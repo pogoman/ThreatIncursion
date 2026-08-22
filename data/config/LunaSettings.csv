@@ -1,0 +1,32 @@
+fieldID,fieldName,fieldType,defaultValue,fieldDescription,minValue,maxValue
+clockHeader,Clock Header,Header,Incursion Clock,"When and how fast the Threat spreads. The incursion begins only after the vanilla abyss story flags fire (finding the Onslaught Mk.I or encountering the Threat).",,
+threatinc_enabled,Incursion Enabled,Boolean,true,"Master switch. Turning this off freezes the incursion entirely (existing hives remain).",,
+threatinc_colonySizeTrigger,Colony Size Trigger,Boolean,true,"Alternate start trigger: a player colony reaching the size below wakes the swarm even without touching the abyss questline - whichever comes first. A maxed colony is exactly the concentration of technology the Threat exists to destroy.",,
+threatinc_triggerColonySize,Trigger Colony Size,Int,6,"Player colony size that wakes the swarm (6 = vanilla max via natural growth).",4,10
+threatinc_tickDays,Days per Tick,Double,30,"How often the incursion clock advances. Higher = slower everything.",5,120
+threatinc_initialSeeds,Initial Seed Systems,Int,2,"How many fringe systems are seeded when the incursion begins.",1,6
+threatinc_seedToHiveDays,Seed to Hive Days,Double,120,"Days for a seeded system to grow a Fabrication Hive.",30,720
+threatinc_hiveToSaturatedDays,Hive to Saturated Days,Double,150,"Days for a hive system to saturate and begin launching strikes.",30,720
+threatinc_spreadChancePerHive,Spread Chance per Hive,Double,0.15,"Per-tick chance of spreading to a new system, multiplied by the number of live hives. Killing hives directly slows this.",0.0,1.0
+threatinc_spreadChanceCap,Spread Chance Cap,Double,0.6,Upper bound on the per-tick spread chance.,0.0,1.0
+threatinc_maxInfestedSystems,Max Infested Systems,Int,12,Hard cap on simultaneously infested systems.,1,40
+phaseHeader,Phase Header,Header,Phases,"Phase 1: fringe expansion (no attacks). Phase 2: strikes at outlying colonies. Phase 3: core worlds in reach.",,
+threatinc_phase2DelayDays,Phase 2 Min Days,Double,180,"Days after the incursion starts before strikes on outlying colonies can begin.",0,3650
+threatinc_phase2MinHives,Phase 2 Min Hives,Int,2,Minimum live hives before phase 2 can begin.,1,20
+threatinc_phase3Enabled,Core Worlds Attackable,Boolean,true,"If on, phase 3 eventually puts the core worlds (size 6+ colonies) in reach.",,
+threatinc_phase3DelayDays,Phase 3 Min Days,Double,540,Days after the incursion starts before core-world strikes can begin.,0,7300
+threatinc_phase3MinHives,Phase 3 Min Hives,Int,4,Minimum live hives before phase 3 can begin.,1,20
+strikeHeader,Strike Header,Header,Strikes,"Saturated hive systems launch incursion fleets at inhabited worlds - real fleets you can intercept and fight alongside the defenders.",,
+threatinc_strikeIntervalDays,Days Between Strikes per Hive,Double,120,Minimum days between strikes launched from any one saturated system.,30,720
+threatinc_maxConcurrentStrikes,Max Concurrent Strikes,Int,2,Sector-wide cap on simultaneous Threat strikes.,1,8
+threatinc_strikeRangeLY,Strike Range (LY),Double,15,How far from a saturated system strikes can reach.,5,60
+threatinc_strikeStrength,Strike Strength,Double,50,"Combined fleet strength of a strike (the Remnant Retribution strike uses 50 as its base, for comparison).",10,300
+threatinc_playerGraceDays,Player Grace Days,Double,120,"Minimum days between strikes that target YOUR colonies specifically. NPC worlds get no such mercy.",0,720
+remnantHeader,Remnant Header,Header,The Remnant Immune System,"Systems defended by a live Remnant Nexus resist infestation - the swarm must win a war of machines first. Purging the Remnant yourself clears the Threat's path.",,
+threatinc_remnantResists,Remnant Systems Resist,Boolean,true,"If on, the spread cannot claim a system with a live Remnant Nexus without first destroying it in a machine war.",,
+threatinc_machineWarWinChance,Machine War Win Chance,Double,0.35,"Per-attempt chance the swarm destroys a defending Remnant Nexus. Failures are retried on later spread attempts.",0.0,1.0
+debugHeader,Debug Header,Header,Debug & Testing,Tools for testing. Effects apply on the next incursion clock check (about half a day of game time).,,
+threatinc_debugLogging,Verbose Logging,Boolean,false,"Logs spread/hive/strike events to starsector.log (prefix [ThreatInc]).",,
+threatinc_debugForceStart,Force Start,Boolean,false,"Starts the incursion immediately, skipping the story-flag trigger. Turn off again afterward.",,
+threatinc_debugFastClock,Fast Clock,Boolean,false,"Runs the entire incursion 10x faster for testing: tick cadence, stage durations, strike intervals, and phase delays.",,
+threatinc_debugGrantSensorMods,Grant Threat Sensor Mods,Boolean,false,"Grants the Onslaught Mk.I sensor modifications (10x detection range vs Threat fleets) that a normal playthrough earns from the abyss quest. Without them Threat fleets are seen at one tenth normal range. Note: having the sensor mods also counts as the incursion's start trigger, as in vanilla.",,

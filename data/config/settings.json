@@ -1,0 +1,46 @@
+{
+	# Threat Incursion - fallback values when LunaLib is not enabled
+
+	# Master switch and clock
+	"threatinc_enabled": true,
+	"threatinc_tickDays": 30,
+
+	# Alternate start trigger: a player colony reaching this size wakes the
+	# swarm even if the abyss story was never touched (whichever comes first)
+	"threatinc_colonySizeTrigger": true,
+	"threatinc_triggerColonySize": 6,
+
+	# Infestation lifecycle
+	"threatinc_initialSeeds": 2,
+	"threatinc_seedToHiveDays": 120,
+	"threatinc_hiveToSaturatedDays": 150,
+	"threatinc_spreadChancePerHive": 0.15,
+	"threatinc_spreadChanceCap": 0.6,
+	"threatinc_maxInfestedSystems": 12,
+
+	# Phase gates (phase 1 = fringe expansion, 2 = strikes at outlying colonies,
+	# 3 = core worlds in reach)
+	"threatinc_phase2DelayDays": 180,
+	"threatinc_phase2MinHives": 2,
+	"threatinc_phase3Enabled": true,
+	"threatinc_phase3DelayDays": 540,
+	"threatinc_phase3MinHives": 4,
+
+	# Strikes
+	"threatinc_strikeIntervalDays": 120,
+	"threatinc_maxConcurrentStrikes": 2,
+	"threatinc_strikeRangeLY": 15,
+	"threatinc_strikeStrength": 50,
+	"threatinc_playerGraceDays": 120,
+
+	# Remnant immune system (pairs with Remnant Retribution, but works with
+	# vanilla Remnant systems regardless)
+	"threatinc_remnantResists": true,
+	"threatinc_machineWarWinChance": 0.35,
+
+	# Debug
+	"threatinc_debugLogging": false,
+	"threatinc_debugForceStart": false,
+	"threatinc_debugFastClock": false,
+	"threatinc_debugGrantSensorMods": false,
+}
