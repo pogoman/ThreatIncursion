@@ -1,0 +1,11 @@
+id,trigger,conditions,script,text,options,notes
+#RULESET_NAME ThreatIncursion,,,,,,
+threatinc_bombardSaturationSel,DialogOptionSelected,"$option == mktBombardSaturation score:1000",ThreatincMarketCMD bombardSaturation,,,"Override: on Threat colonies the atrocity warning/penalty list is owner-only; non-Threat targets delegate to vanilla (DialogOptionSelected fires best-scoring rule only)"
+threatinc_bombardConfirmSel,DialogOptionSelected,"$option == mktBombardConfirm score:1000",ThreatincMarketCMD bombardConfirm,,,"Override: strips third-party factions from the hostile list before the reputation hit is applied for Threat targets; non-Threat delegates to vanilla"
+threatinc_bombardMenuSel,DialogOptionSelected,"$option == mktBombard score:1000",ThreatincMarketCMD bombardMenu,,,"Override: while a Threat colony's Fragment Fabricator runs, the bombardment menu is replaced with the failed-bombardment scene (shield must be raided out from the ground); non-Threat and fabricator-less colonies delegate to vanilla"
+threatinc_fragmentFireSel,DialogOptionSelected,"$option == threatincFragFire",ThreatincMarketCMD fragmentBombardFire,,,"Fires a bombardment into a fragment-screened Threat colony: full fuel cost, zero effect - the lesson costs what it costs"
+threatinc_marketPostOpen,MarketPostOpen,"$hasMarket
+$faction.id == threat score:1000","$tradeMode = NONE 0
+FireBest MarketPostDock","Your $shipOrFleet goes into orbit around $marketName. There is no port authority. No docking clearance is granted or refused - no channel opens at all. Across the world below, the fabrication strata pulse on without pause. To the hive, your fleet is not a visitor; it is material that has not yet been processed.",,"Override: hive worlds conduct no civilian business - trade mode forced to NONE (kills trade, bar, and the smuggler docking flow; MarketPostOpen fires best-scoring rule). Military options remain."
+threatinc_marketCommDirSel,DialogOptionSelected,"$option == marketCommDir
+$faction.id == threat score:1000",,"You sweep the local comm bands. There is no directory - only a wall of machine signal: interleaved fabrication telemetry, targeting handshakes, and a carrier tone your comm officer refuses to leave audible. Nothing down there wants to talk to you.",,"Override: no comm directory on hive worlds (DialogOptionSelected fires best-scoring rule only)"

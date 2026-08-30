@@ -1,46 +1,123 @@
 {
 	# Threat Incursion - fallback values when LunaLib is not enabled
 
+	# lets rules.csv resolve this mod's rule commands (ThreatincBombardCMD)
+	"ruleCommandPackages":["threatinc"],
+
 	# Master switch and clock
 	"threatinc_enabled": true,
 	"threatinc_tickDays": 30,
+
+	# When the incursion begins: by default the abyss story flags wake the
+	# swarm; startAtGameStart skips all triggers and begins immediately in a
+	# new game (or on loading an existing one)
+	"threatinc_startAtGameStart": false,
 
 	# Alternate start trigger: a player colony reaching this size wakes the
 	# swarm even if the abyss story was never touched (whichever comes first)
 	"threatinc_colonySizeTrigger": true,
 	"threatinc_triggerColonySize": 6,
 
-	# Infestation lifecycle
-	"threatinc_initialSeeds": 2,
-	"threatinc_seedToHiveDays": 120,
-	"threatinc_hiveToSaturatedDays": 150,
-	"threatinc_spreadChancePerHive": 0.15,
-	"threatinc_spreadChanceCap": 0.6,
+	# Infestation lifecycle: the incursion begins from ONE resource-complete OG
+	# home system (ore + volatiles mining, refining, heavy industry), whose
+	# whole production chain is founded at once from the Abyss. initialSeeds
+	# above 1 adds that many extra single-colony fringe footholds beyond it.
+	"threatinc_initialSeeds": 1,
+	"threatinc_seedToColonyDays": 120,
+	"threatinc_launchDisruptDays": 60,
 	"threatinc_maxInfestedSystems": 12,
+	"threatinc_spreadMinSize": 3,
 
-	# Phase gates (phase 1 = fringe expansion, 2 = strikes at outlying colonies,
-	# 3 = core worlds in reach)
-	"threatinc_phase2DelayDays": 180,
-	"threatinc_phase2MinHives": 2,
+	# Colonies: growth pacing, size cap, garrison and colonization fleets.
+	# The hive runs a real, self-contained economy - shortages of metals or
+	# machinery stall growth, and ship-hull shortages shrink garrisons/strikes
+	"threatinc_colonyGrowthBaseDays": 60,
+	"threatinc_colonyMaxSize": 8,
+	# Colony size at which a hive world upgrades its founding Spaceport to a
+	# Megaport - a big accessibility boost that feeds starved colonies and
+	# extends the network's fuel range. Gated by size so young fringe seeds
+	# still ramp up slowly (the accessibility ramp is what paces expansion);
+	# lower it toward 3 for faster, more aggressive spread
+	"threatinc_colonyMegaportMinSize": 4,
+	"threatinc_colonizationEscort": 2,
+	"threatinc_garrisonRespawnDays": 40,
+	"threatinc_economyGatesGrowth": true,
+	# The hive is a closed economy that never trades with the Core worlds, so
+	# vanilla's distance-from-Core accessibility penalty models a supply line it
+	# doesn't have. This cancels that penalty for hive colonies (1 = fully, 0 =
+	# leave it). The same-faction proximity term is untouched, so the swarm's
+	# OWN internal network geometry still gates a colony's imports and reach.
+	"threatinc_coreDistanceOffset": 1.0,
+	"threatinc_convertDecivWorlds": true,
+	# Bounties are a live objective board, not a queue: several stand at once,
+	# split across two boards - a strategic tier naming the decisive target and
+	# an immediate tier naming the low-hanging fruit, always at least one of
+	# each - and the weakest on a board is withdrawn unpaid when a better
+	# target of that same tier comes online
+	"threatinc_bountiesEnabled": true,
+	"threatinc_bountyBaseReward": 150000,
+	"threatinc_bountyDurationDays": 365,
+	"threatinc_maxActiveBounties": 3,
+	"threatinc_bountySupersedeMargin": 1.35,
+	"threatinc_bountyMinStandDays": 60,
+	"threatinc_bountyProximityBonus": 0.35,
+	"threatinc_bountyStrategicRewardMult": 1.5,
+
+	# Phases are capability, not calendar: 2 = some colony can stage a strike,
+	# 3 = some colony can field a full-budget armada (size 6+, nominal hulls)
 	"threatinc_phase3Enabled": true,
-	"threatinc_phase3DelayDays": 540,
-	"threatinc_phase3MinHives": 4,
 
-	# Strikes
-	"threatinc_strikeIntervalDays": 120,
+	# Strikes: launched from colonies of at least strikeMinSize; strength is
+	# size squared times the multiplier, degraded by hull shortages
 	"threatinc_maxConcurrentStrikes": 2,
-	"threatinc_strikeRangeLY": 15,
-	"threatinc_strikeStrength": 50,
+	"threatinc_strikeLYPerFuel": 5.0,
+	"threatinc_strikeMinSize": 4,
+	"threatinc_strikeStrengthMult": 1.0,
 	"threatinc_playerGraceDays": 120,
+	# breaking the staging colony's forge (raid/bombardment/destruction) while
+	# an expedition is still PREPARING there makes it stillborn; departed
+	# expeditions are autonomous
+	"threatinc_strikeRecallEnabled": true,
+	# if false, strikes never target story-critical worlds (the engine refuses
+	# to destroy them); if true, the swarm may erase them - can break unfinished
+	# vanilla storylines
+	"threatinc_destroyStoryCritical": true,
+	# scale on hive ground-defense strength; bombardment fuel cost scales with it
+	"threatinc_groundDefenseMult": 1.0,
+	# Fragment Fabricator screens Threat colonies from player bombardment until
+	# it is stolen by ground raid (EXTREME danger)
+	"threatinc_fragmentShieldEnabled": true,
+
+	# Faction reactive defense: task forces against garrisons, and - when a
+	# colony's garrison has been wiped out - saturation purge bombardments
+	"threatinc_responseEnabled": true,
+	"threatinc_responseMaxConcurrent": 3,
+	"threatinc_responseRangeLY": 20,
+	"threatinc_responseMinDifficulty": 4,
+	"threatinc_responseMaxDifficulty": 10,
+	"threatinc_responseStrengthDivisor": 30,
+	"threatinc_responsePurgeEnabled": true,
+	"threatinc_purgeCooldownDays": 240,
 
 	# Remnant immune system (pairs with Remnant Retribution, but works with
 	# vanilla Remnant systems regardless)
 	"threatinc_remnantResists": true,
 	"threatinc_machineWarWinChance": 0.35,
 
+	# Faction relations. The Threat is a machine menace at war with all life:
+	# permaHostile pins it to vengeful with every faction (so it reads as
+	# openly hostile on the relations screen, not merely "not currently
+	# hostile"). bombardNoAtrocity waives the vanilla saturation-bombardment
+	# reputation penalty when the colony you bomb is a Threat colony - civilized
+	# factions do not brand you a war criminal for exterminating the swarm.
+	"threatinc_permaHostile": true,
+	"threatinc_bombardNoAtrocity": true,
+
 	# Debug
+	"threatinc_debugMode": false,
 	"threatinc_debugLogging": false,
 	"threatinc_debugForceStart": false,
 	"threatinc_debugFastClock": false,
 	"threatinc_debugGrantSensorMods": false,
+	"threatinc_debugReset": false,
 }

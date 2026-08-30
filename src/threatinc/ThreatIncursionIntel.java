@@ -1,7 +1,6 @@
 package threatinc;
 
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Set;
 
 import java.awt.Color;
@@ -58,6 +57,28 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		return tags;
 	}
 
+	/**
+	 * The systems the player actually knows are infested: visited in person,
+	 * named in a bounty, or the origin of a strike. This intel deliberately shows
+	 * NOTHING else - not the full spread, not colony sizes, not the swarm's
+	 * economic state. The player is not meant to be able to gauge the true extent
+	 * or strength of the incursion from here.
+	 */
+	protected static java.util.List<String> knownInfestedSystemIds() {
+		java.util.List<String> result = new java.util.ArrayList<String>();
+		for (String systemId : ThreatIncData.stages().keySet()) {
+			if (ThreatIncData.discoveredSystems().contains(systemId)) result.add(systemId);
+		}
+		return result;
+	}
+
+	protected static StarSystemAPI getSystemById(String systemId) {
+		for (StarSystemAPI curr : Global.getSector().getStarSystems()) {
+			if (curr.getId().equals(systemId)) return curr;
+		}
+		return null;
+	}
+
 	@Override
 	public void createIntelInfo(TooltipMakerAPI info, ListInfoMode mode) {
 		Color tc = getTitleColor(mode);
@@ -65,12 +86,8 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 		Color t = Misc.getTextColor();
 		Color h = Misc.getHighlightColor();
-		float initPad = 3f;
-
-		int infested = ThreatIncData.countInfested();
-		int phase = IncursionManager.getPhase();
-		info.addPara("Infested systems: %s", initPad, t, h, "" + infested);
-		info.addPara("Incursion phase: %s", 0f, t, h, "" + phase);
+		info.addPara("Known infested systems: %s", 3f, t, h,
+				"" + knownInfestedSystemIds().size());
 	}
 
 	@Override
@@ -79,50 +96,36 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
 
-		info.addPara("The Threat - the ancient fabricator swarms of the Abyss - is spreading "
-				+ "into the sector. Seeded systems become fabrication hives; hives saturate "
-				+ "and launch incursions against inhabited worlds.", opad);
+		info.addPara("The Threat - the ancient fabricator swarms of the Abyss - has come to the "
+				+ "sector. Where its fabrication strata take root, a machine colony rises that "
+				+ "cannot be reasoned with or occupied, only burned away.", opad);
 
-		int phase = IncursionManager.getPhase();
-		String phaseDesc;
-		if (phase >= 3) {
-			phaseDesc = "converging on the core worlds";
-		} else if (phase == 2) {
-			phaseDesc = "striking at outlying colonies";
-		} else {
-			phaseDesc = "expanding through the uninhabited fringe";
-		}
-		info.addPara("Incursion phase: %s - the swarm is %s.", opad, h, "" + phase, phaseDesc);
-
-		Map<String, String> stages = ThreatIncData.stages();
-		if (stages.isEmpty()) {
-			info.addPara("No known infested systems. The swarm has been contained - for now.", opad);
+		java.util.List<String> known = knownInfestedSystemIds();
+		if (known.isEmpty()) {
+			info.addPara("You have confirmed no Threat infestations. Where the swarm is - and "
+					+ "how far it has spread - is unknown.", opad, neg, "unknown");
 		} else {
 			info.addPara("Known infested systems:", opad);
-			for (Map.Entry<String, String> entry : stages.entrySet()) {
-				StarSystemAPI system = null;
-				for (StarSystemAPI curr : Global.getSector().getStarSystems()) {
-					if (curr.getId().equals(entry.getKey())) {
-						system = curr;
-						break;
-					}
-				}
-				String name = system != null ? system.getNameWithLowercaseTypeShort() : entry.getKey();
-				String stage = entry.getValue();
-				Color c = ThreatIncData.STAGE_SEEDED.equals(stage) ? h : neg;
-				info.addPara(BULLET + name + ": %s", 3f, c, stage);
+			for (String systemId : known) {
+				StarSystemAPI system = getSystemById(systemId);
+				String name = system != null
+						? system.getNameWithLowercaseTypeShort() : systemId;
+				info.addPara(BULLET + name, 3f, neg, name);
 			}
+			info.addPara("Only what you have found is listed here. The full reach of the "
+					+ "incursion is unknown.", opad, h, "unknown");
 		}
 
 		int cleansed = ThreatIncData.getCleansedCount();
 		if (cleansed > 0) {
-			info.addPara("Systems cleansed by hive destruction: %s.", opad,
+			info.addPara("Threat colonies you have burned from the sector: %s.", opad,
 					Misc.getPositiveHighlightColor(), "" + cleansed);
 		}
 
-		info.addPara("Destroying a system's Fabrication Hive fleet collapses the local "
-				+ "infestation and slows the spread everywhere - the swarm's growth scales "
-				+ "with how much of it exists.", opad, Misc.getPositiveHighlightColor(),
-				"Destroying a system's Fabrication Hive fleet");
+		info.addPara("Counterplay: defeat the Defense Swarms orbiting a colony, then saturation "
+				+ "bombardment burns it down - each pass shrinks it, and small colonies are "
+				+ "destroyed outright. The hive is one economy: its supply convoys and colonies "
+				+ "are all targets, and every world it loses starves the rest.", opad,
+				Misc.getPositiveHighlightColor(), "saturation bombardment");
 	}
 }
