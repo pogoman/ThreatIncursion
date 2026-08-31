@@ -115,7 +115,11 @@ public class ThreatIncConfig {
 
 	// ---- strikes ----
 
-	public static int maxConcurrentStrikes() { return i("threatinc_maxConcurrentStrikes"); }
+	/** 0 means unlimited - every system with the means may have a strike in flight. */
+	public static int maxConcurrentStrikes() {
+		int cap = i("threatinc_maxConcurrentStrikes");
+		return cap <= 0 ? Integer.MAX_VALUE : cap;
+	}
 	public static float strikeLYPerFuel()    { return f("threatinc_strikeLYPerFuel"); }
 	public static int strikeMinSize()        { return i("threatinc_strikeMinSize"); }
 	public static float strikeStrengthMult() { return f("threatinc_strikeStrengthMult"); }
@@ -124,7 +128,11 @@ public class ThreatIncConfig {
 	// ---- faction reactive defense ----
 
 	public static boolean responseEnabled()      { return b("threatinc_responseEnabled", true); }
-	public static int   responseMaxConcurrent()  { return i("threatinc_responseMaxConcurrent"); }
+	/** 0 means unlimited, mirroring maxConcurrentStrikes. */
+	public static int   responseMaxConcurrent()  {
+		int cap = i("threatinc_responseMaxConcurrent");
+		return cap <= 0 ? Integer.MAX_VALUE : cap;
+	}
 	public static float responseRangeLY()        { return f("threatinc_responseRangeLY"); }
 	public static int   responseMinDifficulty()  { return i("threatinc_responseMinDifficulty"); }
 	public static int   responseMaxDifficulty()  { return i("threatinc_responseMaxDifficulty"); }

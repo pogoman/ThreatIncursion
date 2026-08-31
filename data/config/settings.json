@@ -69,7 +69,8 @@
 
 	# Strikes: launched from colonies of at least strikeMinSize; strength is
 	# size squared times the multiplier, degraded by hull shortages
-	"threatinc_maxConcurrentStrikes": 2,
+	# 0 = unlimited
+	"threatinc_maxConcurrentStrikes": 0,
 	"threatinc_strikeLYPerFuel": 5.0,
 	"threatinc_strikeMinSize": 4,
 	"threatinc_strikeStrengthMult": 1.0,
@@ -91,7 +92,8 @@
 	# Faction reactive defense: task forces against garrisons, and - when a
 	# colony's garrison has been wiped out - saturation purge bombardments
 	"threatinc_responseEnabled": true,
-	"threatinc_responseMaxConcurrent": 3,
+	# 0 = unlimited
+	"threatinc_responseMaxConcurrent": 0,
 	"threatinc_responseRangeLY": 20,
 	"threatinc_responseMinDifficulty": 4,
 	"threatinc_responseMaxDifficulty": 10,

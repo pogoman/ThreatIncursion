@@ -33,18 +33,17 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	}
 
 	/**
-	 * The payload (bombardment type and pass count) is tiered by the STAGING
-	 * colony's size and set at launch (see IncursionManager.launchStrike):
-	 * frontier colonies harass with tactical bombardment, developed worlds
-	 * deliver one saturation pass, only a size-8 capital delivers two. An
-	 * earlier "annihilation doctrine" let any expedition bombard until the
-	 * target died - one strike could erase a size-8 world start to finish,
-	 * which made strikes the only event that mattered. The custom action
-	 * remains for its dead-target guard and story-critical handling; a kill
-	 * still feeds the deciv-conversion machinery ("the swarm does not abandon
-	 * its kills"). Passes stay affordable because {@link #createFleet} zeroes
-	 * the fleet bombardment fuel cost - launch fuel was paid via
-	 * payLaunchCost.
+	 * The payload sweeps every eligible world in the target system, each
+	 * bombarded at most once per expedition (see IncursionManager.launchStrike):
+	 * frontier staging harasses with tactical bombardment, developed staging
+	 * delivers one saturation pass per world. An earlier "annihilation
+	 * doctrine" let any expedition bombard until the target died - one strike
+	 * could erase a size-8 world start to finish, which made strikes the only
+	 * event that mattered. The custom action remains for its dead-target guard
+	 * and story-critical handling; a kill still feeds the deciv-conversion
+	 * machinery ("the swarm does not abandon its kills"). Passes stay
+	 * affordable because {@link #createFleet} zeroes the fleet bombardment
+	 * fuel cost - launch fuel was paid via payLaunchCost.
 	 */
 	@Override
 	protected GenericPayloadAction createPayloadAction() {

@@ -176,7 +176,7 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				} else {
 					output = "strained";
 				}
-				line.append(". Output %s, Defense Swarms %s.");
+				line.append(". Hive Status %s, Defense Swarms %s.");
 				hl.add(output);
 				hlColors.add("critical".equals(output) || "strained".equals(output) ? neg : h);
 				hl.add("" + garrison);

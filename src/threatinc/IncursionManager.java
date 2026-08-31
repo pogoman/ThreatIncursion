@@ -774,13 +774,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (getPhase() < 2) return;
 		if (countActiveStrikes() >= ThreatIncConfig.maxConcurrentStrikes()) return;
 
-		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
+		// shuffled so the oldest hive can't monopolize the concurrency cap -
+		// iteration used to run in seeding order, which let the founding system
+		// fill every strike slot before younger systems were even considered
+		List<String> systemIds = new ArrayList<String>(ThreatIncData.colonyMarkets().keySet());
+		java.util.Collections.shuffle(systemIds, random);
+		for (String systemId : systemIds) {
 			// a strike is staged by the system's biggest colony that can
-			// actually fabricate it: forge ready, fuel economy intact. No
-			// strike timer - launching retools the forge (payLaunchCost), and
-			// the system can't strike again until it recovers. Strikes and
-			// expansion draw on the same forges: an aggressive hive expands
-			// slower, and vice versa.
+			// actually fabricate it: hulls delivered by the hive network, fuel
+			// economy intact, Swarm Nexus ready. No strike timer - launching
+			// puts the nexus into refit (payLaunchCost), and the colony can't
+			// strike again until it recovers. Strikes and expansion draw on the
+			// same forge output: an aggressive hive expands slower, and vice
+			// versa.
 			MarketAPI colony = ThreatColonyManager.pickStrikeStaging(systemId, true);
 			if (colony == null) continue;
 
@@ -814,23 +820,38 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		params.raidParams.type = FGRaidType.SEQUENTIAL;
 		params.raidParams.tryToCaptureObjectives = false;
 		params.raidParams.allowedTargets.add(target);
+		// sweep doctrine: the expedition works through EVERY eligible world in
+		// the target system, not just the picked one - a strike contests a
+		// system, not a planet. Secondary targets pass the same filters that
+		// gated the primary pick (see pickStrikeTarget), minus the size floor:
+		// once the swarm commits to a system, its outposts burn too.
+		boolean coreAllowed = getPhase() >= 3;
+		boolean playerAllowed = ThreatIncData.daysSincePlayerStruck()
+				>= ThreatIncConfig.playerGraceDays();
+		for (MarketAPI other : Global.getSector().getEconomy().getMarkets(target.getStarSystem())) {
+			if (other == target || other.getPrimaryEntity() == null || other.isHidden()) continue;
+			if (Factions.THREAT.equals(other.getFactionId())) continue;
+			if (other.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) continue;
+			if (!coreAllowed && other.getSize() >= 6) continue;
+			if (other.isPlayerOwned() && !playerAllowed) continue;
+			if (isActiveStrikeTarget(other)) continue;
+			if (!ThreatIncConfig.destroyStoryCritical() && Misc.isStoryCritical(other)) continue;
+			params.raidParams.allowedTargets.add(other);
+		}
 		params.raidParams.allowNonHostileTargets = true;
-		// payload authority scales with the STAGING colony's weight - a single
-		// expedition must not be able to erase a size-8 world start to finish:
-		// - frontier staging (size <= strikeMinSize+1): tactical harassment -
-		//   disruption and destabilization, no killing blows
-		// - developed staging: ONE saturation pass - wounds, or kills a world
-		//   already ground to the destroy threshold
-		// - a size-8 capital: two saturation passes
-		// Erasing a large world therefore takes repeated expeditions (or the
-		// player's own campaign), not one visit.
+		// payload authority: each world in the sweep is bombarded AT MOST ONCE
+		// per expedition - a single visit must not erase any world start to
+		// finish. Frontier staging (size <= strikeMinSize+1) only harasses with
+		// tactical bombardment; developed staging delivers one saturation pass
+		// per world - wounds, or kills a world already ground to the destroy
+		// threshold. Erasing a large world therefore takes repeated
+		// expeditions (or the player's own campaign), not one visit.
 		if (colony.getSize() <= ThreatIncConfig.strikeMinSize() + 1) {
 			params.raidParams.setBombardment(BombardType.TACTICAL);
-			params.raidParams.raidsPerColony = 2;
 		} else {
 			params.raidParams.setBombardment(BombardType.SATURATION);
-			params.raidParams.raidsPerColony = strikeSatPasses(colony.getSize());
 		}
+		params.raidParams.raidsPerColony = strikeSatPasses(colony.getSize());
 		params.noun = "Threat incursion";
 		params.forcesNoun = "Threat forces";
 
@@ -865,7 +886,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatIncConfig.log("Strike launched from " + source.getName() + " at " + target.getName()
 				+ " (difficulty ~" + (int) (colony.getSize() * colony.getSize()
 						* ThreatIncConfig.strikeStrengthMult()
-						* ThreatColonyManager.shipSupplyMult(colony)) + ")");
+						* ThreatColonyManager.shipSupplyMult(colony))
+				+ ", sweeping " + params.raidParams.allowedTargets.size()
+				+ " world(s) in " + target.getStarSystem().getName() + ")");
 	}
 
 	/**
@@ -885,7 +908,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		MarketAPI base = findResponseBase(faction, hiveSystem);
 		if (base == null) return; // no military world in reach: the faction can't respond
 
-		float strength = WarSimScript.getFactionStrength(faction, hiveSystem);
+		// measured at the BASE's system: the hive system is enemy territory where
+		// the faction has no assets, so strength there is ~0 and every task force
+		// would collapse to the minimum difficulty
+		float strength = WarSimScript.getFactionStrength(faction, base.getStarSystem());
 		int difficulty = ThreatIncConfig.responseMinDifficulty()
 				+ Math.round(strength / ThreatIncConfig.responseStrengthDivisor());
 		if (difficulty < ThreatIncConfig.responseMinDifficulty()) difficulty = ThreatIncConfig.responseMinDifficulty();
@@ -964,7 +990,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (base == null) continue;
 
 			FactionAPI faction = base.getFaction();
-			float strength = WarSimScript.getFactionStrength(faction, system);
+			// strength at the base, not the hive system - see dispatchFactionResponse
+			float strength = WarSimScript.getFactionStrength(faction, base.getStarSystem());
 			int difficulty = ThreatIncConfig.responseMinDifficulty()
 					+ Math.round(strength / ThreatIncConfig.responseStrengthDivisor());
 			if (difficulty > ThreatIncConfig.responseMaxDifficulty()) {
@@ -1465,9 +1492,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return false;
 	}
 
-	/** Saturation passes an expedition may deliver, by staging colony size. */
+	/**
+	 * Bombardment passes an expedition may deliver PER WORLD. Always one under
+	 * the sweep doctrine (every world in the target system, each at most once);
+	 * kept as a method because {@link #upgradeInFlightStrikes} uses it to clamp
+	 * strikes launched under earlier, heavier doctrines.
+	 */
 	public static int strikeSatPasses(int stagingSize) {
-		return stagingSize >= 8 ? 2 : 1;
+		return 1;
 	}
 
 	/** Whether some strike staged from this colony is still in its recall window. */
@@ -1550,6 +1582,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				}
 			}
 			if (!targets) continue;
+			// abort() -> finish(true) leaves the intel rendering as "Defeated"
+			// ("...forces have been defeated and any remaining ships are
+			// retreating in disarray") - wrong here: nobody beat these fleets,
+			// their target simply ceased to exist. Flag it failed-but-not-defeated
+			// first so vanilla titles it "- Failed" and reads "...are withdrawing."
+			purge.setFailedButNotDefeated(true);
 			purge.abort();
 			ThreatColonyManager.announce(purge.getFaction().getDisplayName()
 					+ " purge expedition is standing down: " + cause + " means the Threat "
@@ -1604,14 +1642,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * Clamps in-flight strikes to the tiered payload doctrine. The serialized
-	 * FGRaidAction reads its params object live - the very instance
+	 * Clamps in-flight strikes to the sweep doctrine's one pass per world. The
+	 * serialized FGRaidAction reads its params object live - the very instance
 	 * getParams().raidParams holds - so lowering the quota here changes the
 	 * expedition's behavior mid-flight. Only ever clamps DOWN: saturation
 	 * strikes launched under earlier doctrines (vanilla's punitive 2, the
-	 * annihilation cap of 10, or the exact-kill retrofit) are cut to the pass
-	 * count their staging colony's weight now authorizes; tactical strikes
-	 * are already the low tier and are left alone.
+	 * annihilation cap of 10, the exact-kill retrofit, or the size-tiered
+	 * pass counts) are cut to one pass per world; tactical strikes are
+	 * already the low tier and are left alone.
 	 */
 	protected static void upgradeInFlightStrikes() {
 		for (Object curr : getStrikeList()) {

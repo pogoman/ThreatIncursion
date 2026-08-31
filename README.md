@@ -28,9 +28,10 @@ it.
   not marines; they keep firing at reduced effect even while disrupted.
 
 **Strikes.** Colonies launch real, interceptable expeditions at inhabited
-worlds - payload scaled to the staging colony's weight (frontier colonies
-harass with tactical bombardment; only a size-8 capital can deliver two
-saturation passes). Expeditions still being fabricated can be killed by
+worlds - each sweeps every world in its target system, bombarding each at
+most once (frontier colonies harass with tactical bombardment; developed
+worlds deliver saturation passes - erasing a large world still takes
+repeated expeditions). Expeditions still being fabricated can be killed by
 sabotaging the staging colony; once departed they are autonomous. Worlds
 they kill, the swarm colonizes.
 

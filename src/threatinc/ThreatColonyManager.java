@@ -1006,15 +1006,20 @@ public class ThreatColonyManager {
 
 	/**
 	 * The system's strike staging colony: its biggest fueled colony of strike
-	 * size. requireReadyForge=true for actually launching (the forge must be
-	 * free to fabricate); false when only asking about the system's REACH
-	 * (fuel range exists even while the forge retools).
+	 * size. The hive is one economy, so staging does NOT require a shipyard
+	 * in-system: it requires the hive network to actually DELIVER hulls to the
+	 * staging colony (shipsAvailable - group-wide forge output, mediated by
+	 * accessibility). Destroying the hive's forges anywhere still grounds
+	 * strikes everywhere, but a mature forge-less system can stage from
+	 * shipped-in hulls. requireReadyForge=true for actually launching; false
+	 * when only asking about the system's REACH (fuel range exists even while
+	 * the hull supply is choked).
 	 */
 	public static MarketAPI pickStrikeStaging(String systemId, boolean requireReadyForge) {
 		MarketAPI best = null;
 		for (MarketAPI curr : ThreatIncData.getLiveColonyMarkets(systemId)) {
 			if (curr.getSize() < ThreatIncConfig.strikeMinSize()) continue;
-			if (requireReadyForge && !hasReadyForge(curr)) continue;
+			if (requireReadyForge && shipsAvailable(curr) <= 0f) continue;
 			if (!hasOperationalFuel(curr)) continue;
 			// expeditions are staged by the military organ, vanilla-style: a
 			// disrupted Swarm Nexus launches nothing (see MilitaryBase's own
