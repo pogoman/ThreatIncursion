@@ -56,6 +56,10 @@ public class ThreatColonyManager {
 
 	public static final String COLONY_FLAG = "$threatinc_colony";
 	public static final String GARRISON_FLAG = "$threatinc_garrison";
+	/** The FabricatorEscortStrength ordinal a swarm was fabricated at. */
+	public static final String SWARM_TIER_KEY = "$threatinc_swarmTier";
+	/** How many fabricator ships a swarm was fabricated with. */
+	public static final String SWARM_FABS_KEY = "$threatinc_swarmFabs";
 	public static final String WAVE_FLAG = "$threatinc_colonyFleet";
 
 	public static final String STABILITY_MOD_ID = "threatinc_machine";
@@ -1020,6 +1024,9 @@ public class ThreatColonyManager {
 		for (MarketAPI curr : ThreatIncData.getLiveColonyMarkets(systemId)) {
 			if (curr.getSize() < ThreatIncConfig.strikeMinSize()) continue;
 			if (requireReadyForge && shipsAvailable(curr) <= 0f) continue;
+			// a strike musters at least two Defense Swarms above the reserve:
+			// the colony launches from strength, at full garrison, or not at all
+			if (requireReadyForge && garrisonAvailableForLaunch(curr) < 2) continue;
 			if (!hasOperationalFuel(curr)) continue;
 			// expeditions are staged by the military organ, vanilla-style: a
 			// disrupted Swarm Nexus launches nothing (see MilitaryBase's own
@@ -1084,28 +1091,116 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * The fabrication cost of any expedition - colonization wave or strike:
-	 * the source colony's forge is disrupted while it retools. While down it
-	 * supplies no ship hulls (or machinery, supplies, weapons), so the whole
-	 * hive's shipSupplyMult sags and garrisons thin - expanding or raiding
-	 * genuinely weakens the swarm for a window, and a colony can't launch
-	 * again until its forge recovers. No dice, no timers: launch throughput
-	 * is exactly the number of stable forges the hive actually runs.
+	 * Everything comes from somewhere: an expedition's fleets ARE the colony's
+	 * Defense Swarms, mustered off their orbits and sent out. The Swarm Nexus
+	 * never pauses - it keeps growing replacement swarms at its usual cadence
+	 * (maintainGarrisons) - so launch tempo is bought with real standing
+	 * forces, not a disruption timer. The counterplay follows naturally:
+	 * killing a colony's swarms IS disrupting it - a thinned garrison can't
+	 * muster an expedition until the nexus regrows it.
 	 */
-	public static void payLaunchCost(MarketAPI market) {
-		// the launch exhausts the MILITARY organ, not the economic one: the
-		// Swarm Nexus that assembled and launched the expedition goes into
-		// refit, during which the colony stages nothing further and grows no
-		// replacement Defense Swarms (maintainGarrisons gates on it) - a
-		// colony that just threw its punch is at its most exposed. The forge
-		// keeps supplying hulls to the hive economy; it is only disrupted by
-		// enemy action (raids, bombardment).
-		Industry nexus = market.getIndustry(SWARM_NEXUS);
-		if (nexus == null) return;
-		float days = ThreatIncConfig.launchDisruptDays() * IncursionManager.timeScale();
-		nexus.setDisrupted(days, true);
-		ThreatIncConfig.log("Swarm Nexus at " + market.getName() + " in post-launch refit for "
-				+ (int) days + "d (expedition fabricated and away)");
+
+	/**
+	 * Defense Swarms this colony's nexus actually builds toward: the nominal
+	 * size table, degraded by the hive economy's real hull supply. This is
+	 * the SAME number maintainGarrisons grows to - the "full garrison" bar
+	 * for launches must match what the nexus can actually deliver, or a
+	 * strained hive would wait forever for fleets that never come.
+	 */
+	public static int desiredGarrisonCount(MarketAPI market) {
+		if (market == null) return 0;
+		int nominal = desiredGarrison(market.getSize()).length;
+		int desired = Math.max(1, Math.round(nominal * shipSupplyMult(market)));
+		return Math.min(desired, nominal);
+	}
+
+	/** Defense Swarms a colony always keeps home; it never musters these. */
+	public static int garrisonReserve(MarketAPI market) {
+		return Math.max(1, desiredGarrisonCount(market) / 2);
+	}
+
+	/**
+	 * Defense Swarms the colony is willing to send out: only what stands above
+	 * its reserve, and only once the garrison is at full (economy-scaled)
+	 * strength - a colony still regrowing its swarms launches nothing.
+	 */
+	public static int garrisonAvailableForLaunch(MarketAPI market) {
+		if (market == null) return 0;
+		int desired = desiredGarrisonCount(market);
+		int live = countLiveGarrison(market.getId());
+		if (live < desired) return 0;
+		return Math.max(0, live - garrisonReserve(market));
+	}
+
+	/**
+	 * Musters up to count Defense Swarms as the substance of an expedition:
+	 * the fleets leave the garrison (despawned here; the expedition machinery
+	 * re-embodies them as its own fleets). Sends the LARGEST swarms - the
+	 * reserve that stays is the smaller ones. Returns each mustered swarm's
+	 * expedition fleet size (see expeditionSizeFor), so the expedition fields
+	 * exactly the fleets that left orbit.
+	 */
+	public static List<Integer> consumeGarrison(MarketAPI market, int count) {
+		List<Integer> mustered = new ArrayList<Integer>();
+		if (market == null || count <= 0) return mustered;
+		List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(market.getId());
+		List<CampaignFleetAPI> alive = new ArrayList<CampaignFleetAPI>();
+		for (CampaignFleetAPI curr : fleets) {
+			if (curr != null && curr.isAlive()) alive.add(curr);
+		}
+		java.util.Collections.sort(alive, new java.util.Comparator<CampaignFleetAPI>() {
+			public int compare(CampaignFleetAPI a, CampaignFleetAPI b) {
+				return Float.compare(b.getFleetPoints(), a.getFleetPoints());
+			}
+		});
+		for (CampaignFleetAPI curr : alive) {
+			if (mustered.size() >= count) break;
+			mustered.add(expeditionSizeFor(curr));
+			fleets.remove(curr);
+			curr.despawn();
+		}
+		if (!mustered.isEmpty()) {
+			// mustering from an idle nexus STARTS the rebuild clock: finished
+			// swarms are not banked while the garrison stands at capacity, so
+			// the first replacement takes a full interval from this moment. A
+			// build already in progress (timer running) is left to finish.
+			Long last = ThreatIncData.garrisonSpawnTimes().get(market.getId());
+			float interval = ThreatIncConfig.garrisonRespawnDays() * IncursionManager.timeScale();
+			if (last == null || Global.getSector().getClock().getElapsedDaysSince(last) >= interval) {
+				ThreatIncData.garrisonSpawnTimes().put(market.getId(),
+						Global.getSector().getClock().getTimestamp());
+			}
+			ThreatIncConfig.log(mustered.size() + " Defense Swarm(s) mustered from "
+					+ market.getName() + " (" + countLiveGarrison(market.getId())
+					+ " remain on station)");
+		}
+		return mustered;
+	}
+
+	/**
+	 * The expedition fleet size tier that re-embodies this garrison swarm as
+	 * EXACTLY the fleet that left orbit: read from the tier it was fabricated
+	 * at (SWARM_TIER_KEY / SWARM_FABS_KEY; see ThreatStrikeFGI.createFleet
+	 * for the size-to-tier thresholds). Swarms from saves that predate the
+	 * tags fall back to an FP estimate.
+	 */
+	protected static int expeditionSizeFor(CampaignFleetAPI swarm) {
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = swarm.getMemoryWithoutUpdate();
+		if (mem.contains(SWARM_TIER_KEY)) {
+			if (mem.getInt(SWARM_FABS_KEY) > 0) return 9;
+			int tier = mem.getInt(SWARM_TIER_KEY);
+			if (tier <= FabricatorEscortStrength.LOW.ordinal()) return 4;
+			if (tier == FabricatorEscortStrength.MEDIUM.ordinal()) return 6;
+			if (tier == FabricatorEscortStrength.HIGH.ordinal()) return 8;
+			return 9;
+		}
+		// last-resort FP estimate, deliberately conservative: Threat fleet FP
+		// runs high, so err SMALL and never conjure a fabricator armada (9)
+		// out of an untagged garrison swarm
+		float fp = swarm.getFleetPoints();
+		if (fp < 120f) return 4;
+		if (fp < 220f) return 6;
+		return 8;
 	}
 
 	/**
@@ -1120,9 +1215,10 @@ public class ThreatColonyManager {
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (market.getSize() < ThreatIncConfig.spreadMinSize()) continue;
 			if (!hasReadyForge(market)) continue;
-			// the launch cooldown now lives on the nexus (payLaunchCost), so
-			// wave sourcing must respect it like strike staging does
 			if (!hasOperationalNexus(market)) continue;
+			// the wave's substance is a mustered Defense Swarm: the colony must
+			// have one to spare above its defensive reserve
+			if (garrisonAvailableForLaunch(market) < 1) continue;
 			if (requireStable ? !isStableForExpansion(market) : !canProjectFleets(market)) continue;
 			StarSystemAPI system = market.getStarSystem();
 			if (system == null) continue;
@@ -1226,9 +1322,14 @@ public class ThreatColonyManager {
 				1, 0, 0, escort, random);
 		if (fleet == null) return false;
 
-		// the expedition is paid for: the source's forge retools around it
-		if (source != null) payLaunchCost(source);
+		// the expedition is paid for in real fleets: one Defense Swarm leaves
+		// the source's garrison to become the seeding wave's substance
+		if (source != null) consumeGarrison(source, 1);
 		fleet.setName("Seeding Swarm");
+		// tier tag rides the fleet: when this wave digs in as its new colony's
+		// first garrison, later musters know exactly what it is
+		fleet.getMemoryWithoutUpdate().set(SWARM_TIER_KEY, escortIdx);
+		fleet.getMemoryWithoutUpdate().set(SWARM_FABS_KEY, 1);
 		fleet.getMemoryWithoutUpdate().set(WAVE_FLAG, targetSystem.getId());
 		makeDetectable(fleet);
 
@@ -1572,7 +1673,8 @@ public class ThreatColonyManager {
 		// expedition it can send, not a fifth of it - force projection is the
 		// expensive posture, defense the cheap one.
 		if (size <= 2) return new int[][] {{0, low}};
-		if (size <= 4) return new int[][] {{0, med}, {0, med}, {0, med}};
+		if (size == 3) return new int[][] {{0, med}, {0, med}};
+		if (size == 4) return new int[][] {{0, med}, {0, med}, {0, med}};
 		if (size == 5) return new int[][] {{0, med}, {0, med}, {0, high}, {1, med}};
 		if (size == 6) return new int[][] {{0, high}, {0, high}, {0, high}, {1, high}};
 		if (size == 7) return new int[][] {{0, high}, {0, high}, {0, high}, {0, high}, {1, high}};
@@ -1598,9 +1700,13 @@ public class ThreatColonyManager {
 			SharedData.getData().getMarketsWithoutTradeFleetSpawn().add(marketId);
 
 			List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(marketId);
+			boolean lostFleets = false;
 			for (int i = fleets.size() - 1; i >= 0; i--) {
 				CampaignFleetAPI curr = fleets.get(i);
-				if (curr == null || !curr.isAlive()) fleets.remove(i);
+				if (curr == null || !curr.isAlive()) {
+					fleets.remove(i);
+					lostFleets = true;
+				}
 			}
 
 			// fleets are fabricated by the Swarm Nexus, vanilla-military-base
@@ -1610,17 +1716,48 @@ public class ThreatColonyManager {
 			if (!hasOperationalNexus(market)) continue;
 
 			int[][] table = desiredGarrison(market.getSize());
+
+			// backfill fabrication-tier tags on swarms from saves that predate
+			// them, assuming each swarm sits in its table slot - an untagged
+			// legacy swarm otherwise re-embodies from an FP estimate, and real
+			// Threat fleet FP runs high enough to inflate a MEDIUM garrison
+			// swarm into a fabricator armada at muster
+			for (int i = 0; i < fleets.size(); i++) {
+				CampaignFleetAPI curr = fleets.get(i);
+				if (curr.getMemoryWithoutUpdate().contains(SWARM_TIER_KEY)) continue;
+				int[] slot = table[Math.min(i, table.length - 1)];
+				curr.getMemoryWithoutUpdate().set(SWARM_TIER_KEY, slot[1]);
+				curr.getMemoryWithoutUpdate().set(SWARM_FABS_KEY, slot[0]);
+			}
+
 			// the economy is the difficulty: a hull-starved colony fields a
-			// fraction of its nominal garrison
-			int desired = Math.max(1, Math.round(table.length * shipSupplyMult(market)));
-			if (desired > table.length) desired = table.length;
+			// fraction of its nominal garrison (same figure the launch gates
+			// read - see desiredGarrisonCount)
+			int desired = desiredGarrisonCount(market);
 			if (fleets.size() >= desired) continue;
 
 			Long last = ThreatIncData.garrisonSpawnTimes().get(marketId);
-			if (last != null && Global.getSector().getClock().getElapsedDaysSince(last)
-					< ThreatIncConfig.garrisonRespawnDays() * IncursionManager.timeScale()) {
+			// a strained hive builds SLOWER, not just smaller: the replacement
+			// cadence stretches as hull supply sags, up to 4x at a deep deficit.
+			// Since expeditions are mustered from the garrison, this throttles
+			// the hive's entire military tempo through its economy.
+			float pace = Math.max(0.25f, shipSupplyMult(market));
+			float interval = ThreatIncConfig.garrisonRespawnDays()
+					* IncursionManager.timeScale() / pace;
+			boolean timerExpired = last == null
+					|| Global.getSector().getClock().getElapsedDaysSince(last) >= interval;
+			if (lostFleets && timerExpired) {
+				// an IDLE nexus does not bank finished swarms: the timer expired
+				// while the garrison stood at capacity, so this loss (kill in
+				// battle, or a stale despawn) STARTS a build rather than
+				// completing one - the replacement arrives a full interval from
+				// now. A colony already mid-build (timer running) is untouched:
+				// the swarm in the growth-vat is not the one that died.
+				ThreatIncData.garrisonSpawnTimes().put(marketId,
+						Global.getSector().getClock().getTimestamp());
 				continue;
 			}
+			if (!timerExpired) continue;
 
 			int[] spec = table[fleets.size() < table.length ? fleets.size() : table.length - 1];
 			CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
@@ -1628,6 +1765,10 @@ public class ThreatColonyManager {
 			if (fleet == null) continue;
 			fleet.setName("Defense Swarm");
 			fleet.getMemoryWithoutUpdate().set(GARRISON_FLAG, marketId);
+			// remember what this swarm IS, so an expedition mustered from it
+			// re-embodies the same fleet - not an FP-estimated bigger one
+			fleet.getMemoryWithoutUpdate().set(SWARM_TIER_KEY, spec[1]);
+			fleet.getMemoryWithoutUpdate().set(SWARM_FABS_KEY, spec[0]);
 			makeDetectable(fleet);
 
 			system.addEntity(fleet);

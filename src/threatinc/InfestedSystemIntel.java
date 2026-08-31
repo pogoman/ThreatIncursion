@@ -176,11 +176,20 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				} else {
 					output = "strained";
 				}
-				line.append(". Hive Status %s, Defense Swarms %s.");
+				line.append(". Hive Status %s, Defense Swarms %s");
 				hl.add(output);
 				hlColors.add("critical".equals(output) || "strained".equals(output) ? neg : h);
 				hl.add("" + garrison);
 				hlColors.add(h);
+				// swarms mustered for a strike still fabricating in orbit: no
+				// longer garrison, but very much still here until departure
+				int strikeSwarms = IncursionManager.preparingStrikeFleetCount(market);
+				if (strikeSwarms > 0) {
+					line.append(", Strike Swarms %s");
+					hl.add("" + strikeSwarms);
+					hlColors.add(neg);
+				}
+				line.append(".");
 
 				com.fs.starfarer.api.campaign.econ.Industry nexus =
 						market.getIndustry(ThreatColonyManager.SWARM_NEXUS);

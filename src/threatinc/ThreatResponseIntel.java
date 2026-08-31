@@ -92,7 +92,103 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 		if (isEnding() || isEnded()) return;
 		if (!isFleetActive()) {
 			endAfterDelay();
+			return;
 		}
+		// the colony it was sent against is dead (the task force's own doing,
+		// the player's, or another expedition's): pick the next Threat colony
+		// and keep hunting, rather than circling a dead rock until the attack
+		// order times out. Stands down only when the swarm has nothing left.
+		if (targetMarketId != null
+				&& ThreatIncData.resolveColonyMarket(targetMarketId) == null) {
+			retarget();
+		}
+	}
+
+	/** Redirects every living fleet at the nearest surviving Threat colony. */
+	protected void retarget() {
+		CampaignFleetAPI lead = leadFleet();
+		if (lead == null) return;
+
+		com.fs.starfarer.api.campaign.econ.MarketAPI next = null;
+		float bestDist = Float.MAX_VALUE;
+		for (com.fs.starfarer.api.campaign.econ.MarketAPI curr
+				: ThreatIncData.getAllLiveColonyMarkets()) {
+			if (curr.getPrimaryEntity() == null || curr.getStarSystem() == null) continue;
+			float d = Misc.getDistanceLY(lead.getLocationInHyperspace(),
+					curr.getStarSystem().getLocation());
+			if (d < bestDist) {
+				bestDist = d;
+				next = curr;
+			}
+		}
+
+		if (next == null) {
+			// no Threat colonies left anywhere: the war is won, go home
+			standDown();
+			return;
+		}
+
+		targetMarketId = next.getId();
+		targetColonyName = next.getName();
+		com.fs.starfarer.api.campaign.StarSystemAPI system = next.getStarSystem();
+		targetSystemName = system.getNameWithLowercaseTypeShort();
+
+		SectorEntityToken home = nearestFriendlyMarketEntity(lead);
+		for (CampaignFleetAPI curr : allFleets()) {
+			if (!alive(curr)) continue;
+			curr.clearAssignments();
+			curr.addAssignment(com.fs.starfarer.api.campaign.FleetAssignment.ATTACK_LOCATION,
+					next.getPrimaryEntity(), 120f,
+					"attacking the Threat colony in the " + system.getNameWithLowercaseType());
+			if (home != null) {
+				curr.addAssignment(
+						com.fs.starfarer.api.campaign.FleetAssignment.GO_TO_LOCATION_AND_DESPAWN,
+						home, 1000f, "returning home");
+			}
+		}
+
+		String fn = faction() != null ? faction().getDisplayName() : "A faction";
+		ThreatColonyManager.announce(fn + " task force's target is destroyed; it is "
+				+ "redirecting against the Threat colony " + next.getName() + " in the "
+				+ system.getNameWithLowercaseType() + ".", Misc.getHighlightColor());
+		ThreatIncConfig.log(factionId + " task force retargeted to " + next.getName()
+				+ " (" + (int) Math.ceil(bestDist) + " LY away)");
+	}
+
+	/** Sends every living fleet home to despawn; the hunt is over. */
+	protected void standDown() {
+		targetMarketId = null;
+		targetColonyName = null;
+		for (CampaignFleetAPI curr : allFleets()) {
+			if (!alive(curr)) continue;
+			SectorEntityToken home = nearestFriendlyMarketEntity(curr);
+			curr.clearAssignments();
+			if (home != null) {
+				curr.addAssignment(
+						com.fs.starfarer.api.campaign.FleetAssignment.GO_TO_LOCATION_AND_DESPAWN,
+						home, 1000f, "returning home");
+			} else {
+				Misc.fadeAndExpire(curr);
+			}
+		}
+	}
+
+	/** The nearest own-faction market's primary entity, for the return leg. */
+	protected SectorEntityToken nearestFriendlyMarketEntity(CampaignFleetAPI fromFleet) {
+		SectorEntityToken best = null;
+		float bestDist = Float.MAX_VALUE;
+		for (com.fs.starfarer.api.campaign.econ.MarketAPI curr
+				: Global.getSector().getEconomy().getMarketsCopy()) {
+			if (curr.getFaction() == null || !curr.getFaction().getId().equals(factionId)) continue;
+			if (curr.getPrimaryEntity() == null || curr.getStarSystem() == null) continue;
+			float d = Misc.getDistanceLY(fromFleet.getLocationInHyperspace(),
+					curr.getStarSystem().getLocation());
+			if (d < bestDist) {
+				bestDist = d;
+				best = curr.getPrimaryEntity();
+			}
+		}
+		return best;
 	}
 
 	@Override
@@ -197,10 +293,9 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 
 		SectorEntityToken target = targetEntity();
 		if (target == null) {
-			if (targetMarketId != null) {
-				info.addPara("The colony it was sent against no longer exists; the task force "
-						+ "will stand down and return home.", opad, Misc.getGrayColor());
-			}
+			info.addPara("The colony it was sent against no longer exists; the task force is "
+					+ "redirecting against the nearest surviving Threat colony - or home, if "
+					+ "none remain.", opad, Misc.getGrayColor());
 			return;
 		}
 		if (lead.getContainingLocation() == target.getContainingLocation()) {

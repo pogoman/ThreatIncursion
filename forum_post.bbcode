@@ -39,7 +39,7 @@ Which means [b]every link is a target[/b]:
 
 [list]
 [li][b]Fabrication Core[/b] - there is no line between the hive's population and its industrial plant. The Core supplies the hive's heavy machinery - and carries the colony's [b]Fragment Fabricator[/b].[/li]
-[li][b]Swarm Nexus[/b] - the military organ, the hive's answer to a Patrol HQ: it fabricates Defense Swarms and stages expeditions, and goes into a long refit after every launch. Disrupt it and the colony grows no new defenders and launches nothing until it recovers.[/li]
+[li][b]Swarm Nexus[/b] - the military organ, the hive's answer to a Patrol HQ: it continuously grows Defense Swarms, idling (and consuming nothing) once the garrison is full. Expeditions are [b]mustered from the standing garrison[/b] - every fleet comes from somewhere - so killing a colony's swarms IS disrupting it. Disrupt the nexus itself and no replacements grow at all.[/li]
 [li][b]Hive ground defenses and heavy batteries[/b] - fed on machinery and metals, not marines. Machines do not rout: the weapon growths keep firing at reduced effect even while disrupted, so bombardment never becomes free.[/li]
 [/list]
 
@@ -47,7 +47,7 @@ Which means [b]every link is a target[/b]:
 
 [size=14pt][b]Incursions[/b][/size]
 
-Hive colonies launch real expeditions at inhabited space - fleets you can scout, intercept, and fight alongside the defenders against. Each expedition sweeps its whole target system, bombarding every world it can reach [b]at most once[/b]: frontier colonies harass with tactical bombardment, developed worlds deliver a saturation pass per world. Erasing a large colony takes the hive a campaign, not a visit.
+Hive colonies launch real expeditions at inhabited space - fleets you can scout, intercept, and fight alongside the defenders against. Every expedition is [b]mustered from the colony's own Defense Swarms[/b]: a full garrison sends what stands above its defensive reserve, and the fleets that leave orbit ARE the expedition - kill a colony's swarms and you have grounded it. Each expedition sweeps its whole target system, bombarding every world it can reach [b]at most once[/b]: frontier colonies harass with tactical bombardment, developed worlds deliver a saturation pass per world. Erasing a large colony takes the hive a campaign, not a visit.
 
 [center][img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/Picture2.png[/img][/center]
 
@@ -105,10 +105,14 @@ Everything above is tunable. With [url=https://fractalsoftworks.com/forum/index.
 
 [b]v0.3.0[/b] - total war
 [list]
+[li]The pooled-swarm economy: every expedition (strike or colonization wave) is mustered from the staging colony's real Defense Swarms - each fleet that departs is a swarm that leaves orbit, re-embodied at exactly its fabricated tier. The Swarm Nexus never self-disrupts; it continuously grows replacements (slower when the hive is hull-starved, up to 4x), idles and consumes nothing at full garrison, and an idle nexus banks no finished swarms - any loss starts the rebuild clock fresh. Killing swarms IS the disruption.[/li]
+[li]Colonies launch only from a full garrison, always keeping a defensive reserve (half, minimum one) home. The infestation intel shows mustered "Strike Swarms" separately while an expedition fabricates in orbit.[/li]
 [li]Strikes sweep their whole target system, bombarding every world at most once per expedition - no more grinding one planet while its neighbors watch.[/li]
-[li]Faction task forces and purge expeditions now muster at real strength (measured at their home base, not the hive's system) - expect difficulty 7-10 responses from major military worlds.[/li]
+[li]Faction task forces are real battle groups now: direct-fleet-point generation (a max-difficulty fleet is ~250 FP), strength measured at their home base, and strength beyond the per-fleet cap spills into up to 4 fleets per response. When their target dies they redirect to the nearest surviving Threat colony and keep hunting.[/li]
+[li]Purge expeditions campaign through the WHOLE system - every Threat colony there is on the target list, and they stand down only when none remain or they are destroyed. Small footholds (size 3 and under, configurable) are purged preemptively, garrison or not.[/li]
 [li]Any strike-size hive colony with hulls, fuel and a ready Swarm Nexus can stage expeditions - mature systems without their own shipyards now launch too, and staging duty rotates across the hive instead of always falling to the founding system.[/li]
 [li]Max Concurrent Strikes / Responses settings accept 0 = unlimited, and both now default to unlimited. Existing saves keep their stored values - lower/raise them in the LunaLib menu.[/li]
+[li]Nexus disruption now pays bounty board rewards (it is always enemy action now); size-3 colonies field 2 swarms instead of 3; fixed the doubled task force faction name.[/li]
 [/list]
 
 [b]v0.2.0[/b] - first public release

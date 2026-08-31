@@ -56,7 +56,6 @@ public class ThreatIncConfig {
 	public static float tickDays()           { return f("threatinc_tickDays"); }
 	public static int initialSeeds()         { return i("threatinc_initialSeeds"); }
 	public static float seedToColonyDays()   { return f("threatinc_seedToColonyDays"); }
-	public static float launchDisruptDays()  { return f("threatinc_launchDisruptDays"); }
 	public static int maxInfestedSystems()   { return i("threatinc_maxInfestedSystems"); }
 	public static int spreadMinSize()        { return i("threatinc_spreadMinSize"); }
 
