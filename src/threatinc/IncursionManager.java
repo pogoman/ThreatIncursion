@@ -22,6 +22,8 @@ import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.listeners.ColonyDecivListener;
 import com.fs.starfarer.api.campaign.listeners.ColonyPlayerHostileActListener;
 import com.fs.starfarer.api.impl.campaign.command.WarSimScript;
+import com.fs.starfarer.api.impl.campaign.fleets.FleetFactoryV3;
+import com.fs.starfarer.api.impl.campaign.fleets.FleetParamsV3;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.FleetTypes;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
@@ -59,6 +61,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	protected IntervalUtil interval = new IntervalUtil(0.4f, 0.6f); // days between checks
 	protected float daysSinceTick = 999f; // run the first tick immediately on start
+	/**
+	 * Fleet points per point of response difficulty: the 0-10 difficulty scale
+	 * kept for config compatibility, but paid out in real FP - max difficulty
+	 * is a ~250 FP battle group, not a vanilla "standard fleet".
+	 */
+	public static final float FP_PER_RESPONSE_DIFFICULTY = 25f;
+
 	protected Random random = new Random();
 
 	// Last pre-interaction player reputation with each faction that cares about
@@ -912,42 +921,73 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// the faction has no assets, so strength there is ~0 and every task force
 		// would collapse to the minimum difficulty
 		float strength = WarSimScript.getFactionStrength(faction, base.getStarSystem());
-		int difficulty = ThreatIncConfig.responseMinDifficulty()
-				+ Math.round(strength / ThreatIncConfig.responseStrengthDivisor());
-		if (difficulty < ThreatIncConfig.responseMinDifficulty()) difficulty = ThreatIncConfig.responseMinDifficulty();
-		if (difficulty > ThreatIncConfig.responseMaxDifficulty()) difficulty = ThreatIncConfig.responseMaxDifficulty();
-
-		FleetCreatorMission m = new FleetCreatorMission(new Random(random.nextLong()));
-		m.beginFleet();
-		m.createStandardFleet(difficulty, faction.getId(), base.getLocationInHyperspace());
-		m.triggerSetFleetType(FleetTypes.TASK_FORCE);
-		m.triggerSetFleetFaction(faction.getId());
-		m.triggerMakeHostileToFaction(Factions.THREAT);
-		m.triggerSetFleetFlag("$threatinc_response");
-		CampaignFleetAPI fleet = m.createFleet();
-		if (fleet == null) return;
+		int minDiff = ThreatIncConfig.responseMinDifficulty();
+		int maxDiff = ThreatIncConfig.responseMaxDifficulty();
+		// the faction's whole strength converts into a FLOTILLA, not one fleet:
+		// difficulty points beyond the single-fleet cap spill into extra fleets
+		// (up to 4) - a real navy answers a hive system with a battle group,
+		// a backwater militia still sends its one gunboat squadron
+		int budget = Math.max(minDiff,
+				minDiff + Math.round(strength / ThreatIncConfig.responseStrengthDivisor()));
 
 		StarSystemAPI baseSystem = base.getStarSystem();
 		SectorEntityToken baseEntity = base.getPrimaryEntity();
 		if (baseSystem == null || baseEntity == null) return;
 
-		baseSystem.addEntity(fleet);
-		fleet.setLocation(baseEntity.getLocation().x, baseEntity.getLocation().y);
-		fleet.setName(faction.getDisplayName() + " Task Force");
-		fleet.setNoFactionInName(false);
+		java.util.List<CampaignFleetAPI> fleets = new ArrayList<CampaignFleetAPI>();
+		int spent = 0;
+		while (budget > 0 && fleets.size() < 4) {
+			int difficulty = Math.min(budget, maxDiff);
+			// vanilla's 0-10 "standard fleet" scale tops out around a bounty
+			// fleet - a rounding error against a hive garrison. Build with
+			// direct fleet points instead: a max-difficulty fleet is a genuine
+			// ~250 FP battle group, quality and doctrine drawn from the base
+			float fp = difficulty * FP_PER_RESPONSE_DIFFICULTY;
+			FleetParamsV3 fleetParams = new FleetParamsV3(
+					base,
+					base.getLocationInHyperspace(),
+					faction.getId(),
+					null,
+					FleetTypes.TASK_FORCE,
+					fp,           // combat
+					fp * 0.1f,    // freighters
+					fp * 0.1f,    // tankers
+					0f, 0f, 0f,   // transports/liners/utility
+					0f);
+			CampaignFleetAPI fleet = FleetFactoryV3.createFleet(fleetParams);
+			if (fleet == null || fleet.isEmpty()) break;
 
-		fleet.addAssignment(FleetAssignment.ATTACK_LOCATION, threatColony.getPrimaryEntity(), 120f,
-				"attacking the Threat colony in the " + hiveSystem.getNameWithLowercaseType());
-		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, baseEntity, 1000f,
-				"returning to " + base.getName());
+			baseSystem.addEntity(fleet);
+			fleet.setLocation(baseEntity.getLocation().x, baseEntity.getLocation().y);
+			// the fleet name gets the faction prefix from the game, so the name
+			// itself must not repeat it - "Tri-Tachyon Tri-Tachyon Task Force"
+			fleet.setName("Task Force");
+			fleet.setNoFactionInName(false);
+			fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE, true);
+			fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_WAR_FLEET, true);
+			fleet.getMemoryWithoutUpdate().set("$threatinc_response", true);
 
-		ThreatResponseIntel intel = new ThreatResponseIntel(fleet, faction, base.getName(),
+			fleet.addAssignment(FleetAssignment.ATTACK_LOCATION, threatColony.getPrimaryEntity(), 120f,
+					"attacking the Threat colony in the " + hiveSystem.getNameWithLowercaseType());
+			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, baseEntity, 1000f,
+					"returning to " + base.getName());
+
+			fleets.add(fleet);
+			spent += difficulty;
+			budget -= difficulty;
+			// leftover too small to be worth a straggler fleet
+			if (budget < minDiff) break;
+		}
+		if (fleets.isEmpty()) return;
+
+		ThreatResponseIntel intel = new ThreatResponseIntel(fleets, faction, base.getName(),
 				threatColony, hiveSystem.getNameWithLowercaseTypeShort());
 		Global.getSector().getIntelManager().addIntel(intel);
 		getResponseList().add(intel);
 
 		ThreatIncConfig.log(faction.getId() + " dispatched a task force from " + base.getName()
-				+ " (difficulty " + difficulty + ") against the Threat in " + hiveSystem.getName());
+				+ " (" + fleets.size() + " fleet(s), total difficulty " + spent
+				+ ") against the Threat in " + hiveSystem.getName());
 	}
 
 	/**

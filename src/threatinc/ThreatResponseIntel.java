@@ -27,7 +27,10 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 	/** Rough hyperspace travel estimate for the ETA display only. */
 	public static final float EST_LY_PER_DAY = 0.5f;
 
+	/** The lead fleet; the only fleet in intel from saves older than {@link #fleets}. */
 	protected CampaignFleetAPI fleet;
+	/** Every fleet of the flotilla. Null in intel deserialized from older saves. */
+	protected java.util.List<CampaignFleetAPI> fleets;
 	protected String factionId;
 	protected String baseName;
 	protected String targetSystemName;
@@ -35,9 +38,11 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 	protected String targetMarketId;
 	protected String targetColonyName;
 
-	public ThreatResponseIntel(CampaignFleetAPI fleet, FactionAPI faction, String baseName,
-			com.fs.starfarer.api.campaign.econ.MarketAPI targetColony, String targetSystemName) {
-		this.fleet = fleet;
+	public ThreatResponseIntel(java.util.List<CampaignFleetAPI> fleets, FactionAPI faction,
+			String baseName, com.fs.starfarer.api.campaign.econ.MarketAPI targetColony,
+			String targetSystemName) {
+		this.fleets = new java.util.ArrayList<CampaignFleetAPI>(fleets);
+		this.fleet = fleets.isEmpty() ? null : fleets.get(0);
 		this.factionId = faction.getId();
 		this.baseName = baseName;
 		this.targetSystemName = targetSystemName;
@@ -45,6 +50,26 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 			this.targetMarketId = targetColony.getId();
 			this.targetColonyName = targetColony.getName();
 		}
+	}
+
+	/** All fleets of the flotilla, tolerating old single-fleet saves. */
+	protected java.util.List<CampaignFleetAPI> allFleets() {
+		if (fleets != null) return fleets;
+		java.util.List<CampaignFleetAPI> result = new java.util.ArrayList<CampaignFleetAPI>();
+		if (fleet != null) result.add(fleet);
+		return result;
+	}
+
+	protected static boolean alive(CampaignFleetAPI curr) {
+		return curr != null && curr.isAlive() && curr.getContainingLocation() != null;
+	}
+
+	/** The first still-living fleet, for map markers and distance estimates. */
+	protected CampaignFleetAPI leadFleet() {
+		for (CampaignFleetAPI curr : allFleets()) {
+			if (alive(curr)) return curr;
+		}
+		return null;
 	}
 
 	/** The Threat colony the task force was sent against, while it still lives. */
@@ -55,7 +80,7 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 	}
 
 	public boolean isFleetActive() {
-		return fleet != null && fleet.isAlive() && fleet.getContainingLocation() != null;
+		return leadFleet() != null;
 	}
 
 	protected FactionAPI faction() {
@@ -104,8 +129,7 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 	public SectorEntityToken getMapLocation(SectorMapAPI map) {
 		SectorEntityToken target = targetEntity();
 		if (target != null) return target;
-		if (isFleetActive()) return fleet;
-		return null;
+		return leadFleet();
 	}
 
 	/**
@@ -116,9 +140,10 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 	@Override
 	public java.util.List<ArrowData> getArrowData(SectorMapAPI map) {
 		SectorEntityToken target = targetEntity();
-		if (target == null || !isFleetActive()) return null;
-		if (fleet.getContainingLocation() == target.getContainingLocation()) return null;
-		ArrowData arrow = new ArrowData(fleet, target);
+		CampaignFleetAPI lead = leadFleet();
+		if (target == null || lead == null) return null;
+		if (lead.getContainingLocation() == target.getContainingLocation()) return null;
+		ArrowData arrow = new ArrowData(lead, target);
 		if (faction() != null) arrow.color = faction().getBaseUIColor();
 		java.util.List<ArrowData> result = new java.util.ArrayList<ArrowData>();
 		result.add(arrow);
@@ -146,18 +171,28 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 		String fn = faction() != null ? faction().getDisplayName() : "A faction";
 		String colony = targetColonyName != null
 				? "the Threat colony " + targetColonyName : "the Threat colony";
-		info.addPara(fn + " has dispatched a task force from " + baseName + " to strike at "
+		int total = allFleets().size();
+		String force = total > 1 ? "a task force of " + total + " fleets" : "a task force";
+		info.addPara(fn + " has dispatched " + force + " from " + baseName + " to strike at "
 				+ colony + " in the " + targetSystemName + ", in response to an incursion "
 				+ "against its own worlds.", opad);
 
-		info.addPara("This is a real fleet. You can intercept it and fight alongside it - or let it "
-				+ "make its own way against the swarm. If the colony's Defense Swarms are broken, "
-				+ "the colony lies open to bombardment - theirs or yours.", opad, h,
-				"fight alongside it");
+		info.addPara("These are real fleets. You can intercept them and fight alongside them - or "
+				+ "let them make their own way against the swarm. If the colony's Defense Swarms "
+				+ "are broken, the colony lies open to bombardment - theirs or yours.", opad, h,
+				"fight alongside them");
 
-		if (!isFleetActive()) {
+		CampaignFleetAPI lead = leadFleet();
+		if (lead == null) {
 			info.addPara("The task force is no longer in the field.", opad, Misc.getGrayColor());
 			return;
+		}
+		int living = 0;
+		for (CampaignFleetAPI curr : allFleets()) {
+			if (alive(curr)) living++;
+		}
+		if (living < total) {
+			info.addPara("%s of its fleets remain in the field.", opad, h, "" + living);
 		}
 
 		SectorEntityToken target = targetEntity();
@@ -168,11 +203,11 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 			}
 			return;
 		}
-		if (fleet.getContainingLocation() == target.getContainingLocation()) {
+		if (lead.getContainingLocation() == target.getContainingLocation()) {
 			info.addPara("The task force has arrived and is engaging the swarm in the "
 					+ targetSystemName + ".", opad, h, "engaging the swarm");
 		} else {
-			float ly = Misc.getDistanceLY(fleet.getLocationInHyperspace(),
+			float ly = Misc.getDistanceLY(lead.getLocationInHyperspace(),
 					target.getLocationInHyperspace());
 			int days = (int) Math.ceil(ly / EST_LY_PER_DAY);
 			info.addPara("The task force departed the moment it was mustered and is en route: "
