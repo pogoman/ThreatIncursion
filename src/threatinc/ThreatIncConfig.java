@@ -139,6 +139,8 @@ public class ThreatIncConfig {
 	public static float responseStrengthDivisor(){ return f("threatinc_responseStrengthDivisor"); }
 	public static boolean responsePurgeEnabled() { return b("threatinc_responsePurgeEnabled", true); }
 	public static float purgeCooldownDays()      { return f("threatinc_purgeCooldownDays"); }
+	/** Max colony size navies preemptively purge while its garrison still lives; 0 disables. */
+	public static int purgePreemptMaxSize()      { return i("threatinc_purgePreemptMaxSize"); }
 
 	// ---- Remnant immune system ----
 

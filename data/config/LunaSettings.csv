@@ -48,6 +48,7 @@ threatinc_responseMaxDifficulty,Max Task Force Strength,Int,10,Largest task forc
 threatinc_responseStrengthDivisor,Strength Scaling Divisor,Double,30,"Higher = weaker task forces for the same faction military strength. Task force difficulty = min + factionStrength / this.",1,200
 threatinc_responsePurgeEnabled,NPC Purge Bombardments,Boolean,true,"If on, NPC navies launch saturation bombardment expeditions at Threat colonies whose garrisons have been destroyed - they can genuinely shrink and erase colonies without your help.",,
 threatinc_purgeCooldownDays,Purge Cooldown Days,Double,240,"Minimum days between NPC purge expeditions against any one colony.",30,720
+threatinc_purgePreemptMaxSize,Preemptive Purge Max Size,Int,3,"Hive colonies up to this size are purged PREEMPTIVELY - navies in range burn out young footholds before they entrench, fighting through their Defense Swarms. Larger colonies must have their garrison broken first. 0 disables preemptive purges.",0,8
 remnantHeader,Remnant Header,Header,The Remnant Immune System,"Systems defended by a live Remnant Nexus resist infestation - the swarm must win a war of machines first. Purging the Remnant yourself clears the Threat's path.",,
 threatinc_remnantResists,Remnant Systems Resist,Boolean,true,"If on, the spread cannot claim a system with a live Remnant Nexus without first destroying it in a machine war.",,
 threatinc_machineWarWinChance,Machine War Win Chance,Double,0.35,"Per-attempt chance the swarm destroys a defending Remnant Nexus. Failures are retried on later spread attempts.",0.0,1.0
