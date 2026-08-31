@@ -100,6 +100,9 @@
 	"threatinc_responseStrengthDivisor": 30,
 	"threatinc_responsePurgeEnabled": true,
 	"threatinc_purgeCooldownDays": 240,
+	# hive colonies up to this size are purged preemptively, garrison or not;
+	# larger ones must have their garrison broken first. 0 disables
+	"threatinc_purgePreemptMaxSize": 3,
 
 	# Remnant immune system (pairs with Remnant Retribution, but works with
 	# vanilla Remnant systems regardless)

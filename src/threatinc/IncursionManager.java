@@ -991,9 +991,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * When a Threat colony's garrison has been wiped out, nearby navies seize
-	 * the window: a saturation purge expedition against the colony market,
-	 * riding the same NPC-vs-NPC bombardment machinery the Threat itself uses.
+	 * Saturation purge expeditions against hive colonies, riding the same
+	 * NPC-vs-NPC bombardment machinery the Threat itself uses. Two doctrines:
+	 * a colony whose garrison has been wiped out draws a purge at any size
+	 * (the window of opportunity), and a colony still SMALL enough to stomp
+	 * (purgePreemptMaxSize) draws a preemptive purge garrison or not - navies
+	 * do not politely wait for a foothold to grow into a fortress.
 	 */
 	protected void tryPurgeBombardments() {
 		if (!ThreatIncConfig.responsePurgeEnabled()) return;
@@ -1003,8 +1006,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 			StarSystemAPI system = colony.getStarSystem();
 			if (system == null) continue;
-			// a purge only launches at a colony whose own garrison is gone
-			if (ThreatColonyManager.countLiveGarrison(colony.getId()) > 0) continue;
+			// a purge launches at a colony whose garrison is gone - or, the
+			// doctrine of the cheap kill, PREEMPTIVELY at a foothold still small
+			// enough to stomp: waiting for a hive to disarm itself is how it
+			// gets to size 8. A preemptive expedition must fight through the
+			// young colony's Defense Swarms, so it sails with an extra fleet.
+			boolean preemptive = ThreatColonyManager.countLiveGarrison(colony.getId()) > 0;
+			if (preemptive && colony.getSize() > ThreatIncConfig.purgePreemptMaxSize()) continue;
 
 			Long last = ThreatIncData.lastPurgeTimes().get(colony.getId());
 			if (last != null && Global.getSector().getClock().getElapsedDaysSince(last)
@@ -1055,6 +1063,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			params.repImpact = ComplicationRepImpact.NONE;
 			params.fleetSizes.add(Math.min(10, difficulty));
 			params.fleetSizes.add(Math.max(5, difficulty - 2));
+			// the escort that clears the Defense Swarms off a garrisoned foothold
+			if (preemptive) params.fleetSizes.add(Math.min(10, difficulty));
 
 			GenericRaidFGI purge = new GenericRaidFGI(params);
 			Global.getSector().getIntelManager().addIntel(purge);
@@ -1062,10 +1072,18 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			ThreatIncData.lastPurgeTimes().put(colony.getId(),
 					Global.getSector().getClock().getTimestamp());
 
-			ThreatColonyManager.announce(faction.getDisplayName() + " has launched a purge "
-					+ "expedition against the undefended Threat colony in the "
-					+ system.getNameWithLowercaseType() + ".", Misc.getHighlightColor());
-			ThreatIncConfig.log(faction.getId() + " purge expedition vs " + colony.getName()
+			if (preemptive) {
+				ThreatColonyManager.announce(faction.getDisplayName() + " has launched a "
+						+ "preemptive purge expedition against the young Threat foothold in the "
+						+ system.getNameWithLowercaseType() + " - burning it out before it "
+						+ "entrenches.", Misc.getHighlightColor());
+			} else {
+				ThreatColonyManager.announce(faction.getDisplayName() + " has launched a purge "
+						+ "expedition against the undefended Threat colony in the "
+						+ system.getNameWithLowercaseType() + ".", Misc.getHighlightColor());
+			}
+			ThreatIncConfig.log(faction.getId() + (preemptive ? " preemptive" : "")
+					+ " purge expedition vs " + colony.getName()
 					+ " (difficulty " + difficulty + ")");
 		}
 	}
