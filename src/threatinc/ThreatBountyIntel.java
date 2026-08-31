@@ -618,16 +618,14 @@ public class ThreatBountyIntel extends BaseIntelPlugin {
 			return;
 		}
 
-		// disruption counts for every link except the nexus (the hive disrupts
-		// its own nexus with every expedition it launches via payLaunchCost -
-		// only the colony's outright destruction can be credited there)
-		if (type != TYPE_NEXUS) {
-			Industry industry = market.getIndustry(industryIdFor(type, market));
-			if (industry != null && industry.isDisrupted()) {
-				outcome = "disrupted";
-				pay(reward / 2);
-				return;
-			}
+		// disruption counts for every link, the nexus included: the hive no
+		// longer disrupts its own organs at launch (expeditions are paid for
+		// in mustered Defense Swarms), so any disruption is enemy action
+		Industry industry = market.getIndustry(industryIdFor(type, market));
+		if (industry != null && industry.isDisrupted()) {
+			outcome = "disrupted";
+			pay(reward / 2);
+			return;
 		}
 
 		if (Global.getSector().getClock().getElapsedDaysSince(postedTimestamp)

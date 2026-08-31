@@ -43,7 +43,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * and story-critical handling; a kill still feeds the deciv-conversion
 	 * machinery ("the swarm does not abandon its kills"). Passes stay
 	 * affordable because {@link #createFleet} zeroes the fleet bombardment
-	 * fuel cost - launch fuel was paid via payLaunchCost.
+	 * fuel cost - the expedition was provisioned at its staging colony.
 	 */
 	@Override
 	protected GenericPayloadAction createPayloadAction() {

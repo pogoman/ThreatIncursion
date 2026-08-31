@@ -21,17 +21,21 @@ it.
 **Hive organs.** Every colony runs three custom structures:
 - **Fabrication Core** - the population strata as industry: supplies the
   hive's heavy machinery, and carries the colony's **Fragment Fabricator**.
-- **Swarm Nexus** - the military organ: fabricates Defense Swarms, stages
-  expeditions, and goes into refit after every launch. Disrupt it and the
-  colony grows no new defenders and launches nothing.
+- **Swarm Nexus** - the military organ: continuously grows Defense Swarms
+  (idling, and consuming nothing, once the garrison is full). Expeditions
+  are MUSTERED from the standing garrison - every fleet comes from
+  somewhere - so killing a colony's swarms IS disrupting it. Disrupt the
+  nexus itself and no replacements grow at all.
 - **Hive ground defenses / heavy batteries** - run on machinery and metals,
   not marines; they keep firing at reduced effect even while disrupted.
 
 **Strikes.** Colonies launch real, interceptable expeditions at inhabited
-worlds - each sweeps every world in its target system, bombarding each at
-most once (frontier colonies harass with tactical bombardment; developed
-worlds deliver saturation passes - erasing a large world still takes
-repeated expeditions). Expeditions still being fabricated can be killed by
+worlds, mustered from their own Defense Swarms (a full garrison sends what
+stands above its defensive reserve; the fleets that leave orbit ARE the
+expedition). Each strike sweeps every world in its target system,
+bombarding each at most once (frontier colonies harass with tactical
+bombardment; developed worlds deliver saturation passes - erasing a large
+world still takes repeated expeditions). Expeditions still being fabricated can be killed by
 sabotaging the staging colony; once departed they are autonomous. Worlds
 they kill, the swarm colonizes.
 

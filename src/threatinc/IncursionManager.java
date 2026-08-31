@@ -522,14 +522,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * mobilized after that, even if the phase later regresses.
 	 *
 	 * The latch is not cosmetic. Phase 3 requires a size-6+ colony whose hull
-	 * supply is near nominal, and the swarm knocks its OWN hull supply down
-	 * every time it launches an expedition - payLaunchCost disrupts the source
-	 * forge for launchDisruptDays, which sags shipSupplyMult across the shared
-	 * hive economy. Gating the board on a live phase-3 test therefore switched
-	 * it off exactly when the swarm was most active, and the sector stopped
-	 * naming targets in the middle of a colonization wave. Escalation still
-	 * regresses and still matters - it gates strikes and core-world targeting -
-	 * but an admiralty that has seen one armada does not forget it.
+	 * supply is near nominal, and the hive's economy fluctuates as the player
+	 * and the sector tear at it. Gating the board on a live phase-3 test
+	 * switched it off exactly when the swarm was most active, and the sector
+	 * stopped naming targets in the middle of a colonization wave. Escalation
+	 * still regresses and still matters - it gates strikes and core-world
+	 * targeting - but an admiralty that has seen one armada does not forget it.
 	 *
 	 * Read-only on purpose: the flag is owned by checkPhaseAnnouncements, which
 	 * runs later in the same tick. On the tick phase 3 is first reached the live
@@ -663,14 +661,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (ThreatIncData.totalColonySize() <= 0) return;
 
 		// consolidate before reaching outward: unclaimed resource planets in
-		// systems the swarm already holds come first, each wave paid for by a
-		// forge (which is then retooling and can't fund anything else)
+		// systems the swarm already holds come first, each wave paid for with
+		// a Defense Swarm mustered from the source colony's garrison
 		ThreatColonyManager.tryExpandInSystem(random);
 
-		// outward claims are commitments against real fabrication capacity:
-		// one pending claim per stable colony whose forge is free. No dice -
-		// the launch throughput IS the number of forges the hive runs, and
-		// every launch takes its forge offline for a while
+		// outward claims are commitments against real standing forces: one
+		// pending claim per stable colony with a swarm to spare. No dice -
+		// launch throughput IS the garrison surplus the hive's nexuses grow
 		int freeForges = 0;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (market.getSize() < ThreatIncConfig.spreadMinSize()) continue;
@@ -789,13 +786,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		List<String> systemIds = new ArrayList<String>(ThreatIncData.colonyMarkets().keySet());
 		java.util.Collections.shuffle(systemIds, random);
 		for (String systemId : systemIds) {
-			// a strike is staged by the system's biggest colony that can
-			// actually fabricate it: hulls delivered by the hive network, fuel
-			// economy intact, Swarm Nexus ready. No strike timer - launching
-			// puts the nexus into refit (payLaunchCost), and the colony can't
-			// strike again until it recovers. Strikes and expansion draw on the
-			// same forge output: an aggressive hive expands slower, and vice
-			// versa.
+			// a strike is staged by the system's biggest colony with the means:
+			// hulls delivered by the hive network, fuel economy intact, Swarm
+			// Nexus ready, and - the real cost - a FULL garrison with swarms to
+			// spare above the defensive reserve. The expedition is those swarms,
+			// mustered and sent; the nexus regrows them at its usual cadence, so
+			// strike tempo is paced by swarm production, not a timer. Strikes
+			// and expansion draw on the same garrison pool: an aggressive hive
+			// spreads slower, and vice versa.
 			MarketAPI colony = ThreatColonyManager.pickStrikeStaging(systemId, true);
 			if (colony == null) continue;
 
@@ -806,7 +804,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (target == null) continue;
 
 			launchStrike(colony, source, target);
-			ThreatColonyManager.payLaunchCost(colony);
 			// the raid intel names its origin: that system is now known
 			ThreatIncData.markDiscovered(systemId);
 			if (countActiveStrikes() >= ThreatIncConfig.maxConcurrentStrikes()) break;
@@ -867,17 +864,26 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		params.style = FleetStyle.STANDARD;
 		params.repImpact = ComplicationRepImpact.NONE;
 
-		// strength scales with the colony's size and is throttled by the hive
-		// economy's actual ship-hull supply - a starved forge means weak strikes
-		float totalDifficulty = colony.getSize() * colony.getSize()
-				* ThreatIncConfig.strikeStrengthMult()
-				* ThreatColonyManager.shipSupplyMult(colony);
-		totalDifficulty -= 10;
-		params.fleetSizes.add(10);
-		while (totalDifficulty > 0) {
-			int diff = 5 + random.nextInt(4);
-			params.fleetSizes.add(diff);
-			totalDifficulty -= diff;
+		// the expedition IS the colony's mustered Defense Swarms: everything
+		// comes from somewhere. The colony sends what stands above its
+		// defensive reserve, and each expedition fleet is sized to the actual
+		// swarm that left orbit. The nexus keeps growing replacements at its
+		// usual cadence, so strike tempo is bought with real fleets - and
+		// killing a colony's swarms directly starves its next strike.
+		int sendable = ThreatColonyManager.garrisonAvailableForLaunch(colony);
+		java.util.List<Integer> mustered = ThreatColonyManager.consumeGarrison(colony, sendable);
+		if (mustered.isEmpty()) return;
+		// each expedition fleet is EXACTLY the swarm that left orbit (its
+		// fabrication tier rides the fleet's memory); the strength multiplier
+		// up- or down-tiers the re-embodiment for players who want it
+		float mult = ThreatIncConfig.strikeStrengthMult();
+		for (int size : mustered) {
+			int adjusted = size;
+			if (mult >= 2f) adjusted += 2;
+			else if (mult >= 1.25f) adjusted += 1;
+			if (mult <= 0.5f) adjusted -= 2;
+			else if (mult <= 0.8f) adjusted -= 1;
+			params.fleetSizes.add(Math.max(3, Math.min(9, adjusted)));
 		}
 
 		ThreatStrikeFGI strike = new ThreatStrikeFGI(params);
@@ -893,12 +899,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 
 		ThreatIncConfig.log("Strike launched from " + source.getName() + " at " + target.getName()
-				+ " (difficulty ~" + (int) (colony.getSize() * colony.getSize()
-						* ThreatIncConfig.strikeStrengthMult()
-						* ThreatColonyManager.shipSupplyMult(colony))
-				+ ", sweeping " + params.raidParams.allowedTargets.size()
+				+ " (" + mustered.size() + " swarm(s) mustered, sweeping "
+				+ params.raidParams.allowedTargets.size()
 				+ " world(s) in " + target.getStarSystem().getName() + ")");
 	}
+
 
 	/**
 	 * Reactive defense: the struck colony's faction musters a task force from its
@@ -1046,15 +1051,31 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				difficulty = ThreatIncConfig.responseMaxDifficulty();
 			}
 
+			// the expedition purges the SYSTEM, not one world - the mirror of
+			// the swarm's own sweep doctrine: every Threat colony here goes on
+			// the target list, worked through sequentially until the system is
+			// clean or the expedition is dead. The trigger colony (undefended
+			// or stompably small) is what makes the operation viable; its
+			// siblings are why the fleets don't sail home after one kill.
+			java.util.List<MarketAPI> targets = new ArrayList<MarketAPI>();
+			targets.add(colony);
+			boolean anyGarrisoned = ThreatColonyManager.countLiveGarrison(colony.getId()) > 0;
+			for (MarketAPI other : ThreatIncData.getLiveColonyMarkets(system.getId())) {
+				if (other == colony || other.getPrimaryEntity() == null) continue;
+				targets.add(other);
+				if (ThreatColonyManager.countLiveGarrison(other.getId()) > 0) anyGarrisoned = true;
+			}
+
 			GenericRaidParams params = new GenericRaidParams(new Random(random.nextLong()), true);
 			params.factionId = faction.getId();
 			params.source = base;
 			params.prepDays = 7f + 7f * random.nextFloat();
-			params.payloadDays = 30f + 10f * random.nextFloat();
+			// enough on-station time to actually work through the list
+			params.payloadDays = 30f + 10f * random.nextFloat() + 20f * (targets.size() - 1);
 			params.raidParams.where = system;
 			params.raidParams.type = FGRaidType.SEQUENTIAL;
 			params.raidParams.tryToCaptureObjectives = false;
-			params.raidParams.allowedTargets.add(colony);
+			params.raidParams.allowedTargets.addAll(targets);
 			params.raidParams.allowNonHostileTargets = true;
 			params.raidParams.setBombardment(BombardType.SATURATION);
 			params.noun = "purge expedition";
@@ -1063,28 +1084,39 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			params.repImpact = ComplicationRepImpact.NONE;
 			params.fleetSizes.add(Math.min(10, difficulty));
 			params.fleetSizes.add(Math.max(5, difficulty - 2));
-			// the escort that clears the Defense Swarms off a garrisoned foothold
-			if (preemptive) params.fleetSizes.add(Math.min(10, difficulty));
+			// the escort that clears Defense Swarms off garrisoned colonies
+			if (anyGarrisoned) params.fleetSizes.add(Math.min(10, difficulty));
+			// a multi-world campaign brings a fourth fleet for the long haul
+			if (targets.size() >= 3) params.fleetSizes.add(Math.max(5, difficulty - 2));
 
 			GenericRaidFGI purge = new GenericRaidFGI(params);
 			Global.getSector().getIntelManager().addIntel(purge);
 			getPurgeList().add(purge);
-			ThreatIncData.lastPurgeTimes().put(colony.getId(),
-					Global.getSector().getClock().getTimestamp());
+			// stamp every targeted colony so siblings don't each trigger their
+			// own duplicate purge of the same system while this one is in flight
+			for (MarketAPI target : targets) {
+				ThreatIncData.lastPurgeTimes().put(target.getId(),
+						Global.getSector().getClock().getTimestamp());
+			}
 
 			if (preemptive) {
 				ThreatColonyManager.announce(faction.getDisplayName() + " has launched a "
-						+ "preemptive purge expedition against the young Threat foothold in the "
-						+ system.getNameWithLowercaseType() + " - burning it out before it "
-						+ "entrenches.", Misc.getHighlightColor());
+						+ "preemptive purge expedition into the "
+						+ system.getNameWithLowercaseType() + " - burning the swarm's "
+						+ (targets.size() > 1 ? targets.size() + " colonies" : "young foothold")
+						+ " out before they entrench.", Misc.getHighlightColor());
 			} else {
 				ThreatColonyManager.announce(faction.getDisplayName() + " has launched a purge "
-						+ "expedition against the undefended Threat colony in the "
-						+ system.getNameWithLowercaseType() + ".", Misc.getHighlightColor());
+						+ "expedition into the " + system.getNameWithLowercaseType()
+						+ (targets.size() > 1
+								? " - all " + targets.size() + " Threat colonies there are marked "
+										+ "for saturation bombardment."
+								: " against the undefended Threat colony there."),
+						Misc.getHighlightColor());
 			}
 			ThreatIncConfig.log(faction.getId() + (preemptive ? " preemptive" : "")
-					+ " purge expedition vs " + colony.getName()
-					+ " (difficulty " + difficulty + ")");
+					+ " purge expedition vs " + system.getName() + " (" + targets.size()
+					+ " colonies, difficulty " + difficulty + ")");
 		}
 	}
 
@@ -1560,6 +1592,25 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return 1;
 	}
 
+	/**
+	 * Fleets of a strike currently PREPARING at this colony - the mustered
+	 * swarms re-embodying in orbit before departure; 0 if none. Lets the
+	 * infestation intel show where the "missing" Defense Swarms went.
+	 */
+	public static int preparingStrikeFleetCount(MarketAPI market) {
+		if (market == null) return 0;
+		for (Object curr : getStrikeList()) {
+			if (!(curr instanceof ThreatStrikeFGI)) continue;
+			ThreatStrikeFGI strike = (ThreatStrikeFGI) curr;
+			if (strike.isEnded() || strike.isEnding() || strike.isAborted()) continue;
+			if (!strike.isPreparing()) continue;
+			if (strike.getParams() == null || strike.getParams().source == null) continue;
+			if (!market.getId().equals(strike.getParams().source.getId())) continue;
+			return strike.getParams().fleetSizes.size();
+		}
+		return 0;
+	}
+
 	/** Whether some strike staged from this colony is still in its recall window. */
 	public static boolean hasPreparingStrikeFrom(MarketAPI market) {
 		if (market == null) return false;
@@ -1588,9 +1639,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * and the expedition breaks off (vanilla abort - the fleets withdraw).
 	 *
 	 * Cause is attributed by the hostile-act/deciv hooks that call this rather
-	 * than by watching forge disruption, because launching pays the launch
-	 * cost: the forge is ALREADY disrupted by its own retool for most of the
-	 * flight (payLaunchCost), so a disruption test would self-trigger.
+	 * than by watching disruption state, so the recall names what actually
+	 * happened (a raid, a bombardment, the colony's destruction) instead of
+	 * inferring it after the fact.
 	 */
 	public static void abortStrikesFrom(String marketId, String marketName, String cause) {
 		if (marketId == null || !ThreatIncConfig.strikeRecallEnabled()) return;
@@ -1616,13 +1667,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * Stands down every in-flight purge expedition aimed at the given colony.
-	 * A purge exists to burn one undefended Threat colony; if that colony is
-	 * already gone - the player beat the expedition to it, or it died to
-	 * anything else while the fleets were in transit - the expedition has no
-	 * purpose and flying on to saturation-bombard a decivilized husk is
-	 * nonsense. Unconditional (not gated on strikeRecallEnabled - this is
-	 * target-validity cleanup, not player counterplay).
+	 * Stands down every in-flight purge expedition whose ENTIRE target list is
+	 * dead. A purge campaigns through its whole system: one colony dying -
+	 * even to the expedition's own bombardment - is progress, not completion,
+	 * so the fleets press on to the next target and only stand down when no
+	 * target remains (or they are destroyed). Flying on to saturation-bombard
+	 * decivilized husks is nonsense, hence the cleanup. Unconditional (not
+	 * gated on strikeRecallEnabled - this is target-validity cleanup, not
+	 * player counterplay).
 	 */
 	public static void abortPurgesAgainst(String marketId, String marketName, String cause) {
 		if (marketId == null) return;
@@ -1632,14 +1684,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (purge.isEnded() || purge.isEnding() || purge.isAborted()) continue;
 			if (purge.isSucceeded()) continue;
 			if (purge.getParams() == null || purge.getParams().raidParams == null) continue;
-			boolean targets = false;
+			boolean containsDead = false;
+			boolean anyAlive = false;
 			for (MarketAPI target : purge.getParams().raidParams.allowedTargets) {
-				if (target != null && marketId.equals(target.getId())) {
-					targets = true;
-					break;
-				}
+				if (target == null) continue;
+				if (marketId.equals(target.getId())) containsDead = true;
+				if (ThreatIncData.resolveColonyMarket(target.getId()) != null) anyAlive = true;
 			}
-			if (!targets) continue;
+			// the campaign continues while any listed colony still lives
+			if (!containsDead || anyAlive) continue;
 			// abort() -> finish(true) leaves the intel rendering as "Defeated"
 			// ("...forces have been defeated and any remaining ships are
 			// retreating in disarray") - wrong here: nobody beat these fleets,
@@ -1648,10 +1701,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			purge.setFailedButNotDefeated(true);
 			purge.abort();
 			ThreatColonyManager.announce(purge.getFaction().getDisplayName()
-					+ " purge expedition is standing down: " + cause + " means the Threat "
-					+ "colony it was sent to burn no longer exists.", Misc.getHighlightColor());
-			ThreatIncConfig.log("Purge expedition aborted (" + cause + "): target "
-					+ marketName + " already destroyed");
+					+ " purge expedition is standing down: " + cause + " means no Threat "
+					+ "colony it was sent to burn still exists.", Misc.getHighlightColor());
+			ThreatIncConfig.log("Purge expedition standing down (" + cause + "): last target "
+					+ marketName + " destroyed, system purged");
 		}
 	}
 
