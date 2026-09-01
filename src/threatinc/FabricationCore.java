@@ -35,24 +35,6 @@ public class FabricationCore extends BaseIndustry {
 		super.unapply();
 	}
 
-	/**
-	 * The Fragment Fabricator installed here is the single most consequential
-	 * theft in the sector - it is what makes the colony unbombardable (see
-	 * ThreatincMarketCMD.bombardMenu) - and it lives in the fabrication organ
-	 * because that is what it IS: the strata that extrude the fragment screen.
-	 * The hive defends its heart accordingly: EXTREME raid danger, a tier
-	 * beyond any nanoforge.
-	 */
-	@Override
-	public com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.RaidDangerLevel
-			adjustItemDangerLevel(String itemId, String data,
-			com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.RaidDangerLevel level) {
-		if (com.fs.starfarer.api.impl.campaign.ids.Items.FRAGMENT_FABRICATOR.equals(itemId)) {
-			return com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.RaidDangerLevel.EXTREME;
-		}
-		return super.adjustItemDangerLevel(itemId, data, level);
-	}
-
 	// hive-only organ: never offered in the player's construction picker
 	@Override
 	public boolean isAvailableToBuild() {

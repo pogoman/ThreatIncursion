@@ -165,9 +165,12 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				// forge output yet is developing; a forging colony grades on how
 				// well its hulls are supplied.
 				boolean healthy = ThreatColonyManager.isEconomicallyHealthy(market);
+				float health = ThreatColonyManager.computeHealth(market);
 				float shipsAvail = ThreatColonyManager.shipsAvailable(market);
 				String output;
-				if (!healthy) {
+				if (health < ThreatIncConfig.declineHealthThreshold()) {
+					output = "collapsing";
+				} else if (!healthy) {
 					output = "critical";
 				} else if (shipsAvail <= 0f) {
 					output = "developing";
@@ -177,8 +180,9 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 					output = "strained";
 				}
 				line.append(". Hive Status %s, Defense Swarms %s");
-				hl.add(output);
-				hlColors.add("critical".equals(output) || "strained".equals(output) ? neg : h);
+				hl.add(output + " (vitality " + (int) (health * 100f) + "%)");
+				hlColors.add("critical".equals(output) || "strained".equals(output)
+						|| "collapsing".equals(output) ? neg : h);
 				hl.add("" + garrison);
 				hlColors.add(h);
 				// swarms mustered for a strike still fabricating in orbit: no
@@ -199,6 +203,13 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 							+ "d - fabricating no fleets.");
 					hlColors.add(neg);
 				}
+				float decline = ThreatIncData.declineProgress(market.getId());
+				if (decline > 0f) {
+					line.append(" %s");
+					hl.add("Decline: " + (int) (decline * 100f)
+							+ "% of the way to losing a population stratum.");
+					hlColors.add(neg);
+				}
 				info.addPara(line.toString(), 3f,
 						hlColors.toArray(new Color[0]), hl.toArray(new String[0]));
 			}
@@ -207,18 +218,20 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 					+ "its link colonies starves every world in the network.", opad);
 
 			if (totalGarrison > 0) {
-				info.addPara("Counterplay: defeat the Defense Swarms orbiting a colony, then "
-						+ "%s burns the fabrication strata away - each pass shrinks the colony, "
-						+ "and small colonies are destroyed outright. Raiding its ground defenses "
-						+ "first makes the bombardment cheaper. The machines cannot be occupied - "
-						+ "only erased.", opad, pos, "saturation bombardment");
-				if (ThreatIncConfig.fragmentShieldEnabled()) {
-					info.addPara("But no bombardment of yours will land while the colony's %s "
-							+ "runs: its fragment screen unmakes ordnance faster than you can "
-							+ "deliver it. Raid the Fabrication Core and steal the fabricator "
-							+ "first - the hive defends its heart above all else - and the sky "
-							+ "opens permanently.", opad, pos, "Fragment Fabricator");
-				}
+				info.addPara("Counterplay: the hive lives %s behind defenses anchored to its "
+						+ "size - no bombardment can reduce its population, and saturating a "
+						+ "world costs fuel equal to its full defense strength for mere days "
+						+ "of disruption. The machines cannot be occupied, and cannot be "
+						+ "bombed away - only starved and suppressed until the hive itself "
+						+ "withers.", opad, pos, "deep underground");
+				info.addPara("The efficient siege: %s craters the exposed war-strata (ground "
+						+ "defenses, batteries, the nexus), halving their defensive effect - "
+						+ "then %s cut deepest, disrupting a chosen organ for months at a "
+						+ "heavy cost in casualties. A colony whose Fabrication Core is down, "
+						+ "or whose supply lines are cut, stops growing and begins to %s - "
+						+ "losing population faster the longer it stays suppressed, until it "
+						+ "collapses entirely.", opad, pos, "tactical bombardment",
+						"marine raids", "decline");
 				info.addPara("A colony's fleets are fabricated by its %s: raid or bombard it "
 						+ "into disruption and the colony grows no new Defense Swarms and "
 						+ "stages no expeditions until it recovers - the swarms already in "
@@ -226,8 +239,8 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 						"Swarm Nexus");
 			} else {
 				info.addPara("Every colony here lies %s - the garrisons have been destroyed. "
-						+ "Until replacement swarms are fabricated, saturation bombardment can "
-						+ "burn them down unopposed.", opad, pos, "open to bombardment");
+						+ "Until replacement swarms are fabricated, its worlds can be bombarded "
+						+ "and raided unopposed.", opad, pos, "open to attack");
 			}
 		}
 
@@ -246,6 +259,9 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 			}
 		}
 
+		// ---- player-commissioned purge expedition ----
+		addCommissionSection(info, width, opad);
+
 		// ---- debug mode: full per-colony economic vitals + purge tool ----
 		if (ThreatIncConfig.debugMode() && ThreatIncData.STAGE_COLONY.equals(stage)) {
 			info.addSectionHeading("DEBUG - hive vitals", com.fs.starfarer.api.ui.Alignment.MID, opad);
@@ -253,10 +269,12 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				float access = market.getAccessibilityMod().computeEffective(0f);
 				int shipPct = (int) (ThreatColonyManager.shipSupplyMult(market) * 100);
 				float fuelRange = ThreatColonyManager.fuelRangeLY(market);
+				int healthPct = (int) (ThreatIncData.lastHealth(market.getId()) * 100);
+				int declinePct = (int) (ThreatIncData.declineProgress(market.getId()) * 100);
 				info.addPara(market.getName() + " (size " + market.getSize() + "): "
-						+ "access %s, hull output %s, fuel reach %s",
+						+ "access %s, hull output %s, fuel reach %s, health %s, decline %s",
 						opad, h, (int) (access * 100) + "%", shipPct + "%",
-						(int) fuelRange + " ly");
+						(int) fuelRange + " ly", healthPct + "%", declinePct + "%");
 
 				String disrupted = "";
 				for (com.fs.starfarer.api.campaign.econ.Industry ind : market.getIndustries()) {
@@ -278,14 +296,168 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 	}
 
 	protected static final String BUTTON_PURGE = "threatinc_debug_purge";
+	protected static final String BUTTON_COMMISSION = "threatinc_commission_purge";
+
+	/**
+	 * The player's mirror of tryPurgeBombardments: from a player military
+	 * colony within response range, hire the exact expedition NPC navies run -
+	 * sized to the job (target colonies + live garrisons) and priced by fleet
+	 * points plus distance. Everything is recomputed live wherever it's shown
+	 * or spent, so the quoted bill, the confirmation, and the launch always
+	 * agree with the current state of the system.
+	 */
+	protected void addCommissionSection(TooltipMakerAPI info, float width, float opad) {
+		if (!ThreatIncConfig.enabled() || !ThreatIncConfig.commissionEnabled()) return;
+		if (!ThreatIncData.STAGE_COLONY.equals(getStage())) return;
+		StarSystemAPI system = getSystem();
+		if (system == null) return;
+		java.util.List<MarketAPI> targets = IncursionManager.collectSiegeTargets(null, system);
+		if (targets.isEmpty()) return;
+
+		Color h = Misc.getHighlightColor();
+		Color neg = Misc.getNegativeHighlightColor();
+		Color gray = Misc.getGrayColor();
+
+		info.addSectionHeading("Commission a purge expedition",
+				com.fs.starfarer.api.ui.Alignment.MID, opad);
+
+		MarketAPI base = IncursionManager.findPlayerExpeditionBase(system);
+		if (base == null) {
+			info.addPara("None of your colonies with a military structure (Patrol HQ, "
+					+ "Military Base, or High Command) lies within %s light-years of this "
+					+ "system.", opad, h, "" + (int) ThreatIncConfig.responseRangeLY());
+			return;
+		}
+
+		boolean anyGarrisoned = IncursionManager.anyTargetGarrisoned(targets);
+		boolean heavyAssault = anyGarrisoned && anyTargetEntrenched(targets);
+		int difficulty = IncursionManager.computeSiegeDifficulty(targets, anyGarrisoned);
+		java.util.List<Integer> fleetSizes = IncursionManager.siegeFleetSizes(
+				difficulty, anyGarrisoned, heavyAssault, targets.size());
+		int cost = IncursionManager.commissionCost(base, system, fleetSizes);
+		float dist = Misc.getDistanceLY(base.getStarSystem().getLocation(),
+				system.getLocation());
+
+		info.addPara("Your colony %s (" + (int) Math.ceil(dist) + " light-years out) can "
+				+ "muster a %s expedition sized to this system's defenses"
+				+ (anyGarrisoned ? " - including escorts to fight through the live "
+						+ "Defense Swarms" : "")
+				+ ". It runs the full siege playbook autonomously and reports back when "
+				+ "done. The fee covers fleets and distance, paid up front - no refunds.",
+				opad, h, base.getName(), fleetSizes.size() + "-fleet");
+
+		com.fs.starfarer.api.ui.ButtonAPI button = addGenericButton(info, width,
+				"Commission purge expedition (" + Misc.getDGSCredits(cost) + ")",
+				BUTTON_COMMISSION);
+
+		ThreatPurgeFGI existing = IncursionManager.findPlayerExpeditionAgainst(systemId);
+		int credits = (int) Global.getSector().getPlayerFleet().getCargo().getCredits().get();
+		if (existing != null) {
+			button.setEnabled(false);
+			info.addPara("An expedition you commissioned is already operating against this "
+					+ "system.", 3f, gray);
+		} else if (credits < cost) {
+			button.setEnabled(false);
+			info.addPara("You cannot afford the fee - you have %s.", 3f, neg,
+					Misc.getDGSCredits(credits));
+		}
+	}
+
+	/**
+	 * Whether any target colony is big enough that the expedition sails with
+	 * the second escort fleet - same bar as the NPC heavy-assault rule (above
+	 * the preemptive-purge size).
+	 */
+	protected static boolean anyTargetEntrenched(java.util.List<MarketAPI> targets) {
+		for (MarketAPI target : targets) {
+			if (target.getSize() > ThreatIncConfig.purgePreemptMaxSize()) return true;
+		}
+		return false;
+	}
+
+	@Override
+	public boolean doesButtonHaveConfirmDialog(Object buttonId) {
+		if (BUTTON_COMMISSION.equals(buttonId)) return true;
+		return super.doesButtonHaveConfirmDialog(buttonId);
+	}
+
+	@Override
+	public void createConfirmationPrompt(Object buttonId, TooltipMakerAPI prompt) {
+		if (!BUTTON_COMMISSION.equals(buttonId)) {
+			super.createConfirmationPrompt(buttonId, prompt);
+			return;
+		}
+		StarSystemAPI system = getSystem();
+		java.util.List<MarketAPI> targets = system != null
+				? IncursionManager.collectSiegeTargets(null, system)
+				: new java.util.ArrayList<MarketAPI>();
+		MarketAPI base = system != null ? IncursionManager.findPlayerExpeditionBase(system) : null;
+		if (system == null || base == null || targets.isEmpty()) {
+			prompt.addPara("The situation has changed - the expedition can no longer be "
+					+ "mustered.", 0f);
+			return;
+		}
+		boolean anyGarrisoned = IncursionManager.anyTargetGarrisoned(targets);
+		boolean heavyAssault = anyGarrisoned && anyTargetEntrenched(targets);
+		int difficulty = IncursionManager.computeSiegeDifficulty(targets, anyGarrisoned);
+		java.util.List<Integer> fleetSizes = IncursionManager.siegeFleetSizes(
+				difficulty, anyGarrisoned, heavyAssault, targets.size());
+		int cost = IncursionManager.commissionCost(base, system, fleetSizes);
+		prompt.addPara("Commission a " + fleetSizes.size() + "-fleet purge expedition from "
+				+ base.getName() + " against the " + targets.size() + " Threat "
+				+ (targets.size() > 1 ? "colonies" : "colony") + " of the "
+				+ system.getNameWithLowercaseType() + " for %s?", 0f,
+				Misc.getHighlightColor(), Misc.getDGSCredits(cost));
+		prompt.addPara("The fee is paid up front. Once mustered, the expedition is "
+				+ "autonomous - it cannot be recalled and does not refund its fee, even "
+				+ "if the colonies are destroyed by other means first.",
+				Misc.getGrayColor(), 10f);
+	}
 
 	@Override
 	public void buttonPressConfirmed(Object buttonId, com.fs.starfarer.api.ui.IntelUIAPI ui) {
+		if (BUTTON_COMMISSION.equals(buttonId)) {
+			commissionExpedition(ui);
+			return;
+		}
 		if (BUTTON_PURGE.equals(buttonId)) {
 			ThreatColonyManager.purgeSystemDebug(systemId);
 			endAfterDelay(0.1f);
 			ui.recreateIntelUI();
+			return;
 		}
+		super.buttonPressConfirmed(buttonId, ui);
+	}
+
+	protected void commissionExpedition(com.fs.starfarer.api.ui.IntelUIAPI ui) {
+		StarSystemAPI system = getSystem();
+		if (system == null) return;
+		// authoritative recomputation at spend time
+		java.util.List<MarketAPI> targets = IncursionManager.collectSiegeTargets(null, system);
+		MarketAPI base = IncursionManager.findPlayerExpeditionBase(system);
+		if (base == null || targets.isEmpty()) return;
+		if (IncursionManager.findPlayerExpeditionAgainst(systemId) != null) return;
+
+		boolean anyGarrisoned = IncursionManager.anyTargetGarrisoned(targets);
+		boolean heavyAssault = anyGarrisoned && anyTargetEntrenched(targets);
+		int difficulty = IncursionManager.computeSiegeDifficulty(targets, anyGarrisoned);
+		java.util.List<Integer> fleetSizes = IncursionManager.siegeFleetSizes(
+				difficulty, anyGarrisoned, heavyAssault, targets.size());
+		int cost = IncursionManager.commissionCost(base, system, fleetSizes);
+		if (Global.getSector().getPlayerFleet().getCargo().getCredits().get() < cost) return;
+
+		Global.getSector().getPlayerFleet().getCargo().getCredits().subtract(cost);
+		IncursionManager.launchSiegeExpedition(base, Global.getSector().getPlayerFaction(),
+				system, targets, fleetSizes, true, new java.util.Random());
+
+		ThreatColonyManager.announceAlways("A purge expedition you commissioned is "
+				+ "mustering at " + base.getName() + ", bound for the "
+				+ system.getNameWithLowercaseType() + " (" + Misc.getDGSCredits(cost)
+				+ " paid).", Misc.getHighlightColor());
+		ThreatIncConfig.log("Player commissioned purge expedition vs " + system.getName()
+				+ " from " + base.getName() + " - " + fleetSizes.size()
+				+ " fleets, difficulty " + difficulty + ", cost " + cost);
+		ui.updateUIForItem(this);
 	}
 
 	// NOTE: no getArrowData here on purpose. Vanilla uses map arrows solely to

@@ -103,10 +103,52 @@ public class ThreatIncConfig {
 	public static float groundDefenseMult() {
 		return f("threatinc_groundDefenseMult");
 	}
-	/** Whether the Fragment Fabricator screens Threat colonies from player bombardment until stolen. */
-	public static boolean fragmentShieldEnabled() {
-		return b("threatinc_fragmentShieldEnabled", true);
-	}
+
+	// ---- hive sieges ----
+
+	/** Flat ground-defense points per colony size (before industry multipliers). */
+	public static float hiveDefensePerSize()  { return f("threatinc_hiveDefensePerSize"); }
+	/** Ground Defenses structure bonus: defense mult = 1 + bonus (x2 at 1.0). */
+	public static float groundDefensesBonus() { return f("threatinc_groundDefensesBonus"); }
+	/** Heavy Batteries structure bonus: defense mult = 1 + bonus (x3 at 2.0). */
+	public static float heavyBatteriesBonus() { return f("threatinc_heavyBatteriesBonus"); }
+	/** Swarm Nexus defense bonus: defense mult = 1 + bonus (x1.5 at 0.5). */
+	public static float nexusDefenseBonus()   { return f("threatinc_nexusDefenseBonus"); }
+	/** Fraction of a defense structure's bonus that survives disruption. */
+	public static float disruptedDefenseFraction() { return f("threatinc_disruptedDefenseFraction"); }
+	/** Scale on the saturation fuel bill (1.0 = exactly the defense strength). */
+	public static float hiveBombardCostMult() { return f("threatinc_hiveBombardCostMult"); }
+	/** Tactical bombardment fuel cost as a fraction of the defense strength. */
+	public static float hiveTacCostFraction() { return f("threatinc_hiveTacCostFraction"); }
+	/** Days of disruption a saturation pass inflicts on hive industries. */
+	public static float hiveSatDisruptDays()  { return f("threatinc_hiveSatDisruptDays"); }
+	/** Days of disruption a tactical pass inflicts on hive defense structures. */
+	public static float hiveTacDisruptDays()  { return f("threatinc_hiveTacDisruptDays"); }
+	/** Marine-loss multiplier when raiding hive worlds. */
+	public static float hiveMarineLossMult()  { return f("threatinc_hiveMarineLossMult"); }
+
+	// ---- colony decline ----
+
+	/** Colony health below which the colony declines (loses population). */
+	public static float declineHealthThreshold() { return f("threatinc_declineHealthThreshold"); }
+	/** Base decline (size-step fraction) accrued per ~30-day tick while declining. */
+	public static float declineBasePerTick()     { return f("threatinc_declineBasePerTick"); }
+	/** Acceleration per consecutive declining tick. */
+	public static float declineAccelPerTick()    { return f("threatinc_declineAccelPerTick"); }
+	/** Cap on the consecutive-decline acceleration multiplier. */
+	public static float declineAccelCap()        { return f("threatinc_declineAccelCap"); }
+	/** Decline-meter decay per healthy tick (the hive regrows its strata). */
+	public static float declineRecoveryPerTick() { return f("threatinc_declineRecoveryPerTick"); }
+	/** Colony size at which the decline rate applies as-is (rate x ref/size). */
+	public static float declineSizeRef()         { return f("threatinc_declineSizeRef"); }
+	/** Fabrication factor while the Core is disrupted (below the threshold = forced decline). */
+	public static float coreDownFactor()         { return f("threatinc_coreDownFactor"); }
+	/** Fabrication factor while the Nexus is disrupted. */
+	public static float nexusDownFactor()        { return f("threatinc_nexusDownFactor"); }
+	/** Health at or below which growth stops entirely. */
+	public static float growthStallHealth()      { return f("threatinc_growthStallHealth"); }
+	/** Health at or above which the colony grows at full pace. */
+	public static float growthFullHealth()       { return f("threatinc_growthFullHealth"); }
 
 	// ---- phases ----
 
@@ -140,6 +182,19 @@ public class ThreatIncConfig {
 	public static float purgeCooldownDays()      { return f("threatinc_purgeCooldownDays"); }
 	/** Max colony size navies preemptively purge while its garrison still lives; 0 disables. */
 	public static int purgePreemptMaxSize()      { return i("threatinc_purgePreemptMaxSize"); }
+	/** Cooldown multiplier for full assaults on defended entrenched colonies (rarer). */
+	public static float purgeDefendedCooldownMult() { return f("threatinc_purgeDefendedCooldownMult"); }
+	/** Short cooldown for follow-up expeditions against wounded colonies. */
+	public static float purgeFollowUpDays()          { return f("threatinc_purgeFollowUpDays"); }
+
+	// ---- player-commissioned expeditions ----
+
+	/** Whether the player can commission purge expeditions from military colonies. */
+	public static boolean commissionEnabled()   { return b("threatinc_commissionEnabled", true); }
+	/** Credits per fleet-difficulty point of the commissioned flotilla. */
+	public static float commissionCostPerPoint() { return f("threatinc_commissionCostPerPoint"); }
+	/** Credits per light-year from the commissioning colony to the target system. */
+	public static float commissionCostPerLY()    { return f("threatinc_commissionCostPerLY"); }
 
 	// ---- Remnant immune system ----
 

@@ -64,6 +64,9 @@ public class ThreatColonyManager {
 
 	public static final String STABILITY_MOD_ID = "threatinc_machine";
 
+	/** Colony-UI readout of the growth/decline engine (HiveVitalityCondition). */
+	public static final String HIVE_VITALITY_CONDITION = "threatinc_hive_vitality";
+
 	/**
 	 * Supply-mod id of the RETIRED population-machinery mechanism, kept only so
 	 * ensureFabricationCore can strip it from markets in older saves.
@@ -718,34 +721,14 @@ public class ThreatColonyManager {
 			market.addIndustry(FABRICATION_CORE);
 			ThreatIncConfig.log("Fabrication Core added at " + market.getName());
 		}
+		// the colony-UI vitality readout; idempotent, and doubles as the
+		// migration path for colonies founded before the condition existed
+		if (!market.hasCondition(HIVE_VITALITY_CONDITION)) {
+			market.addCondition(HIVE_VITALITY_CONDITION);
+		}
 		if (!market.hasIndustry(SWARM_NEXUS)) {
 			market.addIndustry(SWARM_NEXUS);
 			ThreatIncConfig.log("Swarm Nexus added at " + market.getName());
-		}
-		// The Fragment Fabricator lives in the FABRICATION CORE - it is the
-		// fabrication organ's crown, not the military nexus's. Migrate any
-		// nexus-installed fabricator from earlier builds across first.
-		Industry coreInd = market.getIndustry(FABRICATION_CORE);
-		Industry nexusInd = market.getIndustry(SWARM_NEXUS);
-		if (nexusInd != null && nexusInd.getSpecialItem() != null
-				&& com.fs.starfarer.api.impl.campaign.ids.Items.FRAGMENT_FABRICATOR
-						.equals(nexusInd.getSpecialItem().getId())) {
-			nexusInd.setSpecialItem(null);
-			if (coreInd != null && coreInd.getSpecialItem() == null) {
-				coreInd.setSpecialItem(new com.fs.starfarer.api.campaign.SpecialItemData(
-						com.fs.starfarer.api.impl.campaign.ids.Items.FRAGMENT_FABRICATOR, null));
-			}
-			ThreatIncConfig.log("Fragment Fabricator moved to Fabrication Core at "
-					+ market.getName());
-		}
-		// seed exactly ONCE per colony (flag survives the theft): once raided
-		// out, the colony is permanently bombable
-		if (coreInd != null && coreInd.getSpecialItem() == null
-				&& !market.getMemoryWithoutUpdate().getBoolean(FABRICATOR_SEEDED_FLAG)) {
-			coreInd.setSpecialItem(new com.fs.starfarer.api.campaign.SpecialItemData(
-					com.fs.starfarer.api.impl.campaign.ids.Items.FRAGMENT_FABRICATOR, null));
-			market.getMemoryWithoutUpdate().set(FABRICATOR_SEEDED_FLAG, true);
-			ThreatIncConfig.log("Fragment Fabricator installed at " + market.getName());
 		}
 		// migrate vanilla defensive structures (marine/supplies demands make no
 		// sense on a machine hive) to the machinery+metals variants
@@ -788,27 +771,32 @@ public class ThreatColonyManager {
 		}
 	}
 
-	/** Set once a colony's nexus has received its Fragment Fabricator - the
-	 * item is seeded exactly once, so a stolen fabricator stays stolen and the
-	 * colony stays permanently bombable. */
-	public static final String FABRICATOR_SEEDED_FLAG = "$threatinc_fabricatorSeeded";
-
 	/**
-	 * Whether any industry here still holds the Fragment Fabricator - the
-	 * organ that screens the colony against orbital bombardment
-	 * (ThreatincMarketCMD.bombardMenu). Stolen via ground raid (EXTREME
-	 * danger, see SwarmNexus.adjustItemDangerLevel) is the only way it leaves.
+	 * RETIRED mechanic cleanup: removes the Fragment Fabricator item (and its
+	 * seeded flag) from every hive colony and husk. The item used to screen
+	 * colonies from player bombardment; with the siege rework it no longer
+	 * exists, and its InstallableItemEffect stub is gone - any industry still
+	 * holding one would crash the colony UI. Idempotent; run at load for old
+	 * saves (before any UI can render) and again by the v4 data migration.
 	 */
-	public static boolean hasFragmentFabricator(MarketAPI market) {
-		if (market == null) return false;
-		for (Industry ind : market.getIndustries()) {
-			if (ind.getSpecialItem() != null
-					&& com.fs.starfarer.api.impl.campaign.ids.Items.FRAGMENT_FABRICATOR
-							.equals(ind.getSpecialItem().getId())) {
-				return true;
+	public static void stripFragmentFabricators() {
+		String itemId = com.fs.starfarer.api.impl.campaign.ids.Items.FRAGMENT_FABRICATOR;
+		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
+			StarSystemAPI system = getSystem(systemId);
+			for (String marketId : new ArrayList<String>(ThreatIncData.colonyMarketsFor(systemId))) {
+				MarketAPI market = findMarketAnywhere(marketId, system);
+				if (market == null) continue;
+				for (Industry ind : market.getIndustries()) {
+					if (ind.getSpecialItem() != null
+							&& itemId.equals(ind.getSpecialItem().getId())) {
+						ind.setSpecialItem(null);
+						ThreatIncConfig.log("Fragment Fabricator stripped from "
+								+ market.getName() + " (retired mechanic).");
+					}
+				}
+				market.getMemoryWithoutUpdate().unset("$threatinc_fabricatorSeeded");
 			}
 		}
-		return false;
 	}
 
 	/**
@@ -1613,32 +1601,281 @@ public class ThreatColonyManager {
 	}
 
 	// ------------------------------------------------------------------
-	// growth
+	// vitality: health-scaled growth, and decline under siege
 	// ------------------------------------------------------------------
 
-	/** Called from the ~30-day tick. */
-	public static void growColonies() {
+	/**
+	 * Size-resilience multiplier on the decline rate: rate x (ref / size),
+	 * anchored at declineSizeRef. Smaller colonies decline proportionally
+	 * faster, larger ones slower - mass is resilience. Emergent death spiral:
+	 * as a besieged colony shrinks, its decline speeds up.
+	 */
+	public static float declineSizeMultFor(int size) {
+		return ThreatIncConfig.declineSizeRef() / Math.max(1, size);
+	}
+
+	/** An organ counts as down when missing, disrupted, or non-functional. */
+	protected static boolean organDown(Industry ind) {
+		return ind == null || ind.isDisrupted() || !ind.isFunctional();
+	}
+
+	/**
+	 * Whether any of the colony's key organs (Core, Nexus, port) is currently
+	 * disrupted - the "under active siege" test. While true, the decline meter
+	 * does not regrow, and navies press follow-up expeditions on a short
+	 * cooldown instead of waiting out the full purge interval.
+	 */
+	public static boolean anyOrganDisrupted(MarketAPI market) {
+		if (market == null) return false;
+		Industry core = market.getIndustry(FABRICATION_CORE);
+		if (core != null && core.isDisrupted()) return true;
+		Industry nexus = market.getIndustry(SWARM_NEXUS);
+		if (nexus != null && nexus.isDisrupted()) return true;
+		Industry port = market.getIndustry(Industries.MEGAPORT);
+		if (port == null) port = market.getIndustry(Industries.SPACEPORT);
+		if (port != null && port.isDisrupted()) return true;
+		return false;
+	}
+
+	/**
+	 * The ON/OFF half of colony health: FABRICATION organ functionality. A
+	 * hive's growth is literally its ability to fabricate new strata and
+	 * swarms - a disrupted organ isn't producing at reduced capacity, it
+	 * isn't producing AT ALL. The Fabrication Core dominates (down = decline,
+	 * full stop); the nexus degrades the figure further. The PORT is
+	 * deliberately absent: it is logistics, not fabrication - its disruption
+	 * bites through the supply score (collapsed accessibility cuts imports,
+	 * here and at every sibling colony this world feeds), so counting it here
+	 * would double-charge it and wrongly punish self-sufficient colonies.
+	 */
+	public static float computeFabricationMult(MarketAPI market) {
+		if (market == null) return 0f;
+		float mult = 1f;
+		if (organDown(market.getIndustry(FABRICATION_CORE))) {
+			mult *= ThreatIncConfig.coreDownFactor();
+		}
+		if (organDown(market.getIndustry(SWARM_NEXUS))) {
+			mult *= ThreatIncConfig.nexusDownFactor();
+		}
+		return mult;
+	}
+
+	/**
+	 * The REDUCED-CAPACITY half: input satisfaction. Availability is the
+	 * vanilla economy's group-wide, accessibility-mediated figure, so cutting
+	 * one colony's port or forge - or pirate activity strangling its shipping -
+	 * starves its siblings too. Working organs on thin supply run slower;
+	 * they don't stop.
+	 */
+	public static float computeSupplyMult(MarketAPI market) {
+		if (market == null) return 0f;
+		float inputScore = 1f;
+		if (ThreatIncConfig.economyGatesGrowth()) {
+			float total = 0f;
+			int counted = 0;
+			for (String commodityId : CORE_INPUTS) {
+				CommodityOnMarketAPI com = market.getCommodityData(commodityId);
+				if (com == null) continue;
+				int demand = com.getMaxDemand();
+				if (demand <= 0) continue;
+				total += Math.min(1f, com.getAvailable() / (float) demand);
+				counted++;
+			}
+			if (counted > 0) inputScore = total / counted;
+			// total rare-ore cutoff keeps its hard bite (see isEconomicallyHealthy)
+			if (ThreatIncData.usesRareEconomy()) {
+				CommodityOnMarketAPI rare = market.getCommodityData(Commodities.RARE_ORE);
+				if (rare != null && rare.getMaxDemand() > 0 && rare.getAvailable() <= 0) {
+					inputScore *= 0.5f;
+				}
+			}
+		}
+		return inputScore;
+	}
+
+	/**
+	 * Colony health in [0..1] = fabrication (organs, ON/OFF) x supply (inputs,
+	 * reduced capacity). Multiplicative, and a disrupted Fabrication Core also
+	 * zeroes its machinery supply so shortages compound the disruption.
+	 */
+	public static float computeHealth(MarketAPI market) {
+		if (market == null) return 0f;
+		float health = computeFabricationMult(market) * computeSupplyMult(market);
+		if (health < 0f) health = 0f;
+		if (health > 1f) health = 1f;
+		return health;
+	}
+
+	/** Growth pace [0..1] for a health value - shared by the tick and the UI. */
+	public static float growthMultFor(float health) {
+		float full = ThreatIncConfig.growthFullHealth();
+		float stall = ThreatIncConfig.growthStallHealth();
+		if (health >= full) return 1f;
+		if (health <= stall || full <= stall) return 0f;
+		return (health - stall) / (full - stall);
+	}
+
+	/** Severity multiplier (1-3x) for a declining health value - tick + UI. */
+	public static float declineSeverityFor(float health) {
+		float declineT = ThreatIncConfig.declineHealthThreshold();
+		float severity = 1f + 2f * (declineT - health) / Math.max(declineT, 0.01f);
+		if (severity > 3f) severity = 3f;
+		return severity;
+	}
+
+	/** The effective tick length the vitality engine runs at (fast-clock aware). */
+	public static float effectiveTickDays() {
+		float tickDays = ThreatIncConfig.tickDays();
+		if (ThreatIncConfig.debugFastClock()) tickDays = Math.max(1f, tickDays / 10f);
+		return tickDays;
+	}
+
+	/** The current acceleration multiplier for a colony's days-in-decline. */
+	public static float declineAccelFor(String marketId) {
+		float accel = 1f + ThreatIncConfig.declineAccelPerTick()
+				* Math.max(0f, ThreatIncData.declineDays(marketId) / effectiveTickDays() - 1f);
+		if (accel > ThreatIncConfig.declineAccelCap()) accel = ThreatIncConfig.declineAccelCap();
+		return accel;
+	}
+
+	/**
+	 * The instantaneous decline rate (fraction of a stratum per 30-day-tick
+	 * equivalent) at the given health - the "how fast is it dying" figure.
+	 */
+	public static float declineRatePerTick(MarketAPI market, float health) {
+		if (market == null || health >= ThreatIncConfig.declineHealthThreshold()) return 0f;
+		return ThreatIncConfig.declineBasePerTick() * declineSeverityFor(health)
+				* declineAccelFor(market.getId()) * declineSizeMultFor(market.getSize());
+	}
+
+	/**
+	 * Projected decline timeline if health HOLDS at its current value:
+	 * [0] days until the next population stratum is lost, [1] days until the
+	 * population falls to size 1 and the colony collapses. Integrates the
+	 * exact continuous-accrual math (severity, days-based acceleration, meter
+	 * carryover, fast clock). Both -1 when the colony is not declining; [1]
+	 * alone -1 if collapse is beyond the projection horizon.
+	 */
+	public static float[] projectDecline(MarketAPI market, float health) {
+		if (market == null || health >= ThreatIncConfig.declineHealthThreshold()) {
+			return new float[] {-1f, -1f};
+		}
+		float tickLen = effectiveTickDays();
+		float step = Math.max(1f, tickLen / 6f);
+		float severity = declineSeverityFor(health);
+		float meter = ThreatIncData.declineProgress(market.getId());
+		float daysIn = ThreatIncData.declineDays(market.getId());
+		int size = market.getSize();
+		float days = 0f;
+		float nextStep = -1f;
+		for (int i = 0; i < 2400; i++) {
+			days += step;
+			daysIn += step;
+			float accel = 1f + ThreatIncConfig.declineAccelPerTick()
+					* Math.max(0f, daysIn / tickLen - 1f);
+			if (accel > ThreatIncConfig.declineAccelCap()) {
+				accel = ThreatIncConfig.declineAccelCap();
+			}
+			// size resilience uses the SIMULATED size - as the colony shrinks,
+			// its decline speeds up, and the projection reflects that
+			meter += ThreatIncConfig.declineBasePerTick() * severity * accel
+					* declineSizeMultFor(size) * (step / tickLen);
+			while (meter >= 1f) {
+				meter -= 1f;
+				if (nextStep < 0f) nextStep = days;
+				if (size <= 2) return new float[] {nextStep, days};
+				size--;
+			}
+		}
+		return new float[] {nextStep, -1f};
+	}
+
+	/**
+	 * Called from the fast-cadence poll (~half-day), NOT the 30-day tick:
+	 * decline, meter recovery, and growth all accrue CONTINUOUSLY, pro-rated
+	 * from the per-30-day config rates. Tick-quantized accrual made the
+	 * decline meter stale for up to a month and let a 30-day disruption
+	 * window contribute one decline step or zero depending on pure phase
+	 * luck - the forecast promised a rate the engine only delivered in lumps.
+	 *
+	 * @param elapsedDays campaign days since the previous poll
+	 */
+	public static void updateColonyVitality(float elapsedDays) {
+		if (elapsedDays <= 0f) return;
+		float declineT = ThreatIncConfig.declineHealthThreshold();
+		float tickLen = effectiveTickDays();
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			String id = market.getId();
+			float health = computeHealth(market);
+			ThreatIncData.setLastHealth(id, health);
+
+			if (health < declineT) {
+				float daysIn = ThreatIncData.declineDays(id);
+				boolean entering = daysIn <= 0f;
+				daysIn += elapsedDays;
+				ThreatIncData.setDeclineDays(id, daysIn);
+				// severity 1x at the threshold up to 3x at health zero; the
+				// acceleration ramp runs on continuous days-in-decline
+				float accel = 1f + ThreatIncConfig.declineAccelPerTick()
+						* Math.max(0f, daysIn / tickLen - 1f);
+				if (accel > ThreatIncConfig.declineAccelCap()) {
+					accel = ThreatIncConfig.declineAccelCap();
+				}
+				float before = ThreatIncData.declineProgress(id);
+				float amount = ThreatIncConfig.declineBasePerTick()
+						* declineSeverityFor(health) * accel
+						* declineSizeMultFor(market.getSize())
+						* (elapsedDays / tickLen);
+				ThreatIncData.addDeclineProgress(id, amount);
+				if (entering) {
+					announce("The fabrication colony on " + market.getName() + " is failing - "
+							+ "its strata are dying faster than the hive can regrow them.",
+							Misc.getPositiveHighlightColor());
+				}
+				// log at 10%-meter boundaries, not every half-day poll
+				float after = ThreatIncData.declineProgress(id);
+				if ((int) (before * 10f) != (int) (after * 10f)) {
+					ThreatIncConfig.log("Colony declining at " + market.getName() + ": health "
+							+ String.format("%.2f", health) + ", decline "
+							+ String.format("%.2f", after) + " - " + econDebugSummary(market));
+				}
+				applyDeclineSteps(market);
+				continue;
+			}
+
+			// the pressure has lifted: the hive regrows what it lost, slowly -
+			// but NOT while any key organ is still disrupted. A besieged colony
+			// that scrapes above the decline threshold holds its wounds open,
+			// so successive expeditions accumulate damage instead of watching
+			// the meter heal between visits.
+			ThreatIncData.setDeclineDays(id, 0f);
+			float meter = ThreatIncData.declineProgress(id);
+			if (meter > 0f && !anyOrganDisrupted(market)) {
+				ThreatIncData.setDeclineProgress(id, meter
+						- ThreatIncConfig.declineRecoveryPerTick() * (elapsedDays / tickLen));
+			}
+
 			int size = market.getSize();
 			int cap = Math.min(ThreatIncConfig.colonyMaxSize(), Misc.getMaxMarketSize(market));
 			if (size >= cap) continue;
 
+			float growthMult = growthMultFor(health);
+			if (growthMult <= 0f) continue; // starved: resumes once supply recovers
+
+			float accrued = ThreatIncData.growthProgressDays(id) + elapsedDays * growthMult;
 			float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size
 					* IncursionManager.timeScale();
-			if (ThreatIncData.daysSinceGrowth(market.getId()) < daysPerLevel) continue;
-
-			if (!isEconomicallyHealthy(market)) {
-				// starved: growth resumes promptly once the shortages clear
-				ThreatIncConfig.log("Growth stalled (shortages) at " + market.getName()
-						+ " - " + econDebugSummary(market));
+			if (accrued < daysPerLevel) {
+				ThreatIncData.setGrowthProgressDays(id, accrued);
 				continue;
 			}
 
 			int old = market.getSize();
 			CoreImmigrationPluginImpl.increaseMarketSize(market);
+			ThreatIncData.setGrowthProgressDays(id, 0f);
 			if (market.getSize() <= old) continue;
 			ListenerUtil.reportColonySizeChanged(market, old);
-			ThreatIncData.setGrowthTime(market.getId());
+			ThreatIncData.setGrowthTime(id);
 			// the Fabrication Core's machinery output tracks size by itself
 			// (its apply() reads market size on every econ recompute)
 			planHiveEconomy(market);
@@ -1652,6 +1889,62 @@ public class ThreatColonyManager {
 			}
 			ThreatIncConfig.log("Colony grew to " + newSize + ": " + market.getName());
 		}
+	}
+
+	/**
+	 * Cashes in whole size steps from the decline meter. Decline is THE ONLY
+	 * way a Threat colony dies: no bombardment touches its population. When a
+	 * colony's population would fall to size 1, the hive is no longer viable
+	 * and it COLLAPSES outright - the vanilla teardown runs and pollColonies
+	 * reacts on the next poll.
+	 */
+	public static void applyDeclineSteps(MarketAPI market) {
+		if (market == null) return;
+		String id = market.getId();
+		while (ThreatIncData.declineProgress(id) >= 1f) {
+			ThreatIncData.addDeclineProgress(id, -1f);
+			int old = market.getSize();
+
+			if (old <= 2) {
+				// falling to size 1: the strata can no longer sustain themselves
+				announce("The fabrication colony on " + market.getName() + " has collapsed - "
+						+ "the strata are cold.", Misc.getPositiveHighlightColor());
+				ThreatIncConfig.log("Colony collapsed from decline: " + market.getName());
+				ThreatIncData.clearVitality(id);
+				// fullDestroy bypasses NO_DECIV_KEY (verified against 0.98a source)
+				DecivTracker.decivilize(market, true);
+				return;
+			}
+
+			reduceSizeByOne(market);
+			if (market.getSize() >= old) break; // safety: no step happened
+			ListenerUtil.reportColonySizeChanged(market, old);
+			ThreatIncData.setGrowthProgressDays(id, 0f);
+			ThreatIncData.setGrowthTime(id);
+			announce("The fabrication colony on " + market.getName()
+					+ " has withered to size " + market.getSize() + ".",
+					Misc.getPositiveHighlightColor());
+			ThreatIncConfig.log("Colony declined to " + market.getSize() + ": "
+					+ market.getName());
+		}
+	}
+
+	/**
+	 * -1 size, mirroring vanilla {@code CoreImmigrationPluginImpl.reduceMarketSize}
+	 * but WITHOUT its size-3 floor - decline must be able to grind a hive all
+	 * the way down to collapse.
+	 */
+	protected static void reduceSizeByOne(MarketAPI market) {
+		int size = market.getSize();
+		if (size <= 1) return;
+		market.removeCondition("population_" + size);
+		market.addCondition("population_" + (size - 1));
+		market.setSize(size - 1);
+		market.getPopulation().setWeight(
+				CoreImmigrationPluginImpl.getWeightForMarketSizeStatic(market.getSize()));
+		market.getPopulation().normalize();
+		market.reapplyConditions();
+		market.reapplyIndustries();
 	}
 
 	// ------------------------------------------------------------------
@@ -1907,6 +2200,7 @@ public class ThreatColonyManager {
 				ThreatIncData.garrisonSpawnTimes().remove(marketId);
 				ThreatIncData.growthTimes().remove(marketId);
 				ThreatIncData.lastPurgeTimes().remove(marketId);
+				ThreatIncData.clearVitality(marketId);
 				ids.remove(marketId);
 				lostOne = true;
 			}
@@ -1957,6 +2251,7 @@ public class ThreatColonyManager {
 				pop.supply(MACHINERY_SUPPLY_ID, Commodities.HEAVY_MACHINERY, 0, null);
 				pop.getDemandReductionFromOther().unmodifyFlat("threatinc_machines");
 			}
+			market.removeCondition(HIVE_VITALITY_CONDITION);
 			market.getStability().unmodifyFlat(STABILITY_MOD_ID);
 			market.getStats().getDynamic().getMod(Stats.MAX_MARKET_SIZE).unmodifyFlat("threatinc");
 			market.getMemoryWithoutUpdate().unset(COLONY_FLAG);
@@ -2080,8 +2375,46 @@ public class ThreatColonyManager {
 
 		if (version < 2) migrateHivesToColonies(random);
 		if (version < 3) migrateToMultiColony();
+		if (version < 4) migrateToSiegeRework();
+		if (version < 5) migrateToContinuousDecline();
 
 		ThreatIncData.setDataVersion(ThreatIncData.CURRENT_DATA_VERSION);
+	}
+
+	/**
+	 * v4 -> v5: decline accrual went continuous - consecutive-tick counters
+	 * become days-in-decline.
+	 */
+	protected static void migrateToContinuousDecline() {
+		float tickLen = effectiveTickDays();
+		for (Map.Entry<String, Integer> entry : new ArrayList<Map.Entry<String, Integer>>(
+				ThreatIncData.declineTicks().entrySet())) {
+			if (entry.getValue() == null) continue;
+			ThreatIncData.setDeclineDays(entry.getKey(), entry.getValue() * tickLen);
+		}
+		ThreatIncData.declineTicks().clear();
+		ThreatIncConfig.log("Migrated decline counters to continuous accrual (v5).");
+	}
+
+	/**
+	 * v3 -> v4 (siege rework): the Fragment Fabricator gate is retired - strip
+	 * the item everywhere (the onGameLoad early strip already ran for UI
+	 * safety; this is the durable, versioned pass) - and seed the health-scaled
+	 * growth accumulator from the old growth timestamps so no colony loses
+	 * accrued growth time. Decline maps start empty.
+	 */
+	protected static void migrateToSiegeRework() {
+		stripFragmentFabricators();
+		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			String id = market.getId();
+			float cap = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize()
+					* IncursionManager.timeScale();
+			float accrued = ThreatIncData.daysSinceGrowth(id);
+			if (accrued < 0f) accrued = 0f;
+			if (accrued > cap) accrued = cap;
+			ThreatIncData.setGrowthProgressDays(id, accrued);
+		}
+		ThreatIncConfig.log("Migrated data layout to siege rework (v4).");
 	}
 
 	/** v1 -> v2: hive-fleet systems become real colonies; hive fleets despawn. */

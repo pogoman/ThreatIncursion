@@ -20,7 +20,7 @@ it.
 
 **Hive organs.** Every colony runs three custom structures:
 - **Fabrication Core** - the population strata as industry: supplies the
-  hive's heavy machinery, and carries the colony's **Fragment Fabricator**.
+  hive's heavy machinery. Knock it out and the whole colony starts dying.
 - **Swarm Nexus** - the military organ: continuously grows Defense Swarms
   (idling, and consuming nothing, once the garrison is full). Expeditions
   are MUSTERED from the standing garrison - every fleet comes from
@@ -39,18 +39,37 @@ world still takes repeated expeditions). Expeditions still being fabricated can 
 sabotaging the staging colony; once departed they are autonomous. Worlds
 they kill, the swarm colonizes.
 
-**The kill chain.** Hive worlds cannot simply be bombed: the Fragment
-Fabricator's screen unmakes ordnance in the upper atmosphere. Defeat the
-Defense Swarms, raid the Fabrication Core to steal the fabricator (EXTREME
-raid danger - the hive defends its heart), and only then does bombardment
-land - priced by ground defenses that never fully go down.
+**The siege.** Every hive lives deep underground behind ground defenses
+anchored to its size (400 points per size, immune to unrest, multiplied
+by its defense industries - a mature hive's true figure runs into the
+thousands), and **no bombardment can reduce its population**. Saturation
+costs fuel equal to the full defense figure and buys only days of
+disruption; tactical bombardment costs a quarter of that and suppresses
+the exposed war-strata for months (halving their defensive effect);
+marine raids cut deepest against a chosen organ. A colony whose
+Fabrication Core is down - or whose supply lines are cut - stops growing
+and **declines**, losing population faster the longer it stays
+suppressed, until its population falls to size 1 and the hive collapses.
+That is the only way a Threat colony dies. Supply-chain strikes cascade:
+one disrupted port or forge can push several sister colonies into
+decline at once.
 
 **The sector fights back.** Struck factions dispatch task forces against
-the staging colony; purge expeditions finish undefended hive worlds; from
-phase 3 the colonial defense boards run live bounty boards - a strategic
-tier naming the decisive target and an immediate tier naming the cheapest
-worthwhile cut, re-scored as the network shifts, with active raiders
-jumping the queue.
+the staging colony; siege expeditions work over hive worlds with tactical
+bombardments and commando raids that push them into decline (rarely, with
+extra escorts, assaulting even defended hives), posting a detailed
+after-action sitrep of what they did to each planet; from phase 3 the
+colonial defense boards run live bounty boards - a strategic tier naming
+the decisive target and an immediate tier naming the cheapest worthwhile
+cut, re-scored as the network shifts, with active raiders jumping the
+queue.
+
+**Commission your own.** From the infested-system intel, hire the same
+siege expedition NPC navies run - mustered at your nearest colony with a
+military structure (within response range), sized to the target system's
+defenses, built with your doctrine and blueprints. You pay up front,
+priced by flotilla size and distance; the expedition is autonomous and
+reports back with a full sitrep.
 
 ## Install
 

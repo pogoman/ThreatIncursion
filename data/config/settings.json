@@ -84,12 +84,48 @@
 	"threatinc_destroyStoryCritical": true,
 	# scale on hive ground-defense strength; bombardment fuel cost scales with it
 	"threatinc_groundDefenseMult": 1.0,
-	# Fragment Fabricator screens Threat colonies from player bombardment until
-	# it is stolen by ground raid (EXTREME danger)
-	"threatinc_fragmentShieldEnabled": true,
+
+	# Hive sieges: every hive lives deep underground behind ground defenses
+	# anchored to COLONY SIZE (hiveDefensePerSize x size, immune to unrest,
+	# then multiplied by the defense industries - a size-8 hive's true figure
+	# runs five digits). Saturation bombardment costs the full defense figure
+	# and only disrupts industries for days; it can NEVER reduce population.
+	# Tactical bombardment costs a fraction and suppresses the war-strata
+	# longer; marine raids disrupt longest. The only way a hive dies is
+	# decline: population falling to size 1 under disruption or shortages.
+	"threatinc_hiveDefensePerSize": 400,
+	# defense-structure scaling: defense mult = 1 + bonus per structure, with
+	# disruptedDefenseFraction of the bonus surviving disruption
+	"threatinc_groundDefensesBonus": 1.0,
+	"threatinc_heavyBatteriesBonus": 2.0,
+	"threatinc_nexusDefenseBonus": 0.5,
+	"threatinc_disruptedDefenseFraction": 0.5,
+	"threatinc_hiveBombardCostMult": 1.0,
+	"threatinc_hiveTacCostFraction": 0.25,
+	"threatinc_hiveSatDisruptDays": 20,
+	"threatinc_hiveTacDisruptDays": 60,
+	"threatinc_hiveMarineLossMult": 1.5,
+
+	# Colony decline: a colony whose health (input satisfaction x structure
+	# functionality) falls below the threshold loses population, faster the
+	# longer it stays suppressed, until it collapses at size 1
+	"threatinc_declineHealthThreshold": 0.35,
+	"threatinc_declineBasePerTick": 0.10,
+	"threatinc_declineAccelPerTick": 0.15,
+	"threatinc_declineAccelCap": 2.0,
+	"threatinc_declineRecoveryPerTick": 0.05,
+	# size resilience: decline rate x (ref / size)
+	"threatinc_declineSizeRef": 4.0,
+	# fabrication factors while organs are disrupted (health = fab x supply;
+	# coreDownFactor below declineHealthThreshold = a dead Core forces decline)
+	"threatinc_coreDownFactor": 0.25,
+	"threatinc_nexusDownFactor": 0.8,
+	# growth pace ramps from 0 at stall health to full at full health
+	"threatinc_growthStallHealth": 0.5,
+	"threatinc_growthFullHealth": 0.85,
 
 	# Faction reactive defense: task forces against garrisons, and - when a
-	# colony's garrison has been wiped out - saturation purge bombardments
+	# colony's garrison has been wiped out - siege expeditions
 	"threatinc_responseEnabled": true,
 	# 0 = unlimited
 	"threatinc_responseMaxConcurrent": 0,
@@ -100,8 +136,20 @@
 	"threatinc_responsePurgeEnabled": true,
 	"threatinc_purgeCooldownDays": 240,
 	# hive colonies up to this size are purged preemptively, garrison or not;
-	# larger ones must have their garrison broken first. 0 disables
+	# larger DEFENDED colonies can draw a full assault too, but on a cooldown
+	# stretched by purgeDefendedCooldownMult and with extra escort fleets
 	"threatinc_purgePreemptMaxSize": 3,
+	"threatinc_purgeDefendedCooldownMult": 2.0,
+	# wounded colonies (open decline meter or disrupted organs) draw follow-up
+	# expeditions on this short cooldown - navies press an advantage
+	"threatinc_purgeFollowUpDays": 75,
+
+	# Player-commissioned expeditions: from a player colony with a military
+	# structure in response range, hire the same siege expedition NPC navies
+	# run - priced by flotilla size and distance
+	"threatinc_commissionEnabled": true,
+	"threatinc_commissionCostPerPoint": 15000,
+	"threatinc_commissionCostPerLY": 8000,
 
 	# Remnant immune system (pairs with Remnant Retribution, but works with
 	# vanilla Remnant systems regardless)
