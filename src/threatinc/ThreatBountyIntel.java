@@ -895,13 +895,17 @@ public class ThreatBountyIntel extends BaseIntelPlugin {
 
 		if (market != null) {
 			info.addPara("The target is a size %s colony defended by %s Defense Swarms. "
-					+ "Defeat them, then raid to disrupt - or saturation bombard until "
-					+ "nothing remains.", opad, h, "" + market.getSize(), "" + garrison);
-			if (ThreatIncConfig.fragmentShieldEnabled()
-					&& ThreatColonyManager.hasFragmentFabricator(market)) {
-				info.addPara("Note: this colony's %s still runs - your bombardment cannot land "
-						+ "until a ground raid tears the fabricator out of the Fabrication Core.",
-						opad, neg, "Fragment Fabricator");
+					+ "Defeat them, then raid to disrupt - or lay siege until nothing "
+					+ "remains.", opad, h, "" + market.getSize(), "" + garrison);
+			info.addPara("Note: the hive is %s - no bombardment reduces its population. "
+					+ "Suppress the war-strata with tactical bombardment, put marines on "
+					+ "its organs, and let the decline do the killing.", opad, neg,
+					"buried beyond reach");
+			float decline = ThreatIncData.declineProgress(market.getId());
+			if (decline > 0f) {
+				info.addPara("Its strata are already failing: %s of the way to the next "
+						+ "population stratum lost.", opad, pos,
+						(int) (decline * 100f) + "%");
 			}
 		}
 

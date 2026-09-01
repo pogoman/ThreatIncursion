@@ -47,11 +47,13 @@ import com.fs.starfarer.api.util.WeightedRandomPicker;
  * infestations on the uninhabited fringe, dispatches Seeding Swarms that found
  * real fabrication colonies, grows those colonies into a self-contained hive
  * economy, and - in later phases - launches strikes against inhabited worlds,
- * converting the dead ones into new colonies. Colonies are removed the vanilla
- * way: defeat the garrison, then saturation-bombard until decivilized.
+ * converting the dead ones into new colonies. Colonies die by siege alone:
+ * no bombardment reduces a hive's population - suppress or starve its organs
+ * until decline grinds it to collapse at size 1.
  */
 public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
-		ColonyPlayerHostileActListener {
+		ColonyPlayerHostileActListener,
+		com.fs.starfarer.api.campaign.listeners.MarineLossesStatModifier {
 
 	public static final String KEY_STRIKES = "threatinc_activeStrikes";
 	public static final String KEY_PURGES = "threatinc_activePurges";
@@ -184,6 +186,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// the shifting economy COM and survives save load and econ recompute
 		ThreatColonyManager.applyHiveAccessibility();
 		ThreatColonyManager.pollColonies();
+		// vitality accrues CONTINUOUSLY at this poll cadence (~half-day), not
+		// on the 30-day tick - tick-quantized decline left the meter stale for
+		// up to a month and made short disruption windows a matter of phase luck
+		ThreatColonyManager.updateColonyVitality(interval.getIntervalDuration());
 		sweepOrphanedExpeditions();
 		upgradeInFlightStrikes();
 		dedupDecivIntel();
@@ -214,6 +220,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatBountyIntel.class));
 		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatResponseIntel.class));
 		intel.addAll(Global.getSector().getIntelManager().getIntel(InfestedSystemIntel.class));
+		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatSiegeReportIntel.class));
 		for (com.fs.starfarer.api.campaign.comm.IntelInfoPlugin curr : intel) {
 			if (curr instanceof EveryFrameScript) {
 				((EveryFrameScript) curr).advance(amount);
@@ -309,7 +316,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	protected void tick() {
 		advanceStages();
-		ThreatColonyManager.growColonies();
 		ThreatColonyManager.maintainMegaports();
 		trySpread();
 		tryConversions();
@@ -996,12 +1002,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * Saturation purge expeditions against hive colonies, riding the same
-	 * NPC-vs-NPC bombardment machinery the Threat itself uses. Two doctrines:
-	 * a colony whose garrison has been wiped out draws a purge at any size
-	 * (the window of opportunity), and a colony still SMALL enough to stomp
-	 * (purgePreemptMaxSize) draws a preemptive purge garrison or not - navies
-	 * do not politely wait for a foothold to grow into a fortress.
+	 * Siege expeditions against hive colonies (see ThreatPurgeFGI for the
+	 * doctrine - tactical bombardment and commando raids feeding the decline
+	 * engine; bombardment never reduces hive population). Three triggers: a
+	 * colony whose garrison has been wiped out draws a siege at any size (the
+	 * window of opportunity); a colony still small (purgePreemptMaxSize) draws
+	 * a preemptive siege garrison or not - navies do not politely wait for a
+	 * foothold to grow into a fortress; and a defended larger colony draws the
+	 * rare full assault, with extra escorts, on a stretched cooldown.
 	 */
 	protected void tryPurgeBombardments() {
 		if (!ThreatIncConfig.responsePurgeEnabled()) return;
@@ -1011,21 +1019,36 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 			StarSystemAPI system = colony.getStarSystem();
 			if (system == null) continue;
-			// a purge launches at a colony whose garrison is gone - or, the
-			// doctrine of the cheap kill, PREEMPTIVELY at a foothold still small
-			// enough to stomp: waiting for a hive to disarm itself is how it
-			// gets to size 8. A preemptive expedition must fight through the
-			// young colony's Defense Swarms, so it sails with an extra fleet.
-			boolean preemptive = ThreatColonyManager.countLiveGarrison(colony.getId()) > 0;
-			if (preemptive && colony.getSize() > ThreatIncConfig.purgePreemptMaxSize()) continue;
+			// a purge launches at a colony whose garrison is gone; PREEMPTIVELY
+			// at a foothold still small enough to stomp; or - rarest and
+			// heaviest - as a full assault on a defended entrenched hive, with
+			// extra escorts and on a stretched cooldown. Waiting for a hive to
+			// disarm itself is how it gets to size 8.
+			boolean defended = ThreatColonyManager.countLiveGarrison(colony.getId()) > 0;
+			boolean preemptive = defended
+					&& colony.getSize() <= ThreatIncConfig.purgePreemptMaxSize();
+			boolean heavyAssault = defended && !preemptive;
 
+			float cooldown = ThreatIncConfig.purgeCooldownDays() * timeScale();
+			if (heavyAssault) cooldown *= ThreatIncConfig.purgeDefendedCooldownMult();
+			// FOLLOW-UP PRESSURE: a wounded colony - decline meter open, or key
+			// organs still disrupted - draws the next expedition on a short
+			// cooldown. Navies press an advantage; without this, the decline
+			// recovery between full-interval visits erases everything a lone
+			// expedition achieved.
+			boolean wounded = ThreatIncData.declineProgress(colony.getId()) > 0f
+					|| ThreatColonyManager.anyOrganDisrupted(colony);
+			if (wounded) {
+				cooldown = Math.min(cooldown,
+						ThreatIncConfig.purgeFollowUpDays() * timeScale());
+			}
 			Long last = ThreatIncData.lastPurgeTimes().get(colony.getId());
 			if (last != null && Global.getSector().getClock().getElapsedDaysSince(last)
-					< ThreatIncConfig.purgeCooldownDays() * timeScale()) {
+					< cooldown) {
 				continue;
 			}
 
-			// nearest military world of any faction within response range
+			// nearest military world of any NPC faction within response range
 			MarketAPI base = null;
 			float bestDist = Float.MAX_VALUE;
 			for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
@@ -1051,73 +1074,209 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				difficulty = ThreatIncConfig.responseMaxDifficulty();
 			}
 
-			// the expedition purges the SYSTEM, not one world - the mirror of
-			// the swarm's own sweep doctrine: every Threat colony here goes on
-			// the target list, worked through sequentially until the system is
-			// clean or the expedition is dead. The trigger colony (undefended
-			// or stompably small) is what makes the operation viable; its
-			// siblings are why the fleets don't sail home after one kill.
-			java.util.List<MarketAPI> targets = new ArrayList<MarketAPI>();
-			targets.add(colony);
-			boolean anyGarrisoned = ThreatColonyManager.countLiveGarrison(colony.getId()) > 0;
-			for (MarketAPI other : ThreatIncData.getLiveColonyMarkets(system.getId())) {
-				if (other == colony || other.getPrimaryEntity() == null) continue;
-				targets.add(other);
-				if (ThreatColonyManager.countLiveGarrison(other.getId()) > 0) anyGarrisoned = true;
-			}
+			java.util.List<MarketAPI> targets = collectSiegeTargets(colony, system);
+			boolean anyGarrisoned = anyTargetGarrisoned(targets);
+			java.util.List<Integer> fleetSizes = siegeFleetSizes(difficulty, anyGarrisoned,
+					heavyAssault, targets.size());
 
-			GenericRaidParams params = new GenericRaidParams(new Random(random.nextLong()), true);
-			params.factionId = faction.getId();
-			params.source = base;
-			params.prepDays = 7f + 7f * random.nextFloat();
-			// enough on-station time to actually work through the list
-			params.payloadDays = 30f + 10f * random.nextFloat() + 20f * (targets.size() - 1);
-			params.raidParams.where = system;
-			params.raidParams.type = FGRaidType.SEQUENTIAL;
-			params.raidParams.tryToCaptureObjectives = false;
-			params.raidParams.allowedTargets.addAll(targets);
-			params.raidParams.allowNonHostileTargets = true;
-			params.raidParams.setBombardment(BombardType.SATURATION);
-			params.noun = "purge expedition";
-			params.forcesNoun = faction.getDisplayName() + " forces";
-			params.style = FleetStyle.STANDARD;
-			params.repImpact = ComplicationRepImpact.NONE;
-			params.fleetSizes.add(Math.min(10, difficulty));
-			params.fleetSizes.add(Math.max(5, difficulty - 2));
-			// the escort that clears Defense Swarms off garrisoned colonies
-			if (anyGarrisoned) params.fleetSizes.add(Math.min(10, difficulty));
-			// a multi-world campaign brings a fourth fleet for the long haul
-			if (targets.size() >= 3) params.fleetSizes.add(Math.max(5, difficulty - 2));
-
-			GenericRaidFGI purge = new GenericRaidFGI(params);
-			Global.getSector().getIntelManager().addIntel(purge);
-			getPurgeList().add(purge);
-			// stamp every targeted colony so siblings don't each trigger their
-			// own duplicate purge of the same system while this one is in flight
-			for (MarketAPI target : targets) {
-				ThreatIncData.lastPurgeTimes().put(target.getId(),
-						Global.getSector().getClock().getTimestamp());
-			}
+			launchSiegeExpedition(base, faction, system, targets, fleetSizes, false, random);
 
 			if (preemptive) {
 				ThreatColonyManager.announce(faction.getDisplayName() + " has launched a "
 						+ "preemptive purge expedition into the "
-						+ system.getNameWithLowercaseType() + " - burning the swarm's "
+						+ system.getNameWithLowercaseType() + " - besieging the swarm's "
 						+ (targets.size() > 1 ? targets.size() + " colonies" : "young foothold")
-						+ " out before they entrench.", Misc.getHighlightColor());
+						+ " before they entrench.", Misc.getHighlightColor());
+			} else if (heavyAssault) {
+				ThreatColonyManager.announce(faction.getDisplayName() + " has committed to a "
+						+ "full siege of the " + system.getNameWithLowercaseType()
+						+ " - fighting through the swarm's Defense Swarms to put tactical "
+						+ "bombardments and commandos on its entrenched colonies.",
+						Misc.getHighlightColor());
 			} else {
-				ThreatColonyManager.announce(faction.getDisplayName() + " has launched a purge "
+				ThreatColonyManager.announce(faction.getDisplayName() + " has launched a siege "
 						+ "expedition into the " + system.getNameWithLowercaseType()
 						+ (targets.size() > 1
 								? " - all " + targets.size() + " Threat colonies there are marked "
-										+ "for saturation bombardment."
+										+ "for tactical bombardment and commando raids."
 								: " against the undefended Threat colony there."),
 						Misc.getHighlightColor());
 			}
-			ThreatIncConfig.log(faction.getId() + (preemptive ? " preemptive" : "")
+			ThreatIncConfig.log(faction.getId()
+					+ (preemptive ? " preemptive" : heavyAssault ? " heavy-assault" : "")
 					+ " purge expedition vs " + system.getName() + " (" + targets.size()
 					+ " colonies, difficulty " + difficulty + ")");
 		}
+	}
+
+	/**
+	 * Every Threat colony in the system, trigger colony first - the expedition
+	 * purges the SYSTEM, not one world, worked through sequentially until the
+	 * system is clean or the expedition is dead.
+	 */
+	public static java.util.List<MarketAPI> collectSiegeTargets(MarketAPI trigger,
+			StarSystemAPI system) {
+		java.util.List<MarketAPI> targets = new ArrayList<MarketAPI>();
+		if (trigger != null) targets.add(trigger);
+		for (MarketAPI other : ThreatIncData.getLiveColonyMarkets(system.getId())) {
+			if (other == trigger || other.getPrimaryEntity() == null) continue;
+			targets.add(other);
+		}
+		return targets;
+	}
+
+	public static boolean anyTargetGarrisoned(java.util.List<MarketAPI> targets) {
+		for (MarketAPI target : targets) {
+			if (ThreatColonyManager.countLiveGarrison(target.getId()) > 0) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * The flotilla for a siege expedition: two core fleets, an escort when any
+	 * target still fields Defense Swarms, a second escort for a heavy assault
+	 * on a defended entrenched hive, and a fourth fleet for a multi-world
+	 * campaign. Shared by the NPC trigger and the player commission preview so
+	 * the quoted bill always matches the fleets that actually sail.
+	 */
+	public static java.util.List<Integer> siegeFleetSizes(int difficulty, boolean anyGarrisoned,
+			boolean heavyAssault, int targetCount) {
+		java.util.List<Integer> sizes = new ArrayList<Integer>();
+		sizes.add(Math.min(10, difficulty));
+		sizes.add(Math.max(5, difficulty - 2));
+		if (anyGarrisoned) sizes.add(Math.min(10, difficulty));
+		if (heavyAssault) sizes.add(Math.min(10, difficulty));
+		if (targetCount >= 3) sizes.add(Math.max(5, difficulty - 2));
+		return sizes;
+	}
+
+	/**
+	 * Builds and launches one siege expedition - the single construction path
+	 * for both NPC purges and player-commissioned operations. The player
+	 * variant differs only in flags that would otherwise misfire for the
+	 * player faction: the fleets must NOT be triggered hostile to the player
+	 * (GenericRaidParams.makeFleetsHostile defaults to true), the intel must
+	 * not play the colony-threat alarm (playerTargeted=false), and the
+	 * faction-name strings come from overrides in ThreatPurgeFGI.
+	 */
+	public static ThreatPurgeFGI launchSiegeExpedition(MarketAPI base, FactionAPI faction,
+			StarSystemAPI system, java.util.List<MarketAPI> targets,
+			java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random) {
+		GenericRaidParams params = new GenericRaidParams(
+				new Random(random.nextLong()), !playerCommissioned);
+		params.factionId = faction.getId();
+		params.source = base;
+		params.prepDays = 7f + 7f * random.nextFloat();
+		// enough on-station time to actually work through the list - siege
+		// doctrine makes several passes per colony, not one bombardment
+		params.payloadDays = 45f + 10f * random.nextFloat() + 25f * (targets.size() - 1);
+		params.raidParams.where = system;
+		params.raidParams.type = FGRaidType.SEQUENTIAL;
+		params.raidParams.tryToCaptureObjectives = false;
+		params.raidParams.allowedTargets.addAll(targets);
+		params.raidParams.allowNonHostileTargets = true;
+		// no params.bombardment: the custom raid action in ThreatPurgeFGI
+		// runs the siege doctrine per pass - tactical bombardment while the
+		// war-strata stand, commando raids once they're suppressed; never
+		// saturation (bombardment cannot reduce hive population)
+		params.raidParams.raidsPerColony = 3;
+		params.raidParams.raidApproachText = "moving to besiege";
+		params.raidParams.raidActionText = "conducting siege operations against";
+		params.noun = "purge expedition";
+		params.forcesNoun = playerCommissioned ? "Your forces"
+				: faction.getDisplayName() + " forces";
+		params.style = FleetStyle.STANDARD;
+		params.repImpact = ComplicationRepImpact.NONE;
+		if (playerCommissioned) {
+			// default true: createFleet would triggerMakeHostile() and turn the
+			// fleets the player just paid for against them
+			params.makeFleetsHostile = false;
+		}
+		params.fleetSizes.addAll(fleetSizes);
+
+		ThreatPurgeFGI purge = new ThreatPurgeFGI(params, playerCommissioned);
+		Global.getSector().getIntelManager().addIntel(purge);
+		getPurgeList().add(purge);
+		// stamp every targeted colony so siblings don't each trigger their own
+		// duplicate purge of the same system while this one is in flight (a
+		// commissioned expedition suppresses NPC duplication the same way)
+		for (MarketAPI target : targets) {
+			ThreatIncData.lastPurgeTimes().put(target.getId(),
+					Global.getSector().getClock().getTimestamp());
+		}
+		return purge;
+	}
+
+	// ------------------------------------------------------------------
+	// player-commissioned expeditions
+	// ------------------------------------------------------------------
+
+	/** Nearest player military colony in range of the target system, or null. */
+	public static MarketAPI findPlayerExpeditionBase(StarSystemAPI system) {
+		MarketAPI best = null;
+		float bestDist = Float.MAX_VALUE;
+		for (MarketAPI market : Misc.getPlayerMarkets(false)) {
+			if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
+			if (!hasMilitary(market)) continue;
+			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(),
+					system.getLocation());
+			if (d > ThreatIncConfig.responseRangeLY()) continue;
+			if (d < bestDist) {
+				bestDist = d;
+				best = market;
+			}
+		}
+		return best;
+	}
+
+	/**
+	 * A commissioned expedition is sized to the JOB, not to a sponsor's navy:
+	 * the biggest colony in the target system sets the tempo, live Defense
+	 * Swarms add a point, clamped to the response difficulty band.
+	 */
+	public static int computeSiegeDifficulty(java.util.List<MarketAPI> targets,
+			boolean anyGarrisoned) {
+		int maxSize = 0;
+		for (MarketAPI target : targets) {
+			if (target.getSize() > maxSize) maxSize = target.getSize();
+		}
+		int difficulty = 3 + maxSize + (anyGarrisoned ? 1 : 0);
+		if (difficulty < ThreatIncConfig.responseMinDifficulty()) {
+			difficulty = ThreatIncConfig.responseMinDifficulty();
+		}
+		if (difficulty > ThreatIncConfig.responseMaxDifficulty()) {
+			difficulty = ThreatIncConfig.responseMaxDifficulty();
+		}
+		return difficulty;
+	}
+
+	/**
+	 * The bill: fleet size (sum of per-fleet difficulty points) plus distance,
+	 * rounded to the nearest thousand credits.
+	 */
+	public static int commissionCost(MarketAPI base, StarSystemAPI system,
+			java.util.List<Integer> fleetSizes) {
+		int points = 0;
+		for (Integer size : fleetSizes) points += size;
+		float dist = Misc.getDistanceLY(base.getStarSystem().getLocation(),
+				system.getLocation());
+		float cost = points * ThreatIncConfig.commissionCostPerPoint()
+				+ dist * ThreatIncConfig.commissionCostPerLY();
+		return Math.max(1000, Math.round(cost / 1000f) * 1000);
+	}
+
+	/** The player's live commissioned expedition against a system, or null. */
+	public static ThreatPurgeFGI findPlayerExpeditionAgainst(String systemId) {
+		for (Object curr : getPurgeList()) {
+			if (!(curr instanceof ThreatPurgeFGI)) continue;
+			ThreatPurgeFGI fgi = (ThreatPurgeFGI) curr;
+			if (fgi.isEnded() || fgi.isEnding()) continue;
+			if (!fgi.isPlayerCommissioned()) continue;
+			StarSystemAPI where = fgi.getParams() != null && fgi.getParams().raidParams != null
+					? fgi.getParams().raidParams.where : null;
+			if (where != null && where.getId().equals(systemId)) return fgi;
+		}
+		return null;
 	}
 
 	// ------------------------------------------------------------------
@@ -1148,6 +1307,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	public void reportRaidForValuablesFinishedBeforeCargoShown(InteractionDialogAPI dialog,
 			MarketAPI market, TempData actionData, CargoAPI cargo) {
+	}
+
+	/**
+	 * Raiding a hive world costs marines beyond what its raw ground-defense
+	 * number says: the counter-swarms contest every corridor. Shows up as a
+	 * named line in the raid screen's losses breakdown.
+	 */
+	public void modifyMarineLossesStatPreRaid(MarketAPI market,
+			java.util.List<com.fs.starfarer.api.impl.campaign.graid.GroundRaidObjectivePlugin> objectives,
+			com.fs.starfarer.api.combat.MutableStat stat) {
+		if (!ThreatIncConfig.enabled() || market == null) return;
+		if (!Factions.THREAT.equals(market.getFactionId())) return;
+		float mult = ThreatIncConfig.hiveMarineLossMult();
+		if (mult == 1f) return;
+		stat.modifyMult("threatinc_hive", mult, "Hive counter-swarms");
 	}
 
 	public void reportRaidToDisruptFinished(InteractionDialogAPI dialog,
@@ -1849,7 +2023,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (curr instanceof FleetGroupIntel) {
 				FleetGroupIntel fgi = (FleetGroupIntel) curr;
 				if (!fgi.isEnded() && !fgi.isEnding()) {
-					count++;
+					// the player's paid operations stay in the list (for abort/
+					// sweep lifecycle) but don't consume the NPC concurrency cap
+					boolean playerOp = fgi instanceof ThreatPurgeFGI
+							&& ((ThreatPurgeFGI) fgi).isPlayerCommissioned();
+					if (!playerOp) count++;
 				} else {
 					dead.add(curr);
 				}

@@ -21,17 +21,11 @@ import com.fs.starfarer.api.impl.campaign.ids.Stats;
  */
 public class ThreatGroundDefenses extends GroundDefenses {
 
-	/**
-	 * Fraction of the defense bonus that survives disruption. Vanilla
-	 * defensive industries unapply ENTIRELY while disrupted - and since
-	 * bombardment fuel cost IS defender ground strength
-	 * (MarketCMD.getBombardmentCost), that collapse is what made repeat
-	 * saturation passes nearly free: the first bomb disrupts the defenses,
-	 * every later pass is priced off the naked base. Machines don't rout:
-	 * the dispersed weapon growths keep firing while the strata above them
-	 * burn, at half effect.
-	 */
-	public static final float DISRUPTED_DEFENSE_FRACTION = 0.5f;
+	// NOTE on disruption: vanilla defensive industries unapply ENTIRELY while
+	// disrupted - and since bombardment fuel cost IS defender ground strength
+	// (MarketCMD.getBombardmentCost), that collapse is what made repeat
+	// saturation passes nearly free. Machines don't rout: the weapon growths
+	// keep firing at ThreatIncConfig.disruptedDefenseFraction() effect.
 
 	@Override
 	public void apply() {
@@ -51,12 +45,13 @@ public class ThreatGroundDefenses extends GroundDefenses {
 			String com = getMaxDeficit(Commodities.HEAVY_MACHINERY, Commodities.METALS).one;
 			extra = " (" + getDeficitText(com).toLowerCase() + ")";
 		}
-		float bonus = hb ? DEFENSE_BONUS_BATTERIES : DEFENSE_BONUS_BASE;
+		float bonus = hb ? ThreatIncConfig.heavyBatteriesBonus()
+				: ThreatIncConfig.groundDefensesBonus();
 
-		// no unapply-on-disruption (see DISRUPTED_DEFENSE_FRACTION) - the
-		// contribution degrades instead, and the deficit mult still applies,
-		// so starving the hive of machinery/metals weakens the guns too
-		float resilience = isDisrupted() ? DISRUPTED_DEFENSE_FRACTION : 1f;
+		// no unapply-on-disruption - the contribution degrades instead, and
+		// the deficit mult still applies, so starving the hive of
+		// machinery/metals weakens the guns too
+		float resilience = isDisrupted() ? ThreatIncConfig.disruptedDefenseFraction() : 1f;
 		if (isDisrupted()) extra += " (disrupted: reduced effect)";
 
 		// the groundDefenseMult config knob is applied by SwarmNexus (every

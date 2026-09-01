@@ -30,7 +30,7 @@ public class ThreatIncData {
 	public static final String STAGE_SATURATED = "saturated";
 
 	/** Bumped when the persistent-data layout changes; drives one-time migration. */
-	public static final int CURRENT_DATA_VERSION = 3;
+	public static final int CURRENT_DATA_VERSION = 5;
 
 	public static final String KEY_STARTED = "threatinc_started";
 	public static final String KEY_START_TIMESTAMP = "threatinc_startTimestamp";
@@ -48,6 +48,11 @@ public class ThreatIncData {
 	public static final String KEY_GARRISONS = "threatinc_garrisons";
 	public static final String KEY_GARRISON_SPAWN_TIMES = "threatinc_garrisonSpawnTimes";
 	public static final String KEY_GROWTH_TIMES = "threatinc_growthTimes";
+	public static final String KEY_GROWTH_PROGRESS = "threatinc_growthProgressDays";
+	public static final String KEY_DECLINE_PROGRESS = "threatinc_declineProgress";
+	public static final String KEY_DECLINE_TICKS = "threatinc_declineTicks";
+	public static final String KEY_DECLINE_DAYS = "threatinc_declineDays";
+	public static final String KEY_LAST_HEALTH = "threatinc_lastHealth";
 	public static final String KEY_LAST_PURGE_TIMES = "threatinc_lastPurgeTimes";
 	public static final String KEY_DECIV_TARGETS = "threatinc_decivTargets";
 	public static final String KEY_PENDING_DECIV = "threatinc_pendingDecivChecks";
@@ -147,6 +152,92 @@ public class ThreatIncData {
 	/** colony market id -> last time an NPC purge bombardment targeted it. */
 	public static Map<String, Long> lastPurgeTimes() {
 		return map(KEY_LAST_PURGE_TIMES);
+	}
+
+	// ------------------------------------------------------------------
+	// colony vitality: health-scaled growth and the decline meter
+	// ------------------------------------------------------------------
+
+	/** colony market id -> accumulated effective growth days (health-scaled). */
+	public static Map<String, Float> growthProgress() {
+		return map(KEY_GROWTH_PROGRESS);
+	}
+
+	public static float growthProgressDays(String marketId) {
+		Float v = growthProgress().get(marketId);
+		return v != null ? v : 0f;
+	}
+
+	public static void setGrowthProgressDays(String marketId, float days) {
+		growthProgress().put(marketId, days);
+	}
+
+	/**
+	 * colony market id -> decline meter: accumulated fraction of the NEXT
+	 * population stratum lost. Fed by low colony health (shortages, disrupted
+	 * organs) and by saturation-bombardment population damage; at 1.0 the
+	 * colony loses a size.
+	 */
+	public static Map<String, Float> declineProgress() {
+		return map(KEY_DECLINE_PROGRESS);
+	}
+
+	public static float declineProgress(String marketId) {
+		Float v = declineProgress().get(marketId);
+		return v != null ? v : 0f;
+	}
+
+	public static void setDeclineProgress(String marketId, float progress) {
+		declineProgress().put(marketId, Math.max(0f, progress));
+	}
+
+	public static void addDeclineProgress(String marketId, float amount) {
+		setDeclineProgress(marketId, declineProgress(marketId) + amount);
+	}
+
+	/** LEGACY (pre-v5): consecutive declining ticks; read only by migration. */
+	public static Map<String, Integer> declineTicks() {
+		return map(KEY_DECLINE_TICKS);
+	}
+
+	/**
+	 * colony market id -> consecutive days spent in decline (drives the
+	 * acceleration ramp). Continuous - accrued every poll, not per tick.
+	 */
+	public static Map<String, Float> declineDays() {
+		return map(KEY_DECLINE_DAYS);
+	}
+
+	public static float declineDays(String marketId) {
+		Float v = declineDays().get(marketId);
+		return v != null ? v : 0f;
+	}
+
+	public static void setDeclineDays(String marketId, float days) {
+		declineDays().put(marketId, Math.max(0f, days));
+	}
+
+	/** colony market id -> health computed on the last vitality tick (for UI). */
+	public static Map<String, Float> lastHealth() {
+		return map(KEY_LAST_HEALTH);
+	}
+
+	public static float lastHealth(String marketId) {
+		Float v = lastHealth().get(marketId);
+		return v != null ? v : 1f;
+	}
+
+	public static void setLastHealth(String marketId, float health) {
+		lastHealth().put(marketId, health);
+	}
+
+	/** Drops every vitality entry for one colony (death/system cleanup). */
+	public static void clearVitality(String marketId) {
+		growthProgress().remove(marketId);
+		declineProgress().remove(marketId);
+		declineTicks().remove(marketId);
+		declineDays().remove(marketId);
+		lastHealth().remove(marketId);
 	}
 
 	/** Planet entity ids of Threat-decivilized worlds awaiting conversion. */
@@ -259,6 +350,7 @@ public class ThreatIncData {
 			garrisonSpawnTimes().remove(marketId);
 			growthTimes().remove(marketId);
 			lastPurgeTimes().remove(marketId);
+			clearVitality(marketId);
 		}
 		colonyMarkets().remove(systemId);
 

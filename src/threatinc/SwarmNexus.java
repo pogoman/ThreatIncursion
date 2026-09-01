@@ -40,15 +40,12 @@ public class SwarmNexus extends BaseIndustry {
 		return super.getCurrentName();
 	}
 
-	/**
-	 * The nexus's ground-defense contribution - the hive's stand-in for the
-	 * orbital-station and high-command multipliers vanilla colonies stack
-	 * (hive worlds have neither, which left even large colonies absurdly
-	 * cheap to bombard). Fire coordination by the hive-order: x1.5 intact,
-	 * halved to x1.25 while the nexus is disrupted by enemy action - a
-	 * colony whose war-strata have been raided is genuinely softer.
-	 */
-	public static final float DEFENSE_BONUS = 0.5f;
+	// The nexus's ground-defense contribution - the hive's stand-in for the
+	// orbital-station and high-command multipliers vanilla colonies stack
+	// (hive worlds have neither, which left even large colonies absurdly
+	// cheap to bombard). Fire coordination by the hive-order: x1.5 intact at
+	// the default nexusDefenseBonus, degrading while disrupted - a colony
+	// whose war-strata have been raided is genuinely softer.
 
 	@Override
 	public void apply() {
@@ -64,20 +61,53 @@ public class SwarmNexus extends BaseIndustry {
 			demand(com.fs.starfarer.api.impl.campaign.ids.Commodities.HEAVY_MACHINERY,
 					Math.max(1, market.getSize() - 2));
 		}
-		float resilience = isDisrupted() ? ThreatGroundDefenses.DISRUPTED_DEFENSE_FRACTION : 1f;
-		market.getStats().getDynamic()
-				.getMod(com.fs.starfarer.api.impl.campaign.ids.Stats.GROUND_DEFENSES_MOD)
-				.modifyMult(getModId(),
-						(1f + DEFENSE_BONUS * resilience) * ThreatIncConfig.groundDefenseMult(),
-						getNameForModifier() + (isDisrupted() ? " (in refit)" : ""));
+		float resilience = isDisrupted() ? ThreatIncConfig.disruptedDefenseFraction() : 1f;
+		com.fs.starfarer.api.combat.StatBonus defense = market.getStats().getDynamic()
+				.getMod(com.fs.starfarer.api.impl.campaign.ids.Stats.GROUND_DEFENSES_MOD);
+		defense.modifyMult(getModId(),
+				(1f + ThreatIncConfig.nexusDefenseBonus() * resilience)
+						* ThreatIncConfig.groundDefenseMult(),
+				getNameForModifier() + (isDisrupted() ? " (in refit)" : ""));
+
+		// The deep defenses: hive ground strength is anchored to COLONY SIZE
+		// (hiveDefensePerSize per size, default 500 - a size-8 hive fields a
+		// 4000-point base before industry multipliers), not vanilla's shallow
+		// base table. Topped up as a flat so the vanilla base + this = the
+		// anchor, then the industry mults stack on top. Applied even while the
+		// nexus is disrupted - the strata below the crust don't stop existing.
+		float targetBase = ThreatIncConfig.hiveDefensePerSize() * market.getSize();
+		float vanillaBase = com.fs.starfarer.api.impl.campaign.econ.impl
+				.PopulationAndInfrastructure.getBaseGroundDefenses(market.getSize());
+		float topUp = targetBase - vanillaBase;
+		if (topUp > 0) {
+			defense.modifyFlat(getModId(1), topUp, "Deep fabrication strata");
+		} else {
+			defense.unmodifyFlat(getModId(1));
+		}
+
+		// Machines do not riot: cancel the vanilla stability multiplier
+		// (0.25 + stability/10 * 0.75). Without this, the unrest each
+		// bombardment inflicts craters the colony's own defense stat, making
+		// every following pass cheaper - a death spiral the hive-order does
+		// not permit.
+		float stability = market.getStabilityValue();
+		float stabilityMult = 0.25f + stability / 10f * 0.75f;
+		if (stabilityMult > 0.01f && stabilityMult < 1f) {
+			defense.modifyMult(getModId(2), 1f / stabilityMult,
+					"Machine hive-order (unrest has no effect)");
+		} else {
+			defense.unmodifyMult(getModId(2));
+		}
 	}
 
 	@Override
 	public void unapply() {
 		super.unapply();
-		market.getStats().getDynamic()
-				.getMod(com.fs.starfarer.api.impl.campaign.ids.Stats.GROUND_DEFENSES_MOD)
-				.unmodifyMult(getModId());
+		com.fs.starfarer.api.combat.StatBonus defense = market.getStats().getDynamic()
+				.getMod(com.fs.starfarer.api.impl.campaign.ids.Stats.GROUND_DEFENSES_MOD);
+		defense.unmodifyMult(getModId());
+		defense.unmodifyFlat(getModId(1));
+		defense.unmodifyMult(getModId(2));
 	}
 
 	// hive-only organ: never offered in the player's construction picker
