@@ -31,27 +31,28 @@ The locations of the threat wont be revealed to you until you discover the syste
 
 [size=14pt][b]Claude's explanation[/b][/size]
 
-[b]The war board.[/b] [i]The Threat War Effort[/i] is a permanent Major Events intel entry: every system the swarm holds, ranked by how urgently it needs you, with the hive's vitality, garrisons, strike reach, strikes in flight, inbound sieges and production read straight off the simulation. Systems you have not found are listed as [i]Unknown[/i] - their figures show, their place does not. Select a system for a card per hive world, hover an organ for what it makes and needs, and press [i]Colony[/i] to open vanilla's own colony screen for it. Purge and mission buttons sit on the rows.
-
-[b]How the hive economy really works.[/b] The hive runs on vanilla's economy, and vanilla's economy is not a flow: a world draws the output of the single best source it can reach, and demand elsewhere never subtracts from it. One refinery feeds every forge in the hive; a second equal refinery adds nothing until the first is lost. Everything the swarm does with its economy follows from that:
 [list]
-[li]The planner builds every link of the chain once, then spare refineries, forges and fuel plants spread across systems, then bigger copies wherever the hive's largest consumer outgrows its largest producer. Cutting the hive's supply of anything means cutting several worlds - unless you find the one that is still alone.[/li]
-[li]The home system carries Domain relics where its own deposits fall short: a Pristine Nanoforge on its largest forge, a Mantle Bore, Plasma Dynamo, Catalytic Core or Synchrotron on a starved link. Because availability is best-single-source, those items feed the whole hive - the home hive is the hub worth taking, and the items are the loot. Other forges roll for a Corrupted Nanoforge.[/li]
-[li]Hive ports are Spaceports, never Megaports. A disrupted hive port cuts the world's shipping in and out to a trickle: a forge world starves, a fuel importer is grounded, and what the world makes reaches the rest of the hive only as that trickle. Piracy and distance do not move hive supply at all.[/li]
-[li]Every input counts. Rare ore and rare metals enter vitality like everything else - a hive seeded on poor deposits is a little short for good, and the board says so.[/li]
+[li][b]The Threat War Effort[/b] - a permanent intel screen ranking every infested system by urgency: vitality, garrisons, reach, strikes out, sieges in, production, Purge and mission buttons.[/li]
+[li]Systems you have not found are listed as [i]Unknown[/i] - figures shown, location hidden.[/li]
+[li]Per-world cards with a [i]Colony[/i] button that opens vanilla's own colony screen.[/li]
+[li]The Threat founds real colonies that mine, refine, forge and grow in a closed hive economy that builds every fleet they field.[/li]
+[li]That economy is vanilla's: each world draws from its single best source, so one producer feeds the whole hive - the hive builds spare refineries, forges and fuel plants across systems, and cutting a resource means cutting every copy.[/li]
+[li]The home system carries Domain relics (Pristine Nanoforge, Mantle Bore, Synchrotron, ...) that feed the entire network - the hub worth taking, and the loot for taking it.[/li]
+[li]Hive ports are Spaceports; a disrupted port cuts the world's shipping to a trickle and starves it.[/li]
+[li]Every input counts in Hive Vitality, rare ore and rare metals included.[/li]
+[li]Reach is fuel and fleets for everyone: 4 ly per unit of fuel a colony's fleets can carry, hive and factions alike. Cut the hive's fuel and the swarm stops.[/li]
+[li]Hive worlds run three organs: Fabrication Core (growth, machinery), Swarm Nexus (Defense Swarms, expeditions), marine-free defenses fed on metals and machinery.[/li]
+[li]Expeditions are mustered from a colony's own Defense Swarms - kill its swarms and you have grounded it; a fleet still fabricating in orbit can be stopped at the staging colony.[/li]
+[li]Worlds the swarm destroys, it colonizes.[/li]
+[li]Colonies die only through decline: suppress or starve the organs below 35% vitality until the population collapses. No bombardment reduces population.[/li]
+[li]Disrupted defenses and organs wear down with the disruption days on their clock - repeated raids lower the defense figure, the raid odds and the bombardment bill.[/li]
+[li]NPC purges and commissioned expeditions are sized to the target's defenses; the commission quote shows the landing force against what a raid needs before you pay.[/li]
+[li]Raids land on whatever hurts the hive most on that world - Core, Nexus, an importing port, or the hive's best source of a resource.[/li]
+[li]After-action sitreps arrive the moment operations end, every blow dated.[/li]
+[li]Defense-board contracts are ordinary missions from phase 3: immediate and strategic tiers, accept or ignore, a clock once taken.[/li]
+[li]Every economy, reach, siege and decline number is configurable via LunaLib (Shift+F2) or [tt]data/config/settings.json[/tt].[/li]
+[li]For Starsector 0.98a-RC8. Vanilla-only, LunaLib optional. Safe to add to an existing save; removing it mid-incursion breaks the save.[/li]
 [/list]
-
-[b]Reach is fuel and fleets - for everyone.[/b] A colony's expeditions range 4 light-years per unit of fuel they carry, and they carry the smaller of the fuel available at the colony and what its fleets can lift - vanilla's own Fleets figure for factions and the player, vitality x size for hive worlds. A size-8 Hegemony world with fuel to match strikes 40 light-years; a size-2 hive foothold seeds 10; a besieged hive world's reach shrinks with its vitality. Cut the hive's fuel and the swarm stops.
-
-[b]Sieges that can win.[/b] Every hive lives deep underground; no bombardment reduces its population. The only death is decline: suppress or starve a colony's organs until its population collapses.
-[list]
-[li]NPC purges and commissioned expeditions are sized to the target's defenses - fleets are added until the landing force can actually disrupt an organ, and the commission quote shows the force against the need before you pay.[/li]
-[li]Each commando raid lands on what takes the most from the hive on that world right now: the Fabrication Core, the Swarm Nexus, a port the world imports through, or an economy industry that is the hive's best source of something. One of ten equal mines is left alone; the only fuel plant is hunted.[/li]
-[li]Defenses wear. A disrupted battery or Nexus keeps half its bonus at first and wears to nothing as the disruption days on its clock pile up; a disrupted Core's fabrication wears the same way. Repeated raids lower the defense figure, the raid odds and the bombardment bill.[/li]
-[li]Expeditions post a full after-action sitrep the moment their operations end - actions per planet, industries disrupted, when each blow fell, estimated marine losses, and the colonies' state.[/li]
-[/list]
-
-[b]Everything else.[/b] Hive worlds run three organs - the Fabrication Core (growth and machinery), the Swarm Nexus (Defense Swarms and expeditions) and marine-free defenses fed on metals and machinery. Expeditions are mustered from a colony's own Defense Swarms: kill its swarms and you have grounded it, and a fleet still fabricating in orbit can be stopped by raiding or bombing its staging colony. Worlds the swarm destroys, it colonizes. Defense-board contracts arrive as ordinary missions from phase 3 - immediate and strategic tiers, accept them or not, a completion clock once taken. Every economy, reach, siege and decline number is configurable via LunaLib (Shift+F2) or [tt]data/config/settings.json[/tt]. For Starsector 0.98a-RC8, vanilla-only, LunaLib optional. Safe to add to an existing save - the swarm's ports, relics and redundancy backfill apply on the first tick; removing it mid-incursion breaks the save.
 
 [center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/Picture15.png[/img][/center]
 
