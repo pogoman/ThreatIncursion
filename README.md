@@ -59,14 +59,15 @@ the staging colony; siege expeditions work over hive worlds with tactical
 bombardments and commando raids that push them into decline (rarely, with
 extra escorts, assaulting even defended hives), posting a detailed
 after-action sitrep of what they did to each planet; from phase 3 the
-colonial defense boards run live bounty boards - a strategic tier naming
-the decisive target and an immediate tier naming the cheapest worthwhile
-cut, re-scored as the network shifts, with active raiders jumping the
-queue.
+colonial defense boards offer contracts against hive infrastructure -
+ordinary missions that arrive over the comm network and must be accepted
+before they expire, then completed within 120 days. A strategic tier names
+the decisive target and an immediate tier the cheapest worthwhile cut,
+re-scored as the network shifts, with active raiders jumping the queue.
 
 **Commission your own.** From the infested-system intel, hire the same
 siege expedition NPC navies run - mustered at your nearest colony with a
-military structure (within response range), sized to the target system's
+military structure (within its fuel reach), sized to the target system's
 defenses, built with your doctrine and blueprints. You pay up front,
 priced by flotilla size and distance; the expedition is autonomous and
 reports back with a full sitrep.

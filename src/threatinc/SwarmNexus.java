@@ -61,7 +61,8 @@ public class SwarmNexus extends BaseIndustry {
 			demand(com.fs.starfarer.api.impl.campaign.ids.Commodities.HEAVY_MACHINERY,
 					Math.max(1, market.getSize() - 2));
 		}
-		float resilience = isDisrupted() ? ThreatIncConfig.disruptedDefenseFraction() : 1f;
+		// wears down with the disruption days on the clock, like the batteries
+		float resilience = ThreatColonyManager.disruptedDefenseResilience(this);
 		com.fs.starfarer.api.combat.StatBonus defense = market.getStats().getDynamic()
 				.getMod(com.fs.starfarer.api.impl.campaign.ids.Stats.GROUND_DEFENSES_MOD);
 		defense.modifyMult(getModId(),

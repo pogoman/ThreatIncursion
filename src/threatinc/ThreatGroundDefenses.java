@@ -48,11 +48,15 @@ public class ThreatGroundDefenses extends GroundDefenses {
 		float bonus = hb ? ThreatIncConfig.heavyBatteriesBonus()
 				: ThreatIncConfig.groundDefensesBonus();
 
-		// no unapply-on-disruption - the contribution degrades instead, and
-		// the deficit mult still applies, so starving the hive of
-		// machinery/metals weakens the guns too
-		float resilience = isDisrupted() ? ThreatIncConfig.disruptedDefenseFraction() : 1f;
-		if (isDisrupted()) extra += " (disrupted: reduced effect)";
+		// no unapply-on-disruption - the contribution degrades instead, wearing
+		// down with the disruption days on the clock (see
+		// ThreatColonyManager.disruptedDefenseResilience), and the deficit mult
+		// still applies, so starving the hive of machinery/metals weakens the
+		// guns too
+		float resilience = ThreatColonyManager.disruptedDefenseResilience(this);
+		if (isDisrupted()) {
+			extra += " (disrupted: " + Math.round(resilience * 100f) + "% effect)";
+		}
 
 		// the groundDefenseMult config knob is applied by SwarmNexus (every
 		// colony has one) - applying it here too would square it

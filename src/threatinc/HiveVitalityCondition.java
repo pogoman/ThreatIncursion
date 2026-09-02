@@ -47,7 +47,8 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 		addOrganLine(tooltip, market.getIndustry(ThreatColonyManager.SWARM_NEXUS),
 				"Swarm Nexus");
 		// the port is logistics, not fabrication: its disruption bites through
-		// the supply score (imports collapse - here and at sibling colonies)
+		// the supply score (ThreatColonyManager.applyPortDisruption zeroes the
+		// world's shipping: no imports here, its exports reach no sibling)
 		Industry port = market.getIndustry(Industries.MEGAPORT);
 		if (port == null) port = market.getIndustry(Industries.SPACEPORT);
 		addOrganLine(tooltip, port, "Port (logistics - feeds the supply factor)");

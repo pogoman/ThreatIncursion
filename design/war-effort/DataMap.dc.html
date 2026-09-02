@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600&family=Titillium+Web:wght@400;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #05080c; font-family: 'Titillium Web', 'Segoe UI', system-ui, sans-serif; color: #c6cbd0; font-size: 13px; line-height: 1.35; }
+    a { color: #8ad3ff; } a:hover { color: #cbf5ff; }
+    .root { width: 1340px; min-height: 1180px; box-sizing: border-box; padding: 18px 24px 24px 24px; background: #070b10; display: flex; flex-direction: column; gap: 12px; }
+    .heading { text-align: center; font-size: 13px; letter-spacing: .05em; color: #b9d2c9; background: #1f2b28; border: 1px solid #3a4c47; padding: 3px 8px; text-transform: uppercase; }
+    .hl { color: #f2ae3c; } .neg { color: #ff6a3d; } .pos { color: #9be04c; } .gray { color: #7f878d; } .player { color: #8ad3ff; } .bright { color: #cbf5ff; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #b9d2c9; border-bottom: 1px solid #3a4c47; padding: 4px 8px; background: rgba(31,43,40,.5); }
+    td { padding: 4px 8px; border-bottom: 1px solid rgba(58,76,71,.3); vertical-align: top; font-size: 12px; }
+    code { font-family: Consolas, 'Cascadia Mono', monospace; font-size: 11.5px; color: #cbf5ff; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .box { border: 1px solid #263533; background: rgba(10,16,22,.8); padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
+    .box b { color: #cbf5ff; font-weight: 600; }
+  </style>
+</helmet>
+
+<div class="root">
+  <div>
+    <div style="font-family:'Orbitron',sans-serif; font-size:18px; color:#8ad3ff; letter-spacing:.05em; text-transform:uppercase;">What feeds the board</div>
+    <div class="gray" style="font-size:12px;">Every element on the mockups, where the number already comes from in the mod, and the vanilla intel-UI primitive that can draw it. Nothing here needs new simulation - only new reads, plus a handful of derived scores.</div>
+  </div>
+
+  <div class="heading">Sector header</div>
+  <table>
+    <tr><th style="width:230px;">Element</th><th style="width:520px;">Source today</th><th>Draw with</th></tr>
+    <tr><td>Phase bar (awakened / strike-capable / core in reach)</td><td><code>IncursionManager.getPhase()</code> - capability-based, can regress</td><td>Progress bar plus stage markers, the colony-crisis idiom (<code>addEventProgressBar</code> needs a <code>BaseEventIntel</code>; otherwise a custom panel drawing three markers)</td></tr>
+    <tr><td>Days since awakening</td><td><code>ThreatIncData.daysSinceStart()</code></td><td>para</td></tr>
+    <tr><td>Known systems / hive worlds / fabrication mass</td><td><code>discoveredSystems()</code>, <code>getLiveColonyMarkets</code>, <code>totalColonySize()</code> - <span class="hl">restricted to discovered systems</span> to keep the fog of war the current intel enforces</td><td>KPI tiles: <code>addLabelledValue</code> or a small grid (<code>beginGrid</code>)</td></tr>
+    <tr><td>Outbound expeditions / inbound sieges / bounties / burned</td><td><code>countActiveStrikes()</code>, <code>countActivePurges()</code> + <code>countActiveResponses()</code>, <code>ThreatBountyIntel.getStanding()</code>, <code>getCleansedCount()</code></td><td>KPI tiles</td></tr>
+  </table>
+
+  <div class="heading">Per system row</div>
+  <table>
+    <tr><th style="width:230px;">Element</th><th style="width:520px;">Source today</th><th>Draw with</th></tr>
+    <tr><td>Priority rank and "why it ranks" chip</td><td><span class="neg">New</span> composite: strike in flight (<code>isActiveStrikeSource</code>) &gt; living systems inside <code>fuelRangeLY</code> &gt; declining and open (press it) &gt; network impact (<code>ThreatBountyIntel.networkImpact</code>) &gt; mass &gt; proximity to core. Alternative sorts: vulnerability (lowest health), network impact, distance</td><td>Table row (<code>beginTable2</code> / <code>addRow</code>), colored first column</td></tr>
+    <tr><td>Stage, worlds, mass</td><td><code>stages()</code>, <code>getLiveColonyMarkets(systemId)</code>, sum of <code>getSize()</code></td><td>row cells</td></tr>
+    <tr><td>Vitality bar and trend arrow</td><td><code>computeHealth</code> (or <code>lastHealth</code>), <code>growthMultFor</code> for up, <code>declineHealthThreshold</code> for down; projection via <code>projectDecline</code></td><td>Bar: custom panel rect (<code>createRect</code> / <code>CustomUIPanelPlugin</code>); trend as colored glyph text</td></tr>
+    <tr><td>Swarm pips (live / desired / reserve / mustered)</td><td><code>countLiveGarrison</code>, <code>desiredGarrisonCount</code>, <code>garrisonReserve</code>, <code>preparingStrikeFleetCount</code></td><td>Custom rects, or text "3/4 +2"</td></tr>
+    <tr><td>Reach</td><td><code>fuelRangeLY(pickStrikeStaging(systemId,false))</code>; systems in range = inhabited systems within that LY (<span class="neg">new</span> helper)</td><td>cell + tooltip listing systems in range</td></tr>
+    <tr><td>Outbound ops</td><td><code>getStrikeList()</code> filtered on <code>params.source</code>; <code>isPreparing()</code>, ETA from FGI travel; seeding swarms from <code>waveTargets()</code> + <code>SeedingSwarmIntel</code></td><td>cell; row tooltip with full status</td></tr>
+    <tr><td>Inbound ops</td><td><code>getPurgeList()</code> (target system), <code>getResponseList()</code> (target market), <code>findPlayerExpeditionAgainst</code></td><td>cell colored by faction UI color</td></tr>
+    <tr><td>Bounty</td><td><code>ThreatBountyIntel.getStanding()</code> by market; <code>getTier()</code>, <code>currentRank()</code>, reward, days left</td><td>cell; "Open bounty" button jumps to the bounty intel</td></tr>
+    <tr><td>Distance to core / to your colonies</td><td><span class="neg">New</span>: <code>Misc.getDistanceLY</code> to the nearest size-6+ non-Threat market (core) and to the nearest player market</td><td>cell</td></tr>
+  </table>
+
+  <div class="heading">Hive world drill-down</div>
+  <table>
+    <tr><th style="width:230px;">Element</th><th style="width:520px;">Source today</th><th>Draw with</th></tr>
+    <tr><td>Organ tiles with disruption days</td><td><code>market.getIndustries()</code>, <code>isDisrupted()</code>, <code>getDisruptedDays()</code>; nexus regrow timer from <code>garrisonSpawnTimes</code> + <code>garrisonRespawnDays</code></td><td><code>addImages</code> with the industry icons in a row, or a grid of labelled values; red tint via per-tile color</td></tr>
+    <tr><td>Vitality gauge with thresholds</td><td><code>computeFabricationMult</code> x <code>computeSupplyMult</code>; thresholds from config</td><td>custom panel bar with two marker lines</td></tr>
+    <tr><td>Decline strip</td><td><code>declineProgress</code>, <code>declineRatePerTick</code>, <code>projectDecline</code>, Core <code>getDisruptedDays</code> vs collapse - the same text <code>HiveVitalityCondition</code> already builds</td><td>paras with highlights</td></tr>
+    <tr><td>Ground defenses and fuel costs</td><td>hive defense figure (<code>hiveDefensePerSize</code> x size x structure mults, via the market's ground-defense stat); saturation = figure x <code>hiveBombardCostMult</code>, tactical x <code>hiveTacCostFraction</code></td><td>para</td></tr>
+    <tr><td>Role, "supplies the hive", "if cut"</td><td>industries present + deposits (<code>ResourceDepositsCondition</code>); dependents = colonies with demand for that commodity; impact = <code>ThreatBountyIntel.networkImpact(type, market)</code></td><td>para; icon row via <code>addIcons</code> for commodities</td></tr>
+    <tr><td>Draws from</td><td><code>getCommodityData(id)</code> available/demand per <code>CORE_INPUTS</code>, <code>RARE_INPUTS</code>, fuel; supplier = hive market producing it</td><td>para</td></tr>
+    <tr><td>Commission button and price</td><td><code>addCommissionSection</code> logic in <code>InfestedSystemIntel</code>, unchanged</td><td><code>addGenericButton</code> + confirm dialog</td></tr>
+    <tr><td>Show on map / open intel</td><td><code>IntelUIAPI.showOnMap</code> / <code>selectItem</code> on the system's <code>InfestedSystemIntel</code> or bounty</td><td>buttons</td></tr>
+  </table>
+
+  <div class="two">
+    <div class="box">
+      <b>Where it lives</b>
+      <div>Give the existing <span class="player">Threat Incursion</span> major-event intel <code>hasLargeDescription() = true</code> and build the board in <code>createLargeDescription</code>. It already carries <code>INTEL_MAJOR_EVENT</code>, so it sits beside colony crises in the list, and the per-system <code>InfestedSystemIntel</code> entries stay as the map markers and the "show on map" targets.</div>
+      <div>Selection state (which row is expanded) lives on the intel object; a row click calls <code>ui.updateUIForItem(this)</code> to redraw - the same pattern the commission button uses.</div>
+    </div>
+    <div class="box">
+      <b>Open questions for you</b>
+      <div><span class="hl">Fog of war.</span> Today discovered systems show live numbers. Keep that, or show "last observed X days ago" and stale values for systems you have not visited?</div>
+      <div><span class="hl">Priority formula.</span> One fixed ranking with a reason chip, or sort toggles (threat / vulnerability / impact / distance)?</div>
+      <div><span class="hl">Map.</span> Direction C leans on the sector map the tooltip API can embed. Reach rings and arrows there need custom drawing on top; worth it, or keep the map to "show on map" buttons?</div>
+      <div><span class="hl">Ops feed.</span> Direction B's right column duplicates the intel list. Useful as a single place, or noise?</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

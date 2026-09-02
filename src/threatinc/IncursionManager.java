@@ -96,7 +96,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// intel registers itself via Global.getSector().addScript(this) (see
 		// RaidIntel) or is driven by its owning manager (BaseEventManager);
 		// this mod's intel does neither, so every lifecycle that lives in
-		// advanceImpl - bounty payouts, expiry, endAfterDelay cleanup - would
+		// advanceImpl - mission payouts, expiry, endAfterDelay cleanup - would
 		// otherwise never run. Driven here, manager-style, every frame; intel
 		// already standing in old saves is picked up with no migration.
 		advanceModIntel(amount);
@@ -185,6 +185,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// likewise the Core-distance accessibility offset: re-apply so it tracks
 		// the shifting economy COM and survives save load and econ recompute
 		ThreatColonyManager.applyHiveAccessibility();
+		// worn defenses track their disruption clock daily, not monthly
+		ThreatColonyManager.refreshWornDefenses();
 		ThreatColonyManager.pollColonies();
 		// vitality accrues CONTINUOUSLY at this poll cadence (~half-day), not
 		// on the 30-day tick - tick-quantized decline left the meter stale for
@@ -217,7 +219,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	protected void advanceModIntel(float amount) {
 		List<com.fs.starfarer.api.campaign.comm.IntelInfoPlugin> intel =
 				new ArrayList<com.fs.starfarer.api.campaign.comm.IntelInfoPlugin>();
-		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatBountyIntel.class));
+		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatMissionIntel.class));
+		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatBountyIntel.class)); // legacy stub
 		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatResponseIntel.class));
 		intel.addAll(Global.getSector().getIntelManager().getIntel(InfestedSystemIntel.class));
 		intel.addAll(Global.getSector().getIntelManager().getIntel(ThreatSiegeReportIntel.class));
@@ -226,6 +229,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				((EveryFrameScript) curr).advance(amount);
 			}
 		}
+		ThreatIncursionIntel.checkEradicated();
 	}
 
 	protected boolean isTriggered() {
@@ -316,129 +320,147 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	protected void tick() {
 		advanceStages();
-		ThreatColonyManager.maintainMegaports();
+		ThreatColonyManager.maintainPorts();
+		ThreatColonyManager.maintainHomeRelics();
+		ThreatColonyManager.maintainHiveEconomy();
 		trySpread();
 		tryConversions();
 		tryStrikes();
 		tryPurgeBombardments();
-		manageBounties();
+		manageMissions();
 		checkPhaseAnnouncements();
+		// importers see this tick's new industries, ports and relics now, not
+		// on vanilla's next monthly economy step
+		ThreatColonyManager.flushEconomy();
 	}
 
 	// ------------------------------------------------------------------
-	// tactical bounties: the sector teaches the player how to fight back
+	// defense-board contracts: the sector teaches the player how to fight back
 	// ------------------------------------------------------------------
 
 	/**
-	 * From phase 3, the colonial defense boards run a live objective board
-	 * against the hive network - not a queue of static postings. Every tick they
-	 * re-score every link the swarm runs by what severing it would cost the
-	 * swarm (share of that link's output, how redundant it is, how much of the
-	 * network hangs off it, how close it sits to worlds still alive) against
-	 * what severing it would cost a fleet (garrisons, ground defenses, the burn
-	 * out there, and whether a raid is even creditable). See
-	 * {@link ThreatBountyIntel#tierValue}.
+	 * From phase 3, the colonial defense boards offer contracts against the
+	 * hive network - ordinary missions, taken or ignored the way a survey or
+	 * derelict-analysis posting is. Every tick they re-score every link the
+	 * swarm runs by what severing it would cost the swarm (share of that link's
+	 * output, how redundant it is, how much of the network hangs off it, how
+	 * close it sits to worlds still alive) against what severing it would cost
+	 * a fleet (garrisons, ground defenses, the burn out there). See
+	 * {@link ThreatMissionIntel#tierValue}.
 	 *
-	 * Two things follow. Several objectives stand at once, up to the configured
-	 * cap, spread across the four levers - rare mining, fuel, refining, forges -
-	 * so the player picks a front instead of being handed one. And the board
-	 * evolves: when the swarm brings a genuinely more valuable target online,
-	 * the weakest standing objective is withdrawn unpaid to make room for it.
+	 * Several OFFERS stand at once, up to the configured cap, spread across the
+	 * four levers - rare mining, fuel, refining, nexus - so the player picks a
+	 * front instead of being handed one. Accepting one starts the player's
+	 * completion clock; an accepted contract is theirs, sits outside the cap,
+	 * is never withdrawn, and only keeps its own target from being re-offered.
+	 * The board of offers evolves: when the swarm brings a genuinely more
+	 * valuable target online, the weakest offer is withdrawn to make room.
 	 *
 	 * Churn is bounded on purpose. At most one supersession per tick; a new
 	 * objective must beat the one it displaces by the configured margin, not
 	 * merely edge it out; and nothing is pulled inside its minimum stand period
 	 * or while the player is in the target's system (see
-	 * {@link ThreatBountyIntel#canBeSuperseded}).
+	 * {@link ThreatMissionIntel#canBeSuperseded}).
 	 */
-	protected void manageBounties() {
-		if (!ThreatIncConfig.bountiesEnabled()) return;
+	protected void manageMissions() {
+		if (!ThreatIncConfig.missionsEnabled()) return;
 		if (!boardsMobilized()) {
-			ThreatIncConfig.log("Bounty board: dormant (phase " + getPhase()
+			ThreatIncConfig.log("Mission board: dormant (phase " + getPhase()
 					+ ", never reached phase 3)");
 			return;
 		}
 
-		int cap = Math.max(1, ThreatIncConfig.maxActiveBounties());
-		List<ThreatBountyIntel> standing = ThreatBountyIntel.getStanding();
-		ThreatIncConfig.log("Bounty board: phase " + getPhase() + ", standing "
-				+ standing.size() + "/" + cap + " (strategic "
-				+ ThreatBountyIntel.getStanding(ThreatBountyIntel.TIER_STRATEGIC).size()
+		int cap = Math.max(1, ThreatIncConfig.maxPostedMissions());
+		List<ThreatMissionIntel> open = ThreatMissionIntel.getOpen();
+		List<ThreatMissionIntel> posted = ThreatMissionIntel.getPosted();
+		ThreatIncConfig.log("Mission board: phase " + getPhase() + ", offered "
+				+ posted.size() + "/" + cap + " (strategic "
+				+ inTier(posted, ThreatMissionIntel.TIER_STRATEGIC).size()
 				+ ", immediate "
-				+ ThreatBountyIntel.getStanding(ThreatBountyIntel.TIER_IMMEDIATE).size() + ")");
+				+ inTier(posted, ThreatMissionIntel.TIER_IMMEDIATE).size() + "), accepted "
+				+ (open.size() - posted.size()));
 
-		// 1. cover both boards first. Whatever else is standing, the sector
+		// 1. cover both boards first. Whatever else is offered, the sector
 		// always names its decisive target AND something a captain can act on
 		// now - the whole point of running two tiers.
-		for (int tier = 0; tier < ThreatBountyIntel.TIER_COUNT && standing.size() < cap; tier++) {
-			if (!inTier(standing, tier).isEmpty()) continue;
-			ThreatBountyIntel.Objective best =
-					ThreatBountyIntel.bestObjective(tier, standing, null);
-			if (best != null) standing.add(postBounty(best));
+		for (int tier = 0; tier < ThreatMissionIntel.TIER_COUNT && posted.size() < cap; tier++) {
+			if (!inTier(posted, tier).isEmpty()) continue;
+			ThreatMissionIntel.Objective best =
+					ThreatMissionIntel.bestObjective(tier, open, null);
+			if (best != null) {
+				ThreatMissionIntel mission = postMission(best);
+				posted.add(mission);
+				open.add(mission);
+			}
 		}
 
 		// 2. spare slots go to whichever board is thinner, so a cap of 3 reads
 		// as 2 strategic + 1 immediate rather than drifting to one tier. Tiers
 		// score on unrelated scales, so they are never compared directly.
-		while (standing.size() < cap) {
-			int tier = inTier(standing, ThreatBountyIntel.TIER_IMMEDIATE).size()
-					< inTier(standing, ThreatBountyIntel.TIER_STRATEGIC).size()
-					? ThreatBountyIntel.TIER_IMMEDIATE : ThreatBountyIntel.TIER_STRATEGIC;
-			ThreatBountyIntel.Objective best =
-					ThreatBountyIntel.bestObjective(tier, standing, null);
+		while (posted.size() < cap) {
+			int tier = inTier(posted, ThreatMissionIntel.TIER_IMMEDIATE).size()
+					< inTier(posted, ThreatMissionIntel.TIER_STRATEGIC).size()
+					? ThreatMissionIntel.TIER_IMMEDIATE : ThreatMissionIntel.TIER_STRATEGIC;
+			ThreatMissionIntel.Objective best =
+					ThreatMissionIntel.bestObjective(tier, open, null);
 			if (best == null) {
 				// that board is exhausted; try the other before giving up
-				best = ThreatBountyIntel.bestObjective(
-						tier == ThreatBountyIntel.TIER_IMMEDIATE
-								? ThreatBountyIntel.TIER_STRATEGIC
-								: ThreatBountyIntel.TIER_IMMEDIATE, standing, null);
+				best = ThreatMissionIntel.bestObjective(
+						tier == ThreatMissionIntel.TIER_IMMEDIATE
+								? ThreatMissionIntel.TIER_STRATEGIC
+								: ThreatMissionIntel.TIER_IMMEDIATE, open, null);
 			}
 			if (best == null) {
-				ThreatIncConfig.log("Bounty board: no further candidate objectives ("
+				ThreatIncConfig.log("Mission board: no further candidate objectives ("
 						+ ThreatIncData.getAllLiveColonyMarkets().size() + " live colonies)");
 				break;
 			}
-			standing.add(postBounty(best));
+			ThreatMissionIntel mission = postMission(best);
+			posted.add(mission);
+			open.add(mission);
 		}
 
-		if (standing.size() < cap) return;
+		if (posted.size() < cap) return;
 
-		// 3. a board left with no objectives at all while the other is full is a
+		// 3. a board left with no offers at all while the other is full is a
 		// structural fault, not a close call - correct it before considering any
 		// ordinary value swap, and take only one action per tick either way.
-		if (ensureTierCoverage(standing)) return;
+		if (ensureTierCoverage(posted, open)) return;
 
-		trySupersede(standing);
+		trySupersede(posted, open);
 	}
 
 	/**
-	 * Guarantees the "one of each, always" rule when every slot is taken.
+	 * Guarantees the "one of each, always" rule when every offer slot is taken.
 	 * Filling and superseding cannot do this between them: filling only runs
 	 * while slots are free, and supersession is deliberately locked within a
 	 * tier, so a board that reaches cap on one tier alone would otherwise never
-	 * open the other. That is exactly what happens to a save whose bounties were
-	 * written before tiers existed - they all read as strategic - and it would
-	 * also happen any time one board runs dry while the other is filling.
+	 * open the other - which happens any time one board runs dry while the
+	 * other is filling.
 	 *
-	 * Makes room by withdrawing the weakest objective on the over-full board.
-	 * This waives the minimum stand period, since the board is malformed rather
-	 * than merely out of date, but never the hard protections in
-	 * {@link ThreatBountyIntel#canBeWithdrawn} - an earned payout or a target
-	 * the player is standing on is left alone even at the cost of coverage.
+	 * Makes room by withdrawing the weakest offer on the over-full board. This
+	 * waives the minimum stand period, since the board is malformed rather than
+	 * merely out of date, but never the hard protections in
+	 * {@link ThreatMissionIntel#canBeWithdrawn} - an accepted contract or a
+	 * target the player is standing on is left alone even at the cost of
+	 * coverage.
 	 *
+	 * @param posted the offers awaiting acceptance (the board proper)
+	 * @param open every open contract, offered or accepted, for target exclusion
 	 * @return true if it restructured the board this tick
 	 */
-	protected boolean ensureTierCoverage(List<ThreatBountyIntel> standing) {
-		for (int tier = 0; tier < ThreatBountyIntel.TIER_COUNT; tier++) {
-			if (!inTier(standing, tier).isEmpty()) continue;
+	protected boolean ensureTierCoverage(List<ThreatMissionIntel> posted,
+			List<ThreatMissionIntel> open) {
+		for (int tier = 0; tier < ThreatMissionIntel.TIER_COUNT; tier++) {
+			if (!inTier(posted, tier).isEmpty()) continue;
 
-			// the weakest withdrawable objective, never one that would empty
-			// the board it sits on in the process
-			ThreatBountyIntel victim = null;
+			// the weakest withdrawable offer, never one that would empty the
+			// board it sits on in the process
+			ThreatMissionIntel victim = null;
 			float worst = Float.MAX_VALUE;
-			for (ThreatBountyIntel curr : standing) {
+			for (ThreatMissionIntel curr : posted) {
 				if (!curr.canBeWithdrawn()) continue;
-				if (inTier(standing, curr.getTier()).size() < 2) continue;
+				if (inTier(posted, curr.getTier()).size() < 2) continue;
 				float value = curr.currentValue();
 				if (value < worst) {
 					worst = value;
@@ -447,18 +469,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 			if (victim == null) continue;
 
-			List<ThreatBountyIntel> others = new ArrayList<ThreatBountyIntel>(standing);
+			List<ThreatMissionIntel> others = new ArrayList<ThreatMissionIntel>(open);
 			others.remove(victim);
-			ThreatBountyIntel.Objective best =
-					ThreatBountyIntel.bestObjective(tier, others, victim.getMarketId());
+			ThreatMissionIntel.Objective best =
+					ThreatMissionIntel.bestObjective(tier, others, victim.getMarketId());
 			if (best == null) continue;
 
-			ThreatIncConfig.log("Bounty board: " + ThreatBountyIntel.tierName(tier)
+			ThreatIncConfig.log("Mission board: " + ThreatMissionIntel.tierName(tier)
 					+ " board empty at cap - withdrawing weakest "
-					+ ThreatBountyIntel.tierName(victim.getTier()) + " objective to cover it");
+					+ ThreatMissionIntel.tierName(victim.getTier()) + " offer to cover it");
 			victim.withdraw(best.describe());
-			standing.remove(victim);
-			standing.add(postBounty(best));
+			posted.remove(victim);
+			open.remove(victim);
+			ThreatMissionIntel mission = postMission(best);
+			posted.add(mission);
+			open.add(mission);
 			return true;
 		}
 		return false;
@@ -467,22 +492,23 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	/**
 	 * At most one swap per tick, and always within a tier. Keeping supersession
 	 * tier-local is what preserves the "one of each, always" guarantee - an
-	 * immediate objective can never be displaced by a strategic one and leave
-	 * that board empty. Since the two tiers score on unrelated scales, each is
-	 * judged by its own ratio of challenger to incumbent, and the board with the
-	 * most lopsided ratio gets the single swap.
+	 * immediate offer can never be displaced by a strategic one and leave that
+	 * board empty. Since the two tiers score on unrelated scales, each is judged
+	 * by its own ratio of challenger to incumbent, and the board with the most
+	 * lopsided ratio gets the single swap. Only OFFERS are ever swapped out;
+	 * accepted contracts are the player's.
 	 */
-	protected void trySupersede(List<ThreatBountyIntel> standing) {
-		float margin = ThreatIncConfig.bountySupersedeMargin();
+	protected void trySupersede(List<ThreatMissionIntel> posted, List<ThreatMissionIntel> open) {
+		float margin = ThreatIncConfig.missionSupersedeMargin();
 
-		ThreatBountyIntel bestWeakest = null;
-		ThreatBountyIntel.Objective bestChallenger = null;
+		ThreatMissionIntel bestWeakest = null;
+		ThreatMissionIntel.Objective bestChallenger = null;
 		float bestRatio = margin;
 
-		for (int tier = 0; tier < ThreatBountyIntel.TIER_COUNT; tier++) {
-			ThreatBountyIntel weakest = null;
+		for (int tier = 0; tier < ThreatMissionIntel.TIER_COUNT; tier++) {
+			ThreatMissionIntel weakest = null;
 			float weakestValue = Float.MAX_VALUE;
-			for (ThreatBountyIntel curr : inTier(standing, tier)) {
+			for (ThreatMissionIntel curr : inTier(posted, tier)) {
 				if (!curr.canBeSuperseded()) continue;
 				float value = curr.currentValue();
 				if (value < weakestValue) {
@@ -493,11 +519,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (weakest == null) continue;
 
 			// score the challenger against a board with that slot vacated, so
-			// the outgoing objective's own type no longer suppresses its kind
-			List<ThreatBountyIntel> others = new ArrayList<ThreatBountyIntel>(standing);
+			// the outgoing offer's own type no longer suppresses its kind
+			List<ThreatMissionIntel> others = new ArrayList<ThreatMissionIntel>(open);
 			others.remove(weakest);
-			ThreatBountyIntel.Objective challenger =
-					ThreatBountyIntel.bestObjective(tier, others, weakest.getMarketId());
+			ThreatMissionIntel.Objective challenger =
+					ThreatMissionIntel.bestObjective(tier, others, weakest.getMarketId());
 			if (challenger == null) continue;
 
 			// a collapsed incumbent (its link went redundant) is always beaten
@@ -511,12 +537,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 		if (bestWeakest == null || bestChallenger == null) return;
 		bestWeakest.withdraw(bestChallenger.describe());
-		postBounty(bestChallenger);
+		postMission(bestChallenger);
 	}
 
-	protected static List<ThreatBountyIntel> inTier(List<ThreatBountyIntel> standing, int tier) {
-		List<ThreatBountyIntel> result = new ArrayList<ThreatBountyIntel>();
-		for (ThreatBountyIntel curr : standing) {
+	protected static List<ThreatMissionIntel> inTier(List<ThreatMissionIntel> missions, int tier) {
+		List<ThreatMissionIntel> result = new ArrayList<ThreatMissionIntel>();
+		for (ThreatMissionIntel curr : missions) {
 			if (curr.getTier() == tier) result.add(curr);
 		}
 		return result;
@@ -544,19 +570,26 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return getPhase() >= 3 || ThreatIncData.isPhase3Announced();
 	}
 
-	protected ThreatBountyIntel postBounty(ThreatBountyIntel.Objective objective) {
-		ThreatBountyIntel bounty = new ThreatBountyIntel(
+	/**
+	 * Offers a contract. Queued, not added: like every vanilla mission posting
+	 * it reaches the player the next time they are in comm relay range, and
+	 * until then it sits in the comm queue - which {@link ThreatMissionIntel#getOpen}
+	 * counts, so the board never double-posts while an offer is in transit.
+	 */
+	protected ThreatMissionIntel postMission(ThreatMissionIntel.Objective objective) {
+		ThreatMissionIntel mission = new ThreatMissionIntel(
 				objective.tier, objective.type, objective.market.getId());
-		Global.getSector().getIntelManager().addIntel(bounty);
-		// a bounty names the world publicly: its system now counts as known
+		Global.getSector().getIntelManager().queueIntel(mission);
+		// an offer names the world publicly: its system now counts as known
 		if (objective.market.getStarSystem() != null) {
 			ThreatIncData.markDiscovered(objective.market.getStarSystem().getId());
 		}
-		ThreatIncConfig.log("Bounty posted ["
-				+ ThreatBountyIntel.tierName(objective.tier) + "]: type " + objective.type
+		ThreatIncConfig.log("Mission offered ["
+				+ ThreatMissionIntel.tierName(objective.tier) + "]: type " + objective.type
 				+ " vs " + objective.market.getName() + " (impact " + objective.impact
-				+ ", difficulty " + objective.difficulty + ", value " + objective.value + ")");
-		return bounty;
+				+ ", difficulty " + objective.difficulty + ", value " + objective.value
+				+ ", sponsor " + mission.getFactionId() + ")");
+		return mission;
 	}
 
 	/**
@@ -1057,7 +1090,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
 				if (!hasMilitary(market)) continue;
 				float d = Misc.getDistanceLY(market.getStarSystem().getLocation(), system.getLocation());
-				if (d > ThreatIncConfig.responseRangeLY()) continue;
+				if (d > expeditionRangeLY(market)) continue;
 				if (d < bestDist) {
 					bestDist = d;
 					base = market;
@@ -1077,7 +1110,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			java.util.List<MarketAPI> targets = collectSiegeTargets(colony, system);
 			boolean anyGarrisoned = anyTargetGarrisoned(targets);
 			java.util.List<Integer> fleetSizes = siegeFleetSizes(difficulty, anyGarrisoned,
-					heavyAssault, targets.size());
+					heavyAssault, targets);
+			ThreatIncConfig.log("Siege sizing vs " + system.getName() + ": " + fleetSizes.size()
+					+ " fleets, ground str ~" + (int) siegeRaidStrEstimate(fleetSizes)
+					+ " against " + (int) siegeRaidStrNeeded(targets) + " needed");
 
 			launchSiegeExpedition(base, faction, system, targets, fleetSizes, false, random);
 
@@ -1133,20 +1169,84 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * The flotilla for a siege expedition: two core fleets, an escort when any
-	 * target still fields Defense Swarms, a second escort for a heavy assault
-	 * on a defended entrenched hive, and a fourth fleet for a multi-world
-	 * campaign. Shared by the NPC trigger and the player commission preview so
-	 * the quoted bill always matches the fleets that actually sail.
+	 * Headroom on the ground strength a siege brings: vanilla raises defender
+	 * preparedness after every raid, so the second and third passes face more
+	 * than the first did.
+	 */
+	public static final float SIEGE_RAID_HEADROOM = 1.25f;
+
+	/**
+	 * What the tactical pass leaves of an intact hive's defenses before the
+	 * raids go in: the Nexus bonus halves (1.5 -> 1.25) and the batteries fire
+	 * at half effect (x3 -> x2, x2 -> x1.5), so a size-6 world behind Heavy
+	 * Batteries drops from 10,800 to 6,000 and a size-4 world behind Ground
+	 * Defenses from 4,800 to 3,000. Sizing against the intact figure would
+	 * double the flotilla for nothing.
+	 */
+	public static final float SIEGE_SUPPRESSED_DEFENSE_FRACTION = 0.6f;
+
+	/**
+	 * The ground strength a siege must put on the surface to disrupt anything.
+	 * Vanilla's raid effectiveness is raidStr / (raidStr + defenderStr) and an
+	 * industry raid needs MarketCMD.DISRUPTION_THRESHOLD (0.25) of it, so the
+	 * landing force must be at least a third of the strongest target's
+	 * defender strength as it will stand AFTER the tactical pass - plus
+	 * headroom for the preparedness bump. Hive defenses run to thousands
+	 * (hiveDefensePerSize x size, multiplied by the Nexus and the batteries),
+	 * which is exactly why a flotilla sized by difficulty alone spent its
+	 * raids being repulsed.
+	 */
+	public static float siegeRaidStrNeeded(java.util.List<MarketAPI> targets) {
+		float def = 0f;
+		for (MarketAPI target : targets) {
+			if (target == null) continue;
+			float d = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.getDefenderStr(target);
+			// an already-suppressed world reads its suppressed figure; an intact one will be
+			if (!ThreatColonyManager.anyOrganDisrupted(target)) d *= SIEGE_SUPPRESSED_DEFENSE_FRACTION;
+			def = Math.max(def, d);
+		}
+		float threshold = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.DISRUPTION_THRESHOLD;
+		return def * threshold / Math.max(0.01f, 1f - threshold) * SIEGE_RAID_HEADROOM;
+	}
+
+	/**
+	 * What a flotilla of these difficulty points lands: NPC raid strength is a
+	 * quarter of the fleets' crew capacity, and crew capacity tracks fleet
+	 * size, so difficulty points times siegeRaidStrPerPoint (measured, not
+	 * derived - see the setting).
+	 */
+	public static float siegeRaidStrEstimate(java.util.List<Integer> fleetSizes) {
+		int points = 0;
+		for (Integer size : fleetSizes) points += size;
+		return points * ThreatIncConfig.siegeRaidStrPerPoint();
+	}
+
+	/**
+	 * The flotilla for a siege expedition, sized to the target. The baseline is
+	 * the old shape - two core fleets, an escort when any target still fields
+	 * Defense Swarms, a second for a heavy assault on a defended entrenched
+	 * hive, a fourth for a multi-world campaign - and then fleets are added
+	 * until the estimated ground strength clears siegeRaidStrNeeded, up to
+	 * siegeMaxFleets. Difficulty still sets the quality of each fleet; the
+	 * defenses set how many there are. Shared by the NPC trigger and the
+	 * player commission preview so the quoted bill always matches the fleets
+	 * that actually sail; if the cap still leaves the force short the caller
+	 * can see it (siegeRaidStrEstimate below siegeRaidStrNeeded) and say so.
 	 */
 	public static java.util.List<Integer> siegeFleetSizes(int difficulty, boolean anyGarrisoned,
-			boolean heavyAssault, int targetCount) {
+			boolean heavyAssault, java.util.List<MarketAPI> targets) {
 		java.util.List<Integer> sizes = new ArrayList<Integer>();
 		sizes.add(Math.min(10, difficulty));
 		sizes.add(Math.max(5, difficulty - 2));
 		if (anyGarrisoned) sizes.add(Math.min(10, difficulty));
 		if (heavyAssault) sizes.add(Math.min(10, difficulty));
-		if (targetCount >= 3) sizes.add(Math.max(5, difficulty - 2));
+		if (targets.size() >= 3) sizes.add(Math.max(5, difficulty - 2));
+		float needed = siegeRaidStrNeeded(targets);
+		int maxFleets = Math.max(sizes.size(), ThreatIncConfig.siegeMaxFleets());
+		int extra = Math.min(10, Math.max(6, difficulty));
+		while (siegeRaidStrEstimate(sizes) < needed && sizes.size() < maxFleets) {
+			sizes.add(extra);
+		}
 		return sizes;
 	}
 
@@ -1183,7 +1283,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		params.raidParams.raidApproachText = "moving to besiege";
 		params.raidParams.raidActionText = "conducting siege operations against";
 		params.noun = "purge expedition";
-		params.forcesNoun = playerCommissioned ? "Your forces"
+		// vanilla writes "the <forcesNoun> are withdrawing", so no "Your" here
+		params.forcesNoun = playerCommissioned ? "commissioned forces"
 				: faction.getDisplayName() + " forces";
 		params.style = FleetStyle.STANDARD;
 		params.repImpact = ComplicationRepImpact.NONE;
@@ -1220,7 +1321,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (!hasMilitary(market)) continue;
 			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(),
 					system.getLocation());
-			if (d > ThreatIncConfig.responseRangeLY()) continue;
+			if (d > expeditionRangeLY(market)) continue;
 			if (d < bestDist) {
 				bestDist = d;
 				best = market;
@@ -1688,7 +1789,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
 			if (!hasMilitary(market)) continue;
 			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(), hiveSystem.getLocation());
-			if (d > ThreatIncConfig.responseRangeLY()) continue;
+			if (d > expeditionRangeLY(market)) continue;
 			if (d < bestDist) {
 				bestDist = d;
 				best = market;
@@ -1697,7 +1798,22 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return best;
 	}
 
-	/** Static so the bounty board can ask the same question the purge logic does. */
+	/**
+	 * How far a colony can send a task force or siege expedition: the fuel
+	 * available there times strikeLYPerFuel - the same rule the hive's strikes
+	 * run on (ThreatColonyManager.fuelRangeLY). A size-8 Hegemony world fed by
+	 * Sindria reaches deep; a player colony capped at size 6 reaches what its
+	 * own fuel supply buys; a world with no fuel sends nothing. Replaced the
+	 * flat threatinc_responseRangeLY in Sept 2026 so both sides play by one
+	 * rule.
+	 */
+	public static float expeditionRangeLY(MarketAPI base) {
+		// one rule for every side: fuel available, capped by what the base's
+		// fleets can carry (ThreatColonyManager.expeditionFuelCapacity)
+		return ThreatColonyManager.fuelRangeLY(base);
+	}
+
+	/** Static so the mission board can ask the same question the purge logic does. */
 	protected static boolean hasMilitary(MarketAPI market) {
 		return market.hasIndustry(com.fs.starfarer.api.impl.campaign.ids.Industries.PATROLHQ)
 				|| market.hasIndustry(com.fs.starfarer.api.impl.campaign.ids.Industries.MILITARYBASE)
@@ -1739,8 +1855,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	/**
 	 * Whether this colony is the staging world of a strike currently in flight
 	 * (launchStrike sets params.source to the staging market). The immediate
-	 * bounty board treats such a world as the sector's problem RIGHT NOW - see
-	 * {@link ThreatBountyIntel#immediateThreatMult}.
+	 * mission board treats such a world as the sector's problem RIGHT NOW - see
+	 * {@link ThreatMissionIntel#immediateThreatMult}.
 	 */
 	public static boolean isActiveStrikeSource(MarketAPI market) {
 		if (market == null) return false;

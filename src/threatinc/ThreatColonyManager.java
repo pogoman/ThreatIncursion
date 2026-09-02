@@ -27,7 +27,12 @@ import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Conditions;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
+import com.fs.starfarer.api.impl.campaign.ids.Items;
 import com.fs.starfarer.api.impl.campaign.ids.Stats;
+import com.fs.starfarer.api.campaign.SpecialItemData;
+import com.fs.starfarer.api.campaign.econ.MutableCommodityQuantity;
+import com.fs.starfarer.api.impl.campaign.econ.impl.InstallableItemEffect;
+import com.fs.starfarer.api.impl.campaign.econ.impl.ItemEffectsRepo;
 import com.fs.starfarer.api.impl.campaign.intel.MessageIntel;
 import com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker;
 import com.fs.starfarer.api.impl.campaign.population.CoreImmigrationPluginImpl;
@@ -459,21 +464,38 @@ public class ThreatColonyManager {
 	// ------------------------------------------------------------------
 
 	/**
+	 * The production chain beyond mining, in bootstrap order: the industry of
+	 * each link (a forge is Heavy Industry or its Orbital Works upgrade) and
+	 * the commodity it puts on the hive market.
+	 */
+	protected static final String[] CHAIN_LINKS = {
+			Industries.REFINING, Industries.HEAVYINDUSTRY, Industries.FUELPROD };
+	protected static final String[] CHAIN_OUTPUTS = {
+			Commodities.METALS, Commodities.SHIPS, Commodities.FUEL };
+
+	/**
 	 * Adds at most one industry/structure to the colony, chosen by what the
 	 * hive economy as a whole is missing. Called at founding and after each
 	 * growth step, so the network develops organically: mining worlds where
-	 * the rocks are, one refinery chain, a forge world building the ships.
+	 * the rocks are, then the chain, then spare copies of it.
+	 *
+	 * The vanilla economy the hive runs on is not a flow of goods. What a
+	 * colony can draw of a commodity is the output of the single best source
+	 * it can reach (capped by shipping capacity, see docs/hive-economy.md),
+	 * and demand elsewhere never subtracts from it: one refinery feeds any
+	 * number of forges, and a second, equal refinery adds nothing until the
+	 * first is lost. So the planner never balances producer counts against
+	 * demand. It builds every link once, then spreads spare copies across
+	 * systems - a siege takes a whole system - so that cutting the hive's
+	 * supply of anything means cutting several worlds; and, since a source
+	 * only feeds a consumer up to its own output, a bigger copy wherever the
+	 * hive's biggest consumer has outgrown its biggest producer.
 	 */
 	public static void planHiveEconomy(MarketAPI market) {
 		int size = market.getSize();
 
-		// accessibility IS the swarm's supply line: it gates every in-group
-		// import and the fuel range every wave and strike is launched on, so a
-		// Megaport lifts the whole hive at once - a starving frontier colony
-		// fed better, and the network's reach extended. Upgrade the founding
-		// Spaceport as soon as the colony is established enough to warrant it,
-		// ahead of any production build (structures don't take industry slots).
-		if (tryUpgradeMegaport(market)) return;
+		// the port stays a Spaceport for life (see ensureSpaceport)
+		ensureSpaceport(market);
 
 		// defensive structures don't take industry slots. The hive builds its
 		// own marine-free variants (ThreatGroundDefenses: machinery+metals)
@@ -493,42 +515,22 @@ public class ThreatColonyManager {
 		// mine what the planet offers (Mining supplies nothing without deposits)
 		if (hasMiningDeposits(market) && !market.hasIndustry(Industries.MINING)) {
 			market.addIndustry(Industries.MINING);
+			markEconomyDirty();
 			ThreatIncConfig.log("Hive planner: MINING at " + market.getName());
 			return;
 		}
 
-		int refineries = groupCountIndustry(Industries.REFINING);
-		int forges = groupCountIndustry(Industries.HEAVYINDUSTRY)
-				+ groupCountIndustry(Industries.ORBITALWORKS);
-
-		// bootstrap the basic chain: first refinery, first forge, first fuel plant
-		if (refineries == 0 && groupHasIndustry(Industries.MINING)) {
-			if (!market.hasIndustry(Industries.REFINING)) {
-				market.addIndustry(Industries.REFINING);
-				ThreatIncConfig.log("Hive planner: REFINING (first) at " + market.getName());
-			}
-			return;
-		}
-		if (forges == 0) {
-			if (!market.hasIndustry(Industries.HEAVYINDUSTRY)) {
-				market.addIndustry(Industries.HEAVYINDUSTRY);
-				ThreatIncConfig.log("Hive planner: HEAVYINDUSTRY (first) at " + market.getName());
-			}
-			return;
-		}
-		if (!groupHasIndustry(Industries.FUELPROD) && groupHasVolatiles()) {
-			if (!market.hasIndustry(Industries.FUELPROD)) {
-				market.addIndustry(Industries.FUELPROD);
-				ThreatIncConfig.log("Hive planner: FUELPROD at " + market.getName());
-			}
-			return;
+		// bootstrap: the first copy of each link, wherever there is room
+		for (int link = 0; link < CHAIN_LINKS.length; link++) {
+			if (countLink(link) == 0 && tryBuildLink(market, link, "first", false)) return;
 		}
 
 		// upgrade an established forge to orbital works for better hulls - improves
-		// output/quality without changing the forge count (keeps the balance intact)
+		// output/quality without changing the forge count
 		if (size >= 6 && market.hasIndustry(Industries.HEAVYINDUSTRY)) {
 			market.removeIndustry(Industries.HEAVYINDUSTRY, null, true);
 			market.addIndustry(Industries.ORBITALWORKS);
+			markEconomyDirty();
 			announce("The fabrication colony on " + market.getName()
 					+ " has restructured itself into a forge world. Hull output from the "
 					+ "swarm's shipyards there is accelerating.",
@@ -537,53 +539,361 @@ public class ThreatColonyManager {
 			return;
 		}
 
-		// scale the chain, keeping refineries >= forges. A size-N refinery feeds a
-		// size-N forge, so a forge added without a matching refinery just starves
-		// the whole group of metals. When the two are balanced, upscale the
-		// resource side (refining) FIRST - metals supply leads, never trails, demand.
-		if (forges >= refineries) {
-			if (!market.hasIndustry(Industries.REFINING)) {
-				market.addIndustry(Industries.REFINING);
-				ThreatIncConfig.log("Hive planner: REFINING (scale) at " + market.getName());
+		// redundancy: every link at two copies before any at three, spare copies
+		// steered to the system holding the fewest
+		int target = redundancyTarget();
+		for (int level = 1; level < target; level++) {
+			for (int link = 0; link < CHAIN_LINKS.length; link++) {
+				if (countLink(link) <= level && tryBuildLink(market, link, "spare", true)) return;
 			}
-		} else {
-			if (!market.hasIndustry(Industries.HEAVYINDUSTRY)
-					&& !market.hasIndustry(Industries.ORBITALWORKS)) {
-				market.addIndustry(Industries.HEAVYINDUSTRY);
-				ThreatIncConfig.log("Hive planner: HEAVYINDUSTRY (scale) at " + market.getName());
-			}
+		}
+
+		// the chain is complete: a bigger copy of any link whose largest producer
+		// no longer covers the hive's largest consumer of its output
+		for (int link = 0; link < CHAIN_LINKS.length; link++) {
+			if (outputCovered(link) || size <= largestLinkSize(link)) continue;
+			if (tryBuildLink(market, link, "bigger", false)) return;
 		}
 	}
 
 	/**
-	 * Upgrades a colony's founding Spaceport to a Megaport once it reaches the
-	 * configured size, for the accessibility it buys the whole hive economy.
-	 * Idempotent: a no-op below the gate size, or once the Megaport is in place.
-	 * Gated by size on purpose - the accessibility ramp on young colonies is the
-	 * mod's throttle on expansion, so fringe seeds still ramp naturally.
+	 * Builds the link's industry here if the colony lacks it and the hive
+	 * market carries its input. A refinery wants ore, a fuel plant volatiles;
+	 * forges take metals, which the first refinery already covers.
 	 *
-	 * @return true if it performed the upgrade this call
+	 * @param spread whether the copy must go to a lean system (spreadAllows)
+	 * @return true if it placed the industry
 	 */
-	public static boolean tryUpgradeMegaport(MarketAPI market) {
-		if (market == null) return false;
-		if (market.getSize() < ThreatIncConfig.colonyMegaportMinSize()) return false;
-		if (market.hasIndustry(Industries.MEGAPORT)) return false;
-		if (!market.hasIndustry(Industries.SPACEPORT)) return false;
-		market.removeIndustry(Industries.SPACEPORT, null, true);
-		market.addIndustry(Industries.MEGAPORT);
-		ThreatIncConfig.log("Hive planner: MEGAPORT at " + market.getName());
+	protected static boolean tryBuildLink(MarketAPI market, int link, String label, boolean spread) {
+		if (hasLink(market, link)) return false;
+		String industry = CHAIN_LINKS[link];
+		if (Industries.REFINING.equals(industry) && !groupHasIndustry(Industries.MINING)) return false;
+		if (Industries.FUELPROD.equals(industry) && !groupHasVolatiles()) return false;
+		if (spread && !spreadAllows(market, link)) return false;
+		market.addIndustry(industry);
+		markEconomyDirty();
+		ThreatIncConfig.log("Hive planner: " + industry + " (" + label + ") at " + market.getName());
 		return true;
 	}
 
-	/**
-	 * Sweep every live colony for a pending Megaport upgrade. The planner only
-	 * runs at founding and on growth steps, so without this an already-grown
-	 * colony - especially a size-capped one that never grows again - would never
-	 * upgrade after the setting changed or the feature was added mid-save.
-	 */
-	public static void maintainMegaports() {
+	protected static boolean hasLink(MarketAPI market, int link) {
+		if (Industries.HEAVYINDUSTRY.equals(CHAIN_LINKS[link])) return getForge(market) != null;
+		return market.hasIndustry(CHAIN_LINKS[link]);
+	}
+
+	/** Copies of the link across the hive, built or building. */
+	protected static int countLink(int link) {
+		int count = 0;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
-			tryUpgradeMegaport(market);
+			if (hasLink(market, link)) count++;
+		}
+		return count;
+	}
+
+	protected static int countLinkIn(String systemId, int link) {
+		int count = 0;
+		for (MarketAPI market : ThreatIncData.getLiveColonyMarkets(systemId)) {
+			if (hasLink(market, link)) count++;
+		}
+		return count;
+	}
+
+	/** Size of the largest colony holding the link, built or building; 0 without one. */
+	protected static int largestLinkSize(int link) {
+		int best = 0;
+		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (hasLink(market, link)) best = Math.max(best, market.getSize());
+		}
+		return best;
+	}
+
+	/**
+	 * Whether the hive's largest producer of the link's output covers its
+	 * largest single consumer. Availability is per source, so this - not the
+	 * hive's total output against its total demand - is what decides whether
+	 * every consumer is fed. A copy still under construction supplies nothing
+	 * yet; largestLinkSize counts it, which keeps the planner from stacking
+	 * bigger copies while one is building.
+	 */
+	protected static boolean outputCovered(int link) {
+		String id = CHAIN_OUTPUTS[link];
+		int supply = 0;
+		int demand = 0;
+		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			CommodityOnMarketAPI com = market.getCommodityData(id);
+			if (com == null) continue;
+			supply = Math.max(supply, com.getMaxSupply());
+			demand = Math.max(demand, com.getMaxDemand());
+		}
+		return supply >= demand;
+	}
+
+	/**
+	 * Spare copies go to the system holding the fewest, so a single siege can't
+	 * take the hive's whole supply of anything. A colony may host one if its
+	 * system is among the leanest - or if no leaner system has a world that
+	 * could ever take it (every one full and size-capped), so a stunted seed
+	 * system can't hold the rest of the hive's redundancy hostage.
+	 */
+	protected static boolean spreadAllows(MarketAPI market, int link) {
+		List<String> systems = liveColonySystemIds();
+		String here = null;
+		int min = Integer.MAX_VALUE;
+		for (String systemId : systems) {
+			min = Math.min(min, countLinkIn(systemId, link));
+			if (here != null) continue;
+			for (MarketAPI curr : ThreatIncData.getLiveColonyMarkets(systemId)) {
+				if (curr.getId().equals(market.getId())) here = systemId;
+			}
+		}
+		if (here == null || countLinkIn(here, link) <= min) return true;
+		for (String systemId : systems) {
+			if (countLinkIn(systemId, link) > min) continue;
+			for (MarketAPI other : ThreatIncData.getLiveColonyMarkets(systemId)) {
+				if (hasLink(other, link)) continue;
+				if (Misc.getNumIndustries(other) < Misc.getMaxIndustries(other)
+						|| other.getSize() < ThreatIncConfig.colonyMaxSize()) return false;
+			}
+		}
+		return true;
+	}
+
+	/** Copies of each chain link the hive wants: one per system it holds, capped by config. */
+	protected static int redundancyTarget() {
+		return Math.max(1, Math.min(ThreatIncConfig.chainRedundancy(), liveColonySystemIds().size()));
+	}
+
+	protected static List<String> liveColonySystemIds() {
+		List<String> result = new ArrayList<String>();
+		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
+			if (!ThreatIncData.getLiveColonyMarkets(systemId).isEmpty()) result.add(systemId);
+		}
+		return result;
+	}
+
+	/**
+	 * A hive world's port is a Spaceport, never a Megaport. The hive used to
+	 * upgrade to Megaports for the accessibility, on the theory that
+	 * accessibility was its supply line; it is not (same-faction shipping is
+	 * 5+ units at 0% and no hive producer makes more than 8 - see
+	 * docs/hive-economy.md), so the Megaport bought nothing and cost the one
+	 * thing that showed: it demands fuel at colony size, where a Spaceport
+	 * demands size-2, which is exactly what a fuel plant of the same size
+	 * makes. On Megaports every hive world read a permanent fuel shortage by
+	 * construction. Retired Sept 2026; this also migrates saves that already
+	 * built them. Idempotent.
+	 *
+	 * @return true if it swapped a Megaport out this call
+	 */
+	public static boolean ensureSpaceport(MarketAPI market) {
+		if (market == null) return false;
+		if (!market.hasIndustry(Industries.MEGAPORT)) return false;
+		market.removeIndustry(Industries.MEGAPORT, null, true);
+		if (!market.hasIndustry(Industries.SPACEPORT)) market.addIndustry(Industries.SPACEPORT);
+		markEconomyDirty();
+		ThreatIncConfig.log("Hive planner: Megaport retired for a Spaceport at " + market.getName());
+		return true;
+	}
+
+	/** Tick sweep: every live colony back on a Spaceport (older saves built Megaports). */
+	public static void maintainPorts() {
+		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			ensureSpaceport(market);
+		}
+	}
+
+	// ------------------------------------------------------------------
+	// home relics: the first hive carries what it woke up with
+	// ------------------------------------------------------------------
+
+	/** A deposit this rich (vanilla "rich"/"plentiful", +2) feeds a same-size consumer at size+2. */
+	public static final int IDEAL_DEPOSIT_MOD = 2;
+
+	/**
+	 * The home system's industries carry Domain-era items, the way the swarm
+	 * that woke in the Abyss would have salvaged them. Vanilla's chain only
+	 * balances at the top on rich deposits and nanoforges - a size-8 forge
+	 * makes 6 hulls against a Nexus wanting 8, Refining wants ore at size+2 -
+	 * so the seed system, which every later colony draws on, gets the items
+	 * vanilla uses to close those gaps, and only where its own rocks fall
+	 * short: a Corrupted Nanoforge on the forge always, a Mantle Bore or
+	 * Plasma Dynamo on a mine whose deposit is below rich, a Catalytic Core on
+	 * a refinery short of ore, a Synchrotron on a fuel plant short of
+	 * volatiles. Each item goes in only where vanilla's own requirements for it
+	 * are met (ItemEffectsRepo), so nothing sits installed and inert. Later
+	 * colonies get nothing: the home hive is the hub worth taking, and the
+	 * items are the loot for taking it. Idempotent tick sweep; also equips
+	 * older saves.
+	 */
+	public static void maintainHomeRelics() {
+		if (!ThreatIncConfig.homeRelics()) return;
+		String ogId = ThreatIncData.getOGSystem();
+		if (ogId != null) {
+			for (MarketAPI market : ThreatIncData.getLiveColonyMarkets(ogId)) {
+				for (Industry ind : market.getIndustries()) {
+					if (ind.getSpecialItem() != null || ind.isBuilding()) continue;
+					String item = relicFor(market, ind);
+					if (item == null) continue;
+					installRelic(market, ind, item);
+				}
+			}
+		}
+		maintainNanoforges(ogId);
+	}
+
+	/**
+	 * Nanoforges: one Pristine on the home system's largest forge - the hive's
+	 * hull ceiling, 6 + 3 = 9 against a Nexus wanting 8 at size 8, so a fed
+	 * home forge fills every garrison in the hive - and, on every other forge,
+	 * a one-in-five find of a Corrupted one (threatinc_forgeNanoforgeChance).
+	 * The find is a fixed roll per world (its id hashed), so the answer never
+	 * changes from tick to tick and a rebuilt forge gets the same luck.
+	 */
+	protected static void maintainNanoforges(String ogId) {
+		if (ogId != null) {
+			boolean havePristine = false;
+			Industry best = null;
+			int bestSize = 0;
+			for (MarketAPI market : ThreatIncData.getLiveColonyMarkets(ogId)) {
+				Industry forge = getForge(market);
+				if (forge == null || forge.isBuilding()) continue;
+				if (forge.getSpecialItem() != null) {
+					if (Items.PRISTINE_NANOFORGE.equals(forge.getSpecialItem().getId())) havePristine = true;
+					continue;
+				}
+				if (best == null || market.getSize() > bestSize) {
+					best = forge;
+					bestSize = market.getSize();
+				}
+			}
+			if (!havePristine && best != null) installRelic(best.getMarket(), best, Items.PRISTINE_NANOFORGE);
+		}
+		float chance = ThreatIncConfig.forgeNanoforgeChance();
+		if (chance <= 0f) return;
+		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			Industry forge = getForge(market);
+			if (forge == null || forge.isBuilding() || forge.getSpecialItem() != null) continue;
+			float roll = (Math.abs(market.getId().hashCode()) % 1000) / 1000f;
+			if (roll >= chance) continue;
+			installRelic(market, forge, Items.CORRUPTED_NANOFORGE);
+		}
+	}
+
+	/** Installs the item if vanilla's requirements for it hold here; logs it. */
+	protected static boolean installRelic(MarketAPI market, Industry ind, String item) {
+		if (!relicFits(item, ind)) return false;
+		ind.setSpecialItem(new SpecialItemData(item, null));
+		markEconomyDirty();
+		ThreatIncConfig.log("Relic: " + item + " installed in " + ind.getCurrentName()
+				+ " at " + market.getName());
+		return true;
+	}
+
+	/** The deposit-covering item that closes this industry's gap here, or null when nothing is short. */
+	protected static String relicFor(MarketAPI market, Industry ind) {
+		String id = ind.getId();
+		if (Industries.MINING.equals(id)) {
+			boolean gasGiant = market.getPlanetEntity() != null && market.getPlanetEntity().isGasGiant();
+			if (gasGiant) {
+				return depositMod(market, Commodities.VOLATILES) < IDEAL_DEPOSIT_MOD ? Items.PLASMA_DYNAMO : null;
+			}
+			boolean ore = hasDeposit(market, Commodities.ORE) && depositMod(market, Commodities.ORE) < IDEAL_DEPOSIT_MOD;
+			boolean rare = hasDeposit(market, Commodities.RARE_ORE)
+					&& depositMod(market, Commodities.RARE_ORE) < IDEAL_DEPOSIT_MOD;
+			return ore || rare ? Items.MANTLE_BORE : null;
+		}
+		if (Industries.REFINING.equals(id)) {
+			return inputShort(market, ind, Commodities.ORE) ? Items.CATALYTIC_CORE : null;
+		}
+		if (Industries.FUELPROD.equals(id)) {
+			return inputShort(market, ind, Commodities.VOLATILES) ? Items.SYNCHROTRON : null;
+		}
+		return null;
+	}
+
+	/** Whether vanilla would let this item work in this industry (planet type, atmosphere...). */
+	protected static boolean relicFits(String itemId, Industry ind) {
+		try {
+			InstallableItemEffect effect = ItemEffectsRepo.ITEM_EFFECTS.get(itemId);
+			if (effect == null) return false;
+			List<String> unmet = effect.getUnmetRequirements(ind);
+			return unmet == null || unmet.isEmpty();
+		} catch (Throwable t) {
+			return false;
+		}
+	}
+
+	/** The industry wants more of the input than this world can get. */
+	protected static boolean inputShort(MarketAPI market, Industry ind, String commodityId) {
+		MutableCommodityQuantity q = ind.getDemand(commodityId);
+		if (q == null || q.getQuantity().getModifiedInt() <= 0) return false;
+		CommodityOnMarketAPI com = market.getCommodityData(commodityId);
+		return com == null || com.getAvailable() < q.getQuantity().getModifiedInt();
+	}
+
+	protected static boolean hasDeposit(MarketAPI market, String commodityId) {
+		for (MarketConditionAPI cond : market.getConditions()) {
+			if (commodityId.equals(ResourceDepositsCondition.COMMODITY.get(cond.getId()))) return true;
+		}
+		return false;
+	}
+
+	/** The world's deposit modifier for a commodity (-1 sparse .. +3 ultrarich), 0 without one. */
+	protected static int depositMod(MarketAPI market, String commodityId) {
+		for (MarketConditionAPI cond : market.getConditions()) {
+			if (!commodityId.equals(ResourceDepositsCondition.COMMODITY.get(cond.getId()))) continue;
+			Integer mod = ResourceDepositsCondition.MODIFIER.get(cond.getId());
+			return mod != null ? mod : 0;
+		}
+		return 0;
+	}
+
+	/**
+	 * Vanilla recomputes market availability - what each world can draw from
+	 * the others - on its own monthly economy step, while an industry's local
+	 * supply updates the moment it is (re)applied. So after the tick builds an
+	 * industry, swaps a port or installs a relic, the producing world reads the
+	 * new figure at once and every importer lags up to a month behind: a
+	 * Pristine Nanoforge showing 9 hulls at home and 6 everywhere else. Set by
+	 * every structural change the tick makes; flushEconomy then runs vanilla's
+	 * own full recompute (tripleStep, what sector generation uses) once, so
+	 * the board and the planner see one consistent economy.
+	 */
+	protected static boolean economyDirty = false;
+
+	public static void markEconomyDirty() {
+		economyDirty = true;
+	}
+
+	/** End of tick: one full economy recompute if anything structural changed. */
+	public static void flushEconomy() {
+		if (!economyDirty) return;
+		economyDirty = false;
+		try {
+			Global.getSector().getEconomy().tripleStep();
+			ThreatIncConfig.log("Economy recomputed after hive structural changes");
+		} catch (Throwable t) {
+			ThreatIncConfig.log("Economy recompute failed: " + t);
+		}
+	}
+
+	/**
+	 * Tick sweep for the planner's hive-wide rules. planHiveEconomy runs at
+	 * founding and on each growth step, which is where a colony's OWN needs
+	 * are decided; but redundancy and bigger-copy targets move as the rest of
+	 * the hive changes (a system lost, a consumer grown), and a size-capped
+	 * colony never grows again, so on its own it would never fill a free slot
+	 * however far the hive fell below target. Re-plans only capped colonies
+	 * with a free industry slot - growing ones still build on their growth
+	 * steps - one industry per colony per tick, which is about the pace of a
+	 * vanilla construction anyway.
+	 */
+	public static void maintainHiveEconomy() {
+		int cap = ThreatIncConfig.colonyMaxSize();
+		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (market.getSize() < cap) continue;
+			if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) continue;
+			planHiveEconomy(market);
 		}
 	}
 
@@ -592,55 +902,124 @@ public class ThreatColonyManager {
 	// ------------------------------------------------------------------
 
 	public static final String ACCESS_MOD_ID = "threatinc_coredist";
+	public static final String PORT_DOWN_MOD_ID = "threatinc_portdown";
 
 	/**
-	 * Vanilla docks a market's accessibility by its distance from the economy's
-	 * centre of mass - a size-weighted centroid that the many large Core worlds
-	 * pull to the Core. That penalty models dependence on the Core trade hub:
-	 * the further out you are, the harder imports are to come by.
+	 * The accessibility that gives exactly the configured same-faction
+	 * shipping capacity while a port is disrupted. Misc.getShippingCapacity is
+	 * (accessibility + SAME_FACTION_BONUS) / PER_UNIT_SHIPPING units, truncated
+	 * (vanilla: +0.5, 0.1 per unit), so this aims at the middle of the unit's
+	 * band - 3 units is -15% - to stay clear of float edges. 0 units is -50%,
+	 * nothing docks at all. Read from vanilla's constants so a settings change
+	 * tracks.
+	 */
+	public static float portDownAccessibility() {
+		int units = Math.max(0, ThreatIncConfig.disruptedPortShipping());
+		return (units + 0.5f) * Misc.PER_UNIT_SHIPPING - Misc.SAME_FACTION_BONUS;
+	}
+
+	/**
+	 * The two accessibility modifiers the hive applies, re-asserted every poll
+	 * so they track the economy and survive save load: the Core-distance
+	 * refund and the disrupted-port cut. Everything else about hive trade is
+	 * vanilla's - see docs/hive-economy.md.
 	 *
-	 * The hive has no such dependence. It is a closed econ group, hostile to
-	 * everyone, pulled from the trade-fleet network - every commodity it
-	 * receives comes from its own colonies, never from the Core. Charging it a
+	 * Core distance: vanilla docks a market's accessibility by its distance
+	 * from the economy's centre of mass - a size-weighted centroid that the
+	 * many large Core worlds pull to the Core. That penalty models dependence
+	 * on the Core trade hub. The hive has no such dependence: it is a closed
+	 * econ group, hostile to everyone, pulled from the trade-fleet network -
+	 * every commodity it receives comes from its own colonies. Charging it a
 	 * Core-distance penalty models a supply line that does not exist, and it
-	 * cripples exactly the fringe colonies the swarm is built to seed. So we
-	 * cancel that one component, restoring it as a flat accessibility bonus.
-	 *
-	 * Only the Core-distance term is cancelled. The same-faction proximity /
-	 * isolation term stays untouched (it is folded into the same base value but
-	 * computed the opposite way), so the hive's OWN internal geometry still
-	 * matters: colonies clustered near their siblings stay well-supplied, a lone
-	 * seed flung far from the rest of the swarm still starves. What changes is
-	 * only that the yardstick is the hive's network, not the human Core's.
+	 * cripples exactly the fringe colonies the swarm is built to seed. So that
+	 * one component is cancelled, restored as a flat bonus. Note that this
+	 * leaves nothing that falls with distance: vanilla's same-faction proximity
+	 * term is only ever a bonus, so a hive colony's imports and reach do not
+	 * depend on how far it sits from its siblings.
 	 */
 	public static void applyHiveAccessibility() {
-		float fraction = ThreatIncConfig.coreDistanceOffset();
 		List<MarketAPI> colonies = ThreatIncData.getAllLiveColonyMarkets();
 		if (colonies.isEmpty()) return;
 
-		if (fraction <= 0f) {
-			// feature off: make sure no stale bonus lingers from a prior setting
-			for (MarketAPI market : colonies) {
-				market.getAccessibilityMod().unmodifyFlat(ACCESS_MOD_ID);
-			}
-			return;
-		}
-
-		Vector2f com = economyCenterOfMass();
-		if (com == null) return;
+		float fraction = ThreatIncConfig.coreDistanceOffset();
+		Vector2f com = fraction > 0f ? economyCenterOfMass() : null;
 		// vanilla: accessibility loses 1.0 per this many LY from the COM
-		float lyPerUnit = Global.getSettings().getFloat("accessibilityDistFromCOM");
-		if (lyPerUnit <= 0f) return;
+		float lyPerUnit = com != null
+				? Global.getSettings().getFloat("accessibilityDistFromCOM") : 0f;
 
 		for (MarketAPI market : colonies) {
-			float dist = Misc.getDistanceLY(market.getLocationInHyperspace(), com);
-			float penalty = dist / lyPerUnit;
-			// clamp so a COM estimate that drifts from vanilla's can never turn
-			// this into a runaway accessibility fountain
-			float offset = Math.max(0f, Math.min(2f, penalty * fraction));
-			market.getAccessibilityMod().modifyFlat(ACCESS_MOD_ID, offset,
-					"Hive network (Core distance not applicable)");
+			if (com == null || lyPerUnit <= 0f) {
+				// feature off: make sure no stale bonus lingers from a prior setting
+				market.getAccessibilityMod().unmodifyFlat(ACCESS_MOD_ID);
+			} else {
+				float dist = Misc.getDistanceLY(market.getLocationInHyperspace(), com);
+				float penalty = dist / lyPerUnit;
+				// clamp so a COM estimate that drifts from vanilla's can never turn
+				// this into a runaway accessibility fountain
+				float offset = Math.max(0f, Math.min(2f, penalty * fraction));
+				market.getAccessibilityMod().modifyFlat(ACCESS_MOD_ID, offset,
+						"Hive network (Core distance not applicable)");
+			}
+			applyPortDisruption(market);
 		}
+	}
+
+	/**
+	 * A disrupted port is a skeleton port. Vanilla deliberately keeps a
+	 * disrupted Spaceport flagged as present (Spaceport.apply re-asserts
+	 * hasSpaceport even while non-functional), so a Core world only loses the
+	 * port's own bonus and its shipping barely moves - and for the hive,
+	 * whose producers never make more than 6 units, that meant a disrupted
+	 * Megaport changed nothing (same-faction shipping is 5+ units down to 0%
+	 * accessibility). So while a hive world's port is disrupted its
+	 * accessibility is held at portDownAccessibility(): shipping capped at
+	 * threatinc_disruptedPortShipping units both ways (default 3). A mature
+	 * world's factories run on a trickle - a size-8 forge fed 3 of 8 metals -
+	 * growth stalls, and what the world makes reaches its siblings only as
+	 * that trickle (the hive falls back to its next-best source of it).
+	 *
+	 * Deliberately NOT zero. Vitality is fabrication x supply, and the siege
+	 * raids the Nexus, then the Core, then the port; with the Core down a
+	 * colony's machinery is imported, so a zero-shipping port on top drove
+	 * supply to 0 and the decline rate to its maximum - a port cut worse than
+	 * the Core cut, which is backwards. The port is logistics: it slows a
+	 * colony, the Core kills it.
+	 *
+	 * Computed against the stat's current value rather than a fixed penalty:
+	 * the Core-distance refund and vanilla's proximity bonus can hold a well
+	 * placed colony above 0% even after vanilla's own -100% no-spaceport
+	 * figure. Re-applied every poll (the stat changes as vanilla's own
+	 * modifiers move) and lifted the moment the port is back.
+	 */
+	protected static void applyPortDisruption(MarketAPI market) {
+		boolean had = market.getAccessibilityMod().getFlatBonuses().containsKey(PORT_DOWN_MOD_ID);
+		market.getAccessibilityMod().unmodifyFlat(PORT_DOWN_MOD_ID);
+		Industry port = getPort(market);
+		boolean down = ThreatIncConfig.disruptedPortShipping() >= 0
+				&& port != null && port.isDisrupted();
+		if (!down) {
+			if (had) ThreatIncConfig.log("Port back up at " + market.getName() + ": shipping restored");
+			return;
+		}
+		float target = portDownAccessibility();
+		float current = market.getAccessibilityMod().computeEffective(0f);
+		if (current > target) {
+			market.getAccessibilityMod().modifyFlat(PORT_DOWN_MOD_ID, target - current,
+					"Port disrupted - skeleton docking only");
+		}
+		if (!had) {
+			ThreatIncConfig.log("Port disrupted at " + market.getName() + ": accessibility "
+					+ Math.round(current * 100f) + "% -> " + Math.round(target * 100f)
+					+ "%, shipping " + Misc.getShippingCapacity(market, true) + " units");
+		}
+	}
+
+	/** The colony's port: its Spaceport, or a Megaport an older save has not yet swapped out. */
+	public static Industry getPort(MarketAPI market) {
+		if (market == null) return null;
+		Industry port = market.getIndustry(Industries.MEGAPORT);
+		if (port == null) port = market.getIndustry(Industries.SPACEPORT);
+		return port;
 	}
 
 	/**
@@ -843,23 +1222,38 @@ public class ThreatColonyManager {
 			Commodities.ORE, Commodities.METALS, Commodities.HEAVY_MACHINERY,
 			Commodities.VOLATILES };
 
-	// rare-earth branch (rare ore -> rare metals). Real, permanent inputs for
-	// any incursion whose OG economy was built around rare ore (i.e. normal
-	// starts). They keep gating growth even after the last rare mine is gone -
-	// so wiping out rare ore mining genuinely strangles expansion until the hive
-	// re-establishes it. Rare metals only bite above forge size 3, so the OG
-	// still bootstraps with no deadlock. Only a degenerate rare-free start skips
-	// this (see ThreatIncData.usesRareEconomy).
+	// rare-earth branch (rare ore -> rare metals). Ordinary growth inputs, same
+	// rules as the core four, for any incursion whose OG economy was built
+	// around rare ore (i.e. normal starts); they keep counting after the last
+	// rare mine is gone, so wiping out rare mining genuinely strangles
+	// expansion until the hive re-establishes it. Only a degenerate rare-free
+	// start skips them (see ThreatIncData.usesRareEconomy). They used to be
+	// special-cased - excluded from the supply average, biting only on total
+	// cutoff - on the theory that rare deposits are structurally short and
+	// would drag vitality forever. Dropped Sept 2026: a shortage is a shortage.
+	// A hive seeded on a poor rare deposit is a little short for good, and the
+	// board should say so rather than read 100% beside a red icon.
 	protected static final String[] RARE_INPUTS = {
 			Commodities.RARE_ORE, Commodities.RARE_METALS };
+
+	/** The inputs that gate growth and set the supply half of vitality. */
+	public static String[] growthInputs() {
+		if (!ThreatIncData.usesRareEconomy()) return CORE_INPUTS;
+		String[] all = new String[CORE_INPUTS.length + RARE_INPUTS.length];
+		System.arraycopy(CORE_INPUTS, 0, all, 0, CORE_INPUTS.length);
+		System.arraycopy(RARE_INPUTS, 0, all, CORE_INPUTS.length, RARE_INPUTS.length);
+		return all;
+	}
 
 	/**
 	 * A colony is starved when its own industries can't get their inputs - a
 	 * refinery with no ore, a forge with no metals, a mine with no machinery.
-	 * That happens when the hive's supply lines are cut or a link colony is
-	 * destroyed (or a colony is isolated by distance, via low accessibility),
+	 * That happens when the hive's supply lines are cut - a link colony
+	 * destroyed, or this colony's own port disrupted (applyPortDisruption) -
 	 * exactly the intended siege pressure. A frontier colony whose factories are
-	 * fed is healthy even if its population goods run short.
+	 * fed is healthy even if its population goods run short. Distance from the
+	 * rest of the hive is not a factor: accessibility never falls with it (see
+	 * docs/hive-economy.md).
 	 *
 	 * All input availability is the vanilla economy's own figure, aggregated
 	 * across the shared hive econ group and mediated by accessibility - we never
@@ -886,31 +1280,21 @@ public class ThreatColonyManager {
 	 * still scaling up, which resolves itself) or genuine siege pressure: the
 	 * player cut the hive's mining, refining, or the supply lines carrying
 	 * their output, and the starved colonies freeze until the hive re-establishes
-	 * the flow. Isolation stalls growth through this same check - a colony far
-	 * from the network, or whose link colonies were destroyed, loses in-group
-	 * imports to collapsed accessibility and starves.
+	 * the flow. A colony whose port is disrupted stalls through this same check:
+	 * its shipping capacity is zero, so it imports nothing and lives on what it
+	 * makes itself. (Isolation by distance does not: vanilla's same-faction
+	 * proximity term is only ever a bonus, and the Core-distance penalty is
+	 * refunded by applyHiveAccessibility.)
 	 */
 	public static boolean isEconomicallyHealthy(MarketAPI market) {
 		if (!ThreatIncConfig.economyGatesGrowth()) return true;
 		if (market == null) return false;
-		if (chokedInput(market, CORE_INPUTS) != null) return false;
-		// the rare branch is gated differently: rare deposits are structurally
-		// scarce (one rare world supplies every refinery, each demanding full
-		// size), so the half-fed bar would freeze refinery worlds forever even
-		// in peacetime - and rare_metals output, slashed by that same rare_ore
-		// deficit, would read as a permanent zero at the forge worlds. Scarcity
-		// is vanilla-normal here and already bites through crushed ship
-		// output/quality (shipSupplyMult). Growth freezes only on TOTAL rare_ore
-		// cutoff - the player wiping out rare mining entirely - which stops
-		// every refinery world dead and, as forges outgrow the frozen
-		// refineries, cascades into a metals choke for the rest.
-		if (ThreatIncData.usesRareEconomy()) {
-			CommodityOnMarketAPI rare = market.getCommodityData(Commodities.RARE_ORE);
-			if (rare != null && rare.getMaxDemand() > 0 && rare.getAvailable() <= 0) {
-				return false;
-			}
-		}
-		return true;
+		// rare ore and rare metals included (growthInputs): a hive whose rare
+		// mine is far smaller than its refineries and forges stalls those worlds
+		// until the mine grows - it can, its own growth never depends on rare
+		// metals unless it also hosts a forge, and at equal sizes on a moderate
+		// deposit the rare branch balances. No deadlock, just honest pacing.
+		return chokedInput(market, growthInputs()) == null;
 	}
 
 	/** The first input in the list below the half-fed bar, or null if none. */
@@ -943,8 +1327,7 @@ public class ThreatColonyManager {
 		}
 		sb.append("}");
 		List<String> inputs = new ArrayList<String>();
-		for (String commodityId : CORE_INPUTS) inputs.add(commodityId);
-		for (String commodityId : RARE_INPUTS) inputs.add(commodityId);
+		for (String commodityId : growthInputs()) inputs.add(commodityId);
 		inputs.add(Commodities.SHIPS);
 		for (String commodityId : inputs) {
 			CommodityOnMarketAPI com = market.getCommodityData(commodityId);
@@ -981,19 +1364,67 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * How far this colony's strike expeditions reach, in light-years: its
-	 * actual fuel availability times LY-per-fuel. Availability is the vanilla
-	 * economy's group-wide figure - local fuel production PLUS fuel shipped in
-	 * from sibling colonies, mediated by accessibility - NOT local production
-	 * alone. So a well-connected colony projects the whole hive's fuel reach,
-	 * an isolated one is grounded, and cutting fuel production (or the network
-	 * carrying it) visibly shrinks the swarm's reach everywhere at once.
+	 * How far expeditions from this colony reach, in light-years - one rule
+	 * for hive worlds, faction military worlds and the player's colonies:
+	 *
+	 *   reach = strikeLYPerFuel x min(fuel available, fuel the fleets can carry)
+	 *
+	 * Fuel available is the vanilla economy's figure: the output of the single
+	 * best fuel source this colony can reach, capped by its shipping capacity -
+	 * not a sum, not local production alone (docs/hive-economy.md). Fuel the
+	 * fleets can carry is {@link #expeditionFuelCapacity}: a fixed load per
+	 * 100 percent of fleet size, scaled by vanilla's own fleet-size figure for
+	 * faction and player worlds and by vitality x size / 4 for hive worlds.
+	 * All the fuel in the sector is no use to a colony that only fields small
+	 * fleets, so a young or besieged hive world reaches a fraction of what a
+	 * size-8 world does on the same fuel. Cutting fuel still grounds everyone;
+	 * cutting hulls, organs or inputs now also shortens the leash.
 	 */
 	public static float fuelRangeLY(MarketAPI market) {
 		if (market == null) return 0f;
 		CommodityOnMarketAPI fuel = market.getCommodityData(Commodities.FUEL);
 		if (fuel == null) return 0f;
-		return fuel.getAvailable() * ThreatIncConfig.strikeLYPerFuel();
+		float carried = Math.min(fuel.getAvailable(), expeditionFuelCapacity(market));
+		return Math.max(0f, carried) * ThreatIncConfig.strikeLYPerFuel();
+	}
+
+	/**
+	 * Vanilla's fleet-size multiplier for a market (Stats.COMBAT_FLEET_SIZE_MULT,
+	 * read the way FleetFactoryV3 reads it): colony size x faction doctrine x
+	 * hull-shortage mult x stability, plus any alpha-core bonus. The "Fleets"
+	 * percentage on the colony screen.
+	 */
+	public static float fleetSizeMult(MarketAPI market) {
+		if (market == null) return 0f;
+		return Math.max(0f, market.getStats().getDynamic()
+				.getMod(Stats.COMBAT_FLEET_SIZE_MULT).computeEffective(0f));
+	}
+
+	/**
+	 * Units of fuel the colony's expeditions can carry: reachFuelCarry (what a
+	 * fleet at 100 percent size lifts) times the colony's fleet-size figure.
+	 * For faction and player worlds that figure is vanilla's own, untouched
+	 * ({@link #fleetSizeMult}: colony size, doctrine, hull shortage, stability,
+	 * alpha core, skills - the "Fleets" percentage on the colony screen). For
+	 * a hive world it is vitality x size / 4: a healthy size-4 hive lifts a
+	 * full load, size 8 twice that, a size-2 foothold half, and a colony under
+	 * siege - organs down, inputs cut - loses reach with its health. A faction
+	 * world with no military structure carries nothing; it sends no
+	 * expeditions anyway.
+	 */
+	public static float expeditionFuelCapacity(MarketAPI market) {
+		if (market == null) return 0f;
+		float mult;
+		if (ThreatIncData.resolveColonyMarket(market.getId()) != null) {
+			mult = computeHealth(market) * market.getSize() / 4f;
+		} else if (market.hasIndustry(Industries.HIGHCOMMAND)
+				|| market.hasIndustry(Industries.MILITARYBASE)
+				|| market.hasIndustry(Industries.PATROLHQ)) {
+			mult = fleetSizeMult(market);
+		} else {
+			return 0f;
+		}
+		return ThreatIncConfig.reachFuelCarry() * mult;
 	}
 
 	/**
@@ -1358,7 +1789,7 @@ public class ThreatColonyManager {
 		// No transit intel and no auto-discovery. The player is not meant to be
 		// able to watch the swarm spread, nor to learn a system exists merely
 		// because a wave is bound for it. A system becomes "known" only by being
-		// visited in person, named in a bounty, or launching a strike.
+		// visited in person, named in a contract, or launching a strike.
 
 		ThreatIncConfig.log("Colonization wave launched at " + targetPlanet.getName()
 				+ ", " + targetSystem.getName()
@@ -1614,6 +2045,49 @@ public class ThreatColonyManager {
 		return ThreatIncConfig.declineSizeRef() / Math.max(1, size);
 	}
 
+	/**
+	 * How much of a defensive organ's bonus still fires while it is disrupted.
+	 * Machines do not rout, so a fresh disruption leaves disruptedDefenseFraction
+	 * of the bonus working - but the guns wear: the surviving fraction falls
+	 * linearly with the disruption days on the structure's clock, reaching
+	 * zero at defenseWearDays. Disruption stacks (tactical passes take the
+	 * larger duration, every successful raid adds its own), so a structure
+	 * carrying 300 days has been hit again and again, and by then it is scrap.
+	 * At the defaults (0.5, 300): one tactical pass (60 d) leaves 40 percent
+	 * of the bonus, two stacked raids on top (~150 d) 25 percent, 300+ d none.
+	 * The size-anchored base (hiveDefensePerSize x size) is untouched - the
+	 * strata below the crust do not stop existing - so bombardment never gets
+	 * free, only cheaper as the war-strata are ground down. Shared by
+	 * ThreatGroundDefenses (batteries too) and SwarmNexus.
+	 */
+	public static float disruptedDefenseResilience(Industry ind) {
+		if (ind == null || !ind.isDisrupted()) return 1f;
+		float fraction = ThreatIncConfig.disruptedDefenseFraction();
+		float wear = ThreatIncConfig.defenseWearDays();
+		if (wear <= 0f) return fraction;
+		float worn = Math.max(0f, 1f - ind.getDisruptedDays() / wear);
+		return fraction * worn;
+	}
+
+	/**
+	 * Keeps the worn defense figure current. Vanilla only reapplies a disrupted
+	 * industry when its disruption ends (BaseIndustry.advance ->
+	 * disruptionFinished) or on the monthly economy step, so without this the
+	 * wear in disruptedDefenseResilience would step once a month and a siege's
+	 * raid odds and bombardment bill would lag the clock they are supposed to
+	 * follow. Reapplying a market with a disrupted organ at the fast poll
+	 * cadence is cheap - a handful of worlds, only while under siege.
+	 */
+	public static void refreshWornDefenses() {
+		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			boolean anyDown = false;
+			for (Industry ind : market.getIndustries()) {
+				if (ind.isDisrupted()) { anyDown = true; break; }
+			}
+			if (anyDown) market.reapplyIndustries();
+		}
+	}
+
 	/** An organ counts as down when missing, disrupted, or non-functional. */
 	protected static boolean organDown(Industry ind) {
 		return ind == null || ind.isDisrupted() || !ind.isFunctional();
@@ -1631,8 +2105,7 @@ public class ThreatColonyManager {
 		if (core != null && core.isDisrupted()) return true;
 		Industry nexus = market.getIndustry(SWARM_NEXUS);
 		if (nexus != null && nexus.isDisrupted()) return true;
-		Industry port = market.getIndustry(Industries.MEGAPORT);
-		if (port == null) port = market.getIndustry(Industries.SPACEPORT);
+		Industry port = getPort(market);
 		if (port != null && port.isDisrupted()) return true;
 		return false;
 	}
@@ -1644,28 +2117,44 @@ public class ThreatColonyManager {
 	 * isn't producing AT ALL. The Fabrication Core dominates (down = decline,
 	 * full stop); the nexus degrades the figure further. The PORT is
 	 * deliberately absent: it is logistics, not fabrication - its disruption
-	 * bites through the supply score (collapsed accessibility cuts imports,
-	 * here and at every sibling colony this world feeds), so counting it here
-	 * would double-charge it and wrongly punish self-sufficient colonies.
+	 * bites through the supply score (applyPortDisruption zeroes the world's
+	 * shipping capacity: no imports here, and its exports reach no sibling),
+	 * so counting it here would double-charge it and wrongly punish colonies
+	 * that make their own inputs.
 	 */
 	public static float computeFabricationMult(MarketAPI market) {
 		if (market == null) return 0f;
 		float mult = 1f;
-		if (organDown(market.getIndustry(FABRICATION_CORE))) {
-			mult *= ThreatIncConfig.coreDownFactor();
-		}
-		if (organDown(market.getIndustry(SWARM_NEXUS))) {
-			mult *= ThreatIncConfig.nexusDownFactor();
-		}
+		Industry core = market.getIndustry(FABRICATION_CORE);
+		if (organDown(core)) mult *= wornDownFactor(core, ThreatIncConfig.coreDownFactor());
+		Industry nexus = market.getIndustry(SWARM_NEXUS);
+		if (organDown(nexus)) mult *= wornDownFactor(nexus, ThreatIncConfig.nexusDownFactor());
 		return mult;
 	}
 
 	/**
+	 * A downed organ's fabrication factor, worn further by the disruption
+	 * days on its clock - the same linear wear the defensive bonuses take
+	 * (defenseWearDays). A Core freshly knocked out runs at coreDownFactor;
+	 * one carrying 150 days, hit again and again, at half that; at 300 days
+	 * nothing fabricates at all. A missing organ, or one under construction,
+	 * sits at the base factor.
+	 */
+	protected static float wornDownFactor(Industry ind, float base) {
+		if (ind == null || !ind.isDisrupted()) return base;
+		float wear = ThreatIncConfig.defenseWearDays();
+		if (wear <= 0f) return base;
+		return base * Math.max(0f, 1f - ind.getDisruptedDays() / wear);
+	}
+
+	/**
 	 * The REDUCED-CAPACITY half: input satisfaction. Availability is the
-	 * vanilla economy's group-wide, accessibility-mediated figure, so cutting
-	 * one colony's port or forge - or pirate activity strangling its shipping -
-	 * starves its siblings too. Working organs on thin supply run slower;
-	 * they don't stop.
+	 * vanilla economy's figure - the best single source this colony can reach,
+	 * capped by its shipping capacity - so killing or starving a producer, or
+	 * disrupting the port of the world that hosts it, starves every colony it
+	 * fed. (Piracy and other small accessibility maluses do not: same-faction
+	 * shipping stays at 5+ units down to 0% accessibility.) Working organs on
+	 * thin supply run slower; they don't stop.
 	 */
 	public static float computeSupplyMult(MarketAPI market) {
 		if (market == null) return 0f;
@@ -1673,7 +2162,11 @@ public class ThreatColonyManager {
 		if (ThreatIncConfig.economyGatesGrowth()) {
 			float total = 0f;
 			int counted = 0;
-			for (String commodityId : CORE_INPUTS) {
+			// every growth input this colony demands, rare branch included, each
+			// weighted equally by how much of its demand is met: a size-8 forge
+			// world fed 4 of 6 rare metals reads two-thirds on that input, not
+			// 100% beside a red icon
+			for (String commodityId : growthInputs()) {
 				CommodityOnMarketAPI com = market.getCommodityData(commodityId);
 				if (com == null) continue;
 				int demand = com.getMaxDemand();
@@ -1682,13 +2175,6 @@ public class ThreatColonyManager {
 				counted++;
 			}
 			if (counted > 0) inputScore = total / counted;
-			// total rare-ore cutoff keeps its hard bite (see isEconomicallyHealthy)
-			if (ThreatIncData.usesRareEconomy()) {
-				CommodityOnMarketAPI rare = market.getCommodityData(Commodities.RARE_ORE);
-				if (rare != null && rare.getMaxDemand() > 0 && rare.getAvailable() <= 0) {
-					inputScore *= 0.5f;
-				}
-			}
 		}
 		return inputScore;
 	}
@@ -2336,13 +2822,20 @@ public class ThreatColonyManager {
 		Global.getSector().getPersistentData().remove(ThreatIncData.KEY_RARE_ECONOMY);
 
 		// clear all incursion intel: the per-system markers, transit trackers,
-		// bounties, and the summary (which re-adds itself fresh on restart)
+		// defense-board contracts (received or still queued in the comm
+		// network), and the summary (which re-adds itself fresh on restart)
 		for (Class<?> intelClass : new Class<?>[] {
-				InfestedSystemIntel.class, SeedingSwarmIntel.class, ThreatBountyIntel.class }) {
+				InfestedSystemIntel.class, SeedingSwarmIntel.class, ThreatMissionIntel.class,
+				ThreatBountyIntel.class }) {
 			for (com.fs.starfarer.api.campaign.comm.IntelInfoPlugin curr
 					: new ArrayList<com.fs.starfarer.api.campaign.comm.IntelInfoPlugin>(
 							Global.getSector().getIntelManager().getIntel(intelClass))) {
 				Global.getSector().getIntelManager().removeIntel(curr);
+			}
+			for (com.fs.starfarer.api.campaign.comm.IntelInfoPlugin curr
+					: new ArrayList<com.fs.starfarer.api.campaign.comm.IntelInfoPlugin>(
+							Global.getSector().getIntelManager().getCommQueue(intelClass))) {
+				Global.getSector().getIntelManager().unqueueIntel(curr);
 			}
 		}
 		ThreatIncData.discoveredSystems().clear();
@@ -2545,7 +3038,7 @@ public class ThreatColonyManager {
 	 * Debug-only narration: colony growth, forge restructuring, wave outcomes,
 	 * and so on. In normal play the swarm is silent - the player learns of it
 	 * through discovery (visiting infested space), through travel/raid intel,
-	 * and through the sector's own bounties. Debug mode restores the running
+	 * and through the sector's own contracts. Debug mode restores the running
 	 * commentary for playtesting.
 	 */
 	public static void announce(String text, Color color) {

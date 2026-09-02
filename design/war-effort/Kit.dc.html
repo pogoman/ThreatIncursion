@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600&family=Titillium+Web:wght@400;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #05080c; font-family: 'Titillium Web', 'Segoe UI', system-ui, sans-serif; color: #c6cbd0; font-size: 13px; line-height: 1.35; }
+    a { color: #8ad3ff; } a:hover { color: #cbf5ff; }
+    .root { width: 1100px; min-height: 900px; box-sizing: border-box; padding: 18px 24px 24px 24px; background: #070b10; display: flex; flex-direction: column; gap: 12px; }
+    .heading { text-align: center; font-size: 13px; letter-spacing: .05em; color: #b9d2c9; background: #1f2b28; border: 1px solid #3a4c47; padding: 3px 8px; text-transform: uppercase; }
+    .hl { color: #f2ae3c; } .neg { color: #ff6a3d; } .pos { color: #9be04c; } .gray { color: #7f878d; } .player { color: #8ad3ff; } .bright { color: #cbf5ff; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #b9d2c9; border-bottom: 1px solid #3a4c47; padding: 4px 8px; background: rgba(31,43,40,.5); }
+    td { padding: 4px 8px; border-bottom: 1px solid rgba(58,76,71,.3); vertical-align: top; font-size: 12px; }
+    code { font-family: Consolas, 'Cascadia Mono', monospace; font-size: 11.5px; color: #cbf5ff; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .box { border: 1px solid #263533; background: rgba(10,16,22,.8); padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; font-size: 12px; }
+    .box b { color: #cbf5ff; font-weight: 600; }
+    ol, ul { margin: 0; padding-left: 18px; }
+    li { margin: 2px 0; }
+  </style>
+</helmet>
+
+<div class="root">
+  <div>
+    <div style="font-family:'Orbitron',sans-serif; font-size:18px; color:#8ad3ff; letter-spacing:.05em; text-transform:uppercase;">What the intel panel can actually draw</div>
+    <div class="gray" style="font-size:12px;">Learned from the round-one build running in-game. Round two is designed against this kit and nothing else.</div>
+  </div>
+
+  <div class="heading">The widget kit</div>
+  <table>
+    <tr><th style="width:190px;">Widget</th><th style="width:430px;">What it does well</th><th>Limits</th></tr>
+    <tr><td>Paragraph with highlights</td><td>Wrapping prose, per-word colors. Good for tooltips and one-line footers.</td><td>Every line costs ~18 px; ten sentences is a wall. Round two moves prose into tooltips.</td></tr>
+    <tr><td>Section heading bar</td><td>Faction-colored divider with centered text. Free structure.</td><td>-</td></tr>
+    <tr><td>Table (<code>beginTable2</code>)</td><td>Fixed-height rows, per-cell color and alignment, header tooltips, row tooltips, clickable rows. Proven in round one.</td><td><span class="neg">Text cells only</span>, single line, no wrap, no icons. Total column width must fit the panel; there is no horizontal scroll. Long strings truncate with "...".</td></tr>
+    <tr><td>Grid (<code>beginGrid</code>)</td><td>Label / value pairs in N columns. Cheap KPI strip.</td><td>Value is right-aligned inside its cell, so it visually attaches to the next label unless cells have breathing room.</td></tr>
+    <tr><td>Images (<code>addImage(s)</code>)</td><td>Any sprite: faction crests, industry icons, commodity icons. Rows of icons via <code>addImages</code>.</td><td>No tint, no overlay text, own line only.</td></tr>
+    <tr><td>Custom panel (<code>createCustom</code> + GL)</td><td><span class="pos">The escape hatch.</span> Filled bars, pips, tinted sprites, lines - at any position. Text can be placed inside it via <code>createUIElement</code> + <code>inTL(x, y)</code>. Hover and click via the plugin. Proven for bars in round one.</td><td>Hand-positioned; must be sized to the panel width at build time.</td></tr>
+    <tr><td>Buttons</td><td>Standard intel buttons, confirm dialogs. Proven inside sub-columns.</td><td>Full-width by default; keep to one row.</td></tr>
+    <tr><td>Tooltips</td><td>On any row, header, image or custom element. Can hold a sector map (<code>addSectorMap</code>) plus paragraphs.</td><td>Hover only - nothing critical may live only in a tooltip.</td></tr>
+    <tr><td>Two columns</td><td><code>beginSubTooltip</code> twice, placed side by side. Proven.</td><td>Column widths are fixed at build time.</td></tr>
+  </table>
+
+  <div class="heading">Rules round two follows</div>
+  <div class="two">
+    <div class="box">
+      <b>Budget</b>
+      <div>Design width <span class="hl">1,300 px</span> at 1080p; the narrow variant shows the fold at <span class="hl">1,100 px</span>. Every column has a fixed pixel width and a hard character cap; anything longer goes to the tooltip, never to "...".</div>
+      <div>Ledger rows are custom panels, 30 px tall: rank, name, one chip, size boxes, a bar, pips, three numbers, up to three crests. No sentence anywhere on a row.</div>
+      <div>Sector strip is one line of eight label/value pairs. Phase bar is inline in the header, 260 px.</div>
+    </div>
+    <div class="box">
+      <b>Icons over words</b>
+      <div><span class="hl">Inbound</span> = faction crests (who is coming) with a "+n" overflow; <span class="hl">outbound</span> = a red count; <span class="hl">organs</span> = the real industry icons, red when disrupted, day count beneath; <span class="hl">worlds</span> = size digits in boxes, not "4 (s4 4 4 3)".</div>
+      <div>Status words are a fixed vocabulary: <span class="pos">mustering - recall</span>, en route, <span class="neg">bombarding</span>, engaging, withdrawing.</div>
+    </div>
+    <div class="box">
+      <b>Depth on hover</b>
+      <div>Row tooltip: system map, every operation as a sentence, systems in reach, distance to your colonies. Card tooltip: the decline forecast, the Core-recovers verdict, supplies and draws, fuel costs explained. Header tooltips define each column.</div>
+    </div>
+    <div class="box">
+      <b>Selected system</b>
+      <div>Colony cards 2-across, 112 px each, six worlds fit in three rows; operations as a 4-column table capped at nine rows with "+n more"; one button row. At narrow widths the operations table drops below the cards.</div>
+      <div>Placement: a permanent entry in <span class="player">Major events</span> named The Threat War Effort, present while any hive or seeding swarm exists.</div>
+    </div>
+  </div>
+
+  <div class="heading">Round one to round two</div>
+  <table>
+    <tr><th style="width:300px;">Round one (what you saw)</th><th>Round two</th></tr>
+    <tr><td>12 text columns; four cut off; long cells truncated</td><td>12 custom-drawn columns budgeted to 1,100 px total; nothing truncates because nothing long is on the face</td></tr>
+    <tr><td>Outbound / inbound as sentences per system</td><td>Counts and crests on the row; the sentences move to the tooltip and the operations table</td></tr>
+    <tr><td>Per-colony prose blocks, 9 lines each</td><td>112 px cards: icons, one bar, one line of numbers; prose in the card tooltip</td></tr>
+    <tr><td>KPI grid with values drifting toward the next label</td><td>One-line strip with fixed cell widths and padding</td></tr>
+    <tr><td>Listed in both Major events and Threat Incursion tabs as "Threat Incursion"</td><td>Major events only, "The Threat War Effort" <span class="pos">(already changed in code)</span></td></tr>
+  </table>
+</div>
+</x-dc>
+</body>
+</html>

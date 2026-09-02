@@ -7,8 +7,11 @@ import java.util.Map;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
+import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
+import com.fs.starfarer.api.campaign.econ.MutableCommodityQuantity;
+import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
 import com.fs.starfarer.api.impl.campaign.procgen.StarSystemGenerator;
@@ -25,9 +28,13 @@ import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.BombardType;
  * <ul>
  * <li>While the war-strata fight at full effect - tactical bombardment,
  * clamped to the hive-short disruption the player's passes also achieve;
- * disrupted defenses fire at half effect, opening the door for...</li>
- * <li>...COMMANDO RAIDS against the hive's organs (Nexus, Fabrication Core,
- * port, forge), the same targeted disruption a player raid applies - feeding
+ * disrupted defenses fire at reduced effect that wears further with every
+ * pass (ThreatColonyManager.disruptedDefenseResilience), opening the door
+ * for...</li>
+ * <li>...COMMANDO RAIDS against whatever on the world takes the most from
+ * the hive ({@link #pickRaidTarget}: the Core, the Nexus, a port the world
+ * imports through, or an economy industry that is the hive's best source of
+ * something), the same targeted disruption a player raid applies - feeding
  * {@link ThreatColonyManager#computeHealth}'s decline engine with no extra
  * plumbing.</li>
  * </ul>
@@ -57,6 +64,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		public int estMarinesLost;
 		public int sizeBefore;
 		public boolean destroyed;
+		/** Campaign timestamp of the action; the sitrep posts weeks later, on the fleets' return. */
+		public long timestamp;
 	}
 
 	protected List<SiegeActionRecord> siegeActions = new ArrayList<SiegeActionRecord>();
@@ -125,6 +134,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		rec.marketId = market.getId();
 		rec.marketName = market.getName();
 		rec.sizeBefore = market.getSize();
+		rec.timestamp = Global.getSector().getClock().getTimestamp();
 
 		// tactical pass while the war-strata still fight at full effect
 		float tacDays = ThreatIncConfig.hiveTacDisruptDays();
@@ -203,33 +213,102 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		return Math.max(total, fallback);
 	}
 
+	/** Raid value of a world's Fabrication Core: the kill, always the top prize. */
+	public static final float RAID_VALUE_CORE = 100f;
+	/** Raid value of its Swarm Nexus: silences garrison regrowth and staging. */
+	public static final float RAID_VALUE_NEXUS = 60f;
+	/** Raid value of its port, per growth input the world ships in (the trickle rule starves it). */
+	public static final float RAID_VALUE_PORT_PER_IMPORT = 12f;
+
 	/**
-	 * The organ whose disruption hurts the hive most, favoring ones not
-	 * already down: the Nexus (silences fabrication and staging), then the
-	 * Fabrication Core (starves the whole machinery chain and forces decline),
-	 * then the port (cuts imports network-wide), then the forge.
+	 * What one unit of hive-wide availability of each commodity is worth
+	 * taking away. Fuel is reach and hulls are garrisons; metals feed the
+	 * forges; the raw inputs sit further up the chain.
+	 */
+	protected static float raidWeight(String commodityId) {
+		if (Commodities.FUEL.equals(commodityId) || Commodities.SHIPS.equals(commodityId)) return 6f;
+		if (Commodities.METALS.equals(commodityId) || Commodities.RARE_METALS.equals(commodityId)) return 4f;
+		if (Commodities.HEAVY_MACHINERY.equals(commodityId)) return 2f;
+		return 3f; // ore, rare ore, volatiles
+	}
+
+	/**
+	 * The industry whose disruption takes the most from the hive, scored on
+	 * this world right now - the same reasoning the mission board applies:
+	 *
+	 * <ul>
+	 * <li>Fabrication Core: the kill (RAID_VALUE_CORE). Swarm Nexus: the
+	 * garrison and staging (RAID_VALUE_NEXUS).</li>
+	 * <li>Port: worth what the world ships in - each growth input it demands
+	 * but does not make (RAID_VALUE_PORT_PER_IMPORT), since a disrupted port
+	 * cuts shipping to a trickle. High on a forge world importing its metals,
+	 * nothing on a self-sufficient mine.</li>
+	 * <li>Economy industries: worth what they take from the hive. Availability
+	 * is best-single-source, so a mine, refinery, fuel plant or forge only
+	 * matters when THIS world is the hive's largest producer of something
+	 * another hive world wants: value = weight x the gap to the second-best
+	 * producer, doubled when there is no second. One of ten equal mines scores
+	 * zero and is left alone; the only fuel plant, or the one big one, is hunted
+	 * - which is exactly what the hive's redundancy is there to blunt.</li>
+	 * </ul>
+	 *
+	 * Anything already carrying fresh disruption is skipped, so damage spreads
+	 * across the world's organs instead of stacking on one; when every
+	 * candidate is down, the one closest to recovering is hit again.
 	 */
 	protected Industry pickRaidTarget(MarketAPI market) {
-		List<Industry> priority = new ArrayList<Industry>();
-		priority.add(market.getIndustry(ThreatColonyManager.SWARM_NEXUS));
-		priority.add(market.getIndustry(ThreatColonyManager.FABRICATION_CORE));
-		Industry port = market.getIndustry(Industries.MEGAPORT);
-		if (port == null) port = market.getIndustry(Industries.SPACEPORT);
-		priority.add(port);
-		priority.add(ThreatColonyManager.getForge(market));
-
-		// first organ still (mostly) functional...
-		for (Industry ind : priority) {
-			if (ind == null) continue;
-			if (ind.getDisruptedDays() < 30f) return ind;
-		}
-		// ...else the one closest to recovering
 		Industry best = null;
-		for (Industry ind : priority) {
-			if (ind == null) continue;
-			if (best == null || ind.getDisruptedDays() < best.getDisruptedDays()) best = ind;
+		float bestScore = -1f;
+		Industry soonest = null;
+		for (Industry ind : market.getIndustries()) {
+			float score = raidValue(market, ind);
+			if (score <= 0f) continue;
+			if (ind.getDisruptedDays() >= 1f) {
+				if (soonest == null || ind.getDisruptedDays() < soonest.getDisruptedDays()) soonest = ind;
+				continue;
+			}
+			if (score > bestScore) {
+				bestScore = score;
+				best = ind;
+			}
 		}
-		return best;
+		return best != null ? best : soonest;
+	}
+
+	/** This industry's raid value on this world, 0 for anything not worth a landing. */
+	protected float raidValue(MarketAPI market, Industry ind) {
+		if (ind == null || ind.isBuilding()) return 0f;
+		String id = ind.getId();
+		if (ThreatColonyManager.FABRICATION_CORE.equals(id)) return RAID_VALUE_CORE;
+		if (ThreatColonyManager.SWARM_NEXUS.equals(id)) return RAID_VALUE_NEXUS;
+		if (Industries.SPACEPORT.equals(id) || Industries.MEGAPORT.equals(id)) {
+			int imports = 0;
+			for (String input : ThreatColonyManager.growthInputs()) {
+				CommodityOnMarketAPI com = market.getCommodityData(input);
+				if (com != null && com.getMaxDemand() > 0 && com.getMaxSupply() <= 0) imports++;
+			}
+			return imports * RAID_VALUE_PORT_PER_IMPORT;
+		}
+		// economy industries: what the hive loses when this world's output drops out
+		float value = 0f;
+		for (MutableCommodityQuantity q : ind.getAllSupply()) {
+			int made = q.getQuantity().getModifiedInt();
+			if (made <= 0) continue;
+			String c = q.getCommodityId();
+			int secondBest = 0;
+			boolean wanted = false;
+			for (MarketAPI other : ThreatIncData.getAllLiveColonyMarkets()) {
+				if (other == market) continue;
+				CommodityOnMarketAPI com = other.getCommodityData(c);
+				if (com == null) continue;
+				if (com.getMaxDemand() > 0) wanted = true;
+				secondBest = Math.max(secondBest, com.getMaxSupply());
+			}
+			if (!wanted || secondBest >= made) continue;
+			float gap = secondBest > 0 ? made - secondBest : made * 2f;
+			value += raidWeight(c) * gap;
+		}
+		return value;
 	}
 
 	/**
@@ -249,6 +328,22 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (frac > 0.8f) frac = 0.8f;
 		if (frac < 0f) frac = 0f;
 		return Math.round(marines * frac);
+	}
+
+	/**
+	 * The sitrep goes out the moment the siege operations finish - when the
+	 * payload action completes and the fleets turn for home - not when they
+	 * arrive weeks later. Posted on return, every clock it described had run
+	 * out before anyone read it ("disrupted ~15 days" beside a colony that
+	 * was already nominal again). An expedition aborted or destroyed before
+	 * finishing still reports from notifyEnding.
+	 */
+	@Override
+	protected void notifyActionFinished(com.fs.starfarer.api.impl.campaign.intel.group.FGAction action) {
+		super.notifyActionFinished(action);
+		if (action != null && action == raidAction && !isAborted() && !isFailed()) {
+			postSiegeReport();
+		}
 	}
 
 	@Override

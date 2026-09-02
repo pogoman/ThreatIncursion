@@ -79,6 +79,44 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 		return market != null ? market.getPrimaryEntity() : null;
 	}
 
+	public String getTargetMarketId() {
+		return targetMarketId;
+	}
+
+	public String getTargetColonyName() {
+		return targetColonyName;
+	}
+
+	public FactionAPI getFaction() {
+		return faction();
+	}
+
+	public int countLivingFleets() {
+		int living = 0;
+		for (CampaignFleetAPI curr : allFleets()) {
+			if (alive(curr)) living++;
+		}
+		return living;
+	}
+
+	/** Whether the lead fleet has reached the target colony's system. */
+	public boolean isEngaging() {
+		CampaignFleetAPI lead = leadFleet();
+		SectorEntityToken target = targetEntity();
+		return lead != null && target != null
+				&& lead.getContainingLocation() == target.getContainingLocation();
+	}
+
+	/** Rough days until the lead fleet reaches the target; 0 if there or unknown. */
+	public float etaDays() {
+		CampaignFleetAPI lead = leadFleet();
+		SectorEntityToken target = targetEntity();
+		if (lead == null || target == null) return 0f;
+		float ly = Misc.getDistanceLY(lead.getLocationInHyperspace(),
+				target.getLocationInHyperspace());
+		return ly / EST_LY_PER_DAY;
+	}
+
 	public boolean isFleetActive() {
 		return leadFleet() != null;
 	}

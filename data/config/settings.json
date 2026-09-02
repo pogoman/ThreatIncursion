@@ -32,35 +32,61 @@
 	# machinery stall growth, and ship-hull shortages shrink garrisons/strikes
 	"threatinc_colonyGrowthBaseDays": 60,
 	"threatinc_colonyMaxSize": 8,
-	# Colony size at which a hive world upgrades its founding Spaceport to a
-	# Megaport - a big accessibility boost that feeds starved colonies and
-	# extends the network's fuel range. Gated by size so young fringe seeds
-	# still ramp up slowly (the accessibility ramp is what paces expansion);
-	# lower it toward 3 for faster, more aggressive spread
-	"threatinc_colonyMegaportMinSize": 4,
+	# Spare copies of each production link (refinery, forge, fuel plant) the
+	# hive builds as it spreads - one per infested system it holds, up to this
+	# many. Under vanilla's economy one producer feeds every hive world that can
+	# reach it, so spares add nothing until the original is lost; they exist so
+	# that cutting the hive's supply of anything means cutting several worlds.
+	# 1 = a single point of failure for each.
+	"threatinc_chainRedundancy": 3,
 	"threatinc_colonizationEscort": 2,
 	"threatinc_garrisonRespawnDays": 40,
 	"threatinc_economyGatesGrowth": true,
+	# The first hive system carries Domain-era items the way a swarm out of the
+	# Abyss would: a Pristine Nanoforge on its largest forge, and a Mantle Bore,
+	# Plasma Dynamo, Catalytic Core or Synchrotron wherever its own deposits
+	# leave a link short. Vanilla's chain only balances at size 8 with these;
+	# every later colony draws on the home hive, and the items are the loot for
+	# taking it. Every other forge in the hive has the chance below of carrying
+	# a Corrupted Nanoforge - a fixed roll per world.
+	"threatinc_homeRelics": true,
+	"threatinc_forgeNanoforgeChance": 0.2,
 	# The hive is a closed economy that never trades with the Core worlds, so
 	# vanilla's distance-from-Core accessibility penalty models a supply line it
 	# doesn't have. This cancels that penalty for hive colonies (1 = fully, 0 =
-	# leave it). The same-faction proximity term is untouched, so the swarm's
-	# OWN internal network geometry still gates a colony's imports and reach.
+	# leave it). Distance from the rest of the hive does not move accessibility
+	# either way: vanilla's same-faction proximity term is only ever a bonus.
 	"threatinc_coreDistanceOffset": 1.0,
+	# A disrupted port is a skeleton port. Vanilla keeps a disrupted Spaceport
+	# counted as present, so it only loses the port's bonus and, since
+	# same-faction shipping is 5+ units down to 0% accessibility, a disrupted
+	# hive port changed nothing. While a hive world's port is disrupted its
+	# shipping (imports and exports alike) is capped at this many units: a
+	# size-8 forge gets 3 of the 8 metals it wants, growth stalls, its output
+	# reaches the hive only as a trickle. Not zero on purpose - with the Core
+	# also down a colony's machinery is imported, and zero shipping made a port
+	# cut deadlier than a Core cut. 0 = nothing docks, -1 = vanilla behaviour.
+	"threatinc_disruptedPortShipping": 3,
 	"threatinc_convertDecivWorlds": true,
-	# Bounties are a live objective board, not a queue: several stand at once,
-	# split across two boards - a strategic tier naming the decisive target and
-	# an immediate tier naming the low-hanging fruit, always at least one of
-	# each - and the weakest on a board is withdrawn unpaid when a better
-	# target of that same tier comes online
-	"threatinc_bountiesEnabled": true,
-	"threatinc_bountyBaseReward": 150000,
-	"threatinc_bountyDurationDays": 365,
-	"threatinc_maxActiveBounties": 3,
-	"threatinc_bountySupersedeMargin": 1.35,
-	"threatinc_bountyMinStandDays": 60,
-	"threatinc_bountyProximityBonus": 0.35,
-	"threatinc_bountyStrategicRewardMult": 1.5,
+	# Defense-board contracts are ordinary missions: offered through the comm
+	# network, accepted or ignored like a survey posting. Offers stand for
+	# missionPostingDays and may be withdrawn until accepted; accepting one
+	# starts a missionDurationDays completion clock, and failing or abandoning
+	# it costs reputation with the sponsoring faction. Several offers stand at
+	# once, split across two boards - a strategic tier naming the decisive
+	# target and an immediate tier naming the low-hanging fruit, always at
+	# least one of each - and the weakest offer on a board is withdrawn when a
+	# better target of that same tier comes online. Accepted contracts are
+	# never withdrawn and do not count against the offer cap.
+	"threatinc_missionsEnabled": true,
+	"threatinc_missionBaseReward": 150000,
+	"threatinc_missionPostingDays": 90,
+	"threatinc_missionDurationDays": 120,
+	"threatinc_maxPostedMissions": 3,
+	"threatinc_missionSupersedeMargin": 1.35,
+	"threatinc_missionMinStandDays": 60,
+	"threatinc_missionProximityBonus": 0.35,
+	"threatinc_missionStrategicRewardMult": 1.5,
 
 	# Phases are capability, not calendar: 2 = some colony can stage a strike,
 	# 3 = some colony can field a full-budget armada (size 6+, nominal hulls)
@@ -70,7 +96,15 @@
 	# size squared times the multiplier, degraded by hull shortages
 	# 0 = unlimited
 	"threatinc_maxConcurrentStrikes": 0,
-	"threatinc_strikeLYPerFuel": 5.0,
+	"threatinc_strikeLYPerFuel": 4.0,
+	# Reach = strikeLYPerFuel x min(fuel available, fuel the fleets can carry).
+	# The fleets carry this many units at a fleet-size figure of 100 percent.
+	# Faction and player worlds use vanilla's own figure untouched (colony
+	# size, doctrine, hull shortage, stability, alpha core, skills - the
+	# Fleets percentage on the colony screen); hive worlds use vitality x
+	# size / 4 (a healthy size-4 hive lifts a full load, size 8 twice that, a
+	# size-2 foothold half, a besieged world less as its vitality falls).
+	"threatinc_reachFuelCarry": 4,
 	"threatinc_strikeMinSize": 4,
 	"threatinc_strikeStrengthMult": 1.0,
 	"threatinc_playerGraceDays": 120,
@@ -95,16 +129,24 @@
 	# decline: population falling to size 1 under disruption or shortages.
 	"threatinc_hiveDefensePerSize": 400,
 	# defense-structure scaling: defense mult = 1 + bonus per structure, with
-	# disruptedDefenseFraction of the bonus surviving disruption
+	# disruptedDefenseFraction of the bonus surviving a fresh disruption
 	"threatinc_groundDefensesBonus": 1.0,
 	"threatinc_heavyBatteriesBonus": 2.0,
 	"threatinc_nexusDefenseBonus": 0.5,
 	"threatinc_disruptedDefenseFraction": 0.5,
+	# ...and wearing down from there: the surviving bonus falls linearly with
+	# the disruption days on the structure's clock, to nothing at this many.
+	# The same wear applies to a disrupted Core's and Nexus's fabrication
+	# factor (coreDownFactor / nexusDownFactor at fresh disruption, zero at the
+	# limit). Disruption stacks with every pass and raid, so an organ carrying
+	# 300 days has been hit again and again and is scrap. One tactical pass
+	# (60 d) leaves 40 percent of a battery's bonus, two raids on top about 25
+	# percent. The size-anchored base never wears. 0 = no wear.
+	"threatinc_defenseWearDays": 300,
 	"threatinc_hiveBombardCostMult": 1.0,
 	"threatinc_hiveTacCostFraction": 0.25,
 	"threatinc_hiveSatDisruptDays": 20,
-	"threatinc_hiveTacDisruptDays": 60,
-	"threatinc_hiveMarineLossMult": 1.5,
+	"threatinc_hiveTacDisruptDays": 60,	"threatinc_hiveMarineLossMult": 1.5,
 
 	# Colony decline: a colony whose health (input satisfaction x structure
 	# functionality) falls below the threshold loses population, faster the
@@ -129,10 +171,22 @@
 	"threatinc_responseEnabled": true,
 	# 0 = unlimited
 	"threatinc_responseMaxConcurrent": 0,
-	"threatinc_responseRangeLY": 20,
+	# reach is fuel and fleets: a military world projects task forces and
+	# sieges by the same rule as hive strikes (see threatinc_reachFuel* above)
 	"threatinc_responseMinDifficulty": 4,
 	"threatinc_responseMaxDifficulty": 10,
 	"threatinc_responseStrengthDivisor": 30,
+	# Siege expeditions (NPC and commissioned alike) are sized to the target's
+	# defenses: vanilla disrupts an industry only when the landing force is at
+	# least a third of the defender strength, so fleets are added until the
+	# estimated ground strength clears that with headroom. NPC ground strength
+	# is a quarter of crew capacity, which tracks fleet size - one difficulty
+	# point of fleet lands about this much (measured: 22 points landed 947).
+	"threatinc_siegeRaidStrPerPoint": 43,
+	# Cap on how many fleets a siege grows to. A size-8 hive behind Heavy
+	# Batteries needs ~3,600 ground strength once its war-strata are suppressed
+	# by the tactical pass; at ~430 per full-size fleet that is 9 fleets.
+	"threatinc_siegeMaxFleets": 10,
 	"threatinc_responsePurgeEnabled": true,
 	"threatinc_purgeCooldownDays": 240,
 	# hive colonies up to this size are purged preemptively, garrison or not;
