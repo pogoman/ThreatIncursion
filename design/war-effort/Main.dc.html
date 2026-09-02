@@ -1,0 +1,246 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600&family=Titillium+Web:wght@400;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #05080c; font-family: 'Titillium Web', 'Segoe UI', system-ui, sans-serif; color: #c6cbd0; font-size: 13px; line-height: 1.3; }
+    a { color: #8ad3ff; } a:hover { color: #cbf5ff; }
+    .root { width: 1340px; height: 900px; box-sizing: border-box; padding: 16px 22px 14px 22px; position: relative; overflow: hidden;
+      background-color: #070b10;
+      background-image: linear-gradient(rgba(70,110,130,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(70,110,130,.07) 1px, transparent 1px);
+      background-size: 40px 40px; display: flex; flex-direction: column; gap: 10px; }
+    .title { font-family: 'Orbitron', 'Titillium Web', sans-serif; font-weight: 600; font-size: 24px; letter-spacing: .06em; color: #8ad3ff; margin: 0; text-transform: uppercase; }
+    .heading { text-align: center; font-size: 13px; letter-spacing: .05em; color: #b9d2c9; background: #1f2b28; border: 1px solid #3a4c47; padding: 3px 8px; text-transform: uppercase; }
+    .hl { color: #f2ae3c; } .neg { color: #ff6a3d; } .pos { color: #9be04c; } .gray { color: #7f878d; } .player { color: #8ad3ff; } .threat { color: #829b91; } .bright { color: #cbf5ff; }
+    .heg { color: #e6941f; } .pl { color: #7fa5d9; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; height: 26px; padding: 0 14px; border: 1px solid #3d7ea6; color: #8ad3ff; background: rgba(20,50,70,.55); font-size: 12px; letter-spacing: .03em; white-space: nowrap;
+      clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+    .btn.dim { color: #5a6b78; border-color: #2c4656; }
+    .tbl { width: 100%; border-collapse: separate; border-spacing: 0 2px; }
+    .tbl th { border: 1px solid #3a4c47; color: #b9d2c9; font-weight: 600; padding: 3px 6px; text-align: center; background: rgba(31,43,40,.7); font-size: 12px; letter-spacing: .03em; }
+    .tbl td { padding: 5px 6px; border-bottom: 1px solid rgba(58,76,71,.35); vertical-align: middle; font-size: 12.5px; }
+    .tbl tr.sel td { background: rgba(138,211,255,.08); border-bottom-color: #3d7ea6; }
+    .bar { height: 7px; background: #10171d; border: 1px solid #263533; width: 64px; position: relative; }
+    .bar .f { position: absolute; left: 0; top: 0; bottom: 0; }
+    .pips { display: flex; gap: 3px; align-items: center; }
+    .pip { width: 9px; height: 9px; border: 1px solid #829b91; box-sizing: border-box; }
+    .pip.on { background: #829b91; } .pip.strike { border-color: #ff6a3d; background: #ff6a3d; } .pip.res { border-color: #829b91; background: #3a4c47; }
+    .chip { display: inline-block; padding: 1px 6px; border: 1px solid; font-size: 11px; letter-spacing: .03em; text-transform: uppercase; line-height: 1.4; }
+    .kpi { border: 1px solid #263533; background: rgba(10,16,22,.8); padding: 6px 10px; display: flex; flex-direction: column; gap: 1px; }
+    .kpi .v { font-family: 'Orbitron', sans-serif; font-size: 20px; color: #f2ae3c; }
+    .kpi .l { font-size: 11px; color: #7f878d; text-transform: uppercase; letter-spacing: .05em; }
+    .tile { border: 1px solid #3a4c47; background: rgba(31,43,40,.35); padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .tile .n { font-size: 11px; color: #b9d2c9; text-transform: uppercase; letter-spacing: .03em; }
+    .tile .s { font-size: 12px; }
+    .tile.off { border-color: #ff6a3d; background: rgba(255,106,61,.08); }
+    .row { display: flex; align-items: center; gap: 8px; }
+    .box { border: 1px solid #263533; background: rgba(10,16,22,.75); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+    .kv { display: grid; grid-template-columns: 130px 1fr; gap: 2px 8px; font-size: 12px; }
+    .kv .k { color: #7f878d; }
+    .marker { display: flex; flex-direction: column; align-items: center; gap: 0; position: absolute; top: 0; }
+    .marker .ic { width: 34px; height: 34px; border: 1px solid #3a4c47; background: #0d1418; display: flex; align-items: center; justify-content: center; }
+    .marker .ln { width: 1px; height: 10px; background: #3a4c47; }
+    .marker .t { font-size: 11px; color: #b9d2c9; white-space: nowrap; margin-top: 2px; }
+  </style>
+</helmet>
+
+<div class="root">
+
+  <!-- header -->
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+    <div class="row" style="gap:14px;">
+      <img src="crest_threat.png" alt="" style="width:44px; height:44px; object-fit:contain; opacity:.9;">
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <h1 class="title">The Threat War Effort</h1>
+        <div class="gray" style="font-size:12px;">Sector-wide intelligence on the fabricator swarm. Only what you have found is listed - <span class="hl">the full reach of the incursion is unknown</span>.</div>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px; font-size:12px;">
+      <div><span class="gray">Awakened</span> <span class="hl">212</span> <span class="gray">days ago - Cycle 209</span></div>
+      <div><span class="gray">Sort by</span> <span class="player">threat</span> <span class="gray">| vulnerability | network impact | distance</span></div>
+    </div>
+  </div>
+
+  <!-- phase bar, the crisis-screen idiom -->
+  <div style="position:relative; height:86px; margin: 0 40px;">
+    <div class="marker" style="left:0; transform:translateX(-50%);">
+      <div class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#829b91" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></div><div class="ln"></div><div class="t">Awakened</div>
+    </div>
+    <div class="marker" style="left:50%; transform:translateX(-50%);">
+      <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#829b91" stroke-width="1.8"><path d="M4 20L20 4M20 4h-7M20 4v7"/></svg></div><div class="ln"></div><div class="t">Strike-capable</div>
+    </div>
+    <div class="marker" style="left:100%; transform:translateX(-50%);">
+      <div class="ic" style="border-color:#ff6a3d;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6a3d" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="#ff6a3d"/></svg></div><div class="ln" style="background:#ff6a3d;"></div><div class="t neg">Core worlds in reach</div>
+    </div>
+    <div style="position:absolute; left:0; right:0; top:62px; height:10px; border:1px solid #3a4c47; background:#0d1418;">
+      <div style="position:absolute; left:0; top:0; bottom:0; width:100%; background:linear-gradient(90deg, #2f4a44, #829b91 60%, #ff6a3d);"></div>
+      <div style="position:absolute; left:-6px; top:-5px; width:5px; height:18px; border:1px solid #829b91; border-right:0;"></div>
+      <div style="position:absolute; right:-6px; top:-5px; width:5px; height:18px; border:1px solid #ff6a3d; border-left:0;"></div>
+    </div>
+    <div style="position:absolute; right:-2px; top:76px; font-size:11px; color:#ff6a3d; text-transform:uppercase; letter-spacing:.05em;">Phase 3 - a hive can field a full armada</div>
+    <div style="position:absolute; left:0; top:76px; font-size:11px; color:#7f878d;">Phases are capability, not calendar: burn their forges or cut their fuel and the danger level regresses.</div>
+  </div>
+
+  <!-- KPI strip -->
+  <div style="display:grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap:8px;">
+    <div class="kpi"><div class="v">5</div><div class="l">Known infested systems</div></div>
+    <div class="kpi"><div class="v">7</div><div class="l">Hive worlds</div></div>
+    <div class="kpi"><div class="v">29</div><div class="l">Fabrication mass</div></div>
+    <div class="kpi"><div class="v">13</div><div class="l">Defense swarms sighted</div></div>
+    <div class="kpi"><div class="v neg">2</div><div class="l">Expeditions outbound</div></div>
+    <div class="kpi"><div class="v pos">3</div><div class="l">Sieges &amp; task forces</div></div>
+    <div class="kpi"><div class="v">3</div><div class="l">Standing bounties</div></div>
+    <div class="kpi"><div class="v pos">2</div><div class="l">Hives burned out</div></div>
+  </div>
+
+  <!-- the ledger -->
+  <div class="heading">Known infested systems - priority order</div>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th style="width:26px;">#</th>
+        <th style="text-align:left;">System</th>
+        <th style="text-align:left;">Why it ranks</th>
+        <th>Worlds</th>
+        <th>Mass</th>
+        <th>Vitality</th>
+        <th>Swarms</th>
+        <th>Reach</th>
+        <th style="text-align:left;">Outbound</th>
+        <th style="text-align:left;">Inbound</th>
+        <th style="text-align:left;">Bounty</th>
+        <th>Core</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="sel">
+        <td class="hl" style="text-align:center;">1</td>
+        <td><span class="bright" style="font-weight:600;">Gamma Balwom</span><br><span class="gray" style="font-size:11px;">Forge world - Orbital Works</span></td>
+        <td><span class="chip neg">Striking</span> <span class="gray">expedition mustering against Magec</span></td>
+        <td style="text-align:center;">1 <span class="gray">(s6)</span></td>
+        <td style="text-align:center;" class="hl">6</td>
+        <td><div class="row" style="gap:6px;"><div class="bar"><div class="f" style="width:92%; background:#9be04c;"></div></div><span class="pos">92%</span> <span class="pos">&#9650;</span></div></td>
+        <td><div class="pips"><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip"></div><div class="pip strike"></div><div class="pip strike"></div></div></td>
+        <td style="text-align:center;" class="neg">25 ly</td>
+        <td><span class="neg">&#9650; Magec</span> <span class="gray">2 fleets - departs ~6 d</span></td>
+        <td><span class="heg">&#9660; Hegemony</span> <span class="gray">task force, 3 fleets, ~22 d</span></td>
+        <td><span class="hl">Strategic 1</span> <span class="gray">Nexus - 1,350,000</span></td>
+        <td style="text-align:center;">9 ly</td>
+      </tr>
+      <tr>
+        <td class="hl" style="text-align:center;">2</td>
+        <td><span class="bright" style="font-weight:600;">Beta Vassago</span><br><span class="gray" style="font-size:11px;">Home hive - rare ore, refining, forge</span></td>
+        <td><span class="chip threat" style="border-color:#829b91;">Network heart</span> <span class="gray">feeds rare ore to every refinery</span></td>
+        <td style="text-align:center;">4 <span class="gray">(s4 4 4 3)</span></td>
+        <td style="text-align:center;" class="hl">15</td>
+        <td><div class="row" style="gap:6px;"><div class="bar"><div class="f" style="width:88%; background:#9be04c;"></div></div><span class="pos">88%</span> <span class="pos">&#9650;</span></div></td>
+        <td><div class="pips"><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip"></div></div></td>
+        <td style="text-align:center;" class="neg">20 ly</td>
+        <td><span class="gray">- garrison regrowing</span></td>
+        <td><span class="gray">-</span></td>
+        <td><span class="hl">Strategic 2</span> <span class="gray">rare ore mining - 900,000</span></td>
+        <td style="text-align:center;">14 ly</td>
+      </tr>
+      <tr>
+        <td class="hl" style="text-align:center;">3</td>
+        <td><span class="bright" style="font-weight:600;">Delta Vanhosk</span><br><span class="gray" style="font-size:11px;">Fuel world</span></td>
+        <td><span class="chip pos" style="border-color:#9be04c;">Declining</span> <span class="gray">Core offline 42 d - press the siege</span></td>
+        <td style="text-align:center;">1 <span class="gray">(s5)</span></td>
+        <td style="text-align:center;" class="hl">5</td>
+        <td><div class="row" style="gap:6px;"><div class="bar"><div class="f" style="width:21%; background:#ff6a3d;"></div></div><span class="neg">21%</span> <span class="neg">&#9660;</span> <span class="gray" style="font-size:11px;">-1 in ~19 d</span></div></td>
+        <td><div class="pips"><div class="pip"></div><div class="pip"></div><div class="pip"></div><div class="pip"></div><span class="pos" style="font-size:11px; margin-left:4px;">open</span></div></td>
+        <td style="text-align:center;" class="gray">0 ly</td>
+        <td><span class="gray">-</span></td>
+        <td><span class="heg">&#9660; Hegemony</span> <span class="gray">siege, 2 fleets, engaging</span></td>
+        <td><span class="player">Immediate 1</span> <span class="gray">fuel production - 375,000</span></td>
+        <td style="text-align:center;">11 ly</td>
+      </tr>
+      <tr>
+        <td class="hl" style="text-align:center;">4</td>
+        <td><span class="bright" style="font-weight:600;">Kumari Kandam</span><br><span class="gray" style="font-size:11px;">Young foothold - ore mining</span></td>
+        <td><span class="chip hl" style="border-color:#f2ae3c;">Foothold</span> <span class="gray">metals choked, growth stalled</span></td>
+        <td style="text-align:center;">1 <span class="gray">(s3)</span></td>
+        <td style="text-align:center;" class="hl">3</td>
+        <td><div class="row" style="gap:6px;"><div class="bar"><div class="f" style="width:64%; background:#f2ae3c;"></div></div><span class="hl">64%</span> <span class="gray">&#9644;</span></div></td>
+        <td><div class="pips"><div class="pip on"></div><div class="pip on"></div></div></td>
+        <td style="text-align:center;" class="gray">-</td>
+        <td><span class="gray">-</span></td>
+        <td><span class="pl">&#9660; Persean League</span> <span class="gray">preemptive purge, mustering ~30 d</span></td>
+        <td><span class="gray">-</span></td>
+        <td style="text-align:center;">22 ly</td>
+      </tr>
+      <tr>
+        <td class="hl" style="text-align:center;">5</td>
+        <td><span class="bright" style="font-weight:600;">Alpha Gronshara</span><br><span class="gray" style="font-size:11px;">Colonizing</span></td>
+        <td><span class="chip neg">Seeding swarm</span> <span class="gray">in transit from Beta Vassago - intercept</span></td>
+        <td style="text-align:center;" class="gray">0</td>
+        <td style="text-align:center;" class="gray">-</td>
+        <td><span class="gray">planetfall in ~18 d</span></td>
+        <td><span class="gray">-</span></td>
+        <td style="text-align:center;" class="gray">-</td>
+        <td><span class="gray">-</span></td>
+        <td><span class="gray">-</span></td>
+        <td><span class="gray">-</span></td>
+        <td style="text-align:center;">31 ly</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- detail for the selected row -->
+  <div class="heading" style="margin-top:2px;">Gamma Balwom - selected</div>
+  <div style="display:grid; grid-template-columns: 1.35fr 1fr; gap:10px; flex:1; min-height:0;">
+
+    <div class="box">
+      <div class="row" style="justify-content:space-between;">
+        <div><span class="bright" style="font-weight:700; font-size:14px;">Gamma Balwom I</span> <span class="gray">- Irradiated World, size</span> <span class="hl">6</span> <span class="gray">- 9 ly from the core, 4 ly from</span> <span class="player">Nova Maxios</span></div>
+        <div class="row" style="gap:6px;"><span class="gray">Vitality</span><div class="bar" style="width:90px;"><div class="f" style="width:92%; background:#9be04c;"></div></div><span class="pos">92%</span></div>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap:6px;">
+        <div class="tile"><div class="n">Fabrication Core</div><div class="s pos">running</div></div>
+        <div class="tile"><div class="n">Swarm Nexus</div><div class="s pos">running</div><div class="gray" style="font-size:11px;">regrows a swarm ~40 d</div></div>
+        <div class="tile"><div class="n">Megaport</div><div class="s pos">running</div><div class="gray" style="font-size:11px;">access 157%</div></div>
+        <div class="tile"><div class="n">Orbital Works</div><div class="s pos">running</div><div class="gray" style="font-size:11px;">hulls 100%</div></div>
+        <div class="tile"><div class="n">Heavy Batteries</div><div class="s pos">running</div><div class="gray" style="font-size:11px;">def x3</div></div>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px 16px;">
+        <div class="kv">
+          <div class="k">Growth</div><div><span class="pos">100%</span> pace - <span class="hl">size 7</span> in ~38 d</div>
+          <div class="k">Defense swarms</div><div><span class="hl">3</span> of 4 in orbit, reserve 2 - <span class="neg">2 mustered</span> for the strike</div>
+          <div class="k">Ground defenses</div><div><span class="hl">7,200</span> - saturation costs <span class="neg">7,200 fuel</span>, tactical <span class="hl">1,800</span></div>
+          <div class="k">Strike reach</div><div><span class="neg">25 ly</span> - <span class="neg">Magec</span>, Naraka, <span class="player">Nova Maxios</span> in range</div>
+        </div>
+        <div class="kv">
+          <div class="k">Supplies the hive</div><div><span class="hl">Hulls</span> - 6 colonies depend on this forge</div>
+          <div class="k">Draws from</div><div>metals, rare metals <span class="gray">(Beta Vassago I-B)</span>; fuel <span class="gray">(Delta Vanhosk)</span></div>
+          <div class="k">If cut</div><div>hull supply <span class="neg">-100%</span> network-wide; garrisons shrink, strikes ground</div>
+          <div class="k">Last siege</div><div><span class="gray">none - never besieged</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="gray" style="font-size:11px; text-transform:uppercase; letter-spacing:.05em;">Operations touching this system</div>
+      <div class="row" style="align-items:flex-start;"><span class="neg" style="width:14px;">&#9650;</span><div><span class="neg">Threat incursion</span> vs <span class="hl">Magec</span> - 2 fleets fabricating in orbit, departs in ~6 d, arrives ~55 d. <span class="pos">Recall window open</span> - disrupt the forge or nexus before departure.</div></div>
+      <div class="row" style="align-items:flex-start;"><span class="heg" style="width:14px;">&#9660;</span><div><span class="heg">Hegemony task force</span> from Eventide - 3 fleets, 11 ly out, ~22 d. Hunting the garrison.</div></div>
+      <div class="row" style="align-items:flex-start;"><span class="hl" style="width:14px;">&#9733;</span><div><span class="hl">Strategic bounty, priority 1 of 2</span> - Swarm Nexus, <span class="hl">1,350,000</span> (disruption pays half), stands 301 d.</div></div>
+      <div style="border-top:1px solid #263533; margin-top:2px; padding-top:6px; display:flex; flex-direction:column; gap:6px;">
+        <div><span class="player">Nova Maxios</span> <span class="gray">(4 ly, High Command) can muster a</span> 4-fleet <span class="gray">siege expedition with escorts.</span></div>
+        <div class="row" style="gap:8px;">
+          <div class="btn">Commission purge expedition - 610,000</div>
+          <div class="btn">Show on map</div>
+          <div class="btn dim">Open bounty</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

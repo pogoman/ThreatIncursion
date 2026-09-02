@@ -33,6 +33,15 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 		return systemId;
 	}
 
+	/**
+	 * Kept for the commission machinery and as a map anchor, but no longer
+	 * listed: The Threat War Effort board covers everything these entries said.
+	 */
+	@Override
+	public boolean isHidden() {
+		return true;
+	}
+
 	protected StarSystemAPI getSystem() {
 		for (StarSystemAPI system : Global.getSector().getStarSystems()) {
 			if (system.getId().equals(systemId)) return system;
@@ -307,12 +316,62 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 	 * agree with the current state of the system.
 	 */
 	protected void addCommissionSection(TooltipMakerAPI info, float width, float opad) {
-		if (!ThreatIncConfig.enabled() || !ThreatIncConfig.commissionEnabled()) return;
-		if (!ThreatIncData.STAGE_COLONY.equals(getStage())) return;
-		StarSystemAPI system = getSystem();
-		if (system == null) return;
+		addCommissionSectionFor(this, info, width, opad, systemId, BUTTON_COMMISSION);
+	}
+
+	/**
+	 * Everything the commission needs, recomputed live from the system's
+	 * current state. Null when the system holds no live colony; {@code base}
+	 * null when no player military colony is in range.
+	 */
+	public static class CommissionQuote {
+		public StarSystemAPI system;
+		public MarketAPI base;
+		public java.util.List<MarketAPI> targets;
+		public java.util.List<Integer> fleetSizes;
+		public boolean anyGarrisoned;
+		public int difficulty;
+		public int cost;
+		/** Ground strength the flotilla is expected to land, and what the defenses demand. */
+		public float raidStrEstimate;
+		public float raidStrNeeded;
+		public ThreatPurgeFGI existing;
+	}
+
+	public static CommissionQuote quote(String systemId) {
+		if (systemId == null) return null;
+		if (!ThreatIncData.STAGE_COLONY.equals(ThreatIncData.stages().get(systemId))) return null;
+		StarSystemAPI system = ThreatWarBoard.getSystem(systemId);
+		if (system == null) return null;
 		java.util.List<MarketAPI> targets = IncursionManager.collectSiegeTargets(null, system);
-		if (targets.isEmpty()) return;
+		if (targets.isEmpty()) return null;
+
+		CommissionQuote q = new CommissionQuote();
+		q.system = system;
+		q.targets = targets;
+		q.base = IncursionManager.findPlayerExpeditionBase(system);
+		q.existing = IncursionManager.findPlayerExpeditionAgainst(systemId);
+		if (q.base == null) return q;
+		q.anyGarrisoned = IncursionManager.anyTargetGarrisoned(targets);
+		boolean heavyAssault = q.anyGarrisoned && anyTargetEntrenched(targets);
+		q.difficulty = IncursionManager.computeSiegeDifficulty(targets, q.anyGarrisoned);
+		q.fleetSizes = IncursionManager.siegeFleetSizes(q.difficulty, q.anyGarrisoned,
+				heavyAssault, targets);
+		q.raidStrEstimate = IncursionManager.siegeRaidStrEstimate(q.fleetSizes);
+		q.raidStrNeeded = IncursionManager.siegeRaidStrNeeded(targets);
+		q.cost = IncursionManager.commissionCost(q.base, system, q.fleetSizes);
+		return q;
+	}
+
+	/**
+	 * The commission section, usable from any intel: the owner supplies the
+	 * button styling and receives the press under {@code buttonId}.
+	 */
+	public static void addCommissionSectionFor(BaseIntelPlugin owner, TooltipMakerAPI info,
+			float width, float opad, String systemId, Object buttonId) {
+		if (!ThreatIncConfig.enabled() || !ThreatIncConfig.commissionEnabled()) return;
+		CommissionQuote q = quote(systemId);
+		if (q == null) return;
 
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
@@ -321,46 +380,89 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 		info.addSectionHeading("Commission a purge expedition",
 				com.fs.starfarer.api.ui.Alignment.MID, opad);
 
-		MarketAPI base = IncursionManager.findPlayerExpeditionBase(system);
-		if (base == null) {
+		if (q.base == null) {
 			info.addPara("None of your colonies with a military structure (Patrol HQ, "
-					+ "Military Base, or High Command) lies within %s light-years of this "
-					+ "system.", opad, h, "" + (int) ThreatIncConfig.responseRangeLY());
+					+ "Military Base, or High Command) can reach this system: expeditions range "
+					+ "%s light-years per unit of fuel they carry - the smaller of the fuel "
+					+ "available at the colony and what its fleets can lift - the same rule the "
+					+ "swarm's strikes run on.", opad, h,
+					"" + (int) ThreatIncConfig.strikeLYPerFuel());
 			return;
 		}
 
-		boolean anyGarrisoned = IncursionManager.anyTargetGarrisoned(targets);
-		boolean heavyAssault = anyGarrisoned && anyTargetEntrenched(targets);
-		int difficulty = IncursionManager.computeSiegeDifficulty(targets, anyGarrisoned);
-		java.util.List<Integer> fleetSizes = IncursionManager.siegeFleetSizes(
-				difficulty, anyGarrisoned, heavyAssault, targets.size());
-		int cost = IncursionManager.commissionCost(base, system, fleetSizes);
-		float dist = Misc.getDistanceLY(base.getStarSystem().getLocation(),
-				system.getLocation());
+		float dist = Misc.getDistanceLY(q.base.getStarSystem().getLocation(),
+				q.system.getLocation());
 
 		info.addPara("Your colony %s (" + (int) Math.ceil(dist) + " light-years out) can "
 				+ "muster a %s expedition sized to this system's defenses"
-				+ (anyGarrisoned ? " - including escorts to fight through the live "
+				+ (q.anyGarrisoned ? " - including escorts to fight through the live "
 						+ "Defense Swarms" : "")
 				+ ". It runs the full siege playbook autonomously and reports back when "
 				+ "done. The fee covers fleets and distance, paid up front - no refunds.",
-				opad, h, base.getName(), fleetSizes.size() + "-fleet");
+				opad, h, q.base.getName(), q.fleetSizes.size() + "-fleet");
+		boolean enough = q.raidStrEstimate >= q.raidStrNeeded;
+		info.addPara("Landing force: about %s ground strength against the %s a commando raid "
+				+ "needs to disrupt an organ here"
+				+ (enough ? "." : " - the most your colony can field, and short of it: expect "
+						+ "the tactical bombardment to land and the raids to be repulsed."),
+				3f, enough ? h : Misc.getNegativeHighlightColor(),
+				Misc.getWithDGS(Math.round(q.raidStrEstimate)), Misc.getWithDGS(Math.round(q.raidStrNeeded)));
 
-		com.fs.starfarer.api.ui.ButtonAPI button = addGenericButton(info, width,
-				"Commission purge expedition (" + Misc.getDGSCredits(cost) + ")",
-				BUTTON_COMMISSION);
+		com.fs.starfarer.api.ui.ButtonAPI button = owner.addGenericButton(info, width,
+				"Commission purge expedition (" + Misc.getDGSCredits(q.cost) + ")", buttonId);
 
-		ThreatPurgeFGI existing = IncursionManager.findPlayerExpeditionAgainst(systemId);
 		int credits = (int) Global.getSector().getPlayerFleet().getCargo().getCredits().get();
-		if (existing != null) {
+		if (q.existing != null) {
 			button.setEnabled(false);
 			info.addPara("An expedition you commissioned is already operating against this "
 					+ "system.", 3f, gray);
-		} else if (credits < cost) {
+		} else if (credits < q.cost) {
 			button.setEnabled(false);
 			info.addPara("You cannot afford the fee - you have %s.", 3f, neg,
 					Misc.getDGSCredits(credits));
 		}
+	}
+
+	/** The confirmation dialog text for a commission against a system. */
+	public static void addCommissionPrompt(TooltipMakerAPI prompt, String systemId) {
+		CommissionQuote q = quote(systemId);
+		if (q == null || q.base == null) {
+			prompt.addPara("The situation has changed - the expedition can no longer be "
+					+ "mustered.", 0f);
+			return;
+		}
+		prompt.addPara("Commission a " + q.fleetSizes.size() + "-fleet purge expedition from "
+				+ q.base.getName() + " against the " + q.targets.size() + " Threat "
+				+ (q.targets.size() > 1 ? "colonies" : "colony") + " of the "
+				+ q.system.getNameWithLowercaseType() + " for %s?", 0f,
+				Misc.getHighlightColor(), Misc.getDGSCredits(q.cost));
+		prompt.addPara("The fee is paid up front. Once mustered, the expedition is "
+				+ "autonomous - it cannot be recalled and does not refund its fee, even "
+				+ "if the colonies are destroyed by other means first.",
+				Misc.getGrayColor(), 10f);
+	}
+
+	/**
+	 * Spends the fee and launches; authoritative recomputation at spend time.
+	 * @return true if an expedition was mustered
+	 */
+	public static boolean commissionExpedition(String systemId) {
+		CommissionQuote q = quote(systemId);
+		if (q == null || q.base == null || q.existing != null) return false;
+		if (Global.getSector().getPlayerFleet().getCargo().getCredits().get() < q.cost) return false;
+
+		Global.getSector().getPlayerFleet().getCargo().getCredits().subtract(q.cost);
+		IncursionManager.launchSiegeExpedition(q.base, Global.getSector().getPlayerFaction(),
+				q.system, q.targets, q.fleetSizes, true, new java.util.Random());
+
+		ThreatColonyManager.announceAlways("A purge expedition you commissioned is "
+				+ "mustering at " + q.base.getName() + ", bound for the "
+				+ q.system.getNameWithLowercaseType() + " (" + Misc.getDGSCredits(q.cost)
+				+ " paid).", Misc.getHighlightColor());
+		ThreatIncConfig.log("Player commissioned purge expedition vs " + q.system.getName()
+				+ " from " + q.base.getName() + " - " + q.fleetSizes.size()
+				+ " fleets, difficulty " + q.difficulty + ", cost " + q.cost);
+		return true;
 	}
 
 	/**
@@ -387,31 +489,7 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 			super.createConfirmationPrompt(buttonId, prompt);
 			return;
 		}
-		StarSystemAPI system = getSystem();
-		java.util.List<MarketAPI> targets = system != null
-				? IncursionManager.collectSiegeTargets(null, system)
-				: new java.util.ArrayList<MarketAPI>();
-		MarketAPI base = system != null ? IncursionManager.findPlayerExpeditionBase(system) : null;
-		if (system == null || base == null || targets.isEmpty()) {
-			prompt.addPara("The situation has changed - the expedition can no longer be "
-					+ "mustered.", 0f);
-			return;
-		}
-		boolean anyGarrisoned = IncursionManager.anyTargetGarrisoned(targets);
-		boolean heavyAssault = anyGarrisoned && anyTargetEntrenched(targets);
-		int difficulty = IncursionManager.computeSiegeDifficulty(targets, anyGarrisoned);
-		java.util.List<Integer> fleetSizes = IncursionManager.siegeFleetSizes(
-				difficulty, anyGarrisoned, heavyAssault, targets.size());
-		int cost = IncursionManager.commissionCost(base, system, fleetSizes);
-		prompt.addPara("Commission a " + fleetSizes.size() + "-fleet purge expedition from "
-				+ base.getName() + " against the " + targets.size() + " Threat "
-				+ (targets.size() > 1 ? "colonies" : "colony") + " of the "
-				+ system.getNameWithLowercaseType() + " for %s?", 0f,
-				Misc.getHighlightColor(), Misc.getDGSCredits(cost));
-		prompt.addPara("The fee is paid up front. Once mustered, the expedition is "
-				+ "autonomous - it cannot be recalled and does not refund its fee, even "
-				+ "if the colonies are destroyed by other means first.",
-				Misc.getGrayColor(), 10f);
+		addCommissionPrompt(prompt, systemId);
 	}
 
 	@Override
@@ -430,33 +508,7 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 	}
 
 	protected void commissionExpedition(com.fs.starfarer.api.ui.IntelUIAPI ui) {
-		StarSystemAPI system = getSystem();
-		if (system == null) return;
-		// authoritative recomputation at spend time
-		java.util.List<MarketAPI> targets = IncursionManager.collectSiegeTargets(null, system);
-		MarketAPI base = IncursionManager.findPlayerExpeditionBase(system);
-		if (base == null || targets.isEmpty()) return;
-		if (IncursionManager.findPlayerExpeditionAgainst(systemId) != null) return;
-
-		boolean anyGarrisoned = IncursionManager.anyTargetGarrisoned(targets);
-		boolean heavyAssault = anyGarrisoned && anyTargetEntrenched(targets);
-		int difficulty = IncursionManager.computeSiegeDifficulty(targets, anyGarrisoned);
-		java.util.List<Integer> fleetSizes = IncursionManager.siegeFleetSizes(
-				difficulty, anyGarrisoned, heavyAssault, targets.size());
-		int cost = IncursionManager.commissionCost(base, system, fleetSizes);
-		if (Global.getSector().getPlayerFleet().getCargo().getCredits().get() < cost) return;
-
-		Global.getSector().getPlayerFleet().getCargo().getCredits().subtract(cost);
-		IncursionManager.launchSiegeExpedition(base, Global.getSector().getPlayerFaction(),
-				system, targets, fleetSizes, true, new java.util.Random());
-
-		ThreatColonyManager.announceAlways("A purge expedition you commissioned is "
-				+ "mustering at " + base.getName() + ", bound for the "
-				+ system.getNameWithLowercaseType() + " (" + Misc.getDGSCredits(cost)
-				+ " paid).", Misc.getHighlightColor());
-		ThreatIncConfig.log("Player commissioned purge expedition vs " + system.getName()
-				+ " from " + base.getName() + " - " + fleetSizes.size()
-				+ " fleets, difficulty " + difficulty + ", cost " + cost);
+		commissionExpedition(systemId);
 		ui.updateUIForItem(this);
 	}
 

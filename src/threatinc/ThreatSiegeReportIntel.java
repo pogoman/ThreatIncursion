@@ -128,7 +128,7 @@ public class ThreatSiegeReportIntel extends BaseIntelPlugin {
 		} else if ("aborted".equals(outcome)) {
 			outcomeText = "The expedition stood down before completing its objectives.";
 		} else {
-			outcomeText = "The expedition has completed its operations and withdrawn.";
+			outcomeText = "The expedition has completed its operations and is withdrawing.";
 		}
 		info.addPara(fn + " conducted siege operations against the Threat colonies of the "
 				+ systemName + ". " + outcomeText, opad);
@@ -187,6 +187,15 @@ public class ThreatSiegeReportIntel extends BaseIntelPlugin {
 					line.append(". %s");
 					hl.add("Colony destroyed.");
 					hlColors.add(pos);
+				}
+				// the sitrep arrives with the fleets, weeks after the landing: say when
+				// each blow fell, so a short disruption that has already run out is
+				// not read as one that never happened
+				if (rec.timestamp > 0L) {
+					int daysAgo = (int) Global.getSector().getClock().getElapsedDaysSince(rec.timestamp);
+					line.append(" (%s)");
+					hl.add(daysAgo <= 0 ? "today" : daysAgo + " days ago");
+					hlColors.add(gray);
 				}
 				info.addPara(line.toString(), 3f, hlColors.toArray(new Color[0]),
 						hl.toArray(new String[0]));

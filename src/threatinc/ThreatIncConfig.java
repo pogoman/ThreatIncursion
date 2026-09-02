@@ -63,33 +63,46 @@ public class ThreatIncConfig {
 
 	public static float colonyGrowthBaseDays(){ return f("threatinc_colonyGrowthBaseDays"); }
 	public static int colonyMaxSize()        { return i("threatinc_colonyMaxSize"); }
-	/** Colony size at which the founding Spaceport is upgraded to a Megaport. */
-	public static int colonyMegaportMinSize(){ return i("threatinc_colonyMegaportMinSize"); }
+	/** Copies of each production-chain link the hive builds as it spreads (one per held system, up to this). */
+	public static int chainRedundancy()      { return i("threatinc_chainRedundancy"); }
 	public static int colonizationEscort()   { return i("threatinc_colonizationEscort"); }
 	public static float garrisonRespawnDays(){ return f("threatinc_garrisonRespawnDays"); }
 	public static boolean economyGatesGrowth(){ return b("threatinc_economyGatesGrowth", true); }
+	/** Whether the home system's industries carry Domain items (nanoforge, mantle bore...) where its deposits fall short. */
+	public static boolean homeRelics()        { return b("threatinc_homeRelics", true); }
+	/** Ground (raid) strength one difficulty point of siege fleet lands - measured, about a quarter of crew capacity. */
+	public static float siegeRaidStrPerPoint() { return f("threatinc_siegeRaidStrPerPoint"); }
+	/** Most fleets a siege expedition grows to while sizing itself to the target's defenses. */
+	public static int siegeMaxFleets()       { return i("threatinc_siegeMaxFleets"); }
+	/** Chance that a forge outside the home system's Pristine one carries a Corrupted Nanoforge (fixed roll per world). */
+	public static float forgeNanoforgeChance() { return f("threatinc_forgeNanoforgeChance"); }
 	/** Fraction of the vanilla Core-distance accessibility penalty to cancel for hive colonies (0 = keep it, 1 = remove it). */
 	public static float coreDistanceOffset()  { return f("threatinc_coreDistanceOffset"); }
+	/** Same-faction shipping units a hive world keeps while its port is disrupted (0 = nothing docks, -1 = vanilla, no effect); vanilla alone lets a disrupted port keep trading at 5+ units. */
+	public static int disruptedPortShipping() { return i("threatinc_disruptedPortShipping"); }
 	public static boolean convertDecivWorlds(){ return b("threatinc_convertDecivWorlds", true); }
 
-	// ---- bounties ----
+	// ---- missions (defense-board contracts) ----
 
-	public static boolean bountiesEnabled()  { return b("threatinc_bountiesEnabled", true); }
-	public static float bountyBaseReward()   { return f("threatinc_bountyBaseReward"); }
-	public static float bountyDurationDays() { return f("threatinc_bountyDurationDays"); }
-	/** How many objectives the defense boards keep standing at once. */
-	public static int maxActiveBounties()    { return i("threatinc_maxActiveBounties"); }
-	/** How much better a new objective must score to displace a standing one. */
-	public static float bountySupersedeMargin() { return f("threatinc_bountySupersedeMargin"); }
-	/** Guaranteed life of a newly posted objective before it can be superseded. */
-	public static float bountyMinStandDays() { return f("threatinc_bountyMinStandDays"); }
+	public static boolean missionsEnabled()  { return b("threatinc_missionsEnabled", true); }
+	public static float missionBaseReward()  { return f("threatinc_missionBaseReward"); }
+	/** Days an offer stays posted, unaccepted, before it is withdrawn. */
+	public static float missionPostingDays() { return f("threatinc_missionPostingDays"); }
+	/** Days the player has to complete a contract once accepted. */
+	public static float missionDurationDays() { return f("threatinc_missionDurationDays"); }
+	/** How many offers the defense boards keep posted at once; accepted contracts don't count. */
+	public static int maxPostedMissions()    { return i("threatinc_maxPostedMissions"); }
+	/** How much better a new objective must score to displace a posted offer. */
+	public static float missionSupersedeMargin() { return f("threatinc_missionSupersedeMargin"); }
+	/** Guaranteed life of a newly posted offer before it can be superseded. */
+	public static float missionMinStandDays() { return f("threatinc_missionMinStandDays"); }
 	/** How far a target's score is raised for sitting inside a faction navy's reach. */
-	public static float bountyProximityBonus() {
-		return f("threatinc_bountyProximityBonus");
+	public static float missionProximityBonus() {
+		return f("threatinc_missionProximityBonus");
 	}
 	/** Reward premium on the strategic (expensive) tier over the immediate tier. */
-	public static float bountyStrategicRewardMult() {
-		return f("threatinc_bountyStrategicRewardMult");
+	public static float missionStrategicRewardMult() {
+		return f("threatinc_missionStrategicRewardMult");
 	}
 	/** Whether breaking a staging colony's forge (raid/bombardment/deciv) recalls its in-flight strikes. */
 	public static boolean strikeRecallEnabled() {
@@ -114,8 +127,10 @@ public class ThreatIncConfig {
 	public static float heavyBatteriesBonus() { return f("threatinc_heavyBatteriesBonus"); }
 	/** Swarm Nexus defense bonus: defense mult = 1 + bonus (x1.5 at 0.5). */
 	public static float nexusDefenseBonus()   { return f("threatinc_nexusDefenseBonus"); }
-	/** Fraction of a defense structure's bonus that survives disruption. */
+	/** Fraction of a defense structure's bonus that survives a fresh disruption. */
 	public static float disruptedDefenseFraction() { return f("threatinc_disruptedDefenseFraction"); }
+	/** Disruption days on a structure's clock at which its surviving bonus has worn to nothing (0 = no wear). */
+	public static float defenseWearDays()     { return f("threatinc_defenseWearDays"); }
 	/** Scale on the saturation fuel bill (1.0 = exactly the defense strength). */
 	public static float hiveBombardCostMult() { return f("threatinc_hiveBombardCostMult"); }
 	/** Tactical bombardment fuel cost as a fraction of the defense strength. */
@@ -123,8 +138,7 @@ public class ThreatIncConfig {
 	/** Days of disruption a saturation pass inflicts on hive industries. */
 	public static float hiveSatDisruptDays()  { return f("threatinc_hiveSatDisruptDays"); }
 	/** Days of disruption a tactical pass inflicts on hive defense structures. */
-	public static float hiveTacDisruptDays()  { return f("threatinc_hiveTacDisruptDays"); }
-	/** Marine-loss multiplier when raiding hive worlds. */
+	public static float hiveTacDisruptDays()  { return f("threatinc_hiveTacDisruptDays"); }	/** Marine-loss multiplier when raiding hive worlds. */
 	public static float hiveMarineLossMult()  { return f("threatinc_hiveMarineLossMult"); }
 
 	// ---- colony decline ----
@@ -162,6 +176,8 @@ public class ThreatIncConfig {
 		return cap <= 0 ? Integer.MAX_VALUE : cap;
 	}
 	public static float strikeLYPerFuel()    { return f("threatinc_strikeLYPerFuel"); }
+	/** Fuel units an expedition carries at a fleet-size figure of 100 percent (vanilla's Fleets figure; hive: vitality x size / 4). */
+	public static float reachFuelCarry()     { return f("threatinc_reachFuelCarry"); }
 	public static int strikeMinSize()        { return i("threatinc_strikeMinSize"); }
 	public static float strikeStrengthMult() { return f("threatinc_strikeStrengthMult"); }
 	public static float playerGraceDays()    { return f("threatinc_playerGraceDays"); }
@@ -174,7 +190,6 @@ public class ThreatIncConfig {
 		int cap = i("threatinc_responseMaxConcurrent");
 		return cap <= 0 ? Integer.MAX_VALUE : cap;
 	}
-	public static float responseRangeLY()        { return f("threatinc_responseRangeLY"); }
 	public static int   responseMinDifficulty()  { return i("threatinc_responseMinDifficulty"); }
 	public static int   responseMaxDifficulty()  { return i("threatinc_responseMaxDifficulty"); }
 	public static float responseStrengthDivisor(){ return f("threatinc_responseStrengthDivisor"); }

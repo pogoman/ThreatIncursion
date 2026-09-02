@@ -1,0 +1,259 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600&family=Titillium+Web:wght@400;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #05080c; font-family: 'Titillium Web', 'Segoe UI', system-ui, sans-serif; color: #c6cbd0; font-size: 13px; line-height: 1.25; }
+    a { color: #8ad3ff; } a:hover { color: #cbf5ff; }
+    .root { width: 1400px; height: 900px; box-sizing: border-box; padding: 14px 18px; position: relative; overflow: hidden; background: #070b10; display: flex; flex-direction: column; gap: 8px; }
+    .title { font-family: 'Orbitron', sans-serif; font-weight: 600; font-size: 22px; letter-spacing: .05em; color: #8ad3ff; margin: 0; }
+    .heading { text-align: center; font-size: 12.5px; letter-spacing: .05em; color: #b9d2c9; background: #1f2b28; border: 1px solid #3a4c47; padding: 2px 8px; text-transform: uppercase; }
+    .hl { color: #f2ae3c; } .neg { color: #ff6a3d; } .pos { color: #9be04c; } .gray { color: #7f878d; } .player { color: #8ad3ff; } .threat { color: #829b91; } .bright { color: #cbf5ff; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; height: 24px; padding: 0 12px; border: 1px solid #3d7ea6; color: #8ad3ff; background: rgba(20,50,70,.55); font-size: 11.5px; white-space: nowrap;
+      clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+    .btn.dim { color: #5a6b78; border-color: #2c4656; }
+    .strip { display: grid; grid-template-columns: repeat(8, minmax(0,1fr)); font-size: 12.5px; }
+    .strip div { display: flex; justify-content: space-between; padding: 0 14px 0 0; }
+    .strip span:first-child { color: #7f878d; }
+    /* ledger: custom rows (icons + text + bars), 30px each */
+    .cols { display: grid; grid-template-columns: 28px 180px 150px 100px 46px 150px 96px 56px 60px 110px 96px 56px; gap: 0 8px; align-items: center; padding: 0 6px; }
+    .th { height: 22px; font-size: 11.5px; color: #b9d2c9; text-transform: uppercase; letter-spacing: .04em; }
+    .th div { border: 1px solid #3a4c47; text-align: center; background: rgba(31,43,40,.6); line-height: 20px; }
+    .tr { height: 30px; border-bottom: 1px solid rgba(58,76,71,.35); }
+    .tr.sel { background: rgba(138,211,255,.08); box-shadow: inset 2px 0 0 #8ad3ff; }
+    .tr.hover { background: rgba(185,210,201,.06); }
+    .chip { display: inline-block; padding: 0 6px; border: 1px solid; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; line-height: 1.5; white-space: nowrap; }
+    .bar { height: 8px; background: #10171d; border: 1px solid #263533; position: relative; }
+    .bar .f { position: absolute; left: 0; top: 0; bottom: 0; }
+    .bar .m { position: absolute; top: -2px; bottom: -2px; width: 1px; background: #829b91; opacity: .8; }
+    .pips { display: flex; gap: 2px; align-items: center; }
+    .pip { width: 8px; height: 8px; border: 1px solid #829b91; box-sizing: border-box; }
+    .pip.on { background: #829b91; } .pip.mus { border-color: #ff6a3d; background: #ff6a3d; }
+    .crest { width: 18px; height: 18px; border: 1px solid; font-size: 8.5px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; letter-spacing: 0; flex: none; }
+    .crests { display: flex; gap: 3px; align-items: center; }
+    .sz { display: inline-flex; gap: 2px; }
+    .sz span { width: 14px; height: 16px; border: 1px solid #3a4c47; font-size: 10.5px; display: inline-flex; align-items: center; justify-content: center; color: #f2ae3c; background: rgba(31,43,40,.5); }
+    /* colony cards */
+    .card { border: 1px solid #3a4c47; background: rgba(10,16,22,.85); padding: 6px 8px; display: flex; flex-direction: column; gap: 5px; height: 112px; box-sizing: border-box; position: relative; }
+    .card.hot { border-color: #9be04c; }
+    .org { width: 30px; height: 30px; border: 1px solid #829b91; background: #1a2422; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #b9d2c9; position: relative; }
+    .org.off { border-color: #ff6a3d; background: rgba(255,106,61,.15); color: #ff6a3d; }
+    .org .d { position: absolute; bottom: -13px; left: 0; right: 0; text-align: center; font-size: 9.5px; color: #ff6a3d; font-weight: 400; }
+    .orgs { display: flex; gap: 6px; margin-bottom: 8px; }
+    .kv { font-size: 11.5px; color: #7f878d; display: flex; gap: 10px; white-space: nowrap; overflow: hidden; }
+    .kv b { color: #c6cbd0; font-weight: 600; }
+    /* operations table */
+    .ops { display: grid; grid-template-columns: 22px 1fr 96px 58px; gap: 0 8px; align-items: center; font-size: 12px; padding: 0 4px; }
+    .ops.h { color: #b9d2c9; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; height: 20px; }
+    .ops.r { height: 24px; border-bottom: 1px solid rgba(58,76,71,.3); }
+    .ops .n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tip { position: absolute; left: 456px; top: 552px; width: 420px; background: #0b1218; border: 1px solid #4a6a7e; padding: 8px 10px; font-size: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.6); z-index: 5; display: flex; flex-direction: column; gap: 5px; }
+    .tip .t { color: #cbf5ff; font-weight: 600; }
+    .note { position: absolute; font-size: 10.5px; color: #f2ae3c; border: 1px dashed #f2ae3c; padding: 1px 5px; background: rgba(7,11,16,.9); }
+  </style>
+</helmet>
+
+<div class="root">
+
+  <!-- header: one line -->
+  <div style="display:flex; align-items:center; gap:14px; height:32px;">
+    <img src="crest_threat.png" alt="" style="width:28px; height:28px; object-fit:contain; opacity:.9;">
+    <h1 class="title">THE THREAT WAR EFFORT</h1>
+    <span class="gray" style="font-size:12px;">Cycle 213 - day <span class="hl">1631</span> of the incursion</span>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:10px; font-size:11.5px;">
+      <span class="gray">Awakened</span>
+      <div class="bar" style="width:260px; height:9px;"><div class="f" style="width:50%; background:linear-gradient(90deg,#2f4a44,#829b91);"></div><div class="m" style="left:50%;"></div><div class="m" style="left:calc(100% - 1px); background:#ff6a3d;"></div></div>
+      <span class="threat" style="font-weight:600;">PHASE 2 - Strike-capable</span>
+      <span class="gray">Core worlds in reach</span>
+    </div>
+  </div>
+
+  <!-- sector strip: one line, label/value pairs (vanilla grid) -->
+  <div class="strip">
+    <div><span>Systems known</span><span class="hl">6</span></div>
+    <div><span>Hive worlds</span><span class="hl">19</span></div>
+    <div><span>Fabrication mass</span><span class="hl">112</span></div>
+    <div><span>Swarms sighted</span><span class="hl">31</span></div>
+    <div><span>Expeditions out</span><span class="neg">13</span></div>
+    <div><span>Sieges in</span><span class="pos">12</span></div>
+    <div><span>Bounties</span><span class="hl">3</span></div>
+    <div><span>Hives burned</span><span class="pos">3</span></div>
+  </div>
+
+  <!-- ledger -->
+  <div class="heading">Known infested systems - priority order</div>
+  <div>
+    <div class="cols th"><div>#</div><div>System</div><div>Threat</div><div>Worlds</div><div>Mass</div><div>Vitality</div><div>Swarms</div><div>Reach</div><div>Out</div><div>In</div><div>Bounty</div><div>Core</div></div>
+
+    <div class="cols tr sel">
+      <div class="hl" style="text-align:center; font-family:'Orbitron',sans-serif;">1</div>
+      <div class="player" style="font-weight:600;">Gamma Novy Tayvay</div>
+      <div><span class="chip neg">Striking x5</span></div>
+      <div class="sz"><span>5</span><span>4</span><span>4</span><span>3</span><span>3</span><span>2</span></div>
+      <div class="hl" style="text-align:center;">25</div>
+      <div style="display:flex; align-items:center; gap:6px;"><div class="bar" style="width:84px;"><div class="f" style="width:86%; background:#f2ae3c;"></div><div class="m" style="left:35%;"></div><div class="m" style="left:85%;"></div></div><span class="hl">86%</span><span class="neg" style="font-size:11px;">&#9660;</span></div>
+      <div class="pips"><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip mus"></div><div class="pip mus"></div><span class="gray" style="font-size:10.5px; margin-left:3px;">5/17</span></div>
+      <div class="neg" style="text-align:center;">20 ly</div>
+      <div style="text-align:center;"><span class="neg" style="font-weight:700;">5</span> <span class="neg" style="font-size:10px;">&#9650;</span></div>
+      <div class="crests"><span class="crest" style="color:#e2c04a; border-color:#e2c04a;">LC</span><span class="crest" style="color:#69d8e8; border-color:#69d8e8;">TT</span><span class="crest" style="color:#7fa5d9; border-color:#7fa5d9;">PL</span><span class="gray" style="font-size:10.5px;">+1</span></div>
+      <div class="gray">-</div>
+      <div style="text-align:center;">6 ly</div>
+    </div>
+
+    <div class="cols tr">
+      <div class="hl" style="text-align:center; font-family:'Orbitron',sans-serif;">2</div>
+      <div class="bright" style="font-weight:600;">Gamma Sar</div>
+      <div><span class="chip threat" style="border-color:#829b91;">Home hive</span></div>
+      <div class="sz"><span>8</span><span>8</span><span>8</span><span>8</span></div>
+      <div class="hl" style="text-align:center;">32</div>
+      <div style="display:flex; align-items:center; gap:6px;"><div class="bar" style="width:84px;"><div class="f" style="width:92%; background:#9be04c;"></div><div class="m" style="left:35%;"></div><div class="m" style="left:85%;"></div></div><span class="pos">92%</span><span class="pos" style="font-size:11px;">&#9650;</span></div>
+      <div class="pips"><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><span class="gray" style="font-size:10.5px; margin-left:3px;">12/12</span></div>
+      <div class="neg" style="text-align:center;">20 ly</div>
+      <div class="gray" style="text-align:center;">-</div>
+      <div class="gray">-</div>
+      <div><span class="hl">S1</span> <span class="gray">1.8M</span></div>
+      <div style="text-align:center;">26 ly</div>
+    </div>
+
+    <div class="cols tr hover">
+      <div class="hl" style="text-align:center; font-family:'Orbitron',sans-serif;">3</div>
+      <div class="bright" style="font-weight:600;">Beta Vassago</div>
+      <div><span class="chip neg">Striking</span></div>
+      <div class="sz"><span>7</span><span>6</span><span>6</span><span>6</span></div>
+      <div class="hl" style="text-align:center;">25</div>
+      <div style="display:flex; align-items:center; gap:6px;"><div class="bar" style="width:84px;"><div class="f" style="width:100%; background:#9be04c;"></div><div class="m" style="left:35%;"></div><div class="m" style="left:85%;"></div></div><span class="pos">100%</span><span class="pos" style="font-size:11px;">&#9650;</span></div>
+      <div class="pips"><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><div class="pip mus"></div><div class="pip mus"></div><span class="gray" style="font-size:10.5px; margin-left:3px;">4/12</span></div>
+      <div class="neg" style="text-align:center;">20 ly</div>
+      <div style="text-align:center;"><span class="neg" style="font-weight:700;">1</span> <span class="neg" style="font-size:10px;">&#9650;</span></div>
+      <div class="crests"><span class="crest" style="color:#c96a6a; border-color:#c96a6a;">PI</span></div>
+      <div class="gray">-</div>
+      <div style="text-align:center;">14 ly</div>
+    </div>
+
+    <div class="cols tr">
+      <div class="hl" style="text-align:center; font-family:'Orbitron',sans-serif;">4</div>
+      <div class="bright" style="font-weight:600;">Gamma Balwom</div>
+      <div><span class="chip neg">Striking</span></div>
+      <div class="sz"><span>6</span><span>6</span><span>6</span></div>
+      <div class="hl" style="text-align:center;">18</div>
+      <div style="display:flex; align-items:center; gap:6px;"><div class="bar" style="width:84px;"><div class="f" style="width:100%; background:#9be04c;"></div><div class="m" style="left:35%;"></div><div class="m" style="left:85%;"></div></div><span class="pos">100%</span><span class="pos" style="font-size:11px;">&#9650;</span></div>
+      <div class="pips"><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><span class="gray" style="font-size:10.5px; margin-left:3px;">3/9</span></div>
+      <div class="neg" style="text-align:center;">20 ly</div>
+      <div style="text-align:center;"><span class="neg" style="font-weight:700;">1</span> <span class="neg" style="font-size:10px;">&#9650;</span></div>
+      <div class="crests"><span class="crest" style="color:#7fa5d9; border-color:#7fa5d9;">PL</span></div>
+      <div><span class="player">I1</span> <span class="gray">0.4M</span></div>
+      <div style="text-align:center;">18 ly</div>
+    </div>
+
+    <div class="cols tr">
+      <div class="hl" style="text-align:center; font-family:'Orbitron',sans-serif;">5</div>
+      <div class="bright" style="font-weight:600;">Gamma Gibidigi</div>
+      <div><span class="chip neg">Striking</span></div>
+      <div class="sz"><span>5</span></div>
+      <div class="hl" style="text-align:center;">5</div>
+      <div style="display:flex; align-items:center; gap:6px;"><div class="bar" style="width:84px;"><div class="f" style="width:100%; background:#9be04c;"></div><div class="m" style="left:35%;"></div><div class="m" style="left:85%;"></div></div><span class="pos">100%</span><span class="pos" style="font-size:11px;">&#9650;</span></div>
+      <div class="pips"><div class="pip on"></div><div class="pip on"></div><span class="gray" style="font-size:10.5px; margin-left:3px;">2/3</span></div>
+      <div class="neg" style="text-align:center;">20 ly</div>
+      <div style="text-align:center;"><span class="neg" style="font-weight:700;">1</span> <span class="neg" style="font-size:10px;">&#9650;</span></div>
+      <div class="crests"><span class="crest" style="color:#c96a6a; border-color:#c96a6a;">PI</span></div>
+      <div class="gray">-</div>
+      <div style="text-align:center;">21 ly</div>
+    </div>
+
+    <div class="cols tr">
+      <div class="hl" style="text-align:center; font-family:'Orbitron',sans-serif;">6</div>
+      <div class="bright" style="font-weight:600;">Beta Sar</div>
+      <div><span class="chip hl" style="border-color:#f2ae3c;">Entrenched</span></div>
+      <div class="sz"><span>7</span></div>
+      <div class="hl" style="text-align:center;">7</div>
+      <div style="display:flex; align-items:center; gap:6px;"><div class="bar" style="width:84px;"><div class="f" style="width:100%; background:#9be04c;"></div><div class="m" style="left:35%;"></div><div class="m" style="left:85%;"></div></div><span class="pos">100%</span><span class="pos" style="font-size:11px;">&#9650;</span></div>
+      <div class="pips"><div class="pip on"></div><div class="pip on"></div><div class="pip on"></div><span class="gray" style="font-size:10.5px; margin-left:3px;">3/3</span></div>
+      <div class="neg" style="text-align:center;">20 ly</div>
+      <div class="gray" style="text-align:center;">-</div>
+      <div class="crests"><span class="crest" style="color:#c96a6a; border-color:#c96a6a;">PI</span></div>
+      <div class="gray">-</div>
+      <div style="text-align:center;">25 ly</div>
+    </div>
+  </div>
+
+  <!-- row hover tooltip (the depth lives here, not on the face) -->
+  <div class="tip" style="left:700px; top:300px;">
+    <div class="t">Beta Vassago - 4 hive worlds, mass 25</div>
+    <div><span class="neg">Striking:</span> expedition vs <span class="hl">Al Gebbar</span>, 2 fleets, engaging - departed, autonomous.</div>
+    <div><span style="color:#c96a6a;">Pirates siege</span> - 2 fleets, engaging - tactical bombardment, then commando raids.</div>
+    <div>In strike reach: <span class="neg">Al Gebbar, Canaan, Tyle</span> and 6 more.</div>
+    <div>Nearest colony of yours: <span class="hl">9 ly</span>. Time in stage: <span class="hl">1,204 d</span>.</div>
+    <div class="gray">Click to select</div>
+  </div>
+
+  <!-- selected system -->
+  <div class="heading" style="margin-top:2px;">Gamma Novy Tayvay - 6 hive worlds - mass 25 - 6 ly from the core - 9 ly from your nearest colony</div>
+  <div style="display:grid; grid-template-columns: 1fr 470px; gap:10px; flex:1; min-height:0;">
+
+    <!-- colony cards, 2 across; the 5-6th row scrolls with the page -->
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; align-content:start;">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline;"><span><span class="bright" style="font-weight:700;">Gamma Novy Tayvay I</span> <span class="gray">s</span><span class="hl">5</span> <span class="gray">- forge</span></span><span class="pos" style="font-weight:600;">100% <span style="font-size:11px;">&#9650;</span> <span class="gray" style="font-weight:400;">s6 in 266 d</span></span></div>
+        <div class="orgs"><div class="org">C</div><div class="org">N</div><div class="org">P</div><div class="org">F</div><div class="org">D</div><div class="org">M</div><span class="gray" style="font-size:10.5px; align-self:center; margin-left:4px;">industry icons in-game, red when disrupted</span></div>
+        <div class="bar" style="height:6px;"><div class="f" style="width:100%; background:#9be04c;"></div><div class="m" style="left:35%;"></div><div class="m" style="left:85%;"></div></div>
+        <div class="kv"><span>Swarms <b>1/3</b></span><span>Def <b>6,000</b> sat <b class="neg">6,000</b> tac <b>1,500</b></span><span>Reach <b class="neg">20 ly</b></span><span>Hulls to <b>23</b></span></div>
+      </div>
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline;"><span><span class="bright" style="font-weight:700;">Gamma Novy Tayvay II</span> <span class="gray">s</span><span class="hl">4</span> <span class="gray">- mining</span></span><span class="pos" style="font-weight:600;">100% <span style="font-size:11px;">&#9650;</span> <span class="gray" style="font-weight:400;">s5 in 8 d</span></span></div>
+        <div class="orgs"><div class="org">C</div><div class="org">N</div><div class="org">P</div><div class="org">D</div><div class="org">M</div></div>
+        <div class="bar" style="height:6px;"><div class="f" style="width:100%; background:#9be04c;"></div><div class="m" style="left:35%;"></div><div class="m" style="left:85%;"></div></div>
+        <div class="kv"><span>Swarms <b>2/3</b></span><span>Def <b>4,800</b> sat <b class="neg">4,800</b> tac <b>1,200</b></span><span>Reach <b class="neg">20 ly</b></span><span>Ore to <b>12</b></span></div>
+      </div>
+      <div class="card hot">
+        <div style="display:flex; justify-content:space-between; align-items:baseline;"><span><span class="bright" style="font-weight:700;">Gamma Novy Tayvay III</span> <span class="gray">s</span><span class="hl">4</span> <span class="gray">- refinery</span></span><span class="neg" style="font-weight:600;">28% <span style="font-size:11px;">&#9660;</span> <span class="gray" style="font-weight:400;">s3 in ~22 d</span></span></div>
+        <div class="orgs"><div class="org off">C<span class="d">41d</span></div><div class="org">N</div><div class="org off">P<span class="d">12d</span></div><div class="org">R</div><div class="org off">D<span class="d">30d</span></div><div class="org">M</div></div>
+        <div class="bar" style="height:6px;"><div class="f" style="width:28%; background:#ff6a3d;"></div><div class="m" style="left:35%;"></div><div class="m" style="left:85%;"></div></div>
+        <div class="kv"><span>Swarms <b class="pos">0/3 open</b></span><span>Def <b>2,400</b> sat <b class="neg">2,400</b> tac <b>600</b></span><span>Decline <b class="neg">61%</b></span><span>Metals to <b>9</b></span></div>
+      </div>
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:baseline;"><span><span class="bright" style="font-weight:700;">Gamma Novy Tayvay IV</span> <span class="gray">s</span><span class="hl">3</span> <span class="gray">- mining</span></span><span class="hl" style="font-weight:600;">64% <span class="gray" style="font-size:11px;">&#9644;</span> <span class="gray" style="font-weight:400;">stalled</span></span></div>
+        <div class="orgs"><div class="org">C</div><div class="org">N</div><div class="org">P</div><div class="org">D</div><div class="org">M</div></div>
+        <div class="bar" style="height:6px;"><div class="f" style="width:64%; background:#f2ae3c;"></div><div class="m" style="left:35%;"></div><div class="m" style="left:85%;"></div></div>
+        <div class="kv"><span>Swarms <b>1/2</b></span><span>Def <b>1,800</b> sat <b class="neg">1,800</b> tac <b>450</b></span><span>Reach <b class="gray">-</b></span><span>Volatiles to <b>3</b></span></div>
+      </div>
+      <div class="gray" style="grid-column: 1 / -1; font-size:11px;">+ 2 more worlds below (page scrolls)</div>
+    </div>
+
+    <!-- operations: a table, not sentences -->
+    <div style="display:flex; flex-direction:column; gap:4px; min-height:0;">
+      <div class="ops h"><div></div><div>Operation</div><div>Status</div><div>ETA</div></div>
+      <div class="ops r"><span class="crest" style="color:#829b91; border-color:#829b91;">TH</span><div class="n"><span class="neg">Strike</span> vs <span class="hl">Magec</span> - 2 fleets</div><div class="pos">mustering - recall</div><div>~10 d</div></div>
+      <div class="ops r"><span class="crest" style="color:#829b91; border-color:#829b91;">TH</span><div class="n"><span class="neg">Strike</span> vs <span class="hl">Thule</span> - 2 fleets</div><div class="neg">bombarding</div><div>-</div></div>
+      <div class="ops r"><span class="crest" style="color:#829b91; border-color:#829b91;">TH</span><div class="n"><span class="neg">Strike</span> vs <span class="hl">Askonia</span> - 2 fleets</div><div class="neg">bombarding</div><div>-</div></div>
+      <div class="ops r"><span class="crest" style="color:#829b91; border-color:#829b91;">TH</span><div class="n"><span class="neg">Strike</span> vs <span class="hl">Hybrasil</span> - 2 fleets</div><div class="neg">bombarding</div><div>-</div></div>
+      <div class="ops r"><span class="crest" style="color:#829b91; border-color:#829b91;">TH</span><div class="n"><span class="neg">Strike</span> vs <span class="hl">Mayasura</span> - 2 fleets</div><div class="gray">withdrawing</div><div>-</div></div>
+      <div class="ops r"><span class="crest" style="color:#e2c04a; border-color:#e2c04a;">LC</span><div class="n"><span style="color:#e2c04a;">Luddic Church</span> siege - 4 fleets</div><div>mustering</div><div>~7 d</div></div>
+      <div class="ops r"><span class="crest" style="color:#69d8e8; border-color:#69d8e8;">TT</span><div class="n"><span style="color:#69d8e8;">Tri-Tachyon</span> task force - 1 fleet</div><div class="pos">engaging II</div><div>-</div></div>
+      <div class="ops r"><span class="crest" style="color:#7fa5d9; border-color:#7fa5d9;">PL</span><div class="n"><span style="color:#7fa5d9;">Persean League</span> task force - 2 fleets</div><div class="pos">engaging IV</div><div>-</div></div>
+      <div class="ops r"><span class="crest" style="color:#9aa0a6; border-color:#9aa0a6;">IN</span><div class="n"><span style="color:#9aa0a6;">Independent</span> task force - 1 fleet</div><div class="pos">engaging III</div><div>-</div></div>
+      <div class="gray" style="font-size:11px; padding:2px 4px;">Click a row to open its intel. Bounties on this system: none.</div>
+      <div style="display:flex; gap:6px; margin-top:auto; flex-wrap:wrap;">
+        <span class="btn">Commission purge - 1,240,000</span><span class="btn">Show on map</span><span class="btn">Infestation intel</span><span class="btn dim">Bounty</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- hover tooltip on the declining card -->
+  <div class="tip" style="left:120px; top:690px; width:520px;">
+    <div class="t">Gamma Novy Tayvay III - refinery, size 4</div>
+    <div><span class="neg">DECLINING</span> - vitality 28% = fabrication <span class="neg">25%</span> x supply <span class="hl">100%</span>. Losing <span class="neg">44%</span> of a stratum per month, accelerating. Next stratum in <span class="hl">~22 d</span>, collapse in <span class="hl">~160 d</span>.</div>
+    <div><span class="hl">Core recovers in 41 d</span> - before collapse. Raid it again or the decline stalls at size 3.</div>
+    <div>Supplies metals and transplutonics to 9 colonies. Draws ore 100%, heavy machinery 62%.</div>
+    <div>Ground defenses suppressed 30 d - firing at half effect. Tactical bombardment 600 fuel keeps them down.</div>
+  </div>
+  <div class="note" style="left:640px; top:660px;">hover tooltips carry all prose</div>
+</div>
+</x-dc>
+</body>
+</html>

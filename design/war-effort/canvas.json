@@ -1,0 +1,23 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Round 1 - directions" },
+    { "id": "page-2", "name": "Round 2 - platform-constrained" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Direction A - War ledger", "x": 0, "y": 0, "w": 1340, "h": 900, "page": "page-1" },
+    { "file": "DirectionB.dc.html", "title": "Direction B - Front cards + ops feed", "x": 1440, "y": 0, "w": 1340, "h": 900, "page": "page-1" },
+    { "file": "DirectionC.dc.html", "title": "Direction C - Map first", "x": 2880, "y": 0, "w": 1340, "h": 900, "page": "page-1" },
+    { "file": "HiveDetail.dc.html", "title": "Hive world drill-down (shared)", "x": 0, "y": 1060, "w": 1340, "h": 700, "page": "page-1" },
+    { "file": "DataMap.dc.html", "title": "What feeds the board", "x": 1440, "y": 1060, "w": 1340, "h": 1180, "print": "flow", "page": "page-1" },
+    { "file": "Round2.dc.html", "title": "Round 2 - 1400 px (1080p panel)", "x": 0, "y": 0, "w": 1400, "h": 900, "page": "page-2" },
+    { "file": "Round2Narrow.dc.html", "title": "Round 2 - 1100 px (narrow panel)", "x": 1500, "y": 0, "w": 1100, "h": 820, "page": "page-2" },
+    { "file": "Kit.dc.html", "title": "Widget kit and rules", "x": 0, "y": 1040, "w": 1100, "h": 900, "print": "flow", "page": "page-2" }
+  ],
+  "annotations": [
+    { "id": "brief", "x": 0, "y": -170, "w": 640, "page": "page-1", "text": "THE THREAT WAR EFFORT - three layouts for the same data.\nA: dense ledger, closest to the vanilla event screen. Best for scanning many systems; detail below the table.\nB: one card per front with per-colony rows; operations, bounties and your expeditions in a live column. Most information per screen; heaviest.\nC: sector map carries distance, reach and operations spatially; a compact priority list beside it. Best for strategy at a glance; costs custom map drawing.\nAll three open the same drill-down (bottom left). Bottom right maps every element to the code that already produces it." },
+    { "id": "sample-data", "x": 2880, "y": -110, "w": 460, "page": "page-1", "text": "Sample data is invented but shaped like a real save: Gamma Balwom (forge, striking), Beta Vassago (home hive, 4 worlds), Delta Vanhosk (under siege, declining), Kumari Kandam (foothold), Alpha Gronshara (seeding swarm in transit)." },
+    { "id": "round2-brief", "x": 0, "y": -150, "w": 700, "page": "page-2", "text": "ROUND 2 - same information, designed against what the intel panel actually draws.\nNothing on a row or card is a sentence: chips, size boxes, bars, pips, counts and faction crests. Every column has a fixed width; the whole ledger fits 1,100 px so nothing truncates. All prose moves to hover tooltips (two shown as overlays). Operations become a four-column table capped at nine rows.\nSample data is the real save from your screenshot (Gamma Novy Tayvay etc.). Two overlays in orange dashed boxes are annotations, not UI." },
+    { "id": "round2-narrow", "x": 1500, "y": -110, "w": 460, "page": "page-2", "text": "Narrow variant: what folds when the panel is under ~1,200 px (1600x900 and below). Bounty merges into the Threat chip, Core moves to the tooltip, operations drop below the cards." }
+  ],
+  "launch": { "view": "canvas", "page": "page-2" }
+}

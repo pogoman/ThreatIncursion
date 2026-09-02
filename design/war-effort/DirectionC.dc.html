@@ -1,0 +1,183 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600&family=Titillium+Web:wght@400;600;700&display=swap">
+  <style>
+    body { margin: 0; background: #05080c; font-family: 'Titillium Web', 'Segoe UI', system-ui, sans-serif; color: #c6cbd0; font-size: 13px; line-height: 1.3; }
+    a { color: #8ad3ff; } a:hover { color: #cbf5ff; }
+    .root { width: 1340px; height: 900px; box-sizing: border-box; padding: 16px 22px 14px 22px; position: relative; overflow: hidden;
+      background-color: #070b10;
+      background-image: linear-gradient(rgba(70,110,130,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(70,110,130,.07) 1px, transparent 1px);
+      background-size: 40px 40px; display: flex; flex-direction: column; gap: 10px; }
+    .title { font-family: 'Orbitron', 'Titillium Web', sans-serif; font-weight: 600; font-size: 24px; letter-spacing: .06em; color: #8ad3ff; margin: 0; text-transform: uppercase; }
+    .heading { text-align: center; font-size: 13px; letter-spacing: .05em; color: #b9d2c9; background: #1f2b28; border: 1px solid #3a4c47; padding: 3px 8px; text-transform: uppercase; }
+    .hl { color: #f2ae3c; } .neg { color: #ff6a3d; } .pos { color: #9be04c; } .gray { color: #7f878d; } .player { color: #8ad3ff; } .threat { color: #829b91; } .bright { color: #cbf5ff; }
+    .heg { color: #e6941f; } .pl { color: #7fa5d9; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; height: 24px; padding: 0 12px; border: 1px solid #3d7ea6; color: #8ad3ff; background: rgba(20,50,70,.55); font-size: 11.5px; letter-spacing: .03em; white-space: nowrap;
+      clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); }
+    .map { border: 1px solid #3a4c47; background: #060a12 radial-gradient(ellipse at 62% 58%, rgba(40,70,120,.35), transparent 55%); position: relative; overflow: hidden; }
+    .lst { border: 1px solid #263533; background: rgba(10,16,22,.85); display: flex; flex-direction: column; }
+    .li { display: grid; grid-template-columns: 22px 1fr 40px 84px 60px 70px; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid rgba(58,76,71,.35); font-size: 12px; }
+    .li.h { color: #b9d2c9; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; background: rgba(31,43,40,.5); }
+    .li.sel { background: rgba(138,211,255,.08); border-left: 2px solid #8ad3ff; padding-left: 8px; }
+    .rk { font-family: 'Orbitron', sans-serif; color: #f2ae3c; font-size: 14px; }
+    .bar { height: 7px; background: #10171d; border: 1px solid #263533; width: 56px; position: relative; display: inline-block; vertical-align: middle; }
+    .bar .f { position: absolute; left: 0; top: 0; bottom: 0; }
+    .kv { display: grid; grid-template-columns: 110px 1fr; gap: 3px 8px; font-size: 12px; }
+    .kv .k { color: #7f878d; }
+    .tile { border: 1px solid #3a4c47; background: rgba(31,43,40,.35); padding: 4px 6px; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .tile .n { font-size: 10.5px; color: #b9d2c9; text-transform: uppercase; letter-spacing: .03em; }
+    .tile .s { font-size: 11.5px; }
+    .lg { position: absolute; left: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 3px; font-size: 11px; background: rgba(6,10,18,.85); border: 1px solid #263533; padding: 6px 8px; }
+    .lg div { display: flex; align-items: center; gap: 8px; }
+  </style>
+</helmet>
+
+<div class="root">
+
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <img src="crest_threat.png" alt="" style="width:40px; height:40px; object-fit:contain; opacity:.9;">
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <h1 class="title">The Threat War Effort</h1>
+        <div class="gray" style="font-size:12px;"><span class="neg">Phase 3</span> - a hive can field a full armada - awakened <span class="hl">212</span> days ago - <span class="hl">5</span> known systems, <span class="hl">7</span> hive worlds, mass <span class="hl">29</span>. Only what you have found is shown.</div>
+      </div>
+    </div>
+    <div class="gray" style="font-size:12px;">Map layers: <span class="player">strike reach</span> | <span class="player">expeditions</span> | <span class="player">bounties</span> | <span class="gray">supply lines</span></div>
+  </div>
+
+  <div style="display:grid; grid-template-columns: 1fr 470px; gap:12px; flex:1; min-height:0;">
+
+    <!-- the map: schematic stand-in for the vanilla sector map the intel panel can embed -->
+    <div class="map">
+      <svg width="100%" height="100%" viewBox="0 0 810 790" preserveAspectRatio="xMidYMid slice" font-family="Titillium Web, sans-serif">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#ff6a3d"/></marker>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#e6941f"/></marker>
+          <marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7fa5d9"/></marker>
+          <marker id="au" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8ad3ff"/></marker>
+        </defs>
+        <!-- hyperspace clouds -->
+        <g fill="#1a2a55" opacity=".35"><ellipse cx="180" cy="180" rx="150" ry="90"/><ellipse cx="640" cy="120" rx="130" ry="70"/><ellipse cx="150" cy="620" rx="120" ry="100"/><ellipse cx="700" cy="650" rx="100" ry="120"/></g>
+        <!-- core region -->
+        <circle cx="500" cy="450" r="150" fill="none" stroke="#3d7ea6" stroke-opacity=".35" stroke-dasharray="3 5"/>
+        <text x="500" y="298" fill="#3d7ea6" font-size="11" text-anchor="middle" letter-spacing="2">CORE WORLDS</text>
+
+        <!-- strike reach rings -->
+        <circle cx="330" cy="380" r="200" fill="rgba(255,106,61,.05)" stroke="#ff6a3d" stroke-opacity=".5" stroke-dasharray="6 4"/>
+        <circle cx="140" cy="300" r="160" fill="rgba(255,106,61,.04)" stroke="#ff6a3d" stroke-opacity=".35" stroke-dasharray="6 4"/>
+
+        <!-- supply lines inside the hive (dim) -->
+        <g stroke="#829b91" stroke-opacity=".35" stroke-dasharray="2 4"><line x1="140" y1="300" x2="330" y2="380"/><line x1="140" y1="300" x2="420" y2="560"/><line x1="420" y1="560" x2="330" y2="380"/><line x1="140" y1="300" x2="120" y2="620"/></g>
+
+        <!-- core & inhabited systems -->
+        <g fill="#8ad3ff"><circle cx="470" cy="420" r="4"/><circle cx="560" cy="470" r="4"/><circle cx="520" cy="540" r="4"/><circle cx="600" cy="400" r="3"/><circle cx="430" cy="500" r="3"/></g>
+        <g fill="#c6cbd0" font-size="11"><text x="478" y="416">Magec</text><text x="568" y="466">Eventide</text><text x="528" y="536">Askonia</text><text x="608" y="396">Kazeron</text><text x="360" y="504">Naraka</text></g>
+        <circle cx="350" cy="500" r="3" fill="#c6cbd0"/>
+        <!-- player colony -->
+        <rect x="392" y="352" width="10" height="10" fill="#8ad3ff" transform="rotate(45 397 357)"/><text x="406" y="352" fill="#8ad3ff" font-size="11" font-weight="600">Nova Maxios (yours)</text>
+
+        <!-- hive systems: hexagon sized by mass -->
+        <g>
+          <polygon points="330,357 350,368.5 350,391.5 330,403 310,391.5 310,368.5" fill="#1f2b28" stroke="#ff6a3d" stroke-width="2"/>
+          <text x="330" y="385" fill="#ff6a3d" font-size="13" text-anchor="middle" font-family="Orbitron" font-weight="600">1</text>
+          <text x="358" y="378" fill="#cbf5ff" font-size="12" font-weight="700">Gamma Balwom</text><text x="358" y="392" fill="#7f878d" font-size="10.5">s6 forge - striking</text>
+        </g>
+        <g>
+          <polygon points="140,268 168,284 168,316 140,332 112,316 112,284" fill="#1f2b28" stroke="#829b91" stroke-width="2"/>
+          <text x="140" y="305" fill="#f2ae3c" font-size="13" text-anchor="middle" font-family="Orbitron" font-weight="600">2</text>
+          <text x="176" y="296" fill="#cbf5ff" font-size="12" font-weight="700">Beta Vassago</text><text x="176" y="310" fill="#7f878d" font-size="10.5">home hive - 4 worlds, mass 15</text>
+        </g>
+        <g>
+          <polygon points="420,542 438,552 438,572 420,582 402,572 402,552" fill="#1f2b28" stroke="#9be04c" stroke-width="2" stroke-dasharray="3 2"/>
+          <text x="420" y="567" fill="#f2ae3c" font-size="12" text-anchor="middle" font-family="Orbitron" font-weight="600">3</text>
+          <text x="446" y="560" fill="#cbf5ff" font-size="12" font-weight="700">Delta Vanhosk</text><text x="446" y="574" fill="#9be04c" font-size="10.5">declining - core down 42 d</text>
+        </g>
+        <g>
+          <polygon points="120,608 133,615.5 133,630.5 120,638 107,630.5 107,615.5" fill="#1f2b28" stroke="#f2ae3c" stroke-width="2"/>
+          <text x="120" y="627" fill="#f2ae3c" font-size="11" text-anchor="middle" font-family="Orbitron" font-weight="600">4</text>
+          <text x="140" y="620" fill="#cbf5ff" font-size="12" font-weight="700">Kumari Kandam</text><text x="140" y="634" fill="#7f878d" font-size="10.5">foothold s3</text>
+        </g>
+        <g>
+          <circle cx="90" cy="120" r="7" fill="none" stroke="#ff6a3d" stroke-width="1.5" stroke-dasharray="2 2"/>
+          <text x="90" y="124" fill="#f2ae3c" font-size="10" text-anchor="middle" font-family="Orbitron" font-weight="600">5</text>
+          <text x="104" y="116" fill="#cbf5ff" font-size="12" font-weight="700">Alpha Gronshara</text><text x="104" y="130" fill="#7f878d" font-size="10.5">seeding swarm ~18 d</text>
+        </g>
+
+        <!-- operations arrows -->
+        <line x1="352" y1="380" x2="458" y2="418" stroke="#ff6a3d" stroke-width="2" marker-end="url(#ar)"/>
+        <text x="392" y="392" fill="#ff6a3d" font-size="10.5" transform="rotate(20 392 392)">incursion ~55 d</text>
+        <line x1="128" y1="270" x2="96" y2="134" stroke="#ff6a3d" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#ar)"/>
+        <line x1="548" y1="468" x2="356" y2="392" stroke="#e6941f" stroke-width="2" marker-end="url(#ah)"/>
+        <text x="440" y="422" fill="#e6941f" font-size="10.5" transform="rotate(20 440 422)">Hegemony task force ~22 d</text>
+        <line x1="540" y1="480" x2="438" y2="556" stroke="#e6941f" stroke-width="2" marker-end="url(#ah)"/>
+        <line x1="592" y1="404" x2="136" y2="612" stroke="#7fa5d9" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#ap)"/>
+        <text x="330" y="500" fill="#7fa5d9" font-size="10.5" transform="rotate(-24 330 500)">Persean League purge ~30 d</text>
+        <line x1="400" y1="366" x2="414" y2="540" stroke="#8ad3ff" stroke-width="1.5" marker-end="url(#au)"/>
+        <text x="418" y="470" fill="#8ad3ff" font-size="10.5">your expedition ~9 d</text>
+
+        <!-- bounty stars -->
+        <text x="318" y="352" fill="#f2ae3c" font-size="14">&#9733;</text>
+        <text x="128" y="262" fill="#f2ae3c" font-size="14">&#9733;</text>
+        <text x="408" y="538" fill="#8ad3ff" font-size="13">&#9733;</text>
+      </svg>
+      <div class="lg">
+        <div><span style="width:14px; height:2px; background:#ff6a3d; display:inline-block;"></span> Threat expedition</div>
+        <div><span style="width:14px; height:2px; background:#e6941f; display:inline-block;"></span> Faction siege / task force</div>
+        <div><span style="width:14px; height:2px; background:#8ad3ff; display:inline-block;"></span> Your commissioned expedition</div>
+        <div><span style="width:14px; height:0; border-top:1px dashed #ff6a3d; display:inline-block;"></span> Strike reach (fuel-bought)</div>
+        <div><span class="hl">&#9733;</span> Standing bounty</div>
+        <div><span style="width:12px; height:12px; border:2px solid #829b91; display:inline-block; box-sizing:border-box;"></span> Hive - size by fabrication mass</div>
+      </div>
+    </div>
+
+    <!-- priority list + selected -->
+    <div style="display:flex; flex-direction:column; gap:10px; min-height:0;">
+      <div class="lst">
+        <div class="heading" style="border:0; border-bottom:1px solid #3a4c47;">Priority</div>
+        <div class="li h"><div>#</div><div>System</div><div>Mass</div><div>Vitality</div><div>Reach</div><div>Core</div></div>
+        <div class="li sel"><div class="rk">1</div><div><span class="bright" style="font-weight:600;">Gamma Balwom</span> <span class="neg" style="font-size:11px;">STRIKING</span></div><div class="hl">6</div><div><div class="bar"><div class="f" style="width:92%; background:#9be04c;"></div></div></div><div class="neg">25 ly</div><div>9 ly</div></div>
+        <div class="li"><div class="rk">2</div><div><span class="bright" style="font-weight:600;">Beta Vassago</span> <span class="threat" style="font-size:11px;">HOME</span></div><div class="hl">15</div><div><div class="bar"><div class="f" style="width:88%; background:#9be04c;"></div></div></div><div class="neg">20 ly</div><div>14 ly</div></div>
+        <div class="li"><div class="rk">3</div><div><span class="bright" style="font-weight:600;">Delta Vanhosk</span> <span class="pos" style="font-size:11px;">DECLINING</span></div><div class="hl">5</div><div><div class="bar"><div class="f" style="width:21%; background:#ff6a3d;"></div></div></div><div class="gray">0 ly</div><div>11 ly</div></div>
+        <div class="li"><div class="rk">4</div><div><span class="bright" style="font-weight:600;">Kumari Kandam</span> <span class="hl" style="font-size:11px;">FOOTHOLD</span></div><div class="hl">3</div><div><div class="bar"><div class="f" style="width:64%; background:#f2ae3c;"></div></div></div><div class="gray">-</div><div>22 ly</div></div>
+        <div class="li"><div class="rk">5</div><div><span class="bright" style="font-weight:600;">Alpha Gronshara</span> <span class="neg" style="font-size:11px;">SEEDING</span></div><div class="gray">-</div><div class="gray" style="font-size:11px;">~18 d</div><div class="gray">-</div><div>31 ly</div></div>
+      </div>
+
+      <div class="lst" style="flex:1; padding:0;">
+        <div class="heading" style="border:0; border-bottom:1px solid #3a4c47;">Gamma Balwom</div>
+        <div style="padding:8px 10px; display:flex; flex-direction:column; gap:8px;">
+          <div><span class="bright" style="font-weight:700;">Gamma Balwom I</span> <span class="gray">- size</span> <span class="hl">6</span> <span class="gray">forge world - vitality</span> <span class="pos">92%</span> <span class="pos">&#9650;</span> <span class="gray">size 7 in ~38 d</span></div>
+          <div style="display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap:4px;">
+            <div class="tile"><div class="n">Core</div><div class="s pos">running</div></div>
+            <div class="tile"><div class="n">Nexus</div><div class="s pos">running</div></div>
+            <div class="tile"><div class="n">Megaport</div><div class="s pos">running</div></div>
+            <div class="tile"><div class="n">Orb. Works</div><div class="s pos">running</div></div>
+            <div class="tile"><div class="n">Batteries</div><div class="s pos">running</div></div>
+          </div>
+          <div class="kv">
+            <div class="k">Swarms</div><div><span class="hl">3</span>/4 in orbit - <span class="neg">2 mustered</span> for the Magec strike</div>
+            <div class="k">Defenses</div><div><span class="hl">7,200</span> - saturation <span class="neg">7,200 fuel</span>, tactical <span class="hl">1,800</span></div>
+            <div class="k">Supplies</div><div><span class="hl">Hulls</span> to 6 colonies - the hive's only Orbital Works</div>
+            <div class="k">Outbound</div><div><span class="neg">&#9650;</span> incursion vs <span class="hl">Magec</span> - departs ~6 d - <span class="pos">recall open</span></div>
+            <div class="k">Inbound</div><div><span class="heg">&#9660;</span> Hegemony task force - 3 fleets - ~22 d</div>
+            <div class="k">Bounty</div><div><span class="hl">&#9733; Strategic 1</span> - Nexus - <span class="hl">1,350,000</span> - 301 d</div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:auto;">
+            <div class="btn">Commission purge - 610,000</div>
+            <div class="btn">Infestation intel</div>
+            <div class="btn">Bounty</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -39,6 +39,27 @@ public class SeedingSwarmIntel extends BaseIntelPlugin {
 		this.planetName = planet != null ? planet.getName() : null;
 	}
 
+	public boolean isInTransit() {
+		return outcome == null;
+	}
+
+	public String getPlanetId() {
+		return planetId;
+	}
+
+	public String getSystemId() {
+		return systemId;
+	}
+
+	/** Name of the colony that launched the wave; null for the Abyss bootstrap. */
+	public String getSourceName() {
+		return sourceName;
+	}
+
+	public String getPlanetName() {
+		return planetName;
+	}
+
 	protected StarSystemAPI getSystem() {
 		for (StarSystemAPI system : Global.getSector().getStarSystems()) {
 			if (system.getId().equals(systemId)) return system;
