@@ -118,10 +118,15 @@ public class ThreatincMarketCMD extends MarketCMD {
 	}
 
 	/**
-	 * Tactical bombardment against the hive: reduced fuel cost, hive-specific
-	 * disruption duration, and a matching already-disrupted skip window
-	 * (vanilla's 365-day-based window would hide freshly-recovered targets
-	 * for most of a year).
+	 * Tactical bombardment against the hive: reduced fuel cost and hive-specific
+	 * disruption duration. Unlike vanilla, there is NO already-disrupted skip
+	 * window - already-disrupted war-strata stay valid targets so repeat passes
+	 * can grind the defenses down. The disruption STACKS additively (see
+	 * bombardConfirm), so each pass drives getDisruptedDays() higher and, via
+	 * ThreatColonyManager.disruptedDefenseResilience, wears the defensive bonus
+	 * further toward zero. A player with the fuel can plan a sustained
+	 * suppression campaign; the size-anchored base defense (SwarmNexus) still
+	 * remains, so bombardment never becomes free.
 	 */
 	@Override
 	protected void bombardTactical() {
@@ -136,10 +141,11 @@ public class ThreatincMarketCMD extends MarketCMD {
 
 		int dur = (int) ThreatIncConfig.hiveTacDisruptDays();
 
+		// no already-disrupted skip: repeat passes are the intended way to soften
+		// the war-strata, and their disruption stacks (see bombardConfirm)
 		List<Industry> targets = new ArrayList<Industry>();
 		for (Industry ind : market.getIndustries()) {
 			if (ind.getSpec().hasTag(Industries.TAG_TACTICAL_BOMBARDMENT)) {
-				if (ind.getDisruptedDays() >= dur * 0.8f) continue;
 				targets.add(ind);
 			}
 		}
@@ -147,7 +153,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		temp.bombardmentTargets.addAll(targets);
 
 		if (targets.isEmpty()) {
-			text.addPara(market.getName() + " does not have any undisrupted military targets "
+			text.addPara(market.getName() + " does not have any military targets "
 					+ "that would be affected by a tactical bombardment.");
 			addBombardNeverMindOption();
 			return;
@@ -275,9 +281,14 @@ public class ThreatincMarketCMD extends MarketCMD {
 		}
 
 		if (isThreatTarget() && temp.bombardType == BombardType.TACTICAL) {
-			// full vanilla confirm flow (fuel, rep, unrest, listener), then clamp
-			// the 365-day disruption it wrote down to the hive-short duration -
-			// without erasing any longer raid-earned disruption
+			// full vanilla confirm flow (fuel, rep, unrest, listener), then replace
+			// the 365-day disruption it wrote down with an ADDITIVE hive-short pass:
+			// each bomb STACKS its duration on top of whatever disruption already
+			// stood (a prior pass or a raid), so repeat passes drive the disruption
+			// clock - and thus disruptedDefenseResilience - steadily toward zero.
+			// Uncapped by design: enough fuel buys total suppression. reapply below
+			// makes the softened defenses take effect immediately, not on the next
+			// colony poll.
 			Map<Industry, Float> pre = new LinkedHashMap<Industry, Float>();
 			for (Industry ind : temp.bombardmentTargets) {
 				pre.put(ind, ind.getDisruptedDays());
@@ -286,7 +297,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 			for (Map.Entry<Industry, Float> entry : pre.entrySet()) {
 				float dur = ThreatIncConfig.hiveTacDisruptDays()
 						* StarSystemGenerator.getNormalRandom(getRandom(), 1f, 1.25f);
-				entry.getKey().setDisrupted(Math.max(entry.getValue(), dur));
+				entry.getKey().setDisrupted(entry.getValue() + dur);
 			}
 			market.reapplyIndustries();
 			return;

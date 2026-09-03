@@ -46,6 +46,7 @@ public class ThreatIncData {
 	public static final String KEY_WAVE_FLEETS = "threatinc_colonyFleets";
 	public static final String KEY_WAVE_TARGETS = "threatinc_colonyTargets";
 	public static final String KEY_GARRISONS = "threatinc_garrisons";
+	public static final String KEY_REINFORCEMENTS = "threatinc_reinforcements";
 	public static final String KEY_GARRISON_SPAWN_TIMES = "threatinc_garrisonSpawnTimes";
 	public static final String KEY_GROWTH_TIMES = "threatinc_growthTimes";
 	public static final String KEY_GROWTH_PROGRESS = "threatinc_growthProgressDays";
@@ -128,6 +129,15 @@ public class ThreatIncData {
 	/** colony market id -> live garrison ("Defense Swarm") fleets. */
 	public static Map<String, List<CampaignFleetAPI>> garrisons() {
 		return map(KEY_GARRISONS);
+	}
+
+	/**
+	 * In-transit reinforcement fleets, keyed by fleet id. Each is a Defense Swarm
+	 * that left one colony's garrison to reinforce another (its target colony's
+	 * market id rides the fleet memory); on arrival it joins the target garrison.
+	 */
+	public static Map<String, CampaignFleetAPI> reinforcementFleets() {
+		return map(KEY_REINFORCEMENTS);
 	}
 
 	public static List<CampaignFleetAPI> garrisonsFor(String marketId) {
