@@ -1689,8 +1689,13 @@ public class ThreatWarBoard {
 		hlA.add((int) (health * 100f) + "%");
 		hlcA.add(healthColor(health));
 		// "3/3 of 5": the hull shortage caps what the nexus grows toward, and a
-		// full garrison at the cap must not read as a full garrison
-		hlA.add(live + "/" + desired + (desired < nominal ? " of " + nominal : ""));
+		// full garrison at the cap must not read as a full garrison. "(+2
+		// inbound)": reinforcements flying in from sibling colonies - on station
+		// counts only what has landed, so a bare colony with help en route must
+		// not read as abandoned
+		int inbound = ThreatColonyManager.inboundReinforcements(market.getId());
+		hlA.add(live + "/" + desired + (desired < nominal ? " of " + nominal : "")
+				+ (inbound > 0 ? " (+" + inbound + " inbound)" : ""));
 		hlcA.add(live == 0 ? pos : desired < nominal ? neg : text);
 		if (declining) {
 			a.append("    Decline %s");

@@ -44,14 +44,21 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 
 		addOrganLine(tooltip, market.getIndustry(ThreatColonyManager.FABRICATION_CORE),
 				"Fabrication Core (the growth organ - offline means decline)");
-		addOrganLine(tooltip, market.getIndustry(ThreatColonyManager.SWARM_NEXUS),
-				"Swarm Nexus");
+		// the Swarm Nexus is NOT a vitality factor: it fabricates fleets, not
+		// population. Its disruption thins the garrison (shown on the war board),
+		// not the colony's vitality, so it is deliberately absent here.
 		// the port is logistics, not fabrication: its disruption bites through
 		// the supply score (ThreatColonyManager.applyPortDisruption zeroes the
 		// world's shipping: no imports here, its exports reach no sibling)
 		Industry port = market.getIndustry(Industries.MEGAPORT);
 		if (port == null) port = market.getIndustry(Industries.SPACEPORT);
 		addOrganLine(tooltip, port, "Port (logistics - feeds the supply factor)");
+
+		// make the split roles explicit: vitality is Core + supply; the nexus is
+		// purely military, and only ever freezes an existing decline, never causes it
+		tooltip.addPara("Vitality is the Fabrication Core and Port only. The Swarm Nexus is the "
+				+ "military organ - disrupting it thins the Defense Swarm garrison (see the war "
+				+ "board), never the colony's vitality.", opad);
 
 		float decline = ThreatIncData.declineProgress(market.getId());
 		if (health < declineT) {
@@ -114,10 +121,24 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 		}
 		if (decline > 0f) {
 			tooltip.addPara("Accumulated decline: %s of the way to losing a population "
-					+ "stratum." + (health >= declineT
-							? " It regrows only once every organ is running again."
-							: ""),
-					opad, neg, (int) (decline * 100f) + "%");
+					+ "stratum.", opad, neg, (int) (decline * 100f) + "%");
+			// only relevant when NOT actively declining (health >= threshold): the
+			// meter is either healing or frozen open. Name exactly which organs hold
+			// it open so the freeze is never a mystery.
+			if (health >= declineT) {
+				java.util.List<String> holding =
+						ThreatColonyManager.disruptedOrganNames(market);
+				if (holding.isEmpty()) {
+					tooltip.addPara("Vitality has recovered and every organ is running, so the "
+							+ "hive is slowly regrowing this - it heals fully if left in peace.",
+							3f, pos);
+				} else {
+					tooltip.addPara("The wound is held open by %s - accumulated decline cannot "
+							+ "regrow while any organ is disrupted. A disrupted Swarm Nexus or "
+							+ "Port only freezes it here; the Fabrication Core is what drives "
+							+ "decline deeper.", 3f, neg, joinNames(holding));
+				}
+			}
 		}
 		if (health < declineT || decline > 0f) {
 			tooltip.addPara("Decline is the only way a Threat colony dies - no bombardment "
@@ -138,6 +159,16 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 		} else {
 			tooltip.addPara(BaseIndustryIndent + label + ": %s", 3f, h, "running");
 		}
+	}
+
+	/** Human-readable join: "A", "A and B", "A, B and C". */
+	protected static String joinNames(java.util.List<String> names) {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < names.size(); i++) {
+			if (i > 0) sb.append(i == names.size() - 1 ? " and " : ", ");
+			sb.append(names.get(i));
+		}
+		return sb.toString();
 	}
 
 	protected static final String BaseIndustryIndent = "    ";

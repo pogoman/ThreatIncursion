@@ -199,6 +199,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatColonyManager.clearSeedingSwarmIntel();
 		ThreatColonyManager.clearThreatMissionIntel();
 		ThreatColonyManager.maintainGarrisons(random);
+		// colonies cover each other: landed reinforcements join their new
+		// garrison first (so they count as on-station), then worn-down colonies
+		// draw fresh help from siblings - same system, then fuel range
+		ThreatColonyManager.checkReinforcementArrivals();
+		ThreatColonyManager.redistributeGarrisons();
 		processPendingDecivChecks();
 		syncSystemMarkers();
 
@@ -1446,6 +1451,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (!ThreatIncConfig.enabled() || market == null) return;
 		if (!Factions.THREAT.equals(market.getFactionId())) return;
 		abortStrikesFrom(market.getId(), market.getName(), "the bombardment");
+		// recompute defenses now so the freshly-suppressed value is live at once,
+		// not on the next colony poll (~half a day of stale ground strength).
+		// ThreatincMarketCMD.bombardConfirm already reapplies on our own path;
+		// this covers a bombardment routed through the vanilla fallback, which
+		// sets disruption but never reapplies. reapply is idempotent.
+		market.reapplyIndustries();
 	}
 
 	/**
@@ -1467,6 +1478,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// bombardment decivilized the colony outright the faction is already
 		// neutral and this is skipped - the colony poll catches that case.
 		abortStrikesFrom(market.getId(), market.getName(), "the saturation bombardment");
+
+		// recompute defenses now so the suppressed value is live immediately, not
+		// on the next colony poll. threatSatConfirm already reapplies on our own
+		// path; this covers the vanilla fallback, which never does. Idempotent.
+		market.reapplyIndustries();
 
 		if (!ThreatIncConfig.bombardNoAtrocity()) return;
 

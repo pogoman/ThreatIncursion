@@ -26,11 +26,12 @@ import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.BombardType;
  * siege doctrine:
  *
  * <ul>
- * <li>While the war-strata fight at full effect - tactical bombardment,
- * clamped to the hive-short disruption the player's passes also achieve;
- * disrupted defenses fire at reduced effect that wears further with every
- * pass (ThreatColonyManager.disruptedDefenseResilience), opening the door
- * for...</li>
+ * <li>While the war-strata still fight above the soften floor
+ * (siegeDefenseSoftenFloor) - repeated tactical bombardment, each pass a
+ * hive-short disruption that STACKS with the last (the same additive softening
+ * a player's passes achieve), wearing the defenses further every time
+ * (ThreatColonyManager.disruptedDefenseResilience) until they drop below the
+ * floor - opening the door for...</li>
  * <li>...COMMANDO RAIDS against whatever on the world takes the most from
  * the hive ({@link #pickRaidTarget}: the Core, the Nexus, a port the world
  * imports through, or an economy industry that is the hive's best source of
@@ -136,24 +137,38 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		rec.sizeBefore = market.getSize();
 		rec.timestamp = Global.getSector().getClock().getTimestamp();
 
-		// tactical pass while the war-strata still fight at full effect
+		// Tactical passes soften the war-strata: keep bombing (their disruption
+		// now STACKS, so each pass wears the defenses further via
+		// disruptedDefenseResilience) while any defense structure still fights
+		// above the soften floor. Once bombed below it - or, with wear disabled,
+		// once a single pass has done all a bomb can - the expedition lands troops.
 		float tacDays = ThreatIncConfig.hiveTacDisruptDays();
+		float floor = ThreatIncConfig.siegeDefenseSoftenFloor();
+		boolean wearActive = ThreatIncConfig.defenseWearDays() > 0f;
 		Map<Industry, Float> tagged = new LinkedHashMap<Industry, Float>();
 		boolean needTac = false;
 		for (Industry ind : market.getIndustries()) {
 			if (!ind.getSpec().hasTag(Industries.TAG_TACTICAL_BOMBARDMENT)) continue;
 			tagged.put(ind, ind.getDisruptedDays());
-			if (ind.getDisruptedDays() < tacDays * 0.5f) needTac = true;
+			// a further pass only lowers resilience if wear is active, or the organ
+			// is not yet disrupted (the first pass drops it to disruptedDefenseFraction);
+			// without that guard a wear-off config would loop tactical passes forever
+			boolean canSoftenMore = !ind.isDisrupted() || wearActive;
+			if (canSoftenMore
+					&& ThreatColonyManager.disruptedDefenseResilience(ind) > floor) {
+				needTac = true;
+			}
 		}
 		if (needTac && !tagged.isEmpty()) {
 			new MarketCMD(market.getPrimaryEntity())
 					.doBombardment(getFaction(), BombardType.TACTICAL);
-			// the static path writes vanilla's 365-day overwrite; clamp to the
-			// hive-short duration without erasing longer existing disruption
+			// the static doBombardment writes vanilla's 365-day overwrite; replace
+			// it with an ADDITIVE hive-short pass so repeat siege bombardments
+			// accumulate, exactly as a player's tactical passes now do
 			StringBuilder names = new StringBuilder();
 			for (Map.Entry<Industry, Float> entry : tagged.entrySet()) {
 				float dur = tacDays * StarSystemGenerator.getNormalRandom(getRandom(), 1f, 1.25f);
-				entry.getKey().setDisrupted(Math.max(entry.getValue(), dur));
+				entry.getKey().setDisrupted(entry.getValue() + dur);
 				if (names.length() > 0) names.append(", ");
 				names.append(entry.getKey().getCurrentName());
 			}

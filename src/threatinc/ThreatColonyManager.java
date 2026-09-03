@@ -66,6 +66,10 @@ public class ThreatColonyManager {
 	/** How many fabricator ships a swarm was fabricated with. */
 	public static final String SWARM_FABS_KEY = "$threatinc_swarmFabs";
 	public static final String WAVE_FLAG = "$threatinc_colonyFleet";
+	/** Market id of the colony an in-transit reinforcement swarm is flying to join. */
+	public static final String REINFORCE_TARGET_KEY = "$threatinc_reinforceTarget";
+	/** Fleet points a garrison swarm had the moment it was fabricated (under-strength baseline). */
+	public static final String SWARM_SPAWN_FP = "$threatinc_swarmSpawnFP";
 
 	public static final String STABILITY_MOD_ID = "threatinc_machine";
 
@@ -2100,23 +2104,36 @@ public class ThreatColonyManager {
 	 * cooldown instead of waiting out the full purge interval.
 	 */
 	public static boolean anyOrganDisrupted(MarketAPI market) {
-		if (market == null) return false;
-		Industry core = market.getIndustry(FABRICATION_CORE);
-		if (core != null && core.isDisrupted()) return true;
-		Industry nexus = market.getIndustry(SWARM_NEXUS);
-		if (nexus != null && nexus.isDisrupted()) return true;
-		Industry port = getPort(market);
-		if (port != null && port.isDisrupted()) return true;
-		return false;
+		return !disruptedOrganNames(market).isEmpty();
 	}
 
 	/**
-	 * The ON/OFF half of colony health: FABRICATION organ functionality. A
-	 * hive's growth is literally its ability to fabricate new strata and
-	 * swarms - a disrupted organ isn't producing at reduced capacity, it
-	 * isn't producing AT ALL. The Fabrication Core dominates (down = decline,
-	 * full stop); the nexus degrades the figure further. The PORT is
-	 * deliberately absent: it is logistics, not fabrication - its disruption
+	 * The display names of the colony's key organs (Fabrication Core, Swarm
+	 * Nexus, Port) that are currently disrupted, in that order. The single
+	 * source of truth for {@link #anyOrganDisrupted}, so the vitality tooltip's
+	 * "held open by" list can never drift from the actual decline-heal gate.
+	 */
+	public static java.util.List<String> disruptedOrganNames(MarketAPI market) {
+		java.util.List<String> names = new java.util.ArrayList<String>();
+		if (market == null) return names;
+		Industry core = market.getIndustry(FABRICATION_CORE);
+		if (core != null && core.isDisrupted()) names.add("Fabrication Core");
+		Industry nexus = market.getIndustry(SWARM_NEXUS);
+		if (nexus != null && nexus.isDisrupted()) names.add("Swarm Nexus");
+		Industry port = getPort(market);
+		if (port != null && port.isDisrupted()) names.add("Port");
+		return names;
+	}
+
+	/**
+	 * The ON/OFF half of colony health: FABRICATION CORE functionality. A hive's
+	 * growth is literally its Fabrication Core's ability to grow new population
+	 * strata - a disrupted Core isn't producing at reduced capacity, it isn't
+	 * producing AT ALL (worn further by its disruption days). The Core is the
+	 * ONLY fabrication organ in this figure. The Swarm Nexus is deliberately
+	 * absent: it fabricates FLEETS, not population, so its disruption halts new
+	 * swarm fabrication (maintainGarrisons), never the colony's vitality. The
+	 * PORT is likewise absent: it is logistics, not fabrication - its disruption
 	 * bites through the supply score (applyPortDisruption zeroes the world's
 	 * shipping capacity: no imports here, and its exports reach no sibling),
 	 * so counting it here would double-charge it and wrongly punish colonies
@@ -2127,8 +2144,6 @@ public class ThreatColonyManager {
 		float mult = 1f;
 		Industry core = market.getIndustry(FABRICATION_CORE);
 		if (organDown(core)) mult *= wornDownFactor(core, ThreatIncConfig.coreDownFactor());
-		Industry nexus = market.getIndustry(SWARM_NEXUS);
-		if (organDown(nexus)) mult *= wornDownFactor(nexus, ThreatIncConfig.nexusDownFactor());
 		return mult;
 	}
 
@@ -2460,6 +2475,117 @@ public class ThreatColonyManager {
 		return new int[][] {{0, high}, {0, high}, {0, max}, {1, max}, {2, high}};
 	}
 
+	// ------------------------------------------------------------------
+	// slot fitness: a garrison slot is a promise of a certain weight of defense
+	// ------------------------------------------------------------------
+
+	/** The escort tier a swarm was fabricated at (LOW for untagged legacy swarms). */
+	protected static int swarmTier(CampaignFleetAPI swarm) {
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = swarm.getMemoryWithoutUpdate();
+		return mem.contains(SWARM_TIER_KEY) ? mem.getInt(SWARM_TIER_KEY) : 0;
+	}
+
+	/**
+	 * Whether a swarm has been shot down to a shell of itself: below
+	 * garrisonUnderStrengthFraction of the fleet points it was fabricated with.
+	 * Swarms from saves that predate the stamp read as full strength.
+	 */
+	protected static boolean isUnderStrength(CampaignFleetAPI swarm) {
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = swarm.getMemoryWithoutUpdate();
+		if (!mem.contains(SWARM_SPAWN_FP)) return false;
+		float spawn = mem.getFloat(SWARM_SPAWN_FP);
+		if (spawn <= 0f) return false;
+		return swarm.getFleetPoints() < spawn * ThreatIncConfig.garrisonUnderStrengthFraction();
+	}
+
+	/**
+	 * Whether a swarm genuinely HOLDS a garrison slot: its tier meets the slot's
+	 * and it is not under strength. A fleet that cannot keep the slot's promise
+	 * - a small colony's swarm parked in a big colony's slot, or a swarm
+	 * shredded in battle - is a weak holder. It keeps fighting, but it must
+	 * not block the nexus from growing the real thing.
+	 */
+	protected static boolean isFitForSlot(CampaignFleetAPI swarm, int[] slot) {
+		return swarmTier(swarm) >= slot[1] && !isUnderStrength(swarm);
+	}
+
+	/**
+	 * How many of a colony's garrison slots are properly held. Slots are matched
+	 * most-demanding-first against the strongest live swarms, so the count
+	 * answers "how many of the slots this size of colony wants are covered by a
+	 * fleet fit to cover them" - not merely how many fleets are parked here.
+	 */
+	public static int countFitGarrison(MarketAPI market) {
+		int[][] table = desiredGarrison(market.getSize());
+		List<CampaignFleetAPI> live = new ArrayList<CampaignFleetAPI>();
+		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(market.getId())) {
+			if (curr != null && curr.isAlive()) live.add(curr);
+		}
+		// strongest first: tier, then fleet points
+		java.util.Collections.sort(live, new java.util.Comparator<CampaignFleetAPI>() {
+			public int compare(CampaignFleetAPI a, CampaignFleetAPI b) {
+				int t = Integer.compare(swarmTier(b), swarmTier(a));
+				return t != 0 ? t : Float.compare(b.getFleetPoints(), a.getFleetPoints());
+			}
+		});
+		// most demanding slots first
+		List<int[]> slots = new ArrayList<int[]>(java.util.Arrays.asList(table));
+		java.util.Collections.sort(slots, new java.util.Comparator<int[]>() {
+			public int compare(int[] a, int[] b) { return Integer.compare(b[1], a[1]); }
+		});
+		int fit = 0;
+		for (int i = 0; i < live.size() && i < slots.size(); i++) {
+			if (isFitForSlot(live.get(i), slots.get(i))) fit++;
+		}
+		return fit;
+	}
+
+	/**
+	 * The escort tier the colony's NEXT open slot demands - the bar a
+	 * reinforcement must clear to be worth sending here. A size-2 colony's LOW
+	 * swarm cannot hold a size-8 colony's HIGH slot; it would only park in it
+	 * and block the real thing. This is what limits which colonies can
+	 * reinforce which: fleets must be worth sending.
+	 */
+	public static int nextSlotTier(MarketAPI market) {
+		int[][] table = desiredGarrison(market.getSize());
+		int idx = Math.min(countFitGarrison(market), table.length - 1);
+		return table[idx][1];
+	}
+
+	/** Whether the colony has a live swarm fabricated at or above this tier. */
+	protected static boolean hasSwarmOfTier(MarketAPI market, int tier) {
+		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(market.getId())) {
+			if (curr != null && curr.isAlive() && swarmTier(curr) >= tier) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * The weakest unambiguous weak holder on station - below even the colony's
+	 * least demanding slot's tier, or under strength - that is not currently in
+	 * a battle. This is the swarm the nexus recycles when it grows a proper
+	 * replacement. Null if every swarm holds its slot, or the weak ones are all
+	 * mid-fight (never yank a fleet out of a battle).
+	 */
+	protected static CampaignFleetAPI weakestWeakHolder(MarketAPI market) {
+		int[][] table = desiredGarrison(market.getSize());
+		int minTier = Integer.MAX_VALUE;
+		for (int[] slot : table) minTier = Math.min(minTier, slot[1]);
+		CampaignFleetAPI weakest = null;
+		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(market.getId())) {
+			if (curr == null || !curr.isAlive() || curr.getBattle() != null) continue;
+			if (swarmTier(curr) >= minTier && !isUnderStrength(curr)) continue;
+			if (weakest == null
+					|| swarmTier(curr) < swarmTier(weakest)
+					|| (swarmTier(curr) == swarmTier(weakest)
+							&& curr.getFleetPoints() < weakest.getFleetPoints())) {
+				weakest = curr;
+			}
+		}
+		return weakest;
+	}
+
 	/**
 	 * Prunes dead garrison fleets and fabricates at most one replacement per
 	 * respawn interval, per colony. The garrison orbits its own colony planet -
@@ -2488,10 +2614,13 @@ public class ThreatColonyManager {
 				}
 			}
 
-			// fleets are fabricated by the Swarm Nexus, vanilla-military-base
-			// style: while it is disrupted no NEW Defense Swarms are grown
-			// (existing ones keep fighting) - so a raid or bombardment that
-			// silences the nexus genuinely thins the colony over time
+			// two hard on/off gates on fabrication. The Fabrication Core is the
+			// master switch for all growth: while it is down (missing, disrupted or
+			// still building) NOTHING is grown, Defense Swarms included. The Swarm
+			// Nexus is the military organ: while IT is disrupted no new swarms spawn
+			// either - existing swarms keep fighting, and sibling colonies send
+			// reinforcements to cover the gap. Both organs must be up to rebuild.
+			if (organDown(market.getIndustry(FABRICATION_CORE))) continue;
 			if (!hasOperationalNexus(market)) continue;
 
 			int[][] table = desiredGarrison(market.getSize());
@@ -2511,9 +2640,14 @@ public class ThreatColonyManager {
 
 			// the economy is the difficulty: a hull-starved colony fields a
 			// fraction of its nominal garrison (same figure the launch gates
-			// read - see desiredGarrisonCount)
+			// read - see desiredGarrisonCount). What counts against it is slots
+			// PROPERLY HELD (countFitGarrison), not fleets parked: a weak holder
+			// - a swarm shot under strength, or one too light for its slot (a
+			// small colony's swarm sent here to help) - keeps fighting but does
+			// not stop the nexus growing the real thing
 			int desired = desiredGarrisonCount(market);
-			if (fleets.size() >= desired) continue;
+			int fit = countFitGarrison(market);
+			if (fit >= desired) continue;
 
 			Long last = ThreatIncData.garrisonSpawnTimes().get(marketId);
 			// a strained hive builds SLOWER, not just smaller: the replacement
@@ -2538,16 +2672,38 @@ public class ThreatColonyManager {
 			}
 			if (!timerExpired) continue;
 
-			int[] spec = table[fleets.size() < table.length ? fleets.size() : table.length - 1];
+			// the garrison is at its head-count but a slot is only weakly held:
+			// the fresh swarm REPLACES the weakest weak holder (the hive recycles
+			// the shot-up or undersized hulls) so the count never overshoots.
+			// Never yank a fleet out of a battle - if every weak holder is
+			// fighting, wait for the next poll. Chosen before fabrication and
+			// retired only after it succeeds, so a failed spawn costs nothing.
+			CampaignFleetAPI recycled = null;
+			if (fleets.size() >= desired) {
+				recycled = weakestWeakHolder(market);
+				if (recycled == null) continue;
+			}
+
+			int[] spec = table[fit < table.length ? fit : table.length - 1];
 			CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
 					spec[0], 0, 0, FabricatorEscortStrength.values()[spec[1]], random);
 			if (fleet == null) continue;
+			if (recycled != null) {
+				fleets.remove(recycled);
+				recycled.despawn();
+				ThreatIncConfig.log("Recycled weak Defense Swarm at " + market.getName()
+						+ " (tier " + swarmTier(recycled) + ", "
+						+ (int) recycled.getFleetPoints() + " FP) for a fresh one");
+			}
 			fleet.setName("Defense Swarm");
 			fleet.getMemoryWithoutUpdate().set(GARRISON_FLAG, marketId);
 			// remember what this swarm IS, so an expedition mustered from it
 			// re-embodies the same fleet - not an FP-estimated bigger one
 			fleet.getMemoryWithoutUpdate().set(SWARM_TIER_KEY, spec[1]);
 			fleet.getMemoryWithoutUpdate().set(SWARM_FABS_KEY, spec[0]);
+			// ...and how strong it was born, so battle damage can be measured
+			// against it (isUnderStrength)
+			fleet.getMemoryWithoutUpdate().set(SWARM_SPAWN_FP, fleet.getFleetPoints());
 			makeDetectable(fleet);
 
 			system.addEntity(fleet);
@@ -2561,6 +2717,252 @@ public class ThreatColonyManager {
 					Global.getSector().getClock().getTimestamp());
 			ThreatIncConfig.log("Garrison fleet fabricated at " + market.getName()
 					+ " (" + fleets.size() + "/" + desired + ")");
+		}
+	}
+
+	// ------------------------------------------------------------------
+	// garrison redistribution: colonies reinforce each other
+	// ------------------------------------------------------------------
+
+	/**
+	 * Whether a colony can regrow swarms it sends away: both fabrication organs
+	 * up - the same two gates maintainGarrisons spawns behind. Only such
+	 * colonies DONATE, so a colony that cannot replace a swarm never bleeds its
+	 * irreplaceable garrison out to a sibling.
+	 */
+	protected static boolean canRebuildGarrison(MarketAPI market) {
+		return market != null
+				&& !organDown(market.getIndustry(FABRICATION_CORE))
+				&& hasOperationalNexus(market);
+	}
+
+	/** Reinforcement swarms currently in transit toward this colony. */
+	public static int inboundReinforcements(String marketId) {
+		int count = 0;
+		for (CampaignFleetAPI fleet : ThreatIncData.reinforcementFleets().values()) {
+			if (fleet == null || !fleet.isAlive()) continue;
+			if (marketId.equals(fleet.getMemoryWithoutUpdate().getString(REINFORCE_TARGET_KEY))) {
+				count++;
+			}
+		}
+		return count;
+	}
+
+	/**
+	 * A colony's garrison for balancing purposes: swarms on station plus those
+	 * already flying to join it. Counting inbound swarms is what stops the
+	 * balancer re-sending to the same deficit every poll while help is en route.
+	 */
+	protected static int effectiveGarrison(MarketAPI market) {
+		return countLiveGarrison(market.getId()) + inboundReinforcements(market.getId());
+	}
+
+	/**
+	 * Whether a swarm from source can reach target. Same-system moves are
+	 * sublight and always allowed. Cross-system moves are fuel-bound exactly
+	 * like strikes and colonization waves: the source needs a working fuel
+	 * economy and the hyperspace distance must sit within its fuelRangeLY.
+	 */
+	protected static boolean canReinforce(MarketAPI source, MarketAPI target) {
+		StarSystemAPI from = source.getStarSystem();
+		StarSystemAPI to = target.getStarSystem();
+		if (from == null || to == null) return false;
+		if (from == to) return true;
+		if (!hasOperationalFuel(source)) return false;
+		float d = Misc.getDistanceLY(from.getLocation(), to.getLocation());
+		return d <= fuelRangeLY(source);
+	}
+
+	/**
+	 * The swarm redistributes its Defense Swarms so no colony is left bare while
+	 * a sibling sits at full strength. Each poll it finds the colony with the
+	 * lowest garrison fill ratio (swarms on station plus inbound, over what it
+	 * wants) that is below strength, then the best donor that can reach it:
+	 * same-system first, then the highest fill ratio, then the nearest. One
+	 * swarm is dispatched per pairing, up to reinforceMaxPerPoll per poll, so
+	 * help trickles in over days rather than teleporting in a burst.
+	 *
+	 * A donor must (a) be able to regrow what it sends (canRebuildGarrison),
+	 * (b) keep at least one swarm on station, and (c) still be at least as well
+	 * covered as the receiver AFTER giving one up. That last test is the strict
+	 * inequality (donor.eff - 1) / donor.desired > receiver.eff / receiver.desired;
+	 * strictness is what makes the balance converge and then HOLD, instead of
+	 * two colonies handing a swarm back and forth forever at the boundary.
+	 *
+	 * Because donors regrow, a healthy colony feeds a besieged sibling
+	 * continuously at its own production rate. To actually strip a colony's
+	 * garrison an attacker must outpace every colony that can reach it, or cut
+	 * the fuel range that connects them - the coordinated machine menace, made
+	 * concrete.
+	 */
+	public static void redistributeGarrisons() {
+		if (!ThreatIncConfig.reinforceEnabled()) return;
+		List<MarketAPI> colonies = ThreatIncData.getAllLiveColonyMarkets();
+		if (colonies.size() < 2) return;
+
+		int budget = ThreatIncConfig.reinforceMaxPerPoll();
+		for (int n = 0; n < budget; n++) {
+			// the receiver: lowest fill ratio among colonies below strength
+			MarketAPI receiver = null;
+			float receiverRatio = Float.MAX_VALUE;
+			for (MarketAPI curr : colonies) {
+				if (curr.getPrimaryEntity() == null) continue;
+				int desired = desiredGarrisonCount(curr);
+				if (desired <= 0) continue;
+				int eff = effectiveGarrison(curr);
+				if (eff >= desired) continue;
+				float ratio = eff / (float) desired;
+				if (ratio < receiverRatio) {
+					receiverRatio = ratio;
+					receiver = curr;
+				}
+			}
+			if (receiver == null) return;
+
+			int rEff = effectiveGarrison(receiver);
+			int rDesired = desiredGarrisonCount(receiver);
+			// the weight of fleet this slot wants: only a swarm that can genuinely
+			// hold it is worth sending - a tiny colony's swarm would just park in
+			// a big colony's slot and block the real thing
+			int needTier = nextSlotTier(receiver);
+
+			// the donor: can reach, can regrow, keeps one home, fields a swarm
+			// heavy enough for the slot, and stays at least as covered as the
+			// receiver after giving one up
+			MarketAPI donor = null;
+			boolean donorSameSystem = false;
+			float donorRatio = -1f;
+			float donorDist = Float.MAX_VALUE;
+			for (MarketAPI curr : colonies) {
+				if (curr == receiver || curr.getPrimaryEntity() == null) continue;
+				if (!canRebuildGarrison(curr)) continue;
+				if (countLiveGarrison(curr.getId()) < 2) continue;
+				if (!hasSwarmOfTier(curr, needTier)) continue;
+				int dDesired = desiredGarrisonCount(curr);
+				if (dDesired <= 0) continue;
+				int dEff = effectiveGarrison(curr);
+				// strict (dEff - 1) / dDesired > rEff / rDesired, cross-multiplied
+				if ((dEff - 1) * rDesired <= rEff * dDesired) continue;
+				if (!canReinforce(curr, receiver)) continue;
+
+				boolean same = curr.getStarSystem() == receiver.getStarSystem();
+				float ratio = dEff / (float) dDesired;
+				float dist = same ? 0f : Misc.getDistanceLY(
+						curr.getStarSystem().getLocation(),
+						receiver.getStarSystem().getLocation());
+				boolean better;
+				if (donor == null) better = true;
+				else if (same != donorSameSystem) better = same;
+				else if (ratio != donorRatio) better = ratio > donorRatio;
+				else better = dist < donorDist;
+				if (better) {
+					donor = curr;
+					donorSameSystem = same;
+					donorRatio = ratio;
+					donorDist = dist;
+				}
+			}
+			if (donor == null) return;
+			if (!dispatchReinforcement(donor, receiver, needTier)) return;
+		}
+	}
+
+	/**
+	 * Sends one Defense Swarm from source to reinforce target. It is the SAME
+	 * fleet: it leaves the source garrison and flies to the target planet
+	 * (vanilla fleet AI handles any hyperspace transit, exactly as colonization
+	 * waves travel), joining the target garrison when it lands
+	 * (checkReinforcementArrivals). Of the swarms heavy enough for the slot
+	 * (minTier), the smallest goes and the biggest stay home. Battle damage is
+	 * deliberately NOT a bar: a shot-up swarm is still emergency help, and the
+	 * receiver's nexus recycles it for a fresh one once it can fabricate again
+	 * (see maintainGarrisons). Real and interceptable the whole way.
+	 *
+	 * Blinders on for the journey, as enforceGarrisonLeash does for recalls:
+	 * every Threat fleet carries MEMORY_KEY_MAKE_AGGRESSIVE, whose pursuit AI
+	 * would override the travel order and send the reinforcement off chasing
+	 * the player instead. Restored on arrival.
+	 */
+	protected static boolean dispatchReinforcement(MarketAPI source, MarketAPI target, int minTier) {
+		SectorEntityToken planet = target.getPrimaryEntity();
+		if (planet == null) return false;
+		List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(source.getId());
+		CampaignFleetAPI pick = null;
+		for (CampaignFleetAPI curr : fleets) {
+			if (curr == null || !curr.isAlive()) continue;
+			if (swarmTier(curr) < minTier) continue;
+			if (pick == null || curr.getFleetPoints() < pick.getFleetPoints()) pick = curr;
+		}
+		if (pick == null) return false;
+		fleets.remove(pick);
+
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = pick.getMemoryWithoutUpdate();
+		mem.unset(GARRISON_FLAG);
+		mem.set(REINFORCE_TARGET_KEY, target.getId());
+		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
+		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
+		makeDetectable(pick);
+
+		pick.clearAssignments();
+		pick.addAssignment(FleetAssignment.GO_TO_LOCATION, planet, 365f,
+				"reinforcing " + target.getName());
+		// fallback so the fleet doesn't wander if arrival detection ever misses
+		pick.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
+		ThreatIncData.reinforcementFleets().put(pick.getId(), pick);
+
+		// the source regrows what it sent: start its rebuild clock the way a
+		// strike muster does, unless a build is already in progress
+		Long last = ThreatIncData.garrisonSpawnTimes().get(source.getId());
+		float interval = ThreatIncConfig.garrisonRespawnDays() * IncursionManager.timeScale();
+		if (last == null || Global.getSector().getClock().getElapsedDaysSince(last) >= interval) {
+			ThreatIncData.garrisonSpawnTimes().put(source.getId(),
+					Global.getSector().getClock().getTimestamp());
+		}
+		ThreatIncConfig.log("Reinforcement: Defense Swarm " + source.getName() + " -> "
+				+ target.getName() + " (" + countLiveGarrison(source.getId())
+				+ " remain at source; " + effectiveGarrison(target) + "/"
+				+ desiredGarrisonCount(target) + " covered at destination)");
+		return true;
+	}
+
+	/**
+	 * Polls in-transit reinforcements: a swarm that reaches its target planet
+	 * joins that colony's garrison (flag, orbit and hunting reflexes restored);
+	 * one whose target colony has meanwhile died is disbanded; one killed en
+	 * route simply drops off the books, reopening the deficit for the next poll.
+	 */
+	public static void checkReinforcementArrivals() {
+		java.util.Map<String, CampaignFleetAPI> inTransit = ThreatIncData.reinforcementFleets();
+		for (String fleetId : new ArrayList<String>(inTransit.keySet())) {
+			CampaignFleetAPI fleet = inTransit.get(fleetId);
+			if (fleet == null || !fleet.isAlive()) {
+				inTransit.remove(fleetId);
+				continue;
+			}
+			com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+			String targetId = mem.getString(REINFORCE_TARGET_KEY);
+			MarketAPI target = targetId != null ? ThreatIncData.resolveColonyMarket(targetId) : null;
+			if (target == null || target.getPrimaryEntity() == null) {
+				inTransit.remove(fleetId);
+				fleet.despawn();
+				continue;
+			}
+			SectorEntityToken planet = target.getPrimaryEntity();
+			boolean arrived = fleet.getContainingLocation() == planet.getContainingLocation()
+					&& Misc.getDistance(fleet, planet) <= GARRISON_LEASH_RADIUS;
+			if (!arrived) continue;
+
+			mem.unset(REINFORCE_TARGET_KEY);
+			mem.set(GARRISON_FLAG, targetId);
+			// blinders off: on station, hunting reflexes back on (as the leash does)
+			mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS);
+			mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE, true);
+			fleet.clearAssignments();
+			fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
+			ThreatIncData.garrisonsFor(targetId).add(fleet);
+			inTransit.remove(fleetId);
+			ThreatIncConfig.log("Reinforcement arrived at " + target.getName() + " ("
+					+ countLiveGarrison(targetId) + "/" + desiredGarrisonCount(target) + ")");
 		}
 	}
 
@@ -2814,6 +3216,13 @@ public class ThreatColonyManager {
 		}
 		ThreatIncData.waveFleets().clear();
 		ThreatIncData.waveTargets().clear();
+
+		// reinforcements in transit anywhere
+		for (CampaignFleetAPI curr : new ArrayList<CampaignFleetAPI>(
+				ThreatIncData.reinforcementFleets().values())) {
+			if (curr != null && curr.isAlive()) curr.despawn();
+		}
+		ThreatIncData.reinforcementFleets().clear();
 
 		ThreatIncData.decivTargets().clear();
 		ThreatIncData.pendingDecivChecks().clear();

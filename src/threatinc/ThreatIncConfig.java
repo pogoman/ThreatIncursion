@@ -67,6 +67,12 @@ public class ThreatIncConfig {
 	public static int chainRedundancy()      { return i("threatinc_chainRedundancy"); }
 	public static int colonizationEscort()   { return i("threatinc_colonizationEscort"); }
 	public static float garrisonRespawnDays(){ return f("threatinc_garrisonRespawnDays"); }
+	/** Whether colonies redistribute Defense Swarms to reinforce worn-down siblings. */
+	public static boolean reinforceEnabled()  { return b("threatinc_reinforceEnabled", true); }
+	/** Max reinforcement swarms dispatched per colony poll (~half a day). */
+	public static int reinforceMaxPerPoll()   { return i("threatinc_reinforceMaxPerPoll"); }
+	/** A garrison swarm below this fraction of its fabricated fleet points no longer holds its slot. */
+	public static float garrisonUnderStrengthFraction() { return f("threatinc_garrisonUnderStrengthFraction"); }
 	public static boolean economyGatesGrowth(){ return b("threatinc_economyGatesGrowth", true); }
 	/** Whether the home system's industries carry Domain items (nanoforge, mantle bore...) where its deposits fall short. */
 	public static boolean homeRelics()        { return b("threatinc_homeRelics", true); }
@@ -138,8 +144,11 @@ public class ThreatIncConfig {
 	/** Days of disruption a saturation pass inflicts on hive industries. */
 	public static float hiveSatDisruptDays()  { return f("threatinc_hiveSatDisruptDays"); }
 	/** Days of disruption a tactical pass inflicts on hive defense structures. */
-	public static float hiveTacDisruptDays()  { return f("threatinc_hiveTacDisruptDays"); }	/** Marine-loss multiplier when raiding hive worlds. */
+	public static float hiveTacDisruptDays()  { return f("threatinc_hiveTacDisruptDays"); }
+	/** Marine-loss multiplier when raiding hive worlds. */
 	public static float hiveMarineLossMult()  { return f("threatinc_hiveMarineLossMult"); }
+	/** Resilience above which an NPC siege keeps tactical-bombing before it raids. */
+	public static float siegeDefenseSoftenFloor() { return f("threatinc_siegeDefenseSoftenFloor"); }
 
 	// ---- colony decline ----
 
@@ -158,7 +167,6 @@ public class ThreatIncConfig {
 	/** Fabrication factor while the Core is disrupted (below the threshold = forced decline). */
 	public static float coreDownFactor()         { return f("threatinc_coreDownFactor"); }
 	/** Fabrication factor while the Nexus is disrupted. */
-	public static float nexusDownFactor()        { return f("threatinc_nexusDownFactor"); }
 	/** Health at or below which growth stops entirely. */
 	public static float growthStallHealth()      { return f("threatinc_growthStallHealth"); }
 	/** Health at or above which the colony grows at full pace. */

@@ -41,6 +41,20 @@
 	"threatinc_chainRedundancy": 3,
 	"threatinc_colonizationEscort": 2,
 	"threatinc_garrisonRespawnDays": 40,
+	# Colonies cover each other. Every poll the swarm sends ONE Defense Swarm (up
+	# to reinforceMaxPerPoll) from the best-covered colony that can reach a
+	# worn-down sibling - same system first, then any system within the donor's
+	# fuel range - until garrisons balance out. The swarms physically fly there
+	# and can be intercepted. A donor must be able to regrow what it sends (Core
+	# and Nexus both up) and always keeps one swarm home.
+	"threatinc_reinforceEnabled": true,
+	"threatinc_reinforceMaxPerPoll": 2,
+	# A garrison slot is a promise of a certain weight of defense. A swarm shot
+	# below this fraction of the fleet points it was fabricated with, or one of a
+	# lower tier than the slot wants (a small colony's swarm sent to a big one),
+	# is a WEAK HOLDER: it keeps fighting but no longer blocks the nexus, which
+	# grows a proper replacement at its normal cadence and recycles the weak one.
+	"threatinc_garrisonUnderStrengthFraction": 0.5,
 	"threatinc_economyGatesGrowth": true,
 	# The first hive system carries Domain-era items the way a swarm out of the
 	# Abyss would: a Pristine Nanoforge on its largest forge, and a Mantle Bore,
@@ -136,9 +150,9 @@
 	"threatinc_disruptedDefenseFraction": 0.5,
 	# ...and wearing down from there: the surviving bonus falls linearly with
 	# the disruption days on the structure's clock, to nothing at this many.
-	# The same wear applies to a disrupted Core's and Nexus's fabrication
-	# factor (coreDownFactor / nexusDownFactor at fresh disruption, zero at the
-	# limit). Disruption stacks with every pass and raid, so an organ carrying
+	# The same wear applies to a disrupted Core's fabrication factor
+	# (coreDownFactor at fresh disruption, zero at the limit). Disruption
+	# stacks with every pass and raid, so an organ carrying
 	# 300 days has been hit again and again and is scrap. One tactical pass
 	# (60 d) leaves 40 percent of a battery's bonus, two raids on top about 25
 	# percent. The size-anchored base never wears. 0 = no wear.
@@ -146,7 +160,15 @@
 	"threatinc_hiveBombardCostMult": 1.0,
 	"threatinc_hiveTacCostFraction": 0.25,
 	"threatinc_hiveSatDisruptDays": 20,
-	"threatinc_hiveTacDisruptDays": 60,	"threatinc_hiveMarineLossMult": 1.5,
+	"threatinc_hiveTacDisruptDays": 60,
+	"threatinc_hiveMarineLossMult": 1.5,
+	# NPC siege doctrine: an AI purge expedition keeps delivering tactical
+	# bombardments (stacking their disruption, so each pass wears the war-strata
+	# further) while any defense structure's surviving effect is still above
+	# this fraction; once bombed below it, the expedition lands troops instead.
+	# 0.5 = one pass then raid (old behavior); lower = more softening passes
+	# before the ground assault; 0 = grind the war-strata to nothing first.
+	"threatinc_siegeDefenseSoftenFloor": 0.25,
 
 	# Colony decline: a colony whose health (input satisfaction x structure
 	# functionality) falls below the threshold loses population, faster the
@@ -158,10 +180,11 @@
 	"threatinc_declineRecoveryPerTick": 0.05,
 	# size resilience: decline rate x (ref / size)
 	"threatinc_declineSizeRef": 4.0,
-	# fabrication factors while organs are disrupted (health = fab x supply;
-	# coreDownFactor below declineHealthThreshold = a dead Core forces decline)
+	# fabrication factor while the Fabrication Core is disrupted (health = fab x
+	# supply; coreDownFactor below declineHealthThreshold = a dead Core forces
+	# decline). The Swarm Nexus is NOT a vitality organ - it only fabricates
+	# fleets, so disrupting it halts swarm spawning without touching health.
 	"threatinc_coreDownFactor": 0.25,
-	"threatinc_nexusDownFactor": 0.8,
 	# growth pace ramps from 0 at stall health to full at full health
 	"threatinc_growthStallHealth": 0.5,
 	"threatinc_growthFullHealth": 0.85,
