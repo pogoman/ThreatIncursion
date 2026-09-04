@@ -154,16 +154,10 @@ public class ThreatIncConfig {
 
 	/** Colony health below which the colony declines (loses population). */
 	public static float declineHealthThreshold() { return f("threatinc_declineHealthThreshold"); }
-	/** Base decline (size-step fraction) accrued per ~30-day tick while declining. */
+	/** Fixed decline (stratum fraction) accrued per ~30-day tick while declining. */
 	public static float declineBasePerTick()     { return f("threatinc_declineBasePerTick"); }
-	/** Acceleration per consecutive declining tick. */
-	public static float declineAccelPerTick()    { return f("threatinc_declineAccelPerTick"); }
-	/** Cap on the consecutive-decline acceleration multiplier. */
-	public static float declineAccelCap()        { return f("threatinc_declineAccelCap"); }
 	/** Decline-meter decay per healthy tick (the hive regrows its strata). */
 	public static float declineRecoveryPerTick() { return f("threatinc_declineRecoveryPerTick"); }
-	/** Colony size at which the decline rate applies as-is (rate x ref/size). */
-	public static float declineSizeRef()         { return f("threatinc_declineSizeRef"); }
 	/** Fabrication factor while the Core is disrupted (below the threshold = forced decline). */
 	public static float coreDownFactor()         { return f("threatinc_coreDownFactor"); }
 	/** Fabrication factor while the Nexus is disrupted. */
