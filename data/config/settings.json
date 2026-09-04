@@ -286,6 +286,18 @@
 	"threatinc_convoyEscortFP": 30,
 	"threatinc_convoyEscortPerThousand": 20,
 	"threatinc_convoyMinLoadFraction": 0.5,
+	# sailings per faction per tick, neediest bases first
+	"threatinc_convoyMaxPerTick": 2,
+	# the front is a reserve consumer (docs/design-theory.md 8.3): supply
+	# runs from the nearest base top a friendly front up to frontResupplyDays
+	# of armaments and frontReinforceFraction of its peak marines; the run
+	# waits at the hive system's jump-point up to frontRunWaitDays for the
+	# Defense Swarms to clear the orbit, then turns home. A front that is dry
+	# and below grind strength calls for a withdrawal run instead.
+	"threatinc_frontRunsEnabled": true,
+	"threatinc_frontResupplyDays": 60,
+	"threatinc_frontReinforceFraction": 0.8,
+	"threatinc_frontRunWaitDays": 30,
 	# the hive hunts convoys: a hive colony within raiderRangeLY of a route's
 	# midpoint with Defense Swarms above its reserve detaches ONE to intercept
 	# the convoy for raiderDays, then brings it home to the garrison

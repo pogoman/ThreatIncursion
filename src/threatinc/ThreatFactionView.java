@@ -47,6 +47,10 @@ public class ThreatFactionView {
 	public static final String BUTTON_INTERCEPT = "threatinc_board_intercept:";
 	public static final String BUTTON_SIEGE = "threatinc_board_siege:";
 	public static final String BUTTON_RECALL = "threatinc_board_recall:";
+	/** Supply run to the faction's front on a hive world (payload: factionId:hiveMarketId). */
+	public static final String BUTTON_SUPPLY = "threatinc_board_supply:";
+	/** Withdrawal run for the faction's front on a hive world. */
+	public static final String BUTTON_PULLOUT = "threatinc_board_pullout:";
 
 	/** Selector value for the hive view. */
 	public static final String VIEW_THREAT = "threat";
@@ -399,6 +403,22 @@ public class ThreatFactionView {
 						: "No base in reach, or nothing there to besiege yet.");
 				disableWith(main, intercept, mayOrder && baseOk, blocked != null ? blocked
 						: "No base in reach.");
+				// a front of this faction fights here: supply and pull-out runs
+				MarketAPI frontWorld = frontWorldIn(factionId, e);
+				if (frontWorld != null) {
+					ButtonAPI supply = intel.addGenericButton(main, SMALL_BUTTON_W + 6f, "Supply",
+							BUTTON_SUPPLY + factionId + ":" + frontWorld.getId());
+					supply.getPosition().belowRight(hiveTable, -up)
+							.setXAlignOffset(-6f - 2f * SMALL_BUTTON_W - 14f - 8f);
+					ButtonAPI pull = intel.addGenericButton(main, SMALL_BUTTON_W + 12f, "Pull out",
+							BUTTON_PULLOUT + factionId + ":" + frontWorld.getId());
+					pull.getPosition().belowRight(hiveTable, -up)
+							.setXAlignOffset(-6f - 3f * SMALL_BUTTON_W - 14f - 6f - 12f);
+					disableWith(main, supply, mayOrder && baseOk && ThreatIncConfig.frontRunsEnabled(),
+							blocked != null ? blocked : "No base in reach, or front runs are disabled.");
+					disableWith(main, pull, mayOrder && baseOk && ThreatIncConfig.frontRunsEnabled(),
+							blocked != null ? blocked : "No base in reach, or front runs are disabled.");
+				}
 			}
 		}
 		main.setHeightSoFar(heightBefore);
@@ -563,6 +583,11 @@ public class ThreatFactionView {
 			f.color = h;
 			f.name = c.fromName() + " -> " + c.toName();
 			f.task = cargoText(c.marines, c.armaments, c.fuel, c.supplies);
+			if (c.isFrontRun()) {
+				f.kind = c.pickup ? "Evacuation" : "Supply run";
+				f.task = (c.pickup ? "lifting the front off " : "to the front on ") + c.toName()
+						+ (c.waitSinceTimestamp != 0L && !c.runningIn ? " - waiting at the door" : "");
+			}
 			int hunters = ThreatRaiders.huntersOf(c.fleet);
 			f.status = c.fleet == null || !c.fleet.isAlive() ? "lost"
 					: hunters > 0 ? "HUNTED" : "in transit";
@@ -634,12 +659,14 @@ public class ThreatFactionView {
 	public static boolean isOrderButton(String id) {
 		return id.startsWith(BUTTON_GUARD) || id.startsWith(BUTTON_STAGE)
 				|| id.startsWith(BUTTON_INTERCEPT) || id.startsWith(BUTTON_SIEGE)
-				|| id.startsWith(BUTTON_RECALL);
+				|| id.startsWith(BUTTON_RECALL) || id.startsWith(BUTTON_SUPPLY)
+				|| id.startsWith(BUTTON_PULLOUT);
 	}
 
 	/** Splits "prefix" + "factionId:target" into [prefix, factionId, target]. */
 	protected static String[] parse(String id) {
-		String[] prefixes = {BUTTON_GUARD, BUTTON_STAGE, BUTTON_INTERCEPT, BUTTON_SIEGE, BUTTON_RECALL};
+		String[] prefixes = {BUTTON_GUARD, BUTTON_STAGE, BUTTON_INTERCEPT, BUTTON_SIEGE, BUTTON_RECALL,
+				BUTTON_SUPPLY, BUTTON_PULLOUT};
 		for (String p : prefixes) {
 			if (!id.startsWith(p)) continue;
 			String rest = id.substring(p.length());
@@ -702,6 +729,30 @@ public class ThreatFactionView {
 		} else if (BUTTON_RECALL.equals(parts[0])) {
 			prompt.addPara("Recall this fleet to its base? A convoy brings its cargo home; an "
 					+ "expedition abandons its campaign; a task force breaks off.", 0f);
+		} else if (BUTTON_SUPPLY.equals(parts[0]) || BUTTON_PULLOUT.equals(parts[0])) {
+			MarketAPI hive = ThreatIncData.resolveColonyMarket(parts[2]);
+			ThreatGroundFronts.GroundFront front = hive != null
+					? ThreatGroundFronts.getFront(hive.getId()) : null;
+			MarketAPI base = faction != null && hive != null
+					? ThreatFleetOrders.pickBase(faction, hive.getLocationInHyperspace()) : null;
+			if (hive == null || front == null) {
+				prompt.addPara("There is no front there any more.", 0f);
+			} else if (BUTTON_SUPPLY.equals(parts[0])) {
+				float[] wants = ThreatConvoys.frontWants(front, hive);
+				prompt.addPara("Send a supply run from " + (base != null ? base.getName()
+						: "the nearest base") + " to the front on " + hive.getName() + "? It "
+						+ "wants about %s marines and %s heavy armaments; the run waits at the "
+						+ "jump-point while Defense Swarms hold the orbit, and can be "
+						+ "intercepted on the way.", 0f, h, Misc.getWithDGS((int) wants[0]),
+						Misc.getWithDGS((int) wants[1]));
+			} else {
+				prompt.addPara("Send an evacuation convoy from " + (base != null ? base.getName()
+						: "the nearest base") + " to lift the front off " + hive.getName()
+						+ "? Its %s marines and %s heavy armaments come home into the base's "
+						+ "reserve. The convoy needs the orbit clear to land.", 0f, h,
+						Misc.getWithDGS(Math.round(front.marines)),
+						Misc.getWithDGS((int) front.armaments));
+			}
 		}
 	}
 
@@ -764,6 +815,34 @@ public class ThreatFactionView {
 		}
 		if (BUTTON_RECALL.equals(parts[0])) {
 			return recall(parts[1], parts[2]) ? "recall" : null;
+		}
+		if (BUTTON_SUPPLY.equals(parts[0]) || BUTTON_PULLOUT.equals(parts[0])) {
+			MarketAPI hive = ThreatIncData.resolveColonyMarket(parts[2]);
+			if (hive == null) return null;
+			boolean pull = BUTTON_PULLOUT.equals(parts[0]);
+			ThreatConvoys.Convoy c = pull ? ThreatConvoys.pullOutFront(hive, faction, random)
+					: ThreatConvoys.supplyFront(hive, faction, random);
+			if (c == null) {
+				ThreatColonyManager.announceAlways("No " + (pull ? "evacuation" : "supply")
+						+ " run could be raised for " + hive.getName() + ": no base of "
+						+ (faction.isPlayerFaction() ? "yours" : faction.getDisplayName())
+						+ " is in reach with anything to send, or a run is already bound there.",
+						Misc.getNegativeHighlightColor());
+				return null;
+			}
+			return pull ? "pullout" : "supply";
+		}
+		return null;
+	}
+
+	/** The faction's own front on any hive world of this system, or null. */
+	public static MarketAPI frontWorldIn(String factionId, ThreatWarBoard.Entry e) {
+		for (MarketAPI m : e.markets) {
+			ThreatGroundFronts.GroundFront f = ThreatGroundFronts.getFront(m.getId());
+			if (f == null) continue;
+			String owner = f.factionId != null ? f.factionId
+					: com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER;
+			if (factionId.equals(owner)) return m;
 		}
 		return null;
 	}

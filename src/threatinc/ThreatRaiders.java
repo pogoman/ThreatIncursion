@@ -110,7 +110,11 @@ public class ThreatRaiders {
 			StarSystemAPI system = hive.getStarSystem();
 			if (system == null || hive.getPrimaryEntity() == null) continue;
 			if (Misc.getDistanceLY(system.getLocation(), mid) > range) continue;
-			if (ThreatColonyManager.garrisonAvailableForLaunch(hive) <= 0) continue;
+			// a raider needs only a swarm above the defensive reserve, not a
+			// full garrison (expeditions demand full strength; a hunt is a
+			// cheaper commitment - and garrisons are rarely full in a war)
+			if (ThreatColonyManager.countLiveGarrison(hive.getId())
+					<= ThreatColonyManager.garrisonReserve(hive)) continue;
 			near.add(hive);
 		}
 		if (near.isEmpty()) return;

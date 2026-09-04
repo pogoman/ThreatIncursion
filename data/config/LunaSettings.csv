@@ -106,6 +106,11 @@ threatinc_convoyCargoCapacity,Convoy Cargo Capacity,Double,6000,"Units of armame
 threatinc_convoyEscortFP,Convoy Escort Base (FP),Double,30,"Combat fleet points every convoy sails with, before the cargo-value escort below.",0,300
 threatinc_convoyEscortPerThousand,Convoy Escort per Cargo Value,Double,20,"Extra escort fleet points per 1,000 of cargo value (marines count 1 each, armaments 0.5, fuel and supplies 0.1). A rich convoy is a real fleet.",0,200
 threatinc_convoyMinLoadFraction,Convoy Minimum Load,Double,0.5,"A base's shortfall, as a fraction of one convoy load, below which no convoy sails.",0,1
+threatinc_convoyMaxPerTick,Convoys per Tick,Int,2,"Convoys one faction dispatches per 30-day tick at most, its neediest bases first. Fewer, larger convoys are safer than many small ones.",1,10
+threatinc_frontRunsEnabled,Front Supply Runs Enabled,Boolean,true,"Mobilised factions run supply convoys to their ground fronts (marines and heavy armaments from the nearest base's reserve) and withdrawal convoys for fronts that call for a pickup. Runs wait at the hive system's jump-point while Defense Swarms hold the orbit - a garrisoned hive strangles the front.",,
+threatinc_frontResupplyDays,Front Resupply (Days),Double,60,"Days of heavy-armaments upkeep a supply run tops a front up to.",10,240
+threatinc_frontReinforceFraction,Front Reinforce Fraction,Double,0.8,"A supply run reinforces a front back toward this fraction of its peak marine strength.",0,1.5
+threatinc_frontRunWaitDays,Front Run Wait (Days),Double,30,"Days a supply or withdrawal run waits at the jump-point for the orbit to clear before turning for home with its cargo.",5,120
 threatinc_raiderEnabled,Hive Raiders Enabled,Boolean,true,"Hive colonies near a convoy's route may detach one Defense Swarm to hunt it - the swarm's own commerce raiding, paid for with a thinner garrison while it is out.",,
 threatinc_raiderRangeLY,Raider Range (LY),Double,12,"Light-years from a convoy route's midpoint within which a hive colony may send a raider.",2,40
 threatinc_raiderChance,Raider Chance,Double,0.5,"Chance each eligible hive colony (Defense Swarms above its reserve) detaches a raider at a passing convoy; the nearest rolls first and one raider is enough.",0,1
