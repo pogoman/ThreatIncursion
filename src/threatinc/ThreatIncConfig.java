@@ -150,17 +150,62 @@ public class ThreatIncConfig {
 	/** Resilience above which an NPC siege keeps tactical-bombing before it raids. */
 	public static float siegeDefenseSoftenFloor() { return f("threatinc_siegeDefenseSoftenFloor"); }
 
-	// ---- colony decline ----
+	// ---- ground fronts (docs/ground-war.md) ----
 
-	/** Colony health below which the colony declines (loses population). */
-	public static float declineHealthThreshold() { return f("threatinc_declineHealthThreshold"); }
-	/** Fixed decline (stratum fraction) accrued per ~30-day tick while declining. */
-	public static float declineBasePerTick()     { return f("threatinc_declineBasePerTick"); }
-	/** Decline-meter decay per healthy tick (the hive regrows its strata). */
-	public static float declineRecoveryPerTick() { return f("threatinc_declineRecoveryPerTick"); }
-	/** Fabrication factor while the Core is disrupted (below the threshold = forced decline). */
+	/** Master switch for the ground-front siege mechanic. */
+	public static boolean frontsEnabled()     { return b("threatinc_frontsEnabled", true); }
+	/** Effective strength (marines x entrenchment) as a fraction of the defense figure needed to HOLD (suppress every key structure). */
+	public static float frontHoldFraction()   { return f("threatinc_frontHoldFraction"); }
+	/** Fraction of the defense figure needed to GRIND (harass only the defense structures, at the reduced rate below). */
+	public static float frontGrindFraction()  { return f("threatinc_frontGrindFraction"); }
+	/** Days added to a suppressed structure's disruption clock per day held (the clock counts down 1/day naturally, so 2.0 nets +1). */
+	public static float frontSuppressDaysPerDay() { return f("threatinc_frontSuppressDaysPerDay"); }
+	/** Suppression-rate multiplier while only grinding. */
+	public static float frontGrindSuppressMult() { return f("threatinc_frontGrindSuppressMult"); }
+	/** Fraction of the front's current marines lost per 30 days while supplied. */
+	public static float frontMarineLossPer30Days() { return f("threatinc_frontMarineLossPer30Days"); }
+	/** Attrition multiplier once the heavy armaments run out. */
+	public static float frontUnsuppliedLossMult() { return f("threatinc_frontUnsuppliedLossMult"); }
+	/** Heavy armaments consumed per colony size per 30 days - the front's upkeep. */
+	public static float frontArmamentsPerSizePer30Days() { return f("threatinc_frontArmamentsPerSizePer30Days"); }
+	/** Days of entrenchment to reach the full effectiveness multiplier. */
+	public static float frontEntrenchDays()   { return f("threatinc_frontEntrenchDays"); }
+	/** Effectiveness multiplier of a fully entrenched front. */
+	public static float frontEntrenchMaxMult() { return f("threatinc_frontEntrenchMaxMult"); }
+	/** Marines below which a front collapses outright. */
+	public static float frontMinMarines()     { return f("threatinc_frontMinMarines"); }
+	/** Whether a tactical pass with a front deployed costs front marines (and cracks the deep organs in exchange). */
+	public static boolean frontDangerCloseEnabled() { return b("threatinc_frontDangerCloseEnabled", true); }
+	/** Fraction of the front's marines lost to a danger-close tactical pass. */
+	public static float frontDangerCloseLossFraction() { return f("threatinc_frontDangerCloseLossFraction"); }
+	/** Days saturation fallout blocks landing ground forces (keep >= hiveSatDisruptDays or sat bombing becomes the best siege opener). */
+	public static float falloutDays()         { return f("threatinc_falloutDays"); }
+
+	// ---- stratum campaign: pushes, counter-attacks, eradication ----
+
+	/** Base days per stratum push at even strength (scaled by defense/strength, clamped 0.5x-3x). */
+	public static float frontPushBaseDays()   { return f("threatinc_frontPushBaseDays"); }
+	/** Fraction of the front's marines lost per 30 days while pushing (replaces the entrenched rate). */
+	public static float frontPushLossPer30Days() { return f("threatinc_frontPushLossPer30Days"); }
+	/** Armaments-upkeep multiplier while pushing. */
+	public static float frontPushUpkeepMult() { return f("threatinc_frontPushUpkeepMult"); }
+	/** Effectiveness multiplier of a dry (no armaments) front. */
+	public static float frontDryEffectivenessMult() { return f("threatinc_frontDryEffectivenessMult"); }
+	/** Defense multiplier of an entrenched (non-pushing) front against counter-attacks. */
+	public static float frontEntrenchDefenseBonus() { return f("threatinc_frontEntrenchDefenseBonus"); }
+	/** Days a front consolidates at each stratum checkpoint before pushing on by doctrine. */
+	public static float frontCheckpointDays() { return f("threatinc_frontCheckpointDays"); }
+	/** Base days between hive counter-attacks (divided by colony health - starved hives barely attack). */
+	public static float frontCounterAttackDays() { return f("threatinc_frontCounterAttackDays"); }
+	/** Fraction of the front's marines lost to a counter-attack it fails to repel. */
+	public static float frontCounterAttackLossFraction() { return f("threatinc_frontCounterAttackLossFraction"); }
+	/** Days of armaments supply an NPC expedition's landing force carries. */
+	public static float npcFrontSupplyDays()  { return f("threatinc_npcFrontSupplyDays"); }
+
+	// ---- colony vitality ----
+
+	/** Fabrication factor while the Core is disrupted (weakens the colony; only ground victory kills it). */
 	public static float coreDownFactor()         { return f("threatinc_coreDownFactor"); }
-	/** Fabrication factor while the Nexus is disrupted. */
 	/** Health at or below which growth stops entirely. */
 	public static float growthStallHealth()      { return f("threatinc_growthStallHealth"); }
 	/** Health at or above which the colony grows at full pace. */
@@ -217,6 +262,69 @@ public class ThreatIncConfig {
 
 	public static boolean remnantResists()   { return b("threatinc_remnantResists", true); }
 	public static float machineWarWinChance(){ return f("threatinc_machineWarWinChance"); }
+
+	// ---- strategy layer: war mode, reserves, convoys (docs/strategy-layer.md) ----
+
+	/** Master switch for war mode, per-colony reserves, convoys and fleet orders. */
+	public static boolean strategyEnabled()  { return b("threatinc_strategyEnabled", true); }
+	/** Days after its last strike a faction stands down (if no hive is in reach); 0 = never. */
+	public static float warModeStandDownDays() { return f("threatinc_warModeStandDownDays"); }
+	/** Reserve marines accrued per unit of vanilla marine production per 30 days. */
+	public static float reserveMarinesPerUnit() { return f("threatinc_reserveMarinesPerUnit"); }
+	/** Reserve heavy armaments per unit of hand-weapon production per 30 days. */
+	public static float reserveArmamentsPerUnit() { return f("threatinc_reserveArmamentsPerUnit"); }
+	/** Reserve fuel per unit of fuel production per 30 days. */
+	public static float reserveFuelPerUnit()  { return f("threatinc_reserveFuelPerUnit"); }
+	/** Reserve supplies per unit of supply production per 30 days. */
+	public static float reserveSuppliesPerUnit() { return f("threatinc_reserveSuppliesPerUnit"); }
+	/** Months of its own production a colony stockpiles at most. */
+	public static float reserveCapMonths()    { return f("threatinc_reserveCapMonths"); }
+	/** Months of production each colony holds the moment its faction mobilises. */
+	public static float reserveInitialMonths() { return f("threatinc_reserveInitialMonths"); }
+	/** Fraction of a colony's cap that expeditions and sorties never draw it below (the home garrison's stock). */
+	public static float reserveFloorFraction() { return f("threatinc_reserveFloorFraction"); }
+	/** Militia marines every colony accrues per size per 30 days, regardless of industry. */
+	public static float reserveBaselinePerSize() { return f("threatinc_reserveBaselinePerSize"); }
+	/** Exponent on every ground-war strength ratio: 1 = linear (default), 2 = Lanchester square law. */
+	public static float groundStrengthExponent() { return f("threatinc_groundStrengthExponent"); }
+	/** Fraction of the marines an expedition wants that its base must hold, or it waits. */
+	public static float expeditionMinMarinesFraction() { return f("threatinc_expeditionMinMarinesFraction"); }
+	/** Fuel an expedition draws per fleet point per light-year. */
+	public static float expeditionFuelPerPointLY() { return f("threatinc_expeditionFuelPerPointLY"); }
+	/** Supplies an expedition draws per fleet point. */
+	public static float expeditionSuppliesPerPoint() { return f("threatinc_expeditionSuppliesPerPoint"); }
+	/** Troop-transport share of a cargo-carrying expedition fleet (vanilla composition multiplier). */
+	public static float expeditionTransportMult() { return f("threatinc_expeditionTransportMult"); }
+	/** Whether mobilised factions run supply convoys between their colonies. */
+	public static boolean convoyEnabled()     { return b("threatinc_convoyEnabled", true); }
+	/** Light-years a donor colony will ship to a staging base. */
+	public static float convoyRangeLY()       { return f("threatinc_convoyRangeLY"); }
+	/** Marines one convoy carries at most. */
+	public static float convoyMarineCapacity() { return f("threatinc_convoyMarineCapacity"); }
+	/** Cargo units (armaments, fuel, supplies) one convoy carries at most. */
+	public static float convoyCargoCapacity() { return f("threatinc_convoyCargoCapacity"); }
+	/** Combat fleet points escorting a convoy. */
+	public static float convoyEscortFP()      { return f("threatinc_convoyEscortFP"); }
+	/** Shortfall (in convoy loads) below which no convoy sails. */
+	public static float convoyMinLoadFraction() { return f("threatinc_convoyMinLoadFraction"); }
+	/** Fraction of its own cap a donor colony keeps back. */
+	public static float donorKeepFraction()   { return f("threatinc_donorKeepFraction"); }
+	/** Staging target as a multiple of one expedition's draw. */
+	public static float stagingTargetMult()   { return f("threatinc_stagingTargetMult"); }
+	/** Days after which a convoy that has not arrived is written off. */
+	public static float convoyTimeoutDays()   { return f("threatinc_convoyTimeoutDays"); }
+	/** Whether the war board's fleet orders (guard, stage, intercept, siege, recall) are offered. */
+	public static boolean ordersEnabled()     { return b("threatinc_ordersEnabled", true); }
+	/** Relationship (-1..1) with an allied faction at which it takes the player's orders. */
+	public static float orderMinRelation()    { return f("threatinc_orderMinRelation"); }
+	/** Combat fleet points of a guard or intercept task force. */
+	public static float guardFleetFP()        { return f("threatinc_guardFleetFP"); }
+	/** Days a guard task force holds a colony's orbit. */
+	public static float guardDays()           { return f("threatinc_guardDays"); }
+	/** Days an intercept task force holds a hive system's jump-point. */
+	public static float interceptDays()       { return f("threatinc_interceptDays"); }
+	/** Fraction of the fuel and supplies drawn at launch refunded when a fleet returns home at full strength. */
+	public static float returnRefundMult()    { return f("threatinc_returnRefundMult"); }
 
 	// ---- faction relations ----
 

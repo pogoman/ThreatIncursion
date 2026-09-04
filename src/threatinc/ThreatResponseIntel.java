@@ -199,6 +199,13 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 		targetColonyName = null;
 		for (CampaignFleetAPI curr : allFleets()) {
 			if (!alive(curr)) continue;
+			// a fleet provisioned from a mobilised base goes home on the
+			// tracked leg and refunds what survives (ThreatReturns)
+			String provisionedBy = ThreatReturns.homeOf(curr);
+			if (provisionedBy != null && ThreatReturns.sendHome(curr,
+					factionId, provisionedBy)) {
+				continue;
+			}
 			SectorEntityToken home = nearestFriendlyMarketEntity(curr);
 			curr.clearAssignments();
 			if (home != null) {

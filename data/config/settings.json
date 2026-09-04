@@ -170,18 +170,141 @@
 	# before the ground assault; 0 = grind the war-strata to nothing first.
 	"threatinc_siegeDefenseSoftenFloor": 0.25,
 
-	# Colony decline: a colony whose health (input satisfaction x structure
-	# functionality) falls below the threshold loses population at a FIXED
-	# rate - not scaled by depth, duration, or colony size - until it
-	# collapses at size 1. Fixed so the projected timelines are exact:
-	# disrupting a bigger colony costs more, but the effect is identical.
-	"threatinc_declineHealthThreshold": 0.35,
-	"threatinc_declineBasePerTick": 0.25,
-	"threatinc_declineRecoveryPerTick": 0.05,
+	# Ground fronts (docs/ground-war.md): marines + heavy armaments committed to
+	# a hive world's surface as a persistent siege. The front consumes armaments
+	# as upkeep (the stockpile is the supply countdown), marines attrit at flat
+	# daily rates, and - when strong enough against the world's CURRENT (worn)
+	# ground-defense figure - it keeps the key structures disrupted, feeding the
+	# same wear clock raids and bombardments do. A held front suppresses the
+	# Fabrication Core, so the existing decline engine kills the colony; the
+	# front replaces the disruption-timer babysitting, not the decline math.
+	"threatinc_frontsEnabled": true,
+	# effective strength (marines x entrenchment) as a fraction of the defense
+	# figure: at or above hold = suppress everything; between grind and hold =
+	# harass only the defense structures; below grind = a mere foothold. 0.25
+	# mirrors vanilla's own raid-disruption threshold.
+	"threatinc_frontHoldFraction": 0.25,
+	"threatinc_frontGrindFraction": 0.10,
+	# days added to a suppressed structure's disruption clock per day held; the
+	# clock counts down 1/day naturally, so 2.0 nets +1 day of wear per day
+	"threatinc_frontSuppressDaysPerDay": 2.0,
+	"threatinc_frontGrindSuppressMult": 0.5,
+	# marines lost per 30 days (fraction of current), times the multiplier once
+	# the heavy armaments run dry; below min marines the front is overrun
+	"threatinc_frontMarineLossPer30Days": 0.08,
+	"threatinc_frontUnsuppliedLossMult": 3.0,
+	# heavy armaments burned per colony size per 30 days (size 6 = 2/day)
+	"threatinc_frontArmamentsPerSizePer30Days": 10,
+	# entrenchment: effectiveness ramps to the max multiplier over this many days
+	"threatinc_frontEntrenchDays": 30,
+	"threatinc_frontEntrenchMaxMult": 1.5,
+	"threatinc_frontMinMarines": 50,
+	# a tactical pass with a front deployed costs it this fraction of its
+	# marines - and in exchange the strike's disruption also lands on the
+	# Fabrication Core and port (the ground forces mark targets)
+	"threatinc_frontDangerCloseEnabled": true,
+	"threatinc_frontDangerCloseLossFraction": 0.05,
+	# saturation fallout: days ground forces cannot land after a sat pass. Keep
+	# it >= hiveSatDisruptDays - sat bombing must forfeit ground tempo, or it
+	# becomes the best siege opener instead of a tradeoff
+	"threatinc_falloutDays": 40,
+
+	# The stratum campaign: a size-S hive is S strata deep with the Fabrication
+	# Core at the center. A front strong enough to hold can be ORDERED to push
+	# (NPC fronts run a stance AI); each stratum taken strips its share of the
+	# base defenses and of the hive's output, and taking the last one destroys
+	# the Core - ERADICATION BY GROUND VICTORY, the only way a hive dies.
+	# Starvation and bombardment weaken; boots on the ground finish. After each
+	# stratum the front consolidates at a checkpoint, requests reinforcement,
+	# and - given no orders within the window - pushes on by doctrine.
+	# The hive counter-attacks on a cadence paced by its health: it can retake
+	# strata from a front too weak to hold them, and overrun a beaten beachhead.
+	"threatinc_frontPushBaseDays": 20,
+	"threatinc_frontPushLossPer30Days": 0.30,
+	"threatinc_frontPushUpkeepMult": 2.0,
+	"threatinc_frontDryEffectivenessMult": 0.5,
+	"threatinc_frontEntrenchDefenseBonus": 1.5,
+	"threatinc_frontCheckpointDays": 10,
+	"threatinc_frontCounterAttackDays": 40,
+	"threatinc_frontCounterAttackLossFraction": 0.10,
+	"threatinc_npcFrontSupplyDays": 120,
+
+	# The strategy layer (docs/strategy-layer.md). NPC factions stay vanilla
+	# until the Threat strikes one of their colonies; that strike puts the
+	# faction in WAR MODE. From then on its colonies accrue visible reserves
+	# of marines, heavy armaments, fuel and supplies - each from the colony's
+	# own vanilla production of the matching commodity - and every expedition
+	# draws its landing force and provisions from the colony it sails from,
+	# carrying the troops as real cargo. Colonies ship stock to those staging
+	# bases by convoy: real fleets, interceptable, lootable.
+	"threatinc_strategyEnabled": true,
+	# days after its last strike a faction stands down (only if no hive is in
+	# reach of its military worlds); 0 = mobilised for good
+	"threatinc_warModeStandDownDays": 0,
+	# reserve accrued per unit of the colony's vanilla production per 30 days
+	# (a size-6 Military Base makes ~6 units of marines; Heavy Industry makes
+	# size-2 units of hand weapons and supplies; Fuel Production ~size fuel)
+	"threatinc_reserveMarinesPerUnit": 50,
+	"threatinc_reserveArmamentsPerUnit": 40,
+	"threatinc_reserveFuelPerUnit": 300,
+	"threatinc_reserveSuppliesPerUnit": 300,
+	# a colony stockpiles at most this many months of its own production, and
+	# starts with reserveInitialMonths of it the moment its faction mobilises
+	# (the peacetime depots its first sortie draws from)
+	"threatinc_reserveCapMonths": 6,
+	"threatinc_reserveInitialMonths": 3,
+	# expeditions and sorties never draw a colony below this fraction of its
+	# cap (the home garrison's stock); every colony also raises a militia
+	# trickle of marines per size per 30 days regardless of industry
+	"threatinc_reserveFloorFraction": 0.25,
+	"threatinc_reserveBaselinePerSize": 5,
+	# exponent on every ground-war strength ratio (push pace, push attrition,
+	# counter-attack losses and overruns): 1 = linear and legible (default),
+	# 2 = Lanchester's square law, where concentration pays four times over
+	"threatinc_groundStrengthExponent": 1.0,
+	# an expedition waits unless its base holds this fraction of the marines
+	# the landing needs (siegeRaidStrNeeded - raid strength ~= marines)
+	"threatinc_expeditionMinMarinesFraction": 0.5,
+	# provisions drawn per fleet point: fuel per light-year, supplies flat
+	"threatinc_expeditionFuelPerPointLY": 10,
+	"threatinc_expeditionSuppliesPerPoint": 100,
+	# troop-transport share of a cargo-carrying expedition fleet
+	"threatinc_expeditionTransportMult": 0.3,
+	# convoys: donor colonies within range ship stock to staging bases (a
+	# military world within expedition range of a live hive) until the base
+	# holds stagingTargetMult expeditions' worth; a donor keeps
+	# donorKeepFraction of its own cap; nothing sails for a shortfall under
+	# convoyMinLoadFraction of a load
+	"threatinc_convoyEnabled": true,
+	"threatinc_convoyRangeLY": 15,
+	"threatinc_convoyMarineCapacity": 600,
+	"threatinc_convoyCargoCapacity": 1500,
+	"threatinc_convoyEscortFP": 30,
+	"threatinc_convoyMinLoadFraction": 0.25,
+	"threatinc_donorKeepFraction": 0.5,
+	"threatinc_stagingTargetMult": 1.5,
+	"threatinc_convoyTimeoutDays": 200,
+	# fleet orders from the war board's faction view: your own mobilised
+	# faction always; an allied mobilised faction once your standing with it
+	# reaches orderMinRelation (0.5 = cooperative). Guard and intercept task
+	# forces are built at the nearest base and provisioned from its reserve.
+	"threatinc_ordersEnabled": true,
+	"threatinc_orderMinRelation": 0.5,
+	"threatinc_guardFleetFP": 100,
+	"threatinc_guardDays": 90,
+	"threatinc_interceptDays": 60,
+	# a fleet recalled (or whose order ran out) comes home on a tracked leg:
+	# everything still aboard - marines, armaments, cargo - goes back into the
+	# base's reserve, and this fraction of the fuel and supplies it drew at
+	# launch is refunded, scaled by its surviving strength (fleet points now
+	# over fleet points at launch). A fleet lost on the way returns nothing.
+	"threatinc_returnRefundMult": 0.5,
+
 	# fabrication factor while the Fabrication Core is disrupted (health = fab x
-	# supply; coreDownFactor below declineHealthThreshold = a dead Core forces
-	# decline). The Swarm Nexus is NOT a vitality organ - it only fabricates
-	# fleets, so disrupting it halts swarm spawning without touching health.
+	# supply; low health weakens everything the colony does - growth, garrison
+	# pace, counter-attacks - but only ground victory kills it). The Swarm
+	# Nexus is NOT a vitality organ - it only fabricates fleets, so disrupting
+	# it halts swarm spawning without touching health.
 	"threatinc_coreDownFactor": 0.25,
 	# growth pace ramps from 0 at stall health to full at full health
 	"threatinc_growthStallHealth": 0.5,

@@ -76,7 +76,13 @@ public class SwarmNexus extends BaseIndustry {
 		// base table. Topped up as a flat so the vanilla base + this = the
 		// anchor, then the industry mults stack on top. Applied even while the
 		// nexus is disrupted - the strata below the crust don't stop existing.
-		float targetBase = ThreatIncConfig.hiveDefensePerSize() * market.getSize();
+		// EXCEPT the strata a ground front has taken (docs/ground-war.md): the
+		// war-strata ARE the base defense, so each stratum held strips one
+		// size-worth of it - a front fighting inward gains real momentum, and
+		// a hive counter-attack that retakes a stratum wins it back.
+		int strataLeft = Math.max(0,
+				market.getSize() - ThreatGroundFronts.strataHeld(market.getId()));
+		float targetBase = ThreatIncConfig.hiveDefensePerSize() * strataLeft;
 		float vanillaBase = com.fs.starfarer.api.impl.campaign.econ.impl
 				.PopulationAndInfrastructure.getBaseGroundDefenses(market.getSize());
 		float topUp = targetBase - vanillaBase;

@@ -51,6 +51,11 @@ model. `design/war-effort/Round2.dc.html` is the layout it implements.
 All floating buttons (Purge, View, Map, Colony) are created after everything else and anchored to
 siblings (the table panel, the cards); see platform trap 1 and 2.
 
+**Faction selector** (Sept 2026, `ThreatFactionView`, docs/strategy-layer.md): once any faction
+has mobilised, a row of buttons sits between the strip and the ledger - "The Threat" and one per
+mobilised faction. Choosing a faction replaces the ledger and cards with that faction's colonies,
+reserves, fleets and orders; the hive view above is untouched. Built without an in-game check.
+
 ## Data model (`Entry`, one per hive system)
 
 Built by `buildEntries()` for every system in `ThreatIncData.stages()`. `Entry.known` is whether

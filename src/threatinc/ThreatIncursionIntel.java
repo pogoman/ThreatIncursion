@@ -37,6 +37,17 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		selectedSystemId = systemId;
 	}
 
+	/** The board's faction view (docs/strategy-layer.md); null or "threat" = the hive view. */
+	protected String selectedFactionId;
+
+	public String getSelectedFactionId() {
+		return selectedFactionId;
+	}
+
+	public void setSelectedFactionId(String factionId) {
+		selectedFactionId = factionId;
+	}
+
 	public static ThreatIncursionIntel get() {
 		return (ThreatIncursionIntel) Global.getSector().getMemoryWithoutUpdate().get(KEY);
 	}
@@ -183,8 +194,28 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 			}
 			return;
 		}
+		// faction-view fleet rows carry the fleet itself: show it on the map
+		if (data.rowId instanceof com.fs.starfarer.api.campaign.SectorEntityToken) {
+			ui.showOnMap((com.fs.starfarer.api.campaign.SectorEntityToken) data.rowId);
+			return;
+		}
 		if (data.rowId instanceof String) {
-			selectedSystemId = (String) data.rowId;
+			String rowId = (String) data.rowId;
+			// faction-view colony rows: show the world on the map
+			if (rowId.startsWith(ThreatFactionView.ROW_MARKET)) {
+				com.fs.starfarer.api.campaign.econ.MarketAPI market = Global.getSector().getEconomy()
+						.getMarket(rowId.substring(ThreatFactionView.ROW_MARKET.length()));
+				if (market != null && market.getPrimaryEntity() != null) {
+					ui.showOnMap(market.getPrimaryEntity());
+				}
+				return;
+			}
+			selectedSystemId = rowId;
+			// a hive row clicked from the faction view returns to the hive view
+			if (selectedFactionId != null
+					&& !ThreatFactionView.VIEW_THREAT.equals(selectedFactionId)) {
+				selectedFactionId = ThreatFactionView.VIEW_THREAT;
+			}
 			ui.updateUIForItem(this);
 		}
 	}
@@ -193,6 +224,9 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 	public boolean doesButtonHaveConfirmDialog(Object buttonId) {
 		if (buttonId instanceof String
 				&& ((String) buttonId).startsWith(ThreatWarBoard.BUTTON_COMMISSION)) return true;
+		if (buttonId instanceof String && ThreatFactionView.isOrderButton((String) buttonId)) {
+			return true;
+		}
 		return super.doesButtonHaveConfirmDialog(buttonId);
 	}
 
@@ -202,6 +236,10 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 				&& ((String) buttonId).startsWith(ThreatWarBoard.BUTTON_COMMISSION)) {
 			InfestedSystemIntel.addCommissionPrompt(prompt,
 					((String) buttonId).substring(ThreatWarBoard.BUTTON_COMMISSION.length()));
+			return;
+		}
+		if (buttonId instanceof String && ThreatFactionView.isOrderButton((String) buttonId)) {
+			ThreatFactionView.addOrderPrompt(prompt, (String) buttonId);
 			return;
 		}
 		super.createConfirmationPrompt(buttonId, prompt);
@@ -214,6 +252,17 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 			return;
 		}
 		String id = (String) buttonId;
+		if (id.startsWith(ThreatFactionView.BUTTON_FACTION)) {
+			selectedFactionId = id.substring(ThreatFactionView.BUTTON_FACTION.length());
+			ui.updateUIForItem(this);
+			return;
+		}
+		if (ThreatFactionView.isOrderButton(id)) {
+			String result = ThreatFactionView.executeOrder(id);
+			ThreatIncConfig.log("Board order " + id + " -> " + result);
+			ui.updateUIForItem(this);
+			return;
+		}
 		if (id.startsWith(ThreatWarBoard.BUTTON_COLONY)) {
 			// vanilla's colony screen for the world, closing back to the board
 			com.fs.starfarer.api.campaign.econ.MarketAPI market = ThreatIncData.resolveColonyMarket(

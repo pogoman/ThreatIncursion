@@ -268,12 +268,13 @@ public class ThreatWarBoard {
 		float weightedHealth = 0f;
 		boolean anyDeclining = false;
 		boolean anyGrowing = false;
-		float declineT = ThreatIncConfig.declineHealthThreshold();
 		for (MarketAPI market : e.markets) {
 			e.mass += market.getSize();
 			float health = ThreatColonyManager.computeHealth(market);
 			weightedHealth += health * market.getSize();
-			if (health < declineT) anyDeclining = true;
+			// "declining" since the ground-war rework: a front is on the ground
+			// taking the colony apart (only ground victory kills a hive)
+			if (ThreatGroundFronts.hasFront(market)) anyDeclining = true;
 			else if (ThreatColonyManager.growthMultFor(health) > 0f) anyGrowing = true;
 			int live = ThreatColonyManager.countLiveGarrison(market.getId());
 			int desired = ThreatColonyManager.desiredGarrisonCount(market);
@@ -687,6 +688,16 @@ public class ThreatWarBoard {
 
 		addHeader(main, width);
 		addStrip(main, width, entries);
+		// the faction selector (docs/strategy-layer.md): the hive's war, or a
+		// mobilised faction's - colonies, reserves, fleets and orders
+		String view = intel.getSelectedFactionId();
+		ThreatFactionView.addSelector(intel, main, width, view);
+		if (view != null && !ThreatFactionView.VIEW_THREAT.equals(view)
+				&& ThreatWarState.isAtWar(view)) {
+			nameWidths.clear();
+			ThreatFactionView.render(intel, main, width, opad, view);
+			return;
+		}
 		Ledger ledger = addLedger(intel, ui, main, width, opad, entries, selected);
 		nameWidths.clear();
 		List<Object[]> cards = new ArrayList<Object[]>();
@@ -1410,7 +1421,7 @@ public class ThreatWarBoard {
 				float vx = x + c.x[VIT] * scale + CELL_PAD;
 				float vw = c.w[VIT] * scale - 2f * CELL_PAD - 18f;
 				bar(vx, midY - 4f, vw, 8f, e.health, healthColor(e.health),
-						new float[] {ThreatIncConfig.declineHealthThreshold(),
+						new float[] {ThreatColonyManager.CRITICAL_HEALTH,
 								ThreatIncConfig.growthFullHealth()}, alphaMult);
 				trend(vx + vw + 10f, midY, e.trend, alphaMult);
 			}
@@ -1593,9 +1604,10 @@ public class ThreatWarBoard {
 	protected static CustomPanelAPI buildCard(TooltipMakerAPI main, final MarketAPI market,
 			float cardW, Entry e) {
 		final float health = ThreatColonyManager.computeHealth(market);
-		final float declineT = ThreatIncConfig.declineHealthThreshold();
 		final List<Industry> organs = organsOf(market);
-		final boolean declining = health < declineT;
+		// "declining" = a ground front is taking this colony apart (the card
+		// border lights up); only ground victory kills a hive now
+		final boolean declining = ThreatGroundFronts.hasFront(market);
 		final float iconStep = 44f;
 
 		CustomPanelAPI card = Global.getSettings().createCustom(cardW, CARD_H,
@@ -1697,10 +1709,22 @@ public class ThreatWarBoard {
 		hlA.add(live + "/" + desired + (desired < nominal ? " of " + nominal : "")
 				+ (inbound > 0 ? " (+" + inbound + " inbound)" : ""));
 		hlcA.add(live == 0 ? pos : desired < nominal ? neg : text);
-		if (declining) {
-			a.append("    Decline %s");
-			hlA.add((int) (ThreatIncData.declineProgress(market.getId()) * 100f) + "%");
-			hlcA.add(neg);
+		// a deployed ground front is the siege in progress - it displaces Reach
+		// (a besieged world's strike range is not the question): strength, then
+		// stance or supply trouble, then strata taken of the colony's total
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		if (front != null) {
+			a.append("    Front %s");
+			String stance = ThreatGroundFronts.STANCE_PUSH.equals(front.stance) ? "push"
+					: ThreatGroundFronts.STANCE_CONSOLIDATE.equals(front.stance) ? "regrouping"
+					: "dug in";
+			String label = Misc.getWithDGS(Math.round(front.marines)) + " "
+					+ (front.armaments <= 0f ? "no supply" : stance)
+					+ " " + front.strataHeld + "/" + market.getSize();
+			hlA.add(label);
+			hlcA.add(front.armaments <= 0f ? neg
+					: ThreatGroundFronts.STATE_HOLDING.equals(front.state) ? pos
+					: ThreatGroundFronts.STATE_GRINDING.equals(front.state) ? h : neg);
 		} else if (market.getSize() >= ThreatIncConfig.strikeMinSize()) {
 			float range = ThreatColonyManager.fuelRangeLY(market);
 			a.append("    Reach %s");
@@ -1811,11 +1835,18 @@ public class ThreatWarBoard {
 	protected static String[] forecastParts(MarketAPI market, float health) {
 		String id = market.getId();
 		String from = "s" + market.getSize();
-		if (health < ThreatIncConfig.declineHealthThreshold()) {
-			float[] projection = ThreatColonyManager.projectDecline(market, health);
-			String to = "s" + (market.getSize() - 1)
-					+ (projection[0] > 0f ? " ~" + (int) projection[0] + " d" : "");
-			return new String[] {"%s -> %s", from, to};
+		// a front on the ground: forecast the drive to the Core instead of
+		// growth - remaining strata at the current per-stratum pace
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(id);
+		if (front != null) {
+			int left = Math.max(1, market.getSize() - front.strataHeld);
+			float perStratum = ThreatGroundFronts.pushDaysEstimate(front, market);
+			if (perStratum > 0f && ThreatGroundFronts.effectiveStrength(front)
+					>= ThreatGroundFronts.holdRequirement(market)) {
+				return new String[] {"%s -> %s", from,
+						"core ~" + (int) Math.ceil(left * perStratum) + " d"};
+			}
+			return new String[] {"%s %s", from, "contested"};
 		}
 		float growthMult = ThreatColonyManager.growthMultFor(health);
 		int cap = Math.min(ThreatIncConfig.colonyMaxSize(), Misc.getMaxMarketSize(market));
@@ -1875,7 +1906,7 @@ public class ThreatWarBoard {
 	}
 
 	public static Color healthColor(float health) {
-		if (health < ThreatIncConfig.declineHealthThreshold()) return Misc.getNegativeHighlightColor();
+		if (health < ThreatColonyManager.CRITICAL_HEALTH) return Misc.getNegativeHighlightColor();
 		if (health < ThreatIncConfig.growthFullHealth()) return Misc.getHighlightColor();
 		return Misc.getPositiveHighlightColor();
 	}
