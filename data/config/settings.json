@@ -171,15 +171,13 @@
 	"threatinc_siegeDefenseSoftenFloor": 0.25,
 
 	# Colony decline: a colony whose health (input satisfaction x structure
-	# functionality) falls below the threshold loses population, faster the
-	# longer it stays suppressed, until it collapses at size 1
+	# functionality) falls below the threshold loses population at a FIXED
+	# rate - not scaled by depth, duration, or colony size - until it
+	# collapses at size 1. Fixed so the projected timelines are exact:
+	# disrupting a bigger colony costs more, but the effect is identical.
 	"threatinc_declineHealthThreshold": 0.35,
-	"threatinc_declineBasePerTick": 0.10,
-	"threatinc_declineAccelPerTick": 0.15,
-	"threatinc_declineAccelCap": 2.0,
+	"threatinc_declineBasePerTick": 0.25,
 	"threatinc_declineRecoveryPerTick": 0.05,
-	# size resilience: decline rate x (ref / size)
-	"threatinc_declineSizeRef": 4.0,
 	# fabrication factor while the Fabrication Core is disrupted (health = fab x
 	# supply; coreDownFactor below declineHealthThreshold = a dead Core forces
 	# decline). The Swarm Nexus is NOT a vitality organ - it only fabricates

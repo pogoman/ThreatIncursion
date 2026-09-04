@@ -62,14 +62,13 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 
 		float decline = ThreatIncData.declineProgress(market.getId());
 		if (health < declineT) {
-			boolean accelerating = ThreatIncData.declineDays(market.getId())
-					> ThreatColonyManager.effectiveTickDays();
 			tooltip.addPara("The colony is %s - its strata are dying faster than the hive "
-					+ "can regrow them" + (accelerating ? ", and the decay is accelerating"
-					: "") + ".", opad, neg, "DECLINING");
+					+ "can regrow them.", opad, neg, "DECLINING");
 
 			// the strategic readout: how fast, how long to the kill, and
-			// whether the current disruptions last long enough to get there
+			// whether the current disruptions last long enough to get there.
+			// The rate is FIXED while below the threshold - not scaled by
+			// depth, duration, or colony size - so these figures are exact.
 			float tickDays = ThreatColonyManager.effectiveTickDays();
 			float ratePerMonth = ThreatColonyManager.declineRatePerTick(market, health)
 					/ tickDays * 30f;
@@ -77,8 +76,8 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 			float nextStep = projection[0];
 			float collapse = projection[1];
 
-			tooltip.addPara("Rate: %s of a stratum per month at current vitality"
-					+ (accelerating ? " (accelerating)" : "") + ".",
+			tooltip.addPara("Rate: %s of a stratum per month - fixed while vitality stays "
+					+ "below the threshold.",
 					3f, neg, (int) (ratePerMonth * 100f) + "%");
 			if (nextStep > 0f && collapse > 0f) {
 				tooltip.addPara("Held at this vitality: next stratum lost in about %s, "

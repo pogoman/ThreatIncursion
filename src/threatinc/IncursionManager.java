@@ -1293,11 +1293,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				: faction.getDisplayName() + " forces";
 		params.style = FleetStyle.STANDARD;
 		params.repImpact = ComplicationRepImpact.NONE;
-		if (playerCommissioned) {
-			// default true: createFleet would triggerMakeHostile() and turn the
-			// fleets the player just paid for against them
-			params.makeFleetsHostile = false;
-		}
+		// GenericRaidParams.makeFleetsHostile defaults to true, whose bare
+		// triggerMakeHostile() call turns the fleets hostile to the PLAYER
+		// (Misc reads the flagless $cfai_makeHostile as player-hostility),
+		// overriding faction standing - which is why even a Cooperative
+		// sponsor's purge would pursue the player. The purge fleets don't need
+		// it: the Threat is perma-hostile to everyone (see permaHostile), so
+		// they engage the colonies via normal relations regardless. Off for
+		// every expedition - NPC and player-commissioned alike.
+		params.makeFleetsHostile = false;
 		params.fleetSizes.addAll(fleetSizes);
 
 		ThreatPurgeFGI purge = new ThreatPurgeFGI(params, playerCommissioned);

@@ -2040,16 +2040,6 @@ public class ThreatColonyManager {
 	// ------------------------------------------------------------------
 
 	/**
-	 * Size-resilience multiplier on the decline rate: rate x (ref / size),
-	 * anchored at declineSizeRef. Smaller colonies decline proportionally
-	 * faster, larger ones slower - mass is resilience. Emergent death spiral:
-	 * as a besieged colony shrinks, its decline speeds up.
-	 */
-	public static float declineSizeMultFor(int size) {
-		return ThreatIncConfig.declineSizeRef() / Math.max(1, size);
-	}
-
-	/**
 	 * How much of a defensive organ's bonus still fires while it is disrupted.
 	 * Machines do not rout, so a fresh disruption leaves disruptedDefenseFraction
 	 * of the bonus working - but the guns wear: the surviving fraction falls
@@ -2216,14 +2206,6 @@ public class ThreatColonyManager {
 		return (health - stall) / (full - stall);
 	}
 
-	/** Severity multiplier (1-3x) for a declining health value - tick + UI. */
-	public static float declineSeverityFor(float health) {
-		float declineT = ThreatIncConfig.declineHealthThreshold();
-		float severity = 1f + 2f * (declineT - health) / Math.max(declineT, 0.01f);
-		if (severity > 3f) severity = 3f;
-		return severity;
-	}
-
 	/** The effective tick length the vitality engine runs at (fast-clock aware). */
 	public static float effectiveTickDays() {
 		float tickDays = ThreatIncConfig.tickDays();
@@ -2231,64 +2213,38 @@ public class ThreatColonyManager {
 		return tickDays;
 	}
 
-	/** The current acceleration multiplier for a colony's days-in-decline. */
-	public static float declineAccelFor(String marketId) {
-		float accel = 1f + ThreatIncConfig.declineAccelPerTick()
-				* Math.max(0f, ThreatIncData.declineDays(marketId) / effectiveTickDays() - 1f);
-		if (accel > ThreatIncConfig.declineAccelCap()) accel = ThreatIncConfig.declineAccelCap();
-		return accel;
-	}
-
 	/**
-	 * The instantaneous decline rate (fraction of a stratum per 30-day-tick
-	 * equivalent) at the given health - the "how fast is it dying" figure.
+	 * The decline rate (fraction of a stratum per 30-day-tick equivalent).
+	 * FIXED once health is below the threshold: no severity, duration, or
+	 * colony-size scaling. Disrupting a bigger colony costs more up front -
+	 * that is the cost; the rate afterwards is the same everywhere, so the
+	 * projected timelines are exact and plannable.
 	 */
 	public static float declineRatePerTick(MarketAPI market, float health) {
 		if (market == null || health >= ThreatIncConfig.declineHealthThreshold()) return 0f;
-		return ThreatIncConfig.declineBasePerTick() * declineSeverityFor(health)
-				* declineAccelFor(market.getId()) * declineSizeMultFor(market.getSize());
+		return ThreatIncConfig.declineBasePerTick();
 	}
 
 	/**
-	 * Projected decline timeline if health HOLDS at its current value:
+	 * Projected decline timeline if health HOLDS below the threshold:
 	 * [0] days until the next population stratum is lost, [1] days until the
-	 * population falls to size 1 and the colony collapses. Integrates the
-	 * exact continuous-accrual math (severity, days-based acceleration, meter
-	 * carryover, fast clock). Both -1 when the colony is not declining; [1]
-	 * alone -1 if collapse is beyond the projection horizon.
+	 * population falls to size 1 and the colony collapses. The rate is fixed,
+	 * so this is exact closed-form arithmetic, not a simulation. Both -1 when
+	 * the colony is not declining.
 	 */
 	public static float[] projectDecline(MarketAPI market, float health) {
 		if (market == null || health >= ThreatIncConfig.declineHealthThreshold()) {
 			return new float[] {-1f, -1f};
 		}
-		float tickLen = effectiveTickDays();
-		float step = Math.max(1f, tickLen / 6f);
-		float severity = declineSeverityFor(health);
+		float base = ThreatIncConfig.declineBasePerTick();
+		if (base <= 0f) return new float[] {-1f, -1f};
+		float daysPerStratum = effectiveTickDays() / base;
 		float meter = ThreatIncData.declineProgress(market.getId());
-		float daysIn = ThreatIncData.declineDays(market.getId());
-		int size = market.getSize();
-		float days = 0f;
-		float nextStep = -1f;
-		for (int i = 0; i < 2400; i++) {
-			days += step;
-			daysIn += step;
-			float accel = 1f + ThreatIncConfig.declineAccelPerTick()
-					* Math.max(0f, daysIn / tickLen - 1f);
-			if (accel > ThreatIncConfig.declineAccelCap()) {
-				accel = ThreatIncConfig.declineAccelCap();
-			}
-			// size resilience uses the SIMULATED size - as the colony shrinks,
-			// its decline speeds up, and the projection reflects that
-			meter += ThreatIncConfig.declineBasePerTick() * severity * accel
-					* declineSizeMultFor(size) * (step / tickLen);
-			while (meter >= 1f) {
-				meter -= 1f;
-				if (nextStep < 0f) nextStep = days;
-				if (size <= 2) return new float[] {nextStep, days};
-				size--;
-			}
-		}
-		return new float[] {nextStep, -1f};
+		float nextStep = (1f - meter) * daysPerStratum;
+		// strata left before the population reaches size 1
+		int strata = Math.max(1, market.getSize() - 1);
+		float collapse = nextStep + (strata - 1) * daysPerStratum;
+		return new float[] {nextStep, collapse};
 	}
 
 	/**
@@ -2315,17 +2271,11 @@ public class ThreatColonyManager {
 				boolean entering = daysIn <= 0f;
 				daysIn += elapsedDays;
 				ThreatIncData.setDeclineDays(id, daysIn);
-				// severity 1x at the threshold up to 3x at health zero; the
-				// acceleration ramp runs on continuous days-in-decline
-				float accel = 1f + ThreatIncConfig.declineAccelPerTick()
-						* Math.max(0f, daysIn / tickLen - 1f);
-				if (accel > ThreatIncConfig.declineAccelCap()) {
-					accel = ThreatIncConfig.declineAccelCap();
-				}
+				// fixed rate below the threshold - how deep the health sits,
+				// how long it has been there, and the colony's size all change
+				// nothing, so the forecast the UI shows is exact
 				float before = ThreatIncData.declineProgress(id);
 				float amount = ThreatIncConfig.declineBasePerTick()
-						* declineSeverityFor(health) * accel
-						* declineSizeMultFor(market.getSize())
 						* (elapsedDays / tickLen);
 				ThreatIncData.addDeclineProgress(id, amount);
 				if (entering) {
