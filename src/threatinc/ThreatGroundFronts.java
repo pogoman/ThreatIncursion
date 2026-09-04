@@ -6,6 +6,7 @@ import java.util.Map;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
+import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
@@ -509,6 +510,8 @@ public class ThreatGroundFronts {
 		front.pushProgress = 0f;
 		front.strataHeld++;
 		int total = market.getSize();
+		ThreatAlarm.add(front.factionId != null ? front.factionId : Factions.PLAYER,
+				ThreatIncConfig.alarmPerStratum(), "stratum taken at " + market.getName());
 		if (front.strataHeld >= total) {
 			groundVictory(front, market);
 			return;
@@ -544,7 +547,14 @@ public class ThreatGroundFronts {
 				Misc.getPositiveHighlightColor());
 		ThreatIncConfig.log("Ground victory at " + market.getName());
 		if (front.isPlayerOwned()) evacuate(front);
+		String winner = front.factionId != null ? front.factionId : Factions.PLAYER;
+		StarSystemAPI where = market.getStarSystem();
 		ThreatColonyManager.eradicate(market);
+		// the swarm answers (docs/design-theory.md 8.1): grudge, and a strike
+		// at the winner from the nearest hive that can muster one
+		ThreatAlarm.add(winner, ThreatIncConfig.alarmPerEradication(),
+				"eradication of " + market.getName());
+		IncursionManager.retaliate(winner, where);
 	}
 
 	/**
@@ -586,10 +596,15 @@ public class ThreatGroundFronts {
 					+ " has retaken a stratum - " + front.strataHeld + " of "
 					+ market.getSize() + " still held, " + Math.round(loss)
 					+ " marines lost.", Misc.getNegativeHighlightColor());
+			ThreatIncConfig.log("Counter-attack at " + market.getName() + " retook a stratum ("
+					+ (int) attack + " vs " + (int) defense + "): " + front.strataHeld
+					+ " held, " + Math.round(loss) + " marines lost");
 		} else if (odds > 2f) {
 			ThreatColonyManager.announceAlways("A hive counter-attack has overrun the "
 					+ "beachhead on " + market.getName() + " - the front is destroyed.",
 					Misc.getNegativeHighlightColor());
+			ThreatIncConfig.log("Counter-attack at " + market.getName() + " overran the beachhead ("
+					+ (int) attack + " vs " + (int) defense + ")");
 			fronts().remove(front.marketId);
 			reapply(front.marketId);
 			return;
@@ -597,6 +612,9 @@ public class ThreatGroundFronts {
 			ThreatColonyManager.announceAlways("A hive counter-attack battered the "
 					+ "beachhead on " + market.getName() + " - " + Math.round(loss)
 					+ " marines lost.", Misc.getNegativeHighlightColor());
+			ThreatIncConfig.log("Counter-attack at " + market.getName() + " battered the beachhead ("
+					+ (int) attack + " vs " + (int) defense + "): " + Math.round(loss)
+					+ " marines lost");
 		}
 		if (front.marines < ThreatIncConfig.frontMinMarines()) {
 			ThreatColonyManager.announceAlways("The ground front on " + market.getName()

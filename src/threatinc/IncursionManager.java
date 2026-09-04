@@ -88,7 +88,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return false;
 	}
 
+	/** The live manager (transient, re-created each load), for static callers such as retaliation. */
+	protected static IncursionManager instance;
+
 	public void advance(float amount) {
+		instance = this;
 		float days = Global.getSector().getClock().convertToDays(amount);
 
 		// The engine renders intel but never advances it: an IntelInfoPlugin's
@@ -345,6 +349,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		tryPurgeBombardments();
 		// mobilised factions ship war materiel to their staging bases
 		ThreatConvoys.planLogistics(random);
+		// grudges fade unless renewed
+		ThreatAlarm.decay();
 		manageMissions();
 		checkPhaseAnnouncements();
 		// importers see this tick's new industries, ports and relics now, not
@@ -1575,6 +1581,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// preparing expedition; raiding any other hive industry is not credited
 		if (!ThreatIncConfig.enabled() || market == null || industry == null) return;
 		if (!Factions.THREAT.equals(market.getFactionId())) return;
+		ThreatAlarm.add(Factions.PLAYER, ThreatIncConfig.alarmPerRaid(),
+				"raid on " + market.getName());
 		if (ThreatColonyManager.SWARM_NEXUS.equals(industry.getId())) {
 			abortStrikesFrom(market.getId(), market.getName(), "the raid on its Swarm Nexus");
 			return;
@@ -1589,6 +1597,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// a bombardment disrupts every surface industry, the forge included
 		if (!ThreatIncConfig.enabled() || market == null) return;
 		if (!Factions.THREAT.equals(market.getFactionId())) return;
+		ThreatAlarm.add(Factions.PLAYER, ThreatIncConfig.alarmPerRaid(),
+				"tactical bombardment of " + market.getName());
 		abortStrikesFrom(market.getId(), market.getName(), "the bombardment");
 		// recompute defenses now so the freshly-suppressed value is live at once,
 		// not on the next colony poll (~half a day of stale ground strength).
@@ -1827,6 +1837,54 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	protected MarketAPI pickStrikeTarget(MarketAPI staging, StarSystemAPI source) {
+		return pickStrikeTarget(staging, source, null);
+	}
+
+	/**
+	 * RETALIATION (docs/design-theory.md 8.1): a ground victory draws an
+	 * immediate strike at the winning faction from the nearest hive that can
+	 * muster one and reach a world of theirs. Same rules as any strike
+	 * (phase, concurrency cap, garrison surplus, reach, target filters), so it
+	 * is a strike the swarm could have launched anyway - just aimed, now.
+	 */
+	public static boolean retaliate(String factionId, StarSystemAPI near) {
+		if (instance == null || factionId == null || !ThreatIncConfig.retaliationEnabled()) return false;
+		if (!ThreatAlarm.enabled() || getPhase() < 2) return false;
+		if (instance.countActiveStrikes() >= ThreatIncConfig.maxConcurrentStrikes()) return false;
+		MarketAPI bestColony = null;
+		StarSystemAPI bestSource = null;
+		MarketAPI bestTarget = null;
+		float bestDist = Float.MAX_VALUE;
+		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
+			MarketAPI colony = ThreatColonyManager.pickStrikeStaging(systemId, true);
+			if (colony == null) continue;
+			StarSystemAPI source = instance.getSystem(systemId);
+			if (source == null) continue;
+			MarketAPI target = instance.pickStrikeTarget(colony, source, factionId);
+			if (target == null) continue;
+			float d = near != null ? Misc.getDistanceLY(source.getLocation(), near.getLocation()) : 0f;
+			if (d < bestDist) {
+				bestDist = d;
+				bestColony = colony;
+				bestSource = source;
+				bestTarget = target;
+			}
+		}
+		if (bestColony == null) return false;
+		instance.launchStrike(bestColony, bestSource, bestTarget);
+		ThreatIncData.markDiscovered(bestSource.getId());
+		ThreatColonyManager.announceAlways("The swarm answers the loss of a hive: a Threat "
+				+ "expedition is mustering at " + bestColony.getName() + " against "
+				+ bestTarget.getName() + ".", Misc.getNegativeHighlightColor());
+		ThreatIncConfig.log("Retaliation: " + bestColony.getName() + " -> " + bestTarget.getName()
+				+ " (" + factionId + ")");
+		return true;
+	}
+
+	/**
+	 * @param onlyFactionId restrict candidates to this faction's worlds (retaliation), or null
+	 */
+	protected MarketAPI pickStrikeTarget(MarketAPI staging, StarSystemAPI source, String onlyFactionId) {
 		boolean coreAllowed = getPhase() >= 3;
 		boolean playerAllowed = ThreatIncData.daysSincePlayerStruck() >= ThreatIncConfig.playerGraceDays();
 
@@ -1845,6 +1903,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// size 6+ markets are "core worlds" - phase 3 only
 			if (!coreAllowed && market.getSize() >= 6) continue;
 			if (market.isPlayerOwned() && !playerAllowed) continue;
+			if (onlyFactionId != null && !onlyFactionId.equals(market.getFactionId())) continue;
 			if (isActiveStrikeTarget(market)) continue; // one strike per world
 			// the engine refuses the killing blow on story-critical worlds, and
 			// an annihilation doctrine has no use for a target it cannot kill -
@@ -1858,6 +1917,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// biomass and technology to erase - distance costs are already paid
 			// in fuel (the range gate), so desirability is size alone
 			float w = market.getSize() * market.getSize();
+			// the swarm turns on whoever is hurting it (ThreatAlarm grudge)
+			w *= ThreatAlarm.targetMult(market.getFactionId());
 			picker.add(market, w);
 		}
 		return picker.pick();

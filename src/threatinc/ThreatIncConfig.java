@@ -346,6 +346,27 @@ public class ThreatIncConfig {
 	/** Fraction of the fuel and supplies drawn at launch refunded when a fleet returns home at full strength. */
 	public static float returnRefundMult()    { return f("threatinc_returnRefundMult"); }
 
+	// ---- escalation: grudge and alarm (docs/design-theory.md 8.1) ----
+
+	/** Master switch for grudge, alarm and retaliation. */
+	public static boolean alarmEnabled()      { return b("threatinc_alarmEnabled", true); }
+	/** Grudge points a faction earns per stratum its front takes. */
+	public static float alarmPerStratum()     { return f("threatinc_alarmPerStratum"); }
+	/** Grudge points per hive eradicated. */
+	public static float alarmPerEradication() { return f("threatinc_alarmPerEradication"); }
+	/** Grudge points per successful raid or tactical pass on a hive world. */
+	public static float alarmPerRaid()        { return f("threatinc_alarmPerRaid"); }
+	/** Fraction of every grudge that fades per 30 days. */
+	public static float alarmDecayPer30()     { return f("threatinc_alarmDecayPer30"); }
+	/** Fabrication-speed bonus per point of alarm (0.05 = alarm 10 is x1.5). */
+	public static float alarmTempoMult()      { return f("threatinc_alarmTempoMult"); }
+	/** Cap on the alarm fabrication multiplier. */
+	public static float alarmTempoMax()       { return f("threatinc_alarmTempoMax"); }
+	/** Strike-target weight bonus per point of a faction's grudge (0.2 = grudge 10 is x3). */
+	public static float alarmTargetMult()     { return f("threatinc_alarmTargetMult"); }
+	/** Whether a ground victory draws an immediate strike at the winner. */
+	public static boolean retaliationEnabled() { return b("threatinc_retaliationEnabled", true); }
+
 	// ---- faction relations ----
 
 	/** Pin the Threat faction to vengeful with every other faction (perma-hostile to all). */

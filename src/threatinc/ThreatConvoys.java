@@ -200,8 +200,10 @@ public class ThreatConvoys {
 					return Float.compare((Float) b[3], (Float) a[3]);
 				}
 			});
-			int sailed = 0;
 			int maxPerTick = Math.max(1, ThreatIncConfig.convoyMaxPerTick());
+			// fronts first: an army in the field outranks a depot (seen in-game
+			// 2026-09-04 - staging traffic took every slot and the front starved)
+			int sailed = planFrontRuns(faction, random, 0, maxPerTick);
 			for (Object[] w : wants) {
 				if (sailed >= maxPerTick) break;
 				MarketAPI base = (MarketAPI) w[0];
@@ -218,8 +220,6 @@ public class ThreatConvoys {
 				}
 				if (dispatch(donor, base, faction, load, random) != null) sailed++;
 			}
-			// the front is a reserve consumer too (docs/design-theory.md 8.3)
-			planFrontRuns(faction, random, sailed, maxPerTick);
 		}
 	}
 
@@ -249,11 +249,11 @@ public class ThreatConvoys {
 	 * run from the faction's nearest base in reach, out of that base's
 	 * reserve (above its floor). Counts against the per-tick cap.
 	 */
-	protected static void planFrontRuns(FactionAPI faction, Random random, int sailed, int maxPerTick) {
-		if (!ThreatIncConfig.frontRunsEnabled()) return;
+	protected static int planFrontRuns(FactionAPI faction, Random random, int sailed, int maxPerTick) {
+		if (!ThreatIncConfig.frontRunsEnabled()) return sailed;
 		for (ThreatGroundFronts.GroundFront front
 				: new ArrayList<ThreatGroundFronts.GroundFront>(ThreatGroundFronts.fronts().values())) {
-			if (sailed >= maxPerTick) return;
+			if (sailed >= maxPerTick) return sailed;
 			String owner = front.factionId != null ? front.factionId
 					: com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER;
 			if (!faction.getId().equals(owner)) continue;
@@ -280,6 +280,7 @@ public class ThreatConvoys {
 			if (load[0] < 50f && load[1] < 20f) continue;
 			if (dispatchFrontRun(base, hive, front, faction, load, false, random) != null) sailed++;
 		}
+		return sailed;
 	}
 
 	/**
