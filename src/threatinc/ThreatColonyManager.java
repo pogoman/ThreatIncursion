@@ -1872,6 +1872,10 @@ public class ThreatColonyManager {
 			}
 			PlanetAPI planet = (PlanetAPI) target;
 
+			// an outpost stands over it: no colony can be founded until the
+			// station falls - the wave stays and fights (ThreatOutposts)
+			if (ThreatOutposts.holds(planet)) continue;
+
 			// someone colonized it mid-flight: withdraw
 			MarketAPI existing = planet.getMarket();
 			if (existing == null || (!existing.isPlanetConditionMarketOnly()
@@ -2308,6 +2312,8 @@ public class ThreatColonyManager {
 		if (market == null) return;
 		ThreatIncConfig.log("Colony eradicated: " + market.getName());
 		ThreatIncData.clearVitality(market.getId());
+		// a purged world: somebody may fortify it before the swarm returns
+		ThreatOutposts.recordPurged(market);
 		// fullDestroy bypasses NO_DECIV_KEY (verified against 0.98a source)
 		DecivTracker.decivilize(market, true);
 	}

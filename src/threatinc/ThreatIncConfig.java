@@ -367,6 +367,30 @@ public class ThreatIncConfig {
 	/** Whether a ground victory draws an immediate strike at the winner. */
 	public static boolean retaliationEnabled() { return b("threatinc_retaliationEnabled", true); }
 
+	// ---- coalition (docs/design-theory.md 8.7) ----
+
+	/** Whether a mobilised faction's siege calls other mobilised factions to intercept at the door. */
+	public static boolean coalitionEnabled()  { return b("threatinc_coalitionEnabled", true); }
+	/** Days a coalition call stays open. */
+	public static float coalitionCallDays()   { return f("threatinc_coalitionCallDays"); }
+	/** Chance per tick that an eligible ally answers a call with an Intercept task force. */
+	public static float coalitionSupportChance() { return f("threatinc_coalitionSupportChance"); }
+
+	// ---- outposts on purged worlds (docs/design-theory.md 8.8) ----
+
+	/** Whether outposts can be built on purged worlds. */
+	public static boolean outpostsEnabled()   { return b("threatinc_outpostsEnabled", true); }
+	/** Station tier: 1 orbital station, 2 battlestation, 3 star fortress. */
+	public static int outpostTier()           { return i("threatinc_outpostTier"); }
+	/** Credits the player pays for an outpost. */
+	public static float outpostCredits()      { return f("threatinc_outpostCredits"); }
+	/** Supplies an NPC faction's base pays for an outpost. */
+	public static float outpostSupplies()     { return f("threatinc_outpostSupplies"); }
+	/** Fuel an NPC faction's base pays for an outpost. */
+	public static float outpostFuel()         { return f("threatinc_outpostFuel"); }
+	/** Chance per tick a mobilised NPC faction fortifies an open purged world in reach. */
+	public static float outpostChance()       { return f("threatinc_outpostChance"); }
+
 	// ---- faction relations ----
 
 	/** Pin the Threat faction to vengeful with every other faction (perma-hostile to all). */
