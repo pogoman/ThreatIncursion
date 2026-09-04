@@ -128,10 +128,10 @@ alarmHeader,Alarm Header,Header,Escalation - Grudge and Alarm,"The swarm answers
 threatinc_alarmEnabled,Escalation Enabled,Boolean,true,"Master switch for grudge, alarm and retaliation.",,
 threatinc_alarmPerStratum,Grudge per Stratum,Double,2,"Grudge points a faction earns for each stratum its ground front takes.",0,20
 threatinc_alarmPerEradication,Grudge per Eradication,Double,10,"Grudge points for destroying a hive's Fabrication Core.",0,100
-threatinc_alarmPerRaid,Grudge per Raid,Double,1,"Grudge points for a successful raid or tactical bombardment pass on a hive world.",0,10
-threatinc_alarmDecayPer30,Grudge Decay per Month,Double,0.1,"Fraction of every grudge that fades per 30 days.",0,1
-threatinc_alarmTempoMult,Alarm Fabrication Bonus,Double,0.05,"Swarm Nexus fabrication-speed bonus per point of alarm: at 0.05, alarm 10 means garrisons - and therefore strikes and expansion - come 1.5 times as fast.",0,0.5
-threatinc_alarmTempoMax,Alarm Fabrication Cap,Double,3.0,"The most alarm can multiply fabrication speed by.",1,10
+threatinc_alarmPerRaid,Grudge per Raid,Double,0.5,"Grudge points for a successful raid or tactical bombardment pass on a hive world.",0,10
+threatinc_alarmDecayPer30,Grudge Decay per Month,Double,0.2,"Fraction of every grudge that fades per 30 days.",0,1
+threatinc_alarmTempoMult,Alarm Fabrication Bonus,Double,0.04,"Swarm Nexus fabrication-speed bonus per point of alarm: at 0.04, alarm 10 means garrisons - and therefore strikes and expansion - come 1.4 times as fast.",0,0.5
+threatinc_alarmTempoMax,Alarm Fabrication Cap,Double,2.5,"The most alarm can multiply fabrication speed by.",1,10
 threatinc_alarmTargetMult,Grudge Targeting Weight,Double,0.2,"Strike-target weight bonus per point of a faction's grudge: at 0.2, grudge 10 makes that faction's worlds three times as likely to be struck.",0,2
 threatinc_retaliationEnabled,Retaliation Strikes,Boolean,true,"A ground victory draws an immediate strike at the winning faction from the nearest hive that can muster one - a strike it could have launched anyway, aimed now.",,
 coalitionHeader,Coalition Header,Header,Coalition,"A mobilised faction's siege calls its allies: every other mobilised faction with a base in reach may answer with a task force holding the hive's jump-point so the siege lands under cover. Your Rally button on a hive row does the same for every ally that takes your orders, plus a siege from the best-supplied of them.",,

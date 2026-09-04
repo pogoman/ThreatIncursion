@@ -335,10 +335,13 @@
 	"threatinc_alarmEnabled": true,
 	"threatinc_alarmPerStratum": 2,
 	"threatinc_alarmPerEradication": 10,
-	"threatinc_alarmPerRaid": 1,
-	"threatinc_alarmDecayPer30": 0.1,
-	"threatinc_alarmTempoMult": 0.05,
-	"threatinc_alarmTempoMax": 3.0,
+	# (seen in-game: NPC sieges land three passes per visit, so per-raid points
+	# are small and decay brisk - alarm 27 and x2.3 fabrication inside 100 days
+	# at 1 / 0.1 / 0.05 was too hot)
+	"threatinc_alarmPerRaid": 0.5,
+	"threatinc_alarmDecayPer30": 0.2,
+	"threatinc_alarmTempoMult": 0.04,
+	"threatinc_alarmTempoMax": 2.5,
 	"threatinc_alarmTargetMult": 0.2,
 	"threatinc_retaliationEnabled": true,
 	# coalition (docs/design-theory.md 8.7): a mobilised faction's siege posts
