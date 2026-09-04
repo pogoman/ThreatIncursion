@@ -171,13 +171,58 @@ troops and armaments in full and its provisions at the refund rate when the inte
 nothing. Task forces that finish their attack naturally still despawn unrefunded - they
 spent it.
 
+## Built overnight 2026-09-04/05 (verified in-game on the clone save)
+
+**Convoy planner v2** (`ThreatConvoys.planLogistics`): loads size to the shortfall up
+to `convoyMarineCapacity` (2,000) / `convoyCargoCapacity` (6,000); escort =
+`convoyEscortFP` + cargo value / 1,000 x `convoyEscortPerThousand`; EQUALISATION -
+a donor sends at most half the difference between its stock and the base's, so
+when every colony is a staging base the rich still feed the poor and nobody ships
+the same goods past each other; `convoyMaxPerTick` (2) sailings per faction per
+tick, neediest first, FRONT RUNS FIRST. After any fight `trimToHulls` drops cargo the
+surviving ships cannot carry (Blackett's constant loss per attack).
+
+**Raiders** (`ThreatRaiders`): when a convoy sails, hive colonies within
+`raiderRangeLY` of the route midpoint with a Defense Swarm above their garrison
+reserve roll `raiderChance`; the nearest success detaches its largest swarm from the
+garrison list (so the leash ignores it), gives it INTERCEPT on the convoy for
+`raiderDays`, then brings it home with the leash's own blinders recipe and rejoins
+the garrison. The board shows "Interdiction vs X convoy" as an outbound op on the
+hive's row and the convoy reads HUNTED.
+
+**Front runs** (`ThreatConvoys.planFrontRuns`): a friendly front is a reserve
+consumer. Wants = `frontResupplyDays` of armaments and marines back toward
+`frontReinforceFraction` of peak (`marinesLanded`); the nearest base in reach sends a
+run out of its reserve above the floor. The run sails to the hive system's
+jump-point, waits while `orbitContested` (up to `frontRunWaitDays`, then home), runs
+in, lands cargo via `resupply`, and goes home on the tracked return leg. An NPC
+front that is dry AND below grind strength sets `withdrawRequested`; the next
+planner pass sends an EVACUATION run that lifts the front off (`withdraw`) and
+carries it home into the base reserve. Board: **Supply** and **Pull out** on the
+faction view's hive rows (own front only), **Supply** on the hive card for the
+player's fronts.
+
+**Escalation** (`ThreatAlarm`, docs/design-theory.md 8.1): grudge per faction
+(+`alarmPerStratum`, +`alarmPerEradication`, +`alarmPerRaid` for raids and tactical
+passes, NPC and player alike), alarm = the sum, decaying `alarmDecayPer30`. Alarm
+divides every Swarm Nexus respawn interval by `1 + alarm x alarmTempoMult` (capped
+`alarmTempoMax`); grudge multiplies a faction's worlds' strike weight by
+`1 + grudge x alarmTargetMult`; a ground victory calls `IncursionManager.retaliate`,
+which launches a normal strike (same phase, cap, garrison and reach rules) from the
+nearest hive that can reach a world of the winner. Header shows "Alarm N -
+fabrication xM" with the formula and per-faction grudges in the phase tooltip.
+
+**Also**: reserve floor (`reserveFloorFraction`) and militia trickle
+(`reserveBaselinePerSize`); "send what you can" trims a short expedition's flotilla
+instead of postponing; `groundStrengthExponent` (1.0) on every ground ratio.
+
 ## Not built yet
 
-- A withdrawn front boarding a circling fleet for redeployment (troops back into a
-  fleet's cargo, then a Land order elsewhere).
-- Hive-side fronts on core worlds; outposts on eradicated worlds.
-- The convoy planner is one convoy per base per slow tick and picks a single donor; no
-  routing around known Threat activity yet.
+- Redeploying a withdrawn front elsewhere by order (it comes home into the reserve
+  today; a Siege from that base lands it again).
+- Hive-side fronts on core worlds; outposts on purged worlds (next).
+- The ending (8.5) - deferred to a live session.
+- Coalition calls and Rally (8.7).
 
 ## Testing notes
 

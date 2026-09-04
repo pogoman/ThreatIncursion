@@ -341,6 +341,23 @@
 	"threatinc_alarmTempoMax": 3.0,
 	"threatinc_alarmTargetMult": 0.2,
 	"threatinc_retaliationEnabled": true,
+	# coalition (docs/design-theory.md 8.7): a mobilised faction's siege posts
+	# a call; each tick every other mobilised faction with a base in reach
+	# rolls to answer with an Intercept task force at the hive's jump-point.
+	# The player's Rally button on a hive row batches the same for allies.
+	"threatinc_coalitionEnabled": true,
+	"threatinc_coalitionCallDays": 60,
+	"threatinc_coalitionSupportChance": 0.5,
+	# outposts: a faction-styled station over a world the swarm held and lost.
+	# No market - a fortress that blocks re-seeding until it is destroyed. The
+	# player pays credits; a mobilised NPC faction pays supplies and fuel from
+	# its nearest base and builds them on its own (outpostChance per tick)
+	"threatinc_outpostsEnabled": true,
+	"threatinc_outpostTier": 1,
+	"threatinc_outpostCredits": 150000,
+	"threatinc_outpostSupplies": 1500,
+	"threatinc_outpostFuel": 800,
+	"threatinc_outpostChance": 0.3,
 
 	# fabrication factor while the Fabrication Core is disrupted (health = fab x
 	# supply; low health weakens everything the colony does - growth, garrison

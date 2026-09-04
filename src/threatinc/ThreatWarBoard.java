@@ -306,6 +306,7 @@ public class ThreatWarBoard {
 		collectSeeding(e);
 		collectSieges(e);
 		collectResponses(e);
+		collectOrders(e);
 		e.missions = missionsIn(e);
 
 		e.coreLY = distanceToCore(system);
@@ -351,6 +352,26 @@ public class ThreatWarBoard {
 									+ "Nexus before departure and the operation is stillborn."
 							: " Departed - autonomous; it can only be met in space.");
 			e.outbound.add(op);
+		}
+	}
+
+	/** Intercept task forces (ThreatFleetOrders, coalition or the player's orders) holding this system's door. */
+	protected static void collectOrders(Entry e) {
+		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
+			if (!ThreatFleetOrders.KIND_INTERCEPT.equals(o.kind)) continue;
+			if (!e.systemId.equals(o.targetId)) continue;
+			if (o.fleet == null || !o.fleet.isAlive()) continue;
+			FactionAPI faction = Global.getSector().getFaction(o.factionId);
+			Op op = new Op();
+			op.kind = "taskforce";
+			op.faction = faction;
+			op.color = faction != null ? faction.getBaseUIColor() : Misc.getHighlightColor();
+			op.status = "on station";
+			op.eta = (int) Math.ceil(o.daysLeft()) + " d left";
+			op.who = ThreatWarState.displayName(o.factionId) + " intercept";
+			op.detail = ThreatWarState.displayName(o.factionId) + " task force holding the "
+					+ o.targetName + " for " + (int) Math.ceil(o.daysLeft()) + " more days.";
+			e.inbound.add(op);
 		}
 	}
 
@@ -742,6 +763,7 @@ public class ThreatWarBoard {
 				float up = (n - i) * ROW_H - (ROW_H - 20f) / 2f;
 				if (!e.known) continue; // nothing to commission or read against a place unfound
 				if (e.isColony()) addPurgeButton(intel, main, ledger.table, up, e);
+				if (e.isColony()) addRallyButton(intel, main, ledger.table, up, e, ledger.cols);
 				if (!e.missions.isEmpty()) addMissionButton(intel, main, ledger.table, up, e, ledger.cols);
 			}
 		}
@@ -1312,6 +1334,43 @@ public class ThreatWarBoard {
 		ledger.cols = c;
 		ledger.rows = rowEntries;
 		return ledger;
+	}
+
+	public static final float RALLY_BUTTON_W = 52f;
+
+	/**
+	 * Rally (ThreatCoalition): every mobilised ally that takes the player's
+	 * orders sends an Intercept to the system's door and the best-supplied a
+	 * siege. Sits left of Purge in the Actions column; only offered once
+	 * somebody is mobilised, disabled with the reason when no ally can answer.
+	 */
+	protected static void addRallyButton(ThreatIncursionIntel intel, TooltipMakerAPI main,
+			UIComponentAPI table, float upFromBottom, final Entry e, Cols c) {
+		if (!ThreatWarState.enabled() || ThreatWarState.warFactionIds().isEmpty()) return;
+		if (!ThreatIncConfig.coalitionEnabled() || !ThreatIncConfig.ordersEnabled()) return;
+		final List<String> allies = ThreatCoalition.ralliable(e.system);
+		com.fs.starfarer.api.ui.ButtonAPI button = intel.addGenericButton(main, RALLY_BUTTON_W,
+				"Rally", ThreatFactionView.BUTTON_RALLY + Factions.PLAYER + ":" + e.systemId);
+		button.setEnabled(!allies.isEmpty());
+		button.setShowTooltipWhileInactive(true);
+		button.getPosition().belowRight(table, -upFromBottom)
+				.setXAlignOffset(-6f - PURGE_BUTTON_W - 4f);
+		main.addTooltipTo(new TooltipCreator() {
+			public boolean isTooltipExpandable(Object tooltipParam) { return false; }
+			public float getTooltipWidth(Object tooltipParam) { return 360f; }
+			public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
+				if (allies.isEmpty()) {
+					tooltip.addPara("No mobilised ally will take your orders against this system: "
+							+ "none is in reach, or your standing with them is too low.",
+							Misc.getGrayColor(), 0f);
+					return;
+				}
+				tooltip.addPara("Rally the coalition: %s send task forces to hold this system's "
+						+ "jump-point, and the best-supplied of them a siege expedition - each "
+						+ "paid from its own reserves.", 0f, Misc.getHighlightColor(),
+						join(allies));
+			}
+		}, button, TooltipLocation.BELOW);
 	}
 
 	protected static void addPurgeButton(ThreatIncursionIntel intel, TooltipMakerAPI main,

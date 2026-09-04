@@ -207,6 +207,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatRaiders.poll();
 		ThreatFleetOrders.poll();
 		ThreatReturns.poll();
+		ThreatOutposts.poll();
 		sweepOrphanedExpeditions();
 		upgradeInFlightStrikes();
 		dedupDecivIntel();
@@ -351,6 +352,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatConvoys.planLogistics(random);
 		// grudges fade unless renewed
 		ThreatAlarm.decay();
+		// allies answer open coalition calls
+		ThreatCoalition.tick(random);
+		// mobilised factions fortify purged worlds
+		ThreatOutposts.planNPC(random);
 		manageMissions();
 		checkPhaseAnnouncements();
 		// importers see this tick's new industries, ports and relics now, not
@@ -1400,6 +1405,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		Global.getSector().getIntelManager().addIntel(purge);
 		getPurgeList().add(purge);
+		// a mobilised faction's siege calls its allies to the door
+		ThreatCoalition.post(faction, system);
 		// stamp every targeted colony so siblings don't each trigger their own
 		// duplicate purge of the same system while this one is in flight (a
 		// commissioned expedition suppresses NPC duplication the same way)

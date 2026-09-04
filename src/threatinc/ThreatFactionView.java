@@ -51,6 +51,10 @@ public class ThreatFactionView {
 	public static final String BUTTON_SUPPLY = "threatinc_board_supply:";
 	/** Withdrawal run for the faction's front on a hive world. */
 	public static final String BUTTON_PULLOUT = "threatinc_board_pullout:";
+	/** Rally every ally that takes orders against a hive system (payload: player:systemId). */
+	public static final String BUTTON_RALLY = "threatinc_board_rally:";
+	/** Build an outpost over a purged world (payload: factionId:planetId). */
+	public static final String BUTTON_OUTPOST = "threatinc_board_outpost:";
 
 	/** Selector value for the hive view. */
 	public static final String VIEW_THREAT = "threat";
@@ -357,8 +361,65 @@ public class ThreatFactionView {
 			main.addSpacer(opad);
 		}
 
+		// ---- purged worlds in reach: outposts ----
+		List<com.fs.starfarer.api.campaign.PlanetAPI> purged = purgedInReach(faction);
+		UIPanelAPI purgedTable = null;
+		if (ThreatIncConfig.outpostsEnabled() && !purged.isEmpty()) {
+			main.addSectionHeading("Purged worlds in reach - open for an outpost", bright, dark,
+					Alignment.MID, opad);
+			float tw = width - 24f;
+			float[] frac = {.28f, .22f, .22f, .14f, .14f};
+			String[] names = {"World", "System", "Nearest base", "Cost", "Actions"};
+			List<Object> columns = new ArrayList<Object>();
+			for (int i = 0; i < names.length; i++) {
+				columns.add(names[i]);
+				columns.add((float) Math.floor(tw * frac[i]));
+			}
+			purgedTable = main.beginTable2(faction, ThreatWarBoard.ROW_H, true, true, columns.toArray());
+			main.makeTableItemsClickable();
+			main.addTableHeaderTooltip(4, "Outpost: a " + ThreatOutposts.specIdFor(faction)
+					.replace('_', ' ') + " over the world, blocking the swarm from seeding it "
+					+ "again until it is destroyed. " + (faction.isPlayerFaction()
+							? "You pay credits." : "Paid in supplies and fuel from the nearest base."));
+			for (com.fs.starfarer.api.campaign.PlanetAPI p : purged) {
+				MarketAPI base = ThreatFleetOrders.pickBase(faction, p.getLocationInHyperspace());
+				List<Object> cells = new ArrayList<Object>();
+				ThreatWarBoard.cell(cells, Alignment.LMID, text,
+						main.shortenString(p.getName(), (float) Math.floor(tw * frac[0]) - 10f));
+				ThreatWarBoard.cell(cells, Alignment.MID, text, p.getStarSystem() != null
+						? main.shortenString(p.getStarSystem().getNameWithNoType(),
+								(float) Math.floor(tw * frac[1]) - 10f) : "-");
+				ThreatWarBoard.cell(cells, Alignment.MID, text, base != null
+						? main.shortenString(base.getName(), (float) Math.floor(tw * frac[2]) - 10f) : "-");
+				ThreatWarBoard.cell(cells, Alignment.MID, h, faction.isPlayerFaction()
+						? Misc.getDGSCredits(ThreatIncConfig.outpostCredits())
+						: (int) ThreatIncConfig.outpostSupplies() + " sup / "
+								+ (int) ThreatIncConfig.outpostFuel() + " fuel");
+				ThreatWarBoard.cell(cells, Alignment.MID, gray, "");
+				main.addRow(cells.toArray());
+				main.setIdForAddedRow(p);
+			}
+			main.addTable("None", -1, 0f);
+			main.addSpacer(opad);
+		}
+
 		// ---- floating buttons, last ----
 		float heightBefore = main.getHeightSoFar();
+		if (purgedTable != null) {
+			int n = purged.size();
+			for (int i = 0; i < n; i++) {
+				com.fs.starfarer.api.campaign.PlanetAPI p = purged.get(i);
+				float up = (n - i) * ThreatWarBoard.ROW_H - (ThreatWarBoard.ROW_H - 20f) / 2f;
+				ButtonAPI build = intel.addGenericButton(main, SMALL_BUTTON_W + 12f, "Outpost",
+						BUTTON_OUTPOST + factionId + ":" + p.getId());
+				build.getPosition().belowRight(purgedTable, -up).setXAlignOffset(-6f);
+				boolean canPay = ThreatOutposts.payingBase(faction, p) != null
+						&& (!faction.isPlayerFaction() || Global.getSector().getPlayerFleet()
+								.getCargo().getCredits().get() >= ThreatIncConfig.outpostCredits());
+				disableWith(main, build, mayOrder && canPay, blocked != null ? blocked
+						: "No base in reach can pay for it right now.");
+			}
+		}
 		if (colonyTable != null) {
 			int n = rows.size();
 			for (int i = 0; i < n; i++) {
@@ -605,6 +666,23 @@ public class ThreatFactionView {
 			f.recallKey = "convoy:" + i;
 			rows.add(f);
 		}
+		// outposts (standing stations; Recall = decommission)
+		List<ThreatOutposts.Outpost> outposts = ThreatOutposts.all();
+		for (int i = 0; i < outposts.size(); i++) {
+			ThreatOutposts.Outpost o = outposts.get(i);
+			if (!factionId.equals(o.factionId)) continue;
+			FleetRow f = new FleetRow();
+			f.kind = "Outpost";
+			f.color = o.alive() ? pos : neg;
+			f.name = o.specId != null ? o.specId.replace('_', ' ') : "station";
+			f.task = "holding " + o.planetName();
+			f.status = o.alive() ? "standing" : "destroyed";
+			f.strength = o.fleet != null ? (int) o.fleet.getFleetPoints() + " FP" : "-";
+			f.eta = "-";
+			f.rowId = o.entity;
+			f.recallKey = "outpost:" + i;
+			rows.add(f);
+		}
 		// standing orders
 		List<ThreatFleetOrders.Order> orders = ThreatFleetOrders.all();
 		for (int i = 0; i < orders.size(); i++) {
@@ -666,13 +744,14 @@ public class ThreatFactionView {
 		return id.startsWith(BUTTON_GUARD) || id.startsWith(BUTTON_STAGE)
 				|| id.startsWith(BUTTON_INTERCEPT) || id.startsWith(BUTTON_SIEGE)
 				|| id.startsWith(BUTTON_RECALL) || id.startsWith(BUTTON_SUPPLY)
-				|| id.startsWith(BUTTON_PULLOUT);
+				|| id.startsWith(BUTTON_PULLOUT) || id.startsWith(BUTTON_RALLY)
+				|| id.startsWith(BUTTON_OUTPOST);
 	}
 
 	/** Splits "prefix" + "factionId:target" into [prefix, factionId, target]. */
 	protected static String[] parse(String id) {
 		String[] prefixes = {BUTTON_GUARD, BUTTON_STAGE, BUTTON_INTERCEPT, BUTTON_SIEGE, BUTTON_RECALL,
-				BUTTON_SUPPLY, BUTTON_PULLOUT};
+				BUTTON_SUPPLY, BUTTON_PULLOUT, BUTTON_RALLY, BUTTON_OUTPOST};
 		for (String p : prefixes) {
 			if (!id.startsWith(p)) continue;
 			String rest = id.substring(p.length());
@@ -735,6 +814,35 @@ public class ThreatFactionView {
 		} else if (BUTTON_RECALL.equals(parts[0])) {
 			prompt.addPara("Recall this fleet to its base? A convoy brings its cargo home; an "
 					+ "expedition abandons its campaign; a task force breaks off.", 0f);
+		} else if (BUTTON_OUTPOST.equals(parts[0])) {
+			com.fs.starfarer.api.campaign.SectorEntityToken planet =
+					Global.getSector().getEntityById(parts[2]);
+			MarketAPI base = faction != null && planet != null
+					? ThreatOutposts.payingBase(faction, planet) : null;
+			String station = faction != null ? ThreatOutposts.specIdFor(faction) : "orbitalstation";
+			String cost = faction != null && faction.isPlayerFaction()
+					? Misc.getDGSCredits(ThreatIncConfig.outpostCredits())
+					: (int) ThreatIncConfig.outpostSupplies() + " supplies and "
+							+ (int) ThreatIncConfig.outpostFuel() + " fuel from "
+							+ (base != null ? base.getName() + "'s reserve" : "a base's reserve");
+			prompt.addPara("Build " + who + " " + station.replace('_', ' ') + " over "
+					+ (planet != null ? planet.getName() : "the world") + " for %s? The station "
+					+ "blocks the swarm from seeding the world again until it is destroyed"
+					+ (base == null ? " - but no base in reach can pay for it right now." : "."),
+					0f, h, cost);
+		} else if (BUTTON_RALLY.equals(parts[0])) {
+			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
+			List<String> allies = ThreatCoalition.ralliable(system);
+			if (allies.isEmpty()) {
+				prompt.addPara("No mobilised ally will take your orders against that system "
+						+ "right now.", 0f);
+			} else {
+				prompt.addPara("Rally the coalition against the "
+						+ (system != null ? system.getNameWithLowercaseType() : "hive system")
+						+ "? %s send task forces to hold its jump-point, and the best-supplied "
+						+ "of them sends a siege expedition from its nearest base. Each is paid "
+						+ "from that faction's own reserves.", 0f, h, ThreatWarBoard.join(allies));
+			}
 		} else if (BUTTON_SUPPLY.equals(parts[0]) || BUTTON_PULLOUT.equals(parts[0])) {
 			MarketAPI hive = ThreatIncData.resolveColonyMarket(parts[2]);
 			ThreatGroundFronts.GroundFront front = hive != null
@@ -766,10 +874,14 @@ public class ThreatFactionView {
 	public static String executeOrder(String id) {
 		String[] parts = parse(id);
 		if (parts == null) return null;
+		Random random = new Random();
+		if (BUTTON_RALLY.equals(parts[0])) {
+			return ThreatCoalition.rally(ThreatWarBoard.getSystem(parts[2]), random) != null
+					? "rally" : null;
+		}
 		FactionAPI faction = Global.getSector().getFaction(parts[1]);
 		if (faction == null) return null;
 		if (!ThreatFleetOrders.canPlayerOrder(faction)) return null;
-		Random random = new Random();
 		if (BUTTON_GUARD.equals(parts[0])) {
 			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
 			return ThreatFleetOrders.dispatchGuard(faction, target) != null ? "guard" : null;
@@ -822,6 +934,21 @@ public class ThreatFactionView {
 		if (BUTTON_RECALL.equals(parts[0])) {
 			return recall(parts[1], parts[2]) ? "recall" : null;
 		}
+		if (BUTTON_OUTPOST.equals(parts[0])) {
+			com.fs.starfarer.api.campaign.SectorEntityToken planet =
+					Global.getSector().getEntityById(parts[2]);
+			if (!(planet instanceof com.fs.starfarer.api.campaign.PlanetAPI)) return null;
+			ThreatOutposts.Outpost o = ThreatOutposts.build(faction,
+					(com.fs.starfarer.api.campaign.PlanetAPI) planet);
+			if (o == null) {
+				ThreatColonyManager.announceAlways("No outpost could be built over "
+						+ planet.getName() + ": no base of "
+						+ (faction.isPlayerFaction() ? "yours" : faction.getDisplayName())
+						+ " is in reach, or it cannot pay.", Misc.getNegativeHighlightColor());
+				return null;
+			}
+			return "outpost";
+		}
 		if (BUTTON_SUPPLY.equals(parts[0]) || BUTTON_PULLOUT.equals(parts[0])) {
 			MarketAPI hive = ThreatIncData.resolveColonyMarket(parts[2]);
 			if (hive == null) return null;
@@ -839,6 +966,17 @@ public class ThreatFactionView {
 			return pull ? "pullout" : "supply";
 		}
 		return null;
+	}
+
+	/** Purged worlds within expedition reach of one of the faction's military worlds. */
+	protected static List<com.fs.starfarer.api.campaign.PlanetAPI> purgedInReach(FactionAPI faction) {
+		List<com.fs.starfarer.api.campaign.PlanetAPI> result =
+				new ArrayList<com.fs.starfarer.api.campaign.PlanetAPI>();
+		if (faction == null) return result;
+		for (com.fs.starfarer.api.campaign.PlanetAPI p : ThreatOutposts.openPurgedWorlds()) {
+			if (ThreatFleetOrders.pickBase(faction, p.getLocationInHyperspace()) != null) result.add(p);
+		}
+		return result;
 	}
 
 	/** The faction's own front on any hive world of this system, or null. */
@@ -893,6 +1031,14 @@ public class ThreatFactionView {
 			ThreatFleetOrders.Order o = list.get(index);
 			if (!factionId.equals(o.factionId)) return false;
 			ThreatFleetOrders.recall(o);
+			return true;
+		}
+		if ("outpost".equals(kind)) {
+			List<ThreatOutposts.Outpost> list = ThreatOutposts.all();
+			if (index < 0 || index >= list.size()) return false;
+			ThreatOutposts.Outpost o = list.get(index);
+			if (!factionId.equals(o.factionId)) return false;
+			ThreatOutposts.remove(o, "decommissioned by order");
 			return true;
 		}
 		return false;
