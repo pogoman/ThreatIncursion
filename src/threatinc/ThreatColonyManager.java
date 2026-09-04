@@ -1600,7 +1600,8 @@ public class ThreatColonyManager {
 			// the first replacement takes a full interval from this moment. A
 			// build already in progress (timer running) is left to finish.
 			Long last = ThreatIncData.garrisonSpawnTimes().get(market.getId());
-			float interval = ThreatIncConfig.garrisonRespawnDays() * IncursionManager.timeScale();
+			float interval = ThreatIncConfig.garrisonRespawnDays() * IncursionManager.timeScale()
+					/ ThreatAlarm.tempoMult();
 			if (last == null || Global.getSector().getClock().getElapsedDaysSince(last) >= interval) {
 				ThreatIncData.garrisonSpawnTimes().put(market.getId(),
 						Global.getSector().getClock().getTimestamp());
@@ -2518,8 +2519,10 @@ public class ThreatColonyManager {
 			// Since expeditions are mustered from the garrison, this throttles
 			// the hive's entire military tempo through its economy.
 			float pace = Math.max(0.25f, shipSupplyMult(market));
+			// an alarmed hive fabricates faster (ThreatAlarm.tempoMult, visible
+			// on the board) - the swarm's answer to being hurt
 			float interval = ThreatIncConfig.garrisonRespawnDays()
-					* IncursionManager.timeScale() / pace;
+					* IncursionManager.timeScale() / pace / ThreatAlarm.tempoMult();
 			boolean timerExpired = last == null
 					|| Global.getSector().getClock().getElapsedDaysSince(last) >= interval;
 			if (lostFleets && timerExpired) {

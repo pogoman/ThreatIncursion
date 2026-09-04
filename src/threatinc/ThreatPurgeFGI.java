@@ -382,6 +382,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			market.reapplyIndustries();
 			rec.action = "Tactical bombardment";
 			rec.targets = names.toString();
+			if (getFaction() != null) {
+				ThreatAlarm.add(getFaction().getId(), ThreatIncConfig.alarmPerRaid(),
+						"tactical bombardment of " + market.getName());
+			}
 			rec.disruptDays = (int) tacDays;
 			rec.success = true;
 			siegeActions.add(rec);
@@ -445,6 +449,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		rec.targets = target.getCurrentName();
 		rec.success = ok;
 		rec.disruptDays = ok ? (int) (target.getDisruptedDays() - before) : 0;
+		if (ok && getFaction() != null) {
+			ThreatAlarm.add(getFaction().getId(), ThreatIncConfig.alarmPerRaid(),
+					"raid on " + market.getName());
+		}
 		rec.estMarinesLost = estimateMarineLosses(market, groundStr, ok);
 		siegeActions.add(rec);
 		ThreatIncConfig.log("Siege pass (raid) vs " + rec.marketName + ": "

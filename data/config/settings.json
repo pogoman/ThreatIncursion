@@ -324,6 +324,24 @@
 	# over fleet points at launch). A fleet lost on the way returns nothing.
 	"threatinc_returnRefundMult": 0.5,
 
+	# Escalation (docs/design-theory.md 8.1): the swarm answers who hurts it.
+	# Every faction earns GRUDGE for strata taken, hives eradicated and raids
+	# or tactical passes landed; the sum is the hive's ALARM. Both are shown on
+	# the war board and fade monthly. Alarm speeds up Swarm Nexus fabrication
+	# (the hive's whole military tempo, since strikes and expansion are
+	# mustered from garrison surplus); grudge weights strike targeting toward
+	# that faction's worlds; a ground victory draws an immediate retaliation
+	# strike at the winner from the nearest hive that can muster one.
+	"threatinc_alarmEnabled": true,
+	"threatinc_alarmPerStratum": 2,
+	"threatinc_alarmPerEradication": 10,
+	"threatinc_alarmPerRaid": 1,
+	"threatinc_alarmDecayPer30": 0.1,
+	"threatinc_alarmTempoMult": 0.05,
+	"threatinc_alarmTempoMax": 3.0,
+	"threatinc_alarmTargetMult": 0.2,
+	"threatinc_retaliationEnabled": true,
+
 	# fabrication factor while the Fabrication Core is disrupted (health = fab x
 	# supply; low health weakens everything the colony does - growth, garrison
 	# pace, counter-attacks - but only ground victory kills it). The Swarm

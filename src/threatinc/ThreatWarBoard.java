@@ -1032,17 +1032,43 @@ public class ThreatWarBoard {
 		String label = phase >= 3 ? "PHASE 3 - Core worlds in reach"
 				: phase == 2 ? "PHASE 2 - Strike-capable" : "PHASE 1 - Entrenching";
 		text(panel, bx, 36f, barW, label, phase >= 3 ? neg : threat, Alignment.MID, true);
+		// escalation readout (ThreatAlarm): the swarm's answer to being hurt,
+		// in the open - sits under the cycle line, left of the phase bar
+		final float alarm = ThreatAlarm.alarm();
+		if (ThreatAlarm.enabled()) {
+			text(panel, 48f, 43f, width * 0.5f, ThreatAlarm.headerLabel(),
+					alarm > 0f ? neg : gray, null, true);
+		}
 
 		main.addCustom(panel, 0f);
 		main.addTooltipTo(new TooltipCreator() {
 			public boolean isTooltipExpandable(Object tooltipParam) { return false; }
-			public float getTooltipWidth(Object tooltipParam) { return 400f; }
+			public float getTooltipWidth(Object tooltipParam) { return 420f; }
 			public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 				tooltip.addPara("Phases are capability, not calendar. Phase 2: some hive can "
 						+ "stage an expedition (strike-sized, forged, fuelled, nexus intact). "
 						+ "Phase 3: some hive can field a full armada against the core worlds. "
 						+ "Burn their forges, cut their fuel or shrink their colonies and the "
 						+ "danger level genuinely regresses.", 0f);
+				if (!ThreatAlarm.enabled()) return;
+				Color h = Misc.getHighlightColor();
+				tooltip.addPara("Alarm: the swarm answers who hurts it. Every faction earns "
+						+ "grudge for strata taken (%s), hives eradicated (%s) and raids or "
+						+ "tactical passes (%s); the sum is the alarm, fading %s a month. Alarm "
+						+ "multiplies Swarm Nexus fabrication - the hive's whole military tempo - "
+						+ "by %s now; a faction's grudge weights strikes toward its worlds; a "
+						+ "ground victory draws a retaliation strike at the winner.", 10f, h,
+						"" + (int) ThreatIncConfig.alarmPerStratum(),
+						"" + (int) ThreatIncConfig.alarmPerEradication(),
+						"" + (int) ThreatIncConfig.alarmPerRaid(),
+						(int) (ThreatIncConfig.alarmDecayPer30() * 100f) + "%",
+						"x" + String.format("%.2f", ThreatAlarm.tempoMult()));
+				for (Map.Entry<String, Float> g : ThreatAlarm.grudges().entrySet()) {
+					if (g.getValue() == null || g.getValue() <= 0f) continue;
+					tooltip.addPara(ThreatWarState.displayName(g.getKey()) + ": grudge %s "
+							+ "(strike weight x%s)", 3f, h, String.format("%.1f", g.getValue()),
+							String.format("%.1f", ThreatAlarm.targetMult(g.getKey())));
+				}
 			}
 		}, panel, TooltipLocation.BELOW);
 	}

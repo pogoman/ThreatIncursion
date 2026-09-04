@@ -192,6 +192,12 @@ public class ThreatFactionView {
 			title.append(" - ").append(war.strikesSuffered)
 					.append(war.strikesSuffered == 1 ? " strike suffered" : " strikes suffered");
 		}
+		float grudge = ThreatAlarm.grudge(factionId);
+		if (grudge > 0f) {
+			title.append(" - swarm grudge ").append(String.format("%.1f", grudge))
+					.append(" (strike weight x").append(String.format("%.1f",
+							ThreatAlarm.targetMult(factionId))).append(")");
+		}
 		main.addSectionHeading(title.toString(), bright, dark, Alignment.MID, opad);
 
 		List<MarketAPI> markets = ThreatReserves.marketsOf(factionId);
