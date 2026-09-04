@@ -1537,6 +1537,18 @@ public class ThreatColonyManager {
 		return Math.min(desired, nominal);
 	}
 
+	/**
+	 * The garrison a colony's SIZE calls for - the size table, untouched by the
+	 * hull economy. This is what reinforcement fills a colony toward: the
+	 * hull-shortage cap (desiredGarrisonCount) bounds what the colony's own
+	 * nexus can build, but a sibling's already-built swarm needs none of the
+	 * receiver's hulls to fly over and defend it.
+	 */
+	public static int nominalGarrison(MarketAPI market) {
+		if (market == null) return 0;
+		return desiredGarrison(market.getSize()).length;
+	}
+
 	/** Defense Swarms a colony always keeps home; it never musters these. */
 	public static int garrisonReserve(MarketAPI market) {
 		return Math.max(1, desiredGarrisonCount(market) / 2);
@@ -2726,9 +2738,18 @@ public class ThreatColonyManager {
 	/**
 	 * The swarm redistributes its Defense Swarms so no colony is left bare while
 	 * a sibling sits at full strength. Each poll it finds the colony with the
-	 * lowest garrison fill ratio (swarms on station plus inbound, over what it
-	 * wants) that is below strength, then the best donor that can reach it:
-	 * same-system first, then the highest fill ratio, then the nearest. One
+	 * lowest garrison fill ratio (swarms on station plus inbound, over the
+	 * NOMINAL garrison its size calls for) that is below strength, then the
+	 * best donor that can reach it: same-system first, then the highest fill
+	 * ratio, then the nearest. The ratio deliberately runs against the nominal
+	 * table, NOT desiredGarrisonCount's hull-shortage cap. That cap bounds what
+	 * a colony's own nexus can BUILD (so launch gates never wait for hulls that
+	 * will not come), but a sibling's already-built swarm needs none of the
+	 * receiver's hulls to fly over and defend it - so a "1/2 of 4" world, its
+	 * own fabrication capped at 2 by a hull shortage, is still reinforced to 4.
+	 * A hull-starved DONOR is likewise measured against its nominal, so a world
+	 * sitting at its own build cap does not read as fully covered and bleed
+	 * itself out to a sibling. One
 	 * swarm is dispatched per pairing, up to reinforceMaxPerPoll per poll, so
 	 * help trickles in over days rather than teleporting in a burst.
 	 *
@@ -2757,7 +2778,7 @@ public class ThreatColonyManager {
 			float receiverRatio = Float.MAX_VALUE;
 			for (MarketAPI curr : colonies) {
 				if (curr.getPrimaryEntity() == null) continue;
-				int desired = desiredGarrisonCount(curr);
+				int desired = nominalGarrison(curr);
 				if (desired <= 0) continue;
 				int eff = effectiveGarrison(curr);
 				if (eff >= desired) continue;
@@ -2770,7 +2791,7 @@ public class ThreatColonyManager {
 			if (receiver == null) return;
 
 			int rEff = effectiveGarrison(receiver);
-			int rDesired = desiredGarrisonCount(receiver);
+			int rDesired = nominalGarrison(receiver);
 			// the weight of fleet this slot wants: only a swarm that can genuinely
 			// hold it is worth sending - a tiny colony's swarm would just park in
 			// a big colony's slot and block the real thing
@@ -2788,7 +2809,7 @@ public class ThreatColonyManager {
 				if (!canRebuildGarrison(curr)) continue;
 				if (countLiveGarrison(curr.getId()) < 2) continue;
 				if (!hasSwarmOfTier(curr, needTier)) continue;
-				int dDesired = desiredGarrisonCount(curr);
+				int dDesired = nominalGarrison(curr);
 				if (dDesired <= 0) continue;
 				int dEff = effectiveGarrison(curr);
 				// strict (dEff - 1) / dDesired > rEff / rDesired, cross-multiplied
@@ -2871,7 +2892,7 @@ public class ThreatColonyManager {
 		ThreatIncConfig.log("Reinforcement: Defense Swarm " + source.getName() + " -> "
 				+ target.getName() + " (" + countLiveGarrison(source.getId())
 				+ " remain at source; " + effectiveGarrison(target) + "/"
-				+ desiredGarrisonCount(target) + " covered at destination)");
+				+ nominalGarrison(target) + " covered at destination)");
 		return true;
 	}
 
@@ -2912,7 +2933,7 @@ public class ThreatColonyManager {
 			ThreatIncData.garrisonsFor(targetId).add(fleet);
 			inTransit.remove(fleetId);
 			ThreatIncConfig.log("Reinforcement arrived at " + target.getName() + " ("
-					+ countLiveGarrison(targetId) + "/" + desiredGarrisonCount(target) + ")");
+					+ countLiveGarrison(targetId) + "/" + nominalGarrison(target) + ")");
 		}
 	}
 
