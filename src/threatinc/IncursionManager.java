@@ -200,6 +200,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatWarState.poll();
 		ThreatReserves.poll(interval.getIntervalDuration());
 		ThreatConvoys.poll();
+		ThreatRaiders.poll();
 		ThreatFleetOrders.poll();
 		ThreatReturns.poll();
 		sweepOrphanedExpeditions();

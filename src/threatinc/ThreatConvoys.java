@@ -84,6 +84,20 @@ public class ThreatConvoys {
 		return result;
 	}
 
+	/** Whether this fleet is a convoy the layer is still tracking (not arrived, lost or recalled). */
+	public static boolean isTracked(CampaignFleetAPI fleet) {
+		if (fleet == null) return false;
+		for (Convoy c : all()) {
+			if (c.fleet == fleet) return true;
+		}
+		return false;
+	}
+
+	/** Cargo value for escort sizing: marines weigh most, provisions least. */
+	public static float cargoValue(float marines, float armaments, float fuel, float supplies) {
+		return marines * 1f + armaments * 0.5f + fuel * 0.1f + supplies * 0.1f;
+	}
+
 	protected static boolean convoyBoundFor(String marketId) {
 		for (Convoy c : all()) {
 			if (marketId.equals(c.toMarketId)) return true;
@@ -259,7 +273,11 @@ public class ThreatConvoys {
 		float cargoUnits = load[1] + load[2] + load[3];
 		if (marines <= 0f && cargoUnits <= 0f) return null;
 
-		float escort = ThreatIncConfig.convoyEscortFP();
+		// escort by cargo value (docs/design-theory.md 8.2, Blackett): a rich
+		// convoy is a real fleet, a trickle sails with a picket
+		float escort = ThreatIncConfig.convoyEscortFP()
+				+ cargoValue(marines, load[1], load[2], load[3]) / 1000f
+						* ThreatIncConfig.convoyEscortPerThousand();
 		// freighters sized to the cargo, transports to the troops: roughly one
 		// point of hull per 60 units / 40 marines, so the load actually fits
 		float freighterPts = Math.max(10f, cargoUnits / 60f);
@@ -310,8 +328,44 @@ public class ThreatConvoys {
 		ThreatIncConfig.log("Convoy dispatched: " + faction.getId() + " " + donor.getName()
 				+ " -> " + base.getName() + " (" + (int) c.marines + " marines, "
 				+ (int) c.armaments + " armaments, " + (int) c.fuel + " fuel, "
-				+ (int) c.supplies + " supplies)");
+				+ (int) c.supplies + " supplies; escort " + (int) escort + " FP)");
+		// the hive may come for it
+		ThreatRaiders.consider(c, random);
 		return c;
+	}
+
+	/**
+	 * After an off-screen fight vanilla removes hulls but not their cargo:
+	 * trim what is aboard to what the surviving ships can carry, so losses
+	 * are a fraction of the load (Blackett's constant loss per attack), not
+	 * nothing-or-everything. Marines beyond the berths, then provisions
+	 * beyond the holds, cheapest first.
+	 */
+	protected static void trimToHulls(Convoy c) {
+		CargoAPI cargo = c.fleet.getCargo();
+		int overCrew = -cargo.getFreeCrewSpace();
+		if (overCrew > 0) {
+			int drop = Math.min(cargo.getMarines(), overCrew);
+			if (drop > 0) {
+				cargo.removeMarines(drop);
+				ThreatIncConfig.log("Convoy mauled: " + drop + " marines lost with their transports ("
+						+ c.fromName() + " -> " + c.toName() + ")");
+			}
+		}
+		float over = cargo.getSpaceUsed() - cargo.getMaxCapacity();
+		if (over <= 0f) return;
+		String[] order = {Commodities.SUPPLIES, Commodities.FUEL, Commodities.HAND_WEAPONS};
+		for (String id : order) {
+			if (over <= 0f) break;
+			float have = cargo.getCommodityQuantity(id);
+			float drop = Math.min(have, over);
+			if (drop > 0f) {
+				cargo.removeCommodity(id, drop);
+				over -= drop;
+				ThreatIncConfig.log("Convoy mauled: " + (int) drop + " " + id + " lost with their "
+						+ "freighters (" + c.fromName() + " -> " + c.toName() + ")");
+			}
+		}
 	}
 
 	protected static float loadCommodity(CargoAPI cargo, MarketAPI donor, String commodityId,
@@ -346,6 +400,7 @@ public class ThreatConvoys {
 				lost(c);
 				continue;
 			}
+			trimToHulls(c);
 			MarketAPI base = Global.getSector().getEconomy().getMarket(c.toMarketId);
 			if (base == null || base.getPrimaryEntity() == null
 					|| !c.factionId.equals(base.getFactionId())) {

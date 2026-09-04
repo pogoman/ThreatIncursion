@@ -277,10 +277,22 @@
 	# convoyMinLoadFraction of a load
 	"threatinc_convoyEnabled": true,
 	"threatinc_convoyRangeLY": 15,
-	"threatinc_convoyMarineCapacity": 600,
-	"threatinc_convoyCargoCapacity": 1500,
+	# fewer, larger, escorted (docs/design-theory.md 8.2): loads size to the
+	# shortfall up to these caps; escort = base FP + per-thousand of cargo
+	# value (marines 1, armaments 0.5, fuel and supplies 0.1); nothing sails
+	# for less than convoyMinLoadFraction of a load
+	"threatinc_convoyMarineCapacity": 2000,
+	"threatinc_convoyCargoCapacity": 6000,
 	"threatinc_convoyEscortFP": 30,
-	"threatinc_convoyMinLoadFraction": 0.25,
+	"threatinc_convoyEscortPerThousand": 20,
+	"threatinc_convoyMinLoadFraction": 0.5,
+	# the hive hunts convoys: a hive colony within raiderRangeLY of a route's
+	# midpoint with Defense Swarms above its reserve detaches ONE to intercept
+	# the convoy for raiderDays, then brings it home to the garrison
+	"threatinc_raiderEnabled": true,
+	"threatinc_raiderRangeLY": 12,
+	"threatinc_raiderChance": 0.5,
+	"threatinc_raiderDays": 45,
 	"threatinc_donorKeepFraction": 0.5,
 	"threatinc_stagingTargetMult": 1.5,
 	"threatinc_convoyTimeoutDays": 200,

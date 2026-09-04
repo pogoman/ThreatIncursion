@@ -69,18 +69,33 @@ public class ThreatFactionView {
 		return ids;
 	}
 
+	/** Height reserved in the flow for the selector row (button plus padding). */
+	public static final float SELECTOR_ROW_H = 30f;
+
 	/**
-	 * A row of buttons: the first flows normally, the rest sit to its right
-	 * (siblings), and the flow height is put back to a single row afterward.
-	 * The current selection is drawn disabled, with a tooltip saying so.
+	 * Reserves the selector row's space in the flow, right after the strip.
+	 * Returns whether a row will be drawn (only once somebody has mobilised).
+	 */
+	public static boolean reserveSelectorRow(TooltipMakerAPI main) {
+		if (selectorIds().size() <= 1) return false;
+		main.addSpacer(SELECTOR_ROW_H);
+		return true;
+	}
+
+	/**
+	 * The selector buttons, added LAST like every floating button (platform
+	 * trap 2: an in-flow button moved sideways drags everything after it
+	 * along - verified in-game 2026-09-04, twice). Anchored below the totals
+	 * strip, a sibling, into the space reserveSelectorRow left; the caller
+	 * restores the flow height afterward. The current selection is drawn
+	 * disabled, with a tooltip saying so.
 	 */
 	public static void addSelector(ThreatIncursionIntel intel, TooltipMakerAPI main, float width,
-			String selected) {
+			String selected, UIComponentAPI anchor) {
 		List<String> ids = selectorIds();
-		if (ids.size() <= 1) return; // nobody mobilised: the hive view only, no row to show
+		if (ids.size() <= 1 || anchor == null) return;
 		float w = Math.min(SELECTOR_BUTTON_W, (width - 4f * (ids.size() - 1)) / ids.size());
 		ButtonAPI prev = null;
-		float rowHeight = -1f;
 		for (String id : ids) {
 			String label = VIEW_THREAT.equals(id) ? "The Threat" : ThreatWarState.displayName(id);
 			ButtonAPI button = intel.addGenericButton(main, w, main.shortenString(label, w - 12f),
@@ -89,7 +104,7 @@ public class ThreatFactionView {
 			button.setEnabled(!current);
 			button.setShowTooltipWhileInactive(true);
 			if (prev == null) {
-				rowHeight = main.getHeightSoFar();
+				button.getPosition().belowLeft(anchor, 6f);
 			} else {
 				button.getPosition().rightOfTop(prev, 4f);
 			}
@@ -112,18 +127,6 @@ public class ThreatFactionView {
 			}, button, TooltipLocation.BELOW);
 			prev = button;
 		}
-		if (rowHeight >= 0f) main.setHeightSoFar(rowHeight);
-		// the flow would continue from the LAST button placed to the right
-		// (platform trap 2): the next component takes its x from the last one
-		// added, so a plain addCustom spacer inherits the rightmost button's
-		// x (verified in-game 2026-09-04 - everything after the row rendered
-		// indented and clipped). A component added with an EXPLICIT position
-		// at x=0 resets the anchor, exactly as the ledger's overlay panel
-		// does; y then continues from heightSoFar.
-		CustomPanelAPI reset = Global.getSettings().createCustom(2f, 2f,
-				new BaseCustomUIPanelPlugin());
-		main.addCustomDoNotSetPosition(reset).getPosition().inTL(0f, 0f);
-		main.addSpacer(4f);
 	}
 
 	// ------------------------------------------------------------------
@@ -560,7 +563,10 @@ public class ThreatFactionView {
 			f.color = h;
 			f.name = c.fromName() + " -> " + c.toName();
 			f.task = cargoText(c.marines, c.armaments, c.fuel, c.supplies);
-			f.status = c.fleet != null && c.fleet.isAlive() ? "in transit" : "lost";
+			int hunters = ThreatRaiders.huntersOf(c.fleet);
+			f.status = c.fleet == null || !c.fleet.isAlive() ? "lost"
+					: hunters > 0 ? "HUNTED" : "in transit";
+			if (hunters > 0) f.color = neg;
 			f.strength = "-";
 			int days = (int) Global.getSector().getClock().getElapsedDaysSince(c.departedTimestamp);
 			f.eta = days + " d out";

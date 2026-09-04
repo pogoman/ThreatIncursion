@@ -303,8 +303,18 @@ public class ThreatIncConfig {
 	public static float convoyMarineCapacity() { return f("threatinc_convoyMarineCapacity"); }
 	/** Cargo units (armaments, fuel, supplies) one convoy carries at most. */
 	public static float convoyCargoCapacity() { return f("threatinc_convoyCargoCapacity"); }
-	/** Combat fleet points escorting a convoy. */
+	/** Base combat fleet points escorting a convoy. */
 	public static float convoyEscortFP()      { return f("threatinc_convoyEscortFP"); }
+	/** Extra escort fleet points per 1,000 of cargo value (marines 1, armaments 0.5, fuel/supplies 0.1). */
+	public static float convoyEscortPerThousand() { return f("threatinc_convoyEscortPerThousand"); }
+	/** Whether hive colonies detach Defense Swarms to hunt convoys passing near them. */
+	public static boolean raiderEnabled()     { return b("threatinc_raiderEnabled", true); }
+	/** Light-years from a convoy route's midpoint within which a hive may send a raider. */
+	public static float raiderRangeLY()       { return f("threatinc_raiderRangeLY"); }
+	/** Chance each eligible hive colony detaches a raider at a convoy (nearest rolls first, one raider per convoy). */
+	public static float raiderChance()        { return f("threatinc_raiderChance"); }
+	/** Days a raider hunts before turning home. */
+	public static float raiderDays()          { return f("threatinc_raiderDays"); }
 	/** Shortfall (in convoy loads) below which no convoy sails. */
 	public static float convoyMinLoadFraction() { return f("threatinc_convoyMinLoadFraction"); }
 	/** Fraction of its own cap a donor colony keeps back. */

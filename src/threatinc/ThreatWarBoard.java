@@ -302,6 +302,7 @@ public class ThreatWarBoard {
 		}
 
 		collectStrikes(e);
+		collectRaiders(e);
 		collectSeeding(e);
 		collectSieges(e);
 		collectResponses(e);
@@ -350,6 +351,26 @@ public class ThreatWarBoard {
 									+ "Nexus before departure and the operation is stillborn."
 							: " Departed - autonomous; it can only be met in space.");
 			e.outbound.add(op);
+		}
+	}
+
+	/** Defense Swarms detached from this system's colonies to hunt convoys (ThreatRaiders). */
+	protected static void collectRaiders(Entry e) {
+		for (MarketAPI market : e.markets) {
+			for (ThreatRaiders.Raider r : ThreatRaiders.raidersFrom(market.getId())) {
+				if (r.fleet == null || !r.fleet.isAlive()) continue;
+				String who = ThreatWarState.displayName(r.targetFactionId);
+				Op op = new Op();
+				op.kind = "raid";
+				op.color = Misc.getNegativeHighlightColor();
+				op.faction = Global.getSector().getFaction(Factions.THREAT);
+				op.status = r.returning ? "returning" : "hunting";
+				op.who = "Interdiction vs " + who + " convoy";
+				op.detail = "A Defense Swarm from " + market.getName() + " is "
+						+ (r.returning ? "returning from hunting " : "hunting ") + who
+						+ "'s supply convoy. The garrison is one swarm thinner while it is out.";
+				e.outbound.add(op);
+			}
 		}
 	}
 
@@ -687,15 +708,20 @@ public class ThreatWarBoard {
 		}
 
 		addHeader(main, width);
-		addStrip(main, width, entries);
+		CustomPanelAPI strip = addStrip(main, width, entries);
 		// the faction selector (docs/strategy-layer.md): the hive's war, or a
-		// mobilised faction's - colonies, reserves, fleets and orders
+		// mobilised faction's - colonies, reserves, fleets and orders. Its
+		// buttons are floating (added last, anchored to the strip); only the
+		// row's space is reserved here
 		String view = intel.getSelectedFactionId();
-		ThreatFactionView.addSelector(intel, main, width, view);
+		boolean selector = ThreatFactionView.reserveSelectorRow(main);
 		if (view != null && !ThreatFactionView.VIEW_THREAT.equals(view)
 				&& ThreatWarState.isAtWar(view)) {
 			nameWidths.clear();
 			ThreatFactionView.render(intel, main, width, opad, view);
+			float h = main.getHeightSoFar();
+			if (selector) ThreatFactionView.addSelector(intel, main, width, view, strip);
+			main.setHeightSoFar(h);
 			return;
 		}
 		Ledger ledger = addLedger(intel, ui, main, width, opad, entries, selected);
@@ -708,6 +734,7 @@ public class ThreatWarBoard {
 		// LAST: the tooltip continues its flow from the most recent component,
 		// so anything added after a moved button would land beside it.
 		float heightBefore = main.getHeightSoFar();
+		if (selector) ThreatFactionView.addSelector(intel, main, width, view, strip);
 		if (ledger != null) {
 			int n = ledger.rows.size();
 			for (int i = 0; i < n; i++) {
@@ -1008,7 +1035,8 @@ public class ThreatWarBoard {
 
 	// ---- sector strip ----
 
-	protected static void addStrip(TooltipMakerAPI main, float width, List<Entry> entries) {
+	/** Returns the strip panel so the faction selector can anchor below it (a sibling). */
+	protected static CustomPanelAPI addStrip(TooltipMakerAPI main, float width, List<Entry> entries) {
 		int worlds = 0, mass = 0, swarms = 0, outbound = 0, inbound = 0;
 		for (Entry e : entries) {
 			worlds += e.markets.size();
@@ -1050,6 +1078,7 @@ public class ThreatWarBoard {
 					new Color[] {colors[i]}, new String[] {values[i]}, null, true);
 		}
 		main.addCustom(panel, 6f);
+		return panel;
 	}
 
 	// ---- the ledger ----

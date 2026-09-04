@@ -101,10 +101,15 @@ threatinc_expeditionSuppliesPerPoint,Expedition Supplies per Point,Double,100,"S
 threatinc_expeditionTransportMult,Expedition Transport Share,Double,0.3,"Troop-transport share of a cargo-carrying expedition fleet (vanilla composition multiplier). Too low and the marines drawn will not all fit - the remainder stays home.",0.05,1
 threatinc_convoyEnabled,Convoys Enabled,Boolean,true,"Whether mobilised factions ship reserves between their colonies by convoy. Off, each staging base fights with what it makes itself.",,
 threatinc_convoyRangeLY,Convoy Range (LY),Double,15,"Light-years a donor colony will ship to a staging base.",3,50
-threatinc_convoyMarineCapacity,Convoy Marine Capacity,Double,600,"Marines one convoy carries at most (transports are sized to the load).",50,5000
-threatinc_convoyCargoCapacity,Convoy Cargo Capacity,Double,1500,"Units of armaments, fuel and supplies one convoy carries at most.",100,20000
-threatinc_convoyEscortFP,Convoy Escort (FP),Double,30,"Combat fleet points escorting each convoy.",0,300
-threatinc_convoyMinLoadFraction,Convoy Minimum Load,Double,0.25,"A base's shortfall, as a fraction of one convoy load, below which no convoy sails.",0,1
+threatinc_convoyMarineCapacity,Convoy Marine Capacity,Double,2000,"Marines one convoy carries at most (transports are sized to the load). Fewer, larger convoys lose a smaller share per attack - keep this high.",50,10000
+threatinc_convoyCargoCapacity,Convoy Cargo Capacity,Double,6000,"Units of armaments, fuel and supplies one convoy carries at most.",100,40000
+threatinc_convoyEscortFP,Convoy Escort Base (FP),Double,30,"Combat fleet points every convoy sails with, before the cargo-value escort below.",0,300
+threatinc_convoyEscortPerThousand,Convoy Escort per Cargo Value,Double,20,"Extra escort fleet points per 1,000 of cargo value (marines count 1 each, armaments 0.5, fuel and supplies 0.1). A rich convoy is a real fleet.",0,200
+threatinc_convoyMinLoadFraction,Convoy Minimum Load,Double,0.5,"A base's shortfall, as a fraction of one convoy load, below which no convoy sails.",0,1
+threatinc_raiderEnabled,Hive Raiders Enabled,Boolean,true,"Hive colonies near a convoy's route may detach one Defense Swarm to hunt it - the swarm's own commerce raiding, paid for with a thinner garrison while it is out.",,
+threatinc_raiderRangeLY,Raider Range (LY),Double,12,"Light-years from a convoy route's midpoint within which a hive colony may send a raider.",2,40
+threatinc_raiderChance,Raider Chance,Double,0.5,"Chance each eligible hive colony (Defense Swarms above its reserve) detaches a raider at a passing convoy; the nearest rolls first and one raider is enough.",0,1
+threatinc_raiderDays,Raider Hunt (Days),Double,45,"Days a raider hunts its convoy before turning for home.",10,180
 threatinc_donorKeepFraction,Donor Keep Fraction,Double,0.5,"Fraction of its own cap a donor colony keeps back for itself.",0,1
 threatinc_stagingTargetMult,Staging Target (Expeditions),Double,1.5,"A staging base stocks this many expeditions' worth of each reserve.",0.5,5
 threatinc_convoyTimeoutDays,Convoy Timeout (Days),Double,200,"Days after which a convoy that has not arrived is written off with its cargo.",30,1000
