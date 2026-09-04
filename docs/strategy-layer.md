@@ -216,13 +216,36 @@ fabrication xM" with the formula and per-faction grudges in the phase tooltip.
 (`reserveBaselinePerSize`); "send what you can" trims a short expedition's flotilla
 instead of postponing; `groundStrengthExponent` (1.0) on every ground ratio.
 
+**Coalition** (`ThreatCoalition`, 8.7): `launchSiegeExpedition` by a mobilised faction
+posts a call for `coalitionCallDays` (60); on the slow tick every other mobilised NPC
+faction with a base in reach rolls `coalitionSupportChance` (0.5) and answers once with
+`ThreatFleetOrders.dispatchIntercept` at the hive's jump-point. **Rally** (hive ledger
+row, left of Purge; only once somebody is mobilised) batches Intercepts from every ally
+that takes the player's orders plus a Siege from the ally whose nearest base holds the
+most marines above its floor. Intercept orders show as inbound "X intercept" ops on the
+ledger row.
+
+**Outposts** (`ThreatOutposts`): `ThreatColonyManager.eradicate` records the planet in
+`threatinc_purgedWorlds`. An outpost is vanilla's Orbital Station recipe without the
+market - a hidden station-mode fleet holding the tier's variant (`outpostTier`, spec
+`orbitalstation`/`battlestation`/`starfortress` + the faction's style suffix, read from
+its own colonies' station line, else Hegemony/Luddics low-tech, Tri-Tachyon high-tech,
+others midline) tied to a `station_built_from_industry` entity orbiting the planet. While
+its fleet lives, `checkWaveArrivals` refuses to found a colony there (the wave stays and
+fights). Player pays `outpostCredits` (150,000); an NPC base pays `outpostSupplies` /
+`outpostFuel` above its floor, and mobilised NPC factions fortify one open purged world in
+reach per tick with `outpostChance` (0.3). Faction view: a "Purged worlds in reach" table
+with an **Outpost** button, and outposts in the fleets table (Recall = decommission). A
+dead station is a lost outpost (fast poll). NOT yet verified in-game: no purged world
+existed in the test save.
+
 ## Not built yet
 
 - Redeploying a withdrawn front elsewhere by order (it comes home into the reserve
   today; a Siege from that base lands it again).
-- Hive-side fronts on core worlds; outposts on purged worlds (next).
+- Hive-side fronts on core worlds.
 - The ending (8.5) - deferred to a live session.
-- Coalition calls and Rally (8.7).
+- Outposts as convoy depots (they have no reserve today).
 
 ## Testing notes
 

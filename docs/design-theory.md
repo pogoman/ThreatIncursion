@@ -375,17 +375,20 @@ of any faction; nothing times two factions' efforts together.
 `coalitionCalls` list on the slow tick, `ThreatFleetOrders.dispatchIntercept`,
 `ThreatWarBoard.addPurgeButton` neighbour.
 
-### Suggested order
+### Suggested order - and what happened (overnight 2026-09-04/05)
 
-1. In-game check of everything since 0.5.2 (blocks all tuning).
-2. 8.6 spiral floor (S) and 8.4 exponent knob (S) - cheap, no design risk.
-3. 8.2 convoys and raiders (M) - makes the existing layer matter.
-4. 8.3 logistics to fronts (L) - the biggest payoff; needs 8.2's plumbing.
-5. 8.1 escalation (M) - decide the levers first; build after fronts are supplied, or the
-   swarm will be punishing a player who cannot yet sustain a campaign.
-6. 8.5 the ending (M) - a decision, then a header and a gate.
-7. 8.7 coalition (M).
-8. Outposts - after 8.1 and 8.2, as forward depots and raider bait.
+1. In-game check of everything since 0.5.2 - DONE on the laptop panel (1080p): ground
+   war cards, faction selector, faction view, convoys, raiders, front runs, counter-attack
+   outcomes all seen live; details in docs/strategy-layer.md.
+2. 8.6 spiral floor and 8.4 exponent knob - BUILT (0.6.1).
+3. 8.2 convoys and raiders - BUILT and verified (0.6.1, planner fixes in 0.6.2).
+4. 8.3 logistics to fronts - BUILT (0.6.2); supply/evacuation runs dispatch and turn back
+   correctly, the door-wait and landing paths still need a run to complete in-game.
+5. 8.1 escalation - BUILT (0.6.3): grudge, alarm, tempo, targeting, retaliation, header.
+6. 8.5 the ending - DEFERRED to a live session (user's call).
+7. 8.7 coalition - BUILT (0.6.4), untested in-game.
+8. Outposts - BUILT (0.6.4) as standalone faction-styled stations that block re-seeding;
+   not yet depots; untested in-game (no purged world in the test save).
 
 ## Sources
 

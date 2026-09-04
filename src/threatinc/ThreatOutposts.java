@@ -187,13 +187,25 @@ public class ThreatOutposts {
 	/** Whether the faction could pay for an outpost at this planet right now (and from where). */
 	public static MarketAPI payingBase(FactionAPI faction, SectorEntityToken planet) {
 		if (faction == null || planet == null) return null;
-		MarketAPI base = ThreatFleetOrders.pickBase(faction, planet.getLocationInHyperspace());
-		if (base == null) return null;
-		if (faction.isPlayerFaction()) return base;
+		MarketAPI nearest = ThreatFleetOrders.pickBase(faction, planet.getLocationInHyperspace());
+		if (nearest == null) return null; // nobody in reach at all
+		if (faction.isPlayerFaction()) return nearest;
+		// any military world in reach that can pay, nearest first - the closest
+		// depot is often the emptiest one
 		float[] cost = npcCost();
-		if (ThreatReserves.available(base, Commodities.SUPPLIES) < cost[0]) return null;
-		if (ThreatReserves.available(base, Commodities.FUEL) < cost[1]) return null;
-		return base;
+		MarketAPI best = null;
+		float bestDist = Float.MAX_VALUE;
+		for (MarketAPI market : ThreatReserves.marketsOf(faction.getId())) {
+			if (market.getStarSystem() == null || !IncursionManager.hasMilitary(market)) continue;
+			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(),
+					planet.getLocationInHyperspace());
+			if (d > IncursionManager.expeditionRangeLY(market) || d >= bestDist) continue;
+			if (ThreatReserves.available(market, Commodities.SUPPLIES) < cost[0]) continue;
+			if (ThreatReserves.available(market, Commodities.FUEL) < cost[1]) continue;
+			bestDist = d;
+			best = market;
+		}
+		return best;
 	}
 
 	// ------------------------------------------------------------------
