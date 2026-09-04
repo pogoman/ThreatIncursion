@@ -1144,10 +1144,10 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 					opad);
 		}
 
-		float decline = ThreatIncData.declineProgress(market.getId());
-		if (decline > 0f) {
-			info.addPara("Its strata are already failing: %s of the way to the next population "
-					+ "stratum lost.", opad, h, (int) (decline * 100f) + "%");
+		int strataHeld = ThreatGroundFronts.strataHeld(market.getId());
+		if (strataHeld > 0) {
+			info.addPara("A ground war is already being fought on it: %s of its strata "
+					+ "are taken.", opad, h, strataHeld + " of " + market.getSize());
 		}
 	}
 

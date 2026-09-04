@@ -177,8 +177,8 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				float health = ThreatColonyManager.computeHealth(market);
 				float shipsAvail = ThreatColonyManager.shipsAvailable(market);
 				String output;
-				if (health < ThreatIncConfig.declineHealthThreshold()) {
-					output = "collapsing";
+				if (health < ThreatColonyManager.CRITICAL_HEALTH) {
+					output = "failing";
 				} else if (!healthy) {
 					output = "critical";
 				} else if (shipsAvail <= 0f) {
@@ -191,7 +191,7 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				line.append(". Hive Status %s, Defense Swarms %s");
 				hl.add(output + " (vitality " + (int) (health * 100f) + "%)");
 				hlColors.add("critical".equals(output) || "strained".equals(output)
-						|| "collapsing".equals(output) ? neg : h);
+						|| "failing".equals(output) ? neg : h);
 				hl.add("" + garrison);
 				hlColors.add(h);
 				// swarms mustered for a strike still fabricating in orbit: no
@@ -212,11 +212,12 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 							+ "d - fabricating no fleets.");
 					hlColors.add(neg);
 				}
-				float decline = ThreatIncData.declineProgress(market.getId());
-				if (decline > 0f) {
+				ThreatGroundFronts.GroundFront front =
+						ThreatGroundFronts.getFront(market.getId());
+				if (front != null) {
 					line.append(" %s");
-					hl.add("Decline: " + (int) (decline * 100f)
-							+ "% of the way to losing a population stratum.");
+					hl.add("Ground war: " + front.strataHeld + " of " + market.getSize()
+							+ " strata taken.");
 					hlColors.add(neg);
 				}
 				info.addPara(line.toString(), 3f,
@@ -230,17 +231,15 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				info.addPara("Counterplay: the hive lives %s behind defenses anchored to its "
 						+ "size - no bombardment can reduce its population, and saturating a "
 						+ "world costs fuel equal to its full defense strength for mere days "
-						+ "of disruption. The machines cannot be occupied, and cannot be "
-						+ "bombed away - only starved and suppressed until the hive itself "
-						+ "withers.", opad, pos, "deep underground");
+						+ "of disruption. Bombardment and starvation only weaken a hive; it "
+						+ "dies to a ground victory alone.", opad, pos, "deep underground");
 				info.addPara("The efficient siege: %s craters the exposed war-strata (ground "
 						+ "defenses, batteries, the nexus), halving their defensive effect - "
-						+ "then %s cut deepest, disrupting a chosen organ for months at a "
-						+ "heavy cost in casualties. A colony whose Fabrication Core is down, "
-						+ "or whose supply lines are cut, stops growing and begins to %s - "
-						+ "losing population faster the longer it stays suppressed, until it "
-						+ "collapses entirely.", opad, pos, "tactical bombardment",
-						"marine raids", "decline");
+						+ "then %s a ground front (marines and heavy armaments, from the "
+						+ "Ground operations menu) to take the hive stratum by stratum and "
+						+ "destroy the %s at its center. Starved, suppressed colonies "
+						+ "counter-attack feebly and fall cheaply.", opad, pos,
+						"tactical bombardment", "land", "Fabrication Core");
 				info.addPara("A colony's fleets are fabricated by its %s: raid or bombard it "
 						+ "into disruption and the colony grows no new Defense Swarms and "
 						+ "stages no expeditions until it recovers - the swarms already in "
@@ -279,11 +278,11 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				int shipPct = (int) (ThreatColonyManager.shipSupplyMult(market) * 100);
 				float fuelRange = ThreatColonyManager.fuelRangeLY(market);
 				int healthPct = (int) (ThreatIncData.lastHealth(market.getId()) * 100);
-				int declinePct = (int) (ThreatIncData.declineProgress(market.getId()) * 100);
+				int strataHeld = ThreatGroundFronts.strataHeld(market.getId());
 				info.addPara(market.getName() + " (size " + market.getSize() + "): "
-						+ "access %s, hull output %s, fuel reach %s, health %s, decline %s",
+						+ "access %s, hull output %s, fuel reach %s, health %s, strata taken %s",
 						opad, h, (int) (access * 100) + "%", shipPct + "%",
-						(int) fuelRange + " ly", healthPct + "%", declinePct + "%");
+						(int) fuelRange + " ly", healthPct + "%", "" + strataHeld);
 
 				String disrupted = "";
 				for (com.fs.starfarer.api.campaign.econ.Industry ind : market.getIndustries()) {
@@ -452,8 +451,24 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 		if (Global.getSector().getPlayerFleet().getCargo().getCredits().get() < q.cost) return false;
 
 		Global.getSector().getPlayerFleet().getCargo().getCredits().subtract(q.cost);
-		IncursionManager.launchSiegeExpedition(q.base, Global.getSector().getPlayerFaction(),
-				q.system, q.targets, q.fleetSizes, true, new java.util.Random());
+		ThreatPurgeFGI launched = IncursionManager.launchSiegeExpedition(q.base,
+				Global.getSector().getPlayerFaction(), q.system, q.targets, q.fleetSizes,
+				true, new java.util.Random());
+		if (launched == null) {
+			// a mobilised player faction draws real troops from the base's
+			// reserve (docs/strategy-layer.md); short of them, no landing force
+			// can be raised - fee refunded
+			Global.getSector().getPlayerFleet().getCargo().getCredits().add(q.cost);
+			float[] wants = IncursionManager.expeditionWants(q.base, q.system, q.targets,
+					q.fleetSizes);
+			ThreatColonyManager.announceAlways("No expedition could be raised at "
+					+ q.base.getName() + ": its reserve holds "
+					+ (int) ThreatReserves.stock(q.base.getId(),
+							com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES)
+					+ " marines against the " + (int) wants[0] + " the landing needs. "
+					+ "Stage more there first. Fee refunded.", Misc.getNegativeHighlightColor());
+			return false;
+		}
 
 		ThreatColonyManager.announceAlways("A purge expedition you commissioned is "
 				+ "mustering at " + q.base.getName() + ", bound for the "

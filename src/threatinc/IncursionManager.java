@@ -192,6 +192,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// on the 30-day tick - tick-quantized decline left the meter stale for
 		// up to a month and made short disruption windows a matter of phase luck
 		ThreatColonyManager.updateColonyVitality(interval.getIntervalDuration());
+		// ground fronts tick at the same continuous cadence: upkeep, attrition,
+		// entrenchment, and organ suppression (docs/ground-war.md)
+		ThreatGroundFronts.poll(interval.getIntervalDuration());
+		// the strategy layer (docs/strategy-layer.md): war-mode stand-downs,
+		// per-colony reserve accrual, convoy arrivals and losses
+		ThreatWarState.poll();
+		ThreatReserves.poll(interval.getIntervalDuration());
+		ThreatConvoys.poll();
+		ThreatFleetOrders.poll();
+		ThreatReturns.poll();
 		sweepOrphanedExpeditions();
 		upgradeInFlightStrikes();
 		dedupDecivIntel();
@@ -332,6 +342,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		tryConversions();
 		tryStrikes();
 		tryPurgeBombardments();
+		// mobilised factions ship war materiel to their staging bases
+		ThreatConvoys.planLogistics(random);
 		manageMissions();
 		checkPhaseAnnouncements();
 		// importers see this tick's new industries, ports and relics now, not
@@ -934,6 +946,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		Global.getSector().getIntelManager().addIntel(strike);
 		getStrikeList().add(strike);
 
+		// the struck faction mobilises (docs/strategy-layer.md): from here on
+		// its colonies stock reserves, its logistics run and its fleets take
+		// orders. NPC and player alike.
+		ThreatWarState.recordStrike(target);
+
 		if (target.isPlayerOwned()) {
 			ThreatIncData.setPlayerStruck();
 		} else {
@@ -1029,6 +1046,27 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		if (fleets.isEmpty()) return;
 
+		// a mobilised faction pays for the sortie out of its base's reserves:
+		// fuel for the distance, supplies for the fleets (a cost, not a gate -
+		// the reactive defense always sails; running the depot dry is what
+		// makes the NEXT expedition wait for convoys)
+		if (ThreatWarState.isAtWar(faction)) {
+			float dist = Misc.getDistanceLY(baseSystem.getLocation(), hiveSystem.getLocation());
+			float fuel = ThreatReserves.drawAbove(base,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL,
+					spent * dist * ThreatIncConfig.expeditionFuelPerPointLY());
+			float supplies = ThreatReserves.drawAbove(base,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES,
+					spent * ThreatIncConfig.expeditionSuppliesPerPoint());
+			ThreatIncConfig.log("Expedition draw (task force) at " + base.getName() + ": "
+					+ (int) fuel + " fuel, " + (int) supplies + " supplies");
+			// each fleet remembers its share, for the refund when it is recalled
+			for (CampaignFleetAPI fleet : fleets) {
+				ThreatReturns.provision(fleet, base.getId(), fuel / fleets.size(),
+						supplies / fleets.size());
+			}
+		}
+
 		ThreatResponseIntel intel = new ThreatResponseIntel(fleets, faction, base.getName(),
 				threatColony, hiveSystem.getNameWithLowercaseTypeShort());
 		Global.getSector().getIntelManager().addIntel(intel);
@@ -1069,12 +1107,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 			float cooldown = ThreatIncConfig.purgeCooldownDays() * timeScale();
 			if (heavyAssault) cooldown *= ThreatIncConfig.purgeDefendedCooldownMult();
-			// FOLLOW-UP PRESSURE: a wounded colony - decline meter open, or key
-			// organs still disrupted - draws the next expedition on a short
-			// cooldown. Navies press an advantage; without this, the decline
-			// recovery between full-interval visits erases everything a lone
-			// expedition achieved.
-			boolean wounded = ThreatIncData.declineProgress(colony.getId()) > 0f
+			// FOLLOW-UP PRESSURE: a wounded colony - a ground front on its
+			// surface, or key organs still disrupted - draws the next
+			// expedition on a short cooldown. Navies press an advantage;
+			// without this, the recovery between full-interval visits erases
+			// everything a lone expedition achieved.
+			boolean wounded = ThreatGroundFronts.hasFront(colony)
 					|| ThreatColonyManager.anyOrganDisrupted(colony);
 			if (wounded) {
 				cooldown = Math.min(cooldown,
@@ -1304,7 +1342,55 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		params.makeFleetsHostile = false;
 		params.fleetSizes.addAll(fleetSizes);
 
+		// STRATEGY LAYER (docs/strategy-layer.md): a mobilised faction's
+		// expedition draws its landing force and provisions from the BASE's
+		// reserve - troops that then ride the fleets as real cargo. Short of
+		// marines, the expedition waits for the convoys to stage more.
+		float[] drawn = null;
+		if (ThreatWarState.isAtWar(faction)) {
+			float[] wants = expeditionWants(base, system, targets, fleetSizes);
+			// what the base may actually commit: its stock above the floor
+			float haveMarines = ThreatReserves.available(base,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
+			float minMarines = wants[0] * ThreatIncConfig.expeditionMinMarinesFraction();
+			if (wants[0] > 0f && haveMarines < minMarines) {
+				ThreatIncConfig.log("Expedition postponed at " + base.getName() + ": "
+						+ (int) haveMarines + " of " + (int) wants[0]
+						+ " marines available (need " + (int) minMarines + ")");
+				return null;
+			}
+			// SEND WHAT YOU CAN (docs/design-theory.md 8.6): short of the full
+			// want, the flotilla shrinks to the landing force it can lift
+			// rather than never sailing - never below two fleets
+			if (haveMarines < wants[0]) {
+				int before = params.fleetSizes.size();
+				while (params.fleetSizes.size() > 2
+						&& siegeRaidStrEstimate(params.fleetSizes) > haveMarines) {
+					params.fleetSizes.remove(params.fleetSizes.size() - 1);
+				}
+				if (params.fleetSizes.size() < before) {
+					ThreatIncConfig.log("Expedition trimmed at " + base.getName() + ": "
+							+ before + " -> " + params.fleetSizes.size() + " fleets for "
+							+ (int) haveMarines + " marines");
+				}
+			}
+			drawn = new float[ThreatReserves.COMMODITIES.length];
+			for (int i = 0; i < drawn.length; i++) {
+				drawn[i] = ThreatReserves.drawAbove(base, ThreatReserves.COMMODITIES[i],
+						wants[i]);
+			}
+			ThreatIncConfig.log("Expedition draw at " + base.getName() + ": "
+					+ (int) drawn[0] + "/" + (int) wants[0] + " marines, "
+					+ (int) drawn[1] + "/" + (int) wants[1] + " armaments, "
+					+ (int) drawn[2] + "/" + (int) wants[2] + " fuel, "
+					+ (int) drawn[3] + "/" + (int) wants[3] + " supplies");
+		}
+
 		ThreatPurgeFGI purge = new ThreatPurgeFGI(params, playerCommissioned);
+		if (drawn != null) {
+			purge.setCargoAllotment(Math.round(drawn[0]), drawn[1]);
+			purge.setProvisions(drawn[2], drawn[3]);
+		}
 		Global.getSector().getIntelManager().addIntel(purge);
 		getPurgeList().add(purge);
 		// stamp every targeted colony so siblings don't each trigger their own
@@ -1315,6 +1401,54 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					Global.getSector().getClock().getTimestamp());
 		}
 		return purge;
+	}
+
+	/**
+	 * What one siege expedition from this base against this system draws
+	 * from the base's reserve, in ThreatReserves.COMMODITIES order: marines
+	 * (raid strength ~= marines, as vanilla's own player raids - the same
+	 * figure siegeRaidStrNeeded sizes the flotilla against), heavy armaments
+	 * (npcFrontSupplyDays of the biggest target's front upkeep), fuel (fleet
+	 * points x distance) and supplies (fleet points). Shared by the launch
+	 * and the convoy planner, so what a staging base stocks is exactly what
+	 * an expedition will take.
+	 */
+	public static float[] expeditionWants(MarketAPI base, StarSystemAPI system,
+			java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes) {
+		float marines = siegeRaidStrNeeded(targets);
+		float upkeep = 0f;
+		for (MarketAPI target : targets) {
+			upkeep = Math.max(upkeep, ThreatGroundFronts.dailyUpkeep(target));
+		}
+		float armaments = upkeep * ThreatIncConfig.npcFrontSupplyDays();
+		int points = 0;
+		for (Integer size : fleetSizes) points += size;
+		float dist = base.getStarSystem() != null && system != null
+				? Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation()) : 0f;
+		float fuel = points * dist * ThreatIncConfig.expeditionFuelPerPointLY();
+		float supplies = points * ThreatIncConfig.expeditionSuppliesPerPoint();
+		return new float[] {marines, armaments, fuel, supplies};
+	}
+
+	/**
+	 * The convoy planner's question: what would a standard expedition from
+	 * this base against this hive system draw right now? Sized the way
+	 * tryPurgeBombardments sizes one (difficulty from the faction's strength
+	 * at the base, fleets from the targets' defenses).
+	 */
+	public static float[] stagingWants(MarketAPI base, StarSystemAPI system) {
+		java.util.List<MarketAPI> targets = collectSiegeTargets(null, system);
+		if (targets.isEmpty() || base.getFaction() == null) return new float[] {0f, 0f, 0f, 0f};
+		float strength = WarSimScript.getFactionStrength(base.getFaction(), base.getStarSystem());
+		int difficulty = ThreatIncConfig.responseMinDifficulty()
+				+ Math.round(strength / ThreatIncConfig.responseStrengthDivisor());
+		if (difficulty > ThreatIncConfig.responseMaxDifficulty()) {
+			difficulty = ThreatIncConfig.responseMaxDifficulty();
+		}
+		boolean anyGarrisoned = anyTargetGarrisoned(targets);
+		java.util.List<Integer> fleetSizes = siegeFleetSizes(difficulty, anyGarrisoned,
+				false, targets);
+		return expeditionWants(base, system, targets, fleetSizes);
 	}
 
 	// ------------------------------------------------------------------

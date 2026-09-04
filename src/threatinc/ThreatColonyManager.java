@@ -2146,6 +2146,12 @@ public class ThreatColonyManager {
 		float mult = 1f;
 		Industry core = market.getIndustry(FABRICATION_CORE);
 		if (organDown(core)) mult *= wornDownFactor(core, ThreatIncConfig.coreDownFactor());
+		// strata held by a ground front are strata not fabricating: each one
+		// taken strips its share of the colony's output (docs/ground-war.md)
+		int held = ThreatGroundFronts.strataHeld(market.getId());
+		if (held > 0 && market.getSize() > 0) {
+			mult *= Math.max(0f, (market.getSize() - held) / (float) market.getSize());
+		}
 		return mult;
 	}
 
@@ -2226,97 +2232,34 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * The decline rate (fraction of a stratum per 30-day-tick equivalent).
-	 * FIXED once health is below the threshold: no severity, duration, or
-	 * colony-size scaling. Disrupting a bigger colony costs more up front -
-	 * that is the cost; the rate afterwards is the same everywhere, so the
-	 * projected timelines are exact and plannable.
+	 * The health figure below which the UI grades a colony as failing (red
+	 * vitality, "collapsing" labels). Purely presentational since the siege
+	 * rework: low health weakens a colony - stalled growth, thin garrisons,
+	 * feeble counter-attacks - but only a ground victory kills it
+	 * (docs/ground-war.md).
 	 */
-	public static float declineRatePerTick(MarketAPI market, float health) {
-		if (market == null || health >= ThreatIncConfig.declineHealthThreshold()) return 0f;
-		return ThreatIncConfig.declineBasePerTick();
-	}
-
-	/**
-	 * Projected decline timeline if health HOLDS below the threshold:
-	 * [0] days until the next population stratum is lost, [1] days until the
-	 * population falls to size 1 and the colony collapses. The rate is fixed,
-	 * so this is exact closed-form arithmetic, not a simulation. Both -1 when
-	 * the colony is not declining.
-	 */
-	public static float[] projectDecline(MarketAPI market, float health) {
-		if (market == null || health >= ThreatIncConfig.declineHealthThreshold()) {
-			return new float[] {-1f, -1f};
-		}
-		float base = ThreatIncConfig.declineBasePerTick();
-		if (base <= 0f) return new float[] {-1f, -1f};
-		float daysPerStratum = effectiveTickDays() / base;
-		float meter = ThreatIncData.declineProgress(market.getId());
-		float nextStep = (1f - meter) * daysPerStratum;
-		// strata left before the population reaches size 1
-		int strata = Math.max(1, market.getSize() - 1);
-		float collapse = nextStep + (strata - 1) * daysPerStratum;
-		return new float[] {nextStep, collapse};
-	}
+	public static final float CRITICAL_HEALTH = 0.35f;
 
 	/**
 	 * Called from the fast-cadence poll (~half-day), NOT the 30-day tick:
-	 * decline, meter recovery, and growth all accrue CONTINUOUSLY, pro-rated
-	 * from the per-30-day config rates. Tick-quantized accrual made the
-	 * decline meter stale for up to a month and let a 30-day disruption
-	 * window contribute one decline step or zero depending on pure phase
-	 * luck - the forecast promised a rate the engine only delivered in lumps.
+	 * health and growth accrue CONTINUOUSLY, pro-rated from the per-30-day
+	 * config rates. Since the ground-war rework there is no decline engine
+	 * here - starvation only weakens (stalls growth, thins everything scaled
+	 * by health); colonies die exclusively to ground victory
+	 * (ThreatGroundFronts.groundVictory).
 	 *
 	 * @param elapsedDays campaign days since the previous poll
 	 */
 	public static void updateColonyVitality(float elapsedDays) {
 		if (elapsedDays <= 0f) return;
-		float declineT = ThreatIncConfig.declineHealthThreshold();
-		float tickLen = effectiveTickDays();
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			String id = market.getId();
 			float health = computeHealth(market);
 			ThreatIncData.setLastHealth(id, health);
 
-			if (health < declineT) {
-				float daysIn = ThreatIncData.declineDays(id);
-				boolean entering = daysIn <= 0f;
-				daysIn += elapsedDays;
-				ThreatIncData.setDeclineDays(id, daysIn);
-				// fixed rate below the threshold - how deep the health sits,
-				// how long it has been there, and the colony's size all change
-				// nothing, so the forecast the UI shows is exact
-				float before = ThreatIncData.declineProgress(id);
-				float amount = ThreatIncConfig.declineBasePerTick()
-						* (elapsedDays / tickLen);
-				ThreatIncData.addDeclineProgress(id, amount);
-				if (entering) {
-					announce("The fabrication colony on " + market.getName() + " is failing - "
-							+ "its strata are dying faster than the hive can regrow them.",
-							Misc.getPositiveHighlightColor());
-				}
-				// log at 10%-meter boundaries, not every half-day poll
-				float after = ThreatIncData.declineProgress(id);
-				if ((int) (before * 10f) != (int) (after * 10f)) {
-					ThreatIncConfig.log("Colony declining at " + market.getName() + ": health "
-							+ String.format("%.2f", health) + ", decline "
-							+ String.format("%.2f", after) + " - " + econDebugSummary(market));
-				}
-				applyDeclineSteps(market);
-				continue;
-			}
-
-			// the pressure has lifted: the hive regrows what it lost, slowly -
-			// but NOT while any key organ is still disrupted. A besieged colony
-			// that scrapes above the decline threshold holds its wounds open,
-			// so successive expeditions accumulate damage instead of watching
-			// the meter heal between visits.
-			ThreatIncData.setDeclineDays(id, 0f);
-			float meter = ThreatIncData.declineProgress(id);
-			if (meter > 0f && !anyOrganDisrupted(market)) {
-				ThreatIncData.setDeclineProgress(id, meter
-						- ThreatIncConfig.declineRecoveryPerTick() * (elapsedDays / tickLen));
-			}
+			// no growth while a ground front is on the surface: a colony
+			// fighting inside its own strata builds no new ones
+			if (ThreatGroundFronts.hasFront(market)) continue;
 
 			int size = market.getSize();
 			int cap = Math.min(ThreatIncConfig.colonyMaxSize(), Misc.getMaxMarketSize(market));
@@ -2355,59 +2298,17 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * Cashes in whole size steps from the decline meter. Decline is THE ONLY
-	 * way a Threat colony dies: no bombardment touches its population. When a
-	 * colony's population would fall to size 1, the hive is no longer viable
-	 * and it COLLAPSES outright - the vanilla teardown runs and pollColonies
-	 * reacts on the next poll.
+	 * ERADICATION: the ground-victory teardown, the ONLY way a Threat colony
+	 * dies (docs/ground-war.md) - no bombardment touches its population, no
+	 * timer grinds it down. Vitality bookkeeping cleared, then the vanilla
+	 * decivilization teardown; pollColonies reacts on the next poll.
 	 */
-	public static void applyDeclineSteps(MarketAPI market) {
+	public static void eradicate(MarketAPI market) {
 		if (market == null) return;
-		String id = market.getId();
-		while (ThreatIncData.declineProgress(id) >= 1f) {
-			ThreatIncData.addDeclineProgress(id, -1f);
-			int old = market.getSize();
-
-			if (old <= 2) {
-				// falling to size 1: the strata can no longer sustain themselves
-				announce("The fabrication colony on " + market.getName() + " has collapsed - "
-						+ "the strata are cold.", Misc.getPositiveHighlightColor());
-				ThreatIncConfig.log("Colony collapsed from decline: " + market.getName());
-				ThreatIncData.clearVitality(id);
-				// fullDestroy bypasses NO_DECIV_KEY (verified against 0.98a source)
-				DecivTracker.decivilize(market, true);
-				return;
-			}
-
-			reduceSizeByOne(market);
-			if (market.getSize() >= old) break; // safety: no step happened
-			ListenerUtil.reportColonySizeChanged(market, old);
-			ThreatIncData.setGrowthProgressDays(id, 0f);
-			ThreatIncData.setGrowthTime(id);
-			announce("The fabrication colony on " + market.getName()
-					+ " has withered to size " + market.getSize() + ".",
-					Misc.getPositiveHighlightColor());
-			ThreatIncConfig.log("Colony declined to " + market.getSize() + ": "
-					+ market.getName());
-		}
-	}
-
-	/**
-	 * -1 size, mirroring vanilla {@code CoreImmigrationPluginImpl.reduceMarketSize}
-	 * but WITHOUT its size-3 floor - decline must be able to grind a hive all
-	 * the way down to collapse.
-	 */
-	protected static void reduceSizeByOne(MarketAPI market) {
-		int size = market.getSize();
-		if (size <= 1) return;
-		market.removeCondition("population_" + size);
-		market.addCondition("population_" + (size - 1));
-		market.setSize(size - 1);
-		market.getPopulation().setWeight(
-				CoreImmigrationPluginImpl.getWeightForMarketSizeStatic(market.getSize()));
-		market.getPopulation().normalize();
-		market.reapplyConditions();
-		market.reapplyIndustries();
+		ThreatIncConfig.log("Colony eradicated: " + market.getName());
+		ThreatIncData.clearVitality(market.getId());
+		// fullDestroy bypasses NO_DECIV_KEY (verified against 0.98a source)
+		DecivTracker.decivilize(market, true);
 	}
 
 	// ------------------------------------------------------------------

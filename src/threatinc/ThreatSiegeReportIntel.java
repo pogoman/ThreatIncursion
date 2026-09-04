@@ -208,19 +208,19 @@ public class ThreatSiegeReportIntel extends BaseIntelPlugin {
 						"destroyed - the strata are cold");
 			} else {
 				float health = ThreatIncData.lastHealth(live.getId());
-				float decline = ThreatIncData.declineProgress(live.getId());
+				int strataHeld = ThreatGroundFronts.strataHeld(live.getId());
 				String grade;
-				if (health < ThreatIncConfig.declineHealthThreshold()) grade = "collapsing";
+				if (health < ThreatColonyManager.CRITICAL_HEALTH) grade = "failing";
 				else if (health < ThreatIncConfig.growthStallHealth()) grade = "critical";
 				else if (health < ThreatIncConfig.growthFullHealth()) grade = "strained";
 				else grade = "nominal";
-				Color gradeColor = "collapsing".equals(grade) || "critical".equals(grade)
+				Color gradeColor = "failing".equals(grade) || "critical".equals(grade)
 						? neg : h;
-				if (decline > 0f) {
-					info.addPara("Current state: size %s, hive vitality %s, decline %s "
-							+ "toward the next stratum lost.", 3f, Misc.getTextColor(),
+				if (strataHeld > 0) {
+					info.addPara("Current state: size %s, hive vitality %s, ground war "
+							+ "at %s strata taken.", 3f, Misc.getTextColor(),
 							gradeColor, "" + live.getSize(), grade,
-							(int) (decline * 100f) + "%");
+							strataHeld + " of " + live.getSize());
 				} else {
 					info.addPara("Current state: size %s, hive vitality %s.", 3f,
 							Misc.getTextColor(), gradeColor, "" + live.getSize(), grade);

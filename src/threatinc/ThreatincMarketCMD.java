@@ -1,5 +1,6 @@
 package threatinc;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -71,6 +72,44 @@ import com.fs.starfarer.api.util.Misc;
  */
 public class ThreatincMarketCMD extends MarketCMD {
 
+	// ground-front options (docs/ground-war.md); each id has a rules.csv row
+	public static final String GROUND_OPS = "threatincGroundOps";
+	public static final String GROUND_DEPLOY = "threatincGroundDeploy";
+	public static final String GROUND_RESUPPLY = "threatincGroundResupply";
+	public static final String GROUND_WITHDRAW = "threatincGroundWithdraw";
+	public static final String GROUND_PUSH = "threatincGroundPush";
+	public static final String GROUND_ENTRENCH = "threatincGroundEntrench";
+	public static final String GROUND_BACK = "threatincGroundBack";
+
+	/**
+	 * Custom command dispatch. super.execute initializes every field (dialog,
+	 * market, text, options, temp) before its command chain, and an unknown
+	 * command falls through that chain harmlessly - so our commands piggyback
+	 * on the vanilla init and dispatch here afterward.
+	 */
+	@Override
+	public boolean execute(String ruleId,
+			com.fs.starfarer.api.campaign.InteractionDialogAPI dialog,
+			List<com.fs.starfarer.api.util.Misc.Token> params,
+			Map<String, com.fs.starfarer.api.campaign.rules.MemoryAPI> memoryMap) {
+		String command = params.get(0).getString(memoryMap);
+		boolean result = super.execute(ruleId, dialog, params, memoryMap);
+		if ("groundOps".equals(command)) {
+			groundOps();
+		} else if ("groundDeploy".equals(command)) {
+			groundDeploy();
+		} else if ("groundResupply".equals(command)) {
+			groundResupply();
+		} else if ("groundWithdraw".equals(command)) {
+			groundWithdraw();
+		} else if ("groundPush".equals(command)) {
+			groundPush();
+		} else if ("groundEntrench".equals(command)) {
+			groundEntrench();
+		}
+		return result;
+	}
+
 	protected boolean isThreatTarget() {
 		return ThreatIncConfig.enabled() && market != null
 				&& Factions.THREAT.equals(market.getFactionId());
@@ -92,6 +131,266 @@ public class ThreatincMarketCMD extends MarketCMD {
 	protected int tacCost() {
 		int base = getBombardmentCost(market, playerFleet);
 		return Math.max(2, Math.round(base * ThreatIncConfig.hiveTacCostFraction()));
+	}
+
+	/**
+	 * Appends "Ground operations" to the military options menu of a Threat
+	 * colony, keeping "Go back" last (removeOption + re-add; the escape
+	 * shortcut must be re-set with it).
+	 */
+	@Override
+	protected void showDefenses(boolean withText) {
+		super.showDefenses(withText);
+		if (!isThreatTarget()) return;
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		// the enabled flag gates NEW deployments; an existing front must stay
+		// reachable (resupply/withdraw) even after the setting is turned off
+		if (!ThreatIncConfig.frontsEnabled() && front == null) return;
+		options.removeOption(GO_BACK);
+		String label = front != null
+				? "Ground operations (front deployed)" : "Ground operations";
+		options.addOption(label, GROUND_OPS);
+		options.addOption("Go back", GO_BACK);
+		options.setShortcut(GO_BACK, org.lwjgl.input.Keyboard.KEY_ESCAPE,
+				false, false, false, true);
+	}
+
+	/**
+	 * The ground-operations menu: status of the deployed front, or the landing
+	 * brief when none is. All figures are the same ones ThreatGroundFronts
+	 * ticks on, so what this quotes is exactly what happens.
+	 */
+	protected void groundOps() {
+		options.clearOptions();
+		Color h = Misc.getHighlightColor();
+		Color neg = Misc.getNegativeHighlightColor();
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		int defender = (int) getDefenderStr(market, true);
+		int holdNeed = (int) Math.ceil(ThreatGroundFronts.holdRequirement(market));
+		int grindNeed = (int) Math.ceil(ThreatGroundFronts.grindRequirement(market));
+		float upkeepDay = ThreatGroundFronts.dailyUpkeep(market);
+
+		if (front == null) {
+			int marines = (int) playerFleet.getCargo().getMarines();
+			int arms = (int) playerFleet.getCargo()
+					.getCommodityQuantity(Commodities.HAND_WEAPONS);
+			text.addPara("A landing commits every marine and every heavy armament "
+					+ "aboard to the surface - a persistent front that keeps fighting "
+					+ "after you break orbit. The hive is %s strata deep with the "
+					+ "Fabrication Core at the center: order pushes to take it stratum "
+					+ "by stratum, and destroy the Core to eradicate the colony. Each "
+					+ "stratum taken strips its share of the base defenses and of the "
+					+ "hive's output.", h, "" + market.getSize());
+			text.addPara("Ground defenses stand at %s: holding (and pushing) takes an "
+					+ "effective strength of %s, grinding the outer defenses %s. You "
+					+ "have %s marines and %s heavy armaments aboard; the front burns "
+					+ "about %s armaments a day, fights at reduced effectiveness once "
+					+ "they run out, and the hive counter-attacks - entrenched troops "
+					+ "defend far better than pushing ones.", h,
+					Misc.getWithDGS(defender), Misc.getWithDGS(holdNeed),
+					Misc.getWithDGS(grindNeed), Misc.getWithDGS(marines),
+					Misc.getWithDGS(arms), String.format("%.1f", upkeepDay));
+
+			options.addOption("Land ground forces", GROUND_DEPLOY);
+			float fallout = ThreatGroundFronts.falloutDaysLeft(market);
+			if (fallout > 0f) {
+				text.addPara("The surface is a radiological ruin - saturation fallout "
+						+ "makes a landing impossible for another %s days.", neg,
+						"" + (int) Math.ceil(fallout));
+				options.setEnabled(GROUND_DEPLOY, false);
+				options.setTooltip(GROUND_DEPLOY, "Saturation fallout blocks a landing.");
+			} else if (!temp.canRaid) {
+				options.setEnabled(GROUND_DEPLOY, false);
+				options.setTooltip(GROUND_DEPLOY,
+						"Defending fleets must be dealt with before landing ground forces.");
+			} else if (marines < (int) ThreatIncConfig.frontMinMarines()) {
+				options.setEnabled(GROUND_DEPLOY, false);
+				options.setTooltip(GROUND_DEPLOY, "Too few marines aboard to hold any "
+						+ "ground (need at least "
+						+ (int) ThreatIncConfig.frontMinMarines() + ").");
+			}
+		} else if (!front.isPlayerOwned()) {
+			String owner = "An expeditionary force";
+			com.fs.starfarer.api.campaign.FactionAPI fac =
+					Global.getSector().getFaction(front.factionId);
+			if (fac != null) owner = Misc.ucFirst(fac.getDisplayNameWithArticle())
+					+ " expeditionary force";
+			text.addPara(owner + " already holds ground here - %s troops, %s of %s "
+					+ "strata taken. Their campaign is their own; your fleet cannot "
+					+ "direct or resupply it.", h,
+					Misc.getWithDGS(Math.round(front.marines)),
+					"" + front.strataHeld, "" + market.getSize());
+		} else {
+			int eff = (int) ThreatGroundFronts.effectiveStrength(front);
+			int supplyDays = (int) ThreatGroundFronts.supplyDaysLeft(front, market);
+			boolean pushing = ThreatGroundFronts.STANCE_PUSH.equals(front.stance);
+			String state;
+			if (ThreatGroundFronts.STATE_HOLDING.equals(front.state)) {
+				state = "HOLDING - the hive's organs are suppressed and a push is possible";
+			} else if (ThreatGroundFronts.STATE_GRINDING.equals(front.state)) {
+				state = "GRINDING - harassing the outer defenses; too weak to push";
+			} else {
+				state = "a FOOTHOLD - dug in, but too weak to suppress anything";
+			}
+			text.addPara("The front is " + state + ". It holds %s of %s strata; the "
+					+ "Fabrication Core lies at the center, and taking the last "
+					+ "stratum destroys it - and the colony.", h,
+					"" + front.strataHeld, "" + market.getSize());
+			text.addPara("Strength %s effective (%s marines; entrenchment and supply "
+					+ "included) against defenses at %s - pushing takes %s, grinding "
+					+ "%s. Heavy armaments for about %s days at the current burn.", h,
+					Misc.getWithDGS(eff), Misc.getWithDGS(Math.round(front.marines)),
+					Misc.getWithDGS(defender), Misc.getWithDGS(holdNeed),
+					Misc.getWithDGS(grindNeed), "" + supplyDays);
+			if (pushing) {
+				int est = (int) Math.ceil(ThreatGroundFronts.pushDaysEstimate(front, market));
+				text.addPara("The assault on stratum " + (front.strataHeld + 1)
+						+ " is underway - roughly %s days at current strength, and "
+						+ "the troops are exposed to counter-attack while it lasts.",
+						h, "" + est);
+			} else if (ThreatGroundFronts.STANCE_CONSOLIDATE.equals(front.stance)) {
+				text.addPara("The front is consolidating at the checkpoint and "
+						+ "requesting reinforcement - without new orders it pushes "
+						+ "on in %s days.", h,
+						"" + (int) Math.ceil(front.consolidateDaysLeft));
+			}
+			if (front.armaments <= 0f) {
+				text.addPara("The heavy armaments are exhausted - the front fights at "
+						+ "reduced effectiveness and casualties are mounting.", neg);
+			}
+			if (ThreatGroundFronts.orbitContested(market.getId())) {
+				text.addPara("Defense Swarms contest the orbit - while they live, "
+						+ "nothing lands and nothing leaves.", neg);
+			}
+
+			int marines = (int) playerFleet.getCargo().getMarines();
+			int arms = (int) playerFleet.getCargo()
+					.getCommodityQuantity(Commodities.HAND_WEAPONS);
+
+			if (!pushing) {
+				int estDays = (int) Math.ceil(ThreatGroundFronts.pushDaysEstimate(front, market));
+				int estLoss = ThreatGroundFronts.pushCasualtyEstimate(front, market);
+				options.addOption("Order a push on stratum " + (front.strataHeld + 1)
+						+ " (~" + estDays + " days, ~" + estLoss + " casualties)",
+						GROUND_PUSH);
+				if (eff < holdNeed) {
+					options.setEnabled(GROUND_PUSH, false);
+					options.setTooltip(GROUND_PUSH, "Too weak to take the next stratum - "
+							+ "reinforce the front, resupply its armaments, or soften "
+							+ "the defenses further first.");
+				}
+				if (ThreatGroundFronts.STANCE_CONSOLIDATE.equals(front.stance)) {
+					options.addOption("Order the front to entrench and stand fast",
+							GROUND_ENTRENCH);
+				}
+			} else {
+				options.addOption("Break off the assault and entrench", GROUND_ENTRENCH);
+			}
+			options.addOption("Transfer all marines and heavy armaments to the front",
+					GROUND_RESUPPLY);
+			if (marines <= 0 && arms <= 0) {
+				options.setEnabled(GROUND_RESUPPLY, false);
+				options.setTooltip(GROUND_RESUPPLY,
+						"No marines or heavy armaments aboard.");
+			}
+			options.addOption("Withdraw the ground forces", GROUND_WITHDRAW);
+		}
+
+		options.addOption("Go back", GROUND_BACK);
+		options.setShortcut(GROUND_BACK, org.lwjgl.input.Keyboard.KEY_ESCAPE,
+				false, false, false, true);
+	}
+
+	protected void groundDeploy() {
+		// re-validate: the option can be reached with stale temp state
+		float fallout = ThreatGroundFronts.falloutDaysLeft(market);
+		int marines = (int) playerFleet.getCargo().getMarines();
+		int arms = (int) playerFleet.getCargo()
+				.getCommodityQuantity(Commodities.HAND_WEAPONS);
+		if (!ThreatIncConfig.frontsEnabled() || fallout > 0f || !temp.canRaid
+				|| marines < (int) ThreatIncConfig.frontMinMarines()
+				|| ThreatGroundFronts.getFront(market.getId()) != null) {
+			groundOps();
+			return;
+		}
+		playerFleet.getCargo().removeMarines(marines);
+		playerFleet.getCargo().removeCommodity(Commodities.HAND_WEAPONS, arms);
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.deploy(market,
+				Factions.PLAYER, marines, arms);
+		// classify now so the first poll doesn't re-announce what we say here
+		float eff = ThreatGroundFronts.effectiveStrength(front);
+		if (eff >= ThreatGroundFronts.holdRequirement(market)) {
+			front.state = ThreatGroundFronts.STATE_HOLDING;
+		} else if (eff >= ThreatGroundFronts.grindRequirement(market)) {
+			front.state = ThreatGroundFronts.STATE_GRINDING;
+		} else {
+			front.state = ThreatGroundFronts.STATE_FOOTHOLD;
+		}
+		front.announcedState = front.state;
+		text.addPara("The landers go down through the auspex haze. %s marines and %s "
+				+ "heavy armaments are on the ground and digging in.",
+				Misc.getHighlightColor(), Misc.getWithDGS(marines),
+				Misc.getWithDGS(arms));
+		groundOps();
+	}
+
+	protected void groundPush() {
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		if (front == null || !front.isPlayerOwned()
+				|| ThreatGroundFronts.effectiveStrength(front)
+						< ThreatGroundFronts.holdRequirement(market)) {
+			groundOps();
+			return;
+		}
+		ThreatGroundFronts.orderPush(front);
+		text.addPara("The order goes down: take stratum " + (front.strataHeld + 1) + ".");
+		groundOps();
+	}
+
+	protected void groundEntrench() {
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		if (front == null || !front.isPlayerOwned()) {
+			groundOps();
+			return;
+		}
+		ThreatGroundFronts.orderEntrench(front);
+		text.addPara("The assault is broken off - the front digs in on what it holds.");
+		groundOps();
+	}
+
+	protected void groundResupply() {
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		int marines = (int) playerFleet.getCargo().getMarines();
+		int arms = (int) playerFleet.getCargo()
+				.getCommodityQuantity(Commodities.HAND_WEAPONS);
+		if (front == null || !front.isPlayerOwned() || (marines <= 0 && arms <= 0)) {
+			groundOps();
+			return;
+		}
+		playerFleet.getCargo().removeMarines(marines);
+		playerFleet.getCargo().removeCommodity(Commodities.HAND_WEAPONS, arms);
+		ThreatGroundFronts.resupply(front, marines, arms);
+		text.addPara("%s marines and %s heavy armaments go down to the front.",
+				Misc.getHighlightColor(), Misc.getWithDGS(marines),
+				Misc.getWithDGS(arms));
+		groundOps();
+	}
+
+	protected void groundWithdraw() {
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		if (front == null || !front.isPlayerOwned()) {
+			groundOps();
+			return;
+		}
+		int[] recovered = ThreatGroundFronts.withdraw(market.getId());
+		if (recovered[0] > 0) playerFleet.getCargo().addMarines(recovered[0]);
+		if (recovered[1] > 0) {
+			playerFleet.getCargo().addCommodity(Commodities.HAND_WEAPONS, recovered[1]);
+		}
+		text.addPara("The front folds up its positions and lifts off. %s marines and "
+				+ "%s heavy armaments return to the fleet.", Misc.getHighlightColor(),
+				Misc.getWithDGS(recovered[0]), Misc.getWithDGS(recovered[1]));
+		groundOps();
 	}
 
 	@Override
@@ -171,6 +470,21 @@ public class ThreatincMarketCMD extends MarketCMD {
 		for (Industry ind : targets) {
 			text.addPara("    " + ind.getCurrentName());
 		}
+		// danger close: with a front on the ground the strike is target-marked -
+		// it also cracks the deep organs - but the barrage lands among your own
+		// positions. Warned here, applied in bombardConfirm.
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		if (front != null && front.isPlayerOwned() && ThreatIncConfig.frontsEnabled()
+				&& ThreatIncConfig.frontDangerCloseEnabled()) {
+			int loss = (int) Math.ceil(front.marines
+					* ThreatIncConfig.frontDangerCloseLossFraction());
+			text.addPara("Your ground forces are inside the target grid. They will mark "
+					+ "targets - the strike's disruption will also land on the "
+					+ "Fabrication Core and the port - but a barrage this close will "
+					+ "cost the front about %s marines.",
+					Misc.getNegativeHighlightColor(), "" + loss);
+		}
+
 		text.addPara("The bombardment requires %s fuel. You have %s fuel.",
 				Misc.getHighlightColor(), "" + temp.bombardCost, "" + fuel);
 
@@ -246,6 +560,25 @@ public class ThreatincMarketCMD extends MarketCMD {
 			}
 		}
 
+		if (ThreatIncConfig.frontsEnabled()) {
+			ThreatGroundFronts.GroundFront satFront =
+					ThreatGroundFronts.getFront(market.getId());
+			if (satFront != null && satFront.isPlayerOwned()) {
+				text.addPara("YOUR OWN GROUND FORCES ARE DEPLOYED ON THE SURFACE. "
+						+ "A saturation pass will annihilate the front - there will "
+						+ "be no survivors.", Misc.getNegativeHighlightColor());
+			} else if (satFront != null) {
+				text.addPara("An allied expeditionary ground force is on the surface - "
+						+ "a saturation pass will annihilate it.",
+						Misc.getNegativeHighlightColor());
+			}
+			if (ThreatIncConfig.falloutDays() > 0f) {
+				text.addPara("The fallout will keep ground forces from landing for "
+						+ "about %s days afterward.", Misc.getHighlightColor(),
+						"" + (int) ThreatIncConfig.falloutDays());
+			}
+		}
+
 		text.addPara("The bombardment requires %s fuel. You have %s fuel.",
 				Misc.getHighlightColor(), "" + temp.bombardCost, "" + fuel);
 
@@ -299,6 +632,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 						* StarSystemGenerator.getNormalRandom(getRandom(), 1f, 1.25f);
 				entry.getKey().setDisrupted(entry.getValue() + dur);
 			}
+			applyDangerClose();
 			market.reapplyIndustries();
 			return;
 		}
@@ -396,14 +730,30 @@ public class ThreatincMarketCMD extends MarketCMD {
 		}
 		market.reapplyIndustries();
 
+		// theater shaping, never decline progress: the world is silenced for
+		// days, and the fallout forfeits ground tempo - no landings for a while,
+		// and any front already down there dies under the sky-fall
+		if (ThreatIncConfig.frontsEnabled()) {
+			ThreatGroundFronts.setFallout(market);
+			ThreatGroundFronts.GroundFront satFront =
+					ThreatGroundFronts.getFront(market.getId());
+			if (satFront != null) {
+				boolean own = satFront.isPlayerOwned();
+				ThreatGroundFronts.destroy(market.getId());
+				text.addPara((own ? "Your ground forces were"
+						: "The allied expeditionary ground force was")
+						+ " on the surface when the sky fell. There are no survivors.",
+						Misc.getNegativeHighlightColor());
+			}
+		}
+
 		text.addPara("Surface operations disrupted for a handful of days. The deep "
 				+ "strata absorb the rest - the hive's population is untouched.");
-		float health = ThreatIncData.lastHealth(market.getId());
-		float progress = ThreatIncData.declineProgress(market.getId());
-		if (progress > 0f || health < ThreatIncConfig.declineHealthThreshold()) {
-			text.addPara("The colony is wounded where it matters: %s of the way to losing "
-					+ "a population stratum. Keep its organs down and it will wither.",
-					Misc.getNegativeHighlightColor(), (int) (progress * 100f) + "%");
+		if (ThreatIncData.lastHealth(market.getId()) < ThreatColonyManager.CRITICAL_HEALTH) {
+			text.addPara("The colony is badly weakened - its garrisons, defenses and "
+					+ "counter-attacks all run on its failing vitality. Only a ground "
+					+ "victory destroys it; this bought the ground war time.",
+					Misc.getNegativeHighlightColor());
 		}
 
 		// fired manually since vanilla bombardConfirm was bypassed - this keeps
@@ -427,5 +777,44 @@ public class ThreatincMarketCMD extends MarketCMD {
 		addBombardVisual(market.getPrimaryEntity());
 
 		addBombardContinueOption();
+	}
+
+	/**
+	 * Danger close (docs/ground-war.md): a tactical pass with a front deployed
+	 * costs it marines - and in exchange the ground forces mark targets, so the
+	 * pass's disruption also stacks onto the Fabrication Core and the port,
+	 * not just the war-strata. Called from the tactical bombardConfirm branch,
+	 * before the reapply.
+	 */
+	protected void applyDangerClose() {
+		if (!ThreatIncConfig.frontsEnabled()
+				|| !ThreatIncConfig.frontDangerCloseEnabled()) return;
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		if (front == null || !front.isPlayerOwned()) return;
+
+		int loss = (int) Math.ceil(front.marines
+				* ThreatIncConfig.frontDangerCloseLossFraction());
+		front.marines = Math.max(0f, front.marines - loss);
+
+		List<Industry> deep = new ArrayList<Industry>();
+		Industry core = market.getIndustry(ThreatColonyManager.FABRICATION_CORE);
+		if (core != null) deep.add(core);
+		Industry port = ThreatColonyManager.getPort(market);
+		if (port != null) deep.add(port);
+		for (Industry ind : deep) {
+			float dur = ThreatIncConfig.hiveTacDisruptDays()
+					* StarSystemGenerator.getNormalRandom(getRandom(), 1f, 1.25f);
+			ind.setDisrupted(ind.getDisruptedDays() + dur);
+		}
+
+		text.addPara("Ground-marked targets: the strike also cracked the hive's deep "
+				+ "organs. The front lost %s marines to the barrage.",
+				Misc.getNegativeHighlightColor(), "" + loss);
+
+		if (front.marines < ThreatIncConfig.frontMinMarines()) {
+			ThreatGroundFronts.destroy(market.getId());
+			text.addPara("What was left of the front could not hold its positions "
+					+ "afterward - it has been overrun.", Misc.getNegativeHighlightColor());
+		}
 	}
 }

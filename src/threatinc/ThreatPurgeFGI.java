@@ -17,6 +17,7 @@ import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
 import com.fs.starfarer.api.impl.campaign.procgen.StarSystemGenerator;
 import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD;
 import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.BombardType;
+import com.fs.starfarer.api.util.Misc;
 
 /**
  * NPC siege expedition against Threat colonies - the successor to the plain
@@ -74,6 +75,22 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	/** True for an expedition the player paid for (player-faction fleets). */
 	protected boolean playerCommissioned = false;
 
+	/**
+	 * STRATEGY LAYER (docs/strategy-layer.md): a mobilised faction's
+	 * expedition carries its landing force as REAL cargo. The allotment is
+	 * what was drawn from the base's reserve and is still with the
+	 * expedition; while the fleets are spawned it is kept in step with what
+	 * is actually aboard (a transport destroyed in space is marines lost),
+	 * and while they are abstract (route mode) it is the figure the landing
+	 * uses, discounted by the route's damage.
+	 */
+	protected boolean carriesCargo = false;
+	protected float marinesAllotted = 0f;
+	protected float armamentsAllotted = 0f;
+	/** Loaded so far during the current spawn pass. */
+	protected float marinesLoaded = 0f;
+	protected float armamentsLoaded = 0f;
+
 	public ThreatPurgeFGI(GenericRaidParams params, boolean playerCommissioned) {
 		super(params);
 		this.playerCommissioned = playerCommissioned;
@@ -81,6 +98,196 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 
 	public boolean isPlayerCommissioned() {
 		return playerCommissioned;
+	}
+
+	public void setCargoAllotment(int marines, float armaments) {
+		carriesCargo = true;
+		marinesAllotted = Math.max(0, marines);
+		armamentsAllotted = Math.max(0f, armaments);
+	}
+
+	/** Fuel and supplies drawn from the base at launch (refunded in part on return). */
+	protected float fuelDrawn = 0f;
+	protected float suppliesDrawn = 0f;
+
+	public void setProvisions(float fuel, float supplies) {
+		fuelDrawn = Math.max(0f, fuel);
+		suppliesDrawn = Math.max(0f, supplies);
+	}
+
+	/**
+	 * The expedition is over and was not destroyed: whatever it never landed
+	 * goes back to the base - troops and armaments still with it in full
+	 * (they are what survived), fuel and supplies at returnRefundMult scaled
+	 * by the route's surviving strength. Abort and natural return alike.
+	 */
+	protected void refundOnReturn() {
+		if (!carriesCargo || isFailed()) return;
+		MarketAPI base = params != null ? params.source : null;
+		if (base == null) return;
+		float keep = 1f - routeDamage();
+		float marines = marinesAllotted;
+		float armaments = armamentsAllotted;
+		if (!anyFleetLive()) {
+			marines *= keep;
+			armaments *= keep;
+		}
+		float mult = ThreatIncConfig.returnRefundMult() * keep;
+		float fuel = fuelDrawn * mult;
+		float supplies = suppliesDrawn * mult;
+		ThreatReserves.deposit(base.getId(), Commodities.MARINES, marines);
+		ThreatReserves.deposit(base.getId(), Commodities.HAND_WEAPONS, armaments);
+		ThreatReserves.deposit(base.getId(), Commodities.FUEL, fuel);
+		ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, supplies);
+		marinesAllotted = 0f;
+		armamentsAllotted = 0f;
+		fuelDrawn = 0f;
+		suppliesDrawn = 0f;
+		if (marines > 0f || armaments > 0f || fuel > 0f || supplies > 0f) {
+			ThreatIncConfig.log("Expedition return to " + base.getName() + ": " + (int) marines
+					+ " marines, " + (int) armaments + " armaments, " + (int) fuel + " fuel, "
+					+ (int) supplies + " supplies refunded (strength " + (int) (keep * 100f) + "%)");
+		}
+	}
+
+	public boolean carriesCargo() {
+		return carriesCargo;
+	}
+
+	public float getMarinesAllotted() {
+		return marinesAllotted;
+	}
+
+	public float getArmamentsAllotted() {
+		return armamentsAllotted;
+	}
+
+	/**
+	 * Spawn pass: reload the allotment onto the fresh fleets, then hand back
+	 * to the base whatever would not fit - the reserve was drawn for it, and
+	 * troops with no berth stay home rather than vanish.
+	 */
+	@Override
+	protected void spawnFleets() {
+		marinesLoaded = 0f;
+		armamentsLoaded = 0f;
+		super.spawnFleets();
+		if (!carriesCargo) return;
+		MarketAPI base = params != null ? params.source : null;
+		float marinesLeft = marinesAllotted - marinesLoaded;
+		float armamentsLeft = armamentsAllotted - armamentsLoaded;
+		// a damaged expedition spawns fewer fleets (the missing ones were
+		// destroyed): their troops are gone, not home
+		if (base != null && routeDamage() <= 0f && (marinesLeft > 0f || armamentsLeft > 0f)) {
+			ThreatReserves.deposit(base.getId(), Commodities.MARINES, marinesLeft);
+			ThreatReserves.deposit(base.getId(), Commodities.HAND_WEAPONS, armamentsLeft);
+			ThreatIncConfig.log("Expedition cargo: " + (int) marinesLeft + " marines, "
+					+ (int) armamentsLeft + " armaments did not fit - returned to "
+					+ base.getName());
+		}
+		marinesAllotted = marinesLoaded;
+		armamentsAllotted = armamentsLoaded;
+	}
+
+	/** Cargo-carrying fleets sail with troop transports in the mix. */
+	@Override
+	protected void configureFleet(int size,
+			com.fs.starfarer.api.impl.campaign.missions.FleetCreatorMission m) {
+		super.configureFleet(size, m);
+		if (carriesCargo && marinesAllotted > 0f) {
+			m.triggerSetFleetComposition(0.1f, 0.1f,
+					ThreatIncConfig.expeditionTransportMult(), 0f, 0f);
+		}
+	}
+
+	/** Loads the allotment aboard, as much as each fleet's berths and holds take. */
+	@Override
+	protected void configureFleet(int size, CampaignFleetAPI fleet) {
+		super.configureFleet(size, fleet);
+		if (!carriesCargo || fleet == null) return;
+		com.fs.starfarer.api.campaign.CargoAPI cargo = fleet.getCargo();
+		int marines = (int) Math.min(marinesAllotted - marinesLoaded, cargo.getFreeCrewSpace());
+		if (marines > 0) {
+			cargo.addMarines(marines);
+			marinesLoaded += marines;
+		}
+		int armaments = (int) Math.min(armamentsAllotted - armamentsLoaded, cargo.getSpaceLeft());
+		if (armaments > 0) {
+			cargo.addCommodity(Commodities.HAND_WEAPONS, armaments);
+			armamentsLoaded += armaments;
+		}
+	}
+
+	/** Whether any expedition fleet is currently a real, living fleet (not in route mode). */
+	protected boolean anyFleetLive() {
+		for (CampaignFleetAPI fleet : getFleets()) {
+			if (fleet != null && fleet.isAlive() && !fleet.isExpired()) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * While the fleets are real, the allotment IS what is aboard: a transport
+	 * lost in space took its marines with it. Never adjusted upward.
+	 */
+	@Override
+	protected void advanceImpl(float amount) {
+		super.advanceImpl(amount);
+		if (!carriesCargo || !anyFleetLive()) return;
+		float marines = 0f;
+		float armaments = 0f;
+		for (CampaignFleetAPI fleet : getFleets()) {
+			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+			marines += fleet.getCargo().getMarines();
+			armaments += fleet.getCargo().getCommodityQuantity(Commodities.HAND_WEAPONS);
+		}
+		if (marines < marinesAllotted) marinesAllotted = marines;
+		if (armaments < armamentsAllotted) armamentsAllotted = armaments;
+	}
+
+	/** Route-mode damage fraction (0 = untouched), for the abstract landing figure. */
+	protected float routeDamage() {
+		try {
+			if (getRoute() != null && getRoute().getExtra() != null
+					&& getRoute().getExtra().damage != null) {
+				return Math.max(0f, Math.min(1f, getRoute().getExtra().damage));
+			}
+		} catch (Throwable t) {
+			// no route yet
+		}
+		return 0f;
+	}
+
+	/**
+	 * Takes the landing force off the fleets in this location (or off the
+	 * abstract allotment in route mode). Returns [marines, armaments] landed.
+	 */
+	protected float[] unloadForLanding(MarketAPI market) {
+		float marines = 0f;
+		float armaments = 0f;
+		if (anyFleetLive()) {
+			for (CampaignFleetAPI fleet : getFleets()) {
+				if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+				if (market.getContainingLocation() != null
+						&& fleet.getContainingLocation() != market.getContainingLocation()) {
+					continue;
+				}
+				com.fs.starfarer.api.campaign.CargoAPI cargo = fleet.getCargo();
+				int m = cargo.getMarines();
+				int a = (int) cargo.getCommodityQuantity(Commodities.HAND_WEAPONS);
+				if (m > 0) cargo.removeMarines(m);
+				if (a > 0) cargo.removeCommodity(Commodities.HAND_WEAPONS, a);
+				marines += m;
+				armaments += a;
+			}
+		} else {
+			float keep = 1f - routeDamage();
+			marines = marinesAllotted * keep;
+			armaments = armamentsAllotted * keep;
+		}
+		marinesAllotted = Math.max(0f, marinesAllotted - marines);
+		armamentsAllotted = Math.max(0f, armamentsAllotted - armaments);
+		return new float[] {marines, armaments};
 	}
 
 	@Override
@@ -183,13 +390,51 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			return;
 		}
 
-		// defenses suppressed: put troops on the ground against the hive's organs.
-		// COMBINED ARMS: the landing draws on every expedition fleet in-system,
-		// not just the one whose orbit triggered the pass - one operation, one
-		// ground force. Without this, no single fleet clears the 25 percent
-		// effectiveness floor against a mature hive's defenses and every raid
-		// pass is repulsed.
+		// defenses suppressed: put troops on the ground. COMBINED ARMS: the
+		// landing draws on every expedition fleet in-system, not just the one
+		// whose orbit triggered the pass - one operation, one ground force.
 		float groundStr = combinedRaidStr(market, raidStr);
+
+		// GROUND FRONT (docs/ground-war.md): with the war-strata softened and
+		// no front on this world yet, the expedition lands a persistent ground
+		// force - an NPC-owned front that pushes stratum by stratum toward the
+		// Fabrication Core on its own stance AI. Only ground victory kills a
+		// colony, so this is how NPC navies erase hives without the player.
+		// It carries a finite armaments supply; when that runs dry it withers,
+		// and the next expedition lands a fresh one.
+		if (ThreatIncConfig.frontsEnabled()
+				&& ThreatGroundFronts.getFront(market.getId()) == null
+				&& groundStr >= ThreatGroundFronts.grindRequirement(market)) {
+			float supply = ThreatGroundFronts.dailyUpkeep(market)
+					* ThreatIncConfig.npcFrontSupplyDays();
+			int troops = Math.round(groundStr);
+			if (carriesCargo) {
+				// the landing force is what is actually aboard, and the
+				// armaments are the ones drawn from the base - both leave the
+				// fleets for the surface (docs/strategy-layer.md)
+				float[] landed = unloadForLanding(market);
+				troops = Math.round(landed[0]);
+				supply = landed[1];
+				ThreatIncConfig.log("Landing from cargo at " + market.getName() + ": "
+						+ troops + " marines, " + (int) supply + " armaments");
+			}
+			String owner = getFaction() != null ? getFaction().getId() : null;
+			ThreatGroundFronts.deploy(market, owner, troops, supply);
+			rec.action = "Ground landing";
+			rec.targets = troops + " troops, campaign against the "
+					+ "Fabrication Core";
+			rec.success = true;
+			siegeActions.add(rec);
+			ThreatColonyManager.announceAlways((getFaction() != null
+					? Misc.ucFirst(getFaction().getDisplayNameWithArticle()) : "An")
+					+ " expedition has landed ground forces on " + market.getName()
+					+ " - the campaign for its strata has begun.",
+					Misc.getHighlightColor());
+			ThreatIncConfig.log("Siege pass (landing) vs " + rec.marketName + ": "
+					+ (int) groundStr + " troops");
+			return;
+		}
+
 		Industry target = pickRaidTarget(market);
 		if (target == null) return;
 		float before = target.getDisruptedDays();
@@ -215,6 +460,22 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * expedition scale).
 	 */
 	protected float combinedRaidStr(MarketAPI market, float fallback) {
+		// cargo-carrying expeditions land the marines they actually brought:
+		// aboard the live fleets here, or the (damage-discounted) allotment
+		// while the fleets are abstract
+		if (carriesCargo) {
+			if (!anyFleetLive()) return marinesAllotted * (1f - routeDamage());
+			float aboard = 0f;
+			for (CampaignFleetAPI fleet : getFleets()) {
+				if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+				if (market.getContainingLocation() != null
+						&& fleet.getContainingLocation() != market.getContainingLocation()) {
+					continue;
+				}
+				aboard += fleet.getCargo().getMarines();
+			}
+			return aboard;
+		}
 		float total = 0f;
 		for (CampaignFleetAPI fleet : getFleets()) {
 			if (fleet == null || !fleet.isAlive()) continue;
@@ -365,6 +626,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected void notifyEnding() {
 		super.notifyEnding();
 		postSiegeReport();
+		refundOnReturn();
 	}
 
 	/** Posts the after-action sitrep once, however the expedition ended. */
