@@ -50,6 +50,18 @@ public class ThreatConvoys {
 		public float fuel;
 		public float supplies;
 		public long departedTimestamp;
+		/** Set for a FRONT RUN: the hive world whose friendly front this convoy supplies or picks up. */
+		public String frontMarketId;
+		/** A withdrawal run: lands empty, lifts the front off, carries it home. */
+		public boolean pickup;
+		/** Whether the run has been ordered from the jump-point in to the planet. */
+		public boolean runningIn;
+		/** When it started waiting at the jump-point for the orbit to clear; 0 = not waiting. */
+		public long waitSinceTimestamp;
+
+		public boolean isFrontRun() {
+			return frontMarketId != null;
+		}
 
 		public String fromName() {
 			MarketAPI m = Global.getSector().getEconomy().getMarket(fromMarketId);
@@ -160,10 +172,15 @@ public class ThreatConvoys {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
 			if (faction == null) continue;
 			List<MarketAPI> markets = ThreatReserves.marketsOf(factionId);
+			// the bases short of the most (in convoy loads) sail first; at most
+			// convoyMaxPerTick sailings per faction per tick, so a mobilised
+			// navy does not flood hyperspace with a dozen convoys at once
+			// (seen in-game 2026-09-04: eight in one tick, two of them
+			// shipping the same goods past each other)
+			List<Object[]> wants = new ArrayList<Object[]>();
 			for (MarketAPI base : markets) {
 				if (convoyBoundFor(base.getId())) continue;
 				float[] targets = stagingTargets(base);
-				// the commodity the base is shortest of, in convoy loads
 				int worst = -1;
 				float worstShort = 0f;
 				for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
@@ -176,21 +193,266 @@ public class ThreatConvoys {
 					}
 				}
 				if (worst < 0 || worstShort < ThreatIncConfig.convoyMinLoadFraction()) continue;
-
-				String need = ThreatReserves.COMMODITIES[worst];
+				wants.add(new Object[] {base, targets, Integer.valueOf(worst), Float.valueOf(worstShort)});
+			}
+			java.util.Collections.sort(wants, new java.util.Comparator<Object[]>() {
+				public int compare(Object[] a, Object[] b) {
+					return Float.compare((Float) b[3], (Float) a[3]);
+				}
+			});
+			int sailed = 0;
+			int maxPerTick = Math.max(1, ThreatIncConfig.convoyMaxPerTick());
+			for (Object[] w : wants) {
+				if (sailed >= maxPerTick) break;
+				MarketAPI base = (MarketAPI) w[0];
+				float[] targets = (float[]) w[1];
+				String need = ThreatReserves.COMMODITIES[(Integer) w[2]];
 				MarketAPI donor = pickDonor(markets, base, need);
 				if (donor == null) continue;
-
 				float[] load = new float[ThreatReserves.COMMODITIES.length];
 				for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
 					String c = ThreatReserves.COMMODITIES[i];
 					float shortBy = targets[i] - ThreatReserves.stock(base.getId(), c);
 					if (shortBy <= 0f) continue;
-					load[i] = Math.min(shortBy, Math.min(spare(donor, c), capacityFor(c)));
+					load[i] = Math.min(shortBy, sendable(donor, base, c));
 				}
-				dispatch(donor, base, faction, load, random);
+				if (dispatch(donor, base, faction, load, random) != null) sailed++;
+			}
+			// the front is a reserve consumer too (docs/design-theory.md 8.3)
+			planFrontRuns(faction, random, sailed, maxPerTick);
+		}
+	}
+
+	// ------------------------------------------------------------------
+	// front runs: supply and withdrawal (docs/design-theory.md 8.3)
+	// ------------------------------------------------------------------
+
+	protected static boolean convoyBoundForFront(String hiveMarketId) {
+		for (Convoy c : all()) {
+			if (hiveMarketId.equals(c.frontMarketId)) return true;
+		}
+		return false;
+	}
+
+	/** What a friendly front wants brought: [marines, armaments]; a withdrawal call wants a pickup instead. */
+	public static float[] frontWants(ThreatGroundFronts.GroundFront front, MarketAPI hive) {
+		float armaments = ThreatIncConfig.frontResupplyDays()
+				* ThreatGroundFronts.dailyUpkeep(hive) - front.armaments;
+		float marines = ThreatIncConfig.frontReinforceFraction()
+				* ThreatGroundFronts.landedStrength(front) - front.marines;
+		return new float[] {Math.max(0f, marines), Math.max(0f, armaments)};
+	}
+
+	/**
+	 * Every friendly front of a mobilised faction with no run already bound
+	 * for it: a withdrawal call gets a pickup, a hungry front gets a supply
+	 * run from the faction's nearest base in reach, out of that base's
+	 * reserve (above its floor). Counts against the per-tick cap.
+	 */
+	protected static void planFrontRuns(FactionAPI faction, Random random, int sailed, int maxPerTick) {
+		if (!ThreatIncConfig.frontRunsEnabled()) return;
+		for (ThreatGroundFronts.GroundFront front
+				: new ArrayList<ThreatGroundFronts.GroundFront>(ThreatGroundFronts.fronts().values())) {
+			if (sailed >= maxPerTick) return;
+			String owner = front.factionId != null ? front.factionId
+					: com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER;
+			if (!faction.getId().equals(owner)) continue;
+			if (convoyBoundForFront(front.marketId)) continue;
+			MarketAPI hive = ThreatIncData.resolveColonyMarket(front.marketId);
+			if (hive == null || hive.getStarSystem() == null) continue;
+			MarketAPI base = ThreatFleetOrders.pickBase(faction, hive.getLocationInHyperspace());
+			if (base == null) continue;
+			if (front.withdrawRequested) {
+				if (dispatchFrontRun(base, hive, front, faction, new float[] {0f, 0f}, true, random)
+						!= null) sailed++;
+				continue;
+			}
+			float[] wants = frontWants(front, hive);
+			float upkeepDays = ThreatGroundFronts.dailyUpkeep(hive) > 0f
+					? wants[1] / ThreatGroundFronts.dailyUpkeep(hive) : 0f;
+			// not worth a sailing for less than a few days of armaments or a handful of marines
+			if (upkeepDays < 10f && wants[0] < 100f) continue;
+			float[] load = new float[] {
+					Math.min(wants[0], Math.min(ThreatReserves.available(base, Commodities.MARINES),
+							ThreatIncConfig.convoyMarineCapacity())),
+					Math.min(wants[1], Math.min(ThreatReserves.available(base, Commodities.HAND_WEAPONS),
+							ThreatIncConfig.convoyCargoCapacity()))};
+			if (load[0] < 50f && load[1] < 20f) continue;
+			if (dispatchFrontRun(base, hive, front, faction, load, false, random) != null) sailed++;
+		}
+	}
+
+	/**
+	 * The board's Supply order: a run to this front now, from the nearest
+	 * base, ignoring the per-tick cap. Null if no base is in reach or the
+	 * base has nothing above its floor to send.
+	 */
+	public static Convoy supplyFront(MarketAPI hive, FactionAPI faction, Random random) {
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(hive.getId());
+		if (front == null || faction == null || !ThreatIncConfig.frontRunsEnabled()) return null;
+		if (convoyBoundForFront(hive.getId())) return null;
+		MarketAPI base = ThreatFleetOrders.pickBase(faction, hive.getLocationInHyperspace());
+		if (base == null) return null;
+		float[] wants = frontWants(front, hive);
+		float[] load = new float[] {
+				Math.min(Math.max(wants[0], 200f), Math.min(ThreatReserves.available(base, Commodities.MARINES),
+						ThreatIncConfig.convoyMarineCapacity())),
+				Math.min(Math.max(wants[1], ThreatGroundFronts.dailyUpkeep(hive) * 30f),
+						Math.min(ThreatReserves.available(base, Commodities.HAND_WEAPONS),
+								ThreatIncConfig.convoyCargoCapacity()))};
+		if (load[0] <= 0f && load[1] <= 0f) return null;
+		return dispatchFrontRun(base, hive, front, faction, load, false, random);
+	}
+
+	/** The board's Pull out order: a pickup run for this front now. */
+	public static Convoy pullOutFront(MarketAPI hive, FactionAPI faction, Random random) {
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(hive.getId());
+		if (front == null || faction == null || !ThreatIncConfig.frontRunsEnabled()) return null;
+		if (convoyBoundForFront(hive.getId())) return null;
+		MarketAPI base = ThreatFleetOrders.pickBase(faction, hive.getLocationInHyperspace());
+		if (base == null) return null;
+		front.withdrawRequested = true;
+		return dispatchFrontRun(base, hive, front, faction, new float[] {0f, 0f}, true, random);
+	}
+
+	/**
+	 * Builds the run at the base: transports and freighters sized to the load
+	 * (or, for a pickup, to the front it will lift), escorted by cargo value.
+	 * Sails for the hive system's jump-point; poll() takes it from there.
+	 */
+	protected static Convoy dispatchFrontRun(MarketAPI base, MarketAPI hive,
+			ThreatGroundFronts.GroundFront front, FactionAPI faction, float[] load, boolean pickup,
+			Random random) {
+		StarSystemAPI system = base.getStarSystem();
+		SectorEntityToken from = base.getPrimaryEntity();
+		SectorEntityToken door = ThreatFleetOrders.interceptPoint(hive.getStarSystem());
+		if (system == null || from == null || door == null) return null;
+
+		float marinesForHulls = pickup ? Math.max(100f, front.marines) : load[0];
+		float cargoForHulls = pickup ? Math.max(100f, front.armaments) : load[1];
+		float escort = ThreatIncConfig.convoyEscortFP()
+				+ cargoValue(marinesForHulls, cargoForHulls, 0f, 0f) / 1000f
+						* ThreatIncConfig.convoyEscortPerThousand();
+		float freighterPts = Math.max(10f, cargoForHulls / 60f);
+		float transportPts = Math.max(10f, marinesForHulls / 40f);
+		FleetParamsV3 params = new FleetParamsV3(base, base.getLocationInHyperspace(),
+				faction.getId(), null, FleetTypes.SUPPLY_FLEET,
+				escort, freighterPts, 0f, transportPts, 0f, 0f, 0f);
+		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
+		if (fleet == null || fleet.isEmpty()) return null;
+
+		system.addEntity(fleet);
+		fleet.setLocation(from.getLocation().x, from.getLocation().y);
+		fleet.setName(pickup ? "Evacuation Convoy" : "Supply Convoy");
+		fleet.setNoFactionInName(false);
+		fleet.getMemoryWithoutUpdate().set(CONVOY_FLAG, true);
+		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_TRADE_FLEET, true);
+		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_LOW_REP_IMPACT, true);
+
+		Convoy c = new Convoy();
+		c.fleet = fleet;
+		c.factionId = faction.getId();
+		c.fromMarketId = base.getId();
+		c.toMarketId = hive.getId();
+		c.frontMarketId = hive.getId();
+		c.pickup = pickup;
+		c.departedTimestamp = Global.getSector().getClock().getTimestamp();
+		if (!pickup) {
+			CargoAPI cargo = fleet.getCargo();
+			int m = (int) Math.min(load[0], cargo.getFreeCrewSpace());
+			if (m > 0) {
+				int taken = (int) ThreatReserves.drawAbove(base, Commodities.MARINES, m);
+				if (taken > 0) cargo.addMarines(taken);
+				c.marines = taken;
+			}
+			int a = (int) Math.min(load[1], cargo.getSpaceLeft());
+			if (a > 0) {
+				int taken = (int) ThreatReserves.drawAbove(base, Commodities.HAND_WEAPONS, a);
+				if (taken > 0) cargo.addCommodity(Commodities.HAND_WEAPONS, taken);
+				c.armaments = taken;
+			}
+			if (c.marines <= 0f && c.armaments <= 0f) {
+				Misc.fadeAndExpire(fleet);
+				return null;
 			}
 		}
+		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, door, 1000f,
+				(pickup ? "withdrawal run to " : "supply run to ") + hive.getName());
+		all().add(c);
+		ThreatIncConfig.log((pickup ? "Withdrawal run dispatched: " : "Supply run dispatched: ")
+				+ faction.getId() + " " + base.getName() + " -> " + hive.getName() + " ("
+				+ (int) c.marines + " marines, " + (int) c.armaments + " armaments; escort "
+				+ (int) escort + " FP)");
+		ThreatRaiders.consider(c, random);
+		return c;
+	}
+
+	/**
+	 * A front run inside the hive system: wait at the door while Defense
+	 * Swarms hold the orbit (up to frontRunWaitDays, then home), run in when
+	 * it clears, and on arrival either land the cargo on the front or lift
+	 * the front off. Returns true when the convoy was handled (or removed).
+	 */
+	protected static void pollFrontRun(Convoy c) {
+		CampaignFleetAPI fleet = c.fleet;
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(c.frontMarketId);
+		MarketAPI hive = ThreatIncData.resolveColonyMarket(c.frontMarketId);
+		if (front == null || hive == null || hive.getPrimaryEntity() == null) {
+			// the front died, won, or was pulled out by hand: nothing to do there
+			returnHome(c);
+			return;
+		}
+		SectorEntityToken planet = hive.getPrimaryEntity();
+		if (fleet.getContainingLocation() != planet.getContainingLocation()) return; // en route
+		if (!c.runningIn) {
+			if (ThreatGroundFronts.orbitContested(hive.getId())) {
+				long now = Global.getSector().getClock().getTimestamp();
+				if (c.waitSinceTimestamp == 0L) {
+					c.waitSinceTimestamp = now;
+					ThreatIncConfig.log("Front run waiting at the door of " + hive.getName()
+							+ ": orbit contested");
+				} else if (Global.getSector().getClock().getElapsedDaysSince(c.waitSinceTimestamp)
+						> ThreatIncConfig.frontRunWaitDays()) {
+					ThreatIncConfig.log("Front run gave up at " + hive.getName()
+							+ ": orbit still contested after " + (int) ThreatIncConfig.frontRunWaitDays()
+							+ " days");
+					returnHome(c);
+				}
+				return;
+			}
+			c.runningIn = true;
+			fleet.clearAssignments();
+			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, planet, 1000f,
+					"running in to " + hive.getName());
+			return;
+		}
+		if (Misc.getDistance(fleet, planet) > ARRIVAL_RANGE) return;
+		CargoAPI cargo = fleet.getCargo();
+		String who = ThreatWarState.displayName(c.factionId);
+		if (c.pickup) {
+			int[] rec = ThreatGroundFronts.withdraw(hive.getId());
+			if (rec[0] > 0) cargo.addMarines(rec[0]);
+			if (rec[1] > 0) cargo.addCommodity(Commodities.HAND_WEAPONS, rec[1]);
+			ThreatColonyManager.announceAlways(who + " ground forces have been lifted off "
+					+ hive.getName() + " - " + rec[0] + " marines and " + rec[1]
+					+ " heavy armaments are on their way home.", Misc.getHighlightColor());
+			ThreatIncConfig.log("Front withdrawn to fleet at " + hive.getName() + ": " + rec[0]
+					+ " marines, " + rec[1] + " armaments");
+		} else {
+			int marines = cargo.getMarines();
+			int armaments = (int) cargo.getCommodityQuantity(Commodities.HAND_WEAPONS);
+			if (marines > 0) cargo.removeMarines(marines);
+			if (armaments > 0) cargo.removeCommodity(Commodities.HAND_WEAPONS, armaments);
+			ThreatGroundFronts.resupply(front, marines, armaments);
+			ThreatColonyManager.announceAlways("A " + who + " supply run has landed on "
+					+ hive.getName() + ": " + marines + " marines and " + armaments
+					+ " heavy armaments reach the front.", Misc.getPositiveHighlightColor());
+			ThreatIncConfig.log("Supply run delivered at " + hive.getName() + ": " + marines
+					+ " marines, " + armaments + " armaments");
+		}
+		all().remove(c);
+		// home on the tracked leg: survivors and any undelivered cargo return to the base
+		ThreatReturns.sendHome(fleet, c.factionId, c.fromMarketId);
 	}
 
 	/**
@@ -225,7 +487,7 @@ public class ThreatConvoys {
 		float[] load = new float[ThreatReserves.COMMODITIES.length];
 		for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
 			String c = ThreatReserves.COMMODITIES[i];
-			load[i] = Math.min(spare(donor, c), capacityFor(c));
+			load[i] = sendable(donor, target, c);
 		}
 		return dispatch(donor, target, faction, load, random);
 	}
@@ -236,22 +498,38 @@ public class ThreatConvoys {
 		return Math.max(0f, ThreatReserves.stock(donor.getId(), commodityId) - keep);
 	}
 
+	/**
+	 * EQUALISATION: what a donor may send a base of one commodity - never
+	 * more than half the difference between their stocks, so the donor is
+	 * never left poorer than the base it just supplied. When every colony is
+	 * a staging base (a core faction facing one hive), this is what keeps
+	 * convoys flowing from the rich worlds to the poor ones instead of the
+	 * two shipping the same goods past each other (seen in-game 2026-09-04).
+	 */
+	public static float sendable(MarketAPI donor, MarketAPI base, String commodityId) {
+		float donorStock = ThreatReserves.stock(donor.getId(), commodityId);
+		float baseStock = ThreatReserves.stock(base.getId(), commodityId);
+		float gap = (donorStock - baseStock) / 2f;
+		if (gap <= 0f) return 0f;
+		return Math.min(gap, Math.min(spare(donor, commodityId), capacityFor(commodityId)));
+	}
+
 	protected static MarketAPI pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId) {
 		MarketAPI best = null;
-		float bestSpare = 0f;
+		float bestSend = 0f;
 		float range = ThreatIncConfig.convoyRangeLY();
 		for (MarketAPI donor : markets) {
 			if (donor == base || donor.getStarSystem() == null) continue;
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					base.getStarSystem().getLocation()) > range) continue;
-			float s = spare(donor, commodityId);
-			if (s > bestSpare) {
-				bestSpare = s;
+			float s = sendable(donor, base, commodityId);
+			if (s > bestSend) {
+				bestSend = s;
 				best = donor;
 			}
 		}
 		// not worth a sailing
-		if (best != null && bestSpare < capacityFor(commodityId)
+		if (best != null && bestSend < capacityFor(commodityId)
 				* ThreatIncConfig.convoyMinLoadFraction()) return null;
 		return best;
 	}
@@ -401,6 +679,10 @@ public class ThreatConvoys {
 				continue;
 			}
 			trimToHulls(c);
+			if (c.isFrontRun()) {
+				pollFrontRun(c);
+				continue;
+			}
 			MarketAPI base = Global.getSector().getEconomy().getMarket(c.toMarketId);
 			if (base == null || base.getPrimaryEntity() == null
 					|| !c.factionId.equals(base.getFactionId())) {

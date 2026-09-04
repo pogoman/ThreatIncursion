@@ -759,6 +759,20 @@ public class ThreatWarBoard {
 			com.fs.starfarer.api.ui.ButtonAPI button = intel.addGenericButton(main, MAP_BUTTON_W, "Map",
 					BUTTON_MAP + market.getId());
 			button.getPosition().aboveRight(card, -24f).setXAlignOffset(-8f - COLONY_BUTTON_W - 6f);
+			// the player's own front here, faction mobilised: a supply run from the
+			// nearest base, without flying there (docs/design-theory.md 8.3)
+			ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+			if (front != null && front.isPlayerOwned()
+					&& ThreatWarState.isAtWar(Factions.PLAYER)) {
+				com.fs.starfarer.api.ui.ButtonAPI supply = intel.addGenericButton(main, 60f,
+						"Supply", ThreatFactionView.BUTTON_SUPPLY + Factions.PLAYER + ":" + market.getId());
+				supply.getPosition().aboveRight(card, -24f)
+						.setXAlignOffset(-8f - COLONY_BUTTON_W - 6f - MAP_BUTTON_W - 6f);
+				boolean ok = ThreatIncConfig.frontRunsEnabled() && ThreatFleetOrders.pickBase(
+						Global.getSector().getPlayerFaction(), market.getLocationInHyperspace()) != null;
+				supply.setEnabled(ok);
+				supply.setShowTooltipWhileInactive(true);
+			}
 		}
 		main.setHeightSoFar(heightBefore);
 	}

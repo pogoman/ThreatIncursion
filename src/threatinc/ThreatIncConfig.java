@@ -317,6 +317,16 @@ public class ThreatIncConfig {
 	public static float raiderDays()          { return f("threatinc_raiderDays"); }
 	/** Shortfall (in convoy loads) below which no convoy sails. */
 	public static float convoyMinLoadFraction() { return f("threatinc_convoyMinLoadFraction"); }
+	/** Convoys one faction dispatches per slow tick at most (the neediest bases first). */
+	public static int convoyMaxPerTick()      { return i("threatinc_convoyMaxPerTick"); }
+	/** Whether mobilised factions run supply and withdrawal convoys to their ground fronts. */
+	public static boolean frontRunsEnabled()  { return b("threatinc_frontRunsEnabled", true); }
+	/** Days of armaments a supply run tops a front up to. */
+	public static float frontResupplyDays()   { return f("threatinc_frontResupplyDays"); }
+	/** Fraction of a front's peak strength a supply run reinforces it back toward. */
+	public static float frontReinforceFraction() { return f("threatinc_frontReinforceFraction"); }
+	/** Days a front run waits at the hive system's jump-point for the orbit to clear before turning home. */
+	public static float frontRunWaitDays()    { return f("threatinc_frontRunWaitDays"); }
 	/** Fraction of its own cap a donor colony keeps back. */
 	public static float donorKeepFraction()   { return f("threatinc_donorKeepFraction"); }
 	/** Staging target as a multiple of one expedition's draw. */

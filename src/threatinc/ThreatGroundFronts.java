@@ -86,6 +86,10 @@ public class ThreatGroundFronts {
 		public String announcedState;
 		/** Whether the out-of-supply message has fired for the current dry spell. */
 		public boolean announcedDry;
+		/** Peak marine strength (landing plus reinforcements) - what supply runs reinforce toward. */
+		public float marinesLanded;
+		/** The front has asked to be pulled out (NPC stance AI, or the board's Pull out order). */
+		public boolean withdrawRequested;
 
 		public boolean isPlayerOwned() {
 			return factionId == null || Factions.PLAYER.equals(factionId);
@@ -128,6 +132,7 @@ public class ThreatGroundFronts {
 		front.factionId = factionId;
 		front.marines = marines;
 		front.armaments = armaments;
+		front.marinesLanded = marines;
 		front.deployedTimestamp = Global.getSector().getClock().getTimestamp();
 		front.lastCounterAttack = front.deployedTimestamp;
 		fronts().put(market.getId(), front);
@@ -140,7 +145,15 @@ public class ThreatGroundFronts {
 		if (front == null) return;
 		front.marines += marines;
 		front.armaments += armaments;
+		front.marinesLanded = Math.max(front.marinesLanded, front.marines);
 		front.announcedDry = false;
+		front.withdrawRequested = false;
+	}
+
+	/** Peak strength, falling back to the current figure for fronts from older saves. */
+	public static float landedStrength(GroundFront front) {
+		if (front == null) return 0f;
+		return Math.max(front.marinesLanded, front.marines);
 	}
 
 	/** Removes the front; returns [marines, armaments] recovered. */
@@ -463,6 +476,16 @@ public class ThreatGroundFronts {
 		// economy buys you now
 		hiveCounterAttack(front, market);
 		if (getFront(front.marketId) == null) return; // front overrun
+
+		// NPC withdrawal call (docs/design-theory.md 8.3): dry AND too weak
+		// even to grind, the campaign is lost - ask for a pickup run rather
+		// than wither in place. A supply run that lands first clears the call.
+		if (!front.isPlayerOwned() && !front.withdrawRequested && front.armaments <= 0f
+				&& eff < defender * ThreatIncConfig.frontGrindFraction()) {
+			front.withdrawRequested = true;
+			ThreatIncConfig.log("Front at " + market.getName() + " (" + front.factionId
+					+ ") requests withdrawal: dry and below grind strength");
+		}
 
 		// NPC stance AI: push whenever strong enough and supplied, dig in
 		// otherwise. Consolidation paces them like everyone else; player
