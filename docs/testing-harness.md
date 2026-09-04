@@ -21,6 +21,38 @@ cycle takes about 50 seconds at 3440x1440.
   the table, capture. Parameters: `-Tag`, `-Scale`, `-OutDir`, `-ContinueX/Y`, `-TabX/Y`,
   `-EntryX/Y`, `-ParkX/Y`, `-StopAtMenu`, `-StopAtIntel`.
 
+## Laptop panel (1920x1080, hybrid GPU) - added 2026-09-04
+
+On the laptop's own panel two things break the recipe above: **screen grabs return a
+stale frame** of the game window (CopyFromScreen and Win+PrintScreen alike show the
+loading bar long after the menu is up), and the launcher renders at **597x373** instead
+of 805x503, so Play is at (298,254). Four extra scripts cover it:
+
+- `gameshot.ps1 -Out file.png [-Scale 0.5]` - the only reliable capture there: posts
+  `VK_SNAPSHOT` straight to the game window (`PostMessage`, which bypasses the Windows 11
+  Snipping Tool hotkey) so the game writes its own framebuffer to
+  `Starsector\screenshots\` (one level ABOVE starsector-core), then copies the newest file
+  downscaled. `NOSHOT` means the key was not seen - the game window must have focus.
+- `lap-cycle.ps1 [-Tag x] [-Faction hegemony|player] [-NoCapture]` - the whole cycle for
+  that panel: kill, launch, Play at the small launcher, wait for the menu by the
+  "Reading save data" log line, click Continue at (1392,372) and retry until
+  "Loading stage 39 - last" appears, press E (the war board stays selected across
+  launches so E opens it directly), optionally click a selector button (Hegemony at
+  (730,194), Your faction at (862,194)), then `gameshot`.
+- `hold.ps1 -Key shift -Seconds N` - holds Shift (campaign fast-forward while unpaused):
+  after the board capture, `{ESC}`, space, hold, space, then E again. About 0.6-0.7
+  campaign days per real second.
+- `place.ps1 -X -Y` - forces the game window on-screen (useful when a window is off
+  a disconnected monitor).
+
+Things learned the hard way: with the external monitor powered off the vanilla launcher
+crashes on Play (array index error reading the display list) and nothing paints - keep
+the display on. LunaLib keeps STORED values in
+`saves\common\LunaSettings\threatinc.json.data`; changed defaults in LunaSettings.csv do
+not apply until edited there. Injected persistent-data objects use `_-` for `$` in the
+element name (`threatinc.ThreatGroundFronts_-GroundFront`); a `lastCounterAttack` of 0
+means the front is counter-attacked on the first poll.
+
 ## Coordinates (client pixels, windowed)
 
 | Target | 3440x1440 | 1920x1080 |
