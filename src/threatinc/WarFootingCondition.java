@@ -34,23 +34,23 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 		FactionAPI faction = market.getFaction();
 		String who = faction == null ? "The faction" : faction.isPlayerFaction() ? "Your faction"
 				: Misc.ucFirst(faction.getDisplayNameWithArticle());
-		tooltip.addPara(who + " is mobilised against the Threat. This colony's demand for "
-				+ "marines, heavy armaments, fuel and supplies is raised by %s above what its "
-				+ "industries want, and its war reserve - banked from whatever it has above "
-				+ "demand - is spent on its own shortages before anything sails.", opad, h,
+		tooltip.addPara(who + " is mobilised against the Threat. Demand for marines, heavy "
+				+ "armaments, fuel and supplies is raised by %s here; the war reserve covers "
+				+ "this colony's own shortages before anything sails.", opad, h,
 				units + (units == 1 ? " unit" : " units"));
 		for (String c : ThreatReserves.COMMODITIES) {
 			addCommodityLine(tooltip, market, c, 3f);
 		}
-		tooltip.addPara("Selling any of these here raises its availability for %s days, the way "
-				+ "every sale does: it ends a shortage, spares the reserve, and anything above "
-				+ "demand is banked into the war effort. Buying does the reverse.", opad, h,
+		tooltip.addPara("Selling here raises availability for %s days, as any sale does; "
+				+ "anything above demand banks into the reserve.", opad, h,
 				"" + (int) BaseSubmarketPlugin.TRADE_IMPACT_DAYS);
 	}
 
 	/**
-	 * One commodity's line, vanilla's units beside the reserve's count. Shared
-	 * with the war board's faction view (ThreatFactionView.colonyTooltip).
+	 * One commodity's line: the stock banked, then its state in vanilla's
+	 * units. What is true now, not how the depot works (docs/design-theory.md
+	 * 8.6 and docs/economy-coherence.md have that). Shared with the war
+	 * board's faction view (ThreatFactionView.colonyTooltip).
 	 */
 	public static void addCommodityLine(TooltipMakerAPI tooltip, MarketAPI market, String c,
 			float pad) {
@@ -63,43 +63,29 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 		String name = Misc.ucFirst(ThreatReserves.label(c));
 		String stock = Misc.getWithDGS((int) s.stock);
 		if (s.covering) {
-			tooltip.addPara(name + ": %s in reserve. The depot covers a shortage of %s (%s "
-					+ "available with it, %s demanded): %s issued, %s left.", pad, h, stock,
-					units(s.deficit), "" + s.available, "" + s.demand,
-					Misc.getWithDGS((int) s.coverQty), days(s.coverDaysLeft));
+			tooltip.addPara(name + ": %s banked. Short %s; depot issuing %s for %s.", pad, h,
+					stock, units(s.deficit), Misc.getWithDGS((int) s.coverQty), days(s.coverDaysLeft));
 		} else if (s.exhausted && s.floor > 0f && s.stock - s.floor < s.stock
 				* ThreatIncConfig.reserveShortageCoverFraction()) {
 			// the garrison's floor, not the cover fraction, is what stops the issue
-			tooltip.addPara(name + ": %s in reserve. Short %s (%s available, %s demanded): "
-					+ "%s - a unit is %s and the depot keeps %s for the garrison, so the "
-					+ "shortage stands.", pad, neg, stock, units(s.deficit),
-					"" + s.available, "" + s.demand, "depot too low to issue",
-					Misc.getWithDGS((int) s.econUnit), Misc.getWithDGS((int) s.floor));
+			tooltip.addPara(name + ": %s banked. Short %s; depot too low to issue, %s kept for "
+					+ "the garrison.", pad, neg, stock, units(s.deficit),
+					Misc.getWithDGS((int) s.floor));
 		} else if (s.exhausted) {
-			// the stock may not be zero: the depot spends at most the cover
-			// fraction of it per issue, and a unit costs the econ unit
-			tooltip.addPara(name + ": %s in reserve. Short %s (%s available, %s demanded): "
-					+ "%s - a unit is %s and the depot spends at most %s of its stock per "
-					+ "issue, so the shortage stands.", pad, neg, stock, units(s.deficit),
-					"" + s.available, "" + s.demand, "depot too low to issue",
-					Misc.getWithDGS((int) s.econUnit),
-					(int) Math.round(ThreatIncConfig.reserveShortageCoverFraction() * 100f) + "%");
+			tooltip.addPara(name + ": %s banked. Short %s; depot too low to issue.", pad, neg,
+					stock, units(s.deficit));
 		} else if (s.deficit > 0) {
-			tooltip.addPara(name + ": %s in reserve. Short %s (%s available, %s demanded): "
-					+ "the depot is about to cover it.", pad, h, stock, units(s.deficit),
-					"" + s.available, "" + s.demand);
+			tooltip.addPara(name + ": %s banked. Short %s; cover due.", pad, h, stock,
+					units(s.deficit));
 		} else if (s.surplus > 0f) {
-			tooltip.addPara(name + ": %s in reserve. %s surplus (%s available, %s demanded): "
-					+ "banking %s a month, cap %s.", pad, pos, stock, units((int) s.surplus),
-					"" + s.available, "" + s.demand, Misc.getWithDGS((int) s.per30),
+			tooltip.addPara(name + ": %s banked. Surplus %s; +%s a month, cap %s.", pad, pos,
+					stock, units((int) s.surplus), Misc.getWithDGS((int) s.per30),
 					Misc.getWithDGS((int) s.cap));
 		} else if (s.per30 > 0f) {
-			tooltip.addPara(name + ": %s in reserve. Balanced (%s available, %s demanded): only "
-					+ "the militia trickle banks, %s a month.", pad, gray, stock,
-					"" + s.available, "" + s.demand, Misc.getWithDGS((int) s.per30));
+			tooltip.addPara(name + ": %s banked. Balanced; militia +%s a month.", pad, gray,
+					stock, Misc.getWithDGS((int) s.per30));
 		} else {
-			tooltip.addPara(name + ": %s in reserve. Balanced (%s available, %s demanded): "
-					+ "nothing to bank.", pad, gray, stock, "" + s.available, "" + s.demand);
+			tooltip.addPara(name + ": %s banked. Balanced; nothing to bank.", pad, gray, stock);
 		}
 	}
 

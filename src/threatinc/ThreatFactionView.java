@@ -257,10 +257,8 @@ public class ThreatFactionView {
 				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
 				public float getTooltipWidth(Object tooltipParam) { return 360f; }
 				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
-					tooltip.addPara("Lift the War footing from every colony of yours. Its wartime "
-							+ "demand ends, the reserves stop banking and are kept as they stand, "
-							+ "and this board no longer treats your faction as at war. You can "
-							+ "mobilise again from this tab at any time.", 0f);
+					tooltip.addPara("Lift the War footing from every colony of yours. Reserves stop "
+							+ "banking and are kept as they stand. Mobilise again here any time.", 0f);
 				}
 			}, standDown, TooltipLocation.BELOW);
 		}
@@ -742,36 +740,20 @@ public class ThreatFactionView {
 		}
 		if (r.staging != null) {
 			float[] wants = ThreatConvoys.stagingTargets(m);
-			tooltip.addPara("Staging base for the " + r.staging.getNameWithLowercaseType()
-					+ " (" + (int) Math.ceil(r.stagingLY) + " ly). Stocks toward %s marines, "
-					+ "%s armaments, %s fuel, %s supplies - what its expeditions draw.", 10f, h,
+			tooltip.addPara("Staging for " + r.staging.getNameWithNoType() + ", "
+					+ (int) Math.ceil(r.stagingLY) + " ly. Stocks toward %s marines, %s armaments, "
+					+ "%s fuel, %s supplies.", 10f, h,
 					Misc.getWithDGS((int) wants[0]), Misc.getWithDGS((int) wants[1]),
 					Misc.getWithDGS((int) wants[2]), Misc.getWithDGS((int) wants[3]));
 		} else {
-			tooltip.addPara(r.military ? "No live hive within its expedition reach - it "
-					+ "supplies the bases that have one." : "Not a base: its reserves ship "
-					+ "to the faction's staging bases by convoy.", gray, 10f);
+			tooltip.addPara(r.military ? "No hive in reach; supplies the bases that have one."
+					: "Not a base; its reserves ship to the staging bases.", gray, 10f);
 		}
+		// what the Defend and Aid buttons would send is on the buttons themselves
 		if (m.isPlayerOwned()) {
 			tooltip.addPara(ThreatAidCapacity.describe(m), h, 10f);
-		} else if (ThreatWarState.isAtWar(m.getFaction()) && ThreatAid.canAid(m.getFaction()) == null) {
-			ThreatAid.Quote d = ThreatAid.quoteDefend(m);
-			if (d.ok()) {
-				tooltip.addPara("Defend: a task force of about %s FP from " + d.source.getName()
-						+ ".", 10f, h, "" + (int) d.fp);
-			} else {
-				tooltip.addPara("Defend: " + d.reason, gray, 10f);
-			}
-			ThreatAid.Quote s = ThreatAid.quoteResupply(m);
-			if (s.ok()) {
-				tooltip.addPara("Aid: %s " + ThreatReserves.label(s.commodityId) + " of the %s "
-						+ "needed, from " + s.source.getName() + ".", 3f, h,
-						Misc.getWithDGS(s.quantity), Misc.getWithDGS(s.need));
-			} else {
-				tooltip.addPara("Aid: " + s.reason, gray, 3f);
-			}
 		}
-		tooltip.addPara("Click the row to show the world on the map.", gray, 10f);
+		tooltip.addPara("Click to show on the map.", gray, 10f);
 	}
 
 	protected static List<FleetRow> fleetRows(String factionId) {
@@ -979,16 +961,13 @@ public class ThreatFactionView {
 		main.addSectionHeading(name + " - not mobilised", faction.getBrightUIColor(),
 				faction.getDarkUIColor(), Alignment.MID, opad);
 		int colonies = Misc.getPlayerMarkets(false).size();
-		main.addPara("Your %s " + (colonies == 1 ? "colony is" : "colonies are") + " at peace with "
-				+ "the war. Nothing is stocked for it, no convoys run, and your aid to other "
-				+ "factions has no reserve to draw on.", opad, h, "" + colonies);
-		main.addPara("Mobilise to put every colony of yours on War footing: each stocks marines, "
-				+ "heavy armaments, fuel and supplies from its own surplus into a visible reserve "
-				+ "(seeded with %s months' worth on the day), and carries the footing's extra "
-				+ "demand - %s units at size 5, scaled by size - which shows on the colony "
-				+ "screen and costs stability if unmet. Your fleets then take orders from this "
-				+ "board, your convoys run, and your aid to allies ships from those reserves. "
-				+ "You can stand down again from this tab at any time; the reserves are kept.",
+		main.addPara("Your %s " + (colonies == 1 ? "colony is" : "colonies are") + " not "
+				+ "mobilised: nothing is stocked for the war, no convoys run, and your aid to "
+				+ "allies has no reserve to draw on.", opad, h, "" + colonies);
+		main.addPara("Mobilise: every colony goes on War footing, banking marines, heavy "
+				+ "armaments, fuel and supplies from its own surplus (seeded with %s months' "
+				+ "worth) and carrying %s units of extra demand at size 5, scaled by size. "
+				+ "Stand down here any time; reserves are kept.",
 				opad, h, "" + (int) ThreatIncConfig.reserveInitialMonths(),
 				"" + (int) ThreatIncConfig.warFootingDemandUnits());
 		ButtonAPI mobilise = intel.addGenericButton(main, SELECTOR_BUTTON_W, "Mobilise",
@@ -1034,17 +1013,16 @@ public class ThreatFactionView {
 		if (BUTTON_MOBILISE.equals(parts[0])) {
 			int colonies = Misc.getPlayerMarkets(false).size();
 			prompt.addPara("Mobilise your faction? Every colony of yours (%s) goes on War footing "
-					+ "now: it stocks a reserve from its surplus, seeded with %s months' worth, "
-					+ "and carries the footing's extra demand of %s units at size 5, scaled by "
-					+ "size. You can stand down again from the same tab.", 0f, h,
+					+ "now, seeded with %s months' reserve and carrying %s units of extra demand "
+					+ "at size 5, scaled by size.", 0f, h,
 					"" + colonies, "" + (int) ThreatIncConfig.reserveInitialMonths(),
 					"" + (int) ThreatIncConfig.warFootingDemandUnits());
 			return;
 		}
 		if (BUTTON_STAND_DOWN.equals(parts[0])) {
-			prompt.addPara("Stand your faction down? The War footing and its demand are lifted "
-					+ "from every colony of yours, the reserves stop banking and are kept as "
-					+ "they stand, and fleets and convoys already out finish their runs.", 0f);
+			prompt.addPara("Stand your faction down? War footing and its demand are lifted, "
+					+ "reserves are kept as they stand, and fleets already out finish their "
+					+ "runs.", 0f);
 			return;
 		}
 		if (BUTTON_GUARD.equals(parts[0])) {
@@ -1054,16 +1032,14 @@ public class ThreatFactionView {
 			prompt.addPara("Order a task force of about %s fleet points from "
 					+ (base != null ? base.getName() : "the nearest base") + " to take the orbit of "
 					+ (target != null ? target.getName() : "the world") + " for %s days? Fuel and "
-					+ "supplies come from the base's reserve; the hulls are held against its "
-					+ "fleet capacity until they are home.", 0f, h,
+					+ "supplies come from its reserve.", 0f, h,
 					"" + (int) (base != null ? ThreatAid.taskForceFP(base) : ThreatIncConfig.guardFleetFP()),
 					"" + (int) ThreatIncConfig.guardDays());
 		} else if (BUTTON_STAGE.equals(parts[0])) {
 			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
 			prompt.addPara("Order a convoy to " + (target != null ? target.getName() : "the world")
-					+ " from whichever of " + who + " colonies can best spare war materiel? It "
-					+ "carries up to %s marines and %s units of armaments, fuel and supplies, "
-					+ "and can be intercepted on the way.", 0f, h,
+					+ " from whichever of " + who + " colonies can best spare it? Up to %s "
+					+ "marines and %s units of cargo; it can be intercepted on the way.", 0f, h,
 					"" + (int) ThreatIncConfig.convoyMarineCapacity(),
 					"" + (int) ThreatIncConfig.convoyCargoCapacity());
 		} else if (BUTTON_INTERCEPT.equals(parts[0])) {
@@ -1072,9 +1048,7 @@ public class ThreatFactionView {
 			prompt.addPara("Order a task force of about %s fleet points from "
 					+ (base != null ? base.getName() : "the nearest base") + " to hold the jump-point "
 					+ "of the " + (system != null ? system.getNameWithLowercaseType() : "hive system")
-					+ " for %s days, meeting the swarm's reinforcements and expeditions at the "
-					+ "door? Fuel and supplies come from the base's reserve; the hulls are held "
-					+ "against its fleet capacity until they are home.", 0f, h,
+					+ " for %s days? Fuel and supplies come from its reserve.", 0f, h,
 					"" + (int) (base != null ? ThreatAid.taskForceFP(base) : ThreatIncConfig.guardFleetFP()),
 					"" + (int) ThreatIncConfig.interceptDays());
 		} else if (BUTTON_SIEGE.equals(parts[0])) {
