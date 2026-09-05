@@ -283,7 +283,8 @@ To verify in-game, in this order:
 1. Own faction view: Guard / Stage buttons and their reasons; the colony tooltip's
    "Fleet capacity" line; a Guard commits points and they return when it is home.
 2. Sindria (or any mobilised NPC faction) view: no order buttons; Defend and Aid on
-   colony rows with prices in the tooltip; Strike on hive rows; the aid fleet appears
+   colony rows, each button's own tooltip naming the source colony and what it sends
+   (the row tooltip no longer repeats it); Strike on hive rows; the aid fleet appears
    under "Fleets in flight, and your aid to them" and can be recalled.
 3. A resupply lands: reserve deposit, trade modifier on the colony screen, the standing
    message, the request (if open) accepted and credited.

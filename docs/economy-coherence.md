@@ -79,8 +79,10 @@ on vanilla's shortages before anything else.
    availability. "Short of fuel on the colony screen" therefore also means "cannot
    project", which is the same story told twice, not two stories.
 7. **Units on the board are vanilla's.** The faction view's reserve columns keep item
-   counts, but the colony tooltip shows them beside vanilla's tiers ("fuel: 3 units
-   surplus, banking 1,200 a month, 4,800 in reserve, 60 days of expedition fuel").
+   counts, but the colony tooltip and the War footing condition state each commodity in
+   vanilla's units, one line each ("Fuel: 4,800 banked. Surplus 3 units; +1,200 a month,
+   cap 7,200." / "Fuel: 0 banked. Short 2 units; depot too low to issue."). The line says
+   what is true now; how the depot works is in the docs, not the tooltip.
 
 ## 4. Consequences worth knowing before building
 
