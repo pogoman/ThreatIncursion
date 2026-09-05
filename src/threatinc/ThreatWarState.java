@@ -107,6 +107,55 @@ public class ThreatWarState {
 		}
 	}
 
+	/** Persistent marker: the one-time backfill below has run for this save. */
+	public static final String KEY_BACKFILL = "threatinc_factionWarBackfill";
+
+	/**
+	 * Existing saves: war mode is recorded when a strike LAUNCHES, so a save
+	 * updated mid-war has expeditions in flight and task forces out against
+	 * factions nobody flagged. Once per save, mobilise every faction that is
+	 * evidently already fighting - a target of any strike in flight, or the
+	 * owner of any task force out - and count those strikes. Also catches a
+	 * strike that slipped through while the layer was disabled.
+	 */
+	public static void backfill() {
+		if (!enabled()) return;
+		Object done = Global.getSector().getPersistentData().get(KEY_BACKFILL);
+		if (done instanceof Boolean && (Boolean) done) return;
+		Global.getSector().getPersistentData().put(KEY_BACKFILL, true);
+		int mobilised = 0;
+		for (Object curr : IncursionManager.getStrikeList()) {
+			if (!(curr instanceof com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI)) continue;
+			com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI fgi =
+					(com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI) curr;
+			if (fgi.isEnded() || fgi.isEnding()) continue;
+			if (fgi.getParams() == null || fgi.getParams().raidParams == null) continue;
+			for (MarketAPI target : fgi.getParams().raidParams.allowedTargets) {
+				if (target == null || target.getFaction() == null) continue;
+				boolean was = isAtWar(target.getFactionId());
+				recordStrike(target);
+				if (!was && isAtWar(target.getFactionId())) mobilised++;
+			}
+		}
+		for (Object curr : IncursionManager.getResponseList()) {
+			if (!(curr instanceof ThreatResponseIntel)) continue;
+			ThreatResponseIntel r = (ThreatResponseIntel) curr;
+			if (r.isEnded() || r.isEnding() || r.getFaction() == null) continue;
+			String id = r.getFaction().getId();
+			if (isAtWar(id) || Factions.THREAT.equals(id)) continue;
+			// mobilise without a strike record: the task force IS the evidence
+			FactionWar war = new FactionWar();
+			war.factionId = id;
+			war.enteredTimestamp = Global.getSector().getClock().getTimestamp();
+			war.lastStruckTimestamp = war.enteredTimestamp;
+			wars().put(id, war);
+			ThreatReserves.seed(id);
+			mobilised++;
+		}
+		ThreatIncConfig.log("War mode backfill: " + mobilised + " faction(s) mobilised from "
+				+ "expeditions and task forces already in flight");
+	}
+
 	/**
 	 * Stand-down check, on the fast poll. With warModeStandDownDays at 0 a
 	 * mobilised faction stays mobilised for the rest of the game; otherwise it
@@ -116,6 +165,7 @@ public class ThreatWarState {
 	 */
 	public static void poll() {
 		if (!enabled()) return;
+		backfill();
 		float days = ThreatIncConfig.warModeStandDownDays();
 		if (days <= 0f) return;
 		for (String id : new ArrayList<String>(wars().keySet())) {
