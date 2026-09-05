@@ -95,7 +95,9 @@ public class ThreatWarState {
 		war.lastStruckMarketId = struck.getId();
 		war.strikesSuffered++;
 		if (entering) {
+			// peacetime depots first, then the War footing's demand
 			ThreatReserves.seed(id);
+			ThreatReserves.syncWarFooting(warFactionIds());
 			String who = faction.isPlayerFaction() ? "Your faction"
 					: Misc.ucFirst(faction.getDisplayNameWithArticle());
 			ThreatColonyManager.announceAlways(who + " has mobilised for war against the "
@@ -152,6 +154,7 @@ public class ThreatWarState {
 			ThreatReserves.seed(id);
 			mobilised++;
 		}
+		ThreatReserves.syncWarFooting(warFactionIds());
 		ThreatIncConfig.log("War mode backfill: " + mobilised + " faction(s) mobilised from "
 				+ "expeditions and task forces already in flight");
 	}

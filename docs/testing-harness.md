@@ -109,3 +109,34 @@ shift between saves.
 
 The poll that applies hive accessibility runs only while the clock runs: after the board capture,
 `{ESC}` closes intel, a space unpauses; 15-25 s at 1x covers several days and one 30-day tick.
+
+## External monitor again, and saving from a clone (2026-09-05)
+
+With the 3440x1440 monitor back as primary (laptop panel secondary) the game still ran at
+the 1920x1080 pref, windowed, on the primary. Four things bit:
+
+- **Clicks need the window in front.** `SetForegroundWindow` from a background script fails
+  silently, so the launcher's Play click and the menu's Continue click landed on whatever
+  window covered the game. `place.ps1 -X 300 -Y 300` (topmost) before the first click fixes
+  it; do it again once the game window replaces the launcher. With the window topmost the
+  plain `ui.ps1 -Action shot` screen grab works on this monitor; `gameshot.ps1` works too
+  and needs no focus tricks beyond that.
+- **Continue at 1920x1080 is (1486,314)**, as the older note said; the laptop-session value
+  (1392,372) is wrong here. The menu shows "Preloading..." for a while - click and retry
+  until "Loading stage 39 - last" appears.
+- **Hover needs real motion events.** `SetCursorPos` alone shows no row tooltip; after
+  placing the cursor, send a few relative `mouse_event(MOUSEEVENTF_MOVE, dx, dy)` nudges
+  and wait ~1.5 s. Same for parking the cursor off the table.
+- **Pause state.** The user's gameplay prefs have `pauseAfterMap: true`, so the campaign is
+  ALWAYS paused after leaving intel; one space unpauses, the next pauses. Do not toggle
+  blindly - a stray space leaves the game paused through a Shift hold and nothing advances.
+  Verify with the campaign screen's own date (a `gameshot` of the map shows the date and a
+  "Game paused" label), not the log. ~50 s of `hold.ps1 -Key shift` covered 33 days.
+
+**Saving from a clone writes to the ORIGINAL folder.** The save carries its own folder
+name (`<saveDirName>save_SaturnHadean_...</saveDirName>` in campaign.xml); a copied folder
+with a suffix loads fine but F5/autosave writes back into the folder named inside it, and
+Starsector first renames the original's campaign.xml/descriptor.xml to `.bak`. Recovered
+2026-09-05 by moving the `.bak` pair back and refilling the backup slot from the clone's
+copies. When cloning, edit that one `saveDirName` line to the clone folder's name and the
+clone becomes self-contained (done for `...182493833221313174zz`).

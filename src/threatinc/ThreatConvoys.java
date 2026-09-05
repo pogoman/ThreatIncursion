@@ -11,12 +11,14 @@ import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.FleetAssignment;
 import com.fs.starfarer.api.campaign.SectorEntityToken;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
+import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.fleets.FleetFactoryV3;
 import com.fs.starfarer.api.impl.campaign.fleets.FleetParamsV3;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.FleetTypes;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
+import com.fs.starfarer.api.impl.campaign.submarkets.BaseSubmarketPlugin;
 import com.fs.starfarer.api.util.Misc;
 
 /**
@@ -716,6 +718,14 @@ public class ThreatConvoys {
 		ThreatReserves.deposit(base.getId(), Commodities.HAND_WEAPONS, armaments);
 		ThreatReserves.deposit(base.getId(), Commodities.FUEL, fuel);
 		ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, supplies);
+		// rule 5 (docs/economy-coherence.md): the colony screen sees the shipment
+		// land the way a player's sale would - a trade modifier on availability
+		// for vanilla's own trade-impact duration. Not counted as surplus by the
+		// accrual (ThreatReserves.ownModUnits), so a shipment never banks itself.
+		landed(base, Commodities.MARINES, marines);
+		landed(base, Commodities.HAND_WEAPONS, armaments);
+		landed(base, Commodities.FUEL, fuel);
+		landed(base, Commodities.SUPPLIES, supplies);
 		all().remove(c);
 
 		MarketAPI donor = Global.getSector().getEconomy().getMarket(c.fromMarketId);
@@ -726,6 +736,15 @@ public class ThreatConvoys {
 		ThreatIncConfig.log("Convoy arrived: " + c.factionId + " at " + base.getName() + " ("
 				+ marines + " marines, " + armaments + " armaments, " + fuel + " fuel, "
 				+ supplies + " supplies)");
+	}
+
+	/** A landed quantity raises the base's vanilla availability as a sale of it would. */
+	protected static void landed(MarketAPI base, String commodityId, int quantity) {
+		if (quantity <= 0 || base == null) return;
+		CommodityOnMarketAPI com = base.getCommodityData(commodityId);
+		if (com == null) return;
+		com.addTradeModPlus(ThreatReserves.CONVOY_SOURCE_PREFIX + Misc.genUID(), quantity,
+				BaseSubmarketPlugin.TRADE_IMPACT_DAYS);
 	}
 
 	protected static void lost(Convoy c) {
