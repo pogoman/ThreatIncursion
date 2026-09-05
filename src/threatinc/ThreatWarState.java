@@ -258,6 +258,7 @@ public class ThreatWarState {
 	public static String displayName(String factionId) {
 		FactionAPI faction = Global.getSector().getFaction(factionId);
 		if (faction == null) return factionId;
-		return faction.isPlayerFaction() ? "Your faction" : faction.getDisplayName();
+		// vanilla's "independent" and "pirates" are lower-case; a label is not
+		return faction.isPlayerFaction() ? "Your faction" : Misc.ucFirst(faction.getDisplayName());
 	}
 }

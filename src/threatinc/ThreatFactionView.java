@@ -300,14 +300,7 @@ public class ThreatFactionView {
 						r.military ? militaryLabel(m) : "-");
 				ThreatWarBoard.cell(cells, Alignment.MID, text,
 						Misc.getWithDGS((int) MarketCMD.getDefenderStr(m)));
-				ThreatWarBoard.cell(cells, Alignment.MID, stockColor(m, Commodities.MARINES, text),
-						stockText(m, Commodities.MARINES));
-				ThreatWarBoard.cell(cells, Alignment.MID, stockColor(m, Commodities.HAND_WEAPONS, text),
-						stockText(m, Commodities.HAND_WEAPONS));
-				ThreatWarBoard.cell(cells, Alignment.MID, stockColor(m, Commodities.FUEL, text),
-						stockText(m, Commodities.FUEL));
-				ThreatWarBoard.cell(cells, Alignment.MID, stockColor(m, Commodities.SUPPLIES, text),
-						stockText(m, Commodities.SUPPLIES));
+				for (String c : ThreatReserves.COMMODITIES) stockCell(cells, m, c, text);
 				// the distance is the part that must survive: shorten the name
 				// around it, not the other way round
 				String stagingText = "-";
@@ -330,9 +323,7 @@ public class ThreatFactionView {
 				}, TooltipLocation.LEFT, false);
 				main.setIdForAddedRow(ROW_MARKET + m.getId());
 			}
-			// totals row - the faction's whole reserve, coloured like the cells:
-			// red when a commodity every colony is short of has nothing banked
-			// anywhere, bright when some colony is short, plain otherwise
+			// totals row - the faction's whole reserve, coloured by the same key
 			List<Object> totals = new ArrayList<Object>();
 			ThreatWarBoard.cell(totals, Alignment.LMID, h, "Total");
 			ThreatWarBoard.cell(totals, Alignment.MID, gray, "");
@@ -347,10 +338,9 @@ public class ThreatFactionView {
 			ThreatWarBoard.cell(totals, Alignment.MID, gray, "");
 			main.addRow(totals.toArray());
 			main.addTable("None", -1, 0f);
-			// the key to the colours, in the colours
-			LabelAPI key = main.addPara("banked   short, depot covering   short, depot dry   "
-					+ "-  nothing banked", gray, 4f);
-			key.setHighlight("banked", "short, depot covering", "short, depot dry");
+			// the key to the colours: one word each, in its colour
+			LabelAPI key = main.addPara("excess     deficit     critical     empty", gray, 4f);
+			key.setHighlight("excess", "deficit", "critical");
 			key.setHighlightColors(text, h, neg);
 			main.addSpacer(opad);
 		}
@@ -640,9 +630,9 @@ public class ThreatFactionView {
 	}
 
 	/**
-	 * The totals row's colour for a commodity: red when some colony is short
-	 * of it and the faction has nothing banked anywhere, bright when some
-	 * colony is short, plain otherwise.
+	 * The totals row's colour, by the same key: critical when some colony is
+	 * short and the faction has nothing banked anywhere, deficit when some
+	 * colony is short, empty when nothing is banked, excess otherwise.
 	 */
 	protected static Color totalColor(List<ColonyRow> rows, String commodityId, Color plain) {
 		boolean anyShort = false;
@@ -655,6 +645,7 @@ public class ThreatFactionView {
 		}
 		if (anyShort && stock <= 0f) return Misc.getNegativeHighlightColor();
 		if (anyShort) return Misc.getHighlightColor();
+		if (stock <= 0f) return Misc.getGrayColor();
 		return plain;
 	}
 
@@ -706,24 +697,22 @@ public class ThreatFactionView {
 		return "-";
 	}
 
-	protected static String stockText(MarketAPI m, String commodityId) {
-		float stock = ThreatReserves.stock(m.getId(), commodityId);
-		float per30 = ThreatReserves.accrualPer30(m, commodityId);
-		if (stock <= 0f && per30 <= 0f) return "-";
-		return Misc.getWithDGS((int) stock);
-	}
-
 	/**
-	 * Rule 3 on the board: a stock the depot is spending on the colony's own
-	 * shortage reads bright; one too low to issue another unit while the
-	 * shortage stands reads red (the row tooltip says why).
+	 * A reserve cell, coloured by the key under the table: white = excess
+	 * (stock banked, no shortage), bright = deficit (the colony is short and
+	 * the depot covers it or is about to), red = critical (short, and the
+	 * depot is too low to issue), grey dash = empty (nothing banked, no
+	 * shortage). The row tooltip has the figures.
 	 */
-	protected static Color stockColor(MarketAPI m, String commodityId, Color text) {
+	protected static void stockCell(List<Object> cells, MarketAPI m, String commodityId, Color text) {
 		ThreatReserves.CommodityStatus s = ThreatReserves.status(m, commodityId);
-		if (s == null) return text;
-		if (s.exhausted) return Misc.getNegativeHighlightColor();
-		if (s.covering || s.deficit > 0) return Misc.getHighlightColor();
-		return text;
+		float stock = ThreatReserves.stock(m.getId(), commodityId);
+		boolean shortOf = s != null && (s.exhausted || s.covering || s.deficit > 0);
+		Color color = s != null && s.exhausted ? Misc.getNegativeHighlightColor()
+				: shortOf ? Misc.getHighlightColor()
+				: stock <= 0f ? Misc.getGrayColor() : text;
+		ThreatWarBoard.cell(cells, Alignment.MID, color,
+				stock <= 0f && !shortOf ? "-" : Misc.getWithDGS((int) stock));
 	}
 
 	protected static void colonyTooltip(TooltipMakerAPI tooltip, ColonyRow r) {
@@ -753,7 +742,7 @@ public class ThreatFactionView {
 		if (m.isPlayerOwned()) {
 			tooltip.addPara(ThreatAidCapacity.describe(m), h, 10f);
 		}
-		tooltip.addPara("Click to show on the map.", gray, 10f);
+		tooltip.addPara("Click to open the colony screen.", gray, 10f);
 	}
 
 	protected static List<FleetRow> fleetRows(String factionId) {

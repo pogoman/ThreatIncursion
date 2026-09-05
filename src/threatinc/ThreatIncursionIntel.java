@@ -201,12 +201,15 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		}
 		if (data.rowId instanceof String) {
 			String rowId = (String) data.rowId;
-			// faction-view colony rows: show the world on the map
+			// colony rows (faction view, fronts table): vanilla's colony screen
+			// for the world, as the cards' Colony button - the map is a click
+			// away from there
 			if (rowId.startsWith(ThreatFactionView.ROW_MARKET)) {
 				com.fs.starfarer.api.campaign.econ.MarketAPI market = Global.getSector().getEconomy()
 						.getMarket(rowId.substring(ThreatFactionView.ROW_MARKET.length()));
 				if (market != null && market.getPrimaryEntity() != null) {
-					ui.showOnMap(market.getPrimaryEntity());
+					ui.showDialog(market.getPrimaryEntity(),
+							new ThreatColonyScreenDialog(market.getPrimaryEntity()));
 				}
 				return;
 			}
