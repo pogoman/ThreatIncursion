@@ -1,6 +1,6 @@
 # Economy coherence - how 4X games run economies, and how the war reserves must fit vanilla
 
-Written 2026-09-05 at the user's request. The problem statement: a colony can show a fuel
+Written 2026-09-05 at the user's request; ALL SEVEN RULES APPROVED by the user the same day, build pending (section 5). The problem statement: a colony can show a fuel
 shortage on vanilla's colony screen while the war board shows it holding thousands of
 fuel in reserve. Every system must interact; the player must be able to think "I can
 help Kazeron by selling it fuel" and be right.
