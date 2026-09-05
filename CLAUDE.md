@@ -12,6 +12,22 @@ Quick facts:
 - Two sessions have edited `ThreatWarBoard.java` concurrently before; re-read a file
   immediately before patching it.
 
+## UI text and layout - less is more
+
+The user's rule (2026-09-05): the board is read a hundred times, so it shows what is true
+now and nothing about how the mechanism works - that goes in `docs/`.
+
+- No intro paragraphs above tables. Totals go in a Total row at the foot; colour meanings
+  go in a one-line key of single words in their colours. The reserve key is white excess,
+  yellow deficit, red critical, grey empty - reuse it, do not invent a second palette.
+- A tooltip is one line per fact. A button's tooltip says what pressing it does while
+  enabled and why it cannot be pressed while disabled (`ThreatFactionView.disableWith`).
+  Header tooltips are one line and never explain colours or buttons.
+- Confirmation prompts are the question and the numbers.
+- Clicking a colony row opens vanilla's colony screen (`ThreatColonyScreenDialog`); vanilla's
+  UI shows the rest. Faction names on labels are capitalised (`ThreatWarState.displayName`).
+- When in doubt, cut. If a sentence explains a rule, delete it and check the rule is in a doc.
+
 ## Context discipline
 
 Keep the main context lean - this codebase is large and discovery fills the window fast.
