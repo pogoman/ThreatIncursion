@@ -60,6 +60,10 @@ public class ThreatConvoys {
 		public boolean runningIn;
 		/** When it started waiting at the jump-point for the orbit to clear; 0 = not waiting. */
 		public long waitSinceTimestamp;
+		/** The faction whose colony receives the cargo when it is not the sender's own; null otherwise. */
+		public String recipientFactionId;
+		/** A player aid convoy: paid in credits, on the capacity ledger, earning standing on landing. */
+		public boolean aid;
 
 		public boolean isFrontRun() {
 			return frontMarketId != null;
@@ -544,7 +548,20 @@ public class ThreatConvoys {
 	 */
 	public static Convoy dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction,
 			float[] load, Random random) {
+		return dispatch(donor, base, faction, load, random, null, false);
+	}
+
+	/**
+	 * As above, bound for another faction's colony: an ally's help, or the
+	 * player's aid (docs/player-aid.md). A player convoy is fitted to the
+	 * donor's free capacity first and held on the ledger once loaded.
+	 */
+	public static Convoy dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction,
+			float[] load, Random random, String recipientFactionId, boolean aid) {
 		if (donor == null || base == null || faction == null) return null;
+		if (faction.isPlayerFaction()) {
+			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.freeFP(donor), load);
+		}
 		StarSystemAPI system = donor.getStarSystem();
 		SectorEntityToken from = donor.getPrimaryEntity();
 		SectorEntityToken to = base.getPrimaryEntity();
@@ -567,12 +584,15 @@ public class ThreatConvoys {
 		FleetParamsV3 params = new FleetParamsV3(donor, donor.getLocationInHyperspace(),
 				faction.getId(), null, FleetTypes.SUPPLY_FLEET,
 				escort, freighterPts, tankerPts, transportPts, 0f, 0f, 0f);
+		// a player convoy is exactly the hulls the ledger sized; vanilla's own
+		// fleet-size scaling stays on for NPC navies
+		if (faction.isPlayerFaction()) params.ignoreMarketFleetSizeMult = true;
 		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
 		if (fleet == null || fleet.isEmpty()) return null;
 
 		system.addEntity(fleet);
 		fleet.setLocation(from.getLocation().x, from.getLocation().y);
-		fleet.setName("Supply Convoy");
+		fleet.setName(aid ? "Aid Convoy" : "Supply Convoy");
 		fleet.setNoFactionInName(false);
 		fleet.getMemoryWithoutUpdate().set(CONVOY_FLAG, true);
 		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_TRADE_FLEET, true);
@@ -586,6 +606,8 @@ public class ThreatConvoys {
 		c.fromMarketId = donor.getId();
 		c.toMarketId = base.getId();
 		c.departedTimestamp = Global.getSector().getClock().getTimestamp();
+		c.recipientFactionId = recipientFactionId;
+		c.aid = aid;
 
 		int m = (int) Math.min(marines, cargo.getFreeCrewSpace());
 		if (m > 0) {
@@ -605,6 +627,11 @@ public class ThreatConvoys {
 		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, from, 1000f,
 				"returning to " + donor.getName());
 		all().add(c);
+		if (faction.isPlayerFaction()) {
+			float[] loaded = {c.marines, c.armaments, c.fuel, c.supplies};
+			ThreatAidCapacity.commit(donor, ThreatAidCapacity.convoyPoints(loaded), fleet,
+					"convoy to " + base.getName());
+		}
 
 		ThreatIncConfig.log("Convoy dispatched: " + faction.getId() + " " + donor.getName()
 				+ " -> " + base.getName() + " (" + (int) c.marines + " marines, "
@@ -687,8 +714,7 @@ public class ThreatConvoys {
 				continue;
 			}
 			MarketAPI base = Global.getSector().getEconomy().getMarket(c.toMarketId);
-			if (base == null || base.getPrimaryEntity() == null
-					|| !c.factionId.equals(base.getFactionId())) {
+			if (base == null || base.getPrimaryEntity() == null || !boundFor(c, base)) {
 				// the destination fell or changed hands: turn around, stock stays aboard
 				// until the fleet despawns home, where it is returned to the donor
 				returnHome(c);
@@ -728,14 +754,58 @@ public class ThreatConvoys {
 		landed(base, Commodities.SUPPLIES, supplies);
 		all().remove(c);
 
+		// another faction's colony: the player's standing, an ally's word
+		FactionAPI sender = Global.getSector().getFaction(c.factionId);
+		if (c.recipientFactionId != null && sender != null) {
+			if (sender.isPlayerFaction()) {
+				ThreatAid.onDelivered(base, c.recipientFactionId, marines, armaments, fuel, supplies,
+						true, null);
+			} else {
+				ThreatCoalition.onAllyDelivered(c, base);
+			}
+		}
+
 		MarketAPI donor = Global.getSector().getEconomy().getMarket(c.fromMarketId);
-		SectorEntityToken home = donor != null ? donor.getPrimaryEntity() : base.getPrimaryEntity();
-		fleet.clearAssignments();
-		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home, 1000f,
-				"returning to " + (donor != null ? donor.getName() : base.getName()));
+		if (sender != null && sender.isPlayerFaction() && donor != null
+				&& donor.getPrimaryEntity() != null) {
+			// a player fleet comes home on the tracked leg: the ledger gets its points back
+			ThreatReturns.sendHome(fleet, c.factionId, donor.getId());
+		} else {
+			SectorEntityToken home = donor != null ? donor.getPrimaryEntity() : base.getPrimaryEntity();
+			fleet.clearAssignments();
+			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home, 1000f,
+					"returning to " + (donor != null ? donor.getName() : base.getName()));
+		}
 		ThreatIncConfig.log("Convoy arrived: " + c.factionId + " at " + base.getName() + " ("
 				+ marines + " marines, " + armaments + " armaments, " + fuel + " fuel, "
 				+ supplies + " supplies)");
+	}
+
+	/** Whether the convoy's destination still belongs to whom it was sent to. */
+	protected static boolean boundFor(Convoy c, MarketAPI base) {
+		if (c.factionId.equals(base.getFactionId())) return true;
+		return c.recipientFactionId != null && c.recipientFactionId.equals(base.getFactionId());
+	}
+
+	/** The helper's colony within convoy range of another faction's colony that can spare the most of a commodity, or null. */
+	public static MarketAPI pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId) {
+		if (helper == null || needy == null || needy.getStarSystem() == null) return null;
+		MarketAPI best = null;
+		float bestSpare = 0f;
+		float range = ThreatIncConfig.convoyRangeLY();
+		for (MarketAPI donor : ThreatReserves.marketsOf(helper.getId())) {
+			if (donor.getStarSystem() == null || donor.getPrimaryEntity() == null) continue;
+			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
+					needy.getStarSystem().getLocation()) > range) continue;
+			float s = spare(donor, commodityId);
+			if (s > bestSpare) {
+				bestSpare = s;
+				best = donor;
+			}
+		}
+		if (best != null && bestSpare < capacityFor(commodityId)
+				* ThreatIncConfig.convoyMinLoadFraction()) return null;
+		return best;
 	}
 
 	/** A landed quantity raises the base's vanilla availability as a sale of it would. */

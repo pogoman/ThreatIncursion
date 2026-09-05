@@ -8,10 +8,11 @@
 	"threatinc_enabled": true,
 	"threatinc_tickDays": 30,
 
-	# When the incursion begins: by default the abyss story flags wake the
-	# swarm; startAtGameStart skips all triggers and begins immediately in a
-	# new game (or on loading an existing one)
-	"threatinc_startAtGameStart": false,
+	# When the incursion begins: by default (startAtGameStart) the swarm was
+	# always coming and the incursion starts immediately in a new game (or on
+	# loading an existing one). Turn it off to wait for the abyss story flags
+	# or the colony-size trigger below instead
+	"threatinc_startAtGameStart": true,
 
 	# Alternate start trigger: a player colony reaching this size wakes the
 	# swarm even if the abyss story was never touched (whichever comes first)
@@ -327,11 +328,10 @@
 	"threatinc_stagingTargetMult": 1.5,
 	"threatinc_convoyTimeoutDays": 200,
 	# fleet orders from the war board's faction view: your own mobilised
-	# faction always; an allied mobilised faction once your standing with it
-	# reaches orderMinRelation (0.5 = cooperative). Guard and intercept task
-	# forces are built at the nearest base and provisioned from its reserve.
+	# faction only - other factions' navies are their own (docs/player-aid.md).
+	# Guard and intercept task forces are built at the nearest base and
+	# provisioned from its reserve, and limited by what it can field (below).
 	"threatinc_ordersEnabled": true,
-	"threatinc_orderMinRelation": 0.5,
 	"threatinc_guardFleetFP": 100,
 	"threatinc_guardDays": 90,
 	"threatinc_interceptDays": 60,
@@ -341,6 +341,48 @@
 	# launch is refunded, scaled by its surviving strength (fleet points now
 	# over fleet points at launch). A fleet lost on the way returns nothing.
 	"threatinc_returnRefundMult": 0.5,
+
+	# Player aid (docs/player-aid.md): what you send from your own colonies to
+	# other factions, from the war board. Capacity is the colony's vanilla
+	# "Fleet size %" times aidBaseFP in fleet points; every fleet you launch
+	# from it holds points (escort plus cargo hulls) until it is home, or for
+	# aidRebuildDays after it is lost. No credits change hands (decided
+	# 2026-09-05): the reserve stock, the capacity and the risk of losing the
+	# hulls are the whole price, as for your own faction's orders.
+	"threatinc_aidEnabled": true,
+	"threatinc_aidBaseFP": 100,
+	"threatinc_aidRebuildDays": 60,
+	"threatinc_aidGuardMinFP": 50,
+	# aid is refused by a faction at war with you, and below this standing
+	"threatinc_aidMinRelation": -0.5,
+	# standing earned on arrival: goods' value at the receiving market per
+	# point (1 point = 0.01 relationship), capped per delivery; flat points for
+	# a guard on station and one that serves its term; a split for a task
+	# force at a hive's door among every faction in the hive's reach
+	"threatinc_aidRepPerCredits": 10000,
+	"threatinc_aidRepMaxPerDelivery": 10,
+	"threatinc_aidRepGuardArrived": 3,
+	"threatinc_aidRepGuardCompleted": 2,
+	"threatinc_aidRepFrontTotal": 5,
+	# requests for help: mobilised NPC factions post ordinary missions - defend
+	# a colony a strike is coming for when its defenders are outmatched (the
+	# strike's strength over theirs times defendRequestRatio), or deliver a
+	# commodity the depot is exhausted for or the colony has been short of for
+	# missionAidShortageDays. They expire unaccepted on missionPostingDays and
+	# fail if not completed in the term or the colony is lost.
+	"threatinc_aidRequestsEnabled": true,
+	"threatinc_aidRequestMaxPosted": 3,
+	"threatinc_missionDefendDays": 60,
+	"threatinc_missionDefendCredits": 20000,
+	"threatinc_defendRequestRatio": 1.0,
+	"threatinc_missionAidShortageDays": 60,
+	"threatinc_missionAidPayMult": 1.5,
+	"threatinc_missionRepMult": 2.0,
+	# allies help each other by standing (Cooperative 1.0, Friendly 0.75,
+	# Welcoming 0.5, Favourable 0.25) times this chance per 30-day tick per
+	# need; the player can be helped, never made to help
+	"threatinc_allyAidEnabled": true,
+	"threatinc_allyAidChance": 0.5,
 
 	# Escalation (docs/design-theory.md 8.1): the swarm answers who hurts it.
 	# Every faction earns GRUDGE for strata taken, hives eradicated and raids
@@ -423,11 +465,10 @@
 	"threatinc_purgeFollowUpDays": 75,
 
 	# Player-commissioned expeditions: from a player colony with a military
-	# structure in response range, hire the same siege expedition NPC navies
-	# run - priced by flotilla size and distance
+	# structure in response range, the same siege expedition NPC navies run.
+	# No credits (decided 2026-09-05): it draws troops and provisions from
+	# the colony's reserve and holds its fleet capacity, as the board's Siege
 	"threatinc_commissionEnabled": true,
-	"threatinc_commissionCostPerPoint": 15000,
-	"threatinc_commissionCostPerLY": 8000,
 
 	# Remnant immune system (pairs with Remnant Retribution, but works with
 	# vanilla Remnant systems regardless)

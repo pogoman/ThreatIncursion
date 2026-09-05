@@ -19,3 +19,19 @@ threatinc_groundWithdrawSel,DialogOptionSelected,$option == threatincGroundWithd
 threatinc_groundPushSel,DialogOptionSelected,$option == threatincGroundPush,ThreatincMarketCMD groundPush,,,"Orders the front to assault the next stratum"
 threatinc_groundEntrenchSel,DialogOptionSelected,$option == threatincGroundEntrench,ThreatincMarketCMD groundEntrench,,,"Orders the front to break off / stand fast and entrench"
 threatinc_groundBackSel,DialogOptionSelected,$option == threatincGroundBack,ThreatincMarketCMD goBackToDefenses,,,"Back from ground operations to the military options menu"
+threatincAidOption,PopulateOptions,"$menuState == main
+$hasMarket
+$market.threatinc_aidRequest",,,30:threatincAidDeliver:Deliver aid for the war effort,"Player aid (docs/player-aid.md): while a request for goods stands here, the station commander takes a hand-over from the player's cargo"
+threatincAidDeliverSel,DialogOptionSelected,$option == threatincAidDeliver,ThreatincAidCMD menu,,,"Lists what is asked for and what the player carries; one hand-over option per commodity"
+threatincAidHandMarinesSel,DialogOptionSelected,$option == threatincAidHand_marines,ThreatincAidCMD deliver marines,,,
+threatincAidHandArmsSel,DialogOptionSelected,$option == threatincAidHand_hand_weapons,ThreatincAidCMD deliver hand_weapons,,,
+threatincAidHandFuelSel,DialogOptionSelected,$option == threatincAidHand_fuel,ThreatincAidCMD deliver fuel,,,
+threatincAidHandSuppliesSel,DialogOptionSelected,$option == threatincAidHand_supplies,ThreatincAidCMD deliver supplies,,,
+threatincAidBackSel,DialogOptionSelected,$option == threatincAidBack,ThreatincAidCMD back,,,"Back to the market's main menu"
+threatincOutpostOption,PopulateOptions,"$market.isPlanetConditionMarketOnly
+ThreatincOutpostCMD canBuild",,,5:threatincOutpostBuild:Build an outpost,"Outposts (docs/strategy-layer.md): in orbit of any uncolonised world with a player military colony in reach, the player can raise their faction's station over it for outpostCredits"
+threatincOutpostStanding,PopulateOptions,"$market.isPlanetConditionMarketOnly
+ThreatincOutpostCMD standing",,Your outpost holds the orbit here. The swarm cannot seed this world while the station stands.,,"Reminder line when the player's own outpost is already in orbit"
+threatincOutpostBuildSel,DialogOptionSelected,$option == threatincOutpostBuild,ThreatincOutpostCMD menu,,,"The brief: station type, price, supporting colony; Confirm disabled when unaffordable"
+threatincOutpostConfirmSel,DialogOptionSelected,$option == threatincOutpostConfirm,ThreatincOutpostCMD build,,,"Pays and builds, then returns to the planet's options"
+threatincOutpostBackSel,DialogOptionSelected,$option == threatincOutpostBack,ThreatincOutpostCMD back,,,"Back to the planet's options"

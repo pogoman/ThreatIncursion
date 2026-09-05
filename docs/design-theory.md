@@ -345,7 +345,13 @@ then postpone forever.
 **Mechanic.**
 - `reserveFloorFraction` (0.25): draws for expeditions and orders never take a base below
   this fraction of its cap - the home garrison's stock. Convoys respect the donor keep
-  fraction already.
+  fraction already. **Fixed 2026-09-05:** the floor stands on the largest cap the depot
+  has banked towards (`ColonyReserve.capSeen`), not the live cap - the live cap is the
+  current surplus, which is zero the moment the colony is in deficit, so the floor used
+  to vanish exactly when a struck world needed it. The rule-3 shortage cover now
+  respects the same floor (it used to write straight through it; Sindria at 0 fuel /
+  0 supplies after repeated strikes was this). A colony that never banked a commodity
+  has no floor for it.
 - **Send what you can**: when a base holds at least `expeditionMinMarinesFraction` of the
   want, the expedition is sized to what it CAN draw (fleet count from
   `siegeFleetSizes` capped by the marines available), instead of always drawing the full
@@ -367,9 +373,9 @@ of any faction; nothing times two factions' efforts together.
   and spare reserves answers with probability `coalitionSupportChance` by sending an
   Intercept task force to the hive's jump-point timed to the siege's ETA (the existing
   `dispatchIntercept`), so the siege lands under cover.
-- **Player as coordinator**: a **Rally** button on the hive ledger row batches Siege /
-  Intercept orders to every allied faction that will take them (`canPlayerOrder`), each
-  confirmed in one prompt listing who answers and from where.
+- **Player as participant, not coordinator** (revised 2026-09-05, docs/player-aid.md): the
+  Rally button and every order over an NPC navy were removed. The player sends their own
+  colonies' fleets as aid and earns standing; allies help each other by standing.
 
 **Hooks.** `IncursionManager.launchSiegeExpedition` (post the call), a persistent
 `coalitionCalls` list on the slow tick, `ThreatFleetOrders.dispatchIntercept`,
@@ -388,7 +394,8 @@ of any faction; nothing times two factions' efforts together.
 6. 8.5 the ending - DEFERRED to a live session (user's call).
 7. 8.7 coalition - BUILT (0.6.4), untested in-game.
 8. Outposts - BUILT (0.6.4) as standalone faction-styled stations that block re-seeding;
-   not yet depots; untested in-game (no purged world in the test save).
+   not yet depots; untested in-game (no purged world in the test save). 2026-09-05: the
+   player can build one over any uncolonised world from the planet dialog.
 
 ## Sources
 

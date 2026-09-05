@@ -133,12 +133,23 @@ public class ThreatOutposts {
 				purgedWorlds().remove(id);
 				continue;
 			}
-			MarketAPI m = token.getMarket();
-			if (m != null && m.isInEconomy() && !m.isPlanetConditionMarketOnly()) continue;
-			if (holds(token)) continue;
+			if (!eligible((PlanetAPI) token)) continue;
 			result.add((PlanetAPI) token);
 		}
 		return result;
+	}
+
+	/**
+	 * Whether a world can take an outpost: a planet (not a star) in a star
+	 * system, with no live market (somebody's colony) and no standing outpost.
+	 * Any uncolonised world qualifies (decided 2026-09-05); the purged list
+	 * is only the board's shortlist and the NPC factions' targets.
+	 */
+	public static boolean eligible(PlanetAPI planet) {
+		if (planet == null || planet.isStar() || planet.getStarSystem() == null) return false;
+		MarketAPI m = planet.getMarket();
+		if (m != null && m.isInEconomy() && !m.isPlanetConditionMarketOnly()) return false;
+		return !holds(planet);
 	}
 
 	// ------------------------------------------------------------------
@@ -218,7 +229,7 @@ public class ThreatOutposts {
 	 */
 	public static Outpost build(FactionAPI faction, PlanetAPI planet) {
 		if (!ThreatIncConfig.outpostsEnabled() || faction == null || planet == null) return null;
-		if (holds(planet) || planet.getStarSystem() == null) return null;
+		if (!eligible(planet)) return null;
 		MarketAPI base = payingBase(faction, planet);
 		if (base == null) return null;
 
@@ -327,16 +338,58 @@ public class ThreatOutposts {
 	// ticks
 	// ------------------------------------------------------------------
 
-	/** Fast poll: a dead station is a lost outpost. */
+	/**
+	 * Fast poll: a dead station is a lost outpost; a colony founded on the
+	 * world by the outpost's own faction inherits the station.
+	 */
 	public static void poll() {
 		if (all().isEmpty()) return;
 		for (Outpost o : new ArrayList<Outpost>(all())) {
+			if (o.alive() && carryOver(o)) continue;
 			if (o.alive()) continue;
 			String who = ThreatWarState.displayName(o.factionId);
 			ThreatColonyManager.announce(who + "'s outpost over " + o.planetName()
 					+ " has been destroyed.", Misc.getNegativeHighlightColor());
 			remove(o, "station destroyed");
 		}
+	}
+
+	/**
+	 * CARRY-OVER (decided 2026-09-05): when the world under an outpost becomes
+	 * a live colony of the outpost's own faction, the makeshift station is
+	 * struck and the colony gets the same station line as a built industry -
+	 * the tier-1 outpost inherited into its Orbital Station slot, from where
+	 * vanilla upgrades it. A colony of another faction leaves the station
+	 * standing in orbit as it was. Returns true when the outpost was absorbed.
+	 */
+	protected static boolean carryOver(Outpost o) {
+		SectorEntityToken planet = Global.getSector().getEntityById(o.planetId);
+		if (planet == null) return false;
+		MarketAPI market = planet.getMarket();
+		if (market == null || !market.isInEconomy() || market.isPlanetConditionMarketOnly()) return false;
+		if (market.getFactionId() == null || !market.getFactionId().equals(o.factionId)) return false;
+		boolean hasStation = false;
+		for (Industry ind : market.getIndustries()) {
+			String id = ind.getId();
+			if (id.startsWith("orbitalstation") || id.startsWith("battlestation")
+					|| id.startsWith("starfortress")) {
+				hasStation = true;
+				break;
+			}
+		}
+		String specId = o.specId != null ? o.specId : specIdFor(market.getFaction());
+		if (!hasStation && Global.getSettings().getIndustrySpec(specId) != null) {
+			market.addIndustry(specId);
+			Industry ind = market.getIndustry(specId);
+			if (ind != null && ind.isBuilding()) ind.finishBuildingOrUpgrading();
+		}
+		String who = o.factionId.equals(Global.getSector().getPlayerFaction().getId()) ? "Your"
+				: ThreatWarState.displayName(o.factionId) + "'s";
+		ThreatColonyManager.announceAlways(who + " outpost over " + o.planetName()
+				+ " is absorbed into the new colony" + (hasStation ? "." : " as its "
+				+ specId.replace('_', ' ') + "."), Misc.getPositiveHighlightColor());
+		remove(o, "colony founded - station inherited" + (hasStation ? " (colony already had one)" : ""));
+		return true;
 	}
 
 	/**

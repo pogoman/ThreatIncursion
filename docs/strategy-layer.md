@@ -28,9 +28,12 @@ a config knob (settings.json / LunaLib), master switch `threatinc_strategyEnable
 Persistent map `threatinc_factionWar` of `FactionWar { factionId, enteredTimestamp,
 lastStruckTimestamp, lastStruckMarketId, strikesSuffered }`.
 
-- Entered from `IncursionManager.launchStrike` for the struck colony's faction - NPC
-  and player alike (the player's own reserves start accruing when the swarm first
-  strikes a player world).
+- Entered from `IncursionManager.launchStrike` for the struck colony's faction (NPC
+  factions only). The player's faction mobilises by choice: their own tab is on the
+  selector whenever they hold a colony, and its Mobilise button (confirm dialog) calls
+  `ThreatWarState.mobilisePlayer`; the mobilised view has a Stand down button
+  (`standDownPlayer`) that lifts the War footing and keeps the reserves frozen. A strike
+  on a player world does not mobilise the player, and the stand-down timer skips them.
 - `warModeStandDownDays` (0 = never): with a value, a faction stands down that many
   days after its last strike if no live hive remains within expedition range of any of
   its military worlds. Stock is kept, frozen, when it stands down.
@@ -146,9 +149,15 @@ cards with three stock tables, faction-coloured:
 
 1. **Colonies - staging bases first**: name, size, military structure, ground defense,
    the four reserves, the staging target (nearest live hive in the base's expedition
-   reach, with distance), Threat strikes in flight against it. Row tooltip: per-commodity
-   stock / monthly accrual / cap, and what an expedition from here draws. Click = show on
-   the map. Buttons: **Guard**, **Stage**.
+   reach, with distance), Threat strikes in flight against it. A **Total** row at the
+   foot sums the four reserves (`ThreatReserves.factionStock`), and a one-line colour key
+   under the table replaces the old intro paragraph: plain = banked, bright = the colony is
+   short and the depot covers it, red = short and the depot is too low to issue, dash =
+   nothing banked. The totals cell goes red when some colony is short and the faction has
+   nothing banked anywhere (`totalColor`). Row tooltip: per-commodity stock / monthly
+   accrual / cap, and what an expedition from here draws. Click = show on the map.
+   Buttons: **Guard**, **Stage**. The Actions column is .12 of the width: two floating
+   buttons need ~114 px, and at .08 the second one used to overlap the Strikes column.
 2. **Fleets and orders**: task forces (`ThreatResponseIntel`), expeditions
    (`ThreatPurgeFGI`, with the marines aboard when cargo-carrying), convoys, and standing
    orders, each with task, status, ETA. Click = show the fleet or intel on the map.
@@ -161,7 +170,9 @@ cards with three stock tables, faction-coloured:
 Layout follows docs/intel-ui-platform.md: the selector's first button flows, the rest
 sit `rightOfTop` of it and the flow height is put back to one row; every order button
 is a floating `addGenericButton` anchored `belowRight` of its table panel and added
-last; disabled buttons carry the reason as a tooltip.
+last. A button's tooltip is the one place its rule is written (`disableWith(main, button,
+enabled, reason, help)`): one line saying what pressing it does while enabled, the reason
+while disabled. Header tooltips are one line each and never explain colours or buttons.
 
 ## Fleet orders (ThreatFleetOrders)
 
@@ -183,8 +194,10 @@ provisioned from that base's reserve (fuel x distance, supplies), flagged
 - **Recall**: task force `standDown`, expedition `abort`, convoy `returnHome` (cargo
   back to the donor), order fleet home.
 
-Who may order: the player's own faction once mobilised; a mobilised ally once standing
-reaches `orderMinRelation` (0.5, cooperative). `ordersEnabled` turns the buttons off.
+Who may order: the player's own faction once mobilised, and nobody else's - NPC navies
+are autonomous (docs/player-aid.md, 2026-09-05); their views offer the player's aid
+instead. `ordersEnabled` turns the buttons off. Every player sortie is limited by the
+sending colony's capacity ledger (`ThreatAidCapacity`).
 All orders confirm first (`doesButtonHaveConfirmDialog`), with the cost and the base
 named in the prompt.
 
@@ -251,11 +264,11 @@ instead of postponing; `groundStrengthExponent` (1.0) on every ground ratio.
 **Coalition** (`ThreatCoalition`, 8.7): `launchSiegeExpedition` by a mobilised faction
 posts a call for `coalitionCallDays` (60); on the slow tick every other mobilised NPC
 faction with a base in reach rolls `coalitionSupportChance` (0.5) and answers once with
-`ThreatFleetOrders.dispatchIntercept` at the hive's jump-point. **Rally** (hive ledger
-row, left of Purge; only once somebody is mobilised) batches Intercepts from every ally
-that takes the player's orders plus a Siege from the ally whose nearest base holds the
-most marines above its floor. Intercept orders show as inbound "X intercept" ops on the
-ledger row.
+`ThreatFleetOrders.dispatchIntercept` at the hive's jump-point. Rally (the player batching
+allied orders) was removed 2026-09-05 with the rest of the player's authority over NPC
+navies; allies now help each other's colonies on their own, by standing
+(`ThreatCoalition.allyAid`, docs/player-aid.md section 5). Intercept orders show as
+inbound "X intercept" ops on the ledger row.
 
 **Outposts** (`ThreatOutposts`): `ThreatColonyManager.eradicate` records the planet in
 `threatinc_purgedWorlds`. An outpost is vanilla's Orbital Station recipe without the
@@ -270,6 +283,32 @@ reach per tick with `outpostChance` (0.3). Faction view: a "Purged worlds in rea
 with an **Outpost** button, and outposts in the fleets table (Recall = decommission). A
 dead station is a lost outpost (fast poll). NOT yet verified in-game: no purged world
 existed in the test save.
+
+**Any uncolonised world - 2026-09-05.** The player can raise an outpost over ANY planet
+that holds no live market (`ThreatOutposts.eligible`: not a star, in a star system, no
+colony, no standing outpost), from the planet's own dialog: "Build an outpost" appears
+between the survey options while one of the player's military colonies is within
+expedition reach (`ThreatincOutpostCMD`, rules.csv `threatincOutpost*`), with a brief and
+a Confirm disabled when the credits are short. The board's table stays the purged-world
+shortlist, and NPC factions still fortify purged worlds only. The dialog does not require
+the player's faction to be mobilised (the board's button does, like every board button):
+credits, not the reserve, pay for it.
+
+What an outpost is NOT, for the record (decided 2026-09-05): it has no market, so it has
+no colony screen. It is a makeshift structure: it cannot be upgraded (the tier is fixed at
+build by `outpostTier`; a real upgrade would need a colony's yards) and a Waystation cannot
+be built on it. Making outposts real size-1 markets was considered and rejected - a market
+would let the player build Patrol HQ, Heavy Industry and the rest at what is supposed to
+be a station in orbit.
+
+**Carry-over on colonisation (built 2026-09-05, untested).** When the world under an
+outpost becomes a live colony of the outpost's own faction, the fast poll
+(`ThreatOutposts.carryOver`) strikes the makeshift station and adds the same station line
+(`o.specId`, e.g. `orbitalstation_mid`) to the new market as a built industry - the tier-1
+outpost inherited into the colony's Orbital Station slot, from where vanilla upgrades it
+to Battlestation and Star Fortress. A colony that somehow already has a station keeps it
+and the outpost is simply struck. A colony of another faction leaves the station standing
+in orbit unchanged.
 
 ## Not built yet
 

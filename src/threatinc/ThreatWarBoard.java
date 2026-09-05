@@ -736,8 +736,11 @@ public class ThreatWarBoard {
 		// row's space is reserved here
 		String view = intel.getSelectedFactionId();
 		boolean selector = ThreatFactionView.reserveSelectorRow(main);
+		// the player's own tab shows before they mobilise too: that page is
+		// where the Mobilise button lives
 		if (view != null && !ThreatFactionView.VIEW_THREAT.equals(view)
-				&& ThreatWarState.isAtWar(view)) {
+				&& (ThreatWarState.isAtWar(view)
+						|| (Factions.PLAYER.equals(view) && ThreatWarState.playerMayMobilise()))) {
 			nameWidths.clear();
 			ThreatFactionView.render(intel, main, width, opad, view);
 			float h = main.getHeightSoFar();
@@ -763,7 +766,6 @@ public class ThreatWarBoard {
 				float up = (n - i) * ROW_H - (ROW_H - 20f) / 2f;
 				if (!e.known) continue; // nothing to commission or read against a place unfound
 				if (e.isColony()) addPurgeButton(intel, main, ledger.table, up, e);
-				if (e.isColony()) addRallyButton(intel, main, ledger.table, up, e, ledger.cols);
 				if (!e.missions.isEmpty()) addMissionButton(intel, main, ledger.table, up, e, ledger.cols);
 			}
 		}
@@ -1336,61 +1338,21 @@ public class ThreatWarBoard {
 		return ledger;
 	}
 
-	public static final float RALLY_BUTTON_W = 52f;
-
-	/**
-	 * Rally (ThreatCoalition): every mobilised ally that takes the player's
-	 * orders sends an Intercept to the system's door and the best-supplied a
-	 * siege. Sits left of Purge in the Actions column; only offered once
-	 * somebody is mobilised, disabled with the reason when no ally can answer.
-	 */
-	protected static void addRallyButton(ThreatIncursionIntel intel, TooltipMakerAPI main,
-			UIComponentAPI table, float upFromBottom, final Entry e, Cols c) {
-		if (!ThreatWarState.enabled() || ThreatWarState.warFactionIds().isEmpty()) return;
-		if (!ThreatIncConfig.coalitionEnabled() || !ThreatIncConfig.ordersEnabled()) return;
-		final List<String> allies = ThreatCoalition.ralliable(e.system);
-		com.fs.starfarer.api.ui.ButtonAPI button = intel.addGenericButton(main, RALLY_BUTTON_W,
-				"Rally", ThreatFactionView.BUTTON_RALLY + Factions.PLAYER + ":" + e.systemId);
-		button.setEnabled(!allies.isEmpty());
-		button.setShowTooltipWhileInactive(true);
-		button.getPosition().belowRight(table, -upFromBottom)
-				.setXAlignOffset(-6f - PURGE_BUTTON_W - 4f);
-		main.addTooltipTo(new TooltipCreator() {
-			public boolean isTooltipExpandable(Object tooltipParam) { return false; }
-			public float getTooltipWidth(Object tooltipParam) { return 360f; }
-			public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
-				if (allies.isEmpty()) {
-					tooltip.addPara("No mobilised ally will take your orders against this system: "
-							+ "none is in reach, or your standing with them is too low.",
-							Misc.getGrayColor(), 0f);
-					return;
-				}
-				tooltip.addPara("Rally the coalition: %s send task forces to hold this system's "
-						+ "jump-point, and the best-supplied of them a siege expedition - each "
-						+ "paid from its own reserves.", 0f, Misc.getHighlightColor(),
-						join(allies));
-			}
-		}, button, TooltipLocation.BELOW);
-	}
-
 	protected static void addPurgeButton(ThreatIncursionIntel intel, TooltipMakerAPI main,
 			UIComponentAPI table, float upFromBottom, final Entry e) {
 		final InfestedSystemIntel.CommissionQuote q = InfestedSystemIntel.quote(e.systemId);
 		com.fs.starfarer.api.ui.ButtonAPI button = intel.addGenericButton(main, PURGE_BUTTON_W,
 				"Purge", BUTTON_COMMISSION + e.systemId);
-		int credits = (int) Global.getSector().getPlayerFleet().getCargo().getCredits().get();
 		final boolean enabled = ThreatIncConfig.commissionEnabled() && q != null && q.base != null
-				&& q.existing == null && credits >= q.cost;
+				&& q.existing == null;
 		button.setEnabled(enabled);
 		button.setShowTooltipWhileInactive(true);
 		button.getPosition().belowRight(table, -upFromBottom).setXAlignOffset(-6f);
-		final int creditsNow = credits;
 		main.addTooltipTo(new TooltipCreator() {
 			public boolean isTooltipExpandable(Object tooltipParam) { return false; }
 			public float getTooltipWidth(Object tooltipParam) { return 380f; }
 			public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 				Color h = Misc.getHighlightColor();
-				Color neg = Misc.getNegativeHighlightColor();
 				Color gray = Misc.getGrayColor();
 				if (!ThreatIncConfig.commissionEnabled()) {
 					tooltip.addPara("Commissioned expeditions are disabled in the mod settings.", gray, 0f);
@@ -1413,18 +1375,16 @@ public class ThreatWarBoard {
 						q.system.getLocation());
 				tooltip.addPara("Commission a %s siege expedition from %s (" + (int) Math.ceil(dist)
 						+ " light-years out) against the " + q.targets.size() + " Threat "
-						+ (q.targets.size() > 1 ? "colonies" : "colony") + " here for %s. "
+						+ (q.targets.size() > 1 ? "colonies" : "colony") + " here. "
 						+ (q.anyGarrisoned ? "Includes escorts to fight through the live Defense "
 								+ "Swarms. " : "")
 						+ "It runs the siege playbook autonomously and reports back when done; "
-						+ "the fee is paid up front and not refunded.", 0f, h,
-						q.fleetSizes.size() + "-fleet", q.base.getName(), Misc.getDGSCredits(q.cost));
+						+ "its troops and provisions come from that colony's reserve and its "
+						+ "hulls are held against the colony's fleet capacity until it is over.",
+						0f, h, q.fleetSizes.size() + "-fleet", q.base.getName());
 				if (q.existing != null) {
 					tooltip.addPara("An expedition you commissioned is already operating against "
 							+ "this system.", gray, 6f);
-				} else if (creditsNow < q.cost) {
-					tooltip.addPara("You cannot afford the fee - you have %s.", 6f, neg,
-							Misc.getDGSCredits(creditsNow));
 				}
 			}
 		}, button, TooltipLocation.BELOW);

@@ -324,7 +324,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				? params.source.getName() : "your colony";
 		info.addPara("A %s you commissioned from " + from + ", operating against the Threat "
 				+ "colonies of " + where + ". The expedition is autonomous: it fights with "
-				+ "your faction's doctrine and blueprints, and does not refund its fee.",
+				+ "your faction's doctrine and blueprints, on troops and provisions drawn "
+				+ "from that colony's reserve.",
 				opad, com.fs.starfarer.api.util.Misc.getHighlightColor(), getNoun());
 	}
 

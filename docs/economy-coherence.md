@@ -163,6 +163,14 @@ factions, days 2110-2144 of the incursion):
   reads "depot too low to issue" (a unit is 1,500, half the stock is 1,250) with the
   shortage standing and the board cell red. That is the rule as approved; a fraction of
   1.0 means "spend it all".
+- **The garrison floor is the other stop (fixed 2026-09-05).** The cover used to ignore
+  `reserveFloorFraction` entirely, and the floor itself was a fraction of the LIVE cap,
+  which is zero in deficit - so a struck colony's covers drained the depot to nothing
+  (Sindria: 0 fuel, 0 supplies, 0 arms after repeated strikes). Now the floor stands
+  on the largest cap the depot ever banked towards, and a cover spends at most the
+  cover fraction of the stock and never below the floor; when the floor is what stops
+  the issue the tooltip says "the depot keeps N for the garrison" instead of quoting
+  the fraction. Old saves have no recorded cap until the next poll banks one.
 - Covers lapse and re-issue on schedule (the day-2110 issues were re-bought after the
   30-day hold), survive a save and reload with their timestamps (26 days left after four
   days), and the condition and structure reload without re-mobilising anything.
