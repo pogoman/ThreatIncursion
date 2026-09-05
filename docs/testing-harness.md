@@ -113,7 +113,9 @@ The poll that applies hive accessibility runs only while the clock runs: after t
 ## External monitor again, and saving from a clone (2026-09-05)
 
 With the 3440x1440 monitor back as primary (laptop panel secondary) the game still ran at
-the 1920x1080 pref, windowed, on the primary. Four things bit:
+the 1920x1080 pref, windowed, on the primary. `desk-cycle.ps1` is the whole recipe below
+in one script (launch, Continue with retries, optional unpaused seconds, intel, a
+selector click, a hovered row, captures, log lines). Four things bit:
 
 - **Clicks need the window in front.** `SetForegroundWindow` from a background script fails
   silently, so the launcher's Play click and the menu's Continue click landed on whatever
