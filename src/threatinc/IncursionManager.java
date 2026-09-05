@@ -207,6 +207,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatRaiders.poll();
 		ThreatFleetOrders.poll();
 		ThreatReturns.poll();
+		ThreatAidCapacity.poll();
 		ThreatOutposts.poll();
 		sweepOrphanedExpeditions();
 		upgradeInFlightStrikes();
@@ -352,8 +353,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatConvoys.planLogistics(random);
 		// grudges fade unless renewed
 		ThreatAlarm.decay();
-		// allies answer open coalition calls
+		// allies answer open coalition calls and help each other's colonies
 		ThreatCoalition.tick(random);
+		// mobilised factions ask the sector for help (docs/player-aid.md)
+		ThreatAidRequests.tick(random);
 		// mobilised factions fortify purged worlds
 		ThreatOutposts.planNPC(random);
 		manageMissions();
@@ -1352,6 +1355,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// they engage the colonies via normal relations regardless. Off for
 		// every expedition - NPC and player-commissioned alike.
 		params.makeFleetsHostile = false;
+		// a player expedition is what its base can field (docs/player-aid.md):
+		// fleets dropped, then shrunk, to the colony's free capacity
+		fleetSizes = ThreatAidCapacity.fitExpedition(base, faction, fleetSizes);
 		params.fleetSizes.addAll(fleetSizes);
 
 		// STRATEGY LAYER (docs/strategy-layer.md): a mobilised faction's
@@ -1405,6 +1411,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		Global.getSector().getIntelManager().addIntel(purge);
 		getPurgeList().add(purge);
+		if (faction.isPlayerFaction()) {
+			ThreatAidCapacity.commitGroup(base, ThreatAidCapacity.expeditionPoints(params.fleetSizes),
+					purge, "purge expedition against the " + system.getNameWithLowercaseType());
+		}
 		// a mobilised faction's siege calls its allies to the door
 		ThreatCoalition.post(faction, system);
 		// stamp every targeted colony so siblings don't each trigger their own
@@ -1506,21 +1516,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			difficulty = ThreatIncConfig.responseMaxDifficulty();
 		}
 		return difficulty;
-	}
-
-	/**
-	 * The bill: fleet size (sum of per-fleet difficulty points) plus distance,
-	 * rounded to the nearest thousand credits.
-	 */
-	public static int commissionCost(MarketAPI base, StarSystemAPI system,
-			java.util.List<Integer> fleetSizes) {
-		int points = 0;
-		for (Integer size : fleetSizes) points += size;
-		float dist = Misc.getDistanceLY(base.getStarSystem().getLocation(),
-				system.getLocation());
-		float cost = points * ThreatIncConfig.commissionCostPerPoint()
-				+ dist * ThreatIncConfig.commissionCostPerLY();
-		return Math.max(1000, Math.round(cost / 1000f) * 1000);
 	}
 
 	/** The player's live commissioned expedition against a system, or null. */

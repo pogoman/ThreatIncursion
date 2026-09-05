@@ -50,7 +50,7 @@ public class ThreatIncConfig {
 	// ---- start trigger & pacing ----
 
 	public static boolean enabled()          { return b("threatinc_enabled", true); }
-	public static boolean startAtGameStart() { return b("threatinc_startAtGameStart", false); }
+	public static boolean startAtGameStart() { return b("threatinc_startAtGameStart", true); }
 	public static boolean colonySizeTrigger(){ return b("threatinc_colonySizeTrigger", true); }
 	public static int triggerColonySize()    { return i("threatinc_triggerColonySize"); }
 	public static float tickDays()           { return f("threatinc_tickDays"); }
@@ -251,12 +251,8 @@ public class ThreatIncConfig {
 
 	// ---- player-commissioned expeditions ----
 
-	/** Whether the player can commission purge expeditions from military colonies. */
+	/** Whether the player can commission purge expeditions from military colonies (paid by the base's reserve and capacity, no credits). */
 	public static boolean commissionEnabled()   { return b("threatinc_commissionEnabled", true); }
-	/** Credits per fleet-difficulty point of the commissioned flotilla. */
-	public static float commissionCostPerPoint() { return f("threatinc_commissionCostPerPoint"); }
-	/** Credits per light-year from the commissioning colony to the target system. */
-	public static float commissionCostPerLY()    { return f("threatinc_commissionCostPerLY"); }
 
 	// ---- Remnant immune system ----
 
@@ -335,8 +331,6 @@ public class ThreatIncConfig {
 	public static float convoyTimeoutDays()   { return f("threatinc_convoyTimeoutDays"); }
 	/** Whether the war board's fleet orders (guard, stage, intercept, siege, recall) are offered. */
 	public static boolean ordersEnabled()     { return b("threatinc_ordersEnabled", true); }
-	/** Relationship (-1..1) with an allied faction at which it takes the player's orders. */
-	public static float orderMinRelation()    { return f("threatinc_orderMinRelation"); }
 	/** Combat fleet points of a guard or intercept task force. */
 	public static float guardFleetFP()        { return f("threatinc_guardFleetFP"); }
 	/** Days a guard task force holds a colony's orbit. */
@@ -345,6 +339,49 @@ public class ThreatIncConfig {
 	public static float interceptDays()       { return f("threatinc_interceptDays"); }
 	/** Fraction of the fuel and supplies drawn at launch refunded when a fleet returns home at full strength. */
 	public static float returnRefundMult()    { return f("threatinc_returnRefundMult"); }
+
+	// ---- player aid (docs/player-aid.md) ----
+
+	/** Whether the player can send aid from their colonies and the capacity ledger applies. */
+	public static boolean aidEnabled()        { return b("threatinc_aidEnabled", true); }
+	/** Fleet points a player colony can have at sea at 100% fleet size. */
+	public static float aidBaseFP()           { return f("threatinc_aidBaseFP"); }
+	/** Days before a lost fleet's points return to its colony. */
+	public static float aidRebuildDays()      { return f("threatinc_aidRebuildDays"); }
+	/** Smallest task force a player colony will send. */
+	public static float aidGuardMinFP()       { return f("threatinc_aidGuardMinFP"); }
+	/** Relationship (-1..1) below which a faction refuses the player's aid; hostility always refuses. */
+	public static float aidMinRelation()      { return f("threatinc_aidMinRelation"); }
+	/** Credits of delivered goods, at the receiving market's price, per point of standing. */
+	public static float aidRepPerCredits()    { return f("threatinc_aidRepPerCredits"); }
+	/** Most standing points one delivery earns. */
+	public static float aidRepMaxPerDelivery(){ return f("threatinc_aidRepMaxPerDelivery"); }
+	/** Standing points for a guard arriving on station. */
+	public static float aidRepGuardArrived()  { return f("threatinc_aidRepGuardArrived"); }
+	/** Standing points for a guard serving its full term. */
+	public static float aidRepGuardCompleted(){ return f("threatinc_aidRepGuardCompleted"); }
+	/** Standing points split among every faction in a hive's strike reach for a task force at its door. */
+	public static float aidRepFrontTotal()    { return f("threatinc_aidRepFrontTotal"); }
+	/** Whether mobilised factions post requests for help on the mission board. */
+	public static boolean aidRequestsEnabled(){ return b("threatinc_aidRequestsEnabled", true); }
+	/** Requests posted at once, unaccepted. */
+	public static int aidRequestMaxPosted()   { return i("threatinc_aidRequestMaxPosted"); }
+	/** Days a defence contract runs. */
+	public static float missionDefendDays()   { return f("threatinc_missionDefendDays"); }
+	/** Credits per colony size a defence contract pays. */
+	public static float missionDefendCredits(){ return f("threatinc_missionDefendCredits"); }
+	/** A defence is requested when the strike's strength exceeds the defenders' times this. */
+	public static float defendRequestRatio()  { return f("threatinc_defendRequestRatio"); }
+	/** Days a vanilla deficit must stand before a colony asks for the commodity. */
+	public static float missionAidShortageDays() { return f("threatinc_missionAidShortageDays"); }
+	/** An aid contract pays the goods' value at the receiving market times this. */
+	public static float missionAidPayMult()   { return f("threatinc_missionAidPayMult"); }
+	/** Delivery standing is multiplied by this when it answers a contract. */
+	public static float missionRepMult()      { return f("threatinc_missionRepMult"); }
+	/** Whether allied mobilised factions guard and resupply each other's colonies. */
+	public static boolean allyAidEnabled()    { return b("threatinc_allyAidEnabled", true); }
+	/** Chance per tick per need that a fully willing ally sends aid; scaled down by standing. */
+	public static float allyAidChance()       { return f("threatinc_allyAidChance"); }
 
 	// ---- escalation: grudge and alarm (docs/design-theory.md 8.1) ----
 

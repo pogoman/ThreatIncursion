@@ -63,6 +63,12 @@ public class ThreatReserves {
 		public float supplies;
 		/** Rule 3: when the depot last issued a cover, per commodity (clock timestamp). Null on older saves. */
 		public Map<String, Long> coverIssued;
+		/**
+		 * The largest cap this depot has banked towards, per commodity - the
+		 * basis of its floor once the colony is in deficit and the live cap
+		 * reads zero (see {@link #floor}). Null on older saves.
+		 */
+		public Map<String, Float> capSeen;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -140,8 +146,36 @@ public class ThreatReserves {
 	 */
 	public static float available(MarketAPI market, String commodityId) {
 		if (market == null) return 0f;
-		float floor = cap(market, commodityId) * ThreatIncConfig.reserveFloorFraction();
-		return Math.max(0f, stock(market.getId(), commodityId) - floor);
+		return Math.max(0f, stock(market.getId(), commodityId) - floor(market, commodityId));
+	}
+
+	/**
+	 * The home garrison's stock: reserveFloorFraction of the cap. The live cap
+	 * is the colony's CURRENT surplus times the cap months, and a colony in
+	 * deficit has no surplus - so the moment a colony is short, the cap it
+	 * banked towards reads zero and a floor taken from it alone would vanish
+	 * exactly when it matters (a struck world's depot could be drawn to
+	 * nothing by a sortie or its own shortage covers). The floor therefore
+	 * stands on the largest cap the depot has seen, which {@link #poll}
+	 * records; a colony that never banked a commodity has no floor for it.
+	 */
+	public static float floor(MarketAPI market, String commodityId) {
+		if (market == null) return 0f;
+		float basis = cap(market, commodityId);
+		ColonyReserve r = get(market.getId());
+		if (r != null && r.capSeen != null) {
+			Float seen = r.capSeen.get(commodityId);
+			if (seen != null && seen > basis) basis = seen;
+		}
+		return basis * ThreatIncConfig.reserveFloorFraction();
+	}
+
+	/** Remembers the cap a depot banked towards, so its floor survives the colony falling into deficit. */
+	protected static void noteCap(ColonyReserve r, String c, float capValue) {
+		if (r == null || capValue <= 0f) return;
+		if (r.capSeen == null) r.capSeen = new LinkedHashMap<String, Float>();
+		Float seen = r.capSeen.get(c);
+		if (seen == null || capValue > seen) r.capSeen.put(c, capValue);
 	}
 
 	/** Takes up to {@code amount}, never below the floor; returns what was taken. */
@@ -254,8 +288,11 @@ public class ThreatReserves {
 	 * trade modifier for reserveShortageCoverDays, exactly as a sale is. One
 	 * issue per period, never more than reserveShortageCoverFraction of the
 	 * stock at hand, and only whole units - a fraction of a unit changes
-	 * nothing on vanilla's screen. When the stock cannot buy one unit the
-	 * shortage stands, and {@link #status} reports the depot exhausted.
+	 * nothing on vanilla's screen. Like a sortie's draw it never takes the
+	 * depot below its {@link #floor} - the garrison's stock is not spent on
+	 * the civilian shortage either (docs/design-theory.md 8.6). When what the
+	 * depot may spend cannot buy one unit the shortage stands, and
+	 * {@link #status} reports the depot exhausted.
 	 */
 	protected static void coverShortage(MarketAPI market, ColonyReserve r, String c) {
 		float days = ThreatIncConfig.reserveShortageCoverDays();
@@ -268,11 +305,12 @@ public class ThreatReserves {
 		float unit = com.getCommodity().getEconUnit();
 		if (unit <= 0f) return;
 		float stock = read(r, c);
-		int units = (int) Math.min((double) deficit, Math.floor(stock * fraction / unit));
+		float spendable = coverSpendable(market, stock, c, fraction);
+		int units = (int) Math.min((double) deficit, Math.floor(spendable / unit));
 		if (units <= 0) return;
 		float qty = com.getQuantityForModValue(units);
 		if (qty <= 0f) qty = units * unit;
-		qty = Math.min(qty, stock);
+		qty = Math.min(qty, spendable);
 		write(r, c, stock - qty);
 		com.addTradeModPlus(COVER_SOURCE, qty, days);
 		if (r.coverIssued == null) r.coverIssued = new LinkedHashMap<String, Long>();
@@ -281,6 +319,11 @@ public class ThreatReserves {
 				+ label(c) + " against a " + deficit + "-unit shortage (" + units + " of "
 				+ deficit + " units covered for " + (int) days + " days); "
 				+ (int) (stock - qty) + " left in reserve");
+	}
+
+	/** What one cover issue may spend: the cover fraction of the stock, and never the floor. */
+	protected static float coverSpendable(MarketAPI market, float stock, String c, float fraction) {
+		return Math.max(0f, Math.min(stock * fraction, stock - floor(market, c)));
 	}
 
 	// ------------------------------------------------------------------
@@ -308,9 +351,11 @@ public class ThreatReserves {
 		/** Items the cover in force issued. */
 		public float coverQty;
 		public float coverDaysLeft;
-		/** Short, no cover, and the stock cannot buy one unit within the cover fraction (not necessarily empty). */
+		/** Short, no cover, and what the depot may spend cannot buy one unit (not necessarily empty). */
 		public boolean exhausted;
 		public float econUnit;
+		/** The garrison's stock - what neither a sortie nor a shortage cover takes. */
+		public float floor;
 	}
 
 	public static CommodityStatus status(MarketAPI market, String c) {
@@ -327,6 +372,7 @@ public class ThreatReserves {
 		s.cap = cap(market, c);
 		s.deficit = deficitUnits(com);
 		s.econUnit = com.getCommodity().getEconUnit();
+		s.floor = floor(market, c);
 		s.coverQty = coverQuantity(com);
 		s.covering = s.coverQty > 0f;
 		float days = ThreatIncConfig.reserveShortageCoverDays();
@@ -337,7 +383,7 @@ public class ThreatReserves {
 			s.coverDaysLeft = issued == null ? days : Math.max(0f,
 					days - Global.getSector().getClock().getElapsedDaysSince(issued));
 		} else if (s.deficit > 0 && days > 0f && fraction > 0f && s.econUnit > 0f) {
-			s.exhausted = s.stock * fraction < s.econUnit;
+			s.exhausted = coverSpendable(market, s.stock, c, fraction) < s.econUnit;
 		}
 		return s;
 	}
@@ -444,6 +490,7 @@ public class ThreatReserves {
 					if (per30 > 0f) {
 						if (r == null) r = getOrCreate(market.getId());
 						float capValue = per30 * ThreatIncConfig.reserveCapMonths();
+						noteCap(r, c, capValue);
 						float have = read(r, c);
 						if (have < capValue) {
 							write(r, c, Math.min(capValue, have + per30 * elapsedDays / 30f));
@@ -519,6 +566,7 @@ public class ThreatReserves {
 				float per30 = accrualPer30(market, c);
 				if (per30 <= 0f) continue;
 				if (r == null) r = getOrCreate(market.getId());
+				noteCap(r, c, per30 * ThreatIncConfig.reserveCapMonths());
 				float start = Math.min(per30 * months, per30 * ThreatIncConfig.reserveCapMonths());
 				if (read(r, c) < start) write(r, c, start);
 			}

@@ -5,6 +5,7 @@ Everything here was verified in the running game unless marked otherwise.
 
 | Doc | What it covers |
 | --- | --- |
+| [code-map.md](code-map.md) | One line per class in `src/threatinc/`, grouped by subsystem. Start here to find which file owns a feature or bug before diving in. |
 | [intel-ui-platform.md](intel-ui-platform.md) | What the vanilla intel large-description API can and cannot draw, and the traps that crash or silently break it. Read before any custom intel UI work. |
 | [war-board.md](war-board.md) | How `ThreatWarBoard` is built: data model, priority score, hive supply model, ledger, cards, buttons, tooltips, and the design decisions behind them. |
 | [hive-economy.md](hive-economy.md) | How vanilla's economy really behaves (availability is a broadcast, shipping capacity is `10 x accessibility + 5`) and what that means for the hive planner, fuel reach and the board's Supply column. Read before touching `planHiveEconomy` or anything that reasons about shortages. |
@@ -12,6 +13,7 @@ Everything here was verified in the running game unless marked otherwise.
 | [ground-war.md](ground-war.md) | The ground-front siege rework: design, phase-1 mechanics (fronts, danger-close, fallout), judgment calls awaiting review, and the phase-2 backlog (fleet tasking, hive-side fronts, outposts). |
 | [economy-coherence.md](economy-coherence.md) | How the successful 4X games run economies (stockpile vs flow, physical logistics), what vanilla's economy API actually offers (trade mods, econ units, deficits), and the seven rules that make the war reserves one truth with the colony screen. Built and verified in-game 2026-09-05 (section 5). |
 | [design-theory.md](design-theory.md) | Review of the direction against design and military literature (AI War, Old World, Stellaris crises, Lanchester, Clausewitz, Corbett, Blackett's convoy research, feedback loops): what we already do right, and the seven things to verify or decide before building more. |
+| [player-aid.md](player-aid.md) | BUILT 2026-09-05, untested in-game: NPC factions are autonomous (their order buttons, the Rally button and the standing gate are gone); the player sends Defend / Aid / Strike fleets from their own colonies, gated by a capacity ledger (vanilla fleet-size stat) and reserve stock, paid in credits, earning standing on arrival; factions post requests for help as vanilla missions the player completes in person (station commander hand-over) or by colony fleet; allies aid each other by standing. Section 8 lists what the build did and what to verify. |
 | [strategy-layer.md](strategy-layer.md) | Phase 2, built untested (Sept 2026): per-faction war mode, per-colony reserves from vanilla production, troops as real expedition cargo, staging convoys, the board's faction selector and view, and remote fleet orders (guard, stage, intercept, siege, recall). |
 
 Design mockups (HTML artboards) that led to the current layout are in `design/war-effort/`;

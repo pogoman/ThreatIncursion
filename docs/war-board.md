@@ -116,8 +116,10 @@ Missions come from `ThreatMissionIntel` (the bounty-to-mission conversion, done 
 session). The View button calls `ui.updateIntelList(false, missionsForSystem(id))` then
 `selectItem(first)`. Purge uses `InfestedSystemIntel.quote / addCommissionPrompt /
 commissionExpedition` (made static so the old per-system intel and the board share them);
-the button is disabled with a tooltip when no player military colony is in range, the fee is
-unaffordable, or an expedition is already operating.
+the button is disabled with a tooltip when no player military colony is in range or an
+expedition is already operating. The fee was removed 2026-09-05 (docs/player-aid.md,
+"Paying"): the expedition is paid by the base's reserve and fleet capacity, as the faction
+view's Siege button is.
 
 Siege expeditions, NPC and commissioned alike, are **sized to the target** (Sept 2026,
 `IncursionManager.siegeFleetSizes`). Vanilla's raid effectiveness is `raidStr / (raidStr +

@@ -81,6 +81,8 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			if (storyCritical && atFloor && !ThreatIncConfig.destroyStoryCritical()) return;
 
 			super.performRaid(fleet, market);
+			// a Threat action landed here: any defence contract for the colony fails
+			ThreatAidMissionIntel.strikeLanded(market);
 
 			if (storyCritical && atFloor && ThreatIncConfig.destroyStoryCritical()
 					&& market.isInEconomy()) {

@@ -155,6 +155,8 @@ public class ThreatReturns {
 	 * credited.
 	 */
 	public static float[] settle(CampaignFleetAPI fleet, MarketAPI home) {
+		// home: whatever the capacity ledger held for it is the colony's again
+		ThreatAidCapacity.release(fleet);
 		CargoAPI cargo = fleet.getCargo();
 		float marines = cargo.getMarines();
 		float armaments = cargo.getCommodityQuantity(Commodities.HAND_WEAPONS);

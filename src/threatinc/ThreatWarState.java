@@ -20,8 +20,12 @@ import com.fs.starfarer.api.util.Misc;
  * colonies accrue visible reserves ({@link ThreatReserves}), its logistics
  * run ({@link ThreatConvoys}), its expeditions draw real troops from those
  * reserves, and its fleets appear on the war board. Nothing about a faction
- * that has not been struck is touched. The player's faction mobilises the
- * same way, when the swarm first strikes a player world.
+ * that has not been struck is touched. The player's faction is different:
+ * it mobilises only when the player chooses to, from their own tab on the
+ * war board, and stands down the same way. Mobilising puts every player
+ * colony on War footing (its wartime demand) and seeds reserves; standing
+ * down lifts the footing and freezes the reserves. A strike on a player
+ * world never mobilises the player by itself.
  *
  * <p>Stateless like the other managers: the record lives in persistent data.
  */
@@ -84,29 +88,70 @@ public class ThreatWarState {
 		String id = faction.getId();
 		long now = Global.getSector().getClock().getTimestamp();
 		FactionWar war = wars().get(id);
-		boolean entering = war == null;
-		if (entering) {
-			war = new FactionWar();
-			war.factionId = id;
-			war.enteredTimestamp = now;
-			wars().put(id, war);
+		if (war == null && !faction.isPlayerFaction()) {
+			war = mobilise(faction, "struck at " + struck.getName());
 		}
+		if (war == null) return; // the player mobilises by choice, not by being struck
 		war.lastStruckTimestamp = now;
 		war.lastStruckMarketId = struck.getId();
 		war.strikesSuffered++;
-		if (entering) {
-			// peacetime depots first, then the War footing's demand
-			ThreatReserves.seed(id);
-			ThreatReserves.syncWarFooting(warFactionIds());
-			String who = faction.isPlayerFaction() ? "Your faction"
-					: Misc.ucFirst(faction.getDisplayNameWithArticle());
-			ThreatColonyManager.announceAlways(who + " has mobilised for war against the "
-					+ "Threat: its colonies now stock marines, armaments, fuel and "
-					+ "supplies for the war effort, and ship them to the front.",
-					Misc.getHighlightColor());
-			ThreatIncConfig.log("War mode: " + id + " mobilised (struck at "
-					+ struck.getName() + ")");
-		}
+	}
+
+	/**
+	 * Enter war mode for a faction not yet in it: record it, seed its
+	 * peacetime depots, then the War footing's demand, and tell the player.
+	 * Returns the record, or null if the faction was already at war.
+	 */
+	public static FactionWar mobilise(FactionAPI faction, String why) {
+		if (!enabled() || faction == null) return null;
+		String id = faction.getId();
+		// never the pseudo "neutral" faction: ownerless stations get struck too,
+		// and it has no colonies and no navy to mobilise
+		if (Factions.THREAT.equals(id) || faction.isNeutralFaction()
+				|| wars().containsKey(id)) return null;
+		FactionWar war = new FactionWar();
+		war.factionId = id;
+		war.enteredTimestamp = Global.getSector().getClock().getTimestamp();
+		war.lastStruckTimestamp = war.enteredTimestamp;
+		wars().put(id, war);
+		// peacetime depots first, then the War footing's demand
+		ThreatReserves.seed(id);
+		ThreatReserves.syncWarFooting(warFactionIds());
+		String who = faction.isPlayerFaction() ? "Your faction"
+				: Misc.ucFirst(faction.getDisplayNameWithArticle());
+		ThreatColonyManager.announceAlways(who + " has mobilised for war against the "
+				+ "Threat: its colonies now stock marines, armaments, fuel and "
+				+ "supplies for the war effort, and ship them to the front.",
+				Misc.getHighlightColor());
+		ThreatIncConfig.log("War mode: " + id + " mobilised (" + why + ")");
+		return war;
+	}
+
+	/** Whether the player may mobilise: the layer on, not yet at war, and a colony to put on footing. */
+	public static boolean playerMayMobilise() {
+		return enabled() && !wars().containsKey(Factions.PLAYER)
+				&& !Misc.getPlayerMarkets(false).isEmpty();
+	}
+
+	/** The player's choice, from the war board: mobilise their own faction. */
+	public static void mobilisePlayer() {
+		if (!playerMayMobilise()) return;
+		mobilise(Global.getSector().getFaction(Factions.PLAYER), "by the player's order");
+	}
+
+	/**
+	 * The player's choice, from the war board: stand their faction down. The
+	 * War footing is lifted from every player colony and the reserves are
+	 * kept, frozen, exactly as an NPC faction's are when it stands down.
+	 */
+	public static void standDownPlayer() {
+		if (!enabled() || !wars().containsKey(Factions.PLAYER)) return;
+		wars().remove(Factions.PLAYER);
+		ThreatReserves.syncWarFooting(warFactionIds());
+		ThreatColonyManager.announceAlways("Your faction has stood down from war footing: "
+				+ "your colonies no longer stock for the war effort, and what they hold "
+				+ "is kept.", Misc.getHighlightColor());
+		ThreatIncConfig.log("War mode: player stood down by order");
 	}
 
 	/** Persistent marker: the one-time backfill below has run for this save. */
@@ -143,16 +188,9 @@ public class ThreatWarState {
 			if (!(curr instanceof ThreatResponseIntel)) continue;
 			ThreatResponseIntel r = (ThreatResponseIntel) curr;
 			if (r.isEnded() || r.isEnding() || r.getFaction() == null) continue;
-			String id = r.getFaction().getId();
-			if (isAtWar(id) || Factions.THREAT.equals(id)) continue;
+			if (r.getFaction().isPlayerFaction()) continue; // the player's choice alone
 			// mobilise without a strike record: the task force IS the evidence
-			FactionWar war = new FactionWar();
-			war.factionId = id;
-			war.enteredTimestamp = Global.getSector().getClock().getTimestamp();
-			war.lastStruckTimestamp = war.enteredTimestamp;
-			wars().put(id, war);
-			ThreatReserves.seed(id);
-			mobilised++;
+			if (mobilise(r.getFaction(), "task force out") != null) mobilised++;
 		}
 		ThreatReserves.syncWarFooting(warFactionIds());
 		ThreatIncConfig.log("War mode backfill: " + mobilised + " faction(s) mobilised from "
@@ -164,16 +202,27 @@ public class ThreatWarState {
 	 * mobilised faction stays mobilised for the rest of the game; otherwise it
 	 * stands down that many days after its last strike, provided no live hive
 	 * remains within expedition range of any of its military worlds. Reserves
-	 * are kept, frozen, when it does.
+	 * are kept, frozen, when it does. The player's faction is not on the
+	 * timer: it mobilises and stands down by the player's order only.
 	 */
 	public static void poll() {
 		if (!enabled()) return;
 		backfill();
+		// a "neutral" record left by an older build, which mobilised it when an
+		// ownerless station was struck
+		for (String id : new ArrayList<String>(wars().keySet())) {
+			FactionAPI faction = Global.getSector().getFaction(id);
+			if (faction == null || faction.isNeutralFaction()) {
+				wars().remove(id);
+				ThreatReserves.syncWarFooting(warFactionIds());
+				ThreatIncConfig.log("War mode: dropped " + id + " (not a real faction)");
+			}
+		}
 		float days = ThreatIncConfig.warModeStandDownDays();
 		if (days <= 0f) return;
 		for (String id : new ArrayList<String>(wars().keySet())) {
 			FactionWar war = wars().get(id);
-			if (war == null) continue;
+			if (war == null || Factions.PLAYER.equals(id)) continue;
 			float since = Global.getSector().getClock().getElapsedDaysSince(war.lastStruckTimestamp);
 			if (since < days) continue;
 			FactionAPI faction = Global.getSector().getFaction(id);

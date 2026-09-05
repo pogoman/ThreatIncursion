@@ -330,7 +330,6 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 		public java.util.List<Integer> fleetSizes;
 		public boolean anyGarrisoned;
 		public int difficulty;
-		public int cost;
 		/** Ground strength the flotilla is expected to land, and what the defenses demand. */
 		public float raidStrEstimate;
 		public float raidStrNeeded;
@@ -358,7 +357,6 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				heavyAssault, targets);
 		q.raidStrEstimate = IncursionManager.siegeRaidStrEstimate(q.fleetSizes);
 		q.raidStrNeeded = IncursionManager.siegeRaidStrNeeded(targets);
-		q.cost = IncursionManager.commissionCost(q.base, system, q.fleetSizes);
 		return q;
 	}
 
@@ -397,7 +395,8 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				+ (q.anyGarrisoned ? " - including escorts to fight through the live "
 						+ "Defense Swarms" : "")
 				+ ". It runs the full siege playbook autonomously and reports back when "
-				+ "done. The fee covers fleets and distance, paid up front - no refunds.",
+				+ "done. It draws its troops, armaments, fuel and supplies from that colony's "
+				+ "reserve and holds its fleet capacity until the campaign is over.",
 				opad, h, q.base.getName(), q.fleetSizes.size() + "-fleet");
 		boolean enough = q.raidStrEstimate >= q.raidStrNeeded;
 		info.addPara("Landing force: about %s ground strength against the %s a commando raid "
@@ -408,17 +407,12 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				Misc.getWithDGS(Math.round(q.raidStrEstimate)), Misc.getWithDGS(Math.round(q.raidStrNeeded)));
 
 		com.fs.starfarer.api.ui.ButtonAPI button = owner.addGenericButton(info, width,
-				"Commission purge expedition (" + Misc.getDGSCredits(q.cost) + ")", buttonId);
+				"Commission purge expedition", buttonId);
 
-		int credits = (int) Global.getSector().getPlayerFleet().getCargo().getCredits().get();
 		if (q.existing != null) {
 			button.setEnabled(false);
 			info.addPara("An expedition you commissioned is already operating against this "
 					+ "system.", 3f, gray);
-		} else if (credits < q.cost) {
-			button.setEnabled(false);
-			info.addPara("You cannot afford the fee - you have %s.", 3f, neg,
-					Misc.getDGSCredits(credits));
 		}
 	}
 
@@ -433,32 +427,32 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 		prompt.addPara("Commission a " + q.fleetSizes.size() + "-fleet purge expedition from "
 				+ q.base.getName() + " against the " + q.targets.size() + " Threat "
 				+ (q.targets.size() > 1 ? "colonies" : "colony") + " of the "
-				+ q.system.getNameWithLowercaseType() + " for %s?", 0f,
-				Misc.getHighlightColor(), Misc.getDGSCredits(q.cost));
-		prompt.addPara("The fee is paid up front. Once mustered, the expedition is "
-				+ "autonomous - it cannot be recalled and does not refund its fee, even "
-				+ "if the colonies are destroyed by other means first.",
+				+ q.system.getNameWithLowercaseType() + "? Its troops, armaments, fuel and "
+				+ "supplies come from %s's reserve.", 0f,
+				Misc.getHighlightColor(), q.base.getName());
+		prompt.addPara("Once mustered, the expedition is autonomous - it campaigns on its "
+				+ "own and holds the colony's fleet capacity until it is over, even if the "
+				+ "colonies are destroyed by other means first.",
 				Misc.getGrayColor(), 10f);
 	}
 
 	/**
-	 * Spends the fee and launches; authoritative recomputation at spend time.
+	 * Launches; authoritative recomputation at launch time. No credits: the
+	 * expedition is paid by the base's reserve and its fleet capacity, as the
+	 * board's Siege button is (decided 2026-09-05).
 	 * @return true if an expedition was mustered
 	 */
 	public static boolean commissionExpedition(String systemId) {
 		CommissionQuote q = quote(systemId);
 		if (q == null || q.base == null || q.existing != null) return false;
-		if (Global.getSector().getPlayerFleet().getCargo().getCredits().get() < q.cost) return false;
 
-		Global.getSector().getPlayerFleet().getCargo().getCredits().subtract(q.cost);
 		ThreatPurgeFGI launched = IncursionManager.launchSiegeExpedition(q.base,
 				Global.getSector().getPlayerFaction(), q.system, q.targets, q.fleetSizes,
 				true, new java.util.Random());
 		if (launched == null) {
 			// a mobilised player faction draws real troops from the base's
 			// reserve (docs/strategy-layer.md); short of them, no landing force
-			// can be raised - fee refunded
-			Global.getSector().getPlayerFleet().getCargo().getCredits().add(q.cost);
+			// can be raised
 			float[] wants = IncursionManager.expeditionWants(q.base, q.system, q.targets,
 					q.fleetSizes);
 			ThreatColonyManager.announceAlways("No expedition could be raised at "
@@ -466,17 +460,16 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 					+ (int) ThreatReserves.stock(q.base.getId(),
 							com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES)
 					+ " marines against the " + (int) wants[0] + " the landing needs. "
-					+ "Stage more there first. Fee refunded.", Misc.getNegativeHighlightColor());
+					+ "Stage more there first.", Misc.getNegativeHighlightColor());
 			return false;
 		}
 
 		ThreatColonyManager.announceAlways("A purge expedition you commissioned is "
 				+ "mustering at " + q.base.getName() + ", bound for the "
-				+ q.system.getNameWithLowercaseType() + " (" + Misc.getDGSCredits(q.cost)
-				+ " paid).", Misc.getHighlightColor());
+				+ q.system.getNameWithLowercaseType() + ".", Misc.getHighlightColor());
 		ThreatIncConfig.log("Player commissioned purge expedition vs " + q.system.getName()
 				+ " from " + q.base.getName() + " - " + q.fleetSizes.size()
-				+ " fleets, difficulty " + q.difficulty + ", cost " + q.cost);
+				+ " fleets, difficulty " + q.difficulty);
 		return true;
 	}
 

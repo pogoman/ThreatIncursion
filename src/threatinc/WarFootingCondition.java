@@ -67,6 +67,14 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 					+ "available with it, %s demanded): %s issued, %s left.", pad, h, stock,
 					units(s.deficit), "" + s.available, "" + s.demand,
 					Misc.getWithDGS((int) s.coverQty), days(s.coverDaysLeft));
+		} else if (s.exhausted && s.floor > 0f && s.stock - s.floor < s.stock
+				* ThreatIncConfig.reserveShortageCoverFraction()) {
+			// the garrison's floor, not the cover fraction, is what stops the issue
+			tooltip.addPara(name + ": %s in reserve. Short %s (%s available, %s demanded): "
+					+ "%s - a unit is %s and the depot keeps %s for the garrison, so the "
+					+ "shortage stands.", pad, neg, stock, units(s.deficit),
+					"" + s.available, "" + s.demand, "depot too low to issue",
+					Misc.getWithDGS((int) s.econUnit), Misc.getWithDGS((int) s.floor));
 		} else if (s.exhausted) {
 			// the stock may not be zero: the depot spends at most the cover
 			// fraction of it per issue, and a unit costs the econ unit
