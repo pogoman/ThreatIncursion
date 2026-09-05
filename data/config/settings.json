@@ -232,8 +232,8 @@
 	# The strategy layer (docs/strategy-layer.md). NPC factions stay vanilla
 	# until the Threat strikes one of their colonies; that strike puts the
 	# faction in WAR MODE. From then on its colonies accrue visible reserves
-	# of marines, heavy armaments, fuel and supplies - each from the colony's
-	# own vanilla production of the matching commodity - and every expedition
+	# of marines, heavy armaments, fuel and supplies - each banked from the
+	# colony's vanilla surplus of the matching commodity - and every expedition
 	# draws its landing force and provisions from the colony it sails from,
 	# carrying the troops as real cargo. Colonies ship stock to those staging
 	# bases by convoy: real fleets, interceptable, lootable.
@@ -241,13 +241,31 @@
 	# days after its last strike a faction stands down (only if no hive is in
 	# reach of its military worlds); 0 = mobilised for good
 	"threatinc_warModeStandDownDays": 0,
-	# reserve accrued per unit of the colony's vanilla production per 30 days
-	# (a size-6 Military Base makes ~6 units of marines; Heavy Industry makes
-	# size-2 units of hand weapons and supplies; Fuel Production ~size fuel)
-	"threatinc_reserveMarinesPerUnit": 50,
-	"threatinc_reserveArmamentsPerUnit": 40,
-	"threatinc_reserveFuelPerUnit": 300,
-	"threatinc_reserveSuppliesPerUnit": 300,
+	# Economy coherence (docs/economy-coherence.md): a colony banks only its
+	# vanilla SURPLUS - availability above demand, in econ units - each 30
+	# days: surplus units x the commodity's econ unit (1,500 fuel, 750
+	# supplies, 200 heavy armaments, 100 marines) x this multiplier. Vanilla's
+	# own local-resources stockpiles pile up the same excess at 0.5. A colony
+	# in deficit banks nothing; a player's sale, which raises availability,
+	# banks for its duration. Availability is vanilla's broadcast figure, so
+	# imported surplus banks too.
+	"threatinc_reserveSurplusMult": 1.0,
+	# War footing: every colony of a mobilised faction carries a market
+	# condition (with a hidden structure behind it) that adds vanilla demand
+	# for marines, heavy armaments, fuel and supplies - this many units at
+	# size 5, scaled by size / 5 and rounded up (1.0: sizes 3-5 add 1 unit,
+	# 6-8 add 2). A colony that was only just balanced now shows a shortage:
+	# the war eating its margin. 0 adds no demand.
+	"threatinc_warFootingDemandUnits": 1.0,
+	# the depot counters the colony's own shortage first: while a mobilised
+	# colony is short of a reserve commodity, its reserve issues the quantity
+	# that lifts availability by the deficit - a trade modifier, the way a
+	# sale would be - for reserveShortageCoverDays, then again when it lapses;
+	# never more than this fraction of the stock at hand per issue, and only
+	# whole units. When the stock cannot buy one unit the shortage stands and
+	# the war board says so. 0 days turns covering off.
+	"threatinc_reserveShortageCoverFraction": 0.5,
+	"threatinc_reserveShortageCoverDays": 30,
 	# a colony stockpiles at most this many months of its own production, and
 	# starts with reserveInitialMonths of it the moment its faction mobilises
 	# (the peacetime depots its first sortie draws from)

@@ -1,6 +1,8 @@
 # Economy coherence - how 4X games run economies, and how the war reserves must fit vanilla
 
-Written 2026-09-05 at the user's request; ALL SEVEN RULES APPROVED by the user the same day, build pending (section 5). The problem statement: a colony can show a fuel
+Written 2026-09-05 at the user's request; all seven rules approved by the user the same day
+and BUILT the same day - section 5 records what each rule became and what the clone-save
+test showed. The problem statement: a colony can show a fuel
 shortage on vanilla's colony screen while the war board shows it holding thousands of
 fuel in reserve. Every system must interact; the player must be able to think "I can
 help Kazeron by selling it fuel" and be right.
@@ -96,16 +98,76 @@ on vanilla's shortages before anything else.
 - Hive colonies are untouched: the swarm keeps its own broadcast economy
   ([[vanilla-economy-alignment]]).
 
-## 5. Build order (not started)
+## 5. Built 2026-09-05 - what each rule became, and what the test showed
 
-1. `ThreatReserves.accrualPer30` -> surplus formula via `getSizeMult` and `getEconUnit`;
-   retire the four per-unit knobs for one `reserveSurplusMult` (1.0).
-2. `War footing` condition (`data/campaign/market_conditions.csv` + plugin): demand while
-   mobilised, tooltip with reserve, bank rate and the "sell here" hint.
-3. Shortage countering on the fast poll (rule 3) with the cover-fraction knob and a board
-   status.
-4. Convoy arrival applies `addTradeModPlus`.
-5. Faction view tooltip units (rule 7).
+Built in one session and verified on the clone save (`...182493833221313174zz`, harness at
+1920x1080 on the external monitor): load with the war-mode backfill, a month of Shift
+fast-forward, a quicksave, and a reload on the rebuilt jar. No errors in the log.
+
+1. **Accrual** - `ThreatReserves.accrualPer30`: `getSizeMult(max(0, available -
+   maxDemand)) x econUnit x reserveSurplusMult` (1.0), militia trickle kept, the four
+   per-unit knobs retired. `available` excludes the mod's own trade modifiers (covers and
+   convoy landings, all sources prefixed `threatinc_`) - without that a convoy landing
+   would bank itself for 120 days and shipments would breed stock. Player sales still
+   count, as rule 4 wants.
+2. **War footing** - market condition `threatinc_war_footing` (`WarFootingCondition`,
+   `data/campaign/market_conditions.csv`) plus a hidden structure
+   `threatinc_war_footing_demand` (`WarFootingDemand`, `data/campaign/industries.csv`).
+   The structure exists because vanilla's market demand is the MAX over industries
+   (`CommodityOnMarket.updateMaxSupplyAndDemand`), not a sum, and a condition has no
+   demand of its own: the structure declares "the colony's highest existing demand + N",
+   N = `warFootingDemandUnits` (1.0) x size / 5 rounded up. `ThreatReserves.syncWarFooting`
+   adds and removes both on the fast poll and on mobilisation, with one `tripleStep`
+   recompute when anything changed; both persist in the save.
+3. **Shortage cover** - `ThreatReserves.coverShortage`: `addTradeModPlus` (source
+   `threatinc_cover`) for `getQuantityForModValue(deficit units)`, paid from the reserve,
+   lasting `reserveShortageCoverDays` (30) and re-issued when it lapses; whole units only,
+   at most `reserveShortageCoverFraction` (0.5) of the stock per issue; issue timestamps
+   persist in `ColonyReserve.coverIssued`. Board: the stock cell reads bright while
+   covering and red when the stock is too low to issue a unit; the row tooltip says why.
+4. **Sales** - nothing to build: a sale's trade modifier raises `available`, which ends
+   the deficit (no cover is bought) and banks as surplus. The condition tooltip states the
+   reserve, the bank rate, the cover and "selling any of these here raises its
+   availability for 120 days".
+5. **Convoys** - `ThreatConvoys.arrived` applies `addTradeModPlus` per landed quantity for
+   vanilla's `TRADE_IMPACT_DAYS` (120), sources `threatinc_convoy_<uid>`.
+6. **Reach** - unchanged, reads vanilla fuel.
+7. **Units** - `ThreatReserves.status` feeds one shared line per commodity
+   (`WarFootingCondition.addCommodityLine`) to both the condition tooltip and the faction
+   view's row tooltip: "Fuel: 2,500 in reserve. Short 3 units (7 available, 10 demanded):
+   depot too low to issue - a unit is 1,500 and the depot spends at most 50% of its stock
+   per issue, so the shortage stands."
+
+What the clone save showed (Hegemony, Persean League, the player and the backfilled
+factions, days 2110-2144 of the incursion):
+
+- **Vanilla imports only up to demand.** Every import-fed colony read available = demand
+  for all four commodities before and after the War footing landed (Tigra City marines
+  1/1 with its +1 unit of demand; Chicomoztoc fuel 7/10 only because no source could
+  cover it). So "surplus" is in practice local overproduction: Chicomoztoc's Heavy
+  Industry banks 400 armaments a month (10 available, 8 demanded), the player's
+  nanoforged Ice Wind Desert 800; nobody banks fuel or supplies they import. The worry
+  that every importer would bank a broadcast surplus does not arise; reserves are small
+  and uneven as section 4 predicted, and convoys plus the player's sales are how fuel
+  reaches a faction without a fuel surplus.
+- **Marine demand exists in vanilla.** Ground Defenses / Heavy Batteries demand marines
+  at size, supplies at size and heavy armaments at size-2 (Lion's Guard HQ armaments at
+  size), so a military world's War footing marine demand is size + N, and a colony whose
+  marines come from a distant High Command is short of them the moment it mobilises:
+  Chicomoztoc (10 demanded, 7 reachable) spends 300 marines a month covering three
+  units, Eventide 200, Kazeron 100 marines and 750 supplies.
+- **Vanilla nets trade modifiers.** The depot's 3,000-fuel issue at Chicomoztoc moved
+  availability by one unit, not two, because the player had been buying fuel there.
+  `ownModUnits` credits the difference with and without the depot's quantity.
+- **The cover fraction is a floor the player will see.** Chicomoztoc holding 2,500 fuel
+  reads "depot too low to issue" (a unit is 1,500, half the stock is 1,250) with the
+  shortage standing and the board cell red. That is the rule as approved; a fraction of
+  1.0 means "spend it all".
+- Covers lapse and re-issue on schedule (the day-2110 issues were re-bought after the
+  30-day hold), survive a save and reload with their timestamps (26 days left after four
+  days), and the condition and structure reload without re-mobilising anything.
+- Seen in passing, not from this build: the war-mode backfill mobilised "neutral" (an
+  in-flight strike at the purged world Skathi), which now has a selector button.
 
 ## Sources
 

@@ -41,25 +41,57 @@ Persistent map `threatinc_colonyReserves` of `ColonyReserve { marketId, marines,
 armaments, fuel, supplies }`, keyed by market id, for every market of a war-mode
 faction.
 
-**Accrual** runs on the fast poll (pro-rated per 30 days) and reads vanilla's own
-production figures - `market.getCommodityData(c).getMaxSupply()` - so a reserve is
-exactly what the colony's industries make:
+**Accrual** (rewritten 2026-09-05 to docs/economy-coherence.md rule 1) runs on the fast
+poll, pro-rated per 30 days, and banks only the colony's vanilla SURPLUS: availability
+above demand, in econ units, times the commodity's econ unit (1,500 fuel, 750 supplies,
+200 heavy armaments, 100 marines) times `reserveSurplusMult` (1.0; vanilla's own
+local-resources stockpiles pile up the same excess at 0.5). Marines add the militia
+trickle (`reserveBaselinePerSize`). Vanilla imports only up to demand (verified: every
+import-fed colony reads available = demand), so in practice surplus is local
+overproduction - a nanoforged Heavy Industry, a synchrotron fuel plant - or a trade
+modifier: a player's sale banks for its duration. The mod's own trade modifiers
+(shortage covers, convoy landings) never count as surplus.
 
-| Reserve | Vanilla commodity | Made by | Knob (per supply unit per 30 days) |
+| Reserve | Vanilla commodity | Econ unit (items) | Who demands it in vanilla |
 | --- | --- | --- | --- |
-| marines | `marines` | Patrol HQ / Military Base / High Command | `reserveMarinesPerUnit` (50) |
-| armaments | `hand_weapons` | Heavy Industry / Orbital Works | `reserveArmamentsPerUnit` (40) |
-| fuel | `fuel` | Fuel Production | `reserveFuelPerUnit` (300) |
-| supplies | `supplies` | Heavy Industry / Orbital Works | `reserveSuppliesPerUnit` (300) |
+| marines | `marines` | 100 | Ground Defenses / Heavy Batteries at size |
+| armaments | `hand_weapons` | 200 | Ground Defenses at size-2, Lion's Guard HQ at size |
+| fuel | `fuel` | 1,500 | Spaceport size-2, Military Base size-1, Waystation size |
+| supplies | `supplies` | 750 | Population min(size, 3), Spaceport size-2, Military Base size-1 |
 
-Cap per commodity = accrual x `reserveCapMonths` (6). A colony that makes nothing of a
-commodity holds none of it - which is exactly why staging exists. A shortage on the
-colony (available below demand) scales that commodity's accrual by the availability
-fraction, so a blockaded forge world stops arming. The moment a faction mobilises each
-colony starts with `reserveInitialMonths` (3) of its own production - the peacetime
-depots its first sortie draws from; without that the first expedition would wait
-months. A faction that stands down keeps its stock, frozen; a captured colony keeps
-its depot for the new owner; only the swarm taking a world erases one.
+Cap per commodity = accrual x `reserveCapMonths` (6); a colony in deficit has no accrual,
+so no cap and no sortie floor. Mobilisation seeds `reserveInitialMonths` (3) of the
+peacetime surplus - seeded before the War footing's demand lands. A faction that stands
+down keeps its stock, frozen; a captured colony keeps its depot for the new owner; only
+the swarm taking a world erases one.
+
+**War footing** (rule 2): every colony of a mobilised faction carries the
+`threatinc_war_footing` market condition (tooltip: reserve, surplus and demand in
+vanilla's units, what the depot is covering, the sell-here hint) and a hidden structure
+(`threatinc_war_footing_demand`, `WarFootingDemand`) that declares demand for the four
+commodities at "the colony's highest existing demand plus `warFootingDemandUnits`" (1.0
+at size 5, scaled by size / 5 and rounded up: 1 unit at sizes 3-5, 2 at 6-8). Vanilla's
+market demand is the MAX over industries, not a sum, which is why a condition alone
+cannot add demand. Vanilla then imports up to the new demand wherever a source is in
+reach, so the shortage appears only where it cannot. `ThreatReserves.syncWarFooting`
+adds and removes both on the fast poll and on mobilisation, with one full economy
+recompute when anything changed.
+
+**Shortage cover** (rule 3): while a mobilised colony is short of a reserve commodity
+and no cover is in force, the depot issues `getQuantityForModValue(deficit units)` as an
+`addTradeModPlus` for `reserveShortageCoverDays` (30), paying that quantity from the
+reserve - whole units only, never more than `reserveShortageCoverFraction` (0.5) of the
+stock per issue, re-issued when it lapses. A stock too low to buy one unit within the
+fraction leaves the shortage standing: red on the board, "depot too low to issue" in
+the tooltips (Chicomoztoc holding 2,500 fuel will not spend 1,500 of it). Vanilla nets
+every trade modifier on a market before crediting units, so the depot's credited units
+are the difference with and without its quantity (a player's fuel buying at Chicomoztoc
+ate one of the two units its first cover issued).
+
+**Convoy landings** (rule 5): `ThreatConvoys.arrived` also applies an `addTradeModPlus`
+per landed quantity for vanilla's `TRADE_IMPACT_DAYS` (120), so the colony screen sees
+the shipment as it would a sale (Sphinx read 19 marines available against 6 demanded
+after a 1,399-marine convoy).
 
 **Draws**: `ThreatReserves.draw(marketId, commodity, amount)` returns what was actually
 taken. Callers:
@@ -250,5 +282,7 @@ existed in the test save.
 ## Testing notes
 
 Clone save + XML injection as in docs/testing-harness.md. Cheapest proof lines (debug
-logging on): `War mode:`, `Reserve accrual`, `Expedition draw`, `Convoy dispatched`,
-`Convoy arrived`, `Convoy lost`, `Landing from cargo`.
+logging on): `War mode:`, `War footing:`, `Reserve seed:`, `Reserve cover:`, `Reserve
+ledger:` (one line per mobilised colony on the first poll after a load, then monthly:
+stock, available/demand, surplus, bank rate, cover state), `Expedition draw`, `Convoy
+dispatched`, `Convoy arrived`, `Convoy lost`, `Landing from cargo`.

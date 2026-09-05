@@ -237,9 +237,16 @@ public class ThreatFactionView {
 			main.addTableHeaderTooltip(2, "The structure that makes this a base: expeditions, "
 					+ "task forces and convoys sail from military worlds.");
 			main.addTableHeaderTooltip(3, "Ground defense strength - what a hive landing must beat.");
-			main.addTableHeaderTooltip(4, "Marines in reserve here, made by its military structures. "
-					+ "Hover the row for the monthly accrual and cap.");
-			main.addTableHeaderTooltip(5, "Heavy armaments in reserve, made by heavy industry.");
+			main.addTableHeaderTooltip(4, "Marines in reserve here, banked from what the colony has "
+					+ "above its demand (militia included). Hover the row for vanilla's figures, "
+					+ "the monthly bank rate and any shortage the depot is covering. Bright: the "
+					+ "colony is short and the depot covers it. Red: short, and the depot holds "
+					+ "too little to issue a unit.");
+			main.addTableHeaderTooltip(5, "Heavy armaments in reserve, banked from the surplus "
+					+ "above demand.");
+			main.addTableHeaderTooltip(6, "Fuel in reserve, banked from the surplus above demand - "
+					+ "what expeditions and task forces burn.");
+			main.addTableHeaderTooltip(7, "Supplies in reserve, banked from the surplus above demand.");
 			main.addTableHeaderTooltip(8, "The nearest live hive system within this base's "
 					+ "expedition reach - what its expeditions sail against, and what convoys "
 					+ "stock it for.");
@@ -257,10 +264,14 @@ public class ThreatFactionView {
 						r.military ? militaryLabel(m) : "-");
 				ThreatWarBoard.cell(cells, Alignment.MID, text,
 						Misc.getWithDGS((int) MarketCMD.getDefenderStr(m)));
-				ThreatWarBoard.cell(cells, Alignment.MID, text, stockText(m, Commodities.MARINES));
-				ThreatWarBoard.cell(cells, Alignment.MID, text, stockText(m, Commodities.HAND_WEAPONS));
-				ThreatWarBoard.cell(cells, Alignment.MID, text, stockText(m, Commodities.FUEL));
-				ThreatWarBoard.cell(cells, Alignment.MID, text, stockText(m, Commodities.SUPPLIES));
+				ThreatWarBoard.cell(cells, Alignment.MID, stockColor(m, Commodities.MARINES, text),
+						stockText(m, Commodities.MARINES));
+				ThreatWarBoard.cell(cells, Alignment.MID, stockColor(m, Commodities.HAND_WEAPONS, text),
+						stockText(m, Commodities.HAND_WEAPONS));
+				ThreatWarBoard.cell(cells, Alignment.MID, stockColor(m, Commodities.FUEL, text),
+						stockText(m, Commodities.FUEL));
+				ThreatWarBoard.cell(cells, Alignment.MID, stockColor(m, Commodities.SUPPLIES, text),
+						stockText(m, Commodities.SUPPLIES));
 				ThreatWarBoard.cell(cells, Alignment.MID, r.staging != null ? h : gray,
 						r.staging != null ? main.shortenString(r.staging.getNameWithNoType(),
 								(float) Math.floor(tw * frac[8]) - 10f) + " " + (int) Math.ceil(r.stagingLY)
@@ -560,19 +571,30 @@ public class ThreatFactionView {
 		return Misc.getWithDGS((int) stock);
 	}
 
+	/**
+	 * Rule 3 on the board: a stock the depot is spending on the colony's own
+	 * shortage reads bright; one too low to issue another unit while the
+	 * shortage stands reads red (the row tooltip says why).
+	 */
+	protected static Color stockColor(MarketAPI m, String commodityId, Color text) {
+		ThreatReserves.CommodityStatus s = ThreatReserves.status(m, commodityId);
+		if (s == null) return text;
+		if (s.exhausted) return Misc.getNegativeHighlightColor();
+		if (s.covering || s.deficit > 0) return Misc.getHighlightColor();
+		return text;
+	}
+
 	protected static void colonyTooltip(TooltipMakerAPI tooltip, ColonyRow r) {
 		Color h = Misc.getHighlightColor();
 		Color gray = Misc.getGrayColor();
 		MarketAPI m = r.market;
 		tooltip.addPara(m.getName() + " - size " + m.getSize() + ", "
 				+ (r.military ? militaryLabel(m) : "no military structure") + ".", 0f);
+		// rule 7 (docs/economy-coherence.md): vanilla's units beside the item
+		// counts - surplus, availability and demand, the bank rate, and what the
+		// depot is covering; the same lines the War footing condition shows
 		for (String c : ThreatReserves.COMMODITIES) {
-			float per30 = ThreatReserves.accrualPer30(m, c);
-			float stock = ThreatReserves.stock(m.getId(), c);
-			if (per30 <= 0f && stock <= 0f) continue;
-			tooltip.addPara(Misc.ucFirst(ThreatReserves.label(c)) + ": %s in reserve, %s per "
-					+ "month, cap %s.", 3f, h, Misc.getWithDGS((int) stock),
-					Misc.getWithDGS((int) per30), Misc.getWithDGS((int) ThreatReserves.cap(m, c)));
+			WarFootingCondition.addCommodityLine(tooltip, m, c, 3f);
 		}
 		if (r.staging != null) {
 			float[] wants = ThreatConvoys.stagingTargets(m);

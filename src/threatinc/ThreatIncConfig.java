@@ -269,14 +269,14 @@ public class ThreatIncConfig {
 	public static boolean strategyEnabled()  { return b("threatinc_strategyEnabled", true); }
 	/** Days after its last strike a faction stands down (if no hive is in reach); 0 = never. */
 	public static float warModeStandDownDays() { return f("threatinc_warModeStandDownDays"); }
-	/** Reserve marines accrued per unit of vanilla marine production per 30 days. */
-	public static float reserveMarinesPerUnit() { return f("threatinc_reserveMarinesPerUnit"); }
-	/** Reserve heavy armaments per unit of hand-weapon production per 30 days. */
-	public static float reserveArmamentsPerUnit() { return f("threatinc_reserveArmamentsPerUnit"); }
-	/** Reserve fuel per unit of fuel production per 30 days. */
-	public static float reserveFuelPerUnit()  { return f("threatinc_reserveFuelPerUnit"); }
-	/** Reserve supplies per unit of supply production per 30 days. */
-	public static float reserveSuppliesPerUnit() { return f("threatinc_reserveSuppliesPerUnit"); }
+	/** Reserve banked per 30 days per unit of vanilla SURPLUS (availability above demand): surplus units x the commodity's econ unit x this (docs/economy-coherence.md rule 1). */
+	public static float reserveSurplusMult() { return f("threatinc_reserveSurplusMult"); }
+	/** Vanilla demand units the War footing condition adds at colony size 5 (scaled by size / 5, rounded up); 0 = none (rule 2). */
+	public static float warFootingDemandUnits() { return f("threatinc_warFootingDemandUnits"); }
+	/** Most of the stock at hand the depot spends per issue covering the colony's own shortage (rule 3). */
+	public static float reserveShortageCoverFraction() { return f("threatinc_reserveShortageCoverFraction"); }
+	/** Days one issue from the depot holds the colony's availability up; 0 = no covering (rule 3). */
+	public static float reserveShortageCoverDays() { return f("threatinc_reserveShortageCoverDays"); }
 	/** Months of its own production a colony stockpiles at most. */
 	public static float reserveCapMonths()    { return f("threatinc_reserveCapMonths"); }
 	/** Months of production each colony holds the moment its faction mobilises. */
