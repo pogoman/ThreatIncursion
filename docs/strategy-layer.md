@@ -34,6 +34,11 @@ lastStruckTimestamp, lastStruckMarketId, strikesSuffered }`.
   `ThreatWarState.mobilisePlayer`; the mobilised view has a Stand down button
   (`standDownPlayer`) that lifts the War footing and keeps the reserves frozen. A strike
   on a player world does not mobilise the player, and the stand-down timer skips them.
+- `warExcludedFactions` ("pirates" by default, 2026-09-05): never mobilised, whatever
+  strikes them. `ThreatWarState.mobilise` refuses them, `poll` drops a record already on
+  the save (reserves kept, one announcement), and `IncursionManager.dispatchFactionResponse`
+  raises no task force for them. They stay hostile to the Threat and keep their vanilla
+  raiding; they simply run no military operations - raiders, not a navy.
 - `warModeStandDownDays` (0 = never): with a value, a faction stands down that many
   days after its last strike if no live hive remains within expedition range of any of
   its military worlds. Stock is kept, frozen, when it stands down.
@@ -44,7 +49,36 @@ Persistent map `threatinc_colonyReserves` of `ColonyReserve { marketId, marines,
 armaments, fuel, supplies }`, keyed by market id, for every market of a war-mode
 faction.
 
-**Accrual** (rewritten 2026-09-05 to docs/economy-coherence.md rule 1) runs on the fast
+**A player colony's reserve IS its resource stockpile (2026-09-05, built, untested).**
+The user's call: vanilla's local-resources submarket ("Resource stockpiles" on the colony
+screen) is already the colony's stockpile - production and excess pile up there, a
+Waystation raises the fuel / supply / crew rates, the "use stockpiles for shortages"
+toggle spends it - so a second hidden ledger the player could not see or fill made no
+sense (they deposited 3,826 marines and the board did not move). `ThreatReserves.backing`
+returns that cargo for a player-owned market; `stock` / `draw` / `deposit` go straight to
+it, the ledger entry keeps only `capSeen` / `coverIssued`, and any ledger stock still held
+for such a market (older save, captured colony) is moved into the cargo the first time it
+is asked for. Vanilla fills it (`vanillaStockpilePer30` = the plugin's limit x its add
+rate; cap = vanilla's limit + militia months) and covers shortages under the player's own
+toggle, so the mod's accrual, seed and shortage cover all skip backed colonies; the mod
+adds only the militia marines. Anything the player leaves above the cap is kept - vanilla
+never trims a resource the colony should have - it just stops accruing. NPC colonies have
+no visible stockpile and keep the ledger below.
+
+**A base needs a Waystation (2026-09-05, built, untested).** `IncursionManager.isBase` =
+a military structure (`hasMilitary`, what fields fleets) AND `ThreatReserves.hasDepot`: a
+functional Waystation, or for a hive world an operational Swarm Nexus (its strikes already
+required one; `hasOperationalNexus`). Every pick of a colony to sail from, stage at, ship
+to or post an aid request for asks `isBase` / `hasDepot`; only `hiveInReach` (does the
+faction mobilise at all) still asks `hasMilitary`, because an NPC faction's mobilisation is
+what builds its Waystations: `syncWarFooting` adds one at every military world with a
+spaceport (only Valhalla ships with one in vanilla; `mobilisationBuildsWaystation`). The
+player builds their own. A raid that disrupts the Waystation severs the base, exactly as a
+raid on a Swarm Nexus severs a hive's. Knob `baseRequiresWaystation`. On the board a
+military world without one shows its structure in deficit yellow and "No Waystation" in
+the Staging column; the Stage button says why.
+
+**Accrual** (NPC colonies; rewritten 2026-09-05 to docs/economy-coherence.md rule 1) runs on the fast
 poll, pro-rated per 30 days, and banks only the colony's vanilla SURPLUS: availability
 above demand, in econ units, times the commodity's econ unit (1,500 fuel, 750 supplies,
 200 heavy armaments, 100 marines) times `reserveSurplusMult` (1.0; vanilla's own
@@ -63,7 +97,9 @@ modifier: a player's sale banks for its duration. The mod's own trade modifiers
 | supplies | `supplies` | 750 | Population min(size, 3), Spaceport size-2, Military Base size-1 |
 
 Cap per commodity = accrual x `reserveCapMonths` (6); a colony in deficit has no accrual,
-so no cap and no sortie floor. Mobilisation seeds `reserveInitialMonths` (3) of the
+so no cap and no sortie floor. The sortie floor (`reserveFloorFraction`, 0.25) is for NPC
+colonies; the player's own colonies use `playerReserveFloorFraction` (0), so the Siege
+prompt's "can commit" is the whole stock and the landing draws up to what it wants. Mobilisation seeds `reserveInitialMonths` (3) of the
 peacetime surplus - seeded before the War footing's demand lands. A faction that stands
 down keeps its stock, frozen; a captured colony keeps its depot for the new owner; only
 the swarm taking a world erases one.
@@ -102,7 +138,8 @@ taken. Callers:
 - `IncursionManager.launchSiegeExpedition` (NPC and player-commissioned alike, when the
   base's faction is in war mode): marines wanted = `siegeRaidStrNeeded(targets)` x
   headroom (raid strength ~= marines, as vanilla's own player raids); armaments wanted =
-  `npcFrontSupplyDays` x the biggest target's front upkeep; fuel = fleet points x LY x
+  `npcFrontSupplyDays` x the landing force's own burn (1 armament per marine at the
+  default `frontArmamentsPerMarinePer30Days`); fuel = fleet points x LY x
   `expeditionFuelPerPointLY`; supplies = fleet points x `expeditionSuppliesPerPoint`.
   The expedition is postponed (logged) if the base holds less than
   `expeditionMinMarinesFraction` of the marines wanted - logistics has to stage more.
@@ -125,14 +162,35 @@ Persistent list `threatinc_convoys` of `Convoy { fleetId, factionId, fromMarketI
 toMarketId, marines, armaments, fuel, supplies, departedTimestamp }`; the cargo is ALSO
 physically in `fleet.getCargo()` (marines as marines, the rest as commodities).
 
-**Logistics AI** (slow tick, war-mode factions only): a STAGING BASE is a military
-market within expedition range of a live hive system. For each base and commodity,
-target stock = what one expedition against the nearest hive would draw x
-`stagingTargetMult` (1.5); if the base is short by more than `convoyMinLoadFraction`
-(0.25) of a convoy, the same-faction colony within `convoyRangeLY` (15) holding the
-most surplus above `donorKeepFraction` (0.5) of its own cap ships a convoy of up to
-`convoyMarineCapacity` (600) marines / `convoyCargoCapacity` (1500) units, escorted by
-`convoyEscortFP` (30) points. One convoy per base per tick.
+**Logistics AI** (slow tick, war-mode factions only): a STAGING BASE is the military
+world a siege sails from - the faction's NEAREST base in expedition range of a live hive
+(`ThreatConvoys.stagingHive`, the same pick as the Siege button's
+`ThreatFleetOrders.pickBase`). A military world in range of hives that is never the
+nearest base for any is a donor, not a staging base (changed 2026-09-05: before, every
+military world in range counted, so one hive cluster made all five player colonies
+"staging", all wanting 4,700 marines, none with spare, nothing concentrating). For each
+staging base and commodity, target stock = what the Siege button's expedition would draw
+(`IncursionManager.siegeWants`) x `stagingTargetMult` (1.5); if the base is short by
+at least `convoyMinLoadFraction` (0.5) of a load or of the target (whichever is smaller),
+the same-faction colony within `convoyRangeLY` (15; the player's colonies at any range)
+that is not a staging base and holds
+the most above `donorKeepFraction` (0.5) of its own cap ships a convoy of up to
+`convoyMarineCapacity` (2,000) marines / `convoyCargoCapacity` (6,000) units - provided
+that is at least `convoyMinLoadFraction` of a load or of what the donor could spare when
+full (`ThreatConvoys.minLoad`; the old test against a hull load alone meant 1,000
+marines or 3,000 units, which no reserve ever reached, so nothing sailed). Deposits are
+not capped, so a staging base fills past its own cap. **Stage** (the hand order) is the
+override: `stageDonor` / `stageLoad` send whatever the best donor in range can spare, no
+minimum, preferring donors that are not staging bases; the confirm prompt names the donor.
+The colony table's **Convoys** column reads **Staging base** (yellow) for a base, **to
+<base> N ly** (white) for a donor, a grey dash for a colony with no staging base to feed
+(its reserve stays home; an NPC donor looks only within `convoyRangeLY`, a player donor
+anywhere) and **No Waystation** where nothing sails or lands;
+the row tooltip names the hive a base stocks for and the four targets. A player base
+stages for the nearest hive the PLAYER HAS FOUND (`ThreatIncData.discoveredSystems`), at
+any range, as the Siege button has none for the player; until 2026-09-05 evening it took
+the nearest hive in expedition range whether found or not, and the board (as "Stocks
+for") named a system the player could not find on the map.
 
 **Resolution** (fast poll): a convoy whose fleet is dead is lost with its cargo
 (announced if the player knows the faction is at war); one that reaches its destination
@@ -148,24 +206,116 @@ holds the choice; the hive view is unchanged. A faction view replaces the ledger
 cards with three stock tables, faction-coloured:
 
 1. **Colonies - staging bases first**: name, size, military structure, ground defense,
-   the four reserves, the staging target (nearest live hive in the base's expedition
-   reach, with distance), Threat strikes in flight against it. A **Total** row at the
-   foot sums the four reserves (`ThreatReserves.factionStock`), and a one-line colour key
-   under the table replaces the old intro paragraph: plain = banked, bright = the colony is
-   short and the depot covers it, red = short and the depot is too low to issue, dash =
-   nothing banked. The totals cell goes red when some colony is short and the faction has
-   nothing banked anywhere (`totalColor`). Row tooltip: per-commodity stock / monthly
-   accrual / cap, and what an expedition from here draws. Click = show on the map.
-   Buttons: **Guard**, **Stage**. The Actions column is .12 of the width: two floating
+   fleet points free / capacity, the four reserves, where its convoys go, Threat strikes
+   in flight against it. The **FP** cell (`fleetCell`) reads **free / capacity**
+   (`ThreatAidCapacity.figures`, rounded once so the tooltip's lines add up): what can
+   sail from the colony now - its own capacity less what it has in task forces, plus the
+   LIVE strength of the task forces on station over it - over its own capacity
+   (`capacityFP`), coloured by the free figure by the reserve key: white while a full task
+   force (`guardFleetFP` x `TASK_FORCE_HULL_MULT`) can sail from it, yellow while only a
+   reduced one (`aidGuardMinFP`) can, red while none can, a grey dash off the ledger (no
+   military structure, or not the player's colony). Its Total is free summed / capacity
+   summed, coloured by the single richest colony: a task force sails from ONE colony
+   (`ThreatAid.pickTaskForceSource` - the nearest that fields a full guard, else the one
+   with the most free points if that makes `aidGuardMinFP`) and points pool across
+   colonies only by staging guards (see "Staging fleets" below). Every task-force figure
+   the board quotes - prompts, button tooltips, announcements - is in the same unit as
+   the cell, whole-fleet points with support hulls (`ThreatAid.taskForcePoints`,
+   `Quote.points`); the combat points (`taskForceFP`, `Quote.fp`) are the factory's
+   input and never shown. A reserve cell's number
+   carries the meaning and its colour repeats it (`stockCell`): a positive number is the
+   stock banked - white **excess** (no shortage), yellow **deficit** (short, depot
+   covering or about to, so the stock is being spent); a red negative is **critical**,
+   the colony's uncovered shortfall in vanilla units (short, depot too low to issue);
+   a grey dash is **empty** (nothing banked, nothing short). A **Total** row at the
+   foot follows the same rule (`totalCell`): the faction's banked stock
+   (`ThreatReserves.factionStock`), yellow while any colony is short, the summed
+   uncovered shortfall as a red negative when nothing is banked anywhere. A one-line
+   colour key under the table replaces the old intro paragraph. A shortfall is not a
+   gate: fuel and supplies are drawn best-effort by sorties and expeditions (see
+   **Draws** above), so a red fuel cell means vanilla's shortage penalties and no
+   accrual at that colony, not grounded fleets. Row tooltip: per-commodity stock / monthly accrual /
+   cap, and what an expedition from here draws. Click = vanilla's colony screen
+   (`ThreatColonyScreenDialog`), as the hive cards' Colony button.
+   Buttons: **Guard** (labelled **Fleet**) and **Stage** (labelled **Supplies**) - the
+   user's labels, 2026-09-05 evening; the column is headed **Staging** and the old
+   Staging column is headed **Convoys** (see Convoys above). A player task force sails
+   with EVERYTHING its colony has free
+   (`ThreatAid.taskForceFP`; a 100 FP fleet "will never have any capitals"), the ledger
+   charging what vanilla's factory actually built (`ThreatFleetOrders.builtPoints` -
+   whole-fleet points against whole-fleet points; the first version compared combat
+   points with the whole fleet and so always charged the full ask);
+   `guardFleetFP` is the NPC size and the bar for picking a source first. The Staging column is .12 of the width: two floating
    buttons need ~114 px, and at .08 the second one used to overlap the Strikes column.
+   **Every order button is gated by its own order's rule** (2026-09-05): vanilla's confirm
+   dialog cannot grey its Confirm, so a button is disabled - the reason as its tooltip -
+   whenever the order would raise nothing: Guard / Intercept / Escort by
+   `ThreatAid.quoteDefend` / `quoteStrike` (a source colony with at least `aidGuardMinFP`
+   free), Stage by `ThreatConvoys.stageDonor` (a same-faction colony in convoy range that can
+   spare a worthwhile load), Supply / Pull out by `ThreatConvoys.supplyBlockReason` /
+   `pullOutBlockReason` (a front, no run already bound there, the orbit clear or held, a
+   base with something above its floor), Siege by `IncursionManager.siegeBlockReason` (the
+   base can commit `expeditionMinMarinesFraction` of the landing's marines - the same gate
+   `launchSiegeExpedition` applies). The confirm prompt quotes the same figures
+   (`IncursionManager.siegeWants`, not the convoy planner's `stagingWants`, which sizes by
+   faction strength and could disagree with the launch).
 2. **Fleets and orders**: task forces (`ThreatResponseIntel`), expeditions
-   (`ThreatPurgeFGI`, with the marines aboard when cargo-carrying), convoys, and standing
-   orders, each with task, status, ETA. Click = show the fleet or intel on the map.
-   Button: **Recall** (stand down / abort / turn the convoy home / end the order).
+   (`ThreatPurgeFGI`), convoys, and standing orders, each with task, status, ETA. Click =
+   show the fleet or intel on the map. **A group is one row per fleet** once its fleets are
+   real (2026-09-06, user: recall some, leave others): a task force's `livingFleets()`, an
+   expedition's `getFleets()` while `isSpawnedFleets()` (before that the expedition is one
+   row, "N fleets"); the row shows the fleet's name and the marines it carries (cargo
+   expeditions) or its FP. Buttons: **Recall** (this fleet only - `ThreatPurgeFGI.recallFleet`
+   / `ThreatResponseIntel.recallFleet`, the group's spawned-strength baseline drops with it
+   so the rest is not judged beaten, the last fleet out ends the group; convoys, orders and
+   outposts as before) and **Intercept** (`BUTTON_DETACH`: `detach` the fleet from its group
+   and `ThreatFleetOrders.adoptIntercept` it - the same fleet, nothing built or charged,
+   holds the target hive's jump-point for `interceptDays` and then goes home to the
+   expedition's source base on the tracked leg; marines aboard stay aboard). Recall keys:
+   `purgefleet:i:fleetId` / `tffleet:i:fleetId`.
+   Both are a clean cut (`ThreatPurgeFGI.detach` -> `cutLoose`, seen 2026-09-06 at Gamma
+   Hero): the fleet loses vanilla's `WarfleetAssignmentAI` (a raid fleet's own
+   objective-capturing, colony-raiding script - every detached fleet used to sit on the
+   hive's comm relay instead of its jump-point), any military-response assignment, the
+   raid's busy flag and the blinkers, and is flagged `FLEET_NO_MILITARY_RESPONSE` so no
+   response script - the raid's own, or a system's fight for its objectives
+   (`WarSimScript`) - may borrow it. Every task force the layer builds
+   (`ThreatFleetOrders.buildTaskForce`, `IncursionManager` response fleets) and every
+   tracked leg home (`ThreatReturns.sendHome`) carries that flag too; vanilla's own
+   despawning return was immune, the tracked one was not. Vanilla's incremental spawn never
+   stamps `KEY_SPAWN_FP` on a fleet, so `ThreatPurgeFGI.noteSpawnFP` does: without it
+   `detach` took nothing off the group's baseline and detaching three fleets of four left
+   the fourth judged beaten - the expedition aborted and sailed home, leaving the front to
+   the scour clock.
+   **Fleets on tracked legs home are rows too** ("Returning", `ThreatReturns.all`, 2026-09-06:
+   an expedition's fleets vanished from the table the moment it stood down - the table skips
+   ending groups - though they were still weeks out; likewise a fleet vanilla cut below
+   `fleetAbortsMissionFPFraction` and sent home alone). No Recall; **Intercept** turns the
+   fleet back to hold the door of the hive it is returning FROM (`Return.fromSystemId`,
+   captured in `sendHome` from where the fleet stood as it turned home; `returnfleet:i:fleetId`).
+   It is offered en route or on station, as long as that origin hive still holds a live colony
+   (`returnOriginSystem`) - not only while the fleet still sits in a hive system, the old gate
+   that vanished the button the moment the fleet reached hyperspace (user, 2026-09-06).
+   **Escort takes the nearest fleet already out** (`ThreatFleetOrders.nearestReassignable`,
+   `takeOver`, `adoptEscort`; user 2026-09-06: intercepts sit on one jump-point of two and do
+   not guard the planet, and Escort was raising a new task force from Ice Wind Desert): a
+   fleet on its way home, an intercept or escort elsewhere, a guard of another faction's
+   colony, an expedition fleet in the open or a task force - in the world's system first
+   (closest to it), then by hyperspace distance; staged guards over own colonies are not
+   taken. The prompt names the fleet, its duty and its distance ("Detach X (besieging the
+   Gamma Hero system, in the system) to clear the orbit of Y for 60 days?"). It goes home to
+   the base it was already bound for. A task force is raised only when nothing is out.
 3. **Hive systems in reach**: known infested systems within expedition reach of any of
    the faction's military worlds, with the nearest base and distance. Buttons:
    **Siege** (a full purge expedition from that base, drawing its reserve),
    **Intercept**.
+   **Arrival** (`ThreatReturns.arrived`, 2026-09-06): home once within `ARRIVAL_RANGE` (350)
+   past both hulls' radii, in the home's own location. Vanilla ends a GO_TO_LOCATION at the
+   entity's edge and the fleet stops there, idle, while the colony orbits on - a detachment
+   sat 46 days in Sun Wukong's system with an empty queue, the planet 7000 units away. So
+   `ThreatReturns.onLeg` re-issues the leg whenever the fleet's current assignment is not it,
+   for returns and convoys alike (`ThreatConvoys.poll`, front runs), and the row shows an ETA
+   at `EST_LY_PER_DAY` plus a day in-system (`ThreatReturns.etaDays`).
 
 Layout follows docs/intel-ui-platform.md: the selector's first button flows, the rest
 sit `rightOfTop` of it and the flow height is put back to one row; every order button
@@ -178,19 +328,37 @@ while disabled. Header tooltips are one line each and never explain colours or b
 
 Persistent list `threatinc_fleetOrders` of `Order { fleet, factionId, kind, baseMarketId,
 targetId, targetName, issuedTimestamp, days }`. Every order is a real task force
-(`guardFleetFP`, 100) built at the faction's nearest military world in reach and
+(`guardFleetFP`, 100, for an NPC navy; the player's sail with all the colony has free) built at the faction's nearest military world in reach and
 provisioned from that base's reserve (fuel x distance, supplies), flagged
 `$threatinc_ordered`, with vanilla assignments:
 
-- **Guard**: `ORBIT_AGGRESSIVE` at the colony for `guardDays` (90), then home.
+- **Guard**: `ORBIT_AGGRESSIVE` at the colony for `guardDays` (90), then home. Over one
+  of the player's OWN colonies: `guardOwnDays` (0 = until recalled), and the task force is
+  staged there - see "Staging fleets" below.
 - **Intercept**: `ORBIT_AGGRESSIVE` at the hive system's jump-point nearest its colony
   for `interceptDays` (60) - the swarm's Mutual-Defense reinforcements and expeditions
   meet it at the door.
+- **Support** (Escort until 2026-09-06): `ORBIT_AGGRESSIVE` over a besieged world this
+  faction has a ground front on, for `supportDays` (60, key `threatinc_escortDays`) - it
+  clears the orbit so front runs can land, and while on station its fleet points suppress
+  the world's defences like any siege fleet's (`ThreatGroundFronts.tickSupport`,
+  docs/ground-war.md "Sieges from orbit"). See "Support, and the refuse rule" below.
+- **Defend** (2026-09-07): the same station for `defendDays` (60), but it bombards only
+  while the faction's own front on the world cannot hold
+  (`ThreatGroundFronts.defendBombards`) - Support that keeps its ships. An expedition's
+  landing fleet takes an indefinite Defend by default (`adoptLandingDefend`,
+  docs/ground-war.md "The landing fleet stays, on Defend").
 - **Siege**: `IncursionManager.launchSiegeExpedition` from the nearest base, sized by
   `computeSiegeDifficulty`; postponed with a message when the base lacks marines.
 - **Stage**: `ThreatConvoys.stageTo` - a convoy from the same-faction colony that can
   spare the most marines (or the most of anything) to the chosen colony, whether or not
-  it is a staging base.
+  it is a staging base. What it carries (`stageLoad`, 2026-09-05 evening): a hull load
+  of the marines and heavy armaments the donor holds above its sortie floor
+  (`ThreatReserves.available`) whatever the target already holds - the landing force is
+  never "enough"; fuel and supplies only up to what the target is short of its staging
+  target (or its own cap when it is not a staging base). Before that, every commodity
+  was capped at the target's staging target, so a base sitting at its target greyed the
+  button with a reason that blamed the donors. Any distance (see "Ranges").
 - **Recall**: task force `standDown`, expedition `abort`, convoy `returnHome` (cargo
   back to the donor), order fleet home.
 
@@ -220,10 +388,11 @@ spent it.
 
 **Convoy planner v2** (`ThreatConvoys.planLogistics`): loads size to the shortfall up
 to `convoyMarineCapacity` (2,000) / `convoyCargoCapacity` (6,000); escort =
-`convoyEscortFP` + cargo value / 1,000 x `convoyEscortPerThousand`; EQUALISATION -
-a donor sends at most half the difference between its stock and the base's, so
-when every colony is a staging base the rich still feed the poor and nobody ships
-the same goods past each other; `convoyMaxPerTick` (2) sailings per faction per
+`convoyEscortFP` + cargo value / 1,000 x `convoyEscortPerThousand`; EQUALISATION
+(a donor sent at most half the gap between the stocks) was REMOVED 2026-09-05 - it
+answered every colony being a staging base, and it made a base unable to ever hold more
+than its donors; with one staging base per hive and staging bases never donating, the
+traffic has one direction; `convoyMaxPerTick` (2) sailings per faction per
 tick, neediest first, FRONT RUNS FIRST. After any fight `trimToHulls` drops cargo the
 surviving ships cannot carry (Blackett's constant loss per attack).
 
@@ -243,9 +412,159 @@ jump-point, waits while `orbitContested` (up to `frontRunWaitDays`, then home), 
 in, lands cargo via `resupply`, and goes home on the tracked return leg. An NPC
 front that is dry AND below grind strength sets `withdrawRequested`; the next
 planner pass sends an EVACUATION run that lifts the front off (`withdraw`) and
-carries it home into the base reserve. Board: **Supply** and **Pull out** on the
-faction view's hive rows (own front only), **Supply** on the hive card for the
-player's fronts.
+carries it home into the base reserve. Board: **Supply**, **Pull out** and **Escort**
+on the faction view's hive rows (own front only) and on the war board's Fronts table
+rows; the hive card carries no second copy.
+
+## Staging fleets, and the fleet-point gate (2026-09-05, untested)
+
+Seen in-game the same day: five Siege orders sailed 1,025 FP from a colony with 239 FP of
+capacity (each sailed as the "minimum viable expedition, over-extended"), and five Guards
+sent to that colony added nothing to its FP, so there was no way to bring the other
+colonies' points to the staging base. Two rules replace that:
+
+**No order over-extends a colony.** `IncursionManager.siegeBlockReason` and
+`launchSiegeExpedition` refuse a player siege whose flotilla, after
+`ThreatAidCapacity.fitExpedition` trims it (fleets dropped to two, then shrunk to
+`responseMinDifficulty`), still holds more points than the base has free - the button is
+greyed with "X has N FP free; the smallest expedition needs M." (The purge commission on
+the infested-system intel and the board's Purge button, which did not apply this gate to
+their button, were removed 2026-09-05 evening - one way to raise a siege, one gate.) `siegeSizes` is the one place the flotilla is
+computed; the Siege prompt quotes fleets, points held, points free, marines wanted and
+marines the base can commit. Guard / Intercept / Escort already refused below
+`aidGuardMinFP`.
+
+**A guard over your own colony is staging** (`ThreatFleetOrders.stagedAt`,
+`ThreatAidCapacity.stagedFP` / `freeFP` / `commitSortie` / `foldStaged`,
+`ThreatFleetOrders.fold` / `restation`):
+
+- The task force stays `guardOwnDays` (default 0 = until recalled; the fleets table shows
+  "on station" and no term). Its points stay charged to the colony that sent it. From the
+  moment it is on station (`Order.arrived`, within `ORBIT_HOLD_RANGE`) they count in the
+  host's pool at the fleet's LIVE strength (`ThreatAidCapacity.liveFP`, vanilla's fleet
+  points of the ships it has - the fleets table's Strength; a fleet that lost ships on the
+  way counts what it has, not what its sender was charged): `freeFP(host)` = own free
+  points + staged live points, and that is the FP cell and what sorties from the host are
+  sized by. `describe` (the row tooltip) is one line per fact with the sum written out:
+  capacity, in task forces, at home; on station here, per fleet with its sender; free =
+  at home + on station. A colony guarding itself shows its own fleet on both lines (in
+  task forces AND on station here): the ships are real and in orbit, so they can fold
+  into the next sortie like anyone's.
+- A combat sortie from the host - Siege, Intercept, Escort, a Guard elsewhere, aid
+  Defend / Strike - uses the host's own free points first, then folds staged task forces
+  in until it is covered: the smallest one that covers what is left, else the largest,
+  whole fleets (the last may overshoot). A folded fleet's order ends, what it carries and
+  drew is settled at the host (`ThreatReturns.settle`), it fades out, and its ledger entry
+  rides the sortie (`Commitment.fleet` / `group` re-pointed, `hostMarketId` set,
+  `foldedFP` = its live points at that moment; the sender's charge `fp` stays what sailed
+  from it).
+- An expedition's ledger entries - the base's own points and every folded task force - are
+  split among its fleets by spawned strength the moment they are all real
+  (`ThreatAidCapacity.splitGroup`, from `ThreatPurgeFGI.noteSpawnFP`); from then on each
+  fleet carries its own share, so a fleet recalled, detached to Intercept or lost settles
+  alone (a loss starts that share's rebuild clock). Only an expedition that ends before it
+  ever became real settles as a group (`poll`, at the route's damage, folded ships as a
+  fresh guard over the host).
+- When a fleet is home (`ThreatReturns.settle` -> `ThreatAidCapacity.release`) and any
+  entry it holds was folded in at that colony, the fleet STAYS: the same hulls go on
+  station as a guard of the host (`ThreatFleetOrders.restation`), every entry it holds
+  re-labelled to that guard and still charged to its sender, Recall taking it home to the
+  sender charged most; the row tooltip lists every sender. Otherwise its entries are
+  released and the fleet dissolves. Below `aidGuardMinFP` nothing is kept. (Until
+  2026-09-06 a fresh task force was built at the host the moment the sortie *ended* - the
+  whole group's folded entries at once - while the real ships were still sailing home, and
+  those dissolved on arrival with nothing to hand back: one recalled fleet produced three
+  "back on station over Sun Wukong" messages and left the intercept fleets' ships unbanked.)
+- A colony guarding itself is its own ships made real: `ThreatAid.pickTaskForceSource(loc,
+  self)` sizes the colony by its OWN free points (so a colony with points free guards
+  itself before a neighbour is asked), and a self-guard commits without folding. Net zero
+  on its pool; it is how "guard myself with my FP" works, and it is absorbed by the next
+  sortie like any staged guard.
+- Convoys never fold warships in: `quoteResupply`, `stageLoad` and `dispatch` size by
+  `ownFreeFP`. NPC guards, relief guards and allied guards are unchanged (not on the
+  ledger, `guardDays`).
+
+**Ranges (the user's call, 2026-09-05 evening).** "Too many variables to model - a fuel
+world with enough tankers can cross the sector; distance should cost time, not
+permission." So no range gate on the player's hand orders: `ThreatAid.sources` (the
+source of every Guard / Intercept / Escort / Defend / Aid / Strike), `ThreatConvoys.
+stageDonor` (Stage), `ThreatFleetOrders.pickBase` for the player (Supply / Pull out
+runs, purged worlds for Outpost) and the faction view's `nearestBase` (the Siege base,
+and which hives are listed - the player's table is headed "Known hive systems" and
+lists every known one). What distance costs: fuel drawn at launch by points x
+light-years (`expeditionFuelPerPointLY`, best-effort), the real transit each way, and
+the capacity held for all of it. NPC navies and NPC factions' automatic traffic (the
+convoy planner's `convoyRangeLY` in `pickDonor` / `stagingBaseFor` / `planRelief` /
+`pickAllyDonor`, and `stagingHive`) keep their ranges: autonomy needs bounds, and a base
+is still "the nearest base" to its hive. The player's faction has no range anywhere,
+hand order or planner (2026-09-05 evening: Diggers, a fuel world 20 ly out, showed a dash
+in Convoys while Supplies could sail from it): its planner's donors feed the staging base
+from any distance, and its staging pick (`stagingHive` for a player base) follows the
+Siege button, the nearest KNOWN hive at any range. The fleets table's Fleet column names
+the colony a task force sailed from after the fleet's name: "Task Force (Earth)".
+
+To verify: Fleet on Sun Wukong from Earth; the prompt's figure is Earth's FP cell (not
+five-sixths of it); when the fleets table says "on station", Sun Wukong's FP cell reads
+(its own at home + the fleet's Strength) / its capacity and its tooltip's last line adds
+up to the cell, Earth's stays down by what the factory built; Siege from Sun Wukong now
+sails (the Earth guard fades out, "folds into" in the log with live and charged points);
+when the expedition ends, "back on station over Sun Wukong" and the guard row is back
+with Earth as its Recall home. The Convoys column never names a hive; the row tooltip
+names one you have found, or none.
+
+## Support, and the refuse rule (2026-09-05, renamed from Escort 2026-09-06, untested)
+
+A contested orbit is a closed door, not a queue. **Support** (`ThreatFleetOrders.
+dispatchSupport`, `KIND_SUPPORT` - whose persisted value stays `"escort"` so old saves keep
+their orders) is a combat sortie modelled on Guard: a task force built at the sender's best
+base, `ORBIT_AGGRESSIVE` over the world's own planet for `supportDays` (60), then home on
+the tracked return leg like every other sortie. On station over a hostile world whose orbit
+nothing holds against it, it besieges: each poll `ThreatGroundFronts.tickSupport` delivers
+its live fleet points as a siege slice and the batteries answer (docs/ground-war.md "Sieges
+from orbit"). NPC size is `guardFleetFP`; a player sortie is sized by
+`ThreatAid.taskForceFP(base)` and held on the capacity ledger, exactly as Guard is. Recall
+is the ordinary order Recall. Knobs `threatinc_escortEnabled` / `threatinc_escortDays` (the
+keys keep the old name).
+
+**Defend** (2026-09-07, `KIND_DEFEND`, `dispatchDefend` / `adoptDefend`, knobs
+`threatinc_defendEnabled` / `threatinc_defendDays`) is Support's sibling through the same
+code (`dispatchOrbit` / `adoptOrbit`, the kind a parameter): the same task force, the same
+orbit, the same Recall, but `tickSupport` slices for it only while
+`ThreatGroundFronts.defendBombards` - the faction's own front on the world cannot hold
+(`effectiveStrength < holdRequirement`) and the fortifications are above the floor. With
+no front, or one that holds, it just holds the orbit and pays the batteries nothing. It
+counts as a friendly orbit for the refuse rule. `nearestReassignable(faction, hive, kind)`
+skips a fleet already on that kind over that world, so Support over a world with a Defend
+fleet takes it and vice versa - the two buttons swap a fleet's doctrine; a landing's
+indefinite Defend is never the pick for some OTHER world (its marines would be left bare). An
+expedition's landing fleet takes an indefinite Defend (`adoptLandingDefend`; `poll` ends it
+when the front is gone or `ThreatReturns.health` falls below `defendMinStrength`).
+
+**Refused, not queued** (`ThreatConvoys.canRunTo(faction, hive)`, returning the reason
+or null): while `ThreatGroundFronts.orbitContested(hiveId)` and no friendly combat
+fleet holds the orbit, `supplyFront` and `pullOutFront` do not dispatch at all, and
+the buttons are disabled with **"Orbit contested - send Support or Defend first."** The
+existing in-flight jump-point wait (`frontRunWaitDays`) stays as the fallback for runs
+already at sea when the orbit closes behind them.
+`ThreatFleetOrders.friendlyOrbit(factionId, hiveMarketId)` is what "holds the orbit"
+means: a live Support or Guard order fleet of that faction within `ORBIT_HOLD_RANGE`
+(1,500 units) of the planet, in its system - or, for the player's faction, the player's
+own fleet sitting there. `hasSupport(factionId, hiveMarketId)` is the one-at-a-time gate.
+
+**NPC parity**: `planFrontRuns` checks `canRunTo` before anything else. Refused, the
+faction dispatches Support to that world instead (one per world at a time,
+counting against `convoyMaxPerTick` and provisioned from the base reserve like any
+sortie), and next tick's run goes in. A front with `withdrawRequested` on a contested
+orbit gets the same Support before its pickup.
+
+**Purge landings** (`ThreatPurgeFGI.doCustomRaidAction`) obey the same ground truth:
+no landing while `falloutDaysLeft(market) > 0`, and - only for live fleets, since
+autoresolve has no orbit to contest - none while `orbitContested`. A blocked pass
+falls through to a commando raid (the tactical branch above it has already taken the
+pass if softening still helps) and logs why. And if a front of the SAME faction
+already stands on the world, the expedition **reinforces** it - `ThreatGroundFronts.
+resupply` with what `unloadForLanding` gives - instead of raiding, recorded in the
+sitrep as "Reinforced ground front".
 
 **Escalation** (`ThreatAlarm`, docs/design-theory.md 8.1): grudge per faction
 (+`alarmPerStratum`, +`alarmPerEradication`, +`alarmPerRaid` for raids and tactical
@@ -257,8 +576,8 @@ which launches a normal strike (same phase, cap, garrison and reach rules) from 
 nearest hive that can reach a world of the winner. Header shows "Alarm N -
 fabrication xM" with the formula and per-faction grudges in the phase tooltip.
 
-**Also**: reserve floor (`reserveFloorFraction`) and militia trickle
-(`reserveBaselinePerSize`); "send what you can" trims a short expedition's flotilla
+**Also**: reserve floor (`reserveFloorFraction` for NPC colonies, `playerReserveFloorFraction`
+for the player's, default 0) and militia trickle (`reserveBaselinePerSize`); "send what you can" trims a short expedition's flotilla
 instead of postponing; `groundStrengthExponent` (1.0) on every ground ratio.
 
 **Coalition** (`ThreatCoalition`, 8.7): `launchSiegeExpedition` by a mobilised faction
@@ -280,9 +599,63 @@ its fleet lives, `checkWaveArrivals` refuses to found a colony there (the wave s
 fights). Player pays `outpostCredits` (150,000); an NPC base pays `outpostSupplies` /
 `outpostFuel` above its floor, and mobilised NPC factions fortify one open purged world in
 reach per tick with `outpostChance` (0.3). Faction view: a "Purged worlds in reach" table
-with an **Outpost** button, and outposts in the fleets table (Recall = decommission). A
-dead station is a lost outpost (fast poll). NOT yet verified in-game: no purged world
-existed in the test save.
+with an **Outpost** button. A dead station is a lost outpost (fast poll). Until 2026-09-06
+outposts also sat in the fleets table with a Recall that scuttled them - see "Storage and
+orders" below for what replaced that.
+
+**Free on a ground victory - 2026-09-05, untested.** `ThreatGroundFronts.groundVictory`
+now raises the outpost itself, for the winning faction (the player's own faction for a
+player front), at no cost - `ThreatOutposts.buildFree`, which skips the credit/reserve draw
+and the paying-base check entirely: the fleet that won the siege is already in orbit, so
+holding what it took costs nothing more. It runs AFTER `eradicate` (the world has to be
+market-less before `eligible` passes) and is skipped when an outpost already stands there.
+Knob `threatinc_outpostOnVictory` (default true); `outpostsEnabled` still gates it. `build`
+was split so the station-raising half (`raise`) is shared with `buildFree`.
+
+**Stockpile - 2026-09-05, untested.** An outpost is a BASE. Its stock is an ordinary
+`ThreatReserves` entry keyed by the station ENTITY id instead of a market id, so every
+existing `deposit(id, ...)` / `draw(id, ...)` works on it unchanged. What differs is that
+it has no floor, no accrual and no War footing: it banks nothing on its own, so everything
+in it was carried or won there and all of it is available. `ThreatBases` is the handle -
+`Base` resolves a reserve key to a colony or an outpost and offers `id/name/factionId/
+entity/hyperLoc/starSystem/sourceMarket/isOutpost`, plus `available` (floor for a colony,
+zero for an outpost), `draw` and `deposit`. The stock dies with the station
+(`ThreatOutposts.remove` clears it) and comes ashore on `carryOver` - it is moved into the
+new colony's reserve before the outpost record goes.
+
+**Survivors garrison it.** `groundVictory` passes the outpost to `evacuate`: with an
+outpost over the dead world, BOTH player and NPC survivors (marines and armaments) are
+deposited into its stockpile instead of being lifted off - one message for the player's own
+front. With no outpost the old behaviour stands (player fleet cargo / nearest base reserve),
+and the `poll()` path where the market simply vanished still uses it. The market's entity
+and hyperspace position are captured before `eradicate` runs, since `decivilize` is what
+takes them away.
+
+**Front runs out of an outpost.** `ThreatConvoys.pickFrontBase` prefers an outpost of the
+faction in the HIVE'S OWN SYSTEM over `ThreatFleetOrders.pickBase`: for a resupply when it
+can cover a worthwhile load (>= 50 marines or >= 20 armaments of what is wanted), for a
+pickup always - the front lands in the station next door rather than shipping home.
+`dispatchFrontRun` takes a `ThreatBases.Base`, spawns the fleet at the station entity, and
+builds it with a null `FleetParamsV3` source market (an outpost has no economy, so no
+quality or fleet-size scaling). `ThreatReturns.sendHome/poll/settle` resolve the home
+through `ThreatBases` too, so the run comes back to the station and unloads into its
+stockpile. An outpost that cannot cover the run falls through to the nearest colony,
+unchanged. Once the outpost's system holds no hive its stock ships home:
+`planOutpostReturns` (in `planLogistics`, after front runs and relief, against the
+per-tick cap) sends one convoy at a time from the station to the faction's nearest base
+(`dispatch` takes a `ThreatBases.Base` donor), so a ground victory's survivors return to
+the war instead of sitting in a station nothing can draw from. The faction view's reserves
+table lists each outpost's stock as a row of its own (no floor, no accrual, grey where
+empty), so the Total row sums exactly what is shown; since 2026-09-06 that row carries the
+Supplies and Fleet buttons too ("Storage and orders" above).
+
+**Relief (2026-09-05, untested).** A Threat front on a faction's own world is answered on
+the slow tick: `ThreatFleetOrders.planRelief` puts a Guard task force over it (NPC navies;
+the player orders Guard by hand), one per world, and `ThreatConvoys.planRelief` sends a
+convoy of marines from the colony in convoy range that can spare the most, ahead of every
+depot (the player's mobilised faction too). The besieged colony's own banked marines are
+committed while the front stands (`ThreatReserves.committed`, honoured by `available` and
+`ThreatConvoys.spare`): they defend, they do not ship.
 
 **Any uncolonised world - 2026-09-05.** The player can raise an outpost over ANY planet
 that holds no live market (`ThreatOutposts.eligible`: not a star, in a star system, no
@@ -294,12 +667,50 @@ shortlist, and NPC factions still fortify purged worlds only. The dialog does no
 the player's faction to be mobilised (the board's button does, like every board button):
 credits, not the reserve, pay for it.
 
-What an outpost is NOT, for the record (decided 2026-09-05): it has no market, so it has
-no colony screen. It is a makeshift structure: it cannot be upgraded (the tier is fixed at
-build by `outpostTier`; a real upgrade would need a colony's yards) and a Waystation cannot
-be built on it. Making outposts real size-1 markets was considered and rejected - a market
-would let the player build Patrol HQ, Heavy Industry and the rest at what is supposed to
-be a station in orbit.
+What an outpost is NOT, for the record (decided 2026-09-05): it has no colony and no
+economy - it produces nothing. It is a makeshift structure: it cannot be upgraded (the tier
+is fixed at build by `outpostTier`; a real upgrade would need a colony's yards) and no
+industry, Waystation included, can be built on it. Making outposts real size-1 markets was
+considered and rejected - a market would let the player build Patrol HQ, Heavy Industry and
+the rest at what is supposed to be a station in orbit. The storage-only market of
+2026-09-06 (below) is not that: size 0, neutral, never in the economy, one Storage
+submarket and nothing to build.
+
+**Storage and orders - 2026-09-06, untested.** The user's outpost (won by ground victory,
+2,353 marines aboard) showed on the board as a row in the fleets table with a Recall that
+scuttled it, and no way to supply it, send a fleet to it, or see what it held. Decided:
+
+- **The station is its own depot.** `ThreatReserves.hasDepot(ThreatBases.Base)` is true
+  for a living outpost with no Waystation asked - a station in orbit is the logistics
+  structure. So the board's **Supplies** and **Fleet** buttons sit on the player's outpost
+  rows exactly as on colony rows: `ThreatConvoys.stageTo/stageDonor/stageLoad` and
+  `ThreatFleetOrders.dispatchGuard` take a `ThreatBases.Base` target (the `MarketAPI`
+  overloads delegate), the button payload is the reserve key (`ThreatBases.of(id)` resolves
+  either kind), `Convoy.toMarketId` and `Order.targetId` may now be a station entity id, and
+  `ThreatConvoys.poll/arrived/boundFor`, `ThreatFleetOrders.atStation` and
+  `ThreatRaiders.consider` resolve them through `ThreatBases`. A hand-ordered convoy to an
+  outpost carries a hull load of everything the donor can spare, fuel and supplies included
+  (no staging target, no cap - nothing there is "short"). A guard over an own outpost is an
+  own guard: `guardOwnDays` (0 = until recalled), points on the source's ledger as a sortie;
+  it does not fold into any host (an outpost has no capacity ledger) and it is excluded from
+  the reassignable list like a staged guard. The row's Convoys cell says "Forward base"
+  while the outpost's system holds a hive, else "to <home> N ly" - where
+  `planOutpostReturns` ships its stock (`ThreatConvoys.outpostHome`).
+- **The player's stockpile is a real cargo.** `ThreatOutposts.ensureStorage` gives a
+  player outpost vanilla's abandoned-station recipe on the station entity: a neutral size-0
+  market, never added to the economy, with one Storage submarket already paid for. On
+  `raise` for a player outpost, and on the fast poll for outposts from older saves.
+  `ThreatReserves.backing(id)` returns that storage cargo for an outpost key, so `stock/
+  deposit/draw` on the outpost ARE the storage (the same rule that makes a player colony's
+  reserve its resource stockpile); ledger stock is moved into the cargo the first time it is
+  asked for. NPC outposts stay on the ledger. `remove` detaches the market before deleting
+  the entity.
+- **Docking at the station** opens `ThreatOutpostDialog` (picked by
+  `ThreatIncCampaignPlugin`, registered transient on load): the station's fleet panel, one
+  line of what the storage holds, **Open the storage** (vanilla's cargo screen in OPEN
+  trade mode on the station - take the marines, leave the fuel), **Decommission** with a
+  prompt that says what is lost, and Leave. The planet's reminder line points at it.
+- **Gone:** the outpost row in the fleets table and its Recall; `recall("outpost:i")`.
 
 **Carry-over on colonisation (built 2026-09-05, untested).** When the world under an
 outpost becomes a live colony of the outpost's own faction, the fast poll
@@ -314,9 +725,11 @@ in orbit unchanged.
 
 - Redeploying a withdrawn front elsewhere by order (it comes home into the reserve
   today; a Siege from that base lands it again).
-- Hive-side fronts on core worlds.
 - The ending (8.5) - deferred to a live session.
-- Outposts as convoy depots (they have no reserve today).
+- Outposts as bases for anything but front runs and the ship-home convoy - orders,
+  expeditions and staging still start at colonies.
+- The player's own verb to land a counter-force on their invaded colony (Guard and Aid
+  convoys exist; a landing from the fleet does not).
 
 ## Testing notes
 

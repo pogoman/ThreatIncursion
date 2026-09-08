@@ -10,6 +10,7 @@ FireBest MarketPostDock","Your $shipOrFleet goes into orbit around $marketName. 
 threatinc_marketCommDirSel,DialogOptionSelected,"$option == marketCommDir
 $faction.id == threat score:1000",,"You sweep the local comm bands. There is no directory - only a wall of machine signal: interleaved fabrication telemetry, targeting handshakes, and a carrier tone your comm officer refuses to leave audible. Nothing down there wants to talk to you.",,"Override: no comm directory on hive worlds (DialogOptionSelected fires best-scoring rule only)"
 threatinc_showDefensesSel,DialogOptionSelected,"$option == marketConsiderHostile score:1000",ThreatincMarketCMD showDefenses,,,"Override: military options menu via our subclass, which appends the Ground operations option on Threat colonies (docs/ground-war.md); non-Threat targets see vanilla behavior"
+threatinc_engageSel,DialogOptionSelected,"$option == mktEngage score:1000",ThreatincMarketCMD engage,,,"Override: engage guard - vanilla re-scans for the defender fleet on the click and crashes the game when the scan comes back empty (this.battle is null); ours says there is nothing to engage and re-enters showDefenses"
 threatinc_raidGoBackSel,DialogOptionSelected,"$option == mktRaidGoBack score:1000",ThreatincMarketCMD goBackToDefenses,,,"Override: back-navigation re-enters our showDefenses so the Ground operations option survives going back from the raid menu"
 threatinc_bombardGoBackSel,DialogOptionSelected,"$option == mktBombardGoBack score:1000",ThreatincMarketCMD goBackToDefenses,,,"Override: back-navigation re-enters our showDefenses so the Ground operations option survives going back from the bombardment menu"
 threatinc_groundOpsSel,DialogOptionSelected,$option == threatincGroundOps,ThreatincMarketCMD groundOps,,,"Ground operations menu: front status / landing brief (docs/ground-war.md)"
@@ -31,7 +32,7 @@ threatincAidBackSel,DialogOptionSelected,$option == threatincAidBack,ThreatincAi
 threatincOutpostOption,PopulateOptions,"$market.isPlanetConditionMarketOnly
 ThreatincOutpostCMD canBuild",,,5:threatincOutpostBuild:Build an outpost,"Outposts (docs/strategy-layer.md): in orbit of any uncolonised world with a player military colony in reach, the player can raise their faction's station over it for outpostCredits"
 threatincOutpostStanding,PopulateOptions,"$market.isPlanetConditionMarketOnly
-ThreatincOutpostCMD standing",,Your outpost holds the orbit here. The swarm cannot seed this world while the station stands.,,"Reminder line when the player's own outpost is already in orbit"
+ThreatincOutpostCMD standing",,Your outpost holds the orbit here. The swarm cannot seed this world while the station stands. Dock at the station for its storage.,,"Reminder line when the player's own outpost is already in orbit"
 threatincOutpostBuildSel,DialogOptionSelected,$option == threatincOutpostBuild,ThreatincOutpostCMD menu,,,"The brief: station type, price, supporting colony; Confirm disabled when unaffordable"
 threatincOutpostConfirmSel,DialogOptionSelected,$option == threatincOutpostConfirm,ThreatincOutpostCMD build,,,"Pays and builds, then returns to the planet's options"
 threatincOutpostBackSel,DialogOptionSelected,$option == threatincOutpostBack,ThreatincOutpostCMD back,,,"Back to the planet's options"

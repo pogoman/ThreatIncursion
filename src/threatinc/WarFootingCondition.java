@@ -34,16 +34,24 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 		FactionAPI faction = market.getFaction();
 		String who = faction == null ? "The faction" : faction.isPlayerFaction() ? "Your faction"
 				: Misc.ucFirst(faction.getDisplayNameWithArticle());
+		boolean backed = ThreatReserves.isBacked(market);
 		tooltip.addPara(who + " is mobilised against the Threat. Demand for marines, heavy "
-				+ "armaments, fuel and supplies is raised by %s here; the war reserve covers "
-				+ "this colony's own shortages before anything sails.", opad, h,
-				units + (units == 1 ? " unit" : " units"));
+				+ "armaments, fuel and supplies is raised by %s here; "
+				+ (backed ? "the resource stockpile is the war reserve."
+						: "the war reserve covers this colony's own shortages before anything sails."),
+				opad, h, units + (units == 1 ? " unit" : " units"));
 		for (String c : ThreatReserves.COMMODITIES) {
 			addCommodityLine(tooltip, market, c, 3f);
 		}
-		tooltip.addPara("Selling here raises availability for %s days, as any sale does; "
-				+ "anything above demand banks into the reserve.", opad, h,
-				"" + (int) BaseSubmarketPlugin.TRADE_IMPACT_DAYS);
+		if (!ThreatReserves.hasDepot(market)) {
+			tooltip.addPara("No Waystation: nothing sails from here or lands here.",
+					Misc.getNegativeHighlightColor(), opad);
+		}
+		if (!backed) {
+			tooltip.addPara("Selling here raises availability for %s days, as any sale does; "
+					+ "anything above demand banks into the reserve.", opad, h,
+					"" + (int) BaseSubmarketPlugin.TRADE_IMPACT_DAYS);
+		}
 	}
 
 	/**
@@ -62,6 +70,26 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 		Color gray = Misc.getGrayColor();
 		String name = Misc.ucFirst(ThreatReserves.label(c));
 		String stock = Misc.getWithDGS((int) s.stock);
+		if (s.backed) {
+			// the resource stockpile: vanilla fills and spends it, the militia lands in it
+			if (s.covering) {
+				tooltip.addPara(name + ": %s stockpiled. Short %s; the stockpile is covering.",
+						pad, h, stock, units(s.deficit));
+			} else if (s.stockpilesOff) {
+				tooltip.addPara(name + ": %s stockpiled. Short %s; stockpile use is off.",
+						pad, neg, stock, units(s.deficit));
+			} else if (s.deficit > 0) {
+				tooltip.addPara(name + ": %s stockpiled. Short %s; nothing to cover with.",
+						pad, neg, stock, units(s.deficit));
+			} else if (s.per30 > 0f) {
+				tooltip.addPara(name + ": %s stockpiled. +%s a month, cap %s.", pad,
+						s.stock >= s.cap ? gray : pos, stock, Misc.getWithDGS((int) s.per30),
+						Misc.getWithDGS((int) s.cap));
+			} else {
+				tooltip.addPara(name + ": %s stockpiled. Nothing stockpiles here.", pad, gray, stock);
+			}
+			return;
+		}
 		if (s.covering) {
 			tooltip.addPara(name + ": %s banked. Short %s; depot issuing %s for %s.", pad, h,
 					stock, units(s.deficit), Misc.getWithDGS((int) s.coverQty), days(s.coverDaysLeft));

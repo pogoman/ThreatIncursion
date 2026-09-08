@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 $core = "C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core"
 $mods = "C:\Program Files (x86)\Fractal Softworks\Starsector\mods"
 $luna = "$mods\LunaLib-2.0.4\jars\LunaLib.jar"
-$cp = "$core\starfarer.api.jar;$core\lwjgl.jar;$core\lwjgl_util.jar;$core\log4j-1.2.9.jar;$core\json.jar;$luna"
+$cp = "$core\starfarer.api.jar;$core\lwjgl.jar;$core\lwjgl_util.jar;$core\log4j-1.2.9.jar;$core\json.jar;$core\xstream-1.4.10.jar;$luna"
 
 $javac = "javac"
 $jar = "jar"

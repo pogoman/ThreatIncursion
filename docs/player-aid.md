@@ -67,9 +67,12 @@ game already computes for that colony, so the board can show the exact figures:
    fleet that is lost frees them after `aidRebuildDays` (60). A colony without a military
    structure fields nothing, as for sorties today.
 2. *Stock.* Cargo comes only from the colony's reserve (`ThreatReserves.available`, above
-   the floor) - the banked surplus of what its industries produce. Marines are the militia
-   baseline plus surplus. No purchase from the open market, nothing from colony storage.
-3. *Reach.* `IncursionManager.expeditionRangeLY(market)` as every sortie does.
+   the floor). For a player colony the reserve IS its resource stockpile (2026-09-05,
+   docs/strategy-layer.md): what vanilla stockpiles there plus the militia plus whatever
+   the player leaves there in person. No purchase from the open market.
+3. *Reach.* None for the player's orders since 2026-09-05 evening (was
+   `IncursionManager.expeditionRangeLY(market)`): any colony may send anywhere, paying
+   fuel by the distance and the time there and back - docs/strategy-layer.md "Ranges".
 
 Ships are built by `FleetFactoryV3` with the source colony as `source` and
 `ignoreMarketFleetSizeMult` set, so the FP shown on the board is what sails, and quality
@@ -88,9 +91,12 @@ nothing downstream (standing is computed from the goods' value at the receiving 
 from what was paid). The two knobs are gone, as is the wallet check on Defend / Aid /
 Strike. The purge commission on the infested-system intel and the board's Purge button,
 which shared the launch path and so also drew marines and held points, lost its fee the
-same day (`commissionCostPerPoint` / `commissionCostPerLY` removed; `commissionEnabled`
-stays). Credits now buy only what no reserve can: outposts (`outpostCredits`) and new
-colonies. Goods are the colony's own surplus. Nothing is refunded on loss; a recalled or
+same day (`commissionCostPerPoint` / `commissionCostPerLY` removed) - and were then removed
+outright that evening (`commissionEnabled` gone too): the faction view's Siege button is the
+one way to raise a siege, and NPC navies siege only while mobilised (docs/war-board.md,
+"Missions and sieges"). Credits now buy only what no reserve can: outposts (`outpostCredits`) and new
+colonies - and not even every outpost, since 2026-09-05: one raised by winning a ground
+war is free (section 8, "Outposts"). Goods are the colony's own surplus. Nothing is refunded on loss; a recalled or
 returning fleet puts undelivered cargo back in the source reserve in full
 (`returnRefundMult` applies to provisions only).
 
@@ -232,7 +238,8 @@ Still needs a yes:
    contract can post again when a second strike stages (recommend no, one at a time).
 8. Failing costs standing (vanilla `MISSION_FAILURE`). Does losing the colony, which
    may not be the player's fault, carry the same penalty? Recommend yes, keep it simple.
-9. Guard size: `min(guardFleetFP, free points)`, at least `aidGuardMinFP` (50), else the
+9. Guard size: `min(guardFleetFP, free points)` (superseded 2026-09-05 evening: everything
+   the colony has free), at least `aidGuardMinFP` (50), else the
    button is disabled with the reason.
 10. Reputation numbers in section 3 as defaults (all knobs).
 11. The ally curve in section 5 and that the player can be a recipient.
@@ -271,17 +278,98 @@ Where the build departs from the text above, on purpose:
 - NPC fleets keep vanilla's fleet-size scaling (their navy is their colony); only
   player-launched fleets are built at exactly the ledger's points.
 - A player purge expedition that still exceeds the free points after trimming to two
-  fleets of minimum difficulty sails anyway, and the colony is over-extended until it
-  returns (section 7, item 4).
+  fleets of minimum difficulty is REFUSED (changed 2026-09-05 evening after five sieges
+  sailed 1,025 FP from a 239 FP colony; section 7, item 4 was "send what you can"). The
+  way to a bigger siege is staging guards at the base: docs/strategy-layer.md "Staging
+  fleets". Free points there include staged task forces.
+- **The siege force ladder (added 2026-09-07, untested).** A hive-in-reach row carries
+  three siege buttons, not one - **Siege** lands the marines the assault needs (the old
+  behaviour), **Extra** lands `threatinc_siegeExtraMarinesFactor` x that (default 2), and
+  **All** lands every marine in the base's reserve above its floor. All three share the
+  Siege gate (`siegeBlockReason`), so they grey out together. The extra marines matter
+  because a landed front's strength is linear in its troops (`ThreatGroundFronts.effectiveStrength`)
+  - a heavier landing holds against counter-attacks and takes strata faster, to the
+  `paceRatio` floor. The catch that shapes the whole feature: raising the marine allotment
+  alone does nothing - `ThreatPurgeFGI` clips marines to the fleets' crew space and refunds
+  the surplus - so Extra/All GROW the flotilla (`siegeFleetSizes` takes a marine goal) so it
+  can carry the landing, and that bigger flotilla is then trimmed to the base's free fleet
+  points. So a small base's All is still bounded by its free FP, exactly as a plain siege
+  is; the way to land more from it is still to stage guards there first. The Confirm names
+  the marines each tier commits (`min(goal, reserve)`) and the FP its flotilla holds.
+- **The load ladders (added 2026-09-07, untested).** Every table whose buttons move a
+  quantity carries the same Min/Med/Max selector in a reserved row under its heading,
+  and every order button in the table below reads that one choice - so the row's tooltip
+  and the Confirm quote what will actually sail. Three of them (`ThreatFactionView.addTierSelector`):
+  **Siege force** over the hives table (above), **Supply run** over the ground-fronts
+  table, **Convoy load** over the colonies table. The tier is view state on the intel
+  (`siegeTier` / `supplyTier` / `convoyTier`), set by a button with no Confirm, exactly
+  like the faction selector; the current tier's button is the disabled one.
+  - **Supply run** (the front's Supply button, `ThreatConvoys.supplyAsk`): Min asks for
+    what the front wants, floored to a worthwhile run (200 marines, 30 days' armaments);
+    Med asks `threatinc_convoyExtraLoadFactor` x that (default 2); Max asks for a full
+    hull load, wanted or not - so Max is also the only tier that sails to a front that
+    wants nothing (`supplyBlockReason` skips its "wants nothing" gate at Max).
+  - **Convoy load** (the colony Supplies button, `ThreatConvoys.stageLoad`, and the Aid
+    button, `ThreatAid.quoteResupply`): Min carries what the target is short of its
+    staging target (or of its reserve cap, where it stages for nothing); Med carries the
+    factor x that; Max carries a hull load of everything the source can spare. **Max is
+    the old behaviour** for marines and armaments, which always asked for a hull load
+    regardless of the target's stock (2026-09-05, "the landing force ... there is never
+    enough of it"); Min is the bounded version of that ask, and is the default. Set the
+    ladder to Max to get the old Supplies button back. A run to an OUTPOST is a hull load
+    at every tier: it banks nothing, so nothing there is ever "short".
+  - Every tier is only an ASK. The load is still `min(ask, what the source holds above
+    its floor, the convoy's capacity)`, and a player source's is then fitted to its own
+    free hulls - so a tier raises the ceiling, never the source's ability to fill it.
+  - Fleet orders (Fleet, Defend, Strike, Intercept) have no ladder: they already sail
+    with everything the source colony has free (`ThreatAid.taskForceFP`).
 - The Strike aid button lives in each NPC faction's view, on its hives-in-reach rows;
   standing goes to every faction with a colony in the hive's strike reach.
 - `aidBaseFP` is 100 as approved. Vanilla's own patrols at a Military Base add up to
   roughly two to three times that, so the knob may want raising once it is felt.
 
+### Outposts (added 2026-09-05, untested)
+
+The player's outpost over any uncolonised world, from the planet dialog for
+`outpostCredits` with a military colony in reach (`ThreatincOutpostCMD`), stands as
+described in `docs/strategy-layer.md`. Three things changed the same day, and they apply
+to the player exactly as to an NPC faction:
+
+- **Winning a ground war raises one free.** Eradicate a hive by ground assault and an
+  outpost of the winner's faction appears over the dead world at no cost - no credits, no
+  reserve draw, no base-in-reach requirement. Knob `threatinc_outpostOnVictory` (default
+  true, off = the world is simply dead ground). This is the only outpost the wallet does
+  not pay for.
+- **The survivors garrison it.** Instead of being lifted back into the player's fleet, the
+  front's surviving marines and heavy armaments become the outpost's stockpile - the
+  reward for the campaign stays at the front, where the next one starts. With outposts
+  disabled (or none over the world) they come home as before.
+- **It is a forward base.** A supply run to a front in that system loads at the outpost
+  when it can cover the run, and a pull-out lands the front in it rather than shipping it
+  light-years home. Once the system holds no hive the stock ships itself home to your
+  nearest base by convoy (your faction mobilised). The faction view's reserves table lists
+  it as a row of its own.
+- **It is a base you can use (2026-09-06, untested).** The outpost row has the same
+  **Supplies** and **Fleet** buttons as a colony row: a convoy lands in the station's
+  storage (a hull load of whatever the donor can spare, fuel and supplies included), a task
+  force holds its orbit until recalled. No Waystation is needed - the station is the depot.
+  Dock at the station for its own dialog: **Open the storage** is vanilla's cargo screen on
+  the outpost's storage (the marines, armaments, fuel and supplies the board shows, to take
+  or leave as you please), **Decommission** scuttles it after a prompt saying what is lost.
+  The outpost no longer appears in the fleets table, and the Recall that scuttled it is gone.
+
 To verify in-game, in this order:
 
-1. Own faction view: Guard / Stage buttons and their reasons; the colony tooltip's
-   "Fleet capacity" line; a Guard commits points and they return when it is home.
+1. Own faction view: Fleet / Supplies buttons and their reasons; the FP column (free /
+   capacity) and its Total (white / yellow / red by whether a full, reduced or no task
+   force can sail); the colony tooltip's "Fleet capacity" lines, which add up to the
+   cell; a Fleet order takes everything the colony has free, the prompt quotes the cell's
+   figure, the cell drops by what the factory built (the new fleet's Strength), and the
+   points return when it is home. Siege / Intercept / Stage
+   greyed with a one-line reason when the order would fail (short of fleet points, short
+   of marines, no source colony with 50 FP free, no donor) instead of a Confirm that then
+   does nothing. A Guard over an own colony from another: on station, the host's FP cell
+   rises by it (docs/strategy-layer.md "Staging fleets").
 2. Sindria (or any mobilised NPC faction) view: no order buttons; Defend and Aid on
    colony rows, each button's own tooltip naming the source colony and what it sends
    (the row tooltip no longer repeats it); Strike on hive rows; the aid fleet appears
@@ -294,3 +382,18 @@ To verify in-game, in this order:
    the main menu; hand over; the contract progresses.
 6. Over a few ticks with two mobilised NPC factions at Favourable or better: an ally's
    guard or convoy appears in the log ("... sends ... for ...").
+7. Win a ground war: the eradication message, then the free outpost message over the same
+   world, then the survivors' message naming it as the stockpile ("Outpost built: ...
+   (free - ground victory)" and "Front survivors garrison the outpost over ..." in the
+   log). Then Supply that system's next front and check the run sails from the outpost
+   ("Supply run dispatched: ... <world> Outpost -> ...").
+8. The outpost as a base (2026-09-06): load a save with a standing player outpost - the log
+   says "Outpost storage opened at ..." on the first fast poll and "... moves N marines from
+   the ledger into its storage" on the first board render; the outpost row shows the same
+   figures as before, with Supplies and Fleet buttons and "Forward base" or "to <colony> N
+   ly" in the Convoys column; no Outpost row in the fleets table. Supplies: the prompt
+   quotes the load, the convoy sails and lands in the storage (figures rise). Fleet: a task
+   force from the nearest colony orbits the station "until recalled". Dock at the station:
+   the dialog names the storage; Open the storage shows vanilla's cargo screen with the
+   marines in Storage; take some and the board row drops by them. Decommission: the prompt
+   names what is lost; Confirm removes the station and the row.

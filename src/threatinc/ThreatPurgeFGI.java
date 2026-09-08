@@ -7,14 +7,18 @@ import java.util.Map;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
+import com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI;
 import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.econ.MutableCommodityQuantity;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
+import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
+import com.fs.starfarer.api.impl.campaign.MilitaryResponseScript;
 import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
 import com.fs.starfarer.api.impl.campaign.procgen.StarSystemGenerator;
+import com.fs.starfarer.api.impl.campaign.procgen.themes.WarfleetAssignmentAI;
 import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD;
 import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.BombardType;
 import com.fs.starfarer.api.util.Misc;
@@ -27,12 +31,16 @@ import com.fs.starfarer.api.util.Misc;
  * siege doctrine:
  *
  * <ul>
- * <li>While the war-strata still fight above the soften floor
- * (siegeDefenseSoftenFloor) - repeated tactical bombardment, each pass a
- * hive-short disruption that STACKS with the last (the same additive softening
- * a player's passes achieve), wearing the defenses further every time
- * (ThreatColonyManager.disruptedDefenseResilience) until they drop below the
- * floor - opening the door for...</li>
+ * <li>THE ORBITAL DUEL (2026-09-06, the strike's doctrine mirrored -
+ * docs/ground-war.md "Sieges from orbit"): a live fleet over a hive not yet
+ * ready to be landed on delivers a slice of the siege instead of a pass
+ * ({@link SiegeRaidAction#performRaid}, {@link #siegePass}): its fleet
+ * points against the hive's ground-defence figure suppress the war-strata
+ * toward the orbital floor, and the weapon growths answer with ships lost.
+ * The landing waits until the strata are at the floor or the troops could
+ * hold as they are ({@link ThreatGroundFronts#readyToLand}). Orbit alone
+ * cannot wear the defenses deeper than the floor; the ground forces landed
+ * next do - opening the door for...</li>
  * <li>...COMMANDO RAIDS against whatever on the world takes the most from
  * the hive ({@link #pickRaidTarget}: the Core, the Nexus, a port the world
  * imports through, or an economy industry that is the hive's best source of
@@ -41,9 +49,14 @@ import com.fs.starfarer.api.util.Misc;
  * plumbing.</li>
  * </ul>
  *
- * <p>No saturation, ever: bombardment cannot reduce a hive's population. The
- * expedition's job is to suppress the colony's organs until decline - the only
- * way a Threat colony dies - grinds it to collapse.
+ * <p>No saturation, ever: bombardment cannot reduce a hive's population. Once
+ * the war-strata are suppressed the expedition lands its marines as a ground
+ * front ({@link ThreatGroundFronts}) - ground victory is the only way a Threat
+ * colony dies. Siege slices spend no pass; the pass budget is
+ * siegePassesPerColony (default 4: the first lands, the rest reinforce the
+ * front with whatever is still aboard - and once the marines are ashore a pass
+ * with too few left to crew a raid (frontMinMarines) simply stands down rather
+ * than mount a zero-marine commando raid that only gets repulsed).
  *
  * Every pass is recorded; when the expedition ends (for any reason) a
  * {@link ThreatSiegeReportIntel} sitrep is posted detailing what was done to
@@ -55,9 +68,9 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	public static class SiegeActionRecord {
 		public String marketId;
 		public String marketName;
-		/** Player-facing action name, e.g. "Saturation bombardment". */
+		/** Player-facing action name: "Tactical bombardment", "Ground landing", "Commando raid". */
 		public String action;
-		/** Industries hit, comma-joined; null for saturation passes. */
+		/** Industries hit, comma-joined; the troops landed for a ground landing. */
 		public String targets;
 		/** Approximate days of disruption inflicted (0 if none). */
 		public int disruptDays;
@@ -115,43 +128,337 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		suppliesDrawn = Math.max(0f, supplies);
 	}
 
+	/** Set once the fleets have become real - one-way; vanilla never re-abstracts them. */
+	protected boolean everSpawned = false;
+
 	/**
-	 * The expedition is over and was not destroyed: whatever it never landed
-	 * goes back to the base - troops and armaments still with it in full
-	 * (they are what survived), fuel and supplies at returnRefundMult scaled
-	 * by the route's surviving strength. Abort and natural return alike.
+	 * Hands a live expedition fleet to the returns ledger: it sails home on a
+	 * tracked leg and whatever is aboard - marines, armaments - is credited to
+	 * the base when it arrives. A fleet lost on the way home returns nothing.
+	 */
+	protected boolean sendHomeTracked(CampaignFleetAPI fleet) {
+		MarketAPI base = params != null ? params.source : null;
+		if (fleet == null || base == null || !fleet.isAlive() || fleet.isExpired()) return false;
+		String factionId = getFaction() != null ? getFaction().getId() : null;
+		return ThreatReturns.sendHome(fleet, factionId, base.getId());
+	}
+
+	/**
+	 * Every road home vanilla knows - the natural return once the siege is
+	 * done, an abort, a fleet cut below fleetAbortsMissionFPFraction and sent
+	 * back alone - runs through here. A cargo expedition's fleets take the
+	 * tracked leg instead of vanilla's untracked return-and-despawn, so the
+	 * marines still aboard reach the base's reserve rather than vanishing with
+	 * the hull.
+	 */
+	@Override
+	protected void giveReturnAssignments(CampaignFleetAPI fleet) {
+		// a fleet holding a capacity-ledger entry takes the tracked leg too: it
+		// settles that entry on arrival (vanilla's despawning return would read
+		// as a loss to the ledger)
+		if (fleet != null && (carriesCargo || ThreatAidCapacity.heldBy(fleet) != null)) {
+			cutLoose(fleet);
+			fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_FLEET_DO_NOT_GET_SIDETRACKED, true);
+			if (sendHomeTracked(fleet)) {
+				if (trackedHome == null) trackedHome = new ArrayList<CampaignFleetAPI>();
+				if (!trackedHome.contains(fleet)) trackedHome.add(fleet);
+				return;
+			}
+		}
+		super.giveReturnAssignments(fleet);
+	}
+
+	/**
+	 * Fleets vanilla dropped from getFleets() while still alive (stragglers,
+	 * fleets cut below fleetAbortsMissionFPFraction) and that are on tracked
+	 * legs home: they still count as surviving strength for the provisions
+	 * refund.
+	 */
+	protected List<CampaignFleetAPI> trackedHome = new ArrayList<CampaignFleetAPI>();
+
+	/**
+	 * The expedition is over, however it ended - natural return, recalled,
+	 * standing down because its targets are gone, or beaten. Real fleets go
+	 * home on tracked legs through ONE door, {@link #giveReturnAssignments},
+	 * which vanilla calls for every fleet when the group finishes; here they
+	 * are only counted, for the provisions refund. They settle on arrival:
+	 * what is aboard is what survived, a fleet lost on the way returns
+	 * nothing, and marines on fleets destroyed in the siege died with them. An
+	 * expedition that never became real refunds its un-landed allotment less
+	 * the route's damage. Fuel and supplies come back at returnRefundMult
+	 * scaled by the surviving strength.
 	 */
 	protected void refundOnReturn() {
-		if (!carriesCargo || isFailed()) return;
+		if (!carriesCargo) return;
 		MarketAPI base = params != null ? params.source : null;
-		if (base == null) return;
-		float keep = 1f - routeDamage();
-		float marines = marinesAllotted;
-		float armaments = armamentsAllotted;
-		if (!anyFleetLive()) {
-			marines *= keep;
-			armaments *= keep;
+		float keep;
+		float marines = 0f;
+		float armaments = 0f;
+		int homebound = 0;
+		if (everSpawned) {
+			float fp = 0f;
+			for (CampaignFleetAPI fleet : getFleets()) {
+				if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+				fp += fleet.getFleetPoints();
+				if (trackedHome != null && trackedHome.contains(fleet)) homebound++;
+			}
+			if (trackedHome != null) {
+				for (CampaignFleetAPI fleet : trackedHome) {
+					if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+					if (getFleets().contains(fleet)) continue;
+					fp += fleet.getFleetPoints();
+					homebound++;
+				}
+			}
+			keep = baselineFP() > 0f ? Math.max(0f, Math.min(1f, fp / baselineFP())) : 0f;
+		} else {
+			keep = 1f - routeDamage();
+			marines = marinesAllotted * keep;
+			armaments = armamentsAllotted * keep;
 		}
 		float mult = ThreatIncConfig.returnRefundMult() * keep;
 		float fuel = fuelDrawn * mult;
 		float supplies = suppliesDrawn * mult;
-		ThreatReserves.deposit(base.getId(), Commodities.MARINES, marines);
-		ThreatReserves.deposit(base.getId(), Commodities.HAND_WEAPONS, armaments);
-		ThreatReserves.deposit(base.getId(), Commodities.FUEL, fuel);
-		ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, supplies);
+		if (base != null) {
+			ThreatReserves.deposit(base.getId(), Commodities.MARINES, marines);
+			ThreatReserves.deposit(base.getId(), Commodities.HAND_WEAPONS, armaments);
+			ThreatReserves.deposit(base.getId(), Commodities.FUEL, fuel);
+			ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, supplies);
+		}
 		marinesAllotted = 0f;
 		armamentsAllotted = 0f;
 		fuelDrawn = 0f;
 		suppliesDrawn = 0f;
-		if (marines > 0f || armaments > 0f || fuel > 0f || supplies > 0f) {
-			ThreatIncConfig.log("Expedition return to " + base.getName() + ": " + (int) marines
-					+ " marines, " + (int) armaments + " armaments, " + (int) fuel + " fuel, "
-					+ (int) supplies + " supplies refunded (strength " + (int) (keep * 100f) + "%)");
+		ThreatIncConfig.log("Expedition return to " + (base != null ? base.getName() : "nowhere")
+				+ ": " + homebound + " fleets on tracked legs home, " + (int) marines
+				+ " marines, " + (int) armaments + " armaments, " + (int) fuel + " fuel, "
+				+ (int) supplies + " supplies refunded (strength " + (int) (keep * 100f) + "%)");
+	}
+
+	/**
+	 * Surviving strength, 0..1: live fleet points (tracked legs home
+	 * included) over what was spawned, or the route's damage while the
+	 * expedition was still abstract - the same figure refundOnReturn scales
+	 * by. The capacity ledger restations staged detachments at it when the
+	 * expedition is over (ThreatAidCapacity.poll).
+	 */
+	public float survivingFraction() {
+		if (!everSpawned) return Math.max(0f, 1f - routeDamage());
+		float fp = 0f;
+		for (CampaignFleetAPI fleet : getFleets()) {
+			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+			fp += fleet.getFleetPoints();
 		}
+		if (trackedHome != null) {
+			for (CampaignFleetAPI fleet : trackedHome) {
+				if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+				if (getFleets().contains(fleet)) continue;
+				fp += fleet.getFleetPoints();
+			}
+		}
+		return baselineFP() > 0f ? Math.max(0f, Math.min(1f, fp / baselineFP())) : 0f;
 	}
 
 	public boolean carriesCargo() {
 		return carriesCargo;
+	}
+
+	/**
+	 * Takes one fleet out of the expedition (the board's per-fleet Recall and
+	 * Intercept, 2026-09-06). The group's spawned-strength baseline drops by
+	 * the fleet's own, so the rest is not judged beaten for its absence
+	 * (vanilla aborts a group below groupAbortsMissionFPFraction of what it
+	 * spawned); an expedition left with no fleet ends. Returns false when the
+	 * fleet is not in the group.
+	 */
+	public boolean detach(CampaignFleetAPI fleet) {
+		return detach(fleet, true);
+	}
+
+	/**
+	 * {@code endIfEmpty} false: an expedition left with no fleet finishes as
+	 * vanilla's does (FGRaidAction.directFleets ends its action on an empty
+	 * group, and the return action does the same) rather than as a rout - a
+	 * landing fleet staying behind on Defend is the expedition succeeding,
+	 * not scattering. Its spawn points move to {@link #detachedBaselineFP},
+	 * so the refund and surviving-fraction sums still measure it.
+	 */
+	public boolean detach(CampaignFleetAPI fleet, boolean endIfEmpty) {
+		if (fleet == null || !getFleets().contains(fleet)) return false;
+		float spawnFP = fleet.getMemoryWithoutUpdate().getFloat(KEY_SPAWN_FP);
+		if (spawnFP <= 0f) spawnFP = fleet.getFleetPoints();
+		getFleets().remove(fleet);
+		if (trackedHome != null) trackedHome.remove(fleet);
+		if (!endIfEmpty && getFleets().isEmpty()) {
+			// the last fleet out: everything still on the baseline - the fleets
+			// the siege destroyed included - moves over, so baselineFP() stays
+			// what was spawned and the refund reads the real losses
+			detachedBaselineFP += getTotalFPSpawned();
+			setTotalFPSpawned(0f);
+		} else {
+			if (!endIfEmpty) detachedBaselineFP += Math.min(spawnFP, getTotalFPSpawned());
+			setTotalFPSpawned(Math.max(0f, getTotalFPSpawned() - spawnFP));
+		}
+		cutLoose(fleet);
+		if (endIfEmpty && getFleets().isEmpty() && !isEnding() && !isEnded()) abort();
+		return true;
+	}
+
+	/** Spawned points of fleets that left to defend a landing: still the expedition's for the refund and surviving-fraction sums. */
+	protected float detachedBaselineFP = 0f;
+
+	/** The expedition's spawned-strength baseline, fleets that stayed to defend a landing included. */
+	protected float baselineFP() {
+		return getTotalFPSpawned() + detachedBaselineFP;
+	}
+
+	/**
+	 * THE LANDING FLEET STAYS (2026-09-07, the user: "after a siege expedition
+	 * has dropped off its marines it should hold the space above the sieged
+	 * planet"): the fleet whose pass landed or reinforced the front, and every
+	 * other expedition fleet in the system with nothing left to land, leave
+	 * the expedition for an indefinite Defend order over the world
+	 * ({@link ThreatFleetOrders#adoptLandingDefend}) - holding the orbit,
+	 * bombarding only while the front cannot hold. A landing takes the
+	 * marines off every fleet in the system ({@link #unloadForLanding}), so
+	 * for a cargo expedition that is every fleet here; one not yet arrived
+	 * still carries its marines, sweeps on, and stays in its turn when it
+	 * reinforces. Knob: landingDefendEnabled.
+	 */
+	protected void stayOnDefend(CampaignFleetAPI passing, MarketAPI market) {
+		if (market == null || getFaction() == null) return;
+		if (!ThreatIncConfig.landingDefendEnabled()) return;
+		MarketAPI base = sourceBase();
+		if (base == null) return;
+		for (CampaignFleetAPI fleet : new ArrayList<CampaignFleetAPI>(getFleets())) {
+			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+			if (fleet != passing) {
+				if (market.getContainingLocation() == null
+						|| fleet.getContainingLocation() != market.getContainingLocation()) {
+					continue;
+				}
+				// only a cargo expedition's fleets are known to be empty
+				if (!carriesCargo
+						|| fleet.getCargo().getMarines() >= ThreatIncConfig.frontMinMarines()) {
+					continue;
+				}
+			}
+			if (!detach(fleet, false)) continue;
+			if (ThreatFleetOrders.adoptLandingDefend(fleet, getFaction(), market, base) == null) {
+				giveReturnAssignments(fleet); // out of the group and refused: home, not adrift
+			}
+			// still one of the expedition's fleets for the refund sums (detach took it out)
+			if (trackedHome == null) trackedHome = new ArrayList<CampaignFleetAPI>();
+			if (!trackedHome.contains(fleet)) trackedHome.add(fleet);
+		}
+	}
+
+	/**
+	 * A fleet with nothing left to land joins the defence of the
+	 * expedition's own front - this world's if it is ours, else the nearest
+	 * of the sweep's - rather than duelling batteries over a world it can
+	 * never take (2026-09-07, Gamma Hero I). False when there is no such
+	 * front: the pass then goes ahead and spends itself on nothing.
+	 */
+	protected boolean joinDefend(CampaignFleetAPI fleet, MarketAPI market) {
+		if (fleet == null || getFaction() == null) return false;
+		if (!ThreatIncConfig.landingDefendEnabled()) return false;
+		MarketAPI world = ownFrontWorld(market, fleet);
+		if (world == null) return false;
+		stayOnDefend(fleet, world);
+		return !getFleets().contains(fleet);
+	}
+
+	/** This world if the expedition's own front stands on it, else the sweep's own-front world nearest the fleet, else null. */
+	protected MarketAPI ownFrontWorld(MarketAPI market, CampaignFleetAPI fleet) {
+		String ourId = getFaction() != null ? getFaction().getId() : null;
+		if (ourId == null) return null;
+		if (market != null && ownFrontOn(market, ourId)) return market;
+		if (getParams() == null || getParams().raidParams == null) return null;
+		MarketAPI best = null;
+		float bestDist = Float.MAX_VALUE;
+		for (MarketAPI target : getParams().raidParams.allowedTargets) {
+			if (target == null || !target.isInEconomy() || target.getPrimaryEntity() == null) continue;
+			if (!ownFrontOn(target, ourId)) continue;
+			float dist = fleet != null && fleet.getContainingLocation() == target.getContainingLocation()
+					? Misc.getDistance(fleet, target.getPrimaryEntity()) : Float.MAX_VALUE / 2f;
+			if (dist < bestDist) {
+				bestDist = dist;
+				best = target;
+			}
+		}
+		return best;
+	}
+
+	protected static boolean ownFrontOn(MarketAPI market, String factionId) {
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		return front != null && factionId.equals(ThreatGroundFronts.ownerOf(front));
+	}
+
+	/**
+	 * A fleet leaving its group takes nothing of the group's mind with it:
+	 * vanilla's WarfleetAssignmentAI (which captures objectives and raids on
+	 * its own - seen 2026-09-06: every fleet detached to Intercept or
+	 * recalled sat on the hive's comm relay instead), the raid's
+	 * military-response pull and its assignments, the busy flag the raid
+	 * action leaves, and the blinkers. From here on only its own orders move
+	 * it, and no response script (a raid's, or a system's fight for its
+	 * objectives) may borrow it.
+	 */
+	public static void cutLoose(CampaignFleetAPI fleet) {
+		if (fleet == null) return;
+		fleet.removeScriptsOfClass(WarfleetAssignmentAI.class);
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+		mem.unset(MemFlags.MEMORY_KEY_FLEET_DO_NOT_GET_SIDETRACKED);
+		mem.unset(MemFlags.FLEET_MILITARY_RESPONSE);
+		Misc.setFlagWithReason(mem, MemFlags.FLEET_BUSY, fleet.getId(), false, 0f);
+		mem.unset(MemFlags.FLEET_BUSY);
+		mem.set(MemFlags.FLEET_NO_MILITARY_RESPONSE, true);
+		if (fleet.getAI() != null) {
+			for (FleetAssignmentDataAPI a : fleet.getAI().getAssignmentsCopy()) {
+				if (MilitaryResponseScript.RESPONSE_ASSIGNMENT.equals(a.getCustom())) {
+					fleet.getAI().removeAssignment(a);
+				}
+			}
+		}
+	}
+
+	/** Set once the capacity ledger's group entries have been split among the real fleets. */
+	protected boolean ledgerSplit = false;
+
+	/**
+	 * Vanilla's incremental spawn (its default) never stamps KEY_SPAWN_FP on
+	 * a fleet, so its own "cut below fleetAbortsMissionFPFraction" check
+	 * never fires and {@link #detach} had nothing to take off the group's
+	 * baseline: three fleets detached from four left the fourth judged
+	 * beaten and the expedition aborted (2026-09-06, Gamma Hero). Stamped
+	 * here the tick after each fleet becomes real. Once every fleet is real
+	 * the capacity ledger's group entries are split among them
+	 * ({@link ThreatAidCapacity#splitGroup}), so each settles its own share.
+	 */
+	protected void noteSpawnFP() {
+		for (CampaignFleetAPI fleet : getFleets()) {
+			if (fleet == null) continue;
+			if (fleet.getMemoryWithoutUpdate().getFloat(KEY_SPAWN_FP) <= 0f) {
+				fleet.getMemoryWithoutUpdate().set(KEY_SPAWN_FP, (float) fleet.getFleetPoints());
+			}
+		}
+		if (!ledgerSplit && isSpawnedFleets() && !isSpawning() && !getFleets().isEmpty()) {
+			ledgerSplit = true;
+			ThreatAidCapacity.splitGroup(this);
+		}
+	}
+
+	/** Detaches one fleet and sends it home on the tracked leg (its cargo refunds on arrival). */
+	public boolean recallFleet(CampaignFleetAPI fleet) {
+		if (!detach(fleet)) return false;
+		giveReturnAssignments(fleet);
+		return true;
+	}
+
+	/** The base the expedition sailed from, or null for an abstract one. */
+	public MarketAPI sourceBase() {
+		return params != null ? params.source : null;
 	}
 
 	public float getMarinesAllotted() {
@@ -172,6 +479,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		marinesLoaded = 0f;
 		armamentsLoaded = 0f;
 		super.spawnFleets();
+		everSpawned = true;
 		if (!carriesCargo) return;
 		MarketAPI base = params != null ? params.source : null;
 		float marinesLeft = marinesAllotted - marinesLoaded;
@@ -233,6 +541,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	@Override
 	protected void advanceImpl(float amount) {
 		super.advanceImpl(amount);
+		noteSpawnFP();
 		if (!carriesCargo || !anyFleetLive()) return;
 		float marines = 0f;
 		float armaments = 0f;
@@ -294,6 +603,13 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected Object readResolve() {
 		super.readResolve();
 		if (siegeActions == null) siegeActions = new ArrayList<SiegeActionRecord>();
+		if (trackedHome == null) trackedHome = new ArrayList<CampaignFleetAPI>();
+		if (siegeAnnounced == null) siegeAnnounced = new java.util.HashSet<String>();
+		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
+		// saves from before everSpawned existed: vanilla's own spawn bookkeeping
+		// says whether the fleets were ever real (else a spawned expedition would
+		// refund its allotment AND settle the same marines from cargo)
+		if (!everSpawned && (spawnedFleets || totalFPSpawned > 0f)) everSpawned = true;
 		return this;
 	}
 
@@ -329,9 +645,155 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				opad, com.fs.starfarer.api.util.Misc.getHighlightColor(), getNoun());
 	}
 
+	/** What the expedition is doing to this colony right now. */
+	protected String siegePhase(MarketAPI market) {
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		if (front != null && getFaction() != null
+				&& getFaction().getId().equals(ThreatGroundFronts.ownerOf(front))) {
+			return "landed " + Misc.getWithDGS(Math.round(front.marines)) + " troops";
+		}
+		if (ThreatIncConfig.siegeFightsForOrbit() && getFaction() != null && isSpawnedFleets()
+				&& ThreatGroundFronts.orbitContestedFor(getFaction().getId(), market)) {
+			return "clearing the orbit";
+		}
+		return ThreatGroundFronts.landingPhase(market, abstractTroops(market), "besieging from orbit");
+	}
+
+	/**
+	 * Siege status: while the expedition is working the system, one line per
+	 * surviving target - what is being done to it and how much of its pass
+	 * budget is spent - and, for a cargo expedition, what is still aboard.
+	 */
+	@Override
+	protected void addStatusSection(com.fs.starfarer.api.ui.TooltipMakerAPI info,
+			float width, float height, float opad) {
+		super.addStatusSection(info, width, height, opad);
+		if (isEnding() || isEnded() || isAborted() || isSucceeded() || isFailed()) return;
+		if (getCurrentAction() == null || params == null || params.raidParams == null) return;
+		java.awt.Color h = Misc.getHighlightColor();
+		if (getCurrentAction() == raidAction) {
+			int budget = Math.max(1, params.raidParams.raidsPerColony);
+			com.fs.starfarer.api.util.CountingMap<MarketAPI> passes =
+					raidAction instanceof com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction
+					? ((com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction) raidAction)
+							.getRaidCount() : null;
+			for (MarketAPI target : params.raidParams.allowedTargets) {
+				if (target == null) continue;
+				if (ThreatIncData.resolveColonyMarket(target.getId()) == null) continue;
+				int used = passes != null ? passes.getCount(target) : 0;
+				info.addPara(target.getName() + ": %s, %s passes.", 3f, h,
+						siegePhase(target), used + "/" + budget);
+			}
+		}
+		if (carriesCargo) {
+			info.addPara("Aboard: %s marines, %s heavy armaments.", 3f, h,
+					Misc.getWithDGS((int) getMarinesAllotted()),
+					Misc.getWithDGS((int) getArmamentsAllotted()));
+		}
+	}
 	@Override
 	public boolean hasCustomRaidAction() {
 		return true;
+	}
+
+	@Override
+	protected GenericPayloadAction createPayloadAction() {
+		return new SiegeRaidAction(params.raidParams, params.payloadDays);
+	}
+
+	/**
+	 * The siege's raid action: vanilla's, plus the orbit. While Defense Swarms
+	 * hold the orbit of a world still to be raided, no pass is delivered there
+	 * ({@link #canRaid} for a real fleet) and every expedition fleet in the
+	 * system is made aggressive and un-blinkered so it hunts the swarms down.
+	 * Vanilla's raid fleets are re-flagged every tick not to get sidetracked,
+	 * which is exactly why a single swarm ship used to stall a siege for its
+	 * whole stay while the passes were spent on commando raids the landing
+	 * gate had refused (seen 2026-09-05: pirates and the player alike, four
+	 * raids at ~1,200 marines each, no landing). Once the orbit is clear the
+	 * passes resume - tactical, then the landing. Bookkeeping calls (null
+	 * fleet) are untouched, so the stage and its time limit run as vanilla's.
+	 * Knob: {@code siegeFightsForOrbit}.
+	 */
+	public static class SiegeRaidAction
+			extends com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction {
+
+		public SiegeRaidAction(FGRaidParams params, float raidDays) {
+			super(params, raidDays);
+		}
+
+		protected boolean orbitHeld(MarketAPI market) {
+			if (market == null || intel == null || intel.getFaction() == null) return false;
+			return ThreatGroundFronts.orbitContestedFor(intel.getFaction().getId(), market);
+		}
+
+		/**
+		 * The orbital duel (the strike's AnnihilationAction, mirrored): a live
+		 * fleet over a hive not yet ready to be landed on delivers a slice of
+		 * the siege instead of a pass, spending none; an abstract expedition
+		 * runs its whole siege in one go first.
+		 */
+		@Override
+		public void performRaid(CampaignFleetAPI fleet, MarketAPI market) {
+			if (market == null || !market.isInEconomy()) return;
+			if (intel instanceof ThreatPurgeFGI && ThreatGroundFronts.isHiveTarget(market)) {
+				ThreatPurgeFGI purge = (ThreatPurgeFGI) intel;
+				if (fleet != null) {
+					if (purge.siegePass(fleet, market)) return;
+				} else if (!purge.carriesCargo()
+						|| purge.abstractTroops(market) >= ThreatIncConfig.frontMinMarines()) {
+					// nothing to land means no siege either (siegePass's rule)
+					purge.abstractSiege(market);
+					// vanilla counts the pass before it asks us what to do with
+					// it: a world still above the floor after the abstract siege
+					// waits here, spending nothing
+					if (purge.waitsAboveFloor(market)) return;
+				}
+			}
+			super.performRaid(fleet, market);
+		}
+
+		@Override
+		public boolean canRaid(CampaignFleetAPI fleet, MarketAPI market) {
+			if (!super.canRaid(fleet, market)) return false;
+			// a real pass asks with its fleet; the stage's bookkeeping asks with null
+			if (fleet != null && ThreatIncConfig.siegeFightsForOrbit() && orbitHeld(market)) {
+				return false;
+			}
+			return true;
+		}
+
+		/**
+		 * The fight for the orbit, scoped to the orbit: a fleet within
+		 * siegeHuntRange of a hive world whose Defense Swarms hold it hunts
+		 * them, and every other fleet of the expedition keeps vanilla's
+		 * blinkers on and stays over its target
+		 * ({@link ThreatFleetOrders#siegeLeash}). Stripping the blinkers off
+		 * the whole expedition, as this did, sent it after the first swarm
+		 * that ran and it never came back.
+		 */
+		@Override
+		public void directFleets(float amount) {
+			super.directFleets(amount);
+			if (isActionFinished() || intel == null) return;
+			// fleets still mustering at the source are not strays (vanilla's own guard)
+			if (intel.isSpawning()) return;
+			FGRaidParams p = getParams();
+			if (p == null || p.where == null) return;
+			List<MarketAPI> live = new ArrayList<MarketAPI>();
+			List<MarketAPI> contested = new ArrayList<MarketAPI>();
+			for (MarketAPI target : p.allowedTargets) {
+				if (target == null || !target.isInEconomy()) continue;
+				if (getRaidCount().getCount(target) >= p.raidsPerColony) continue;
+				live.add(target);
+				if (orbitHeld(target)) contested.add(target);
+			}
+			boolean hunt = ThreatIncConfig.siegeFightsForOrbit();
+			for (CampaignFleetAPI fleet : intel.getFleets()) {
+				ThreatFleetOrders.siegeLeash(fleet, contested,
+						ThreatFleetOrders.nearestWorld(fleet, live), hunt, "Siege");
+			}
+		}
 	}
 
 	@Override
@@ -345,60 +807,58 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		rec.sizeBefore = market.getSize();
 		rec.timestamp = Global.getSector().getClock().getTimestamp();
 
-		// Tactical passes soften the war-strata: keep bombing (their disruption
-		// now STACKS, so each pass wears the defenses further via
-		// disruptedDefenseResilience) while any defense structure still fights
-		// above the soften floor. Once bombed below it - or, with wear disabled,
-		// once a single pass has done all a bomb can - the expedition lands troops.
-		float tacDays = ThreatIncConfig.hiveTacDisruptDays();
-		float floor = ThreatIncConfig.siegeDefenseSoftenFloor();
-		boolean wearActive = ThreatIncConfig.defenseWearDays() > 0f;
-		Map<Industry, Float> tagged = new LinkedHashMap<Industry, Float>();
-		boolean needTac = false;
-		for (Industry ind : market.getIndustries()) {
-			if (!ind.getSpec().hasTag(Industries.TAG_TACTICAL_BOMBARDMENT)) continue;
-			tagged.put(ind, ind.getDisruptedDays());
-			// a further pass only lowers resilience if wear is active, or the organ
-			// is not yet disrupted (the first pass drops it to disruptedDefenseFraction);
-			// without that guard a wear-off config would loop tactical passes forever
-			boolean canSoftenMore = !ind.isDisrupted() || wearActive;
-			if (canSoftenMore
-					&& ThreatColonyManager.disruptedDefenseResilience(ind) > floor) {
-				needTac = true;
-			}
-		}
-		if (needTac && !tagged.isEmpty()) {
-			new MarketCMD(market.getPrimaryEntity())
-					.doBombardment(getFaction(), BombardType.TACTICAL);
-			// the static doBombardment writes vanilla's 365-day overwrite; replace
-			// it with an ADDITIVE hive-short pass so repeat siege bombardments
-			// accumulate, exactly as a player's tactical passes now do
-			StringBuilder names = new StringBuilder();
-			for (Map.Entry<Industry, Float> entry : tagged.entrySet()) {
-				float dur = tacDays * StarSystemGenerator.getNormalRandom(getRandom(), 1f, 1.25f);
-				entry.getKey().setDisrupted(entry.getValue() + dur);
-				if (names.length() > 0) names.append(", ");
-				names.append(entry.getKey().getCurrentName());
-			}
-			market.reapplyIndustries();
-			rec.action = "Tactical bombardment";
-			rec.targets = names.toString();
-			if (getFaction() != null) {
-				ThreatAlarm.add(getFaction().getId(), ThreatIncConfig.alarmPerRaid(),
-						"tactical bombardment of " + market.getName());
-			}
-			rec.disruptDays = (int) tacDays;
-			rec.success = true;
-			siegeActions.add(rec);
-			ThreatIncConfig.log("Siege pass (tactical) vs " + rec.marketName
-					+ ": " + rec.targets);
+		// COMBINED ARMS: the landing draws on every expedition fleet in-system,
+		// not just the one whose orbit triggered the pass - one operation, one
+		// ground force.
+		float groundStr = combinedRaidStr(market, raidStr);
+
+		// THE ORBITAL DUEL has to have done all it can first
+		// (SiegeRaidAction.performRaid delivers the slices; a live fleet only
+		// gets here once the strata are at the floor or the troops could
+		// hold, an abstract expedition once its whole siege has run): a pass
+		// over a world still above the floor waits rather than raids
+		if (waitsAboveFloor(market)) {
+			ThreatIncConfig.log("Siege pass at " + rec.marketName
+					+ " waits: the war-strata are still above the floor");
 			return;
 		}
 
-		// defenses suppressed: put troops on the ground. COMBINED ARMS: the
-		// landing draws on every expedition fleet in-system, not just the one
-		// whose orbit triggered the pass - one operation, one ground force.
-		float groundStr = combinedRaidStr(market, raidStr);
+		// THE LANDING GATE (ThreatGroundFronts.landingBlocked, the same one the
+		// strike runs): saturation fallout on the ground, another faction's
+		// army holding it, or - with live fleets in the system - Defense
+		// Swarms holding the orbit. (Autoresolve has no orbit to contest:
+		// vanilla already skipped the colony if its defenders outweighed the
+		// expedition.) A blocked pass falls through to a commando raid; the
+		// tactical branch above has already taken the pass if softening still
+		// helps.
+		String ourId = getFaction() != null ? getFaction().getId() : null;
+		String landingBlocked = ourId == null ? "no faction to land for"
+				: ThreatGroundFronts.landingBlocked(ourId, market, fleet != null);
+		ThreatGroundFronts.GroundFront standing = ThreatGroundFronts.getFront(market.getId());
+
+		// REINFORCEMENT: a front of our own already stands on this world (the
+		// gate has said so - a foreign one would have blocked the landing), so
+		// the expedition feeds it instead of raiding - the troops and
+		// armaments aboard go to the men on the ground.
+		if (standing != null && landingBlocked == null) {
+			float[] landed = unloadForLanding(market);
+			if ((landed[0] >= 1f || landed[1] >= 1f) && ThreatGroundFronts.landOrReinforce(
+					market, ourId, Math.round(landed[0]), landed[1]) != null) {
+				rec.action = "Reinforced ground front";
+				rec.targets = Math.round(landed[0]) + " troops, " + (int) landed[1]
+						+ " heavy armaments";
+				rec.success = true;
+				siegeActions.add(rec);
+				ThreatIncConfig.log("Siege pass (reinforce) vs " + rec.marketName + ": "
+						+ rec.targets);
+				stayOnDefend(fleet, market);
+				return;
+			}
+		}
+		if (landingBlocked != null) {
+			ThreatIncConfig.log("Siege pass at " + rec.marketName + ": no landing - "
+					+ landingBlocked + "; raiding instead");
+		}
 
 		// GROUND FRONT (docs/ground-war.md): with the war-strata softened and
 		// no front on this world yet, the expedition lands a persistent ground
@@ -408,10 +868,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		// It carries a finite armaments supply; when that runs dry it withers,
 		// and the next expedition lands a fresh one.
 		if (ThreatIncConfig.frontsEnabled()
-				&& ThreatGroundFronts.getFront(market.getId()) == null
+				&& standing == null
+				&& landingBlocked == null
 				&& groundStr >= ThreatGroundFronts.grindRequirement(market)) {
-			float supply = ThreatGroundFronts.dailyUpkeep(market)
-					* ThreatIncConfig.npcFrontSupplyDays();
+			float supply = ThreatGroundFronts.landingSupply(groundStr,
+					ThreatIncConfig.npcFrontSupplyDays());
 			int troops = Math.round(groundStr);
 			if (carriesCargo) {
 				// the landing force is what is actually aboard, and the
@@ -423,20 +884,30 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				ThreatIncConfig.log("Landing from cargo at " + market.getName() + ": "
 						+ troops + " marines, " + (int) supply + " armaments");
 			}
-			String owner = getFaction() != null ? getFaction().getId() : null;
-			ThreatGroundFronts.deploy(market, owner, troops, supply);
-			rec.action = "Ground landing";
-			rec.targets = troops + " troops, campaign against the "
-					+ "Fabrication Core";
-			rec.success = true;
-			siegeActions.add(rec);
-			ThreatColonyManager.announceAlways((getFaction() != null
-					? Misc.ucFirst(getFaction().getDisplayNameWithArticle()) : "An")
-					+ " expedition has landed ground forces on " + market.getName()
-					+ " - the campaign for its strata has begun.",
-					Misc.getHighlightColor());
-			ThreatIncConfig.log("Siege pass (landing) vs " + rec.marketName + ": "
-					+ (int) groundStr + " troops");
+			if (ThreatGroundFronts.landOrReinforce(market, ourId, troops, supply) != null) {
+				rec.action = "Ground landing";
+				rec.targets = troops + " troops, campaign against the "
+						+ "Fabrication Core";
+				rec.success = true;
+				siegeActions.add(rec);
+				ThreatIncConfig.log("Siege pass (landing) vs " + rec.marketName + ": "
+						+ (int) groundStr + " troops");
+				stayOnDefend(fleet, market);
+				return;
+			}
+		}
+
+		// A commando raid is a marine assault. Once the landing force is ashore
+		// (or a fleet never carried enough), there is nothing to raid WITH -
+		// don't mount, and don't report, a raid the expedition can't crew.
+		// Before this guard, every pass after the landing fired a zero-marine
+		// doIndustryRaid that was repulsed on the spot (user, 2026-09-06).
+		// frontMinMarines is the mod's floor for a viable marine force
+		// everywhere else - the player ground deploy, strike landings.
+		if (groundStr < ThreatIncConfig.frontMinMarines()) {
+			ThreatIncConfig.log("Siege pass at " + rec.marketName + ": no commando raid - "
+					+ (int) groundStr + " marines aboard (need "
+					+ (int) ThreatIncConfig.frontMinMarines() + ")");
 			return;
 		}
 
@@ -459,6 +930,116 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		ThreatIncConfig.log("Siege pass (raid) vs " + rec.marketName + ": "
 				+ rec.targets + " (ground str " + (int) groundStr + ")"
 				+ (ok ? " +" + rec.disruptDays + "d" : " - repulsed"));
+	}
+
+	// ---- the orbital siege (docs/ground-war.md "Sieges from orbit") ----
+
+	/** Worlds whose siege has been recorded for the sitrep. */
+	protected java.util.Set<String> siegeAnnounced = new java.util.HashSet<String>();
+	/** Worlds whose siege has been run abstractly (no live fleets). */
+	protected java.util.Set<String> siegeResolved = new java.util.HashSet<String>();
+
+	/**
+	 * A live fleet over a hive: a slice of the orbital siege in place of a
+	 * pass, spending none. False when the pass should go ahead - a front of
+	 * ours already stands here to reinforce, or the world is ready to be
+	 * landed on. While Defense Swarms hold the orbit nothing happens either
+	 * way: the fleets hunt them ({@link SiegeRaidAction#directFleets}).
+	 */
+	protected boolean siegePass(CampaignFleetAPI fleet, MarketAPI market) {
+		if (fleet == null || market == null) return false;
+		if (!ThreatIncConfig.frontsEnabled()) return false;
+		String ourId = getFaction() != null ? getFaction().getId() : null;
+		if (ourId == null) return false;
+		float troops = combinedRaidStr(market, MarketCMD.getRaidStr(fleet));
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		// only a cargo expedition knows what it has left to land; the other
+		// kind fights on vanilla's raid strength, which never runs out
+		if (front != null) {
+			// our own front and nothing aboard to reinforce it with: the fleet
+			// stays over it on Defend instead of spending the pass
+			if (carriesCargo && troops <= 0f && ourId.equals(ThreatGroundFronts.ownerOf(front))) {
+				return joinDefend(fleet, market);
+			}
+			return false;
+		}
+		// nothing left to land: no duel over a world the expedition can never
+		// take (2026-09-07, Gamma Hero I - the batteries were paid for
+		// nothing). The fleet joins the defence of the front it did land;
+		// with none, the pass goes ahead and spends itself on nothing
+		if (carriesCargo && troops < ThreatIncConfig.frontMinMarines()) {
+			if (joinDefend(fleet, market)) return true;
+			ThreatIncConfig.log("Siege of " + market.getName() + ": nothing left to land, no siege");
+			return false;
+		}
+		if (ThreatGroundFronts.orbitContestedFor(ourId, market)) {
+			ThreatIncConfig.log("Siege of " + market.getName() + ": the orbit is contested");
+			return true;
+		}
+		if (ThreatGroundFronts.readyToLand(market, troops)) return false;
+		float days = ThreatGroundFronts.siegeSliceDays(fleet);
+		float fp = fleet.getFleetPoints();
+		float[] est = ThreatGroundFronts.siegeSliceEstimate(fp, market, days);
+		float loss = ThreatGroundFronts.siegeSlice(fp, market, days);
+		float removed = ThreatGroundFronts.applyFleetLosses(fleet, loss);
+		if (siegeAnnounced == null) siegeAnnounced = new java.util.HashSet<String>();
+		if (siegeAnnounced.add(market.getId())) {
+			SiegeActionRecord rec = new SiegeActionRecord();
+			rec.marketId = market.getId();
+			rec.marketName = market.getName();
+			rec.sizeBefore = market.getSize();
+			rec.timestamp = Global.getSector().getClock().getTimestamp();
+			rec.action = "Orbital siege";
+			rec.targets = "war-strata suppressed from orbit";
+			rec.success = true;
+			siegeActions.add(rec);
+		}
+		ThreatIncConfig.log("Siege slice vs " + market.getName() + ": " + (int) fp + " FP for "
+				+ String.format("%.1f", days) + " d, +" + String.format("%.1f", est[0])
+				+ " d on the clock (" + (int) ThreatGroundFronts.siegeClock(market) + " of "
+				+ (int) ThreatGroundFronts.siegeFloorDays(market) + "), batteries cost "
+				+ String.format("%.1f", loss) + " FP (" + (int) removed + " removed)");
+		return true;
+	}
+
+	/**
+	 * An expedition that never spawned (vanilla autoresolve) runs its whole
+	 * siege of a world in one go ({@link ThreatGroundFronts#abstractSiege}),
+	 * its allotted strength less route damage standing in for the fleets.
+	 */
+	protected void abstractSiege(MarketAPI market) {
+		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
+		if (market == null || !siegeResolved.add(market.getId())) return;
+		if (ThreatGroundFronts.getFront(market.getId()) != null) return;
+		float start = 0f;
+		if (getParams() != null && getParams().fleetSizes != null) {
+			for (Integer size : getParams().fleetSizes) {
+				if (size != null) start += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+			}
+		}
+		start *= Math.max(0f, 1f - routeDamage());
+		float left = ThreatGroundFronts.abstractSiege(market, start, abstractTroops(market),
+				groupAbortsMissionFPFraction);
+		// the batteries' toll comes off what the expedition carries
+		if (start > 0f && left < start) {
+			float keep = Math.max(0f, left / start);
+			marinesAllotted *= keep;
+			armamentsAllotted *= keep;
+		}
+	}
+
+	/** The ground strength an unspawned expedition would land: its cargo, or vanilla's estimate of its raid strength. */
+	protected float abstractTroops(MarketAPI market) {
+		float fallback = getParams() != null && getParams().fleetSizes != null
+				? IncursionManager.siegeRaidStrEstimate(getParams().fleetSizes) : 0f;
+		return combinedRaidStr(market, fallback);
+	}
+
+	/** Whether a pass here should wait rather than spend itself: no front of ours yet and the world not ready to be landed on. */
+	protected boolean waitsAboveFloor(MarketAPI market) {
+		if (!ThreatIncConfig.frontsEnabled() || market == null) return false;
+		if (ThreatGroundFronts.getFront(market.getId()) != null) return false;
+		return !ThreatGroundFronts.readyToLand(market, abstractTroops(market));
 	}
 
 	/**

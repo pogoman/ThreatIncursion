@@ -54,6 +54,10 @@ on vanilla's shortages before anything else.
    reserve commodity - exactly the stock vanilla would let a local-resources submarket
    pile up from the same excess - plus the militia trickle for marines. A colony in
    deficit banks nothing. Replaces the "50 per unit of max supply" knobs.
+   *Player colonies (2026-09-05):* the reserve IS the vanilla resource stockpile, which
+   vanilla fills by this same rule (excess at 0.5, production at 0.25, the Waystation's
+   bonus, capped at `stockpileMaxMonths`); the mod adds only the militia and never
+   accrues, seeds or covers there - the player's own "use stockpiles" toggle is rule 3.
 2. **Mobilisation is vanilla demand.** A `War footing` market condition on every colony
    of a mobilised faction adds demand for marines, hand weapons, fuel and supplies
    (`warFootingDemandUnits`, 1-2 units, scaled by colony size). A colony that was only

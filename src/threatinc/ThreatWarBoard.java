@@ -47,7 +47,7 @@ import com.fs.starfarer.api.ui.TooltipMakerAPI.TooltipLocation;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * "The Threat War Effort": the sector-wide board drawn as the large
+ * "The Abyssal War": the sector-wide board drawn as the large
  * description of {@link ThreatIncursionIntel}. One screen for everything the
  * player knows about the incursion: a header with the phase bar, a one-line
  * strip of sector totals, one custom-drawn ledger row per KNOWN infested
@@ -76,8 +76,6 @@ public class ThreatWarBoard {
 	/** The card's Colony button: opens vanilla's colony screen for the world (ThreatColonyScreenDialog). */
 	public static final String BUTTON_COLONY = "threatinc_board_colony:";
 	public static final float COLONY_BUTTON_W = 58f;
-	public static final String BUTTON_COMMISSION = "threatinc_board_commission:";
-	public static final String BUTTON_MISSION = "threatinc_board_mission:";
 
 	/** The font the stock intel table uses for its cells; every text the board places itself matches it. */
 	public static final String BOARD_FONT = "graphics/fonts/insignia15LTaa.fnt";
@@ -307,6 +305,8 @@ public class ThreatWarBoard {
 		collectSieges(e);
 		collectResponses(e);
 		collectOrders(e);
+		collectFronts(e);
+		collectFrontRuns(e);
 		e.missions = missionsIn(e);
 
 		e.coreLY = distanceToCore(system);
@@ -345,7 +345,7 @@ public class ThreatWarBoard {
 			op.intel = strike;
 			statusOf(strike, op, true);
 			op.who = "Strike vs " + target + " - " + fleetsText(fleets);
-			op.detail = "Threat incursion against " + target + " - " + fleetsText(fleets) + ", "
+			op.detail = "Threat strike against " + target + " - " + fleetsText(fleets) + ", "
 					+ op.status + (op.eta.equals("-") ? "" : " (" + op.eta + ")") + "."
 					+ (strike.isPreparing()
 							? " Recall window open: disrupt the staging colony's forge or Swarm "
@@ -355,22 +355,101 @@ public class ThreatWarBoard {
 		}
 	}
 
-	/** Intercept task forces (ThreatFleetOrders, coalition or the player's orders) holding this system's door. */
+	/** The ids of this system's hive worlds. */
+	protected static Set<String> marketIds(Entry e) {
+		Set<String> here = new LinkedHashSet<String>();
+		for (MarketAPI market : e.markets) here.add(market.getId());
+		return here;
+	}
+
+	/**
+	 * Intercept task forces (ThreatFleetOrders, coalition or the player's
+	 * orders) holding this system's door, and Support sorties over a besieged
+	 * world here.
+	 */
 	protected static void collectOrders(Entry e) {
+		Set<String> here = marketIds(e);
 		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
-			if (!ThreatFleetOrders.KIND_INTERCEPT.equals(o.kind)) continue;
-			if (!e.systemId.equals(o.targetId)) continue;
+			boolean intercept = ThreatFleetOrders.KIND_INTERCEPT.equals(o.kind)
+					&& e.systemId.equals(o.targetId);
+			boolean escort = ThreatFleetOrders.KIND_SUPPORT.equals(o.kind)
+					&& o.targetId != null && here.contains(o.targetId);
+			boolean defend = ThreatFleetOrders.KIND_DEFEND.equals(o.kind)
+					&& o.targetId != null && here.contains(o.targetId);
+			if (!intercept && !escort && !defend) continue;
 			if (o.fleet == null || !o.fleet.isAlive()) continue;
 			FactionAPI faction = Global.getSector().getFaction(o.factionId);
+			String name = ThreatWarState.displayName(o.factionId);
 			Op op = new Op();
 			op.kind = "taskforce";
 			op.faction = faction;
 			op.color = faction != null ? faction.getBaseUIColor() : Misc.getHighlightColor();
-			op.status = "on station";
-			op.eta = (int) Math.ceil(o.daysLeft()) + " d left";
-			op.who = ThreatWarState.displayName(o.factionId) + " intercept";
-			op.detail = ThreatWarState.displayName(o.factionId) + " task force holding the "
-					+ o.targetName + " for " + (int) Math.ceil(o.daysLeft()) + " more days.";
+			op.status = intercept ? "on station" : defend ? "holding the orbit" : "supporting the siege";
+			op.eta = o.indefinite() ? "-" : (int) Math.ceil(o.daysLeft()) + " d left";
+			String term = o.indefinite() ? " until the front there is gone."
+					: " for " + (int) Math.ceil(o.daysLeft()) + " more days.";
+			if (intercept) {
+				op.who = name + " intercept";
+				op.detail = name + " task force holding the " + o.targetName + term;
+			} else if (defend) {
+				op.who = name + " defend";
+				op.detail = name + " task force holding the orbit of " + o.targetName
+						+ ", bombarding only while its front cannot hold," + term;
+			} else {
+				op.who = name + " support";
+				op.detail = name + " task force holding the orbit of " + o.targetName
+						+ " and suppressing its defences" + term;
+			}
+			e.inbound.add(op);
+		}
+	}
+
+	/** Ground fronts on this system's worlds (ThreatGroundFronts): a landing is a crest in the Activity column. */
+	protected static void collectFronts(Entry e) {
+		for (MarketAPI market : e.markets) {
+			ThreatGroundFronts.GroundFront f = ThreatGroundFronts.getFront(market.getId());
+			if (f == null) continue;
+			String ownerId = ThreatGroundFronts.ownerOf(f);
+			FactionAPI faction = Global.getSector().getFaction(ownerId);
+			String who = f.isPlayerOwned() ? "Your" : ThreatWarState.displayName(ownerId);
+			String state = ThreatGroundFronts.STATE_HOLDING.equals(f.state) ? "holding"
+					: ThreatGroundFronts.STATE_GRINDING.equals(f.state) ? "grinding" : "a foothold";
+			Op op = new Op();
+			op.kind = "front";
+			op.faction = faction;
+			op.color = f.isPlayerOwned() ? Misc.getBasePlayerColor()
+					: faction != null ? faction.getBaseUIColor() : Misc.getHighlightColor();
+			op.status = state;
+			op.who = who + " front on " + market.getName();
+			op.detail = who + " ground front on " + market.getName() + " - "
+					+ Misc.getWithDGS(Math.round(f.marines)) + " troops, " + state + ", "
+					+ f.strataHeld + " of " + market.getSize() + " " + layersOf(market) + ", "
+					+ ThreatGroundFronts.stanceLabel(f) + ".";
+			e.inbound.add(op);
+		}
+	}
+
+	/** Supply and evacuation runs bound for a front here (ThreatConvoys). */
+	protected static void collectFrontRuns(Entry e) {
+		Set<String> here = marketIds(e);
+		for (ThreatConvoys.Convoy c : ThreatConvoys.all()) {
+			if (c.frontMarketId == null || !here.contains(c.frontMarketId)) continue;
+			if (c.fleet == null || !c.fleet.isAlive()) continue;
+			FactionAPI faction = Global.getSector().getFaction(c.factionId);
+			MarketAPI world = ThreatGroundFronts.resolveMarket(c.frontMarketId);
+			String who = ThreatWarState.displayName(c.factionId)
+					+ (c.pickup ? " evacuation run" : " supply run");
+			Op op = new Op();
+			op.kind = "convoy";
+			op.faction = faction;
+			op.color = faction != null ? faction.getBaseUIColor() : Misc.getHighlightColor();
+			op.status = c.runningIn ? "running in"
+					: c.waitSinceTimestamp > 0 ? "waiting at the jump-point" : "en route";
+			op.who = who;
+			op.detail = who + " to the front on " + (world != null ? world.getName() : "a world here")
+					+ " - " + op.status + (c.pickup ? "" : ", carrying "
+					+ Misc.getWithDGS(Math.round(c.marines)) + " marines and "
+					+ Misc.getWithDGS(Math.round(c.armaments)) + " heavy armaments") + ".";
 			e.inbound.add(op);
 		}
 	}
@@ -748,27 +827,26 @@ public class ThreatWarBoard {
 			main.setHeightSoFar(h);
 			return;
 		}
-		Ledger ledger = addLedger(intel, ui, main, width, opad, entries, selected);
+		addLedger(intel, ui, main, width, opad, entries, selected);
 		nameWidths.clear();
 		List<Object[]> cards = new ArrayList<Object[]>();
+		Fronts fronts = null;
 		if (selected != null) {
-			addDetail(intel, main, width, opad, selected, cards);
+			addDetailHeading(main, opad, selected);
+			// the selected system's ground fronts sit under its heading and
+			// ABOVE its cards: the last colony card is a repositioned component,
+			// and the flow after one of those lands beside it (platform trap 2).
+			// Other systems' fronts show as crests in the Activity column.
+			fronts = addFronts(intel, main, width, opad, frontRowsIn(selected),
+					Global.getSector().getFaction(Factions.THREAT), false);
+			addDetailBody(main, width, opad, selected, cards);
 		}
 		// Floating buttons are anchored to siblings already laid out and added
 		// LAST: the tooltip continues its flow from the most recent component,
 		// so anything added after a moved button would land beside it.
 		float heightBefore = main.getHeightSoFar();
 		if (selector) ThreatFactionView.addSelector(intel, main, width, view, strip);
-		if (ledger != null) {
-			int n = ledger.rows.size();
-			for (int i = 0; i < n; i++) {
-				Entry e = ledger.rows.get(i);
-				float up = (n - i) * ROW_H - (ROW_H - 20f) / 2f;
-				if (!e.known) continue; // nothing to commission or read against a place unfound
-				if (e.isColony()) addPurgeButton(intel, main, ledger.table, up, e);
-				if (!e.missions.isEmpty()) addMissionButton(intel, main, ledger.table, up, e, ledger.cols);
-			}
-		}
+		addFrontButtons(intel, main, fronts);
 		for (Object[] pair : cards) {
 			CustomPanelAPI card = (CustomPanelAPI) pair[0];
 			MarketAPI market = (MarketAPI) pair[1];
@@ -783,20 +861,8 @@ public class ThreatWarBoard {
 			com.fs.starfarer.api.ui.ButtonAPI button = intel.addGenericButton(main, MAP_BUTTON_W, "Map",
 					BUTTON_MAP + market.getId());
 			button.getPosition().aboveRight(card, -24f).setXAlignOffset(-8f - COLONY_BUTTON_W - 6f);
-			// the player's own front here, faction mobilised: a supply run from the
-			// nearest base, without flying there (docs/design-theory.md 8.3)
-			ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
-			if (front != null && front.isPlayerOwned()
-					&& ThreatWarState.isAtWar(Factions.PLAYER)) {
-				com.fs.starfarer.api.ui.ButtonAPI supply = intel.addGenericButton(main, 60f,
-						"Supply", ThreatFactionView.BUTTON_SUPPLY + Factions.PLAYER + ":" + market.getId());
-				supply.getPosition().aboveRight(card, -24f)
-						.setXAlignOffset(-8f - COLONY_BUTTON_W - 6f - MAP_BUTTON_W - 6f);
-				boolean ok = ThreatIncConfig.frontRunsEnabled() && ThreatFleetOrders.pickBase(
-						Global.getSector().getPlayerFaction(), market.getLocationInHyperspace()) != null;
-				supply.setEnabled(ok);
-				supply.setShowTooltipWhileInactive(true);
-			}
+			// a front's own verbs - Supply, Pull out, Support - live on its row in
+			// the fronts table above; the card carries no second copy
 		}
 		main.setHeightSoFar(heightBefore);
 	}
@@ -808,52 +874,651 @@ public class ThreatWarBoard {
 		List<Entry> rows = new ArrayList<Entry>();
 	}
 
-	/** Open missions (accepted first, then offers) against a system, for the intel button. */
-	public static List<IntelInfoPlugin> missionsForSystem(String systemId) {
-		List<IntelInfoPlugin> result = new ArrayList<IntelInfoPlugin>();
-		List<ThreatMissionIntel> open = new ArrayList<ThreatMissionIntel>();
-		open.addAll(ThreatMissionIntel.getAccepted());
-		open.addAll(ThreatMissionIntel.getPosted());
-		for (ThreatMissionIntel mission : open) {
-			MarketAPI market = ThreatIncData.resolveColonyMarket(mission.getMarketId());
-			if (market != null && market.getStarSystem() != null
-					&& systemId.equals(market.getStarSystem().getId()) && !result.contains(mission)) {
-				result.add(mission);
+	// ------------------------------------------------------------------
+	// ground fronts (docs/ground-war.md "Reading a front"): the table both
+	// views draw - the hive view for its selected system, a faction view for
+	// the fronts that faction is party to
+	// ------------------------------------------------------------------
+
+	/** One row of the fronts table: a landing and the world it is fighting on. */
+	public static class FrontRow {
+		public ThreatGroundFronts.GroundFront front;
+		public MarketAPI market;
+	}
+
+	/** What the fronts table leaves behind for its floating buttons. */
+	public static class Fronts {
+		public com.fs.starfarer.api.ui.UIPanelAPI table;
+		public List<FrontRow> rows = new ArrayList<FrontRow>();
+		/** Per front, the table index of its button row, or -1 when it has none. */
+		public List<Integer> buttonRows = new ArrayList<Integer>();
+		/** Every row the table holds: the entries, their button rows, the Total row. */
+		public int rowCount;
+		/** Whether a row was reserved above the table for the supply-load selector. */
+		public boolean tierSelector;
+	}
+
+	protected static final float FRONT_STANCE_W = 56f;
+	protected static final float FRONT_SUPPLY_W = 60f;
+	protected static final float FRONT_PULLOUT_W = 72f;
+	protected static final float FRONT_SUPPORT_W = 62f;
+	protected static final float FRONT_DEFEND_W = 58f;
+	protected static final float FRONT_BUTTON_GAP = 4f;
+
+	/** Every live front, the player's own first, then by world name. */
+	public static List<FrontRow> frontRows() {
+		List<FrontRow> rows = new ArrayList<FrontRow>();
+		for (ThreatGroundFronts.GroundFront front : ThreatGroundFronts.fronts().values()) {
+			if (front == null) continue;
+			// generic resolver: a Threat front on a human world has no hive market
+			MarketAPI market = ThreatGroundFronts.resolveMarket(front.marketId);
+			if (market == null) continue;
+			FrontRow r = new FrontRow();
+			r.front = front;
+			r.market = market;
+			rows.add(r);
+		}
+		Collections.sort(rows, new Comparator<FrontRow>() {
+			public int compare(FrontRow a, FrontRow b) {
+				boolean pa = a.front.isPlayerOwned();
+				boolean pb = b.front.isPlayerOwned();
+				if (pa != pb) return pa ? -1 : 1;
+				return a.market.getName().compareTo(b.market.getName());
+			}
+		});
+		return rows;
+	}
+
+	/** The fronts on one system's worlds - the hive view's selected system. */
+	public static List<FrontRow> frontRowsIn(Entry e) {
+		List<FrontRow> rows = new ArrayList<FrontRow>();
+		if (e == null || e.systemId == null) return rows;
+		for (FrontRow r : frontRows()) {
+			if (r.market.getStarSystem() != null
+					&& e.systemId.equals(r.market.getStarSystem().getId())) {
+				rows.add(r);
 			}
 		}
+		return rows;
+	}
+
+	/** The fronts a faction is party to: its own landings, and the swarm's landings on its worlds. */
+	public static List<FrontRow> frontRowsFor(String factionId) {
+		List<FrontRow> rows = new ArrayList<FrontRow>();
+		if (factionId == null) return rows;
+		for (FrontRow r : frontRows()) {
+			boolean own = factionId.equals(ThreatGroundFronts.ownerOf(r.front));
+			boolean invaded = ThreatGroundFronts.isThreatOwned(r.front)
+					&& factionId.equals(r.market.getFactionId());
+			if (own || invaded) rows.add(r);
+		}
+		return rows;
+	}
+
+	/** Whether the player's row buttons apply to this front: their own, while their faction may order. */
+	protected static boolean playerCanOrder(FrontRow r) {
+		return r.front.isPlayerOwned()
+				&& ThreatFleetOrders.canPlayerOrder(Global.getSector().getPlayerFaction());
+	}
+
+	/** "~N d" until the last stratum or district falls while the front can push at its current strength, else null. */
+	protected static String coreEstimate(ThreatGroundFronts.GroundFront front, MarketAPI market) {
+		int left = Math.max(1, market.getSize() - front.strataHeld);
+		float perStratum = ThreatGroundFronts.pushDaysEstimate(front, market);
+		if (perStratum <= 0f || ThreatGroundFronts.effectiveStrength(front)
+				< ThreatGroundFronts.holdRequirement(market)) {
+			return null;
+		}
+		// the layer under assault counts what is left of it, not a whole one
+		float first = perStratum;
+		if (ThreatGroundFronts.STANCE_PUSH.equals(front.stance)) {
+			first = Math.max(0f, ThreatIncConfig.frontPushBaseDays() - front.pushProgress)
+					* ThreatGroundFronts.paceRatio(ThreatGroundFronts.defenderStrength(market),
+							ThreatGroundFronts.effectiveStrength(front));
+		}
+		return "~" + (int) Math.ceil(first + (left - 1) * perStratum) + " d";
+	}
+
+	/** "strata" on a hive, "districts" on a colony. */
+	protected static String layersOf(MarketAPI market) {
+		return "stratum".equals(ThreatGroundFronts.layerName(market)) ? "strata" : "districts";
+	}
+
+	/**
+	 * The fronts table: one row per landing in {@code rows}, nothing when there
+	 * are none. The columns are the figures a push-or-dig-in decision needs;
+	 * the row tooltip is the arithmetic behind them, one line per fact
+	 * (ThreatGroundFronts' readouts, so the table quotes what the tick does).
+	 * A front the player can order takes two rows: the entry, then an empty
+	 * row its buttons - Push / Dig in, Supply, Support, Pull out - float over
+	 * (user's layout, 2026-09-06); {@link #addFrontButtons} adds them last.
+	 */
+	public static Fronts addFronts(ThreatIncursionIntel intel, TooltipMakerAPI main,
+			float width, float opad, List<FrontRow> rows, FactionAPI tableFaction,
+			boolean showSystem) {
+		if (rows == null || rows.isEmpty()) return null;
+
+		FactionAPI colours = tableFaction != null ? tableFaction
+				: Global.getSector().getFaction(Factions.THREAT);
+		Color dark = colours.getDarkUIColor();
+		Color bright = colours.getBrightUIColor();
+		Color h = Misc.getHighlightColor();
+		Color neg = Misc.getNegativeHighlightColor();
+		Color pos = Misc.getPositiveHighlightColor();
+		Color gray = Misc.getGrayColor();
+		Color text = Misc.getTextColor();
+
+		main.addSectionHeading("Ground fronts", bright, dark, Alignment.MID, opad);
+		// the supply-load selector sits in a reserved row under the heading,
+		// only where a front of the player's carries orders; its buttons float
+		// in later (addFrontButtons -> addSupplyTierSelector)
+		boolean tierSelector = false;
+		for (FrontRow r : rows) {
+			if (playerCanOrder(r)) tierSelector = true;
+		}
+		if (tierSelector) main.addSpacer(ThreatFactionView.SELECTOR_ROW_H);
+		float tw = width - 24f;
+		// the columns share the width by fraction; a front's orders float on
+		// the row beneath its entry
+		List<String> names = new ArrayList<String>();
+		List<Float> fracs = new ArrayList<Float>();
+		names.add("Force"); fracs.add(.09f);
+		names.add("World"); fracs.add(.12f);
+		if (showSystem) { names.add("System"); fracs.add(.11f); }
+		names.add("Attackers"); fracs.add(.075f);
+		names.add("Defenders"); fracs.add(.07f);
+		names.add("Defenses"); fracs.add(.075f);
+		names.add("State"); fracs.add(.07f);
+		names.add("Held"); fracs.add(.05f);
+		names.add("Stance"); fracs.add(.075f);
+		names.add("Attrition"); fracs.add(.085f);
+		names.add("Counter"); fracs.add(.065f);
+		names.add("Arms"); fracs.add(.05f);
+		names.add("Falls"); fracs.add(.08f);
+		names.add("Space"); fracs.add(.09f);
+		float sum = 0f;
+		for (Float fr : fracs) sum += fr;
+		float[] w = new float[names.size()];
+		List<Object> columns = new ArrayList<Object>();
+		for (int i = 0; i < names.size(); i++) {
+			w[i] = (float) Math.floor(tw * fracs.get(i) / sum);
+			columns.add(names.get(i));
+			columns.add(w[i]);
+		}
+		com.fs.starfarer.api.ui.UIPanelAPI table = main.beginTable2(colours, ROW_H, true, true,
+				columns.toArray());
+		main.makeTableItemsClickable();
+		int strengthCol = showSystem ? 3 : 2;
+		main.addTableHeaderTooltip(strengthCol, "Effective strength of the landed troops: numbers x "
+				+ "entrenchment x supply.");
+		main.addTableHeaderTooltip(strengthCol + 1, "What the world defends with; holding needs "
+				+ Math.round(ThreatIncConfig.frontHoldFraction() * 100f) + "% of it, grinding "
+				+ Math.round(ThreatIncConfig.frontGrindFraction() * 100f) + "%.");
+		main.addTableHeaderTooltip(strengthCol + 2, "Which way the defenders are heading: worn down "
+				+ "by a holding front, held by a grinding one, recovering from a foothold.");
+		main.addTableHeaderTooltip(strengthCol + 3, "Holding suppresses the colony's structures, "
+				+ "grinding wears its defenses, a foothold only survives.");
+		main.addTableHeaderTooltip(strengthCol + 4, "Strata or districts the front holds, of the "
+				+ "world's size.");
+		main.addTableHeaderTooltip(strengthCol + 5, "Push takes ground and bleeds; dug in loses "
+				+ "less and defends from cover; regrouping awaits orders after a stratum.");
+		main.addTableHeaderTooltip(strengthCol + 6, "Troops lost a day at the current stance "
+				+ "and supply.");
+		main.addTableHeaderTooltip(strengthCol + 7, "Days to the defenders' next counter-attack.");
+		main.addTableHeaderTooltip(strengthCol + 8, "Days of heavy armaments left at the current "
+				+ "burn rate; the swarm does not fight on them.");
+		main.addTableHeaderTooltip(strengthCol + 9, "Days until the last stratum or district falls "
+				+ "at the current push pace.");
+		main.addTableHeaderTooltip(strengthCol + 10, "Whose warships hold the space over the world.");
+
+		Fronts result = new Fronts();
+		result.table = table;
+		result.tierSelector = tierSelector;
+		result.rows = rows;
+		int rowIndex = 0;
+		int totalStrength = 0;
+		for (FrontRow r : rows) {
+			final ThreatGroundFronts.GroundFront f = r.front;
+			final MarketAPI m = r.market;
+			String ownerId = ThreatGroundFronts.ownerOf(f);
+			FactionAPI owner = Global.getSector().getFaction(ownerId);
+			totalStrength += Math.round(ThreatGroundFronts.effectiveStrength(f));
+			float eff = ThreatGroundFronts.effectiveStrength(f);
+			float defender = ThreatGroundFronts.defenderStrength(m);
+			List<Object> cells = new ArrayList<Object>();
+			int i = 0;
+			cell(cells, Alignment.LMID, f.isPlayerOwned() ? Misc.getBasePlayerColor()
+					: owner != null ? owner.getBaseUIColor() : gray,
+					main.shortenString(f.isPlayerOwned() ? "You" : owner != null
+							? ThreatWarState.displayName(ownerId) : "Unknown", w[i++] - 10f));
+			cell(cells, Alignment.LMID, bright, main.shortenString(m.getName(), w[i++] - 10f));
+			if (showSystem) {
+				float sw = w[i++];
+				cell(cells, Alignment.LMID, text, m.getStarSystem() != null
+						? main.shortenString(m.getStarSystem().getNameWithNoType(), sw - 10f) : "-");
+			}
+			cell(cells, Alignment.MID, text, Misc.getWithDGS(Math.round(eff))); i++;
+			cell(cells, Alignment.MID, text, Misc.getWithDGS(Math.round(defender))); i++;
+			int trend = ThreatGroundFronts.defensesTrend(f, m);
+			String defenses = ThreatGroundFronts.defensesLabel(f, m);
+			cell(cells, Alignment.MID, trend == ThreatGroundFronts.DEFENSES_WORN ? pos
+					: trend == ThreatGroundFronts.DEFENSES_RECOVERING ? neg
+					: "held".equals(defenses) ? h : text, defenses); i++;
+			boolean holding = ThreatGroundFronts.STATE_HOLDING.equals(f.state);
+			boolean grinding = ThreatGroundFronts.STATE_GRINDING.equals(f.state);
+			cell(cells, Alignment.MID, holding ? pos : grinding ? h : neg,
+					holding ? "holding" : grinding ? "grinding" : "foothold"); i++;
+			cell(cells, Alignment.MID, h, f.strataHeld + "/" + m.getSize()); i++;
+			cell(cells, Alignment.MID, text, ThreatGroundFronts.stanceLabel(f)); i++;
+			float losses = ThreatGroundFronts.attritionPer30Days(f, m);
+			cell(cells, Alignment.MID, ThreatGroundFronts.isDry(f) ? neg : text,
+					ThreatGroundFronts.perDay(losses) + " / day"); i++;
+			float attackIn = ThreatGroundFronts.daysToCounterAttack(f, m);
+			boolean repelled = ThreatGroundFronts.counterAttackRepelled(f, m);
+			{
+				cell(cells, Alignment.MID, repelled ? pos : neg,
+						attackIn <= 0f ? "due" : (int) Math.ceil(attackIn) + " d");
+			}
+			i++;
+			// armaments read as what they buy: days of fighting left - and the
+			// swarm does not fight on them at all, so its rows have no figure
+			float days = ThreatGroundFronts.supplyDaysLeft(f);
+			boolean fDry = ThreatGroundFronts.isDry(f);
+			cell(cells, Alignment.MID,
+					!ThreatGroundFronts.needsArms(f) ? gray : fDry ? neg : text,
+					!ThreatGroundFronts.needsArms(f) ? "-" : fDry ? "dry" : (int) days + " d"); i++;
+			String estimate = coreEstimate(f, m);
+			cell(cells, Alignment.MID, estimate != null ? h : gray, estimate != null ? estimate : "-"); i++;
+			String spaceId = ThreatGroundFronts.spaceHolder(m);
+			FactionAPI space = spaceId != null ? Global.getSector().getFaction(spaceId) : null;
+			boolean spacePlayer = Factions.PLAYER.equals(spaceId);
+			cell(cells, Alignment.MID,
+					spaceId == null ? gray : spacePlayer ? Misc.getBasePlayerColor()
+							: space != null ? space.getBaseUIColor() : text,
+					spaceId == null ? "Empty" : main.shortenString(spacePlayer ? "You"
+							: ThreatWarState.displayName(spaceId), w[i] - 10f)); i++;
+			main.addRow(cells.toArray());
+			TooltipCreator facts = new TooltipCreator() {
+				public boolean isTooltipExpandable(Object tooltipParam) { return false; }
+				public float getTooltipWidth(Object tooltipParam) { return 460f; }
+				public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
+					addFrontTooltip(tooltip, f, m);
+				}
+			};
+			main.addTooltipToAddedRow(facts, TooltipLocation.LEFT, false);
+			main.setIdForAddedRow(ThreatFactionView.ROW_MARKET + m.getId());
+			rowIndex++;
+			if (!playerCanOrder(r)) {
+				result.buttonRows.add(-1);
+				continue;
+			}
+			// the player's front: an empty row beneath the entry, its buttons
+			// floated over it by addFrontButtons. Same facts, same click.
+			List<Object> blank = new ArrayList<Object>();
+			for (int k = 0; k < w.length; k++) cell(blank, Alignment.MID, gray, "");
+			main.addRow(blank.toArray());
+			main.addTooltipToAddedRow(facts, TooltipLocation.LEFT, false);
+			main.setIdForAddedRow(ThreatFactionView.ROW_MARKET + m.getId());
+			result.buttonRows.add(rowIndex);
+			rowIndex++;
+		}
+
+		List<Object> totals = new ArrayList<Object>();
+		for (int i = 0; i < w.length; i++) {
+			if (i == 0) cell(totals, Alignment.LMID, h, "Total");
+			else if (i == 1) cell(totals, Alignment.LMID, gray, rows.size()
+					+ (rows.size() == 1 ? " front" : " fronts"));
+			else if (i == strengthCol) cell(totals, Alignment.MID, h, Misc.getWithDGS(totalStrength));
+			else cell(totals, Alignment.MID, gray, "");
+		}
+		main.addRow(totals.toArray());
+		rowIndex++;
+		result.rowCount = rowIndex;
+		main.addTable("None", -1, 0f);
+
+		LabelAPI key = main.addPara("holding   grinding   foothold", gray, 4f);
+		key.setHighlight("holding", "grinding", "foothold");
+		key.setHighlightColors(pos, h, neg);
+		main.addSpacer(opad);
+
 		return result;
 	}
 
-	protected static void addMissionButton(ThreatIncursionIntel intel, TooltipMakerAPI main,
-			UIComponentAPI table, float upFromBottom, final Entry e, Cols c) {
-		com.fs.starfarer.api.ui.ButtonAPI button = intel.addGenericButton(main, MISSION_BUTTON_W,
-				"View", BUTTON_MISSION + e.systemId);
-		// the Missions column sits just left of Actions; centre the button in it
-		float inset = 6f + c.w[ACTIONS] + (c.w[MISSIONS] - MISSION_BUTTON_W) / 2f;
-		button.getPosition().belowRight(table, -upFromBottom).setXAlignOffset(-inset);
-		main.addTooltipTo(new TooltipCreator() {
-			public boolean isTooltipExpandable(Object tooltipParam) { return false; }
-			public float getTooltipWidth(Object tooltipParam) { return 400f; }
-			public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
-				Color h = Misc.getHighlightColor();
-				Color text = Misc.getTextColor();
-				for (ThreatMissionIntel b : e.missions) {
-					MarketAPI market = ThreatIncData.resolveColonyMarket(b.getMarketId());
-					String target = ThreatMissionIntel.typeNoun(b.getType()) + " on "
-							+ (market != null ? market.getName() : "a hive world");
-					if (b.isAccepted()) {
-						tooltip.addPara("Accepted " + ThreatMissionIntel.tierName(b.getTier()).toLowerCase()
-								+ " - " + target + ": %s, %s days left to complete.", 3f, text, h,
-								Misc.getDGSCredits(b.getReward()), "" + (int) b.daysRemaining());
-					} else {
-						tooltip.addPara(ThreatMissionIntel.tierName(b.getTier()) + " offer, priority "
-								+ b.currentRank() + " - " + target + ": %s, %s days left to accept.", 3f,
-								text, h, Misc.getDGSCredits(b.getReward()), "" + (int) b.daysRemaining());
-					}
-				}
-				tooltip.addPara("Click to open in the intel list.", Misc.getGrayColor(), 6f);
+	/** The arithmetic behind a front's row, one line per fact. */
+	protected static void addFrontTooltip(TooltipMakerAPI tooltip, ThreatGroundFronts.GroundFront f,
+			MarketAPI m) {
+		Color h = Misc.getHighlightColor();
+		Color neg = Misc.getNegativeHighlightColor();
+		Color pos = Misc.getPositiveHighlightColor();
+		Color gray = Misc.getGrayColor();
+		Color text = Misc.getTextColor();
+		String ownerId = ThreatGroundFronts.ownerOf(f);
+		FactionAPI owner = Global.getSector().getFaction(ownerId);
+		Color ownerColor = f.isPlayerOwned() ? Misc.getBasePlayerColor()
+				: owner != null ? owner.getBaseUIColor() : gray;
+		String who = f.isPlayerOwned() ? "Your" : ThreatWarState.displayName(ownerId);
+		String system = m.getStarSystem() != null ? ", " + m.getStarSystem().getNameWithNoType() : "";
+		boolean pushing = ThreatGroundFronts.STANCE_PUSH.equals(f.stance);
+		boolean regrouping = ThreatGroundFronts.STANCE_CONSOLIDATE.equals(f.stance);
+		boolean dry = ThreatGroundFronts.isDry(f);
+
+		tooltip.addPara(who + " front on " + m.getName() + system + " - landed "
+				+ (int) ThreatGroundFronts.daysSinceLanding(f) + " days ago.", ownerColor, 0f);
+
+		float eff = ThreatGroundFronts.effectiveStrength(f);
+		float mult = ThreatGroundFronts.entrenchMult(f);
+		int dugIn = (int) Math.min(f.entrenchDays, ThreatIncConfig.frontEntrenchDays());
+		// experience and (for the player) the ground skills are factors in
+		// effectiveStrength too, so the line has to name them or its own
+		// arithmetic does not reach the total it prints (2026-09-08)
+		float quality = ThreatMarineXP.frontEffectMult(f)
+				* (f.isPlayerOwned() ? ThreatMarineXP.playerGroundSkillMult() : 1f);
+		String qual = Math.abs(quality - 1f) < 0.005f ? ""
+				: " x " + String.format("%.2f", quality) + " troops";
+		if (dry) {
+			tooltip.addPara("Strength %s: %s troops x %s entrenchment (%s of %s days)" + qual
+					+ " x %s dry.", 4f,
+					text, h, Misc.getWithDGS(Math.round(eff)), Misc.getWithDGS(Math.round(f.marines)),
+					String.format("%.2f", mult), "" + dugIn, "" + (int) ThreatIncConfig.frontEntrenchDays(),
+					String.format("%.1f", ThreatIncConfig.frontDryEffectivenessMult()));
+		} else {
+			tooltip.addPara("Strength %s: %s troops x %s entrenchment (%s of %s days)" + qual + ".", 4f,
+					text, h, Misc.getWithDGS(Math.round(eff)), Misc.getWithDGS(Math.round(f.marines)),
+					String.format("%.2f", mult), "" + dugIn, "" + (int) ThreatIncConfig.frontEntrenchDays());
+		}
+
+		// what the troops themselves are worth: vanilla's own ramp, vanilla's
+		// own rank names (2026-09-08)
+		float lvl = ThreatMarineXP.frontLevel(f);
+		if (lvl > 0f) {
+			tooltip.addPara("Troops %s: %s strength, %s casualties.", 4f, text,
+					lvl >= 0.5f ? pos : h, ThreatMarineXP.frontRank(f),
+					"+" + ThreatMarineXP.effectPercent(lvl) + "%",
+					"-" + ThreatMarineXP.lossPercent(lvl) + "%");
+		} else {
+			// two zeros on a line is noise: say the rank and stop
+			tooltip.addPara("Troops %s.", 4f, text, h, ThreatMarineXP.frontRank(f));
+		}
+
+		float defender = ThreatGroundFronts.defenderStrength(m);
+		tooltip.addPara("Defenders %s: holding needs %s, grinding %s.", 4f, text, h,
+				Misc.getWithDGS(Math.round(defender)),
+				Misc.getWithDGS(Math.round(ThreatGroundFronts.holdRequirement(m))),
+				Misc.getWithDGS(Math.round(ThreatGroundFronts.grindRequirement(m))));
+		if (!ThreatGroundFronts.isHiveTarget(m)) {
+			float garrison = ThreatGroundFronts.colonyGarrison(m);
+			float armed = ThreatReserves.armedMarines(m);
+			if (armed > 0f) {
+				tooltip.addPara("Of that, %s garrison and %s armed marines, %s.", 4f, text, h,
+						Misc.getWithDGS(Math.round(garrison)),
+						Misc.getWithDGS(Math.round(armed)),
+						ThreatMarineXP.colonyRank(m).toLowerCase());
+			} else {
+				tooltip.addPara("Of that, %s garrison and %s armed marines.", 4f, text, h,
+						Misc.getWithDGS(Math.round(garrison)), "no");
 			}
-		}, button, TooltipLocation.BELOW);
+			float arming = ThreatReserves.stock(m.getId(), Commodities.MARINES) - armed;
+			if (arming > 1f) {
+				tooltip.addPara("%s more marines still being armed - they defend as they are posted.",
+						4f, text, h, Misc.getWithDGS(Math.round(arming)));
+			}
+			float bleed = ThreatGroundFronts.defenderLossPer30Days(m, f);
+			if (bleed > 0f) {
+				tooltip.addPara("Defenders losing %s marines a day at this pressure.", 4f,
+						text, f.isPlayerOwned() ? pos : neg, ThreatGroundFronts.perDay(bleed));
+			}
+		}
+		// the defenders' whole "reinforcement": structures recovering from
+		// disruption, unless the front keeps them down
+		int trend = ThreatGroundFronts.defensesTrend(f, m);
+		List<String> disrupted = ThreatGroundFronts.recoveringStructures(m);
+		if (disrupted.isEmpty()) {
+			tooltip.addPara("Defenses intact: nothing disrupted, nothing to recover.", text, 4f);
+		} else {
+			String verb = trend == ThreatGroundFronts.DEFENSES_WORN ? "worn down while the front holds"
+					: trend == ThreatGroundFronts.DEFENSES_RECOVERING ? "recovering"
+					: "held down";
+			tooltip.addPara("Defenses " + verb + " - disruption left: " + join(disrupted) + ".",
+					trend == ThreatGroundFronts.DEFENSES_WORN ? pos
+					: trend == ThreatGroundFronts.DEFENSES_RECOVERING ? neg : h, 4f);
+		}
+
+		float burn = ThreatGroundFronts.dailyUpkeep(f)
+				* (pushing ? ThreatIncConfig.frontPushUpkeepMult() : 1f);
+		if (!ThreatGroundFronts.needsArms(f)) {
+			tooltip.addPara("Heavy armaments: %s - it carries no supply line and needs none.", 4f,
+					text, h, "not used");
+		} else if (dry) {
+			tooltip.addPara("Heavy armaments %s: fighting at x%s, losses x%s until resupplied.", 4f,
+					text, neg, "exhausted", String.format("%.1f", ThreatIncConfig.frontDryEffectivenessMult()),
+					String.format("%.0f", ThreatIncConfig.frontUnsuppliedLossMult()));
+		} else {
+			String pushNote = pushing ? " (x" + String.format("%.0f",
+					ThreatIncConfig.frontPushUpkeepMult()) + " pushing)" : "";
+			tooltip.addPara("Heavy armaments %s, burning %s a day" + pushNote + " - %s days.", 4f,
+					text, h, Misc.getWithDGS((int) f.armaments), String.format("%.1f", burn),
+					"" + (int) ThreatGroundFronts.supplyDaysLeft(f));
+		}
+
+		float losses = ThreatGroundFronts.attritionPer30Days(f, m);
+		String dryNote = dry ? " x" + String.format("%.0f",
+				ThreatIncConfig.frontUnsuppliedLossMult()) + " unsupplied" : "";
+		float swarmPush = pushing ? ThreatGroundFronts.pushLossMult(f) : 1f;
+		if (swarmPush != 1f) {
+			dryNote += " x" + String.format("%.1f", swarmPush) + " swarm assault";
+		}
+		// the swarm bombarding from orbit is part of this figure, not on top of
+		// it: name its share so the two lines cannot be read as additive
+		float fromOrbit = ThreatGroundFronts.swarmBombardPer30Days(f, m);
+		String orbitNote = fromOrbit <= 0f ? ""
+				: ", " + ThreatGroundFronts.perDay(fromOrbit) + " of it from orbit";
+		tooltip.addPara("Losses %s troops a day at the " + (pushing ? "assault" : "holding")
+				+ " rate" + dryNote + orbitNote + ".", 4f, text, dry || fromOrbit > 0f ? neg : h,
+				ThreatGroundFronts.perDay(losses));
+		float finalIn = ThreatGroundFronts.daysToFinalPush(f);
+		if (f.finalPush) {
+			tooltip.addPara("Out of armaments and past waiting: the final push.", neg, 4f);
+		} else if (finalIn >= 0f) {
+			tooltip.addPara("Dug in for the next expedition - final push in %s days if none comes.",
+					4f, text, h, "" + (int) Math.ceil(finalIn));
+		}
+
+		float attackIn = ThreatGroundFronts.daysToCounterAttack(f, m);
+		float attack = ThreatGroundFronts.counterAttackStrength(m);
+		float defense = ThreatGroundFronts.defenseStrength(f);
+		String outcome;
+		if (ThreatGroundFronts.counterAttackRepelled(f, m)) {
+			outcome = "repelled";
+		} else if (ThreatGroundFronts.counterAttackOverruns(f, m)) {
+			outcome = "the front is overrun";
+		} else {
+			outcome = "costs ~" + Misc.getWithDGS(Math.round(ThreatGroundFronts.counterAttackLoss(f, m)))
+					+ " troops" + (f.strataHeld > 0 ? " and a " + ThreatGroundFronts.layerName(m) : "");
+		}
+		String when = attackIn <= 0f ? "due" : "in " + (int) Math.ceil(attackIn) + " days";
+		String cover = pushing ? " (exposed, pushing)" : " (cover x"
+				+ String.format("%.2f", ThreatGroundFronts.coverMult(f)) + ")";
+		tooltip.addPara("Next counter-attack " + when + ": %s against the front's %s" + cover
+				+ " - " + outcome + ".", 4f, text,
+				ThreatGroundFronts.counterAttackRepelled(f, m) ? pos : neg,
+				Misc.getWithDGS(Math.round(attack)), Misc.getWithDGS(Math.round(defense)));
+		// why that figure is smaller than the Defenders one (2026-09-08)
+		if (!ThreatGroundFronts.isHiveTarget(m) && ThreatReserves.armedMarines(m) > 0f
+				&& ThreatIncConfig.marineCounterAttackMult() < 1f) {
+			tooltip.addPara("Its marines hold at full weight but attack at %s.", 4f, text, h,
+					"x" + String.format("%.2f", ThreatIncConfig.marineCounterAttackMult()));
+		}
+		// why the cadence is what it is: troops to spare buy tempo (2026-09-08)
+		float tempo = ThreatGroundFronts.counterAttackTempo(f, m);
+		if (Math.abs(tempo - 1f) > 0.05f) {
+			boolean faster = tempo > 1f;
+			boolean goodForPlayer = f.isPlayerOwned() ? !faster : faster;
+			tooltip.addPara("Cadence %s: they " + (faster ? "outnumber the front"
+					: "are outnumbered on their own ground") + ".", 4f, text,
+					goodForPlayer ? pos : neg, "x" + String.format("%.2f", tempo));
+		}
+		float defCost = ThreatGroundFronts.counterAttackDefenderLoss(f, m);
+		if (defCost > 0f) {
+			tooltip.addPara("It costs them %s marines to mount, win or lose.", 4f, text,
+					f.isPlayerOwned() ? pos : neg, Misc.getWithDGS(Math.round(defCost)));
+		}
+
+		float bombard = ThreatGroundFronts.swarmBombardPer30Days(f, m);
+		if (bombard > 0f) {
+			tooltip.addPara("The swarm has held the orbit unopposed for %s days and is bombarding "
+					+ "the front. A fleet over the planet stops it.",
+					4f, text, neg, "" + (int) ThreatGroundFronts.swarmOrbitDaysHeld(f, m));
+		} else if (ThreatGroundFronts.swarmBombardContested(f, m)) {
+			tooltip.addPara("Your fleet contests the orbit: the swarm cannot bombard the front.",
+					pos, 4f);
+		}
+
+		int next = f.strataHeld + 1;
+		String layer = ThreatGroundFronts.layerName(m);
+		float pace = ThreatGroundFronts.pushDaysEstimate(f, m);
+		if (pushing) {
+			// the engine's own figure, so the quote and the decision to press
+			// on or brace read the same number
+			float remaining = ThreatGroundFronts.pushDaysRemaining(f, m);
+			tooltip.addPara("Pushing " + layer + " %s of %s: ~%s days more at this pace, ~%s casualties "
+					+ "for the " + layer + ".", 4f, text, h, "" + next, "" + m.getSize(),
+					"" + (int) Math.ceil(Math.max(0f, remaining)),
+					Misc.getWithDGS(ThreatGroundFronts.pushCasualtyEstimate(f, m)));
+			if (remaining >= 0f && remaining <= attackIn
+					&& ThreatGroundFronts.overrunIfPushing(f, m)) {
+				tooltip.addPara("Pressing on: the " + layer + " falls before the counter-attack.",
+						f.isPlayerOwned() ? pos : neg, 4f);
+			}
+		} else if (regrouping) {
+			boolean strong = eff >= ThreatGroundFronts.holdRequirement(m);
+			tooltip.addPara("Regrouping after " + layer + " %s: %s days until it "
+					+ (strong ? "pushes on" : "digs in") + " by doctrine, told nothing.", 4f, text, h,
+					"" + f.strataHeld, "" + (int) Math.ceil(f.consolidateDaysLeft));
+		} else if (f.bracedFromPush) {
+			tooltip.addPara("Broken off the assault until the counter-attack lands: %s days.",
+					4f, text, h, "" + (int) Math.ceil(attackIn));
+		} else if (pace > 0f && eff >= ThreatGroundFronts.holdRequirement(m)
+				&& f.strataHeld < m.getSize()) {
+			tooltip.addPara("A push on " + layer + " %s of %s would take ~%s days and ~%s troops.", 4f,
+					text, h, "" + next, "" + m.getSize(), "" + (int) Math.ceil(pace),
+					Misc.getWithDGS(ThreatGroundFronts.pushCasualtyEstimate(f, m)));
+		} else if (f.strataHeld < m.getSize()) {
+			tooltip.addPara("Too weak to push: %s effective of the %s needed to hold.", 4f, text, neg,
+					Misc.getWithDGS(Math.round(eff)),
+					Misc.getWithDGS(Math.round(ThreatGroundFronts.holdRequirement(m))));
+		}
+
+		if (f.isPlayerOwned()) {
+			float[] wants = ThreatConvoys.frontWants(f, m);
+			if (wants[0] > 0f || wants[1] > 0f) {
+				tooltip.addPara("Wants %s marines and %s heavy armaments.", 4f, text, h,
+						Misc.getWithDGS((int) wants[0]), Misc.getWithDGS((int) wants[1]));
+			} else {
+				tooltip.addPara("At strength and stocked for %s days.", 4f, text, h,
+						"" + (int) ThreatIncConfig.frontResupplyDays());
+			}
+		}
+		tooltip.addPara("Click for the colony screen.", gray, 6f);
+	}
+
+	/**
+	 * The fronts table's buttons - the player's own fronts only, while their
+	 * faction is mobilised - floated over the empty row beneath each such
+	 * entry, left to right: Push / Dig in, Supply, Support, Pull out. Added
+	 * last, anchored to the table (platform traps 1 and 2); both views call
+	 * this after everything else. The orders route through
+	 * ThreatFactionView.executeOrder, one code path.
+	 */
+	public static void addFrontButtons(ThreatIncursionIntel intel, TooltipMakerAPI main, Fronts fronts) {
+		if (fronts == null || fronts.table == null) return;
+		FactionAPI player = Global.getSector().getPlayerFaction();
+		int supplyTier = intel.getSupplyTier();
+		int n = Math.min(fronts.rows.size(), fronts.buttonRows.size());
+		for (int i = 0; i < n; i++) {
+			FrontRow r = fronts.rows.get(i);
+			int rowIndex = fronts.buttonRows.get(i);
+			if (rowIndex < 0 || !playerCanOrder(r)) continue;
+			// the row's distance up from the table's foot, centred in it
+			float up = (fronts.rowCount - rowIndex) * ROW_H - (ROW_H - 20f) / 2f;
+			String key = Factions.PLAYER + ":" + r.market.getId();
+			float x = 6f;
+			// the stance order: the one the front is not in
+			boolean pushing = ThreatGroundFronts.STANCE_PUSH.equals(r.front.stance);
+			com.fs.starfarer.api.ui.ButtonAPI stance = intel.addGenericButton(main,
+					FRONT_STANCE_W, pushing ? "Dig in" : "Push",
+					(pushing ? ThreatFactionView.BUTTON_ENTRENCH : ThreatFactionView.BUTTON_PUSH) + key);
+			stance.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
+			x += FRONT_STANCE_W + FRONT_BUTTON_GAP;
+			com.fs.starfarer.api.ui.ButtonAPI supply = intel.addGenericButton(main,
+					FRONT_SUPPLY_W, "Supply", ThreatFactionView.BUTTON_SUPPLY + key);
+			supply.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
+			x += FRONT_SUPPLY_W + FRONT_BUTTON_GAP;
+			// SUPPORT: nothing lands while the defenders hold the orbit, so the
+			// runs are refused until a warship clears it - and once there it
+			// besieges the world with the front
+			com.fs.starfarer.api.ui.ButtonAPI escort = intel.addGenericButton(main,
+					FRONT_SUPPORT_W, "Support", ThreatFactionView.BUTTON_SUPPORT + key);
+			escort.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
+			x += FRONT_SUPPORT_W + FRONT_BUTTON_GAP;
+			// DEFEND: the same station, bombarding only while the front cannot hold
+			com.fs.starfarer.api.ui.ButtonAPI defend = intel.addGenericButton(main,
+					FRONT_DEFEND_W, "Defend", ThreatFactionView.BUTTON_DEFEND + key);
+			defend.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
+			x += FRONT_DEFEND_W + FRONT_BUTTON_GAP;
+			com.fs.starfarer.api.ui.ButtonAPI pull = intel.addGenericButton(main,
+					FRONT_PULLOUT_W, "Pull out", ThreatFactionView.BUTTON_PULLOUT + key);
+			pull.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(x);
+
+			// each order's own gate, so a button never opens a Confirm the
+			// order would then fail (vanilla's dialog cannot grey Confirm)
+			if (pushing) {
+				String why = ThreatGroundFronts.entrenchBlockReason(r.front);
+				ThreatFactionView.disableWith(main, stance, why == null, why,
+						"Break off the assault and dig in: losses fall to ~"
+						+ ThreatGroundFronts.perDay(ThreatGroundFronts.attritionPer30Days(
+								r.front, r.market, false)) + " troops a day; it defends at up to x"
+						+ String.format("%.1f", ThreatIncConfig.frontEntrenchDefenseBonus())
+						+ " from cover once dug in.");
+			} else {
+				String why = ThreatGroundFronts.pushBlockReason(r.front, r.market);
+				ThreatFactionView.disableWith(main, stance, why == null, why,
+						"Order the assault on " + ThreatGroundFronts.layerName(r.market) + " "
+						+ (r.front.strataHeld + 1) + ": ~"
+						+ (int) Math.ceil(ThreatGroundFronts.pushDaysEstimate(r.front, r.market))
+						+ " days and ~" + Misc.getWithDGS(ThreatGroundFronts.pushCasualtyEstimate(
+								r.front, r.market)) + " troops at this pace; armaments burn x"
+						+ String.format("%.0f", ThreatIncConfig.frontPushUpkeepMult()) + ".");
+			}
+			String supplyWhy = ThreatConvoys.supplyBlockReason(player, r.market, supplyTier);
+			float[] asked = ThreatConvoys.supplyAsk(r.front, r.market, supplyTier);
+			ThreatFactionView.disableWith(main, supply, supplyWhy == null, supplyWhy,
+					"A convoy runs up to " + Misc.getWithDGS((int) asked[0]) + " marines and "
+					+ Misc.getWithDGS((int) asked[1]) + " heavy armaments from your nearest "
+					+ "base to this front.");
+			String escortWhy = ThreatFleetOrders.supportBlockReason(player, r.market);
+			ThreatFleetOrders.Reassignable nearSupport = escortWhy == null
+					? ThreatFleetOrders.nearestReassignable(player, r.market) : null;
+			float supportFP = nearSupport != null ? nearSupport.fleet.getFleetPoints()
+					: ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP());
+			ThreatFactionView.disableWith(main, escort, escortWhy == null, escortWhy,
+					(nearSupport != null ? nearSupport.fleet.getName() + " (" + nearSupport.duty + ") goes."
+							: "A task force is raised from your nearest base.") + "\n"
+					+ ThreatFleetOrders.supportEffect(r.market, supportFP));
+			String defendWhy = ThreatFleetOrders.defendBlockReason(player, r.market);
+			ThreatFleetOrders.Reassignable nearDefend = defendWhy == null
+					? ThreatFleetOrders.nearestReassignable(player, r.market, ThreatFleetOrders.KIND_DEFEND)
+					: null;
+			float defendFP = nearDefend != null ? nearDefend.fleet.getFleetPoints()
+					: ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP());
+			ThreatFactionView.disableWith(main, defend, defendWhy == null, defendWhy,
+					(nearDefend != null ? nearDefend.fleet.getName() + " (" + nearDefend.duty + ") goes."
+							: "A task force is raised from your nearest base.") + "\n"
+					+ ThreatFleetOrders.defendEffect(r.market, defendFP));
+			String pullWhy = ThreatConvoys.pullOutBlockReason(player, r.market);
+			ThreatFactionView.disableWith(main, pull, pullWhy == null, pullWhy,
+					"A convoy lifts this front off the world and brings it home.");
+		}
+		if (fronts.tierSelector) ThreatFactionView.addSupplyTierSelector(intel, main, fronts.table);
 	}
 
 	// ---- shared drawing helpers ----
@@ -1041,12 +1706,12 @@ public class ThreatWarBoard {
 		TooltipMakerAPI title = panel.createUIElement(width * 0.5f, 30f, false);
 		title.setTextWidthOverride(width * 0.5f);
 		title.setParaOrbitronLarge();
-		title.addPara("THE THREAT WAR EFFORT", player, 0f);
+		title.addPara("THE ABYSSAL WAR", player, 0f);
 		panel.addUIElement(title).inTL(48f, 4f);
 
 		int days = (int) ThreatIncData.daysSinceStart();
 		text(panel, 48f, 29f, width * 0.68f, "Cycle " + Global.getSector().getClock().getCycle()
-				+ " - day " + days + " of the incursion - only what you have found is listed",
+				+ " - day " + days + " of the war - only what you have found is listed",
 				gray, null, true);
 
 		float bx = width - barW;
@@ -1148,8 +1813,8 @@ public class ThreatWarBoard {
 	// ---- the ledger ----
 
 	protected static final int RANK = 0, SYSTEM = 1, THREAT = 2, WORLDS = 3, MASS = 4, VIT = 5,
-			SWARMS = 6, REACH = 7, OUT = 8, IN = 9, SUPPLY = 10, CORE = 11, MISSIONS = 12, ACTIONS = 13;
-	protected static final int COLS = 14;
+			SWARMS = 6, REACH = 7, OUT = 8, IN = 9, SUPPLY = 10, CORE = 11;
+	protected static final int COLS = 12;
 
 	/** Column widths (and their offsets within a row) for a given table width. */
 	protected static class Cols {
@@ -1161,8 +1826,8 @@ public class ThreatWarBoard {
 		Cols(float width) {
 			narrow = width < NARROW_WIDTH;
 			float[] frac = narrow
-					? new float[] {.03f, .14f, 0f, .09f, .05f, .11f, .08f, .06f, .05f, .09f, .17f, 0f, .06f, .07f}
-					: new float[] {.028f, .14f, 0f, .09f, .045f, .09f, .07f, .055f, .045f, .09f, .15f, .047f, .08f, .07f};
+					? new float[] {.03f, .16f, 0f, .10f, .05f, .13f, .09f, .07f, .06f, .14f, .17f, 0f}
+					: new float[] {.028f, .16f, 0f, .10f, .05f, .11f, .08f, .065f, .055f, .13f, .17f, .052f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
@@ -1190,8 +1855,6 @@ public class ThreatWarBoard {
 	protected static final float CELL_PAD = 5f;
 	protected static final float CREST = 18f;
 	protected static final float CREST_STEP = 22f;
-	protected static final float PURGE_BUTTON_W = 68f;
-	protected static final float MISSION_BUTTON_W = 68f;
 
 	protected static Ledger addLedger(final ThreatIncursionIntel intel, final IntelUIAPI ui,
 			TooltipMakerAPI main, float width, float opad, List<Entry> entries, Entry selected) {
@@ -1215,7 +1878,7 @@ public class ThreatWarBoard {
 		// the stock table carries the text, the clicks and the tooltips
 		final Cols c = new Cols(width - 24f);
 		String[] names = {"#", "System", "Threat", "Worlds", "Mass", "Vitality", "Swarms",
-				"Reach", "Strikes", "Purges", "Supply", "Core", "Missions", "Actions"};
+				"Reach", "Strikes", "Activity", "Supply", "Core"};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < COLS; i++) {
 			if (!c.has(i)) continue;
@@ -1245,9 +1908,9 @@ public class ThreatWarBoard {
 				+ "with the fuel the staging colony draws from the hive network.");
 		main.addTableHeaderTooltip(c.visibleIndex(OUT), "Threat expeditions staged from this "
 				+ "system: strikes in flight and seeding swarms in transit. Details in the row tooltip.");
-		main.addTableHeaderTooltip(c.visibleIndex(IN), "Navies sailing against it - the crests of "
-				+ "siege expeditions, task forces and your own commissioned expedition. Details in "
-				+ "the row tooltip.");
+		main.addTableHeaderTooltip(c.visibleIndex(IN), "Everything against it, by crest: siege "
+				+ "expeditions, task forces, intercepts, Support sorties, front runs and ground fronts. "
+				+ "Details in the row tooltip.");
 		main.addTableHeaderTooltip(c.visibleIndex(SUPPLY), new TooltipCreator() {
 			public boolean isTooltipExpandable(Object tooltipParam) { return false; }
 			public float getTooltipWidth(Object tooltipParam) { return 420f; }
@@ -1262,12 +1925,6 @@ public class ThreatWarBoard {
 			main.addTableHeaderTooltip(c.visibleIndex(CORE), "Light-years to the nearest major "
 					+ "inhabited world.");
 		}
-		main.addTableHeaderTooltip(c.visibleIndex(MISSIONS), "Defense-board missions against this "
-				+ "system - offers and the ones you hold. The button opens them in the intel list; "
-				+ "details on hover.");
-		main.addTableHeaderTooltip(c.visibleIndex(ACTIONS), "Purge: commission a siege expedition "
-				+ "against this system from your nearest colony with a military structure. Hover "
-				+ "the button for the price.");
 
 		final List<Object> rowObjects = new ArrayList<Object>();
 		final List<Entry> rowEntries = new ArrayList<Entry>();
@@ -1307,8 +1964,6 @@ public class ThreatWarBoard {
 			if (c.has(CORE)) {
 				cell(cells, Alignment.MID, text, e.known && e.coreLY >= 0f ? (int) Math.ceil(e.coreLY) + " ly" : "-");
 			}
-			cell(cells, Alignment.MID, gray, e.missions.isEmpty() ? "-" : ""); // the Missions button sits here
-			cell(cells, Alignment.MID, gray, ""); // the Purge button sits here
 
 			Object row = isSelected ? main.addRowWithGlow(cells.toArray()) : main.addRow(cells.toArray());
 			main.addTooltipToAddedRow(new TooltipCreator() {
@@ -1336,58 +1991,6 @@ public class ThreatWarBoard {
 		ledger.cols = c;
 		ledger.rows = rowEntries;
 		return ledger;
-	}
-
-	protected static void addPurgeButton(ThreatIncursionIntel intel, TooltipMakerAPI main,
-			UIComponentAPI table, float upFromBottom, final Entry e) {
-		final InfestedSystemIntel.CommissionQuote q = InfestedSystemIntel.quote(e.systemId);
-		com.fs.starfarer.api.ui.ButtonAPI button = intel.addGenericButton(main, PURGE_BUTTON_W,
-				"Purge", BUTTON_COMMISSION + e.systemId);
-		final boolean enabled = ThreatIncConfig.commissionEnabled() && q != null && q.base != null
-				&& q.existing == null;
-		button.setEnabled(enabled);
-		button.setShowTooltipWhileInactive(true);
-		button.getPosition().belowRight(table, -upFromBottom).setXAlignOffset(-6f);
-		main.addTooltipTo(new TooltipCreator() {
-			public boolean isTooltipExpandable(Object tooltipParam) { return false; }
-			public float getTooltipWidth(Object tooltipParam) { return 380f; }
-			public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
-				Color h = Misc.getHighlightColor();
-				Color gray = Misc.getGrayColor();
-				if (!ThreatIncConfig.commissionEnabled()) {
-					tooltip.addPara("Commissioned expeditions are disabled in the mod settings.", gray, 0f);
-					return;
-				}
-				if (q == null) {
-					tooltip.addPara("Nothing to besiege here yet.", gray, 0f);
-					return;
-				}
-				if (q.base == null) {
-					tooltip.addPara("None of your colonies with a military structure (Patrol HQ, "
-							+ "Military Base, or High Command) can reach this system - expeditions "
-							+ "range %s light-years per unit of fuel they carry, the smaller of the "
-							+ "fuel available at the colony and what its fleets can lift, the same "
-							+ "rule the swarm's strikes run on.", 0f, h,
-							"" + (int) ThreatIncConfig.strikeLYPerFuel());
-					return;
-				}
-				float dist = Misc.getDistanceLY(q.base.getStarSystem().getLocation(),
-						q.system.getLocation());
-				tooltip.addPara("Commission a %s siege expedition from %s (" + (int) Math.ceil(dist)
-						+ " light-years out) against the " + q.targets.size() + " Threat "
-						+ (q.targets.size() > 1 ? "colonies" : "colony") + " here. "
-						+ (q.anyGarrisoned ? "Includes escorts to fight through the live Defense "
-								+ "Swarms. " : "")
-						+ "It runs the siege playbook autonomously and reports back when done; "
-						+ "its troops and provisions come from that colony's reserve and its "
-						+ "hulls are held against the colony's fleet capacity until it is over.",
-						0f, h, q.fleetSizes.size() + "-fleet", q.base.getName());
-				if (q.existing != null) {
-					tooltip.addPara("An expedition you commissioned is already operating against "
-							+ "this system.", gray, 6f);
-				}
-			}
-		}, button, TooltipLocation.BELOW);
 	}
 
 	protected static void cell(List<Object> cells, Alignment align, Color color, String text) {
@@ -1465,11 +2068,13 @@ public class ThreatWarBoard {
 					quad(x, y, 2f, h, Misc.getBasePlayerColor(), 0.9f * alphaMult);
 				}
 
-				// inbound crests, centred in the Purges column
-				int crests = Math.min(3, e.inbound.size());
+				// inbound crests, centred in the Activity column, as many as fit
+				float colWIn = c.w[IN] * scale;
+				int fitIn = Math.max(1, (int) ((colWIn - 2f * CELL_PAD + (CREST_STEP - CREST)) / CREST_STEP));
+				int crests = Math.min(fitIn, e.inbound.size());
 				if (crests > 0) {
 					float colX = x + c.x[IN] * scale;
-					float colW = c.w[IN] * scale;
+					float colW = colWIn;
 					float groupW = crests * CREST_STEP - (CREST_STEP - CREST);
 					float cx0 = colX + (colW - groupW) / 2f;
 					for (int k = 0; k < crests; k++) {
@@ -1577,8 +2182,8 @@ public class ThreatWarBoard {
 
 	// ---- the drill-down: colony cards across the full width ----
 
-	protected static void addDetail(ThreatIncursionIntel intel, TooltipMakerAPI main,
-			float width, float opad, Entry e, List<Object[]> cardsOut) {
+	/** The selected system's heading line; its fronts table and cards follow separately. */
+	protected static void addDetailHeading(TooltipMakerAPI main, float opad, Entry e) {
 		FactionAPI threat = Global.getSector().getFaction(Factions.THREAT);
 		Color dark = threat.getDarkUIColor();
 		Color bright = threat.getBrightUIColor();
@@ -1595,7 +2200,11 @@ public class ThreatWarBoard {
 		if (e.coreLY >= 0f) title.append(" - ").append((int) Math.ceil(e.coreLY)).append(" ly from the core");
 		if (e.playerLY >= 0f) title.append(" - ").append((int) Math.ceil(e.playerLY)).append(" ly from your nearest colony");
 		main.addSectionHeading(title.toString(), bright, dark, Alignment.MID, opad);
+	}
 
+	/** The selected system's colony cards (or the seeding note), after its fronts. */
+	protected static void addDetailBody(TooltipMakerAPI main, float width, float opad, Entry e,
+			List<Object[]> cardsOut) {
 		if (e.isColony()) {
 			addCards(main, width, e, cardsOut);
 		} else {

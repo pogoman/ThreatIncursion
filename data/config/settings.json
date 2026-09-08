@@ -1,5 +1,5 @@
 {
-	# Threat Incursion - fallback values when LunaLib is not enabled
+	# Abyssal War - fallback values when LunaLib is not enabled
 
 	# lets rules.csv resolve this mod's rule commands (ThreatincBombardCMD)
 	"ruleCommandPackages":["threatinc"],
@@ -8,8 +8,8 @@
 	"threatinc_enabled": true,
 	"threatinc_tickDays": 30,
 
-	# When the incursion begins: by default (startAtGameStart) the swarm was
-	# always coming and the incursion starts immediately in a new game (or on
+	# When the war begins: by default (startAtGameStart) the swarm was
+	# always coming and the war starts immediately in a new game (or on
 	# loading an existing one). Turn it off to wait for the abyss story flags
 	# or the colony-size trigger below instead
 	"threatinc_startAtGameStart": true,
@@ -19,7 +19,7 @@
 	"threatinc_colonySizeTrigger": true,
 	"threatinc_triggerColonySize": 6,
 
-	# Infestation lifecycle: the incursion begins from ONE resource-complete OG
+	# Infestation lifecycle: the war begins from ONE resource-complete OG
 	# home system (ore + volatiles mining, refining, heavy industry), whose
 	# whole production chain is founded at once from the Abyss. initialSeeds
 	# above 1 adds that many extra single-colony fringe footholds beyond it.
@@ -42,6 +42,12 @@
 	"threatinc_chainRedundancy": 3,
 	"threatinc_colonizationEscort": 2,
 	"threatinc_garrisonRespawnDays": 40,
+	# military options menu: how far (su) from a hive's world a defending swarm
+	# fleet can be engaged from its orbit (the colony's garrison, reinforcements
+	# bound for it and its Defend Swarms count wherever they are in the system,
+	# closing raids and bombardment until engaged; any other swarm fleet counts
+	# while inside this radius; garrisons orbit 400-700 su out)
+	"threatinc_defendRadius": 1000,
 	# Colonies cover each other. Every poll the swarm sends ONE Defense Swarm (up
 	# to reinforceMaxPerPoll) from the best-covered colony that can reach a
 	# worn-down sibling - same system first, then any system within the donor's
@@ -131,6 +137,103 @@
 	# to destroy them); if true, the swarm may erase them - can break unfinished
 	# vanilla storylines
 	"threatinc_destroyStoryCritical": true,
+
+	# THREAT STRIKE DOCTRINE (docs/ground-war.md "Threat ground assaults"): the
+	# swarm mirrors the siege it is subjected to. A strike softens a world's
+	# tactical-bombardment structures, then LANDS a Threat-owned ground front
+	# that pushes the colony's strata; only a ground victory destroys the
+	# colony. Saturation bombardment is off by default - turn it back on to
+	# restore the old "one pass wounds or erases a world" behaviour.
+	"threatinc_strikeSaturationEnabled": false,
+	"threatinc_strikeGroundFrontsEnabled": true,
+	# passes an expedition may deliver per world: one softens, one lands the
+	# world's share of the troop pool, any further pass tops up what is left
+	# of that share (a landing turned back by a held orbit gets another try)
+	"threatinc_strikePassesPerColony": 3,
+	# the troop pool: strikeTroopsPerPoint per difficulty point of the swarms
+	# mustered (3-9 each), fixed at launch, discounted by losses on the way,
+	# split evenly across the worlds in the sweep, shown on the strike's intel
+	# - a strike lands what it brought and nothing more
+	"threatinc_strikeTroopsPerPoint": 20,
+	# a world's share is never below this; a small strike lands fewer worlds
+	# rather than token forces
+	"threatinc_strikeFrontMinTroops": 300,
+	# days of armaments a Threat landing carries; it is never resupplied except
+	# by a follow-up pass of the same expedition
+	"threatinc_strikeFrontSupplyDays": 90,
+	# banked reserve marines that defend the ground when a colony is invaded
+	"threatinc_reserveDefenseMult": 1.0,
+	# counter-attack cadence bonus for a colony with a military industry
+	"threatinc_colonyCounterAttackMilitaryMult": 1.5,
+
+	# Sieges from orbit (docs/ground-war.md "Sieges from orbit", 2026-09-06),
+	# the same duel over a hive and over a human colony. Defenders = garrison
+	# x fortification. The garrison (a colony's base-by-size figure times
+	# stability plus reserve marines; a hive's size-anchored strata) orbit
+	# cannot touch. The fortification is each defence structure's multiplier
+	# scaled by its condition - 1 intact, 0 once its disruption clock carries
+	# the theatre's wear days (fortificationDisruptDays on a colony,
+	# defenseWearDays on a hive) - instead of vanilla's on/off. From orbit
+	# alone the condition never falls below fortificationOrbitFloor; once a
+	# front stands on the world the floor is 0. On a colony the rule applies
+	# to worlds besieged (or landed on), not to every raid.
+	"threatinc_fortificationDisruptDays": 180,
+	"threatinc_fortificationOrbitFloor": 0.5,
+	# an unopposed besieging fleet - a Threat strike, a faction's or the
+	# player's siege expedition, a Support sortie, the player's own tactical
+	# bombardment - adds suppressDaysPerDay x fleet / (fleet + defence)
+	# disruption days per day to the world's fortifications (fleet points x
+	# siegeFPWeight against the ground-defence figure), and loses
+	# siegeBatteryAttritionPerDay x its points x the batteries' share of the
+	# defence / (fleet + defence) per day to return fire, smallest ships
+	# first. An expedition lands once the fortification is at the floor, or
+	# once its troops could hold as they are (every day in orbit costs ships,
+	# so a force that can hold spends marines rather than hulls; Support is
+	# the button for when that call is wrong). The rate is NET of the clock's
+	# own run-down (a day per day): a live fleet makes that up first. A hive's
+	# figure is anchored to its size and runs several times a colony's, so
+	# its rate is higher: at 30 a 600-point expedition takes a size-5 hive
+	# (~9,000) to the floor in about 60 days, as 1,000 points take a 4,000
+	# colony in about 75.
+	"threatinc_siegeSuppressDaysPerDay": 12,
+	"threatinc_hiveSiegeSuppressDaysPerDay": 30,
+	"threatinc_siegeFPWeight": 1.0,
+	"threatinc_siegeBatteryAttritionPerDay": 0.02,
+	# days of siege one tactical bombardment by the player stands for
+	"threatinc_siegeBombardSliceDays": 3,
+	# a planetary shield is a military structure that wears on the same clock as
+	# any fortification, but what its condition buys is cover: an intact shield
+	# turns this fraction of a bombardment away from everything else on the world,
+	# falling in a straight line as its own disruption days pile up. The shield
+	# itself has no cover and takes every pass at full weight (soak mult). The
+	# orbital floor applies to it too, so orbit alone can never quite spend one -
+	# land a front and the floor is gone.
+	"threatinc_shieldAbsorbEnabled": true,
+	"threatinc_shieldAbsorbMax": 0.75,
+	"threatinc_shieldSoakMult": 1.0,
+	# vanilla's shield multiplies the garrison by three and does nothing about
+	# bombardment; here it is the other way round, so the ground-defense bonus is
+	# off by default and cover is what the shield buys. Set to 2.0 for vanilla's
+	# x3 - applied in proportion to the shield's condition, never on/off.
+	"threatinc_shieldDefenseBonus": 0,
+	# days an expedition holds orbit over each world before it gives the siege up
+	"threatinc_siegeOrbitDays": 120,
+	# a world whose Threat front is dry weighs this much more as the next
+	# strike's target: the front signals, the next expedition answers
+	"threatinc_strikeReinforceWeight": 4.0,
+	# days a dry Threat front digs in for that expedition before spending
+	# itself in a final push (the swarm does not extract)
+	"threatinc_frontDryFinalPushDays": 120,
+	# each district a front holds costs the colony stability and accessibility
+	# and seizes its share of the colony's industries, pinned at
+	# districtSeizeDays of disruption while held
+	"threatinc_districtStabilityPenalty": 1.0,
+	"threatinc_districtAccessPenalty": 0.1,
+	"threatinc_districtSeizeDays": 30,
+	# a Threat ground victory seeds a hive of conquestHiveSize on the spot
+	"threatinc_conquestConverts": true,
+	"threatinc_conquestHiveSize": 2,
+
 	# scale on hive ground-defense strength; bombardment fuel cost scales with it
 	"threatinc_groundDefenseMult": 1.0,
 
@@ -143,33 +246,26 @@
 	# longer; marine raids disrupt longest. The only way a hive dies is
 	# decline: population falling to size 1 under disruption or shortages.
 	"threatinc_hiveDefensePerSize": 400,
-	# defense-structure scaling: defense mult = 1 + bonus per structure, with
-	# disruptedDefenseFraction of the bonus surviving a fresh disruption
+	# defense-structure scaling: defense mult = 1 + bonus per structure
 	"threatinc_groundDefensesBonus": 1.0,
 	"threatinc_heavyBatteriesBonus": 2.0,
 	"threatinc_nexusDefenseBonus": 0.5,
-	"threatinc_disruptedDefenseFraction": 0.5,
-	# ...and wearing down from there: the surviving bonus falls linearly with
-	# the disruption days on the structure's clock, to nothing at this many.
-	# The same wear applies to a disrupted Core's fabrication factor
-	# (coreDownFactor at fresh disruption, zero at the limit). Disruption
-	# stacks with every pass and raid, so an organ carrying
-	# 300 days has been hit again and again and is scrap. One tactical pass
-	# (60 d) leaves 40 percent of a battery's bonus, two raids on top about 25
-	# percent. The size-anchored base never wears. 0 = no wear.
+	# ...wearing down under disruption: the bonus falls linearly with the
+	# disruption days on the structure's clock, to nothing at this many - the
+	# hive's fortification clock (fortificationOrbitFloor applies from orbit,
+	# 0 once a front stands). The same wear applies to a disrupted Core's
+	# fabrication factor (coreDownFactor at fresh disruption, zero at the
+	# limit). What drives a clock that deep: siege slices from orbit up to the
+	# floor, marine raids adding their days (vanilla), and a ground front that
+	# HOLDS adding a net day per day (frontSuppressDaysPerDay), so an organ
+	# carrying 300 days has had an army on top of it for most of a year. The
+	# size-anchored base never wears. 0 = no wear.
 	"threatinc_defenseWearDays": 300,
 	"threatinc_hiveBombardCostMult": 1.0,
 	"threatinc_hiveTacCostFraction": 0.25,
 	"threatinc_hiveSatDisruptDays": 20,
 	"threatinc_hiveTacDisruptDays": 60,
 	"threatinc_hiveMarineLossMult": 1.5,
-	# NPC siege doctrine: an AI purge expedition keeps delivering tactical
-	# bombardments (stacking their disruption, so each pass wears the war-strata
-	# further) while any defense structure's surviving effect is still above
-	# this fraction; once bombed below it, the expedition lands troops instead.
-	# 0.5 = one pass then raid (old behavior); lower = more softening passes
-	# before the ground assault; 0 = grind the war-strata to nothing first.
-	"threatinc_siegeDefenseSoftenFloor": 0.25,
 
 	# Ground fronts (docs/ground-war.md): marines + heavy armaments committed to
 	# a hive world's surface as a persistent siege. The front consumes armaments
@@ -180,11 +276,21 @@
 	# Fabrication Core, so the existing decline engine kills the colony; the
 	# front replaces the disruption-timer babysitting, not the decline math.
 	"threatinc_frontsEnabled": true,
+	# troops that land push: a front at holding strength assaults the next
+	# stratum as soon as it is on the ground (and when reinforced back to
+	# holding strength); off, the player's fronts push only when ordered
+	"threatinc_frontAutoPush": true,
+	# a front holding no ground is destroyed outright by a counter-attack, and
+	# assaulting costs it all its cover - so if an assault would get it killed
+	# it digs in first and resumes once cover (or the odds) make one survivable.
+	# Its own fleet will not bombard over troops in the open either.
+	"threatinc_frontBraceEnabled": true,
 	# effective strength (marines x entrenchment) as a fraction of the defense
 	# figure: at or above hold = suppress everything; between grind and hold =
-	# harass only the defense structures; below grind = a mere foothold. 0.25
-	# mirrors vanilla's own raid-disruption threshold.
-	"threatinc_frontHoldFraction": 0.25,
+	# harass only the defense structures; below grind = a mere foothold. 0.17
+	# keeps the landing sizes of the old 1.5x entrenchment bonus viable now
+	# that a dug-in front fights at 1.0 (2026-09-06).
+	"threatinc_frontHoldFraction": 0.17,
 	"threatinc_frontGrindFraction": 0.10,
 	# days added to a suppressed structure's disruption clock per day held; the
 	# clock counts down 1/day naturally, so 2.0 nets +1 day of wear per day
@@ -194,12 +300,57 @@
 	# the heavy armaments run dry; below min marines the front is overrun
 	"threatinc_frontMarineLossPer30Days": 0.08,
 	"threatinc_frontUnsuppliedLossMult": 3.0,
-	# heavy armaments burned per colony size per 30 days (size 6 = 2/day)
-	"threatinc_frontArmamentsPerSizePer30Days": 10,
-	# entrenchment: effectiveness ramps to the max multiplier over this many days
+	# heavy armaments burned per marine per 30 days. The army eats the armaments,
+	# not the world it fights on: at 0.25 a landing carries 1 armament per marine
+	# for its npcFrontSupplyDays (120), and burns them faster the bigger it is.
+	"threatinc_frontArmamentsPerMarinePer30Days": 0.25,
+	# entrenchment (2026-09-06): a landing fights at frontLandingMult and digs
+	# in to frontEntrenchMaxMult over frontEntrenchDays; the ramp is frozen
+	# while pushing, and taking a stratum or being battered by a counter-attack
+	# keeps only frontEntrenchKeptFraction of it - pushing costs cover, holding
+	# earns it. The defenders' entrenchment is their ground-defence figure.
 	"threatinc_frontEntrenchDays": 30,
-	"threatinc_frontEntrenchMaxMult": 1.5,
+	"threatinc_frontLandingMult": 0.75,
+	"threatinc_frontEntrenchMaxMult": 1.0,
+	"threatinc_frontEntrenchKeptFraction": 0.5,
 	"threatinc_frontMinMarines": 50,
+	# a front sitting on a threshold would flap between states now that the
+	# defence figure bleeds; it keeps a state until it falls this far below
+	# the line it crossed to reach it
+	"threatinc_frontStateHysteresis": 0.1,
+
+	# marines: garrison, casualties and veterancy (2026-09-08).
+	# A colony defends with its resource stockpile's marines - never with
+	# personal Storage, which is the player's own. Holding a line and going
+	# over the top are different jobs, so marines enter a counter-attack at a
+	# fraction of what they defend with.
+	"threatinc_marineCounterAttackMult": 0.25,
+	# mustering an offensive is also a question of having troops to spare:
+	# the cadence scales with how badly the world outnumbers what is on its
+	# soil, clamped both ways by this. 1 disables the term (stability only).
+	"threatinc_counterAttackRatioClamp": 3.0,
+	# marines shipped into a besieged colony are crates of rifles until they
+	# are called up, armed and posted: the whole stockpile works up over this
+	# many days, so a regiment landed today buys a garrison over weeks
+	"threatinc_marineArmingDays": 20,
+	# what the defenders pay: per counter-attack (win or lose - bouncing off a
+	# dug-in front is the expensive case), and per 30 days while a front at
+	# full strength presses them
+	"threatinc_defenderCounterAttackLossFraction": 0.15,
+	"threatinc_defenderLossPer30Days": 0.20,
+	# veterancy, on vanilla's own ramp: level = xp / headcount, Regular below
+	# 0.25, Experienced below 0.5, Veteran below 0.75, Elite above. Vanilla's
+	# own fully-elite marines are +100% effect and half losses.
+	"threatinc_marineVeterancyEffectMax": 1.0,
+	"threatinc_marineVeterancyLossReduction": 0.5,
+	# a hard fight teaches, a curbstomp teaches nothing: xp is
+	# (1 - effectiveness) x headcount x this, vanilla's own raid figure
+	"threatinc_marineXpPerBattle": 0.2,
+	# what an NPC or Threat landing musters at (0 raw, 1 elite)
+	"threatinc_npcLandingVeterancy": 0.15,
+	# landings inherit the player fleet's marine rank and write back what they
+	# earned on withdrawal, and the ground skills apply to the player's fronts
+	"threatinc_marineFleetXpTransfer": true,
 	# a tactical pass with a front deployed costs it this fraction of its
 	# marines - and in exchange the strike's disruption also lands on the
 	# Fabrication Core and port (the ground forces mark targets)
@@ -209,6 +360,26 @@
 	# it >= hiveSatDisruptDays - sat bombing must forfeit ground tempo, or it
 	# becomes the best siege opener instead of a tradeoff
 	"threatinc_falloutDays": 40,
+	# Threat doctrine over its own besieged world (2026-09-06): while Defense
+	# Swarms or any armed Threat fleet hold the orbit over an enemy front with
+	# no armed hostile fleet there to contest them, a countdown runs; at
+	# threatScourDays the hive saturation-bombards its own surface - the front
+	# is annihilated to the last marine and fallout closes the ground. A fleet
+	# over the planet (Escort, Guard, the player) stops the clock; leaving it
+	# resets nothing but its own presence. The board's Attack cell shows
+	# "scour N d" while it runs.
+	# Minimum total Threat fleet points in orbit (garrison Defense Swarms and any
+	# Threat combat fleet within 1,500u) for the swarm to "hold the orbit" for a
+	# scour: a saturation bombardment is a fleet operation, not something a lone
+	# battered frigate can mount. Below this the swarm holds nothing - the clock
+	# resets (a remnant is not a bombardment platform). The smallest real Defense
+	# Swarm is ~83 FP and a stray frigate ~5-15, so 50 separates them; raise it
+	# toward 150-300 to demand a serious battle group.
+	# the swarm grinds an enemy front it has the orbit over, rather than
+	# annihilating it on a timer (the scour, removed 2026-09-08): this
+	# fraction of the front per 30 days, scaled by its weight over the planet
+	"threatinc_swarmFrontBombardPer30Days": 0.60,
+	"threatinc_swarmOrbitMinFleetFP": 50,
 
 	# The stratum campaign: a size-S hive is S strata deep with the Fabrication
 	# Core at the center. A front strong enough to hold can be ORDERED to push
@@ -224,6 +395,22 @@
 	"threatinc_frontPushLossPer30Days": 0.30,
 	"threatinc_frontPushUpkeepMult": 2.0,
 	"threatinc_frontDryEffectivenessMult": 0.5,
+	# THE SWARM DOES NOT FIGHT ON ARMAMENTS (2026-09-08). A faction's front is
+	# the far end of a logistics chain and running dry is that chain failing.
+	# The swarm has no chain - convoys and front runs resolve through hive
+	# markets and a Threat front stands on a human colony, so nothing can ever
+	# reach it - so charging it for a supply line it can never use was a
+	# countdown wearing the costume of a supply rule. With threatFrontNeedsArms
+	# false its fronts burn nothing, never run dry, and take none of the dry
+	# penalties: no half strength, no tripled attrition, no final-push clock, no
+	# collapse. What replaces that pressure is threatPushLossMult - casualties
+	# while PUSHING, since a swarm that can break up its own hulls for troops
+	# (fabricateEnabled) should pay for ground in bodies. Only while pushing: a
+	# dug-in Threat front bleeds at the ordinary rate, so the counterplay is to
+	# make them come to you rather than to wait them out. True restores the old
+	# rule exactly, final push and all.
+	"threatinc_threatFrontNeedsArms": false,
+	"threatinc_threatPushLossMult": 2.0,
 	"threatinc_frontEntrenchDefenseBonus": 1.5,
 	"threatinc_frontCheckpointDays": 10,
 	"threatinc_frontCounterAttackDays": 40,
@@ -242,6 +429,12 @@
 	# days after its last strike a faction stands down (only if no hive is in
 	# reach of its military worlds); 0 = mobilised for good
 	"threatinc_warModeStandDownDays": 0,
+	# Factions that never mobilise, comma-separated ids. The Threat still
+	# strikes their worlds and they stay hostile to it, but they raise no task
+	# forces, sieges, convoys or fronts and keep no war reserve - vanilla
+	# raiders, not a navy. A record already on a save is dropped on the next
+	# poll (reserves kept).
+	"threatinc_warExcludedFactions": "pirates",
 	# Economy coherence (docs/economy-coherence.md): a colony banks only its
 	# vanilla SURPLUS - availability above demand, in econ units - each 30
 	# days: surplus units x the commodity's econ unit (1,500 fuel, 750
@@ -272,11 +465,22 @@
 	# (the peacetime depots its first sortie draws from)
 	"threatinc_reserveCapMonths": 6,
 	"threatinc_reserveInitialMonths": 3,
-	# expeditions and sorties never draw a colony below this fraction of its
-	# cap (the home garrison's stock); every colony also raises a militia
-	# trickle of marines per size per 30 days regardless of industry
+	# NPC expeditions and sorties never draw a colony below this fraction of its
+	# cap (the home garrison's stock); your own colonies use the player floor
+	# instead - 0 means your orders may commit the whole stock (a colony's
+	# stockpiled marines also count toward its ground defence, so an emptied
+	# one is easier to land on); every colony also raises a militia trickle of
+	# marines per size per 30 days regardless of industry
 	"threatinc_reserveFloorFraction": 0.25,
+	"threatinc_playerReserveFloorFraction": 0,
 	"threatinc_reserveBaselinePerSize": 5,
+	# a player colony's reserve IS its resource stockpile (vanilla fills it; the
+	# mod adds the militia). A base needs a military structure AND a functional
+	# Waystation (a hive world its Swarm Nexus) to stage, sail, send or receive;
+	# an NPC faction's mobilisation builds one at each military world with a
+	# spaceport, the player builds their own
+	"threatinc_baseRequiresWaystation": true,
+	"threatinc_mobilisationBuildsWaystation": true,
 	# exponent on every ground-war strength ratio (push pace, push attrition,
 	# counter-attack losses and overruns): 1 = linear and legible (default),
 	# 2 = Lanchester's square law, where concentration pays four times over
@@ -284,24 +488,29 @@
 	# an expedition waits unless its base holds this fraction of the marines
 	# the landing needs (siegeRaidStrNeeded - raid strength ~= marines)
 	"threatinc_expeditionMinMarinesFraction": 0.5,
+	# the player's "Extra" siege tier commits this multiple of the landing need
+	# (the "Siege" tier); "All" commits the whole reserve above its floor
+	"threatinc_siegeExtraMarinesFactor": 2.0,
 	# provisions drawn per fleet point: fuel per light-year, supplies flat
 	"threatinc_expeditionFuelPerPointLY": 10,
 	"threatinc_expeditionSuppliesPerPoint": 100,
 	# troop-transport share of a cargo-carrying expedition fleet
 	"threatinc_expeditionTransportMult": 0.3,
-	# convoys: donor colonies within range ship stock to staging bases (a
-	# military world within expedition range of a live hive) until the base
-	# holds stagingTargetMult expeditions' worth; a donor keeps
-	# donorKeepFraction of its own cap; nothing sails for a shortfall under
-	# convoyMinLoadFraction of a load
+	# convoys: donor colonies within range ship stock to staging bases (the
+	# faction's nearest military world to a live hive - where the Siege
+	# button sails from) until the base holds stagingTargetMult sieges'
+	# worth; a donor keeps donorKeepFraction of its own cap; staging bases
+	# never donate; nothing sails for less than convoyMinLoadFraction of a
+	# load or of what the donor could spare when full, whichever is smaller
 	"threatinc_convoyEnabled": true,
 	"threatinc_convoyRangeLY": 15,
 	# fewer, larger, escorted (docs/design-theory.md 8.2): loads size to the
 	# shortfall up to these caps; escort = base FP + per-thousand of cargo
-	# value (marines 1, armaments 0.5, fuel and supplies 0.1); nothing sails
-	# for less than convoyMinLoadFraction of a load
+	# value (marines 1, armaments 0.5, fuel and supplies 0.1); the Stage
+	# button (a hand order) has no minimum load
 	"threatinc_convoyMarineCapacity": 2000,
 	"threatinc_convoyCargoCapacity": 6000,
+	"threatinc_convoyExtraLoadFactor": 2.0,
 	"threatinc_convoyEscortFP": 30,
 	"threatinc_convoyEscortPerThousand": 20,
 	"threatinc_convoyMinLoadFraction": 0.5,
@@ -330,11 +539,74 @@
 	# fleet orders from the war board's faction view: your own mobilised
 	# faction only - other factions' navies are their own (docs/player-aid.md).
 	# Guard and intercept task forces are built at the nearest base and
-	# provisioned from its reserve, and limited by what it can field (below).
+	# provisioned from its reserve. Yours sail with EVERYTHING the colony has
+	# free on the capacity ledger (below; 2026-09-05, a 100 FP fleet "will
+	# never have any capitals"); guardFleetFP is the NPC size, and the free
+	# points a colony of yours needs to be picked first as the source.
 	"threatinc_ordersEnabled": true,
 	"threatinc_guardFleetFP": 100,
 	"threatinc_guardDays": 90,
+	# a guard over one of YOUR OWN colonies is staging (2026-09-05): it stays
+	# guardOwnDays (0 = until recalled), its points count in that colony's FP
+	# while it is there, and a siege / intercept / escort / guard from there
+	# folds it in - back on station when the sortie is home. A guard a colony
+	# raises over itself is its own ships made real (nothing staged folds in).
+	"threatinc_guardOwnDays": 0,
 	"threatinc_interceptDays": 60,
+	# a SUPPORT sortie (Escort until 2026-09-06; the keys keep the old name)
+	# holds the orbit over a besieged world, clears it of what contests it so
+	# supply and evacuation runs can land, and besieges: its fleet points
+	# suppress the world's fortifications each day like any siege fleet's, and
+	# the batteries answer. Without one, a run to a contested orbit is refused
+	# outright rather than idling at the jump-point.
+	"threatinc_escortEnabled": true,
+	"threatinc_escortDays": 60,
+	# a DEFEND sortie (2026-09-07) is Support that keeps its ships: it holds
+	# the orbit over a world and fights whatever contests it, but bombards
+	# only while the faction's own front on the ground cannot hold, and never
+	# past the floor. An expedition fleet that has landed or reinforced a
+	# front leaves its expedition for a Defend with no term over it
+	# (landingDefendEnabled) - the marines it put down are covered, and a
+	# fleet with nothing left to land joins it instead of duelling batteries
+	# over a world it cannot take - and stands down when the front is gone or
+	# the batteries have ground it below defendMinStrength of its strength.
+	"threatinc_defendEnabled": true,
+	"threatinc_defendDays": 60,
+	"threatinc_landingDefendEnabled": true,
+	"threatinc_defendMinStrength": 0.33,
+	# FABRICATING TROOPS FROM THE FLEET (2026-09-08). A Defend fleet bombards
+	# while its front cannot hold - but once every fortification is at the
+	# orbital floor there is nothing left for a slice to reach, and a losing
+	# front would just watch. Instead the fleet breaks up its own hulls and
+	# sends them down as soldiers: fabricateTroopsPerFP troops per fleet point,
+	# landed with fabricateSupplyDays of their own armaments. It commits only
+	# what the front is short of fabricateHoldMargin of the hold line, so a
+	# shallow deficit costs a shallow bite; on top of the hulls that become
+	# troops it pays what UNDISRUPTED batteries would charge for a day in orbit
+	# (the duel's own siegeBatteryAttritionPerDay formula read at full
+	# condition), so a world with no guns is fed for free. It stops the moment the
+	# front holds, and while it is running the fleet is exempt from the
+	# defendMinStrength stand-down: it commits until the front stands or falls.
+	# The flagship and the last hull are always spared.
+	"threatinc_fabricateEnabled": true,
+	"threatinc_fabricateTroopsPerFP": 10,
+	"threatinc_fabricateHoldMargin": 1.05,
+	"threatinc_fabricateSupplyDays": 30,
+	# a Support or Defend fleet, and a swarm's station, HOLDS STATION: it
+	# occupies the orbit and fights what attacks it or meets it there, and
+	# never pursues. true restores the hunting reflexes at the planet, with
+	# the per-frame leash pulling a fleet back from 1,500 units out - which
+	# left at most one of four Defend fleets at the planet on any day.
+	"threatinc_orbitFleetsHunt": false,
+	# WHO HOLDS AN ORBIT (2026-09-07): a strength contest at the planet.
+	# Defenders within 1,500 units of the world - a hive's Defense Swarms, a
+	# colony's station and patrols - hold its orbit against a faction only
+	# while their fleet points are at least this fraction of that faction's
+	# own warships there; with nothing friendly there, any defender holds it.
+	# While an orbit is held, no siege slice, no pass and no landing; the
+	# fleets fight for it. Before this a single respawned swarm anywhere in
+	# the garrison list held the orbit against four Defend fleets.
+	"threatinc_orbitContestFraction": 0.5,
 	# a fleet recalled (or whose order ran out) comes home on a tracked leg:
 	# everything still aboard - marines, armaments, cargo - goes back into the
 	# base's reserve, and this fraction of the fuel and supplies it drew at
@@ -414,26 +686,37 @@
 	# outposts: a faction-styled station over a world the swarm held and lost.
 	# No market - a fortress that blocks re-seeding until it is destroyed. The
 	# player pays credits; a mobilised NPC faction pays supplies and fuel from
-	# its nearest base and builds them on its own (outpostChance per tick)
+	# its nearest base and builds them on its own (outpostChance per tick).
+	# A ground victory raises one free for the winner over the world it took,
+	# and the front's survivors become that outpost's stockpile
 	"threatinc_outpostsEnabled": true,
+	"threatinc_outpostOnVictory": true,
 	"threatinc_outpostTier": 1,
 	"threatinc_outpostCredits": 150000,
 	"threatinc_outpostSupplies": 1500,
 	"threatinc_outpostFuel": 800,
 	"threatinc_outpostChance": 0.3,
 
-	# fabrication factor while the Fabrication Core is disrupted (health = fab x
-	# supply; low health weakens everything the colony does - growth, garrison
-	# pace, counter-attacks - but only ground victory kills it). The Swarm
-	# Nexus is NOT a vitality organ - it only fabricates fleets, so disrupting
-	# it halts swarm spawning without touching health.
-	"threatinc_coreDownFactor": 0.25,
+	# fabrication factor the moment the Fabrication Core is disrupted (health =
+	# fab x supply; low health weakens everything the colony does - growth,
+	# garrison pace, counter-attacks - but only ground victory kills it). From
+	# there it wears linearly to zero at defenseWearDays, so at 1.0 the days on
+	# the Core's clock alone decide: one tactical pass (60 d) leaves 80
+	# percent, a front holding for 150 days half, 300 days nothing (decided
+	# 2026-09-05; it was a 0.25 step, so one day of holding quadrupled the
+	# counter-attack interval). The Swarm Nexus is NOT a vitality organ - it
+	# only fabricates fleets, so disrupting it halts swarm spawning without
+	# touching health.
+	"threatinc_coreDownFactor": 1.0,
 	# growth pace ramps from 0 at stall health to full at full health
 	"threatinc_growthStallHealth": 0.5,
 	"threatinc_growthFullHealth": 0.85,
 
 	# Faction reactive defense: task forces against garrisons, and - when a
-	# colony's garrison has been wiped out - siege expeditions
+	# colony's garrison has been wiped out - siege expeditions. Sieges sail
+	# only from a MOBILISED faction's base, drawing that base's war reserve
+	# (docs/strategy-layer.md); the player's own are the war board's Siege
+	# order. A faction the swarm has never struck launches none.
 	"threatinc_responseEnabled": true,
 	# 0 = unlimited
 	"threatinc_responseMaxConcurrent": 0,
@@ -453,6 +736,27 @@
 	# Batteries needs ~3,600 ground strength once its war-strata are suppressed
 	# by the tactical pass; at ~430 per full-size fleet that is 9 fleets.
 	"threatinc_siegeMaxFleets": 10,
+	# Siege passes an expedition may run against each colony. A fresh hive
+	# takes one tactical pass (a war-stratum carrying 80 percent of a pass is
+	# not bombed again - vanilla's rule); the landing is the pass after that,
+	# and any further pass reinforces the front with what is still aboard.
+	"threatinc_siegePassesPerColony": 4,
+	# A siege fights for the orbit first: while Defense Swarms hold it no pass
+	# is delivered, and the expedition's fleets AT THAT WORLD (within
+	# siegeHuntRange) are made aggressive to hunt them down. Vanilla's raid
+	# fleets ignore other fleets, so one swarm ship used to stall a siege for
+	# its whole stay while its passes went on commando raids. Off restores that
+	# behaviour; the siege leash below keeps the fleets on target either way.
+	"threatinc_siegeFightsForOrbit": true,
+	# How far from a contested world an expedition fleet will hunt for its
+	# orbit. The fight for the orbit is bounded by the range the contest is
+	# measured over (orbitContestFraction): a defender that breaks off this
+	# far is no longer holding the orbit, so there is nothing left to fight
+	# for and the fleet goes back to its siege.
+	"threatinc_siegeHuntRange": 1500,
+	# How far from its nearest target an expedition fleet may stray before it
+	# is dropped back on the siege. Out of the system counts however far.
+	"threatinc_siegeLeashRange": 6000,
 	"threatinc_responsePurgeEnabled": true,
 	"threatinc_purgeCooldownDays": 240,
 	# hive colonies up to this size are purged preemptively, garrison or not;
@@ -463,12 +767,6 @@
 	# wounded colonies (open decline meter or disrupted organs) draw follow-up
 	# expeditions on this short cooldown - navies press an advantage
 	"threatinc_purgeFollowUpDays": 75,
-
-	# Player-commissioned expeditions: from a player colony with a military
-	# structure in response range, the same siege expedition NPC navies run.
-	# No credits (decided 2026-09-05): it draws troops and provisions from
-	# the colony's reserve and holds its fleet capacity, as the board's Siege
-	"threatinc_commissionEnabled": true,
 
 	# Remnant immune system (pairs with Remnant Retribution, but works with
 	# vanilla Remnant systems regardless)
@@ -490,5 +788,18 @@
 	"threatinc_debugForceStart": false,
 	"threatinc_debugFastClock": false,
 	"threatinc_debugGrantSensorMods": false,
+	# Instant war (ThreatDebugWar, docs/testing-harness.md): fires once when
+	# toggled on. Founds SystemsMin..SystemsMax hive systems - a home chain plus
+	# footholds, each within LinkLY of another, CoreMin..CoreMax of them within
+	# CoreLY of a size 6+ world - at the sizes below, and mobilises every faction.
+	"threatinc_debugInstantWar": false,
+	"threatinc_debugInstantWarSystemsMin": 5,
+	"threatinc_debugInstantWarSystemsMax": 10,
+	"threatinc_debugInstantWarCoreMin": 2,
+	"threatinc_debugInstantWarCoreMax": 4,
+	"threatinc_debugInstantWarLinkLY": 20,
+	"threatinc_debugInstantWarCoreLY": 15,
+	"threatinc_debugInstantWarHomeSize": 6,
+	"threatinc_debugInstantWarColonySize": 4,
 	"threatinc_debugReset": false,
 }

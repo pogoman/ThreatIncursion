@@ -106,8 +106,9 @@ public class ThreatWarState {
 		if (!enabled() || faction == null) return null;
 		String id = faction.getId();
 		// never the pseudo "neutral" faction: ownerless stations get struck too,
-		// and it has no colonies and no navy to mobilise
-		if (Factions.THREAT.equals(id) || faction.isNeutralFaction()
+		// and it has no colonies and no navy to mobilise; never an excluded
+		// faction (pirates): raiders, not a navy
+		if (Factions.THREAT.equals(id) || faction.isNeutralFaction() || excluded(id)
 				|| wars().containsKey(id)) return null;
 		FactionWar war = new FactionWar();
 		war.factionId = id;
@@ -125,6 +126,11 @@ public class ThreatWarState {
 				Misc.getHighlightColor());
 		ThreatIncConfig.log("War mode: " + id + " mobilised (" + why + ")");
 		return war;
+	}
+
+	/** A faction that takes no part in the war effort (warExcludedFactions - pirates by default). */
+	public static boolean excluded(String factionId) {
+		return factionId != null && ThreatIncConfig.warExcludedFactions().contains(factionId);
 	}
 
 	/** Whether the player may mobilise: the layer on, not yet at war, and a colony to put on footing. */
@@ -209,13 +215,20 @@ public class ThreatWarState {
 		if (!enabled()) return;
 		backfill();
 		// a "neutral" record left by an older build, which mobilised it when an
-		// ownerless station was struck
+		// ownerless station was struck; or a faction excluded since the save
+		// was made (pirates, 2026-09-05) - it stands down, reserves kept
 		for (String id : new ArrayList<String>(wars().keySet())) {
 			FactionAPI faction = Global.getSector().getFaction(id);
-			if (faction == null || faction.isNeutralFaction()) {
-				wars().remove(id);
-				ThreatReserves.syncWarFooting(warFactionIds());
+			boolean bogus = faction == null || faction.isNeutralFaction();
+			if (!bogus && !excluded(id)) continue;
+			wars().remove(id);
+			ThreatReserves.syncWarFooting(warFactionIds());
+			if (bogus) {
 				ThreatIncConfig.log("War mode: dropped " + id + " (not a real faction)");
+			} else {
+				ThreatColonyManager.announce(Misc.ucFirst(faction.getDisplayNameWithArticle())
+						+ " takes no part in the war effort: stood down.", Misc.getHighlightColor());
+				ThreatIncConfig.log("War mode: dropped " + id + " (excluded from mobilisation)");
 			}
 		}
 		float days = ThreatIncConfig.warModeStandDownDays();

@@ -36,10 +36,13 @@ import com.fs.starfarer.api.util.Misc;
  *
  * <ul>
  * <li><b>Defend</b> - a window of missionDefendDays. Completes when the term
- * ends with no Threat action landed on the colony and a player asset (the
- * player's fleet, or a guard sent from a player colony) in the system when
- * each strike arrived. Fails the moment a strike lands ({@link #strikeLanded},
- * from the strike's raid action). If no strike came at all, or the faction
+ * ends with no Threat ground force landed on the colony and a player asset
+ * (the player's fleet, or a guard sent from a player colony) in the system
+ * when each strike arrived. Fails the moment the swarm puts troops on the
+ * ground, or a saturation pass hits ({@link #strikeLanded}, from
+ * ThreatGroundFronts.landOrReinforce and the saturation raid action). A pass
+ * that only bombards tactically, or is turned back from a held orbit, does not
+ * fail it - holding the orbit is the contract working. If no strike came at all, or the faction
  * beat one with no player asset present, the contract ends unpaid and
  * without penalty - nothing was owed.</li>
  * <li><b>Aid</b> - deliver N of a commodity within missionDurationDays, by any

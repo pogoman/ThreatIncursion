@@ -1,6 +1,6 @@
 # Automated in-game check
 
-Two PowerShell scripts in `tools/test-harness/` launch Starsector, reach The Threat War Effort
+Two PowerShell scripts in `tools/test-harness/` launch Starsector, reach The Abyssal War
 board and screenshot it, so a build can be verified without a person clicking through. A full
 cycle takes about 50 seconds at 3440x1440.
 
@@ -60,10 +60,10 @@ means the front is counter-attacked on the first poll.
 | Launcher "Play Starsector" (launcher is 805x503 at any resolution) | 402,343 | 402,343 |
 | Main menu Continue | 2250,492 | 1486,314 |
 | Intel: Major events tab | 1357,1155 | 734,824 |
-| The Threat War Effort entry in that list | 800,692 | 200,672 |
+| The Abyssal War entry in that list | 800,692 | 200,672 |
 | Mouse park (off the table) | 3300,1400 | 1700,1000 |
 
-The tab strip re-flows when tab labels change (e.g. the Threat Incursion count), and the entry's
+The tab strip re-flows when tab labels change (e.g. the Abyssal War count), and the entry's
 position depends on what else is in Major events for the loaded save. Re-find both with a
 `-StopAtIntel` run and a cropped capture whenever the click lands wrong: a capture of the sector
 map instead of the board means the entry click missed.
@@ -87,7 +87,7 @@ frames). Another session playing a different save changes what Continue loads - 
 
 ## Manual equivalent
 
-Open the game, Continue, press E, Major events, click The Threat War Effort. UI scaling means
+Open the game, Continue, press E, Major events, click The Abyssal War. UI scaling means
 the board gets 1195 logical px at 3440x1440 (the full layout) and 997 at 1080p (the narrow
 fold), so check both when changing column budgets.
 
@@ -142,3 +142,42 @@ Starsector first renames the original's campaign.xml/descriptor.xml to `.bak`. R
 2026-09-05 by moving the `.bak` pair back and refilling the backup slot from the clone's
 copies. When cloning, edit that one `saveDirName` line to the clone folder's name and the
 clone becomes self-contained (done for `...182493833221313174zz`).
+
+## Instant war (debug setting, 2026-09-05)
+
+`Debug & Testing > Instant War` (`threatinc_debugInstantWar`, `ThreatDebugWar`) stands the
+whole war up on a fresh save so the balance can be watched from day one instead of year
+three. Untested in-game at the time of writing. It fires once per toggle-on (latched in
+persistent data like RESET; switch it off again afterward or every new game gets one), on
+the first incursion poll after the incursion starts - the switch is itself a start trigger,
+so about half a day into a new game:
+
+1. **Placement.** Picks `SystemsMin..SystemsMax` (5-10) uninhabited systems by greedy
+   growth: a home able to host the full chain, chosen on the fringe but within
+   `CoreLY + hops x LinkLY` of the core so the quota is reachable; then, step by step, a
+   candidate within `LinkLY` (20) of the network - heading for the core until
+   `CoreMin..CoreMax` (2-4) systems sit within `CoreLY` (15) of a size 6+ world, then
+   stretching outward at random, staying out of the core zone once the ceiling is met.
+   Twelve homes are tried; the plan meeting the most of its targets wins. "Core" is
+   `ThreatWarBoard.distanceToCore` (nearest size 6+ non-player colony). Systems a live
+   Remnant Nexus defends are skipped when `remnantResists` is on. Hive systems already
+   founded count toward the totals; bare seeds (the normal start's home included) are
+   dropped and re-placed.
+2. **Founding.** `ThreatColonyManager.foundColony` at `HomeSize` (6) on every
+   `pickChainPlanets` world of the home, `ColonySize` (4) on `pickColonyPlanet` elsewhere,
+   with the planetfall bookkeeping (`STAGE_COLONY`, colony list, growth time, discovered).
+   `planHiveEconomy` is then run round-robin with economy recomputes until nothing changes,
+   so the chain (mining, refining, forge, fuel, defenses) stands at once, and
+   `fillGarrisonNow` fabricates each colony's full nominal garrison.
+3. **Mobilisation.** `ThreatWarState.mobilise` for every faction owning a non-hidden
+   colony (pirates and Pathers included; the player excepted - the board's Mobilise button
+   stays theirs). With `warModeStandDownDays` at 0 nobody stands down again.
+
+One campaign message reports colonies, systems, near-core count, swarms and factions;
+`starsector.log` (`[ThreatInc] Instant war:`) lists each system with its core distance,
+always, without Verbose Logging. Phase is capability, so with the defaults expect phase 3
+as soon as the home forge's hull supply reads stable, and first strikes on the first tick.
+
+To verify: new game with the switch on, wait a day, open the war board - expect 5-10 hive
+rows, 2-4 with a core distance under 15 LY, every faction on the selector, garrisons in
+orbit in any hive system, and strikes mustering within the first month.

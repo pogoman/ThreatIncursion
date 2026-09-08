@@ -65,6 +65,8 @@ public class ThreatAidRequests {
 						ThreatAidMissionIntel.KIND_DEFEND, null) == null) {
 					if (ThreatAidMissionIntel.postDefend(market) != null) posted++;
 				}
+				// goods need a depot to land in; a guard fleet does not
+				if (!ThreatReserves.hasDepot(market)) continue;
 				for (String c : ThreatReserves.COMMODITIES) {
 					if (posted >= cap) return;
 					if (!shortageStanding(market, c)) continue;

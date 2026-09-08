@@ -95,6 +95,25 @@ following: mechanics as knobs now, tuning after the in-game check.
   and buys time for the counterstroke. That is orthodox, and it is why the hive's
   counter-attack cadence scaled by health is the right coupling (a starved hive cannot
   mount the counterstroke that culmination promises the defender).
+- **Saturation bombardment is off by default (2026-09-05), and the strike doctrine is now
+  symmetric.** The old Threat strike was a bombardment: one pass wounded a world, or
+  erased one already ground to the destroy threshold. That broke every principle above at
+  once. It was *decision-free* - nothing the defender did between the strike launching and
+  the pass landing changed the outcome, so the sector's biggest event had no counterplay
+  and no story, only a die roll on whether the swarm reached you. It was *asymmetric* in
+  the worst direction: the player had spent the whole ground-war rework learning that
+  colonies die on the ground and never from orbit, and then watched the swarm do the one
+  thing the rules said was impossible. And it made the strike *terminal rather than
+  positional* - there was no siege to relieve, no front to counter-attack, nothing to
+  culminate, so none of Clausewitz, Corbett or Blackett had any purchase on the sector's
+  central threat. Replacing the pass with soften-land-reinforce buys all of it back:
+  orbit superiority over your own world is now a live Corbettian objective (contest it and
+  nothing lands), the swarm's own offensive culminates when its 90 days of armaments run
+  out with no convoy behind it, and defense in depth cuts both ways - your strata strip the
+  swarm's ground exactly as its strata strip yours. The knob
+  (`strikeSaturationEnabled`, default false) restores the old behaviour for anyone who
+  wants the sector to feel arbitrary and doomed rather than contested; it is not the
+  design. See docs/ground-war.md, "Threat ground assaults".
 
 ## 4. Naval doctrine: orbit, convoys, interception
 
@@ -260,7 +279,8 @@ gone.
 
 **Mechanic: the front is a reserve consumer.**
 - **Supply runs**: the convoy planner treats a friendly front (`front.factionId`) as a
-  destination. Target = `frontResupplyDays` (60) x `dailyUpkeep(market)` armaments on
+  destination. Target = `frontResupplyDays` (60) x the burn of the army the run leaves
+  behind (current marines, or `frontReinforceFraction` of peak if higher) armaments on
   hand, plus marines to bring the front back to `frontReinforceFraction` (0.8) of its
   landing strength. Donor = the faction's nearest staging base (its reserve, which colony
   convoys refill) - a two-hop chain, colony -> base -> front, each hop interceptable.
@@ -345,7 +365,10 @@ then postpone forever.
 **Mechanic.**
 - `reserveFloorFraction` (0.25): draws for expeditions and orders never take a base below
   this fraction of its cap - the home garrison's stock. Convoys respect the donor keep
-  fraction already. **Fixed 2026-09-05:** the floor stands on the largest cap the depot
+  fraction already. The player's own colonies use `playerReserveFloorFraction` (0,
+  2026-09-05 evening): the user's orders may commit the whole stock - "totally fine for
+  them to commit their whole regiment if I want them to"; the cost is the colony's own
+  ground defence, which counts its stockpiled marines. **Fixed 2026-09-05:** the floor stands on the largest cap the depot
   has banked towards (`ColonyReserve.capSeen`), not the live cap - the live cap is the
   current surplus, which is zero the moment the colony is in deficit, so the floor used
   to vanish exactly when a struck world needed it. The rule-3 shortage cover now

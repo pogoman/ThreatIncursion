@@ -17,7 +17,7 @@ import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * One marker per infested system: appears under the "Threat Incursion" intel
+ * One marker per infested system: appears under the "Abyssal War" intel
  * tab and as an icon on the sector map at the system's location, so the
  * spread is visible at a glance.
  */
@@ -34,8 +34,10 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 	}
 
 	/**
-	 * Kept for the commission machinery and as a map anchor, but no longer
-	 * listed: The Threat War Effort board covers everything these entries said.
+	 * Kept as a map anchor, but no longer listed: The Abyssal War board
+	 * covers everything these entries said, and sieges are ordered from its
+	 * faction view (the purge commission that lived here was removed
+	 * 2026-09-05 - it was a second UI over the same launch as the Siege order).
 	 */
 	@Override
 	public boolean isHidden() {
@@ -267,9 +269,6 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 			}
 		}
 
-		// ---- player-commissioned purge expedition ----
-		addCommissionSection(info, width, opad);
-
 		// ---- debug mode: full per-colony economic vitals + purge tool ----
 		if (ThreatIncConfig.debugMode() && ThreatIncData.STAGE_COLONY.equals(stage)) {
 			info.addSectionHeading("DEBUG - hive vitals", com.fs.starfarer.api.ui.Alignment.MID, opad);
@@ -304,208 +303,8 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 	}
 
 	protected static final String BUTTON_PURGE = "threatinc_debug_purge";
-	protected static final String BUTTON_COMMISSION = "threatinc_commission_purge";
-
-	/**
-	 * The player's mirror of tryPurgeBombardments: from a player military
-	 * colony within response range, hire the exact expedition NPC navies run -
-	 * sized to the job (target colonies + live garrisons) and priced by fleet
-	 * points plus distance. Everything is recomputed live wherever it's shown
-	 * or spent, so the quoted bill, the confirmation, and the launch always
-	 * agree with the current state of the system.
-	 */
-	protected void addCommissionSection(TooltipMakerAPI info, float width, float opad) {
-		addCommissionSectionFor(this, info, width, opad, systemId, BUTTON_COMMISSION);
-	}
-
-	/**
-	 * Everything the commission needs, recomputed live from the system's
-	 * current state. Null when the system holds no live colony; {@code base}
-	 * null when no player military colony is in range.
-	 */
-	public static class CommissionQuote {
-		public StarSystemAPI system;
-		public MarketAPI base;
-		public java.util.List<MarketAPI> targets;
-		public java.util.List<Integer> fleetSizes;
-		public boolean anyGarrisoned;
-		public int difficulty;
-		/** Ground strength the flotilla is expected to land, and what the defenses demand. */
-		public float raidStrEstimate;
-		public float raidStrNeeded;
-		public ThreatPurgeFGI existing;
-	}
-
-	public static CommissionQuote quote(String systemId) {
-		if (systemId == null) return null;
-		if (!ThreatIncData.STAGE_COLONY.equals(ThreatIncData.stages().get(systemId))) return null;
-		StarSystemAPI system = ThreatWarBoard.getSystem(systemId);
-		if (system == null) return null;
-		java.util.List<MarketAPI> targets = IncursionManager.collectSiegeTargets(null, system);
-		if (targets.isEmpty()) return null;
-
-		CommissionQuote q = new CommissionQuote();
-		q.system = system;
-		q.targets = targets;
-		q.base = IncursionManager.findPlayerExpeditionBase(system);
-		q.existing = IncursionManager.findPlayerExpeditionAgainst(systemId);
-		if (q.base == null) return q;
-		q.anyGarrisoned = IncursionManager.anyTargetGarrisoned(targets);
-		boolean heavyAssault = q.anyGarrisoned && anyTargetEntrenched(targets);
-		q.difficulty = IncursionManager.computeSiegeDifficulty(targets, q.anyGarrisoned);
-		q.fleetSizes = IncursionManager.siegeFleetSizes(q.difficulty, q.anyGarrisoned,
-				heavyAssault, targets);
-		q.raidStrEstimate = IncursionManager.siegeRaidStrEstimate(q.fleetSizes);
-		q.raidStrNeeded = IncursionManager.siegeRaidStrNeeded(targets);
-		return q;
-	}
-
-	/**
-	 * The commission section, usable from any intel: the owner supplies the
-	 * button styling and receives the press under {@code buttonId}.
-	 */
-	public static void addCommissionSectionFor(BaseIntelPlugin owner, TooltipMakerAPI info,
-			float width, float opad, String systemId, Object buttonId) {
-		if (!ThreatIncConfig.enabled() || !ThreatIncConfig.commissionEnabled()) return;
-		CommissionQuote q = quote(systemId);
-		if (q == null) return;
-
-		Color h = Misc.getHighlightColor();
-		Color neg = Misc.getNegativeHighlightColor();
-		Color gray = Misc.getGrayColor();
-
-		info.addSectionHeading("Commission a purge expedition",
-				com.fs.starfarer.api.ui.Alignment.MID, opad);
-
-		if (q.base == null) {
-			info.addPara("None of your colonies with a military structure (Patrol HQ, "
-					+ "Military Base, or High Command) can reach this system: expeditions range "
-					+ "%s light-years per unit of fuel they carry - the smaller of the fuel "
-					+ "available at the colony and what its fleets can lift - the same rule the "
-					+ "swarm's strikes run on.", opad, h,
-					"" + (int) ThreatIncConfig.strikeLYPerFuel());
-			return;
-		}
-
-		float dist = Misc.getDistanceLY(q.base.getStarSystem().getLocation(),
-				q.system.getLocation());
-
-		info.addPara("Your colony %s (" + (int) Math.ceil(dist) + " light-years out) can "
-				+ "muster a %s expedition sized to this system's defenses"
-				+ (q.anyGarrisoned ? " - including escorts to fight through the live "
-						+ "Defense Swarms" : "")
-				+ ". It runs the full siege playbook autonomously and reports back when "
-				+ "done. It draws its troops, armaments, fuel and supplies from that colony's "
-				+ "reserve and holds its fleet capacity until the campaign is over.",
-				opad, h, q.base.getName(), q.fleetSizes.size() + "-fleet");
-		boolean enough = q.raidStrEstimate >= q.raidStrNeeded;
-		info.addPara("Landing force: about %s ground strength against the %s a commando raid "
-				+ "needs to disrupt an organ here"
-				+ (enough ? "." : " - the most your colony can field, and short of it: expect "
-						+ "the tactical bombardment to land and the raids to be repulsed."),
-				3f, enough ? h : Misc.getNegativeHighlightColor(),
-				Misc.getWithDGS(Math.round(q.raidStrEstimate)), Misc.getWithDGS(Math.round(q.raidStrNeeded)));
-
-		com.fs.starfarer.api.ui.ButtonAPI button = owner.addGenericButton(info, width,
-				"Commission purge expedition", buttonId);
-
-		if (q.existing != null) {
-			button.setEnabled(false);
-			info.addPara("An expedition you commissioned is already operating against this "
-					+ "system.", 3f, gray);
-		}
-	}
-
-	/** The confirmation dialog text for a commission against a system. */
-	public static void addCommissionPrompt(TooltipMakerAPI prompt, String systemId) {
-		CommissionQuote q = quote(systemId);
-		if (q == null || q.base == null) {
-			prompt.addPara("The situation has changed - the expedition can no longer be "
-					+ "mustered.", 0f);
-			return;
-		}
-		prompt.addPara("Commission a " + q.fleetSizes.size() + "-fleet purge expedition from "
-				+ q.base.getName() + " against the " + q.targets.size() + " Threat "
-				+ (q.targets.size() > 1 ? "colonies" : "colony") + " of the "
-				+ q.system.getNameWithLowercaseType() + "? Its troops, armaments, fuel and "
-				+ "supplies come from %s's reserve.", 0f,
-				Misc.getHighlightColor(), q.base.getName());
-		prompt.addPara("Once mustered, the expedition is autonomous - it campaigns on its "
-				+ "own and holds the colony's fleet capacity until it is over, even if the "
-				+ "colonies are destroyed by other means first.",
-				Misc.getGrayColor(), 10f);
-	}
-
-	/**
-	 * Launches; authoritative recomputation at launch time. No credits: the
-	 * expedition is paid by the base's reserve and its fleet capacity, as the
-	 * board's Siege button is (decided 2026-09-05).
-	 * @return true if an expedition was mustered
-	 */
-	public static boolean commissionExpedition(String systemId) {
-		CommissionQuote q = quote(systemId);
-		if (q == null || q.base == null || q.existing != null) return false;
-
-		ThreatPurgeFGI launched = IncursionManager.launchSiegeExpedition(q.base,
-				Global.getSector().getPlayerFaction(), q.system, q.targets, q.fleetSizes,
-				true, new java.util.Random());
-		if (launched == null) {
-			// a mobilised player faction draws real troops from the base's
-			// reserve (docs/strategy-layer.md); short of them, no landing force
-			// can be raised
-			float[] wants = IncursionManager.expeditionWants(q.base, q.system, q.targets,
-					q.fleetSizes);
-			ThreatColonyManager.announceAlways("No expedition could be raised at "
-					+ q.base.getName() + ": its reserve holds "
-					+ (int) ThreatReserves.stock(q.base.getId(),
-							com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES)
-					+ " marines against the " + (int) wants[0] + " the landing needs. "
-					+ "Stage more there first.", Misc.getNegativeHighlightColor());
-			return false;
-		}
-
-		ThreatColonyManager.announceAlways("A purge expedition you commissioned is "
-				+ "mustering at " + q.base.getName() + ", bound for the "
-				+ q.system.getNameWithLowercaseType() + ".", Misc.getHighlightColor());
-		ThreatIncConfig.log("Player commissioned purge expedition vs " + q.system.getName()
-				+ " from " + q.base.getName() + " - " + q.fleetSizes.size()
-				+ " fleets, difficulty " + q.difficulty);
-		return true;
-	}
-
-	/**
-	 * Whether any target colony is big enough that the expedition sails with
-	 * the second escort fleet - same bar as the NPC heavy-assault rule (above
-	 * the preemptive-purge size).
-	 */
-	protected static boolean anyTargetEntrenched(java.util.List<MarketAPI> targets) {
-		for (MarketAPI target : targets) {
-			if (target.getSize() > ThreatIncConfig.purgePreemptMaxSize()) return true;
-		}
-		return false;
-	}
-
-	@Override
-	public boolean doesButtonHaveConfirmDialog(Object buttonId) {
-		if (BUTTON_COMMISSION.equals(buttonId)) return true;
-		return super.doesButtonHaveConfirmDialog(buttonId);
-	}
-
-	@Override
-	public void createConfirmationPrompt(Object buttonId, TooltipMakerAPI prompt) {
-		if (!BUTTON_COMMISSION.equals(buttonId)) {
-			super.createConfirmationPrompt(buttonId, prompt);
-			return;
-		}
-		addCommissionPrompt(prompt, systemId);
-	}
-
 	@Override
 	public void buttonPressConfirmed(Object buttonId, com.fs.starfarer.api.ui.IntelUIAPI ui) {
-		if (BUTTON_COMMISSION.equals(buttonId)) {
-			commissionExpedition(ui);
-			return;
-		}
 		if (BUTTON_PURGE.equals(buttonId)) {
 			ThreatColonyManager.purgeSystemDebug(systemId);
 			endAfterDelay(0.1f);
@@ -513,11 +312,6 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 			return;
 		}
 		super.buttonPressConfirmed(buttonId, ui);
-	}
-
-	protected void commissionExpedition(com.fs.starfarer.api.ui.IntelUIAPI ui) {
-		commissionExpedition(systemId);
-		ui.updateUIForItem(this);
 	}
 
 	// NOTE: no getArrowData here on purpose. Vanilla uses map arrows solely to

@@ -24,7 +24,7 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 	public static final String KEY = "$threatinc_intel";
 
 	/** Custom intel tag: gives the incursion its own tab in the intel screen. */
-	public static final String TAG_THREAT = "Threat Incursion";
+	public static final String TAG_THREAT = "Abyssal War";
 
 	/** The system whose drill-down the war board shows; null = the top-ranked one. */
 	protected String selectedSystemId;
@@ -46,6 +46,48 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	public void setSelectedFactionId(String factionId) {
 		selectedFactionId = factionId;
+	}
+
+	/** The siege-force tier the board's Siege buttons commit: 0 min (the need), 1 med, 2 max (docs/player-aid.md). */
+	protected int siegeTier;
+
+	/** The load tier the board's front Supply buttons run: 0 min (what the front wants), 1 med, 2 max. */
+	protected int supplyTier;
+
+	/** The load tier the board's colony Supplies and Aid buttons carry: 0 min (the shortfall), 1 med, 2 max. */
+	protected int convoyTier;
+
+	public int getSiegeTier() {
+		return siegeTier;
+	}
+
+	public void setSiegeTier(int tier) {
+		siegeTier = tier;
+	}
+
+	public int getSupplyTier() {
+		return supplyTier;
+	}
+
+	public void setSupplyTier(int tier) {
+		supplyTier = tier;
+	}
+
+	public int getConvoyTier() {
+		return convoyTier;
+	}
+
+	public void setConvoyTier(int tier) {
+		convoyTier = tier;
+	}
+
+	/** The tier index a ladder button's id carries, or 0 if it carries nothing readable. */
+	protected static int tierOf(String id, String prefix) {
+		try {
+			return Integer.parseInt(id.substring(prefix.length()));
+		} catch (NumberFormatException e) {
+			return 0;
+		}
 	}
 
 	public static ThreatIncursionIntel get() {
@@ -86,7 +128,7 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	@Override
 	public String getName() {
-		return "The Threat War Effort";
+		return "The Abyssal War";
 	}
 
 	@Override
@@ -98,7 +140,7 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	/**
 	 * A major event, and only that: the war board lives beside the colony
-	 * crises, not in the per-system Threat Incursion tab it summarizes.
+	 * crises, not in the per-system Abyssal War tab it summarizes.
 	 */
 	@Override
 	public Set<String> getIntelTags(SectorMapAPI map) {
@@ -131,17 +173,16 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	@Override
 	public void createIntelInfo(TooltipMakerAPI info, ListInfoMode mode) {
-		Color tc = getTitleColor(mode);
-		info.addPara(getName(), tc, 0f);
-
-		Color t = Misc.getTextColor();
-		Color h = Misc.getHighlightColor();
-		info.addPara("Known infested systems: %s", 3f, t, h,
-				"" + knownInfestedSystemIds().size());
+		// the row is the title and nothing else, in vanilla's own list font
+		// (BaseEventIntel.createIntelInfo does exactly this), so the entry reads
+		// at the same size as Colony Crises beside it
+		info.setParaSmallInsignia();
+		info.addPara(getName(), getTitleColor(mode), 0f);
+		info.setParaFontDefault();
 	}
 
 	// ------------------------------------------------------------------
-	// The Threat War Effort - the full-width board (see ThreatWarBoard)
+	// The Abyssal War - the full-width board (see ThreatWarBoard)
 	// ------------------------------------------------------------------
 
 	@Override
@@ -225,8 +266,6 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	@Override
 	public boolean doesButtonHaveConfirmDialog(Object buttonId) {
-		if (buttonId instanceof String
-				&& ((String) buttonId).startsWith(ThreatWarBoard.BUTTON_COMMISSION)) return true;
 		if (buttonId instanceof String && ThreatFactionView.isOrderButton((String) buttonId)) {
 			return true;
 		}
@@ -235,14 +274,8 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	@Override
 	public void createConfirmationPrompt(Object buttonId, TooltipMakerAPI prompt) {
-		if (buttonId instanceof String
-				&& ((String) buttonId).startsWith(ThreatWarBoard.BUTTON_COMMISSION)) {
-			InfestedSystemIntel.addCommissionPrompt(prompt,
-					((String) buttonId).substring(ThreatWarBoard.BUTTON_COMMISSION.length()));
-			return;
-		}
 		if (buttonId instanceof String && ThreatFactionView.isOrderButton((String) buttonId)) {
-			ThreatFactionView.addOrderPrompt(prompt, (String) buttonId);
+			ThreatFactionView.addOrderPrompt(prompt, (String) buttonId, this);
 			return;
 		}
 		super.createConfirmationPrompt(buttonId, prompt);
@@ -260,8 +293,25 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 			ui.updateUIForItem(this);
 			return;
 		}
+		// the ladders are view toggles like the faction selector: set the tier,
+		// re-render, no Confirm (doesButtonHaveConfirmDialog leaves it to the default)
+		if (id.startsWith(ThreatFactionView.BUTTON_SIEGE_TIER)) {
+			siegeTier = tierOf(id, ThreatFactionView.BUTTON_SIEGE_TIER);
+			ui.updateUIForItem(this);
+			return;
+		}
+		if (id.startsWith(ThreatFactionView.BUTTON_SUPPLY_TIER)) {
+			supplyTier = tierOf(id, ThreatFactionView.BUTTON_SUPPLY_TIER);
+			ui.updateUIForItem(this);
+			return;
+		}
+		if (id.startsWith(ThreatFactionView.BUTTON_CONVOY_TIER)) {
+			convoyTier = tierOf(id, ThreatFactionView.BUTTON_CONVOY_TIER);
+			ui.updateUIForItem(this);
+			return;
+		}
 		if (ThreatFactionView.isOrderButton(id)) {
-			String result = ThreatFactionView.executeOrder(id);
+			String result = ThreatFactionView.executeOrder(id, this);
 			ThreatIncConfig.log("Board order " + id + " -> " + result);
 			ui.updateUIForItem(this);
 			return;
@@ -291,23 +341,6 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 			}
 			return;
 		}
-		if (id.startsWith(ThreatWarBoard.BUTTON_MISSION)) {
-			// show just this system's missions in the list and select the first: selecting an
-			// item hidden by the current tab filter is a no-op, a custom subset is not
-			java.util.List<com.fs.starfarer.api.campaign.comm.IntelInfoPlugin> missions =
-					ThreatWarBoard.missionsForSystem(id.substring(ThreatWarBoard.BUTTON_MISSION.length()));
-			if (!missions.isEmpty()) {
-				ui.updateIntelList(false, missions);
-				ui.selectItem(missions.get(0));
-			}
-			return;
-		}
-		if (id.startsWith(ThreatWarBoard.BUTTON_COMMISSION)) {
-			InfestedSystemIntel.commissionExpedition(
-					id.substring(ThreatWarBoard.BUTTON_COMMISSION.length()));
-			ui.updateUIForItem(this);
-			return;
-		}
 		super.buttonPressConfirmed(buttonId, ui);
 	}
 
@@ -334,7 +367,7 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 				info.addPara(BULLET + name, 3f, neg, name);
 			}
 			info.addPara("Only what you have found is listed here. The full reach of the "
-					+ "incursion is unknown.", opad, h, "unknown");
+					+ "war is unknown.", opad, h, "unknown");
 		}
 
 		int cleansed = ThreatIncData.getCleansedCount();

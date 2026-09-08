@@ -8,6 +8,7 @@ import org.json.JSONObject;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
+import com.fs.starfarer.api.campaign.CargoAPI;
 import com.fs.starfarer.api.campaign.CustomCampaignEntityAPI;
 import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.PlanetAPI;
@@ -15,6 +16,7 @@ import com.fs.starfarer.api.campaign.SectorEntityToken;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
+import com.fs.starfarer.api.campaign.econ.SubmarketAPI;
 import com.fs.starfarer.api.fleet.FleetMemberAPI;
 import com.fs.starfarer.api.fleet.FleetMemberType;
 import com.fs.starfarer.api.impl.campaign.fleets.FleetFactoryV3;
@@ -25,6 +27,8 @@ import com.fs.starfarer.api.impl.campaign.ids.Entities;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.FleetTypes;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
+import com.fs.starfarer.api.impl.campaign.ids.Submarkets;
+import com.fs.starfarer.api.impl.campaign.submarkets.StoragePlugin;
 import com.fs.starfarer.api.loading.IndustrySpecAPI;
 import com.fs.starfarer.api.util.Misc;
 
@@ -43,7 +47,24 @@ import com.fs.starfarer.api.util.Misc;
  * from the reserve of its nearest base, and builds them on its own on the
  * slow tick. Style follows the faction: whatever station line its own
  * colonies use, else low-tech for the Hegemony and the Luddics, high-tech for
- * Tri-Tachyon, midline for everyone else.
+ * Tri-Tachyon, midline for everyone else. A GROUND VICTORY raises one free
+ * ({@code outpostOnVictory}): the force that took the world holds it.
+ *
+ * <p>An outpost has a STOCKPILE - a {@link ThreatReserves} entry keyed by its
+ * station entity id - so it is a base the war layer can ship from and to
+ * ({@link ThreatBases}): a front's survivors are banked in it, front runs in
+ * its own system load and unload there, and when the world is colonised the
+ * stock comes ashore with the station.
+ *
+ * <p>The PLAYER'S outpost keeps that stockpile in a real cargo (decided
+ * 2026-09-06): a storage-only market on the station, vanilla's abandoned-
+ * station recipe ({@code Misc.setAbandonedStationMarket}) - no economy, no
+ * industries, not in the economy list, just a Storage submarket the player
+ * docks at ({@link ThreatOutpostDialog}). {@link ThreatReserves#backing}
+ * treats it exactly as it treats a colony's resource stockpile, so the board,
+ * convoys and fronts read and write the same cargo the player sees. The
+ * station is its own depot: convoys land and task forces hold its orbit with
+ * no Waystation asked ({@link ThreatReserves#hasDepot(ThreatBases.Base)}).
  */
 public class ThreatOutposts {
 
@@ -118,6 +139,133 @@ public class ThreatOutposts {
 			if (factionId == null || factionId.equals(o.factionId)) result.add(o);
 		}
 		return result;
+	}
+
+	/** A living outpost of this faction in this system, or null. */
+	public static Outpost outpostIn(String factionId, StarSystemAPI system) {
+		if (system == null) return null;
+		for (Outpost o : all()) {
+			if (!o.alive() || o.entity == null) continue;
+			if (factionId != null && !factionId.equals(o.factionId)) continue;
+			if (system.getId().equals(o.systemId)) return o;
+		}
+		return null;
+	}
+
+	// ------------------------------------------------------------------
+	// the stockpile (docs/strategy-layer.md): an outpost is a base
+	// ------------------------------------------------------------------
+
+	/**
+	 * An outpost's stockpile is an ordinary {@link ThreatReserves} entry keyed
+	 * by its station ENTITY id instead of a market id - it has no market, but
+	 * the reserve map never needed one. It banks nothing on its own (no
+	 * economy to bank from) and carries no War footing, so it holds only what
+	 * was carried or won there, and it has no garrison floor: all of it is
+	 * available. {@link ThreatBases} is the handle that treats it as a base.
+	 */
+	public static String stockId(Outpost o) {
+		return o == null || o.entity == null ? null : o.entity.getId();
+	}
+
+	/** The outpost whose stockpile this reserve key belongs to, or null. */
+	public static Outpost byStockId(String entityId) {
+		if (entityId == null) return null;
+		for (Outpost o : all()) {
+			if (entityId.equals(stockId(o))) return o;
+		}
+		return null;
+	}
+
+	/** What the outpost holds of a reserve commodity. */
+	public static float stock(Outpost o, String commodityId) {
+		return ThreatReserves.stock(stockId(o), commodityId);
+	}
+
+	public static void deposit(Outpost o, String commodityId, float amount) {
+		ThreatReserves.deposit(stockId(o), commodityId, amount);
+	}
+
+	/** Takes up to {@code amount} from the stockpile (no floor); returns what was taken. */
+	public static float draw(Outpost o, String commodityId, float amount) {
+		String id = stockId(o);
+		return id == null ? 0f : ThreatReserves.draw(id, commodityId, amount);
+	}
+
+	/** Whether the outpost holds anything at all. */
+	public static boolean hasStock(Outpost o) {
+		for (String c : ThreatReserves.COMMODITIES) {
+			if (stock(o, c) > 0f) return true;
+		}
+		return false;
+	}
+
+	// ------------------------------------------------------------------
+	// the player's storage: the stockpile the player can dock at
+	// ------------------------------------------------------------------
+
+	/** The storage-only market on the station (player outposts), or null. */
+	public static MarketAPI storeMarket(Outpost o) {
+		if (o == null || o.entity == null) return null;
+		MarketAPI m = o.entity.getMarket();
+		if (m == null || m.getSubmarket(Submarkets.SUBMARKET_STORAGE) == null) return null;
+		return m;
+	}
+
+	/**
+	 * The cargo that IS this outpost's stockpile (the station's Storage), or
+	 * null when the ledger holds it (an NPC outpost). Stock the ledger still
+	 * carries for a player outpost - a save from before the storage existed -
+	 * moves into the cargo the first time it is asked for.
+	 */
+	public static CargoAPI storage(Outpost o) {
+		MarketAPI m = storeMarket(o);
+		if (m == null) return null;
+		SubmarketAPI sub = m.getSubmarket(Submarkets.SUBMARKET_STORAGE);
+		if (sub == null || sub.getCargo() == null) return null;
+		CargoAPI cargo = sub.getCargo();
+		ThreatReserves.ColonyReserve r = ThreatReserves.get(stockId(o));
+		if (r != null) {
+			for (String c : ThreatReserves.COMMODITIES) {
+				float held = ThreatReserves.read(r, c);
+				if (held <= 0f) continue;
+				cargo.addCommodity(c, held);
+				ThreatReserves.write(r, c, 0f);
+				ThreatIncConfig.log("Outpost: " + o.planetName() + " moves " + (int) held + " "
+						+ ThreatReserves.label(c) + " from the ledger into its storage");
+			}
+			ThreatReserves.clear(stockId(o));
+		}
+		return cargo;
+	}
+
+	/**
+	 * Gives a player outpost its storage if it has none: vanilla's
+	 * abandoned-station market (neutral, size 0, never in the economy, one
+	 * Storage submarket already paid for) on the station entity. Idempotent;
+	 * nothing for an NPC outpost, whose stock stays on the ledger.
+	 */
+	public static void ensureStorage(Outpost o) {
+		if (o == null || o.entity == null || !o.alive()) return;
+		if (!Global.getSector().getPlayerFaction().getId().equals(o.factionId)) return;
+		if (storeMarket(o) != null) return;
+		try {
+			String name = o.entity.getName();
+			MarketAPI market = Global.getFactory().createMarket(o.entity.getId() + "_store", name, 0);
+			market.setSurveyLevel(MarketAPI.SurveyLevel.FULL);
+			market.setPrimaryEntity(o.entity);
+			market.setFactionId(Factions.NEUTRAL);
+			market.addSubmarket(Submarkets.SUBMARKET_STORAGE);
+			market.setPlanetConditionMarketOnly(false);
+			SubmarketAPI sub = market.getSubmarket(Submarkets.SUBMARKET_STORAGE);
+			if (sub != null && sub.getPlugin() instanceof StoragePlugin) {
+				((StoragePlugin) sub.getPlugin()).setPlayerPaidToUnlock(true);
+			}
+			o.entity.setMarket(market);
+			ThreatIncConfig.log("Outpost storage opened at " + o.planetName());
+		} catch (Throwable t) {
+			ThreatIncConfig.log("Outpost: could not open storage at " + o.planetName() + ": " + t);
+		}
 	}
 
 	/**
@@ -207,7 +355,7 @@ public class ThreatOutposts {
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
 		for (MarketAPI market : ThreatReserves.marketsOf(faction.getId())) {
-			if (market.getStarSystem() == null || !IncursionManager.hasMilitary(market)) continue;
+			if (market.getStarSystem() == null || !IncursionManager.isBase(market)) continue;
 			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(),
 					planet.getLocationInHyperspace());
 			if (d > IncursionManager.expeditionRangeLY(market) || d >= bestDist) continue;
@@ -244,7 +392,28 @@ public class ThreatOutposts {
 			ThreatReserves.drawAbove(base, Commodities.SUPPLIES, cost[0]);
 			ThreatReserves.drawAbove(base, Commodities.FUEL, cost[1]);
 		}
+		return raise(faction, planet, "paid from " + base.getName());
+	}
 
+	/**
+	 * An outpost at NO cost - the ground victory's prize
+	 * ({@code outpostOnVictory}, {@link ThreatGroundFronts}). The force that
+	 * took the world is already in orbit over it; holding what it won costs
+	 * nothing more, and its survivors become the new station's stockpile. No
+	 * base in reach is needed: the fleet that won the siege is the base.
+	 */
+	public static Outpost buildFree(FactionAPI faction, SectorEntityToken planet) {
+		if (!ThreatIncConfig.outpostsEnabled() || faction == null) return null;
+		if (!(planet instanceof PlanetAPI)) return null;
+		if (!eligible((PlanetAPI) planet)) return null;
+		return raise(faction, (PlanetAPI) planet, "free - ground victory");
+	}
+
+	/**
+	 * Raises the station itself, the payment already settled (or waived).
+	 * Vanilla's OrbitalStation.spawnStation recipe.
+	 */
+	protected static Outpost raise(FactionAPI faction, PlanetAPI planet, String paidNote) {
 		String specId = specIdFor(faction);
 		IndustrySpecAPI spec = Global.getSettings().getIndustrySpec(specId);
 		String variantId = "station1_Standard";
@@ -312,19 +481,22 @@ public class ThreatOutposts {
 		o.specId = specId;
 		o.builtTimestamp = Global.getSector().getClock().getTimestamp();
 		all().add(o);
+		ensureStorage(o);
 
 		String who = faction.isPlayerFaction() ? "Your" : Misc.ucFirst(faction.getDisplayNameWithArticle());
 		ThreatColonyManager.announceAlways(who + " " + fleetName.toLowerCase() + " now stands over "
 				+ planet.getName() + " - the swarm cannot seed the world again while it holds.",
 				Misc.getPositiveHighlightColor());
 		ThreatIncConfig.log("Outpost built: " + faction.getId() + " " + specId + " at "
-				+ planet.getName() + " (paid from " + base.getName() + ")");
+				+ planet.getName() + " (" + paidNote + ")");
 		return o;
 	}
 
-	/** Removes an outpost (decommissioned by order, or its station died). */
+	/** Removes an outpost (decommissioned by order, or its station died). Its stockpile is lost with it. */
 	public static void remove(Outpost o, String why) {
 		all().remove(o);
+		ThreatReserves.clear(stockId(o));
+		if (o.entity != null && o.entity.getMarket() != null) o.entity.setMarket(null);
 		if (o.fleet != null && o.fleet.getContainingLocation() != null) {
 			o.fleet.getContainingLocation().removeEntity(o.fleet);
 		}
@@ -346,7 +518,10 @@ public class ThreatOutposts {
 		if (all().isEmpty()) return;
 		for (Outpost o : new ArrayList<Outpost>(all())) {
 			if (o.alive() && carryOver(o)) continue;
-			if (o.alive()) continue;
+			if (o.alive()) {
+				ensureStorage(o); // a player outpost from before the storage existed
+				continue;
+			}
 			String who = ThreatWarState.displayName(o.factionId);
 			ThreatColonyManager.announce(who + "'s outpost over " + o.planetName()
 					+ " has been destroyed.", Misc.getNegativeHighlightColor());
@@ -383,12 +558,27 @@ public class ThreatOutposts {
 			Industry ind = market.getIndustry(specId);
 			if (ind != null && ind.isBuilding()) ind.finishBuildingOrUpgrading();
 		}
+		// the stockpile comes ashore with the station: whatever the outpost was
+		// holding is the new colony's reserve (remove() would otherwise drop it)
+		String from = stockId(o);
+		int moved = 0;
+		if (from != null) {
+			for (String c : ThreatReserves.COMMODITIES) {
+				float amount = ThreatReserves.draw(from, c, ThreatReserves.stock(from, c));
+				if (amount <= 0f) continue;
+				ThreatReserves.deposit(market.getId(), c, amount);
+				moved += (int) amount;
+			}
+		}
 		String who = o.factionId.equals(Global.getSector().getPlayerFaction().getId()) ? "Your"
 				: ThreatWarState.displayName(o.factionId) + "'s";
 		ThreatColonyManager.announceAlways(who + " outpost over " + o.planetName()
 				+ " is absorbed into the new colony" + (hasStation ? "." : " as its "
-				+ specId.replace('_', ' ') + "."), Misc.getPositiveHighlightColor());
-		remove(o, "colony founded - station inherited" + (hasStation ? " (colony already had one)" : ""));
+				+ specId.replace('_', ' ') + ".")
+				+ (moved > 0 ? " Its stockpile passes to the colony's reserve." : ""),
+				Misc.getPositiveHighlightColor());
+		remove(o, "colony founded - station inherited" + (hasStation ? " (colony already had one)" : "")
+				+ (moved > 0 ? ", " + moved + " units of stock carried over" : ""));
 		return true;
 	}
 

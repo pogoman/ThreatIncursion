@@ -1,6 +1,6 @@
 # Knowledge base
 
-Notes written while building The Threat War Effort intel screen (Sept 2026).
+Notes written while building The Abyssal War intel screen (Sept 2026).
 Everything here was verified in the running game unless marked otherwise.
 
 | Doc | What it covers |
