@@ -1,13 +1,13 @@
 [center][size=20pt][b]The Abyssal War[/b][/size]
-[i]v0.5.0 - the war has a map - for Starsector 0.98a-RC8[/i][/center]
+[i]v0.6.0 - the war layer - for Starsector 0.98a-RC8[/i][/center]
 
 [hr]
 
 [size=14pt][b]Download[/b][/size]
 
-[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.5.0/ThreatIncursion-0.5.0.zip]ThreatIncursion-0.5.0.zip[/url]
+[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.6.0/AbyssalWar-0.6.0.zip]AbyssalWar-0.6.0.zip[/url]
 
-Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher.
+Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher. It extracts to [tt]mods/ThreatIncursion[/tt] - overwrite your existing folder rather than keeping both. Saves made with Threat Incursion carry over: the mod id has not changed.
 
 [hr]
 
@@ -32,36 +32,109 @@ The locations of the threat wont be revealed to you until you discover the syste
 [size=14pt][b]Claude's explanation[/b][/size]
 
 [list]
-[li][b]The Abyssal War[/b] - a permanent intel screen ranking every infested system by urgency: vitality, garrisons, reach, strikes out, sieges in, production, Purge and mission buttons.[/li]
-[li]Systems you have not found are listed as [i]Unknown[/i] - figures shown, location hidden.[/li]
-[li]Per-world cards with a [i]Colony[/i] button that opens vanilla's own colony screen.[/li]
-[li]The Threat founds real colonies that mine, refine, forge and grow in a closed hive economy that builds every fleet they field.[/li]
-[li]That economy is vanilla's: each world draws from its single best source, so one producer feeds the whole hive - the hive builds spare refineries, forges and fuel plants across systems, and cutting a resource means cutting every copy.[/li]
-[li]The home system carries Domain relics (Pristine Nanoforge, Mantle Bore, Synchrotron, ...) that feed the entire network - the hub worth taking, and the loot for taking it.[/li]
-[li]Hive ports are Spaceports; a disrupted port cuts the world's shipping to a trickle and starves it.[/li]
-[li]Every input counts in Hive Vitality, rare ore and rare metals included.[/li]
-[li]Reach is fuel and fleets for everyone: 4 ly per unit of fuel a colony's fleets can carry, hive and factions alike. Cut the hive's fuel and the swarm stops.[/li]
-[li]Hive worlds run three organs: Fabrication Core (growth, machinery), Swarm Nexus (Defense Swarms, expeditions), marine-free defenses fed on metals and machinery.[/li]
-[li]Expeditions are mustered from a colony's own Defense Swarms - kill its swarms and you have grounded it; a fleet still fabricating in orbit can be stopped at the staging colony.[/li]
+[li]The Threat colonizes the sector: real colonies that mine, refine, forge and grow.[/li]
+[li]One hive economy feeds every fleet they field; cut a resource and every copy starves.[/li]
+[li]Expeditions muster from a colony's own Defense Swarms - ground them and it cannot strike.[/li]
 [li]Worlds the swarm destroys, it colonizes.[/li]
-[li]Colonies die only through decline: suppress or starve the organs below 35% vitality until the population collapses. No bombardment reduces population.[/li]
-[li]Disrupted defenses and organs wear down with the disruption days on their clock - repeated raids lower the defense figure, the raid odds and the bombardment bill.[/li]
-[li]NPC purges and commissioned expeditions are sized to the target's defenses; the commission quote shows the landing force against what a raid needs before you pay.[/li]
-[li]Raids land on whatever hurts the hive most on that world - Core, Nexus, an importing port, or the hive's best source of a resource.[/li]
-[li]After-action sitreps arrive the moment operations end, every blow dated.[/li]
-[li]Defense-board contracts are ordinary missions from phase 3: immediate and strategic tiers, accept or ignore, a clock once taken.[/li]
-[li]Every economy, reach, siege and decline number is configurable via LunaLib (Shift+F2) or [tt]data/config/settings.json[/tt].[/li]
-[li]For Starsector 0.98a-RC8. Vanilla-only, LunaLib optional. Safe to add to an existing save; removing it mid-war breaks the save.[/li]
+[li]The Abyssal War board ranks every known system by urgency, with orders on every row.[/li]
+[li]Hives die by ground war, not timers: land marines, take the strata, kill the Core.[/li]
+[li]Your worlds are invaded too: garrison, fortification and marines all bleed.[/li]
+[li]Factions mobilise when struck: war mode, banked reserves, convoys you can escort or raid.[/li]
+[li]Order your own navy from the board: guard, stage, intercept, support, siege, recall.[/li]
+[li]Send aid to any faction, by fleet or handed over in person.[/li]
+[li]Outposts over uncolonised worlds deny the swarm ground and hold your salvage.[/li]
+[li]Alarm and grudge: the swarm answers whoever hurts it most.[/li]
 [/list]
 
+For Starsector 0.98a-RC8. Vanilla-only, LunaLib optional. Safe to add mid-save; removing it mid-war breaks the save. Every number is configurable via LunaLib (Shift+F2) or [tt]data/config/settings.json[/tt].
+
 [center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/Picture15.png[/img][/center]
+
+[hr]
+
+[size=14pt][b]Changelog[/b][/size]
+
+[b]0.6.0 - the war layer[/b]
+[spoiler]
+Threat Incursion is now The Abyssal War. The mod id is unchanged, so existing saves keep working.
+
+[b]Ground war[/b]
+[list]
+[li]Eradication is a ground campaign, not a decline timer: land marines, take the strata, kill the Fabrication Core.[/li]
+[li]Ground fronts push, dig in or withdraw; armaments burn per marine per day, so what a front carries is how long it lasts.[/li]
+[li]Fronts push the moment troops land at holding strength; a dug-in front stays dug in until the next landing.[/li]
+[li]Sieges fight for the orbit first. Bombardment wears fortification to a floor and no further - a front on the ground takes it the rest of the way.[/li]
+[li]Threat strikes land fronts of their own on inhabited worlds, dig in, then make a final push.[/li]
+[li]Colony defense is garrison troops times fortification, each worn down separately, with an orbital floor under the structures.[/li]
+[li]Marines arm over weeks, take casualties, count toward counter-attacks, and carry veterancy both ways with your fleet's marine pool.[/li]
+[li]Support and Defend fleet orders: hold the orbit, run the siege slice, or fight only while the front cannot hold.[/li]
+[li]A Defend fleet at the orbital floor can break up its own hulls into troops for the front.[/li]
+[li]Planetary shields buy real cover against orbital bombardment.[/li]
+[li]The hive scours an unopposed enemy front after three days.[/li]
+[/list]
+
+[b]Strategy layer[/b]
+[list]
+[li]NPC factions enter war mode when the Threat strikes them; you mobilise or stand down yourself.[/li]
+[li]Every colony banks a visible reserve of marines, heavy armaments, fuel and supplies.[/li]
+[li]Convoys carry that stock physically - escort them, or let the swarm's raiders have them.[/li]
+[li]Fleet orders from the board: guard, stage, intercept, support, defend, siege, recall.[/li]
+[li]Guarding your own colony stages the fleet there: its strength counts at the host and folds into sorties.[/li]
+[li]Faction view shows any mobilised faction's colonies, reserves and fleets, with a totals row and a colour key.[/li]
+[li]Min / Med / Max load ladders on sieges, supply runs and convoy loads.[/li]
+[li]Recalled and expired fleets sail home and return their surviving cargo.[/li]
+[li]Sieges are leashed to the contested orbit; strays are recalled instead of chasing across the sector.[/li]
+[/list]
+
+[b]Player aid and outposts[/b]
+[list]
+[li]NPC factions are autonomous now: you aid them, you do not command them.[/li]
+[li]Send Defend, Resupply, Reinforce or Strike from your own colonies, gated by a capacity ledger and reserve stock, earning standing on arrival.[/li]
+[li]Factions post their needs as ordinary missions - deliver by colony fleet, or in person at the dock.[/li]
+[li]Allies send each other aid by standing, without you.[/li]
+[li]Build an outpost over any uncolonised world, or take one free by ground victory. Dock at it for storage, or decommission it.[/li]
+[li]A later colony on that world inherits the outpost.[/li]
+[/list]
+
+[b]Economy[/b]
+[list]
+[li]War reserves are the colony's real resource stockpile, not a separate hidden ledger.[/li]
+[li]Mobilised colonies carry the War Footing condition, so the war shows as genuine demand and a real shortage on the colony screen.[/li]
+[li]Depots cover the colony's own shortages before they fund anything else.[/li]
+[li]Convoys land as trade at the receiving colony.[/li]
+[li]Bases need a Waystation; NPC mobilisation builds them.[/li]
+[/list]
+
+[b]Escalation[/b]
+[list]
+[li]Grudge and alarm: the swarm answers whoever hurts it most, and alarm speeds hive fabrication.[/li]
+[li]A ground victory draws retaliation from the nearest hive.[/li]
+[li]Coalition fleets answer a mobilised faction's call during a siege.[/li]
+[li]Defense Swarms detach to raid convoys, then return to their garrison.[/li]
+[/list]
+
+[b]Board[/b]
+[list]
+[li]Ground Fronts table, per system, with order buttons on every front.[/li]
+[li]Per-fleet rows with Recall and Intercept.[/li]
+[li]Colony rows open vanilla's own colony screen.[/li]
+[li]Purge commissions removed; sieges launch from the faction view.[/li]
+[li]Tooltips rewritten: one line per fact, and every button says what pressing it does - or why it cannot be pressed.[/li]
+[li]The intel list row reads at vanilla's own size now, next to Colony Crises.[/li]
+[/list]
+
+[b]Testing[/b]
+[list]
+[li]Instant War (LunaLib, Debug): stands up a mature sector-wide war on a fresh save in one toggle.[/li]
+[/list]
+[/spoiler]
 
 [hr]
 [center][size=14pt][b]Recommended mod collection for ultimate late game experience[/b][/size][/center]
 [center][i]Standalone, safe to add mid-save, can be run together or separately.[/i][/center]
 
 [list]
-[*][b][url=https://fractalsoftworks.com/forum/index.php?topic=35955]The Abyssal War[/url][/b] — the threat colonizes the sector and invades the core worlds. Disrupt their supply chains and besiege the entrenched hives into decline.
+[*][b][url=https://fractalsoftworks.com/forum/index.php?topic=35955]The Abyssal War[/url][/b] — the Threat colonizes the sector and invades the core worlds. Cut their supply chains, then take the hives on the ground.
 [*][b][url=https://fractalsoftworks.com/forum/index.php?topic=35957]Commerce Wars[/url][/b] — dominate a faction's markets or the military balance and they push back: ultimatums, tribute, enforcement fleets.
 [*][b][url=https://fractalsoftworks.com/forum/index.php?topic=35956]Piracy Reworked[/url][/b] — the underworld runs on your money: black-market trade funds a self-sustaining pirate war economy.
 [*][b][url=https://fractalsoftworks.com/forum/index.php?topic=35940]Remnant Retribution[/url][/b] — a late-game colony crisis.
