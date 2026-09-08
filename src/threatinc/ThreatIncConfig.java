@@ -35,6 +35,23 @@ public class ThreatIncConfig {
 		return Global.getSettings().getFloat(key);
 	}
 
+	private static String s(String key, String def) {
+		if (lunaAvailable()) {
+			try {
+				String v = LunaConfigBridge.getString(key);
+				if (v != null) return v;
+			} catch (Throwable t) {
+				// an older LunaLib without string fields: fall through
+			}
+		}
+		try {
+			String v = Global.getSettings().getString(key);
+			return v != null ? v : def;
+		} catch (Throwable t) {
+			return def;
+		}
+	}
+
 	private static boolean b(String key, boolean def) {
 		if (lunaAvailable()) {
 			Boolean v = LunaConfigBridge.getBoolean(key);
@@ -67,6 +84,8 @@ public class ThreatIncConfig {
 	public static int chainRedundancy()      { return i("threatinc_chainRedundancy"); }
 	public static int colonizationEscort()   { return i("threatinc_colonizationEscort"); }
 	public static float garrisonRespawnDays(){ return f("threatinc_garrisonRespawnDays"); }
+	/** Military options menu: how far (su) from a hive's world a defending swarm fleet can be engaged from its orbit; any swarm fleet inside also counts as a defender. */
+	public static float defendRadius()      { return f("threatinc_defendRadius"); }
 	/** Whether colonies redistribute Defense Swarms to reinforce worn-down siblings. */
 	public static boolean reinforceEnabled()  { return b("threatinc_reinforceEnabled", true); }
 	/** Max reinforcement swarms dispatched per colony poll (~half a day). */
@@ -80,6 +99,13 @@ public class ThreatIncConfig {
 	public static float siegeRaidStrPerPoint() { return f("threatinc_siegeRaidStrPerPoint"); }
 	/** Most fleets a siege expedition grows to while sizing itself to the target's defenses. */
 	public static int siegeMaxFleets()       { return i("threatinc_siegeMaxFleets"); }
+	/** Siege passes (tactical bombardment / landing / commando raid) an expedition may run per colony. */
+	public static int siegePassesPerColony() { return i("threatinc_siegePassesPerColony"); }
+	public static boolean siegeFightsForOrbit() { return b("threatinc_siegeFightsForOrbit", true); }
+	/** How far from a contested world an expedition fleet may hunt for its orbit. */
+	public static float siegeHuntRange()     { return f("threatinc_siegeHuntRange"); }
+	/** How far from its nearest target an expedition fleet may stray before it is recalled. */
+	public static float siegeLeashRange()    { return f("threatinc_siegeLeashRange"); }
 	/** Chance that a forge outside the home system's Pristine one carries a Corrupted Nanoforge (fixed roll per world). */
 	public static float forgeNanoforgeChance() { return f("threatinc_forgeNanoforgeChance"); }
 	/** Fraction of the vanilla Core-distance accessibility penalty to cancel for hive colonies (0 = keep it, 1 = remove it). */
@@ -123,6 +149,74 @@ public class ThreatIncConfig {
 		return f("threatinc_groundDefenseMult");
 	}
 
+	// ---- Threat strike doctrine (docs/ground-war.md "Threat ground assaults") ----
+
+	/** Whether Threat strikes still saturation-bomb (the pre-ground-front doctrine). Default OFF. */
+	public static boolean strikeSaturationEnabled() {
+		return b("threatinc_strikeSaturationEnabled", false);
+	}
+	/** Whether a Threat strike lands a Threat-owned ground front once the defenses are softened. */
+	public static boolean strikeGroundFrontsEnabled() {
+		return b("threatinc_strikeGroundFrontsEnabled", true);
+	}
+	/** Passes a Threat expedition delivers per world: one softens, one lands the world's share of the pool, any more top it up. */
+	public static int strikePassesPerColony() { return i("threatinc_strikePassesPerColony"); }
+	/** The troop pool a strike carries, per difficulty point of the swarms it musters - fixed at launch. */
+	public static float strikeTroopsPerPoint() { return f("threatinc_strikeTroopsPerPoint"); }
+	/** A world's share of the pool is never below this: a small strike lands fewer worlds, not token forces. */
+	public static int strikeFrontMinTroops()  { return i("threatinc_strikeFrontMinTroops"); }
+	/** Days of armaments a Threat landing carries (it is never resupplied from a base). */
+	public static float strikeFrontSupplyDays() { return f("threatinc_strikeFrontSupplyDays"); }
+	/** How much of a colony's banked reserve marines defend the ground against a front. */
+	public static float reserveDefenseMult()  { return f("threatinc_reserveDefenseMult"); }
+	/** Counter-attack cadence bonus for a colony with a military industry. */
+	public static float colonyCounterAttackMilitaryMult() {
+		return f("threatinc_colonyCounterAttackMilitaryMult");
+	}
+
+	// ---- sieges from orbit (docs/ground-war.md "Sieges from orbit") ----
+
+	/** Disruption days at which a colony's defence structure contributes nothing (its bonus scales down linearly to it). */
+	public static float fortificationDisruptDays() { return f("threatinc_fortificationDisruptDays"); }
+	/** Fraction of a suppressed structure's bonus orbit alone cannot take away, hive or colony; 0 once a front stands on the world. */
+	public static float fortificationOrbitFloor() { return f("threatinc_fortificationOrbitFloor"); }
+	/** Disruption days per day an unopposed siege fleet adds to a colony's fortifications at overwhelming strength, scaled by fleet / (fleet + defence). */
+	public static float siegeSuppressDaysPerDay() { return f("threatinc_siegeSuppressDaysPerDay"); }
+	/** The same, over a hive's war-strata (their clock is defenseWearDays). */
+	public static float hiveSiegeSuppressDaysPerDay() { return f("threatinc_hiveSiegeSuppressDaysPerDay"); }
+	/** Days of siege one tactical bombardment by the player stands for. */
+	public static float siegeBombardSliceDays() { return f("threatinc_siegeBombardSliceDays"); }
+
+	/** Whether a planetary shield absorbs part of the disruption a bombardment lands on everything else. */
+	public static boolean shieldAbsorbEnabled() { return b("threatinc_shieldAbsorbEnabled", true); }
+	/** Fraction of incoming disruption a fully intact planetary shield turns aside; scales down with its own disruption clock. */
+	public static float shieldAbsorbMax()     { return f("threatinc_shieldAbsorbMax"); }
+	/** Disruption a planetary shield takes itself, as a multiple of what a fortification would take from the same pass. */
+	public static float shieldSoakMult()      { return f("threatinc_shieldSoakMult"); }
+	/** What a planetary shield adds to the garrison at full condition; 0 removes vanilla's x3 outright. */
+	public static float shieldDefenseBonus()  { return f("threatinc_shieldDefenseBonus"); }
+
+	/** Fleet points are multiplied by this before being weighed against the ground-defence figure. */
+	public static float siegeFPWeight()       { return f("threatinc_siegeFPWeight"); }
+	/** Fraction of an orbiting fleet's points the colony's batteries destroy per day at even odds. */
+	public static float siegeBatteryAttritionPerDay() { return f("threatinc_siegeBatteryAttritionPerDay"); }
+	/** Days a strike expedition holds orbit over a system before giving its siege up. */
+	public static float siegeOrbitDays()      { return f("threatinc_siegeOrbitDays"); }
+	/** Strike-target weight multiplier for a world whose Threat front is dry and signalling for the next expedition. */
+	public static float strikeReinforceWeight() { return f("threatinc_strikeReinforceWeight"); }
+	/** Days a dry Threat front holds for the next expedition before its final push. */
+	public static float frontDryFinalPushDays() { return f("threatinc_frontDryFinalPushDays"); }
+	/** Stability lost per district an invader holds. */
+	public static float districtStabilityPenalty() { return f("threatinc_districtStabilityPenalty"); }
+	/** Accessibility lost per district an invader holds. */
+	public static float districtAccessPenalty() { return f("threatinc_districtAccessPenalty"); }
+	/** Disruption days a seized civilian industry is pinned at while the invader holds its district. */
+	public static float districtSeizeDays()   { return f("threatinc_districtSeizeDays"); }
+	/** Whether a Threat ground victory seeds a hive on the spot (off: the world decivilises). */
+	public static boolean conquestConverts()  { return b("threatinc_conquestConverts", true); }
+	/** Size of the hive seeded on a conquered world. */
+	public static int conquestHiveSize()      { return i("threatinc_conquestHiveSize"); }
+
 	// ---- hive sieges ----
 
 	/** Flat ground-defense points per colony size (before industry multipliers). */
@@ -133,9 +227,7 @@ public class ThreatIncConfig {
 	public static float heavyBatteriesBonus() { return f("threatinc_heavyBatteriesBonus"); }
 	/** Swarm Nexus defense bonus: defense mult = 1 + bonus (x1.5 at 0.5). */
 	public static float nexusDefenseBonus()   { return f("threatinc_nexusDefenseBonus"); }
-	/** Fraction of a defense structure's bonus that survives a fresh disruption. */
-	public static float disruptedDefenseFraction() { return f("threatinc_disruptedDefenseFraction"); }
-	/** Disruption days on a structure's clock at which its surviving bonus has worn to nothing (0 = no wear). */
+	/** Disruption days on a structure's clock at which its bonus has worn to nothing (0 = no wear); the hive's fortification clock. */
 	public static float defenseWearDays()     { return f("threatinc_defenseWearDays"); }
 	/** Scale on the saturation fuel bill (1.0 = exactly the defense strength). */
 	public static float hiveBombardCostMult() { return f("threatinc_hiveBombardCostMult"); }
@@ -143,17 +235,19 @@ public class ThreatIncConfig {
 	public static float hiveTacCostFraction() { return f("threatinc_hiveTacCostFraction"); }
 	/** Days of disruption a saturation pass inflicts on hive industries. */
 	public static float hiveSatDisruptDays()  { return f("threatinc_hiveSatDisruptDays"); }
-	/** Days of disruption a tactical pass inflicts on hive defense structures. */
+	/** Days of disruption a danger-close tactical pass writes to a hive's Core and port (the war-strata take the siege slice). */
 	public static float hiveTacDisruptDays()  { return f("threatinc_hiveTacDisruptDays"); }
 	/** Marine-loss multiplier when raiding hive worlds. */
 	public static float hiveMarineLossMult()  { return f("threatinc_hiveMarineLossMult"); }
-	/** Resilience above which an NPC siege keeps tactical-bombing before it raids. */
-	public static float siegeDefenseSoftenFloor() { return f("threatinc_siegeDefenseSoftenFloor"); }
 
 	// ---- ground fronts (docs/ground-war.md) ----
 
 	/** Master switch for the ground-front siege mechanic. */
 	public static boolean frontsEnabled()     { return b("threatinc_frontsEnabled", true); }
+	/** Troops that land push: a front at holding strength assaults as soon as it is on the ground. */
+	public static boolean frontAutoPush()     { return b("threatinc_frontAutoPush", true); }
+	/** Whether a front holding no ground breaks off its assault and digs in when an assault would get it overrun. */
+	public static boolean frontBraceEnabled() { return b("threatinc_frontBraceEnabled", true); }
 	/** Effective strength (marines x entrenchment) as a fraction of the defense figure needed to HOLD (suppress every key structure). */
 	public static float frontHoldFraction()   { return f("threatinc_frontHoldFraction"); }
 	/** Fraction of the defense figure needed to GRIND (harass only the defense structures, at the reduced rate below). */
@@ -166,20 +260,53 @@ public class ThreatIncConfig {
 	public static float frontMarineLossPer30Days() { return f("threatinc_frontMarineLossPer30Days"); }
 	/** Attrition multiplier once the heavy armaments run out. */
 	public static float frontUnsuppliedLossMult() { return f("threatinc_frontUnsuppliedLossMult"); }
-	/** Heavy armaments consumed per colony size per 30 days - the front's upkeep. */
-	public static float frontArmamentsPerSizePer30Days() { return f("threatinc_frontArmamentsPerSizePer30Days"); }
+	/** Heavy armaments consumed per marine per 30 days - the front's upkeep. */
+	public static float frontArmamentsPerMarinePer30Days() { return f("threatinc_frontArmamentsPerMarinePer30Days"); }
 	/** Days of entrenchment to reach the full effectiveness multiplier. */
 	public static float frontEntrenchDays()   { return f("threatinc_frontEntrenchDays"); }
 	/** Effectiveness multiplier of a fully entrenched front. */
 	public static float frontEntrenchMaxMult() { return f("threatinc_frontEntrenchMaxMult"); }
+	/** Effectiveness multiplier of a fresh landing, before any entrenchment. */
+	public static float frontLandingMult()    { return f("threatinc_frontLandingMult"); }
+	/** Fraction of its entrenchment a front keeps when it takes a stratum or is battered by a counter-attack. */
+	public static float frontEntrenchKeptFraction() { return f("threatinc_frontEntrenchKeptFraction"); }
 	/** Marines below which a front collapses outright. */
 	public static float frontMinMarines()     { return f("threatinc_frontMinMarines"); }
+	/** Band a front must fall below a threshold before it gives the state back up - stops flapping now the defence figure bleeds. */
+	public static float frontStateHysteresis() { return f("threatinc_frontStateHysteresis"); }
+
+	// ---- marines: garrison, casualties and veterancy (docs/ground-war.md) ----
+
+	/** Weight the colony's stockpiled marines enter a COUNTER-ATTACK at; they defend at full weight either way. */
+	public static float marineCounterAttackMult() { return f("threatinc_marineCounterAttackMult"); }
+	/** Most the force ratio may speed up (or slow) a colony's counter-attack cadence; 1 disables the tempo term. */
+	public static float counterAttackRatioClamp() { return f("threatinc_counterAttackRatioClamp"); }
+	/** Days a colony takes to call up, arm and post its whole marine stockpile; marines shipped in mid-siege ramp in over this. */
+	public static float marineArmingDays()    { return f("threatinc_marineArmingDays"); }
+	/** Fraction of a colony's armed marines lost each time it counter-attacks, win or lose. */
+	public static float defenderCounterAttackLossFraction() { return f("threatinc_defenderCounterAttackLossFraction"); }
+	/** Fraction of a colony's armed marines lost per 30 days while a front presses it at full strength. */
+	public static float defenderLossPer30Days() { return f("threatinc_defenderLossPer30Days"); }
+	/** Strength bonus of a fully elite pool (vanilla's own figure is 1.0, ie +100%). */
+	public static float marineVeterancyEffectMax() { return f("threatinc_marineVeterancyEffectMax"); }
+	/** Casualty reduction of a fully elite pool (vanilla's own figure is 0.5, ie half losses). */
+	public static float marineVeterancyLossReduction() { return f("threatinc_marineVeterancyLossReduction"); }
+	/** Experience multiplier per ground action, on vanilla's raid figure - what a fight teaches the side that was outmatched. */
+	public static float marineXpPerBattle()   { return f("threatinc_marineXpPerBattle"); }
+	/** Veterancy level an NPC or Threat landing musters at (0 = raw, 1 = elite). */
+	public static float npcLandingVeterancy() { return f("threatinc_npcLandingVeterancy"); }
+	/** Whether landings inherit the player fleet's marine rank, write it back on withdrawal, and read the ground skills. */
+	public static boolean marineFleetXpTransfer() { return b("threatinc_marineFleetXpTransfer", true); }
 	/** Whether a tactical pass with a front deployed costs front marines (and cracks the deep organs in exchange). */
 	public static boolean frontDangerCloseEnabled() { return b("threatinc_frontDangerCloseEnabled", true); }
 	/** Fraction of the front's marines lost to a danger-close tactical pass. */
 	public static float frontDangerCloseLossFraction() { return f("threatinc_frontDangerCloseLossFraction"); }
 	/** Days saturation fallout blocks landing ground forces (keep >= hiveSatDisruptDays or sat bombing becomes the best siege opener). */
 	public static float falloutDays()         { return f("threatinc_falloutDays"); }
+	/** Fraction of an enemy front's troops the swarm kills per 30 days while it holds the orbit over its own hive unopposed. */
+	public static float swarmFrontBombardPer30Days() { return f("threatinc_swarmFrontBombardPer30Days"); }
+	/** Minimum total Threat fleet points in orbit for the swarm to hold it (a bombardment is a fleet operation, not a lone frigate). */
+	public static float swarmOrbitMinFleetFP() { return f("threatinc_swarmOrbitMinFleetFP"); }
 
 	// ---- stratum campaign: pushes, counter-attacks, eradication ----
 
@@ -191,6 +318,10 @@ public class ThreatIncConfig {
 	public static float frontPushUpkeepMult() { return f("threatinc_frontPushUpkeepMult"); }
 	/** Effectiveness multiplier of a dry (no armaments) front. */
 	public static float frontDryEffectivenessMult() { return f("threatinc_frontDryEffectivenessMult"); }
+	/** Whether the SWARM's own ground fronts burn heavy armaments and take the dry penalties. False (2026-09-08): nothing can resupply them, so they do not fight on armaments at all. */
+	public static boolean threatFrontNeedsArms() { return b("threatinc_threatFrontNeedsArms", false); }
+	/** Casualty multiplier on a Threat front while it is PUSHING - what it pays instead of starving, now that it can fabricate replacements. */
+	public static float threatPushLossMult()  { return f("threatinc_threatPushLossMult"); }
 	/** Defense multiplier of an entrenched (non-pushing) front against counter-attacks. */
 	public static float frontEntrenchDefenseBonus() { return f("threatinc_frontEntrenchDefenseBonus"); }
 	/** Days a front consolidates at each stratum checkpoint before pushing on by doctrine. */
@@ -252,7 +383,6 @@ public class ThreatIncConfig {
 	// ---- player-commissioned expeditions ----
 
 	/** Whether the player can commission purge expeditions from military colonies (paid by the base's reserve and capacity, no credits). */
-	public static boolean commissionEnabled()   { return b("threatinc_commissionEnabled", true); }
 
 	// ---- Remnant immune system ----
 
@@ -265,6 +395,20 @@ public class ThreatIncConfig {
 	public static boolean strategyEnabled()  { return b("threatinc_strategyEnabled", true); }
 	/** Days after its last strike a faction stands down (if no hive is in reach); 0 = never. */
 	public static float warModeStandDownDays() { return f("threatinc_warModeStandDownDays"); }
+	/**
+	 * Faction ids that never mobilise (comma-separated; "pirates" by default):
+	 * the Threat still strikes their worlds and they stay hostile to it, but
+	 * they raise no task forces, sieges, convoys or fronts and keep no war
+	 * reserve - vanilla raiders, not a navy (decided 2026-09-05).
+	 */
+	public static java.util.List<String> warExcludedFactions() {
+		java.util.List<String> ids = new java.util.ArrayList<String>();
+		for (String part : s("threatinc_warExcludedFactions", "pirates").split(",")) {
+			String id = part.trim();
+			if (id.length() > 0) ids.add(id);
+		}
+		return ids;
+	}
 	/** Reserve banked per 30 days per unit of vanilla SURPLUS (availability above demand): surplus units x the commodity's econ unit x this (docs/economy-coherence.md rule 1). */
 	public static float reserveSurplusMult() { return f("threatinc_reserveSurplusMult"); }
 	/** Vanilla demand units the War footing condition adds at colony size 5 (scaled by size / 5, rounded up); 0 = none (rule 2). */
@@ -277,14 +421,22 @@ public class ThreatIncConfig {
 	public static float reserveCapMonths()    { return f("threatinc_reserveCapMonths"); }
 	/** Months of production each colony holds the moment its faction mobilises. */
 	public static float reserveInitialMonths() { return f("threatinc_reserveInitialMonths"); }
-	/** Fraction of a colony's cap that expeditions and sorties never draw it below (the home garrison's stock). */
+	/** Fraction of an NPC colony's cap that expeditions and sorties never draw it below (the home garrison's stock). */
 	public static float reserveFloorFraction() { return f("threatinc_reserveFloorFraction"); }
+	/** The same floor for the player's own colonies; 0 (default) lets the player's orders commit everything. */
+	public static float playerReserveFloorFraction() { return f("threatinc_playerReserveFloorFraction"); }
 	/** Militia marines every colony accrues per size per 30 days, regardless of industry. */
 	public static float reserveBaselinePerSize() { return f("threatinc_reserveBaselinePerSize"); }
+	/** A base needs a functional Waystation (a hive world its Swarm Nexus) to stage, sail, send or receive. */
+	public static boolean baseRequiresWaystation() { return b("threatinc_baseRequiresWaystation", true); }
+	/** An NPC faction's mobilisation builds a Waystation at every military world with a spaceport. */
+	public static boolean mobilisationBuildsWaystation() { return b("threatinc_mobilisationBuildsWaystation", true); }
 	/** Exponent on every ground-war strength ratio: 1 = linear (default), 2 = Lanchester square law. */
 	public static float groundStrengthExponent() { return f("threatinc_groundStrengthExponent"); }
 	/** Fraction of the marines an expedition wants that its base must hold, or it waits. */
 	public static float expeditionMinMarinesFraction() { return f("threatinc_expeditionMinMarinesFraction"); }
+	/** Marines the player's "Extra" siege tier commits, as a multiple of the computed landing need (the "Siege" tier). */
+	public static float siegeExtraMarinesFactor() { return f("threatinc_siegeExtraMarinesFactor"); }
 	/** Fuel an expedition draws per fleet point per light-year. */
 	public static float expeditionFuelPerPointLY() { return f("threatinc_expeditionFuelPerPointLY"); }
 	/** Supplies an expedition draws per fleet point. */
@@ -299,6 +451,8 @@ public class ThreatIncConfig {
 	public static float convoyMarineCapacity() { return f("threatinc_convoyMarineCapacity"); }
 	/** Cargo units (armaments, fuel, supplies) one convoy carries at most. */
 	public static float convoyCargoCapacity() { return f("threatinc_convoyCargoCapacity"); }
+	/** Load the board's "Med" tier asks for, as a multiple of what the front or colony is short of. */
+	public static float convoyExtraLoadFactor() { return f("threatinc_convoyExtraLoadFactor"); }
 	/** Base combat fleet points escorting a convoy. */
 	public static float convoyEscortFP()      { return f("threatinc_convoyEscortFP"); }
 	/** Extra escort fleet points per 1,000 of cargo value (marines 1, armaments 0.5, fuel/supplies 0.1). */
@@ -331,12 +485,37 @@ public class ThreatIncConfig {
 	public static float convoyTimeoutDays()   { return f("threatinc_convoyTimeoutDays"); }
 	/** Whether the war board's fleet orders (guard, stage, intercept, siege, recall) are offered. */
 	public static boolean ordersEnabled()     { return b("threatinc_ordersEnabled", true); }
-	/** Combat fleet points of a guard or intercept task force. */
+	/** Combat fleet points of an NPC guard or intercept task force, and the free points a player colony needs to be picked first as a source; a player task force sails with everything its colony has free. */
 	public static float guardFleetFP()        { return f("threatinc_guardFleetFP"); }
 	/** Days a guard task force holds a colony's orbit. */
 	public static float guardDays()           { return f("threatinc_guardDays"); }
+	/** Days a task force guarding one of the player's own colonies stays; 0 = until recalled, staged there with its points the colony's to send out. */
+	public static float guardOwnDays()        { return f("threatinc_guardOwnDays"); }
 	/** Days an intercept task force holds a hive system's jump-point. */
 	public static float interceptDays()       { return f("threatinc_interceptDays"); }
+	/** Whether Support sorties (holding a besieged world's orbit and suppressing it) are offered and flown. Key kept from the order's old name. */
+	public static boolean supportEnabled()    { return b("threatinc_escortEnabled", true); }
+	/** Days a Support task force holds a besieged world's orbit. */
+	public static float supportDays()         { return f("threatinc_escortDays"); }
+	/** Whether Defend sorties (holding a world's orbit, bombarding only while the faction's front there cannot hold) are offered and flown. */
+	public static boolean defendEnabled()     { return b("threatinc_defendEnabled", true); }
+	/** Days a Defend task force holds a world's orbit. */
+	public static float defendDays()          { return f("threatinc_defendDays"); }
+	/** Whether an expedition fleet that has landed or reinforced a front stays over it on Defend (and one with nothing left to land joins it). */
+	public static boolean landingDefendEnabled() { return b("threatinc_landingDefendEnabled", true); }
+	/** A landing's Defend stands down once the batteries have ground the fleet below this fraction of its strength. */
+	public static float defendMinStrength()   { return f("threatinc_defendMinStrength"); }
+	/** Whether a Defend fleet with nothing left to bombard breaks up its own hulls into troops for its front (docs/ground-war.md "Fabricating troops from the fleet"). */
+	public static boolean fabricateEnabled()  { return b("threatinc_fabricateEnabled", true); }
+	/** Troops landed per fleet point of hulls broken up. */
+	public static float fabricateTroopsPerFP(){ return f("threatinc_fabricateTroopsPerFP"); }
+	/** How far past the hold line fabrication aims, so the front does not oscillate on the boundary. */
+	public static float fabricateHoldMargin() { return f("threatinc_fabricateHoldMargin"); }
+	/** Days of armaments a batch of fabricated troops brings down with it. */
+	public static float fabricateSupplyDays() { return f("threatinc_fabricateSupplyDays"); }
+	public static boolean orbitFleetsHunt()   { return b("threatinc_orbitFleetsHunt", false); }
+	/** Defenders at a world hold its orbit against a faction while their points are at least this fraction of that faction's warships there; nothing friendly there, and any defender holds it. */
+	public static float orbitContestFraction() { return f("threatinc_orbitContestFraction"); }
 	/** Fraction of the fuel and supplies drawn at launch refunded when a fleet returns home at full strength. */
 	public static float returnRefundMult()    { return f("threatinc_returnRefundMult"); }
 
@@ -417,6 +596,8 @@ public class ThreatIncConfig {
 
 	/** Whether outposts can be built on purged worlds. */
 	public static boolean outpostsEnabled()   { return b("threatinc_outpostsEnabled", true); }
+	/** Whether a ground victory raises a free outpost over the dead world for the winner. */
+	public static boolean outpostOnVictory()  { return b("threatinc_outpostOnVictory", true); }
 	/** Station tier: 1 orbital station, 2 battlestation, 3 star fortress. */
 	public static int outpostTier()           { return i("threatinc_outpostTier"); }
 	/** Credits the player pays for an outpost. */
@@ -443,6 +624,17 @@ public class ThreatIncConfig {
 	public static boolean debugFastClock()   { return b("threatinc_debugFastClock", false); }
 	public static boolean debugGrantSensorMods() { return b("threatinc_debugGrantSensorMods", false); }
 	public static boolean debugReset()       { return b("threatinc_debugReset", false); }
+	// instant war (ThreatDebugWar): a connected network of mature hive systems
+	// founded at once and every faction mobilised, to test the war on a fresh save
+	public static boolean debugInstantWar()        { return b("threatinc_debugInstantWar", false); }
+	public static int debugInstantWarSystemsMin()  { return i("threatinc_debugInstantWarSystemsMin"); }
+	public static int debugInstantWarSystemsMax()  { return i("threatinc_debugInstantWarSystemsMax"); }
+	public static int debugInstantWarCoreMin()     { return i("threatinc_debugInstantWarCoreMin"); }
+	public static int debugInstantWarCoreMax()     { return i("threatinc_debugInstantWarCoreMax"); }
+	public static float debugInstantWarLinkLY()    { return f("threatinc_debugInstantWarLinkLY"); }
+	public static float debugInstantWarCoreLY()    { return f("threatinc_debugInstantWarCoreLY"); }
+	public static int debugInstantWarHomeSize()    { return i("threatinc_debugInstantWarHomeSize"); }
+	public static int debugInstantWarColonySize()  { return i("threatinc_debugInstantWarColonySize"); }
 
 	public static void log(String msg) {
 		if (debugLogging()) {

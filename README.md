@@ -1,4 +1,4 @@
-# Threat Incursion
+# The Abyssal War
 
 A standalone sector-doom mod for Starsector 0.98a. The Threat - the abyssal
 fabricator swarms from the vanilla endgame content - does not stay in the
@@ -81,7 +81,7 @@ enable in the launcher.
 
 - Starsector 0.98a-RC8
 - Vanilla-only; LunaLib optional (in-game config menu for everything)
-- Safe to add to an existing save; removing mid-incursion breaks the save
+- Safe to add to an existing save; removing mid-war breaks the save
 
 ## Building
 

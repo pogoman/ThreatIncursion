@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.fs.starfarer.api.Global;
+import com.fs.starfarer.api.impl.campaign.ids.Factions;
 
 /**
  * ESCALATION - the swarm answers who hurts it (docs/design-theory.md 8.1).
@@ -62,6 +63,10 @@ public class ThreatAlarm {
 
 	public static void add(String factionId, float points, String reason) {
 		if (!enabled() || factionId == null || points <= 0f) return;
+		// the swarm holds no grudge against itself: a Threat front taking strata
+		// on a human world is not a hive being hurt (the one choke point, so no
+		// caller has to know whose front it is)
+		if (Factions.THREAT.equals(factionId)) return;
 		float g = grudge(factionId) + points;
 		grudges().put(factionId, g);
 		ThreatIncConfig.log("Alarm: +" + points + " " + factionId + " (" + reason + ") -> grudge "

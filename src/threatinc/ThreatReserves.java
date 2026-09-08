@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.fs.starfarer.api.Global;
+import com.fs.starfarer.api.campaign.CargoAPI;
+import com.fs.starfarer.api.campaign.SubmarketPlugin;
 import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
@@ -13,12 +15,26 @@ import com.fs.starfarer.api.combat.MutableStat.StatMod;
 import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
+import com.fs.starfarer.api.impl.campaign.ids.Industries;
+import com.fs.starfarer.api.impl.campaign.ids.Submarkets;
+import com.fs.starfarer.api.impl.campaign.submarkets.LocalResourcesSubmarketPlugin;
+import com.fs.starfarer.api.util.Misc;
 
 /**
  * Per-colony faction RESERVES (docs/strategy-layer.md): the stock of marines,
  * heavy armaments, fuel and supplies a mobilised faction's colony holds for
  * the war. Everything the faction commits - expedition landing forces, task
  * force provisioning, convoy cargo - is drawn from here.
+ *
+ * <p>A PLAYER colony's reserve IS its vanilla resource stockpile (the
+ * local-resources submarket the colony screen shows, 2026-09-05): stock is
+ * read from and written to that cargo, so what the player leaves there is
+ * the reserve and what a sortie takes leaves it. Vanilla fills it from the
+ * colony's production and excess (a Waystation raises the fuel, supply and
+ * crew rates) and spends it on shortages under the player's own "use
+ * stockpiles" toggle; the mod adds only the militia marines. NPC colonies
+ * have no visible stockpile, so theirs stays the ledger below, banked from
+ * surplus by the same rule vanilla stockpiles by. {@link #backing} decides.
  *
  * <p>The reserve is ONE truth with vanilla's colony screen
  * (docs/economy-coherence.md, the seven rules). It is banked only from the
@@ -69,6 +85,33 @@ public class ThreatReserves {
 		 * reads zero (see {@link #floor}). Null on older saves.
 		 */
 		public Map<String, Float> capSeen;
+		/**
+		 * Veterancy pool of the colony's marines, on vanilla's shape: an
+		 * absolute figure clamped to the armed headcount, so the level is
+		 * {@code marineXp / armedMarines} (see {@link ThreatMarineXP}). Mod
+		 * state even for a player colony, whose STOCK is the vanilla stockpile
+		 * - vanilla has no opinion about the quality of marines sitting in a
+		 * resource stockpile. 0 on older saves: a green garrison, which is what
+		 * one that has never been invaded is.
+		 */
+		public float marineXp;
+		/**
+		 * Marines that have actually been called up, armed and posted - the
+		 * only ones that defend. Ramps toward the stock over
+		 * {@code marineArmingDays}, so a mass of marines shipped in mid-siege
+		 * does not turn into a garrison the same day (2026-09-08). Clamped down
+		 * the instant stock leaves.
+		 */
+		public float armedMarines;
+		/**
+		 * Whether {@link #armedMarines} has been seeded from the stock. False
+		 * on older saves and on a fresh object, where it means "assume the
+		 * standing stock is already armed" - a colony that has been sitting on
+		 * its marines for years is not caught with them in crates.
+		 */
+		public boolean marineArmSeeded;
+		/** Clock stamp of the last arming tick, so the ramp advances on its own clock whoever calls it. 0 on older saves. */
+		public long marineArmedAt;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -105,9 +148,113 @@ public class ThreatReserves {
 	// ------------------------------------------------------------------
 
 	public static float stock(String marketId, String commodityId) {
+		CargoAPI cargo = backing(marketId);
+		if (cargo != null) return cargo.getCommodityQuantity(commodityId);
 		ColonyReserve r = get(marketId);
 		if (r == null) return 0f;
 		return read(r, commodityId);
+	}
+
+	// ------------------------------------------------------------------
+	// backing: a player colony's reserve is its resource stockpile
+	// ------------------------------------------------------------------
+
+	/**
+	 * The cargo that IS this colony's reserve, or null when the ledger is.
+	 * A player-owned market with vanilla's local-resources submarket is
+	 * backed by that cargo. Stock the ledger still holds for such a market
+	 * (a save from before 2026-09-05, or a colony the player has just taken
+	 * whose depot came with it) is moved into the stockpile the first time it
+	 * is asked for, so nothing is counted twice or lost.
+	 */
+	public static CargoAPI backing(String marketId) {
+		if (marketId == null) return null;
+		MarketAPI market = Global.getSector().getEconomy().getMarket(marketId);
+		if (market != null) return backing(market);
+		// a player outpost's stockpile is the storage of its station
+		return ThreatOutposts.storage(ThreatOutposts.byStockId(marketId));
+	}
+
+	public static CargoAPI backing(MarketAPI market) {
+		if (market == null || !market.isPlayerOwned()) return null;
+		CargoAPI cargo = Misc.getLocalResourcesCargo(market);
+		if (cargo == null) return null;
+		ColonyReserve r = all().get(market.getId());
+		if (r != null) {
+			for (String c : COMMODITIES) {
+				float held = read(r, c);
+				if (held <= 0f) continue;
+				cargo.addCommodity(c, held);
+				write(r, c, 0f);
+				ThreatIncConfig.log("Reserve: " + market.getName() + " moves " + (int) held + " "
+						+ label(c) + " from the ledger into its resource stockpile");
+			}
+		}
+		return cargo;
+	}
+
+	/** Whether this colony's reserve is its resource stockpile rather than the ledger. */
+	public static boolean isBacked(MarketAPI market) {
+		return backing(market) != null;
+	}
+
+	/**
+	 * What vanilla adds to a backed colony's stockpile per 30 days: the
+	 * local-resources plugin's own rate - its stockpile limit (excess at 0.5,
+	 * production at 0.25, the Waystation's bonus, times stockpileMaxMonths)
+	 * times its add-rate multiplier (1 / stockpileMaxMonths). Zero for a
+	 * commodity in deficit, as vanilla's limit is.
+	 */
+	public static float vanillaStockpilePer30(MarketAPI market, String commodityId) {
+		if (market == null) return 0f;
+		SubmarketPlugin sub = Misc.getLocalResources(market);
+		if (!(sub instanceof LocalResourcesSubmarketPlugin)) return 0f;
+		CommodityOnMarketAPI com = market.getCommodityData(commodityId);
+		if (com == null) return 0f;
+		LocalResourcesSubmarketPlugin lr = (LocalResourcesSubmarketPlugin) sub;
+		return Math.max(0f, lr.getStockpileLimit(com) * lr.getStockpilingAddRateMult(com));
+	}
+
+	/** Vanilla's stockpile limit for a backed colony - what it fills the stockpile up to. */
+	public static float vanillaStockpileLimit(MarketAPI market, String commodityId) {
+		if (market == null) return 0f;
+		SubmarketPlugin sub = Misc.getLocalResources(market);
+		if (!(sub instanceof LocalResourcesSubmarketPlugin)) return 0f;
+		CommodityOnMarketAPI com = market.getCommodityData(commodityId);
+		if (com == null) return 0f;
+		return Math.max(0f, ((LocalResourcesSubmarketPlugin) sub).getStockpileLimit(com));
+	}
+
+	/** The militia trickle: marines every colony raises per 30 days regardless of industry. */
+	public static float militiaPer30(MarketAPI market, String commodityId) {
+		if (market == null || !Commodities.MARINES.equals(commodityId)) return 0f;
+		return ThreatIncConfig.reserveBaselinePerSize() * market.getSize();
+	}
+
+	/**
+	 * A base's logistics structure. A player's or NPC colony needs a
+	 * functional Waystation - vanilla's stockpiling structure, the one that
+	 * fills the resource stockpile with fuel, supplies and crew - to stage,
+	 * to sail sorties and convoys, and to receive them; a hive world needs an
+	 * operational Swarm Nexus, its equivalent, as its strikes already do.
+	 * Disrupting either (a raid) severs the base. Off with the
+	 * baseRequiresWaystation knob.
+	 */
+	public static boolean hasDepot(MarketAPI market) {
+		if (market == null) return false;
+		if (!ThreatIncConfig.baseRequiresWaystation()) return true;
+		if (Factions.THREAT.equals(market.getFactionId())) {
+			return ThreatColonyManager.hasOperationalNexus(market);
+		}
+		Industry w = market.getIndustry(Industries.WAYSTATION);
+		return w != null && w.isFunctional() && !w.isDisrupted();
+	}
+
+	/** As above for either kind of base: an outpost is its own depot - a station in orbit needs no Waystation. */
+	public static boolean hasDepot(ThreatBases.Base base) {
+		if (base == null) return false;
+		if (base.isOutpost()) return base.outpost.alive();
+		return hasDepot(base.market);
 	}
 
 	protected static float read(ColonyReserve r, String c) {
@@ -129,6 +276,12 @@ public class ThreatReserves {
 	/** Takes up to {@code amount}; returns what was actually taken. */
 	public static float draw(String marketId, String commodityId, float amount) {
 		if (amount <= 0f) return 0f;
+		CargoAPI cargo = backing(marketId);
+		if (cargo != null) {
+			float taken = Math.min(cargo.getCommodityQuantity(commodityId), amount);
+			if (taken > 0f) cargo.removeCommodity(commodityId, taken);
+			return Math.max(0f, taken);
+		}
 		ColonyReserve r = get(marketId);
 		if (r == null) return 0f;
 		float have = read(r, commodityId);
@@ -143,10 +296,235 @@ public class ThreatReserves {
 	 * expeditions and orders never draw below it, so a small faction cannot
 	 * empty its depots on one sortie and go quiet for the rest of the war
 	 * (docs/design-theory.md 8.6). Convoys use the donor keep fraction instead.
+	 * The player's own colonies have their own fraction,
+	 * playerReserveFloorFraction, default 0: the player's orders may commit
+	 * the whole stock (2026-09-05 evening, the user: "totally fine for them
+	 * to commit their whole regiment if I want them to").
 	 */
 	public static float available(MarketAPI market, String commodityId) {
 		if (market == null) return 0f;
+		if (committed(market, commodityId)) return 0f;
 		return Math.max(0f, stock(market.getId(), commodityId) - floor(market, commodityId));
+	}
+
+	/**
+	 * Stock that is fighting and cannot be shipped: a colony's banked marines
+	 * while an enemy army stands on its surface. They count as its defenders
+	 * (ThreatGroundFronts.defenderStrength), so no sortie or convoy may carry
+	 * them away mid-siege - sorties ask here through {@link #available},
+	 * logistics convoys through ThreatConvoys.spare.
+	 */
+	public static boolean committed(MarketAPI market, String commodityId) {
+		return market != null && Commodities.MARINES.equals(commodityId)
+				&& ThreatGroundFronts.hasFront(market);
+	}
+
+	// ------------------------------------------------------------------
+	// the garrison: which marines are actually armed, and how good they are
+	// (2026-09-08 - docs/ground-war.md "Marines defend, and they die")
+	// ------------------------------------------------------------------
+
+	/**
+	 * Marines that are called up, armed and posted: the only ones that count as
+	 * defenders. New stock ramps in over {@code marineArmingDays}, so shipping
+	 * a regiment into a besieged colony buys a garrison over days rather than
+	 * the same afternoon. Never above the stock - marines that leave stop
+	 * defending at once.
+	 */
+	public static float armedMarines(MarketAPI market) {
+		if (market == null) return 0f;
+		float stocked = stock(market.getId(), Commodities.MARINES);
+		if (stocked <= 0f) return 0f;
+		ColonyReserve r = get(market.getId());
+		// unseen colony, or a save from before the ramp existed: what is
+		// standing there is standing there, already armed
+		if (r == null || !r.marineArmSeeded) return stocked;
+		return Math.max(0f, Math.min(r.armedMarines, stocked));
+	}
+
+	/**
+	 * Marines arriving already trained and equipped - a front falling back onto
+	 * a base, or survivors garrisoning what they took. They join the garrison
+	 * at once instead of walking the arming ramp (they are the reason the ramp
+	 * exists: raw stock has to be worked up, veterans do not), and their
+	 * experience is credited against the headcount they actually arrived in.
+	 *
+	 * <p>Depositing and then calling {@link #addMarineXp} separately does NOT
+	 * work: that clamps the pool to the armed count from BEFORE the arrival,
+	 * which is often 0 for a base whose sortie emptied it, and the veterancy is
+	 * silently thrown away (review, 2026-09-08).
+	 */
+	public static void depositArmed(MarketAPI market, float marines, float level) {
+		if (market == null || marines <= 0f) return;
+		deposit(market.getId(), Commodities.MARINES, marines);
+		armReturning(market, marines, level);
+	}
+
+	/**
+	 * The bookkeeping half of {@link #depositArmed}, for callers that have
+	 * already banked the bodies by another route (a returning convoy settles
+	 * through {@link ThreatBases}).
+	 */
+	public static void armReturning(MarketAPI market, float marines, float level) {
+		if (market == null || marines <= 0f) return;
+		ColonyReserve r = getOrCreate(market.getId());
+		float stocked = stock(market.getId(), Commodities.MARINES);
+		if (!r.marineArmSeeded) {
+			r.marineArmSeeded = true;
+			r.marineArmedAt = Global.getSector().getClock().getTimestamp();
+			r.armedMarines = stocked; // never seen before: what is there is posted
+		} else {
+			r.armedMarines = Math.min(stocked, r.armedMarines + marines);
+		}
+		if (level > 0f) {
+			r.marineXp = ThreatMarineXP.addXp(r.marineXp, marines * level, r.armedMarines);
+		}
+	}
+
+	/**
+	 * Seeds the arming ramp for every colony that has not carried one, so a
+	 * save upgraded to this build counts the marines it was ALREADY sitting on
+	 * as armed - and everything shipped in afterwards has to be worked up.
+	 *
+	 * <p>This MUST run at load rather than lazily on first sight. Lazily, the
+	 * seed captured whatever the stockpile held the first time the colony
+	 * happened to be walked, so marines delivered in between were grandfathered
+	 * in as a standing garrison and the ramp did nothing at all (user,
+	 * 2026-09-08: the counter-attack cadence collapsed to 3 days the moment
+	 * marines were added, because the whole delivery counted as armed).
+	 *
+	 * <p>Player-owned colonies are seeded even holding nothing: they are the
+	 * ones marines get hand-delivered to through vanilla's own cargo screen,
+	 * which the mod never sees, so their ramp has to exist before the drop.
+	 */
+	public static void seedMarineArming() {
+		long now = Global.getSector().getClock().getTimestamp();
+		int seeded = 0;
+		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (market == null || Factions.THREAT.equals(market.getFactionId())) continue;
+			if (market.isPlanetConditionMarketOnly()) continue;
+			ColonyReserve r = get(market.getId());
+			if (r != null && r.marineArmSeeded) continue;
+			float stocked = stock(market.getId(), Commodities.MARINES);
+			// nothing to remember, and nowhere the player can drop marines
+			// unseen: leave it to be seeded when it first matters
+			if (stocked <= 0f && r == null && !market.isPlayerOwned()) continue;
+			r = getOrCreate(market.getId());
+			r.marineArmSeeded = true;
+			r.armedMarines = stocked;
+			r.marineArmedAt = now;
+			seeded++;
+		}
+		if (seeded > 0) {
+			ThreatIncConfig.log("Marine arming: seeded " + seeded
+					+ " colonies from the stock they were already standing on");
+		}
+	}
+
+	/**
+	 * Records the ramp at the CURRENT stock before something is added to it, so
+	 * the arrival has to be worked up rather than counting as a garrison that
+	 * was always there. Every marine delivery goes through {@link #deposit},
+	 * so this is where an NPC colony's first one is caught.
+	 */
+	protected static void ensureMarineSeed(String marketId) {
+		if (marketId == null) return;
+		ColonyReserve r = get(marketId);
+		if (r != null && r.marineArmSeeded) return;
+		float stocked = stock(marketId, Commodities.MARINES);
+		r = getOrCreate(marketId);
+		r.marineArmSeeded = true;
+		r.armedMarines = stocked;
+		r.marineArmedAt = Global.getSector().getClock().getTimestamp();
+	}
+
+	/** The colony's marine veterancy pool ({@link ThreatMarineXP}). */
+	public static float marineXp(MarketAPI market) {
+		if (market == null) return 0f;
+		ColonyReserve r = get(market.getId());
+		return r == null ? 0f : Math.max(0f, r.marineXp);
+	}
+
+	/** Grants the colony's marines experience, clamped to the armed headcount. */
+	public static void addMarineXp(MarketAPI market, float gain) {
+		if (market == null || gain <= 0f) return;
+		ColonyReserve r = getOrCreate(market.getId());
+		r.marineXp = ThreatMarineXP.addXp(r.marineXp, gain, armedMarines(market));
+	}
+
+	/**
+	 * Marines killed defending. Draws from the stock - the resource stockpile
+	 * for a player colony, the ledger for an NPC one - and keeps the garrison's
+	 * bookkeeping straight: the armed count falls with the bodies and the
+	 * veterancy pool scales so the survivors keep their level rather than being
+	 * promoted for surviving. Returns what was actually lost.
+	 *
+	 * <p>Personal Storage is never touched. The war reads and spends the
+	 * resource stockpile only (user, 2026-09-08).
+	 */
+	public static float spendDefendingMarines(MarketAPI market, float amount) {
+		if (market == null || amount <= 0f) return 0f;
+		float before = armedMarines(market);
+		if (before <= 0f) return 0f;
+		float taken = draw(market.getId(), Commodities.MARINES, Math.min(amount, before));
+		if (taken <= 0f) return 0f;
+		ColonyReserve r = getOrCreate(market.getId());
+		float after = Math.max(0f, before - taken);
+		r.marineArmSeeded = true;
+		r.armedMarines = after;
+		r.marineXp = ThreatMarineXP.scaleForLosses(r.marineXp, before, after);
+		return taken;
+	}
+
+	/**
+	 * Advances the arming ramp. Called for every colony the reserve poll walks,
+	 * backed or not, so a garrison is worked up in peacetime and only the
+	 * marines that arrive mid-siege have to be called up under fire.
+	 */
+	protected static void tickMarineArming(MarketAPI market) {
+		if (market == null) return;
+		float stocked = stock(market.getId(), Commodities.MARINES);
+		// a garrison of zero is a fact worth remembering: bailing out here left
+		// the colony unseeded, so its FIRST delivery counted as already armed
+		// and walked straight past the ramp (review, 2026-09-08). This only
+		// runs for colonies the poll or a front tick already walks, so it
+		// creates no entries for markets nothing has touched.
+		ColonyReserve r = getOrCreate(market.getId());
+		long now = Global.getSector().getClock().getTimestamp();
+		if (!r.marineArmSeeded) {
+			// first sight of this colony: what it already has is already armed
+			r.marineArmSeeded = true;
+			r.armedMarines = stocked;
+			r.marineArmedAt = now;
+			return;
+		}
+		// the ramp advances on its OWN clock, not on the caller's elapsed days,
+		// so it is safe to call from the reserve poll and the front tick both -
+		// a colony under siege is walked by each of them
+		float elapsed = r.marineArmedAt == 0 ? 0f
+				: Global.getSector().getClock().getElapsedDaysSince(r.marineArmedAt);
+		r.marineArmedAt = now;
+		if (stocked <= 0f) {
+			r.armedMarines = 0f;
+			r.marineXp = 0f;
+			return;
+		}
+		if (r.armedMarines > stocked) {
+			// Stock shipped out (a sortie, a convoy, vanilla spending the
+			// stockpile on a shortage). SCALE the pool with the headcount, do
+			// not clamp it: clamping raised the level instead of preserving it,
+			// so shipping a garrison away promoted whoever was left to Elite
+			// (review, 2026-09-08). Same rule spendDefendingMarines uses.
+			r.marineXp = ThreatMarineXP.scaleForLosses(r.marineXp, r.armedMarines, stocked);
+			r.armedMarines = stocked;
+		}
+		if (elapsed > 0f) {
+			float days = Math.max(0.01f, ThreatIncConfig.marineArmingDays());
+			// the whole stock is what the depot works through, so a big intake
+			// arms at the same PACE as a small one rather than the same rate
+			r.armedMarines = Math.min(stocked, r.armedMarines + stocked / days * elapsed);
+		}
+		r.marineXp = Math.min(r.marineXp, r.armedMarines); // safety net; a no-op after the scale
 	}
 
 	/**
@@ -167,7 +545,8 @@ public class ThreatReserves {
 			Float seen = r.capSeen.get(commodityId);
 			if (seen != null && seen > basis) basis = seen;
 		}
-		return basis * ThreatIncConfig.reserveFloorFraction();
+		return basis * (market.isPlayerOwned() ? ThreatIncConfig.playerReserveFloorFraction()
+				: ThreatIncConfig.reserveFloorFraction());
 	}
 
 	/** Remembers the cap a depot banked towards, so its floor survives the colony falling into deficit. */
@@ -187,6 +566,15 @@ public class ThreatReserves {
 	/** Adds stock (a convoy arriving, a withdrawn front returning). No cap - what was made is kept. */
 	public static void deposit(String marketId, String commodityId, float amount) {
 		if (amount <= 0f || marketId == null) return;
+		// marines arriving must ramp in, so pin the ramp at what is here NOW
+		// before they land (depositArmed re-arms them straight after, which is
+		// what makes a front falling back different from a fresh delivery)
+		if (Commodities.MARINES.equals(commodityId)) ensureMarineSeed(marketId);
+		CargoAPI cargo = backing(marketId);
+		if (cargo != null) {
+			cargo.addCommodity(commodityId, amount);
+			return;
+		}
 		ColonyReserve r = getOrCreate(marketId);
 		write(r, commodityId, read(r, commodityId) + amount);
 	}
@@ -213,8 +601,10 @@ public class ThreatReserves {
 		if (market == null) return 0f;
 		// militia: every colony raises some marines on its own, so a farming
 		// world is never permanently at zero
-		float baseline = Commodities.MARINES.equals(commodityId)
-				? ThreatIncConfig.reserveBaselinePerSize() * market.getSize() : 0f;
+		float baseline = militiaPer30(market, commodityId);
+		// a player colony's stockpile is filled by vanilla at vanilla's rate;
+		// the mod adds only the militia (poll)
+		if (isBacked(market)) return baseline + vanillaStockpilePer30(market, commodityId);
 		CommodityOnMarketAPI com = market.getCommodityData(commodityId);
 		if (com == null) return baseline;
 		float surplus = surplusUnits(com);
@@ -264,8 +654,17 @@ public class ThreatReserves {
 		return mod == null ? 0f : mod.value;
 	}
 
-	/** The most of a commodity the colony keeps: months of its own banking. */
+	/**
+	 * The most of a commodity the colony keeps: months of its own banking.
+	 * A backed colony's cap is vanilla's stockpile limit plus months of the
+	 * militia; what the player leaves there above it is kept (vanilla never
+	 * trims a resource it should have), it just stops accruing.
+	 */
 	public static float cap(MarketAPI market, String commodityId) {
+		if (isBacked(market)) {
+			return vanillaStockpileLimit(market, commodityId)
+					+ militiaPer30(market, commodityId) * ThreatIncConfig.reserveCapMonths();
+		}
 		return accrualPer30(market, commodityId) * ThreatIncConfig.reserveCapMonths();
 	}
 
@@ -356,6 +755,10 @@ public class ThreatReserves {
 		public float econUnit;
 		/** The garrison's stock - what neither a sortie nor a shortage cover takes. */
 		public float floor;
+		/** The reserve is the colony's resource stockpile (a player colony). */
+		public boolean backed;
+		/** Backed, short, and the player's "use stockpiles for shortages" is off. */
+		public boolean stockpilesOff;
 	}
 
 	public static CommodityStatus status(MarketAPI market, String c) {
@@ -364,7 +767,23 @@ public class ThreatReserves {
 		if (com == null) return null;
 		CommodityStatus s = new CommodityStatus();
 		s.commodityId = c;
+		s.backed = isBacked(market);
 		s.stock = stock(market.getId(), c);
+		if (s.backed) {
+			s.available = com.getAvailable();
+			s.demand = com.getMaxDemand();
+			s.surplus = surplusUnits(com);
+			s.per30 = accrualPer30(market, c);
+			s.cap = cap(market, c);
+			s.deficit = Math.max(0, s.demand - Math.max(0, s.available));
+			s.econUnit = com.getCommodity().getEconUnit();
+			s.floor = floor(market, c);
+			// vanilla's own cover lifts availability by the deficit while it draws
+			StatMod lr = com.getAvailableStat().getFlatStatMod(Submarkets.LOCAL_RESOURCES);
+			s.covering = lr != null && lr.value > 0f;
+			s.stockpilesOff = s.deficit > 0 && !market.isUseStockpilesForShortages();
+			return s;
+		}
 		s.available = com.getAvailable();
 		s.demand = com.getMaxDemand();
 		s.surplus = surplusUnits(com);
@@ -432,6 +851,17 @@ public class ThreatReserves {
 				if (ind instanceof WarFootingDemand && ((WarFootingDemand) ind).refresh()) {
 					reapply = true;
 				}
+				// an NPC faction's mobilisation builds the depot its bases need:
+				// a Waystation at every military world with a spaceport (only
+				// one vanilla market ships with one); the player builds their own
+				if (ThreatIncConfig.mobilisationBuildsWaystation() && !market.isPlayerOwned()
+						&& IncursionManager.hasMilitary(market) && market.hasSpaceport()
+						&& !market.hasIndustry(Industries.WAYSTATION)) {
+					market.addIndustry(Industries.WAYSTATION);
+					reapply = true;
+					ThreatIncConfig.log("War footing: " + market.getName() + " (" + factionId
+							+ ") builds a Waystation - its depot for the war");
+				}
 				if (reapply) {
 					market.reapplyIndustries();
 					changed = true;
@@ -484,6 +914,24 @@ public class ThreatReserves {
 		for (String factionId : warring) {
 			for (MarketAPI market : marketsOf(factionId)) {
 				if (Factions.THREAT.equals(market.getFactionId())) continue;
+				// the garrison works up whether or not anyone has landed yet
+				tickMarineArming(market);
+				CargoAPI cargo = backing(market);
+				if (cargo != null) {
+					// the stockpile: vanilla fills it and spends it on shortages
+					// under the player's toggle; the mod adds the militia
+					ColonyReserve r = getOrCreate(market.getId());
+					for (String c : COMMODITIES) {
+						float capValue = cap(market, c);
+						noteCap(r, c, capValue);
+						float militia = militiaPer30(market, c);
+						if (militia <= 0f) continue;
+						float have = cargo.getCommodityQuantity(c);
+						if (have >= capValue) continue;
+						cargo.addCommodity(c, Math.min(capValue - have, militia * elapsedDays / 30f));
+					}
+					continue;
+				}
 				ColonyReserve r = get(market.getId());
 				for (String c : COMMODITIES) {
 					float per30 = accrualPer30(market, c);
@@ -503,6 +951,8 @@ public class ThreatReserves {
 		logLedger(warring, elapsedDays);
 
 		for (String marketId : new ArrayList<String>(all().keySet())) {
+			// an outpost's stockpile is keyed by its station entity, not a market
+			if (ThreatOutposts.byStockId(marketId) != null) continue;
 			MarketAPI market = Global.getSector().getEconomy().getMarket(marketId);
 			if (market == null || !market.isInEconomy()
 					|| Factions.THREAT.equals(market.getFactionId())) {
@@ -561,6 +1011,8 @@ public class ThreatReserves {
 		if (months <= 0f) return;
 		for (MarketAPI market : marketsOf(factionId)) {
 			if (Factions.THREAT.equals(market.getFactionId())) continue;
+			// a player colony's stockpile has been filling since it was founded
+			if (isBacked(market)) continue;
 			ColonyReserve r = null;
 			for (String c : COMMODITIES) {
 				float per30 = accrualPer30(market, c);
@@ -580,6 +1032,9 @@ public class ThreatReserves {
 		float total = 0f;
 		for (MarketAPI market : marketsOf(factionId)) {
 			total += stock(market.getId(), commodityId);
+		}
+		for (ThreatOutposts.Outpost o : ThreatOutposts.outpostsOf(factionId)) {
+			total += ThreatOutposts.stock(o, commodityId);
 		}
 		return total;
 	}

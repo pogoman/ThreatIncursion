@@ -1,4 +1,4 @@
-# One test cycle: kill the game, relaunch, reach The Threat War Effort, capture it.
+# One test cycle: kill the game, relaunch, reach The Abyssal War, capture it.
 # Waits are adaptive: the launcher and game windows are detected, the main menu by the
 # Continue button lighting up, and the save load by a new "Loading stage 39 - last" line
 # in starsector.log. See docs/testing-harness.md for coordinates per resolution.
@@ -64,7 +64,7 @@ Start-Sleep -Seconds 3
 if ($StopAtIntel) { & $ui -Action shot -Out (Join-Path $OutDir "$Tag-intel.png") -Scale 0.5; exit 0 }
 & $ui -Action click -X $TabX -Y $TabY | Out-Null      # Major events tab
 Start-Sleep -Seconds 2
-& $ui -Action click -X $EntryX -Y $EntryY | Out-Null  # The Threat War Effort entry
+& $ui -Action click -X $EntryX -Y $EntryY | Out-Null  # The Abyssal War entry
 Start-Sleep -Seconds 2
 & $ui -Action move -X $ParkX -Y $ParkY | Out-Null     # off the table so no tooltip covers it
 Start-Sleep -Seconds 1

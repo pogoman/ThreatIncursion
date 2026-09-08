@@ -138,11 +138,7 @@ public class ThreatCoalition {
 
 	/** Whether a guard task force is already bound for or over the colony. */
 	protected static boolean guardBoundFor(MarketAPI market) {
-		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
-			if (ThreatFleetOrders.KIND_GUARD.equals(o.kind) && market.getId().equals(o.targetId)
-					&& o.fleet != null && o.fleet.isAlive()) return true;
-		}
-		return false;
+		return ThreatFleetOrders.guardBoundFor(market.getId());
 	}
 
 	protected static boolean convoyBoundFor(MarketAPI market) {
@@ -183,6 +179,7 @@ public class ThreatCoalition {
 					}
 				}
 				if (convoyBoundFor(market)) continue;
+				if (!ThreatReserves.hasDepot(market)) continue; // nowhere to land it
 				for (String c : ThreatReserves.COMMODITIES) {
 					if (!ThreatAidRequests.shortageStanding(market, c)) continue;
 					int need = ThreatAidRequests.needItems(market, c);

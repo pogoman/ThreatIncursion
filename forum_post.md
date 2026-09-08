@@ -1,4 +1,4 @@
-# Threat Incursion
+# The Abyssal War
 
 *v0.4.0 - the swarm colonizes the sector - for Starsector 0.98a-RC8*
 
@@ -6,7 +6,7 @@
 
 The Threat does not stay in the abyss. Once woken - by the vanilla story, or simply because your colonies grew large enough to be noticed - the fabricator swarms spread from the sector's darkest fringe. Not as event fleets on a timer: as **real colonies** that mine, refine, forge, and grow, feeding a closed hive economy that builds every fleet the swarm fields. Left alone, it converges on the core worlds and the sector's lights go out one by one.
 
-**Threat Incursion** is a standalone, vanilla-only mod. You do not fight a spawner - you fight a war economy.
+**The Abyssal War** is a standalone, vanilla-only mod. You do not fight a spawner - you fight a war economy.
 
 ---
 
@@ -43,11 +43,11 @@ Which means **every link is a target**:
 
 ---
 
-## Incursions
+## Expeditions
 
 Hive colonies launch real expeditions at inhabited space - fleets you can scout, intercept, and fight alongside the defenders against. Every expedition is **mustered from the colony's own Defense Swarms**: a full garrison sends what stands above its defensive reserve, and the fleets that leave orbit ARE the expedition - kill a colony's swarms and you have grounded it. Each expedition sweeps its whole target system, bombarding every world it can reach **at most once**: frontier colonies harass with tactical bombardment, developed worlds deliver a saturation pass per world. Erasing a large colony takes the hive a campaign, not a visit.
 
-[Incursion expedition](https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/Picture10.png)
+[Strike expedition](https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/Picture10.png)
 
 An expedition still being **fabricated** at its staging colony can be strangled in the crib - raid the forge or the Swarm Nexus, or bombard the colony, before the fleets depart and the operation is stillborn. Once it departs, it is autonomous: meet it in space or defend the target.
 
@@ -100,7 +100,7 @@ Everything above is tunable. With [**LunaLib**](https://fractalsoftworks.com/for
 * **LunaLib** - optional, for the in-game config menu
 * Vanilla-only - no other hard dependencies
 * Safe to **add** to an existing save
-* **Removing** it from a save with the incursion active will break that save
+* **Removing** it from a save with the war active will break that save
 
 ---
 
@@ -141,7 +141,7 @@ Everything above is tunable. With [**LunaLib**](https://fractalsoftworks.com/for
 
 *Standalone, vanilla-only, safe to add mid-save — designed to stack.*
 
-* [**Threat Incursion**](https://fractalsoftworks.com/forum/index.php?topic=35955) (v0.4.0) — the swarm colonizes the sector and raids the core worlds. Disrupt their supply chains and besiege the entrenched hives into decline.
+* [**The Abyssal War**](https://fractalsoftworks.com/forum/index.php?topic=35955) (v0.4.0) — the swarm colonizes the sector and raids the core worlds. Disrupt their supply chains and besiege the entrenched hives into decline.
 * [**Commerce Wars**](https://fractalsoftworks.com/forum/index.php?topic=35957) (v0.2.0) — dominate a faction's markets or the military balance and they push back: ultimatums, tribute, enforcement fleets.
 * [**Piracy Reworked**](https://fractalsoftworks.com/forum/index.php?topic=35956) (v0.1.0) — the underworld runs on your money: black-market trade funds a self-sustaining pirate war economy.
 * [**Remnant Retribution**](https://fractalsoftworks.com/forum/index.php?topic=35940) (v0.3.1) — a late-game colony crisis: prosper too hard and the Remnant come to collect.

@@ -172,6 +172,35 @@ public class ThreatColonyManager {
 	}
 
 	/**
+	 * A Threat ground victory over a human colony (2026-09-06, docs/ground-war.md
+	 * "Sieges against human factions"): the world is a hive at once. Vanilla's
+	 * own teardown strips the population and industries, then the hive is
+	 * founded on the ruin at {@code conquestHiveSize}, as a wave would found it.
+	 * Returns the hive, or null when the world cannot carry one (the caller
+	 * falls back to the deciv path).
+	 */
+	public static MarketAPI convertConquered(PlanetAPI planet, MarketAPI market) {
+		if (planet == null || market == null) return null;
+		String name = market.getName();
+		DecivTracker.decivilize(market, false);
+		MarketAPI ruin = planet.getMarket();
+		if (ruin == null || !ruin.isPlanetConditionMarketOnly()) {
+			ThreatIncConfig.log("Conquest of " + name + ": no condition market to seed a hive on");
+			// the ruin is the swarm's kill all the same: it comes back for it
+			market.getMemoryWithoutUpdate().set(ThreatGroundFronts.KILLED_BY_FLAG, Factions.THREAT, 60f);
+			return null;
+		}
+		int size = Math.max(1, Math.min(Misc.MAX_COLONY_SIZE, ThreatIncConfig.conquestHiveSize()));
+		MarketAPI hive = foundColony(planet, size);
+		if (hive == null) {
+			ruin.getMemoryWithoutUpdate().set(ThreatGroundFronts.KILLED_BY_FLAG, Factions.THREAT, 60f);
+			return null;
+		}
+		ThreatIncConfig.log("Conquest: " + name + " seeded as a size-" + size + " hive");
+		return hive;
+	}
+
+	/**
 	 * Best planet for a system's first colony. Machines don't care about
 	 * hazard, weather, or farmland - only what can be fed into the
 	 * fabricators. Score is purely the planet's resource deposits (count and
@@ -2057,27 +2086,31 @@ public class ThreatColonyManager {
 	// ------------------------------------------------------------------
 
 	/**
-	 * How much of a defensive organ's bonus still fires while it is disrupted.
-	 * Machines do not rout, so a fresh disruption leaves disruptedDefenseFraction
-	 * of the bonus working - but the guns wear: the surviving fraction falls
-	 * linearly with the disruption days on the structure's clock, reaching
-	 * zero at defenseWearDays. Disruption stacks (tactical passes take the
-	 * larger duration, every successful raid adds its own), so a structure
-	 * carrying 300 days has been hit again and again, and by then it is scrap.
-	 * At the defaults (0.5, 300): one tactical pass (60 d) leaves 40 percent
-	 * of the bonus, two stacked raids on top (~150 d) 25 percent, 300+ d none.
-	 * The size-anchored base (hiveDefensePerSize x size) is untouched - the
-	 * strata below the crust do not stop existing - so bombardment never gets
-	 * free, only cheaper as the war-strata are ground down. Shared by
-	 * ThreatGroundDefenses (batteries too) and SwarmNexus.
+	 * How much of a defensive organ's bonus still fires while it is disrupted:
+	 * its CONDITION, the hive's half of the fortification rule
+	 * (docs/ground-war.md "Sieges from orbit", 2026-09-06). Machines do not
+	 * rout, so the guns keep firing - but they wear: the bonus falls in a
+	 * straight line with the disruption days on the structure's clock,
+	 * reaching zero at defenseWearDays. From orbit alone the condition never
+	 * falls below fortificationOrbitFloor; once a front stands on the world
+	 * the floor is gone. Disruption stacks (every siege slice and every
+	 * successful raid adds its own), so a structure carrying 300 days has been
+	 * hit again and again, and by then it is scrap. The size-anchored base
+	 * (hiveDefensePerSize x size) is untouched - the strata below the crust
+	 * do not stop existing - so bombardment never gets free, only cheaper as
+	 * the war-strata are ground down. Shared by ThreatGroundDefenses
+	 * (batteries too) and SwarmNexus.
 	 */
 	public static float disruptedDefenseResilience(Industry ind) {
 		if (ind == null || !ind.isDisrupted()) return 1f;
-		float fraction = ThreatIncConfig.disruptedDefenseFraction();
 		float wear = ThreatIncConfig.defenseWearDays();
-		if (wear <= 0f) return fraction;
+		if (wear <= 0f) return 1f;
 		float worn = Math.max(0f, 1f - ind.getDisruptedDays() / wear);
-		return fraction * worn;
+		MarketAPI market = ind.getMarket();
+		if (market == null || ThreatGroundFronts.getFront(market.getId()) == null) {
+			worn = Math.max(worn, ThreatIncConfig.fortificationOrbitFloor());
+		}
+		return Math.min(1f, worn);
 	}
 
 	/**
@@ -2133,11 +2166,16 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * The ON/OFF half of colony health: FABRICATION CORE functionality. A hive's
-	 * growth is literally its Fabrication Core's ability to grow new population
-	 * strata - a disrupted Core isn't producing at reduced capacity, it isn't
-	 * producing AT ALL (worn further by its disruption days). The Core is the
-	 * ONLY fabrication organ in this figure. The Swarm Nexus is deliberately
+	 * The fabrication half of colony health: FABRICATION CORE condition. A
+	 * hive's growth is its Fabrication Core's ability to grow new population
+	 * strata, and a disrupted Core fabricates in proportion to how deep its
+	 * disruption runs: coreDownFactor of full output the moment it is hit
+	 * (1.0 by default - the days on the clock alone decide), falling in a
+	 * straight line to nothing at defenseWearDays (decided 2026-09-05: a
+	 * front that held one day used to quarter the hive's health and quadruple
+	 * its counter-attack interval at a stroke). A missing Core, or one still
+	 * building, fabricates nothing. The Core is the ONLY fabrication organ in
+	 * this figure. The Swarm Nexus is deliberately
 	 * absent: it fabricates FLEETS, not population, so its disruption halts new
 	 * swarm fabrication (maintainGarrisons), never the colony's vitality. The
 	 * PORT is likewise absent: it is logistics, not fabrication - its disruption
@@ -2150,7 +2188,13 @@ public class ThreatColonyManager {
 		if (market == null) return 0f;
 		float mult = 1f;
 		Industry core = market.getIndustry(FABRICATION_CORE);
-		if (organDown(core)) mult *= wornDownFactor(core, ThreatIncConfig.coreDownFactor());
+		if (core == null || (!core.isDisrupted() && !core.isFunctional())) {
+			// no Core, or one still building: nothing to fabricate with
+			// (ensureFabricationCores heals a missing one on the next sweep)
+			mult = 0f;
+		} else if (core.isDisrupted()) {
+			mult *= wornDownFactor(core, ThreatIncConfig.coreDownFactor());
+		}
 		// strata held by a ground front are strata not fabricating: each one
 		// taken strips its share of the colony's output (docs/ground-war.md)
 		int held = ThreatGroundFronts.strataHeld(market.getId());
@@ -2161,12 +2205,12 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * A downed organ's fabrication factor, worn further by the disruption
-	 * days on its clock - the same linear wear the defensive bonuses take
-	 * (defenseWearDays). A Core freshly knocked out runs at coreDownFactor;
-	 * one carrying 150 days, hit again and again, at half that; at 300 days
-	 * nothing fabricates at all. A missing organ, or one under construction,
-	 * sits at the base factor.
+	 * A disrupted organ's fabrication factor: base x the same linear wear the
+	 * defensive bonuses take (defenseWearDays). With the default base of 1.0 a
+	 * Core carrying 60 days (one tactical pass) fabricates at 80 percent, one
+	 * carrying 150 days at half, and at 300 days nothing fabricates at all -
+	 * only ground forces and raids drive a clock that far. An undisrupted
+	 * organ returns the base.
 	 */
 	protected static float wornDownFactor(Industry ind, float base) {
 		if (ind == null || !ind.isDisrupted()) return base;
@@ -2208,8 +2252,8 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * Colony health in [0..1] = fabrication (organs, ON/OFF) x supply (inputs,
-	 * reduced capacity). Multiplicative, and a disrupted Fabrication Core also
+	 * Colony health in [0..1] = fabrication (the Core, worn by its disruption
+	 * days) x supply (inputs, reduced capacity). Multiplicative, and a disrupted Fabrication Core also
 	 * zeroes its machinery supply so shortages compound the disruption.
 	 */
 	public static float computeHealth(MarketAPI market) {
@@ -2557,8 +2601,7 @@ public class ThreatColonyManager {
 			}
 
 			int[] spec = table[fit < table.length ? fit : table.length - 1];
-			CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
-					spec[0], 0, 0, FabricatorEscortStrength.values()[spec[1]], random);
+			CampaignFleetAPI fleet = fabricateGarrisonSwarm(market, spec, random);
 			if (fleet == null) continue;
 			if (recycled != null) {
 				fleets.remove(recycled);
@@ -2567,22 +2610,6 @@ public class ThreatColonyManager {
 						+ " (tier " + swarmTier(recycled) + ", "
 						+ (int) recycled.getFleetPoints() + " FP) for a fresh one");
 			}
-			fleet.setName("Defense Swarm");
-			fleet.getMemoryWithoutUpdate().set(GARRISON_FLAG, marketId);
-			// remember what this swarm IS, so an expedition mustered from it
-			// re-embodies the same fleet - not an FP-estimated bigger one
-			fleet.getMemoryWithoutUpdate().set(SWARM_TIER_KEY, spec[1]);
-			fleet.getMemoryWithoutUpdate().set(SWARM_FABS_KEY, spec[0]);
-			// ...and how strong it was born, so battle damage can be measured
-			// against it (isUnderStrength)
-			fleet.getMemoryWithoutUpdate().set(SWARM_SPAWN_FP, fleet.getFleetPoints());
-			makeDetectable(fleet);
-
-			system.addEntity(fleet);
-			Vector2f loc = Misc.getPointAtRadius(planet.getLocation(),
-					planet.getRadius() + 400f + random.nextFloat() * 300f);
-			fleet.setLocation(loc.x, loc.y);
-			fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
 
 			fleets.add(fleet);
 			ThreatIncData.garrisonSpawnTimes().put(marketId,
@@ -2590,6 +2617,59 @@ public class ThreatColonyManager {
 			ThreatIncConfig.log("Garrison fleet fabricated at " + market.getName()
 					+ " (" + fleets.size() + "/" + desired + ")");
 		}
+	}
+
+	/**
+	 * Fabricates one Defense Swarm of the given garrison-table slot
+	 * ({numFabricators, escort-strength ordinal}) and parks it in orbit over
+	 * the colony; null if the fleet could not be built. The caller adds it to
+	 * the colony's garrison list and stamps the spawn time.
+	 */
+	protected static CampaignFleetAPI fabricateGarrisonSwarm(MarketAPI market, int[] spec, Random random) {
+		SectorEntityToken planet = market.getPrimaryEntity();
+		StarSystemAPI system = market.getStarSystem();
+		if (planet == null || system == null) return null;
+		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
+				spec[0], 0, 0, FabricatorEscortStrength.values()[spec[1]], random);
+		if (fleet == null) return null;
+		fleet.setName("Defense Swarm");
+		fleet.getMemoryWithoutUpdate().set(GARRISON_FLAG, market.getId());
+		// remember what this swarm IS, so an expedition mustered from it
+		// re-embodies the same fleet - not an FP-estimated bigger one
+		fleet.getMemoryWithoutUpdate().set(SWARM_TIER_KEY, spec[1]);
+		fleet.getMemoryWithoutUpdate().set(SWARM_FABS_KEY, spec[0]);
+		// ...and how strong it was born, so battle damage can be measured
+		// against it (isUnderStrength)
+		fleet.getMemoryWithoutUpdate().set(SWARM_SPAWN_FP, fleet.getFleetPoints());
+		makeDetectable(fleet);
+
+		system.addEntity(fleet);
+		Vector2f loc = Misc.getPointAtRadius(planet.getLocation(),
+				planet.getRadius() + 400f + random.nextFloat() * 300f);
+		fleet.setLocation(loc.x, loc.y);
+		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
+		return fleet;
+	}
+
+	/**
+	 * Debug (ThreatDebugWar): stands the colony's whole nominal garrison up at
+	 * once - every slot its size table calls for, the respawn cadence and the
+	 * hull economy's cap skipped. Returns how many swarms it fabricated.
+	 */
+	public static int fillGarrisonNow(MarketAPI market, Random random) {
+		if (market == null) return 0;
+		List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(market.getId());
+		int[][] table = desiredGarrison(market.getSize());
+		int made = 0;
+		while (fleets.size() < table.length) {
+			CampaignFleetAPI fleet = fabricateGarrisonSwarm(market, table[fleets.size()], random);
+			if (fleet == null) break;
+			fleets.add(fleet);
+			made++;
+		}
+		ThreatIncData.garrisonSpawnTimes().put(market.getId(),
+				Global.getSector().getClock().getTimestamp());
+		return made;
 	}
 
 	// ------------------------------------------------------------------
@@ -3142,9 +3222,9 @@ public class ThreatColonyManager {
 		Global.getSector().getPersistentData().remove(ThreatIncData.KEY_SYSTEMS_CLEANSED);
 		Global.getSector().getPersistentData().remove(ThreatIncData.KEY_ANNOUNCED_PHASE3);
 
-		announce("The Threat incursion has been reset. The swarm will return to the sector "
+		announce("The Abyssal War has been reset. The swarm will return to the sector "
 				+ "as if for the first time.", Misc.getHighlightColor());
-		ThreatIncConfig.log("Incursion fully reset.");
+		ThreatIncConfig.log("Abyssal War fully reset.");
 	}
 
 	// ------------------------------------------------------------------

@@ -198,24 +198,67 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 		targetMarketId = null;
 		targetColonyName = null;
 		for (CampaignFleetAPI curr : allFleets()) {
-			if (!alive(curr)) continue;
-			// a fleet provisioned from a mobilised base goes home on the
-			// tracked leg and refunds what survives (ThreatReturns)
-			String provisionedBy = ThreatReturns.homeOf(curr);
-			if (provisionedBy != null && ThreatReturns.sendHome(curr,
-					factionId, provisionedBy)) {
-				continue;
-			}
-			SectorEntityToken home = nearestFriendlyMarketEntity(curr);
-			curr.clearAssignments();
-			if (home != null) {
-				curr.addAssignment(
-						com.fs.starfarer.api.campaign.FleetAssignment.GO_TO_LOCATION_AND_DESPAWN,
-						home, 1000f, "returning home");
-			} else {
-				Misc.fadeAndExpire(curr);
-			}
+			sendFleetHome(curr);
 		}
+	}
+
+	/** One fleet's home leg: tracked when a mobilised base provisioned it, a plain return otherwise. */
+	protected void sendFleetHome(CampaignFleetAPI curr) {
+		if (!alive(curr)) return;
+		// a fleet provisioned from a mobilised base goes home on the
+		// tracked leg and refunds what survives (ThreatReturns)
+		String provisionedBy = ThreatReturns.homeOf(curr);
+		if (provisionedBy != null && ThreatReturns.sendHome(curr, factionId, provisionedBy)) {
+			return;
+		}
+		SectorEntityToken home = nearestFriendlyMarketEntity(curr);
+		curr.clearAssignments();
+		if (home != null) {
+			curr.addAssignment(
+					com.fs.starfarer.api.campaign.FleetAssignment.GO_TO_LOCATION_AND_DESPAWN,
+					home, 1000f, "returning home");
+		} else {
+			Misc.fadeAndExpire(curr);
+		}
+	}
+
+	/**
+	 * Stands ONE fleet of the flotilla down (the board's per-fleet Recall,
+	 * 2026-09-06): it leaves the task force and goes home; the rest carry on.
+	 * The last fleet out stands the whole task force down.
+	 */
+	public boolean recallFleet(CampaignFleetAPI curr) {
+		if (curr == null || fleets == null || !fleets.contains(curr)) return false;
+		if (countLivingFleets() <= 1) {
+			standDown();
+			return true;
+		}
+		fleets.remove(curr);
+		if (fleet == curr) fleet = leadFleet();
+		sendFleetHome(curr);
+		return true;
+	}
+
+	/** Takes one fleet out of the flotilla without sending it anywhere (it is being retasked). */
+	public boolean detach(CampaignFleetAPI curr) {
+		if (curr == null || fleets == null || !fleets.contains(curr)) return false;
+		fleets.remove(curr);
+		if (fleet == curr) fleet = leadFleet();
+		if (countLivingFleets() == 0) standDown();
+		return true;
+	}
+
+	public String getBaseName() {
+		return baseName;
+	}
+
+	/** Every living fleet of the flotilla, for the board's per-fleet rows. */
+	public java.util.List<CampaignFleetAPI> livingFleets() {
+		java.util.List<CampaignFleetAPI> result = new java.util.ArrayList<CampaignFleetAPI>();
+		for (CampaignFleetAPI curr : allFleets()) {
+			if (alive(curr)) result.add(curr);
+		}
+		return result;
 	}
 
 	/** The nearest own-faction market's primary entity, for the return leg. */
@@ -315,7 +358,7 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 		int total = allFleets().size();
 		String force = total > 1 ? "a task force of " + total + " fleets" : "a task force";
 		info.addPara(fn + " has dispatched " + force + " from " + baseName + " to strike at "
-				+ colony + " in the " + targetSystemName + ", in response to an incursion "
+				+ colony + " in the " + targetSystemName + ", in response to a strike "
 				+ "against its own worlds.", opad);
 
 		info.addPara("These are real fleets. You can intercept them and fight alongside them - or "

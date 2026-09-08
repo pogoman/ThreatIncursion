@@ -190,7 +190,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 			if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
 			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(),
 					system.getLocation());
-			if (IncursionManager.hasMilitary(market) && d < nearestMilitary) {
+			if (IncursionManager.isBase(market) && d < nearestMilitary) {
 				nearestMilitary = d;
 				bestMilitary = market;
 			}
@@ -419,7 +419,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 			if (base.getFaction() == null || base.getFaction().isPlayerFaction()) continue;
 			if (Factions.THREAT.equals(base.getFactionId())) continue;
 			if (base.getStarSystem() == null || base.getPrimaryEntity() == null) continue;
-			if (!IncursionManager.hasMilitary(base)) continue;
+			if (!IncursionManager.isBase(base)) continue;
 			float d = Misc.getDistanceLY(base.getStarSystem().getLocation(),
 					system.getLocation());
 			if (d < nearest) nearest = d;
@@ -451,7 +451,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 			if (base.getFaction() == null || base.getFaction().isPlayerFaction()) continue;
 			if (Factions.THREAT.equals(base.getFactionId())) continue;
 			if (base.getStarSystem() == null || base.getPrimaryEntity() == null) continue;
-			if (!IncursionManager.hasMilitary(base)) continue;
+			if (!IncursionManager.isBase(base)) continue;
 			float range = IncursionManager.expeditionRangeLY(base);
 			if (range <= 0f) continue;
 			float d = Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation());

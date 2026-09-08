@@ -25,7 +25,8 @@ public class ThreatGroundDefenses extends GroundDefenses {
 	// disrupted - and since bombardment fuel cost IS defender ground strength
 	// (MarketCMD.getBombardmentCost), that collapse is what made repeat
 	// saturation passes nearly free. Machines don't rout: the weapon growths
-	// keep firing at ThreatIncConfig.disruptedDefenseFraction() effect.
+	// keep firing in proportion to their condition
+	// (ThreatColonyManager.disruptedDefenseResilience - the fortification rule).
 
 	@Override
 	public void apply() {
@@ -55,7 +56,7 @@ public class ThreatGroundDefenses extends GroundDefenses {
 		// guns too
 		float resilience = ThreatColonyManager.disruptedDefenseResilience(this);
 		if (isDisrupted()) {
-			extra += " (disrupted: " + Math.round(resilience * 100f) + "% effect)";
+			extra += " (suppressed, " + Math.round(resilience * 100f) + "% effect)";
 		}
 
 		// the groundDefenseMult config knob is applied by SwarmNexus (every

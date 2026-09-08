@@ -17,6 +17,10 @@ class LunaConfigBridge {
 		return LunaSettings.getFloat(ThreatIncConfig.MOD_ID, key);
 	}
 
+	static String getString(String key) {
+		return LunaSettings.getString(ThreatIncConfig.MOD_ID, key);
+	}
+
 	static Boolean getBoolean(String key) {
 		return LunaSettings.getBoolean(ThreatIncConfig.MOD_ID, key);
 	}

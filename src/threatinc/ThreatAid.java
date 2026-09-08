@@ -91,15 +91,18 @@ public class ThreatAid {
 	// sources
 	// ------------------------------------------------------------------
 
-	/** Player colonies with a military structure within their own expedition reach of the spot, nearest first. */
+	/**
+	 * Player colonies with a military structure and a Waystation, nearest
+	 * the spot first. No range (2026-09-05, the user's call): a far colony
+	 * may send, and pays in fuel drawn by the distance and in the time the
+	 * fleet takes to get there and back.
+	 */
 	public static List<MarketAPI> sources(final Vector2f hyperLoc) {
 		List<MarketAPI> result = new ArrayList<MarketAPI>();
 		if (hyperLoc == null) return result;
 		for (MarketAPI m : Misc.getPlayerMarkets(false)) {
 			if (m.getStarSystem() == null || m.getPrimaryEntity() == null) continue;
-			if (!IncursionManager.hasMilitary(m)) continue;
-			float d = Misc.getDistanceLY(m.getStarSystem().getLocation(), hyperLoc);
-			if (d > IncursionManager.expeditionRangeLY(m)) continue;
+			if (!IncursionManager.isBase(m)) continue;
 			result.add(m);
 		}
 		Collections.sort(result, new Comparator<MarketAPI>() {
@@ -111,23 +114,55 @@ public class ThreatAid {
 		return result;
 	}
 
-	/** Combat points a task force from this colony sails with: the guard size, or what the free points allow. */
+	/**
+	 * Combat points a task force from this colony sails with: EVERYTHING it
+	 * has free, staged task forces included (2026-09-05 evening, the user's
+	 * call - a task force capped at guardFleetFP "is a pretty shit fleet and
+	 * will never have any capitals"). guardFleetFP is now only the NPC size
+	 * and the bar for picking a source first (pickTaskForceSource).
+	 */
 	public static float taskForceFP(MarketAPI base) {
+		return taskForceFP(base, false);
+	}
+
+	/** As above; {@code ownOnly} sizes by the colony's own free points - a guard over itself, which nothing staged there folds into. */
+	public static float taskForceFP(MarketAPI base, boolean ownOnly) {
 		if (base == null) return 0f;
-		float free = ThreatAidCapacity.freeFP(base) / ThreatAidCapacity.TASK_FORCE_HULL_MULT;
-		return Math.max(0f, Math.min(ThreatIncConfig.guardFleetFP(), free));
+		if (!ThreatAidCapacity.enabled()) return ThreatIncConfig.guardFleetFP();
+		float free = (ownOnly ? ThreatAidCapacity.ownFreeFP(base) : ThreatAidCapacity.freeFP(base))
+				/ ThreatAidCapacity.TASK_FORCE_HULL_MULT;
+		return Math.max(0f, free);
 	}
 
 	/**
-	 * The colony to send a task force from: the closest that fields a full
-	 * guard, else the one with the most free points if that makes at least
-	 * aidGuardMinFP, else null.
+	 * As {@link #taskForceFP} but in whole-fleet points, support hulls
+	 * included - the FP column's unit, and the only figure the board quotes
+	 * for a task force (a prompt that said 199 beside a cell that said 239
+	 * was the combat points, 2026-09-05 evening).
+	 */
+	public static float taskForcePoints(MarketAPI base, boolean ownOnly) {
+		return ThreatAidCapacity.taskForcePoints(taskForceFP(base, ownOnly));
+	}
+
+	/**
+	 * The colony to send a task force from: the closest with at least
+	 * guardFleetFP free (it sails with all it has free), else the one with
+	 * the most free points if that makes at least aidGuardMinFP, else null.
 	 */
 	public static MarketAPI pickTaskForceSource(Vector2f hyperLoc) {
+		return pickTaskForceSource(hyperLoc, null);
+	}
+
+	/**
+	 * As above; {@code self} is the colony being guarded when it is one of
+	 * the player's own, sized by its own free points (it is the closest
+	 * source to itself, so a colony with own points free guards itself).
+	 */
+	public static MarketAPI pickTaskForceSource(Vector2f hyperLoc, MarketAPI self) {
 		MarketAPI best = null;
 		float bestFP = 0f;
 		for (MarketAPI m : sources(hyperLoc)) {
-			float fp = taskForceFP(m);
+			float fp = taskForceFP(m, m == self);
 			if (fp >= ThreatIncConfig.guardFleetFP()) return m;
 			if (fp > bestFP) {
 				bestFP = fp;
@@ -157,12 +192,18 @@ public class ThreatAid {
 	// ------------------------------------------------------------------
 
 	public static Quote quoteDefend(MarketAPI target) {
+		return quoteDefend(ThreatBases.of(target));
+	}
+
+	/** As above for either kind of base: a colony, or the player's outpost. */
+	public static Quote quoteDefend(ThreatBases.Base target) {
 		Quote q = new Quote();
-		if (target == null || target.getStarSystem() == null) {
+		if (target == null || target.starSystem() == null) {
 			q.reason = "No target.";
 			return q;
 		}
-		return quoteTaskForce(q, target.getLocationInHyperspace(), target.getName());
+		return quoteTaskForce(q, target.hyperLoc(), target.name(),
+				target.market != null && target.market.isPlayerOwned() ? target.market : null);
 	}
 
 	public static Quote quoteStrike(StarSystemAPI hive) {
@@ -171,18 +212,18 @@ public class ThreatAid {
 			q.reason = "No target.";
 			return q;
 		}
-		return quoteTaskForce(q, hive.getLocation(), "the " + hive.getNameWithLowercaseType());
+		return quoteTaskForce(q, hive.getLocation(), "the " + hive.getNameWithLowercaseType(), null);
 	}
 
-	protected static Quote quoteTaskForce(Quote q, Vector2f hyperLoc, String what) {
-		q.source = pickTaskForceSource(hyperLoc);
+	protected static Quote quoteTaskForce(Quote q, Vector2f hyperLoc, String what, MarketAPI self) {
+		q.source = pickTaskForceSource(hyperLoc, self);
 		if (q.source == null) {
 			q.reason = noSourceReason(hyperLoc, what) + " A task force needs at least "
 					+ (int) (ThreatIncConfig.aidGuardMinFP() * ThreatAidCapacity.TASK_FORCE_HULL_MULT)
 					+ " FP.";
 			return q;
 		}
-		q.fp = taskForceFP(q.source);
+		q.fp = taskForceFP(q.source, q.source == self);
 		q.points = ThreatAidCapacity.taskForcePoints(q.fp);
 		q.distLY = Misc.getDistanceLY(q.source.getStarSystem().getLocation(), hyperLoc);
 		return q;
@@ -190,12 +231,12 @@ public class ThreatAid {
 
 	/**
 	 * A resupply of what the colony is shortest of: the request's remaining
-	 * quantity if one is open, else its deficit in items. Sends the smaller of
-	 * the need, the source's stock above its floor and what its free points
-	 * can carry, from the closest colony that covers the need or the one
-	 * that sends the most.
+	 * quantity if one is open, else its deficit in items. Sends the smaller
+	 * of the load tier's ask, the source's stock above its floor and what
+	 * its free points can carry, from the closest colony that covers the ask
+	 * or the one that sends the most.
 	 */
-	public static Quote quoteResupply(MarketAPI target) {
+	public static Quote quoteResupply(MarketAPI target, int tier) {
 		Quote q = new Quote();
 		if (target == null || target.getStarSystem() == null) {
 			q.reason = "No target.";
@@ -214,6 +255,11 @@ public class ThreatAid {
 			q.reason = target.getName() + " is not short of " + ThreatReserves.label(q.commodityId) + ".";
 			return q;
 		}
+		// the board's load tier: what the colony is short of (Min), that times
+		// convoyExtraLoadFactor (Med), or everything the source can spare and
+		// carry (Max). The need itself is what the board and the prompt quote.
+		float ask = tier >= 2 ? Float.MAX_VALUE
+				: tier == 1 ? q.need * ThreatIncConfig.convoyExtraLoadFactor() : q.need;
 		int idx = index(q.commodityId);
 		Vector2f loc = target.getLocationInHyperspace();
 		MarketAPI best = null;
@@ -223,11 +269,12 @@ public class ThreatAid {
 			float avail = ThreatReserves.available(m, q.commodityId);
 			if (avail < 1f) continue;
 			float[] load = new float[ThreatReserves.COMMODITIES.length];
-			load[idx] = Math.min(q.need, avail);
-			float[] fitted = ThreatAidCapacity.fitLoad(ThreatAidCapacity.freeFP(m), load);
+			load[idx] = Math.min(ask, avail);
+			// a convoy sails on the colony's own hulls: staged warships do not fold into it
+			float[] fitted = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(m), load);
 			int qty = (int) fitted[idx];
 			if (qty < 1) continue;
-			if (qty >= q.need) {
+			if (qty >= ask) {
 				best = m;
 				bestLoad = fitted;
 				bestQty = qty;
@@ -247,7 +294,7 @@ public class ThreatAid {
 				List<String> parts = new ArrayList<String>();
 				for (MarketAPI m : inReach) {
 					parts.add(m.getName() + " " + (int) ThreatReserves.available(m, q.commodityId)
-							+ " spare, " + (int) Math.max(0f, ThreatAidCapacity.freeFP(m)) + " FP free");
+							+ " spare, " + (int) Math.max(0f, ThreatAidCapacity.ownFreeFP(m)) + " FP free");
 				}
 				q.reason = "No colony of yours in reach can spare and carry "
 						+ ThreatReserves.label(q.commodityId) + " for " + target.getName() + ": "
@@ -297,7 +344,7 @@ public class ThreatAid {
 		}
 		o.recipientFactionId = target.getFactionId();
 		ThreatColonyManager.announceAlways("Your task force from " + q.source.getName() + " ("
-				+ (int) q.fp + " FP) sails to defend " + target.getName() + " for the "
+				+ (int) q.points + " FP) sails to defend " + target.getName() + " for the "
 				+ target.getFaction().getDisplayName() + ".", Misc.getHighlightColor());
 		return true;
 	}
@@ -317,19 +364,19 @@ public class ThreatAid {
 			return false;
 		}
 		ThreatColonyManager.announceAlways("Your task force from " + q.source.getName() + " ("
-				+ (int) q.fp + " FP) sails to hold the door of the " + hive.getNameWithLowercaseType()
+				+ (int) q.points + " FP) sails to hold the door of the " + hive.getNameWithLowercaseType()
 				+ ".", Misc.getHighlightColor());
 		return true;
 	}
 
-	public static boolean dispatchResupply(MarketAPI target, Random random) {
+	public static boolean dispatchResupply(MarketAPI target, int tier, Random random) {
 		if (target == null) return false;
 		String blocked = canAid(target.getFaction());
 		if (blocked != null) {
 			ThreatColonyManager.announceAlways(blocked, Misc.getNegativeHighlightColor());
 			return false;
 		}
-		Quote q = quoteResupply(target);
+		Quote q = quoteResupply(target, tier);
 		if (!q.ok()) {
 			ThreatColonyManager.announceAlways(q.reason, Misc.getNegativeHighlightColor());
 			return false;

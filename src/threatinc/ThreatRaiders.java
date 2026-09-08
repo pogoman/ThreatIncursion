@@ -96,13 +96,15 @@ public class ThreatRaiders {
 	 */
 	public static void consider(ThreatConvoys.Convoy convoy, Random random) {
 		if (!ThreatIncConfig.raiderEnabled() || convoy == null || convoy.fleet == null) return;
-		MarketAPI from = Global.getSector().getEconomy().getMarket(convoy.fromMarketId);
-		MarketAPI to = Global.getSector().getEconomy().getMarket(convoy.toMarketId);
-		if (from == null || to == null || from.getStarSystem() == null || to.getStarSystem() == null) {
+		// either end may be an outpost (a front run's or a return's, or a hand
+		// order to the player's)
+		ThreatBases.Base from = ThreatBases.of(convoy.fromMarketId);
+		ThreatBases.Base to = ThreatBases.of(convoy.toMarketId);
+		if (from == null || to == null || from.starSystem() == null || to.starSystem() == null) {
 			return;
 		}
-		Vector2f a = from.getStarSystem().getLocation();
-		Vector2f b = to.getStarSystem().getLocation();
+		Vector2f a = from.starSystem().getLocation();
+		Vector2f b = to.starSystem().getLocation();
 		Vector2f mid = new Vector2f((a.x + b.x) / 2f, (a.y + b.y) / 2f);
 		float range = ThreatIncConfig.raiderRangeLY();
 		List<MarketAPI> near = new ArrayList<MarketAPI>();
