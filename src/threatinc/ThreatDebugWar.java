@@ -47,6 +47,8 @@ import com.fs.starfarer.api.util.WeightedRandomPicker;
 public class ThreatDebugWar {
 
 	public static final String KEY_LATCH = "threatinc_instantWarLatched";
+	/** The floor size last applied by pollFloor, so a setting fires once. */
+	public static final String KEY_FLOOR_APPLIED = "threatinc_hiveFloorApplied";
 
 	/** Home candidates tried before settling for the best plan found. */
 	protected static final int PLAN_ATTEMPTS = 12;
@@ -69,6 +71,59 @@ public class ThreatDebugWar {
 					Misc.getNegativeHighlightColor());
 			IncursionManager.setThreatIcon(msg);
 			Global.getSector().getCampaignUI().addMessage(msg);
+		}
+	}
+
+	/**
+	 * Hive Floor Size (threatinc_debugHiveFloorSize, 0 = off): every live hive
+	 * colony below the floor is grown up to it through the vitality engine's
+	 * own growth step (ThreatColonyManager.growColony - size, planner, the
+	 * announcements), then the new industries are stood up together the way
+	 * the instant war does. Fires once per value: a floor of 4 applied once
+	 * stays applied, and a later 5 fires again. Added 2026-09-09 to catch a
+	 * save up after the bootstrap deadlock froze its hive for a year.
+	 */
+	public static void pollFloor() {
+		int floor = ThreatIncConfig.debugHiveFloorSize();
+		if (floor <= 0) {
+			Global.getSector().getPersistentData().remove(KEY_FLOOR_APPLIED);
+			return;
+		}
+		Object applied = Global.getSector().getPersistentData().get(KEY_FLOOR_APPLIED);
+		if (applied instanceof Integer && (Integer) applied == floor) return;
+		Global.getSector().getPersistentData().put(KEY_FLOOR_APPLIED, floor);
+		try {
+			int grown = 0;
+			List<MarketAPI> touched = new ArrayList<MarketAPI>();
+			for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+				int cap = Math.min(ThreatIncConfig.colonyMaxSize(), Misc.getMaxMarketSize(market));
+				boolean any = false;
+				while (market.getSize() < floor && market.getSize() < cap) {
+					if (!ThreatColonyManager.growColony(market, cap)) break;
+					grown++;
+					any = true;
+				}
+				if (any) touched.add(market);
+			}
+			for (int round = 0; round < PLAN_ROUNDS && !touched.isEmpty(); round++) {
+				boolean changed = false;
+				for (MarketAPI market : touched) {
+					Set<String> before = industryIds(market);
+					ThreatColonyManager.planHiveEconomy(market);
+					if (!industryIds(market).equals(before)) changed = true;
+				}
+				ThreatColonyManager.flushEconomy();
+				if (!changed) break;
+			}
+			Global.getLogger(ThreatDebugWar.class).info("[ThreatInc] Hive floor " + floor + ": "
+					+ grown + " growth steps over " + touched.size() + " colonies");
+			MessageIntel msg = new MessageIntel("Debug: hive floor " + floor + " - " + grown
+					+ " growth steps over " + touched.size() + " colonies.",
+					Misc.getNegativeHighlightColor());
+			IncursionManager.setThreatIcon(msg);
+			Global.getSector().getCampaignUI().addMessage(msg);
+		} catch (Throwable t) {
+			Global.getLogger(ThreatDebugWar.class).error("[ThreatInc] Hive floor failed", t);
 		}
 	}
 

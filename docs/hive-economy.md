@@ -109,6 +109,44 @@ draws on it - and the items are the loot for taking the home hive. Added Sept 20
 arithmetic caps at 3 of 5; the card now reads "3/3 of 5" in red when the hull shortage is
 what sets the cap.
 
+## The hive does not build guns it cannot feed - the 0.6.0 freeze
+
+Found 2026-09-09 in a 467-day save whose home hive was still five size-3 worlds, and
+deterministic for every save started on 0.4.0 through 0.6.0: the board read `Vitality 50%`,
+and 50% is not a coincidence.
+
+The arithmetic. A colony has ONE industry slot until size 4 (vanilla's `maxIndustries`
+table, the rule a player colony lives by), and the planner puts Mining in it. At size 3 it
+added Ground Defenses - a structure, no slot - which demands machinery and metals at
+`size - 2` = 1 each. `computeSupplyMult` averages `min(1, available/demand)` over every
+growth input the colony demands: machinery 1.0 off the Fabrication Core, metals 0.0 because
+no refinery existed and none could - the only slot was Mining's - and ore, volatiles, rare
+ore not counted, having no consumer. Mean exactly **0.5**, `growthMultFor`'s stall value, a
+hard zero. No growth, so never size 4, so never a second slot, so never a refinery, so never
+metals. Re-planning cannot help: the planner has nowhere to build. The ordering and the
+demand shape date from v0.2.0; v0.4.0's health-scaled growth made the stall permanent.
+
+The rule now (the user's, 2026-09-09): **the hive arms once it can pay.** `defensesAffordable`
+gates Ground Defenses and the Heavy Batteries upgrade on the machinery and metals they would
+demand being at least half-met (`STALL_MET_FRACTION`, the same bar a growth input must
+clear), so building them can never be what stalls the world. A bare mining world grows to 4,
+builds its refinery on that growth step, metals appear, and the batteries follow on the next
+planner call. Cutting the hive's metals later still stalls every world whose batteries or
+forge want them - that lever is untouched.
+
+Saves already frozen are healed on load (`healStalledBootstrap`, from the manager's first
+poll). The fingerprint - a hive with no refinery anywhere, and size-3+ worlds carrying
+batteries that stored a health on the stall floor with their only slot full - cannot arise
+under the new rule. Each such world is grown the one size the freeze cost it, then the chain
+is stood up to a fixed point the way the instant war does, so the hive is fed the moment the
+save opens. The tick sweep also re-plans stalled colonies with a free slot now, not only
+capped ones. The debug lever Hive Floor Size (`ThreatDebugWar.pollFloor`) grows every hive
+colony to a set size through the same growth step, for catching a save up further.
+
+Why testing missed it: the harness saves come up through Instant War, which founds the home
+chain at size 6 and plans it to completion before the first tick. The real seeding path
+founds at size 1 and had never been walked to size 4 under the health-gated growth.
+
 ## The monthly lag, and the flush
 
 Vanilla recomputes what each market can draw from the others on its own monthly economy

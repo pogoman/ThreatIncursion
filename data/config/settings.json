@@ -801,5 +801,9 @@
 	"threatinc_debugInstantWarCoreLY": 15,
 	"threatinc_debugInstantWarHomeSize": 6,
 	"threatinc_debugInstantWarColonySize": 4,
+	# Hive floor: every hive colony below this size is grown up to it through
+	# the normal growth step. Fires once per value; 0 = off. For catching a
+	# save up after a stall.
+	"threatinc_debugHiveFloorSize": 0,
 	"threatinc_debugReset": false,
 }

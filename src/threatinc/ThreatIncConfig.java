@@ -634,6 +634,7 @@ public class ThreatIncConfig {
 	public static float debugInstantWarLinkLY()    { return f("threatinc_debugInstantWarLinkLY"); }
 	public static float debugInstantWarCoreLY()    { return f("threatinc_debugInstantWarCoreLY"); }
 	public static int debugInstantWarHomeSize()    { return i("threatinc_debugInstantWarHomeSize"); }
+	public static int debugHiveFloorSize()         { return i("threatinc_debugHiveFloorSize"); }
 	public static int debugInstantWarColonySize()  { return i("threatinc_debugInstantWarColonySize"); }
 
 	public static void log(String msg) {

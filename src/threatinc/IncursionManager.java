@@ -79,6 +79,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	// these snapshotted values to undo it. Transient - only meaningful within the
 	// frames immediately before a bombardment, never serialized.
 	protected transient Map<String, Float> atrocityRepSnapshot;
+	/** Set once the bootstrap heal has run this session (transient: every load runs it). */
+	protected transient boolean bootstrapHealed;
 
 	public boolean isDone() {
 		return false;
@@ -146,6 +148,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (Global.getSector().getPersistentData().get(ThreatIncData.KEY_RARE_ECONOMY) == null) {
 				ThreatIncData.setUsesRareEconomy(ThreatColonyManager.ogSystemHasRareOre());
 			}
+			// a hive frozen by an unfinished chain (docs/hive-economy.md, "The
+			// bootstrap must not depend on growth") is finished on load, not a
+			// tick later; transient flag, so once per session
+			if (!bootstrapHealed) {
+				bootstrapHealed = true;
+				ThreatColonyManager.healStalledBootstrap();
+			}
 		}
 
 		// debug: full reset back to pre-incursion state. Latched so it fires
@@ -175,6 +184,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// like the reset above, fires once per toggle-on; the poll below then
 		// picks the new colonies up in the same pass
 		ThreatDebugWar.poll(this, random);
+		ThreatDebugWar.pollFloor();
 
 		daysSinceTick += interval.getIntervalDuration();
 
