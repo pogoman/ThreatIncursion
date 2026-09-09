@@ -531,14 +531,20 @@ public class ThreatColonyManager {
 		ensureSpaceport(market);
 
 		// defensive structures don't take industry slots. The hive builds its
-		// own marine-free variants (ThreatGroundDefenses: machinery+metals)
-		if (size >= 6 && market.hasIndustry(THREAT_GROUND_DEFENSES)) {
+		// own marine-free variants (ThreatGroundDefenses: machinery+metals) -
+		// but only guns it can feed (defensesAffordable): a colony has one
+		// industry slot until size 4 and Mining holds it, so batteries built
+		// at size 3 demanded metals no refinery could yet exist to make, and
+		// that unmet demand held vitality on the stall floor for good - every
+		// hive frozen at five size-3 worlds, 0.4.0 through 0.6.0 (found
+		// 2026-09-09; docs/hive-economy.md). The hive arms once it can pay.
+		if (size >= 6 && market.hasIndustry(THREAT_GROUND_DEFENSES) && defensesAffordable(market)) {
 			market.removeIndustry(THREAT_GROUND_DEFENSES, null, true);
 			market.addIndustry(THREAT_HEAVY_BATTERIES);
 			return;
 		}
 		if (size >= 3 && !market.hasIndustry(THREAT_GROUND_DEFENSES)
-				&& !market.hasIndustry(THREAT_HEAVY_BATTERIES)) {
+				&& !market.hasIndustry(THREAT_HEAVY_BATTERIES) && defensesAffordable(market)) {
 			market.addIndustry(THREAT_GROUND_DEFENSES);
 			return;
 		}
@@ -725,6 +731,23 @@ public class ThreatColonyManager {
 		if (!market.hasIndustry(Industries.SPACEPORT)) market.addIndustry(Industries.SPACEPORT);
 		markEconomyDirty();
 		ThreatIncConfig.log("Hive planner: Megaport retired for a Spaceport at " + market.getName());
+		return true;
+	}
+
+	/**
+	 * Whether the colony can feed the batteries it would build: the machinery
+	 * and metals Ground Defenses / Heavy Batteries demand (size - 2 each,
+	 * ThreatGroundDefenses.apply) are at least half-met on the hive market -
+	 * the same bar a growth input must clear (STALL_MET_FRACTION), so arming
+	 * can never be what stalls the world.
+	 */
+	public static boolean defensesAffordable(MarketAPI market) {
+		int need = market.getSize() - 2;
+		if (need <= 0) return true;
+		for (String commodityId : new String[] { Commodities.HEAVY_MACHINERY, Commodities.METALS }) {
+			CommodityOnMarketAPI com = market.getCommodityData(commodityId);
+			if (com == null || com.getAvailable() < need * STALL_MET_FRACTION) return false;
+		}
 		return true;
 	}
 
@@ -916,18 +939,86 @@ public class ThreatColonyManager {
 	 * are decided; but redundancy and bigger-copy targets move as the rest of
 	 * the hive changes (a system lost, a consumer grown), and a size-capped
 	 * colony never grows again, so on its own it would never fill a free slot
-	 * however far the hive fell below target. Re-plans only capped colonies
-	 * with a free industry slot - growing ones still build on their growth
-	 * steps - one industry per colony per tick, which is about the pace of a
-	 * vanilla construction anyway.
+	 * however far the hive fell below target. Re-plans capped colonies and
+	 * STALLED ones with a free industry slot - a colony that is still growing
+	 * builds on its growth steps - one industry per colony per tick, which is
+	 * about the pace of a vanilla construction anyway.
+	 *
+	 * The stalled case is the one that used to deadlock (found 2026-09-09 in a
+	 * 467-day save whose home hive sat at five size-3 worlds): a colony below
+	 * the cap builds only on its growth steps, but health IS its inputs, so a
+	 * chain link the hive has not built anywhere holds it at or under the stall
+	 * floor and it has no growth steps left to build on. In that save the whole
+	 * hive had Mining and nothing else - metals read 0 against Ground Defenses'
+	 * demand, heavy machinery 1 off the Fabrication Core, and computeSupplyMult
+	 * averaged the two to exactly 0.5, growthMultFor's stall value, so the pace
+	 * was a hard zero and the planner was never called again. The bootstrap must
+	 * therefore not depend on growth: growth paces redundancy and bigger copies,
+	 * never the first copy of a link that vitality is itself made of.
 	 */
 	public static void maintainHiveEconomy() {
 		int cap = ThreatIncConfig.colonyMaxSize();
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
-			if (market.getSize() < cap) continue;
-			if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) continue;
+			// a world that can now feed the batteries it lacks (or the heavy
+			// batteries it has outgrown) arms on this tick, not on its next
+			// growth step a season away - structures need no slot
+			int size = market.getSize();
+			boolean gd = market.hasIndustry(THREAT_GROUND_DEFENSES);
+			boolean hb = market.hasIndustry(THREAT_HEAVY_BATTERIES);
+			boolean arms = ((size >= 3 && !gd && !hb) || (size >= 6 && gd)) && defensesAffordable(market);
+			if (!arms) {
+				if (size < cap && growthMultFor(computeHealth(market)) > 0f) continue;
+				if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) continue;
+			}
 			planHiveEconomy(market);
 		}
+	}
+
+	/**
+	 * Save heal for the 0.4.0-0.6.0 freeze (see planHiveEconomy's batteries
+	 * rule), run once on load from IncursionManager's first poll. The
+	 * fingerprint is exact and cannot arise under the fixed rule: a hive with
+	 * NO refinery anywhere, and colonies at size 3+ carrying batteries that
+	 * stored a health on the stall floor last session with their only slot
+	 * full. Each such colony lost its growth to the bug for as long as it
+	 * stood there, so it gets the one size the freeze cost it - the slot the
+	 * refinery needs - through the normal growth step, and the chain is then
+	 * stood up to a fixed point with recomputes between rounds (the instant
+	 * war's loop), so the hive is fed the moment the save opens. A save this
+	 * never applied to pays one cheap scan. Returns the colonies grown.
+	 */
+	public static int healStalledBootstrap() {
+		float stall = ThreatIncConfig.growthStallHealth();
+		if (countLink(0) > 0) return 0;
+		List<MarketAPI> frozen = new ArrayList<MarketAPI>();
+		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (market.getSize() < 3) continue;
+			if (!market.hasIndustry(THREAT_GROUND_DEFENSES) && !market.hasIndustry(THREAT_HEAVY_BATTERIES)) continue;
+			if (!ThreatIncData.lastHealth().containsKey(market.getId())) continue;
+			if (ThreatIncData.lastHealth(market.getId()) > stall) continue;
+			if (Misc.getNumIndustries(market) < Misc.getMaxIndustries(market)) continue;
+			frozen.add(market);
+		}
+		if (frozen.isEmpty()) return 0;
+		int grown = 0;
+		for (MarketAPI market : frozen) {
+			int cap = Math.min(ThreatIncConfig.colonyMaxSize(), Misc.getMaxMarketSize(market));
+			if (market.getSize() < cap && growColony(market, cap)) grown++;
+		}
+		for (int round = 0; round < 12; round++) {
+			boolean changed = false;
+			for (MarketAPI market : frozen) {
+				int had = market.getIndustries().size();
+				planHiveEconomy(market);
+				if (market.getIndustries().size() > had) changed = true;
+			}
+			flushEconomy();
+			if (!changed) break;
+		}
+		Global.getLogger(ThreatColonyManager.class).info("[ThreatInc] Bootstrap heal: " + grown
+				+ " of " + frozen.size() + " frozen colonies grown a size; chain links now "
+				+ countLink(0) + "/" + countLink(1) + "/" + countLink(2));
+		return grown;
 	}
 
 	// ------------------------------------------------------------------
@@ -2325,25 +2416,36 @@ public class ThreatColonyManager {
 				continue;
 			}
 
-			int old = market.getSize();
-			CoreImmigrationPluginImpl.increaseMarketSize(market);
-			ThreatIncData.setGrowthProgressDays(id, 0f);
-			if (market.getSize() <= old) continue;
-			ListenerUtil.reportColonySizeChanged(market, old);
-			ThreatIncData.setGrowthTime(id);
-			// the Fabrication Core's machinery output tracks size by itself
-			// (its apply() reads market size on every econ recompute)
-			planHiveEconomy(market);
-
-			int newSize = market.getSize();
-			if (newSize == 4 || newSize == 6 || newSize >= cap) {
-				announce("The fabrication colony on " + market.getName()
-						+ " has expanded to size " + newSize + "."
-						+ (newSize >= cap ? " Its growth has reached saturation." : ""),
-						Misc.getNegativeHighlightColor());
-			}
-			ThreatIncConfig.log("Colony grew to " + newSize + ": " + market.getName());
+			growColony(market, cap);
 		}
+	}
+
+	/**
+	 * One growth step: size up, plan one industry, announce the milestones.
+	 * The vitality engine's step, and the debug floor's (ThreatDebugWar.
+	 * pollFloor). @return whether the size actually rose.
+	 */
+	public static boolean growColony(MarketAPI market, int cap) {
+		String id = market.getId();
+		int old = market.getSize();
+		CoreImmigrationPluginImpl.increaseMarketSize(market);
+		ThreatIncData.setGrowthProgressDays(id, 0f);
+		if (market.getSize() <= old) return false;
+		ListenerUtil.reportColonySizeChanged(market, old);
+		ThreatIncData.setGrowthTime(id);
+		// the Fabrication Core's machinery output tracks size by itself
+		// (its apply() reads market size on every econ recompute)
+		planHiveEconomy(market);
+
+		int newSize = market.getSize();
+		if (newSize == 4 || newSize == 6 || newSize >= cap) {
+			announce("The fabrication colony on " + market.getName()
+					+ " has expanded to size " + newSize + "."
+					+ (newSize >= cap ? " Its growth has reached saturation." : ""),
+					Misc.getNegativeHighlightColor());
+		}
+		ThreatIncConfig.log("Colony grew to " + newSize + ": " + market.getName());
+		return true;
 	}
 
 	/**

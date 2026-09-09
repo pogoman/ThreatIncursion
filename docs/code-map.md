@@ -17,7 +17,7 @@ to reconcile it.
 - `ThreatIncConfig.java` — central settings accessor, reading LunaLib live config or bundled JSON fallback.
 - `LunaConfigBridge.java` — thin isolation wrapper around LunaLib's settings API, loaded only when LunaLib is present.
 - `ThreatIncData.java` — persistent-data schema and accessors for all incursion state (stages, colonies, waves, garrisons, vitality).
-- `ThreatDebugWar.java` — the Instant War debug switch: once per toggle-on, founds a connected network of mature hive systems (home chain plus footholds, a quota near the core), fills their garrisons and mobilises every faction, so a fresh save can test the war balance.
+- `ThreatDebugWar.java` — the Instant War debug switch: once per toggle-on, founds a connected network of mature hive systems (home chain plus footholds, a quota near the core), fills their garrisons and mobilises every faction, so a fresh save can test the war balance; also the Hive Floor Size lever (`pollFloor`), which grows every hive colony below a set size through the normal growth step, once per value.
 
 ### Incursion core (spawning, colony lifecycle, siege engine)
 - `IncursionManager.java` — the incursion's master clock: seeds infestations, dispatches waves, launches strikes/purges, drives all mod intel.

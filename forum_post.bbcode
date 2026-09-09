@@ -1,11 +1,11 @@
 [center][size=20pt][b]The Abyssal War[/b][/size]
-[i]v0.6.0 - the war layer - for Starsector 0.98a-RC8[/i][/center]
+[i]v0.6.1 - the hive arms once it can pay - for Starsector 0.98a-RC8[/i][/center]
 
 [hr]
 
 [size=14pt][b]Download[/b][/size]
 
-[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.6.0/AbyssalWar-0.6.0.zip]AbyssalWar-0.6.0.zip[/url]
+[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.6.1/AbyssalWar-0.6.1.zip]AbyssalWar-0.6.1.zip[/url]
 
 Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher. It extracts to [tt]mods/ThreatIncursion[/tt] - overwrite your existing folder rather than keeping both. Saves made with Threat Incursion carry over: the mod id has not changed.
 
@@ -46,6 +46,16 @@ For Starsector 0.98a-RC8. Vanilla-only, LunaLib optional, incompatible with Nex.
 
 [size=14pt][b]Changelog[/b][/size]
 
+[b]0.6.1 - the hive arms once it can pay[/b]
+[spoiler]
+[b]Fix: the hive never grew past size 3.[/b] Every hive world built its Ground Defenses at size 3, and those batteries demand metals the hive could not yet make - a size-3 world has one industry slot and Mining holds it. The unmet demand held vitality on the stall floor, so no world reached size 4, no refinery was ever built, and the whole war stayed dormant (Reach and Strikes dashed, Swarms idle). Present since 0.4.0; every save started on 0.6.0 is affected.
+[list]
+[li]The hive now builds Ground Defenses and Heavy Batteries only when it can feed them - the machinery and metals they demand at least half-met, the same bar a growth input must clear. A bare mining world grows to 4, builds its refinery, and arms on the next tick.[/li]
+[li][b]Existing saves heal on load.[/b] A frozen hive - no refinery anywhere, size-3 worlds with batteries on the stall floor and no free slot - gets each such world the one size the freeze cost it and its production chain stood up in the same load. Expect a burst of "expanded to size 4" messages the first time you load.[/li]
+[li]The monthly sweep re-plans stalled colonies too, not only size-capped ones, and arms a world the tick it can afford to.[/li]
+[li]New debug lever, Hive Floor Size (LunaLib, Debug): grows every hive colony below a set size through the normal growth step, once per value. For catching a save up further after the freeze.[/li]
+[/list]
+[/spoiler]
 [b]0.6.0 - the war layer[/b]
 [spoiler]
 Threat Incursion is now The Abyssal War. The mod id is unchanged, so existing saves keep working.
