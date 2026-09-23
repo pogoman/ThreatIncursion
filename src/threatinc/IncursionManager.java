@@ -217,6 +217,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// ground fronts tick at the same continuous cadence: upkeep, attrition,
 		// entrenchment, and organ suppression (docs/ground-war.md)
 		ThreatGroundFronts.poll(interval.getIntervalDuration());
+		// Nexerelin (optional): no invasion lands on a world the swarm besieges
+		ThreatNexCompat.poll();
 		// the strategy layer (docs/strategy-layer.md): war-mode stand-downs,
 		// per-colony reserve accrual, convoy arrivals and losses
 		ThreatWarState.poll();
@@ -422,6 +424,17 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (!boardsMobilized()) {
 			ThreatIncConfig.log("Mission board: dormant (phase " + getPhase()
 					+ ", never reached phase 3)");
+			return;
+		}
+		// an offer outlives its sponsor's war footing only until the next tick
+		if (ThreatWarState.enabled()) {
+			for (ThreatMissionIntel curr : ThreatMissionIntel.getPosted()) {
+				if (!ThreatWarState.isAtWar(curr.getFactionId())) curr.standDown();
+			}
+		}
+		// the boards speak in a mobilised faction's name; nobody at war, no contract
+		if (ThreatWarState.enabled() && ThreatWarState.warFactionIds().isEmpty()) {
+			ThreatIncConfig.log("Mission board: dormant (no faction mobilised)");
 			return;
 		}
 
@@ -2057,20 +2070,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 		WeightedRandomPicker<MarketAPI> picker = new WeightedRandomPicker<MarketAPI>(random);
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
-			if (market.isHidden()) continue;
-			if (Factions.THREAT.equals(market.getFactionId())) continue;
-			if (market.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) continue;
-			if (market.getSize() < 3) continue;
+			if (!isStrikeableWorld(market)) continue;
 			// size 6+ markets are "core worlds" - phase 3 only
-			if (!coreAllowed && market.getSize() >= 6) continue;
+			if (!coreAllowed && isCoreWorld(market)) continue;
 			if (market.isPlayerOwned() && !playerAllowed) continue;
 			if (onlyFactionId != null && !onlyFactionId.equals(market.getFactionId())) continue;
 			if (isActiveStrikeTarget(market)) continue; // one strike per world
-			// the engine refuses the killing blow on story-critical worlds, and
-			// an annihilation doctrine has no use for a target it cannot kill -
-			// unless the player has opted into breaking vanilla storylines
-			if (!ThreatIncConfig.destroyStoryCritical() && Misc.isStoryCritical(market)) continue;
 
 			float d = Misc.getDistanceLY(source.getLocation(), market.getStarSystem().getLocation());
 			if (d > rangeLY) continue;
@@ -2091,6 +2096,48 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return picker.pick();
 	}
 
+	/**
+	 * A world the swarm could ever send a strike at: inhabited, size 3+, not
+	 * the hive's own, and killable. The engine refuses the killing blow on
+	 * story-critical worlds, and an annihilation doctrine has no use for a
+	 * target it cannot kill - unless the player has opted into breaking
+	 * vanilla storylines. Shared by the target picker and the phase gate so
+	 * "core worlds in reach" means a world a strike could actually go to.
+	 */
+	protected static boolean isStrikeableWorld(MarketAPI market) {
+		if (market.getStarSystem() == null || market.getPrimaryEntity() == null) return false;
+		if (market.isHidden()) return false;
+		if (Factions.THREAT.equals(market.getFactionId())) return false;
+		if (market.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) return false;
+		if (market.getSize() < 3) return false;
+		if (!ThreatIncConfig.destroyStoryCritical() && Misc.isStoryCritical(market)) return false;
+		return true;
+	}
+
+	/** Size 6+ is a core world: the strike budget it takes rivals core defenses. */
+	protected static boolean isCoreWorld(MarketAPI market) {
+		return market.getSize() >= 6;
+	}
+
+	/**
+	 * Whether an armada-capable hive could actually reach a core world: some
+	 * strikeable size-6+ market sits within its fuel range - the same gate
+	 * pickStrikeTarget applies, so phase 3 is never announced while every
+	 * core world is beyond what the hive's fuel buys.
+	 */
+	protected static boolean coreWorldInReach(MarketAPI staging) {
+		StarSystemAPI source = staging.getStarSystem();
+		if (source == null) return false;
+		float rangeLY = ThreatColonyManager.fuelRangeLY(staging);
+		if (rangeLY <= 0f) return false;
+		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (!isCoreWorld(market) || !isStrikeableWorld(market)) continue;
+			float d = Misc.getDistanceLY(source.getLocation(), market.getStarSystem().getLocation());
+			if (d <= rangeLY) return true;
+		}
+		return false;
+	}
+
 	// ------------------------------------------------------------------
 	// phases, bookkeeping, helpers
 	// ------------------------------------------------------------------
@@ -2102,9 +2149,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// could actually stage a strike (strike-sized, forged, fueled); phase 3
 		// when some colony can field a full-budget armada - core-world-sized
 		// (its size-squared strike budget rivals core defenses) with a
-		// near-nominal hull economy. Both can REGRESS: burn their forges, cut
-		// their fuel, shrink their colonies, and the sector's danger level
-		// genuinely drops - the escalation is theirs to earn and yours to undo.
+		// near-nominal hull economy - AND a core world sits within its fuel
+		// range (coreWorldInReach), so the label is literally true. Both can
+		// REGRESS: burn their forges, cut their fuel, shrink their colonies,
+		// and the sector's danger level genuinely drops - the escalation is
+		// theirs to earn and yours to undo.
 		boolean canStrike = false;
 		boolean canStrikeCore = false;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
@@ -2113,9 +2162,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (!ThreatColonyManager.hasOperationalFuel(market)) continue;
 			if (!ThreatColonyManager.hasOperationalNexus(market)) continue;
 			canStrike = true;
-			if (market.getSize() >= 6
+			if (isCoreWorld(market)
 					&& ThreatColonyManager.shipSupplyMult(market)
-							>= ThreatColonyManager.STABLE_SHIP_SUPPLY_MULT) {
+							>= ThreatColonyManager.STABLE_SHIP_SUPPLY_MULT
+					&& coreWorldInReach(market)) {
 				canStrikeCore = true;
 				break;
 			}

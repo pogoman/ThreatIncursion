@@ -285,7 +285,8 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 			return;
 		}
 		if (!isAccepted()) return;
-		setElapsedDays(getElapsedDays() + amount);
+		float days = Global.getSector().getClock().convertToDays(amount);
+		setElapsedDays(getElapsedDays() + days);
 		if (market == null || !factionId.equals(market.getFactionId())) {
 			fail("lost");
 			return;
@@ -300,7 +301,7 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 			}
 			return;
 		}
-		watch.advance(amount);
+		watch.advance(days);
 		if (watch.intervalElapsed()) watchStrikes(market);
 		if (!isAccepted()) return;
 		// a strike still in the system decides the contract; the term waits for it
@@ -577,10 +578,10 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 					+ commodityLabel() + " at " + marketName() + ", in the " + sysName + ": the "
 					+ "colony is short and its war depot cannot cover it.", opad, fc,
 					Misc.getWithDGS(needed));
-			info.addPara("Deliver it any way you like: hand it over to the station commander "
-					+ "when you dock, or send a convoy from one of your colonies through the war "
-					+ "board. Partial deliveries count; the contract completes when the total is "
-					+ "reached.", opad);
+			info.addPara("Deliver it any way you like: hand it over when you dock (Deliver aid "
+					+ "on the port menu, or the station commander over the comm directory), or "
+					+ "send a convoy from one of your colonies through the war board. Partial "
+					+ "deliveries count; the contract completes when the total is reached.", opad);
 		}
 
 		if (!isPosted() && !isAccepted()) {

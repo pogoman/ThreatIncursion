@@ -23,8 +23,11 @@ import com.fs.starfarer.api.util.Misc;
  * contract and earns the same standing. The player's own holds are the only
  * gate on this route.
  *
- * <p>Wired from rules.csv: the option appears on the market's main menu while
- * the market memory carries {@link ThreatAidMissionIntel#MEM_REQUEST}.
+ * <p>Wired from rules.csv: the option appears on the market's main menu, and in
+ * the station or base commander's comm-directory conversation, while the market
+ * memory carries {@link ThreatAidMissionIntel#MEM_REQUEST}. Back re-fires
+ * PopulateOptions without touching $menuState, so it returns to whichever menu
+ * the player came from.
  * Commands: {@code menu}, {@code deliver <commodityId>}, {@code back}.
  */
 public class ThreatincAidCMD extends BaseCommandPlugin {

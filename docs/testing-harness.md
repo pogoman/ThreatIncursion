@@ -181,3 +181,12 @@ as soon as the home forge's hull supply reads stable, and first strikes on the f
 To verify: new game with the switch on, wait a day, open the war board - expect 5-10 hive
 rows, 2-4 with a core distance under 15 LY, every faction on the selector, garrisons in
 orbit in any hive system, and strikes mustering within the first month.
+
+## Laptop panel only, game pref 2560x1440 (2026-09-23)
+
+With only the 1920x1080 panel connected, set the `resolution` pref to `1920x1080` for the run
+(restore it after). The launcher is 597x373 (Play 298,254) and must be `place.ps1`'d first or the
+click misses. Main menu Continue is at **(1350,372)** there, not (1392,372). Screen grabs of the
+game work, but `gameshot.ps1` is what was used. Clicking a planet from ~200 su docks in a few
+seconds; the clock runs meanwhile (two days passed on one approach).
+

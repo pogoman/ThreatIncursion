@@ -42,6 +42,11 @@ lastStruckTimestamp, lastStruckMarketId, strikesSuffered }`.
 - `warModeStandDownDays` (0 = never): with a value, a faction stands down that many
   days after its last strike if no live hive remains within expedition range of any of
   its military worlds. Stock is kept, frozen, when it stands down.
+- Defense-board contracts (`ThreatMissionIntel`, the "Cripple Threat ..." missions) are
+  posted in a mobilised faction's name only: `pickSponsor` skips factions not at war,
+  `manageMissions` is dormant while nobody is mobilised, and a posted offer whose sponsor
+  has stood down is withdrawn on the next tick (`standDown`, cancel reason `stoodDown`).
+  Fixed 2026-09-11 after an unmobilised Hegemony sponsored two contracts.
 
 ## Reserves (ThreatReserves)
 

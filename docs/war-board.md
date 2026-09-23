@@ -15,7 +15,10 @@ model. `design/war-effort/Round2.dc.html` is the layout it implements.
 
 1. **Header** (custom panel): crest, title in Orbitron, cycle/day line, and the phase bar with
    its three stage labels (Awakened / Strike-capable / Core worlds in reach) driven by
-   `IncursionManager.getPhase()`, which is capability-based and can regress.
+   `IncursionManager.getPhase()`, which is capability-based and can regress. Phase 3 also
+   requires a strikeable size-6+ world within the armada-capable hive's fuel range
+   (`coreWorldInReach`, the same gate `pickStrikeTarget` applies) - so "Core worlds in reach"
+   is literally true, and cutting a hive's fuel can push the phase back.
 2. **Totals strip** (custom panel, two rows of four label/value pairs): known systems, hive
    worlds, mass, swarms sighted, expeditions out, sieges in, missions, hives burned.
 3. **Ledger**: stock table, one row per known system in priority order. Columns (wide / narrow

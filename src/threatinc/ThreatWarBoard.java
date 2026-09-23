@@ -1736,7 +1736,8 @@ public class ThreatWarBoard {
 			public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 				tooltip.addPara("Phases are capability, not calendar. Phase 2: some hive can "
 						+ "stage an expedition (strike-sized, forged, fuelled, nexus intact). "
-						+ "Phase 3: some hive can field a full armada against the core worlds. "
+						+ "Phase 3: some hive can field a full armada and a core world sits "
+						+ "within its reach. "
 						+ "Burn their forges, cut their fuel or shrink their colonies and the "
 						+ "danger level genuinely regresses.", 0f);
 				if (!ThreatAlarm.enabled()) return;
