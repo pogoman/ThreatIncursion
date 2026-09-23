@@ -163,8 +163,10 @@ request accepts it.
   value at the receiving market's price times `missionAidPayMult` (1.5) - the faction
   pays a premium for delivery - plus section 3's reputation doubled.
 
-**Handing over in person.** At the receiving colony the station commander offers
-"Deliver aid" (a rules.csv option on the market dialog, vanilla-only), listing what the
+**Handing over in person.** At the receiving colony the port offers "Deliver aid for the
+war effort" on the dock menu, and the station or base commander offers the same over
+the comm directory (rules.csv options, vanilla-only; the conversation needs its own
+rows because `$local` is the person there and `$menuState` is out of scope), listing what the
 contract still needs and what the player's fleet holds. What is handed over leaves the
 player's cargo, lands exactly as a convoy does (reserve deposit and trade modifier), and
 earns section 3's reputation. The player's own holds are the gate - buying 20,000 fuel
@@ -379,7 +381,9 @@ To verify in-game, in this order:
 4. A request appears on the intel screen for a struck NPC colony; accept; fail it by
    letting the strike land, or complete it by parking the player fleet there.
 5. Dock at a colony with an open delivery request: "Deliver aid for the war effort" on
-   the main menu; hand over; the contract progresses.
+   the main menu, and "I've brought aid for the war effort." in the station commander's
+   comm-directory conversation; hand over; the contract progresses. The term counts
+   real days (was frame seconds until 2026-09-17: a 120-day contract died in 12).
 6. Over a few ticks with two mobilised NPC factions at Favourable or better: an ally's
    guard or convoy appears in the log ("... sends ... for ...").
 7. Win a ground war: the eradication message, then the free outpost message over the same

@@ -174,7 +174,9 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 	 * hive world is somebody's front line, and that somebody posts the job.
 	 * Prefers a military world (the same bases purge expeditions muster from),
 	 * falls back to any inhabited world, and never asks pirates or the player's
-	 * own faction to sponsor.
+	 * own faction to sponsor. With the strategy layer on, only a mobilised
+	 * faction speaks: a contract in a faction's name says that faction is at war
+	 * with the swarm, and {@link ThreatWarState} is what says who is.
 	 */
 	protected static MarketAPI pickSponsor(MarketAPI target) {
 		StarSystemAPI system = target.getStarSystem();
@@ -186,6 +188,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 			if (faction == null || faction.isPlayerFaction()) continue;
 			if (Factions.THREAT.equals(market.getFactionId())) continue;
 			if (Misc.isPirateFaction(faction) || !faction.isShowInIntelTab()) continue;
+			if (ThreatWarState.enabled() && !ThreatWarState.isAtWar(faction)) continue;
 			if (market.isHidden() || market.isPlanetConditionMarketOnly()) continue;
 			if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
 			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(),
@@ -872,6 +875,11 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 		cancelWithReason("superseded", replacement);
 	}
 
+	/** Pulled from the board because the sponsor is no longer at war with the swarm. */
+	public void standDown() {
+		cancelWithReason("stoodDown", null);
+	}
+
 	/**
 	 * Whether the boards are willing to pull this offer. They will not do it
 	 * inside the minimum stand period - an offer that evaporates while the
@@ -1255,6 +1263,9 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 											+ " board's priority has moved to the "
 											+ threat.getDisplayName() + " " + supersededBy
 									: "") + ". The infrastructure it named still runs.", opad);
+				} else if ("stoodDown".equals(cancelReason)) {
+					info.addPara(faction.getDisplayNameWithArticle() + " has stood down from the war and "
+							+ "withdrawn this offer. The infrastructure it named still runs.", opad);
 				} else if ("neutralized".equals(cancelReason)) {
 					info.addPara("The target was neutralized before the contract was accepted. "
 							+ "Nothing is owed on work done before signing.", opad);
