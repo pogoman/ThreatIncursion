@@ -735,6 +735,38 @@ to Battlestation and Star Fortress. A colony that somehow already has a station 
 and the outpost is simply struck. A colony of another faction leaves the station standing
 in orbit unchanged.
 
+## Finding the hive (ThreatScouts, 2026-09-24, untested)
+
+User's call: a strike should not reveal where it came from; NPC factions find hives with
+scouting parties, and a hive any faction finds is known to all, player included.
+
+- One shared list, `ThreatIncData.discoveredSystems()`. It now gates the NPC war too:
+  `ThreatScouts.sectorKnows` (not debug-bypassed) filters purge sieges
+  (`tryPurgeBombardments`), the struck faction's task force (`dispatchFactionResponse`)
+  and its retarget (`ThreatResponseIntel.retarget`), NPC convoy staging
+  (`ThreatConvoys.stagingHive`), the stand-down test (`ThreatWarState.hiveInReach`) and
+  the defense-board contracts (`ThreatMissionIntel.bestObjective`).
+- What reveals a hive: the player entering its system (silent, as before); a scout
+  entering it; any non-Threat colony in the same system (`revealNeighbours`). A scout's
+  or neighbour's find is announced. Strikes and retaliation strikes no longer reveal.
+- A strike on an NPC colony gives its faction a LEAD on the origin. Sorties sweep
+  uninhabited systems with a planet within scoutLeadRadiusLY of the origin, nearest-first
+  from the faction's nearest military world, scoutStops per sortie, until the origin is
+  entered. A lead ignores sweeps older than itself. No task force sails until the origin
+  is known; after that the normal purge tick takes it up.
+- A mobilised faction with no lead sweeps within scoutRangeLY of a random military world
+  every scoutIntervalDays. A system swept clear is skipped for scoutMemoryDays.
+- scoutMaxPerFaction sorties out at once; a scouting party is a PATROL_SMALL of
+  scoutFleetPoints, non-aggressive, stays scoutStayDays per empty system, reports home.
+- The strike intel hides its origin until found: no source arrow, map point on the
+  target, status and return ETA without the staging world, no recall hint while preparing.
+- The player gets no leads: they scout in person, or wait for an NPC's find.
+- Knob hiveFogOfWar false = the old rule (every strike reveals its origin, NPCs know all).
+
+Verify: a strike on an NPC colony logs "Scout lead"; a "Scouting party" fleet leaves the
+faction's military world; entering the origin announces the find and a board row names
+it; no "dispatched a task force" line before that; the strike intel names no origin.
+
 ## Not built yet
 
 - Redeploying a withdrawn front elsewhere by order (it comes home into the reserve

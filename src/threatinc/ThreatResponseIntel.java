@@ -152,6 +152,7 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 		for (com.fs.starfarer.api.campaign.econ.MarketAPI curr
 				: ThreatIncData.getAllLiveColonyMarkets()) {
 			if (curr.getPrimaryEntity() == null || curr.getStarSystem() == null) continue;
+			if (!ThreatScouts.sectorKnows(curr)) continue;
 			float d = Misc.getDistanceLY(lead.getLocationInHyperspace(),
 					curr.getStarSystem().getLocation());
 			if (d < bestDist) {

@@ -250,7 +250,7 @@ public class ThreatWarState {
 		}
 	}
 
-	/** Whether any live hive system lies within expedition range of one of the faction's military worlds. */
+	/** Whether any known live hive system lies within expedition range of one of the faction's military worlds. */
 	public static boolean hiveInReach(FactionAPI faction) {
 		for (MarketAPI market : ThreatReserves.marketsOf(faction.getId())) {
 			if (!IncursionManager.hasMilitary(market)) continue;
@@ -258,7 +258,7 @@ public class ThreatWarState {
 			float range = IncursionManager.expeditionRangeLY(market);
 			for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) {
 				StarSystemAPI system = hive.getStarSystem();
-				if (system == null) continue;
+				if (system == null || !ThreatScouts.sectorKnows(hive)) continue;
 				if (Misc.getDistanceLY(market.getStarSystem().getLocation(),
 						system.getLocation()) <= range) {
 					return true;

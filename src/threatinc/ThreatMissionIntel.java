@@ -664,6 +664,8 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 		Objective best = null;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (taken.contains(market.getId())) continue;
+			// a board posts contracts only on hives the sector has found
+			if (!ThreatScouts.sectorKnows(market)) continue;
 			for (int type = 0; type < TYPE_COUNT; type++) {
 				if (!isValidTarget(type, market)) continue;
 				float impact = networkImpact(type, market);
@@ -914,6 +916,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 		}
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (covered.contains(market.getId())) continue;
+			if (!ThreatScouts.sectorKnows(market)) continue;
 			if (IncursionManager.isActiveStrikeSource(market)) return true;
 		}
 		return false;

@@ -172,6 +172,15 @@ threatinc_raiderEnabled,Hive Raiders Enabled,Boolean,true,"Hive colonies near a 
 threatinc_raiderRangeLY,Raider Range (LY),Double,12,"Light-years from a convoy route's midpoint within which a hive colony may send a raider.",2,40
 threatinc_raiderChance,Raider Chance,Double,0.5,"Chance each eligible hive colony (Defense Swarms above its reserve) detaches a raider at a passing convoy; the nearest rolls first and one raider is enough.",0,1
 threatinc_raiderDays,Raider Hunt (Days),Double,45,"Days a raider hunts its convoy before turning for home.",10,180
+threatinc_hiveFogOfWar,Hive Fog of War,Boolean,true,"Strikes do not reveal where they came from. Factions find hives with scouting parties, and a hive anyone finds is known to everyone, you included. NPC factions only attack hives they know. Off: every strike reveals its origin and NPC factions know every hive.",,
+threatinc_scoutLeadRadiusLY,Scout Lead Radius (LY),Double,6,"Light-years around a strike's origin that the struck faction's scouts sweep.",1,20
+threatinc_scoutRangeLY,Scout Sweep Range (LY),Double,10,"Light-years around one of its military worlds that a mobilised faction's routine sweep covers.",2,40
+threatinc_scoutIntervalDays,Scout Sweep Interval (Days),Double,60,"Days between a mobilised faction's routine sweeps while it has no strike to follow up.",10,365
+threatinc_scoutStops,Scout Stops per Sortie,Int,4,"Systems one scouting party visits before heading home.",1,10
+threatinc_scoutStayDays,Scout Stay (Days),Double,2,"Days a scout sweeps an empty system before moving on.",0,10
+threatinc_scoutMemoryDays,Scout Memory (Days),Double,180,"Days a system swept clear is left alone by routine sweeps. A new strike's follow-up ignores older sweeps.",0,720
+threatinc_scoutMaxPerFaction,Scouting Parties per Faction,Int,2,"Scouting parties one faction keeps out at once.",1,6
+threatinc_scoutFleetPoints,Scout Fleet Points,Double,20,"Combat fleet points of a scouting party.",5,100
 threatinc_donorKeepFraction,Donor Keep Fraction,Double,0.5,"Fraction of its own cap a donor colony keeps back for itself.",0,1
 threatinc_stagingTargetMult,Staging Target (Expeditions),Double,1.5,"A staging base stocks this many expeditions' worth of each reserve.",0.5,5
 threatinc_convoyTimeoutDays,Convoy Timeout (Days),Double,200,"Days after which a convoy that has not arrived is written off with its cargo.",30,1000
