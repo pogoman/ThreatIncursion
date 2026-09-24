@@ -2708,11 +2708,13 @@ public class ThreatColonyManager {
 			CampaignFleetAPI fleet = fabricateGarrisonSwarm(market, spec, random);
 			if (fleet == null) continue;
 			if (recycled != null) {
+				// read before despawn: a despawned fleet reports 0 FP
+				int oldTier = swarmTier(recycled);
+				int oldFP = (int) recycled.getFleetPoints();
 				fleets.remove(recycled);
 				recycled.despawn();
 				ThreatIncConfig.log("Recycled weak Defense Swarm at " + market.getName()
-						+ " (tier " + swarmTier(recycled) + ", "
-						+ (int) recycled.getFleetPoints() + " FP) for a fresh one");
+						+ " (tier " + oldTier + ", " + oldFP + " FP) for a fresh one");
 			}
 
 			fleets.add(fleet);
@@ -3017,7 +3019,11 @@ public class ThreatColonyManager {
 					&& Misc.getDistance(fleet, planet) <= GARRISON_LEASH_RADIUS;
 			if (!arrived) continue;
 
+			if (fleet.getBattle() != null) continue;
+
+			inTransit.remove(fleetId);
 			mem.unset(REINFORCE_TARGET_KEY);
+			if (absorbSurplus(target, fleet)) continue;
 			mem.set(GARRISON_FLAG, targetId);
 			// blinders off: on station, hunting reflexes back on (as the leash does)
 			mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS);
@@ -3025,10 +3031,72 @@ public class ThreatColonyManager {
 			fleet.clearAssignments();
 			fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
 			ThreatIncData.garrisonsFor(targetId).add(fleet);
-			inTransit.remove(fleetId);
 			ThreatIncConfig.log("Reinforcement arrived at " + target.getName() + " ("
 					+ countLiveGarrison(targetId) + "/" + nominalGarrison(target) + ")");
 		}
+	}
+
+	/**
+	 * A swarm coming home to a garrison already at its table's head-count
+	 * (a reinforcement that crossed a local fabrication, a raider whose slot
+	 * was refilled while it was out) is absorbed rather than seated: its hulls
+	 * join the standing swarms with room, weakest first, and whatever fits
+	 * nowhere is the hive's to recycle. Returns false when there is a free slot.
+	 */
+	public static boolean absorbSurplus(MarketAPI market, CampaignFleetAPI fleet) {
+		if (market == null || fleet == null) return false;
+		if (countLiveGarrison(market.getId()) < nominalGarrison(market)) return false;
+		int cap = Global.getSettings().getInt("maxShipsInAIFleet");
+		List<CampaignFleetAPI> hosts = new ArrayList<CampaignFleetAPI>();
+		for (CampaignFleetAPI swarm : ThreatIncData.garrisonsFor(market.getId())) {
+			if (swarm == null || !swarm.isAlive() || swarm == fleet || swarm.getBattle() != null) continue;
+			if (swarm.getContainingLocation() != fleet.getContainingLocation()) continue;
+			hosts.add(swarm);
+		}
+		// no swarm on station to take the hulls in: seat it and let the next
+		// fabrication's recycler sort the count out
+		if (hosts.isEmpty()) return false;
+		java.util.Collections.sort(hosts, new java.util.Comparator<CampaignFleetAPI>() {
+			public int compare(CampaignFleetAPI a, CampaignFleetAPI b) {
+				return Float.compare(a.getFleetPoints(), b.getFleetPoints());
+			}
+		});
+		int ships = 0, fp = (int) fleet.getFleetPoints(), joined = 0;
+		java.util.Set<CampaignFleetAPI> grown = new java.util.HashSet<CampaignFleetAPI>();
+		for (com.fs.starfarer.api.fleet.FleetMemberAPI m : fleet.getFleetData().getMembersListCopy()) {
+			if (m.isStation()) continue;
+			CampaignFleetAPI into = null;
+			for (CampaignFleetAPI host : hosts) {
+				if (host.getFleetData().getNumMembers() < cap) {
+					into = host;
+					break;
+				}
+			}
+			if (into == null) break;
+			fleet.getFleetData().removeFleetMember(m);
+			m.setFlagship(false);
+			into.getFleetData().addFleetMember(m);
+			grown.add(into);
+			ships++;
+			joined += (int) m.getFleetPointCost();
+		}
+		for (CampaignFleetAPI host : grown) {
+			host.getFleetData().sort();
+			host.getFleetData().setSyncNeeded();
+			host.getFleetData().syncIfNeeded();
+			host.forceSync();
+			// grown past its birth strength: damage is measured from here (isUnderStrength)
+			com.fs.starfarer.api.campaign.rules.MemoryAPI mem = host.getMemoryWithoutUpdate();
+			float spawn = mem.contains(SWARM_SPAWN_FP) ? mem.getFloat(SWARM_SPAWN_FP) : 0f;
+			mem.set(SWARM_SPAWN_FP, Math.max(spawn, host.getFleetPoints()));
+		}
+		int left = fleet.getFleetData().getNumMembers();
+		fleet.despawn();
+		ThreatIncConfig.log("Surplus swarm absorbed at " + market.getName() + ": " + ships + " ships ("
+				+ joined + " of " + fp + " FP) into " + grown.size() + " swarms"
+				+ (left > 0 ? ", " + left + " recycled" : "") + " (" + countLiveGarrison(market.getId())
+				+ "/" + nominalGarrison(market) + ")");
+		return true;
 	}
 
 	/**

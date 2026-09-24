@@ -160,16 +160,26 @@ taken. Callers:
   depot's stock above the floor pays for. A player-commissioned expedition draws fuel and
   supplies best-effort (cost, not gate). Armaments short = a shorter front supply.
   An NPC siege sails at FULL STRENGTH (2026-09-24, knob `npcSiegeFullStrength`): all the
-  marines it wants (`minMarinesFraction` = 1 for NPCs), and a flotilla its depot pays for
-  whose `siegeRaidStrEstimate` still reaches `siegeRaidStrNeeded`; short of either it
-  waits. With half the marines, Hegemony's sieges of Thrial were trimmed to two fleets,
-  lost in the fight for the orbit before a landing, and spent the whole draw.
-  `siegeBlockReason` mirrors both gates. The player's sieges keep the half.
+  marines it wants (`minMarinesFraction` = 1 for NPCs), and the leading fleets that reach
+  the target's ground strength (`pointsForStrength`) and its orbit (`pointsForOrbit`) are
+  not for trimming - the depot pays for them or the siege waits, whatever the floor
+  fraction says; only the fleets beyond them shrink to what it can pay for. The ground
+  strength is `siegeRaidStrNeeded`, or what `siegeMaxFleets` allows when the cap left the
+  flotilla short (a capped flotilla sails as it did before the gate; review fix
+  2026-09-24 - before it, the trim gate compared against the full need and a capped
+  flotilla was postponed forever, and any provisions trim at all failed the gate, so the
+  floor fraction never let a smaller siege sail). With half the marines, Hegemony's
+  sieges of Thrial were trimmed to two fleets, lost in the fight for the orbit before a
+  landing, and spent the whole draw. The player's sieges keep the half;
+  `siegeBlockReason` mirrors only the player's gates (the board orders no NPC siege).
   An NPC siege also WEIGHS THE ORBIT (2026-09-24, knobs `npcSiegeOrbitGate`,
   `npcSiegeOrbitMargin` 1.5): the flotilla grows (up to `siegeMaxFleets`) until its fleet
   points (`ThreatAidCapacity.expeditionPoints`, 25 per size point) reach the Defense Swarm
-  FP over the target system (`siegeOrbitFP`, live garrisons of every target) times the
-  margin. The check runs FIRST, ahead of the marine gate: a flotilla at its fullest still
+  FP it faces (`siegeOrbitFaced`) times the margin. Since the 2026-09-24 review that is the
+  strongest single target world's garrison (`npcSiegeOrbitPerWorld`, default on). A siege
+  is `SEQUENTIAL` (vanilla takes the worlds one at a time with the whole flotilla), and a
+  garrison fights over its own world only. The old sum of every world's swarms kept the
+  gate shut for good: 679 postponements and 1 siege in a 21-month run. The check runs FIRST, ahead of the marine gate: a flotilla at its fullest still
   short waits and posts a SWARM BOUNTY on the system (`ThreatSwarmBountyIntel`;
   docs/player-aid.md section 4) while the base banks marines and provisions; one the
   depot trimmed below the orbit just waits. Whether a siege
@@ -177,6 +187,16 @@ taken. Callers:
   of Thrial (5 fleets, 1,200 marines) came home at 39% with no landing against six
   garrisons. Each launch logs "Siege fleets real: N FP spawned against ~M estimated" -
   the 25 FP per point is the mod's convention for vanilla-built raid fleets, unmeasured.
+  ONE SIZING (review fix 2026-09-24, `IncursionManager.siegeSizes`): the launch
+  (`tryPurgeBombardments`), the hunting gate (`hasSiegeableHive`), the convoy planner
+  (`stagingWants`) and the board's quotes size a base's flotilla the same way - an NPC's
+  per-fleet difficulty from its strength at the base (`siegeDifficulty`), the player's
+  from the job (`computeSiegeDifficulty`), the fleet count from the defenses and the
+  orbit, and a heavy-assault escort when any target is a defended hive above
+  `purgePreemptMaxSize` (`siegeHeavyAssault`, system-wide: the expedition purges the
+  system). Before, the hunting gate sized by the job and the launch by the navy, so a
+  weak navy could be told it could siege, be outweighed at the launch, and neither siege
+  nor hunt.
   An NPC staging base BANKS TOWARD ITS SIEGE (2026-09-24, `ThreatReserves.stagingBank`):
   its cap is the months cap plus its staging target, so the wait is the siege's needs over
   its banking. The floor stays on the months cap (`monthsCap`), so the siege spends what
@@ -241,7 +261,9 @@ and tanker hulls are added until the marines fit the berths, the goods the hold 
 fuel the tanks (up to 12 per pass). Before, an NPC navy's fleet-size multiplier and
 vanilla's hull picks left convoys a few dozen free berths, and marines were loaded only
 to that - 19 to 76 of a few hundred planned. Fuel is loaded against tank space, not the
-hold.
+hold. NPC convoys and outpost returns only: a player colony's convoy keeps the hulls its
+free fleet points bought (`ThreatAidCapacity.fitLoad`) and loads what they carry, so it
+never sails over the ledger.
 
 **Resolution** (fast poll): a convoy whose fleet is dead is lost with its cargo
 (announced if the player knows the faction is at war); one that reaches its destination
@@ -308,8 +330,8 @@ cards with three stock tables, faction-coloured:
    base with something above its floor), Siege by `IncursionManager.siegeBlockReason` (the
    base can commit `expeditionMinMarinesFraction` of the landing's marines - the same gate
    `launchSiegeExpedition` applies). The confirm prompt quotes the same figures
-   (`IncursionManager.siegeWants`, not the convoy planner's `stagingWants`, which sizes by
-   faction strength and could disagree with the launch).
+   (`IncursionManager.siegeWants`, on the same `siegeSizes` the launch and the convoy
+   planner's `stagingWants` use, so none can disagree).
 2. **Fleets and orders**: task forces (`ThreatResponseIntel`), expeditions
    (`ThreatPurgeFGI`), convoys, and standing orders, each with task, status, ETA. Click =
    show the fleet or intel on the map. **A group is one row per fleet** once its fleets are
@@ -321,9 +343,10 @@ cards with three stock tables, faction-coloured:
    so the rest is not judged beaten, the last fleet out ends the group; convoys, orders and
    outposts as before) and **Hunt** (Intercept until 2026-09-24; `BUTTON_DETACH`: `detach`
    the fleet from its group and `ThreatFleetOrders.adoptHunt` it - the same fleet, nothing
-   built or charged, hunts the target hive's Defense Swarms for `softenDays` (see "Hunting
-   forces") and then goes home to the expedition's source base on the tracked leg; marines
-   aboard stay aboard). Recall keys:
+   built or charged, hunts the target hive's Defense Swarms until they are gone, it falls
+   below `softenRetreatStrength` or `softenDays` run out (see "Hunting forces"), then goes
+   home to the expedition's source base on the tracked leg; marines aboard stay aboard;
+   the Confirm is the question and the days only). Recall keys:
    `purgefleet:i:fleetId` / `tffleet:i:fleetId`.
    Both are a clean cut (`ThreatPurgeFGI.detach` -> `cutLoose`, seen 2026-09-06 at Gamma
    Hero): the fleet loses vanilla's `WarfleetAssignmentAI` (a raid fleet's own
@@ -444,8 +467,9 @@ to `convoyMarineCapacity` (2,000) / `convoyCargoCapacity` (6,000); escort =
 `convoyEscortFP` + cargo value / 1,000 x `convoyEscortPerThousand`; EQUALISATION
 (a donor sent at most half the gap between the stocks) was REMOVED 2026-09-05 - it
 answered every colony being a staging base, and it made a base unable to ever hold more
-than its donors; with one staging base per hive and staging bases never donating, the
-traffic has one direction; `convoyMaxPerTick` (2) sailings per faction per
+than its donors; with one staging base per hive and a staging base donating only what it
+holds above its own siege's needs (`ThreatConvoys.spare`, 2026-09-24 - never before), the
+traffic in each commodity has one direction; `convoyMaxPerTick` (2) sailings per faction per
 tick, neediest first, FRONT RUNS FIRST. After any fight `trimToHulls` drops cargo the
 surviving ships cannot carry (Blackett's constant loss per attack).
 
@@ -788,18 +812,65 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   - the base has a hive of its own to siege (`IncursionManager.hasSiegeableHive`: a known
     hive it is `siegeBaseFor` whose swarms its fullest flotilla outweighs). It banks for
     that siege instead.
-- Size: the system's Defense Swarm FP x `softenMargin` (1.0), capped at `softenMaxFP`
-  (4,000, above a siege's 10 x ~245), and never below the weakest colony's garrison x the
-  margin. It waits if that floor is above the cap, or if the base cannot pay for it.
+- Size: the system's Defense Swarm FP x `softenMargin` (2.0), capped at `softenMaxFP`
+  (12,000), and never below the weakest colony's garrison x the margin. It waits if that
+  floor is above the cap, or if its bases cannot pay for it. Counted on the WARSHIPS BUILT
+  (`combatFP`): vanilla scales an NPC fleet by its market's `COMBAT_FLEET_SIZE_MULT`, so the
+  planner asks for points / that multiplier and adds up what each fleet really came out at.
+  If the yards built less than the floor, the fleets fold straight back into the depot
+  (`ThreatFleetOrders.fold`, full refund).
+- POOLED (`softenPool`, default on): after the nearest base, every other base of the
+  faction in reach that is not resting and has no siege of its own chips in, nearest
+  first, until the force reaches its size. Each base that sent a fleet rests
+  `softenIntervalDays`.
 - Cost: fuel (FP / 25 x LY x `expeditionFuelPerPointLY`) and supplies (FP / 25 x
   `expeditionSuppliesPerPoint`) drawn from the base's stock above its floor, as a siege
   pays. Everything is a warship: no marines, no armaments, no landing.
 - Fleets: split into fleets of at most `softenFleetFP` (400), each a `KIND_HUNT` order
-  (`ThreatFleetOrders.dispatchHunt`, "Hunt" on the board). They sit `ORBIT_AGGRESSIVE` over
-  the colony with the weakest standing garrison. When its garrison is gone they move to the
-  next weakest (`retargetHunt`). They go home on the tracked leg (refund on arrival) when
-  the system is clear, a fleet falls below `softenRetreatStrength` (0.4) of its launch
-  strength, or `softenDays` (60) run out.
+  (`ThreatFleetOrders.dispatchHunt`, "Hunt" on the board) carrying the force's id
+  (`Order.forceId`, a `ThreatSoftening.Force` in persistent data).
+- MUSTER (2026-09-24 review): the fleets fly blinkered to their faction's muster point,
+  3,000 units off the hive system's hyperspace anchor on a bearing of its own (`musterPoint`;
+  one shared point had hostile factions' forces fighting each other there). A base inside the
+  system waits at home. They hold there. The force goes in when
+  every fleet is in, or `softenMusterDays` (15) after the first arrived. It goes home if
+  none arrived within `softenDays`. It goes in only if the fleets present beat the weakest
+  garrison by the margin. If they do not but the whole force would, it waits up to three
+  muster spells for the stragglers. The 60-day term starts when it goes in. Before this each fleet
+  flew alone at its own burn and met the whole garrison one by one: in the 21-month run 69
+  hunting fleets broke off badly hurt and 3 cleared a system.
+- FLEET SIZE (`softenFleetFP` 1500): vanilla prunes an AI fleet to `maxShipsInAIFleet` (30)
+  at spawn, and a navy without big hulls loses the points. In the test Nortia's
+  Independents built 304 FP of a 1,683 ask. Most navies top out at 250-500 FP per fleet.
+  A fleet built below 80% of its ask refunds the provisions for the missing points, and
+  the faction asks at most 1.1x what it built from then on (`FLEET_CAP`, relearned after
+  a load).
+- IN AS ONE (the same night's test): sent in on separate headings, the fleets strung out
+  and fought the garrisons they passed alone. The slowest fleet leads with the hunt order,
+  and the rest FOLLOW it blinkered (`sendIn`). Once gathered they fold into the lead
+  (`softenMerge`, `mergeInto`): ships, provisions and launch strength summed, home to the
+  lead's base. Vanilla's AI never keeps separate fleets together in a fight: before this,
+  every battle of a 16-fleet Hegemony force was one ~400 FP fleet against an 876-1,037 FP
+  swarm. Merged, the same force (449 ships, 5,895 FP) cleared Alpha Novy Tayvay I. The
+  merged fleet has no ship cap (no unasked caps); the lead drops its blinkers within
+  2,500 units of the target.
+- In: all fleets `ORBIT_AGGRESSIVE` over the weakest garrison. When it is gone the force
+  moves on to the next weakest (`retargetHunt`) only if its warships still beat that
+  garrison by the margin, and goes home otherwise ("outmatched by"). The whole force goes
+  home (tracked leg, refund on arrival) when the system is clear, it falls below
+  `softenRetreatStrength` (0.4) of its strength when it went in or last moved on, or
+  `softenDays` (60) run out.
+- A THINNED SYSTEM IS SIEGED NOW (the same night): when a hunt clears a colony's swarms or
+  a force that fought goes home, `IncursionManager.huntThinned` marks the system. The
+  next poll runs the siege pass (`tryPurgeBombardments`) instead of waiting for the
+  monthly tick, and the system's colonies count as wounded (the `purgeFollowUpDays`
+  cooldown) for that long. In Run 4 a hunt opened Alpha Novy Tayvay's gate (355 FP) and
+  the swarms were back at 3,233 FP before the next tick. `siegeMaxFleets` went from 10
+  to 25 the same night: big hive worlds hold 3.7k-7.5k FP of swarms each, and 10 fleets
+  (~2.4k FP) never could reach the orbit margin.
+- Upkeep runs on the half-day order poll (`ThreatSoftening.advanceHunts` from
+  `IncursionManager.advance`). It used to ride the 30-day strategy tick, so a hunt could
+  fight on for a month before its retreat rule was read.
 - The PLAYER'S HUNT (same day, the user's call: it replaces Intercept, "quite a lot of
   crossover and this action feels more useful"). The faction view's Intercept buttons are
   Hunt now: on an own hive row (`BUTTON_HUNT`, a task force with everything the nearest
@@ -846,6 +917,10 @@ scouting parties, and a hive any faction finds is known to all, player included.
   every scoutIntervalDays. A system swept clear is skipped for scoutMemoryDays.
 - scoutMaxPerFaction sorties out at once; a scouting party is a PATROL_SMALL of
   scoutFleetPoints, non-aggressive, stays scoutStayDays per empty system, reports home.
+- Sweeps skip abyssal, hidden-theme and cut-off systems (`ThreatScouts.unreachable`): a
+  fleet's GO_TO into vanilla's "Unknown Location" pockets never arrives - one Hegemony scout
+  sat 132 days on one (test run 2026-09-24). Backstop for any stop: a party that has not
+  reached it in scoutLegMaxDays (60) logs "gave up on" and moves to the next.
 - The strike intel hides its origin until found: no source arrow, map point on the
   target, status and return ETA without the staging world, no recall hint while preparing.
 - The player gets no leads: they scout in person, or wait for an NPC's find.

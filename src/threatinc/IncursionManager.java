@@ -228,6 +228,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatScouts.poll(random);
 		ThreatSwarmScouts.poll(random);
 		ThreatFleetOrders.poll();
+		// hunting forces muster, move on and break off on the poll, not the monthly tick
+		ThreatSoftening.advanceHunts();
+		// a hunt just thinned a hive system: the sieges look now, not at the
+		// next monthly tick, by when the swarms have grown back
+		if (siegePassPending) {
+			siegePassPending = false;
+			java.util.List<String> names = new ArrayList<String>();
+			for (String id : THINNED.keySet()) {
+				StarSystemAPI thinned = Global.getSector().getStarSystem(id);
+				if (thinned != null && recentlyThinned(id)) names.add(thinned.getName());
+			}
+			ThreatIncConfig.log("Siege pass after a hunt thinned " + names);
+			tryPurgeBombardments();
+		}
 		ThreatReturns.poll();
 		ThreatAidCapacity.poll();
 		ThreatOutposts.poll();
@@ -1173,6 +1187,31 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * foothold to grow into a fortress; and a defended larger colony draws the
 	 * rare full assault, with extra escorts, on a stretched cooldown.
 	 */
+	/**
+	 * Hive system id -> when a hunting force last thinned it (ThreatSoftening:
+	 * a colony's swarms gone, or a force done). Not saved. A hunt took Alpha
+	 * Novy Tayvay I's swarms to 355 FP and opened the orbit gate, but sieges
+	 * are weighed on the monthly tick and the hive had regrown to 3,233 FP
+	 * before the next one; now a thinned system is looked at on the next poll,
+	 * on the follow-up cooldown of a wounded colony.
+	 */
+	protected static final java.util.Map<String, Long> THINNED = new java.util.HashMap<String, Long>();
+	protected static boolean siegePassPending;
+
+	/** A hunting force has thinned the system's swarms: weigh its sieges on the next poll. */
+	public static void huntThinned(String systemId) {
+		if (systemId == null) return;
+		THINNED.put(systemId, Global.getSector().getClock().getTimestamp());
+		siegePassPending = true;
+	}
+
+	/** Whether a hunt thinned the system within purgeFollowUpDays. */
+	protected static boolean recentlyThinned(String systemId) {
+		Long when = THINNED.get(systemId);
+		return when != null && Global.getSector().getClock().getElapsedDaysSince(when)
+				< ThreatIncConfig.purgeFollowUpDays() * timeScale();
+	}
+
 	protected void tryPurgeBombardments() {
 		if (!ThreatIncConfig.responsePurgeEnabled()) return;
 
@@ -1201,7 +1240,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// without this, the recovery between full-interval visits erases
 			// everything a lone expedition achieved.
 			boolean wounded = ThreatGroundFronts.hasFront(colony)
-					|| ThreatColonyManager.anyOrganDisrupted(colony);
+					|| ThreatColonyManager.anyOrganDisrupted(colony)
+					|| recentlyThinned(system.getId());
 			if (wounded) {
 				cooldown = Math.min(cooldown,
 						ThreatIncConfig.purgeFollowUpDays() * timeScale());
@@ -1222,23 +1262,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (base == null) continue;
 
 			FactionAPI faction = base.getFaction();
-			// strength at the base, not the hive system - see dispatchFactionResponse
-			float strength = WarSimScript.getFactionStrength(faction, base.getStarSystem());
-			int difficulty = ThreatIncConfig.responseMinDifficulty()
-					+ Math.round(strength / ThreatIncConfig.responseStrengthDivisor());
-			if (difficulty > ThreatIncConfig.responseMaxDifficulty()) {
-				difficulty = ThreatIncConfig.responseMaxDifficulty();
-			}
-
+			// ONE sizing (siegeSizes) for the launch, the hunting gate
+			// (hasSiegeableHive) and the convoy planner (stagingWants): a base
+			// judged able to take the orbit sails the flotilla that was judged,
+			// or the judgement locks it out of both sieging and hunting
 			java.util.List<MarketAPI> targets = collectSiegeTargets(colony, system);
 			boolean anyGarrisoned = anyTargetGarrisoned(targets);
-			java.util.List<Integer> fleetSizes = siegeFleetSizes(difficulty, anyGarrisoned,
-					heavyAssault, targets, 0f, siegeOrbitNeeded(faction, targets));
-			ThreatIncConfig.log("Siege sizing vs " + system.getName() + ": " + fleetSizes.size()
+			int difficulty = siegeDifficulty(base, faction, targets, anyGarrisoned);
+			java.util.List<Integer> fleetSizes = siegeSizes(base, faction, system);
+			ThreatIncConfig.logQuiet("sizing:" + system.getId(), "Siege sizing vs " + system.getName() + ": " + fleetSizes.size()
 					+ " fleets, ground str ~" + (int) siegeRaidStrEstimate(fleetSizes)
 					+ " against " + (int) siegeRaidStrNeeded(targets) + " needed, ~"
 					+ (int) ThreatAidCapacity.expeditionPoints(fleetSizes) + " FP against "
-					+ (int) siegeOrbitFP(targets) + " FP of Defense Swarms");
+					+ (int) siegeOrbitFaced(targets) + " FP of Defense Swarms faced");
 
 			// a postponed (short of marines) or refused (over free FP) launch
 			// returns null WITHOUT stamping the siblings' cooldown - so if we
@@ -1302,7 +1338,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * Whether this base has a hive to siege: a known hive system it is the
 	 * siege base for (siegeBaseFor) whose Defense Swarms its fullest flotilla
 	 * outweighs. Such a base spends on the siege, not on hunting forces
-	 * (ThreatSoftening) - the siege always comes first.
+	 * (ThreatSoftening) - the siege always comes first. The flotilla weighed
+	 * is exactly the one tryPurgeBombardments sails (siegeSizes), so a base
+	 * this says can siege is never then outweighed at the launch.
 	 */
 	public static boolean hasSiegeableHive(MarketAPI base) {
 		if (base == null || base.getFaction() == null) return false;
@@ -1415,6 +1453,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return points;
 	}
 
+	/** Difficulty points, taken in order, before the flotilla's fleet points reach the orbit need (all of them if they never do; 0 when the orbit is not weighed). */
+	public static int pointsForOrbit(java.util.List<Integer> fleetSizes, float orbitNeed) {
+		int points = 0;
+		for (Integer size : fleetSizes) {
+			if (points * FP_PER_RESPONSE_DIFFICULTY >= orbitNeed) break;
+			points += size;
+		}
+		return points;
+	}
+
 	public static float siegeRaidStrEstimate(java.util.List<Integer> fleetSizes) {
 		int points = 0;
 		for (Integer size : fleetSizes) points += size;
@@ -1435,15 +1483,32 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
+	 * The Defense Swarms a siege's flotilla fights at once: the strongest
+	 * single world's (npcSiegeOrbitPerWorld), since a siege is SEQUENTIAL -
+	 * the whole flotilla takes the system's worlds one at a time - and a
+	 * garrison fights over its own world only. Off: every world's summed.
+	 */
+	public static float siegeOrbitFaced(java.util.List<MarketAPI> targets) {
+		if (!ThreatIncConfig.npcSiegeOrbitPerWorld()) return siegeOrbitFP(targets);
+		float most = 0f;
+		for (MarketAPI target : targets) {
+			most = Math.max(most, siegeOrbitFP(java.util.Collections.singletonList(target)));
+		}
+		return most;
+	}
+
+	/**
 	 * The fleet points an NPC flotilla must bring to take the targets' orbit
-	 * (2026-09-24): the Defense Swarms there times npcSiegeOrbitMargin. A
-	 * siege sized only by its landing sailed into Thrial's six garrisons at
-	 * full marines and came home at 39% without a landing. 0 for the player's
-	 * own sieges and with the gate off.
+	 * (2026-09-24): the Defense Swarms it faces (siegeOrbitFaced) times
+	 * npcSiegeOrbitMargin. A siege sized only by its landing sailed into
+	 * Thrial's six garrisons at full marines and came home at 39% without a
+	 * landing. Weighing every world's swarms at once instead left the gate shut
+	 * for good: 679 postponements and one siege in a 21-month run. 0 for the
+	 * player's own sieges and with the gate off.
 	 */
 	public static float siegeOrbitNeeded(FactionAPI faction, java.util.List<MarketAPI> targets) {
 		if (faction == null || faction.isPlayerFaction() || !ThreatIncConfig.npcSiegeOrbitGate()) return 0f;
-		return siegeOrbitFP(targets) * Math.max(0f, ThreatIncConfig.npcSiegeOrbitMargin());
+		return siegeOrbitFaced(targets) * Math.max(0f, ThreatIncConfig.npcSiegeOrbitMargin());
 	}
 
 	/**
@@ -1593,14 +1658,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			float orbitNeed = siegeOrbitNeeded(faction, targets);
 			float fieldable = ThreatAidCapacity.expeditionPoints(params.fleetSizes);
 			if (orbitNeed > 0f && fieldable < orbitNeed) {
-				float garrison = siegeOrbitFP(targets);
+				float garrison = siegeOrbitFaced(targets);
 				int allowed = (int) (fieldable / Math.max(0.01f, ThreatIncConfig.npcSiegeOrbitMargin()));
-				ThreatIncConfig.log("Expedition postponed at " + base.getName() + ": "
+				ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + ": "
 						+ (int) fieldable + " FP against " + (int) garrison + " FP of Defense Swarms over "
 						+ system.getName() + " (takes at most " + allowed + ")");
 				ThreatSwarmBountyIntel.post(base, system, allowed);
 				return null;
 			}
+			// the ground strength this flotilla sets out with: the target's need, or
+			// what siegeMaxFleets allows when the cap left it short - a capped
+			// flotilla sailed before the full-strength gate and still does
+			float need = siegeRaidStrNeeded(targets);
+			float strGoal = Math.min(need, siegeRaidStrEstimate(params.fleetSizes));
 			float[] wants = expeditionWants(base, system, targets, fleetSizes);
 			// the landing the player asked for: the need (wants[0]), or the
 			// Extra/All tier's bigger goal - never below the need
@@ -1610,7 +1680,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 			float minMarines = wants[0] * minMarinesFraction(faction);
 			if (wants[0] > 0f && haveMarines < minMarines) {
-				ThreatIncConfig.log("Expedition postponed at " + base.getName() + ": "
+				ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + ": "
 						+ (int) haveMarines + " of " + (int) wants[0]
 						+ " marines available (need " + (int) minMarines + ")");
 				return null;
@@ -1650,15 +1720,27 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				if (suppliesPerPoint > 0f) payable = Math.min(payable, haveSupplies / suppliesPerPoint);
 				int points = 0;
 				for (Integer size : params.fleetSizes) points += size;
-				float minProvisions = points * ThreatIncConfig.expeditionMinProvisionsFraction();
+				// full strength (2026-09-24): the fleets that reach the target's
+				// ground strength and its orbit are not for trimming - the depot
+				// pays for them or the siege waits, whatever the floor fraction
+				// says. Only the fleets beyond them shrink to what it can pay for.
+				int mustPay = 0;
+				if (ThreatIncConfig.npcSiegeFullStrength()) {
+					mustPay = Math.max(pointsForStrength(params.fleetSizes, strGoal),
+							pointsForOrbit(params.fleetSizes, orbitNeed));
+				}
+				float minProvisions = Math.max(mustPay,
+						points * ThreatIncConfig.expeditionMinProvisionsFraction());
 				if (points > 0 && payable < minProvisions) {
-					ThreatIncConfig.log("Expedition postponed at " + base.getName() + ": "
+					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + ": "
 							+ (int) haveFuel + "/" + (int) (points * fuelPerPoint) + " fuel, "
 							+ (int) haveSupplies + "/" + (int) (points * suppliesPerPoint)
-							+ " supplies available (need "
-							+ (int) (ThreatIncConfig.expeditionMinProvisionsFraction() * 100f) + "%)");
+							+ " supplies pay for " + (int) Math.min(points, payable) + " of the "
+							+ points + " points (needs " + (int) Math.ceil(minProvisions) + ")");
 					return null;
 				}
+				// payable >= mustPay, and mustPay is the leading fleets, so the
+				// trim never reaches them
 				int before = params.fleetSizes.size();
 				while (params.fleetSizes.size() > 2 && points > payable) {
 					points -= params.fleetSizes.remove(params.fleetSizes.size() - 1);
@@ -1668,22 +1750,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 							+ before + " -> " + params.fleetSizes.size() + " fleets for "
 							+ (int) haveFuel + " fuel, " + (int) haveSupplies + " supplies");
 				}
-				// full strength (2026-09-24): a flotilla the depot trimmed
-				// below what the target needs waits instead of dying in orbit
-				float need = siegeRaidStrNeeded(targets);
+				// the same rule from the other side; holds by construction, kept
+				// so a trim below what the target needs can never sail
 				if (ThreatIncConfig.npcSiegeFullStrength()
-						&& siegeRaidStrEstimate(params.fleetSizes) < need) {
-					ThreatIncConfig.log("Expedition postponed at " + base.getName() + ": "
+						&& siegeRaidStrEstimate(params.fleetSizes) < strGoal) {
+					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + ": "
 							+ (int) haveFuel + " fuel, " + (int) haveSupplies + " supplies pay for "
 							+ (int) siegeRaidStrEstimate(params.fleetSizes) + " of the "
-							+ (int) need + " ground strength the target needs");
+							+ (int) strGoal + " ground strength the siege sails with");
 					return null;
 				}
 				// the orbit again: a flotilla the depot trimmed below it waits
 				// for convoys (the base's job, so no request)
 				float brings = ThreatAidCapacity.expeditionPoints(params.fleetSizes);
 				if (orbitNeed > 0f && brings < orbitNeed) {
-					ThreatIncConfig.log("Expedition postponed at " + base.getName() + ": "
+					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + ": "
 							+ (int) haveFuel + " fuel, " + (int) haveSupplies + " supplies pay for "
 							+ (int) brings + " of the " + (int) orbitNeed + " FP the orbit needs");
 					return null;
@@ -1757,23 +1838,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	/**
 	 * The convoy planner's question: what would a standard expedition from
-	 * this base against this hive system draw right now? Sized the way
-	 * tryPurgeBombardments sizes one (difficulty from the faction's strength
-	 * at the base, fleets from the targets' defenses).
+	 * this base against this hive system draw right now? The flotilla is the
+	 * one tryPurgeBombardments sails (siegeSizes), so a staging base stocks
+	 * exactly what its launch will take.
 	 */
 	public static float[] stagingWants(MarketAPI base, StarSystemAPI system) {
 		java.util.List<MarketAPI> targets = collectSiegeTargets(null, system);
 		if (targets.isEmpty() || base.getFaction() == null) return new float[] {0f, 0f, 0f, 0f};
-		float strength = WarSimScript.getFactionStrength(base.getFaction(), base.getStarSystem());
-		int difficulty = ThreatIncConfig.responseMinDifficulty()
-				+ Math.round(strength / ThreatIncConfig.responseStrengthDivisor());
-		if (difficulty > ThreatIncConfig.responseMaxDifficulty()) {
-			difficulty = ThreatIncConfig.responseMaxDifficulty();
-		}
-		boolean anyGarrisoned = anyTargetGarrisoned(targets);
-		java.util.List<Integer> fleetSizes = siegeFleetSizes(difficulty, anyGarrisoned,
-				false, targets, 0f, siegeOrbitNeeded(base.getFaction(), targets));
-		return expeditionWants(base, system, targets, fleetSizes);
+		return expeditionWants(base, system, targets, siegeSizes(base, base.getFaction(), system));
 	}
 
 	/**
@@ -1800,27 +1872,35 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return siegeSizes(base, faction, system, 0f);
 	}
 
-	/** As {@link #siegeSizes(MarketAPI, FactionAPI, StarSystemAPI)}, sized to land at least {@code marineGoal} (0 = the need) before the free-points trim. */
+	/**
+	 * As {@link #siegeSizes(MarketAPI, FactionAPI, StarSystemAPI)}, sized to land
+	 * at least {@code marineGoal} (0 = the need) before the free-points trim.
+	 * THE sizing of a siege from a base: the NPC launch (tryPurgeBombardments),
+	 * the hunting gate (hasSiegeableHive), the convoy planner (stagingWants)
+	 * and the board's quotes all read it, so none can disagree with another.
+	 */
 	public static java.util.List<Integer> siegeSizes(MarketAPI base, FactionAPI faction,
 			StarSystemAPI system, float marineGoal) {
 		java.util.List<MarketAPI> targets = system != null
 				? collectSiegeTargets(null, system) : new java.util.ArrayList<MarketAPI>();
 		if (base == null || faction == null || targets.isEmpty()) return new java.util.ArrayList<Integer>();
 		boolean anyGarrisoned = anyTargetGarrisoned(targets);
-		int difficulty = computeSiegeDifficulty(targets, anyGarrisoned);
-		java.util.List<Integer> sizes = siegeFleetSizes(difficulty, anyGarrisoned, false, targets, marineGoal,
+		int difficulty = siegeDifficulty(base, faction, targets, anyGarrisoned);
+		java.util.List<Integer> sizes = siegeFleetSizes(difficulty, anyGarrisoned,
+				siegeHeavyAssault(faction, targets), targets, marineGoal,
 				siegeOrbitNeeded(faction, targets));
 		return ThreatAidCapacity.fitExpedition(base, faction, sizes, false);
 	}
 
 	/**
 	 * Why the board's Siege order would raise nothing now, or null if it
-	 * would sail: the same gates launchSiegeExpedition applies (a player base
-	 * must have the free fleet points for the smallest flotilla, staged task
-	 * forces included; a mobilised faction's base must commit
-	 * expeditionMinMarinesFraction of the landing's marines, and an NPC's
-	 * expeditionMinProvisionsFraction of its fuel and supplies), so the button
-	 * greys out instead of the order failing after Confirm.
+	 * would sail: the gates launchSiegeExpedition applies to the PLAYER's own
+	 * sieges (a base must have the free fleet points for the smallest
+	 * flotilla, staged task forces included; in war mode it must commit
+	 * expeditionMinMarinesFraction of the landing's marines), so the button
+	 * greys out instead of the order failing after Confirm. The board orders
+	 * only the player's sieges (ThreatFleetOrders.canPlayerOrder); an NPC's
+	 * orbit and provisions gates live in the launch alone.
 	 */
 	public static String siegeBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
 		if (base == null) {
@@ -1840,15 +1920,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 		}
 		if (!ThreatWarState.isAtWar(faction)) return null;
-		// the orbit gate comes first (launchSiegeExpedition)
-		java.util.List<MarketAPI> orbitTargets = collectSiegeTargets(null, system);
-		float orbitNeed = siegeOrbitNeeded(faction, orbitTargets);
-		float fieldable = ThreatAidCapacity.expeditionPoints(siegeSizes(base, faction, system));
-		if (orbitNeed > 0f && fieldable < orbitNeed) {
-			return "The Defense Swarms hold " + Misc.getWithDGS((int) siegeOrbitFP(orbitTargets))
-					+ " FP; the largest siege from " + base.getName() + " brings "
-					+ Misc.getWithDGS((int) fieldable) + " FP.";
-		}
 		float[] wants = siegeWants(base, faction, system);
 		float have = ThreatReserves.available(base,
 				com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
@@ -1858,32 +1929,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					+ "landing needs at least " + Misc.getWithDGS((int) Math.ceil(min)) + " of the "
 					+ Misc.getWithDGS((int) wants[0]) + " it wants.";
 		}
-		// an NPC siege's provisions gate (launchSiegeExpedition)
-		if (!faction.isPlayerFaction()) {
-			float frac = ThreatIncConfig.expeditionMinProvisionsFraction();
-			// at full strength, provisions for the fleets that reach the need
-			if (ThreatIncConfig.npcSiegeFullStrength()) {
-				java.util.List<Integer> sizes = siegeSizes(base, faction, system);
-				int total = 0;
-				for (Integer size : sizes) total += size;
-				int needed = pointsForStrength(sizes, siegeRaidStrNeeded(collectSiegeTargets(null, system)));
-				if (total > 0) frac = Math.max(frac, (float) needed / total);
-			}
-			float fuel = ThreatReserves.available(base,
-					com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
-			float supplies = ThreatReserves.available(base,
-					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
-			if (wants[2] > 0f && fuel < wants[2] * frac) {
-				return base.getName() + " can pay " + Misc.getWithDGS((int) fuel) + " fuel; the "
-						+ "expedition needs at least " + Misc.getWithDGS((int) Math.ceil(wants[2] * frac))
-						+ " of the " + Misc.getWithDGS((int) wants[2]) + " it burns.";
-			}
-			if (wants[3] > 0f && supplies < wants[3] * frac) {
-				return base.getName() + " can pay " + Misc.getWithDGS((int) supplies) + " supplies; the "
-						+ "expedition needs at least " + Misc.getWithDGS((int) Math.ceil(wants[3] * frac))
-						+ " of the " + Misc.getWithDGS((int) wants[3]) + " it burns.";
-			}
-		}
 		return null;
 	}
 
@@ -1892,9 +1937,50 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	// ------------------------------------------------------------------
 
 	/**
-	 * A siege expedition is sized to the JOB, not to a sponsor's navy:
-	 * the biggest colony in the target system sets the tempo, live Defense
-	 * Swarms add a point, clamped to the response difficulty band.
+	 * The quality of each fleet in a siege from this base. An NPC navy sends
+	 * what it has: its strength at the BASE's system (the hive system is enemy
+	 * territory where it has none - see dispatchFactionResponse), in the
+	 * response difficulty band. The player's own siege is sized to the job
+	 * (computeSiegeDifficulty). The defenses set how many fleets there are
+	 * either way (siegeFleetSizes).
+	 */
+	public static int siegeDifficulty(MarketAPI base, FactionAPI faction,
+			java.util.List<MarketAPI> targets, boolean anyGarrisoned) {
+		if (faction == null || faction.isPlayerFaction() || base == null) {
+			return computeSiegeDifficulty(targets, anyGarrisoned);
+		}
+		float strength = WarSimScript.getFactionStrength(faction, base.getStarSystem());
+		int difficulty = ThreatIncConfig.responseMinDifficulty()
+				+ Math.round(strength / ThreatIncConfig.responseStrengthDivisor());
+		if (difficulty > ThreatIncConfig.responseMaxDifficulty()) {
+			difficulty = ThreatIncConfig.responseMaxDifficulty();
+		}
+		return difficulty;
+	}
+
+	/**
+	 * Whether an NPC siege of these targets is a full assault - the expedition
+	 * purges the SYSTEM, so a defended hive there too big to stomp
+	 * preemptively (purgePreemptMaxSize) earns the extra escort whichever
+	 * colony's cooldown triggered the launch. The player's flotilla never adds
+	 * one; its tiers grow it instead (siegeMarineGoal).
+	 */
+	public static boolean siegeHeavyAssault(FactionAPI faction, java.util.List<MarketAPI> targets) {
+		if (faction == null || faction.isPlayerFaction()) return false;
+		for (MarketAPI target : targets) {
+			if (target == null) continue;
+			if (ThreatColonyManager.countLiveGarrison(target.getId()) > 0
+					&& target.getSize() > ThreatIncConfig.purgePreemptMaxSize()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * The player's siege is sized to the JOB, not to a navy: the biggest
+	 * colony in the target system sets the tempo, live Defense Swarms add a
+	 * point, clamped to the response difficulty band.
 	 */
 	public static int computeSiegeDifficulty(java.util.List<MarketAPI> targets,
 			boolean anyGarrisoned) {

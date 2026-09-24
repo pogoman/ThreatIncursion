@@ -187,7 +187,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			boolean hunt = ThreatIncConfig.siegeFightsForOrbit() && p.bombardment == null;
 			for (CampaignFleetAPI fleet : intel.getFleets()) {
 				ThreatFleetOrders.siegeLeash(fleet, contested,
-						ThreatFleetOrders.nearestWorld(fleet, live), hunt, "Strike");
+						ThreatFleetOrders.anchorWorld(fleet, live), hunt, "Strike");
 			}
 		}
 	}

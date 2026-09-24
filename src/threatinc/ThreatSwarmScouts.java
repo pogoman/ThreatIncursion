@@ -6,11 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.lwjgl.util.vector.Vector2f;
-
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
-import com.fs.starfarer.api.campaign.FleetAssignment;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.rules.MemoryAPI;
@@ -40,14 +37,8 @@ public class ThreatSwarmScouts {
 	public static final String KEY_KNOWN = "threatinc_swarmKnownSystems";
 	public static final String SCOUT_FLAG = "$threatinc_swarmScout";
 
-	public static class Scout {
-		public CampaignFleetAPI fleet;
-		public String homeMarketId;
-		public List<String> route = new ArrayList<String>();
-		public int leg;
-		/** When the current leg's system was entered; 0 while in transit. */
-		public long enteredTimestamp;
-		public boolean returning;
+	/** A Scouting Swarm out charting; everything it carries is the {@link ThreatScoutRoute.Party}'s. */
+	public static class Scout extends ThreatScoutRoute.Party {
 	}
 
 	@SuppressWarnings("unchecked")
@@ -91,83 +82,47 @@ public class ThreatSwarmScouts {
 	public static void poll(Random random) {
 		if (!enabled()) return;
 		for (Scout s : new ArrayList<Scout>(all())) {
-			advance(s);
+			ROUTE.advance(s);
 		}
 		if (IncursionManager.getPhase() < 2) return;
 		if (countOut() >= ThreatIncConfig.swarmScoutMax()) return;
 		launchOne(random);
 	}
 
-	protected static void advance(Scout s) {
-		CampaignFleetAPI fleet = s.fleet;
-		if (fleet == null || !fleet.isAlive() || fleet.isExpired()) {
-			all().remove(s);
-			ThreatIncConfig.log("Scouting Swarm " + (s.returning ? "home" : "lost"));
-			return;
+	/** The route walker, with what a Scouting Swarm does at a stop. */
+	protected static final ThreatScoutRoute<Scout> ROUTE = new ThreatScoutRoute<Scout>() {
+		protected List<Scout> all() {
+			return ThreatSwarmScouts.all();
 		}
-		if (s.returning) return; // GO_TO_LOCATION_AND_DESPAWN does the rest
-		if (s.leg >= s.route.size()) {
-			goHome(s);
-			return;
+		protected String describe(Scout s) {
+			return "Scouting Swarm";
 		}
-		StarSystemAPI target = ThreatWarBoard.getSystem(s.route.get(s.leg));
-		if (target == null) {
-			nextLeg(s);
-			return;
+		protected boolean knownStop(String systemId) {
+			return known().containsKey(systemId);
 		}
-		if (fleet.getContainingLocation() != target) return;
-		long now = Global.getSector().getClock().getTimestamp();
-		if (s.enteredTimestamp == 0L) {
+		protected boolean onEnter(Scout s, StarSystemAPI system, long now) {
 			// in the system is enough: the swarm sees what lives there
-			s.enteredTimestamp = now;
-			if (!known().containsKey(target.getId())) {
-				known().put(target.getId(), now);
+			if (!known().containsKey(system.getId())) {
+				known().put(system.getId(), now);
 				ThreatColonyManager.announce("A Scouting Swarm has charted the "
-						+ target.getNameWithLowercaseType() + ".", Misc.getNegativeHighlightColor());
-				ThreatIncConfig.log("Scouting Swarm charted " + target.getName());
+						+ system.getNameWithLowercaseType() + ".", Misc.getNegativeHighlightColor());
+				ThreatIncConfig.log("Scouting Swarm charted " + system.getName());
 			}
+			return false;
 		}
-		if (Global.getSector().getClock().getElapsedDaysSince(s.enteredTimestamp)
-				< ThreatIncConfig.scoutStayDays()) return;
-		nextLeg(s);
-	}
-
-	protected static void nextLeg(Scout s) {
-		s.leg++;
-		while (s.leg < s.route.size() && known().containsKey(s.route.get(s.leg))) s.leg++;
-		if (s.leg >= s.route.size()) {
-			goHome(s);
-			return;
+		protected String stayVerb() {
+			return "charting";
 		}
-		StarSystemAPI next = ThreatWarBoard.getSystem(s.route.get(s.leg));
-		if (next == null) {
-			nextLeg(s);
-			return;
+		protected MarketAPI homeOf(Scout s) {
+			return ThreatIncData.resolveColonyMarket(s.homeMarketId);
 		}
-		sendTo(s, next);
-	}
-
-	protected static void sendTo(Scout s, StarSystemAPI system) {
-		s.enteredTimestamp = 0L;
-		s.fleet.clearAssignments();
-		s.fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, system.getCenter(), 1000f,
-				"scouting the " + system.getNameWithLowercaseTypeShort());
-		s.fleet.addAssignment(FleetAssignment.PATROL_SYSTEM, system.getCenter(), 1000f,
-				"charting the " + system.getNameWithLowercaseTypeShort());
-	}
-
-	protected static void goHome(Scout s) {
-		s.returning = true;
-		s.fleet.clearAssignments();
-		MarketAPI home = ThreatIncData.resolveColonyMarket(s.homeMarketId);
-		if (home == null || home.getPrimaryEntity() == null) {
-			Misc.fadeAndExpire(s.fleet);
-			return;
+		protected void onReturn(Scout s) {
+			s.fleet.getMemoryWithoutUpdate().set(MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		}
-		s.fleet.getMemoryWithoutUpdate().set(MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
-		s.fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home.getPrimaryEntity(), 1000f,
-				"returning to the hive");
-	}
+		protected String returnLabel(Scout s, MarketAPI home) {
+			return "returning to the hive";
+		}
+	};
 
 	protected static int countOut() {
 		int n = 0;
@@ -217,14 +172,9 @@ public class ThreatSwarmScouts {
 	 * colony's fuel reach, nearest-first, none already on another scout's route.
 	 */
 	protected static List<String> planRoute(MarketAPI colony, float rangeLY) {
-		List<String> route = new ArrayList<String>();
 		StarSystemAPI home = colony.getStarSystem();
-		if (home == null || rangeLY <= 0f) return route;
-		List<String> taken = new ArrayList<String>();
-		for (Scout s : all()) {
-			if (s.returning) continue;
-			for (int i = s.leg; i < s.route.size(); i++) taken.add(s.route.get(i));
-		}
+		if (home == null || rangeLY <= 0f) return new ArrayList<String>();
+		List<String> taken = ROUTE.taken();
 		List<StarSystemAPI> candidates = new ArrayList<StarSystemAPI>();
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (!IncursionManager.isStrikeableWorld(market)) continue;
@@ -234,23 +184,7 @@ public class ThreatSwarmScouts {
 			if (Misc.getDistanceLY(home.getLocation(), system.getLocation()) > rangeLY) continue;
 			candidates.add(system);
 		}
-		Vector2f at = home.getLocation();
-		int stops = Math.max(1, ThreatIncConfig.scoutStops());
-		while (!candidates.isEmpty() && route.size() < stops) {
-			StarSystemAPI next = null;
-			float bestDist = Float.MAX_VALUE;
-			for (StarSystemAPI system : candidates) {
-				float d = Misc.getDistanceLY(system.getLocation(), at);
-				if (d < bestDist) {
-					bestDist = d;
-					next = system;
-				}
-			}
-			candidates.remove(next);
-			route.add(next.getId());
-			at = next.getLocation();
-		}
-		return route;
+		return ThreatScoutRoute.nearestFirst(candidates, home.getLocation());
 	}
 
 	protected static Scout launch(MarketAPI colony, List<String> route, Random random) {
@@ -273,7 +207,7 @@ public class ThreatSwarmScouts {
 		s.homeMarketId = colony.getId();
 		s.route = route;
 		all().add(s);
-		sendTo(s, ThreatWarBoard.getSystem(route.get(0)));
+		ROUTE.sendTo(s, ThreatScoutRoute.systemById(route.get(0)));
 
 		ThreatIncConfig.log("Scouting Swarm from " + colony.getName() + ": " + route);
 		return s;

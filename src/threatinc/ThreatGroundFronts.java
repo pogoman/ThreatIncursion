@@ -232,6 +232,14 @@ public class ThreatGroundFronts {
 		return front == null || front.factionId == null ? Factions.PLAYER : front.factionId;
 	}
 
+	/** The front's world by name for the log - its market may already have left the economy. */
+	protected static String worldName(GroundFront front) {
+		MarketAPI market = Global.getSector().getEconomy().getMarket(front.marketId);
+		if (market != null) return market.getName();
+		SectorEntityToken entity = Global.getSector().getEntityById(front.marketId);
+		return entity != null ? entity.getName() : front.marketId;
+	}
+
 	/**
 	 * THE THEATRE: everything about a front that depends on whose ground it
 	 * stands on, in one object, so the tick and the readouts ask it instead of
@@ -3194,7 +3202,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			// the swarm has no reserve to bank into (ThreatWarState excludes the
 			// Threat) and no outpost to garrison. Whatever was on the surface is
 			// simply gone with the front.
-			ThreatIncConfig.log("Threat front dispersed at " + front.marketId + ": "
+			ThreatIncConfig.log("Threat front dispersed at " + worldName(front) + ": "
 					+ marines + " marines, " + armaments + " armaments lost");
 			return;
 		}
@@ -3229,7 +3237,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				}
 			}
 			if (base == null) {
-				ThreatIncConfig.log("Front survivors stranded (no base in reach): " + front.marketId);
+				ThreatIncConfig.log("Front survivors stranded (no base in reach): " + worldName(front));
 				return;
 			}
 			// veterans coming off a front season the garrison they fall back on,
@@ -3257,6 +3265,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				+ marines + " " + ThreatMarineXP.rankName(level).toLowerCase()
 				+ " marines rejoin the fleet.",
 				Misc.getPositiveHighlightColor());
-		ThreatIncConfig.log("Front evacuated: " + front.marketId);
+		ThreatIncConfig.log("Front evacuated: " + worldName(front));
 	}
 }

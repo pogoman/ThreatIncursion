@@ -45,6 +45,14 @@ public class ThreatReturns {
 	public static final String MEM_FUEL = "$threatinc_drawFuel";
 	public static final String MEM_SUPPLIES = "$threatinc_drawSupplies";
 	public static final String MEM_FP0 = "$threatinc_fpAtLaunch";
+	/**
+	 * Fleet memory: the strength a fleet already out was given a new order at
+	 * ({@link #rebaseline}), for that order's stand-down rule. Kept apart from
+	 * MEM_FP0, which stays what {@link #settle} scales the refund by: a fleet
+	 * re-hunted at half strength must still be refunded as a fleet at half
+	 * strength (2026-09-24).
+	 */
+	public static final String MEM_FP_ORDER = "$threatinc_fpAtOrder";
 	/** Fleet memory: the last settle kept the fleet on station (ThreatAidCapacity.release). */
 	public static final String MEM_KEPT = "$threatinc_keptOnStation";
 
@@ -141,10 +149,10 @@ public class ThreatReturns {
 		return fleet.getMemoryWithoutUpdate().getString(MEM_HOME);
 	}
 
-	/** Restamps the strength baseline {@link #health} reads at the fleet's points now. */
+	/** Stamps the order baseline {@link #orderHealth} reads at the fleet's points now; the launch baseline is left alone. */
 	public static void rebaseline(CampaignFleetAPI fleet) {
 		if (fleet == null) return;
-		fleet.getMemoryWithoutUpdate().set(MEM_FP0, fleet.getFleetPoints());
+		fleet.getMemoryWithoutUpdate().set(MEM_FP_ORDER, fleet.getFleetPoints());
 	}
 
 	/** Surviving strength, 0..1: fleet points now over fleet points at launch. */
@@ -152,6 +160,18 @@ public class ThreatReturns {
 		if (fleet == null) return 0f;
 		float fp0 = fleet.getMemoryWithoutUpdate().getFloat(MEM_FP0);
 		if (fp0 <= 0f) return 1f;
+		return Math.max(0f, Math.min(1f, fleet.getFleetPoints() / fp0));
+	}
+
+	/**
+	 * Surviving strength for an order's stand-down rule, 0..1: fleet points
+	 * now over the points it was given the order at ({@link #rebaseline}), or
+	 * over launch ({@link #health}) for a fleet that sailed on it.
+	 */
+	public static float orderHealth(CampaignFleetAPI fleet) {
+		if (fleet == null) return 0f;
+		float fp0 = fleet.getMemoryWithoutUpdate().getFloat(MEM_FP_ORDER);
+		if (fp0 <= 0f) return health(fleet);
 		return Math.max(0f, Math.min(1f, fleet.getFleetPoints() / fp0));
 	}
 

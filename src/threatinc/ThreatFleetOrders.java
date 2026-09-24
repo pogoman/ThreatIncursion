@@ -147,6 +147,20 @@ public class ThreatFleetOrders {
 		public boolean aid;
 		/** Whether the sortie has reached its station. */
 		public boolean arrived;
+		/** An aid sortie's arrival standing has been earned - once, however many stations a hunt goes on to. */
+		public boolean credited;
+		/**
+		 * The hive system a hunt works (KIND_HUNT): when its colony's swarms are
+		 * gone it goes on to the system's next, even once that colony has left
+		 * the economy and no longer says where it was. Null on older orders.
+		 */
+		public String systemId;
+		/**
+		 * The NPC hunting force this fleet sails with (ThreatSoftening.Force):
+		 * its fleets muster, go in, move on and go home together. Null for the
+		 * player's Hunt and on orders from before 2026-09-24.
+		 */
+		public String forceId;
 
 		/** No term: on station until recalled (a guard over one of the player's own colonies, guardOwnDays 0). */
 		public boolean indefinite() {
@@ -162,7 +176,10 @@ public class ThreatFleetOrders {
 		public String task() {
 			if (KIND_GUARD.equals(kind)) return "guarding " + targetName;
 			if (KIND_INTERCEPT.equals(kind)) return "intercepting at " + targetName;
-			if (KIND_HUNT.equals(kind)) return "hunting the swarms over " + targetName;
+			if (KIND_HUNT.equals(kind)) {
+				return (ThreatSoftening.mustering(this) ? "mustering to hunt the swarms over "
+						: "hunting the swarms over ") + targetName;
+			}
 			if (KIND_SUPPORT.equals(kind) || KIND_DEFEND.equals(kind)) {
 				// fighting for the orbit first; then besieging (Support), or
 				// holding it and covering a front that cannot hold (Defend)
@@ -217,11 +234,13 @@ public class ThreatFleetOrders {
 					ThreatColonyManager.announceAlways("Your task force " + o.task()
 							+ " has been lost.", Misc.getNegativeHighlightColor());
 				}
+				ThreatIncConfig.log("Order lost (fleet destroyed): " + o.factionId + " " + o.task());
 				continue;
 			}
 			if (!o.arrived && atStation(o)) {
 				o.arrived = true;
-				if (o.aid) {
+				if (o.aid && !o.credited) {
+					o.credited = true;
 					if (KIND_GUARD.equals(o.kind)) ThreatAid.onGuardArrived(o);
 					else ThreatAid.onStrikeArrived(o);
 				}
@@ -236,7 +255,7 @@ public class ThreatFleetOrders {
 			// stands or falls, never home because fabrication cost it ships
 			boolean frontGone = KIND_DEFEND.equals(o.kind) && o.indefinite()
 					&& (ThreatGroundFronts.getFront(o.targetId) == null
-					|| (ThreatReturns.health(o.fleet) < ThreatIncConfig.defendMinStrength()
+					|| (ThreatReturns.orderHealth(o.fleet) < ThreatIncConfig.defendMinStrength()
 					&& !ThreatGroundFronts.defendCommitted(o.fleet, o.factionId, o.targetId)));
 			if (o.daysLeft() <= 0f || stationGone || frontGone) {
 				all().remove(o);
@@ -722,6 +741,16 @@ public class ThreatFleetOrders {
 	 * over the hive colony for softenDays, then home on the tracked leg.
 	 */
 	public static Order dispatchHunt(FactionAPI faction, MarketAPI base, MarketAPI hive, float fp) {
+		return dispatchHunt(faction, base, hive, fp, null, null);
+	}
+
+	/**
+	 * As above; a fleet of an NPC hunting force ({@code forceId}) first flies
+	 * blinkered to the force's {@code muster} point with the rest of it, and
+	 * is sent in by ThreatSoftening once the force has gathered.
+	 */
+	public static Order dispatchHunt(FactionAPI faction, MarketAPI base, MarketAPI hive, float fp,
+			String forceId, SectorEntityToken muster) {
 		if (faction == null || base == null || hive == null || hive.getPrimaryEntity() == null) return null;
 		StarSystemAPI system = hive.getStarSystem();
 		if (system == null) return null;
@@ -730,12 +759,33 @@ public class ThreatFleetOrders {
 		if (fleet == null) return null;
 		fleet.setName("Hunting Force");
 		// the player's hunting fleets earn swarm bounties on their own
-		if (faction.isPlayerFaction()) fleet.addEventListener(new ThreatSwarmBountyIntel.HunterPay());
-		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, hive.getPrimaryEntity(), days,
+		if (faction.isPlayerFaction()) ThreatSwarmBountyIntel.HunterPay.attach(fleet);
+		if (forceId != null && muster != null) {
+			// a fleet that picks a fight on the way reaches the muster without the strength it was counted at
+			fleet.getMemoryWithoutUpdate().set(MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
+			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, muster, 1000f,
+					"mustering to hunt the swarms in the " + system.getNameWithLowercaseTypeShort());
+			fleet.addAssignment(FleetAssignment.ORBIT_PASSIVE, muster, 1000f,
+					"mustering to hunt the swarms in the " + system.getNameWithLowercaseTypeShort());
+		} else {
+			engageHunt(fleet, base, hive, days);
+		}
+		Order o = record(fleet, faction, KIND_HUNT, base, hive.getId(), hive.getName(), days);
+		o.systemId = system.getId();
+		o.forceId = forceId;
+		return o;
+	}
+
+	/** A hunting fleet's orders once it goes in: the swarms over the hive for {@code days}, then home. */
+	public static void engageHunt(CampaignFleetAPI fleet, MarketAPI base, MarketAPI hive, float days) {
+		fleet.clearAssignments();
+		fleet.getMemoryWithoutUpdate().unset(MemFlags.FLEET_IGNORES_OTHER_FLEETS);
+		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, hive.getPrimaryEntity(), Math.max(1f, days),
 				"hunting the swarms over " + hive.getName());
-		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
-				1000f, "returning to " + base.getName());
-		return record(fleet, faction, KIND_HUNT, base, hive.getId(), hive.getName(), days);
+		if (base != null && base.getPrimaryEntity() != null) {
+			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
+					1000f, "returning to " + base.getName());
+		}
 	}
 
 	/** Moves a hunting fleet on to another colony of the same system, for what is left of its term. */
@@ -744,13 +794,11 @@ public class ThreatFleetOrders {
 		MarketAPI base = o.baseMarketId != null ? Global.getSector().getEconomy().getMarket(o.baseMarketId) : null;
 		o.targetId = hive.getId();
 		o.targetName = hive.getName();
-		o.fleet.clearAssignments();
-		o.fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, hive.getPrimaryEntity(),
-				Math.max(1f, o.daysLeft()), "hunting the swarms over " + hive.getName());
-		if (base != null && base.getPrimaryEntity() != null) {
-			o.fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
-					1000f, "returning to " + base.getName());
-		}
+		// en route again until it is over the next colony (the board reads
+		// arrived); an aid hunt's standing was earned at its first station
+		if (o.arrived) o.credited = true;
+		o.arrived = false;
+		engageHunt(o.fleet, base, hive, o.daysLeft());
 	}
 
 	/** Ends an order now: its fleet goes home on the tracked leg (refund on arrival). */
@@ -1045,13 +1093,16 @@ public class ThreatFleetOrders {
 		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_FLEET_DO_NOT_GET_SIDETRACKED, true);
 		fleet.getMemoryWithoutUpdate().set(ORDER_FLAG, true);
 		// its strength from here: the retreat rule reads what it hunts with
+		// (the order baseline only - the launch baseline still scales its refund)
 		ThreatReturns.rebaseline(fleet);
-		if (faction.isPlayerFaction()) fleet.addEventListener(new ThreatSwarmBountyIntel.HunterPay());
+		// one listener however often it is re-hunted: two would pay each bounty twice
+		if (faction.isPlayerFaction()) ThreatSwarmBountyIntel.HunterPay.attach(fleet);
 		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, target.getPrimaryEntity(), days,
 				"hunting the swarms over " + target.getName());
 		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
 				1000f, "returning to " + base.getName());
 		Order o = record(fleet, faction, KIND_HUNT, base, target.getId(), target.getName(), days);
+		o.systemId = hive.getId();
 		announce(faction, fleet.getName() + " is detached to hunt the Defense Swarms in the "
 				+ hive.getNameWithLowercaseTypeShort() + " for " + (int) days + " days.");
 		return o;
@@ -1420,7 +1471,7 @@ public class ThreatFleetOrders {
 	 * </ul>
 	 *
 	 * @param contested worlds whose orbit is held against the besieger
-	 * @param anchor    the target this fleet should be over ({@link #nearestWorld})
+	 * @param anchor    the target this fleet should be over ({@link #anchorWorld})
 	 * @param mayHunt   whether the doctrine fights for the orbit at all
 	 */
 	public static void siegeLeash(CampaignFleetAPI fleet, List<MarketAPI> contested,
@@ -1465,9 +1516,8 @@ public class ThreatFleetOrders {
 		// up the next thing it passes otherwise
 		mem.set(MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI curr = fleet.getCurrentAssignment();
-		if (curr != null && curr.getTarget() == planet
-				&& curr.getAssignment() == FleetAssignment.GO_TO_LOCATION) {
-			return; // already on the way back
+		if (curr != null && curr.getTarget() == planet) {
+			return; // already bound for the world, on our order or the sweep's
 		}
 		ThreatIncConfig.log(label + " on " + anchor.getName() + ": " + fleet.getName()
 				+ " strayed " + (dist < 0f ? "out of the system" : (int) dist + " units")
@@ -1480,11 +1530,20 @@ public class ThreatFleetOrders {
 	}
 
 	/**
-	 * The target a fleet is nearest to - the one world of an expedition's
-	 * several its leash is measured against. Anything in another location is
-	 * further than anything in this one.
+	 * The one world of an expedition's several its leash is measured against:
+	 * the one the raid's sweep has the fleet heading for, else the nearest.
+	 * Anchoring a fleet the sweep had sent on to its next target to the one it
+	 * left recalled it every poll (a strike at Earth, 9 recalls in 2.6 s).
+	 * Anything in another location is further than anything in this one.
 	 */
-	public static MarketAPI nearestWorld(CampaignFleetAPI fleet, List<MarketAPI> worlds) {
+	public static MarketAPI anchorWorld(CampaignFleetAPI fleet, List<MarketAPI> worlds) {
+		com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI curr =
+				fleet != null ? fleet.getCurrentAssignment() : null;
+		if (curr != null && curr.getTarget() != null) {
+			for (MarketAPI world : worlds) {
+				if (world != null && world.getPrimaryEntity() == curr.getTarget()) return world;
+			}
+		}
 		MarketAPI best = null;
 		float bestDist = 0f;
 		for (MarketAPI world : worlds) {

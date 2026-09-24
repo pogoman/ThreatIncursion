@@ -38,7 +38,9 @@ import com.fs.starfarer.api.util.Misc;
  * fighting, with vanilla's system-bounty standing per battle - and the
  * player's hunting fleets earn it too, for their share of their side
  * ({@link HunterPay}). Defense Swarms
- * of that system count wherever they are caught. It ends early only if the
+ * of that system count wherever they are caught - and each ship lost pays ONE
+ * bounty: its garrison's home system's, else the system it was caught in's
+ * ({@link #paidBy}). It ends early only if the
  * hive system falls, or the base or its faction's war goes. The siege gate
  * reads the live garrison, so every swarm destroyed opens the siege sooner.
  */
@@ -111,7 +113,7 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 	}
 
 	/**
-	 * Hears the player's battles and pays every running bounty for the
+	 * Hears the player's battles and pays the running bounties for the
 	 * Threat ships lost on the other side. Transient, added on every load.
 	 */
 	public static class Kills extends BaseCampaignEventListener {
@@ -122,23 +124,31 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		@Override
 		public void reportBattleOccurred(CampaignFleetAPI primaryWinner, BattleAPI battle) {
 			if (battle == null || !battle.isPlayerInvolved()) return;
-			for (IntelInfoPlugin curr : Global.getSector().getIntelManager().getIntel(ThreatSwarmBountyIntel.class)) {
-				ThreatSwarmBountyIntel b = (ThreatSwarmBountyIntel) curr;
-				if (b.isEnded() || b.isEnding()) continue;
-				b.payFor(battle.getNonPlayerSideSnapshot(), battle.getPlayerInvolvementFraction(),
-						b.inSystem(Global.getSector().getPlayerFleet()), "your fleet");
-			}
+			payAll(battle.getNonPlayerSideSnapshot(), battle.getPlayerInvolvementFraction(),
+					Global.getSector().getPlayerFleet(), "your fleet");
 		}
 	}
 
 	/**
 	 * Rides each of the player's hunting fleets (ThreatFleetOrders.dispatchHunt
-	 * and adoptHunt, 2026-09-24): a battle it fights pays every running
-	 * bounty for the Threat ships lost on the other side, for that fleet's
+	 * and adoptHunt, 2026-09-24): a battle it fights pays the running
+	 * bounties for the Threat ships lost on the other side, for that fleet's
 	 * share of its side's strength - so a Hunt order earns the bounty with
 	 * the player elsewhere. Saved with the fleet; no fields.
 	 */
 	public static class HunterPay implements FleetEventListener {
+		/** Puts one on the fleet unless it carries one already: a fleet hunted again would otherwise pay each bounty twice. */
+		public static void attach(CampaignFleetAPI fleet) {
+			if (fleet == null) return;
+			List<FleetEventListener> listeners = fleet.getEventListeners();
+			if (listeners != null) {
+				for (FleetEventListener l : listeners) {
+					if (l instanceof HunterPay) return;
+				}
+			}
+			fleet.addEventListener(new HunterPay());
+		}
+
 		@Override
 		public void reportFleetDespawnedToListener(CampaignFleetAPI fleet, FleetDespawnReason reason, Object param) {
 		}
@@ -152,10 +162,7 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 			float side = 0f;
 			for (CampaignFleetAPI f : battle.getSnapshotSideFor(fleet)) side += snapshotFP(f);
 			if (ours <= 0f || side <= 0f) return;
-			for (ThreatSwarmBountyIntel b : running()) {
-				b.payFor(battle.getOtherSideSnapshotFor(fleet), Math.min(1f, ours / side),
-						b.inSystem(fleet), fleet.getName());
-			}
+			payAll(battle.getOtherSideSnapshotFor(fleet), Math.min(1f, ours / side), fleet, fleet.getName());
 		}
 	}
 
@@ -167,32 +174,54 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		return fp;
 	}
 
-	/** Whether the fleet is in this bounty's system. */
-	protected boolean inSystem(CampaignFleetAPI fleet) {
-		return fleet != null && fleet.getContainingLocation() instanceof StarSystemAPI
-				&& systemId.equals(((StarSystemAPI) fleet.getContainingLocation()).getId());
+	/**
+	 * Pays the running bounties for the Threat ships lost among
+	 * {@code enemies} in a battle {@code ours} fought, times {@code share}.
+	 * Every enemy fleet is handed to exactly one bounty ({@link #paidBy}), so
+	 * a Defense Swarm of one bountied system caught in another is not paid
+	 * for twice. Both the player's own battles (Kills) and the hunting fleets'
+	 * (HunterPay) come through here.
+	 */
+	protected static void payAll(List<CampaignFleetAPI> enemies, float share, CampaignFleetAPI ours, String who) {
+		if (enemies == null || enemies.isEmpty() || share <= 0f) return;
+		List<ThreatSwarmBountyIntel> bounties = running();
+		if (bounties.isEmpty()) return;
+		String battleSystemId = ours != null && ours.getContainingLocation() instanceof StarSystemAPI
+				? ((StarSystemAPI) ours.getContainingLocation()).getId() : null;
+		List<String> payer = new ArrayList<String>();
+		for (CampaignFleetAPI fleet : enemies) payer.add(paidBy(fleet, battleSystemId));
+		for (ThreatSwarmBountyIntel b : bounties) {
+			List<CampaignFleetAPI> covered = new ArrayList<CampaignFleetAPI>();
+			for (int i = 0; i < enemies.size(); i++) {
+				if (b.systemId.equals(payer.get(i))) covered.add(enemies.get(i));
+			}
+			if (!covered.isEmpty()) b.payFor(covered, share, who);
+		}
 	}
 
-	/** Whether this Threat fleet is one the bounty pays for: fought in the system, or one of its Defense Swarms caught elsewhere. */
-	protected boolean covers(CampaignFleetAPI fleet, boolean battleInSystem) {
-		if (fleet == null || fleet.getFaction() == null) return false;
-		if (!Factions.THREAT.equals(fleet.getFaction().getId())) return false;
-		if (battleInSystem) return true;
+	/**
+	 * The hive system whose bounty pays for this Threat fleet: its garrison's
+	 * home system when a bounty runs there, else the system it was caught in
+	 * (which pays only if a bounty runs there). Null for a fleet that is not
+	 * Threat's.
+	 */
+	protected static String paidBy(CampaignFleetAPI fleet, String battleSystemId) {
+		if (fleet == null || fleet.getFaction() == null) return null;
+		if (!Factions.THREAT.equals(fleet.getFaction().getId())) return null;
 		String home = fleet.getMemoryWithoutUpdate().getString(ThreatColonyManager.GARRISON_FLAG);
-		if (home == null) return false;
-		MarketAPI colony = Global.getSector().getEconomy().getMarket(home);
-		if (colony == null) colony = ThreatIncData.resolveColonyMarket(home);
-		return colony != null && colony.getStarSystem() != null
-				&& systemId.equals(colony.getStarSystem().getId());
+		MarketAPI colony = home != null ? Global.getSector().getEconomy().getMarket(home) : null;
+		if (colony != null && colony.getStarSystem() != null && find(colony.getStarSystem().getId()) != null) {
+			return colony.getStarSystem().getId();
+		}
+		return battleSystemId;
 	}
 
-	/** Pays for the Threat ships lost among {@code enemies}, times {@code share}; {@code battleInSystem} if the fight was in this system. */
-	protected void payFor(List<CampaignFleetAPI> enemies, float share, boolean battleInSystem, String who) {
+	/** Pays for the Threat ships lost among {@code enemies} - the fleets {@link #payAll} handed this bounty - times {@code share}. */
+	protected void payFor(List<CampaignFleetAPI> enemies, float share, String who) {
 		if (enemies == null || share <= 0f) return;
 		float bounty = 0f;
 		float fpDestroyed = 0f;
 		for (CampaignFleetAPI fleet : enemies) {
-			if (!covers(fleet, battleInSystem)) continue;
 			for (FleetMemberAPI loss : Misc.getSnapshotMembersLost(fleet)) {
 				bounty += Misc.getSizeNum(loss.getHullSpec().getHullSize()) * baseBounty;
 				fpDestroyed += loss.getFleetPointCost();
@@ -259,8 +288,13 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		return faction;
 	}
 
+	/** The hive system, or null when it is gone. */
+	protected StarSystemAPI system() {
+		return systemId != null ? Global.getSector().getStarSystem(systemId) : null;
+	}
+
 	protected String systemName() {
-		StarSystemAPI system = ThreatWarBoard.getSystem(systemId);
+		StarSystemAPI system = system();
 		return system != null ? system.getNameWithLowercaseTypeShort() : "hive system";
 	}
 
@@ -269,11 +303,11 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		return base != null ? base.getName() : baseMarketId;
 	}
 
-	/** Defense Swarm points over the system now. */
+	/** Defense Swarm points a siege faces now: the strongest world's (IncursionManager.siegeOrbitFaced). */
 	protected float orbitFP() {
-		StarSystemAPI system = ThreatWarBoard.getSystem(systemId);
+		StarSystemAPI system = system();
 		if (system == null) return 0f;
-		return IncursionManager.siegeOrbitFP(IncursionManager.collectSiegeTargets(null, system));
+		return IncursionManager.siegeOrbitFaced(IncursionManager.collectSiegeTargets(null, system));
 	}
 
 	@Override
@@ -308,7 +342,7 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		for (MarketAPI hive : hives) {
 			if (hive.getPrimaryEntity() != null) return hive.getPrimaryEntity();
 		}
-		StarSystemAPI system = ThreatWarBoard.getSystem(systemId);
+		StarSystemAPI system = system();
 		return system != null ? system.getCenter() : null;
 	}
 
@@ -346,7 +380,7 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 				initPad = 0f;
 			}
 			info.addPara("%s base reward per frigate", initPad, tc, h, Misc.getDGSCredits(baseBounty));
-			info.addPara("Swarms at %s FP, siege at %s", 0f, tc, h, Misc.getWithDGS((int) orbitFP()),
+			info.addPara("Strongest swarms %s FP, siege takes %s", 0f, tc, h, Misc.getWithDGS((int) orbitFP()),
 					Misc.getWithDGS(siegeFP));
 			addDays(info, "remaining", Math.max(0f, duration - elapsedDays), tc);
 		}
@@ -361,7 +395,7 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		if (faction.getLogo() != null) info.addImage(faction.getLogo(), width, 128, opad);
 		info.addPara(Misc.ucFirst(faction.getDisplayNameWithArticle()) + " is paying for Threat ships "
 				+ "destroyed in the " + systemName() + ". Its siege from " + baseName() + " can take the "
-				+ "orbit once the Defense Swarms are down to %s FP; they hold %s.", opad, h,
+				+ "orbit once no world's Defense Swarms hold more than %s FP; the strongest hold %s.", opad, h,
 				Misc.getWithDGS(siegeFP), Misc.getWithDGS((int) orbitFP()));
 		info.addPara("Paid per ship by hull size, for your share of each battle. The system's Defense "
 				+ "Swarms count wherever you catch them.", opad);

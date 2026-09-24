@@ -17,6 +17,7 @@ Everything here was verified in the running game unless marked otherwise.
 | [strategy-layer.md](strategy-layer.md) | Phase 2, built untested (Sept 2026): per-faction war mode, per-colony reserves from vanilla production, troops as real expedition cargo, staging convoys, the board's faction selector and view, and remote fleet orders (guard, stage, intercept, siege, recall). |
 | [nexerelin.md](nexerelin.md) | Compatibility with Nexerelin (optional, built and partly verified in-game 2026-09-23): who owns the military menu, how besieged colonies are kept out of Nexerelin invasions, and what Nexerelin still does unchecked. |
 | [fleet-archetypes.md](fleet-archetypes.md) | BUILT 2026-09-24, untested in-game: the 12 new Threat variants, the archetypes (Host, Vanguard, Battery, Tide, Hunter, Scout) and which fleet gets which, how composition keeps vanilla's strength, and how to add a variant or archetype. |
+| [testing-handover-2026-09-24.md](testing-handover-2026-09-24.md) | UNTESTED, uncommitted: how to prove the 15 review fixes of 2026-09-24 in-game - ten checks in priority order, the exact log lines each one hinges on, load risks, and what to do when it passes. |
 
 Design mockups (HTML artboards) that led to the current layout are in `design/war-effort/`;
 `Round2.dc.html` is the layout the board implements, `Kit.dc.html` the widget rules.

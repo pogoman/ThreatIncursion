@@ -6,6 +6,8 @@ param(
   [string]$Tag = "lap",
   [string]$Faction = "",          # "" = hive view, "hegemony", "player"
   [double]$Scale = 0.5,
+  [int]$ContinueX = 1350,         # 1350,372 with only the laptop panel (2026-09-23)
+  [int]$ContinueY = 372,
   [switch]$NoCapture
 )
 $sp = $PSScriptRoot
@@ -29,12 +31,15 @@ $deadline = (Get-Date).AddSeconds(60)
 do { Start-Sleep -Seconds 1; $r = & $ui -Action rect } while ($r -eq "NOWINDOW" -and (Get-Date) -lt $deadline)
 Write-Output "$(Elapsed)s launcher: $r"
 Start-Sleep -Seconds 3
+# a background script cannot take the foreground: pin the window topmost or the click misses
+& "$sp\place.ps1" -X 300 -Y 200 | Out-Null
 # Play: launcher is 805x503 nominal, 597x373 on this panel
 if ($r -like "*client 597x*") { & $ui -Action click -X 298 -Y 254 | Out-Null } else { & $ui -Action click -X 402 -Y 343 | Out-Null }
 
 $deadline = (Get-Date).AddSeconds(180)
 do { Start-Sleep -Seconds 3; $r = & $ui -Action rect } while ($r -notlike "*client 1920x1080*" -and (Get-Date) -lt $deadline)
 Write-Output "$(Elapsed)s game window: $r"
+& "$sp\place.ps1" -X 0 -Y 0 | Out-Null
 # main menu is up once it reads the save descriptors for Continue ("Reading save
 # data"); the music line fires earlier, during loading
 $deadline = (Get-Date).AddSeconds(240)
@@ -47,7 +52,7 @@ Write-Output "$(Elapsed)s menu"
 $after = $before
 for ($attempt = 1; $attempt -le 4 -and $after -le $before; $attempt++) {
   Start-Sleep -Seconds 6
-  & $ui -Action click -X 1392 -Y 372 | Out-Null
+  & $ui -Action click -X $ContinueX -Y $ContinueY | Out-Null
   $deadline = (Get-Date).AddSeconds(45)
   do { Start-Sleep -Seconds 3; if (RolledOver) { $before = 0 }; $after = (Select-String -Path $log -Pattern "Loading stage 39 - last" -ErrorAction SilentlyContinue | Measure-Object).Count } while ($after -le $before -and (Get-Date) -lt $deadline)
   Write-Output "$(Elapsed)s continue attempt $attempt loaded=$($after -gt $before)"

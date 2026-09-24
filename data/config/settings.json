@@ -506,6 +506,9 @@
 	# short asks the player to thin the swarms (an orbit contract)
 	"threatinc_npcSiegeOrbitGate": true,
 	"threatinc_npcSiegeOrbitMargin": 1.5,
+	# weigh the strongest single world's swarms (a siege takes the worlds one
+	# at a time, and a garrison fights over its own world only); off: all summed
+	"threatinc_npcSiegeOrbitPerWorld": true,
 	# an NPC siege waits unless its base can pay this fraction of the fuel and
 	# supplies its flotilla burns; short of the rest, the flotilla shrinks
 	"threatinc_expeditionMinProvisionsFraction": 0.5,
@@ -566,6 +569,7 @@
 	"threatinc_scoutIntervalDays": 60,
 	"threatinc_scoutStops": 4,
 	"threatinc_scoutStayDays": 2,
+	"threatinc_scoutLegMaxDays": 60,
 	"threatinc_scoutMemoryDays": 180,
 	"threatinc_scoutMaxPerFaction": 2,
 	"threatinc_scoutFleetPoints": 20,
@@ -700,13 +704,21 @@
 	"threatinc_swarmBountyDays": 60,
 	# a mobilised NPC base with no hive of its own to siege sends a hunting
 	# force against a bountied hive's swarms: sized to beat them
-	# (softenMargin) up to softenMaxFP, in fleets of at most
-	# softenFleetFP, paid in fuel and supplies like a siege; it works the
-	# weakest garrison first for softenDays, home below softenRetreatStrength
+	# (softenMargin, on the fleets actually built) up to softenMaxFP, in
+	# fleets of at most softenFleetFP, paid in fuel and supplies like a
+	# siege - pooled from every base of the faction in reach (softenPool).
+	# The fleets muster outside the system (up to softenMusterDays for
+	# stragglers) and go in together; the force works the weakest garrison
+	# first for softenDays, moves on only while it still outweighs the
+	# next, and goes home whole below softenRetreatStrength
 	"threatinc_softenEnabled": true,
-	"threatinc_softenMargin": 1.0,
-	"threatinc_softenMaxFP": 4000,
-	"threatinc_softenFleetFP": 400,
+	"threatinc_softenMargin": 2.0,
+	"threatinc_softenMaxFP": 12000,
+	"threatinc_softenPool": true,
+	"threatinc_softenMusterDays": 15,
+	# once gathered, the fleets fold into the lead and fight as one fleet
+	"threatinc_softenMerge": true,
+	"threatinc_softenFleetFP": 1500,
 	"threatinc_softenDays": 60,
 	"threatinc_softenIntervalDays": 30,
 	"threatinc_softenRetreatStrength": 0.4,
@@ -796,7 +808,9 @@
 	# Cap on how many fleets a siege grows to. A size-8 hive behind Heavy
 	# Batteries needs ~3,600 ground strength once its war-strata are suppressed
 	# by the tactical pass; at ~430 per full-size fleet that is 9 fleets.
-	"threatinc_siegeMaxFleets": 10,
+	# 25 (2026-09-24): an NPC siege also weighs the orbit, and a big hive
+	# world holds 3.7k-7.5k FP of swarms - 10 fleets (~2.4k FP) never could
+	"threatinc_siegeMaxFleets": 25,
 	# Siege passes an expedition may run against each colony. A fresh hive
 	# takes one tactical pass (a war-stratum carrying 80 percent of a pass is
 	# not bombed again - vanilla's rule); the landing is the pass after that,

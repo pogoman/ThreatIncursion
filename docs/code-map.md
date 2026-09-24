@@ -62,7 +62,8 @@ to reconcile it.
 - `ThreatAidRequests.java` — mobilised NPC colonies' needs (outmatched by a strike; exhausted or standing shortages) and the slow tick that posts requests for help.
 - `ThreatRaiders.java` — hive garrison swarms detached to hunt enemy supply convoys (guerre de course).
 - `ThreatScouts.java` — the fog of war on hives: NPC scouting parties that find hive systems (leads from strikes, routine sweeps), the shared discovered list every faction acts on, and `sectorKnows`, the gate on NPC war efforts.
-- `ThreatMissionFilter.java` — wraps vanilla's generic mission creators so a hive market never posts a survey, analyze or procurement mission.
+- `ThreatScoutRoute.java` — the route walker both scouting sides share (each holds one as `ROUTE`, hooks for what its party does at a stop): sent stop to stop, look on entry, stay scoutStayDays, skip stops learned of meanwhile or not reached in scoutLegMaxDays, report home or fade; `Party` is the persisted record each side's `Scout` extends, and `nearestFirst` / `taken` order a new route and keep two parties off the same system.
+- `ThreatMissionFilter.java` — filtering subclasses of vanilla's generic mission creators (analyze, survey, procurement) so a hive market never posts one; `install` reshapes the manager's list each load (unwraps the retired wrapper, drops the duplicates it let accrue, swaps plain vanilla creators for the subclasses). Subclasses, not wrappers, because vanilla's `hasMissionCreator` is an `isInstance` test.
 - `ThreatSwarmScouts.java` — the swarm's side of the fog: Scouting Swarms chart inhabited systems in fuel reach, and `swarmKnows` gates which worlds a strike may target.
 - `ThreatAlarm.java` — escalation/grudge tracking that speeds hive fabrication and retargets strikes at aggressors.
 
@@ -70,7 +71,7 @@ to reconcile it.
 - `ThreatMissionIntel.java` — dynamic defense-board contracts scoring and offering strikes against specific hive infrastructure links.
 - `ThreatAidMissionIntel.java` — a faction's request for help at a colony as a vanilla mission: Defend (a window; fails if a strike lands; needs a player asset present) or Deliver N of a commodity (running total from convoys and hand-overs).
 - `ThreatSwarmBountyIntel.java` — a swarm bounty: an NPC base whose siege a hive system's Defense Swarms outweigh pays per Threat ship the player destroys there, by hull size, for `swarmBountyDays` (vanilla's system bounty; `Kills` hears the player's battles, `HunterPay` rides the player's hunting fleets).
-- `ThreatSoftening.java` — NPC hunting forces: a mobilised base with no hive of its own to siege sends Hunt orders against the Defense Swarms of a bountied hive system, weakest garrison first, paid in fuel and supplies.
+- `ThreatSoftening.java` — NPC hunting forces: bases with no hive of their own to siege pool a force (Hunt orders sharing a `Force`) against a bountied hive system's Defense Swarms; it musters outside the system, goes in together, weakest garrison first, paid in fuel and supplies. Also runs the player's single-fleet hunts.
 
 ### Custom intel UI / war board
 - `ThreatWarBoard.java` — the custom-drawn "The Abyssal War" war board (large description of `ThreatIncursionIntel`): ledger (with the Activity crests), the selected system's ground-fronts table (also drawn by the faction view; row buttons Push / Dig in / Support / Pull out / Supply), colony cards. The mod's bespoke war-board UI — re-read before patching (two sessions have edited it concurrently).

@@ -1,7 +1,9 @@
 package threatinc;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import org.lwjgl.util.vector.Vector2f;
@@ -83,7 +85,10 @@ public class ThreatConvoys {
 		/** The destination: a colony, a hive world (front run), or an outpost. */
 		public String toName() {
 			MarketAPI m = Global.getSector().getEconomy().getMarket(toMarketId);
-			return m != null ? m.getName() : ThreatBases.nameOf(toMarketId);
+			if (m != null) return m.getName();
+			// a hive world a siege destroyed has left the economy; its planet has not
+			com.fs.starfarer.api.campaign.SectorEntityToken planet = Global.getSector().getEntityById(toMarketId);
+			return planet != null ? planet.getName() : ThreatBases.nameOf(toMarketId);
 		}
 	}
 
@@ -203,14 +208,44 @@ public class ThreatConvoys {
 	 * launch from here against its hive draws (IncursionManager.siegeWants -
 	 * the same figures the button and its prompt show), times
 	 * stagingTargetMult. All zeros for a world that is not a staging base.
+	 * Memoised per base for one game-clock instant: each call is a
+	 * stagingHive sweep plus a full siegeSizes, and the planner asks for a
+	 * donor's (through ThreatReserves.stagingBank, per donor per commodity
+	 * per base) and the board for a colony's (per commodity) many times over
+	 * in one tick or render. The memo empties when the clock moves, on every
+	 * war board render and on game load ({@link #forgetStagingTargets}): a
+	 * player base's target follows its free fleet points, which a board order
+	 * changes with the clock stopped.
 	 */
 	public static float[] stagingTargets(MarketAPI base) {
+		if (base == null) return new float[] {0f, 0f, 0f, 0f};
+		long now = Global.getSector().getClock().getTimestamp();
+		if (now != targetsMemoStamp) {
+			targetsMemo.clear();
+			targetsMemoStamp = now;
+		}
+		float[] memo = targetsMemo.get(base.getId());
+		if (memo != null) return memo.clone();
+		float[] wants;
 		StarSystemAPI hive = stagingHive(base);
-		if (hive == null) return new float[] {0f, 0f, 0f, 0f};
-		float[] wants = IncursionManager.siegeWants(base, base.getFaction(), hive);
-		float mult = ThreatIncConfig.stagingTargetMult();
-		for (int i = 0; i < wants.length; i++) wants[i] *= mult;
+		if (hive == null) {
+			wants = new float[] {0f, 0f, 0f, 0f};
+		} else {
+			wants = IncursionManager.siegeWants(base, base.getFaction(), hive);
+			float mult = ThreatIncConfig.stagingTargetMult();
+			for (int i = 0; i < wants.length; i++) wants[i] *= mult;
+		}
+		targetsMemo.put(base.getId(), wants.clone());
 		return wants;
+	}
+
+	/** {@link #stagingTargets} by market id, good for the game-clock instant in targetsMemoStamp. */
+	private static final Map<String, float[]> targetsMemo = new HashMap<String, float[]>();
+	private static long targetsMemoStamp = Long.MIN_VALUE;
+
+	/** Drops the stagingTargets memo; the faction view calls it as it renders, so a board order's effect shows on the same paused frame. */
+	public static void forgetStagingTargets() {
+		targetsMemo.clear();
 	}
 
 	public static float capacityFor(String commodityId) {
@@ -807,8 +842,8 @@ public class ThreatConvoys {
 	 * OUTPOST is always a hull load: it banks nothing, so nothing there is
 	 * short of anything. Every tier is capped by what the donor holds above
 	 * its sortie floor (ThreatReserves.available) and by the convoy's
-	 * capacity. The planner's rules (the donor keep, a worthwhile load,
-	 * donors that are not staging bases, convoy range) are for the automatic
+	 * capacity. The planner's rules (the donor keep, a worthwhile load, a
+	 * staging base's own siege needs, convoy range) are for the automatic
 	 * traffic, not the override. A player donor's load is fitted to its own
 	 * free hulls here, so the board quotes exactly what dispatch will carry.
 	 */
@@ -899,9 +934,11 @@ public class ThreatConvoys {
 	 * military world was a staging base and they shipped the same goods past
 	 * each other, and it made concentrating at one base impossible - the
 	 * receiver could never hold more than its donors. Now only the faction's
-	 * nearest base for a hive stages ({@link #stagingHive}) and staging
-	 * bases never donate to depots ({@link #pickDonor}), so the traffic has
-	 * one direction and needs no damping.
+	 * nearest base for a hive stages ({@link #stagingHive}) and a staging
+	 * base donates only what it holds above its own siege's needs
+	 * ({@link #spare}; until 2026-09-24 it never donated), so no colony is
+	 * both short of a commodity and sparing it: the traffic in each
+	 * commodity has one direction and needs no damping.
 	 */
 	public static float sendable(MarketAPI donor, MarketAPI base, String commodityId) {
 		return Math.min(spare(donor, commodityId), capacityFor(commodityId));
@@ -921,7 +958,7 @@ public class ThreatConvoys {
 				* Math.min(capacityFor(commodityId), Math.max(0f, fullSpare));
 	}
 
-	/** The planner's donor: the colony in convoy range (the player's at any range) with the most to send that is not a staging base itself. */
+	/** The planner's donor: the colony in convoy range (the player's at any range) with the most to send; a staging base counts what it holds above its own siege's needs. */
 	protected static MarketAPI pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId) {
 		MarketAPI best = null;
 		float bestSend = 0f;
@@ -1007,7 +1044,13 @@ public class ThreatConvoys {
 		if (faction.isPlayerFaction()) params.ignoreMarketFleetSizeMult = true;
 		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
 		if (fleet == null || fleet.isEmpty()) return null;
-		fitHulls(fleet, faction, marines, load[1] + load[3], load[2], random);
+		// a player colony's convoy stays the hulls its free points bought - the
+		// load is clamped to what they carry below, the fleet is never grown
+		// past the ledger (nothing sails over-extended); NPC convoys and
+		// outpost returns grow to fit their load
+		if (!(faction.isPlayerFaction() && donor.market != null)) {
+			fitHulls(fleet, faction, marines, load[1] + load[3], load[2], random);
+		}
 
 		system.addEntity(fleet);
 		fleet.setLocation(from.getLocation().x, from.getLocation().y);
@@ -1101,7 +1144,10 @@ public class ThreatConvoys {
 	 * 40 marines / 60 units, but an NPC navy's fleet-size multiplier and the
 	 * hulls vanilla happens to pick left convoys with a few dozen free
 	 * berths: 300 marines planned, 19 to 76 loaded, the rest left behind.
-	 * A bigger load now means a bigger, slower convoy, as it should.
+	 * A bigger load now means a bigger, slower convoy, as it should. Not
+	 * for a player colony's convoy: its hulls are what its free fleet
+	 * points bought (ThreatAidCapacity.fitLoad), and growing them would sail
+	 * more than the ledger holds.
 	 */
 	protected static void fitHulls(CampaignFleetAPI fleet, FactionAPI faction, float marines,
 			float cargoUnits, float fuel, Random random) {
