@@ -1,0 +1,47 @@
+{
+    "displayName": "Type 351",
+    "fluxCapacitors": 30,
+    "fluxVents": 30,
+    "goalVariant": true,
+    "hullId": "hive_unit",
+    "hullMods": [
+        "fragment_swarm",
+        "fragment_coordinator",
+        "secondary_fabricator"
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "hive_unit_Type351",
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 000": "swarm_launcher",
+                "WS 001": "swarm_launcher"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS 002": "seeker_fragment",
+                "WS 003": "seeker_fragment",
+                "WS 004": "seeker_fragment",
+                "WS 005": "seeker_fragment",
+                "WS 006": "seeker_fragment",
+                "WS 007": "seeker_fragment"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 008": "voltaic_discharge",
+                "WS 009": "voltaic_discharge",
+                "WS 010": "voltaic_discharge",
+                "WS 011": "voltaic_discharge"
+            }
+        }
+    ]
+}

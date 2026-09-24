@@ -1,0 +1,49 @@
+{
+	# Threat fleet archetypes - read by ThreatFleetComposer, see docs/fleet-archetypes.md.
+	# Vanilla sizes every fleet; its archetype then re-spends the escorts' fleet points.
+	#   mix:    share of the escort FP spent on each hull (relative weights).
+	#           Hulls not named here (fabricators) stay as vanilla built them.
+	#   favour: variants picked favourWeight times as often as the hull's others.
+	"favourWeight": 4,
+
+	"archetypes": {
+		# about vanilla's own mix: overseer-led, frigate screen
+		"host": {
+			"mix": {"skirmish_unit": 25, "assault_unit": 10, "standoff_unit": 10, "overseer_unit": 40, "hive_unit": 15},
+			"favour": [],
+		},
+		# close-range spearhead
+		"vanguard": {
+			"mix": {"skirmish_unit": 15, "assault_unit": 45, "standoff_unit": 10, "overseer_unit": 30},
+			"favour": ["assault_unit_Type202", "assault_unit_Type200", "skirmish_unit_Type102", "overseer_unit_Type251"],
+		},
+		# long-range siege line
+		"battery": {
+			"mix": {"skirmish_unit": 10, "assault_unit": 5, "standoff_unit": 50, "overseer_unit": 20, "hive_unit": 15},
+			"favour": ["standoff_unit_Type300", "standoff_unit_Type303", "standoff_unit_Type304", "skirmish_unit_Type104", "overseer_unit_Type252"],
+		},
+		# fragment carriers
+		"tide": {
+			"mix": {"skirmish_unit": 15, "assault_unit": 5, "standoff_unit": 10, "overseer_unit": 20, "hive_unit": 50},
+			"favour": ["hive_unit_Type351", "hive_unit_Type352", "skirmish_unit_Type103", "overseer_unit_Type251"],
+		},
+		# fast torpedo pack, no big hulls - raiders prefer these
+		"hunter": {
+			"mix": {"skirmish_unit": 35, "assault_unit": 50, "overseer_unit": 15},
+			"favour": ["skirmish_unit_Type101", "skirmish_unit_Type102", "assault_unit_Type201"],
+		},
+		# frigates only
+		"scout": {
+			"mix": {"skirmish_unit": 100},
+			"favour": ["skirmish_unit_Type104", "skirmish_unit_Type103"],
+		},
+	},
+
+	# which archetypes each kind of fleet is built as (relative weights)
+	"jobs": {
+		"strike":   {"vanguard": 3, "battery": 3, "tide": 2, "host": 2},
+		"garrison": {"host": 3, "battery": 3, "tide": 2, "hunter": 2},
+		"seeding":  {"host": 1},
+		"scout":    {"scout": 1},
+	},
+}

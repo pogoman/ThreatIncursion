@@ -1874,8 +1874,8 @@ public class ThreatColonyManager {
 		if (escortIdx > 3) escortIdx = 3;
 		FabricatorEscortStrength escort = FabricatorEscortStrength.values()[escortIdx];
 
-		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
-				1, 0, 0, escort, random);
+		CampaignFleetAPI fleet = ThreatFleetComposer.create(ThreatFleetComposer.JOB_SEEDING,
+				1, escort, random);
 		if (fleet == null) return false;
 
 		// the expedition is paid for in real fleets: one Defense Swarm leaves
@@ -2731,8 +2731,8 @@ public class ThreatColonyManager {
 		SectorEntityToken planet = market.getPrimaryEntity();
 		StarSystemAPI system = market.getStarSystem();
 		if (planet == null || system == null) return null;
-		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
-				spec[0], 0, 0, FabricatorEscortStrength.values()[spec[1]], random);
+		CampaignFleetAPI fleet = ThreatFleetComposer.create(ThreatFleetComposer.JOB_GARRISON,
+				spec[0], FabricatorEscortStrength.values()[spec[1]], random);
 		if (fleet == null) return null;
 		fleet.setName("Defense Swarm");
 		fleet.getMemoryWithoutUpdate().set(GARRISON_FLAG, market.getId());

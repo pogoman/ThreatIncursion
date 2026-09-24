@@ -1,0 +1,54 @@
+{
+    "displayName": "Type 352",
+    "fluxCapacitors": 30,
+    "fluxVents": 30,
+    "goalVariant": true,
+    "hullId": "hive_unit",
+    "hullMods": [
+        "fragment_swarm",
+        "fragment_coordinator",
+        "secondary_fabricator",
+        "missleracks"
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "hive_unit_Type352",
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 000": "swarm_launcher",
+                "WS 001": "swarm_launcher"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS 002": "kinetic_fragments",
+                "WS 003": "kinetic_fragments",
+                "WS 004": "kinetic_fragments",
+                "WS 005": "kinetic_fragments"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS 006": "devouring_swarm",
+                "WS 007": "devouring_swarm"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 008": "unstable_fragment",
+                "WS 009": "unstable_fragment",
+                "WS 010": "unstable_fragment",
+                "WS 011": "unstable_fragment"
+            }
+        }
+    ]
+}

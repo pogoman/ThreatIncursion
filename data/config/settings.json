@@ -130,6 +130,11 @@
 	"threatinc_reachFuelCarry": 4,
 	"threatinc_strikeMinSize": 4,
 	"threatinc_strikeStrengthMult": 1.0,
+
+	# Threat fleets built as archetypes (data/config/threatinc_fleets.json);
+	# false = vanilla's mix
+	"threatinc_fleetArchetypes": true,
+
 	"threatinc_playerGraceDays": 120,
 	# breaking the staging colony's forge (raid/bombardment/destruction) while
 	# an expedition is still PREPARING there makes it stillborn; departed
@@ -554,6 +559,14 @@
 	"threatinc_scoutMemoryDays": 180,
 	"threatinc_scoutMaxPerFaction": 2,
 	"threatinc_scoutFleetPoints": 20,
+	# the swarm scouts too (ThreatSwarmScouts): a strike may only target a
+	# system a Scouting Swarm has charted. A colony that passes the strike
+	# economy gates (size, hulls, fuel, Swarm Nexus - not the garrison) sends
+	# one through unknown inhabited systems in its fuel reach; scoutStops and
+	# scoutStayDays apply. swarmScouting false = the swarm knows every world.
+	"threatinc_swarmScouting": true,
+	"threatinc_swarmScoutFleetPoints": 30,
+	"threatinc_swarmScoutMax": 2,
 	"threatinc_donorKeepFraction": 0.5,
 	"threatinc_stagingTargetMult": 1.5,
 	"threatinc_convoyTimeoutDays": 200,
