@@ -159,6 +159,7 @@ public class ThreatConvoys {
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
 			if (ThreatIncData.getLiveColonyMarkets(systemId).isEmpty()) continue;
 			if (player && !debug && !ThreatIncData.discoveredSystems().contains(systemId)) continue;
+			if (!player && !ThreatScouts.sectorKnows(systemId)) continue;
 			StarSystemAPI system = Global.getSector().getStarSystem(systemId);
 			if (system == null) continue;
 			float d = Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation());

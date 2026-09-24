@@ -277,7 +277,7 @@ public class ThreatIncData {
 
 	/**
 	 * Systems whose infestation the player actually knows about: visited in
-	 * person, targeted by a publicly-tracked swarm, or the origin of a strike.
+	 * person, or found by any faction (ThreatScouts) - one list the whole sector shares.
 	 * Outside debug mode, only these get map markers.
 	 */
 	public static List<String> discoveredSystems() {

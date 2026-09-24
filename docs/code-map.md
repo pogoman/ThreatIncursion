@@ -60,6 +60,7 @@ to reconcile it.
 - `ThreatAid.java` — player aid from the war board: source auto-pick, quotes and dispatch of Defend/Aid/Strike (paid by the source colony's reserve and capacity, no credits), standing on arrival, crediting deliveries to open requests.
 - `ThreatAidRequests.java` — mobilised NPC colonies' needs (outmatched by a strike; exhausted or standing shortages) and the slow tick that posts requests for help.
 - `ThreatRaiders.java` — hive garrison swarms detached to hunt enemy supply convoys (guerre de course).
+- `ThreatScouts.java` — the fog of war on hives: NPC scouting parties that find hive systems (leads from strikes, routine sweeps), the shared discovered list every faction acts on, and `sectorKnows`, the gate on NPC war efforts.
 - `ThreatAlarm.java` — escalation/grudge tracking that speeds hive fabrication and retargets strikes at aggressors.
 
 ### Ground war support / mission design

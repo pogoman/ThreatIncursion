@@ -467,6 +467,24 @@ public class ThreatIncConfig {
 	public static float raiderChance()        { return f("threatinc_raiderChance"); }
 	/** Days a raider hunts before turning home. */
 	public static float raiderDays()          { return f("threatinc_raiderDays"); }
+	/** Strikes hide their origin; the sector acts only on hives someone has found (ThreatScouts). Off: the old omniscient rule. */
+	public static boolean hiveFogOfWar()      { return b("threatinc_hiveFogOfWar", true); }
+	/** Light-years around a strike's origin a struck faction's scouts sweep. */
+	public static float scoutLeadRadiusLY()   { return f("threatinc_scoutLeadRadiusLY"); }
+	/** Light-years around a military world a mobilised faction's routine sweep covers. */
+	public static float scoutRangeLY()        { return f("threatinc_scoutRangeLY"); }
+	/** Days between a mobilised faction's routine sweeps (while it has no lead). */
+	public static float scoutIntervalDays()   { return f("threatinc_scoutIntervalDays"); }
+	/** Systems one scouting party visits per sortie. */
+	public static int scoutStops()            { return i("threatinc_scoutStops"); }
+	/** Days a scout sweeps an empty system before moving on. */
+	public static float scoutStayDays()       { return f("threatinc_scoutStayDays"); }
+	/** Days a system swept clear is left alone by routine sweeps. */
+	public static float scoutMemoryDays()     { return f("threatinc_scoutMemoryDays"); }
+	/** Scouting parties one faction keeps out at once. */
+	public static int scoutMaxPerFaction()    { return i("threatinc_scoutMaxPerFaction"); }
+	/** Combat fleet points of a scouting party. */
+	public static float scoutFleetPoints()    { return f("threatinc_scoutFleetPoints"); }
 	/** Shortfall (in convoy loads) below which no convoy sails. */
 	public static float convoyMinLoadFraction() { return f("threatinc_convoyMinLoadFraction"); }
 	/** Convoys one faction dispatches per slow tick at most (the neediest bases first). */

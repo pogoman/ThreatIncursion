@@ -225,6 +225,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatReserves.poll(interval.getIntervalDuration());
 		ThreatConvoys.poll();
 		ThreatRaiders.poll();
+		ThreatScouts.poll(random);
 		ThreatFleetOrders.poll();
 		ThreatReturns.poll();
 		ThreatAidCapacity.poll();
@@ -911,8 +912,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (target == null) continue;
 
 			launchStrike(colony, source, target);
-			// the raid intel names its origin: that system is now known
-			ThreatIncData.markDiscovered(systemId);
+			// under the fog a strike hides its origin (ThreatScouts); without
+			// it the raid intel names its origin and the system is known
+			if (!ThreatIncConfig.hiveFogOfWar()) ThreatIncData.markDiscovered(systemId);
 			if (countActiveStrikes() >= ThreatIncConfig.maxConcurrentStrikes()) break;
 		}
 	}
@@ -1022,8 +1024,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (target.isPlayerOwned()) {
 			ThreatIncData.setPlayerStruck();
 		} else {
-			// an NPC colony was struck: its faction fights back, sending a task
-			// force against the attacking colony's garrison
+			// an NPC colony was struck: its scouts go looking for where the
+			// strike came from, and once that is known its faction fights
+			// back, sending a task force against the attacking colony's garrison
+			ThreatScouts.addLead(target.getFactionId(), source.getId());
 			dispatchFactionResponse(target, source, colony);
 		}
 
@@ -1049,6 +1053,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (faction == null || faction.isPlayerFaction()) return;
 		// an excluded faction (pirates) runs no military operations at all
 		if (ThreatWarState.excluded(faction.getId())) return;
+		// no counter-attack on a hive no one has found: the scouts go first
+		if (!ThreatScouts.sectorKnows(hiveSystem.getId())) return;
 
 		MarketAPI base = findResponseBase(faction, hiveSystem);
 		if (base == null) return; // no military world in reach: the faction can't respond
@@ -1164,6 +1170,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 		for (MarketAPI colony : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (countActivePurges() >= ThreatIncConfig.responseMaxConcurrent()) return;
+			// no siege of a hive no one has found (ThreatScouts)
+			if (!ThreatScouts.sectorKnows(colony)) continue;
 
 			StarSystemAPI system = colony.getStarSystem();
 			if (system == null) continue;
@@ -2108,9 +2116,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		if (bestColony == null) return false;
 		instance.launchStrike(bestColony, bestSource, bestTarget);
-		ThreatIncData.markDiscovered(bestSource.getId());
+		if (!ThreatIncConfig.hiveFogOfWar()) ThreatIncData.markDiscovered(bestSource.getId());
+		String at = ThreatScouts.sectorKnows(bestSource.getId()) ? " at " + bestColony.getName() : "";
 		ThreatColonyManager.announceAlways("The swarm answers the loss of a hive: a Threat "
-				+ "expedition is mustering at " + bestColony.getName() + " against "
+				+ "expedition is mustering" + at + " against "
 				+ bestTarget.getName() + ".", Misc.getNegativeHighlightColor());
 		ThreatIncConfig.log("Retaliation: " + bestColony.getName() + " -> " + bestTarget.getName()
 				+ " (" + factionId + ")");
@@ -2679,8 +2688,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 */
 	protected void syncSystemMarkers() {
 		// outside debug mode, a system's marker exists only once the player has
-		// actually DISCOVERED the infestation - visited the system, or seen it
-		// named by swarm-transit or strike intel. Debug mode shows everything.
+		// actually DISCOVERED the infestation - visited the system, or had it
+		// found by any faction (ThreatScouts). Debug mode shows everything.
 		boolean debug = ThreatIncConfig.debugMode();
 		java.util.Set<String> marked = new java.util.LinkedHashSet<String>();
 		List<Object> stale = new ArrayList<Object>();

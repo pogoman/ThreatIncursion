@@ -151,7 +151,7 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	/**
 	 * The systems the player actually knows are infested: visited in person,
-	 * named in a contract, or the origin of a strike. This intel deliberately shows
+	 * named in a contract, or found by any faction's scouts. This intel deliberately shows
 	 * NOTHING else - not the full spread, not colony sizes, not the swarm's
 	 * economic state. The player is not meant to be able to gauge the true extent
 	 * or strength of the incursion from here.

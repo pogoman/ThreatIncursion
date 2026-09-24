@@ -539,6 +539,21 @@
 	"threatinc_raiderRangeLY": 12,
 	"threatinc_raiderChance": 0.5,
 	"threatinc_raiderDays": 45,
+	# finding the hive (ThreatScouts): a strike does not reveal its origin.
+	# The struck faction sends scouts to sweep uninhabited systems within
+	# scoutLeadRadiusLY of it; a mobilised faction also sweeps within
+	# scoutRangeLY of a military world every scoutIntervalDays. A hive any
+	# faction finds is known to all, player included, and NPC war efforts
+	# act only on known hives. hiveFogOfWar false = the old omniscient rule.
+	"threatinc_hiveFogOfWar": true,
+	"threatinc_scoutLeadRadiusLY": 6,
+	"threatinc_scoutRangeLY": 10,
+	"threatinc_scoutIntervalDays": 60,
+	"threatinc_scoutStops": 4,
+	"threatinc_scoutStayDays": 2,
+	"threatinc_scoutMemoryDays": 180,
+	"threatinc_scoutMaxPerFaction": 2,
+	"threatinc_scoutFleetPoints": 20,
 	"threatinc_donorKeepFraction": 0.5,
 	"threatinc_stagingTargetMult": 1.5,
 	"threatinc_convoyTimeoutDays": 200,

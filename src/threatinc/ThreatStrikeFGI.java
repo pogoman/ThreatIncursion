@@ -611,13 +611,19 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	@Override
 	protected void addStatusSection(com.fs.starfarer.api.ui.TooltipMakerAPI info,
 			float width, float height, float opad) {
-		super.addStatusSection(info, width, height, opad);
+		if (originKnown()) {
+			super.addStatusSection(info, width, height, opad);
+		} else {
+			addHiddenOriginStatus(info, width, height, opad);
+		}
 		if (isEnding() || isEnded() || isAborted() || isSucceeded() || isFailed()) return;
 		addSiegeStatus(info);
 		if (!ThreatIncConfig.strikeRecallEnabled()) return;
 		com.fs.starfarer.api.campaign.econ.MarketAPI source =
 				getParams() != null ? getParams().source : null;
 		if (source == null) return;
+		// the counterplay needs the forge found first
+		if (isPreparing() && !originKnown()) return;
 		if (!com.fs.starfarer.api.impl.campaign.ids.Factions.THREAT
 				.equals(source.getFactionId())) return;
 		if (isPreparing()) {
@@ -631,6 +637,71 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 					+ "colony will turn it back now. It can only be met in space, or its "
 					+ "target defended.", opad,
 					com.fs.starfarer.api.util.Misc.getNegativeHighlightColor(), "autonomous");
+		}
+	}
+
+	// ------------------------------------------------------------------
+	// the fog (ThreatScouts): a strike does not say where it came from
+	// ------------------------------------------------------------------
+
+	/** Whether the player may be told where this strike came from. */
+	protected boolean originKnown() {
+		if (ThreatIncConfig.debugMode() || !ThreatIncConfig.hiveFogOfWar()) return true;
+		MarketAPI source = getParams() != null ? getParams().source : null;
+		if (source == null || source.getStarSystem() == null) return true;
+		return ThreatIncData.discoveredSystems().contains(source.getStarSystem().getId());
+	}
+
+	@Override
+	public com.fs.starfarer.api.campaign.SectorEntityToken getMapLocation(
+			com.fs.starfarer.api.ui.SectorMapAPI map) {
+		if (!originKnown()) return getDestination();
+		return super.getMapLocation(map);
+	}
+
+	@Override
+	public List<com.fs.starfarer.api.campaign.comm.IntelInfoPlugin.ArrowData> getArrowData(
+			com.fs.starfarer.api.ui.SectorMapAPI map) {
+		if (!originKnown()) return null;
+		return super.getArrowData(map);
+	}
+
+	@Override
+	protected void addETABulletPoints(String destName, java.awt.Color destHL, boolean withDepartedText,
+			float eta, ETAType type, TooltipMakerAPI info, java.awt.Color tc, float initPad) {
+		if (type == ETAType.RETURNING && !originKnown()) {
+			destName = "its hive";
+			destHL = null;
+		}
+		super.addETABulletPoints(destName, destHL, withDepartedText, eta, type, info, tc, initPad);
+	}
+
+	/** Vanilla's status section with the staging world left out. */
+	protected void addHiddenOriginStatus(TooltipMakerAPI info, float width, float height, float opad) {
+		com.fs.starfarer.api.impl.campaign.intel.group.FGAction curr = getCurrentAction();
+		if (curr == null && !isEnding() && !isSucceeded()) return;
+		info.addSectionHeading("Status", faction.getBaseUIColor(), faction.getDarkUIColor(),
+				com.fs.starfarer.api.ui.Alignment.MID, opad);
+		String noun = getNoun();
+		String forces = getForcesNoun();
+		if (isEnding() && !isSucceeded()) {
+			if ((isFailed() || isAborted()) && !isFailedButNotDefeated()) {
+				info.addPara("The " + forces + " have been defeated and any "
+						+ "remaining ships are retreating in disarray.", opad);
+			} else {
+				info.addPara("The " + forces + " are withdrawing.", opad);
+			}
+		} else if (isEnding() || isSucceeded()) {
+			info.addPara("The " + noun + " was successful and the " + forces + " are withdrawing.", opad);
+		} else if (isInPreLaunchDelay() || PREPARE_ACTION.equals(curr.getId())) {
+			info.addPara("The " + noun + " is being prepared at an unknown hive world.", opad);
+		} else if (TRAVEL_ACTION.equals(curr.getId())) {
+			info.addPara("Traveling to the " + raidAction.getWhere().getNameWithLowercaseTypeShort()
+					+ " from an unknown hive world.", opad);
+		} else if (RETURN_ACTION.equals(curr.getId())) {
+			info.addPara("Returning to its hive.", opad);
+		} else if (PAYLOAD_ACTION.equals(curr.getId())) {
+			addPayloadActionStatus(info, width, height, opad);
 		}
 	}
 
