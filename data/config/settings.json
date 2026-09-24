@@ -496,6 +496,16 @@
 	# an expedition waits unless its base holds this fraction of the marines
 	# the landing needs (siegeRaidStrNeeded - raid strength ~= marines)
 	"threatinc_expeditionMinMarinesFraction": 0.5,
+	# an NPC siege sails only with all the marines it wants and a flotilla
+	# its depot can pay for that reaches the target's ground-strength need;
+	# false = send what it can (half the marines, trimmed to two fleets)
+	"threatinc_npcSiegeFullStrength": true,
+	# an NPC siege sails only when its flotilla's fleet points reach this
+	# multiple of the Defense Swarms over the target system; the flotilla
+	# grows toward it (up to siegeMaxFleets), and a base that still falls
+	# short asks the player to thin the swarms (an orbit contract)
+	"threatinc_npcSiegeOrbitGate": true,
+	"threatinc_npcSiegeOrbitMargin": 1.5,
 	# an NPC siege waits unless its base can pay this fraction of the fuel and
 	# supplies its flotilla burns; short of the rest, the flotilla shrinks
 	"threatinc_expeditionMinProvisionsFraction": 0.5,
@@ -683,6 +693,12 @@
 	"threatinc_defendRequestRatio": 1.0,
 	"threatinc_missionAidShortageDays": 60,
 	"threatinc_missionAidPayMult": 1.5,
+	# a swarm bounty (an outweighed NPC siege's call for help) pays this per
+	# frigate destroyed in the hive system - destroyer x2, cruiser x3,
+	# capital x4, times the player's share - for swarmBountyDays
+	"threatinc_swarmBountiesEnabled": true,
+	"threatinc_swarmBountyPerFrigate": 1500,
+	"threatinc_swarmBountyDays": 60,
 	"threatinc_missionRepMult": 2.0,
 	# allies help each other by standing (Cooperative 1.0, Friendly 0.75,
 	# Welcoming 0.5, Favourable 0.25) times this chance per 30-day tick per

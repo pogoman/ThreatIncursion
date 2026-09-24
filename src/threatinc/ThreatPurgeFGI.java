@@ -446,6 +446,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (!ledgerSplit && isSpawnedFleets() && !isSpawning() && !getFleets().isEmpty()) {
 			ledgerSplit = true;
 			ThreatAidCapacity.splitGroup(this);
+			// calibrates the orbit gate's estimate (IncursionManager.siegeOrbitNeeded)
+			ThreatIncConfig.log("Siege fleets real: " + getFleets().size() + " fleets, "
+					+ (int) getTotalFPSpawned() + " FP spawned against ~"
+					+ (int) ThreatAidCapacity.expeditionPoints(getParams().fleetSizes) + " estimated");
 		}
 	}
 
