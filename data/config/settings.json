@@ -582,7 +582,7 @@
 	"threatinc_convoyTimeoutDays": 200,
 	# fleet orders from the war board's faction view: your own mobilised
 	# faction only - other factions' navies are their own (docs/player-aid.md).
-	# Guard and intercept task forces are built at the nearest base and
+	# Guard and hunt task forces are built at the nearest base and
 	# provisioned from its reserve. Yours sail with EVERYTHING the colony has
 	# free on the capacity ledger (below; 2026-09-05, a 100 FP fleet "will
 	# never have any capitals"); guardFleetFP is the NPC size, and the free
@@ -592,11 +592,10 @@
 	"threatinc_guardDays": 90,
 	# a guard over one of YOUR OWN colonies is staging (2026-09-05): it stays
 	# guardOwnDays (0 = until recalled), its points count in that colony's FP
-	# while it is there, and a siege / intercept / escort / guard from there
+	# while it is there, and a siege / hunt / escort / guard from there
 	# folds it in - back on station when the sortie is home. A guard a colony
 	# raises over itself is its own ships made real (nothing staged folds in).
 	"threatinc_guardOwnDays": 0,
-	"threatinc_interceptDays": 60,
 	# a SUPPORT sortie (Escort until 2026-09-06; the keys keep the old name)
 	# holds the orbit over a besieged world, clears it of what contests it so
 	# supply and evacuation runs can land, and besieges: its fleet points
@@ -699,6 +698,18 @@
 	"threatinc_swarmBountiesEnabled": true,
 	"threatinc_swarmBountyPerFrigate": 1500,
 	"threatinc_swarmBountyDays": 60,
+	# a mobilised NPC base with no hive of its own to siege sends a hunting
+	# force against a bountied hive's swarms: sized to beat them
+	# (softenMargin) up to softenMaxFP, in fleets of at most
+	# softenFleetFP, paid in fuel and supplies like a siege; it works the
+	# weakest garrison first for softenDays, home below softenRetreatStrength
+	"threatinc_softenEnabled": true,
+	"threatinc_softenMargin": 1.0,
+	"threatinc_softenMaxFP": 4000,
+	"threatinc_softenFleetFP": 400,
+	"threatinc_softenDays": 60,
+	"threatinc_softenIntervalDays": 30,
+	"threatinc_softenRetreatStrength": 0.4,
 	"threatinc_missionRepMult": 2.0,
 	# allies help each other by standing (Cooperative 1.0, Friendly 0.75,
 	# Welcoming 0.5, Favourable 0.25) times this chance per 30-day tick per

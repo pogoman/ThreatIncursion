@@ -498,6 +498,20 @@ public class ThreatIncConfig {
 	public static float swarmBountyPerFrigate() { return f("threatinc_swarmBountyPerFrigate"); }
 	/** Days a swarm bounty runs. */
 	public static float swarmBountyDays()     { return f("threatinc_swarmBountyDays"); }
+	/** Whether mobilised NPC bases with no siege of their own send hunting forces against bountied hives (ThreatSoftening). */
+	public static boolean softenEnabled()     { return b("threatinc_softenEnabled", true); }
+	/** Combat FP a hunting force brings per FP of Defense Swarm it hunts. */
+	public static float softenMargin()        { return f("threatinc_softenMargin"); }
+	/** Most combat FP one hunting force sails with. */
+	public static float softenMaxFP()         { return f("threatinc_softenMaxFP"); }
+	/** Most combat FP in one fleet of a hunting force. */
+	public static float softenFleetFP()       { return f("threatinc_softenFleetFP"); }
+	/** Days a hunt order - an NPC hunting force, a coalition answer, or the player's Hunt - stays on the hunt. */
+	public static float softenDays()          { return f("threatinc_softenDays"); }
+	/** Days a base waits between hunting forces. */
+	public static float softenIntervalDays()  { return f("threatinc_softenIntervalDays"); }
+	/** A hunting fleet below this share of its launch strength goes home. */
+	public static float softenRetreatStrength() { return f("threatinc_softenRetreatStrength"); }
 	/** The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts). Off: it knows every world. */
 	public static boolean swarmScouting()     { return b("threatinc_swarmScouting", true); }
 	/** Fleet points of a Scouting Swarm. */
@@ -531,7 +545,6 @@ public class ThreatIncConfig {
 	/** Days a task force guarding one of the player's own colonies stays; 0 = until recalled, staged there with its points the colony's to send out. */
 	public static float guardOwnDays()        { return f("threatinc_guardOwnDays"); }
 	/** Days an intercept task force holds a hive system's jump-point. */
-	public static float interceptDays()       { return f("threatinc_interceptDays"); }
 	/** Whether Support sorties (holding a besieged world's orbit and suppressing it) are offered and flown. Key kept from the order's old name. */
 	public static boolean supportEnabled()    { return b("threatinc_escortEnabled", true); }
 	/** Days a Support task force holds a besieged world's orbit. */

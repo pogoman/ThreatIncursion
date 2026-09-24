@@ -36,9 +36,12 @@ import com.fs.starfarer.api.util.Misc;
  * ({@link ThreatAidCapacity#commitSortie}) and it goes back on station when
  * the sortie is home ({@link #restation}). A guard the colony raises over
  * itself is its own ships made real; nothing staged folds into that.</li>
- * <li>INTERCEPT - a task force on ORBIT_AGGRESSIVE at the hive system's
- * jump-point nearest its colony for interceptDays: it meets the swarm's
- * reinforcements and expeditions at the door.</li>
+ * <li>HUNT (2026-09-24, replacing INTERCEPT) - a task force on
+ * ORBIT_AGGRESSIVE over the hive colony with the weakest standing garrison
+ * for softenDays, moved on to the next as each garrison falls and sent home
+ * when the system is clear or it is badly hurt ({@link ThreatSoftening}).
+ * NPC hunting forces fly the same order. Intercept (holding the hive's
+ * jump-point) is no longer given; orders already out in a save still run.</li>
  * <li>SUPPORT (Escort until 2026-09-06; the persisted kind string stays
  * "escort") - orbit superiority over a besieged world for supportDays,
  * clearing it of whatever contests it so front runs can land, and besieging
@@ -56,7 +59,7 @@ import com.fs.starfarer.api.util.Misc;
  *
  * <p>Only the player's OWN faction takes the player's orders (docs/player-aid.md):
  * NPC navies answer their governors. The same sorties flown as AID - a
- * player task force sent to another faction's colony or to a hive's door -
+ * player task force sent to another faction's colony or to hunt a hive -
  * are orders flagged {@link Order#aid}, paid in credits, held on the
  * capacity ledger ({@link ThreatAidCapacity}) and earning standing on arrival
  * ({@link ThreatAid}). NPC factions use the same code to guard an ally's
@@ -77,6 +80,8 @@ public class ThreatFleetOrders {
 	public static final String KIND_SUPPORT = "escort";
 	/** Holds a world's orbit; bombards only while the faction's own front there cannot hold (2026-09-07). */
 	public static final String KIND_DEFEND = "defend";
+	/** Hunts the Defense Swarms of a bountied hive system, colony by colony (ThreatSoftening, 2026-09-24). */
+	public static final String KIND_HUNT = "hunt";
 
 	/** How close a warship has to be to a planet to count as holding its orbit. */
 	public static final float ORBIT_HOLD_RANGE = 1500f;
@@ -157,6 +162,7 @@ public class ThreatFleetOrders {
 		public String task() {
 			if (KIND_GUARD.equals(kind)) return "guarding " + targetName;
 			if (KIND_INTERCEPT.equals(kind)) return "intercepting at " + targetName;
+			if (KIND_HUNT.equals(kind)) return "hunting the swarms over " + targetName;
 			if (KIND_SUPPORT.equals(kind) || KIND_DEFEND.equals(kind)) {
 				// fighting for the orbit first; then besieging (Support), or
 				// holding it and covering a front that cannot hold (Defend)
@@ -247,7 +253,10 @@ public class ThreatFleetOrders {
 	/** Whether the fleet is within arrival range of its station. */
 	protected static boolean atStation(Order o) {
 		SectorEntityToken station = null;
-		if (KIND_GUARD.equals(o.kind) || KIND_SUPPORT.equals(o.kind) || KIND_DEFEND.equals(o.kind)) {
+		if (KIND_HUNT.equals(o.kind)) {
+			MarketAPI hive = o.targetId != null ? Global.getSector().getEconomy().getMarket(o.targetId) : null;
+			station = hive != null ? hive.getPrimaryEntity() : null;
+		} else if (KIND_GUARD.equals(o.kind) || KIND_SUPPORT.equals(o.kind) || KIND_DEFEND.equals(o.kind)) {
 			ThreatBases.Base b = ThreatBases.of(o.targetId);
 			station = b != null ? b.entity() : null;
 		} else {
@@ -671,43 +680,85 @@ public class ThreatFleetOrders {
 		return best;
 	}
 
-	/** A task force on the hive system's door for interceptDays, from the sender's best base. */
-	public static Order dispatchIntercept(FactionAPI faction, StarSystemAPI hive) {
+	/**
+	 * THE PLAYER'S HUNT (2026-09-24, replacing Intercept): a task force from
+	 * the sender's best base hunts the hive system's Defense Swarms, weakest
+	 * garrison first, for softenDays - the same order an NPC hunting force
+	 * flies (ThreatSoftening moves it on and brings it home).
+	 */
+	public static Order dispatchHunt(FactionAPI faction, StarSystemAPI hive) {
 		if (faction == null || hive == null) return null;
 		MarketAPI base = faction.isPlayerFaction()
 				? ThreatAid.pickTaskForceSource(hive.getLocation())
 				: pickBase(faction, hive.getLocation());
-		return dispatchIntercept(faction, hive, base, false);
+		return dispatchHunt(faction, hive, base, false);
 	}
 
-	/** A task force on the hive system's door for interceptDays, from a given base. */
-	public static Order dispatchIntercept(FactionAPI faction, StarSystemAPI hive, MarketAPI base,
-			boolean aid) {
+	/** As above from a given base; {@code aid} marks the player's aid sortie (the board's hunt for another faction). */
+	public static Order dispatchHunt(FactionAPI faction, StarSystemAPI hive, MarketAPI base, boolean aid) {
 		if (faction == null || hive == null || base == null) return null;
-		SectorEntityToken point = interceptPoint(hive);
-		if (point == null) return null;
-		float days = ThreatIncConfig.interceptDays();
+		MarketAPI target = ThreatSoftening.huntTarget(hive.getId());
+		if (target == null) return null;
 		float fp = sortieFP(faction, base);
 		if (faction.isPlayerFaction() && fp < ThreatIncConfig.aidGuardMinFP()) return null;
-		CampaignFleetAPI fleet = buildTaskForce(base, faction, fp, hive.getLocation());
-		if (fleet == null) return null;
-		String where = point.getName() != null ? point.getName()
-				: "the " + hive.getNameWithLowercaseTypeShort() + " jump-point";
-		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, point, days,
-				"intercepting at " + where);
-		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
-				1000f, "returning to " + base.getName());
-		Order o = record(fleet, faction, KIND_INTERCEPT, base, hive.getId(), where, days);
+		Order o = dispatchHunt(faction, base, target, fp);
+		if (o == null) return null;
 		o.aid = aid;
 		if (faction.isPlayerFaction()) {
-			ThreatAidCapacity.commitSortie(base, builtPoints(fleet, fp), fleet,
-					"intercept at " + where);
+			ThreatAidCapacity.commitSortie(base, builtPoints(o.fleet, fp), o.fleet,
+					"hunt in the " + hive.getNameWithLowercaseTypeShort());
 		}
 		if (!aid) {
-			announce(faction, "task force from " + base.getName() + " is moving to intercept the "
-					+ "swarm at " + where + " for " + (int) days + " days.");
+			announce(faction, "task force from " + base.getName() + " is moving to hunt the Defense "
+					+ "Swarms in the " + hive.getNameWithLowercaseTypeShort() + " for "
+					+ (int) ThreatIncConfig.softenDays() + " days.");
 		}
 		return o;
+	}
+
+	/**
+	 * One fleet of a hunting force (ThreatSoftening): {@code fp} combat points
+	 * from the base, provisioned from its reserve, fighting the Defense Swarms
+	 * over the hive colony for softenDays, then home on the tracked leg.
+	 */
+	public static Order dispatchHunt(FactionAPI faction, MarketAPI base, MarketAPI hive, float fp) {
+		if (faction == null || base == null || hive == null || hive.getPrimaryEntity() == null) return null;
+		StarSystemAPI system = hive.getStarSystem();
+		if (system == null) return null;
+		float days = ThreatIncConfig.softenDays();
+		CampaignFleetAPI fleet = buildTaskForce(base, faction, fp, system.getLocation());
+		if (fleet == null) return null;
+		fleet.setName("Hunting Force");
+		// the player's hunting fleets earn swarm bounties on their own
+		if (faction.isPlayerFaction()) fleet.addEventListener(new ThreatSwarmBountyIntel.HunterPay());
+		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, hive.getPrimaryEntity(), days,
+				"hunting the swarms over " + hive.getName());
+		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
+				1000f, "returning to " + base.getName());
+		return record(fleet, faction, KIND_HUNT, base, hive.getId(), hive.getName(), days);
+	}
+
+	/** Moves a hunting fleet on to another colony of the same system, for what is left of its term. */
+	public static void retargetHunt(Order o, MarketAPI hive) {
+		if (o == null || o.fleet == null || hive == null || hive.getPrimaryEntity() == null) return;
+		MarketAPI base = o.baseMarketId != null ? Global.getSector().getEconomy().getMarket(o.baseMarketId) : null;
+		o.targetId = hive.getId();
+		o.targetName = hive.getName();
+		o.fleet.clearAssignments();
+		o.fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, hive.getPrimaryEntity(),
+				Math.max(1f, o.daysLeft()), "hunting the swarms over " + hive.getName());
+		if (base != null && base.getPrimaryEntity() != null) {
+			o.fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
+					1000f, "returning to " + base.getName());
+		}
+	}
+
+	/** Ends an order now: its fleet goes home on the tracked leg (refund on arrival). */
+	public static void standDown(Order o, String why) {
+		if (o == null) return;
+		all().remove(o);
+		if (o.fleet != null && o.fleet.isAlive()) ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId);
+		ThreatIncConfig.log("Order stood down (" + why + "): " + o.factionId + " " + o.task());
 	}
 
 	// ------------------------------------------------------------------
@@ -971,22 +1022,21 @@ public class ThreatFleetOrders {
 	}
 
 	/**
-	 * Puts an EXISTING fleet on the hive system's door for interceptDays
-	 * (the board's per-fleet Intercept on an expedition or task force,
-	 * 2026-09-06): no new hull is built and nothing is charged - the fleet
-	 * was paid for when it sailed - it is simply retasked, and goes home to
-	 * {@code base} on the tracked leg when the order runs out or is recalled.
+	 * Puts an EXISTING fleet on the hunt in the hive system for softenDays
+	 * (the board's per-fleet Hunt on an expedition, task force or fleet going
+	 * home - Intercept until 2026-09-24): no new hull is built and nothing is
+	 * charged - the fleet was paid for when it sailed - it is simply
+	 * retasked, and goes home to {@code base} on the tracked leg when the
+	 * order ends or is recalled.
 	 */
-	public static Order adoptIntercept(CampaignFleetAPI fleet, FactionAPI faction,
+	public static Order adoptHunt(CampaignFleetAPI fleet, FactionAPI faction,
 			StarSystemAPI hive, MarketAPI base) {
 		if (fleet == null || !fleet.isAlive() || faction == null || hive == null) return null;
 		if (base == null) base = pickBase(faction, hive.getLocation());
-		if (base == null) return null;
-		SectorEntityToken point = interceptPoint(hive);
-		if (point == null) return null;
-		float days = ThreatIncConfig.interceptDays();
-		String where = point.getName() != null ? point.getName()
-				: "the " + hive.getNameWithLowercaseTypeShort() + " jump-point";
+		if (base == null || base.getPrimaryEntity() == null) return null;
+		MarketAPI target = ThreatSoftening.huntTarget(hive.getId());
+		if (target == null || target.getPrimaryEntity() == null) return null;
+		float days = ThreatIncConfig.softenDays();
 		fleet.clearAssignments();
 		// nothing of its old group or task force moves it any more
 		ThreatPurgeFGI.cutLoose(fleet);
@@ -994,13 +1044,16 @@ public class ThreatFleetOrders {
 		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_WAR_FLEET, true);
 		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_FLEET_DO_NOT_GET_SIDETRACKED, true);
 		fleet.getMemoryWithoutUpdate().set(ORDER_FLAG, true);
-		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, point, days,
-				"intercepting at " + where);
+		// its strength from here: the retreat rule reads what it hunts with
+		ThreatReturns.rebaseline(fleet);
+		if (faction.isPlayerFaction()) fleet.addEventListener(new ThreatSwarmBountyIntel.HunterPay());
+		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, target.getPrimaryEntity(), days,
+				"hunting the swarms over " + target.getName());
 		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
 				1000f, "returning to " + base.getName());
-		Order o = record(fleet, faction, KIND_INTERCEPT, base, hive.getId(), where, days);
-		announce(faction, fleet.getName() + " is detached to intercept the swarm at " + where
-				+ " for " + (int) days + " days.");
+		Order o = record(fleet, faction, KIND_HUNT, base, target.getId(), target.getName(), days);
+		announce(faction, fleet.getName() + " is detached to hunt the Defense Swarms in the "
+				+ hive.getNameWithLowercaseTypeShort() + " for " + (int) days + " days.");
 		return o;
 	}
 
