@@ -580,17 +580,22 @@ public class ThreatReserves {
 	}
 
 	// ------------------------------------------------------------------
-	// accrual - rule 1: only surplus banks
+	// accrual - rule 1: what arrives above peacetime needs banks
 	// ------------------------------------------------------------------
 
 	/**
-	 * What this colony adds to a reserve per 30 days: its vanilla SURPLUS of
-	 * the commodity - availability above demand, in econ units - times the
+	 * What this colony adds to a reserve per 30 days: its availability of the
+	 * commodity above its PEACETIME demand, in econ units - the War footing's
+	 * share as far as it is met, plus any surplus beyond it - times the
 	 * commodity's econ unit (the item count behind one unit: 1,500 fuel, 750
 	 * supplies, 200 heavy armaments, 100 marines) times reserveSurplusMult.
+	 * The War footing's demand is the war's supply line, so a colony that
+	 * imports it banks it; before 2026-09-24 only availability above the
+	 * War footing's demand banked, so mobilising stopped every importer
+	 * banking at all and a depot drained by sorties never refilled.
 	 * BaseIndustry.getSizeMult is vanilla's own tier-to-multiplier curve, the
 	 * one its local-resources submarket stockpiles excess by (at 0.5). A
-	 * colony in deficit banks nothing. Availability is vanilla's broadcast
+	 * colony short of its peacetime needs banks nothing. Availability is vanilla's broadcast
 	 * figure, so a colony banks surplus it imports as well as surplus it
 	 * makes, and a player's sale, which raises availability, banks for its
 	 * duration (rule 4). The mod's OWN trade modifiers - shortage covers and
@@ -607,16 +612,20 @@ public class ThreatReserves {
 		if (isBacked(market)) return baseline + vanillaStockpilePer30(market, commodityId);
 		CommodityOnMarketAPI com = market.getCommodityData(commodityId);
 		if (com == null) return baseline;
-		float surplus = surplusUnits(com);
+		float surplus = surplusUnits(market, com);
 		if (surplus <= 0f) return baseline;
 		return baseline + BaseIndustry.getSizeMult(surplus) * com.getCommodity().getEconUnit()
 				* ThreatIncConfig.reserveSurplusMult();
 	}
 
-	/** Units of availability above demand, this mod's own trade modifiers excluded; never negative. */
-	public static float surplusUnits(CommodityOnMarketAPI com) {
+	/**
+	 * Units of availability above the colony's peacetime demand (the War
+	 * footing's own left out), this mod's own trade modifiers excluded; never
+	 * negative. What banks.
+	 */
+	public static float surplusUnits(MarketAPI market, CommodityOnMarketAPI com) {
 		if (com == null) return 0f;
-		return Math.max(0f, structuralAvailable(com) - com.getMaxDemand());
+		return Math.max(0f, structuralAvailable(com) - WarFootingDemand.peacetimeDemand(market, com));
 	}
 
 	/** Vanilla's availability (units) less what this mod's own trade modifiers contribute to it. */
@@ -680,8 +689,22 @@ public class ThreatReserves {
 	}
 
 	/**
-	 * While a mobilised colony is short of a reserve commodity and no cover is
-	 * in force, the governor issues one: the quantity that lifts vanilla's
+	 * Units short of the colony's PEACETIME demand, the depot's own cover
+	 * ignored - what the depot covers. A gap only in the War footing's share
+	 * is the war's supply not arriving: covering it would spend the reserve
+	 * to lift a figure that banks nothing back (the cover is the mod's own
+	 * modifier), and no industry here is short for it.
+	 */
+	public static int localDeficitUnits(MarketAPI market, CommodityOnMarketAPI com) {
+		if (com == null) return 0;
+		int available = com.getAvailable() - ownModUnits(com, COVER_SOURCE);
+		return Math.max(0, WarFootingDemand.peacetimeDemand(market, com) - Math.max(0, available));
+	}
+
+	/**
+	 * While a mobilised colony is short of a reserve commodity for its own
+	 * peacetime needs ({@link #localDeficitUnits}) and no cover is in force,
+	 * the governor issues one: the quantity that lifts vanilla's
 	 * availability by the deficit's whole units (what a player would have to
 	 * sell here to end the shortage) leaves the reserve and is applied as a
 	 * trade modifier for reserveShortageCoverDays, exactly as a sale is. One
@@ -699,7 +722,7 @@ public class ThreatReserves {
 		if (days <= 0f || fraction <= 0f) return;
 		CommodityOnMarketAPI com = market.getCommodityData(c);
 		if (com == null || coverQuantity(com) > 0f) return;
-		int deficit = deficitUnits(com);
+		int deficit = localDeficitUnits(market, com);
 		if (deficit <= 0) return;
 		float unit = com.getCommodity().getEconUnit();
 		if (unit <= 0f) return;
@@ -738,19 +761,21 @@ public class ThreatReserves {
 		public int available;
 		/** Vanilla's units. */
 		public int demand;
-		/** Units above demand that bank (this mod's own modifiers excluded). */
+		/** Units above peacetime demand that bank (this mod's own modifiers excluded). */
 		public float surplus;
 		/** Items banked per 30 days. */
 		public float per30;
 		public float cap;
 		/** Units short, the depot's cover ignored. */
 		public int deficit;
+		/** Units short of peacetime demand - what the depot covers; the rest of {@link #deficit} is war supply not arriving. */
+		public int localDeficit;
 		/** A cover is in force. */
 		public boolean covering;
 		/** Items the cover in force issued. */
 		public float coverQty;
 		public float coverDaysLeft;
-		/** Short, no cover, and what the depot may spend cannot buy one unit (not necessarily empty). */
+		/** Short of peacetime needs, no cover, and what the depot may spend cannot buy one unit (not necessarily empty). */
 		public boolean exhausted;
 		public float econUnit;
 		/** The garrison's stock - what neither a sortie nor a shortage cover takes. */
@@ -772,7 +797,7 @@ public class ThreatReserves {
 		if (s.backed) {
 			s.available = com.getAvailable();
 			s.demand = com.getMaxDemand();
-			s.surplus = surplusUnits(com);
+			s.surplus = surplusUnits(market, com);
 			s.per30 = accrualPer30(market, c);
 			s.cap = cap(market, c);
 			s.deficit = Math.max(0, s.demand - Math.max(0, s.available));
@@ -786,10 +811,11 @@ public class ThreatReserves {
 		}
 		s.available = com.getAvailable();
 		s.demand = com.getMaxDemand();
-		s.surplus = surplusUnits(com);
+		s.surplus = surplusUnits(market, com);
 		s.per30 = accrualPer30(market, c);
 		s.cap = cap(market, c);
 		s.deficit = deficitUnits(com);
+		s.localDeficit = localDeficitUnits(market, com);
 		s.econUnit = com.getCommodity().getEconUnit();
 		s.floor = floor(market, c);
 		s.coverQty = coverQuantity(com);
@@ -801,7 +827,7 @@ public class ThreatReserves {
 			Long issued = r != null && r.coverIssued != null ? r.coverIssued.get(c) : null;
 			s.coverDaysLeft = issued == null ? days : Math.max(0f,
 					days - Global.getSector().getClock().getElapsedDaysSince(issued));
-		} else if (s.deficit > 0 && days > 0f && fraction > 0f && s.econUnit > 0f) {
+		} else if (s.localDeficit > 0 && days > 0f && fraction > 0f && s.econUnit > 0f) {
 			s.exhausted = coverSpendable(market, s.stock, c, fraction) < s.econUnit;
 		}
 		return s;

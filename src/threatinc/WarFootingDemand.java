@@ -1,5 +1,6 @@
 package threatinc;
 
+import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.econ.MutableCommodityQuantity;
@@ -63,9 +64,29 @@ public class WarFootingDemand extends BaseIndustry {
 
 	/** The highest demand any OTHER industry here declares for the commodity. */
 	protected int othersMax(String commodityId) {
+		return othersMax(market, this, commodityId);
+	}
+
+	/**
+	 * The colony's demand for the commodity without the War footing: the
+	 * highest any other structure declares, vanilla's figure where the
+	 * colony is not mobilised. What arrives above it banks
+	 * (ThreatReserves.surplusUnits); a gap below it is what the depot covers
+	 * (ThreatReserves.localDeficitUnits).
+	 */
+	public static int peacetimeDemand(MarketAPI market, CommodityOnMarketAPI com) {
+		if (com == null) return 0;
+		int demand = com.getMaxDemand();
+		if (market == null) return demand;
+		Industry footing = market.getIndustry(ThreatReserves.WAR_FOOTING_INDUSTRY);
+		if (footing == null) return demand;
+		return Math.min(demand, othersMax(market, footing, com.getId()));
+	}
+
+	protected static int othersMax(MarketAPI market, Industry exclude, String commodityId) {
 		int max = 0;
 		for (Industry ind : market.getIndustries()) {
-			if (ind == this) continue;
+			if (ind == exclude) continue;
 			for (MutableCommodityQuantity q : ind.getAllDemand()) {
 				if (!commodityId.equals(q.getCommodityId())) continue;
 				max = Math.max(max, q.getQuantity().getModifiedInt());

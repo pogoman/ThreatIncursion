@@ -54,6 +54,11 @@ on vanilla's shortages before anything else.
    reserve commodity - exactly the stock vanilla would let a local-resources submarket
    pile up from the same excess - plus the militia trickle for marines. A colony in
    deficit banks nothing. Replaces the "50 per unit of max supply" knobs.
+   *Amended 2026-09-24:* `maxDemand` there is now the colony's PEACETIME demand
+   (`WarFootingDemand.peacetimeDemand`, the War footing's own left out). The War
+   footing's demand is the war's supply line: vanilla imports it, the depot banks it.
+   Measured above the full demand, every importer banked nothing once mobilised (vanilla
+   imports only up to demand) and depots drained by sorties never refilled.
    *Player colonies (2026-09-05):* the reserve IS the vanilla resource stockpile, which
    vanilla fills by this same rule (excess at 0.5, production at 0.25, the Waystation's
    bonus, capped at `stockpileMaxMonths`); the mod adds only the militia and never
@@ -69,6 +74,11 @@ on vanilla's shortages before anything else.
    the reserve. A colony cannot be short on the colony screen while the war board shows
    it sitting on that commodity - the governor issues the depot. If the reserve runs out,
    the shortage stands, and the board shows "reserve exhausted covering local shortage".
+   *Amended 2026-09-24:* only a gap below PEACETIME demand is covered
+   (`ThreatReserves.localDeficitUnits`). A gap in the War footing's share is the war's
+   supply not arriving: covering it spent the reserve to lift a figure that banks
+   nothing back, and no industry there is short for it. The tooltip says "War supply
+   short"; the full vanilla shortage still drives help requests.
 4. **Selling to a colony helps twice, honestly.** Vanilla's trade modifier ends the
    shortage (rule 3 stops draining the reserve) and lifts availability above demand, so
    rule 1 starts banking again for the modifier's duration. No separate "donate to the
@@ -90,7 +100,9 @@ on vanilla's shortages before anything else.
 
 ## 4. Consequences worth knowing before building
 
-- Reserves will be SMALLER and more uneven than today: only surplus banks. A faction
+- Reserves will be SMALLER and more uneven than today: only surplus banks. (Superseded
+  2026-09-24: the War footing's share banks too, so an importer has war fuel as long as
+  vanilla can deliver it - rule 1's amendment.) A faction
   with no fuel surplus anywhere has no war fuel, which is correct and which convoys and
   the player's trading now fix. `reserveSurplusMult` and `reserveInitialMonths` stay as
   the tuning levers.

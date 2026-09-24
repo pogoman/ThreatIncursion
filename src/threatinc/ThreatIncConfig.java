@@ -435,6 +435,8 @@ public class ThreatIncConfig {
 	public static float groundStrengthExponent() { return f("threatinc_groundStrengthExponent"); }
 	/** Fraction of the marines an expedition wants that its base must hold, or it waits. */
 	public static float expeditionMinMarinesFraction() { return f("threatinc_expeditionMinMarinesFraction"); }
+	/** An NPC siege waits unless its base can pay this fraction of the fuel and supplies its flotilla burns. */
+	public static float expeditionMinProvisionsFraction() { return f("threatinc_expeditionMinProvisionsFraction"); }
 	/** Marines the player's "Extra" siege tier commits, as a multiple of the computed landing need (the "Siege" tier). */
 	public static float siegeExtraMarinesFactor() { return f("threatinc_siegeExtraMarinesFactor"); }
 	/** Fuel an expedition draws per fleet point per light-year. */
