@@ -1027,10 +1027,12 @@ public class ThreatReserves {
 	/**
 	 * Mobilisation stock: the moment a faction enters war mode each of its
 	 * colonies starts with reserveInitialMonths of its own banking (never
-	 * above the cap, never below what it already holds) - the peacetime
-	 * depots a navy draws its first sortie from, banked at the peacetime
-	 * surplus since the War footing's demand is added right after. Without
-	 * this the first expedition would wait months for accrual alone.
+	 * above the cap, never below what it already holds) - the depots a navy
+	 * draws its first sortie from. Runs after the War footing's demand has
+	 * landed and the economy recomputed (ThreatWarState.mobilise), so an
+	 * importer seeds the War footing's share it will bank, not the nothing
+	 * its peacetime surplus was. Without this the first expedition would
+	 * wait months for accrual alone.
 	 */
 	public static void seed(String factionId) {
 		float months = ThreatIncConfig.reserveInitialMonths();

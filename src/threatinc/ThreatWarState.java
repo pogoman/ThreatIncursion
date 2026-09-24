@@ -98,8 +98,8 @@ public class ThreatWarState {
 	}
 
 	/**
-	 * Enter war mode for a faction not yet in it: record it, seed its
-	 * peacetime depots, then the War footing's demand, and tell the player.
+	 * Enter war mode for a faction not yet in it: record it, add the War
+	 * footing's demand, seed its depots, and tell the player.
 	 * Returns the record, or null if the faction was already at war.
 	 */
 	public static FactionWar mobilise(FactionAPI faction, String why) {
@@ -115,9 +115,12 @@ public class ThreatWarState {
 		war.enteredTimestamp = Global.getSector().getClock().getTimestamp();
 		war.lastStruckTimestamp = war.enteredTimestamp;
 		wars().put(id, war);
-		// peacetime depots first, then the War footing's demand
-		ThreatReserves.seed(id);
+		// the War footing's demand first - syncWarFooting recomputes the
+		// economy, so vanilla's imports of it are in availability - then the
+		// depots, seeded at the rate they will actually bank. The other way
+		// round an importer seeded nothing but militia (2026-09-24)
 		ThreatReserves.syncWarFooting(warFactionIds());
+		ThreatReserves.seed(id);
 		String who = faction.isPlayerFaction() ? "Your faction"
 				: Misc.ucFirst(faction.getDisplayNameWithArticle());
 		ThreatColonyManager.announceAlways(who + " has mobilised for war against the "

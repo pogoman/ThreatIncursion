@@ -109,7 +109,9 @@ Cap per commodity = accrual x `reserveCapMonths` (6); a colony in deficit has no
 so no cap and no sortie floor. The sortie floor (`reserveFloorFraction`, 0.25) is for NPC
 colonies; the player's own colonies use `playerReserveFloorFraction` (0), so the Siege
 prompt's "can commit" is the whole stock and the landing draws up to what it wants. Mobilisation seeds `reserveInitialMonths` (3) of the
-peacetime surplus - seeded before the War footing's demand lands. A faction that stands
+depot's banking - seeded after the War footing's demand lands and the economy
+recomputes, so an importer seeds the War footing's share (before 2026-09-24 it seeded
+first, and an importer got only its militia). A faction that stands
 down keeps its stock, frozen; a captured colony keeps its depot for the new owner; only
 the swarm taking a world erases one.
 
