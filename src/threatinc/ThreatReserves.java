@@ -539,7 +539,7 @@ public class ThreatReserves {
 	 */
 	public static float floor(MarketAPI market, String commodityId) {
 		if (market == null) return 0f;
-		float basis = cap(market, commodityId);
+		float basis = monthsCap(market, commodityId);
 		ColonyReserve r = get(market.getId());
 		if (r != null && r.capSeen != null) {
 			Float seen = r.capSeen.get(commodityId);
@@ -670,6 +670,29 @@ public class ThreatReserves {
 	 * trims a resource it should have), it just stops accruing.
 	 */
 	public static float cap(MarketAPI market, String commodityId) {
+		return monthsCap(market, commodityId) + stagingBank(market, commodityId);
+	}
+
+	/**
+	 * An NPC staging base banks on toward the siege it stages (2026-09-24):
+	 * its staging target (ThreatConvoys.stagingTargets) on top of the months
+	 * cap, so the wait for a siege is its needs over its banking, not
+	 * forever. Before, a base 31 ly from the nearest known hive could hold
+	 * 9,000 fuel against a 13,000 launch gate. Zero for any other colony and
+	 * for the player's (their stockpile is vanilla's). The floor stays on the
+	 * months cap, so the siege can spend what it saved.
+	 */
+	public static float stagingBank(MarketAPI market, String commodityId) {
+		if (market == null || market.isPlayerOwned() || isBacked(market)) return 0f;
+		float[] targets = ThreatConvoys.stagingTargets(market);
+		for (int i = 0; i < COMMODITIES.length; i++) {
+			if (COMMODITIES[i].equals(commodityId)) return targets[i];
+		}
+		return 0f;
+	}
+
+	/** The cap without the staging bank: months of the colony's own banking. */
+	public static float monthsCap(MarketAPI market, String commodityId) {
 		if (isBacked(market)) {
 			return vanillaStockpileLimit(market, commodityId)
 					+ militiaPer30(market, commodityId) * ThreatIncConfig.reserveCapMonths();
@@ -959,12 +982,16 @@ public class ThreatReserves {
 					continue;
 				}
 				ColonyReserve r = get(market.getId());
-				for (String c : COMMODITIES) {
+				// once per colony per poll: a staging base banks on toward its siege
+				float[] staging = market.isPlayerOwned() ? null : ThreatConvoys.stagingTargets(market);
+				for (int ci = 0; ci < COMMODITIES.length; ci++) {
+					String c = COMMODITIES[ci];
 					float per30 = accrualPer30(market, c);
 					if (per30 > 0f) {
 						if (r == null) r = getOrCreate(market.getId());
 						float capValue = per30 * ThreatIncConfig.reserveCapMonths();
-						noteCap(r, c, capValue);
+						noteCap(r, c, capValue); // the floor's basis: months only
+						if (staging != null) capValue += staging[ci];
 						float have = read(r, c);
 						if (have < capValue) {
 							write(r, c, Math.min(capValue, have + per30 * elapsedDays / 30f));
