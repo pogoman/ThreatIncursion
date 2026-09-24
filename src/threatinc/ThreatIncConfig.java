@@ -486,6 +486,18 @@ public class ThreatIncConfig {
 	public static int scoutMaxPerFaction()    { return i("threatinc_scoutMaxPerFaction"); }
 	/** Combat fleet points of a scouting party. */
 	public static float scoutFleetPoints()    { return f("threatinc_scoutFleetPoints"); }
+	/** NPC sieges sail only with the marines and fleets their target needs; off = send what they can (trimmed to two fleets). */
+	public static boolean npcSiegeFullStrength() { return b("threatinc_npcSiegeFullStrength", true); }
+	/** NPC sieges sail only when their flotilla outweighs the target system's Defense Swarms; off = the garrison is not weighed. */
+	public static boolean npcSiegeOrbitGate() { return b("threatinc_npcSiegeOrbitGate", true); }
+	/** Fleet points an NPC flotilla brings per point of Defense Swarm over the target system. */
+	public static float npcSiegeOrbitMargin() { return f("threatinc_npcSiegeOrbitMargin"); }
+	/** Whether an outweighed NPC siege posts a bounty on the hive system's swarms. */
+	public static boolean swarmBountiesEnabled() { return b("threatinc_swarmBountiesEnabled", true); }
+	/** Credits a swarm bounty pays per frigate destroyed (destroyer x2, cruiser x3, capital x4). */
+	public static float swarmBountyPerFrigate() { return f("threatinc_swarmBountyPerFrigate"); }
+	/** Days a swarm bounty runs. */
+	public static float swarmBountyDays()     { return f("threatinc_swarmBountyDays"); }
 	/** The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts). Off: it knows every world. */
 	public static boolean swarmScouting()     { return b("threatinc_swarmScouting", true); }
 	/** Fleet points of a Scouting Swarm. */

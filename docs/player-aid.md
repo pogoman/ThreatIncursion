@@ -162,6 +162,22 @@ request accepts it.
   running total and completes when it reaches N within the term. Reward: the goods'
   value at the receiving market's price times `missionAidPayMult` (1.5) - the faction
   pays a premium for delivery - plus section 3's reputation doubled.
+- **Swarm bounty on the X system** (2026-09-24, untested; `ThreatSwarmBountyIntel`). Not a
+  contract but vanilla's system bounty pointed at a hive: posted by a mobilised base whose
+  siege the Defense Swarms over the target hive system outweigh (docs/strategy-layer.md,
+  "weighs the orbit"), one per hive system. No accepting, no failing. For
+  `swarmBountyDays` (60) it pays `swarmBountyPerFrigate` (1,500) per Threat ship the player
+  destroys in that system - destroyer x2, cruiser x3, capital x4, times the player's share
+  of the battle - plus vanilla's system-bounty standing (`RepActions.SYSTEM_BOUNTY_REWARD`)
+  per battle. The system's Defense Swarms count wherever they are caught (the fleet's
+  `$threatinc_garrison` names its colony). It ends early only if the hive system falls or
+  the base or its war goes; a base still outweighed afterwards posts the next one. The
+  intel names the FP the siege can take and what the swarms hold now; the gate reads the
+  live garrison, so every swarm destroyed opens the siege sooner. Replaced, the same day,
+  an accept/fail "thin the swarms" contract paid per FP asked - Pelephanar's asked 15.7M.
+  Help requests were never advanced until 2026-09-24 (missing from
+  `IncursionManager.advanceModIntel`): posted ones never withdrew, Defend windows never
+  closed, accepted terms never ran.
 
 **Handing over in person.** At the receiving colony the port offers "Deliver aid for the
 war effort" on the dock menu, and the station or base commander offers the same over

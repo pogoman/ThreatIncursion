@@ -69,6 +69,7 @@ to reconcile it.
 ### Ground war support / mission design
 - `ThreatMissionIntel.java` — dynamic defense-board contracts scoring and offering strikes against specific hive infrastructure links.
 - `ThreatAidMissionIntel.java` — a faction's request for help at a colony as a vanilla mission: Defend (a window; fails if a strike lands; needs a player asset present) or Deliver N of a commodity (running total from convoys and hand-overs).
+- `ThreatSwarmBountyIntel.java` — a swarm bounty: an NPC base whose siege a hive system's Defense Swarms outweigh pays per Threat ship the player destroys there, by hull size, for `swarmBountyDays` (vanilla's system bounty; its `Kills` battle listener).
 
 ### Custom intel UI / war board
 - `ThreatWarBoard.java` — the custom-drawn "The Abyssal War" war board (large description of `ThreatIncursionIntel`): ledger (with the Activity crests), the selected system's ground-fronts table (also drawn by the faction view; row buttons Push / Dig in / Support / Pull out / Supply), colony cards. The mod's bespoke war-board UI — re-read before patching (two sessions have edited it concurrently).

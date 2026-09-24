@@ -159,6 +159,24 @@ taken. Callers:
   the marine trim) burns, and trimmed - never below two fleets - to the fleet points the
   depot's stock above the floor pays for. A player-commissioned expedition draws fuel and
   supplies best-effort (cost, not gate). Armaments short = a shorter front supply.
+  An NPC siege sails at FULL STRENGTH (2026-09-24, knob `npcSiegeFullStrength`): all the
+  marines it wants (`minMarinesFraction` = 1 for NPCs), and a flotilla its depot pays for
+  whose `siegeRaidStrEstimate` still reaches `siegeRaidStrNeeded`; short of either it
+  waits. With half the marines, Hegemony's sieges of Thrial were trimmed to two fleets,
+  lost in the fight for the orbit before a landing, and spent the whole draw.
+  `siegeBlockReason` mirrors both gates. The player's sieges keep the half.
+  An NPC siege also WEIGHS THE ORBIT (2026-09-24, knobs `npcSiegeOrbitGate`,
+  `npcSiegeOrbitMargin` 1.5): the flotilla grows (up to `siegeMaxFleets`) until its fleet
+  points (`ThreatAidCapacity.expeditionPoints`, 25 per size point) reach the Defense Swarm
+  FP over the target system (`siegeOrbitFP`, live garrisons of every target) times the
+  margin. The check runs FIRST, ahead of the marine gate: a flotilla at its fullest still
+  short waits and posts a SWARM BOUNTY on the system (`ThreatSwarmBountyIntel`;
+  docs/player-aid.md section 4) while the base banks marines and provisions; one the
+  depot trimmed below the orbit just waits. Whether a siege
+  sails is the garrison's to decide, not the colony's size: a full-strength Hegemony siege
+  of Thrial (5 fleets, 1,200 marines) came home at 39% with no landing against six
+  garrisons. Each launch logs "Siege fleets real: N FP spawned against ~M estimated" -
+  the 25 FP per point is the mod's convention for vanilla-built raid fleets, unmeasured.
   An NPC staging base BANKS TOWARD ITS SIEGE (2026-09-24, `ThreatReserves.stagingBank`):
   its cap is the months cap plus its staging target, so the wait is the siege's needs over
   its banking. The floor stays on the months cap (`monthsCap`), so the siege spends what
