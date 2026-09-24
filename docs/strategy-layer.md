@@ -84,15 +84,19 @@ military world without one shows its structure in deficit yellow and "No Waystat
 the Staging column; the Stage button says why.
 
 **Accrual** (NPC colonies; rewritten 2026-09-05 to docs/economy-coherence.md rule 1) runs on the fast
-poll, pro-rated per 30 days, and banks only the colony's vanilla SURPLUS: availability
-above demand, in econ units, times the commodity's econ unit (1,500 fuel, 750 supplies,
-200 heavy armaments, 100 marines) times `reserveSurplusMult` (1.0; vanilla's own
-local-resources stockpiles pile up the same excess at 0.5). Marines add the militia
-trickle (`reserveBaselinePerSize`). Vanilla imports only up to demand (verified: every
-import-fed colony reads available = demand), so in practice surplus is local
-overproduction - a nanoforged Heavy Industry, a synchrotron fuel plant - or a trade
-modifier: a player's sale banks for its duration. The mod's own trade modifiers
-(shortage covers, convoy landings) never count as surplus.
+poll, pro-rated per 30 days, and banks the colony's availability above its PEACETIME
+demand (`WarFootingDemand.peacetimeDemand`: the highest demand any structure but the War
+footing declares), in econ units, times the commodity's econ unit (1,500 fuel, 750
+supplies, 200 heavy armaments, 100 marines) times `reserveSurplusMult` (1.0; vanilla's
+own local-resources stockpiles pile up excess at 0.5). Marines add the militia trickle
+(`reserveBaselinePerSize`). Vanilla imports only up to demand (verified: every
+import-fed colony reads available = demand), so an importer banks the War footing's
+share - its N units, as far as they arrive - and a producer banks that plus its local
+overproduction; a player's sale banks for its duration. The mod's own trade modifiers
+(shortage covers, convoy landings) never count. *Until 2026-09-24 only availability
+above the War footing's demand banked:* every importer banked nothing once mobilised,
+and sorties drained depots that never refilled (logged: "Order draw at Sindria: 0 fuel,
+0 supplies").
 
 | Reserve | Vanilla commodity | Econ unit (items) | Who demands it in vanilla |
 | --- | --- | --- | --- |
@@ -148,9 +152,14 @@ taken. Callers:
   `expeditionFuelPerPointLY`; supplies = fleet points x `expeditionSuppliesPerPoint`.
   The expedition is postponed (logged) if the base holds less than
   `expeditionMinMarinesFraction` of the marines wanted - logistics has to stage more.
-  Fuel and supplies are drawn best-effort (cost, not gate); armaments short = a shorter
-  front supply.
-- `IncursionManager.dispatchFactionResponse`: task forces draw fuel and supplies only.
+  An NPC siege is also gated on provisions (2026-09-24): postponed below
+  `expeditionMinProvisionsFraction` (0.5) of the fuel and supplies its flotilla (after
+  the marine trim) burns, and trimmed - never below two fleets - to the fleet points the
+  depot's stock above the floor pays for. A player-commissioned expedition draws fuel and
+  supplies best-effort (cost, not gate). Armaments short = a shorter front supply.
+- `IncursionManager.dispatchFactionResponse`: task forces draw fuel and supplies only,
+  best-effort - the reactive defense always sails; draining the depot is what holds up
+  the next siege.
 
 **Troops ride the fleets**: `ThreatPurgeFGI` carries `marinesAllotted` /
 `armamentsAllotted`; its fleets are composed with troop transports

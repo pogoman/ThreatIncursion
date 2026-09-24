@@ -437,12 +437,13 @@
 	# raiders, not a navy. A record already on a save is dropped on the next
 	# poll (reserves kept).
 	"threatinc_warExcludedFactions": "pirates",
-	# Economy coherence (docs/economy-coherence.md): a colony banks only its
-	# vanilla SURPLUS - availability above demand, in econ units - each 30
-	# days: surplus units x the commodity's econ unit (1,500 fuel, 750
-	# supplies, 200 heavy armaments, 100 marines) x this multiplier. Vanilla's
-	# own local-resources stockpiles pile up the same excess at 0.5. A colony
-	# in deficit banks nothing; a player's sale, which raises availability,
+	# Economy coherence (docs/economy-coherence.md): a colony banks what
+	# arrives above its PEACETIME demand - the War footing's share as far as
+	# it is met, plus any surplus beyond - each 30 days: those units x the
+	# commodity's econ unit (1,500 fuel, 750 supplies, 200 heavy armaments,
+	# 100 marines) x this multiplier. Vanilla's own local-resources
+	# stockpiles pile up excess at 0.5. A colony short of its peacetime
+	# needs banks nothing; a player's sale, which raises availability,
 	# banks for its duration. Availability is vanilla's broadcast figure, so
 	# imported surplus banks too.
 	"threatinc_reserveSurplusMult": 1.0,
@@ -490,6 +491,9 @@
 	# an expedition waits unless its base holds this fraction of the marines
 	# the landing needs (siegeRaidStrNeeded - raid strength ~= marines)
 	"threatinc_expeditionMinMarinesFraction": 0.5,
+	# an NPC siege waits unless its base can pay this fraction of the fuel and
+	# supplies its flotilla burns; short of the rest, the flotilla shrinks
+	"threatinc_expeditionMinProvisionsFraction": 0.5,
 	# the player's "Extra" siege tier commits this multiple of the landing need
 	# (the "Siege" tier); "All" commits the whole reserve above its floor
 	"threatinc_siegeExtraMarinesFactor": 2.0,

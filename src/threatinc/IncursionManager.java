@@ -1510,6 +1510,48 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 							+ (int) haveMarines + " marines");
 				}
 			}
+			// an NPC siege is paid for as well (2026-09-24): the flotilla shrinks
+			// to the fuel and supplies its depot holds above the floor, and
+			// below expeditionMinProvisionsFraction of what it would burn it
+			// waits for convoys and the War footing to refill the depot. The
+			// player's expedition pays what it can - cost, never permission.
+			if (!faction.isPlayerFaction()) {
+				float dist = base.getStarSystem() != null
+						? Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation()) : 0f;
+				float fuelPerPoint = dist * ThreatIncConfig.expeditionFuelPerPointLY();
+				float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
+				float haveFuel = ThreatReserves.available(base,
+						com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
+				float haveSupplies = ThreatReserves.available(base,
+						com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
+				// the fleet points the depot can pay for
+				float payable = Float.MAX_VALUE;
+				if (fuelPerPoint > 0f) payable = Math.min(payable, haveFuel / fuelPerPoint);
+				if (suppliesPerPoint > 0f) payable = Math.min(payable, haveSupplies / suppliesPerPoint);
+				int points = 0;
+				for (Integer size : params.fleetSizes) points += size;
+				float minProvisions = points * ThreatIncConfig.expeditionMinProvisionsFraction();
+				if (points > 0 && payable < minProvisions) {
+					ThreatIncConfig.log("Expedition postponed at " + base.getName() + ": "
+							+ (int) haveFuel + "/" + (int) (points * fuelPerPoint) + " fuel, "
+							+ (int) haveSupplies + "/" + (int) (points * suppliesPerPoint)
+							+ " supplies available (need "
+							+ (int) (ThreatIncConfig.expeditionMinProvisionsFraction() * 100f) + "%)");
+					return null;
+				}
+				int before = params.fleetSizes.size();
+				while (params.fleetSizes.size() > 2 && points > payable) {
+					points -= params.fleetSizes.remove(params.fleetSizes.size() - 1);
+				}
+				if (params.fleetSizes.size() < before) {
+					ThreatIncConfig.log("Expedition trimmed at " + base.getName() + ": "
+							+ before + " -> " + params.fleetSizes.size() + " fleets for "
+							+ (int) haveFuel + " fuel, " + (int) haveSupplies + " supplies");
+				}
+			}
+			// provisions to what actually sails (the landing's own wants
+			// depend on the targets, not the fleets)
+			wants = expeditionWants(base, system, targets, params.fleetSizes);
 			drawn = new float[ThreatReserves.COMMODITIES.length];
 			// marines: draw up to the tier's goal; provisions still to the want
 			drawn[0] = ThreatReserves.drawAbove(base,
@@ -1635,7 +1677,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * would sail: the same gates launchSiegeExpedition applies (a player base
 	 * must have the free fleet points for the smallest flotilla, staged task
 	 * forces included; a mobilised faction's base must commit
-	 * expeditionMinMarinesFraction of the landing's marines), so the button
+	 * expeditionMinMarinesFraction of the landing's marines, and an NPC's
+	 * expeditionMinProvisionsFraction of its fuel and supplies), so the button
 	 * greys out instead of the order failing after Confirm.
 	 */
 	public static String siegeBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
@@ -1664,6 +1707,24 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			return base.getName() + " can commit " + Misc.getWithDGS((int) have) + " marines; the "
 					+ "landing needs at least " + Misc.getWithDGS((int) Math.ceil(min)) + " of the "
 					+ Misc.getWithDGS((int) wants[0]) + " it wants.";
+		}
+		// an NPC siege's provisions gate (launchSiegeExpedition)
+		if (!faction.isPlayerFaction()) {
+			float frac = ThreatIncConfig.expeditionMinProvisionsFraction();
+			float fuel = ThreatReserves.available(base,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
+			float supplies = ThreatReserves.available(base,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
+			if (wants[2] > 0f && fuel < wants[2] * frac) {
+				return base.getName() + " can pay " + Misc.getWithDGS((int) fuel) + " fuel; the "
+						+ "expedition needs at least " + Misc.getWithDGS((int) Math.ceil(wants[2] * frac))
+						+ " of the " + Misc.getWithDGS((int) wants[2]) + " it burns.";
+			}
+			if (wants[3] > 0f && supplies < wants[3] * frac) {
+				return base.getName() + " can pay " + Misc.getWithDGS((int) supplies) + " supplies; the "
+						+ "expedition needs at least " + Misc.getWithDGS((int) Math.ceil(wants[3] * frac))
+						+ " of the " + Misc.getWithDGS((int) wants[3]) + " it burns.";
+			}
 		}
 		return null;
 	}

@@ -49,7 +49,7 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 		}
 		if (!backed) {
 			tooltip.addPara("Selling here raises availability for %s days, as any sale does; "
-					+ "anything above demand banks into the reserve.", opad, h,
+					+ "anything above peacetime demand banks into the reserve.", opad, h,
 					"" + (int) BaseSubmarketPlugin.TRADE_IMPACT_DAYS);
 		}
 	}
@@ -102,11 +102,19 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 		} else if (s.exhausted) {
 			tooltip.addPara(name + ": %s banked. Short %s; depot too low to issue.", pad, neg,
 					stock, units(s.deficit));
-		} else if (s.deficit > 0) {
+		} else if (s.localDeficit > 0) {
 			tooltip.addPara(name + ": %s banked. Short %s; cover due.", pad, h, stock,
 					units(s.deficit));
+		} else if (s.deficit > 0 && s.per30 > 0f) {
+			// the war's share only partly arriving: what does arrive banks
+			tooltip.addPara(name + ": %s banked. War supply short %s; +%s a month, cap %s.", pad,
+					h, stock, units(s.deficit), Misc.getWithDGS((int) s.per30),
+					Misc.getWithDGS((int) s.cap));
+		} else if (s.deficit > 0) {
+			tooltip.addPara(name + ": %s banked. War supply short %s; nothing to bank.", pad, h,
+					stock, units(s.deficit));
 		} else if (s.surplus > 0f) {
-			tooltip.addPara(name + ": %s banked. Surplus %s; +%s a month, cap %s.", pad, pos,
+			tooltip.addPara(name + ": %s banked. War supply %s; +%s a month, cap %s.", pad, pos,
 					stock, units((int) s.surplus), Misc.getWithDGS((int) s.per30),
 					Misc.getWithDGS((int) s.cap));
 		} else if (s.per30 > 0f) {
