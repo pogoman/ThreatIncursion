@@ -132,7 +132,9 @@ public class ThreatColonyManager {
 		market.setEconGroup(ECON_GROUP);
 		// no stockpile cushioning: severed supply chains bite immediately
 		market.setUseStockpilesForShortages(false);
-		// keep procurement/analysis missions from pointing at hive worlds
+		// keeps bar and contact missions from pointing at hive worlds; the
+		// generic survey/analyze/procurement missions ignore this flag and
+		// are filtered by ThreatMissionFilter instead
 		market.setInvalidMissionTarget(true);
 
 		market.getMemoryWithoutUpdate().set(DecivTracker.NO_DECIV_KEY, true);

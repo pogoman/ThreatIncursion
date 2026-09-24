@@ -17,6 +17,7 @@ import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.fleets.FleetFactoryV3;
 import com.fs.starfarer.api.impl.campaign.fleets.FleetParamsV3;
+import com.fs.starfarer.api.impl.campaign.ids.ShipRoles;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.FleetTypes;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
@@ -219,10 +220,12 @@ public class ThreatConvoys {
 
 	/**
 	 * One planning pass: for each mobilised faction, each staging base with
-	 * no convoy already inbound, find the commodity it is shortest of (as a
-	 * fraction of a convoy load) and the donor colony with the most spare
-	 * stock of it, then send one convoy carrying that plus whatever else the
-	 * donor can spare that the base also wants.
+	 * no convoy already inbound, take the commodities it is short of,
+	 * shortest first (as a fraction of a convoy load), and the first with a
+	 * donor - the colony with the most spare stock of it, another staging
+	 * base's stock above its own siege's needs included - then send one
+	 * convoy carrying that plus whatever else the donor can spare that the
+	 * base also wants.
 	 */
 	public static void planLogistics(Random random) {
 		if (!ThreatWarState.enabled() || !ThreatIncConfig.convoyEnabled()) return;
@@ -239,8 +242,12 @@ public class ThreatConvoys {
 			for (MarketAPI base : markets) {
 				if (convoyBoundFor(base.getId())) continue;
 				float[] targets = stagingTargets(base);
-				int worst = -1;
-				float worstShort = 0f;
+				// every commodity worth a sailing, shortest first (in loads): a
+				// base whose worst need no donor holds still takes the next -
+				// before 2026-09-24 Chicomoztoc, short of fuel nobody banked,
+				// got no convoy at all while donors sat on marines it needed
+				final float[] loadsShort = new float[ThreatReserves.COMMODITIES.length];
+				List<Integer> order = new ArrayList<Integer>();
 				for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
 					String c = ThreatReserves.COMMODITIES[i];
 					float shortBy = targets[i] - ThreatReserves.stock(base.getId(), c);
@@ -248,14 +255,16 @@ public class ThreatConvoys {
 					// target when the target is smaller than a load
 					if (shortBy < ThreatIncConfig.convoyMinLoadFraction()
 							* Math.min(capacityFor(c), targets[i])) continue;
-					float loads = shortBy / Math.max(1f, capacityFor(c));
-					if (loads > worstShort) {
-						worstShort = loads;
-						worst = i;
-					}
+					loadsShort[i] = shortBy / Math.max(1f, capacityFor(c));
+					order.add(Integer.valueOf(i));
 				}
-				if (worst < 0) continue;
-				wants.add(new Object[] {base, targets, Integer.valueOf(worst), Float.valueOf(worstShort)});
+				if (order.isEmpty()) continue;
+				java.util.Collections.sort(order, new java.util.Comparator<Integer>() {
+					public int compare(Integer a, Integer b) {
+						return Float.compare(loadsShort[b], loadsShort[a]);
+					}
+				});
+				wants.add(new Object[] {base, targets, order, Float.valueOf(loadsShort[order.get(0)])});
 			}
 			java.util.Collections.sort(wants, new java.util.Comparator<Object[]>() {
 				public int compare(Object[] a, Object[] b) {
@@ -274,8 +283,13 @@ public class ThreatConvoys {
 				if (sailed >= maxPerTick) break;
 				MarketAPI base = (MarketAPI) w[0];
 				float[] targets = (float[]) w[1];
-				String need = ThreatReserves.COMMODITIES[(Integer) w[2]];
-				MarketAPI donor = pickDonor(markets, base, need);
+				@SuppressWarnings("unchecked")
+				List<Integer> order = (List<Integer>) w[2];
+				MarketAPI donor = null;
+				for (Integer i : order) {
+					donor = pickDonor(markets, base, ThreatReserves.COMMODITIES[i]);
+					if (donor != null) break;
+				}
 				if (donor == null) continue;
 				float[] load = new float[ThreatReserves.COMMODITIES.length];
 				for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
@@ -872,7 +886,9 @@ public class ThreatConvoys {
 	/** Stock a colony can spare: what it holds above its keep fraction of its own cap. */
 	public static float spare(MarketAPI donor, String commodityId) {
 		if (ThreatReserves.committed(donor, commodityId)) return 0f; // its marines are fighting
-		float keep = ThreatReserves.cap(donor, commodityId) * ThreatIncConfig.donorKeepFraction();
+		// a staging base keeps its own siege's needs, then gives like any donor
+		float keep = ThreatReserves.monthsCap(donor, commodityId) * ThreatIncConfig.donorKeepFraction()
+				+ ThreatReserves.stagingBank(donor, commodityId);
 		return Math.max(0f, ThreatReserves.stock(donor.getId(), commodityId) - keep);
 	}
 
@@ -899,7 +915,7 @@ public class ThreatConvoys {
 	 * defaults - which no colony's reserve ever reached, so nothing sailed.
 	 */
 	public static float minLoad(MarketAPI donor, String commodityId) {
-		float fullSpare = ThreatReserves.cap(donor, commodityId)
+		float fullSpare = ThreatReserves.monthsCap(donor, commodityId)
 				* (1f - ThreatIncConfig.donorKeepFraction());
 		return ThreatIncConfig.convoyMinLoadFraction()
 				* Math.min(capacityFor(commodityId), Math.max(0f, fullSpare));
@@ -914,7 +930,6 @@ public class ThreatConvoys {
 			if (donor == base || donor.getStarSystem() == null) continue;
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					base.getStarSystem().getLocation()) > range) continue;
-			if (stagingHive(donor) != null) continue; // its stock is for its own siege
 			float s = sendable(donor, base, commodityId);
 			if (s > bestSend) {
 				bestSend = s;
@@ -992,6 +1007,7 @@ public class ThreatConvoys {
 		if (faction.isPlayerFaction()) params.ignoreMarketFleetSizeMult = true;
 		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
 		if (fleet == null || fleet.isEmpty()) return null;
+		fitHulls(fleet, faction, marines, load[1] + load[3], load[2], random);
 
 		system.addEntity(fleet);
 		fleet.setLocation(from.getLocation().x, from.getLocation().y);
@@ -1079,10 +1095,69 @@ public class ThreatConvoys {
 		}
 	}
 
+	/**
+	 * Adds the faction's own personnel, freighter and tanker hulls until the
+	 * load fits (2026-09-24). The fleet is built to about a point of hull per
+	 * 40 marines / 60 units, but an NPC navy's fleet-size multiplier and the
+	 * hulls vanilla happens to pick left convoys with a few dozen free
+	 * berths: 300 marines planned, 19 to 76 loaded, the rest left behind.
+	 * A bigger load now means a bigger, slower convoy, as it should.
+	 */
+	protected static void fitHulls(CampaignFleetAPI fleet, FactionAPI faction, float marines,
+			float cargoUnits, float fuel, Random random) {
+		CargoAPI cargo = fleet.getCargo();
+		int before = fleet.getFleetData().getNumMembers();
+		for (int i = 0; i < MAX_FIT_HULLS && cargo.getFreeCrewSpace() < marines; i++) {
+			float missing = marines - cargo.getFreeCrewSpace();
+			if (!addHull(fleet, faction, missing, 400f, 150f, ShipRoles.PERSONNEL_LARGE,
+					ShipRoles.PERSONNEL_MEDIUM, ShipRoles.PERSONNEL_SMALL, random)) break;
+		}
+		for (int i = 0; i < MAX_FIT_HULLS && cargo.getSpaceLeft() < cargoUnits; i++) {
+			float missing = cargoUnits - cargo.getSpaceLeft();
+			if (!addHull(fleet, faction, missing, 1000f, 300f, ShipRoles.FREIGHTER_LARGE,
+					ShipRoles.FREIGHTER_MEDIUM, ShipRoles.FREIGHTER_SMALL, random)) break;
+		}
+		for (int i = 0; i < MAX_FIT_HULLS && cargo.getFreeFuelSpace() < fuel; i++) {
+			float missing = fuel - cargo.getFreeFuelSpace();
+			if (!addHull(fleet, faction, missing, 1000f, 300f, ShipRoles.TANKER_LARGE,
+					ShipRoles.TANKER_MEDIUM, ShipRoles.TANKER_SMALL, random)) break;
+		}
+		int added = fleet.getFleetData().getNumMembers() - before;
+		if (added > 0) {
+			ThreatIncConfig.log("Convoy fitted: +" + added + " hulls for " + (int) marines + " marines, "
+					+ (int) cargoUnits + " cargo, " + (int) fuel + " fuel (berths "
+					+ cargo.getFreeCrewSpace() + ", hold " + (int) cargo.getSpaceLeft()
+					+ ", tanks " + cargo.getFreeFuelSpace() + ")");
+		}
+	}
+
+	/** Hulls one convoy may gain in each of fitHulls' three passes. */
+	protected static final int MAX_FIT_HULLS = 12;
+
+	/** One hull of the size the shortfall calls for, falling back to smaller ones; false if none could be added. */
+	protected static boolean addHull(CampaignFleetAPI fleet, FactionAPI faction, float missing,
+			float largeAt, float mediumAt, String large, String medium, String small, Random random) {
+		String[] roles = missing >= largeAt ? new String[] {large, medium, small}
+				: missing >= mediumAt ? new String[] {medium, small, large}
+				: new String[] {small, medium, large};
+		for (String role : roles) {
+			float fp = faction.pickShipAndAddToFleet(role, FactionAPI.ShipPickParams.priority(),
+					fleet, random);
+			if (fp > 0f) {
+				fleet.getFleetData().setSyncNeeded();
+				fleet.getFleetData().syncIfNeeded();
+				return true;
+			}
+		}
+		return false;
+	}
+
 	protected static float loadCommodity(CargoAPI cargo, String donorId, String commodityId,
 			float wanted) {
 		if (wanted <= 0f) return 0f;
-		float fits = Math.max(0f, Math.min(wanted, cargo.getSpaceLeft()));
+		// fuel rides in the tanks, everything else in the hold
+		float room = Commodities.FUEL.equals(commodityId) ? cargo.getFreeFuelSpace() : cargo.getSpaceLeft();
+		float fits = Math.max(0f, Math.min(wanted, room));
 		int units = (int) fits;
 		if (units <= 0) return 0f;
 		float taken = ThreatReserves.draw(donorId, commodityId, units);

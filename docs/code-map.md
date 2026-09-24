@@ -62,6 +62,7 @@ to reconcile it.
 - `ThreatAidRequests.java` — mobilised NPC colonies' needs (outmatched by a strike; exhausted or standing shortages) and the slow tick that posts requests for help.
 - `ThreatRaiders.java` — hive garrison swarms detached to hunt enemy supply convoys (guerre de course).
 - `ThreatScouts.java` — the fog of war on hives: NPC scouting parties that find hive systems (leads from strikes, routine sweeps), the shared discovered list every faction acts on, and `sectorKnows`, the gate on NPC war efforts.
+- `ThreatMissionFilter.java` — wraps vanilla's generic mission creators so a hive market never posts a survey, analyze or procurement mission.
 - `ThreatSwarmScouts.java` — the swarm's side of the fog: Scouting Swarms chart inhabited systems in fuel reach, and `swarmKnows` gates which worlds a strike may target.
 - `ThreatAlarm.java` — escalation/grudge tracking that speeds hive fabrication and retargets strikes at aggressors.
 

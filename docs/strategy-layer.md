@@ -159,6 +159,11 @@ taken. Callers:
   the marine trim) burns, and trimmed - never below two fleets - to the fleet points the
   depot's stock above the floor pays for. A player-commissioned expedition draws fuel and
   supplies best-effort (cost, not gate). Armaments short = a shorter front supply.
+  An NPC staging base BANKS TOWARD ITS SIEGE (2026-09-24, `ThreatReserves.stagingBank`):
+  its cap is the months cap plus its staging target, so the wait is the siege's needs over
+  its banking. The floor stays on the months cap (`monthsCap`), so the siege spends what
+  it saved. Before, Chicomoztoc, 31 ly from the nearest known hive, could hold 9,000 fuel
+  against a 13,000 launch gate and never sailed.
 - `IncursionManager.dispatchFactionResponse`: task forces draw fuel and supplies only,
   best-effort - the reactive defense always sails; draining the depot is what holds up
   the next siege.
@@ -189,13 +194,17 @@ staging base and commodity, target stock = what the Siege button's expedition wo
 (`IncursionManager.siegeWants`) x `stagingTargetMult` (1.5); if the base is short by
 at least `convoyMinLoadFraction` (0.5) of a load or of the target (whichever is smaller),
 the same-faction colony within `convoyRangeLY` (15; the player's colonies at any range)
-that is not a staging base and holds
-the most above `donorKeepFraction` (0.5) of its own cap ships a convoy of up to
+that holds the most above `donorKeepFraction` (0.5) of its own months cap - a staging
+base counts too, above that plus its own staging target (2026-09-24) - ships a convoy
+of up to
 `convoyMarineCapacity` (2,000) marines / `convoyCargoCapacity` (6,000) units - provided
 that is at least `convoyMinLoadFraction` of a load or of what the donor could spare when
 full (`ThreatConvoys.minLoad`; the old test against a hull load alone meant 1,000
 marines or 3,000 units, which no reserve ever reached, so nothing sailed). Deposits are
-not capped, so a staging base fills past its own cap. **Stage** (the hand order) is the
+not capped, so a staging base fills past its own cap. The base's short commodities are
+tried shortest first until one has a donor, and that donor sends everything it can spare
+that the base wants (2026-09-24: a base whose worst need nobody banked - Chicomoztoc's
+fuel - used to get no convoy at all). **Stage** (the hand order) is the
 override: `stageDonor` / `stageLoad` send whatever the best donor in range can spare, no
 minimum, preferring donors that are not staging bases; the confirm prompt names the donor.
 The colony table's **Convoys** column reads **Staging base** (yellow) for a base, **to
@@ -207,6 +216,14 @@ stages for the nearest hive the PLAYER HAS FOUND (`ThreatIncData.discoveredSyste
 any range, as the Siege button has none for the player; until 2026-09-05 evening it took
 the nearest hive in expedition range whether found or not, and the board (as "Stocks
 for") named a system the player could not find on the map.
+
+**Hulls fit the load** (2026-09-24, `ThreatConvoys.fitHulls`): after the fleet is built
+(about a point of hull per 40 marines / 60 units), the faction's own personnel, freighter
+and tanker hulls are added until the marines fit the berths, the goods the hold and the
+fuel the tanks (up to 12 per pass). Before, an NPC navy's fleet-size multiplier and
+vanilla's hull picks left convoys a few dozen free berths, and marines were loaded only
+to that - 19 to 76 of a few hundred planned. Fuel is loaded against tank space, not the
+hold.
 
 **Resolution** (fast poll): a convoy whose fleet is dead is lost with its cargo
 (announced if the player knows the faction is at war); one that reaches its destination

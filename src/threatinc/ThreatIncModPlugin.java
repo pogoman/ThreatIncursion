@@ -57,6 +57,9 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// for colonies that hold nothing.
 		ThreatReserves.seedMarineArming();
 
+		// hive worlds post no vanilla missions (survey, analyze, procurement)
+		ThreatMissionFilter.install();
+
 		// transient: re-added every load, never serialized into the save
 		IncursionManager manager = new IncursionManager();
 		Global.getSector().addTransientScript(manager);
