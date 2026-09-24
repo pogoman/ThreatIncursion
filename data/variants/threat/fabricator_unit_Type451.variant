@@ -1,0 +1,70 @@
+{
+    "displayName": "Type 451",
+    "fluxCapacitors": 50,
+    "fluxVents": 50,
+    "goalVariant": true,
+    "hullId": "fabricator_unit",
+    "hullMods": [
+        "fragment_swarm",
+        "fragment_coordinator",
+        "secondary_fabricator",
+        "magazines"
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "fabricator_unit_Type451",
+    "weaponGroups": [
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "voidblaster",
+                "WS 003": "voidblaster",
+                "WS 007": "voidblaster",
+                "WS 010": "voidblaster"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS 021": "seeker_fragment",
+                "WS 022": "seeker_fragment",
+                "WS 023": "seeker_fragment",
+                "WS 024": "seeker_fragment"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 002": "light_mass_driver",
+                "WS 004": "light_mass_driver",
+                "WS 005": "light_mass_driver",
+                "WS 006": "light_mass_driver",
+                "WS 008": "light_mass_driver",
+                "WS 009": "light_mass_driver",
+                "WS 011": "light_mass_driver",
+                "WS 012": "light_mass_driver"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 014": "unstable_fragment",
+                "WS 015": "unstable_fragment"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS 013": "voltaic_discharge",
+                "WS 018": "voltaic_discharge",
+                "WS 019": "voltaic_discharge",
+                "WS 020": "voltaic_discharge"
+            }
+        }
+    ]
+}

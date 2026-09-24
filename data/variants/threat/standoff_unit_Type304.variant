@@ -1,0 +1,71 @@
+{
+    "displayName": "Type 304",
+    "fluxCapacitors": 30,
+    "fluxVents": 30,
+    "goalVariant": true,
+    "hullId": "standoff_unit",
+    "hullMods": [
+        "fragment_swarm",
+        "heavyarmor",
+        "missleracks",
+        "ballistic_rangefinder"
+    ],
+    "permaMods": [],
+    "sMods": [],
+    "variantId": "standoff_unit_Type304",
+    "weaponGroups": [
+        {
+            "autofire": false,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 012": "neoferric_quadcoil",
+                "WS 013": "neoferric_quadcoil"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 010": "heavy_mass_driver",
+                "WS 011": "heavy_mass_driver"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS 014": "neutron_torpedo",
+                "WS 015": "neutron_torpedo",
+                "WS 016": "neutron_torpedo",
+                "WS 017": "neutron_torpedo"
+            }
+        },
+        {
+            "autofire": false,
+            "mode": "ALTERNATING",
+            "weapons": {
+                "WS 005": "devouring_swarm",
+                "WS 006": "devouring_swarm",
+                "WS 008": "devouring_swarm",
+                "WS 009": "devouring_swarm"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 007": "unstable_fragment"
+            }
+        },
+        {
+            "autofire": true,
+            "mode": "LINKED",
+            "weapons": {
+                "WS 001": "voltaic_cannon",
+                "WS 002": "voltaic_cannon",
+                "WS 003": "voltaic_cannon",
+                "WS 004": "voltaic_cannon"
+            }
+        }
+    ]
+}

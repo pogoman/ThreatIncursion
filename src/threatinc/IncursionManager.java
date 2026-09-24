@@ -226,6 +226,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatConvoys.poll();
 		ThreatRaiders.poll();
 		ThreatScouts.poll(random);
+		ThreatSwarmScouts.poll(random);
 		ThreatFleetOrders.poll();
 		ThreatReturns.poll();
 		ThreatAidCapacity.poll();
@@ -2146,6 +2147,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (market.isPlayerOwned() && !playerAllowed) continue;
 			if (onlyFactionId != null && !onlyFactionId.equals(market.getFactionId())) continue;
 			if (isActiveStrikeTarget(market)) continue; // one strike per world
+			// the swarm strikes only what it has scouted (ThreatSwarmScouts)
+			if (!ThreatSwarmScouts.swarmKnows(market)) continue;
 
 			float d = Misc.getDistanceLY(source.getLocation(), market.getStarSystem().getLocation());
 			if (d > rangeLY) continue;

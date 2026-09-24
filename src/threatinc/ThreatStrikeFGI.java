@@ -727,8 +727,8 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			fabricators = 0;
 		}
 
-		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
-				fabricators, 0, 0, strength, getRandom());
+		CampaignFleetAPI fleet = ThreatFleetComposer.create(ThreatFleetComposer.JOB_STRIKE,
+				fabricators, strength, getRandom());
 
 		// provision the swarm to actually bombard on arrival rather than idling
 		// until the operation times out: vanilla gates live bombardment behind

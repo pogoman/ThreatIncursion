@@ -765,9 +765,27 @@ scouting parties, and a hive any faction finds is known to all, player included.
 - The player gets no leads: they scout in person, or wait for an NPC's find.
 - Knob hiveFogOfWar false = the old rule (every strike reveals its origin, NPCs know all).
 
+The swarm scouts too (`ThreatSwarmScouts`, user's call the same day): a strike does not go
+out the moment a world is in reach.
+
+- `pickStrikeTarget` (strikes and retaliation) takes only worlds the swarm knows
+  (`swarmKnows`): its system charted by a Scouting Swarm, shared with a hive colony, or
+  a Threat ground front on the world. Charted systems stay charted.
+- From phase 2, a colony that passes the strike economy gates - strikeMinSize, hulls
+  delivered, fuel, working Swarm Nexus, but NOT the garrison - sends a Scouting Swarm
+  (`ThreatFleetComposer.createScouts`, the scout archetype, swarmScoutFleetPoints)
+  through unknown systems with a strikeable world within its `fuelRangeLY`,
+  nearest-first, scoutStops per sortie, scoutStayDays each. The Defense Swarms stay home.
+- swarmScoutMax out at once, hive-wide. Scouts keep the swarm's stealth, pick no fights,
+  and fade out at home. Charting a system is announced in debug mode only.
+- Knob swarmScouting false = the swarm knows every world, as before. An existing save
+  pauses its strikes until the first scouts have charted something.
+
 Verify: a strike on an NPC colony logs "Scout lead"; a "Scouting party" fleet leaves the
 faction's military world; entering the origin announces the find and a board row names
 it; no "dispatched a task force" line before that; the strike intel names no origin.
+Swarm side: "Scouting Swarm from X" in the log once phase 2 is reached, "Scouting Swarm
+charted Y" on arrival, and no "Strike launched" at a system before it is charted.
 
 ## Not built yet
 

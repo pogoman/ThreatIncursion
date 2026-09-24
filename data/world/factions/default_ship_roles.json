@@ -1,0 +1,55 @@
+# The Abyssal War - merged over vanilla's default_ship_roles.json. Adds the mod's Threat
+# variants and re-weights vanilla's so each hull keeps its vanilla share of every role.
+{
+	"combatSmallForSmallFleet": {
+		"skirmish_unit_Type100": 2,
+		"skirmish_unit_Type101": 2,
+		"skirmish_unit_Type102": 2,
+		"skirmish_unit_Type103": 2,
+		"skirmish_unit_Type104": 2
+	},
+	"combatSmall": {
+		"skirmish_unit_Type100": 2,
+		"skirmish_unit_Type101": 2,
+		"skirmish_unit_Type102": 2,
+		"skirmish_unit_Type103": 2,
+		"skirmish_unit_Type104": 2
+	},
+	"combatMedium": {
+		"assault_unit_Type200": 5,
+		"assault_unit_Type201": 5,
+		"assault_unit_Type202": 5,
+		"assault_unit_Type203": 5,
+		"overseer_unit_Type250": 6.67,
+		"overseer_unit_Type251": 6.67,
+		"overseer_unit_Type252": 6.67
+	},
+	"combatLarge": {
+		"standoff_unit_Type300": 2,
+		"standoff_unit_Type301": 2,
+		"standoff_unit_Type302": 2,
+		"standoff_unit_Type303": 2,
+		"standoff_unit_Type304": 2,
+		"hive_unit_Type350": 3.33,
+		"hive_unit_Type351": 3.33,
+		"hive_unit_Type352": 3.33
+	},
+	"combatCapital": {
+		"fabricator_unit_Type450": 5,
+		"fabricator_unit_Type451": 5
+	},
+	"threatFabricator": {
+		"fabricator_unit_Type450": 5,
+		"fabricator_unit_Type451": 5
+	},
+	"threatHive": {
+		"hive_unit_Type350": 3.33,
+		"hive_unit_Type351": 3.33,
+		"hive_unit_Type352": 3.33
+	},
+	"threatOverseer": {
+		"overseer_unit_Type250": 3.33,
+		"overseer_unit_Type251": 3.33,
+		"overseer_unit_Type252": 3.33
+	}
+}

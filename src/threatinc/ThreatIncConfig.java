@@ -358,6 +358,7 @@ public class ThreatIncConfig {
 	public static float reachFuelCarry()     { return f("threatinc_reachFuelCarry"); }
 	public static int strikeMinSize()        { return i("threatinc_strikeMinSize"); }
 	public static float strikeStrengthMult() { return f("threatinc_strikeStrengthMult"); }
+	public static boolean fleetArchetypes()  { return b("threatinc_fleetArchetypes", true); }
 	public static float playerGraceDays()    { return f("threatinc_playerGraceDays"); }
 
 	// ---- faction reactive defense ----
@@ -485,6 +486,12 @@ public class ThreatIncConfig {
 	public static int scoutMaxPerFaction()    { return i("threatinc_scoutMaxPerFaction"); }
 	/** Combat fleet points of a scouting party. */
 	public static float scoutFleetPoints()    { return f("threatinc_scoutFleetPoints"); }
+	/** The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts). Off: it knows every world. */
+	public static boolean swarmScouting()     { return b("threatinc_swarmScouting", true); }
+	/** Fleet points of a Scouting Swarm. */
+	public static float swarmScoutFleetPoints() { return f("threatinc_swarmScoutFleetPoints"); }
+	/** Scouting Swarms out at once, hive-wide. */
+	public static int swarmScoutMax()         { return i("threatinc_swarmScoutMax"); }
 	/** Shortfall (in convoy loads) below which no convoy sails. */
 	public static float convoyMinLoadFraction() { return f("threatinc_convoyMinLoadFraction"); }
 	/** Convoys one faction dispatches per slow tick at most (the neediest bases first). */

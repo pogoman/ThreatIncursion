@@ -134,13 +134,22 @@ public class ThreatRaiders {
 		}
 	}
 
-	/** Takes the largest live garrison swarm off station and sends it after the convoy. */
+	/**
+	 * Takes the largest live hunter-pack swarm off station - the largest
+	 * swarm of any kind if the garrison has none - and sends it after the convoy.
+	 */
 	public static Raider detach(MarketAPI hive, ThreatConvoys.Convoy convoy) {
 		List<CampaignFleetAPI> garrison = ThreatIncData.garrisonsFor(hive.getId());
 		CampaignFleetAPI best = null;
+		boolean bestHunter = false;
 		for (CampaignFleetAPI curr : garrison) {
 			if (curr == null || !curr.isAlive()) continue;
-			if (best == null || curr.getFleetPoints() > best.getFleetPoints()) best = curr;
+			boolean hunter = ThreatFleetComposer.HUNTER.equals(ThreatFleetComposer.archetypeOf(curr));
+			if (best == null || (hunter && !bestHunter)
+					|| (hunter == bestHunter && curr.getFleetPoints() > best.getFleetPoints())) {
+				best = curr;
+				bestHunter = hunter;
+			}
 		}
 		if (best == null) return null;
 		garrison.remove(best);
