@@ -214,11 +214,14 @@ public class ThreatRaiders {
 			}
 			if (fleet.getContainingLocation() == planet.getContainingLocation()
 					&& Misc.getDistance(fleet, planet) <= HOME_RANGE) {
-				// back on station: rejoin the garrison; the leash restores its
+				// back on station: rejoin the garrison, or be absorbed into it when
+				// the slot it left was refilled meanwhile; the leash restores its
 				// hunting reflexes the moment it sees the blinders
+				if (fleet.getBattle() != null) continue;
 				fleet.getMemoryWithoutUpdate().unset(RAIDER_FLAG);
-				ThreatIncData.garrisonsFor(home.getId()).add(fleet);
 				all().remove(r);
+				if (ThreatColonyManager.absorbSurplus(home, fleet)) continue;
+				ThreatIncData.garrisonsFor(home.getId()).add(fleet);
 				ThreatIncConfig.log("Raider home at " + home.getName());
 			}
 		}

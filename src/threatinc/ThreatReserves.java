@@ -791,7 +791,7 @@ public class ThreatReserves {
 		public float cap;
 		/** Units short, the depot's cover ignored. */
 		public int deficit;
-		/** Units short of peacetime demand - what the depot covers; the rest of {@link #deficit} is war supply not arriving. */
+		/** Units short of peacetime demand - what the depot covers; the rest of {@link #deficit} is war supply not arriving. Backed: what the stockpile's cover lifts. */
 		public int localDeficit;
 		/** A cover is in force. */
 		public boolean covering;
@@ -829,6 +829,8 @@ public class ThreatReserves {
 			// vanilla's own cover lifts availability by the deficit while it draws
 			StatMod lr = com.getAvailableStat().getFlatStatMod(Submarkets.LOCAL_RESOURCES);
 			s.covering = lr != null && lr.value > 0f;
+			// deficit reads 0 while the cover draws: the shortage it pays for is what it lifts
+			s.localDeficit = s.covering ? Math.round(lr.value) : s.deficit;
 			s.stockpilesOff = s.deficit > 0 && !market.isUseStockpilesForShortages();
 			return s;
 		}

@@ -7,6 +7,9 @@ import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.econ.impl.PlanetaryShield;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
+import com.fs.starfarer.api.impl.campaign.intel.AnalyzeEntityIntelCreator;
+import com.fs.starfarer.api.impl.campaign.intel.ProcurementMissionCreator;
+import com.fs.starfarer.api.impl.campaign.intel.SurveyPlanetIntelCreator;
 import com.thoughtworks.xstream.XStream;
 
 public class ThreatIncModPlugin extends BaseModPlugin {
@@ -27,10 +30,16 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 	 * <p>This holds only while {@link ThreatPlanetaryShield} declares no instance
 	 * fields - a field vanilla's class does not have would break loading without
 	 * the mod just as badly.
+	 *
+	 * <p>The filtering mission creators ({@link ThreatMissionFilter}) take the same
+	 * alias, on the same no-fields condition.
 	 */
 	@Override
 	public void configureXStream(XStream x) {
 		x.alias(PlanetaryShield.class.getName(), ThreatPlanetaryShield.class);
+		x.alias(AnalyzeEntityIntelCreator.class.getName(), ThreatMissionFilter.AnalyzeEntity.class);
+		x.alias(SurveyPlanetIntelCreator.class.getName(), ThreatMissionFilter.SurveyPlanet.class);
+		x.alias(ProcurementMissionCreator.class.getName(), ThreatMissionFilter.Procurement.class);
 	}
 
 	@Override
@@ -59,6 +68,10 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 
 		// hive worlds post no vanilla missions (survey, analyze, procurement)
 		ThreatMissionFilter.install();
+
+		// a save reloaded at the same clock instant must not read the last
+		// session's staging targets
+		ThreatConvoys.forgetStagingTargets();
 
 		// transient: re-added every load, never serialized into the save
 		IncursionManager manager = new IncursionManager();

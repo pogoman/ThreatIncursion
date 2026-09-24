@@ -74,7 +74,7 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 			// the resource stockpile: vanilla fills and spends it, the militia lands in it
 			if (s.covering) {
 				tooltip.addPara(name + ": %s stockpiled. Short %s; the stockpile is covering.",
-						pad, h, stock, units(s.deficit));
+						pad, h, stock, units(s.localDeficit));
 			} else if (s.stockpilesOff) {
 				tooltip.addPara(name + ": %s stockpiled. Short %s; stockpile use is off.",
 						pad, neg, stock, units(s.deficit));
@@ -93,18 +93,18 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 		if (s.covering) {
 			tooltip.addPara(name + ": %s banked. Short %s; depot issuing %s for %s.", pad, h,
 					stock, units(s.deficit), Misc.getWithDGS((int) s.coverQty), days(s.coverDaysLeft));
-		} else if (s.exhausted && s.floor > 0f && s.stock - s.floor < s.stock
+		} else if (s.exhausted && s.floor > 0f && s.stock > 0f && s.stock - s.floor < s.stock
 				* ThreatIncConfig.reserveShortageCoverFraction()) {
-			// the garrison's floor, not the cover fraction, is what stops the issue
+			// the garrison's floor, not the cover fraction, is what stops the issue; an empty depot keeps nothing
 			tooltip.addPara(name + ": %s banked. Short %s; depot too low to issue, %s kept for "
-					+ "the garrison.", pad, neg, stock, units(s.deficit),
-					Misc.getWithDGS((int) s.floor));
+					+ "the garrison.", pad, neg, stock, units(s.localDeficit),
+					Misc.getWithDGS((int) Math.min(s.stock, s.floor)));
 		} else if (s.exhausted) {
 			tooltip.addPara(name + ": %s banked. Short %s; depot too low to issue.", pad, neg,
-					stock, units(s.deficit));
+					stock, units(s.localDeficit));
 		} else if (s.localDeficit > 0) {
 			tooltip.addPara(name + ": %s banked. Short %s; cover due.", pad, h, stock,
-					units(s.deficit));
+					units(s.localDeficit));
 		} else if (s.deficit > 0 && s.per30 > 0f) {
 			// the war's share only partly arriving: what does arrive banks
 			tooltip.addPara(name + ": %s banked. War supply short %s; +%s a month, cap %s.", pad,

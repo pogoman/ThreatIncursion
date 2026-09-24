@@ -801,6 +801,9 @@ public class ThreatWarBoard {
 
 	public static void render(ThreatIncursionIntel intel, TooltipMakerAPI main, float width) {
 		float opad = 10f;
+		// a board order can change a player base's staging target with the
+		// clock stopped; every tab reads the targets, so the memo empties here
+		ThreatConvoys.forgetStagingTargets();
 		IntelUIAPI ui = main.getIntelUI();
 		ThreatIncConfig.log("war board render width=" + width
 				+ " narrow=" + (width - 24f < NARROW_WIDTH) + " stack=" + (width < STACK_WIDTH));

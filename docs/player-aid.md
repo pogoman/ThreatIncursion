@@ -170,7 +170,10 @@ request accepts it.
   destroys in that system - destroyer x2, cruiser x3, capital x4, times the player's share
   of the battle - plus vanilla's system-bounty standing (`RepActions.SYSTEM_BOUNTY_REWARD`)
   per battle. The system's Defense Swarms count wherever they are caught (the fleet's
-  `$threatinc_garrison` names its colony). It ends early only if the hive system falls or
+  `$threatinc_garrison` names its colony), and each ship lost pays ONE bounty - its
+  garrison's home system's when one runs there, else the system it was caught in's
+  (`paidBy`; review fix 2026-09-24, before it two running bounties both paid for a swarm
+  of one system killed in the other). It ends early only if the hive system falls or
   the base or its war goes; a base still outweighed afterwards posts the next one. The
   intel names the FP the siege can take and what the swarms hold now; the gate reads the
   live garrison, so every swarm destroyed opens the siege sooner. Replaced, the same day,

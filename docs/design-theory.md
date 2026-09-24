@@ -380,8 +380,10 @@ then postpone forever.
   `siegeFleetSizes` capped by the marines available), instead of always drawing the full
   want. A smaller expedition that sails beats a big one that never does. An NPC siege
   does the same with fuel and supplies (2026-09-24, `expeditionMinProvisionsFraction`):
-  trimmed to the fleet points its depot pays for, postponed below the fraction. Before
-  that they were a cost nothing checked, so a drained depot changed nothing.
+  trimmed to the fleet points its depot pays for, postponed below the fraction - but at
+  full strength (`npcSiegeFullStrength`) the fleets that reach the target's ground need
+  and orbit are never trimmed, so the fraction only ever cuts the fleets beyond them.
+  Before that they were a cost nothing checked, so a drained depot changed nothing.
 - `reserveBaselinePerSize` (5 marines / 30 days per size): every colony trickles a militia
   reserve regardless of industry, so a farming world is not permanently zero.
 

@@ -480,6 +480,8 @@ public class ThreatIncConfig {
 	public static int scoutStops()            { return i("threatinc_scoutStops"); }
 	/** Days a scout sweeps an empty system before moving on. */
 	public static float scoutStayDays()       { return f("threatinc_scoutStayDays"); }
+	/** Days a scout may spend reaching one stop before it skips it. */
+	public static float scoutLegMaxDays()     { return f("threatinc_scoutLegMaxDays"); }
 	/** Days a system swept clear is left alone by routine sweeps. */
 	public static float scoutMemoryDays()     { return f("threatinc_scoutMemoryDays"); }
 	/** Scouting parties one faction keeps out at once. */
@@ -492,6 +494,8 @@ public class ThreatIncConfig {
 	public static boolean npcSiegeOrbitGate() { return b("threatinc_npcSiegeOrbitGate", true); }
 	/** Fleet points an NPC flotilla brings per point of Defense Swarm over the target system. */
 	public static float npcSiegeOrbitMargin() { return f("threatinc_npcSiegeOrbitMargin"); }
+	/** The orbit gate weighs the strongest single world's swarms, not the whole system's. */
+	public static boolean npcSiegeOrbitPerWorld() { return b("threatinc_npcSiegeOrbitPerWorld", true); }
 	/** Whether an outweighed NPC siege posts a bounty on the hive system's swarms. */
 	public static boolean swarmBountiesEnabled() { return b("threatinc_swarmBountiesEnabled", true); }
 	/** Credits a swarm bounty pays per frigate destroyed (destroyer x2, cruiser x3, capital x4). */
@@ -510,8 +514,14 @@ public class ThreatIncConfig {
 	public static float softenDays()          { return f("threatinc_softenDays"); }
 	/** Days a base waits between hunting forces. */
 	public static float softenIntervalDays()  { return f("threatinc_softenIntervalDays"); }
-	/** A hunting fleet below this share of its launch strength goes home. */
+	/** A hunting force below this share of its strength at launch (or its last move-on) goes home whole. */
 	public static float softenRetreatStrength() { return f("threatinc_softenRetreatStrength"); }
+	/** Whether a hunting force draws fleets from every base of the faction in reach, not just the nearest. */
+	public static boolean softenPool()        { return b("threatinc_softenPool", true); }
+	/** Days a hunting force waits at its muster point for stragglers. */
+	public static float softenMusterDays()    { return f("threatinc_softenMusterDays"); }
+	/** Whether a hunting force's fleets fold into its lead once gathered, to sail and fight as one fleet. */
+	public static boolean softenMerge()       { return b("threatinc_softenMerge", true); }
 	/** The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts). Off: it knows every world. */
 	public static boolean swarmScouting()     { return b("threatinc_swarmScouting", true); }
 	/** Fleet points of a Scouting Swarm. */
@@ -693,5 +703,26 @@ public class ThreatIncConfig {
 		if (debugLogging()) {
 			Global.getLogger(ThreatIncConfig.class).info("[ThreatInc] " + msg);
 		}
+	}
+
+	/** key -> {shape of the last line, when it was logged}; not saved, a reload logs each once more. */
+	private static final java.util.Map<String, Object[]> QUIET = new java.util.HashMap<String, Object[]>();
+	private static final float QUIET_DAYS = 30f;
+
+	/**
+	 * A line a poll repeats: logged when its wording changes (numbers aside),
+	 * or once a month while it does not.
+	 */
+	public static void logQuiet(String key, String msg) {
+		if (!debugLogging() || Global.getSector() == null) return;
+		String shape = msg.replaceAll("[0-9]+", "#");
+		long now = Global.getSector().getClock().getTimestamp();
+		Object[] last = QUIET.get(key);
+		if (last != null && shape.equals(last[0])
+				&& Global.getSector().getClock().getElapsedDaysSince((Long) last[1]) < QUIET_DAYS) {
+			return;
+		}
+		QUIET.put(key, new Object[] { shape, now });
+		log(msg);
 	}
 }

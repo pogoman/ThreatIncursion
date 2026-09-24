@@ -11,7 +11,6 @@ import org.lwjgl.util.vector.Vector2f;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.FactionAPI;
-import com.fs.starfarer.api.campaign.FleetAssignment;
 import com.fs.starfarer.api.campaign.PlanetAPI;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
@@ -21,6 +20,7 @@ import com.fs.starfarer.api.impl.campaign.fleets.FleetParamsV3;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.FleetTypes;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
+import com.fs.starfarer.api.impl.campaign.ids.Tags;
 import com.fs.starfarer.api.util.Misc;
 
 /**
@@ -52,15 +52,9 @@ public class ThreatScouts {
 	public static final String KEY_LAST_SWEEP = "threatinc_scoutLastSweep";
 	public static final String SCOUT_FLAG = "$threatinc_scout";
 
-	public static class Scout {
-		public CampaignFleetAPI fleet;
+	/** A party out sweeping; the route and fleet are the {@link ThreatScoutRoute.Party}'s. */
+	public static class Scout extends ThreatScoutRoute.Party {
 		public String factionId;
-		public String homeMarketId;
-		public List<String> route = new ArrayList<String>();
-		public int leg;
-		/** When the current leg's system was entered; 0 while in transit. */
-		public long enteredTimestamp;
-		public boolean returning;
 		/** The origin this sortie is following up; null for a routine sweep. */
 		public String leadSystemId;
 	}
@@ -120,7 +114,7 @@ public class ThreatScouts {
 	public static void reveal(String systemId, String finderFactionId) {
 		if (systemId == null || ThreatIncData.discoveredSystems().contains(systemId)) return;
 		ThreatIncData.markDiscovered(systemId);
-		StarSystemAPI system = ThreatWarBoard.getSystem(systemId);
+		StarSystemAPI system = ThreatScoutRoute.systemById(systemId);
 		String where = system != null ? system.getNameWithLowercaseType() : systemId;
 		String who = finderFactionId == null ? "The sector"
 				: Factions.PLAYER.equals(finderFactionId) ? "Your faction"
@@ -166,7 +160,7 @@ public class ThreatScouts {
 		if (!enabled()) return;
 		revealNeighbours();
 		for (Scout s : new ArrayList<Scout>(all())) {
-			advance(s);
+			ROUTE.advance(s);
 		}
 		pruneLeads();
 		launchSorties(random);
@@ -177,7 +171,7 @@ public class ThreatScouts {
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
 			if (ThreatIncData.discoveredSystems().contains(systemId)) continue;
 			if (!hasLiveHive(systemId)) continue;
-			StarSystemAPI system = ThreatWarBoard.getSystem(systemId);
+			StarSystemAPI system = ThreatScoutRoute.systemById(systemId);
 			if (system == null) continue;
 			for (MarketAPI market : Global.getSector().getEconomy().getMarkets(system)) {
 				if (market.isHidden() || market.getPrimaryEntity() == null) continue;
@@ -193,77 +187,38 @@ public class ThreatScouts {
 		return !ThreatIncData.getLiveColonyMarkets(systemId).isEmpty();
 	}
 
-	protected static void advance(Scout s) {
-		CampaignFleetAPI fleet = s.fleet;
-		if (fleet == null || !fleet.isAlive() || fleet.isExpired()) {
-			all().remove(s);
-			ThreatIncConfig.log("Scout of " + s.factionId + (s.returning ? " home" : " lost"));
-			return;
+	/** The route walker, with what the sector's parties do at a stop. */
+	protected static final ThreatScoutRoute<Scout> ROUTE = new ThreatScoutRoute<Scout>() {
+		protected List<Scout> all() {
+			return ThreatScouts.all();
 		}
-		if (s.returning) return; // GO_TO_LOCATION_AND_DESPAWN does the rest
-		if (s.leg >= s.route.size()) {
-			goHome(s);
-			return;
+		protected String describe(Scout s) {
+			return "Scout of " + s.factionId;
 		}
-		StarSystemAPI target = ThreatWarBoard.getSystem(s.route.get(s.leg));
-		if (target == null) {
-			nextLeg(s);
-			return;
+		protected boolean knownStop(String systemId) {
+			// a stop someone else found meanwhile
+			return ThreatIncData.discoveredSystems().contains(systemId);
 		}
-		if (fleet.getContainingLocation() != target) return;
-		long now = Global.getSector().getClock().getTimestamp();
-		if (s.enteredTimestamp == 0L) {
-			s.enteredTimestamp = now;
-			if (hasLiveHive(target.getId())) {
-				reveal(target.getId(), s.factionId);
-				goHome(s); // the report is what counts
-				return;
-			}
+		protected boolean onEnter(Scout s, StarSystemAPI system, long now) {
+			if (!hasLiveHive(system.getId())) return false;
+			reveal(system.getId(), s.factionId);
+			return true; // the report is what counts
 		}
-		if (Global.getSector().getClock().getElapsedDaysSince(s.enteredTimestamp)
-				< ThreatIncConfig.scoutStayDays()) return;
-		swept().put(target.getId(), now);
-		nextLeg(s);
-	}
-
-	protected static void nextLeg(Scout s) {
-		s.leg++;
-		// a stop someone else found meanwhile is skipped
-		while (s.leg < s.route.size() && ThreatIncData.discoveredSystems().contains(s.route.get(s.leg))) {
-			s.leg++;
+		protected void onStay(Scout s, StarSystemAPI system, long now) {
+			swept().put(system.getId(), now);
 		}
-		if (s.leg >= s.route.size()) {
-			goHome(s);
-			return;
+		protected String stayVerb() {
+			return "sweeping";
 		}
-		StarSystemAPI next = ThreatWarBoard.getSystem(s.route.get(s.leg));
-		if (next == null) {
-			nextLeg(s);
-			return;
+		protected MarketAPI homeOf(Scout s) {
+			MarketAPI home = Global.getSector().getEconomy().getMarket(s.homeMarketId);
+			// a home that changed hands is no home
+			return home != null && s.factionId.equals(home.getFactionId()) ? home : null;
 		}
-		sendTo(s, next);
-	}
-
-	protected static void sendTo(Scout s, StarSystemAPI system) {
-		s.enteredTimestamp = 0L;
-		s.fleet.clearAssignments();
-		s.fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, system.getCenter(), 1000f,
-				"scouting the " + system.getNameWithLowercaseTypeShort());
-		s.fleet.addAssignment(FleetAssignment.PATROL_SYSTEM, system.getCenter(), 1000f,
-				"sweeping the " + system.getNameWithLowercaseTypeShort());
-	}
-
-	protected static void goHome(Scout s) {
-		s.returning = true;
-		s.fleet.clearAssignments();
-		MarketAPI home = Global.getSector().getEconomy().getMarket(s.homeMarketId);
-		if (home == null || home.getPrimaryEntity() == null || !s.factionId.equals(home.getFactionId())) {
-			Misc.fadeAndExpire(s.fleet);
-			return;
+		protected String returnLabel(Scout s, MarketAPI home) {
+			return "returning to " + home.getName();
 		}
-		s.fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home.getPrimaryEntity(), 1000f,
-				"returning to " + home.getName());
-	}
+	};
 
 	/** A lead ends when its origin is known or its hive is gone. */
 	protected static void pruneLeads() {
@@ -328,7 +283,7 @@ public class ThreatScouts {
 
 	/** Sweeps the area around a strike's origin from the faction's nearest military world. */
 	protected static boolean launchLead(String factionId, Lead lead) {
-		StarSystemAPI origin = ThreatWarBoard.getSystem(lead.systemId);
+		StarSystemAPI origin = ThreatScoutRoute.systemById(lead.systemId);
 		if (origin == null) return false;
 		MarketAPI home = nearestBase(factionId, origin.getLocation());
 		if (home == null) return false;
@@ -379,39 +334,18 @@ public class ThreatScouts {
 	 * within scoutMemoryDays.
 	 */
 	protected static List<String> planRoute(MarketAPI home, Vector2f centre, float radiusLY, long leadSince) {
-		List<String> taken = new ArrayList<String>();
-		for (Scout s : all()) {
-			if (s.returning) continue;
-			for (int i = s.leg; i < s.route.size(); i++) taken.add(s.route.get(i));
-		}
+		List<String> taken = ROUTE.taken();
 		List<StarSystemAPI> candidates = new ArrayList<StarSystemAPI>();
 		for (StarSystemAPI system : Global.getSector().getStarSystems()) {
 			String id = system.getId();
-			if (system.getCenter() == null) continue;
+			if (system.getCenter() == null || unreachable(system)) continue;
 			if (Misc.getDistanceLY(system.getLocation(), centre) > radiusLY) continue;
 			if (ThreatIncData.discoveredSystems().contains(id) || taken.contains(id)) continue;
 			if (sweptLately(id, leadSince)) continue;
 			if (!hasPlanet(system) || inhabited(system)) continue;
 			candidates.add(system);
 		}
-		List<String> route = new ArrayList<String>();
-		Vector2f at = home.getStarSystem().getLocation();
-		int stops = Math.max(1, ThreatIncConfig.scoutStops());
-		while (!candidates.isEmpty() && route.size() < stops) {
-			StarSystemAPI next = null;
-			float bestDist = Float.MAX_VALUE;
-			for (StarSystemAPI system : candidates) {
-				float d = Misc.getDistanceLY(system.getLocation(), at);
-				if (d < bestDist) {
-					bestDist = d;
-					next = system;
-				}
-			}
-			candidates.remove(next);
-			route.add(next.getId());
-			at = next.getLocation();
-		}
-		return route;
+		return ThreatScoutRoute.nearestFirst(candidates, home.getStarSystem().getLocation());
 	}
 
 	protected static boolean sweptLately(String systemId, long leadSince) {
@@ -419,6 +353,12 @@ public class ThreatScouts {
 		if (when == null) return false;
 		if (leadSince != 0L) return when >= leadSince;
 		return Global.getSector().getClock().getElapsedDaysSince(when) < ThreatIncConfig.scoutMemoryDays();
+	}
+
+	/** Abyssal pockets and hidden-theme systems: a fleet's GO_TO never arrives (a scout sat 132 days on one). */
+	protected static boolean unreachable(StarSystemAPI system) {
+		return system.hasTag(Tags.SYSTEM_ABYSSAL) || system.hasTag(Tags.THEME_HIDDEN)
+				|| system.hasTag(Tags.SYSTEM_CUT_OFF_FROM_HYPER);
 	}
 
 	protected static boolean hasPlanet(StarSystemAPI system) {
@@ -474,7 +414,7 @@ public class ThreatScouts {
 		s.leg = 0;
 		s.leadSystemId = leadSystemId;
 		all().add(s);
-		sendTo(s, ThreatWarBoard.getSystem(route.get(0)));
+		ROUTE.sendTo(s, ThreatScoutRoute.systemById(route.get(0)));
 
 		ThreatIncConfig.log("Scouting party of " + factionId + " from " + home.getName()
 				+ (leadSystemId != null ? " (lead)" : " (sweep)") + ": " + route);

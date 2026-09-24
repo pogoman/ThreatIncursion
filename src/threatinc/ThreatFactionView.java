@@ -1617,10 +1617,7 @@ public class ThreatFactionView {
 				prompt.addPara("No Defense Swarms there to hunt.", 0f);
 			} else {
 				prompt.addPara("Detach " + fleet.getName() + " to hunt the Defense Swarms in the %s for "
-						+ "%s days? It leaves its group, starts over " + first.getName() + ", and goes "
-						+ "home when the swarms are gone, it is badly hurt, or the order runs out"
-						+ (fleet.getCargo().getMarines() > 0 ? " - the marines aboard stay "
-								+ "aboard." : "."), 0f, h,
+						+ "%s days?", 0f, h,
 						hive.getNameWithLowercaseTypeShort(), "" + (int) ThreatIncConfig.softenDays());
 			}
 		} else if (BUTTON_OUTPOST.equals(parts[0])) {
