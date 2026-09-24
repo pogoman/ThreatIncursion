@@ -319,10 +319,11 @@ cards with three stock tables, faction-coloured:
    expeditions) or its FP. Buttons: **Recall** (this fleet only - `ThreatPurgeFGI.recallFleet`
    / `ThreatResponseIntel.recallFleet`, the group's spawned-strength baseline drops with it
    so the rest is not judged beaten, the last fleet out ends the group; convoys, orders and
-   outposts as before) and **Intercept** (`BUTTON_DETACH`: `detach` the fleet from its group
-   and `ThreatFleetOrders.adoptIntercept` it - the same fleet, nothing built or charged,
-   holds the target hive's jump-point for `interceptDays` and then goes home to the
-   expedition's source base on the tracked leg; marines aboard stay aboard). Recall keys:
+   outposts as before) and **Hunt** (Intercept until 2026-09-24; `BUTTON_DETACH`: `detach`
+   the fleet from its group and `ThreatFleetOrders.adoptHunt` it - the same fleet, nothing
+   built or charged, hunts the target hive's Defense Swarms for `softenDays` (see "Hunting
+   forces") and then goes home to the expedition's source base on the tracked leg; marines
+   aboard stay aboard). Recall keys:
    `purgefleet:i:fleetId` / `tffleet:i:fleetId`.
    Both are a clean cut (`ThreatPurgeFGI.detach` -> `cutLoose`, seen 2026-09-06 at Gamma
    Hero): the fleet loses vanilla's `WarfleetAssignmentAI` (a raid fleet's own
@@ -386,9 +387,10 @@ provisioned from that base's reserve (fuel x distance, supplies), flagged
 - **Guard**: `ORBIT_AGGRESSIVE` at the colony for `guardDays` (90), then home. Over one
   of the player's OWN colonies: `guardOwnDays` (0 = until recalled), and the task force is
   staged there - see "Staging fleets" below.
-- **Intercept**: `ORBIT_AGGRESSIVE` at the hive system's jump-point nearest its colony
-  for `interceptDays` (60) - the swarm's Mutual-Defense reinforcements and expeditions
-  meet it at the door.
+- **Hunt** (replaced Intercept 2026-09-24): `ORBIT_AGGRESSIVE` over the hive colony with
+  the weakest standing garrison for `softenDays` (60), moving on as each garrison falls -
+  see "Hunting forces". Intercept (the hive's jump-point, `interceptDays`, now removed) is
+  no longer given; intercepts already out in a save run their term.
 - **Support** (Escort until 2026-09-06): `ORBIT_AGGRESSIVE` over a besieged world this
   faction has a ground front on, for `supportDays` (60, key `threatinc_escortDays`) - it
   clears the orbit so front runs can land, and while on station its fleet points suppress
@@ -634,11 +636,12 @@ instead of postponing; `groundStrengthExponent` (1.0) on every ground ratio.
 **Coalition** (`ThreatCoalition`, 8.7): `launchSiegeExpedition` by a mobilised faction
 posts a call for `coalitionCallDays` (60); on the slow tick every other mobilised NPC
 faction with a base in reach rolls `coalitionSupportChance` (0.5) and answers once with
-`ThreatFleetOrders.dispatchIntercept` at the hive's jump-point. Rally (the player batching
+a Hunt (`ThreatFleetOrders.dispatchHunt`, Intercept at the jump-point until 2026-09-24;
+no answer when the system has no Defense Swarms left). Rally (the player batching
 allied orders) was removed 2026-09-05 with the rest of the player's authority over NPC
 navies; allies now help each other's colonies on their own, by standing
-(`ThreatCoalition.allyAid`, docs/player-aid.md section 5). Intercept orders show as
-inbound "X intercept" ops on the ledger row.
+(`ThreatCoalition.allyAid`, docs/player-aid.md section 5). Hunt orders show as inbound
+"X hunt" ops on the ledger row.
 
 **Outposts** (`ThreatOutposts`): `ThreatColonyManager.eradicate` records the planet in
 `threatinc_purgedWorlds`. An outpost is vanilla's Orbital Station recipe without the
@@ -771,6 +774,54 @@ outpost inherited into the colony's Orbital Station slot, from where vanilla upg
 to Battlestation and Star Fortress. A colony that somehow already has a station keeps it
 and the outpost is simply struck. A colony of another faction leaves the station standing
 in orbit unchanged.
+
+## Hunting forces (ThreatSoftening, 2026-09-24)
+
+The user's call: human factions send their own softening fleets to hive systems with a
+swarm bounty (docs/player-aid.md section 4); they cost resources but carry no siege, so
+they can be stronger than a siege; a siegeable world in reach always comes first.
+
+- Every slow tick, for each running `ThreatSwarmBountyIntel`, every mobilised NPC faction's
+  nearest base in reach (`ThreatFleetOrders.pickBase`) sends one hunting force, unless:
+  - the faction already hunts in that system;
+  - the base sent one within `softenIntervalDays` (30);
+  - the base has a hive of its own to siege (`IncursionManager.hasSiegeableHive`: a known
+    hive it is `siegeBaseFor` whose swarms its fullest flotilla outweighs). It banks for
+    that siege instead.
+- Size: the system's Defense Swarm FP x `softenMargin` (1.0), capped at `softenMaxFP`
+  (4,000, above a siege's 10 x ~245), and never below the weakest colony's garrison x the
+  margin. It waits if that floor is above the cap, or if the base cannot pay for it.
+- Cost: fuel (FP / 25 x LY x `expeditionFuelPerPointLY`) and supplies (FP / 25 x
+  `expeditionSuppliesPerPoint`) drawn from the base's stock above its floor, as a siege
+  pays. Everything is a warship: no marines, no armaments, no landing.
+- Fleets: split into fleets of at most `softenFleetFP` (400), each a `KIND_HUNT` order
+  (`ThreatFleetOrders.dispatchHunt`, "Hunt" on the board). They sit `ORBIT_AGGRESSIVE` over
+  the colony with the weakest standing garrison. When its garrison is gone they move to the
+  next weakest (`retargetHunt`). They go home on the tracked leg (refund on arrival) when
+  the system is clear, a fleet falls below `softenRetreatStrength` (0.4) of its launch
+  strength, or `softenDays` (60) run out.
+- The PLAYER'S HUNT (same day, the user's call: it replaces Intercept, "quite a lot of
+  crossover and this action feels more useful"). The faction view's Intercept buttons are
+  Hunt now: on an own hive row (`BUTTON_HUNT`, a task force with everything the nearest
+  colony has free), on a group fleet's row (detach -> `adoptHunt`), and the aid button on
+  another faction's hive rows (`ThreatAid.dispatchStrike`, an aid-flagged hunt earning the
+  front standing once on arrival). Coalition answers hunt too. Greyed out when the system
+  has no Defense Swarms (`ThreatAid.quoteStrike`). The player's hunting fleets follow the
+  same rules as the NPCs' (weakest garrison first, home below `softenRetreatStrength`),
+  with a message when one moves on, finishes or breaks off.
+- The player's hunting fleets COLLECT SWARM BOUNTIES on their own
+  (`ThreatSwarmBountyIntel.HunterPay`, a FleetEventListener added at dispatch and adopt,
+  saved with the fleet): a battle one fights pays the bounty for the Threat ships lost,
+  times that fleet's share of its side's starting FP. A battle the player's own fleet is
+  in pays through `Kills` (vanilla's player-involvement share) and the hunter's own share
+  on top; the hunter skips itself only when it IS the player's fleet.
+- Test, 2026-09-24, on the clone save with provisions free (Chicomoztoc could pay for 0 FP
+  at the real rates):
+  - Chicomoztoc sent 8 fleets (2,883 FP) to Alpha Mesh. Its swarms fell 2,883 -> ~300 FP,
+    under the 1,633 its siege can take, so that siege now waits only on marines.
+  - Nachiketa's force against Delta Mengryla was beaten back; the swarms there grew to
+    ~3,450 on reinforcements, so it stays home (floor above the cap).
+  - Every hunting fleet came home "badly hurt".
 
 ## Finding the hive (ThreatScouts, 2026-09-24, untested)
 

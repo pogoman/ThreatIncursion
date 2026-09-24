@@ -196,7 +196,6 @@ threatinc_ordersEnabled,Fleet Orders Enabled,Boolean,true,"Whether the faction v
 threatinc_guardFleetFP,Guard Task Force (FP),Double,100,"Combat fleet points of an NPC faction's guard or intercept task force. Your own task forces sail with everything the colony has free; this is only the free points a colony needs to be picked first as the source.",25,400
 threatinc_guardDays,Guard Duration (Days),Double,90,"Days a guard task force holds a colony's orbit before returning to base.",15,365
 threatinc_guardOwnDays,Own Colony Guard (Days),Double,0,"Days a task force guarding one of your own colonies stays before returning; 0 = until recalled. While it is there its points are that colony's to send out, and a siege, intercept, escort or guard from there takes it along - the way to stage fleets at a staging base.",0,365
-threatinc_interceptDays,Intercept Duration (Days),Double,60,"Days an intercept task force holds a hive system's jump-point.",15,365
 threatinc_escortEnabled,Support Sorties Enabled,Boolean,true,"A combat sortie that holds the orbit over a besieged world your faction has a ground front on, clears it of whatever contests it, and besieges it: its fleet points suppress the world's defenses each day like any siege fleet's, and the batteries answer. While the orbit is contested and no friendly warship holds it, supply and evacuation runs to that front are refused outright. Factions fly Support too.",,
 threatinc_escortDays,Support Duration (Days),Double,60,"Days a Support task force holds a besieged world's orbit before returning to base.",15,365
 threatinc_defendEnabled,Defend Sorties Enabled,Boolean,true,"A combat sortie that holds the orbit over a world and fights whatever contests it, but bombards only while your ground front there cannot hold - it keeps its ships where Support spends them. Factions fly Defend too.",,
@@ -230,6 +229,13 @@ threatinc_missionAidPayMult,Delivery Pay Multiplier,Double,1.5,"An aid contract 
 threatinc_swarmBountiesEnabled,Swarm Bounties,Boolean,true,"A faction whose siege the Defense Swarms outweigh posts a bounty on Threat ships in that hive system.",,
 threatinc_swarmBountyPerFrigate,Swarm Bounty per Frigate,Double,1500,"Credits a swarm bounty pays per frigate destroyed; destroyers 2x, cruisers 3x, capitals 4x, times your share of the battle.",0,20000
 threatinc_swarmBountyDays,Swarm Bounty Days,Double,60,"Days a swarm bounty runs. A faction still outweighed when it ends posts another.",1,365
+threatinc_softenEnabled,NPC Hunting Forces,Boolean,true,"A mobilised faction's base with no hive of its own to siege sends a hunting force against the Defense Swarms of a hive under a swarm bounty. It carries no marines, costs fuel and supplies like a siege, and works the weakest garrison first.",,
+threatinc_softenMargin,Hunting Force Margin,Double,1.0,"Fleet points a hunting force brings per fleet point of Defense Swarm it hunts. It never sails for less than the weakest colony's garrison times this.",0.25,5
+threatinc_softenMaxFP,Hunting Force Max FP,Double,4000,"Most combat fleet points one hunting force sails with - more than a siege (which must also carry its landing). It is sized to beat the system's swarms by the margin above, up to this and what its base can pay for.",100,20000
+threatinc_softenFleetFP,Hunting Fleet Size,Double,400,"Most combat fleet points in one fleet of a hunting force; a bigger force sails as several fleets.",50,1000
+threatinc_softenDays,Hunt Duration (Days),Double,60,"Days a hunt stays on the hunt before going home - an NPC hunting force, a coalition answer, or your own Hunt order.",1,365
+threatinc_softenIntervalDays,Hunting Force Interval,Double,30,"Days a base waits between hunting forces.",0,365
+threatinc_softenRetreatStrength,Hunting Force Retreat,Double,0.4,"A hunting fleet below this share of its launch strength goes home.",0,1
 threatinc_missionRepMult,Contract Standing Multiplier,Double,2.0,"Standing for a delivery is multiplied by this when it answers an open request.",1,5
 threatinc_allyAidEnabled,Allies Help Each Other,Boolean,true,"Whether mobilised factions guard and resupply each other's colonies by standing - and yours.",,
 threatinc_allyAidChance,Ally Aid Chance,Double,0.5,"Chance per 30-day tick per need that a fully willing (Cooperative) ally sends aid; Friendly 0.75x, Welcoming 0.5x, Favourable 0.25x, less nothing.",0,1

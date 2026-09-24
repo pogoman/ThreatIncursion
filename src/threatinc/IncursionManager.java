@@ -377,6 +377,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		tryConversions();
 		tryStrikes();
 		tryPurgeBombardments();
+		// bases with no siege to fight hunt the swarms of bountied hives
+		// (after the sieges, which always come first)
+		ThreatSoftening.tick(random);
 		// mobilised factions ship war materiel to their staging bases (and
 		// marines to their own worlds under Threat invasion)
 		ThreatConvoys.planLogistics(random);
@@ -1215,21 +1218,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// that base's reserve (launchSiegeExpedition) - a faction the swarm
 			// has never struck launches nothing, because it has nothing banked
 			// to launch with (decided 2026-09-05: no expedition from nowhere)
-			MarketAPI base = null;
-			float bestDist = Float.MAX_VALUE;
-			for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
-				if (market.getFaction() == null || market.getFaction().isPlayerFaction()) continue;
-				if (Factions.THREAT.equals(market.getFactionId())) continue;
-				if (!ThreatWarState.isAtWar(market.getFactionId())) continue;
-				if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
-				if (!isBase(market)) continue;
-				float d = Misc.getDistanceLY(market.getStarSystem().getLocation(), system.getLocation());
-				if (d > expeditionRangeLY(market)) continue;
-				if (d < bestDist) {
-					bestDist = d;
-					base = market;
-				}
-			}
+			MarketAPI base = siegeBaseFor(system);
 			if (base == null) continue;
 
 			FactionAPI faction = base.getFaction();
@@ -1286,6 +1275,50 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					+ " purge expedition vs " + system.getName() + " (" + targets.size()
 					+ " colonies, difficulty " + difficulty + ")");
 		}
+	}
+
+	/** The base an NPC siege of this hive system sails from: the nearest military world of a mobilised NPC faction in reach, or null. */
+	public static MarketAPI siegeBaseFor(StarSystemAPI system) {
+		if (system == null) return null;
+		MarketAPI base = null;
+		float bestDist = Float.MAX_VALUE;
+		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (market.getFaction() == null || market.getFaction().isPlayerFaction()) continue;
+			if (Factions.THREAT.equals(market.getFactionId())) continue;
+			if (!ThreatWarState.isAtWar(market.getFactionId())) continue;
+			if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
+			if (!isBase(market)) continue;
+			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(), system.getLocation());
+			if (d > expeditionRangeLY(market)) continue;
+			if (d < bestDist) {
+				bestDist = d;
+				base = market;
+			}
+		}
+		return base;
+	}
+
+	/**
+	 * Whether this base has a hive to siege: a known hive system it is the
+	 * siege base for (siegeBaseFor) whose Defense Swarms its fullest flotilla
+	 * outweighs. Such a base spends on the siege, not on hunting forces
+	 * (ThreatSoftening) - the siege always comes first.
+	 */
+	public static boolean hasSiegeableHive(MarketAPI base) {
+		if (base == null || base.getFaction() == null) return false;
+		java.util.Set<String> seen = new java.util.HashSet<String>();
+		for (MarketAPI colony : ThreatIncData.getAllLiveColonyMarkets()) {
+			StarSystemAPI system = colony.getStarSystem();
+			if (system == null || !seen.add(system.getId())) continue;
+			if (!ThreatScouts.sectorKnows(colony)) continue;
+			if (siegeBaseFor(system) != base) continue;
+			java.util.List<MarketAPI> targets = collectSiegeTargets(null, system);
+			float need = siegeOrbitNeeded(base.getFaction(), targets);
+			if (need <= ThreatAidCapacity.expeditionPoints(siegeSizes(base, base.getFaction(), system))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**

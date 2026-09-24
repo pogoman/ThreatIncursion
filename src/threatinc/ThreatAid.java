@@ -212,6 +212,11 @@ public class ThreatAid {
 			q.reason = "No target.";
 			return q;
 		}
+		// a hunt needs something to hunt (2026-09-24, Hunt replaced Intercept)
+		if (ThreatSoftening.huntTarget(hive.getId()) == null) {
+			q.reason = "No Defense Swarms in the " + hive.getNameWithLowercaseTypeShort() + " to hunt.";
+			return q;
+		}
 		return quoteTaskForce(q, hive.getLocation(), "the " + hive.getNameWithLowercaseType(), null);
 	}
 
@@ -356,7 +361,7 @@ public class ThreatAid {
 			ThreatColonyManager.announceAlways(q.reason, Misc.getNegativeHighlightColor());
 			return false;
 		}
-		ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchIntercept(
+		ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchHunt(
 				Global.getSector().getPlayerFaction(), hive, q.source, true);
 		if (o == null) {
 			ThreatColonyManager.announceAlways("No task force could be raised at " + q.source.getName()
@@ -364,8 +369,8 @@ public class ThreatAid {
 			return false;
 		}
 		ThreatColonyManager.announceAlways("Your task force from " + q.source.getName() + " ("
-				+ (int) q.points + " FP) sails to hold the door of the " + hive.getNameWithLowercaseType()
-				+ ".", Misc.getHighlightColor());
+				+ (int) q.points + " FP) sails to hunt the Defense Swarms in the "
+				+ hive.getNameWithLowercaseType() + ".", Misc.getHighlightColor());
 		return true;
 	}
 
@@ -480,12 +485,17 @@ public class ThreatAid {
 	/** A task force at a hive's door: every faction with a colony in the hive's strike reach shares the credit. */
 	public static void onStrikeArrived(ThreatFleetOrders.Order o) {
 		if (o == null) return;
-		StarSystemAPI hive = ThreatWarBoard.getSystem(o.targetId);
+		// a hunt targets a colony; an older intercept, the system
+		boolean hunt = ThreatFleetOrders.KIND_HUNT.equals(o.kind);
+		MarketAPI colony = hunt && o.targetId != null ? Global.getSector().getEconomy().getMarket(o.targetId) : null;
+		StarSystemAPI hive = hunt ? (colony != null ? colony.getStarSystem() : null)
+				: ThreatWarBoard.getSystem(o.targetId);
 		Set<String> factions = factionsInStrikeReach(hive);
 		if (factions.isEmpty()) return;
 		float each = ThreatIncConfig.aidRepFrontTotal() / factions.size();
 		for (String id : factions) rep(id, each, null);
-		ThreatColonyManager.announceAlways("Your task force holds the door of the "
+		ThreatColonyManager.announceAlways("Your task force "
+				+ (hunt ? "is hunting the swarms in the " : "holds the door of the ")
 				+ (hive != null ? hive.getNameWithLowercaseType() : "hive system") + " - noted by "
 				+ names(factions) + ".", Misc.getHighlightColor());
 	}

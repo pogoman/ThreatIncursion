@@ -110,7 +110,9 @@ public class ThreatCoalition {
 				MarketAPI base = ThreatFleetOrders.pickBase(faction, system.getLocation());
 				if (base == null) continue;
 				if (random.nextFloat() >= ThreatIncConfig.coalitionSupportChance()) continue;
-				ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchIntercept(faction, system);
+				// hunts the system's Defense Swarms under cover of the siege
+				// (Intercept at the jump-point until 2026-09-24)
+				ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchHunt(faction, system);
 				c.answered.add(factionId);
 				if (o != null) {
 					ThreatIncConfig.log("Coalition: " + factionId + " answers " + c.callerFactionId

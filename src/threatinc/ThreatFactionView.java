@@ -35,7 +35,7 @@ import com.fs.starfarer.api.util.Misc;
  * strikes inbound; its fleets (task forces, expeditions, convoys, standing
  * orders); and the hive systems its bases can reach. For the player's OWN
  * faction every fleet action lives here as a button: guard a colony, stage
- * materiel to it, intercept at a hive's door, send a siege, recall a fleet.
+ * materiel to it, hunt a hive's swarms, send a siege, recall a fleet.
  * Another faction's view is a window, not a console (docs/player-aid.md): its
  * navy is its own, and the buttons send the player's AID from the player's
  * colonies - Defend, Aid, Strike - paid from those colonies' reserves and
@@ -50,7 +50,7 @@ public class ThreatFactionView {
 	public static final String BUTTON_FACTION = "threatinc_board_faction:";
 	public static final String BUTTON_GUARD = "threatinc_board_guard:";
 	public static final String BUTTON_STAGE = "threatinc_board_stage:";
-	public static final String BUTTON_INTERCEPT = "threatinc_board_intercept:";
+	public static final String BUTTON_HUNT = "threatinc_board_hunt:";
 	public static final String BUTTON_SIEGE = "threatinc_board_siege:";
 	/** Picks the siege-force tier (payload: the tier index 0/1/2); a view toggle, not an order - no Confirm. */
 	public static final String BUTTON_SIEGE_TIER = "threatinc_board_siegetier:";
@@ -59,7 +59,7 @@ public class ThreatFactionView {
 	/** Picks the colony convoy-load tier (payload: the tier index 0/1/2); a view toggle, not an order. */
 	public static final String BUTTON_CONVOY_TIER = "threatinc_board_convoytier:";
 	public static final String BUTTON_RECALL = "threatinc_board_recall:";
-	/** One fleet of an expedition or task force is detached to intercept (payload: factionId:interceptKey). */
+	/** One fleet of an expedition or task force is detached to hunt (payload: factionId:huntKey). */
 	public static final String BUTTON_DETACH = "threatinc_board_detach:";
 	/** Supply run to the faction's front on a hive world (payload: factionId:hiveMarketId). */
 	public static final String BUTTON_SUPPLY = "threatinc_board_supply:";
@@ -216,10 +216,10 @@ public class ThreatFactionView {
 		 * recalled and others left).
 		 */
 		String recallKey;
-		/** Set on a group fleet's row that can be detached to intercept: the same key. */
-		String interceptKey;
-		/** The hive system a detached fleet would intercept at. */
-		StarSystemAPI interceptSystem;
+		/** Set on a group fleet's row that can be detached to hunt: the same key. */
+		String huntKey;
+		/** The hive system a detached fleet would hunt in. */
+		StarSystemAPI huntSystem;
 		/** A player aid fleet shown in another faction's view: the player may recall it. */
 		boolean playerAid;
 	}
@@ -476,7 +476,7 @@ public class ThreatFactionView {
 			main.addPara("No task forces, expeditions or convoys are in flight.", gray, opad);
 		} else {
 			float tw = width - 24f;
-			// Actions holds Recall + Intercept on a group fleet's row (134 px)
+			// Actions holds Recall + Hunt on a group fleet's row (134 px)
 			float[] frac = {.11f, .19f, .23f, .12f, .14f, .08f, .13f};
 			String[] names = {"Kind", "Fleet", "Task", "Status", "Marines - Fleet", "ETA", "Actions"};
 			List<Object> columns = new ArrayList<Object>();
@@ -519,7 +519,7 @@ public class ThreatFactionView {
 					+ "faction's military worlds.", gray, opad);
 		} else {
 			float tw = width - 24f;
-			// Actions carries Intercept + one Siege button (~132 px); Nearest base
+			// Actions carries Hunt + one Siege button (~132 px); Nearest base
 			// holds a shortened colony name and the count columns a single figure,
 			// so the width goes to System (the system name) instead
 			float[] frac = {.30f, .09f, .09f, .18f, .13f, .21f};
@@ -717,7 +717,7 @@ public class ThreatFactionView {
 			int n = fleets.size();
 			for (int i = 0; i < n; i++) {
 				FleetRow f = fleets.get(i);
-				if (f.recallKey == null && f.interceptKey == null) continue;
+				if (f.recallKey == null && f.huntKey == null) continue;
 				float up = (n - i) * ThreatWarBoard.ROW_H - (ThreatWarBoard.ROW_H - 20f) / 2f;
 				float right = -6f;
 				if (f.recallKey != null) {
@@ -729,16 +729,16 @@ public class ThreatFactionView {
 							+ "home; the rest of an expedition or task force fights on.");
 					right -= (SMALL_BUTTON_W + 8f) + 4f;
 				}
-				if (f.interceptKey != null) {
-					ButtonAPI detach = intel.addGenericButton(main, SMALL_BUTTON_W + 14f, "Intercept",
-							BUTTON_DETACH + factionId + ":" + f.interceptKey);
+				if (f.huntKey != null) {
+					ButtonAPI detach = intel.addGenericButton(main, SMALL_BUTTON_W + 14f, "Hunt",
+							BUTTON_DETACH + factionId + ":" + f.huntKey);
 					detach.getPosition().belowRight(fleetTable, -up).setXAlignOffset(right);
-					disableWith(main, detach, mayOrder && ThreatFleetOrders.interceptPoint(
-							f.interceptSystem) != null, blocked != null ? blocked
-							: "No jump-point to hold there.",
-							"This fleet leaves its group and holds the "
-							+ f.interceptSystem.getNameWithLowercaseTypeShort() + " jump-point for "
-							+ (int) ThreatIncConfig.interceptDays() + " days, then goes home.");
+					disableWith(main, detach, mayOrder && ThreatSoftening.huntTarget(
+							f.huntSystem.getId()) != null, blocked != null ? blocked
+							: "No Defense Swarms there to hunt.",
+							"This fleet leaves its group and hunts the Defense Swarms in the "
+							+ f.huntSystem.getNameWithLowercaseTypeShort() + " for "
+							+ (int) ThreatIncConfig.softenDays() + " days, then goes home.");
 				}
 			}
 		}
@@ -748,7 +748,7 @@ public class ThreatFactionView {
 				ThreatWarBoard.Entry e = reach.get(i);
 				float up = (n - i) * ThreatWarBoard.ROW_H - (ThreatWarBoard.ROW_H - 20f) / 2f;
 				if (!own) {
-					ButtonAPI strike = intel.addGenericButton(main, SMALL_BUTTON_W + 6f, "Strike",
+					ButtonAPI strike = intel.addGenericButton(main, SMALL_BUTTON_W + 6f, "Hunt",
 							BUTTON_AID_STRIKE + factionId + ":" + e.systemId);
 					strike.getPosition().belowRight(hiveTable, -up).setXAlignOffset(-6f);
 					ThreatAid.Quote q = ThreatAid.quoteStrike(e.system);
@@ -756,8 +756,8 @@ public class ThreatFactionView {
 							!ThreatAidCapacity.enabled() ? "Player aid is disabled in the mod settings."
 							: q.reason,
 							"A task force of about " + (q.ok() ? (int) q.points : 0) + " FP from "
-							+ (q.ok() ? q.source.getName() : "your nearest colony") + " holds "
-							+ "this hive's jump-point for " + (int) ThreatIncConfig.interceptDays()
+							+ (q.ok() ? q.source.getName() : "your nearest colony") + " hunts "
+							+ "this hive's Defense Swarms for " + (int) ThreatIncConfig.softenDays()
 							+ " days. Paid from that colony's reserve; every faction in the "
 							+ "hive's reach notes it.");
 					continue;
@@ -779,15 +779,15 @@ public class ThreatFactionView {
 						+ (siegeBase != null ? siegeBase.getName() : "the nearest base")
 						+ ", its landing the marines the siege-force selector is set to.");
 				right -= SMALL_BUTTON_W + 4f;
-				ButtonAPI intercept = intel.addGenericButton(main, SMALL_BUTTON_W + 14f, "Intercept",
-						BUTTON_INTERCEPT + factionId + ":" + e.systemId);
-				intercept.getPosition().belowRight(hiveTable, -up).setXAlignOffset(right);
+				ButtonAPI hunt = intel.addGenericButton(main, SMALL_BUTTON_W + 14f, "Hunt",
+						BUTTON_HUNT + factionId + ":" + e.systemId);
+				hunt.getPosition().belowRight(hiveTable, -up).setXAlignOffset(right);
 				ThreatAid.Quote iq = ThreatAid.quoteStrike(e.system);
-				disableWith(main, intercept, mayOrder && iq.ok(), blocked != null ? blocked : iq.reason,
+				disableWith(main, hunt, mayOrder && iq.ok(), blocked != null ? blocked : iq.reason,
 						"A task force of about " + (iq.ok() ? (int) iq.points : 0) + " FP from "
-						+ (iq.ok() ? iq.source.getName() : "the nearest colony") + " holds this "
-						+ "hive's jump-point for " + (int) ThreatIncConfig.interceptDays()
-						+ " days, meeting the swarm's reinforcements and expeditions at the door.");
+						+ (iq.ok() ? iq.source.getName() : "the nearest colony") + " hunts this "
+						+ "hive's Defense Swarms for " + (int) ThreatIncConfig.softenDays()
+						+ " days, weakest garrison first.");
 			}
 		}
 		if (colonyTable != null) {
@@ -1156,8 +1156,8 @@ public class ThreatFactionView {
 				f.rowId = fleet;
 				f.recallKey = "tffleet:" + i + ":" + fleet.getId();
 				if (hive != null) {
-					f.interceptKey = f.recallKey;
-					f.interceptSystem = hive;
+					f.huntKey = f.recallKey;
+					f.huntSystem = hive;
 				}
 				rows.add(f);
 			}
@@ -1216,8 +1216,8 @@ public class ThreatFactionView {
 				f.rowId = fleet;
 				f.recallKey = "purgefleet:" + i + ":" + fleet.getId();
 				if (where != null) {
-					f.interceptKey = f.recallKey;
-					f.interceptSystem = where;
+					f.huntKey = f.recallKey;
+					f.huntSystem = where;
 				}
 				rows.add(f);
 			}
@@ -1256,6 +1256,7 @@ public class ThreatFactionView {
 			FleetRow f = new FleetRow();
 			f.kind = ThreatFleetOrders.KIND_SUPPORT.equals(o.kind) ? "Support"
 					: ThreatFleetOrders.KIND_DEFEND.equals(o.kind) ? "Defend"
+					: ThreatFleetOrders.KIND_HUNT.equals(o.kind) ? (o.aid ? "Aid hunt" : "Hunt")
 					: (o.aid ? "Aid " : "") + (ThreatFleetOrders.KIND_GUARD.equals(o.kind)
 					? (o.aid ? "guard" : "Guard") : (o.aid ? "intercept" : "Intercept"));
 			f.color = o.fleet != null && o.fleet.isAlive() ? pos : neg;
@@ -1271,7 +1272,7 @@ public class ThreatFactionView {
 		}
 		// fleets on tracked legs home (2026-09-06: an expedition's fleets
 		// vanished from the board the moment it stood down, though they were
-		// still weeks out); Intercept turns one back to hold the door of the
+		// still weeks out); Hunt turns one back to hunt the swarms of the
 		// hive it is returning FROM, en route or not (as long as that hive still
 		// lives) - not only while it happens to sit in a hive system
 		List<ThreatReturns.Return> returns = ThreatReturns.all();
@@ -1292,8 +1293,8 @@ public class ThreatFactionView {
 			f.rowId = r.fleet;
 			StarSystemAPI origin = returnOriginSystem(r);
 			if (origin != null) {
-				f.interceptKey = "returnfleet:" + i + ":" + r.fleet.getId();
-				f.interceptSystem = origin;
+				f.huntKey = "returnfleet:" + i + ":" + r.fleet.getId();
+				f.huntSystem = origin;
 			}
 			rows.add(f);
 		}
@@ -1456,7 +1457,7 @@ public class ThreatFactionView {
 	/** Whether this button id is one of the faction view's order buttons. */
 	public static boolean isOrderButton(String id) {
 		return id.startsWith(BUTTON_GUARD) || id.startsWith(BUTTON_STAGE)
-				|| id.startsWith(BUTTON_INTERCEPT) || id.startsWith(BUTTON_SIEGE)
+				|| id.startsWith(BUTTON_HUNT) || id.startsWith(BUTTON_SIEGE)
 				|| id.startsWith(BUTTON_RECALL) || id.startsWith(BUTTON_DETACH)
 				|| id.startsWith(BUTTON_SUPPLY)
 				|| id.startsWith(BUTTON_PULLOUT) || id.startsWith(BUTTON_SUPPORT)
@@ -1470,7 +1471,7 @@ public class ThreatFactionView {
 
 	/** Splits "prefix" + "factionId:target" into [prefix, factionId, target]. */
 	protected static String[] parse(String id) {
-		String[] prefixes = {BUTTON_GUARD, BUTTON_STAGE, BUTTON_INTERCEPT, BUTTON_SIEGE,
+		String[] prefixes = {BUTTON_GUARD, BUTTON_STAGE, BUTTON_HUNT, BUTTON_SIEGE,
 				BUTTON_RECALL,
 				BUTTON_DETACH,
 				BUTTON_SUPPLY, BUTTON_PULLOUT, BUTTON_SUPPORT, BUTTON_DEFEND, BUTTON_PUSH, BUTTON_ENTRENCH,
@@ -1551,16 +1552,16 @@ public class ThreatFactionView {
 						+ " with %s? It can be intercepted on the way.", 0f, h,
 						cargoText(load[0], load[1], load[2], load[3]));
 			}
-		} else if (BUTTON_INTERCEPT.equals(parts[0])) {
+		} else if (BUTTON_HUNT.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
 			MarketAPI base = system != null ? ThreatAid.pickTaskForceSource(system.getLocation()) : null;
 			prompt.addPara("Order a task force of about %s fleet points from "
-					+ (base != null ? base.getName() : "the nearest base") + " to hold the jump-point "
-					+ "of the " + (system != null ? system.getNameWithLowercaseType() : "hive system")
+					+ (base != null ? base.getName() : "the nearest base") + " to hunt the Defense "
+					+ "Swarms in the " + (system != null ? system.getNameWithLowercaseType() : "hive system")
 					+ " for %s days? Fuel and supplies come from its reserve.", 0f, h,
 					"" + (int) (base != null ? ThreatAid.taskForcePoints(base, false)
 							: ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP())),
-					"" + (int) ThreatIncConfig.interceptDays());
+					"" + (int) ThreatIncConfig.softenDays());
 		} else if (BUTTON_SIEGE.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
 			MarketAPI base = null;
@@ -1609,19 +1610,18 @@ public class ThreatFactionView {
 		} else if (BUTTON_DETACH.equals(parts[0])) {
 			CampaignFleetAPI fleet = groupFleet(parts[2]);
 			StarSystemAPI hive = groupTargetSystem(parts[2]);
-			com.fs.starfarer.api.campaign.SectorEntityToken point = hive != null
-					? ThreatFleetOrders.interceptPoint(hive) : null;
-			if (fleet == null || hive == null || point == null) {
+			MarketAPI first = hive != null ? ThreatSoftening.huntTarget(hive.getId()) : null;
+			if (fleet == null || hive == null) {
 				prompt.addPara("That fleet is no longer with its group.", 0f);
+			} else if (first == null) {
+				prompt.addPara("No Defense Swarms there to hunt.", 0f);
 			} else {
-				prompt.addPara("Detach " + fleet.getName() + " to hold %s for %s days? It leaves "
-						+ "its group, meets the swarm's traffic at the door, and goes home when "
-						+ "the order runs out"
+				prompt.addPara("Detach " + fleet.getName() + " to hunt the Defense Swarms in the %s for "
+						+ "%s days? It leaves its group, starts over " + first.getName() + ", and goes "
+						+ "home when the swarms are gone, it is badly hurt, or the order runs out"
 						+ (fleet.getCargo().getMarines() > 0 ? " - the marines aboard stay "
 								+ "aboard." : "."), 0f, h,
-						point.getName() != null ? point.getName()
-								: "the " + hive.getNameWithLowercaseTypeShort() + " jump-point",
-						"" + (int) ThreatIncConfig.interceptDays());
+						hive.getNameWithLowercaseTypeShort(), "" + (int) ThreatIncConfig.softenDays());
 			}
 		} else if (BUTTON_OUTPOST.equals(parts[0])) {
 			com.fs.starfarer.api.campaign.SectorEntityToken planet =
@@ -1678,12 +1678,11 @@ public class ThreatFactionView {
 				prompt.addPara(q.reason != null ? q.reason : "The situation has changed.", 0f);
 			} else {
 				prompt.addPara("Send a task force of about %s fleet points from " + q.source.getName()
-						+ " to hold the jump-point of the " + system.getNameWithLowercaseType()
-						+ " for %s days, meeting the swarm's reinforcements and expeditions at the "
-						+ "door? Fuel and supplies come from " + q.source.getName() + "'s reserve "
+						+ " to hunt the Defense Swarms in the " + system.getNameWithLowercaseType()
+						+ " for %s days? Fuel and supplies come from " + q.source.getName() + "'s reserve "
 						+ "and its hulls are held against that colony's capacity until home. "
 						+ "Every faction with a colony in the hive's reach notes it.", 0f, h,
-						"" + (int) q.points, "" + (int) ThreatIncConfig.interceptDays());
+						"" + (int) q.points, "" + (int) ThreatIncConfig.softenDays());
 			}
 		} else if (BUTTON_SUPPORT.equals(parts[0]) || BUTTON_DEFEND.equals(parts[0])) {
 			String kind = BUTTON_DEFEND.equals(parts[0]) ? ThreatFleetOrders.KIND_DEFEND
@@ -1828,9 +1827,9 @@ public class ThreatFactionView {
 			}
 			return "stage";
 		}
-		if (BUTTON_INTERCEPT.equals(parts[0])) {
+		if (BUTTON_HUNT.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
-			return ThreatFleetOrders.dispatchIntercept(faction, system) != null ? "intercept" : null;
+			return ThreatFleetOrders.dispatchHunt(faction, system) != null ? "hunt" : null;
 		}
 		if (BUTTON_SIEGE.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
@@ -1867,7 +1866,7 @@ public class ThreatFactionView {
 			return recall(parts[1], parts[2]) ? "recall" : null;
 		}
 		if (BUTTON_DETACH.equals(parts[0])) {
-			return detachToIntercept(faction, parts[2]) ? "detach" : null;
+			return detachToHunt(faction, parts[2]) ? "detach" : null;
 		}
 		if (BUTTON_OUTPOST.equals(parts[0])) {
 			com.fs.starfarer.api.campaign.SectorEntityToken planet =
@@ -2028,8 +2027,8 @@ public class ThreatFactionView {
 		return null;
 	}
 
-	/** One fleet leaves its expedition or task force and holds the hive's door (ThreatFleetOrders). */
-	protected static boolean detachToIntercept(FactionAPI faction, String key) {
+	/** One fleet leaves its expedition or task force and hunts the hive's Defense Swarms (ThreatFleetOrders.adoptHunt). */
+	protected static boolean detachToHunt(FactionAPI faction, String key) {
 		if (faction == null || key == null) return false;
 		Object g = group(key);
 		CampaignFleetAPI fleet = groupFleet(key);
@@ -2040,7 +2039,7 @@ public class ThreatFactionView {
 			if (p.getFaction() == null || !faction.getId().equals(p.getFaction().getId())) return false;
 			MarketAPI base = p.sourceBase();
 			if (!p.detach(fleet)) return false;
-			if (ThreatFleetOrders.adoptIntercept(fleet, faction, hive, base) == null) {
+			if (ThreatFleetOrders.adoptHunt(fleet, faction, hive, base) == null) {
 				// nowhere to hold: the fleet goes home instead of drifting
 				ThreatReturns.sendHome(fleet, faction.getId(), base != null ? base.getId() : null);
 				return false;
@@ -2052,7 +2051,7 @@ public class ThreatFactionView {
 			if (!faction.getId().equals(ret.factionId)) return false;
 			MarketAPI base = Global.getSector().getEconomy().getMarket(ret.homeMarketId);
 			ThreatReturns.all().remove(ret);
-			if (ThreatFleetOrders.adoptIntercept(fleet, faction, hive, base) == null) {
+			if (ThreatFleetOrders.adoptHunt(fleet, faction, hive, base) == null) {
 				ThreatReturns.sendHome(fleet, faction.getId(), ret.homeMarketId);
 				return false;
 			}
@@ -2063,7 +2062,7 @@ public class ThreatFactionView {
 		String home = ThreatReturns.homeOf(fleet);
 		MarketAPI base = home != null ? Global.getSector().getEconomy().getMarket(home) : null;
 		if (!r.detach(fleet)) return false;
-		if (ThreatFleetOrders.adoptIntercept(fleet, faction, hive, base) == null) {
+		if (ThreatFleetOrders.adoptHunt(fleet, faction, hive, base) == null) {
 			if (home != null) ThreatReturns.sendHome(fleet, faction.getId(), home);
 			return false;
 		}

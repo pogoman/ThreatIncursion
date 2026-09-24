@@ -363,9 +363,10 @@ public class ThreatWarBoard {
 	}
 
 	/**
-	 * Intercept task forces (ThreatFleetOrders, coalition or the player's
-	 * orders) holding this system's door, and Support sorties over a besieged
-	 * world here.
+	 * Hunt task forces (ThreatFleetOrders: NPC hunting forces, coalition
+	 * answers or the player's orders) over this system's worlds, Intercepts
+	 * still holding its door in older saves, and Support and Defend sorties
+	 * over a besieged world here.
 	 */
 	protected static void collectOrders(Entry e) {
 		Set<String> here = marketIds(e);
@@ -376,7 +377,9 @@ public class ThreatWarBoard {
 					&& o.targetId != null && here.contains(o.targetId);
 			boolean defend = ThreatFleetOrders.KIND_DEFEND.equals(o.kind)
 					&& o.targetId != null && here.contains(o.targetId);
-			if (!intercept && !escort && !defend) continue;
+			boolean hunt = ThreatFleetOrders.KIND_HUNT.equals(o.kind)
+					&& o.targetId != null && here.contains(o.targetId);
+			if (!intercept && !escort && !defend && !hunt) continue;
 			if (o.fleet == null || !o.fleet.isAlive()) continue;
 			FactionAPI faction = Global.getSector().getFaction(o.factionId);
 			String name = ThreatWarState.displayName(o.factionId);
@@ -384,11 +387,15 @@ public class ThreatWarBoard {
 			op.kind = "taskforce";
 			op.faction = faction;
 			op.color = faction != null ? faction.getBaseUIColor() : Misc.getHighlightColor();
-			op.status = intercept ? "on station" : defend ? "holding the orbit" : "supporting the siege";
+			op.status = intercept ? "on station" : hunt ? (o.arrived ? "hunting" : "en route")
+					: defend ? "holding the orbit" : "supporting the siege";
 			op.eta = o.indefinite() ? "-" : (int) Math.ceil(o.daysLeft()) + " d left";
 			String term = o.indefinite() ? " until the front there is gone."
 					: " for " + (int) Math.ceil(o.daysLeft()) + " more days.";
-			if (intercept) {
+			if (hunt) {
+				op.who = name + " hunt";
+				op.detail = name + " task force hunting the Defense Swarms over " + o.targetName + term;
+			} else if (intercept) {
 				op.who = name + " intercept";
 				op.detail = name + " task force holding the " + o.targetName + term;
 			} else if (defend) {
