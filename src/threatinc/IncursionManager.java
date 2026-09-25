@@ -1527,16 +1527,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	public static final float SIEGE_RAID_HEADROOM = 1.25f;
 
 	/**
-	 * What the tactical pass leaves of an intact hive's defenses before the
-	 * raids go in: the Nexus bonus halves (1.5 -> 1.25) and the batteries fire
-	 * at half effect (x3 -> x2, x2 -> x1.5), so a size-6 world behind Heavy
-	 * Batteries drops from 10,800 to 6,000 and a size-4 world behind Ground
-	 * Defenses from 4,800 to 3,000. Sizing against the intact figure would
-	 * double the flotilla for nothing.
-	 */
-	public static final float SIEGE_SUPPRESSED_DEFENSE_FRACTION = 0.6f;
-
-	/**
 	 * The ground strength a siege must put on the surface to disrupt anything.
 	 * Vanilla's raid effectiveness is raidStr / (raidStr + defenderStr) and an
 	 * industry raid needs MarketCMD.DISRUPTION_THRESHOLD (0.25) of it, so the
@@ -1551,20 +1541,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float def = 0f;
 		for (MarketAPI target : targets) {
 			if (target == null) continue;
-			float d = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.getDefenderStr(target);
-			// what the tactical pass will leave, about the fraction of the intact
-			// figure. The live figure already carries the wear orbit has done, so it
-			// takes only the rest: the whole fraction intact, none at the floor.
-			// Keyed on the key organs, a hive whose Core or port alone was down
-			// (neither touches its defence) was sized 1.67x the same hive intact;
-			// keyed on any wear at all, so was one with its batteries 8% worn (rc1 fix review)
-			float wear = ThreatGroundFronts.fortificationWear(target);
-			d *= SIEGE_SUPPRESSED_DEFENSE_FRACTION / (1f - (1f - SIEGE_SUPPRESSED_DEFENSE_FRACTION) * wear);
+			// the defence as the tactical pass leaves it: every fortification worn to
+			// the orbital floor (ThreatGroundFronts.orbitFloorFraction). A flat 0.6 of
+			// the intact figure held only behind batteries - a hive without them wears
+			// to ~0.83, so its landings were sized ~28% short (Run 9) - and keyed on
+			// the key organs, a hive with only its Core or port down (neither touches
+			// its defence) was sized 1.67x the same hive intact (rc1 fix review)
+			float d = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.getDefenderStr(target)
+					* ThreatGroundFronts.orbitFloorFraction(target);
 			// a young colony reads vanilla's shallow base until its Swarm Nexus goes
 			// up, weeks before the siege arrives: sized on that, landings of 300
 			// met counter-attacks of 1,180 (Rhesh, Run 7). Size on the Nexus anchor,
-			// read as the tactical pass leaves it
-			d = Math.max(d, nexusAnchoredDefense(target) * SIEGE_SUPPRESSED_DEFENSE_FRACTION);
+			// its bonus worn to the floor
+			float floor = Math.max(0f, Math.min(1f, ThreatIncConfig.fortificationOrbitFloor()));
+			float nexus = ThreatIncConfig.nexusDefenseBonus();
+			d = Math.max(d, nexusAnchoredDefense(target) * (1f + nexus * floor) / Math.max(0.01f, 1f + nexus));
 			def = Math.max(def, d);
 		}
 		float threshold = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.DISRUPTION_THRESHOLD;
