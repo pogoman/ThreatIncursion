@@ -540,3 +540,29 @@ Laptop panel, harness, debug logging on. Three clones were run, so no original s
 - **Board:** the Hegemony view renders at day 1405 and no raw `market_` ids appear in the log. "Your hunt",
   Hunt-on-convoy and scout recall/RESET were not exercised (the player had no colonies).
 - Result at day 1405: 9 human ground victories and 6 hives burned. The Threat holds 29 worlds, 12 known systems and 101 swarms.
+
+## Run 9 (2026-09-25 evening): review of the rc1 fixes
+The fixes were reviewed (code-review, each finding checked against the code, vanilla and Run 8's log).
+Five small follow-ups: bounty PENDING cleared on load, siege strength memo re-read on a change of
+owner, peacetime-demand memo reset as the board and War footing tooltip render, a javadoc, a shared
+index. The one behaviour change is NPC siege sizing: `siegeRaidStrNeeded` scales the live defence by
+how far orbit has worn the fortifications (`ThreatGroundFronts.fortificationWear`), not by whether any
+key organ is down (the Core and port do not touch defence, so such a hive was sized 1.67x).
+
+Laptop panel, clones of `save_IWFix_...795` (the Run 8 war at day 1405), debug logging on, a
+temporary A/B log of old vs new sizing per hive (removed before the release build):
+- At load: 29 hives, 27 intact and unchanged; Gamma Spair I-A (45% worn) 4,877 -> 3,560 and
+  Alpha Vigri III (81% worn) 1,557 -> 1,382.
+- A yes/no gate on any wear was tried first and dropped: a month in, Gamma Spair I-A at 8% wear
+  read 5,769 against 3,461 before - the same 1.67x jump. The continuous factor held it at
+  3,553-3,570 through 45%, 24% and 8% wear while the old gate swung 4,877 / 5,343 / 3,458.
+- `save_IWSizeC_...795`, 2 cycles (~14 months): **0 exceptions**, 4 sieges, 8 fresh human landings
+  resolved and none overrun on the first counter-attack (the 5 overrun were the swarm's own landings).
+- Harness: a relaunch missed the launcher's Play click and sat 15 minutes (the scratch
+  `lap-cycle-r.ps1` retries Play); a Threat strike then caught the parked test fleet, and the
+  encounter dialog blocks F5, so the run stopped after cycle 2.
+- **Open (balance, not changed):** `SIEGE_SUPPRESSED_DEFENSE_FRACTION` 0.6 is what orbit leaves of a
+  hive WITH batteries. A hive without them (most hives of this war: live = anchor / 0.6) can only be
+  worn to ~0.83 (Nexus 1.5 -> 1.25), so its landings are sized ~28% short of the floor - likely behind
+  the young Alpha Vigri overruns of Runs 7-8. Sizing on the exact floor figure (each fortification's
+  own bonus at the floor) would fix it and raise those landings ~39%; it wants its own run.

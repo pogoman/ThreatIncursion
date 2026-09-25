@@ -707,11 +707,7 @@ public class ThreatReserves {
 	 */
 	public static float stagingBank(MarketAPI market, String commodityId) {
 		if (market == null || market.isPlayerOwned() || isBacked(market)) return 0f;
-		float[] targets = ThreatConvoys.stagingTargets(market);
-		for (int i = 0; i < COMMODITIES.length; i++) {
-			if (COMMODITIES[i].equals(commodityId)) return targets[i];
-		}
-		return 0f;
+		return ThreatConvoys.stagingTarget(market, commodityId);
 	}
 
 	/** The cap without the staging bank: months of the colony's own banking. */
