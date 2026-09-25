@@ -561,8 +561,24 @@ temporary A/B log of old vs new sizing per hive (removed before the release buil
 - Harness: a relaunch missed the launcher's Play click and sat 15 minutes (the scratch
   `lap-cycle-r.ps1` retries Play); a Threat strike then caught the parked test fleet, and the
   encounter dialog blocks F5, so the run stopped after cycle 2.
-- **Open (balance, not changed):** `SIEGE_SUPPRESSED_DEFENSE_FRACTION` 0.6 is what orbit leaves of a
+- **Open after Run 9 (fixed in Run 10):** `SIEGE_SUPPRESSED_DEFENSE_FRACTION` 0.6 is what orbit leaves of a
   hive WITH batteries. A hive without them (most hives of this war: live = anchor / 0.6) can only be
   worn to ~0.83 (Nexus 1.5 -> 1.25), so its landings are sized ~28% short of the floor - likely behind
-  the young Alpha Vigri overruns of Runs 7-8. Sizing on the exact floor figure (each fortification's
-  own bonus at the floor) would fix it and raise those landings ~39%; it wants its own run.
+  the young Alpha Vigri overruns of Runs 7-8.
+
+## Run 10 (2026-09-25 evening): landings sized on each hive's own floor
+`siegeRaidStrNeeded` now reads the defence as orbit leaves it, fortification by fortification
+(`ThreatGroundFronts.orbitFloorFraction`: each one's bonus at the orbital floor over its bonus now), and
+the Nexus anchor at the floor; the 0.6 constant is gone. Same clone source and harness as Run 9.
+- At load (temporary A/B log, removed before the release build): 22 hives without batteries x0.83,
+  2,160 -> 3,000 (+39%); 4 behind Heavy Batteries x0.56, 8,640 -> 8,000 (-7%); Gamma Spair I-A (Ground
+  Defenses 72%, Nexus 83%) x0.77; Alpha Vigri III (Nexus 59%) 1,382 -> 1,500, its hand-computed floor.
+- `save_IWFloor_...795`, ~27 months over 4 cycles: **0 exceptions**. The Threat strike caught the parked
+  fleet again at Nov 210; the fleet was flown out into the nebula and the run resumed from the cycle-1
+  save (a `loc` edit in campaign.xml did not move it).
+- Launches: 10 sieges in the last 18 months (0.56 a month; Runs 9 and 10a 0.4). Marine postponements
+  rose (142 quiet lines): bases in reach of Hadreel sit at ~2,600-2,900 of the 3,333 it now asks.
+- **Every new-size landing held its first counter-attack**: Epsilon Qades I-B 1,667 marines (2,427 vs
+  1,384), Gamma Spair I-B 2,917 (3,331 vs 2,043), Gamma Golgotha II 2,500 (2,877 vs 1,679), Vlaan-Tone
+  1,250 (1,940 vs 1,257), all "battered", after 9-18 days in orbit. At the old 0.6 each would have been
+  ~28% smaller, past the 2:1 overrun line. The 17 first-counter overruns were all the swarm's own landings.

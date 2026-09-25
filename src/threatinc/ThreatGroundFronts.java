@@ -372,11 +372,7 @@ public class ThreatGroundFronts {
 			float mult = 1f;
 			for (Industry ind : defenseStructures(market)) {
 				if (ind.isBuilding() && !ind.isUpgrading()) continue;
-				float bonus = ThreatColonyManager.THREAT_HEAVY_BATTERIES.equals(ind.getId())
-						? ThreatIncConfig.heavyBatteriesBonus() : ThreatIncConfig.groundDefensesBonus();
-				float deficit = ThreatSiegeMalus.deficitMult(ind,
-						Commodities.HEAVY_MACHINERY, Commodities.METALS);
-				mult *= 1f + bonus * deficit * condition(market, ind);
+				mult *= 1f + hiveFortificationBonus(ind) * condition(market, ind);
 			}
 			return mult <= 1f ? 0f : 1f - 1f / mult;
 		}
@@ -384,11 +380,7 @@ public class ThreatGroundFronts {
 			float mult = 1f;
 			for (Industry ind : defenseStructures(market)) {
 				if (ind.isBuilding() && !ind.isUpgrading()) continue;
-				float bonus = ThreatColonyManager.THREAT_HEAVY_BATTERIES.equals(ind.getId())
-						? ThreatIncConfig.heavyBatteriesBonus() : ThreatIncConfig.groundDefensesBonus();
-				float deficit = ThreatSiegeMalus.deficitMult(ind,
-						Commodities.HEAVY_MACHINERY, Commodities.METALS);
-				mult *= 1f + bonus * deficit;
+				mult *= 1f + hiveFortificationBonus(ind);
 			}
 			return mult <= 1f ? 0f : 1f - 1f / mult;
 		}
@@ -2481,21 +2473,31 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
-	 * How far the world's fortifications are worn toward the orbital floor,
-	 * averaged over them: 0 intact, 1 at or past the floor. 0 with none to wear.
+	 * What orbit leaves of a hive's defender strength once every fortification
+	 * is worn to the orbital floor, as a fraction of the figure now: each one's
+	 * bonus at the floor over its bonus at its present condition. One already at
+	 * or past the floor gives up nothing more. Intact, about 0.56 behind Heavy
+	 * Batteries, 0.63 behind Ground Defenses and 0.83 with neither.
 	 */
-	public static float fortificationWear(MarketAPI market) {
-		if (market == null) return 0f;
-		float span = 1f - Math.max(0f, Math.min(1f, ThreatIncConfig.fortificationOrbitFloor()));
-		if (span <= 0f) return 0f;
-		Theatre theatre = Theatre.of(market);
-		List<Industry> forts = theatre.fortifications(market);
-		if (forts.isEmpty()) return 0f;
-		float wear = 0f;
-		for (Industry ind : forts) {
-			wear += Math.max(0f, Math.min(1f, (1f - theatre.condition(market, ind)) / span));
+	public static float orbitFloorFraction(MarketAPI market) {
+		if (market == null) return 1f;
+		float floor = Math.max(0f, Math.min(1f, ThreatIncConfig.fortificationOrbitFloor()));
+		float fraction = 1f;
+		for (Industry ind : HIVE.fortifications(market)) {
+			float bonus = hiveFortificationBonus(ind);
+			float condition = HIVE.condition(market, ind);
+			if (bonus <= 0f || condition <= floor) continue;
+			fraction *= (1f + bonus * floor) / (1f + bonus * condition);
 		}
-		return wear / forts.size();
+		return fraction;
+	}
+
+	/** A hive fortification's defence bonus at full condition: the Nexus's, or a battery's after its deficits (SwarmNexus, ThreatGroundDefenses). */
+	public static float hiveFortificationBonus(Industry ind) {
+		if (ThreatColonyManager.SWARM_NEXUS.equals(ind.getId())) return ThreatIncConfig.nexusDefenseBonus();
+		float bonus = ThreatColonyManager.THREAT_HEAVY_BATTERIES.equals(ind.getId())
+				? ThreatIncConfig.heavyBatteriesBonus() : ThreatIncConfig.groundDefensesBonus();
+		return bonus * ThreatSiegeMalus.deficitMult(ind, Commodities.HEAVY_MACHINERY, Commodities.METALS);
 	}
 
 	/**
