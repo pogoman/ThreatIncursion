@@ -126,6 +126,12 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		ThreatIncConfig.log("Threat eradicated - retiring the war board.");
 	}
 
+	/** Off the intel list until the player knows of at least one hive system. */
+	@Override
+	public boolean isHidden() {
+		return !ThreatIncConfig.debugMode() && knownInfestedSystemIds().isEmpty();
+	}
+
 	@Override
 	public String getName() {
 		return "The Abyssal War";

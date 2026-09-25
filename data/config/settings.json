@@ -186,6 +186,14 @@
 	# to worlds besieged (or landed on), not to every raid.
 	"threatinc_fortificationDisruptDays": 180,
 	"threatinc_fortificationOrbitFloor": 0.5,
+	# the player can raid a human colony's fortifications (vanilla tags them
+	# unraidable): danger as vanilla's NONE/MINIMAL/LOW/MEDIUM/HIGH/EXTREME -
+	# days per marine token and casualties. Raids are not held to the floor.
+	"threatinc_fortificationRaidDanger": "HIGH",
+	# marines lost on a fortification grow by (tokens ^ depthLoss - 1) x the
+	# defence's share of the fight: depth costs dear against a strong
+	# garrison, little against a weak one (0 = vanilla)
+	"threatinc_fortificationRaidDepthLoss": 1.5,
 	# an unopposed besieging fleet - a Threat strike, a faction's or the
 	# player's siege expedition, a Support sortie, the player's own tactical
 	# bombardment - adds suppressDaysPerDay x fleet / (fleet + defence)

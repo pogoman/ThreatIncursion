@@ -586,6 +586,61 @@ then do the batteries answer. The expedition's own status line
 says which branch opened its landing gate (`ThreatGroundFronts.landingPhase`: "moving to
 land - defences at the floor" or "moving to land - the troops can hold, sparing the ships").
 
+### Raiding the fortifications (2026-09-25, built, untested)
+
+Vanilla tags a colony's Ground Defenses, Heavy Batteries, Patrol HQ, Military Base and
+High Command `unraidable` with no disrupt danger: its tactical bombardment knocks them out
+for 365 days, so raiding them was never needed. Ours is a siege slice that stops at the
+orbital floor - a few days a pass, at vanilla's fuel bill - which left the player no way
+past the floor short of a ground front. `ThreatFortificationRaids` (a
+`GroundRaidObjectivesListener`, priority 1, after vanilla's list) puts every human colony's
+fortifications on the disrupt-raid picker at the danger in `threatinc_fortificationRaidDanger`
+(default HIGH, the hive batteries' own in industries.csv: 20 days per marine token).
+
+What the defence decides is vanilla's: raid strength / (raid strength + defender strength)
+sets how many marine tokens you have and trims losses as it rises. The danger label is
+fixed per structure and only sets the base casualty rate and days per token. Wearing the
+guns down iteratively beats knocking them out in one go, by design (user, 2026-09-25):
+
+- Each raid's days add in full. Vanilla shrinks a raid on a clock already running
+  (dur x dur / (dur + already)); the fortification's condition is linear in its clock, so
+  that only punished coming back.
+- Marines lost on a fortification objective grow by (tokens ^ `threatinc_fortificationRaidDepthLoss`
+  - 1) x the defence's share of the fight, defender / (raid + defender) - the same odds
+  vanilla sets the tokens by (`modifyMarineLossesStatPreRaid`, shown in the losses breakdown
+  as "Deep raid on the fortifications"). Vanilla averages danger per token, so five tokens
+  on one objective cost what one does. First cut (same day) had no defence term: 8 tokens
+  at 1.5 was a flat x22.6, and a raid of 800 marines on a 333-defence world lost 387 where
+  vanilla would have lost ~17. Now that raid (~0.2 share) is ~x5; against a garrison
+  holding 0.7 of the fight, a 3-token raid is ~x4 against 3 shallow raids' ~x2.7.
+- The same term is weighted by what the structure adds to the defence now - its bonus x
+  condition x input deficit, against Ground Defenses' intact x2 (user, 2026-09-25: a
+  Military Base's x1.2 showed the same x2.7 at full commit as Ground Defenses' x2). Heavy
+  Batteries weigh 2, Ground Defenses 1, High Command 0.3, Military Base 0.2, Patrol HQ
+  0.1, and a structure already worn down weighs less - so each shallow raid makes the
+  next one cheaper.
+- Vanilla's own terms still apply on top: raid strength is 0.25 x the fleet's personnel
+  capacity + ground support, times marine XP and skills - not the marine count - and the
+  loss is a fraction of every marine aboard, so a bigger stock loses more for the same raid.
+  "Increased defender preparedness" adds 50% per recent raid, decaying, so shallow raids
+  back to back get dearer.
+- A raid marks the world besieged (`BESIEGED_FLAG`, wearDays) and syncs the siege state, so
+  the structure loses its bonus in proportion to its clock. Before this a raid on a world
+  nobody had bombarded fell back to vanilla's on/off: 20 days stripped Ground Defenses' x2.
+- A raid is not held to the orbital floor: past the floor it sets `$threatinc_raidedPastFloor_<id>`
+  on the market (expires with the clock) and `ThreatSiegeMalus.condition` skips the floor
+  clamp for that structure. `siegeSlice` skips a structure already past the floor, so a
+  raided clock is never pulled back down to it.
+- Every clock read is `siegeDisruptDays`: the bombard's revert leaves a ghost expire on a
+  structure it set back to 0, and vanilla's raw read would stack the raid on top of it.
+- Off with Nexerelin: its bombardment runs human colonies' menus and still writes the year.
+- Hives: their defences were raidable already (HIGH, industries.csv); untouched.
+
+To verify: Disrupt lists the colony's fortifications at Heavy danger; one token on Ground
+Defenses at an unbombarded colony leaves it at ~89% effect (not 0); the losses breakdown
+grows with tokens on one fortification, and the objective's hover tooltip quotes its multiplier (x at the next token counts with one token, the current figure and a shallow-raids hint with more); a second raid adds its full 20 days; raiding past
+the floor drops the condition below 50%; a later tac bombard does not lower it; with
+Nexerelin loaded the list is vanilla's.
 ### Fabricating troops from the fleet (2026-09-08, built, untested)
 
 The user, after watching the Defend behaviour they liked run out of road: a covering
