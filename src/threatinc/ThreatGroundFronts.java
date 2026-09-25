@@ -2481,6 +2481,24 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
+	 * How far the world's fortifications are worn toward the orbital floor,
+	 * averaged over them: 0 intact, 1 at or past the floor. 0 with none to wear.
+	 */
+	public static float fortificationWear(MarketAPI market) {
+		if (market == null) return 0f;
+		float span = 1f - Math.max(0f, Math.min(1f, ThreatIncConfig.fortificationOrbitFloor()));
+		if (span <= 0f) return 0f;
+		Theatre theatre = Theatre.of(market);
+		List<Industry> forts = theatre.fortifications(market);
+		if (forts.isEmpty()) return 0f;
+		float wear = 0f;
+		for (Industry ind : forts) {
+			wear += Math.max(0f, Math.min(1f, (1f - theatre.condition(market, ind)) / span));
+		}
+		return wear / forts.size();
+	}
+
+	/**
 	 * One slice of the orbital siege (docs/ground-war.md "Sieges from orbit"):
 	 * {@code fp} fleet points unopposed over a world for {@code days}. The
 	 * fleet suppresses the world's fortifications by the theatre's

@@ -80,10 +80,12 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		ThreatConvoys.forgetStagingTargets();
 		// nor any other not-saved state of the game this session left: a system
 		// thinned in the abandoned timeline, a fleet cap learned in another save,
-		// debug lines held quiet on the old clock
+		// debug lines held quiet on the old clock, a bounty's standing owed for
+		// one of its battles
 		IncursionManager.forgetThinned();
 		ThreatSoftening.forgetFleetCaps();
 		ThreatIncConfig.forgetQuiet();
+		ThreatSwarmBountyIntel.forgetPending();
 
 		// colonyMarkets keys that read lookups created before 0.7.0 made in-system
 		// expansion seed hives into inhabited core systems (rc1 review)

@@ -244,11 +244,8 @@ public class ThreatConvoys {
 
 	/** One commodity of {@link #stagingTargets}. */
 	public static float stagingTarget(MarketAPI base, String commodityId) {
-		float[] targets = stagingTargets(base);
-		for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
-			if (ThreatReserves.COMMODITIES[i].equals(commodityId)) return targets[i];
-		}
-		return 0f;
+		int i = ThreatAid.index(commodityId);
+		return i >= 0 ? stagingTargets(base)[i] : 0f;
 	}
 
 	/** {@link #stagingTargets} by market id, good for a day from targetsMemoStamp. */

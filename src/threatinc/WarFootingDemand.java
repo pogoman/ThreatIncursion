@@ -102,7 +102,11 @@ public class WarFootingDemand extends BaseIndustry {
 	private static final java.util.Map<String, Integer> PEACE_MEMO = new java.util.HashMap<String, Integer>();
 	private static long peaceMemoStamp = Long.MIN_VALUE;
 
-	/** Called on load: a reload at the same clock instant must not read the last session's figures. */
+	/**
+	 * Called on load, and as the war board and the War footing tooltip render:
+	 * a reload at the same clock instant must not read the last session's
+	 * figures, nor a paused screen the industries as they stood before a change.
+	 */
 	public static void forgetPeacetimeDemand() {
 		PEACE_MEMO.clear();
 		peaceMemoStamp = Long.MIN_VALUE;

@@ -1552,16 +1552,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		for (MarketAPI target : targets) {
 			if (target == null) continue;
 			float d = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.getDefenderStr(target);
+			// what the tactical pass will leave, about the fraction of the intact
+			// figure. The live figure already carries the wear orbit has done, so it
+			// takes only the rest: the whole fraction intact, none at the floor.
+			// Keyed on the key organs, a hive whose Core or port alone was down
+			// (neither touches its defence) was sized 1.67x the same hive intact;
+			// keyed on any wear at all, so was one with its batteries 8% worn (rc1 fix review)
+			float wear = ThreatGroundFronts.fortificationWear(target);
+			d *= SIEGE_SUPPRESSED_DEFENSE_FRACTION / (1f - (1f - SIEGE_SUPPRESSED_DEFENSE_FRACTION) * wear);
 			// a young colony reads vanilla's shallow base until its Swarm Nexus goes
 			// up, weeks before the siege arrives: sized on that, landings of 300
-			// met counter-attacks of 1,180 (Rhesh, Run 7). Size on the Nexus anchor.
-			// an already-suppressed world reads its suppressed figure; an intact one
-			// will be. The anchor is read as the tactical pass leaves it on both:
-			// at full strength on a wounded world, a hive with one organ disrupted
-			// was sized up to 1.67x the same hive intact
-			float anchor = nexusAnchoredDefense(target) * SIEGE_SUPPRESSED_DEFENSE_FRACTION;
-			if (!ThreatColonyManager.anyOrganDisrupted(target)) d *= SIEGE_SUPPRESSED_DEFENSE_FRACTION;
-			d = Math.max(d, anchor);
+			// met counter-attacks of 1,180 (Rhesh, Run 7). Size on the Nexus anchor,
+			// read as the tactical pass leaves it
+			d = Math.max(d, nexusAnchoredDefense(target) * SIEGE_SUPPRESSED_DEFENSE_FRACTION);
 			def = Math.max(def, d);
 		}
 		float threshold = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.DISRUPTION_THRESHOLD;
@@ -2159,13 +2162,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return difficulty;
 	}
 
-	/** One read of a base's navy strength, and when it was taken. */
+	/** One read of a base's navy strength, when it was taken, and for which owner. */
 	protected static class StrengthRead {
 		float strength;
 		long at;
+		String factionId;
 	}
 
-	/** Base market id -> its siege strength read; not saved. */
+	/** Base market id -> its siege strength read; not saved. A base that changed hands reads afresh. */
 	protected static final java.util.Map<String, StrengthRead> SIEGE_STRENGTH = new java.util.HashMap<String, StrengthRead>();
 
 	/**
@@ -2178,13 +2182,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	protected static float siegeStrength(MarketAPI base, FactionAPI faction) {
 		long now = Global.getSector().getClock().getTimestamp();
 		StrengthRead read = SIEGE_STRENGTH.get(base.getId());
-		if (read != null) {
+		if (read != null && faction.getId().equals(read.factionId)) {
 			float age = Global.getSector().getClock().getElapsedDaysSince(read.at);
 			if (age >= 0f && age < Math.max(1f, ThreatIncConfig.tickDays())) return read.strength;
 		}
 		read = new StrengthRead();
 		read.strength = WarSimScript.getFactionStrength(faction, base.getStarSystem());
 		read.at = now;
+		read.factionId = faction.getId();
 		SIEGE_STRENGTH.put(base.getId(), read);
 		return read.strength;
 	}
@@ -2942,16 +2947,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 	}
 
-	/**
-	 * Stands down every in-flight purge expedition whose ENTIRE target list is
-	 * dead. A purge campaigns through its whole system: one colony dying -
-	 * even to the expedition's own bombardment - is progress, not completion,
-	 * so the fleets press on to the next target and only stand down when no
-	 * target remains (or they are destroyed). Flying on to saturation-bombard
-	 * decivilized husks is nonsense, hence the cleanup. Unconditional (not
-	 * gated on strikeRecallEnabled - this is target-validity cleanup, not
-	 * player counterplay).
-	 */
 	/** Factions with a siege expedition still running against a colony of the system. */
 	public static java.util.Set<String> siegeFactionsIn(String systemId) {
 		java.util.Set<String> result = new java.util.HashSet<String>();
@@ -2972,6 +2967,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return result;
 	}
 
+	/**
+	 * Stands down every in-flight purge expedition whose ENTIRE target list is
+	 * dead. A purge campaigns through its whole system: one colony dying -
+	 * even to the expedition's own bombardment - is progress, not completion,
+	 * so the fleets press on to the next target and only stand down when no
+	 * target remains (or they are destroyed). Flying on to saturation-bombard
+	 * decivilized husks is nonsense, hence the cleanup. Unconditional (not
+	 * gated on strikeRecallEnabled - this is target-validity cleanup, not
+	 * player counterplay).
+	 */
 	public static void abortPurgesAgainst(String marketId, String marketName, String cause) {
 		if (marketId == null) return;
 		for (Object curr : getPurgeList()) {

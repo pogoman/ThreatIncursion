@@ -156,7 +156,12 @@ taken. Callers:
   defences at no less than the Swarm Nexus anchor (`nexusAnchoredDefense`): a young colony
   reads vanilla's shallow base until its Nexus goes up, and Run 7's landings of 300 met
   counter-attacks of 1,180. The anchor is read as the tactical pass leaves it
-  (x `SIEGE_SUPPRESSED_DEFENSE_FRACTION`) on intact and wounded worlds alike. The sizing
+  (x `SIEGE_SUPPRESSED_DEFENSE_FRACTION`) on intact and wounded worlds alike. The live
+  figure already carries the wear orbit has done to the fortifications (Nexus and
+  batteries), so it takes only the rest of the fraction: all of it intact, none at the
+  orbital floor, in between by their wear (`ThreatGroundFronts.fortificationWear`). Keyed
+  on the key organs, a hive whose Core or port alone was down was sized at 1.67x the same
+  hive intact; keyed on any wear at all, so was one with its batteries 8% worn. The sizing
   assumes that pass, so an NPC siege's FIRST landing also waits for it: it keeps duelling
   until the beachhead survives the first counter-attack (`ThreatGroundFronts.readyToLand`
   with the faction, `beachheadSurvives`), or orbit has done all it can. Landing at 0 siege

@@ -27,6 +27,8 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 	@Override
 	protected void createTooltipAfterDescription(TooltipMakerAPI tooltip, boolean expanded) {
 		if (market == null) return;
+		// read on the colony screen, where industries are built and shut down with the clock stopped
+		WarFootingDemand.forgetPeacetimeDemand();
 		float opad = 10f;
 		Color h = Misc.getHighlightColor();
 		int units = WarFootingDemand.unitsFor(market);

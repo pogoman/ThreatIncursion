@@ -204,6 +204,11 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 	protected static final java.util.Map<BattleAPI, java.util.Map<ThreatSwarmBountyIntel, float[]>> PENDING =
 			new java.util.WeakHashMap<BattleAPI, java.util.Map<ThreatSwarmBountyIntel, float[]>>();
 
+	/** Called on load: standing owed for a battle of the game this session left is not paid into the loaded one. */
+	public static void forgetPending() {
+		PENDING.clear();
+	}
+
 	/**
 	 * Standing and the message for a battle, once it is over: an autoresolved
 	 * fight reports every round, and each round had applied its own reputation
