@@ -179,8 +179,6 @@ public class ThreatWarBoard {
 	public static class Entry {
 		public String systemId;
 		public StarSystemAPI system;
-		/** Whether the player has found this system; false hides its name and place. */
-		public boolean known = true;
 		public String stage;
 		public List<MarketAPI> markets = new ArrayList<MarketAPI>();
 		public int mass;
@@ -213,9 +211,8 @@ public class ThreatWarBoard {
 			return ThreatIncData.STAGE_COLONY.equals(stage) && !markets.isEmpty();
 		}
 
-		/** The system's name, or "Unknown" for one the player has not found. */
 		public String displayName() {
-			return known ? system.getNameWithNoType() : "Unknown";
+			return system.getNameWithNoType();
 		}
 
 		public int strikeCount() {
@@ -227,15 +224,15 @@ public class ThreatWarBoard {
 		}
 	}
 
-	/** Every system the swarm holds, best target first; unfound ones unnamed. */
+	/** Every system the swarm holds that the player has found, best target first. */
 	public static List<Entry> buildEntries() {
 		List<Entry> result = new ArrayList<Entry>();
 		hiveSupply = computeHiveSupply();
 		boolean debug = ThreatIncConfig.debugMode();
 		for (String systemId : new ArrayList<String>(ThreatIncData.stages().keySet())) {
+			if (!debug && !ThreatIncData.discoveredSystems().contains(systemId)) continue;
 			Entry entry = build(systemId);
 			if (entry == null) continue;
-			entry.known = debug || ThreatIncData.discoveredSystems().contains(systemId);
 			result.add(entry);
 		}
 		Collections.sort(result, new Comparator<Entry>() {
@@ -811,13 +808,7 @@ public class ThreatWarBoard {
 				+ " narrow=" + (width - 24f < NARROW_WIDTH) + " stack=" + (width < STACK_WIDTH));
 		List<Entry> entries = buildEntries();
 		Entry selected = findEntry(entries, intel.getSelectedSystemId());
-		// an unfound system has no detail to show - its cards would name its planets
-		if (selected != null && !selected.known) selected = null;
-		if (selected == null) {
-			for (Entry e : entries) {
-				if (e.known) { selected = e; break; }
-			}
-		}
+		if (selected == null && !entries.isEmpty()) selected = entries.get(0);
 
 		addHeader(main, width);
 		CustomPanelAPI strip = addStrip(main, width, entries);
@@ -1947,7 +1938,7 @@ public class ThreatWarBoard {
 			boolean isSelected = selected != null && selected.systemId.equals(e.systemId);
 			List<Object> cells = new ArrayList<Object>();
 			cell(cells, Alignment.MID, h, "" + rank);
-			cell(cells, Alignment.LMID, isSelected ? Misc.getBasePlayerColor() : (e.known ? bright : gray),
+			cell(cells, Alignment.LMID, isSelected ? Misc.getBasePlayerColor() : bright,
 					main.shortenString(e.displayName(), c.w[SYSTEM] - 2f * CELL_PAD));
 			if (c.has(THREAT)) cell(cells, Alignment.LMID, e.reasonColor, e.chip);
 
@@ -1975,7 +1966,7 @@ public class ThreatWarBoard {
 			cell(cells, Alignment.MID, gray, e.inbound.isEmpty() ? "-" : ""); // crests by the overlay
 			cell(cells, Alignment.MID, gray, e.supplies.isEmpty() ? "-" : ""); // icons by the overlay
 			if (c.has(CORE)) {
-				cell(cells, Alignment.MID, text, e.known && e.coreLY >= 0f ? (int) Math.ceil(e.coreLY) + " ly" : "-");
+				cell(cells, Alignment.MID, text, e.coreLY >= 0f ? (int) Math.ceil(e.coreLY) + " ly" : "-");
 			}
 
 			Object row = isSelected ? main.addRowWithGlow(cells.toArray()) : main.addRow(cells.toArray());
@@ -2140,12 +2131,9 @@ public class ThreatWarBoard {
 		Color gray = Misc.getGrayColor();
 		Color text = Misc.getTextColor();
 		float w = tooltip.getWidthSoFar();
-		if (e.known) {
-			tooltip.addSectorMap(w, Math.round(w / 1.8f), e.system, 0f);
-			tooltip.addSpacer(10f);
-		}
-		String title = e.known ? e.system.getNameWithNoType()
-				: "Unknown system - not yet found; enter it to place it on the map";
+		tooltip.addSectorMap(w, Math.round(w / 1.8f), e.system, 0f);
+		tooltip.addSpacer(10f);
+		String title = e.system.getNameWithNoType();
 		if (e.isColony()) {
 			title += " - " + e.markets.size() + (e.markets.size() == 1 ? " hive world" : " hive worlds")
 					+ ", mass " + e.mass + ", vitality " + (int) (e.health * 100f) + "%";
@@ -2186,8 +2174,8 @@ public class ThreatWarBoard {
 		}
 		List<String> geo = new ArrayList<String>();
 		// distances place a system on the map as surely as its name; none for one unfound
-		if (e.known && e.coreLY >= 0f) geo.add((int) Math.ceil(e.coreLY) + " ly from the nearest major world");
-		if (e.known && e.playerLY >= 0f) geo.add((int) Math.ceil(e.playerLY) + " ly from your nearest colony");
+		if (e.coreLY >= 0f) geo.add((int) Math.ceil(e.coreLY) + " ly from the nearest major world");
+		if (e.playerLY >= 0f) geo.add((int) Math.ceil(e.playerLY) + " ly from your nearest colony");
 		geo.add((int) ThreatIncData.daysInStage(e.systemId) + " days in its current stage");
 		tooltip.addPara(join(geo) + ".", gray, 4f);
 		tooltip.addPara("Click to select", gray, 6f);

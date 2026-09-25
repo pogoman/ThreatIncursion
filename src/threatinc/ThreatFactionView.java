@@ -1404,7 +1404,7 @@ public class ThreatFactionView {
 	protected static List<ThreatWarBoard.Entry> hivesInReach(List<MarketAPI> markets) {
 		List<ThreatWarBoard.Entry> result = new ArrayList<ThreatWarBoard.Entry>();
 		for (ThreatWarBoard.Entry e : ThreatWarBoard.buildEntries()) {
-			if (!e.known || e.system == null) continue;
+			if (e.system == null) continue;
 			if (nearestBase(markets, e.system) != null) result.add(e);
 		}
 		return result;

@@ -99,6 +99,8 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// it can waive the atrocity penalty for exterminating the swarm, and
 		// pre-raid marine-loss computation so hive worlds chew up marines
 		Global.getSector().getListenerManager().addListener(manager, true);
+		// a human colony's fortifications on the disrupt-raid list
+		Global.getSector().getListenerManager().addListener(new ThreatFortificationRaids(), true);
 		// hears the player's battles for the swarm bounties
 		Global.getSector().addTransientListener(new ThreatSwarmBountyIntel.Kills());
 		// the player's outpost stations open their own dialog (storage, decommission)

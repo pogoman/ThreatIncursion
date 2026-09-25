@@ -186,6 +186,10 @@ public class ThreatIncConfig {
 	public static float fortificationDisruptDays() { return f("threatinc_fortificationDisruptDays"); }
 	/** Fraction of a suppressed structure's bonus orbit alone cannot take away, hive or colony; 0 once a front stands on the world. */
 	public static float fortificationOrbitFloor() { return f("threatinc_fortificationOrbitFloor"); }
+	/** Raid danger (vanilla RaidDangerLevel name) of a disrupt raid on a human colony's fortifications (ThreatFortificationRaids). */
+	public static String fortificationRaidDanger() { return s("threatinc_fortificationRaidDanger", "HIGH"); }
+	/** Marines lost on a raid grow as (tokens on one fortification) ^ this: 0 is vanilla (depth free), 1 costs the same as shallow raids, above 1 one deep raid costs more. */
+	public static float fortificationRaidDepthLoss() { return f("threatinc_fortificationRaidDepthLoss"); }
 	/** Disruption days per day an unopposed siege fleet adds to a colony's fortifications at overwhelming strength, scaled by fleet / (fleet + defence). */
 	public static float siegeSuppressDaysPerDay() { return f("threatinc_siegeSuppressDaysPerDay"); }
 	/** The same, over a hive's war-strata (their clock is defenseWearDays). */

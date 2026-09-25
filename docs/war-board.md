@@ -114,11 +114,11 @@ reserves, fleets and orders; the hive view above is untouched. Built without an 
 
 ## Data model (`Entry`, one per hive system)
 
-Built by `buildEntries()` for every system in `ThreatIncData.stages()`. `Entry.known` is whether
-the player has found it (`ThreatIncData.discoveredSystems()`, or debug mode); an unfound system is
-listed with its figures but named "Unknown" in gray, its row tooltip has no sector map, it cannot
-be selected for the detail block (its cards would name its planets) and gets no Purge or View
-button. Requested Sept 2026 after the debug listing turned out to be the better read. Per entry:
+Built by `buildEntries()` for every system in `ThreatIncData.stages()` the player has found
+(`ThreatIncData.discoveredSystems()`, or debug mode). An unfound system is not listed at all and
+counts toward none of the strip's totals, and while nothing is found the board itself is off the
+intel list (`ThreatIncursionIntel.isHidden`). User's rule 2026-09-25, replacing the earlier gray
+"Unknown" rows. Per entry:
 stage, live markets, mass, size-weighted health and trend, swarms live/desired/mustered
 (`countLiveGarrison`, `desiredGarrisonCount`, `preparingStrikeFleetCount`), staging colony and
 `fuelRangeLY` reach, inhabited systems inside reach, outbound ops (strikes from

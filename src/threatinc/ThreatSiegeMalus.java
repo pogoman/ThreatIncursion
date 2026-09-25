@@ -116,13 +116,15 @@ public class ThreatSiegeMalus extends BaseIndustry {
 		return Math.max(0f, Math.min(1f, (demand - deficit) / demand));
 	}
 
-	/** 1 intact .. 0 fully suppressed, from the structure's disruption clock. */
+	/** 1 intact .. 0 fully suppressed, from the structure's disruption clock; a raid's days are not held to the floor. */
 	public static float condition(Industry ind, boolean floor) {
 		if (ind == null) return 0f;
 		if (!ind.isDisrupted()) return 1f;
 		float full = Math.max(1f, ThreatIncConfig.fortificationDisruptDays());
 		float raw = Math.max(0f, 1f - ind.getDisruptedDays() / full);
-		if (floor) raw = Math.max(raw, ThreatIncConfig.fortificationOrbitFloor());
+		if (floor && !ThreatFortificationRaids.raided(ind)) {
+			raw = Math.max(raw, ThreatIncConfig.fortificationOrbitFloor());
+		}
 		return Math.min(1f, raw);
 	}
 
