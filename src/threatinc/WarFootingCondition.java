@@ -5,7 +5,6 @@ import java.awt.Color;
 import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.econ.BaseMarketConditionPlugin;
-import com.fs.starfarer.api.impl.campaign.submarkets.BaseSubmarketPlugin;
 import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.Misc;
 
@@ -47,11 +46,7 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 			tooltip.addPara("No Waystation: nothing sails from here or lands here.",
 					Misc.getNegativeHighlightColor(), opad);
 		}
-		if (!backed) {
-			tooltip.addPara("Selling here raises availability for %s days, as any sale does; "
-					+ "anything above peacetime demand banks into the reserve.", opad, h,
-					"" + (int) BaseSubmarketPlugin.TRADE_IMPACT_DAYS);
-		}
+		// how a sale banks is docs/economy-coherence.md rule 4, not the tooltip's
 	}
 
 	/**

@@ -108,6 +108,11 @@ public class ThreatCoalition {
 				if (c.answered.contains(factionId)) continue;
 				FactionAPI faction = Global.getSector().getFaction(factionId);
 				if (faction == null || faction.isPlayerFaction()) continue; // the player answers by hand
+				// no answer to an enemy's call, nor into a system where an enemy's fleets
+				// already fight: the Diktat answered Hegemony's Blost call while hostile to
+				// it and fought its Support task force instead of the swarms (Run 7)
+				if (c.callerFactionId != null && faction.isHostileTo(c.callerFactionId)) continue;
+				if (ThreatSoftening.hostileAt(faction, c.systemId)) continue;
 				MarketAPI base = ThreatFleetOrders.pickBase(faction, system.getLocation());
 				if (base == null) continue;
 				if (ThreatIncConfig.softenEnabled() && ThreatSoftening.hunting(factionId, c.systemId)) {

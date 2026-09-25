@@ -355,6 +355,15 @@ public class ThreatAid {
 	}
 
 	public static boolean dispatchStrike(StarSystemAPI hive) {
+		return dispatchStrike(hive, null);
+	}
+
+	/**
+	 * As above, sent from {@code recipientFactionId}'s view: the hunt is listed
+	 * there, where it can be recalled. With no recipient, a hunt sent before the
+	 * player mobilised had no row in any view for its 60 days (rc1 review).
+	 */
+	public static boolean dispatchStrike(StarSystemAPI hive, String recipientFactionId) {
 		if (hive == null) return false;
 		Quote q = quoteStrike(hive);
 		if (!q.ok()) {
@@ -367,6 +376,9 @@ public class ThreatAid {
 			ThreatColonyManager.announceAlways("No task force could be raised at " + q.source.getName()
 					+ " right now.", Misc.getNegativeHighlightColor());
 			return false;
+		}
+		if (recipientFactionId != null && !Factions.PLAYER.equals(recipientFactionId)) {
+			o.recipientFactionId = recipientFactionId;
 		}
 		ThreatColonyManager.announceAlways("Your task force from " + q.source.getName() + " ("
 				+ (int) q.points + " FP) sails to hunt the Defense Swarms in the "

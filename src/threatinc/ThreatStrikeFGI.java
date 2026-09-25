@@ -30,6 +30,15 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 
 	public ThreatStrikeFGI(GenericRaidParams params) {
 		super(params);
+		hideOrigin();
+	}
+
+	/**
+	 * Vanilla's return leg reads "returning to <source world>" on the fleets:
+	 * under the fog of war that named a hive nobody had found (rc1 review).
+	 */
+	protected void hideOrigin() {
+		if (getReturnAction() != null) getReturnAction().setTravelText("returning to the hive");
 	}
 
 	/**
@@ -233,6 +242,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	@Override
 	protected Object readResolve() {
 		super.readResolve();
+		hideOrigin();
 		if (landedAt == null) landedAt = new HashMap<String, Float>();
 		if (siegeAnnounced == null) siegeAnnounced = new HashSet<String>();
 		if (siegeResolved == null) siegeResolved = new HashSet<String>();

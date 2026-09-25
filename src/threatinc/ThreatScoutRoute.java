@@ -149,6 +149,29 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 				stayVerb() + " the " + system.getNameWithLowercaseTypeShort());
 	}
 
+	/**
+	 * The side stopped scouting (its knob turned off): every party still out
+	 * turns for home, and the ones gone drop off the books. Left alone, parties
+	 * sat on their 1,000-day patrol, swarms parked in human systems.
+	 */
+	public void recallAll() {
+		for (S s : new ArrayList<S>(all())) {
+			if (s.fleet == null || !s.fleet.isAlive() || s.fleet.isExpired()) {
+				all().remove(s);
+				continue;
+			}
+			if (!s.returning) goHome(s);
+		}
+	}
+
+	/** RESET War: every party out fades and the side's list empties. */
+	public void clearAll() {
+		for (S s : all()) {
+			if (s.fleet != null && s.fleet.isAlive()) Misc.fadeAndExpire(s.fleet);
+		}
+		all().clear();
+	}
+
 	protected void goHome(S s) {
 		s.returning = true;
 		s.fleet.clearAssignments();

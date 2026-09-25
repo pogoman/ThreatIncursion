@@ -88,8 +88,10 @@ public class ThreatFleetComposer {
 		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
 				new ThreatFleetCreationParams(), random);
 		String archetype = pickArchetype(JOB_SCOUT, random);
-		if (archetype == null) archetype = SCOUT;
-		Archetype a = archetypes != null ? archetypes.get(archetype) : null;
+		// the scout archetype is the default only while archetypes are on: loaded
+		// once, the table outlived the knob being turned off mid-session
+		if (archetype == null && ThreatIncConfig.fleetArchetypes()) archetype = SCOUT;
+		Archetype a = archetype != null && archetypes != null ? archetypes.get(archetype) : null;
 		if (a != null) {
 			fill(fleet, a, fp, random);
 			fleet.getMemoryWithoutUpdate().set(ARCHETYPE_KEY, archetype);

@@ -87,8 +87,7 @@ public class ThreatConvoys {
 			MarketAPI m = Global.getSector().getEconomy().getMarket(toMarketId);
 			if (m != null) return m.getName();
 			// a hive world a siege destroyed has left the economy; its planet has not
-			com.fs.starfarer.api.campaign.SectorEntityToken planet = Global.getSector().getEntityById(toMarketId);
-			return planet != null ? planet.getName() : ThreatBases.nameOf(toMarketId);
+			return ThreatBases.nameOf(toMarketId);
 		}
 	}
 
@@ -208,11 +207,11 @@ public class ThreatConvoys {
 	 * launch from here against its hive draws (IncursionManager.siegeWants -
 	 * the same figures the button and its prompt show), times
 	 * stagingTargetMult. All zeros for a world that is not a staging base.
-	 * Memoised per base for one game-clock instant: each call is a
+	 * Memoised per base for a day: each call is a
 	 * stagingHive sweep plus a full siegeSizes, and the planner asks for a
 	 * donor's (through ThreatReserves.stagingBank, per donor per commodity
 	 * per base) and the board for a colony's (per commodity) many times over
-	 * in one tick or render. The memo empties when the clock moves, on every
+	 * in one tick or render. The memo empties after a day, on every
 	 * war board render and on game load ({@link #forgetStagingTargets}): a
 	 * player base's target follows its free fleet points, which a board order
 	 * changes with the clock stopped.
@@ -220,7 +219,11 @@ public class ThreatConvoys {
 	public static float[] stagingTargets(MarketAPI base) {
 		if (base == null) return new float[] {0f, 0f, 0f, 0f};
 		long now = Global.getSector().getClock().getTimestamp();
-		if (now != targetsMemoStamp) {
+		// a day's memo: rebuilt at every clock instant, the half-day reserve poll
+		// re-sized every staging base's siege on every pass (rc1 review)
+		float age = targetsMemoStamp == Long.MIN_VALUE ? Float.MAX_VALUE
+				: Global.getSector().getClock().getElapsedDaysSince(targetsMemoStamp);
+		if (age < 0f || age >= 1f) {
 			targetsMemo.clear();
 			targetsMemoStamp = now;
 		}
@@ -239,7 +242,16 @@ public class ThreatConvoys {
 		return wants;
 	}
 
-	/** {@link #stagingTargets} by market id, good for the game-clock instant in targetsMemoStamp. */
+	/** One commodity of {@link #stagingTargets}. */
+	public static float stagingTarget(MarketAPI base, String commodityId) {
+		float[] targets = stagingTargets(base);
+		for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
+			if (ThreatReserves.COMMODITIES[i].equals(commodityId)) return targets[i];
+		}
+		return 0f;
+	}
+
+	/** {@link #stagingTargets} by market id, good for a day from targetsMemoStamp. */
 	private static final Map<String, float[]> targetsMemo = new HashMap<String, float[]>();
 	private static long targetsMemoStamp = Long.MIN_VALUE;
 
@@ -921,9 +933,13 @@ public class ThreatConvoys {
 	/** Stock a colony can spare: what it holds above its keep fraction of its own cap. */
 	public static float spare(MarketAPI donor, String commodityId) {
 		if (ThreatReserves.committed(donor, commodityId)) return 0f; // its marines are fighting
-		// a staging base keeps its own siege's needs, then gives like any donor
-		float keep = ThreatReserves.monthsCap(donor, commodityId) * ThreatIncConfig.donorKeepFraction()
-				+ ThreatReserves.stagingBank(donor, commodityId);
+		// a staging base keeps its own siege's needs, then gives like any donor.
+		// A player base has no staging bank (its stockpile is vanilla's), so its
+		// staging target is kept here: without it two player staging bases each
+		// shipped the other everything above half its cap, every month (rc1 review)
+		float bank = donor.isPlayerOwned() ? stagingTarget(donor, commodityId)
+				: ThreatReserves.stagingBank(donor, commodityId);
+		float keep = ThreatReserves.monthsCap(donor, commodityId) * ThreatIncConfig.donorKeepFraction() + bank;
 		return Math.max(0f, ThreatReserves.stock(donor.getId(), commodityId) - keep);
 	}
 

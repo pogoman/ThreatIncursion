@@ -167,7 +167,7 @@ request accepts it.
   siege the Defense Swarms over the target hive system outweigh (docs/strategy-layer.md,
   "weighs the orbit"), one per hive system. No accepting, no failing. For
   `swarmBountyDays` (60) it pays `swarmBountyPerFrigate` (1,500) per Threat ship the player
-  destroys in that system - destroyer x2, cruiser x3, capital x4, times the player's share
+  destroys in that system - destroyer x2, cruiser x3, capital x5 (vanilla's system-bounty scale), times the player's share
   of the battle - plus vanilla's system-bounty standing (`RepActions.SYSTEM_BOUNTY_REWARD`)
   per battle. The system's Defense Swarms count wherever they are caught (the fleet's
   `$threatinc_garrison` names its colony), and each ship lost pays ONE bounty - its

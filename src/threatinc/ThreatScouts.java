@@ -157,7 +157,11 @@ public class ThreatScouts {
 	// ------------------------------------------------------------------
 
 	public static void poll(Random random) {
-		if (!enabled()) return;
+		if (!enabled()) {
+			// switched off mid-game: the parties out go home rather than sit on their patrol
+			if (!all().isEmpty()) ROUTE.recallAll();
+			return;
+		}
 		revealNeighbours();
 		for (Scout s : new ArrayList<Scout>(all())) {
 			ROUTE.advance(s);
@@ -166,13 +170,35 @@ public class ThreatScouts {
 		launchSorties(random);
 	}
 
-	/** A hive in a system where anyone else keeps a colony is no secret. */
+	/** RESET War: the parties out fade, and every sweep, lead and sweep clock is forgotten. */
+	public static void reset() {
+		ROUTE.clearAll();
+		for (String key : new String[] { KEY_SCOUTS, KEY_SWEPT, KEY_LEADS, KEY_LAST_SWEEP }) {
+			Global.getSector().getPersistentData().remove(key);
+		}
+	}
+
+	/**
+	 * A hive in a system where anyone else keeps a colony is no secret; nor is
+	 * one another faction already has a ground front on - a 0.6.2 save carries
+	 * fronts on hives the fog of war never marked found, and they had no
+	 * follow-up sieges until a scout came by (rc1 review).
+	 */
 	protected static void revealNeighbours() {
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
 			if (ThreatIncData.discoveredSystems().contains(systemId)) continue;
 			if (!hasLiveHive(systemId)) continue;
 			StarSystemAPI system = ThreatScoutRoute.systemById(systemId);
 			if (system == null) continue;
+			String fronted = null;
+			for (MarketAPI hive : ThreatIncData.getLiveColonyMarkets(systemId)) {
+				ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(hive.getId());
+				if (front != null && !ThreatGroundFronts.isThreatOwned(front)) fronted = ThreatGroundFronts.ownerOf(front);
+			}
+			if (fronted != null) {
+				reveal(systemId, fronted);
+				continue;
+			}
 			for (MarketAPI market : Global.getSector().getEconomy().getMarkets(system)) {
 				if (market.isHidden() || market.getPrimaryEntity() == null) continue;
 				if (Factions.THREAT.equals(market.getFactionId())) continue;

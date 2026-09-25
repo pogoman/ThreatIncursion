@@ -477,3 +477,66 @@ Test: new Instant War game `save_IWRunSeven_...161` (pirates/Pathers neutral, su
   44 worlds / 16 systems / 162 swarms, 1 burned.
 - Still open: 32 of 88 hunting forces stood down at the muster (now refunded in full); young hives'
   batteries push counter-attacks above the Nexus anchor (Beta Berene II: 600 landed, 1,771 counter).
+
+## rc1 review fixes (2026-09-25, built; Run 8 below)
+
+The v0.7.0-rc1 review (32 findings) is fixed in code; Run 8 tested it. The checklist that follows is what Run 8 checked. Verify
+in a fresh Instant War game plus one upgraded 0.6.2 save, with LunaLib on:
+
+- **Phantom hive systems** (`getLiveColonyMarkets` read-only, `dropPhantomSystems` on load,
+  `tryExpandInSystem` needs a live colony): no "Colonization wave launched at" into Corvus,
+  Galatia, Magec or Askonia; on the old save, no in-system wave into a system the swarm holds nothing in.
+- **LunaLib migration** (`LunaConfigBridge.migrateStoredDefaults`): with a stored file holding 10 /
+  3, the first launch logs "LunaLib settings moved to the 0.7.0 defaults" and the menu shows 25 / 6;
+  `saves/common/threatinc_lunaSettingsVersion.data` exists; a hand-set value stays.
+- **NPC landings** (`readyToLand(market, troops, factionId)`): an NPC siege's first landing comes after
+  "Siege slice" lines, not at "Abstract siege of X: 0 d"; far fewer "overran the beachhead" on first
+  counter-attacks (Run 7: 10 of 22). Watch for sieges that duel to their term and never land.
+- **Hunting forces**: no "Hunt battle" against another faction's Hunting Force or task force;
+  "goes in" followed at once by "merged into the lead" lines; hunt battles with the whole force on
+  one side; no force above `softenMergeMaxShips` (90) ships; fewer "outmatched at the muster";
+  no 30-fleet build followed by a stand-down on consecutive ticks.
+- **Siege banks**: a staging base's fuel/supplies survive a hunt (Culann-style drain gone); pooled
+  sieges log "Expedition armaments pooled for" and no longer land with a fraction of their arms -
+  but watch for new "armaments available" postponements.
+- **Nearest base hunts while it cannot siege**: Nachiketa-style bases now send hunting forces and
+  answer coalition calls while short or on cooldown.
+- **Garrisons**: no "Surplus swarm" lines in normal play (a returning raider or reinforcement finds
+  its slot); siege-gate FP per world back near the fresh-swarm totals.
+- **Bounties**: one standing change and one message per battle; a player battle beside your own
+  hunting fleet pays once; "Faction: Independent"; the end message shows "- Over".
+- **Scouts**: turning Swarm Scouting / Fog of War off sends every party home; RESET War clears them.
+- **Board**: aid Hunt sent before mobilising shows as "Your hunt" with Recall in that faction's view;
+  no raw `market_...` ids on convoy rows; Hunt not offered on convoys.
+- **Not changed**: fleets are still built with vanilla escorts and then recomposed (the escorts are
+  built twice); the cost is one extra fleet build per spawn and the design needs vanilla's budget.
+
+## Run 8 (2026-09-25 afternoon): rc1 review fixes
+Laptop panel, harness, debug logging on. Three clones were run, so no original save was written:
+- `save_StarLord_...fx`, an old save from before 0.6.2 (needs Officer Extension): loaded and ran about 2 months.
+- `save_IWSevenFix_...161`, the Run 7 rc1 save at war day ~1920: loaded and ran about 6 minutes.
+- `save_IWFix_...795`, a pre-war save. Instant War was switched on at load (it fires on an existing save), then 5 cycles to war day 1405.
+
+**0 exceptions** in all three.
+- **LunaLib migration: verified.** The stored file was set to 10 / 4 first. The first launch logged "LunaLib settings
+  moved...", siegeMaxFleets went to 25, the hand-set reserveInitialMonths 4 stayed, and the marker file was written.
+- **Phantom systems: verified.** 29 colonisation waves, none into a core system.
+- **NPC landings: verified.** 21 fresh human landings; 3 were overrun on the first counter-attack
+  (Run 7: 10 of 22). Most waited 9-27 d in orbit first. The 3 were 300-600 marine landings on young
+  Alpha Vigri hives, the open young-hive-batteries item from Run 7. The "0 d" landings were sieges arriving
+  over defences already at the floor. Beachheads now fall later, to attrition (supply runs raided, orbit contested).
+- **Hunting forces: verified.**
+  - 51 sent, no build-and-fold.
+  - No hunt battle against another faction's force, except one in the rc1 save between two forces already in flight at load.
+  - Merges on go-in; the cap holds at 90 ships.
+  - Forces mostly go in whole (2/2, 3/3, 4/4, 8/9).
+  - 4 of 51 stood down outmatched at the muster (Run 7: 32 of 88).
+  - 9 "badly hurt" stand-downs, all after real losses.
+- **Siege banks:** 8 "armaments pooled", 0 "armaments available" postponements. Bases short of a siege
+  wait for hunts ("1 base pays for 0 FP") instead of spending the bank.
+- **Garrisons:** 0 "Surplus swarm" lines on the fresh game (1 on the rc1 save, at load).
+- **Bounties:** post, 60 d, "over", repost; paid 0 because the player never hunted. Player payout
+  and messages untested.
+- **Board:** the Hegemony view renders at day 1405 and no raw `market_` ids appear in the log. "Your hunt",
+  Hunt-on-convoy and scout recall/RESET were not exercised (the player had no colonies).
+- Result at day 1405: 9 human ground victories and 6 hives burned. The Threat holds 29 worlds, 12 known systems and 101 swarms.

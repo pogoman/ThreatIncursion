@@ -103,6 +103,13 @@ public class ThreatIncData {
 		return map(KEY_COLONY_MARKETS);
 	}
 
+	/** The system's colony ids, or an empty list; never adds a key. */
+	public static List<String> colonyIdsIn(String systemId) {
+		List<String> ids = systemId != null ? colonyMarkets().get(systemId) : null;
+		return ids != null ? ids : new ArrayList<String>();
+	}
+
+	/** The system's colony id list, created if missing - only for code that adds to it. */
 	public static List<String> colonyMarketsFor(String systemId) {
 		List<String> ids = colonyMarkets().get(systemId);
 		if (ids == null) {
@@ -355,7 +362,7 @@ public class ThreatIncData {
 	}
 
 	public static void clearSystem(String systemId) {
-		for (String marketId : new ArrayList<String>(colonyMarketsFor(systemId))) {
+		for (String marketId : new ArrayList<String>(colonyIdsIn(systemId))) {
 			garrisons().remove(marketId);
 			garrisonSpawnTimes().remove(marketId);
 			growthTimes().remove(marketId);
@@ -376,6 +383,22 @@ public class ThreatIncData {
 		stageTimes().remove(systemId);
 		hives().remove(systemId);
 		lastStrikeTimes().remove(systemId);
+		// a hive later re-seeded here has to be found again
+		discoveredSystems().remove(systemId);
+	}
+
+	/**
+	 * Drops colonyMarkets keys that hold no colony and have no stage - left by
+	 * read lookups before {@link #getLiveColonyMarkets} became read-only, they
+	 * made in-system expansion treat inhabited systems as hive systems.
+	 */
+	public static void dropPhantomSystems() {
+		for (String systemId : new ArrayList<String>(colonyMarkets().keySet())) {
+			List<String> ids = colonyMarkets().get(systemId);
+			if ((ids == null || ids.isEmpty()) && !stages().containsKey(systemId)) {
+				colonyMarkets().remove(systemId);
+			}
+		}
 	}
 
 	public static float daysInStage(String systemId) {
@@ -425,10 +448,13 @@ public class ThreatIncData {
 		return market;
 	}
 
-	/** All live colony markets in a system. */
+	/**
+	 * All live colony markets in a system. Read-only: asking about a system never
+	 * adds it to {@link #colonyMarkets()}, whose keys are the systems the swarm holds.
+	 */
 	public static List<MarketAPI> getLiveColonyMarkets(String systemId) {
 		List<MarketAPI> result = new ArrayList<MarketAPI>();
-		for (String marketId : colonyMarketsFor(systemId)) {
+		for (String marketId : colonyIdsIn(systemId)) {
 			MarketAPI market = resolveColonyMarket(marketId);
 			if (market != null) result.add(market);
 		}

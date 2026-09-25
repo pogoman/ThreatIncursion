@@ -236,8 +236,8 @@ public class ThreatGroundFronts {
 	protected static String worldName(GroundFront front) {
 		MarketAPI market = Global.getSector().getEconomy().getMarket(front.marketId);
 		if (market != null) return market.getName();
-		SectorEntityToken entity = Global.getSector().getEntityById(front.marketId);
-		return entity != null ? entity.getName() : front.marketId;
+		String world = ThreatBases.worldName(front.marketId);
+		return world != null ? world : front.marketId;
 	}
 
 	/**
@@ -2621,13 +2621,19 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 */
 	public static float abstractSiege(MarketAPI market, float start, float troops,
 			float abortFraction) {
+		return abstractSiege(market, start, troops, abortFraction, null);
+	}
+
+	/** As above for the faction whose siege it is ({@link #readyToLand(MarketAPI, float, String)}). */
+	public static float abstractSiege(MarketAPI market, float start, float troops,
+			float abortFraction, String factionId) {
 		if (market == null || start <= 0f) return start;
 		float fp = start;
 		float elapsed = 0f;
 		float step = SIEGE_FIRST_SLICE_DAYS;
 		float budget = ThreatIncConfig.siegeOrbitDays();
 		while (fp > 0f && elapsed < budget && fp > start * abortFraction) {
-			if (readyToLand(market, troops)) break;
+			if (readyToLand(market, troops, factionId)) break;
 			// one frame: nothing runs down between steps, one reapply at the end
 			fp -= siegeSlice(fp, market, step, false, false);
 			elapsed += step;
@@ -2920,6 +2926,38 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
+	 * As {@link #readyToLand(MarketAPI, float)} for a siege expedition's FIRST
+	 * landing: an NPC one also keeps duelling until its beachhead survives the
+	 * world's first counter-attack ({@link #beachheadSurvives}), unless orbit has
+	 * done all it can. NPC sieges are sized for a defence the tactical pass has
+	 * suppressed (IncursionManager.siegeRaidStrNeeded), but the hold test opened
+	 * at 0 siege days, so they landed against the intact defence with about 60%
+	 * of what the overrun rule asks: 10 of 22 NPC beachheads of Run 7 fell to the
+	 * first counter-attack (rc1 review). The player's landing stays the
+	 * commander's call (2026-09-06).
+	 */
+	public static boolean readyToLand(MarketAPI market, float troops, String factionId) {
+		if (!readyToLand(market, troops)) return false;
+		if (factionId == null || Factions.PLAYER.equals(factionId)) return true;
+		if (suppressedToFloor(market)) return true;
+		return beachheadSurvives(market, troops);
+	}
+
+	/**
+	 * Whether a fresh beachhead of {@code troops} outlasts the world's first
+	 * counter-attack by siegeBeachheadMargin: the counter-attack overruns it past
+	 * 2:1 odds after the strength exponent (IncursionManager.beachheadNeeded, the
+	 * same line the landing is sized on). Margin 0 skips the test.
+	 */
+	public static boolean beachheadSurvives(MarketAPI market, float troops) {
+		float margin = ThreatIncConfig.siegeBeachheadMargin();
+		if (market == null || margin <= 0f) return true;
+		float e = Math.max(0.1f, ThreatIncConfig.groundStrengthExponent());
+		float odds = (float) Math.pow(2f, 1f / e);
+		return troops * ThreatIncConfig.frontLandingMult() * odds >= counterAttackStrength(market) * margin;
+	}
+
+	/**
 	 * The expedition's status line over a world it has not landed on, saying
 	 * WHY it is landing when it is (the user, 2026-09-06: the early landing
 	 * was the part nobody realised): {@code besieging} while orbit still has
@@ -2927,9 +2965,14 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * gate.
 	 */
 	public static String landingPhase(MarketAPI market, float troops, String besieging) {
+		return landingPhase(market, troops, besieging, null);
+	}
+
+	/** As above, for the faction whose landing it is ({@link #readyToLand(MarketAPI, float, String)}). */
+	public static String landingPhase(MarketAPI market, float troops, String besieging, String factionId) {
 		if (market == null) return besieging;
 		if (suppressedToFloor(market)) return "moving to land - defences at the floor";
-		if (readyToLand(market, troops)) return "moving to land - the troops can hold, sparing the ships";
+		if (readyToLand(market, troops, factionId)) return "moving to land - the troops can hold, sparing the ships";
 		return besieging;
 	}
 

@@ -191,8 +191,9 @@ public class ThreatSwarmDefend {
 				? Global.getSector().getEconomy().getMarket(e.homeMarketId) : null;
 		SectorEntityToken to = home != null ? home.getPrimaryEntity() : null;
 		if (to != null) {
+			// no hive's name on the fleet: under the fog it may be one nobody has found
 			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, to, 1000f,
-					"returning to " + home.getName());
+					"returning to the hive");
 		} else {
 			// the staging colony is gone: out of sight into hyperspace, not a
 			// fade in front of the player (vanilla's own fallback)
