@@ -108,8 +108,8 @@ and sorties drained depots that never refilled (logged: "Order draw at Sindria: 
 Cap per commodity = accrual x `reserveCapMonths` (6); a colony in deficit has no accrual,
 so no cap and no sortie floor. The sortie floor (`reserveFloorFraction`, 0.25) is for NPC
 colonies; the player's own colonies use `playerReserveFloorFraction` (0), so the Siege
-prompt's "can commit" is the whole stock and the landing draws up to what it wants. Mobilisation seeds `reserveInitialMonths` (3) of the
-depot's banking - seeded after the War footing's demand lands and the economy
+prompt's "can commit" is the whole stock and the landing draws up to what it wants. Mobilisation seeds `reserveInitialMonths` (6, the full cap since
+2026-09-25 so a navy opens the war at full strength; 3 before) of the depot's banking - seeded after the War footing's demand lands and the economy
 recomputes, so an importer seeds the War footing's share (before 2026-09-24 it seeded
 first, and an importer got only its militia). A faction that stands
 down keeps its stock, frozen; a captured colony keeps its depot for the new owner; only
@@ -148,7 +148,19 @@ taken. Callers:
 
 - `IncursionManager.launchSiegeExpedition` (NPC and player-commissioned alike, when the
   base's faction is in war mode): marines wanted = `siegeRaidStrNeeded(targets)` x
-  headroom (raid strength ~= marines, as vanilla's own player raids); armaments wanted =
+  headroom (raid strength ~= marines, as vanilla's own player raids) - since 2026-09-25 at
+  least the BEACHHEAD (`beachheadNeeded`): enough that the landing, at `frontLandingMult`,
+  meets the hive's first counter-attack under the 2:1 odds that overrun a fresh front, times
+  `siegeBeachheadMargin` (1.25; 0 = raids only). Sized for the raids alone (a quarter of the
+  defences), 18 of 19 Persean landings were overrun in Run 6. Both needs read the target's
+  defences at no less than the Swarm Nexus anchor (`nexusAnchoredDefense`): a young colony
+  reads vanilla's shallow base until its Nexus goes up, and Run 7's landings of 300 met
+  counter-attacks of 1,180. An NPC siege short of marines
+  at its base draws the rest from its faction's other bases in reach, nearest first
+  (`siegePoolMarines`, `marinePool`); a size-4 beachhead is ~2,400 troops and a full depot
+  holds ~560. The system's siege base is the nearest (`siegeBaseFor`: it stages and is
+  barred from hunting there); while it cannot launch, the next two nearest bases of any
+  mobilised NPC faction try (`siegeBasesFor`, `SIEGE_BASE_TRIES`). Armaments wanted =
   `npcFrontSupplyDays` x the landing force's own burn (1 armament per marine at the
   default `frontArmamentsPerMarinePer30Days`); fuel = fleet points x LY x
   `expeditionFuelPerPointLY`; supplies = fleet points x `expeditionSuppliesPerPoint`.
@@ -660,8 +672,14 @@ instead of postponing; `groundStrengthExponent` (1.0) on every ground ratio.
 **Coalition** (`ThreatCoalition`, 8.7): `launchSiegeExpedition` by a mobilised faction
 posts a call for `coalitionCallDays` (60); on the slow tick every other mobilised NPC
 faction with a base in reach rolls `coalitionSupportChance` (0.5) and answers once with
-a Hunt (`ThreatFleetOrders.dispatchHunt`, Intercept at the jump-point until 2026-09-24;
-no answer when the system has no Defense Swarms left). Rally (the player batching
+a pooled hunting force (`ThreatSoftening.send`, 2026-09-25: sized, pooled and mustered
+like any hunting force, bounty or not). A faction already hunting there has answered; one
+whose base is resting, has a siege of its own, or cannot pay yet tries again while the
+call stands. Until 2026-09-25 the answer was one `guardFleetFP` (100 FP) Hunt
+(`ThreatFleetOrders.dispatchHunt`, still the path with `softenEnabled` off) - lone fleets
+that met 171 FP swarms at 137 FP; an odds gate on it cut answers from 53 to 3 and was
+reverted. Intercept at the jump-point until 2026-09-24; no answer when the system has no
+Defense Swarms left. Rally (the player batching
 allied orders) was removed 2026-09-05 with the rest of the player's authority over NPC
 navies; allies now help each other's colonies on their own, by standing
 (`ThreatCoalition.allyAid`, docs/player-aid.md section 5). Hunt orders show as inbound
@@ -813,8 +831,11 @@ they can be stronger than a siege; a siegeable world in reach always comes first
     hive it is `siegeBaseFor` whose swarms its fullest flotilla outweighs). It banks for
     that siege instead.
 - Size: the system's Defense Swarm FP x `softenMargin` (2.0), capped at `softenMaxFP`
-  (12,000), and never below the weakest colony's garrison x the margin. It waits if that
-  floor is above the cap, or if its bases cannot pay for it. Counted on the WARSHIPS BUILT
+  (12,000), and never below the weakest colony's garrison x the margin x `softenHeadroom`
+  (1.5, 2026-09-25). It waits if that floor is above the cap, or if its bases cannot pay
+  for it. The headroom is slack for the muster: the swarms reinforce while the force
+  gathers (433 -> 1,329 FP over Zendar in Run 6), and the muster still asks only garrison x
+  margin. Counted on the WARSHIPS BUILT
   (`combatFP`): vanilla scales an NPC fleet by its market's `COMBAT_FLEET_SIZE_MULT`, so the
   planner asks for points / that multiplier and adds up what each fleet really came out at.
   If the yards built less than the floor, the fleets fold straight back into the depot
@@ -836,7 +857,9 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   every fleet is in, or `softenMusterDays` (15) after the first arrived. It goes home if
   none arrived within `softenDays`. It goes in only if the fleets present beat the weakest
   garrison by the margin. If they do not but the whole force would, it waits up to three
-  muster spells for the stragglers. The 60-day term starts when it goes in. Before this each fleet
+  muster spells for the stragglers. A force that stands down without going in gets its
+  fuel and supplies back in full on the spot (`standDownAll`, 2026-09-25); one that fought
+  takes the return rule's refund. The 60-day term starts when it goes in. Before this each fleet
   flew alone at its own burn and met the whole garrison one by one: in the 21-month run 69
   hunting fleets broke off badly hurt and 3 cleared a system.
 - FLEET SIZE (`softenFleetFP` 1500): vanilla prunes an AI fleet to `maxShipsInAIFleet` (30)

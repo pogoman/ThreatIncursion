@@ -1,11 +1,11 @@
 [center][size=20pt][b]The Abyssal War[/b][/size]
-[i]v0.6.2 - Nexerelin compatible - for Starsector 0.98a-RC8[/i][/center]
+[i]v0.6.3 - the core fights back - for Starsector 0.98a-RC8[/i][/center]
 
 [hr]
 
 [size=14pt][b]Download[/b][/size]
 
-[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.6.2/AbyssalWar-0.6.2.zip]AbyssalWar-0.6.2.zip[/url]
+[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.6.3/AbyssalWar-0.6.3.zip]AbyssalWar-0.6.3.zip[/url]
 
 Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher. It extracts to [tt]mods/ThreatIncursion[/tt] - overwrite your existing folder rather than keeping both. Saves made with Threat Incursion carry over: the mod id has not changed.
 
@@ -58,6 +58,39 @@ For Starsector 0.98a-RC8. LunaLib optional, Nexerelin compatible. Safe to add mi
 
 [size=14pt][b]Changelog[/b][/size]
 
+[b]0.6.3 - the core fights back[/b]
+[spoiler]
+[b]Human navies now open the war at full strength and win early ground victories.[/b] In testing they burned 10 hive worlds in the first two years, where before they burned one in five; the hive still grinds them down if the player stays out.
+
+[b]Hive fog of war[/b]
+[list]
+[li]A strike no longer reveals where it came from. The struck faction gets a lead and sends scouting parties to sweep the systems around it. Sieges, task forces and contracts act only on hives someone has found.[/li]
+[li]The swarm scouts too: it only strikes worlds its Scouting Swarms have charted.[/li]
+[li]Fleet archetypes: 12 new Threat variants, and strike, garrison, seeding and scout swarms are each built to their own shape.[/li]
+[/list]
+[b]NPC navies[/b]
+[list]
+[li]Depots fill from the war's supply (importers used to bank nothing once mobilised) and start full the moment a faction mobilises.[/li]
+[li]Sieges actually launch: staging bases bank toward the siege, and convoys carry full loads of marines, fuel and supplies.[/li]
+[li]Sieges sail at full strength and weigh the Defense Swarms first. A base the swarms outweigh posts a swarm bounty, paid per Threat ship by hull size.[/li]
+[li]Landings are sized to survive the hive's first counter-attack, with marines pooled from the faction's other bases. When the nearest base cannot pay for a siege, the next nearest sails instead.[/li]
+[li]Hunting forces: a base with no siege of its own hunts a bountied hive's Defense Swarms. Fleets from every base in reach muster outside the system and go in as one fleet. Allies answer a siege call with a hunting force.[/li]
+[/list]
+[b]Player[/b]
+[list]
+[li]Hunt replaces Intercept: send a task force to hunt a hive's Defense Swarms from the board. Your hunting fleets collect swarm bounties on their own.[/li]
+[/list]
+[b]Fixes[/b]
+[list]
+[li]Help requests now withdraw and expire; Defend windows close.[/li]
+[li]Hive worlds no longer post survey, analyze or procurement missions.[/li]
+[li]A hunting force that never fights gets its fuel and supplies back in full.[/li]
+[li]A swarm coming home to a full garrison joins it instead of overshooting the cap.[/li]
+[li]Siege fleets no longer shuttle back and forth between worlds.[/li]
+[li]The disabled Aid/Defend tooltip names the real requirement: a military structure and a Waystation.[/li]
+[/list]
+With LunaLib, settings you have saved keep their value: set Mobilisation Stock to 6 for the new full-depot start.
+[/spoiler]
 [b]0.6.2 - Nexerelin compatible[/b]
 [spoiler]
 [b]Nexerelin now works alongside the mod.[/b] Before, the mod's military-options menu replaced Nexerelin's on every world, so the Invade option never appeared.

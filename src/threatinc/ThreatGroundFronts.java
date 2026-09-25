@@ -2845,8 +2845,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			fleet.getMemoryWithoutUpdate().set(SLICE_LOG_KEY, true, 1f);
 			ThreatIncConfig.log(label + " over " + market.getName() + ": " + fleet.getName() + " at "
 					+ (int) fleet.getFleetPoints() + " FP fabricates - the defences are at the floor and "
-					+ "the front is " + (int) (holdRequirement(market) - effectiveStrength(front))
-					+ " short of holding; " + String.format("%.1f", wanted) + " FP of hulls wanted, "
+					+ "the front is " + (int) Math.ceil(fabricateNeed(front, market))
+					+ " troops short of holding with margin; " + String.format("%.1f", wanted) + " FP of hulls wanted, "
 					+ String.format("%.2f", price) + " FP/day the batteries charge"
 					+ (canGive ? "" : " (nothing left to break up)"));
 		}

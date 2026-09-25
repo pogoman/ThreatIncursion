@@ -470,9 +470,10 @@
 	"threatinc_reserveShortageCoverDays": 30,
 	# a colony stockpiles at most this many months of its own production, and
 	# starts with reserveInitialMonths of it the moment its faction mobilises
-	# (the peacetime depots its first sortie draws from)
+	# (the peacetime depots its first sortie draws from - full, so a navy
+	# opens the war at full strength)
 	"threatinc_reserveCapMonths": 6,
-	"threatinc_reserveInitialMonths": 3,
+	"threatinc_reserveInitialMonths": 6,
 	# NPC expeditions and sorties never draw a colony below this fraction of its
 	# cap (the home garrison's stock); your own colonies use the player floor
 	# instead - 0 means your orders may commit the whole stock (a colony's
@@ -713,6 +714,10 @@
 	# next, and goes home whole below softenRetreatStrength
 	"threatinc_softenEnabled": true,
 	"threatinc_softenMargin": 2.0,
+	# a force sails only with softenHeadroom over what the muster will ask
+	# (the swarms reinforce while it gathers); one that never goes in is
+	# refunded in full
+	"threatinc_softenHeadroom": 1.5,
 	"threatinc_softenMaxFP": 12000,
 	"threatinc_softenPool": true,
 	"threatinc_softenMusterDays": 15,
@@ -805,6 +810,13 @@
 	# is a quarter of crew capacity, which tracks fleet size - one difficulty
 	# point of fleet lands about this much (measured: 22 points landed 947).
 	"threatinc_siegeRaidStrPerPoint": 43,
+	# ...and big enough that the beachhead outlives the hive's first
+	# counter-attack: this much over the 2:1 odds that overrun a fresh landing
+	# (0 sizes the landing for the raids alone)
+	"threatinc_siegeBeachheadMargin": 1.25,
+	# an NPC siege short of marines at its base draws the rest from its
+	# faction's other bases in reach, nearest first
+	"threatinc_siegePoolMarines": true,
 	# Cap on how many fleets a siege grows to. A size-8 hive behind Heavy
 	# Batteries needs ~3,600 ground strength once its war-strata are suppressed
 	# by the tactical pass; at ~430 per full-size fleet that is 9 fleets.

@@ -97,6 +97,10 @@ public class ThreatIncConfig {
 	public static boolean homeRelics()        { return b("threatinc_homeRelics", true); }
 	/** Ground (raid) strength one difficulty point of siege fleet lands - measured, about a quarter of crew capacity. */
 	public static float siegeRaidStrPerPoint() { return f("threatinc_siegeRaidStrPerPoint"); }
+	/** A siege lands this much over the 2:1 odds at which the hive overruns a fresh beachhead; 0 sizes for the raids only. */
+	public static float siegeBeachheadMargin() { return f("threatinc_siegeBeachheadMargin"); }
+	/** Whether an NPC siege short of marines at its base draws them from its faction's other bases in reach. */
+	public static boolean siegePoolMarines()  { return b("threatinc_siegePoolMarines", true); }
 	/** Most fleets a siege expedition grows to while sizing itself to the target's defenses. */
 	public static int siegeMaxFleets()       { return i("threatinc_siegeMaxFleets"); }
 	/** Siege passes (tactical bombardment / landing / commando raid) an expedition may run per colony. */
@@ -506,6 +510,8 @@ public class ThreatIncConfig {
 	public static boolean softenEnabled()     { return b("threatinc_softenEnabled", true); }
 	/** Combat FP a hunting force brings per FP of Defense Swarm it hunts. */
 	public static float softenMargin()        { return f("threatinc_softenMargin"); }
+	/** A hunting force sails only with this much over what its muster will ask of it. */
+	public static float softenHeadroom()      { return f("threatinc_softenHeadroom"); }
 	/** Most combat FP one hunting force sails with. */
 	public static float softenMaxFP()         { return f("threatinc_softenMaxFP"); }
 	/** Most combat FP in one fleet of a hunting force. */

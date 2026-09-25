@@ -367,3 +367,113 @@ days, 0 exceptions.
 - Hunts: 10 raised, 6 went in, 1 cleared its system, 6 broke off badly hurt. Hegemony
   went in over Surtr with 19 fleets merged, 8,188 FP against 2,479. Absorbed 38; no
   garrison over its cap.
+
+## Run 6 (2026-09-25 overnight): two brand-new games
+Laptop panel, harness. Game 1 was a normal new game (save `save_NewGameTest_...186`,
+mercenary start, about 6.5 years). Game 2 had Instant War on (`save_InstantWarTest_...893`,
+about 5 years). The player fleet sat idle in hyperspace. To keep the clock running, each save
+was edited: supplies topped up, CR reset, pirates and Pathers set neutral to the player. Debug
+logging and debug mode were on for the run. Both LunaLib settings and launcher prefs are restored.
+Both logs: **0 exceptions.** New-game creation, the first poll and every relaunch were clean.
+
+**Game 1 (normal start).**
+- The hive seeded in Zendar, 18 LY from the core. It grew unseen for about 4 years through
+  phase 1 into phase 2 (size-6 home, 16-17 LY reach), spreading only to fringe systems.
+- No strike, no scout, no NPC reaction until about day 1400. Strikes need
+  `ThreatSwarmScouts.swarmKnows`, and nothing human was in reach. Mobilisation and NPC scouting
+  are purely strike-driven (`ThreatWarState.recordStrike`), so a far seed is a silent seed.
+  Design note: if a quiet opening of several years is unwanted, a distance cap on the OG seed
+  or an alarm-driven sweep would change it.
+- Then: every faction mobilised within a year, hives were found by scouts, hunting forces
+  merged up to ~5.4k FP, and there were 4 NPC purge expeditions (one overran Beta Shevar I).
+- Final score: Threat colonies 25 founded, 0 lost. Threat fronts 3 won, 8 lost. No hive burned.
+- The war board rendered correctly throughout: fog ("Unknown", figures readable), phase strip,
+  faction selector, and a player with no colonies.
+
+**Game 2 (Instant War).**
+- Placement matched the doc: 10 colonies in 6 systems, 3 within 15 LY of the core,
+  every faction mobilised, garrisons full.
+- Two things differ from the doc (section "Instant war"):
+  - The first strike came at the 20th tick, not in the first month. The swarm must scout first (hive fog of war).
+  - Phase 3 arrived at the 30th tick.
+- After 5 years:
+  - Threat: 16 systems / 44 worlds / 162 swarms, and hives 5 and 7 LY from the core.
+  - Human side: 1 hive burned (Ghan), 2 human worlds conquered.
+  - 32 Persean purges made 19 landings and 18 were overrun.
+- Same verdict as Runs 3-5: the Threat wins comfortably.
+
+**Fixed (jar rebuilt; the first fix verified in game, the last two not):**
+- A hunting force the yards built short of its floor folded, and its provisions came
+  back at the return rule's 50%. The fleets never sailed, so the refund is now in full
+  (`ThreatSoftening.send`). The stand-down line now reads "..., N fuel and M supplies back in the depots".
+  Verified by the ledger (Chicomoztoc fuel/supplies unchanged across a stand-down).
+- That stand-down fired for 1-4 FP shortfalls ("built 9430 FP of the 9434"). Each time,
+  ~20 fleets were spawned and folded (Chicomoztoc x3, Jangala x2, Ailmar x2). A remainder under
+  the 25-point minimum ask was dropped. It is now rounded up when the depot can pay. UNTESTED.
+- The Aid/Defend disabled tooltip said "None of your colonies with a military structure
+  is in reach of X", but there has been no range since 2026-09-05. It now names the real
+  need: a military structure and a Waystation. UNTESTED text.
+
+**Proposals, not built (balance/design, your call):**
+1. **Coalition answers feed garrisons.** An NPC answer to a siege call is one
+   `guardFleetFP` (100 FP) fleet with no odds check. Seen: 137 FP against 171 FP, five hunts over
+   one system, no swarm killed. A gate of garrison x `softenMargin` was tried for one run and
+   REVERTED: it cut answers from 53 to 3, since 100 FP never clears it. Better: answer by
+   contributing to the faction's pooled hunting force (`ThreatSoftening`) instead of a lone fleet.
+2. **Hunting forces stand down at the muster.** A force is sized against the weakest
+   colony at send time. It waits 15-45 days to gather, and the hive reinforces meanwhile
+   (e.g. 433 -> 1329 FP). It then stands down "outmatched at the muster" and loses 50% of its
+   provisions. Repeats monthly per base (Hesperus/Gilead vs Zendar). Options:
+   - size the floor with headroom (x1.25), or against the second-weakest colony;
+   - refund in full when a force stands down without having fought.
+3. **Purge landings are sized to lose.** The landing is sized by `siegeRaidStrNeeded` (e.g. 1200),
+   and the hive counter-attacks at 3-5x that; 18 of 19 Persean landings were overrun.
+   `siegeBaseFor` also sends every purge from the same one or two nearest bases.
+4. Log hygiene:
+   - "front is -47 short of holding" prints a negative number (`ThreatGroundFronts` ~2849,
+     the margin is missing);
+   - "no commando raid - 0 marines aboard" is logged x3 in the same ms;
+   - "Expedition postponed at Madeira" does not name the system, so it repeats within the same ms.
+
+**Harness additions:** `ui.ps1 -Action rclick` (right-click sets a map course). The
+scratch loop scripts for this run (resupply with save-completion check, dialog dismiss via
+gameshot pixel, pause detection by date-pixel hash) are in `%TEMP%\ng`. Two lessons:
+- An accident pop-up blocks F5, so never kill the game on an unconfirmed save.
+- Stopping a background shell that launched the game kills the game.
+
+## Run 7 (2026-09-25 morning): proposals 1-4 built, fresh Instant War game
+User: "try all the proposals and then run the test again ... they should at least have some
+victories at the beginning while they are all at full strength". Built (jar rebuilt, NOT committed):
+- **Coalition answers are hunting forces** (`ThreatCoalition.answerCalls` -> `ThreatSoftening.send`,
+  now returns whether a force sailed). A faction already hunting there has answered; a resting,
+  sieging or short base retries while the call stands. The lone 100 FP Hunt stays as the
+  `softenEnabled`-off path.
+- **Hunting-force headroom** (`softenHeadroom` 1.5): the floor a force sails with is garrison x
+  margin x 1.5; the muster still asks garrison x margin. A force that stands down without going
+  in is refunded in full (`standDownAll`).
+- **Beachhead sizing** (`beachheadNeeded`, `siegeBeachheadMargin` 1.25): the landing must meet the
+  hive's first counter-attack under the 2:1 overrun odds at `frontLandingMult`. Defences read at no
+  less than the Swarm Nexus anchor (`nexusAnchoredDefense`), since a young colony reads vanilla's
+  shallow base until its Nexus goes up.
+- **Marine pooling** (`siegePoolMarines`, `marinePool`): found in the first test minutes - a size-4
+  beachhead is ~2,400 marines and a full depot ~560, so nothing sailed. A short siege now draws the
+  rest from its faction's other bases in reach.
+- **Fallback siege bases** (`siegeBasesFor`, `SIEGE_BASE_TRIES` 3): while the nearest base cannot
+  launch, the next two nearest (any mobilised NPC faction) try. `siegeBaseFor` is still the nearest.
+- **Full depots at mobilisation**: `reserveInitialMonths` 3 -> 6 (the cap). The stored LunaLib value
+  was also set to 6 (it shadowed the default).
+- Logs: "short of holding" now prints the troop gap to the margined target (was negative); "no
+  commando raid" is `logQuiet` per world; every "Expedition postponed" names its system.
+
+Test: new Instant War game `save_IWRunSeven_...161` (pirates/Pathers neutral, supplies edited),
+5 cycles, then 2 more after the Nexus-anchor fix. **0 exceptions.**
+- Years 1-2: **10 ground victories** (Delta Berene I and II, Ferragut, Heimos, Sentinel, Frey, Rhesh,
+  Beta Guaya I, New Caldwell, Jeremiah's World), 2 beachheads overrun. 88 coalition hunting forces;
+  34 sieges pooled marines; 25 sailed from a fallback base. Near-miss folds: 0 (round-up works).
+- Years 3-5: the Threat re-colonises the burned worlds and the human landings grind: bigger
+  (1,400-3,100 marines after the anchor fix), mostly "battered", several still overrun. No hive
+  burned after ~day 1300. Home system Beta Glith (8 worlds, 39 LY out) never touched.
+- Day 1921: Threat 22 worlds / 10 systems / 72 swarms, phase 3, 8 hives burned. Run 6 at 5 years:
+  44 worlds / 16 systems / 162 swarms, 1 burned.
+- Still open: 32 of 88 hunting forces stood down at the muster (now refunded in full); young hives'
+  batteries push counter-attacks above the Nexus anchor (Beta Berene II: 600 landed, 1,771 counter).
