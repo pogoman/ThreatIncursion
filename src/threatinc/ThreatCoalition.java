@@ -18,8 +18,9 @@ import com.fs.starfarer.api.util.Misc;
  * <p>Two things happen on the slow tick. When a mobilised faction launches a
  * siege against a hive system it posts a CALL for coalitionCallDays; every
  * OTHER mobilised faction with a base in reach that has not yet answered
- * rolls coalitionSupportChance and, on success, sends an Intercept task force
- * to the hive's jump-point so the siege lands under cover.
+ * rolls coalitionSupportChance and, on success, raises a pooled hunting force
+ * against the system's Defense Swarms (ThreatSoftening.send) so the siege
+ * lands under cover.
  *
  * <p>And allies help each other's colonies. Every mobilised faction looks at
  * every other mobilised faction's colonies with a need the sector would post
@@ -109,9 +110,25 @@ public class ThreatCoalition {
 				if (faction == null || faction.isPlayerFaction()) continue; // the player answers by hand
 				MarketAPI base = ThreatFleetOrders.pickBase(faction, system.getLocation());
 				if (base == null) continue;
+				if (ThreatIncConfig.softenEnabled() && ThreatSoftening.hunting(factionId, c.systemId)) {
+					// its hunting force is already there: that is the answer
+					c.answered.add(factionId);
+					continue;
+				}
 				if (random.nextFloat() >= ThreatIncConfig.coalitionSupportChance()) continue;
 				// hunts the system's Defense Swarms under cover of the siege
 				// (Intercept at the jump-point until 2026-09-24)
+				if (ThreatIncConfig.softenEnabled()) {
+					// with a pooled hunting force sized to win, not one guard fleet (a lone 100 FP
+					// answer met 171 FP swarms, Run 6); a faction that cannot pay for one yet
+					// tries again while the call stands
+					if (ThreatSoftening.resting(base) || IncursionManager.hasSiegeableHive(base)) continue;
+					if (!ThreatSoftening.send(faction, base, system)) continue;
+					c.answered.add(factionId);
+					ThreatIncConfig.log("Coalition: " + factionId + " answers " + c.callerFactionId
+							+ "'s call at " + system.getName() + " with a hunting force");
+					continue;
+				}
 				ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchHunt(faction, system);
 				c.answered.add(factionId);
 				if (o != null) {

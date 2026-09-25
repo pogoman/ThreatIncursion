@@ -262,17 +262,20 @@ public class ThreatSoftening {
 		return result;
 	}
 
-	protected static void send(FactionAPI faction, MarketAPI base, StarSystemAPI system) {
+	/** Raises a hunting force against the system; true when one sailed for the muster. */
+	protected static boolean send(FactionAPI faction, MarketAPI base, StarSystemAPI system) {
 		MarketAPI first = weakest(system.getId());
-		if (first == null) return;
+		if (first == null) return false;
 		String key = "huntwait:" + faction.getId() + ":" + system.getId();
 		float margin = Math.max(0f, ThreatIncConfig.softenMargin());
-		float floor = garrisonFP(first) * margin;
+		// the swarms reinforce while the force gathers (433 -> 1,329 FP over Zendar, Run 6):
+		// it sails with headroom over what the muster will ask of it
+		float floor = garrisonFP(first) * margin * Math.max(1f, ThreatIncConfig.softenHeadroom());
 		float max = ThreatIncConfig.softenMaxFP();
 		if (floor > max) {
 			ThreatIncConfig.logQuiet(key, "Hunting force stays at " + base.getName() + ": " + first.getName()
 					+ "'s swarms need " + (int) floor + " FP, above softenMaxFP");
-			return;
+			return false;
 		}
 		float want = IncursionManager.siegeOrbitFP(IncursionManager.collectSiegeTargets(null, system)) * margin;
 		want = Math.max(floor, Math.min(want, max));
@@ -283,7 +286,7 @@ public class ThreatSoftening {
 		if (builds < floor) {
 			ThreatIncConfig.logQuiet(key, "Hunting force waits at " + base.getName() + ": " + bases.size()
 					+ (bases.size() == 1 ? " base pays for " : " bases pay for ") + (int) builds + " FP, " + first.getName() + "'s swarms need " + (int) floor);
-			return;
+			return false;
 		}
 
 		long now = Global.getSector().getClock().getTimestamp();
@@ -315,6 +318,9 @@ public class ThreatSoftening {
 			while (built < want && sent.size() < MAX_FLEETS) {
 				float size = Math.min(perFleet, fleetCap(faction.getId()));
 				float ask = Math.min(Math.min(size, want - built) / mult, budget);
+				// a remainder under the smallest fleet is rounded up, not dropped: dropped,
+				// the force came in a few points under its floor and folded (9430 of 9434)
+				if (ask < 25f) ask = Math.min(25f, budget);
 				if (ask < 25f) break;
 				ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchHunt(faction, b, first, ask, force.id, muster);
 				if (o == null) break;
@@ -337,13 +343,24 @@ public class ThreatSoftening {
 				from.add(b.getName());
 			}
 		}
-		if (sent.isEmpty()) return;
+		if (sent.isEmpty()) return false;
 		if (built < floor) {
 			// the yards built short of the numbers: back into the depot, provisions refunded
-			for (ThreatFleetOrders.Order o : sent) ThreatFleetOrders.fold(o, baseOf(o));
+			// in full - the fleets never sailed, so the return rule's refund cut does not apply
+			float backFuel = 0f, backSupplies = 0f;
+			for (ThreatFleetOrders.Order o : sent) {
+				MarketAPI home = baseOf(o);
+				if (home != null && o.fleet != null) {
+					backFuel += o.fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL);
+					backSupplies += o.fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_SUPPLIES);
+					refundShort(o.fleet, home, 1f);
+				}
+				ThreatFleetOrders.fold(o, home);
+			}
 			ThreatIncConfig.log("Hunting force from " + base.getName() + " built " + (int) built + " FP of the "
-					+ (int) floor + " " + first.getName() + "'s swarms need - stood down");
-			return;
+					+ (int) floor + " " + first.getName() + "'s swarms need - stood down, " + (int) backFuel
+					+ " fuel and " + (int) backSupplies + " supplies back in the depots");
+			return false;
 		}
 		forces().put(force.id, force);
 		ThreatColonyManager.announceAlways(Misc.ucFirst(faction.getDisplayNameWithArticle())
@@ -353,6 +370,7 @@ public class ThreatSoftening {
 				+ sent.size() + " fleets (" + shape(sent) + "), " + (int) built + " FP built (wanted " + (int) want + ", pays for "
 				+ (int) builds + ") against " + first.getName() + " first (" + (int) garrisonFP(first)
 				+ " FP), mustering");
+		return true;
 	}
 
 	/** How close a follower must be to its lead to be merged into it. */
@@ -658,6 +676,10 @@ public class ThreatSoftening {
 		if (f.engaged) IncursionManager.huntThinned(f.systemId);
 		for (ThreatFleetOrders.Order o : orders) {
 			o.fleet.getMemoryWithoutUpdate().unset(MemFlags.FLEET_IGNORES_OTHER_FLEETS);
+			// a force that never went in spent nothing: provisions back in full now, so the
+			// return rule's refund cut finds nothing left to cut
+			MarketAPI home = baseOf(o);
+			if (!f.engaged && home != null) refundShort(o.fleet, home, 1f);
 			ThreatFleetOrders.standDown(o, why);
 		}
 	}

@@ -909,7 +909,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		// frontMinMarines is the mod's floor for a viable marine force
 		// everywhere else - the player ground deploy, strike landings.
 		if (groundStr < ThreatIncConfig.frontMinMarines()) {
-			ThreatIncConfig.log("Siege pass at " + rec.marketName + ": no commando raid - "
+			// every fleet's pass lands here with the same combined figure: once per world
+			ThreatIncConfig.logQuiet("nocommando:" + rec.marketId, "Siege pass at " + rec.marketName + ": no commando raid - "
 					+ (int) groundStr + " marines aboard (need "
 					+ (int) ThreatIncConfig.frontMinMarines() + ")");
 			return;

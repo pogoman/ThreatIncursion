@@ -87,6 +87,14 @@ switch ($Action) {
     [Win]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
     Write-Output ("CLICK {0},{1} (screen {2},{3})" -f $X, $Y, $sx, $sy)
   }
+  "rclick" {
+    [Win]::SetForegroundWindow($h) | Out-Null; Start-Sleep -Milliseconds 150
+    $sx = $origin.X + $X; $sy = $origin.Y + $Y
+    [Win]::SetCursorPos($sx, $sy) | Out-Null; Start-Sleep -Milliseconds 120
+    [Win]::mouse_event(0x0008, 0, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60
+    [Win]::mouse_event(0x0010, 0, 0, 0, [UIntPtr]::Zero)
+    Write-Output ("RCLICK {0},{1} (screen {2},{3})" -f $X, $Y, $sx, $sy)
+  }
   "pixel" {
     $bmp = New-Object System.Drawing.Bitmap 1, 1
     $g = [System.Drawing.Graphics]::FromImage($bmp)

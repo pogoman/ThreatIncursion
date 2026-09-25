@@ -173,15 +173,15 @@ public class ThreatAid {
 		return null;
 	}
 
-	protected static String noSourceReason(Vector2f hyperLoc, String what) {
-		List<MarketAPI> inReach = sources(hyperLoc);
-		if (inReach.isEmpty()) {
-			return "None of your colonies with a military structure (Patrol HQ, Military Base or "
-					+ "High Command) is in reach of " + what + ".";
+	protected static String noSourceReason(Vector2f hyperLoc) {
+		List<MarketAPI> bases = sources(hyperLoc);
+		if (bases.isEmpty()) {
+			return "None of your colonies has both a military structure (Patrol HQ, Military Base "
+					+ "or High Command) and a Waystation.";
 		}
-		StringBuilder sb = new StringBuilder("No colony of yours in reach can field it: ");
+		StringBuilder sb = new StringBuilder("No colony of yours can field it: ");
 		List<String> parts = new ArrayList<String>();
-		for (MarketAPI m : inReach) {
+		for (MarketAPI m : bases) {
 			parts.add(m.getName() + " " + (int) Math.max(0f, ThreatAidCapacity.freeFP(m)) + " FP free");
 		}
 		return sb.append(ThreatWarBoard.join(parts)).append(".").toString();
@@ -223,7 +223,7 @@ public class ThreatAid {
 	protected static Quote quoteTaskForce(Quote q, Vector2f hyperLoc, String what, MarketAPI self) {
 		q.source = pickTaskForceSource(hyperLoc, self);
 		if (q.source == null) {
-			q.reason = noSourceReason(hyperLoc, what) + " A task force needs at least "
+			q.reason = noSourceReason(hyperLoc) + " A task force needs at least "
 					+ (int) (ThreatIncConfig.aidGuardMinFP() * ThreatAidCapacity.TASK_FORCE_HULL_MULT)
 					+ " FP.";
 			return q;
@@ -294,7 +294,7 @@ public class ThreatAid {
 		if (best == null) {
 			List<MarketAPI> inReach = sources(loc);
 			if (inReach.isEmpty()) {
-				q.reason = noSourceReason(loc, target.getName());
+				q.reason = noSourceReason(loc);
 			} else {
 				List<String> parts = new ArrayList<String>();
 				for (MarketAPI m : inReach) {

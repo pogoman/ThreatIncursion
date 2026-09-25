@@ -1258,31 +1258,46 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// that base's reserve (launchSiegeExpedition) - a faction the swarm
 			// has never struck launches nothing, because it has nothing banked
 			// to launch with (decided 2026-09-05: no expedition from nowhere)
-			MarketAPI base = siegeBaseFor(system);
-			if (base == null) continue;
-
-			FactionAPI faction = base.getFaction();
-			// ONE sizing (siegeSizes) for the launch, the hunting gate
-			// (hasSiegeableHive) and the convoy planner (stagingWants): a base
-			// judged able to take the orbit sails the flotilla that was judged,
-			// or the judgement locks it out of both sieging and hunting
+			// The nearest base is the system's (it stages, and it alone is barred
+			// from hunting there); while it cannot pay, the next nearest in reach
+			// may sail instead - every Persean siege of Run 6 came from the same
+			// two bases while the rest of the League's depots sat full
+			java.util.List<MarketAPI> bases = siegeBasesFor(system);
+			if (bases.isEmpty()) continue;
 			java.util.List<MarketAPI> targets = collectSiegeTargets(colony, system);
 			boolean anyGarrisoned = anyTargetGarrisoned(targets);
-			int difficulty = siegeDifficulty(base, faction, targets, anyGarrisoned);
-			java.util.List<Integer> fleetSizes = siegeSizes(base, faction, system);
-			ThreatIncConfig.logQuiet("sizing:" + system.getId(), "Siege sizing vs " + system.getName() + ": " + fleetSizes.size()
-					+ " fleets, ground str ~" + (int) siegeRaidStrEstimate(fleetSizes)
-					+ " against " + (int) siegeRaidStrNeeded(targets) + " needed, ~"
-					+ (int) ThreatAidCapacity.expeditionPoints(fleetSizes) + " FP against "
-					+ (int) siegeOrbitFaced(targets) + " FP of Defense Swarms faced");
-
-			// a postponed (short of marines) or refused (over free FP) launch
-			// returns null WITHOUT stamping the siblings' cooldown - so if we
-			// announced regardless, every colony in the system would each fire
-			// its own "launched a purge expedition" beat for an expedition that
-			// never sailed (2 for a 2-colony system, 4 for a 4-colony one)
-			ThreatPurgeFGI purge = launchSiegeExpedition(base, faction, system,
-					targets, fleetSizes, false, random);
+			MarketAPI base = null;
+			FactionAPI faction = null;
+			int difficulty = 0;
+			ThreatPurgeFGI purge = null;
+			for (int i = 0; i < bases.size() && i < SIEGE_BASE_TRIES && purge == null; i++) {
+				base = bases.get(i);
+				faction = base.getFaction();
+				// ONE sizing (siegeSizes) for the launch, the hunting gate
+				// (hasSiegeableHive) and the convoy planner (stagingWants): a base
+				// judged able to take the orbit sails the flotilla that was judged,
+				// or the judgement locks it out of both sieging and hunting
+				difficulty = siegeDifficulty(base, faction, targets, anyGarrisoned);
+				java.util.List<Integer> fleetSizes = siegeSizes(base, faction, system);
+				if (i == 0) {
+					ThreatIncConfig.logQuiet("sizing:" + system.getId(), "Siege sizing vs " + system.getName() + ": " + fleetSizes.size()
+							+ " fleets, ground str ~" + (int) siegeRaidStrEstimate(fleetSizes)
+							+ " against " + (int) siegeRaidStrNeeded(targets) + " needed, ~"
+							+ (int) ThreatAidCapacity.expeditionPoints(fleetSizes) + " FP against "
+							+ (int) siegeOrbitFaced(targets) + " FP of Defense Swarms faced");
+				}
+				// a postponed (short of marines) or refused (over free FP) launch
+				// returns null WITHOUT stamping the siblings' cooldown - so if we
+				// announced regardless, every colony in the system would each fire
+				// its own "launched a purge expedition" beat for an expedition that
+				// never sailed (2 for a 2-colony system, 4 for a 4-colony one)
+				purge = launchSiegeExpedition(base, faction, system,
+						targets, fleetSizes, false, random);
+				if (purge != null && i > 0) {
+					ThreatIncConfig.log("Siege of " + system.getName() + " sails from " + base.getName()
+							+ ": " + bases.get(0).getName() + ", the nearest base, cannot pay for it");
+				}
+			}
 			if (purge == null) continue;
 
 			// the launch is the player-facing beat of the whole siege system:
@@ -1315,9 +1330,27 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	/** The base an NPC siege of this hive system sails from: the nearest military world of a mobilised NPC faction in reach, or null. */
 	public static MarketAPI siegeBaseFor(StarSystemAPI system) {
-		if (system == null) return null;
-		MarketAPI base = null;
-		float bestDist = Float.MAX_VALUE;
+		java.util.List<MarketAPI> bases = siegeBasesFor(system);
+		return bases.isEmpty() ? null : bases.get(0);
+	}
+
+	/** The siege base's own faction's other bases in reach of the hive system, nearest first: where a short landing draws its marines. */
+	public static java.util.List<MarketAPI> marinePool(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
+		java.util.List<MarketAPI> result = new ArrayList<MarketAPI>();
+		for (MarketAPI m : siegeBasesFor(system)) {
+			if (m != base && faction.getId().equals(m.getFactionId())) result.add(m);
+		}
+		return result;
+	}
+
+	/** How many bases, nearest first, a siege tries before it waits: the nearest, then the fallbacks. */
+	public static final int SIEGE_BASE_TRIES = 3;
+
+	/** Every military world of a mobilised NPC faction in reach of the hive system, nearest first. */
+	public static java.util.List<MarketAPI> siegeBasesFor(StarSystemAPI system) {
+		java.util.List<MarketAPI> result = new ArrayList<MarketAPI>();
+		if (system == null) return result;
+		final java.util.Map<MarketAPI, Float> dist = new java.util.HashMap<MarketAPI, Float>();
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (market.getFaction() == null || market.getFaction().isPlayerFaction()) continue;
 			if (Factions.THREAT.equals(market.getFactionId())) continue;
@@ -1326,12 +1359,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (!isBase(market)) continue;
 			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(), system.getLocation());
 			if (d > expeditionRangeLY(market)) continue;
-			if (d < bestDist) {
-				bestDist = d;
-				base = market;
-			}
+			dist.put(market, d);
+			result.add(market);
 		}
-		return base;
+		java.util.Collections.sort(result, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				return Float.compare(dist.get(a), dist.get(b));
+			}
+		});
+		return result;
 	}
 
 	/**
@@ -1415,12 +1451,40 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		for (MarketAPI target : targets) {
 			if (target == null) continue;
 			float d = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.getDefenderStr(target);
+			// a young colony reads vanilla's shallow base until its Swarm Nexus goes
+			// up, weeks before the siege arrives: sized on that, landings of 300
+			// met counter-attacks of 1,180 (Rhesh, Run 7). Size on the Nexus anchor.
+			d = Math.max(d, nexusAnchoredDefense(target));
 			// an already-suppressed world reads its suppressed figure; an intact one will be
 			if (!ThreatColonyManager.anyOrganDisrupted(target)) d *= SIEGE_SUPPRESSED_DEFENSE_FRACTION;
 			def = Math.max(def, d);
 		}
 		float threshold = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.DISRUPTION_THRESHOLD;
-		return def * threshold / Math.max(0.01f, 1f - threshold) * SIEGE_RAID_HEADROOM;
+		float raid = def * threshold / Math.max(0.01f, 1f - threshold) * SIEGE_RAID_HEADROOM;
+		return Math.max(raid, beachheadNeeded(def));
+	}
+
+	/** A hive's defender strength once its Swarm Nexus stands (SwarmNexus: the size anchor over the strata left, times the Nexus bonus), batteries aside. */
+	public static float nexusAnchoredDefense(MarketAPI target) {
+		int strataLeft = Math.max(0, target.getSize() - ThreatGroundFronts.strataHeld(target.getId()));
+		return ThreatIncConfig.hiveDefensePerSize() * strataLeft
+				* (1f + ThreatIncConfig.nexusDefenseBonus()) * ThreatIncConfig.groundDefenseMult();
+	}
+
+	/**
+	 * The landing that survives the first counter-attack: the hive throws its
+	 * whole defender strength at a fresh beachhead (landing effectiveness
+	 * frontLandingMult, no cover yet) and overruns it past 2:1 odds
+	 * (ThreatGroundFronts.hiveCounterAttack). Sized for the raids alone - a
+	 * quarter of the defences - 18 of 19 Persean landings were overrun in
+	 * Run 6. siegeBeachheadMargin over the 2:1 line; 0 sizes for the raids only.
+	 */
+	public static float beachheadNeeded(float defenderStr) {
+		float margin = ThreatIncConfig.siegeBeachheadMargin();
+		if (margin <= 0f || defenderStr <= 0f) return 0f;
+		float e = Math.max(0.1f, ThreatIncConfig.groundStrengthExponent());
+		float odds = (float) Math.pow(2f, 1f / e);
+		return defenderStr / (Math.max(0.05f, ThreatIncConfig.frontLandingMult()) * odds) * margin;
 	}
 
 	/**
@@ -1660,7 +1724,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (orbitNeed > 0f && fieldable < orbitNeed) {
 				float garrison = siegeOrbitFaced(targets);
 				int allowed = (int) (fieldable / Math.max(0.01f, ThreatIncConfig.npcSiegeOrbitMargin()));
-				ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + ": "
+				ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 						+ (int) fieldable + " FP against " + (int) garrison + " FP of Defense Swarms over "
 						+ system.getName() + " (takes at most " + allowed + ")");
 				ThreatSwarmBountyIntel.post(base, system, allowed);
@@ -1678,9 +1742,18 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// what the base may actually commit: its stock above the floor
 			float haveMarines = ThreatReserves.available(base,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
+			// a navy's landing is the navy's: short at the base, the faction's other
+			// bases in reach put their marines aboard (a size-4 hive's beachhead is
+			// ~2,400 troops; one full depot holds ~560)
+			java.util.List<MarketAPI> marinePool = haveMarines < lift && !faction.isPlayerFaction()
+					&& ThreatIncConfig.siegePoolMarines() ? marinePool(base, faction, system)
+					: new ArrayList<MarketAPI>();
+			for (MarketAPI m : marinePool) {
+				haveMarines += ThreatReserves.available(m, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
+			}
 			float minMarines = wants[0] * minMarinesFraction(faction);
 			if (wants[0] > 0f && haveMarines < minMarines) {
-				ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + ": "
+				ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 						+ (int) haveMarines + " of " + (int) wants[0]
 						+ " marines available (need " + (int) minMarines + ")");
 				return null;
@@ -1732,7 +1805,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				float minProvisions = Math.max(mustPay,
 						points * ThreatIncConfig.expeditionMinProvisionsFraction());
 				if (points > 0 && payable < minProvisions) {
-					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + ": "
+					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 							+ (int) haveFuel + "/" + (int) (points * fuelPerPoint) + " fuel, "
 							+ (int) haveSupplies + "/" + (int) (points * suppliesPerPoint)
 							+ " supplies pay for " + (int) Math.min(points, payable) + " of the "
@@ -1754,7 +1827,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				// so a trim below what the target needs can never sail
 				if (ThreatIncConfig.npcSiegeFullStrength()
 						&& siegeRaidStrEstimate(params.fleetSizes) < strGoal) {
-					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + ": "
+					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 							+ (int) haveFuel + " fuel, " + (int) haveSupplies + " supplies pay for "
 							+ (int) siegeRaidStrEstimate(params.fleetSizes) + " of the "
 							+ (int) strGoal + " ground strength the siege sails with");
@@ -1764,7 +1837,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				// for convoys (the base's job, so no request)
 				float brings = ThreatAidCapacity.expeditionPoints(params.fleetSizes);
 				if (orbitNeed > 0f && brings < orbitNeed) {
-					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + ": "
+					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 							+ (int) haveFuel + " fuel, " + (int) haveSupplies + " supplies pay for "
 							+ (int) brings + " of the " + (int) orbitNeed + " FP the orbit needs");
 					return null;
@@ -1777,6 +1850,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// marines: draw up to the tier's goal; provisions still to the want
 			drawn[0] = ThreatReserves.drawAbove(base,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES, lift);
+			java.util.List<String> pooledFrom = new ArrayList<String>();
+			for (MarketAPI m : marinePool) {
+				if (drawn[0] >= lift) break;
+				float got = ThreatReserves.drawAbove(m,
+						com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES, lift - drawn[0]);
+				if (got < 1f) continue;
+				drawn[0] += got;
+				pooledFrom.add(m.getName() + " " + (int) got);
+			}
+			if (!pooledFrom.isEmpty()) {
+				ThreatIncConfig.log("Expedition marines pooled for " + base.getName() + ": "
+						+ Misc.getAndJoined(pooledFrom));
+			}
 			for (int i = 1; i < drawn.length; i++) {
 				drawn[i] = ThreatReserves.drawAbove(base, ThreatReserves.COMMODITIES[i],
 						wants[i]);
