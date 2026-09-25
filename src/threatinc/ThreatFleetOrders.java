@@ -130,6 +130,15 @@ public class ThreatFleetOrders {
 		return fleet != null && fleet.getMemoryWithoutUpdate().getBoolean(ORBIT_FIGHT_KEY);
 	}
 
+	/** Whether the fleet is flying a Hunt order now. */
+	public static boolean onHunt(CampaignFleetAPI fleet) {
+		if (fleet == null) return false;
+		for (Order o : all()) {
+			if (o.fleet == fleet && KIND_HUNT.equals(o.kind)) return true;
+		}
+		return false;
+	}
+
 	/** One standing order and the fleet flying it. */
 	public static class Order {
 		public CampaignFleetAPI fleet;
@@ -260,6 +269,8 @@ public class ThreatFleetOrders {
 			if (o.daysLeft() <= 0f || stationGone || frontGone) {
 				all().remove(o);
 				if (o.aid && o.arrived && KIND_GUARD.equals(o.kind)) ThreatAid.onGuardCompleted(o);
+				// a hunting force's follower still wears the force's blinkers; home unable to react otherwise
+				if (KIND_HUNT.equals(o.kind)) o.fleet.getMemoryWithoutUpdate().unset(MemFlags.FLEET_IGNORES_OTHER_FLEETS);
 				// time served: home on the tracked leg, refund on arrival
 				ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId);
 				ThreatIncConfig.log("Order " + (stationGone ? "void - station gone: "
@@ -537,6 +548,16 @@ public class ThreatFleetOrders {
 	/** As above; {@code provision} false builds the hulls without drawing on the base (a restationed detachment). */
 	public static CampaignFleetAPI buildTaskForce(MarketAPI base, FactionAPI faction, float fp,
 			Vector2f destinationHyper, boolean provision) {
+		return buildTaskForce(base, faction, fp, destinationHyper, provision, false);
+	}
+
+	/**
+	 * As above; {@code spareOnly} draws only the base's spendable stock
+	 * (ThreatReserves.spendable) - a hunting force's fleets, which must not
+	 * spend what the base banked for its own siege.
+	 */
+	public static CampaignFleetAPI buildTaskForce(MarketAPI base, FactionAPI faction, float fp,
+			Vector2f destinationHyper, boolean provision, boolean spareOnly) {
 		StarSystemAPI system = base.getStarSystem();
 		SectorEntityToken entity = base.getPrimaryEntity();
 		if (system == null || entity == null || fp <= 0f) return null;
@@ -564,10 +585,12 @@ public class ThreatFleetOrders {
 
 		float points = fp / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
 		float dist = Misc.getDistanceLY(system.getLocation(), destinationHyper);
-		float fuel = ThreatReserves.drawAbove(base, Commodities.FUEL,
-				points * dist * ThreatIncConfig.expeditionFuelPerPointLY());
-		float supplies = ThreatReserves.drawAbove(base, Commodities.SUPPLIES,
-				points * ThreatIncConfig.expeditionSuppliesPerPoint());
+		float wantFuel = points * dist * ThreatIncConfig.expeditionFuelPerPointLY();
+		float wantSupplies = points * ThreatIncConfig.expeditionSuppliesPerPoint();
+		float fuel = spareOnly ? ThreatReserves.drawSpendable(base, Commodities.FUEL, wantFuel)
+				: ThreatReserves.drawAbove(base, Commodities.FUEL, wantFuel);
+		float supplies = spareOnly ? ThreatReserves.drawSpendable(base, Commodities.SUPPLIES, wantSupplies)
+				: ThreatReserves.drawAbove(base, Commodities.SUPPLIES, wantSupplies);
 		ThreatIncConfig.log("Order draw at " + base.getName() + ": " + (int) fuel + " fuel, "
 				+ (int) supplies + " supplies");
 		// remembered on the fleet so the return leg can refund what survives
@@ -755,7 +778,8 @@ public class ThreatFleetOrders {
 		StarSystemAPI system = hive.getStarSystem();
 		if (system == null) return null;
 		float days = ThreatIncConfig.softenDays();
-		CampaignFleetAPI fleet = buildTaskForce(base, faction, fp, system.getLocation());
+		// a force's fleets spend only what the base can spare, never its siege bank
+		CampaignFleetAPI fleet = buildTaskForce(base, faction, fp, system.getLocation(), true, forceId != null);
 		if (fleet == null) return null;
 		fleet.setName("Hunting Force");
 		// the player's hunting fleets earn swarm bounties on their own
@@ -798,6 +822,8 @@ public class ThreatFleetOrders {
 		// arrived); an aid hunt's standing was earned at its first station
 		if (o.arrived) o.credited = true;
 		o.arrived = false;
+		// "badly hurt" is measured from the strength it moved on with
+		ThreatReturns.rebaseline(o.fleet);
 		engageHunt(o.fleet, base, hive, o.daysLeft());
 	}
 
@@ -1080,6 +1106,8 @@ public class ThreatFleetOrders {
 	public static Order adoptHunt(CampaignFleetAPI fleet, FactionAPI faction,
 			StarSystemAPI hive, MarketAPI base) {
 		if (fleet == null || !fleet.isAlive() || faction == null || hive == null) return null;
+		// a convoy - an evacuation carrying a front's marines among them - never hunts
+		if (ThreatConvoys.isConvoy(fleet)) return null;
 		if (base == null) base = pickBase(faction, hive.getLocation());
 		if (base == null || base.getPrimaryEntity() == null) return null;
 		MarketAPI target = ThreatSoftening.huntTarget(hive.getId());
@@ -1088,6 +1116,9 @@ public class ThreatFleetOrders {
 		fleet.clearAssignments();
 		// nothing of its old group or task force moves it any more
 		ThreatPurgeFGI.cutLoose(fleet);
+		// a hunt has to engage: a Support/Defend leash or a siege's hold-station
+		// blinkers left on it, it orbited the garrison and never fought
+		fleet.getMemoryWithoutUpdate().unset(MemFlags.FLEET_IGNORES_OTHER_FLEETS);
 		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE, true);
 		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_WAR_FLEET, true);
 		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_FLEET_DO_NOT_GET_SIDETRACKED, true);

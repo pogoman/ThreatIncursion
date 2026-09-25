@@ -1,5 +1,6 @@
 package threatinc;
 
+import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
@@ -80,7 +81,31 @@ public class WarFootingDemand extends BaseIndustry {
 		if (market == null) return demand;
 		Industry footing = market.getIndustry(ThreatReserves.WAR_FOOTING_INDUSTRY);
 		if (footing == null) return demand;
-		return Math.min(demand, othersMax(market, footing, com.getId()));
+		// one walk of the industries per colony and commodity per clock instant:
+		// the reserve poll asked 200-600 times a pass, each walk allocating a
+		// demand list per industry (rc1 review)
+		long now = Global.getSector().getClock().getTimestamp();
+		if (now != peaceMemoStamp) {
+			PEACE_MEMO.clear();
+			peaceMemoStamp = now;
+		}
+		String key = market.getId() + "|" + com.getId();
+		Integer others = PEACE_MEMO.get(key);
+		if (others == null) {
+			others = othersMax(market, footing, com.getId());
+			PEACE_MEMO.put(key, others);
+		}
+		return Math.min(demand, others);
+	}
+
+	/** Market|commodity -> the other structures' highest demand, for the clock instant in peaceMemoStamp. */
+	private static final java.util.Map<String, Integer> PEACE_MEMO = new java.util.HashMap<String, Integer>();
+	private static long peaceMemoStamp = Long.MIN_VALUE;
+
+	/** Called on load: a reload at the same clock instant must not read the last session's figures. */
+	public static void forgetPeacetimeDemand() {
+		PEACE_MEMO.clear();
+		peaceMemoStamp = Long.MIN_VALUE;
 	}
 
 	protected static int othersMax(MarketAPI market, Industry exclude, String commodityId) {

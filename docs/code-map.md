@@ -15,7 +15,7 @@ to reconcile it.
 ### Mod bootstrap & config
 - `ThreatIncModPlugin.java` — mod entry point; registers the incursion manager and migrates old saves on load.
 - `ThreatIncConfig.java` — central settings accessor, reading LunaLib live config or bundled JSON fallback.
-- `LunaConfigBridge.java` — thin isolation wrapper around LunaLib's settings API, loaded only when LunaLib is present.
+- `LunaConfigBridge.java` — thin isolation wrapper around LunaLib's settings API, loaded only when LunaLib is present; also moves stored values still at an old default to a changed one, once per version.
 - `ThreatNexCompat.java` — Nexerelin compatibility, soft (memory flag + reflection): flags besieged human colonies `$nex_npc_no_invade` and calls off Nexerelin invasions and AI ground battles already under way there (docs/nexerelin.md).
 - `ThreatIncData.java` — persistent-data schema and accessors for all incursion state (stages, colonies, waves, garrisons, vitality).
 - `ThreatDebugWar.java` — the Instant War debug switch: once per toggle-on, founds a connected network of mature hive systems (home chain plus footholds, a quota near the core), fills their garrisons and mobilises every faction, so a fresh save can test the war balance; also the Hive Floor Size lever (`pollFloor`), which grows every hive colony below a set size through the normal growth step, once per value.

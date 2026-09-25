@@ -1288,7 +1288,7 @@ public class ThreatColonyManager {
 		String itemId = com.fs.starfarer.api.impl.campaign.ids.Items.FRAGMENT_FABRICATOR;
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
 			StarSystemAPI system = getSystem(systemId);
-			for (String marketId : new ArrayList<String>(ThreatIncData.colonyMarketsFor(systemId))) {
+			for (String marketId : new ArrayList<String>(ThreatIncData.colonyIdsIn(systemId))) {
 				MarketAPI market = findMarketAnywhere(marketId, system);
 				if (market == null) continue;
 				for (Industry ind : market.getIndustries()) {
@@ -2161,6 +2161,8 @@ public class ThreatColonyManager {
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
 			StarSystemAPI system = getSystem(systemId);
 			if (system == null) continue;
+			// only a system the swarm actually holds grows in place
+			if (ThreatIncData.getLiveColonyMarkets(systemId).isEmpty()) continue;
 
 			PlanetAPI planet = pickExpansionPlanet(system);
 			if (planet == null) continue;
@@ -2664,8 +2666,10 @@ public class ThreatColonyManager {
 			// small colony's swarm sent here to help) - keeps fighting but does
 			// not stop the nexus growing the real thing
 			int desired = desiredGarrisonCount(market);
+			// a swarm out raiding or on its way in holds its slot
+			int away = swarmsAway(marketId);
 			int fit = countFitGarrison(market);
-			if (fit >= desired) continue;
+			if (fit + away >= desired) continue;
 
 			Long last = ThreatIncData.garrisonSpawnTimes().get(marketId);
 			// a strained hive builds SLOWER, not just smaller: the replacement
@@ -2699,7 +2703,7 @@ public class ThreatColonyManager {
 			// fighting, wait for the next poll. Chosen before fabrication and
 			// retired only after it succeeds, so a failed spawn costs nothing.
 			CampaignFleetAPI recycled = null;
-			if (fleets.size() >= desired) {
+			if (fleets.size() + away >= desired) {
 				recycled = weakestWeakHolder(market);
 				if (recycled == null) continue;
 			}
@@ -2812,7 +2816,25 @@ public class ThreatColonyManager {
 	 * balancer re-sending to the same deficit every poll while help is en route.
 	 */
 	protected static int effectiveGarrison(MarketAPI market) {
-		return countLiveGarrison(market.getId()) + inboundReinforcements(market.getId());
+		// raiders out hold their slots here too, or a sibling filled the slot and the
+		// raider came home to a full garrison and was recycled
+		return countLiveGarrison(market.getId()) + swarmsAway(market.getId());
+	}
+
+	/**
+	 * Defense Swarms out of orbit that are coming back to this colony: its
+	 * raiders on a hunt and reinforcements inbound. They hold their slots, so
+	 * the nexus never refills a slot a swarm is coming home to - refilled, the
+	 * returning swarm had its hulls merged into the standing swarms, ~7,000 FP of
+	 * them into Tetra's garrison in one session, inflating every siege and hunt
+	 * gate (rc1 review).
+	 */
+	public static int swarmsAway(String marketId) {
+		int n = inboundReinforcements(marketId);
+		for (ThreatRaiders.Raider r : ThreatRaiders.raidersFrom(marketId)) {
+			if (r.fleet != null && r.fleet.isAlive()) n++;
+		}
+		return n;
 	}
 
 	/**
@@ -2971,8 +2993,9 @@ public class ThreatColonyManager {
 		makeDetectable(pick);
 
 		pick.clearAssignments();
+		// no hive's name on the fleet: under the fog it may be one nobody has found
 		pick.addAssignment(FleetAssignment.GO_TO_LOCATION, planet, 365f,
-				"reinforcing " + target.getName());
+				"reinforcing the hive");
 		// fallback so the fleet doesn't wander if arrival detection ever misses
 		pick.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
 		ThreatIncData.reinforcementFleets().put(pick.getId(), pick);
@@ -3037,65 +3060,22 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * A swarm coming home to a garrison already at its table's head-count
-	 * (a reinforcement that crossed a local fabrication, a raider whose slot
-	 * was refilled while it was out) is absorbed rather than seated: its hulls
-	 * join the standing swarms with room, weakest first, and whatever fits
-	 * nowhere is the hive's to recycle. Returns false when there is a free slot.
+	 * A swarm coming home to a garrison already at its table's head-count is
+	 * the hive's to recycle, not seated. Rare since away swarms hold their
+	 * slots ({@link #swarmsAway}): it takes the colony shrinking while the swarm
+	 * was out. Until the rc1 review its hulls were merged into the standing
+	 * swarms instead, which inflated the orbit every siege and hunt gate reads
+	 * (Tetra's garrison took ~7,000 FP that way) and then vanished at the next
+	 * muster, which re-embodies a swarm from its tier. Returns false when there
+	 * is a free slot.
 	 */
 	public static boolean absorbSurplus(MarketAPI market, CampaignFleetAPI fleet) {
 		if (market == null || fleet == null) return false;
 		if (countLiveGarrison(market.getId()) < nominalGarrison(market)) return false;
-		int cap = Global.getSettings().getInt("maxShipsInAIFleet");
-		List<CampaignFleetAPI> hosts = new ArrayList<CampaignFleetAPI>();
-		for (CampaignFleetAPI swarm : ThreatIncData.garrisonsFor(market.getId())) {
-			if (swarm == null || !swarm.isAlive() || swarm == fleet || swarm.getBattle() != null) continue;
-			if (swarm.getContainingLocation() != fleet.getContainingLocation()) continue;
-			hosts.add(swarm);
-		}
-		// no swarm on station to take the hulls in: seat it and let the next
-		// fabrication's recycler sort the count out
-		if (hosts.isEmpty()) return false;
-		java.util.Collections.sort(hosts, new java.util.Comparator<CampaignFleetAPI>() {
-			public int compare(CampaignFleetAPI a, CampaignFleetAPI b) {
-				return Float.compare(a.getFleetPoints(), b.getFleetPoints());
-			}
-		});
-		int ships = 0, fp = (int) fleet.getFleetPoints(), joined = 0;
-		java.util.Set<CampaignFleetAPI> grown = new java.util.HashSet<CampaignFleetAPI>();
-		for (com.fs.starfarer.api.fleet.FleetMemberAPI m : fleet.getFleetData().getMembersListCopy()) {
-			if (m.isStation()) continue;
-			CampaignFleetAPI into = null;
-			for (CampaignFleetAPI host : hosts) {
-				if (host.getFleetData().getNumMembers() < cap) {
-					into = host;
-					break;
-				}
-			}
-			if (into == null) break;
-			fleet.getFleetData().removeFleetMember(m);
-			m.setFlagship(false);
-			into.getFleetData().addFleetMember(m);
-			grown.add(into);
-			ships++;
-			joined += (int) m.getFleetPointCost();
-		}
-		for (CampaignFleetAPI host : grown) {
-			host.getFleetData().sort();
-			host.getFleetData().setSyncNeeded();
-			host.getFleetData().syncIfNeeded();
-			host.forceSync();
-			// grown past its birth strength: damage is measured from here (isUnderStrength)
-			com.fs.starfarer.api.campaign.rules.MemoryAPI mem = host.getMemoryWithoutUpdate();
-			float spawn = mem.contains(SWARM_SPAWN_FP) ? mem.getFloat(SWARM_SPAWN_FP) : 0f;
-			mem.set(SWARM_SPAWN_FP, Math.max(spawn, host.getFleetPoints()));
-		}
-		int left = fleet.getFleetData().getNumMembers();
+		int fp = (int) fleet.getFleetPoints();
 		fleet.despawn();
-		ThreatIncConfig.log("Surplus swarm absorbed at " + market.getName() + ": " + ships + " ships ("
-				+ joined + " of " + fp + " FP) into " + grown.size() + " swarms"
-				+ (left > 0 ? ", " + left + " recycled" : "") + " (" + countLiveGarrison(market.getId())
-				+ "/" + nominalGarrison(market) + ")");
+		ThreatIncConfig.log("Surplus swarm recycled at " + market.getName() + ": " + fp + " FP ("
+				+ countLiveGarrison(market.getId()) + "/" + nominalGarrison(market) + ")");
 		return true;
 	}
 
@@ -3177,7 +3157,7 @@ public class ThreatColonyManager {
 
 	public static int countLiveGarrisonInSystem(String systemId) {
 		int count = 0;
-		for (String marketId : ThreatIncData.colonyMarketsFor(systemId)) {
+		for (String marketId : ThreatIncData.colonyIdsIn(systemId)) {
 			count += countLiveGarrison(marketId);
 		}
 		return count;
@@ -3316,7 +3296,7 @@ public class ThreatColonyManager {
 		for (String systemId : new ArrayList<String>(ThreatIncData.stages().keySet())) {
 			StarSystemAPI system = getSystem(systemId);
 
-			for (String marketId : new ArrayList<String>(ThreatIncData.colonyMarketsFor(systemId))) {
+			for (String marketId : new ArrayList<String>(ThreatIncData.colonyIdsIn(systemId))) {
 				for (CampaignFleetAPI curr : new ArrayList<CampaignFleetAPI>(
 						ThreatIncData.garrisonsFor(marketId))) {
 					if (curr != null && curr.isAlive()) curr.despawn();
@@ -3381,6 +3361,9 @@ public class ThreatColonyManager {
 			}
 		}
 		ThreatIncData.discoveredSystems().clear();
+		// both sides' scouting starts over with the war: parties out fade, charts and leads go
+		ThreatScouts.reset();
+		ThreatSwarmScouts.reset();
 		Global.getSector().getPersistentData().remove(IncursionManager.KEY_BOUNTY_ROTATION);
 		ThreatIncursionIntel summary = ThreatIncursionIntel.get();
 		if (summary != null) {
@@ -3604,7 +3587,7 @@ public class ThreatColonyManager {
 	 */
 	public static void purgeSystemDebug(String systemId) {
 		StarSystemAPI system = getSystem(systemId);
-		for (String marketId : new ArrayList<String>(ThreatIncData.colonyMarketsFor(systemId))) {
+		for (String marketId : new ArrayList<String>(ThreatIncData.colonyIdsIn(systemId))) {
 			for (CampaignFleetAPI curr : new ArrayList<CampaignFleetAPI>(
 					ThreatIncData.garrisonsFor(marketId))) {
 				if (curr != null && curr.isAlive()) curr.despawn();

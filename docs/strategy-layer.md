@@ -155,12 +155,23 @@ taken. Callers:
   defences), 18 of 19 Persean landings were overrun in Run 6. Both needs read the target's
   defences at no less than the Swarm Nexus anchor (`nexusAnchoredDefense`): a young colony
   reads vanilla's shallow base until its Nexus goes up, and Run 7's landings of 300 met
-  counter-attacks of 1,180. An NPC siege short of marines
-  at its base draws the rest from its faction's other bases in reach, nearest first
-  (`siegePoolMarines`, `marinePool`); a size-4 beachhead is ~2,400 troops and a full depot
-  holds ~560. The system's siege base is the nearest (`siegeBaseFor`: it stages and is
-  barred from hunting there); while it cannot launch, the next two nearest bases of any
-  mobilised NPC faction try (`siegeBasesFor`, `SIEGE_BASE_TRIES`). Armaments wanted =
+  counter-attacks of 1,180. The anchor is read as the tactical pass leaves it
+  (x `SIEGE_SUPPRESSED_DEFENSE_FRACTION`) on intact and wounded worlds alike. The sizing
+  assumes that pass, so an NPC siege's FIRST landing also waits for it: it keeps duelling
+  until the beachhead survives the first counter-attack (`ThreatGroundFronts.readyToLand`
+  with the faction, `beachheadSurvives`), or orbit has done all it can. Landing at 0 siege
+  days against the intact defence, 10 of 22 NPC beachheads of Run 7 were overrun (rc1
+  review). The player's landing stays the commander's call. An NPC siege short of marines
+  - or armaments - at its base draws the rest from its faction's other bases in reach,
+  nearest first, out of their spendable stock (`siegePoolMarines`, `marinePool`), and waits
+  while it cannot arm the landing to the marine gate's share (`minMarinesFraction`, all of
+  it at `npcSiegeFullStrength`); a size-4 beachhead is
+  ~2,400 troops and a full depot holds ~560. The system's siege base is the nearest
+  (`siegeBaseFor`: it stages and is barred from hunting there while it could launch);
+  while it cannot launch, the next nearest bases of any mobilised NPC faction try
+  (`siegeBasesFor`, `siegeBaseTries` 3). The base's navy strength that sizes the fleets is
+  read once per strategy tick (`siegeStrength`): read live, one base's flotilla swung
+  between ~3,550 and ~6,150 FP from tick to tick. Armaments wanted =
   `npcFrontSupplyDays` x the landing force's own burn (1 armament per marine at the
   default `frontArmamentsPerMarinePer30Days`); fuel = fleet points x LY x
   `expeditionFuelPerPointLY`; supplies = fleet points x `expeditionSuppliesPerPoint`.
@@ -201,7 +212,7 @@ taken. Callers:
   the 25 FP per point is the mod's convention for vanilla-built raid fleets, unmeasured.
   ONE SIZING (review fix 2026-09-24, `IncursionManager.siegeSizes`): the launch
   (`tryPurgeBombardments`), the hunting gate (`hasSiegeableHive`), the convoy planner
-  (`stagingWants`) and the board's quotes size a base's flotilla the same way - an NPC's
+  (`ThreatConvoys.stagingTargets`) and the board's quotes size a base's flotilla the same way - an NPC's
   per-fleet difficulty from its strength at the base (`siegeDifficulty`), the player's
   from the job (`computeSiegeDifficulty`), the fleet count from the defenses and the
   orbit, and a heavy-assault escort when any target is a defended hive above
@@ -343,7 +354,7 @@ cards with three stock tables, faction-coloured:
    base can commit `expeditionMinMarinesFraction` of the landing's marines - the same gate
    `launchSiegeExpedition` applies). The confirm prompt quotes the same figures
    (`IncursionManager.siegeWants`, on the same `siegeSizes` the launch and the convoy
-   planner's `stagingWants` use, so none can disagree).
+   planner's `ThreatConvoys.stagingTargets` use, so none can disagree).
 2. **Fleets and orders**: task forces (`ThreatResponseIntel`), expeditions
    (`ThreatPurgeFGI`), convoys, and standing orders, each with task, status, ETA. Click =
    show the fleet or intel on the map. **A group is one row per fleet** once its fleets are
@@ -828,11 +839,18 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   - the faction already hunts in that system;
   - the base sent one within `softenIntervalDays` (30);
   - the base has a hive of its own to siege (`IncursionManager.hasSiegeableHive`: a known
-    hive it is `siegeBaseFor` whose swarms its fullest flotilla outweighs). It banks for
-    that siege instead.
+    hive it is `siegeBaseFor` whose swarms its fullest flotilla outweighs, off its siege
+    cooldown, not already under this faction's siege, and whose landing the base can man,
+    arm and provision - rc1 review). It banks for that siege instead;
+  - a faction hostile to it has fleets under orders or a siege in the system
+    (`ThreatSoftening.hostileAt`, rc1 review: all 9 badly-hurt stand-downs of Run 7 came
+    after a fight with another faction's force). Coalition answers skip the same, and skip
+    an enemy's call.
 - Size: the system's Defense Swarm FP x `softenMargin` (2.0), capped at `softenMaxFP`
   (12,000), and never below the weakest colony's garrison x the margin x `softenHeadroom`
-  (1.5, 2026-09-25). It waits if that floor is above the cap, or if its bases cannot pay
+  (1.5, 2026-09-25) - or, for a colony regrowing its swarms, the whole garrison it refills
+  to at the strength of the swarms it has (`musterFloorFP`, rc1 review: targets regrew
+  1.7-43x during musters). It waits if that floor is above the cap, or if its bases cannot pay
   for it. The headroom is slack for the muster: the swarms reinforce while the force
   gathers (433 -> 1,329 FP over Zendar in Run 6), and the muster still asks only garrison x
   margin. Counted on the WARSHIPS BUILT
@@ -845,8 +863,11 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   first, until the force reaches its size. Each base that sent a fleet rests
   `softenIntervalDays`.
 - Cost: fuel (FP / 25 x LY x `expeditionFuelPerPointLY`) and supplies (FP / 25 x
-  `expeditionSuppliesPerPoint`) drawn from the base's stock above its floor, as a siege
-  pays. Everything is a warship: no marines, no armaments, no landing.
+  `expeditionSuppliesPerPoint`) drawn from the base's SPENDABLE stock
+  (`ThreatReserves.spendable`: above the floor, the donor keep share and the staging bank),
+  so a hunt never spends what convoys banked for the base's own siege (rc1 review: one hunt
+  took Culann from 55,852 fuel to 3,765 and its siege postponed). A siege's pooled marines
+  and armaments come from the other bases the same way. Everything is a warship: no marines, no armaments, no landing.
 - Fleets: split into fleets of at most `softenFleetFP` (400), each a `KIND_HUNT` order
   (`ThreatFleetOrders.dispatchHunt`, "Hunt" on the board) carrying the force's id
   (`Order.forceId`, a `ThreatSoftening.Force` in persistent data).
@@ -856,8 +877,10 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   system waits at home. They hold there. The force goes in when
   every fleet is in, or `softenMusterDays` (15) after the first arrived. It goes home if
   none arrived within `softenDays`. It goes in only if the fleets present beat the weakest
-  garrison by the margin. If they do not but the whole force would, it waits up to three
-  muster spells for the stragglers. A force that stands down without going in gets its
+  garrison by the margin. If they do not but the whole force would, it waits up to
+  `softenMusterStragglerMult` (3) muster spells for the stragglers. Where it musters is
+  recorded on the force (`musterInSystem`/`musterEntityId`, or `musterX/Y`), so a
+  contributor from another system counts at an in-system muster. A force that stands down without going in gets its
   fuel and supplies back in full on the spot (`standDownAll`, 2026-09-25); one that fought
   takes the return rule's refund. The 60-day term starts when it goes in. Before this each fleet
   flew alone at its own burn and met the whole garrison one by one: in the 21-month run 69
@@ -866,25 +889,35 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   at spawn, and a navy without big hulls loses the points. In the test Nortia's
   Independents built 304 FP of a 1,683 ask. Most navies top out at 250-500 FP per fleet.
   A fleet built below 80% of its ask refunds the provisions for the missing points, and
-  the faction asks at most 1.1x what it built from then on (`FLEET_CAP`, relearned after
-  a load).
+  the faction asks at most 1.1x what it built from then on (`FLEET_CAP`, cleared on load).
+  It is learned only from a real prune (the fleet at the ship cap), and the pre-muster
+  check caps what the yards can build at `MAX_FLEETS` fleets of that size: before, a
+  faction built 30 fleets, came up short and scrapped them every month (rc1 review).
 - IN AS ONE (the same night's test): sent in on separate headings, the fleets strung out
-  and fought the garrisons they passed alone. The slowest fleet leads with the hunt order,
-  and the rest FOLLOW it blinkered (`sendIn`). Once gathered they fold into the lead
+  and fought the garrisons they passed alone. The slowest MUSTERED fleet leads with the hunt
+  order, and the rest FOLLOW it blinkered (`sendIn`). At go-in every mustered fleet folds
+  into the lead at once (rc1 review: merged only on its heels, the lead met the garrison
+  first, and all 214 hunt battles of Run 7 had one hunter fleet); stragglers fold in
   (`softenMerge`, `mergeInto`): ships, provisions and launch strength summed, home to the
   lead's base. Vanilla's AI never keeps separate fleets together in a fight: before this,
   every battle of a 16-fleet Hegemony force was one ~400 FP fleet against an 876-1,037 FP
-  swarm. Merged, the same force (449 ships, 5,895 FP) cleared Alpha Novy Tayvay I. The
-  merged fleet has no ship cap (no unasked caps); the lead drops its blinkers within
-  2,500 units of the target.
+  swarm. Merged, the same force (449 ships, 5,895 FP) cleared Alpha Novy Tayvay I. Merging
+  stops at `softenMergeMaxShips` (90; one merged fleet reached 900 ships), and fleets
+  beyond it follow the lead. The lead drops its blinkers within 2,500 units of the target,
+  with every follower within 2,000 of it; a follower near the lead in a battle drops them too.
 - In: all fleets `ORBIT_AGGRESSIVE` over the weakest garrison. When it is gone the force
   moves on to the next weakest (`retargetHunt`) only if its warships still beat that
   garrison by the margin, and goes home otherwise ("outmatched by"). The whole force goes
   home (tracked leg, refund on arrival) when the system is clear, it falls below
   `softenRetreatStrength` (0.4) of its strength when it went in or last moved on, or
-  `softenDays` (60) run out.
-- A THINNED SYSTEM IS SIEGED NOW (the same night): when a hunt clears a colony's swarms or
-  a force that fought goes home, `IncursionManager.huntThinned` marks the system. The
+  `softenDays` (60) run out. Strength is what is IN the fight: the fleets that went in
+  (`Force.inForce`) wherever they are, plus a straggler once it reaches the lead
+  (`presentFP`), not stragglers that never came in (rc1 review: a force
+  ground down to 41 FP at Rhesh still read 53%). A single hunt rebaselines when it moves on.
+- A THINNED SYSTEM IS SIEGED NOW (the same night): when a hunt clears a colony's swarms,
+  a force that fought goes home, or (rc1 review) any battle sinks Threat ships of a
+  bountied system (`ThreatSwarmBountyIntel.thinned`), `IncursionManager.huntThinned` marks
+  the system. The
   next poll runs the siege pass (`tryPurgeBombardments`) instead of waiting for the
   monthly tick, and the system's colonies count as wounded (the `purgeFollowUpDays`
   cooldown) for that long. In Run 4 a hunt opened Alpha Novy Tayvay's gate (355 FP) and
@@ -906,9 +939,11 @@ they can be stronger than a siege; a siegeable world in reach always comes first
 - The player's hunting fleets COLLECT SWARM BOUNTIES on their own
   (`ThreatSwarmBountyIntel.HunterPay`, a FleetEventListener added at dispatch and adopt,
   saved with the fleet): a battle one fights pays the bounty for the Threat ships lost,
-  times that fleet's share of its side's starting FP. A battle the player's own fleet is
-  in pays through `Kills` (vanilla's player-involvement share) and the hunter's own share
-  on top; the hunter skips itself only when it IS the player's fleet.
+  times that fleet's share of its side's starting FP, only while it flies a Hunt order. A
+  battle the player is in pays through `Kills` alone: vanilla's player-involvement share
+  already counts the player's fleets (rc1 review: a hunter wiped out in the fight had been
+  paid on top). Standing and the message come once per battle (`reportBattleFinished`),
+  not once per autoresolve round.
 - Test, 2026-09-24, on the clone save with provisions free (Chicomoztoc could pay for 0 FP
   at the real rates):
   - Chicomoztoc sent 8 fleets (2,883 FP) to Alpha Mesh. Its swarms fell 2,883 -> ~300 FP,

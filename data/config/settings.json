@@ -524,8 +524,8 @@
 	# convoys: donor colonies within range ship stock to staging bases (the
 	# faction's nearest military world to a live hive - where the Siege
 	# button sails from) until the base holds stagingTargetMult sieges'
-	# worth; a donor keeps donorKeepFraction of its own cap; staging bases
-	# never donate; nothing sails for less than convoyMinLoadFraction of a
+	# worth; a donor keeps donorKeepFraction of its own cap, and a staging
+	# base its own staging target on top; nothing sails for less than convoyMinLoadFraction of a
 	# load or of what the donor could spare when full, whichever is smaller
 	"threatinc_convoyEnabled": true,
 	"threatinc_convoyRangeLY": 15,
@@ -699,7 +699,7 @@
 	"threatinc_missionAidPayMult": 1.5,
 	# a swarm bounty (an outweighed NPC siege's call for help) pays this per
 	# frigate destroyed in the hive system - destroyer x2, cruiser x3,
-	# capital x4, times the player's share - for swarmBountyDays
+	# capital x5, times the player's share - for swarmBountyDays
 	"threatinc_swarmBountiesEnabled": true,
 	"threatinc_swarmBountyPerFrigate": 1500,
 	"threatinc_swarmBountyDays": 60,
@@ -721,8 +721,13 @@
 	"threatinc_softenMaxFP": 12000,
 	"threatinc_softenPool": true,
 	"threatinc_softenMusterDays": 15,
-	# once gathered, the fleets fold into the lead and fight as one fleet
+	# a force short at the muster whose stragglers would carry it waits for
+	# them up to this many muster spells
+	"threatinc_softenMusterStragglerMult": 3,
+	# once gathered, the fleets fold into the lead and fight as one fleet,
+	# up to softenMergeMaxShips; fleets beyond it follow the lead
 	"threatinc_softenMerge": true,
+	"threatinc_softenMergeMaxShips": 90,
 	"threatinc_softenFleetFP": 1500,
 	"threatinc_softenDays": 60,
 	"threatinc_softenIntervalDays": 30,
@@ -817,6 +822,9 @@
 	# an NPC siege short of marines at its base draws the rest from its
 	# faction's other bases in reach, nearest first
 	"threatinc_siegePoolMarines": true,
+	# bases, nearest first, an NPC siege tries before it waits: the nearest
+	# stages; while it cannot pay, the next ones may sail instead
+	"threatinc_siegeBaseTries": 3,
 	# Cap on how many fleets a siege grows to. A size-8 hive behind Heavy
 	# Batteries needs ~3,600 ground strength once its war-strata are suppressed
 	# by the tactical pass; at ~430 per full-size fleet that is 9 fleets.

@@ -758,8 +758,7 @@ public class ThreatFactionView {
 							"A task force of about " + (q.ok() ? (int) q.points : 0) + " FP from "
 							+ (q.ok() ? q.source.getName() : "your nearest colony") + " hunts "
 							+ "this hive's Defense Swarms for " + (int) ThreatIncConfig.softenDays()
-							+ " days. Paid from that colony's reserve; every faction in the "
-							+ "hive's reach notes it.");
+							+ " days.");
 					continue;
 				}
 				// each order's own gate, so a button never opens a Confirm the
@@ -917,7 +916,8 @@ public class ThreatFactionView {
 			ThreatReserves.CommodityStatus s = ThreatReserves.status(r.market, commodityId);
 			if (s == null) continue;
 			if (s.deficit > 0 || s.covering || s.exhausted) anyShort = true;
-			if (s.exhausted) uncovered += s.deficit;
+			// the peacetime gap "exhausted" and the tooltips read; the War footing's share is the war's supply line
+			if (s.exhausted) uncovered += s.localDeficit;
 		}
 		if (stock <= 0f && uncovered > 0) {
 			ThreatWarBoard.cell(cells, Alignment.MID, Misc.getNegativeHighlightColor(), "-" + uncovered);
@@ -1292,7 +1292,9 @@ public class ThreatFactionView {
 			f.eta = eta > 0f ? "~" + (int) Math.ceil(eta) + " d" : "-";
 			f.rowId = r.fleet;
 			StarSystemAPI origin = returnOriginSystem(r);
-			if (origin != null) {
+			// a convoy going home (an evacuation with a front's marines aboard among them) is no hunter
+			if (origin != null && !ThreatConvoys.isConvoy(r.fleet)
+					&& ThreatSoftening.combatFP(r.fleet) >= ThreatIncConfig.aidGuardMinFP()) {
 				f.huntKey = "returnfleet:" + i + ":" + r.fleet.getId();
 				f.huntSystem = origin;
 			}
@@ -1305,7 +1307,7 @@ public class ThreatFactionView {
 				ThreatFleetOrders.Order o = orders.get(i);
 				if (!o.aid || !factionId.equals(o.recipientFactionId)) continue;
 				FleetRow f = new FleetRow();
-				f.kind = "Your guard";
+				f.kind = ThreatFleetOrders.KIND_HUNT.equals(o.kind) ? "Your hunt" : "Your guard";
 				f.color = o.fleet != null && o.fleet.isAlive() ? pos : neg;
 				f.name = (o.fleet != null ? o.fleet.getName() : "-") + fromColony(o.baseMarketId);
 				f.task = o.task();
@@ -1442,12 +1444,11 @@ public class ThreatFactionView {
 		main.addPara("Your %s " + (colonies == 1 ? "colony is" : "colonies are") + " not "
 				+ "mobilised: nothing is stocked for the war, no convoys run, and your aid to "
 				+ "allies has no reserve to draw on.", opad, h, "" + colonies);
+		// no seeding clause: a player colony's reserve is its vanilla stockpile, which mobilising does not fill
 		main.addPara("Mobilise: every colony goes on War footing, banking marines, heavy "
-				+ "armaments, fuel and supplies from its own surplus (seeded with %s months' "
-				+ "worth) and carrying %s units of extra demand at size 5, scaled by size. "
-				+ "Stand down here any time; reserves are kept.",
-				opad, h, "" + (int) ThreatIncConfig.reserveInitialMonths(),
-				"" + (int) ThreatIncConfig.warFootingDemandUnits());
+				+ "armaments, fuel and supplies from its own surplus and carrying %s units of "
+				+ "extra demand at size 5, scaled by size. Stand down here any time; reserves are kept.",
+				opad, h, "" + (int) ThreatIncConfig.warFootingDemandUnits());
 		ButtonAPI mobilise = intel.addGenericButton(main, SELECTOR_BUTTON_W, "Mobilise",
 				BUTTON_MOBILISE + faction.getId());
 		disableWith(main, mobilise, ThreatWarState.playerMayMobilise(),
@@ -1501,10 +1502,8 @@ public class ThreatFactionView {
 		if (BUTTON_MOBILISE.equals(parts[0])) {
 			int colonies = Misc.getPlayerMarkets(false).size();
 			prompt.addPara("Mobilise your faction? Every colony of yours (%s) goes on War footing "
-					+ "now, seeded with %s months' reserve and carrying %s units of extra demand "
-					+ "at size 5, scaled by size.", 0f, h,
-					"" + colonies, "" + (int) ThreatIncConfig.reserveInitialMonths(),
-					"" + (int) ThreatIncConfig.warFootingDemandUnits());
+					+ "now, carrying %s units of extra demand at size 5, scaled by size.", 0f, h,
+					"" + colonies, "" + (int) ThreatIncConfig.warFootingDemandUnits());
 			return;
 		}
 		if (BUTTON_STAND_DOWN.equals(parts[0])) {
@@ -1676,9 +1675,7 @@ public class ThreatFactionView {
 			} else {
 				prompt.addPara("Send a task force of about %s fleet points from " + q.source.getName()
 						+ " to hunt the Defense Swarms in the " + system.getNameWithLowercaseType()
-						+ " for %s days? Fuel and supplies come from " + q.source.getName() + "'s reserve "
-						+ "and its hulls are held against that colony's capacity until home. "
-						+ "Every faction with a colony in the hive's reach notes it.", 0f, h,
+						+ " for %s days?", 0f, h,
 						"" + (int) q.points, "" + (int) ThreatIncConfig.softenDays());
 			}
 		} else if (BUTTON_SUPPORT.equals(parts[0]) || BUTTON_DEFEND.equals(parts[0])) {
@@ -1799,7 +1796,7 @@ public class ThreatFactionView {
 					convoyTier, random) ? "aid-supply" : null;
 		}
 		if (BUTTON_AID_STRIKE.equals(parts[0])) {
-			return ThreatAid.dispatchStrike(ThreatWarBoard.getSystem(parts[2])) ? "aid-strike" : null;
+			return ThreatAid.dispatchStrike(ThreatWarBoard.getSystem(parts[2]), parts[1]) ? "aid-strike" : null;
 		}
 		if (BUTTON_RECALL.equals(parts[0])
 				&& (parts[2].startsWith("aidorder:") || parts[2].startsWith("aidconvoy:"))) {

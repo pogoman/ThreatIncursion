@@ -563,6 +563,29 @@ public class ThreatReserves {
 		return draw(market.getId(), commodityId, Math.min(amount, available(market, commodityId)));
 	}
 
+	/**
+	 * Stock another faction effort may take from this base - a hunting force,
+	 * or a sibling base's short siege: above the floor, the donor keep share
+	 * of the months cap AND the staging bank, so what convoys built up for this
+	 * base's own siege stays for it. Culann's 55,852 banked fuel went on one hunt
+	 * and its siege then postponed (rc1 review). The base's own siege draws
+	 * through {@link #available}.
+	 */
+	public static float spendable(MarketAPI market, String commodityId) {
+		if (market == null) return 0f;
+		if (committed(market, commodityId)) return 0f;
+		float keep = Math.max(floor(market, commodityId),
+				monthsCap(market, commodityId) * ThreatIncConfig.donorKeepFraction()
+						+ stagingBank(market, commodityId));
+		return Math.max(0f, stock(market.getId(), commodityId) - keep);
+	}
+
+	/** Takes up to {@code amount} of {@link #spendable} stock; returns what was taken. */
+	public static float drawSpendable(MarketAPI market, String commodityId, float amount) {
+		if (market == null || amount <= 0f) return 0f;
+		return draw(market.getId(), commodityId, Math.min(amount, spendable(market, commodityId)));
+	}
+
 	/** Adds stock (a convoy arriving, a withdrawn front returning). No cap - what was made is kept. */
 	public static void deposit(String marketId, String commodityId, float amount) {
 		if (amount <= 0f || marketId == null) return;

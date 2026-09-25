@@ -80,13 +80,25 @@ public class ThreatSwarmScouts {
 	// ------------------------------------------------------------------
 
 	public static void poll(Random random) {
-		if (!enabled()) return;
+		if (!enabled()) {
+			// switched off mid-game: the swarms out go home rather than park where they are
+			if (!all().isEmpty()) ROUTE.recallAll();
+			return;
+		}
 		for (Scout s : new ArrayList<Scout>(all())) {
 			ROUTE.advance(s);
 		}
-		if (IncursionManager.getPhase() < 2) return;
+		// the cheap test first: getPhase walks every colony
 		if (countOut() >= ThreatIncConfig.swarmScoutMax()) return;
+		if (IncursionManager.getPhase() < 2) return;
 		launchOne(random);
+	}
+
+	/** RESET War: the parties out fade and what the swarm charted is forgotten. */
+	public static void reset() {
+		ROUTE.clearAll();
+		Global.getSector().getPersistentData().remove(KEY_SCOUTS);
+		Global.getSector().getPersistentData().remove(KEY_KNOWN);
 	}
 
 	/** The route walker, with what a Scouting Swarm does at a stop. */

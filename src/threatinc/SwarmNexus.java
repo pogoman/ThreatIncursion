@@ -31,7 +31,9 @@ public class SwarmNexus extends BaseIndustry {
 	public boolean isIdleAtCapacity() {
 		if (market == null || isDisrupted()) return false;
 		int nominal = ThreatColonyManager.desiredGarrison(market.getSize()).length;
-		return ThreatColonyManager.countLiveGarrison(market.getId()) >= nominal;
+		// swarms out raiding or inbound hold their slots (ThreatColonyManager.swarmsAway)
+		return ThreatColonyManager.countLiveGarrison(market.getId())
+				+ ThreatColonyManager.swarmsAway(market.getId()) >= nominal;
 	}
 
 	@Override

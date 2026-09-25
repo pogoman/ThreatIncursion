@@ -660,7 +660,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				&& ThreatGroundFronts.orbitContestedFor(getFaction().getId(), market)) {
 			return "clearing the orbit";
 		}
-		return ThreatGroundFronts.landingPhase(market, abstractTroops(market), "besieging from orbit");
+		return ThreatGroundFronts.landingPhase(market, abstractTroops(market), "besieging from orbit", ourFactionId());
 	}
 
 	/**
@@ -981,7 +981,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			ThreatIncConfig.log("Siege of " + market.getName() + ": the orbit is contested");
 			return true;
 		}
-		if (ThreatGroundFronts.readyToLand(market, troops)) return false;
+		if (ThreatGroundFronts.readyToLand(market, troops, ourId)) return false;
 		float days = ThreatGroundFronts.siegeSliceDays(fleet);
 		float fp = fleet.getFleetPoints();
 		float[] est = ThreatGroundFronts.siegeSliceEstimate(fp, market, days);
@@ -1024,7 +1024,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 		start *= Math.max(0f, 1f - routeDamage());
 		float left = ThreatGroundFronts.abstractSiege(market, start, abstractTroops(market),
-				groupAbortsMissionFPFraction);
+				groupAbortsMissionFPFraction, ourFactionId());
 		// the batteries' toll comes off what the expedition carries
 		if (start > 0f && left < start) {
 			float keep = Math.max(0f, left / start);
@@ -1040,11 +1040,15 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		return combinedRaidStr(market, fallback);
 	}
 
+	protected String ourFactionId() {
+		return getFaction() != null ? getFaction().getId() : null;
+	}
+
 	/** Whether a pass here should wait rather than spend itself: no front of ours yet and the world not ready to be landed on. */
 	protected boolean waitsAboveFloor(MarketAPI market) {
 		if (!ThreatIncConfig.frontsEnabled() || market == null) return false;
 		if (ThreatGroundFronts.getFront(market.getId()) != null) return false;
-		return !ThreatGroundFronts.readyToLand(market, abstractTroops(market));
+		return !ThreatGroundFronts.readyToLand(market, abstractTroops(market), ourFactionId());
 	}
 
 	/**

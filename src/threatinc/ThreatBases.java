@@ -130,6 +130,22 @@ public class ThreatBases {
 	/** Display name of a reserve key that may be either kind of base. */
 	public static String nameOf(String id) {
 		Base b = of(id);
-		return b != null ? b.name() : id;
+		if (b != null) return b.name();
+		String world = worldName(id);
+		return world != null ? world : id;
+	}
+
+	/**
+	 * A world's name by a market id whose market has left the economy: its
+	 * planet's. A hive market's id is "market_" + the planet id, so the direct
+	 * lookup never matched one and the board showed the raw id (rc1 review).
+	 */
+	public static String worldName(String marketId) {
+		if (marketId == null) return null;
+		SectorEntityToken e = Global.getSector().getEntityById(marketId);
+		if (e == null && marketId.startsWith("market_")) {
+			e = Global.getSector().getEntityById(marketId.substring("market_".length()));
+		}
+		return e != null ? e.getName() : null;
 	}
 }

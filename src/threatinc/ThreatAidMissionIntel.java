@@ -124,6 +124,8 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 			ThreatAidMissionIntel m = (ThreatAidMissionIntel) curr;
 			if (m.isEnded() || m.isEnding()) continue;
 			if (!m.isPosted() && !m.isAccepted()) continue;
+			// a request past its window is no longer open, queued or not
+			if (m.isPosted() && m.postingDaysRemaining() <= 0f) continue;
 			if (result.contains(m)) continue;
 			result.add(m);
 		}
@@ -443,6 +445,12 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 
 	@Override
 	public boolean shouldRemoveIntel() {
+		// a request still unreceived in the comm queue never advances, so its
+		// posting window is enforced here - the queue polls this - or up to
+		// aidRequestMaxPosted stale requests blocked every new one while the
+		// player was out of relay range (rc1 review). As ThreatMissionIntel.
+		if (isPosted() && postingDaysRemaining() <= 0f
+				&& Global.getSector().getIntelManager().hasIntelQueued(this)) return true;
 		return isEnded() && super.shouldRemoveIntel();
 	}
 

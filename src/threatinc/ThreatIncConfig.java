@@ -103,6 +103,8 @@ public class ThreatIncConfig {
 	public static boolean siegePoolMarines()  { return b("threatinc_siegePoolMarines", true); }
 	/** Most fleets a siege expedition grows to while sizing itself to the target's defenses. */
 	public static int siegeMaxFleets()       { return i("threatinc_siegeMaxFleets"); }
+	/** How many bases, nearest first, an NPC siege tries before it waits: the nearest, then the fallbacks. */
+	public static int siegeBaseTries()       { return i("threatinc_siegeBaseTries"); }
 	/** Siege passes (tactical bombardment / landing / commando raid) an expedition may run per colony. */
 	public static int siegePassesPerColony() { return i("threatinc_siegePassesPerColony"); }
 	public static boolean siegeFightsForOrbit() { return b("threatinc_siegeFightsForOrbit", true); }
@@ -502,7 +504,7 @@ public class ThreatIncConfig {
 	public static boolean npcSiegeOrbitPerWorld() { return b("threatinc_npcSiegeOrbitPerWorld", true); }
 	/** Whether an outweighed NPC siege posts a bounty on the hive system's swarms. */
 	public static boolean swarmBountiesEnabled() { return b("threatinc_swarmBountiesEnabled", true); }
-	/** Credits a swarm bounty pays per frigate destroyed (destroyer x2, cruiser x3, capital x4). */
+	/** Credits a swarm bounty pays per frigate destroyed (destroyer x2, cruiser x3, capital x5, vanilla's). */
 	public static float swarmBountyPerFrigate() { return f("threatinc_swarmBountyPerFrigate"); }
 	/** Days a swarm bounty runs. */
 	public static float swarmBountyDays()     { return f("threatinc_swarmBountyDays"); }
@@ -526,8 +528,12 @@ public class ThreatIncConfig {
 	public static boolean softenPool()        { return b("threatinc_softenPool", true); }
 	/** Days a hunting force waits at its muster point for stragglers. */
 	public static float softenMusterDays()    { return f("threatinc_softenMusterDays"); }
+	/** Muster spells a force short at the muster waits for stragglers that would carry it. */
+	public static float softenMusterStragglerMult() { return f("threatinc_softenMusterStragglerMult"); }
 	/** Whether a hunting force's fleets fold into its lead once gathered, to sail and fight as one fleet. */
 	public static boolean softenMerge()       { return b("threatinc_softenMerge", true); }
+	/** Most ships a hunting force's lead grows to by merging; the rest follow it. */
+	public static int softenMergeMaxShips()   { return i("threatinc_softenMergeMaxShips"); }
 	/** The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts). Off: it knows every world. */
 	public static boolean swarmScouting()     { return b("threatinc_swarmScouting", true); }
 	/** Fleet points of a Scouting Swarm. */
@@ -560,7 +566,6 @@ public class ThreatIncConfig {
 	public static float guardDays()           { return f("threatinc_guardDays"); }
 	/** Days a task force guarding one of the player's own colonies stays; 0 = until recalled, staged there with its points the colony's to send out. */
 	public static float guardOwnDays()        { return f("threatinc_guardOwnDays"); }
-	/** Days an intercept task force holds a hive system's jump-point. */
 	/** Whether Support sorties (holding a besieged world's orbit and suppressing it) are offered and flown. Key kept from the order's old name. */
 	public static boolean supportEnabled()    { return b("threatinc_escortEnabled", true); }
 	/** Days a Support task force holds a besieged world's orbit. */
@@ -724,11 +729,16 @@ public class ThreatIncConfig {
 		String shape = msg.replaceAll("[0-9]+", "#");
 		long now = Global.getSector().getClock().getTimestamp();
 		Object[] last = QUIET.get(key);
-		if (last != null && shape.equals(last[0])
-				&& Global.getSector().getClock().getElapsedDaysSince((Long) last[1]) < QUIET_DAYS) {
-			return;
+		if (last != null && shape.equals(last[0])) {
+			float days = Global.getSector().getClock().getElapsedDaysSince((Long) last[1]);
+			if (days >= 0f && days < QUIET_DAYS) return;
 		}
 		QUIET.put(key, new Object[] { shape, now });
 		log(msg);
+	}
+
+	/** Called on load: every quiet line logs once more in the loaded game. */
+	public static void forgetQuiet() {
+		QUIET.clear();
 	}
 }

@@ -43,6 +43,12 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 	}
 
 	@Override
+	public void onApplicationLoad() {
+		// LunaLib keeps stored values over changed defaults; move the ones this release changed
+		if (ThreatIncConfig.lunaAvailable()) LunaConfigBridge.migrateStoredDefaults();
+	}
+
+	@Override
 	public void onGameLoad(boolean newGame) {
 		// the alias above normally covers this; this is the fallback for a shield
 		// still on the vanilla plugin after load
@@ -72,6 +78,16 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// a save reloaded at the same clock instant must not read the last
 		// session's staging targets
 		ThreatConvoys.forgetStagingTargets();
+		// nor any other not-saved state of the game this session left: a system
+		// thinned in the abandoned timeline, a fleet cap learned in another save,
+		// debug lines held quiet on the old clock
+		IncursionManager.forgetThinned();
+		ThreatSoftening.forgetFleetCaps();
+		ThreatIncConfig.forgetQuiet();
+
+		// colonyMarkets keys that read lookups created before 0.7.0 made in-system
+		// expansion seed hives into inhabited core systems (rc1 review)
+		if (ThreatIncData.isStarted()) ThreatIncData.dropPhantomSystems();
 
 		// transient: re-added every load, never serialized into the save
 		IncursionManager manager = new IncursionManager();
