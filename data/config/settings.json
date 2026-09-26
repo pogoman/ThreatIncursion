@@ -897,8 +897,9 @@
 	# world holds 3.7k-7.5k FP of swarms - 10 fleets (~2.4k FP) never could.
 	# 40 (2026-09-26): 25 capped the flotilla at ~6,150 FP, so no NPC could
 	# siege a world over ~4,100 FP of swarms; big worlds held 5-6.7k all run.
-	# Marines and provisions, pooled now, are the real constraint
-	"threatinc_siegeMaxFleets": 40,
+	# Marines and provisions, pooled now, are the real constraint. 50 (run 7):
+	# at 40 Epsilon Morgothi and Gamma Spair sat 50 FP short (9,900 of 9,950)
+	"threatinc_siegeMaxFleets": 50,
 	# Siege passes an expedition may run against each colony. A fresh hive
 	# takes one tactical pass (a war-stratum carrying 80 percent of a pass is
 	# not bombed again - vanilla's rule); the landing is the pass after that,

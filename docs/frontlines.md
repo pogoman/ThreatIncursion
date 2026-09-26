@@ -229,10 +229,14 @@ a single strike the month their garrison went home. So now:
   stock pays its own garrison. Every monthly payment is logged with who paid it.
 
 The rules from before:
-- **Spare strength** is vanilla's strength of the faction in the base's system
-  (`WarSimScript`), in the relief force's fleet points, less what the base
-  already has out garrisoning. So a faction holds as many links as its navy can
-  guard - no count cap. Relief forces are weighed on the same spare strength.
+- **Spare strength** is the navy's: vanilla's strength of the faction summed
+  over its bases' systems (`WarSimScript`, each system once), in the relief
+  force's fleet points, less every garrison it has out (`navySpareFP`). So a
+  faction holds as many links as its navy can guard - no count cap. Run 8
+  weighed only the sending base's own system, and Hegemony, the biggest navy,
+  "could not spare" 1,200 FP most of the run. The garrison sails from the
+  faction's nearest base. Its voyage is paid from that base, then the faction's
+  other markets except links. Relief forces still weigh their own base.
 - **The garrison** is real task forces on DEFEND_LOCATION over the link, built
   at the size asked for (`ignoreMarketFleetSizeMult` - run 4's 400-point
   garrisons sailed at 756 on average with the base's fleet-size multiplier).
