@@ -131,6 +131,13 @@ public class ThreatGroundFronts {
 		 * because removing one breaks every save that holds it.
 		 */
 		public float swarmOrbitDays;
+		/**
+		 * The fleet points an unspawned expedition leaves over its landing
+		 * (vanilla autoresolve spawns no fleets to put on DEFEND): it contests
+		 * the orbit while it outweighs the swarm there, and is lost for good
+		 * once outweighed (swarmOrbitContested). 0 for none.
+		 */
+		public float coverFP;
 		/** Whether the bombardment notice has fired for the current unopposed spell. */
 		public boolean announcedScour;
 		/** Days the front has stood, by the tick's own clock - what "landed N days ago" reads. */
@@ -2133,6 +2140,17 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			if (fleet.getFleetPoints() <= 0f || fleet.getFaction() == null) continue;
 			if (Misc.getDistance(fleet.getLocation(), world.getLocation()) > range) continue;
 			if (fleet.getFaction().isHostileTo(Factions.THREAT)) return true;
+		}
+		// an unspawned expedition's flotilla over its own front (coverFP): runs 6
+		// and 7 lost every autoresolved landing on Gamma Golgotha II to an orbit
+		// nobody held, because an abstract siege leaves no fleet to put on DEFEND
+		GroundFront front = getFront(market.getId());
+		if (front != null && front.coverFP > 0f && !isThreatOwned(front)) {
+			float swarm = swarmOrbitStrength(market);
+			if (front.coverFP >= swarm) return true;
+			ThreatIncConfig.log("Orbit cover over " + market.getName() + " lost: " + (int) swarm
+					+ " FP of swarms outweigh the " + front.factionId + " flotilla's " + (int) front.coverFP);
+			front.coverFP = 0f;
 		}
 		return false;
 	}

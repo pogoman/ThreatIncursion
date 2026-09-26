@@ -624,25 +624,68 @@ public class ThreatFrontlines {
 			noGarrisonWhy = "upkeep would be " + (int) upkeep + " of " + (int) budget + " supplies a month";
 			return null;
 		}
+		float spare = navySpareFP(faction);
+		if (spare < needFP) {
+			noGarrisonWhy = "its navy can spare " + (int) Math.max(0f, spare) + " of " + (int) needFP + " FP";
+			return null;
+		}
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
 		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
 			if (m.getStarSystem() == null || m.getPrimaryEntity() == null || !IncursionManager.isBase(m)) continue;
 			float d = Misc.getDistanceLY(m.getLocationInHyperspace(), site.getLocationInHyperspace());
-			if (d >= bestDist || !canGarrisonFrom(faction, m, d, needFP)) continue;
+			if (d >= bestDist) continue;
 			bestDist = d;
 			best = m;
 		}
-		if (best == null) noGarrisonWhy = "no base can spare " + (int) needFP + " FP";
+		if (best == null) {
+			noGarrisonWhy = "no base";
+			return null;
+		}
+		if (!canPayVoyage(best, needFP, bestDist)) {
+			noGarrisonWhy = "cannot pay the voyage of " + (int) needFP + " FP from " + best.getName();
+			return null;
+		}
 		return best;
 	}
 
-	/** Whether a base can spare this many fleet points and pay their voyage. */
-	protected static boolean canGarrisonFrom(FactionAPI faction, MarketAPI base, float ly, float fp) {
-		if (spareFP(faction, base) < fp) return false;
+	/**
+	 * What the faction's navy can spare for garrisons, in fleet points: vanilla's
+	 * strength of the faction in each of its bases' systems (WarSimScript), in
+	 * the relief force's fleet points, less every garrison it has out. Run 8
+	 * weighed each base's own system alone, so Hegemony - the biggest navy -
+	 * "could not spare" 1,200 FP for most of the run whenever the patrols of
+	 * the one system asked happened to be out.
+	 */
+	protected static float navySpareFP(FactionAPI faction) {
+		java.util.Set<StarSystemAPI> seen = new java.util.HashSet<StarSystemAPI>();
+		float strength = 0f;
+		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
+			StarSystemAPI sys = m.getStarSystem();
+			if (sys == null || !IncursionManager.isBase(m) || !seen.add(sys)) continue;
+			strength += WarSimScript.getFactionStrength(faction, sys);
+		}
+		float committed = 0f;
+		for (Outpost o : all()) {
+			if (faction.getId().equals(o.factionId)) committed += fpOf(liveGuards(o));
+		}
+		return strength / Math.max(1f, ThreatIncConfig.responseStrengthDivisor())
+				* IncursionManager.FP_PER_RESPONSE_DIFFICULTY - committed;
+	}
+
+	/** Whether the faction can pay a garrison's voyage from this base: its stock, then the faction's other markets (payFromOthers). */
+	protected static boolean canPayVoyage(MarketAPI base, float fp, float ly) {
 		float[] cost = voyageCost(fp, ly);
-		return ThreatReserves.available(base, Commodities.FUEL) >= cost[0]
-				&& ThreatReserves.available(base, Commodities.SUPPLIES) >= cost[1];
+		return pooled(base, Commodities.FUEL) >= cost[0] && pooled(base, Commodities.SUPPLIES) >= cost[1];
+	}
+
+	/** A commodity above the floor at the base and every other market of its faction but the links. */
+	protected static float pooled(MarketAPI base, String commodityId) {
+		float sum = ThreatReserves.available(base, commodityId);
+		for (MarketAPI m : ThreatReserves.marketsOf(base.getFactionId())) {
+			if (m != base && !isOutpost(m)) sum += ThreatReserves.available(m, commodityId);
+		}
+		return sum;
 	}
 
 	protected static boolean sendGarrison(Outpost o, MarketAPI market, MarketAPI base) {
@@ -672,8 +715,11 @@ public class ThreatFrontlines {
 		if (fleets.isEmpty()) return false;
 		float fp = fpOf(fleets);
 		float[] cost = voyageCost(fp, ly(base, market));
+		// the base first, then the faction's other markets (canPayVoyage)
 		float fuel = ThreatReserves.drawAbove(base, Commodities.FUEL, cost[0]);
+		if (fuel < cost[0]) fuel += payFromOthers(base, null, Commodities.FUEL, cost[0] - fuel);
 		float supplies = ThreatReserves.drawAbove(base, Commodities.SUPPLIES, cost[1]);
+		if (supplies < cost[1]) supplies += payFromOthers(base, null, Commodities.SUPPLIES, cost[1] - supplies);
 		for (CampaignFleetAPI f : fleets) {
 			ThreatReturns.provision(f, base.getId(), fuel / fleets.size(), supplies / fleets.size());
 		}
@@ -812,7 +858,8 @@ public class ThreatFrontlines {
 		float upkeep = garrisonUpkeep(faction.getId()) + shortFP * UPKEEP_PER_FP;
 		String why = null;
 		if (upkeep > budget) why = "upkeep would be " + (int) upkeep + " of " + (int) budget + " supplies a month";
-		else if (!canGarrisonFrom(faction, home, ly(home, market), shortFP)) why = home.getName() + " cannot spare " + (int) shortFP + " FP";
+		else if (navySpareFP(faction) < shortFP) why = "its navy cannot spare " + (int) shortFP + " FP";
+		else if (!canPayVoyage(home, shortFP, ly(home, market))) why = "cannot pay the voyage from " + home.getName();
 		if (why != null) {
 			ThreatIncConfig.logQuiet("fl_topup_" + market.getId(), "Frontline: the garrison of " + market.getName()
 					+ " weighs " + (int) have + " of " + (int) need + " - no reinforcement: " + why);
@@ -847,14 +894,14 @@ public class ThreatFrontlines {
 		MarketAPI home = homeOf(o);
 		float fromHome = link < want && home != null ? ThreatReserves.drawAbove(home, Commodities.SUPPLIES, want - link) : 0f;
 		float paid = link + fromHome;
-		if (paid < want) paid += payFromOthers(market, home, want - paid);
+		if (paid < want) paid += payFromOthers(market, home, Commodities.SUPPLIES, want - paid);
 		ThreatIncConfig.log("Frontline upkeep of " + market.getName() + "'s garrison: paid " + (int) paid + " of "
 				+ (int) want + " supplies (link " + (int) link + ", home " + (int) fromHome
 				+ ", other markets " + (int) (paid - link - fromHome) + ")");
 		return paid;
 	}
 
-	protected static float payFromOthers(MarketAPI market, MarketAPI home, float want) {
+	protected static float payFromOthers(MarketAPI market, MarketAPI home, String commodityId, float want) {
 		float paid = 0f;
 		List<MarketAPI> others = new ArrayList<MarketAPI>();
 		for (MarketAPI m : ThreatReserves.marketsOf(market.getFactionId())) {
@@ -869,7 +916,7 @@ public class ThreatFrontlines {
 		});
 		for (MarketAPI m : others) {
 			if (paid >= want) break;
-			paid += ThreatReserves.drawAbove(m, Commodities.SUPPLIES, want - paid);
+			paid += ThreatReserves.drawAbove(m, commodityId, want - paid);
 		}
 		return paid;
 	}

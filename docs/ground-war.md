@@ -920,6 +920,16 @@ swarm's weight over the planet against what the front can put in the way
 is a fleet operation, not a lone frigate - and an armed hostile fleet on station stops it
 outright (`swarmOrbitContested`).
 
+**Orbit cover for autoresolved landings (2026-09-26, overnight after run 7).** Far from the
+player, vanilla resolves an NPC siege without spawning any fleet, so after an abstract
+landing no flotilla existed to put on DEFEND. The swarm then held the orbit unopposed and
+bombarded the front until it ran dry and was overrun: runs 6 and 7 lost both Gamma
+Golgotha II landings this way (2,917 and 3,333 marines). Now `ThreatPurgeFGI.stayOnDefend`,
+with no live fleet, leaves what the abstract siege had left (`abstractLeft`, in abstract FP)
+on the front as `GroundFront.coverFP`. The cover contests the orbit while it is at least the
+swarm's FP there. Once the swarm outweighs it, the cover is lost for good and logged
+("Orbit cover over ... lost").
+
 **This replaced the scour** (removed 2026-09-08, user). The hive used to saturation-bomb its
 OWN surface once the swarm had held the orbit unopposed for `threatScourDays`, annihilating
 the front to the last marine and closing the ground with fallout for `falloutDays`. That rule

@@ -328,6 +328,25 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected void stayOnDefend(CampaignFleetAPI passing, MarketAPI market) {
 		if (market == null || getFaction() == null) return;
 		if (!ThreatIncConfig.landingDefendEnabled()) return;
+		if (passing == null && !anyFleetLive()) {
+			// autoresolved: no fleet to put on DEFEND, so what the abstract siege
+			// left stays over the landing as the front's orbit cover
+			ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+			float left = abstractLeft;
+			if (left <= 0f && getParams() != null && getParams().fleetSizes != null) {
+				// a reinforcing pass whose siege ran on an earlier world
+				for (Integer size : getParams().fleetSizes) {
+					if (size != null) left += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+				}
+				left *= Math.max(0f, 1f - routeDamage());
+			}
+			if (front != null && left > front.coverFP) {
+				front.coverFP = left;
+				ThreatIncConfig.log("Orbit cover over " + market.getName() + ": the "
+						+ getFaction().getId() + " flotilla holds it with " + (int) left + " FP");
+			}
+			return;
+		}
 		MarketAPI base = sourceBase();
 		if (base == null) return;
 		for (CampaignFleetAPI fleet : new ArrayList<CampaignFleetAPI>(getFleets())) {
@@ -943,6 +962,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected java.util.Set<String> siegeAnnounced = new java.util.HashSet<String>();
 	/** Worlds whose siege has been run abstractly (no live fleets). */
 	protected java.util.Set<String> siegeResolved = new java.util.HashSet<String>();
+	/** Fleet points the last abstract siege left, what stays over its landing (stayOnDefend). */
+	protected float abstractLeft;
 
 	/**
 	 * A live fleet over a hive: a slice of the orbital siege in place of a
@@ -1025,6 +1046,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		start *= Math.max(0f, 1f - routeDamage());
 		float left = ThreatGroundFronts.abstractSiege(market, start, abstractTroops(market),
 				groupAbortsMissionFPFraction, ourFactionId());
+		abstractLeft = left;
 		// the batteries' toll comes off what the expedition carries
 		if (start > 0f && left < start) {
 			float keep = Math.max(0f, left / start);
