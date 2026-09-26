@@ -11,6 +11,7 @@ import com.fs.starfarer.api.Global;
 import org.lwjgl.util.vector.Vector2f;
 
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
+import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.PlanetAPI;
 import com.fs.starfarer.api.campaign.SectorEntityToken;
 import com.fs.starfarer.api.campaign.rules.MemoryAPI;
@@ -232,6 +233,11 @@ public class ThreatGroundFronts {
 		return front == null || front.factionId == null ? Factions.PLAYER : front.factionId;
 	}
 
+	/** The front's owner as a faction, for a notice's crest and name (the player's for a player front). */
+	protected static FactionAPI ownerFaction(GroundFront front) {
+		return Global.getSector().getFaction(ownerOf(front));
+	}
+
 	/** The front's world by name for the log - its market may already have left the economy. */
 	protected static String worldName(GroundFront front) {
 		MarketAPI market = Global.getSector().getEconomy().getMarket(front.marketId);
@@ -294,8 +300,6 @@ public class ThreatGroundFronts {
 		public abstract boolean carriesSiegeState();
 		/** The last stratum has fallen. */
 		public abstract void victory(GroundFront front, MarketAPI market);
-		/** Who counter-attacks, for the message. */
-		public abstract String counterAttacker(MarketAPI market);
 	}
 
 	/**
@@ -399,9 +403,6 @@ public class ThreatGroundFronts {
 		public void victory(GroundFront front, MarketAPI market) {
 			hiveGroundVictory(front, market);
 		}
-		public String counterAttacker(MarketAPI market) {
-			return "A hive counter-attack";
-		}
 	};
 
 	/**
@@ -489,9 +490,6 @@ public class ThreatGroundFronts {
 		}
 		public void victory(GroundFront front, MarketAPI market) {
 			colonyGroundVictory(front, market);
-		}
-		public String counterAttacker(MarketAPI market) {
-			return "A counter-attack by the garrison of " + market.getName();
 		}
 	};
 
@@ -798,6 +796,8 @@ public class ThreatGroundFronts {
 	public static String landingBlocked(String ownerFactionId, MarketAPI market,
 			boolean liveFleets) {
 		if (market == null) return "no world to land on";
+		// a forward base is a station, as vanilla's pirate base is: its station is the base
+		if (ThreatFrontlines.isOutpost(market)) return "a station, not a world";
 		float fallout = falloutDaysLeft(market);
 		if (fallout > 0f) return "saturation fallout, " + (int) Math.ceil(fallout) + " days left";
 		GroundFront standing = getFront(market.getId());
@@ -829,10 +829,11 @@ public class ThreatGroundFronts {
 			if (!ownerOf(standing).equals(ownerFactionId)) return null;
 			resupply(standing, troops, armaments);
 			if (threat) {
-				ThreatColonyManager.announceAlways("A fresh Threat wave has come down on "
-						+ market.getName() + " - " + Misc.getWithDGS(troops)
-						+ " more of them reinforce the ground assault.",
-						Misc.getNegativeHighlightColor());
+				ThreatNotice.titled("Swarm Reinforces").bad()
+						.line("A fresh Threat wave has landed on %s.", ThreatNotice.market(market))
+						.line("%s more troops join the ground assault.",
+								ThreatNotice.red(Misc.getWithDGS(troops)))
+						.send();
 				ThreatAidMissionIntel.strikeLanded(market);
 			}
 			ThreatIncConfig.log("Front reinforced at " + market.getName() + " (" + ownerFactionId
@@ -841,20 +842,23 @@ public class ThreatGroundFronts {
 		}
 		GroundFront front = deploy(market, ownerFactionId, troops, armaments);
 		if (threat) {
-			ThreatColonyManager.announceAlways("The Threat has landed on " + market.getName()
-					+ " - " + Misc.getWithDGS(troops) + " of them are on the surface, and only "
-					+ "beating them on the ground will save the colony.",
-					Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Threat Landing").bad()
+					.line("The Threat has landed on %s.", ThreatNotice.market(market))
+					.line("%s troops on the surface.", ThreatNotice.red(Misc.getWithDGS(troops)))
+					.line("Beat them on the ground to save the colony.")
+					.send();
 			ThreatAidMissionIntel.strikeLanded(market);
 		} else {
 			// a faction's expedition, or the player's commissioned one
-			com.fs.starfarer.api.campaign.FactionAPI owner =
-					Global.getSector().getFaction(ownerFactionId);
-			String who = front.isPlayerOwned() ? "Your"
-					: owner != null ? Misc.ucFirst(owner.getDisplayNameWithArticle()) : "An";
-			ThreatColonyManager.announceAlways(who + " expedition has landed ground forces on "
-					+ market.getName() + " - the campaign for its strata has begun.",
-					Misc.getHighlightColor());
+			FactionAPI owner = Global.getSector().getFaction(ownerFactionId);
+			ThreatNotice n = ThreatNotice.titled("Expedition Landed").icon(owner);
+			if (front.isPlayerOwned()) {
+				n.line("Your expedition has landed on %s.", ThreatNotice.market(market));
+			} else {
+				n.line("%s's expedition has landed on %s.",
+						ThreatNotice.faction(owner), ThreatNotice.market(market));
+			}
+			n.line("%s troops on the surface.", Misc.getWithDGS(troops)).send();
 		}
 		return front;
 	}
@@ -1528,15 +1532,22 @@ public class ThreatGroundFronts {
 			pushing = false;
 		}
 		if (threatFront) {
-			ThreatColonyManager.announceAlways("The Threat ground forces on "
-					+ market.getName() + " have exhausted their heavy armaments - "
-					+ "they dig in and signal for the next expedition. Hold the orbit "
-					+ "against it, and they wither.", Misc.getPositiveHighlightColor());
+			ThreatNotice.titled("Threat Front Dry").good()
+					.line("The Threat front on %s has exhausted its heavy armaments.",
+							ThreatNotice.market(market))
+					.line("It digs in and signals for the next expedition.")
+					.line("Hold the orbit against it and it withers.")
+					.send();
 		} else {
-				ThreatColonyManager.announceAlways("The ground forces on " + market.getName()
-						+ " have exhausted their heavy armaments - they fight at reduced "
-						+ "effectiveness and casualties will mount until they are resupplied "
-						+ "or withdrawn.", Misc.getNegativeHighlightColor());
+				ThreatNotice n = ThreatNotice.titled("Front Dry").bad().icon(ownerFaction(front));
+				if (front.isPlayerOwned()) {
+					n.line("Your front on %s has exhausted its heavy armaments.",
+							ThreatNotice.market(market));
+				} else {
+					n.line("%s's front on %s has exhausted its heavy armaments.",
+							ThreatNotice.faction(ownerFaction(front)), ThreatNotice.market(market));
+				}
+				n.line("Casualties mount until it is resupplied or withdrawn.").send();
 			}
 		}
 
@@ -1567,13 +1578,13 @@ public class ThreatGroundFronts {
 		bleedDefenders(market, front, elapsedDays);
 		if (front.marines < ThreatIncConfig.frontMinMarines()) {
 			if (threatFront) {
-				ThreatColonyManager.announceAlways("The Threat landing on " + market.getName()
-						+ " has been ground down to nothing - the surface is clear.",
-						Misc.getPositiveHighlightColor());
+				ThreatNotice.titled("Threat Landing Destroyed").good()
+						.line("The Threat landing on %s has been ground down to nothing.",
+								ThreatNotice.market(market))
+						.line("The surface is clear.")
+						.send();
 			} else {
-				ThreatColonyManager.announceAlways("The ground front on " + market.getName()
-						+ " has collapsed - the surviving positions were overrun.",
-						Misc.getNegativeHighlightColor());
+				announceCollapse(front, market);
 			}
 			ThreatIncConfig.log("Front collapsed at " + market.getName());
 			fronts().remove(front.marketId);
@@ -1591,13 +1602,16 @@ public class ThreatGroundFronts {
 			orderEntrench(front);
 			front.bracedFromPush = true;
 			pushing = false;
+			int inDays = (int) Math.ceil(daysToCounterAttack(front, market));
 			if (front.isPlayerOwned()) {
-				ThreatColonyManager.announceAlways("The ground forces on " + market.getName()
-						+ " break off their assault and dig in - a counter-attack is coming "
-						+ "and they hold no ground to give.", Misc.getHighlightColor());
+				ThreatNotice.titled("Front Digs In").icon(Global.getSector().getPlayerFaction())
+						.line("Your front on %s breaks off its assault and digs in.",
+								ThreatNotice.market(market))
+						.line("A counter-attack is %s days out and it holds no ground to give.", inDays)
+						.send();
 			}
 			ThreatIncConfig.log("Front at " + market.getName() + " braces for a counter-attack in "
-					+ (int) Math.ceil(daysToCounterAttack(front, market)) + " d");
+					+ inDays + " d");
 		} else if (!pushing && front.bracedFromPush && !shouldBrace(front, market)) {
 			// Dug in enough (or the odds moved) that an assault would survive
 			// the next blow: back to it, picking up where it stopped. Safe to
@@ -1689,18 +1703,19 @@ public class ThreatGroundFronts {
 				front.stance = STANCE_PUSH;
 					front.pushProgress = 0f;
 					if (front.isPlayerOwned()) {
-						ThreatColonyManager.announceAlways("No new orders reached the "
-								+ "front on " + market.getName() + " - it resumes the "
-								+ "assault on stratum " + (front.strataHeld + 1) + ".",
-								Misc.getHighlightColor());
+						ThreatNotice.titled("Assault Resumed").icon(Global.getSector().getPlayerFaction())
+								.line("No new orders reached your front on %s.", ThreatNotice.market(market))
+								.line("It resumes the assault on %s %s.", theatre.layer(), front.strataHeld + 1)
+								.send();
 					}
 				} else {
 					front.stance = STANCE_ENTRENCH;
 					if (front.isPlayerOwned()) {
-						ThreatColonyManager.announceAlways("The front on "
-								+ market.getName() + " is too weak to resume the "
-								+ "assault - it entrenches on what it holds, awaiting "
-								+ "reinforcement.", Misc.getNegativeHighlightColor());
+						ThreatNotice.titled("Front Entrenches").bad().icon(Global.getSector().getPlayerFaction())
+								.line("Your front on %s is too weak to resume the assault.",
+										ThreatNotice.market(market))
+								.line("It entrenches on what it holds and awaits reinforcement.")
+								.send();
 					}
 				}
 			}
@@ -1744,9 +1759,10 @@ public class ThreatGroundFronts {
 		if (!front.isPlayerOwned() && !front.withdrawRequested && isDry(front)
 				&& eff < defender * ThreatIncConfig.frontGrindFraction()) {
 			if (threatFront) {
-				ThreatColonyManager.announceAlways("The Threat force on " + market.getName()
-						+ " has spent itself - out of armaments and too weak to press, "
-						+ "the landing is finished.", Misc.getPositiveHighlightColor());
+				ThreatNotice.titled("Threat Landing Spent").good()
+						.line("The Threat force on %s has spent itself.", ThreatNotice.market(market))
+						.line("Out of armaments and too weak to press, the landing is finished.")
+						.send();
 				ThreatIncConfig.log("Threat front at " + market.getName()
 						+ " collapsed: dry and below grind strength");
 				fronts().remove(front.marketId);
@@ -1770,9 +1786,10 @@ public class ThreatGroundFronts {
 			&& !lastStratumProtected(front, market)) {
 		front.finalPush = true;
 		orderPush(front);
-		ThreatColonyManager.announceAlways("No expedition has reached the Threat front on "
-				+ market.getName() + " - it throws everything it has left at the next "
-				+ theatre.layer() + ".", Misc.getHighlightColor());
+		ThreatNotice.titled("Final Push").bad()
+				.line("No expedition has reached the Threat front on %s.", ThreatNotice.market(market))
+				.line("It throws everything it has left at the next %s.", theatre.layer())
+				.send();
 		ThreatIncConfig.log("Threat front at " + market.getName() + " makes its final push");
 	}
 
@@ -1829,22 +1846,27 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		front.stance = STANCE_CONSOLIDATE;
 		front.consolidateDaysLeft = ThreatIncConfig.frontCheckpointDays();
 		reapply(front.marketId); // strata strip base defense and fabrication
+		String layer = Theatre.of(market).layer();
 		if (isThreatOwned(front)) {
-		ThreatColonyManager.announceAlways("The Threat has taken " + Theatre.of(market).layer()
-				+ " " + front.strataHeld + " of " + total + " on " + market.getName()
-				+ " - that much of the colony's garrison is gone with it.",
-				Misc.getNegativeHighlightColor());
+			ThreatNotice.titled(Misc.ucFirst(layer) + " Taken").bad()
+					.line("The Threat has taken %s %s of %s on %s.", layer,
+							ThreatNotice.red(front.strataHeld), total, ThreatNotice.market(market))
+					.line("That share of the garrison is gone with it.")
+					.send();
 		} else if (front.isPlayerOwned()) {
-			ThreatColonyManager.announceAlways("Ground forces on " + market.getName()
-					+ " have taken stratum " + front.strataHeld + " of " + total
-					+ " and are consolidating. They request reinforcement and "
-					+ "resupply - without new orders they will push on in "
-					+ (int) front.consolidateDaysLeft + " days.",
-					Misc.getPositiveHighlightColor());
+			ThreatNotice.titled(Misc.ucFirst(layer) + " Taken").good()
+					.icon(Global.getSector().getPlayerFaction())
+					.line("Your front on %s has taken %s %s of %s.", ThreatNotice.market(market),
+							layer, ThreatNotice.green(front.strataHeld), total)
+					.line("It consolidates and requests reinforcement and resupply.")
+					.line("Without new orders it pushes on in %s days.", (int) front.consolidateDaysLeft)
+					.send();
 		} else {
-			ThreatColonyManager.announceAlways("Expeditionary ground forces on "
-					+ market.getName() + " have taken stratum " + front.strataHeld
-					+ " of " + total + ".", Misc.getPositiveHighlightColor());
+			FactionAPI owner = ownerFaction(front);
+			ThreatNotice.titled(Misc.ucFirst(layer) + " Taken").good().icon(owner)
+					.line("%s's front on %s has taken %s %s of %s.", ThreatNotice.faction(owner),
+							ThreatNotice.market(market), layer, ThreatNotice.green(front.strataHeld), total)
+					.send();
 		}
 		ThreatIncConfig.log("Front took stratum " + front.strataHeld + "/" + total
 				+ " at " + market.getName());
@@ -1868,11 +1890,17 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** A hive's last stratum has fallen: eradication, the winner's free outpost, the survivors into it, the swarm's answer. */
 	protected static void hiveGroundVictory(GroundFront front, MarketAPI market) {
 		fronts().remove(front.marketId);
-		ThreatColonyManager.announceAlways("The Fabrication Core of " + market.getName()
-				+ " has been destroyed - the hive is eradicated. The strata are cold.",
-				Misc.getPositiveHighlightColor());
-		ThreatIncConfig.log("Ground victory at " + market.getName());
 		String winner = ownerOf(front);
+		FactionAPI winnerFaction = ownerFaction(front);
+		ThreatNotice n = ThreatNotice.titled("Hive Eradicated").good().icon(winnerFaction);
+		if (front.isPlayerOwned()) {
+			n.line("Your front has destroyed the Fabrication Core of %s.", ThreatNotice.market(market));
+		} else {
+			n.line("%s's front has destroyed the Fabrication Core of %s.",
+					ThreatNotice.faction(winnerFaction), ThreatNotice.market(market));
+		}
+		n.line("The strata are cold.").send();
+		ThreatIncConfig.log("Ground victory at " + market.getName());
 		StarSystemAPI where = market.getStarSystem();
 		// held before the teardown: the market's entity and position are the
 		// only handles on the world once decivilize has run
@@ -1882,15 +1910,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// what was taken is held: the outpost is free (the fleet that won it is
 		// already in orbit) and only possible now the market is gone
 		ThreatOutposts.Outpost outpost = null;
+		MarketAPI forwardBase = null;
 		if (world != null && ThreatIncConfig.outpostsEnabled()) {
 			outpost = ThreatOutposts.outpostAt(world.getId());
 			if (outpost != null && !outpost.alive()) outpost = null;
 			if (outpost == null && ThreatIncConfig.outpostOnVictory()) {
-				outpost = ThreatOutposts.buildFree(
-						Global.getSector().getFaction(winner), world);
+				// the player holds it with an outpost, an NPC with a forward base
+				com.fs.starfarer.api.campaign.FactionAPI wf = Global.getSector().getFaction(winner);
+				outpost = ThreatOutposts.buildFree(wf, world);
+				if (outpost == null) forwardBase = ThreatOutposts.raiseForwardBase(wf, world, "free - ground victory");
 			}
 		}
-		evacuate(front, outpost, hyperLoc);
+		evacuate(front, outpost, hyperLoc, forwardBase);
 		// the swarm answers (docs/design-theory.md 8.1): grudge, and a strike
 		// at the winner from the nearest hive that can muster one
 		ThreatAlarm.add(winner, ThreatIncConfig.alarmPerEradication(),
@@ -1920,8 +1951,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	protected static void colonyGroundVictory(GroundFront front, MarketAPI market) {
 		fronts().remove(front.marketId);
 		if (syncSiegeState(market)) market.reapplyIndustries(); // strip the malus/tooltip before the teardown
-		ThreatColonyManager.announceAlways(market.getName() + " has fallen to the Threat "
-				+ "ground assault - the colony is lost.", Misc.getNegativeHighlightColor());
+		ThreatNotice.titled("Colony Lost").bad()
+				.line("%s has fallen to the Threat ground assault.", ThreatNotice.market(market))
+				.send();
 		ThreatIncConfig.log("Threat ground victory at " + market.getName());
 		// any defence contract for this colony has failed for good
 		ThreatAidMissionIntel.strikeLanded(market);
@@ -1936,8 +1968,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (ThreatIncConfig.conquestConverts() && world instanceof PlanetAPI) {
 			MarketAPI hive = ThreatColonyManager.convertConquered((PlanetAPI) world, market);
 			if (hive != null) {
-				ThreatColonyManager.announceAlways("The swarm has seeded a hive on the ruins of "
-						+ hive.getName() + ".", Misc.getNegativeHighlightColor());
+				ThreatNotice.titled("Hive Seeded").bad()
+						.line("The swarm has seeded a hive on the ruins of %s.", ThreatNotice.market(hive))
+						.send();
 				return;
 			}
 			// the teardown ran but no hive could be seeded: the world is already a
@@ -1992,19 +2025,29 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (loss <= 0f) return;
 		if (!front.announcedScour) {
 			front.announcedScour = true;
-			String who = front.isPlayerOwned() ? "your"
-					: ThreatWarState.displayName(front.factionId) + "'s";
-			ThreatColonyManager.announceAlways("The swarm holds the orbit over " + who
-					+ " front on " + market.getName() + " unopposed and has begun bombarding it - "
-					+ perDay(swarmBombardPer30Days(front, market)) + " troops a day. "
-					+ "Contest the orbit and it stops.",
-					front.isPlayerOwned() ? Misc.getNegativeHighlightColor() : Misc.getHighlightColor());
+			ThreatNotice n = ThreatNotice.titled("Front Bombarded");
+			if (front.isPlayerOwned()) {
+				n.bad().line("The swarm holds the orbit over your front on %s unopposed and bombards it.",
+						ThreatNotice.market(market));
+			} else {
+				n.line("The swarm holds the orbit over %s's front on %s unopposed and bombards it.",
+						ThreatNotice.faction(ownerFaction(front)), ThreatNotice.market(market));
+			}
+			n.line("%s troops a day.", ThreatNotice.red(perDay(swarmBombardPer30Days(front, market))))
+					.line("Contest the orbit and it stops.")
+					.send();
 		}
 		ThreatMarineXP.frontLose(front, loss);
 		if (front.marines < ThreatIncConfig.frontMinMarines()) {
-			ThreatColonyManager.announceAlways("The ground front on " + market.getName()
-					+ " has been bombarded to nothing from orbit.",
-					front.isPlayerOwned() ? Misc.getNegativeHighlightColor() : Misc.getHighlightColor());
+			ThreatNotice n = ThreatNotice.titled("Front Destroyed");
+			if (front.isPlayerOwned()) {
+				n.bad().line("Your front on %s has been bombarded to nothing from orbit.",
+						ThreatNotice.market(market));
+			} else {
+				n.line("%s's front on %s has been bombarded to nothing from orbit.",
+						ThreatNotice.faction(ownerFaction(front)), ThreatNotice.market(market));
+			}
+			n.send();
 			ThreatIncConfig.log("Front at " + market.getName() + " (" + ownerOf(front)
 					+ ") destroyed by swarm orbital bombardment");
 			fronts().remove(front.marketId);
@@ -2195,7 +2238,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	protected static void hiveCounterAttack(GroundFront front, MarketAPI market) {
 		boolean threatFront = isThreatOwned(front);
 		Theatre theatre = Theatre.of(market);
-		String who = theatre.counterAttacker(market);
 		float interval = theatre.counterAttackInterval(front, market);
 		float since = Global.getSector().getClock()
 				.getElapsedDaysSince(front.lastCounterAttack);
@@ -2238,10 +2280,13 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float loss = counterAttackLoss(front, attack, defense);
 		ThreatMarineXP.frontLose(front, loss);
 
-		java.awt.Color tone = threatFront ? Misc.getPositiveHighlightColor()
-				: Misc.getNegativeHighlightColor();
-		// the colony theatre's attacker already names the world
-		String where = theatre == HIVE ? " on " + market.getName() : "";
+		// a hive's counter-attack is the swarm's (Threat crest); a colony's is its garrison's
+		FactionAPI attacker = theatre == HIVE ? null : market.getFaction();
+		String by = theatre == HIVE ? "A hive counter-attack on %s"
+				: "The garrison of %s";
+		// the front's dead: the sector's loss when the front is ours, its gain when the swarm's
+		ThreatNotice.Hl lost = threatFront ? ThreatNotice.green(Math.round(loss))
+				: ThreatNotice.red(Math.round(loss));
 	// thrown back or battered, the front's cover is spoilt (2026-09-06)
 	front.entrenchDays *= Math.max(0f, Math.min(1f, ThreatIncConfig.frontEntrenchKeptFraction()));
 	if (front.strataHeld > 0) {
@@ -2250,36 +2295,45 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// a final push does not stop for a setback - it is spent either way
 		front.stance = front.finalPush ? STANCE_PUSH : STANCE_ENTRENCH;
 		reapply(front.marketId);
-		ThreatColonyManager.announceAlways(who + where + " has retaken a " + theatre.layer()
-				+ " - " + front.strataHeld + " of " + market.getSize() + " still held by the "
-				+ "invaders, " + Math.round(loss) + " of their troops lost.", tone);
+		ThreatNotice n = ThreatNotice.titled(Misc.ucFirst(theatre.layer()) + " Retaken").icon(attacker);
+		if (threatFront) n.good(); else n.bad();
+		n.line(by + " has retaken a %s.", ThreatNotice.market(market), theatre.layer())
+				.line("%s of %s still held by the invaders.", front.strataHeld, market.getSize())
+				.line("%s of their troops lost.", lost)
+				.send();
 			ThreatIncConfig.log("Counter-attack at " + market.getName() + " retook a stratum ("
 					+ (int) attack + " vs " + (int) defense + "): " + front.strataHeld
 					+ " held, " + Math.round(loss) + " marines lost");
 		} else if (odds > 2f) {
-			ThreatColonyManager.announceAlways(who + where + " has overrun the beachhead "
-					+ (threatFront ? "on " + market.getName() + " " : "")
-					+ "- the front is destroyed.", tone);
+			ThreatNotice n = ThreatNotice.titled("Beachhead Overrun").icon(attacker);
+			if (threatFront) n.good(); else n.bad();
+			n.line(by + " has overrun the beachhead.", ThreatNotice.market(market))
+					.line("The front is destroyed.")
+					.send();
 			ThreatIncConfig.log("Counter-attack at " + market.getName() + " overran the beachhead ("
 					+ (int) attack + " vs " + (int) defense + ")");
 			fronts().remove(front.marketId);
 			reapply(front.marketId);
 			return;
 		} else {
-		ThreatColonyManager.announceAlways(who + where + " has battered the beachhead "
-				+ (threatFront ? "on " + market.getName() + " " : "")
-				+ "- " + Math.round(loss) + " of their troops lost.", tone);
+			ThreatNotice n = ThreatNotice.titled("Beachhead Battered").icon(attacker);
+			if (threatFront) n.good(); else n.bad();
+			n.line(by + " has battered the beachhead.", ThreatNotice.market(market))
+					.line("%s of its troops lost.", lost)
+					.send();
 			ThreatIncConfig.log("Counter-attack at " + market.getName() + " battered the beachhead ("
 					+ (int) attack + " vs " + (int) defense + "): " + Math.round(loss)
 					+ " marines lost");
 		}
 		if (front.marines < ThreatIncConfig.frontMinMarines()) {
-			ThreatColonyManager.announceAlways(threatFront
-					? "The Threat landing on " + market.getName() + " has been destroyed - "
-							+ "the surface is clear."
-					: "The ground front on " + market.getName()
-							+ " has collapsed - the surviving positions were overrun.",
-					tone);
+			if (threatFront) {
+				ThreatNotice.titled("Threat Landing Destroyed").good()
+						.line("The Threat landing on %s has been destroyed.", ThreatNotice.market(market))
+						.line("The surface is clear.")
+						.send();
+			} else {
+				announceCollapse(front, market);
+			}
 			fronts().remove(front.marketId);
 			reapply(front.marketId);
 		}
@@ -2903,14 +2957,16 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** One sentence when fragments reach the ground, in the owner's voice; the log carries the rest. */
 	protected static void announceFabrication(MarketAPI market, String factionId, int troops) {
 		if (Factions.THREAT.equals(factionId)) {
-			ThreatColonyManager.announceAlways("The swarm over " + market.getName()
-					+ " is breaking up its own ships - " + Misc.getWithDGS(troops)
-					+ " more of them have come down on the assault.",
-					Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Swarm Breaks Up Ships").bad()
+					.line("The swarm over %s is breaking up its own ships.", ThreatNotice.market(market))
+					.line("%s more troops join the assault.", ThreatNotice.red(Misc.getWithDGS(troops)))
+					.send();
 		} else if (Factions.PLAYER.equals(factionId)) {
-			ThreatColonyManager.announceAlways("Your fleet over " + market.getName()
-					+ " has stripped its hulls for the ground - " + Misc.getWithDGS(troops)
-					+ " more into the fight.", Misc.getHighlightColor());
+			ThreatNotice.titled("Hulls Stripped").icon(Global.getSector().getPlayerFaction())
+					.line("Your fleet over %s has stripped its hulls for the ground.",
+							ThreatNotice.market(market))
+					.line("%s more troops join the fight.", Misc.getWithDGS(troops))
+					.send();
 		}
 	}
 
@@ -3216,6 +3272,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return Theatre.of(market).layer();
 	}
 
+	/** A player's or faction's front is gone: the surviving positions were overrun. */
+	protected static void announceCollapse(GroundFront front, MarketAPI market) {
+		ThreatNotice n = ThreatNotice.titled("Front Collapsed").bad().icon(ownerFaction(front));
+		if (front.isPlayerOwned()) {
+			n.line("Your front on %s has collapsed.", ThreatNotice.market(market));
+		} else {
+			n.line("%s's front on %s has collapsed.",
+					ThreatNotice.faction(ownerFaction(front)), ThreatNotice.market(market));
+		}
+		n.line("The surviving positions were overrun.").send();
+	}
+
 	protected static void announceStateChange(GroundFront front, MarketAPI market) {
 		if (front.state.equals(front.announcedState)) return;
 		String was = front.announcedState;
@@ -3224,18 +3292,24 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// the deploy dialog already told the player where they stand
 		if (was == null && !STATE_HOLDING.equals(front.state)) return;
 		if (!front.isPlayerOwned()) return; // NPC campaigns message on strata only
+		FactionAPI player = Global.getSector().getPlayerFaction();
 		if (STATE_HOLDING.equals(front.state)) {
-			ThreatColonyManager.announceAlways("Ground forces on " + market.getName()
-					+ " are holding - the hive's organs are suppressed and a push "
-					+ "on the next stratum is possible.", Misc.getPositiveHighlightColor());
+			ThreatNotice.titled("Front Holding").good().icon(player)
+					.line("Your front on %s is holding.", ThreatNotice.market(market))
+					.line("The hive's organs are suppressed.")
+					.line("A push on the next %s is possible.", layerName(market))
+					.send();
 		} else if (STATE_GRINDING.equals(front.state)) {
-			ThreatColonyManager.announceAlways("Ground forces on " + market.getName()
-					+ " have been pushed back to grinding the outer defenses - "
-					+ "too weak to hold the deep organs.", Misc.getHighlightColor());
+			ThreatNotice.titled("Front Pushed Back").icon(player)
+					.line("Your front on %s is pushed back to grinding the outer defenses.",
+							ThreatNotice.market(market))
+					.line("Too weak to hold the deep organs.")
+					.send();
 		} else {
-			ThreatColonyManager.announceAlways("Ground forces on " + market.getName()
-					+ " are reduced to a foothold - too weak to suppress anything.",
-					Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Front Reduced").bad().icon(player)
+					.line("Your front on %s is reduced to a foothold.", ThreatNotice.market(market))
+					.line("Too weak to suppress anything.")
+					.send();
 		}
 	}
 
@@ -3257,6 +3331,12 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	protected static void evacuate(GroundFront front, ThreatOutposts.Outpost outpost,
 			Vector2f hyperLoc) {
+		evacuate(front, outpost, hyperLoc, null);
+	}
+
+	/** An NPC front's survivors garrison the forward base it won, when one was raised. */
+	protected static void evacuate(GroundFront front, ThreatOutposts.Outpost outpost,
+			Vector2f hyperLoc, MarketAPI forwardBase) {
 		int marines = Math.round(front.marines);
 		int armaments = (int) Math.floor(front.armaments);
 		// what they learned down there comes home with them (2026-09-08)
@@ -3273,10 +3353,12 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			ThreatOutposts.deposit(outpost, Commodities.MARINES, marines);
 			ThreatOutposts.deposit(outpost, Commodities.HAND_WEAPONS, armaments);
 			if (front.isPlayerOwned()) {
-				ThreatColonyManager.announceAlways("The ground forces hold what they took - "
-						+ marines + " marines and " + armaments + " heavy armaments are now "
-						+ "the stockpile of the outpost over " + outpost.planetName() + ".",
-						Misc.getPositiveHighlightColor());
+				ThreatNotice.titled("Outpost Garrisoned").good().icon(Global.getSector().getPlayerFaction())
+						.line("Your ground forces hold what they took.")
+						.line("%s marines and %s heavy armaments stock the outpost over %s.",
+								ThreatNotice.green(marines), ThreatNotice.green(armaments),
+								outpost.planetName())
+						.send();
 			}
 			ThreatIncConfig.log("Front survivors garrison the outpost over "
 					+ outpost.planetName() + ": " + marines + " marines, " + armaments
@@ -3286,8 +3368,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (!front.isPlayerOwned()) {
 			com.fs.starfarer.api.campaign.FactionAPI faction =
 					Global.getSector().getFaction(front.factionId);
-			MarketAPI base = null;
-			if (faction != null && hyperLoc != null) {
+			MarketAPI base = forwardBase;
+			if (base == null && faction != null && hyperLoc != null) {
 				base = ThreatFleetOrders.pickBase(faction, hyperLoc);
 			}
 			if (base == null && faction != null) {
@@ -3324,10 +3406,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				player.getCargo().addCommodity(Commodities.HAND_WEAPONS, armaments);
 			}
 		}
-		ThreatColonyManager.announceAlways("The ground forces have lifted off - "
-				+ marines + " " + ThreatMarineXP.rankName(level).toLowerCase()
-				+ " marines rejoin the fleet.",
-				Misc.getPositiveHighlightColor());
+		ThreatNotice.titled("Front Lifted Off").good().icon(Global.getSector().getPlayerFaction())
+				.line("%s %s marines rejoin the fleet.", ThreatNotice.green(marines),
+						ThreatMarineXP.rankName(level).toLowerCase())
+				.send();
 		ThreatIncConfig.log("Front evacuated: " + worldName(front));
 	}
 }

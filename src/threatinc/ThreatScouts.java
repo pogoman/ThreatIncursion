@@ -116,11 +116,14 @@ public class ThreatScouts {
 		ThreatIncData.markDiscovered(systemId);
 		StarSystemAPI system = ThreatScoutRoute.systemById(systemId);
 		String where = system != null ? system.getNameWithLowercaseType() : systemId;
-		String who = finderFactionId == null ? "The sector"
-				: Factions.PLAYER.equals(finderFactionId) ? "Your faction"
-				: ThreatWarState.displayName(finderFactionId);
-		ThreatColonyManager.announceAlways(who + " has found a Threat hive in the " + where + ".",
-				Misc.getNegativeHighlightColor());
+		FactionAPI finder = finderFactionId == null ? null : Global.getSector().getFaction(finderFactionId);
+		ThreatNotice n = ThreatNotice.titled("Hive Found").good().icon(finder);
+		if (finder == null) {
+			n.line("The sector has found a Threat hive in the %s.", where);
+		} else {
+			n.line("%s has found a Threat hive in the %s.", ThreatNotice.faction(finder), where);
+		}
+		n.send();
 		ThreatIncConfig.log("Hive found in " + where + " by " + finderFactionId);
 	}
 

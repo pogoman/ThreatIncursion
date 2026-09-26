@@ -40,18 +40,23 @@ import com.fs.starfarer.api.util.Misc;
  * softenFleetFP, and paid for as a siege is, in fuel and supplies. With
  * softenPool every base of the faction in reach chips in, nearest first. The
  * odds are counted on the warships the yards actually build (vanilla scales an
- * NPC fleet by its market), and a force that cannot beat the weakest colony's
- * garrison by the margin does not sail.
+ * NPC fleet by its market), and a force that cannot beat its target's garrison
+ * by the margin does not sail.
  *
  * <p>The fleets MUSTER (2026-09-24 review): each flies blinkered to the hive
  * system's hyperspace anchor and waits there until the whole force is in, or
  * softenMusterDays after the first arrival, then all go in together. Before
  * this every fleet flew on its own and met the whole garrison alone - 69 of a
- * 21-month run's hunting fleets broke off badly hurt. The force works the
- * system's colonies weakest garrison first, moves on only while what is left
- * of it still beats the next garrison by the margin, and goes home whole when
- * it falls below softenRetreatStrength of its strength when it went in or last
- * moved on. The player's Hunt (no force) keeps the single-fleet rules. One
+ * 21-month run's hunting fleets broke off badly hurt. The force AIMS AT THE
+ * GATE (2026-09-26, {@link #strongest}): its target is the world the siege's
+ * orbit gate reads - the strongest garrison - or it does not sail; it moves
+ * on to the next strongest only while what is left of it still beats that
+ * garrison by the margin, and goes home whole when it falls below
+ * softenRetreatStrength of its strength when it went in or last moved on.
+ * Weakest first, Run 5's forces beat Loka (25 FP) and Aigor (14) while the
+ * gate read the 5-6.7k FP world beside them, which refilled them in days:
+ * ~277k supplies and ~497k fuel gross for no gate opened in 2.4 years. The
+ * player's Hunt (no force) keeps the single-fleet rules, weakest first. One
  * force per faction per system; a base waits softenIntervalDays after sending
  * fleets to one.
  *
@@ -194,7 +199,7 @@ public class ThreatSoftening {
 		return IncursionManager.siegeOrbitFP(Collections.singletonList(hive));
 	}
 
-	/** Where a hunt in this system starts: the colony with the weakest standing garrison, or null when no colony has one. */
+	/** Where the player's single-fleet hunt in this system starts: the colony with the weakest standing garrison, or null when no colony has one. */
 	public static MarketAPI huntTarget(String systemId) {
 		return weakest(systemId);
 	}
@@ -208,6 +213,26 @@ public class ThreatSoftening {
 			float fp = garrisonFP(hive);
 			if (fp <= 0f) continue;
 			if (fp < bestFP) {
+				bestFP = fp;
+				best = hive;
+			}
+		}
+		return best;
+	}
+
+	/**
+	 * A hunting force's target: the colony the siege's orbit gate reads - the
+	 * strongest standing garrison (IncursionManager.siegeOrbitFaced with
+	 * npcSiegeOrbitPerWorld; summed, the gate still falls fastest here), or null
+	 * when no colony has one.
+	 */
+	protected static MarketAPI strongest(String systemId) {
+		MarketAPI best = null;
+		float bestFP = 0f;
+		for (MarketAPI hive : ThreatIncData.getLiveColonyMarkets(systemId)) {
+			if (hive.getPrimaryEntity() == null) continue;
+			float fp = garrisonFP(hive);
+			if (fp > bestFP) {
 				bestFP = fp;
 				best = hive;
 			}
@@ -321,7 +346,9 @@ public class ThreatSoftening {
 
 	/** Raises a hunting force against the system; true when one sailed for the muster. */
 	protected static boolean send(FactionAPI faction, MarketAPI base, StarSystemAPI system) {
-		MarketAPI first = weakest(system.getId());
+		// the world the siege's orbit gate reads, or nothing: a force that cannot
+		// be fielded or paid against it does not go for a weaker world instead
+		MarketAPI first = strongest(system.getId());
 		if (first == null) return false;
 		String key = "huntwait:" + faction.getId() + ":" + system.getId();
 		float margin = Math.max(0f, ThreatIncConfig.softenMargin());
@@ -428,9 +455,15 @@ public class ThreatSoftening {
 			return false;
 		}
 		forces().put(force.id, force);
-		ThreatColonyManager.announceAlways(Misc.ucFirst(faction.getDisplayNameWithArticle())
-				+ " " + faction.getDisplayNameIsOrAre() + " mustering a hunting force against the Defense Swarms in the "
-				+ system.getNameWithLowercaseTypeShort() + ".", Misc.getHighlightColor());
+		ThreatNotice n = ThreatNotice.titled("Hunting Force Musters").icon(faction);
+		if (faction.isPlayerFaction()) {
+			n.line("Your hunting force musters against the Defense Swarms in the %s",
+					system.getNameWithLowercaseTypeShort());
+		} else {
+			n.line("%s musters a hunting force against the Defense Swarms in the %s",
+					ThreatNotice.faction(faction), system.getNameWithLowercaseTypeShort());
+		}
+		n.send();
 		ThreatIncConfig.log("Hunting force from " + Misc.getAndJoined(from) + " to " + system.getName() + ": "
 				+ sent.size() + " fleets (" + shape(sent) + "), " + (int) built + " FP built (wanted " + (int) want + ", pays for "
 				+ (int) builds + ") against " + first.getName() + " first (" + (int) garrisonFP(first)
@@ -601,7 +634,7 @@ public class ThreatSoftening {
 			boolean waited = f.firstArrivalTimestamp != 0L
 					&& clock.getElapsedDaysSince(f.firstArrivalTimestamp) >= ThreatIncConfig.softenMusterDays();
 			if (!all && !waited) return;
-			MarketAPI target = weakest(f.systemId);
+			MarketAPI target = strongest(f.systemId);
 			if (target == null) {
 				standDownAll(f, orders, "the swarms are gone");
 				return;
@@ -698,7 +731,8 @@ public class ThreatSoftening {
 					+ orders.size() + " fleets, " + (int) fp + " FP present against " + (int) garrisonFP(hive));
 		}
 		if (hive != null && isHive(hive) && garrisonFP(hive) > 0f) return;
-		MarketAPI next = weakest(f.systemId);
+		// on to what the gate reads now
+		MarketAPI next = strongest(f.systemId);
 		if (next == null) {
 			standDownAll(f, orders, "the swarms are gone");
 			return;
@@ -876,8 +910,9 @@ public class ThreatSoftening {
 		boolean player = Global.getSector().getPlayerFaction().getId().equals(o.factionId);
 		if (ThreatReturns.orderHealth(o.fleet) < ThreatIncConfig.softenRetreatStrength()) {
 			if (player) {
-				ThreatColonyManager.announceAlways(o.fleet.getName() + " is badly hurt and breaks off "
-						+ "the hunt over " + o.targetName + ".", Misc.getNegativeHighlightColor());
+				ThreatNotice.titled("Hunt Broken Off").bad().icon(Global.getSector().getPlayerFaction())
+						.line("%s is badly hurt", o.fleet.getName())
+						.line("It breaks off the hunt over %s", o.targetName).send();
 			}
 			ThreatFleetOrders.standDown(o, "badly hurt");
 			return;
@@ -890,8 +925,9 @@ public class ThreatSoftening {
 		MarketAPI next = systemId != null ? weakest(systemId) : null;
 		if (next == null) {
 			if (player) {
-				ThreatColonyManager.announceAlways(o.fleet.getName() + " has hunted down the Defense "
-						+ "Swarms and is heading home.", Misc.getHighlightColor());
+				ThreatNotice.titled("Swarms Hunted Down").good().icon(Global.getSector().getPlayerFaction())
+						.line("%s has hunted down the Defense Swarms", o.fleet.getName())
+						.line("Heading home").send();
 			}
 			ThreatFleetOrders.standDown(o, "the swarms are gone");
 			IncursionManager.huntThinned(systemId);
@@ -903,8 +939,9 @@ public class ThreatSoftening {
 			return;
 		}
 		if (player) {
-			ThreatColonyManager.announceAlways(o.fleet.getName() + " moves on to hunt the swarms "
-					+ "over " + next.getName() + ".", Misc.getHighlightColor());
+			ThreatNotice.titled("Hunt Moves On").icon(Global.getSector().getPlayerFaction())
+					.line("%s moves on to the swarms over %s", o.fleet.getName(), ThreatNotice.market(next))
+					.send();
 		}
 		ThreatFleetOrders.retargetHunt(o, next);
 		ThreatIncConfig.log("Hunting fleet moves on to " + next.getName());

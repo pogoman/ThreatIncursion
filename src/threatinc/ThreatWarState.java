@@ -121,12 +121,11 @@ public class ThreatWarState {
 		// round an importer seeded nothing but militia (2026-09-24)
 		ThreatReserves.syncWarFooting(warFactionIds());
 		ThreatReserves.seed(id);
-		String who = faction.isPlayerFaction() ? "Your faction"
-				: Misc.ucFirst(faction.getDisplayNameWithArticle());
-		ThreatColonyManager.announceAlways(who + " has mobilised for war against the "
-				+ "Threat: its colonies now stock marines, armaments, fuel and "
-				+ "supplies for the war effort, and ship them to the front.",
-				Misc.getHighlightColor());
+		ThreatNotice.titled("Mobilised for War").icon(faction)
+				.line("%s has mobilised for war against the Threat.", ThreatNotice.faction(faction))
+				.line("Its colonies now stock marines, armaments, fuel and supplies, "
+						+ "and ship them to the front.")
+				.send();
 		ThreatIncConfig.log("War mode: " + id + " mobilised (" + why + ")");
 		return war;
 	}
@@ -157,9 +156,10 @@ public class ThreatWarState {
 		if (!enabled() || !wars().containsKey(Factions.PLAYER)) return;
 		wars().remove(Factions.PLAYER);
 		ThreatReserves.syncWarFooting(warFactionIds());
-		ThreatColonyManager.announceAlways("Your faction has stood down from war footing: "
-				+ "your colonies no longer stock for the war effort, and what they hold "
-				+ "is kept.", Misc.getHighlightColor());
+		ThreatNotice.titled("Stood Down").icon(Global.getSector().getFaction(Factions.PLAYER))
+				.line("Your faction has stood down from war footing.")
+				.line("Your colonies no longer stock for the war effort; what they hold is kept.")
+				.send();
 		ThreatIncConfig.log("War mode: player stood down by order");
 	}
 
@@ -229,8 +229,9 @@ public class ThreatWarState {
 			if (bogus) {
 				ThreatIncConfig.log("War mode: dropped " + id + " (not a real faction)");
 			} else {
-				ThreatColonyManager.announce(Misc.ucFirst(faction.getDisplayNameWithArticle())
-						+ " takes no part in the war effort: stood down.", Misc.getHighlightColor());
+				ThreatColonyManager.announce(ThreatNotice.titled("Stood Down").icon(faction)
+						.line("%s takes no part in the war effort: stood down.",
+								ThreatNotice.faction(faction)));
 				ThreatIncConfig.log("War mode: dropped " + id + " (excluded from mobilisation)");
 			}
 		}
@@ -244,11 +245,11 @@ public class ThreatWarState {
 			FactionAPI faction = Global.getSector().getFaction(id);
 			if (faction != null && hiveInReach(faction)) continue;
 			wars().remove(id);
-			String who = faction == null ? id : faction.isPlayerFaction() ? "Your faction"
-					: Misc.ucFirst(faction.getDisplayNameWithArticle());
-			ThreatColonyManager.announce(who + " has stood down from war footing - no "
-					+ "hive remains in reach and the swarm has not struck for "
-					+ (int) days + " days.", Misc.getHighlightColor());
+			ThreatColonyManager.announce(ThreatNotice.titled("Stood Down").icon(faction)
+					.line("%s has stood down from war footing.",
+							faction == null ? id : ThreatNotice.faction(faction))
+					.line("No hive remains in reach and the swarm has not struck for %s days.",
+							(int) days));
 			ThreatIncConfig.log("War mode: " + id + " stood down");
 		}
 	}

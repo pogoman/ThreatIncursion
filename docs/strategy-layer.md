@@ -166,10 +166,12 @@ taken. Callers:
   with the faction, `beachheadSurvives`), or orbit has done all it can. Landing at 0 siege
   days against the intact defence, 10 of 22 NPC beachheads of Run 7 were overrun (rc1
   review). The player's landing stays the commander's call. An NPC siege short of marines
-  - or armaments - at its base draws the rest from its faction's other bases in reach,
-  nearest first, out of their spendable stock (`siegePoolMarines`, `marinePool`), and waits
-  while it cannot arm the landing to the marine gate's share (`minMarinesFraction`, all of
-  it at `npcSiegeFullStrength`); a size-4 beachhead is
+  - or armaments - at its base draws the rest from its faction's other markets in reach
+  (`siegePoolMarines`, `IncursionManager.siegeDonors`, 2026-09-26: colonies as well as
+  bases, any with a reserve, each giving everything above its floor - no donor keep share,
+  no staging hold; a market under a ground front gives nothing), nearest the base first,
+  and waits while it cannot arm the landing to the marine gate's share
+  (`minMarinesFraction`, all of it at `npcSiegeFullStrength`); a size-4 beachhead is
   ~2,400 troops and a full depot holds ~560. The system's siege base is the nearest
   (`siegeBaseFor`: it stages and is barred from hunting there while it could launch);
   while it cannot launch, the next nearest bases of any mobilised NPC faction try
@@ -184,7 +186,10 @@ taken. Callers:
   An NPC siege is also gated on provisions (2026-09-24): postponed below
   `expeditionMinProvisionsFraction` (0.5) of the fuel and supplies its flotilla (after
   the marine trim) burns, and trimmed - never below two fleets - to the fleet points the
-  depot's stock above the floor pays for. A player-commissioned expedition draws fuel and
+  stock above the floor pays for: the base's plus its donors' (`siegePoolProvisions`,
+  2026-09-26, the same `siegeDonors`; the draw takes the base first, then the donors
+  nearest it, and logs "Expedition fuel/supplies pooled for"; refunds still land at the
+  base). A player-commissioned expedition draws fuel and
   supplies best-effort (cost, not gate). Armaments short = a shorter front supply.
   An NPC siege sails at FULL STRENGTH (2026-09-24, knob `npcSiegeFullStrength`): all the
   marines it wants (`minMarinesFraction` = 1 for NPCs), and the leading fleets that reach
@@ -229,6 +234,23 @@ taken. Callers:
   its banking. The floor stays on the months cap (`monthsCap`), so the siege spends what
   it saved. Before, Chicomoztoc, 31 ly from the nearest known hive, could hold 9,000 fuel
   against a 13,000 launch gate and never sailed.
+- 2026-09-26, FROM RUN 5 (2.4 years, no player: 4 NPC sieges, hives grew). The log showed
+  the gates shut for four reasons, each fixed in the same idiom: (S1) fuel and supplies
+  were read at the siege base alone - supplies bound 220 of 244 provision postponements
+  at a median 299 in the depot against a 12,600 bill, while the faction held 2.5x of it
+  in 216 - so they pool now like the marines (`siegePoolProvisions`). (S2) The marine
+  pool was sibling BASES' spendable stock only - the faction's marines covered the need
+  in 374 of 375 marine postponements (median 2.9x) but base + pool held a median tenth -
+  so the donors are every market of the faction in reach, each above its floor
+  (`siegeDonors`; the hunts' `payableFP`, convoys' `spare` and the player's aid keep the
+  keep fraction and staging hold). (S3) Hunting forces went at the weakest world first
+  (Loka 25 FP, Aigor 14), which its siblings refilled in days, while the orbit gate read
+  the strongest: ~277k supplies and ~497k fuel gross for no gate opened - a force now
+  targets the world the gate reads or does not sail (`ThreatSoftening.strongest`). (S4)
+  `siegeMaxFleets` 25 capped the flotilla at ~6,150 FP (25 x difficulty 10 x 25 FP), so
+  no NPC could siege a world over ~4,100 FP of swarms at the 1.5 margin, and the big
+  worlds held 5-6.7k all run: 40 now; with the pools, marines and provisions are the
+  real constraint. The LunaLib store moves 25 -> 40 through `LunaConfigBridge` version 2.
 - `IncursionManager.dispatchFactionResponse`: task forces draw fuel and supplies only,
   best-effort - the reactive defense always sails; draining the depot is what holds up
   the next siege.
@@ -850,8 +872,11 @@ they can be stronger than a siege; a siegeable world in reach always comes first
     (`ThreatSoftening.hostileAt`, rc1 review: all 9 badly-hurt stand-downs of Run 7 came
     after a fight with another faction's force). Coalition answers skip the same, and skip
     an enemy's call.
+- Target: the world the siege's orbit gate reads - the strongest garrison
+  (`ThreatSoftening.strongest`, 2026-09-26; see the Run 5 note under "NPC sieges"). A
+  force that cannot be fielded or paid against it does not go for a weaker world instead.
 - Size: the system's Defense Swarm FP x `softenMargin` (2.0), capped at `softenMaxFP`
-  (12,000), and never below the weakest colony's garrison x the margin x `softenHeadroom`
+  (12,000), and never below the target's garrison x the margin x `softenHeadroom`
   (1.5, 2026-09-25) - or, for a colony regrowing its swarms, the whole garrison it refills
   to at the strength of the swarms it has (`musterFloorFP`, rc1 review: targets regrew
   1.7-43x during musters). It waits if that floor is above the cap, or if its bases cannot pay
@@ -909,9 +934,10 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   stops at `softenMergeMaxShips` (90; one merged fleet reached 900 ships), and fleets
   beyond it follow the lead. The lead drops its blinkers within 2,500 units of the target,
   with every follower within 2,000 of it; a follower near the lead in a battle drops them too.
-- In: all fleets `ORBIT_AGGRESSIVE` over the weakest garrison. When it is gone the force
-  moves on to the next weakest (`retargetHunt`) only if its warships still beat that
-  garrison by the margin, and goes home otherwise ("outmatched by"). The whole force goes
+- In: all fleets `ORBIT_AGGRESSIVE` over the target garrison (the strongest; it goes in
+  only if the fleets present beat it by the margin). When it is gone the force
+  moves on to what the gate reads now - the next strongest - only if its warships still
+  beat that garrison by the margin, and goes home otherwise ("outmatched by"). The whole force goes
   home (tracked leg, refund on arrival) when the system is clear, it falls below
   `softenRetreatStrength` (0.4) of its strength when it went in or last moved on, or
   `softenDays` (60) run out. Strength is what is IN the fight: the fleets that went in
@@ -937,9 +963,10 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   colony has free), on a group fleet's row (detach -> `adoptHunt`), and the aid button on
   another faction's hive rows (`ThreatAid.dispatchStrike`, an aid-flagged hunt earning the
   front standing once on arrival). Coalition answers hunt too. Greyed out when the system
-  has no Defense Swarms (`ThreatAid.quoteStrike`). The player's hunting fleets follow the
-  same rules as the NPCs' (weakest garrison first, home below `softenRetreatStrength`),
-  with a message when one moves on, finishes or breaks off.
+  has no Defense Swarms (`ThreatAid.quoteStrike`). The player's hunting fleets keep the
+  single-fleet rules (weakest garrison first - `huntTarget` - and home below
+  `softenRetreatStrength`; the NPC forces aim at the strongest since 2026-09-26), with a
+  message when one moves on, finishes or breaks off.
 - The player's hunting fleets COLLECT SWARM BOUNTIES on their own
   (`ThreatSwarmBountyIntel.HunterPay`, a FleetEventListener added at dispatch and adopt,
   saved with the fleet): a battle one fights pays the bounty for the Threat ships lost,

@@ -186,10 +186,10 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 			}
 		}
 
-		String fn = faction() != null ? faction().getDisplayName() : "A faction";
-		ThreatColonyManager.announce(fn + " task force's target is destroyed; it is "
-				+ "redirecting against the Threat colony " + next.getName() + " in the "
-				+ system.getNameWithLowercaseType() + ".", Misc.getHighlightColor());
+		ThreatColonyManager.announce(ThreatNotice.titled("Task Force Redirected").icon(faction())
+				.line("The %s task force's target is destroyed.", ThreatNotice.faction(faction()))
+				.line("It is redirecting against the Threat colony %s in the %s.",
+						ThreatNotice.market(next), system.getNameWithLowercaseType()));
 		ThreatIncConfig.log(factionId + " task force retargeted to " + next.getName()
 				+ " (" + (int) Math.ceil(bestDist) + " LY away)");
 	}

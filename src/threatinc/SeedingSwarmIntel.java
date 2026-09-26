@@ -144,6 +144,14 @@ public class SeedingSwarmIntel extends BaseIntelPlugin {
 		return "Threat Seeding Swarm - " + name;
 	}
 
+	/** Threat news titles in the Threat's colour; ended entries keep vanilla's grey. */
+	@Override
+	public java.awt.Color getTitleColor(com.fs.starfarer.api.campaign.comm.IntelInfoPlugin.ListInfoMode mode) {
+		java.awt.Color c = super.getTitleColor(mode);
+		if (isEnded() || Misc.getGrayColor().equals(c)) return c;
+		return ThreatNotice.threatColor();
+	}
+
 	@Override
 	public String getIcon() {
 		String crest = Global.getSector().getFaction(Factions.THREAT).getCrest();
@@ -215,7 +223,7 @@ public class SeedingSwarmIntel extends BaseIntelPlugin {
 		float opad = 10f;
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 
 		StarSystemAPI system = getSystem();
 		String sysName = system != null ? system.getNameWithLowercaseType() : systemId;

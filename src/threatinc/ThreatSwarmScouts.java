@@ -116,9 +116,10 @@ public class ThreatSwarmScouts {
 			// in the system is enough: the swarm sees what lives there
 			if (!known().containsKey(system.getId())) {
 				known().put(system.getId(), now);
-				ThreatColonyManager.announce("A Scouting Swarm has charted the "
-						+ system.getNameWithLowercaseType() + ".", Misc.getNegativeHighlightColor());
+				ThreatColonyManager.announce(ThreatNotice.titled("System Charted").bad()
+						.line("A Scouting Swarm has charted the %s.", system.getNameWithLowercaseType()));
 				ThreatIncConfig.log("Scouting Swarm charted " + system.getName());
+				ThreatOmens.onSwarmScouted(system);
 			}
 			return false;
 		}

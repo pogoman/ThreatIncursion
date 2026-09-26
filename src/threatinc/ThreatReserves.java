@@ -1,6 +1,7 @@
 package threatinc;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -564,12 +565,12 @@ public class ThreatReserves {
 	}
 
 	/**
-	 * Stock another faction effort may take from this base - a hunting force,
-	 * or a sibling base's short siege: above the floor, the donor keep share
-	 * of the months cap AND the staging bank, so what convoys built up for this
-	 * base's own siege stays for it. Culann's 55,852 banked fuel went on one hunt
-	 * and its siege then postponed (rc1 review). The base's own siege draws
-	 * through {@link #available}.
+	 * Stock a hunting force may take from this base: above the floor, the
+	 * donor keep share of the months cap AND the staging bank, so what convoys
+	 * built up for this base's own siege stays for it. Culann's 55,852 banked
+	 * fuel went on one hunt and its siege then postponed (rc1 review). A siege
+	 * - the base's own or a sibling's pooling it (IncursionManager.siegeDonors,
+	 * 2026-09-26) - draws through {@link #available}.
 	 */
 	public static float spendable(MarketAPI market, String commodityId) {
 		if (market == null) return 0f;
@@ -638,7 +639,57 @@ public class ThreatReserves {
 		float surplus = surplusUnits(market, com);
 		if (surplus <= 0f) return baseline;
 		return baseline + BaseIndustry.getSizeMult(surplus) * com.getCommodity().getEconUnit()
-				* ThreatIncConfig.reserveSurplusMult();
+				* ThreatIncConfig.reserveSurplusMult()
+				* productionShare(market.getFactionId(), commodityId);
+	}
+
+	/** factionId|commodity -> {share, timestamp}; transient, recomputed daily. */
+	private static final Map<String, Object[]> SHARE_CACHE = new HashMap<String, Object[]>();
+
+	/**
+	 * The faction banks what it makes (2026-09-26): vanilla's availability is
+	 * broadcast - every importer gets its whole share of the same exporter's
+	 * output, nothing is used up - so banking each market's surplus on its own
+	 * made a faction's banking grow with its market COUNT (the long war test:
+	 * the Diktat quadrupled its fuel on three colonies by adding forward
+	 * bases). The faction's banking of a commodity is scaled to at most its
+	 * own markets' production above their own peacetime demand, shared evenly
+	 * across every market that banks it - or, if larger, the sector's best
+	 * single exporter's output (times reserveBankImportsMult), what the
+	 * faction can buy in. 1 when that covers it, or with
+	 * reserveBankFromProduction off.
+	 */
+	public static float productionShare(String factionId, String commodityId) {
+		if (factionId == null || !ThreatIncConfig.reserveBankFromProduction()) return 1f;
+		String key = factionId + "|" + commodityId;
+		long now = Global.getSector().getClock().getTimestamp();
+		Object[] cached = SHARE_CACHE.get(key);
+		if (cached != null) {
+			float age = Global.getSector().getClock().getElapsedDaysSince((Long) cached[1]);
+			if (age >= 0f && age < 1f) return (Float) cached[0];
+		}
+		float made = 0f, banked = 0f, foreign = 0f;
+		for (MarketAPI m : marketsOf(factionId)) {
+			if (isBacked(m)) continue;
+			CommodityOnMarketAPI com = m.getCommodityData(commodityId);
+			if (com == null) continue;
+			banked += BaseIndustry.getSizeMult(surplusUnits(m, com));
+			float own = Math.min(com.getMaxSupply(), structuralAvailable(com))
+					- WarFootingDemand.peacetimeDemand(m, com);
+			if (own > 0f) made += BaseIndustry.getSizeMult(own);
+			if (com.getCommodityMarketData() != null) {
+				foreign = Math.max(foreign, com.getCommodityMarketData().getMaxExportGlobal());
+			}
+		}
+		// what it does not make it buys: vanilla feeds a market from the better
+		// of its faction's best exporter and the sector's (getMaxExportGlobal),
+		// so the faction as a whole may bank the better of its own making and
+		// the sector's best exporter - once, however many markets import it
+		float budget = Math.max(made,
+				BaseIndustry.getSizeMult(foreign) * ThreatIncConfig.reserveBankImportsMult());
+		float share = banked <= 0f ? 1f : Math.min(1f, budget / banked);
+		SHARE_CACHE.put(key, new Object[] { share, now });
+		return share;
 	}
 
 	/**

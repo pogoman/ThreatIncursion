@@ -14,7 +14,6 @@ import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
-import com.fs.starfarer.api.impl.campaign.intel.MessageIntel;
 import com.fs.starfarer.api.impl.campaign.intel.events.RemnantHostileActivityFactor;
 import com.fs.starfarer.api.util.Misc;
 import com.fs.starfarer.api.util.WeightedRandomPicker;
@@ -67,10 +66,9 @@ public class ThreatDebugWar {
 			apply(manager, random);
 		} catch (Throwable t) {
 			Global.getLogger(ThreatDebugWar.class).error("[ThreatInc] Instant war failed", t);
-			MessageIntel msg = new MessageIntel("Debug: instant war failed - see starsector.log.",
-					Misc.getNegativeHighlightColor());
-			IncursionManager.setThreatIcon(msg);
-			Global.getSector().getCampaignUI().addMessage(msg);
+			ThreatNotice.titled("Debug: Instant War").bad()
+					.line("Instant war failed - see %s.", "starsector.log")
+					.send();
 		}
 	}
 
@@ -117,11 +115,10 @@ public class ThreatDebugWar {
 			}
 			Global.getLogger(ThreatDebugWar.class).info("[ThreatInc] Hive floor " + floor + ": "
 					+ grown + " growth steps over " + touched.size() + " colonies");
-			MessageIntel msg = new MessageIntel("Debug: hive floor " + floor + " - " + grown
-					+ " growth steps over " + touched.size() + " colonies.",
-					Misc.getNegativeHighlightColor());
-			IncursionManager.setThreatIcon(msg);
-			Global.getSector().getCampaignUI().addMessage(msg);
+			ThreatNotice.titled("Debug: Hive Floor")
+					.line("Hive floor %s: %s growth steps over %s colonies.",
+							floor, grown, touched.size())
+					.send();
 		} catch (Throwable t) {
 			Global.getLogger(ThreatDebugWar.class).error("[ThreatInc] Hive floor failed", t);
 		}
@@ -239,9 +236,11 @@ public class ThreatDebugWar {
 				+ swarms + " Defense Swarms, " + mobilised + " factions mobilised.";
 		Global.getLogger(ThreatDebugWar.class).info("[ThreatInc] " + text
 				+ " Phase " + IncursionManager.getPhase() + ".");
-		MessageIntel msg = new MessageIntel(text, Misc.getNegativeHighlightColor());
-		IncursionManager.setThreatIcon(msg);
-		Global.getSector().getCampaignUI().addMessage(msg);
+		ThreatNotice.titled("Debug: Instant War")
+				.line("%s hive colonies in %s systems (%s near the core).",
+						founded.size(), plan.systems.size(), plan.nearCore)
+				.line("%s Defense Swarms, %s factions mobilised.", swarms, mobilised)
+				.send();
 	}
 
 	// ------------------------------------------------------------------

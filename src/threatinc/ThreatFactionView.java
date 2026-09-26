@@ -240,7 +240,7 @@ public class ThreatFactionView {
 		Color bright = faction.getBrightUIColor();
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 		Color text = Misc.getTextColor();
 		String name = ThreatWarState.displayName(factionId);
@@ -978,7 +978,7 @@ public class ThreatFactionView {
 		for (Object curr : IncursionManager.getStrikeList()) {
 			if (!(curr instanceof GenericRaidFGI)) continue;
 			GenericRaidFGI fgi = (GenericRaidFGI) curr;
-			if (fgi.isEnded() || fgi.isEnding()) continue;
+			if (fgi.isEnded() || fgi.isEnding() || fgi.isHidden()) continue;
 			if (fgi.getParams() == null || fgi.getParams().raidParams == null) continue;
 			if (fgi.getParams().raidParams.allowedTargets.contains(market)) n++;
 		}
@@ -1126,7 +1126,7 @@ public class ThreatFactionView {
 	protected static List<FleetRow> fleetRows(String factionId) {
 		List<FleetRow> rows = new ArrayList<FleetRow>();
 		Color h = Misc.getHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		Color neg = Misc.getNegativeHighlightColor();
 		// task forces
 		List<Object> responses = IncursionManager.getResponseList();
@@ -1813,10 +1813,14 @@ public class ThreatFactionView {
 			if (target == null) return null;
 			ThreatConvoys.Convoy c = ThreatConvoys.stageTo(target, faction, convoyTier, random);
 			if (c == null) {
-				ThreatColonyManager.announceAlways("No colony of "
-						+ (faction.isPlayerFaction() ? "yours" : faction.getDisplayName())
-						+ " within convoy range can spare materiel for " + target.name()
-						+ " right now.", Misc.getNegativeHighlightColor());
+				ThreatNotice n = ThreatNotice.titled("Stage Refused").bad().icon(faction);
+				if (faction.isPlayerFaction()) {
+					n.line("No colony within convoy range can spare materiel for %s", target.name());
+				} else {
+					n.line("No %s colony within convoy range can spare materiel for %s",
+							ThreatNotice.faction(faction), target.name());
+				}
+				n.send();
 				return null;
 			}
 			return "stage";
@@ -1845,15 +1849,16 @@ public class ThreatFactionView {
 			if (purge == null) {
 				// the launch's own gates (fleet points, then marines) say why
 				String why = IncursionManager.siegeBlockReason(base, faction, system);
-				ThreatColonyManager.announceAlways(why != null ? why
-						: "No expedition could be raised at " + base.getName() + " right now.",
-						Misc.getNegativeHighlightColor());
+				ThreatNotice n = ThreatNotice.titled("Siege Refused").bad().icon(faction);
+				if (why != null) n.line(why);
+				else n.line("No expedition could be raised at %s", ThreatNotice.market(base));
+				n.send();
 				return null;
 			}
-			ThreatColonyManager.announceAlways(Misc.ucFirst(faction.isPlayerFaction() ? "your"
-					: faction.getDisplayNameWithArticle()) + " purge expedition is mustering at "
-					+ base.getName() + ", bound for the " + system.getNameWithLowercaseType()
-					+ ".", Misc.getHighlightColor());
+			ThreatNotice.titled("Expedition Musters").icon(faction)
+					.line("Purge expedition at %s", ThreatNotice.market(base))
+					.line("Bound for the %s", system.getNameWithLowercaseType())
+					.send();
 			return "siege";
 		}
 		if (BUTTON_RECALL.equals(parts[0])) {
@@ -1869,10 +1874,11 @@ public class ThreatFactionView {
 			ThreatOutposts.Outpost o = ThreatOutposts.build(faction,
 					(com.fs.starfarer.api.campaign.PlanetAPI) planet);
 			if (o == null) {
-				ThreatColonyManager.announceAlways("No outpost could be built over "
-						+ planet.getName() + ": no base of "
-						+ (faction.isPlayerFaction() ? "yours" : faction.getDisplayName())
-						+ " is in reach, or it cannot pay.", Misc.getNegativeHighlightColor());
+				ThreatNotice n = ThreatNotice.titled("Outpost Refused").bad().icon(faction)
+						.line("Over %s", planet.getName());
+				if (faction.isPlayerFaction()) n.line("No base in reach, or none that can pay");
+				else n.line("No %s base in reach, or none that can pay", ThreatNotice.faction(faction));
+				n.send();
 				return null;
 			}
 			return "outpost";
@@ -1888,19 +1894,22 @@ public class ThreatFactionView {
 			String why = push ? ThreatGroundFronts.pushBlockReason(front, world)
 					: ThreatGroundFronts.entrenchBlockReason(front);
 			if (why != null) {
-				ThreatColonyManager.announceAlways(why, Misc.getNegativeHighlightColor());
+				ThreatNotice.titled(push ? "Cannot Push" : "Cannot Dig In").bad().icon(faction)
+						.line(why).send();
 				return null;
 			}
 			if (push) {
 				ThreatGroundFronts.orderPush(front);
-				ThreatColonyManager.announceAlways("The order goes down to the front on "
-						+ world.getName() + ": take stratum " + (front.strataHeld + 1) + ".",
-						Misc.getHighlightColor());
+				ThreatNotice.titled("Push Ordered").icon(faction)
+						.line("Front on %s to take stratum %s", ThreatNotice.market(world),
+								front.strataHeld + 1)
+						.send();
 				return "push";
 			}
 			ThreatGroundFronts.orderEntrench(front);
-			ThreatColonyManager.announceAlways("The order goes down to the front on "
-					+ world.getName() + ": break off and dig in.", Misc.getHighlightColor());
+			ThreatNotice.titled("Dig In Ordered").icon(faction)
+					.line("Front on %s breaks off and digs in", ThreatNotice.market(world))
+					.send();
 			return "entrench";
 		}
 		if (BUTTON_SUPPORT.equals(parts[0]) || BUTTON_DEFEND.equals(parts[0])) {
@@ -1913,28 +1922,35 @@ public class ThreatFactionView {
 			if (why == null && ThreatFleetOrders.dispatchOrbit(faction, hive, kind) != null) {
 				return ThreatFleetOrders.orbitName(kind).toLowerCase();
 			}
-			ThreatColonyManager.announceAlways(why != null ? why
-					: "No task force could be raised for the orbit of " + hive.getName() + ".",
-					Misc.getNegativeHighlightColor());
+			ThreatNotice n = ThreatNotice.titled(ThreatFleetOrders.orbitName(kind) + " Refused").bad()
+					.icon(faction);
+			if (why != null) n.line(why);
+			else n.line("No task force could be raised for the orbit of %s", ThreatNotice.market(hive));
+			n.send();
 			return null;
 		}
 		if (BUTTON_SUPPLY.equals(parts[0]) || BUTTON_PULLOUT.equals(parts[0])) {
 			MarketAPI hive = ThreatIncData.resolveColonyMarket(parts[2]);
 			if (hive == null) return null;
+			boolean pull = BUTTON_PULLOUT.equals(parts[0]);
+			String title = pull ? "Evacuation Refused" : "Supply Run Refused";
 			String refused = ThreatConvoys.canRunTo(faction, hive);
 			if (refused != null) {
-				ThreatColonyManager.announceAlways(refused, Misc.getNegativeHighlightColor());
+				ThreatNotice.titled(title).bad().icon(faction).line(refused).send();
 				return null;
 			}
-			boolean pull = BUTTON_PULLOUT.equals(parts[0]);
 			ThreatConvoys.Convoy c = pull ? ThreatConvoys.pullOutFront(hive, faction, random)
 					: ThreatConvoys.supplyFront(hive, faction, supplyTier, random);
 			if (c == null) {
-				ThreatColonyManager.announceAlways("No " + (pull ? "evacuation" : "supply")
-						+ " run could be raised for " + hive.getName() + ": no base of "
-						+ (faction.isPlayerFaction() ? "yours" : faction.getDisplayName())
-						+ " is in reach with anything to send, or a run is already bound there.",
-						Misc.getNegativeHighlightColor());
+				ThreatNotice n = ThreatNotice.titled(title).bad().icon(faction)
+						.line("For %s", ThreatNotice.market(hive));
+				if (faction.isPlayerFaction()) {
+					n.line("No base in reach with anything to send, or a run already bound there");
+				} else {
+					n.line("No %s base in reach with anything to send, or a run already bound there",
+							ThreatNotice.faction(faction));
+				}
+				n.send();
 				return null;
 			}
 			return pull ? "pullout" : "supply";

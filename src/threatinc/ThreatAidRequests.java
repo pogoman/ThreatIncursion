@@ -160,6 +160,8 @@ public class ThreatAidRequests {
 			if (!(curr instanceof GenericRaidFGI)) continue;
 			GenericRaidFGI fgi = (GenericRaidFGI) curr;
 			if (fgi.isEnded() || fgi.isEnding()) continue;
+			// nobody asks for help against a strike nobody has seen (docs/frontlines.md)
+			if (fgi.isHidden()) continue;
 			if (fgi.getParams() == null || fgi.getParams().raidParams == null) continue;
 			if (fgi.getParams().raidParams.allowedTargets.contains(market)) result.add(fgi);
 		}

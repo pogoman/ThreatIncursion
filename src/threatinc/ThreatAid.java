@@ -332,25 +332,29 @@ public class ThreatAid {
 		if (target == null) return false;
 		String blocked = canAid(target.getFaction());
 		if (blocked != null) {
-			ThreatColonyManager.announceAlways(blocked, Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.line(blocked).send();
 			return false;
 		}
 		Quote q = quoteDefend(target);
 		if (!q.ok()) {
-			ThreatColonyManager.announceAlways(q.reason, Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.line(q.reason).send();
 			return false;
 		}
 		ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchGuard(
 				Global.getSector().getPlayerFaction(), target, q.source, true);
 		if (o == null) {
-			ThreatColonyManager.announceAlways("No task force could be raised at " + q.source.getName()
-					+ " right now.", Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.line("No task force could be raised at %s", ThreatNotice.market(q.source)).send();
 			return false;
 		}
 		o.recipientFactionId = target.getFactionId();
-		ThreatColonyManager.announceAlways("Your task force from " + q.source.getName() + " ("
-				+ (int) q.points + " FP) sails to defend " + target.getName() + " for the "
-				+ target.getFaction().getDisplayName() + ".", Misc.getHighlightColor());
+		ThreatNotice.titled("Task Force Sails").icon(Global.getSector().getPlayerFaction())
+				.line("From %s, %s FP", ThreatNotice.market(q.source), (int) q.points)
+				.line("Defending %s for %s", ThreatNotice.market(target),
+						ThreatNotice.faction(target.getFaction()))
+				.send();
 		return true;
 	}
 
@@ -367,22 +371,24 @@ public class ThreatAid {
 		if (hive == null) return false;
 		Quote q = quoteStrike(hive);
 		if (!q.ok()) {
-			ThreatColonyManager.announceAlways(q.reason, Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Hunt Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.line(q.reason).send();
 			return false;
 		}
 		ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchHunt(
 				Global.getSector().getPlayerFaction(), hive, q.source, true);
 		if (o == null) {
-			ThreatColonyManager.announceAlways("No task force could be raised at " + q.source.getName()
-					+ " right now.", Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Hunt Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.line("No task force could be raised at %s", ThreatNotice.market(q.source)).send();
 			return false;
 		}
 		if (recipientFactionId != null && !Factions.PLAYER.equals(recipientFactionId)) {
 			o.recipientFactionId = recipientFactionId;
 		}
-		ThreatColonyManager.announceAlways("Your task force from " + q.source.getName() + " ("
-				+ (int) q.points + " FP) sails to hunt the Defense Swarms in the "
-				+ hive.getNameWithLowercaseType() + ".", Misc.getHighlightColor());
+		ThreatNotice.titled("Task Force Sails").icon(Global.getSector().getPlayerFaction())
+				.line("From %s, %s FP", ThreatNotice.market(q.source), (int) q.points)
+				.line("Hunting the Defense Swarms in the %s", hive.getNameWithLowercaseType())
+				.send();
 		return true;
 	}
 
@@ -390,25 +396,29 @@ public class ThreatAid {
 		if (target == null) return false;
 		String blocked = canAid(target.getFaction());
 		if (blocked != null) {
-			ThreatColonyManager.announceAlways(blocked, Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Supply Run Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.line(blocked).send();
 			return false;
 		}
 		Quote q = quoteResupply(target, tier);
 		if (!q.ok()) {
-			ThreatColonyManager.announceAlways(q.reason, Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Supply Run Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.line(q.reason).send();
 			return false;
 		}
 		ThreatConvoys.Convoy c = ThreatConvoys.dispatch(q.source, target,
 				Global.getSector().getPlayerFaction(), q.load, random, target.getFactionId(), true);
 		if (c == null) {
-			ThreatColonyManager.announceAlways("No convoy could be raised at " + q.source.getName()
-					+ " right now.", Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Supply Run Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.line("No convoy could be raised at %s", ThreatNotice.market(q.source)).send();
 			return false;
 		}
-		ThreatColonyManager.announceAlways("Your convoy from " + q.source.getName() + " sails with "
-				+ Misc.getWithDGS(q.quantity) + " " + ThreatReserves.label(q.commodityId) + " for "
-				+ target.getName() + " (" + target.getFaction().getDisplayName() + ").",
-				Misc.getHighlightColor());
+		ThreatNotice.titled("Convoy Sails").icon(Global.getSector().getPlayerFaction())
+				.line("From %s, %s %s", ThreatNotice.market(q.source), Misc.getWithDGS(q.quantity),
+						ThreatReserves.label(q.commodityId))
+				.line("Bound for %s of the %s", ThreatNotice.market(target),
+						ThreatNotice.faction(target.getFaction()))
+				.send();
 		return true;
 	}
 
@@ -466,12 +476,13 @@ public class ThreatAid {
 				value / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
 		if (credited) points *= ThreatIncConfig.missionRepMult();
 		rep(recipientFactionId, points, text);
-		FactionAPI faction = Global.getSector().getFaction(recipientFactionId);
-		String who = faction != null ? faction.getDisplayName() : recipientFactionId;
 		if (viaFleet) {
-			ThreatColonyManager.announceAlways("Your aid convoy has landed "
-					+ ThreatFactionView.cargoText(marines, armaments, fuel, supplies) + " at "
-					+ base.getName() + " for the " + who + ".", Misc.getHighlightColor());
+			FactionAPI faction = Global.getSector().getFaction(recipientFactionId);
+			ThreatNotice.titled("Aid Landed").icon(Global.getSector().getPlayerFaction())
+					.line("%s at %s", ThreatFactionView.cargoText(marines, armaments, fuel, supplies),
+							ThreatNotice.market(base))
+					.line("For the %s", faction != null ? ThreatNotice.faction(faction) : recipientFactionId)
+					.send();
 		}
 		ThreatIncConfig.log("Aid delivered at " + base.getName() + " (" + recipientFactionId + "): "
 				+ marines + " marines, " + armaments + " armaments, " + fuel + " fuel, " + supplies
@@ -482,16 +493,18 @@ public class ThreatAid {
 	public static void onGuardArrived(ThreatFleetOrders.Order o) {
 		if (o == null || o.recipientFactionId == null) return;
 		rep(o.recipientFactionId, ThreatIncConfig.aidRepGuardArrived(), null);
-		ThreatColonyManager.announceAlways("Your task force is on station over " + o.targetName
-				+ " for the " + ThreatWarState.displayName(o.recipientFactionId) + ".",
-				Misc.getHighlightColor());
+		ThreatNotice.titled("Task Force On Station").icon(Global.getSector().getPlayerFaction())
+				.line("Over %s", o.targetName)
+				.line("For the %s", ThreatNotice.faction(Global.getSector().getFaction(o.recipientFactionId)))
+				.send();
 	}
 
 	public static void onGuardCompleted(ThreatFleetOrders.Order o) {
 		if (o == null || o.recipientFactionId == null) return;
 		rep(o.recipientFactionId, ThreatIncConfig.aidRepGuardCompleted(), null);
-		ThreatColonyManager.announceAlways("Your task force has served its term over " + o.targetName
-				+ " and is returning home.", Misc.getHighlightColor());
+		ThreatNotice.titled("Task Force Returning").icon(Global.getSector().getPlayerFaction())
+				.line("Term served over %s", o.targetName)
+				.send();
 	}
 
 	/** A task force at a hive's door: every faction with a colony in the hive's strike reach shares the credit. */
@@ -506,10 +519,11 @@ public class ThreatAid {
 		if (factions.isEmpty()) return;
 		float each = ThreatIncConfig.aidRepFrontTotal() / factions.size();
 		for (String id : factions) rep(id, each, null);
-		ThreatColonyManager.announceAlways("Your task force "
-				+ (hunt ? "is hunting the swarms in the " : "holds the door of the ")
-				+ (hive != null ? hive.getNameWithLowercaseType() : "hive system") + " - noted by "
-				+ names(factions) + ".", Misc.getHighlightColor());
+		ThreatNotice.titled(hunt ? "Hunt Begins" : "Door Held").icon(Global.getSector().getPlayerFaction())
+				.line(hunt ? "Task force hunting the swarms in the %s" : "Task force holds the door of the %s",
+						hive != null ? hive.getNameWithLowercaseType() : "hive system")
+				.line("Noted by %s", names(factions))
+				.send();
 	}
 
 	/** Non-Threat, non-player factions with a colony within any of the hive system's colonies' strike reach. */

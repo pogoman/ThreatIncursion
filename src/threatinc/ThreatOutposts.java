@@ -126,11 +126,11 @@ public class ThreatOutposts {
 		return null;
 	}
 
-	/** Whether a living outpost stands over this planet (blocks seeding). */
+	/** Whether a living outpost or frontline forward base stands over this planet (blocks seeding). */
 	public static boolean holds(SectorEntityToken planet) {
 		if (planet == null) return false;
 		Outpost o = outpostAt(planet.getId());
-		return o != null && o.alive();
+		return (o != null && o.alive()) || ThreatFrontlines.hostsLink(planet);
 	}
 
 	public static List<Outpost> outpostsOf(String factionId) {
@@ -404,9 +404,54 @@ public class ThreatOutposts {
 	 */
 	public static Outpost buildFree(FactionAPI faction, SectorEntityToken planet) {
 		if (!ThreatIncConfig.outpostsEnabled() || faction == null) return null;
+		if (!faction.isPlayerFaction()) return null; // an NPC holds it with a forward base
 		if (!(planet instanceof PlanetAPI)) return null;
 		if (!eligible((PlanetAPI) planet)) return null;
 		return raise(faction, (PlanetAPI) planet, "free - ground victory");
+	}
+
+	/**
+	 * An NPC faction holds a world with a frontline forward base, never an
+	 * outpost (2026-09-26): a real market that grows and builds
+	 * (ThreatFrontlines). Cost is the caller's; null when it cannot stand here.
+	 */
+	public static MarketAPI raiseForwardBase(FactionAPI faction, SectorEntityToken planet, String note) {
+		if (faction == null || faction.isPlayerFaction() || !ThreatIncConfig.frontlinesEnabled()) return null;
+		if (!(planet instanceof PlanetAPI) || !eligible((PlanetAPI) planet)) return null;
+		MarketAPI market = ThreatFrontlines.found(faction, (PlanetAPI) planet,
+				ThreatFrontlines.hiveNear(planet));
+		if (market != null) {
+			ThreatIncConfig.log("Outpost: " + faction.getId() + " holds " + planet.getName()
+					+ " with a forward base (" + note + ")");
+		}
+		return market;
+	}
+
+	/**
+	 * An NPC outpost from before forward bases (2026-09-26) becomes one where
+	 * it stands, its stock carried into the new market's reserve. False when
+	 * it cannot (frontlines off, world gone): the old outpost stays.
+	 */
+	protected static boolean convertToForwardBase(Outpost o) {
+		FactionAPI faction = Global.getSector().getFaction(o.factionId);
+		if (faction == null || faction.isPlayerFaction() || !ThreatIncConfig.frontlinesEnabled()) return false;
+		SectorEntityToken planet = Global.getSector().getEntityById(o.planetId);
+		if (!(planet instanceof PlanetAPI)) return false;
+		String from = stockId(o);
+		java.util.Map<String, Float> stock = new java.util.LinkedHashMap<String, Float>();
+		if (from != null) {
+			for (String c : ThreatReserves.COMMODITIES) {
+				float amount = ThreatReserves.draw(from, c, ThreatReserves.stock(from, c));
+				if (amount > 0f) stock.put(c, amount);
+			}
+		}
+		remove(o, "replaced by a forward base");
+		MarketAPI market = raiseForwardBase(faction, planet, "converted outpost");
+		if (market == null) return true; // the old station is gone either way
+		for (java.util.Map.Entry<String, Float> e : stock.entrySet()) {
+			ThreatReserves.deposit(market.getId(), e.getKey(), e.getValue());
+		}
+		return true;
 	}
 
 	/**
@@ -483,10 +528,14 @@ public class ThreatOutposts {
 		all().add(o);
 		ensureStorage(o);
 
-		String who = faction.isPlayerFaction() ? "Your" : Misc.ucFirst(faction.getDisplayNameWithArticle());
-		ThreatColonyManager.announceAlways(who + " " + fleetName.toLowerCase() + " now stands over "
-				+ planet.getName() + " - the swarm cannot seed the world again while it holds.",
-				Misc.getPositiveHighlightColor());
+		ThreatNotice n = ThreatNotice.titled("Outpost Built").good().icon(faction);
+		if (faction.isPlayerFaction()) {
+			n.line("Your %s stands over %s", fleetName.toLowerCase(), planet.getName());
+		} else {
+			n.line("%s %s stands over %s", ThreatNotice.faction(faction), fleetName.toLowerCase(),
+					planet.getName());
+		}
+		n.send();
 		ThreatIncConfig.log("Outpost built: " + faction.getId() + " " + specId + " at "
 				+ planet.getName() + " (" + paidNote + ")");
 		return o;
@@ -518,13 +567,19 @@ public class ThreatOutposts {
 		if (all().isEmpty()) return;
 		for (Outpost o : new ArrayList<Outpost>(all())) {
 			if (o.alive() && carryOver(o)) continue;
+			if (o.alive() && convertToForwardBase(o)) continue;
 			if (o.alive()) {
 				ensureStorage(o); // a player outpost from before the storage existed
 				continue;
 			}
-			String who = ThreatWarState.displayName(o.factionId);
-			ThreatColonyManager.announce(who + "'s outpost over " + o.planetName()
-					+ " has been destroyed.", Misc.getNegativeHighlightColor());
+			FactionAPI faction = Global.getSector().getFaction(o.factionId);
+			ThreatNotice n = ThreatNotice.titled("Outpost Destroyed").bad().icon(faction);
+			if (faction != null && faction.isPlayerFaction()) {
+				n.line("Your outpost over %s", o.planetName());
+			} else {
+				n.line("%s outpost over %s", ThreatNotice.faction(faction), o.planetName());
+			}
+			ThreatColonyManager.announce(n);
 			remove(o, "station destroyed");
 		}
 	}
@@ -570,24 +625,29 @@ public class ThreatOutposts {
 				moved += (int) amount;
 			}
 		}
-		String who = o.factionId.equals(Global.getSector().getPlayerFaction().getId()) ? "Your"
-				: ThreatWarState.displayName(o.factionId) + "'s";
-		ThreatColonyManager.announceAlways(who + " outpost over " + o.planetName()
-				+ " is absorbed into the new colony" + (hasStation ? "." : " as its "
-				+ specId.replace('_', ' ') + ".")
-				+ (moved > 0 ? " Its stockpile passes to the colony's reserve." : ""),
-				Misc.getPositiveHighlightColor());
+		ThreatNotice n = ThreatNotice.titled("Outpost Absorbed").good().icon(market.getFaction());
+		if (market.getFaction().isPlayerFaction()) {
+			n.line("Your outpost over %s is part of the new colony", ThreatNotice.market(market));
+		} else {
+			n.line("%s outpost over %s is part of the new colony", ThreatNotice.faction(market.getFaction()),
+					ThreatNotice.market(market));
+		}
+		if (!hasStation) n.line("It serves as the colony's %s", specId.replace('_', ' '));
+		if (moved > 0) n.line("%s units of stock pass to the colony's reserve", Misc.getWithDGS(moved));
+		n.send();
 		remove(o, "colony founded - station inherited" + (hasStation ? " (colony already had one)" : "")
 				+ (moved > 0 ? ", " + moved + " units of stock carried over" : ""));
 		return true;
 	}
 
 	/**
-	 * Slow tick: each mobilised NPC faction rolls outpostChance to fortify one
-	 * open purged world within reach of a base that can pay. One per tick.
+	 * Slow tick: each mobilised NPC faction rolls outpostChance to hold one
+	 * open purged world within reach of a base that can pay, with a forward
+	 * base - only one a found live hive lies within frontlineKeepLY of, or it
+	 * would be abandoned as soon as it stood. One per tick.
 	 */
 	public static void planNPC(Random random) {
-		if (!ThreatWarState.enabled() || !ThreatIncConfig.outpostsEnabled()) return;
+		if (!ThreatWarState.enabled() || !ThreatIncConfig.frontlinesEnabled()) return;
 		List<PlanetAPI> open = openPurgedWorlds();
 		if (open.isEmpty()) return;
 		for (String factionId : ThreatWarState.warFactionIds()) {
@@ -595,9 +655,21 @@ public class ThreatOutposts {
 			if (faction == null || faction.isPlayerFaction()) continue;
 			if (random.nextFloat() >= ThreatIncConfig.outpostChance()) continue;
 			for (PlanetAPI planet : open) {
-				if (holds(planet)) continue;
-				if (payingBase(faction, planet) == null) continue;
-				if (build(faction, planet) != null) break;
+				if (holds(planet) || ThreatFrontlines.hiveNear(planet) == null) continue;
+				MarketAPI base = payingBase(faction, planet);
+				if (base == null) continue;
+				// no paper bases: only where a base can spare it a garrison
+				MarketAPI guardBase = ThreatIncConfig.frontlineGarrisonEnabled()
+						? ThreatFrontlines.garrisonBase(faction, planet) : null;
+				if (ThreatIncConfig.frontlineGarrisonEnabled() && guardBase == null) continue;
+				float[] cost = npcCost();
+				ThreatReserves.drawAbove(base, Commodities.SUPPLIES, cost[0]);
+				ThreatReserves.drawAbove(base, Commodities.FUEL, cost[1]);
+				MarketAPI link = raiseForwardBase(faction, planet, "paid from " + base.getName());
+				if (link != null) {
+					if (guardBase != null) ThreatFrontlines.garrisonNow(link, guardBase);
+					break;
+				}
 			}
 		}
 	}

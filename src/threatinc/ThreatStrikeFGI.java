@@ -31,6 +31,46 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	public ThreatStrikeFGI(GenericRaidParams params) {
 		super(params);
 		hideOrigin();
+		undetected = ThreatIncConfig.strikeDetection() && !ThreatIncConfig.debugMode();
+	}
+
+	/**
+	 * Nobody has seen this strike yet (docs/frontlines.md, "Strike warning"):
+	 * the intel stays hidden - no entry, no updates, no board row - until a
+	 * fleet of it is spotted (IncursionManager.detectStrikes). Negative so a
+	 * strike from an older save, which never had the field, stays visible.
+	 */
+	protected boolean undetected = false;
+
+	public boolean isDetected() {
+		return !undetected;
+	}
+
+	/** Spotted: the intel appears with vanilla's "new intel" message. */
+	public void markDetected(String by) {
+		if (!undetected) return;
+		undetected = false;
+		if (!isEnding() && !isEnded()) {
+			// "new" counts from now, not from the unseen launch
+			setPlayerVisibleTimestamp(Global.getSector().getClock().getTimestamp());
+			Global.getSector().getCampaignUI().addMessage(this,
+					com.fs.starfarer.api.campaign.comm.CommMessageAPI.MessageClickAction.INTEL_TAB, this);
+		}
+		ThreatIncConfig.log("Strike on " + (getParams().raidParams.where != null
+				? getParams().raidParams.where.getName() : "?") + " detected by " + by);
+	}
+
+	/** Threat news titles in the Threat's colour; ended entries keep vanilla's grey. */
+	@Override
+	public java.awt.Color getTitleColor(com.fs.starfarer.api.campaign.comm.IntelInfoPlugin.ListInfoMode mode) {
+		java.awt.Color c = super.getTitleColor(mode);
+		if (isEnded() || Misc.getGrayColor().equals(c)) return c;
+		return ThreatNotice.threatColor();
+	}
+
+	@Override
+	public boolean isHidden() {
+		return undetected || super.isHidden();
 	}
 
 	/**
@@ -96,6 +136,15 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		public void performRaid(com.fs.starfarer.api.campaign.CampaignFleetAPI fleet,
 				com.fs.starfarer.api.campaign.econ.MarketAPI market) {
 			if (market == null || !market.isInEconomy()) return;
+
+			// a forward base is a station, as vanilla's pirate base is: no
+			// landing, no bombardment - the station is the base (2026-09-26)
+			if (intel instanceof ThreatStrikeFGI && ThreatFrontlines.isOutpost(market)) {
+				ThreatStrikeFGI strike = (ThreatStrikeFGI) intel;
+				if (fleet != null) strike.stationPass(market);
+				else strike.stationAssault(market);
+				return;
+			}
 
 			// ground doctrine: no bombardment type is set, so the base class
 			// routes the pass to doCustomRaidAction. None of the bombardment
@@ -345,9 +394,10 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		float loss = ThreatGroundFronts.siegeSlice(fp, market, days);
 		float removed = ThreatGroundFronts.applyFleetLosses(fleet, loss);
 		if (siegeAnnounced.add(market.getId())) {
-			ThreatColonyManager.announceAlways("Threat swarms are besieging " + market.getName()
-					+ " - its defences are being suppressed from orbit, and its batteries "
-					+ "are answering.", Misc.getNegativeHighlightColor());
+			ThreatNotice.titled("Under Siege").bad()
+					.line("Threat swarms are besieging %s.", ThreatNotice.market(market))
+					.line("Its defences are being suppressed from orbit; its batteries are answering.")
+					.send();
 		}
 		ThreatIncConfig.log("Siege slice vs " + market.getName() + ": " + (int) fp + " FP for "
 				+ String.format("%.1f", days) + " d, +" + String.format("%.1f", est[0])
@@ -366,16 +416,60 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	protected void abstractSiege(MarketAPI market) {
 		if (market == null || !siegeResolved.add(market.getId())) return;
 		if (ThreatGroundFronts.getFront(market.getId()) != null) return;
+		float start = abstractStrength();
+		float left = ThreatGroundFronts.abstractSiege(market, start, worldShare(),
+				groupAbortsMissionFPFraction);
+		// the batteries' toll comes off the troops the ships were carrying
+		if (start > 0f && left < start) troopsAboard *= Math.max(0f, left / start);
+	}
+
+	/** The expedition's strength in fleet points: what survives of the spawned fleets, else its planned sizes. */
+	protected float abstractStrength() {
 		float start = totalFPSpawned > 0f ? totalFPSpawned * survivingStrength(null) : 0f;
 		if (start <= 0f && getParams() != null && getParams().fleetSizes != null) {
 			for (Integer size : getParams().fleetSizes) {
 				if (size != null) start += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
 			}
 		}
-		float left = ThreatGroundFronts.abstractSiege(market, start, worldShare(),
-				groupAbortsMissionFPFraction);
-		// the batteries' toll comes off the troops the ships were carrying
-		if (start > 0f && left < start) troopsAboard *= Math.max(0f, left / start);
+		return start;
+	}
+
+	/**
+	 * A live pass over a forward base. The fleets fight its station for real
+	 * (directFleets hunts while it flies) and a station beaten in battle ends
+	 * the base (ThreatFrontlines.StationListener). A station already down -
+	 * disrupted, not flying - leaves the base nothing to hold it with.
+	 */
+	protected void stationPass(MarketAPI market) {
+		if (ThreatFrontlines.stationUp(market)) return;
+		effectivePasses++;
+		ThreatFrontlines.stationDestroyed(market, "a Threat strike (station down)");
+	}
+
+	/**
+	 * An expedition that never spawned against a forward base: vanilla has
+	 * already fought it. FGRaidAction.autoresolve weighs the strike's strength
+	 * against every hostile fleet in the system - the garrison and any relief
+	 * included - plus the station, skips a target whose defenders are as
+	 * strong, and only otherwise disrupts the station and calls performRaid.
+	 * So reaching here IS the station beaten, and the base goes with it (the
+	 * disruption vanilla just wrote is why an earlier version read every
+	 * station here as already down). Logged in vanilla's strength units.
+	 */
+	protected void stationAssault(MarketAPI market) {
+		if (market == null || !siegeResolved.add(market.getId())) return;
+		if (market.getStarSystem() != null && market.getFaction() != null) {
+			float str = com.fs.starfarer.api.impl.campaign.command.WarSimScript.getFactionStrength(
+					getFaction(), market.getStarSystem());
+			float def = com.fs.starfarer.api.impl.campaign.command.WarSimScript.getEnemyStrength(
+					getFaction(), market.getStarSystem(), false)
+					+ com.fs.starfarer.api.impl.campaign.command.WarSimScript.getStationStrength(
+							market.getFaction(), market.getStarSystem(), market.getPrimaryEntity());
+			ThreatIncConfig.log("Station assault on " + market.getName() + ": the strike beat its defenders"
+					+ " (strength " + (int) str + " vs " + (int) def + " left after the fight)");
+		}
+		effectivePasses++;
+		ThreatFrontlines.stationDestroyed(market, "a Threat strike");
 	}
 
 	/**

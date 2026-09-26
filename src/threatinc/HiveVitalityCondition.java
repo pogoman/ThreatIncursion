@@ -29,7 +29,7 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 		float opad = 10f;
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 
 		float fab = ThreatColonyManager.computeFabricationMult(market);
 		float supply = ThreatColonyManager.computeSupplyMult(market);

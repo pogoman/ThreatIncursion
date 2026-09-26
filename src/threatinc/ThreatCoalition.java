@@ -198,7 +198,8 @@ public class ThreatCoalition {
 						if (base == null) continue;
 						ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchGuard(helper, market, base, false);
 						if (o == null) continue;
-						report(helper, needy, "sends a task force to guard " + market.getName());
+						report(helper, needy, "Allied Task Force Sails", "sends a task force to guard %s",
+								ThreatNotice.market(market));
 						break;
 					}
 				}
@@ -225,9 +226,9 @@ public class ThreatCoalition {
 						ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, market, helper, load,
 								random, needyId, false);
 						if (convoy == null) continue;
-						report(helper, needy, "sends " + Misc.getWithDGS((int) amount) + " "
-								+ ThreatReserves.label(c) + " from " + donor.getName() + " to "
-								+ market.getName());
+						report(helper, needy, "Allied Convoy Sails", "sends %s %s from %s to %s",
+								Misc.getWithDGS((int) amount), ThreatReserves.label(c),
+								ThreatNotice.market(donor), ThreatNotice.market(market));
 						sent = true;
 						break;
 					}
@@ -241,19 +242,27 @@ public class ThreatCoalition {
 	public static void onAllyDelivered(ThreatConvoys.Convoy c, MarketAPI base) {
 		FactionAPI helper = Global.getSector().getFaction(c.factionId);
 		if (helper == null) return;
-		String who = base.isPlayerOwned() ? "your colony " + base.getName()
-				: base.getName() + " (" + ThreatWarState.displayName(base.getFactionId()) + ")";
-		ThreatColonyManager.announce(Misc.ucFirst(helper.getDisplayNameWithArticle())
-				+ " convoy has landed " + ThreatFactionView.cargoText(c.marines, c.armaments, c.fuel,
-						c.supplies) + " at " + who + ".", Misc.getHighlightColor());
+		ThreatColonyManager.announce(ThreatNotice.titled("Allied Convoy Landed").icon(helper)
+				.line("%s convoy lands at %s", ThreatNotice.faction(helper), ThreatNotice.market(base))
+				.line("Delivered: %s", ThreatFactionView.cargoText(c.marines, c.armaments, c.fuel, c.supplies)));
 	}
 
-	protected static void report(FactionAPI helper, FactionAPI needy, String what) {
+	/**
+	 * Debug narration of an ally's aid: "{Helper} {what}" with the names in
+	 * {@code what} highlighted, then who it is for and the helper's standing.
+	 */
+	protected static void report(FactionAPI helper, FactionAPI needy, String title, String what,
+			Object... args) {
 		String standing = helper.getRelationshipLevel(needy.getId()) != null
 				? helper.getRelationshipLevel(needy.getId()).getDisplayName() : "";
-		ThreatColonyManager.announce(Misc.ucFirst(helper.getDisplayNameWithArticle()) + " " + what
-				+ " for " + (needy.isPlayerFaction() ? "you" : needy.getDisplayName())
-				+ (standing.isEmpty() ? "" : " - " + standing) + ".", Misc.getHighlightColor());
-		ThreatIncConfig.log("Ally aid: " + helper.getId() + " " + what + " for " + needy.getId());
+		Object[] withWho = new Object[args.length + 1];
+		withWho[0] = ThreatNotice.faction(helper);
+		System.arraycopy(args, 0, withWho, 1, args.length);
+		ThreatNotice n = ThreatNotice.titled(title).icon(helper).line("%s " + what, withWho);
+		if (needy.isPlayerFaction()) n.line("For you");
+		else n.line("For %s", ThreatNotice.faction(needy));
+		if (!standing.isEmpty()) n.line("Standing: %s", standing);
+		ThreatColonyManager.announce(n);
+		ThreatIncConfig.log("Ally aid: " + helper.getId() + " for " + needy.getId() + ": " + n.plain());
 	}
 }

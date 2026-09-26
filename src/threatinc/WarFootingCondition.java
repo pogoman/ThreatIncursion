@@ -63,7 +63,7 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 		if (s == null) return;
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 		String name = Misc.ucFirst(ThreatReserves.label(c));
 		String stock = Misc.getWithDGS((int) s.stock);

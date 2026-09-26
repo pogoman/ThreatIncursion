@@ -39,6 +39,14 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 	 * faction view (the purge commission that lived here was removed
 	 * 2026-09-05 - it was a second UI over the same launch as the Siege order).
 	 */
+	/** Threat news titles in the Threat's colour; ended entries keep vanilla's grey. */
+	@Override
+	public java.awt.Color getTitleColor(com.fs.starfarer.api.campaign.comm.IntelInfoPlugin.ListInfoMode mode) {
+		java.awt.Color c = super.getTitleColor(mode);
+		if (isEnded() || Misc.getGrayColor().equals(c)) return c;
+		return ThreatNotice.threatColor();
+	}
+
 	@Override
 	public boolean isHidden() {
 		return true;
@@ -112,7 +120,7 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 		float opad = 10f;
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 
 		StarSystemAPI system = getSystem();
 		String name = system != null ? system.getNameWithLowercaseType() : systemId;
