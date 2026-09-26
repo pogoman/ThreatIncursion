@@ -481,8 +481,13 @@ public class ThreatConvoys {
 		// a front reinforced back toward its peak burns at the peak's rate
 		float strength = Math.max(front.marines, ThreatIncConfig.frontReinforceFraction()
 				* ThreatGroundFronts.landedStrength(front));
-		float armaments = ThreatIncConfig.frontResupplyDays()
-				* ThreatGroundFronts.dailyUpkeep(strength) - front.armaments;
+		// at the rate it actually burns: a pushing front burns frontPushUpkeepMult
+		// times as fast, and runs sized at the dug-in rate carried ~20 days of a
+		// push that the next run took 22-45 days to follow (run 11, Beta Vigri I
+		// dry six times)
+		float burn = ThreatGroundFronts.dailyUpkeep(strength);
+		if (ThreatGroundFronts.STANCE_PUSH.equals(front.stance)) burn *= ThreatIncConfig.frontPushUpkeepMult();
+		float armaments = ThreatIncConfig.frontResupplyDays() * burn - front.armaments;
 		return new float[] {Math.max(0f, marines), Math.max(0f, armaments)};
 	}
 
