@@ -96,11 +96,20 @@ public class ThreatSiegeReportIntel extends BaseIntelPlugin {
 	public void createIntelInfo(TooltipMakerAPI info, ListInfoMode mode) {
 		Color tc = getTitleColor(mode);
 		info.addPara(getName(), tc, 0f);
-		int actions = records.size();
+		addBulletPoints(info, mode);
+	}
+
+	@Override
+	protected void addBulletPoints(TooltipMakerAPI info, ListInfoMode mode) {
+		Color tc = getBulletColorForMode(mode);
+		float initPad = mode == ListInfoMode.IN_DESC ? 10f : 3f;
 		int killed = countDestroyed();
-		info.addPara(BULLET + "%s ground actions, %s colonies destroyed", 3f,
-				Misc.getTextColor(), Misc.getHighlightColor(),
-				"" + actions, "" + killed);
+		bullet(info);
+		info.addPara("%s ground actions", initPad, tc, Misc.getHighlightColor(), "" + records.size());
+		if (killed > 0) {
+			info.addPara("%s colonies destroyed", 0f, tc, Misc.getNegativeHighlightColor(), "" + killed);
+		}
+		unindent(info);
 	}
 
 	protected int countDestroyed() {
@@ -116,7 +125,7 @@ public class ThreatSiegeReportIntel extends BaseIntelPlugin {
 		float opad = 10f;
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 
 		String fn = faction() != null && faction().isPlayerFaction()

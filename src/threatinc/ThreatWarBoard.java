@@ -327,6 +327,8 @@ public class ThreatWarBoard {
 			if (!(curr instanceof ThreatStrikeFGI)) continue;
 			ThreatStrikeFGI strike = (ThreatStrikeFGI) curr;
 			if (strike.isEnded() || strike.isEnding() || strike.isAborted()) continue;
+			// an unseen strike is not on the board either (docs/frontlines.md)
+			if (!strike.isDetected()) continue;
 			if (strike.getParams() == null || strike.getParams().source == null) continue;
 			StarSystemAPI from = strike.getParams().source.getStarSystem();
 			if (from == null || !from.getId().equals(e.systemId)) continue;
@@ -696,7 +698,7 @@ public class ThreatWarBoard {
 	 */
 	protected static void score(Entry e) {
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		Color h = Misc.getHighlightColor();
 		Color threat = Global.getSector().getFaction(Factions.THREAT).getBaseUIColor();
 
@@ -1007,7 +1009,7 @@ public class ThreatWarBoard {
 		Color bright = colours.getBrightUIColor();
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 		Color text = Misc.getTextColor();
 
@@ -1192,7 +1194,7 @@ public class ThreatWarBoard {
 			MarketAPI m) {
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 		Color text = Misc.getTextColor();
 		String ownerId = ThreatGroundFronts.ownerOf(f);
@@ -1601,7 +1603,7 @@ public class ThreatWarBoard {
 	/** Small triangle: up (growing), down (declining) or a dash (stalled). */
 	protected static void trend(float cx, float cy, int dir, float alpha) {
 		if (dir > 0) {
-			glColor(Misc.getPositiveHighlightColor(), alpha);
+			glColor(ThreatNotice.goodColor(), alpha);
 			GL11.glBegin(GL11.GL_TRIANGLES);
 			GL11.glVertex2f(cx - 4f, cy - 3f);
 			GL11.glVertex2f(cx + 4f, cy - 3f);
@@ -1782,7 +1784,7 @@ public class ThreatWarBoard {
 		int burned = ThreatIncData.getCleansedCount();
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 
 		String[] labels = {"Known systems", "Hive worlds", "Mass", "Swarms",
@@ -1867,7 +1869,7 @@ public class ThreatWarBoard {
 		Color bright = threat.getBrightUIColor();
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 		Color text = Misc.getTextColor();
 
@@ -2216,7 +2218,7 @@ public class ThreatWarBoard {
 
 	protected static void addNonColonyBlock(TooltipMakerAPI info, float opad, Entry e) {
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		String name = e.system.getNameWithLowercaseType();
 		if (ThreatIncData.STAGE_COLONIZING.equals(e.stage)) {
 			info.addPara("A Threat %s is in transit to the " + name + ", carrying the fabricator "
@@ -2321,7 +2323,7 @@ public class ThreatWarBoard {
 				FactionAPI threat = Global.getSector().getFaction(Factions.THREAT);
 				glBegin();
 				quad(x, y, w, h, Color.BLACK, 0.35f * alphaMult);
-				outline(x, y, w, h, declining ? Misc.getPositiveHighlightColor()
+				outline(x, y, w, h, declining ? ThreatNotice.goodColor()
 						: threat.getBaseUIColor(), (declining ? 0.9f : 0.6f) * alphaMult);
 				// organ icons along the bottom: 30 px squares, red-tinted while disrupted
 				float ix = x + 8f;
@@ -2343,7 +2345,7 @@ public class ThreatWarBoard {
 
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 		Color text = Misc.getTextColor();
 		Color bright = Global.getSector().getFaction(Factions.THREAT).getBrightUIColor();
@@ -2606,7 +2608,7 @@ public class ThreatWarBoard {
 	public static Color healthColor(float health) {
 		if (health < ThreatColonyManager.CRITICAL_HEALTH) return Misc.getNegativeHighlightColor();
 		if (health < ThreatIncConfig.growthFullHealth()) return Misc.getHighlightColor();
-		return Misc.getPositiveHighlightColor();
+		return ThreatNotice.goodColor();
 	}
 
 	public static StarSystemAPI getSystem(String systemId) {

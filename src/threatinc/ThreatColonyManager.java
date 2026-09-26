@@ -33,7 +33,6 @@ import com.fs.starfarer.api.campaign.SpecialItemData;
 import com.fs.starfarer.api.campaign.econ.MutableCommodityQuantity;
 import com.fs.starfarer.api.impl.campaign.econ.impl.InstallableItemEffect;
 import com.fs.starfarer.api.impl.campaign.econ.impl.ItemEffectsRepo;
-import com.fs.starfarer.api.impl.campaign.intel.MessageIntel;
 import com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker;
 import com.fs.starfarer.api.impl.campaign.population.CoreImmigrationPluginImpl;
 import com.fs.starfarer.api.impl.campaign.shared.SharedData;
@@ -572,10 +571,9 @@ public class ThreatColonyManager {
 			market.removeIndustry(Industries.HEAVYINDUSTRY, null, true);
 			market.addIndustry(Industries.ORBITALWORKS);
 			markEconomyDirty();
-			announce("The fabrication colony on " + market.getName()
-					+ " has restructured itself into a forge world. Hull output from the "
-					+ "swarm's shipyards there is accelerating.",
-					Misc.getNegativeHighlightColor());
+			announce(ThreatNotice.titled("Forge World").bad()
+					.line("%s has restructured into a forge world", ThreatNotice.market(market))
+					.line("Hull output there is accelerating"));
 			ThreatIncConfig.log("Hive planner: ORBITALWORKS at " + market.getName());
 			return;
 		}
@@ -1971,15 +1969,14 @@ public class ThreatColonyManager {
 						otherInbound++;
 					}
 				}
-				String msg = "The Seeding Swarm bound for "
-						+ (planetName != null ? planetName : ("the " + system.getNameWithLowercaseType()))
-						+ " has been destroyed.";
-				if (otherInbound == 1) {
-					msg += " Another swarm is still inbound to the system.";
-				} else if (otherInbound > 1) {
-					msg += " " + otherInbound + " more swarms are still inbound to the system.";
+				ThreatNotice notice = ThreatNotice.titled("Seeding Swarm Destroyed").good()
+						.line("The swarm bound for %s is gone",
+								planetName != null ? planetName : "the " + system.getNameWithLowercaseType());
+				if (otherInbound > 0) {
+					notice.line("%s more still inbound to the %s", ThreatNotice.red(otherInbound),
+							system.getNameWithLowercaseType());
 				}
-				announce(msg, Misc.getPositiveHighlightColor());
+				announce(notice);
 				ThreatIncConfig.log("Wave destroyed: " + system.getName());
 				continue;
 			}
@@ -2039,18 +2036,17 @@ public class ThreatColonyManager {
 				ThreatIncData.garrisonsFor(market.getId()).add(fleet);
 
 				if (conversion) {
-					announce("The dead world of " + planet.getName() + " is dead no longer. "
-							+ "Fabrication strata are spreading through the ruins - the swarm "
-							+ "has claimed what it killed.", Misc.getNegativeHighlightColor());
+					announce(ThreatNotice.titled("Ruins Claimed").bad()
+							.line("Fabrication strata spread through the ruins of %s", planet.getName())
+							.line("The swarm has claimed what it killed"));
 				} else if (firstColony) {
-					announce("The swarm has taken root on " + planet.getName() + " in the "
-							+ system.getNameWithLowercaseType() + ". Fabrication strata are "
-							+ "spreading across its surface.", Misc.getNegativeHighlightColor());
+					announce(ThreatNotice.titled("Hive Takes Root").bad()
+							.line("The swarm has taken root on %s", planet.getName())
+							.line("In the %s", system.getNameWithLowercaseType()));
 				} else {
-					announce("The swarm has spread to a second world: " + planet.getName()
-							+ " in the " + system.getNameWithLowercaseType()
-							+ " is being converted to fabrication strata.",
-							Misc.getNegativeHighlightColor());
+					announce(ThreatNotice.titled("Hive Spreads").bad()
+							.line("%s is being converted to fabrication strata", planet.getName())
+							.line("Another world in the %s", system.getNameWithLowercaseType()));
 				}
 				ThreatIncConfig.log("Colony founded: " + planet.getName()
 						+ (conversion ? " (converted deciv world)" : ""));
@@ -2443,10 +2439,10 @@ public class ThreatColonyManager {
 
 		int newSize = market.getSize();
 		if (newSize == 4 || newSize == 6 || newSize >= cap) {
-			announce("The fabrication colony on " + market.getName()
-					+ " has expanded to size " + newSize + "."
-					+ (newSize >= cap ? " Its growth has reached saturation." : ""),
-					Misc.getNegativeHighlightColor());
+			ThreatNotice notice = ThreatNotice.titled("Hive Grows").bad()
+					.line("%s has grown to size %s", ThreatNotice.market(market), newSize);
+			if (newSize >= cap) notice.line("Its growth has reached saturation");
+			announce(notice);
 		}
 		ThreatIncConfig.log("Colony grew to " + newSize + ": " + market.getName());
 		return true;
@@ -3213,14 +3209,14 @@ public class ThreatColonyManager {
 			if (ids.isEmpty()) {
 				ThreatIncData.clearSystem(systemId);
 				ThreatIncData.incrCleansedCount();
-				announce("The last Threat fabrication colony in " + name + " has been burned "
-						+ "away. The hive's network is diminished - and every surviving colony "
-						+ "feels the loss.", Misc.getPositiveHighlightColor());
+				announce(ThreatNotice.titled("System Cleansed").good()
+						.line("The last Threat colony in %s has been burned away", name)
+						.line("Every surviving hive feels the loss"));
 				ThreatIncConfig.log("System cleansed: " + name);
 			} else {
-				announce("A Threat fabrication colony in " + name + " has been burned away, "
-						+ "though the swarm still holds other worlds there.",
-						Misc.getPositiveHighlightColor());
+				announce(ThreatNotice.titled("Hive Burned").good()
+						.line("A Threat colony in %s has been burned away", name)
+						.line("The swarm still holds other worlds there"));
 				ThreatIncConfig.log("Colony destroyed (system still held): " + name);
 			}
 		}
@@ -3364,6 +3360,7 @@ public class ThreatColonyManager {
 		// both sides' scouting starts over with the war: parties out fade, charts and leads go
 		ThreatScouts.reset();
 		ThreatSwarmScouts.reset();
+		ThreatOmens.reset();
 		Global.getSector().getPersistentData().remove(IncursionManager.KEY_BOUNTY_ROTATION);
 		ThreatIncursionIntel summary = ThreatIncursionIntel.get();
 		if (summary != null) {
@@ -3377,8 +3374,8 @@ public class ThreatColonyManager {
 		Global.getSector().getPersistentData().remove(ThreatIncData.KEY_SYSTEMS_CLEANSED);
 		Global.getSector().getPersistentData().remove(ThreatIncData.KEY_ANNOUNCED_PHASE3);
 
-		announce("The Abyssal War has been reset. The swarm will return to the sector "
-				+ "as if for the first time.", Misc.getHighlightColor());
+		announce(ThreatNotice.titled("Abyssal War Reset")
+				.line("The swarm will return as if for the first time"));
 		ThreatIncConfig.log("Abyssal War fully reset.");
 	}
 
@@ -3472,9 +3469,8 @@ public class ThreatColonyManager {
 		ThreatIncData.hives().clear();
 
 		if (converted > 0) {
-			announce("The swarm has consolidated its holdings: its fabrication hives have "
-					+ "dug into the planets below, becoming true colonies of the machine.",
-					Misc.getNegativeHighlightColor());
+			announce(ThreatNotice.titled("Hives Consolidated").bad()
+					.line("%s hive fleets have dug into the planets below", converted));
 			ThreatIncConfig.log("Migrated " + converted + " legacy hive systems to colonies.");
 		}
 	}
@@ -3564,18 +3560,12 @@ public class ThreatColonyManager {
 	 * and so on. In normal play the swarm is silent - the player learns of it
 	 * through discovery (visiting infested space), through travel/raid intel,
 	 * and through the sector's own contracts. Debug mode restores the running
-	 * commentary for playtesting.
+	 * commentary for playtesting. Always-shown notices call
+	 * {@link ThreatNotice#send} themselves.
 	 */
-	public static void announce(String text, Color color) {
+	public static void announce(ThreatNotice notice) {
 		if (!ThreatIncConfig.debugMode()) return;
-		announceAlways(text, color);
-	}
-
-	/** The rare always-shown message: initial incursion flavor and the like. */
-	public static void announceAlways(String text, Color color) {
-		MessageIntel msg = new MessageIntel(text, color);
-		IncursionManager.setThreatIcon(msg);
-		Global.getSector().getCampaignUI().addMessage(msg);
+		notice.send();
 	}
 
 	/**

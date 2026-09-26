@@ -240,8 +240,8 @@ public class ThreatFleetOrders {
 			if (o.fleet == null || !o.fleet.isAlive() || o.fleet.isExpired()) {
 				all().remove(o);
 				if (o.aid) {
-					ThreatColonyManager.announceAlways("Your task force " + o.task()
-							+ " has been lost.", Misc.getNegativeHighlightColor());
+					ThreatNotice.titled("Task Force Lost").bad().icon(Global.getSector().getPlayerFaction())
+							.line("Your task force was %s", o.task()).send();
 				}
 				ThreatIncConfig.log("Order lost (fleet destroyed): " + o.factionId + " " + o.task());
 				continue;
@@ -391,8 +391,8 @@ public class ThreatFleetOrders {
 			c.lostTimestamp = 0L;
 			c.label = label;
 		}
-		ThreatColonyManager.announceAlways(fleet.getName() + " is back on station over "
-				+ host.getName() + ".", Misc.getHighlightColor());
+		ThreatNotice.titled("Back on Station").icon(player)
+				.line("%s holds the orbit over %s again", fleet.getName(), ThreatNotice.market(host)).send();
 		return true;
 	}
 
@@ -434,8 +434,9 @@ public class ThreatFleetOrders {
 		Order o = record(fleet, player, KIND_GUARD, source, host.getId(), host.getName(), days);
 		o.arrived = true;
 		ThreatAidCapacity.commit(source, points, fleet, "guard of " + host.getName());
-		ThreatColonyManager.announceAlways("Your task force from " + source.getName()
-				+ " is back on station over " + host.getName() + ".", Misc.getHighlightColor());
+		ThreatNotice.titled("Back on Station").icon(player)
+				.line("Your task force from %s holds the orbit over %s again", ThreatNotice.market(source),
+						ThreatNotice.market(host)).send();
 		return true;
 	}
 
@@ -693,8 +694,10 @@ public class ThreatFleetOrders {
 			else ThreatAidCapacity.commitSortie(base, points, fleet, label);
 		}
 		if (!aid) {
-			announce(faction, "task force from " + base.getName() + " is moving to guard "
-					+ target.name() + (days > 0f ? " for " + (int) days + " days." : "."));
+			ThreatNotice n = notice(faction, "Task Force Sails", "task force from %s moves to guard %s",
+					ThreatNotice.market(base), target.name());
+			if (days > 0f) n.line("For %s days", (int) days);
+			n.send();
 		}
 		return o;
 	}
@@ -751,9 +754,9 @@ public class ThreatFleetOrders {
 					"hunt in the " + hive.getNameWithLowercaseTypeShort());
 		}
 		if (!aid) {
-			announce(faction, "task force from " + base.getName() + " is moving to hunt the Defense "
-					+ "Swarms in the " + hive.getNameWithLowercaseTypeShort() + " for "
-					+ (int) ThreatIncConfig.softenDays() + " days.");
+			notice(faction, "Task Force Sails", "task force from %s moves to hunt the Defense Swarms in the %s",
+					ThreatNotice.market(base), hive.getNameWithLowercaseTypeShort())
+					.line("For %s days", (int) ThreatIncConfig.softenDays()).send();
 		}
 		return o;
 	}
@@ -909,8 +912,9 @@ public class ThreatFleetOrders {
 			ThreatAidCapacity.commitSortie(base, builtPoints(fleet, fp), fleet,
 					orbitName(kind).toLowerCase() + " over " + hive.getName());
 		}
-		announce(faction, "task force from " + base.getName() + " is moving to " + orbitVerb(kind)
-				+ " " + hive.getName() + " for " + (int) days + " days.");
+		notice(faction, "Task Force Sails", "task force from %s moves to " + orbitVerb(kind) + " %s",
+				ThreatNotice.market(base), ThreatNotice.market(hive))
+				.line("For %s days", (int) days).send();
 		return o;
 	}
 
@@ -1134,8 +1138,9 @@ public class ThreatFleetOrders {
 				1000f, "returning to " + base.getName());
 		Order o = record(fleet, faction, KIND_HUNT, base, target.getId(), target.getName(), days);
 		o.systemId = hive.getId();
-		announce(faction, fleet.getName() + " is detached to hunt the Defense Swarms in the "
-				+ hive.getNameWithLowercaseTypeShort() + " for " + (int) days + " days.");
+		notice(faction, "Fleet Detached", "%s is detached to hunt the Defense Swarms in the %s",
+				fleet.getName(), hive.getNameWithLowercaseTypeShort())
+				.line("For %s days", (int) days).send();
 		return o;
 	}
 
@@ -1329,8 +1334,12 @@ public class ThreatFleetOrders {
 		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
 				1000f, "returning to " + base.getName());
 		Order o = record(fleet, faction, kind, base, hive.getId(), hive.getName(), days);
-		announce(faction, fleet.getName() + (duty != null ? " breaks off " + duty : "")
-				+ " to " + orbitVerb(kind) + " " + hive.getName() + " for " + (int) days + " days.");
+		ThreatNotice n = duty != null
+				? notice(faction, "Fleet Retasked", "%s breaks off %s to " + orbitVerb(kind) + " %s",
+						fleet.getName(), duty, ThreatNotice.market(hive))
+				: notice(faction, "Fleet Retasked", "%s moves to " + orbitVerb(kind) + " %s",
+						fleet.getName(), ThreatNotice.market(hive));
+		n.line("For %s days", (int) days).send();
 		return o;
 	}
 
@@ -1367,8 +1376,8 @@ public class ThreatFleetOrders {
 		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, world.getPrimaryEntity(), NO_TERM_DAYS,
 				orbitTask(KIND_DEFEND, world.getName()));
 		Order o = record(fleet, faction, KIND_DEFEND, base, world.getId(), world.getName(), 0f);
-		announce(faction, fleet.getName() + " stays over " + world.getName()
-				+ " to defend the landing.");
+		notice(faction, "Fleet Holds Orbit", "%s stays over %s to defend the landing",
+				fleet.getName(), ThreatNotice.market(world)).send();
 		return o;
 	}
 
@@ -1648,9 +1657,17 @@ public class ThreatFleetOrders {
 		ThreatIncConfig.log("Order recalled: " + o.factionId + " " + o.task());
 	}
 
-	protected static void announce(FactionAPI faction, String what) {
-		String who = faction.isPlayerFaction() ? "Your"
-				: Misc.ucFirst(faction.getDisplayNameWithArticle());
-		ThreatColonyManager.announceAlways(who + " " + what, Misc.getHighlightColor());
+	/**
+	 * A notice on an order, its first line "Your {what}" for the player or
+	 * "{Faction} {what}" in the faction's colour otherwise, under the faction's
+	 * crest. The caller adds any further lines and sends it.
+	 */
+	protected static ThreatNotice notice(FactionAPI faction, String title, String what, Object... args) {
+		ThreatNotice n = ThreatNotice.titled(title).icon(faction);
+		if (faction.isPlayerFaction()) return n.line("Your " + what, args);
+		Object[] withWho = new Object[args.length + 1];
+		withWho[0] = ThreatNotice.faction(faction);
+		System.arraycopy(args, 0, withWho, 1, args.length);
+		return n.line("%s " + what, withWho);
 	}
 }

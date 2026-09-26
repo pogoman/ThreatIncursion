@@ -99,8 +99,10 @@ public class ThreatIncConfig {
 	public static float siegeRaidStrPerPoint() { return f("threatinc_siegeRaidStrPerPoint"); }
 	/** A siege lands this much over the 2:1 odds at which the hive overruns a fresh beachhead; 0 sizes for the raids only. */
 	public static float siegeBeachheadMargin() { return f("threatinc_siegeBeachheadMargin"); }
-	/** Whether an NPC siege short of marines at its base draws them from its faction's other bases in reach. */
+	/** Whether an NPC siege short of marines (and armaments) at its base draws them from its faction's other markets in reach, each above its floor. */
 	public static boolean siegePoolMarines()  { return b("threatinc_siegePoolMarines", true); }
+	/** Whether an NPC siege's fuel and supplies gate and draw pool its faction's other markets in reach the same way (2026-09-26). */
+	public static boolean siegePoolProvisions() { return b("threatinc_siegePoolProvisions", true); }
 	/** Most fleets a siege expedition grows to while sizing itself to the target's defenses. */
 	public static int siegeMaxFleets()       { return i("threatinc_siegeMaxFleets"); }
 	/** How many bases, nearest first, an NPC siege tries before it waits: the nearest, then the fallbacks. */
@@ -422,6 +424,18 @@ public class ThreatIncConfig {
 	}
 	/** Reserve banked per 30 days per unit of vanilla SURPLUS (availability above demand): surplus units x the commodity's econ unit x this (docs/economy-coherence.md rule 1). */
 	public static float reserveSurplusMult() { return f("threatinc_reserveSurplusMult"); }
+	/** A frontline link is founded only with a garrison to hold it, which stays as long as the link stands. */
+	public static boolean frontlineGarrisonEnabled() { return b("threatinc_frontlineGarrisonEnabled", true); }
+	/** Smallest garrison a link gets, in fleet points, whatever the strikes in reach. */
+	public static float frontlineGarrisonFP() { return f("threatinc_frontlineGarrisonFP"); }
+	/** Garrison plus station must weigh this times the strongest Threat strike in reach (vanilla's raid strength). */
+	public static float frontlineGarrisonMargin() { return f("threatinc_frontlineGarrisonMargin"); }
+	/** Most of a faction's supply banking its links' garrisons may cost in upkeep. */
+	public static float frontlineUpkeepShare() { return f("threatinc_frontlineUpkeepShare"); }
+	/** A faction banks at most what its own markets produce above their own demand, shared across its markets (ThreatReserves.productionShare). */
+	public static boolean reserveBankFromProduction() { return b("threatinc_reserveBankFromProduction", true); }
+	/** With banking by production: the share of the sector's best single exporter a faction may bank of what it does not make. */
+	public static float reserveBankImportsMult() { return f("threatinc_reserveBankImportsMult"); }
 	/** Vanilla demand units the War footing condition adds at colony size 5 (scaled by size / 5, rounded up); 0 = none (rule 2). */
 	public static float warFootingDemandUnits() { return f("threatinc_warFootingDemandUnits"); }
 	/** Most of the stock at hand the depot spends per issue covering the colony's own shortage (rule 3). */
@@ -480,6 +494,14 @@ public class ThreatIncConfig {
 	public static float raiderDays()          { return f("threatinc_raiderDays"); }
 	/** Strikes hide their origin; the sector acts only on hives someone has found (ThreatScouts). Off: the old omniscient rule. */
 	public static boolean hiveFogOfWar()      { return b("threatinc_hiveFogOfWar", true); }
+	/** Foreboding messages until anyone finds a hive (ThreatOmens). */
+	public static boolean omensEnabled()      { return b("threatinc_omensEnabled", true); }
+	/** Light-years from an unfound hive colony at which the player's fleet hears it. */
+	public static float omenStaticLY()        { return f("threatinc_omenStaticLY"); }
+	/** Days between omens heard by the player's fleet. */
+	public static float omenStaticDays()      { return f("threatinc_omenStaticDays"); }
+	/** Days between sector-wide omens (spread, swarm scouts, unseen strikes). */
+	public static float omenSectorDays()      { return f("threatinc_omenSectorDays"); }
 	/** Light-years around a strike's origin a struck faction's scouts sweep. */
 	public static float scoutLeadRadiusLY()   { return f("threatinc_scoutLeadRadiusLY"); }
 	/** Light-years around a military world a mobilised faction's routine sweep covers. */
@@ -685,6 +707,25 @@ public class ThreatIncConfig {
 	public static float outpostFuel()         { return f("threatinc_outpostFuel"); }
 	/** Chance per tick a mobilised NPC faction fortifies an open purged world in reach. */
 	public static float outpostChance()       { return f("threatinc_outpostChance"); }
+
+	// ---- frontline outposts and strike warning (docs/frontlines.md) ----
+
+	public static boolean frontlinesEnabled()        { return b("threatinc_frontlinesEnabled", true); }
+	public static float frontlinePlanDays()          { return f("threatinc_frontlinePlanDays"); }
+	public static int frontlineMaxPerFaction()       { return i("threatinc_frontlineMaxPerFaction"); }
+	public static float frontlineLinkLY()            { return f("threatinc_frontlineLinkLY"); }
+	public static float frontlineReachLY()           { return f("threatinc_frontlineReachLY"); }
+	public static float frontlineKeepLY()            { return f("threatinc_frontlineKeepLY"); }
+	public static int frontlineMaxSize()             { return i("threatinc_frontlineMaxSize"); }
+	public static float frontlineGrowDays()          { return f("threatinc_frontlineGrowDays"); }
+	public static float frontlineStarveDays()        { return f("threatinc_frontlineStarveDays"); }
+	public static float frontlineAbandonDays()       { return f("threatinc_frontlineAbandonDays"); }
+	public static float frontlineRelayAccess()       { return f("threatinc_frontlineRelayAccess"); }
+	public static float frontlineStrikeWeight()      { return f("threatinc_frontlineStrikeWeight"); }
+	public static boolean frontlineReliefEnabled()   { return b("threatinc_frontlineReliefEnabled", true); }
+	public static float frontlineReliefMargin()      { return f("threatinc_frontlineReliefMargin"); }
+	public static boolean strikeDetection()          { return b("threatinc_strikeDetection", true); }
+	public static float strikeDetectLY()             { return f("threatinc_strikeDetectLY"); }
 
 	// ---- faction relations ----
 

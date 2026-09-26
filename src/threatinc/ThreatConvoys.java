@@ -382,11 +382,15 @@ public class ThreatConvoys {
 			Convoy c = dispatch(donor, besieged, faction, load, random);
 			if (c == null) continue;
 			sailed++;
-			String who = faction.isPlayerFaction() ? "Your"
-					: Misc.ucFirst(faction.getDisplayNameWithArticle());
-			ThreatColonyManager.announceAlways(who + " relief convoy carries "
-					+ Misc.getWithDGS((int) c.marines) + " marines from " + donor.getName()
-					+ " to the defence of " + besieged.getName() + ".", Misc.getHighlightColor());
+			ThreatNotice n = ThreatNotice.titled("Relief Convoy Sails").icon(faction);
+			if (faction.isPlayerFaction()) {
+				n.line("Your convoy carries %s marines from %s", Misc.getWithDGS((int) c.marines),
+						ThreatNotice.market(donor));
+			} else {
+				n.line("%s convoy carries %s marines from %s", ThreatNotice.faction(faction),
+						Misc.getWithDGS((int) c.marines), ThreatNotice.market(donor));
+			}
+			n.line("To the defence of %s", ThreatNotice.market(besieged)).send();
 		}
 		return sailed;
 	}
@@ -791,7 +795,7 @@ public class ThreatConvoys {
 		}
 		if (!ThreatReturns.onLeg(fleet, planet, "running in to " + hive.getName())) return;
 		CargoAPI cargo = fleet.getCargo();
-		String who = ThreatWarState.displayName(c.factionId);
+		FactionAPI faction = Global.getSector().getFaction(c.factionId);
 		if (c.pickup) {
 			// the level has to be read before the front is taken apart, and rides
 			// home on the fleet so the base it lands at is seasoned by it
@@ -802,9 +806,15 @@ public class ThreatConvoys {
 				fleet.getMemoryWithoutUpdate().set(ThreatReturns.MEM_MARINE_LEVEL, level);
 			}
 			if (rec[1] > 0) cargo.addCommodity(Commodities.HAND_WEAPONS, rec[1]);
-			ThreatColonyManager.announceAlways(who + " ground forces have been lifted off "
-					+ hive.getName() + " - " + rec[0] + " marines and " + rec[1]
-					+ " heavy armaments are on their way home.", Misc.getHighlightColor());
+			ThreatNotice n = ThreatNotice.titled("Ground Forces Lifted Off").icon(faction);
+			if (faction != null && faction.isPlayerFaction()) {
+				n.line("Your ground forces have left %s", ThreatNotice.market(hive));
+			} else {
+				n.line("%s ground forces have left %s", ThreatNotice.faction(faction),
+						ThreatNotice.market(hive));
+			}
+			n.line("%s marines and %s heavy armaments are on their way home",
+					Misc.getWithDGS(rec[0]), Misc.getWithDGS(rec[1])).send();
 			ThreatIncConfig.log("Front withdrawn to fleet at " + hive.getName() + ": " + rec[0]
 					+ " marines, " + rec[1] + " armaments");
 		} else {
@@ -813,9 +823,10 @@ public class ThreatConvoys {
 			if (marines > 0) cargo.removeMarines(marines);
 			if (armaments > 0) cargo.removeCommodity(Commodities.HAND_WEAPONS, armaments);
 			ThreatGroundFronts.resupply(front, marines, armaments);
-			ThreatColonyManager.announceAlways("A " + who + " supply run has landed on "
-					+ hive.getName() + ": " + marines + " marines and " + armaments
-					+ " heavy armaments reach the front.", Misc.getPositiveHighlightColor());
+			ThreatNotice.titled("Supplies Landed").good().icon(faction)
+					.line("%s marines and %s heavy armaments reach the front on %s",
+							Misc.getWithDGS(marines), Misc.getWithDGS(armaments), ThreatNotice.market(hive))
+					.send();
 			ThreatIncConfig.log("Supply run delivered at " + hive.getName() + ": " + marines
 					+ " marines, " + armaments + " armaments");
 		}
@@ -1362,10 +1373,15 @@ public class ThreatConvoys {
 	protected static void lost(Convoy c) {
 		all().remove(c);
 		FactionAPI faction = Global.getSector().getFaction(c.factionId);
-		String who = faction == null ? c.factionId : faction.isPlayerFaction() ? "Your"
-				: Misc.ucFirst(faction.getDisplayNameWithArticle());
-		ThreatColonyManager.announce(who + " supply convoy from " + c.fromName() + " to "
-				+ c.toName() + " has been lost with its cargo.", Misc.getNegativeHighlightColor());
+		ThreatNotice n = ThreatNotice.titled("Convoy Lost").bad().icon(faction);
+		if (faction != null && faction.isPlayerFaction()) {
+			n.line("Your supply convoy from %s to %s", c.fromName(), c.toName());
+		} else {
+			n.line("%s supply convoy from %s to %s",
+					faction != null ? ThreatNotice.faction(faction) : ThreatNotice.gray(c.factionId),
+					c.fromName(), c.toName());
+		}
+		ThreatColonyManager.announce(n.line("Lost with its cargo"));
 		ThreatIncConfig.log("Convoy lost: " + c.factionId + " " + c.fromName() + " -> " + c.toName());
 	}
 

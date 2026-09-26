@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 1;
+	static final int MIGRATION_VERSION = 2;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -41,26 +41,37 @@ class LunaConfigBridge {
 	 * equal to the OLD default is moved to the new one; anything the player
 	 * set by hand is left alone. 0.7.0: siegeMaxFleets 10 -> 25,
 	 * reserveInitialMonths 3 -> 6 (rc1 review - the release's main balance
-	 * change never applied under LunaLib).
+	 * change never applied under LunaLib). Version 2 (2026-09-26):
+	 * siegeMaxFleets 25 -> 40 (the bumps chain, so a store still at 10 lands
+	 * on 40); frontlineGarrisonFP 400 -> 200 (now the minimum garrison - links
+	 * are garrisoned against the strikes in reach).
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
 		try {
-			if (settings.fileExistsInCommon(MIGRATION_MARKER)
-					&& parseVersion(settings.readTextFileFromCommon(MIGRATION_MARKER)) >= MIGRATION_VERSION) {
-				return;
-			}
+			int from = settings.fileExistsInCommon(MIGRATION_MARKER)
+					? parseVersion(settings.readTextFileFromCommon(MIGRATION_MARKER)) : 0;
+			if (from >= MIGRATION_VERSION) return;
 			String path = "LunaSettings/" + ThreatIncConfig.MOD_ID + ".json";
 			if (settings.fileExistsInCommon(path)) {
 				JSONObject json = new JSONObject(settings.readTextFileFromCommon(path));
-				boolean changed = bump(json, "threatinc_siegeMaxFleets", 10, 25, true);
-				changed |= bump(json, "threatinc_reserveInitialMonths", 3, 6, false);
+				// each version's bumps only once: a value set back by hand after
+				// an earlier migration is the player's
+				boolean changed = false;
+				if (from < 1) {
+					changed |= bump(json, "threatinc_siegeMaxFleets", 10, 25, true);
+					changed |= bump(json, "threatinc_reserveInitialMonths", 3, 6, false);
+				}
+				if (from < 2) {
+					changed |= bump(json, "threatinc_siegeMaxFleets", 25, 40, true);
+					changed |= bump(json, "threatinc_frontlineGarrisonFP", 400, 200, false);
+				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));
 					// LunaLib re-reads its stored file
 					LunaSettings.SettingsCreator.refresh(ThreatIncConfig.MOD_ID);
 					Global.getLogger(LunaConfigBridge.class).info(
-							"[ThreatInc] LunaLib settings moved to the 0.7.0 defaults where they still held the old ones");
+							"[ThreatInc] LunaLib settings moved to the current defaults where they still held the old ones");
 				}
 			}
 			settings.writeTextFileToCommon(MIGRATION_MARKER, String.valueOf(MIGRATION_VERSION));

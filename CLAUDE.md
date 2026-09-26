@@ -31,6 +31,14 @@ now and nothing about how the mechanism works - that goes in `docs/`.
 - Clicking a colony row opens vanilla's colony screen (`ThreatColonyScreenDialog`); vanilla's
   UI shows the rest. Faction names on labels are capitalised (`ThreatWarState.displayName`).
 - When in doubt, cut. If a sentence explains a rule, delete it and check the rule is in a doc.
+- Notifications go through `ThreatNotice` (user's rule 2026-09-26), never `MessageIntel` or one
+  flat-coloured sentence: a 1-4 word Title Case title, then one fact per bullet with factions in
+  their colour (`ThreatNotice.faction`), markets in their owner's (`market`), figures highlighted.
+  Title colours: the Threat's faction colour for anything the swarm does (Threat crest), red only
+  for our side's losses (a faction crest + `bad()`), the default light blue for good or neutral.
+  The word "Threat" in a line is coloured automatically.
+- **Never fluoro green** (`Misc.getPositiveHighlightColor`), anywhere - user's rule 2026-09-26.
+  A good state or gain uses `ThreatNotice.goodColor()` (the player's UI blue).
 - **Option panels: shape first, state last.** In any dialog menu, do every
   `addOption`/`removeOption`/`clearOptions` first, then every `setEnabled`/`setTooltip`.
   `removeOption` rebuilds the panel and drops every `setEnabled`, `setTooltip`, `setShortcut`

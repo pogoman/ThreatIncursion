@@ -59,6 +59,20 @@ on vanilla's shortages before anything else.
    footing's demand is the war's supply line: vanilla imports it, the depot banks it.
    Measured above the full demand, every importer banked nothing once mobilised (vanilla
    imports only up to demand) and depots drained by sorties never refilled.
+   *Amended 2026-09-26 (`reserveBankFromProduction`, default on):* vanilla's
+   availability is broadcast - every importer gets its whole share of the same
+   exporter's output and nothing is used up - so each market banking on its own made a
+   faction's banking grow with its market count. The two-year no-player test showed it:
+   factions stacking forward bases doubled to quadrupled their fuel (the Diktat 36k to
+   151k on three colonies), those whose bases starved stayed flat. Now the faction's
+   banking of a commodity is scaled to at most what its own markets make above their
+   own peacetime demand (`ThreatReserves.productionShare`), shared evenly across every
+   market that banks it. What it does not make it buys: vanilla feeds a market from the
+   better of its faction's best exporter and the sector's (`getMaxExportGlobal`), so the
+   faction's budget is the larger of its own making and the sector's best single
+   exporter (× `reserveBankImportsMult`, default 1) - once for the whole faction,
+   however many markets import it. Without this a faction importing all its fuel
+   banked none and could never sail a siege.
    *Player colonies (2026-09-05):* the reserve IS the vanilla resource stockpile, which
    vanilla fills by this same rule (excess at 0.5, production at 0.25, the Waystation's
    bonus, capped at `stockpileMaxMonths`); the mod adds only the militia and never

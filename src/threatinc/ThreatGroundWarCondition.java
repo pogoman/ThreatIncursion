@@ -39,7 +39,7 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		float opad = 10f;
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
-		Color pos = Misc.getPositiveHighlightColor();
+		Color pos = ThreatNotice.goodColor();
 
 		int size = market.getSize();
 		int held = Math.max(0, Math.min(size, front.strataHeld));

@@ -379,13 +379,13 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		int cleansed = ThreatIncData.getCleansedCount();
 		if (cleansed > 0) {
 			info.addPara("Threat colonies you have burned from the sector: %s.", opad,
-					Misc.getPositiveHighlightColor(), "" + cleansed);
+					ThreatNotice.goodColor(), "" + cleansed);
 		}
 
 		info.addPara("Counterplay: defeat the Defense Swarms orbiting a colony, then saturation "
 				+ "bombardment burns it down - each pass shrinks it, and small colonies are "
 				+ "destroyed outright. The hive is one economy: its supply convoys and colonies "
 				+ "are all targets, and every world it loses starves the rest.", opad,
-				Misc.getPositiveHighlightColor(), "saturation bombardment");
+				ThreatNotice.goodColor(), "saturation bombardment");
 	}
 }

@@ -27,7 +27,6 @@ import com.fs.starfarer.api.impl.campaign.fleets.FleetParamsV3;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.FleetTypes;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
-import com.fs.starfarer.api.impl.campaign.intel.MessageIntel;
 import com.fs.starfarer.api.impl.campaign.intel.events.RemnantHostileActivityFactor;
 import com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction.FGRaidType;
 import com.fs.starfarer.api.impl.campaign.intel.group.FleetGroupIntel;
@@ -227,6 +226,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatRaiders.poll();
 		ThreatScouts.poll(random);
 		ThreatSwarmScouts.poll(random);
+		// until a hive is found the sector only hears it (docs/omens.md)
+		ThreatOmens.poll();
 		ThreatFleetOrders.poll();
 		// hunting forces muster, move on and break off on the poll, not the monthly tick
 		ThreatSoftening.advanceHunts();
@@ -245,6 +246,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatReturns.poll();
 		ThreatAidCapacity.poll();
 		ThreatOutposts.poll();
+		ThreatFrontlines.poll(random);
+		detectStrikes();
 		sweepOrphanedExpeditions();
 		upgradeInFlightStrikes();
 		dedupDecivIntel();
@@ -367,13 +370,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 		ThreatIncursionIntel.ensureAdded();
 
-		MessageIntel msg = new MessageIntel(
-				"Deep-space listening posts have picked up anomalous fabrication signatures "
-				+ "from the darkest fringes of the sector. Whatever was woken in the Abyss "
-				+ "is no longer content to stay there.",
-				Misc.getNegativeHighlightColor());
-		setThreatIcon(msg);
-		Global.getSector().getCampaignUI().addMessage(msg);
+		ThreatNotice.titled("Something Stirs in the Abyss").bad()
+				.line("Deep-space listening posts have picked up anomalous fabrication "
+						+ "signatures from the darkest fringes of the sector.")
+				.line("Whatever was woken in the %s is no longer content to stay there.", "Abyss")
+				.send();
 
 		ThreatIncConfig.log("Abyssal War started.");
 	}
@@ -720,10 +721,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				// always announced: this is the incursion's opening move, and
 				// the player must know SEVERAL swarms are coming - killing one
 				// does not stop the chain
-				ThreatColonyManager.announce("Dense Threat swarms have been detected in "
-						+ "transit toward the " + system.getNameWithLowercaseType()
-						+ " - multiple fabricator fleets, a coordinated colonization effort.",
-						Misc.getNegativeHighlightColor());
+				ThreatColonyManager.announce(ThreatNotice.titled("Swarms Inbound").bad()
+						.line("Dense Threat swarms are in transit toward the %s.",
+								system.getNameWithLowercaseType())
+						.line("Multiple fabricator fleets: a coordinated colonization effort."));
 				continue;
 			}
 
@@ -749,9 +750,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			boolean launched = ThreatColonyManager.launchColonizationWave(
 					source, system, planet, random);
 			if (launched && getPhase() >= 2) {
-				ThreatColonyManager.announce("A dense Threat swarm has been detected in transit "
-						+ "toward the " + system.getNameWithLowercaseType() + ".",
-						Misc.getNegativeHighlightColor());
+				ThreatColonyManager.announce(ThreatNotice.titled("Swarm Inbound").bad()
+						.line("A dense Threat swarm is in transit toward the %s.",
+								system.getNameWithLowercaseType()));
 			}
 		}
 	}
@@ -831,19 +832,22 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (nexus != null) {
 				if (random.nextFloat() < ThreatIncConfig.machineWarWinChance()) {
 					nexus.despawn();
-					ThreatColonyManager.announce(
-							"The Remnant Nexus in the " + target.getNameWithLowercaseType()
-							+ " has gone silent. Salvors report wreckage of both Remnant and unknown "
-							+ "manufacture - a war between machines, and the Remnant lost.",
-							Misc.getNegativeHighlightColor());
+					ThreatColonyManager.announce(ThreatNotice.titled("Machine War").bad()
+							.line("The %s Nexus in the %s has gone silent.",
+									ThreatNotice.faction(Global.getSector().getFaction(Factions.REMNANTS)),
+									target.getNameWithLowercaseType())
+							.line("Salvors report wreckage of both Remnant and unknown manufacture: "
+									+ "a war between machines, and the Remnant %s.",
+									ThreatNotice.red("lost")));
 					ThreatIncData.setStage(target.getId(), ThreatIncData.STAGE_SEEDED);
 					ThreatIncConfig.log("Machine war won at " + target.getName() + "; nexus destroyed, system seeded.");
 				} else {
-					ThreatColonyManager.announce(
-							"Fierce fighting between Remnant forces and unidentified constructs has been "
-							+ "reported in the " + target.getNameWithLowercaseType()
-							+ ". The Remnant Nexus holds - for now.",
-							Misc.getHighlightColor());
+					ThreatColonyManager.announce(ThreatNotice.titled("Machine War")
+							.line("Fierce fighting between %s forces and unidentified constructs "
+									+ "in the %s.",
+									ThreatNotice.faction(Global.getSector().getFaction(Factions.REMNANTS)),
+									target.getNameWithLowercaseType())
+							.line("The Remnant Nexus %s - for now.", ThreatNotice.green("holds")));
 					ThreatIncConfig.log("Machine war lost at " + target.getName() + "; nexus holds.");
 				}
 				return;
@@ -898,9 +902,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 			if (ThreatColonyManager.launchColonizationWave(source, system, planet, random)) {
 				ThreatIncData.decivTargets().remove(planetId);
-				ThreatColonyManager.announce("Something is moving through the ruins of "
-						+ planet.getName() + " - a dense Threat swarm is inbound to claim "
-						+ "the world it killed.", Misc.getNegativeHighlightColor());
+				ThreatColonyManager.announce(ThreatNotice.titled("Swarm Inbound").bad()
+						.line("Something is moving through the ruins of %s.", planet.getName())
+						.line("A dense Threat swarm is inbound to claim the world it killed."));
 				return;
 			}
 		}
@@ -941,7 +945,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 	}
 
-	protected void launchStrike(MarketAPI colony, StarSystemAPI source, MarketAPI target) {
+	protected ThreatStrikeFGI launchStrike(MarketAPI colony, StarSystemAPI source, MarketAPI target) {
 		GenericRaidParams params = new GenericRaidParams(new Random(random.nextLong()), true);
 
 		params.factionId = Factions.THREAT;
@@ -1020,45 +1024,97 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// killing a colony's swarms directly starves its next strike.
 		int sendable = ThreatColonyManager.garrisonAvailableForLaunch(colony);
 		java.util.List<Integer> mustered = ThreatColonyManager.consumeGarrison(colony, sendable);
-		if (mustered.isEmpty()) return;
+		if (mustered.isEmpty()) return null;
 		// each expedition fleet is EXACTLY the swarm that left orbit (its
 		// fabrication tier rides the fleet's memory); the strength multiplier
 		// up- or down-tiers the re-embodiment for players who want it
-		float mult = ThreatIncConfig.strikeStrengthMult();
 		for (int size : mustered) {
-			int adjusted = size;
-			if (mult >= 2f) adjusted += 2;
-			else if (mult >= 1.25f) adjusted += 1;
-			if (mult <= 0.5f) adjusted -= 2;
-			else if (mult <= 0.8f) adjusted -= 1;
-			params.fleetSizes.add(Math.max(3, Math.min(9, adjusted)));
+			params.fleetSizes.add(strikeFleetSize(size));
 		}
 
 		ThreatStrikeFGI strike = new ThreatStrikeFGI(params);
 		Global.getSector().getIntelManager().addIntel(strike);
 		getStrikeList().add(strike);
 
-		// the struck faction mobilises (docs/strategy-layer.md): from here on
-		// its colonies stock reserves, its logistics run and its fleets take
-		// orders. NPC and player alike.
-		ThreatWarState.recordStrike(target);
-
 		if (target.isPlayerOwned()) {
 			ThreatIncData.setPlayerStruck();
-		} else {
+		}
+		// the struck faction's scouts and task force answer when the strike is
+		// SEEN (detectStrikes), not when it is launched - without strike
+		// detection that is the same moment
+		if (strike.isDetected()) onStrikeDetected(strike);
+		else ThreatOmens.onStrikeLaunched(target);
+
+		ThreatIncConfig.log("Strike launched from " + source.getName() + " at " + target.getName()
+				+ " (" + mustered.size() + " swarm(s) mustered, sweeping "
+				+ params.raidParams.allowedTargets.size()
+				+ " world(s) in " + target.getStarSystem().getName() + ")");
+		return strike;
+	}
+
+
+	/**
+	 * Strike warning (docs/frontlines.md): a strike nobody has seen is hidden.
+	 * Each poll, a strike whose fleets are in sight of the player, share a
+	 * system with a colony or outpost, or fly within strikeDetectLY of a
+	 * military world or frontline outpost in hyperspace, is spotted - and the
+	 * struck faction answers from then on.
+	 */
+	protected void detectStrikes() {
+		for (Object curr : new ArrayList<Object>(getStrikeList())) {
+			if (!(curr instanceof ThreatStrikeFGI)) continue;
+			ThreatStrikeFGI strike = (ThreatStrikeFGI) curr;
+			if (strike.isDetected() || strike.isEnded() || strike.isEnding()) continue;
+			String by = null;
+			if (strike.isSpawnedFleets()) {
+				for (CampaignFleetAPI fleet : strike.getFleets()) {
+					by = ThreatFrontlines.detectedBy(fleet);
+					if (by != null) break;
+				}
+			} else if (strike.getRoute() != null) {
+				// far from the player the group flies as an abstract route
+				// (vanilla spawns fleets only near the player): read its place
+				com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteData route = strike.getRoute();
+				com.fs.starfarer.api.campaign.LocationAPI loc = route.getCurrent() != null
+						? route.getCurrent().getCurrentContainingLocation() : null;
+				by = ThreatFrontlines.detectedAt(loc, route.getInterpolatedHyperLocation());
+			}
+			// the payload has begun: it is at the target, seen or not
+			if (by == null && strike.getCurrentAction() != null
+					&& strike.getCurrentAction() == strike.getRaidAction()) {
+				by = "its target";
+			}
+			if (by == null) continue;
+			strike.markDetected(by);
+			onStrikeDetected(strike);
+		}
+	}
+
+	/** The struck NPC faction's scouts get a lead and its task force sails; outposts call relief. */
+	protected void onStrikeDetected(ThreatStrikeFGI strike) {
+		if (strike.getParams() == null || strike.getParams().raidParams == null) return;
+		MarketAPI colony = strike.getParams().source;
+		StarSystemAPI source = colony != null ? colony.getStarSystem() : null;
+		java.util.List<MarketAPI> targets = strike.getParams().raidParams.allowedTargets;
+		MarketAPI target = targets.isEmpty() ? null : targets.get(0);
+		// seen late, the world may already be gone
+		if (target != null && !target.isInEconomy()) target = null;
+		// the struck faction mobilises (docs/strategy-layer.md): from here on
+		// its colonies stock reserves, its logistics run and its fleets take
+		// orders. NPC and player alike - once the strike is seen
+		if (target != null) ThreatWarState.recordStrike(target);
+		// no task force against a hive that died while the strike flew unseen
+		boolean hiveAlive = colony != null && colony.isInEconomy()
+				&& Factions.THREAT.equals(colony.getFactionId());
+		if (target != null && source != null && hiveAlive && !target.isPlayerOwned()) {
 			// an NPC colony was struck: its scouts go looking for where the
 			// strike came from. A task force goes against the attacking colony's
 			// garrison only if its hive is already found - none follows later
 			ThreatScouts.addLead(target.getFactionId(), source.getId());
 			dispatchFactionResponse(target, source, colony);
 		}
-
-		ThreatIncConfig.log("Strike launched from " + source.getName() + " at " + target.getName()
-				+ " (" + mustered.size() + " swarm(s) mustered, sweeping "
-				+ params.raidParams.allowedTargets.size()
-				+ " world(s) in " + target.getStarSystem().getName() + ")");
+		ThreatFrontlines.sendRelief(strike, random);
 	}
-
 
 	/**
 	 * Reactive defense: the struck colony's faction musters a task force from its
@@ -1301,23 +1357,29 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// the launch is the player-facing beat of the whole siege system:
 			// always shown, one sentence
 			if (preemptive) {
-				ThreatColonyManager.announceAlways(faction.getDisplayName() + " has launched a "
-						+ "preemptive purge expedition into the "
-						+ system.getNameWithLowercaseType() + ", against the swarm's "
-						+ (targets.size() > 1 ? targets.size() + " colonies" : "young foothold")
-						+ " before they entrench.", Misc.getHighlightColor());
+				ThreatNotice.titled("Preemptive Purge").icon(faction)
+						.line("%s has launched a preemptive purge expedition into the %s.",
+								ThreatNotice.faction(faction), system.getNameWithLowercaseType())
+						.line("Against the swarm's %s before they entrench.",
+								targets.size() > 1 ? targets.size() + " colonies" : "young foothold")
+						.send();
 			} else if (heavyAssault) {
-				ThreatColonyManager.announceAlways(faction.getDisplayName() + " has committed to a "
-						+ "full siege of the " + system.getNameWithLowercaseType()
-						+ ", fighting through the Defense Swarms to bombard and land on its "
-						+ "entrenched colonies.", Misc.getHighlightColor());
+				ThreatNotice.titled("Full Siege").icon(faction)
+						.line("%s has committed to a full siege of the %s.",
+								ThreatNotice.faction(faction), system.getNameWithLowercaseType())
+						.line("Fighting through the Defense Swarms to bombard and land on its "
+								+ "entrenched colonies.")
+						.send();
 			} else {
-				ThreatColonyManager.announceAlways(faction.getDisplayName() + " has launched a "
-						+ "siege expedition into the " + system.getNameWithLowercaseType()
-						+ (targets.size() > 1
-								? ", against all " + targets.size() + " Threat colonies there."
-								: ", against the undefended Threat colony there."),
-						Misc.getHighlightColor());
+				ThreatNotice n = ThreatNotice.titled("Siege Expedition").icon(faction)
+						.line("%s has launched a siege expedition into the %s.",
+								ThreatNotice.faction(faction), system.getNameWithLowercaseType());
+				if (targets.size() > 1) {
+					n.line("Against all %s Threat colonies there.", targets.size());
+				} else {
+					n.line("Against the undefended Threat colony there.");
+				}
+				n.send();
 			}
 			ThreatIncConfig.log(faction.getId()
 					+ (preemptive ? " preemptive" : heavyAssault ? " heavy-assault" : "")
@@ -1357,13 +1419,92 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return bases.isEmpty() ? null : bases.get(0);
 	}
 
-	/** The siege base's own faction's other bases in reach of the hive system, nearest first: where a short landing draws its marines. */
-	public static java.util.List<MarketAPI> marinePool(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
+	/**
+	 * The markets a short NPC siege draws on (2026-09-26): every other market of
+	 * the siege base's faction in reach of the hive system (expeditionRangeLY,
+	 * the rule siegeBasesFor applies) that holds a reserve - bases and plain
+	 * colonies alike - nearest the siege base first. Each gives everything
+	 * above its floor (ThreatReserves.available: reserveFloorFraction of the
+	 * largest cap seen; a market under a ground front gives nothing), with no
+	 * donor keep share and no staging hold. Until then only sibling BASES gave,
+	 * and only their spendable stock: in Run 5 (2.4 years, no player) the
+	 * faction's marines covered the landing in 374 of 375 marine postponements
+	 * but the base and its pool held a median tenth of them; supplies bound 220
+	 * of 244 provision postponements at a median 299 in the depot against a
+	 * 12,600 bill the faction held 2.5x of. Four sieges sailed.
+	 */
+	public static java.util.List<MarketAPI> siegeDonors(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
 		java.util.List<MarketAPI> result = new ArrayList<MarketAPI>();
-		for (MarketAPI m : siegeBasesFor(system)) {
-			if (m != base && faction.getId().equals(m.getFactionId())) result.add(m);
+		if (base == null || faction == null || system == null) return result;
+		for (MarketAPI m : factionMarketsInReach(faction, system)) {
+			// a forward base's stock pays its own garrison's upkeep first
+			// (ThreatFrontlines.payUpkeep): a siege drawing it dry recalls the garrison
+			if (m != base && !ThreatFrontlines.isOutpost(m)) result.add(m);
 		}
+		final org.lwjgl.util.vector.Vector2f at = base.getStarSystem() != null
+				? base.getStarSystem().getLocation() : system.getLocation();
+		java.util.Collections.sort(result, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				return Float.compare(Misc.getDistanceLY(a.getStarSystem().getLocation(), at),
+						Misc.getDistanceLY(b.getStarSystem().getLocation(), at));
+			}
+		});
 		return result;
+	}
+
+	/** Faction id + system id -> {@link #factionMarketsInReach}, for the clock instant in basesMemoStamp; not saved. */
+	private static final java.util.Map<String, java.util.List<MarketAPI>> DONORS_MEMO =
+			new java.util.HashMap<String, java.util.List<MarketAPI>>();
+
+	/** Every market of the faction with a reserve, in reach of the hive system (expeditionRangeLY); memoised per clock instant like siegeBasesFor. */
+	protected static java.util.List<MarketAPI> factionMarketsInReach(FactionAPI faction, StarSystemAPI system) {
+		long now = Global.getSector().getClock().getTimestamp();
+		if (now != basesMemoStamp) {
+			BASES_MEMO.clear();
+			DONORS_MEMO.clear();
+			basesMemoStamp = now;
+		}
+		String key = faction.getId() + ":" + system.getId();
+		java.util.List<MarketAPI> memo = DONORS_MEMO.get(key);
+		if (memo == null) {
+			memo = new ArrayList<MarketAPI>();
+			for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
+				if (m.getStarSystem() == null || ThreatReserves.get(m.getId()) == null) continue;
+				if (Misc.getDistanceLY(m.getStarSystem().getLocation(), system.getLocation()) > expeditionRangeLY(m)) continue;
+				memo.add(m);
+			}
+			DONORS_MEMO.put(key, memo);
+		}
+		return new ArrayList<MarketAPI>(memo);
+	}
+
+	/** Stock the siege base and its donors hold above their floors, for the launch's gates. */
+	protected static float siegePooled(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId) {
+		float have = ThreatReserves.available(base, commodityId);
+		for (MarketAPI m : donors) have += ThreatReserves.available(m, commodityId);
+		return have;
+	}
+
+	/**
+	 * Draws up to {@code amount} of a commodity for a siege: the base first,
+	 * then the donors nearest it first, each above its floor; logs what the
+	 * donors gave. Returns what was drawn.
+	 */
+	protected static float siegeDraw(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId,
+			float amount, String label) {
+		float drawn = ThreatReserves.drawAbove(base, commodityId, amount);
+		java.util.List<String> from = new ArrayList<String>();
+		for (MarketAPI m : donors) {
+			if (drawn >= amount) break;
+			float got = ThreatReserves.drawAbove(m, commodityId, amount - drawn);
+			drawn += got;
+			if (got >= 1f) from.add(m.getName() + " " + (int) got);
+		}
+		if (!from.isEmpty()) {
+			ThreatIncConfig.log("Expedition " + label + " pooled for " + base.getName() + ": "
+					+ Misc.getAndJoined(from));
+		}
+		return drawn;
 	}
 
 	/** System id -> {@link #siegeBasesFor}, for the clock instant in basesMemoStamp; not saved. */
@@ -1381,6 +1522,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		long now = Global.getSector().getClock().getTimestamp();
 		if (now != basesMemoStamp) {
 			BASES_MEMO.clear();
+			DONORS_MEMO.clear();
 			basesMemoStamp = now;
 		}
 		java.util.List<MarketAPI> memo = BASES_MEMO.get(system.getId());
@@ -1463,26 +1605,27 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			java.util.List<MarketAPI> targets, java.util.List<Integer> sizes) {
 		if (sizes.isEmpty() || !ThreatWarState.isAtWar(faction)) return true;
 		float[] wants = expeditionWants(base, system, targets, sizes);
-		java.util.List<MarketAPI> pool = !faction.isPlayerFaction() && ThreatIncConfig.siegePoolMarines()
-				? marinePool(base, faction, system) : new ArrayList<MarketAPI>();
+		java.util.List<MarketAPI> donors = !faction.isPlayerFaction()
+				? siegeDonors(base, faction, system) : new ArrayList<MarketAPI>();
+		java.util.List<MarketAPI> pool = ThreatIncConfig.siegePoolMarines() ? donors : new ArrayList<MarketAPI>();
 		for (int i = 0; i < 2; i++) {
 			if (wants[i] <= 0f) continue;
 			String c = ThreatReserves.COMMODITIES[i];
-			float have = ThreatReserves.available(base, c);
-			for (MarketAPI m : pool) have += ThreatReserves.spendable(m, c);
-			if (have < wants[i] * minMarinesFraction(faction)) return false;
+			if (siegePooled(base, pool, c) < wants[i] * minMarinesFraction(faction)) return false;
 		}
 		if (faction.isPlayerFaction() || base.getStarSystem() == null) return true;
+		java.util.List<MarketAPI> provisionPool = ThreatIncConfig.siegePoolProvisions() ? donors
+				: new ArrayList<MarketAPI>();
 		float dist = Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation());
 		float fuelPerPoint = dist * ThreatIncConfig.expeditionFuelPerPointLY();
 		float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
 		float payable = Float.MAX_VALUE;
 		if (fuelPerPoint > 0f) {
-			payable = Math.min(payable, ThreatReserves.available(base,
+			payable = Math.min(payable, siegePooled(base, provisionPool,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL) / fuelPerPoint);
 		}
 		if (suppliesPerPoint > 0f) {
-			payable = Math.min(payable, ThreatReserves.available(base,
+			payable = Math.min(payable, siegePooled(base, provisionPool,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES) / suppliesPerPoint);
 		}
 		int points = 0;
@@ -1834,16 +1977,18 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// what the base may actually commit: its stock above the floor
 			float haveMarines = ThreatReserves.available(base,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
-			// a navy's landing is the navy's: short at the base, the faction's other
-			// bases in reach put their marines aboard (a size-4 hive's beachhead is
-			// ~2,400 troops; one full depot holds ~560)
-			// the other bases give only what they can spare (ThreatReserves.spendable):
-			// their own staging bank stays for their own sieges
-			java.util.List<MarketAPI> pool = !faction.isPlayerFaction() && ThreatIncConfig.siegePoolMarines()
-					? marinePool(base, faction, system) : new ArrayList<MarketAPI>();
+			// a navy's landing is the navy's: short at the base, every market of
+			// the faction in reach puts aboard what it holds above its floor
+			// (siegeDonors, 2026-09-26: colonies as well as bases, no donor keep
+			// or staging hold - a size-4 hive's beachhead is ~2,400 troops; one
+			// full depot holds ~560, and sibling bases' spare stock held a tenth
+			// of the faction's marines in Run 5)
+			java.util.List<MarketAPI> donors = !faction.isPlayerFaction()
+					? siegeDonors(base, faction, system) : new ArrayList<MarketAPI>();
+			java.util.List<MarketAPI> pool = ThreatIncConfig.siegePoolMarines() ? donors : new ArrayList<MarketAPI>();
 			java.util.List<MarketAPI> marinePool = haveMarines < lift ? pool : new ArrayList<MarketAPI>();
 			for (MarketAPI m : marinePool) {
-				haveMarines += ThreatReserves.spendable(m, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
+				haveMarines += ThreatReserves.available(m, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 			}
 			float minMarines = wants[0] * minMarinesFraction(faction);
 			if (wants[0] > 0f && haveMarines < minMarines) {
@@ -1872,15 +2017,22 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// below expeditionMinProvisionsFraction of what it would burn it
 			// waits for convoys and the War footing to refill the depot. The
 			// player's expedition pays what it can - cost, never permission.
+			// Pooled like the marines (siegePoolProvisions, 2026-09-26): the
+			// base's stock above its floor plus every donor's. Read at the base
+			// alone, supplies bound 220 of Run 5's 244 provision postponements
+			// at a median 299 against a 12,600 bill the faction held 2.5x of.
+			java.util.List<MarketAPI> provisionPool = ThreatIncConfig.siegePoolProvisions() ? donors
+					: new ArrayList<MarketAPI>();
 			if (!faction.isPlayerFaction()) {
 				float dist = base.getStarSystem() != null
 						? Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation()) : 0f;
 				float fuelPerPoint = dist * ThreatIncConfig.expeditionFuelPerPointLY();
 				float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
-				float haveFuel = ThreatReserves.available(base,
+				float haveFuel = siegePooled(base, provisionPool,
 						com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
-				float haveSupplies = ThreatReserves.available(base,
+				float haveSupplies = siegePooled(base, provisionPool,
 						com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
+				String pooledNote = provisionPool.isEmpty() ? "" : " across " + (provisionPool.size() + 1) + " markets";
 				// the fleet points the depot can pay for
 				float payable = Float.MAX_VALUE;
 				if (fuelPerPoint > 0f) payable = Math.min(payable, haveFuel / fuelPerPoint);
@@ -1902,7 +2054,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 							+ (int) haveFuel + "/" + (int) (points * fuelPerPoint) + " fuel, "
 							+ (int) haveSupplies + "/" + (int) (points * suppliesPerPoint)
-							+ " supplies pay for " + (int) Math.min(points, payable) + " of the "
+							+ " supplies" + pooledNote + " pay for " + (int) Math.min(points, payable) + " of the "
 							+ points + " points (needs " + (int) Math.ceil(minProvisions) + ")");
 					return null;
 				}
@@ -1945,8 +2097,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// pooled, so fronts landed with 161 of 600 arms and were overrun (rc1 logs)
 			String arms = ThreatReserves.COMMODITIES[1];
 			if (!faction.isPlayerFaction() && wants[1] > 0f) {
-				float haveArms = ThreatReserves.available(base, arms);
-				for (MarketAPI m : pool) haveArms += ThreatReserves.spendable(m, arms);
+				float haveArms = siegePooled(base, pool, arms);
 				float minArms = wants[1] * minMarinesFraction(faction);
 				if (haveArms < minArms) {
 					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
@@ -1956,38 +2107,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				}
 			}
 			drawn = new float[ThreatReserves.COMMODITIES.length];
-			// marines: draw up to the tier's goal; provisions still to the want
-			drawn[0] = ThreatReserves.drawAbove(base,
-					com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES, lift);
-			java.util.List<String> pooledFrom = new ArrayList<String>();
-			for (MarketAPI m : marinePool) {
-				if (drawn[0] >= lift) break;
-				float got = ThreatReserves.drawSpendable(m,
-						com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES, lift - drawn[0]);
-				if (got < 1f) continue;
-				drawn[0] += got;
-				pooledFrom.add(m.getName() + " " + (int) got);
-			}
-			if (!pooledFrom.isEmpty()) {
-				ThreatIncConfig.log("Expedition marines pooled for " + base.getName() + ": "
-						+ Misc.getAndJoined(pooledFrom));
-			}
-			for (int i = 1; i < drawn.length; i++) {
-				drawn[i] = ThreatReserves.drawAbove(base, ThreatReserves.COMMODITIES[i],
-						wants[i]);
-			}
-			List<String> armsFrom = new ArrayList<String>();
-			for (MarketAPI m : pool) {
-				if (drawn[1] >= wants[1]) break;
-				float got = ThreatReserves.drawSpendable(m, arms, wants[1] - drawn[1]);
-				if (got < 1f) continue;
-				drawn[1] += got;
-				armsFrom.add(m.getName() + " " + (int) got);
-			}
-			if (!armsFrom.isEmpty()) {
-				ThreatIncConfig.log("Expedition armaments pooled for " + base.getName() + ": "
-						+ Misc.getAndJoined(armsFrom));
-			}
+			// marines: draw up to the tier's goal; the rest to the want - each
+			// from the base first, then the donors nearest it (siegeDraw)
+			drawn[0] = siegeDraw(base, marinePool,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES, lift, "marines");
+			drawn[1] = siegeDraw(base, pool, arms, wants[1], "armaments");
+			drawn[2] = siegeDraw(base, provisionPool,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, wants[2], "fuel");
+			drawn[3] = siegeDraw(base, provisionPool,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES, wants[3], "supplies");
 			ThreatIncConfig.log("Expedition draw at " + base.getName() + ": "
 					+ (int) drawn[0] + "/" + (int) lift + " marines, "
 					+ (int) drawn[1] + "/" + (int) wants[1] + " armaments, "
@@ -2409,11 +2537,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 			if (!ThreatIncData.decivTargets().contains(planetId)) {
 				ThreatIncData.decivTargets().add(planetId);
-				ThreatColonyManager.announce(entity.getName() + (taken
-						? " has fallen to the Threat ground assault"
-						: " has fallen silent under Threat bombardment")
-						+ "... and the swarm does not abandon its kills. Expect them "
-						+ "to come for the ruins.", Misc.getNegativeHighlightColor());
+				ThreatColonyManager.announce(ThreatNotice.titled("Colony Lost").bad()
+						.line(taken ? "%s has fallen to the Threat ground assault."
+								: "%s has fallen silent under Threat bombardment.",
+								ThreatNotice.red(entity.getName()))
+						.line("The swarm does not abandon its kills: expect them to come "
+								+ "for the ruins."));
 				ThreatIncConfig.log("Deciv conversion target: " + entity.getName());
 			}
 		}
@@ -2540,6 +2669,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return best;
 	}
 
+	/**
+	 * A mustered swarm's expedition size as the strike fields it: the
+	 * strength multiplier up- or down-tiers the re-embodiment, clamped 3-9.
+	 */
+	public static int strikeFleetSize(int size) {
+		float mult = ThreatIncConfig.strikeStrengthMult();
+		int adjusted = size;
+		if (mult >= 2f) adjusted += 2;
+		else if (mult >= 1.25f) adjusted += 1;
+		if (mult <= 0.5f) adjusted -= 2;
+		else if (mult <= 0.8f) adjusted -= 1;
+		return Math.max(3, Math.min(9, adjusted));
+	}
+
 	protected MarketAPI pickStrikeTarget(MarketAPI staging, StarSystemAPI source) {
 		return pickStrikeTarget(staging, source, null);
 	}
@@ -2578,12 +2721,22 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 		}
 		if (bestColony == null) return false;
-		instance.launchStrike(bestColony, bestSource, bestTarget);
+		ThreatStrikeFGI strike = instance.launchStrike(bestColony, bestSource, bestTarget);
+		// announced to the sector below, so it is seen from the start
+		if (strike != null && !strike.isDetected()) {
+			strike.markDetected("the swarm's announcement");
+			instance.onStrikeDetected(strike);
+		}
 		if (!ThreatIncConfig.hiveFogOfWar()) ThreatIncData.markDiscovered(bestSource.getId());
-		String at = ThreatScouts.sectorKnows(bestSource.getId()) ? " at " + bestColony.getName() : "";
-		ThreatColonyManager.announceAlways("The swarm answers the loss of a hive: a Threat "
-				+ "expedition is mustering" + at + " against "
-				+ bestTarget.getName() + ".", Misc.getNegativeHighlightColor());
+		ThreatNotice n = ThreatNotice.titled("Swarm Retaliates").bad()
+				.line("The swarm answers the loss of a hive.");
+		if (ThreatScouts.sectorKnows(bestSource.getId())) {
+			n.line("A Threat expedition is mustering at %s against %s.",
+					ThreatNotice.market(bestColony), ThreatNotice.market(bestTarget));
+		} else {
+			n.line("A Threat expedition is mustering against %s.", ThreatNotice.market(bestTarget));
+		}
+		n.send();
 		ThreatIncConfig.log("Retaliation: " + bestColony.getName() + " -> " + bestTarget.getName()
 				+ " (" + factionId + ")");
 		return true;
@@ -2619,6 +2772,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// biomass and technology to erase - distance costs are already paid
 			// in fuel (the range gate), so desirability is size alone
 			float w = market.getSize() * market.getSize();
+			// a frontline outpost is worth what hangs off it: the swarm goes
+			// for the link whose loss cuts the most of the chain beyond
+			// (docs/frontlines.md, "The Threat breaks the chain")
+			if (ThreatFrontlines.isOutpost(market)) w = ThreatFrontlines.strikeWeight(market);
 			// the swarm turns on whoever is hurting it (ThreatAlarm grudge)
 			w *= ThreatAlarm.targetMult(market.getFactionId());
 			// a dry front of the swarm's is signalling: the next expedition
@@ -2644,7 +2801,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (market.isHidden()) return false;
 		if (Factions.THREAT.equals(market.getFactionId())) return false;
 		if (market.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) return false;
-		if (market.getSize() < 3) return false;
+		// frontline outposts start at size 1 and are targets from the first day
+		if (market.getSize() < 3 && !ThreatFrontlines.isOutpost(market)) return false;
 		if (!ThreatIncConfig.destroyStoryCritical() && Misc.isStoryCritical(market)) return false;
 		return true;
 	}
@@ -2715,12 +2873,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	protected void checkPhaseAnnouncements() {
 		if (getPhase() >= 3 && !ThreatIncData.isPhase3Announced()) {
 			ThreatIncData.setPhase3Announced();
-			MessageIntel msg = new MessageIntel(
-					"Threat strike fleets have been sighted on approach vectors toward the core "
-					+ "worlds. Nowhere in the sector is beyond their reach any longer.",
-					Misc.getNegativeHighlightColor());
-			setThreatIcon(msg);
-			Global.getSector().getCampaignUI().addMessage(msg);
+			ThreatNotice.titled("Core Worlds in Reach").bad()
+					.line("Threat strike fleets have been sighted on approach vectors toward "
+							+ "the %s.", "core worlds")
+					.line("Nowhere in the sector is beyond their reach any longer.")
+					.send();
 		}
 	}
 
@@ -2930,9 +3087,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (strike.getParams() == null || strike.getParams().source == null) continue;
 			if (!marketId.equals(strike.getParams().source.getId())) continue;
 			strike.abort();
-			ThreatColonyManager.announce("The Threat expedition being fabricated at " + marketName
-					+ " is stillborn: " + cause + " has broken the forge before the "
-					+ "fleets could depart.", Misc.getPositiveHighlightColor());
+			ThreatColonyManager.announce(ThreatNotice.titled("Expedition Stillborn").good()
+					.line("The Threat expedition being fabricated at %s is stillborn.", marketName)
+					.line("%s has broken the forge before the fleets could depart.", cause));
 			ThreatIncConfig.log("Strike recalled in preparation (" + cause + "): staged from "
 					+ marketName);
 		}
@@ -2992,9 +3149,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// first so vanilla titles it "- Failed" and reads "...are withdrawing."
 			purge.setFailedButNotDefeated(true);
 			purge.abort();
-			ThreatColonyManager.announceAlways(purge.getFaction().getDisplayName()
-					+ " purge expedition is standing down: " + cause + " leaves it nothing "
-					+ "to burn.", Misc.getHighlightColor());
+			ThreatNotice.titled("Purge Stands Down").icon(purge.getFaction())
+					.line("%s purge expedition is standing down.", ThreatNotice.faction(purge.getFaction()))
+					.line("%s leaves it nothing to burn.", cause)
+					.send();
 			ThreatIncConfig.log("Purge expedition standing down (" + cause + "): last target "
 					+ marketName + " destroyed, system purged");
 		}
@@ -3200,15 +3358,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (!debug && !ThreatIncData.discoveredSystems().contains(systemId)) continue;
 			InfestedSystemIntel marker = new InfestedSystemIntel(systemId);
 			Global.getSector().getIntelManager().addIntel(marker, true);
-		}
-	}
-
-	public static void setThreatIcon(MessageIntel msg) {
-		try {
-			String crest = Global.getSector().getFaction(Factions.THREAT).getCrest();
-			if (crest != null) msg.setIcon(crest);
-		} catch (Throwable t) {
-			// no icon is fine
 		}
 	}
 }

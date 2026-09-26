@@ -174,11 +174,16 @@ public class ThreatRaiders {
 		r.days = days;
 		all().add(r);
 
-		String who = ThreatWarState.displayName(convoy.factionId);
-		ThreatColonyManager.announce("A Defense Swarm has left orbit at " + hive.getName()
-				+ " to hunt " + (convoy.factionId.equals(com.fs.starfarer.api.impl.campaign.ids
-						.Factions.PLAYER) ? "your" : who + "'s") + " supply convoy bound for "
-				+ convoy.toName() + ".", Misc.getNegativeHighlightColor());
+		ThreatNotice n = ThreatNotice.titled("Convoy Hunted").bad()
+				.line("A Defense Swarm has left orbit at %s.", ThreatNotice.market(hive));
+		if (convoy.factionId.equals(com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER)) {
+			n.line("It hunts your supply convoy bound for %s.", convoy.toName());
+		} else {
+			n.line("It hunts the %s supply convoy bound for %s.",
+					ThreatNotice.faction(Global.getSector().getFaction(convoy.factionId)),
+					convoy.toName());
+		}
+		ThreatColonyManager.announce(n);
 		ThreatIncConfig.log("Raider detached from " + hive.getName() + " vs " + convoy.factionId
 				+ " convoy " + convoy.fromName() + " -> " + convoy.toName());
 		return r;
