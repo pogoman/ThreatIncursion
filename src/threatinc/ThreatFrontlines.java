@@ -1017,6 +1017,10 @@ public class ThreatFrontlines {
 	protected static void dismantle(Outpost o, MarketAPI market, String why) {
 		all().remove(o);
 		recallGarrison(o, "the link is gone");
+		// given up, not destroyed: its stock goes home with the garrison. Run 12
+		// lost 2,299 marines a front had just evacuated into a link that starved
+		// 15 days later
+		if (!why.startsWith("station destroyed")) carryStockHome(o, market);
 		SectorEntityToken entity = market.getPrimaryEntity();
 		market.setAdmin(null);
 		market.getCommDirectory().clear();
@@ -1032,6 +1036,34 @@ public class ThreatFrontlines {
 			Misc.fadeAndExpire(entity);
 		}
 		ThreatIncConfig.log("Frontline: " + o.factionId + " dismantled " + market.getName() + " (" + why + ")");
+	}
+
+	/** Moves a link's reserve to the faction's nearest other market that is not a link. */
+	protected static void carryStockHome(Outpost o, MarketAPI market) {
+		MarketAPI home = null;
+		float best = Float.MAX_VALUE;
+		for (MarketAPI m : ThreatReserves.marketsOf(o.factionId)) {
+			if (m == market || isOutpost(m) || m.getPrimaryEntity() == null) continue;
+			float d = Misc.getDistanceLY(m.getLocationInHyperspace(), market.getLocationInHyperspace());
+			if (d < best) {
+				best = d;
+				home = m;
+			}
+		}
+		if (home == null) return;
+		StringBuilder moved = new StringBuilder();
+		for (String c : ThreatReserves.COMMODITIES) {
+			float amount = ThreatReserves.stock(market.getId(), c);
+			if (amount < 1f) continue;
+			float took = ThreatReserves.draw(market.getId(), c, amount);
+			ThreatReserves.deposit(home.getId(), c, took);
+			if (moved.length() > 0) moved.append(", ");
+			moved.append((int) took).append(" ").append(c);
+		}
+		if (moved.length() > 0) {
+			ThreatIncConfig.log("Frontline: " + market.getName() + "'s stock carried to " + home.getName()
+					+ ": " + moved);
+		}
 	}
 
 	/**

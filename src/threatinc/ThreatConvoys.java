@@ -550,7 +550,11 @@ public class ThreatConvoys {
 		if (!ThreatIncConfig.frontRunsEnabled()) return sailed;
 		for (ThreatGroundFronts.GroundFront front
 				: new ArrayList<ThreatGroundFronts.GroundFront>(ThreatGroundFronts.fronts().values())) {
-			if (sailed >= maxPerTick) return sailed;
+			if (sailed >= maxPerTick) {
+				ThreatIncConfig.logQuiet("fr_cap_" + faction.getId(), "Front runs: " + faction.getId()
+						+ " reached its " + maxPerTick + " sailings this tick with fronts still waiting");
+				return sailed;
+			}
 			String owner = front.factionId != null ? front.factionId
 					: com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER;
 			if (!faction.getId().equals(owner)) continue;
@@ -560,6 +564,8 @@ public class ThreatConvoys {
 			// a contested orbit is a closed door: the navy clears it first
 			// (one Support sortie per world at a time), and next tick's run goes in
 			if (canRunTo(faction, hive) != null) {
+				ThreatIncConfig.logQuiet("fr_door_" + front.marketId, "Front run for " + hive.getName()
+						+ " held back: orbit contested and no cover");
 				if (supportFor(faction, hive)) sailed++;
 				continue;
 			}
@@ -576,13 +582,22 @@ public class ThreatConvoys {
 			// not worth a sailing for less than a few days of armaments or a handful of marines
 			if (upkeepDays < 10f && wants[0] < 100f) continue;
 			ThreatBases.Base base = pickFrontBase(faction, hive, false, wants);
-			if (base == null) continue;
+			if (base == null) {
+				ThreatIncConfig.logQuiet("fr_nobase_" + front.marketId, "Front run for " + hive.getName()
+						+ ": no base of " + faction.getId() + " in reach");
+				continue;
+			}
 			float[] load = new float[] {
 					Math.min(wants[0], Math.min(ThreatBases.available(base, Commodities.MARINES),
 						ThreatIncConfig.convoyMarineCapacity())),
 					Math.min(wants[1], Math.min(ThreatBases.available(base, Commodities.HAND_WEAPONS),
 						ThreatIncConfig.convoyCargoCapacity()))};
-			if (load[0] < FRONT_RUN_MIN_MARINES && load[1] < FRONT_RUN_MIN_ARMAMENTS) continue;
+			if (load[0] < FRONT_RUN_MIN_MARINES && load[1] < FRONT_RUN_MIN_ARMAMENTS) {
+				ThreatIncConfig.logQuiet("fr_thin_" + front.marketId, "Front run for " + hive.getName()
+						+ ": wants " + (int) wants[0] + " marines, " + (int) wants[1] + " armaments; the best source ("
+						+ base.name() + ") has " + (int) load[0] + " and " + (int) load[1]);
+				continue;
+			}
 			if (dispatchFrontRun(base, hive, front, faction, load, false, random) != null) sailed++;
 		}
 		return sailed;
