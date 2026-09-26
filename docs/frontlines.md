@@ -259,7 +259,11 @@ The rules from before:
 `ThreatOutposts` stations; only the player does. Where an NPC used to get one,
 it founds a forward base instead (`ThreatOutposts.raiseForwardBase`):
 - **Ground victory:** free, and the front's survivors bank into the new base's
-  reserve.
+  reserve. Since 2026-09-27 (after run 10) it is raised only if the winner can
+  garrison it, and the garrison is sent at once. Without one, no base is raised
+  and the survivors go home. Run 10's four unguarded victory bases died within
+  2-51 days to the system's other hive worlds, taking the banked survivors with
+  them.
 - **Purged worlds** (`planNPC`, `outpostChance` per slow tick): paid at the
   outpost cost from a base in reach, and only where a found live hive lies
   within `frontlineKeepLY`, or the base would stand idle and be abandoned.

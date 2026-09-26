@@ -1925,7 +1925,24 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				// the player holds it with an outpost, an NPC with a forward base
 				com.fs.starfarer.api.campaign.FactionAPI wf = Global.getSector().getFaction(winner);
 				outpost = ThreatOutposts.buildFree(wf, world);
-				if (outpost == null) forwardBase = ThreatOutposts.raiseForwardBase(wf, world, "free - ground victory");
+				// an NPC raises it only with a garrison to hold it, sent at once: all
+				// four raised unguarded in run 10 died within 2-51 days to the
+				// system's other hive worlds, and the front's survivors banked into
+				// them died too - without one they go home instead (evacuate)
+				MarketAPI guardBase = null;
+				boolean guarded = !ThreatIncConfig.frontlineGarrisonEnabled();
+				if (outpost == null && !guarded) {
+					guardBase = ThreatFrontlines.garrisonBase(wf, world);
+					guarded = guardBase != null;
+					if (!guarded) {
+						ThreatIncConfig.log("Ground victory at " + market.getName() + ": no forward base - "
+								+ winner + " cannot garrison it (" + ThreatFrontlines.noGarrisonWhy + ")");
+					}
+				}
+				if (outpost == null && guarded) {
+					forwardBase = ThreatOutposts.raiseForwardBase(wf, world, "free - ground victory");
+					if (forwardBase != null && guardBase != null) ThreatFrontlines.garrisonNow(forwardBase, guardBase);
+				}
 			}
 		}
 		evacuate(front, outpost, hyperLoc, forwardBase);
