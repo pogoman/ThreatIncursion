@@ -245,6 +245,10 @@ The rules from before:
   12,901 a month, 55 garrisons recalled unpaid). Drawn monthly from the link's
   reserve, then its base's, then the faction's other bases nearest first.
   Paid under half, it goes home.
+- **A link given up** (starved, no garrison, no hive in reach) sends its reserve
+  to the faction's nearest market that is not a link (`carryStockHome`). A
+  destroyed one loses it. Run 12 lost 2,299 marines that a front had evacuated
+  into a link that starved 15 days later.
 - **Recalled** when the link is dismantled or changes hands, or garrisons are
   switched off. (Until run 5 it also went home at a star fortress, and a
   fortress under construction paused the unguarded clock; both are gone.)
