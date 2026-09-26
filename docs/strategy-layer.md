@@ -298,7 +298,23 @@ The colony table's **Convoys** column reads **Staging base** (yellow) for a base
 <base> N ly** (white) for a donor, a grey dash for a colony with no staging base to feed
 (its reserve stays home; an NPC donor looks only within `convoyRangeLY`, a player donor
 anywhere) and **No Waystation** where nothing sails or lands;
-the row tooltip names the hive a base stocks for and the four targets. A player base
+the row tooltip names the hive a base stocks for and the four targets.
+
+**NPC reach and front runs (2026-09-27, overnight after run 9).**
+- **Convoy reach:** an NPC donor now reaches a staging base as far as its own fuel does
+  (`IncursionManager.expeditionRangeLY`, at least `convoyRangeLY`). That is the range a
+  base stages at, and `stagingBaseFor` uses the same rule. In run 9 Hegemony's forward
+  staging base Calu got 2 convoys in three years, while 65 others moved marines around its
+  core worlds, and its sieges waited on marines with 15k banked.
+- **Front-run source:** an NPC front run loads at whichever of the nearest base or the
+  faction's markets in reach of the hive covers the most of its wants (`frontScore`).
+  Links are excluded.
+- **Orbit cover lets runs in:** a front run is let in by the front's own orbit cover
+  (`ThreatGroundFronts.coverHolds`), both when it is planned (`canRunTo`) and at the door
+  (`pollFrontRun`). In run 9 Loka's run waited at the door while 5,900 FP of cover held
+  the orbit, and the dry front was overrun three days later.
+
+A player base
 stages for the nearest hive the PLAYER HAS FOUND (`ThreatIncData.discoveredSystems`), at
 any range, as the Siege button has none for the player; until 2026-09-05 evening it took
 the nearest hive in expedition range whether found or not, and the board (as "Stocks

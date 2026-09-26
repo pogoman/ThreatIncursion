@@ -185,8 +185,12 @@ public class ThreatConvoys {
 	 */
 	public static MarketAPI stagingBaseFor(MarketAPI colony) {
 		if (colony == null || colony.getStarSystem() == null || colony.getFaction() == null) return null;
+		// an NPC colony feeds a staging base as far as its fuel reaches, the range
+		// the base itself stages at (stagingHive); the flat convoyRangeLY kept
+		// Hegemony's marines circling its core worlds while its forward staging
+		// base got two convoys in three years (run 9)
 		float range = colony.getFaction().isPlayerFaction() ? Float.MAX_VALUE
-				: ThreatIncConfig.convoyRangeLY();
+				: Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.expeditionRangeLY(colony));
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
 		for (MarketAPI m : ThreatReserves.marketsOf(colony.getFaction().getId())) {
@@ -504,7 +508,31 @@ public class ThreatConvoys {
 			}
 		}
 		MarketAPI base = ThreatFleetOrders.pickBase(faction, hive.getLocationInHyperspace());
-		return ThreatBases.of(base);
+		if (pickup || faction.isPlayerFaction() || hive.getStarSystem() == null) return ThreatBases.of(base);
+		// an NPC front loads where the most of what it wants is: the nearest base,
+		// or any of the faction's markets in reach of the hive (the siege pool,
+		// IncursionManager.siegeDonors). One base alone let Hegemony's Loka front
+		// go dry and fall with 15k marines banked elsewhere (run 9)
+		MarketAPI best = base;
+		float bestScore = base != null ? frontScore(base, wants) : -1f;
+		for (MarketAPI m : IncursionManager.factionMarketsInReach(faction, hive.getStarSystem())) {
+			if (m == base || ThreatFrontlines.isOutpost(m)) continue;
+			float s = frontScore(m, wants);
+			if (s > bestScore) {
+				bestScore = s;
+				best = m;
+			}
+		}
+		return ThreatBases.of(best);
+	}
+
+	/** How much of a front run's wants a market covers, 0-2 (marines + armaments, each as a share). */
+	protected static float frontScore(MarketAPI m, float[] wants) {
+		float marines = wants[0] > 0f
+				? Math.min(1f, ThreatReserves.available(m, Commodities.MARINES) / wants[0]) : 0f;
+		float arms = wants[1] > 0f
+				? Math.min(1f, ThreatReserves.available(m, Commodities.HAND_WEAPONS) / wants[1]) : 0f;
+		return marines + arms;
 	}
 
 	/**
@@ -566,6 +594,9 @@ public class ThreatConvoys {
 		if (faction == null || hive == null) return "No front there.";
 		if (!ThreatGroundFronts.orbitContested(hive.getId())) return null;
 		if (ThreatFleetOrders.friendlyOrbit(faction.getId(), hive.getId())) return null;
+		// an autoresolved siege's flotilla holding the orbit over its own front
+		// (run 9: Loka's run waited at the door while 5,900 FP of cover held it)
+		if (ThreatGroundFronts.coverHolds(hive, faction.getId())) return null;
 		return "Orbit contested - send Support or Defend first.";
 	}
 
@@ -772,7 +803,9 @@ public class ThreatConvoys {
 		SectorEntityToken planet = hive.getPrimaryEntity();
 		if (fleet.getContainingLocation() != planet.getContainingLocation()) return; // en route
 		if (!c.runningIn) {
-			if (ThreatGroundFronts.orbitContested(hive.getId())) {
+			// the same door canRunTo keeps: our own escort or orbit cover over the
+			// planet lets the run in
+			if (canRunTo(fleet.getFaction(), hive) != null) {
 				long now = Global.getSector().getClock().getTimestamp();
 				if (c.waitSinceTimestamp == 0L) {
 					c.waitSinceTimestamp = now;
@@ -989,8 +1022,11 @@ public class ThreatConvoys {
 		float range = base.isPlayerOwned() ? Float.MAX_VALUE : ThreatIncConfig.convoyRangeLY();
 		for (MarketAPI donor : markets) {
 			if (donor == base || donor.getStarSystem() == null) continue;
+			// a donor reaches as far as its own fuel does (stagingBaseFor)
+			float reach = base.isPlayerOwned() ? range
+					: Math.max(range, IncursionManager.expeditionRangeLY(donor));
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
-					base.getStarSystem().getLocation()) > range) continue;
+					base.getStarSystem().getLocation()) > reach) continue;
 			float s = sendable(donor, base, commodityId);
 			if (s > bestSend) {
 				bestSend = s;

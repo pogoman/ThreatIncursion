@@ -2155,6 +2155,14 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return false;
 	}
 
+	/** Whether this faction's front on the world holds its orbit with an autoresolved flotilla's cover (coverFP) that still outweighs the swarm there. */
+	public static boolean coverHolds(MarketAPI market, String factionId) {
+		if (market == null || factionId == null) return false;
+		GroundFront front = getFront(market.getId());
+		if (front == null || front.coverFP <= 0f || !factionId.equals(front.factionId)) return false;
+		return front.coverFP >= swarmOrbitStrength(market);
+	}
+
 	/** Days the swarm has held the orbit over this front unopposed; 0 when it does not. */
 	public static float swarmOrbitDaysHeld(GroundFront front, MarketAPI market) {
 		if (front == null || market == null) return 0f;
