@@ -433,6 +433,7 @@ public class ThreatIncConfig {
 	public static float frontlineGarrisonMargin() { return f("threatinc_frontlineGarrisonMargin"); }
 	/** Most of a faction's supply banking its links' garrisons may cost in upkeep. */
 	public static float frontlineUpkeepShare() { return f("threatinc_frontlineUpkeepShare"); }
+	public static float frontlineUpkeepStockMonths() { return f("threatinc_frontlineUpkeepStockMonths"); }
 	/** A faction banks at most what its own markets produce above their own demand, shared across its markets (ThreatReserves.productionShare). */
 	public static boolean reserveBankFromProduction() { return b("threatinc_reserveBankFromProduction", true); }
 	/** With banking by production: the share of the sector's best single exporter a faction may bank of what it does not make. */

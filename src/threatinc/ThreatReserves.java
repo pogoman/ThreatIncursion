@@ -237,7 +237,7 @@ public class ThreatReserves {
 		return ThreatIncConfig.reserveBaselinePerSize() * market.getSize() * mult;
 	}
 
-	/** Tithes per 30 days, [supplies, fuel, marines], for the day in titheDay; not saved. */
+	/** Tithes per 30 days, [supplies, fuel, marines], as read at the clock instant in titheDay; not saved. */
 	private static float[] tithe;
 	private static int titheDepots;
 	private static long titheDay = Long.MIN_VALUE;
@@ -255,9 +255,12 @@ public class ThreatReserves {
 		int i = Commodities.SUPPLIES.equals(commodityId) ? 0 : Commodities.FUEL.equals(commodityId) ? 1
 				: Commodities.MARINES.equals(commodityId) ? 2 : -1;
 		if (i < 0 || !hasDepot(market)) return 0f;
-		long day = (long) Global.getSector().getClock().getElapsedDaysSince(0L);
-		if (tithe == null || titheDay != day || titheSector != Global.getSector()) {
-			titheDay = day;
+		// a day's memo, aged like stagingTargets': keyed on the days since
+		// timestamp 0, run 18 logged its cells once in three years
+		float age = titheDay == Long.MIN_VALUE ? Float.MAX_VALUE
+				: Global.getSector().getClock().getElapsedDaysSince(titheDay);
+		if (tithe == null || age < 0f || age >= 1f || titheSector != Global.getSector()) {
+			titheDay = Global.getSector().getClock().getTimestamp();
 			titheSector = Global.getSector();
 			tithe = pathTithes();
 			titheDepots = 0;

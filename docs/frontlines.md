@@ -237,9 +237,18 @@ founded beyond it) sends its standing garrison home the same way after
 used 30 days, and 4 of 7 guards went home with a strike launched at them but
 not yet seen (strikes are seen a median 16 days after launch, up to 59). A strike
 due while that guard still sails home turns it back to the link rather than a new
-one sailing. A strike contests the whole system and
-vanilla's autoresolve weighs every fleet in it, so the guards of the faction's other
-links in the system count toward a call. A front link that falls sends the link
+one sailing. Next, before the navy is asked, the guards the faction has behind
+the front with no strike on their own link (on station through the rear grace, or
+sailing home from it) are sent, nearest first, if they make it before the strike
+(`borrowRear`, 2026-09-27, untested: run 18's six calls all found the navy with 0 FP
+to spare). A strike contests the whole system, and vanilla's autoresolve
+(`FGRaidAction`) weighs `WarSimScript.getEnemyStrength` of the raider plus the
+target's station. That is the fleets and routes of every faction that holds a market
+in the system and is hostile to the Threat. So the call counts the guards of the
+faction's other links in the system, and the link's patrols and any such third
+party's fleets (`otherDefenders`). An ally's task force in a system where it holds no
+market is not counted, because vanilla does not count it (run 18's Persean task force
+over Pontus). A front link that falls sends the link
 behind it a garrison at once; the new front's founding does not count the guards
 it sends home against the navy's spare strength or the budget. Strikes are
 hidden until detected (below), so the guard races the strike from its detection.
@@ -273,8 +282,12 @@ a single strike the month their garrison went home. So now:
   a garrison under 80% of its need (the hives grew) is reinforced from its home
   base.
 - **Paid for:** a faction founds, re-sends or reinforces a front garrison only
-  while its front garrisons' upkeep stays within `frontlineUpkeepShare` (0.5) of its monthly
-  supply banking (`ThreatReserves.accrualPer30`), leaving the rest for sieges.
+  while its front garrisons' upkeep stays within its budget: `frontlineUpkeepShare` (0.5)
+  of its monthly supply banking (`ThreatReserves.accrualPer30`), plus its supplies above
+  the floors spread over `frontlineUpkeepStockMonths` (12; 0 = banking only), leaving the
+  rest for sieges. Run 18's Hegemony was refused at 4,439 a month on a 3,375 budget while
+  it held 37,000 supplies, and six links were lost that way. A stock drawn down shrinks
+  the budget back to the banking.
   The garrisons a new front link puts behind the front are not counted, since
   they go home. A guard called by a strike is never refused for the budget, but
   its upkeep counts in it (2026-09-27, user's call): while it is out the faction
@@ -361,6 +374,7 @@ All are in `settings.json` and LunaLib, under Frontline Outposts:
 - `frontlineGarrisonFP` (200, the minimum garrison)
 - `frontlineGarrisonMargin` (1.25)
 - `frontlineUpkeepShare` (0.5)
+- `frontlineUpkeepStockMonths` (12)
 - `frontlineHeavyIndustry` (true)
 - `frontlineRearGraceDays` (60)
 - `strikeDetection`

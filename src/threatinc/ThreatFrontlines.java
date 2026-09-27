@@ -707,6 +707,29 @@ public class ThreatFrontlines {
 		return sum;
 	}
 
+	/**
+	 * The rest of what vanilla's autoresolve puts up for the link's system
+	 * (FGRaidAction: WarSimScript.getEnemyStrength of the raider - the fleets
+	 * and routes of every faction holding a market there that is hostile to the
+	 * Threat): its patrols, and a third party's fleets where that party holds a
+	 * market. The faction's link guards in the system are counted by the caller,
+	 * so they come out. An ally's task force in a system where it holds no
+	 * market is not counted, because vanilla does not count it.
+	 */
+	protected static float otherDefenders(MarketAPI link) {
+		StarSystemAPI sys = link.getStarSystem();
+		if (sys == null) return 0f;
+		float all = WarSimScript.getEnemyStrength(Global.getSector().getFaction(Factions.THREAT), sys, false);
+		float ours = 0f;
+		for (Outpost o : all()) {
+			if (!link.getFactionId().equals(o.factionId)) continue;
+			for (CampaignFleetAPI f : liveGuards(o)) {
+				if (f.getContainingLocation() == sys) ours += f.getEffectiveStrength();
+			}
+		}
+		return Math.max(0f, all - ours);
+	}
+
 	/** Fleet points of standing guards the front would send home: links behind it with no strike on them. */
 	protected static float releasedFP(String factionId, Set<String> front) {
 		float sum = 0f;
@@ -759,13 +782,21 @@ public class ThreatFrontlines {
 		return sum;
 	}
 
-	/** What the faction may spend on garrisons a month: its supply banking x frontlineUpkeepShare. */
+	/**
+	 * What the faction may spend on garrisons a month: its supply banking x
+	 * frontlineUpkeepShare, plus its stock above the floors spread over
+	 * frontlineUpkeepStockMonths. Run 18's Hegemony was refused a garrison at
+	 * 4,439 a month on a 3,375 budget while it held 37,000 supplies; a stock
+	 * drawn down shrinks the budget back to the banking.
+	 */
 	protected static float upkeepBudget(String factionId) {
-		float income = 0f;
+		float income = 0f, stock = 0f;
 		for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
 			income += ThreatReserves.accrualPer30(m, Commodities.SUPPLIES);
+			stock += ThreatReserves.available(m, Commodities.SUPPLIES);
 		}
-		return income * ThreatIncConfig.frontlineUpkeepShare();
+		float months = ThreatIncConfig.frontlineUpkeepStockMonths();
+		return income * ThreatIncConfig.frontlineUpkeepShare() + (months > 0f ? stock / months : 0f);
 	}
 
 	/** Why the last garrisonBase found none, for the planner's log. */
@@ -1012,6 +1043,11 @@ public class ThreatFrontlines {
 		List<CampaignFleetAPI> live = liveGuards(o);
 		long now = Global.getSector().getClock().getTimestamp();
 		if (!live.isEmpty()) {
+			if (o.guards != null && live.size() < o.guards.size()) {
+				ThreatIncConfig.log("Frontline: the garrison of " + market.getName() + " lost "
+						+ (o.guards.size() - live.size()) + " fleet(s); " + live.size() + " left, strength "
+						+ (int) strengthOf(live));
+			}
 			o.guards = live; // the dead and despawned are not kept in the save
 			o.unguardedDays = 0f;
 			// behind the front for a while (a hive's fuel range drifts) and nothing
@@ -1855,28 +1891,96 @@ public class ThreatFrontlines {
 		if (back.isEmpty() || market.getPrimaryEntity() == null) return 0f;
 		MarketAPI home = nearestBase(market.getFaction(), market.getPrimaryEntity());
 		if (home == null || home.getPrimaryEntity() == null) return 0f;
-		for (CampaignFleetAPI f : back) {
+		takeOver(o, market, back, home);
+		float str = strengthOf(back);
+		ThreatIncConfig.log("Frontline: the guard sailing home from " + market.getName() + " turned back, "
+				+ back.size() + " fleet(s), " + (int) fpOf(back) + " FP, strength " + (int) str
+				+ " (rear; strike on its way " + (int) strikesWeight(market) + ")");
+		return str;
+	}
+
+	/** Puts fleets already out on the link's guard: on station there, then home to {@code home}. */
+	protected static void takeOver(Outpost o, MarketAPI market, List<CampaignFleetAPI> fleets, MarketAPI home) {
+		for (CampaignFleetAPI f : fleets) {
 			f.clearAssignments();
 			f.addAssignment(FleetAssignment.DEFEND_LOCATION, market.getPrimaryEntity(), 100000f,
 					"garrisoning " + market.getName());
 			f.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home.getPrimaryEntity(), 1000f,
 					"returning to " + home.getName());
 		}
-		boolean topUp = !liveGuards(o).isEmpty();
-		if (!topUp) {
+		if (liveGuards(o).isEmpty()) {
 			o.guards = new ArrayList<CampaignFleetAPI>();
 			o.guardFP = 0f;
 			o.guardPaid = Global.getSector().getClock().getTimestamp();
 			o.guardBaseId = home.getId();
 		}
-		o.guards.addAll(back);
-		o.guardFP += fpOf(back);
+		o.guards.addAll(fleets);
+		o.guardFP += fpOf(fleets);
 		o.unguardedDays = 0f;
-		float str = strengthOf(back);
-		ThreatIncConfig.log("Frontline: the guard sailing home from " + market.getName() + " turned back, "
-				+ back.size() + " fleet(s), " + (int) fpOf(back) + " FP, strength " + (int) str
-				+ " (rear; strike on its way " + (int) strikesWeight(market) + ")");
-		return str;
+	}
+
+	/**
+	 * Guards the faction has out behind the front with no seen strike on their
+	 * own link - on station through its rear grace, or sailing home from one -
+	 * answer a strike on this link before the navy is asked (user's call
+	 * 2026-09-27: run 18's six calls all found the navy with 0 FP to spare).
+	 * They are the navy's already. Nearest first, and only fleets that make it
+	 * before the strike. The strength borrowed.
+	 */
+	protected static float borrowRear(Outpost o, MarketAPI market, float need, float eta) {
+		if (market.getPrimaryEntity() == null || need <= 0f) return 0f;
+		MarketAPI home = nearestBase(market.getFaction(), market.getPrimaryEntity());
+		if (home == null || home.getPrimaryEntity() == null) return 0f;
+		final Map<CampaignFleetAPI, Float> dist = new HashMap<CampaignFleetAPI, Float>();
+		final Map<CampaignFleetAPI, Outpost> from = new HashMap<CampaignFleetAPI, Outpost>();
+		for (Outpost d : all()) {
+			if (d == o || !o.factionId.equals(d.factionId)) continue;
+			MarketAPI m = marketOf(d);
+			if (m == null || isFront(m) || !strikesOn(m).isEmpty()) continue;
+			List<CampaignFleetAPI> pool = liveGuards(d);
+			if (d.homebound != null) {
+				for (CampaignFleetAPI f : d.homebound) {
+					if (f != null && f.isAlive() && !f.isDespawning()) pool.add(f);
+				}
+			}
+			for (CampaignFleetAPI f : pool) {
+				float ly = Misc.getDistanceLY(f.getLocationInHyperspace(), market.getLocationInHyperspace());
+				if (ly * GUARD_DAYS_PER_LY > eta) continue; // too late
+				dist.put(f, ly);
+				from.put(f, d);
+			}
+		}
+		List<CampaignFleetAPI> near = new ArrayList<CampaignFleetAPI>(dist.keySet());
+		java.util.Collections.sort(near, new java.util.Comparator<CampaignFleetAPI>() {
+			public int compare(CampaignFleetAPI a, CampaignFleetAPI b) {
+				return Float.compare(dist.get(a), dist.get(b));
+			}
+		});
+		List<CampaignFleetAPI> moved = new ArrayList<CampaignFleetAPI>();
+		Set<String> names = new java.util.LinkedHashSet<String>();
+		float got = 0f;
+		for (CampaignFleetAPI f : near) {
+			if (got >= need) break;
+			Outpost d = from.get(f);
+			if (d.guards != null && d.guards.remove(f)) {
+				d.guardFP = Math.max(0f, d.guardFP - f.getFleetPoints());
+				if (d.guards.isEmpty()) { // lent, not lost
+					d.guards = null;
+					d.guardBaseId = null;
+					d.guardFP = 0f;
+				}
+			}
+			if (d.homebound != null) d.homebound.remove(f);
+			moved.add(f);
+			got += f.getEffectiveStrength();
+			names.add(marketOf(d).getName());
+		}
+		if (moved.isEmpty()) return 0f;
+		takeOver(o, market, moved, home);
+		ThreatIncConfig.log("Frontline: " + market.getFactionId() + " sent " + market.getName() + " the guards behind the front at "
+				+ Misc.getAndJoined(new ArrayList<String>(names)) + ", " + moved.size() + " fleet(s), "
+				+ (int) fpOf(moved) + " FP, strength " + (int) got + " (strike on its way " + (int) strikesWeight(market) + ")");
+		return got;
 	}
 
 	/**
@@ -1894,7 +1998,7 @@ public class ThreatFrontlines {
 	 * at least matches the strike. True if a guard sailed or turned back.
 	 */
 	protected static boolean callGuard(Outpost o, MarketAPI market, float have, boolean atDetection) {
-		float want = onCallNeed(market) - neighbourGuards(o, market);
+		float want = onCallNeed(market) - neighbourGuards(o, market) - otherDefenders(market);
 		float need = want - have;
 		if (need < 30f * STRENGTH_PER_FP) return false;
 		// a guard on station is reinforced only once it falls under 80% of what
@@ -1906,8 +2010,11 @@ public class ThreatFrontlines {
 		float eta = strikeEta(market);
 		float voyage = near != null ? ly(near, market) * GUARD_DAYS_PER_LY + GUARD_LEAD_DAYS : 0f;
 		if (near != null && eta > voyage) return false; // not yet
-		// a guard still sailing home turns back rather than a new one sailing
+		// a guard still sailing home turns back rather than a new one sailing, and
+		// the guards behind the front come before the navy
 		need -= turnBack(o, market);
+		if (need < 30f * STRENGTH_PER_FP) return true;
+		need -= borrowRear(o, market, need, eta);
 		if (need < 30f * STRENGTH_PER_FP) return true;
 		if (Global.getSector().getClock().getElapsedDaysSince(o.guardCalled) < 7f) return false;
 		o.guardCalled = Global.getSector().getClock().getTimestamp();
