@@ -1492,7 +1492,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		FactionAPI path = Global.getSector().getFaction(Factions.LUDDIC_PATH);
 		if (path == null || !ThreatWarState.isAtWar(path)) return out;
 		if (ThreatCoalition.willingness(path, faction.getId()) < 0.5f) return out;
-		out.addAll(factionMarketsInReach(path, system));
+		for (MarketAPI m : factionMarketsInReach(path, system)) {
+			if (!ThreatFrontlines.isOutpost(m)) out.add(m);
+		}
 		return out;
 	}
 
