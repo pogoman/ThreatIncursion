@@ -201,8 +201,12 @@ the freed worlds.
 strike on a link is detected, the link's guard is brought up to the seen strikes
 bound for it × `frontlineGarrisonMargin`, less its station (at the front, at least
 its standing need). The faction's nearest base sends the difference if the navy
-can spare all of it and the faction can pay the voyage; the upkeep budget does not
-hold it back. Otherwise the link fights with what it has: no piecemeal feeding.
+can spare it and the faction can pay the voyage; the upkeep budget does not hold
+it back. A navy short of the margin sends what it can spare (user's call
+2026-09-27), so long as the link's defenders at least match the strike - vanilla's
+autoresolve passes a target that strong by - and never less than 150 FP. Run 17
+lost Akron with 1,087 of 1,119 FP to spare. Short of that, the link fights with
+what it has.
 The guard sails only once the first strike is due within its voyage (1.5 days
 per LY from the nearest colony base) plus 20 days: run 16's strikes took 159-203
 days from launch to target, and guards called at detection sat on station for

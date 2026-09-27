@@ -1869,7 +1869,8 @@ public class ThreatFrontlines {
 	 * days from launch to target, and guards called at detection sat on
 	 * station for months. The daily step asks again until then; a refusal
 	 * waits a week. A guard on station is reinforced only under 80% of what it
-	 * must weigh. True if a guard sailed or turned back.
+	 * must weigh. A navy short of the margin sends what it can spare, if that
+	 * at least matches the strike. True if a guard sailed or turned back.
 	 */
 	protected static boolean callGuard(Outpost o, MarketAPI market, float have, boolean atDetection) {
 		float want = onCallNeed(market) - neighbourGuards(o, market);
@@ -1889,8 +1890,22 @@ public class ThreatFrontlines {
 		float voyage = near != null ? ly(near, market) * GUARD_DAYS_PER_LY + GUARD_LEAD_DAYS : 0f;
 		if (near != null && eta > voyage) return false; // not yet
 		o.guardCalled = Global.getSector().getClock().getTimestamp();
-		MarketAPI base = garrisonBase(faction, market.getPrimaryEntity(), need / STRENGTH_PER_FP, null);
-		if (base != null && sendGarrison(o, market, base, need)) return true;
+		// short of the margin, the navy sends what it can spare so long as the
+		// link's defenders at least match the strike, when vanilla's autoresolve
+		// passes the target by (user's call 2026-09-27: run 17 lost Akron with
+		// 1,087 of 1,119 FP to spare)
+		float margin = ThreatIncConfig.frontlineGarrisonMargin();
+		// and never less than 150 FP of it, so a short navy does not trickle in
+		float floor = Math.min(need, Math.max(150f * STRENGTH_PER_FP,
+				need - strikesWeight(market) * Math.max(0f, margin - 1f)));
+		float spare = navySpareFP(faction) * STRENGTH_PER_FP * 0.99f;
+		float send = spare >= need ? need : spare >= floor ? spare : floor;
+		MarketAPI base = garrisonBase(faction, market.getPrimaryEntity(), send / STRENGTH_PER_FP, null);
+		if (base != null && send < need) {
+			ThreatIncConfig.log("Frontline: " + market.getFactionId() + " sends " + market.getName()
+					+ " a partial guard, " + (int) send + " of " + (int) need + " (the strike " + (int) strikesWeight(market) + ")");
+		}
+		if (base != null && sendGarrison(o, market, base, send)) return true;
 		String why = (base == null ? noGarrisonWhy : "no fleet came out of " + base.getName())
 				+ " (strike in " + (int) eta + " d, voyage " + (int) voyage + " d)";
 		if (atDetection) {
