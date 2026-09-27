@@ -302,6 +302,7 @@ threatinc_frontlineGarrisonEnabled,Garrison Links,Boolean,true,"A faction founds
 threatinc_frontlineGarrisonFP,Minimum Garrison (FP),Double,200,"Smallest garrison a link gets, whatever the strikes in reach.",0,2000
 threatinc_frontlineGarrisonMargin,Garrison Margin,Double,1.25,"Garrison plus station must outweigh the strongest Threat strike in reach by this.",0.5,3
 threatinc_frontlineUpkeepShare,Garrison Upkeep Share,Double,0.5,"Most of a faction's supply banking its garrisons may cost.",0,1
+threatinc_frontlineUpkeepStockMonths,Upkeep Stock Months,Double,12,"Months a faction's stored supplies are spread over in its garrison budget. 0 = banking only.",0,120
 threatinc_frontlineRearGraceDays,Rear Grace (Days),Double,60,"Days a link stands behind the front before its garrison goes home.",0,365
 threatinc_strikeDetection,Strike Warning,Boolean,true,"A Threat strike is hidden until seen: by you, by a colony in its system, or in hyperspace near a military world or frontline outpost. Off: every strike is known at launch.",,
 threatinc_strikeDetectLY,Picket Range (LY),Double,4,"Hyperspace range at which military worlds and frontline outposts see a strike.",0,20

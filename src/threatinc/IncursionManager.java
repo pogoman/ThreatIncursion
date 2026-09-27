@@ -1278,6 +1278,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// a reload at the same clock instant would otherwise hand out the old session's markets
 		BASES_MEMO.clear();
 		basesMemoStamp = Long.MIN_VALUE;
+		TARGETS_MEMO.clear();
+		targetsMemoStamp = Long.MIN_VALUE;
 		WarFootingDemand.forgetPeacetimeDemand();
 	}
 
@@ -1287,22 +1289,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// a siege takes the whole system, so each system is weighed once a pass:
 		// its sibling colonies re-ran the same sizing after a postponement
 		java.util.Set<String> weighed = new java.util.HashSet<String>();
-		for (MarketAPI colony : ThreatIncData.getAllLiveColonyMarkets()) {
+		// the low-hanging fruit first (user's rule 2026-09-27): the easiest hives
+		// claim the marines and the concurrency slots before the hard ones
+		for (MarketAPI colony : easiestFirst(ThreatIncData.getAllLiveColonyMarkets())) {
 			if (countActivePurges() >= ThreatIncConfig.responseMaxConcurrent()) return;
 			// no siege of a hive no one has found (ThreatScouts)
 			if (!ThreatScouts.sectorKnows(colony)) continue;
 
 			StarSystemAPI system = colony.getStarSystem();
 			if (system == null) continue;
-			// a purge launches at a colony whose garrison is gone; PREEMPTIVELY
-			// at a foothold still small enough to stomp; or - rarest and
-			// heaviest - as a full assault on a defended entrenched hive, with
-			// extra escorts and on a stretched cooldown. Waiting for a hive to
-			// disarm itself is how it gets to size 8.
-			boolean defended = ThreatColonyManager.countLiveGarrison(colony.getId()) > 0;
-			boolean preemptive = defended
-					&& colony.getSize() <= ThreatIncConfig.purgePreemptMaxSize();
-			boolean heavyAssault = defended && !preemptive;
 			if (onPurgeCooldown(colony)) continue;
 			if (!weighed.add(system.getId())) continue;
 
@@ -1318,8 +1313,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// two bases while the rest of the League's depots sat full
 			java.util.List<MarketAPI> bases = siegeBasesFor(system);
 			if (bases.isEmpty()) continue;
-			java.util.List<MarketAPI> targets = collectSiegeTargets(colony, system);
-			boolean anyGarrisoned = anyTargetGarrisoned(targets);
+			java.util.List<MarketAPI> targets = null;
 			MarketAPI base = null;
 			FactionAPI faction = null;
 			int difficulty = 0;
@@ -1327,12 +1321,17 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			for (int i = 0; i < bases.size() && i < Math.max(1, ThreatIncConfig.siegeBaseTries()) && purge == null; i++) {
 				base = bases.get(i);
 				faction = base.getFaction();
-				// ONE sizing (siegeSizes) for the launch, the hunting gate
+				// one siege of a system per faction at a time: a partial siege
+				// leaves the harder worlds unstamped
+				if (siegeFactionsIn(system.getId()).contains(faction.getId())) continue;
+				// ONE sizing (siegeTargets + siegeSizesFor) for the launch, the hunting gate
 				// (hasSiegeableHive) and the convoy planner (ThreatConvoys.stagingTargets): a base
 				// judged able to take the orbit sails the flotilla that was judged,
 				// or the judgement locks it out of both sieging and hunting
-				difficulty = siegeDifficulty(base, faction, targets, anyGarrisoned);
-				java.util.List<Integer> fleetSizes = siegeSizes(base, faction, system);
+				targets = siegeTargets(base, faction, system);
+				if (targets.isEmpty()) continue;
+				difficulty = siegeDifficulty(base, faction, targets, anyTargetGarrisoned(targets));
+				java.util.List<Integer> fleetSizes = siegeSizesFor(base, faction, targets, 0f);
 				if (i == 0 && ThreatIncConfig.debugLogging()) {
 					ThreatIncConfig.logQuiet("sizing:" + system.getId(), "Siege sizing vs " + system.getName() + ": " + fleetSizes.size()
 							+ " fleets, ground str ~" + (int) siegeRaidStrEstimate(fleetSizes)
@@ -1353,6 +1352,17 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				}
 			}
 			if (purge == null) continue;
+			// a purge launches at a colony whose garrison is gone; PREEMPTIVELY
+			// at a foothold still small enough to stomp; or - rarest and
+			// heaviest - as a full assault on a defended entrenched hive, with
+			// extra escorts and on a stretched cooldown. Waiting for a hive to
+			// disarm itself is how it gets to size 8.
+			boolean defended = anyTargetGarrisoned(targets);
+			int biggest = 0;
+			for (MarketAPI t : targets) biggest = Math.max(biggest, t.getSize());
+			boolean preemptive = defended && biggest <= ThreatIncConfig.purgePreemptMaxSize();
+			boolean heavyAssault = defended && !preemptive;
+			int inSystem = ThreatIncData.getLiveColonyMarkets(system.getId()).size();
 
 			// the launch is the player-facing beat of the whole siege system:
 			// always shown, one sentence
@@ -1374,7 +1384,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				ThreatNotice n = ThreatNotice.titled("Siege Expedition").icon(faction)
 						.line("%s has launched a siege expedition into the %s.",
 								ThreatNotice.faction(faction), system.getNameWithLowercaseType());
-				if (targets.size() > 1) {
+				if (targets.size() < inSystem) {
+					n.line("Against %s of the %s Threat colonies there.", targets.size(), inSystem);
+				} else if (targets.size() > 1) {
 					n.line("Against all %s Threat colonies there.", targets.size());
 				} else {
 					n.line("Against the undefended Threat colony there.");
@@ -1383,7 +1395,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 			ThreatIncConfig.log(faction.getId()
 					+ (preemptive ? " preemptive" : heavyAssault ? " heavy-assault" : "")
-					+ " purge expedition vs " + system.getName() + " (" + targets.size()
+					+ " purge expedition vs " + system.getName() + " (" + targets.size() + " of " + inSystem
 					+ " colonies, difficulty " + difficulty + ")");
 		}
 	}
@@ -1490,11 +1502,23 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (!ThreatIncConfig.pathZealotMarines() || faction == null || system == null) return out;
 		if (Factions.LUDDIC_PATH.equals(faction.getId())) return out;
 		FactionAPI path = Global.getSector().getFaction(Factions.LUDDIC_PATH);
-		if (path == null || !ThreatWarState.isAtWar(path)) return out;
-		if (ThreatCoalition.willingness(path, faction.getId()) < 0.5f) return out;
+		String key = "zealots:" + faction.getId() + ":" + system.getId();
+		if (path == null || !ThreatWarState.isAtWar(path)) {
+			ThreatIncConfig.logQuiet(key, "Zealots: none for " + faction.getId() + " at " + system.getName() + " - the Path is not at war");
+			return out;
+		}
+		float will = ThreatCoalition.willingness(path, faction.getId());
+		if (will < 0.5f) {
+			ThreatIncConfig.logQuiet(key, "Zealots: none for " + faction.getId() + " at " + system.getName()
+					+ " - the Path's willingness is " + String.format("%.2f", will) + " of 0.50");
+			return out;
+		}
 		for (MarketAPI m : factionMarketsInReach(path, system)) {
 			if (!ThreatFrontlines.isOutpost(m)) out.add(m);
 		}
+		float held = siegePooled(null, out, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
+		ThreatIncConfig.logQuiet(key, "Zealots: " + out.size() + " Path world(s) in reach of " + system.getName()
+				+ " offer " + faction.getId() + " " + (int) held + " marines");
 		return out;
 	}
 
@@ -1602,18 +1626,23 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (!ThreatScouts.sectorKnows(colony)) continue;
 			if (siegeBaseFor(system) != base) continue;
 			if (siegeFactionsIn(system.getId()).contains(faction.getId())) continue;
-			java.util.List<MarketAPI> targets = collectSiegeTargets(null, system);
+			java.util.List<MarketAPI> targets = siegeTargets(base, faction, system);
 			boolean anyReady = false;
 			for (MarketAPI t : targets) {
 				if (!onPurgeCooldown(t)) anyReady = true;
 			}
 			if (!anyReady) continue;
-			java.util.List<Integer> sizes = siegeSizes(base, faction, system);
-			float need = siegeOrbitNeeded(faction, targets);
-			if (need > ThreatAidCapacity.expeditionPoints(sizes)) continue;
-			if (siegeCanPay(base, faction, system, targets, sizes)) return true;
+			if (siegeAffordable(base, faction, system, targets)) return true;
 		}
 		return false;
+	}
+
+	/** Whether the flotilla this base would sail against these worlds takes their orbit and is paid for. */
+	protected static boolean siegeAffordable(MarketAPI base, FactionAPI faction, StarSystemAPI system,
+			java.util.List<MarketAPI> targets) {
+		java.util.List<Integer> sizes = siegeSizesFor(base, faction, targets, 0f);
+		if (siegeOrbitNeeded(faction, targets) > ThreatAidCapacity.expeditionPoints(sizes)) return false;
+		return siegeCanPay(base, faction, system, targets, sizes);
 	}
 
 	/**
@@ -1673,6 +1702,72 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			targets.add(other);
 		}
 		return targets;
+	}
+
+	/** Base id + system id -> {@link #siegeTargets}, for the clock instant in targetsMemoStamp; not saved. */
+	private static final java.util.Map<String, java.util.List<MarketAPI>> TARGETS_MEMO =
+			new java.util.HashMap<String, java.util.List<MarketAPI>>();
+	private static long targetsMemoStamp = Long.MIN_VALUE;
+
+	/**
+	 * The worlds an NPC siege from this base takes, easiest first - the
+	 * low-hanging fruit (user's rule 2026-09-27): the whole system when the
+	 * base can take and pay for it; short of that, the most of its easiest
+	 * worlds it can; short of even one, the easiest alone, so its convoys stage
+	 * toward the nearest win instead of waiting on marines for the biggest
+	 * hive while the small ones grow. Worlds on their siege cooldown are left
+	 * out. The player's Siege order takes the whole system, as ordered.
+	 */
+	public static java.util.List<MarketAPI> siegeTargets(MarketAPI base, FactionAPI faction,
+			StarSystemAPI system) {
+		java.util.List<MarketAPI> all = system != null
+				? collectSiegeTargets(null, system) : new ArrayList<MarketAPI>();
+		if (base == null || faction == null || faction.isPlayerFaction() || all.isEmpty()) return all;
+		long now = Global.getSector().getClock().getTimestamp();
+		if (now != targetsMemoStamp) {
+			TARGETS_MEMO.clear();
+			targetsMemoStamp = now;
+		}
+		String key = base.getId() + ":" + system.getId();
+		java.util.List<MarketAPI> memo = TARGETS_MEMO.get(key);
+		if (memo != null) return new ArrayList<MarketAPI>(memo);
+		java.util.List<MarketAPI> ready = new ArrayList<MarketAPI>();
+		for (MarketAPI t : easiestFirst(all)) {
+			if (!onPurgeCooldown(t)) ready.add(t);
+		}
+		if (ready.isEmpty()) ready = easiestFirst(all);
+		java.util.List<MarketAPI> pick = new ArrayList<MarketAPI>(ready.subList(0, 1));
+		if (!ThreatWarState.isAtWar(faction)) {
+			pick = ready;
+		} else {
+			for (int n = ready.size(); n >= 2; n--) {
+				java.util.List<MarketAPI> set = new ArrayList<MarketAPI>(ready.subList(0, n));
+				if (siegeAffordable(base, faction, system, set)) {
+					pick = set;
+					break;
+				}
+			}
+		}
+		TARGETS_MEMO.put(key, pick);
+		return new ArrayList<MarketAPI>(pick);
+	}
+
+	/** The hives sorted by the landing each needs alone, then the Defense Swarms over it: easiest first. */
+	public static java.util.List<MarketAPI> easiestFirst(java.util.List<MarketAPI> hives) {
+		final java.util.Map<MarketAPI, float[]> ease = new java.util.HashMap<MarketAPI, float[]>();
+		for (MarketAPI h : hives) {
+			java.util.List<MarketAPI> one = java.util.Collections.singletonList(h);
+			ease.put(h, new float[] {siegeRaidStrNeeded(one), siegeOrbitFaced(one)});
+		}
+		java.util.List<MarketAPI> result = new ArrayList<MarketAPI>(hives);
+		java.util.Collections.sort(result, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				float[] ea = ease.get(a), eb = ease.get(b);
+				int c = Float.compare(ea[0], eb[0]);
+				return c != 0 ? c : Float.compare(ea[1], eb[1]);
+			}
+		});
+		return result;
 	}
 
 	public static boolean anyTargetGarrisoned(java.util.List<MarketAPI> targets) {
@@ -2163,6 +2258,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		Global.getSector().getIntelManager().addIntel(purge);
 		getPurgeList().add(purge);
+		// the draw changed what every other siege can pay for
+		TARGETS_MEMO.clear();
 		if (faction.isPlayerFaction()) {
 			ThreatAidCapacity.commitGroup(base, ThreatAidCapacity.expeditionPoints(params.fleetSizes),
 					purge, "purge expedition against the " + system.getNameWithLowercaseType());
@@ -2212,10 +2309,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * ThreatReserves.COMMODITIES order. All zeros with nothing to besiege.
 	 */
 	public static float[] siegeWants(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
-		java.util.List<MarketAPI> targets = system != null
-				? collectSiegeTargets(null, system) : new java.util.ArrayList<MarketAPI>();
+		java.util.List<MarketAPI> targets = siegeTargets(base, faction, system);
 		if (base == null || faction == null || targets.isEmpty()) return new float[] {0f, 0f, 0f, 0f};
-		return expeditionWants(base, system, targets, siegeSizes(base, faction, system));
+		return expeditionWants(base, system, targets, siegeSizesFor(base, faction, targets, 0f));
 	}
 
 	/**
@@ -2237,8 +2333,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 */
 	public static java.util.List<Integer> siegeSizes(MarketAPI base, FactionAPI faction,
 			StarSystemAPI system, float marineGoal) {
-		java.util.List<MarketAPI> targets = system != null
-				? collectSiegeTargets(null, system) : new java.util.ArrayList<MarketAPI>();
+		return siegeSizesFor(base, faction, siegeTargets(base, faction, system), marineGoal);
+	}
+
+	/** As {@link #siegeSizes(MarketAPI, FactionAPI, StarSystemAPI, float)}, against these worlds. */
+	public static java.util.List<Integer> siegeSizesFor(MarketAPI base, FactionAPI faction,
+			java.util.List<MarketAPI> targets, float marineGoal) {
 		if (base == null || faction == null || targets.isEmpty()) return new java.util.ArrayList<Integer>();
 		boolean anyGarrisoned = anyTargetGarrisoned(targets);
 		int difficulty = siegeDifficulty(base, faction, targets, anyGarrisoned);

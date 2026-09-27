@@ -231,6 +231,19 @@ taken. Callers:
   system). Before, the hunting gate sized by the job and the launch by the navy, so a
   weak navy could be told it could siege, be outweighed at the launch, and neither siege
   nor hunt.
+  THE LOW-HANGING FRUIT FIRST (user's rule 2026-09-27, untested,
+  `IncursionManager.siegeTargets`): an NPC siege takes the whole system when the base
+  can take its orbit and pay for it; short of that, the most of the system's easiest
+  worlds it can, easiest first (`easiestFirst`: the landing each world needs alone, then
+  its Defense Swarms); short of even one, the easiest alone, so its convoys stage toward
+  the nearest win. Worlds on their siege cooldown are left out, and a faction runs one
+  siege of a system at a time. The siege pass walks the hives easiest first, so easy
+  sieges claim the marines and the concurrency slots before hard ones. The launch, the
+  hunting gate and the convoy planner all read `siegeTargets`, and size with
+  `siegeSizesFor`. The notice says "Against 2 of the 3 Threat colonies there". Run 18:
+  marines gated 92% of postponements, and some systems' biggest hive needed more marines
+  than the faction could raise while their small ones grew. The player's Siege order
+  still takes the whole system.
   An NPC staging base BANKS TOWARD ITS SIEGE (2026-09-24, `ThreatReserves.stagingBank`):
   its cap is the months cap plus its staging target, so the wait is the siege's needs over
   its banking. The floor stays on the months cap (`monthsCap`), so the siege spends what
@@ -285,6 +298,14 @@ held a link. Its strength in lore is people and cells, not industry, so:
   NPC siege by a faction it is Welcoming or better with, after that faction's own
   donors, each above its floor (`IncursionManager.zealotDonors`). Notice "Zealots
   Join Siege". Hives die to ground victories, so this is where the Path counts.
+  Each ask is logged ("Zealots: ..."), with why none came.
+
+Run 18: 4 cells tithed 750 supplies, 750 fuel and 125 marines a month, and covering
+vanilla shortages on the Path's own worlds took most of it. That stays (user's rule
+2026-09-27): no faction banks war income where shortage cover cannot reach it. The
+tithe grows with the cells vanilla places. Run 18 logged the tithe once in three
+years: its daily memo was keyed on the days since timestamp 0, now aged like the
+other memos.
 
 ## Convoys (ThreatConvoys)
 

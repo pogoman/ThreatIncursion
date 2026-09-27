@@ -1643,8 +1643,9 @@ public class ThreatFleetOrders {
 		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
 		if (mem.getBoolean(STATION_LOG_KEY)) return;
 		mem.set(STATION_LOG_KEY, true, 1f);
-		ThreatIncConfig.log(label + " over " + world.getName() + ": " + fleet.getName() + " at "
-				+ (int) fleet.getFleetPoints() + " FP holds the orbit - " + why);
+		// once a month while nothing changes: run 18 logged 11,000 of these
+		ThreatIncConfig.logQuiet("idle:" + fleet.getId(), label + " over " + world.getName() + ": " + fleet.getName()
+				+ " at " + (int) fleet.getFleetPoints() + " FP holds the orbit - " + why);
 	}
 
 	/** Sends the fleet home (refund on arrival, see ThreatReturns) and forgets the order. */
