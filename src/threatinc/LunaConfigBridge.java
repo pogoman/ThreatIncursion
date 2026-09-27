@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 3;
+	static final int MIGRATION_VERSION = 4;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -45,7 +45,8 @@ class LunaConfigBridge {
 	 * siegeMaxFleets 25 -> 40 (the bumps chain, so a store still at 10 lands
 	 * on 40); frontlineGarrisonFP 400 -> 200 (now the minimum garrison - links
 	 * are garrisoned against the strikes in reach). Version 3 (run 7):
-	 * siegeMaxFleets 40 -> 50.
+	 * siegeMaxFleets 40 -> 50. Version 4 (run 17): expeditionSuppliesPerPoint
+	 * 100 -> 30 - Hegemony's sieges waited 16 months on 32,600-supply bills.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
@@ -69,6 +70,9 @@ class LunaConfigBridge {
 				}
 				if (from < 3) {
 					changed |= bump(json, "threatinc_siegeMaxFleets", 40, 50, true);
+				}
+				if (from < 4) {
+					changed |= bump(json, "threatinc_expeditionSuppliesPerPoint", 100, 30, false);
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));

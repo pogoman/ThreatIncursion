@@ -162,7 +162,7 @@ threatinc_npcSiegeOrbitPerWorld,NPC Siege Weighs One World,Boolean,true,"The orb
 threatinc_expeditionMinProvisionsFraction,Expedition Provisions Floor,Double,0.5,"An NPC siege waits - and its base keeps calling convoys - unless the base can pay this fraction of the fuel and supplies its fleets burn; short of the rest, the fleets beyond those the target needs (NPC Sieges at Full Strength) shrink to what it can pay for. Your own expeditions pay what they can. 0 sails with whatever is there.",0,1
 threatinc_siegeExtraMarinesFactor,Siege Extra-Tier Marines,Double,2,"The board's ""Extra"" siege button commits this multiple of the marines the assault needs (the ""Siege"" button); ""All"" commits the whole reserve above its floor. The flotilla grows to carry the bigger landing and is trimmed to the base's free fleet points.",1,10
 threatinc_expeditionFuelPerPointLY,Expedition Fuel per Point-LY,Double,10,"Fuel an expedition or task force draws from its base per fleet point per light-year of distance. An NPC siege short of it sails smaller or waits (Expedition Provisions Floor); a task force always sails.",0,100
-threatinc_expeditionSuppliesPerPoint,Expedition Supplies per Point,Double,100,"Supplies an expedition or task force draws from its base per fleet point. An NPC siege short of it sails smaller or waits (Expedition Provisions Floor); a task force always sails.",0,1000
+threatinc_expeditionSuppliesPerPoint,Expedition Supplies per Point,Double,30,"Supplies an expedition or task force draws from its base per fleet point. An NPC siege short of it sails smaller or waits (Expedition Provisions Floor); a task force always sails.",0,1000
 threatinc_expeditionTransportMult,Expedition Transport Share,Double,0.3,"Troop-transport share of a cargo-carrying expedition fleet (vanilla composition multiplier). Too low and the marines drawn will not all fit - the remainder stays home.",0.05,1
 threatinc_convoyEnabled,Convoys Enabled,Boolean,true,"Whether mobilised factions ship reserves between their colonies by convoy. Off, each staging base fights with what it makes itself.",,
 threatinc_convoyRangeLY,Convoy Range (LY),Double,15,"Light-years a donor colony will ship to a staging base.",3,50
@@ -275,6 +275,14 @@ threatinc_outpostCredits,Outpost Cost (Credits),Double,150000,"What you pay for 
 threatinc_outpostSupplies,Outpost Cost (Supplies),Double,1500,"Supplies a mobilised faction's base pays for an outpost.",0,20000
 threatinc_outpostFuel,Outpost Cost (Fuel),Double,800,"Fuel a mobilised faction's base pays for an outpost.",0,20000
 threatinc_outpostChance,Outpost Build Chance,Double,0.3,"Chance per 30-day tick that a mobilised faction fortifies an open purged world within reach of a base that can pay.",0,1
+pathHeader,Path Header,Header,Luddic Path,"The Path fights with people and cells, not industry.",,
+threatinc_pathTithes,Pather Tithes,Boolean,true,"Every Pather cell on another faction's world sends the Path supplies, fuel and recruits each month.",,
+threatinc_pathTitheSuppliesPerSize,Tithe Supplies,Double,30,"Supplies per 30 days a cell sends, per size of its world.",0,500
+threatinc_pathTitheFuelPerSize,Tithe Fuel,Double,30,"Fuel per 30 days a cell sends, per size of its world.",0,500
+threatinc_pathTitheMarinesPerSize,Tithe Recruits,Double,5,"Marines per 30 days a cell sends, per size of its world.",0,100
+threatinc_pathTitheSleeperFraction,Sleeper Cell Share,Double,0.5,"Share of a full tithe a sleeper cell sends.",0,1
+threatinc_pathMilitiaMult,Zealot Militia,Double,3,"Path colonies raise this many times the usual militia.",0,10
+threatinc_pathZealotMarines,Zealots Join Sieges,Boolean,true,"The Path's marines above its floor join the sieges of factions it is Welcoming or better with.",,
 frontlineHeader,Frontline Header,Header,Frontline Outposts,"A mobilised faction pushes a chain of small markets toward every found hive its bases cannot reach. Links grow from size 1 while they run without shortages and build only what they can supply. Take a middle link and the rest lose the forward relay.",,
 threatinc_frontlinesEnabled,Frontline Outposts Enabled,Boolean,true,"Whether mobilised factions found frontline outposts.",,
 threatinc_frontlinePlanDays,Plan Interval (Days),Double,15,"Days between a faction's chances to found its next link.",1,120
@@ -287,6 +295,7 @@ threatinc_frontlineGrowDays,Growth (Days),Double,60,"Days without shortages of s
 threatinc_frontlineStarveDays,Starvation (Days),Double,90,"Days of such shortages before a link shrinks a size; at size 1 it is abandoned.",10,365
 threatinc_frontlineAbandonDays,Abandon (Days),Double,60,"Days a link sits with no purpose before it is dismantled.",0,365
 threatinc_frontlineRelayAccess,Forward Relay Access,Double,0.2,"Accessibility a link connected to a colony through its chain gets.",0,1
+threatinc_frontlineHeavyIndustry,Link Heavy Industry,Boolean,true,"A link of size 3 or more builds a Heavy Industry once it can import the metals and rare metals.",,
 threatinc_frontlineStrikeWeight,Swarm Target Weight,Double,3,"How much the swarm wants a link: its size squared (at least 9) times this, times one plus the links its loss would cut.",0,20
 threatinc_frontlineReliefEnabled,Called Guards,Boolean,true,"Whether a strike seen coming at a link calls a guard to it. Rear links have no standing garrison.",,
 threatinc_frontlineGarrisonEnabled,Garrison Links,Boolean,true,"A faction founds a link only if a base can spare it a garrison, which stays as long as the link stands. Off: links stand on their station alone.",,

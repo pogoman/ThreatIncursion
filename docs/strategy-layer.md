@@ -180,7 +180,9 @@ taken. Callers:
   between ~3,550 and ~6,150 FP from tick to tick. Armaments wanted =
   `npcFrontSupplyDays` x the landing force's own burn (1 armament per marine at the
   default `frontArmamentsPerMarinePer30Days`); fuel = fleet points x LY x
-  `expeditionFuelPerPointLY`; supplies = fleet points x `expeditionSuppliesPerPoint`.
+  `expeditionFuelPerPointLY`; supplies = fleet points x `expeditionSuppliesPerPoint`
+  (30 since run 17; it was 100, and Hegemony's sieges waited 16 months on
+  32,600-supply bills - ~20x a fleet's maintenance over a siege).
   The expedition is postponed (logged) if the base holds less than
   `expeditionMinMarinesFraction` of the marines wanted - logistics has to stage more.
   An NPC siege is also gated on provisions (2026-09-24): postponed below
@@ -263,6 +265,26 @@ cargo is split across them by personnel and cargo capacity in
 live expedition fleets in-system; a landing removes them (and the armaments) from the
 fleets and hands them to `ThreatGroundFronts.deploy`. Kill the transports in space and
 the landing never happens - that is the point.
+
+### The Luddic Path: tithes and zealots (2026-09-27, user's call, untested)
+
+Run 17's Path banked no fuel or supplies at all: two worlds (Epiphany 4, Chalcedon
+5) with nothing above their own needs, so its garrison budget sat at 0. It lived on
+its opening stock and the Church's convoys, and never sieged, hunted, scouted or
+held a link. Its strength in lore is people and cells, not industry, so:
+
+- **Tithes** (`ThreatReserves.tithePer30`, knob `pathTithes`): every vanilla Pather
+  cell (`LuddicPathCellsIntel`) on another faction's world sends the Path, per 30
+  days and per size of that world, `pathTitheSuppliesPerSize` (30) supplies,
+  `pathTitheFuelPerSize` (30) fuel and `pathTitheMarinesPerSize` (5) recruits; a
+  sleeper cell `pathTitheSleeperFraction` (0.5) of it. It is split evenly between
+  the Path's depots and banked like militia (outside `productionShare`), so it
+  raises the Path's caps and its garrison budget. Logged monthly as "Path tithes".
+- **Zealots:** Path colonies raise `pathMilitiaMult` (3) times the militia, and
+  (`pathZealotMarines`) the Path's markets in reach join the marine pool of any
+  NPC siege by a faction it is Welcoming or better with, after that faction's own
+  donors, each above its floor (`IncursionManager.zealotDonors`). Notice "Zealots
+  Join Siege". Hives die to ground victories, so this is where the Path counts.
 
 ## Convoys (ThreatConvoys)
 

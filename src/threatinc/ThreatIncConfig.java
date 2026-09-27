@@ -426,6 +426,7 @@ public class ThreatIncConfig {
 	public static float reserveSurplusMult() { return f("threatinc_reserveSurplusMult"); }
 	/** A frontline link is founded only with a garrison to hold it, which stays as long as the link stands. */
 	public static boolean frontlineGarrisonEnabled() { return b("threatinc_frontlineGarrisonEnabled", true); }
+	public static boolean frontlineHeavyIndustry()   { return b("threatinc_frontlineHeavyIndustry", true); }
 	/** Smallest garrison a link gets, in fleet points, whatever the strikes in reach. */
 	public static float frontlineGarrisonFP() { return f("threatinc_frontlineGarrisonFP"); }
 	/** Garrison plus station must weigh this times the strongest Threat strike in reach (vanilla's raid strength). */
@@ -719,6 +720,13 @@ public class ThreatIncConfig {
 	public static float frontlineStarveDays()        { return f("threatinc_frontlineStarveDays"); }
 	public static float frontlineAbandonDays()       { return f("threatinc_frontlineAbandonDays"); }
 	public static float frontlineRearGraceDays()     { return f("threatinc_frontlineRearGraceDays"); }
+	public static boolean pathTithes()               { return b("threatinc_pathTithes", true); }
+	public static float pathTitheSuppliesPerSize()   { return f("threatinc_pathTitheSuppliesPerSize"); }
+	public static float pathTitheFuelPerSize()       { return f("threatinc_pathTitheFuelPerSize"); }
+	public static float pathTitheMarinesPerSize()    { return f("threatinc_pathTitheMarinesPerSize"); }
+	public static float pathTitheSleeperFraction()   { return f("threatinc_pathTitheSleeperFraction"); }
+	public static float pathMilitiaMult()            { return f("threatinc_pathMilitiaMult"); }
+	public static boolean pathZealotMarines()        { return b("threatinc_pathZealotMarines", true); }
 	public static float frontlineRelayAccess()       { return f("threatinc_frontlineRelayAccess"); }
 	public static float frontlineStrikeWeight()      { return f("threatinc_frontlineStrikeWeight"); }
 	public static boolean frontlineReliefEnabled()   { return b("threatinc_frontlineReliefEnabled", true); }

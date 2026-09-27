@@ -528,7 +528,7 @@
 	"threatinc_siegeExtraMarinesFactor": 2.0,
 	# provisions drawn per fleet point: fuel per light-year, supplies flat
 	"threatinc_expeditionFuelPerPointLY": 10,
-	"threatinc_expeditionSuppliesPerPoint": 100,
+	"threatinc_expeditionSuppliesPerPoint": 30,
 	# troop-transport share of a cargo-carrying expedition fleet
 	"threatinc_expeditionTransportMult": 0.3,
 	# convoys: donor colonies within range ship stock to staging bases (the
@@ -816,6 +816,9 @@
 	"threatinc_frontlineStarveDays": 90,
 	"threatinc_frontlineAbandonDays": 60,
 	"threatinc_frontlineRelayAccess": 0.2,
+	# a link of size 3+ with a free industry slot builds a Heavy Industry once it
+	# can import the metals and rare metals: supplies, heavy armaments and ships
+	"threatinc_frontlineHeavyIndustry": true,
 	# the swarm's want for a link: max(size,3)^2 x this x (1 + links its loss cuts)
 	"threatinc_frontlineStrikeWeight": 3,
 	# a seen strike on a link calls its guard: rear links have no standing garrison
@@ -831,6 +834,18 @@
 	# days a link stands behind the front before its standing garrison goes home
 	# (a strike seen on it later turns it back while it still sails)
 	"threatinc_frontlineRearGraceDays": 60,
+	# LUDDIC PATH: its strength is people and cells, not industry. Every vanilla
+	# Pather cell on another faction's world tithes the Path per 30 days, per
+	# size of that world (a sleeper cell pathTitheSleeperFraction of it); its
+	# colonies raise pathMilitiaMult x the militia; and its marines above the
+	# floor join the sieges of factions it is Welcoming or better with
+	"threatinc_pathTithes": true,
+	"threatinc_pathTitheSuppliesPerSize": 30,
+	"threatinc_pathTitheFuelPerSize": 30,
+	"threatinc_pathTitheMarinesPerSize": 5,
+	"threatinc_pathTitheSleeperFraction": 0.5,
+	"threatinc_pathMilitiaMult": 3,
+	"threatinc_pathZealotMarines": true,
 	# STRIKE WARNING: a strike is hidden until a fleet of it is seen - by you,
 	# by any colony in its system, or in hyperspace within strikeDetectLY of
 	# a military world or frontline outpost. The struck faction's scouts and

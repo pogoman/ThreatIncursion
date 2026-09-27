@@ -1478,9 +1478,27 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return new ArrayList<MarketAPI>(memo);
 	}
 
+	/**
+	 * The Path's markets in reach whose marines join the faction's siege
+	 * (user's call 2026-09-27): its strength is its zealots, and hives die to
+	 * ground victories. Only while the Path is at war and Welcoming or better
+	 * with the besieger (ThreatCoalition.willingness); drawn after the
+	 * faction's own donors, each above its floor.
+	 */
+	protected static java.util.List<MarketAPI> zealotDonors(FactionAPI faction, StarSystemAPI system) {
+		java.util.List<MarketAPI> out = new ArrayList<MarketAPI>();
+		if (!ThreatIncConfig.pathZealotMarines() || faction == null || system == null) return out;
+		if (Factions.LUDDIC_PATH.equals(faction.getId())) return out;
+		FactionAPI path = Global.getSector().getFaction(Factions.LUDDIC_PATH);
+		if (path == null || !ThreatWarState.isAtWar(path)) return out;
+		if (ThreatCoalition.willingness(path, faction.getId()) < 0.5f) return out;
+		out.addAll(factionMarketsInReach(path, system));
+		return out;
+	}
+
 	/** Stock the siege base and its donors hold above their floors, for the launch's gates. */
 	protected static float siegePooled(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId) {
-		float have = ThreatReserves.available(base, commodityId);
+		float have = base != null ? ThreatReserves.available(base, commodityId) : 0f;
 		for (MarketAPI m : donors) have += ThreatReserves.available(m, commodityId);
 		return have;
 	}
@@ -1986,7 +2004,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			java.util.List<MarketAPI> donors = !faction.isPlayerFaction()
 					? siegeDonors(base, faction, system) : new ArrayList<MarketAPI>();
 			java.util.List<MarketAPI> pool = ThreatIncConfig.siegePoolMarines() ? donors : new ArrayList<MarketAPI>();
-			java.util.List<MarketAPI> marinePool = haveMarines < lift ? pool : new ArrayList<MarketAPI>();
+			java.util.List<MarketAPI> marinePool = haveMarines < lift ? new ArrayList<MarketAPI>(pool)
+					: new ArrayList<MarketAPI>();
+			// the Path's zealots come after the faction's own (zealotDonors)
+			java.util.List<MarketAPI> zealots = haveMarines < lift && !faction.isPlayerFaction()
+					? zealotDonors(faction, system) : new ArrayList<MarketAPI>();
+			marinePool.addAll(zealots);
 			for (MarketAPI m : marinePool) {
 				haveMarines += ThreatReserves.available(m, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 			}
@@ -2109,8 +2132,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			drawn = new float[ThreatReserves.COMMODITIES.length];
 			// marines: draw up to the tier's goal; the rest to the want - each
 			// from the base first, then the donors nearest it (siegeDraw)
+			float zealotsHeld = siegePooled(null, zealots, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 			drawn[0] = siegeDraw(base, marinePool,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES, lift, "marines");
+			float zealotsGave = zealotsHeld
+					- siegePooled(null, zealots, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
+			if (zealotsGave >= 1f) {
+				ThreatCoalition.report(Global.getSector().getFaction(Factions.LUDDIC_PATH), faction,
+						"Zealots Join Siege", "sends %s marines to the siege of %s",
+						Misc.getWithDGS((int) zealotsGave), system.getNameWithLowercaseTypeShort());
+			}
 			drawn[1] = siegeDraw(base, pool, arms, wants[1], "armaments");
 			drawn[2] = siegeDraw(base, provisionPool,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, wants[2], "fuel");

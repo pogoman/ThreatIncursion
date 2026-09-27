@@ -112,8 +112,17 @@ after it.
 | --- | --- | --- |
 | 3 | Patrol HQ | supplies, fuel, ships s−1 |
 | 3 | orbital → battlestation | crew 5, supplies 5 |
+| 3 | Heavy Industry, in the free industry slot | metals s, rare metals s−2 |
 | 4 | Patrol HQ → Military Base | supplies, fuel, ships s+1 |
 | 4 | battlestation → star fortress | crew 7, supplies 7 |
+
+**Heavy Industry** (2026-09-27, user's call; knob `frontlineHeavyIndustry`): run
+17's links took in 242k supplies by convoy and sent 8.5k back, and their garrisons'
+upkeep stalled Hegemony's sieges for 16 months. Heavy Industry makes supplies, heavy
+armaments and ships (vanilla: s−2 of each), all of which the war banks. The ships
+also serve the Military Base. It takes the one industry slot at size 3; the
+Military Base takes the second at size 4. No Mining: a station's market does not
+hold its planet's deposits, and ore is nothing a link or the war needs.
 
 No Ground Defenses or Heavy Batteries (2026-09-26): nothing lands on a
 station, and vanilla's pirate base has none. Links built before keep theirs.
@@ -266,7 +275,10 @@ a single strike the month their garrison went home. So now:
   while its front garrisons' upkeep stays within `frontlineUpkeepShare` (0.5) of its monthly
   supply banking (`ThreatReserves.accrualPer30`), leaving the rest for sieges.
   The garrisons a new front link puts behind the front are not counted, since
-  they go home. A guard called by a strike is not held against the budget.
+  they go home. A guard called by a strike is never refused for the budget, but
+  its upkeep counts in it (2026-09-27, user's call): while it is out the faction
+  founds and stands fewer front garrisons. Run 17's Hegemony paid ~5,065 a month
+  on a 3,750 budget, and its sieges starved.
   Upkeep is drawn from the link, then the garrison's home base (while the
   faction still holds it), then any of the faction's other markets nearest
   first, except other links. Sieges don't pool from links either: a link's
@@ -348,6 +360,7 @@ All are in `settings.json` and LunaLib, under Frontline Outposts:
 - `frontlineGarrisonFP` (200, the minimum garrison)
 - `frontlineGarrisonMargin` (1.25)
 - `frontlineUpkeepShare` (0.5)
+- `frontlineHeavyIndustry` (true)
 - `frontlineRearGraceDays` (60)
 - `strikeDetection`
 - `strikeDetectLY` (4)

@@ -226,10 +226,71 @@ public class ThreatReserves {
 		return Math.max(0f, ((LocalResourcesSubmarketPlugin) sub).getStockpileLimit(com));
 	}
 
-	/** The militia trickle: marines every colony raises per 30 days regardless of industry. */
+	/**
+	 * The militia trickle: marines every colony raises per 30 days regardless
+	 * of industry. The Path's zealots raise pathMilitiaMult times as many
+	 * (user's call 2026-09-27: its strength is people, not industry).
+	 */
 	public static float militiaPer30(MarketAPI market, String commodityId) {
 		if (market == null || !Commodities.MARINES.equals(commodityId)) return 0f;
-		return ThreatIncConfig.reserveBaselinePerSize() * market.getSize();
+		float mult = Factions.LUDDIC_PATH.equals(market.getFactionId()) ? ThreatIncConfig.pathMilitiaMult() : 1f;
+		return ThreatIncConfig.reserveBaselinePerSize() * market.getSize() * mult;
+	}
+
+	/** Tithes per 30 days, [supplies, fuel, marines], for the day in titheDay; not saved. */
+	private static float[] tithe;
+	private static long titheDay = Long.MIN_VALUE;
+	private static Object titheSector;
+
+	/**
+	 * The Path's tithes (user's call 2026-09-27): every vanilla Pather cell on
+	 * another faction's world sends the Path supplies, fuel and recruits each
+	 * month by the world's size, a sleeper cell pathTitheSleeperFraction of it.
+	 * Run 17's Path banked no fuel or supplies at all - two worlds, no surplus -
+	 * and never sieged or held a link. Split evenly between the Path's depots.
+	 */
+	public static float tithePer30(MarketAPI market, String commodityId) {
+		if (market == null || !Factions.LUDDIC_PATH.equals(market.getFactionId())) return 0f;
+		int i = Commodities.SUPPLIES.equals(commodityId) ? 0 : Commodities.FUEL.equals(commodityId) ? 1
+				: Commodities.MARINES.equals(commodityId) ? 2 : -1;
+		if (i < 0 || !hasDepot(market)) return 0f;
+		long day = (long) Global.getSector().getClock().getElapsedDaysSince(0L);
+		if (tithe == null || titheDay != day || titheSector != Global.getSector()) {
+			titheDay = day;
+			titheSector = Global.getSector();
+			tithe = pathTithes();
+		}
+		int depots = 0;
+		for (MarketAPI m : marketsOf(Factions.LUDDIC_PATH)) {
+			if (hasDepot(m)) depots++;
+		}
+		return depots > 0 ? tithe[i] / depots : 0f;
+	}
+
+	/** The Path's whole tithe per 30 days, [supplies, fuel, marines], from the cells vanilla has placed. */
+	protected static float[] pathTithes() {
+		float[] out = new float[3];
+		if (!ThreatIncConfig.pathTithes()) return out;
+		float sizes = 0f;
+		int cells = 0, sleepers = 0;
+		for (Object o : Global.getSector().getIntelManager().getIntel(
+				com.fs.starfarer.api.impl.campaign.intel.bases.LuddicPathCellsIntel.class)) {
+			com.fs.starfarer.api.impl.campaign.intel.bases.LuddicPathCellsIntel cell =
+					(com.fs.starfarer.api.impl.campaign.intel.bases.LuddicPathCellsIntel) o;
+			MarketAPI m = cell.getMarket();
+			if (m == null || !m.isInEconomy() || Factions.LUDDIC_PATH.equals(m.getFactionId())) continue;
+			if (cell.isEnded() || cell.isEnding()) continue;
+			float w = cell.isSleeper() ? ThreatIncConfig.pathTitheSleeperFraction() : 1f;
+			if (cell.isSleeper()) sleepers++;
+			cells++;
+			sizes += m.getSize() * w;
+		}
+		out[0] = sizes * ThreatIncConfig.pathTitheSuppliesPerSize();
+		out[1] = sizes * ThreatIncConfig.pathTitheFuelPerSize();
+		out[2] = sizes * ThreatIncConfig.pathTitheMarinesPerSize();
+		ThreatIncConfig.logQuiet("path_tithe", "Path tithes: " + cells + " cells (" + sleepers + " sleeping), "
+				+ (int) out[0] + " supplies, " + (int) out[1] + " fuel, " + (int) out[2] + " marines per 30 days");
+		return out;
 	}
 
 	/**
@@ -630,7 +691,7 @@ public class ThreatReserves {
 		if (market == null) return 0f;
 		// militia: every colony raises some marines on its own, so a farming
 		// world is never permanently at zero
-		float baseline = militiaPer30(market, commodityId);
+		float baseline = militiaPer30(market, commodityId) + tithePer30(market, commodityId);
 		// a player colony's stockpile is filled by vanilla at vanilla's rate;
 		// the mod adds only the militia (poll)
 		if (isBacked(market)) return baseline + vanillaStockpilePer30(market, commodityId);
