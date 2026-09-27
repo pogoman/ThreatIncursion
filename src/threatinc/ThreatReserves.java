@@ -274,13 +274,16 @@ public class ThreatReserves {
 		if (!ThreatIncConfig.pathTithes()) return out;
 		float sizes = 0f;
 		int cells = 0, sleepers = 0;
-		for (Object o : Global.getSector().getIntelManager().getIntel(
-				com.fs.starfarer.api.impl.campaign.intel.bases.LuddicPathCellsIntel.class)) {
+		// read off the markets' Pather Cells condition: vanilla only queues the
+		// cells' intel on NPC worlds, so the intel manager lists none of them
+		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (!m.isInEconomy() || Factions.LUDDIC_PATH.equals(m.getFactionId())) continue;
+			com.fs.starfarer.api.campaign.econ.MarketConditionAPI mc =
+					m.getCondition(com.fs.starfarer.api.impl.campaign.ids.Conditions.PATHER_CELLS);
+			if (mc == null || !(mc.getPlugin() instanceof com.fs.starfarer.api.impl.campaign.intel.bases.LuddicPathCells)) continue;
 			com.fs.starfarer.api.impl.campaign.intel.bases.LuddicPathCellsIntel cell =
-					(com.fs.starfarer.api.impl.campaign.intel.bases.LuddicPathCellsIntel) o;
-			MarketAPI m = cell.getMarket();
-			if (m == null || !m.isInEconomy() || Factions.LUDDIC_PATH.equals(m.getFactionId())) continue;
-			if (cell.isEnded() || cell.isEnding()) continue;
+					((com.fs.starfarer.api.impl.campaign.intel.bases.LuddicPathCells) mc.getPlugin()).getIntel();
+			if (cell == null || cell.isEnded() || cell.isEnding()) continue;
 			float w = cell.isSleeper() ? ThreatIncConfig.pathTitheSleeperFraction() : 1f;
 			if (cell.isSleeper()) sleepers++;
 			cells++;
