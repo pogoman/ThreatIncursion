@@ -787,10 +787,8 @@
 	# No market - a fortress that blocks re-seeding until it is destroyed. The
 	# player pays credits; a mobilised NPC faction pays supplies and fuel from
 	# its nearest base and builds them on its own (outpostChance per tick).
-	# A ground victory raises one free for the winner over the world it took,
-	# and the front's survivors become that outpost's stockpile
+	# A ground victory raises nothing: the front's survivors come home
 	"threatinc_outpostsEnabled": true,
-	"threatinc_outpostOnVictory": true,
 	"threatinc_outpostTier": 1,
 	"threatinc_outpostCredits": 150000,
 	"threatinc_outpostSupplies": 1500,

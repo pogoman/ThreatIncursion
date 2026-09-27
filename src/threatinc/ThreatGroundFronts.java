@@ -1882,9 +1882,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/**
 	 * The final stratum is taken and the Fabrication Core destroyed: the
 	 * colony is ERADICATED - the only way a hive dies. The vanilla teardown
-	 * runs, the winner raises a free outpost over the dead world
-	 * ({@code outpostOnVictory}) so the swarm cannot seed it again, and the
-	 * survivors become that outpost's stockpile. pollColonies reacts next poll.
+	 * runs and the survivors come home; nothing is raised on the dead world
+	 * (2026-09-27). pollColonies reacts next poll.
 	 *
 	 * <p>A THREAT front winning on a human world is the mirror image and shares
 	 * none of that bookkeeping - see {@link #colonyGroundVictory}. The theatre
@@ -1914,38 +1913,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		SectorEntityToken world = market.getPrimaryEntity();
 		Vector2f hyperLoc = market.getLocationInHyperspace();
 		ThreatColonyManager.eradicate(market);
-		// what was taken is held: the outpost is free (the fleet that won it is
-		// already in orbit) and only possible now the market is gone
+		// nothing is raised on the freed world (user's call 2026-09-27, player and
+		// NPC alike): the front's survivors come home - an NPC's bank into its
+		// nearest base's reserve, the player's board the player's fleet
+		// (evacuate). Only an outpost already standing there takes them. Runs
+		// 10-15's victory bases mostly died within days to the system's other
+		// hive worlds or its leftover swarms, the survivors with them
 		ThreatOutposts.Outpost outpost = null;
-		MarketAPI forwardBase = null;
 		if (world != null && ThreatIncConfig.outpostsEnabled()) {
 			outpost = ThreatOutposts.outpostAt(world.getId());
 			if (outpost != null && !outpost.alive()) outpost = null;
-			if (outpost == null && ThreatIncConfig.outpostOnVictory()) {
-				// the player holds it with an outpost, an NPC with a forward base
-				com.fs.starfarer.api.campaign.FactionAPI wf = Global.getSector().getFaction(winner);
-				outpost = ThreatOutposts.buildFree(wf, world);
-				// an NPC raises it only with a garrison to hold it, sent at once: all
-				// four raised unguarded in run 10 died within 2-51 days to the
-				// system's other hive worlds, and the front's survivors banked into
-				// them died too - without one they go home instead (evacuate)
-				MarketAPI guardBase = null;
-				boolean guarded = !ThreatIncConfig.frontlineGarrisonEnabled();
-				if (outpost == null && !guarded) {
-					guardBase = ThreatFrontlines.garrisonBase(wf, world);
-					guarded = guardBase != null;
-					if (!guarded) {
-						ThreatIncConfig.log("Ground victory at " + market.getName() + ": no forward base - "
-								+ winner + " cannot garrison it (" + ThreatFrontlines.noGarrisonWhy + ")");
-					}
-				}
-				if (outpost == null && guarded) {
-					forwardBase = ThreatOutposts.raiseForwardBase(wf, world, "free - ground victory");
-					if (forwardBase != null && guardBase != null) ThreatFrontlines.garrisonNow(forwardBase, guardBase);
-				}
-			}
 		}
-		evacuate(front, outpost, hyperLoc, forwardBase);
+		evacuate(front, outpost, hyperLoc, null);
 		// the swarm answers (docs/design-theory.md 8.1): grudge, and a strike
 		// at the winner from the nearest hive that can muster one
 		ThreatAlarm.add(winner, ThreatIncConfig.alarmPerEradication(),

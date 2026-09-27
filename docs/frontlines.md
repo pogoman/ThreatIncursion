@@ -74,6 +74,10 @@ One link per pass:
   the hive, or lie within `frontlineReachLY` of it, and it takes the one that
   gets closest. The system must have no hive, no hostile market, no link of
   this faction, and must not be hidden or cut off from hyperspace.
+- **One faction's links per system** (2026-09-27): a system with any faction's
+  link takes no other. Run 15's Alpha Vigri held four; when vanilla made three
+  of them hostile, their garrisons fought and four stations fell with no Threat
+  there. Purged worlds and converted old outposts follow the same rule.
 - **Every pair is tried.** All (unreached hive, anchor) pairs are tried
   nearest first, up to 24. An anchor boxed in beside a hive doesn't stall the
   faction.
@@ -286,12 +290,11 @@ The rules from before:
 **Held worlds (2026-09-26).** NPC factions no longer build the old
 `ThreatOutposts` stations; only the player does. Where an NPC used to get one,
 it founds a forward base instead (`ThreatOutposts.raiseForwardBase`):
-- **Ground victory:** free, and the front's survivors bank into the new base's
-  reserve. Since 2026-09-27 (after run 10) it is raised only if the winner can
-  garrison it, and the garrison is sent at once. Without one, no base is raised
-  and the survivors go home. Run 10's four unguarded victory bases died within
-  2-51 days to the system's other hive worlds, taking the banked survivors with
-  them.
+- **Ground victory: nothing (2026-09-27, user's call, player too).** A base
+  used to be raised free on the freed world. Runs 10-15's died within days to
+  the system's other hive worlds or its leftover swarms (4 of 4 in run 10;
+  Vlaan-Tone in run 15, 2 days, with 2,611 marines banked in it). The front's
+  survivors bank into the nearest base's reserve, veterancy kept.
 - **Purged worlds** (`planNPC`, `outpostChance` per slow tick): paid at the
   outpost cost from a base in reach, and only where a found live hive lies
   within `frontlineKeepLY`, or the base would stand idle and be abandoned.

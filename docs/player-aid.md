@@ -356,15 +356,11 @@ The player's outpost over any uncolonised world, from the planet dialog for
 described in `docs/strategy-layer.md`. Three things changed the same day, and they apply
 to the player exactly as to an NPC faction:
 
-- **Winning a ground war raises one free.** Eradicate a hive by ground assault and an
-  outpost of the winner's faction appears over the dead world at no cost - no credits, no
-  reserve draw, no base-in-reach requirement. Knob `threatinc_outpostOnVictory` (default
-  true, off = the world is simply dead ground). This is the only outpost the wallet does
-  not pay for.
-- **The survivors garrison it.** Instead of being lifted back into the player's fleet, the
-  front's surviving marines and heavy armaments become the outpost's stockpile - the
-  reward for the campaign stays at the front, where the next one starts. With outposts
-  disabled (or none over the world) they come home as before.
+- **A ground victory raises nothing (removed 2026-09-27, user's call).** It used to raise
+  a free outpost over the dead world with the front's survivors as its stockpile; runs
+  10-15's victory bases mostly died within days to the system's other hive worlds. The
+  survivors now come home: the player's marines and armaments board the player's fleet,
+  veterancy kept. An outpost already standing over the world still takes them.
 - **It is a forward base.** A supply run to a front in that system loads at the outpost
   when it can cover the run, and a pull-out lands the front in it rather than shipping it
   light-years home. Once the system holds no hive the stock ships itself home to your
@@ -405,11 +401,8 @@ To verify in-game, in this order:
    real days (was frame seconds until 2026-09-17: a 120-day contract died in 12).
 6. Over a few ticks with two mobilised NPC factions at Favourable or better: an ally's
    guard or convoy appears in the log ("... sends ... for ...").
-7. Win a ground war: the eradication message, then the free outpost message over the same
-   world, then the survivors' message naming it as the stockpile ("Outpost built: ...
-   (free - ground victory)" and "Front survivors garrison the outpost over ..." in the
-   log). Then Supply that system's next front and check the run sails from the outpost
-   ("Supply run dispatched: ... <world> Outpost -> ...").
+7. Win a ground war: the eradication message, then "Front Lifted Off" - the survivors are
+   in the fleet's cargo. No outpost is raised.
 8. The outpost as a base (2026-09-06): load a save with a standing player outpost - the log
    says "Outpost storage opened at ..." on the first fast poll and "... moves N marines from
    the ledger into its storage" on the first board render; the outpost row shows the same

@@ -47,8 +47,7 @@ import com.fs.starfarer.api.util.Misc;
  * from the reserve of its nearest base, and builds them on its own on the
  * slow tick. Style follows the faction: whatever station line its own
  * colonies use, else low-tech for the Hegemony and the Luddics, high-tech for
- * Tri-Tachyon, midline for everyone else. A GROUND VICTORY raises one free
- * ({@code outpostOnVictory}): the force that took the world holds it.
+ * Tri-Tachyon, midline for everyone else.
  *
  * <p>An outpost has a STOCKPILE - a {@link ThreatReserves} entry keyed by its
  * station entity id - so it is a base the war layer can ship from and to
@@ -396,21 +395,6 @@ public class ThreatOutposts {
 	}
 
 	/**
-	 * An outpost at NO cost - the ground victory's prize
-	 * ({@code outpostOnVictory}, {@link ThreatGroundFronts}). The force that
-	 * took the world is already in orbit over it; holding what it won costs
-	 * nothing more, and its survivors become the new station's stockpile. No
-	 * base in reach is needed: the fleet that won the siege is the base.
-	 */
-	public static Outpost buildFree(FactionAPI faction, SectorEntityToken planet) {
-		if (!ThreatIncConfig.outpostsEnabled() || faction == null) return null;
-		if (!faction.isPlayerFaction()) return null; // an NPC holds it with a forward base
-		if (!(planet instanceof PlanetAPI)) return null;
-		if (!eligible((PlanetAPI) planet)) return null;
-		return raise(faction, (PlanetAPI) planet, "free - ground victory");
-	}
-
-	/**
 	 * An NPC faction holds a world with a frontline forward base, never an
 	 * outpost (2026-09-26): a real market that grows and builds
 	 * (ThreatFrontlines). Cost is the caller's; null when it cannot stand here.
@@ -418,6 +402,7 @@ public class ThreatOutposts {
 	public static MarketAPI raiseForwardBase(FactionAPI faction, SectorEntityToken planet, String note) {
 		if (faction == null || faction.isPlayerFaction() || !ThreatIncConfig.frontlinesEnabled()) return null;
 		if (!(planet instanceof PlanetAPI) || !eligible((PlanetAPI) planet)) return null;
+		if (ThreatFrontlines.linkTaken(((PlanetAPI) planet).getStarSystem())) return null;
 		MarketAPI market = ThreatFrontlines.found(faction, (PlanetAPI) planet,
 				ThreatFrontlines.hiveNear(planet));
 		if (market != null) {
@@ -447,7 +432,14 @@ public class ThreatOutposts {
 		}
 		remove(o, "replaced by a forward base");
 		MarketAPI market = raiseForwardBase(faction, planet, "converted outpost");
-		if (market == null) return true; // the old station is gone either way
+		// the old station is gone either way; with no base raised (another
+		// faction's link holds the system) its stock goes to the nearest base
+		if (market == null) market = ThreatFrontlines.nearestBase(faction, planet);
+		if (market == null) {
+			java.util.List<MarketAPI> own = ThreatReserves.marketsOf(faction.getId());
+			if (!own.isEmpty()) market = own.get(0);
+		}
+		if (market == null) return true;
 		for (java.util.Map.Entry<String, Float> e : stock.entrySet()) {
 			ThreatReserves.deposit(market.getId(), e.getKey(), e.getValue());
 		}
@@ -656,6 +648,7 @@ public class ThreatOutposts {
 			if (random.nextFloat() >= ThreatIncConfig.outpostChance()) continue;
 			for (PlanetAPI planet : open) {
 				if (holds(planet) || ThreatFrontlines.hiveNear(planet) == null) continue;
+				if (ThreatFrontlines.linkTaken(planet.getStarSystem())) continue; // one faction's links per system
 				MarketAPI base = payingBase(faction, planet);
 				if (base == null) continue;
 				// no paper bases: only where a base can spare it a garrison
