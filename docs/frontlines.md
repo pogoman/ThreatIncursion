@@ -175,22 +175,38 @@ Threat is everyone's enemy. When a strike is detected:
 - the struck faction mobilises (`recordStrike`);
 - its scouts get a lead, and its task force sails against the hive if the
   hive is found;
-- links among the targets call relief.
+- links among the targets call their guard.
 
 A strike can now be seen weeks after launch. So its "New" tag counts from
 detection, the task force only sails if the hive still lives, and targets that
 have left the economy are skipped. All of those used to happen at launch.
 Strikes in flight in an older save have no hidden flag and stay visible.
 
-**Relief.** When a strike on a link is detected, the nearest base of the link's
-faction in reach (`findSiegeBases`) sends up to 4 "Relief Force" task forces.
-They hold the link's orbit for 60 days, then go home. The base only sends them
-if what it can field (`WarSimScript` strength converted the same way as the
-existing response task force) is at least the strike's FP ×
-`frontlineReliefMargin`. Otherwise the link fights alone. This rule exists to
-stop fleets being fed in one at a time. Relief pays fuel and supplies from
-the base's reserve, as the task force does, and is partly refunded if it comes
-home. A link gets one relief per 30 days.
+**Front and rear (2026-09-27, the user's call).** Only the front stands guard.
+For every found hive world that stages strikes, the faction's market nearest it is
+its front toward that hive (within 0.5 LY, so a whole system counts), if the hive's
+fuel reaches it. A link in a system with any hive world is at the front too (run
+10's unguarded ground-victory bases died to theirs). A link at the front keeps a
+standing garrison, as below. Every other link is the rear: it has no standing garrison and is never given up for
+lacking one. Run 14 had every faction's upkeep budget full of garrisons over rear
+links, so no ground victory could raise a forward base and the swarm re-seeded
+the freed worlds.
+
+**A seen strike calls the guard** (it replaced the 60-day Relief Force). When a
+strike on a link is detected, the link's guard is brought up to the seen strikes
+bound for it × `frontlineGarrisonMargin`, less its station (at the front, at least
+its standing need). The faction's nearest base sends the difference if the navy
+can spare all of it and the faction can pay the voyage; the upkeep budget does not
+hold it back. Otherwise the link fights with what it has: no piecemeal feeding.
+While the strike comes, the daily step retries weekly. Once no seen strike is bound
+for a rear link, its guard goes home. A link that falls behind the front (a new link
+founded beyond it) sends its standing garrison home the same way after 30 days
+behind it, since a hive's fuel range drifts. A strike contests the whole system and
+vanilla's autoresolve weighs every fleet in it, so the guards of the faction's other
+links in the system count toward a call. A front link that falls sends the link
+behind it a garrison at once; the new front's founding does not count the guards
+it sends home against the navy's spare strength or the budget. Strikes are
+hidden until detected (below), so the guard races the strike from its detection.
 
 **Garrisons: no paper bases (2026-09-26, user's rule).** The third long test
 founded 155 links and lost 111 to strikes: a 100-FP orbital station cannot hold
@@ -220,9 +236,11 @@ a single strike the month their garrison went home. So now:
 - **Kept for as long as the link stands.** Each month, after the upkeep is paid,
   a garrison under 80% of its need (the hives grew) is reinforced from its home
   base.
-- **Paid for:** a faction founds, re-sends or reinforces only while all its
-  garrisons' upkeep stays within `frontlineUpkeepShare` (0.5) of its monthly
+- **Paid for:** a faction founds, re-sends or reinforces a front garrison only
+  while its front garrisons' upkeep stays within `frontlineUpkeepShare` (0.5) of its monthly
   supply banking (`ThreatReserves.accrualPer30`), leaving the rest for sieges.
+  The garrisons a new front link puts behind the front are not counted, since
+  they go home. A guard called by a strike is not held against the budget.
   Upkeep is drawn from the link, then the garrison's home base (while the
   faction still holds it), then any of the faction's other markets nearest
   first, except other links. Sieges don't pool from links either: a link's
@@ -236,7 +254,7 @@ The rules from before:
   weighed only the sending base's own system, and Hegemony, the biggest navy,
   "could not spare" 1,200 FP most of the run. The garrison sails from the
   faction's nearest base. Its voyage is paid from that base, then the faction's
-  other markets except links. Relief forces still weigh their own base.
+  other markets except links.
 - **The garrison** is real task forces on DEFEND_LOCATION over the link, built
   at the size asked for (`ignoreMarketFleetSizeMult` - run 4's 400-point
   garrisons sailed at 756 on average with the base's fleet-size multiplier).
@@ -298,8 +316,7 @@ All are in `settings.json` and LunaLib, under Frontline Outposts:
 - `frontlineAbandonDays` (60)
 - `frontlineRelayAccess` (0.2)
 - `frontlineStrikeWeight` (3)
-- `frontlineReliefEnabled`
-- `frontlineReliefMargin` (1.0)
+- `frontlineReliefEnabled` (a seen strike calls the guard)
 - `frontlineGarrisonEnabled`
 - `frontlineGarrisonFP` (200, the minimum garrison)
 - `frontlineGarrisonMargin` (1.25)
@@ -327,8 +344,8 @@ Look for the "Frontline:" and "Strike ... detected by" log lines.
    (the route path), and check it shows as "New".
 7. **The struck NPC faction's response task force** now sails at detection,
    not at launch.
-8. **The swarm strikes a link.** The link's intel appears and a Relief Force
-   sails if the base is strong enough. No landing is ever logged against a
+8. **The swarm strikes a link.** The link's intel appears and its guard is
+   called ("rear; strike on its way") if the navy can spare it. No landing is ever logged against a
    link ("a station, not a world"); `Station assault on` lines weigh the
    strike, and a lost station logs `dismantled ... (station destroyed by ...)`.
 9. **Kill the target hive.** The links dismantle after 60 days unless another

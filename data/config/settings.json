@@ -549,8 +549,6 @@
 	"threatinc_convoyEscortFP": 30,
 	"threatinc_convoyEscortPerThousand": 20,
 	"threatinc_convoyMinLoadFraction": 0.5,
-	# sailings per faction per tick, neediest bases first
-	"threatinc_convoyMaxPerTick": 2,
 	# the front is a reserve consumer (docs/design-theory.md 8.3): supply
 	# runs from the nearest base top a friendly front up to frontResupplyDays
 	# of armaments and frontReinforceFraction of its peak marines; the run
@@ -822,10 +820,8 @@
 	"threatinc_frontlineRelayAccess": 0.2,
 	# the swarm's want for a link: max(size,3)^2 x this x (1 + links its loss cuts)
 	"threatinc_frontlineStrikeWeight": 3,
-	# a seen strike on a link: the nearest base in reach sends a relief force
-	# only if what it can field is at least the strike's FP x this margin
+	# a seen strike on a link calls its guard: rear links have no standing garrison
 	"threatinc_frontlineReliefEnabled": true,
-	"threatinc_frontlineReliefMargin": 1.0,
 	"threatinc_frontlineGarrisonEnabled": true,
 	# a link's garrison, for as long as it stands: garrison + station weigh the
 	# strongest Threat strike in reach x the margin (vanilla's raid strength), at

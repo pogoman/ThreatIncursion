@@ -534,8 +534,9 @@ to `convoyMarineCapacity` (2,000) / `convoyCargoCapacity` (6,000); escort =
 answered every colony being a staging base, and it made a base unable to ever hold more
 than its donors; with one staging base per hive and a staging base donating only what it
 holds above its own siege's needs (`ThreatConvoys.spare`, 2026-09-24 - never before), the
-traffic in each commodity has one direction; `convoyMaxPerTick` (2) sailings per faction per
-tick, neediest first, FRONT RUNS FIRST. After any fight `trimToHulls` drops cargo the
+traffic in each commodity has one direction. Every base short of stock sails each tick, one
+convoy at a time per base, neediest first, FRONT RUNS FIRST (no per-tick cap since
+2026-09-27: the cap of 2 held Hegemony's fronts back 12 times in run 14). After any fight `trimToHulls` drops cargo the
 surviving ships cannot carry (Blackett's constant loss per attack).
 
 **Raiders** (`ThreatRaiders`): when a convoy sails, hive colonies within
@@ -695,8 +696,7 @@ own fleet sitting there. `hasSupport(factionId, hiveMarketId)` is the one-at-a-t
 
 **NPC parity**: `planFrontRuns` checks `canRunTo` before anything else. Refused, the
 faction dispatches Support to that world instead (one per world at a time,
-counting against `convoyMaxPerTick` and provisioned from the base reserve like any
-sortie), and next tick's run goes in. A front with `withdrawRequested` on a contested
+provisioned from the base reserve like any sortie), and next tick's run goes in. A front with `withdrawRequested` on a contested
 orbit gets the same Support before its pickup.
 
 **Purge landings** (`ThreatPurgeFGI.doCustomRaidAction`) obey the same ground truth:
@@ -790,8 +790,7 @@ quality or fleet-size scaling). `ThreatReturns.sendHome/poll/settle` resolve the
 through `ThreatBases` too, so the run comes back to the station and unloads into its
 stockpile. An outpost that cannot cover the run falls through to the nearest colony,
 unchanged. Once the outpost's system holds no hive its stock ships home:
-`planOutpostReturns` (in `planLogistics`, after front runs and relief, against the
-per-tick cap) sends one convoy at a time from the station to the faction's nearest base
+`planOutpostReturns` (in `planLogistics`, after front runs and relief) sends one convoy at a time from the station to the faction's nearest base
 (`dispatch` takes a `ThreatBases.Base` donor), so a ground victory's survivors return to
 the war instead of sitting in a station nothing can draw from. The faction view's reserves
 table lists each outpost's stock as a row of its own (no floor, no accrual, grey where

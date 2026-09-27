@@ -569,7 +569,6 @@ public class ThreatIncConfig {
 	/** Shortfall (in convoy loads) below which no convoy sails. */
 	public static float convoyMinLoadFraction() { return f("threatinc_convoyMinLoadFraction"); }
 	/** Convoys one faction dispatches per slow tick at most (the neediest bases first). */
-	public static int convoyMaxPerTick()      { return i("threatinc_convoyMaxPerTick"); }
 	/** Whether mobilised factions run supply and withdrawal convoys to their ground fronts. */
 	public static boolean frontRunsEnabled()  { return b("threatinc_frontRunsEnabled", true); }
 	/** Days of armaments a supply run tops a front up to. */
@@ -723,7 +722,6 @@ public class ThreatIncConfig {
 	public static float frontlineRelayAccess()       { return f("threatinc_frontlineRelayAccess"); }
 	public static float frontlineStrikeWeight()      { return f("threatinc_frontlineStrikeWeight"); }
 	public static boolean frontlineReliefEnabled()   { return b("threatinc_frontlineReliefEnabled", true); }
-	public static float frontlineReliefMargin()      { return f("threatinc_frontlineReliefMargin"); }
 	public static boolean strikeDetection()          { return b("threatinc_strikeDetection", true); }
 	public static float strikeDetectLY()             { return f("threatinc_strikeDetectLY"); }
 
