@@ -439,9 +439,15 @@ public class ThreatOutposts {
 			java.util.List<MarketAPI> own = ThreatReserves.marketsOf(faction.getId());
 			if (!own.isEmpty()) market = own.get(0);
 		}
-		if (market == null) return true;
+		if (market == null) {
+			ThreatIncConfig.log("Outpost: " + o.planetName() + "'s stock lost - " + o.factionId + " has no market left");
+			return true;
+		}
 		for (java.util.Map.Entry<String, Float> e : stock.entrySet()) {
 			ThreatReserves.deposit(market.getId(), e.getKey(), e.getValue());
+		}
+		if (!stock.isEmpty()) {
+			ThreatIncConfig.log("Outpost: " + o.planetName() + "'s stock carried to " + market.getName() + " " + stock);
 		}
 		return true;
 	}

@@ -1001,6 +1001,9 @@ public class ThreatFrontlines {
 				o.guardSent = 0L; // if it comes to the front again, guard it at once
 				return true;
 			}
+			// more coming than the guard on station outweighs (run 16: two strikes,
+			// 2,700, met Yami's 1,496 FP garrison and nothing was called)
+			callGuard(o, market, strengthOf(live), false);
 			float since = Global.getSector().getClock().getElapsedDaysSince(o.guardPaid);
 			if (since >= 30f) {
 				o.guardPaid = now;
@@ -1025,16 +1028,7 @@ public class ThreatFrontlines {
 		// a seen strike on it calls a guard, front or rear - also after a front
 		// garrison went home unpaid (run 15: Eps Golgotha I's seen strike landed
 		// 17 days after its recall, with no guard called)
-		float called = onCallNeed(market) - neighbourGuards(o, market);
-		if (called >= 30f * STRENGTH_PER_FP
-				&& Global.getSector().getClock().getElapsedDaysSince(o.guardCalled) >= 7f) {
-			o.guardCalled = now;
-			MarketAPI base = garrisonBase(market.getFaction(), market.getPrimaryEntity(), called / STRENGTH_PER_FP, null);
-			if (base != null && sendGarrison(o, market, base, called)) return true;
-			ThreatIncConfig.logQuiet("fl_nocall_" + market.getId(), "Frontline: " + market.getFactionId()
-					+ " cannot guard " + market.getName() + " against the strike on it - "
-					+ (base == null ? noGarrisonWhy : "no fleet came out of " + base.getName()));
-		}
+		if (callGuard(o, market, 0f, false)) return true;
 		if (!front) {
 			o.unguardedDays = 0f; // the rear stands unguarded until a strike is seen coming
 			return true;
@@ -1763,12 +1757,8 @@ public class ThreatFrontlines {
 	/**
 	 * A seen strike against a link calls its guard (user's call 2026-09-27):
 	 * a rear link has none standing, and a front link's may be outweighed by
-	 * what is coming. The faction's nearest base sends what the link lacks -
-	 * the seen strikes bound for it x frontlineGarrisonMargin, less its
-	 * station (needNow) - if the navy can spare all of it and the faction can
-	 * pay the voyage; the upkeep budget does not hold it back. Otherwise the
-	 * link fights with what it has: no piecemeal feeding. The guard goes home
-	 * once no seen strike is bound for a rear link (garrison).
+	 * what is coming (callGuard, which also times the voyage). The guard goes
+	 * home once no seen strike is bound for a rear link (garrison).
 	 */
 	public static void sendRelief(ThreatStrikeFGI strike, Random random) {
 		if (!ThreatIncConfig.frontlinesEnabled() || !ThreatIncConfig.frontlineReliefEnabled()) return;
@@ -1784,19 +1774,55 @@ public class ThreatFrontlines {
 	protected static void relieve(Outpost o, MarketAPI target) {
 		FactionAPI faction = target.getFaction();
 		if (faction == null || !ThreatWarState.isAtWar(faction)) return;
-		if (target.getStarSystem() == null || target.getPrimaryEntity() == null) return;
-		// what is coming, not the front's standing need: a call is outside the
-		// budget, and the fleets it sends stay on with a front link's garrison
-		float need = onCallNeed(target);
-		float have = strengthOf(liveGuards(o)) + neighbourGuards(o, target);
-		if (have >= need * 0.95f) return;
-		MarketAPI base = garrisonBase(faction, target.getPrimaryEntity(), (need - have) / STRENGTH_PER_FP, null);
-		if (base == null) {
-			ThreatIncConfig.log("Frontline: " + target.getName() + " faces the strike with " + (int) have
-					+ " of " + (int) need + " - no guard called: " + noGarrisonWhy);
-			return;
+		callGuard(o, target, strengthOf(liveGuards(o)), true);
+	}
+
+	/** Days a guard takes from muster to station per LY sailed (run 16: 13 LY ~18 d, 6.5 LY ~10 d). */
+	protected static final float GUARD_DAYS_PER_LY = 1.5f;
+	/** Days early a called guard sails beyond its voyage: muster, and the strike's ETA is vanilla's estimate. */
+	protected static final float GUARD_LEAD_DAYS = 20f;
+
+	/** Days until the first seen strike bound for the market strikes (0 if striking now), or -1 with none. */
+	protected static float strikeEta(MarketAPI market) {
+		float best = -1f;
+		for (ThreatStrikeFGI strike : strikesOn(market)) {
+			float eta = strike.isCurrent(GenericRaidFGI.PAYLOAD_ACTION) ? 0f
+					: Math.max(0f, strike.getETAUntil(GenericRaidFGI.PAYLOAD_ACTION));
+			if (best < 0f || eta < best) best = eta;
 		}
+		return best;
+	}
+
+	/**
+	 * Calls a guard against the seen strikes bound for the link, outside the
+	 * upkeep budget: what they weigh x frontlineGarrisonMargin, less the
+	 * link's station, the guards already there ({@code have}) and those of the
+	 * faction's other links in the system. It sails only once the first
+	 * strike is due within the voyage from the nearest colony base plus
+	 * GUARD_LEAD_DAYS - run 16's strikes took 159-203 days from launch to
+	 * target, and guards called at detection sat on station for months. The
+	 * daily step asks again until then; a refusal waits a week. True if a
+	 * guard sailed.
+	 */
+	protected static boolean callGuard(Outpost o, MarketAPI market, float have, boolean atDetection) {
+		float need = onCallNeed(market) - neighbourGuards(o, market) - have;
+		if (need < 30f * STRENGTH_PER_FP) return false;
+		if (Global.getSector().getClock().getElapsedDaysSince(o.guardCalled) < 7f) return false;
+		FactionAPI faction = market.getFaction();
+		MarketAPI near = nearestBase(faction, market.getPrimaryEntity());
+		float eta = strikeEta(market);
+		if (near != null && eta > ly(near, market) * GUARD_DAYS_PER_LY + GUARD_LEAD_DAYS) return false; // not yet
 		o.guardCalled = Global.getSector().getClock().getTimestamp();
-		sendGarrison(o, target, base, need - have);
+		MarketAPI base = garrisonBase(faction, market.getPrimaryEntity(), need / STRENGTH_PER_FP, null);
+		if (base != null && sendGarrison(o, market, base, need)) return true;
+		String why = base == null ? noGarrisonWhy : "no fleet came out of " + base.getName();
+		if (atDetection) {
+			ThreatIncConfig.log("Frontline: " + market.getName() + " faces the strike " + (int) need
+					+ " short (guards on station " + (int) have + ") - no guard called: " + why);
+		} else {
+			ThreatIncConfig.logQuiet("fl_nocall_" + market.getId(), "Frontline: " + market.getFactionId()
+					+ " cannot guard " + market.getName() + " against the strike on it - " + why);
+		}
+		return false;
 	}
 }
