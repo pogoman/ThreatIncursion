@@ -1716,7 +1716,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * worlds it can; short of even one, the easiest alone, so its convoys stage
 	 * toward the nearest win instead of waiting on marines for the biggest
 	 * hive while the small ones grow. Worlds on their siege cooldown are left
-	 * out. The player's Siege order takes the whole system, as ordered.
+	 * out, and so are worlds another faction's siege is taking: run 19 sent 14
+	 * of 37 sieges at Epsilon Qades, and 7 stood down when someone else's
+	 * landing got there first. Empty when every world is someone else's. The
+	 * player's Siege order takes the whole system, as ordered.
 	 */
 	public static java.util.List<MarketAPI> siegeTargets(MarketAPI base, FactionAPI faction,
 			StarSystemAPI system) {
@@ -1731,11 +1734,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		String key = base.getId() + ":" + system.getId();
 		java.util.List<MarketAPI> memo = TARGETS_MEMO.get(key);
 		if (memo != null) return new ArrayList<MarketAPI>(memo);
-		java.util.List<MarketAPI> ready = new ArrayList<MarketAPI>();
+		java.util.Set<MarketAPI> taken = besiegedByOthers(faction);
+		java.util.List<MarketAPI> free = new ArrayList<MarketAPI>();
 		for (MarketAPI t : easiestFirst(all)) {
+			if (!taken.contains(t)) free.add(t);
+		}
+		if (free.isEmpty()) {
+			TARGETS_MEMO.put(key, free);
+			return new ArrayList<MarketAPI>();
+		}
+		java.util.List<MarketAPI> ready = new ArrayList<MarketAPI>();
+		for (MarketAPI t : free) {
 			if (!onPurgeCooldown(t)) ready.add(t);
 		}
-		if (ready.isEmpty()) ready = easiestFirst(all);
+		if (ready.isEmpty()) ready = free;
 		java.util.List<MarketAPI> pick = new ArrayList<MarketAPI>(ready.subList(0, 1));
 		if (!ThreatWarState.isAtWar(faction)) {
 			pick = ready;
@@ -1750,6 +1762,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		TARGETS_MEMO.put(key, pick);
 		return new ArrayList<MarketAPI>(pick);
+	}
+
+	/** The worlds a live siege by any faction but this one is taking. */
+	protected static java.util.Set<MarketAPI> besiegedByOthers(FactionAPI faction) {
+		java.util.Set<MarketAPI> out = new java.util.HashSet<MarketAPI>();
+		for (Object curr : getPurgeList()) {
+			if (!(curr instanceof GenericRaidFGI)) continue;
+			GenericRaidFGI purge = (GenericRaidFGI) curr;
+			if (purge.isEnded() || purge.isEnding() || purge.getFaction() == null) continue;
+			if (purge.getFaction() == faction) continue;
+			if (purge.getParams() == null || purge.getParams().raidParams == null) continue;
+			out.addAll(purge.getParams().raidParams.allowedTargets);
+		}
+		return out;
 	}
 
 	/** The hives sorted by the landing each needs alone, then the Defense Swarms over it: easiest first. */
