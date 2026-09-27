@@ -447,7 +447,7 @@ half rate.
 | Losing a layer | fabrication and per-stratum defence fall | garrison share, stability, accessibility fall; the district's industries are seized |
 | Orbital bombardment | suppresses the war-strata to the floor, the size-anchored strata untouched, weapon growths fire back | suppresses fortification to the floor, garrison untouched, batteries fire back |
 | Counter-attacks | paced by hive health | paced by stability and military command; strength is the garrison |
-| Victory | the Core dies: eradicated, free outpost | the last district falls: a hive is seeded on the spot |
+| Victory | the Core dies: eradicated, the survivors come home | the last district falls: a hive is seeded on the spot |
 
 ### Sieges from orbit - one duel, both theatres (2026-09-06, untested)
 

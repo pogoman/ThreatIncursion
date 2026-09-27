@@ -1630,14 +1630,27 @@ public class ThreatFrontlines {
 		return false;
 	}
 
-	/** No hostile market in the system, and no link of this faction there already. */
+	/** No hostile market in the system, and no link of this faction or another (linkTaken). */
 	protected static boolean siteSystemOk(FactionAPI faction, StarSystemAPI sys) {
 		for (MarketAPI m : Global.getSector().getEconomy().getMarkets(sys)) {
 			if (m.getFaction() == null) continue;
 			if (m.getFaction().isHostileTo(faction)) return false;
-			if (isOutpost(m) && faction.getId().equals(m.getFactionId())) return false;
 		}
-		return true;
+		return !linkTaken(sys);
+	}
+
+	/**
+	 * Whether a system already holds a link, of any faction: one faction's
+	 * forward bases per system (user's call 2026-09-27). Run 15's Alpha Vigri
+	 * held four factions' links; when vanilla later made three of them hostile,
+	 * their garrisons fought and four stations fell with no Threat there.
+	 */
+	public static boolean linkTaken(StarSystemAPI sys) {
+		if (sys == null) return false;
+		for (MarketAPI m : Global.getSector().getEconomy().getMarkets(sys)) {
+			if (isOutpost(m)) return true;
+		}
+		return false;
 	}
 
 	/** Founds a size-1 link on a station over the planet. */

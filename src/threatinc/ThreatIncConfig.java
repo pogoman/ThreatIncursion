@@ -695,7 +695,6 @@ public class ThreatIncConfig {
 	/** Whether outposts can be built on purged worlds. */
 	public static boolean outpostsEnabled()   { return b("threatinc_outpostsEnabled", true); }
 	/** Whether a ground victory raises a free outpost over the dead world for the winner. */
-	public static boolean outpostOnVictory()  { return b("threatinc_outpostOnVictory", true); }
 	/** Station tier: 1 orbital station, 2 battlestation, 3 star fortress. */
 	public static int outpostTier()           { return i("threatinc_outpostTier"); }
 	/** Credits the player pays for an outpost. */

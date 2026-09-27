@@ -752,14 +752,14 @@ with an **Outpost** button. A dead station is a lost outpost (fast poll). Until 
 outposts also sat in the fleets table with a Recall that scuttled them - see "Storage and
 orders" below for what replaced that.
 
-**Free on a ground victory - 2026-09-05, untested.** `ThreatGroundFronts.groundVictory`
+**Free on a ground victory - 2026-09-05, REMOVED 2026-09-27 (user's call: survivors come
+home; nothing is raised on the freed world, player or NPC).** `ThreatGroundFronts.groundVictory`
 now raises the outpost itself, for the winning faction (the player's own faction for a
 player front), at no cost - `ThreatOutposts.buildFree`, which skips the credit/reserve draw
 and the paying-base check entirely: the fleet that won the siege is already in orbit, so
 holding what it took costs nothing more. It runs AFTER `eradicate` (the world has to be
 market-less before `eligible` passes) and is skipped when an outpost already stands there.
-Knob `threatinc_outpostOnVictory` (default true); `outpostsEnabled` still gates it. `build`
-was split so the station-raising half (`raise`) is shared with `buildFree`.
+`buildFree` and the knob `threatinc_outpostOnVictory` are gone.
 
 **Stockpile - 2026-09-05, untested.** An outpost is a BASE. Its stock is an ordinary
 `ThreatReserves` entry keyed by the station ENTITY id instead of a market id, so every
@@ -772,7 +772,8 @@ zero for an outpost), `draw` and `deposit`. The stock dies with the station
 (`ThreatOutposts.remove` clears it) and comes ashore on `carryOver` - it is moved into the
 new colony's reserve before the outpost record goes.
 
-**Survivors garrison it.** `groundVictory` passes the outpost to `evacuate`: with an
+**Survivors garrison it** (only an outpost already standing there, since 2026-09-27).
+`groundVictory` passes the outpost to `evacuate`: with an
 outpost over the dead world, BOTH player and NPC survivors (marines and armaments) are
 deposited into its stockpile instead of being lifted off - one message for the player's own
 front. With no outpost the old behaviour stands (player fleet cargo / nearest base reserve),
