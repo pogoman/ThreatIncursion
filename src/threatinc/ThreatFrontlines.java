@@ -39,6 +39,7 @@ import com.fs.starfarer.api.impl.campaign.ids.Submarkets;
 import com.fs.starfarer.api.impl.campaign.ids.Tags;
 import com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker;
 import com.fs.starfarer.api.impl.campaign.intel.group.FleetGroupIntel;
+import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
 import com.fs.starfarer.api.impl.campaign.population.CoreImmigrationPluginImpl;
 import com.fs.starfarer.api.util.Misc;
 
@@ -572,7 +573,8 @@ public class ThreatFrontlines {
 	/**
 	 * The links a faction holds at the front: for every found hive world that
 	 * stages strikes, the faction's market nearest it, when that is a link and
-	 * the hive's fuel reaches it, and every link in a system with a hive world.
+	 * the hive's fuel reaches it, and every link in a system with a hive world
+	 * or Threat fleets.
 	 * Those keep a standing garrison. The rest are
 	 * the rear: guarded only while a seen strike is bound for them
 	 * (onCallNeed). {@code extra} is a site about to be raised, reported as
@@ -581,6 +583,18 @@ public class ThreatFrontlines {
 	protected static Set<String> frontOf(String factionId, SectorEntityToken extra) {
 		Set<String> front = new HashSet<String>();
 		List<MarketAPI> mine = ThreatReserves.marketsOf(factionId);
+		// Threat fleets in the system - a dead hive's Defense Swarms stay on:
+		// run 15's Vlaan-Tone victory base was raised as rear under 732 FP of
+		// them, and died two days later with the front's survivors in it
+		FactionAPI threat = Global.getSector().getFaction(Factions.THREAT);
+		for (MarketAPI m : mine) {
+			if (!isOutpost(m) || m.getStarSystem() == null) continue;
+			if (WarSimScript.getFactionStrength(threat, m.getStarSystem()) > 0f) front.add(m.getId());
+		}
+		if (extra != null && extra.getContainingLocation() instanceof StarSystemAPI
+				&& WarSimScript.getFactionStrength(threat, (StarSystemAPI) extra.getContainingLocation()) > 0f) {
+			front.add("extra");
+		}
 		for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) {
 			StarSystemAPI sys = hive.getStarSystem();
 			if (sys == null) continue;
@@ -629,13 +643,16 @@ public class ThreatFrontlines {
 		return front.contains(link.getId());
 	}
 
-	/** The seen strikes bound for this market, still in flight. */
+	/** The seen strikes bound for this market that have not struck yet. */
 	protected static List<ThreatStrikeFGI> strikesOn(MarketAPI market) {
 		List<ThreatStrikeFGI> out = new ArrayList<ThreatStrikeFGI>();
 		for (Object curr : IncursionManager.getStrikeList()) {
 			if (!(curr instanceof ThreatStrikeFGI)) continue;
 			ThreatStrikeFGI strike = (ThreatStrikeFGI) curr;
 			if (strike.isEnded() || strike.isEnding() || strike.isAborted() || !strike.isDetected()) continue;
+			// struck and going home: run 15's called guards stayed a median 155
+			// days, the strike's whole return leg
+			if (strike.isSucceeded() || strike.isFailed() || strike.isCurrent(GenericRaidFGI.RETURN_ACTION)) continue;
 			if (strike.getParams() == null || strike.getParams().raidParams == null) continue;
 			if (strike.getParams().raidParams.allowedTargets.contains(market)) out.add(strike);
 		}
@@ -797,12 +814,17 @@ public class ThreatFrontlines {
 		return best;
 	}
 
-	/** The faction's base nearest the site, or null. */
+	/**
+	 * The faction's base nearest the site that is not a link, or null. A link
+	 * that became a base spawned its own called guard on the spot in run 15 (15
+	 * of 19): the guard is the navy's and sails from a colony.
+	 */
 	protected static MarketAPI nearestBase(FactionAPI faction, SectorEntityToken site) {
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
 		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
 			if (m.getStarSystem() == null || m.getPrimaryEntity() == null || !IncursionManager.isBase(m)) continue;
+			if (isOutpost(m)) continue;
 			float d = Misc.getDistanceLY(m.getLocationInHyperspace(), site.getLocationInHyperspace());
 			if (d >= bestDist) continue;
 			bestDist = d;
@@ -824,7 +846,8 @@ public class ThreatFrontlines {
 		float strength = 0f;
 		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
 			StarSystemAPI sys = m.getStarSystem();
-			if (sys == null || !IncursionManager.isBase(m) || !seen.add(sys)) continue;
+			// not the links' systems: what stands there is mostly the garrisons already counted out
+			if (sys == null || !IncursionManager.isBase(m) || isOutpost(m) || !seen.add(sys)) continue;
 			strength += WarSimScript.getFactionStrength(faction, sys);
 		}
 		float committed = 0f;
@@ -999,18 +1022,21 @@ public class ThreatFrontlines {
 			o.guardBaseId = null;
 			o.guardFP = 0f;
 		}
+		// a seen strike on it calls a guard, front or rear - also after a front
+		// garrison went home unpaid (run 15: Eps Golgotha I's seen strike landed
+		// 17 days after its recall, with no guard called)
+		float called = onCallNeed(market) - neighbourGuards(o, market);
+		if (called >= 30f * STRENGTH_PER_FP
+				&& Global.getSector().getClock().getElapsedDaysSince(o.guardCalled) >= 7f) {
+			o.guardCalled = now;
+			MarketAPI base = garrisonBase(market.getFaction(), market.getPrimaryEntity(), called / STRENGTH_PER_FP, null);
+			if (base != null && sendGarrison(o, market, base, called)) return true;
+			ThreatIncConfig.logQuiet("fl_nocall_" + market.getId(), "Frontline: " + market.getFactionId()
+					+ " cannot guard " + market.getName() + " against the strike on it - "
+					+ (base == null ? noGarrisonWhy : "no fleet came out of " + base.getName()));
+		}
 		if (!front) {
 			o.unguardedDays = 0f; // the rear stands unguarded until a strike is seen coming
-			float need = onCallNeed(market) - neighbourGuards(o, market);
-			if (need < 30f * STRENGTH_PER_FP) return true;
-			if (Global.getSector().getClock().getElapsedDaysSince(o.guardCalled) < 7f) return true;
-			o.guardCalled = now;
-			MarketAPI base = garrisonBase(market.getFaction(), market.getPrimaryEntity(), need / STRENGTH_PER_FP, null);
-			if (base == null || !sendGarrison(o, market, base, need)) {
-				ThreatIncConfig.logQuiet("fl_nocall_" + market.getId(), "Frontline: " + market.getFactionId()
-						+ " cannot guard " + market.getName() + " against the strike on it - "
-						+ (base == null ? noGarrisonWhy : "no fleet came out of " + base.getName()));
-			}
 			return true;
 		}
 		o.unguardedDays += days;

@@ -185,8 +185,9 @@ Strikes in flight in an older save have no hidden flag and stay visible.
 **Front and rear (2026-09-27, the user's call).** Only the front stands guard.
 For every found hive world that stages strikes, the faction's market nearest it is
 its front toward that hive (within 0.5 LY, so a whole system counts), if the hive's
-fuel reaches it. A link in a system with any hive world is at the front too (run
-10's unguarded ground-victory bases died to theirs). A link at the front keeps a
+fuel reaches it. A link in a system with any hive world or any Threat fleet is at
+the front too (run 10's unguarded ground-victory bases died to theirs; run 15's
+Vlaan-Tone base died under a dead hive's 732 FP of leftover Defense Swarms). A link at the front keeps a
 standing garrison, as below. Every other link is the rear: it has no standing garrison and is never given up for
 lacking one. Run 14 had every faction's upkeep budget full of garrisons over rear
 links, so no ground victory could raise a forward base and the swarm re-seeded
@@ -198,8 +199,13 @@ bound for it × `frontlineGarrisonMargin`, less its station (at the front, at le
 its standing need). The faction's nearest base sends the difference if the navy
 can spare all of it and the faction can pay the voyage; the upkeep budget does not
 hold it back. Otherwise the link fights with what it has: no piecemeal feeding.
-While the strike comes, the daily step retries weekly. Once no seen strike is bound
-for a rear link, its guard goes home. A link that falls behind the front (a new link
+While the strike comes, the daily step retries weekly, at the front too (run 15:
+a front garrison recalled unpaid left its link open to a strike it had already
+seen). A strike stops counting as bound for the link once it has struck: run 15's
+called guards stayed a median 155 days, the strike's whole return leg. Once no
+seen strike is bound for a rear link, its guard goes home. Guards sail from a
+colony, never from a link: in run 15, 15 of 19 called guards spawned at their own
+link, which had become a base. A link that falls behind the front (a new link
 founded beyond it) sends its standing garrison home the same way after 30 days
 behind it, since a hive's fuel range drifts. A strike contests the whole system and
 vanilla's autoresolve weighs every fleet in it, so the guards of the faction's other
