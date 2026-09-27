@@ -718,6 +718,7 @@ public class ThreatIncConfig {
 	public static float frontlineGrowDays()          { return f("threatinc_frontlineGrowDays"); }
 	public static float frontlineStarveDays()        { return f("threatinc_frontlineStarveDays"); }
 	public static float frontlineAbandonDays()       { return f("threatinc_frontlineAbandonDays"); }
+	public static float frontlineRearGraceDays()     { return f("threatinc_frontlineRearGraceDays"); }
 	public static float frontlineRelayAccess()       { return f("threatinc_frontlineRelayAccess"); }
 	public static float frontlineStrikeWeight()      { return f("threatinc_frontlineStrikeWeight"); }
 	public static boolean frontlineReliefEnabled()   { return b("threatinc_frontlineReliefEnabled", true); }

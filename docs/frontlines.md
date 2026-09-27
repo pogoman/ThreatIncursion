@@ -204,18 +204,26 @@ its standing need). The faction's nearest base sends the difference if the navy
 can spare all of it and the faction can pay the voyage; the upkeep budget does not
 hold it back. Otherwise the link fights with what it has: no piecemeal feeding.
 The guard sails only once the first strike is due within its voyage (1.5 days
-per LY from the nearest colony base) plus 20 days, by vanilla's ETA: run 16's
-strikes took 159-203 days from launch to target, and guards called at detection
-sat on station for months. Until then the daily step asks again; a refusal waits
-a week. It calls at the front too, on top of a standing garrison the strikes
+per LY from the nearest colony base) plus 20 days: run 16's strikes took 159-203
+days from launch to target, and guards called at detection sat on station for
+months. A strike far from the player flies as a route, and vanilla autoresolves
+it when its payload stage ends, `siegeOrbitDays` (120) after it arrives, so it is
+due then (`strikeEta`); run 17 timed guards on the arrival and called them ~160
+days early. Spawned fleets fight on arrival. Until then the daily step asks
+again; a refusal waits a week. A guard on station is reinforced only once it
+falls under 80% of what it must weigh (run 17: Akron took 9 top-ups of 37-524 FP
+in 80 days). It calls at the front too, on top of a standing garrison the strikes
 outweigh (run 16: two strikes, 2,700, met Yami's 1,496 FP garrison with nothing
 called) and after an unpaid recall (run 15, Eps Golgotha I). A strike stops counting as bound for the link once it has struck: run 15's
 called guards stayed a median 155 days, the strike's whole return leg. Once no
 seen strike is bound for a rear link, its guard goes home. Guards sail from a
 colony, never from a link: in run 15, 15 of 19 called guards spawned at their own
 link, which had become a base. A link that falls behind the front (a new link
-founded beyond it) sends its standing garrison home the same way after 30 days
-behind it, since a hive's fuel range drifts. A strike contests the whole system and
+founded beyond it) sends its standing garrison home the same way after
+`frontlineRearGraceDays` (60) behind it, since a hive's fuel range drifts. Run 17
+used 30 days, and 4 of 7 guards went home with a strike launched at them but
+not yet seen (strikes are seen a median 16 days after launch, up to 59). A strike
+seen while that guard still sails home turns it back to the link at once. A strike contests the whole system and
 vanilla's autoresolve weighs every fleet in it, so the guards of the faction's other
 links in the system count toward a call. A front link that falls sends the link
 behind it a garrison at once; the new front's founding does not count the guards
@@ -336,6 +344,7 @@ All are in `settings.json` and LunaLib, under Frontline Outposts:
 - `frontlineGarrisonFP` (200, the minimum garrison)
 - `frontlineGarrisonMargin` (1.25)
 - `frontlineUpkeepShare` (0.5)
+- `frontlineRearGraceDays` (60)
 - `strikeDetection`
 - `strikeDetectLY` (4)
 
