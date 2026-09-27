@@ -787,16 +787,22 @@ public class ThreatFrontlines {
 	 * frontlineUpkeepShare, plus its stock above the floors spread over
 	 * frontlineUpkeepStockMonths. Run 18's Hegemony was refused a garrison at
 	 * 4,439 a month on a 3,375 budget while it held 37,000 supplies; a stock
-	 * drawn down shrinks the budget back to the banking.
+	 * drawn down shrinks the budget back to the banking. The sieges come first:
+	 * only the stock beyond what the staging bases are banking for their
+	 * sieges (ThreatConvoys.stagingTargets) counts - run 19 counted all of it,
+	 * and its sieges' fuel-and-supply postponements went from 36 to 141.
 	 */
 	protected static float upkeepBudget(String factionId) {
-		float income = 0f, stock = 0f;
+		float income = 0f, stock = 0f, sieges = 0f;
+		int supplies = java.util.Arrays.asList(ThreatReserves.COMMODITIES).indexOf(Commodities.SUPPLIES);
 		for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
 			income += ThreatReserves.accrualPer30(m, Commodities.SUPPLIES);
 			stock += ThreatReserves.available(m, Commodities.SUPPLIES);
+			if (supplies >= 0 && !m.isPlayerOwned()) sieges += ThreatConvoys.stagingTargets(m)[supplies];
 		}
 		float months = ThreatIncConfig.frontlineUpkeepStockMonths();
-		return income * ThreatIncConfig.frontlineUpkeepShare() + (months > 0f ? stock / months : 0f);
+		float spare = Math.max(0f, stock - sieges);
+		return income * ThreatIncConfig.frontlineUpkeepShare() + (months > 0f ? spare / months : 0f);
 	}
 
 	/** Why the last garrisonBase found none, for the planner's log. */

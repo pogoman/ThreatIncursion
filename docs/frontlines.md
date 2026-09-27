@@ -287,7 +287,10 @@ a single strike the month their garrison went home. So now:
   the floors spread over `frontlineUpkeepStockMonths` (12; 0 = banking only), leaving the
   rest for sieges. Run 18's Hegemony was refused at 4,439 a month on a 3,375 budget while
   it held 37,000 supplies, and six links were lost that way. A stock drawn down shrinks
-  the budget back to the banking.
+  the budget back to the banking. Sieges come first: only the stock beyond what the
+  faction's staging bases are banking for their sieges (`ThreatConvoys.stagingTargets`)
+  counts. Run 19 counted all of it, and its sieges' fuel-and-supply postponements rose
+  from 36 to 141.
   The garrisons a new front link puts behind the front are not counted, since
   they go home. A guard called by a strike is never refused for the budget, but
   its upkeep counts in it (2026-09-27, user's call): while it is out the faction

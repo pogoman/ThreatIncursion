@@ -237,7 +237,9 @@ taken. Callers:
   worlds it can, easiest first (`easiestFirst`: the landing each world needs alone, then
   its Defense Swarms); short of even one, the easiest alone, so its convoys stage toward
   the nearest win. Worlds on their siege cooldown are left out, and a faction runs one
-  siege of a system at a time. The siege pass walks the hives easiest first, so easy
+  siege of a system at a time. So are worlds another faction's live siege is taking
+  (`besiegedByOthers`): run 19 sent 14 of 37 sieges at Epsilon Qades, and 7 stood down
+  when another faction's landing took the world first. The siege pass walks the hives easiest first, so easy
   sieges claim the marines and the concurrency slots before hard ones. The launch, the
   hunting gate and the convoy planner all read `siegeTargets`, and size with
   `siegeSizesFor`. The notice says "Against 2 of the 3 Threat colonies there". Run 18:
