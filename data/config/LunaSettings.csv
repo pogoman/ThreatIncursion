@@ -172,7 +172,6 @@ threatinc_convoyExtraLoadFactor,Convoy Med-Tier Load,Double,2,"The board's ""Med
 threatinc_convoyEscortFP,Convoy Escort Base (FP),Double,30,"Combat fleet points every convoy sails with, before the cargo-value escort below.",0,300
 threatinc_convoyEscortPerThousand,Convoy Escort per Cargo Value,Double,20,"Extra escort fleet points per 1,000 of cargo value (marines count 1 each, armaments 0.5, fuel and supplies 0.1). A rich convoy is a real fleet.",0,200
 threatinc_convoyMinLoadFraction,Convoy Minimum Load,Double,0.5,"A base's shortfall, as a fraction of one convoy load, below which no convoy sails.",0,1
-threatinc_convoyMaxPerTick,Convoys per Tick,Int,2,"Convoys one faction dispatches per 30-day tick at most, its neediest bases first. Fewer, larger convoys are safer than many small ones.",1,10
 threatinc_frontRunsEnabled,Front Supply Runs Enabled,Boolean,true,"Mobilised factions run supply convoys to their ground fronts (marines and heavy armaments from the nearest base's reserve) and withdrawal convoys for fronts that call for a pickup. Runs wait at the hive system's jump-point while Defense Swarms hold the orbit - a garrisoned hive strangles the front.",,
 threatinc_frontResupplyDays,Front Resupply (Days),Double,60,"Days of heavy-armaments upkeep a supply run tops a front up to.",10,240
 threatinc_frontReinforceFraction,Front Reinforce Fraction,Double,0.8,"A supply run reinforces a front back toward this fraction of its peak marine strength.",0,1.5
@@ -290,8 +289,7 @@ threatinc_frontlineStarveDays,Starvation (Days),Double,90,"Days of such shortage
 threatinc_frontlineAbandonDays,Abandon (Days),Double,60,"Days a link sits with no purpose before it is dismantled.",0,365
 threatinc_frontlineRelayAccess,Forward Relay Access,Double,0.2,"Accessibility a link connected to a colony through its chain gets.",0,1
 threatinc_frontlineStrikeWeight,Swarm Target Weight,Double,3,"How much the swarm wants a link: its size squared (at least 9) times this, times one plus the links its loss would cut.",0,20
-threatinc_frontlineReliefEnabled,Relief Forces,Boolean,true,"Whether a faction sends a relief force when a strike on one of its links is seen.",,
-threatinc_frontlineReliefMargin,Relief Margin,Double,1.0,"A relief force sails only if its base can field the strike's FP times this.",0,5
+threatinc_frontlineReliefEnabled,Called Guards,Boolean,true,"Whether a strike seen coming at a link calls a guard to it. Rear links have no standing garrison.",,
 threatinc_frontlineGarrisonEnabled,Garrison Links,Boolean,true,"A faction founds a link only if a base can spare it a garrison, which stays as long as the link stands. Off: links stand on their station alone.",,
 threatinc_frontlineGarrisonFP,Minimum Garrison (FP),Double,200,"Smallest garrison a link gets, whatever the strikes in reach.",0,2000
 threatinc_frontlineGarrisonMargin,Garrison Margin,Double,1.25,"Garrison plus station must outweigh the strongest Threat strike in reach by this.",0.5,3

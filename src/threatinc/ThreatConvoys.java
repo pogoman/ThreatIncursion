@@ -281,11 +281,11 @@ public class ThreatConvoys {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
 			if (faction == null) continue;
 			List<MarketAPI> markets = ThreatReserves.marketsOf(factionId);
-			// the bases short of the most (in convoy loads) sail first; at most
-			// convoyMaxPerTick sailings per faction per tick, so a mobilised
-			// navy does not flood hyperspace with a dozen convoys at once
-			// (seen in-game 2026-09-04: eight in one tick, two of them
-			// shipping the same goods past each other)
+			// the bases short of the most (in convoy loads) sail first, so the
+			// donors' stock goes to them first. No cap on sailings: each base
+			// takes one convoy at a time, and every one needs a donor with the
+			// stock to spare (the per-tick cap of 2 held Hegemony's fronts
+			// back, 2026-09-27)
 			List<Object[]> wants = new ArrayList<Object[]>();
 			for (MarketAPI base : markets) {
 				if (convoyBoundFor(base.getId())) continue;
@@ -319,17 +319,18 @@ public class ThreatConvoys {
 					return Float.compare((Float) b[3], (Float) a[3]);
 				}
 			});
-			int maxPerTick = Math.max(1, ThreatIncConfig.convoyMaxPerTick());
-			// fronts first: an army in the field outranks a depot (seen in-game
-			// 2026-09-04 - staging traffic took every slot and the front starved)
-			int sailed = planFrontRuns(faction, random, 0, maxPerTick);
+			// fronts first: an army in the field outranks a depot for the
+			// donors' stock (seen in-game 2026-09-04 - staging traffic drew the
+			// donors dry and the front starved)
+			planFrontRuns(faction, random);
 			// then an own world under Threat invasion, then outposts shipping a
 			// purged system's stock home - all before any depot
-			sailed = planRelief(faction, random, sailed, maxPerTick);
-			sailed = planOutpostReturns(faction, random, sailed, maxPerTick);
+			planRelief(faction, random);
+			planOutpostReturns(faction, random);
 			for (Object[] w : wants) {
-				if (sailed >= maxPerTick) break;
 				MarketAPI base = (MarketAPI) w[0];
+				// a relief or outpost-return convoy planned above may already be bound for it
+				if (convoyBoundFor(base.getId())) continue;
 				float[] targets = (float[]) w[1];
 				@SuppressWarnings("unchecked")
 				List<Integer> order = (List<Integer>) w[2];
@@ -346,7 +347,7 @@ public class ThreatConvoys {
 					if (shortBy <= 0f) continue;
 					load[i] = Math.min(shortBy, sendable(donor, base, c));
 				}
-				if (dispatch(donor, base, faction, load, random) != null) sailed++;
+				dispatch(donor, base, faction, load, random);
 			}
 		}
 	}
@@ -358,11 +359,10 @@ public class ThreatConvoys {
 	 * defence: one convoy of marines from the colony in convoy range that can
 	 * spare the most, one at a time per invaded world.
 	 */
-	protected static int planRelief(FactionAPI faction, Random random, int sailed, int maxPerTick) {
+	protected static void planRelief(FactionAPI faction, Random random) {
 		List<MarketAPI> markets = ThreatReserves.marketsOf(faction.getId());
 		float range = faction.isPlayerFaction() ? Float.MAX_VALUE : ThreatIncConfig.convoyRangeLY();
 		for (MarketAPI besieged : markets) {
-			if (sailed >= maxPerTick) break;
 			if (besieged.getStarSystem() == null || besieged.getPrimaryEntity() == null) continue;
 			if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(besieged.getId()))) {
 				continue;
@@ -385,7 +385,6 @@ public class ThreatConvoys {
 			load[0] = Math.min(best, capacityFor(Commodities.MARINES));
 			Convoy c = dispatch(donor, besieged, faction, load, random);
 			if (c == null) continue;
-			sailed++;
 			ThreatNotice n = ThreatNotice.titled("Relief Convoy Sails").icon(faction);
 			if (faction.isPlayerFaction()) {
 				n.line("Your convoy carries %s marines from %s", Misc.getWithDGS((int) c.marines),
@@ -396,7 +395,6 @@ public class ThreatConvoys {
 			}
 			n.line("To the defence of %s", ThreatNotice.market(besieged)).send();
 		}
-		return sailed;
 	}
 
 	/**
@@ -404,13 +402,10 @@ public class ThreatConvoys {
 	 * system; once that system holds no hive there is nothing left to run to,
 	 * so the stock ships home to the faction's nearest base - the outflow that
 	 * keeps a ground victory's survivors in the war instead of in a station
-	 * nothing can draw from. One convoy per outpost at a time, against the
-	 * per-tick cap.
+	 * nothing can draw from. One convoy per outpost at a time.
 	 */
-	protected static int planOutpostReturns(FactionAPI faction, Random random, int sailed,
-			int maxPerTick) {
+	protected static void planOutpostReturns(FactionAPI faction, Random random) {
 		for (ThreatOutposts.Outpost o : ThreatOutposts.outpostsOf(faction.getId())) {
-			if (sailed >= maxPerTick) break;
 			if (!o.alive() || o.entity == null || !ThreatOutposts.hasStock(o)) continue;
 			if (!ThreatIncData.getLiveColonyMarkets(o.systemId).isEmpty()) continue; // still a forward base
 			ThreatBases.Base from = ThreatBases.of(o);
@@ -424,11 +419,9 @@ public class ThreatConvoys {
 			}
 			Convoy c = dispatch(from, home, faction, load, random, null, false);
 			if (c == null) continue;
-			sailed++;
 			ThreatIncConfig.log("Outpost stock shipping home: " + from.name() + " -> "
 					+ home.getName());
 		}
-		return sailed;
 	}
 
 	/** Where an outpost's stock ships home once its system holds no hive: the nearest base, else the nearest colony. */
@@ -544,17 +537,12 @@ public class ThreatConvoys {
 	 * Every friendly front of a mobilised faction with no run already bound
 	 * for it: a withdrawal call gets a pickup, a hungry front gets a supply
 	 * run from the faction's forward outpost or nearest base in reach, out of
-	 * that base's stock (above a colony's floor). Counts against the per-tick cap.
+	 * that base's stock (above a colony's floor).
 	 */
-	protected static int planFrontRuns(FactionAPI faction, Random random, int sailed, int maxPerTick) {
-		if (!ThreatIncConfig.frontRunsEnabled()) return sailed;
+	protected static void planFrontRuns(FactionAPI faction, Random random) {
+		if (!ThreatIncConfig.frontRunsEnabled()) return;
 		for (ThreatGroundFronts.GroundFront front
 				: new ArrayList<ThreatGroundFronts.GroundFront>(ThreatGroundFronts.fronts().values())) {
-			if (sailed >= maxPerTick) {
-				ThreatIncConfig.logQuiet("fr_cap_" + faction.getId(), "Front runs: " + faction.getId()
-						+ " reached its " + maxPerTick + " sailings this tick with fronts still waiting");
-				return sailed;
-			}
 			String owner = front.factionId != null ? front.factionId
 					: com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER;
 			if (!faction.getId().equals(owner)) continue;
@@ -566,14 +554,13 @@ public class ThreatConvoys {
 			if (canRunTo(faction, hive) != null) {
 				ThreatIncConfig.logQuiet("fr_door_" + front.marketId, "Front run for " + hive.getName()
 						+ " held back: orbit contested and no cover");
-				if (supportFor(faction, hive)) sailed++;
+				supportFor(faction, hive);
 				continue;
 			}
 			if (front.withdrawRequested) {
 				ThreatBases.Base to = pickFrontBase(faction, hive, true, new float[] {0f, 0f});
 				if (to == null) continue;
-				if (dispatchFrontRun(to, hive, front, faction, new float[] {0f, 0f}, true, random)
-						!= null) sailed++;
+				dispatchFrontRun(to, hive, front, faction, new float[] {0f, 0f}, true, random);
 				continue;
 			}
 			float[] wants = frontWants(front, hive);
@@ -598,9 +585,8 @@ public class ThreatConvoys {
 						+ base.name() + ") has " + (int) load[0] + " and " + (int) load[1]);
 				continue;
 			}
-			if (dispatchFrontRun(base, hive, front, faction, load, false, random) != null) sailed++;
+			dispatchFrontRun(base, hive, front, faction, load, false, random);
 		}
-		return sailed;
 	}
 
 	/**
@@ -655,8 +641,7 @@ public class ThreatConvoys {
 
 	/**
 	 * The board's Supply order: a run to this front now, from the faction's
-	 * outpost in the hive's system or the nearest base, ignoring the per-tick
-	 * cap, carrying what the load tier asks for. Null if the orbit is
+	 * outpost in the hive's system or the nearest base, carrying what the load tier asks for. Null if the orbit is
 	 * contested with nothing friendly holding it, no base is in reach, or it
 	 * has nothing above its floor to send.
 	 */

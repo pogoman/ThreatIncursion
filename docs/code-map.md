@@ -54,7 +54,7 @@ to reconcile it.
 - `ThreatBases.java` — one handle over the two kinds of base a fleet ships from or home to: a colony (reserve with a floor) or an outpost (stockpile without one).
 - `WarFootingDemand.java` — hidden industry declaring a mobilised colony's extra vanilla demand for war materiel.
 - `WarFootingCondition.java` — colony-screen tooltip explaining the War Footing reserve and demand to the player.
-- `ThreatFrontlines.java` — frontline outposts: mobilised NPC factions found chains of small real markets toward hives none of their bases reach, grow and build them within vanilla import limits, garrison each until its station is a star fortress (no garrison, no link), keep the chain's relay flags, dismantle purposeless links; also strike detection (`detectedBy`) and relief forces for threatened links (docs/frontlines.md).
+- `ThreatFrontlines.java` — frontline outposts: mobilised NPC factions found chains of small real markets toward hives none of their bases reach, grow and build them within vanilla import limits, keep standing garrisons at the front and call guards to rear links a seen strike is bound for, keep the chain's relay flags, dismantle purposeless links; also strike detection (`detectedBy`) (docs/frontlines.md).
 - `FrontlineCondition.java` — the Frontline Outpost market condition: Forward Relay accessibility while the link is chain-connected to a colony.
 - `ThreatConvoys.java` — physical logistics fleets shipping war materiel between a faction's colonies and its staging bases; also front runs, relief marines to an own world under Threat invasion, and outposts shipping a purged system's stock home.
 - `ThreatReturns.java` — settles fleets sent home from any strategy-layer sortie, refunding cargo and drawn provisions.
