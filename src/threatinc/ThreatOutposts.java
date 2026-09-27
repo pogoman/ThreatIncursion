@@ -430,11 +430,16 @@ public class ThreatOutposts {
 				if (amount > 0f) stock.put(c, amount);
 			}
 		}
-		remove(o, "replaced by a forward base");
+		remove(o, "converting to a forward base");
 		MarketAPI market = raiseForwardBase(faction, planet, "converted outpost");
-		// the old station is gone either way; with no base raised (another
-		// faction's link holds the system) its stock goes to the nearest base
-		if (market == null) market = ThreatFrontlines.nearestBase(faction, planet);
+		// the old station is gone either way; with no base raised (a link
+		// already holds the system) its stock goes to the nearest base
+		if (market == null) {
+			StarSystemAPI sys = planet.getStarSystem();
+			ThreatIncConfig.log("Outpost: no forward base raised at " + o.planetName()
+					+ (sys != null && ThreatFrontlines.linkTaken(sys) ? " - " + sys.getName() + " already holds a link" : ""));
+			market = ThreatFrontlines.nearestBase(faction, planet);
+		}
 		if (market == null) {
 			java.util.List<MarketAPI> own = ThreatReserves.marketsOf(faction.getId());
 			if (!own.isEmpty()) market = own.get(0);

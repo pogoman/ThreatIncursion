@@ -113,10 +113,12 @@ public class ThreatFrontlines {
 		public long guardPaid;
 		/** Days the link has stood without the garrison it needs. */
 		public float unguardedDays;
-		/** Days the link has stood behind the front; its standing guard goes home after REAR_GRACE_DAYS. */
+		/** Days the link has stood behind the front; its standing guard goes home after frontlineRearGraceDays. */
 		public float rearDays;
 		/** When a seen strike last called a guard here (the front's monthly retry keeps guardSent). */
 		public long guardCalled;
+		/** The standing guard sent home from behind the front, turned back if a strike calls one while it sails. */
+		public List<CampaignFleetAPI> homebound;
 	}
 
 	/** Market memory: the station was destroyed in battle; the next daily update ends the base. */
@@ -563,9 +565,6 @@ public class ThreatFrontlines {
 
 	/** Links nearer a hive than this beyond the faction's nearest market still stand at its front (the same system). */
 	protected static final float FRONT_TOLERANCE_LY = 0.5f;
-	/** Days a link stands behind the front before its standing guard goes home: a hive's fuel range drifts. */
-	protected static final float REAR_GRACE_DAYS = 30f;
-
 	protected static Object frontSector;
 	protected static long frontDay = -1;
 	protected static Map<String, Set<String>> frontCache = new HashMap<String, Set<String>>();
@@ -669,14 +668,20 @@ public class ThreatFrontlines {
 		return sum;
 	}
 
+	/** What the seen strikes bound for the market weigh together (strikeStrength). */
+	protected static float strikesWeight(MarketAPI market) {
+		float str = 0f;
+		for (ThreatStrikeFGI strike : strikesOn(market)) str += strikeStrength(strike);
+		return str;
+	}
+
 	/**
 	 * The raid strength a rear link must be guarded by now: the seen strikes
 	 * bound for it x frontlineGarrisonMargin, less its station - 0 with none
 	 * coming.
 	 */
 	protected static float onCallNeed(MarketAPI link) {
-		float str = 0f;
-		for (ThreatStrikeFGI strike : strikesOn(link)) str += strikeStrength(strike);
+		float str = strikesWeight(link);
 		if (str <= 0f) return 0f;
 		float need = str * ThreatIncConfig.frontlineGarrisonMargin();
 		if (link.getStarSystem() != null && link.getPrimaryEntity() != null) {
@@ -990,14 +995,22 @@ public class ThreatFrontlines {
 		}
 		boolean front = isFront(market);
 		o.rearDays = front ? 0f : o.rearDays + days;
+		if (o.homebound != null) {
+			boolean sailing = false;
+			for (CampaignFleetAPI f : o.homebound) sailing |= f != null && f.isAlive() && !f.isDespawning();
+			if (!sailing) o.homebound = null; // home: the save keeps no dead fleets
+		}
 		List<CampaignFleetAPI> live = liveGuards(o);
 		long now = Global.getSector().getClock().getTimestamp();
 		if (!live.isEmpty()) {
 			o.guards = live; // the dead and despawned are not kept in the save
 			o.unguardedDays = 0f;
-			// behind the front for a while (a hive's fuel range drifts) and nothing coming
-			if (o.rearDays >= REAR_GRACE_DAYS && strikesOn(market).isEmpty()) {
+			// behind the front for a while (a hive's fuel range drifts) and nothing
+			// seen coming - run 17: 4 of 7 went home with a strike launched but not
+			// yet seen (seen a median 16 days after launch, up to 59)
+			if (o.rearDays >= ThreatIncConfig.frontlineRearGraceDays() && strikesOn(market).isEmpty()) {
 				recallGarrison(o, "behind the front, no strike on it");
+				o.homebound = live;
 				o.guardSent = 0L; // if it comes to the front again, guard it at once
 				return true;
 			}
@@ -1782,40 +1795,104 @@ public class ThreatFrontlines {
 	/** Days early a called guard sails beyond its voyage: muster, and the strike's ETA is vanilla's estimate. */
 	protected static final float GUARD_LEAD_DAYS = 20f;
 
-	/** Days until the first seen strike bound for the market strikes (0 if striking now), or -1 with none. */
+	/**
+	 * Days until the first seen strike bound for the market strikes (0 if
+	 * striking now), or -1 with none. Far from the player a strike flies as a
+	 * route, and vanilla autoresolves it when its payload stage ends
+	 * (FGRaidAction.notifySegmentFinished) - siegeOrbitDays after it arrives.
+	 * Run 17 timed guards on the arrival, and called them ~160 days early.
+	 * Spawned fleets fight on arrival.
+	 */
 	protected static float strikeEta(MarketAPI market) {
 		float best = -1f;
 		for (ThreatStrikeFGI strike : strikesOn(market)) {
-			float eta = strike.isCurrent(GenericRaidFGI.PAYLOAD_ACTION) ? 0f
-					: Math.max(0f, strike.getETAUntil(GenericRaidFGI.PAYLOAD_ACTION));
+			float eta;
+			if (strike.isSpawnedFleets()) {
+				eta = strike.isCurrent(GenericRaidFGI.PAYLOAD_ACTION) ? 0f
+						: strike.getETAUntil(GenericRaidFGI.PAYLOAD_ACTION);
+			} else {
+				eta = strike.getETAUntil(GenericRaidFGI.PAYLOAD_ACTION, true);
+			}
+			eta = Math.max(0f, eta);
 			if (best < 0f || eta < best) best = eta;
 		}
 		return best;
 	}
 
 	/**
+	 * Turns the guard sent home from behind the front back to the link, while
+	 * it still sails: its fleets are the navy's already, and a strike seen
+	 * after it left is what they were there for. The strength turned back.
+	 */
+	protected static float turnBack(Outpost o, MarketAPI market) {
+		if (o.homebound == null) return 0f;
+		List<CampaignFleetAPI> back = new ArrayList<CampaignFleetAPI>();
+		for (CampaignFleetAPI f : o.homebound) {
+			if (f != null && f.isAlive() && !f.isDespawning()) back.add(f);
+		}
+		o.homebound = null;
+		if (back.isEmpty() || market.getPrimaryEntity() == null) return 0f;
+		MarketAPI home = nearestBase(market.getFaction(), market.getPrimaryEntity());
+		if (home == null || home.getPrimaryEntity() == null) return 0f;
+		for (CampaignFleetAPI f : back) {
+			f.clearAssignments();
+			f.addAssignment(FleetAssignment.DEFEND_LOCATION, market.getPrimaryEntity(), 100000f,
+					"garrisoning " + market.getName());
+			f.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home.getPrimaryEntity(), 1000f,
+					"returning to " + home.getName());
+		}
+		boolean topUp = !liveGuards(o).isEmpty();
+		if (!topUp) {
+			o.guards = new ArrayList<CampaignFleetAPI>();
+			o.guardFP = 0f;
+			o.guardPaid = Global.getSector().getClock().getTimestamp();
+			o.guardBaseId = home.getId();
+		}
+		o.guards.addAll(back);
+		o.guardFP += fpOf(back);
+		o.unguardedDays = 0f;
+		float str = strengthOf(back);
+		ThreatIncConfig.log("Frontline: the guard sailing home from " + market.getName() + " turned back, "
+				+ back.size() + " fleet(s), " + (int) fpOf(back) + " FP, strength " + (int) str
+				+ " (rear; strike on its way " + (int) strikesWeight(market) + ")");
+		return str;
+	}
+
+	/**
 	 * Calls a guard against the seen strikes bound for the link, outside the
 	 * upkeep budget: what they weigh x frontlineGarrisonMargin, less the
 	 * link's station, the guards already there ({@code have}) and those of the
-	 * faction's other links in the system. It sails only once the first
-	 * strike is due within the voyage from the nearest colony base plus
-	 * GUARD_LEAD_DAYS - run 16's strikes took 159-203 days from launch to
-	 * target, and guards called at detection sat on station for months. The
-	 * daily step asks again until then; a refusal waits a week. True if a
-	 * guard sailed.
+	 * faction's other links in the system. A guard sent home from behind the
+	 * front and still sailing turns back at once (turnBack). A new one sails
+	 * only once the first strike is due (strikeEta) within the voyage from the
+	 * nearest colony base plus GUARD_LEAD_DAYS - run 16's strikes took 159-203
+	 * days from launch to target, and guards called at detection sat on
+	 * station for months. The daily step asks again until then; a refusal
+	 * waits a week. A guard on station is reinforced only under 80% of what it
+	 * must weigh. True if a guard sailed or turned back.
 	 */
 	protected static boolean callGuard(Outpost o, MarketAPI market, float have, boolean atDetection) {
-		float need = onCallNeed(market) - neighbourGuards(o, market) - have;
+		float want = onCallNeed(market) - neighbourGuards(o, market);
+		float need = want - have;
 		if (need < 30f * STRENGTH_PER_FP) return false;
+		// a guard on station is reinforced only once it falls under 80% of what
+		// it must weigh, as topUp does - run 17's Akron took 9 top-ups of 37-524
+		// FP in 80 days
+		if (have > 0f && have >= want * 0.8f) return false;
+		// a guard still sailing home turns back at once, whenever the strike is due
+		need -= turnBack(o, market);
+		if (need < 30f * STRENGTH_PER_FP) return true;
 		if (Global.getSector().getClock().getElapsedDaysSince(o.guardCalled) < 7f) return false;
 		FactionAPI faction = market.getFaction();
 		MarketAPI near = nearestBase(faction, market.getPrimaryEntity());
 		float eta = strikeEta(market);
-		if (near != null && eta > ly(near, market) * GUARD_DAYS_PER_LY + GUARD_LEAD_DAYS) return false; // not yet
+		float voyage = near != null ? ly(near, market) * GUARD_DAYS_PER_LY + GUARD_LEAD_DAYS : 0f;
+		if (near != null && eta > voyage) return false; // not yet
 		o.guardCalled = Global.getSector().getClock().getTimestamp();
 		MarketAPI base = garrisonBase(faction, market.getPrimaryEntity(), need / STRENGTH_PER_FP, null);
 		if (base != null && sendGarrison(o, market, base, need)) return true;
-		String why = base == null ? noGarrisonWhy : "no fleet came out of " + base.getName();
+		String why = (base == null ? noGarrisonWhy : "no fleet came out of " + base.getName())
+				+ " (strike in " + (int) eta + " d, voyage " + (int) voyage + " d)";
 		if (atDetection) {
 			ThreatIncConfig.log("Frontline: " + market.getName() + " faces the strike " + (int) need
 					+ " short (guards on station " + (int) have + ") - no guard called: " + why);
