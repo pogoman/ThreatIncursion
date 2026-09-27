@@ -738,14 +738,22 @@ public class ThreatFrontlines {
 	}
 
 	/**
-	 * Supplies a month the faction's standing garrisons cost - the front's,
-	 * {@code front} (frontOf). A rear link's guard answers one strike and goes
-	 * home, so it is not held against the budget.
+	 * Supplies a month the faction's garrisons cost: the front's standing ones,
+	 * {@code front} (frontOf), and the guards strikes called to the rear. A
+	 * called guard is never refused for the budget, but while it is out the
+	 * faction founds and stands fewer front garrisons (user's call 2026-09-27:
+	 * run 17's Hegemony paid ~5,065 a month on a 3,750 budget, and its sieges
+	 * starved). A rear guard with no strike on it is on its way home, and is
+	 * not counted.
 	 */
 	protected static float garrisonUpkeep(String factionId, Set<String> front) {
 		float sum = 0f;
 		for (Outpost o : all()) {
-			if (!factionId.equals(o.factionId) || !front.contains(o.marketId)) continue;
+			if (!factionId.equals(o.factionId)) continue;
+			if (!front.contains(o.marketId)) {
+				MarketAPI m = marketOf(o);
+				if (m == null || strikesOn(m).isEmpty()) continue;
+			}
 			for (CampaignFleetAPI f : liveGuards(o)) sum += maintenancePerMonth(f);
 		}
 		return sum;
@@ -1298,8 +1306,8 @@ public class ThreatFrontlines {
 	}
 
 	/**
-	 * One project at a time, in order: Patrol HQ and battlestation (3),
-	 * Military Base and star fortress (4) - each only if every commodity it
+	 * One project at a time, in order: Patrol HQ, battlestation and Heavy
+	 * Industry (3), Military Base and star fortress (4) - each only if every commodity it
 	 * demands can be had here
 	 * (canSupply). Demands are vanilla's (industries.csv / the industry
 	 * classes), s being the market size.
@@ -1331,6 +1339,18 @@ public class ThreatFrontlines {
 		if (s >= 3 && station != null && stationTier(station) == 1) {
 			if (canSupply(market, Commodities.CREW, 5) && canSupply(market, Commodities.SUPPLIES, 5)) {
 				upgrade(market, station);
+				return;
+			}
+		}
+		// a war industry in the free industry slot (user's call 2026-09-27): run
+		// 17's links took in 242k supplies and sent 8.5k back, and their upkeep
+		// stalled Hegemony's sieges for 16 months. Heavy Industry makes supplies,
+		// heavy armaments and ships - the last is the Military Base's too
+		if (s >= 3 && ThreatIncConfig.frontlineHeavyIndustry()
+				&& !market.hasIndustry(Industries.HEAVYINDUSTRY) && !market.hasIndustry(Industries.ORBITALWORKS)
+				&& Misc.getNumIndustries(market) < Misc.getMaxIndustries(market)) {
+			if (canSupply(market, Commodities.METALS, s) && canSupply(market, Commodities.RARE_METALS, s - 2)) {
+				startNew(market, Industries.HEAVYINDUSTRY);
 				return;
 			}
 		}
