@@ -236,7 +236,8 @@ founded beyond it) sends its standing garrison home the same way after
 `frontlineRearGraceDays` (60) behind it, since a hive's fuel range drifts. Run 17
 used 30 days, and 4 of 7 guards went home with a strike launched at them but
 not yet seen (strikes are seen a median 16 days after launch, up to 59). A strike
-seen while that guard still sails home turns it back to the link at once. A strike contests the whole system and
+due while that guard still sails home turns it back to the link rather than a new
+one sailing. A strike contests the whole system and
 vanilla's autoresolve weighs every fleet in it, so the guards of the faction's other
 links in the system count toward a call. A front link that falls sends the link
 behind it a garrison at once; the new front's founding does not count the guards

@@ -239,6 +239,7 @@ public class ThreatReserves {
 
 	/** Tithes per 30 days, [supplies, fuel, marines], for the day in titheDay; not saved. */
 	private static float[] tithe;
+	private static int titheDepots;
 	private static long titheDay = Long.MIN_VALUE;
 	private static Object titheSector;
 
@@ -259,12 +260,12 @@ public class ThreatReserves {
 			titheDay = day;
 			titheSector = Global.getSector();
 			tithe = pathTithes();
+			titheDepots = 0;
+			for (MarketAPI m : marketsOf(Factions.LUDDIC_PATH)) {
+				if (hasDepot(m)) titheDepots++;
+			}
 		}
-		int depots = 0;
-		for (MarketAPI m : marketsOf(Factions.LUDDIC_PATH)) {
-			if (hasDepot(m)) depots++;
-		}
-		return depots > 0 ? tithe[i] / depots : 0f;
+		return titheDepots > 0 ? tithe[i] / titheDepots : 0f;
 	}
 
 	/** The Path's whole tithe per 30 days, [supplies, fuel, marines], from the cells vanilla has placed. */
