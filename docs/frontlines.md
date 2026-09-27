@@ -203,9 +203,13 @@ bound for it × `frontlineGarrisonMargin`, less its station (at the front, at le
 its standing need). The faction's nearest base sends the difference if the navy
 can spare all of it and the faction can pay the voyage; the upkeep budget does not
 hold it back. Otherwise the link fights with what it has: no piecemeal feeding.
-While the strike comes, the daily step retries weekly, at the front too (run 15:
-a front garrison recalled unpaid left its link open to a strike it had already
-seen). A strike stops counting as bound for the link once it has struck: run 15's
+The guard sails only once the first strike is due within its voyage (1.5 days
+per LY from the nearest colony base) plus 20 days, by vanilla's ETA: run 16's
+strikes took 159-203 days from launch to target, and guards called at detection
+sat on station for months. Until then the daily step asks again; a refusal waits
+a week. It calls at the front too, on top of a standing garrison the strikes
+outweigh (run 16: two strikes, 2,700, met Yami's 1,496 FP garrison with nothing
+called) and after an unpaid recall (run 15, Eps Golgotha I). A strike stops counting as bound for the link once it has struck: run 15's
 called guards stayed a median 155 days, the strike's whole return leg. Once no
 seen strike is bound for a rear link, its guard goes home. Guards sail from a
 colony, never from a link: in run 15, 15 of 19 called guards spawned at their own
@@ -294,7 +298,9 @@ it founds a forward base instead (`ThreatOutposts.raiseForwardBase`):
   used to be raised free on the freed world. Runs 10-15's died within days to
   the system's other hive worlds or its leftover swarms (4 of 4 in run 10;
   Vlaan-Tone in run 15, 2 days, with 2,611 marines banked in it). The front's
-  survivors bank into the nearest base's reserve, veterancy kept.
+  survivors bank into the nearest colony base's reserve, veterancy kept - never
+  a link, which takes its stock with it when it falls (run 16 banked 3 of 4
+  victories' survivors into links).
 - **Purged worlds** (`planNPC`, `outpostChance` per slow tick): paid at the
   outpost cost from a base in reach, and only where a found live hive lies
   within `frontlineKeepLY`, or the base would stand idle and be abandoned.

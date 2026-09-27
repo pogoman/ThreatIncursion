@@ -3394,14 +3394,27 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			if (base == null && faction != null && hyperLoc != null) {
 				base = ThreatFleetOrders.pickBase(faction, hyperLoc);
 			}
+			// a colony, not a forward base: a link that falls takes its stock with
+			// it (run 16 banked 3 of 4 victories' survivors into links)
+			if (base != null && base != forwardBase && ThreatFrontlines.isOutpost(base)) base = null;
 			if (base == null && faction != null) {
-				// the world is already gone from the map: any base of theirs will do
+				// the nearest colony base of theirs, else any colony, else a link
+				MarketAPI colony = null, link = null;
+				float best = Float.MAX_VALUE;
 				for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
-					if (IncursionManager.isBase(m)) {
+					if (ThreatFrontlines.isOutpost(m)) {
+						if (link == null) link = m;
+						continue;
+					}
+					if (colony == null) colony = m;
+					if (!IncursionManager.isBase(m) || m.getPrimaryEntity() == null) continue;
+					float d = hyperLoc == null ? 0f : Misc.getDistanceLY(hyperLoc, m.getLocationInHyperspace());
+					if (d < best) {
+						best = d;
 						base = m;
-						break;
 					}
 				}
+				if (base == null) base = colony != null ? colony : link;
 			}
 			if (base == null) {
 				ThreatIncConfig.log("Front survivors stranded (no base in reach): " + worldName(front));
