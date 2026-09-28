@@ -99,10 +99,12 @@ on vanilla's shortages before anything else.
    war effort" path is needed - the vanilla act IS the help. The `War footing` tooltip
    states the reserve, the monthly bank rate, and "selling fuel here raises it".
 5. **Draws and deliveries stay physical.** Expeditions, sorties, outposts and convoys
-   draw from and deposit into the reserve as now; a convoy delivery to a base also
-   applies `addTradeModPlus` for what it landed, so the colony screen shows the
-   shipment arriving the way a player sale would. Expedition draws apply nothing extra:
-   the stock was surplus when banked.
+   draw from and deposit into the reserve as now. A convoy delivery lands in the depot
+   only. Until 2026-09-27 it also applied `addTradeModPlus` so the colony screen showed
+   it, but vanilla's market screens then sold the military's shipment as cheap excess
+   (Chicomoztoc: 7,719 excess fuel, 12,000 of it convoyed); `ThreatConvoys.stripLandedMods`
+   lifts the old ones on load. Expedition draws apply nothing extra: the stock was
+   surplus when banked.
 6. **Reach stays vanilla fuel.** Expedition and convoy range keep reading vanilla fuel
    availability. "Short of fuel on the colony screen" therefore also means "cannot
    project", which is the same story told twice, not two stories.
@@ -199,7 +201,9 @@ factions, days 2110-2144 of the incursion):
   `reserveFloorFraction` entirely, and the floor itself was a fraction of the LIVE cap,
   which is zero in deficit - so a struck colony's covers drained the depot to nothing
   (Sindria: 0 fuel, 0 supplies, 0 arms after repeated strikes). Now the floor stands
-  on the largest cap the depot ever banked towards, and a cover spends at most the
+  on the largest cap the depot ever banked towards (kept at full production share and
+  scaled to the share of the day, 2026-09-27 - a peak kept at an old share pinned the
+  floor above the live cap once the share fell), and a cover spends at most the
   cover fraction of the stock and never below the floor; when the floor is what stops
   the issue the tooltip says "the depot keeps N for the garrison" instead of quoting
   the fraction. Old saves have no recorded cap until the next poll banks one.

@@ -637,7 +637,7 @@ public class ThreatWarBoard {
 		Map<String, String> names = new LinkedHashMap<String, String>();
 		for (MarketAPI other : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (Factions.THREAT.equals(other.getFactionId())) continue;
-			if (other.isHidden() || other.isPlanetConditionMarketOnly()) continue;
+			if (ThreatMapFog.hidden(other) || ThreatMapFog.conditionOnly(other)) continue;
 			StarSystemAPI system = other.getStarSystem();
 			if (system == null || system == from || other.getSize() < 3) continue;
 			if (system.getNameWithNoType() == null || system.getNameWithNoType().trim().isEmpty()) continue;
@@ -667,7 +667,7 @@ public class ThreatWarBoard {
 		for (int minSize = 6; minSize >= 5 && best < 0f; minSize--) {
 			for (MarketAPI other : Global.getSector().getEconomy().getMarketsCopy()) {
 				if (Factions.THREAT.equals(other.getFactionId())) continue;
-				if (other.isPlayerOwned() || other.isHidden()) continue;
+				if (other.isPlayerOwned() || ThreatMapFog.hidden(other)) continue;
 				if (other.getStarSystem() == null || other.getSize() < minSize) continue;
 				float d = Misc.getDistanceLY(from.getLocation(), other.getStarSystem().getLocation());
 				if (best < 0f || d < best) best = d;

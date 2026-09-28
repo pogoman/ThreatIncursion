@@ -31,8 +31,8 @@ import com.fs.starfarer.api.util.Misc;
  * HQ, Military Base, High Command) on the player's disrupt-raid list
  * (docs/ground-war.md "Raiding the fortifications", 2026-09-25). Vanilla tags
  * them unraidable because its tactical bombardment knocks them out for a
- * year; ours is a siege slice that stops at the orbital floor, so without
- * this the only way past the floor was a ground front. Not with Nexerelin
+ * year; ours is a siege slice scaled by the odds, so raiding is a second way
+ * to wear them - marines rather than hulls. Not with Nexerelin
  * loaded - its own bombardment runs human colonies' menus and still writes
  * vanilla's year. Hive defences are raidable in industries.csv already.
  *
@@ -44,17 +44,26 @@ import com.fs.starfarer.api.util.Misc;
  * fight and by what the structure adds to that defence - against a strong
  * garrison's batteries one deep raid costs far more than the same days in
  * shallow ones; against a weak one, or a Patrol HQ, depth costs little.
+ *
+ * <p>A hive's Swarm Nexus and Fabrication Core take the same depth toll and
+ * their days add in full too (2026-09-27/28): vanilla lists them already, so
+ * its objective is swapped for an OrganRaid.
  */
 public class ThreatFortificationRaids implements GroundRaidObjectivesListener, MarineLossesStatModifier {
-
-	/** Market memory + industry id: a raid took this structure's clock past the orbital floor; expires with the clock. */
-	public static final String RAIDED_KEY = "$threatinc_raidedPastFloor_";
 
 	public void modifyRaidObjectives(MarketAPI market, SectorEntityToken entity,
 			List<GroundRaidObjectivePlugin> objectives, RaidType type, int marineTokens, int priority) {
 		// after vanilla's own list (priority 0), so anything it already offers is left alone
 		if (priority != 1 || type != RaidType.DISRUPT || market == null) return;
-		if (!ThreatIncConfig.enabled() || ThreatNexCompat.nexEnabled()) return;
+		if (!ThreatIncConfig.enabled()) return;
+		// the hive's organs: vanilla's objective, swapped for one that quotes the toll
+		for (int i = 0; i < objectives.size(); i++) {
+			GroundRaidObjectivePlugin curr = objectives.get(i);
+			if (curr instanceof OrganRaid || !(curr instanceof DisruptIndustryRaidObjectivePluginImpl)) continue;
+			Industry ind = ((DisruptIndustryRaidObjectivePluginImpl) curr).getSource();
+			if (isOrgan(ind)) objectives.set(i, new OrganRaid(market, ind));
+		}
+		if (ThreatNexCompat.nexEnabled()) return;
 		if (ThreatGroundFronts.Theatre.of(market) != ThreatGroundFronts.COLONY) return;
 		for (Industry ind : ThreatSiegeMalus.fortifications(market)) {
 			if (ind.getSpec() == null || !ind.getSpec().hasTag(Industries.TAG_UNRAIDABLE)) continue;
@@ -87,10 +96,12 @@ public class ThreatFortificationRaids implements GroundRaidObjectivesListener, M
 			if (n <= 0 || curr.getDangerLevel() == null) continue;
 			float w = curr.getDangerLevel().marineLossesMult * n;
 			base += w;
-			deep += curr instanceof FortificationRaid ? w * depthMult(market, ((FortificationRaid) curr).getSource(), n) : w;
+			Industry ind = curr instanceof DisruptIndustryRaidObjectivePluginImpl
+					? ((DisruptIndustryRaidObjectivePluginImpl) curr).getSource() : null;
+			deep += curr instanceof FortificationRaid || isOrgan(ind) ? w * depthMult(market, ind, n) : w;
 		}
 		if (base <= 0f || deep <= base * 1.001f) return;
-		stat.modifyMult("threatinc_fortDepth", deep / base, "Deep raid on the fortifications");
+		stat.modifyMult("threatinc_fortDepth", deep / base, "Deep raid on one structure");
 	}
 
 	/**
@@ -105,9 +116,30 @@ public class ThreatFortificationRaids implements GroundRaidObjectivesListener, M
 		if (market == null || ind == null || player == null || n <= 1) return 1f;
 		float k = Math.max(0f, ThreatIncConfig.fortificationRaidDepthLoss());
 		float pressure = Math.max(0f, Math.min(1f, 1f - MarketCMD.getRaidEffectiveness(market, player)));
-		float weight = ThreatSiegeMalus.bonusOf(ind.getId()) * ThreatSiegeMalus.condition(market, ind)
+		return 1f + ((float) Math.pow(n, k) - 1f) * pressure * depthWeight(market, ind);
+	}
+
+	/**
+	 * The structure's weight in the toll, Ground Defenses intact = 1. The
+	 * Nexus by its defence bonus as worn (x1.5 intact: half); the Core adds
+	 * no defence, so a knob stands in, worn with its fabrication.
+	 */
+	private static float depthWeight(MarketAPI market, Industry ind) {
+		String id = ind.getId();
+		if (ThreatColonyManager.SWARM_NEXUS.equals(id)) {
+			return Math.max(0f, ThreatIncConfig.nexusDefenseBonus()) * ThreatColonyManager.disruptedDefenseResilience(ind);
+		}
+		if (ThreatColonyManager.FABRICATION_CORE.equals(id)) {
+			return ThreatColonyManager.wornDownFactor(ind, Math.max(0f, ThreatIncConfig.coreRaidDepthWeight()));
+		}
+		return ThreatSiegeMalus.bonusOf(id) * ThreatSiegeMalus.condition(market, ind)
 				* ThreatSiegeMalus.deficitMult(ind) / ThreatSiegeMalus.bonusOf(Industries.GROUNDDEFENSES);
-		return 1f + ((float) Math.pow(n, k) - 1f) * pressure * weight;
+	}
+
+	/** A hive organ the depth toll covers. */
+	private static boolean isOrgan(Industry ind) {
+		return ind != null && (ThreatColonyManager.SWARM_NEXUS.equals(ind.getId())
+				|| ThreatColonyManager.FABRICATION_CORE.equals(ind.getId()));
 	}
 
 	private static boolean listed(List<GroundRaidObjectivePlugin> objectives, Industry ind) {
@@ -129,28 +161,38 @@ public class ThreatFortificationRaids implements GroundRaidObjectivesListener, M
 		}
 	}
 
-	/** Whether a raid put this structure's clock where it is: the orbital floor does not hold it up (ThreatSiegeMalus.condition). */
-	public static boolean raided(Industry ind) {
-		return ind != null && ind.getMarket() != null
-				&& ind.getMarket().getMemoryWithoutUpdate().getBoolean(RAIDED_KEY + ind.getId());
+	/** The depth toll, in this garrison's numbers (depthMult). */
+	private static void addDepthTooltip(TooltipMakerAPI t, MarketAPI market, Industry source, int marines) {
+		int n = Math.max(1, marines);
+		int next = n + 1;
+		Color h = Misc.getHighlightColor();
+		if (n > 1) {
+			t.addPara("%s tokens on this structure: its danger x%s. Raiding it a token at a time loses fewer marines.",
+					10f, Misc.getNegativeHighlightColor(), "" + n, fmt(depthMult(market, source, n)));
+		} else {
+			t.addPara("Each token added here raises its danger: x%s at %s, x%s at %s.", 10f, h,
+					fmt(depthMult(market, source, next)), "" + next,
+					fmt(depthMult(market, source, next + 2)), "" + (next + 2));
+		}
+	}
+
+	private static String fmt(float mult) {
+		return String.format("%.1f", mult);
 	}
 
 	/**
-	 * Vanilla's disrupt objective with the knob's danger in place of the
-	 * spec's empty one, the days added in full, and every read of the clock
-	 * gated on the real state (ThreatGroundFronts.siegeDisruptDays): the
-	 * tactical bombardment's revert leaves a ghost expire on a structure it
-	 * did not touch, and vanilla's raw read would add the raid on top of it.
+	 * Vanilla's disrupt objective with the days added in full and every read
+	 * of the clock gated on the real state (ThreatGroundFronts.siegeDisruptDays).
+	 * Vanilla shrinks a raid on a clock already running (dur x dur / (dur +
+	 * already)), so a structure carrying a long clock took a few percent of
+	 * the raid's days; and the tactical bombardment's revert leaves a ghost
+	 * expire on a structure it did not touch, which vanilla's raw read would
+	 * add the raid on top of.
 	 */
-	public static class FortificationRaid extends DisruptIndustryRaidObjectivePluginImpl {
+	public static class FullDaysRaid extends DisruptIndustryRaidObjectivePluginImpl {
 
-		public FortificationRaid(MarketAPI market, Industry target) {
+		public FullDaysRaid(MarketAPI market, Industry target) {
 			super(market, target);
-		}
-
-		@Override
-		public RaidDangerLevel getDangerLevel() {
-			return danger();
 		}
 
 		@Override
@@ -164,28 +206,14 @@ public class ThreatFortificationRaids implements GroundRaidObjectivesListener, M
 		@Override
 		public void createTooltip(TooltipMakerAPI t, boolean expanded) {
 			super.createTooltip(t, expanded);
-			// the depth toll, in this garrison's numbers (ThreatFortificationRaids.depthMult)
-			int n = Math.max(1, marinesAssigned);
-			int next = n + 1;
-			Color h = Misc.getHighlightColor();
-			if (n > 1) {
-				t.addPara("%s tokens on this structure: its danger x%s. Raiding it a token at a time loses fewer marines.",
-						10f, Misc.getNegativeHighlightColor(), "" + n, fmt(depthMult(market, source, n)));
-			} else {
-				t.addPara("Each token added here raises its danger: x%s at %s, x%s at %s.", 10f, h,
-						fmt(depthMult(market, source, next)), "" + next,
-						fmt(depthMult(market, source, next + 2)), "" + (next + 2));
-			}
-		}
-
-		private static String fmt(float mult) {
-			return String.format("%.1f", mult);
+			addDepthTooltip(t, market, source, marinesAssigned);
 		}
 
 		@Override
 		public float getBaseDisruptDuration(int marines) {
-			if (marines <= 0) return 0f;
-			return marines * danger().disruptionDays;
+			RaidDangerLevel level = getDangerLevel();
+			if (marines <= 0 || level == null) return 0f;
+			return marines * level.disruptionDays;
 		}
 
 		@Override
@@ -201,17 +229,7 @@ public class ThreatFortificationRaids implements GroundRaidObjectivesListener, M
 
 			MarketAPI market = source.getMarket();
 			if (market != null) {
-				MemoryAPI mem = market.getMemoryWithoutUpdate();
-				if (total > ThreatGroundFronts.siegeFloorDays(market)) {
-					mem.set(RAIDED_KEY + source.getId(), true, total);
-				}
-				// a raid on the guns is a siege: the structure loses its bonus in
-				// proportion to its clock, not whole as vanilla strips it
-				ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(market);
-				if (mem.getExpire(ThreatGroundFronts.BESIEGED_FLAG) < theatre.wearDays()) {
-					mem.set(ThreatGroundFronts.BESIEGED_FLAG, true, theatre.wearDays());
-				}
-				ThreatGroundFronts.syncSiegeState(market);
+				afterRaid(market, total);
 				market.reapplyIndustries();
 			}
 
@@ -219,6 +237,43 @@ public class ThreatFortificationRaids implements GroundRaidObjectivesListener, M
 					+ " It will take at least %s days for normal operations to resume.",
 					Misc.getHighlightColor(), "" + (int) Math.round(source.getDisruptedDays()));
 			return (int) (dur * DISRUPTION_DAYS_XP_MULT);
+		}
+
+		/** What the raid does to the world beyond the structure's clock. */
+		protected void afterRaid(MarketAPI market, float total) {
+		}
+	}
+
+	/** A hive's Swarm Nexus or Fabrication Core: vanilla's danger, the days in full, the depth toll quoted. */
+	public static class OrganRaid extends FullDaysRaid {
+
+		public OrganRaid(MarketAPI market, Industry target) {
+			super(market, target);
+		}
+	}
+
+	/** A human colony's fortification: the knob's danger in place of the spec's empty one. */
+	public static class FortificationRaid extends FullDaysRaid {
+
+		public FortificationRaid(MarketAPI market, Industry target) {
+			super(market, target);
+		}
+
+		@Override
+		public RaidDangerLevel getDangerLevel() {
+			return danger();
+		}
+
+		@Override
+		protected void afterRaid(MarketAPI market, float total) {
+			MemoryAPI mem = market.getMemoryWithoutUpdate();
+			// a raid on the guns is a siege: the structure loses its bonus in
+			// proportion to its clock, not whole as vanilla strips it
+			ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(market);
+			if (mem.getExpire(ThreatGroundFronts.BESIEGED_FLAG) < theatre.wearDays()) {
+				mem.set(ThreatGroundFronts.BESIEGED_FLAG, true, theatre.wearDays());
+			}
+			ThreatGroundFronts.syncSiegeState(market);
 		}
 	}
 }

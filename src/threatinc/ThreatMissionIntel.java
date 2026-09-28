@@ -189,7 +189,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 			if (Factions.THREAT.equals(market.getFactionId())) continue;
 			if (Misc.isPirateFaction(faction) || !faction.isShowInIntelTab()) continue;
 			if (ThreatWarState.enabled() && !ThreatWarState.isAtWar(faction)) continue;
-			if (market.isHidden() || market.isPlanetConditionMarketOnly()) continue;
+			if (ThreatMapFog.hidden(market) || ThreatMapFog.conditionOnly(market)) continue;
 			if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
 			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(),
 					system.getLocation());
@@ -379,7 +379,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 		float nearest = Float.MAX_VALUE;
 		for (MarketAPI other : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (Factions.THREAT.equals(other.getFactionId())) continue;
-			if (other.isHidden() || other.isPlanetConditionMarketOnly()) continue;
+			if (ThreatMapFog.hidden(other) || ThreatMapFog.conditionOnly(other)) continue;
 			if (other.getStarSystem() == null || other.getSize() < 3) continue;
 			float d = Misc.getDistanceLY(system.getLocation(),
 					other.getStarSystem().getLocation());

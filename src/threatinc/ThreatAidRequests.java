@@ -23,9 +23,11 @@ import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
  * two needs. A DEFENCE need: a Threat strike is staged or in flight against
  * the colony and the defenders are outmatched (the strike's strength beats
  * the faction's strength in the system plus the station, times
- * defendRequestRatio). A SUPPLY need: the depot is exhausted for a
- * commodity, or the colony's vanilla deficit in it has stood for
- * missionAidShortageDays. Each need with no request already open posts one
+ * defendRequestRatio). A SUPPLY need: the colony is short of its peacetime
+ * demand and the depot cannot cover it - exhausted now, or the gap has stood
+ * uncovered for missionAidShortageDays. A gap only in the War footing's share
+ * is the war's supply not arriving, which the depot itself answers; it asks
+ * nobody. Each need with no request already open posts one
  * ({@link ThreatAidMissionIntel}), up to aidRequestMaxPosted at once. The
  * same tests drive what allies send each other ({@link ThreatCoalition}).
  */
@@ -72,7 +74,7 @@ public class ThreatAidRequests {
 					if (!shortageStanding(market, c)) continue;
 					if (ThreatAidMissionIntel.find(market.getId(),
 							ThreatAidMissionIntel.KIND_AID, c) != null) continue;
-					int need = needItems(market, c);
+					int need = requestItems(market, c);
 					if (need <= 0) continue;
 					if (ThreatAidMissionIntel.postAid(market, c, need) != null) posted++;
 				}
@@ -90,7 +92,7 @@ public class ThreatAidRequests {
 				for (String c : ThreatReserves.COMMODITIES) {
 					ThreatReserves.CommodityStatus s = ThreatReserves.status(market, c);
 					String k = key(market, c);
-					if (s != null && s.deficit > 0) {
+					if (s != null && s.localDeficit > 0) {
 						live.add(k);
 						if (!since.containsKey(k)) since.put(k, now);
 					}
@@ -106,16 +108,23 @@ public class ThreatAidRequests {
 	// supply needs
 	// ------------------------------------------------------------------
 
-	/** Exhausted now, or short for missionAidShortageDays. */
+	/** Short of peacetime demand with the depot unable to cover it: exhausted now, or uncovered for missionAidShortageDays. */
 	public static boolean shortageStanding(MarketAPI market, String commodityId) {
 		ThreatReserves.CommodityStatus s = ThreatReserves.status(market, commodityId);
 		if (s == null) return false;
 		if (s.exhausted) return true;
-		if (s.deficit <= 0) return false;
+		if (s.localDeficit <= 0 || s.covering) return false;
 		Long since = shortageSince().get(key(market, commodityId));
 		if (since == null) return false;
 		return Global.getSector().getClock().getElapsedDaysSince(since)
 				>= ThreatIncConfig.missionAidShortageDays();
+	}
+
+	/** What a request asks for: the peacetime gap in items. The War footing's share is not asked for. */
+	public static int requestItems(MarketAPI market, String commodityId) {
+		ThreatReserves.CommodityStatus s = ThreatReserves.status(market, commodityId);
+		if (s == null || s.localDeficit <= 0 || s.econUnit <= 0f) return 0;
+		return Math.max((int) s.econUnit, Math.round(s.localDeficit * s.econUnit));
 	}
 
 	/** The deficit in items: vanilla's units short times the commodity's econ unit. */

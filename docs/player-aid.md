@@ -155,13 +155,17 @@ request accepts it.
   contract's term. Reward: credits `missionDefendCredits` scaled by colony size, plus
   the reputation in section 3 doubled (`missionRepMult` 2.0) - asked-for help is worth
   more.
-- **Aid X with N of C.** Posted when a colony's depot is exhausted for C (the
-  `CommodityStatus.exhausted` flag from `ThreatReserves.status`) or its vanilla deficit
-  has stood for `missionAidShortageDays` (60). N is the deficit in items. Delivered by
+- **Aid X with N of C.** Posted when a colony is short of its PEACETIME demand for C
+  and the depot cannot cover it: exhausted (`CommodityStatus.exhausted` from
+  `ThreatReserves.status`), or the gap has stood with no cover in force for
+  `missionAidShortageDays` (60). A gap only in the War footing's share asks nobody -
+  the depot is the war's supply. N is the peacetime gap in items
+  (`ThreatAidRequests.requestItems`). A posted request withdraws itself once the gap
+  closes (2026-09-27); an accepted one runs its term. Delivered by
   any mix of colony resupply landings and personal hand-overs; the contract keeps a
   running total and completes when it reaches N within the term. Reward: the goods'
-  value at the receiving market's price times `missionAidPayMult` (1.5) - the faction
-  pays a premium for delivery - plus section 3's reputation doubled.
+  value at the receiving market's price, its shortage premium included (no multiplier
+  since 2026-09-27) - plus section 3's reputation doubled.
 - **Swarm bounty on the X system** (2026-09-24, untested; `ThreatSwarmBountyIntel`). Not a
   contract but vanilla's system bounty pointed at a hive: posted by a mobilised base whose
   siege the Defense Swarms over the target hive system outweigh (docs/strategy-layer.md,

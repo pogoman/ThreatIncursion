@@ -123,8 +123,7 @@ public class ThreatWarState {
 		ThreatReserves.seed(id);
 		ThreatNotice.titled("Mobilised for War").icon(faction)
 				.line("%s has mobilised for war against the Threat.", ThreatNotice.faction(faction))
-				.line("Its colonies now stock marines, armaments, fuel and supplies, "
-						+ "and ship them to the front.")
+				.line("Its colonies now stock marines, armaments, fuel and supplies.")
 				.send();
 		ThreatIncConfig.log("War mode: " + id + " mobilised (" + why + ")");
 		return war;
@@ -158,7 +157,8 @@ public class ThreatWarState {
 		ThreatReserves.syncWarFooting(warFactionIds());
 		ThreatNotice.titled("Stood Down").icon(Global.getSector().getFaction(Factions.PLAYER))
 				.line("Your faction has stood down from war footing.")
-				.line("Your colonies no longer stock for the war effort; what they hold is kept.")
+				.line("Your colonies no longer stock for the war effort.")
+				.line("What they hold is kept.")
 				.send();
 		ThreatIncConfig.log("War mode: player stood down by order");
 	}

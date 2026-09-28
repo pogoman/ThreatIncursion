@@ -57,7 +57,8 @@ public class ThreatAid {
 		public int quantity;
 		public int need;
 		public float distLY;
-		public String reason;
+		/** Why not, one fact per line (a notice's bullets, a tooltip's lines); null when the quote is good. */
+		public ThreatNotice.Reason reason;
 
 		public boolean ok() {
 			return reason == null && source != null;
@@ -69,20 +70,26 @@ public class ThreatAid {
 	// ------------------------------------------------------------------
 
 	/** Why the player cannot aid this faction, or null if they can. */
-	public static String canAid(FactionAPI faction) {
-		if (faction == null) return "No faction.";
-		if (!ThreatAidCapacity.enabled()) return "Player aid is disabled in the mod settings.";
-		if (faction.isPlayerFaction()) return "That is your own faction - order its fleets directly.";
+	public static ThreatNotice.Reason canAid(FactionAPI faction) {
+		if (faction == null) return ThreatNotice.Reason.of("No faction");
+		if (!ThreatAidCapacity.enabled()) {
+			return ThreatNotice.Reason.of("Player aid is disabled in the mod settings");
+		}
+		if (faction.isPlayerFaction()) {
+			return ThreatNotice.Reason.of("That is your own faction - order its fleets directly");
+		}
 		if (!ThreatWarState.isAtWar(faction)) {
-			return faction.getDisplayName() + " is not mobilised - the Threat has not struck it.";
+			return ThreatNotice.Reason.of("%s is not mobilised", ThreatNotice.faction(faction))
+					.line("The Threat has not struck it");
 		}
 		FactionAPI player = Global.getSector().getPlayerFaction();
 		if (faction.isHostileTo(player)) {
-			return faction.getDisplayName() + " is at war with you: its patrols would fire on "
-					+ "anything you sent.";
+			return ThreatNotice.Reason.of("%s is at war with you", ThreatNotice.faction(faction))
+					.line("Its patrols would fire on anything you sent");
 		}
 		if (faction.getRelToPlayer().getRel() < ThreatIncConfig.aidMinRelation()) {
-			return faction.getDisplayName() + " will not accept your help at this standing.";
+			return ThreatNotice.Reason.of("%s will not accept your help at this standing",
+					ThreatNotice.faction(faction));
 		}
 		return null;
 	}
@@ -173,18 +180,19 @@ public class ThreatAid {
 		return null;
 	}
 
-	protected static String noSourceReason(Vector2f hyperLoc) {
+	/** Why no colony can send a task force: none qualifies, or each one's free points. */
+	protected static ThreatNotice.Reason noSourceReason(Vector2f hyperLoc) {
 		List<MarketAPI> bases = sources(hyperLoc);
 		if (bases.isEmpty()) {
-			return "None of your colonies has both a military structure (Patrol HQ, Military Base "
-					+ "or High Command) and a Waystation.";
+			return ThreatNotice.Reason.of("None of your colonies has both a military structure "
+					+ "(Patrol HQ, Military Base or High Command) and a Waystation");
 		}
-		StringBuilder sb = new StringBuilder("No colony of yours can field it: ");
-		List<String> parts = new ArrayList<String>();
+		ThreatNotice.Reason reason = ThreatNotice.Reason.of("No colony of yours can field it");
 		for (MarketAPI m : bases) {
-			parts.add(m.getName() + " " + (int) Math.max(0f, ThreatAidCapacity.freeFP(m)) + " FP free");
+			reason.line("%s has %s FP free", ThreatNotice.market(m),
+					(int) Math.max(0f, ThreatAidCapacity.freeFP(m)));
 		}
-		return sb.append(ThreatWarBoard.join(parts)).append(".").toString();
+		return reason;
 	}
 
 	// ------------------------------------------------------------------
@@ -199,7 +207,7 @@ public class ThreatAid {
 	public static Quote quoteDefend(ThreatBases.Base target) {
 		Quote q = new Quote();
 		if (target == null || target.starSystem() == null) {
-			q.reason = "No target.";
+			q.reason = ThreatNotice.Reason.of("No target");
 			return q;
 		}
 		return quoteTaskForce(q, target.hyperLoc(), target.name(),
@@ -209,12 +217,13 @@ public class ThreatAid {
 	public static Quote quoteStrike(StarSystemAPI hive) {
 		Quote q = new Quote();
 		if (hive == null) {
-			q.reason = "No target.";
+			q.reason = ThreatNotice.Reason.of("No target");
 			return q;
 		}
 		// a hunt needs something to hunt (2026-09-24, Hunt replaced Intercept)
 		if (ThreatSoftening.huntTarget(hive.getId()) == null) {
-			q.reason = "No Defense Swarms in the " + hive.getNameWithLowercaseTypeShort() + " to hunt.";
+			q.reason = ThreatNotice.Reason.of("No Defense Swarms in the %s to hunt",
+					hive.getNameWithLowercaseTypeShort());
 			return q;
 		}
 		return quoteTaskForce(q, hive.getLocation(), "the " + hive.getNameWithLowercaseType(), null);
@@ -223,9 +232,8 @@ public class ThreatAid {
 	protected static Quote quoteTaskForce(Quote q, Vector2f hyperLoc, String what, MarketAPI self) {
 		q.source = pickTaskForceSource(hyperLoc, self);
 		if (q.source == null) {
-			q.reason = noSourceReason(hyperLoc) + " A task force needs at least "
-					+ (int) (ThreatIncConfig.aidGuardMinFP() * ThreatAidCapacity.TASK_FORCE_HULL_MULT)
-					+ " FP.";
+			q.reason = noSourceReason(hyperLoc).line("A task force needs at least %s FP",
+					(int) (ThreatIncConfig.aidGuardMinFP() * ThreatAidCapacity.TASK_FORCE_HULL_MULT));
 			return q;
 		}
 		q.fp = taskForceFP(q.source, q.source == self);
@@ -244,12 +252,13 @@ public class ThreatAid {
 	public static Quote quoteResupply(MarketAPI target, int tier) {
 		Quote q = new Quote();
 		if (target == null || target.getStarSystem() == null) {
-			q.reason = "No target.";
+			q.reason = ThreatNotice.Reason.of("No target");
 			return q;
 		}
 		q.commodityId = ThreatAidRequests.worstShortage(target);
 		if (q.commodityId == null) {
-			q.reason = target.getName() + " is not short of marines, armaments, fuel or supplies.";
+			q.reason = ThreatNotice.Reason.of("%s is not short of marines, armaments, fuel or supplies",
+					ThreatNotice.market(target));
 			return q;
 		}
 		ThreatAidMissionIntel request = ThreatAidMissionIntel.find(target.getId(),
@@ -257,7 +266,8 @@ public class ThreatAid {
 		q.need = request != null && request.remaining() > 0 ? request.remaining()
 				: ThreatAidRequests.needItems(target, q.commodityId);
 		if (q.need <= 0) {
-			q.reason = target.getName() + " is not short of " + ThreatReserves.label(q.commodityId) + ".";
+			q.reason = ThreatNotice.Reason.of("%s is not short of %s", ThreatNotice.market(target),
+					ThreatReserves.label(q.commodityId));
 			return q;
 		}
 		// the board's load tier: what the colony is short of (Min), that times
@@ -296,14 +306,13 @@ public class ThreatAid {
 			if (inReach.isEmpty()) {
 				q.reason = noSourceReason(loc);
 			} else {
-				List<String> parts = new ArrayList<String>();
+				q.reason = ThreatNotice.Reason.of("No colony of yours in reach can spare and carry %s for %s",
+						ThreatReserves.label(q.commodityId), ThreatNotice.market(target));
 				for (MarketAPI m : inReach) {
-					parts.add(m.getName() + " " + (int) ThreatReserves.available(m, q.commodityId)
-							+ " spare, " + (int) Math.max(0f, ThreatAidCapacity.ownFreeFP(m)) + " FP free");
+					q.reason.line("%s has %s spare and %s FP free", ThreatNotice.market(m),
+							(int) ThreatReserves.available(m, q.commodityId),
+							(int) Math.max(0f, ThreatAidCapacity.ownFreeFP(m)));
 				}
-				q.reason = "No colony of yours in reach can spare and carry "
-						+ ThreatReserves.label(q.commodityId) + " for " + target.getName() + ": "
-						+ ThreatWarBoard.join(parts) + ".";
 			}
 			return q;
 		}
@@ -330,16 +339,16 @@ public class ThreatAid {
 
 	public static boolean dispatchDefend(MarketAPI target) {
 		if (target == null) return false;
-		String blocked = canAid(target.getFaction());
+		ThreatNotice.Reason blocked = canAid(target.getFaction());
 		if (blocked != null) {
 			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
-					.line(blocked).send();
+					.lines(blocked).send();
 			return false;
 		}
 		Quote q = quoteDefend(target);
 		if (!q.ok()) {
 			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
-					.line(q.reason).send();
+					.lines(q.reason).send();
 			return false;
 		}
 		ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchGuard(
@@ -372,7 +381,7 @@ public class ThreatAid {
 		Quote q = quoteStrike(hive);
 		if (!q.ok()) {
 			ThreatNotice.titled("Hunt Refused").bad().icon(Global.getSector().getPlayerFaction())
-					.line(q.reason).send();
+					.lines(q.reason).send();
 			return false;
 		}
 		ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchHunt(
@@ -394,16 +403,16 @@ public class ThreatAid {
 
 	public static boolean dispatchResupply(MarketAPI target, int tier, Random random) {
 		if (target == null) return false;
-		String blocked = canAid(target.getFaction());
+		ThreatNotice.Reason blocked = canAid(target.getFaction());
 		if (blocked != null) {
 			ThreatNotice.titled("Supply Run Refused").bad().icon(Global.getSector().getPlayerFaction())
-					.line(blocked).send();
+					.lines(blocked).send();
 			return false;
 		}
 		Quote q = quoteResupply(target, tier);
 		if (!q.ok()) {
 			ThreatNotice.titled("Supply Run Refused").bad().icon(Global.getSector().getPlayerFaction())
-					.line(q.reason).send();
+					.lines(q.reason).send();
 			return false;
 		}
 		ThreatConvoys.Convoy c = ThreatConvoys.dispatch(q.source, target,
@@ -494,7 +503,7 @@ public class ThreatAid {
 		if (o == null || o.recipientFactionId == null) return;
 		rep(o.recipientFactionId, ThreatIncConfig.aidRepGuardArrived(), null);
 		ThreatNotice.titled("Task Force On Station").icon(Global.getSector().getPlayerFaction())
-				.line("Over %s", o.targetName)
+				.line("Over %s", target(o))
 				.line("For the %s", ThreatNotice.faction(Global.getSector().getFaction(o.recipientFactionId)))
 				.send();
 	}
@@ -503,8 +512,14 @@ public class ThreatAid {
 		if (o == null || o.recipientFactionId == null) return;
 		rep(o.recipientFactionId, ThreatIncConfig.aidRepGuardCompleted(), null);
 		ThreatNotice.titled("Task Force Returning").icon(Global.getSector().getPlayerFaction())
-				.line("Term served over %s", o.targetName)
+				.line("Term served over %s", target(o))
 				.send();
+	}
+
+	/** The order's target for a line: the colony in its owner's colour or the outpost, else the name the order recorded. */
+	protected static Object target(ThreatFleetOrders.Order o) {
+		ThreatBases.Base base = ThreatBases.of(o.targetId);
+		return base != null ? ThreatNotice.base(base) : o.targetName;
 	}
 
 	/** A task force at a hive's door: every faction with a colony in the hive's strike reach shares the credit. */
@@ -519,10 +534,19 @@ public class ThreatAid {
 		if (factions.isEmpty()) return;
 		float each = ThreatIncConfig.aidRepFrontTotal() / factions.size();
 		for (String id : factions) rep(id, each, null);
+		// each faction its own argument, in its own colour
+		Object[] noted = new Object[factions.size()];
+		StringBuilder format = new StringBuilder("Noted by ");
+		int i = 0;
+		for (String id : factions) {
+			if (i > 0) format.append(i == noted.length - 1 ? " and " : ", ");
+			format.append("%s");
+			noted[i++] = ThreatNotice.faction(Global.getSector().getFaction(id));
+		}
 		ThreatNotice.titled(hunt ? "Hunt Begins" : "Door Held").icon(Global.getSector().getPlayerFaction())
 				.line(hunt ? "Task force hunting the swarms in the %s" : "Task force holds the door of the %s",
 						hive != null ? hive.getNameWithLowercaseType() : "hive system")
-				.line("Noted by %s", names(factions))
+				.line(format.toString(), noted)
 				.send();
 	}
 
@@ -536,19 +560,13 @@ public class ThreatAid {
 		}
 		if (range <= 0f) return result;
 		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (m.getStarSystem() == null || m.isHidden()) continue;
+			if (m.getStarSystem() == null || ThreatMapFog.hidden(m)) continue;
 			if (m.getFaction() == null || m.isPlayerOwned()) continue;
 			if (Factions.THREAT.equals(m.getFactionId())) continue;
 			if (Misc.getDistanceLY(m.getStarSystem().getLocation(), hive.getLocation()) > range) continue;
 			result.add(m.getFactionId());
 		}
 		return result;
-	}
-
-	protected static String names(Set<String> factionIds) {
-		List<String> parts = new ArrayList<String>();
-		for (String id : factionIds) parts.add(ThreatWarState.displayName(id));
-		return ThreatWarBoard.join(parts);
 	}
 
 	// ------------------------------------------------------------------

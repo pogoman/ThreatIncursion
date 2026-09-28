@@ -444,7 +444,7 @@ public class ThreatIncData {
 		MarketAPI market = Global.getSector().getEconomy().getMarket(marketId);
 		if (market == null) return null;
 		if (!Factions.THREAT.equals(market.getFactionId())) return null;
-		if (market.isPlanetConditionMarketOnly()) return null;
+		if (ThreatMapFog.conditionOnly(market)) return null;
 		return market;
 	}
 

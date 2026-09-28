@@ -385,15 +385,15 @@ public class ThreatConvoys {
 			load[0] = Math.min(best, capacityFor(Commodities.MARINES));
 			Convoy c = dispatch(donor, besieged, faction, load, random);
 			if (c == null) continue;
-			ThreatNotice n = ThreatNotice.titled("Relief Convoy Sails").icon(faction);
+			// only the player's own: another faction's relief is progress, not news
 			if (faction.isPlayerFaction()) {
-				n.line("Your convoy carries %s marines from %s", Misc.getWithDGS((int) c.marines),
-						ThreatNotice.market(donor));
-			} else {
-				n.line("%s convoy carries %s marines from %s", ThreatNotice.faction(faction),
-						Misc.getWithDGS((int) c.marines), ThreatNotice.market(donor));
+				ThreatNotice.titled("Relief Convoy Sails").icon(faction)
+						.line("Your convoy carries %s marines from %s", Misc.getWithDGS((int) c.marines),
+								ThreatNotice.market(donor))
+						.line("To the defence of %s", ThreatNotice.market(besieged)).send();
 			}
-			n.line("To the defence of %s", ThreatNotice.market(besieged)).send();
+			ThreatIncConfig.log("Relief convoy: " + faction.getId() + " " + (int) c.marines + " marines "
+					+ donor.getName() + " -> " + besieged.getName());
 		}
 	}
 
@@ -491,7 +491,10 @@ public class ThreatConvoys {
 	 * the outpost can actually cover loads there instead of crossing
 	 * light-years - and a pickup lands the front in it rather than shipping it
 	 * home. An outpost too thin to cover the run falls through to the nearest
-	 * military colony in reach, as before.
+	 * military colony in reach, as before - never a link: its stock dies with
+	 * its station (run 16 lost a withdrawn front's survivors that way), so a
+	 * link that is nearest gives way to the nearest colony base, as
+	 * {@code ThreatGroundFronts.evacuate} falls back.
 	 */
 	protected static ThreatBases.Base pickFrontBase(FactionAPI faction, MarketAPI hive,
 			boolean pickup, float[] wants) {
@@ -506,6 +509,8 @@ public class ThreatConvoys {
 			}
 		}
 		MarketAPI base = ThreatFleetOrders.pickBase(faction, hive.getLocationInHyperspace());
+		// a link in the hive's own system is always nearest, and pickBase takes it
+		if (ThreatFrontlines.isOutpost(base)) base = colonyBase(faction, hive.getLocationInHyperspace(), base);
 		if (pickup || faction.isPlayerFaction() || hive.getStarSystem() == null) return ThreatBases.of(base);
 		// an NPC front loads where the most of what it wants is: the nearest base,
 		// or any of the faction's markets in reach of the hive (the siege pool,
@@ -522,6 +527,27 @@ public class ThreatConvoys {
 			}
 		}
 		return ThreatBases.of(best);
+	}
+
+	/**
+	 * The faction's nearest colony base by hyperspace distance, at any range
+	 * and never a link; else any colony of theirs, else {@code link} itself -
+	 * the fallback {@code ThreatGroundFronts.evacuate} lands survivors by.
+	 */
+	protected static MarketAPI colonyBase(FactionAPI faction, Vector2f hyperLoc, MarketAPI link) {
+		MarketAPI base = null, colony = null;
+		float best = Float.MAX_VALUE;
+		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
+			if (ThreatFrontlines.isOutpost(m)) continue;
+			if (colony == null) colony = m;
+			if (!IncursionManager.isBase(m) || m.getPrimaryEntity() == null) continue;
+			float d = Misc.getDistanceLY(hyperLoc, m.getLocationInHyperspace());
+			if (d < best) {
+				best = d;
+				base = m;
+			}
+		}
+		return base != null ? base : colony != null ? colony : link;
 	}
 
 	/** How much of a front run's wants a market covers, 0-2 (marines + armaments, each as a share). */
@@ -861,10 +887,13 @@ public class ThreatConvoys {
 			if (marines > 0) cargo.removeMarines(marines);
 			if (armaments > 0) cargo.removeCommodity(Commodities.HAND_WEAPONS, armaments);
 			ThreatGroundFronts.resupply(front, marines, armaments);
-			ThreatNotice.titled("Supplies Landed").good().icon(faction)
-					.line("%s marines and %s heavy armaments reach the front on %s",
-							Misc.getWithDGS(marines), Misc.getWithDGS(armaments), ThreatNotice.market(hive))
-					.send();
+			// only the player's own runs: another faction's resupply is progress, not news
+			if (faction != null && faction.isPlayerFaction()) {
+				ThreatNotice.titled("Supplies Landed").good().icon(faction)
+						.line("%s marines and %s heavy armaments reach the front on %s",
+								Misc.getWithDGS(marines), Misc.getWithDGS(armaments), ThreatNotice.market(hive))
+						.send();
+			}
 			ThreatIncConfig.log("Supply run delivered at " + hive.getName() + ": " + marines
 					+ " marines, " + armaments + " armaments");
 		}
@@ -1334,17 +1363,9 @@ public class ThreatConvoys {
 		ThreatReserves.deposit(base.id(), Commodities.HAND_WEAPONS, armaments);
 		ThreatReserves.deposit(base.id(), Commodities.FUEL, fuel);
 		ThreatReserves.deposit(base.id(), Commodities.SUPPLIES, supplies);
-		// rule 5 (docs/economy-coherence.md): the colony screen sees the shipment
-		// land the way a player's sale would - a trade modifier on availability
-		// for vanilla's own trade-impact duration. Not counted as surplus by the
-		// accrual (ThreatReserves.ownModUnits), so a shipment never banks itself.
-		// An outpost has no colony screen: its storage simply holds more.
-		if (base.market != null) {
-			landed(base.market, Commodities.MARINES, marines);
-			landed(base.market, Commodities.HAND_WEAPONS, armaments);
-			landed(base.market, Commodities.FUEL, fuel);
-			landed(base.market, Commodities.SUPPLIES, supplies);
-		}
+		// rule 5 (docs/economy-coherence.md): war stock lands in the depot only.
+		// It used to land as a trade modifier too, and vanilla's market screens
+		// sold the military's shipment as cheap excess (2026-09-27).
 		all().remove(c);
 
 		// another faction's colony: the player's standing, an ally's word
@@ -1402,13 +1423,17 @@ public class ThreatConvoys {
 		return best;
 	}
 
-	/** A landed quantity raises the base's vanilla availability as a sale of it would. */
-	protected static void landed(MarketAPI base, String commodityId, int quantity) {
-		if (quantity <= 0 || base == null) return;
-		CommodityOnMarketAPI com = base.getCommodityData(commodityId);
-		if (com == null) return;
-		com.addTradeModPlus(ThreatReserves.CONVOY_SOURCE_PREFIX + Misc.genUID(), quantity,
-				BaseSubmarketPlugin.TRADE_IMPACT_DAYS);
+	/** Strips the landing trade modifiers older builds left on markets (rule 5). Idempotent. */
+	public static void stripLandedMods() {
+		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
+			for (CommodityOnMarketAPI com : market.getAllCommodities()) {
+				for (String source : new ArrayList<String>(com.getTradeModPlus().getFlatMods().keySet())) {
+					if (source.startsWith(ThreatReserves.CONVOY_SOURCE_PREFIX)) {
+						com.getTradeModPlus().unmodifyFlat(source);
+					}
+				}
+			}
+		}
 	}
 
 	protected static void lost(Convoy c) {

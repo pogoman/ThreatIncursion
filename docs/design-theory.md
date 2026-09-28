@@ -371,7 +371,10 @@ then postpone forever.
   ground defence, which counts its stockpiled marines. **Fixed 2026-09-05:** the floor stands on the largest cap the depot
   has banked towards (`ColonyReserve.capSeen`), not the live cap - the live cap is the
   current surplus, which is zero the moment the colony is in deficit, so the floor used
-  to vanish exactly when a struck world needed it. The rule-3 shortage cover now
+  to vanish exactly when a struck world needed it. The record is kept at full
+  production share and scaled to the share of the day (2026-09-27): the share moves
+  with the faction's market count, and a peak recorded at share 1 pinned the floor
+  above the live cap after a drop to 0.35. The rule-3 shortage cover now
   respects the same floor (it used to write straight through it; Sindria at 0 fuel /
   0 supplies after repeated strikes was this). A colony that never banked a commodity
   has no floor for it.

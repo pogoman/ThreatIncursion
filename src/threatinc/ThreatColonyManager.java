@@ -1,6 +1,5 @@
 package threatinc;
 
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -118,6 +117,8 @@ public class ThreatColonyManager {
 		// supply convoys - the hive economy needs its ports
 		market.addIndustry(Industries.SPACEPORT);
 
+		// what the player knew of the planet, for the map while the hive is unfound (ThreatMapFog)
+		market.getMemoryWithoutUpdate().set(ThreatMapFog.KEY_PRIOR_SURVEY, market.getSurveyLevel().name());
 		market.setSurveyLevel(SurveyLevel.FULL);
 		for (MarketConditionAPI cond : market.getConditions()) {
 			cond.setSurveyed(true);
@@ -185,7 +186,7 @@ public class ThreatColonyManager {
 		String name = market.getName();
 		DecivTracker.decivilize(market, false);
 		MarketAPI ruin = planet.getMarket();
-		if (ruin == null || !ruin.isPlanetConditionMarketOnly()) {
+		if (ruin == null || !ThreatMapFog.conditionOnly(ruin)) {
 			ThreatIncConfig.log("Conquest of " + name + ": no condition market to seed a hive on");
 			// the ruin is the swarm's kill all the same: it comes back for it
 			market.getMemoryWithoutUpdate().set(ThreatGroundFronts.KILLED_BY_FLAG, Factions.THREAT, 60f);
@@ -197,8 +198,47 @@ public class ThreatColonyManager {
 			ruin.getMemoryWithoutUpdate().set(ThreatGroundFronts.KILLED_BY_FLAG, Factions.THREAT, 60f);
 			return null;
 		}
+		registerConquest(planet, hive);
 		ThreatIncConfig.log("Conquest: " + name + " seeded as a size-" + size + " hive");
 		return hive;
+	}
+
+	/**
+	 * Books a conquered hive the way a wave landing books its colony, so the
+	 * board, the siege picker and the scouts can see it. Found on the spot: the
+	 * siege that took it was fought in plain sight.
+	 */
+	protected static void registerConquest(PlanetAPI planet, MarketAPI hive) {
+		String systemId = planet.getContainingLocation().getId();
+		if (!ThreatIncData.STAGE_COLONY.equals(ThreatIncData.stages().get(systemId))) {
+			ThreatIncData.setStage(systemId, ThreatIncData.STAGE_COLONY);
+		}
+		List<String> colonies = ThreatIncData.colonyMarketsFor(systemId);
+		if (!colonies.contains(hive.getId())) colonies.add(hive.getId());
+		ThreatIncData.setGrowthTime(hive.getId());
+		ThreatIncData.garrisonSpawnTimes().put(hive.getId(),
+				Global.getSector().getClock().getTimestamp());
+		ThreatIncData.decivTargets().remove(planet.getId());
+		ThreatIncData.bootstrapSeeds().remove(systemId);
+		ThreatIncData.markDiscovered(systemId);
+	}
+
+	/**
+	 * Saves from before conquests were booked: a hive seeded on a conquered
+	 * world ran outside the registry, unlisted and never besieged. Adopt it.
+	 */
+	public static void adoptUnbookedConquests() {
+		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (!Factions.THREAT.equals(market.getFactionId())) continue;
+			if (!market.getMemoryWithoutUpdate().getBoolean(COLONY_FLAG)) continue;
+			if (!(market.getPrimaryEntity() instanceof PlanetAPI)) continue;
+			PlanetAPI planet = (PlanetAPI) market.getPrimaryEntity();
+			if (!(planet.getContainingLocation() instanceof StarSystemAPI)) continue;
+			if (ThreatIncData.colonyIdsIn(planet.getContainingLocation().getId())
+					.contains(market.getId())) continue;
+			registerConquest(planet, market);
+			ThreatIncConfig.log("Adopted unbooked conquest hive: " + market.getName());
+		}
 	}
 
 	/**
@@ -312,7 +352,7 @@ public class ThreatColonyManager {
 	protected static boolean isColonizable(PlanetAPI planet) {
 		if (planet.isStar()) return false;
 		if (planet.getMarket() == null) return false;
-		return planet.getMarket().isPlanetConditionMarketOnly();
+		return ThreatMapFog.conditionOnly(planet.getMarket());
 	}
 
 	protected static float depositScore(PlanetAPI planet) {
@@ -466,7 +506,7 @@ public class ThreatColonyManager {
 	public static void launchOGChain(StarSystemAPI system, Random random) {
 		for (PlanetAPI planet : pickChainPlanets(system)) {
 			// skip planets already colonized or already inbound
-			if (planet.getMarket() != null && !planet.getMarket().isPlanetConditionMarketOnly()) continue;
+			if (planet.getMarket() != null && !ThreatMapFog.conditionOnly(planet.getMarket())) continue;
 			if (ThreatIncData.waveFleets().containsKey(planet.getId())) continue;
 			launchColonizationWave(null, system, planet, random);
 		}
@@ -1155,7 +1195,7 @@ public class ThreatColonyManager {
 	protected static Vector2f economyCenterOfMass() {
 		float sx = 0f, sy = 0f, weight = 0f;
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (market.isHidden() || market.isPlanetConditionMarketOnly()) continue;
+			if (ThreatMapFog.hidden(market) || ThreatMapFog.conditionOnly(market)) continue;
 			Vector2f loc = market.getLocationInHyperspace();
 			if (loc == null) continue;
 			float w = market.getSize();
@@ -1997,7 +2037,7 @@ public class ThreatColonyManager {
 
 			// someone colonized it mid-flight: withdraw
 			MarketAPI existing = planet.getMarket();
-			if (existing == null || (!existing.isPlanetConditionMarketOnly()
+			if (existing == null || (!ThreatMapFog.conditionOnly(existing)
 					&& !Factions.NEUTRAL.equals(existing.getFactionId()))) {
 				ThreatIncData.waveFleets().remove(planetId);
 				ThreatIncData.waveTargets().remove(planetId);
@@ -2182,9 +2222,7 @@ public class ThreatColonyManager {
 	 * (docs/ground-war.md "Sieges from orbit", 2026-09-06). Machines do not
 	 * rout, so the guns keep firing - but they wear: the bonus falls in a
 	 * straight line with the disruption days on the structure's clock,
-	 * reaching zero at defenseWearDays. From orbit alone the condition never
-	 * falls below fortificationOrbitFloor; once a front stands on the world
-	 * the floor is gone. Disruption stacks (every siege slice and every
+	 * reaching zero at defenseWearDays. Disruption stacks (every siege slice and every
 	 * successful raid adds its own), so a structure carrying 300 days has been
 	 * hit again and again, and by then it is scrap. The size-anchored base
 	 * (hiveDefensePerSize x size) is untouched - the strata below the crust
@@ -2196,12 +2234,7 @@ public class ThreatColonyManager {
 		if (ind == null || !ind.isDisrupted()) return 1f;
 		float wear = ThreatIncConfig.defenseWearDays();
 		if (wear <= 0f) return 1f;
-		float worn = Math.max(0f, 1f - ind.getDisruptedDays() / wear);
-		MarketAPI market = ind.getMarket();
-		if (market == null || ThreatGroundFronts.getFront(market.getId()) == null) {
-			worn = Math.max(worn, ThreatIncConfig.fortificationOrbitFloor());
-		}
-		return Math.min(1f, worn);
+		return Math.min(1f, Math.max(0f, 1f - ind.getDisruptedDays() / wear));
 	}
 
 	/**

@@ -126,7 +126,6 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		}
 		remove(cargo, commodityId, qty);
 		ThreatReserves.deposit(market.getId(), commodityId, qty);
-		ThreatConvoys.landed(market, commodityId, qty);
 		int marines = Commodities.MARINES.equals(commodityId) ? qty : 0;
 		int armaments = Commodities.HAND_WEAPONS.equals(commodityId) ? qty : 0;
 		int fuel = Commodities.FUEL.equals(commodityId) ? qty : 0;

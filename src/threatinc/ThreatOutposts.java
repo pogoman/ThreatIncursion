@@ -295,7 +295,7 @@ public class ThreatOutposts {
 	public static boolean eligible(PlanetAPI planet) {
 		if (planet == null || planet.isStar() || planet.getStarSystem() == null) return false;
 		MarketAPI m = planet.getMarket();
-		if (m != null && m.isInEconomy() && !m.isPlanetConditionMarketOnly()) return false;
+		if (m != null && m.isInEconomy() && !ThreatMapFog.conditionOnly(m)) return false;
 		return !holds(planet);
 	}
 
@@ -405,10 +405,8 @@ public class ThreatOutposts {
 		if (ThreatFrontlines.linkTaken(((PlanetAPI) planet).getStarSystem())) return null;
 		MarketAPI market = ThreatFrontlines.found(faction, (PlanetAPI) planet,
 				ThreatFrontlines.hiveNear(planet));
-		if (market != null) {
-			ThreatIncConfig.log("Outpost: " + faction.getId() + " holds " + planet.getName()
-					+ " with a forward base (" + note + ")");
-		}
+		ThreatIncConfig.log("Outpost: " + faction.getId() + " holds " + planet.getName()
+				+ " with a forward base (" + note + ")");
 		return market;
 	}
 
@@ -599,7 +597,7 @@ public class ThreatOutposts {
 		SectorEntityToken planet = Global.getSector().getEntityById(o.planetId);
 		if (planet == null) return false;
 		MarketAPI market = planet.getMarket();
-		if (market == null || !market.isInEconomy() || market.isPlanetConditionMarketOnly()) return false;
+		if (market == null || !market.isInEconomy() || ThreatMapFog.conditionOnly(market)) return false;
 		if (market.getFactionId() == null || !market.getFactionId().equals(o.factionId)) return false;
 		boolean hasStation = false;
 		for (Industry ind : market.getIndustries()) {
@@ -647,28 +645,44 @@ public class ThreatOutposts {
 	 * Slow tick: each mobilised NPC faction rolls outpostChance to hold one
 	 * open purged world within reach of a base that can pay, with a forward
 	 * base - only one a found live hive lies within frontlineKeepLY of, or it
-	 * would be abandoned as soon as it stood. One per tick.
+	 * would be abandoned as soon as it stood - under a link's site rules
+	 * (ThreatFrontlines.siteSystemOk) and the faction's link cap. One per tick.
+	 * The outposts knob and the frontlines knob both gate it.
 	 */
 	public static void planNPC(Random random) {
-		if (!ThreatWarState.enabled() || !ThreatIncConfig.frontlinesEnabled()) return;
+		if (!ThreatWarState.enabled() || !ThreatIncConfig.outpostsEnabled()
+				|| !ThreatIncConfig.frontlinesEnabled()) return;
 		List<PlanetAPI> open = openPurgedWorlds();
 		if (open.isEmpty()) return;
+		int max = ThreatIncConfig.frontlineMaxPerFaction(); // 0 = no cap, as the planner reads it
 		for (String factionId : ThreatWarState.warFactionIds()) {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
 			if (faction == null || faction.isPlayerFaction()) continue;
 			if (random.nextFloat() >= ThreatIncConfig.outpostChance()) continue;
+			if (max > 0) {
+				int count = 0;
+				for (ThreatFrontlines.Outpost o : ThreatFrontlines.all()) if (factionId.equals(o.factionId)) count++;
+				if (count >= max) continue;
+			}
 			for (PlanetAPI planet : open) {
 				if (holds(planet) || ThreatFrontlines.hiveNear(planet) == null) continue;
-				if (ThreatFrontlines.linkTaken(planet.getStarSystem())) continue; // one faction's links per system
+				// no hive or hostile market in the system, one faction's links per system
+				if (!ThreatFrontlines.siteSystemOk(faction, planet.getStarSystem())) continue;
 				MarketAPI base = payingBase(faction, planet);
 				if (base == null) continue;
+				// the founding is paid before the garrison is weighed: its voyage
+				// check reads the pool the founding draws from
+				float[] cost = npcCost();
+				float[] paid = { ThreatReserves.drawAbove(base, Commodities.SUPPLIES, cost[0]),
+						ThreatReserves.drawAbove(base, Commodities.FUEL, cost[1]) };
 				// no paper bases: only where a base can spare it a garrison
 				MarketAPI guardBase = ThreatIncConfig.frontlineGarrisonEnabled()
 						? ThreatFrontlines.garrisonBase(faction, planet) : null;
-				if (ThreatIncConfig.frontlineGarrisonEnabled() && guardBase == null) continue;
-				float[] cost = npcCost();
-				ThreatReserves.drawAbove(base, Commodities.SUPPLIES, cost[0]);
-				ThreatReserves.drawAbove(base, Commodities.FUEL, cost[1]);
+				if (ThreatIncConfig.frontlineGarrisonEnabled() && guardBase == null) {
+					ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, paid[0]);
+					ThreatReserves.deposit(base.getId(), Commodities.FUEL, paid[1]);
+					continue;
+				}
 				MarketAPI link = raiseForwardBase(faction, planet, "paid from " + base.getName());
 				if (link != null) {
 					if (guardBase != null) ThreatFrontlines.garrisonNow(link, guardBase);

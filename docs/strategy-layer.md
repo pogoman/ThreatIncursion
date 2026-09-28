@@ -138,10 +138,9 @@ every trade modifier on a market before crediting units, so the depot's credited
 are the difference with and without its quantity (a player's fuel buying at Chicomoztoc
 ate one of the two units its first cover issued).
 
-**Convoy landings** (rule 5): `ThreatConvoys.arrived` also applies an `addTradeModPlus`
-per landed quantity for vanilla's `TRADE_IMPACT_DAYS` (120), so the colony screen sees
-the shipment as it would a sale (Sphinx read 19 marines available against 6 demanded
-after a 1,399-marine convoy).
+**Convoy landings** (rule 5): a landing credits the depot only. The trade modifier it
+used to add (2026-09-04 to 2026-09-27) showed war stock as market excess; see
+docs/economy-coherence.md rule 5.
 
 **Draws**: `ThreatReserves.draw(marketId, commodity, amount)` returns what was actually
 taken. Callers:
@@ -154,9 +153,8 @@ taken. Callers:
   `siegeBeachheadMargin` (1.25; 0 = raids only). Sized for the raids alone (a quarter of the
   defences), 18 of 19 Persean landings were overrun in Run 6. Both needs read the target's
   defences as the tactical pass leaves them: every fortification (the Nexus and the
-  batteries) worn to the orbital floor (`ThreatGroundFronts.orbitFloorFraction`) - about
-  0.56 of the intact figure behind Heavy Batteries, 0.63 behind Ground Defenses and 0.83
-  with neither - and at no less than the Swarm Nexus anchor (`nexusAnchoredDefense`, its
+  batteries) fully worn (`ThreatGroundFronts.wornDefenceFraction`) - and at no less than
+  the Swarm Nexus anchor (`nexusAnchoredDefense / (1 + nexusDefenseBonus)`, its
   bonus worn the same way): a young colony reads vanilla's shallow base until its Nexus
   goes up, and Run 7's landings of 300 met counter-attacks of 1,180. A flat 0.6 of the
   intact figure held only behind batteries, so landings on hives without them came ~28%
@@ -175,7 +173,8 @@ taken. Callers:
   ~2,400 troops and a full depot holds ~560. The system's siege base is the nearest
   (`siegeBaseFor`: it stages and is barred from hunting there while it could launch);
   while it cannot launch, the next nearest bases of any mobilised NPC faction try
-  (`siegeBasesFor`, `siegeBaseTries` 3). The base's navy strength that sizes the fleets is
+  (`siegeBasesFor`, `siegeBaseTries` 3 bases weighed - one already besieging the system, or
+  with nothing to take, does not use a try). The base's navy strength that sizes the fleets is
   read once per strategy tick (`siegeStrength`): read live, one base's flotilla swung
   between ~3,550 and ~6,150 FP from tick to tick. Armaments wanted =
   `npcFrontSupplyDays` x the landing force's own burn (1 armament per marine at the
@@ -228,18 +227,27 @@ taken. Callers:
   from the job (`computeSiegeDifficulty`), the fleet count from the defenses and the
   orbit, and a heavy-assault escort when any target is a defended hive above
   `purgePreemptMaxSize` (`siegeHeavyAssault`, system-wide: the expedition purges the
-  system). Before, the hunting gate sized by the job and the launch by the navy, so a
+  system; the launch's "Full Siege" notice and log read the same test, so a garrisoned
+  foothold beside a big empty hive is neither preemptive nor full). Before, the hunting
+  gate sized by the job and the launch by the navy, so a
   weak navy could be told it could siege, be outweighed at the launch, and neither siege
   nor hunt.
   THE LOW-HANGING FRUIT FIRST (user's rule 2026-09-27, untested,
   `IncursionManager.siegeTargets`): an NPC siege takes the whole system when the base
   can take its orbit and pay for it; short of that, the most of the system's easiest
   worlds it can, easiest first (`easiestFirst`: the landing each world needs alone, then
-  its Defense Swarms); short of even one, the easiest alone, so its convoys stage toward
-  the nearest win. Worlds on their siege cooldown are left out, and a faction runs one
-  siege of a system at a time. So are worlds another faction's live siege is taking
-  (`besiegedByOthers`): run 19 sent 14 of 37 sieges at Epsilon Qades, and 7 stood down
-  when another faction's landing took the world first. The siege pass walks the hives easiest first, so easy
+  its Defense Swarms); short of that, the first world it can take alone (an easy landing
+  under heavy swarms is no fruit while a harder one under light swarms is affordable);
+  short of even one, the easiest alone, so its convoys stage toward the nearest win - and
+  only that: the launch, like the hunting gate, needs a target off its siege cooldown
+  (`anySiegeReady`; before, a trigger colony off its cooldown but taken by another's
+  siege sent the launch at its siblings still on theirs). Worlds on their siege cooldown
+  are left out, and a faction runs one siege of a system at a time. So are worlds another
+  faction's live siege is taking (`besiegedByOthers`): run 19 sent 14 of 37 sieges at
+  Epsilon Qades, and 7 stood down when another faction's landing took the world first.
+  And worlds another faction's army holds (`heldByOtherArmy`, the landing gate's own
+  test): a front outlives its purge, and run 19's "1 of 2" siege spent all four passes
+  raiding Epsilon Qades I with nowhere to land. The siege pass walks the hives easiest first, so easy
   sieges claim the marines and the concurrency slots before hard ones. The launch, the
   hunting gate and the convoy planner all read `siegeTargets`, and size with
   `siegeSizesFor`. The notice says "Against 2 of the 3 Threat colonies there". Run 18:
@@ -267,7 +275,9 @@ taken. Callers:
   `siegeMaxFleets` 25 capped the flotilla at ~6,150 FP (25 x difficulty 10 x 25 FP), so
   no NPC could siege a world over ~4,100 FP of swarms at the 1.5 margin, and the big
   worlds held 5-6.7k all run: 40 now; with the pools, marines and provisions are the
-  real constraint. The LunaLib store moves 25 -> 40 through `LunaConfigBridge` version 2.
+  real constraint. The LunaLib store moves 25 -> 50 in one step through `LunaConfigBridge`
+  (0.7.0 shipped 25 at marker 1; the 40 step only ever ran on dev installs, so a 40 set
+  by hand stays).
 - `IncursionManager.dispatchFactionResponse`: task forces draw fuel and supplies only,
   best-effort - the reactive defense always sails; draining the depot is what holds up
   the next siege.
@@ -300,7 +310,9 @@ held a link. Its strength in lore is people and cells, not industry, so:
   NPC siege by a faction it is Welcoming or better with, after that faction's own
   donors, each above its floor (`IncursionManager.zealotDonors`). Notice "Zealots
   Join Siege". Hives die to ground victories, so this is where the Path counts.
-  Each ask is logged ("Zealots: ..."), with why none came.
+  Each ask is logged ("Zealots: ..."), with why none came. The hunting gate and the
+  target pick count them too (`siegeCanPay`), so no landing the launch could pay for
+  is refused there.
 
 Run 18: 4 cells tithed 750 supplies, 750 fuel and 125 marines a month, and covering
 vanilla shortages on the Path's own worlds took most of it. That stays (user's rule
@@ -353,7 +365,11 @@ the row tooltip names the hive a base stocks for and the four targets.
   core worlds, and its sieges waited on marines with 15k banked.
 - **Front-run source:** an NPC front run loads at whichever of the nearest base or the
   faction's markets in reach of the hive covers the most of its wants (`frontScore`).
-  Links are excluded.
+  Links are excluded, as the base too (2026-09-27): a link in the hive's own system is
+  always the nearest base, so a nearest link gives way to the faction's nearest colony
+  base at any range (`ThreatConvoys.colonyBase`, `evacuate`'s fallback) for supply runs
+  and pickups alike - a link's stock dies with its station, and run 16 lost a withdrawn
+  front's survivors into one.
 - **Orbit cover lets runs in:** a front run is let in by the front's own orbit cover
   (`ThreatGroundFronts.coverHolds`), both when it is planned (`canRunTo`) and at the door
   (`pollFrontRun`). In run 9 Loka's run waited at the door while 5,900 FP of cover held
@@ -719,7 +735,7 @@ keys keep the old name).
 code (`dispatchOrbit` / `adoptOrbit`, the kind a parameter): the same task force, the same
 orbit, the same Recall, but `tickSupport` slices for it only while
 `ThreatGroundFronts.defendBombards` - the faction's own front on the world cannot hold
-(`effectiveStrength < holdRequirement`) and the fortifications are above the floor. With
+(`effectiveStrength < holdRequirement`) and the fortifications haven't worn out. With
 no front, or one that holds, it just holds the orbit and pays the batteries nothing. It
 counts as a friendly orbit for the refuse rule. `nearestReassignable(faction, hive, kind)`
 skips a fleet already on that kind over that world, so Support over a world with a Defend
@@ -933,10 +949,17 @@ they can be stronger than a siege; a siegeable world in reach always comes first
     (`ThreatSoftening.hostileAt`, rc1 review: all 9 badly-hurt stand-downs of Run 7 came
     after a fight with another faction's force). Coalition answers skip the same, and skip
     an enemy's call.
-- Target: the world the siege's orbit gate reads - the strongest garrison
-  (`ThreatSoftening.strongest`, 2026-09-26; see the Run 5 note under "NPC sieges"). A
-  force that cannot be fielded or paid against it does not go for a weaker world instead.
-- Size: the system's Defense Swarm FP x `softenMargin` (2.0), capped at `softenMaxFP`
+- Target: the world the siege's orbit gate reads - the strongest garrison among the worlds
+  the siege is fighting (`ThreatSoftening.strongest`, 2026-09-26; see the Run 5 note under
+  "NPC sieges"). A siege takes a subset of the system since 2026-09-27, so a coalition
+  answer reads the caller's purge targets (`IncursionManager.siegeTargetsOf`) and a bounty
+  hunt the poster's `siegeTargets` (the bounty's "Strongest swarms" line reads the same);
+  the force records them (`Force.targetIds`; null, and on older saves, is the whole
+  system) and is sized to their swarms. The Church besieged Epsilon Qades I alone while
+  Tri-Tachyon's answer went over I-B. A force that cannot be fielded or paid against it
+  does not go for a weaker world instead.
+- Size: the Defense Swarm FP over the siege's worlds (the whole system's for a force with
+  no set) x `softenMargin` (2.0), capped at `softenMaxFP`
   (12,000), and never below the target's garrison x the margin x `softenHeadroom`
   (1.5, 2026-09-25) - or, for a colony regrowing its swarms, the whole garrison it refills
   to at the strength of the swarms it has (`musterFloorFP`, rc1 review: targets regrew
@@ -995,11 +1018,12 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   stops at `softenMergeMaxShips` (90; one merged fleet reached 900 ships), and fleets
   beyond it follow the lead. The lead drops its blinkers within 2,500 units of the target,
   with every follower within 2,000 of it; a follower near the lead in a battle drops them too.
-- In: all fleets `ORBIT_AGGRESSIVE` over the target garrison (the strongest; it goes in
-  only if the fleets present beat it by the margin). When it is gone the force
-  moves on to what the gate reads now - the next strongest - only if its warships still
-  beat that garrison by the margin, and goes home otherwise ("outmatched by"). The whole force goes
-  home (tracked leg, refund on arrival) when the system is clear, it falls below
+- In: all fleets `ORBIT_AGGRESSIVE` over the target garrison (the strongest of the siege's
+  worlds; it goes in only if the fleets present beat it by the margin). When it is gone the
+  force moves on to what the gate reads now - the next strongest of them - only if its
+  warships still beat that garrison by the margin, and goes home otherwise ("outmatched
+  by"). The whole force goes home (tracked leg, refund on arrival) when the siege's worlds
+  are clear ("the siege's worlds are clear"; "the swarms are gone" for a force with no set), it falls below
   `softenRetreatStrength` (0.4) of its strength when it went in or last moved on, or
   `softenDays` (60) run out. Strength is what is IN the fight: the fleets that went in
   (`Force.inForce`) wherever they are, plus a straggler once it reaches the lead

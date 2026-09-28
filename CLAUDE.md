@@ -66,18 +66,13 @@ Keep the main context lean - this codebase is large and discovery fills the wind
   design or fix stays here. Rule of thumb: if you are about to open more than two or three
   files you were not pointed at by name, stop and send an `Explore` subagent to do the
   sweep, then act on its conclusion in this session.
-- What stays on Fable is the *judgement* - designing an intricate feature, deciding the
-  fix, writing the code - not the reading that feeds it. Do NOT delegate that judgement to
-  a bare subagent. The global `pin-subagent-model` hook pins any subagent a Fable session
-  spawns without an explicit model to a cheaper tier (`general-purpose` -> opus, `Explore`
-  -> sonnet), which is right for discovery, legwork and reviews but wrong for designing an
-  intricate feature. Build complex features in this session, or - only when you want
-  parallel workstreams - delegate with an explicit `model: "fable"` so the hook passes it
-  through (watch for the hook's `PINNED` notice - if a build task lands on opus, you forgot
-  the explicit model; re-issue it with `model:"fable"`). Cheap tiers are
-  for finding, fetching and reviewing Fable's work, never for architecting it. A review by
-  Fable afterwards is a complement, not a substitute: it catches bugs but won't redo a weak
-  design a cheaper model committed to while building.
+- Complex work - designing an intricate feature, deciding the fix, writing the code - runs
+  on the **current session's model**: build it in this session, or, for parallel
+  workstreams, delegate with an explicit `model` equal to this session's own model. Never
+  pick a model above the session's. Simple work - discovery, legwork, reviews - goes to
+  lower tiers (`Explore` -> sonnet, lookups -> sonnet/haiku). The global
+  `pin-subagent-model` hook downgrades subagents spawned without a model, so an unspecified
+  build agent may land on a cheaper tier - pass the model explicitly for build work.
 - "Points at directly" means a named file or an explicit line range - read those here. A
   feature or symbol named only by concept ("the recall path", "how sieges land") is a
   discovery target, not a pointer: fan it out to a subagent rather than opening files one

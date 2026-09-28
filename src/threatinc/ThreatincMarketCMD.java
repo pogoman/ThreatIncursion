@@ -47,7 +47,7 @@ import com.fs.starfarer.api.util.Misc;
  * <li><b>Tactical</b>: costs only hiveTacCostFraction of the defense figure
  * and is one slice of the orbital siege (docs/ground-war.md "Sieges from
  * orbit"): the fleet's points against the defence figure suppress the
- * war-strata toward the orbital floor, and the weapon growths answer with
+ * war-strata toward worn out, and the weapon growths answer with
  * ships lost. The same rule runs against a human colony at vanilla's fuel
  * bill.</li>
  * <li><b>Marine raids</b>: vanilla - the deepest cut, at a casualty price.</li>
@@ -547,7 +547,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		playerFleet.getCargo().removeCommodity(Commodities.HAND_WEAPONS, arms);
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.deploy(market,
 				Factions.PLAYER, marines, arms, landingLevel);
-		// classify now so the first poll doesn't re-announce what we say here
+		// classify now, so the board reads the front's state before its first poll
 		float eff = ThreatGroundFronts.effectiveStrength(front);
 		if (eff >= ThreatGroundFronts.holdRequirement(market)) {
 			front.state = ThreatGroundFronts.STATE_HOLDING;
@@ -556,7 +556,6 @@ public class ThreatincMarketCMD extends MarketCMD {
 		} else {
 			front.state = ThreatGroundFronts.STATE_FOOTHOLD;
 		}
-		front.announcedState = front.state;
 		boolean pushing = ThreatGroundFronts.STANCE_PUSH.equals(front.stance);
 		text.addPara("The landers go down through the auspex haze. %s marines and %s "
 				+ "heavy armaments are on the ground and "
@@ -669,8 +668,8 @@ public class ThreatincMarketCMD extends MarketCMD {
 	 * alike, the same rules the swarm's strikes and the factions' siege
 	 * expeditions fly. The player's fleet points against the world's
 	 * ground-defence figure set how many disruption days the pass adds to the
-	 * world's fortifications (siegeBombardSliceDays of siege), never past the
-	 * orbital floor, and the batteries answer with ships lost, smallest first.
+	 * world's fortifications (siegeBombardSliceDays of siege), up to worn out,
+	 * and the batteries answer with ships lost, smallest first.
 	 * Vanilla's own flow (fuel, reputation, unrest) is kept; only the
 	 * disruption it writes is replaced ({@link #bombardConfirm}). The hive's
 	 * reduced fuel bill stays.
@@ -695,12 +694,12 @@ public class ThreatincMarketCMD extends MarketCMD {
 		temp.willBecomeHostile.clear();
 		temp.willBecomeHostile.add(faction);
 
-		// what orbit can still push: every fortification above the floor
+		// what orbit can still push: every fortification not yet worn out
 		ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(market);
-		float floorDays = ThreatGroundFronts.siegeFloorDays(market) - 0.01f;
+		float wornDays = ThreatGroundFronts.siegeWornDays(market) - 0.01f;
 		List<Industry> targets = new ArrayList<Industry>();
 		for (Industry ind : theatre.fortifications(market)) {
-			if (ThreatGroundFronts.siegeDisruptDays(ind) >= floorDays) continue;
+			if (ThreatGroundFronts.siegeDisruptDays(ind) >= wornDays) continue;
 			targets.add(ind);
 		}
 		// the shield is a target too - knocking it down is what opens the rest
@@ -710,7 +709,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		// cover of its own); it gets its own line below.
 		Industry shield = ThreatShield.present(market) ? ThreatShield.get(market) : null;
 		float shieldRoom = shield == null ? 0f : Math.max(0f,
-				ThreatGroundFronts.siegeFloorDays(market)
+				ThreatGroundFronts.siegeWornDays(market)
 						- ThreatGroundFronts.siegeDisruptDays(shield));
 		boolean shieldTarget = shield != null && shieldRoom > 0.01f;
 		temp.bombardmentTargets.clear();
@@ -718,8 +717,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		if (shieldTarget) temp.bombardmentTargets.add(shield);
 
 		if (targets.isEmpty() && !shieldTarget) {
-			text.addPara(market.getName() + "'s defences are suppressed as far as orbit can "
-					+ "push them.");
+			text.addPara(market.getName() + "'s defences are worn out.");
 			addBombardNeverMindOption();
 			return;
 		}
@@ -729,14 +727,12 @@ public class ThreatincMarketCMD extends MarketCMD {
 		temp.bombardCost = isThreatTarget() ? tacCost() : getBombardmentCost(market, playerFleet);
 
 		float days = ThreatIncConfig.siegeBombardSliceDays();
-		float[] est = ThreatGroundFronts.siegeSliceEstimate(playerFleet.getFleetPoints(), market, days);
-		int floorPct = Math.round(Math.max(0f, Math.min(1f,
-				ThreatIncConfig.fortificationOrbitFloor())) * 100f);
+		float[] est = ThreatGroundFronts.siegeSliceEstimate(playerFleet.getFleetPoints(), market, days,
+				ThreatIncConfig.tacBombardSuppressDays());
 		int fuel = (int) playerFleet.getCargo().getFuel();
 		if (!targets.isEmpty()) {
 			text.addPara("A tactical bombardment suppresses the following for about %s more days "
-					+ "each; orbit cannot take them below %s effect:", Misc.getHighlightColor(),
-					"" + Math.round(est[0]), floorPct + "%");
+					+ "each:", Misc.getHighlightColor(), "" + Math.round(est[0]));
 			for (Industry ind : targets) {
 				text.addPara("    " + ind.getCurrentName() + " "
 						+ Math.round(theatre.condition(market, ind) * 100f) + "%");
@@ -913,7 +909,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 			// full vanilla confirm flow (fuel, rep, unrest, listener), then take
 			// back the 365-day disruption it wrote and deliver the siege slice
 			// instead: the clocks advance by what the fleet's points earn against
-			// the defence figure, never past the floor, and the batteries answer.
+			// the defence figure, up to worn out, and the batteries answer.
 			// reapply below makes the suppressed defences take effect immediately,
 			// not on the next colony poll.
 			// capture REAL disruption, not the raw clock: a structure whose
@@ -937,7 +933,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 			float days = ThreatIncConfig.siegeBombardSliceDays();
 			// instantaneous: nothing to make up, the clocks run down from here
 			float loss = ThreatGroundFronts.siegeSlice(playerFleet.getFleetPoints(), market, days,
-					false, true, defence);
+					false, true, defence, ThreatIncConfig.tacBombardSuppressDays());
 			List<com.fs.starfarer.api.fleet.FleetMemberAPI> lost =
 					new ArrayList<com.fs.starfarer.api.fleet.FleetMemberAPI>();
 			ThreatGroundFronts.applyFleetLosses(playerFleet, loss, lost);

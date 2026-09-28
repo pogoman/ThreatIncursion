@@ -250,7 +250,7 @@ public class ThreatFactionView {
 		// another faction's view is a window, not a console (docs/player-aid.md):
 		// its navy is its own, and the buttons offer the player's aid instead
 		boolean own = faction.isPlayerFaction();
-		String aidBlocked = own ? null : ThreatAid.canAid(faction);
+		ThreatNotice.Reason aidBlocked = own ? null : ThreatAid.canAid(faction);
 		boolean mayAid = !own && aidBlocked == null;
 
 		// ---- heading and the reserve totals ----
@@ -277,7 +277,7 @@ public class ThreatFactionView {
 		// the totals sit at the foot of the colony table and the rules on the
 		// buttons; up here only the one reason nothing can be ordered, if any
 		if (own && !mayOrder && blocked != null) main.addPara(blocked, gray, opad);
-		else if (!own && aidBlocked != null) main.addPara(aidBlocked, gray, opad);
+		else if (!own && aidBlocked != null) main.addPara(aidBlocked.toString(), gray, opad);
 
 		if (own) {
 			// the player's faction stands down by choice alone (docs/strategy-layer.md)
@@ -634,7 +634,8 @@ public class ThreatFactionView {
 				ThreatAid.Quote q = ThreatAid.quoteDefend(b);
 				MarketAPI donor = ThreatConvoys.stageDonor(b, faction, convoyTier);
 				float[] load = donor != null ? ThreatConvoys.stageLoad(donor, b, convoyTier) : null;
-				disableWith(main, guard, mayOrder && q.ok(), blocked != null ? blocked : q.reason,
+				disableWith(main, guard, mayOrder && q.ok(),
+						blocked != null ? blocked : ThreatNotice.text(q.reason),
 						"A task force of about " + (q.ok() ? (int) q.points : 0) + " FP from "
 						+ (q.ok() ? q.source.getName() : "the nearest colony") + " holds this "
 						+ "orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled") + ".");
@@ -673,7 +674,7 @@ public class ThreatFactionView {
 					float[] load = donor != null ? ThreatConvoys.stageLoad(donor, r.market, convoyTier) : null;
 					// a guard over an own colony is staging: it stays, and its
 					// points are the colony's to send out (docs/strategy-layer.md)
-					disableWith(main, guard, guardOk, blocked != null ? blocked : q.reason,
+					disableWith(main, guard, guardOk, blocked != null ? blocked : ThreatNotice.text(q.reason),
 							"A task force of about " + (q.ok() ? (int) q.points : 0) + " FP from "
 							+ (q.ok() ? q.source.getName() : "the nearest colony") + " holds this "
 							+ "orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled")
@@ -697,13 +698,13 @@ public class ThreatFactionView {
 					ThreatAid.Quote d = ThreatAid.quoteDefend(r.market);
 					ThreatAid.Quote s = ThreatAid.quoteResupply(r.market, convoyTier);
 					disableWith(main, defend, mayAid && d.ok(),
-							aidBlocked != null ? aidBlocked : d.reason,
+							ThreatNotice.text(aidBlocked != null ? aidBlocked : d.reason),
 							"A task force of about " + (d.ok() ? (int) d.points : 0) + " FP from "
 							+ (d.ok() ? d.source.getName() : "your nearest colony") + " holds "
 							+ "this orbit for " + guardDays + " days. Paid from that colony's "
 							+ "reserve; earns standing on arrival.");
 					disableWith(main, aid, mayAid && s.ok(),
-							aidBlocked != null ? aidBlocked : s.reason,
+							ThreatNotice.text(aidBlocked != null ? aidBlocked : s.reason),
 							s.ok() ? "A convoy of " + Misc.getWithDGS(s.quantity) + " "
 									+ ThreatReserves.label(s.commodityId) + " from "
 									+ s.source.getName() + ", of the " + Misc.getWithDGS(s.need)
@@ -754,7 +755,7 @@ public class ThreatFactionView {
 					ThreatAid.Quote q = ThreatAid.quoteStrike(e.system);
 					disableWith(main, strike, ThreatAidCapacity.enabled() && q.ok(),
 							!ThreatAidCapacity.enabled() ? "Player aid is disabled in the mod settings."
-							: q.reason,
+							: ThreatNotice.text(q.reason),
 							"A task force of about " + (q.ok() ? (int) q.points : 0) + " FP from "
 							+ (q.ok() ? q.source.getName() : "your nearest colony") + " hunts "
 							+ "this hive's Defense Swarms for " + (int) ThreatIncConfig.softenDays()
@@ -782,7 +783,7 @@ public class ThreatFactionView {
 						BUTTON_HUNT + factionId + ":" + e.systemId);
 				hunt.getPosition().belowRight(hiveTable, -up).setXAlignOffset(right);
 				ThreatAid.Quote iq = ThreatAid.quoteStrike(e.system);
-				disableWith(main, hunt, mayOrder && iq.ok(), blocked != null ? blocked : iq.reason,
+				disableWith(main, hunt, mayOrder && iq.ok(), blocked != null ? blocked : ThreatNotice.text(iq.reason),
 						"A task force of about " + (iq.ok() ? (int) iq.points : 0) + " FP from "
 						+ (iq.ok() ? iq.source.getName() : "the nearest colony") + " hunts this "
 						+ "hive's Defense Swarms for " + (int) ThreatIncConfig.softenDays()
@@ -1573,7 +1574,7 @@ public class ThreatFactionView {
 			} else {
 				// the selected tier's landing goal, and the flotilla grown to
 				// carry it then trimmed to the base's free points (siegeMarineGoal/siegeSizes)
-				List<MarketAPI> targets = IncursionManager.collectSiegeTargets(null, system);
+				List<MarketAPI> targets = IncursionManager.collectSiegeTargets(system);
 				float goal = siegeMarineGoal(siegeTier, base, targets);
 				float have = ThreatReserves.available(base, Commodities.MARINES);
 				float commit = Math.min(goal, have);
@@ -1639,7 +1640,7 @@ public class ThreatFactionView {
 			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
 			ThreatAid.Quote q = ThreatAid.quoteDefend(target);
 			if (!q.ok() || target == null) {
-				prompt.addPara(q.reason != null ? q.reason : "The situation has changed.", 0f);
+				prompt.addPara(q.reason != null ? q.reason.toString() : "The situation has changed.", 0f);
 			} else {
 				prompt.addPara("Send a task force of about %s fleet points from " + q.source.getName()
 						+ " to take the orbit of " + target.getName() + " for %s days, on behalf of "
@@ -1654,7 +1655,7 @@ public class ThreatFactionView {
 			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
 			ThreatAid.Quote q = ThreatAid.quoteResupply(target, convoyTier);
 			if (!q.ok() || target == null) {
-				prompt.addPara(q.reason != null ? q.reason : "The situation has changed.", 0f);
+				prompt.addPara(q.reason != null ? q.reason.toString() : "The situation has changed.", 0f);
 			} else {
 				boolean request = ThreatAidMissionIntel.find(target.getId(),
 						ThreatAidMissionIntel.KIND_AID, q.commodityId) != null;
@@ -1671,7 +1672,7 @@ public class ThreatFactionView {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
 			ThreatAid.Quote q = ThreatAid.quoteStrike(system);
 			if (!q.ok() || system == null) {
-				prompt.addPara(q.reason != null ? q.reason : "The situation has changed.", 0f);
+				prompt.addPara(q.reason != null ? q.reason.toString() : "The situation has changed.", 0f);
 			} else {
 				prompt.addPara("Send a task force of about %s fleet points from " + q.source.getName()
 						+ " to hunt the Defense Swarms in the " + system.getNameWithLowercaseType()
@@ -1815,10 +1816,10 @@ public class ThreatFactionView {
 			if (c == null) {
 				ThreatNotice n = ThreatNotice.titled("Stage Refused").bad().icon(faction);
 				if (faction.isPlayerFaction()) {
-					n.line("No colony within convoy range can spare materiel for %s", target.name());
+					n.line("No colony within convoy range can spare materiel for %s", ThreatNotice.base(target));
 				} else {
 					n.line("No %s colony within convoy range can spare materiel for %s",
-							ThreatNotice.faction(faction), target.name());
+							ThreatNotice.faction(faction), ThreatNotice.base(target));
 				}
 				n.send();
 				return null;
@@ -1834,7 +1835,7 @@ public class ThreatFactionView {
 			if (system == null) return null;
 			MarketAPI base = nearestBase(ThreatReserves.marketsOf(faction.getId()), system);
 			if (base == null) return null;
-			List<MarketAPI> targets = IncursionManager.collectSiegeTargets(null, system);
+			List<MarketAPI> targets = IncursionManager.collectSiegeTargets(system);
 			if (targets.isEmpty()) return null;
 			boolean anyGarrisoned = IncursionManager.anyTargetGarrisoned(targets);
 			int difficulty = IncursionManager.computeSiegeDifficulty(targets, anyGarrisoned);
@@ -1848,9 +1849,9 @@ public class ThreatFactionView {
 					targets, sizes, faction.isPlayerFaction(), random, marineGoal);
 			if (purge == null) {
 				// the launch's own gates (fleet points, then marines) say why
-				String why = IncursionManager.siegeBlockReason(base, faction, system);
+				ThreatNotice.Reason why = IncursionManager.siegeBlockFacts(base, faction, system);
 				ThreatNotice n = ThreatNotice.titled("Siege Refused").bad().icon(faction);
-				if (why != null) n.line(why);
+				if (why != null) n.lines(why);
 				else n.line("No expedition could be raised at %s", ThreatNotice.market(base));
 				n.send();
 				return null;
@@ -1891,11 +1892,11 @@ public class ThreatFactionView {
 					? ThreatGroundFronts.getFront(world.getId()) : null;
 			if (front == null || !front.isPlayerOwned()) return null;
 			boolean push = BUTTON_PUSH.equals(parts[0]);
-			String why = push ? ThreatGroundFronts.pushBlockReason(front, world)
-					: ThreatGroundFronts.entrenchBlockReason(front);
+			ThreatNotice.Reason why = push ? ThreatGroundFronts.pushRefusal(front, world)
+					: ThreatGroundFronts.entrenchRefusal(front);
 			if (why != null) {
 				ThreatNotice.titled(push ? "Cannot Push" : "Cannot Dig In").bad().icon(faction)
-						.line(why).send();
+						.lines(why).send();
 				return null;
 			}
 			if (push) {
@@ -1918,13 +1919,13 @@ public class ThreatFactionView {
 			// a front can stand on a human world too: the same resolver the prompt uses
 			MarketAPI hive = ThreatGroundFronts.resolveMarket(parts[2]);
 			if (hive == null) return null;
-			String why = ThreatFleetOrders.orbitBlockReason(faction, hive, kind);
+			ThreatNotice.Reason why = ThreatFleetOrders.orbitRefusal(faction, hive, kind);
 			if (why == null && ThreatFleetOrders.dispatchOrbit(faction, hive, kind) != null) {
 				return ThreatFleetOrders.orbitName(kind).toLowerCase();
 			}
 			ThreatNotice n = ThreatNotice.titled(ThreatFleetOrders.orbitName(kind) + " Refused").bad()
 					.icon(faction);
-			if (why != null) n.line(why);
+			if (why != null) n.lines(why);
 			else n.line("No task force could be raised for the orbit of %s", ThreatNotice.market(hive));
 			n.send();
 			return null;
@@ -1936,7 +1937,7 @@ public class ThreatFactionView {
 			String title = pull ? "Evacuation Refused" : "Supply Run Refused";
 			String refused = ThreatConvoys.canRunTo(faction, hive);
 			if (refused != null) {
-				ThreatNotice.titled(title).bad().icon(faction).line(refused).send();
+				ThreatNotice.titled(title).bad().icon(faction).lines(refused).send();
 				return null;
 			}
 			ThreatConvoys.Convoy c = pull ? ThreatConvoys.pullOutFront(hive, faction, random)

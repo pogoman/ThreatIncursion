@@ -186,9 +186,8 @@ Siege expeditions, NPC and commissioned alike, are **sized to the target** (Sept
 `IncursionManager.siegeFleetSizes`). Vanilla's raid effectiveness is `raidStr / (raidStr +
 defenderStr)` and an industry raid needs `MarketCMD.DISRUPTION_THRESHOLD` = 0.25 of it, so the
 landing force must be at least a third of the strongest target's `getDefenderStr` as it will
-stand after the tactical pass (`ThreatGroundFronts.orbitFloorFraction`: every fortification
-worn to the orbital floor - about 0.56 of the intact figure behind Heavy Batteries, 0.63 behind
-Ground Defenses, 0.83 with neither), times `SIEGE_RAID_HEADROOM` (1.25) for
+stand after the tactical pass (`ThreatGroundFronts.wornDefenceFraction`: every fortification's
+bonus fully worn away), times `SIEGE_RAID_HEADROOM` (1.25) for
 the preparedness bump each raid adds. NPC raid strength is a
 quarter of crew capacity (`MarketCMD.getRaidStr`), which tracks fleet size, so fleets are added
 to the old baseline shape until difficulty points x `threatinc_siegeRaidStrPerPoint` (43,
@@ -211,9 +210,8 @@ the same per-world figure.
 
 Disrupted defenses **wear** (Sept 2026, `ThreatColonyManager.disruptedDefenseResilience`, used
 by `ThreatGroundDefenses` and `SwarmNexus`): a structure's bonus falls linearly with the
-disruption days on its clock to nothing at `threatinc_defenseWearDays` (300), and from orbit
-alone never below `threatinc_fortificationOrbitFloor` (0.5) - the hive's half of the
-fortification rule (2026-09-06; the old half-effect step is gone).
+disruption days on its clock to nothing at `threatinc_defenseWearDays` (300), orbit included -
+the orbital floor that used to stop bombardment at half effect is gone (2026-09-28).
 Disruption stacks - tactical passes keep the longer duration, successful raids add theirs - so
 repeated raids now lower the defense figure (and with it the raid odds and the bombardment
 bill) where before every pass met the same half-effect batteries. The size-anchored base never
