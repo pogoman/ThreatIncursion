@@ -800,6 +800,15 @@ public class ThreatFrontlines {
 		return sum;
 	}
 
+	/** Supplies a month the garrison standing at this forward base costs (0 for any other market). */
+	public static float garrisonUpkeepAt(MarketAPI market) {
+		Outpost o = find(market);
+		if (o == null) return 0f;
+		float sum = 0f;
+		for (CampaignFleetAPI f : liveGuards(o)) sum += maintenancePerMonth(f);
+		return sum;
+	}
+
 	/**
 	 * What the faction may spend on garrisons a month: its supply banking x
 	 * frontlineUpkeepShare, plus its stock above the floors spread over

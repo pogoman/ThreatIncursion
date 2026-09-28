@@ -569,13 +569,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
 		if (faction == null || faction.isPlayerFaction()) return false;
 		float ours = liveFP();
-		if (ours <= 0f) return false;
+		if (ours <= 0f || holdsAFront()) return false;
 		float worst = 0f;
 		MarketAPI at = null;
 		for (MarketAPI target : live) {
 			if (!ThreatGroundFronts.isHiveTarget(target)) continue;
-			ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(target.getId());
-			if (front != null && faction.getId().equals(ThreatGroundFronts.ownerOf(front))) return false;
 			float hostile = ThreatGroundFronts.hostilePointsNear(faction.getId(), target);
 			if (hostile > worst) {
 				worst = hostile;
@@ -583,6 +581,70 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			}
 		}
 		if (at == null || worst < ours * ratio) return false;
+		callOff(at, worst, ours, getTotalFPSpawned());
+		return true;
+	}
+
+	/** A front of this faction down on any world the expedition sailed for: it stays over its troops. */
+	protected boolean holdsAFront() {
+		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
+		if (faction == null || getParams() == null || getParams().raidParams == null) return false;
+		for (MarketAPI target : getParams().raidParams.allowedTargets) {
+			if (target == null) continue;
+			ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(target.getId());
+			if (front != null && faction.getId().equals(ThreatGroundFronts.ownerOf(front))) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * The break-off off-screen (2026-09-29, overnight run N1): vanilla's
+	 * FGRaidAction.autoresolve weighs the expedition's strength in the system
+	 * against every hostile fleet there plus the target's station, and where the
+	 * defence is as strong it charges up to 75% damage and skips the raid - so an
+	 * unspawned razing or siege met by converging Defense Swarms came home at a
+	 * quarter strength with its ordnance unburned (7 of 15 razings of run 6),
+	 * and breaksOff, which reads live fleets, never saw it. Same test in
+	 * vanilla's own units, before vanilla fights: outweighed by
+	 * siegeBreakOffRatio over a hive it has still to take, it turns home intact.
+	 * The notice quotes the swarms in the expedition's FP at vanilla's ratio.
+	 */
+	protected boolean breaksOffAbstract(com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction.FGRaidParams p,
+			com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction action) {
+		float ratio = ThreatIncConfig.siegeBreakOffRatio();
+		if (ratio <= 0f || playerCommissioned || p == null || p.where == null) return false;
+		if (isEnding() || isEnded() || isAborted() || isSucceeded() || isSpawnedFleets()) return false;
+		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
+		if (faction == null || faction.isPlayerFaction() || holdsAFront()) return false;
+		float str = com.fs.starfarer.api.impl.campaign.command.WarSimScript.getFactionStrength(faction, p.where);
+		if (getRoute() != null && getRoute().isExpired() && getRoute().getExtra() != null) {
+			str += getRoute().getExtra().getStrengthModifiedByDamage();
+		}
+		if (str <= 0f) return false;
+		float enemy = com.fs.starfarer.api.impl.campaign.command.WarSimScript.getEnemyStrength(faction, p.where, false);
+		float worst = 0f;
+		MarketAPI at = null;
+		for (MarketAPI target : p.allowedTargets) {
+			if (target == null || !target.isInEconomy() || !ThreatGroundFronts.isHiveTarget(target)) continue;
+			if (action.getRaidCount().getCount(target) >= p.raidsPerColony) continue;
+			float def = enemy + com.fs.starfarer.api.impl.campaign.command.WarSimScript.getStationStrength(
+					target.getFaction(), p.where, target.getPrimaryEntity());
+			if (def > worst) {
+				worst = def;
+				at = target;
+			}
+		}
+		if (at == null || worst < str * ratio) return false;
+		float ours = abstractAllotment();
+		ThreatIncConfig.log("Abstract break-off at " + at.getName() + ": strength " + (int) str + " vs "
+				+ (int) worst + " defending (vanilla units)");
+		callOff(at, ours * worst / str, ours, ours / Math.max(0.01f, 1f - routeDamage()));
+		return true;
+	}
+
+	/** Turn the expedition home intact: notice, log, and the base's swarm bounty. */
+	protected void callOff(MarketAPI at, float worst, float ours, float sailed) {
+		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
 		setFailedButNotDefeated(true);
 		abort();
 		ThreatNotice.titled("Siege Called Off").icon(faction)
@@ -592,14 +654,14 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				.send();
 		ThreatIncConfig.log("Siege called off over " + at.getName() + " (" + faction.getId() + "): "
 				+ (int) worst + " FP of swarms against " + (int) ours + " FP, "
-				+ (int) (100f * ours / Math.max(1f, getTotalFPSpawned())) + "% of what sailed");
+				+ (int) (100f * ours / Math.max(1f, sailed)) + "% of what sailed");
 		com.fs.starfarer.api.campaign.StarSystemAPI system = at.getStarSystem();
+		IncursionManager.noteSwarmsMet(faction.getId(), system, worst);
 		MarketAPI base = sourceBase();
 		if (base != null && system != null) {
 			ThreatSwarmBountyIntel.post(base, system,
 					(int) (ours / Math.max(0.01f, ThreatIncConfig.npcSiegeOrbitMargin())));
 		}
-		return true;
 	}
 
 	public float getMarinesAllotted() {
@@ -915,6 +977,20 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				}
 			}
 			super.performRaid(fleet, market);
+		}
+
+		/**
+		 * Off-screen, the commander's break-off comes before vanilla's fight
+		 * ({@link ThreatPurgeFGI#breaksOffAbstract}): an outweighed expedition
+		 * turns home rather than take vanilla's 75% for nothing.
+		 */
+		@Override
+		public void autoresolve() {
+			if (!isActionFinished() && intel instanceof ThreatPurgeFGI
+					&& ((ThreatPurgeFGI) intel).breaksOffAbstract(getParams(), this)) {
+				return;
+			}
+			super.autoresolve();
 		}
 
 		/** Every pass the world has left, spent at once: vanilla's stage takes it as done. */

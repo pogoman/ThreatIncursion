@@ -1845,3 +1845,39 @@ Hives eradicated 5 (4, 3). Two short landings never landed: Defense Swarms that 
 the launch ground them below the abort line with the ordnance unburned (the orbit gate's
 problem, not the guns'). Threat beachheads overrun by colony garrisons: 29 (runs 3-4: 29, 30).
 The "lands X of Y" line is logQuiet since (21:09 jar, untested).
+
+### Overnight 2026-09-29 - siege AI fixes (built, tested in runs N1-N3)
+
+Runs on clones of save_IWLong19 (day 0 = 0215-05-15, no player, all sieges off-screen), findings
+per checkpoint in the session scratch folder. Run 6 / N1 baseline at ~540 d: 22-28 launches, 5 hives
+eradicated, 0 colonies lost, Threat hives 39 -> 38 - a stalemate.
+
+- **Off-screen break-off** (`ThreatPurgeFGI.breaksOffAbstract`, called from
+  `SiegeRaidAction.autoresolve`). Vanilla's `FGRaidAction.autoresolve` weighs the expedition's
+  strength in the system against every hostile fleet there plus the station; where the defence is
+  as strong it charges up to 75% damage and skips the raid. `breaksOff` only reads live fleets, so
+  an unspawned siege or razing met by converging Defense Swarms came home at 25% with its ordnance
+  unburned (7 of 15 razings in run 6, "strength 25%" x10). The same test now runs first, in
+  vanilla's units: outweighed by `siegeBreakOffRatio` over a hive still to take, it turns home
+  intact ("Abstract break-off at X", "Siege called off"). No break-off while the faction has a
+  front on ANY of the expedition's worlds (`holdsAFront`). N2: 14 called off, 0 razings worn.
+- **Sibling forward bases pool** (`siegeDonors`, `donorAvailable`). Forward bases were excluded as
+  donors; run 6's Hegemony held 19-53k fuel at Alpha Spair I and Calu while Temblor postponed 73
+  times for fuel. Now every market in reach gives above its floor; a forward base keeps back
+  `siegeOutpostKeepMonths` (3) of its garrison's supply upkeep (`ThreatFrontlines.garrisonUpkeepAt`).
+  N2: launches 26 at 270 d (N1: 14).
+- **A called-off siege remembers** (`IncursionManager.swarmsMet` / `noteSwarmsMet`). The launch
+  gate weighs one world's Defense Swarms (`npcSiegeOrbitPerWorld`), but garrisons converge and
+  vanilla's fight weighs the system: N2's sieges sailed into 4-7x their weight, Goodfellow twice.
+  `callOff` records the swarms met on the system per faction for `siegeMetMemoryDays` (90);
+  `siegeOrbitNeeded` weighs the larger of the two. The bounty the call-off posts sends hunters in.
+- **Threat beachheads sized to survive** (`ThreatStrikeFGI.beachheadLanding`,
+  `ThreatGroundFronts.beachheadTroops`). Strikes never asked `beachheadSurvives`: abstract ones
+  landed after "0 d" of bombardment (the world's even share, 200-300 troops) against counter-attacks
+  of 440-680, and 37 of 42 beachheads were overrun in N1 with no colony taken. Now the swarm's
+  siege (live and abstract) uses the faction form of `readyToLand` like a purge, and a first
+  landing short of the line lands more of what the strike carries, then breaks hulls up at
+  `fabricateTroopsPerFP` for the rest (abstract strikes charge `fabricatedFP` off their strength);
+  a strike that cannot reach it holds back ("Strike landing at X held back").
+- LunaLib migration 6: `frontDangerCloseLossFraction` 0.05 -> 0.005 (the v2 default never reached
+  a stored settings file).
