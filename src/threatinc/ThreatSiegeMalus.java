@@ -5,12 +5,14 @@ import java.util.List;
 
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
+import com.fs.starfarer.api.campaign.econ.MarketImmigrationModifier;
 import com.fs.starfarer.api.campaign.econ.MutableCommodityQuantity;
 import com.fs.starfarer.api.combat.StatBonus;
 import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.impl.campaign.ids.Stats;
+import com.fs.starfarer.api.impl.campaign.population.PopulationComposition;
 import com.fs.starfarer.api.util.Pair;
 
 /**
@@ -32,12 +34,16 @@ import com.fs.starfarer.api.util.Pair;
  * does for a hive's strata), and each district held costs the colony
  * stability and accessibility.
  *
- * <p>Installed while a front stands or any defence structure is disrupted,
- * removed otherwise ({@link ThreatGroundFronts#syncSiegeState}). Modelled on
+ * <p><b>Saturation.</b> A colony under saturation does not grow
+ * ({@link ThreatRazing#saturated}): its immigration is held at nothing while
+ * the bombs fall.
+ *
+ * <p>Installed while a front stands, any defence structure is disrupted or
+ * saturation falls, removed otherwise ({@link ThreatGroundFronts#syncSiegeState}). Modelled on
  * {@link WarFootingDemand}: never shown, never buildable, never disrupted,
  * never raided, no upkeep.
  */
-public class ThreatSiegeMalus extends BaseIndustry {
+public class ThreatSiegeMalus extends BaseIndustry implements MarketImmigrationModifier {
 
 	public static final String ID = "threatinc_siege_malus";
 
@@ -180,9 +186,17 @@ public class ThreatSiegeMalus extends BaseIndustry {
 		return lines;
 	}
 
+	/** No growth while saturation falls: the colony's incoming population held at nothing. */
+	public void modifyIncoming(MarketAPI market, PopulationComposition incoming) {
+		if (ThreatRazing.saturated(market)) {
+			incoming.getWeight().modifyMult(getModId(), 0f, "Saturation bombardment");
+		}
+	}
+
 	@Override
 	public void apply() {
 		super.apply(true);
+		market.addTransientImmigrationModifier(this);
 		StatBonus defense = market.getStats().getDynamic().getMod(Stats.GROUND_DEFENSES_MOD);
 		int size = Math.max(1, market.getSize());
 		// a colony that shrank onto its held districts still defends its last one
@@ -215,14 +229,26 @@ public class ThreatSiegeMalus extends BaseIndustry {
 		// fortification: a suppressed structure keeps its bonus in proportion
 		// to its condition (vanilla stripped it whole) and to its inputs, as
 		// vanilla scales it when it runs
+		// vanilla's disruption also strips the structure's stability whole, and
+		// stability multiplies the ground defence (0.25 at 0, 1 at 10): kept in
+		// proportion to its condition too, or the first day's touch cost the
+		// garrison a quarter of its strength at 97% condition (Jangala, 2026-09-28)
 		for (String id : FORTIFICATION_IDS) {
 			String key = getModId() + "_" + id;
 			Industry ind = market.getIndustry(id);
 			if (ind == null || !ind.isDisrupted() || (ind.isBuilding() && !ind.isUpgrading())) {
 				defense.unmodifyMult(key);
+				market.getStability().unmodifyFlat(key);
 				continue;
 			}
-			float cond = condition(ind) * deficitMult(ind);
+			float wear = condition(ind);
+			float stability = stabilityOf(id) * wear;
+			if (stability > 0f) {
+				market.getStability().modifyFlat(key, stability, ind.getCurrentName() + " (suppressed)");
+			} else {
+				market.getStability().unmodifyFlat(key);
+			}
+			float cond = wear * deficitMult(ind);
 			if (cond <= 0f) {
 				defense.unmodifyMult(key);
 				continue;
@@ -232,13 +258,25 @@ public class ThreatSiegeMalus extends BaseIndustry {
 		}
 	}
 
+	/** The base stability vanilla gives each while it runs (GroundDefenses / MilitaryBase getBaseStabilityMod). */
+	public static float stabilityOf(String industryId) {
+		if (Industries.GROUNDDEFENSES.equals(industryId)) return 1f;
+		if (Industries.HEAVYBATTERIES.equals(industryId)) return 1f;
+		if (Industries.PATROLHQ.equals(industryId)) return 1f;
+		if (Industries.MILITARYBASE.equals(industryId)) return 2f;
+		if (Industries.HIGHCOMMAND.equals(industryId)) return 2f;
+		return 0f;
+	}
+
 	@Override
 	public void unapply() {
 		super.unapply();
+		market.removeTransientImmigrationModifier(this);
 		StatBonus defense = market.getStats().getDynamic().getMod(Stats.GROUND_DEFENSES_MOD);
 		defense.unmodifyMult(getModId());
 		for (String id : FORTIFICATION_IDS) {
 			defense.unmodifyMult(getModId() + "_" + id);
+			market.getStability().unmodifyFlat(getModId() + "_" + id);
 		}
 		market.getStability().unmodifyFlat(getModId());
 		market.getAccessibilityMod().unmodifyFlat(getModId());

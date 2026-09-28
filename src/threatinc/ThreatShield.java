@@ -19,10 +19,11 @@ import com.fs.starfarer.api.impl.campaign.ids.Industries;
  * {@code threatinc_shieldDefenseBonus} knob if you want it back).
  *
  * <p>So a bombardment against a shielded world spends itself twice over. The
- * shield stands in the open and takes every pass at full weight; everything
- * under it takes {@link #throughput} of what was aimed at it. An intact shield
- * turns most of a strike aside, and each pass buys less cover for the next.
- * Grind it to nothing and the world is bare.
+ * shield stands in the open and takes every day at full weight; everything
+ * under it takes {@link #throughput} of what was aimed at it, and a
+ * saturation day's fuel reaches the razing bar at the same cut
+ * ({@link ThreatRazing}). An intact shield turns most of a day aside, and
+ * each day buys less cover for the next. Raids and fronts ignore it.
  *
  * <p><b>Useful Planetary Shield, if it is also loaded.</b> Nothing is overridden
  * and nothing needs to be. UPS gates its own mitigation on the shield having
@@ -79,12 +80,13 @@ public class ThreatShield {
 	}
 
 	/**
-	 * The shield's own share of one orbital slice. It has no cover of its own,
-	 * so it takes the slice at full weight (times its soak rate), on the same
-	 * cap and the same make-up-the-run-down rule as a fortification.
+	 * The shield's own share of a day of bombardment, tactical or saturation.
+	 * It has no cover of its own, so it takes the day at full weight (times its
+	 * soak rate) times what still stands of it - the same diminishing returns as
+	 * any fortification - on the same cap and the same make-up-the-run-down rule.
 	 *
-	 * @param restore the days the clock ran down since the last slice, or 0 for
-	 *                an instantaneous pass
+	 * @param add     the day's rate on a structure still whole
+	 * @param restore the days the clock ran down since the last slice, or 0
 	 * @return whether anything was written
 	 */
 	public static boolean soak(MarketAPI market, float add, float restore, float cap) {
@@ -96,23 +98,7 @@ public class ThreatShield {
 		float cur = ThreatGroundFronts.siegeDisruptDays(shield);
 		if (cur >= cap) return false;
 		float made = cur > 0f ? restore : 0f;
-		shield.setDisrupted(Math.min(cap, cur + made + add * rate));
-		return true;
-	}
-
-	/**
-	 * The shield's share of a raise-to pass - a saturation strike, a danger-close
-	 * barrage - raised to the full figure it would have taken, never shortened.
-	 *
-	 * @return whether anything was written
-	 */
-	public static boolean soakTo(MarketAPI market, float dur) {
-		if (!present(market)) return false;
-		Industry shield = get(market);
-		if (shield == null || dur <= 0f) return false;
-		float rate = Math.max(0f, ThreatIncConfig.shieldSoakMult());
-		if (rate <= 0f) return false;
-		shield.setDisrupted(Math.max(ThreatGroundFronts.siegeDisruptDays(shield), dur * rate));
+		shield.setDisrupted(Math.min(cap, cur + made + add * rate * integrity(market)));
 		return true;
 	}
 

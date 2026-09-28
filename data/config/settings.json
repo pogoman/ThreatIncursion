@@ -183,43 +183,50 @@
 	# defenseWearDays on a hive) - instead of vanilla's on/off. On a colony
 	# the rule applies to worlds besieged (or landed on), not to every raid.
 	"threatinc_fortificationDisruptDays": 180,
-	# the player can raid a human colony's fortifications (vanilla tags them
-	# unraidable): danger as vanilla's NONE/MINIMAL/LOW/MEDIUM/HIGH/EXTREME -
-	# days per marine token and casualties.
-	"threatinc_fortificationRaidDanger": "HIGH",
-	# marines lost on a fortification grow by (tokens ^ depthLoss - 1) x the
-	# defence's share of the fight: depth costs dear against a strong
-	# garrison, little against a weak one (0 = vanilla)
-	"threatinc_fortificationRaidDepthLoss": 1.5,
-	# the same toll on a hive's Swarm Nexus (weighted by its defence bonus)
-	# and Fabrication Core (no defence bonus: this weight, Ground Defenses = 1)
+	# raiding a hive's Fabrication Core (the one raid on a war structure left,
+	# 2026-09-28): marines lost grow by (tokens ^ depthLoss - 1) x the
+	# defence's share of the fight x the Core's weight (Ground Defenses = 1)
+	"threatinc_coreRaidDepthLoss": 1.5,
 	"threatinc_coreRaidDepthWeight": 1.0,
-	# an unopposed besieging fleet - a Threat strike, a faction's or the
-	# player's siege expedition, a Support sortie, the player's own tactical
-	# bombardment - adds suppressDaysPerDay x fleet / (fleet + defence)
-	# disruption days per day to the world's fortifications (fleet points x
-	# siegeFPWeight against the ground-defence figure), and loses
-	# siegeBatteryAttritionPerDay x its points x the batteries' share of the
-	# defence / (fleet + defence) per day to return fire, smallest ships
-	# first. An expedition lands once the fortification is at the floor, or
-	# once its troops could hold as they are (every day in orbit costs ships,
-	# so a force that can hold spends marines rather than hulls; Support is
-	# the button for when that call is wrong). The rate is NET of the clock's
-	# own run-down (a day per day): a live fleet makes that up first. A hive's
-	# figure is anchored to its size and runs several times a colony's, so
-	# its rate is higher: at 30 a 600-point expedition takes a size-5 hive
-	# (~9,000) to the floor in about 60 days, as 1,000 points take a 4,000
-	# colony in about 75.
+	# Bombardment (docs/suppression-balance.md, v2 2026-09-28). A bombardment
+	# is a day of sorties, once a day: every besieger - a Threat strike, a
+	# faction's or the player's siege expedition, a Support or Defend sortie,
+	# the player's own tactical bombardment - adds suppressDaysPerDay x fleet /
+	# (fleet + defence) x condition disruption days per day to each
+	# fortification (fleet points x siegeFPWeight against the ground-defence
+	# figure). The x condition is what still stands: each pass finds fewer
+	# targets, so orbit softens and boots finish. A hovering fleet makes up
+	# the clock's own run-down (a day per day). A hive's figure is anchored to
+	# its size and runs several times a colony's, so its rate is higher.
 	"threatinc_siegeSuppressDaysPerDay": 12,
 	"threatinc_hiveSiegeSuppressDaysPerDay": 30,
 	"threatinc_siegeFPWeight": 1.0,
-	"threatinc_siegeBatteryAttritionPerDay": 0.02,
-	# days of siege one tactical bombardment by the player stands for in
-	# return fire, and in suppression: a pass is a concentrated strike, so it
-	# suppresses as a longer siege would but is under the guns only briefly.
-	# Both still scale by fleet / (fleet + defence).
-	"threatinc_siegeBombardSliceDays": 3,
-	"threatinc_tacBombardSuppressDays": 15,
+	# the player's bombardments share one lock: another within this many days
+	"threatinc_bombardCooldownDays": 1,
+	# fuel is ordnance: a tactical bombardment day burns this per fleet point
+	# (an AI fleet's from its provisions; no fuel, no bombardment)
+	"threatinc_bombardFuelPerFPDay": 0.04,
+	# return fire is set by the guns, not the fleet: fleet points lost per day =
+	# this x the defence the batteries add (defence x (1 - 1 / their
+	# multiplier)), smallest ships first, the flagship spared
+	"threatinc_bombardReturnFirePerGunDefence": 0.0008,
+	# a commander bombards only while a day takes at least this many defence
+	# points off the world for each fleet point the guns take: a fleet point of
+	# hull costs ~5,600 credits at vanilla's median, ~6,000 armed and crewed,
+	# a marine 200, and a defence point is a marine the landing no longer needs
+	"threatinc_bombardFPWorth": 30,
+	# unrest a bombardment raises the world to, never stacked: tactical this x
+	# (1 - condition), saturation this
+	"threatinc_bombardUnrestMax": 10,
+	# saturation pours this much fuel per fleet point per day into the world's
+	# razing bar; destroying a size-4 colony takes satFuelSize4 fuel, each size
+	# up x3.2 (the built-up area). A razed level is a size off; the last ends
+	# the colony
+	"threatinc_satFuelPerFPDay": 2.86,
+	"threatinc_satFuelSize4": 10000,
+	# NPC factions raze a hive from orbit instead of landing where that is the
+	# cheaper at vanilla base prices (docs/suppression-balance.md v2 section 8)
+	"threatinc_npcRazeEnabled": true,
 	# a planetary shield is a military structure that wears on the same clock as
 	# any fortification, but what its condition buys is cover: an intact shield
 	# turns this fraction of a bombardment away from everything else on the world,
@@ -255,17 +262,14 @@
 	"threatinc_conquestConverts": true,
 	"threatinc_conquestHiveSize": 2,
 
-	# scale on hive ground-defense strength; bombardment fuel cost scales with it
+	# scale on hive ground-defense strength
 	"threatinc_groundDefenseMult": 1.0,
 
 	# Hive sieges: every hive lives deep underground behind ground defenses
-	# anchored to COLONY SIZE (hiveDefensePerSize x size, immune to unrest,
-	# then multiplied by the defense industries - a size-8 hive's true figure
-	# runs five digits). Saturation bombardment costs the full defense figure
-	# and only disrupts industries for days; it can NEVER reduce population.
-	# Tactical bombardment costs a fraction and suppresses the war-strata
-	# longer; marine raids disrupt longest. The only way a hive dies is
-	# decline: population falling to size 1 under disruption or shortages.
+	# anchored to COLONY SIZE (hiveDefensePerSize x size, times stability like
+	# any colony's, then multiplied by the defense industries - a size-8 hive's
+	# true figure runs five digits). A hive dies to a ground victory, or to
+	# saturation razed down to its last stratum.
 	"threatinc_hiveDefensePerSize": 400,
 	# defense-structure scaling: defense mult = 1 + bonus per structure
 	"threatinc_groundDefensesBonus": 1.0,
@@ -275,15 +279,11 @@
 	# disruption days on the structure's clock, to nothing at this many - the
 	# hive's fortification clock. The same wear applies to a disrupted Core's
 	# fabrication factor (coreDownFactor at fresh disruption, zero at the
-	# limit). What drives a clock that deep: siege slices from orbit, marine raids adding their days (vanilla), and a ground front that
-	# HOLDS adding a net day per day (frontSuppressDaysPerDay), so an organ
+	# limit). What drives a clock that deep: bombardment from orbit and a
+	# ground front wearing by its advantage (frontWearRate), so an organ
 	# carrying 300 days has had an army on top of it for most of a year. The
 	# size-anchored base never wears. 0 = no wear.
 	"threatinc_defenseWearDays": 300,
-	"threatinc_hiveBombardCostMult": 1.0,
-	"threatinc_hiveTacCostFraction": 0.25,
-	"threatinc_hiveSatDisruptDays": 20,
-	"threatinc_hiveTacDisruptDays": 60,
 	"threatinc_hiveMarineLossMult": 1.5,
 
 	# Ground fronts (docs/ground-war.md): marines + heavy armaments committed to
@@ -311,10 +311,10 @@
 	# that a dug-in front fights at 1.0 (2026-09-06).
 	"threatinc_frontHoldFraction": 0.17,
 	"threatinc_frontGrindFraction": 0.10,
-	# days added to a suppressed structure's disruption clock per day held; the
-	# clock counts down 1/day naturally, so 2.0 nets +1 day of wear per day
-	"threatinc_frontSuppressDaysPerDay": 2.0,
-	"threatinc_frontGrindSuppressMult": 0.5,
+	# a front wears the defences by its advantage: this x troops / (troops +
+	# defence) disruption days per day, whatever orbit left standing; the clock
+	# counts down 1/day naturally, so it breaks even at about 0.09 x defence
+	"threatinc_frontWearRate": 12,
 	# marines lost per 30 days (fraction of current), times the multiplier once
 	# the heavy armaments run dry; below min marines the front is overrun
 	"threatinc_frontMarineLossPer30Days": 0.08,
@@ -374,11 +374,8 @@
 	# marines - and in exchange the strike's disruption also lands on the
 	# Fabrication Core and port (the ground forces mark targets)
 	"threatinc_frontDangerCloseEnabled": true,
-	"threatinc_frontDangerCloseLossFraction": 0.05,
-	# saturation fallout: days ground forces cannot land after a sat pass. Keep
-	# it >= hiveSatDisruptDays - sat bombing must forfeit ground tempo, or it
-	# becomes the best siege opener instead of a tradeoff
-	"threatinc_falloutDays": 40,
+	# per bombardment day (a bombardment is one day since 2026-09-28)
+	"threatinc_frontDangerCloseLossFraction": 0.005,
 	# Threat doctrine over its own besieged world (2026-09-06): while Defense
 	# Swarms or any armed Threat fleet hold the orbit over an enemy front with
 	# no armed hostile fleet there to contest them, a countdown runs; at
@@ -521,6 +518,10 @@
 	# short asks the player to thin the swarms (an orbit contract)
 	"threatinc_npcSiegeOrbitGate": true,
 	"threatinc_npcSiegeOrbitMargin": 1.5,
+	# an NPC siege that has landed nothing turns home intact once the fleets
+	# hostile to it over a hive it is taking reach this x its own (1 =
+	# outweighed); 0 fights on to vanilla's abort line (0.33 of what sailed)
+	"threatinc_siegeBreakOffRatio": 1.0,
 	# weigh the strongest single world's swarms (a siege takes the worlds one
 	# at a time, and a garrison fights over its own world only); off: all summed
 	"threatinc_npcSiegeOrbitPerWorld": true,
@@ -647,7 +648,8 @@
 	"threatinc_defendDays": 60,
 	"threatinc_landingDefendEnabled": true,
 	"threatinc_defendMinStrength": 0.33,
-	# FABRICATING TROOPS FROM THE FLEET (2026-09-08). A Defend fleet bombards
+	# FABRICATING TROOPS FROM THE FLEET (2026-09-08; the swarm's alone since
+	# 2026-09-28 - a navy's hulls do not become marines). A swarm Defend fleet bombards
 	# while its front cannot hold - but once every fortification is worn out
 	# there is nothing left for a slice to reach, and a losing
 	# front would just watch. Instead the fleet breaks up its own hulls and
@@ -656,8 +658,8 @@
 	# what the front is short of fabricateHoldMargin of the hold line, so a
 	# shallow deficit costs a shallow bite; on top of the hulls that become
 	# troops it pays what UNDISRUPTED batteries would charge for a day in orbit
-	# (the duel's own siegeBatteryAttritionPerDay formula read at full
-	# condition), so a world with no guns is fed for free. It stops the moment the
+	# (the day's return fire read with every gun intact), so a world with no
+	# guns is fed for free. It stops the moment the
 	# front holds, and while it is running the fleet is exempt from the
 	# defendMinStrength stand-down: it commits until the front stands or falls.
 	# The flagship and the last hull are always spared.

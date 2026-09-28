@@ -186,20 +186,32 @@ public class ThreatIncConfig {
 
 	/** Disruption days at which a colony's defence structure contributes nothing (its bonus scales down linearly to it). */
 	public static float fortificationDisruptDays() { return f("threatinc_fortificationDisruptDays"); }
-	/** Raid danger (vanilla RaidDangerLevel name) of a disrupt raid on a human colony's fortifications (ThreatFortificationRaids). */
-	public static String fortificationRaidDanger() { return s("threatinc_fortificationRaidDanger", "HIGH"); }
-	/** Marines lost on a raid grow as (tokens on one fortification) ^ this: 0 is vanilla (depth free), 1 costs the same as shallow raids, above 1 one deep raid costs more. */
-	public static float fortificationRaidDepthLoss() { return f("threatinc_fortificationRaidDepthLoss"); }
+	/** Marines lost raiding a hive's Fabrication Core grow as (tokens on it) ^ this: 0 is vanilla (depth free), 1 costs the same as shallow raids, above 1 one deep raid costs more. */
+	public static float coreRaidDepthLoss() { return f("threatinc_coreRaidDepthLoss"); }
 	/** A Fabrication Core's weight in the raid depth toll, Ground Defenses intact = 1 (the Nexus is weighted by its defence bonus). */
 	public static float coreRaidDepthWeight() { return f("threatinc_coreRaidDepthWeight"); }
 	/** Disruption days per day an unopposed siege fleet adds to a colony's fortifications at overwhelming strength, scaled by fleet / (fleet + defence). */
 	public static float siegeSuppressDaysPerDay() { return f("threatinc_siegeSuppressDaysPerDay"); }
 	/** The same, over a hive's war-strata (their clock is defenseWearDays). */
 	public static float hiveSiegeSuppressDaysPerDay() { return f("threatinc_hiveSiegeSuppressDaysPerDay"); }
-	/** Days of siege one tactical bombardment by the player stands for. */
-	public static float siegeBombardSliceDays() { return f("threatinc_siegeBombardSliceDays"); }
-	/** Days of siege a player's tactical bombardment stands for in suppression; the return fire stays siegeBombardSliceDays. */
-	public static float tacBombardSuppressDays() { return f("threatinc_tacBombardSuppressDays"); }
+	/** Days before the player's fleet can organize another bombardment; tactical and saturation share the lock. */
+	public static float bombardCooldownDays() { return f("threatinc_bombardCooldownDays"); }
+	/** Fuel a day of tactical bombardment burns per fleet point (an AI fleet's from its provisions). */
+	public static float bombardFuelPerFPDay() { return f("threatinc_bombardFuelPerFPDay"); }
+	/** Fleet points a bombarding fleet loses per day per point of defence the batteries add. */
+	public static float bombardReturnFirePerGunDefence() { return f("threatinc_bombardReturnFirePerGunDefence"); }
+	/** Defence points a day of bombardment must take off per fleet point the guns take: a hull's price in marines. */
+	public static float bombardFPWorth() { return f("threatinc_bombardFPWorth"); }
+	/** Unrest a saturation bombardment raises a world to; a tactical one raises it to this x (1 - condition). */
+	public static float bombardUnrestMax() { return f("threatinc_bombardUnrestMax"); }
+	/** Fuel a day of saturation pours onto a world per fleet point. */
+	public static float satFuelPerFPDay() { return f("threatinc_satFuelPerFPDay"); }
+	/** Fuel to raze a size-4 colony to nothing; each size up x sqrt(10). */
+	public static float satFuelSize4() { return f("threatinc_satFuelSize4"); }
+	/** Whether NPC factions raze a hive from orbit where that is cheaper than landing (IncursionManager.razeWorlds). */
+	public static boolean npcRazeEnabled() {
+		return b("threatinc_npcRazeEnabled", true);
+	}
 
 	/** Whether a planetary shield absorbs part of the disruption a bombardment lands on everything else. */
 	public static boolean shieldAbsorbEnabled() { return b("threatinc_shieldAbsorbEnabled", true); }
@@ -212,8 +224,6 @@ public class ThreatIncConfig {
 
 	/** Fleet points are multiplied by this before being weighed against the ground-defence figure. */
 	public static float siegeFPWeight()       { return f("threatinc_siegeFPWeight"); }
-	/** Fraction of an orbiting fleet's points the colony's batteries destroy per day at even odds. */
-	public static float siegeBatteryAttritionPerDay() { return f("threatinc_siegeBatteryAttritionPerDay"); }
 	/** Days a strike expedition holds orbit over a system before giving its siege up. */
 	public static float siegeOrbitDays()      { return f("threatinc_siegeOrbitDays"); }
 	/** Strike-target weight multiplier for a world whose Threat front is dry and signalling for the next expedition. */
@@ -245,14 +255,6 @@ public class ThreatIncConfig {
 	public static float nexusDefenseBonus()   { return f("threatinc_nexusDefenseBonus"); }
 	/** Disruption days on a structure's clock at which its bonus has worn to nothing (0 = no wear); the hive's fortification clock. */
 	public static float defenseWearDays()     { return f("threatinc_defenseWearDays"); }
-	/** Scale on the saturation fuel bill (1.0 = exactly the defense strength). */
-	public static float hiveBombardCostMult() { return f("threatinc_hiveBombardCostMult"); }
-	/** Tactical bombardment fuel cost as a fraction of the defense strength. */
-	public static float hiveTacCostFraction() { return f("threatinc_hiveTacCostFraction"); }
-	/** Days of disruption a saturation pass inflicts on hive industries. */
-	public static float hiveSatDisruptDays()  { return f("threatinc_hiveSatDisruptDays"); }
-	/** Days of disruption a danger-close tactical pass writes to a hive's Core and port (the war-strata take the siege slice). */
-	public static float hiveTacDisruptDays()  { return f("threatinc_hiveTacDisruptDays"); }
 	/** Marine-loss multiplier when raiding hive worlds. */
 	public static float hiveMarineLossMult()  { return f("threatinc_hiveMarineLossMult"); }
 
@@ -268,10 +270,8 @@ public class ThreatIncConfig {
 	public static float frontHoldFraction()   { return f("threatinc_frontHoldFraction"); }
 	/** Fraction of the defense figure needed to GRIND (harass only the defense structures, at the reduced rate below). */
 	public static float frontGrindFraction()  { return f("threatinc_frontGrindFraction"); }
-	/** Days added to a suppressed structure's disruption clock per day held (the clock counts down 1/day naturally, so 2.0 nets +1). */
-	public static float frontSuppressDaysPerDay() { return f("threatinc_frontSuppressDaysPerDay"); }
-	/** Suppression-rate multiplier while only grinding. */
-	public static float frontGrindSuppressMult() { return f("threatinc_frontGrindSuppressMult"); }
+	/** Disruption days a front adds per day to what it holds, times troops / (troops + defence); the clock runs down 1/day. */
+	public static float frontWearRate()       { return f("threatinc_frontWearRate"); }
 	/** Fraction of the front's current marines lost per 30 days while supplied. */
 	public static float frontMarineLossPer30Days() { return f("threatinc_frontMarineLossPer30Days"); }
 	/** Attrition multiplier once the heavy armaments run out. */
@@ -315,10 +315,8 @@ public class ThreatIncConfig {
 	public static boolean marineFleetXpTransfer() { return b("threatinc_marineFleetXpTransfer", true); }
 	/** Whether a tactical pass with a front deployed costs front marines (and cracks the deep organs in exchange). */
 	public static boolean frontDangerCloseEnabled() { return b("threatinc_frontDangerCloseEnabled", true); }
-	/** Fraction of the front's marines lost to a danger-close tactical pass. */
+	/** Fraction of the front's marines lost to each day of danger-close tactical bombardment. */
 	public static float frontDangerCloseLossFraction() { return f("threatinc_frontDangerCloseLossFraction"); }
-	/** Days saturation fallout blocks landing ground forces (keep >= hiveSatDisruptDays or sat bombing becomes the best siege opener). */
-	public static float falloutDays()         { return f("threatinc_falloutDays"); }
 	/** Fraction of an enemy front's troops the swarm kills per 30 days while it holds the orbit over its own hive unopposed. */
 	public static float swarmFrontBombardPer30Days() { return f("threatinc_swarmFrontBombardPer30Days"); }
 	/** Minimum total Threat fleet points in orbit for the swarm to hold it (a bombardment is a fleet operation, not a lone frigate). */
@@ -532,6 +530,8 @@ public class ThreatIncConfig {
 	public static boolean npcSiegeOrbitGate() { return b("threatinc_npcSiegeOrbitGate", true); }
 	/** Fleet points an NPC flotilla brings per point of Defense Swarm over the target system. */
 	public static float npcSiegeOrbitMargin() { return f("threatinc_npcSiegeOrbitMargin"); }
+	/** An NPC siege not yet landed turns home when hostile fleets over a world it is taking reach this x its own (0: fights to vanilla's abort line). */
+	public static float siegeBreakOffRatio() { return f("threatinc_siegeBreakOffRatio"); }
 	/** The orbit gate weighs the strongest single world's swarms, not the whole system's. */
 	public static boolean npcSiegeOrbitPerWorld() { return b("threatinc_npcSiegeOrbitPerWorld", true); }
 	/** Whether an outweighed NPC siege posts a bounty on the hive system's swarms. */
@@ -789,6 +789,20 @@ public class ThreatIncConfig {
 			if (days >= 0f && days < QUIET_DAYS) return;
 		}
 		QUIET.put(key, new Object[] { shape, now });
+		log(msg);
+	}
+
+	/**
+	 * A line a poll repeats, logged only when {@code state} changes - a verdict,
+	 * not the figures behind it - and no more than once in ten days: a verdict
+	 * that flips every pass (Goodfellow from Gilead, 90 times) logs its latest.
+	 */
+	public static void logOnChange(String key, String state, String msg) {
+		if (!debugLogging() || Global.getSector() == null) return;
+		Object[] last = QUIET.get(key);
+		if (last != null && state.equals(last[0])) return;
+		if (last != null && Global.getSector().getClock().getElapsedDaysSince((Long) last[1]) < 10f) return;
+		QUIET.put(key, new Object[] { state, Global.getSector().getClock().getTimestamp() });
 		log(msg);
 	}
 

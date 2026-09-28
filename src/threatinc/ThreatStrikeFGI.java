@@ -12,9 +12,11 @@ import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.fleet.FleetMemberAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
+import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
 import com.fs.starfarer.api.impl.campaign.ids.Stats;
 import com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction;
 import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
+import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.BombardType;
 import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.CountingMap;
 import com.fs.starfarer.api.util.Misc;
@@ -101,12 +103,12 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * passes on each. What a pass DOES is {@link #doCustomRaidAction}: the
 	 * swarm mirrors the siege it is subjected to - soften, land, reinforce.
 	 *
-	 * <p>With {@code strikeSaturationEnabled} the old doctrine comes back
-	 * instead: {@code raidParams.bombardment} is set, vanilla's own bombardment
-	 * path runs, and this action's dead-target guard and story-critical
-	 * handling matter again. Passes stay affordable because
-	 * {@link #createFleet} zeroes the fleet bombardment fuel cost - the
-	 * expedition was provisioned at its staging colony.
+	 * <p>With {@code strikeSaturationEnabled} the bombardment doctrine comes
+	 * back instead: {@code raidParams.bombardment} is set, and each pass flies
+	 * the bombardment every besieger flies (docs/suppression-balance.md v2) -
+	 * a tactical slice for a frontier strike, saturation razing the world level
+	 * by level for the rest ({@link #saturationPass}) - never vanilla's instant
+	 * bombardment. The swarm has no fuel economy: it pours without limit.
 	 */
 	@Override
 	protected GenericPayloadAction createPayloadAction() {
@@ -123,14 +125,14 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		 * Autoresolve loops the full pass count blindly; skip passes at a
 		 * target that is already dead so the husk isn't re-bombarded.
 		 *
-		 * Story-critical worlds need their own handling because vanilla
-		 * doBombardment hard-refuses the killing blow on them (destroy is
-		 * forced false): without it, the surplus annihilation passes just
-		 * stacked stability damage on an unkillable world (observed: -100
-		 * stability on Chalcedon). With destruction disallowed the passes
-		 * stop once the world is ground to the destroy threshold - nothing
-		 * more can be achieved; with it allowed, the killing blow the engine
-		 * refused is dealt directly.
+		 * The bombardment doctrine's pass is the day's slice by the rules
+		 * every besieger flies (docs/suppression-balance.md v2): saturation
+		 * razes a world level by level ({@link ThreatStrikeFGI#saturationPass})
+		 * and spends no pass until it is gone - or razed as far as saturation
+		 * goes, where destroyStoryCritical decides the killing blow as it did
+		 * over vanilla's bombardment - then all of them at once, so the stage
+		 * moves on; a frontier strike's tactical harassment is one slice a pass
+		 * ({@link ThreatStrikeFGI#harassPass}).
 		 */
 		@Override
 		public void performRaid(com.fs.starfarer.api.campaign.CampaignFleetAPI fleet,
@@ -168,7 +170,8 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 						// it: a world not yet ready to land on waits here, spending nothing
 						if (ThreatIncConfig.frontsEnabled()
 								&& ThreatGroundFronts.getFront(market.getId()) == null
-								&& !ThreatGroundFronts.readyToLand(market, strike.worldShare())) {
+								&& !ThreatGroundFronts.readyToLand(market, strike.worldShare(),
+										strike.abstractOrbitDone(market))) {
 							return;
 						}
 					}
@@ -177,22 +180,50 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 				return;
 			}
 
-			boolean storyCritical = com.fs.starfarer.api.util.Misc.isStoryCritical(market);
-			boolean atFloor = market.getSize()
-					<= com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD
-							.getBombardDestroyThreshold();
-			if (storyCritical && atFloor && !ThreatIncConfig.destroyStoryCritical()) return;
-
-			super.performRaid(fleet, market);
-			// a Threat action landed here: any defence contract for the colony fails
-			ThreatAidMissionIntel.strikeLanded(market);
-
-			if (storyCritical && atFloor && ThreatIncConfig.destroyStoryCritical()
-					&& market.isInEconomy()) {
-				// the swarm does not care whose story a world matters to
-				com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker
-						.decivilize(market, true);
+			if (!(intel instanceof ThreatStrikeFGI)) {
+				super.performRaid(fleet, market);
+				return;
 			}
+			// the swarm does not bombard its own
+			if (Factions.THREAT.equals(market.getFactionId())) return;
+			ThreatStrikeFGI strike = (ThreatStrikeFGI) intel;
+			boolean done = getParams().bombardment == BombardType.SATURATION
+					? strike.saturationPass(fleet, market)
+					: strike.harassPass(fleet, market);
+			if (done) passesSpent(market);
+		}
+
+		/**
+		 * Every pass the world has left, spent at once, and one bombardment
+		 * delivered for vanilla's success fraction: the stage takes the world
+		 * as done, a razed one included - vanilla would otherwise hold the
+		 * fleets over a decivilized world for the stage's whole duration.
+		 */
+		protected void passesSpent(MarketAPI market) {
+			int left = getParams().raidsPerColony - getRaidCount().getCount(market);
+			if (left > 0) getRaidCount().add(market, left);
+			bombardCount++;
+		}
+
+		/**
+		 * The bombardment doctrine's live passes: every fleet of the strike
+		 * over the world bombards, its points adding to the others' - vanilla
+		 * lets only the biggest fleet in reach deliver its one instant
+		 * bombardment. Otherwise vanilla's test, unchanged.
+		 */
+		@Override
+		public boolean canRaid(CampaignFleetAPI fleet, MarketAPI market) {
+			FGRaidParams p = getParams();
+			if (p == null || p.bombardment == null || fleet == null) return super.canRaid(fleet, market);
+			if (market == null || !market.isInEconomy()) return false;
+			if (!p.allowedTargets.contains(market) && !p.allowedTargets.isEmpty() && !p.allowAnyHostileMarket) {
+				return false;
+			}
+			if (getRaidCount().getCount(market) >= p.raidsPerColony) return false;
+			if (!intel.getFleets().contains(fleet)) return false;
+			boolean hostile = market.getFaction().isHostileTo(fleet.getFaction())
+					|| Misc.isFleetMadeHostileToFaction(fleet, market.getFaction());
+			return (p.allowNonHostileTargets || hostile) && !isActionFinished();
 		}
 
 		/**
@@ -240,9 +271,9 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 					contested.add(target);
 				}
 			}
-			// the saturation doctrine bombards from orbit and never lands, so
-			// it has nothing to clear the orbit for
-			boolean hunt = ThreatIncConfig.siegeFightsForOrbit() && p.bombardment == null;
+			// every doctrine clears the orbit first: a bombardment, as a landing,
+			// is flown only over an orbit nothing holds against the swarm
+			boolean hunt = ThreatIncConfig.siegeFightsForOrbit();
 			for (CampaignFleetAPI fleet : intel.getFleets()) {
 				ThreatFleetOrders.siegeLeash(fleet, contested,
 						ThreatFleetOrders.anchorWorld(fleet, live), hunt, "Strike");
@@ -257,8 +288,9 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	/**
 	 * Under the ground doctrine every pass runs through
 	 * {@link #doCustomRaidAction} - which the base class only calls when no
-	 * bombardment type is set. With {@code strikeSaturationEnabled} the old
-	 * saturation path takes over and this goes quiet.
+	 * bombardment type is set. With {@code strikeSaturationEnabled} the
+	 * bombardment doctrine's passes (AnnihilationAction.performRaid) take over
+	 * and this goes quiet.
 	 */
 	@Override
 	public boolean hasCustomRaidAction() {
@@ -384,14 +416,18 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			return false;
 		}
 		if (ThreatGroundFronts.orbitContestedFor(Factions.THREAT, market)) {
-			ThreatIncConfig.log("Siege of " + market.getName() + ": the orbit is contested");
+			ThreatIncConfig.logQuiet("contested:" + market.getId(), "Siege of " + market.getName()
+					+ ": the orbit is contested");
 			return true;
 		}
-		if (ThreatGroundFronts.readyToLand(market, troops)) return false;
-		float days = ThreatGroundFronts.siegeSliceDays(fleet);
 		float fp = fleet.getFleetPoints();
-		float[] est = ThreatGroundFronts.siegeSliceEstimate(fp, market, days);
-		float loss = ThreatGroundFronts.siegeSlice(fp, market, days);
+		// the swarm over the world bombards as one: one ratio, one answer from the guns
+		float orbit = ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fp);
+		if (ThreatGroundFronts.readyToLand(market, troops,
+				ThreatGroundFronts.orbitSpent(market, orbit, 0f, false, ThreatGroundFronts.swarmWorth()))) return false;
+		float days = ThreatGroundFronts.siegeSliceDays(fleet);
+		ThreatGroundFronts.BombardDay est = ThreatGroundFronts.bombardDay(fp, market, false);
+		float loss = ThreatGroundFronts.siegeSlice(fp, orbit, market, days, true, true, -1f, "Orbital bombardment");
 		float removed = ThreatGroundFronts.applyFleetLosses(fleet, loss);
 		if (siegeAnnounced.add(market.getId())) {
 			ThreatNotice.titled("Under Siege").bad()
@@ -401,10 +437,9 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 					.send();
 		}
 		ThreatIncConfig.log("Siege slice vs " + market.getName() + ": " + (int) fp + " FP for "
-				+ String.format("%.1f", days) + " d, +" + String.format("%.1f", est[0])
-				+ " d on the clock (" + (int) ThreatGroundFronts.siegeClock(market) + " of "
-				+ (int) ThreatGroundFronts.siegeWornDays(market) + "), batteries cost "
-				+ String.format("%.1f", loss) + " FP (" + (int) removed + " removed)");
+				+ String.format("%.1f", days) + " d at " + String.format("%.1f", est.rate)
+				+ " d/day, defences " + Math.round(ThreatGroundFronts.fortificationCondition(market) * 100f)
+				+ "%, batteries cost " + String.format("%.1f", loss) + " FP (" + (int) removed + " removed)");
 		return true;
 	}
 
@@ -420,6 +455,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		float start = abstractStrength();
 		float left = ThreatGroundFronts.abstractSiege(market, start, worldShare(),
 				groupAbortsMissionFPFraction);
+		abstractLeft = left;
 		// the batteries' toll comes off the troops the ships were carrying
 		if (start > 0f && left < start) troopsAboard *= Math.max(0f, left / start);
 	}
@@ -433,6 +469,121 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			}
 		}
 		return start;
+	}
+
+	/** Fleet points the last abstract siege left (abstractSiege); kept for saves that carry it. */
+	protected float abstractLeft;
+
+	/**
+	 * Whether orbit is done for an unspawned strike: its siege of the world
+	 * ran once and its commander stopped it - the days, or the guns about to
+	 * break it - so the troops land on what orbit left. Read as orbitSpent
+	 * alone, a siege stopped short of spent held the landing back for good:
+	 * Eventide and Mazalot lost 42% and 31% of the strike and nothing landed.
+	 */
+	protected boolean abstractOrbitDone(MarketAPI market) {
+		if (market != null && siegeResolved.contains(market.getId())) return true;
+		return ThreatGroundFronts.orbitSpent(market, abstractStrength(), 0f, false, ThreatGroundFronts.swarmWorth());
+	}
+
+	// ---- the bombardment doctrine (strikeSaturationEnabled) ----
+
+	/** The unrest the swarm's bombardment raises is put down to it. */
+	protected static final String BOMBARD_REASON = "Threat bombardment";
+
+	/**
+	 * One pass of the saturation doctrine (docs/suppression-balance.md v2
+	 * sections 4 and 8): the swarm razes a world by the rule every razer does -
+	 * a live fleet's saturation for the days since its last pass
+	 * (ThreatGroundFronts.saturationSlice: every building suppressed, the guns'
+	 * answer, what it pours taking the colony a level at a time), an unspawned
+	 * strike's whole razing in one go (ThreatPurgeFGI.razeAbstract). The swarm
+	 * has no fuel economy and pours without limit. Nothing while the orbit is
+	 * held against it: the fleets fight for it first. True once the world is
+	 * done with: razed, or razed as far as saturation goes - a story-critical
+	 * world stops short of its last level, where destroyStoryCritical deals
+	 * the killing blow the razing refuses, as it did over vanilla's bombardment.
+	 */
+	protected boolean saturationPass(CampaignFleetAPI fleet, MarketAPI market) {
+		if (ThreatRazing.razeable(market) <= 0) return razedAsFarAsItGoes(market);
+		if (fleet != null && ThreatGroundFronts.orbitContestedFor(Factions.THREAT, market)) {
+			ThreatIncConfig.log("Razing of " + market.getName() + ": the orbit is contested");
+			return false;
+		}
+		// an unspawned strike razes each world once, in one go
+		if (fleet == null && !siegeResolved.add(market.getId())) return false;
+		if (siegeAnnounced.add(market.getId())) {
+			ThreatNotice.titled("Under Bombardment").bad()
+					.line("Threat swarms are razing %s from orbit.", ThreatNotice.market(market))
+					.send();
+		}
+		boolean destroyed;
+		if (fleet != null) {
+			String name = market.getName();
+			float fp = fleet.getFleetPoints();
+			float days = ThreatGroundFronts.siegeSliceDays(fleet);
+			float[] out = ThreatGroundFronts.saturationSlice(fp,
+					ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fp), market, days, Float.MAX_VALUE,
+					true, true, -1f, Factions.THREAT, BOMBARD_REASON);
+			float removed = ThreatGroundFronts.applyFleetLosses(fleet, out[0]);
+			destroyed = out[3] > 0f;
+			ThreatIncConfig.log("Razing slice vs " + name + ": " + (int) fp + " FP for "
+					+ String.format("%.1f", days) + " d poured " + (int) out[1] + " fuel, " + (int) out[2]
+					+ " levels razed" + (destroyed ? ", destroyed" : "") + "; batteries cost "
+					+ String.format("%.1f", out[0]) + " FP (" + (int) removed + " removed)");
+		} else {
+			float[] out = ThreatPurgeFGI.razeAbstract(market, abstractStrength(), groupAbortsMissionFPFraction,
+					Float.MAX_VALUE, Factions.THREAT, BOMBARD_REASON);
+			destroyed = out[2] > 0f;
+		}
+		// razed: the teardown has run (ThreatGroundFronts.colonyRazed) and
+		// nothing else on the world is touched
+		if (destroyed) return true;
+		markBombarded(market);
+		return ThreatRazing.razeable(market) <= 0 && razedAsFarAsItGoes(market);
+	}
+
+	/**
+	 * A world saturation can raze no further (story-critical, at its floor):
+	 * with destroyStoryCritical the swarm deals the killing blow - the swarm
+	 * does not care whose story a world matters to. Done with either way.
+	 */
+	protected boolean razedAsFarAsItGoes(MarketAPI market) {
+		if (market.isInEconomy() && Misc.isStoryCritical(market) && ThreatIncConfig.destroyStoryCritical()) {
+			ThreatGroundFronts.colonyRazed(market, Factions.THREAT);
+		}
+		return true;
+	}
+
+	/**
+	 * One pass of a frontier strike's tactical harassment: the tactical slice
+	 * (ThreatGroundFronts.siegeSlice) for the days since the fleet's last pass,
+	 * or vanilla's gap between passes for an unspawned strike, and the pass is
+	 * spent - a harassment is a visit, not a siege. Nothing while the orbit is
+	 * held against the swarm.
+	 */
+	protected boolean harassPass(CampaignFleetAPI fleet, MarketAPI market) {
+		if (fleet != null && ThreatGroundFronts.orbitContestedFor(Factions.THREAT, market)) return false;
+		float fp = fleet != null ? fleet.getFleetPoints() : abstractStrength();
+		float days = fleet != null ? ThreatGroundFronts.siegeSliceDays(fleet)
+				: ThreatGroundFronts.SIEGE_FIRST_SLICE_DAYS;
+		float orbit = fleet != null ? ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fp) : fp;
+		float loss = ThreatGroundFronts.siegeSlice(fp, orbit, market, days, fleet != null, true, -1f,
+				BOMBARD_REASON);
+		float removed = fleet != null ? ThreatGroundFronts.applyFleetLosses(fleet, loss) : 0f;
+		markBombarded(market);
+		ThreatIncConfig.log("Harassment slice vs " + market.getName() + ": " + (int) fp + " FP for "
+				+ String.format("%.1f", days) + " d, defences "
+				+ Math.round(ThreatGroundFronts.fortificationCondition(market) * 100f) + "%, batteries cost "
+				+ String.format("%.1f", loss) + " FP (" + (int) removed + " removed)");
+		return true;
+	}
+
+	/** The swarm's mark on a world it bombarded (the deciv claim reads it), and any defence contract for it failed. */
+	protected static void markBombarded(MarketAPI market) {
+		Misc.setFlagWithReason(market.getMemoryWithoutUpdate(), MemFlags.RECENTLY_BOMBARDED,
+				Factions.THREAT, true, 30f);
+		ThreatAidMissionIntel.strikeLanded(market);
 	}
 
 	/**
@@ -487,8 +638,9 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * delivers a slice of the orbital siege instead of a pass ({@link #siegePass}):
 	 * the defence structures are suppressed a little, in proportion to fleet
 	 * strength against ground defence, and the batteries answer in ships. The
-	 * landing waits until the fortification is worn out or the troops could
-	 * hold as they are ({@link ThreatGroundFronts#readyToLand}).</li>
+	 * landing waits until orbit has done what it can - a day buys less than
+	 * the defenders repair - or the troops could hold as they are
+	 * ({@link ThreatGroundFronts#readyToLand}).</li>
 	 * <li><b>Land.</b> With the defenses suppressed and nothing blocking the
 	 * landing (fallout, another army, a held orbit), the pass puts the world's
 	 * share of the troop pool on the surface as a Threat-owned front with
@@ -523,9 +675,13 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		int troops = availableLanding(market, fleet);
 		// 1. soften: the orbital siege (performRaid) must have done all it can,
 		// or the troops must be able to hold as they are, before anything lands
-		if (front == null && !ThreatGroundFronts.readyToLand(market, troops)) {
+		if (front == null && !ThreatGroundFronts.readyToLand(market, troops, fleet != null
+				? ThreatGroundFronts.orbitSpent(market,
+						ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fleet.getFleetPoints()),
+						0f, false, ThreatGroundFronts.swarmWorth())
+				: abstractOrbitDone(market))) {
 			ThreatIncConfig.log("Strike landing at " + market.getName()
-					+ " waits: the defences are not yet worn out");
+					+ " waits: bombardment still has work to do");
 			return;
 		}
 		if (front == null && troops < ThreatIncConfig.frontMinMarines()) {
@@ -640,10 +796,12 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * The siege as it stands, for the intel: each world's phase and passes
 	 * spent, and the troops still aboard - the purge's own readout, mirrored,
 	 * so the defender reads the landing off the strike, not off a surprise.
+	 * The bombardment doctrine carries no troops, and its razing spends no
+	 * pass until the world is gone: its phase alone.
 	 */
 	protected void addSiegeStatus(TooltipMakerAPI info) {
-		if (getParams() == null || getParams().raidParams == null
-				|| getParams().raidParams.bombardment != null) return;
+		if (getParams() == null || getParams().raidParams == null) return;
+		boolean bombard = getParams().raidParams.bombardment != null;
 		java.awt.Color h = Misc.getHighlightColor();
 		if (getCurrentAction() != null && getCurrentAction() == raidAction) {
 			int budget = Math.max(1, getParams().raidParams.raidsPerColony);
@@ -651,23 +809,42 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 					? ((FGRaidAction) raidAction).getRaidCount() : null;
 			for (MarketAPI target : getParams().raidParams.allowedTargets) {
 				if (target == null || !target.isInEconomy()) continue;
+				if (bombard) {
+					info.addPara(target.getName() + ": %s.", 3f, h, phase(target));
+					continue;
+				}
 				int used = passes != null ? passes.getCount(target) : 0;
 				info.addPara(target.getName() + ": %s, %s passes.", 3f, h, phase(target),
 						used + "/" + budget);
 			}
 		}
-		info.addPara("Aboard: %s troops.", 3f, h, Misc.getWithDGS((int) getTroopsAboard()));
+		if (!bombard) info.addPara("Aboard: %s troops.", 3f, h, Misc.getWithDGS((int) getTroopsAboard()));
 	}
 
 	/** What the strike is doing to this world right now. */
 	protected String phase(MarketAPI market) {
+		BombardType bombard = getParams() != null && getParams().raidParams != null
+				? getParams().raidParams.bombardment : null;
+		if (bombard != null) {
+			boolean razing = bombard == BombardType.SATURATION;
+			if (passesDone(market)) return razing ? "razed as far as it goes" : "bombarded";
+			if (ThreatGroundFronts.orbitContestedFor(Factions.THREAT, market)) return "fighting for the orbit";
+			return razing ? "razing from orbit" : "bombarding its defences";
+		}
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
 		if (ThreatGroundFronts.isThreatOwned(front)) {
 			return "landed " + Misc.getWithDGS(Math.round(front.marines)) + " troops";
 		}
 		if (front != null) return "another army ashore";
 		if (ThreatGroundFronts.orbitContestedFor(Factions.THREAT, market)) return "fighting for the orbit";
-		return ThreatGroundFronts.landingPhase(market, worldShare(), "suppressing the defences");
+		return ThreatGroundFronts.landingPhase(market, worldShare(), "suppressing the defences",
+				abstractOrbitDone(market));
+	}
+
+	/** Whether every pass the world had is spent. */
+	protected boolean passesDone(MarketAPI market) {
+		if (!(raidAction instanceof FGRaidAction) || getParams() == null || getParams().raidParams == null) return false;
+		return ((FGRaidAction) raidAction).getRaidCount().getCount(market) >= getParams().raidParams.raidsPerColony;
 	}
 
 	/**
@@ -835,10 +1012,10 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		CampaignFleetAPI fleet = ThreatFleetComposer.create(ThreatFleetComposer.JOB_STRIKE,
 				fabricators, strength, getRandom());
 
-		// provision the swarm to actually bombard on arrival rather than idling
-		// until the operation times out: vanilla gates live bombardment behind
-		// fuel the fleet doesn't carry, so grant a large (summed per member)
-		// FLEET_BOMBARD_COST_REDUCTION to zero that cost
+		// the swarm has no fuel economy: the doctrine's slices pay no fuel
+		// (saturationPass), and wherever vanilla's own bombardment still asks,
+		// it gates on fuel the fleet doesn't carry - a large (summed per member)
+		// FLEET_BOMBARD_COST_REDUCTION zeroes that cost
 		if (fleet != null) {
 			for (FleetMemberAPI member : fleet.getFleetData().getMembersListCopy()) {
 				member.getStats().getDynamic().getMod(Stats.FLEET_BOMBARD_COST_REDUCTION)

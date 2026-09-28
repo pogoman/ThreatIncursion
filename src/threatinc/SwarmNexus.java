@@ -94,19 +94,11 @@ public class SwarmNexus extends BaseIndustry {
 			defense.unmodifyFlat(getModId(1));
 		}
 
-		// Machines do not riot: cancel the vanilla stability multiplier
-		// (0.25 + stability/10 * 0.75). Without this, the unrest each
-		// bombardment inflicts craters the colony's own defense stat, making
-		// every following pass cheaper - a death spiral the hive-order does
-		// not permit.
-		float stability = market.getStabilityValue();
-		float stabilityMult = 0.25f + stability / 10f * 0.75f;
-		if (stabilityMult > 0.01f && stabilityMult < 1f) {
-			defense.modifyMult(getModId(2), 1f / stabilityMult,
-					"Machine hive-order (unrest has no effect)");
-		} else {
-			defense.unmodifyMult(getModId(2));
-		}
+		// bombardment unrest cuts the hive's defence through vanilla's stability
+		// multiplier, as it does a colony's (docs/suppression-balance.md v2):
+		// the guns' return fire is what prices the spiral now. The cancel this
+		// once carried is stripped from old saves here.
+		defense.unmodifyMult(getModId(2));
 	}
 
 	@Override

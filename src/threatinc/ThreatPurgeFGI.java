@@ -35,10 +35,11 @@ import com.fs.starfarer.api.util.Misc;
  * docs/ground-war.md "Sieges from orbit"): a live fleet over a hive not yet
  * ready to be landed on delivers a slice of the siege instead of a pass
  * ({@link SiegeRaidAction#performRaid}, {@link #siegePass}): its fleet
- * points against the hive's ground-defence figure suppress the war-strata
- * toward worn out, and the weapon growths answer with ships lost.
- * The landing waits until the strata are worn out or the troops could
- * hold as they are ({@link ThreatGroundFronts#readyToLand}); the ground
+ * points against the hive's ground-defence figure suppress the war-strata,
+ * each day finding fewer targets, and the weapon growths answer with ships
+ * lost. The landing waits until orbit has done what it can - a day buys
+ * less than the defenders repair, or the ordnance is spent - or the troops
+ * could hold as they are ({@link ThreatGroundFronts#readyToLand}); the ground
  * forces landed next open the door for...</li>
  * <li>...COMMANDO RAIDS against whatever on the world takes the most from
  * the hive ({@link #pickRaidTarget}: the Core, the Nexus, a port the world
@@ -48,10 +49,14 @@ import com.fs.starfarer.api.util.Misc;
  * plumbing.</li>
  * </ul>
  *
- * <p>No saturation, ever: bombardment cannot reduce a hive's population. Once
- * the war-strata are suppressed the expedition lands its marines as a ground
- * front ({@link ThreatGroundFronts}) - ground victory is the only way a Threat
- * colony dies. Siege slices spend no pass; the pass budget is
+ * <p>Once orbit has done what it can the expedition lands its marines as a
+ * ground front ({@link ThreatGroundFronts}), and a ground victory ends the
+ * colony. A world its navy finds cheaper to raze (the raze task,
+ * IncursionManager.razeWorlds) takes saturation instead, level by level
+ * until it is gone ({@link #razePass}) - the other way a colony dies. Every
+ * day of bombardment burns ordnance the expedition drew at launch
+ * ({@link #ordnance}, {@link #razeFuel}): no fuel, no bombardment. Siege
+ * slices spend no pass; the pass budget is
  * siegePassesPerColony (default 4: the first lands, the rest reinforce the
  * front with whatever is still aboard - and once the marines are ashore a pass
  * with too few left to crew a raid (frontMinMarines) simply stands down rather
@@ -118,13 +123,69 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		armamentsAllotted = Math.max(0f, armaments);
 	}
 
-	/** Fuel and supplies drawn from the base at launch (refunded in part on return). */
+	/** Fuel for the passage and supplies drawn from the base at launch (refunded in part on return). */
 	protected float fuelDrawn = 0f;
 	protected float suppliesDrawn = 0f;
 
 	public void setProvisions(float fuel, float supplies) {
 		fuelDrawn = Math.max(0f, fuel);
 		suppliesDrawn = Math.max(0f, supplies);
+	}
+
+	/**
+	 * ORDNANCE (docs/suppression-balance.md v2, 2026-09-28: fuel is ordnance):
+	 * fuel drawn at launch for the bombardment itself, apart from the passage
+	 * (IncursionManager.expeditionFuel). Every siege slice burns
+	 * bombardFuelPerDay a day out of it; out of it, orbit has done what it can
+	 * and the troops land on what it left. What is not burned comes home with
+	 * the refund. An expedition that drew none - no reserve behind it, or one
+	 * sailing from before ordnance existed - bombards as it always did
+	 * ({@link #paysOrdnance} false).
+	 */
+	protected float ordnance = 0f;
+	/** Fuel set aside at launch to raze the worlds in {@link #razeIds}: poured by the razing passes alone. */
+	protected float razeFuel = 0f;
+	protected boolean paysOrdnance = false;
+	/** Worlds this expedition razes from orbit instead of landing on (IncursionManager.razeWorlds). */
+	protected java.util.Set<String> razeIds = new java.util.LinkedHashSet<String>();
+
+	public void setOrdnance(float tactical, float razing) {
+		ordnance = Math.max(0f, tactical);
+		razeFuel = Math.max(0f, razing);
+		paysOrdnance = true;
+	}
+
+	public void setRazeWorlds(java.util.Collection<String> ids) {
+		razeIds = new java.util.LinkedHashSet<String>();
+		if (ids != null) razeIds.addAll(ids);
+	}
+
+	/** Whether the expedition razes this world rather than lands on it. */
+	public boolean razes(MarketAPI market) {
+		return market != null && razeIds != null && razeIds.contains(market.getId());
+	}
+
+	/** The tactical ordnance left for the siege slices; without limit for an expedition that drew none. */
+	public float ordnanceLeft() {
+		return paysOrdnance ? ordnance : Float.MAX_VALUE;
+	}
+
+	/** The fuel left for the razing passes; without limit for an expedition that drew none. */
+	public float razeFuelLeft() {
+		return paysOrdnance ? razeFuel : Float.MAX_VALUE;
+	}
+
+	/**
+	 * Pays a slice's ordnance out of what the expedition carries: the days of
+	 * bombardment a fleet of fp gets from what is left, never more than asked,
+	 * the fuel burned.
+	 */
+	protected float burnOrdnance(float fp, float days) {
+		float want = ThreatGroundFronts.bombardFuelPerDay(fp) * days;
+		if (!paysOrdnance || want <= 0f) return days;
+		float paid = Math.min(want, ordnance);
+		ordnance -= paid;
+		return days * paid / want;
 	}
 
 	/** Set once the fleets have become real - one-way; vanilla never re-abstracts them. */
@@ -185,7 +246,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * nothing, and marines on fleets destroyed in the siege died with them. An
 	 * expedition that never became real refunds its un-landed allotment less
 	 * the route's damage. Fuel and supplies come back at returnRefundMult
-	 * scaled by the surviving strength.
+	 * scaled by the surviving strength - the ordnance the bombardment did not
+	 * burn with the passage's fuel.
 	 */
 	protected void refundOnReturn() {
 		if (!carriesCargo) return;
@@ -216,7 +278,9 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			armaments = armamentsAllotted * keep;
 		}
 		float mult = ThreatIncConfig.returnRefundMult() * keep;
-		float fuel = fuelDrawn * mult;
+		// ordnance left over is fuel like the passage's, and comes home the same way
+		float unburned = paysOrdnance ? ordnance + razeFuel : 0f;
+		float fuel = (fuelDrawn + unburned) * mult;
 		float supplies = suppliesDrawn * mult;
 		if (base != null) {
 			ThreatReserves.deposit(base.getId(), Commodities.MARINES, marines);
@@ -228,9 +292,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		armamentsAllotted = 0f;
 		fuelDrawn = 0f;
 		suppliesDrawn = 0f;
+		ordnance = 0f;
+		razeFuel = 0f;
 		ThreatIncConfig.log("Expedition return to " + (base != null ? base.getName() : "nowhere")
 				+ ": " + homebound + " fleets on tracked legs home, " + (int) marines
-				+ " marines, " + (int) armaments + " armaments, " + (int) fuel + " fuel, "
+				+ " marines, " + (int) armaments + " armaments, " + (int) fuel + " fuel (with "
+				+ (int) unburned + " ordnance unburned), "
 				+ (int) supplies + " supplies refunded (strength " + (int) (keep * 100f) + "%)");
 	}
 
@@ -483,6 +550,58 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		return params != null ? params.source : null;
 	}
 
+	/**
+	 * THE COMMANDER'S BREAK-OFF (2026-09-28, after run 5): an NPC siege that
+	 * has landed nothing yet weighs the armed fleets hostile to it over each
+	 * hive it has still to take against its own, and outweighed by
+	 * siegeBreakOffRatio turns home intact rather than fight on to vanilla's
+	 * abort line. The launch weighed one world's Defense Swarms
+	 * (IncursionManager.siegeOrbitFaced); the hive's garrisons converge on a
+	 * besieged world (ThreatColonyManager.redistributeGarrisons), and ten
+	 * sieges of run 5 were ground to a quarter with their ordnance unburned.
+	 * A siege with a front down stays over it. The base posts a swarm bounty,
+	 * as its launch gate does. True when it broke off.
+	 */
+	protected boolean breaksOff(List<MarketAPI> live) {
+		float ratio = ThreatIncConfig.siegeBreakOffRatio();
+		if (ratio <= 0f || playerCommissioned || live == null || live.isEmpty()) return false;
+		if (isEnding() || isEnded() || isAborted() || isSucceeded()) return false;
+		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
+		if (faction == null || faction.isPlayerFaction()) return false;
+		float ours = liveFP();
+		if (ours <= 0f) return false;
+		float worst = 0f;
+		MarketAPI at = null;
+		for (MarketAPI target : live) {
+			if (!ThreatGroundFronts.isHiveTarget(target)) continue;
+			ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(target.getId());
+			if (front != null && faction.getId().equals(ThreatGroundFronts.ownerOf(front))) return false;
+			float hostile = ThreatGroundFronts.hostilePointsNear(faction.getId(), target);
+			if (hostile > worst) {
+				worst = hostile;
+				at = target;
+			}
+		}
+		if (at == null || worst < ours * ratio) return false;
+		setFailedButNotDefeated(true);
+		abort();
+		ThreatNotice.titled("Siege Called Off").icon(faction)
+				.line("%s siege of %s turns home.", ThreatNotice.faction(faction), ThreatNotice.market(at))
+				.line("Defense Swarms %s FP against its %s FP.", ThreatNotice.hl(Misc.getWithDGS((int) worst)),
+						ThreatNotice.hl(Misc.getWithDGS((int) ours)))
+				.send();
+		ThreatIncConfig.log("Siege called off over " + at.getName() + " (" + faction.getId() + "): "
+				+ (int) worst + " FP of swarms against " + (int) ours + " FP, "
+				+ (int) (100f * ours / Math.max(1f, getTotalFPSpawned())) + "% of what sailed");
+		com.fs.starfarer.api.campaign.StarSystemAPI system = at.getStarSystem();
+		MarketAPI base = sourceBase();
+		if (base != null && system != null) {
+			ThreatSwarmBountyIntel.post(base, system,
+					(int) (ours / Math.max(0.01f, ThreatIncConfig.npcSiegeOrbitMargin())));
+		}
+		return true;
+	}
+
 	public float getMarinesAllotted() {
 		return marinesAllotted;
 	}
@@ -628,6 +747,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (trackedHome == null) trackedHome = new ArrayList<CampaignFleetAPI>();
 		if (siegeAnnounced == null) siegeAnnounced = new java.util.HashSet<String>();
 		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
+		if (razeIds == null) razeIds = new java.util.LinkedHashSet<String>();
 		// saves from before everSpawned existed: vanilla's own spawn bookkeeping
 		// says whether the fleets were ever real (else a spawned expedition would
 		// refund its allotment AND settle the same marines from cargo)
@@ -678,7 +798,9 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				&& ThreatGroundFronts.orbitContestedFor(getFaction().getId(), market)) {
 			return "clearing the orbit";
 		}
-		return ThreatGroundFronts.landingPhase(market, abstractTroops(market), "besieging from orbit", ourFactionId());
+		if (razes(market)) return "razing from orbit";
+		return ThreatGroundFronts.landingPhase(market, abstractTroops(market), "besieging from orbit", ourFactionId(),
+				orbitDoneHere(market));
 	}
 
 	/**
@@ -702,12 +824,22 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			for (MarketAPI target : params.raidParams.allowedTargets) {
 				if (target == null) continue;
 				if (ThreatIncData.resolveColonyMarket(target.getId()) == null) continue;
+				// a razing spends no pass until the world is gone
+				if (razes(target)) {
+					info.addPara(target.getName() + ": %s.", 3f, h, siegePhase(target));
+					continue;
+				}
 				int used = passes != null ? passes.getCount(target) : 0;
 				info.addPara(target.getName() + ": %s, %s passes.", 3f, h,
 						siegePhase(target), used + "/" + budget);
 			}
 		}
-		if (carriesCargo) {
+		if (carriesCargo && paysOrdnance) {
+			info.addPara("Aboard: %s marines, %s heavy armaments, %s fuel.", 3f, h,
+					Misc.getWithDGS((int) getMarinesAllotted()),
+					Misc.getWithDGS((int) getArmamentsAllotted()),
+					Misc.getWithDGS((int) (ordnance + razeFuel)));
+		} else if (carriesCargo) {
 			info.addPara("Aboard: %s marines, %s heavy armaments.", 3f, h,
 					Misc.getWithDGS((int) getMarinesAllotted()),
 					Misc.getWithDGS((int) getArmamentsAllotted()));
@@ -753,13 +885,23 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		 * The orbital duel (the strike's AnnihilationAction, mirrored): a live
 		 * fleet over a hive not yet ready to be landed on delivers a slice of
 		 * the siege instead of a pass, spending none; an abstract expedition
-		 * runs its whole siege in one go first.
+		 * runs its whole siege in one go first. A world the expedition razes
+		 * takes its saturation passes ({@link ThreatPurgeFGI#razePass}) and
+		 * spends none until it is done with: then all of them at once, so the
+		 * stage moves on as it does once a world's passes are spent - a world
+		 * decivilized mid-stage otherwise holds the fleets over its ruin for
+		 * the stage's full siegeOrbitDays, since vanilla only ever counts it
+		 * finished by its passes.
 		 */
 		@Override
 		public void performRaid(CampaignFleetAPI fleet, MarketAPI market) {
 			if (market == null || !market.isInEconomy()) return;
 			if (intel instanceof ThreatPurgeFGI && ThreatGroundFronts.isHiveTarget(market)) {
 				ThreatPurgeFGI purge = (ThreatPurgeFGI) intel;
+				if (purge.razes(market)) {
+					if (purge.razePass(fleet, market)) passesSpent(market);
+					return;
+				}
 				if (fleet != null) {
 					if (purge.siegePass(fleet, market)) return;
 				} else if (!purge.carriesCargo()
@@ -773,6 +915,39 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				}
 			}
 			super.performRaid(fleet, market);
+		}
+
+		/** Every pass the world has left, spent at once: vanilla's stage takes it as done. */
+		protected void passesSpent(MarketAPI market) {
+			int left = getParams().raidsPerColony - getRaidCount().getCount(market);
+			if (left > 0) getRaidCount().add(market, left);
+		}
+
+		/**
+		 * The worlds it razes come first: a razing is days, a siege months, and
+		 * a landing sends every fleet with nothing left aboard to hold its orbit
+		 * (stayOnDefend) - a razing left for after it would have no fleets to fly
+		 * it. Otherwise vanilla's order, nearest first.
+		 */
+		@Override
+		protected void computeSubstages() {
+			super.computeSubstages();
+			if (!(intel instanceof ThreatPurgeFGI) || stages == null || stages.size() < 2) return;
+			ThreatPurgeFGI purge = (ThreatPurgeFGI) intel;
+			List<RaidSubstage> razing = new ArrayList<RaidSubstage>();
+			List<RaidSubstage> rest = new ArrayList<RaidSubstage>();
+			for (RaidSubstage stage : stages) {
+				boolean razes = !stage.markets.isEmpty();
+				for (com.fs.starfarer.api.campaign.SectorEntityToken e : stage.markets) {
+					if (!purge.razes(e.getMarket())) razes = false;
+				}
+				if (razes) razing.add(stage);
+				else rest.add(stage);
+			}
+			if (razing.isEmpty() || rest.isEmpty()) return;
+			stages.clear();
+			stages.addAll(razing);
+			stages.addAll(rest);
 		}
 
 		@Override
@@ -810,6 +985,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				live.add(target);
 				if (orbitHeld(target)) contested.add(target);
 			}
+			if (intel instanceof ThreatPurgeFGI && ((ThreatPurgeFGI) intel).breaksOff(live)) return;
 			boolean hunt = ThreatIncConfig.siegeFightsForOrbit();
 			for (CampaignFleetAPI fleet : intel.getFleets()) {
 				ThreatFleetOrders.siegeLeash(fleet, contested,
@@ -836,12 +1012,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 
 		// THE ORBITAL DUEL has to have done all it can first
 		// (SiegeRaidAction.performRaid delivers the slices; a live fleet only
-		// gets here once the strata are worn out or the troops could
+		// gets here once orbit has done what it can or the troops could
 		// hold, an abstract expedition once its whole siege has run): a pass
 		// over a world not yet ready to land on waits rather than raids
 		if (waitsInOrbit(market)) {
 			ThreatIncConfig.log("Siege pass at " + rec.marketName
-					+ " waits: the war-strata are not yet worn out");
+					+ " waits: bombardment still has work to do");
 			return;
 		}
 
@@ -1031,11 +1207,14 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			ThreatIncConfig.log("Siege of " + market.getName() + ": the orbit is contested");
 			return true;
 		}
-		if (ThreatGroundFronts.readyToLand(market, troops, ourId)) return false;
-		float days = ThreatGroundFronts.siegeSliceDays(fleet);
+		if (ThreatGroundFronts.readyToLand(market, troops, ourId, orbitDoneHere(market, troops))) return false;
 		float fp = fleet.getFleetPoints();
-		float[] est = ThreatGroundFronts.siegeSliceEstimate(fp, market, days);
-		float loss = ThreatGroundFronts.siegeSlice(fp, market, days);
+		// a day's ordnance for every day since its last pass, from what the
+		// expedition carries: short of it, the slice is as long as it buys
+		float days = burnOrdnance(fp, ThreatGroundFronts.siegeSliceDays(fleet));
+		ThreatGroundFronts.BombardDay est = ThreatGroundFronts.bombardDay(fp, market, false);
+		float loss = ThreatGroundFronts.siegeSlice(fp, ThreatGroundFronts.orbitPoints(ourId, market, fp), market,
+				days, true, true, -1f, "Orbital bombardment");
 		float removed = ThreatGroundFronts.applyFleetLosses(fleet, loss);
 		if (siegeAnnounced == null) siegeAnnounced = new java.util.HashSet<String>();
 		if (siegeAnnounced.add(market.getId())) {
@@ -1050,25 +1229,255 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			siegeActions.add(rec);
 		}
 		ThreatIncConfig.log("Siege slice vs " + market.getName() + ": " + (int) fp + " FP for "
-				+ String.format("%.1f", days) + " d, +" + String.format("%.1f", est[0])
-				+ " d on the clock (" + (int) ThreatGroundFronts.siegeClock(market) + " of "
-				+ (int) ThreatGroundFronts.siegeWornDays(market) + "), batteries cost "
-				+ String.format("%.1f", loss) + " FP (" + (int) removed + " removed)");
+				+ String.format("%.1f", days) + " d at " + String.format("%.1f", est.rate)
+				+ " d/day, defences " + Math.round(ThreatGroundFronts.fortificationCondition(market) * 100f)
+				+ "%, batteries cost " + String.format("%.1f", loss) + " FP (" + (int) removed + " removed)"
+				+ (paysOrdnance ? "; " + (int) ordnance + " ordnance left" : ""));
 		return true;
+	}
+
+	/**
+	 * The fleet points this expedition bombards the world with: its live
+	 * fleets in the world's location - one expedition, one orbit, as the
+	 * landing is one ground force - or, never spawned, what its abstract siege
+	 * of the world left, or its allotment before that.
+	 */
+	protected float orbitFP(MarketAPI market) {
+		float fp = 0f;
+		for (CampaignFleetAPI fleet : getFleets()) {
+			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+			if (market.getContainingLocation() != null
+					&& fleet.getContainingLocation() != market.getContainingLocation()) {
+				continue;
+			}
+			fp += fleet.getFleetPoints();
+		}
+		if (fp > 0f) return fp;
+		if (siegeResolved != null && siegeResolved.contains(market.getId())) return abstractLeft;
+		return abstractAllotment();
+	}
+
+	/**
+	 * Orbit has nothing more to give this expedition over the world
+	 * (ThreatGroundFronts.orbitDone): for the fleet points it has there, a day
+	 * now gains less than a day of the defenders' repair or costs more to the
+	 * guns than it takes off the world, or its ordnance will not buy half a
+	 * day - or another day of the guns would take the expedition below
+	 * vanilla's abort line, and its commander lands on what orbit has left
+	 * rather than turn for home. The landing gate's orbit test - the slices,
+	 * the pass that follows and the status line all read this one.
+	 */
+	protected boolean orbitDoneHere(MarketAPI market) {
+		return orbitDoneHere(market, market != null ? abstractTroops(market) : 0f);
+	}
+
+	/** As above for {@code troops} aboard: short of the hold, the orbit keeps working past the ships' worth (ThreatGroundFronts.bombardPlan). */
+	protected boolean orbitDoneHere(MarketAPI market, float troops) {
+		// an unspawned expedition's siege ran once and its commander stopped it -
+		// the days, the guns or the fuel: the troops land on what orbit left
+		if (market != null && liveFP() <= 0f && siegeResolved != null
+				&& siegeResolved.contains(market.getId())) return true;
+		String ourId = ourFactionId();
+		if (ThreatGroundFronts.orbitDone(market, orbitFP(market), ordnanceLeft(), troops,
+				ourId != null && !com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER.equals(ourId))) return true;
+		return ThreatGroundFronts.gunsWouldBreak(market, liveFP(), getTotalFPSpawned(),
+				groupAbortsMissionFPFraction);
+	}
+
+	/** The fleet points the expedition's live fleets hold now, wherever they are - what vanilla weighs against its abort line. */
+	protected float liveFP() {
+		float fp = 0f;
+		for (CampaignFleetAPI fleet : getFleets()) {
+			if (fleet != null && fleet.isAlive() && !fleet.isExpired()) fp += fleet.getFleetPoints();
+		}
+		return fp;
+	}
+
+	// ---- the raze task (docs/suppression-balance.md v2 sections 4 and 8) ----
+
+	/** The unrest a razing raises is put down to the razer's bombardment, as vanilla names it. */
+	protected String razeReason() {
+		return (getFaction() != null ? getFaction().getDisplayName() : "Orbital") + " bombardment";
+	}
+
+	/**
+	 * Whether the razing fuel aboard would not finish even the world's top
+	 * level ({@link ThreatRazing#shortOfALevel}): nothing is poured, and the
+	 * fuel comes home with the refund. The swarm pours without limit.
+	 */
+	protected boolean shortOfALevel(MarketAPI market) {
+		if (!paysOrdnance) return false;
+		float fuel = razeFuelLeft();
+		if (!ThreatRazing.shortOfALevel(market, fuel)) return false;
+		ThreatIncConfig.log("Razing of " + market.getName() + ": short of a level (" + (int) fuel + " of "
+				+ (int) ThreatRazing.fuelForTopLevel(market) + " fuel), the fuel goes home");
+		return true;
+	}
+
+	/**
+	 * One pass of the RAZE TASK over a world the expedition razes
+	 * (IncursionManager.razeWorlds): a live fleet delivers saturation for the
+	 * days since its last pass (ThreatGroundFronts.saturationSlice) - every
+	 * building suppressed, the guns' answer, the fuel poured into the world's
+	 * levels until the last one ends it - paid from the fuel set aside for the
+	 * razing; an expedition that never spawned razes in one go
+	 * ({@link #razeAbstract}). Nothing while the orbit is held against it: the
+	 * fleets fight for it first. True once the world is done with - razed,
+	 * razed as far as saturation goes, or the razing fuel spent - and then the
+	 * stage moves on; a world razed is gone, and nothing more touches it.
+	 */
+	protected boolean razePass(CampaignFleetAPI fleet, MarketAPI market) {
+		String ourId = ourFactionId();
+		if (ourId == null || market == null) return false;
+		if (fleet == null) return abstractRaze(market);
+		if (ThreatGroundFronts.orbitContestedFor(ourId, market)) {
+			ThreatIncConfig.log("Razing of " + market.getName() + ": the orbit is contested");
+			return false;
+		}
+		if (ThreatRazing.razeable(market) <= 0) {
+			ThreatIncConfig.log("Razing of " + market.getName() + ": razed as far as saturation goes");
+			return true;
+		}
+		if (razeFuelLeft() < 1f) {
+			ThreatIncConfig.log("Razing of " + market.getName() + ": no fuel left to pour");
+			return true;
+		}
+		if (shortOfALevel(market)) return true;
+		String id = market.getId();
+		String name = market.getName();
+		int size = market.getSize();
+		float fp = fleet.getFleetPoints();
+		float days = ThreatGroundFronts.siegeSliceDays(fleet);
+		recordRazing(id, name, size, false);
+		float[] out = ThreatGroundFronts.saturationSlice(fp, ThreatGroundFronts.orbitPoints(ourId, market, fp),
+				market, days, razeFuelLeft(), true, true, -1f, ourId, razeReason());
+		if (paysOrdnance) razeFuel = Math.max(0f, razeFuel - out[1]);
+		float removed = ThreatGroundFronts.applyFleetLosses(fleet, out[0]);
+		boolean destroyed = out[3] > 0f;
+		if (destroyed) recordRazing(id, name, size, true);
+		ThreatIncConfig.log("Razing slice vs " + name + ": " + (int) fp + " FP for "
+				+ String.format("%.1f", days) + " d poured " + (int) out[1] + " fuel, " + (int) out[2]
+				+ " levels razed" + (destroyed ? ", destroyed" : "") + "; batteries cost "
+				+ String.format("%.1f", out[0]) + " FP (" + (int) removed + " removed)"
+				+ (paysOrdnance ? "; " + (int) razeFuel + " razing fuel left" : ""));
+		return destroyed;
+	}
+
+	/**
+	 * An expedition that never spawned razes the world in one go
+	 * ({@link #razeAbstract}), its allotment less route damage standing in for
+	 * the fleets; the batteries' toll comes off what it carries as the
+	 * abstract siege's does. True once the world is razed.
+	 */
+	protected boolean abstractRaze(MarketAPI market) {
+		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
+		if (!siegeResolved.add(market.getId())) return false;
+		if (shortOfALevel(market)) return false;
+		String id = market.getId();
+		String name = market.getName();
+		int size = market.getSize();
+		float start = abstractAllotment();
+		recordRazing(id, name, size, false);
+		float[] out = razeAbstract(market, start, groupAbortsMissionFPFraction, razeFuelLeft(), ourFactionId(),
+				razeReason());
+		if (paysOrdnance) razeFuel = Math.max(0f, out[1]);
+		abstractLeft = out[0];
+		if (start > 0f && out[0] < start) {
+			float keep = Math.max(0f, out[0] / start);
+			marinesAllotted *= keep;
+			armamentsAllotted *= keep;
+		}
+		boolean destroyed = out[2] > 0f;
+		if (destroyed) recordRazing(id, name, size, true);
+		return destroyed;
+	}
+
+	/** The razing, for the sitrep: once when it begins, once when the world is gone. */
+	protected void recordRazing(String marketId, String marketName, int sizeBefore, boolean destroyed) {
+		if (siegeAnnounced == null) siegeAnnounced = new java.util.HashSet<String>();
+		if (!destroyed && !siegeAnnounced.add(marketId)) return;
+		SiegeActionRecord rec = new SiegeActionRecord();
+		rec.marketId = marketId;
+		rec.marketName = marketName;
+		rec.sizeBefore = sizeBefore;
+		rec.timestamp = Global.getSector().getClock().getTimestamp();
+		rec.action = destroyed ? "Razed from orbit" : "Saturation bombardment";
+		rec.success = true;
+		rec.destroyed = destroyed;
+		siegeActions.add(rec);
+	}
+
+	/**
+	 * A razing that never spawned (vanilla autoresolve) runs in one go: the
+	 * saturation slices of ThreatGroundFronts.saturationSlice against the same
+	 * guns, {@code start} abstract fleet points standing in for the fleets, a
+	 * step of vanilla's gap between passes at a time - or the whole days that
+	 * finish the colony, if fewer: a bombardment is never less than a day -
+	 * until the world is razed, saturation can take no more, the fuel is
+	 * poured (Float.MAX_VALUE: the swarm's, without limit), the group's abort
+	 * fraction or siegeOrbitDays. What it razes is real. Shared with the
+	 * swarm's saturation doctrine (ThreatStrikeFGI). Returns {fleet points
+	 * left, fuel left, 1 when the world is gone}.
+	 */
+	public static float[] razeAbstract(MarketAPI market, float start, float abortFraction, float fuel,
+			String razerFactionId, String reason) {
+		float[] result = new float[] { start, fuel, 0f };
+		if (market == null || start <= 0f) return result;
+		String name = market.getName();
+		float fp = start;
+		float elapsed = 0f;
+		float budget = ThreatIncConfig.siegeOrbitDays();
+		float perFP = Math.max(0f, ThreatIncConfig.satFuelPerFPDay());
+		while (fp > 0f && elapsed < budget && fp > start * abortFraction) {
+			if (ThreatRazing.razeable(market) <= 0 || fuel < 1f) break;
+			float days = ThreatGroundFronts.SIEGE_FIRST_SLICE_DAYS;
+			if (perFP > 0f) {
+				float pour = Math.min(ThreatRazing.fuelToDestroyThrough(market), fuel);
+				days = Math.min(days, Math.max(1f, (float) Math.ceil(pour / (perFP * fp))));
+			}
+			// one frame: nothing runs down between steps; the stats recomputed
+			// after each, so the next step meets the defence this one left
+			float[] out = ThreatGroundFronts.saturationSlice(fp, market, days, fuel, false, false, -1f,
+					razerFactionId, reason);
+			fp = Math.max(0f, fp - out[0]);
+			if (fuel < Float.MAX_VALUE) fuel = Math.max(0f, fuel - out[1]);
+			elapsed += days;
+			if (out[3] > 0f) {
+				result[2] = 1f;
+				break;
+			}
+			ThreatGroundFronts.syncSiegeState(market);
+			market.reapplyIndustries();
+		}
+		if (result[2] <= 0f) {
+			ThreatGroundFronts.syncSiegeState(market);
+			market.reapplyIndustries();
+		}
+		result[0] = fp;
+		result[1] = fuel;
+		ThreatIncConfig.log("Abstract razing of " + name + " by " + razerFactionId + ": " + (int) elapsed
+				+ " d, " + (int) start + " -> " + (int) fp + " FP"
+				+ (fuel < Float.MAX_VALUE ? ", " + (int) fuel + " fuel left" : "")
+				+ (result[2] > 0f ? ", destroyed" : ""));
+		return result;
 	}
 
 	/**
 	 * An expedition that never spawned (vanilla autoresolve) runs its whole
 	 * siege of a world in one go ({@link ThreatGroundFronts#abstractSiege}),
-	 * its allotted strength less route damage standing in for the fleets.
+	 * its allotted strength less route damage standing in for the fleets and
+	 * its ordnance paying for each day: what that does not burn stays aboard
+	 * for the next world.
 	 */
 	protected void abstractSiege(MarketAPI market) {
 		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
 		if (market == null || !siegeResolved.add(market.getId())) return;
 		if (ThreatGroundFronts.getFront(market.getId()) != null) return;
 		float start = abstractAllotment();
-		float left = ThreatGroundFronts.abstractSiege(market, start, abstractTroops(market),
-				groupAbortsMissionFPFraction, ourFactionId());
+		float[] out = ThreatGroundFronts.abstractSiege(market, start, abstractTroops(market),
+				groupAbortsMissionFPFraction, ourFactionId(), ordnanceLeft());
+		float left = out[0];
+		if (paysOrdnance) ordnance = Math.max(0f, out[1]);
 		abstractLeft = left;
 		// the batteries' toll comes off what the expedition carries
 		if (start > 0f && left < start) {
@@ -1089,11 +1498,17 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		return getFaction() != null ? getFaction().getId() : null;
 	}
 
-	/** Whether a pass here should wait rather than spend itself: no front of ours yet and the world not ready to be landed on. */
+	/**
+	 * Whether a pass here should wait rather than spend itself: no front of
+	 * ours yet and the world not ready to be landed on. The orbit test is the
+	 * one the slices stopped on ({@link #orbitDoneHere}), so a pass a slice let
+	 * through is never then turned back here as not ready.
+	 */
 	protected boolean waitsInOrbit(MarketAPI market) {
 		if (!ThreatIncConfig.frontsEnabled() || market == null) return false;
 		if (ThreatGroundFronts.getFront(market.getId()) != null) return false;
-		return !ThreatGroundFronts.readyToLand(market, abstractTroops(market), ourFactionId());
+		return !ThreatGroundFronts.readyToLand(market, abstractTroops(market), ourFactionId(),
+				orbitDoneHere(market));
 	}
 
 	/**

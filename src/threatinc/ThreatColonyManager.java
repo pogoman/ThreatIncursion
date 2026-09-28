@@ -147,8 +147,9 @@ public class ThreatColonyManager {
 		// civilian fleets sourcing from a machine-swarm world
 		SharedData.getData().getMarketsWithoutTradeFleetSpawn().add(market.getId());
 
-		// machine order: no unrest, ever - shortages still bite through the
-		// industry deficit multipliers and the ship-hull fleet size mult
+		// machine order: stability held at 10 less bombardment unrest, re-pinned
+		// every poll (applyHiveOrder) - shortages still bite through the industry
+		// deficit multipliers and the ship-hull fleet size mult
 		market.getStability().modifyFlat(STABILITY_MOD_ID, 10f, "Machine hive-order");
 
 		int cap = ThreatIncConfig.colonyMaxSize();
@@ -586,7 +587,9 @@ public class ThreatColonyManager {
 		}
 		if (size >= 3 && !market.hasIndustry(THREAT_GROUND_DEFENSES)
 				&& !market.hasIndustry(THREAT_HEAVY_BATTERIES) && defensesAffordable(market)) {
-			market.addIndustry(THREAT_GROUND_DEFENSES);
+			// a world already past size 6 arms with the heavy batteries at once,
+			// not a tick later (saves whose hives never armed catch up in one tick)
+			market.addIndustry(size >= 6 ? THREAT_HEAVY_BATTERIES : THREAT_GROUND_DEFENSES);
 			return;
 		}
 
@@ -786,9 +789,27 @@ public class ThreatColonyManager {
 		if (need <= 0) return true;
 		for (String commodityId : new String[] { Commodities.HEAVY_MACHINERY, Commodities.METALS }) {
 			CommodityOnMarketAPI com = market.getCommodityData(commodityId);
-			if (com == null || com.getAvailable() < need * STALL_MET_FRACTION) return false;
+			// what it could draw, not only what it shows: vanilla imports only up
+			// to demand, so a world with no batteries yet shows no metals however
+			// much the hive's refineries make - read locally, 35 of 41 hives never
+			// armed (2026-09-28 run). The hive's largest producer is what it would
+			// draw from (availability is per source, as outputCovered reads it);
+			// before any refinery exists that is still nothing, so the 0.6.1
+			// stall stays fixed
+			float available = Math.max(com != null ? com.getAvailable() : 0f, hiveMaxSupply(commodityId));
+			if (available < need * STALL_MET_FRACTION) return false;
 		}
 		return true;
+	}
+
+	/** The most any one hive world makes of a commodity: what another hive world could draw of it. */
+	protected static int hiveMaxSupply(String commodityId) {
+		int supply = 0;
+		for (MarketAPI other : ThreatIncData.getAllLiveColonyMarkets()) {
+			CommodityOnMarketAPI com = other.getCommodityData(commodityId);
+			if (com != null) supply = Math.max(supply, com.getMaxSupply());
+		}
+		return supply;
 	}
 
 	/** Tick sweep: every live colony back on a Spaceport (older saves built Megaports). */
@@ -2430,9 +2451,12 @@ public class ThreatColonyManager {
 			float health = computeHealth(market);
 			ThreatIncData.setLastHealth(id, health);
 
-			// no growth while a ground front is on the surface: a colony
-			// fighting inside its own strata builds no new ones
-			if (ThreatGroundFronts.hasFront(market)) continue;
+			applyHiveOrder(market);
+
+			// no growth while a ground front is on the surface - a colony
+			// fighting inside its own strata builds no new ones - or while
+			// saturation falls on it (docs/suppression-balance.md v2)
+			if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) continue;
 
 			int size = market.getSize();
 			int cap = Math.min(ThreatIncConfig.colonyMaxSize(), Misc.getMaxMarketSize(market));
@@ -2451,6 +2475,38 @@ public class ThreatColonyManager {
 
 			growColony(market, cap);
 		}
+	}
+
+	/**
+	 * Days until a hive grows its next size at the rate it grows now
+	 * (updateColonyVitality's rule); Float.MAX_VALUE for a world that is not a
+	 * hive, is at its cap, starving, or held by a front or saturation.
+	 */
+	public static float daysToNextSize(MarketAPI market) {
+		if (market == null || !Factions.THREAT.equals(market.getFactionId())) return Float.MAX_VALUE;
+		if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) return Float.MAX_VALUE;
+		int size = market.getSize();
+		if (size >= Math.min(ThreatIncConfig.colonyMaxSize(), Misc.getMaxMarketSize(market))) return Float.MAX_VALUE;
+		float growthMult = growthMultFor(computeHealth(market));
+		if (growthMult <= 0f) return Float.MAX_VALUE;
+		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size * IncursionManager.timeScale();
+		return Math.max(0f, daysPerLevel - ThreatIncData.growthProgressDays(market.getId())) / growthMult;
+	}
+
+	/**
+	 * Machine hive-order (docs/suppression-balance.md v2 section 5): a hive's
+	 * stability is held at 10 less the unrest bombardment has raised
+	 * (vanilla's RecentUnrest), so no other vanilla source reaches it - the
+	 * shortages that once rioted it no more than anything that would lift it -
+	 * and that unrest cuts its ground defence as it cuts a human colony's.
+	 * Re-pinned every poll and after each bombardment.
+	 */
+	public static void applyHiveOrder(MarketAPI market) {
+		if (market == null) return;
+		com.fs.starfarer.api.combat.MutableStat stability = market.getStability();
+		stability.unmodifyFlat(STABILITY_MOD_ID);
+		float target = 10f - com.fs.starfarer.api.impl.campaign.econ.RecentUnrest.getPenalty(market);
+		stability.modifyFlat(STABILITY_MOD_ID, target - stability.getModifiedValue(), "Machine hive-order");
 	}
 
 	/**
@@ -2482,10 +2538,11 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * ERADICATION: the ground-victory teardown, the ONLY way a Threat colony
-	 * dies (docs/ground-war.md) - no bombardment touches its population, no
-	 * timer grinds it down. Vitality bookkeeping cleared, then the vanilla
-	 * decivilization teardown; pollColonies reacts on the next poll.
+	 * ERADICATION: the teardown of a Threat colony, by one of the two ways it
+	 * dies - a ground victory, or saturation razed to its last stratum
+	 * (docs/suppression-balance.md v2) - never a timer. Vitality bookkeeping
+	 * cleared, then the vanilla decivilization teardown; pollColonies reacts
+	 * on the next poll.
 	 */
 	public static void eradicate(MarketAPI market) {
 		if (market == null) return;

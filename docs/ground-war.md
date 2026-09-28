@@ -8,10 +8,11 @@ config knob (settings.json / LunaLib).
 
 **The colony is the fortress; the Core is the objective.** A size-S hive is S strata
 deep with the Fabrication Core at the center. There is NO decline timer any more -
-the old health-below-threshold decline engine is removed. Starvation and bombardment
-only ever WEAKEN a colony; **eradication is a ground victory**: take every stratum,
-destroy the Core, colony dies (`ThreatGroundFronts.groundVictory` ->
-`ThreatColonyManager.eradicate`). This holds for NPCs too - purge expeditions land
+the old health-below-threshold decline engine is removed (rejected again 2026-09-28).
+**A colony dies two ways**: a ground victory - take every stratum, destroy the Core
+(`ThreatGroundFronts.groundVictory` -> `ThreatColonyManager.eradicate`) - or saturation
+razed down to its last level (2026-09-28, `ThreatRazing`, "Bombardment v2" below).
+Starvation and tactical bombardment only ever WEAKEN it. This holds for NPCs too - purge expeditions land
 their own fronts (below) - and, since 2026-09-05, **for the swarm as well**: Threat
 strikes land Threat-owned fronts on inhabited worlds and can only kill a colony by
 taking its last stratum ("Threat ground assaults" below). The rule is symmetric.
@@ -37,21 +38,19 @@ options menu; commits everything aboard). Ticks on the colony poll at flat rates
 - **Suppression states**: HOLDING (>= `frontHoldFraction`, 0.17, of the defense figure -
   lowered from 0.25 when the 1.5x entrenchment bonus went, so the old landing sizes still
   hold) suppresses Core/Nexus/port/defense structures by feeding their disruption clocks
-  (the existing wear mechanic); GRINDING (>= `frontGrindFraction`, 0.10) harasses just
-  the defense structures at half rate; FOOTHOLD suppresses nothing.
-- **What drives a disruption clock** (2026-09-06): orbit besieges, day by day, all the way
-  to nothing (2026-09-28: the orbital floor is gone) - a Threat strike over a colony, a faction's or the
-  player's siege expedition over a hive, a Support sortie over either, and the player's
-  own tactical bombardment (return fire of `siegeBombardSliceDays`, 3, suppression of
-  `tacBombardSuppressDays`, 15, since 2026-09-27: 3 days of both came to ~5 days against a
-  strong colony for ~10 FP) all run the same
-  duel ("Sieges from orbit" below). Saturation on a hive still writes `hiveSatDisruptDays`
-  (20) to everything. Marine raids add their days (vanilla). A HOLDING front adds
-  `frontSuppressDaysPerDay` (2) per day against the clock's own run-down, so a net day per
-  day, up to a cap of 1.2 x `defenseWearDays`. Orbit alone therefore wears the defenses to
-  nothing by itself; a front just gets there faster. Danger close
-  (a tactical pass with your own front down) lands `hiveTacDisruptDays` (60) on the Core
-  and port too.
+  (the existing wear mechanic); GRINDING (>= `frontGrindFraction`, 0.10) wears just
+  the defense structures; FOOTHOLD suppresses nothing. Either wears by its advantage,
+  `frontWearRate` (12) x troops / (troops + defence) days a day (2026-09-28).
+- **What drives a disruption clock** (2026-09-28, "Bombardment v2" below): orbit, a day
+  of bombardment at a time - a Threat strike over a colony, a faction's or the player's
+  siege expedition over a hive, a Support or Defend sortie over either, and the player's
+  own bombardment all fly the same day - adding the theatre's rate x F / (F + D) x what
+  still stands of each fortification, so it softens with diminishing returns and never
+  wears anything out. A front adds `frontWearRate` (12) x E / (E + D) a day, not cut by
+  condition - boots finish what orbit cannot - against the clock's own run-down of a day a
+  day, up to a cap of 1.2 x the wear days. No raid reaches a fortification any more;
+  on a hive only the Fabrication Core is raidable. Danger close (a tactical day with your own front down) lands the day on the
+  Core and port too.
 - **The Core wears in proportion** (2026-09-05): its fabrication factor is `coreDownFactor`
   (0.8 since 2026-09-28; at 1.0 a Core under ~45 days still grew at full pace) x
   (1 - clock / `defenseWearDays`) - one pass leaves 64 percent, 150 days 40, 300 days
@@ -144,7 +143,7 @@ only), and cannot land where one already fights.
 
 Built 2026-09-05, untested in-game. **The swarm no longer erases worlds from orbit.**
 Saturation bombardment is gone from Threat strikes (knob `strikeSaturationEnabled`,
-default FALSE, restores the old behaviour verbatim). A strike now does to an inhabited
+default FALSE; on, since 2026-09-28 the swarm saturates by the razing bar like anyone). A strike now does to an inhabited
 world exactly what a purge expedition does to a hive - and for the same reason: *only a
 ground victory kills a colony, in either direction.*
 
@@ -174,12 +173,12 @@ drift apart.
    autoresolve, the player far away) runs its whole siege in one go first
    (`abstractSiege`: the same slices against the same batteries, its abstract strength
    standing in for the fleets, the disruption it writes real).
-2. **Land.** The world is ready (`readyToLand`: every defence structure fully worn,
-   or the landing could hold as it is - `troops x frontLandingMult >=
-   holdRequirement`) and nothing blocks the landing (`landingBlocked`: saturation fallout -
-   `FALLOUT_FLAG` binds the swarm too - another army on the ground, or, with real fleets,
-   the orbit held against it): the pass puts the world's share of the troop pool on the
-   surface as a `Factions.THREAT` ground front.
+2. **Land.** The world is ready (`readyToLand`: bombardment has done what it can -
+   `orbitDone`, 2026-09-28 - or the landing could hold as it is - `troops x
+   frontLandingMult >= holdRequirement`) and nothing blocks the landing
+   (`landingBlocked`: another army on the ground, or, with real fleets, the orbit held
+   against it): the pass puts the world's share of the troop pool on the surface as a
+   `Factions.THREAT` ground front.
 3. **Reinforce.** A pass over the swarm's own front lands whatever of the world's share
    is still aboard - a top-up, never a schedule: **a Threat front's real reinforcement is
    the next expedition**. A dry front signals for it (`wantsExpedition`), and
@@ -187,7 +186,7 @@ drift apart.
    the next strike's target; the expedition that answers resupplies the front on its pass.
    There is no convoy layer behind the swarm.
 
-A pass that lands nothing - the share spent, fallout on the ground - is still a pass
+A pass that lands nothing - the share spent - is still a pass
 spent, and does not count toward the strike's success
 (`AnnihilationAction.getSuccessFraction`); a slice of the siege spends nothing.
 
@@ -451,6 +450,107 @@ half rate.
 | Counter-attacks | paced by hive health | paced by stability and military command; strength is the garrison |
 | Victory | the Core dies: eradicated, the survivors come home | the last district falls: a hive is seeded on the spot |
 
+### Bombardment v2 - the day of sorties (2026-09-28, built, untested)
+
+The spec, its principles and its tables are `docs/suppression-balance.md` ("Bombardment and
+siege redesign v2"); this is where it landed in the code. Sections below that predate it are
+kept as history where they say otherwise.
+
+- **One day, one rule.** `ThreatGroundFronts.siegeSlice` is a day (or an AI fleet's few
+  days, integrated a day at a time) of bombardment: each fortification's clock gains the
+  theatre's rate x F / (F + D) x its condition, the shield soaks its own share on the same
+  rule, and the world's unrest is raised to `bombardUnrestMax` x (1 - condition), never
+  stacked. The guns answer with `bombardReturnFirePerGunDefence` (0.0008) x the defence they
+  add, a day - whatever the fleet's size. Fuel is `bombardFuelPerFPDay` (0.04) per fleet
+  point a day. The 15-days-for-3 player bomb is gone.
+- **The player** (`ThreatincMarketCMD`): the menu quotes each kind's fuel a day, a shared
+  `bombardCooldownDays` lock (sector memory `$threatinc_bombardLock`) allows one bombardment a
+  day, and the prompt names the ships the day's return fire would take and the next in line
+  with the damage banked toward it (`lossLines`). Vanilla's reputation, hostility timeouts,
+  military response, pollution and listeners run every day.
+- **Saturation** (`saturationSlice`, `ThreatRazing`): the tactical day on every building,
+  unrest raised to 10, growth paused (`$threatinc_saturated`), and `satFuelPerFPDay` (2.86) x F
+  of fuel a day poured into the razing bar through the shield. Fuel per level at size s =
+  `satFuelSize4` x 10^(s/2) / 144.8; a level paid is a size off (below 3 too); the last ends
+  the colony (`hiveRazed` / `colonyRazed`). Layers a front holds count as size lost. The dead
+  stay dead. A story-critical world stops at size 3. One atrocity per campaign (a month
+  without saturation ends it), not per day.
+- **When orbit has done what it can** (`orbitSpent`): the commander would not fly another day -
+  its gain on the least-worn fortification or the shield is below the day of repair the
+  defenders make, or the day would take less than `bombardFPWorth` (30) defence off the world for each
+  fleet point the guns take - a hull's price in marines, or the day would take the fleet
+  under vanilla's abort line (0.33). It replaces "fully worn" everywhere the AI decided on it:
+  the landing gate (`readyToLand(..., orbitDone)`), Defend's bombard/fabricate split
+  (`orbitDoneFor`, which also counts a fleet out of ordnance as done). `bombardPlan` runs the
+  same day forward, the fleet's losses included, for sizing landings; an expedition lands
+  rather than let the guns take it under its abort line (`gunsWouldBreak`).
+- **Short of troops, soften first** (run 4 -> 5). While the troops aboard could not hold
+  (`troopsToLand`: the hold, and an NPC's first-landing beachhead, with the garrison read at the
+  day's defence), the ships' worth is waived: without the troops, softening is the only way in.
+  The gain and the abort line still stop it. Every landing gate passes its troops
+  (`orbitSpent/orbitDone(..., troops, beachhead)`; the purge's `orbitDoneHere(market, troops)`,
+  the strike's calls, `abstractSiege`). A base that cannot raise the planned landing sails with
+  all the marines it has when `landsAfterSoftening` says the longer bombardment lets them land,
+  drawing that bombardment's ordnance (`expeditionWants/expeditionFuel(..., shortLanding)`);
+  otherwise it waits as before, and a flotilla trimmed for provisions below that wear waits too.
+- **The swarm's stop is what a hull becomes** (after run 5, untested). The Threat buys nothing
+  with credits, so it never uses `bombardFPWorth`: a hull kept is `fabricateTroopsPerFP` troops,
+  and a defence point bombarded off is worth `frontHoldFraction / mult` troops to the hold, so a
+  day must take `fabricateTroopsPerFP x mult / frontHoldFraction` defence off per FP lost
+  (`hullWorth`; 10 x 0.75 / 0.17 = 44 at the landing's footing, up to 59 dug in). Strikes use it
+  at `frontLandingMult` (`swarmWorth`) and drop the short-of-troops waiver - a short landing is
+  made up by fabrication. A Defend fleet over its own front that cannot hold uses it at the
+  front's `entrenchMult` (`defendWorth`): bombard while a day beats sending the hulls down,
+  then fabricate. Navies keep `bombardFPWorth`: they cannot fabricate.
+- **NPC sieges break off when outweighed** (after run 5, untested). An expedition that arrives
+  with no front down and finds Defense Swarms of at least `siegeBreakOffRatio` (1.0) x its live
+  FP over any target turns home intact (`ThreatPurgeFGI.breaksOff`), with a "Siege Called Off"
+  notice and a swarm bounty posted. 0 turns it off.
+- **Finish by saturation** (after run 5, untested). An NPC Defend fleet over its own front razes
+  the levels the enemy still holds when its ordnance covers the whole pour and its faction's
+  ships outlast the guns (`defendRazes`, `defendRazeSlice`; `razePlan`) - faster than the push.
+  `razeWorlds` also weighs a world the faction's own front stands on, razing it whenever
+  flotilla and fuel allow, whatever the landing would cost. `hiveRazed` evacuates the front.
+  Only when it is faster: a front that takes the last stratum before the razing would land
+  (`daysToLastStratum` against `razeArrivalDays` plus the razing's days) is left to finish, and a
+  world whose front finishes before a siege could arrive is not targeted at all
+  (`frontFinishesFirst`; run 6 sent a razing to a hive its front took a day later).
+  Off with `npcRazeEnabled`; never the swarm or the player.
+- **A navy holds over its own troops** (2026-09-28, untested). Holding orbit costs a Defend
+  fleet nothing, stops the swarm bombarding the front (`tickSwarmBombard`) and keeps the door
+  open for front runs, so a navy's Defend fleet (NPC or player) over its standing front no longer
+  goes home at `defendMinStrength`: only when worn below it AND outweighed - Defense Swarms of at
+  least `siegeBreakOffRatio` x its faction's points there (`navyHoldsOver`, via
+  `defendCommitted`). The front runs' contested-door check then sends a Support sortie - only if
+  a task force (`guardFleetFP`) can clear the orbit it faces (`siegeOrbitNeeded`; run 6 sent 111
+  FP against 4,800), and an NPC Support sortie outweighed over its own front goes home
+  (`navyHoldsOver`, in `ThreatFleetOrders.poll`).
+  A front that cannot hold asks its runs for the troops that hold it (`holdGap`, with
+  `fabricateHoldMargin`), not just `frontReinforceFraction` of what it landed, and a run sails
+  for a small shortfall while the front cannot hold.
+- **One day over one world.** Fleets of one faction over a world bombard as one: the
+  structures wear at the rate their combined points earn (`orbitPoints`) and the guns answer
+  once, each fleet taking its share by points (the slices' `orbitFP` overloads).
+- **The raze task** (`IncursionManager.razeWorlds`, `ThreatPurgeFGI` raze mode): an NPC siege
+  razes a hive from orbit instead of landing where the razing fuel costs less than the landing's
+  marines and armaments at vanilla base prices, its reserve holds the fuel, and a flotilla big
+  enough to outlast the guns (`ThreatGroundFronts.razePlan`) finishes within `siegeOrbitDays`.
+  The razing fleets carry the fuel (`razeFuel`), pour it a day at a time (`razePass`), and the
+  board reads "razing from orbit". `npcRazeEnabled` turns it off. The swarm razes by the same
+  bar when `strikeSaturationEnabled` is on.
+- **The player's Bombard order** (war board, docs/war-board.md): the same razing expedition,
+  player-commissioned, against a system's hives without a front; fleets sized to outlast the
+  guns, fuel from the base's reserve.
+- **Ordnance**: Support and Defend fleets pay the day's fuel from their provisions, then their
+  home base's spendable reserve (`payOrdnance`); with none they stand idle ("out of fuel to
+  bombard with"). The swarm has no fuel economy and bombards free.
+- **Fronts** wear by their advantage (`frontWearRate` above); no fallout; saturation no longer
+  kills a front. A landing is an act of war: vanilla's bombardment reputation hit, never covert.
+- **Hives take unrest**: stability is pinned at 10 less `RecentUnrest` every poll
+  (`ThreatColonyManager.applyHiveOrder`), and the Swarm Nexus no longer cancels the stability
+  defence multiplier. A besieged human colony is held off vanilla's zero-stability
+  decivilisation while the siege lasts (`$threatinc_decivHeld`).
+
 ### Sieges from orbit - one duel, both theatres (2026-09-06, untested)
 
 The user's call the same evening: the orbital duel is the doctrine for everyone, not the
@@ -464,9 +564,9 @@ suppresses and what answers:
 | Fortifications | Ground Defenses / Heavy Batteries, Swarm Nexus | Ground Defenses, Heavy Batteries, Patrol HQ, Military Base, High Command (`ThreatSiegeMalus.FORTIFICATION_IDS`) |
 | Clock (condition 1 -> 0) | `defenseWearDays` (300) | `fortificationDisruptDays` (180) |
 | Condition carrier | the organs themselves (`ThreatColonyManager.disruptedDefenseResilience`, a straight line to 0 - the old `disruptedDefenseFraction` step is gone) | `ThreatSiegeMalus` |
-| Suppression rate (net of the clock's run-down) | `hiveSiegeSuppressDaysPerDay` (30) x F / (F + D) | `siegeSuppressDaysPerDay` (6) x F / (F + D) |
+| Suppression a day (the run-down made up) | `hiveSiegeSuppressDaysPerDay` (30) x F / (F + D) x condition | `siegeSuppressDaysPerDay` (12) x F / (F + D) x condition |
 | Batteries' share | the two defence structures' multipliers on the hive's machinery/metals deficit | the two batteries' multipliers on vanilla's deficit |
-| Return fire | `siegeBatteryAttritionPerDay` (0.02) x F x share x D / (F + D), smallest ship first, flagship spared | the same |
+| Return fire | `bombardReturnFirePerGunDefence` (0.0008) x D x share a day, smallest ship first, flagship spared | the same |
 
 A disruption clock runs down a day per day (vanilla's expiry), which the first build of the
 duel missed: a live fleet's slice now makes up the days the clock lost since its last slice
@@ -589,7 +689,14 @@ then do the batteries answer. The expedition's own status line
 says which branch opened its landing gate (`ThreatGroundFronts.landingPhase`: "moving to
 land - defences worn out" or "moving to land - the troops can hold, sparing the ships").
 
-### Raiding the fortifications (2026-09-25, built, untested)
+### Raiding the fortifications (2026-09-25) - RETIRED 2026-09-28
+
+**Retired by "Bombardment v2".** Marines reach the guns only by landing: every human
+fortification is vanilla's unraidable again, the hive's Swarm Nexus, Ground Defenses and
+Heavy Batteries and the planetary shield are tagged unraidable, and the knobs
+`fortificationRaidDanger` / `fortificationRaidDepthLoss` are gone. The Fabrication Core raid
+stays (it is not a defence), its depth toll on `coreRaidDepthLoss` and read from the
+player's own raid strength (the suspected `depthMult` bug, fixed). What follows is history.
 
 Vanilla tags a colony's Ground Defenses, Heavy Batteries, Patrol HQ, Military Base and
 High Command `unraidable` with no disrupt danger: its tactical bombardment knocks them out
@@ -648,6 +755,12 @@ grows with tokens on one fortification, and the objective's hover tooltip quotes
 Nexerelin loaded the list is vanilla's.
 ### Fabricating troops from the fleet (2026-09-08, built, untested)
 
+**The swarm's alone (2026-09-28).** It had been built for every Defend fleet, player and NPC
+navies included; the user never meant that - bioships go down as troops, a navy's hulls do
+not. `defendFabricates` and `fabricateTroops` now refuse any faction but the Threat, and the
+player's Defend tooltip no longer offers it. A navy's Defend fleet bombards while it pays and
+otherwise holds the orbit; its troops come from the next expedition.
+
 The user, after watching the Defend behaviour they liked run out of road: a covering
 fleet bombards while its front cannot hold - but the bombardment stops mattering once the
 defences are fully worn, and a losing front then just watches a full fleet sit in orbit doing
@@ -660,7 +773,7 @@ The trigger is the exact complement of the one that was already there
 | | `defendBombards` | `defendFabricates` |
 | --- | --- | --- |
 | Its own front on the ground | cannot hold | cannot hold |
-| Fortifications | not yet fully worn | fully worn (`suppressedFully`) |
+| Orbit | still pays for this fleet | done for it (`orbitDoneFor`: spent, or no ordnance - 2026-09-28) |
 
 Both are false while the front holds, so the two states tile the "front in trouble" case
 between them and neither runs while the ground is safe. Four rules the user set, and where
@@ -685,8 +798,8 @@ each one lives:
    worth *after* the drop, not before: the fragments land with their own armaments, so
    pricing in the dry penalty and then cancelling it by landing would over-feed the front by
    half its own weight.
-4. **The price is the undisrupted batteries.** `fabricateCost` is `siegeSlice`'s own return-fire
-   formula - `siegeBatteryAttritionPerDay x fp x share x D / (fp + D)` - read at **full**
+4. **The price is the undisrupted batteries.** `fabricateCost` is the day's return fire
+   (2026-09-28: `bombardReturnFirePerGunDefence x D x share`) read at **full**
    condition instead of the suppressed one, charged on top of the hulls that became troops
    and banked as ordinary battery damage. The fragments go down through defended air, so
    the guns get the shot they would have had on the first day of the siege even though they
@@ -826,8 +939,9 @@ The shield wears from orbit like any other fortification, all the way to 0 by th
 wear days (2026-09-28: the orbital floor that used to stop it at 50% condition is gone) -
 `siegeSlice` spends it the same way it spends the guns. `tickFront`'s
 suppression grinds the shield at exactly the rate it grinds the guns too (`suppressShield`, full
-rate while HOLDING, `frontGrindSuppressMult` while GRINDING, capped at `wearDays x 1.2` like
-any other structure), so a ground front simply gets there faster than orbit alone.
+the front's advantage-set rate while HOLDING or GRINDING, capped at `wearDays x 1.2` like
+any other structure), so a ground front finishes what orbit alone only approaches. From orbit
+the shield wears under the same diminishing returns as the guns (x its own condition).
 
 The shield is deliberately NOT in `keyStructures` / `defenseStructures`; those lists also
 answer "are this colony's defences held", which the shield does not speak to. It is suppressed
@@ -850,11 +964,11 @@ Where it hooks - every write, no exceptions:
 
 | Site | What changes |
 | --- | --- |
-| `ThreatGroundFronts.siegeSlice` | fortifications take `add x throughput`; the shield takes `add x shieldSoakMult`. `throughput` is read once, before the loop, so one slice sees one shield state |
-| `ThreatGroundFronts.siegeSliceEstimate` | `[0]` is already cut by the shield, so every caller quoting suppression gets the true figure; `[2]` is what the pass puts on the shield |
-| `ThreatincMarketCMD.applySaturationDisruption` | raise-to `dur x throughput`, the shield raised to the full `dur` |
+| `ThreatGroundFronts.bombardStructures` (every slice, tactical and saturation, 2026-09-28) | each day the structures take `rate x condition x throughput`, `throughput` re-read each day; the shield takes `rate x shieldSoakMult x its integrity` |
+| `ThreatGroundFronts.saturationSlice` | the day's fuel reaches the razing bar x `throughput` (`ThreatRazing`) |
+| `ThreatGroundFronts.bombardDay` | the prompt and tooltip figures, already cut by the shield |
 | `ThreatincMarketCMD.applyDangerClose` | the deep organs are under the shield too |
-| `ThreatincMarketCMD.bombardTactical` | the shield is a bombardment target in its own right while it isn't fully worn, and `siegeSliceApplies` now fires for a shielded world with no guns at all. It is printed on its own line, not under the shared "about N days each" headline, because it takes a different figure - clamped to the room left on its clock |
+| `ThreatincMarketCMD.bombardTactical` | the shield is a bombardment target in its own right (`bombardable` fires for a shielded world with no guns at all), printed on its own line |
 | `ThreatGroundFronts.tickFront` | `suppressShield` - boots grind it at the same rate as the guns |
 | `ThreatPlanetaryShield.apply` | vanilla's x3 ground defence never written; the knob's value applied in proportion to condition when set |
 
@@ -952,8 +1066,8 @@ The counterplay keeps its shape - get a fleet over the planet - but becomes a qu
 degree rather than a deadline: contesting the orbit stops the bleeding, and arriving late now
 costs troops instead of everything.
 
-The player's own saturation bombardment is untouched: `ThreatincMarketCMD` still applies the
-full disruption set and `setFallout`. Only the hive self-scour is gone.
+The player's saturation bombardment became a campaign to destruction on 2026-09-28
+("Bombardment v2"); fallout went with it.
 ### Relief (2026-09-27, built, untested)
 
 A Threat army on an NPC faction's own world is answered by `ThreatFleetOrders.planRelief`,
@@ -1093,7 +1207,7 @@ reinforcing, the front battered / overrun / withered, and the colony falling.
   delegate. The front's owner is the other axis and stays on the front (`ownerOf`, never
   null - `deploy` writes `Factions.PLAYER` for the player).
 - The landing doctrine is the engine's, not the expeditions': `needsSoftening`,
-  `landingBlocked` (fallout / another army / the orbit, one reason string for the
+  `landingBlocked` (another army / the orbit, one reason string for the
   expeditions and the board alike) and `landOrReinforce` (deploy or resupply, the
   announcement, the Defend-contract failure for a Threat landing) are called by both
   `ThreatPurgeFGI` and `ThreatStrikeFGI`.
@@ -1210,12 +1324,11 @@ marines the figure counts.
 ## Vanilla-tool integration (unchanged from phase 1)
 
 - **Tac bomb + own front = danger close**: costs the front
-  `frontDangerCloseLossFraction` marines, in exchange the strike's disruption also
-  lands on the Core and port. Player-owned fronts only. Warned before confirm.
-- **Sat bomb**: destroys ANY front on the surface (warned), sets
-  `$threatinc_fallout` for `falloutDays` (40 >= the 20-day blackout - sat bombing
-  must forfeit ground tempo). Role: theater shaping, never eradication progress.
-  The flag binds the swarm too: a Threat strike will not land into fallout either.
+  `frontDangerCloseLossFraction` (0.005 a day since 2026-09-28) of its marines, in
+  exchange the day also lands on the Core and port. Player-owned fronts only. Warned
+  before confirm.
+- **Sat bomb** (2026-09-28): a day of razing, the bombs on the owner's layers only; a
+  front on the surface survives it and its layers count as already lost. No fallout.
 
 - **Military options menu - who the defenders are (2026-09-07, TESTED, works)**: for a
   Threat colony the defenders are (`ThreatincMarketCMD.threatDefenders`) the live swarm fleets
@@ -1631,3 +1744,104 @@ whose fortifications are already fully worn with a front that cannot hold.
 8. **Nothing else moved.** A player or NPC front on a hive must still burn armaments, still
    go dry, still show days of supply, and still request a pickup when dry and below grind
    strength.
+
+### To verify - bombardment v2 (2026-09-28, built, untested)
+
+Spec and build notes: docs/suppression-balance.md, "Bombardment and siege redesign v2".
+
+1. **The menu.** Over a hive, Bombard reads "Tactical bombardment: N fuel a day." and
+   "Saturation bombardment: up to N fuel a day."; after either, both grey out with the lock
+   line until the next day.
+2. **The tactical prompt** lists each fortification "X% to Y%", the shield when one stands,
+   the ships the day's return fire takes by name ("Lost to return fire: ...", "Next to go:
+   ..."), and the unrest the day leaves. Three days in a row take less off each day.
+3. **Hive unrest.** After a tactical day a hive's stability reads 10 minus the unrest, and its
+   Defenses tooltip falls with it; the Swarm Nexus no longer cancels the stability multiplier.
+4. **Razing a seed.** A size-2 hive under a ~500 FP fleet with 1,000 fuel is razed in a day or
+   two: a "Hive Razed" notice, the hive gone from the board, its system clear.
+5. **Razing a big hive.** Saturation on a size 4+ hive puts "Razed" on the colony screen
+   ("Level N: X of Y fuel", "Razed with N more fuel"), takes a size off per level paid, and the
+   hive's tooltip reads "Growth: halted under saturation" until a day or two after the last.
+6. **Combined arms.** With a front holding layers, the saturation prompt prices size less
+   layers held; the front survives the saturation, and it can land at once afterwards (no
+   fallout).
+7. **The shield** cuts the day's delivery into the bar while it stands (prompt and bar agree).
+8. **Fronts wear by advantage.** A front with troops about equal to the defence takes the
+   guns down far faster than one at a tenth of it; a grinding front wears them too.
+9. **An act of war.** Landing a front on a non-hostile colony costs -0.01 x size reputation
+   and leaves the faction hostile.
+10. **Raids.** Over a hive the raid list has no Ground Defenses, Heavy Batteries, Swarm Nexus
+    or shield; the Fabrication Core is still there with its depth line. Over a human colony,
+    vanilla's list (no military structures).
+11. **Support and Defend** tooltips name the ships the day's return fire takes and the fuel;
+    with no fuel aboard and none at home the fleet holds the orbit, "out of fuel to bombard
+    with".
+12. **Besieged colony at 0 stability.** No decivilization warning while the siege lasts.
+13. **The AI.** The log shows each siege slice with its fuel, landings on "bombardment has done
+    what it can" or "the troops can hold", and a raze-or-siege line with both costs and the
+    razing fleet's points per target; a raze expedition reads "razing from orbit" and the hive
+    goes as in 4-5.
+14. **The commander's stop.** An NPC siege of a Heavy-Battery hive bombards a few weeks at most,
+    keeps most of its fleet, and lands before its fleets drop to a third of what sailed - no
+    siege aborts under the guns. Over a colony it bombards as the spec's tables say.
+15. **One day over one world.** With three fleets of one expedition over a world, the log's
+    "batteries cost" figures of a day add up to one day's return fire, not three.
+16. **Bombard.** Each hive row shows Siege, Bombard and Hunt without overlapping (the Actions
+    column is wider). The prompt lists the fleets, the fuel carried and drawn, and one line per
+    hive; the expedition reads "razing the ..." on the fleets table, razes its hives in turn,
+    and Recall brings the unburned fuel home. With no fuel past the passage the button is
+    greyed and says so.
+17. **Siege prompt** quotes "Carries N of the M fuel its bombardment burns."
+**Test run 1 (2026-09-28, clone save_IWBomb1, 700 d, log only).** No exceptions; slices diminish;
+colony return fire 3-5 FP/day as the spec says; no decivilization. Fixed after it, untested:
+off-screen sieges and razings recompute the defence every step (it stayed at the intact figure);
+an unspawned strike lands once its off-screen siege has run (Eventide and Mazalot lost a third of
+the strike and never landed; the purge's gate the same); a live station holds a colony's orbit
+whatever it weighs, so the first day no longer meets its x3; a suppressed fortification keeps its
+stability bonus x condition (the first touch cost ~25% of the garrison); a razing is priced for
+the size the hive will have on arrival (ThreatRazing.fuelToDestroyThrough(market, days)); the
+raze-or-siege line logs on a changed verdict only. Still open: hive return fire at 0.008 - every
+hive bombarded in the run had no guns.
+**Test run 2 (2026-09-28, clone save_IWBomb2, 394 d, all off-screen).** Fixes 1, 3, 4 and the log
+line held; 3 hives killed by NPC fronts, 0 colonies lost. The station gate (fix 2) is untested -
+it only reads live fleets. Razing still razed nothing; fixed after it (jar 19:07, untested): an
+unspawned expedition acts only when its payload window ends, and a raze-only expedition's window
+was siegeOrbitDays (~120 d) - it is now the days its razing takes (razeRun); a razing short of the
+top level pours nothing and takes its fuel home (ThreatRazing.shortOfALevel); ThreatRazing.pour
+takes a level 0.5 fuel short (an exact pour left the last level standing). Open: hives never
+answered - every hive bombarded had no Ground Defenses or Heavy Batteries.
+**Test run 3 (2026-09-28, clone save_IWBomb3, 439 d, all off-screen, jar 19:14).** No exceptions.
+Hives arm: 34/34 size >= 3 armed by day 35 (was 6). Razing razes: five hives razed from orbit,
+Qaras 3 -> 2 -> 1 -> gone in 2 d; dead worlds the swarm refounds are razed again. Hive return fire
+at 0.008: Gamma Golgotha II-L5 (defence 10,952) cost Hegemony ~58 FP/d at condition 0.72, 45 d,
+5950 -> 4790 FP, then landed; a colony (Tartessus, 1,200) costs ~6 FP/d. "0 d" Threat landings
+are the commander's trade (troops already hold, `readyToLand`), not skipped bombardment. Open:
+Hegemony's 2,700 FP against Beta Vigri II (size 8, defence 14,400) - siege sizing weighs only
+the Defense Swarm faced (385 FP), and the stop trades 1 FP for 1 defence point (siegeFPWeight
+1.0), so it bombarded 27 d to 1,031 FP, landed at condition ~0.7, then lost orbit cover to 2,651
+FP of regrouped swarms and stalled at the door.
+
+**Test run 4 (2026-09-28, clone save_IWBomb4, 502 d, jar 20:06).** User's call after run 3: a fleet
+point is worth far more than a marine, and return fire was overtuned - sizing left alone.
+`bombardFPWorth` 30 (a day must take 30 defence off per fleet point lost: ~6,000 cr a point
+armed and crewed, a marine 200) and `bombardReturnFirePerGunDefence` 0.008 -> 0.0008 (LunaLib
+migration 5). No exceptions. Hive sieges bled a tenth as much and stopped sooner: Persean
+League on Gamma Golgotha II-L5, 5,950 FP, 18 d, lost 85 FP (run 3: 45 d, 1,160 FP), landed
+5,998; on Gamma Golgotha I (D 14,400), 7,200 FP, 49 d, D -> 3,906, lost 147 FP; Epsilon Qades
+I-C 93 d, 54 FP, Fabrication Core destroyed. Colonies cost ~0.5 FP/d and the stop ends them in
+9-24 d (were 39-45). Razing still razes. Because the day's worth (defence taken / FP lost) is
+k x F/(F+D) / rate, independent of condition, worth x rate sets a line: a fleet under ~1/3 of a
+hive's defence (F/(F+D) < 0.24; 0.36 on a colony) does not bombard at all and plans to land at
+full defence - 10,000-11,450 marines on a size 7-8 hive. Marine postponements 327 (run 3: 120
+in 439 d), launches 19 (23).
+
+**Test run 5 (2026-09-28, clone save_IWBomb5, 506 d, jar 20:42).** Run 4 plus short of troops,
+soften first. No exceptions. Beta Vigri II, run 3's failure: Persean sailed with 5,569 of
+10,019 marines, 5,950 FP bombarded 21 d (D 12,600 -> 7,026, lost 97 FP), landed 5,479 and
+eradicated the hive. Hegemony likewise took Gamma Golgotha I (5,937 of 10,217 marines, 24 d, 123
+FP). Launches 25 (run 4: 19), marine postponements 65 (327), fuel postponements 287 (30) - the
+longer bombardment's ordnance (~35,000 fuel for a size-8 hive) is now what a base waits for.
+Hives eradicated 5 (4, 3). Two short landings never landed: Defense Swarms that reinforced after
+the launch ground them below the abort line with the ordnance unburned (the orbit gate's
+problem, not the guns'). Threat beachheads overrun by colony garrisons: 29 (runs 3-4: 29, 30).
+The "lands X of Y" line is logQuiet since (21:09 jar, untested).
