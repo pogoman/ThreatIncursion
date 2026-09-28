@@ -39,14 +39,16 @@ class LunaConfigBridge {
 	 * never updates a key already there, so a changed default never reaches a
 	 * player upgrading with LunaLib. Once per version, a stored value still
 	 * equal to the OLD default is moved to the new one; anything the player
-	 * set by hand is left alone. 0.7.0: siegeMaxFleets 10 -> 25,
+	 * set by hand is left alone. 0.7.0 (marker 1): siegeMaxFleets 10 -> 25,
 	 * reserveInitialMonths 3 -> 6 (rc1 review - the release's main balance
-	 * change never applied under LunaLib). Version 2 (2026-09-26):
-	 * siegeMaxFleets 25 -> 40 (the bumps chain, so a store still at 10 lands
-	 * on 40); frontlineGarrisonFP 400 -> 200 (now the minimum garrison - links
-	 * are garrisoned against the strikes in reach). Version 3 (run 7):
-	 * siegeMaxFleets 40 -> 50. Version 4 (run 17): expeditionSuppliesPerPoint
-	 * 100 -> 30 - Hegemony's sieges waited 16 months on 32,600-supply bills.
+	 * change never applied under LunaLib). Versions 2 and 3 (2026-09-26, run
+	 * 7) only ever ran on dev installs: siegeMaxFleets 25 -> 40 -> 50, and
+	 * frontlineGarrisonFP 400 -> 200, a knob 0.7.0 did not have. A released
+	 * store therefore goes 25 -> 50 in one step (the bumps chain, so one still
+	 * at 10 lands on 50) and a 40 set by hand is left alone; only a store the
+	 * version-2 migration itself moved to 40 goes on to 50. Version 4 (run
+	 * 17): expeditionSuppliesPerPoint 100 -> 30 - Hegemony's sieges waited 16
+	 * months on 32,600-supply bills.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
@@ -65,10 +67,8 @@ class LunaConfigBridge {
 					changed |= bump(json, "threatinc_reserveInitialMonths", 3, 6, false);
 				}
 				if (from < 2) {
-					changed |= bump(json, "threatinc_siegeMaxFleets", 25, 40, true);
-					changed |= bump(json, "threatinc_frontlineGarrisonFP", 400, 200, false);
-				}
-				if (from < 3) {
+					changed |= bump(json, "threatinc_siegeMaxFleets", 25, 50, true);
+				} else if (from == 2) {
 					changed |= bump(json, "threatinc_siegeMaxFleets", 40, 50, true);
 				}
 				if (from < 4) {

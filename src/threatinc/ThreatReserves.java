@@ -43,8 +43,8 @@ import com.fs.starfarer.api.util.Misc;
  * stockpiling scale (rule 1); mobilisation is vanilla demand, the War footing
  * condition (rule 2); the depot is spent on the colony's own vanilla shortage
  * before anything sails (rule 3); a player's sale does what a sale always
- * does, ending the shortage and feeding the banking (rule 4); convoys land as
- * trade modifiers the colony screen can see (rule 5); the board shows
+ * does, ending the shortage and feeding the banking (rule 4); convoys land in
+ * the depot only, never on the open market (rule 5); the board shows
  * vanilla's units beside the item counts (rule 7). A colony that has no
  * surplus of something banks none of it - which is what staging and convoys
  * ({@link ThreatConvoys}) are for.
@@ -68,7 +68,7 @@ public class ThreatReserves {
 	public static final String MOD_SOURCE_PREFIX = "threatinc_";
 	/** Trade-modifier source of the depot's shortage cover (rule 3): one per commodity per market. */
 	public static final String COVER_SOURCE = MOD_SOURCE_PREFIX + "cover";
-	/** Trade-modifier source prefix of a convoy landing (rule 5); each landing gets its own. */
+	/** Trade-modifier source prefix older builds gave a convoy landing (rule 5); stripped on load. */
 	public static final String CONVOY_SOURCE_PREFIX = MOD_SOURCE_PREFIX + "convoy_";
 
 	/** One colony's stock. Serialized into the save via persistent data. */
@@ -81,9 +81,10 @@ public class ThreatReserves {
 		/** Rule 3: when the depot last issued a cover, per commodity (clock timestamp). Null on older saves. */
 		public Map<String, Long> coverIssued;
 		/**
-		 * The largest cap this depot has banked towards, per commodity - the
-		 * basis of its floor once the colony is in deficit and the live cap
-		 * reads zero (see {@link #floor}). Null on older saves.
+		 * The largest cap this depot has banked towards, per commodity, at full
+		 * production share ({@link #noteCap}) - the basis of its floor once the
+		 * colony is in deficit and the live cap reads zero (see {@link #floor}).
+		 * Null on older saves.
 		 */
 		public Map<String, Float> capSeen;
 		/**
@@ -471,7 +472,7 @@ public class ThreatReserves {
 		int seeded = 0;
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (market == null || Factions.THREAT.equals(market.getFactionId())) continue;
-			if (market.isPlanetConditionMarketOnly()) continue;
+			if (ThreatMapFog.conditionOnly(market)) continue;
 			ColonyReserve r = get(market.getId());
 			if (r != null && r.marineArmSeeded) continue;
 			float stocked = stock(market.getId(), Commodities.MARINES);
@@ -604,7 +605,10 @@ public class ThreatReserves {
 	 * exactly when it matters (a struck world's depot could be drawn to
 	 * nothing by a sortie or its own shortage covers). The floor therefore
 	 * stands on the largest cap the depot has seen, which {@link #poll}
-	 * records; a colony that never banked a commodity has no floor for it.
+	 * records at full production share and the floor scales to the share in
+	 * force - the share moves with the faction's market count, and a peak kept
+	 * at an old share pinned the floor above the live cap after a drop; a
+	 * colony that never banked a commodity has no floor for it.
 	 */
 	public static float floor(MarketAPI market, String commodityId) {
 		if (market == null) return 0f;
@@ -612,18 +616,43 @@ public class ThreatReserves {
 		ColonyReserve r = get(market.getId());
 		if (r != null && r.capSeen != null) {
 			Float seen = r.capSeen.get(commodityId);
-			if (seen != null && seen > basis) basis = seen;
+			if (seen != null) {
+				float base = baselineMonths(market, commodityId);
+				float atShare = seen > base ? base + (seen - base) * capShare(market, commodityId) : seen;
+				if (atShare > basis) basis = atShare;
+			}
 		}
 		return basis * (market.isPlayerOwned() ? ThreatIncConfig.playerReserveFloorFraction()
 				: ThreatIncConfig.reserveFloorFraction());
 	}
 
-	/** Remembers the cap a depot banked towards, so its floor survives the colony falling into deficit. */
-	protected static void noteCap(ColonyReserve r, String c, float capValue) {
+	/**
+	 * Remembers the cap a depot banked towards, so its floor survives the
+	 * colony falling into deficit. Kept at full production share: the share
+	 * scales only the surplus banking, so that part is divided by the share in
+	 * force (the militia and the tithes are not) and {@link #floor} scales it
+	 * back to the share of the day. A record from before the share existed was
+	 * made at share 1 and stands as it is.
+	 */
+	protected static void noteCap(MarketAPI market, ColonyReserve r, String c, float capValue) {
 		if (r == null || capValue <= 0f) return;
+		float base = baselineMonths(market, c);
+		float share = capShare(market, c);
+		if (share > 0f && capValue > base) capValue = base + (capValue - base) / share;
 		if (r.capSeen == null) r.capSeen = new LinkedHashMap<String, Float>();
 		Float seen = r.capSeen.get(c);
 		if (seen == null || capValue > seen) r.capSeen.put(c, capValue);
+	}
+
+	/** Months of the banking the production share does not scale: the militia and the Path's tithes. */
+	protected static float baselineMonths(MarketAPI market, String commodityId) {
+		return (militiaPer30(market, commodityId) + tithePer30(market, commodityId))
+				* ThreatIncConfig.reserveCapMonths();
+	}
+
+	/** The production share a colony's cap is scaled by; none for a backed colony, whose stockpile is vanilla's. */
+	protected static float capShare(MarketAPI market, String commodityId) {
+		return isBacked(market) ? 1f : productionShare(market.getFactionId(), commodityId);
 	}
 
 	/** Takes up to {@code amount}, never below the floor; returns what was taken. */
@@ -758,6 +787,15 @@ public class ThreatReserves {
 		float share = banked <= 0f ? 1f : Math.min(1f, budget / banked);
 		SHARE_CACHE.put(key, new Object[] { share, now });
 		return share;
+	}
+
+	/** Drops the tithe and production-share memos, so a loaded game never reads the previous campaign's (game load). */
+	public static void forgetCaches() {
+		tithe = null;
+		titheDepots = 0;
+		titheDay = Long.MIN_VALUE;
+		titheSector = null;
+		SHARE_CACHE.clear();
 	}
 
 	/**
@@ -1017,7 +1055,7 @@ public class ThreatReserves {
 	public static void syncWarFooting(List<String> warring) {
 		boolean changed = false;
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (market.isHidden() || market.getPrimaryEntity() == null) continue;
+			if (ThreatMapFog.hidden(market) || market.getPrimaryEntity() == null) continue;
 			String factionId = market.getFactionId();
 			boolean wants = factionId != null && warring.contains(factionId)
 					&& !Factions.THREAT.equals(factionId);
@@ -1079,7 +1117,7 @@ public class ThreatReserves {
 		List<MarketAPI> result = new ArrayList<MarketAPI>();
 		if (factionId == null) return result;
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (market.isHidden() || market.getPrimaryEntity() == null) continue;
+			if (ThreatMapFog.hidden(market) || market.getPrimaryEntity() == null) continue;
 			if (!factionId.equals(market.getFactionId())) continue;
 			result.add(market);
 		}
@@ -1112,7 +1150,7 @@ public class ThreatReserves {
 					ColonyReserve r = getOrCreate(market.getId());
 					for (String c : COMMODITIES) {
 						float capValue = cap(market, c);
-						noteCap(r, c, capValue);
+						noteCap(market, r, c, capValue);
 						float militia = militiaPer30(market, c);
 						if (militia <= 0f) continue;
 						float have = cargo.getCommodityQuantity(c);
@@ -1130,7 +1168,7 @@ public class ThreatReserves {
 					if (per30 > 0f) {
 						if (r == null) r = getOrCreate(market.getId());
 						float capValue = per30 * ThreatIncConfig.reserveCapMonths();
-						noteCap(r, c, capValue); // the floor's basis: months only
+						noteCap(market, r, c, capValue); // the floor's basis: months only
 						if (staging != null) capValue += staging[ci];
 						float have = read(r, c);
 						if (have < capValue) {
@@ -1213,7 +1251,7 @@ public class ThreatReserves {
 				float per30 = accrualPer30(market, c);
 				if (per30 <= 0f) continue;
 				if (r == null) r = getOrCreate(market.getId());
-				noteCap(r, c, per30 * ThreatIncConfig.reserveCapMonths());
+				noteCap(market, r, c, per30 * ThreatIncConfig.reserveCapMonths());
 				float start = Math.min(per30 * months, per30 * ThreatIncConfig.reserveCapMonths());
 				if (read(r, c) < start) write(r, c, start);
 			}

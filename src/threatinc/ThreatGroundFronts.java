@@ -116,9 +116,9 @@ public class ThreatGroundFronts {
 		public float consolidateDaysLeft;
 		public long deployedTimestamp;
 		public long lastCounterAttack;
-		/** Last state announced, so transitions message exactly once. */
+		/** Unused since the progress notices went (2026-09-27); kept so saves load. */
 		public String announcedState;
-		/** Whether the out-of-supply message has fired for the current dry spell. */
+		/** Unused since the progress notices went (2026-09-27); kept so saves load. */
 		public boolean announcedDry;
 		/** Peak marine strength (landing plus reinforcements) - what supply runs reinforce toward. */
 		public float marinesLanded;
@@ -138,7 +138,7 @@ public class ThreatGroundFronts {
 		 * once outweighed (swarmOrbitContested). 0 for none.
 		 */
 		public float coverFP;
-		/** Whether the bombardment notice has fired for the current unopposed spell. */
+		/** Unused since the progress notices went (2026-09-27); kept so saves load. */
 		public boolean announcedScour;
 		/** Days the front has stood, by the tick's own clock - what "landed N days ago" reads. */
 		public float daysAlive;
@@ -221,7 +221,7 @@ public class ThreatGroundFronts {
 		MarketAPI market = Global.getSector().getEconomy().getMarket(marketId);
 		if (market == null || !market.isInEconomy()) return null;
 		if (Factions.THREAT.equals(market.getFactionId())) return null; // hive path said no
-		if (market.isPlanetConditionMarketOnly()) return null;
+		if (ThreatMapFog.conditionOnly(market)) return null;
 		return market;
 	}
 
@@ -291,7 +291,7 @@ public class ThreatGroundFronts {
 
 		/** The structures orbit suppresses and the batteries among them answer with (docs/ground-war.md "Sieges from orbit"). */
 		public abstract List<Industry> fortifications(MarketAPI market);
-		/** Disruption days at which a fortification has worn to nothing: the clock the orbital floor is a fraction of. */
+		/** Disruption days at which a fortification has worn to nothing. */
 		public abstract float wearDays();
 		/** Disruption days an unopposed fleet adds per day at ratio 1. */
 		public abstract float suppressDaysPerDay();
@@ -299,7 +299,7 @@ public class ThreatGroundFronts {
 		public abstract float batteryShare(MarketAPI market);
 		/** The same share with every gun intact: what a fleet pays to fabricate ground troops from its hulls. */
 		public abstract float intactBatteryShare(MarketAPI market);
-		/** 1 intact .. 0 fully suppressed, from the structure's clock and the orbital floor. */
+		/** 1 intact .. 0 fully suppressed, from the structure's clock. */
 		public abstract float condition(MarketAPI market, Industry ind);
 		/** Whether the space over the world is held against a front of this owner. */
 		public abstract boolean orbitHeldAgainst(String ownerFactionId, MarketAPI market);
@@ -605,7 +605,6 @@ public class ThreatGroundFronts {
 		}
 		front.armaments += armaments;
 		front.marinesLanded = Math.max(front.marinesLanded, front.marines);
-		front.announcedDry = false;
 		front.withdrawRequested = false;
 		if (front.armaments > 0f) {
 			front.dryTimestamp = 0;
@@ -788,8 +787,8 @@ public class ThreatGroundFronts {
 	 */
 	public static boolean needsSoftening(MarketAPI market) {
 		if (market == null) return false;
-		// orbit has more to do while any fortification is above the floor
-		return !suppressedToFloor(market);
+		// orbit has more to do while any fortification is not yet worn out
+		return !suppressedFully(market);
 	}
 
 	/**
@@ -835,14 +834,7 @@ public class ThreatGroundFronts {
 		if (standing != null) {
 			if (!ownerOf(standing).equals(ownerFactionId)) return null;
 			resupply(standing, troops, armaments);
-			if (threat) {
-				ThreatNotice.titled("Swarm Reinforces").bad()
-						.line("A fresh Threat wave has landed on %s.", ThreatNotice.market(market))
-						.line("%s more troops join the ground assault.",
-								ThreatNotice.red(Misc.getWithDGS(troops)))
-						.send();
-				ThreatAidMissionIntel.strikeLanded(market);
-			}
+			if (threat) ThreatAidMissionIntel.strikeLanded(market);
 			ThreatIncConfig.log("Front reinforced at " + market.getName() + " (" + ownerFactionId
 					+ "): +" + troops + " troops, +" + (int) armaments + " armaments");
 			return standing;
@@ -1323,23 +1315,35 @@ public class ThreatGroundFronts {
 
 	/** Why the board's Push order would do nothing now, or null if the front can be ordered to push. */
 	public static String pushBlockReason(GroundFront front, MarketAPI market) {
-		if (front == null || market == null) return "No front there.";
-		if (STANCE_PUSH.equals(front.stance)) return "Already pushing.";
-		if (front.strataHeld >= market.getSize()) return "Nothing left to take.";
+		return ThreatNotice.text(pushRefusal(front, market));
+	}
+
+	/** As above, one fact per line for the refusal notice. */
+	public static ThreatNotice.Reason pushRefusal(GroundFront front, MarketAPI market) {
+		if (front == null || market == null) return ThreatNotice.Reason.of("No front there");
+		if (STANCE_PUSH.equals(front.stance)) return ThreatNotice.Reason.of("Already pushing");
+		if (front.strataHeld >= market.getSize()) return ThreatNotice.Reason.of("Nothing left to take");
 		float eff = effectiveStrength(front);
 		float need = holdRequirement(market);
 		if (eff < need) {
-			return "Too weak to push: " + Misc.getWithDGS(Math.round(eff)) + " effective of the "
-					+ Misc.getWithDGS(Math.round(need)) + " needed to hold"
-					+ (isDry(front) ? " - out of armaments" : "") + ".";
+			ThreatNotice.Reason reason = ThreatNotice.Reason.of(
+					"Too weak to push: %s effective of the %s needed to hold",
+					Misc.getWithDGS(Math.round(eff)), Misc.getWithDGS(Math.round(need)));
+			if (isDry(front)) reason.line("Out of armaments");
+			return reason;
 		}
 		return null;
 	}
 
 	/** Why the board's Dig in order would do nothing now, or null. */
 	public static String entrenchBlockReason(GroundFront front) {
-		if (front == null) return "No front there.";
-		if (STANCE_ENTRENCH.equals(front.stance)) return "Already dug in.";
+		return ThreatNotice.text(entrenchRefusal(front));
+	}
+
+	/** As above, one fact per line for the refusal notice. */
+	public static ThreatNotice.Reason entrenchRefusal(GroundFront front) {
+		if (front == null) return ThreatNotice.Reason.of("No front there");
+		if (STANCE_ENTRENCH.equals(front.stance)) return ThreatNotice.Reason.of("Already dug in");
 		return null;
 	}
 
@@ -1469,6 +1473,9 @@ public class ThreatGroundFronts {
 		tickSupport(elapsedDays);
 		ThreatSwarmDefend.tick(elapsedDays);
 		sweepSieges();
+		ThreatBlockade.sweep();
+		// NPC navies relieve their own invaded worlds (sized to the swarm overhead)
+		ThreatFleetOrders.planRelief();
 		Map<String, GroundFront> fronts = fronts();
 		if (fronts.isEmpty()) return;
 		for (String marketId : new ArrayList<String>(fronts.keySet())) {
@@ -1499,7 +1506,7 @@ public class ThreatGroundFronts {
 	 */
 	protected static void sweepSieges() {
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (market == null || market.isHidden() || market.isPlanetConditionMarketOnly()) continue;
+			if (market == null || ThreatMapFog.hidden(market) || ThreatMapFog.conditionOnly(market)) continue;
 			if (!Theatre.of(market).carriesSiegeState()) continue;
 			boolean has = market.hasIndustry(ThreatSiegeMalus.ID);
 			if (!has && !(besieged(market) && ThreatSiegeMalus.anyDisrupted(market))) continue;
@@ -1528,8 +1535,9 @@ public class ThreatGroundFronts {
 			if (pushing) upkeep *= ThreatIncConfig.frontPushUpkeepMult();
 			front.armaments = Math.max(0f, front.armaments - upkeep * elapsedDays);
 		}
-	if (supplied && isDry(front) && !front.announcedDry) {
-		front.announcedDry = true;
+	// the tick the armaments ran out: they only rise in deploy and resupply,
+	// so this is the edge, and the next tick starts dry
+	if (supplied && isDry(front)) {
 		front.dryTimestamp = Global.getSector().getClock().getTimestamp();
 		// a dry front breaks off its assault and digs in (2026-09-06): the
 		// swarm's waits for the next expedition, a faction's for its convoys;
@@ -1538,24 +1546,7 @@ public class ThreatGroundFronts {
 			orderEntrench(front);
 			pushing = false;
 		}
-		if (threatFront) {
-			ThreatNotice.titled("Threat Front Dry").good()
-					.line("The Threat front on %s has exhausted its heavy armaments.",
-							ThreatNotice.market(market))
-					.line("It digs in and signals for the next expedition.")
-					.line("Hold the orbit against it and it withers.")
-					.send();
-		} else {
-				ThreatNotice n = ThreatNotice.titled("Front Dry").bad().icon(ownerFaction(front));
-				if (front.isPlayerOwned()) {
-					n.line("Your front on %s has exhausted its heavy armaments.",
-							ThreatNotice.market(market));
-				} else {
-					n.line("%s's front on %s has exhausted its heavy armaments.",
-							ThreatNotice.faction(ownerFaction(front)), ThreatNotice.market(market));
-				}
-				n.line("Casualties mount until it is resupplied or withdrawn.").send();
-			}
+		// no notice: a siege announces its landing and its end, nothing between (user, 2026-09-27)
 		}
 
 		// attrition: flat fraction per 30 days; pushing bleeds harder, and a
@@ -1610,13 +1601,6 @@ public class ThreatGroundFronts {
 			front.bracedFromPush = true;
 			pushing = false;
 			int inDays = (int) Math.ceil(daysToCounterAttack(front, market));
-			if (front.isPlayerOwned()) {
-				ThreatNotice.titled("Front Digs In").icon(Global.getSector().getPlayerFaction())
-						.line("Your front on %s breaks off its assault and digs in.",
-								ThreatNotice.market(market))
-						.line("A counter-attack is %s days out and it holds no ground to give.", inDays)
-						.send();
-			}
 			ThreatIncConfig.log("Front at " + market.getName() + " braces for a counter-attack in "
 					+ inDays + " d");
 		} else if (!pushing && front.bracedFromPush && !shouldBrace(front, market)) {
@@ -1655,7 +1639,7 @@ public class ThreatGroundFronts {
 		// Hysteresis (2026-09-08). The defence figure used to be a wall that
 		// moved only when a structure was suppressed or a district fell; now
 		// the garrison bleeds every tick, so a front sitting near a threshold
-		// would cross it back and forth - and announce every flip. A state
+		// would cross it back and forth, its suppression with it. A state
 		// already held is kept until the front drops a band below the line it
 		// crossed to reach it.
 		float band = Math.max(0f, Math.min(0.5f, ThreatIncConfig.frontStateHysteresis()));
@@ -1709,21 +1693,8 @@ public class ThreatGroundFronts {
 			if (eff >= defender * ThreatIncConfig.frontHoldFraction() || front.finalPush) {
 				front.stance = STANCE_PUSH;
 					front.pushProgress = 0f;
-					if (front.isPlayerOwned()) {
-						ThreatNotice.titled("Assault Resumed").icon(Global.getSector().getPlayerFaction())
-								.line("No new orders reached your front on %s.", ThreatNotice.market(market))
-								.line("It resumes the assault on %s %s.", theatre.layer(), front.strataHeld + 1)
-								.send();
-					}
 				} else {
 					front.stance = STANCE_ENTRENCH;
-					if (front.isPlayerOwned()) {
-						ThreatNotice.titled("Front Entrenches").bad().icon(Global.getSector().getPlayerFaction())
-								.line("Your front on %s is too weak to resume the assault.",
-										ThreatNotice.market(market))
-								.line("It entrenches on what it holds and awaits reinforcement.")
-								.send();
-					}
 				}
 			}
 		}
@@ -1793,10 +1764,6 @@ public class ThreatGroundFronts {
 			&& !lastStratumProtected(front, market)) {
 		front.finalPush = true;
 		orderPush(front);
-		ThreatNotice.titled("Final Push").bad()
-				.line("No expedition has reached the Threat front on %s.", ThreatNotice.market(market))
-				.line("It throws everything it has left at the next %s.", theatre.layer())
-				.send();
 		ThreatIncConfig.log("Threat front at " + market.getName() + " makes its final push");
 	}
 
@@ -1817,8 +1784,6 @@ public class ThreatGroundFronts {
 				&& !shouldBrace(front, market)) {
 			orderPush(front);
 		}
-
-		announceStateChange(front, market);
 	}
 
 	/**
@@ -1853,28 +1818,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		front.stance = STANCE_CONSOLIDATE;
 		front.consolidateDaysLeft = ThreatIncConfig.frontCheckpointDays();
 		reapply(front.marketId); // strata strip base defense and fabrication
-		String layer = Theatre.of(market).layer();
-		if (isThreatOwned(front)) {
-			ThreatNotice.titled(Misc.ucFirst(layer) + " Taken").bad()
-					.line("The Threat has taken %s %s of %s on %s.", layer,
-							ThreatNotice.red(front.strataHeld), total, ThreatNotice.market(market))
-					.line("That share of the garrison is gone with it.")
-					.send();
-		} else if (front.isPlayerOwned()) {
-			ThreatNotice.titled(Misc.ucFirst(layer) + " Taken").good()
-					.icon(Global.getSector().getPlayerFaction())
-					.line("Your front on %s has taken %s %s of %s.", ThreatNotice.market(market),
-							layer, ThreatNotice.green(front.strataHeld), total)
-					.line("It consolidates and requests reinforcement and resupply.")
-					.line("Without new orders it pushes on in %s days.", (int) front.consolidateDaysLeft)
-					.send();
-		} else {
-			FactionAPI owner = ownerFaction(front);
-			ThreatNotice.titled(Misc.ucFirst(layer) + " Taken").good().icon(owner)
-					.line("%s's front on %s has taken %s %s of %s.", ThreatNotice.faction(owner),
-							ThreatNotice.market(market), layer, ThreatNotice.green(front.strataHeld), total)
-					.send();
-		}
 		ThreatIncConfig.log("Front took stratum " + front.strataHeld + "/" + total
 				+ " at " + market.getName());
 	}
@@ -1893,7 +1836,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		Theatre.of(market).victory(front, market);
 	}
 
-	/** A hive's last stratum has fallen: eradication, the winner's free outpost, the survivors into it, the swarm's answer. */
+	/** A hive's last stratum has fallen: eradication, the survivors home (or into an outpost already there), the swarm's answer. */
 	protected static void hiveGroundVictory(GroundFront front, MarketAPI market) {
 		fronts().remove(front.marketId);
 		String winner = ownerOf(front);
@@ -1924,7 +1867,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			outpost = ThreatOutposts.outpostAt(world.getId());
 			if (outpost != null && !outpost.alive()) outpost = null;
 		}
-		evacuate(front, outpost, hyperLoc, null);
+		evacuate(front, outpost, hyperLoc);
 		// the swarm answers (docs/design-theory.md 8.1): grudge, and a strike
 		// at the winner from the nearest hive that can muster one
 		ThreatAlarm.add(winner, ThreatIncConfig.alarmPerEradication(),
@@ -1978,7 +1921,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			}
 			// the teardown ran but no hive could be seeded: the world is already a
 			// ruin flagged for the swarm's return - never decivilise it twice
-			if (!market.isInEconomy() || market.isPlanetConditionMarketOnly()) return;
+			if (!market.isInEconomy() || ThreatMapFog.conditionOnly(market)) return;
 		}
 		market.getMemoryWithoutUpdate().set(KILLED_BY_FLAG, Factions.THREAT, 60f);
 		com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker.decivilize(market, true);
@@ -2020,31 +1963,16 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (elapsedDays <= 0f) return;
 		if (!swarmHoldsOrbit(market)) {
 			front.swarmOrbitDays = 0f;
-			front.announcedScour = false;
 			return;
 		}
 		front.swarmOrbitDays += elapsedDays;
 		float loss = swarmBombardPer30Days(front, market) / 30f * elapsedDays;
 		if (loss <= 0f) return;
-		if (!front.announcedScour) {
-			front.announcedScour = true;
-			ThreatNotice n = ThreatNotice.titled("Front Bombarded");
-			if (front.isPlayerOwned()) {
-				n.bad().line("The swarm holds the orbit over your front on %s unopposed and bombards it.",
-						ThreatNotice.market(market));
-			} else {
-				n.line("The swarm holds the orbit over %s's front on %s unopposed and bombards it.",
-						ThreatNotice.faction(ownerFaction(front)), ThreatNotice.market(market));
-			}
-			n.line("%s troops a day.", ThreatNotice.red(perDay(swarmBombardPer30Days(front, market))))
-					.line("Contest the orbit and it stops.")
-					.send();
-		}
 		ThreatMarineXP.frontLose(front, loss);
 		if (front.marines < ThreatIncConfig.frontMinMarines()) {
-			ThreatNotice n = ThreatNotice.titled("Front Destroyed");
+			ThreatNotice n = ThreatNotice.titled("Front Destroyed"); // the swarm's doing: its crest and colour
 			if (front.isPlayerOwned()) {
-				n.bad().line("Your front on %s has been bombarded to nothing from orbit.",
+				n.line("Your front on %s has been bombarded to nothing from orbit.",
 						ThreatNotice.market(market));
 			} else {
 				n.line("%s's front on %s has been bombarded to nothing from orbit.",
@@ -2302,13 +2230,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float loss = counterAttackLoss(front, attack, defense);
 		ThreatMarineXP.frontLose(front, loss);
 
-		// a hive's counter-attack is the swarm's (Threat crest); a colony's is its garrison's
-		FactionAPI attacker = theatre == HIVE ? null : market.getFaction();
-		String by = theatre == HIVE ? "A hive counter-attack on %s"
-				: "The garrison of %s";
-		// the front's dead: the sector's loss when the front is ours, its gain when the swarm's
-		ThreatNotice.Hl lost = threatFront ? ThreatNotice.green(Math.round(loss))
-				: ThreatNotice.red(Math.round(loss));
 	// thrown back or battered, the front's cover is spoilt (2026-09-06)
 	front.entrenchDays *= Math.max(0f, Math.min(1f, ThreatIncConfig.frontEntrenchKeptFraction()));
 	if (front.strataHeld > 0) {
@@ -2317,16 +2238,13 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// a final push does not stop for a setback - it is spent either way
 		front.stance = front.finalPush ? STANCE_PUSH : STANCE_ENTRENCH;
 		reapply(front.marketId);
-		ThreatNotice n = ThreatNotice.titled(Misc.ucFirst(theatre.layer()) + " Retaken").icon(attacker);
-		if (threatFront) n.good(); else n.bad();
-		n.line(by + " has retaken a %s.", ThreatNotice.market(market), theatre.layer())
-				.line("%s of %s still held by the invaders.", front.strataHeld, market.getSize())
-				.line("%s of their troops lost.", lost)
-				.send();
 			ThreatIncConfig.log("Counter-attack at " + market.getName() + " retook a stratum ("
 					+ (int) attack + " vs " + (int) defense + "): " + front.strataHeld
 					+ " held, " + Math.round(loss) + " marines lost");
 		} else if (odds > 2f) {
+			// a hive's counter-attack is the swarm's (Threat crest); a colony's is its garrison's
+			FactionAPI attacker = theatre == HIVE ? null : market.getFaction();
+			String by = theatre == HIVE ? "A hive counter-attack on %s" : "The garrison of %s";
 			ThreatNotice n = ThreatNotice.titled("Beachhead Overrun").icon(attacker);
 			if (threatFront) n.good(); else n.bad();
 			n.line(by + " has overrun the beachhead.", ThreatNotice.market(market))
@@ -2338,11 +2256,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			reapply(front.marketId);
 			return;
 		} else {
-			ThreatNotice n = ThreatNotice.titled("Beachhead Battered").icon(attacker);
-			if (threatFront) n.good(); else n.bad();
-			n.line(by + " has battered the beachhead.", ThreatNotice.market(market))
-					.line("%s of its troops lost.", lost)
-					.send();
 			ThreatIncConfig.log("Counter-attack at " + market.getName() + " battered the beachhead ("
 					+ (int) attack + " vs " + (int) defense + "): " + Math.round(loss)
 					+ " marines lost");
@@ -2409,8 +2322,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/**
 	 * The shield is a military structure and boots grind it at the same rate as
-	 * the guns - and past the orbital floor, which stops applying the moment a
-	 * front stands on the world. Kept out of {@code keyStructures} /
+	 * the guns. Kept out of {@code keyStructures} /
 	 * {@code defenseStructures} because those lists also answer "are the
 	 * colony's defences held", which the shield does not speak to.
 	 */
@@ -2484,6 +2396,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/** Fleet memory: when this fleet last delivered a slice of a siege. */
 	public static final String SIEGE_LAST_KEY = "$threatinc_siegeLast";
+	/** Market memory: when a slice last made up the clocks' run-down - once per world, however many fleets slice it. */
+	public static final String SIEGE_MADE_UP_KEY = "$threatinc_siegeMadeUp";
 	/** Market memory: suppression days banked toward the next bombardment burst (one per whole day added). */
 	public static final String SIEGE_VISUAL_KEY = "$threatinc_siegeVisualDays";
 	/** Fleet memory: this fleet's Support / Defend slice has been logged today. */
@@ -2494,10 +2408,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** Abstract fleet points per difficulty point, for an expedition that never spawned. */
 	public static final float ABSTRACT_FP_PER_POINT = 25f;
 
-	/** Disruption days at which this world's fortifications sit at the orbital floor - as far as orbit can push them. */
-	public static float siegeFloorDays(MarketAPI market) {
-		float floor = Math.max(0f, Math.min(1f, ThreatIncConfig.fortificationOrbitFloor()));
-		return Theatre.of(market).wearDays() * (1f - floor);
+	/** Disruption days at which this world's fortifications have worn to nothing - as far as a siege can push them. */
+	public static float siegeWornDays(MarketAPI market) {
+		return Theatre.of(market).wearDays();
 	}
 
 	/**
@@ -2508,7 +2421,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * expire keeps counting down (observed: a Swarm Nexus reading disr=394 with
 	 * isDisrupted()=false, memVal=null), so a bare getDisruptedDays() reports a
 	 * ghost clock. Reading it directly made the siege skip such a structure as
-	 * "already past the orbital floor" forever, so bombardment could never touch
+	 * "already worn out" forever, so bombardment could never touch
 	 * it though it was not disrupted at all. Gate on the real state.
 	 */
 	public static float siegeDisruptDays(Industry ind) {
@@ -2525,7 +2438,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return least == Float.MAX_VALUE ? 0f : least;
 	}
 
-	/** One line of what is true now: "Defences at N% effect: C of F days to the floor." */
+	/** One line of what is true now: "Defences at N% effect: C of F days to worn out." */
 	public static String siegeClockLine(MarketAPI market) {
 		if (market == null) return "";
 		Theatre theatre = Theatre.of(market);
@@ -2535,13 +2448,13 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		for (Industry ind : forts) cond += theatre.condition(market, ind);
 		cond /= forts.size();
 		return "Defences at " + Math.round(cond * 100f) + "% effect: " + (int) siegeClock(market)
-				+ " of " + (int) siegeFloorDays(market) + " days to the floor.";
+				+ " of " + (int) siegeWornDays(market) + " days to worn out.";
 	}
 
-	/** Whether orbit has done all it can here: every fortification is at or past the floor. */
-	public static boolean suppressedToFloor(MarketAPI market) {
+	/** Whether orbit has done all it can here: every fortification is worn out. */
+	public static boolean suppressedFully(MarketAPI market) {
 		if (market == null) return true;
-		float days = siegeFloorDays(market) - 0.01f;
+		float days = siegeWornDays(market) - 0.01f;
 		for (Industry ind : Theatre.of(market).fortifications(market)) {
 			if (siegeDisruptDays(ind) < days) return false;
 		}
@@ -2550,20 +2463,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/**
 	 * What orbit leaves of a hive's defender strength once every fortification
-	 * is worn to the orbital floor, as a fraction of the figure now: each one's
-	 * bonus at the floor over its bonus at its present condition. One already at
-	 * or past the floor gives up nothing more. Intact, about 0.56 behind Heavy
-	 * Batteries, 0.63 behind Ground Defenses and 0.83 with neither.
+	 * is worn out, as a fraction of the figure now: each one's bonus gone, over
+	 * its bonus at its present condition. One already worn out gives up nothing
+	 * more.
 	 */
-	public static float orbitFloorFraction(MarketAPI market) {
+	public static float wornDefenceFraction(MarketAPI market) {
 		if (market == null) return 1f;
-		float floor = Math.max(0f, Math.min(1f, ThreatIncConfig.fortificationOrbitFloor()));
 		float fraction = 1f;
 		for (Industry ind : HIVE.fortifications(market)) {
 			float bonus = hiveFortificationBonus(ind);
 			float condition = HIVE.condition(market, ind);
-			if (bonus <= 0f || condition <= floor) continue;
-			fraction *= (1f + bonus * floor) / (1f + bonus * condition);
+			if (bonus <= 0f || condition <= 0f) continue;
+			fraction *= 1f / (1f + bonus * condition);
 		}
 		return fraction;
 	}
@@ -2581,7 +2492,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * {@code fp} fleet points unopposed over a world for {@code days}. The
 	 * fleet suppresses the world's fortifications by the theatre's
 	 * suppression rate x fleet / (fleet + defence) disruption days per day,
-	 * never past the orbital floor, and the batteries answer: the fleet loses
+	 * up to worn out, and the batteries answer: the fleet loses
 	 * siegeBatteryAttritionPerDay x fp x the batteries' share of the defence
 	 * / (fleet + defence) per day. The same duel over a hive and over a human
 	 * colony; the theatre says which structures, which clock and which
@@ -2593,7 +2504,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 *
 	 * <p>A disruption clock runs down a day per day, so a live fleet's slice
 	 * first makes up the {@code days} the clock lost since its last one and
-	 * then adds the suppression: the rate is NET progress toward the floor,
+	 * then adds the suppression: the rate is NET progress toward worn out,
 	 * and a fleet that stays holds the clock where it is. An instantaneous
 	 * slice (the player's bombardment, the abstract siege) makes nothing up.
 	 */
@@ -2618,6 +2529,19 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 */
 	public static float siegeSlice(float fp, MarketAPI market, float days, boolean elapsed,
 			boolean reapply, float defenceOverride) {
+		return siegeSlice(fp, market, days, elapsed, reapply, defenceOverride, 0f);
+	}
+
+	/**
+	 * As above, with the suppression reckoned over {@code suppressDays} rather
+	 * than {@code days} (0 or less: the same). The player's tactical bombardment
+	 * is a concentrated strike: its suppression stands for more siege than the
+	 * return fire it takes ({@code tacBombardSuppressDays} against
+	 * {@code siegeBombardSliceDays}), still scaled by the odds, so a token
+	 * fleet earns a token pass. The shield still applies.
+	 */
+	public static float siegeSlice(float fp, MarketAPI market, float days, boolean elapsed,
+			boolean reapply, float defenceOverride, float suppressDays) {
 		if (market == null || days <= 0f || fp <= 0f) return 0f;
 		Theatre theatre = Theatre.of(market);
 		float weighted = fp * Math.max(0f, ThreatIncConfig.siegeFPWeight());
@@ -2626,26 +2550,29 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// the batteries answer with what they had when the slice began
 		float share = theatre.batteryShare(market);
 		float ratio = weighted / Math.max(1f, weighted + defence);
-		float add = theatre.suppressDaysPerDay() * ratio * days;
-		float cap = siegeFloorDays(market);
+		float add = theatre.suppressDaysPerDay() * ratio * (suppressDays > 0f ? suppressDays : days);
+		float cap = siegeWornDays(market);
 		if (theatre.carriesSiegeState()) {
 			market.getMemoryWithoutUpdate().set(BESIEGED_FLAG, true, theatre.wearDays());
 		}
 		// what the planetary shield still turns aside, read before this slice
 		// writes anything so every structure under it takes the same cut
 		float through = ThreatShield.throughput(market);
+		// what the clocks ran down since the last slice by ANY fleet, made up
+		// first: each fleet counting its own gap gave N fleets over one world
+		// N days back per day, and splitting a fleet bought free suppression
+		float madeUp = elapsed ? madeUpDays(market, days) : 0f;
 		boolean touched = false;
 		for (Industry ind : theatre.fortifications(market)) {
 			float cur = siegeDisruptDays(ind);
 			if (cur >= cap || add <= 0f) continue;
-			// what the clock ran down since the last slice, made up first
-			float restore = elapsed && cur > 0f ? days : 0f;
+			float restore = cur > 0f ? madeUp : 0f;
 			ind.setDisrupted(Math.min(cap, cur + restore + add * through));
 			touched = true;
 		}
 		// the shield stands in the open: it has no cover of its own and takes
 		// the pass at full weight, which is what spends it
-		if (ThreatShield.soak(market, add, elapsed ? days : 0f, cap)) touched = true;
+		if (ThreatShield.soak(market, add, madeUp, cap)) touched = true;
 		float loss = fp * ThreatIncConfig.siegeBatteryAttritionPerDay() * days
 				* (defence * share) / Math.max(1f, weighted + defence);
 		// DEBUG: one line per slice - fp against the defence figure, the ratio it
@@ -2680,13 +2607,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/** What one slice would do, for a prompt: {suppression days added under the shield, fleet points the batteries take, days onto the shield}. */
 	public static float[] siegeSliceEstimate(float fp, MarketAPI market, float days) {
-		if (market == null || days <= 0f || fp <= 0f) return new float[] { 0f, 0f };
+		return siegeSliceEstimate(fp, market, days, 0f);
+	}
+
+	/** As above, with the suppression reckoned over {@code suppressDays} (the player's tactical bombardment; 0 or less: {@code days}). */
+	public static float[] siegeSliceEstimate(float fp, MarketAPI market, float days, float suppressDays) {
+		if (market == null || days <= 0f || fp <= 0f) return new float[] { 0f, 0f, 0f };
 		Theatre theatre = Theatre.of(market);
 		float weighted = fp * Math.max(0f, ThreatIncConfig.siegeFPWeight());
 		float defence = Math.max(0f, MarketCMD.getDefenderStr(market, true));
 		float share = theatre.batteryShare(market);
 		float ratio = weighted / Math.max(1f, weighted + defence);
-		float add = theatre.suppressDaysPerDay() * ratio * days;
+		float add = theatre.suppressDaysPerDay() * ratio * (suppressDays > 0f ? suppressDays : days);
 		float loss = fp * ThreatIncConfig.siegeBatteryAttritionPerDay() * days
 				* (defence * share) / Math.max(1f, weighted + defence);
 		// [0] is what reaches the fortifications - already cut by the shield, so
@@ -2694,6 +2626,20 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// [2] is what the pass puts on the shield itself
 		return new float[] { add * ThreatShield.throughput(market), loss,
 				add * Math.max(0f, ThreatIncConfig.shieldSoakMult()) };
+	}
+
+	/**
+	 * The run-down a slice of {@code days} may make up on this world: the days
+	 * since any slice last made it up, never more than the slice's own.
+	 */
+	private static float madeUpDays(MarketAPI market, float days) {
+		MemoryAPI mem = market.getMemoryWithoutUpdate();
+		float since = days;
+		if (mem.contains(SIEGE_MADE_UP_KEY)) {
+			since = Global.getSector().getClock().getElapsedDaysSince(mem.getLong(SIEGE_MADE_UP_KEY));
+		}
+		mem.set(SIEGE_MADE_UP_KEY, Global.getSector().getClock().getTimestamp(), SIEGE_MAX_SLICE_DAYS);
+		return Math.max(0f, Math.min(days, since));
 	}
 
 	/** Days since this fleet's last slice, clamped; a first slice stands for vanilla's gap between passes. */
@@ -2791,7 +2737,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	// ------------------------------------------------------------------
 	// FABRICATING TROOPS FROM THE FLEET (2026-09-08, the user): a Defend
 	// station whose front cannot hold bombards - until the bombardment has
-	// nothing left to reach. At the floor the guns are as quiet as orbit can
+	// nothing left to reach. Worn out, the guns are as quiet as orbit can
 	// make them and the front is still losing, so the fleet stops firing and
 	// starts feeding itself into the ground instead: hulls broken up and sent
 	// down as soldiers. It commits only what the front is short, it pays for
@@ -2812,7 +2758,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * formula, read at full condition rather than the suppressed one - the
 	 * fragments go down through defended air, so the guns get the shot they
 	 * would have had on the first day of the siege even though they are ground
-	 * to the floor. It is a PRICE, never the size of the commitment: a world
+	 * to nothing. It is a PRICE, never the size of the commitment: a world
 	 * with no batteries charges nothing and its front is fed for free, which is
 	 * right and is why the two figures are not the same number.
 	 */
@@ -2839,7 +2785,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		GroundFront front = getFront(market.getId());
 		if (front == null || !factionId.equals(ownerOf(front))) return false;
 		if (frontCanHold(front, market)) return false;
-		return suppressedToFloor(market);
+		return suppressedFully(market);
 	}
 
 	/**
@@ -2930,7 +2876,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			if (troops > 0) {
 				float arms = fabricateArms(front, troops);
 				resupply(front, troops, arms);
-				announceFabrication(market, factionId, troops);
 				fabricationVisual(market, factionId, troops);
 			}
 		}
@@ -2946,7 +2891,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (!fleet.getMemoryWithoutUpdate().getBoolean(SLICE_LOG_KEY)) {
 			fleet.getMemoryWithoutUpdate().set(SLICE_LOG_KEY, true, 1f);
 			ThreatIncConfig.log(label + " over " + market.getName() + ": " + fleet.getName() + " at "
-					+ (int) fleet.getFleetPoints() + " FP fabricates - the defences are at the floor and "
+					+ (int) fleet.getFleetPoints() + " FP fabricates - the defences are worn out and "
 					+ "the front is " + (int) Math.ceil(fabricateNeed(front, market))
 					+ " troops short of holding with margin; " + String.format("%.1f", wanted) + " FP of hulls wanted, "
 					+ String.format("%.2f", price) + " FP/day the batteries charge"
@@ -2975,23 +2920,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		ThreatFabricationVisual.play(market.getPrimaryEntity(), colour,
 				"Fleet fragments landing", fragments);
 	}
-
-	/** One sentence when fragments reach the ground, in the owner's voice; the log carries the rest. */
-	protected static void announceFabrication(MarketAPI market, String factionId, int troops) {
-		if (Factions.THREAT.equals(factionId)) {
-			ThreatNotice.titled("Swarm Breaks Up Ships").bad()
-					.line("The swarm over %s is breaking up its own ships.", ThreatNotice.market(market))
-					.line("%s more troops join the assault.", ThreatNotice.red(Misc.getWithDGS(troops)))
-					.send();
-		} else if (Factions.PLAYER.equals(factionId)) {
-			ThreatNotice.titled("Hulls Stripped").icon(Global.getSector().getPlayerFaction())
-					.line("Your fleet over %s has stripped its hulls for the ground.",
-							ThreatNotice.market(market))
-					.line("%s more troops join the fight.", Misc.getWithDGS(troops))
-					.send();
-		}
-	}
-
 	/**
 	 * Whether a Defend fleet over this world is committed to the ground and
 	 * must NOT stand down on strength (the user, 2026-09-08: it never gives up
@@ -3010,7 +2938,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/**
 	 * Whether an expedition should land on the world now rather than keep
-	 * suppressing it from orbit: the fortifications are at the floor (orbit
+	 * suppressing it from orbit: the fortifications are worn out (orbit
 	 * has done all it can), or the troops could hold as they are. The second
 	 * branch is the commander's trade (the user, 2026-09-06, after a round
 	 * trip through "always soften first"): every day in orbit costs ships to
@@ -3019,7 +2947,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 */
 	public static boolean readyToLand(MarketAPI market, float troops) {
 		if (market == null) return false;
-		if (suppressedToFloor(market)) return true;
+		if (suppressedFully(market)) return true;
 		return troops * ThreatIncConfig.frontLandingMult() >= holdRequirement(market);
 	}
 
@@ -3037,7 +2965,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	public static boolean readyToLand(MarketAPI market, float troops, String factionId) {
 		if (!readyToLand(market, troops)) return false;
 		if (factionId == null || Factions.PLAYER.equals(factionId)) return true;
-		if (suppressedToFloor(market)) return true;
+		if (suppressedFully(market)) return true;
 		return beachheadSurvives(market, troops);
 	}
 
@@ -3069,7 +2997,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** As above, for the faction whose landing it is ({@link #readyToLand(MarketAPI, float, String)}). */
 	public static String landingPhase(MarketAPI market, float troops, String besieging, String factionId) {
 		if (market == null) return besieging;
-		if (suppressedToFloor(market)) return "moving to land - defences at the floor";
+		if (suppressedFully(market)) return "moving to land - defences worn out";
 		if (readyToLand(market, troops, factionId)) return "moving to land - the troops can hold, sparing the ships";
 		return besieging;
 	}
@@ -3082,7 +3010,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/**
 	 * Whether a DEFEND fleet of the faction bombards this world now
 	 * (2026-09-07): only while the faction's own front on the ground cannot
-	 * hold, and while orbit can still push the fortifications - at the floor
+	 * hold, and while orbit can still push the fortifications - worn out,
 	 * a slice buys nothing and the batteries still answer. Never with no
 	 * front, or with one that holds: keeping the ships is the point of
 	 * Defend over Support.
@@ -3160,7 +3088,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// it does not need either.
 		if (STANCE_PUSH.equals(front.stance)) return false;
 		if (frontCanHold(front, market) && !counterAttackOverruns(front, market)) return false;
-		return !suppressedToFloor(market);
+		return !suppressedFully(market);
 	}
 
 	/**
@@ -3168,8 +3096,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * order that is on station over a hostile world whose orbit nobody holds
 	 * against it delivers a slice of the siege each poll with its live fleet
 	 * points, and the batteries answer it like any besieging fleet. A front
-	 * on the ground does not stop it - orbit still cannot push a fortification
-	 * past the floor, but it keeps it there while the front does the rest.
+	 * on the ground does not stop it - it keeps the fortifications worn while
+	 * the front does the rest.
 	 * A DEFEND fleet (2026-09-07) slices only while {@link #defendBombards}.
 	 */
 	protected static void tickSupport(float elapsedDays) {
@@ -3212,8 +3140,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		GroundFront front = market != null ? getFront(market.getId()) : null;
 		if (front == null || factionId == null || !factionId.equals(ownerOf(front))) return "no front of its own";
 		if (frontCanHold(front, market)) return "the front holds";
-		if (!ThreatIncConfig.fabricateEnabled()) return "the defences are at the floor";
-		return "the defences are at the floor, and it has nothing left to send down";
+		if (!ThreatIncConfig.fabricateEnabled()) return "the defences are worn out";
+		return "the defences are worn out, and it has nothing left to send down";
 	}
 
 	/**
@@ -3246,7 +3174,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				ThreatIncConfig.log(label + " over " + market.getName() + ": " + fleet.getName() + " at "
 						+ (int) fp + " FP suppresses ~" + String.format("%.1f", est[0])
 						+ " d/day, batteries ~" + String.format("%.1f", est[1]) + " FP/day; clock "
-						+ (int) siegeClock(market) + " of " + (int) siegeFloorDays(market) + " d");
+						+ (int) siegeClock(market) + " of " + (int) siegeWornDays(market) + " d");
 			}
 		}
 		if (contested) return 0f;
@@ -3305,47 +3233,16 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		}
 		n.line("The surviving positions were overrun.").send();
 	}
-
-	protected static void announceStateChange(GroundFront front, MarketAPI market) {
-		if (front.state.equals(front.announcedState)) return;
-		String was = front.announcedState;
-		front.announcedState = front.state;
-		// no message for the very first classification unless it's a hold -
-		// the deploy dialog already told the player where they stand
-		if (was == null && !STATE_HOLDING.equals(front.state)) return;
-		if (!front.isPlayerOwned()) return; // NPC campaigns message on strata only
-		FactionAPI player = Global.getSector().getPlayerFaction();
-		if (STATE_HOLDING.equals(front.state)) {
-			ThreatNotice.titled("Front Holding").good().icon(player)
-					.line("Your front on %s is holding.", ThreatNotice.market(market))
-					.line("The hive's organs are suppressed.")
-					.line("A push on the next %s is possible.", layerName(market))
-					.send();
-		} else if (STATE_GRINDING.equals(front.state)) {
-			ThreatNotice.titled("Front Pushed Back").icon(player)
-					.line("Your front on %s is pushed back to grinding the outer defenses.",
-							ThreatNotice.market(market))
-					.line("Too weak to hold the deep organs.")
-					.send();
-		} else {
-			ThreatNotice.titled("Front Reduced").bad().icon(player)
-					.line("Your front on %s is reduced to a foothold.", ThreatNotice.market(market))
-					.line("Too weak to suppress anything.")
-					.send();
-		}
-	}
-
 	/**
 	 * The colony died under the front. There is no market left to dock with,
 	 * and stranding the survivors punishes winning.
 	 *
-	 * <p>When an outpost stands over the dead world - the ground victory's own
-	 * prize, or one that was already there - the survivors simply stay: player
-	 * and NPC alike, they are the station's garrison stockpile, ready for the
-	 * next front run out of it ({@link ThreatConvoys}). With no outpost they
-	 * are lifted off by their own support elements and returned to the player
-	 * fleet, or - for an NPC front - banked in the reserve of the faction's
-	 * nearest base in reach.
+	 * <p>When an outpost already stands over the dead world the survivors
+	 * simply stay: player and NPC alike, they are the station's garrison
+	 * stockpile, ready for the next front run out of it ({@link ThreatConvoys}).
+	 * With no outpost they are lifted off by their own support elements and
+	 * returned to the player fleet, or - for an NPC front - banked in the
+	 * reserve of the faction's nearest base in reach.
 	 */
 	protected static void evacuate(GroundFront front, MarketAPI market) {
 		evacuate(front, null, market != null ? market.getLocationInHyperspace() : null);
@@ -3353,12 +3250,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	protected static void evacuate(GroundFront front, ThreatOutposts.Outpost outpost,
 			Vector2f hyperLoc) {
-		evacuate(front, outpost, hyperLoc, null);
-	}
-
-	/** An NPC front's survivors garrison the forward base it won, when one was raised. */
-	protected static void evacuate(GroundFront front, ThreatOutposts.Outpost outpost,
-			Vector2f hyperLoc, MarketAPI forwardBase) {
 		int marines = Math.round(front.marines);
 		int armaments = (int) Math.floor(front.armaments);
 		// what they learned down there comes home with them (2026-09-08)
@@ -3390,13 +3281,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (!front.isPlayerOwned()) {
 			com.fs.starfarer.api.campaign.FactionAPI faction =
 					Global.getSector().getFaction(front.factionId);
-			MarketAPI base = forwardBase;
-			if (base == null && faction != null && hyperLoc != null) {
-				base = ThreatFleetOrders.pickBase(faction, hyperLoc);
-			}
+			MarketAPI base = faction != null && hyperLoc != null
+					? ThreatFleetOrders.pickBase(faction, hyperLoc) : null;
 			// a colony, not a forward base: a link that falls takes its stock with
 			// it (run 16 banked 3 of 4 victories' survivors into links)
-			if (base != null && base != forwardBase && ThreatFrontlines.isOutpost(base)) base = null;
+			if (base != null && ThreatFrontlines.isOutpost(base)) base = null;
 			if (base == null && faction != null) {
 				// the nearest colony base of theirs, else any colony, else a link
 				MarketAPI colony = null, link = null;

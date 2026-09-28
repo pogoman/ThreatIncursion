@@ -165,7 +165,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 						// (nothing left to land means no siege either - siegePass's rule)
 						strike.abstractSiege(market);
 						// vanilla counts the pass before it asks us what to do with
-						// it: a world still above the floor waits here, spending nothing
+						// it: a world not yet ready to land on waits here, spending nothing
 						if (ThreatIncConfig.frontsEnabled()
 								&& ThreatGroundFronts.getFront(market.getId()) == null
 								&& !ThreatGroundFronts.readyToLand(market, strike.worldShare())) {
@@ -396,13 +396,14 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		if (siegeAnnounced.add(market.getId())) {
 			ThreatNotice.titled("Under Siege").bad()
 					.line("Threat swarms are besieging %s.", ThreatNotice.market(market))
-					.line("Its defences are being suppressed from orbit; its batteries are answering.")
+					.line("Its defences are being suppressed from orbit.")
+					.line("Its batteries are answering.")
 					.send();
 		}
 		ThreatIncConfig.log("Siege slice vs " + market.getName() + ": " + (int) fp + " FP for "
 				+ String.format("%.1f", days) + " d, +" + String.format("%.1f", est[0])
 				+ " d on the clock (" + (int) ThreatGroundFronts.siegeClock(market) + " of "
-				+ (int) ThreatGroundFronts.siegeFloorDays(market) + "), batteries cost "
+				+ (int) ThreatGroundFronts.siegeWornDays(market) + "), batteries cost "
 				+ String.format("%.1f", loss) + " FP (" + (int) removed + " removed)");
 		return true;
 	}
@@ -486,7 +487,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * delivers a slice of the orbital siege instead of a pass ({@link #siegePass}):
 	 * the defence structures are suppressed a little, in proportion to fleet
 	 * strength against ground defence, and the batteries answer in ships. The
-	 * landing waits until the fortification is at its floor or the troops could
+	 * landing waits until the fortification is worn out or the troops could
 	 * hold as they are ({@link ThreatGroundFronts#readyToLand}).</li>
 	 * <li><b>Land.</b> With the defenses suppressed and nothing blocking the
 	 * landing (fallout, another army, a held orbit), the pass puts the world's
@@ -524,7 +525,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		// or the troops must be able to hold as they are, before anything lands
 		if (front == null && !ThreatGroundFronts.readyToLand(market, troops)) {
 			ThreatIncConfig.log("Strike landing at " + market.getName()
-					+ " waits: the defences are still above the floor");
+					+ " waits: the defences are not yet worn out");
 			return;
 		}
 		if (front == null && troops < ThreatIncConfig.frontMinMarines()) {

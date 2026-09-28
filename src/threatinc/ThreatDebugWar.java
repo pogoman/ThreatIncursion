@@ -186,7 +186,7 @@ public class ThreatDebugWar {
 			}
 			int before = founded.size();
 			for (PlanetAPI planet : planets) {
-				if (planet.getMarket() == null || !planet.getMarket().isPlanetConditionMarketOnly()) continue;
+				if (planet.getMarket() == null || !ThreatMapFog.conditionOnly(planet.getMarket())) continue;
 				MarketAPI market = ThreatColonyManager.foundColony(planet, home ? homeSize : size);
 				if (market == null) continue;
 				// the bookkeeping a Seeding Swarm's planetfall does
@@ -398,7 +398,7 @@ public class ThreatDebugWar {
 	protected static int mobiliseAll() {
 		Set<String> owners = new LinkedHashSet<String>();
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (market.isHidden() || market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
+			if (ThreatMapFog.hidden(market) || market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
 			if (market.isPlayerOwned() || market.getFactionId() == null) continue;
 			owners.add(market.getFactionId());
 		}

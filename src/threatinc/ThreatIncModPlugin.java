@@ -40,6 +40,11 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		x.alias(AnalyzeEntityIntelCreator.class.getName(), ThreatMissionFilter.AnalyzeEntity.class);
 		x.alias(SurveyPlanetIntelCreator.class.getName(), ThreatMissionFilter.SurveyPlanet.class);
 		x.alias(ProcurementMissionCreator.class.getName(), ThreatMissionFilter.Procurement.class);
+		// link fields dropped in the 2026-09-27 review; saves written before still carry them
+		x.omitField(ThreatFrontlines.Outpost.class, "guardFP");
+		x.omitField(ThreatFrontlines.Outpost.class, "founded");
+		x.omitField(ThreatFrontlines.Outpost.class, "entityId");
+		x.omitField(ThreatFrontlines.Outpost.class, "lastRelief");
 	}
 
 	@Override
@@ -50,9 +55,15 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 
 	@Override
 	public void onGameLoad(boolean newGame) {
+		// before anything reads a market: a save taken with the map veil on
+		ThreatMapFog.onGameLoad();
+
 		// the alias above normally covers this; this is the fallback for a shield
 		// still on the vanilla plugin after load
 		migrateExistingShields();
+
+		// before the first merc spawns: routes to links dismantled by older builds
+		ThreatFrontlines.repairMercRoutes();
 
 		// Saves from before the siege rework (data v4) may still carry the
 		// retired Fragment Fabricator item installed in hive industries; its
@@ -72,6 +83,11 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// for colonies that hold nothing.
 		ThreatReserves.seedMarineArming();
 
+		// convoys no longer land as trade modifiers (docs/economy-coherence.md
+		// rule 5): lift the ones an older build left, or the military's stock
+		// sells as market excess for another 120 days
+		ThreatConvoys.stripLandedMods();
+
 		// hive worlds post no vanilla missions (survey, analyze, procurement)
 		ThreatMissionFilter.install();
 
@@ -81,11 +97,14 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// nor any other not-saved state of the game this session left: a system
 		// thinned in the abandoned timeline, a fleet cap learned in another save,
 		// debug lines held quiet on the old clock, a bounty's standing owed for
-		// one of its battles
+		// one of its battles, the front set and depot shares cached against the
+		// old sector (holding it keeps the whole abandoned campaign in memory)
 		IncursionManager.forgetThinned();
 		ThreatSoftening.forgetFleetCaps();
 		ThreatIncConfig.forgetQuiet();
 		ThreatSwarmBountyIntel.forgetPending();
+		ThreatFrontlines.forgetCaches();
+		ThreatReserves.forgetCaches();
 
 		// colonyMarkets keys that read lookups created before 0.7.0 made in-system
 		// expansion seed hives into inhabited core systems (rc1 review)
@@ -103,6 +122,10 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		Global.getSector().getListenerManager().addListener(new ThreatFortificationRaids(), true);
 		// hears the player's battles for the swarm bounties
 		Global.getSector().addTransientListener(new ThreatSwarmBountyIntel.Kills());
+		// unfound hives veiled on the map and intel screens while a core tab is open
+		ThreatMapFog fog = new ThreatMapFog();
+		Global.getSector().addTransientScript(fog);
+		Global.getSector().getListenerManager().addListener(fog, true);
 		// the player's outpost stations open their own dialog (storage, decommission)
 		Global.getSector().registerPlugin(new ThreatIncCampaignPlugin());
 

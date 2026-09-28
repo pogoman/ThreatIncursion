@@ -23,10 +23,7 @@ import com.fs.starfarer.api.util.Pair;
  * multiplier while functional and strip it entirely while disrupted. This
  * restores the multiplier scaled by the structure's CONDITION - 1 intact,
  * falling in a straight line to 0 at {@code fortificationDisruptDays} on its
- * clock - so bombardment is a dial, not a switch. From orbit alone the
- * condition never falls below {@code fortificationOrbitFloor}; once a front
- * stands on the world the floor is 0: boots finish what orbit started. The
- * rule applies to colonies the swarm has besieged
+ * clock - so bombardment is a dial, not a switch. The rule applies to colonies the swarm has besieged
  * ({@link ThreatGroundFronts#BESIEGED_FLAG}) or landed on, not to every raid
  * in the sector.
  *
@@ -78,11 +75,6 @@ public class ThreatSiegeMalus extends BaseIndustry {
 		return list;
 	}
 
-	/** Whether the orbital floor still protects the structures: no front stands on the world. */
-	public static boolean floorApplies(MarketAPI market) {
-		return market == null || ThreatGroundFronts.getFront(market.getId()) == null;
-	}
-
 	/**
 	 * Vanilla's own input-deficit factor on the structure's bonus
 	 * (BaseIndustry.getDeficitMult, replicated from its public parts): a
@@ -116,20 +108,16 @@ public class ThreatSiegeMalus extends BaseIndustry {
 		return Math.max(0f, Math.min(1f, (demand - deficit) / demand));
 	}
 
-	/** 1 intact .. 0 fully suppressed, from the structure's disruption clock; a raid's days are not held to the floor. */
-	public static float condition(Industry ind, boolean floor) {
+	/** 1 intact .. 0 fully suppressed, from the structure's disruption clock. */
+	public static float condition(Industry ind) {
 		if (ind == null) return 0f;
 		if (!ind.isDisrupted()) return 1f;
 		float full = Math.max(1f, ThreatIncConfig.fortificationDisruptDays());
-		float raw = Math.max(0f, 1f - ind.getDisruptedDays() / full);
-		if (floor && !ThreatFortificationRaids.raided(ind)) {
-			raw = Math.max(raw, ThreatIncConfig.fortificationOrbitFloor());
-		}
-		return Math.min(1f, raw);
+		return Math.min(1f, Math.max(0f, 1f - ind.getDisruptedDays() / full));
 	}
 
 	public static float condition(MarketAPI market, Industry ind) {
-		return condition(ind, floorApplies(market));
+		return condition(ind);
 	}
 
 
@@ -227,7 +215,6 @@ public class ThreatSiegeMalus extends BaseIndustry {
 		// fortification: a suppressed structure keeps its bonus in proportion
 		// to its condition (vanilla stripped it whole) and to its inputs, as
 		// vanilla scales it when it runs
-		boolean floor = floorApplies(market);
 		for (String id : FORTIFICATION_IDS) {
 			String key = getModId() + "_" + id;
 			Industry ind = market.getIndustry(id);
@@ -235,7 +222,7 @@ public class ThreatSiegeMalus extends BaseIndustry {
 				defense.unmodifyMult(key);
 				continue;
 			}
-			float cond = condition(ind, floor) * deficitMult(ind);
+			float cond = condition(ind) * deficitMult(ind);
 			if (cond <= 0f) {
 				defense.unmodifyMult(key);
 				continue;

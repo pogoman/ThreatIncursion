@@ -60,12 +60,15 @@ Vanilla numbers that do the work (verified in the API source and in
 `ThreatFrontlines` (daily, on IncursionManager's poll) and `FrontlineCondition`.
 
 **Founding** runs every `frontlinePlanDays` for each mobilised NPC faction under
-`frontlineMaxPerFaction` (0 = no cap; pirates and the player never found links).
-One link per pass:
+`frontlineMaxPerFaction` (0 = no cap; pirates and the player never found links),
+while `frontlinesEnabled` is on. The knob gates founding only: links already
+standing are kept up, paid, guarded and pruned with it off. One link per pass:
 - **Cost:** the outpost cost (`outpostSupplies`, `outpostFuel`) once, drawn
   from the war reserve of the faction's base nearest the site that holds it,
-  at any range. No base can pay, no link. There is no upkeep: a link lives on
-  vanilla imports like any market.
+  at any range. No base can pay, no link. It is drawn before the garrison is
+  weighed, so the voyage check reads what the founding leaves, and refunded if
+  no garrison can be had. There is no upkeep: a link lives on vanilla imports
+  like any market.
 - **Target:** the nearest found live hive that none of the faction's bases or
   links is within `frontlineReachLY` of.
 - **Anchor:** the faction's colony, or connected link, nearest that hive.
@@ -99,9 +102,12 @@ One link per pass:
 **Growth and starvation.** A link grows one size every `frontlineGrowDays` of
 running with no shortage of supplies, fuel, crew or food, up to
 `frontlineMaxSize`. A shortage is demand over availability, as vanilla's
-industries measure it. It is not the trade stockpile, so the player buying at
-a link doesn't starve it. A shortage resets the count. `frontlineStarveDays` of
-shortage shrinks it one size; at size 1 it is abandoned.
+industries measure it - the peacetime demand (`WarFootingDemand.peacetimeDemand`):
+the War Footing on a link declares one unit over the other industries', and
+vanilla's max demand read every fully supplied link short. It is not the trade
+stockpile, so the player buying at a link doesn't starve it. A shortage resets
+the count. `frontlineStarveDays` of shortage shrinks it one size; at size 1 it
+is abandoned.
 
 **The builder** runs one project at a time, with vanilla build times. Each step
 waits until every commodity it demands can be had, judged by vanilla's own
@@ -140,7 +146,10 @@ falls, everything beyond it loses the bonus on the next day's update.
 - **Abandoned:** after `frontlineAbandonDays` without purpose, the link is
   dismantled the way vanilla tears a market down: people and industries are
   removed (the station industry takes its fleet), then the market leaves the
-  economy, chatter is cleared, and the entity fades. Purpose means the faction is at war, and either the hive
+  economy, chatter is cleared, and the entity fades. The market stays on the
+  fading entity, as it does on vanilla's pirate base. Vanilla mercs pick links as
+  destinations and read `getMarket().getName()` when their fleet spawns, so
+  nulling it crashed the game (2026-09-27; `repairMercRoutes` fixes older saves on load). Purpose means the faction is at war, and either the hive
   the link was founded toward lives, or a found hive lies within
   `frontlineKeepLY` (the link is then adopted by that hive).
 - **Station destroyed (2026-09-26, as a vanilla pirate base):** a link is a
@@ -169,7 +178,9 @@ place of size². `isStrikeableWorld` admits links below size 3. The swarm still
 needs to have scouted the system (`ThreatSwarmScouts.swarmKnows`).
 
 **Strike warning.** `ThreatStrikeFGI` is hidden until detected: no intel
-entry, no updates, no board row, no help requests, no faction-view count. Each
+entry, no updates, no board row, no help requests, no faction-view count, and its
+staging world reads as quiet on the board and mission board (`isActiveStrikeSource`,
+`preparingStrikeFleetCount` and `hasPreparingStrikeFrom` skip it). Each
 poll, `IncursionManager.detectStrikes` spots a strike when any live fleet of
 it is:
 - visible to the player's fleet;
@@ -198,9 +209,11 @@ Strikes in flight in an older save have no hidden flag and stay visible.
 **Front and rear (2026-09-27, the user's call).** Only the front stands guard.
 For every found hive world that stages strikes, the faction's market nearest it is
 its front toward that hive (within 0.5 LY, so a whole system counts), if the hive's
-fuel reaches it. A link in a system with any hive world or any Threat fleet is at
-the front too (run 10's unguarded ground-victory bases died to theirs; run 15's
-Vlaan-Tone base died under a dead hive's 732 FP of leftover Defense Swarms). A link at the front keeps a
+fuel reaches it. A link in a system with any hive world or any Threat fleet but a
+Scouting Swarm is at the front too (run 10's unguarded ground-victory bases died to
+theirs; run 15's Vlaan-Tone base died under a dead hive's 732 FP of leftover Defense
+Swarms; a scout visits every uncharted system with a strikeable world, and would flip
+a rear link to front for the day). A link at the front keeps a
 standing garrison, as below. Every other link is the rear: it has no standing garrison and is never given up for
 lacking one. Run 14 had every faction's upkeep budget full of garrisons over rear
 links, so no ground victory could raise a forward base and the swarm re-seeded
@@ -279,8 +292,10 @@ a single strike the month their garrison went home. So now:
   topped up once if short. The log line gives the strength sent, needed and the
   strike in reach.
 - **Kept for as long as the link stands.** Each month, after the upkeep is paid,
-  a garrison under 80% of its need (the hives grew) is reinforced from its home
-  base.
+  a front garrison under 80% of its standing need (the hives grew) is reinforced
+  from its home base. A rear guard answers the seen strikes only, through the
+  daily call with its netting, timing and throttle: a monthly top-up sized on
+  the strikes' gross figure undid the call's netting.
 - **Paid for:** a faction founds, re-sends or reinforces a front garrison only
   while its front garrisons' upkeep stays within its budget: `frontlineUpkeepShare` (0.5)
   of its monthly supply banking (`ThreatReserves.accrualPer30`), plus its supplies above
@@ -298,8 +313,14 @@ a single strike the month their garrison went home. So now:
   on a 3,750 budget, and its sieges starved.
   Upkeep is drawn from the link, then the garrison's home base (while the
   faction still holds it), then any of the faction's other markets nearest
-  first, except other links. Sieges don't pool from links either: a link's
-  stock pays its own garrison. Every monthly payment is logged with who paid it.
+  first, except other links. The link's own stock pays down to its floor; the
+  home base and the others give only what a hunt may take
+  (`ThreatReserves.spendable`: above the floor, the donor keep and the staging
+  bank), so a garrison never spends what convoys banked for a siege - its home
+  is often the hive's staging base. A voyage is checked and paid from the same
+  stock, in full or the fleets stand down. Sieges don't pool from links either:
+  a link's stock pays its own garrison. Every monthly payment is logged with who
+  paid it.
 
 The rules from before:
 - **Spare strength** is the navy's: vanilla's strength of the faction summed
@@ -316,8 +337,10 @@ The rules from before:
   Its upkeep is its ships' vanilla supplies per month, maintenance only (run 4
   billed `getTotalSuppliesPerDay`, which adds repair and CR recovery: up to
   12,901 a month, 55 garrisons recalled unpaid). Drawn monthly from the link's
-  reserve, then its base's, then the faction's other bases nearest first.
-  Paid under half, it goes home.
+  reserve, then its base's, then the faction's other bases nearest first, each
+  fleet billed from the day it joined the guard (a guard called on payday is not
+  billed the month before it). Paid under half, it goes home, and a strike seen
+  while it sails turns it back, as a rear guard is.
 - **A link given up** (starved, no garrison, no hive in reach) sends its reserve
   to the faction's nearest market that is not a link (`carryStockHome`). A
   destroyed one loses it. Run 12 lost 2,299 marines that a front had evacuated
@@ -344,7 +367,10 @@ it founds a forward base instead (`ThreatOutposts.raiseForwardBase`):
   victories' survivors into links).
 - **Purged worlds** (`planNPC`, `outpostChance` per slow tick): paid at the
   outpost cost from a base in reach, and only where a found live hive lies
-  within `frontlineKeepLY`, or the base would stand idle and be abandoned.
+  within `frontlineKeepLY`, or the base would stand idle and be abandoned. The
+  site rules are a link's (`siteSystemOk`: no hive or hostile market in the
+  system, one faction's links per system), under `frontlineMaxPerFaction`, and
+  both Outposts Enabled and Frontline Outposts Enabled gate it.
 - **Old NPC outposts in a save** convert where they stand on the next poll,
   stock carried into the new market's reserve.
 
@@ -360,7 +386,7 @@ hives. A long war test reads these for runaway growth.
 
 All are in `settings.json` and LunaLib, under Frontline Outposts:
 
-- `frontlinesEnabled`
+- `frontlinesEnabled` (founding only; standing links are kept up with it off)
 - `frontlinePlanDays` (15)
 - `frontlineMaxPerFaction` (0 = no cap)
 - `frontlineLinkLY` (12)
@@ -372,7 +398,7 @@ All are in `settings.json` and LunaLib, under Frontline Outposts:
 - `frontlineAbandonDays` (60)
 - `frontlineRelayAccess` (0.2)
 - `frontlineStrikeWeight` (3)
-- `frontlineReliefEnabled` (a seen strike calls the guard)
+- `frontlineReliefEnabled` (a seen strike calls the guard; off, none is called)
 - `frontlineGarrisonEnabled`
 - `frontlineGarrisonFP` (200, the minimum garrison)
 - `frontlineGarrisonMargin` (1.25)
@@ -428,6 +454,8 @@ Load risks to watch:
 - **Warnings are shared with the whole sector,** player included.
 - **Relief only for links, not for colonies.** Relieving colonies too would
   shift the balance of every strike, and humans already win early.
+  (Still true of strikes. A Threat army that has LANDED on a colony is relieved since
+  2026-09-27, sized to the swarm over it: docs/ground-war.md "Relief".)
 - **Recording a strike (mobilisation) moved to detection,** with the response.
 
 ## 7. Not built

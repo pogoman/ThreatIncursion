@@ -89,7 +89,7 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 			setDuration(ThreatIncConfig.missionDefendDays());
 		} else {
 			float value = ThreatAid.valueAt(market, commodityId, needed);
-			reward = Math.max(1000, Math.round(value * ThreatIncConfig.missionAidPayMult() / 1000f) * 1000);
+			reward = Math.max(1000, Math.round(value / 1000f) * 1000);
 			setDuration(ThreatIncConfig.missionDurationDays());
 		}
 	}
@@ -276,6 +276,10 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 				return;
 			}
 			if (kind == KIND_DEFEND && ThreatAidRequests.strikesAgainst(market).isEmpty()) {
+				cancelWithReason("neutralized");
+				return;
+			}
+			if (kind == KIND_AID && ThreatAidRequests.requestItems(market, commodityId) <= 0) {
 				cancelWithReason("neutralized");
 				return;
 			}

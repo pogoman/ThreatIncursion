@@ -186,18 +186,20 @@ public class ThreatIncConfig {
 
 	/** Disruption days at which a colony's defence structure contributes nothing (its bonus scales down linearly to it). */
 	public static float fortificationDisruptDays() { return f("threatinc_fortificationDisruptDays"); }
-	/** Fraction of a suppressed structure's bonus orbit alone cannot take away, hive or colony; 0 once a front stands on the world. */
-	public static float fortificationOrbitFloor() { return f("threatinc_fortificationOrbitFloor"); }
 	/** Raid danger (vanilla RaidDangerLevel name) of a disrupt raid on a human colony's fortifications (ThreatFortificationRaids). */
 	public static String fortificationRaidDanger() { return s("threatinc_fortificationRaidDanger", "HIGH"); }
 	/** Marines lost on a raid grow as (tokens on one fortification) ^ this: 0 is vanilla (depth free), 1 costs the same as shallow raids, above 1 one deep raid costs more. */
 	public static float fortificationRaidDepthLoss() { return f("threatinc_fortificationRaidDepthLoss"); }
+	/** A Fabrication Core's weight in the raid depth toll, Ground Defenses intact = 1 (the Nexus is weighted by its defence bonus). */
+	public static float coreRaidDepthWeight() { return f("threatinc_coreRaidDepthWeight"); }
 	/** Disruption days per day an unopposed siege fleet adds to a colony's fortifications at overwhelming strength, scaled by fleet / (fleet + defence). */
 	public static float siegeSuppressDaysPerDay() { return f("threatinc_siegeSuppressDaysPerDay"); }
 	/** The same, over a hive's war-strata (their clock is defenseWearDays). */
 	public static float hiveSiegeSuppressDaysPerDay() { return f("threatinc_hiveSiegeSuppressDaysPerDay"); }
 	/** Days of siege one tactical bombardment by the player stands for. */
 	public static float siegeBombardSliceDays() { return f("threatinc_siegeBombardSliceDays"); }
+	/** Days of siege a player's tactical bombardment stands for in suppression; the return fire stays siegeBombardSliceDays. */
+	public static float tacBombardSuppressDays() { return f("threatinc_tacBombardSuppressDays"); }
 
 	/** Whether a planetary shield absorbs part of the disruption a bombardment lands on everything else. */
 	public static boolean shieldAbsorbEnabled() { return b("threatinc_shieldAbsorbEnabled", true); }
@@ -222,6 +224,8 @@ public class ThreatIncConfig {
 	public static float districtStabilityPenalty() { return f("threatinc_districtStabilityPenalty"); }
 	/** Accessibility lost per district an invader holds. */
 	public static float districtAccessPenalty() { return f("threatinc_districtAccessPenalty"); }
+	/** Accessibility a colony loses while Threat warships hold its orbit; half while the fight is even. */
+	public static float blockadeAccessPenalty() { return f("threatinc_blockadeAccessPenalty"); }
 	/** Disruption days a seized civilian industry is pinned at while the invader holds its district. */
 	public static float districtSeizeDays()   { return f("threatinc_districtSeizeDays"); }
 	/** Whether a Threat ground victory seeds a hive on the spot (off: the world decivilises). */
@@ -570,7 +574,6 @@ public class ThreatIncConfig {
 	public static int swarmScoutMax()         { return i("threatinc_swarmScoutMax"); }
 	/** Shortfall (in convoy loads) below which no convoy sails. */
 	public static float convoyMinLoadFraction() { return f("threatinc_convoyMinLoadFraction"); }
-	/** Convoys one faction dispatches per slow tick at most (the neediest bases first). */
 	/** Whether mobilised factions run supply and withdrawal convoys to their ground fronts. */
 	public static boolean frontRunsEnabled()  { return b("threatinc_frontRunsEnabled", true); }
 	/** Days of armaments a supply run tops a front up to. */
@@ -589,6 +592,8 @@ public class ThreatIncConfig {
 	public static boolean ordersEnabled()     { return b("threatinc_ordersEnabled", true); }
 	/** Combat fleet points of an NPC guard or intercept task force, and the free points a player colony needs to be picked first as a source; a player task force sails with everything its colony has free. */
 	public static float guardFleetFP()        { return f("threatinc_guardFleetFP"); }
+	/** Combat points of each fleet a relief force is built from (merged into one before it sails). */
+	public static float reliefFleetFP()       { return f("threatinc_reliefFleetFP"); }
 	/** Days a guard task force holds a colony's orbit. */
 	public static float guardDays()           { return f("threatinc_guardDays"); }
 	/** Days a task force guarding one of the player's own colonies stays; 0 = until recalled, staged there with its points the colony's to send out. */
@@ -654,7 +659,6 @@ public class ThreatIncConfig {
 	/** Days a vanilla deficit must stand before a colony asks for the commodity. */
 	public static float missionAidShortageDays() { return f("threatinc_missionAidShortageDays"); }
 	/** An aid contract pays the goods' value at the receiving market times this. */
-	public static float missionAidPayMult()   { return f("threatinc_missionAidPayMult"); }
 	/** Delivery standing is multiplied by this when it answers a contract. */
 	public static float missionRepMult()      { return f("threatinc_missionRepMult"); }
 	/** Whether allied mobilised factions guard and resupply each other's colonies. */
@@ -696,7 +700,6 @@ public class ThreatIncConfig {
 
 	/** Whether outposts can be built on purged worlds. */
 	public static boolean outpostsEnabled()   { return b("threatinc_outpostsEnabled", true); }
-	/** Whether a ground victory raises a free outpost over the dead world for the winner. */
 	/** Station tier: 1 orbital station, 2 battlestation, 3 star fortress. */
 	public static int outpostTier()           { return i("threatinc_outpostTier"); }
 	/** Credits the player pays for an outpost. */

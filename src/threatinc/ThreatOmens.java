@@ -193,7 +193,7 @@ public class ThreatOmens {
 		StarSystemAPI best = null;
 		float bestDist = Float.MAX_VALUE;
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (market.isHidden() || market.getStarSystem() == null) continue;
+			if (ThreatMapFog.hidden(market) || market.getStarSystem() == null) continue;
 			if (Factions.THREAT.equals(market.getFactionId())) continue;
 			if (market.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) continue;
 			float dist = Misc.getDistanceLY(from.getLocation(), market.getStarSystem().getLocation());

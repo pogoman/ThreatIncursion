@@ -19,8 +19,8 @@ import com.fs.starfarer.api.util.Misc;
  * siege against a hive system it posts a CALL for coalitionCallDays; every
  * OTHER mobilised faction with a base in reach that has not yet answered
  * rolls coalitionSupportChance and, on success, raises a pooled hunting force
- * against the system's Defense Swarms (ThreatSoftening.send) so the siege
- * lands under cover.
+ * against the Defense Swarms over the worlds the siege is fighting
+ * (ThreatSoftening.send, its purge's targets) so the siege lands under cover.
  *
  * <p>And allies help each other's colonies. Every mobilised faction looks at
  * every other mobilised faction's colonies with a need the sector would post
@@ -128,7 +128,10 @@ public class ThreatCoalition {
 					// answer met 171 FP swarms, Run 6); a faction that cannot pay for one yet
 					// tries again while the call stands
 					if (ThreatSoftening.resting(base) || IncursionManager.hasSiegeableHive(base)) continue;
-					if (!ThreatSoftening.send(faction, base, system)) continue;
+					// over the worlds the caller's siege is fighting (its purge's targets),
+					// not the system's strongest garrison: a siege takes a subset since 2026-09-27
+					if (!ThreatSoftening.send(faction, base, system,
+							IncursionManager.siegeTargetsOf(c.callerFactionId, c.systemId))) continue;
 					c.answered.add(factionId);
 					ThreatIncConfig.log("Coalition: " + factionId + " answers " + c.callerFactionId
 							+ "'s call at " + system.getName() + " with a hunting force");
@@ -187,7 +190,10 @@ public class ThreatCoalition {
 			if (needy == null) continue;
 			for (MarketAPI market : ThreatReserves.marketsOf(needyId)) {
 				if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
-				if (ThreatAidRequests.needsDefence(market) && !guardBoundFor(market)) {
+				// a strike coming, or a landed Threat army whose relief the owner
+				// could not pay for in full (2026-09-27: help used to stop at the landing)
+				float owed = ThreatFleetOrders.reliefShort(market);
+				if ((ThreatAidRequests.needsDefence(market) && !guardBoundFor(market)) || owed > 0f) {
 					for (String helperId : ids) {
 						if (helperId.equals(needyId)) continue;
 						FactionAPI helper = Global.getSector().getFaction(helperId);
@@ -196,8 +202,11 @@ public class ThreatCoalition {
 						if (w <= 0f || random.nextFloat() >= w * chance) continue;
 						MarketAPI base = ThreatFleetOrders.pickBase(helper, market.getLocationInHyperspace());
 						if (base == null) continue;
-						ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchGuard(helper, market, base, false);
-						if (o == null) continue;
+						if (owed > 0f) {
+							if (ThreatFleetOrders.sendRelief(helper, market, base, owed) <= 0f) continue;
+						} else if (ThreatFleetOrders.dispatchGuard(helper, market, base, false) == null) {
+							continue;
+						}
 						report(helper, needy, "Allied Task Force Sails", "sends a task force to guard %s",
 								ThreatNotice.market(market));
 						break;
@@ -207,7 +216,7 @@ public class ThreatCoalition {
 				if (!ThreatReserves.hasDepot(market)) continue; // nowhere to land it
 				for (String c : ThreatReserves.COMMODITIES) {
 					if (!ThreatAidRequests.shortageStanding(market, c)) continue;
-					int need = ThreatAidRequests.needItems(market, c);
+					int need = ThreatAidRequests.requestItems(market, c);
 					if (need <= 0) continue;
 					boolean sent = false;
 					for (String helperId : ids) {

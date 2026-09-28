@@ -39,21 +39,24 @@ options menu; commits everything aboard). Ticks on the colony poll at flat rates
   hold) suppresses Core/Nexus/port/defense structures by feeding their disruption clocks
   (the existing wear mechanic); GRINDING (>= `frontGrindFraction`, 0.10) harasses just
   the defense structures at half rate; FOOTHOLD suppresses nothing.
-- **What drives a disruption clock** (2026-09-06): orbit besieges, day by day, to the
-  orbital floor and never past it - a Threat strike over a colony, a faction's or the
+- **What drives a disruption clock** (2026-09-06): orbit besieges, day by day, all the way
+  to nothing (2026-09-28: the orbital floor is gone) - a Threat strike over a colony, a faction's or the
   player's siege expedition over a hive, a Support sortie over either, and the player's
-  own tactical bombardment (one slice of `siegeBombardSliceDays`, 3) all run the same
+  own tactical bombardment (return fire of `siegeBombardSliceDays`, 3, suppression of
+  `tacBombardSuppressDays`, 15, since 2026-09-27: 3 days of both came to ~5 days against a
+  strong colony for ~10 FP) all run the same
   duel ("Sieges from orbit" below). Saturation on a hive still writes `hiveSatDisruptDays`
   (20) to everything. Marine raids add their days (vanilla). A HOLDING front adds
   `frontSuppressDaysPerDay` (2) per day against the clock's own run-down, so a net day per
-  day, up to a cap of 1.2 x `defenseWearDays`. Orbit alone therefore holds the defenses at
-  the floor and no deeper; the wear curve below it is the ground forces' work. Danger close
+  day, up to a cap of 1.2 x `defenseWearDays`. Orbit alone therefore wears the defenses to
+  nothing by itself; a front just gets there faster. Danger close
   (a tactical pass with your own front down) lands `hiveTacDisruptDays` (60) on the Core
   and port too.
 - **The Core wears in proportion** (2026-09-05): its fabrication factor is `coreDownFactor`
-  (1.0) x (1 - clock / `defenseWearDays`) - one pass leaves 80 percent, a front holding for
-  150 days half, 300 days nothing - and the hive's health, growth and counter-attack
-  interval follow it smoothly instead of quartering the moment the Core is touched. A
+  (0.8 since 2026-09-28; at 1.0 a Core under ~45 days still grew at full pace) x
+  (1 - clock / `defenseWearDays`) - one pass leaves 64 percent, 150 days 40, 300 days
+  nothing - and the hive's health, growth and counter-attack interval follow it smoothly
+  instead of quartering the moment the Core is touched. A
   missing or unbuilt Core fabricates nothing. Swarm fabrication stays a hard gate: no new
   Defense Swarms while the Core or the Nexus is disrupted at all.
 
@@ -126,8 +129,8 @@ which is why a single swarm ship used to stall a siege for its whole stay - the 
 refused every pass and each fell through to a commando raid at ~1,200 marines (pirates and
 the player alike, Gamma Gibidigi, seen in the log). The stage's vanilla time limit still
 bounds the hunt; an expedition that cannot clear the orbit withdraws having done nothing,
-which is the honest outcome. Once the orbit is clear, and the war-strata are at the orbital
-floor or the troops could hold as they are (`ThreatGroundFronts.readyToLand`, the strike's
+which is the honest outcome. Once the orbit is clear, and the war-strata are
+fully worn or the troops could hold as they are (`ThreatGroundFronts.readyToLand`, the strike's
 gate), they land an NPC-owned front (troops = combined expedition ground strength,
 armaments = `npcFrontSupplyDays` of that force's own burn) instead of their first commando raid.
 The front runs a stance AI - push when strong enough and supplied, entrench
@@ -171,8 +174,8 @@ drift apart.
    autoresolve, the player far away) runs its whole siege in one go first
    (`abstractSiege`: the same slices against the same batteries, its abstract strength
    standing in for the fleets, the disruption it writes real).
-2. **Land.** The world is ready (`readyToLand`: every defence structure at the orbital
-   floor, or the landing could hold as it is - `troops x frontLandingMult >=
+2. **Land.** The world is ready (`readyToLand`: every defence structure fully worn,
+   or the landing could hold as it is - `troops x frontLandingMult >=
    holdRequirement`) and nothing blocks the landing (`landingBlocked`: saturation fallout -
    `FALLOUT_FLAG` binds the swarm too - another army on the ground, or, with real fleets,
    the orbit held against it): the pass puts the world's share of the troop pool on the
@@ -240,9 +243,8 @@ a colony is besieged - on one skeleton, and splits what vanilla lumps together:
   1.3) scaled by its **condition** - 1 intact, falling in a straight line to 0 at
   `fortificationDisruptDays` (180) on its disruption clock - instead of vanilla's on/off,
   and x vanilla's own input-deficit factor, so a starving battery gives less either way.
-  From orbit alone the condition never falls below `fortificationOrbitFloor` (0.5); once a
-  front stands on the world the floor is 0 and a holding front wears the structures down
-  as it always did. Boots finish what orbit started.
+  From orbit alone the condition falls all the way to 0 like everything else; a holding
+  front on the world just wears it down faster (2026-09-28: the orbital floor is gone).
 
 ### Marines defend, and they die
 
@@ -419,16 +421,16 @@ Threat fleet of F points (x `siegeFPWeight`, 1.0) sits over a colony of defence 
 (`getDefenderStr(market, true)`, no cargo marines):
 
 - its defence structures gain `siegeSuppressDaysPerDay` (6) x F / (F + D) disruption days,
-  never past the floor (`floorDays` = `fortificationDisruptDays` x (1 - floor), 90); the
+  up to fully worn at `fortificationDisruptDays` (180); the
   moment the fleet leaves, recovery starts from there;
 - the batteries answer: the fleet loses `siegeBatteryAttritionPerDay` (0.02) x F x the
   batteries' share of D (1 - 1 / their multiplier) / (F + D) points, taken off the live
   fleet smallest ship first (`applyFleetLosses`, the remainder banked in fleet memory, the
   last ship spared - the group's own abort rule takes a gutted expedition home).
 
-So Chicomoztoc after its fortress dies (D ~1,375) takes a 300-point fleet about 170 days
-and costs it most of its ships, a 1,500-point armada ~60 days and ~500 points; Nomios (D
-~95) falls to the floor in a week for a handful of points. Every defence building has a
+So Chicomoztoc after its fortress dies (D ~1,375) costs a 300-point fleet most of its
+ships to wear down, a 1,500-point armada far less; Nomios (D ~95) wears out fast for a
+handful of points. Every defence building has a
 job: batteries hurt the fleet, Ground Defenses slow suppression, the fortress contests
 the orbit, a military command speeds counter-attacks, reserve marines deepen the garrison.
 
@@ -445,7 +447,7 @@ half rate.
 | --- | --- | --- |
 | Layers | strata, underground, one per size | districts, one per size |
 | Losing a layer | fabrication and per-stratum defence fall | garrison share, stability, accessibility fall; the district's industries are seized |
-| Orbital bombardment | suppresses the war-strata to the floor, the size-anchored strata untouched, weapon growths fire back | suppresses fortification to the floor, garrison untouched, batteries fire back |
+| Orbital bombardment | suppresses the war-strata to nothing, the size-anchored strata untouched, weapon growths fire back | suppresses fortification to nothing, garrison untouched, batteries fire back |
 | Counter-attacks | paced by hive health | paced by stability and military command; strength is the garrison |
 | Victory | the Core dies: eradicated, the survivors come home | the last district falls: a hive is seeded on the spot |
 
@@ -455,12 +457,13 @@ The user's call the same evening: the orbital duel is the doctrine for everyone,
 swarm's alone. `ThreatGroundFronts.siegeSlice` now asks the `Theatre` for what orbit
 suppresses and what answers:
 
+2026-09-28: the orbital floor was removed - orbit wears fortifications and shields to 0.
+
 | | Hive (`Theatre.HIVE`) | Human colony (`Theatre.COLONY`) |
 | --- | --- | --- |
 | Fortifications | Ground Defenses / Heavy Batteries, Swarm Nexus | Ground Defenses, Heavy Batteries, Patrol HQ, Military Base, High Command (`ThreatSiegeMalus.FORTIFICATION_IDS`) |
 | Clock (condition 1 -> 0) | `defenseWearDays` (300) | `fortificationDisruptDays` (180) |
-| Condition carrier | the organs themselves (`ThreatColonyManager.disruptedDefenseResilience`, now a straight line with the orbital floor - the old `disruptedDefenseFraction` step is gone) | `ThreatSiegeMalus` |
-| Floor from orbit | `fortificationOrbitFloor` (0.5) of the bonus, 0 once a front stands | the same |
+| Condition carrier | the organs themselves (`ThreatColonyManager.disruptedDefenseResilience`, a straight line to 0 - the old `disruptedDefenseFraction` step is gone) | `ThreatSiegeMalus` |
 | Suppression rate (net of the clock's run-down) | `hiveSiegeSuppressDaysPerDay` (30) x F / (F + D) | `siegeSuppressDaysPerDay` (6) x F / (F + D) |
 | Batteries' share | the two defence structures' multipliers on the hive's machinery/metals deficit | the two batteries' multipliers on vanilla's deficit |
 | Return fire | `siegeBatteryAttritionPerDay` (0.02) x F x share x D / (F + D), smallest ship first, flagship spared | the same |
@@ -470,31 +473,31 @@ duel missed: a live fleet's slice now makes up the days the clock lost since its
 and then adds the rate x F / (F + D), so the rate is net progress and a fleet that stays holds
 the clock where it is; an instantaneous slice (the player's bombardment, the abstract siege)
 makes nothing up. The hive rate is higher because a hive's figure is anchored to its size
-and runs several times a colony's: a 600-point expedition takes a size-5 hive (~9,000) to
-the floor in about 60 days, as 1,000 points take a 4,000 colony in about 75 - and both lose
+and runs several times a colony's: a 600-point expedition wears a size-5 hive (~9,000)
+down far more slowly than 1,000 points wear a 4,000 colony - and both lose
 most of their ships doing it. Who delivers slices:
 
 - **A Threat strike** over a colony (`ThreatStrikeFGI.siegePass`, as before).
 - **A faction's or the player's siege expedition** over a hive
   (`ThreatPurgeFGI.SiegeRaidAction.performRaid` -> `siegePass` / `abstractSiege`): the
-  flat 60-day tactical pass is gone; a live fleet slices while the strata are above the floor
+  flat 60-day tactical pass is gone; a live fleet slices while the strata aren't fully worn
   and the troops could not hold, spending no pass, and lands once `readyToLand` says so. An
   unspawned expedition runs its whole siege abstractly first (`ABSTRACT_FP_PER_POINT` x
   its difficulty points, less route damage; the batteries' toll comes off its marines and
-  armaments - the strike's off its troops aboard), and a pass over a world still above the
-  floor returns before vanilla counts it (`waitsAboveFloor`; vanilla's `performRaid` counts
+  armaments - the strike's off its troops aboard), and a pass over a world not yet fully
+  worn returns before vanilla counts it (`waitsInOrbit`; vanilla's `performRaid` counts
   the pass before it asks what to do with it, so the check cannot live in
   `doCustomRaidAction`). The expedition's payload stage is `siegeOrbitDays` (120) per world,
   as the strike's is.
 - **A Support sortie** (Escort until today) on station over a hostile world whose orbit
   nothing holds against it: every poll, `tickSupport` delivers its live fleet points as a
-  slice and the batteries answer. A front on the ground does not stop it - the floor still
-  holds from orbit, but the sortie keeps the fortifications there while the front pushes.
+  slice and the batteries answer. A front on the ground does not stop it - Support's slices
+  stack with anything a ground front adds.
   Over a contested orbit (a colony's station or patrols, a hive's Defense Swarms) it fights
   instead and its row reads "clearing the orbit of X" until it is clear. NPC factions fly
   Support too (`ThreatConvoys.supportFor`).
 - **The player's tactical bombardment** (`ThreatincMarketCMD.bombardTactical` /
-  `bombardConfirm`, hive or colony): the targets are the fortifications above the floor, the
+  `bombardConfirm`, hive or colony): the targets are the fortifications not yet fully worn, the
   prompt quotes the days each gains and the fleet points the batteries take, vanilla's fuel
   (a hive's `hiveTacCostFraction` bill), reputation and unrest flow runs, and the 365 days it
   wrote are taken back for the slice. Ships lost are named in the result; the flagship is
@@ -502,19 +505,19 @@ most of their ships doing it. Who delivers slices:
   push them." A world with no fortification at all (nothing the duel describes) keeps
   vanilla's bombardment; Lion's Guard HQ is not a fortification and is left alone.
 
-The landing gate is one rule everywhere (`readyToLand`): the fortifications are at the floor
-(`suppressedToFloor`, every fortification at `siegeFloorDays`) or the troops x
+The landing gate is one rule everywhere (`readyToLand`): the fortifications are fully worn
+(`suppressedFully`, every fortification at `siegeWornDays`) or the troops x
 `frontLandingMult` could hold. The second branch went round a loop on 2026-09-06: the user
 first asked why any commander would not soften the ground for the troops when orbit can, then
 recalled that every day in orbit costs ships to the batteries - a force that can already
 hold spends marines rather than hulls, and the Support button is there when that call is
-wrong. The original rule stands. `needsSoftening` is the floor test's complement on both
+wrong. The original rule stands. `needsSoftening` is `suppressedFully`'s complement on both
 theatres.
 
 **How long a fleet stays, and what it does there** (the user's question, 2026-09-06 evening,
 after a strike dropped its marines and left): an expedition's fleets deliver a slice on each
-raid pass (vanilla's own cadence, about every 3 days per fleet) while the world is above the
-floor and the troops could not hold - so a strike whose troops could hold on arrival lands at
+raid pass (vanilla's own cadence, about every 3 days per fleet) while the world isn't fully
+worn and the troops could not hold - so a strike whose troops could hold on arrival lands at
 once and never bombards, which is what "disrupted 1 day from marines" was: the front's own
 suppression, no orbital siege, and the intended trade (see the landing gate above). The
 passes are the landings: `strikePassesPerColony` (3) per
@@ -534,7 +537,7 @@ to land goes with it (`ThreatPurgeFGI.stayOnDefend`; a fleet still carrying a la
 on). Defend is not Support: it fights whatever contests the orbit but bombards only while
 the front it covers cannot hold **or would not survive the next counter-attack**
 (`ThreatGroundFronts.defendBombards`: the faction's own front, and the fortifications not
-yet at the floor), so a front that holds *and is safe* costs it nothing. It stands down when the front is gone (won or
+yet fully worn), so a front that holds *and is safe* costs it nothing. It stands down when the front is gone (won or
 lost) or the batteries have ground it below `defendMinStrength` (0.33) of its arrival
 strength, and goes home on the tracked leg. Knob `landingDefendEnabled`; off, the
 expedition sweeps on as before.
@@ -575,8 +578,8 @@ the fleet within days. An indefinite order has no return leg queued behind its o
 **The Support button says what it does** (the user, after the round trip above): its
 tooltip and confirm name the fleet that goes, then one line per fact
 (`ThreatFleetOrders.supportEffect`): it holds the orbit and fights whatever contests it;
-while the orbit is clear it bombards the defences at about N disruption days per day to no
-lower than the floor; the batteries answer at about M fleet points of ships lost per day,
+while the orbit is clear it bombards the defences at about N disruption days per day;
+the batteries answer at about M fleet points of ships lost per day,
 smallest first - N and M from `siegeSliceEstimate` at the fleet's points against the
 world's defence figure; and that it bombards whether or not the front could hold, where
 Defend bombards only while it cannot and an expedition lands as soon as its troops can, to
@@ -584,15 +587,15 @@ spare its ships. The Defend button (`defendEffect`) says the same the other way 
 does not bombard while the front holds, and only while it cannot does it bombard - and only
 then do the batteries answer. The expedition's own status line
 says which branch opened its landing gate (`ThreatGroundFronts.landingPhase`: "moving to
-land - defences at the floor" or "moving to land - the troops can hold, sparing the ships").
+land - defences worn out" or "moving to land - the troops can hold, sparing the ships").
 
 ### Raiding the fortifications (2026-09-25, built, untested)
 
 Vanilla tags a colony's Ground Defenses, Heavy Batteries, Patrol HQ, Military Base and
 High Command `unraidable` with no disrupt danger: its tactical bombardment knocks them out
-for 365 days, so raiding them was never needed. Ours is a siege slice that stops at the
-orbital floor - a few days a pass, at vanilla's fuel bill - which left the player no way
-past the floor short of a ground front. `ThreatFortificationRaids` (a
+for 365 days, so raiding them was never needed. Ours is a siege slice that wears them down
+over the full clock at vanilla's fuel bill; raiding trades marines for speed.
+`ThreatFortificationRaids` (a
 `GroundRaidObjectivesListener`, priority 1, after vanilla's list) puts every human colony's
 fortifications on the disrupt-raid picker at the danger in `threatinc_fortificationRaidDanger`
 (default HIGH, the hive batteries' own in industries.csv: 20 days per marine token).
@@ -608,7 +611,7 @@ guns down iteratively beats knocking them out in one go, by design (user, 2026-0
 - Marines lost on a fortification objective grow by (tokens ^ `threatinc_fortificationRaidDepthLoss`
   - 1) x the defence's share of the fight, defender / (raid + defender) - the same odds
   vanilla sets the tokens by (`modifyMarineLossesStatPreRaid`, shown in the losses breakdown
-  as "Deep raid on the fortifications"). Vanilla averages danger per token, so five tokens
+  as "Deep raid on one structure"). Vanilla averages danger per token, so five tokens
   on one objective cost what one does. First cut (same day) had no defence term: 8 tokens
   at 1.5 was a flat x22.6, and a raid of 800 marines on a 333-defence world lost 387 where
   vanilla would have lost ~17. Now that raid (~0.2 share) is ~x5; against a garrison
@@ -627,25 +630,27 @@ guns down iteratively beats knocking them out in one go, by design (user, 2026-0
 - A raid marks the world besieged (`BESIEGED_FLAG`, wearDays) and syncs the siege state, so
   the structure loses its bonus in proportion to its clock. Before this a raid on a world
   nobody had bombarded fell back to vanilla's on/off: 20 days stripped Ground Defenses' x2.
-- A raid is not held to the orbital floor: past the floor it sets `$threatinc_raidedPastFloor_<id>`
-  on the market (expires with the clock) and `ThreatSiegeMalus.condition` skips the floor
-  clamp for that structure. `siegeSlice` skips a structure already past the floor, so a
-  raided clock is never pulled back down to it.
 - Every clock read is `siegeDisruptDays`: the bombard's revert leaves a ghost expire on a
   structure it set back to 0, and vanilla's raw read would stack the raid on top of it.
 - Off with Nexerelin: its bombardment runs human colonies' menus and still writes the year.
-- Hives: their defences were raidable already (HIGH, industries.csv); untouched.
+- Hives: their defences were raidable already (HIGH, industries.csv). The Swarm Nexus and
+  Fabrication Core take the same depth toll (2026-09-27, built, untested): vanilla lists them,
+  so `modifyRaidObjectives` swaps each for an `OrganRaid` that quotes the toll. Their days add
+  in full as well (2026-09-28): vanilla's shrink left a second raid on an organ with a long
+  clock a few percent of its days. Weight: the Nexus by its defence bonus as worn (`nexusDefenseBonus` x
+  resilience, 0.5 intact); the Core adds no defence, so `threatinc_coreRaidDepthWeight`
+  (default 1, Ground Defenses intact) x its fabrication wear. Before this five tokens on the
+  Nexus bought 100 days at a one-token casualty rate. On with Nexerelin too.
 
 To verify: Disrupt lists the colony's fortifications at Heavy danger; one token on Ground
 Defenses at an unbombarded colony leaves it at ~89% effect (not 0); the losses breakdown
-grows with tokens on one fortification, and the objective's hover tooltip quotes its multiplier (x at the next token counts with one token, the current figure and a shallow-raids hint with more); a second raid adds its full 20 days; raiding past
-the floor drops the condition below 50%; a later tac bombard does not lower it; with
+grows with tokens on one fortification, and the objective's hover tooltip quotes its multiplier (x at the next token counts with one token, the current figure and a shallow-raids hint with more); a second raid adds its full 20 days; with
 Nexerelin loaded the list is vanilla's.
 ### Fabricating troops from the fleet (2026-09-08, built, untested)
 
 The user, after watching the Defend behaviour they liked run out of road: a covering
-fleet bombards while its front cannot hold - but the bombardment stops mattering at the
-orbital floor, and a losing front then just watches a full fleet sit in orbit doing
+fleet bombards while its front cannot hold - but the bombardment stops mattering once the
+defences are fully worn, and a losing front then just watches a full fleet sit in orbit doing
 nothing. So **once there is nothing left to bombard, the fleet starts sending fragments of
 itself down as ground troops instead.** Hulls broken up into soldiers.
 
@@ -655,7 +660,7 @@ The trigger is the exact complement of the one that was already there
 | | `defendBombards` | `defendFabricates` |
 | --- | --- | --- |
 | Its own front on the ground | cannot hold | cannot hold |
-| Fortifications | above the floor | at the floor (`suppressedToFloor`) |
+| Fortifications | not yet fully worn | fully worn (`suppressedFully`) |
 
 Both are false while the front holds, so the two states tile the "front in trouble" case
 between them and neither runs while the ground is safe. Four rules the user set, and where
@@ -664,7 +669,7 @@ each one lives:
 1. **Only while the front cannot hold.** `defendFabricates` is re-evaluated every poll and
    `fabricateNeed` returns 0 the moment the front is over the line, so the fleet stops
    cutting itself up the same poll the ground is safe and goes back to ordinary Defend -
-   which, at the floor, means holding the orbit and paying nothing.
+   which, with the defences fully worn, means holding the orbit and paying nothing.
 2. **It never gives up.** A Defend order and a swarm station both stand down when the
    batteries grind them below `defendMinStrength` (0.33) of their arrival strength. A
    fabricating fleet is **exempt** (`defendCommitted`, checked in both
@@ -685,7 +690,7 @@ each one lives:
    condition instead of the suppressed one, charged on top of the hulls that became troops
    and banked as ordinary battery damage. The fragments go down through defended air, so
    the guns get the shot they would have had on the first day of the siege even though they
-   are ground to the floor.
+   are ground down to nothing.
 
 **Cost and commitment are deliberately two numbers, not one.** The obvious build - spend
 the undisrupted-battery toll per day and land *that* as troops - is wrong in a way that only
@@ -726,7 +731,7 @@ tick. The board and the fleet's own assignment say it too: `Order.task` reads "b
 for the front on X".
 
 Knobs: `fabricateEnabled` (true), `fabricateTroopsPerFP` (25), `fabricateHoldMargin` (1.05),
-`fabricateSupplyDays` (30). Off, a Defend fleet at the floor simply holds the orbit as before.
+`fabricateSupplyDays` (30). Off, a Defend fleet with the defences fully worn simply holds the orbit as before.
 
 ### The swarm does not fight on armaments (2026-09-08, built, untested)
 
@@ -817,14 +822,12 @@ weight times `shieldSoakMult` (`soak` for the orbital slice, `soakTo` for a rais
 So a bombardment spends itself twice: an intact shield turns most of a strike aside, and
 each pass buys less cover for the next. Grind it down and the world is bare.
 
-The orbital floor applies to the shield like anything else, so `siegeFloorDays` caps what a
-fleet in orbit can spend: at `fortificationOrbitFloor` 0.5 a besieged shield stops at 50%
-condition and keeps absorbing 37.5%. Boots take it the rest of the way - `tickFront`'s
-suppression grinds the shield at exactly the rate it grinds the guns (`suppressShield`, full
+The shield wears from orbit like any other fortification, all the way to 0 by the theatre's
+wear days (2026-09-28: the orbital floor that used to stop it at 50% condition is gone) -
+`siegeSlice` spends it the same way it spends the guns. `tickFront`'s
+suppression grinds the shield at exactly the rate it grinds the guns too (`suppressShield`, full
 rate while HOLDING, `frontGrindSuppressMult` while GRINDING, capped at `wearDays x 1.2` like
-any other structure), and `floorApplies` is false while a front stands, so the condition curve
-has no floor and the cover goes to nothing. That is the whole counterplay: **a shielded world
-cannot be broken from orbit alone** - land, or bring enough that partial suppression is enough.
+any other structure), so a ground front simply gets there faster than orbit alone.
 
 The shield is deliberately NOT in `keyStructures` / `defenseStructures`; those lists also
 answer "are this colony's defences held", which the shield does not speak to. It is suppressed
@@ -851,8 +854,8 @@ Where it hooks - every write, no exceptions:
 | `ThreatGroundFronts.siegeSliceEstimate` | `[0]` is already cut by the shield, so every caller quoting suppression gets the true figure; `[2]` is what the pass puts on the shield |
 | `ThreatincMarketCMD.applySaturationDisruption` | raise-to `dur x throughput`, the shield raised to the full `dur` |
 | `ThreatincMarketCMD.applyDangerClose` | the deep organs are under the shield too |
-| `ThreatincMarketCMD.bombardTactical` | the shield is a bombardment target in its own right while it is above the floor, and `siegeSliceApplies` now fires for a shielded world with no guns at all. It is printed on its own line, not under the shared "about N days each" headline, because it takes a different figure - clamped to the room left below the floor |
-| `ThreatGroundFronts.tickFront` | `suppressShield` - boots grind it at the same rate as the guns, past the orbital floor |
+| `ThreatincMarketCMD.bombardTactical` | the shield is a bombardment target in its own right while it isn't fully worn, and `siegeSliceApplies` now fires for a shielded world with no guns at all. It is printed on its own line, not under the shared "about N days each" headline, because it takes a different figure - clamped to the room left on its clock |
+| `ThreatGroundFronts.tickFront` | `suppressShield` - boots grind it at the same rate as the guns |
 | `ThreatPlanetaryShield.apply` | vanilla's x3 ground defence never written; the knob's value applied in proportion to condition when set |
 
 Knobs: `threatinc_shieldAbsorbEnabled` (true), `threatinc_shieldAbsorbMax` (0.75),
@@ -925,8 +928,14 @@ player, vanilla resolves an NPC siege without spawning any fleet, so after an ab
 landing no flotilla existed to put on DEFEND. The swarm then held the orbit unopposed and
 bombarded the front until it ran dry and was overrun: runs 6 and 7 lost both Gamma
 Golgotha II landings this way (2,917 and 3,333 marines). Now `ThreatPurgeFGI.stayOnDefend`,
-with no live fleet, leaves what the abstract siege had left (`abstractLeft`, in abstract FP)
-on the front as `GroundFront.coverFP`. The cover contests the orbit while it is at least the
+with no live fleet, leaves what the world's abstract siege left (its allotment less route
+damage and that world's batteries, in abstract FP) on the front as `GroundFront.coverFP` -
+out of one flotilla (`abstractFP`), as the live fleets stay where they landed: the next
+world the sweep lands on or reinforces gets only what earlier landings did not keep
+(2026-09-27: each world's pass read the whole flotilla afresh, and one expedition
+reinforcing two fronts covered both with all of it). Each world's siege itself still
+starts from the whole allotment.
+The cover contests the orbit while it is at least the
 swarm's FP there. Once the swarm outweighs it, the cover is lost for good and logged
 ("Orbit cover over ... lost").
 
@@ -945,6 +954,49 @@ costs troops instead of everything.
 
 The player's own saturation bombardment is untouched: `ThreatincMarketCMD` still applies the
 full disruption set and `setFallout`. Only the hive self-scour is gone.
+### Relief (2026-09-27, built, untested)
+
+A Threat army on an NPC faction's own world is answered by `ThreatFleetOrders.planRelief`,
+on the ground-front poll (it was monthly):
+
+- **Sized to break the hold.** The relief is the Threat's points over the world
+  (`pointsNear`, `ORBIT_HOLD_RANGE`) times `npcSiegeOrbitMargin` (1.5), less the guards
+  already bound there, built at the nearest base from fleets of `reliefFleetFP` (300
+  combat points) and merged into one "Relief Force" up to `softenMergeMaxShips`. Each fleet
+  must be provisioned at `expeditionMinProvisionsFraction` from the depot's stock above
+  its floor, so a depot runs out rather than conjuring fleets. With no swarm overhead,
+  one guard of `guardFleetFP` still goes, as before. The old flat 100-point guard
+  (258 FP built) sat 2,600 units off Coatl against 2,812 FP for 76 days.
+- **Relief before offensives.** While a faction owes relief it could send
+  (`reliefOwed`), no base of it starts a new siege. Running sieges keep their fleets.
+- **Help after the landing.** While the swarm holds the orbit over the army, the owner
+  posts a swarm bounty on the system (`ThreatSwarmBountyIntel.postRelief`, ends when the
+  army is gone), and allies send relief for what the owner could not
+  (`ThreatCoalition.allyAid`, by standing and `allyAidChance`). Before this, allied
+  guards and Defend contracts stopped once the strike landed. The Defend contract itself
+  still covers strikes in flight only.
+
+To verify: Coatl-like siege gets a Relief Force at about 1.5x the Threat FP within a
+day of loading; it engages rather than keeping its distance; a depot too dry to
+provision one leaves the owner short, and the bounty and allied relief follow; no new
+siege launches from that faction meanwhile.
+
+### Blockade (2026-09-27, built, untested)
+
+Threat warships over a human colony blockade it the way vanilla's Persean League
+blockade does, per colony rather than per system (`ThreatBlockade`, condition
+`threatinc_blockaded`, vanilla's blockade icon). The effect is accessibility only;
+vanilla turns that into lost import capacity (`accessibilityPerUnitShipping` 0.1 per
+unit, in-faction imports +0.5) and export income by itself. Strength follows vanilla's
+`BlockadeFGI.getAccessibilityPenalty`: Threat points within `ORBIT_HOLD_RANGE` against
+every non-hostile fleet there (station, patrols, a Guard, the player). Below 0.75x
+nothing, below 1.25x half, else `blockadeAccessPenalty` (0.6, vanilla's figure).
+Refreshed on the ground-front poll.
+
+To verify: a colony whose Space column reads Threat shows Blockaded with -60%
+accessibility; the penalty halves when defenders come close and lifts when they win
+or the swarm leaves; the colony's import shortages follow.
+
 ### A station that comes back (2026-09-08, built, untested)
 
 *The user: the Threat held the space over a core world it was sieging, "the siege went so long
@@ -1000,6 +1052,10 @@ never feed its alarm), no `retaliate` (guarded so it can never fire for a Threat
 `ThreatColonyManager.convertConquered` runs vanilla's own teardown
 (`DecivTracker.decivilize(market, false)`) and founds a hive of `conquestHiveSize` (2) on
 the ruin at once, as a colonisation wave would (`foundColony`). Any Defend contract fails.
+`foundColony` only builds the market: `registerConquest` books it (stage, `colonyMarkets`,
+growth/garrison clocks) and marks the system found, since the siege was public. Before
+2026-09-27 this step was missing - conquered hives (Qaras, Yma) ran off the registry,
+off the board and never besieged; `adoptUnbookedConquests` books those on load.
 Announced: *"X has fallen to the Threat ground assault - the colony is lost."* then *"The
 swarm has seeded a hive on the ruins of X."* With the knob off, or a world that cannot
 carry a hive, the old path runs: the mod's own `$threatinc_killedBy` flag names the Threat
@@ -1274,9 +1330,9 @@ docs/testing-harness.md; persistent-data XML injection of
    every few days per fleet, the colony's Defenses tooltip shows "Heavy Batteries
    (suppressed, N% effect)" climbing down to 50%, and the fleet loses ships to the batteries
    (log: "batteries cost N FP").
-2. The landing comes once every defence structure carries 90 days (the floor) or the
+2. The landing comes once every defence structure is fully worn out or the
    troops could hold - not before. The strike intel reads "suppressing the defences" then
-   "moving to land - defences at the floor" or "moving to land - the troops can hold,
+   "moving to land - defences worn out" or "moving to land - the troops can hold,
    sparing the ships"; the purge's reads "besieging from orbit" then the same.
 3. A dry Threat front digs in (board: stance "dug in", Arms "dry", tooltip "Dug in for the
    next expedition - final push in N days"), the next strike goes to that world more often
@@ -1299,7 +1355,7 @@ docs/testing-harness.md; persistent-data XML injection of
 
 10. A faction or player-commissioned siege expedition over a hive logs "Siege slice vs X"
     per fleet instead of "Siege pass (tactical)"; the hive's Ground Defenses tooltip reads
-    "(suppressed, N% effect)" falling to 50% and no lower while no front stands; the
+    "(suppressed, N% effect)" falling to 0% eventually; the
     expedition loses ships (log "batteries cost N FP"); its intel reads "besieging from
     orbit" then lands. The sitrep lists one "Orbital siege" line per world.
 11. A hive struck by a marine raid or saturation pass keeps most of its defence bonus now
@@ -1307,22 +1363,22 @@ docs/testing-harness.md; persistent-data XML injection of
 12. The player's tactical bombardment of a hive and of a human colony shows the slice
     prompt (days per structure, fleet points lost, fuel), takes the smallest ship(s) and
     names them, never the flagship, and moves each structure's clock by about the quoted
-    days rather than 60 / 365. A second bombardment at the floor is refused with the
+    days rather than 60 / 365. A second bombardment once fully worn is refused with the
     "as far as orbit can push them" line.
 13. The button reads Support; its row label, the fleets table kind, the board Activity
     entry ("supporting the siege") and the Supply / Pull out refusal ("send Support
     first") all say Support. Saves from before the rename keep their Escort orders working
     under the new name.
 14. A Support fleet on station over a besieged world with a clear orbit logs "Support over
-    X: ... lost N FP" as the batteries bite and the world's fortifications fall to the
-    floor; over a contested orbit it fights instead and suppresses nothing.
+    X: ... lost N FP" as the batteries bite and the world's fortifications fall to
+    nothing; over a contested orbit it fights instead and suppresses nothing.
 15. Balance to read off the log: what a default 400-point siege expedition does to a
     size-5 hive per slice, and whether its landing gate opens before `siegeOrbitDays`.
 16. The planet shows vanilla's bombardment burst on every siege slice while the player is
     in-system (one burst per whole day of suppression added per world), from an expedition, a Support
     fleet or the player's own tactical bombardment. The Support button's tooltip and its
-    confirm name the fleet that goes and quote the days per day it suppresses, the floor,
-    and the fleet points per day the batteries take.
+    confirm name the fleet that goes and quote the days per day it suppresses and the
+    fleet points per day the batteries take.
 
 ### To verify - the landing fleet defends, and the Defend order (2026-09-07, built, untested)
 
@@ -1333,7 +1389,7 @@ docs/testing-harness.md; persistent-data XML injection of
     "Siege slice vs <second world>" follows: instead "Siege of <second world>: nothing left
     to land, no siege", or nothing at all once every fleet has joined the Defend.
 18. A Defend fleet over a front that holds logs no "Defend over X: ... lost N FP" and the
-    hive's fortifications recover from the floor; the moment the front cannot hold (a
+    hive's fortifications recover; the moment the front cannot hold (a
     counter-attack, armaments out) the slices and the bombardment burst start and the
     fleets-table task reads "covering the front on X", back to "defending the orbit of X"
     when it can hold again.
@@ -1364,7 +1420,7 @@ docs/testing-harness.md; persistent-data XML injection of
     (`orbitHeld`). Verify: with Defend fleets over a hive the daily log line reads
     "suppresses ~N d/day ... clock C of F" on most days and "fights for the orbit - H FP of
     defenders against F FP here" only while a real swarm force is at the planet; the clock
-    climbs by the summed rate and reaches the floor (150 on a hive) in days, not months.
+    climbs by the summed rate and reaches full wear (300 on a hive) in days, not months.
     SECOND CORRECTION: with the contest fixed, only one of four Defend fleets ever logged
     a slice - the other three failed the 1,500-unit distance check, chasing swarms round
     the system on MAKE_AGGRESSIVE. Support / Defend fleets and the swarm's stations are now
@@ -1385,16 +1441,16 @@ docs/testing-harness.md; persistent-data XML injection of
       them at the planet, and never pursue. Defense Swarms are aggressive, so the fight for
       the orbit still happens, at the planet.
     - Once a day every order fleet logs one line: at the planet, the slice line as before,
-      or "holds the orbit - the front holds / the defences are at the floor"; away from it,
+      or "holds the orbit - the front holds / the defences are worn out"; away from it,
       "<fleet> at P FP is N units out (or: out of the system, in X), <assignment>, in a
       battle, blinkered/hunting". A leash line now says what the fleet was doing
       ("(was: ORBIT_AGGRESSIVE -> Gamma Brador IV '...')"), which names the other writer.
     Verify: four Defend fleets over one world give four lines a day, all "suppresses" once
-    the front cannot hold, and the clock climbs at their sum until the floor (150 on a
+    the front cannot hold, and the clock climbs at their sum toward the full clock (300 on a
     hive); no fleet is more than 1,500 units out for more than a day; if "strayed" repeats
-    for one fleet, the "(was: ...)" text says who keeps re-tasking it. The floor is the
-    end of what orbit can do: at 149-150 of 150 the clock cannot rise, and a front that
-    cannot hold there needs troops, not ships (`fortificationOrbitFloor` sets the floor).
+    for one fleet, the "(was: ...)" text says who keeps re-tasking it.
+    2026-09-28: orbit alone can now wear the defences all the way to nothing by itself - a
+    front on the ground just gets there faster (`fortificationOrbitFloor` is gone).
 
 ### Verified - military options on a hive (2026-09-07, tested in game, works)
 
@@ -1450,10 +1506,10 @@ The rest of the list below was the pre-fix verification plan and still holds:
 - Confirm it. The shield's disruption clock starts; the guns take the reduced figure. Check
   the log line: `siegeSlice ... shieldThrough=0.25`.
 - Bombard again. `shieldThrough` has risen (the shield is worn, so more gets through) and the
-  guns take more than last time. Repeat until `shieldThrough` reaches 1 - or 0.625 at the
-  orbital floor with LunaLib's `fortificationOrbitFloor` 0.5, where it should stop.
-- Land a front on that world: the floor goes, and further passes take the shield to 0
-  condition and `shieldThrough` to 1.
+  guns take more than last time. Repeat until `shieldThrough` reaches 1 (2026-09-28: the
+  orbital floor is gone, so orbit alone gets there eventually).
+- Land a front on that world: further passes take the shield to 0
+  condition and `shieldThrough` to 1 faster than orbit alone.
 - The colony screen's invasion tooltip reads "Planetary shield at N% effect: it absorbs M% of
   incoming disruption." after "Defences suppressed to: ...", and the shield appears in that
   suppressed list once it is disrupted.
@@ -1480,26 +1536,26 @@ The rest of the list below was the pre-fix verification plan and still holds:
   must open with a plain vanilla shield rather than a `CannotResolveClassException`. Re-enable
   and load again: the shield is ours, and a shield that was disrupted still is (the disruption
   key is pinned to vanilla's).
-- Land a front on a shielded world and hold it: the shield's condition keeps falling past the
-  orbital floor (below 50% at LunaLib defaults) and reaches 0, at the same rate the guns fall.
+- Land a front on a shielded world and hold it: the shield's condition keeps falling,
+  reaching 0 at the same rate the guns fall.
   While GRINDING rather than HOLDING it should fall at `frontGrindSuppressMult` of that.
-- Balance watch: at LunaLib defaults (`siegeSuppressDaysPerDay` 6, `fortificationOrbitFloor`
-  0.5, `siegeOrbitDays` 120) a 600 FP expedition floors an unshielded size-5 colony's guns in
-  ~115 days, inside its orbit budget, but needs ~218 days against a shielded one - so from
-  orbit alone it will time out. It does not need the floor to land (suppression lowers
-  `defenderStrength` continuously), but if the swarm never manages a landing on shielded
+- Balance watch: at LunaLib defaults (`siegeSuppressDaysPerDay` 6, `siegeOrbitDays` 120) a
+  600 FP expedition wears an unshielded size-5 colony's guns down within its orbit budget,
+  but a shielded one takes longer - so from orbit alone it may time out. Landing does not
+  need the guns already worn down (suppression lowers `defenderStrength` continuously), but
+  if the swarm never manages a landing on shielded
   worlds, `threatinc_shieldAbsorbMax` is the dial; 0.5 roughly halves the penalty.
 
 ### To verify - fabricating troops from the fleet (2026-09-08, built, untested)
 
 The mechanic starts where bombardment stops, so the setup is a Defend fleet over a world
-whose fortifications are already at the floor with a front that cannot hold.
+whose fortifications are already fully worn with a front that cannot hold.
 
-1. **It engages at the right moment, and only then.** Bombard a world to the floor with a
+1. **It engages at the right moment, and only then.** Bombard a world to fully worn with a
    front on it that is short of `holdRequirement`. The fleet's log line should switch from
-   the slice line to `... FP fabricates - the defences are at the floor and the front is N
+   the slice line to `... FP fabricates - the defences are worn out and the front is N
    short of holding`, and the board row from "covering the front on X" to "breaking up for
-   the front on X". Above the floor it must still bombard.
+   the front on X". While not yet fully worn it must still bombard.
 2. **It stops when the front holds.** Once the drops carry the front over the line the row
    should go back to "defending the orbit of X" and the fleet stop losing ships. Watch for
    oscillation across the boundary - that is what `fabricateHoldMargin` is for; if it
@@ -1516,17 +1572,17 @@ whose fortifications are already at the floor with a front that cannot hold.
    a drop still happens (`frontMinMarines` worth) and its armaments un-dry the front.
 7. **The price.** On a world with heavy batteries, `lost N FP to the batteries doing it`
    should appear beside the drop and be larger than the suppressed-condition figure the
-   slice line was quoting before the floor. On a world with no defence structures at all,
-   fabrication should still run and cost nothing.
+   slice line was quoting before the guns were fully worn. On a world with no defence
+   structures at all, fabrication should still run and cost nothing.
 8. **Both theatres.** A faction/player Defend over a hive, and a swarm station over a human
    colony under invasion. The swarm's messages should read "The swarm over X is breaking up
    its own ships".
 9. **The visual.** In the same system, fragments should fall inward to the planet with a
    ping and a floating label - and it must NOT look like the bombardment burst. Out of the
    system, nothing should be drawn and nothing should throw.
-10. **Off.** `threatinc_fabricateEnabled` false: a Defend fleet at the floor idles as it did
-    before, with the old "the defences are at the floor" reason, and the tooltip loses its
-    fabrication lines.
+10. **Off.** `threatinc_fabricateEnabled` false: a Defend fleet with the defences fully worn
+    idles as it did before, with the old "the defences are worn out" reason, and the
+    tooltip loses its fabrication lines.
 
 ### To verify - a station that comes back (2026-09-08, built, untested)
 

@@ -180,20 +180,20 @@
 	# cannot touch. The fortification is each defence structure's multiplier
 	# scaled by its condition - 1 intact, 0 once its disruption clock carries
 	# the theatre's wear days (fortificationDisruptDays on a colony,
-	# defenseWearDays on a hive) - instead of vanilla's on/off. From orbit
-	# alone the condition never falls below fortificationOrbitFloor; once a
-	# front stands on the world the floor is 0. On a colony the rule applies
-	# to worlds besieged (or landed on), not to every raid.
+	# defenseWearDays on a hive) - instead of vanilla's on/off. On a colony
+	# the rule applies to worlds besieged (or landed on), not to every raid.
 	"threatinc_fortificationDisruptDays": 180,
-	"threatinc_fortificationOrbitFloor": 0.5,
 	# the player can raid a human colony's fortifications (vanilla tags them
 	# unraidable): danger as vanilla's NONE/MINIMAL/LOW/MEDIUM/HIGH/EXTREME -
-	# days per marine token and casualties. Raids are not held to the floor.
+	# days per marine token and casualties.
 	"threatinc_fortificationRaidDanger": "HIGH",
 	# marines lost on a fortification grow by (tokens ^ depthLoss - 1) x the
 	# defence's share of the fight: depth costs dear against a strong
 	# garrison, little against a weak one (0 = vanilla)
 	"threatinc_fortificationRaidDepthLoss": 1.5,
+	# the same toll on a hive's Swarm Nexus (weighted by its defence bonus)
+	# and Fabrication Core (no defence bonus: this weight, Ground Defenses = 1)
+	"threatinc_coreRaidDepthWeight": 1.0,
 	# an unopposed besieging fleet - a Threat strike, a faction's or the
 	# player's siege expedition, a Support sortie, the player's own tactical
 	# bombardment - adds suppressDaysPerDay x fleet / (fleet + defence)
@@ -214,15 +214,17 @@
 	"threatinc_hiveSiegeSuppressDaysPerDay": 30,
 	"threatinc_siegeFPWeight": 1.0,
 	"threatinc_siegeBatteryAttritionPerDay": 0.02,
-	# days of siege one tactical bombardment by the player stands for
+	# days of siege one tactical bombardment by the player stands for in
+	# return fire, and in suppression: a pass is a concentrated strike, so it
+	# suppresses as a longer siege would but is under the guns only briefly.
+	# Both still scale by fleet / (fleet + defence).
 	"threatinc_siegeBombardSliceDays": 3,
+	"threatinc_tacBombardSuppressDays": 15,
 	# a planetary shield is a military structure that wears on the same clock as
 	# any fortification, but what its condition buys is cover: an intact shield
 	# turns this fraction of a bombardment away from everything else on the world,
 	# falling in a straight line as its own disruption days pile up. The shield
-	# itself has no cover and takes every pass at full weight (soak mult). The
-	# orbital floor applies to it too, so orbit alone can never quite spend one -
-	# land a front and the floor is gone.
+	# itself has no cover and takes every pass at full weight (soak mult).
 	"threatinc_shieldAbsorbEnabled": true,
 	"threatinc_shieldAbsorbMax": 0.75,
 	"threatinc_shieldSoakMult": 1.0,
@@ -244,6 +246,10 @@
 	# districtSeizeDays of disruption while held
 	"threatinc_districtStabilityPenalty": 1.0,
 	"threatinc_districtAccessPenalty": 0.1,
+	# Threat warships holding a colony's orbit blockade it, as vanilla's League
+	# blockade does: this much accessibility at 1.25x the defenders' points,
+	# half from 0.75x (vanilla 0.6)
+	"threatinc_blockadeAccessPenalty": 0.6,
 	"threatinc_districtSeizeDays": 30,
 	# a Threat ground victory seeds a hive of conquestHiveSize on the spot
 	"threatinc_conquestConverts": true,
@@ -267,11 +273,9 @@
 	"threatinc_nexusDefenseBonus": 0.5,
 	# ...wearing down under disruption: the bonus falls linearly with the
 	# disruption days on the structure's clock, to nothing at this many - the
-	# hive's fortification clock (fortificationOrbitFloor applies from orbit,
-	# 0 once a front stands). The same wear applies to a disrupted Core's
+	# hive's fortification clock. The same wear applies to a disrupted Core's
 	# fabrication factor (coreDownFactor at fresh disruption, zero at the
-	# limit). What drives a clock that deep: siege slices from orbit up to the
-	# floor, marine raids adding their days (vanilla), and a ground front that
+	# limit). What drives a clock that deep: siege slices from orbit, marine raids adding their days (vanilla), and a ground front that
 	# HOLDS adding a net day per day (frontSuppressDaysPerDay), so an organ
 	# carrying 300 days has had an army on top of it for most of a year. The
 	# size-anchored base never wears. 0 = no wear.
@@ -611,6 +615,10 @@
 	# points a colony of yours needs to be picked first as the source.
 	"threatinc_ordersEnabled": true,
 	"threatinc_guardFleetFP": 100,
+	# relief of an NPC's own invaded world is sized to the swarm over it times
+	# npcSiegeOrbitMargin, built from fleets of reliefFleetFP combat points
+	# (as far as the base's depot provisions them) and merged into one
+	"threatinc_reliefFleetFP": 300,
 	"threatinc_guardDays": 90,
 	# a guard over one of YOUR OWN colonies is staging (2026-09-05): it stays
 	# guardOwnDays (0 = until recalled), its points count in that colony's FP
@@ -640,8 +648,8 @@
 	"threatinc_landingDefendEnabled": true,
 	"threatinc_defendMinStrength": 0.33,
 	# FABRICATING TROOPS FROM THE FLEET (2026-09-08). A Defend fleet bombards
-	# while its front cannot hold - but once every fortification is at the
-	# orbital floor there is nothing left for a slice to reach, and a losing
+	# while its front cannot hold - but once every fortification is worn out
+	# there is nothing left for a slice to reach, and a losing
 	# front would just watch. Instead the fleet breaks up its own hulls and
 	# sends them down as soldiers: fabricateTroopsPerFP troops per fleet point,
 	# landed with fabricateSupplyDays of their own armaments. It commits only
@@ -704,8 +712,8 @@
 	# requests for help: mobilised NPC factions post ordinary missions - defend
 	# a colony a strike is coming for when its defenders are outmatched (the
 	# strike's strength over theirs times defendRequestRatio), or deliver a
-	# commodity the depot is exhausted for or the colony has been short of for
-	# missionAidShortageDays. They expire unaccepted on missionPostingDays and
+	# commodity the colony is short of for its peacetime needs and the depot
+	# cannot cover (exhausted, or uncovered for missionAidShortageDays). They expire unaccepted on missionPostingDays and
 	# fail if not completed in the term or the colony is lost.
 	"threatinc_aidRequestsEnabled": true,
 	"threatinc_aidRequestMaxPosted": 3,
@@ -713,7 +721,6 @@
 	"threatinc_missionDefendCredits": 20000,
 	"threatinc_defendRequestRatio": 1.0,
 	"threatinc_missionAidShortageDays": 60,
-	"threatinc_missionAidPayMult": 1.5,
 	# a swarm bounty (an outweighed NPC siege's call for help) pays this per
 	# frigate destroyed in the hive system - destroyer x2, cruiser x3,
 	# capital x5, times the player's share - for swarmBountyDays
@@ -783,10 +790,11 @@
 	"threatinc_coalitionEnabled": true,
 	"threatinc_coalitionCallDays": 60,
 	"threatinc_coalitionSupportChance": 0.5,
-	# outposts: a faction-styled station over a world the swarm held and lost.
-	# No market - a fortress that blocks re-seeding until it is destroyed. The
-	# player pays credits; a mobilised NPC faction pays supplies and fuel from
-	# its nearest base and builds them on its own (outpostChance per tick).
+	# outposts: your faction-styled station over an uncolonised world - no
+	# market, a fortress that blocks re-seeding until it is destroyed - for
+	# credits. A mobilised NPC faction holds purged worlds with forward bases
+	# instead (frontline outposts), paid in supplies and fuel from its nearest
+	# base, outpostChance per tick; this knob gates those too.
 	# A ground victory raises nothing: the front's survivors come home
 	"threatinc_outpostsEnabled": true,
 	"threatinc_outpostTier": 1,
@@ -804,7 +812,8 @@
 	# builder only adds what vanilla's import numbers say the link can supply.
 	# A link connected to a colony through the chain gets frontlineRelayAccess;
 	# a link starved frontlineStarveDays shrinks; one with no found hive within
-	# frontlineKeepLY for frontlineAbandonDays is dismantled
+	# frontlineKeepLY for frontlineAbandonDays is dismantled. The enabled knob
+	# gates founding only: links already standing are kept up with it off
 	"threatinc_frontlinesEnabled": true,
 	"threatinc_frontlinePlanDays": 15,
 	"threatinc_frontlineMaxPerFaction": 0,
@@ -856,16 +865,12 @@
 	"threatinc_strikeDetectLY": 4,
 
 	# fabrication factor the moment the Fabrication Core is disrupted (health =
-	# fab x supply; low health weakens everything the colony does - growth,
-	# garrison pace, counter-attacks - but only ground victory kills it). From
-	# there it wears linearly to zero at defenseWearDays, so at 1.0 the days on
-	# the Core's clock alone decide: one tactical pass (60 d) leaves 80
-	# percent, a front holding for 150 days half, 300 days nothing (decided
-	# 2026-09-05; it was a 0.25 step, so one day of holding quadrupled the
-	# counter-attack interval). The Swarm Nexus is NOT a vitality organ - it
-	# only fabricates fleets, so disrupting it halts swarm spawning without
-	# touching health.
-	"threatinc_coreDownFactor": 1.0,
+	# fab x supply); from there it wears linearly to zero at defenseWearDays.
+	# 0.8 (2026-09-28): any disruption slows growth at once - at 1.0 a Core
+	# under ~45 days grew at full pace while its tooltip read disrupted. One
+	# tactical pass (60 d) leaves 64 percent. Was a 0.25 step before
+	# 2026-09-05 (one day of holding quadrupled the counter-attack interval).
+	"threatinc_coreDownFactor": 0.8,
 	# growth pace ramps from 0 at stall health to full at full health
 	"threatinc_growthStallHealth": 0.5,
 	"threatinc_growthFullHealth": 0.85,

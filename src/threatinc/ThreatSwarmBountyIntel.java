@@ -43,6 +43,11 @@ import com.fs.starfarer.api.util.Misc;
  * ({@link #paidBy}). It ends early only if the
  * hive system falls, or the base or its faction's war goes. The siege gate
  * reads the live garrison, so every swarm destroyed opens the siege sooner.
+ *
+ * <p>RELIEF (2026-09-27): a mobilised NPC colony whose orbit the swarm holds
+ * over a landed Threat army posts the same bounty on its own system
+ * ({@link #postRelief}, from ThreatFleetOrders.planRelief). It ends when the
+ * army is gone from the world.
  */
 public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 
@@ -60,6 +65,8 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 	protected ReputationAdjustmentResult latestRep;
 	/** Why it ended early: "cleared", "neutralized"; null when it ran its term. */
 	protected String endReason;
+	/** A relief bounty: the invaded colony it lifts the siege of. Null for a siege bounty. */
+	protected String reliefMarketId;
 
 	protected ThreatSwarmBountyIntel(MarketAPI base, StarSystemAPI system, int siegeFP) {
 		this.systemId = system.getId();
@@ -85,6 +92,22 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		Global.getSector().getIntelManager().addIntel(b);
 		ThreatIncConfig.log("Swarm bounty posted by " + b.factionId + " on " + system.getName()
 				+ " (siege takes " + siegeFP + " FP)");
+		return b;
+	}
+
+	/**
+	 * The swarm holds the orbit over a Threat army on the colony: its owner
+	 * posts a bounty on the system's Threat ships, unless one is already
+	 * running there.
+	 */
+	public static ThreatSwarmBountyIntel postRelief(MarketAPI colony) {
+		if (colony == null || colony.getStarSystem() == null || !ThreatIncConfig.swarmBountiesEnabled()) return null;
+		if (find(colony.getStarSystem().getId()) != null) return null;
+		ThreatSwarmBountyIntel b = new ThreatSwarmBountyIntel(colony, colony.getStarSystem(), 0);
+		b.reliefMarketId = colony.getId();
+		Global.getSector().getIntelManager().addIntel(b);
+		ThreatIncConfig.log("Relief bounty posted by " + b.factionId + " on " + colony.getStarSystem().getName()
+				+ " for " + colony.getName());
 		return b;
 	}
 
@@ -341,7 +364,11 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 	}
 
 	protected String needGone() {
-		if (ThreatIncData.getLiveColonyMarkets(systemId).isEmpty()) return "cleared";
+		if (reliefMarketId != null) {
+			if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(reliefMarketId))) return "cleared";
+		} else if (ThreatIncData.getLiveColonyMarkets(systemId).isEmpty()) {
+			return "cleared";
+		}
 		MarketAPI base = Global.getSector().getEconomy().getMarket(baseMarketId);
 		if (base == null || !factionId.equals(base.getFactionId())) return "neutralized";
 		if (!ThreatWarState.isAtWar(factionId)) return "neutralized";
@@ -387,11 +414,18 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		return base != null ? base.getName() : baseMarketId;
 	}
 
-	/** Defense Swarm points a siege faces now: the strongest world's (IncursionManager.siegeOrbitFaced). */
-	protected float orbitFP() {
+	/** The worlds the poster's siege would take now (IncursionManager.siegeTargets), or every hive of the system while it has none to take. */
+	protected List<MarketAPI> siegeTargets() {
 		StarSystemAPI system = system();
-		if (system == null) return 0f;
-		return IncursionManager.siegeOrbitFaced(IncursionManager.collectSiegeTargets(null, system));
+		if (system == null) return new ArrayList<MarketAPI>();
+		MarketAPI base = Global.getSector().getEconomy().getMarket(baseMarketId);
+		List<MarketAPI> targets = IncursionManager.siegeTargets(base, Global.getSector().getFaction(factionId), system);
+		return !targets.isEmpty() ? targets : IncursionManager.collectSiegeTargets(system);
+	}
+
+	/** Defense Swarm points the siege faces now: the strongest of its worlds' (IncursionManager.siegeOrbitFaced). */
+	protected float orbitFP() {
+		return IncursionManager.siegeOrbitFaced(siegeTargets());
 	}
 
 	@Override
@@ -422,6 +456,8 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 
 	@Override
 	public SectorEntityToken getMapLocation(SectorMapAPI map) {
+		MarketAPI relieved = reliefMarketId != null ? Global.getSector().getEconomy().getMarket(reliefMarketId) : null;
+		if (relieved != null && relieved.getPrimaryEntity() != null) return relieved.getPrimaryEntity();
 		List<MarketAPI> hives = new ArrayList<MarketAPI>(ThreatIncData.getLiveColonyMarkets(systemId));
 		for (MarketAPI hive : hives) {
 			if (hive.getPrimaryEntity() != null) return hive.getPrimaryEntity();
@@ -464,8 +500,16 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 				initPad = 0f;
 			}
 			info.addPara("%s base reward per frigate", initPad, tc, h, Misc.getDGSCredits(baseBounty));
-			info.addPara("Strongest swarms %s FP, siege takes %s", 0f, tc, h, Misc.getWithDGS((int) orbitFP()),
-					Misc.getWithDGS(siegeFP));
+			if (reliefMarketId != null) {
+				MarketAPI relieved = Global.getSector().getEconomy().getMarket(reliefMarketId);
+				if (relieved != null) {
+					info.addPara("Threat over %s: %s FP", 0f, tc, h, relieved.getName(), Misc.getWithDGS(
+							(int) ThreatGroundFronts.pointsNear(relieved, Factions.THREAT, true)));
+				}
+			} else {
+				info.addPara("Strongest swarms %s FP, siege takes %s", 0f, tc, h, Misc.getWithDGS((int) orbitFP()),
+						Misc.getWithDGS(siegeFP));
+			}
 			addDays(info, "remaining", Math.max(0f, duration - elapsedDays), tc);
 		}
 		unindent(info);
@@ -478,10 +522,13 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		FactionAPI faction = getFaction();
 		if (faction.getLogo() != null) info.addImage(faction.getLogo(), width, 128, opad);
 		info.addPara(Misc.ucFirst(faction.getDisplayNameWithArticle()) + " " + faction.getDisplayNameIsOrAre()
-				+ " paying for Threat ships destroyed in the " + systemName() + ", for its siege from "
-				+ baseName() + ".", opad);
+				+ " paying for Threat ships destroyed in the " + systemName() + ", "
+				+ (reliefMarketId != null ? "to lift the siege of " + baseName() : "for its siege from " + baseName())
+				+ ".", opad);
 		if (isEnding() || isEnded()) {
-			info.addPara("cleared".equals(endReason) ? "The hive system has fallen; the bounty is over."
+			info.addPara("cleared".equals(endReason) ? (reliefMarketId != null
+					? "The Threat army is gone from " + baseName() + "; the bounty is over."
+					: "The hive system has fallen; the bounty is over.")
 					: "neutralized".equals(endReason) ? "The bounty has been withdrawn."
 					: "The bounty has run its term.", opad);
 		}

@@ -203,7 +203,7 @@ public class ThreatScouts {
 				continue;
 			}
 			for (MarketAPI market : Global.getSector().getEconomy().getMarkets(system)) {
-				if (market.isHidden() || market.getPrimaryEntity() == null) continue;
+				if (ThreatMapFog.hidden(market) || market.getPrimaryEntity() == null) continue;
 				if (Factions.THREAT.equals(market.getFactionId())) continue;
 				if (market.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) continue;
 				reveal(systemId, market.getFactionId());
@@ -400,7 +400,7 @@ public class ThreatScouts {
 	/** Anyone but the swarm keeps a colony there - revealNeighbours covers those. */
 	protected static boolean inhabited(StarSystemAPI system) {
 		for (MarketAPI market : Global.getSector().getEconomy().getMarkets(system)) {
-			if (market.isHidden() || market.getPrimaryEntity() == null) continue;
+			if (ThreatMapFog.hidden(market) || market.getPrimaryEntity() == null) continue;
 			if (Factions.THREAT.equals(market.getFactionId())) continue;
 			return true;
 		}

@@ -481,13 +481,60 @@ public class ThreatFleetOrders {
 		return false;
 	}
 
+	/** Fleet points of the live guard task forces of any faction bound for or over the colony. */
+	public static float guardPointsFor(String marketId) {
+		float fp = 0f;
+		if (marketId == null) return fp;
+		for (Order o : all()) {
+			if (!KIND_GUARD.equals(o.kind) || !marketId.equals(o.targetId)) continue;
+			if (o.fleet != null && o.fleet.isAlive() && !o.fleet.isExpired()) fp += o.fleet.getFleetPoints();
+		}
+		return fp;
+	}
+
 	/**
-	 * RELIEF (docs/ground-war.md "How the defender fights back"): a Threat
-	 * army on one of the faction's own worlds gets a Guard task force over it
-	 * - the orbit denied, no further wave can land - one per world at a time,
-	 * from the nearest base. NPC navies only: the player's own faction takes
-	 * the player's orders from the board. Marines follow by convoy
-	 * (ThreatConvoys.planRelief).
+	 * What lifting the Threat's hold over the colony takes: the swarm's points
+	 * over it times npcSiegeOrbitMargin, the siege's own orbit rule. With no
+	 * swarm overhead, one guard of guardFleetFP to deny the next landing.
+	 */
+	public static float reliefGoal(MarketAPI market) {
+		float threat = ThreatGroundFronts.pointsNear(market, Factions.THREAT, true);
+		if (threat <= 0f) return ThreatIncConfig.guardFleetFP();
+		return threat * Math.max(1f, ThreatIncConfig.npcSiegeOrbitMargin());
+	}
+
+	/** Points the colony's relief is still short: 0 unless a Threat army stands on it. */
+	public static float reliefShort(MarketAPI market) {
+		if (market == null) return 0f;
+		if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(market.getId()))) return 0f;
+		return Math.max(0f, reliefGoal(market) - guardPointsFor(market.getId()));
+	}
+
+	/**
+	 * Whether one of the faction's own invaded worlds is still owed relief a
+	 * base of the faction can reach and provision. A siege waits for it:
+	 * relief draws on the depots first (user, 2026-09-27).
+	 */
+	public static boolean reliefOwed(FactionAPI faction) {
+		if (faction == null || faction.isPlayerFaction()) return false;
+		for (MarketAPI market : ThreatReserves.marketsOf(faction.getId())) {
+			if (market.getPrimaryEntity() == null || reliefShort(market) <= 0f) continue;
+			MarketAPI base = pickBase(faction, market.getLocationInHyperspace());
+			if (base != null && canProvisionRelief(base, market)) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * RELIEF (docs/ground-war.md "Relief"): a Threat army on one of the
+	 * faction's own worlds gets a task force over it sized to break the
+	 * swarm's hold - reliefGoal, less the guards already bound there - from
+	 * the nearest base, as far as its depot can provision it. Checked on the
+	 * ground-front poll. NPC navies only: the player's own faction takes the
+	 * player's orders from the board. While the swarm holds the orbit the
+	 * owner also posts a swarm bounty on the system; allies top up a relief
+	 * the owner could not pay for (ThreatCoalition.allyAid). Marines follow
+	 * by convoy (ThreatConvoys.planRelief).
 	 */
 	public static void planRelief() {
 		if (!ThreatWarState.enabled() || !ThreatIncConfig.ordersEnabled()) return;
@@ -499,14 +546,109 @@ public class ThreatFleetOrders {
 				if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(market.getId()))) {
 					continue;
 				}
-				if (guardBoundFor(market.getId())) continue;
-				Order o = dispatchGuard(faction, market);
-				if (o != null) {
-					ThreatIncConfig.log("Relief: " + factionId + " guards invaded "
-							+ market.getName());
+				if (Factions.THREAT.equals(ThreatGroundFronts.spaceHolder(market))) {
+					ThreatSwarmBountyIntel.postRelief(market);
+				}
+				float owed = reliefShort(market);
+				if (owed <= 0f) continue;
+				MarketAPI base = pickBase(faction, market.getLocationInHyperspace());
+				if (base == null) continue;
+				float sent = sendRelief(faction, market, base, owed);
+				if (sent > 0f) {
+					ThreatIncConfig.log("Relief: " + factionId + " sends " + (int) sent + " FP from "
+							+ base.getName() + " to invaded " + market.getName() + " (owed "
+							+ (int) owed + ")");
 				}
 			}
 		}
+	}
+
+	/** Fuel and supplies one relief fleet asks of the base: {fuel, supplies}. */
+	protected static float[] reliefWants(MarketAPI base, MarketAPI target) {
+		float points = ThreatIncConfig.reliefFleetFP() / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+		float dist = base.getStarSystem() == null ? 0f
+				: Misc.getDistanceLY(base.getStarSystem().getLocation(), target.getLocationInHyperspace());
+		return new float[] {points * dist * ThreatIncConfig.expeditionFuelPerPointLY(),
+				points * ThreatIncConfig.expeditionSuppliesPerPoint()};
+	}
+
+	/** Whether the base's depot can provision one more relief fleet: expeditionMinProvisionsFraction of its wants, a siege's own rule. */
+	protected static boolean canProvisionRelief(MarketAPI base, MarketAPI target) {
+		float[] wants = reliefWants(base, target);
+		float min = ThreatIncConfig.expeditionMinProvisionsFraction();
+		return ThreatReserves.available(base, Commodities.FUEL) >= wants[0] * min
+				&& ThreatReserves.available(base, Commodities.SUPPLIES) >= wants[1] * min;
+	}
+
+	/**
+	 * Builds relief at the base until its fleets reach {@code owed} points,
+	 * siegeMaxFleets are built, or the depot cannot provision another, then
+	 * folds them into one fleet up to softenMergeMaxShips - vanilla's AI never
+	 * keeps separate fleets together, and a guard a tenth the swarm's size
+	 * only ever kept its distance (Coatl, 2026-09-27). Each fleet left over
+	 * guards beside the lead. Returns the points sent.
+	 */
+	public static float sendRelief(FactionAPI faction, MarketAPI target, MarketAPI base, float owed) {
+		if (faction == null || target == null || base == null || owed <= 0f) return 0f;
+		List<CampaignFleetAPI> built = new ArrayList<CampaignFleetAPI>();
+		float sent = 0f;
+		int max = Math.max(1, ThreatIncConfig.siegeMaxFleets());
+		while (sent < owed && built.size() < max && canProvisionRelief(base, target)) {
+			CampaignFleetAPI fleet = buildTaskForce(base, faction, ThreatIncConfig.reliefFleetFP(),
+					target.getLocationInHyperspace());
+			if (fleet == null) break;
+			built.add(fleet);
+			sent += fleet.getFleetPoints();
+		}
+		if (built.isEmpty()) return 0f;
+		CampaignFleetAPI lead = built.get(0);
+		List<CampaignFleetAPI> sailing = new ArrayList<CampaignFleetAPI>();
+		sailing.add(lead);
+		for (int i = 1; i < built.size(); i++) {
+			CampaignFleetAPI f = built.get(i);
+			if (lead.getFleetData().getNumMembers() + f.getFleetData().getNumMembers()
+					<= ThreatIncConfig.softenMergeMaxShips()) {
+				absorb(lead, f);
+			} else {
+				sailing.add(f);
+			}
+		}
+		float days = ThreatIncConfig.guardDays();
+		for (CampaignFleetAPI fleet : sailing) {
+			fleet.setName("Relief Force");
+			fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, target.getPrimaryEntity(), days,
+					"relieving " + target.getName());
+			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
+					1000f, "returning to " + base.getName());
+			Order o = record(fleet, faction, KIND_GUARD, base, target.getId(), target.getName(), days);
+			if (!faction.getId().equals(target.getFactionId())) o.recipientFactionId = target.getFactionId();
+		}
+		return sent;
+	}
+
+	/**
+	 * Folds {@code from} into {@code to}: its ships, and what it was
+	 * provisioned with and launched at, so the one fleet is refunded and
+	 * judged as the two were (ThreatReturns). Despawns {@code from}; the
+	 * caller settles any order it carried.
+	 */
+	public static void absorb(CampaignFleetAPI to, CampaignFleetAPI from) {
+		for (com.fs.starfarer.api.fleet.FleetMemberAPI m : from.getFleetData().getMembersListCopy()) {
+			from.getFleetData().removeFleetMember(m);
+			m.setFlagship(false);
+			to.getFleetData().addFleetMember(m);
+		}
+		com.fs.starfarer.api.campaign.rules.MemoryAPI a = to.getMemoryWithoutUpdate(), b = from.getMemoryWithoutUpdate();
+		for (String k : new String[] { ThreatReturns.MEM_FUEL, ThreatReturns.MEM_SUPPLIES, ThreatReturns.MEM_FP0,
+				ThreatReturns.MEM_FP_ORDER }) {
+			if (!a.contains(k) && !b.contains(k)) continue;
+			a.set(k, (a.contains(k) ? a.getFloat(k) : 0f) + (b.contains(k) ? b.getFloat(k) : 0f));
+		}
+		to.getFleetData().sort();
+		to.getFleetData().setSyncNeeded();
+		to.getFleetData().syncIfNeeded();
+		to.forceSync();
+		from.despawn();
 	}
 
 	// ------------------------------------------------------------------
@@ -693,9 +835,11 @@ public class ThreatFleetOrders {
 			if (self) ThreatAidCapacity.commit(base, points, fleet, label);
 			else ThreatAidCapacity.commitSortie(base, points, fleet, label);
 		}
-		if (!aid) {
+		// the player's own order is news; an NPC navy's relief or coalition guard
+		// is its routine (no progress notices): record's log line is all it gets
+		if (!aid && faction.isPlayerFaction()) {
 			ThreatNotice n = notice(faction, "Task Force Sails", "task force from %s moves to guard %s",
-					ThreatNotice.market(base), target.name());
+					ThreatNotice.market(base), ThreatNotice.base(target));
 			if (days > 0f) n.line("For %s days", (int) days);
 			n.send();
 		}
@@ -908,13 +1052,16 @@ public class ThreatFleetOrders {
 		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
 				1000f, "returning to " + base.getName());
 		Order o = record(fleet, faction, kind, base, hive.getId(), hive.getName(), days);
+		// the player's own order is news; an NPC navy's sortie is automatic
+		// (ThreatConvoys.supportFor, every ~60 days per contested front) -
+		// progress, not news, and record's log line is all it gets
 		if (faction.isPlayerFaction()) {
 			ThreatAidCapacity.commitSortie(base, builtPoints(fleet, fp), fleet,
 					orbitName(kind).toLowerCase() + " over " + hive.getName());
+			notice(faction, "Task Force Sails", "task force from %s moves to " + orbitVerb(kind) + " %s",
+					ThreatNotice.market(base), ThreatNotice.market(hive))
+					.line("For %s days", (int) days).send();
 		}
-		notice(faction, "Task Force Sails", "task force from %s moves to " + orbitVerb(kind) + " %s",
-				ThreatNotice.market(base), ThreatNotice.market(hive))
-				.line("For %s days", (int) days).send();
 		return o;
 	}
 
@@ -961,10 +1108,8 @@ public class ThreatFleetOrders {
 		sb.append("\n").append(ThreatGroundFronts.siegeClockLine(world));
 		if (ThreatShield.present(world)) sb.append("\n").append(ThreatShield.line(world));
 		float[] est = ThreatGroundFronts.siegeSliceEstimate(fp, world, 1f);
-		int floor = Math.round(Math.max(0f, Math.min(1f, ThreatIncConfig.fortificationOrbitFloor())) * 100f);
 		sb.append("\nWhile the orbit is clear it bombards the defences: about ")
-				.append(String.format("%.1f", est[0]))
-				.append(" disruption days per day, to no lower than ").append(floor).append("% effect.");
+				.append(String.format("%.1f", est[0])).append(" disruption days per day.");
 		sb.append("\nThe batteries answer: about ").append(String.format("%.1f", est[1]))
 				.append(" fleet points of ships lost per day, smallest first.");
 		sb.append("\nIt bombards whether or not the front could hold on its own; Defend bombards "
@@ -988,14 +1133,12 @@ public class ThreatFleetOrders {
 		if (ThreatShield.present(world)) sb.append("\n").append(ThreatShield.line(world));
 		sb.append("\nIt does not bombard while the front holds, so the batteries cost it nothing.");
 		float[] est = ThreatGroundFronts.siegeSliceEstimate(fp, world, 1f);
-		int floor = Math.round(Math.max(0f, Math.min(1f, ThreatIncConfig.fortificationOrbitFloor())) * 100f);
 		sb.append("\nWhile the front cannot hold it bombards the defences until it can: about ")
-				.append(String.format("%.1f", est[0]))
-				.append(" disruption days per day, to no lower than ").append(floor).append("% effect.");
+				.append(String.format("%.1f", est[0])).append(" disruption days per day.");
 		sb.append("\nOnly then do the batteries answer: about ").append(String.format("%.1f", est[1]))
 				.append(" fleet points of ships lost per day, smallest first.");
 		if (ThreatIncConfig.fabricateEnabled()) {
-			sb.append("\nWith the defences at the floor and the front still short, it stops bombarding "
+			sb.append("\nWith the defences worn out and the front still short, it stops bombarding "
 					+ "and breaks up its own hulls into troops instead - only as many as the front "
 					+ "needs to hold, and it stops as soon as it does.");
 			sb.append("\nThe batteries charge about ")
@@ -1071,15 +1214,25 @@ public class ThreatFleetOrders {
 
 	/** Why this faction cannot send a Support or Defend sortie over the world now, or null if it can. */
 	public static String orbitBlockReason(FactionAPI faction, MarketAPI hive, String kind) {
-		if (!orbitEnabled(kind)) return orbitName(kind) + " sorties are disabled in the mod settings.";
-		if (faction == null || hive == null) return "No target.";
-		if (hasOrder(kind, faction.getId(), hive.getId())) return "A task force is already on its way there.";
+		return ThreatNotice.text(orbitRefusal(faction, hive, kind));
+	}
+
+	/** As above, one fact per line for the refusal notice. */
+	public static ThreatNotice.Reason orbitRefusal(FactionAPI faction, MarketAPI hive, String kind) {
+		if (!orbitEnabled(kind)) {
+			return ThreatNotice.Reason.of(orbitName(kind) + " sorties are disabled in the mod settings");
+		}
+		if (faction == null || hive == null) return ThreatNotice.Reason.of("No target");
+		if (hasOrder(kind, faction.getId(), hive.getId())) {
+			return ThreatNotice.Reason.of("A task force is already on its way there");
+		}
 		if (faction.isPlayerFaction()) {
 			if (nearestReassignable(faction, hive, kind) != null) return null;
 			ThreatAid.Quote q = ThreatAid.quoteDefend(hive);
 			return q.ok() ? null : q.reason;
 		}
-		return pickBase(faction, hive.getLocationInHyperspace()) == null ? "No base in reach." : null;
+		return pickBase(faction, hive.getLocationInHyperspace()) == null
+				? ThreatNotice.Reason.of("No base in reach") : null;
 	}
 
 	protected static Order record(CampaignFleetAPI fleet, FactionAPI faction, String kind,
@@ -1375,9 +1528,16 @@ public class ThreatFleetOrders {
 		ThreatReturns.rebaseline(fleet);
 		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, world.getPrimaryEntity(), NO_TERM_DAYS,
 				orbitTask(KIND_DEFEND, world.getName()));
+		// one notice per landing, the player's own only: the first of the
+		// expedition's fleets to stay says so; the rest (ThreatPurgeFGI.stayOnDefend
+		// empties every fleet in the system, up to siegeMaxFleets of them) and
+		// every NPC navy's are progress, and record's log line is all they get
+		boolean first = faction.isPlayerFaction() && !hasDefend(faction.getId(), world.getId());
 		Order o = record(fleet, faction, KIND_DEFEND, base, world.getId(), world.getName(), 0f);
-		notice(faction, "Fleet Holds Orbit", "%s stays over %s to defend the landing",
-				fleet.getName(), ThreatNotice.market(world)).send();
+		if (first) {
+			notice(faction, "Fleet Holds Orbit", "%s stays over %s to defend the landing",
+					fleet.getName(), ThreatNotice.market(world)).send();
+		}
 		return o;
 	}
 

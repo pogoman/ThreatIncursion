@@ -24,11 +24,6 @@ import com.fs.starfarer.api.impl.campaign.ids.Industries;
  * turns most of a strike aside, and each pass buys less cover for the next.
  * Grind it to nothing and the world is bare.
  *
- * <p>The orbital floor applies to the shield like anything else, so a fleet in
- * orbit can never quite spend one: {@code fortificationOrbitFloor} of its cover
- * survives any siege. Land a front and the floor is gone - boots finish what
- * orbit started, here as everywhere else.
- *
  * <p><b>Useful Planetary Shield, if it is also loaded.</b> Nothing is overridden
  * and nothing needs to be. UPS gates its own mitigation on the shield having
  * been functional at its previous poll, so the first strike on an intact shield
@@ -62,7 +57,7 @@ public class ThreatShield {
 	/**
 	 * 1 intact .. 0 spent, read off the shield's own disruption clock through
 	 * the theatre's condition curve - the same curve every fortification wears
-	 * on, orbital floor included.
+	 * on.
 	 */
 	public static float integrity(MarketAPI market) {
 		Industry shield = get(market);

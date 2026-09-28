@@ -36,11 +36,10 @@ import com.fs.starfarer.api.util.Misc;
  * ready to be landed on delivers a slice of the siege instead of a pass
  * ({@link SiegeRaidAction#performRaid}, {@link #siegePass}): its fleet
  * points against the hive's ground-defence figure suppress the war-strata
- * toward the orbital floor, and the weapon growths answer with ships lost.
- * The landing waits until the strata are at the floor or the troops could
- * hold as they are ({@link ThreatGroundFronts#readyToLand}). Orbit alone
- * cannot wear the defenses deeper than the floor; the ground forces landed
- * next do - opening the door for...</li>
+ * toward worn out, and the weapon growths answer with ships lost.
+ * The landing waits until the strata are worn out or the troops could
+ * hold as they are ({@link ThreatGroundFronts#readyToLand}); the ground
+ * forces landed next open the door for...</li>
  * <li>...COMMANDO RAIDS against whatever on the world takes the most from
  * the hive ({@link #pickRaidTarget}: the Core, the Nexus, a port the world
  * imports through, or an economy industry that is the hive's best source of
@@ -330,17 +329,17 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (!ThreatIncConfig.landingDefendEnabled()) return;
 		if (passing == null && !anyFleetLive()) {
 			// autoresolved: no fleet to put on DEFEND, so what the abstract siege
-			// left stays over the landing as the front's orbit cover
+			// left stays over the landing as the front's orbit cover - out of one
+			// flotilla, as the live fleets stay where they landed: a second front
+			// the sweep lands or reinforces gets what the first did not keep, not
+			// all of it again
 			ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
-			float left = abstractLeft;
-			if (left <= 0f && getParams() != null && getParams().fleetSizes != null) {
-				// a reinforcing pass whose siege ran on an earlier world
-				for (Integer size : getParams().fleetSizes) {
-					if (size != null) left += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
-				}
-				left *= Math.max(0f, 1f - routeDamage());
-			}
-			if (front != null && left > front.coverFP) {
+			if (front == null) return;
+			// a reinforcing pass whose siege ran on an earlier world reads the allotment
+			float left = abstractLeft > 0f ? abstractLeft : abstractAllotment();
+			left = Math.min(left, abstractFlotilla());
+			if (left > front.coverFP) {
+				abstractFP -= left;
 				front.coverFP = left;
 				ThreatIncConfig.log("Orbit cover over " + market.getName() + ": the "
 						+ getFaction().getId() + " flotilla holds it with " + (int) left + " FP");
@@ -768,9 +767,9 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 					// nothing to land means no siege either (siegePass's rule)
 					purge.abstractSiege(market);
 					// vanilla counts the pass before it asks us what to do with
-					// it: a world still above the floor after the abstract siege
+					// it: a world not yet ready to land on after the abstract siege
 					// waits here, spending nothing
-					if (purge.waitsAboveFloor(market)) return;
+					if (purge.waitsInOrbit(market)) return;
 				}
 			}
 			super.performRaid(fleet, market);
@@ -837,12 +836,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 
 		// THE ORBITAL DUEL has to have done all it can first
 		// (SiegeRaidAction.performRaid delivers the slices; a live fleet only
-		// gets here once the strata are at the floor or the troops could
+		// gets here once the strata are worn out or the troops could
 		// hold, an abstract expedition once its whole siege has run): a pass
-		// over a world still above the floor waits rather than raids
-		if (waitsAboveFloor(market)) {
+		// over a world not yet ready to land on waits rather than raids
+		if (waitsInOrbit(market)) {
 			ThreatIncConfig.log("Siege pass at " + rec.marketName
-					+ " waits: the war-strata are still above the floor");
+					+ " waits: the war-strata are not yet worn out");
 			return;
 		}
 
@@ -964,6 +963,36 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected java.util.Set<String> siegeResolved = new java.util.HashSet<String>();
 	/** Fleet points the last abstract siege left, what stays over its landing (stayOnDefend). */
 	protected float abstractLeft;
+	/**
+	 * What of the unspawned expedition's flotilla is still free to stay over a
+	 * landing as orbit cover, in abstract FP: its allotment less route damage,
+	 * less the cover already left over its landings (stayOnDefend) - one
+	 * flotilla, however many fronts the sweep lands or reinforces. Read from
+	 * the allotment the first time it is asked for (abstractStarted), so an
+	 * older save starts it there too.
+	 */
+	protected float abstractFP;
+	protected boolean abstractStarted;
+
+	/** The expedition's allotment in abstract FP less route damage: what each world's abstract siege starts from. */
+	protected float abstractAllotment() {
+		float fp = 0f;
+		if (getParams() != null && getParams().fleetSizes != null) {
+			for (Integer size : getParams().fleetSizes) {
+				if (size != null) fp += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+			}
+		}
+		return fp * Math.max(0f, 1f - routeDamage());
+	}
+
+	/** The part of the abstract flotilla not yet left over a landing as cover. */
+	protected float abstractFlotilla() {
+		if (!abstractStarted) {
+			abstractStarted = true;
+			abstractFP = abstractAllotment();
+		}
+		return abstractFP;
+	}
 
 	/**
 	 * A live fleet over a hive: a slice of the orbital siege in place of a
@@ -1023,7 +1052,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		ThreatIncConfig.log("Siege slice vs " + market.getName() + ": " + (int) fp + " FP for "
 				+ String.format("%.1f", days) + " d, +" + String.format("%.1f", est[0])
 				+ " d on the clock (" + (int) ThreatGroundFronts.siegeClock(market) + " of "
-				+ (int) ThreatGroundFronts.siegeFloorDays(market) + "), batteries cost "
+				+ (int) ThreatGroundFronts.siegeWornDays(market) + "), batteries cost "
 				+ String.format("%.1f", loss) + " FP (" + (int) removed + " removed)");
 		return true;
 	}
@@ -1037,13 +1066,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
 		if (market == null || !siegeResolved.add(market.getId())) return;
 		if (ThreatGroundFronts.getFront(market.getId()) != null) return;
-		float start = 0f;
-		if (getParams() != null && getParams().fleetSizes != null) {
-			for (Integer size : getParams().fleetSizes) {
-				if (size != null) start += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
-			}
-		}
-		start *= Math.max(0f, 1f - routeDamage());
+		float start = abstractAllotment();
 		float left = ThreatGroundFronts.abstractSiege(market, start, abstractTroops(market),
 				groupAbortsMissionFPFraction, ourFactionId());
 		abstractLeft = left;
@@ -1067,7 +1090,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	}
 
 	/** Whether a pass here should wait rather than spend itself: no front of ours yet and the world not ready to be landed on. */
-	protected boolean waitsAboveFloor(MarketAPI market) {
+	protected boolean waitsInOrbit(MarketAPI market) {
 		if (!ThreatIncConfig.frontsEnabled() || market == null) return false;
 		if (ThreatGroundFronts.getFront(market.getId()) != null) return false;
 		return !ThreatGroundFronts.readyToLand(market, abstractTroops(market), ourFactionId());
