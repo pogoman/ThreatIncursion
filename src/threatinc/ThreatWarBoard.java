@@ -268,8 +268,8 @@ public class ThreatWarBoard {
 			float health = ThreatColonyManager.computeHealth(market);
 			weightedHealth += health * market.getSize();
 			// "declining" since the ground-war rework: a front is on the ground
-			// taking the colony apart (only ground victory kills a hive)
-			if (ThreatGroundFronts.hasFront(market)) anyDeclining = true;
+			// taking the colony apart, or saturation is razing it from orbit
+			if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) anyDeclining = true;
 			else if (ThreatColonyManager.growthMultFor(health) > 0f) anyGrowing = true;
 			int live = ThreatColonyManager.countLiveGarrison(market.getId());
 			int desired = ThreatColonyManager.desiredGarrisonCount(market);
@@ -554,9 +554,7 @@ public class ThreatWarBoard {
 			statusOf(purge, op, false);
 			op.who = who + " - " + fleetsText(fleets);
 			op.detail = who + " - " + fleetsText(fleets) + ", " + op.status
-					+ (op.eta.equals("-") ? "" : " (" + op.eta + ")") + ". Tactical bombardment "
-					+ "while the war-strata stand, commando raids on the organs once they are "
-					+ "suppressed.";
+					+ (op.eta.equals("-") ? "" : " (" + op.eta + ")") + ".";
 			e.inbound.add(op);
 		}
 	}
@@ -1508,7 +1506,8 @@ public class ThreatWarBoard {
 			ThreatFactionView.disableWith(main, escort, escortWhy == null, escortWhy,
 					(nearSupport != null ? nearSupport.fleet.getName() + " (" + nearSupport.duty + ") goes."
 							: "A task force is raised from your nearest base.") + "\n"
-					+ ThreatFleetOrders.supportEffect(r.market, supportFP));
+					+ ThreatFleetOrders.supportEffect(r.market, supportFP,
+							nearSupport != null ? nearSupport.fleet : null));
 			String defendWhy = ThreatFleetOrders.defendBlockReason(player, r.market);
 			ThreatFleetOrders.Reassignable nearDefend = defendWhy == null
 					? ThreatFleetOrders.nearestReassignable(player, r.market, ThreatFleetOrders.KIND_DEFEND)
@@ -1518,7 +1517,8 @@ public class ThreatWarBoard {
 			ThreatFactionView.disableWith(main, defend, defendWhy == null, defendWhy,
 					(nearDefend != null ? nearDefend.fleet.getName() + " (" + nearDefend.duty + ") goes."
 							: "A task force is raised from your nearest base.") + "\n"
-					+ ThreatFleetOrders.defendEffect(r.market, defendFP));
+					+ ThreatFleetOrders.defendEffect(r.market, defendFP,
+							nearDefend != null ? nearDefend.fleet : null));
 			String pullWhy = ThreatConvoys.pullOutBlockReason(player, r.market);
 			ThreatFactionView.disableWith(main, pull, pullWhy == null, pullWhy,
 					"A convoy lifts this front off the world and brings it home.");
@@ -2305,9 +2305,9 @@ public class ThreatWarBoard {
 			float cardW, Entry e) {
 		final float health = ThreatColonyManager.computeHealth(market);
 		final List<Industry> organs = organsOf(market);
-		// "declining" = a ground front is taking this colony apart (the card
-		// border lights up); only ground victory kills a hive now
-		final boolean declining = ThreatGroundFronts.hasFront(market);
+		// "declining" = a ground front or saturation is taking this colony
+		// apart (the card border lights up)
+		final boolean declining = ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market);
 		final float iconStep = 44f;
 
 		CustomPanelAPI card = Global.getSettings().createCustom(cardW, CARD_H,
@@ -2434,14 +2434,14 @@ public class ThreatWarBoard {
 		textHl(card, 8f, 27f, cardW - 16f, a.toString(), gray, hlcA.toArray(new Color[0]),
 				hlA.toArray(new String[0]), Alignment.LMID, true);
 
-		// line B: the fuel bill
-		int baseCost = MarketCMD.getBombardmentCost(market, Global.getSector().getPlayerFleet());
+		// line B: the fuel bill - razing it from orbit, and a day of tactical
+		// bombardment by the player's fleet as it stands
 		int defense = (int) MarketCMD.getDefenderStr(market, true);
-		int sat = Math.max(2, Math.round(baseCost * ThreatIncConfig.hiveBombardCostMult()));
-		int tac = Math.max(2, Math.round(baseCost * ThreatIncConfig.hiveTacCostFraction()));
-		textHl(card, 8f, 45f, cardW - 16f - rightW, "Def %s   sat %s fuel   tac %s", gray,
+		int raze = Math.round(ThreatRazing.fuelToDestroyThrough(market));
+		int tac = Math.round(ThreatGroundFronts.bombardFuelPerDay(Global.getSector().getPlayerFleet().getFleetPoints()));
+		textHl(card, 8f, 45f, cardW - 16f - rightW, "Def %s   raze %s fuel   tac %s a day", gray,
 				new Color[] {text, neg, text},
-				new String[] {Misc.getWithDGS(defense), Misc.getWithDGS(sat), Misc.getWithDGS(tac)},
+				new String[] {Misc.getWithDGS(defense), Misc.getWithDGS(raze), Misc.getWithDGS(tac)},
 				Alignment.LMID, true);
 
 		return card;

@@ -15,6 +15,8 @@ import com.fs.starfarer.api.campaign.RuleBasedDialog;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.listeners.ListenerUtil;
+import com.fs.starfarer.api.combat.StatBonus;
+import com.fs.starfarer.api.fleet.FleetMemberAPI;
 import com.fs.starfarer.api.impl.campaign.CoreReputationPlugin.CustomRepImpact;
 import com.fs.starfarer.api.impl.campaign.CoreReputationPlugin.RepActionEnvelope;
 import com.fs.starfarer.api.impl.campaign.CoreReputationPlugin.RepActions;
@@ -25,36 +27,29 @@ import com.fs.starfarer.api.impl.campaign.ids.Conditions;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
+import com.fs.starfarer.api.impl.campaign.ids.Stats;
 import com.fs.starfarer.api.impl.campaign.procgen.StarSystemGenerator;
 import com.fs.starfarer.api.impl.campaign.rulecmd.AddRemoveCommodity;
 import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD;
+import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * MarketCMD override implementing the hive-siege rules for Threat colonies.
- *
- * <p>Every hive lives deep underground behind ground defenses anchored to
- * colony size (see {@link SwarmNexus}: hiveDefensePerSize per size, immune to
- * unrest, multiplied by the defense industries) - so bombardment is priced off
- * a number that stays punishing for the colony's whole life:
+ * MarketCMD override: the player's bombardment of any world, and the ground
+ * operations and defender rule of a Threat colony's military options
+ * (docs/suppression-balance.md "v2", 2026-09-28).
  *
  * <ul>
- * <li><b>Saturation</b>: fuel cost = the full ground-defense strength.
- * Disrupts every industry for only ~hiveSatDisruptDays (the buried strata
- * reknit fast) and NEVER touches colony size - bombardment cannot shrink or
- * destroy a hive. Its role is suppression: keep the organs down and the
- * decline engine (ThreatColonyManager) does the killing.</li>
- * <li><b>Tactical</b>: costs only hiveTacCostFraction of the defense figure
- * and is one slice of the orbital siege (docs/ground-war.md "Sieges from
- * orbit"): the fleet's points against the defence figure suppress the
- * war-strata toward worn out, and the weapon growths answer with
- * ships lost. The same rule runs against a human colony at vanilla's fuel
- * bill.</li>
- * <li><b>Marine raids</b>: vanilla - the deepest cut, at a casualty price.</li>
+ * <li><b>Tactical</b>: a day of the siege slice every besieger flies
+ * ({@link ThreatGroundFronts#siegeSlice}): the fleet's points against the
+ * defence figure suppress the fortifications by what still stands of them,
+ * the guns answer with ships lost, fuel is the ordnance (per fleet point),
+ * and the world's unrest is raised to what the bombardment has broken.</li>
+ * <li><b>Saturation</b>: the same day on every building, and the fuel poured
+ * into the colony's razing bar ({@link ThreatRazing}) - a level a size, the
+ * last ends the colony. A hive dies to it as a human colony does.</li>
+ * <li>Both share a once-a-day lock, like vanilla's raid cooldown.</li>
  * </ul>
- *
- * <p>The only way a Threat colony dies is decline: its population falling to
- * size 1 under sustained disruption or shortages.
  *
  * <p>Also waives the saturation-bombardment atrocity penalty when the bombed
  * colony belongs to the Threat: vanilla {@code bombardSaturation} builds
@@ -64,17 +59,14 @@ import com.fs.starfarer.api.util.Misc;
  * <p>Wired from this mod's {@code rules.csv}: higher-scored overrides of the
  * vanilla {@code mktBombard*} rules invoke this class instead
  * ({@code DialogOptionSelected} fires only the best-scoring rule). With the
- * mod off everything delegates to vanilla; with it on, only tactical
- * bombardment (the siege slice, any world with a fortification to suppress)
- * touches non-Threat targets.
+ * mod off everything delegates to vanilla; with it on, the bombardment is this
+ * class's on every world whose menu it runs (Nexerelin runs human colonies').
  *
  * <p>{@code temp} is shared state stored in market memory ($MarketCMD_temp), so
- * what one rule invocation writes (e.g. the tactical cost set in
+ * what one rule invocation writes (e.g. the day's fuel set in
  * {@code bombardTactical}) is exactly what a later invocation's
- * {@code bombardConfirm} reads. The confirm-screen "Never mind" routes through
- * VANILLA {@code bombardMenu} (its rule is not overridden), which resets
- * {@code temp.bombardCost} to base - harmless, because re-selecting either
- * bombardment type always re-enters our overrides, which recompute it.
+ * {@code bombardConfirm} reads. Re-selecting either bombardment type always
+ * re-enters our overrides, which recompute it.
  */
 public class ThreatincMarketCMD extends MarketCMD {
 
@@ -125,18 +117,6 @@ public class ThreatincMarketCMD extends MarketCMD {
 		return ThreatIncConfig.enabled() && ThreatIncConfig.bombardNoAtrocity()
 				&& market != null && market.getFaction() != null
 				&& Factions.THREAT.equals(market.getFaction().getId());
-	}
-
-	/** Saturation bill: the full defense strength (times the config scale). */
-	protected int satCost() {
-		int base = getBombardmentCost(market, playerFleet);
-		return Math.max(2, Math.round(base * ThreatIncConfig.hiveBombardCostMult()));
-	}
-
-	/** Tactical bill: a fraction of the defense strength. */
-	protected int tacCost() {
-		int base = getBombardmentCost(market, playerFleet);
-		return Math.max(2, Math.round(base * ThreatIncConfig.hiveTacCostFraction()));
 	}
 
 	/**
@@ -419,14 +399,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 					Misc.getWithDGS(arms), String.format("%.1f", upkeepDay));
 
 			options.addOption("Land ground forces", GROUND_DEPLOY);
-			float fallout = ThreatGroundFronts.falloutDaysLeft(market);
-			if (fallout > 0f) {
-				text.addPara("The surface is a radiological ruin - saturation fallout "
-						+ "makes a landing impossible for another %s days.", neg,
-						"" + (int) Math.ceil(fallout));
-				options.setEnabled(GROUND_DEPLOY, false);
-				options.setTooltip(GROUND_DEPLOY, "Saturation fallout blocks a landing.");
-			} else if (!temp.canRaid) {
+			if (!temp.canRaid) {
 				options.setEnabled(GROUND_DEPLOY, false);
 				options.setTooltip(GROUND_DEPLOY,
 						"Defending fleets must be dealt with before landing ground forces.");
@@ -530,11 +503,10 @@ public class ThreatincMarketCMD extends MarketCMD {
 
 	protected void groundDeploy() {
 		// re-validate: the option can be reached with stale temp state
-		float fallout = ThreatGroundFronts.falloutDaysLeft(market);
 		int marines = (int) playerFleet.getCargo().getMarines();
 		int arms = (int) playerFleet.getCargo()
 				.getCommodityQuantity(Commodities.HAND_WEAPONS);
-		if (!ThreatIncConfig.frontsEnabled() || fallout > 0f || !temp.canRaid
+		if (!ThreatIncConfig.frontsEnabled() || !temp.canRaid
 				|| marines < (int) ThreatIncConfig.frontMinMarines()
 				|| ThreatGroundFronts.getFront(market.getId()) != null) {
 			groundOps();
@@ -547,6 +519,14 @@ public class ThreatincMarketCMD extends MarketCMD {
 		playerFleet.getCargo().removeCommodity(Commodities.HAND_WEAPONS, arms);
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.deploy(market,
 				Factions.PLAYER, marines, arms, landingLevel);
+		// a landing is an act of war (docs/suppression-balance.md v2 section 7):
+		// vanilla's bombardment impact, and never covert
+		CustomRepImpact impact = new CustomRepImpact();
+		impact.delta = market.getSize() * -0.01f;
+		impact.ensureAtBest = RepLevel.HOSTILE;
+		Global.getSector().adjustPlayerReputation(
+				new RepActionEnvelope(RepActions.CUSTOM, impact, null, text, true, true),
+				market.getFactionId());
 		// classify now, so the board reads the front's state before its first poll
 		float eff = ThreatGroundFronts.effectiveStrength(front);
 		if (eff >= ThreatGroundFronts.holdRequirement(market)) {
@@ -639,169 +619,196 @@ public class ThreatincMarketCMD extends MarketCMD {
 		groundOps();
 	}
 
+	/** Fuel a day of tactical bombardment by the player's fleet costs: its points' worth, less vanilla's specialised bombardment capability. */
+	protected int tacticalFuel() {
+		float fuel = ThreatGroundFronts.bombardFuelPerDay(playerFleet.getFleetPoints()) - bombardBonus();
+		return Math.max(0, Math.round(fuel));
+	}
+
+	/** Vanilla's specialised fleet bombardment capability: fuel off each bombardment. */
+	protected float bombardBonus() {
+		return Misc.getFleetwideTotalMod(playerFleet, Stats.FLEET_BOMBARD_COST_REDUCTION, 0f);
+	}
+
+	/** Fuel a day of saturation pours: the fleet's rate, what it carries, never more than the colony needs. */
+	protected float saturationPour() {
+		return ThreatRazing.deliverable(market, playerFleet.getFleetPoints(), 1f,
+				playerFleet.getCargo().getFuel());
+	}
+
+	/** What that day costs from the tanks: the pour, never less than a tactical day unless it finishes the razing, less the bombardment capability. */
+	protected int saturationFuel(float pour) {
+		boolean finishes = pour >= ThreatRazing.fuelToDestroyThrough(market) - 0.5f;
+		float spent = finishes ? pour
+				: Math.max(pour, ThreatGroundFronts.bombardFuelPerDay(playerFleet.getFleetPoints()));
+		spent = Math.min(spent, playerFleet.getCargo().getFuel()) - bombardBonus();
+		return Math.max(0, Math.round(spent));
+	}
+
+	protected static String pct(float fraction) {
+		return Math.round(fraction * 100f) + "%";
+	}
+
+	/** Whether the player's fleet may organize a bombardment now (the once-a-day lock). */
+	protected boolean bombardReady() {
+		return DebugFlags.MARKET_HOSTILITIES_DEBUG || !ThreatGroundFronts.bombardLocked();
+	}
+
+	protected static final String LOCKED = "Your forces need a day to organize another bombardment.";
+
+	/**
+	 * The bombardment menu (docs/suppression-balance.md v2): vanilla's brief of
+	 * the defence figure, then one line per fact - what a day of each kind
+	 * burns, what the fleet carries - and the once-a-day lock both kinds share.
+	 * A bombardment is a day of sorties: fuel is the ordnance, per fleet point.
+	 */
 	@Override
 	protected void bombardMenu() {
-		super.bombardMenu();
-		if (!isThreatTarget()) return;
+		if (!ThreatIncConfig.enabled()) {
+			super.bombardMenu();
+			return;
+		}
+		Color h = Misc.getHighlightColor();
+		dialog.getVisualPanel().showImagePortion("illustrations", "bombard_prepare", 640, 400, 0, 0, 480, 300);
 
-		int tac = tacCost();
-		text.addPara("Surface returns are thin. Beneath the crust the auspex paints "
-				+ "kilometers of fabrication strata - the hive lives %s, and no "
-				+ "bombardment can burn it out. A tactical strike on the exposed "
-				+ "war-strata would cost only %s fuel and suppress its defenses; "
-				+ "saturating the whole world buys days of disruption at the full "
-				+ "price above.", Misc.getHighlightColor(), "deep underground",
-				"" + tac);
+		StatBonus defender = market.getStats().getDynamic().getMod(Stats.GROUND_DEFENSES_MOD);
+		temp.defenderStr = Math.round(defender.computeEffective(0f));
+		TooltipMakerAPI info = text.beginTooltip();
+		info.setParaSmallInsignia();
+		float initPad = 0f;
+		if (!faction.isHostileTo(Factions.PLAYER)) {
+			info.addPara(Misc.ucFirst(faction.getDisplayNameWithArticle()) + " " + faction.getDisplayNameIsOrAre()
+					+ " not currently hostile. A bombardment can't be concealed, whatever the transponder says.",
+					initPad, faction.getBaseUIColor(), faction.getDisplayNameWithArticleWithoutArticle());
+			initPad = 10f;
+		}
+		info.addPara("Ground defense strength: %s", initPad, h, "" + (int) temp.defenderStr);
+		info.addStatModGrid(350f, 50f, 10f, 5f, defender, true, statPrinter(true));
+		text.addTooltip();
 
-		// vanilla gates both options at the FULL cost; tactical is cheaper
-		// against the hive, so re-open it when the fleet can afford that much
 		int fuel = (int) playerFleet.getCargo().getFuel();
-		if (fuel >= tac || DebugFlags.MARKET_HOSTILITIES_DEBUG) {
-			options.setEnabled(BOMBARD_TACTICAL, true);
-			options.setTooltip(BOMBARD_TACTICAL, null);
+		int tac = tacticalFuel();
+		float satRate = Math.max(0f, ThreatIncConfig.satFuelPerFPDay()) * playerFleet.getFleetPoints();
+		text.addPara("Tactical bombardment: %s fuel a day.", h, Misc.getWithDGS(tac));
+		text.addPara("Saturation bombardment: up to %s fuel a day.", h, Misc.getWithDGS(Math.round(satRate)));
+		text.addPara("You have %s fuel.", h, Misc.getWithDGS(fuel));
+		boolean ready = bombardReady();
+		if (!ready) text.addPara("Your forces will be able to organize another bombardment within a day or so.");
+
+		options.clearOptions();
+		options.addOption("Prepare a tactical bombardment", BOMBARD_TACTICAL);
+		options.addOption("Prepare a saturation bombardment", BOMBARD_SATURATION);
+		options.addOption("Go back", RAID_GO_BACK);
+		options.setShortcut(RAID_GO_BACK, org.lwjgl.input.Keyboard.KEY_ESCAPE, false, false, false, true);
+		// state after shape (CLAUDE.md "Option panels")
+		boolean debug = DebugFlags.MARKET_HOSTILITIES_DEBUG;
+		if (!ready) {
+			options.setEnabled(BOMBARD_TACTICAL, false);
+			options.setTooltip(BOMBARD_TACTICAL, LOCKED);
+			options.setEnabled(BOMBARD_SATURATION, false);
+			options.setTooltip(BOMBARD_SATURATION, LOCKED);
+			return;
+		}
+		if (!ThreatGroundFronts.bombardable(market)) {
+			options.setEnabled(BOMBARD_TACTICAL, false);
+			options.setTooltip(BOMBARD_TACTICAL, "No defence structure to bombard.");
+		} else if (fuel < tac && !debug) {
+			options.setEnabled(BOMBARD_TACTICAL, false);
+			options.setTooltip(BOMBARD_TACTICAL, "Not enough fuel.");
+		}
+		if (fuel < Math.max(1, tac) && !debug) {
+			options.setEnabled(BOMBARD_SATURATION, false);
+			options.setTooltip(BOMBARD_SATURATION, "Not enough fuel.");
 		}
 	}
 
 	/**
-	 * Tactical bombardment is a slice of the orbital siege (docs/ground-war.md
-	 * "Sieges from orbit", 2026-09-06) - against a hive and a human colony
-	 * alike, the same rules the swarm's strikes and the factions' siege
-	 * expeditions fly. The player's fleet points against the world's
-	 * ground-defence figure set how many disruption days the pass adds to the
-	 * world's fortifications (siegeBombardSliceDays of siege), up to worn out,
-	 * and the batteries answer with ships lost, smallest first.
-	 * Vanilla's own flow (fuel, reputation, unrest) is kept; only the
-	 * disruption it writes is replaced ({@link #bombardConfirm}). The hive's
-	 * reduced fuel bill stays.
+	 * A day of tactical bombardment, before it is flown: each fortification's
+	 * condition now and after the day, the shield's, the ships the return fire
+	 * would take by name, the unrest the day raises, the fuel. The same
+	 * figures {@link ThreatGroundFronts#siegeSlice} writes on the confirm.
 	 */
-	/** Whether the siege slice describes this world: the mod is on and the theatre has a fortification to suppress. */
-	protected boolean siegeSliceApplies() {
-		if (!ThreatIncConfig.enabled() || market == null) return false;
-		if (!ThreatGroundFronts.Theatre.of(market).fortifications(market).isEmpty()) return true;
-		// a shielded world with no defence structure is still a siege: the shield
-		// is what orbit is fighting through, and grinding it down is progress
-		return ThreatShield.present(market);
-	}
-
 	@Override
 	protected void bombardTactical() {
-		if (!siegeSliceApplies()) {
-			super.bombardTactical(); // a world with no defence structure: vanilla's targets and days
+		if (!ThreatIncConfig.enabled()) {
+			super.bombardTactical();
 			return;
 		}
-
 		temp.bombardType = BombardType.TACTICAL;
 		temp.willBecomeHostile.clear();
 		temp.willBecomeHostile.add(faction);
-
-		// what orbit can still push: every fortification not yet worn out
-		ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(market);
-		float wornDays = ThreatGroundFronts.siegeWornDays(market) - 0.01f;
-		List<Industry> targets = new ArrayList<Industry>();
-		for (Industry ind : theatre.fortifications(market)) {
-			if (ThreatGroundFronts.siegeDisruptDays(ind) >= wornDays) continue;
-			targets.add(ind);
-		}
-		// the shield is a target too - knocking it down is what opens the rest
-		// of the world to orbit, so a pass that only grinds it is worth flying.
-		// It is kept out of `targets` because that list is printed under one
-		// shared days figure and the shield takes a different one (it has no
-		// cover of its own); it gets its own line below.
-		Industry shield = ThreatShield.present(market) ? ThreatShield.get(market) : null;
-		float shieldRoom = shield == null ? 0f : Math.max(0f,
-				ThreatGroundFronts.siegeWornDays(market)
-						- ThreatGroundFronts.siegeDisruptDays(shield));
-		boolean shieldTarget = shield != null && shieldRoom > 0.01f;
 		temp.bombardmentTargets.clear();
-		temp.bombardmentTargets.addAll(targets);
-		if (shieldTarget) temp.bombardmentTargets.add(shield);
-
-		if (targets.isEmpty() && !shieldTarget) {
-			text.addPara(market.getName() + "'s defences are worn out.");
+		if (!ThreatGroundFronts.bombardable(market)) {
+			text.addPara("There is nothing here for a tactical bombardment to suppress.");
 			addBombardNeverMindOption();
 			return;
 		}
+		Color h = Misc.getHighlightColor();
+		Color bad = Misc.getNegativeHighlightColor();
+		ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(market);
+		List<Industry> forts = theatre.fortifications(market);
+		temp.bombardmentTargets.addAll(forts);
+		// recomputed on every entry (see the class doc on the never-mind reset)
+		temp.bombardCost = tacticalFuel();
+		ThreatGroundFronts.BombardDay day = ThreatGroundFronts.bombardDay(playerFleet.getFleetPoints(), market, false);
 
-		// the hive's cheap, surgical bill; vanilla's for a colony - recomputed
-		// here on every entry (see class doc re the never-mind cost reset)
-		temp.bombardCost = isThreatTarget() ? tacCost() : getBombardmentCost(market, playerFleet);
-
-		float days = ThreatIncConfig.siegeBombardSliceDays();
-		float[] est = ThreatGroundFronts.siegeSliceEstimate(playerFleet.getFleetPoints(), market, days,
-				ThreatIncConfig.tacBombardSuppressDays());
-		int fuel = (int) playerFleet.getCargo().getFuel();
-		if (!targets.isEmpty()) {
-			text.addPara("A tactical bombardment suppresses the following for about %s more days "
-					+ "each:", Misc.getHighlightColor(), "" + Math.round(est[0]));
-			for (Industry ind : targets) {
-				text.addPara("    " + ind.getCurrentName() + " "
-						+ Math.round(theatre.condition(market, ind) * 100f) + "%");
-			}
+		text.addPara("A day of tactical bombardment:");
+		for (Industry ind : forts) {
+			text.addPara("    " + ind.getCurrentName() + " %s to %s", h, pct(theatre.condition(market, ind)),
+					pct(ThreatGroundFronts.conditionAfterDay(market, ind, day.rate, day.through)));
 		}
-		if (shield != null) {
-			int onShield = Math.round(Math.min(est[2], shieldRoom));
-			if (shieldTarget && onShield > 0) {
-				text.addPara("    " + shield.getCurrentName() + " "
-						+ Math.round(ThreatShield.integrity(market) * 100f)
-						+ "% - it turns %s of that away, and this pass puts %s days on it.",
-						Misc.getHighlightColor(),
-						Math.round(ThreatShield.absorb(market) * 100f) + "%",
-						"" + onShield);
-			} else {
-				text.addPara("    " + shield.getCurrentName() + " "
-						+ Math.round(ThreatShield.integrity(market) * 100f)
-						+ "% - it turns %s of that away, and orbit cannot spend it further.",
-						Misc.getHighlightColor(),
-						Math.round(ThreatShield.absorb(market) * 100f) + "%");
-			}
+		if (day.shieldNow >= 0f) {
+			text.addPara("    " + ThreatShield.get(market).getCurrentName() + " %s to %s, turning aside %s of the day.",
+					h, pct(day.shieldNow), pct(day.shieldAfter), pct(ThreatShield.absorb(market)));
 		}
-		// only when something actually shoots back: a hive whose only fortification
-		// is the Swarm Nexus (no Ground Defenses, no Heavy Batteries) has no
-		// batteries' share, so the fleet takes nothing and the line would read 0.0
-		if (est[1] >= 0.05f) {
-			text.addPara("The batteries answer: about %s fleet points of ships lost, smallest first.",
-					Misc.getNegativeHighlightColor(), String.format("%.1f", est[1]));
-		}
-		// danger close: with a front on the ground the strike is target-marked -
-		// it also cracks the deep organs - but the barrage lands among your own
-		// positions. Warned here, applied in bombardConfirm.
+		for (String line : ThreatGroundFronts.lossLines(playerFleet, day.returnFire)) text.addPara(line, bad);
+		if (day.unrest > 0) text.addPara("Unrest raised to %s.", h, "" + day.unrest);
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
 		if (isThreatTarget() && front != null && front.isPlayerOwned()
 				&& ThreatIncConfig.frontsEnabled() && ThreatIncConfig.frontDangerCloseEnabled()) {
-			int loss = (int) Math.ceil(front.marines
-					* ThreatIncConfig.frontDangerCloseLossFraction());
-			text.addPara("Your ground forces are inside the target grid. They will mark "
-					+ "targets - the strike's disruption will also land on the "
-					+ "Fabrication Core and the port - but a barrage this close will "
-					+ "cost the front about %s marines.",
-					Misc.getNegativeHighlightColor(), "" + loss);
+			int loss = (int) Math.ceil(front.marines * ThreatIncConfig.frontDangerCloseLossFraction());
+			text.addPara("Your front marks targets: the Fabrication Core and the port take the day too.");
+			text.addPara("The front loses about %s marines to the barrage.", bad, "" + loss);
 		}
-
-		text.addPara("The bombardment requires %s fuel. You have %s fuel.",
-				Misc.getHighlightColor(), "" + temp.bombardCost, "" + fuel);
-
+		int fuel = (int) playerFleet.getCargo().getFuel();
+		text.addPara("The bombardment requires %s fuel. You have %s fuel.", h,
+				"" + temp.bombardCost, "" + fuel);
 		addBombardConfirmOptions();
+		gateConfirm(fuel >= temp.bombardCost);
+	}
 
-		if (fuel < temp.bombardCost && !DebugFlags.MARKET_HOSTILITIES_DEBUG) {
+	/** The confirm's state, set after its shape: the day's lock, then the fuel. */
+	protected void gateConfirm(boolean fuelEnough) {
+		if (!bombardReady()) {
+			options.setEnabled(BOMBARD_CONFIRM, false);
+			options.setTooltip(BOMBARD_CONFIRM, LOCKED);
+		} else if (!fuelEnough && !DebugFlags.MARKET_HOSTILITIES_DEBUG) {
 			options.setEnabled(BOMBARD_CONFIRM, false);
 			options.setTooltip(BOMBARD_CONFIRM, "Not enough fuel.");
 		}
 	}
 
+	/**
+	 * A day of saturation bombardment, before it is flown
+	 * (docs/suppression-balance.md v2 section 4): what the fuel does to the
+	 * colony's levels - the bombs fall on the owner's, a front's layers count
+	 * as already lost - how long the rest would take at this rate, the
+	 * defences the day wears, the ships the guns would take by name, the
+	 * unrest, and who it makes hostile.
+	 */
 	@Override
 	protected void bombardSaturation() {
-		if (!isThreatTarget()) {
+		if (!ThreatIncConfig.enabled()) {
 			super.bombardSaturation();
 			return;
 		}
-
 		temp.bombardType = BombardType.SATURATION;
-
-		// hostile list: owner-only when the atrocity waiver is on; otherwise the
-		// vanilla caresAboutAtrocities sweep
+		// hostile list: vanilla's sweep of the factions that care about
+		// atrocities; the owner alone under the waiver
 		temp.willBecomeHostile.clear();
 		temp.willBecomeHostile.add(faction);
 		List<FactionAPI> nonHostile = new ArrayList<FactionAPI>();
+		if (!faction.isHostileTo(Factions.PLAYER)) nonHostile.add(faction);
 		if (!waiveAtrocity()) {
 			for (FactionAPI other : Global.getSector().getAllFactions()) {
 				if (temp.willBecomeHostile.contains(other)) continue;
@@ -811,79 +818,100 @@ public class ThreatincMarketCMD extends MarketCMD {
 				}
 			}
 		}
+		temp.bombardmentTargets.clear();
+		temp.bombardmentTargets.addAll(ThreatGroundFronts.saturationTargets(market));
 
-		// disruption from a pass is short against the buried hive, so the
-		// already-disrupted skip window must be short too or one pass would
-		// blank the target list for a year
-		int dur = (int) ThreatIncConfig.hiveSatDisruptDays();
-		List<Industry> targets = new ArrayList<Industry>();
-		for (Industry ind : market.getIndustries()) {
-			if (!ind.getSpec().hasTag(Industries.TAG_NO_SATURATION_BOMBARDMENT)) {
-				if (ThreatGroundFronts.siegeDisruptDays(ind) >= dur * 0.8f) continue;
-				targets.add(ind);
+		Color h = Misc.getHighlightColor();
+		Color bad = Misc.getNegativeHighlightColor();
+		float fp = playerFleet.getFleetPoints();
+		float pour = saturationPour();
+		temp.bombardCost = saturationFuel(pour);
+		ThreatGroundFronts.BombardDay day = ThreatGroundFronts.bombardDay(fp, market, true);
+		ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(market);
+
+		text.addPara("A day of saturation bombardment:");
+		int size = market.getSize();
+		int layers = ThreatRazing.enemyLayers(market);
+		if (layers < size) {
+			text.addPara("    Your front holds %s of %s " + theatre.layer() + "s; the bombs fall on the other %s.",
+					h, "" + (size - layers), "" + size, "" + layers);
+		}
+		if (ThreatRazing.razeable(market) <= 0) {
+			text.addPara("    " + market.getName() + " cannot be razed any further.");
+		} else {
+			razingLines(pour * day.through, h, bad);
+			float rate = Math.max(0f, ThreatIncConfig.satFuelPerFPDay()) * fp;
+			float whole = ThreatRazing.fuelToDestroyThrough(market);
+			if (rate > 0f && whole > pour + 0.5f) {
+				text.addPara("    Razed in about %s days at this rate: %s fuel in all.", h,
+						"" + (int) Math.ceil(whole / rate), Misc.getWithDGS(Math.round(whole)));
 			}
 		}
-		temp.bombardmentTargets.clear();
-		temp.bombardmentTargets.addAll(targets);
-
-		// the full defense bill; recomputed on every entry, which also
-		// neutralizes the never-mind cost-reset bypass
-		temp.bombardCost = satCost();
-
-		int fuel = (int) playerFleet.getCargo().getFuel();
-		text.addPara("The hive is buried too deep for any bombardment to kill or even "
-				+ "thin its population. A saturation pass will disrupt every surface "
-				+ "operation for a matter of %s - the strata below reknit quickly. To "
-				+ "destroy this colony, keep its organs suppressed or its supply lines "
-				+ "cut until the hive itself withers.", Misc.getHighlightColor(), "days");
+		if (day.shieldNow >= 0f) {
+			text.addPara("    " + ThreatShield.get(market).getCurrentName() + " %s, turning aside %s of the fuel.",
+					h, pct(day.shieldNow), pct(ThreatShield.absorb(market)));
+		}
+		if (!theatre.fortifications(market).isEmpty()) {
+			text.addPara("    Every structure suppressed; the defences %s to %s.", h,
+					pct(day.conditionNow), pct(day.conditionAfter));
+		}
+		for (String line : ThreatGroundFronts.lossLines(playerFleet, day.returnFire)) text.addPara(line, bad);
+		if (day.unrest > 0) text.addPara("Unrest raised to %s.", h, "" + day.unrest);
 
 		if (waiveAtrocity()) {
-			text.addPara("An atrocity by any other measure - but no power in the civilized "
-					+ "sector mourns the swarm. Only the machines themselves will mark the "
-					+ "loss.");
+			text.addPara("No power in the civilized sector mourns the swarm.");
 		} else if (nonHostile.isEmpty()) {
-			text.addPara("An atrocity of this scale can not be hidden, but any factions that "
-					+ "would be dismayed by such actions are already hostile to you.");
+			text.addPara("An atrocity of this scale can not be hidden, but any factions that would "
+					+ "be dismayed by such actions are already hostile to you.");
 		} else {
-			text.addPara("An atrocity of this scale can not be hidden, and will make the "
-					+ "following factions hostile:");
+			text.addPara("An atrocity of this scale can not be hidden, and will make the following "
+					+ "factions hostile:");
 			for (FactionAPI fac : nonHostile) {
 				text.addPara("    " + Misc.ucFirst(fac.getDisplayName()), fac.getBaseUIColor());
 			}
 		}
-
-		if (ThreatIncConfig.frontsEnabled()) {
-			ThreatGroundFronts.GroundFront satFront =
-					ThreatGroundFronts.getFront(market.getId());
-			if (satFront != null && satFront.isPlayerOwned()) {
-				text.addPara("YOUR OWN GROUND FORCES ARE DEPLOYED ON THE SURFACE. "
-						+ "A saturation pass will annihilate the front - there will "
-						+ "be no survivors.", Misc.getNegativeHighlightColor());
-			} else if (satFront != null) {
-				text.addPara("An allied expeditionary ground force is on the surface - "
-						+ "a saturation pass will annihilate it.",
-						Misc.getNegativeHighlightColor());
-			}
-			if (ThreatIncConfig.falloutDays() > 0f) {
-				text.addPara("The fallout will keep ground forces from landing for "
-						+ "about %s days afterward.", Misc.getHighlightColor(),
-						"" + (int) ThreatIncConfig.falloutDays());
-			}
-		}
-
-		text.addPara("The bombardment requires %s fuel. You have %s fuel.",
-				Misc.getHighlightColor(), "" + temp.bombardCost, "" + fuel);
-
+		int fuel = (int) playerFleet.getCargo().getFuel();
+		text.addPara("The bombardment requires %s fuel. You have %s fuel.", h,
+				"" + temp.bombardCost, "" + fuel);
 		addBombardConfirmOptions();
+		gateConfirm(fuel >= Math.max(1, temp.bombardCost));
+	}
 
-		if (fuel < temp.bombardCost && !DebugFlags.MARKET_HOSTILITIES_DEBUG) {
-			options.setEnabled(BOMBARD_CONFIRM, false);
-			options.setTooltip(BOMBARD_CONFIRM, "Not enough fuel.");
+	/** What the day's fuel does to the razing bar, one line a fact: a destroyed colony, the size it falls to, the level's bar after. */
+	protected void razingLines(float barFuel, Color h, Color bad) {
+		int layers = ThreatRazing.enemyLayers(market);
+		int levels = ThreatRazing.razeable(market);
+		float bar = ThreatRazing.progress(market) + barFuel;
+		int razed = 0;
+		while (razed < levels) {
+			float need = ThreatRazing.levelFuel(layers - razed);
+			if (bar < need) break;
+			bar -= need;
+			razed++;
+		}
+		if (razed > 0 && razed >= layers) {
+			text.addPara("    " + market.getName() + " is destroyed.", bad);
+			return;
+		}
+		if (razed > 0) {
+			text.addPara("    Size %s to %s.", bad, "" + market.getSize(), "" + (market.getSize() - razed));
+		}
+		if (razed < levels) {
+			text.addPara("    The next level: %s of %s fuel.", h, Misc.getWithDGS(Math.round(bar)),
+					Misc.getWithDGS(Math.round(ThreatRazing.levelFuel(layers - razed))));
 		}
 	}
 
 	@Override
 	protected void bombardConfirm() {
+		if (!ThreatIncConfig.enabled()) {
+			super.bombardConfirm();
+			return;
+		}
+		if (temp.bombardType == null) {
+			bombardNeverMind();
+			return;
+		}
 		// defense in depth: even if some other path populated the hostile list
 		// (e.g. vanilla bombardSaturation ran via a mod conflict), strip every
 		// third party before the reputation hit is applied
@@ -896,243 +924,162 @@ public class ThreatincMarketCMD extends MarketCMD {
 			if (temp.willBecomeHostile.isEmpty()) {
 				temp.willBecomeHostile.add(Global.getSector().getFaction(Factions.THREAT));
 			}
-			ThreatIncConfig.log("Waived atrocity penalty for saturation bombardment of "
-					+ market.getName() + ".");
 		}
-
-		if (isThreatTarget() && temp.bombardType == BombardType.SATURATION) {
-			threatSatConfirm();
-			return;
-		}
-
-		if (siegeSliceApplies() && temp.bombardType == BombardType.TACTICAL) {
-			// full vanilla confirm flow (fuel, rep, unrest, listener), then take
-			// back the 365-day disruption it wrote and deliver the siege slice
-			// instead: the clocks advance by what the fleet's points earn against
-			// the defence figure, up to worn out, and the batteries answer.
-			// reapply below makes the suppressed defences take effect immediately,
-			// not on the next colony poll.
-			// capture REAL disruption, not the raw clock: a structure whose
-			// disruption was cleared can carry a ghost expire (see
-			// ThreatGroundFronts.siegeDisruptDays), and restoring that as a value
-			// would resurrect it as genuine disruption the siege then can't touch
-			Map<Industry, Float> pre = new LinkedHashMap<Industry, Float>();
-			for (Industry ind : temp.bombardmentTargets) {
-				pre.put(ind, ThreatGroundFronts.siegeDisruptDays(ind));
-			}
-			// the defence figure BEFORE the transaction: super.bombardConfirm below
-			// disrupts the defence industries for 365 days and our listener reapplies
-			// the stat, so a live getDefenderStr inside the slice would read a value
-			// crushed to a fraction of the board's until the revert-and-reapply at the
-			// end of this branch restores it. Captured here, it matches the estimate.
-			float defence = Math.max(0f, getDefenderStr(market, true));
-			super.bombardConfirm();
-			for (Map.Entry<Industry, Float> entry : pre.entrySet()) {
-				entry.getKey().setDisrupted(entry.getValue());
-			}
-			float days = ThreatIncConfig.siegeBombardSliceDays();
-			// instantaneous: nothing to make up, the clocks run down from here
-			float loss = ThreatGroundFronts.siegeSlice(playerFleet.getFleetPoints(), market, days,
-					false, true, defence, ThreatIncConfig.tacBombardSuppressDays());
-			List<com.fs.starfarer.api.fleet.FleetMemberAPI> lost =
-					new ArrayList<com.fs.starfarer.api.fleet.FleetMemberAPI>();
-			ThreatGroundFronts.applyFleetLosses(playerFleet, loss, lost);
-			if (!lost.isEmpty()) {
-				StringBuilder names = new StringBuilder();
-				for (com.fs.starfarer.api.fleet.FleetMemberAPI member : lost) {
-					if (names.length() > 0) names.append(", ");
-					names.append(member.getShipName()).append(" (")
-							.append(member.getHullSpec().getHullNameWithDashClass()).append(")");
-				}
-				text.addPara("Lost to the batteries: " + names + ".",
-						Misc.getNegativeHighlightColor());
-			}
-			if (isThreatTarget()) applyDangerClose();
-			market.reapplyIndustries();
-			return;
-		}
-
-		super.bombardConfirm();
+		bombardDay(temp.bombardType == BombardType.SATURATION);
 	}
 
-	/**
-	 * The disruption a hive saturation bombardment lays down: every industry not
-	 * tagged {@code TAG_NO_SATURATION_BOMBARDMENT} - mining, population, spaceport,
-	 * defenses, all of it, not just the military structures a ground siege was
-	 * already suppressing - has its disruption clock raised TO the hive-short sat
-	 * pass ({@code hiveSatDisruptDays} x 1..1.25), never shortened below what a
-	 * raid or the ground war already earned. No size reduction: bombardment cannot
-	 * kill a hive, only decline can. This is the one place that answer lives, so a
-	 * player strike ({@link #threatSatConfirm}) - the swarm's own self-scour
-	 * was removed 2026-09-08 - disrupts exactly this set: they
-	 * are the same bombardment.
-	 */
-	public static void applySaturationDisruption(MarketAPI market, java.util.Random random) {
-		if (market == null) return;
-		if (random == null) random = new java.util.Random();
-		// what the shield still turns aside, read before the pass writes anything
-		float through = ThreatShield.throughput(market);
-		// null with the shield mechanic off, so the loop below disrupts it as it
-		// would any other structure - an ordinary industry again
-		Industry shield = ThreatShield.present(market) ? ThreatShield.get(market) : null;
-		for (Industry curr : market.getIndustries()) {
-			if (curr == null || curr.getSpec() == null) continue;
-			if (curr.getSpec().hasTag(Industries.TAG_NO_SATURATION_BOMBARDMENT)) continue;
-			float dur = ThreatIncConfig.hiveSatDisruptDays()
-					* StarSystemGenerator.getNormalRandom(random, 1f, 1.25f);
-			// the shield has no cover of its own and takes the pass at full weight
-			if (curr == shield) {
-				ThreatShield.soakTo(market, dur);
-				continue;
-			}
-			curr.setDisrupted(Math.max(ThreatGroundFronts.siegeDisruptDays(curr), dur * through));
-		}
-		market.reapplyIndustries();
-	}
+	/** Market memory: this saturation campaign has been counted as an atrocity (a month without saturation ends it). */
+	public static final String ATROCITY_KEY = "$threatinc_satAtrocity";
 
 	/**
-	 * Saturation bombardment of a hive. Mirrors vanilla
-	 * {@code MarketCMD.bombardConfirm} (0.98a) with the siege differences:
-	 * disruption is hive-short (and never erases longer existing disruption),
-	 * and there is NO size reduction and NO destroy branch - bombardment
-	 * cannot kill a hive; only decline can. The atrocity counters are skipped
-	 * under the waiver.
+	 * One day of the player's bombardment (docs/suppression-balance.md v2):
+	 * vanilla's confirm - hostility timeouts, the military response, the
+	 * reputation hit, pollution, the listeners - around the day itself: the
+	 * slice (tactical) or the saturation slice with its razing, the ships the
+	 * guns took by name, the unrest raised rather than stacked, and the
+	 * once-a-day lock.
 	 */
-	protected void threatSatConfirm() {
-		if (temp.bombardType == null) {
-			bombardNeverMind();
-			return;
-		}
-
-		dialog.getVisualPanel().showImagePortion("illustrations", "bombard_saturation_result",
+	protected void bombardDay(boolean saturation) {
+		Color h = Misc.getHighlightColor();
+		Color bad = Misc.getNegativeHighlightColor();
+		dialog.getVisualPanel().showImagePortion("illustrations",
+				saturation ? "bombard_saturation_result" : "bombard_tactical_result",
 				640, 400, 0, 0, 480, 300);
-
-		java.util.Random random = getRandom();
-
 		if (!DebugFlags.MARKET_HOSTILITIES_DEBUG) {
-			float timeout = SATURATION_BOMBARD_TIMEOUT_DAYS;
+			float timeout = saturation ? SATURATION_BOMBARD_TIMEOUT_DAYS : TACTICAL_BOMBARD_TIMEOUT_DAYS;
 			Misc.increaseMarketHostileTimeout(market, timeout);
 			timeout *= 0.7f;
-			for (MarketAPI curr : Global.getSector().getEconomy()
-					.getMarkets(market.getContainingLocation())) {
+			for (MarketAPI curr : Global.getSector().getEconomy().getMarkets(market.getContainingLocation())) {
 				if (curr == market) continue;
-				boolean cares = curr.getFaction()
-						.getCustomBoolean(Factions.CUSTOM_CARES_ABOUT_ATROCITIES);
+				boolean cares = saturation
+						&& curr.getFaction().getCustomBoolean(Factions.CUSTOM_CARES_ABOUT_ATROCITIES);
 				if (curr.getFaction().isNeutralFaction()) continue;
 				if (curr.getFaction().isPlayerFaction()) continue;
 				if (curr.getFaction().isHostileTo(market.getFaction()) && !cares) continue;
 				Misc.increaseMarketHostileTimeout(curr, timeout);
 			}
 		}
-
 		addMilitaryResponse();
 
-		playerFleet.getCargo().removeFuel(temp.bombardCost);
-		AddRemoveCommodity.addCommodityLossText(Commodities.FUEL, temp.bombardCost, text);
+		// read before the day writes anything
+		float fp = playerFleet.getFleetPoints();
+		float defence = Math.max(0f, getDefenderStr(market, true));
+		float suppression = ThreatGroundFronts.suppressionRate(market, fp, defence);
+		float fuelAboard = playerFleet.getCargo().getFuel();
+		int unrestBefore = RecentUnrest.getPenalty(market);
+		String name = market.getName();
+		int sizeBefore = market.getSize();
+
+		int cost = Math.min((int) fuelAboard, temp.bombardCost);
+		playerFleet.getCargo().removeFuel(cost);
+		AddRemoveCommodity.addCommodityLossText(Commodities.FUEL, cost, text);
 
 		for (FactionAPI curr : temp.willBecomeHostile) {
 			CustomRepImpact impact = new CustomRepImpact();
 			impact.delta = market.getSize() * -0.01f;
 			impact.ensureAtBest = RepLevel.HOSTILE;
-			if (curr == faction) {
-				impact.ensureAtBest = RepLevel.VENGEFUL;
-			}
+			if (saturation && curr == faction) impact.ensureAtBest = RepLevel.VENGEFUL;
 			Global.getSector().adjustPlayerReputation(
-					new RepActionEnvelope(RepActions.CUSTOM, impact, null, text, true, true),
-					curr.getId());
+					new RepActionEnvelope(RepActions.CUSTOM, impact, null, text, true, true), curr.getId());
 		}
-
-		// no war-crime bookkeeping for exterminating the swarm
-		if (!waiveAtrocity()) {
-			int atrocities = (int) Global.getSector().getCharacterData()
-					.getMemoryWithoutUpdate().getFloat(MemFlags.PLAYER_ATROCITIES);
-			atrocities++;
-			Global.getSector().getCharacterData().getMemoryWithoutUpdate()
-					.set(MemFlags.PLAYER_ATROCITIES, atrocities);
-			if (market.getFaction() != null) {
-				com.fs.starfarer.api.campaign.rules.MemoryAPI mem =
-						market.getFaction().getMemoryWithoutUpdate();
-				mem.set(MemFlags.FACTION_SATURATION_BOMBARED_BY_PLAYER,
-						mem.getInt(MemFlags.FACTION_SATURATION_BOMBARED_BY_PLAYER) + 1);
-			}
-		}
-
-		// unrest is flavor only - hive defenses are stability-immune (SwarmNexus)
-		int stabilityPenalty = getSaturationBombardmentStabilityPenalty();
-		if (stabilityPenalty > 0) {
-			String reason = "Recently bombarded";
-			if (Misc.isPlayerFactionSetUp()) {
-				reason = playerFaction.getDisplayName() + " bombardment";
-			}
-			RecentUnrest.get(market).add(stabilityPenalty, reason);
-		}
-
-		if (market.hasCondition(Conditions.HABITABLE)
-				&& !market.hasCondition(Conditions.POLLUTION)) {
+		if (saturation) countAtrocity();
+		if (market.hasCondition(Conditions.HABITABLE) && !market.hasCondition(Conditions.POLLUTION)) {
 			market.addCondition(Conditions.POLLUTION);
 		}
 
-		// short disruption, and never shorter than what a raid already earned
-		applySaturationDisruption(market, random);
-
-		// theater shaping, never decline progress: the world is silenced for
-		// days, and the fallout forfeits ground tempo - no landings for a while,
-		// and any front already down there dies under the sky-fall
-		if (ThreatIncConfig.frontsEnabled()) {
-			ThreatGroundFronts.setFallout(market);
-			ThreatGroundFronts.GroundFront satFront =
-					ThreatGroundFronts.getFront(market.getId());
-			if (satFront != null) {
-				boolean own = satFront.isPlayerOwned();
-				ThreatGroundFronts.destroy(market.getId());
-				text.addPara((own ? "Your ground forces were"
-						: "The allied expeditionary ground force was")
-						+ " on the surface when the sky fell. There are no survivors.",
-						Misc.getNegativeHighlightColor());
+		String reason = Misc.isPlayerFactionSetUp() ? playerFaction.getDisplayName() + " bombardment"
+				: "Recently bombarded";
+		float loss;
+		boolean destroyed = false;
+		if (saturation) {
+			float[] out = ThreatGroundFronts.saturationSlice(fp, market, 1f, fuelAboard, true, false,
+					defence, Factions.PLAYER, reason);
+			loss = out[0];
+			destroyed = out[3] > 0f;
+		} else {
+			loss = ThreatGroundFronts.siegeSlice(fp, market, 1f, true, false, defence, reason);
+			if (isThreatTarget()) applyDangerClose(suppression);
+		}
+		List<FleetMemberAPI> lost = new ArrayList<FleetMemberAPI>();
+		ThreatGroundFronts.applyFleetLosses(playerFleet, loss, lost);
+		if (!lost.isEmpty()) {
+			StringBuilder names = new StringBuilder();
+			for (FleetMemberAPI member : lost) {
+				if (names.length() > 0) names.append(", ");
+				names.append(ThreatGroundFronts.shipName(member));
 			}
+			text.addPara("Lost to return fire: " + names + ".", bad);
 		}
 
-		text.addPara("Surface operations disrupted for a handful of days. The deep "
-				+ "strata absorb the rest - the hive's population is untouched.");
-		if (ThreatIncData.lastHealth(market.getId()) < ThreatColonyManager.CRITICAL_HEALTH) {
-			text.addPara("The colony is badly weakened - its garrisons, defenses and "
-					+ "counter-attacks all run on its failing vitality. Only a ground "
-					+ "victory destroys it; this bought the ground war time.",
-					Misc.getNegativeHighlightColor());
+		if (destroyed) {
+			text.addPara(name + " destroyed.");
+		} else {
+			if (market.getSize() < sizeBefore) {
+				text.addPara("Colony size reduced to %s.", bad, "" + market.getSize());
+			}
+			int raised = RecentUnrest.getPenalty(market) - unrestBefore;
+			if (raised > 0) {
+				text.addPara("Stability of " + name + " reduced by %s.", h, "" + raised);
+			}
+			if (!ThreatGroundFronts.Theatre.of(market).fortifications(market).isEmpty()) {
+				text.addPara("Defences at %s.", h, pct(ThreatGroundFronts.fortificationCondition(market)));
+			}
+			// the suppressed defences in force now, not on the next colony poll
+			ThreatGroundFronts.syncSiegeState(market);
+			market.reapplyIndustries();
 		}
+		ThreatGroundFronts.lockBombard();
 
-		// fired manually since vanilla bombardConfirm was bypassed - this keeps
-		// strike recall and the atrocity rep-restore listener working
-		ListenerUtil.reportSaturationBombardmentFinished(dialog, market, temp);
-
+		if (saturation) {
+			ListenerUtil.reportSaturationBombardmentFinished(dialog, market, temp);
+		} else {
+			ListenerUtil.reportTacticalBombardmentFinished(dialog, market, temp);
+		}
 		if (dialog != null && dialog.getPlugin() instanceof RuleBasedDialog) {
 			if (dialog.getInteractionTarget() != null
 					&& dialog.getInteractionTarget().getMarket() != null) {
 				Global.getSector().setPaused(false);
-				dialog.getInteractionTarget().getMarket().getMemoryWithoutUpdate()
-						.advance(0.0001f);
+				dialog.getInteractionTarget().getMarket().getMemoryWithoutUpdate().advance(0.0001f);
 				Global.getSector().setPaused(true);
 			}
 			((RuleBasedDialog) dialog.getPlugin()).updateMemory();
 		}
-
 		Misc.setFlagWithReason(market.getMemoryWithoutUpdate(), MemFlags.RECENTLY_BOMBARDED,
 				Factions.PLAYER, true, 30f);
-
 		addBombardVisual(market.getPrimaryEntity());
-
 		addBombardContinueOption();
 	}
 
 	/**
-	 * Danger close (docs/ground-war.md): a tactical pass with a front deployed
-	 * costs it marines - and in exchange the ground forces mark targets, so the
-	 * pass's disruption also lands on the Fabrication Core and the port, not
-	 * just the war-strata (raised to the pass length like everything else a
-	 * bombardment touches, never past it). Called from the tactical bombardConfirm branch,
-	 * before the reapply.
+	 * Vanilla's atrocity bookkeeping, once a campaign rather than once a day: a
+	 * razing is one atrocity however many days it takes (a month without
+	 * saturation ends the campaign). Nothing for exterminating the swarm under
+	 * the waiver.
 	 */
-	protected void applyDangerClose() {
+	protected void countAtrocity() {
+		if (waiveAtrocity()) return;
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = market.getMemoryWithoutUpdate();
+		boolean counted = mem.getBoolean(ATROCITY_KEY);
+		mem.set(ATROCITY_KEY, true, 30f);
+		if (counted) return;
+		com.fs.starfarer.api.campaign.rules.MemoryAPI player = Global.getSector().getCharacterData()
+				.getMemoryWithoutUpdate();
+		player.set(MemFlags.PLAYER_ATROCITIES, (int) player.getFloat(MemFlags.PLAYER_ATROCITIES) + 1);
+		if (market.getFaction() != null) {
+			com.fs.starfarer.api.campaign.rules.MemoryAPI fmem = market.getFaction().getMemoryWithoutUpdate();
+			fmem.set(MemFlags.FACTION_SATURATION_BOMBARED_BY_PLAYER,
+					fmem.getInt(MemFlags.FACTION_SATURATION_BOMBARED_BY_PLAYER) + 1);
+		}
+	}
+
+	/**
+	 * Danger close (docs/ground-war.md): a day of tactical bombardment with your
+	 * front deployed costs it marines, and in exchange the ground forces mark
+	 * targets - the day also lands on the Fabrication Core and the port, at the
+	 * rate it lands on the war-strata. Called from the tactical day, before the
+	 * reapply.
+	 */
+	protected void applyDangerClose(float rate) {
 		if (!ThreatIncConfig.frontsEnabled()
 				|| !ThreatIncConfig.frontDangerCloseEnabled()) return;
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
@@ -1149,16 +1096,10 @@ public class ThreatincMarketCMD extends MarketCMD {
 		if (core != null) deep.add(core);
 		Industry port = ThreatColonyManager.getPort(market);
 		if (port != null) deep.add(port);
-		float through = ThreatShield.throughput(market);
-		for (Industry ind : deep) {
-			float dur = ThreatIncConfig.hiveTacDisruptDays()
-					* StarSystemGenerator.getNormalRandom(getRandom(), 1f, 1.25f);
-			ind.setDisrupted(Math.max(ThreatGroundFronts.siegeDisruptDays(ind), dur * through));
-		}
+		ThreatGroundFronts.bombardStructures(market, deep, rate, 1f, 0f);
 
-		text.addPara("Ground-marked targets: the strike also cracked the hive's deep "
-				+ "organs. The front lost %s marines to the barrage.",
-				Misc.getNegativeHighlightColor(), "" + loss);
+		text.addPara("Your front marked targets: the Fabrication Core and the port took the day too.");
+		text.addPara("The front lost %s marines to the barrage.", Misc.getNegativeHighlightColor(), "" + loss);
 
 		if (front.marines < ThreatIncConfig.frontMinMarines()) {
 			ThreatGroundFronts.destroy(market.getId());

@@ -470,6 +470,8 @@ public class ThreatConvoys {
 	public static float[] frontWants(ThreatGroundFronts.GroundFront front, MarketAPI hive) {
 		float marines = ThreatIncConfig.frontReinforceFraction()
 				* ThreatGroundFronts.landedStrength(front) - front.marines;
+		// a front that cannot hold asks for what holds it, whatever it landed with
+		marines = Math.max(marines, ThreatGroundFronts.holdGap(front, hive));
 		// armaments for the army the run leaves behind, not the depleted one:
 		// a front reinforced back toward its peak burns at the peak's rate
 		float strength = Math.max(front.marines, ThreatIncConfig.frontReinforceFraction()
@@ -593,7 +595,8 @@ public class ThreatConvoys {
 			float upkeepDays = ThreatGroundFronts.dailyUpkeep(front) > 0f
 					? wants[1] / ThreatGroundFronts.dailyUpkeep(front) : 0f;
 			// not worth a sailing for less than a few days of armaments or a handful of marines
-			if (upkeepDays < 10f && wants[0] < 100f) continue;
+			// - unless it cannot hold without them
+			if (upkeepDays < 10f && wants[0] < 100f && ThreatGroundFronts.frontCanHold(front, hive)) continue;
 			ThreatBases.Base base = pickFrontBase(faction, hive, false, wants);
 			if (base == null) {
 				ThreatIncConfig.logQuiet("fr_nobase_" + front.marketId, "Front run for " + hive.getName()
@@ -637,6 +640,15 @@ public class ThreatConvoys {
 		if (!ThreatIncConfig.supportEnabled()) return false;
 		if (ThreatFleetOrders.hasSupport(faction.getId(), hive.getId())) return false;
 		if (ThreatFleetOrders.hasDefend(faction.getId(), hive.getId())) return false;
+		// a sortie that cannot clear the orbit only feeds the swarm and holds the
+		// door open for convoys to be mauled in it (run 6: 111 FP against 4,800)
+		float need = IncursionManager.siegeOrbitNeeded(faction, java.util.Collections.singletonList(hive));
+		float brings = ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP());
+		if (need > brings) {
+			ThreatIncConfig.logQuiet("fr_nosupport_" + hive.getId(), "Support for " + hive.getName() + " refused: "
+					+ (int) need + " FP of orbit to clear, a task force brings " + (int) brings);
+			return false;
+		}
 		return ThreatFleetOrders.dispatchSupport(faction, hive) != null;
 	}
 

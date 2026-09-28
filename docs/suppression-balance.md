@@ -1,10 +1,11 @@
 # Suppressing a colony's defences - every path, side by side
 
-Written 2026-09-28, the day the orbital floor (`fortificationOrbitFloor`, 0.5) was removed:
-orbit now wears a fortification - and a planetary shield - all the way to 0. Figures are
-computed from the formulas below, not measured in-game. **The build spec is "Bombardment and
-siege redesign v2 - FINAL SPEC" below**; the tables above it describe the current code. Calculator: re-derive from the formulas
-(a throwaway Python sim produced the tables).
+Written 2026-09-28, the day the orbital floor (`fortificationOrbitFloor`, 0.5) was removed.
+**"Bombardment and siege redesign v2" below is BUILT (2026-09-28, untested)** - its build
+notes close that section. The paths and tables before it describe the code as it stood
+between the floor's removal and v2, and are kept as the case that led to the redesign.
+Figures are computed from the formulas, not measured in-game (a throwaway Python sim
+produced the tables).
 
 Assumptions for every table: stability 10, no deficits, hazard 100%, no skills, no ground
 support, no planetary shield, LunaLib defaults. Colony theatre only (a hive runs the same duel
@@ -133,12 +134,12 @@ A ground front alone wears any of these in 180 days (net +1 d/day while HOLDING)
     its fortifications at 50%. Vanilla's 365 days are past the 180-day wear, so it strips
     everything, at stability -10 and size -1.
 
-## Bombardment and siege redesign v2 - FINAL SPEC for build (2026-09-28, NOT BUILT)
+## Bombardment and siege redesign v2 - FINAL SPEC (2026-09-28, BUILT the same day, untested)
 
-Handover: this section is the complete, agreed design from the 2026-09-28 brainstorm. Every item
-below is either the user's decision or a recommendation the user accepted ("do all
-recommendations"). Nothing in it is built. Build it in this order of dependency: the tactical
-rules, then saturation, then fronts/diplomacy/AI. v1 at the bottom is history only.
+This section is the complete, agreed design from the 2026-09-28 brainstorm. Every item below
+is either the user's decision or a recommendation the user accepted ("do all
+recommendations"). It was built the same day; "Built 2026-09-28" at the end of the section
+records what the build decided where the spec left it open. v1 at the bottom is history only.
 
 ### State of the code at handover
 
@@ -334,6 +335,23 @@ the share it absorbs. Raids and fronts ignore it, as today.
   for the swarm's side, default false today). Seed hive: about 900 fuel, 1-2 days.
 - `IncursionManager.siegeRaidStrNeeded` sizes landings against defences worn by the new rules.
 
+### 9. The player's Bombard order (added 2026-09-28, the user's decision)
+
+The player gets the AI's raze expedition as a war-board order, on the same numbers. A
+**Bombard** button on a found hive's row sends a fleet sized for the orbit, with no marines and
+the raze fuel (`ThreatRazing.fuelToDestroyThrough`) from the player's stockpile. It fights the
+Defense Swarms for the orbit, then saturates the hive a day at a time until it is gone, or until
+the fuel runs out and it comes home. The order only razes. Tactical bombardment stays inside
+Siege (it bombards before it lands) and Support / Defend (over a front the player holds); the
+user chose raze-only over a tactical mode.
+
+Built the same day (untested): the targets are the system's hives saturation can still take with
+no front on them (combined arms stays with the menu, which pays danger close); several hives are
+razed in turn by one flotilla, sized to outlast every world's guns (`IncursionManager.razeRun`);
+the fleets fit the base's free points like a Siege and, like a Siege, are not sized against the
+Defense Swarms; the fuel comes from the base alone (the player's sieges never pool), passage
+first, and a reserve short of the full razing sends what it has.
+
 ### The Kazeron heist, computed (the case that started this)
 
 Kazeron: size 7, Heavy Batteries, Military Base, Star Fortress (x3 until beaten), stability 10
@@ -358,11 +376,13 @@ the raid alone keeps the transponder-off option.
 | --- | --- | --- |
 | `bombardCooldownDays` | 1 | new; shared tactical/saturation lock |
 | `bombardFuelPerFPDay` | 0.04 | new; tactical fuel |
-| `bombardReturnFirePerGunDefence` | 0.008 | replaces `siegeBatteryAttritionPerDay` |
+| `bombardReturnFirePerGunDefence` | 0.0008 | replaces `siegeBatteryAttritionPerDay`; was 0.008 until run 4 |
+| `bombardFPWorth` | 30 | new (run 4); defence a day must take off per fleet point lost (NPCs; the swarm uses `fabricateTroopsPerFP x mult / frontHoldFraction`) |
 | `bombardUnrestMax` | 10 | new; tactical unrest = this x (1 - condition) |
 | `satFuelPerFPDay` | 2.86 | new; saturation delivery |
 | `satFuelSize4` | 10,000 | new; anchor for fuel per level (x3.2 per size) |
 | `frontWearRate` | 12 | replaces `frontSuppressDaysPerDay`'s flat rate |
+| `npcRazeEnabled` | true | new (build); NPC raze task on/off |
 | retire | - | `tacBombardSuppressDays`, `siegeBombardSliceDays`, `hiveSatDisruptDays`, `hiveTacDisruptDays` (check use), `falloutDays`, `fortificationRaidDanger`, `fortificationRaidDepthLoss` |
 
 Knob names are proposals. `hiveBombardCostMult` goes too (fuel no longer derives from D).
@@ -398,6 +418,93 @@ Knob names are proposals. `hiveBombardCostMult` goes too (fuel no longer derives
 - The rates carrying the tables (rate 12/30, 0.008, 0.04, 2.86, x3.2) are first cuts - tune after
   a test run, not before.
 - How the NPC decides raze vs siege (a cost comparison of fuel against marines and days).
+
+### Built 2026-09-28 - what the build decided
+
+- **"Orbit has done what it can"** (`ThreatGroundFronts.orbitSpent`): a day's bombardment now
+  gains less than one day of the defenders' repair (1 d/day). It replaces the "fully worn" gate
+  (`suppressedFully`), which diminishing returns never reach; no new knob. `orbitDone` also
+  counts the fuel: less than half a day's ordnance aboard is done too. `bombardPlan` runs the
+  days forward (shield and unrest included, capped at `siegeOrbitDays`) so a landing is sized on
+  what orbit will leave.
+- **Fuel.** The player's tactical day costs 0.04 x FP less vanilla's fleet bombardment
+  capability (`FLEET_BOMBARD_COST_REDUCTION`). Saturation pours the least of 2.86 x FP, the fuel
+  aboard and what the colony still needs, and never costs less than a tactical day (the buildings
+  are bombed too). The player may pour every ton aboard.
+- **Support and Defend** pay their ordnance from the fuel they carry (`ThreatReturns.MEM_FUEL`),
+  then from the home base's spendable reserve (`payOrdnance`). Out of both, they hold the orbit
+  without bombarding ("out of fuel to bombard with"). A Defend fleet with no fuel over a front
+  that cannot hold fabricates troops, since an empty tank counts as orbit done (`orbitDoneFor`).
+  The swarm pays nothing: it has no fuel economy.
+- **One atrocity per saturation campaign** (`$threatinc_satAtrocity`, 30 days), not one a day: a
+  70-day campaign counts once, as vanilla's one-shot did.
+- **Story-critical worlds** stop at size 3 and are never destroyed, as vanilla's saturation
+  spares them. Below size 3 the size comes off by vanilla's steps in `ThreatRazing.reduceSize`,
+  since vanilla's `reduceMarketSize` refuses to go under 3.
+- **Besieged human colonies** hold vanilla's `NO_DECIV_KEY` (expiring, with our own
+  `$threatinc_decivHeld` flag so another mod's hold is never lifted): bombardment unrest can take
+  stability to 0 without vanilla decivilizing the colony (principle 7).
+- **Hive stability** is pinned at 10 minus recent unrest (`ThreatColonyManager.applyHiveOrder`),
+  re-applied whenever bombardment raises the unrest.
+- **The razing bar** is a colony condition (`threatinc_razed`, `ThreatRazedCondition`), not a
+  line on the Population & Infrastructure row: that row's tooltip is vanilla's plugin.
+- **Danger close** (a front's own marines under the bombs) is per day now: 0.005 of the marines a
+  day (was 0.05 a bombardment).
+- **Fabrication price**: 0.008 x days x D x the intact batteries' share - what the return fire
+  would have cost over the days of bombardment the fabrication replaces.
+- **Core raid**: `fortificationRaidDepthLoss` is renamed `coreRaidDepthLoss` (the Core is the one
+  raid left), and its pressure reads the player's raid strength (marines plus ground support,
+  through planetary operations) instead of `MarketCMD.getRaidStr`, the AI's figure (asymmetry 5).
+- **Retired knobs**: `tacBombardSuppressDays`, `siegeBombardSliceDays`, `hiveSatDisruptDays`,
+  `hiveTacDisruptDays`, `hiveBombardCostMult`, `hiveTacCostFraction`, `falloutDays`,
+  `fortificationRaidDanger`, `siegeBatteryAttritionPerDay`, `frontSuppressDaysPerDay` (now
+  `frontWearRate`), `frontGrindSuppressMult` (a grinding front wears by its advantage too).
+- **Nexerelin** runs human colonies' military menus, so with it loaded the player's bombardment
+  days apply to hives only.
+
+The AI half, and what reviewing it changed (same day):
+
+- **The commander's stop.** `orbitSpent` first stopped only when a day gained less than a day
+  of repair. Over a hive with Heavy Batteries that kept fleets bombarding while the guns sank
+  them: a size-4 hive (D 7,200) fires 38 FP a day, so a 450 FP flotilla planned for 120 days
+  lasted 6, landed a quarter of the marines it needed and was overrun. Now a day is flown only
+  while it takes at least `bombardFPWorth` (30) defence off the world per fleet point the guns
+  take (a fleet point of hull is ~6,000 credits armed and crewed, a marine 200; a defence point
+  is a marine the landing no longer needs) and leaves the fleet above vanilla's abort line
+  (0.33 of what it set out with). `bombardPlan` counts the fleet's losses day by day, and a
+  live expedition lands rather than let the guns take it under the line (`gunsWouldBreak`).
+  Human colonies are unchanged - the day's trade stays 4 to 7 in the fleet's favour there, and
+  the tables above hold. Heavy-Battery hives: a siege bombards about 18 days to 47% and lands
+  about 1,400 (size 2) to 4,200 (size 6) marines from 960-2,900 FP flotillas.
+- **One day over one world.** An expedition's fleets over a world sliced separately, each taking
+  the guns' whole day: N fleets paid N times, while splitting a fleet wore faster (asymmetry 3).
+  Now they bombard as one - the structures wear at the rate their combined points earn
+  (`orbitPoints`: the faction's armed fleets over the world) and the guns answer once, each
+  fleet taking its share by points. NPC expeditions, Support, Defend and the swarm's strikes all
+  do this; the player's own fleet in the menu takes the whole day.
+- **The raze task.** An NPC razes a world when razing's fuel (at 25) costs less than the
+  landing's marines (200) and armaments (500), the pooled reserve holds the fuel over the
+  passage, and a flotilla grown until it outlasts the guns (`razePlan`) finishes within
+  `siegeOrbitDays`. Never a world with a front, a story-critical one, or a razing that would
+  leave the rest of a mixed siege short of fuel. The smallest fleet that survives a Heavy-Battery
+  hive's razing loses about two thirds of itself: 72 FP for a size 2, 292 for a size 4, 788 for
+  a size 6 (twice that loses about a sixth). `npcRazeEnabled` switches the task off.
+- **Ordnance.** A siege expedition draws its passage, its ordnance (each world it lands on:
+  `bombardPlan` days x 0.04 x the flotilla's FP) and its razing fuel through the provisions
+  gate; the passage is paid first, then the razing, and the rest is ordnance. Unburned fuel comes
+  home with the refund. No ordnance left: no slice, and the landing gate opens.
+- **Landing sizes.** A landing is sized on the wear of the flotilla that carries it, solved
+  together with the landing - the least any siege of those worlds sails with - so the launch,
+  the sizing, the convoys and the board read one figure.
+- **The swarm's saturation doctrine** (`strikeSaturationEnabled`, off) razes by the bar through
+  `saturationSlice`; a pass over a world not yet razed does not use up vanilla's pass count.
+- **Hive return fire - open.** The 0.008 was calibrated on a size-6 colony. A hive's figure is
+  4-8 times a colony's, so its guns fire 19-58 FP a day (size 2-6 with Heavy Batteries) - about
+  three times what the old attrition took from a 1,000 FP fleet, six times from a 500 FP one.
+  With the commander's stop the AI copes (it razes small hives and lands big on large ones), but
+  large Heavy-Battery hives may be beyond most NPC sieges. A separate hive rate is the knob to add
+  if a test run agrees.
+- **Old saves.** Expeditions already out drew no ordnance: they bombard unpaid and raze nothing.
 
 ## Proposed model v1 - SUPERSEDED by the final spec above (brainstorm 2026-09-28, history only)
 

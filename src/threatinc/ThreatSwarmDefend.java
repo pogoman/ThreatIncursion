@@ -163,9 +163,11 @@ public class ThreatSwarmDefend {
 					ThreatGroundFronts.fightsForOrbit(e.factionId, market));
 			if (!ThreatFleetOrders.nearPlanet(e.fleet, market.getPrimaryEntity())) {
 				ThreatFleetOrders.stationReport(e.fleet, market, "Swarm defend");
-			} else if (ThreatGroundFronts.defendBombards(e.factionId, market)) {
+			} else if (ThreatGroundFronts.defendRazes(e.factionId, market, e.fleet)) {
+				ThreatGroundFronts.defendRazeSlice(e.fleet, market, e.factionId, elapsedDays, "Swarm defend");
+			} else if (ThreatGroundFronts.defendBombards(e.factionId, market, e.fleet)) {
 				ThreatGroundFronts.supportSlice(e.fleet, market, e.factionId, elapsedDays, "Swarm defend");
-			} else if (ThreatGroundFronts.defendFabricates(e.factionId, market)) {
+			} else if (ThreatGroundFronts.defendFabricates(e.factionId, market, e.fleet)) {
 				// the guns are as quiet as orbit can make them and the front is
 				// still short: the swarm breaks up its own ships for the ground
 				ThreatGroundFronts.fabricateTroops(e.fleet, market, e.factionId, elapsedDays,

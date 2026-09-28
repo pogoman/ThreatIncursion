@@ -78,7 +78,7 @@ model. `design/war-effort/Round2.dc.html` is the layout it implements.
    line A "Vitality n%  Swarms a/b  Reach n ly" (vitality in its health colour; "Swarms a/b of n"
    in red when the hull shortage caps the garrison below the size table's n; "Decline n%"
    replaces reach while declining) at full width - it wrapped when it shared the line; line B
-   "Def x  sat y fuel  tac z" with the size forecast right-aligned on the same line ("s5 -> s6
+   "Def x  raze y fuel  tac z a day" (2026-09-28: the fuel to raze the hive from orbit through its shield, and a day of tactical bombardment by your fleet as it stands) with the size forecast right-aligned on the same line ("s5 -> s6
    ~270 d", "s5 -> s4 ~22 d" red while declining, "s8 max", "s5 stalled"); then the organ icons
    along the bottom (industry sprites, red-tinted while disrupted, day
    count beneath), each with a hover tooltip naming the industry, its state, its output and its
@@ -182,12 +182,24 @@ way to raise a siege is the faction view's **Siege** button, gated and quoted by
 swarm has never struck keeps no reserve, so it launches nothing - no expedition from nowhere.
 `commissionEnabled` was removed from the config.
 
+**Bombard** (2026-09-28, built, untested; docs/suppression-balance.md v2 section 9) sits between
+Siege and Hunt on each hive row: a razing expedition, the player's twin of the NPC raze task. It
+takes the system's hives that saturation can still take and no front stands on
+(`IncursionManager.bombardTargets`), sizes its fleets to outlast their guns in turn
+(`bombardFleetSizes`, `razeRun` over `ThreatGroundFronts.razePlan`), fits them to the base's free
+points like a Siege, and carries the passage then the razing fuel from the base's own reserve -
+less than the razing takes if that is all there is. The prompt is the fleets, the fuel carried of
+what the razing takes, the fuel drawn of the reserve, and a line per hive (days in orbit, about
+the FP the guns take, razed or not). Gated by `bombardBlockReason`; refused with a "Razing
+Refused" notice. To fit the third button the hives table went from System .30 / Actions .21 to
+.26 / .25. The Siege prompt also quotes the fuel its bombardment burns.
+
 Siege expeditions, NPC and commissioned alike, are **sized to the target** (Sept 2026,
 `IncursionManager.siegeFleetSizes`). Vanilla's raid effectiveness is `raidStr / (raidStr +
 defenderStr)` and an industry raid needs `MarketCMD.DISRUPTION_THRESHOLD` = 0.25 of it, so the
 landing force must be at least a third of the strongest target's `getDefenderStr` as it will
-stand after the tactical pass (`ThreatGroundFronts.wornDefenceFraction`: every fortification's
-bonus fully worn away), times `SIEGE_RAID_HEADROOM` (1.25) for
+stand after the tactical pass (`ThreatGroundFronts.bombardPlan`: the defence left when the
+flotilla's commander stops bombarding, since 2026-09-28), times `SIEGE_RAID_HEADROOM` (1.25) for
 the preparedness bump each raid adds. NPC raid strength is a
 quarter of crew capacity (`MarketCMD.getRaidStr`), which tracks fleet size, so fleets are added
 to the old baseline shape until difficulty points x `threatinc_siegeRaidStrPerPoint` (43,

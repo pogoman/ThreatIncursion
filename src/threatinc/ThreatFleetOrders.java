@@ -198,10 +198,13 @@ public class ThreatFleetOrders {
 					return "clearing the orbit of " + targetName;
 				}
 				if (KIND_SUPPORT.equals(kind)) return "supporting the siege of " + targetName;
-				if (world != null && ThreatGroundFronts.defendBombards(factionId, world)) {
+				if (world != null && ThreatGroundFronts.defendRazes(factionId, world, fleet)) {
+					return "razing " + targetName;
+				}
+				if (world != null && ThreatGroundFronts.defendBombards(factionId, world, fleet)) {
 					return "covering the front on " + targetName;
 				}
-				if (world != null && ThreatGroundFronts.defendFabricates(factionId, world)) {
+				if (world != null && ThreatGroundFronts.defendFabricates(factionId, world, fleet)) {
 					return "breaking up for the front on " + targetName;
 				}
 				return "defending the orbit of " + targetName;
@@ -258,15 +261,19 @@ public class ThreatFleetOrders {
 			boolean stationGone = KIND_GUARD.equals(o.kind) && o.targetId != null
 					&& ThreatBases.of(o.targetId) == null;
 			// a landing's Defend (no term) stays until the front it covers is
-			// gone, or the batteries have ground it below defendMinStrength
-			// a fleet feeding its front its own hulls is exempt from the
-			// strength stand-down (2026-09-08): it commits until the front
-			// stands or falls, never home because fabrication cost it ships
+			// gone, or it is below defendMinStrength and not committed
+			// (defendCommitted: the swarm feeding its front its own hulls; a
+			// navy over its own front until worn AND outweighed, 2026-09-28)
 			boolean frontGone = KIND_DEFEND.equals(o.kind) && o.indefinite()
 					&& (ThreatGroundFronts.getFront(o.targetId) == null
 					|| (ThreatReturns.orderHealth(o.fleet) < ThreatIncConfig.defendMinStrength()
 					&& !ThreatGroundFronts.defendCommitted(o.fleet, o.factionId, o.targetId)));
-			if (o.daysLeft() <= 0f || stationGone || frontGone) {
+			// an NPC Support sortie outweighed over its own front goes home intact
+			// like a navy's Defend, not on to die (run 6: 111 FP against 4,800)
+			boolean supportLost = KIND_SUPPORT.equals(o.kind) && !o.aid && !Factions.PLAYER.equals(o.factionId)
+					&& !ThreatGroundFronts.navyHoldsOver(o.fleet, o.factionId, o.targetId != null
+							? Global.getSector().getEconomy().getMarket(o.targetId) : null);
+			if (o.daysLeft() <= 0f || stationGone || frontGone || supportLost) {
 				all().remove(o);
 				if (o.aid && o.arrived && KIND_GUARD.equals(o.kind)) ThreatAid.onGuardCompleted(o);
 				// a hunting force's follower still wears the force's blinkers; home unable to react otherwise
@@ -274,7 +281,7 @@ public class ThreatFleetOrders {
 				// time served: home on the tracked leg, refund on arrival
 				ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId);
 				ThreatIncConfig.log("Order " + (stationGone ? "void - station gone: "
-						: frontGone ? "stood down: " : "complete: ")
+						: frontGone || supportLost ? "stood down: " : "complete: ")
 						+ o.factionId + " " + o.task());
 			}
 		}
@@ -1091,8 +1098,31 @@ public class ThreatFleetOrders {
 	}
 
 	/** The button and confirm text for a sortie of the kind ({@link #supportEffect} / {@link #defendEffect}). */
-	public static String orbitEffect(MarketAPI world, float fp, String kind) {
-		return KIND_DEFEND.equals(kind) ? defendEffect(world, fp) : supportEffect(world, fp);
+	public static String orbitEffect(MarketAPI world, float fp, String kind, CampaignFleetAPI fleet) {
+		return KIND_DEFEND.equals(kind) ? defendEffect(world, fp, fleet) : supportEffect(world, fp, fleet);
+	}
+
+	/**
+	 * A day of the sortie's bombardment in the world's current numbers, one
+	 * fact a line: the defences a day moves, the fuel it burns, and the return
+	 * fire - the ships by name when the fleet is known
+	 * ({@link ThreatGroundFronts#lossLines}), else the fleet points.
+	 */
+	protected static void bombardLines(StringBuilder sb, MarketAPI world, float fp, CampaignFleetAPI fleet,
+			String when) {
+		ThreatGroundFronts.BombardDay day = ThreatGroundFronts.bombardDay(fp, world, false);
+		sb.append("\n").append(when).append(": defences ").append(Math.round(day.conditionNow * 100f))
+				.append("% to ").append(Math.round(day.conditionAfter * 100f)).append("% a day.");
+		sb.append("\nBurns ").append(Misc.getWithDGS(Math.round(day.fuel))).append(" fuel a day.");
+		if (day.returnFire < 0.05f) return;
+		java.util.List<String> lost = fleet != null
+				? ThreatGroundFronts.lossLines(fleet, day.returnFire) : new java.util.ArrayList<String>();
+		if (lost.isEmpty()) {
+			sb.append("\nReturn fire: about ").append(String.format("%.1f", day.returnFire))
+					.append(" fleet points of ships a day, smallest first.");
+		} else {
+			for (String line : lost) sb.append("\n").append(line);
+		}
 	}
 
 	/**
@@ -1100,52 +1130,30 @@ public class ThreatFleetOrders {
 	 * button and the confirm (the user, 2026-09-06: the button must say what
 	 * they will do, when they bombard, and what it costs). One line per fact.
 	 */
-	public static String supportEffect(MarketAPI world, float fp) {
+	public static String supportEffect(MarketAPI world, float fp, CampaignFleetAPI fleet) {
 		if (world == null) return "";
 		StringBuilder sb = new StringBuilder();
 		sb.append("Holds the orbit for ").append((int) ThreatIncConfig.supportDays())
-				.append(" days: runs can land, and a fleet or Defense Swarms contesting it are fought.");
+				.append(" days; fights anything contesting it.");
 		sb.append("\n").append(ThreatGroundFronts.siegeClockLine(world));
 		if (ThreatShield.present(world)) sb.append("\n").append(ThreatShield.line(world));
-		float[] est = ThreatGroundFronts.siegeSliceEstimate(fp, world, 1f);
-		sb.append("\nWhile the orbit is clear it bombards the defences: about ")
-				.append(String.format("%.1f", est[0])).append(" disruption days per day.");
-		sb.append("\nThe batteries answer: about ").append(String.format("%.1f", est[1]))
-				.append(" fleet points of ships lost per day, smallest first.");
-		sb.append("\nIt bombards whether or not the front could hold on its own; Defend bombards "
-				+ "only while it cannot, and an expedition lands as soon as its troops can hold, "
-				+ "to spare its ships.");
+		bombardLines(sb, world, fp, fleet, "Bombards whether or not the front holds");
 		return sb.toString();
 	}
 
 	/**
 	 * What a Defend sortie of {@code fp} points does over the world, for the
 	 * button and the confirm. One line per fact; that the bombardment is
-	 * conditional is the whole difference from Support, so it is the second
-	 * line.
+	 * conditional is the whole difference from Support.
 	 */
-	public static String defendEffect(MarketAPI world, float fp) {
+	public static String defendEffect(MarketAPI world, float fp, CampaignFleetAPI fleet) {
 		if (world == null) return "";
 		StringBuilder sb = new StringBuilder();
 		sb.append("Holds the orbit for ").append((int) ThreatIncConfig.defendDays())
-				.append(" days: runs can land, and a fleet or Defense Swarms contesting it are fought.");
+				.append(" days; fights anything contesting it.");
 		sb.append("\n").append(ThreatGroundFronts.siegeClockLine(world));
 		if (ThreatShield.present(world)) sb.append("\n").append(ThreatShield.line(world));
-		sb.append("\nIt does not bombard while the front holds, so the batteries cost it nothing.");
-		float[] est = ThreatGroundFronts.siegeSliceEstimate(fp, world, 1f);
-		sb.append("\nWhile the front cannot hold it bombards the defences until it can: about ")
-				.append(String.format("%.1f", est[0])).append(" disruption days per day.");
-		sb.append("\nOnly then do the batteries answer: about ").append(String.format("%.1f", est[1]))
-				.append(" fleet points of ships lost per day, smallest first.");
-		if (ThreatIncConfig.fabricateEnabled()) {
-			sb.append("\nWith the defences worn out and the front still short, it stops bombarding "
-					+ "and breaks up its own hulls into troops instead - only as many as the front "
-					+ "needs to hold, and it stops as soon as it does.");
-			sb.append("\nThe batteries charge about ")
-					.append(String.format("%.1f", ThreatGroundFronts.fabricateCost(fp, world, 1f)))
-					.append(" fleet points a day for the drop, as though they were undisrupted.");
-			sb.append("\nIt does not go home while it is doing that.");
-		}
+		bombardLines(sb, world, fp, fleet, "Bombards only while the front cannot hold");
 		return sb.toString();
 	}
 

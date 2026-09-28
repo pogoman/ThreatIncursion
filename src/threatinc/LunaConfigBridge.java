@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 4;
+	static final int MIGRATION_VERSION = 5;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -48,7 +48,8 @@ class LunaConfigBridge {
 	 * at 10 lands on 50) and a 40 set by hand is left alone; only a store the
 	 * version-2 migration itself moved to 40 goes on to 50. Version 4 (run
 	 * 17): expeditionSuppliesPerPoint 100 -> 30 - Hegemony's sieges waited 16
-	 * months on 32,600-supply bills.
+	 * months on 32,600-supply bills. Version 5 (bombardment v2 run 4):
+	 * bombardReturnFirePerGunDefence 0.008 -> 0.0008.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
@@ -73,6 +74,9 @@ class LunaConfigBridge {
 				}
 				if (from < 4) {
 					changed |= bump(json, "threatinc_expeditionSuppliesPerPoint", 100, 30, false);
+				}
+				if (from < 5) {
+					changed |= bump(json, "threatinc_bombardReturnFirePerGunDefence", 0.008, 0.0008, false);
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));

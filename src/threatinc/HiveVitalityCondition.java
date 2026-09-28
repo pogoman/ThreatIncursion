@@ -68,6 +68,8 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 			tooltip.addPara("Strata held: %s of %s", opad, h,
 					"" + front.strataHeld, "" + market.getSize());
 			tooltip.addPara("Growth: %s", 3f, neg, "halted");
+		} else if (ThreatRazing.saturated(market)) {
+			tooltip.addPara("Growth: %s", opad, neg, "halted under saturation");
 		} else {
 			float growthMult = ThreatColonyManager.growthMultFor(health);
 			tooltip.addPara("Growth: %s", opad, growthMult >= 1f ? h : neg,

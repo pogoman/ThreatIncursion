@@ -230,3 +230,10 @@ The Supply column is icons only: what each system makes. Shares of a hive total 
 producer" framing were removed - a share of a total says nothing about who feeds whom when
 one producer feeds everyone. `HiveSupply` keeps the demand totals only, to dim an output no
 hive world wants.
+**Arming reads the hive, not the world (2026-09-28).** The 0.6.1 gate (defensesAffordable) read metals
+on the world's own market, but vanilla imports only up to demand: a world with no batteries demands
+no metals and shows none, however much the hive's refineries make. In the IWBomb2 save 35 of 41
+hives never armed and only the 6 that make metals themselves had Heavy Batteries (0 Ground Defenses),
+so hive return fire was always 0. The gate now also counts the hive's largest producer
+(hiveMaxSupply), the source the world would draw from. With no refinery anywhere that is still 0, so
+the size-3 stall stays fixed; once one exists every world of size 3+ arms on the next tick.
