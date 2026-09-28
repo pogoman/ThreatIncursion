@@ -160,6 +160,26 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (ids != null) razeIds.addAll(ids);
 	}
 
+	/** Every world the expedition sailed for is one it razes. */
+	public boolean razesAll() {
+		if (getParams() == null || getParams().raidParams == null) return false;
+		for (MarketAPI target : getParams().raidParams.allowedTargets) {
+			if (!razes(target)) return false;
+		}
+		return !getParams().raidParams.allowedTargets.isEmpty();
+	}
+
+	/**
+	 * A siege called off inside vanilla's segment-end resolve aborts, and
+	 * vanilla then finishes the expired route as a plain failure, which would
+	 * clear the abort (reviewed 2026-09-29): an abort stands.
+	 */
+	@Override
+	public void finish(boolean isAbort) {
+		if (!isAbort && isAborted()) return;
+		super.finish(isAbort);
+	}
+
 	/** Whether the expedition razes this world rather than lands on it. */
 	public boolean razes(MarketAPI market) {
 		return market != null && razeIds != null && razeIds.contains(market.getId());
@@ -566,6 +586,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction action =
 				(com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction) seg.custom;
 		if (action.isActionFinished() || seg.elapsed < 1f) return;
+		// a razing's window is already the days it razes for (razeRun)
+		if (intel instanceof ThreatPurgeFGI && ((ThreatPurgeFGI) intel).razesAll()) return;
 		action.autoresolve();
 		if (action.isActionFinished()) seg.daysMax = Math.min(seg.daysMax, seg.elapsed + 0.1f);
 	}

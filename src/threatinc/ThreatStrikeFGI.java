@@ -512,9 +512,15 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			removed = fp;
 		}
 		int made = (int) (removed * perFP);
+		// the fragments join the pool, so a landing that does not go ahead
+		// keeps them aboard (availableLanding clips to the allotment)
 		troopsAboard += made;
+		troopsAllotted += made;
 		ThreatIncConfig.log("Strike at " + market.getName() + " broke up " + (int) removed + " FP of hulls into "
 				+ made + " troops: the beachhead needs " + need + ", " + carried + " aboard for it");
+		// the flagship and the last hull are spared, so a live fleet can come up
+		// short: it keeps what it made aboard rather than land under the line
+		if (carried + made < need) return -1;
 		return carried + made;
 	}
 
