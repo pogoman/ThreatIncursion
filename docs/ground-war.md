@@ -1881,3 +1881,31 @@ eradicated, 0 colonies lost, Threat hives 39 -> 38 - a stalemate.
   a strike that cannot reach it holds back ("Strike landing at X held back").
 - LunaLib migration 6: `frontDangerCloseLossFraction` 0.05 -> 0.005 (the v2 default never reached
   a stored settings file).
+- **The orbit gate weighs the whole system** (`npcSiegeOrbitSystem`, `siegeOrbitWeighed`,
+  `systemSwarms`). With the break-off in place, N3's first sieges into heavy systems still sailed
+  blind (Gamma Spair I-B: 10,656 FP of swarms met by 1,450). The gate now weighs the larger of the
+  strongest target world's garrisons, every Defense Swarm in the system, and the swarms last met
+  there. A heavy system stays postponed (bounty posted, hunters thin it) and the easiest-first walk
+  moves the base on. N4 vs N3 at 540 d: 17 launches vs 37 for 11 vs 13 hives killed, fuel waits
+  182 vs 399, hunt battles 41 vs 13, Threat hives 33 vs 34.
+- **The swarm relieves its fronts** (`ThreatGroundFronts.losingGround`, `strikeReliefFirst`).
+  `wantsExpedition` read only `frontCanHold` (the fortification line, 0.17 x the defence), which
+  stayed true while garrisons won every counter-attack. It now also asks whether the world's
+  counter-attack by `siegeBeachheadMargin` beats the front; such a front in reach takes the next
+  strike before any new target.
+- **Off-screen expeditions resolve on arrival** (`ThreatPurgeFGI.resolveOnArrival`,
+  `abstractResolveOnArrival`). Vanilla autoresolves an unspawned raid when its payload segment
+  ENDS, and that segment is `siegeOrbitDays` (~120 d): strikes whose siege took 0-51 d landed
+  150-180 d after launch, and relief reached fronts months after they fell. The same resolution
+  now runs a day after arrival and the segment ends. N5 vs N4: relief passes 19 vs 5, razings 10
+  vs 6, strikes 139 vs 82 (the staging hive frees sooner).
+- **The strike gate** (`IncursionManager.strikeOutweighed`, `strikeDefenceGate`). Nothing weighed
+  a target's defence before a strike: 17 of 24 measured strikes in N4 landed nothing, 12 of 13
+  against forward bases - vanilla's off-screen fight skips a raid the defenders hold as strongly
+  and charges up to 75%. The swarm now passes over a world whose system defence (vanilla's
+  `WarSimScript` enemy + station strength) outweighs the strike its staging hive can muster
+  (`ThreatColonyManager.peekGarrison`) by `siegeBreakOffRatio`.
+
+Open (design, for the user): the Threat still takes no colony in 540 d. A ~300-marine beachhead
+pushes at x2 casualties (`threatPushLossMult`), wears to half in ~2 months and is overrun while
+human relief convoys bring 200-1,800 marines; strike relief comes in 300-troop shares.

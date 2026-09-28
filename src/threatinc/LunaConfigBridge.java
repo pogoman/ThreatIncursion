@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 6;
+	static final int MIGRATION_VERSION = 7;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -51,6 +51,9 @@ class LunaConfigBridge {
 	 * months on 32,600-supply bills. Version 5 (bombardment v2 run 4):
 	 * bombardReturnFirePerGunDefence 0.008 -> 0.0008. Version 6 (bombardment
 	 * v2): frontDangerCloseLossFraction 0.05 -> 0.005 per day of bombardment.
+	 * Version 7: coreDownFactor 1.0 -> 0.8 (bombardment v2), and
+	 * responseStrengthDivisor 20 -> 30 - its menu maximum was 20 under a
+	 * default of 30 until 0.7.0, so LunaLib stored the clamp.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
@@ -81,6 +84,10 @@ class LunaConfigBridge {
 				}
 				if (from < 6) {
 					changed |= bump(json, "threatinc_frontDangerCloseLossFraction", 0.05, 0.005, false);
+				}
+				if (from < 7) {
+					changed |= bump(json, "threatinc_coreDownFactor", 1.0, 0.8, false);
+					changed |= bump(json, "threatinc_responseStrengthDivisor", 20, 30, false);
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));
