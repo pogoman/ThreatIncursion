@@ -1756,6 +1756,26 @@ public class ThreatColonyManager {
 	 * expedition fleet size (see expeditionSizeFor), so the expedition fields
 	 * exactly the fleets that left orbit.
 	 */
+	/** The expedition sizes consumeGarrison would muster now, without mustering them (the largest swarms first). */
+	public static List<Integer> peekGarrison(MarketAPI market, int count) {
+		List<Integer> sizes = new ArrayList<Integer>();
+		if (market == null || count <= 0) return sizes;
+		List<CampaignFleetAPI> alive = new ArrayList<CampaignFleetAPI>();
+		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(market.getId())) {
+			if (curr != null && curr.isAlive()) alive.add(curr);
+		}
+		java.util.Collections.sort(alive, new java.util.Comparator<CampaignFleetAPI>() {
+			public int compare(CampaignFleetAPI a, CampaignFleetAPI b) {
+				return Float.compare(b.getFleetPoints(), a.getFleetPoints());
+			}
+		});
+		for (CampaignFleetAPI curr : alive) {
+			if (sizes.size() >= count) break;
+			sizes.add(expeditionSizeFor(curr));
+		}
+		return sizes;
+	}
+
 	public static List<Integer> consumeGarrison(MarketAPI market, int count) {
 		List<Integer> mustered = new ArrayList<Integer>();
 		if (market == null || count <= 0) return mustered;

@@ -545,6 +545,31 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		return true;
 	}
 
+	/**
+	 * An expedition that never spawned resolves when it reaches its target
+	 * (2026-09-29, overnight run N4), not when vanilla's payload segment ends:
+	 * vanilla autoresolves an unspawned raid at the END of the segment, which
+	 * is siegeOrbitDays (~120 d) long, so a strike whose siege needed 0-51 d
+	 * landed 150-180 d after launch and a relief strike reached its front
+	 * months after the front had fallen. The resolution is the same one -
+	 * vanilla's autoresolve, whose performRaid runs the whole abstract siege
+	 * and the landing (abstractSiege) - only a day after arrival, and the
+	 * segment then ends so the route moves on. Knob: abstractResolveOnArrival.
+	 */
+	public static void resolveOnArrival(com.fs.starfarer.api.impl.campaign.intel.group.FleetGroupIntel intel) {
+		if (intel == null || !ThreatIncConfig.abstractResolveOnArrival()) return;
+		if (intel.isSpawnedFleets() || intel.isEnding() || intel.isEnded() || intel.isAborted()) return;
+		com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteData route = intel.getRoute();
+		if (route == null) return;
+		com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteSegment seg = route.getCurrent();
+		if (seg == null || !(seg.custom instanceof com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction)) return;
+		com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction action =
+				(com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction) seg.custom;
+		if (action.isActionFinished() || seg.elapsed < 1f) return;
+		action.autoresolve();
+		if (action.isActionFinished()) seg.daysMax = Math.min(seg.daysMax, seg.elapsed + 0.1f);
+	}
+
 	/** The base the expedition sailed from, or null for an abstract one. */
 	public MarketAPI sourceBase() {
 		return params != null ? params.source : null;
@@ -744,6 +769,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	@Override
 	protected void advanceImpl(float amount) {
 		super.advanceImpl(amount);
+		resolveOnArrival(this);
 		noteSpawnFP();
 		if (!carriesCargo || !anyFleetLive()) return;
 		float marines = 0f;
