@@ -3745,6 +3745,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float rangeLY = ThreatColonyManager.fuelRangeLY(staging);
 		if (rangeLY <= 0f) return null;
 
+		// the strike the colony would muster, in vanilla's strength units - the
+		// ones its off-screen fight is weighed in (strikeOutweighed)
+		int points = 0;
+		for (int size : ThreatColonyManager.peekGarrison(staging,
+				ThreatColonyManager.garrisonAvailableForLaunch(staging))) {
+			points += strikeFleetSize(size);
+		}
+		float strikeStr = FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points);
+		java.util.Map<String, Boolean> outweighed = new java.util.HashMap<String, Boolean>();
 		WeightedRandomPicker<MarketAPI> picker = new WeightedRandomPicker<MarketAPI>(random);
 		// relief before offensives, the swarm's as the navies' (2026-09-29): a
 		// front of its own losing ground in reach takes the strike
@@ -3761,6 +3770,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 			float d = Misc.getDistanceLY(source.getLocation(), market.getStarSystem().getLocation());
 			if (d > rangeLY) continue;
+			if (strikeOutweighed(market, strikeStr, outweighed)) continue;
 
 			// the swarm hunts concentration: the bigger the world, the more
 			// biomass and technology to erase - distance costs are already paid
@@ -3782,6 +3792,37 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		if (!relief.isEmpty()) return relief.pick();
 		return picker.pick();
+	}
+
+	/**
+	 * The strike gate (2026-09-29, overnight run N4): vanilla's off-screen fight
+	 * skips a raid whose target the defenders hold as strongly - the patrols,
+	 * garrisons and relief guards in the system plus the world's station - and
+	 * charges the raiders up to 75% for it; 17 of 24 strikes measured in N4
+	 * landed nothing, 12 of 13 against forward bases. The swarm scouts what it
+	 * strikes (ThreatSwarmScouts): a world whose system outweighs the strike by
+	 * siegeBreakOffRatio - its swarms already there counted with it - is not
+	 * picked. Knob: strikeDefenceGate. Memoised per system for one pick.
+	 */
+	protected static boolean strikeOutweighed(MarketAPI target, float strikeStr, java.util.Map<String, Boolean> memo) {
+		if (!ThreatIncConfig.strikeDefenceGate() || target == null || target.getStarSystem() == null) return false;
+		float ratio = ThreatIncConfig.siegeBreakOffRatio();
+		if (ratio <= 0f) return false;
+		String key = target.getId();
+		Boolean known = memo.get(key);
+		if (known != null) return known;
+		StarSystemAPI system = target.getStarSystem();
+		FactionAPI threat = Global.getSector().getFaction(Factions.THREAT);
+		float ours = strikeStr + WarSimScript.getFactionStrength(threat, system);
+		float def = WarSimScript.getEnemyStrength(threat, system, true)
+				+ WarSimScript.getStationStrength(target.getFaction(), system, target.getPrimaryEntity());
+		boolean out = def >= ours * ratio;
+		if (out) {
+			ThreatIncConfig.logQuiet("strikegate:" + key, "Strike gate: " + target.getName() + " passed over, defence "
+					+ (int) def + " against a strike of " + (int) ours + " (vanilla units)");
+		}
+		memo.put(key, out);
+		return out;
 	}
 
 	/**

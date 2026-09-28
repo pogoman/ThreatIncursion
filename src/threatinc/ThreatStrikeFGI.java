@@ -770,6 +770,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	@Override
 	protected void advanceImpl(float amount) {
 		super.advanceImpl(amount);
+		ThreatPurgeFGI.resolveOnArrival(this);
 		for (CampaignFleetAPI fleet : getFleets()) {
 			if (fleet == null) continue;
 			if (fleet.getMemoryWithoutUpdate().getFloat(KEY_SPAWN_FP) <= 0f) {

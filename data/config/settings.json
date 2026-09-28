@@ -534,6 +534,12 @@
 	# a Threat strike relieves a front of its own losing ground (in reach)
 	# before it opens a new one
 	"threatinc_strikeReliefFirst": true,
+	# an expedition resolved off-screen (no fleets spawned) fights a day after
+	# it reaches the target, not when vanilla's ~120-day payload segment ends
+	"threatinc_abstractResolveOnArrival": true,
+	# the swarm passes over a world whose system's defence (patrols, guards,
+	# station) outweighs the strike it can muster, by siegeBreakOffRatio
+	"threatinc_strikeDefenceGate": true,
 	# weigh the strongest single world's swarms (a siege takes the worlds one
 	# at a time, and a garrison fights over its own world only); off: all summed
 	"threatinc_npcSiegeOrbitPerWorld": true,

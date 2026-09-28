@@ -540,6 +540,10 @@ public class ThreatIncConfig {
 	public static boolean npcSiegeOrbitSystem() { return b("threatinc_npcSiegeOrbitSystem", true); }
 	/** A Threat strike relieves a front of its own that is losing ground, in reach, before it opens a new one. */
 	public static boolean strikeReliefFirst() { return b("threatinc_strikeReliefFirst", true); }
+	/** An unspawned expedition resolves a day after reaching its target, not at the end of vanilla's payload segment. */
+	public static boolean abstractResolveOnArrival() { return b("threatinc_abstractResolveOnArrival", true); }
+	/** The swarm passes over a world whose system's defence outweighs the strike it can muster. */
+	public static boolean strikeDefenceGate() { return b("threatinc_strikeDefenceGate", true); }
 	/** The orbit gate weighs the strongest single world's swarms, not the whole system's. */
 	public static boolean npcSiegeOrbitPerWorld() { return b("threatinc_npcSiegeOrbitPerWorld", true); }
 	/** Whether an outweighed NPC siege posts a bounty on the hive system's swarms. */
