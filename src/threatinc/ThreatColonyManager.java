@@ -1748,14 +1748,6 @@ public class ThreatColonyManager {
 		return Math.max(0, live - garrisonReserve(market));
 	}
 
-	/**
-	 * Musters up to count Defense Swarms as the substance of an expedition:
-	 * the fleets leave the garrison (despawned here; the expedition machinery
-	 * re-embodies them as its own fleets). Sends the LARGEST swarms - the
-	 * reserve that stays is the smaller ones. Returns each mustered swarm's
-	 * expedition fleet size (see expeditionSizeFor), so the expedition fields
-	 * exactly the fleets that left orbit.
-	 */
 	/** The expedition sizes consumeGarrison would muster now, without mustering them (the largest swarms first). */
 	public static List<Integer> peekGarrison(MarketAPI market, int count) {
 		List<Integer> sizes = new ArrayList<Integer>();
@@ -1776,6 +1768,14 @@ public class ThreatColonyManager {
 		return sizes;
 	}
 
+	/**
+	 * Musters up to count Defense Swarms as the substance of an expedition:
+	 * the fleets leave the garrison (despawned here; the expedition machinery
+	 * re-embodies them as its own fleets). Sends the LARGEST swarms - the
+	 * reserve that stays is the smaller ones. Returns each mustered swarm's
+	 * expedition fleet size (see expeditionSizeFor), so the expedition fields
+	 * exactly the fleets that left orbit.
+	 */
 	public static List<Integer> consumeGarrison(MarketAPI market, int count) {
 		List<Integer> mustered = new ArrayList<Integer>();
 		if (market == null || count <= 0) return mustered;

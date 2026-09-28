@@ -974,7 +974,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		boolean coreAllowed = getPhase() >= 3;
 		boolean playerAllowed = ThreatIncData.daysSincePlayerStruck()
 				>= ThreatIncConfig.playerGraceDays();
-		for (MarketAPI other : Global.getSector().getEconomy().getMarkets(target.getStarSystem())) {
+		// a relief strike goes to its front alone (2026-09-29, overnight run N6):
+		// swept across the system it split its troops into even shares and
+		// the front it was sent for got 300 of them
+		boolean relief = ThreatIncConfig.strikeReliefFirst() && ThreatGroundFronts.wantsExpedition(target);
+		for (MarketAPI other : relief ? java.util.Collections.<MarketAPI>emptyList()
+				: Global.getSector().getEconomy().getMarkets(target.getStarSystem())) {
 			if (other == target || other.getPrimaryEntity() == null || ThreatMapFog.hidden(other)) continue;
 			if (Factions.THREAT.equals(other.getFactionId())) continue;
 			if (other.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) continue;
@@ -2146,13 +2151,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 */
 	public static float swarmsMet(String factionId, com.fs.starfarer.api.campaign.StarSystemAPI system) {
 		if (factionId == null || system == null) return 0f;
-		return system.getMemoryWithoutUpdate().getFloat(SWARMS_MET_KEY + factionId);
+		// sector memory: a distant location's own memory may not tick its expiry
+		return Global.getSector().getMemoryWithoutUpdate().getFloat(SWARMS_MET_KEY + factionId + "_" + system.getId());
 	}
 
 	public static void noteSwarmsMet(String factionId, com.fs.starfarer.api.campaign.StarSystemAPI system, float fp) {
 		float days = ThreatIncConfig.siegeMetMemoryDays();
 		if (factionId == null || system == null || fp <= 0f || days <= 0f) return;
-		system.getMemoryWithoutUpdate().set(SWARMS_MET_KEY + factionId, Math.max(fp, swarmsMet(factionId, system)), days);
+		Global.getSector().getMemoryWithoutUpdate().set(SWARMS_MET_KEY + factionId + "_" + system.getId(),
+				Math.max(fp, swarmsMet(factionId, system)), days);
 	}
 
 	/**
@@ -2367,7 +2374,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 			// a navy's landing is the navy's: short at the base, every market of
 			// the faction in reach puts aboard what it holds above its floor
-			// (siegeDonors, 2026-09-26: colonies as well as bases, no donor keep
+			// (siegeDonors, 2026-09-26: colonies as well as bases; a forward base keeps its garrison's upkeep
 			// or staging hold - a size-4 hive's beachhead is ~2,400 troops; one
 			// full depot holds ~560, and sibling bases' spare stock held a tenth
 			// of the faction's marines in Run 5)
@@ -3753,7 +3760,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			points += strikeFleetSize(size);
 		}
 		float strikeStr = FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points);
-		java.util.Map<String, Boolean> outweighed = new java.util.HashMap<String, Boolean>();
+		java.util.Map<String, float[]> outweighed = new java.util.HashMap<String, float[]>();
 		WeightedRandomPicker<MarketAPI> picker = new WeightedRandomPicker<MarketAPI>(random);
 		// relief before offensives, the swarm's as the navies' (2026-09-29): a
 		// front of its own losing ground in reach takes the strike
@@ -3802,26 +3809,30 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * landed nothing, 12 of 13 against forward bases. The swarm scouts what it
 	 * strikes (ThreatSwarmScouts): a world whose system outweighs the strike by
 	 * siegeBreakOffRatio - its swarms already there counted with it - is not
-	 * picked. Knob: strikeDefenceGate. Memoised per system for one pick.
+	 * picked. Knob: strikeDefenceGate. Weighed per world - the station is the world's.
 	 */
-	protected static boolean strikeOutweighed(MarketAPI target, float strikeStr, java.util.Map<String, Boolean> memo) {
+	protected static boolean strikeOutweighed(MarketAPI target, float strikeStr, java.util.Map<String, float[]> memo) {
 		if (!ThreatIncConfig.strikeDefenceGate() || target == null || target.getStarSystem() == null) return false;
 		float ratio = ThreatIncConfig.siegeBreakOffRatio();
 		if (ratio <= 0f) return false;
 		String key = target.getId();
-		Boolean known = memo.get(key);
-		if (known != null) return known;
 		StarSystemAPI system = target.getStarSystem();
 		FactionAPI threat = Global.getSector().getFaction(Factions.THREAT);
-		float ours = strikeStr + WarSimScript.getFactionStrength(threat, system);
-		float def = WarSimScript.getEnemyStrength(threat, system, true)
+		// the system's fleets once per pick; the station per world
+		float[] fleets = memo.get(system.getId());
+		if (fleets == null) {
+			fleets = new float[] { WarSimScript.getFactionStrength(threat, system),
+					WarSimScript.getEnemyStrength(threat, system, true) };
+			memo.put(system.getId(), fleets);
+		}
+		float ours = strikeStr + fleets[0];
+		float def = fleets[1]
 				+ WarSimScript.getStationStrength(target.getFaction(), system, target.getPrimaryEntity());
 		boolean out = def >= ours * ratio;
 		if (out) {
 			ThreatIncConfig.logQuiet("strikegate:" + key, "Strike gate: " + target.getName() + " passed over, defence "
 					+ (int) def + " against a strike of " + (int) ours + " (vanilla units)");
 		}
-		memo.put(key, out);
 		return out;
 	}
 
