@@ -1484,14 +1484,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * but the base and its pool held a median tenth of them; supplies bound 220
 	 * of 244 provision postponements at a median 299 in the depot against a
 	 * 12,600 bill the faction held 2.5x of. Four sieges sailed.
+	 *
+	 * <p>Sibling forward bases give too (2026-09-29, overnight): run 6's
+	 * Hegemony held 19-53k fuel at Alpha Spair I and Calu, both waiting on
+	 * supplies, while Temblor next door postponed its siege for fuel 73 times
+	 * across the whole run. A base keeps back its garrison's supply upkeep for
+	 * siegeOutpostKeepMonths ({@link #donorAvailable}); the rest pays whichever
+	 * of the faction's sieges is ready first.
 	 */
 	public static java.util.List<MarketAPI> siegeDonors(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
 		java.util.List<MarketAPI> result = new ArrayList<MarketAPI>();
 		if (base == null || faction == null || system == null) return result;
 		for (MarketAPI m : factionMarketsInReach(faction, system)) {
-			// a forward base's stock pays its own garrison's upkeep first
-			// (ThreatFrontlines.payUpkeep): a siege drawing it dry recalls the garrison
-			if (m != base && !ThreatFrontlines.isOutpost(m)) result.add(m);
+			// a forward base keeps its garrison's upkeep back (donorAvailable)
+			if (m != base) result.add(m);
 		}
 		final org.lwjgl.util.vector.Vector2f at = base.getStarSystem() != null
 				? base.getStarSystem().getLocation() : system.getLocation();
@@ -1565,8 +1571,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	/** Stock the siege base and its donors hold above their floors, for the launch's gates. */
 	protected static float siegePooled(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId) {
 		float have = base != null ? ThreatReserves.available(base, commodityId) : 0f;
-		for (MarketAPI m : donors) have += ThreatReserves.available(m, commodityId);
+		for (MarketAPI m : donors) have += donorAvailable(m, commodityId);
 		return have;
+	}
+
+	/**
+	 * What a donor gives a sibling's siege: its stock above the floor, less -
+	 * for a forward base - siegeOutpostKeepMonths of its garrison's supply
+	 * upkeep (ThreatFrontlines.payUpkeep), so the pool never recalls a garrison.
+	 */
+	protected static float donorAvailable(MarketAPI m, String commodityId) {
+		float have = ThreatReserves.available(m, commodityId);
+		if (have <= 0f || !com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES.equals(commodityId) || !ThreatFrontlines.isOutpost(m)) return have;
+		return Math.max(0f, have - ThreatFrontlines.garrisonUpkeepAt(m)
+				* Math.max(0f, ThreatIncConfig.siegeOutpostKeepMonths()));
 	}
 
 	/**
@@ -1580,7 +1598,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		java.util.List<String> from = new ArrayList<String>();
 		for (MarketAPI m : donors) {
 			if (drawn >= amount) break;
-			float got = ThreatReserves.drawAbove(m, commodityId, amount - drawn);
+			float got = ThreatReserves.drawAbove(m, commodityId, Math.min(amount - drawn, donorAvailable(m, commodityId)));
 			drawn += got;
 			if (got >= 1f) from.add(m.getName() + " " + (int) got);
 		}
@@ -2080,7 +2098,61 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 */
 	public static float siegeOrbitNeeded(FactionAPI faction, java.util.List<MarketAPI> targets) {
 		if (faction == null || faction.isPlayerFaction() || !ThreatIncConfig.npcSiegeOrbitGate()) return 0f;
-		return siegeOrbitFaced(targets) * Math.max(0f, ThreatIncConfig.npcSiegeOrbitMargin());
+		return siegeOrbitWeighed(faction, targets) * Math.max(0f, ThreatIncConfig.npcSiegeOrbitMargin());
+	}
+
+	/**
+	 * The Defense Swarms an NPC siege weighs itself against: the strongest
+	 * world's it takes (siegeOrbitFaced), every garrison of the system with
+	 * npcSiegeOrbitSystem - they converge on a besieged world
+	 * (ThreatColonyManager.redistributeGarrisons) and vanilla's off-screen
+	 * fight weighs every hostile fleet in the system - and what its last
+	 * called-off siege there met (swarmsMet).
+	 */
+	public static float siegeOrbitWeighed(FactionAPI faction, java.util.List<MarketAPI> targets) {
+		float faced = siegeOrbitFaced(targets);
+		java.util.Set<com.fs.starfarer.api.campaign.StarSystemAPI> systems =
+				new java.util.LinkedHashSet<com.fs.starfarer.api.campaign.StarSystemAPI>();
+		for (MarketAPI t : targets) {
+			if (t != null && t.getStarSystem() != null) systems.add(t.getStarSystem());
+		}
+		for (com.fs.starfarer.api.campaign.StarSystemAPI system : systems) {
+			if (faction != null) faced = Math.max(faced, swarmsMet(faction.getId(), system));
+			if (ThreatIncConfig.npcSiegeOrbitSystem()) faced = Math.max(faced, systemSwarms(system));
+		}
+		return faced;
+	}
+
+	/** Fleet points of every Defense Swarm over the Threat's worlds in the system. */
+	public static float systemSwarms(com.fs.starfarer.api.campaign.StarSystemAPI system) {
+		java.util.List<MarketAPI> hives = new ArrayList<MarketAPI>();
+		for (MarketAPI m : Misc.getMarketsInLocation(system)) {
+			if (Factions.THREAT.equals(m.getFactionId())) hives.add(m);
+		}
+		return siegeOrbitFP(hives);
+	}
+
+	/** System memory key prefix: the swarm weight a faction's siege was called off against there. */
+	protected static final String SWARMS_MET_KEY = "$threatinc_swarmsMet_";
+
+	/**
+	 * What the last siege of this faction called off in the system met
+	 * (ThreatPurgeFGI.callOff, 2026-09-29 overnight): the launch weighs one
+	 * world's Defense Swarms, but the hive's garrisons converge on a besieged
+	 * world and vanilla's off-screen fight weighs the whole system - run N2's
+	 * sieges sailed into 4-7x their weight, Goodfellow twice. A commander does
+	 * not sail into the same wall again until the intelligence is
+	 * siegeMetMemoryDays old; the bounty the call-off posts sends hunters in.
+	 */
+	public static float swarmsMet(String factionId, com.fs.starfarer.api.campaign.StarSystemAPI system) {
+		if (factionId == null || system == null) return 0f;
+		return system.getMemoryWithoutUpdate().getFloat(SWARMS_MET_KEY + factionId);
+	}
+
+	public static void noteSwarmsMet(String factionId, com.fs.starfarer.api.campaign.StarSystemAPI system, float fp) {
+		float days = ThreatIncConfig.siegeMetMemoryDays();
+		if (factionId == null || system == null || fp <= 0f || days <= 0f) return;
+		system.getMemoryWithoutUpdate().set(SWARMS_MET_KEY + factionId, Math.max(fp, swarmsMet(factionId, system)), days);
 	}
 
 	/**
@@ -2273,7 +2345,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			float fleetGoal = siegeFleetGoal(faction, targets, raze);
 			float fieldable = ThreatAidCapacity.expeditionPoints(params.fleetSizes);
 			if (orbitNeed > 0f && fieldable < orbitNeed) {
-				float garrison = siegeOrbitFaced(targets);
+				float garrison = siegeOrbitWeighed(faction, targets);
 				int allowed = (int) (fieldable / Math.max(0.01f, ThreatIncConfig.npcSiegeOrbitMargin()));
 				ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 						+ (int) fieldable + " FP against " + (int) garrison + " FP of Defense Swarms over "
@@ -3674,6 +3746,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (rangeLY <= 0f) return null;
 
 		WeightedRandomPicker<MarketAPI> picker = new WeightedRandomPicker<MarketAPI>(random);
+		// relief before offensives, the swarm's as the navies' (2026-09-29): a
+		// front of its own losing ground in reach takes the strike
+		WeightedRandomPicker<MarketAPI> relief = new WeightedRandomPicker<MarketAPI>(random);
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (!isStrikeableWorld(market)) continue;
 			// size 6+ markets are "core worlds" - phase 3 only
@@ -3701,9 +3776,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// answers it (2026-09-06)
 			if (ThreatGroundFronts.wantsExpedition(market)) {
 				w *= Math.max(1f, ThreatIncConfig.strikeReinforceWeight());
+				if (ThreatIncConfig.strikeReliefFirst()) relief.add(market, w);
 			}
 			picker.add(market, w);
 		}
+		if (!relief.isEmpty()) return relief.pick();
 		return picker.pick();
 	}
 

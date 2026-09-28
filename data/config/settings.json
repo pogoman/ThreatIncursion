@@ -522,6 +522,18 @@
 	# hostile to it over a hive it is taking reach this x its own (1 =
 	# outweighed); 0 fights on to vanilla's abort line (0.33 of what sailed)
 	"threatinc_siegeBreakOffRatio": 1.0,
+	# a sibling forward base pools its stock into a faction's siege, keeping
+	# back this many months of its own garrison's supply upkeep
+	"threatinc_siegeOutpostKeepMonths": 3,
+	# a siege called off remembers the swarms it met in the system; the
+	# faction's next siege there must outweigh them until this many days pass
+	"threatinc_siegeMetMemoryDays": 90,
+	# the orbit gate also weighs every Defense Swarm in the target system -
+	# the garrisons converge on a besieged world
+	"threatinc_npcSiegeOrbitSystem": true,
+	# a Threat strike relieves a front of its own losing ground (in reach)
+	# before it opens a new one
+	"threatinc_strikeReliefFirst": true,
 	# weigh the strongest single world's swarms (a siege takes the worlds one
 	# at a time, and a garrison fights over its own world only); off: all summed
 	"threatinc_npcSiegeOrbitPerWorld": true,

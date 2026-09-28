@@ -423,7 +423,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		float fp = fleet.getFleetPoints();
 		// the swarm over the world bombards as one: one ratio, one answer from the guns
 		float orbit = ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fp);
-		if (ThreatGroundFronts.readyToLand(market, troops,
+		if (ThreatGroundFronts.readyToLand(market, troops, Factions.THREAT,
 				ThreatGroundFronts.orbitSpent(market, orbit, 0f, false, ThreatGroundFronts.swarmWorth()))) return false;
 		float days = ThreatGroundFronts.siegeSliceDays(fleet);
 		ThreatGroundFronts.BombardDay est = ThreatGroundFronts.bombardDay(fp, market, false);
@@ -453,14 +453,18 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		if (market == null || !siegeResolved.add(market.getId())) return;
 		if (ThreatGroundFronts.getFront(market.getId()) != null) return;
 		float start = abstractStrength();
-		float left = ThreatGroundFronts.abstractSiege(market, start, worldShare(),
-				groupAbortsMissionFPFraction);
+		// the swarm's gate (beachheadSurvives, as a purge's): it bombards until
+		// the landing it can make outlasts the first counter-attack or orbit is
+		// done - run N1's abstract strikes landed after 0 d and 37 of 42
+		// beachheads were overrun
+		float left = ThreatGroundFronts.abstractSiege(market, start, Math.max(worldShare(), troopsAboard),
+				groupAbortsMissionFPFraction, Factions.THREAT);
 		abstractLeft = left;
 		// the batteries' toll comes off the troops the ships were carrying
 		if (start > 0f && left < start) troopsAboard *= Math.max(0f, left / start);
 	}
 
-	/** The expedition's strength in fleet points: what survives of the spawned fleets, else its planned sizes. */
+	/** The expedition's strength in fleet points: what survives of the spawned fleets, else its planned sizes, less the hulls it broke up into troops. */
 	protected float abstractStrength() {
 		float start = totalFPSpawned > 0f ? totalFPSpawned * survivingStrength(null) : 0f;
 		if (start <= 0f && getParams() != null && getParams().fleetSizes != null) {
@@ -468,7 +472,55 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 				if (size != null) start += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
 			}
 		}
-		return start;
+		return Math.max(0f, start - fabricatedFP);
+	}
+
+	/** Abstract fleet points an unspawned strike broke up into troops for a beachhead ({@link #beachheadLanding}). */
+	protected float fabricatedFP;
+
+	/**
+	 * A strike's first landing on a world, sized to outlast the world's first
+	 * counter-attack (2026-09-29, overnight run N1: 200-300 troops against
+	 * counter-attacks of 440-680, 37 of 42 beachheads overrun, no colony
+	 * taken). Short of {@link ThreatGroundFronts#beachheadTroops}, it lands more
+	 * of what it carries than the world's even share - one world taken beats
+	 * three beachheads lost - then breaks hulls up into the rest at
+	 * fabricateTroopsPerFP, the rate a Defend fleet feeds its front with. A
+	 * strike that cannot reach the line even so keeps its troops aboard.
+	 * Returns the troops to land, or -1 when it holds back.
+	 */
+	protected int beachheadLanding(MarketAPI market, CampaignFleetAPI fleet, int troops) {
+		int need = ThreatGroundFronts.beachheadTroops(market);
+		if (need <= troops) return troops;
+		int carried = Math.max(troops, Math.min(Math.round(troopsAboard), need));
+		int shortfall = need - carried;
+		if (shortfall <= 0) return carried;
+		float perFP = Math.max(0.01f, ThreatIncConfig.fabricateTroopsPerFP());
+		float fp = shortfall / perFP;
+		float spare = fleet != null ? fleet.getFleetPoints() - fleetFlagshipFP(fleet) : abstractStrength();
+		if (!ThreatIncConfig.fabricateEnabled() || fp > spare) {
+			ThreatIncConfig.log("Strike landing at " + market.getName() + " held back: " + carried
+					+ " troops and " + (int) spare + " FP of hulls cannot make the " + need
+					+ " a beachhead needs to outlast the first counter-attack");
+			return -1;
+		}
+		float removed;
+		if (fleet != null) {
+			removed = ThreatGroundFronts.applyFleetLosses(fleet, fp);
+		} else {
+			fabricatedFP += fp;
+			removed = fp;
+		}
+		int made = (int) (removed * perFP);
+		troopsAboard += made;
+		ThreatIncConfig.log("Strike at " + market.getName() + " broke up " + (int) removed + " FP of hulls into "
+				+ made + " troops: the beachhead needs " + need + ", " + carried + " aboard for it");
+		return carried + made;
+	}
+
+	protected static float fleetFlagshipFP(CampaignFleetAPI fleet) {
+		if (fleet == null || fleet.getFlagship() == null) return 0f;
+		return fleet.getFlagship().getFleetPointCost();
 	}
 
 	/** Fleet points the last abstract siege left (abstractSiege); kept for saves that carry it. */
@@ -675,7 +727,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		int troops = availableLanding(market, fleet);
 		// 1. soften: the orbital siege (performRaid) must have done all it can,
 		// or the troops must be able to hold as they are, before anything lands
-		if (front == null && !ThreatGroundFronts.readyToLand(market, troops, fleet != null
+		if (front == null && !ThreatGroundFronts.readyToLand(market, troops, Factions.THREAT, fleet != null
 				? ThreatGroundFronts.orbitSpent(market,
 						ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fleet.getFleetPoints()),
 						0f, false, ThreatGroundFronts.swarmWorth())
@@ -688,6 +740,10 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			ThreatIncConfig.log("Strike landing at " + market.getName() + " aborted: only "
 					+ troops + " troops left aboard for it");
 			return;
+		}
+		if (front == null) {
+			troops = beachheadLanding(market, fleet, troops);
+			if (troops < 0) return;
 		}
 		if (troops <= 0) return; // the world's share is spent: nothing to reinforce with
 		float supply = ThreatGroundFronts.landingSupply(troops,

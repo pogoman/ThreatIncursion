@@ -3793,6 +3793,16 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * 2:1 odds after the strength exponent (IncursionManager.beachheadNeeded, the
 	 * same line the landing is sized on). Margin 0 skips the test.
 	 */
+	/** The smallest landing {@link #beachheadSurvives}: 0 when the test is off. */
+	public static int beachheadTroops(MarketAPI market) {
+		float margin = ThreatIncConfig.siegeBeachheadMargin();
+		if (market == null || margin <= 0f) return 0;
+		float e = Math.max(0.1f, ThreatIncConfig.groundStrengthExponent());
+		float odds = (float) Math.pow(2f, 1f / e);
+		return (int) Math.ceil(counterAttackStrength(market) * margin
+				/ Math.max(0.01f, ThreatIncConfig.frontLandingMult() * odds));
+	}
+
 	public static boolean beachheadSurvives(MarketAPI market, float troops) {
 		float margin = ThreatIncConfig.siegeBeachheadMargin();
 		if (market == null || margin <= 0f) return true;
@@ -4108,7 +4118,20 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		GroundFront front = getFront(market.getId());
 		if (!isThreatOwned(front) || front.finalPush) return false;
 		if (needsArms(front)) return front.armaments <= 0f;
-		return !frontCanHold(front, market);
+		return !frontCanHold(front, market) || losingGround(front, market);
+	}
+
+	/**
+	 * The world's counter-attack, by siegeBeachheadMargin, beats the front as
+	 * it stands (2026-09-29, overnight run N3): it takes a stratum back, or
+	 * overruns a beachhead holding none. frontCanHold is the fortification
+	 * line (frontHoldFraction of the defence) and stayed true while relief
+	 * convoys fed the garrisons that overran 14 of 17 Threat beachheads.
+	 */
+	public static boolean losingGround(GroundFront front, MarketAPI market) {
+		if (front == null || market == null) return false;
+		float margin = Math.max(1f, ThreatIncConfig.siegeBeachheadMargin());
+		return counterAttackStrength(market) * margin > defenseStrength(front);
 	}
 
 	/** Days until a dry Threat front's final push, or -1 when it is not waiting. */

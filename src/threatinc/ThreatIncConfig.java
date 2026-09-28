@@ -532,6 +532,14 @@ public class ThreatIncConfig {
 	public static float npcSiegeOrbitMargin() { return f("threatinc_npcSiegeOrbitMargin"); }
 	/** An NPC siege not yet landed turns home when hostile fleets over a world it is taking reach this x its own (0: fights to vanilla's abort line). */
 	public static float siegeBreakOffRatio() { return f("threatinc_siegeBreakOffRatio"); }
+	/** Months of its garrison's supply upkeep a forward base keeps back when a sibling's siege pools its stock. */
+	public static float siegeOutpostKeepMonths() { return f("threatinc_siegeOutpostKeepMonths"); }
+	/** Days a faction weighs the swarms its called-off siege met in a system before it sails there again (0: forgets at once). */
+	public static float siegeMetMemoryDays() { return f("threatinc_siegeMetMemoryDays"); }
+	/** The orbit gate also weighs every Defense Swarm in the target system: they converge on a besieged world. */
+	public static boolean npcSiegeOrbitSystem() { return b("threatinc_npcSiegeOrbitSystem", true); }
+	/** A Threat strike relieves a front of its own that is losing ground, in reach, before it opens a new one. */
+	public static boolean strikeReliefFirst() { return b("threatinc_strikeReliefFirst", true); }
 	/** The orbit gate weighs the strongest single world's swarms, not the whole system's. */
 	public static boolean npcSiegeOrbitPerWorld() { return b("threatinc_npcSiegeOrbitPerWorld", true); }
 	/** Whether an outweighed NPC siege posts a bounty on the hive system's swarms. */
