@@ -127,11 +127,18 @@ public class ThreatCoalition {
 					// with a pooled hunting force sized to win, not one guard fleet (a lone 100 FP
 					// answer met 171 FP swarms, Run 6); a faction that cannot pay for one yet
 					// tries again while the call stands
-					if (ThreatSoftening.resting(base) || IncursionManager.hasSiegeableHive(base)) continue;
 					// over the worlds the caller's siege is fighting (its purge's targets),
-					// not the system's strongest garrison: a siege takes a subset since 2026-09-27
-					if (!ThreatSoftening.send(faction, base, system,
-							IncursionManager.siegeTargetsOf(c.callerFactionId, c.systemId))) continue;
+					// not the system's strongest garrison: a siege takes a subset since 2026-09-27.
+					// From the best paid base free to hunt, as a bounty's hunt (huntBases)
+					boolean sent = false;
+					for (MarketAPI from : ThreatSoftening.huntBases(faction, system)) {
+						if (ThreatSoftening.send(faction, from, system,
+								IncursionManager.siegeTargetsOf(c.callerFactionId, c.systemId))) {
+							sent = true;
+							break;
+						}
+					}
+					if (!sent) continue;
 					c.answered.add(factionId);
 					ThreatIncConfig.log("Coalition: " + factionId + " answers " + c.callerFactionId
 							+ "'s call at " + system.getName() + " with a hunting force");

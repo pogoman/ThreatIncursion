@@ -30,8 +30,8 @@ import com.fs.starfarer.api.util.Misc;
  * HUNTING FORCES (2026-09-24, docs/strategy-layer.md "Hunting forces"): a
  * mobilised NPC faction softens a bountied hive (ThreatSwarmBountyIntel)
  * with its own ships. For each hive system with a running swarm bounty, every
- * mobilised NPC faction's nearest base in reach (ThreatFleetOrders.pickBase)
- * raises a hunting force - unless that base has a hive of its own to siege
+ * mobilised NPC faction raises a hunting force at its best-paid base in reach
+ * ({@link #huntBases}) - never at one with a hive of its own to siege
  * (IncursionManager.hasSiegeableHive): the siege always comes first.
  *
  * <p>A hunting force carries no marines and lands nothing, so every point is a
@@ -143,13 +143,49 @@ public class ThreatSoftening {
 				if (faction == null || faction.isPlayerFaction()) continue;
 				if (hunting(factionId, system.getId())) continue;
 				if (hostileAt(faction, system.getId())) continue;
-				MarketAPI base = ThreatFleetOrders.pickBase(faction, system.getLocation());
-				if (base == null || resting(base)) continue;
-				if (IncursionManager.hasSiegeableHive(base)) continue;
-				// against the worlds the poster's siege would take
-				send(faction, base, system, bounty.siegeTargets());
+				// against the worlds the poster's siege would take, from the best
+				// paid base first until one force sails (huntBases)
+				for (MarketAPI base : huntBases(faction, system)) {
+					if (send(faction, base, system, bounty.siegeTargets())) break;
+				}
 			}
 		}
+	}
+
+	/**
+	 * The bases a hunting force may be raised at, the best paid first
+	 * (2026-09-29): every base of the faction in fuel reach of the hive (the
+	 * rule ThreatFleetOrders.pickBase applies) that is not resting and has no
+	 * siege of its own to spend on (IncursionManager.hasSiegeableHive), ranked
+	 * by the fleet points it and its donors can pay a force there for
+	 * ({@link #payableFP}); the nearest breaks a tie. The nearest base alone,
+	 * whatever its stock and never passed over, launched no hunt at all in a
+	 * test where the Threat grew from 36 hives to 66.
+	 */
+	protected static List<MarketAPI> huntBases(FactionAPI faction, StarSystemAPI system) {
+		final Map<MarketAPI, Float> pays = new java.util.HashMap<MarketAPI, Float>();
+		final Vector2f loc = system.getLocation();
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
+			if (m.getStarSystem() == null || !IncursionManager.isBase(m)) continue;
+			if (Misc.getDistanceLY(m.getStarSystem().getLocation(), loc) > IncursionManager.expeditionRangeLY(m)) continue;
+			if (resting(m)) continue;
+			float p = payableFP(m, system, huntDonors(faction, m));
+			if (p <= 0f) continue;
+			// the costly gate last, on the bases that could pay anything
+			if (IncursionManager.hasSiegeableHive(m)) continue;
+			pays.put(m, p);
+			out.add(m);
+		}
+		Collections.sort(out, new Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				int c = Float.compare(pays.get(b), pays.get(a));
+				if (c != 0) return c;
+				return Float.compare(Misc.getDistanceLY(a.getStarSystem().getLocation(), loc),
+						Misc.getDistanceLY(b.getStarSystem().getLocation(), loc));
+			}
+		});
+		return out;
 	}
 
 	/**
@@ -273,15 +309,112 @@ public class ThreatSoftening {
 	 * siege that can sail.
 	 */
 	protected static float payableFP(MarketAPI base, StarSystemAPI system) {
+		return payableFP(base, system, null);
+	}
+
+	/** As above, with what the hunt's {@code donors} (huntDonors) can give toward the base's fleets. */
+	protected static float payableFP(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors) {
 		float dist = Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation());
 		float fuelPerPoint = dist * ThreatIncConfig.expeditionFuelPerPointLY();
 		float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
 		float points = Float.MAX_VALUE;
-		if (fuelPerPoint > 0f) points = Math.min(points, huntSpendable(base, system, Commodities.FUEL) / fuelPerPoint);
+		if (fuelPerPoint > 0f) {
+			points = Math.min(points, (huntSpendable(base, system, Commodities.FUEL)
+					+ donorsSpendable(donors, Commodities.FUEL)) / fuelPerPoint);
+		}
 		if (suppliesPerPoint > 0f) {
-			points = Math.min(points, huntSpendable(base, system, Commodities.SUPPLIES) / suppliesPerPoint);
+			points = Math.min(points, (huntSpendable(base, system, Commodities.SUPPLIES)
+					+ donorsSpendable(donors, Commodities.SUPPLIES)) / suppliesPerPoint);
 		}
 		return points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+	}
+
+	/**
+	 * The markets that pay toward the primary base's hunting fleets without
+	 * sailing (2026-09-29): every market of the faction whose stock reaches the
+	 * base (IncursionManager.marketsReaching - the convoys' reach, as a siege's
+	 * donors) that fields no hunting fleets of its own - no base, no link -
+	 * nearest the base first. Each gives what a hunt may take
+	 * (ThreatReserves.spendable). Until now only bases paid, each for its own
+	 * fleets, and a faction's depots never paid for a hunt at all. A forward
+	 * base that fields no fleets gives too (2026-09-29), less its garrison's
+	 * upkeep ({@link #donorSpendable}), as it gives a sibling's siege.
+	 */
+	protected static List<MarketAPI> huntDonors(FactionAPI faction, MarketAPI primary) {
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		if (!ThreatIncConfig.softenPool() || primary.getStarSystem() == null) return out;
+		for (MarketAPI m : IncursionManager.marketsReaching(faction, primary)) {
+			if (m == primary || IncursionManager.isBase(m)) continue;
+			out.add(m);
+		}
+		final Vector2f at = primary.getStarSystem().getLocation();
+		Collections.sort(out, new Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				return Float.compare(Misc.getDistanceLY(a.getStarSystem().getLocation(), at),
+						Misc.getDistanceLY(b.getStarSystem().getLocation(), at));
+			}
+		});
+		return out;
+	}
+
+	/** What the donors can give a hunt of one commodity ({@link #donorSpendable}). */
+	protected static float donorsSpendable(List<MarketAPI> donors, String commodityId) {
+		if (donors == null) return 0f;
+		float sum = 0f;
+		for (MarketAPI m : donors) sum += donorSpendable(m, commodityId);
+		return sum;
+	}
+
+	/** What one market can give a hunt: ThreatReserves.spendable, less a forward base's garrison upkeep ({@link #outpostKeep}). */
+	protected static float donorSpendable(MarketAPI m, String commodityId) {
+		return Math.max(0f, ThreatReserves.spendable(m, commodityId) - outpostKeep(m, commodityId));
+	}
+
+	/**
+	 * The supplies a forward base keeps back from a hunt: siegeOutpostKeepMonths
+	 * of its garrison's upkeep (ThreatFrontlines.garrisonUpkeepAt), the keep it
+	 * holds against a sibling's siege (IncursionManager.donorAvailable), so a
+	 * hunt never recalls a garrison. 0 for anything else.
+	 */
+	protected static float outpostKeep(MarketAPI m, String commodityId) {
+		if (m == null || !Commodities.SUPPLIES.equals(commodityId) || !ThreatFrontlines.isOutpost(m)) return 0f;
+		return ThreatFrontlines.garrisonUpkeepAt(m) * Math.max(0f, ThreatIncConfig.siegeOutpostKeepMonths());
+	}
+
+	/**
+	 * Pays the rest of a hunting fleet's provisions from the donors, nearest the
+	 * base first: the fleet is built at the points asked (buildTaskForce), and
+	 * the base paid what it could of them. What the donors give is added to
+	 * what the fleet carries (ThreatReturns.MEM_FUEL, MEM_SUPPLIES), so it
+	 * comes home to the base with the rest, as a siege's pooled stock does.
+	 */
+	protected static void payFromDonors(CampaignFleetAPI fleet, MarketAPI base, List<MarketAPI> donors,
+			StarSystemAPI system, float fp) {
+		if (fleet == null || donors == null || donors.isEmpty()) return;
+		float[] wants = ThreatFleetOrders.sortieWants(base, fp, system.getLocation());
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+		float fuel = mem.getFloat(ThreatReturns.MEM_FUEL);
+		float supplies = mem.getFloat(ThreatReturns.MEM_SUPPLIES);
+		List<String> from = new ArrayList<String>();
+		float moreFuel = drawDonors(donors, Commodities.FUEL, wants[0] - fuel, from);
+		float moreSupplies = drawDonors(donors, Commodities.SUPPLIES, wants[1] - supplies, from);
+		if (moreFuel <= 0f && moreSupplies <= 0f) return;
+		mem.set(ThreatReturns.MEM_FUEL, fuel + moreFuel);
+		mem.set(ThreatReturns.MEM_SUPPLIES, supplies + moreSupplies);
+		ThreatIncConfig.log("Hunting fleet from " + base.getName() + " pooled " + (int) moreFuel + " fuel, "
+				+ (int) moreSupplies + " supplies: " + Misc.getAndJoined(from));
+	}
+
+	/** Draws up to {@code want} from the donors in turn; names each that gave into {@code from}. */
+	protected static float drawDonors(List<MarketAPI> donors, String commodityId, float want, List<String> from) {
+		float got = 0f;
+		for (MarketAPI m : donors) {
+			if (got >= want) break;
+			float g = ThreatReserves.draw(m.getId(), commodityId, Math.min(want - got, donorSpendable(m, commodityId)));
+			got += g;
+			if (g >= 1f) from.add(m.getName() + " " + (int) g + " " + commodityId);
+		}
+		return got;
 	}
 
 	/**
@@ -305,11 +438,12 @@ public class ThreatSoftening {
 	 */
 	protected static float huntSpendable(MarketAPI base, StarSystemAPI system, String commodityId) {
 		if (base == null) return 0f;
-		if (!siegeWaitsOnHunt(base, system)) return ThreatReserves.spendable(base, commodityId);
+		// a forward base keeps its garrison's upkeep back (outpostKeep) either way
+		if (!siegeWaitsOnHunt(base, system)) return donorSpendable(base, commodityId);
 		if (ThreatReserves.committed(base, commodityId)) return 0f;
 		float keep = Math.max(ThreatReserves.floor(base, commodityId),
 				ThreatReserves.monthsCap(base, commodityId) * ThreatIncConfig.donorKeepFraction());
-		return Math.max(0f, ThreatReserves.stock(base.getId(), commodityId) - keep);
+		return Math.max(0f, ThreatReserves.stock(base.getId(), commodityId) - keep - outpostKeep(base, commodityId));
 	}
 
 	/** Takes up to {@code amount} of {@link #huntSpendable} stock; returns what was taken. */
@@ -393,7 +527,10 @@ public class ThreatSoftening {
 	 * base free to that reaches the hive or the primary base, nearest the hive
 	 * first. A base in fuel range of the primary chips in too (2026-09-29): its
 	 * fleets pay fuel for the whole way (payableFP); the hive's range alone kept
-	 * every depot behind the primary out of the hunt.
+	 * every depot behind the primary out of the hunt. In range of the primary is
+	 * the convoys' reach between two markets (ThreatConvoys.stockReachLY), as a
+	 * siege's donors: at least convoyRangeLY, whatever the base's own fuel.
+	 * The markets that field no fleets pay toward the primary's (huntDonors).
 	 */
 	protected static List<MarketAPI> contributors(FactionAPI faction, MarketAPI primary, StarSystemAPI system) {
 		List<MarketAPI> result = new ArrayList<MarketAPI>();
@@ -406,7 +543,8 @@ public class ThreatSoftening {
 			if (m == primary || m.getStarSystem() == null || !IncursionManager.isBase(m)) continue;
 			float range = IncursionManager.expeditionRangeLY(m);
 			Vector2f at = m.getStarSystem().getLocation();
-			if (Misc.getDistanceLY(at, loc) > range && Misc.getDistanceLY(at, hub) > range) continue;
+			if (Misc.getDistanceLY(at, loc) > range
+					&& Misc.getDistanceLY(at, hub) > ThreatConvoys.stockReachLY(m)) continue;
 			if (resting(m) || IncursionManager.hasSiegeableHive(m)) continue;
 			others.add(m);
 		}
@@ -451,15 +589,19 @@ public class ThreatSoftening {
 				: IncursionManager.collectSiegeTargets(system)) * margin;
 		want = Math.max(floor, want);
 		List<MarketAPI> bases = contributors(faction, base, system);
+		// the markets that field no fleets pay toward the primary's
+		List<MarketAPI> donors = huntDonors(faction, base);
 		float perFleet = Math.max(50f, ThreatIncConfig.softenFleetFP());
 		// what the depots can pay for is what is built (2026-09-29: closed economy -
 		// a fleet is built at the points it is paid for, ThreatFleetOrders.buildTaskForce;
 		// the market's fleet-size multiplier on top was unpaid)
 		float builds = 0f;
-		for (MarketAPI b : bases) builds += payableFP(b, system);
+		for (MarketAPI b : bases) builds += payableFP(b, system, b == base ? donors : null);
 		if (builds < floor) {
 			ThreatIncConfig.logQuiet(key, "Hunting force waits at " + base.getName() + ": " + bases.size()
-					+ (bases.size() == 1 ? " base pays for " : " bases pay for ") + (int) builds + " FP, " + first.getName() + "'s swarms need " + (int) floor);
+					+ (bases.size() == 1 ? " base" : " bases") + (donors.isEmpty() ? "" : " and " + donors.size()
+					+ (donors.size() == 1 ? " donor" : " donors")) + " pay for " + (int) builds + " FP, "
+					+ first.getName() + "'s swarms need " + (int) floor);
 			return false;
 		}
 
@@ -487,7 +629,7 @@ public class ThreatSoftening {
 		for (MarketAPI b : bases) {
 			if (built >= want) break;
 			// asked in the points the depot pays for, at most perFleet
-			float budget = payableFP(b, system);
+			float budget = payableFP(b, system, b == base ? donors : null);
 			boolean any = false;
 			while (built < want) {
 				float size = Math.min(perFleet, fleetCap(faction.getId()));
@@ -506,6 +648,8 @@ public class ThreatSoftening {
 					ThreatFleetOrders.fold(o, b);
 					break;
 				}
+				// the base paid what it could of the ask; the donors pay the rest
+				if (b == base) payFromDonors(o.fleet, b, donors, system, ask);
 				float share = Math.min(1f, got / Math.max(1f, ask));
 				if (share < BUILT_SHORT) {
 					// vanilla prunes a fleet to maxShipsInAIFleet: a navy without the

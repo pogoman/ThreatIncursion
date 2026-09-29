@@ -37,6 +37,17 @@
 	# per 30 days - no bank, no build (a closed economy)
 	"threatinc_colonyGrowthBaseDays": 60,
 	"threatinc_fabFPPerShipUnit": 100,
+	# a Seeding Swarm's hulls become its colony, not its garrison: the launching
+	# colony's bank also pays this much per structure the colony is founded
+	# with (Population, Spaceport, Fabrication Core, Swarm Nexus, a first
+	# industry), and the new hive builds its garrison from its own bank
+	"threatinc_foundingFPPerStructure": 150,
+	# upkeep: every 30 days a colony's bank pays this fraction of the fleet
+	# points of the fleets it owns (its garrison, raiders, reinforcements
+	# inbound, strikes/waves/scouts it paid for). A bank that cannot carry its
+	# fleets stops building and recycles its weakest swarms until it can -
+	# a garrison settles where income = upkeep, i.e. at income / this rate
+	"threatinc_garrisonUpkeepPerMonth": 0.04,
 	"threatinc_colonizationEscort": 2,
 	# military options menu: how far (su) from a hive's world a defending swarm
 	# fleet can be engaged from its orbit (the colony's garrison, reinforcements
@@ -690,14 +701,15 @@
 	"threatinc_orbitContestFraction": 0.5,
 	# a fleet recalled (or whose order ran out) comes home on a tracked leg:
 	# everything still aboard - marines, armaments, cargo - goes back into the
-	# base's reserve, and this fraction of the fuel and supplies it drew at
-	# launch is refunded, scaled by its surviving strength (fleet points now
-	# over fleet points at launch). A fleet lost on the way returns nothing.
+	# base's reserve, and this fraction of the supplies it drew at launch is
+	# refunded, scaled by its surviving strength (fleet points now over fleet
+	# points at launch). Fuel is the round trip: only the leg home of the hulls
+	# it lost comes back (2026-09-29). A fleet lost on the way returns nothing.
 	"threatinc_returnRefundMult": 0.5,
 	# an NPC fleet's supplies paid for its hulls as well as its voyage: this
 	# share comes back in full x surviving strength, so only losses and the
-	# voyage cost anything (closed economy, 2026-09-29); the rest, and all
-	# fuel, follow returnRefundMult. Your own fleets keep the rule above.
+	# voyage cost anything (closed economy, 2026-09-29); the rest follows
+	# returnRefundMult. Your own fleets keep the rule above.
 	"threatinc_returnHullShare": 0.8,
 
 	# Player aid (docs/player-aid.md): what you send from your own colonies to

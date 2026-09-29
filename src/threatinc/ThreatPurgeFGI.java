@@ -266,10 +266,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * what is aboard is what survived, a fleet lost on the way returns
 	 * nothing, and marines on fleets destroyed in the siege died with them. An
 	 * expedition that never became real refunds its un-landed allotment less
-	 * the route's damage. Fuel and supplies come back at returnRefundMult
-	 * scaled by the surviving strength - the ordnance the bombardment did not
-	 * burn with the passage's fuel - except an NPC siege's hull share of its
-	 * supplies, which comes back in full at that strength. A siege the hull
+	 * the route's damage. Of the passage's fuel only the leg home of the hulls
+	 * lost from fleets that came home returns (ThreatReturns.fuelBack); the
+	 * ordnance the bombardment did not burn returns whole in those fleets.
+	 * Supplies come back at returnRefundMult scaled by the surviving strength,
+	 * except an NPC siege's hull share of them, which comes back in full at that
+	 * strength. A siege the hull
 	 * ledger settled at spawn holds no supplies here: they ride its fleets,
 	 * each refunded as it comes home ({@link #settleLedger}).
 	 */
@@ -280,31 +282,55 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		float marines = 0f;
 		float armaments = 0f;
 		int homebound = 0;
+		// the fuel pools that came home (share of what set out), and the leg home
+		// of the hulls those fleets lost (ThreatReturns.fuelBack, fleet by fleet)
+		float poolsHome;
+		float lostLeg;
 		if (everSpawned) {
 			float fp = 0f;
+			float spawned = 0f;
+			float lost = 0f;
+			java.util.List<CampaignFleetAPI> counted = new ArrayList<CampaignFleetAPI>();
 			for (CampaignFleetAPI fleet : getFleets()) {
 				if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
-				fp += fleet.getFleetPoints();
+				counted.add(fleet);
 				if (trackedHome != null && trackedHome.contains(fleet)) homebound++;
 			}
 			if (trackedHome != null) {
 				for (CampaignFleetAPI fleet : trackedHome) {
 					if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
 					if (getFleets().contains(fleet)) continue;
-					fp += fleet.getFleetPoints();
+					counted.add(fleet);
 					homebound++;
 				}
 			}
-			keep = baselineFP() > 0f ? Math.max(0f, Math.min(1f, fp / baselineFP())) : 0f;
+			for (CampaignFleetAPI fleet : counted) {
+				float now = fleet.getFleetPoints();
+				float at = fleet.getMemoryWithoutUpdate().getFloat(KEY_SPAWN_FP);
+				if (at < now) at = now;
+				fp += now;
+				spawned += at;
+				lost += at - now;
+			}
+			float base0 = baselineFP();
+			keep = base0 > 0f ? Math.max(0f, Math.min(1f, fp / base0)) : 0f;
+			poolsHome = base0 > 0f ? Math.max(0f, Math.min(1f, spawned / base0)) : 0f;
+			lostLeg = base0 > 0f ? Math.max(0f, Math.min(1f, lost / base0)) : 0f;
 		} else {
 			keep = 1f - routeDamage();
 			marines = marinesAllotted * keep;
 			armaments = armamentsAllotted * keep;
+			// the route's damage cannot tell a fleet lost whole from hulls lost
+			// out of fleets that come home: read as whole fleets, never free fuel
+			poolsHome = Math.max(0f, keep);
+			lostLeg = 0f;
 		}
-		float mult = ThreatIncConfig.returnRefundMult() * keep;
-		// ordnance left over is fuel like the passage's, and comes home the same way
+		// (2026-09-29) the passage was drawn for the round trip: the survivors
+		// burned their way home, so only the lost hulls' leg comes back - it was
+		// returnRefundMult x strength, which sailed the whole flotilla home free.
+		// Ordnance left over is cargo in the pools that came home, in full
 		float unburned = paysOrdnance ? ordnance + razeFuel : 0f;
-		float fuel = (fuelDrawn + unburned) * mult;
+		float fuel = fuelDrawn * ThreatReturns.RETURN_LEG_SHARE * lostLeg + unburned * poolsHome;
 		// (2026-09-29: closed economy - an NPC siege's hulls come home at what
 		// survived: the hull share of its supplies in full, ThreatReturns.suppliesBack)
 		boolean player = getFaction() != null && getFaction().isPlayerFaction();

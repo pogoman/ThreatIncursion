@@ -297,7 +297,7 @@ a single strike the month their garrison went home. So now:
 - **Sent** as fleets sized at 1.4 strength per FP (run 6 measured 1.2-1.6), then weighed for real and
   topped up until it holds (2026-09-29: it was once; two passes left a garrison short
   whatever the depots could pay), within `payableFP` - the points whose voyage the base and the
-  faction's other markets can pay (pooled stock / `voyageCost`). `spawnForce` builds nothing past
+  markets reaching it can pay (pooled stock / `voyageCost`). `spawnForce` builds nothing past
   it, so a garrison is never spawned and then despawned for want of pay (2026-09-29: the whole
   force was spawned, weighed against the depots and despawned if they fell short, and
   `callGuard` asked again every week). A garrison may therefore sail below its need when the
@@ -317,8 +317,8 @@ a single strike the month their garrison went home. So now:
   staging banks are what keep the sieges fed. Run 18's Hegemony was refused at 4,439 a month on a 3,375 budget while
   it held 37,000 supplies, and six links were lost that way. A stock drawn down shrinks
   the budget back to the banking. Sieges come first: only the stock beyond what the
-  faction's staging bases are banking for their sieges (`ThreatConvoys.stagingTargets`)
-  counts. Run 19 counted all of it, and its sieges' fuel-and-supply postponements rose
+  faction's staging bases and relays are banking (`ThreatConvoys.bankTargets`: the siege bank and
+  any relay's, not a garrison voyage's want, which is this budget's) counts. Run 19 counted all of it, and its sieges' fuel-and-supply postponements rose
   from 36 to 141. The surplus is counted market by market (2026-09-29): netted
   faction-wide, one staging base's unmet target zeroed every other depot's surplus and
   pinned Hegemony at ~3,750 a month for a 3.7-year test.
@@ -328,8 +328,9 @@ a single strike the month their garrison went home. So now:
   founds and stands fewer front garrisons. Run 17's Hegemony paid ~5,065 a month
   on a 3,750 budget, and its sieges starved.
   Upkeep is drawn from the link, then the garrison's home base (while the
-  faction still holds it), then any of the faction's other markets nearest
-  first, except other links. The link's own stock pays down to its floor plus
+  faction still holds it, and only if its stock reaches the link - 2026-09-29), then the
+  faction's other markets whose stock reaches the link, nearest first, except other links
+  (`payFromOthers`). The link's own stock pays down to its floor plus
   its staging bank (2026-09-29: down to the floor alone, staging links fed their
   garrisons out of the siege's savings); the home base and the others give only
   what a hunt may take (`ThreatReserves.spendable`: above the floor, the donor
@@ -344,7 +345,15 @@ The rules from before:
   faction's vanilla strength over its bases' systems, less every garrison out
   (`navySpareFP`). It is deleted. The garrison sails from the faction's nearest
   base, and the depots paying its voyage are the gate. Its voyage is paid from
-  that base, then the faction's other markets except links.
+  that base, then the faction's other markets except links - only those whose stock REACHES the
+  base (2026-09-29, `othersPay` for the check, `payFromOthers` for the draw, both through
+  `IncursionManager.marketsReaching` / `ThreatConvoys.stockReachLY`, the rule of a siege's and a
+  hunt's donors; every market of the faction paid at any range before - stock that never sailed).
+  When a voyage cannot be paid, the base notes what it lacks past what the markets reaching it give
+  (`noteVoyageWant`; base memory, 30 days, `VOYAGE_WANT_DAYS`, NPC bases only), so convoys stock
+  it like a staging base and the relays carry it on past its donors' reach
+  (`ThreatConvoys.stagingTargets` = `bankTargets` + the want). A garrison that sails clears it
+  (`clearVoyageWant`).
 - **The garrison** is real task forces on DEFEND_LOCATION over the link, built
   at the size asked for (`ignoreMarketFleetSizeMult` - run 4's 400-point
   garrisons sailed at 756 on average with the base's fleet-size multiplier; since 2026-09-29

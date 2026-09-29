@@ -174,18 +174,31 @@ taken. Callers:
   (`siegePoolMarines`, `IncursionManager.siegeDonors`, 2026-09-26: colonies as well as
   bases, any with a reserve, each giving everything above its floor - no donor keep share,
   no staging hold; a market under a ground front gives nothing), nearest the base first,
-  and waits while it cannot arm the landing to the marine gate's share
+  chosen by reach to the siege BASE (2026-09-29: `IncursionManager.marketsReaching` with
+  `ThreatConvoys.stockReachLY` = max(`convoyRangeLY`, the donor's `expeditionRangeLY`), unlimited
+  for the player - a donor's stock goes aboard at the base and none of it sails for the hive.
+  Each donor used to need its own strike range to the hive, which was 0 for any depot without
+  a military structure, shutting them all out: a bug), and waits while it cannot arm the landing to the marine gate's share
   (`minMarinesFraction`, all of it at `npcSiegeFullStrength`); a size-4 beachhead is
   ~2,400 troops and a full depot holds ~560. The system's siege base is the nearest
   (`siegeBaseFor`: it stages and is barred from hunting there while it could launch);
-  while it cannot launch, the next nearest bases of any mobilised NPC faction try
+  while it cannot launch, the next bases of any mobilised NPC faction try - cheapest first
+  (2026-09-29, `cheapestFirst`: the bases that can take and pay for the siege go first, sorted by
+  what it would draw, `expeditionWants` at vanilla's base prices, so the passage and the fleets each
+  base sails decide it; the rest follow nearest-first. Nearest-first sailed Damar's Star's sieges
+  31.9 ly from Chicomoztoc whenever the forward base 11.4 ly out was short)
   (`siegeBasesFor`; every base in reach is weighed, nearest first, until one sails -
   2026-09-29: `siegeBaseTries` stopped at the third that could take anything). The base's navy strength that sizes the fleets is
   read once per strategy tick (`siegeStrength`): read live, one base's flotilla swung
   between ~3,550 and ~6,150 FP from tick to tick. Armaments wanted =
   `npcFrontSupplyDays` x the landing force's own burn (1 armament per marine at the
   default `frontArmamentsPerMarinePer30Days`); fuel = fleet points x LY x
-  `expeditionFuelPerPointLY`; supplies = fleet points x `expeditionSuppliesPerPoint`
+  `expeditionFuelPerPointLY` (the passage; plus bombardment ordnance for ONE world - 2026-09-29:
+  the dearest of the non-front targets, `expeditionFuel`, not summed: the first landing takes
+  every marine aboard (`ThreatPurgeFGI.unloadForLanding`) and the marine need is sized to the
+  strongest target, so a world with nothing left to land is never bombarded; a six-world system
+  billed six bombardments for the one it flew - and the razing fuel, which is still summed);
+  supplies = fleet points x `expeditionSuppliesPerPoint`
   (30 since run 17; it was 100, and Hegemony's sieges waited 16 months on
   32,600-supply bills - ~20x a fleet's maintenance over a siege).
   The expedition is postponed (logged) if the base holds less than
@@ -217,7 +230,16 @@ taken. Callers:
   strongest single target world's garrison (`npcSiegeOrbitPerWorld`, default on). A siege
   is `SEQUENTIAL` (vanilla takes the worlds one at a time with the whole flotilla), and a
   garrison fights over its own world only. The old sum of every world's swarms kept the
-  gate shut for good: 679 postponements and 1 siege in a 21-month run. The check runs FIRST, ahead of the marine gate: a flotilla the pool cannot pay for
+  gate shut for good: 679 postponements and 1 siege in a 21-month run. The gate is not the strongest
+  world alone, though: `siegeOrbitWeighed` is the larger of that, every Defense Swarm in the system
+  (`npcSiegeOrbitSystem`, `systemSwarms`) and what the last called-off siege there met
+  (`swarmsMet`) - a max, never a sum. Why the whole system: off-screen, vanilla's
+  `WarSimScript.getEnemyStrength` (through `FGRaidAction.autoresolve` and
+  `ThreatPurgeFGI.breaksOffAbstract`) counts every Threat fleet in the system at once, the swarm each
+  sibling keeps home included; on-screen, `redistributeGarrisons` / `pickDonor` drain every
+  sibling down to one swarm toward the besieged world. Sieges sized for one world always lost. The
+  "Siege sizing" log line prints the weighed figure, with the strongest world's in brackets
+  ("... FP of Defense Swarms weighed (N over the strongest world)"). The check runs FIRST, ahead of the marine gate: a flotilla the pool cannot pay for
   waits and posts a SWARM BOUNTY on the system (`ThreatSwarmBountyIntel`;
   docs/player-aid.md section 4) while the base banks marines and provisions - the
   provisions gate posts it when the pooled fuel and supplies cannot pay for the orbit's
@@ -347,7 +369,8 @@ held a link. Its strength in lore is people and cells, not industry, so:
 - **Zealots:** Path colonies raise `pathMilitiaMult` (3) times the militia, and
   (`pathZealotMarines`) the Path's markets in reach join the marine pool of any
   NPC siege by a faction it is Welcoming or better with, after that faction's own
-  donors, each above its floor (`IncursionManager.zealotDonors`). Notice "Zealots
+  donors, each above its floor (`IncursionManager.zealotDonors`; in reach of the siege's base
+  by the same `marketsReaching` rule as the faction's own donors, 2026-09-29). Notice "Zealots
   Join Siege". Hives die to ground victories, so this is where the Path counts.
   Each ask is logged ("Zealots: ..."), with why none came. The hunting gate and the
   target pick count them too (`siegeCanPay`), so no landing the launch could pay for
@@ -419,6 +442,28 @@ the row tooltip names the hive a base stocks for and the four targets.
   (`ThreatGroundFronts.coverHolds`), both when it is planned (`canRunTo`) and at the door
   (`pollFrontRun`). In run 9 Loka's run waited at the door while 5,900 FP of cover held
   the orbit, and the dry front was overrun three days later.
+- **Relays (2026-09-29, `ThreatConvoys.relayPlan` / `drawRelays` / `pickRelay`).** A market's stock
+  reaches another only within `stockReachLY`, so a forward staging base drew on the few markets
+  near it while the core's could not reach it at all, and its sieges sailed from the core at two
+  to three times the passage (Chicomoztoc to Damar's Star, 31.9 ly, while Gamma Shero stood 11.4 ly
+  out). A market whose in-reach donors cannot cover its staging shortfall names one **relay**: a
+  depot whose stock reaches it, not under a ground front, reached itself by more of the faction's
+  markets, the most of them new to the needy market (the nearest breaks a tie). The relay takes the
+  unmet part as a target of its own (`relayTargets`), convoys stock it from its own donors like any
+  staging base (`planLogistics`), and it ships onward what it holds for that market (`relayHold`
+  feeds `sendable`). A relay short in turn names its own, so a chain climbs toward the core one
+  real convoy hop at a time; every market is weighed once, fewest-reaching first, so no chain can
+  loop. Relay stock sits inside the staging bank (`spare`): hunts and other staging bases leave
+  it. Relays also serve guard bases: a base whose garrison voyage could not be paid carries a
+  voyage want (docs/frontlines.md, `noteVoyageWant`) and the relay plan weighs its need and keep
+  by `ownWants`, its siege stock raised to that want. Logged as "Relay:". The player's convoys reach
+  any range and have no relays.
+- **The staging target (2026-09-29).** `ThreatConvoys.stagingTargets` = `bankTargets` (the siege's
+  stock plus any relay target) + the garrison voyage want (`withVoyage`: the voyage's fuel and
+  supplies above the keep the voyage never draws). The staging bank
+  (`ThreatReserves.stagingBank`) is `bankTargets` alone - it excludes the voyage want, so the
+  stock convoys bring for a voyage stays spendable and the voyage can spend it, while hunts and donors
+  still leave the siege's and the relay's.
 
 A player base
 stages for the nearest hive the PLAYER HAS FOUND (`ThreatIncData.discoveredSystems`), at
@@ -657,8 +702,9 @@ Recalled fleets, and fleets whose order ran out, come home on a tracked `GO_TO_L
 leg (persistent list `threatinc_fleetReturns`) instead of despawning. On arrival the
 base gets back everything still physically aboard - marines, armaments, cargo - so
 losses in transit are simply what did not return; plus `returnRefundMult` (0.5) of the
-fuel and supplies drawn at launch, scaled by surviving strength (fleet points now over
-fleet points at launch, remembered in the fleet's memory by `provision`). A fleet lost
+supplies drawn at launch, scaled by surviving strength (fleet points now over
+fleet points at launch, remembered in the fleet's memory by `provision`). Fuel is settled
+differently since 2026-09-29 (below); `returnRefundMult` now applies to supplies only. A fleet lost
 on the way home returns nothing. Convoys recalled or whose destination fell carry their
 cargo back the same way. A recalled (or never-landed) expedition refunds its undeployed
 troops and armaments in full and its provisions at the refund rate when the intel ends
@@ -674,7 +720,18 @@ recall. `retarget` leaves fleets already on their tracked leg home alone.
 splits the supplies drawn at launch: `returnHullShare` (0.8) of it paid for the hulls and
 comes back in full at the surviving strength (what comes home intact is not destroyed); only
 the rest is the voyage, refunded at `returnRefundMult`. Losses are the real cost of a sortie.
-The player's fleets keep the old rule, all of it at `returnRefundMult`. Fuel is unchanged.
+The player's fleets keep the old rule for supplies, all of it at `returnRefundMult`.
+**Fuel is charged for the round trip (2026-09-29).** The passage is drawn at
+`expeditionFuelPerPointLY` a point per light-year, about vanilla's burn there and back, in one pool.
+`ThreatReturns.fuelBack` refunds only the return leg of the hulls lost from a fleet that comes home:
+drawn x `RETURN_LEG_SHARE` (0.5) x (1 - health). The survivors burned their way home, so a fleet home
+at full strength refunds nothing, and one destroyed outright refunds nothing (its fuel went down with
+it); it was `returnRefundMult` x health, which sailed a whole flotilla home free. A fleet settled where
+it stands, never flying home (`ThreatFleetOrders.fold`, the yards-built-short fold), gets the whole
+return leg back (`fuelBack(..., flownHome=false)`). `ThreatPurgeFGI.refundOnReturn` works per fleet
+through `KEY_SPAWN_FP` (fleet points at spawn against now); unburned ordnance and razing fuel are cargo
+and come back in full with the fleets that return; the fuel pools that came home count by their
+spawn share, so a fleet lost whole is not credited.
 **NPC sieges settle on the real hulls (`ThreatPurgeFGI`, "the hull ledger", 2026-09-29).** The
 launch draws supplies on an estimate (`expeditionSuppliesPerPoint` a point, a point =
 `FP_PER_RESPONSE_DIFFICULTY` fleet points); vanilla builds each fleet from the faction's own sizes
@@ -1067,8 +1124,13 @@ The user's call: human factions send their own softening fleets to hive systems 
 swarm bounty (docs/player-aid.md section 4); they cost resources but carry no siege, so
 they can be stronger than a siege; a siegeable world in reach always comes first.
 
-- Every slow tick, for each running `ThreatSwarmBountyIntel`, every mobilised NPC faction's
-  nearest base in reach (`ThreatFleetOrders.pickBase`) sends one hunting force, unless:
+- Every slow tick, for each running `ThreatSwarmBountyIntel`, every mobilised NPC faction sends
+  one hunting force from the first of its bases that can (2026-09-29: `ThreatSoftening.huntBases` -
+  every base in fuel reach of the hive, not resting and with no siege of its own, ranked by the
+  fleet points it and its donors can pay a force there for, `payableFP`, the nearest breaking a
+  tie; coalition answers, `ThreatCoalition`, try the same list. The nearest base alone
+  (`ThreatFleetOrders.pickBase`), whatever its stock and never passed over, launched no hunt at all
+  in a test where the Threat grew from 36 hives to 66), unless:
   - the faction already hunts in that system;
   - the base sent one within `softenIntervalDays` (30);
   - the base has a hive of its own to siege (`IncursionManager.hasSiegeableHive`: a known
@@ -1104,11 +1166,20 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   If the yards built less than the floor, the fleets fold straight back into the depot
   (`ThreatFleetOrders.fold`, full refund).
 - POOLED (`softenPool`, default on): after the nearest base, every other base of the
-  faction that reaches the hive - or the primary base - on its own expedition range
-  (`expeditionRangeLY`), is not resting and has no siege of its own chips in, nearest
-  the hive first, until the force reaches its size (2026-09-29, `contributors`: the hive's
-  range alone kept every depot behind the primary base out of the hunt; a base in fuel range
-  of the primary chips in, its fleets paying fuel for the whole way). Each base that sent a
+  faction that reaches the hive on its own `expeditionRangeLY`, or the primary base within
+  `ThreatConvoys.stockReachLY` (max(`convoyRangeLY`, its `expeditionRangeLY`)), is not resting and has
+  no siege of its own chips in, nearest the hive first, until the force reaches its size
+  (2026-09-29, `contributors`: the hive's range alone kept every depot behind the primary base out
+  of the hunt; a base in reach of the primary chips in, its fleets paying fuel for the whole way).
+  The markets that field no fleets - not a base - but whose stock reaches the primary are the
+  `huntDonors`, used when `softenPool` is on; forward bases (links) that field no fleets are donors
+  too (2026-09-29). Each gives what a hunt may take
+  (`ThreatReserves.spendable`, less `outpostKeep` for a forward base: `siegeOutpostKeepMonths` of
+  its garrison's supply upkeep, the keep it holds against a sibling's siege) toward the primary's fleets (`payableFP` counts it,
+  `payFromDonors` pays nearest first), and the "Hunting force waits" log line names them. What a
+  donor gives rides the fleet (`MEM_FUEL` / `MEM_SUPPLIES`) and comes home to the base the fleet
+  returns to, as if a convoy had carried the stock - it is not refunded to the donors. A siege's
+  pooled provisions refund the same way ("refunds still land at the base"). Each base that sent a
   fleet rests `softenIntervalDays`.
 - Cost: fuel (FP / 25 x LY x `expeditionFuelPerPointLY`) and supplies (FP / 25 x
   `expeditionSuppliesPerPoint`) drawn from the base's SPENDABLE stock

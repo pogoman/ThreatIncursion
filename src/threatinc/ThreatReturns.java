@@ -27,9 +27,11 @@ import com.fs.starfarer.api.util.Misc;
  * <li>everything still physically aboard: marines, heavy armaments, fuel and
  * supplies in the cargo - so losses in transit or in battle are simply what
  * did not come back;</li>
- * <li>a refund of the abstract provisions drawn at launch (fuel, supplies),
- * scaled by the fleet's surviving strength (fleet points now over fleet
- * points at launch) and by returnRefundMult - the sortie consumed the rest.
+ * <li>a refund of the abstract provisions drawn at launch: of the fuel, the
+ * leg home of the hulls it lost ({@link #fuelBack} - the survivors burned
+ * theirs); of the supplies, returnRefundMult of them scaled by the fleet's
+ * surviving strength (fleet points now over fleet points at launch) - the
+ * sortie consumed the rest.
  * An NPC navy's supplies draw is split (2026-09-29: closed economy): the
  * {@link #hullShare} of it paid for the hulls and comes back in full at the
  * surviving strength, only the rest at returnRefundMult ({@link #suppliesBack}).</li>
@@ -98,6 +100,34 @@ public class ThreatReturns {
 		if (player) return drawn * mult * h;
 		float hull = hullShare();
 		return drawn * h * (hull + (1f - hull) * mult);
+	}
+
+	/**
+	 * Share of a voyage's fuel draw that is the leg home: a fleet is drawn
+	 * expeditionFuelPerPointLY a point per light-year out, about vanilla's
+	 * burn there and back.
+	 */
+	public static final float RETURN_LEG_SHARE = 0.5f;
+
+	/**
+	 * Voyage fuel refunded of {@code drawn} to a fleet home at surviving
+	 * strength {@code health} (2026-09-29): the leg home of the hulls it lost.
+	 * A fleet carries its round trip in one pool; every hull burned the way
+	 * out, the survivors burned the way home, and the lost hulls' share of the
+	 * way home is still in the pool. A fleet destroyed whole brings nothing
+	 * home - its fuel went down with it. It was returnRefundMult x health, which
+	 * gave a whole fleet its way home free.
+	 */
+	public static float fuelBack(float drawn, float health) {
+		return fuelBack(drawn, health, true);
+	}
+
+	/** As above; {@code flownHome} false - a fleet settled where it stands, never sailing home - brings the whole leg home back. */
+	public static float fuelBack(float drawn, float health, boolean flownHome) {
+		if (drawn <= 0f) return 0f;
+		if (!flownHome) return drawn * RETURN_LEG_SHARE;
+		float h = Math.max(0f, Math.min(1f, health));
+		return drawn * RETURN_LEG_SHARE * (1f - h);
 	}
 
 	/** Whether the fleet is the player's, for the refund rule ({@link #suppliesBack}). */
@@ -346,6 +376,15 @@ public class ThreatReturns {
 
 	/** As above, for a home that may be a colony or an outpost. */
 	public static float[] settle(CampaignFleetAPI fleet, ThreatBases.Base home) {
+		return settle(fleet, home, true);
+	}
+
+	/** As above; {@code flownHome} false for a fleet settled where it stands, whose leg home was never flown ({@link #fuelBack}). */
+	public static float[] settle(CampaignFleetAPI fleet, MarketAPI home, boolean flownHome) {
+		return settle(fleet, ThreatBases.of(home), flownHome);
+	}
+
+	public static float[] settle(CampaignFleetAPI fleet, ThreatBases.Base home, boolean flownHome) {
 		if (fleet == null || home == null) return new float[] {0f, 0f, 0f, 0f};
 		CargoAPI cargo = fleet.getCargo();
 		float marines = cargo.getMarines();
@@ -361,8 +400,8 @@ public class ThreatReturns {
 			fuel = 0f;
 			supplies = 0f;
 		}
-		float mult = ThreatIncConfig.returnRefundMult() * health(fleet);
-		float drawFuel = fleet.getMemoryWithoutUpdate().getFloat(MEM_FUEL) * mult;
+		// the voyage's fuel: only the lost hulls' leg home comes back (fuelBack)
+		float drawFuel = fuelBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_FUEL), health(fleet), flownHome);
 		// an NPC fleet's hulls come home at what survived (suppliesBack)
 		float drawSupplies = suppliesBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_SUPPLIES), health(fleet),
 				playerFleet(fleet));

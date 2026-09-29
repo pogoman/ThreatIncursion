@@ -290,7 +290,7 @@ public class ThreatFrontlines {
 			if (ThreatScouts.sectorKnows(hive)) known++;
 		}
 		ThreatIncConfig.log("Census: threat hives " + hives + " (size " + hiveSizes + "), found "
-				+ known);
+				+ known + ", " + ThreatColonyManager.hiveLedgerSummary());
 	}
 
 	/** Drops links that are gone (taken, decivilised) or changed hands. */
@@ -832,7 +832,8 @@ public class ThreatFrontlines {
 		int supplies = java.util.Arrays.asList(ThreatReserves.COMMODITIES).indexOf(Commodities.SUPPLIES);
 		for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
 			income += ThreatReserves.accrualPer30(m, Commodities.SUPPLIES);
-			float siege = supplies >= 0 && !m.isPlayerOwned() ? ThreatConvoys.stagingTargets(m)[supplies] : 0f;
+			// the siege's bank and any relay's: not a garrison voyage's want, which is this budget's
+			float siege = supplies >= 0 && !m.isPlayerOwned() ? ThreatConvoys.bankTargets(m)[supplies] : 0f;
 			spare += Math.max(0f, ThreatReserves.available(m, Commodities.SUPPLIES) - siege);
 		}
 		float months = ThreatIncConfig.frontlineUpkeepStockMonths();
@@ -915,29 +916,84 @@ public class ThreatFrontlines {
 		return best;
 	}
 
-	/** Whether the faction can pay a garrison's voyage from this base: its stock, then the faction's other markets (payFromOthers). */
+	/**
+	 * Whether the faction can pay a garrison's voyage from this base: its stock,
+	 * then the markets whose stock reaches it (payFromOthers). Short, the base
+	 * notes what it lacks, and convoys stock it toward that (noteVoyageWant).
+	 */
 	protected static boolean canPayVoyage(MarketAPI base, float fp, float ly) {
 		float[] cost = voyageCost(fp, ly);
-		return pooled(base, Commodities.FUEL) >= cost[0] && pooled(base, Commodities.SUPPLIES) >= cost[1];
+		boolean pays = pooled(base, Commodities.FUEL) >= cost[0] && pooled(base, Commodities.SUPPLIES) >= cost[1];
+		if (!pays) noteVoyageWant(base, cost);
+		return pays;
 	}
 
 	/**
-	 * A commodity at the base and every other market of its faction but the
-	 * links, as much of each as a hunt may take (ThreatReserves.spendable: above
-	 * the floor, the donor keep and the staging bank). A garrison's home is
-	 * often a hive's staging base, and what convoys banked for the siege stays.
+	 * A commodity at the base and at every market of its faction whose stock
+	 * reaches it (IncursionManager.marketsReaching, the rule of a siege's and a
+	 * hunt's donors) but the links, as much of each as a hunt may take
+	 * (ThreatReserves.spendable: above the floor, the donor keep and the
+	 * staging bank). A garrison's home is often a hive's staging base, and what
+	 * convoys banked for the siege stays. Until 2026-09-29 every market of the
+	 * faction paid, at any range - stock that never sailed.
 	 */
 	protected static float pooled(MarketAPI base, String commodityId) {
-		float sum = ThreatReserves.spendable(base, commodityId);
-		for (MarketAPI m : ThreatReserves.marketsOf(base.getFactionId())) {
+		return ThreatReserves.spendable(base, commodityId) + othersPay(base, commodityId);
+	}
+
+	/** What the markets reaching the base but the base and the links can give a voyage ({@link #pooled} without the base). */
+	protected static float othersPay(MarketAPI base, String commodityId) {
+		float sum = 0f;
+		for (MarketAPI m : IncursionManager.marketsReaching(base.getFaction(), base)) {
 			if (m != base && !isOutpost(m)) sum += ThreatReserves.spendable(m, commodityId);
 		}
 		return sum;
 	}
 
+	/** Base memory: the fuel and supplies a garrison's voyage from it lacked past what the markets reaching it give (garrisonWants). */
+	protected static final String VOYAGE_FUEL_KEY = "$threatinc_voyageFuelWant";
+	protected static final String VOYAGE_SUPPLIES_KEY = "$threatinc_voyageSuppliesWant";
+	/** Days a voyage want stands unless a garrison sails first. */
+	protected static final float VOYAGE_WANT_DAYS = 30f;
+
 	/**
-	 * The most fleet points whose voyage of {@code ly} the base and its
-	 * faction's other markets can pay (pooled, voyageCost): the budget a
+	 * A garrison's voyage from the base could not be paid: notes, for
+	 * VOYAGE_WANT_DAYS, what the base itself must hold for it - the cost past
+	 * what the markets reaching it give (othersPay), the most asked. Convoys
+	 * stock the base toward it like a staging base (ThreatConvoys.stagingTargets),
+	 * and the relays carry it on past its donors' reach. A garrison that sails
+	 * clears it (clearVoyageWant). NPC bases only: the player's convoys are the
+	 * player's.
+	 */
+	protected static void noteVoyageWant(MarketAPI base, float[] cost) {
+		if (base == null || base.isPlayerOwned()) return;
+		MemoryAPI mem = base.getMemoryWithoutUpdate();
+		String[][] keys = { { VOYAGE_FUEL_KEY, Commodities.FUEL }, { VOYAGE_SUPPLIES_KEY, Commodities.SUPPLIES } };
+		for (int i = 0; i < keys.length; i++) {
+			float want = cost[i] - othersPay(base, keys[i][1]);
+			if (want <= 0f) continue;
+			float had = mem.contains(keys[i][0]) ? mem.getFloat(keys[i][0]) : 0f;
+			if (want > had) mem.set(keys[i][0], want, VOYAGE_WANT_DAYS);
+		}
+	}
+
+	protected static void clearVoyageWant(MarketAPI base) {
+		if (base == null) return;
+		base.getMemoryWithoutUpdate().unset(VOYAGE_FUEL_KEY);
+		base.getMemoryWithoutUpdate().unset(VOYAGE_SUPPLIES_KEY);
+	}
+
+	/** {fuel, supplies} a garrison's voyage from the base waits on it holding, above its keep ({@link #noteVoyageWant}); zeros with none. */
+	public static float[] garrisonWants(MarketAPI base) {
+		if (base == null || base.isPlayerOwned()) return new float[] {0f, 0f};
+		MemoryAPI mem = base.getMemoryWithoutUpdate();
+		return new float[] {mem.contains(VOYAGE_FUEL_KEY) ? mem.getFloat(VOYAGE_FUEL_KEY) : 0f,
+				mem.contains(VOYAGE_SUPPLIES_KEY) ? mem.getFloat(VOYAGE_SUPPLIES_KEY) : 0f};
+	}
+
+	/**
+	 * The most fleet points whose voyage of {@code ly} the base and the
+	 * markets reaching it can pay (pooled, voyageCost): the budget a
 	 * garrison is built to, a hair under so float rounding never tips the
 	 * paid-in-full check. Unbounded when the voyage costs nothing.
 	 */
@@ -993,12 +1049,13 @@ public class ThreatFrontlines {
 			if (payable < 30f) {
 				ThreatIncConfig.logQuiet("fl_unpaid_" + market.getId(), "Frontline: " + base.getName()
 						+ " cannot pay a voyage to " + market.getName() + " (" + (int) payable + " FP payable)");
+				noteVoyageWant(base, voyageCost(str / STRENGTH_PER_FP, ly));
 			}
 			return false;
 		}
 		float fp = fpOf(fleets);
 		float[] cost = voyageCost(fp, ly);
-		// paid in full: the base first, then the faction's other markets
+		// paid in full: the base first, then the markets reaching it
 		// (pooled), the same stock the draw takes. The force was built within
 		// what they pay, so this is a guard that should never trip
 		if (pooled(base, Commodities.FUEL) < cost[0] || pooled(base, Commodities.SUPPLIES) < cost[1]) {
@@ -1011,6 +1068,8 @@ public class ThreatFrontlines {
 		if (fuel < cost[0]) fuel += payFromOthers(base, null, Commodities.FUEL, cost[0] - fuel);
 		float supplies = ThreatReserves.drawSpendable(base, Commodities.SUPPLIES, cost[1]);
 		if (supplies < cost[1]) supplies += payFromOthers(base, null, Commodities.SUPPLIES, cost[1] - supplies);
+		// the voyage it waited on has sailed
+		clearVoyageWant(base);
 		for (CampaignFleetAPI f : fleets) {
 			ThreatReturns.provision(f, base.getId(), fuel / fleets.size(), supplies / fleets.size());
 		}
@@ -1267,8 +1326,9 @@ public class ThreatFrontlines {
 	}
 
 	/**
-	 * Pays a garrison's upkeep: the link's reserve first, then its home base,
-	 * then the faction's other markets nearest the link - the faction pays for
+	 * Pays a garrison's upkeep: the link's reserve first, then its home base
+	 * if the home's stock reaches the link, then the faction's other markets whose stock reaches the link, nearest
+	 * first (payFromOthers) - the faction pays for
 	 * the fleet, not one depot, out of the same markets upkeepBudget counts the
 	 * banking of. Other links keep theirs for their own garrisons. The link's
 	 * own stock pays down to its floor plus its staging bank; the home base and
@@ -1283,7 +1343,10 @@ public class ThreatFrontlines {
 				- ThreatReserves.stagingBank(market, Commodities.SUPPLIES);
 		float link = ThreatReserves.drawAbove(market, Commodities.SUPPLIES, Math.min(want, Math.max(0f, free)));
 		MarketAPI home = homeOf(o);
-		float fromHome = link < want && home != null ? ThreatReserves.drawSpendable(home, Commodities.SUPPLIES, want - link) : 0f;
+		// the home base pays only when its stock reaches the link, like any other market
+		boolean homeReaches = home != null && Misc.getDistanceLY(home.getLocationInHyperspace(),
+				market.getLocationInHyperspace()) <= ThreatConvoys.stockReachLY(home);
+		float fromHome = link < want && homeReaches ? ThreatReserves.drawSpendable(home, Commodities.SUPPLIES, want - link) : 0f;
 		float paid = link + fromHome;
 		if (paid < want) paid += payFromOthers(market, home, Commodities.SUPPLIES, want - paid);
 		ThreatIncConfig.log("Frontline upkeep of " + market.getName() + "'s garrison: paid " + (int) paid + " of "
@@ -1292,11 +1355,16 @@ public class ThreatFrontlines {
 		return paid;
 	}
 
-	/** Draws from the faction's other markets nearest {@code market}, links and {@code home} left out, what a hunt may take of each (ThreatReserves.spendable). */
+	/**
+	 * Draws from the faction's other markets whose stock reaches {@code market}
+	 * (IncursionManager.marketsReaching - 2026-09-29, it was every market at any
+	 * range), nearest it first, links and {@code home} left out, what a hunt may
+	 * take of each (ThreatReserves.spendable).
+	 */
 	protected static float payFromOthers(MarketAPI market, MarketAPI home, String commodityId, float want) {
 		float paid = 0f;
 		List<MarketAPI> others = new ArrayList<MarketAPI>();
-		for (MarketAPI m : ThreatReserves.marketsOf(market.getFactionId())) {
+		for (MarketAPI m : IncursionManager.marketsReaching(market.getFaction(), market)) {
 			if (m != market && m != home && !isOutpost(m)) others.add(m);
 		}
 		final MarketAPI at = market;

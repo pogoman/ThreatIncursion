@@ -1171,11 +1171,12 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	/**
 	 * The most ships a swarm of this spec rolls: vanilla's createThreatFleet
 	 * escort ranges at their tops (7 / 11 / 27 / 26 at LOW / MEDIUM / HIGH /
-	 * MAXIMUM) plus its fabricators. What a launch packs by, so a pack fits
+	 * MAXIMUM) plus its fabricators. spec[1] is the FabricatorEscortStrength
+	 * ordinal, which starts at NONE. What a launch packs by, so a pack fits
 	 * whatever vanilla rolls; createFleet checks the real count.
 	 */
 	public static int shipsEstimate(int[] spec) {
-		int[] byTier = { 7, 11, 27, 26 };
+		int[] byTier = { 0, 7, 11, 27, 26 }; // NONE, LOW, MEDIUM, HIGH, MAXIMUM
 		return byTier[Math.max(0, Math.min(byTier.length - 1, spec[1]))] + Math.max(0, spec[0]);
 	}
 
