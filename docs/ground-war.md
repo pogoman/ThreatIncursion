@@ -302,14 +302,22 @@ is no record of what the colony held before it. Shipping the marines out and bac
 whole and the second at `marineCounterAttackMult` (0.25); the garrison proper enters both whole.
 A hive still counter-attacks with everything, having no marines to hold back.
 
-**3. The defenders bleed.** `defenderLossPer30Days` (0.20) of the armed marines per 30 days,
+**3. The defenders bleed.** `defenderLossPer30Days` (0.20) of the engaged armed marines per 30 days,
 scaled by the front's pressure (`effectiveStrength / holdRequirement`, capped at 1), plus
-`defenderCounterAttackLossFraction` (0.15) every time the colony counter-attacks - **win or
+`defenderCounterAttackLossFraction` (0.15) of them every time the colony counter-attacks - **win or
 lose**. Bouncing off a dug-in front used to be free; it is now the expensive case. The bleed is
 deliberately *not* gated on the front's state: gating it on HOLDING or GRINDING would let a
 colony switch the cost off by reinforcing past the threshold, which is precisely the move this is
 meant to charge for. All of it is drawn through `ThreatReserves.spendDefendingMarines`, so the
 armed count, the stockpile and the veterancy pool stay consistent.
+
+Both scale with the *engaged* defenders, `ThreatGroundFronts.engaged(armed, front)` = min(armed marines,
+`front.marines`): the frontage is the smaller force. Scaled on the whole garrison, a 1,000-marine
+beachhead bled a 5,000-marine world 1,000 a month and 15% of 5,000 per counter-attack; a 20-month test
+lost the Hegemony ~39k marines to fronts that lost ~2k, and five worlds fell once relief convoys had fed
+the grinder dry (2026-09-29, ti-h8h). A front with no marines counted (`front.marines` 0) engages the
+whole garrison. The war board quotes both through `defenderLossPer30Days` and `counterAttackDefenderLoss`,
+so its figures follow.
 
 **3b. Troops to spare buy tempo.** The cadence used to read stability and nothing else:
 

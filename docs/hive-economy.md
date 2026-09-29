@@ -470,6 +470,12 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
        before it can donate;
      - a fleet that was moved rests 30 days (`$threatinc_postureMoved`) before it is sent again;
      - each transfer counts as inbound to the receiver while it travels.
+     - **Fabrication** (`fabricatorFor`, `fabricateFor`; 2026-09-29, ti-h8f - 60-80k FP lay banked at colonies at
+       their want while pressed systems held 5-10k short): when no garrison in reach can spare a fleet for a
+       receiver short of its want, a colony that holds its own want, can fabricate and reach the receiver, and
+       whose bank holds its own want plus the swarm's cost builds the receiver's cheapest garrison row
+       (`cheapestRow`) and sends it as a normal reinforcement (same rests and inbound). Richest idle bank
+       (bank - want - cost) first, same system first. The cost is paid from that bank (`chargeFP`).
   2. Waves and strikes, through launch availability.
   3. Recycling (`recycleSurplus`), only after the break-even: (1 - `hullShare`) / upkeep x 30 days -
      150 days at the defaults - one fleet per colony per pass, weakest first, out of battle; or at
@@ -492,7 +498,7 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   adds `S_ATTACKED`). Day stamps are days since timestamp 1 (`today()`) - see the gotcha in
   docs/README.md.
 - **Logs:** `Posture: <system> QUIET->THREATENED pressure N (staged ..., attacks ..., losses30d ...,
-  hostiles ..., forward ...) want N (base N, need N) held ... (+N inbound) bank ...` on a mode change; `Posture: <donor> sent N FP to ...`;
+  hostiles ..., forward ...) want N (base N, need N) held ... (+N inbound) bank ...` on a mode change; `Posture: <donor> sent N FP to ...`; `Posture: X fabricated a N FP swarm for Y (B FP banked)`;
   `Posture: <colony> recycled a N FP surplus fleet`; `Posture: <system> written off` / `defensible again`;
   and a monthly `Posture sector: ...` line, ending `; forges paying n/N; banks <top 4 colony banks>`.
   NPC staging raises Threat pressure (docs/strategy-layer.md "Staging").
