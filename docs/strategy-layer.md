@@ -411,7 +411,14 @@ that would have thinned the system went unpaid. Once hunts thin it enough the si
 target returns to it - with hysteresis: a hunt-staged base returns to its siege only when the
 siege's fuel and supplies fit within 0.8 x the funding in reach (`SIEGE_RETURN_SHARE`), a
 siege-staged one drops to hunt staging above 1.0 x (a base that flipped four times in one run
-turned its convoys around each time). The verdict persists in `threatinc_huntStagingVerdicts`. A
+turned its convoys around each time). The faction funds its sieges cheapest first (2026-09-30,
+`ThreatConvoys.committedBefore`, called in `siegeStock`): a base's siege fits only in what its
+network holds after the `siegeWants` of every cheaper staging base in the same `stockNetwork` whose own
+verdict is a siege (cheaper = less fuel wanted; ties by market id; a player base is not counted). Before,
+each base read the whole network's stock plus banking alone, so a dozen bases on one pool all staged for
+sieges and none reached its target (40-month test: 1,148 postponements, median pool 23% of need).
+`WANTS_MEMO` holds the day's `siegeWants` per base; `ALLOCATING` stops the walk re-entering a base
+whose verdict is being read. The verdict persists in `threatinc_huntStagingVerdicts`. A
 "Staging:" log line reports each verdict change (`logOnChange`), naming the
 siege's wants and what is in reach. This applies to NPC bases; the player orders their own sieges. Cross-reference (2026-09-29): NPC
 staging, and the sieges, hunts and Support / Defend orders it feeds, now raise the Threat's pressure on
