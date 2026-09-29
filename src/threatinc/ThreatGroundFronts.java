@@ -3300,8 +3300,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * What a fleet's bombardment costs in fuel it carries, paid: the swarm
 	 * carries none and pays nothing (it has no fuel economy); anyone else pays
 	 * from its own provisions ({@link ThreatReturns#MEM_FUEL}) first and then
-	 * from its home base's spendable reserve - the supply line an order stands
-	 * on. Returns the fuel actually paid, which may be short.
+	 * from the spendable reserve of its supply line ({@link #ordnanceSources}).
+	 * Returns the fuel actually paid, which may be short.
 	 */
 	public static float payOrdnance(CampaignFleetAPI fleet, String factionId, float fuel) {
 		if (fuel <= 0f) return 0f;
@@ -3311,10 +3311,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float carried = Math.max(0f, mem.getFloat(ThreatReturns.MEM_FUEL));
 		float paid = Math.min(carried, fuel);
 		if (paid > 0f) mem.set(ThreatReturns.MEM_FUEL, carried - paid);
-		if (paid < fuel) {
-			String home = ThreatReturns.homeOf(fleet);
-			MarketAPI base = home != null ? Global.getSector().getEconomy().getMarket(home) : null;
-			if (base != null) paid += ThreatReserves.drawSpendable(base, Commodities.FUEL, fuel - paid);
+		for (MarketAPI m : ordnanceSources(fleet, factionId)) {
+			if (paid >= fuel) break;
+			paid += ThreatReserves.drawSpendable(m, Commodities.FUEL, fuel - paid);
 		}
 		return paid;
 	}
@@ -3324,10 +3323,37 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (Factions.THREAT.equals(factionId)) return Float.MAX_VALUE;
 		if (fleet == null) return 0f;
 		float fuel = Math.max(0f, fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL));
+		for (MarketAPI m : ordnanceSources(fleet, factionId)) fuel += ThreatReserves.spendable(m, Commodities.FUEL);
+		return fuel;
+	}
+
+	/**
+	 * The markets a fleet's bombardment draws on past its own provisions - its
+	 * supply line. At its home base's system, the home base, as ever. Away
+	 * from it (2026-09-29), only markets whose stock reaches where the fleet
+	 * stands (IncursionManager.marketsReaching, ThreatConvoys.stockReachLY):
+	 * the home base first if it does, then the faction's others nearest first.
+	 * Until then the home base paid at any range - fuel that never sailed. The
+	 * player's fleets keep their home base alone (its reach is any range).
+	 */
+	protected static List<MarketAPI> ordnanceSources(CampaignFleetAPI fleet, String factionId) {
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
 		String home = ThreatReturns.homeOf(fleet);
 		MarketAPI base = home != null ? Global.getSector().getEconomy().getMarket(home) : null;
-		if (base != null) fuel += ThreatReserves.spendable(base, Commodities.FUEL);
-		return fuel;
+		if (base != null && base.getStarSystem() != null && fleet.getStarSystem() == base.getStarSystem()) {
+			out.add(base);
+			return out;
+		}
+		com.fs.starfarer.api.campaign.FactionAPI faction = factionId != null
+				? Global.getSector().getFaction(factionId) : null;
+		if (faction == null) return out;
+		List<MarketAPI> reaching = IncursionManager.marketsReaching(faction, fleet.getLocationInHyperspace());
+		if (base != null && reaching.contains(base)) out.add(base);
+		if (faction.isPlayerFaction()) return out;
+		for (MarketAPI m : reaching) {
+			if (m != base) out.add(m);
+		}
+		return out;
 	}
 
 	/**

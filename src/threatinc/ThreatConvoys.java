@@ -283,6 +283,18 @@ public class ThreatConvoys {
 	}
 
 	/**
+	 * How far a market's stock reaches another market: convoyRangeLY, or as far
+	 * as its fuel does (IncursionManager.expeditionRangeLY) - the donor rule of
+	 * the staging planner, relief runs and the siege and hunt pools. The
+	 * player's at any range.
+	 */
+	public static float stockReachLY(MarketAPI donor) {
+		if (donor == null) return 0f;
+		if (donor.getFaction() != null && donor.getFaction().isPlayerFaction()) return Float.MAX_VALUE;
+		return Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.expeditionRangeLY(donor));
+	}
+
+	/**
 	 * The faction's nearest staging base within convoy range of this colony
 	 * (not itself), or null. The player's colonies feed a base at any range
 	 * (2026-09-05 evening: Diggers, a fuel world 20 ly out, showed a dash
@@ -295,8 +307,7 @@ public class ThreatConvoys {
 		// the base itself stages at (stagingHive); the flat convoyRangeLY kept
 		// Hegemony's marines circling its core worlds while its forward staging
 		// base got two convoys in three years (run 9)
-		float range = colony.getFaction().isPlayerFaction() ? Float.MAX_VALUE
-				: Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.expeditionRangeLY(colony));
+		float range = stockReachLY(colony);
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
 		for (MarketAPI m : ThreatReserves.marketsOf(colony.getFaction().getId())) {
@@ -324,10 +335,60 @@ public class ThreatConvoys {
 	 * in one tick or render. The memo empties after a day, on every
 	 * war board render and on game load ({@link #forgetStagingTargets}): a
 	 * player base's target follows its free fleet points, which a board order
-	 * changes with the clock stopped.
+	 * changes with the clock stopped. A RELAY's target is added on top
+	 * ({@link #relayTargets}): the stock it passes on to a staging base its
+	 * donors cannot reach.
 	 */
 	public static float[] stagingTargets(MarketAPI base) {
-		if (base == null) return new float[] {0f, 0f, 0f, 0f};
+		return withVoyage(base, bankTargets(base));
+	}
+
+	/**
+	 * What the base keeps banked for sieges, its own and those it relays for:
+	 * {@link #stagingTargets} without a garrison voyage's want. The staging bank
+	 * (ThreatReserves.stagingBank) - a voyage's stock must stay spendable, as
+	 * the voyage draws only that.
+	 */
+	public static float[] bankTargets(MarketAPI base) {
+		float[] wants = siegeStock(base);
+		float[] relay = relayTargets(base);
+		for (int i = 0; i < wants.length; i++) wants[i] += relay[i];
+		return wants;
+	}
+
+	/**
+	 * The targets {@code bank} raised to what a garrison's voyage from the base
+	 * waits on (ThreatFrontlines.garrisonWants, 2026-09-29): the voyage's fuel
+	 * and supplies above the stock a voyage never draws (ThreatReserves.spendable's
+	 * keep), so the stock convoys bring is stock the voyage can spend.
+	 */
+	protected static float[] withVoyage(MarketAPI base, float[] bank) {
+		if (base == null || base.isPlayerOwned()) return bank;
+		float[] voyage = ThreatFrontlines.garrisonWants(base);
+		String[] cs = {Commodities.FUEL, Commodities.SUPPLIES};
+		for (int k = 0; k < cs.length; k++) {
+			int i = ThreatAid.index(cs[k]);
+			if (i < 0 || voyage[k] <= 0f) continue;
+			float keep = Math.max(ThreatReserves.floor(base, cs[k]),
+					ThreatReserves.monthsBasis(base, cs[k]) * ThreatIncConfig.donorKeepFraction() + bank[i]);
+			bank[i] = Math.max(bank[i], keep + voyage[k]);
+		}
+		return bank;
+	}
+
+	/** One commodity of {@link #bankTargets}. */
+	public static float bankTarget(MarketAPI base, String commodityId) {
+		int i = ThreatAid.index(commodityId);
+		return i >= 0 ? bankTargets(base)[i] : 0f;
+	}
+
+	/** A market's own targets, relays aside: its siege's stock, raised to any garrison voyage's want - what a relay plan weighs a market's need and keep by. */
+	protected static float[] ownWants(MarketAPI m) {
+		return withVoyage(m, siegeStock(m));
+	}
+
+	/** Drops the day's memos when a day has passed since they were drawn. */
+	protected static void ageTargetsMemo() {
 		long now = Global.getSector().getClock().getTimestamp();
 		// a day's memo: rebuilt at every clock instant, the half-day reserve poll
 		// re-sized every staging base's siege on every pass (rc1 review)
@@ -335,8 +396,15 @@ public class ThreatConvoys {
 				: Global.getSector().getClock().getElapsedDaysSince(targetsMemoStamp);
 		if (age < 0f || age >= 1f) {
 			targetsMemo.clear();
+			relayMemo.clear();
 			targetsMemoStamp = now;
 		}
+	}
+
+	/** {@link #stagingTargets} for the base's own siege alone, relays aside: what the siege from here draws, times stagingTargetMult. */
+	protected static float[] siegeStock(MarketAPI base) {
+		if (base == null) return new float[] {0f, 0f, 0f, 0f};
+		ageTargetsMemo();
 		float[] memo = targetsMemo.get(base.getId());
 		if (memo != null) return memo.clone();
 		float[] wants;
@@ -358,13 +426,219 @@ public class ThreatConvoys {
 		return i >= 0 ? stagingTargets(base)[i] : 0f;
 	}
 
-	/** {@link #stagingTargets} by market id, good for a day from targetsMemoStamp. */
+	/** {@link #siegeStock} by market id, good for a day from targetsMemoStamp. */
 	private static final Map<String, float[]> targetsMemo = new HashMap<String, float[]>();
 	private static long targetsMemoStamp = Long.MIN_VALUE;
 
-	/** Drops the stagingTargets memo; the faction view calls it as it renders, so a board order's effect shows on the same paused frame. */
+	/** Drops the stagingTargets memos; the faction view calls it as it renders, so a board order's effect shows on the same paused frame. */
 	public static void forgetStagingTargets() {
 		targetsMemo.clear();
+		relayMemo.clear();
+	}
+
+	// ------------------------------------------------------------------
+	// relays: stock carried on toward a staging base past its donors' reach
+	// ------------------------------------------------------------------
+
+	/** One faction's relays for the day: relay market id -> its target, and -> the ids of the markets it passes stock on to. */
+	protected static class RelayPlan {
+		final Map<String, float[]> target = new HashMap<String, float[]>();
+		final Map<String, java.util.Set<String>> serves = new HashMap<String, java.util.Set<String>>();
+	}
+
+	/** Faction id -> {@link RelayPlan}, good for a day from targetsMemoStamp; not saved. */
+	private static final Map<String, RelayPlan> relayMemo = new HashMap<String, RelayPlan>();
+	/** Set while a plan is drawn: a nested ask (through a donor's keep) reads no relays rather than recursing. */
+	private static boolean drawingRelays = false;
+
+	/**
+	 * What a market holds to pass on, in ThreatReserves.COMMODITIES order: its
+	 * relay target ({@link #relayPlan}). Zeros for the player's (their convoys
+	 * reach any range) and for a market that relays for nothing.
+	 */
+	public static float[] relayTargets(MarketAPI market) {
+		float[] out = new float[ThreatReserves.COMMODITIES.length];
+		if (market == null || market.getFaction() == null || market.isPlayerOwned()) return out;
+		float[] t = relayPlan(market.getFaction()).target.get(market.getId());
+		if (t != null) System.arraycopy(t, 0, out, 0, out.length);
+		return out;
+	}
+
+	/**
+	 * RELAYS (2026-09-29). A market's stock reaches another only within
+	 * stockReachLY - convoyRangeLY, or a military world's fuel range - so a
+	 * forward staging base drew on the two to six markets near it while the
+	 * core's fifteen could not reach it at all, and its sieges sailed from the
+	 * core at two to three times the passage (Chicomoztoc to Damar's Star, 31.9
+	 * ly, while Gamma Shero stood 11.4 ly out). Stock does not jump that gap: a
+	 * RELAY carries it. A market short of what its donors in reach can give
+	 * names one relay - a depot whose stock reaches it, reached itself by more
+	 * of the faction's markets, the most of them new - and the relay takes the
+	 * rest as a target of its own. Convoys stock the relay from its donors
+	 * like any staging base (planLogistics), and it sends what it holds for
+	 * the market on ({@link #sendable}); hunts and other staging bases leave it
+	 * (the staging bank, {@link #spare}). A relay short in turn names its own,
+	 * so a chain climbs toward the core a convoy hop at a time.
+	 *
+	 * <p>Every market is weighed once, fewest markets reaching it first. A
+	 * relay is always reached by more markets than the one it serves, so it is
+	 * weighed after everything that relays through it, and no chain can loop:
+	 * the plan ends within the faction's market count.
+	 */
+	protected static RelayPlan relayPlan(FactionAPI faction) {
+		ageTargetsMemo();
+		RelayPlan plan = relayMemo.get(faction.getId());
+		if (plan != null) return plan;
+		plan = new RelayPlan();
+		if (faction.isPlayerFaction() || drawingRelays) return plan;
+		drawingRelays = true;
+		try {
+			drawRelays(faction, plan);
+		} finally {
+			drawingRelays = false;
+		}
+		relayMemo.put(faction.getId(), plan);
+		return plan;
+	}
+
+	protected static void drawRelays(FactionAPI faction, RelayPlan plan) {
+		List<MarketAPI> markets = ThreatReserves.marketsOf(faction.getId());
+		final Map<MarketAPI, Integer> reached = new HashMap<MarketAPI, Integer>();
+		Map<MarketAPI, float[]> want = new java.util.LinkedHashMap<MarketAPI, float[]>();
+		for (MarketAPI m : markets) {
+			if (m.getStarSystem() == null) continue;
+			reached.put(m, IncursionManager.marketsReaching(faction, m).size());
+			// a siege's stock, or a garrison voyage's (ownWants)
+			float[] own = ownWants(m);
+			for (float w : own) {
+				if (w > 0f) {
+					want.put(m, own);
+					break;
+				}
+			}
+		}
+		int n = ThreatReserves.COMMODITIES.length;
+		java.util.Set<MarketAPI> weighed = new java.util.HashSet<MarketAPI>();
+		// one market marked weighed a pass, from a finite list: at most one
+		// pass per market
+		while (true) {
+			MarketAPI needy = null;
+			for (MarketAPI m : want.keySet()) {
+				if (weighed.contains(m)) continue;
+				if (needy == null || reached.get(m) < reached.get(needy)) needy = m;
+			}
+			if (needy == null) break;
+			weighed.add(needy);
+			MarketAPI relay = pickRelay(faction, needy, reached);
+			if (relay == null) continue;
+			// short net of its stock, what is at sea to it and what every donor
+			// in reach but the relay could send
+			float[] w = want.get(needy);
+			float[] at = inbound(needy.getId());
+			float[] unmet = new float[n];
+			boolean any = false;
+			for (int i = 0; i < n; i++) {
+				String c = ThreatReserves.COMMODITIES[i];
+				float u = w[i] - ThreatReserves.stock(needy.getId(), c) - at[i];
+				for (MarketAPI d : IncursionManager.marketsReaching(faction, needy)) {
+					if (d == needy || d == relay || u <= 0f) continue;
+					u -= ownSpare(plan, d, i);
+				}
+				unmet[i] = Math.max(0f, u);
+				if (worthSailing(c, unmet[i], w[i])) any = true;
+			}
+			if (!any) continue;
+			float[] t = plan.target.get(relay.getId());
+			if (t == null) t = new float[n];
+			float[] rw = want.containsKey(relay) ? want.get(relay) : ownWants(relay);
+			for (int i = 0; i < n; i++) {
+				t[i] += unmet[i];
+				rw[i] += unmet[i];
+			}
+			plan.target.put(relay.getId(), t);
+			// weighed later: it is reached by more markets than the needy
+			want.put(relay, rw);
+			java.util.Set<String> ids = plan.serves.get(relay.getId());
+			if (ids == null) {
+				ids = new java.util.HashSet<String>();
+				plan.serves.put(relay.getId(), ids);
+			}
+			ids.add(needy.getId());
+			ThreatIncConfig.logOnChange("relay:" + needy.getId(), relay.getId(), "Relay: " + faction.getId() + " "
+					+ relay.getName() + " passes stock on to " + needy.getName() + " ("
+					+ (int) unmet[0] + " marines, " + (int) unmet[1] + " armaments, " + (int) unmet[2]
+					+ " fuel, " + (int) unmet[3] + " supplies past its donors' reach)");
+		}
+	}
+
+	/**
+	 * The relay for a market its donors cannot keep stocked, or null: a depot
+	 * of the faction whose stock reaches it (stockReachLY), not under a ground
+	 * front, reached by more of the faction's markets than it is, the most of
+	 * them markets that cannot reach it themselves; the nearest breaks a tie.
+	 */
+	protected static MarketAPI pickRelay(FactionAPI faction, MarketAPI needy, Map<MarketAPI, Integer> reached) {
+		List<MarketAPI> near = IncursionManager.marketsReaching(faction, needy);
+		java.util.Set<MarketAPI> reachesNeedy = new java.util.HashSet<MarketAPI>(near);
+		Integer own = reached.get(needy);
+		if (own == null) return null;
+		MarketAPI best = null;
+		int bestFresh = 0;
+		float bestDist = Float.MAX_VALUE;
+		for (MarketAPI m : near) {
+			if (m == needy || m.isPlayerOwned() || ThreatGroundFronts.hasFront(m)) continue;
+			if (!ThreatReserves.hasDepot(m)) continue;
+			Integer r = reached.get(m);
+			if (r == null || r <= own) continue;
+			int fresh = 0;
+			for (MarketAPI s : IncursionManager.marketsReaching(faction, m)) {
+				if (!reachesNeedy.contains(s)) fresh++;
+			}
+			if (fresh <= 0) continue;
+			float d = Misc.getDistanceLY(m.getStarSystem().getLocation(), needy.getStarSystem().getLocation());
+			if (fresh > bestFresh || (fresh == bestFresh && d < bestDist)) {
+				best = m;
+				bestFresh = fresh;
+				bestDist = d;
+			}
+		}
+		return best;
+	}
+
+	/** What a donor could send of commodity {@code i} by the plan so far: its stock above its keep, its own needs (ownKeep) and any relay target already set. */
+	protected static float ownSpare(RelayPlan plan, MarketAPI donor, int i) {
+		if (ThreatGroundFronts.hasFront(donor) || donor.isPlayerOwned()) return 0f;
+		String c = ThreatReserves.COMMODITIES[i];
+		float[] relay = plan.target.get(donor.getId());
+		float keep = ownKeep(donor, i) + (relay != null ? relay[i] : 0f);
+		return Math.max(0f, ThreatReserves.stock(donor.getId(), c) - keep);
+	}
+
+	/** The stock a market keeps of commodity {@code i} for itself, relays aside: its donor keep and its siege's stock, or a garrison voyage's whole want when that is more (ownWants). */
+	protected static float ownKeep(MarketAPI m, int i) {
+		String c = ThreatReserves.COMMODITIES[i];
+		return Math.max(ThreatReserves.monthsBasis(m, c) * ThreatIncConfig.donorKeepFraction() + siegeStock(m)[i],
+				ownWants(m)[i]);
+	}
+
+	/**
+	 * What a relay holds for the market it passes stock on to: its stock above
+	 * its keep and its own siege's needs, up to its relay target. 0 unless it
+	 * is that market's relay ({@link #relayPlan}), or under a ground front.
+	 */
+	protected static float relayHold(MarketAPI relay, MarketAPI to, String commodityId) {
+		if (relay == null || to == null || relay.getFaction() == null || relay.isPlayerOwned()) return 0f;
+		// a backed depot banks no staging keep (ThreatReserves.stagingBank), so
+		// {@link #spare} already offers the whole of it
+		if (ThreatGroundFronts.hasFront(relay) || ThreatReserves.isBacked(relay)) return 0f;
+		RelayPlan plan = relayPlan(relay.getFaction());
+		java.util.Set<String> ids = plan.serves.get(relay.getId());
+		if (ids == null || !ids.contains(to.getId())) return 0f;
+		int i = ThreatAid.index(commodityId);
+		float[] t = plan.target.get(relay.getId());
+		if (i < 0 || t == null) return 0f;
+		float above = ThreatReserves.stock(relay.getId(), commodityId) - ownKeep(relay, i);
+		return Math.max(0f, Math.min(t[i], above));
 	}
 
 	/**
@@ -1303,6 +1577,9 @@ public class ThreatConvoys {
 		float bank = donor.isPlayerOwned() ? stagingTarget(donor, commodityId)
 				: ThreatReserves.stagingBank(donor, commodityId);
 		float keep = ThreatReserves.monthsBasis(donor, commodityId) * ThreatIncConfig.donorKeepFraction() + bank;
+		// and what a garrison's voyage from it waits on (stagingTargets), which
+		// is outside the bank so the voyage can spend it
+		if (!donor.isPlayerOwned()) keep = Math.max(keep, stagingTarget(donor, commodityId));
 		return Math.max(0f, ThreatReserves.stock(donor.getId(), commodityId) - keep);
 	}
 
@@ -1319,10 +1596,12 @@ public class ThreatConvoys {
 	 * base donates only what it holds above its own siege's needs
 	 * ({@link #spare}; until 2026-09-24 it never donated), so no colony is
 	 * both short of a commodity and sparing it: the traffic in each
-	 * commodity has one direction and needs no damping.
+	 * commodity has one direction and needs no damping. A relay adds what it
+	 * holds for this base ({@link #relayHold}): the stock it was stocked with
+	 * to pass on, which it spares no one else.
 	 */
 	public static float sendable(MarketAPI donor, MarketAPI base, String commodityId) {
-		return spare(donor, commodityId);
+		return spare(donor, commodityId) + relayHold(donor, base, commodityId);
 	}
 
 	/**

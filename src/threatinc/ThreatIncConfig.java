@@ -81,6 +81,10 @@ public class ThreatIncConfig {
 	public static int colonizationEscort()   { return i("threatinc_colonizationEscort"); }
 	/** Fleet points a hive's FP bank gains per ship unit its forges produce, per 30 days - the Threat's whole fleet income (closed economy, 2026-09-29). */
 	public static float fabFPPerShipUnit()   { return f("threatinc_fabFPPerShipUnit"); }
+	/** Fleet points each structure a Seeding Swarm founds its colony with costs the launching colony's bank (Population, Spaceport, Fabrication Core, Swarm Nexus, a first industry). */
+	public static float foundingFPPerStructure() { return f("threatinc_foundingFPPerStructure"); }
+	/** Fraction of a colony's standing fleets' FP its bank pays in upkeep every 30 days (garrison, raiders, inbound reinforcements, its ledger-bound fleets). */
+	public static float garrisonUpkeepPerMonth() { return f("threatinc_garrisonUpkeepPerMonth"); }
 	/** Military options menu: how far (su) from a hive's world a defending swarm fleet can be engaged from its orbit; any swarm fleet inside also counts as a defender. */
 	public static float defendRadius()      { return f("threatinc_defendRadius"); }
 	/** Whether colonies redistribute Defense Swarms to reinforce worn-down siblings. */

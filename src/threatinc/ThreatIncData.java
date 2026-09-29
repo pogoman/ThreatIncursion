@@ -367,8 +367,11 @@ public class ThreatIncData {
 		for (Map.Entry<String, String> entry : new ArrayList<Map.Entry<String, String>>(
 				waveTargets().entrySet())) {
 			if (systemId.equals(entry.getValue())) {
-				waveFleets().remove(entry.getKey());
+				CampaignFleetAPI wave = waveFleets().remove(entry.getKey());
 				waveTargets().remove(entry.getKey());
+				// untracked it would orbit its target for good: it withdraws,
+				// and a founding its source paid for is refunded
+				ThreatColonyManager.abandonWave(wave);
 			}
 		}
 

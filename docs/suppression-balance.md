@@ -432,7 +432,12 @@ Knob names are proposals. `hiveBombardCostMult` goes too (fuel no longer derives
   aboard and what the colony still needs, and never costs less than a tactical day (the buildings
   are bombed too). The player may pour every ton aboard.
 - **Support and Defend** pay their ordnance from the fuel they carry (`ThreatReturns.MEM_FUEL`),
-  then from the home base's spendable reserve (`payOrdnance`). Out of both, they hold the orbit
+  then from their supply line's spendable reserve (`payOrdnance`; 2026-09-29, it was the home base
+  at any range - fuel that never sailed). The supply line is `ThreatGroundFronts.ordnanceSources`:
+  the home base when the fleet is in its home system; otherwise only markets whose stock reaches
+  where the fleet stands (`IncursionManager.marketsReaching`, `ThreatConvoys.stockReachLY`), the
+  home base first if it does, then the faction's others nearest first. Player fleets use their home
+  base alone (its reach is any range). Out of both, they hold the orbit
   without bombarding ("out of fuel to bombard with"). A Defend fleet with no fuel over a front
   that cannot hold fabricates troops, since an empty tank counts as orbit done (`orbitDoneFor`).
   The swarm pays nothing: it has no fuel economy.
@@ -489,13 +494,24 @@ The AI half, and what reviewing it changed (same day):
   leave the rest of a mixed siege short of fuel. The smallest fleet that survives a Heavy-Battery
   hive's razing loses about two thirds of itself: 72 FP for a size 2, 292 for a size 4, 788 for
   a size 6 (twice that loses about a sixth). `npcRazeEnabled` switches the task off.
-- **Ordnance.** A siege expedition draws its passage, its ordnance (each world it lands on:
-  `bombardPlan` days x 0.04 x the flotilla's FP) and its razing fuel through the provisions
+- **Ordnance.** A siege expedition draws its passage, its ordnance (ONE world since 2026-09-29 -
+  the dearest of the non-front targets, not each world it lands on: the first landing unloads
+  every marine and the marine need is sized to the strongest target, so later worlds are never
+  bombarded; `bombardPlan` days x 0.04 x the flotilla's FP) and its razing fuel (still summed
+  over the razed worlds) through the provisions
   gate; the passage is paid first, then the razing, and the rest is ordnance. Unburned fuel comes
   home with the refund. No ordnance left: no slice, and the landing gate opens.
 - **Landing sizes.** A landing is sized on the wear of the flotilla that carries it, solved
   together with the landing - the least any siege of those worlds sails with - so the launch,
-  the sizing, the convoys and the board read one figure.
+  the sizing, the convoys and the board read one figure. (2026-09-29: the need is read on the
+  LANDING side of the bisection - `IncursionManager.needAndWear` returns {need at hi, hi}. No day
+  is flown until it takes `bombardFPWorth` of defence off per fleet point the guns take, so the
+  need is a step in fleet points: unworn below the first day's line, about a third of that above
+  it. The low side sat just under the step and asked the unworn landing, 3x (12,882 against
+  4,294 for a size-9 hive). `siegeWearFP` - the fleet points that wear the worlds to that need
+  and carry it - is a minimum fleet goal in `siegeFleetSizes` and `siegeFleetGoal`, and the
+  launch has a new postpone reason for it: "the bombardment needs" N FP, beside "orbit" and
+  "razing".)
 - **The swarm's saturation doctrine** (`strikeSaturationEnabled`, off) razes by the bar through
   `saturationSlice`; a pass over a world not yet razed does not use up vanilla's pass count.
 - **Hive return fire - open.** The 0.008 was calibrated on a size-6 colony. A hive's figure is

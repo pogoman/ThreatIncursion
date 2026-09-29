@@ -337,7 +337,8 @@ public class ThreatFleetOrders {
 		all().remove(o);
 		CampaignFleetAPI fleet = o.fleet;
 		if (fleet == null || !fleet.isAlive()) return;
-		ThreatReturns.settle(fleet, host);
+		// settled where it stands: it never flies its leg home (ThreatReturns.fuelBack)
+		ThreatReturns.settle(fleet, host, false);
 		if (!ThreatReturns.kept(fleet)) Misc.fadeAndExpire(fleet);
 	}
 

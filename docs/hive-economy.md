@@ -237,7 +237,7 @@ points, and the bank is filled by what the hive's forges really make.
   (`maintainGarrisons`: the bank must hold `swarmCostEstimate`, a running mean of what that
   tier/fabricator spec came out at, else 46 / 134 / 347 / 458 FP by tier plus 40 a fabricator),
   a Scouting Swarm (`ThreatSwarmScouts.launch`), and a colonization wave's upsize over the swarm
-  it is made of. A recycled weak swarm gives its hulls back. No bank, no build.
+  it is made of, plus the structures it founds with ("Paid founding" below). A recycled weak swarm gives its hulls back. No bank, no build.
 - **No pace timer.** `garrisonRespawnDays` is gone: the bank is the bound, at one swarm per
   colony per poll (about half a day), so a large bank comes out over days, never as a frame of
   fleets. The size table (`desiredGarrison`) is a floor the nexus rebuilds first, not a
@@ -257,7 +257,9 @@ points, and the bank is filled by what the hive's forges really make.
 - **Strikes fly packed.** A strike's swarms (one expedition size each) are packed into as few
   fleets as `maxShipsInAIFleet` allows (`ThreatStrikeFGI.pack`: biggest first, each into the
   first fleet with room by `shipsEstimate` - 7 / 11 / 27 / 26 ships at LOW / MEDIUM / HIGH /
-  MAXIMUM plus its fabricators; the pack list is kept in `packs`). `params.fleetSizes` entries are
+  MAXIMUM plus its fabricators, 0 at NONE, which is the first `FabricatorEscortStrength` ordinal;
+  an earlier build indexed the table without NONE and mis-sized every tier, fixed 2026-09-29, so a
+  LOW swarm packs about four to a fleet and a MEDIUM two; the pack list is kept in `packs`). `params.fleetSizes` entries are
   fleet totals (`packSize`), so strength is unchanged while the count - `expeditionPasses`, the
   board's `preparingStrikeFleetCount` - is the real fleets'. A swarm a fleet has no room for at
   spawn goes to `overflow` and is placed as an extra fleet. `estimateFP` is worked swarm by swarm
@@ -310,6 +312,72 @@ points, and the bank is filled by what the hive's forges really make.
   dropping the NPC supplies bound; and `SIEGE_FLEETS_SANITY` (100,000 fleets) means "cannot be
   done" - a goal past it is not grown toward (logged, "cannot be done"), not clamped into a
   100,000-fleet list. See docs/strategy-layer.md "No cap on the flotilla".
+
+### Paid founding (2026-09-29, built, untested)
+
+A Seeding Swarm used to dig in as its new colony's first garrison, so a founding moved fleet
+points from one bank's garrison to another's and the colony itself came free: hives went 36 to 90.
+Now founding is paid, not transferred.
+
+- **The wave.** A seeding wave still consumes one mustered Defense Swarm, and the source's bank pays
+  the difference to the wave's size (`launchColonizationWave`).
+- **The structures.** Charged at launch, so an unaffordable founding never sails:
+  `threatinc_foundingFPPerStructure` (150) each - 4 core structures (Population, Spaceport,
+  Fabrication Core, Swarm Nexus, `FOUNDING_CORE_STRUCTURES`), +1 where the planet has mining
+  deposits (`foundingStructuresEstimate`). The bill and the wave's source ride the fleet
+  (`FOUNDING_FP_KEY`, `FOUNDING_SOURCE_KEY`); the key's presence marks a wave launched under these
+  rules.
+- **Landing.** The wave is consumed into the colony: `settleFounding` reconciles the real structure
+  count against what was booked (the difference drawn from the source, or the new colony's own bank
+  if the source is gone, or credited back), the fleet is unbound from the ledger and despawned. It
+  does NOT become the garrison. The new hive starts with an empty bank and no garrison and builds its
+  floor from its own income. A paid wave is not consumed out from under a battle.
+- **Failure.** A wave that cannot found, withdraws, or is dropped refunds the structures
+  (`refundFounding`, to the source or the nearest live colony; `abandonWave`, which
+  `ThreatIncData.clearSystem` now calls for every wave it drops, where an untracked wave would have
+  orbited its target for good). The hulls follow the ledger: re-banked if it withdraws, lost if shot
+  down.
+- **Old rules kept.** A wave launched before this (in flight in an older save) and an Abyss
+  bootstrap wave (source null, endowed by `endowSeed`) still dig in as the first garrison.
+- **Conquest** is paid the same way: docs/ground-war.md "Conquest pays".
+
+**Forge retooling.** A launch disrupts the source's forge for 1 day per `RETOOL_FP_PER_DAY` (10)
+FP of wave (`retoolForge`, vanilla's industry disruption, never shortening a longer one) - about 50
+days for a MAXIMUM wave. `forgeOutput` is 0 while it is disrupted, so hive-wide income dips with it.
+`hasReadyForge` is the cooldown (no launch timer anywhere) and now really gates `pickForgeSource`,
+`trySpread` and `launchColonizationWave` itself.
+
+**Structures are bought.** Every planner build, and every upgrade, costs `foundingFPPerStructure`
+(150) from the colony's own bank (`buyStructure`). An unpaid build waits: the planner spends its turn
+on it (`KEY_BUILD_WAITING`) and `buyWaitingStructures` retries each poll. A waiting build pauses
+garrison growth past the floor. A missing organ (Fabrication Core, Swarm Nexus) is added as a debt,
+charged whatever the bank holds (`addEssentialStructure`), its production paying it off before
+anything else is built. Migration swaps (`ensureSpaceport`), the debug war and the one-time save
+heal (`planHiveEconomyFree`) stay free.
+
+### Upkeep - a standing fleet costs its bank (2026-09-29, built, untested)
+
+Paying for a fleet once let a rich hive's garrisons pile up forever, while the human side's forward
+guards pay supplies to stand.
+
+- **Rate.** `threatinc_garrisonUpkeepPerMonth` (0.04) of a fleet's FP per 30 days
+  (`upkeepPerDay`), charged in `accrueFabrication`. 0 disables. The bank may go below 0 on it.
+- **What a colony pays for.** Its garrison list at real FP (a grown fleet at its whole FP), its
+  raiders, reinforcements inbound to it, and every live fleet in space bound to its ledger -
+  strikes, waves, scouts, strays withdrawing (`ownedFleetFP`, `ledgerFleetFP`).
+- **Recycling.** When the bank is below 0 and its income is below its upkeep, `recycleForUpkeep`
+  scraps the weakest swarms first (a weak holder, else the smallest on station; never one in
+  battle; at most one pass over the garrison), each crediting `hullShare` (0.8) of its FP, until the
+  bank is back at 0 or the income covers the upkeep. This can take a colony below its floor: a
+  floor the bank cannot carry is not one. Logged monthly ("Upkeep month:").
+- **Equilibrium.** A garrison settles where its income meets its upkeep: income / rate. A size-6
+  hive at about 240 FP/month settles near 6,000 FP.
+- **Census.** The census line ends with `hiveLedgerSummary`: total fleet FP, income/month,
+  upkeep/month, banked.
+
+**Settings.** `threatinc_foundingFPPerStructure` (150 FP a structure) and
+`threatinc_garrisonUpkeepPerMonth` (0.04) are in `settings.json` and LunaLib, beside
+`fabFPPerShipUnit` (100) and the endowment.
 
 Design rule and reasoning: docs/design-theory.md "Two design rules".
 

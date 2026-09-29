@@ -92,7 +92,10 @@ the strong grow without limit. Every fleet is paid for and what survives comes h
 - The Threat pays from a fleet-point bank per colony, filled by its forges' real hull output
   (docs/hive-economy.md "Fabrication bank"): garrison swarms, scouts and wave upsizes are charged
   their actual FP, strikes are booked on the bank, and surviving fleets credit their FP home when
-  they despawn. No bank, no build; the alarm buys no ships.
+  they despawn. No bank, no build; the alarm buys no ships. Founding is paid (a wave's structures
+  cost 150 FP each, the wave is consumed, the new hive starts empty), every structure is bought,
+  and a standing fleet costs upkeep, so a garrison settles at income / rate and a hive cannot pile
+  up fleets forever.
 - The navies pay fuel and supplies for every sortie, in full or it stays home: `buildSortie` refuses
   unpaid fleets, convoy escorts pay the voyage rate and sail home, scouts pay and settle on return,
   garrisons recalled from a link go home and re-bank, a founding that fails is refunded. A

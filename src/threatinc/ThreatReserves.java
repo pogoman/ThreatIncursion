@@ -866,7 +866,9 @@ public class ThreatReserves {
 	 */
 	public static float stagingBank(MarketAPI market, String commodityId) {
 		if (market == null || market.isPlayerOwned() || isBacked(market)) return 0f;
-		return ThreatConvoys.stagingTarget(market, commodityId);
+		// the sieges' (its own and those it relays for), not a garrison voyage's
+		// want: that stock is the voyage's to spend (ThreatConvoys.bankTargets)
+		return ThreatConvoys.bankTarget(market, commodityId);
 	}
 
 	/**

@@ -53,8 +53,10 @@ variant only needs its `.variant` file and a line in `default_ship_roles.json`.
 | scout | `ThreatFleetComposer.createScouts`, called by `ThreatSwarmScouts.launch` | scout |
 
 Raiders (`ThreatRaiders.detach`) take the largest hunter-pack swarm in the garrison, the
-largest swarm of any kind if there is none. A seeding swarm that digs in as a colony's
-first garrison stays a host.
+largest swarm of any kind if there is none. A seeding swarm is a host. It no longer digs in as
+the new colony's first garrison (2026-09-29: founding is paid): it is consumed into the colony
+when it founds it, and the hive builds its garrison from its own bank. Only a wave already in
+flight in an older save, or out of the Abyss, still digs in as one.
 
 ## To verify in-game
 

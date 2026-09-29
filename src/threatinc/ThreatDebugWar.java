@@ -107,7 +107,7 @@ public class ThreatDebugWar {
 				boolean changed = false;
 				for (MarketAPI market : touched) {
 					Set<String> before = industryIds(market);
-					ThreatColonyManager.planHiveEconomy(market);
+					ThreatColonyManager.planHiveEconomyFree(market);
 					if (!industryIds(market).equals(before)) changed = true;
 				}
 				ThreatColonyManager.flushEconomy();
@@ -213,7 +213,7 @@ public class ThreatDebugWar {
 			boolean changed = false;
 			for (MarketAPI market : founded) {
 				Set<String> before = industryIds(market);
-				ThreatColonyManager.planHiveEconomy(market);
+				ThreatColonyManager.planHiveEconomyFree(market);
 				if (!industryIds(market).equals(before)) changed = true;
 			}
 			ThreatColonyManager.flushEconomy();

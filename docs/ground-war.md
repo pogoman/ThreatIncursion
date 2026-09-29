@@ -251,6 +251,15 @@ a colony is besieged - on one skeleton, and splits what vanilla lumps together:
   From orbit alone the condition falls all the way to 0 like everything else; a holding
   front on the world just wears it down faster (2026-09-28: the orbital floor is gone).
 
+**Conquest pays (2026-09-29, closed economy).** When the Threat takes a human colony and seeds a
+hive on the ruins, the hive is paid for: `convertConquered` -> `foundColony(planet, size, payerId)`
+with the payer from `conquestPayer` - the nearest live colony whose bank can pay the four core
+structures and a first build (5 x `foundingFPPerStructure`, 750 FP), else the nearest live colony,
+else the new hive itself. The core four (Population, Spaceport, Fabrication Core, Swarm Nexus) are
+charged whatever the bank holds - a debt its production pays off - and the rest wait on the
+hive's own bank (docs/hive-economy.md "Paid founding"). The conquered hive starts with an empty
+bank and no garrison.
+
 ### Marines defend, and they die
 
 Before 2026-09-08 a colony's defence was a **fixed wall**: it fell only when a structure was
@@ -1202,7 +1211,8 @@ never feed its alarm), no `retaliate` (guarded so it can never fire for a Threat
 **The swarm converts what it conquers** (user, 2026-09-06, knob `conquestConverts`):
 `ThreatColonyManager.convertConquered` runs vanilla's own teardown
 (`DecivTracker.decivilize(market, false)`) and founds a hive of `conquestHiveSize` (2) on
-the ruin at once, as a colonisation wave would (`foundColony`). Any Defend contract fails.
+the ruin at once, as a colonisation wave would (`foundColony`; paid from a colony's bank since
+2026-09-29, see "Conquest pays" above). Any Defend contract fails.
 `foundColony` only builds the market: `registerConquest` books it (stage, `colonyMarkets`,
 growth/garrison clocks) and marks the system found, since the siege was public. Before
 2026-09-27 this step was missing - conquered hives (Qaras, Yma) ran off the registry,
