@@ -2202,7 +2202,19 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (pressure <= 0f) return 0f;
 		float rate = ThreatIncConfig.defenderLossPer30Days() * pressure;
 		rate *= ThreatMarineXP.lossMult(ThreatMarineXP.colonyLevel(market));
-		return armed * rate;
+		return engaged(armed, front) * rate;
+	}
+
+	/**
+	 * The defenders a front actually fights: the garrison, but no more than the
+	 * beachhead's own headcount - the frontage is the smaller force. Losses on
+	 * the whole garrison let a 1,000-marine beachhead bleed a 5,000-marine world
+	 * 1,000 a month and 15% per counter-attack more; the Hegemony lost ~39k
+	 * marines to fronts that lost ~2k (2026-09-29, ti-h8h), and five worlds
+	 * fell once relief convoys had fed the grinder dry.
+	 */
+	protected static float engaged(float armed, GroundFront front) {
+		return front.marines > 0f ? Math.min(armed, front.marines) : armed;
 	}
 
 	/**
@@ -2250,7 +2262,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float exponent = Math.max(0f, ThreatIncConfig.groundStrengthExponent() - 1f);
 		float defOdds = ratioPow(defenseStrength(front)
 				/ Math.max(1f, counterAttackStrength(market)));
-		return armed * ThreatIncConfig.defenderCounterAttackLossFraction()
+		return engaged(armed, front) * ThreatIncConfig.defenderCounterAttackLossFraction()
 				* Math.min(2f, (float) Math.pow(Math.max(1f, defOdds), exponent))
 				* ThreatMarineXP.lossMult(ThreatMarineXP.colonyLevel(market));
 	}
