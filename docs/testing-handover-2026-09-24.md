@@ -8,7 +8,9 @@ here no longer exist: `siegeMaxFleets` (10 -> 25 -> 50, gone: no fleet cap), `so
 `MAX_FLEETS` (hunting forces have no ceiling), `siegeBaseTries`, `siegePassesPerColony` /
 `strikePassesPerColony` (`expeditionPasses`, fleets + 2), and `ThreatColonyManager.absorbSurplus`
 (deleted: a swarm arriving at a full table is seated - the garrison table is a floor, not a
-ceiling). See docs/design-theory.md "Two design rules" and docs/strategy-layer.md.
+ceiling). Also gone: `softenMargin` and `softenHeadroom` (a hunt is sized by
+`npcSiegeOrbitMargin` on the garrison projected to arrival). See docs/design-theory.md "Two design
+rules" and docs/strategy-layer.md.
 
 **State of the tree.** `main` at 8da7a1a plus an UNCOMMITTED working set (`git status`:
 13 source files, the LunaLib CSV, five docs, this doc, and one new class,

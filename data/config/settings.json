@@ -62,6 +62,37 @@
 	# and can be intercepted. A donor must be able to regrow what it sends (Core
 	# and Nexus both up) and always keeps one swarm home.
 	"threatinc_reinforceEnabled": true,
+	# Posture: every postureDays each hive system weighs the war around it
+	# (attacks running, what the bases staging for it could pay, recent
+	# losses, hostiles present, forward bases in reach) and wants the garrison
+	# that pressure needs - by the siege's orbit margin, times postureMargin -
+	# or its size tables' floor, whichever is more. Nothing is built past the
+	# want; garrison above it by postureBand and one swarm is let go to pressed
+	# siblings, waves and strikes, and recycled once it has stood idle past the
+	# upkeep's break-even. A quiet hive thins to its reserve to spread; a
+	# pressed one keeps its forges home. Off: the nexus builds past the floor
+	# whenever its bank pays, as before.
+	"threatinc_postureEnabled": true,
+	"threatinc_postureMargin": 1.25,
+	"threatinc_postureBand": 0.25,
+	"threatinc_postureDays": 5,
+	# Stance: each posture pass the hive decides what its surplus is for.
+	# PRESS - it holds stancePressRatio times a rival's force in reach, knows a
+	# world of that rival whose defence is at most stanceWeakOdds of what it
+	# could muster, and under half of stanceConsolidateShare of its systems are
+	# pressed: the staging colony builds that strike and aims it; expansion
+	# gets stanceSecondaryShare of its appetite. CONSOLIDATE - that share of
+	# its systems pressed, or hives lost under attack, with no breathing room:
+	# no new claims, quiet colonies feed pressed systems, spoiling strikes at
+	# bases staging against it only. EXPAND otherwise, seeding away from the
+	# strongest rival. A stance holds stanceDwellDays (consolidating never
+	# waits). Off: posture alone, as before.
+	"threatinc_stanceEnabled": true,
+	"threatinc_stancePressRatio": 1.5,
+	"threatinc_stanceWeakOdds": 0.5,
+	"threatinc_stanceConsolidateShare": 0.5,
+	"threatinc_stanceDwellDays": 30,
+	"threatinc_stanceSecondaryShare": 0.5,
 	# A garrison slot is a promise of a certain weight of defense. A swarm shot
 	# below this fraction of the fleet points it was fabricated with, or one of a
 	# lower tier than the slot wants (a small colony's swarm sent to a big one),
@@ -623,6 +654,10 @@
 	"threatinc_swarmScoutFleetPoints": 30,
 	"threatinc_donorKeepFraction": 0.5,
 	"threatinc_stagingTargetMult": 1.5,
+	# a base stages for its siege only while the siege's fuel and supplies fit
+	# in the faction's stock in reach plus this many months of its banking;
+	# past that it stages for the hunting force that thins the swarms first
+	"threatinc_stagingHorizonMonths": 6,
 	"threatinc_convoyTimeoutDays": 200,
 	# fleet orders from the war board's faction view: your own mobilised
 	# faction only - other factions' navies are their own (docs/player-aid.md).
@@ -753,20 +788,17 @@
 	"threatinc_swarmBountyPerFrigate": 1500,
 	"threatinc_swarmBountyDays": 60,
 	# a mobilised NPC base with no hive of its own to siege sends a hunting
-	# force against a bountied hive's swarms: sized to beat them
-	# (softenMargin, on the fleets actually built) with no ceiling, in
-	# fleets of at most softenFleetFP, paid in fuel and supplies like a
-	# siege - pooled from every base of the faction in reach (softenPool).
-	# The fleets muster outside the system (up to softenMusterDays for
-	# stragglers) and go in together; the force works the weakest garrison
-	# first for softenDays, moves on only while it still outweighs the
-	# next, and goes home whole below softenRetreatStrength
+	# force against a bountied hive's swarms: sized to beat them by the
+	# siege's own margin (npcSiegeOrbitMargin, on the fleets actually built),
+	# the swarms counted as they will stand when it arrives, with no
+	# ceiling, in fleets of at most softenFleetFP, paid in fuel and supplies
+	# like a siege - pooled from every base of the faction in reach
+	# (softenPool). The fleets muster outside the system (up to
+	# softenMusterDays for stragglers) and go in together; the force works
+	# the strongest garrison first for softenDays, moves on only while it
+	# still outweighs the next, and goes home whole below
+	# softenRetreatStrength; one that never goes in is refunded in full
 	"threatinc_softenEnabled": true,
-	"threatinc_softenMargin": 2.0,
-	# a force sails only with softenHeadroom over what the muster will ask
-	# (the swarms reinforce while it gathers); one that never goes in is
-	# refunded in full
-	"threatinc_softenHeadroom": 1.5,
 	"threatinc_softenPool": true,
 	"threatinc_softenMusterDays": 15,
 	# a force short at the muster whose stragglers would carry it waits for

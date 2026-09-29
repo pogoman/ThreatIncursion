@@ -110,6 +110,9 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		ThreatSwarmBountyIntel.forgetPending();
 		ThreatFrontlines.forgetCaches();
 		ThreatReserves.forgetCaches();
+		// and the posture's per-colony wants, its pass clock and month's tallies
+		ThreatPosture.forget();
+		ThreatStance.forget();
 
 		// colonyMarkets keys that read lookups created before 0.7.0 made in-system
 		// expansion seed hives into inhabited core systems (rc1 review)

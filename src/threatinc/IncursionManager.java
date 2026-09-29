@@ -257,6 +257,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatColonyManager.checkWaveArrivals(random);
 		ThreatColonyManager.clearSeedingSwarmIntel();
 		ThreatColonyManager.clearThreatMissionIntel();
+		// each hive system weighs the war around it (every postureDays): the
+		// garrison it wants, what it lets go, the appetite to spread
+		ThreatPosture.poll();
 		ThreatColonyManager.maintainGarrisons(random);
 		// colonies cover each other: landed reinforcements join their new
 		// garrison first (so they count as on-station), then worn-down colonies
@@ -805,6 +808,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (market.getSize() < ThreatIncConfig.spreadMinSize()) continue;
 			if (!ThreatColonyManager.hasReadyForge(market)) continue;
 			if (!ThreatColonyManager.isStableForExpansion(market)) continue;
+			// a forge of a pressed system stays home (ThreatPosture)
+			if (ThreatPosture.pressed(market.getStarSystem())) continue;
 			freeForges++;
 			ThreatIncConfig.log("Spread-capable forge: " + market.getName() + " (size "
 					+ market.getSize()
@@ -825,7 +830,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				pending++;
 			}
 		}
-		if (pending >= freeForges) return;
+		// ...and under posture, the share of them the hive's appetite commits:
+		// what its quiet systems hold above their want, and banks that pay the
+		// next founding (ThreatPosture.claimCap)
+		if (pending >= ThreatPosture.claimCap(freeForges)) return;
 
 		StarSystemAPI target = pickSpreadTarget();
 		if (target == null) return;
@@ -3990,6 +3998,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (strainedHive && need <= 0f) continue;
 			float w = (1f + need * 0.01f)
 					/ ((1f + dInfested) * (1f + dInhabited * dInhabited));
+			// expanding to diversify, the swarm leans away from its strongest
+			// rival (ThreatStance)
+			w *= ThreatStance.spreadMult(system);
 			picker.add(system, w);
 		}
 		return picker.pick();
@@ -4143,26 +4154,71 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (d > rangeLY) continue;
 			if (strikeOutweighed(market, strikeStr, outweighed)) continue;
 
-			// the swarm hunts concentration: the bigger the world, the more
-			// biomass and technology to erase - distance costs are already paid
-			// in fuel (the range gate), so desirability is size alone
-			float w = market.getSize() * market.getSize();
-			// a frontline outpost is worth what hangs off it: the swarm goes
-			// for the link whose loss cuts the most of the chain beyond
-			// (docs/frontlines.md, "The Threat breaks the chain")
-			if (ThreatFrontlines.isOutpost(market)) w = ThreatFrontlines.strikeWeight(market);
-			// the swarm turns on whoever is hurting it (ThreatAlarm grudge)
-			w *= ThreatAlarm.targetMult(market.getFactionId());
+			float w = strikeValue(market);
 			// a dry front of the swarm's is signalling: the next expedition
 			// answers it (2026-09-06)
 			if (ThreatGroundFronts.wantsExpedition(market)) {
 				w *= Math.max(1f, ThreatIncConfig.strikeReinforceWeight());
 				if (ThreatIncConfig.strikeReliefFirst()) relief.add(market, w);
 			}
+			// the sector stance (ThreatStance): pressing, the weak worlds it
+			// picked out; consolidating, only a spoiling blow at a base staging
+			// against the hive; expanding, as it comes
+			float odds = strikeStr > 0f ? targetDefence(market, outweighed) / (strikeStr * breakOffRatio()) : 1f;
+			w *= ThreatStance.strikeTargetMult(market, source, odds);
+			if (w <= 0f) continue;
 			picker.add(market, w);
 		}
 		if (!relief.isEmpty()) return relief.pick();
 		return picker.pick();
+	}
+
+	/**
+	 * What a world is worth striking: the swarm hunts concentration - the
+	 * bigger the world, the more biomass and technology to erase (distance is
+	 * paid in fuel, the range gate) - a frontline outpost is worth what hangs
+	 * off it (docs/frontlines.md, "The Threat breaks the chain"), and the
+	 * swarm turns on whoever is hurting it (ThreatAlarm grudge).
+	 */
+	public static float strikeValue(MarketAPI market) {
+		float w = market.getSize() * market.getSize();
+		if (ThreatFrontlines.isOutpost(market)) w = ThreatFrontlines.strikeWeight(market);
+		return w * ThreatAlarm.targetMult(market.getFactionId());
+	}
+
+	/** siegeBreakOffRatio, 1 when unset: the strike gate's odds are defence over strike times this. */
+	protected static float breakOffRatio() {
+		float ratio = ThreatIncConfig.siegeBreakOffRatio();
+		return ratio > 0f ? ratio : 1f;
+	}
+
+	/**
+	 * The defence a strike at the world meets, in vanilla strength units: the
+	 * hostile fleets of its system and its station, as strikeOutweighed weighs
+	 * them (the system's fleets memoised in {@code memo}, {Threat, enemy}).
+	 */
+	protected static float targetDefence(MarketAPI target, java.util.Map<String, float[]> memo) {
+		StarSystemAPI system = target.getStarSystem();
+		if (system == null) return 0f;
+		float[] fleets = memo.get(system.getId());
+		if (fleets == null) {
+			FactionAPI threat = Global.getSector().getFaction(Factions.THREAT);
+			fleets = new float[] { WarSimScript.getFactionStrength(threat, system),
+					WarSimScript.getEnemyStrength(threat, system, true) };
+			memo.put(system.getId(), fleets);
+		}
+		return fleets[1] + WarSimScript.getStationStrength(target.getFaction(), system, target.getPrimaryEntity());
+	}
+
+	/** The strike gate's filters short of reach and weight: a world a strike may be aimed at now. */
+	protected static boolean strikeAllowed(MarketAPI market) {
+		if (!isStrikeableWorld(market)) return false;
+		if (getPhase() < 3 && isCoreWorld(market)) return false;
+		if (market.isPlayerOwned() && ThreatIncData.daysSincePlayerStruck() < ThreatIncConfig.playerGraceDays()) {
+			return false;
+		}
+		if (isActiveStrikeTarget(market)) return false;
+		return ThreatSwarmScouts.swarmKnows(market);
 	}
 
 	/**

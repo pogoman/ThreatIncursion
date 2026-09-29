@@ -397,7 +397,28 @@ nearest base for any is a donor, not a staging base (changed 2026-09-05: before,
 military world in range counted, so one hive cluster made all five player colonies
 "staging", all wanting 4,700 marines, none with spare, nothing concentrating). For each
 staging base and commodity, target stock = what the Siege button's expedition would draw
-(`IncursionManager.siegeWants`) x `stagingTargetMult` (1.5); if the base is short by
+(`IncursionManager.siegeWants`) x `stagingTargetMult` (1.5) - **only while the siege is fundable**
+(2026-09-29, `ThreatConvoys.siegeStock`, `siegeFundable`: its fuel and supplies both fit within
+`fundingInReach`, the stock across the `stockNetwork` - the markets whose stock reaches the base
+directly or through relays - plus `stagingHorizonMonths` (6) of what each banks; marines and
+armaments are not weighed, a hunt spends neither). When it is not, the target becomes the smallest
+hunting force's fuel and supplies against the same hive (`ThreatSoftening.stagingWants`: the
+`musterFloorFP` sortie's `sortieWants`, no marines or armaments), x the same multiplier; relays
+follow either way (`ownWants`). The base then counts as staging for a hunt (`stagesForHunt`). Staged
+for Pelephanar's siege, weighed on 14,288 FP of system swarms, Hegemony's staging bases and relays
+banked 100-560k fuel against a faction total of 59.6k, none of it ever spendable, while the hunts
+that would have thinned the system went unpaid. Once hunts thin it enough the siege fits and the
+target returns to it - with hysteresis: a hunt-staged base returns to its siege only when the
+siege's fuel and supplies fit within 0.8 x the funding in reach (`SIEGE_RETURN_SHARE`), a
+siege-staged one drops to hunt staging above 1.0 x (a base that flipped four times in one run
+turned its convoys around each time). The verdict persists in `threatinc_huntStagingVerdicts`. A
+"Staging:" log line reports each verdict change (`logOnChange`), naming the
+siege's wants and what is in reach. This applies to NPC bases; the player orders their own sieges. Cross-reference (2026-09-29): NPC
+staging, and the sieges, hunts and Support / Defend orders it feeds, now raise the Threat's pressure on
+the hive system (`ThreatPosture`: a staged base counts at 1.0 for its siege, 0.5 for a hunt; a live
+siege or hunt counts in full), so the hive holds a bigger garrison there - docs/hive-economy.md
+"Posture".
+If the base is short by
 at least `convoyMinLoadFraction` (0.5) of a load or of the target (whichever is smaller),
 the same-faction colony within `convoyRangeLY` (15; the player's colonies at any range)
 that holds the most above `donorKeepFraction` (0.5) of its own months cap - a staging
@@ -961,6 +982,15 @@ docs/hive-economy.md - and both alarm knobs and `ThreatAlarm.tempoMult` are dele
 config. The header read "Alarm N - fabrication xM"; its tooltip listed the formula, now each
 faction's grudge and strike-weight multiplier.)
 
+**Strike target weight** (`pickStrikeTarget`, 2026-09-29): a world's weight = `IncursionManager.strikeValue`
+(size squared, or the outpost link weight, x the grudge multiplier; factored out of the loop, behaviour
+unchanged) x `strikeReinforceWeight` for a dry front of the swarm's own x
+`ThreatStance.strikeTargetMult(market, source, odds)`, with odds = defence / (strike x
+`siegeBreakOffRatio`). The stance multiplier: EXPAND 1. PRESS max(0.05, 1 - odds), x10 for the world the
+stance picked for that source system. CONSOLIDATE 0, except a world at odds <= `stanceWeakOdds` that is
+an outpost or a base staging against a hive: max(0.05, 1 - odds). The relief pick (a dry front of its own)
+is filled before the stance multiplier and not affected by it. docs/hive-economy.md "Stance".
+
 **Also**: reserve floor (`reserveFloorFraction` for NPC colonies, `playerReserveFloorFraction`
 for the player's, default 0) and militia trickle (`reserveBaselinePerSize`); "send what you can" trims a short expedition's flotilla
 instead of postponing; `groundStrengthExponent` (1.0) on every ground ratio.
@@ -1145,20 +1175,30 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   the siege is fighting (`ThreatSoftening.strongest`, 2026-09-26; see the Run 5 note under
   "NPC sieges"). A siege takes a subset of the system since 2026-09-27, so a coalition
   answer reads the caller's purge targets (`IncursionManager.siegeTargetsOf`) and a bounty
-  hunt the poster's `siegeTargets` (the bounty's "Strongest swarms" line reads the same);
-  the force records them (`Force.targetIds`; null, and on older saves, is the whole
+  hunt the poster's `siegeTargets` (the bounty's "Strongest swarms" line reads the same) - except
+  (2026-09-29, `ThreatSoftening.gateWorlds`) that a bounty hunt targets the WHOLE system, strongest
+  garrison first, whenever the system's swarms or `swarmsMet` drive the siege's orbit gate
+  (`siegeOrbitWeighed` > `siegeOrbitFaced` of its targets; `gateWorlds` returns null = the whole
+  system): a force that beat the targets' 75 FP and stood down clear left the gate reading 11k FP over
+  the siblings. `stagingWants` is sized against the same worlds. Coalition answers to a live siege
+  still cover that siege's own worlds (`siegeTargetsOf`); the force records them (`Force.targetIds`; null, and on older saves, is the whole
   system) and is sized to their swarms. The Church besieged Epsilon Qades I alone while
   Tri-Tachyon's answer went over I-B. A force that cannot be fielded or paid against it
   does not go for a weaker world instead.
 - Size: the Defense Swarm FP over the siege's worlds (the whole system's for a force with
-  no set) x `softenMargin` (2.0), with no ceiling (2026-09-29: `softenMaxFP` 12,000 and
+  no set) x `npcSiegeOrbitMargin` (1.5, the siege's own orbit margin, `ThreatSoftening.margin`),
+  with no ceiling (2026-09-29: `softenMaxFP` 12,000 and
   `MAX_FLEETS` 30 left every hive over ~4k FP a world unhunted for a 3.7-year test; only what
-  the bases can pay bounds it), and never below the target's garrison x the margin x `softenHeadroom`
-  (1.5, 2026-09-25) - or, for a colony regrowing its swarms, the whole garrison it refills
-  to at the strength of the swarms it has (`musterFloorFP`, rc1 review: targets regrew
-  1.7-43x during musters). It waits if its bases cannot pay for it. The headroom is slack for the muster: the swarms reinforce while the force
-  gathers (433 -> 1,329 FP over Zendar in Run 6), and the muster still asks only garrison x
-  margin. Counted on the WARSHIPS BUILT
+  the bases can pay bounds it), and never below the target's garrison projected to ARRIVAL x that
+  margin (`musterFloorFP`, `garrisonOnArrivalFP`: what the colony owns - its garrison, raiders out
+  and reinforcements inbound, all home by then - plus, while its Fabrication Core and Swarm Nexus
+  work, its bank and its net income minus upkeep over the passage and muster days,
+  `arrivalDays`). 2026-09-29: `softenMargin` (2.0), `softenHeadroom` (1.5) and the refill-to-nominal
+  rule are removed - stacked, they asked 15,790 FP of a force against Alpha Mesh I's 3,158 - and the
+  projection replaces the regrowth the old refill stood in for, which the bank may not pay for at
+  all. Sized on the swarms projected, not those present: 15% of Run 7's forces met a garrison that had
+  regrown during the muster and stood down outmatched (rc1 review). It waits if its bases cannot
+  pay for it. Counted on the WARSHIPS BUILT
   (`combatFP`): each fleet is built at the points it is paid for (`ignoreMarketFleetSizeMult`,
   2026-09-29 - the planner used to ask for points / the market's `COMBAT_FLEET_SIZE_MULT`
   and a 1.5 multiplier sailed half again free) and the planner adds up what each fleet really
@@ -1191,7 +1231,9 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   stages for and `hasSiegeableHive` is false - its orbit gate is what the hunt thins), that
   siege's staging bank is spendable too and the base keeps only its floor and donor keep;
   the siege cannot sail until the swarm is thinned, and the staging bank starved the one force
-  that would thin it. A siege's pooled marines
+  that would thin it. A base staging for a hunt rather than its siege (`ThreatConvoys.stagesForHunt`,
+  below) releases its bank to a hunt in ANY system, not only its own staging hive: it holds nothing
+  for a siege that could sail. A siege's pooled marines
   and armaments come from the other bases the same way. Everything is a warship: no marines, no armaments, no landing.
 - Fleets: split into fleets of at most `softenFleetFP` (1500), each a `KIND_HUNT` order
   (`ThreatFleetOrders.dispatchHunt`, "Hunt" on the board) carrying the force's id

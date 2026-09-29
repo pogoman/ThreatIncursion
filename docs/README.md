@@ -8,7 +8,7 @@ Everything here was verified in the running game unless marked otherwise.
 | [code-map.md](code-map.md) | One line per class in `src/threatinc/`, grouped by subsystem. Start here to find which file owns a feature or bug before diving in. |
 | [intel-ui-platform.md](intel-ui-platform.md) | What the vanilla intel large-description API can and cannot draw, and the traps that crash or silently break it. Read before any custom intel UI work. |
 | [war-board.md](war-board.md) | How `ThreatWarBoard` is built: data model, priority score, hive supply model, ledger, cards, buttons, tooltips, and the design decisions behind them. |
-| [hive-economy.md](hive-economy.md) | How vanilla's economy really behaves (availability is a broadcast, shipping capacity is `10 x accessibility + 5`) and what that means for the hive planner, fuel reach and the board's Supply column. Read before touching `planHiveEconomy` or anything that reasons about shortages. Ends with "Fabrication bank": the Threat's closed economy (FP bank per colony, homecoming ledger, 2026-09-29). |
+| [hive-economy.md](hive-economy.md) | How vanilla's economy really behaves (availability is a broadcast, shipping capacity is `10 x accessibility + 5`) and what that means for the hive planner, fuel reach and the board's Supply column. Read before touching `planHiveEconomy` or anything that reasons about shortages. Ends with "Fabrication bank": the Threat's closed economy (FP bank per colony, homecoming ledger, 2026-09-29), whose last subsections are "Posture" (the garrison the war calls for) and "Stance" (PRESS / EXPAND / CONSOLIDATE, sector-wide). |
 | [testing-harness.md](testing-harness.md) | Launching the game, reaching the board and screenshotting it automatically. Scripts live in `tools/test-harness/`. |
 | [ground-war.md](ground-war.md) | The ground-front siege rework: design, phase-1 mechanics (fronts, danger-close, fallout), judgment calls awaiting review, and the phase-2 backlog (fleet tasking, hive-side fronts, outposts). |
 | [economy-coherence.md](economy-coherence.md) | How the successful 4X games run economies (stockpile vs flow, physical logistics), what vanilla's economy API actually offers (trade mods, econ units, deficits), and the seven rules that make the war reserves one truth with the colony screen. Built and verified in-game 2026-09-05 (section 5). |
@@ -21,6 +21,13 @@ Everything here was verified in the running game unless marked otherwise.
 | [fleet-archetypes.md](fleet-archetypes.md) | BUILT 2026-09-24, untested in-game: the 12 new Threat variants, the archetypes (Host, Vanguard, Battery, Tide, Hunter, Scout) and which fleet gets which, how composition keeps vanilla's strength, and how to add a variant or archetype. |
 | [suppression-balance.md](suppression-balance.md) | Every way a colony's defences get worn down (hover siege, player tac bomb, fortification raids, fronts, saturation) with time and price tables at four defence levels, and the asymmetries between them. Computed, not measured (2026-09-28). **Holds the spec of the bombardment/siege redesign v2, BUILT 2026-09-28 (untested) - the build notes are at the end of its spec section.** |
 | [testing-handover-2026-09-24.md](testing-handover-2026-09-24.md) | UNTESTED, uncommitted: how to prove the 15 review fixes of 2026-09-24 in-game - ten checks in priority order, the exact log lines each one hinges on, load risks, and what to do when it passes. |
+
+Gotchas that cost a test run:
+
+- **`CampaignClock.getElapsedDaysSince(0L)` returns `Float.MAX_VALUE`,** because vanilla reads a
+  timestamp of 0 as "never". For absolute days use `getElapsedDaysSince(1L)` (`ThreatPosture.today()`).
+  Stamping with `since(0L)` made every stamp the same day, so nothing decayed and a system's first
+  pressure stood for a year (2026-09-29, ti8c).
 
 Design mockups (HTML artboards) that led to the current layout are in `design/war-effort/`;
 `Round2.dc.html` is the layout the board implements, `Kit.dc.html` the widget rules.

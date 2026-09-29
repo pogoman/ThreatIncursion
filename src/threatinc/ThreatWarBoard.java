@@ -272,7 +272,7 @@ public class ThreatWarBoard {
 			if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) anyDeclining = true;
 			else if (ThreatColonyManager.growthMultFor(health) > 0f) anyGrowing = true;
 			int live = ThreatColonyManager.countLiveGarrison(market.getId());
-			int desired = ThreatColonyManager.desiredGarrisonCount(market);
+			int desired = ThreatColonyManager.garrisonTargetCount(market);
 			e.swarmsLive += live;
 			e.swarmsDesired += desired;
 			e.swarmsMustered += IncursionManager.preparingStrikeFleetCount(market);
@@ -2386,7 +2386,7 @@ public class ThreatWarBoard {
 
 		// line A, above the organs: vitality, garrison, reach or decline
 		int live = ThreatColonyManager.countLiveGarrison(market.getId());
-		int desired = ThreatColonyManager.desiredGarrisonCount(market);
+		int desired = ThreatColonyManager.garrisonTargetCount(market);
 		int nominal = ThreatColonyManager.desiredGarrison(market.getSize()).length;
 		List<String> hlA = new ArrayList<String>();
 		List<Color> hlcA = new ArrayList<Color>();

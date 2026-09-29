@@ -1141,9 +1141,11 @@ public class ThreatFleetOrders {
 			ThreatAidCapacity.commitSortie(base, builtPoints(o.fleet, fp), o.fleet,
 					"hunt in the " + hive.getNameWithLowercaseTypeShort());
 		} else {
-			// sized to beat the garrison it starts on by softenMargin, the rule it
-			// moves on by (ThreatSoftening.advanceSingle), or it does not sail
-			float need = ThreatSoftening.garrisonFP(target) * Math.max(0f, ThreatIncConfig.softenMargin());
+			// sized to beat the garrison it starts on, as it will stand when the fleet
+			// gets there, by the siege's margin - the rule it moves on by
+			// (ThreatSoftening.advanceSingle) - or it does not sail
+			float need = ThreatSoftening.garrisonOnArrivalFP(target, ThreatSoftening.passageDays(base, hive))
+					* ThreatSoftening.margin();
 			List<CampaignFleetAPI> fleets = buildSortie(base, faction, need, hive.getLocation(), true,
 					"a hunt in the " + hive.getNameWithLowercaseTypeShort());
 			if (fleets == null) return null;

@@ -147,6 +147,8 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		@Override
 		public void reportBattleOccurred(CampaignFleetAPI primaryWinner, BattleAPI battle) {
 			if (battle == null) return;
+			// the hive's loss ledger hears every battle, bounty or not (ThreatPosture)
+			ThreatPosture.noteBattle(battle);
 			thinned(battle);
 			if (!battle.isPlayerInvolved()) return;
 			payAll(battle.getNonPlayerSideSnapshot(), battle.getPlayerInvolvementFraction(),

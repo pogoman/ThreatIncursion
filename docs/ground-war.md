@@ -260,6 +260,14 @@ charged whatever the bank holds - a debt its production pays off - and the rest 
 hive's own bank (docs/hive-economy.md "Paid founding"). The conquered hive starts with an empty
 bank and no garrison.
 
+**Conquest garrison (2026-09-29).** When a Threat landing fleet's front ends because the world was
+taken (ThreatSwarmDefend.tick: the old market gone or Threat-owned), the fleet does not fly home: it
+digs in as the new hive's garrison (ThreatColonyManager.digInAtConquest). Its ledger is unbound (its
+hulls leave the source's bank; upkeep charges them where they stand), it takes GARRISON_FLAG and joins
+garrisonsFor the nearest live hive within twice the leash, orbiting aggressive. No hive under it, or the
+fleet in a battle, and it goes home as before. Before this the conquerors flew away and the new hive
+stood empty (Asharu, Corvus, razed by 275 FP days later, ti-h8d). Logged Conquest garrison: ....
+
 ### Marines defend, and they die
 
 Before 2026-09-08 a colony's defence was a **fixed wall**: it fell only when a structure was

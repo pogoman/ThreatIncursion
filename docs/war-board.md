@@ -75,7 +75,8 @@ model. `design/war-effort/Round2.dc.html` is the layout it implements.
 5. **Colony cards**, three across wide / two narrow, `CARD_H`
    = 124 px, deliberately thin (Sept 2026): name, with the **Map** button (jumps the map to the
    planet) and **Colony** button flush right (`aboveRight(card, -24f)` with negative x offsets);
-   line A "Vitality n%  Swarms a/b  Reach n ly" (vitality in its health colour; "Swarms a/b of n"
+   line A "Vitality n%  Swarms a/b  Reach n ly" (b is `garrisonTargetCount`, 2026-09-29: the
+   posture base count, not the size table's n; vitality in its health colour; "Swarms a/b of n"
    in red when the hull shortage caps the garrison below the size table's n; "Decline n%"
    replaces reach while declining) at full width - it wrapped when it shared the line; line B
    "Def x  raze y fuel  tac z a day" (2026-09-28: the fuel to raze the hive from orbit through its shield, and a day of tactical bombardment by your fleet as it stands) with the size forecast right-aligned on the same line ("s5 -> s6
@@ -120,7 +121,10 @@ counts toward none of the strip's totals, and while nothing is found the board i
 intel list (`ThreatIncursionIntel.isHidden`). User's rule 2026-09-25, replacing the earlier gray
 "Unknown" rows. Per entry:
 stage, live markets, mass, size-weighted health and trend, swarms live/desired/mustered
-(`countLiveGarrison`, `desiredGarrisonCount`, `preparingStrikeFleetCount`) - all counted in
+(`countLiveGarrison`, `garrisonTargetCount`, `preparingStrikeFleetCount`; 2026-09-29: "desired" is
+`garrisonTargetCount` - the size table's `desiredGarrisonCount` with posture off, posture's base count
+(reserve plus a forge's launch stock, docs/hive-economy.md "Posture") with it on, so a quiet colony
+shows full at its lean target and the fabrication trend arrow reads the same count) - all counted in
 fleets since 2026-09-29: a garrison fleet grown past one swarm (docs/hive-economy.md "Grown garrison
 fleets") counts once, and `preparingStrikeFleetCount` is the strike's packed fleets, not its swarms -
 staging colony and

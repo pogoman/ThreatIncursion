@@ -291,6 +291,8 @@ public class ThreatFrontlines {
 		}
 		ThreatIncConfig.log("Census: threat hives " + hives + " (size " + hiveSizes + "), found "
 				+ known + ", " + ThreatColonyManager.hiveLedgerSummary());
+		// the month's upkeep and posture lines ride the census's own 30-day beat
+		ThreatColonyManager.flushUpkeepMonth();
 	}
 
 	/** Drops links that are gone (taken, decivilised) or changed hands. */
@@ -515,7 +517,7 @@ public class ThreatFrontlines {
 	 * Swarms not yet regrown count as the average.
 	 */
 	protected static float strikeOf(MarketAPI hive) {
-		int send = Math.max(ThreatColonyManager.desiredGarrisonCount(hive),
+		int send = Math.max(ThreatColonyManager.garrisonTargetCount(hive),
 				ThreatColonyManager.countLiveGarrison(hive.getId())) - ThreatColonyManager.garrisonReserve(hive);
 		if (send <= 0) return 0f;
 		List<Float> live = new ArrayList<Float>();
