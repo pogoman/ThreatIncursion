@@ -646,7 +646,7 @@ public class ThreatOutposts {
 	 * open purged world within reach of a base that can pay, with a forward
 	 * base - only one a found live hive lies within frontlineKeepLY of, or it
 	 * would be abandoned as soon as it stood - under a link's site rules
-	 * (ThreatFrontlines.siteSystemOk) and the faction's link cap. One per tick.
+	 * (ThreatFrontlines.siteSystemOk). One per tick.
 	 * The outposts knob and the frontlines knob both gate it.
 	 */
 	public static void planNPC(Random random) {
@@ -654,16 +654,11 @@ public class ThreatOutposts {
 				|| !ThreatIncConfig.frontlinesEnabled()) return;
 		List<PlanetAPI> open = openPurgedWorlds();
 		if (open.isEmpty()) return;
-		int max = ThreatIncConfig.frontlineMaxPerFaction(); // 0 = no cap, as the planner reads it
+		// (2026-09-29: closed economy - no link cap: a founding is paid from the reserves, and that is the limit)
 		for (String factionId : ThreatWarState.warFactionIds()) {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
 			if (faction == null || faction.isPlayerFaction()) continue;
 			if (random.nextFloat() >= ThreatIncConfig.outpostChance()) continue;
-			if (max > 0) {
-				int count = 0;
-				for (ThreatFrontlines.Outpost o : ThreatFrontlines.all()) if (factionId.equals(o.factionId)) count++;
-				if (count >= max) continue;
-			}
 			for (PlanetAPI planet : open) {
 				if (holds(planet) || ThreatFrontlines.hiveNear(planet) == null) continue;
 				// no hive or hostile market in the system, one faction's links per system
@@ -688,6 +683,9 @@ public class ThreatOutposts {
 					if (guardBase != null) ThreatFrontlines.garrisonNow(link, guardBase);
 					break;
 				}
+				// (2026-09-29: closed economy) nothing raised: the founding goes back
+				ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, paid[0]);
+				ThreatReserves.deposit(base.getId(), Commodities.FUEL, paid[1]);
 			}
 		}
 	}

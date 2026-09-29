@@ -91,6 +91,11 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// hive worlds post no vanilla missions (survey, analyze, procurement)
 		ThreatMissionFilter.install();
 
+		// (2026-09-29: closed economy) the garrison respawn clock is gone - the
+		// FP bank paces the swarm - so its per-colony timestamps are dropped. A
+		// plain map under a string key: nothing in the save refers to it
+		Global.getSector().getPersistentData().remove("threatinc_garrisonSpawnTimes");
+
 		// a save reloaded at the same clock instant must not read the last
 		// session's staging targets
 		ThreatConvoys.forgetStagingTargets();

@@ -734,11 +734,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				continue;
 			}
 
-			// one colonization attempt at a time (initial Abyss seeds exempt):
-			// a matured claim waits its turn while another wave is in flight
-			if (ThreatColonyManager.anyWaveInFlight()
-					&& !ThreatIncData.bootstrapSeeds().contains(systemId)) continue;
-
+			// waves fly in parallel (2026-09-29: one attempt at a time held every
+			// matured claim behind the one in flight): each is a Defense Swarm a
+			// ready forge in fuel reach can spare (pickWaveSource), and the
+			// launch spends it, so the next claim finds the forge poorer. The
+			// claim leaves SEEDED as its wave sails, so it never draws two
 			MarketAPI source = pickWaveSource(system);
 			if (source == null) {
 				// no colony can source a wave. Only the initial seeds may fall
@@ -811,16 +811,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		if (freeForges <= 0) return;
 
-		// one outward claim at a time, no matter how many forges the hive has -
-		// expansion is serial and deliberate, not a parallel flood
+		// a pending claim per free forge (2026-09-29: one claim at a time, and
+		// maxInfestedSystems, held the spread to a trickle whatever the hive
+		// could build): each claim is a wave a forge must still pay for, so the
+		// forges bound them, and forge readiness, garrison surplus and fuel
+		// reach bound the waves (pickForgeSource)
+		int pending = 0;
 		for (Map.Entry<String, String> entry : ThreatIncData.stages().entrySet()) {
 			if (ThreatIncData.STAGE_SEEDED.equals(entry.getValue())
 					&& !ThreatIncData.bootstrapSeeds().contains(entry.getKey())) {
-				return;
+				pending++;
 			}
 		}
-
-		if (ThreatIncData.countInfested() >= ThreatIncConfig.maxInfestedSystems()) return;
+		if (pending >= freeForges) return;
 
 		StarSystemAPI target = pickSpreadTarget();
 		if (target == null) return;
@@ -865,11 +868,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	protected void tryConversions() {
 		if (!ThreatIncConfig.convertDecivWorlds()) return;
 		if (ThreatIncData.decivTargets().isEmpty()) return;
-		if (ThreatColonyManager.anyWaveInFlight()) return; // one attempt at a time
 		// graveyard grabs are opportunism, not necessity - a strained hive
-		// doesn't add mouths it can't feed
+		// doesn't add mouths it can't feed. Alongside waves already in flight
+		// and with no system ceiling (2026-09-29): a wave per ready forge in
+		// reach with a swarm to spare (pickForgeSource) is the bound
 		if (!ThreatColonyManager.anyNominalColony()) return;
-		if (ThreatIncData.countInfested() >= ThreatIncConfig.maxInfestedSystems()) return;
 
 		for (String planetId : new ArrayList<String>(ThreatIncData.decivTargets())) {
 			SectorEntityToken entity = Global.getSector().getEntityById(planetId);
@@ -911,11 +914,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	protected void tryStrikes() {
 		if (getPhase() < 2) return;
-		if (countActiveStrikes() >= ThreatIncConfig.maxConcurrentStrikes()) return;
+		// (2026-09-29: closed economy - no concurrency cap: a strike is paid
+		// from its colony's bank, and that is the limit)
 
-		// shuffled so the oldest hive can't monopolize the concurrency cap -
-		// iteration used to run in seeding order, which let the founding system
-		// fill every strike slot before younger systems were even considered
+		// shuffled so seeding order does not decide which hive moves first
 		List<String> systemIds = new ArrayList<String>(ThreatIncData.colonyMarkets().keySet());
 		java.util.Collections.shuffle(systemIds, random);
 		for (String systemId : systemIds) {
@@ -936,11 +938,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			MarketAPI target = pickStrikeTarget(colony, source);
 			if (target == null) continue;
 
-			launchStrike(colony, source, target);
+			// (2026-09-29) nothing launched when the bank cannot pay the muster
+			if (launchStrike(colony, source, target) == null) continue;
 			// under the fog a strike hides its origin (ThreatScouts); without
 			// it the raid intel names its origin and the system is known
 			if (!ThreatIncConfig.hiveFogOfWar()) ThreatIncData.markDiscovered(systemId);
-			if (countActiveStrikes() >= ThreatIncConfig.maxConcurrentStrikes()) break;
 		}
 	}
 
@@ -1012,8 +1014,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			params.raidParams.bombardment = null;
 			params.raidParams.raidApproachText = "moving to assault";
 			params.raidParams.raidActionText = "assaulting";
-			params.raidParams.raidsPerColony =
-					Math.max(1, ThreatIncConfig.strikePassesPerColony());
+			// the passes are set once the swarms are mustered (expeditionPasses)
 		}
 		params.noun = "Threat strike";
 		params.forcesNoun = "Threat forces";
@@ -1024,20 +1025,67 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// the expedition IS the colony's mustered Defense Swarms: everything
 		// comes from somewhere. The colony sends what stands above its
 		// defensive reserve, and each expedition fleet is sized to the actual
-		// swarm that left orbit. The nexus keeps growing replacements at its
-		// usual cadence, so strike tempo is bought with real fleets - and
+		// swarm that left orbit. The nexus grows replacements as its bank
+		// pays, so strike tempo is bought with real fleets - and
 		// killing a colony's swarms directly starves its next strike.
 		int sendable = ThreatColonyManager.garrisonAvailableForLaunch(colony);
-		java.util.List<Integer> mustered = ThreatColonyManager.consumeGarrison(colony, sendable);
+		// (2026-09-29: closed economy - the fleets are re-embodied at their
+		// expedition size, which can weigh more than the swarms that left: a
+		// swarm shot under strength, or the strength multiplier's up-tier. The
+		// staging colony's bank pays that excess, so the muster is what it can
+		// pay for: every sendable swarm if the bank covers the estimate, else
+		// one fleet fewer at a time - never a strike the bank cannot pay, and
+		// the swarms it cannot pay for stay home)
+		// One sorted walk of the pool (2026-09-29 review: every step re-peeked,
+		// re-sorting every garrison): a muster of n fleets takes the walk's
+		// first n (peekMuster), so the excess of each n is a running sum. Not
+		// monotone - a swarm can weigh more than its re-embodiment - so every
+		// n is read, the largest the bank pays for wins
+		java.util.List<ThreatColonyManager.MusterFleet> walk = ThreatColonyManager.peekMuster(colony, sendable);
+		float[] excessOf = new float[walk.size() + 1];
+		for (int i = 0; i < walk.size(); i++) {
+			java.util.List<Integer> sizes = new ArrayList<Integer>();
+			for (int size : walk.get(i).sizes) sizes.add(strikeFleetSize(size));
+			excessOf[i + 1] = excessOf[i] + ThreatStrikeFGI.estimateFP(sizes) - walk.get(i).fp;
+		}
+		int count = walk.size();
+		for (; count > 0; count--) {
+			float excess = excessOf[count];
+			if (excess <= 0f || ThreatColonyManager.canAffordFP(colony, excess)) break;
+		}
+		if (count <= 0) {
+			if (sendable > 0) {
+				ThreatIncConfig.log("Strike from " + colony.getName() + " held: the bank ("
+						+ (int) ThreatColonyManager.bankedFP(colony) + " FP) cannot re-embody even one swarm");
+			}
+			return null;
+		}
+		float[] paid = { 0f };
+		java.util.List<Integer> mustered = ThreatColonyManager.consumeGarrison(colony, count, paid);
 		if (mustered.isEmpty()) return null;
-		// each expedition fleet is EXACTLY the swarm that left orbit (its
+		// each swarm is re-embodied as EXACTLY the swarm that left orbit (its
 		// fabrication tier rides the fleet's memory); the strength multiplier
 		// up- or down-tiers the re-embodiment for players who want it
-		for (int size : mustered) {
-			params.fleetSizes.add(strikeFleetSize(size));
+		java.util.List<Integer> swarmSizes = new ArrayList<Integer>();
+		for (int size : mustered) swarmSizes.add(strikeFleetSize(size));
+		// ...and the swarms fly packed, as few fleets as maxShipsInAIFleet
+		// allows (2026-09-29 review: a fleet a swarm, dozens of them): an
+		// entry a fleet, its swarms' sizes summed, so the strength is the
+		// same and the count - the passes, the board - is the real fleets'
+		java.util.List<java.util.List<Integer>> packs = ThreatStrikeFGI.pack(swarmSizes);
+		for (java.util.List<Integer> pack : packs) params.fleetSizes.add(ThreatStrikeFGI.packSize(pack));
+		if (params.raidParams.bombardment == null) {
+			params.raidParams.raidsPerColony = expeditionPasses(params.fleetSizes.size());
 		}
+		// the estimated excess is drawn now and booked on the strike; the
+		// spawn settles the rest against what the fleets really weigh.
+		// Estimated swarm by swarm: a packed entry is no swarm's size
+		float drawn = Math.max(0f, ThreatStrikeFGI.estimateFP(swarmSizes) - paid[0]);
+		if (drawn > 0f) ThreatColonyManager.chargeFP(colony, drawn);
 
 		ThreatStrikeFGI strike = new ThreatStrikeFGI(params);
+		strike.setPacks(packs);
+		strike.setLedger(colony.getId(), paid[0] + drawn);
 		Global.getSector().getIntelManager().addIntel(strike);
 		getStrikeList().add(strike);
 
@@ -1051,7 +1099,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		else ThreatOmens.onStrikeLaunched(target);
 
 		ThreatIncConfig.log("Strike launched from " + source.getName() + " at " + target.getName()
-				+ " (" + mustered.size() + " swarm(s) mustered, sweeping "
+				+ " (" + mustered.size() + " swarm(s) mustered in " + packs.size() + " fleet(s), "
+				+ (int) paid[0] + " FP + "
+				+ (int) drawn + " drawn from the bank, sweeping "
 				+ params.raidParams.allowedTargets.size()
 				+ " world(s) in " + target.getStarSystem().getName() + ")");
 		return strike;
@@ -1130,7 +1180,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	protected void dispatchFactionResponse(MarketAPI struckColony, StarSystemAPI hiveSystem, MarketAPI threatColony) {
 		if (!ThreatIncConfig.responseEnabled()) return;
 		if (threatColony == null || threatColony.getPrimaryEntity() == null) return;
-		if (countActiveResponses() >= ThreatIncConfig.responseMaxConcurrent()) return;
 
 		FactionAPI faction = struckColony.getFaction();
 		if (faction == null || faction.isPlayerFaction()) return;
@@ -1147,26 +1196,61 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// would collapse to the minimum difficulty
 		float strength = WarSimScript.getFactionStrength(faction, base.getStarSystem());
 		int minDiff = ThreatIncConfig.responseMinDifficulty();
-		int maxDiff = ThreatIncConfig.responseMaxDifficulty();
 		// the faction's whole strength converts into a FLOTILLA, not one fleet:
-		// difficulty points beyond the single-fleet cap spill into extra fleets
-		// (up to 4) - a real navy answers a hive system with a battle group,
-		// a backwater militia still sends its one gunboat squadron
+		// a real navy answers a hive system with a battle group, a backwater
+		// militia still sends its one gunboat squadron. Sized to the budget and
+		// what the depot pays for (2026-09-29: it stopped at four fleets of
+		// responseMaxDifficulty 10 - 250 FP a fleet, not vanilla's scale, as
+		// these are built on fleet points), in fleets of softenFleetFP, the
+		// mod's hunting-fleet size; vanilla prunes each to maxShipsInAIFleet
 		int budget = Math.max(minDiff,
 				minDiff + Math.round(strength / ThreatIncConfig.responseStrengthDivisor()));
+		int least = Math.max(1, minDiff);
+		int perFleet = Math.max(least,
+				Math.round(ThreatIncConfig.softenFleetFP() / FP_PER_RESPONSE_DIFFICULTY));
 
 		StarSystemAPI baseSystem = base.getStarSystem();
 		SectorEntityToken baseEntity = base.getPrimaryEntity();
 		if (baseSystem == null || baseEntity == null) return;
 
+		// a mobilised faction pays for the sortie out of its base's reserves,
+		// fuel for the distance and supplies for the fleets, fleet by fleet: a
+		// fleet sails only while the depot can pay for it
+		boolean pays = ThreatWarState.isAtWar(faction);
+		float dist = Misc.getDistanceLY(baseSystem.getLocation(), hiveSystem.getLocation());
+		float fuelPerPoint = dist * ThreatIncConfig.expeditionFuelPerPointLY();
+		float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
+		float fuelDrawn = 0f;
+		float suppliesDrawn = 0f;
+
 		java.util.List<CampaignFleetAPI> fleets = new ArrayList<CampaignFleetAPI>();
 		int spent = 0;
-		while (budget > 0 && fleets.size() < 4) {
-			int difficulty = Math.min(budget, maxDiff);
+		// budget falls by at least one point a fleet, so this ends; the guard
+		// only stops a runaway strength read
+		for (int guard = 0; budget >= least; guard++) {
+			if (guard >= SIEGE_FLEETS_SANITY) {
+				ThreatIncConfig.log("Task force from " + base.getName() + " hit the sanity stop at "
+						+ fleets.size() + " fleets");
+				break;
+			}
+			int difficulty = Math.min(budget, perFleet);
+			if (pays) {
+				// the last fleet shrinks to what the depot can still pay for
+				float payable = Float.MAX_VALUE;
+				if (fuelPerPoint > 0f) payable = Math.min(payable, ThreatReserves.available(base,
+						com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL) / fuelPerPoint);
+				if (suppliesPerPoint > 0f) payable = Math.min(payable, ThreatReserves.available(base,
+						com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES) / suppliesPerPoint);
+				if (payable < difficulty) difficulty = (int) payable;
+				if (difficulty < least) {
+					ThreatIncConfig.log("Task force from " + base.getName() + ": the depot pays for "
+							+ fleets.size() + " fleet(s), " + spent + " of " + (spent + budget) + " points");
+					break;
+				}
+			}
 			// vanilla's 0-10 "standard fleet" scale tops out around a bounty
 			// fleet - a rounding error against a hive garrison. Build with
-			// direct fleet points instead: a max-difficulty fleet is a genuine
-			// ~250 FP battle group, quality and doctrine drawn from the base
+			// direct fleet points instead, quality and doctrine drawn from the base
 			float fp = difficulty * FP_PER_RESPONSE_DIFFICULTY;
 			FleetParamsV3 fleetParams = new FleetParamsV3(
 					base,
@@ -1179,6 +1263,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					fp * 0.1f,    // tankers
 					0f, 0f, 0f,   // transports/liners/utility
 					0f);
+			// built at the points paid for, not the base's fleet-size multiplier on
+			// top (2026-09-29: closed economy - a 1.5 multiplier sailed half again free)
+			fleetParams.ignoreMarketFleetSizeMult = true;
 			CampaignFleetAPI fleet = FleetFactoryV3.createFleet(fleetParams);
 			if (fleet == null || fleet.isEmpty()) break;
 
@@ -1194,38 +1281,38 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			fleet.getMemoryWithoutUpdate().set(MemFlags.FLEET_NO_MILITARY_RESPONSE, true);
 			fleet.getMemoryWithoutUpdate().set("$threatinc_response", true);
 
+			// nothing queued behind the attack: when it runs out the intel sends
+			// the fleet home through ThreatReturns, to settle (2026-09-29: closed
+			// economy - a queued despawning return ended it unsettled)
 			fleet.addAssignment(FleetAssignment.ATTACK_LOCATION, threatColony.getPrimaryEntity(), 120f,
 					"attacking the Threat colony in the " + hiveSystem.getNameWithLowercaseType());
-			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, baseEntity, 1000f,
-					"returning to " + base.getName());
 
+			if (pays) {
+				float fuel = ThreatReserves.drawAbove(base,
+						com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, difficulty * fuelPerPoint);
+				float supplies = ThreatReserves.drawAbove(base,
+						com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES, difficulty * suppliesPerPoint);
+				// each fleet remembers what it cost, for the refund when it comes home
+				ThreatReturns.provision(fleet, base.getId(), fuel, supplies);
+				// vanilla prunes a fleet to maxShipsInAIFleet: pay only for what was built
+				float share = Math.min(1f, ThreatSoftening.combatFP(fleet) / Math.max(1f, fp));
+				if (share < ThreatSoftening.BUILT_SHORT) {
+					ThreatSoftening.refundShort(fleet, base, 1f - share);
+					fuel *= share;
+					supplies *= share;
+				}
+				fuelDrawn += fuel;
+				suppliesDrawn += supplies;
+			}
 			fleets.add(fleet);
 			spent += difficulty;
 			budget -= difficulty;
-			// leftover too small to be worth a straggler fleet
-			if (budget < minDiff) break;
+			// leftover too small to be worth a straggler fleet: the loop's test
 		}
 		if (fleets.isEmpty()) return;
-
-		// a mobilised faction pays for the sortie out of its base's reserves:
-		// fuel for the distance, supplies for the fleets (a cost, not a gate -
-		// the reactive defense always sails; running the depot dry is what
-		// makes the NEXT expedition wait for convoys)
-		if (ThreatWarState.isAtWar(faction)) {
-			float dist = Misc.getDistanceLY(baseSystem.getLocation(), hiveSystem.getLocation());
-			float fuel = ThreatReserves.drawAbove(base,
-					com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL,
-					spent * dist * ThreatIncConfig.expeditionFuelPerPointLY());
-			float supplies = ThreatReserves.drawAbove(base,
-					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES,
-					spent * ThreatIncConfig.expeditionSuppliesPerPoint());
+		if (pays) {
 			ThreatIncConfig.log("Expedition draw (task force) at " + base.getName() + ": "
-					+ (int) fuel + " fuel, " + (int) supplies + " supplies");
-			// each fleet remembers its share, for the refund when it is recalled
-			for (CampaignFleetAPI fleet : fleets) {
-				ThreatReturns.provision(fleet, base.getId(), fuel / fleets.size(),
-						supplies / fleets.size());
-			}
+					+ (int) fuelDrawn + " fuel, " + (int) suppliesDrawn + " supplies");
 		}
 
 		ThreatResponseIntel intel = new ThreatResponseIntel(fleets, faction, base.getName(),
@@ -1290,6 +1377,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		needMemoStamp = Long.MIN_VALUE;
 		RAZE_MEMO.clear();
 		razeMemoStamp = Long.MIN_VALUE;
+		payableMemoStamp = Long.MIN_VALUE;
 		WarFootingDemand.forgetPeacetimeDemand();
 	}
 
@@ -1300,9 +1388,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// its sibling colonies re-ran the same sizing after a postponement
 		java.util.Set<String> weighed = new java.util.HashSet<String>();
 		// the low-hanging fruit first (user's rule 2026-09-27): the easiest hives
-		// claim the marines and the concurrency slots before the hard ones
+		// claim the marines and the reserves before the hard ones
 		for (MarketAPI colony : easiestFirst(ThreatIncData.getAllLiveColonyMarkets())) {
-			if (countActivePurges() >= ThreatIncConfig.responseMaxConcurrent()) return;
 			// no siege of a hive no one has found (ThreatScouts)
 			if (!ThreatScouts.sectorKnows(colony)) continue;
 
@@ -1329,15 +1416,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			FactionAPI faction = null;
 			int difficulty = 0;
 			ThreatPurgeFGI purge = null;
-			// siegeBaseTries counts the bases weighed: one already besieging the
-			// system, or with nothing to take, does not use up a try
+			// every base in reach is weighed, nearest first, until one sails
+			// (2026-09-29: siegeBaseTries stopped at the third that could take
+			// anything); tries counts those with something to take, for the log
 			int tries = 0;
-			for (int i = 0; i < bases.size() && tries < Math.max(1, ThreatIncConfig.siegeBaseTries()) && purge == null; i++) {
+			for (int i = 0; i < bases.size() && purge == null; i++) {
 				base = bases.get(i);
 				faction = base.getFaction();
-				// one siege of a system per faction at a time: a partial siege
-				// leaves the harder worlds unstamped
-				if (siegeFactionsIn(system.getId()).contains(faction.getId())) continue;
+				// a faction already besieging the system may send another at the
+				// worlds no running siege has booked (2026-09-29): siegeTargets
+				// leaves out every booked world, its own sieges' included
 				// relief before offensives (user, 2026-09-27): no new siege while
 				// one of the faction's own invaded worlds is owed relief it can send
 				if (ThreatFleetOrders.reliefOwed(faction)) continue;
@@ -1671,7 +1759,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * this says can siege is never then outweighed at the launch.
 	 *
 	 * <p>Only while the siege could actually sail (rc1 review): a system on its
-	 * siege cooldown or already under this faction's siege, a landing the base
+	 * siege cooldown or with every world booked by a running siege, a landing the base
 	 * cannot man, arm or provision, or sieges switched off bar nothing. Before,
 	 * Nachiketa - nearest base for three hive systems - sat out every hunt and
 	 * coalition call of both rc1 runs while it could launch nothing. What the
@@ -1688,9 +1776,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (system == null || !seen.add(system.getId())) continue;
 			if (!ThreatScouts.sectorKnows(colony)) continue;
 			if (siegeBaseFor(system) != base) continue;
-			if (siegeFactionsIn(system.getId()).contains(faction.getId())) continue;
+			// worlds its own running siege has booked are left out by siegeTargets
 			java.util.List<MarketAPI> targets = siegeTargets(base, faction, system);
-			if (!anySiegeReady(targets)) continue;
+			if (targets.isEmpty() || !anySiegeReady(targets)) continue;
 			if (siegeAffordable(base, faction, system, targets)) return true;
 		}
 		return false;
@@ -1785,7 +1873,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * instead of waiting on marines for the biggest hive while the small ones
 	 * grow. Worlds on their siege cooldown are left out (the launch needs one
 	 * off it - anySiegeReady - so that last fallback only stages convoys), and
-	 * so are worlds another faction's siege is taking: run 19 sent 14 of 37
+	 * so are worlds a running siege is taking, its own or another faction's
+	 * (bookedWorlds): run 19 sent 14 of 37
 	 * sieges at Epsilon Qades, and 7 stood down when someone else's landing got
 	 * there first. So are worlds another faction's army holds
 	 * (heldByOtherArmy): a front outlives its purge, and the landing gate
@@ -1806,7 +1895,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		String key = base.getId() + ":" + system.getId();
 		java.util.List<MarketAPI> memo = TARGETS_MEMO.get(key);
 		if (memo != null) return new ArrayList<MarketAPI>(memo);
-		java.util.Set<MarketAPI> taken = besiegedByOthers(faction);
+		java.util.Set<MarketAPI> taken = bookedWorlds();
 		java.util.List<MarketAPI> free = new ArrayList<MarketAPI>();
 		for (MarketAPI t : easiestFirst(all)) {
 			if (!taken.contains(t) && !heldByOtherArmy(faction, t) && !frontFinishesFirst(base, faction, system, t)) {
@@ -1868,14 +1957,18 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return days >= 0f && days <= razeArrivalDays(base, system);
 	}
 
-	/** The worlds a live siege by any faction but this one is taking. */
-	protected static java.util.Set<MarketAPI> besiegedByOthers(FactionAPI faction) {
+	/**
+	 * The worlds a live siege is taking, whoever's: never booked twice. The
+	 * faction's own sieges count too (2026-09-29): it may run several in one
+	 * system now, one siege per faction per system having left the worlds a
+	 * first siege could not afford unbesieged until it came home.
+	 */
+	protected static java.util.Set<MarketAPI> bookedWorlds() {
 		java.util.Set<MarketAPI> out = new java.util.HashSet<MarketAPI>();
 		for (Object curr : getPurgeList()) {
 			if (!(curr instanceof GenericRaidFGI)) continue;
 			GenericRaidFGI purge = (GenericRaidFGI) curr;
 			if (purge.isEnded() || purge.isEnding() || purge.getFaction() == null) continue;
-			if (purge.getFaction() == faction) continue;
 			if (purge.getParams() == null || purge.getParams().raidParams == null) continue;
 			out.addAll(purge.getParams().raidParams.allowedTargets);
 		}
@@ -2167,12 +2260,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * the old shape - two core fleets, an escort when any target still fields
 	 * Defense Swarms, a second for a heavy assault on a defended entrenched
 	 * hive, a fourth for a multi-world campaign - and then fleets are added
-	 * until the estimated ground strength clears siegeRaidStrNeeded, up to
-	 * siegeMaxFleets. Difficulty still sets the quality of each fleet; the
-	 * defenses set how many there are. Shared by the NPC trigger and the
-	 * player commission preview so the quoted bill always matches the fleets
-	 * that actually sail; if the cap still leaves the force short the caller
-	 * can see it (siegeRaidStrEstimate below siegeRaidStrNeeded) and say so.
+	 * until the estimated ground strength clears siegeRaidStrNeeded.
+	 * Difficulty still sets the quality of each fleet; the defenses set how
+	 * many there are. Shared by the NPC trigger and the player commission
+	 * preview so the quoted bill always matches the fleets that actually sail.
+	 * No fleet ceiling (2026-09-29: siegeMaxFleets blocked 814 of 1,284 siege
+	 * attempts): whether the flotilla the need calls for can be paid is the
+	 * launch's provisions gate, and a player's is fitted to its free points.
+	 * A goal no flotilla meets (siegeFleetGoal's Float.MAX_VALUE) is not grown
+	 * toward: the flotilla comes back short of it and the caller reads that.
 	 *
 	 * <p>The flotilla grows until it can LAND at least {@code marineGoal} - the player's
 	 * Extra/All siege tiers ask for a bigger landing than the defenses alone
@@ -2205,13 +2301,85 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (heavyAssault) sizes.add(Math.min(10, difficulty));
 		if (targets.size() >= 3) sizes.add(Math.max(5, difficulty - 2));
 		float needed = Math.max(siegeRaidStrNeeded(landTargets), marineGoal);
-		int maxFleets = Math.max(sizes.size(), ThreatIncConfig.siegeMaxFleets());
-		int extra = Math.min(10, Math.max(6, difficulty));
-		while ((siegeRaidStrEstimate(sizes) < needed
-				|| ThreatAidCapacity.expeditionPoints(sizes) < orbitGoal) && sizes.size() < maxFleets) {
-			sizes.add(extra);
+		// a goal no flotilla meets is "cannot be done", never a loop toward it
+		if (!attainable(needed)) needed = 0f;
+		if (!attainable(orbitGoal)) orbitGoal = 0f;
+		int extra = Math.min(VANILLA_MAX_DIFFICULTY, Math.max(6, difficulty));
+		// the fleets both goals call for, counted rather than looped: each extra
+		// fleet adds extra points of ground strength and fleet points alike
+		double forStr = 0d;
+		float strPerFleet = extra * ThreatIncConfig.siegeRaidStrPerPoint();
+		float str = siegeRaidStrEstimate(sizes);
+		if (needed > str && strPerFleet > 0f) forStr = Math.ceil((needed - str) / strPerFleet);
+		double forOrbit = 0d;
+		float fp = ThreatAidCapacity.expeditionPoints(sizes);
+		if (orbitGoal > fp) forOrbit = Math.ceil((orbitGoal - fp) / (extra * FP_PER_RESPONSE_DIFFICULTY));
+		// a goal past the sanity stop is "cannot be done", as a non-finite one
+		// is: not grown toward, so the flotilla comes back short of it and the
+		// caller reads that (2026-09-29 review: clamped, it was a 100,000-fleet
+		// list). No goal the sector could pay for gets near it (sectorPayableFP
+		// bounds razeFleetPoints)
+		if (forStr > SIEGE_FLEETS_SANITY) {
+			ThreatIncConfig.log("Siege sizing: " + (long) forStr + " fleets wanted for " + (int) needed
+					+ " ground strength, past the sanity stop - cannot be done");
+			forStr = 0d;
 		}
+		if (forOrbit > SIEGE_FLEETS_SANITY) {
+			ThreatIncConfig.log("Siege sizing: " + (long) forOrbit + " fleets wanted for " + (int) orbitGoal
+					+ " FP, past the sanity stop - cannot be done");
+			forOrbit = 0d;
+		}
+		int more = (int) Math.max(forStr, forOrbit);
+		for (int i = 0; i < more; i++) sizes.add(extra);
 		return sizes;
+	}
+
+	/**
+	 * Fleets past which a siege's sizing reads a goal as unattainable and logs:
+	 * a guard against a runaway goal, never a strategic bound - the largest
+	 * flotilla the whole sector's supplies could provision is a few thousand
+	 * fleets.
+	 */
+	protected static final int SIEGE_FLEETS_SANITY = 100000;
+
+	/** vanilla's createStandardFleet / GenericRaidFGI difficulty scale tops out at 10 a fleet: an engine scale, more force comes as more fleets. */
+	public static final int VANILLA_MAX_DIFFICULTY = 10;
+
+	/** Whether a sizing goal is a real figure: not NaN, not infinite, not siegeFleetGoal's Float.MAX_VALUE "no flotilla does it". */
+	public static boolean attainable(float goal) {
+		return !Float.isNaN(goal) && !Float.isInfinite(goal) && goal < Float.MAX_VALUE;
+	}
+
+	/** Sector-wide supplies stock -> fleet points, for the clock instant in payableMemoStamp; not saved. */
+	private static float payableMemo;
+	private static long payableMemoStamp = Long.MIN_VALUE;
+
+	/**
+	 * The largest flotilla anyone could field: the fleet points the sector's
+	 * whole reserve stock of supplies provisions at expeditionSuppliesPerPoint
+	 * (what an NPC siege pays with), or every player colony's fleet capacity
+	 * together (what bounds the player's), whichever is more - the resource
+	 * bound razeFleetPoints searches up to. Float.MAX_VALUE when supplies cost
+	 * nothing (no NPC bound). With the player's capacity ledger off the player
+	 * part is 0 (2026-09-29 review: it made the whole bound Float.MAX_VALUE,
+	 * dropping the NPC supplies bound with it). Memoised per clock instant.
+	 */
+	public static float sectorPayableFP() {
+		float perPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
+		if (perPoint <= 0f) return Float.MAX_VALUE;
+		long now = Global.getSector().getClock().getTimestamp();
+		if (now != payableMemoStamp) {
+			boolean aid = ThreatAidCapacity.enabled();
+			float supplies = 0f;
+			float capacity = 0f;
+			for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
+				supplies += ThreatReserves.stock(m.getId(), com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
+				if (aid && m.isPlayerOwned()) capacity += ThreatAidCapacity.capacityFP(m);
+			}
+			payableMemo = Math.max(supplies / perPoint * FP_PER_RESPONSE_DIFFICULTY, capacity);
+			payableMemoStamp = now;
+		}
+		return payableMemo;
 	}
 
 	/**
@@ -2278,8 +2446,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// a ground landing once it has done what it can or the troops could
 		// hold; a world it razes (razeWorlds) takes its own saturation passes
 		// instead (ThreatPurgeFGI.razePass), never vanilla's instant one. The
-		// passes are the landing and the reinforcements.
-		params.raidParams.raidsPerColony = Math.max(1, ThreatIncConfig.siegePassesPerColony());
+		// passes are the landing and the reinforcements: set once the flotilla
+		// is final (expeditionPasses), below.
 		params.raidParams.raidApproachText = "moving to besiege";
 		params.raidParams.raidActionText = "conducting siege operations against";
 		params.noun = "purge expedition";
@@ -2346,6 +2514,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// bounty goes up now, while the base banks its marines and
 			// provisions, so whether a siege sails is the garrison's to decide,
 			// not the colony's size. Every swarm destroyed brings it closer.
+			// The largest siege it can field is the one its depots can pay for
+			// (2026-09-29: no longer siegeMaxFleets fleets): sized to the need,
+			// the flotilla falls short here only past the sizing's sanity stop,
+			// and the provisions gate below posts the bounty when the pool
+			// cannot pay for the orbit's fleets
 			float orbitNeed = siegeOrbitNeeded(faction, targets);
 			// the fleet points the siege sails with at least: the orbit's, and
 			// what outlasts the guns of the worlds it razes (siegeFleetGoal)
@@ -2360,9 +2533,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				ThreatSwarmBountyIntel.post(base, system, allowed);
 				return null;
 			}
-			// the ground strength this flotilla sets out with: the target's need, or
-			// what siegeMaxFleets allows when the cap left it short - a capped
-			// flotilla sailed before the full-strength gate and still does
+			// the ground strength this flotilla sets out with: the target's need
+			// (the sizing reaches it; the min only guards a zero raid-strength
+			// setting, where no fleet adds any)
 			float need = siegeRaidStrNeeded(land);
 			float strGoal = Math.min(need, siegeRaidStrEstimate(params.fleetSizes));
 			float[] wants = expeditionWants(base, system, targets, fleetSizes, raze);
@@ -2474,6 +2647,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 							+ (int) haveSupplies + "/" + (int) (points * suppliesPerPoint)
 							+ " supplies" + pooledNote + " pay for " + (int) Math.min(points, payable) + " of the "
 							+ points + " points (needs " + (int) Math.ceil(minProvisions) + ")");
+					// the orbit alone is past what the pool can pay for: its swarms are
+					// the player's to thin, the bounty the fleet ceiling used to post
+					float payableFP = payable * FP_PER_RESPONSE_DIFFICULTY;
+					if (orbitNeed > 0f && payableFP < orbitNeed) {
+						ThreatSwarmBountyIntel.post(base, system,
+								(int) (payableFP / Math.max(0.01f, ThreatIncConfig.npcSiegeOrbitMargin())));
+					}
 					return null;
 				}
 				// payable >= mustPay, and mustPay is the leading fleets, so the
@@ -2561,6 +2741,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					+ (int) drawn[3] + "/" + (int) wants[3] + " supplies");
 		}
 
+		params.raidParams.raidsPerColony = expeditionPasses(params.fleetSizes.size());
 		ThreatPurgeFGI purge = new ThreatPurgeFGI(params, playerCommissioned);
 		if (drawn != null) {
 			purge.setCargoAllotment(Math.round(drawn[0]), drawn[1]);
@@ -2570,6 +2751,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			float razing = Math.min(drawn[2] - passage, fuelParts[2]);
 			purge.setProvisions(passage, drawn[3]);
 			purge.setOrdnance(drawn[2] - passage - razing, razing);
+			// an NPC siege's supplies paid for its hulls at the estimate: settled
+			// against what vanilla builds when the fleets spawn (ThreatPurgeFGI.settleLedger)
+			float perPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
+			if (!faction.isPlayerFaction() && perPoint > 0f && drawn[3] > 0f) {
+				purge.setLedger(base.getId(), drawn[3] / perPoint * FP_PER_RESPONSE_DIFFICULTY);
+			}
 		}
 		purge.setRazeWorlds(raze);
 		Global.getSector().getIntelManager().addIntel(purge);
@@ -2935,10 +3122,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * before the fuel is poured - 200 FP over a size-4 hive's Heavy Batteries
 	 * lasts about five days - and one this size loses about two thirds of
 	 * itself doing it. Found by bisection, as siegeRaidStrNeeded is; the
-	 * flotilla rounds it up in whole fleets (siegeFleetSizes). Float.MAX_VALUE
-	 * when not even the largest a siege can field - siegeMaxFleets fleets of
-	 * the top difficulty - does; 0 with nothing to raze. Memoised per clock
-	 * instant.
+	 * flotilla rounds it up in whole fleets (siegeFleetSizes). The search is
+	 * open-ended (2026-09-29: it stopped at siegeMaxFleets fleets of the top
+	 * difficulty): the ceiling doubles from one top fleet until it razes them
+	 * all. Float.MAX_VALUE when not even more than anyone could pay for does
+	 * (sectorPayableFP); 0 with nothing to raze. Memoised per clock instant.
 	 */
 	public static float razeFleetPoints(java.util.List<MarketAPI> worlds) {
 		if (worlds == null || worlds.isEmpty()) return 0f;
@@ -2951,13 +3139,30 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		for (MarketAPI world : worlds) key.append(world != null ? world.getId() : "-").append('|');
 		Float memo = RAZE_FP_MEMO.get(key.toString());
 		if (memo != null) return memo;
-		float hi = Math.max(1, ThreatIncConfig.siegeMaxFleets()) * 10f * FP_PER_RESPONSE_DIFFICULTY;
+		// what anyone could pay for, and never past what siegeFleetSizes would
+		// build: a need its sanity stop reads as "cannot be done" is Float.MAX_VALUE
+		// here too (2026-09-29 review: with supplies free the search ran 64
+		// doublings to a need of ~10^22 FP, and the sizing clamped it to a
+		// 100,000-fleet list). The smallest fleet the sizing adds is difficulty 6
+		float payable = Math.min(sectorPayableFP(),
+				(float) SIEGE_FLEETS_SANITY * 6 * FP_PER_RESPONSE_DIFFICULTY);
+		float hi = VANILLA_MAX_DIFFICULTY * FP_PER_RESPONSE_DIFFICULTY;
+		boolean razes = razesAll(worlds, hi);
+		// the guard only stops a runaway search (2^64 top fleets); the payable
+		// ceiling is what ends it (under 17 doublings)
+		for (int i = 0; !razes && hi < payable && i < 64; i++) {
+			hi *= 2f;
+			razes = razesAll(worlds, hi);
+			if (i == 63 && !razes) {
+				ThreatIncConfig.log("Raze sizing hit the search guard at " + (long) hi + " FP");
+			}
+		}
 		float need = Float.MAX_VALUE;
-		if (razesAll(worlds, hi)) {
+		if (razes) {
 			// more fleet points only ever help: the guns fire at their own
 			// rate, and a bigger fleet pours faster and silences them sooner
-			float lo = 0f;
-			for (int i = 0; i < 24 && hi - lo > 1f; i++) {
+			float lo = hi > VANILLA_MAX_DIFFICULTY * FP_PER_RESPONSE_DIFFICULTY ? hi / 2f : 0f;
+			for (int i = 0; i < 64 && hi - lo > 1f; i++) {
 				float mid = (lo + hi) / 2f;
 				if (razesAll(worlds, mid)) {
 					hi = mid;
@@ -2965,7 +3170,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					lo = mid;
 				}
 			}
-			need = hi;
+			// more than anyone could pay for is no flotilla at all
+			if (hi <= payable) need = hi;
 		}
 		RAZE_FP_MEMO.put(key.toString(), need);
 		return need;
@@ -3260,8 +3466,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	/**
 	 * The quality of each fleet in a siege from this base. An NPC navy sends
 	 * what it has: its strength at the BASE's system (the hive system is enemy
-	 * territory where it has none - see dispatchFactionResponse), in the
-	 * response difficulty band. The player's own siege is sized to the job
+	 * territory where it has none - see dispatchFactionResponse), from
+	 * responseMinDifficulty to vanilla's top quality. The player's own siege is sized to the job
 	 * (computeSiegeDifficulty). The defenses set how many fleets there are
 	 * either way (siegeFleetSizes).
 	 */
@@ -3273,9 +3479,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float strength = siegeStrength(base, faction);
 		int difficulty = ThreatIncConfig.responseMinDifficulty()
 				+ Math.round(strength / ThreatIncConfig.responseStrengthDivisor());
-		if (difficulty > ThreatIncConfig.responseMaxDifficulty()) {
-			difficulty = ThreatIncConfig.responseMaxDifficulty();
-		}
+		// vanilla's per-fleet quality scale, not a force cap: more strength
+		// sails as more fleets (siegeFleetSizes)
+		if (difficulty > VANILLA_MAX_DIFFICULTY) difficulty = VANILLA_MAX_DIFFICULTY;
 		return difficulty;
 	}
 
@@ -3333,7 +3539,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	/**
 	 * The player's siege is sized to the JOB, not to a navy: the biggest
 	 * colony in the target system sets the tempo, live Defense Swarms add a
-	 * point, clamped to the response difficulty band.
+	 * point, from responseMinDifficulty to vanilla's top quality.
 	 */
 	public static int computeSiegeDifficulty(java.util.List<MarketAPI> targets,
 			boolean anyGarrisoned) {
@@ -3345,9 +3551,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (difficulty < ThreatIncConfig.responseMinDifficulty()) {
 			difficulty = ThreatIncConfig.responseMinDifficulty();
 		}
-		if (difficulty > ThreatIncConfig.responseMaxDifficulty()) {
-			difficulty = ThreatIncConfig.responseMaxDifficulty();
-		}
+		if (difficulty > VANILLA_MAX_DIFFICULTY) difficulty = VANILLA_MAX_DIFFICULTY;
 		return difficulty;
 	}
 
@@ -3689,7 +3893,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * RETALIATION (docs/design-theory.md 8.1): a ground victory draws an
 	 * immediate strike at the winning faction from the nearest hive that can
 	 * muster one and reach a world of theirs. Same rules as any strike
-	 * (phase, concurrency cap, garrison surplus, reach, target filters), so it
+	 * (phase, the bank, garrison surplus, reach, target filters), so it
 	 * is a strike the swarm could have launched anyway - just aimed, now.
 	 */
 	public static boolean retaliate(String factionId, StarSystemAPI near) {
@@ -3698,7 +3902,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// winning on a human world is not a hive being lost
 		if (Factions.THREAT.equals(factionId)) return false;
 		if (!ThreatAlarm.enabled() || getPhase() < 2) return false;
-		if (instance.countActiveStrikes() >= ThreatIncConfig.maxConcurrentStrikes()) return false;
 		MarketAPI bestColony = null;
 		StarSystemAPI bestSource = null;
 		MarketAPI bestTarget = null;
@@ -3720,8 +3923,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		if (bestColony == null) return false;
 		ThreatStrikeFGI strike = instance.launchStrike(bestColony, bestSource, bestTarget);
+		// (2026-09-29) a muster the bank cannot pay for launches nothing: no
+		// announcement of a strike that is not coming
+		if (strike == null) return false;
 		// announced to the sector below, so it is seen from the start
-		if (strike != null && !strike.isDetected()) {
+		if (!strike.isDetected()) {
 			strike.markDetected("the swarm's announcement");
 			instance.onStrikeDetected(strike);
 		}
@@ -4072,6 +4278,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
+	 * Passes a ground-doctrine siege or strike has per world: one that softens,
+	 * one that lands, and one for every fleet's cargo to top the front up with.
+	 * What is aboard and the payload days bound what the passes do - a pass
+	 * with nothing to land spends itself on nothing - so the count only has to
+	 * be finite, as vanilla's autoresolve runs every pass at once (2026-09-29:
+	 * siegePassesPerColony 4 and strikePassesPerColony 3 left the cargo of
+	 * every fleet past the third or fourth aboard). Never fewer than those were
+	 * for the smallest expeditions.
+	 */
+	public static int expeditionPasses(int fleets) {
+		return Math.max(1, fleets) + 2;
+	}
+
+	/**
 	 * Fleets of a strike currently PREPARING at this colony - the mustered
 	 * swarms re-embodying in orbit before departure; 0 if none. Lets the
 	 * infestation intel show where the "missing" Defense Swarms went.
@@ -4119,7 +4339,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * is keyed to Military Base/High Command industries hive colonies never
 	 * run, so it can't fire for strikes. The hive's anchor is the forge colony:
 	 * raid its forge into disruption, bombard the colony, or erase it outright,
-	 * and the expedition breaks off (vanilla abort - the fleets withdraw).
+	 * and the expedition breaks off (vanilla abort - the fleets withdraw),
+	 * stillborn: what it mustered and paid is forfeit (markStillborn).
 	 *
 	 * Cause is attributed by the hostile-act/deciv hooks that call this rather
 	 * than by watching disruption state, so the recall names what actually
@@ -4140,6 +4361,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (!strike.isPreparing()) continue;
 			if (strike.getParams() == null || strike.getParams().source == null) continue;
 			if (!marketId.equals(strike.getParams().source.getId())) continue;
+			// stillborn: the hive loses what it mustered and paid - no refund when
+			// it ends, and fleets already in orbit leave unbound (2026-09-29
+			// review: it was re-banked in full, so breaking the forge only
+			// delayed the strike). Marked before the abort sends them off
+			strike.markStillborn();
 			strike.abort();
 			ThreatColonyManager.announce(ThreatNotice.titled("Expedition Stillborn").good()
 					.line("The Threat expedition being fabricated at %s is stillborn.", marketName)
@@ -4288,7 +4514,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 *
 	 * <p>Ground-doctrine strikes (no bombardment type set) are left alone too:
 	 * their passes are the siege itself - soften, land, reinforce - and are
-	 * budgeted by strikePassesPerColony, not by this clamp.
+	 * counted by expeditionPasses, not by this clamp.
 	 */
 	protected static void upgradeInFlightStrikes() {
 		for (Object curr : getStrikeList()) {

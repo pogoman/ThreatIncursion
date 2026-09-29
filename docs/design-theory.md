@@ -64,6 +64,48 @@ following: mechanics as knobs now, tuning after the in-game check.
   itself, and the Stage button is the override. That is the Distant Worlds model and it is
   the right one for a game the player is also flying a ship in: **no chores**.
 
+## 2a. Two design rules (2026-09-29, the user's)
+
+**1. No arbitrary caps.** A force is bounded only by its resources and by the engine's own
+limits. *Why:* a cap creates situations that cannot be solved, where the AI gets stuck. The
+long tests kept finding the same shape: `siegeMaxFleets` (50) made every big hive "take at most
+8,300 FP" and blocked 814 of 1,284 siege attempts; a 4-fleet, 250-FP-per-fleet task force and
+`MAX_FLEETS` 30 / `softenMaxFP` 12,000 left every hive over ~4k FP unhunted for 3.7 years;
+`navySpareFP` refused every Persean guard ("can spare 0 of 878 FP") and 22 links fell undefended;
+`frontlineUpkeepShare` held a garrison budget to half of what the faction earned. None of them
+was a resource: the depots could pay, and the AI sat waiting on a number no play could change.
+A cap makes a gate that shuts for good; a resource gate opens again when stock arrives.
+- Allowed bounds: what the depots, banks and yards can pay (the provisions gate, the FP bank),
+  and the engine's limits - vanilla's max market size (10), its 0-10 fleet difficulty scale
+  (`VANILLA_MAX_DIFFICULTY`: more force is more fleets), `maxShipsInAIFleet` (fleets are sized to
+  what the yards were seen to build, `ThreatSoftening.fleetCap`), and the finite pass count
+  vanilla's autoresolve needs (`expeditionPasses`, fleets + 2).
+- A loop guard is not a bound: `SIEGE_FLEETS_SANITY` (100,000) and the redistribution guard only
+  stop a bug, and log when they trip.
+- A floor is not a ceiling: the garrison size table (`desiredGarrison`), the reference loads
+  (`convoyMarineCapacity`, `convoyCargoCapacity`), `guardFleetFP` and `reserveCapMonths` say how
+  much is worth doing or keeping, never how much may be done.
+- When a knob would bound a force, ask what real quantity it stands in for and gate on that.
+
+**2. A closed economy: nothing has an infinite supply.** No cap means nothing may be free, or
+the strong grow without limit. Every fleet is paid for and what survives comes home.
+- The Threat pays from a fleet-point bank per colony, filled by its forges' real hull output
+  (docs/hive-economy.md "Fabrication bank"): garrison swarms, scouts and wave upsizes are charged
+  their actual FP, strikes are booked on the bank, and surviving fleets credit their FP home when
+  they despawn. No bank, no build; the alarm buys no ships.
+- The navies pay fuel and supplies for every sortie, in full or it stays home: `buildSortie` refuses
+  unpaid fleets, convoy escorts pay the voyage rate and sail home, scouts pay and settle on return,
+  garrisons recalled from a link go home and re-bank, a founding that fails is refunded. A
+  convoy that times out turns home and settles rather than being written off with its cargo;
+  one whose donor changed hands settles at the faction's nearest base, and a front run never
+  deposits into a depot that changed hands. A garrison is built only up to what the depots can
+  pay the voyage of, never spawned and despawned.
+  `ThreatReturns.settle` refunds the hull share (`returnHullShare`, 0.8) of an NPC fleet's supplies
+  x its surviving health in full, the voyage at `returnRefundMult` - the player's fleets keep the
+  old rule. Losses are the real cost of a sortie.
+- Where the two rules meet, the first bound found is the resource, and it is one a player can
+  change: cut a forge and the swarm builds less; raid a depot and a siege waits.
+
 ## 3. Battle doctrine: how we resolve fights on the ground
 
 - **Lanchester.** Aimed-fire combat follows the square law: a force twice as large is
@@ -220,10 +262,12 @@ took a stratum or eradicated a hive.
   front of that faction takes a stratum, +`alarmPerEradication` on a ground victory,
   +`alarmPerRaid` for a successful commando raid or tactical pass; decays
   `alarmDecayPer30` per 30 days. Player and NPC alike.
-- Hive ALARM = the sum of grudges. Two levers only:
-  1. **Targeting**: in `pickStrikeTarget`, a candidate world's weight is multiplied by
-     `1 + grudge(faction) x alarmTargetMult`. The swarm turns on whoever is hurting it.
-  2. **Tempo**: strike cooldown and seeding cadence divided by `1 + alarm x alarmTempoMult`.
+- Hive ALARM = the sum of grudges. One lever (2026-09-29, closed economy: there were two):
+  **Targeting**: in `pickStrikeTarget`, a candidate world's weight is multiplied by
+  `1 + grudge(faction) x alarmTargetMult`. The swarm turns on whoever is hurting it.
+  The second, **Tempo** (fabrication interval divided by `1 + alarm x alarmTempoMult`), is
+  deleted with `alarmTempoMult`, `alarmTempoMax` and `garrisonRespawnDays`: the alarm buys the
+  swarm no ships, the FP bank pays for every one (docs/hive-economy.md "Fabrication bank").
 - **Retaliation** (`retaliationEnabled`): on a ground victory, the nearest surviving hive
   within reach of the winner's nearest colony launches a strike at it immediately if it
   has the garrison to spare (`launchStrike` with an explicit target). Causal, instant,
@@ -234,8 +278,9 @@ took a stratum or eradicated a hive.
 `pickStrikeTarget`, `trySpread`; a `ThreatIncData` grudge map with `clearSystem`
 untouched (grudges outlive systems).
 
-**Player sees.** An "Alarm" figure in the board header beside the phase bar, with the
-formula in its tooltip; a "Swarm grudge" line in the faction view heading and in the
+**Player sees.** An "Alarm N" figure in the board header beside the phase bar (2026-09-29: the
+"- fabrication xM" suffix and the formula are gone with the tempo lever; the tooltip lists each
+faction's grudge and its strike-weight multiplier); a "Swarm grudge" line in the faction view heading and in the
 hive ledger's reason chip ("RETALIATION" when a strike is a grudge strike). The vitality
 condition tooltip on a hive world does NOT show grudge (fog of war rule).
 
@@ -260,8 +305,11 @@ fleet happens to meet it; ship losses in an off-screen battle do not reduce the 
   `raiderRangeLY` of the route's midpoint with a garrison above its defensive reserve
   (`garrisonAvailableForLaunch`) rolls `raiderChance`; on success it detaches ONE swarm
   (`consumeGarrison(colony, 1)`) with `FleetAssignment.INTERCEPT` on the convoy fleet for
-  `raiderDays`, then `GO_TO_LOCATION_AND_DESPAWN` home (returning it to the garrison via
-  the existing reinforcement-arrival path). Corbett's guerre de course, paid for out of a
+  `raiderDays`, then home (rejoining the garrison on arrival, always - the table is a floor,
+  so nothing is absorbed or despawned at a full table). 2026-09-29: it detaches swarms one
+  after another until the pack's FP reaches the convoy's x `RAIDER_MARGIN` (1.5), not one; and
+  a raider whose colony died stands down into the nearest live colony's bank
+  (`creditHome`). Corbett's guerre de course, paid for out of a
   real garrison - a hive that raids is a hive that is thinner at home.
 
 **Hooks.** `ThreatConvoys.dispatch` / `poll`; `ThreatColonyManager.garrisonAvailableForLaunch`,
@@ -280,9 +328,9 @@ gone.
 **Mechanic: the front is a reserve consumer.**
 - **Supply runs**: the convoy planner treats a friendly front (`front.factionId`) as a
   destination. Target = `frontResupplyDays` (60) x the burn of the army the run leaves
-  behind (current marines, or `frontReinforceFraction` of peak if higher) armaments on
-  hand, plus marines to bring the front back to `frontReinforceFraction` (0.8) of its
-  landing strength. Donor = the faction's nearest staging base (its reserve, which colony
+  behind (current marines, or the peak if higher) armaments on
+  hand, plus marines to bring the front back to its whole landing strength or what holds it,
+  whichever is more (2026-09-29: it was `frontReinforceFraction`, 0.8, of it - gone). Donor = the faction's nearest staging base (its reserve, which colony
   convoys refill) - a two-hop chain, colony -> base -> front, each hop interceptable.
 - **The orbit gate**: a supply run must survive the world's Defense Swarms. The convoy
   goes to the hive system's jump-point (`ORBIT_PASSIVE`) and waits up to
@@ -421,7 +469,7 @@ of any faction; nothing times two factions' efforts together.
 3. 8.2 convoys and raiders - BUILT and verified (0.6.1, planner fixes in 0.6.2).
 4. 8.3 logistics to fronts - BUILT (0.6.2); supply/evacuation runs dispatch and turn back
    correctly, the door-wait and landing paths still need a run to complete in-game.
-5. 8.1 escalation - BUILT (0.6.3): grudge, alarm, tempo, targeting, retaliation, header.
+5. 8.1 escalation - BUILT (0.6.3): grudge, alarm, tempo (removed 2026-09-29), targeting, retaliation, header.
 6. 8.5 the ending - DEFERRED to a live session (user's call).
 7. 8.7 coalition - BUILT (0.6.4), untested in-game.
 8. Outposts - BUILT (0.6.4) as standalone faction-styled stations that block re-seeding;

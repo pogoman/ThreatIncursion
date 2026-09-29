@@ -25,42 +25,38 @@
 	# above 1 adds that many extra single-colony fringe footholds beyond it.
 	"threatinc_initialSeeds": 1,
 	"threatinc_seedToColonyDays": 120,
-	"threatinc_maxInfestedSystems": 12,
 	"threatinc_spreadMinSize": 3,
 
-	# Colonies: growth pacing, size cap, garrison and colonization fleets.
-	# The hive runs a real, self-contained economy - shortages of metals or
-	# machinery stall growth, and ship-hull shortages shrink garrisons/strikes
+	# Colonies: growth pacing, garrison and colonization fleets. The hive runs
+	# a real, self-contained economy - shortages of metals or machinery stall
+	# growth. Colonies grow to vanilla's max market size (10); the hive builds
+	# a spare of each production link per system it holds, as its free
+	# industry slots allow (2026-09-29: colonyMaxSize 8 and chainRedundancy 3
+	# were caps). Every fleet it fields is paid from an FP bank per colony,
+	# filled by its forges' ship output at fabFPPerShipUnit FP per ship unit
+	# per 30 days - no bank, no build (a closed economy)
 	"threatinc_colonyGrowthBaseDays": 60,
-	"threatinc_colonyMaxSize": 8,
-	# Spare copies of each production link (refinery, forge, fuel plant) the
-	# hive builds as it spreads - one per infested system it holds, up to this
-	# many. Under vanilla's economy one producer feeds every hive world that can
-	# reach it, so spares add nothing until the original is lost; they exist so
-	# that cutting the hive's supply of anything means cutting several worlds.
-	# 1 = a single point of failure for each.
-	"threatinc_chainRedundancy": 3,
+	"threatinc_fabFPPerShipUnit": 100,
 	"threatinc_colonizationEscort": 2,
-	"threatinc_garrisonRespawnDays": 40,
 	# military options menu: how far (su) from a hive's world a defending swarm
 	# fleet can be engaged from its orbit (the colony's garrison, reinforcements
 	# bound for it and its Defend Swarms count wherever they are in the system,
 	# closing raids and bombardment until engaged; any other swarm fleet counts
 	# while inside this radius; garrisons orbit 400-700 su out)
 	"threatinc_defendRadius": 1000,
-	# Colonies cover each other. Every poll the swarm sends ONE Defense Swarm (up
-	# to reinforceMaxPerPoll) from the best-covered colony that can reach a
-	# worn-down sibling - same system first, then any system within the donor's
-	# fuel range - until garrisons balance out. The swarms physically fly there
+	# Colonies cover each other. Every poll the swarm sends Defense Swarms from
+	# the best-covered colonies that can reach worn-down siblings - same system
+	# first, then any system within the donor's fuel range - until garrisons
+	# balance out (no per-poll limit since 2026-09-29). The swarms physically fly there
 	# and can be intercepted. A donor must be able to regrow what it sends (Core
 	# and Nexus both up) and always keeps one swarm home.
 	"threatinc_reinforceEnabled": true,
-	"threatinc_reinforceMaxPerPoll": 2,
 	# A garrison slot is a promise of a certain weight of defense. A swarm shot
 	# below this fraction of the fleet points it was fabricated with, or one of a
 	# lower tier than the slot wants (a small colony's swarm sent to a big one),
 	# is a WEAK HOLDER: it keeps fighting but no longer blocks the nexus, which
-	# grows a proper replacement at its normal cadence and recycles the weak one.
+	# grows a proper replacement once the colony's fleet bank can pay for it and
+	# recycles the weak one, its hulls back into the bank.
 	"threatinc_garrisonUnderStrengthFraction": 0.5,
 	"threatinc_economyGatesGrowth": true,
 	# The first hive system carries Domain-era items the way a swarm out of the
@@ -117,8 +113,6 @@
 
 	# Strikes: launched from colonies of at least strikeMinSize; strength is
 	# size squared times the multiplier, degraded by hull shortages
-	# 0 = unlimited
-	"threatinc_maxConcurrentStrikes": 0,
 	"threatinc_strikeLYPerFuel": 4.0,
 	# Reach = strikeLYPerFuel x min(fuel available, fuel the fleets can carry).
 	# The fleets carry this many units at a fleet-size figure of 100 percent.
@@ -153,10 +147,6 @@
 	# restore the old "one pass wounds or erases a world" behaviour.
 	"threatinc_strikeSaturationEnabled": false,
 	"threatinc_strikeGroundFrontsEnabled": true,
-	# passes an expedition may deliver per world: one softens, one lands the
-	# world's share of the troop pool, any further pass tops up what is left
-	# of that share (a landing turned back by a held orbit gets another try)
-	"threatinc_strikePassesPerColony": 3,
 	# the troop pool: strikeTroopsPerPoint per difficulty point of the swarms
 	# mustered (3-9 each), fixed at launch, discounted by losses on the way,
 	# split evenly across the worlds in the sweep, shown on the strike's intel
@@ -479,7 +469,8 @@
 	# the war board says so. 0 days turns covering off.
 	"threatinc_reserveShortageCoverFraction": 0.5,
 	"threatinc_reserveShortageCoverDays": 30,
-	# a colony stockpiles at most this many months of its own production, and
+	# a colony banks everything it makes (2026-09-29: no ceiling); the floor
+	# and donor keep are measured in reserveCapMonths of its production, and it
 	# starts with reserveInitialMonths of it the moment its faction mobilises
 	# (the peacetime depots its first sortie draws from - full, so a navy
 	# opens the war at full strength)
@@ -514,8 +505,8 @@
 	"threatinc_npcSiegeFullStrength": true,
 	# an NPC siege sails only when its flotilla's fleet points reach this
 	# multiple of the Defense Swarms over the target system; the flotilla
-	# grows toward it (up to siegeMaxFleets), and a base that still falls
-	# short asks the player to thin the swarms (an orbit contract)
+	# grows toward it, paid from the pooled depots, and a base whose pool
+	# cannot pay for it asks for the swarms to be thinned (a swarm bounty)
 	"threatinc_npcSiegeOrbitGate": true,
 	"threatinc_npcSiegeOrbitMargin": 1.5,
 	# an NPC siege that has landed nothing turns home intact once the fleets
@@ -563,7 +554,8 @@
 	"threatinc_convoyEnabled": true,
 	"threatinc_convoyRangeLY": 15,
 	# fewer, larger, escorted (docs/design-theory.md 8.2): loads size to the
-	# shortfall up to these caps; escort = base FP + per-thousand of cargo
+	# whole shortfall, and these reference loads only measure the minimum
+	# worthwhile sailing (2026-09-29: they were caps); escort = base FP + per-thousand of cargo
 	# value (marines 1, armaments 0.5, fuel and supplies 0.1); the Stage
 	# button (a hand order) has no minimum load
 	"threatinc_convoyMarineCapacity": 2000,
@@ -574,13 +566,12 @@
 	"threatinc_convoyMinLoadFraction": 0.5,
 	# the front is a reserve consumer (docs/design-theory.md 8.3): supply
 	# runs from the nearest base top a friendly front up to frontResupplyDays
-	# of armaments and frontReinforceFraction of its peak marines; the run
+	# of armaments and its whole peak marines, or what holds it; the run
 	# waits at the hive system's jump-point up to frontRunWaitDays for the
 	# Defense Swarms to clear the orbit, then turns home. A front that is dry
 	# and below grind strength calls for a withdrawal run instead.
 	"threatinc_frontRunsEnabled": true,
 	"threatinc_frontResupplyDays": 60,
-	"threatinc_frontReinforceFraction": 0.8,
 	"threatinc_frontRunWaitDays": 30,
 	# the hive hunts convoys: a hive colony within raiderRangeLY of a route's
 	# midpoint with Defense Swarms above its reserve detaches ONE to intercept
@@ -608,20 +599,17 @@
 	"threatinc_scoutLeadRadiusLY": 6,
 	"threatinc_scoutRangeLY": 10,
 	"threatinc_scoutIntervalDays": 60,
-	"threatinc_scoutStops": 4,
 	"threatinc_scoutStayDays": 2,
 	"threatinc_scoutLegMaxDays": 60,
 	"threatinc_scoutMemoryDays": 180,
-	"threatinc_scoutMaxPerFaction": 2,
 	"threatinc_scoutFleetPoints": 20,
 	# the swarm scouts too (ThreatSwarmScouts): a strike may only target a
 	# system a Scouting Swarm has charted. A colony that passes the strike
 	# economy gates (size, hulls, fuel, Swarm Nexus - not the garrison) sends
-	# one through unknown inhabited systems in its fuel reach; scoutStops and
-	# scoutStayDays apply. swarmScouting false = the swarm knows every world.
+	# one through unknown inhabited systems in its fuel reach, paid from its FP
+	# bank; scoutStayDays applies. swarmScouting false = the swarm knows every world.
 	"threatinc_swarmScouting": true,
 	"threatinc_swarmScoutFleetPoints": 30,
-	"threatinc_swarmScoutMax": 2,
 	"threatinc_donorKeepFraction": 0.5,
 	"threatinc_stagingTargetMult": 1.5,
 	"threatinc_convoyTimeoutDays": 200,
@@ -706,6 +694,11 @@
 	# launch is refunded, scaled by its surviving strength (fleet points now
 	# over fleet points at launch). A fleet lost on the way returns nothing.
 	"threatinc_returnRefundMult": 0.5,
+	# an NPC fleet's supplies paid for its hulls as well as its voyage: this
+	# share comes back in full x surviving strength, so only losses and the
+	# voyage cost anything (closed economy, 2026-09-29); the rest, and all
+	# fuel, follow returnRefundMult. Your own fleets keep the rule above.
+	"threatinc_returnHullShare": 0.8,
 
 	# Player aid (docs/player-aid.md): what you send from your own colonies to
 	# other factions, from the war board. Capacity is the colony's vanilla
@@ -749,7 +742,7 @@
 	"threatinc_swarmBountyDays": 60,
 	# a mobilised NPC base with no hive of its own to siege sends a hunting
 	# force against a bountied hive's swarms: sized to beat them
-	# (softenMargin, on the fleets actually built) up to softenMaxFP, in
+	# (softenMargin, on the fleets actually built) with no ceiling, in
 	# fleets of at most softenFleetFP, paid in fuel and supplies like a
 	# siege - pooled from every base of the faction in reach (softenPool).
 	# The fleets muster outside the system (up to softenMusterDays for
@@ -762,7 +755,6 @@
 	# (the swarms reinforce while it gathers); one that never goes in is
 	# refunded in full
 	"threatinc_softenHeadroom": 1.5,
-	"threatinc_softenMaxFP": 12000,
 	"threatinc_softenPool": true,
 	"threatinc_softenMusterDays": 15,
 	# a force short at the muster whose stragglers would carry it waits for
@@ -786,21 +778,16 @@
 	# Escalation (docs/design-theory.md 8.1): the swarm answers who hurts it.
 	# Every faction earns GRUDGE for strata taken, hives eradicated and raids
 	# or tactical passes landed; the sum is the hive's ALARM. Both are shown on
-	# the war board and fade monthly. Alarm speeds up Swarm Nexus fabrication
-	# (the hive's whole military tempo, since strikes and expansion are
-	# mustered from garrison surplus); grudge weights strike targeting toward
+	# the war board and fade monthly. Grudge weights strike targeting toward
 	# that faction's worlds; a ground victory draws an immediate retaliation
 	# strike at the winner from the nearest hive that can muster one.
 	"threatinc_alarmEnabled": true,
 	"threatinc_alarmPerStratum": 2,
 	"threatinc_alarmPerEradication": 10,
 	# (seen in-game: NPC sieges land three passes per visit, so per-raid points
-	# are small and decay brisk - alarm 27 and x2.3 fabrication inside 100 days
-	# at 1 / 0.1 / 0.05 was too hot)
+	# are small and decay brisk)
 	"threatinc_alarmPerRaid": 0.5,
 	"threatinc_alarmDecayPer30": 0.2,
-	"threatinc_alarmTempoMult": 0.04,
-	"threatinc_alarmTempoMax": 2.5,
 	"threatinc_alarmTargetMult": 0.2,
 	"threatinc_retaliationEnabled": true,
 	# coalition (docs/design-theory.md 8.7): a mobilised faction's siege posts
@@ -836,11 +823,9 @@
 	# gates founding only: links already standing are kept up with it off
 	"threatinc_frontlinesEnabled": true,
 	"threatinc_frontlinePlanDays": 15,
-	"threatinc_frontlineMaxPerFaction": 0,
 	"threatinc_frontlineLinkLY": 12,
 	"threatinc_frontlineReachLY": 10,
 	"threatinc_frontlineKeepLY": 36,
-	"threatinc_frontlineMaxSize": 4,
 	"threatinc_frontlineGrowDays": 60,
 	"threatinc_frontlineStarveDays": 90,
 	"threatinc_frontlineAbandonDays": 60,
@@ -856,10 +841,9 @@
 	# a link's garrison, for as long as it stands: garrison + station weigh the
 	# strongest Threat strike in reach x the margin (vanilla's raid strength), at
 	# least the minimum FP; a faction founds or tops one up only while its
-	# garrisons' upkeep stays within this share of its supply banking
+	# garrisons' upkeep stays within its supply banking
 	"threatinc_frontlineGarrisonFP": 200,
 	"threatinc_frontlineGarrisonMargin": 1.25,
-	"threatinc_frontlineUpkeepShare": 0.5,
 	# months the stock above the floors is spread over in that budget (0 = banking only)
 	"threatinc_frontlineUpkeepStockMonths": 12,
 	# days a link stands behind the front before its standing garrison goes home
@@ -901,12 +885,9 @@
 	# (docs/strategy-layer.md); the player's own are the war board's Siege
 	# order. A faction the swarm has never struck launches none.
 	"threatinc_responseEnabled": true,
-	# 0 = unlimited
-	"threatinc_responseMaxConcurrent": 0,
 	# reach is fuel and fleets: a military world projects task forces and
 	# sieges by the same rule as hive strikes (see threatinc_reachFuel* above)
 	"threatinc_responseMinDifficulty": 4,
-	"threatinc_responseMaxDifficulty": 10,
 	"threatinc_responseStrengthDivisor": 30,
 	# Siege expeditions (NPC and commissioned alike) are sized to the target's
 	# defenses: vanilla disrupts an industry only when the landing force is at
@@ -926,24 +907,10 @@
 	"threatinc_siegePoolMarines": true,
 	# ...and its fuel and supplies gate and draw pool the same markets
 	"threatinc_siegePoolProvisions": true,
-	# bases, nearest first, an NPC siege tries before it waits: the nearest
-	# stages; while it cannot pay, the next ones may sail instead
-	"threatinc_siegeBaseTries": 3,
-	# Cap on how many fleets a siege grows to. A size-8 hive behind Heavy
-	# Batteries needs ~3,600 ground strength once its war-strata are suppressed
-	# by the tactical pass; at ~430 per full-size fleet that is 9 fleets.
-	# 25 (2026-09-24): an NPC siege also weighs the orbit, and a big hive
-	# world holds 3.7k-7.5k FP of swarms - 10 fleets (~2.4k FP) never could.
-	# 40 (2026-09-26): 25 capped the flotilla at ~6,150 FP, so no NPC could
-	# siege a world over ~4,100 FP of swarms; big worlds held 5-6.7k all run.
-	# Marines and provisions, pooled now, are the real constraint. 50 (run 7):
-	# at 40 Epsilon Morgothi and Gamma Spair sat 50 FP short (9,900 of 9,950)
-	"threatinc_siegeMaxFleets": 50,
-	# Siege passes an expedition may run against each colony. A fresh hive
-	# takes one tactical pass (a war-stratum carrying 80 percent of a pass is
-	# not bombed again - vanilla's rule); the landing is the pass after that,
-	# and any further pass reinforces the front with what is still aboard.
-	"threatinc_siegePassesPerColony": 4,
+	# (2026-09-29: no caps on sieges - every base in reach is weighed, the
+	# flotilla grows until it clears the need, and passes run one per fleet
+	# plus the softening and the landing; the depots' pooled provisions are
+	# the bound. siegeMaxFleets 50 alone blocked 814 of 1,284 siege attempts)
 	# A siege fights for the orbit first: while Defense Swarms hold it no pass
 	# is delivered, and the expedition's fleets AT THAT WORLD (within
 	# siegeHuntRange) are made aggressive to hunt them down. Vanilla's raid

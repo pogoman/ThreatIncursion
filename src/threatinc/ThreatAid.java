@@ -78,6 +78,8 @@ public class ThreatAid {
 		if (faction.isPlayerFaction()) {
 			return ThreatNotice.Reason.of("That is your own faction - order its fleets directly");
 		}
+		ThreatNotice.Reason self = playerNotMobilised();
+		if (self != null) return self;
 		if (!ThreatWarState.isAtWar(faction)) {
 			return ThreatNotice.Reason.of("%s is not mobilised", ThreatNotice.faction(faction))
 					.line("The Threat has not struck it");
@@ -92,6 +94,12 @@ public class ThreatAid {
 					ThreatNotice.faction(faction));
 		}
 		return null;
+	}
+
+	/** Why the player may send no aid at all: not mobilised. Null if they may. */
+	public static ThreatNotice.Reason playerNotMobilised() {
+		if (ThreatWarState.isAtWar(Factions.PLAYER)) return null;
+		return ThreatNotice.Reason.of("Your faction is not mobilised");
 	}
 
 	// ------------------------------------------------------------------
@@ -378,6 +386,7 @@ public class ThreatAid {
 	 */
 	public static boolean dispatchStrike(StarSystemAPI hive, String recipientFactionId) {
 		if (hive == null) return false;
+		if (playerNotMobilised() != null) return false;
 		Quote q = quoteStrike(hive);
 		if (!q.ok()) {
 			ThreatNotice.titled("Hunt Refused").bad().icon(Global.getSector().getPlayerFaction())

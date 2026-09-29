@@ -56,8 +56,8 @@ import com.fs.starfarer.api.util.Misc;
  * <ul>
  * <li>Each link is a vanilla market on a station over an uncolonised world:
  * size 1 with Spaceport, Waystation and an orbital station, growing one size
- * every {@code frontlineGrowDays} it runs without war shortages, to
- * {@code frontlineMaxSize}.</li>
+ * every {@code frontlineGrowDays} it runs without war shortages, up to
+ * vanilla's own max market size.</li>
  * <li>The builder adds Patrol HQ (which makes the link a siege base under
  * the existing rules), station upgrades and Military Base by size - vanilla's
  * pirate base, no ground works - but only what vanilla's own import numbers
@@ -448,8 +448,10 @@ public class ThreatFrontlines {
 					+ market.getSize());
 		}
 
+		// up to vanilla's max market size: supply gates the growth (2026-09-29: the
+		// frontlineMaxSize knob held every fed link at 4)
 		if (o.healthyDays >= ThreatIncConfig.frontlineGrowDays()
-				&& market.getSize() < ThreatIncConfig.frontlineMaxSize()) {
+				&& market.getSize() < Misc.getMaxMarketSize(market)) {
 			o.healthyDays = 0f;
 			CoreImmigrationPluginImpl.increaseMarketSize(market);
 			ThreatIncConfig.log("Frontline: " + market.getName() + " grew to size " + market.getSize());
@@ -470,6 +472,15 @@ public class ThreatFrontlines {
 			if (f != null && f.isAlive() && !f.isDespawning()) live.add(f);
 		}
 		return live;
+	}
+
+	/**
+	 * Whether a guard sent home is still on its tracked leg (recallGarrison):
+	 * one that arrived was settled - its hulls re-banked - and is the base's
+	 * again, not a guard to turn back (2026-09-29).
+	 */
+	protected static boolean sailingHome(CampaignFleetAPI f) {
+		return f != null && f.isAlive() && !f.isDespawning() && ThreatReturns.tracked(f);
 	}
 
 	/** [fuel, supplies] a garrison of this size costs to sail this far, as the response task force pays. */
@@ -512,7 +523,9 @@ public class ThreatFrontlines {
 		for (CampaignFleetAPI f : ThreatIncData.garrisonsFor(hive.getId())) {
 			if (f == null || !f.isAlive()) continue;
 			int size = IncursionManager.strikeFleetSize(ThreatColonyManager.expeditionSizeFor(f));
-			float s = FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(hive.getFactionId(), size);
+			// a grown garrison fleet musters one expedition size per swarm it holds
+			float s = FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(hive.getFactionId(), size)
+					* ThreatColonyManager.swarmCount(f);
 			live.add(s);
 			sum += s;
 		}
@@ -748,17 +761,6 @@ public class ThreatFrontlines {
 		return Math.max(0f, all - ours);
 	}
 
-	/** Fleet points of standing guards the front would send home: links behind it with no strike on them. */
-	protected static float releasedFP(String factionId, Set<String> front) {
-		float sum = 0f;
-		for (Outpost o : all()) {
-			if (!factionId.equals(o.factionId) || front.contains(o.marketId)) continue;
-			MarketAPI m = marketOf(o);
-			if (m != null && strikesOn(m).isEmpty()) sum += fpOf(liveGuards(o));
-		}
-		return sum;
-	}
-
 	/** What the link's guard must weigh today: the front's standing need, else what is coming at it. */
 	protected static float needNow(MarketAPI link) {
 		float need = onCallNeed(link);
@@ -810,26 +812,31 @@ public class ThreatFrontlines {
 	}
 
 	/**
-	 * What the faction may spend on garrisons a month: its supply banking x
-	 * frontlineUpkeepShare, plus its stock above the floors spread over
-	 * frontlineUpkeepStockMonths. Run 18's Hegemony was refused a garrison at
+	 * What the faction may spend on garrisons a month: its whole supply
+	 * banking, plus its stock above the floors spread over
+	 * frontlineUpkeepStockMonths (2026-09-29: frontlineUpkeepShare held the
+	 * garrisons to half the banking, an arbitrary share; the staging banks
+	 * below are what keep the sieges fed). Run 18's Hegemony was refused a garrison at
 	 * 4,439 a month on a 3,375 budget while it held 37,000 supplies; a stock
 	 * drawn down shrinks the budget back to the banking. The sieges come first:
 	 * only the stock beyond what the staging bases are banking for their
 	 * sieges (ThreatConvoys.stagingTargets) counts - run 19 counted all of it,
-	 * and its sieges' fuel-and-supply postponements went from 36 to 141.
+	 * and its sieges' fuel-and-supply postponements went from 36 to 141. Each
+	 * market's stock over its own target counts: netted faction-wide, one
+	 * staging base's unmet target (~24k) zeroed every other depot's surplus and
+	 * pinned Hegemony's budget at its banking for the whole long test
+	 * (2026-09-29).
 	 */
 	protected static float upkeepBudget(String factionId) {
-		float income = 0f, stock = 0f, sieges = 0f;
+		float income = 0f, spare = 0f;
 		int supplies = java.util.Arrays.asList(ThreatReserves.COMMODITIES).indexOf(Commodities.SUPPLIES);
 		for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
 			income += ThreatReserves.accrualPer30(m, Commodities.SUPPLIES);
-			stock += ThreatReserves.available(m, Commodities.SUPPLIES);
-			if (supplies >= 0 && !m.isPlayerOwned()) sieges += ThreatConvoys.stagingTargets(m)[supplies];
+			float siege = supplies >= 0 && !m.isPlayerOwned() ? ThreatConvoys.stagingTargets(m)[supplies] : 0f;
+			spare += Math.max(0f, ThreatReserves.available(m, Commodities.SUPPLIES) - siege);
 		}
 		float months = ThreatIncConfig.frontlineUpkeepStockMonths();
-		float spare = Math.max(0f, stock - sieges);
-		return income * ThreatIncConfig.frontlineUpkeepShare() + (months > 0f ? spare / months : 0f);
+		return income + (months > 0f ? spare / months : 0f);
 	}
 
 	/** Why the last garrisonBase found none, for the planner's log. */
@@ -838,8 +845,8 @@ public class ThreatFrontlines {
 	/**
 	 * For a site about to be raised: the faction's base that will answer for
 	 * it, or null - and then nothing is raised there. At the front (frontOf)
-	 * that is the nearest base that can spare the standing garrison the site
-	 * needs and pay its voyage and upkeep: a front base the faction cannot hold
+	 * that is the nearest base that can pay the voyage and upkeep of the
+	 * standing garrison the site needs: a front base the faction cannot hold
 	 * against the strikes in reach is a paper base. The garrisons the new site
 	 * relieves - the links it puts behind the front - are not counted against
 	 * the budget. In the rear it is the nearest base, which sends a guard only
@@ -856,10 +863,15 @@ public class ThreatFrontlines {
 	}
 
 	/**
-	 * The nearest base that can spare {@code needFP} and pay its voyage, or
-	 * null. With {@code front} given, only while the standing garrisons'
-	 * upkeep stays within the budget; without, a guard called by a strike,
-	 * which the budget does not hold back.
+	 * The nearest base that can pay the voyage of {@code needFP}, or null.
+	 * With {@code front} given, only while the standing garrisons' upkeep
+	 * stays within the budget; without, a guard called by a strike, which the
+	 * budget does not hold back. No navy share (2026-09-29): a garrison is
+	 * spawned fresh (spawnForce) and takes nothing from the navy's ships, so
+	 * navySpareFP - vanilla's faction strength / responseStrengthDivisor - was
+	 * an arbitrary proxy; in the last test it refused every Persean guard
+	 * ("can spare 0 of 878 FP") and 22 Persean links fell undefended. The
+	 * depots paying for it are the real gate.
 	 */
 	protected static MarketAPI garrisonBase(FactionAPI faction, SectorEntityToken site, float needFP,
 			Set<String> front) {
@@ -870,13 +882,6 @@ public class ThreatFrontlines {
 				noGarrisonWhy = "upkeep would be " + (int) upkeep + " of " + (int) budget + " supplies a month";
 				return null;
 			}
-		}
-		float spare = navySpareFP(faction);
-		// the guards the new front sends home are the navy's again
-		if (front != null) spare += releasedFP(faction.getId(), front);
-		if (spare < needFP) {
-			noGarrisonWhy = "its navy can spare " + (int) Math.max(0f, spare) + " of " + (int) needFP + " FP";
-			return null;
 		}
 		MarketAPI best = nearestBase(faction, site);
 		if (best == null) {
@@ -910,31 +915,6 @@ public class ThreatFrontlines {
 		return best;
 	}
 
-	/**
-	 * What the faction's navy can spare for garrisons, in fleet points: vanilla's
-	 * strength of the faction in each of its bases' systems (WarSimScript), in
-	 * the response task force's fleet points, less every garrison it has out. Run 8
-	 * weighed each base's own system alone, so Hegemony - the biggest navy -
-	 * "could not spare" 1,200 FP for most of the run whenever the patrols of
-	 * the one system asked happened to be out.
-	 */
-	protected static float navySpareFP(FactionAPI faction) {
-		java.util.Set<StarSystemAPI> seen = new java.util.HashSet<StarSystemAPI>();
-		float strength = 0f;
-		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
-			StarSystemAPI sys = m.getStarSystem();
-			// not the links' systems: what stands there is mostly the garrisons already counted out
-			if (sys == null || !IncursionManager.isBase(m) || isOutpost(m) || !seen.add(sys)) continue;
-			strength += WarSimScript.getFactionStrength(faction, sys);
-		}
-		float committed = 0f;
-		for (Outpost o : all()) {
-			if (faction.getId().equals(o.factionId)) committed += fpOf(liveGuards(o));
-		}
-		return strength / Math.max(1f, ThreatIncConfig.responseStrengthDivisor())
-				* IncursionManager.FP_PER_RESPONSE_DIFFICULTY - committed;
-	}
-
 	/** Whether the faction can pay a garrison's voyage from this base: its stock, then the faction's other markets (payFromOthers). */
 	protected static boolean canPayVoyage(MarketAPI base, float fp, float ly) {
 		float[] cost = voyageCost(fp, ly);
@@ -955,6 +935,20 @@ public class ThreatFrontlines {
 		return sum;
 	}
 
+	/**
+	 * The most fleet points whose voyage of {@code ly} the base and its
+	 * faction's other markets can pay (pooled, voyageCost): the budget a
+	 * garrison is built to, a hair under so float rounding never tips the
+	 * paid-in-full check. Unbounded when the voyage costs nothing.
+	 */
+	protected static float payableFP(MarketAPI base, float ly) {
+		float[] per = voyageCost(1f, ly);
+		float fp = Float.MAX_VALUE;
+		if (per[0] > 0f) fp = Math.min(fp, pooled(base, Commodities.FUEL) / per[0]);
+		if (per[1] > 0f) fp = Math.min(fp, pooled(base, Commodities.SUPPLIES) / per[1]);
+		return fp == Float.MAX_VALUE ? fp : Math.max(0f, fp * 0.999f);
+	}
+
 	/** Guards a link just raised, if it stands at the front or a strike is on its way. */
 	protected static boolean sendGarrison(Outpost o, MarketAPI market, MarketAPI base) {
 		frontDay = -1; // the new link moved the front
@@ -967,28 +961,46 @@ public class ThreatFrontlines {
 	 * Sends fleets from the base bringing {@code str} of vanilla's raid
 	 * strength to the link: real fleets on DEFEND_LOCATION over it for as long
 	 * as it stands, paid out of the base's reserve like a response task force (fuel
-	 * for the distance, supplies for the fleets) - in full, or the fleets stand
-	 * down. Sized on STRENGTH_PER_FP,
-	 * then weighed for real and topped up once if short. Joins any garrison
-	 * already there.
+	 * for the distance, supplies for the fleets) - in full. Sized on STRENGTH_PER_FP,
+	 * then weighed for real and topped up until it holds (2026-09-29: two
+	 * passes at most left a garrison short whatever the depots could pay),
+	 * within the points the depots can pay the voyage of ({@link #payableFP}):
+	 * spawnForce builds nothing past that budget. Until 2026-09-29 the whole
+	 * force was spawned, then weighed against the depots and all of it
+	 * despawned if they fell short - and callGuard asked again every week.
+	 * Joins any garrison already there.
 	 */
 	protected static boolean sendGarrison(Outpost o, MarketAPI market, MarketAPI base, float str) {
 		FactionAPI faction = market.getFaction();
+		float ly = ly(base, market);
+		float payable = payableFP(base, ly);
 		List<CampaignFleetAPI> fleets = new ArrayList<CampaignFleetAPI>();
 		float got = 0f;
-		for (int pass = 0; pass < 2 && got < str * 0.95f; pass++) {
+		// ends: each pass adds strength or breaks, and every fleet spends at
+		// least a point of a finite budget (spawnForce), which below 30 builds nothing
+		while (got < str * 0.95f) {
 			float rate = got > 0f ? got / Math.max(1f, fpOf(fleets)) : STRENGTH_PER_FP;
-			List<CampaignFleetAPI> more = spawnForce(faction, base, market, (str - got) / rate, "Garrison",
-					100000f, "garrisoning " + market.getName(), 16);
-			if (more.isEmpty()) break;
+			float budget = Math.min((str - got) / rate, payable - fpOf(fleets));
+			List<CampaignFleetAPI> more = spawnForce(faction, base, market, budget, "Garrison",
+					100000f, "garrisoning " + market.getName());
+			if (more.isEmpty()) break; // the rest is under the smallest fleet, past what is paid, or nothing could be built
+			float before = got;
 			fleets.addAll(more);
 			got = strengthOf(fleets);
+			if (got <= before) break; // no progress: the yards build nothing that weighs
 		}
-		if (fleets.isEmpty()) return false;
+		if (fleets.isEmpty()) {
+			if (payable < 30f) {
+				ThreatIncConfig.logQuiet("fl_unpaid_" + market.getId(), "Frontline: " + base.getName()
+						+ " cannot pay a voyage to " + market.getName() + " (" + (int) payable + " FP payable)");
+			}
+			return false;
+		}
 		float fp = fpOf(fleets);
-		float[] cost = voyageCost(fp, ly(base, market));
-		// paid in full or not at all: the base first, then the faction's other
-		// markets (pooled), the same stock the draw takes
+		float[] cost = voyageCost(fp, ly);
+		// paid in full: the base first, then the faction's other markets
+		// (pooled), the same stock the draw takes. The force was built within
+		// what they pay, so this is a guard that should never trip
 		if (pooled(base, Commodities.FUEL) < cost[0] || pooled(base, Commodities.SUPPLIES) < cost[1]) {
 			for (CampaignFleetAPI f : fleets) f.despawn();
 			ThreatIncConfig.log("Frontline: " + base.getName() + " cannot pay the voyage of " + (int) fp + " FP to "
@@ -1032,24 +1044,57 @@ public class ThreatFrontlines {
 		return home != null && home.getFactionId().equals(o.factionId) ? home : null;
 	}
 
-	/** Sends the garrison home (the link is gone, or it went unpaid). */
+	/**
+	 * Sends the garrison home (the link is gone, or it went unpaid) on the
+	 * tracked leg (2026-09-29: closed economy - it despawned on arrival with
+	 * nothing back): the base re-banks its hulls at what survived, the rule
+	 * every sortie comes home by (ThreatReturns.settle). A home that fell
+	 * sends it to the faction's nearest base instead.
+	 */
 	protected static void recallGarrison(Outpost o, String why) {
 		List<CampaignFleetAPI> live = liveGuards(o);
-		MarketAPI home = homeOf(o);
-		for (CampaignFleetAPI f : live) {
-			f.clearAssignments();
-			if (home != null && home.getPrimaryEntity() != null) {
-				f.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home.getPrimaryEntity(), 1000f,
-						"returning to " + home.getName());
-			} else {
-				f.despawn(); // its base is gone: nowhere to go home to
-			}
-		}
+		for (CampaignFleetAPI f : live) sendGuardHome(o, f);
 		if (!live.isEmpty()) {
 			ThreatIncConfig.log("Frontline: garrison of " + o.marketId + " recalled (" + why + ")");
 		}
 		o.guards = null;
 		o.guardBaseId = null;
+	}
+
+	/** One guard home on the tracked leg, to its base or the faction's nearest; despawned only with no base left. */
+	protected static void sendGuardHome(Outpost o, CampaignFleetAPI f) {
+		MarketAPI to = homeOf(o);
+		FactionAPI faction = Global.getSector().getFaction(o.factionId);
+		if ((to == null || to.getPrimaryEntity() == null) && faction != null) to = nearestBase(faction, f);
+		if (to == null || to.getPrimaryEntity() == null || !ThreatReturns.sendHome(f, o.factionId, to.getId())) {
+			f.clearAssignments();
+			f.despawn(); // no base left: nowhere to go home to
+		}
+	}
+
+	/**
+	 * A guard whose order ran out with nothing after it (ThreatReturns.orderRanOut:
+	 * its station gone from under it, or the term run) leaves the guard and goes
+	 * home to settle. Nothing despawning is queued behind a guard's order
+	 * (2026-09-29: closed economy - that return ended it unsettled); a guard
+	 * from an older save still carrying one is caught as it comes up.
+	 */
+	protected static void sendHomeRanOut(Outpost o) {
+		if (o.guards == null) return;
+		int sent = 0;
+		for (CampaignFleetAPI f : new ArrayList<CampaignFleetAPI>(o.guards)) {
+			if (!ThreatReturns.orderRanOut(f)) continue;
+			o.guards.remove(f);
+			sendGuardHome(o, f);
+			sent++;
+		}
+		if (sent > 0) {
+			ThreatIncConfig.log("Frontline: " + sent + " guard(s) of " + o.marketId + " ran out of orders - home");
+		}
+		if (o.guards.isEmpty()) {
+			o.guards = null;
+			o.guardBaseId = null;
+		}
 	}
 
 	/**
@@ -1062,7 +1107,7 @@ public class ThreatFrontlines {
 	 * seen while it sails; paid, a front garrison the strikes in reach outgrew
 	 * is reinforced (topUp).</li>
 	 * <li>No garrison (lost in battle, recalled, or a link raised without one):
-	 * one is sent if a base can spare it, at most every 30 days; a link
+	 * one is sent if a base can pay for it, at most every 30 days; a link
 	 * unguarded for frontlineAbandonDays is given up.</li>
 	 * <li>The rear (isFront false, user's call 2026-09-27): no standing
 	 * garrison. A guard sails when a strike is seen coming (sendRelief, then
@@ -1084,9 +1129,10 @@ public class ThreatFrontlines {
 		o.rearDays = front ? 0f : o.rearDays + days;
 		if (o.homebound != null) {
 			boolean sailing = false;
-			for (CampaignFleetAPI f : o.homebound) sailing |= f != null && f.isAlive() && !f.isDespawning();
+			for (CampaignFleetAPI f : o.homebound) sailing |= sailingHome(f);
 			if (!sailing) o.homebound = null; // home: the save keeps no dead fleets
 		}
+		sendHomeRanOut(o);
 		List<CampaignFleetAPI> live = liveGuards(o);
 		long now = Global.getSector().getClock().getTimestamp();
 		if (!live.isEmpty()) {
@@ -1143,7 +1189,7 @@ public class ThreatFrontlines {
 			return true;
 		}
 		// the call may have turned back or borrowed a guard and still said no (its
-		// week's wait, or the navy short of the rest): that guard counts toward
+		// week's wait, or the rest unpaid): that guard counts toward
 		// the standing need, and only the rest is sent
 		float need = guardNeed(market.getPrimaryEntity(), market) - strengthOf(liveGuards(o));
 		if (need < 30f * STRENGTH_PER_FP) {
@@ -1171,8 +1217,8 @@ public class ThreatFrontlines {
 	/**
 	 * The hives grow: a front garrison that no longer outweighs the strongest
 	 * strike in reach (guardNeed) by the margin - under 80% of it - is
-	 * reinforced from its home base, if that base can spare it and the faction
-	 * can pay for it within the upkeep budget. The seen strikes are callGuard's,
+	 * reinforced from its home base, if the faction can pay its voyage and
+	 * its upkeep within the budget. The seen strikes are callGuard's,
 	 * daily, with its netting, timing and throttle: sized against their gross
 	 * figure here, a rear guard netted at the call was topped up on payday,
 	 * after the strike.
@@ -1190,7 +1236,6 @@ public class ThreatFrontlines {
 		float upkeep = garrisonUpkeep(faction.getId(), frontOf(faction.getId(), null)) + shortFP * UPKEEP_PER_FP;
 		String why = null;
 		if (upkeep > budget) why = "upkeep would be " + (int) upkeep + " of " + (int) budget + " supplies a month";
-		else if (navySpareFP(faction) < shortFP) why = "its navy cannot spare " + (int) shortFP + " FP";
 		else if (!canPayVoyage(home, shortFP, ly(home, market))) why = "cannot pay the voyage from " + home.getName();
 		if (why != null) {
 			ThreatIncConfig.logQuiet("fl_topup_" + market.getId(), "Frontline: the garrison of " + market.getName()
@@ -1226,12 +1271,17 @@ public class ThreatFrontlines {
 	 * then the faction's other markets nearest the link - the faction pays for
 	 * the fleet, not one depot, out of the same markets upkeepBudget counts the
 	 * banking of. Other links keep theirs for their own garrisons. The link's
-	 * own stock pays down to its floor; the home base and the others give what
-	 * a hunt may take (ThreatReserves.spendable), never what convoys banked for
-	 * a siege. Returns what was paid.
+	 * own stock pays down to its floor plus its staging bank; the home base and
+	 * the others give what a hunt may take (ThreatReserves.spendable) - never
+	 * what convoys banked for a siege. Drawn to the floor alone, the long test's
+	 * staging links fed ~1,600 a month of garrison out of a ~441 banking and
+	 * Alpha Mesh's siege sat at 233 of 8,040 supplies (2026-09-29). Returns what
+	 * was paid.
 	 */
 	protected static float payUpkeep(Outpost o, MarketAPI market, float want) {
-		float link = ThreatReserves.drawAbove(market, Commodities.SUPPLIES, want);
+		float free = ThreatReserves.available(market, Commodities.SUPPLIES)
+				- ThreatReserves.stagingBank(market, Commodities.SUPPLIES);
+		float link = ThreatReserves.drawAbove(market, Commodities.SUPPLIES, Math.min(want, Math.max(0f, free)));
 		MarketAPI home = homeOf(o);
 		float fromHome = link < want && home != null ? ThreatReserves.drawSpendable(home, Commodities.SUPPLIES, want - link) : 0f;
 		float paid = link + fromHome;
@@ -1265,30 +1315,38 @@ public class ThreatFrontlines {
 
 	/**
 	 * Real fleets from a base to hold a market's orbit: task forces summing
-	 * {@code fp} (four at most unless told), on DEFEND_LOCATION for
-	 * {@code days}, then home.
+	 * {@code fp}, on DEFEND_LOCATION for {@code days}, then home to settle
+	 * ({@link #sendHomeRanOut}). Each fleet
+	 * is up to softenFleetFP, the mod's per-fleet size, or the largest the
+	 * faction's yards were seen to build whole under vanilla's
+	 * maxShipsInAIFleet (ThreatSoftening.fleetCap). No fleet count cap
+	 * (2026-09-29): 16 fleets of responseMaxDifficulty x 25 (250 FP) held a
+	 * garrison to 4,000 FP whatever the depots could pay. {@code fp} is a
+	 * budget the built points never pass - the caller's payable points
+	 * (sendGarrison, payableFP): a fleet built over what is left is dropped
+	 * before it is placed, never spawned and despawned. The loop ends as the
+	 * budget is spent: each fleet takes its built points off it.
 	 */
 	protected static List<CampaignFleetAPI> spawnForce(FactionAPI faction, MarketAPI base, MarketAPI target,
 			float fp, String name, float days, String what) {
-		return spawnForce(faction, base, target, fp, name, days, what, 4);
-	}
-
-	protected static List<CampaignFleetAPI> spawnForce(FactionAPI faction, MarketAPI base, MarketAPI target,
-			float fp, String name, float days, String what, int maxFleets) {
 		List<CampaignFleetAPI> fleets = new ArrayList<CampaignFleetAPI>();
-		float perFleet = Math.max(50f, ThreatIncConfig.responseMaxDifficulty()
-				* IncursionManager.FP_PER_RESPONSE_DIFFICULTY);
 		float budget = fp;
-		while (budget >= 30f && fleets.size() < maxFleets) {
-			float size = Math.min(budget, perFleet);
-			FleetParamsV3 params = new FleetParamsV3(base, base.getLocationInHyperspace(),
-					faction.getId(), null, FleetTypes.TASK_FORCE, size, size * 0.1f, size * 0.1f,
-					0f, 0f, 0f, 0f);
-			// the size asked for, not the base's fleet-size multiplier on top: the
-			// long test's 400-point garrisons sailed at 756 on average
-			params.ignoreMarketFleetSizeMult = true;
-			CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
-			if (fleet == null || fleet.isEmpty()) break;
+		while (budget >= 30f) {
+			float perFleet = Math.max(50f, Math.min(ThreatIncConfig.softenFleetFP(),
+					ThreatSoftening.fleetCap(faction.getId())));
+			// the warships plus a tenth each of freighters and tankers on top
+			// (the params below): the last fleet is asked what fits what is left
+			float size = Math.min(budget / (1f + 2f * SUPPORT_SHARE), perFleet);
+			CampaignFleetAPI fleet = buildForce(faction, base, size);
+			if (fleet == null) break;
+			// pruned to vanilla's ship cap: ask smaller from now, and count what was built
+			ThreatSoftening.learnFleetCap(faction.getId(), fleet, size);
+			if (fleet.getFleetPoints() > budget) {
+				// vanilla's picks ran over what is paid for: once more at the size
+				// that fits, else the budget's rest stays unspent
+				fleet = buildForce(faction, base, size * budget / fleet.getFleetPoints() * 0.95f);
+				if (fleet == null || fleet.getFleetPoints() > budget) break;
+			}
 			base.getStarSystem().addEntity(fleet);
 			SectorEntityToken home = base.getPrimaryEntity();
 			fleet.setLocation(home.getLocation().x, home.getLocation().y);
@@ -1296,13 +1354,29 @@ public class ThreatFrontlines {
 			fleet.setNoFactionInName(false);
 			fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_WAR_FLEET, true);
 			fleet.getMemoryWithoutUpdate().set(MemFlags.FLEET_NO_MILITARY_RESPONSE, true);
+			// nothing queued behind the order: when it runs out the garrison step
+			// sends the fleet home through ThreatReturns, to settle (sendHomeRanOut)
 			fleet.addAssignment(FleetAssignment.DEFEND_LOCATION, target.getPrimaryEntity(), days, what);
-			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home, 1000f,
-					"returning to " + base.getName());
-			budget -= size;
+			budget -= fleet.getFleetPoints(); // at least 1: the loop always shrinks the budget
 			fleets.add(fleet);
 		}
 		return fleets;
+	}
+
+	/** Freighter and tanker points a garrison task force is built with, each as a share of its warship points. */
+	protected static final float SUPPORT_SHARE = 0.1f;
+
+	/** One garrison task force of {@code size} warship points, built and not placed; null if nothing came out. */
+	protected static CampaignFleetAPI buildForce(FactionAPI faction, MarketAPI base, float size) {
+		FleetParamsV3 params = new FleetParamsV3(base, base.getLocationInHyperspace(),
+				faction.getId(), null, FleetTypes.TASK_FORCE, size, size * SUPPORT_SHARE, size * SUPPORT_SHARE,
+				0f, 0f, 0f, 0f);
+		// the size asked for, not the base's fleet-size multiplier on top: the
+		// long test's 400-point garrisons sailed at 756 on average
+		params.ignoreMarketFleetSizeMult = true;
+		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
+		if (fleet == null || fleet.isEmpty() || fleet.getFleetPoints() < 1) return null;
+		return fleet;
 	}
 
 	/**
@@ -1611,11 +1685,7 @@ public class ThreatFrontlines {
 			if (ThreatWarState.excluded(fid)) continue;
 			FactionAPI faction = Global.getSector().getFaction(fid);
 			if (faction == null) continue;
-			int count = 0;
-			for (Outpost o : all()) if (fid.equals(o.factionId)) count++;
-			// 0 = no cap: founding is paid from the reserves, and that is the limit
-			int max = ThreatIncConfig.frontlineMaxPerFaction();
-			if (max > 0 && count >= max) continue;
+			// no cap: founding is paid from the reserves, and that is the limit
 			planFor(faction, hiveSystems);
 		}
 	}
@@ -1661,9 +1731,12 @@ public class ThreatFrontlines {
 				return Float.compare(dist.get(x), dist.get(y));
 			}
 		});
+		// every pair (2026-09-29: the first 24 only, and a faction whose one open
+		// way lay further down the list never built toward it). It runs once per
+		// frontlinePlanDays, and returns at the first site found
 		int tries = 0;
 		for (Object[] pair : pairs) {
-			if (++tries > 24) break;
+			tries++;
 			StarSystemAPI hive = (StarSystemAPI) pair[0];
 			MarketAPI anchor = (MarketAPI) pair[1];
 			PlanetAPI site = pickSite(faction, anchor, hive, hop, reach);
@@ -1701,8 +1774,7 @@ public class ThreatFrontlines {
 		}
 		Object[] first = pairs.get(0);
 		ThreatIncConfig.log("Frontline: " + fid + " has no site toward "
-				+ ((StarSystemAPI) first[0]).getName() + " (tried " + Math.min(tries, pairs.size())
-				+ " anchor(s))");
+				+ ((StarSystemAPI) first[0]).getName() + " (tried " + tries + " anchor(s))");
 	}
 
 	/**
@@ -1942,17 +2014,19 @@ public class ThreatFrontlines {
 
 	/**
 	 * Days until the first seen strike bound for the market strikes (0 if
-	 * striking now), or -1 with none. Far from the player a strike flies as a
-	 * route, and vanilla autoresolves it when its payload stage ends
-	 * (FGRaidAction.notifySegmentFinished) - siegeOrbitDays after it arrives.
-	 * Run 17 timed guards on the arrival, and called them ~160 days early.
-	 * Spawned fleets fight on arrival.
+	 * striking now), or -1 with none. Spawned fleets fight on arrival, and so
+	 * does a route strike with abstractResolveOnArrival (ThreatPurgeFGI.resolveOnArrival,
+	 * a day into its payload). Only with that knob off does vanilla autoresolve
+	 * a route at the end of its payload stage - siegeOrbitDays after it arrives.
+	 * Timed on the payload's end with the knob on, no guard sailed in a 3.7-year
+	 * test: the links fell 42-69 days after launch while the ETA still read
+	 * 100+ (2026-09-29).
 	 */
 	protected static float strikeEta(MarketAPI market) {
 		float best = -1f;
 		for (ThreatStrikeFGI strike : strikesOn(market)) {
 			float eta;
-			if (strike.isSpawnedFleets()) {
+			if (strike.isSpawnedFleets() || ThreatIncConfig.abstractResolveOnArrival()) {
 				eta = strike.isCurrent(GenericRaidFGI.PAYLOAD_ACTION) ? 0f
 						: strike.getETAUntil(GenericRaidFGI.PAYLOAD_ACTION);
 			} else {
@@ -1973,7 +2047,7 @@ public class ThreatFrontlines {
 		if (o.homebound == null) return 0f;
 		List<CampaignFleetAPI> back = new ArrayList<CampaignFleetAPI>();
 		for (CampaignFleetAPI f : o.homebound) {
-			if (f != null && f.isAlive() && !f.isDespawning()) back.add(f);
+			if (sailingHome(f)) back.add(f);
 		}
 		o.homebound = null;
 		if (back.isEmpty() || market.getPrimaryEntity() == null) return 0f;
@@ -1991,11 +2065,11 @@ public class ThreatFrontlines {
 	protected static void takeOver(Outpost o, MarketAPI market, List<CampaignFleetAPI> fleets, MarketAPI home) {
 		long now = Global.getSector().getClock().getTimestamp();
 		for (CampaignFleetAPI f : fleets) {
+			// off its tracked leg home, or ThreatReturns steers it back onto it
+			ThreatReturns.untrack(f);
 			f.clearAssignments();
 			f.addAssignment(FleetAssignment.DEFEND_LOCATION, market.getPrimaryEntity(), 100000f,
 					"garrisoning " + market.getName());
-			f.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home.getPrimaryEntity(), 1000f,
-					"returning to " + home.getName());
 			f.getMemoryWithoutUpdate().set(GUARD_JOINED_KEY, now);
 		}
 		if (liveGuards(o).isEmpty()) {
@@ -2028,7 +2102,7 @@ public class ThreatFrontlines {
 			List<CampaignFleetAPI> pool = liveGuards(d);
 			if (d.homebound != null) {
 				for (CampaignFleetAPI f : d.homebound) {
-					if (f != null && f.isAlive() && !f.isDespawning()) pool.add(f);
+					if (sailingHome(f)) pool.add(f);
 				}
 			}
 			for (CampaignFleetAPI f : pool) {
@@ -2078,8 +2152,8 @@ public class ThreatFrontlines {
 	 * station for months. The daily step asks again until then; a refusal
 	 * waits a week. A guard sent home from behind the front and still sailing
 	 * turns back first (turnBack). A guard on station is reinforced only under 80% of what it
-	 * must weigh. A navy short of the margin sends what it can spare, if that
-	 * at least matches the strike. True if a guard sailed or turned back;
+	 * must weigh. The guard is what is needed, if the depots can pay its
+	 * voyage. True if a guard sailed or turned back;
 	 * nothing with the Called Guards knob (frontlineReliefEnabled) off.
 	 */
 	protected static boolean callGuard(Outpost o, MarketAPI market, float have, boolean atDetection) {
@@ -2088,9 +2162,14 @@ public class ThreatFrontlines {
 		// links' guards and the system's defenders are summed
 		float call = onCallNeed(market);
 		if (call - have < 30f * STRENGTH_PER_FP) return false;
+		String key = "fl_guard_" + market.getId();
 		float want = call - neighbourGuards(o, market) - otherDefenders(market);
 		float need = want - have;
-		if (need < 30f * STRENGTH_PER_FP) return false;
+		if (need < 30f * STRENGTH_PER_FP) {
+			ThreatIncConfig.logQuiet(key, "Frontline: no guard for " + market.getName() + " - the strike ("
+					+ (int) call + ") is covered by its neighbours' guards and defenders");
+			return false;
+		}
 		// a guard on station is reinforced only once it falls under 80% of what
 		// it must weigh, as topUp does - run 17's Akron took 9 top-ups of 37-524
 		// FP in 80 days
@@ -2099,7 +2178,11 @@ public class ThreatFrontlines {
 		MarketAPI near = nearestBase(faction, market.getPrimaryEntity());
 		float eta = strikeEta(market);
 		float voyage = near != null ? ly(near, market) * GUARD_DAYS_PER_LY + GUARD_LEAD_DAYS : 0f;
-		if (near != null && eta > voyage) return false; // not yet
+		if (near != null && eta > voyage) {
+			ThreatIncConfig.logQuiet(key, "Frontline: guard for " + market.getName() + " waits - strike due in "
+					+ (int) eta + " days, the voyage from " + near.getName() + " takes " + (int) voyage);
+			return false; // not yet
+		}
 		// a guard still sailing home turns back rather than a new one sailing, and
 		// the guards behind the front come before the navy
 		need -= turnBack(o, market);
@@ -2108,25 +2191,13 @@ public class ThreatFrontlines {
 		if (need < 30f * STRENGTH_PER_FP) return true;
 		if (Global.getSector().getClock().getElapsedDaysSince(o.guardCalled) < 7f) return false;
 		o.guardCalled = Global.getSector().getClock().getTimestamp();
-		// short of the margin, the navy sends what it can spare so long as the
-		// link's defenders at least match the strike, when vanilla's autoresolve
-		// passes the target by (user's call 2026-09-27: run 17 lost Akron with
-		// 1,087 of 1,119 FP to spare)
-		float margin = ThreatIncConfig.frontlineGarrisonMargin();
-		// and never less than 150 FP of it, so a short navy does not trickle in
-		float floor = Math.min(need, Math.max(150f * STRENGTH_PER_FP,
-				need - strikesWeight(market) * Math.max(0f, margin - 1f)));
-		float spare = navySpareFP(faction) * STRENGTH_PER_FP * 0.99f;
-		float send = spare >= need ? need : spare >= floor ? spare : floor;
+		// what is needed, gated only by the depots paying its voyage (2026-09-29:
+		// the navy's spare share - vanilla's faction strength / responseStrengthDivisor,
+		// and a partial guard of what it could spare - refused every Persean
+		// call at "0 of 878 FP"; a guard is spawned fresh and takes no navy ships)
+		float send = need;
 		MarketAPI base = garrisonBase(faction, market.getPrimaryEntity(), send / STRENGTH_PER_FP, null);
-		if (base != null && sendGarrison(o, market, base, send)) {
-			if (send < need) {
-				ThreatIncConfig.log("Frontline: " + market.getFactionId() + " sent " + market.getName()
-						+ " a partial guard, " + (int) send + " of " + (int) need + " (the strike "
-						+ (int) strikesWeight(market) + ")");
-			}
-			return true;
-		}
+		if (base != null && sendGarrison(o, market, base, send)) return true;
 		String why = (base == null ? noGarrisonWhy : "no fleet came out of " + base.getName())
 				+ " (strike in " + (int) eta + " d, voyage " + (int) voyage + " d)";
 		if (atDetection) {

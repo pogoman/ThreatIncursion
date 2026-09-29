@@ -59,9 +59,9 @@ Vanilla numbers that do the work (verified in the API source and in
 
 `ThreatFrontlines` (daily, on IncursionManager's poll) and `FrontlineCondition`.
 
-**Founding** runs every `frontlinePlanDays` for each mobilised NPC faction under
-`frontlineMaxPerFaction` (0 = no cap; pirates and the player never found links),
-while `frontlinesEnabled` is on. The knob gates founding only: links already
+**Founding** runs every `frontlinePlanDays` for each mobilised NPC faction (pirates and the
+player never found links; 2026-09-29: `frontlineMaxPerFaction` is gone - what a faction can
+found and garrison is bounded by its depots), while `frontlinesEnabled` is on. The knob gates founding only: links already
 standing are kept up, paid, guarded and pruned with it off. One link per pass:
 - **Cost:** the outpost cost (`outpostSupplies`, `outpostFuel`) once, drawn
   from the war reserve of the faction's base nearest the site that holds it,
@@ -82,8 +82,9 @@ standing are kept up, paid, guarded and pruned with it off. One link per pass:
   of them hostile, their garrisons fought and four stations fell with no Threat
   there. Purged worlds and converted old outposts follow the same rule.
 - **Every pair is tried.** All (unreached hive, anchor) pairs are tried
-  nearest first, up to 24. An anchor boxed in beside a hive doesn't stall the
-  faction.
+  nearest first, until one yields a site (2026-09-29: the first 24 only; a faction
+  whose one open way lay further down the list never built toward it). An anchor
+  boxed in beside a hive doesn't stall the faction.
 - **The market:** size 1 on a `makeshift_station` entity, vanilla's
   pirate-base entity. It is tagged `station` and `use_station_visual`, so the
   orbital station industry adopts it and gives it its look. It has
@@ -100,8 +101,9 @@ standing are kept up, paid, guarded and pruned with it off. One link per pass:
   sieges, hunts and convoy staging under the rules that already exist.
 
 **Growth and starvation.** A link grows one size every `frontlineGrowDays` of
-running with no shortage of supplies, fuel, crew or food, up to
-`frontlineMaxSize`. A shortage is demand over availability, as vanilla's
+running with no shortage of supplies, fuel, crew or food, up to vanilla's
+max market size for it (`Misc.getMaxMarketSize`; 2026-09-29: the `frontlineMaxSize`
+knob, 4, is gone and held every fed link there - supply is the gate). A shortage is demand over availability, as vanilla's
 industries measure it - the peacetime demand (`WarFootingDemand.peacetimeDemand`):
 the War Footing on a link declares one unit over the other industries', and
 vanilla's max demand read every fully supplied link short. It is not the trade
@@ -222,23 +224,27 @@ the freed worlds.
 **A seen strike calls the guard** (it replaced the 60-day Relief Force). When a
 strike on a link is detected, the link's guard is brought up to the seen strikes
 bound for it × `frontlineGarrisonMargin`, less its station (at the front, at least
-its standing need). The faction's nearest base sends the difference if the navy
-can spare it and the faction can pay the voyage; the upkeep budget does not hold
-it back. A navy short of the margin sends what it can spare (user's call
-2026-09-27), so long as the link's defenders at least match the strike - vanilla's
-autoresolve passes a target that strong by - and never less than 150 FP. Run 17
-lost Akron with 1,087 of 1,119 FP to spare. Short of that, the link fights with
-what it has.
+its standing need). The faction's nearest base sends the difference if the faction
+can pay the voyage; the upkeep budget does not hold it back. Nothing else gates it
+(2026-09-29, no arbitrary caps): the navy's spare strength (`navySpareFP`, vanilla's
+faction strength / `responseStrengthDivisor`) is gone, and with it the partial guard
+of what the navy could spare and its 150 FP floor. A garrison is spawned fresh and
+takes no navy ships; the last test's Persean calls all read "can spare 0 of 878 FP"
+and 22 links fell undefended. A voyage the depots cannot pay leaves the link to fight
+with what it has, and logs why (`fl_nocall_`, `Frontline: ... no guard called`).
 The guard sails only once the first strike is due within its voyage (1.5 days
 per LY from the nearest colony base) plus 20 days: run 16's strikes took 159-203
 days from launch to target, and guards called at detection sat on station for
-months. A strike far from the player flies as a route, and vanilla autoresolves
-it when its payload stage ends, `siegeOrbitDays` (120) after it arrives, so it is
-due then (`strikeEta`); run 17 timed guards on the arrival and called them ~160
-days early. Spawned fleets fight on arrival. Until then the daily step asks
+months. A strike is due on arrival (`strikeEta`): spawned fleets fight there, and
+a route strike resolves a day into its payload (`abstractResolveOnArrival`,
+`ThreatPurgeFGI.resolveOnArrival`). Only with that knob off is a route due at the
+end of its payload stage, `siegeOrbitDays` (120) after it arrives. Timed on the
+payload's end with the knob on, no guard sailed in the 3.7-year test of
+2026-09-29: links fell 42-69 days after launch while the ETA read 100+, and the
+silent exits hid it (they log now, `fl_guard_`). Until then the daily step asks
 again; a refusal waits a week. A guard on station is reinforced only once it
 falls under 80% of what it must weigh (run 17: Akron took 9 top-ups of 37-524 FP
-in 80 days). It calls at the front too, on top of a standing garrison the strikes
+in 80 days), and then sent until it holds. It calls at the front too, on top of a standing garrison the strikes
 outweigh (run 16: two strikes, 2,700, met Yami's 1,496 FP garrison with nothing
 called) and after an unpaid recall (run 15, Eps Golgotha I). A strike stops counting as bound for the link once it has struck: run 15's
 called guards stayed a median 155 days, the strike's whole return leg. Once no
@@ -263,7 +269,7 @@ party's fleets (`otherDefenders`). An ally's task force in a system where it hol
 market is not counted, because vanilla does not count it (run 18's Persean task force
 over Pontus). A front link that falls sends the link
 behind it a garrison at once; the new front's founding does not count the guards
-it sends home against the navy's spare strength or the budget. Strikes are
+it sends home against the budget. Strikes are
 hidden until detected (below), so the guard races the strike from its detection.
 
 **Garrisons: no paper bases (2026-09-26, user's rule).** The third long test
@@ -289,23 +295,33 @@ a single strike the month their garrison went home. So now:
   about 4x the route figure (a 1,350 strike read about 5,500), so every one of
   196 foundings was refused on upkeep.
 - **Sent** as fleets sized at 1.4 strength per FP (run 6 measured 1.2-1.6), then weighed for real and
-  topped up once if short. The log line gives the strength sent, needed and the
-  strike in reach.
+  topped up until it holds (2026-09-29: it was once; two passes left a garrison short
+  whatever the depots could pay), within `payableFP` - the points whose voyage the base and the
+  faction's other markets can pay (pooled stock / `voyageCost`). `spawnForce` builds nothing past
+  it, so a garrison is never spawned and then despawned for want of pay (2026-09-29: the whole
+  force was spawned, weighed against the depots and despawned if they fell short, and
+  `callGuard` asked again every week). A garrison may therefore sail below its need when the
+  depots cannot pay it all, and the callers top it up later (the monthly reinforcement, the
+  daily call). The log line gives the strength sent, needed and the strike in reach; a base that
+  can pay under 30 FP logs `fl_unpaid_`.
 - **Kept for as long as the link stands.** Each month, after the upkeep is paid,
   a front garrison under 80% of its standing need (the hives grew) is reinforced
   from its home base. A rear guard answers the seen strikes only, through the
   daily call with its netting, timing and throttle: a monthly top-up sized on
   the strikes' gross figure undid the call's netting.
 - **Paid for:** a faction founds, re-sends or reinforces a front garrison only
-  while its front garrisons' upkeep stays within its budget: `frontlineUpkeepShare` (0.5)
-  of its monthly supply banking (`ThreatReserves.accrualPer30`), plus its supplies above
-  the floors spread over `frontlineUpkeepStockMonths` (12; 0 = banking only), leaving the
-  rest for sieges. Run 18's Hegemony was refused at 4,439 a month on a 3,375 budget while
+  while its front garrisons' upkeep stays within its budget (`upkeepBudget`): the whole
+  of its monthly supply banking (`ThreatReserves.accrualPer30`; 2026-09-29: it was
+  `frontlineUpkeepShare`, 0.5, of it - an arbitrary half, now gone), plus its supplies
+  above the floors spread over `frontlineUpkeepStockMonths` (12; 0 = banking only). The
+  staging banks are what keep the sieges fed. Run 18's Hegemony was refused at 4,439 a month on a 3,375 budget while
   it held 37,000 supplies, and six links were lost that way. A stock drawn down shrinks
   the budget back to the banking. Sieges come first: only the stock beyond what the
   faction's staging bases are banking for their sieges (`ThreatConvoys.stagingTargets`)
   counts. Run 19 counted all of it, and its sieges' fuel-and-supply postponements rose
-  from 36 to 141.
+  from 36 to 141. The surplus is counted market by market (2026-09-29): netted
+  faction-wide, one staging base's unmet target zeroed every other depot's surplus and
+  pinned Hegemony at ~3,750 a month for a 3.7-year test.
   The garrisons a new front link puts behind the front are not counted, since
   they go home. A guard called by a strike is never refused for the budget, but
   its upkeep counts in it (2026-09-27, user's call): while it is out the faction
@@ -313,27 +329,31 @@ a single strike the month their garrison went home. So now:
   on a 3,750 budget, and its sieges starved.
   Upkeep is drawn from the link, then the garrison's home base (while the
   faction still holds it), then any of the faction's other markets nearest
-  first, except other links. The link's own stock pays down to its floor; the
-  home base and the others give only what a hunt may take
-  (`ThreatReserves.spendable`: above the floor, the donor keep and the staging
-  bank), so a garrison never spends what convoys banked for a siege - its home
-  is often the hive's staging base. A voyage is checked and paid from the same
-  stock, in full or the fleets stand down. Sieges don't pool from links either:
-  a link's stock pays its own garrison. Every monthly payment is logged with who
-  paid it.
+  first, except other links. The link's own stock pays down to its floor plus
+  its staging bank (2026-09-29: down to the floor alone, staging links fed their
+  garrisons out of the siege's savings); the home base and the others give only
+  what a hunt may take (`ThreatReserves.spendable`: above the floor, the donor
+  keep and the staging bank), so a garrison never spends what convoys banked for
+  a siege - its home is often the hive's staging base. A voyage is checked and
+  paid from the same stock, in full or the fleets stand down. Sieges pool from
+  links like any other base (`IncursionManager.siegeDonors`). Every monthly
+  payment is logged with who paid it.
 
 The rules from before:
-- **Spare strength** is the navy's: vanilla's strength of the faction summed
-  over its bases' systems (`WarSimScript`, each system once), in the relief
-  force's fleet points, less every garrison it has out (`navySpareFP`). So a
-  faction holds as many links as its navy can guard - no count cap. Run 8
-  weighed only the sending base's own system, and Hegemony, the biggest navy,
-  "could not spare" 1,200 FP most of the run. The garrison sails from the
-  faction's nearest base. Its voyage is paid from that base, then the faction's
-  other markets except links.
+- **No navy share (2026-09-29).** There used to be a "spare strength" rule: the
+  faction's vanilla strength over its bases' systems, less every garrison out
+  (`navySpareFP`). It is deleted. The garrison sails from the faction's nearest
+  base, and the depots paying its voyage are the gate. Its voyage is paid from
+  that base, then the faction's other markets except links.
 - **The garrison** is real task forces on DEFEND_LOCATION over the link, built
   at the size asked for (`ignoreMarketFleetSizeMult` - run 4's 400-point
-  garrisons sailed at 756 on average with the base's fleet-size multiplier).
+  garrisons sailed at 756 on average with the base's fleet-size multiplier; since 2026-09-29
+  every NPC fleet the layer builds is built this way - hunting forces, sorties, task forces,
+  scouts, convoy escorts - at the points it is paid for, and whatever vanilla prunes is
+  refunded, `refundShort`).
+  `spawnForce` has no fleet-count cap and loops until the strength is met, each
+  fleet up to `softenFleetFP` (2026-09-29: 16 fleets of 250 FP held a garrison
+  to 4,000 FP whatever the depots could pay).
   Its upkeep is its ships' vanilla supplies per month, maintenance only (run 4
   billed `getTotalSuppliesPerDay`, which adds repair and CR recovery: up to
   12,901 a month, 55 garrisons recalled unpaid). Drawn monthly from the link's
@@ -346,11 +366,18 @@ The rules from before:
   destroyed one loses it. Run 12 lost 2,299 marines that a front had evacuated
   into a link that starved 15 days later.
 - **Recalled** when the link is dismantled or changes hands, or garrisons are
-  switched off. (Until run 5 it also went home at a star fortress, and a
+  switched off. It sails home on the tracked leg (2026-09-29, closed economy: it despawned on
+  arrival with nothing back) and the base re-banks its hulls at what survived
+  (`recallGarrison`, `ThreatReturns.settle`); a home that fell sends it to the faction's nearest base.
+  A guard that arrived home is the base's again, not one to turn back (`sailingHome`).
+  Recall goes through `sendGuardHome` (its base, else the faction's nearest; despawned only with
+  no base left). Guards no longer have a despawning return queued behind their order: when one
+  runs out (its station gone, or the term run) the daily garrison step (`sendHomeRanOut`,
+  `ThreatReturns.orderRanOut`) takes it off the guard and sends it home to settle. (Until run 5 it also went home at a star fortress, and a
   fortress under construction paused the unguarded clock; both are gone.)
 - **Lost** (beaten in battle, recalled unpaid, or a link raised without one - a
   converted outpost, a ground-victory prize): a new one is sent when a base can
-  spare it, at most every 30 days. A link unguarded for `frontlineAbandonDays`
+  pay for it (2026-09-29: no navy share), at most every 30 days. A link unguarded for `frontlineAbandonDays`
   is given up ("no garrison to hold it").
 - Purged-world forward bases (`ThreatOutposts.planNPC`) need a garrison too.
 - The census line reports guarded links, their garrison FP, and star fortresses.
@@ -369,7 +396,7 @@ it founds a forward base instead (`ThreatOutposts.raiseForwardBase`):
   outpost cost from a base in reach, and only where a found live hive lies
   within `frontlineKeepLY`, or the base would stand idle and be abandoned. The
   site rules are a link's (`siteSystemOk`: no hive or hostile market in the
-  system, one faction's links per system), under `frontlineMaxPerFaction`, and
+  system, one faction's links per system), and
   both Outposts Enabled and Frontline Outposts Enabled gate it.
 - **Old NPC outposts in a save** convert where they stand on the next poll,
   stock carried into the new market's reserve.
@@ -388,11 +415,9 @@ All are in `settings.json` and LunaLib, under Frontline Outposts:
 
 - `frontlinesEnabled` (founding only; standing links are kept up with it off)
 - `frontlinePlanDays` (15)
-- `frontlineMaxPerFaction` (0 = no cap)
 - `frontlineLinkLY` (12)
 - `frontlineReachLY` (10)
 - `frontlineKeepLY` (36)
-- `frontlineMaxSize` (4)
 - `frontlineGrowDays` (60)
 - `frontlineStarveDays` (90)
 - `frontlineAbandonDays` (60)
@@ -402,7 +427,6 @@ All are in `settings.json` and LunaLib, under Frontline Outposts:
 - `frontlineGarrisonEnabled`
 - `frontlineGarrisonFP` (200, the minimum garrison)
 - `frontlineGarrisonMargin` (1.25)
-- `frontlineUpkeepShare` (0.5)
 - `frontlineUpkeepStockMonths` (12)
 - `frontlineHeavyIndustry` (true)
 - `frontlineRearGraceDays` (60)
@@ -430,7 +454,7 @@ Look for the "Frontline:" and "Strike ... detected by" log lines.
 7. **The struck NPC faction's response task force** now sails at detection,
    not at launch.
 8. **The swarm strikes a link.** The link's intel appears and its guard is
-   called ("rear; strike on its way") if the navy can spare it. No landing is ever logged against a
+   called ("rear; strike on its way") if the depots can pay its voyage. No landing is ever logged against a
    link ("a station, not a world"); `Station assault on` lines weigh the
    strike, and a lost station logs `dismantled ... (station destroyed by ...)`.
 9. **Kill the target hive.** The links dismantle after 60 days unless another
@@ -441,8 +465,9 @@ Load risks to watch:
   hidden, and in the shared economy.
 - `startBuilding` and `startUpgrading` on NPC markets: they should complete by
   vanilla's own advance.
-- Nexerelin may upsize NPC markets, including links, past `frontlineMaxSize`.
-  Nothing stops that yet.
+- Nexerelin may upsize NPC markets, including links, beyond what supply grows them
+  to. Nothing stops that; links already grow to vanilla's max market size
+  (`frontlineMaxSize` is gone, 2026-09-29).
 
 ## 6. Liberties taken (the user was away, review these)
 

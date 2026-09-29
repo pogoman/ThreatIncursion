@@ -200,23 +200,29 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 	}
 
 	/**
-	 * Up to scoutStops of the candidates as a route, nearest-first from where
-	 * the party starts, each leg measured from the stop before. Empties the list.
+	 * The candidates as a route, nearest-first from where the party starts,
+	 * each leg measured from the stop before. After the first, a stop joins
+	 * only while it lies nearer the last stop than the party's start: a
+	 * neighbour is the party's to sweep on, one back toward home a fresh
+	 * party's (2026-09-29: routes were cut at scoutStops, 4, and a side fielded
+	 * at most two parties - a side now sends as many as its candidates need).
+	 * Takes the stops it uses out of the list.
 	 */
 	public static List<String> nearestFirst(List<StarSystemAPI> candidates, Vector2f from) {
 		List<String> route = new ArrayList<String>();
 		Vector2f at = from;
-		int stops = Math.max(1, ThreatIncConfig.scoutStops());
-		while (!candidates.isEmpty() && route.size() < stops) {
+		while (!candidates.isEmpty()) {
 			StarSystemAPI next = null;
 			float bestDist = Float.MAX_VALUE;
 			for (StarSystemAPI system : candidates) {
 				float d = Misc.getDistanceLY(system.getLocation(), at);
+				if (!route.isEmpty() && d >= Misc.getDistanceLY(system.getLocation(), from)) continue;
 				if (d < bestDist) {
 					bestDist = d;
 					next = system;
 				}
 			}
+			if (next == null) break;
 			candidates.remove(next);
 			route.add(next.getId());
 			at = next.getLocation();

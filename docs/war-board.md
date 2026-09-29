@@ -120,7 +120,10 @@ counts toward none of the strip's totals, and while nothing is found the board i
 intel list (`ThreatIncursionIntel.isHidden`). User's rule 2026-09-25, replacing the earlier gray
 "Unknown" rows. Per entry:
 stage, live markets, mass, size-weighted health and trend, swarms live/desired/mustered
-(`countLiveGarrison`, `desiredGarrisonCount`, `preparingStrikeFleetCount`), staging colony and
+(`countLiveGarrison`, `desiredGarrisonCount`, `preparingStrikeFleetCount`) - all counted in
+fleets since 2026-09-29: a garrison fleet grown past one swarm (docs/hive-economy.md "Grown garrison
+fleets") counts once, and `preparingStrikeFleetCount` is the strike's packed fleets, not its swarms -
+staging colony and
 `fuelRangeLY` reach, inhabited systems inside reach, outbound ops (strikes from
 `IncursionManager.getStrikeList()` where `params.source` is here; seeding swarms from
 `SeedingSwarmIntel`), inbound ops (`getPurgeList()` sieges targeting the system,
@@ -203,8 +206,11 @@ flotilla's commander stops bombarding, since 2026-09-28), times `SIEGE_RAID_HEAD
 the preparedness bump each raid adds. NPC raid strength is a
 quarter of crew capacity (`MarketCMD.getRaidStr`), which tracks fleet size, so fleets are added
 to the old baseline shape until difficulty points x `threatinc_siegeRaidStrPerPoint` (43,
-measured: 22 points landed 947) clears the need, up to `threatinc_siegeMaxFleets`. The
-commission quote shows the estimate against the need and warns when the cap leaves it short.
+measured: 22 points landed 947) clears the need. The flotilla grows until it clears it
+(2026-09-29: it stopped at `threatinc_siegeMaxFleets`, and that cap alone blocked 814 of 1,284
+siege attempts in a test - the knob is gone). What decides whether it sails is the depots' pooled
+provisions (an NPC) or the base's free fleet points (the player's, which fits the flotilla to
+them); the commission quote shows the estimate against the need.
 Before this, a difficulty-sized flotilla against Gamma Gibidigi I (defenses 3,000) landed 947
 against the 1,000 needed and had both raids repulsed - the fee bought one tactical pass.
 

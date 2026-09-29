@@ -64,7 +64,8 @@ returns that cargo for a player-owned market; `stock` / `draw` / `deposit` go st
 it, the ledger entry keeps only `capSeen` / `coverIssued`, and any ledger stock still held
 for such a market (older save, captured colony) is moved into the cargo the first time it
 is asked for. Vanilla fills it (`vanillaStockpilePer30` = the plugin's limit x its add
-rate; cap = vanilla's limit + militia months) and covers shortages under the player's own
+rate; the reference basis = vanilla's limit + militia months, no longer a ceiling for the
+militia - 2026-09-29: the recruits the colony raises are all kept) and covers shortages under the player's own
 toggle, so the mod's accrual, seed and shortage cover all skip backed colonies; the mod
 adds only the militia marines. Anything the player leaves above the cap is kept - vanilla
 never trims a resource the colony should have - it just stops accruing. NPC colonies have
@@ -105,8 +106,13 @@ and sorties drained depots that never refilled (logged: "Order draw at Sindria: 
 | fuel | `fuel` | 1,500 | Spaceport size-2, Military Base size-1, Waystation size |
 | supplies | `supplies` | 750 | Population min(size, 3), Spaceport size-2, Military Base size-1 |
 
-Cap per commodity = accrual x `reserveCapMonths` (6); a colony in deficit has no accrual,
-so no cap and no sortie floor. The sortie floor (`reserveFloorFraction`, 0.25) is for NPC
+**Depots bank everything made (2026-09-29, no arbitrary caps).** There is no cap per
+commodity: accrual used to stop at accrual x `reserveCapMonths` (6) plus the staging target,
+and a producer lost everything above it. `reserveCapMonths` is now only the basis
+(`ThreatReserves.monthsBasis`; `monthsCap` is its old name) the sortie floor and the donor
+keep are fractions of, and `ThreatReserves.cap` is a reference for "how full" readouts.
+`stagingBank` is a keep, not a bank limit. A colony in deficit has no accrual, so no basis
+and no sortie floor (the floor stands on the largest basis seen). The sortie floor (`reserveFloorFraction`, 0.25) is for NPC
 colonies; the player's own colonies use `playerReserveFloorFraction` (0), so the Siege
 prompt's "can commit" is the whole stock and the landing draws up to what it wants. Mobilisation seeds `reserveInitialMonths` (6, the full cap since
 2026-09-25 so a navy opens the war at full strength; 3 before) of the depot's banking - seeded after the War footing's demand lands and the economy
@@ -173,8 +179,8 @@ taken. Callers:
   ~2,400 troops and a full depot holds ~560. The system's siege base is the nearest
   (`siegeBaseFor`: it stages and is barred from hunting there while it could launch);
   while it cannot launch, the next nearest bases of any mobilised NPC faction try
-  (`siegeBasesFor`, `siegeBaseTries` 3 bases weighed - one already besieging the system, or
-  with nothing to take, does not use a try). The base's navy strength that sizes the fleets is
+  (`siegeBasesFor`; every base in reach is weighed, nearest first, until one sails -
+  2026-09-29: `siegeBaseTries` stopped at the third that could take anything). The base's navy strength that sizes the fleets is
   read once per strategy tick (`siegeStrength`): read live, one base's flotilla swung
   between ~3,550 and ~6,150 FP from tick to tick. Armaments wanted =
   `npcFrontSupplyDays` x the landing force's own burn (1 armament per marine at the
@@ -197,25 +203,26 @@ taken. Callers:
   the target's ground strength (`pointsForStrength`) and its orbit (`pointsForOrbit`) are
   not for trimming - the depot pays for them or the siege waits, whatever the floor
   fraction says; only the fleets beyond them shrink to what it can pay for. The ground
-  strength is `siegeRaidStrNeeded`, or what `siegeMaxFleets` allows when the cap left the
-  flotilla short (a capped flotilla sails as it did before the gate; review fix
-  2026-09-24 - before it, the trim gate compared against the full need and a capped
-  flotilla was postponed forever, and any provisions trim at all failed the gate, so the
-  floor fraction never let a smaller siege sail). With half the marines, Hegemony's
+  strength is `siegeRaidStrNeeded` (2026-09-29: it was "or what `siegeMaxFleets` allows
+  when the cap left the flotilla short"; the flotilla has no cap now, so the gate reads the
+  need). With half the marines, Hegemony's
   sieges of Thrial were trimmed to two fleets, lost in the fight for the orbit before a
   landing, and spent the whole draw. The player's sieges keep the half;
   `siegeBlockReason` mirrors only the player's gates (the board orders no NPC siege).
   An NPC siege also WEIGHS THE ORBIT (2026-09-24, knobs `npcSiegeOrbitGate`,
-  `npcSiegeOrbitMargin` 1.5): the flotilla grows (up to `siegeMaxFleets`) until its fleet
+  `npcSiegeOrbitMargin` 1.5): the flotilla grows until its fleet
   points (`ThreatAidCapacity.expeditionPoints`, 25 per size point) reach the Defense Swarm
-  FP it faces (`siegeOrbitFaced`) times the margin. Since the 2026-09-24 review that is the
+  FP it faces (`siegeOrbitFaced`) times the margin (2026-09-29: it stopped at
+  `siegeMaxFleets`, 50 - see "No cap on the flotilla" below). Since the 2026-09-24 review that is the
   strongest single target world's garrison (`npcSiegeOrbitPerWorld`, default on). A siege
   is `SEQUENTIAL` (vanilla takes the worlds one at a time with the whole flotilla), and a
   garrison fights over its own world only. The old sum of every world's swarms kept the
-  gate shut for good: 679 postponements and 1 siege in a 21-month run. The check runs FIRST, ahead of the marine gate: a flotilla at its fullest still
-  short waits and posts a SWARM BOUNTY on the system (`ThreatSwarmBountyIntel`;
-  docs/player-aid.md section 4) while the base banks marines and provisions; one the
-  depot trimmed below the orbit just waits. Whether a siege
+  gate shut for good: 679 postponements and 1 siege in a 21-month run. The check runs FIRST, ahead of the marine gate: a flotilla the pool cannot pay for
+  waits and posts a SWARM BOUNTY on the system (`ThreatSwarmBountyIntel`;
+  docs/player-aid.md section 4) while the base banks marines and provisions - the
+  provisions gate posts it when the pooled fuel and supplies cannot pay for the orbit's
+  fleets (2026-09-29: it was the fleet ceiling that posted it); one the depot trimmed
+  below the orbit just waits. Whether a siege
   sails is the garrison's to decide, not the colony's size: a full-strength Hegemony siege
   of Thrial (5 fleets, 1,200 marines) came home at 39% with no landing against six
   garrisons. Each launch logs "Siege fleets real: N FP spawned against ~M estimated" -
@@ -232,6 +239,28 @@ taken. Callers:
   gate sized by the job and the launch by the navy, so a
   weak navy could be told it could siege, be outweighed at the launch, and neither siege
   nor hunt.
+  NO CAP ON THE FLOTILLA (2026-09-29, user's rule: forces are bounded only by resources and
+  engine limits; docs/design-theory.md "Two design rules"). `siegeMaxFleets` (50) made every siege
+  "take at most 8,300 FP" and blocked 814 of 1,284 siege attempts in a test; it is gone
+  from the code, settings and LunaLib (`LunaConfigBridge` no longer bumps it). The flotilla
+  (`siegeFleetSizes`) grows until it clears the ground need and the orbit goal; the pooled
+  depots' provisions decide feasibility (the gate above), and the bounty posts when the pool
+  cannot pay for the orbit. `SIEGE_FLEETS_SANITY` (100,000 fleets) is a loop guard, not a
+  bound: a goal past it reads "cannot be done" (logged) and is not grown toward, rather than clamped
+  into a 100,000-fleet list, and `sectorPayableFP` counts the player's part as 0 with the capacity
+  ledger off; a goal no flotilla meets (`siegeFleetGoal` = `Float.MAX_VALUE`) is not grown toward
+  (`attainable`). Fleets are still 10 difficulty at most (`VANILLA_MAX_DIFFICULTY`: vanilla's
+  scale) - more force is more fleets. `razeFleetPoints` doubles its ceiling from one top fleet
+  until it razes every world, open-ended up to `sectorPayableFP` (the FP the whole sector's
+  supplies provision at `expeditionSuppliesPerPoint`, or the player colonies' capacity).
+  `siegeBaseTries` (3 bases weighed) is gone: every base in reach is weighed. Several sieges
+  per faction per system are allowed (one used to be the rule), never on a booked world:
+  `bookedWorlds` counts every running siege's targets, the faction's own included. Passes per
+  world = fleets + 2 (`expeditionPasses`; it was `siegePassesPerColony` 4 / `strikePassesPerColony`
+  3, which left the cargo of every fleet past the third or fourth aboard); vanilla's autoresolve
+  runs `raidsPerColony` passes at once, so the count has to be finite. `dispatchFactionResponse`
+  task forces have no 4-fleet or 250-FP-per-fleet limit: they split into `softenFleetFP`
+  fleets, each paid before it spawns, until the budget or the depot runs out.
   THE LOW-HANGING FRUIT FIRST (user's rule 2026-09-27, untested,
   `IncursionManager.siegeTargets`): an NPC siege takes the whole system when the base
   can take its orbit and pay for it; short of that, the most of the system's easiest
@@ -242,22 +271,27 @@ taken. Callers:
   only that: the launch, like the hunting gate, needs a target off its siege cooldown
   (`anySiegeReady`; before, a trigger colony off its cooldown but taken by another's
   siege sent the launch at its siblings still on theirs). Worlds on their siege cooldown
-  are left out, and a faction runs one siege of a system at a time. So are worlds another
+  are left out (2026-09-29: a faction used to run one siege of a system at a time; it may run
+  several now, on worlds no running siege has booked). So are worlds another
   faction's live siege is taking (`besiegedByOthers`): run 19 sent 14 of 37 sieges at
   Epsilon Qades, and 7 stood down when another faction's landing took the world first.
   And worlds another faction's army holds (`heldByOtherArmy`, the landing gate's own
   test): a front outlives its purge, and run 19's "1 of 2" siege spent all four passes
   raiding Epsilon Qades I with nowhere to land. The siege pass walks the hives easiest first, so easy
-  sieges claim the marines and the concurrency slots before hard ones. The launch, the
+  sieges claim the marines before hard ones (2026-09-29: there are no concurrency slots any more;
+  the strike and response concurrency caps, `maxConcurrentStrikes` and `responseMaxConcurrent`,
+  are deleted). The launch, the
   hunting gate and the convoy planner all read `siegeTargets`, and size with
   `siegeSizesFor`. The notice says "Against 2 of the 3 Threat colonies there". Run 18:
   marines gated 92% of postponements, and some systems' biggest hive needed more marines
   than the faction could raise while their small ones grew. The player's Siege order
   still takes the whole system.
   An NPC staging base BANKS TOWARD ITS SIEGE (2026-09-24, `ThreatReserves.stagingBank`):
-  its cap is the months cap plus its staging target, so the wait is the siege's needs over
-  its banking. The floor stays on the months cap (`monthsCap`), so the siege spends what
-  it saved. Before, Chicomoztoc, 31 ly from the nearest known hive, could hold 9,000 fuel
+  its reference stock is the months basis plus its staging target, so the wait is the siege's
+  needs over its banking (2026-09-29: it was a cap on the depot; banking has no ceiling now,
+  and the staging bank is a keep hunts and donors leave alone, except a hunt that thins the
+  very swarm blocking that siege, `huntSpendable`). The floor stays on the months basis
+  (`monthsBasis`; `monthsCap` is its old name), so the siege spends what it saved. Before, Chicomoztoc, 31 ly from the nearest known hive, could hold 9,000 fuel
   against a 13,000 launch gate and never sailed.
 - 2026-09-26, FROM RUN 5 (2.4 years, no player: 4 NPC sieges, hives grew). The log showed
   the gates shut for four reasons, each fixed in the same idiom: (S1) fuel and supplies
@@ -277,10 +311,15 @@ taken. Callers:
   worlds held 5-6.7k all run: 40 now; with the pools, marines and provisions are the
   real constraint. The LunaLib store moves 25 -> 50 in one step through `LunaConfigBridge`
   (0.7.0 shipped 25 at marker 1; the 40 step only ever ran on dev installs, so a 40 set
-  by hand stays).
+  by hand stays). (2026-09-29: the knob is gone altogether - 50 blocked 814 of 1,284
+  attempts in a later test; see "No cap on the flotilla" above.)
 - `IncursionManager.dispatchFactionResponse`: task forces draw fuel and supplies only,
   best-effort - the reactive defense always sails; draining the depot is what holds up
-  the next siege.
+  the next siege. No 4-fleet or 250-FP-per-fleet limit since 2026-09-29
+  (`responseMaxDifficulty` is gone): the faction's strength sets a budget that splits into
+  fleets of `softenFleetFP`, each sailing only while the depot pays for it (the last shrinks
+  to what it can pay), built at the points paid for (`ignoreMarketFleetSizeMult`). When their
+  order runs out they go home and settle (`ThreatReturns.orderRanOut`, see "Returns").
 
 **Troops ride the fleets**: `ThreatPurgeFGI` carries `marinesAllotted` /
 `armamentsAllotted`; its fleets are composed with troop transports
@@ -340,11 +379,17 @@ at least `convoyMinLoadFraction` (0.5) of a load or of the target (whichever is 
 the same-faction colony within `convoyRangeLY` (15; the player's colonies at any range)
 that holds the most above `donorKeepFraction` (0.5) of its own months cap - a staging
 base counts too, above that plus its own staging target (2026-09-24) - ships a convoy
-of up to
-`convoyMarineCapacity` (2,000) marines / `convoyCargoCapacity` (6,000) units - provided
-that is at least `convoyMinLoadFraction` of a load or of what the donor could spare when
-full (`ThreatConvoys.minLoad`; the old test against a hull load alone meant 1,000
-marines or 3,000 units, which no reserve ever reached, so nothing sailed). Deposits are
+of everything it can spare that the base still wants, and every donor that can does the
+same in parallel until the shortfall is covered (`planLogistics`; net of `inbound`, the
+cargo already at sea to the base). 2026-09-29, no arbitrary caps: it was one convoy per base
+at a time, each up to `convoyMarineCapacity` (2,000) marines / `convoyCargoCapacity` (6,000)
+units, which made a staging target of tens of thousands a queue of round trips. Those two
+are now **reference loads**: the unit "worth a sailing" is measured in
+(`ThreatConvoys.minLoad`, `convoyMinLoadFraction` of a load or of what the donor could spare
+when full - the old test against a hull load alone meant 1,000 marines or 3,000 units,
+which no reserve ever reached, so nothing sailed), never a ceiling on a load;
+`fitHulls` grows the fleet to carry the load, up to vanilla's `maxShipsInAIFleet` (`fleetShipLimit`,
+an engine limit; see "Hulls fit the load"). Deposits are
 not capped, so a staging base fills past its own cap. The base's short commodities are
 tried shortest first until one has a donor, and that donor sends everything it can spare
 that the base wants (2026-09-24: a base whose worst need nobody banked - Chicomoztoc's
@@ -384,18 +429,48 @@ for") named a system the player could not find on the map.
 **Hulls fit the load** (2026-09-24, `ThreatConvoys.fitHulls`): after the fleet is built
 (about a point of hull per 40 marines / 60 units), the faction's own personnel, freighter
 and tanker hulls are added until the marines fit the berths, the goods the hold and the
-fuel the tanks (up to 12 per pass). Before, an NPC navy's fleet-size multiplier and
-vanilla's hull picks left convoys a few dozen free berths, and marines were loaded only
+fuel the tanks (each pass runs until the load fits or no hull of the role can be added;
+2026-09-29: `MAX_FIT_HULLS`, 12 a pass, silently cut a big load). Before, vanilla's hull picks
+(and, until 2026-09-29, an NPC navy's fleet-size multiplier, now off for every convoy) left convoys a few dozen free berths, and marines were loaded only
 to that - 19 to 76 of a few hundred planned. Fuel is loaded against tank space, not the
 hold. NPC convoys and outpost returns only: a player colony's convoy keeps the hulls its
 free fleet points bought (`ThreatAidCapacity.fitLoad`) and loads what they carry, so it
-never sails over the ledger.
+never sails over the ledger - it is never grown or split, vanilla prunes it at its ship limit,
+the load is clamped to what it carries and anything clamped stays at the donor.
+
+**Split convoys (2026-09-29).** `fitHulls` grows a fleet only up to `maxShipsInAIFleet`
+(`fleetShipLimit`); it used to grow one fleet to 50-100 ships. A load that needs more sails as
+several convoys in parallel (`ThreatConvoys.dispatch`; the `nextHulls` search builds the fleet
+for the largest share of the load that fits, to within `SPLIT_PRECISION` 1.25). Each fleet
+pays its own escort - including a `convoyEscortFP` base per fleet - is paid for what was built
+(`builtEscort`: vanilla pruning below `BUILT_SHORT` is not billed), and is tracked and settled on
+its own. The total shipped is the load; only its division into fleets changes. The first fleet
+carries the whole sailing in `Convoy.sailing`, and the planner's totals (relief and front-run
+accounting) read it through `carried()`. `dispatch` pays the escort and draws what is loaded
+(`sail`: "draw only what was loaded"), so a donor holding less than asked sails less, and an empty
+fleet refunds its escort and fades. A fleet that comes up short ends the sailing; the rest waits
+for the next pass. Logged as "Convoy split".
 
 **Resolution** (fast poll): a convoy whose fleet is dead is lost with its cargo
 (announced if the player knows the faction is at war); one that reaches its destination
 deposits whatever is still aboard into the base reserve and turns for home
-(`GO_TO_LOCATION_AND_DESPAWN`). Fleets are flagged `$threatinc_convoy`; they are
+(`GO_TO_LOCATION_AND_DESPAWN`). One still afloat past `convoyTimeoutDays` (2026-09-29) is not
+written off with its cargo: it turns for home and settles (`returnHome`), and
+`ThreatReturns` despawns it only if it is not home within another `convoyTimeoutDays`. Fleets are flagged `$threatinc_convoy`; they are
 ordinary faction fleets, so the Threat hunts them and the player can raid them.
+
+**Escorts pay (2026-09-29, closed economy).** An NPC convoy's escort sails at the sortie's
+voyage rate (`ThreatConvoys.escortRate`: `expeditionSuppliesPerPoint` per
+`FP_PER_RESPONSE_DIFFICULTY` points, fuel for the distance), drawn from the donor's
+spendable stock (an outpost's whole stockpile) beyond the cargo it ships. The escort shrinks
+to what is paid (`paidEscort`), to none on a depot with nothing to spare, and the convoy
+comes home on the tracked leg (`ThreatReturns.sendHome`), its hulls re-banked at what
+survived. A convoy that never sailed refunds the escort in full (`refundEscort`). A player
+convoy's escort is its capacity ledger's business. An NPC convoy whose donor is gone or has
+changed hands settles at its faction's nearest base (`ThreatFleetOrders.pickBase`), else its
+nearest colony (`fallbackHome`, `homeBase`); a front run's arrival no longer deposits leftovers
+into a depot that changed hands. A convoy that times out turns home and settles too (see
+"Resolution").
 
 ## The faction selector and faction view (ThreatFactionView)
 
@@ -529,7 +604,11 @@ while disabled. Header tooltips are one line each and never explain colours or b
 
 Persistent list `threatinc_fleetOrders` of `Order { fleet, factionId, kind, baseMarketId,
 targetId, targetName, issuedTimestamp, days }`. Every order is a real task force
-(`guardFleetFP`, 100, for an NPC navy; the player's sail with all the colony has free) built at the faction's nearest military world in reach and
+(`guardFleetFP`, 100, for an NPC navy - since 2026-09-29 only its minimum: `ThreatFleetOrders.buildSortie`
+sizes an NPC sortie to what it faces, in fleets of up to `softenFleetFP` folded into one up to
+`softenMergeMaxShips`, stopping when the next fleet cannot be paid from the base's spendable stock;
+the first must be paid in full or the sortie stays home, and it logs `sortie_unpaid`; the player's sail
+with all the colony has free) built at the faction's nearest military world in reach and
 provisioned from that base's reserve (fuel x distance, supplies), flagged
 `$threatinc_ordered`, with vanilla assignments:
 
@@ -554,10 +633,11 @@ provisioned from that base's reserve (fuel x distance, supplies), flagged
   `computeSiegeDifficulty`; postponed with a message when the base lacks marines.
 - **Stage**: `ThreatConvoys.stageTo` - a convoy from the same-faction colony that can
   spare the most marines (or the most of anything) to the chosen colony, whether or not
-  it is a staging base. What it carries (`stageLoad`, 2026-09-05 evening): a hull load
-  of the marines and heavy armaments the donor holds above its sortie floor
+  it is a staging base. What it carries (`stageLoad`, 2026-09-05 evening): the marines and
+  heavy armaments the donor holds above its sortie floor
   (`ThreatReserves.available`) whatever the target already holds - the landing force is
-  never "enough"; fuel and supplies only up to what the target is short of its staging
+  never "enough" (2026-09-29: no longer a hull load, every tier is capped only by what the
+  donor holds above its floor and the run's hulls grow to carry it); fuel and supplies only up to what the target is short of its staging
   target (or its own cap when it is not a staging base). Before that, every commodity
   was capped at the target's staging target, so a base sitting at its target greyed the
   button with a reason that blamed the donors. Any distance (see "Ranges").
@@ -583,34 +663,75 @@ on the way home returns nothing. Convoys recalled or whose destination fell carr
 cargo back the same way. A recalled (or never-landed) expedition refunds its undeployed
 troops and armaments in full and its provisions at the refund rate when the intel ends
 (`ThreatPurgeFGI.refundOnReturn`), scaled by route damage; a destroyed one refunds
-nothing. Task forces that finish their attack naturally still despawn unrefunded - they
-spent it.
+nothing. Task forces that finish their attack naturally no longer despawn free (2026-09-29,
+closed economy; they used to fall through to a queued despawning return, unsettled): the
+response task force (`ThreatResponseIntel.advanceImpl`) polls `ThreatReturns.orderRanOut` - the
+order queue is empty, or only the old despawning return is left, and the fleet is not already
+on its tracked leg - and sends the fleet home (`sendFleetHome` -> `sendHome`) to settle like any
+recall. `retarget` leaves fleets already on their tracked leg home alone.
+
+**The hull share (2026-09-29, closed economy).** For an NPC fleet, `ThreatReturns.suppliesBack`
+splits the supplies drawn at launch: `returnHullShare` (0.8) of it paid for the hulls and
+comes back in full at the surviving strength (what comes home intact is not destroyed); only
+the rest is the voyage, refunded at `returnRefundMult`. Losses are the real cost of a sortie.
+The player's fleets keep the old rule, all of it at `returnRefundMult`. Fuel is unchanged.
+**NPC sieges settle on the real hulls (`ThreatPurgeFGI`, "the hull ledger", 2026-09-29).** The
+launch draws supplies on an estimate (`expeditionSuppliesPerPoint` a point, a point =
+`FP_PER_RESPONSE_DIFFICULTY` fleet points); vanilla builds each fleet from the faction's own sizes
+with jitter. `spawnFleets` -> `settleLedger` compares the fleet points that really spawned with
+what the expedition still held (route damage off): the shortfall is drawn from the base, then
+the siege donors (`IncursionManager.siegeDraw`), and the excess is refunded. What still cannot be
+paid for is pruned (`pruneOne`): warships first, one a pass, never a flagship or a civilian ship,
+and a whole fleet only when no warship is left. After the settle the supplies ride each fleet as
+a `ThreatReturns.provision` stamp (`suppliesDrawn` is zeroed), and each fleet refunds its own share
+by the hull-share rule when it is home - not at group end (`refundOnReturn` no longer holds
+them), so a fleet destroyed on the way home returns nothing. Fleets vanilla built but never
+placed when the expedition ended first (`settleUnplaced`) re-bank in full with their landing.
+Routes that never spawn, the player's expeditions and sieges from before the ledger
+(`ledgerHome` null) stay on the estimate. Fuel and ordnance are still on the estimate.
+Everything an NPC sends comes home on this leg now: convoy escorts (`ThreatConvoys.payEscort`
+draws the voyage, `sendHome` returns the hulls), recalled garrisons over a link
+(`ThreatFrontlines.recallGarrison`: the base re-banks what survived; a home that fell sends
+them to the faction's nearest base) and scouting parties (`ScoutReturn`). A fleet built with
+nothing drawn (`buildSortie`) does not sail: every NPC sortie is paid in full or stays home,
+and an outpost that fails to be raised refunds its cost.
 
 ## Built overnight 2026-09-04/05 (verified in-game on the clone save)
 
-**Convoy planner v2** (`ThreatConvoys.planLogistics`): loads size to the shortfall up
-to `convoyMarineCapacity` (2,000) / `convoyCargoCapacity` (6,000); escort =
+**Convoy planner v2** (`ThreatConvoys.planLogistics`): loads size to the shortfall (2026-09-29:
+up to `convoyMarineCapacity` (2,000) / `convoyCargoCapacity` (6,000) then; they are reference
+loads now, see "Logistics AI" above); escort =
 `convoyEscortFP` + cargo value / 1,000 x `convoyEscortPerThousand`; EQUALISATION
 (a donor sent at most half the gap between the stocks) was REMOVED 2026-09-05 - it
 answered every colony being a staging base, and it made a base unable to ever hold more
 than its donors; with one staging base per hive and a staging base donating only what it
 holds above its own siege's needs (`ThreatConvoys.spare`, 2026-09-24 - never before), the
-traffic in each commodity has one direction. Every base short of stock sails each tick, one
-convoy at a time per base, neediest first, FRONT RUNS FIRST (no per-tick cap since
+traffic in each commodity has one direction. Every base short of stock sails each tick, as
+many convoys in parallel as it has donors for (2026-09-29; it was one at a time per base),
+neediest first, FRONT RUNS FIRST (no per-tick cap since
 2026-09-27: the cap of 2 held Hegemony's fronts back 12 times in run 14). After any fight `trimToHulls` drops cargo the
 surviving ships cannot carry (Blackett's constant loss per attack).
 
 **Raiders** (`ThreatRaiders`): when a convoy sails, hive colonies within
 `raiderRangeLY` of the route midpoint with a Defense Swarm above their garrison
 reserve roll `raiderChance`; the nearest success detaches its largest swarm from the
-garrison list (so the leash ignores it), gives it INTERCEPT on the convoy for
+garrison list (so the leash ignores it), one after another until the pack's fleet points
+reach the convoy's x `RAIDER_MARGIN` (1.5; 2026-09-29: it was one raider per convoy, one
+swarm per hive), gives it INTERCEPT on the convoy for
 `raiderDays`, then brings it home with the leash's own blinders recipe and rejoins
 the garrison. The board shows "Interdiction vs X convoy" as an outbound op on the
 hive's row and the convoy reads HUNTED.
 
 **Front runs** (`ThreatConvoys.planFrontRuns`): a friendly front is a reserve
-consumer. Wants = `frontResupplyDays` of armaments and marines back toward
-`frontReinforceFraction` of peak (`marinesLanded`); the nearest base in reach sends a
+consumer. Wants = `frontResupplyDays` of armaments and marines back to the whole peak
+(`landedStrength`) or what holds the front (`holdGap`), whichever is more
+(`ThreatConvoys.frontWants`; 2026-09-29: `frontReinforceFraction`, 0.8, of peak is gone -
+an army was never let back to the strength it landed at). Runs are sized to the wants,
+several in parallel from the bases and forward outposts in reach (it was one run at a time,
+each a hull load; the run's hulls grow to carry it, up to `maxShipsInAIFleet` - a supply load past
+that sails as several runs in parallel by the same split rule as convoys ("Split convoys" above),
+each paying its own escort; a pickup is one fleet grown to the limit, and what its berths cannot
+hold rides home aboard it rather than being split off a front still fighting); the nearest base in reach sends a
 run out of its reserve above the floor. The run sails to the hive system's
 jump-point, waits while `orbitContested` (up to `frontRunWaitDays`, then home), runs
 in, lands cargo via `resupply`, and goes home on the tracked return leg. An NPC
@@ -725,7 +846,7 @@ base, `ORBIT_AGGRESSIVE` over the world's own planet for `supportDays` (60), the
 the tracked return leg like every other sortie. On station over a hostile world whose orbit
 nothing holds against it, it besieges: each poll `ThreatGroundFronts.tickSupport` delivers
 its live fleet points as a siege slice and the batteries answer (docs/ground-war.md "Sieges
-from orbit"). NPC size is `guardFleetFP`; a player sortie is sized by
+from orbit"). NPC size is what `buildSortie` sizes it to (`guardFleetFP` is its minimum, 2026-09-29); a player sortie is sized by
 `ThreatAid.taskForceFP(base)` and held on the capacity ledger, exactly as Guard is. Recall
 is the ordinary order Recall. Knobs `threatinc_escortEnabled` / `threatinc_escortDays` (the
 keys keep the old name).
@@ -771,13 +892,17 @@ sitrep as "Reinforced ground front".
 
 **Escalation** (`ThreatAlarm`, docs/design-theory.md 8.1): grudge per faction
 (+`alarmPerStratum`, +`alarmPerEradication`, +`alarmPerRaid` for raids and tactical
-passes, NPC and player alike), alarm = the sum, decaying `alarmDecayPer30`. Alarm
-divides every Swarm Nexus respawn interval by `1 + alarm x alarmTempoMult` (capped
-`alarmTempoMax`); grudge multiplies a faction's worlds' strike weight by
+passes, NPC and player alike), alarm = the sum, decaying `alarmDecayPer30`. Grudge
+multiplies a faction's worlds' strike weight by
 `1 + grudge x alarmTargetMult`; a ground victory calls `IncursionManager.retaliate`,
 which launches a normal strike (same phase, cap, garrison and reach rules) from the
-nearest hive that can reach a world of the winner. Header shows "Alarm N -
-fabrication xM" with the formula and per-faction grudges in the phase tooltip.
+nearest hive that can reach a world of the winner. Header shows "Alarm N".
+(2026-09-29, closed economy: the alarm no longer speeds fabrication. It used to divide every
+Swarm Nexus respawn interval by `1 + alarm x alarmTempoMult`, capped at `alarmTempoMax`; the
+respawn interval (`garrisonRespawnDays`) is gone with the FP bank - see "Fabrication bank" in
+docs/hive-economy.md - and both alarm knobs and `ThreatAlarm.tempoMult` are deleted from code and
+config. The header read "Alarm N - fabrication xM"; its tooltip listed the formula, now each
+faction's grudge and strike-weight multiplier.)
 
 **Also**: reserve floor (`reserveFloorFraction` for NPC colonies, `playerReserveFloorFraction`
 for the player's, default 0) and militia trickle (`reserveBaselinePerSize`); "send what you can" trims a short expedition's flotilla
@@ -852,7 +977,7 @@ quality or fleet-size scaling). `ThreatReturns.sendHome/poll/settle` resolve the
 through `ThreatBases` too, so the run comes back to the station and unloads into its
 stockpile. An outpost that cannot cover the run falls through to the nearest colony,
 unchanged. Once the outpost's system holds no hive its stock ships home:
-`planOutpostReturns` (in `planLogistics`, after front runs and relief) sends one convoy at a time from the station to the faction's nearest base
+`planOutpostReturns` (in `planLogistics`, after front runs and relief) sends the whole stock at once in as many fleets as it needs (2026-09-29; it was one hull load per convoy, one convoy at a time; the fleets grow to `maxShipsInAIFleet`, then split as above), from the station to the faction's nearest base
 (`dispatch` takes a `ThreatBases.Base` donor), so a ground victory's survivors return to
 the war instead of sitting in a station nothing can draw from. The faction view's reserves
 table lists each outpost's stock as a row of its own (no floor, no accrual, grey where
@@ -861,9 +986,11 @@ Supplies and Fleet buttons too ("Storage and orders" above).
 
 **Relief (2026-09-05, untested).** A Threat front on a faction's own world is answered on
 the slow tick: `ThreatFleetOrders.planRelief` puts a Guard task force over it (NPC navies;
-the player orders Guard by hand), one per world, and `ThreatConvoys.planRelief` sends a
-convoy of marines from the colony in convoy range that can spare the most, ahead of every
-depot (the player's mobilised faction too). The besieged colony's own banked marines are
+the player orders Guard by hand), one per world, sized to the swarm over it with no fleet
+cap (`sendRelief`), and `ThreatConvoys.planRelief` sends the marines the counter-attack needs
+(`ThreatGroundFronts.reliefNeed`, net of what is at sea) from every colony in reach that can
+spare them, richest first, in parallel (2026-09-29; it was one convoy from one donor), ahead of
+every depot (the player's mobilised faction too). The besieged colony's own banked marines are
 committed while the front stands (`ThreatReserves.committed`, honoured by `available` and
 `ThreatConvoys.spare`): they defend, they do not ship.
 
@@ -899,8 +1026,11 @@ scuttled it, and no way to supply it, send a fleet to it, or see what it held. D
   either kind), `Convoy.toMarketId` and `Order.targetId` may now be a station entity id, and
   `ThreatConvoys.poll/arrived/boundFor`, `ThreatFleetOrders.atStation` and
   `ThreatRaiders.consider` resolve them through `ThreatBases`. A hand-ordered convoy to an
-  outpost carries a hull load of everything the donor can spare, fuel and supplies included
-  (no staging target, no cap - nothing there is "short"). A guard over an own outpost is an
+  outpost carries, by the load ladder (`stageLoad`; 2026-09-29, it was a hull load of everything
+  the donor can spare), Min = a reference load (`convoyMarineCapacity` / `convoyCargoCapacity`),
+  Med = that x `convoyExtraLoadFactor`, Max = everything available above the donor's floor,
+  fuel and supplies included (no staging target - nothing there is "short"); a player donor's
+  is fitted to its free FP. A guard over an own outpost is an
   own guard: `guardOwnDays` (0 = until recalled), points on the source's ledger as a sortie;
   it does not fold into any host (an outpost has no capacity ledger) and it is excluded from
   the reassignable list like a staged guard. The row's Convoys cell says "Forward base"
@@ -959,29 +1089,40 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   Tri-Tachyon's answer went over I-B. A force that cannot be fielded or paid against it
   does not go for a weaker world instead.
 - Size: the Defense Swarm FP over the siege's worlds (the whole system's for a force with
-  no set) x `softenMargin` (2.0), capped at `softenMaxFP`
-  (12,000), and never below the target's garrison x the margin x `softenHeadroom`
+  no set) x `softenMargin` (2.0), with no ceiling (2026-09-29: `softenMaxFP` 12,000 and
+  `MAX_FLEETS` 30 left every hive over ~4k FP a world unhunted for a 3.7-year test; only what
+  the bases can pay bounds it), and never below the target's garrison x the margin x `softenHeadroom`
   (1.5, 2026-09-25) - or, for a colony regrowing its swarms, the whole garrison it refills
   to at the strength of the swarms it has (`musterFloorFP`, rc1 review: targets regrew
-  1.7-43x during musters). It waits if that floor is above the cap, or if its bases cannot pay
-  for it. The headroom is slack for the muster: the swarms reinforce while the force
+  1.7-43x during musters). It waits if its bases cannot pay for it. The headroom is slack for the muster: the swarms reinforce while the force
   gathers (433 -> 1,329 FP over Zendar in Run 6), and the muster still asks only garrison x
   margin. Counted on the WARSHIPS BUILT
-  (`combatFP`): vanilla scales an NPC fleet by its market's `COMBAT_FLEET_SIZE_MULT`, so the
-  planner asks for points / that multiplier and adds up what each fleet really came out at.
+  (`combatFP`): each fleet is built at the points it is paid for (`ignoreMarketFleetSizeMult`,
+  2026-09-29 - the planner used to ask for points / the market's `COMBAT_FLEET_SIZE_MULT`
+  and a 1.5 multiplier sailed half again free) and the planner adds up what each fleet really
+  came out at; what vanilla pruned is refunded (`refundShort`).
   If the yards built less than the floor, the fleets fold straight back into the depot
   (`ThreatFleetOrders.fold`, full refund).
 - POOLED (`softenPool`, default on): after the nearest base, every other base of the
-  faction in reach that is not resting and has no siege of its own chips in, nearest
-  first, until the force reaches its size. Each base that sent a fleet rests
-  `softenIntervalDays`.
+  faction that reaches the hive - or the primary base - on its own expedition range
+  (`expeditionRangeLY`), is not resting and has no siege of its own chips in, nearest
+  the hive first, until the force reaches its size (2026-09-29, `contributors`: the hive's
+  range alone kept every depot behind the primary base out of the hunt; a base in fuel range
+  of the primary chips in, its fleets paying fuel for the whole way). Each base that sent a
+  fleet rests `softenIntervalDays`.
 - Cost: fuel (FP / 25 x LY x `expeditionFuelPerPointLY`) and supplies (FP / 25 x
   `expeditionSuppliesPerPoint`) drawn from the base's SPENDABLE stock
   (`ThreatReserves.spendable`: above the floor, the donor keep share and the staging bank),
   so a hunt never spends what convoys banked for the base's own siege (rc1 review: one hunt
-  took Culann from 55,852 fuel to 3,765 and its siege postponed). A siege's pooled marines
+  took Culann from 55,852 fuel to 3,765 and its siege postponed). **The exception
+  (2026-09-29, `ThreatSoftening.huntSpendable`):** where the base's own siege of that system is
+  blocked by the very swarm the hunt targets (`siegeWaitsOnHunt`: the system is the hive it
+  stages for and `hasSiegeableHive` is false - its orbit gate is what the hunt thins), that
+  siege's staging bank is spendable too and the base keeps only its floor and donor keep;
+  the siege cannot sail until the swarm is thinned, and the staging bank starved the one force
+  that would thin it. A siege's pooled marines
   and armaments come from the other bases the same way. Everything is a warship: no marines, no armaments, no landing.
-- Fleets: split into fleets of at most `softenFleetFP` (400), each a `KIND_HUNT` order
+- Fleets: split into fleets of at most `softenFleetFP` (1500), each a `KIND_HUNT` order
   (`ThreatFleetOrders.dispatchHunt`, "Hunt" on the board) carrying the force's id
   (`Order.forceId`, a `ThreatSoftening.Force` in persistent data).
 - MUSTER (2026-09-24 review): the fleets fly blinkered to their faction's muster point,
@@ -1003,9 +1144,9 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   Independents built 304 FP of a 1,683 ask. Most navies top out at 250-500 FP per fleet.
   A fleet built below 80% of its ask refunds the provisions for the missing points, and
   the faction asks at most 1.1x what it built from then on (`FLEET_CAP`, cleared on load).
-  It is learned only from a real prune (the fleet at the ship cap), and the pre-muster
-  check caps what the yards can build at `MAX_FLEETS` fleets of that size: before, a
-  faction built 30 fleets, came up short and scrapped them every month (rc1 review).
+  It is learned only from a real prune (the fleet at the ship cap). There is no fleet-count
+  cap since 2026-09-29: the force takes as many fleets of that size as its bases pay for (the
+  old `MAX_FLEETS` 30 was what made forces come up short and scrap every month, rc1 review).
 - IN AS ONE (the same night's test): sent in on separate headings, the fleets strung out
   and fought the garrisons they passed alone. The slowest MUSTERED fleet leads with the hunt
   order, and the rest FOLLOW it blinkered (`sendIn`). At go-in every mustered fleet folds
@@ -1038,7 +1179,7 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   cooldown) for that long. In Run 4 a hunt opened Alpha Novy Tayvay's gate (355 FP) and
   the swarms were back at 3,233 FP before the next tick. `siegeMaxFleets` went from 10
   to 25 the same night: big hive worlds hold 3.7k-7.5k FP of swarms each, and 10 fleets
-  (~2.4k FP) never could reach the orbit margin.
+  (~2.4k FP) never could reach the orbit margin. (2026-09-29: the knob is gone - no fleet cap.)
 - Upkeep runs on the half-day order poll (`ThreatSoftening.advanceHunts` from
   `IncursionManager.advance`). It used to ride the 30-day strategy tick, so a hunt could
   fight on for a month before its retreat rule was read.
@@ -1084,13 +1225,21 @@ scouting parties, and a hive any faction finds is known to all, player included.
   or neighbour's find is announced. Strikes and retaliation strikes no longer reveal.
 - A strike on an NPC colony gives its faction a LEAD on the origin. Sorties sweep
   uninhabited systems with a planet within scoutLeadRadiusLY of the origin, nearest-first
-  from the faction's nearest military world, scoutStops per sortie, until the origin is
+  from the faction's nearest military world, as many parties as the route needs (2026-09-29:
+  `scoutStops`, 4 per sortie, is gone; a route joins a stop only while it lies nearer the last
+  stop than the party's start, `ThreatScoutRoute.nearestFirst`), until the origin is
   entered. A lead ignores sweeps older than itself. No task force sails until the origin
   is known; after that the normal purge tick takes it up.
 - A mobilised faction with no lead sweeps within scoutRangeLY of a random military world
   every scoutIntervalDays. A system swept clear is skipped for scoutMemoryDays.
-- scoutMaxPerFaction sorties out at once; a scouting party is a PATROL_SMALL of
+- No limit on sorties out at once (2026-09-29: `scoutMaxPerFaction`, 2, and one launch per poll
+  are gone; a faction sends a party per route until nothing is left to sweep around each of its
+  military worlds); a scouting party is a PATROL_SMALL of
   scoutFleetPoints, non-aggressive, stays scoutStayDays per empty system, reports home.
+  **Scouts pay (2026-09-29, closed economy):** a party pays what any NPC sortie pays from its
+  home's spendable reserve - supplies at the voyage rate per point, fuel per point per light-year
+  of the whole route - in full or it does not sail (the route waits on the depot), and what
+  survives is settled home on return (`ScoutReturn`, `ThreatReturns.settle`).
 - Sweeps skip abyssal, hidden-theme and cut-off systems (`ThreatScouts.unreachable`): a
   fleet's GO_TO into vanilla's "Unknown Location" pockets never arrives - one Hegemony scout
   sat 132 days on one (test run 2026-09-24). Backstop for any stop: a party that has not
@@ -1110,8 +1259,14 @@ out the moment a world is in reach.
   delivered, fuel, working Swarm Nexus, but NOT the garrison - sends a Scouting Swarm
   (`ThreatFleetComposer.createScouts`, the scout archetype, swarmScoutFleetPoints)
   through unknown systems with a strikeable world within its `fuelRangeLY`,
-  nearest-first, scoutStops per sortie, scoutStayDays each. The Defense Swarms stay home.
-- swarmScoutMax out at once, hive-wide. Scouts keep the swarm's stealth, pick no fights,
+  nearest-first, a sortie per route, scoutStayDays each. The Defense Swarms stay home.
+  Each Scouting Swarm is paid from the colony's fabrication bank (`canAffordFP`, then
+  `chargeFP` at the fleet's real points; docs/hive-economy.md "Fabrication bank"): no bank, no
+  scout. The scout is bound to the bank (`bindToLedger`), so what survives is re-banked when it
+  fades out at home.
+- No limit on scouts out at once (2026-09-29: `swarmScoutMax`, 2, hive-wide, and one sortie
+  a poll are gone; `launchAll` sends a route per hive system that can pay until nothing unknown
+  is left in reach). Scouts keep the swarm's stealth, pick no fights,
   and fade out at home. Charting a system is announced in debug mode only.
 - Knob swarmScouting false = the swarm knows every world, as before. An existing save
   pauses its strikes until the first scouts have charted something.

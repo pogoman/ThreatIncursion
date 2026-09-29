@@ -256,6 +256,9 @@ Still needs a yes:
 5. Recipient standing: aid to a faction at war with the player (`aidMinRelation`,
    default the hostile threshold) is refused - their patrols would shoot the convoy.
    Inhospitable Sindria at -20 still qualifies.
+   The player must be mobilised too (user 2026-09-29): Defend, Aid and Hunt in another
+   faction's view are refused while the player is not (`ThreatAid.playerNotMobilised`);
+   Recall of fleets already out stays open.
 6. Defence contract: the "player asset present when the strike arrives" rule, and
    ending unpaid (no penalty) when no strike came or the faction managed alone.
    Alternative: pay half for a term served with no action.
@@ -301,7 +304,10 @@ Where the build departs from the text above, on purpose:
   at the colony (the market memory flag `$threatinc_aidRequest`), not for unsolicited
   gifts. Board aid to a colony with nothing short is refused too.
 - NPC fleets keep vanilla's fleet-size scaling (their navy is their colony); only
-  player-launched fleets are built at exactly the ledger's points.
+  player-launched fleets are built at exactly the ledger's points. (2026-09-29, closed
+  economy: no longer - task forces, sorties, hunting forces, scouts and convoy escorts are
+  built at the points paid for, `ignoreMarketFleetSizeMult`, for NPC and player alike; what
+  vanilla prunes is refunded.)
 - A player purge expedition that still exceeds the free points after trimming to two
   fleets of minimum difficulty is REFUSED (changed 2026-09-05 evening after five sieges
   sailed 1,025 FP from a 239 FP colony; section 7, item 4 was "send what you can"). The
@@ -332,20 +338,29 @@ Where the build departs from the text above, on purpose:
   - **Supply run** (the front's Supply button, `ThreatConvoys.supplyAsk`): Min asks for
     what the front wants, floored to a worthwhile run (200 marines, 30 days' armaments);
     Med asks `threatinc_convoyExtraLoadFactor` x that (default 2); Max asks for a full
-    hull load, wanted or not - so Max is also the only tier that sails to a front that
+    hull load (2026-09-29: everything available above the floor), wanted or not - so Max is also the only tier that sails to a front that
     wants nothing (`supplyBlockReason` skips its "wants nothing" gate at Max).
   - **Convoy load** (the colony Supplies button, `ThreatConvoys.stageLoad`, and the Aid
     button, `ThreatAid.quoteResupply`): Min carries what the target is short of its
     staging target (or of its reserve cap, where it stages for nothing); Med carries the
-    factor x that; Max carries a hull load of everything the source can spare. **Max is
+    factor x that; Max carries everything the source can spare above its floor (a hull load until
+    2026-09-29). **Max is
     the old behaviour** for marines and armaments, which always asked for a hull load
     regardless of the target's stock (2026-09-05, "the landing force ... there is never
     enough of it"); Min is the bounded version of that ask, and is the default. Set the
-    ladder to Max to get the old Supplies button back. A run to an OUTPOST is a hull load
-    at every tier: it banks nothing, so nothing there is ever "short".
+    ladder to Max to get the old Supplies button back. A run to an OUTPOST (2026-09-29; it was a
+    hull load at every tier) is Min = a reference load (`convoyMarineCapacity` /
+    `convoyCargoCapacity`), Med = that x `convoyExtraLoadFactor`, Max = everything available
+    above the floor: it banks nothing, so nothing there is ever "short".
   - Every tier is only an ASK. The load is still `min(ask, what the source holds above
     its floor, the convoy's capacity)`, and a player source's is then fitted to its own
     free hulls - so a tier raises the ceiling, never the source's ability to fill it.
+    (2026-09-29, no arbitrary caps: `convoyMarineCapacity` / `convoyCargoCapacity` are
+    reference loads, not a limit - an NPC run's hulls grow to carry the ask, up to vanilla's
+    `maxShipsInAIFleet`, then split into parallel fleets. A player colony's convoy - outpost runs
+    included - is fitted to the colony's free FP and is never grown or split: vanilla prunes it
+    at its ship limit, the load is clamped to what it carries, and anything clamped stays at the
+    donor.)
   - Fleet orders (Fleet, Defend, Strike, Intercept) have no ladder: they already sail
     with everything the source colony has free (`ThreatAid.taskForceFP`).
 - The Strike aid button lives in each NPC faction's view, on its hives-in-reach rows;
@@ -372,7 +387,8 @@ to the player exactly as to an NPC faction:
   it as a row of its own.
 - **It is a base you can use (2026-09-06, untested).** The outpost row has the same
   **Supplies** and **Fleet** buttons as a colony row: a convoy lands in the station's
-  storage (a hull load of whatever the donor can spare, fuel and supplies included), a task
+  storage (by the load ladder - a reference load, that x the extra factor, or everything above
+  the donor's floor, fuel and supplies included; fitted to the colony's free FP), a task
   force holds its orbit until recalled. No Waystation is needed - the station is the depot.
   Dock at the station for its own dialog: **Open the storage** is vanilla's cargo screen on
   the outpost's storage (the marines, armaments, fuel and supplies the board shows, to take

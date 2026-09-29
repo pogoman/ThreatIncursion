@@ -132,8 +132,9 @@ public class ThreatMissionFilter implements GenericMissionCreator {
 	static EveryFrameScript dropIfPostedByThreat(EveryFrameScript intel) {
 		if (intel instanceof BaseIntelPlugin && postedByThreat((BaseIntelPlugin) intel)) {
 			((BaseIntelPlugin) intel).endImmediately();
-			ThreatIncConfig.log("Vanilla mission from a hive world dropped: "
-					+ intel.getClass().getSimpleName());
+			// one line a month per kind: 350+ a long test otherwise
+			ThreatIncConfig.logQuiet("mission_drop_" + intel.getClass().getSimpleName(),
+					"Vanilla mission from a hive world dropped: " + intel.getClass().getSimpleName());
 		}
 		return intel;
 	}

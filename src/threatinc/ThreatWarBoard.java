@@ -1747,22 +1747,15 @@ public class ThreatWarBoard {
 						+ "danger level genuinely regresses.", 0f);
 				if (!ThreatAlarm.enabled()) return;
 				Color h = Misc.getHighlightColor();
-				tooltip.addPara("Alarm: the swarm answers who hurts it. Every faction earns "
-						+ "grudge for strata taken (%s), hives eradicated (%s) and raids or "
-						+ "tactical passes (%s); the sum is the alarm, fading %s a month. Alarm "
-						+ "multiplies Swarm Nexus fabrication - the hive's whole military tempo - "
-						+ "by %s now; a faction's grudge weights strikes toward its worlds; a "
-						+ "ground victory draws a retaliation strike at the winner.", 10f, h,
-						"" + (int) ThreatIncConfig.alarmPerStratum(),
-						"" + (int) ThreatIncConfig.alarmPerEradication(),
-						"" + (int) ThreatIncConfig.alarmPerRaid(),
-						(int) (ThreatIncConfig.alarmDecayPer30() * 100f) + "%",
-						"x" + String.format("%.2f", ThreatAlarm.tempoMult()));
+				// (2026-09-29: the alarm no longer speeds fabrication - the bank
+				// pays for every swarm - so the tooltip is the grudges, one a line)
+				float pad = 10f;
 				for (Map.Entry<String, Float> g : ThreatAlarm.grudges().entrySet()) {
 					if (g.getValue() == null || g.getValue() <= 0f) continue;
 					tooltip.addPara(ThreatWarState.displayName(g.getKey()) + ": grudge %s "
-							+ "(strike weight x%s)", 3f, h, String.format("%.1f", g.getValue()),
+							+ "(strike weight x%s)", pad, h, String.format("%.1f", g.getValue()),
 							String.format("%.1f", ThreatAlarm.targetMult(g.getKey())));
+					pad = 3f;
 				}
 			}
 		}, panel, TooltipLocation.BELOW);
@@ -2549,7 +2542,7 @@ public class ThreatWarBoard {
 			return new String[] {"%s %s", from, "contested"};
 		}
 		float growthMult = ThreatColonyManager.growthMultFor(health);
-		int cap = Math.min(ThreatIncConfig.colonyMaxSize(), Misc.getMaxMarketSize(market));
+		int cap = ThreatColonyManager.maxColonySize(market);
 		if (market.getSize() >= cap) return new String[] {"%s %s", from, "max"};
 		if (growthMult <= 0f) return new String[] {"%s %s", from, "stalled"};
 		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize()

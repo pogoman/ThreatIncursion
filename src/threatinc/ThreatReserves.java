@@ -81,10 +81,11 @@ public class ThreatReserves {
 		/** Rule 3: when the depot last issued a cover, per commodity (clock timestamp). Null on older saves. */
 		public Map<String, Long> coverIssued;
 		/**
-		 * The largest cap this depot has banked towards, per commodity, at full
-		 * production share ({@link #noteCap}) - the basis of its floor once the
-		 * colony is in deficit and the live cap reads zero (see {@link #floor}).
-		 * Null on older saves.
+		 * The largest months basis this depot has banked at, per commodity, at
+		 * full production share ({@link #noteBasis}) - the basis of its floor
+		 * once the colony is in deficit and the live basis reads zero (see
+		 * {@link #floor}). A reference, never a ceiling: the field keeps its old
+		 * name so saves load. Null on older saves.
 		 */
 		public Map<String, Float> capSeen;
 		/**
@@ -362,7 +363,7 @@ public class ThreatReserves {
 
 	/**
 	 * Stock above the colony's floor - what a sortie may actually take. The
-	 * floor (reserveFloorFraction of the cap) is the home garrison's stock;
+	 * floor (reserveFloorFraction of the months basis) is the home garrison's stock;
 	 * expeditions and orders never draw below it, so a small faction cannot
 	 * empty its depots on one sortie and go quiet for the rest of the war
 	 * (docs/design-theory.md 8.6). Convoys use the donor keep fraction instead.
@@ -598,27 +599,27 @@ public class ThreatReserves {
 	}
 
 	/**
-	 * The home garrison's stock: reserveFloorFraction of the cap. The live cap
-	 * is the colony's CURRENT surplus times the cap months, and a colony in
-	 * deficit has no surplus - so the moment a colony is short, the cap it
-	 * banked towards reads zero and a floor taken from it alone would vanish
-	 * exactly when it matters (a struck world's depot could be drawn to
-	 * nothing by a sortie or its own shortage covers). The floor therefore
-	 * stands on the largest cap the depot has seen, which {@link #poll}
-	 * records at full production share and the floor scales to the share in
-	 * force - the share moves with the faction's market count, and a peak kept
-	 * at an old share pinned the floor above the live cap after a drop; a
-	 * colony that never banked a commodity has no floor for it.
+	 * The home garrison's stock: reserveFloorFraction of the months basis
+	 * ({@link #monthsBasis}). The live basis is the colony's CURRENT banking
+	 * times reserveCapMonths, and a colony in deficit has no surplus - so the
+	 * moment a colony is short, its basis reads zero and a floor taken from it
+	 * alone would vanish exactly when it matters (a struck world's depot could
+	 * be drawn to nothing by a sortie or its own shortage covers). The floor
+	 * therefore stands on the largest basis the depot has seen, which
+	 * {@link #poll} records at full production share and the floor scales to
+	 * the share in force - the share moves with the faction's market count,
+	 * and a peak kept at an old share pinned the floor above the live basis
+	 * after a drop; a colony that never banked a commodity has no floor for it.
 	 */
 	public static float floor(MarketAPI market, String commodityId) {
 		if (market == null) return 0f;
-		float basis = monthsCap(market, commodityId);
+		float basis = monthsBasis(market, commodityId);
 		ColonyReserve r = get(market.getId());
 		if (r != null && r.capSeen != null) {
 			Float seen = r.capSeen.get(commodityId);
 			if (seen != null) {
 				float base = baselineMonths(market, commodityId);
-				float atShare = seen > base ? base + (seen - base) * capShare(market, commodityId) : seen;
+				float atShare = seen > base ? base + (seen - base) * basisShare(market, commodityId) : seen;
 				if (atShare > basis) basis = atShare;
 			}
 		}
@@ -627,21 +628,21 @@ public class ThreatReserves {
 	}
 
 	/**
-	 * Remembers the cap a depot banked towards, so its floor survives the
+	 * Remembers the months basis a depot banked at, so its floor survives the
 	 * colony falling into deficit. Kept at full production share: the share
 	 * scales only the surplus banking, so that part is divided by the share in
 	 * force (the militia and the tithes are not) and {@link #floor} scales it
 	 * back to the share of the day. A record from before the share existed was
 	 * made at share 1 and stands as it is.
 	 */
-	protected static void noteCap(MarketAPI market, ColonyReserve r, String c, float capValue) {
-		if (r == null || capValue <= 0f) return;
+	protected static void noteBasis(MarketAPI market, ColonyReserve r, String c, float basis) {
+		if (r == null || basis <= 0f) return;
 		float base = baselineMonths(market, c);
-		float share = capShare(market, c);
-		if (share > 0f && capValue > base) capValue = base + (capValue - base) / share;
+		float share = basisShare(market, c);
+		if (share > 0f && basis > base) basis = base + (basis - base) / share;
 		if (r.capSeen == null) r.capSeen = new LinkedHashMap<String, Float>();
 		Float seen = r.capSeen.get(c);
-		if (seen == null || capValue > seen) r.capSeen.put(c, capValue);
+		if (seen == null || basis > seen) r.capSeen.put(c, basis);
 	}
 
 	/** Months of the banking the production share does not scale: the militia and the Path's tithes. */
@@ -650,8 +651,8 @@ public class ThreatReserves {
 				* ThreatIncConfig.reserveCapMonths();
 	}
 
-	/** The production share a colony's cap is scaled by; none for a backed colony, whose stockpile is vanilla's. */
-	protected static float capShare(MarketAPI market, String commodityId) {
+	/** The production share a colony's banking is scaled by; none for a backed colony, whose stockpile is vanilla's. */
+	protected static float basisShare(MarketAPI market, String commodityId) {
 		return isBacked(market) ? 1f : productionShare(market.getFactionId(), commodityId);
 	}
 
@@ -663,7 +664,7 @@ public class ThreatReserves {
 
 	/**
 	 * Stock a hunting force may take from this base: above the floor, the
-	 * donor keep share of the months cap AND the staging bank, so what convoys
+	 * donor keep share of the months basis AND the staging bank, so what convoys
 	 * built up for this base's own siege stays for it. Culann's 55,852 banked
 	 * fuel went on one hunt and its siege then postponed (rc1 review). A siege
 	 * - the base's own or a sibling's pooling it (IncursionManager.siegeDonors,
@@ -673,7 +674,7 @@ public class ThreatReserves {
 		if (market == null) return 0f;
 		if (committed(market, commodityId)) return 0f;
 		float keep = Math.max(floor(market, commodityId),
-				monthsCap(market, commodityId) * ThreatIncConfig.donorKeepFraction()
+				monthsBasis(market, commodityId) * ThreatIncConfig.donorKeepFraction()
 						+ stagingBank(market, commodityId));
 		return Math.max(0f, stock(market.getId(), commodityId) - keep);
 	}
@@ -844,36 +845,48 @@ public class ThreatReserves {
 	}
 
 	/**
-	 * The most of a commodity the colony keeps: months of its own banking.
-	 * A backed colony's cap is vanilla's stockpile limit plus months of the
-	 * militia; what the player leaves there above it is kept (vanilla never
-	 * trims a resource it should have), it just stops accruing.
+	 * The colony's REFERENCE stock of a commodity - months of its own banking
+	 * plus its staging bank - for "how full" readouts. Not a ceiling
+	 * (2026-09-29: the depot used to stop banking here, and production above
+	 * it was lost; a staging target of tens of thousands then waited on
+	 * convoys alone). Stock runs past it freely: what is made is banked.
 	 */
 	public static float cap(MarketAPI market, String commodityId) {
-		return monthsCap(market, commodityId) + stagingBank(market, commodityId);
+		return monthsBasis(market, commodityId) + stagingBank(market, commodityId);
 	}
 
 	/**
-	 * An NPC staging base banks on toward the siege it stages (2026-09-24):
-	 * its staging target (ThreatConvoys.stagingTargets) on top of the months
-	 * cap, so the wait for a siege is its needs over its banking, not
-	 * forever. Before, a base 31 ly from the nearest known hive could hold
-	 * 9,000 fuel against a 13,000 launch gate. Zero for any other colony and
-	 * for the player's (their stockpile is vanilla's). The floor stays on the
-	 * months cap, so the siege can spend what it saved.
+	 * What an NPC staging base holds for the siege it stages (2026-09-24): its
+	 * staging target (ThreatConvoys.stagingTargets). A keep, not a bank limit
+	 * since 2026-09-29 - banking has no ceiling - so hunts and donors leave it
+	 * for the base's own siege ({@link #spendable}, ThreatConvoys.spare). Zero
+	 * for any other colony and for the player's (their stockpile is
+	 * vanilla's). The floor stays on the months basis, so the siege can spend
+	 * what it saved.
 	 */
 	public static float stagingBank(MarketAPI market, String commodityId) {
 		if (market == null || market.isPlayerOwned() || isBacked(market)) return 0f;
 		return ThreatConvoys.stagingTarget(market, commodityId);
 	}
 
-	/** The cap without the staging bank: months of the colony's own banking. */
-	public static float monthsCap(MarketAPI market, String commodityId) {
+	/**
+	 * Months of the colony's own banking (reserveCapMonths of it): the
+	 * reference the sortie floor (reserveFloorFraction), the donor keep
+	 * (donorKeepFraction) and {@link ColonyReserve#capSeen} are fractions of.
+	 * Never a ceiling since 2026-09-29. A backed colony's is vanilla's
+	 * stockpile limit plus months of the militia.
+	 */
+	public static float monthsBasis(MarketAPI market, String commodityId) {
 		if (isBacked(market)) {
 			return vanillaStockpileLimit(market, commodityId)
 					+ militiaPer30(market, commodityId) * ThreatIncConfig.reserveCapMonths();
 		}
 		return accrualPer30(market, commodityId) * ThreatIncConfig.reserveCapMonths();
+	}
+
+	/** Old name of {@link #monthsBasis}, kept for callers not yet moved over; a reference, not a cap. */
+	public static float monthsCap(MarketAPI market, String commodityId) {
+		return monthsBasis(market, commodityId);
 	}
 
 	// ------------------------------------------------------------------
@@ -964,6 +977,7 @@ public class ThreatReserves {
 		public float surplus;
 		/** Items banked per 30 days. */
 		public float per30;
+		/** The reference stock ({@link ThreatReserves#cap}) for "how full" readouts; stock may exceed it, banking never stops at it. */
 		public float cap;
 		/** Units short, the depot's cover ignored. */
 		public int deficit;
@@ -1149,31 +1163,30 @@ public class ThreatReserves {
 					// under the player's toggle; the mod adds the militia
 					ColonyReserve r = getOrCreate(market.getId());
 					for (String c : COMMODITIES) {
-						float capValue = cap(market, c);
-						noteCap(market, r, c, capValue);
+						noteBasis(market, r, c, monthsBasis(market, c));
 						float militia = militiaPer30(market, c);
 						if (militia <= 0f) continue;
-						float have = cargo.getCommodityQuantity(c);
-						if (have >= capValue) continue;
-						cargo.addCommodity(c, Math.min(capValue - have, militia * elapsedDays / 30f));
+						// (2026-09-29: the militia stopped at vanilla's limit plus
+						// reserveCapMonths of itself - the mod's own ceiling, not
+						// vanilla's. Vanilla still fills its share up to its own
+						// limit; the recruits the colony raises are all kept.)
+						cargo.addCommodity(c, militia * elapsedDays / 30f);
 					}
 					continue;
 				}
 				ColonyReserve r = get(market.getId());
-				// once per colony per poll: a staging base banks on toward its siege
-				float[] staging = market.isPlayerOwned() ? null : ThreatConvoys.stagingTargets(market);
-				for (int ci = 0; ci < COMMODITIES.length; ci++) {
-					String c = COMMODITIES[ci];
+				for (String c : COMMODITIES) {
 					float per30 = accrualPer30(market, c);
 					if (per30 > 0f) {
 						if (r == null) r = getOrCreate(market.getId());
-						float capValue = per30 * ThreatIncConfig.reserveCapMonths();
-						noteCap(market, r, c, capValue); // the floor's basis: months only
-						if (staging != null) capValue += staging[ci];
-						float have = read(r, c);
-						if (have < capValue) {
-							write(r, c, Math.min(capValue, have + per30 * elapsedDays / 30f));
-						}
+						noteBasis(market, r, c, per30 * ThreatIncConfig.reserveCapMonths()); // the floor's basis
+						// what is made is banked (2026-09-29): accrual stopped at
+						// reserveCapMonths of banking plus the staging target, so a
+						// producer lost everything above it and every hunt, garrison
+						// and siege paying from spendable stock was throttled by it.
+						// productionShare already bounds the banking by what the
+						// faction really makes
+						write(r, c, read(r, c) + per30 * elapsedDays / 30f);
 					}
 					if (r != null && read(r, c) > 0f) coverShortage(market, r, c);
 				}
@@ -1232,7 +1245,7 @@ public class ThreatReserves {
 	/**
 	 * Mobilisation stock: the moment a faction enters war mode each of its
 	 * colonies starts with reserveInitialMonths of its own banking (never
-	 * above the cap, never below what it already holds) - the depots a navy
+	 * below what it already holds) - the depots a navy
 	 * draws its first sortie from. Runs after the War footing's demand has
 	 * landed and the economy recomputed (ThreatWarState.mobilise), so an
 	 * importer seeds the War footing's share it will bank, not the nothing
@@ -1251,8 +1264,10 @@ public class ThreatReserves {
 				float per30 = accrualPer30(market, c);
 				if (per30 <= 0f) continue;
 				if (r == null) r = getOrCreate(market.getId());
-				noteCap(market, r, c, per30 * ThreatIncConfig.reserveCapMonths());
-				float start = Math.min(per30 * months, per30 * ThreatIncConfig.reserveCapMonths());
+				noteBasis(market, r, c, per30 * ThreatIncConfig.reserveCapMonths());
+				// (2026-09-29: no longer clipped to reserveCapMonths - that is
+				// a reference now, not a cap)
+				float start = per30 * months;
 				if (read(r, c) < start) write(r, c, start);
 			}
 		}

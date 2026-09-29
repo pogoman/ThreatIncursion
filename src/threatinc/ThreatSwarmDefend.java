@@ -21,7 +21,7 @@ import com.fs.starfarer.api.util.Misc;
  * planet, holding the orbit against whatever contests it - until the front
  * is gone (the world taken, or the front destroyed) or the batteries have
  * ground it below {@code defendMinStrength} of its arrival strength, then
- * returns to its staging colony and despawns. It does NOT bombard while the
+ * returns to its staging colony and despawns, re-banking what survives. It does NOT bombard while the
  * front holds: only while the front cannot hold and orbit can still push the
  * fortifications ({@link ThreatGroundFronts#defendBombards}) does it deliver
  * siege slices and pay the batteries for them - and once orbit has nothing
@@ -179,13 +179,28 @@ public class ThreatSwarmDefend {
 		}
 	}
 
-	/** The front is gone: the swarm's fleet goes back to its staging colony and despawns; a faction's on the tracked leg. */
+	/**
+	 * The front is gone: the swarm's fleet goes back to its staging colony and
+	 * despawns there, a faction's on the tracked leg. Both settle (2026-09-29:
+	 * closed economy): a faction's fleet at ThreatReturns, a swarm fleet on its
+	 * despawn - a strike fleet is bound to its colony's FP bank from the moment
+	 * it spawns (ThreatStrikeFGI.createFleet), so whatever road it despawns by,
+	 * home or the hyperspace fallback, its surviving points are re-banked
+	 * (ThreatColonyManager.settleLedger, the nearest live colony if its own is gone).
+	 */
 	protected static void sendHome(Entry e) {
 		CampaignFleetAPI fleet = e.fleet;
 		if (fleet == null || !fleet.isAlive()) return;
 		if (!Factions.THREAT.equals(e.factionId)) {
-			ThreatReturns.sendHome(fleet, e.factionId, e.homeMarketId);
+			// the base that provisioned it, where the entry names none
+			String home = e.homeMarketId != null ? e.homeMarketId : ThreatReturns.homeOf(fleet);
+			ThreatReturns.sendHome(fleet, e.factionId, home);
 			return;
+		}
+		if (!ThreatColonyManager.ledgerBound(fleet)) {
+			// a strike from before the ledger: nothing was drawn for it, nothing is owed back
+			ThreatIncConfig.log("Swarm defend over " + e.marketName + ": " + fleet.getName()
+					+ " is on no ledger");
 		}
 		fleet.clearAssignments();
 		fleet.getMemoryWithoutUpdate().set(Misc.FLEET_RETURNING_TO_DESPAWN, true);

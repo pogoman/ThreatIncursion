@@ -37,8 +37,12 @@ import com.fs.starfarer.api.util.Misc;
  * <p>Logistics AI runs on the slow tick, per mobilised faction: every
  * military world within expedition range of a live hive is a staging base;
  * when one is short of what an expedition against its nearest hive would
- * draw, the same-faction colony with the most spare stock within convoy range
- * sends a convoy. Arrivals and losses resolve on the fast poll.
+ * draw, net of what is already at sea to it, the same-faction colonies with
+ * spare stock in reach each send a convoy of what they can spare of it - as
+ * many in parallel as the shortfall and the donors support, each fleet grown
+ * to carry its load (no per-convoy load cap and no one-convoy-per-base rule
+ * since 2026-09-29) up to vanilla's maxShipsInAIFleet - a load past that
+ * sails in several fleets. Arrivals and losses resolve on the fast poll.
  */
 public class ThreatConvoys {
 
@@ -72,6 +76,13 @@ public class ThreatConvoys {
 		public String recipientFactionId;
 		/** A player aid convoy: paid in credits, on the capacity ledger, earning standing on landing. */
 		public boolean aid;
+		/**
+		 * On the first fleet of a sailing split across several (a load past
+		 * vanilla's maxShipsInAIFleet): what all of them carry, in
+		 * ThreatReserves.COMMODITIES order ({@link ThreatConvoys#carried}).
+		 * Transient - the planner reads it the tick it sails; null otherwise.
+		 */
+		public transient float[] sailing;
 
 		public boolean isFrontRun() {
 			return frontMarketId != null;
@@ -127,11 +138,106 @@ public class ThreatConvoys {
 		return marines * 1f + armaments * 0.5f + fuel * 0.1f + supplies * 0.1f;
 	}
 
-	protected static boolean convoyBoundFor(String marketId) {
-		for (Convoy c : all()) {
-			if (marketId.equals(c.toMarketId)) return true;
+	/** What a sailing carries, in ThreatReserves.COMMODITIES order: every fleet of a split one (Convoy.sailing), else the convoy's own load. */
+	public static float[] carried(Convoy c) {
+		if (c == null) return new float[ThreatReserves.COMMODITIES.length];
+		if (c.sailing != null) return c.sailing.clone();
+		return new float[] {c.marines, c.armaments, c.fuel, c.supplies};
+	}
+
+	// ------------------------------------------------------------------
+	// the escort's voyage (2026-09-29: closed economy - an NPC escort is
+	// paid like any other NPC fleet, and never sails free)
+	// ------------------------------------------------------------------
+
+	/**
+	 * {fuel, supplies} one escort point's voyage of {@code ly} costs: the
+	 * sortie rate (ThreatFleetOrders.sortieWants) - expeditionSuppliesPerPoint
+	 * per FP_PER_RESPONSE_DIFFICULTY points, fuel for the distance.
+	 */
+	protected static float[] escortRate(float ly) {
+		float points = 1f / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+		return new float[] {points * Math.max(0f, ly) * ThreatIncConfig.expeditionFuelPerPointLY(),
+				points * ThreatIncConfig.expeditionSuppliesPerPoint()};
+	}
+
+	/** What the donor may spend on an escort: a colony's spendable stock (ThreatReserves.spendable), an outpost's whole stockpile. */
+	protected static float escortStock(ThreatBases.Base donor, String commodityId) {
+		if (donor.isOutpost()) return ThreatReserves.stock(donor.id(), commodityId);
+		return ThreatReserves.spendable(donor.market, commodityId);
+	}
+
+	/**
+	 * The escort points the donor pays a voyage of {@code ly} for, at most
+	 * {@code want}: the escort shrinks to what is paid, to none on a depot
+	 * with nothing to spare. The fuel and supplies the convoy ships as cargo
+	 * ({@code fuelLoad}, {@code suppliesLoad}) are not the escort's to spend.
+	 * A player convoy's escort is its ledger's business and is not charged here.
+	 */
+	protected static float paidEscort(ThreatBases.Base donor, float want, float ly, float fuelLoad,
+			float suppliesLoad) {
+		if (want <= 0f) return 0f;
+		float[] rate = escortRate(ly);
+		float fp = want;
+		if (rate[0] > 0f) {
+			fp = Math.min(fp, Math.max(0f, escortStock(donor, Commodities.FUEL) - fuelLoad) / rate[0]);
 		}
-		return false;
+		if (rate[1] > 0f) {
+			fp = Math.min(fp, Math.max(0f, escortStock(donor, Commodities.SUPPLIES) - suppliesLoad) / rate[1]);
+		}
+		return Math.max(0f, fp);
+	}
+
+	/**
+	 * Draws an escort of {@code escort} points' voyage from the donor and
+	 * records it on the fleet (ThreatReturns.provision), so the convoy's
+	 * return re-banks its hulls at what survived. Call after the hulls are
+	 * final: the launch strength is read here.
+	 */
+	protected static void payEscort(CampaignFleetAPI fleet, ThreatBases.Base donor, float escort, float ly) {
+		float[] rate = escortRate(ly);
+		float fuel = drawEscort(donor, Commodities.FUEL, escort * rate[0]);
+		float supplies = drawEscort(donor, Commodities.SUPPLIES, escort * rate[1]);
+		ThreatReturns.provision(fleet, donor.id(), fuel, supplies);
+	}
+
+	protected static float drawEscort(ThreatBases.Base donor, String commodityId, float amount) {
+		if (amount <= 0f) return 0f;
+		if (donor.isOutpost()) return ThreatReserves.draw(donor.id(), commodityId, amount);
+		return ThreatReserves.drawSpendable(donor.market, commodityId, amount);
+	}
+
+	/** A convoy that never sailed: its escort's voyage back to the donor in full. */
+	protected static void refundEscort(CampaignFleetAPI fleet, ThreatBases.Base donor) {
+		if (fleet == null || donor == null) return;
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+		ThreatBases.deposit(donor, Commodities.FUEL, mem.getFloat(ThreatReturns.MEM_FUEL));
+		ThreatBases.deposit(donor, Commodities.SUPPLIES, mem.getFloat(ThreatReturns.MEM_SUPPLIES));
+		mem.unset(ThreatReturns.MEM_FUEL);
+		mem.unset(ThreatReturns.MEM_SUPPLIES);
+	}
+
+	/**
+	 * Cargo still at sea to this base, in ThreatReserves.COMMODITIES order:
+	 * every logistics convoy bound for it that has not landed, read off the
+	 * fleet's hold (what a fight left aboard) while it is alive. The planners
+	 * size the next sailing to the shortfall net of this, so several convoys
+	 * can sail to one base at once without over-shipping (2026-09-29: one
+	 * convoy per base at a time made a staging target of tens of thousands a
+	 * queue of sequential round trips).
+	 */
+	protected static float[] inbound(String marketId) {
+		float[] out = new float[ThreatReserves.COMMODITIES.length];
+		if (marketId == null) return out;
+		for (Convoy c : all()) {
+			if (c.isFrontRun() || !marketId.equals(c.toMarketId)) continue;
+			CargoAPI cargo = c.fleet != null && c.fleet.isAlive() ? c.fleet.getCargo() : null;
+			out[0] += cargo != null ? cargo.getMarines() : c.marines;
+			out[1] += cargo != null ? cargo.getCommodityQuantity(Commodities.HAND_WEAPONS) : c.armaments;
+			out[2] += cargo != null ? cargo.getCommodityQuantity(Commodities.FUEL) : c.fuel;
+			out[3] += cargo != null ? cargo.getCommodityQuantity(Commodities.SUPPLIES) : c.supplies;
+		}
+		return out;
 	}
 
 	// ------------------------------------------------------------------
@@ -261,19 +367,46 @@ public class ThreatConvoys {
 		targetsMemo.clear();
 	}
 
+	/**
+	 * A REFERENCE load (convoyMarineCapacity / convoyCargoCapacity): the unit
+	 * the "worth a sailing" floors are measured in ({@link #minLoad}, the
+	 * planner's shortfall test, {@link #pickAllyDonor}) and the Min / Med size
+	 * of the player's hand-ordered run to an outpost. Not a ceiling on any
+	 * load since 2026-09-29: a convoy carries its whole shortfall or its
+	 * donor's whole spare, and {@link #fitHulls} grows the fleet to carry it.
+	 */
 	public static float capacityFor(String commodityId) {
 		if (Commodities.MARINES.equals(commodityId)) return ThreatIncConfig.convoyMarineCapacity();
 		return ThreatIncConfig.convoyCargoCapacity();
 	}
 
+	/** What a base is short of its targets, net of its stock and of what is already at sea to it ({@link #inbound}). */
+	protected static float[] shortfall(MarketAPI base, float[] targets) {
+		float[] at = inbound(base.getId());
+		float[] out = new float[ThreatReserves.COMMODITIES.length];
+		for (int i = 0; i < out.length; i++) {
+			out[i] = targets[i] - ThreatReserves.stock(base.getId(), ThreatReserves.COMMODITIES[i]) - at[i];
+		}
+		return out;
+	}
+
+	/** Whether a shortfall is worth a sailing: convoyMinLoadFraction of a reference load, or of the whole target when that is smaller. */
+	protected static boolean worthSailing(String commodityId, float shortBy, float target) {
+		return shortBy > 0f
+				&& shortBy >= ThreatIncConfig.convoyMinLoadFraction() * Math.min(capacityFor(commodityId), target);
+	}
+
 	/**
-	 * One planning pass: for each mobilised faction, each staging base with
-	 * no convoy already inbound, take the commodities it is short of,
-	 * shortest first (as a fraction of a convoy load), and the first with a
-	 * donor - the colony with the most spare stock of it, another staging
-	 * base's stock above its own siege's needs included - then send one
-	 * convoy carrying that plus whatever else the donor can spare that the
-	 * base also wants.
+	 * One planning pass: for each mobilised faction, each staging base short
+	 * of its targets net of what is already at sea to it, neediest first (as
+	 * a fraction of the target); then, for as long as it is still short and a
+	 * donor it has not drawn on this pass can spare some - the colony with the
+	 * most of its neediest commodity, another staging base's stock above its
+	 * own siege's needs included - a convoy of everything that donor can
+	 * spare that the base still wants. Several donors mean several convoys in
+	 * parallel (2026-09-29: one convoy per base, each capped at a hull load,
+	 * turned a staging target of tens of thousands into a queue of round
+	 * trips - the main throttle on staging).
 	 */
 	public static void planLogistics(Random random) {
 		if (!ThreatWarState.enabled() || !ThreatIncConfig.convoyEnabled()) return;
@@ -281,38 +414,32 @@ public class ThreatConvoys {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
 			if (faction == null) continue;
 			List<MarketAPI> markets = ThreatReserves.marketsOf(factionId);
-			// the bases short of the most (in convoy loads) sail first, so the
-			// donors' stock goes to them first. No cap on sailings: each base
-			// takes one convoy at a time, and every one needs a donor with the
-			// stock to spare (the per-tick cap of 2 held Hegemony's fronts
-			// back, 2026-09-27)
+			// the bases short of the most (as a share of their target) sail
+			// first, so the donors' stock goes to them first. No cap on
+			// sailings: every one needs a donor with the stock to spare (the
+			// per-tick cap of 2 held Hegemony's fronts back, 2026-09-27)
 			List<Object[]> wants = new ArrayList<Object[]>();
 			for (MarketAPI base : markets) {
-				if (convoyBoundFor(base.getId())) continue;
 				float[] targets = stagingTargets(base);
-				// every commodity worth a sailing, shortest first (in loads): a
-				// base whose worst need no donor holds still takes the next -
-				// before 2026-09-24 Chicomoztoc, short of fuel nobody banked,
-				// got no convoy at all while donors sat on marines it needed
-				final float[] loadsShort = new float[ThreatReserves.COMMODITIES.length];
+				float[] shortBy = shortfall(base, targets);
+				// every commodity worth a sailing, neediest first: a base whose
+				// worst need no donor holds still takes the next - before
+				// 2026-09-24 Chicomoztoc, short of fuel nobody banked, got no
+				// convoy at all while donors sat on marines it needed
+				final float[] fractionShort = new float[ThreatReserves.COMMODITIES.length];
 				List<Integer> order = new ArrayList<Integer>();
 				for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
-					String c = ThreatReserves.COMMODITIES[i];
-					float shortBy = targets[i] - ThreatReserves.stock(base.getId(), c);
-					// worth a sailing: minLoadFraction of a load, or of the whole
-					// target when the target is smaller than a load
-					if (shortBy < ThreatIncConfig.convoyMinLoadFraction()
-							* Math.min(capacityFor(c), targets[i])) continue;
-					loadsShort[i] = shortBy / Math.max(1f, capacityFor(c));
+					if (!worthSailing(ThreatReserves.COMMODITIES[i], shortBy[i], targets[i])) continue;
+					fractionShort[i] = shortBy[i] / Math.max(1f, targets[i]);
 					order.add(Integer.valueOf(i));
 				}
 				if (order.isEmpty()) continue;
 				java.util.Collections.sort(order, new java.util.Comparator<Integer>() {
 					public int compare(Integer a, Integer b) {
-						return Float.compare(loadsShort[b], loadsShort[a]);
+						return Float.compare(fractionShort[b], fractionShort[a]);
 					}
 				});
-				wants.add(new Object[] {base, targets, order, Float.valueOf(loadsShort[order.get(0)])});
+				wants.add(new Object[] {base, targets, order, Float.valueOf(fractionShort[order.get(0)])});
 			}
 			java.util.Collections.sort(wants, new java.util.Comparator<Object[]>() {
 				public int compare(Object[] a, Object[] b) {
@@ -329,25 +456,32 @@ public class ThreatConvoys {
 			planOutpostReturns(faction, random);
 			for (Object[] w : wants) {
 				MarketAPI base = (MarketAPI) w[0];
-				// a relief or outpost-return convoy planned above may already be bound for it
-				if (convoyBoundFor(base.getId())) continue;
 				float[] targets = (float[]) w[1];
 				@SuppressWarnings("unchecked")
 				List<Integer> order = (List<Integer>) w[2];
-				MarketAPI donor = null;
-				for (Integer i : order) {
-					donor = pickDonor(markets, base, ThreatReserves.COMMODITIES[i]);
-					if (donor != null) break;
+				// each donor sails once per pass, so the loop ends within the
+				// faction's market count however the draws fall
+				java.util.Set<MarketAPI> drawn = new java.util.HashSet<MarketAPI>();
+				while (drawn.size() < markets.size()) {
+					// net of everything at sea to it, the convoys just sailed
+					// and any relief or outpost return planned above included
+					float[] shortBy = shortfall(base, targets);
+					MarketAPI donor = null;
+					for (Integer i : order) {
+						String c = ThreatReserves.COMMODITIES[i];
+						if (!worthSailing(c, shortBy[i], targets[i])) continue;
+						donor = pickDonor(markets, base, c, drawn);
+						if (donor != null) break;
+					}
+					if (donor == null) break;
+					drawn.add(donor);
+					float[] load = new float[ThreatReserves.COMMODITIES.length];
+					for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
+						if (shortBy[i] <= 0f) continue;
+						load[i] = Math.min(shortBy[i], sendable(donor, base, ThreatReserves.COMMODITIES[i]));
+					}
+					dispatch(donor, base, faction, load, random);
 				}
-				if (donor == null) continue;
-				float[] load = new float[ThreatReserves.COMMODITIES.length];
-				for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
-					String c = ThreatReserves.COMMODITIES[i];
-					float shortBy = targets[i] - ThreatReserves.stock(base.getId(), c);
-					if (shortBy <= 0f) continue;
-					load[i] = Math.min(shortBy, sendable(donor, base, c));
-				}
-				dispatch(donor, base, faction, load, random);
 			}
 		}
 	}
@@ -356,44 +490,69 @@ public class ThreatConvoys {
 	 * RELIEF: an own colony with a Threat army on its surface comes before
 	 * every depot. Its banked marines already fight
 	 * (ThreatGroundFronts.defenderStrength), so every marine landed there is
-	 * defence: one convoy of marines from the colony in convoy range that can
-	 * spare the most, one at a time per invaded world.
+	 * defence. The want is what the colony's counter-attack needs to beat the
+	 * army (ThreatGroundFronts.reliefNeed) less what is already at sea to it;
+	 * every colony in reach that can spare marines sends what it can of that,
+	 * the richest first, in parallel. Until 2026-09-29 it was one hull load
+	 * (convoyMarineCapacity) from one donor at a time per invaded world, and
+	 * an NPC donor had to be within the flat convoyRangeLY - now it reaches as
+	 * far as its fuel, as the staging planner's donors do.
 	 */
 	protected static void planRelief(FactionAPI faction, Random random) {
 		List<MarketAPI> markets = ThreatReserves.marketsOf(faction.getId());
-		float range = faction.isPlayerFaction() ? Float.MAX_VALUE : ThreatIncConfig.convoyRangeLY();
 		for (MarketAPI besieged : markets) {
 			if (besieged.getStarSystem() == null || besieged.getPrimaryEntity() == null) continue;
 			if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(besieged.getId()))) {
 				continue;
 			}
-			if (convoyBoundFor(besieged.getId())) continue;
-			MarketAPI donor = null;
-			float best = 0f;
+			float need = ThreatGroundFronts.reliefNeed(besieged) - inbound(besieged.getId())[0];
+			if (need < FRONT_RUN_MIN_MARINES) continue;
+			final Map<MarketAPI, Float> spares = new HashMap<MarketAPI, Float>();
 			for (MarketAPI d : markets) {
 				if (d == besieged || d.getStarSystem() == null || d.getPrimaryEntity() == null) continue;
+				float reach = faction.isPlayerFaction() ? Float.MAX_VALUE
+						: Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.expeditionRangeLY(d));
 				if (Misc.getDistanceLY(d.getStarSystem().getLocation(),
-						besieged.getStarSystem().getLocation()) > range) continue;
+						besieged.getStarSystem().getLocation()) > reach) continue;
 				float s = spare(d, Commodities.MARINES);
-				if (s > best) {
-					best = s;
-					donor = d;
+				if (s >= FRONT_RUN_MIN_MARINES) spares.put(d, s);
+			}
+			List<MarketAPI> donors = new ArrayList<MarketAPI>(spares.keySet());
+			java.util.Collections.sort(donors, new java.util.Comparator<MarketAPI>() {
+				public int compare(MarketAPI a, MarketAPI b) {
+					return Float.compare(spares.get(b), spares.get(a));
 				}
+			});
+			int sailed = 0;
+			float carried = 0f;
+			MarketAPI first = null;
+			for (MarketAPI donor : donors) {
+				if (need < FRONT_RUN_MIN_MARINES) break;
+				float[] load = new float[ThreatReserves.COMMODITIES.length];
+				load[0] = Math.min(need, spares.get(donor));
+				Convoy c = dispatch(donor, besieged, faction, load, random);
+				if (c == null) continue;
+				// every fleet of the sailing, when the load was split across several
+				float lifted = carried(c)[0];
+				need -= lifted;
+				carried += lifted;
+				sailed++;
+				if (first == null) first = donor;
+				ThreatIncConfig.log("Relief convoy: " + faction.getId() + " " + (int) lifted + " marines "
+						+ donor.getName() + " -> " + besieged.getName());
 			}
-			if (donor == null || best < FRONT_RUN_MIN_MARINES) continue;
-			float[] load = new float[ThreatReserves.COMMODITIES.length];
-			load[0] = Math.min(best, capacityFor(Commodities.MARINES));
-			Convoy c = dispatch(donor, besieged, faction, load, random);
-			if (c == null) continue;
 			// only the player's own: another faction's relief is progress, not news
-			if (faction.isPlayerFaction()) {
-				ThreatNotice.titled("Relief Convoy Sails").icon(faction)
-						.line("Your convoy carries %s marines from %s", Misc.getWithDGS((int) c.marines),
-								ThreatNotice.market(donor))
-						.line("To the defence of %s", ThreatNotice.market(besieged)).send();
+			if (sailed > 0 && faction.isPlayerFaction()) {
+				ThreatNotice n = ThreatNotice.titled(sailed > 1 ? "Relief Convoys Sail" : "Relief Convoy Sails")
+						.icon(faction);
+				if (sailed > 1) {
+					n.line("Your %s convoys carry %s marines", "" + sailed, Misc.getWithDGS((int) carried));
+				} else {
+					n.line("Your convoy carries %s marines from %s", Misc.getWithDGS((int) carried),
+							ThreatNotice.market(first));
+				}
+				n.line("To the defence of %s", ThreatNotice.market(besieged)).send();
 			}
-			ThreatIncConfig.log("Relief convoy: " + faction.getId() + " " + (int) c.marines + " marines "
-					+ donor.getName() + " -> " + besieged.getName());
 		}
 	}
 
@@ -402,20 +561,22 @@ public class ThreatConvoys {
 	 * system; once that system holds no hive there is nothing left to run to,
 	 * so the stock ships home to the faction's nearest base - the outflow that
 	 * keeps a ground victory's survivors in the war instead of in a station
-	 * nothing can draw from. One convoy per outpost at a time.
+	 * nothing can draw from. The whole stock sails at once, the fleet grown to
+	 * carry it (2026-09-29: one hull load per convoy, one convoy per outpost
+	 * at a time, left most of a big garrison sitting in the station for
+	 * months); whatever the hulls could not take sails on the next pass.
 	 */
 	protected static void planOutpostReturns(FactionAPI faction, Random random) {
 		for (ThreatOutposts.Outpost o : ThreatOutposts.outpostsOf(faction.getId())) {
 			if (!o.alive() || o.entity == null || !ThreatOutposts.hasStock(o)) continue;
 			if (!ThreatIncData.getLiveColonyMarkets(o.systemId).isEmpty()) continue; // still a forward base
 			ThreatBases.Base from = ThreatBases.of(o);
-			if (from == null || convoyFrom(from.id())) continue;
+			if (from == null) continue;
 			MarketAPI home = outpostHome(faction, o);
 			if (home == null) continue;
 			float[] load = new float[ThreatReserves.COMMODITIES.length];
 			for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
-				String c = ThreatReserves.COMMODITIES[i];
-				load[i] = Math.min(ThreatReserves.stock(from.id(), c), capacityFor(c));
+				load[i] = ThreatReserves.stock(from.id(), ThreatReserves.COMMODITIES[i]);
 			}
 			Convoy c = dispatch(from, home, faction, load, random, null, false);
 			if (c == null) continue;
@@ -430,13 +591,6 @@ public class ThreatConvoys {
 		MarketAPI home = ThreatFleetOrders.pickBase(faction, o.entity.getLocationInHyperspace());
 		if (home == null) home = nearestColony(faction, o.entity.getLocationInHyperspace());
 		return home;
-	}
-
-	protected static boolean convoyFrom(String baseId) {
-		for (Convoy c : all()) {
-			if (baseId.equals(c.fromMarketId)) return true;
-		}
-		return false;
 	}
 
 	/** The faction's nearest colony to a hyperspace location, military or not. */
@@ -466,16 +620,37 @@ public class ThreatConvoys {
 		return false;
 	}
 
+	/** Whether a withdrawal run is already on its way to this front. */
+	protected static boolean pickupBoundFor(String hiveMarketId) {
+		for (Convoy c : all()) {
+			if (c.pickup && hiveMarketId.equals(c.frontMarketId)) return true;
+		}
+		return false;
+	}
+
+	/** [marines, armaments] aboard the supply runs already at sea to this front (the hold, while the fleet lives). */
+	protected static float[] inboundFront(String hiveMarketId) {
+		float[] out = new float[2];
+		for (Convoy c : all()) {
+			if (c.pickup || !hiveMarketId.equals(c.frontMarketId)) continue;
+			CargoAPI cargo = c.fleet != null && c.fleet.isAlive() ? c.fleet.getCargo() : null;
+			out[0] += cargo != null ? cargo.getMarines() : c.marines;
+			out[1] += cargo != null ? cargo.getCommodityQuantity(Commodities.HAND_WEAPONS) : c.armaments;
+		}
+		return out;
+	}
+
 	/** What a friendly front wants brought: [marines, armaments]; a withdrawal call wants a pickup instead. */
 	public static float[] frontWants(ThreatGroundFronts.GroundFront front, MarketAPI hive) {
-		float marines = ThreatIncConfig.frontReinforceFraction()
-				* ThreatGroundFronts.landedStrength(front) - front.marines;
-		// a front that cannot hold asks for what holds it, whatever it landed with
-		marines = Math.max(marines, ThreatGroundFronts.holdGap(front, hive));
+		// the whole peak back, or what holds it, whichever is more (2026-09-29:
+		// runs reinforced only to frontReinforceFraction, 0.8, of the peak - an
+		// army was never let back to the strength it landed at)
+		float marines = Math.max(ThreatGroundFronts.landedStrength(front) - front.marines,
+				ThreatGroundFronts.holdGap(front, hive));
 		// armaments for the army the run leaves behind, not the depleted one:
 		// a front reinforced back toward its peak burns at the peak's rate
-		float strength = Math.max(front.marines, ThreatIncConfig.frontReinforceFraction()
-				* ThreatGroundFronts.landedStrength(front));
+		float strength = Math.max(ThreatGroundFronts.landedStrength(front),
+				front.marines + Math.max(0f, marines));
 		// at the rate it actually burns: a pushing front burns frontPushUpkeepMult
 		// times as fast, and runs sized at the dug-in rate carried ~20 days of a
 		// push that the next run took 22-45 days to follow (run 11, Beta Vigri I
@@ -500,19 +675,27 @@ public class ThreatConvoys {
 	 */
 	protected static ThreatBases.Base pickFrontBase(FactionAPI faction, MarketAPI hive,
 			boolean pickup, float[] wants) {
+		return pickFrontBase(faction, hive, pickup, wants, null);
+	}
+
+	/** As above, passing over the bases in {@code skip} (ids of those already drawn on this pass). */
+	protected static ThreatBases.Base pickFrontBase(FactionAPI faction, MarketAPI hive,
+			boolean pickup, float[] wants, java.util.Set<String> skip) {
 		ThreatOutposts.Outpost o = ThreatOutposts.outpostIn(faction.getId(), hive.getStarSystem());
-		if (o != null) {
-			if (pickup) return ThreatBases.of(o);
+		ThreatBases.Base forward = o != null ? ThreatBases.of(o) : null;
+		if (forward != null && (skip == null || !skip.contains(forward.id()))) {
+			if (pickup) return forward;
 			float marines = Math.min(wants[0], ThreatOutposts.stock(o, Commodities.MARINES));
 			float armaments = Math.min(wants[1],
 					ThreatOutposts.stock(o, Commodities.HAND_WEAPONS));
 			if (marines >= FRONT_RUN_MIN_MARINES || armaments >= FRONT_RUN_MIN_ARMAMENTS) {
-				return ThreatBases.of(o);
+				return forward;
 			}
 		}
 		MarketAPI base = ThreatFleetOrders.pickBase(faction, hive.getLocationInHyperspace());
 		// a link in the hive's own system is always nearest, and pickBase takes it
 		if (ThreatFrontlines.isOutpost(base)) base = colonyBase(faction, hive.getLocationInHyperspace(), base);
+		if (base != null && skip != null && skip.contains(base.getId())) base = null;
 		if (pickup || faction.isPlayerFaction() || hive.getStarSystem() == null) return ThreatBases.of(base);
 		// an NPC front loads where the most of what it wants is: the nearest base,
 		// or any of the faction's markets in reach of the hive (the siege pool,
@@ -522,6 +705,7 @@ public class ThreatConvoys {
 		float bestScore = base != null ? frontScore(base, wants) : -1f;
 		for (MarketAPI m : IncursionManager.factionMarketsInReach(faction, hive.getStarSystem())) {
 			if (m == base || ThreatFrontlines.isOutpost(m)) continue;
+			if (skip != null && skip.contains(m.getId())) continue;
 			float s = frontScore(m, wants);
 			if (s > bestScore) {
 				bestScore = s;
@@ -562,10 +746,15 @@ public class ThreatConvoys {
 	}
 
 	/**
-	 * Every friendly front of a mobilised faction with no run already bound
-	 * for it: a withdrawal call gets a pickup, a hungry front gets a supply
-	 * run from the faction's forward outpost or nearest base in reach, out of
-	 * that base's stock (above a colony's floor).
+	 * Every friendly front of a mobilised faction with no pickup already bound
+	 * for it: a withdrawal call gets a pickup (once any supply run at sea has
+	 * landed - its landing may call the withdrawal off), a hungry front gets
+	 * supply runs for what it wants net of the runs already at sea to it -
+	 * from the faction's forward outpost or best base in reach first, then
+	 * the next best for whatever that one could not cover, each out of its
+	 * stock above a colony's floor. Until 2026-09-29 a front took one run at
+	 * a time, each capped at a hull load (convoyMarineCapacity /
+	 * convoyCargoCapacity).
 	 */
 	protected static void planFrontRuns(FactionAPI faction, Random random) {
 		if (!ThreatIncConfig.frontRunsEnabled()) return;
@@ -574,7 +763,7 @@ public class ThreatConvoys {
 			String owner = front.factionId != null ? front.factionId
 					: com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER;
 			if (!faction.getId().equals(owner)) continue;
-			if (convoyBoundForFront(front.marketId)) continue;
+			if (pickupBoundFor(front.marketId)) continue;
 			MarketAPI hive = ThreatIncData.resolveColonyMarket(front.marketId);
 			if (hive == null || hive.getStarSystem() == null) continue;
 			// a contested orbit is a closed door: the navy clears it first
@@ -586,35 +775,56 @@ public class ThreatConvoys {
 				continue;
 			}
 			if (front.withdrawRequested) {
+				if (convoyBoundForFront(front.marketId)) continue; // a supply run lands first
 				ThreatBases.Base to = pickFrontBase(faction, hive, true, new float[] {0f, 0f});
 				if (to == null) continue;
 				dispatchFrontRun(to, hive, front, faction, new float[] {0f, 0f}, true, random);
 				continue;
 			}
 			float[] wants = frontWants(front, hive);
+			float[] atSea = inboundFront(front.marketId);
+			wants[0] = Math.max(0f, wants[0] - atSea[0]);
+			wants[1] = Math.max(0f, wants[1] - atSea[1]);
 			float upkeepDays = ThreatGroundFronts.dailyUpkeep(front) > 0f
 					? wants[1] / ThreatGroundFronts.dailyUpkeep(front) : 0f;
 			// not worth a sailing for less than a few days of armaments or a handful of marines
-			// - unless it cannot hold without them
-			if (upkeepDays < 10f && wants[0] < 100f && ThreatGroundFronts.frontCanHold(front, hive)) continue;
-			ThreatBases.Base base = pickFrontBase(faction, hive, false, wants);
-			if (base == null) {
-				ThreatIncConfig.logQuiet("fr_nobase_" + front.marketId, "Front run for " + hive.getName()
-						+ ": no base of " + faction.getId() + " in reach");
-				continue;
+			// - unless it cannot hold without them (and nothing at sea is bringing it)
+			boolean covered = atSea[0] > 0f || atSea[1] > 0f;
+			if (upkeepDays < 10f && wants[0] < 100f
+					&& (ThreatGroundFronts.frontCanHold(front, hive) || covered)) continue;
+			// each base sails once per pass, so the loop ends within the
+			// faction's market count (plus its forward outpost)
+			java.util.Set<String> drawn = new java.util.HashSet<String>();
+			int bases = ThreatReserves.marketsOf(faction.getId()).size() + 1;
+			for (int n = 0; n < bases; n++) {
+				ThreatBases.Base base = pickFrontBase(faction, hive, false, wants, drawn);
+				if (base == null) {
+					if (n == 0) {
+						ThreatIncConfig.logQuiet("fr_nobase_" + front.marketId, "Front run for " + hive.getName()
+								+ ": no base of " + faction.getId() + " in reach");
+					}
+					break;
+				}
+				drawn.add(base.id());
+				float[] load = new float[] {
+						Math.min(wants[0], ThreatBases.available(base, Commodities.MARINES)),
+						Math.min(wants[1], ThreatBases.available(base, Commodities.HAND_WEAPONS))};
+				if (load[0] < FRONT_RUN_MIN_MARINES && load[1] < FRONT_RUN_MIN_ARMAMENTS) {
+					if (n == 0) {
+						ThreatIncConfig.logQuiet("fr_thin_" + front.marketId, "Front run for " + hive.getName()
+								+ ": wants " + (int) wants[0] + " marines, " + (int) wants[1]
+								+ " armaments; the best source (" + base.name() + ") has " + (int) load[0]
+								+ " and " + (int) load[1]);
+					}
+					break;
+				}
+				Convoy c = dispatchFrontRun(base, hive, front, faction, load, false, random);
+				if (c == null) continue;
+				float[] sent = carried(c);
+				wants[0] = Math.max(0f, wants[0] - sent[0]);
+				wants[1] = Math.max(0f, wants[1] - sent[1]);
+				if (wants[0] < FRONT_RUN_MIN_MARINES && wants[1] < FRONT_RUN_MIN_ARMAMENTS) break;
 			}
-			float[] load = new float[] {
-					Math.min(wants[0], Math.min(ThreatBases.available(base, Commodities.MARINES),
-						ThreatIncConfig.convoyMarineCapacity())),
-					Math.min(wants[1], Math.min(ThreatBases.available(base, Commodities.HAND_WEAPONS),
-						ThreatIncConfig.convoyCargoCapacity()))};
-			if (load[0] < FRONT_RUN_MIN_MARINES && load[1] < FRONT_RUN_MIN_ARMAMENTS) {
-				ThreatIncConfig.logQuiet("fr_thin_" + front.marketId, "Front run for " + hive.getName()
-						+ ": wants " + (int) wants[0] + " marines, " + (int) wants[1] + " armaments; the best source ("
-						+ base.name() + ") has " + (int) load[0] + " and " + (int) load[1]);
-				continue;
-			}
-			dispatchFrontRun(base, hive, front, faction, load, false, random);
 		}
 	}
 
@@ -635,19 +845,30 @@ public class ThreatConvoys {
 		return "Orbit contested - send Support or Defend first.";
 	}
 
-	/** Sends one Support sortie to clear a contested orbit, if none is out already (a Defend on its way there counts). */
+	/**
+	 * Sends one Support sortie to clear a contested orbit, if none is out
+	 * already (a Defend on its way there counts). Sized to the orbit by
+	 * ThreatFleetOrders.buildSortie; held back only while the base's stock
+	 * cannot provision that much (sortieReachFP), which saves a build and a
+	 * refund every tick. (2026-09-29: it was refused outright whenever the
+	 * orbit needed more than one guardFleetFP task force - the sortie was the
+	 * fixed size, not the need - so a front under a strong swarm never got
+	 * its door opened and starved.)
+	 */
 	protected static boolean supportFor(FactionAPI faction, MarketAPI hive) {
 		if (!ThreatIncConfig.supportEnabled()) return false;
 		if (ThreatFleetOrders.hasSupport(faction.getId(), hive.getId())) return false;
 		if (ThreatFleetOrders.hasDefend(faction.getId(), hive.getId())) return false;
-		// a sortie that cannot clear the orbit only feeds the swarm and holds the
-		// door open for convoys to be mauled in it (run 6: 111 FP against 4,800)
 		float need = IncursionManager.siegeOrbitNeeded(faction, java.util.Collections.singletonList(hive));
-		float brings = ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP());
-		if (need > brings) {
-			ThreatIncConfig.logQuiet("fr_nosupport_" + hive.getId(), "Support for " + hive.getName() + " refused: "
-					+ (int) need + " FP of orbit to clear, a task force brings " + (int) brings);
-			return false;
+		MarketAPI base = ThreatFleetOrders.pickBase(faction, hive.getLocationInHyperspace());
+		if (base != null && need > 0f) {
+			float reach = ThreatFleetOrders.sortieReachFP(base, hive.getLocationInHyperspace());
+			if (need > reach) {
+				ThreatIncConfig.logQuiet("fr_nosupport_" + hive.getId(), "Support for " + hive.getName()
+						+ " waits: " + (int) need + " FP of orbit to clear, " + base.getName()
+						+ " can provision " + (int) reach);
+				return false;
+			}
 		}
 		return ThreatFleetOrders.dispatchSupport(faction, hive) != null;
 	}
@@ -655,15 +876,20 @@ public class ThreatConvoys {
 	/**
 	 * What the board's Supply order asks the base for at a load tier: what
 	 * the front wants, floored to a worthwhile run (Min); that times
-	 * convoyExtraLoadFactor (Med); a full hull load, wanted or not (Max).
-	 * The ask is then capped by the base's stock above its floor and by the
-	 * convoy's capacity, so a tier raises the ceiling, never the base's
-	 * ability to fill it.
+	 * convoyExtraLoadFactor (Med); everything the base can spare above its
+	 * floor, wanted or not (Max - a hull load until 2026-09-29, when the
+	 * per-convoy cap went). The ask is then capped only by the base's stock
+	 * above its floor; the run's hulls grow to carry it.
 	 */
 	public static float[] supplyAsk(ThreatGroundFronts.GroundFront front, MarketAPI hive, int tier) {
 		if (tier >= 2) {
-			return new float[] {ThreatIncConfig.convoyMarineCapacity(),
-					ThreatIncConfig.convoyCargoCapacity()};
+			FactionAPI owner = front != null
+					? Global.getSector().getFaction(ThreatGroundFronts.ownerOf(front)) : null;
+			ThreatBases.Base base = owner != null && hive != null
+					? pickFrontBase(owner, hive, false, frontWants(front, hive)) : null;
+			if (base == null) return new float[] {0f, 0f};
+			return new float[] {ThreatBases.available(base, Commodities.MARINES),
+					ThreatBases.available(base, Commodities.HAND_WEAPONS)};
 		}
 		float[] wants = frontWants(front, hive);
 		// a hand order always sends a worthwhile load, wanted or not
@@ -692,10 +918,8 @@ public class ThreatConvoys {
 		ThreatBases.Base base = pickFrontBase(faction, hive, false, asked);
 		if (base == null) return null;
 		float[] load = new float[] {
-				Math.min(asked[0], Math.min(ThreatBases.available(base, Commodities.MARINES),
-						ThreatIncConfig.convoyMarineCapacity())),
-				Math.min(asked[1], Math.min(ThreatBases.available(base, Commodities.HAND_WEAPONS),
-						ThreatIncConfig.convoyCargoCapacity()))};
+				Math.min(asked[0], ThreatBases.available(base, Commodities.MARINES)),
+				Math.min(asked[1], ThreatBases.available(base, Commodities.HAND_WEAPONS))};
 		if (load[0] <= 0f && load[1] <= 0f) return null;
 		return dispatchFrontRun(base, hive, front, faction, load, false, random);
 	}
@@ -712,7 +936,8 @@ public class ThreatConvoys {
 		float[] wants = frontWants(front, hive);
 		// a run only sails for what the front is short of: marines back toward
 		// its peak, armaments up to frontResupplyDays. Max is the player asking
-		// for a hull load whether the front wants one or not, so it always sails.
+		// for everything the base can spare whether the front wants it or not,
+		// so it always sails.
 		if (tier < 2 && wants[0] <= 0f && wants[1] <= 0f) {
 			return "The front wants nothing: at strength and stocked for "
 					+ (int) ThreatIncConfig.frontResupplyDays() + " days.";
@@ -760,6 +985,14 @@ public class ThreatConvoys {
 	 * Sails for the hive system's jump-point; poll() takes it from there. The
 	 * base may be a colony or an outpost - a run out of an outpost spawns at
 	 * the station and draws from its stockpile, which has no floor.
+	 *
+	 * <p>A supply load past what one fleet under vanilla's maxShipsInAIFleet
+	 * carries sails as several runs in parallel ({@link #nextHulls}), each
+	 * paying its own escort; the first is returned, with the whole sailing on
+	 * {@link Convoy#sailing}. A pickup is one fleet, grown to the limit: the
+	 * front is lifted whole by whichever run lands, and what its berths
+	 * cannot hold rides home aboard it rather than being split off a front
+	 * still fighting.
 	 */
 	protected static Convoy dispatchFrontRun(ThreatBases.Base base, MarketAPI hive,
 			ThreatGroundFronts.GroundFront front, FactionAPI faction, float[] load, boolean pickup,
@@ -769,18 +1002,50 @@ public class ThreatConvoys {
 		SectorEntityToken door = ThreatFleetOrders.interceptPoint(hive.getStarSystem());
 		if (system == null || from == null || door == null) return null;
 
-		float marinesForHulls = pickup ? Math.max(100f, front.marines) : load[0];
-		float cargoForHulls = pickup ? Math.max(100f, front.armaments) : load[1];
-		float escort = ThreatIncConfig.convoyEscortFP()
-				+ cargoValue(marinesForHulls, cargoForHulls, 0f, 0f) / 1000f
-						* ThreatIncConfig.convoyEscortPerThousand();
-		float freighterPts = Math.max(10f, cargoForHulls / 60f);
-		float transportPts = Math.max(10f, marinesForHulls / 40f);
-		FleetParamsV3 params = new FleetParamsV3(base.sourceMarket(), base.hyperLoc(),
-				faction.getId(), null, FleetTypes.SUPPLY_FLEET,
-				escort, freighterPts, 0f, transportPts, 0f, 0f, 0f);
-		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
-		if (fleet == null || fleet.isEmpty()) return null;
+		// (2026-09-29: closed economy) an NPC run's escort is what the base pays for
+		boolean paysEscort = !faction.isPlayerFaction();
+		float ly = Misc.getDistanceLY(base.hyperLoc(), hive.getLocationInHyperspace());
+		if (pickup) {
+			// the run grows to the whole front it will lift (2026-09-29), up to the limit
+			float[] ask = {Math.max(100f, front.marines), Math.max(100f, front.armaments), 0f, 0f};
+			Hulls h = buildHulls(base, faction, ask, ask, ly, paysEscort, true, true, random);
+			return h != null ? sailFrontRun(h, base, hive, faction, true, paysEscort, ly, door, random) : null;
+		}
+		float[] whole = {load[0], load[1], 0f, 0f};
+		float[] remaining = whole.clone();
+		Split split = new Split(whole);
+		Convoy lead = null;
+		float[] sailed = new float[whole.length];
+		int fleets = 0;
+		// ends: every run that sails carries its whole ask of at least one unit
+		// or the loop stops (sailed())
+		while (true) {
+			Hulls h = nextHulls(split, remaining, base, faction, ly, paysEscort, true, random);
+			if (h == null) break;
+			Convoy c = sailFrontRun(h, base, hive, faction, false, paysEscort, ly, door, random);
+			if (c == null) break;
+			if (lead == null) lead = c;
+			fleets++;
+			if (!sailed(h, c, remaining, sailed)) break;
+		}
+		if (lead != null && fleets > 1) {
+			lead.sailing = sailed;
+			ThreatIncConfig.log("Supply run split: " + faction.getId() + " " + base.name() + " -> "
+					+ hive.getName() + " in " + fleets + " fleets (" + (int) sailed[0] + " marines, "
+					+ (int) sailed[1] + " armaments)");
+		}
+		return lead;
+	}
+
+	/** One front run of the sailing: the fleet paid for, placed at the base, loaded (a supply run) and sent for the door. */
+	protected static Convoy sailFrontRun(Hulls h, ThreatBases.Base base, MarketAPI hive, FactionAPI faction,
+			boolean pickup, boolean paysEscort, float ly, SectorEntityToken door, Random random) {
+		CampaignFleetAPI fleet = h.fleet;
+		float[] load = h.ask;
+		float escort = builtEscort(h);
+		if (paysEscort) payEscort(fleet, base, escort, ly);
+		StarSystemAPI system = base.starSystem();
+		SectorEntityToken from = base.entity();
 
 		system.addEntity(fleet);
 		fleet.setLocation(from.getLocation().x, from.getLocation().y);
@@ -813,6 +1078,7 @@ public class ThreatConvoys {
 				c.armaments = taken;
 			}
 			if (c.marines <= 0f && c.armaments <= 0f) {
+				refundEscort(fleet, base);
 				Misc.fadeAndExpire(fleet);
 				return null;
 			}
@@ -823,7 +1089,7 @@ public class ThreatConvoys {
 		ThreatIncConfig.log((pickup ? "Withdrawal run dispatched: " : "Supply run dispatched: ")
 				+ faction.getId() + " " + base.name() + " -> " + hive.getName() + " ("
 				+ (int) c.marines + " marines, " + (int) c.armaments + " armaments; escort "
-				+ (int) escort + " FP)");
+				+ (int) escort + " FP, " + fleet.getFleetData().getNumMembers() + " ships)");
 		ThreatRaiders.consider(c, random);
 		return c;
 	}
@@ -910,8 +1176,11 @@ public class ThreatConvoys {
 					+ " marines, " + armaments + " armaments");
 		}
 		all().remove(c);
-		// home on the tracked leg: survivors and any undelivered cargo return to the base
-		ThreatReturns.sendHome(fleet, c.factionId, c.fromMarketId);
+		// home on the tracked leg: survivors and any undelivered cargo return to
+		// the base - an NPC's nearest base when its own changed hands, not into
+		// another faction's depot
+		ThreatBases.Base home = homeBase(c);
+		ThreatReturns.sendHome(fleet, c.factionId, home != null ? home.id() : c.fromMarketId);
 	}
 
 	/**
@@ -934,14 +1203,15 @@ public class ThreatConvoys {
 
 	/**
 	 * What a hand-ordered convoy from this donor carries to this target at a
-	 * load tier: what the target is short of its staging target (Min), that
-	 * times convoyExtraLoadFactor (Med), or a hull load of everything the
-	 * donor can spare (Max - the 2026-09-05 rule, kept as the override the
-	 * player reaches for when the shortfall is not the point). A run to an
-	 * OUTPOST is always a hull load: it banks nothing, so nothing there is
-	 * short of anything. Every tier is capped by what the donor holds above
-	 * its sortie floor (ThreatReserves.available) and by the convoy's
-	 * capacity. The planner's rules (the donor keep, a worthwhile load, a
+	 * load tier: what the target is short of its staging target, or of its
+	 * reference stock (Min), that times convoyExtraLoadFactor (Med), or
+	 * everything the donor can spare (Max - the 2026-09-05 rule, kept as the
+	 * override the player reaches for when the shortfall is not the point). A
+	 * run to an OUTPOST banks nothing, so nothing there is short of anything:
+	 * its Min is a reference load, Med that times convoyExtraLoadFactor.
+	 * Every tier is capped by what the donor holds above its sortie floor
+	 * (ThreatReserves.available) - no longer by a hull load (2026-09-29).
+	 * The planner's rules (the donor keep, a worthwhile load, a
 	 * staging base's own siege needs, convoy range) are for the automatic
 	 * traffic, not the override. A player donor's load is fitted to its own
 	 * free hulls here, so the board quotes exactly what dispatch will carry.
@@ -959,13 +1229,15 @@ public class ThreatConvoys {
 		for (int i = 0; i < load.length; i++) {
 			String c = ThreatReserves.COMMODITIES[i];
 			float want;
-			if (tier >= 2 || target.isOutpost()) {
-				want = capacityFor(c);
+			if (tier >= 2) {
+				want = Float.MAX_VALUE; // everything above the floor
+			} else if (target.isOutpost()) {
+				want = capacityFor(c) * (tier == 1 ? ThreatIncConfig.convoyExtraLoadFactor() : 1f);
 			} else {
 				float toward = targets[i] > 0f ? targets[i] : ThreatReserves.cap(target.market, c);
 				float shortBy = Math.max(0f, toward - ThreatReserves.stock(target.id(), c));
 				if (tier == 1) shortBy *= ThreatIncConfig.convoyExtraLoadFactor();
-				want = Math.min(capacityFor(c), shortBy);
+				want = shortBy;
 			}
 			load[i] = Math.min(want, ThreatReserves.available(donor, c));
 		}
@@ -1017,22 +1289,28 @@ public class ThreatConvoys {
 		return best;
 	}
 
-	/** Stock a colony can spare: what it holds above its keep fraction of its own cap. */
+	/** Stock a colony can spare: what it holds above its keep fraction of its own months basis (ThreatReserves.monthsBasis), plus a staging base's own siege needs. */
 	public static float spare(MarketAPI donor, String commodityId) {
-		if (ThreatReserves.committed(donor, commodityId)) return 0f; // its marines are fighting
+		// a colony under a ground front gives nothing, as it gives no siege
+		// (IncursionManager.siegeDonors): its depot arms the defence and
+		// provisions its relief. Nachiketa shipped 2,287 fuel to its staging
+		// base with a swarm on it and relief then had nothing to sail on (2026-09-29)
+		if (ThreatGroundFronts.hasFront(donor)) return 0f;
 		// a staging base keeps its own siege's needs, then gives like any donor.
 		// A player base has no staging bank (its stockpile is vanilla's), so its
 		// staging target is kept here: without it two player staging bases each
 		// shipped the other everything above half its cap, every month (rc1 review)
 		float bank = donor.isPlayerOwned() ? stagingTarget(donor, commodityId)
 				: ThreatReserves.stagingBank(donor, commodityId);
-		float keep = ThreatReserves.monthsCap(donor, commodityId) * ThreatIncConfig.donorKeepFraction() + bank;
+		float keep = ThreatReserves.monthsBasis(donor, commodityId) * ThreatIncConfig.donorKeepFraction() + bank;
 		return Math.max(0f, ThreatReserves.stock(donor.getId(), commodityId) - keep);
 	}
 
 	/**
-	 * What a donor may send a base of one commodity: what it can spare, up to
-	 * a hull load. The old EQUALISATION rule (never more than half the gap
+	 * What a donor may send a base of one commodity: all it can spare
+	 * (2026-09-29: it was clipped to a hull load, convoyMarineCapacity /
+	 * convoyCargoCapacity; the fleet now grows to the load in
+	 * {@link #fitHulls}). The old EQUALISATION rule (never more than half the gap
 	 * between the two stocks, 2026-09-04) is gone: it existed because every
 	 * military world was a staging base and they shipped the same goods past
 	 * each other, and it made concentrating at one base impossible - the
@@ -1044,18 +1322,19 @@ public class ThreatConvoys {
 	 * commodity has one direction and needs no damping.
 	 */
 	public static float sendable(MarketAPI donor, MarketAPI base, String commodityId) {
-		return Math.min(spare(donor, commodityId), capacityFor(commodityId));
+		return spare(donor, commodityId);
 	}
 
 	/**
-	 * The least worth a sailing from this donor: convoyMinLoadFraction of a
-	 * hull load, or of what the donor could ever spare when full (its cap
-	 * above its keep) when that is smaller. Before 2026-09-05 it was the
-	 * fraction of a hull load alone - 1,000 marines or 3,000 units at the
-	 * defaults - which no colony's reserve ever reached, so nothing sailed.
+	 * The least worth a sailing from this donor (a floor, not a cap):
+	 * convoyMinLoadFraction of a reference load, or of what the donor spares
+	 * over its months basis (its basis above its keep) when that is smaller.
+	 * Before 2026-09-05 it was the fraction of a hull load alone - 1,000
+	 * marines or 3,000 units at the defaults - which no colony's reserve ever
+	 * reached, so nothing sailed.
 	 */
 	public static float minLoad(MarketAPI donor, String commodityId) {
-		float fullSpare = ThreatReserves.monthsCap(donor, commodityId)
+		float fullSpare = ThreatReserves.monthsBasis(donor, commodityId)
 				* (1f - ThreatIncConfig.donorKeepFraction());
 		return ThreatIncConfig.convoyMinLoadFraction()
 				* Math.min(capacityFor(commodityId), Math.max(0f, fullSpare));
@@ -1063,11 +1342,18 @@ public class ThreatConvoys {
 
 	/** The planner's donor: the colony in convoy range (the player's at any range) with the most to send; a staging base counts what it holds above its own siege's needs. */
 	protected static MarketAPI pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId) {
+		return pickDonor(markets, base, commodityId, null);
+	}
+
+	/** As above, passing over the donors in {@code skip} (those already drawn on this pass). */
+	protected static MarketAPI pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId,
+			java.util.Set<MarketAPI> skip) {
 		MarketAPI best = null;
 		float bestSend = 0f;
 		float range = base.isPlayerOwned() ? Float.MAX_VALUE : ThreatIncConfig.convoyRangeLY();
 		for (MarketAPI donor : markets) {
 			if (donor == base || donor.getStarSystem() == null) continue;
+			if (skip != null && skip.contains(donor)) continue;
 			// a donor reaches as far as its own fuel does (stagingBaseFor)
 			float reach = base.isPlayerOwned() ? range
 					: Math.max(range, IncursionManager.expeditionRangeLY(donor));
@@ -1115,48 +1401,94 @@ public class ThreatConvoys {
 	 * shipping its stockpile home ({@link #planOutpostReturns}). An outpost has
 	 * no capacity ledger and no floor, so its whole stock is loadable, and no
 	 * economy, so its hulls are built without a market's quality or size.
+	 *
+	 * <p>A load past what one fleet under vanilla's maxShipsInAIFleet carries
+	 * sails as several convoys in parallel (2026-09-29: fitHulls grew one
+	 * fleet to 50-100 ships for a whole shortfall), each paying its own
+	 * escort, tracked, and settled like any other; the first is returned,
+	 * with the whole sailing on {@link Convoy#sailing}. The total shipped is
+	 * the load - only its division into fleets changes.
 	 */
 	public static Convoy dispatch(ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction,
 			float[] load, Random random, String recipientFactionId, boolean aid) {
 		if (donor == null || base == null || faction == null) return null;
-		if (faction.isPlayerFaction() && donor.market != null) {
+		// a player colony's convoy stays the hulls its free points bought - the
+		// load is clamped to what they carry, the fleet is never grown past the
+		// ledger (nothing sails over-extended), and it is never split; NPC
+		// convoys and outpost returns grow to fit their load
+		boolean ledger = faction.isPlayerFaction() && donor.market != null;
+		if (ledger) {
 			// the colony's own hulls: staged warships never fold into a convoy
 			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor.market), load);
 		}
+		if (donor.starSystem() == null || donor.entity() == null || base.entity() == null) return null;
+		if (load[0] <= 0f && load[1] + load[2] + load[3] <= 0f) return null;
+
+		// (2026-09-29: closed economy) an NPC convoy's escort is what the donor
+		// pays for beside the cargo; the player's is the ledger's, as before
+		boolean paysEscort = !faction.isPlayerFaction();
+		float ly = Misc.getDistanceLY(donor.hyperLoc(), base.hyperLoc());
+		if (ledger) {
+			Hulls h = buildHulls(donor, faction, load, load, ly, paysEscort, false, false, random);
+			return h != null ? sail(h, donor, base, faction, paysEscort, ly, recipientFactionId, aid, random) : null;
+		}
+		float[] remaining = load.clone();
+		Split split = new Split(load);
+		Convoy lead = null;
+		float[] sailed = new float[load.length];
+		int fleets = 0;
+		// ends: every convoy that sails carries its whole ask of at least one
+		// unit or the loop stops (sailed()), and the load is finite
+		while (true) {
+			Hulls h = nextHulls(split, remaining, donor, faction, ly, paysEscort, false, random);
+			if (h == null) break;
+			Convoy c = sail(h, donor, base, faction, paysEscort, ly, recipientFactionId, aid, random);
+			if (c == null) break;
+			if (lead == null) lead = c;
+			fleets++;
+			if (!sailed(h, c, remaining, sailed)) break;
+		}
+		if (lead != null && fleets > 1) {
+			lead.sailing = sailed;
+			ThreatIncConfig.log("Convoy split: " + faction.getId() + " " + donor.name() + " -> " + base.name()
+					+ " in " + fleets + " fleets (" + (int) sailed[0] + " marines, " + (int) sailed[1]
+					+ " armaments, " + (int) sailed[2] + " fuel, " + (int) sailed[3] + " supplies)");
+		}
+		return lead;
+	}
+
+	/**
+	 * Books what one fleet of a sailing loaded: into {@code sailed}, off
+	 * {@code remaining}. True while another fleet should follow - this one
+	 * took its whole ask and something is left; a fleet that came up short
+	 * (the donor ran dry, or no hull of the role was to be had) ends the
+	 * sailing, and the rest waits for the next pass.
+	 */
+	protected static boolean sailed(Hulls h, Convoy c, float[] remaining, float[] sailed) {
+		float[] got = {c.marines, c.armaments, c.fuel, c.supplies};
+		boolean whole = true;
+		boolean left = false;
+		for (int i = 0; i < remaining.length; i++) {
+			sailed[i] += got[i];
+			remaining[i] = Math.max(0f, remaining[i] - got[i]);
+			// loads are whole units: an ask of 40.6 is met by 40
+			if (got[i] < (float) Math.floor(h.ask[i])) whole = false;
+			if (remaining[i] >= 1f) left = true;
+		}
+		return whole && left;
+	}
+
+	/** One convoy of the sailing: the escort paid for, the fleet placed at the donor, loaded, and sent. */
+	protected static Convoy sail(Hulls h, ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction,
+			boolean paysEscort, float ly, String recipientFactionId, boolean aid, Random random) {
+		CampaignFleetAPI fleet = h.fleet;
+		float[] load = h.ask;
 		StarSystemAPI system = donor.starSystem();
 		SectorEntityToken from = donor.entity();
 		SectorEntityToken to = base.entity();
-		if (system == null || from == null || to == null) return null;
-
-		float marines = load[0];
-		float cargoUnits = load[1] + load[2] + load[3];
-		if (marines <= 0f && cargoUnits <= 0f) return null;
-
-		// escort by cargo value (docs/design-theory.md 8.2, Blackett): a rich
-		// convoy is a real fleet, a trickle sails with a picket
-		float escort = ThreatIncConfig.convoyEscortFP()
-				+ cargoValue(marines, load[1], load[2], load[3]) / 1000f
-						* ThreatIncConfig.convoyEscortPerThousand();
-		// freighters sized to the cargo, transports to the troops: roughly one
-		// point of hull per 60 units / 40 marines, so the load actually fits
-		float freighterPts = Math.max(10f, cargoUnits / 60f);
-		float tankerPts = load[2] > 0f ? Math.max(5f, load[2] / 100f) : 0f;
-		float transportPts = marines > 0f ? Math.max(10f, marines / 40f) : 0f;
-		FleetParamsV3 params = new FleetParamsV3(donor.sourceMarket(), donor.hyperLoc(),
-				faction.getId(), null, FleetTypes.SUPPLY_FLEET,
-				escort, freighterPts, tankerPts, transportPts, 0f, 0f, 0f);
-		// a player convoy is exactly the hulls the ledger sized; vanilla's own
-		// fleet-size scaling stays on for NPC navies
-		if (faction.isPlayerFaction()) params.ignoreMarketFleetSizeMult = true;
-		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
-		if (fleet == null || fleet.isEmpty()) return null;
-		// a player colony's convoy stays the hulls its free points bought - the
-		// load is clamped to what they carry below, the fleet is never grown
-		// past the ledger (nothing sails over-extended); NPC convoys and
-		// outpost returns grow to fit their load
-		if (!(faction.isPlayerFaction() && donor.market != null)) {
-			fitHulls(fleet, faction, marines, load[1] + load[3], load[2], random);
-		}
+		// paid before the cargo is drawn: it was sized on the stock beside the load
+		float escort = builtEscort(h);
+		if (paysEscort) payEscort(fleet, donor, escort, ly);
 
 		system.addEntity(fleet);
 		fleet.setLocation(from.getLocation().x, from.getLocation().y);
@@ -1177,15 +1509,18 @@ public class ThreatConvoys {
 		c.recipientFactionId = recipientFactionId;
 		c.aid = aid;
 
-		int m = (int) Math.min(marines, cargo.getFreeCrewSpace());
+		int m = (int) Math.min(load[0], cargo.getFreeCrewSpace());
 		if (m > 0) {
-			cargo.addMarines(m);
-			c.marines = ThreatReserves.draw(donor.id(), Commodities.MARINES, m);
+			// aboard is what was drawn: a donor holding less than asked sails less
+			int taken = (int) ThreatReserves.draw(donor.id(), Commodities.MARINES, m);
+			if (taken > 0) cargo.addMarines(taken);
+			c.marines = taken;
 		}
 		c.armaments = loadCommodity(cargo, donor.id(), Commodities.HAND_WEAPONS, load[1]);
 		c.fuel = loadCommodity(cargo, donor.id(), Commodities.FUEL, load[2]);
 		c.supplies = loadCommodity(cargo, donor.id(), Commodities.SUPPLIES, load[3]);
 		if (c.marines <= 0f && c.armaments <= 0f && c.fuel <= 0f && c.supplies <= 0f) {
+			refundEscort(fleet, donor);
 			Misc.fadeAndExpire(fleet);
 			return null;
 		}
@@ -1204,7 +1539,8 @@ public class ThreatConvoys {
 		ThreatIncConfig.log("Convoy dispatched: " + faction.getId() + " " + donor.name()
 				+ " -> " + base.name() + " (" + (int) c.marines + " marines, "
 				+ (int) c.armaments + " armaments, " + (int) c.fuel + " fuel, "
-				+ (int) c.supplies + " supplies; escort " + (int) escort + " FP)");
+				+ (int) c.supplies + " supplies; escort " + (int) escort + " FP, "
+				+ fleet.getFleetData().getNumMembers() + " ships)");
 		// the hive may come for it
 		ThreatRaiders.consider(c, random);
 		return c;
@@ -1251,40 +1587,204 @@ public class ThreatConvoys {
 	 * hulls vanilla happens to pick left convoys with a few dozen free
 	 * berths: 300 marines planned, 19 to 76 loaded, the rest left behind.
 	 * A bigger load now means a bigger, slower convoy, as it should. Not
-	 * for a player colony's convoy: its hulls are what its free fleet
-	 * points bought (ThreatAidCapacity.fitLoad), and growing them would sail
-	 * more than the ledger holds.
+	 * for a player colony's logistics convoy: its hulls are what its free
+	 * fleet points bought (ThreatAidCapacity.fitLoad), and growing them would
+	 * sail more than the ledger holds. Front runs, which the ledger does not
+	 * hold, grow for everyone (2026-09-29). Never past vanilla's
+	 * maxShipsInAIFleet ({@link #fleetShipLimit}): a load that needs more
+	 * sails in several fleets ({@link #nextHulls}). The dispatch log carries
+	 * the ship count; the split search builds fleets it drops, so nothing is
+	 * logged here.
 	 */
 	protected static void fitHulls(CampaignFleetAPI fleet, FactionAPI faction, float marines,
 			float cargoUnits, float fuel, Random random) {
 		CargoAPI cargo = fleet.getCargo();
-		int before = fleet.getFleetData().getNumMembers();
-		for (int i = 0; i < MAX_FIT_HULLS && cargo.getFreeCrewSpace() < marines; i++) {
-			float missing = marines - cargo.getFreeCrewSpace();
-			if (!addHull(fleet, faction, missing, 400f, 150f, ShipRoles.PERSONNEL_LARGE,
+		int limit = fleetShipLimit();
+		// each pass runs until the load fits or the fleet is at the ship limit
+		// (2026-09-29: MAX_FIT_HULLS, 12 a pass, silently cut a big load to what
+		// 12 more hulls held). It also stops when no hull of the role can be
+		// added, or when one was added and the room did not grow - so it always
+		// ends: every turn that continues adds a ship toward the limit
+		while (cargo.getFreeCrewSpace() < marines && fleet.getFleetData().getNumMembers() < limit) {
+			float room = cargo.getFreeCrewSpace();
+			if (!addHull(fleet, faction, marines - room, 400f, 150f, ShipRoles.PERSONNEL_LARGE,
 					ShipRoles.PERSONNEL_MEDIUM, ShipRoles.PERSONNEL_SMALL, random)) break;
+			if (cargo.getFreeCrewSpace() <= room) break;
 		}
-		for (int i = 0; i < MAX_FIT_HULLS && cargo.getSpaceLeft() < cargoUnits; i++) {
-			float missing = cargoUnits - cargo.getSpaceLeft();
-			if (!addHull(fleet, faction, missing, 1000f, 300f, ShipRoles.FREIGHTER_LARGE,
+		while (cargo.getSpaceLeft() < cargoUnits && fleet.getFleetData().getNumMembers() < limit) {
+			float room = cargo.getSpaceLeft();
+			if (!addHull(fleet, faction, cargoUnits - room, 1000f, 300f, ShipRoles.FREIGHTER_LARGE,
 					ShipRoles.FREIGHTER_MEDIUM, ShipRoles.FREIGHTER_SMALL, random)) break;
+			if (cargo.getSpaceLeft() <= room) break;
 		}
-		for (int i = 0; i < MAX_FIT_HULLS && cargo.getFreeFuelSpace() < fuel; i++) {
-			float missing = fuel - cargo.getFreeFuelSpace();
-			if (!addHull(fleet, faction, missing, 1000f, 300f, ShipRoles.TANKER_LARGE,
+		while (cargo.getFreeFuelSpace() < fuel && fleet.getFleetData().getNumMembers() < limit) {
+			float room = cargo.getFreeFuelSpace();
+			if (!addHull(fleet, faction, fuel - room, 1000f, 300f, ShipRoles.TANKER_LARGE,
 					ShipRoles.TANKER_MEDIUM, ShipRoles.TANKER_SMALL, random)) break;
-		}
-		int added = fleet.getFleetData().getNumMembers() - before;
-		if (added > 0) {
-			ThreatIncConfig.log("Convoy fitted: +" + added + " hulls for " + (int) marines + " marines, "
-					+ (int) cargoUnits + " cargo, " + (int) fuel + " fuel (berths "
-					+ cargo.getFreeCrewSpace() + ", hold " + (int) cargo.getSpaceLeft()
-					+ ", tanks " + cargo.getFreeFuelSpace() + ")");
+			if (cargo.getFreeFuelSpace() <= room) break;
 		}
 	}
 
-	/** Hulls one convoy may gain in each of fitHulls' three passes. */
-	protected static final int MAX_FIT_HULLS = 12;
+	// ------------------------------------------------------------------
+	// splitting a load across fleets (2026-09-29: vanilla's ship limit)
+	// ------------------------------------------------------------------
+
+	/** The most ships an AI fleet may have: vanilla's maxShipsInAIFleet, an engine limit. */
+	public static int fleetShipLimit() {
+		return Math.max(1, Global.getSettings().getInt("maxShipsInAIFleet"));
+	}
+
+	/** One convoy fleet built for an ask, not yet paid for, placed or loaded. */
+	protected static class Hulls {
+		CampaignFleetAPI fleet;
+		/** What this fleet is to carry, in ThreatReserves.COMMODITIES order. */
+		float[] ask;
+		/** The escort points it was built with. */
+		float escort;
+	}
+
+	/**
+	 * Builds one convoy fleet at {@code from} for {@code ask}: freighters
+	 * sized to the cargo, transports to the troops (roughly one point of hull
+	 * per 60 units / 40 marines, so the load actually fits; a front run's at
+	 * least ten points each, as it always sailed), and an escort by cargo value
+	 * (docs/design-theory.md 8.2, Blackett: a rich convoy is a real fleet, a
+	 * trickle sails with a picket) - an NPC's only as much as the donor pays
+	 * for beside the {@code reserve} of fuel and supplies it ships as cargo.
+	 * With {@code grow}, fitHulls adds hulls up to the ship limit. Nothing is
+	 * paid, placed or drawn here: a fleet the split search passes over is
+	 * simply dropped.
+	 */
+	protected static Hulls buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve,
+			float ly, boolean paysEscort, boolean frontRun, boolean grow, Random random) {
+		float escort = ThreatIncConfig.convoyEscortFP() + escortForValue(ask);
+		if (paysEscort) escort = paidEscort(from, escort, ly, reserve[2], reserve[3]);
+		float cargoUnits = ask[1] + ask[2] + ask[3];
+		float freighterPts = Math.max(10f, cargoUnits / 60f);
+		float tankerPts = ask[2] > 0f ? Math.max(5f, ask[2] / 100f) : 0f;
+		float transportPts = ask[0] > 0f || frontRun ? Math.max(10f, ask[0] / 40f) : 0f;
+		FleetParamsV3 params = new FleetParamsV3(from.sourceMarket(), from.hyperLoc(),
+				faction.getId(), null, FleetTypes.SUPPLY_FLEET,
+				escort, freighterPts, tankerPts, transportPts, 0f, 0f, 0f);
+		// a convoy is exactly the hulls the ledger sized and the escort it pays
+		// for: vanilla's own fleet-size scaling is off for NPC navies too
+		// (2026-09-29: closed economy - the multiplier's share of the escort was
+		// unpaid; it was on even for the player's front runs)
+		params.ignoreMarketFleetSizeMult = true;
+		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
+		if (fleet == null || fleet.isEmpty()) return null;
+		if (grow) fitHulls(fleet, faction, ask[0], ask[1] + ask[3], ask[2], random);
+		Hulls h = new Hulls();
+		h.fleet = fleet;
+		h.ask = ask;
+		h.escort = escort;
+		return h;
+	}
+
+	/** The escort points a load's cargo value calls for, over the convoyEscortFP every convoy sails with. */
+	protected static float escortForValue(float[] ask) {
+		return cargoValue(ask[0], ask[1], ask[2], ask[3]) / 1000f * ThreatIncConfig.convoyEscortPerThousand();
+	}
+
+	/**
+	 * The escort points the donor pays for: those asked, or - vanilla pruned
+	 * the fleet to maxShipsInAIFleet - only what was built (as
+	 * ThreatFleetOrders' relief pays, ThreatSoftening.BUILT_SHORT).
+	 */
+	protected static float builtEscort(Hulls h) {
+		float built = ThreatSoftening.combatFP(h.fleet);
+		return built < h.escort * ThreatSoftening.BUILT_SHORT ? built : h.escort;
+	}
+
+	/** The smallest share of its ask the fleet's berths, hold or tanks take; 1 or more when it takes the whole. */
+	protected static float holds(CampaignFleetAPI fleet, float[] ask) {
+		CargoAPI cargo = fleet.getCargo();
+		float share = Float.MAX_VALUE;
+		if (ask[0] >= 1f) share = Math.min(share, cargo.getFreeCrewSpace() / ask[0]);
+		float hold = ask[1] + ask[3];
+		if (hold >= 1f) share = Math.min(share, cargo.getSpaceLeft() / hold);
+		if (ask[2] >= 1f) share = Math.min(share, cargo.getFreeFuelSpace() / ask[2]);
+		return Math.max(0f, share);
+	}
+
+	/** How close the split search brings the share it sails to the share known not to fit. */
+	protected static final float SPLIT_PRECISION = 1.25f;
+
+	/**
+	 * The split search's state across one sailing: shares of the whole load
+	 * one fleet was seen to carry within the ship limit, and not to. The next
+	 * fleet starts from the share the last one carried, so a long sailing
+	 * builds once per fleet after the first.
+	 */
+	protected static class Split {
+		final float[] load;
+		/** The largest share seen to fit one fleet; 0 = none yet. */
+		float fits = 0f;
+		/** The smallest share seen not to; Float.MAX_VALUE = none yet. */
+		float over = Float.MAX_VALUE;
+
+		Split(float[] load) {
+			this.load = load.clone();
+		}
+	}
+
+	/**
+	 * The next fleet of a sailing: built for the largest share of the load
+	 * that one fleet carries within vanilla's ship limit, as near as
+	 * SPLIT_PRECISION - the whole of {@code remaining} when that fits, as it
+	 * nearly always does. A share that does not fit is dropped unpaid; the
+	 * search narrows from what the fleet held (a fleet that held 40% of the
+	 * ask tries 40%), then halves the gap between the share that fits and the
+	 * one that did not. A fleet under the limit that still cannot hold its
+	 * ask found no more hulls of the role, and sails with what fits, as
+	 * before the split. Null if nothing could be built.
+	 *
+	 * <p>Ends: while nothing fits, each probe asks at most 0.8 of the last,
+	 * and an ask under one unit counts as a fit; once one fits, each probe
+	 * halves the log of over/fits until it is within SPLIT_PRECISION.
+	 */
+	protected static Hulls nextHulls(Split split, float[] remaining, ThreatBases.Base from,
+			FactionAPI faction, float ly, boolean paysEscort, boolean frontRun, Random random) {
+		int limit = fleetShipLimit();
+		Hulls best = null;
+		float share = split.fits > 0f ? split.fits : 1f;
+		while (true) {
+			float[] ask = new float[remaining.length];
+			boolean whole = true;
+			float units = 0f;
+			for (int i = 0; i < ask.length; i++) {
+				ask[i] = Math.min(remaining[i], share * split.load[i]);
+				if (ask[i] < remaining[i]) whole = false;
+				units += ask[i];
+			}
+			// the escort pays beside everything still to ship, not only this fleet's share
+			Hulls h = buildHulls(from, faction, ask, remaining, ly, paysEscort, frontRun, true, random);
+			if (h == null) return best;
+			float held = holds(h.fleet, ask);
+			boolean fits = held >= 1f
+					|| h.fleet.getFleetData().getNumMembers() < limit
+					|| units < 1f
+					// the escort alone fills the fleet, and no smaller ask sheds a ship of it
+					|| (held <= 0f && escortForValue(ask) < 1f);
+			if (fits) {
+				// every fit is at a larger share than the last: the search climbs from it
+				best = h;
+				split.fits = share;
+				if (split.over <= share) split.over = Float.MAX_VALUE;
+			} else {
+				split.over = share;
+				if (split.fits >= share) split.fits = 0f;
+			}
+			if (best != null) {
+				if (whole || split.over == Float.MAX_VALUE || split.over <= split.fits * SPLIT_PRECISION) {
+					return best;
+				}
+				share = (float) Math.sqrt(split.fits * split.over);
+			} else {
+				share = held > 0f ? Math.min(share * held, share * 0.8f) : share * 0.5f;
+			}
+		}
+	}
 
 	/** One hull of the size the shortfall calls for, falling back to smaller ones; false if none could be added. */
 	protected static boolean addHull(CampaignFleetAPI fleet, FactionAPI faction, float missing,
@@ -1334,8 +1834,13 @@ public class ThreatConvoys {
 			}
 			float days = Global.getSector().getClock().getElapsedDaysSince(c.departedTimestamp);
 			if (days > ThreatIncConfig.convoyTimeoutDays()) {
-				Misc.fadeAndExpire(fleet);
-				lost(c);
+				// (2026-09-29: closed economy) a convoy still afloat past its time is
+				// not written off with its cargo: it turns for home and settles there
+				// (returnHome). That is its last leg - ThreatReturns gives it
+				// convoyTimeoutDays more, then despawns it - so it cannot loop
+				ThreatIncConfig.log("Convoy timed out after " + (int) days + " days: " + c.factionId + " "
+						+ c.fromName() + " -> " + c.toName() + ", sent home");
+				returnHome(c);
 				continue;
 			}
 			trimToHulls(c);
@@ -1392,15 +1897,27 @@ public class ThreatConvoys {
 		}
 
 		MarketAPI donor = Global.getSector().getEconomy().getMarket(c.fromMarketId);
+		ThreatBases.Base npcHome = sender != null && !sender.isPlayerFaction() ? ThreatBases.of(c.fromMarketId) : null;
 		if (sender != null && sender.isPlayerFaction() && donor != null
 				&& donor.getPrimaryEntity() != null) {
 			// a player fleet comes home on the tracked leg: the ledger gets its points back
 			ThreatReturns.sendHome(fleet, c.factionId, donor.getId());
+		} else if (npcHome != null && npcHome.entity() != null && c.factionId.equals(npcHome.factionId())) {
+			// (2026-09-29: closed economy) an NPC convoy comes home on the tracked
+			// leg too: its escort's hulls are re-banked at what survived (ThreatReturns)
+			ThreatReturns.sendHome(fleet, c.factionId, npcHome.id());
 		} else {
-			SectorEntityToken home = donor != null ? donor.getPrimaryEntity() : base.entity();
-			fleet.clearAssignments();
-			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home, 1000f,
-					"returning to " + (donor != null ? donor.getName() : base.name()));
+			// an NPC sender whose donor is gone or changed hands settles at its
+			// faction's nearest base instead (2026-09-29: closed economy - the
+			// despawning return below ended its escort unsettled)
+			ThreatBases.Base fallback = sender != null && !sender.isPlayerFaction()
+					? fallbackHome(fleet, c.factionId) : null;
+			if (fallback == null || !ThreatReturns.sendHome(fleet, c.factionId, fallback.id())) {
+				SectorEntityToken home = donor != null ? donor.getPrimaryEntity() : base.entity();
+				fleet.clearAssignments();
+				fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home, 1000f,
+						"returning to " + (donor != null ? donor.getName() : base.name()));
+			}
 		}
 		ThreatIncConfig.log("Convoy arrived: " + c.factionId + " at " + base.name() + " ("
 				+ marines + " marines, " + armaments + " armaments, " + fuel + " fuel, "
@@ -1414,16 +1931,23 @@ public class ThreatConvoys {
 		return c.recipientFactionId != null && c.recipientFactionId.equals(base.factionId());
 	}
 
-	/** The helper's colony within convoy range of another faction's colony that can spare the most of a commodity, or null. */
+	/**
+	 * The helper's colony in reach of another faction's colony that can spare
+	 * the most of a commodity, or null. An NPC helper reaches as far as its
+	 * donor's fuel does, as the staging planner's donors (2026-09-29: the flat
+	 * convoyRangeLY, 15 ly, kept allies' stock out of reach of sieges their
+	 * fuel could reach); the player's at any range.
+	 */
 	public static MarketAPI pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId) {
 		if (helper == null || needy == null || needy.getStarSystem() == null) return null;
 		MarketAPI best = null;
 		float bestSpare = 0f;
-		float range = helper.isPlayerFaction() ? Float.MAX_VALUE : ThreatIncConfig.convoyRangeLY();
 		for (MarketAPI donor : ThreatReserves.marketsOf(helper.getId())) {
 			if (donor.getStarSystem() == null || donor.getPrimaryEntity() == null) continue;
+			float reach = helper.isPlayerFaction() ? Float.MAX_VALUE
+					: Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.expeditionRangeLY(donor));
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
-					needy.getStarSystem().getLocation()) > range) continue;
+					needy.getStarSystem().getLocation()) > reach) continue;
 			float s = spare(donor, commodityId);
 			if (s > bestSpare) {
 				bestSpare = s;
@@ -1464,18 +1988,42 @@ public class ThreatConvoys {
 	}
 
 	/**
-	 * Recalled, or its destination is gone: the convoy turns for the donor
-	 * with the cargo still aboard, and whatever survives the trip home goes
-	 * back into the donor's reserve on arrival (ThreatReturns).
+	 * Where an NPC convoy whose donor is gone or changed hands goes home to
+	 * settle: its faction's nearest base to the fleet (ThreatFleetOrders.pickBase),
+	 * else its nearest colony. Null for the player's - the ledger holds it for
+	 * its own colony - and for a faction with nowhere left.
+	 */
+	protected static ThreatBases.Base fallbackHome(CampaignFleetAPI fleet, String factionId) {
+		if (fleet == null || factionId == null) return null;
+		FactionAPI faction = Global.getSector().getFaction(factionId);
+		if (faction == null || faction.isPlayerFaction()) return null;
+		Vector2f at = fleet.getLocationInHyperspace();
+		MarketAPI home = ThreatFleetOrders.pickBase(faction, at);
+		if (home == null || home.getPrimaryEntity() == null) home = nearestColony(faction, at);
+		return home != null && home.getPrimaryEntity() != null ? ThreatBases.of(home) : null;
+	}
+
+	/** Where a convoy settles: its donor while still the sender's and there, else {@link #fallbackHome}; null with neither. */
+	protected static ThreatBases.Base homeBase(Convoy c) {
+		// the donor may be an outpost (a front run out of one): still theirs, still there
+		ThreatBases.Base donor = ThreatBases.of(c.fromMarketId);
+		if (donor != null && donor.entity() != null && c.factionId.equals(donor.factionId())) return donor;
+		return fallbackHome(c.fleet, c.factionId);
+	}
+
+	/**
+	 * Recalled, timed out, or its destination is gone: the convoy turns for
+	 * the donor with the cargo still aboard, and whatever survives the trip
+	 * home goes back into the donor's reserve on arrival (ThreatReturns). An
+	 * NPC donor that is gone or changed hands gives way to the faction's
+	 * nearest base ({@link #fallbackHome}); with none, the fleet fades out.
 	 */
 	protected static void returnHome(Convoy c) {
 		all().remove(c);
 		CampaignFleetAPI fleet = c.fleet;
-		// the donor may be an outpost (a front run out of one): still theirs, still there
-		ThreatBases.Base donor = ThreatBases.of(c.fromMarketId);
-		if (donor != null && donor.entity() != null
-				&& c.factionId.equals(donor.factionId())) {
-			ThreatReturns.sendHome(fleet, c.factionId, donor.id());
+		ThreatBases.Base home = homeBase(c);
+		if (home != null) {
+			ThreatReturns.sendHome(fleet, c.factionId, home.id());
 		} else if (fleet != null) {
 			Misc.fadeAndExpire(fleet);
 		}

@@ -22,12 +22,13 @@ import com.fs.starfarer.api.util.Misc;
  * ({@link #swarmKnows}): one a Scouting Swarm has entered, one a hive colony
  * shares, or a world a Threat ground front stands on. From phase 2 a hive
  * colony that could stage a strike on the economy alone - size, hulls
- * delivered, fuel, a working Swarm Nexus - sends a Scouting Swarm
+ * delivered, fuel, a working Swarm Nexus - sends Scouting Swarms
  * ({@link ThreatFleetComposer#createScouts}) through the unknown inhabited
- * systems within its fuel reach, nearest-first, scoutStops per sortie. Scouts
- * are fabricated fresh, not mustered: the Defense Swarms stay home. At most
- * swarmScoutMax fly at once. They keep the swarm's stealth, pick no fights,
- * and fade out at home.
+ * systems within its fuel reach, nearest-first, as many as those systems
+ * need. Scouts are fabricated fresh, not mustered - the Defense Swarms stay
+ * home - and paid from the colony's fabrication bank (ThreatColonyManager's
+ * ledger): a colony that has not banked a scout's fleet points sends none.
+ * They keep the swarm's stealth, pick no fights, and fade out at home.
  *
  * <p>Knob swarmScouting off: the swarm knows every world, as before.
  */
@@ -88,10 +89,8 @@ public class ThreatSwarmScouts {
 		for (Scout s : new ArrayList<Scout>(all())) {
 			ROUTE.advance(s);
 		}
-		// the cheap test first: getPhase walks every colony
-		if (countOut() >= ThreatIncConfig.swarmScoutMax()) return;
 		if (IncursionManager.getPhase() < 2) return;
-		launchOne(random);
+		launchAll(random);
 	}
 
 	/** RESET War: the parties out fade and what the swarm charted is forgotten. */
@@ -137,29 +136,28 @@ public class ThreatSwarmScouts {
 		}
 	};
 
-	protected static int countOut() {
-		int n = 0;
-		for (Scout s : all()) {
-			if (!s.returning) n++;
-		}
-		return n;
-	}
-
 	// ------------------------------------------------------------------
 	// sorties
 	// ------------------------------------------------------------------
 
-	/** One sortie from the first hive colony, in shuffled order, that can send one and has somewhere to look. */
-	protected static void launchOne(Random random) {
+	/**
+	 * Sorties from every hive system that can send one, in shuffled order, a
+	 * Scouting Swarm per route until nothing unknown is left in its reach
+	 * (2026-09-29: one sortie per poll, swarmScoutMax, 2, in the air at once).
+	 * Each launch takes its stops off the candidates (ROUTE.taken), so the
+	 * loop ends.
+	 */
+	protected static void launchAll(Random random) {
 		List<String> systemIds = new ArrayList<String>(ThreatIncData.colonyMarkets().keySet());
 		Collections.shuffle(systemIds, random);
 		for (String systemId : systemIds) {
 			MarketAPI colony = pickStaging(systemId);
 			if (colony == null) continue;
-			List<String> route = planRoute(colony, ThreatColonyManager.fuelRangeLY(colony));
-			if (route.isEmpty()) continue;
-			launch(colony, route, random);
-			return;
+			float range = ThreatColonyManager.fuelRangeLY(colony);
+			while (true) {
+				List<String> route = planRoute(colony, range);
+				if (route.isEmpty() || launch(colony, route, random) == null) break;
+			}
 		}
 	}
 
@@ -181,8 +179,9 @@ public class ThreatSwarmScouts {
 	}
 
 	/**
-	 * Up to scoutStops unknown systems holding a strikeable world within the
-	 * colony's fuel reach, nearest-first, none already on another scout's route.
+	 * A route (ThreatScoutRoute.nearestFirst) through the unknown systems holding
+	 * a strikeable world within the colony's fuel reach, none already on another
+	 * scout's route.
 	 */
 	protected static List<String> planRoute(MarketAPI colony, float rangeLY) {
 		StarSystemAPI home = colony.getStarSystem();
@@ -200,10 +199,20 @@ public class ThreatSwarmScouts {
 		return ThreatScoutRoute.nearestFirst(candidates, home.getLocation());
 	}
 
+	/**
+	 * Fabricates a Scouting Swarm at the colony and sends it down the route; null
+	 * when the colony's nexus has not banked what it costs (the fabrication
+	 * ledger, 2026-09-29 - scouts came free), or the fleet could not be built.
+	 */
 	protected static Scout launch(MarketAPI colony, List<String> route, Random random) {
-		CampaignFleetAPI fleet = ThreatFleetComposer.createScouts(ThreatIncConfig.swarmScoutFleetPoints(),
-				new Random(random.nextLong()));
+		float budget = ThreatIncConfig.swarmScoutFleetPoints();
+		if (!ThreatColonyManager.canAffordFP(colony, budget)) return null;
+		CampaignFleetAPI fleet = ThreatFleetComposer.createScouts(budget, new Random(random.nextLong()));
 		if (fleet == null || fleet.isEmpty()) return null;
+		ThreatColonyManager.chargeFP(colony, fleet.getFleetPoints());
+		// what survives is re-banked when it despawns home (2026-09-29: closed
+		// economy - it was charged and never bound, so every scout was spent whole)
+		ThreatColonyManager.bindToLedger(fleet, colony.getId());
 		colony.getStarSystem().addEntity(fleet);
 		fleet.setLocation(colony.getPrimaryEntity().getLocation().x, colony.getPrimaryEntity().getLocation().y);
 		MemoryAPI mem = fleet.getMemoryWithoutUpdate();

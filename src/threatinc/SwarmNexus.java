@@ -6,7 +6,9 @@ import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
  * The military organ of a Threat colony - the hive's answer to a Patrol HQ or
  * Military Base: the growth-vats and command strata from which the colony's
  * Defense Swarms are fabricated and its expeditions staged. It produces no
- * commodity; what it supplies is FLEETS. ThreatColonyManager gates garrison
+ * commodity; what it supplies is FLEETS, paid for from the fleet points it
+ * banks from the hulls it is delivered (ThreatColonyManager's fabrication
+ * ledger). ThreatColonyManager gates garrison
  * respawn on it ({@code hasOperationalNexus}) and strike staging requires it
  * ({@code pickStrikeStaging}), so disrupting it - a raid or bombardment -
  * silences the colony militarily until it recovers: no new Defense Swarms,
@@ -19,29 +21,6 @@ import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
  */
 public class SwarmNexus extends BaseIndustry {
 
-	/**
-	 * Whether the nexus has nothing to build: the garrison stands at its full
-	 * NOMINAL strength (the size table, not the economy-scaled figure - a
-	 * strained colony still WANTS more swarms and keeps consuming to get
-	 * them). An idle nexus draws nothing from the hive economy; the moment
-	 * swarms are mustered for an expedition or killed, it wakes and consumes
-	 * again. Deliberately based on the static table so the state can't
-	 * oscillate with the very deficits its own demand creates.
-	 */
-	public boolean isIdleAtCapacity() {
-		if (market == null || isDisrupted()) return false;
-		int nominal = ThreatColonyManager.desiredGarrison(market.getSize()).length;
-		// swarms out raiding or inbound hold their slots (ThreatColonyManager.swarmsAway)
-		return ThreatColonyManager.countLiveGarrison(market.getId())
-				+ ThreatColonyManager.swarmsAway(market.getId()) >= nominal;
-	}
-
-	@Override
-	public String getCurrentName() {
-		if (isIdleAtCapacity()) return super.getCurrentName() + " - Idle";
-		return super.getCurrentName();
-	}
-
 	// The nexus's ground-defense contribution - the hive's stand-in for the
 	// orbital-station and high-command multipliers vanilla colonies stack
 	// (hive worlds have neither, which left even large colonies absurdly
@@ -53,16 +32,17 @@ public class SwarmNexus extends BaseIndustry {
 	public void apply() {
 		super.apply(true);
 		// the nexus is the hive's military CONSUMER: growing Defense Swarms
-		// eats the forge chain's hull output and machinery. At capacity it
-		// goes cold - no demand, "Idle" in the colony UI - so a rear-echelon
-		// world with a full garrison stops drawing on the network's resources
-		// while frontier colonies rebuild theirs
-		if (!isIdleAtCapacity()) {
-			demand(com.fs.starfarer.api.impl.campaign.ids.Commodities.SHIPS,
-					market.getSize());
-			demand(com.fs.starfarer.api.impl.campaign.ids.Commodities.HEAVY_MACHINERY,
-					Math.max(1, market.getSize() - 2));
-		}
+		// eats the forge chain's hull output and machinery. It demands them
+		// always (2026-09-29): the garrison has no capacity to reach, so there
+		// is no Idle state, and a demand that does not move with the garrison
+		// is what keeps the hulls it is delivered - the production it banks
+		// (ThreatColonyManager.nexusDraw, the fabrication ledger) - from
+		// oscillating with the deficit its own demand makes. Under vanilla's
+		// economy a demand takes nothing from other worlds (docs/hive-economy.md)
+		demand(com.fs.starfarer.api.impl.campaign.ids.Commodities.SHIPS,
+				market.getSize());
+		demand(com.fs.starfarer.api.impl.campaign.ids.Commodities.HEAVY_MACHINERY,
+				Math.max(1, market.getSize() - 2));
 		// wears down with the disruption days on the clock, like the batteries
 		float resilience = ThreatColonyManager.disruptedDefenseResilience(this);
 		com.fs.starfarer.api.combat.StatBonus defense = market.getStats().getDynamic()

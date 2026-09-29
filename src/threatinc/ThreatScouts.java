@@ -17,6 +17,7 @@ import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.rules.MemoryAPI;
 import com.fs.starfarer.api.impl.campaign.fleets.FleetFactoryV3;
 import com.fs.starfarer.api.impl.campaign.fleets.FleetParamsV3;
+import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.FleetTypes;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
@@ -30,9 +31,9 @@ import com.fs.starfarer.api.util.Misc;
  * <p>A Threat strike does not give away where it came from; it gives the
  * struck faction a LEAD. The faction sends a small scouting party to sweep
  * the uninhabited systems within scoutLeadRadiusLY of the strike's true
- * origin, nearest-first from home, a few stops per sortie, until the origin
- * is found. A mobilised faction with no lead sweeps the uninhabited systems
- * within scoutRangeLY of one of its military worlds every scoutIntervalDays.
+ * origin, nearest-first from home, as many parties as the sweep needs, until
+ * the origin is found. A mobilised faction with no lead sweeps the uninhabited
+ * systems within scoutRangeLY of its military worlds every scoutIntervalDays.
  *
  * <p>A scout that jumps into a system with a live hive colony reveals it -
  * to the whole sector, player included: {@link ThreatIncData#discoveredSystems}
@@ -274,15 +275,22 @@ public class ThreatScouts {
 			if (!factions.contains(id)) factions.add(id);
 		}
 		long now = Global.getSector().getClock().getTimestamp();
+		// as many parties as there are systems to sweep (2026-09-29: a faction
+		// flew at most scoutMaxPerFaction, 2, and launched one per poll). Each
+		// launch takes its stops off the candidates (ROUTE.taken), so the loops
+		// end when nothing is left to sweep
 		for (String factionId : factions) {
 			if (!mayScout(factionId)) continue;
-			if (countFor(factionId) >= ThreatIncConfig.scoutMaxPerFaction()) continue;
 			List<Lead> list = leads().get(factionId);
 			if (list != null && !list.isEmpty()) {
 				for (Lead lead : new ArrayList<Lead>(list)) {
-					if (launchLead(factionId, lead)) break;
-					// nothing left to sweep and no one out looking: the lead is spent
-					if (!leadInFlight(factionId, lead.systemId)) list.remove(lead);
+					Boolean launched;
+					do {
+						launched = launchLead(factionId, lead);
+					} while (Boolean.TRUE.equals(launched));
+					// nothing left to sweep and no one out looking: the lead is spent.
+					// A party the depot cannot pay for yet (null) keeps the lead
+					if (launched != null && !leadInFlight(factionId, lead.systemId)) list.remove(lead);
 				}
 				continue;
 			}
@@ -295,14 +303,6 @@ public class ThreatScouts {
 		}
 	}
 
-	protected static int countFor(String factionId) {
-		int n = 0;
-		for (Scout s : all()) {
-			if (!s.returning && factionId.equals(s.factionId)) n++;
-		}
-		return n;
-	}
-
 	protected static boolean leadInFlight(String factionId, String systemId) {
 		for (Scout s : all()) {
 			if (!s.returning && factionId.equals(s.factionId) && systemId.equals(s.leadSystemId)) return true;
@@ -310,8 +310,12 @@ public class ThreatScouts {
 		return false;
 	}
 
-	/** Sweeps the area around a strike's origin from the faction's nearest military world. */
-	protected static boolean launchLead(String factionId, Lead lead) {
+	/**
+	 * Sweeps the area around a strike's origin from the faction's nearest
+	 * military world. True launched; false nothing (left) to sweep; null a
+	 * route waits on a depot that cannot pay for the party yet.
+	 */
+	protected static Boolean launchLead(String factionId, Lead lead) {
 		StarSystemAPI origin = ThreatScoutRoute.systemById(lead.systemId);
 		if (origin == null) return false;
 		MarketAPI home = nearestBase(factionId, origin.getLocation());
@@ -319,10 +323,14 @@ public class ThreatScouts {
 		List<String> route = planRoute(home, origin.getLocation(),
 				ThreatIncConfig.scoutLeadRadiusLY(), lead.timestamp);
 		if (route.isEmpty()) return false;
-		return launch(factionId, home, route, lead.systemId) != null;
+		return launch(factionId, home, route, lead.systemId) != null ? Boolean.TRUE : null;
 	}
 
-	/** Sweeps the unexplored space around one of the faction's military worlds. */
+	/**
+	 * Sweeps the unexplored space around every one of the faction's military
+	 * worlds (2026-09-29: one world per sweep), a party per route until each
+	 * has nothing left in range.
+	 */
 	protected static void launchRoutine(String factionId, Random random) {
 		List<MarketAPI> bases = new ArrayList<MarketAPI>();
 		for (MarketAPI market : ThreatReserves.marketsOf(factionId)) {
@@ -330,11 +338,11 @@ public class ThreatScouts {
 		}
 		Collections.shuffle(bases, random);
 		for (MarketAPI home : bases) {
-			List<String> route = planRoute(home, home.getStarSystem().getLocation(),
-					ThreatIncConfig.scoutRangeLY(), 0L);
-			if (route.isEmpty()) continue;
-			launch(factionId, home, route, null);
-			return;
+			while (true) {
+				List<String> route = planRoute(home, home.getStarSystem().getLocation(),
+						ThreatIncConfig.scoutRangeLY(), 0L);
+				if (route.isEmpty() || launch(factionId, home, route, null) == null) break;
+			}
 		}
 	}
 
@@ -357,8 +365,8 @@ public class ThreatScouts {
 	}
 
 	/**
-	 * Up to scoutStops systems within radius of the centre, nearest-first from
-	 * home: unknown, uninhabited, with a planet, not on another scout's route,
+	 * A route (ThreatScoutRoute.nearestFirst) through the systems within radius
+	 * of the centre, from home: unknown, uninhabited, with a planet, not on another scout's route,
 	 * and not swept clear lately - since the lead began (leadSince), else
 	 * within scoutMemoryDays.
 	 */
@@ -411,6 +419,17 @@ public class ThreatScouts {
 		StarSystemAPI homeSystem = home.getStarSystem();
 		if (homeSystem == null || home.getPrimaryEntity() == null) return null;
 		float fp = ThreatIncConfig.scoutFleetPoints();
+		// (2026-09-29: closed economy - a party sailed for free.) It pays what
+		// any NPC sortie pays, from the home's spendable reserve: supplies at
+		// the voyage rate per point (a point is FP_PER_RESPONSE_DIFFICULTY
+		// fleet points) and fuel per point per light-year of its route. Paid
+		// in full or it does not sail; what survives is refunded home
+		// (ScoutReturn, ThreatReturns.settle)
+		float[] cost = voyageCost(fp, routeLY(home, route));
+		if (ThreatReserves.spendable(home, Commodities.FUEL) < cost[0]
+				|| ThreatReserves.spendable(home, Commodities.SUPPLIES) < cost[1]) {
+			return null;
+		}
 		FleetParamsV3 params = new FleetParamsV3(
 				home,
 				home.getLocationInHyperspace(),
@@ -422,6 +441,9 @@ public class ThreatScouts {
 				fp * 0.2f, // tankers: it goes a long way
 				0f, 0f, 0f,
 				0f);
+		// the points paid for, not the market's fleet-size multiplier on top
+		// (2026-09-29: closed economy)
+		params.ignoreMarketFleetSizeMult = true;
 		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
 		if (fleet == null || fleet.isEmpty()) return null;
 
@@ -434,6 +456,10 @@ public class ThreatScouts {
 		// it looks, it does not fight: no picking battles, no borrowing it
 		mem.set(MemFlags.MEMORY_KEY_MAKE_NON_AGGRESSIVE, true);
 		mem.set(MemFlags.FLEET_NO_MILITARY_RESPONSE, true);
+		float fuel = ThreatReserves.drawSpendable(home, Commodities.FUEL, cost[0]);
+		float supplies = ThreatReserves.drawSpendable(home, Commodities.SUPPLIES, cost[1]);
+		ThreatReturns.provision(fleet, home.getId(), fuel, supplies);
+		fleet.addEventListener(new ScoutReturn());
 
 		Scout s = new Scout();
 		s.fleet = fleet;
@@ -446,7 +472,56 @@ public class ThreatScouts {
 		ROUTE.sendTo(s, ThreatScoutRoute.systemById(route.get(0)));
 
 		ThreatIncConfig.log("Scouting party of " + factionId + " from " + home.getName()
-				+ (leadSystemId != null ? " (lead)" : " (sweep)") + ": " + route);
+				+ (leadSystemId != null ? " (lead)" : " (sweep)") + ": " + route
+				+ " (" + (int) fuel + " fuel, " + (int) supplies + " supplies drawn)");
 		return s;
+	}
+
+	/** [fuel, supplies] a party of this many fleet points pays to sail this far, as a task force pays. */
+	protected static float[] voyageCost(float fp, float ly) {
+		float points = fp / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+		return new float[] { points * ly * ThreatIncConfig.expeditionFuelPerPointLY(),
+				points * ThreatIncConfig.expeditionSuppliesPerPoint() };
+	}
+
+	/** Light-years of the route out: home to its first stop, then stop to stop. */
+	protected static float routeLY(MarketAPI home, List<String> route) {
+		float ly = 0f;
+		Vector2f at = home.getLocationInHyperspace();
+		for (String id : route) {
+			StarSystemAPI system = ThreatScoutRoute.systemById(id);
+			if (system == null) continue;
+			ly += Misc.getDistanceLY(at, system.getLocation());
+			at = system.getLocation();
+		}
+		return ly;
+	}
+
+	/**
+	 * On a scouting party: home again, what it drew is settled as any
+	 * sortie's is (ThreatReturns.settle - the hulls' share back at the
+	 * strength that survived). A party whose home changed hands, or that was
+	 * destroyed, gets nothing back.
+	 */
+	public static class ScoutReturn implements com.fs.starfarer.api.campaign.listeners.FleetEventListener {
+		public void reportFleetDespawnedToListener(CampaignFleetAPI fleet,
+				com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param) {
+			if (reason != com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason.REACHED_DESTINATION) {
+				return;
+			}
+			String homeId = ThreatReturns.homeOf(fleet);
+			MarketAPI home = homeId != null ? Global.getSector().getEconomy().getMarket(homeId) : null;
+			if (home == null || fleet.getFaction() == null
+					|| !fleet.getFaction().getId().equals(home.getFactionId())) {
+				return;
+			}
+			ThreatReturns.settle(fleet, home);
+			// settled once: a second despawn report finds nothing to refund
+			fleet.getMemoryWithoutUpdate().unset(ThreatReturns.MEM_HOME);
+		}
+
+		public void reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner,
+				com.fs.starfarer.api.campaign.BattleAPI battle) {
+		}
 	}
 }
