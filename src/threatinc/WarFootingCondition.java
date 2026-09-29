@@ -79,9 +79,8 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 				tooltip.addPara(name + ": %s stockpiled. Short %s; nothing to cover with.",
 						pad, neg, stock, units(s.deficit));
 			} else if (s.per30 > 0f) {
-				tooltip.addPara(name + ": %s stockpiled. +%s a month, cap %s.", pad,
-						s.stock >= s.cap ? gray : pos, stock, Misc.getWithDGS((int) s.per30),
-						Misc.getWithDGS((int) s.cap));
+				tooltip.addPara(name + ": %s stockpiled. +%s a month.", pad,
+						pos, stock, Misc.getWithDGS((int) s.per30));
 			} else {
 				tooltip.addPara(name + ": %s stockpiled. Nothing stockpiles here.", pad, gray, stock);
 			}
@@ -104,16 +103,14 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 					units(s.localDeficit));
 		} else if (s.deficit > 0 && s.per30 > 0f) {
 			// the war's share only partly arriving: what does arrive banks
-			tooltip.addPara(name + ": %s banked. War supply short %s; +%s a month, cap %s.", pad,
-					h, stock, units(s.deficit), Misc.getWithDGS((int) s.per30),
-					Misc.getWithDGS((int) s.cap));
+			tooltip.addPara(name + ": %s banked. War supply short %s; +%s a month.", pad,
+					h, stock, units(s.deficit), Misc.getWithDGS((int) s.per30));
 		} else if (s.deficit > 0) {
 			tooltip.addPara(name + ": %s banked. War supply short %s; nothing to bank.", pad, h,
 					stock, units(s.deficit));
 		} else if (s.surplus > 0f) {
-			tooltip.addPara(name + ": %s banked. War supply %s; +%s a month, cap %s.", pad, pos,
-					stock, units((int) s.surplus), Misc.getWithDGS((int) s.per30),
-					Misc.getWithDGS((int) s.cap));
+			tooltip.addPara(name + ": %s banked. War supply %s; +%s a month.", pad, pos,
+					stock, units((int) s.surplus), Misc.getWithDGS((int) s.per30));
 		} else if (s.per30 > 0f) {
 			tooltip.addPara(name + ": %s banked. Balanced; militia +%s a month.", pad, gray,
 					stock, Misc.getWithDGS((int) s.per30));

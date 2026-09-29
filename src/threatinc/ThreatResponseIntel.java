@@ -140,6 +140,11 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 				&& ThreatIncData.resolveColonyMarket(targetMarketId) == null) {
 			retarget();
 		}
+		// a fleet whose attack order has run out goes home to settle (2026-09-29:
+		// closed economy - it used to despawn on a queued return, unsettled)
+		for (CampaignFleetAPI curr : allFleets()) {
+			if (alive(curr) && ThreatReturns.orderRanOut(curr)) sendFleetHome(curr);
+		}
 	}
 
 	/** Redirects every living fleet at the nearest surviving Threat colony. */
@@ -172,18 +177,15 @@ public class ThreatResponseIntel extends BaseIntelPlugin {
 		com.fs.starfarer.api.campaign.StarSystemAPI system = next.getStarSystem();
 		targetSystemName = system.getNameWithLowercaseTypeShort();
 
-		SectorEntityToken home = nearestFriendlyMarketEntity(lead);
 		for (CampaignFleetAPI curr : allFleets()) {
 			if (!alive(curr)) continue;
+			// a fleet already on its tracked leg home stays on it
+			if (ThreatReturns.tracked(curr)) continue;
 			curr.clearAssignments();
+			// nothing queued behind it: advanceImpl sends it home to settle
 			curr.addAssignment(com.fs.starfarer.api.campaign.FleetAssignment.ATTACK_LOCATION,
 					next.getPrimaryEntity(), 120f,
 					"attacking the Threat colony in the " + system.getNameWithLowercaseType());
-			if (home != null) {
-				curr.addAssignment(
-						com.fs.starfarer.api.campaign.FleetAssignment.GO_TO_LOCATION_AND_DESPAWN,
-						home, 1000f, "returning home");
-			}
 		}
 
 		ThreatColonyManager.announce(ThreatNotice.titled("Task Force Redirected").icon(faction())

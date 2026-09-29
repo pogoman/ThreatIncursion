@@ -12,16 +12,11 @@ import com.fs.starfarer.api.impl.campaign.ids.Factions;
  *
  * <p>Every faction that takes a stratum, eradicates a hive, or lands a raid
  * or bombardment on one earns GRUDGE points; the sum of all grudges is the
- * hive's ALARM. Both are visible on the war board and decay monthly. Two
- * levers, no hidden difficulty:
- *
- * <ul>
- * <li>TEMPO: Swarm Nexuses fabricate replacement garrisons faster by
- * {@link #tempoMult()} - and since strikes and expansion are mustered from
- * garrison surplus, that is the hive's whole military tempo.</li>
- * <li>TARGETING: a strike's target weight is multiplied by
- * {@link #targetMult(String)} for the grudged faction's worlds.</li>
- * </ul>
+ * hive's ALARM. Both are visible on the war board and decay monthly. No
+ * hidden difficulty: a strike's target weight is multiplied by
+ * {@link #targetMult(String)} for the grudged faction's worlds (TARGETING).
+ * The alarm buys the swarm no ships (2026-09-29: closed economy - the TEMPO
+ * lever, alarmTempoMult, is gone; the FP bank pays for every swarm).
  *
  * Plus RETALIATION (IncursionManager.retaliate): a ground victory draws an
  * immediate strike at the winner from the nearest hive that can muster one.
@@ -73,13 +68,6 @@ public class ThreatAlarm {
 				+ String.format("%.1f", g) + ", alarm " + String.format("%.1f", alarm()));
 	}
 
-	/** Fabrication-speed multiplier on every Swarm Nexus, 1 at no alarm, capped. */
-	public static float tempoMult() {
-		if (!enabled()) return 1f;
-		float m = 1f + alarm() * ThreatIncConfig.alarmTempoMult();
-		return Math.min(ThreatIncConfig.alarmTempoMax(), Math.max(1f, m));
-	}
-
 	/** Strike-target weight multiplier for a faction's worlds, 1 at no grudge. */
 	public static float targetMult(String factionId) {
 		if (!enabled()) return 1f;
@@ -102,11 +90,10 @@ public class ThreatAlarm {
 		}
 	}
 
-	/** "Alarm 12 - fabrication x1.6" for the board header. */
+	/** "Alarm 12" for the board header. */
 	public static String headerLabel() {
 		float a = alarm();
 		if (a <= 0f) return "Alarm 0";
-		return "Alarm " + (int) Math.ceil(a) + " - fabrication x"
-				+ String.format("%.1f", tempoMult());
+		return "Alarm " + (int) Math.ceil(a);
 	}
 }

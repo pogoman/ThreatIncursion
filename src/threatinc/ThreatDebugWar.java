@@ -94,7 +94,7 @@ public class ThreatDebugWar {
 			int grown = 0;
 			List<MarketAPI> touched = new ArrayList<MarketAPI>();
 			for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
-				int cap = Math.min(ThreatIncConfig.colonyMaxSize(), Misc.getMaxMarketSize(market));
+				int cap = ThreatColonyManager.maxColonySize(market);
 				boolean any = false;
 				while (market.getSize() < floor && market.getSize() < cap) {
 					if (!ThreatColonyManager.growColony(market, cap)) break;

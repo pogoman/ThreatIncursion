@@ -99,8 +99,9 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 
 	/**
 	 * The payload sweeps every eligible world in the target system
-	 * (IncursionManager.launchStrike), spending {@code strikePassesPerColony}
-	 * passes on each. What a pass DOES is {@link #doCustomRaidAction}: the
+	 * (IncursionManager.launchStrike), spending up to
+	 * IncursionManager.expeditionPasses passes on each - one a mustered swarm,
+	 * and two more: what is aboard bounds what they do. What a pass DOES is {@link #doCustomRaidAction}: the
 	 * swarm mirrors the siege it is subjected to - soften, land, reinforce.
 	 *
 	 * <p>With {@code strikeSaturationEnabled} the bombardment doctrine comes
@@ -170,7 +171,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 						// it: a world not yet ready to land on waits here, spending nothing
 						if (ThreatIncConfig.frontsEnabled()
 								&& ThreatGroundFronts.getFront(market.getId()) == null
-								&& !ThreatGroundFronts.readyToLand(market, strike.worldShare(),
+								&& !ThreatGroundFronts.readyToLand(market, strike.availableLanding(market, null),
 										strike.abstractOrbitDone(market))) {
 							return;
 						}
@@ -308,14 +309,16 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * expedition loses on the way, drawn down by every landing, and shown on
 	 * the intel. A strike lands what it brought and nothing more; the
 	 * defender's strength decides what happens next, never how big the
-	 * invasion is. The pool is split evenly across the worlds in the sweep,
-	 * no share below {@code strikeFrontMinTroops}: a small strike lands fewer
-	 * worlds, not token forces.
+	 * invasion is. Each world is owed an even split of the sweep, no share
+	 * below {@code strikeFrontMinTroops} - a small strike lands fewer worlds,
+	 * not token forces - and a front takes what it needs from the pool aboard
+	 * past that (2026-09-29: the even split capped it, and a front short of
+	 * holding watched the troops that would save it sail on to the next world).
 	 */
 	protected float troopsAllotted = 0f;
 	protected float troopsAboard = 0f;
 	protected boolean poolSet = false;
-	/** Troops put ashore per world so far - a world never receives more than its share. */
+	/** Troops put ashore per world so far: what of its even share it has had. */
 	protected Map<String, Float> landedAt = new HashMap<String, Float>();
 	/** Passes that did something - a bombardment, a landing, a reinforcement - for the success fraction. */
 	protected int effectivePasses = 0;
@@ -360,16 +363,31 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 
 	/**
 	 * What this pass can put ashore here: the pool, first cut to what the
-	 * surviving expedition can still carry, then capped at what is left of
-	 * the world's share. Not yet drawn - {@link #commitLanding} takes it once
-	 * the landing goes ahead.
+	 * surviving expedition can still carry, then to what is left of the
+	 * world's share or what its front needs now (worldNeed), whichever is
+	 * more. Not yet drawn - {@link #commitLanding} takes it once the landing
+	 * goes ahead.
 	 */
 	protected int availableLanding(MarketAPI market, CampaignFleetAPI fleet) {
 		ensurePool();
 		troopsAboard = Math.min(troopsAboard, troopsAllotted * survivingStrength(fleet));
 		Float already = landedAt.get(market.getId());
-		float room = worldShare() - (already != null ? already : 0f);
+		float room = Math.max(worldShare() - (already != null ? already : 0f), worldNeed(market));
 		return Math.max(0, Math.round(Math.min(troopsAboard, room)));
+	}
+
+	/**
+	 * What the world's front needs of the pool now: a beachhead that outlasts
+	 * the first counter-attack (ThreatGroundFronts.beachheadTroops), or what
+	 * puts the swarm's own front back over its hold line
+	 * (ThreatGroundFronts.fabricateNeed). Nothing under another army.
+	 */
+	protected float worldNeed(MarketAPI market) {
+		if (market == null) return 0f;
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		if (front == null) return ThreatGroundFronts.beachheadTroops(market);
+		if (ThreatGroundFronts.isThreatOwned(front)) return ThreatGroundFronts.fabricateNeed(front, market);
+		return 0f;
 	}
 
 	protected void commitLanding(MarketAPI market, int troops) {
@@ -1050,11 +1068,46 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		}
 	}
 
-	@Override
-	protected CampaignFleetAPI createFleet(int size, float damage) {
+	// ------------------------------------------------------------------
+	// the fabrication ledger (2026-09-29: closed economy)
+	// ------------------------------------------------------------------
+	//
+	// The strike is paid for: the mustered swarms' fleet points, plus what
+	// the source colony's bank drew for the re-embodied fleets weighing more
+	// (IncursionManager.launchStrike). When the fleets spawn, the bank settles
+	// the difference between what they came out at and what the strike still
+	// held (its route damage and hulls broken into troops taken off). What
+	// survives goes back into the bank: each spawned fleet as it despawns
+	// home (ThreatColonyManager.bindToLedger, once per fleet), or - a strike
+	// that never spawned - its abstract remainder when it ends (notifyEnding).
+	// Losses are real. A strike from before the ledger (ledgerHome null) is
+	// left as it was.
+
+	/** Market id whose bank paid for the strike; null for a strike from before the ledger. */
+	protected String ledgerHome;
+	/** Fleet points the strike was paid: the mustered swarms plus any excess drawn. */
+	protected float ledgerPaid;
+	/** Fleet points createFleet built. */
+	protected float ledgerBuilt;
+	/** The spawn-time settle has run. */
+	protected boolean ledgerSpawned;
+	/** The end-time settle has run. */
+	protected boolean ledgerClosed;
+
+	/** Books the strike on its source colony's bank: paid is what the swarms and the excess drawn came to. */
+	public void setLedger(String homeMarketId, float paid) {
+		ledgerHome = homeMarketId;
+		ledgerPaid = Math.max(0f, paid);
+	}
+
+	public float getLedgerPaid() {
+		return ledgerPaid;
+	}
+
+	/** {fabricators, escort tier} of the fleet createFleet builds for an expedition size, at the damage it spawns with. */
+	public static int[] specFor(int size, float damage) {
 		FabricatorEscortStrength strength;
 		int fabricators = 0;
-
 		if (size <= 4) {
 			strength = FabricatorEscortStrength.LOW;
 		} else if (size <= 6) {
@@ -1065,39 +1118,328 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			strength = FabricatorEscortStrength.HIGH;
 			fabricators = 1; // the armada brings a fabricator
 		}
-
 		// heavy pre-spawn damage downgrades the swarm a tier
 		if (damage > 0.4f && strength != FabricatorEscortStrength.LOW) {
 			strength = FabricatorEscortStrength.values()[strength.ordinal() - 1];
 			fabricators = 0;
 		}
+		return new int[] { fabricators, strength.ordinal() };
+	}
 
-		CampaignFleetAPI fleet = ThreatFleetComposer.create(ThreatFleetComposer.JOB_STRIKE,
-				fabricators, strength, getRandom());
+	/**
+	 * What swarms of these expedition sizes (one size a swarm - never a packed
+	 * fleet's total) are expected to come out at: the strike job's learned
+	 * mean (ThreatColonyManager.swarmCostEstimate).
+	 */
+	public static float estimateFP(List<Integer> sizes) {
+		float fp = 0f;
+		if (sizes == null) return fp;
+		for (Integer size : sizes) {
+			if (size != null) {
+				fp += ThreatColonyManager.swarmCostEstimate(ThreatFleetComposer.JOB_STRIKE, specFor(size, 0f));
+			}
+		}
+		return fp;
+	}
+
+	// ------------------------------------------------------------------
+	// packing: fewer, fuller fleets (2026-09-29 review)
+	// ------------------------------------------------------------------
+	//
+	// A strike used to fly a fleet a mustered swarm - dozens of fleets from a
+	// rich hive. Its swarms now fly packed into fleets of up to
+	// maxShipsInAIFleet ships: params.fleetSizes holds one entry a FLEET, the
+	// sum of its swarms' sizes (so every reader of the sizes' sum - troops,
+	// route strength, the board's FP - reads the same total as before, and
+	// every reader of the count reads real fleets), and packs holds which
+	// swarms each entry is. createFleet builds the entry's swarms and merges
+	// them; a swarm the fleet has no room for after all (an archetype's hull
+	// mix ran to more ships than the estimate) takes the field as a fleet of
+	// its own. Nothing is added or lost: the same swarms at the same sizes.
+
+	/** The swarms (expedition sizes) each fleet embodies: one list a params.fleetSizes entry, summing to it. Null for a strike from before packing (a fleet a swarm). */
+	protected List<List<Integer>> packs;
+	/** packs not yet built by this spawn; not saved. */
+	protected transient List<List<Integer>> packsLeft;
+	/** Swarms a packed fleet had no room for in this spawn, fleets of their own placed after the rest; not saved. */
+	protected transient List<CampaignFleetAPI> overflow;
+
+	public void setPacks(List<List<Integer>> packs) {
+		this.packs = packs;
+	}
+
+	/**
+	 * The most ships a swarm of this spec rolls: vanilla's createThreatFleet
+	 * escort ranges at their tops (7 / 11 / 27 / 26 at LOW / MEDIUM / HIGH /
+	 * MAXIMUM) plus its fabricators. What a launch packs by, so a pack fits
+	 * whatever vanilla rolls; createFleet checks the real count.
+	 */
+	public static int shipsEstimate(int[] spec) {
+		int[] byTier = { 7, 11, 27, 26 };
+		return byTier[Math.max(0, Math.min(byTier.length - 1, spec[1]))] + Math.max(0, spec[0]);
+	}
+
+	/**
+	 * A strike's swarms (an expedition size each) packed into as few fleets as
+	 * maxShipsInAIFleet allows: biggest first, each into the first fleet with
+	 * room for its ships (shipsEstimate), else a fleet of its own. Every swarm
+	 * goes into exactly one fleet, so it ends.
+	 */
+	public static List<List<Integer>> pack(List<Integer> sizes) {
+		int max = ThreatColonyManager.maxShipsPerFleet();
+		List<Integer> sorted = new ArrayList<Integer>();
+		for (Integer size : sizes) {
+			if (size != null) sorted.add(size);
+		}
+		java.util.Collections.sort(sorted, java.util.Collections.reverseOrder());
+		List<List<Integer>> out = new ArrayList<List<Integer>>();
+		List<Integer> ships = new ArrayList<Integer>();
+		for (int size : sorted) {
+			int s = shipsEstimate(specFor(size, 0f));
+			int at = -1;
+			for (int i = 0; i < out.size() && at < 0; i++) {
+				if (ships.get(i) + s <= max) at = i;
+			}
+			if (at < 0) {
+				out.add(new ArrayList<Integer>());
+				ships.add(0);
+				at = out.size() - 1;
+			}
+			out.get(at).add(size);
+			ships.set(at, ships.get(at) + s);
+		}
+		return out;
+	}
+
+	/** A pack's params.fleetSizes entry: its swarms' sizes summed. */
+	public static int packSize(List<Integer> pack) {
+		int sum = 0;
+		for (Integer size : pack) {
+			if (size != null) sum += size;
+		}
+		return sum;
+	}
+
+	/** Takes the next unbuilt pack whose entry is this size; null for a strike from before packing. */
+	protected List<Integer> takePack(int size) {
+		if (packsLeft == null) return null;
+		for (int i = 0; i < packsLeft.size(); i++) {
+			if (packSize(packsLeft.get(i)) == size) return packsLeft.remove(i);
+		}
+		return null;
+	}
+
+	// ------------------------------------------------------------------
+	// stillborn (IncursionManager.abortStrikesFrom)
+	// ------------------------------------------------------------------
+
+	/** Broken in preparation: what was paid for it is forfeit. */
+	protected boolean stillborn;
+
+	/**
+	 * The forge building the strike was broken before it departed: it is
+	 * stillborn, and the hive loses what it mustered and paid - nothing is
+	 * re-banked when it ends (notifyEnding), and fleets already embodied in
+	 * orbit are unbound before vanilla's abort sends them off to despawn.
+	 * Call before abort().
+	 */
+	public void markStillborn() {
+		stillborn = true;
+		for (CampaignFleetAPI fleet : getFleets()) ThreatColonyManager.unbindLedger(fleet);
+		if (spawning != null) {
+			for (CampaignFleetAPI fleet : spawning) ThreatColonyManager.unbindLedger(fleet);
+		}
+	}
+
+	public boolean isStillborn() {
+		return stillborn;
+	}
+
+	/**
+	 * Share of what was paid the strike still holds while it has not spawned:
+	 * one less its route damage, less the hulls broken into troops
+	 * (fabricatedFP, on the planned sizes' scale).
+	 */
+	protected float ledgerShare() {
+		float planned = 0f;
+		if (getParams() != null && getParams().fleetSizes != null) {
+			for (Integer size : getParams().fleetSizes) {
+				if (size != null) planned += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+			}
+		}
+		float share = 1f;
+		try {
+			if (getRoute() != null && getRoute().getExtra() != null && getRoute().getExtra().damage != null) {
+				share -= getRoute().getExtra().damage;
+			}
+		} catch (Throwable t) {
+			// no route: untouched
+		}
+		if (planned > 0f) share -= fabricatedFP / planned;
+		return Math.max(0f, Math.min(1f, share));
+	}
+
+	/** The source's primary entity, to find the nearest live colony when the source is gone. */
+	protected com.fs.starfarer.api.campaign.SectorEntityToken ledgerNear() {
+		return getParams() != null && getParams().source != null ? getParams().source.getPrimaryEntity() : null;
+	}
+
+	/**
+	 * Vanilla spawns the whole group at once, near the player: the fleets
+	 * createFleet built are settled against what the strike still held - the
+	 * bank pays what they weigh beyond it, and takes back what they fell short.
+	 * A packed fleet's swarms that had no room in it take the field after the
+	 * rest as fleets of their own, and the passes grow with them.
+	 */
+	@Override
+	protected void spawnFleets() {
+		ledgerBuilt = 0f;
+		packsLeft = packs != null ? new ArrayList<List<Integer>>(packs) : null;
+		overflow = new ArrayList<CampaignFleetAPI>();
+		super.spawnFleets();
+		for (CampaignFleetAPI fleet : overflow) {
+			// placed as vanilla places the rest (GenericRaidFGI.spawnFleets)
+			finishFleet(fleet);
+			if (route != null) {
+				setLocationAndCoordinates(fleet, route.getCurrent());
+				fleets.add(fleet);
+			}
+		}
+		if (!overflow.isEmpty() && getParams() != null && getParams().raidParams != null
+				&& getParams().raidParams.bombardment == null) {
+			// a pass for every fleet's cargo (IncursionManager.expeditionPasses)
+			getParams().raidParams.raidsPerColony = Math.max(getParams().raidParams.raidsPerColony,
+					IncursionManager.expeditionPasses(fleets.size()));
+		}
+		ThreatIncConfig.log("Strike spawned as " + fleets.size() + " fleet(s)"
+				+ (overflow.isEmpty() ? "" : ", " + overflow.size() + " of them swarms a packed fleet had no room for"));
+		packsLeft = null;
+		overflow = null;
+		// stillborn, what it was paid is forfeit already: nothing drawn or given back
+		if (ledgerHome == null || ledgerSpawned || stillborn) return;
+		ledgerSpawned = true;
+		float held = ledgerPaid * ledgerShare();
+		float diff = ledgerBuilt - held;
+		if (diff > 0f) {
+			ThreatColonyManager.drawFP(ledgerHome, diff);
+		} else if (diff < 0f) {
+			ThreatColonyManager.creditHome(ledgerHome, -diff, ledgerNear());
+		}
+		ThreatIncConfig.log("Strike ledger: spawned " + (int) ledgerBuilt + " FP against " + (int) held
+				+ " held (" + (int) ledgerPaid + " paid); bank " + (diff >= 0f ? "drew " : "got back ")
+				+ (int) Math.abs(diff));
+	}
+
+	/**
+	 * The strike is over. Spawned, its fleets settle themselves as they come
+	 * home; any still waiting to be placed (vanilla's incremental spawn, cut
+	 * short) never flew and settle here. Never spawned, what it still held
+	 * goes back into the bank now. Stillborn, nothing does (markStillborn).
+	 * Once.
+	 */
+	@Override
+	protected void notifyEnding() {
+		super.notifyEnding();
+		if (ledgerHome == null || ledgerClosed) return;
+		ledgerClosed = true;
+		if (stillborn) {
+			ThreatIncConfig.log("Strike ledger: stillborn, " + (int) (ledgerPaid * ledgerShare()) + " of "
+					+ (int) ledgerPaid + " FP forfeit");
+			return;
+		}
+		if (isSpawnedFleets()) {
+			// vanilla takes a fleet off this list as it places it
+			if (spawning != null) {
+				for (CampaignFleetAPI fleet : new ArrayList<CampaignFleetAPI>(spawning)) {
+					ThreatColonyManager.settleLedger(fleet, false);
+				}
+			}
+			return;
+		}
+		float fp = ledgerPaid * ledgerShare();
+		String to = ThreatColonyManager.creditHome(ledgerHome, fp, ledgerNear());
+		ThreatIncConfig.log("Strike ledger: ended unspawned, " + (int) fp + " of " + (int) ledgerPaid
+				+ " FP re-banked" + (to == null ? " - no hive left, lost" : ""));
+	}
+
+	/**
+	 * One params.fleetSizes entry: its pack's swarms (takePack; a strike from
+	 * before packing, the one swarm the size is) built one by one and merged
+	 * into one fleet while it has room under maxShipsInAIFleet. A swarm it has
+	 * no room for goes to the overflow (spawnFleets).
+	 */
+	@Override
+	protected CampaignFleetAPI createFleet(int size, float damage) {
+		List<Integer> pack = takePack(size);
+		if (pack == null) pack = java.util.Collections.singletonList(size);
+		int max = ThreatColonyManager.maxShipsPerFleet();
+		CampaignFleetAPI fleet = null;
+		for (Integer swarmSize : pack) {
+			CampaignFleetAPI swarm = createSwarm(swarmSize, damage);
+			if (swarm == null) continue;
+			if (fleet == null) {
+				fleet = swarm;
+			} else if (fleet.getFleetData().getNumMembers() + swarm.getFleetData().getNumMembers() <= max) {
+				ThreatColonyManager.mergeInto(fleet, swarm);
+			} else {
+				stowOverflow(swarm, max);
+			}
+		}
+		if (fleet != null) finishFleet(fleet);
+		return fleet;
+	}
+
+	/** A swarm a packed fleet had no room for: into an overflow fleet with room, else a fleet of its own. */
+	protected void stowOverflow(CampaignFleetAPI swarm, int max) {
+		if (overflow == null) overflow = new ArrayList<CampaignFleetAPI>();
+		int ships = swarm.getFleetData().getNumMembers();
+		for (CampaignFleetAPI curr : overflow) {
+			if (curr.getFleetData().getNumMembers() + ships <= max) {
+				ThreatColonyManager.mergeInto(curr, swarm);
+				return;
+			}
+		}
+		overflow.add(swarm);
+	}
+
+	/** One swarm of an expedition size, at the damage the strike spawns with; its cost is learned for the strike job. */
+	protected CampaignFleetAPI createSwarm(int size, float damage) {
+		int[] spec = specFor(size, damage);
+		CampaignFleetAPI swarm = ThreatFleetComposer.create(ThreatFleetComposer.JOB_STRIKE,
+				spec[0], FabricatorEscortStrength.values()[spec[1]], getRandom());
+		if (swarm != null) {
+			ThreatColonyManager.learnSwarmCost(ThreatFleetComposer.JOB_STRIKE, spec, swarm.getFleetPoints());
+		}
+		return swarm;
+	}
+
+	/** A built strike fleet, whole: booked on the ledger, and fitted out for the job. */
+	protected void finishFleet(CampaignFleetAPI fleet) {
+		// a stillborn strike's fleets fly home unbound: what it was paid is forfeit
+		if (ledgerHome != null && !stillborn) {
+			ledgerBuilt += fleet.getFleetPoints();
+			ThreatColonyManager.bindToLedger(fleet, ledgerHome);
+		}
 
 		// the swarm has no fuel economy: the doctrine's slices pay no fuel
 		// (saturationPass), and wherever vanilla's own bombardment still asks,
 		// it gates on fuel the fleet doesn't carry - a large (summed per member)
 		// FLEET_BOMBARD_COST_REDUCTION zeroes that cost
-		if (fleet != null) {
-			for (FleetMemberAPI member : fleet.getFleetData().getMembersListCopy()) {
-				member.getStats().getDynamic().getMod(Stats.FLEET_BOMBARD_COST_REDUCTION)
-						.modifyFlat("threatinc_strike", 100000f);
-			}
-			// An expedition is on a job. The swarm's fleet factory stamps every
-			// Threat fleet ALLOW_LONG_PURSUIT (DisposableThreatFleetManager),
-			// which turns one defender breaking off into a crossing of the
-			// sector; a human raid fleet has no such reflex and neither does
-			// this one. What aggression it gets is the siege leash's to grant,
-			// in the orbit it is fighting for and nowhere else.
-			fleet.getMemoryWithoutUpdate().unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags
-					.MEMORY_KEY_ALLOW_LONG_PURSUIT);
-			// let the player see the incursion coming rather than only when it
-			// arrives (our fleets lack the vanilla behavior script that would
-			// otherwise restore detection range for a sensor-mod-equipped player)
-			ThreatColonyManager.makeDetectable(fleet);
+		for (FleetMemberAPI member : fleet.getFleetData().getMembersListCopy()) {
+			member.getStats().getDynamic().getMod(Stats.FLEET_BOMBARD_COST_REDUCTION)
+					.modifyFlat("threatinc_strike", 100000f);
 		}
-
-		return fleet;
+		// An expedition is on a job. The swarm's fleet factory stamps every
+		// Threat fleet ALLOW_LONG_PURSUIT (DisposableThreatFleetManager),
+		// which turns one defender breaking off into a crossing of the
+		// sector; a human raid fleet has no such reflex and neither does
+		// this one. What aggression it gets is the siege leash's to grant,
+		// in the orbit it is fighting for and nowhere else.
+		fleet.getMemoryWithoutUpdate().unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags
+				.MEMORY_KEY_ALLOW_LONG_PURSUIT);
+		// let the player see the incursion coming rather than only when it
+		// arrives (our fleets lack the vanilla behavior script that would
+		// otherwise restore detection range for a sensor-mod-equipped player)
+		ThreatColonyManager.makeDetectable(fleet);
 	}
 }

@@ -168,17 +168,10 @@ public class ThreatCoalition {
 		return ThreatFleetOrders.guardBoundFor(market.getId());
 	}
 
-	protected static boolean convoyBoundFor(MarketAPI market) {
-		for (ThreatConvoys.Convoy c : ThreatConvoys.all()) {
-			if (market.getId().equals(c.toMarketId)) return true;
-		}
-		return false;
-	}
-
 	/**
 	 * Each mobilised colony with a need, each other mobilised NPC faction: by
-	 * willingness and chance, one helper sends a guard or a convoy. One
-	 * helper per need per tick.
+	 * willingness and chance, one helper sends a guard or relief; every willing
+	 * helper ships what it can spare until a shortage is covered.
 	 */
 	public static void allyAid(Random random) {
 		if (!ThreatWarState.enabled() || !ThreatIncConfig.allyAidEnabled()) return;
@@ -212,14 +205,17 @@ public class ThreatCoalition {
 						break;
 					}
 				}
-				if (convoyBoundFor(market)) continue;
 				if (!ThreatReserves.hasDepot(market)) continue; // nowhere to land it
+				// (2026-09-29: one convoy per helped colony, one helper per need and a
+				// hull-load clip were caps - every willing helper now sends what it can
+				// spare until the shortage is covered, net of what is already at sea)
+				float[] atSea = ThreatConvoys.inbound(market.getId());
 				for (String c : ThreatReserves.COMMODITIES) {
 					if (!ThreatAidRequests.shortageStanding(market, c)) continue;
-					int need = ThreatAidRequests.requestItems(market, c);
-					if (need <= 0) continue;
-					boolean sent = false;
+					float need = ThreatAidRequests.requestItems(market, c) - atSea[ThreatAid.index(c)];
+					if (need < 1f) continue;
 					for (String helperId : ids) {
+						if (need < 1f) break;
 						if (helperId.equals(needyId)) continue;
 						FactionAPI helper = Global.getSector().getFaction(helperId);
 						if (helper == null || helper.isPlayerFaction()) continue;
@@ -227,8 +223,7 @@ public class ThreatCoalition {
 						if (w <= 0f || random.nextFloat() >= w * chance) continue;
 						MarketAPI donor = ThreatConvoys.pickAllyDonor(helper, market, c);
 						if (donor == null) continue;
-						float amount = Math.min(need, Math.min(ThreatConvoys.spare(donor, c),
-								ThreatConvoys.capacityFor(c)));
+						float amount = Math.min(need, ThreatConvoys.spare(donor, c));
 						if (amount < 1f) continue;
 						float[] load = new float[ThreatReserves.COMMODITIES.length];
 						load[ThreatAid.index(c)] = amount;
@@ -238,10 +233,8 @@ public class ThreatCoalition {
 						report(helper, needy, "Allied Convoy Sails", "sends %s %s from %s to %s",
 								Misc.getWithDGS((int) amount), ThreatReserves.label(c),
 								ThreatNotice.market(donor), ThreatNotice.market(market));
-						sent = true;
-						break;
+						need -= amount;
 					}
-					if (sent) break;
 				}
 			}
 		}

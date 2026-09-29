@@ -3,6 +3,13 @@
 Written 2026-09-24 afternoon. First harness run the same evening: results at the foot
 ("Run 1"); checks 3, 5, 6 (convoy side) and 8 still open.
 
+**Superseded knobs (2026-09-29, note added; the record below is unedited).** Several names
+here no longer exist: `siegeMaxFleets` (10 -> 25 -> 50, gone: no fleet cap), `softenMaxFP` and
+`MAX_FLEETS` (hunting forces have no ceiling), `siegeBaseTries`, `siegePassesPerColony` /
+`strikePassesPerColony` (`expeditionPasses`, fleets + 2), and `ThreatColonyManager.absorbSurplus`
+(deleted: a swarm arriving at a full table is seated - the garrison table is a floor, not a
+ceiling). See docs/design-theory.md "Two design rules" and docs/strategy-layer.md.
+
 **State of the tree.** `main` at 8da7a1a plus an UNCOMMITTED working set (`git status`:
 13 source files, the LunaLib CSV, five docs, this doc, and one new class,
 `ThreatScoutRoute.java`). `jars/ThreatInc.jar` is rebuilt from it and compiles clean. The set fixes the 15 findings of the code review over today's seven

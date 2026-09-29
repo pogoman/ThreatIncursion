@@ -36,8 +36,8 @@ import com.fs.starfarer.api.util.Misc;
  *
  * <p>A hunting force carries no marines and lands nothing, so every point is a
  * warship: it is sized to beat the whole system's Defense Swarms
- * (softenMargin), up to softenMaxFP, split into fleets of at most
- * softenFleetFP, and paid for as a siege is, in fuel and supplies. With
+ * (softenMargin), as big as its depots can pay for (no ceiling, 2026-09-29),
+ * split into fleets of at most softenFleetFP, and paid for as a siege is, in fuel and supplies. With
  * softenPool every base of the faction in reach chips in, nearest first. The
  * odds are counted on the warships the yards actually build (vanilla scales an
  * NPC fleet by its market), and a force that cannot beat its target's garrison
@@ -72,8 +72,6 @@ public class ThreatSoftening {
 
 	public static final String KEY_LAST = "threatinc_softenLast";
 	public static final String KEY_FORCES = "threatinc_huntForces";
-	/** Most fleets one force is built from. */
-	protected static final int MAX_FLEETS = 30;
 	/** How close to its muster point a fleet counts as mustered. */
 	protected static final float MUSTER_RANGE = 1500f;
 	/** How far from the hive system's hyperspace anchor each faction's muster point lies. */
@@ -270,19 +268,54 @@ public class ThreatSoftening {
 
 	/**
 	 * Combat points the base's reserve can pay a force to this system for (fuel
-	 * for the distance, supplies for the hulls) - out of its spendable stock,
-	 * so a hunt never spends what the base banked for its own siege.
+	 * for the distance, supplies for the hulls) - out of what a hunt there may
+	 * take (huntSpendable), so a hunt never spends what the base banked for a
+	 * siege that can sail.
 	 */
 	protected static float payableFP(MarketAPI base, StarSystemAPI system) {
 		float dist = Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation());
 		float fuelPerPoint = dist * ThreatIncConfig.expeditionFuelPerPointLY();
 		float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
 		float points = Float.MAX_VALUE;
-		if (fuelPerPoint > 0f) points = Math.min(points, ThreatReserves.spendable(base, Commodities.FUEL) / fuelPerPoint);
+		if (fuelPerPoint > 0f) points = Math.min(points, huntSpendable(base, system, Commodities.FUEL) / fuelPerPoint);
 		if (suppliesPerPoint > 0f) {
-			points = Math.min(points, ThreatReserves.spendable(base, Commodities.SUPPLIES) / suppliesPerPoint);
+			points = Math.min(points, huntSpendable(base, system, Commodities.SUPPLIES) / suppliesPerPoint);
 		}
 		return points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+	}
+
+	/**
+	 * Whether the base's own siege waits on the hunt in this system: the
+	 * system is the hive it stages for (ThreatConvoys.stagingHive) and the
+	 * siege cannot sail (IncursionManager.hasSiegeableHive) - its orbit gate is
+	 * the very swarm the hunt thins.
+	 */
+	protected static boolean siegeWaitsOnHunt(MarketAPI base, StarSystemAPI system) {
+		if (base == null || system == null) return false;
+		return ThreatConvoys.stagingHive(base) == system && !IncursionManager.hasSiegeableHive(base);
+	}
+
+	/**
+	 * Stock a hunt in this system may take from the base: ThreatReserves.spendable,
+	 * except where the base's own siege there waits on the hunt
+	 * (siegeWaitsOnHunt) - then that siege's staging bank is spendable too, and
+	 * the base keeps only its floor and donor keep (2026-09-29). The siege cannot
+	 * sail until the swarm is thinned, and the staging bank starved the one force
+	 * that would thin it.
+	 */
+	protected static float huntSpendable(MarketAPI base, StarSystemAPI system, String commodityId) {
+		if (base == null) return 0f;
+		if (!siegeWaitsOnHunt(base, system)) return ThreatReserves.spendable(base, commodityId);
+		if (ThreatReserves.committed(base, commodityId)) return 0f;
+		float keep = Math.max(ThreatReserves.floor(base, commodityId),
+				ThreatReserves.monthsCap(base, commodityId) * ThreatIncConfig.donorKeepFraction());
+		return Math.max(0f, ThreatReserves.stock(base.getId(), commodityId) - keep);
+	}
+
+	/** Takes up to {@code amount} of {@link #huntSpendable} stock; returns what was taken. */
+	public static float drawHunt(MarketAPI base, StarSystemAPI system, String commodityId, float amount) {
+		if (base == null || amount <= 0f) return 0f;
+		return ThreatReserves.draw(base.getId(), commodityId, Math.min(amount, huntSpendable(base, system, commodityId)));
 	}
 
 	/** A fleet built below this share of the points asked was pruned: see {@link #FLEET_CAP}. */
@@ -304,6 +337,17 @@ public class ThreatSoftening {
 	protected static boolean pruned(CampaignFleetAPI fleet) {
 		return fleet != null && fleet.getFleetData().getNumMembers()
 				>= Global.getSettings().getInt("maxShipsInAIFleet");
+	}
+
+	/**
+	 * Learns the faction's fleet size from a fleet vanilla built short of the
+	 * {@code asked} combat points and pruned to its ship cap: every fleet
+	 * builder that sizes fleets by softenFleetFP asks no more from then on
+	 * (ThreatFrontlines.spawnForce, ThreatFleetOrders.buildSortie).
+	 */
+	protected static void learnFleetCap(String factionId, CampaignFleetAPI fleet, float asked) {
+		float got = combatFP(fleet);
+		if (got < asked * BUILT_SHORT && pruned(fleet)) FLEET_CAP.put(factionId, Math.max(100f, got * 1.1f));
 	}
 
 	/**
@@ -334,11 +378,6 @@ public class ThreatSoftening {
 		}
 	}
 
-	/** Vanilla's fleet-size multiplier at the base: what FleetFactoryV3 scales an NPC fleet's points by. */
-	protected static float sizeMult(MarketAPI base) {
-		return Math.max(0f, base.getStats().getDynamic().getMod(Stats.COMBAT_FLEET_SIZE_MULT).computeEffective(0f));
-	}
-
 	/** A fleet's warship points - the freighters and tankers it sails with fight nothing. */
 	public static float combatFP(CampaignFleetAPI fleet) {
 		if (fleet == null) return 0f;
@@ -349,16 +388,25 @@ public class ThreatSoftening {
 		return fp;
 	}
 
-	/** The bases a force draws on: the nearest, then (softenPool) every other base in reach free to, nearest first. */
+	/**
+	 * The bases a force draws on: the nearest, then (softenPool) every other
+	 * base free to that reaches the hive or the primary base, nearest the hive
+	 * first. A base in fuel range of the primary chips in too (2026-09-29): its
+	 * fleets pay fuel for the whole way (payableFP); the hive's range alone kept
+	 * every depot behind the primary out of the hunt.
+	 */
 	protected static List<MarketAPI> contributors(FactionAPI faction, MarketAPI primary, StarSystemAPI system) {
 		List<MarketAPI> result = new ArrayList<MarketAPI>();
 		result.add(primary);
 		if (!ThreatIncConfig.softenPool()) return result;
 		final Vector2f loc = system.getLocation();
+		Vector2f hub = primary.getStarSystem() != null ? primary.getStarSystem().getLocation() : loc;
 		List<MarketAPI> others = new ArrayList<MarketAPI>();
 		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
 			if (m == primary || m.getStarSystem() == null || !IncursionManager.isBase(m)) continue;
-			if (Misc.getDistanceLY(m.getStarSystem().getLocation(), loc) > IncursionManager.expeditionRangeLY(m)) continue;
+			float range = IncursionManager.expeditionRangeLY(m);
+			Vector2f at = m.getStarSystem().getLocation();
+			if (Misc.getDistanceLY(at, loc) > range && Misc.getDistanceLY(at, hub) > range) continue;
 			if (resting(m) || IncursionManager.hasSiegeableHive(m)) continue;
 			others.add(m);
 		}
@@ -395,25 +443,20 @@ public class ThreatSoftening {
 		float margin = Math.max(0f, ThreatIncConfig.softenMargin());
 		// the swarms reinforce while the force gathers (433 -> 1,329 FP over Zendar, Run 6):
 		// it sails with headroom over what the muster will ask of it
+		// no ceiling on the force (user's rule 2026-09-29): what the depots can pay
+		// bounds it. softenMaxFP (12,000) and 30 fleets left every hive over ~4k FP
+		// a world unhunted for the 3.7-year test
 		float floor = musterFloorFP(first);
-		float max = ThreatIncConfig.softenMaxFP();
-		if (floor > max) {
-			ThreatIncConfig.logQuiet(key, "Hunting force stays at " + base.getName() + ": " + first.getName()
-					+ "'s swarms need " + (int) floor + " FP, above softenMaxFP");
-			return false;
-		}
 		float want = IncursionManager.siegeOrbitFP(among != null ? targets
 				: IncursionManager.collectSiegeTargets(system)) * margin;
-		want = Math.max(floor, Math.min(want, max));
+		want = Math.max(floor, want);
 		List<MarketAPI> bases = contributors(faction, base, system);
 		float perFleet = Math.max(50f, ThreatIncConfig.softenFleetFP());
-		// what the yards would build for what the depots can pay - and no more
-		// than MAX_FLEETS fleets of the size they are known to build whole, or
-		// the force spawned 30 fleets, came up short and scrapped them all
-		// every month (8,375 of 9,976 FP, then 8,404 of 10,186, rc1 logs)
+		// what the depots can pay for is what is built (2026-09-29: closed economy -
+		// a fleet is built at the points it is paid for, ThreatFleetOrders.buildTaskForce;
+		// the market's fleet-size multiplier on top was unpaid)
 		float builds = 0f;
-		for (MarketAPI b : bases) builds += payableFP(b, system) * sizeMult(b);
-		builds = Math.min(builds, MAX_FLEETS * Math.min(perFleet, fleetCap(faction.getId())));
+		for (MarketAPI b : bases) builds += payableFP(b, system);
 		if (builds < floor) {
 			ThreatIncConfig.logQuiet(key, "Hunting force waits at " + base.getName() + ": " + bases.size()
 					+ (bases.size() == 1 ? " base pays for " : " bases pay for ") + (int) builds + " FP, " + first.getName() + "'s swarms need " + (int) floor);
@@ -442,15 +485,13 @@ public class ThreatSoftening {
 		List<ThreatFleetOrders.Order> sent = new ArrayList<ThreatFleetOrders.Order>();
 		List<String> from = new ArrayList<String>();
 		for (MarketAPI b : bases) {
-			if (built >= want || sent.size() >= MAX_FLEETS) break;
-			float mult = sizeMult(b);
-			if (mult <= 0f) continue;
-			// asked in the points the depot pays for, sized so what is built is at most perFleet
+			if (built >= want) break;
+			// asked in the points the depot pays for, at most perFleet
 			float budget = payableFP(b, system);
 			boolean any = false;
-			while (built < want && sent.size() < MAX_FLEETS) {
+			while (built < want) {
 				float size = Math.min(perFleet, fleetCap(faction.getId()));
-				float ask = Math.min(Math.min(size, want - built) / mult, budget);
+				float ask = Math.min(Math.min(size, want - built), budget);
 				// a remainder under the smallest fleet is rounded up, not dropped: dropped,
 				// the force came in a few points under its floor and folded (9430 of 9434)
 				if (ask < 25f) ask = Math.min(25f, budget);
@@ -458,7 +499,14 @@ public class ThreatSoftening {
 				ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchHunt(faction, b, first, ask, force.id, muster);
 				if (o == null) break;
 				float got = combatFP(o.fleet);
-				float share = Math.min(1f, got / Math.max(1f, ask * mult));
+				if (got < 1f) {
+					// nothing built: the depot keeps its provisions, and the loop has no
+					// fleet cap to end it
+					refundShort(o.fleet, b, 1f);
+					ThreatFleetOrders.fold(o, b);
+					break;
+				}
+				float share = Math.min(1f, got / Math.max(1f, ask));
 				if (share < BUILT_SHORT) {
 					// vanilla prunes a fleet to maxShipsInAIFleet: a navy without the
 					// big hulls to hold the points loses them (Nortia built 304 FP of

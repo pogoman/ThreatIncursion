@@ -182,6 +182,18 @@ To verify: new game with the switch on, wait a day, open the war board - expect 
 rows, 2-4 with a core distance under 15 LY, every faction on the selector, garrisons in
 orbit in any hive system, and strikes mustering within the first month.
 
+## New laptop, 125% display scaling (2026-09-29)
+
+The game is DPI-aware; a script that is not gets virtualised coordinates (the launcher read
+477x298 instead of 597x373) and its grabs and clicks land off target. `ui.ps1` and `place.ps1`
+now call `SetProcessDPIAware`, so coordinates are physical pixels again. Run them in a fresh
+process (`powershell -NoProfile -File ...`): a session that already loaded the old `Add-Type`
+class keeps it. At the `1600x900` pref: launcher Play (298,254), main menu Continue (1190,282),
+board selector The Threat (446,167), Hegemony (713,167). The locale uses a decimal comma, and
+`-Crop` does not parse through `-File`; capture whole and scale instead. Debug logging was off in
+this machine's LunaLib store, so no `[ThreatInc]` lines were written; read the state from a
+quicksaved clone instead (`threatinc_frontlines` lists every link, its faction, hive and guards).
+
 ## Laptop panel only, game pref 2560x1440 (2026-09-23)
 
 With only the 1920x1080 panel connected, set the `resolution` pref to `1920x1080` for the run

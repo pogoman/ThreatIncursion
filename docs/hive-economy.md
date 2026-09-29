@@ -48,8 +48,9 @@ Consequences the mod builds on:
   insurance against the player, not extra supply. Only a *bigger* producer raises what any
   consumer can draw.
 - `ThreatColonyManager.planHiveEconomy` therefore builds every chain link once, then spare
-  copies spread across systems (`threatinc_chainRedundancy`, one per held system, every
-  link at two before any at three), then a bigger copy wherever the hive's largest consumer
+  copies spread across systems (one per held system, `redundancyTarget`; bounded only by free
+  industry slots, `Misc.getMaxIndustries` - 2026-09-29: the `threatinc_chainRedundancy` knob, 3,
+  is gone, and with it "every link at two before any at three"), then a bigger copy wherever the hive's largest consumer
   of an output outgrows its largest producer. The old `refineries >= forges` ratio rested on
   the flow misconception. `maintainHiveEconomy` re-plans size-capped colonies with a free
   slot every tick, so an existing hive fills in its redundancy without waiting for growth
@@ -213,6 +214,104 @@ The first version zeroed shipping (-50%). Rejected in play: the siege raids the 
 the Core, then the port, and with the Core down a colony imports its machinery, so zero
 shipping on top took supply to 0 and the decline rate to its 3x cap - a port cut deadlier than
 a Core cut. Vitality is fabrication x supply; the Core is the kill, the port slows.
+
+## Fabrication bank - the Threat's closed economy (2026-09-29, built, untested)
+
+Vanilla's hull availability is a rate the whole econ group reads at once and nothing consumes
+(above: "Availability is a broadcast"). So the swarm's fleets used to come free, one per
+`garrisonRespawnDays` at every colony. Now every Threat fleet is paid for out of a bank of fleet
+points, and the bank is filled by what the hive's forges really make.
+
+- **Bank per colony** (`ThreatColonyManager`: `fabBank`, `bankedFP`, `fpBank`, `drawFP`,
+  `chargeFP`, `creditFP`, `canAffordFP`; saved under `threatinc_fabBank`). It may dip below 0:
+  a fleet built on the last of it.
+- **Income.** The hive's forges' SHIPS output (`forgeOutput`: vanilla's `getMaxSupply` of ships,
+  capped by what the hive structurally has of it; 0 with the forge down) x `fabFPPerShipUnit`
+  (100) fleet points per 30 days, split between the nexuses by the hulls each draws
+  (`nexusDraw`, `fabricationRatePerDay`; never more than a nexus draws). More nexuses split the
+  same hulls; only more forges raise the total. Nothing is banked while the Fabrication Core or
+  the Swarm Nexus is down, or no forge reaches the colony. The alarm no longer speeds it.
+  Sized so a mid-war hive (a forge per held system) earns about what the old timer gave: ~160 FP
+  a month for a size-4 world, 240 at 6, 320 at 8.
+- **What is charged.** Every fleet the bank fabricates, at its actual FP: each garrison swarm
+  (`maintainGarrisons`: the bank must hold `swarmCostEstimate`, a running mean of what that
+  tier/fabricator spec came out at, else 46 / 134 / 347 / 458 FP by tier plus 40 a fabricator),
+  a Scouting Swarm (`ThreatSwarmScouts.launch`), and a colonization wave's upsize over the swarm
+  it is made of. A recycled weak swarm gives its hulls back. No bank, no build.
+- **No pace timer.** `garrisonRespawnDays` is gone: the bank is the bound, at one swarm per
+  colony per poll (about half a day), so a large bank comes out over days, never as a frame of
+  fleets. The size table (`desiredGarrison`) is a floor the nexus rebuilds first, not a
+  ceiling: past it the nexus keeps building for as long as production pays, taking the
+  table's rows in turn (counted in swarms). Reinforcement (`redistributeGarrisons`) runs every
+  pairing each poll until the garrisons balance; a swarm arriving at a full table is seated,
+  never despawned (`absorbSurplus` is deleted).
+- **Grown garrison fleets.** Once every row of the size table is held (`fit >= table.length`), a
+  new swarm's hulls join a standing garrison fleet of its spec with room for them, up to
+  `maxShipsInAIFleet` (`growGarrisonFleet`, host from `garrisonHostFor`; the count rides the
+  fleet in `SWARM_COUNT_KEY`, `swarmCount`). Only a swarm no fleet has room for takes orbit as a
+  fleet of its own. The same hulls at the same price - fewer, fuller fleets (it was a fleet a
+  swarm: dozens to hundreds over a rich hive). Garrison counts on the board are fleets. Musters
+  count fleets (`musterFrom` takes the largest fleets first) and yield one expedition size per
+  swarm a fleet embodies, so a grown fleet re-embodies as every swarm in it
+  (`ThreatFrontlines.strikeOf` weighs it as its strength x `swarmCount`).
+- **Strikes fly packed.** A strike's swarms (one expedition size each) are packed into as few
+  fleets as `maxShipsInAIFleet` allows (`ThreatStrikeFGI.pack`: biggest first, each into the
+  first fleet with room by `shipsEstimate` - 7 / 11 / 27 / 26 ships at LOW / MEDIUM / HIGH /
+  MAXIMUM plus its fabricators; the pack list is kept in `packs`). `params.fleetSizes` entries are
+  fleet totals (`packSize`), so strength is unchanged while the count - `expeditionPasses`, the
+  board's `preparingStrikeFleetCount` - is the real fleets'. A swarm a fleet has no room for at
+  spawn goes to `overflow` and is placed as an extra fleet. `estimateFP` is worked swarm by swarm
+  (a packed entry is no swarm's size). Older strikes are a fleet a swarm (`packs` null).
+- **Learned costs are keyed by job.** `fabCosts` is `"tier:fabricators"` for a garrison swarm - the
+  key every existing save carries - and `"job/tier:fabricators"` for other fleets
+  (`costKey`, `ThreatFleetComposer.JOB_*`); a job with no history falls back to the garrison's.
+- **Strikes are booked on the bank.** A strike's swarms are re-embodied at expedition size,
+  which can weigh more than the swarms that left. `launchStrike` charges the staging colony's
+  bank that excess and musters fewer swarms if it cannot pay (`Strike from ... held: the bank
+  ... cannot re-embody even one swarm`), never a strike the bank cannot pay. `ThreatStrikeFGI`
+  carries the ledger fields (`ledgerHome`, `ledgerPaid`, `ledgerBuilt`, `ledgerSpawned`,
+  `ledgerClosed`) and settles the spawn against what the fleets really weigh. A relief strike
+  goes to its front alone.
+- **Homecoming.** A fleet the bank paid for is bound to it (`bindToLedger`, memory
+  `$threatinc_ledgerHome`; a `LedgerReturn` listener). When it leaves the sector by any road but
+  battle, its fleet points go back to the paying colony's bank (`settleLedger`, once per
+  fleet); the colony gone, to the nearest live colony (`creditHome`). A swarm that joined a
+  garrison is the garrison's and is not credited. Strike fleets, withdrawn waves and Scouting
+  Swarms (`ThreatSwarmScouts.launch` charges the bank and binds the scout, so what survives
+  re-banks when it fades out at home) come home this way. A dead colony's garrison (it withdraws)
+  and the stray raiders of a dead colony are bound to the nearest live colony's bank
+  (`bindStrayToNearest`, which drops the garrison flag) and credited when they leave the sector,
+  not up front - a swarm shot down on its way out is lost. Only a reinforcement disbanded because
+  its colony is gone is credited on the spot (`creditHome(null, ...)`, then despawned). A swarm
+  Defend fleet whose front is gone is bound from spawn and re-banks on despawn by any road. Losses
+  in battle are the real cost.
+- **Stillborn strikes.** A strike broken in preparation - `IncursionManager.abortStrikesFrom`: a
+  raid on the forge or the Swarm Nexus, a bombardment, the colony's destruction - is stillborn
+  (`ThreatStrikeFGI.markStillborn`): what it mustered and paid is forfeit, its fleets are unbound
+  before the abort sends them off, and `notifyEnding` credits nothing ("Strike ledger: stillborn").
+  Before, it was re-banked in full, so breaking the forge only delayed the strike. A strike in
+  flight is autonomous and unaffected.
+- **Endowment.** A save from before the ledger is endowed once with `FAB_ENDOWMENT_DAYS` (180) of
+  each colony's income (`endowSave`, "Fabrication ledger opened"); a seed from the Abyss lands
+  with 180 days of a full nexus's income at its size (`endowSeed`). A new colony's clock starts at
+  first sight and does not back-pay. The save endowment is deferred per colony
+  (`threatinc_fabEndowPending`): each colony waits for the first poll at which its fabrication
+  rate is above 0, so a colony whose economy has not yet recomputed is not endowed nothing.
+- **What else is unbounded now (2026-09-29, no arbitrary caps; forges, swarms and fuel are
+  the bounds).** Colonies grow to 10 (`HIVE_MAX_SIZE`, vanilla's `population_10`; the
+  `colonyMaxSize` knob, 8, is gone). A colonization wave per unclaimed planet
+  (`tryExpandInSystem`), and a pending claim per free forge (`IncursionManager`); waves fly in
+  parallel, each paid for by a mustered swarm. `pickChainPlanets` is no longer cut at five.
+  One spare production link per held system. No scout limits. Raiders detach swarms until the
+  pack outweighs the convoy by 1.5x. `maxInfestedSystems` is gone. Strikes pool the whole
+  system's colonies for the muster (`garrisonAvailableForLaunch`). Siege sizing follows the same
+  rule for the NPC side: `sectorPayableFP` (the resource bound `razeFleetPoints` searches up to)
+  treats the player's part as 0 when the capacity ledger is off, instead of going unbounded and
+  dropping the NPC supplies bound; and `SIEGE_FLEETS_SANITY` (100,000 fleets) means "cannot be
+  done" - a goal past it is not grown toward (logged, "cannot be done"), not clamped into a
+  100,000-fleet list. See docs/strategy-layer.md "No cap on the flotilla".
+
+Design rule and reasoning: docs/design-theory.md "Two design rules".
 
 ## Levers, verified
 

@@ -73,23 +73,18 @@ public class ThreatIncConfig {
 	public static float tickDays()           { return f("threatinc_tickDays"); }
 	public static int initialSeeds()         { return i("threatinc_initialSeeds"); }
 	public static float seedToColonyDays()   { return f("threatinc_seedToColonyDays"); }
-	public static int maxInfestedSystems()   { return i("threatinc_maxInfestedSystems"); }
 	public static int spreadMinSize()        { return i("threatinc_spreadMinSize"); }
 
 	// ---- colonies ----
 
 	public static float colonyGrowthBaseDays(){ return f("threatinc_colonyGrowthBaseDays"); }
-	public static int colonyMaxSize()        { return i("threatinc_colonyMaxSize"); }
-	/** Copies of each production-chain link the hive builds as it spreads (one per held system, up to this). */
-	public static int chainRedundancy()      { return i("threatinc_chainRedundancy"); }
 	public static int colonizationEscort()   { return i("threatinc_colonizationEscort"); }
-	public static float garrisonRespawnDays(){ return f("threatinc_garrisonRespawnDays"); }
+	/** Fleet points a hive's FP bank gains per ship unit its forges produce, per 30 days - the Threat's whole fleet income (closed economy, 2026-09-29). */
+	public static float fabFPPerShipUnit()   { return f("threatinc_fabFPPerShipUnit"); }
 	/** Military options menu: how far (su) from a hive's world a defending swarm fleet can be engaged from its orbit; any swarm fleet inside also counts as a defender. */
 	public static float defendRadius()      { return f("threatinc_defendRadius"); }
 	/** Whether colonies redistribute Defense Swarms to reinforce worn-down siblings. */
 	public static boolean reinforceEnabled()  { return b("threatinc_reinforceEnabled", true); }
-	/** Max reinforcement swarms dispatched per colony poll (~half a day). */
-	public static int reinforceMaxPerPoll()   { return i("threatinc_reinforceMaxPerPoll"); }
 	/** A garrison swarm below this fraction of its fabricated fleet points no longer holds its slot. */
 	public static float garrisonUnderStrengthFraction() { return f("threatinc_garrisonUnderStrengthFraction"); }
 	public static boolean economyGatesGrowth(){ return b("threatinc_economyGatesGrowth", true); }
@@ -103,12 +98,6 @@ public class ThreatIncConfig {
 	public static boolean siegePoolMarines()  { return b("threatinc_siegePoolMarines", true); }
 	/** Whether an NPC siege's fuel and supplies gate and draw pool its faction's other markets in reach the same way (2026-09-26). */
 	public static boolean siegePoolProvisions() { return b("threatinc_siegePoolProvisions", true); }
-	/** Most fleets a siege expedition grows to while sizing itself to the target's defenses. */
-	public static int siegeMaxFleets()       { return i("threatinc_siegeMaxFleets"); }
-	/** How many bases, nearest first, an NPC siege tries before it waits: the nearest, then the fallbacks. */
-	public static int siegeBaseTries()       { return i("threatinc_siegeBaseTries"); }
-	/** Siege passes (tactical bombardment / landing / commando raid) an expedition may run per colony. */
-	public static int siegePassesPerColony() { return i("threatinc_siegePassesPerColony"); }
 	public static boolean siegeFightsForOrbit() { return b("threatinc_siegeFightsForOrbit", true); }
 	/** How far from a contested world an expedition fleet may hunt for its orbit. */
 	public static float siegeHuntRange()     { return f("threatinc_siegeHuntRange"); }
@@ -167,8 +156,6 @@ public class ThreatIncConfig {
 	public static boolean strikeGroundFrontsEnabled() {
 		return b("threatinc_strikeGroundFrontsEnabled", true);
 	}
-	/** Passes a Threat expedition delivers per world: one softens, one lands the world's share of the pool, any more top it up. */
-	public static int strikePassesPerColony() { return i("threatinc_strikePassesPerColony"); }
 	/** The troop pool a strike carries, per difficulty point of the swarms it musters - fixed at launch. */
 	public static float strikeTroopsPerPoint() { return f("threatinc_strikeTroopsPerPoint"); }
 	/** A world's share of the pool is never below this: a small strike lands fewer worlds, not token forces. */
@@ -362,11 +349,6 @@ public class ThreatIncConfig {
 
 	// ---- strikes ----
 
-	/** 0 means unlimited - every system with the means may have a strike in flight. */
-	public static int maxConcurrentStrikes() {
-		int cap = i("threatinc_maxConcurrentStrikes");
-		return cap <= 0 ? Integer.MAX_VALUE : cap;
-	}
 	public static float strikeLYPerFuel()    { return f("threatinc_strikeLYPerFuel"); }
 	/** Fuel units an expedition carries at a fleet-size figure of 100 percent (vanilla's Fleets figure; hive: vitality x size / 4). */
 	public static float reachFuelCarry()     { return f("threatinc_reachFuelCarry"); }
@@ -378,13 +360,7 @@ public class ThreatIncConfig {
 	// ---- faction reactive defense ----
 
 	public static boolean responseEnabled()      { return b("threatinc_responseEnabled", true); }
-	/** 0 means unlimited, mirroring maxConcurrentStrikes. */
-	public static int   responseMaxConcurrent()  {
-		int cap = i("threatinc_responseMaxConcurrent");
-		return cap <= 0 ? Integer.MAX_VALUE : cap;
-	}
 	public static int   responseMinDifficulty()  { return i("threatinc_responseMinDifficulty"); }
-	public static int   responseMaxDifficulty()  { return i("threatinc_responseMaxDifficulty"); }
 	public static float responseStrengthDivisor(){ return f("threatinc_responseStrengthDivisor"); }
 	public static boolean responsePurgeEnabled() { return b("threatinc_responsePurgeEnabled", true); }
 	public static float purgeCooldownDays()      { return f("threatinc_purgeCooldownDays"); }
@@ -433,8 +409,6 @@ public class ThreatIncConfig {
 	public static float frontlineGarrisonFP() { return f("threatinc_frontlineGarrisonFP"); }
 	/** Garrison plus station must weigh this times the strongest Threat strike in reach (vanilla's raid strength). */
 	public static float frontlineGarrisonMargin() { return f("threatinc_frontlineGarrisonMargin"); }
-	/** Most of a faction's supply banking its links' garrisons may cost in upkeep. */
-	public static float frontlineUpkeepShare() { return f("threatinc_frontlineUpkeepShare"); }
 	public static float frontlineUpkeepStockMonths() { return f("threatinc_frontlineUpkeepStockMonths"); }
 	/** A faction banks at most what its own markets produce above their own demand, shared across its markets (ThreatReserves.productionShare). */
 	public static boolean reserveBankFromProduction() { return b("threatinc_reserveBankFromProduction", true); }
@@ -446,7 +420,7 @@ public class ThreatIncConfig {
 	public static float reserveShortageCoverFraction() { return f("threatinc_reserveShortageCoverFraction"); }
 	/** Days one issue from the depot holds the colony's availability up; 0 = no covering (rule 3). */
 	public static float reserveShortageCoverDays() { return f("threatinc_reserveShortageCoverDays"); }
-	/** Months of its own production a colony stockpiles at most. */
+	/** Months of its own production a colony's floor and donor keep are measured against - not a ceiling (2026-09-29). */
 	public static float reserveCapMonths()    { return f("threatinc_reserveCapMonths"); }
 	/** Months of production each colony holds the moment its faction mobilises. */
 	public static float reserveInitialMonths() { return f("threatinc_reserveInitialMonths"); }
@@ -478,9 +452,9 @@ public class ThreatIncConfig {
 	public static boolean convoyEnabled()     { return b("threatinc_convoyEnabled", true); }
 	/** Light-years a donor colony will ship to a staging base. */
 	public static float convoyRangeLY()       { return f("threatinc_convoyRangeLY"); }
-	/** Marines one convoy carries at most. */
+	/** The reference marine load a worthwhile sailing is measured in - not a cap (2026-09-29). */
 	public static float convoyMarineCapacity() { return f("threatinc_convoyMarineCapacity"); }
-	/** Cargo units (armaments, fuel, supplies) one convoy carries at most. */
+	/** The reference cargo load (armaments, fuel, supplies) a worthwhile sailing is measured in - not a cap (2026-09-29). */
 	public static float convoyCargoCapacity() { return f("threatinc_convoyCargoCapacity"); }
 	/** Load the board's "Med" tier asks for, as a multiple of what the front or colony is short of. */
 	public static float convoyExtraLoadFactor() { return f("threatinc_convoyExtraLoadFactor"); }
@@ -512,16 +486,12 @@ public class ThreatIncConfig {
 	public static float scoutRangeLY()        { return f("threatinc_scoutRangeLY"); }
 	/** Days between a mobilised faction's routine sweeps (while it has no lead). */
 	public static float scoutIntervalDays()   { return f("threatinc_scoutIntervalDays"); }
-	/** Systems one scouting party visits per sortie. */
-	public static int scoutStops()            { return i("threatinc_scoutStops"); }
 	/** Days a scout sweeps an empty system before moving on. */
 	public static float scoutStayDays()       { return f("threatinc_scoutStayDays"); }
 	/** Days a scout may spend reaching one stop before it skips it. */
 	public static float scoutLegMaxDays()     { return f("threatinc_scoutLegMaxDays"); }
 	/** Days a system swept clear is left alone by routine sweeps. */
 	public static float scoutMemoryDays()     { return f("threatinc_scoutMemoryDays"); }
-	/** Scouting parties one faction keeps out at once. */
-	public static int scoutMaxPerFaction()    { return i("threatinc_scoutMaxPerFaction"); }
 	/** Combat fleet points of a scouting party. */
 	public static float scoutFleetPoints()    { return f("threatinc_scoutFleetPoints"); }
 	/** NPC sieges sail only with the marines and fleets their target needs; off = send what they can (trimmed to two fleets). */
@@ -558,8 +528,6 @@ public class ThreatIncConfig {
 	public static float softenMargin()        { return f("threatinc_softenMargin"); }
 	/** A hunting force sails only with this much over what its muster will ask of it. */
 	public static float softenHeadroom()      { return f("threatinc_softenHeadroom"); }
-	/** Most combat FP one hunting force sails with. */
-	public static float softenMaxFP()         { return f("threatinc_softenMaxFP"); }
 	/** Most combat FP in one fleet of a hunting force. */
 	public static float softenFleetFP()       { return f("threatinc_softenFleetFP"); }
 	/** Days a hunt order - an NPC hunting force, a coalition answer, or the player's Hunt - stays on the hunt. */
@@ -582,16 +550,12 @@ public class ThreatIncConfig {
 	public static boolean swarmScouting()     { return b("threatinc_swarmScouting", true); }
 	/** Fleet points of a Scouting Swarm. */
 	public static float swarmScoutFleetPoints() { return f("threatinc_swarmScoutFleetPoints"); }
-	/** Scouting Swarms out at once, hive-wide. */
-	public static int swarmScoutMax()         { return i("threatinc_swarmScoutMax"); }
 	/** Shortfall (in convoy loads) below which no convoy sails. */
 	public static float convoyMinLoadFraction() { return f("threatinc_convoyMinLoadFraction"); }
 	/** Whether mobilised factions run supply and withdrawal convoys to their ground fronts. */
 	public static boolean frontRunsEnabled()  { return b("threatinc_frontRunsEnabled", true); }
 	/** Days of armaments a supply run tops a front up to. */
 	public static float frontResupplyDays()   { return f("threatinc_frontResupplyDays"); }
-	/** Fraction of a front's peak strength a supply run reinforces it back toward. */
-	public static float frontReinforceFraction() { return f("threatinc_frontReinforceFraction"); }
 	/** Days a front run waits at the hive system's jump-point for the orbit to clear before turning home. */
 	public static float frontRunWaitDays()    { return f("threatinc_frontRunWaitDays"); }
 	/** Fraction of its own cap a donor colony keeps back. */
@@ -602,7 +566,7 @@ public class ThreatIncConfig {
 	public static float convoyTimeoutDays()   { return f("threatinc_convoyTimeoutDays"); }
 	/** Whether the war board's fleet orders (guard, stage, intercept, siege, recall) are offered. */
 	public static boolean ordersEnabled()     { return b("threatinc_ordersEnabled", true); }
-	/** Combat fleet points of an NPC guard or intercept task force, and the free points a player colony needs to be picked first as a source; a player task force sails with everything its colony has free. */
+	/** Least combat fleet points of an NPC guard or intercept task force (it sails sized to the need), and the free points a player colony needs to be picked first as a source; a player task force sails with everything its colony has free. */
 	public static float guardFleetFP()        { return f("threatinc_guardFleetFP"); }
 	/** Combat points of each fleet a relief force is built from (merged into one before it sails). */
 	public static float reliefFleetFP()       { return f("threatinc_reliefFleetFP"); }
@@ -635,6 +599,8 @@ public class ThreatIncConfig {
 	public static float orbitContestFraction() { return f("threatinc_orbitContestFraction"); }
 	/** Fraction of the fuel and supplies drawn at launch refunded when a fleet returns home at full strength. */
 	public static float returnRefundMult()    { return f("threatinc_returnRefundMult"); }
+	/** Share of an NPC fleet's supplies draw that paid for its hulls: refunded at surviving strength in full on return (closed economy, 2026-09-29). */
+	public static float returnHullShare()     { return f("threatinc_returnHullShare"); }
 
 	// ---- player aid (docs/player-aid.md) ----
 
@@ -690,10 +656,6 @@ public class ThreatIncConfig {
 	public static float alarmPerRaid()        { return f("threatinc_alarmPerRaid"); }
 	/** Fraction of every grudge that fades per 30 days. */
 	public static float alarmDecayPer30()     { return f("threatinc_alarmDecayPer30"); }
-	/** Fabrication-speed bonus per point of alarm (0.05 = alarm 10 is x1.5). */
-	public static float alarmTempoMult()      { return f("threatinc_alarmTempoMult"); }
-	/** Cap on the alarm fabrication multiplier. */
-	public static float alarmTempoMax()       { return f("threatinc_alarmTempoMax"); }
 	/** Strike-target weight bonus per point of a faction's grudge (0.2 = grudge 10 is x3). */
 	public static float alarmTargetMult()     { return f("threatinc_alarmTargetMult"); }
 	/** Whether a ground victory draws an immediate strike at the winner. */
@@ -727,11 +689,9 @@ public class ThreatIncConfig {
 
 	public static boolean frontlinesEnabled()        { return b("threatinc_frontlinesEnabled", true); }
 	public static float frontlinePlanDays()          { return f("threatinc_frontlinePlanDays"); }
-	public static int frontlineMaxPerFaction()       { return i("threatinc_frontlineMaxPerFaction"); }
 	public static float frontlineLinkLY()            { return f("threatinc_frontlineLinkLY"); }
 	public static float frontlineReachLY()           { return f("threatinc_frontlineReachLY"); }
 	public static float frontlineKeepLY()            { return f("threatinc_frontlineKeepLY"); }
-	public static int frontlineMaxSize()             { return i("threatinc_frontlineMaxSize"); }
 	public static float frontlineGrowDays()          { return f("threatinc_frontlineGrowDays"); }
 	public static float frontlineStarveDays()        { return f("threatinc_frontlineStarveDays"); }
 	public static float frontlineAbandonDays()       { return f("threatinc_frontlineAbandonDays"); }

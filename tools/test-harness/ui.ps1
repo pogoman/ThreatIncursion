@@ -31,6 +31,7 @@ public class Win {
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
   [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr l);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   public delegate bool EnumProc(IntPtr h, IntPtr l);
   public static IntPtr Find(string needle) {
     IntPtr found = IntPtr.Zero;
@@ -44,6 +45,9 @@ public class Win {
   }
 }
 "@ -ErrorAction SilentlyContinue
+# the game is DPI-aware; at display scaling above 100% an unaware script gets
+# virtualised coordinates and its clicks and grabs land off target
+[Win]::SetProcessDPIAware() | Out-Null
 
 function Get-GameWindow {
   $h = [Win]::Find("Starsector")

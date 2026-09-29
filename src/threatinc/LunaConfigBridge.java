@@ -67,14 +67,9 @@ class LunaConfigBridge {
 				// each version's bumps only once: a value set back by hand after
 				// an earlier migration is the player's
 				boolean changed = false;
+				// (2026-09-29: the siegeMaxFleets bumps went with the knob - sieges have no fleet cap)
 				if (from < 1) {
-					changed |= bump(json, "threatinc_siegeMaxFleets", 10, 25, true);
 					changed |= bump(json, "threatinc_reserveInitialMonths", 3, 6, false);
-				}
-				if (from < 2) {
-					changed |= bump(json, "threatinc_siegeMaxFleets", 25, 50, true);
-				} else if (from == 2) {
-					changed |= bump(json, "threatinc_siegeMaxFleets", 40, 50, true);
 				}
 				if (from < 4) {
 					changed |= bump(json, "threatinc_expeditionSuppliesPerPoint", 100, 30, false);

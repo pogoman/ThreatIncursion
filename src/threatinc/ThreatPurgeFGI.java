@@ -57,8 +57,9 @@ import com.fs.starfarer.api.util.Misc;
  * day of bombardment burns ordnance the expedition drew at launch
  * ({@link #ordnance}, {@link #razeFuel}): no fuel, no bombardment. Siege
  * slices spend no pass; the pass budget is
- * siegePassesPerColony (default 4: the first lands, the rest reinforce the
- * front with whatever is still aboard - and once the marines are ashore a pass
+ * IncursionManager.expeditionPasses (a softening pass, the landing, and one
+ * for every fleet to reinforce the front with whatever is still aboard; no
+ * fixed count since 2026-09-29 - and once the marines are ashore a pass
  * with too few left to crew a raid (frontMinMarines) simply stands down rather
  * than mount a zero-marine commando raid that only gets repulsed).
  *
@@ -267,7 +268,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * expedition that never became real refunds its un-landed allotment less
 	 * the route's damage. Fuel and supplies come back at returnRefundMult
 	 * scaled by the surviving strength - the ordnance the bombardment did not
-	 * burn with the passage's fuel.
+	 * burn with the passage's fuel - except an NPC siege's hull share of its
+	 * supplies, which comes back in full at that strength. A siege the hull
+	 * ledger settled at spawn holds no supplies here: they ride its fleets,
+	 * each refunded as it comes home ({@link #settleLedger}).
 	 */
 	protected void refundOnReturn() {
 		if (!carriesCargo) return;
@@ -301,7 +305,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		// ordnance left over is fuel like the passage's, and comes home the same way
 		float unburned = paysOrdnance ? ordnance + razeFuel : 0f;
 		float fuel = (fuelDrawn + unburned) * mult;
-		float supplies = suppliesDrawn * mult;
+		// (2026-09-29: closed economy - an NPC siege's hulls come home at what
+		// survived: the hull share of its supplies in full, ThreatReturns.suppliesBack)
+		boolean player = getFaction() != null && getFaction().isPlayerFaction();
+		float supplies = ThreatReturns.suppliesBack(suppliesDrawn, keep, player);
 		if (base != null) {
 			ThreatReserves.deposit(base.getId(), Commodities.MARINES, marines);
 			ThreatReserves.deposit(base.getId(), Commodities.HAND_WEAPONS, armaments);
@@ -728,8 +735,14 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected void spawnFleets() {
 		marinesLoaded = 0f;
 		armamentsLoaded = 0f;
+		List<CampaignFleetAPI> before = new ArrayList<CampaignFleetAPI>(getFleets());
 		super.spawnFleets();
 		everSpawned = true;
+		// vanilla fills the group's list; it moves them to its incremental
+		// spawn only once this returns
+		List<CampaignFleetAPI> spawned = new ArrayList<CampaignFleetAPI>(getFleets());
+		spawned.removeAll(before);
+		settleLedger(spawned);
 		if (!carriesCargo) return;
 		MarketAPI base = params != null ? params.source : null;
 		float marinesLeft = marinesAllotted - marinesLoaded;
@@ -745,6 +758,193 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 		marinesAllotted = marinesLoaded;
 		armamentsAllotted = armamentsLoaded;
+	}
+
+	// ------------------------------------------------------------------
+	// the hull ledger (2026-09-29: closed economy)
+	// ------------------------------------------------------------------
+	//
+	// An NPC siege draws its supplies at expeditionSuppliesPerPoint a point,
+	// and prices a point at FP_PER_RESPONSE_DIFFICULTY fleet points; vanilla
+	// builds each fleet from the faction's own fleet sizes, with its jitter.
+	// When the fleets spawn, what they came out at is settled against what
+	// the expedition still held (its route damage off): the same reserve pays
+	// the difference, or takes back the excess, and what it cannot pay for is
+	// pruned - warships first, then whole fleets - and never sails. The
+	// supplies then ride the fleets (ThreatReturns.provision): each settles
+	// its own share at the hull-share rule when it is home (ThreatReturns.settle),
+	// once, and the group's refund (refundOnReturn) no longer holds them. An
+	// expedition that never spawns stays on the estimate. The player's
+	// expeditions (their capacity ledger) and sieges from before the ledger
+	// (ledgerHome null) are left as they were.
+
+	/** Market id whose reserve paid the flotilla's hulls; null for an expedition the ledger does not settle. */
+	protected String ledgerHome;
+	/** Fleet points the supplies drawn paid for, at the estimate. */
+	protected float ledgerPaid;
+	/** Fleet points the spawn pass fielded, after any pruning. */
+	protected float ledgerBuilt;
+	/** The spawn-time settle has run. */
+	protected boolean ledgerSpawned;
+
+	/** Books the flotilla on the base's reserve: paid is the fleet points the supplies drawn came to. */
+	public void setLedger(String homeMarketId, float paid) {
+		ledgerHome = homeMarketId;
+		ledgerPaid = Math.max(0f, paid);
+	}
+
+	/**
+	 * Settles the fleets just built against what the expedition still held,
+	 * prunes what the reserve cannot pay for, and stamps each fleet with the
+	 * supplies behind it. Once.
+	 */
+	protected void settleLedger(List<CampaignFleetAPI> spawned) {
+		if (ledgerHome == null || ledgerSpawned || ledgerPaid <= 0f || suppliesDrawn <= 0f) return;
+		ledgerSpawned = true;
+		// supplies a fleet point was paid at
+		float rate = suppliesDrawn / ledgerPaid;
+		float held = suppliesDrawn * (1f - routeDamage());
+		float built = pointsOf(spawned);
+		// the base while its faction holds it, else the nearest of the pool
+		MarketAPI base = sourceBase();
+		MarketAPI bank = base != null && getFaction() != null && getFaction().getId().equals(base.getFactionId())
+				? base : null;
+		List<MarketAPI> pool = new ArrayList<MarketAPI>();
+		if (ThreatIncConfig.siegePoolProvisions() && base != null && getFaction() != null
+				&& params.raidParams != null && params.raidParams.where != null) {
+			pool = IncursionManager.siegeDonors(base, getFaction(), params.raidParams.where);
+		}
+		if (bank == null && !pool.isEmpty()) bank = pool.remove(0);
+		float got = 0f;
+		if (built * rate > held && bank != null) {
+			got = IncursionManager.siegeDraw(bank, pool, Commodities.SUPPLIES, built * rate - held, "supplies");
+		}
+		// short of it: each pass takes one warship or one whole fleet off a
+		// finite muster, so the cut ends - paid for, or nothing left
+		float payable = (held + got) / rate;
+		float fielded = built;
+		while (fielded > payable + 0.01f) {
+			if (!pruneOne(spawned, fielded - payable)) break;
+			fielded = pointsOf(spawned);
+		}
+		// what was paid and does not sail - the excess, and what the cut took - goes back
+		float back = held + got - fielded * rate;
+		if (back > 0f && bank != null) ThreatReserves.deposit(bank.getId(), Commodities.SUPPLIES, back);
+		for (CampaignFleetAPI fleet : spawned) {
+			ThreatReturns.provision(fleet, ledgerHome, 0f, fleet.getFleetPoints() * rate);
+		}
+		ledgerBuilt = fielded;
+		suppliesDrawn = 0f;
+		ThreatIncConfig.log("Siege ledger: spawned " + (int) built + " FP against " + (int) (held / rate)
+				+ " held (" + (int) ledgerPaid + " paid); reserve drew " + (int) got + ", got back "
+				+ (int) Math.max(0f, back) + " supplies" + (fielded < built ? "; pruned " + (int) (built - fielded)
+						+ " FP unpaid" : "") + (back > 0f && bank == null ? " - no market left, lost" : ""));
+	}
+
+	/** Fleet points of these fleets now. */
+	protected static float pointsOf(List<CampaignFleetAPI> fleets) {
+		float fp = 0f;
+		for (CampaignFleetAPI fleet : fleets) {
+			if (fleet != null) fp += fleet.getFleetPoints();
+		}
+		return fp;
+	}
+
+	/**
+	 * Takes one cut off the spawned fleets toward {@code over} fleet points:
+	 * the warship that covers it with least to spare, else the largest that
+	 * does not - never a flagship, nor a transport carrying the landing. With
+	 * none left, a whole fleet by the same rule. False when nothing is left.
+	 */
+	protected boolean pruneOne(List<CampaignFleetAPI> spawned, float over) {
+		CampaignFleetAPI from = null;
+		com.fs.starfarer.api.fleet.FleetMemberAPI pick = null;
+		for (CampaignFleetAPI fleet : spawned) {
+			if (fleet == null) continue;
+			for (com.fs.starfarer.api.fleet.FleetMemberAPI m : fleet.getFleetData().getMembersListCopy()) {
+				if (m.isFlagship() || m.isCivilian()) continue;
+				if (pick == null || betterCut(m.getFleetPointCost(), pick.getFleetPointCost(), over)) {
+					pick = m;
+					from = fleet;
+				}
+			}
+		}
+		if (pick != null) {
+			com.fs.starfarer.api.campaign.CargoAPI cargo = from.getCargo();
+			// its crew goes with it
+			cargo.removeCrew(Math.min(cargo.getCrew(), Math.round(pick.getMinCrew())));
+			from.getFleetData().removeFleetMember(pick);
+			from.getFleetData().setSyncNeeded();
+			from.getFleetData().syncIfNeeded();
+			from.updateCounts();
+			from.forceSync();
+			// the landing that no longer has a berth or a hold stays home
+			unloadToBase(from, Math.max(0, -cargo.getFreeCrewSpace()), Math.max(0f, -cargo.getSpaceLeft()));
+			return true;
+		}
+		CampaignFleetAPI whole = null;
+		for (CampaignFleetAPI fleet : spawned) {
+			if (fleet == null) continue;
+			if (whole == null || betterCut(fleet.getFleetPoints(), whole.getFleetPoints(), over)) whole = fleet;
+		}
+		if (whole == null) return false;
+		unloadToBase(whole, whole.getCargo().getMarines(),
+				whole.getCargo().getCommodityQuantity(Commodities.HAND_WEAPONS));
+		spawned.remove(whole);
+		getFleets().remove(whole);
+		if (whole.getContainingLocation() != null) whole.despawn();
+		return true;
+	}
+
+	/** Whether a cut of {@code a} points beats one of {@code b} toward {@code over}: the least that covers it, else the most. */
+	protected static boolean betterCut(float a, float b, float over) {
+		boolean aCovers = a >= over;
+		if (aCovers != (b >= over)) return aCovers;
+		return aCovers ? a < b : a > b;
+	}
+
+	/** Takes landing cargo loaded at spawn off a fleet and back into the base's reserve, which paid for it. */
+	protected void unloadToBase(CampaignFleetAPI fleet, int marines, float armaments) {
+		MarketAPI base = sourceBase();
+		if (!carriesCargo || fleet == null || base == null) return;
+		com.fs.starfarer.api.campaign.CargoAPI cargo = fleet.getCargo();
+		int m = (int) Math.min(Math.min(marines, cargo.getMarines()), marinesLoaded);
+		if (m > 0) {
+			cargo.removeMarines(m);
+			marinesLoaded -= m;
+			marinesAllotted -= m;
+			ThreatReserves.deposit(base.getId(), Commodities.MARINES, m);
+		}
+		float a = Math.min(Math.min(armaments, cargo.getCommodityQuantity(Commodities.HAND_WEAPONS)), armamentsLoaded);
+		if (a > 0f) {
+			cargo.removeCommodity(Commodities.HAND_WEAPONS, a);
+			armamentsLoaded -= a;
+			armamentsAllotted -= a;
+			ThreatReserves.deposit(base.getId(), Commodities.HAND_WEAPONS, a);
+		}
+	}
+
+	/**
+	 * Fleets vanilla's incremental spawn built and never placed, the
+	 * expedition ending first: they never sailed, so their supplies come back
+	 * in full with the landing they carry. Once - the list is emptied.
+	 */
+	protected void settleUnplaced() {
+		if (ledgerHome == null || spawning == null || spawning.isEmpty()) return;
+		for (CampaignFleetAPI fleet : new ArrayList<CampaignFleetAPI>(spawning)) {
+			if (fleet == null) continue;
+			com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+			com.fs.starfarer.api.campaign.CargoAPI cargo = fleet.getCargo();
+			ThreatReserves.deposit(ledgerHome, Commodities.SUPPLIES, mem.getFloat(ThreatReturns.MEM_SUPPLIES));
+			ThreatReserves.deposit(ledgerHome, Commodities.MARINES, cargo.getMarines());
+			ThreatReserves.deposit(ledgerHome, Commodities.HAND_WEAPONS,
+					cargo.getCommodityQuantity(Commodities.HAND_WEAPONS));
+			cargo.clear();
+			mem.unset(ThreatReturns.MEM_SUPPLIES);
+			mem.unset(ThreatReturns.MEM_HOME);
+		}
+		ThreatIncConfig.log("Siege ledger: " + spawning.size() + " fleet(s) never placed - re-banked at " + ledgerHome);
+		spawning.clear();
 	}
 
 	/** Cargo-carrying fleets sail with troop transports in the mix. */
@@ -1809,6 +2009,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected void notifyEnding() {
 		super.notifyEnding();
 		postSiegeReport();
+		settleUnplaced();
 		refundOnReturn();
 	}
 

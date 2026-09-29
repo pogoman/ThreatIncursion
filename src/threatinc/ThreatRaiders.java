@@ -21,7 +21,8 @@ import com.fs.starfarer.api.util.Misc;
  *
  * <p>When a mobilised faction's convoy sails, every hive colony within
  * raiderRangeLY of the route's midpoint that has Defense Swarms above its
- * defensive reserve may detach ONE real garrison swarm to hunt it: the swarm
+ * defensive reserve may detach real garrison swarms to hunt it, until the
+ * pack outweighs the convoy (consider): each swarm
  * leaves the garrison list (so the leash does not recall it), gets an
  * INTERCEPT on the convoy fleet for raiderDays, and then comes home the way
  * the leash brings strays home - blinders on, aggression off - and rejoins
@@ -91,8 +92,20 @@ public class ThreatRaiders {
 	// ------------------------------------------------------------------
 
 	/**
-	 * A convoy just sailed: hive colonies near its route roll to hunt it. At
-	 * most one raider per convoy.
+	 * The margin raiders hunt a convoy with: hives detach swarms until the
+	 * pack's fleet points reach the convoy's times this. The margin the NPC
+	 * sieges weigh an orbit with (npcSiegeOrbitMargin's default); a code
+	 * constant until it has a knob of its own.
+	 */
+	public static final float RAIDER_MARGIN = 1.5f;
+
+	/**
+	 * A convoy just sailed: hive colonies near its route roll to hunt it,
+	 * nearest first. Each that rolls detaches swarms above its reserve, one
+	 * after another, until the pack outweighs the convoy by RAIDER_MARGIN
+	 * (2026-09-29: it was one raider per convoy, one swarm per hive). A swarm
+	 * out holds its slot at home (ThreatColonyManager.swarmsAway), so the
+	 * reserve test thins itself as swarms leave.
 	 */
 	public static void consider(ThreatConvoys.Convoy convoy, Random random) {
 		if (!ThreatIncConfig.raiderEnabled() || convoy == null || convoy.fleet == null) return;
@@ -128,10 +141,28 @@ public class ThreatRaiders {
 						Misc.getDistanceLY(y.getStarSystem().getLocation(), m));
 			}
 		});
+		float need = convoy.fleet.getFleetPoints() * RAIDER_MARGIN;
 		for (MarketAPI hive : near) {
+			if (packFP(convoy.fleet) >= need) return;
 			if (random.nextFloat() >= ThreatIncConfig.raiderChance()) continue;
-			if (detach(hive, convoy) != null) return;
+			// terminates: every detach takes a swarm off this garrison
+			while (packFP(convoy.fleet) < need
+					&& ThreatColonyManager.countLiveGarrison(hive.getId())
+							> ThreatColonyManager.garrisonReserve(hive)) {
+				if (detach(hive, convoy) == null) break;
+			}
 		}
+	}
+
+	/** Fleet points of the raiders out hunting this convoy fleet. */
+	public static float packFP(CampaignFleetAPI convoyFleet) {
+		float fp = 0f;
+		for (Raider r : all()) {
+			if (!r.returning && r.target == convoyFleet && r.fleet != null && r.fleet.isAlive()) {
+				fp += r.fleet.getFleetPoints();
+			}
+		}
+		return fp;
 	}
 
 	/**
@@ -204,9 +235,22 @@ public class ThreatRaiders {
 			}
 			MarketAPI home = ThreatIncData.resolveColonyMarket(r.homeMarketId);
 			if (home == null || home.getPrimaryEntity() == null) {
-				// the colony died while it was out: a stray with no station
+				// the colony died while it was out: a stray with no station. Its
+				// hulls go to the nearest live colony's bank (2026-09-29: closed
+				// economy) - bound to it and credited when it leaves the sector,
+				// as a dead colony's garrison is, not paid before it is gone. It
+				// withdraws the garrison's way (retireFleet: out by the system's
+				// jump point, or at once in hyperspace), blinders on so no chase
+				// holds it here
 				all().remove(r);
-				Misc.fadeAndExpire(fleet);
+				String to = ThreatColonyManager.bindStrayToNearest(fleet);
+				ThreatIncConfig.log("Raider from " + r.homeName() + " stood down, its colony gone: "
+						+ (int) fleet.getFleetPoints() + " FP "
+						+ (to != null ? "bound for the bank at " + to : "lost, no hive left"));
+				MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+				mem.set(MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
+				mem.unset(MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
+				ThreatColonyManager.retireFleet(fleet, fleet.getStarSystem());
 				continue;
 			}
 			SectorEntityToken planet = home.getPrimaryEntity();
@@ -219,13 +263,12 @@ public class ThreatRaiders {
 			}
 			if (fleet.getContainingLocation() == planet.getContainingLocation()
 					&& Misc.getDistance(fleet, planet) <= HOME_RANGE) {
-				// back on station: rejoin the garrison, or be absorbed into it when
-				// the slot it left was refilled meanwhile; the leash restores its
-				// hunting reflexes the moment it sees the blinders
+				// back on station: rejoin the garrison - always, it has no ceiling
+				// to be over (2026-09-29); the leash restores its hunting reflexes
+				// the moment it sees the blinders
 				if (fleet.getBattle() != null) continue;
 				fleet.getMemoryWithoutUpdate().unset(RAIDER_FLAG);
 				all().remove(r);
-				if (ThreatColonyManager.absorbSurplus(home, fleet)) continue;
 				ThreatIncData.garrisonsFor(home.getId()).add(fleet);
 				ThreatIncConfig.log("Raider home at " + home.getName());
 			}

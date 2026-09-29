@@ -9,8 +9,10 @@ public class WP {
   [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 "@ -ErrorAction SilentlyContinue
+[WP]::SetProcessDPIAware() | Out-Null   # physical pixels at display scaling above 100%
 $p = Get-Process -Name java -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like "*Starsector*" } | Select-Object -First 1
 if (-not $p) { Write-Output "NOWINDOW"; exit 0 }
 $h = $p.MainWindowHandle

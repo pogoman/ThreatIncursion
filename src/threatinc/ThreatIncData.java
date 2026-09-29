@@ -47,7 +47,6 @@ public class ThreatIncData {
 	public static final String KEY_WAVE_TARGETS = "threatinc_colonyTargets";
 	public static final String KEY_GARRISONS = "threatinc_garrisons";
 	public static final String KEY_REINFORCEMENTS = "threatinc_reinforcements";
-	public static final String KEY_GARRISON_SPAWN_TIMES = "threatinc_garrisonSpawnTimes";
 	public static final String KEY_GROWTH_TIMES = "threatinc_growthTimes";
 	public static final String KEY_GROWTH_PROGRESS = "threatinc_growthProgressDays";
 	public static final String KEY_DECLINE_PROGRESS = "threatinc_declineProgress";
@@ -154,11 +153,6 @@ public class ThreatIncData {
 			garrisons().put(marketId, fleets);
 		}
 		return fleets;
-	}
-
-	/** colony market id -> last garrison fabrication time. */
-	public static Map<String, Long> garrisonSpawnTimes() {
-		return map(KEY_GARRISON_SPAWN_TIMES);
 	}
 
 	/** colony market id -> last size-up (or founding) time. */
@@ -364,7 +358,6 @@ public class ThreatIncData {
 	public static void clearSystem(String systemId) {
 		for (String marketId : new ArrayList<String>(colonyIdsIn(systemId))) {
 			garrisons().remove(marketId);
-			garrisonSpawnTimes().remove(marketId);
 			growthTimes().remove(marketId);
 			lastPurgeTimes().remove(marketId);
 			clearVitality(marketId);

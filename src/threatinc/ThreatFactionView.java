@@ -755,8 +755,10 @@ public class ThreatFactionView {
 							BUTTON_AID_STRIKE + factionId + ":" + e.systemId);
 					strike.getPosition().belowRight(hiveTable, -up).setXAlignOffset(-6f);
 					ThreatAid.Quote q = ThreatAid.quoteStrike(e.system);
-					disableWith(main, strike, ThreatAidCapacity.enabled() && q.ok(),
+					ThreatNotice.Reason unready = ThreatAid.playerNotMobilised();
+					disableWith(main, strike, ThreatAidCapacity.enabled() && unready == null && q.ok(),
 							!ThreatAidCapacity.enabled() ? "Player aid is disabled in the mod settings."
+							: unready != null ? ThreatNotice.text(unready)
 							: ThreatNotice.text(q.reason),
 							"A task force of about " + (q.ok() ? (int) q.points : 0) + " FP from "
 							+ (q.ok() ? q.source.getName() : "your nearest colony") + " hunts "

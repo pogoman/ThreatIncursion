@@ -4134,6 +4134,39 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return counterAttackStrength(market) * margin > defenseStrength(front);
 	}
 
+	/**
+	 * Marines an own colony under a Threat army still wants banked for its
+	 * counter-attack to beat that army by siegeBeachheadMargin
+	 * (2026-09-29): what relief convoys are sized to (ThreatConvoys.planRelief),
+	 * in place of one flat hull load at a time. Stock already on the world but
+	 * not yet armed counts, as it will be. Where banked marines add nothing to
+	 * a counter-attack (marineCounterAttackMult 0) they still hold the line, so
+	 * the want is then the marines that push the army below its grind line. 0
+	 * with no Threat front, or once the garrison is enough.
+	 */
+	public static float reliefNeed(MarketAPI market) {
+		if (market == null || isHiveTarget(market)) return 0f;
+		GroundFront front = getFront(market.getId());
+		if (!isThreatOwned(front)) return 0f;
+		float perMarine = Math.max(0f, ThreatIncConfig.reserveDefenseMult())
+				* ThreatMarineXP.effectMult(ThreatMarineXP.colonyLevel(market));
+		if (perMarine <= 0f) return 0f; // banked marines do not fight here
+		float margin = Math.max(1f, ThreatIncConfig.siegeBeachheadMargin());
+		float armed;
+		float counterMult = Math.max(0f, ThreatIncConfig.marineCounterAttackMult());
+		if (counterMult > 0f) {
+			float gap = defenseStrength(front) * margin - counterAttackStrength(market);
+			armed = gap / (perMarine * counterMult);
+		} else {
+			float grind = Math.max(0.01f, ThreatIncConfig.frontGrindFraction());
+			float gap = effectiveStrength(front) * margin / grind - defenderStrength(market);
+			armed = gap / perMarine;
+		}
+		float arming = Math.max(0f, ThreatReserves.stock(market.getId(), Commodities.MARINES)
+				- ThreatReserves.armedMarines(market));
+		return Math.max(0f, armed - arming);
+	}
+
 	/** Days until a dry Threat front's final push, or -1 when it is not waiting. */
 	public static float daysToFinalPush(GroundFront front) {
 		if (!isThreatOwned(front) || !isDry(front) || front.finalPush) return -1f;

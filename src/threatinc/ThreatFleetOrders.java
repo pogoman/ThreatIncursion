@@ -469,7 +469,7 @@ public class ThreatFleetOrders {
 					+ "you. Send aid from your colonies instead.";
 		}
 		if (!ThreatWarState.isAtWar(faction)) {
-			return "Your faction is not mobilised - the Threat has not struck it.";
+			return "Your faction is not mobilised.";
 		}
 		return null;
 	}
@@ -526,8 +526,7 @@ public class ThreatFleetOrders {
 		if (faction == null || faction.isPlayerFaction()) return false;
 		for (MarketAPI market : ThreatReserves.marketsOf(faction.getId())) {
 			if (market.getPrimaryEntity() == null || reliefShort(market) <= 0f) continue;
-			MarketAPI base = pickBase(faction, market.getLocationInHyperspace());
-			if (base != null && canProvisionRelief(base, market)) return true;
+			if (pickReliefBase(faction, market) != null) return true;
 		}
 		return false;
 	}
@@ -558,8 +557,13 @@ public class ThreatFleetOrders {
 				}
 				float owed = reliefShort(market);
 				if (owed <= 0f) continue;
-				MarketAPI base = pickBase(faction, market.getLocationInHyperspace());
-				if (base == null) continue;
+				MarketAPI base = pickReliefBase(faction, market);
+				if (base == null) {
+					ThreatIncConfig.logQuiet("relief-none:" + market.getId(), "Relief: " + factionId
+							+ " cannot relieve invaded " + market.getName() + " - no base in reach can provision it (owed "
+							+ (int) owed + ")");
+					continue;
+				}
 				float sent = sendRelief(faction, market, base, owed);
 				if (sent > 0f) {
 					ThreatIncConfig.log("Relief: " + factionId + " sends " + (int) sent + " FP from "
@@ -568,6 +572,27 @@ public class ThreatFleetOrders {
 				}
 			}
 		}
+	}
+
+	/**
+	 * The base a relief sails from: the nearest in reach whose depot can
+	 * provision one relief fleet. The nearest alone is often the invaded world
+	 * itself, drained by its front, and relief never sailed while a stocked
+	 * base sat 3 ly away (Nachiketa, 2026-09-29).
+	 */
+	public static MarketAPI pickReliefBase(FactionAPI faction, MarketAPI target) {
+		MarketAPI best = null;
+		float bestDist = Float.MAX_VALUE;
+		Vector2f hyperLoc = target.getLocationInHyperspace();
+		for (MarketAPI market : ThreatReserves.marketsOf(faction.getId())) {
+			if (market.getStarSystem() == null || !IncursionManager.isBase(market)) continue;
+			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(), hyperLoc);
+			if (d > IncursionManager.expeditionRangeLY(market) || d >= bestDist) continue;
+			if (!canProvisionRelief(market, target)) continue;
+			bestDist = d;
+			best = market;
+		}
+		return best;
 	}
 
 	/** Fuel and supplies one relief fleet asks of the base: {fuel, supplies}. */
@@ -588,8 +613,9 @@ public class ThreatFleetOrders {
 	}
 
 	/**
-	 * Builds relief at the base until its fleets reach {@code owed} points,
-	 * siegeMaxFleets are built, or the depot cannot provision another, then
+	 * Builds relief at the base until its fleets reach {@code owed} points or
+	 * the depot cannot provision another (2026-09-29: no siegeMaxFleets cap, 50
+	 * fleets of reliefFleetFP held a relief to ~15,000 FP), then
 	 * folds them into one fleet up to softenMergeMaxShips - vanilla's AI never
 	 * keeps separate fleets together, and a guard a tenth the swarm's size
 	 * only ever kept its distance (Coatl, 2026-09-27). Each fleet left over
@@ -599,11 +625,26 @@ public class ThreatFleetOrders {
 		if (faction == null || target == null || base == null || owed <= 0f) return 0f;
 		List<CampaignFleetAPI> built = new ArrayList<CampaignFleetAPI>();
 		float sent = 0f;
-		int max = Math.max(1, ThreatIncConfig.siegeMaxFleets());
-		while (sent < owed && built.size() < max && canProvisionRelief(base, target)) {
-			CampaignFleetAPI fleet = buildTaskForce(base, faction, ThreatIncConfig.reliefFleetFP(),
-					target.getLocationInHyperspace());
+		// ends: every fleet adds at least a point toward a finite owed and draws
+		// on the depot, or the loop breaks
+		while (sent < owed && canProvisionRelief(base, target)) {
+			// (2026-09-29: closed economy) each fleet is what the depot pays for in
+			// full: a depot at expeditionMinProvisionsFraction of one fleet's
+			// provisions sent the whole reliefFleetFP half paid
+			float ask = Math.min(ThreatIncConfig.reliefFleetFP(),
+					sortieFirstPayableFP(base, target.getLocationInHyperspace()));
+			if (ask < 1f) break;
+			CampaignFleetAPI fleet = buildTaskForce(base, faction, ask, target.getLocationInHyperspace());
 			if (fleet == null) break;
+			if (fleet.getFleetPoints() < 1) { // built nothing: the depot keeps its provisions
+				ThreatSoftening.refundShort(fleet, base, 1f);
+				fleet.despawn();
+				break;
+			}
+			// vanilla prunes a fleet to maxShipsInAIFleet: pay only for what was
+			// built (2026-09-29: closed economy, as buildSortie)
+			float share = Math.min(1f, ThreatSoftening.combatFP(fleet) / Math.max(1f, ask));
+			if (share < ThreatSoftening.BUILT_SHORT) ThreatSoftening.refundShort(fleet, base, 1f - share);
 			built.add(fleet);
 			sent += fleet.getFleetPoints();
 		}
@@ -685,10 +726,11 @@ public class ThreatFleetOrders {
 
 	/**
 	 * A task force at the base, provisioned from its reserve (fuel for the
-	 * distance, supplies for the hulls). A player fleet is built at exactly
-	 * the points asked for - the capacity ledger already sized it to the
-	 * colony - so vanilla's own fleet-size scaling is switched off for it;
-	 * an NPC fleet keeps vanilla's scaling, which is its navy's size.
+	 * distance, supplies for the hulls). Every fleet is built at exactly the
+	 * points asked for, which are the points it is paid for: vanilla's own
+	 * fleet-size scaling (the market's COMBAT_FLEET_SIZE_MULT) is switched off.
+	 * (2026-09-29: closed economy - an NPC fleet kept that scaling, so a 1.5
+	 * multiplier sailed half again what its depot paid for.)
 	 */
 	public static CampaignFleetAPI buildTaskForce(MarketAPI base, FactionAPI faction, float fp,
 			Vector2f destinationHyper) {
@@ -708,13 +750,25 @@ public class ThreatFleetOrders {
 	 */
 	public static CampaignFleetAPI buildTaskForce(MarketAPI base, FactionAPI faction, float fp,
 			Vector2f destinationHyper, boolean provision, boolean spareOnly) {
+		return buildTaskForce(base, faction, fp, destinationHyper, provision, spareOnly, null);
+	}
+
+	/**
+	 * As above; with {@code hunted}, a hunting force's fleet draws what a hunt
+	 * in that system may take (ThreatSoftening.drawHunt): a staging base whose
+	 * own siege there waits on the hunt spends that siege's bank too, the same
+	 * stock the force was sized on (ThreatSoftening.payableFP).
+	 */
+	protected static CampaignFleetAPI buildTaskForce(MarketAPI base, FactionAPI faction, float fp,
+			Vector2f destinationHyper, boolean provision, boolean spareOnly, StarSystemAPI hunted) {
 		StarSystemAPI system = base.getStarSystem();
 		SectorEntityToken entity = base.getPrimaryEntity();
 		if (system == null || entity == null || fp <= 0f) return null;
 		FleetParamsV3 params = new FleetParamsV3(base, base.getLocationInHyperspace(),
 				faction.getId(), null, FleetTypes.TASK_FORCE,
 				fp, fp * 0.1f, fp * 0.1f, 0f, 0f, 0f, 0f);
-		if (faction.isPlayerFaction()) params.ignoreMarketFleetSizeMult = true;
+		// the points paid for, player and NPC alike (2026-09-29: closed economy)
+		params.ignoreMarketFleetSizeMult = true;
 		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
 		if (fleet == null || fleet.isEmpty()) return null;
 		system.addEntity(fleet);
@@ -733,14 +787,18 @@ public class ThreatFleetOrders {
 			return fleet;
 		}
 
-		float points = fp / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
-		float dist = Misc.getDistanceLY(system.getLocation(), destinationHyper);
-		float wantFuel = points * dist * ThreatIncConfig.expeditionFuelPerPointLY();
-		float wantSupplies = points * ThreatIncConfig.expeditionSuppliesPerPoint();
-		float fuel = spareOnly ? ThreatReserves.drawSpendable(base, Commodities.FUEL, wantFuel)
-				: ThreatReserves.drawAbove(base, Commodities.FUEL, wantFuel);
-		float supplies = spareOnly ? ThreatReserves.drawSpendable(base, Commodities.SUPPLIES, wantSupplies)
-				: ThreatReserves.drawAbove(base, Commodities.SUPPLIES, wantSupplies);
+		float[] wants = sortieWants(base, fp, destinationHyper);
+		float fuel, supplies;
+		if (hunted != null) {
+			fuel = ThreatSoftening.drawHunt(base, hunted, Commodities.FUEL, wants[0]);
+			supplies = ThreatSoftening.drawHunt(base, hunted, Commodities.SUPPLIES, wants[1]);
+		} else if (spareOnly) {
+			fuel = ThreatReserves.drawSpendable(base, Commodities.FUEL, wants[0]);
+			supplies = ThreatReserves.drawSpendable(base, Commodities.SUPPLIES, wants[1]);
+		} else {
+			fuel = ThreatReserves.drawAbove(base, Commodities.FUEL, wants[0]);
+			supplies = ThreatReserves.drawAbove(base, Commodities.SUPPLIES, wants[1]);
+		}
 		ThreatIncConfig.log("Order draw at " + base.getName() + ": " + (int) fuel + " fuel, "
 				+ (int) supplies + " supplies");
 		// remembered on the fleet so the return leg can refund what survives
@@ -748,10 +806,171 @@ public class ThreatFleetOrders {
 		return fleet;
 	}
 
-	/** Combat points a sortie from this base sails with: the NPC guard size, or everything a player colony has free (staged task forces included). */
+	/** {fuel, supplies} a task force of {@code fp} combat points from the base to {@code destinationHyper} is provisioned with. */
+	protected static float[] sortieWants(MarketAPI base, float fp, Vector2f destinationHyper) {
+		float points = fp / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+		float dist = base.getStarSystem() == null || destinationHyper == null ? 0f
+				: Misc.getDistanceLY(base.getStarSystem().getLocation(), destinationHyper);
+		return new float[] { points * dist * ThreatIncConfig.expeditionFuelPerPointLY(),
+				points * ThreatIncConfig.expeditionSuppliesPerPoint() };
+	}
+
+	/** Combat points the base's spendable stock (ThreatReserves.spendable) can provision a sortie to {@code destinationHyper} for. */
+	public static float sortiePayableFP(MarketAPI base, Vector2f destinationHyper) {
+		return payableFP(base, destinationHyper, true);
+	}
+
+	/**
+	 * Combat points the stock a sortie's first fleet draws (ThreatReserves.available:
+	 * above the floor, as a sortie always drew) can provision it to {@code destinationHyper} for.
+	 */
+	public static float sortieFirstPayableFP(MarketAPI base, Vector2f destinationHyper) {
+		return payableFP(base, destinationHyper, false);
+	}
+
+	/** Combat points the base's spendable ({@code spareOnly}) or available stock provisions a sortie for; unbounded when a sortie costs nothing. */
+	protected static float payableFP(MarketAPI base, Vector2f destinationHyper, boolean spareOnly) {
+		if (base == null) return 0f;
+		float[] per = sortieWants(base, IncursionManager.FP_PER_RESPONSE_DIFFICULTY, destinationHyper);
+		float fuel = spareOnly ? ThreatReserves.spendable(base, Commodities.FUEL)
+				: ThreatReserves.available(base, Commodities.FUEL);
+		float supplies = spareOnly ? ThreatReserves.spendable(base, Commodities.SUPPLIES)
+				: ThreatReserves.available(base, Commodities.SUPPLIES);
+		float points = Float.MAX_VALUE;
+		if (per[0] > 0f) points = Math.min(points, fuel / per[0]);
+		if (per[1] > 0f) points = Math.min(points, supplies / per[1]);
+		return points >= Float.MAX_VALUE ? Float.MAX_VALUE : points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+	}
+
+	/**
+	 * Warship points an NPC sortie from the base can bring against a need: the
+	 * guardFleetFP minimum, paid as a sortie always was, or what its spendable
+	 * stock provisions, whichever is more - a fleet is built at the points it is
+	 * paid for (buildTaskForce). What buildSortie builds at most. Nothing when the
+	 * depot cannot pay the minimum (2026-09-29: closed economy - no fleet the
+	 * depot cannot pay for).
+	 */
+	public static float sortieReachFP(MarketAPI base, Vector2f destinationHyper) {
+		if (base == null) return 0f;
+		float min = Math.max(1f, ThreatIncConfig.guardFleetFP());
+		if (sortieFirstPayableFP(base, destinationHyper) < min) return 0f;
+		return Math.max(min, sortiePayableFP(base, destinationHyper));
+	}
+
+	/** Combat points a player sortie from this base sails with: everything the colony has free (staged task forces included). */
 	protected static float sortieFP(FactionAPI faction, MarketAPI base) {
-		if (faction.isPlayerFaction()) return ThreatAid.taskForceFP(base);
-		return ThreatIncConfig.guardFleetFP();
+		return ThreatAid.taskForceFP(base);
+	}
+
+	/**
+	 * The fleets of an NPC sortie sized to what it faces (2026-09-29): until
+	 * their warships bring {@code need} fleet points, fleets of up to
+	 * softenFleetFP (or what the faction's yards were seen to build whole,
+	 * ThreatSoftening.fleetCap). The first is at least guardFleetFP and drawn
+	 * as a sortie always was, and only if the depot pays it in full
+	 * (2026-09-29); everything above that minimum is only what the
+	 * base's spendable stock pays for (ThreatReserves.spendable), so what
+	 * convoys banked for a siege stays. It stops when the next fleet cannot be
+	 * paid or a fleet adds nothing. Before, every NPC Support, Defend, guard
+	 * and single hunt sailed at exactly guardFleetFP (100) whatever it faced.
+	 * Folded into one fleet up to softenMergeMaxShips (vanilla's AI never keeps
+	 * separate fleets together), the rest sailing beside it. With {@code whole},
+	 * a sortie short of the need does not sail: its provisions go back and it
+	 * returns null. Lead first; null when nothing was built.
+	 */
+	protected static List<CampaignFleetAPI> buildSortie(MarketAPI base, FactionAPI faction, float need,
+			Vector2f destinationHyper, boolean whole, String what) {
+		if (base == null || faction == null) return null;
+		List<CampaignFleetAPI> built = new ArrayList<CampaignFleetAPI>();
+		float min = Math.max(1f, ThreatIncConfig.guardFleetFP());
+		// asked in the points the depot pays for, and built at them (buildTaskForce;
+		// 2026-09-29: closed economy - it was asked need / the market's fleet-size
+		// multiplier and built at need, the difference unpaid)
+		float got = 0f;
+		// ends: each pass builds a fleet that adds at least a point toward a finite
+		// need, or breaks (nothing payable, nothing built)
+		while (built.isEmpty() || got < need) {
+			boolean first = built.isEmpty();
+			float perFleet = Math.max(min, Math.min(ThreatIncConfig.softenFleetFP(),
+					ThreatSoftening.fleetCap(faction.getId())));
+			float ask = Math.min(perFleet, Math.max(0f, need - got));
+			float payable = sortiePayableFP(base, destinationHyper);
+			if (first) {
+				// (2026-09-29: closed economy - payment is a hard gate) the minimum is
+				// the smallest sortie, not a free one: a depot that cannot pay it sends
+				// nothing. It sailed at guardFleetFP on an empty depot before.
+				float firstPayable = sortieFirstPayableFP(base, destinationHyper);
+				if (firstPayable < min) {
+					ThreatIncConfig.logQuiet("sortie_unpaid:" + faction.getId() + ":" + what, "Sortie from "
+							+ base.getName() + " for " + what + " stays home: its depot pays " + (int) firstPayable
+							+ " of the " + (int) min + " FP minimum");
+					break;
+				}
+				ask = Math.min(Math.max(min, Math.min(ask, payable)), firstPayable);
+			} else {
+				ask = Math.min(Math.max(ask, 30f), payable); // a remainder under the smallest fleet is rounded up
+				if (ask < 30f) break;
+			}
+			CampaignFleetAPI fleet = buildTaskForce(base, faction, ask, destinationHyper, true, !first);
+			if (fleet == null) break;
+			float fp = ThreatSoftening.combatFP(fleet);
+			if (fp < 1f) {
+				ThreatSoftening.refundShort(fleet, base, 1f);
+				fleet.despawn();
+				break;
+			}
+			// vanilla prunes a fleet to maxShipsInAIFleet: pay only for what was built
+			float share = Math.min(1f, fp / Math.max(1f, ask));
+			if (share < ThreatSoftening.BUILT_SHORT) {
+				ThreatSoftening.refundShort(fleet, base, 1f - share);
+				ThreatSoftening.learnFleetCap(faction.getId(), fleet, ask);
+			}
+			built.add(fleet);
+			got += fp;
+		}
+		if (built.isEmpty()) return null;
+		if (whole && got < need) {
+			// never sailed: provisions back in full
+			for (CampaignFleetAPI f : built) {
+				ThreatSoftening.refundShort(f, base, 1f);
+				f.despawn();
+			}
+			ThreatIncConfig.logQuiet("sortie_short:" + faction.getId() + ":" + what, "Sortie from " + base.getName()
+					+ " for " + what + " stood down: built " + (int) got + " FP of the " + (int) need + " it needs");
+			return null;
+		}
+		CampaignFleetAPI lead = built.get(0);
+		List<CampaignFleetAPI> sailing = new ArrayList<CampaignFleetAPI>();
+		sailing.add(lead);
+		for (int i = 1; i < built.size(); i++) {
+			CampaignFleetAPI f = built.get(i);
+			if (lead.getFleetData().getNumMembers() + f.getFleetData().getNumMembers()
+					<= ThreatIncConfig.softenMergeMaxShips()) {
+				absorb(lead, f);
+			} else {
+				sailing.add(f);
+			}
+		}
+		if (built.size() > 1 || need > min) {
+			ThreatIncConfig.log("Sortie from " + base.getName() + " for " + what + ": " + (int) got + " FP in "
+					+ sailing.size() + " fleet(s) against a need of " + (int) need);
+		}
+		return sailing;
+	}
+
+	/**
+	 * Fleet points an NPC guard over the colony must bring: the Threat's points
+	 * over it x npcSiegeOrbitMargin (reliefGoal's rule), or the seen strikes
+	 * bound for it x frontlineGarrisonMargin, in task-force points
+	 * (ThreatFrontlines.STRENGTH_PER_FP) - whichever is more; 0 with neither.
+	 */
+	public static float guardNeed(MarketAPI market) {
+		if (market == null) return 0f;
+		float swarm = ThreatGroundFronts.pointsNear(market, Factions.THREAT, true)
+				* Math.max(1f, ThreatIncConfig.npcSiegeOrbitMargin());
+		float strikes = ThreatFrontlines.strikesWeight(market) * ThreatIncConfig.frontlineGarrisonMargin()
+				/ ThreatFrontlines.STRENGTH_PER_FP;
+		return Math.max(0f, Math.max(swarm, strikes));
 	}
 
 	/**
@@ -822,11 +1041,42 @@ public class ThreatFleetOrders {
 		// own free points, and nothing staged there folds into it
 		boolean self = own && target.market != null && base == target.market;
 		float days = own ? ThreatIncConfig.guardOwnDays() : ThreatIncConfig.guardDays();
-		float fp = faction.isPlayerFaction() ? ThreatAid.taskForceFP(base, self)
-				: ThreatIncConfig.guardFleetFP();
-		if (faction.isPlayerFaction() && fp < ThreatIncConfig.aidGuardMinFP()) return null;
+		if (!faction.isPlayerFaction()) {
+			// an NPC guard is sized to what threatens the colony (buildSortie), and
+			// sails with what the depot can pay toward it
+			List<CampaignFleetAPI> fleets = buildSortie(base, faction, guardNeed(target.market), target.hyperLoc(),
+					false, "a guard of " + target.name());
+			if (fleets == null) return null;
+			Order lead = null;
+			for (CampaignFleetAPI f : fleets) {
+				Order o = guardOrder(f, faction, target, base, days, aid);
+				if (lead == null) lead = o;
+			}
+			return lead;
+		}
+		float fp = ThreatAid.taskForceFP(base, self);
+		if (fp < ThreatIncConfig.aidGuardMinFP()) return null;
 		CampaignFleetAPI fleet = buildTaskForce(base, faction, fp, target.hyperLoc());
 		if (fleet == null) return null;
+		Order o = guardOrder(fleet, faction, target, base, days, aid);
+		float points = builtPoints(fleet, fp);
+		String label = "guard of " + target.name();
+		if (self) ThreatAidCapacity.commit(base, points, fleet, label);
+		else ThreatAidCapacity.commitSortie(base, points, fleet, label);
+		// the player's own order is news; an NPC navy's relief or coalition guard
+		// is its routine (no progress notices): record's log line is all it gets
+		if (!aid) {
+			ThreatNotice n = notice(faction, "Task Force Sails", "task force from %s moves to guard %s",
+					ThreatNotice.market(base), ThreatNotice.base(target));
+			if (days > 0f) n.line("For %s days", (int) days);
+			n.send();
+		}
+		return o;
+	}
+
+	/** Puts a built fleet on guard over the base's target: ORBIT_AGGRESSIVE for {@code days}, then home; the recorded order. */
+	protected static Order guardOrder(CampaignFleetAPI fleet, FactionAPI faction, ThreatBases.Base target,
+			MarketAPI base, float days, boolean aid) {
 		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, target.entity(),
 				days > 0f ? days : NO_TERM_DAYS, "guarding " + target.name());
 		// the home leg is GO_TO_LOCATION, not a despawn: poll() hands the fleet
@@ -836,20 +1086,6 @@ public class ThreatFleetOrders {
 		Order o = record(fleet, faction, KIND_GUARD, base, target.id(), target.name(), days);
 		o.aid = aid;
 		if (!faction.getId().equals(target.factionId())) o.recipientFactionId = target.factionId();
-		if (faction.isPlayerFaction()) {
-			float points = builtPoints(fleet, fp);
-			String label = "guard of " + target.name();
-			if (self) ThreatAidCapacity.commit(base, points, fleet, label);
-			else ThreatAidCapacity.commitSortie(base, points, fleet, label);
-		}
-		// the player's own order is news; an NPC navy's relief or coalition guard
-		// is its routine (no progress notices): record's log line is all it gets
-		if (!aid && faction.isPlayerFaction()) {
-			ThreatNotice n = notice(faction, "Task Force Sails", "task force from %s moves to guard %s",
-					ThreatNotice.market(base), ThreatNotice.base(target));
-			if (days > 0f) n.line("For %s days", (int) days);
-			n.send();
-		}
 		return o;
 	}
 
@@ -894,16 +1130,30 @@ public class ThreatFleetOrders {
 	public static Order dispatchHunt(FactionAPI faction, StarSystemAPI hive, MarketAPI base, boolean aid) {
 		if (faction == null || hive == null || base == null) return null;
 		MarketAPI target = ThreatSoftening.huntTarget(hive.getId());
-		if (target == null) return null;
-		float fp = sortieFP(faction, base);
-		if (faction.isPlayerFaction() && fp < ThreatIncConfig.aidGuardMinFP()) return null;
-		Order o = dispatchHunt(faction, base, target, fp);
-		if (o == null) return null;
-		o.aid = aid;
+		if (target == null || target.getPrimaryEntity() == null) return null;
+		Order o;
 		if (faction.isPlayerFaction()) {
+			float fp = sortieFP(faction, base);
+			if (fp < ThreatIncConfig.aidGuardMinFP()) return null;
+			o = dispatchHunt(faction, base, target, fp);
+			if (o == null) return null;
 			ThreatAidCapacity.commitSortie(base, builtPoints(o.fleet, fp), o.fleet,
 					"hunt in the " + hive.getNameWithLowercaseTypeShort());
+		} else {
+			// sized to beat the garrison it starts on by softenMargin, the rule it
+			// moves on by (ThreatSoftening.advanceSingle), or it does not sail
+			float need = ThreatSoftening.garrisonFP(target) * Math.max(0f, ThreatIncConfig.softenMargin());
+			List<CampaignFleetAPI> fleets = buildSortie(base, faction, need, hive.getLocation(), true,
+					"a hunt in the " + hive.getNameWithLowercaseTypeShort());
+			if (fleets == null) return null;
+			o = null;
+			for (CampaignFleetAPI f : fleets) {
+				Order each = huntOrder(f, faction, base, target, null, null);
+				each.aid = aid;
+				if (o == null) o = each;
+			}
 		}
+		o.aid = aid;
 		if (!aid) {
 			notice(faction, "Task Force Sails", "task force from %s moves to hunt the Defense Swarms in the %s",
 					ThreatNotice.market(base), hive.getNameWithLowercaseTypeShort())
@@ -931,10 +1181,19 @@ public class ThreatFleetOrders {
 		if (faction == null || base == null || hive == null || hive.getPrimaryEntity() == null) return null;
 		StarSystemAPI system = hive.getStarSystem();
 		if (system == null) return null;
-		float days = ThreatIncConfig.softenDays();
-		// a force's fleets spend only what the base can spare, never its siege bank
-		CampaignFleetAPI fleet = buildTaskForce(base, faction, fp, system.getLocation(), true, forceId != null);
+		// a force's fleets spend what a hunt there may take (ThreatSoftening.huntSpendable):
+		// never a siege's bank, unless that siege waits on this very hunt
+		CampaignFleetAPI fleet = buildTaskForce(base, faction, fp, system.getLocation(), true, forceId != null,
+				forceId != null ? system : null);
 		if (fleet == null) return null;
+		return huntOrder(fleet, faction, base, hive, forceId, muster);
+	}
+
+	/** Puts a built fleet on a hunt of the hive's system (mustering first for a force); the recorded order. */
+	protected static Order huntOrder(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI base, MarketAPI hive,
+			String forceId, SectorEntityToken muster) {
+		StarSystemAPI system = hive.getStarSystem();
+		float days = ThreatIncConfig.softenDays();
 		fleet.setName("Hunting Force");
 		// the player's hunting fleets earn swarm bounties on their own
 		if (faction.isPlayerFaction()) ThreatSwarmBountyIntel.HunterPay.attach(fleet);
@@ -999,7 +1258,7 @@ public class ThreatFleetOrders {
 	 * supply and evacuation runs can land, and suppresses its defences from
 	 * orbit while it is there. Without one, a run to a contested orbit is
 	 * refused outright ({@link ThreatConvoys#canRunTo}). Player and NPC
-	 * alike; sized like a guard.
+	 * alike; an NPC one sized to take the orbit (buildSortie).
 	 */
 	public static Order dispatchSupport(FactionAPI faction, MarketAPI hive) {
 		return dispatchOrbit(faction, hive, KIND_SUPPORT);
@@ -1050,26 +1309,46 @@ public class ThreatFleetOrders {
 		if (faction == null || hive == null || hive.getPrimaryEntity() == null) return null;
 		if (base == null) return null;
 		float days = orbitDays(kind);
+		if (!faction.isPlayerFaction()) {
+			// sized to take the orbit, the siege's own rule (siegeOrbitNeeded); a
+			// sortie that cannot clear it only feeds the swarm and holds the door open
+			// for convoys to be mauled in it (run 6: 111 FP against 4,800), so it
+			// does not sail
+			float need = IncursionManager.siegeOrbitNeeded(faction, java.util.Collections.singletonList(hive));
+			List<CampaignFleetAPI> fleets = buildSortie(base, faction, need, hive.getLocationInHyperspace(), true,
+					orbitName(kind).toLowerCase() + " over " + hive.getName());
+			if (fleets == null) return null;
+			Order lead = null;
+			for (CampaignFleetAPI f : fleets) {
+				Order o = orbitOrder(f, faction, hive, base, kind, days);
+				if (lead == null) lead = o;
+			}
+			return lead;
+		}
 		float fp = sortieFP(faction, base);
-		if (faction.isPlayerFaction() && fp < ThreatIncConfig.aidGuardMinFP()) return null;
+		if (fp < ThreatIncConfig.aidGuardMinFP()) return null;
 		CampaignFleetAPI fleet = buildTaskForce(base, faction, fp, hive.getLocationInHyperspace());
 		if (fleet == null) return null;
+		Order o = orbitOrder(fleet, faction, hive, base, kind, days);
+		// the player's own order is news; an NPC navy's sortie is automatic
+		// (ThreatConvoys.supportFor, every ~60 days per contested front) -
+		// progress, not news, and record's log line is all it gets
+		ThreatAidCapacity.commitSortie(base, builtPoints(fleet, fp), fleet,
+				orbitName(kind).toLowerCase() + " over " + hive.getName());
+		notice(faction, "Task Force Sails", "task force from %s moves to " + orbitVerb(kind) + " %s",
+				ThreatNotice.market(base), ThreatNotice.market(hive))
+				.line("For %s days", (int) days).send();
+		return o;
+	}
+
+	/** Puts a built fleet on a Support or Defend sortie over the world for {@code days}, then home; the recorded order. */
+	protected static Order orbitOrder(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI hive, MarketAPI base,
+			String kind, float days) {
 		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, hive.getPrimaryEntity(),
 				days > 0f ? days : NO_TERM_DAYS, orbitTask(kind, hive.getName()));
 		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
 				1000f, "returning to " + base.getName());
-		Order o = record(fleet, faction, kind, base, hive.getId(), hive.getName(), days);
-		// the player's own order is news; an NPC navy's sortie is automatic
-		// (ThreatConvoys.supportFor, every ~60 days per contested front) -
-		// progress, not news, and record's log line is all it gets
-		if (faction.isPlayerFaction()) {
-			ThreatAidCapacity.commitSortie(base, builtPoints(fleet, fp), fleet,
-					orbitName(kind).toLowerCase() + " over " + hive.getName());
-			notice(faction, "Task Force Sails", "task force from %s moves to " + orbitVerb(kind) + " %s",
-					ThreatNotice.market(base), ThreatNotice.market(hive))
-					.line("For %s days", (int) days).send();
-		}
-		return o;
+		return record(fleet, faction, kind, base, hive.getId(), hive.getName(), days);
 	}
 
 	/** "Support" or "Defend". */
@@ -1538,7 +1817,7 @@ public class ThreatFleetOrders {
 				orbitTask(KIND_DEFEND, world.getName()));
 		// one notice per landing, the player's own only: the first of the
 		// expedition's fleets to stay says so; the rest (ThreatPurgeFGI.stayOnDefend
-		// empties every fleet in the system, up to siegeMaxFleets of them) and
+		// empties every fleet in the system) and
 		// every NPC navy's are progress, and record's log line is all they get
 		boolean first = faction.isPlayerFaction() && !hasDefend(faction.getId(), world.getId());
 		Order o = record(fleet, faction, KIND_DEFEND, base, world.getId(), world.getName(), 0f);

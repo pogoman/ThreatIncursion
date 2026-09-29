@@ -12,6 +12,7 @@ import com.fs.starfarer.api.campaign.SectorEntityToken;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
+import com.fs.starfarer.api.impl.campaign.ids.Tags;
 import com.fs.starfarer.api.util.Misc;
 
 /**
@@ -28,7 +29,10 @@ import com.fs.starfarer.api.util.Misc;
  * did not come back;</li>
  * <li>a refund of the abstract provisions drawn at launch (fuel, supplies),
  * scaled by the fleet's surviving strength (fleet points now over fleet
- * points at launch) and by returnRefundMult - the sortie consumed the rest.</li>
+ * points at launch) and by returnRefundMult - the sortie consumed the rest.
+ * An NPC navy's supplies draw is split (2026-09-29: closed economy): the
+ * {@link #hullShare} of it paid for the hulls and comes back in full at the
+ * surviving strength, only the rest at returnRefundMult ({@link #suppliesBack}).</li>
  * </ul>
  *
  * A fleet destroyed on the way home returns nothing. Provisioning data rides
@@ -66,6 +70,40 @@ public class ThreatReturns {
 	 * planet 7000 units on).
 	 */
 	public static final float ARRIVAL_RANGE = 350f;
+
+	/**
+	 * Share of an NPC fleet's supplies draw that paid for its hulls rather
+	 * than its voyage (2026-09-29: closed economy - what comes home intact is
+	 * not destroyed). It comes back in full at the surviving strength; the
+	 * rest keeps returnRefundMult. Losses are the real cost of a sortie, and
+	 * sailing one costs its voyage. Default of the knob-to-be
+	 * threatinc_returnHullShare.
+	 */
+	public static final float HULL_SHARE = 0.8f;
+
+	/** The hull share of a supplies draw, 0..1 (returnHullShare; {@link #HULL_SHARE} is its default). */
+	public static float hullShare() {
+		return Math.max(0f, Math.min(1f, ThreatIncConfig.returnHullShare()));
+	}
+
+	/**
+	 * Supplies refunded of {@code drawn} at surviving strength {@code health}:
+	 * the hull share at 1.0, the voyage share at returnRefundMult. The
+	 * player's fleets keep the old rule, all of it at returnRefundMult.
+	 */
+	public static float suppliesBack(float drawn, float health, boolean player) {
+		if (drawn <= 0f) return 0f;
+		float h = Math.max(0f, Math.min(1f, health));
+		float mult = ThreatIncConfig.returnRefundMult();
+		if (player) return drawn * mult * h;
+		float hull = hullShare();
+		return drawn * h * (hull + (1f - hull) * mult);
+	}
+
+	/** Whether the fleet is the player's, for the refund rule ({@link #suppliesBack}). */
+	protected static boolean playerFleet(CampaignFleetAPI fleet) {
+		return fleet != null && fleet.getFaction() != null && fleet.getFaction().isPlayerFaction();
+	}
 
 	/** Whether the fleet is at the entity: same location, within ARRIVAL_RANGE past both radii. */
 	public static boolean arrived(CampaignFleetAPI fleet, SectorEntityToken to) {
@@ -219,6 +257,44 @@ public class ThreatReturns {
 		return true;
 	}
 
+	/**
+	 * Whether a fleet's order has run out with nothing after it (2026-09-29:
+	 * closed economy - an order that ended on its own used to fall through to
+	 * a despawning return and the fleet was never settled): its queue is
+	 * empty, or - a provisioned fleet from an older build - only that
+	 * despawning return is left. Never a fleet already on its tracked leg, or
+	 * one settled and fading out. The caller sends it home ({@link #sendHome}).
+	 */
+	public static boolean orderRanOut(CampaignFleetAPI fleet) {
+		if (fleet == null || !fleet.isAlive() || fleet.isExpired()) return false;
+		if (fleet.hasTag(Tags.FADING_OUT_AND_EXPIRING) || tracked(fleet)) return false;
+		FleetAssignmentDataAPI a = fleet.getCurrentAssignment();
+		if (a == null) return true;
+		return homeOf(fleet) != null && a.getAssignment() == FleetAssignment.GO_TO_LOCATION_AND_DESPAWN;
+	}
+
+	/** Whether the fleet is on a tracked leg home now (not yet settled). */
+	public static boolean tracked(CampaignFleetAPI fleet) {
+		if (fleet == null) return false;
+		for (Return r : all()) {
+			if (r.fleet == fleet) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Takes a fleet off its tracked leg for a new duty: it is no longer bound
+	 * home, and may be sidetracked again. What it drew still rides it, for
+	 * the settle when it next comes home.
+	 */
+	public static void untrack(CampaignFleetAPI fleet) {
+		if (fleet == null) return;
+		for (Return r : new ArrayList<Return>(all())) {
+			if (r.fleet == fleet) all().remove(r);
+		}
+		fleet.getMemoryWithoutUpdate().unset(MemFlags.MEMORY_KEY_FLEET_DO_NOT_GET_SIDETRACKED);
+	}
+
 	public static void poll() {
 		if (all().isEmpty()) return;
 		for (Return r : new ArrayList<Return>(all())) {
@@ -287,7 +363,9 @@ public class ThreatReturns {
 		}
 		float mult = ThreatIncConfig.returnRefundMult() * health(fleet);
 		float drawFuel = fleet.getMemoryWithoutUpdate().getFloat(MEM_FUEL) * mult;
-		float drawSupplies = fleet.getMemoryWithoutUpdate().getFloat(MEM_SUPPLIES) * mult;
+		// an NPC fleet's hulls come home at what survived (suppliesBack)
+		float drawSupplies = suppliesBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_SUPPLIES), health(fleet),
+				playerFleet(fleet));
 
 		ThreatBases.deposit(home, Commodities.MARINES, marines);
 		// veterans lifted off a front season the garrison they land in, and are

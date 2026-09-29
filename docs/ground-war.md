@@ -150,8 +150,11 @@ ground victory kills a colony, in either direction.*
 ### The doctrine: besiege, land, reinforce (reworked 2026-09-06, untested)
 
 `launchStrike` leaves `raidParams.bombardment` null - that is what routes each pass into
-`ThreatStrikeFGI` instead of vanilla's bombardment path - budgets `strikePassesPerColony`
-(3) passes per world in the sweep, and gives every world in the sweep `siegeOrbitDays`
+`ThreatStrikeFGI` instead of vanilla's bombardment path - budgets `expeditionPasses` (fleets +
+2) passes per world in the sweep (2026-09-29: `strikePassesPerColony`, 3, and the purge's
+`siegePassesPerColony`, 4, are gone - they left the cargo of every fleet past the third or
+fourth aboard; vanilla's autoresolve loops `raidsPerColony`, so the count is finite but
+scales with the fleets), and gives every world in the sweep `siegeOrbitDays`
 (120) of siege (vanilla re-times the payload stage per world once the fleets spawn, so
 the knob is written to `maxDurationIfSpawnedFleets*` too). The landing questions are the
 engine's, shared with the purge
@@ -200,8 +203,11 @@ fixed at **launch** from what the expedition is, the mirror of the purge's
   mustered (3-9 each; `launchStrike` puts them in `fleetSizes`). Shown on the strike's
   intel as "Aboard: N troops", with each world's phase and passes spent.
 - A world's **share** is `max(strikeFrontMinTroops (300), troopsAllotted / worlds in the
-  sweep)`, and a world never receives more than its share across all its passes
-  (`landedAt`). A small strike lands fewer worlds, not token forces.
+  sweep)`, and a world receives no more than its share across all its passes
+  (`landedAt`) unless it needs more: a front takes what it needs from the pool still aboard
+  beyond its even share (2026-09-29; the even split capped it, and a front short of holding
+  watched the troops that would save it sail on to the next world). A small strike lands
+  fewer worlds, not token forces.
 - Before every pass the pool is cut to `troopsAllotted x` the strike's **surviving
   strength** - live fleet points over `totalFPSpawned`, or `1 - routeDamage` while the
   fleets are abstract - so losses on the way are troops that never land. Below
@@ -522,11 +528,15 @@ kept as history where they say otherwise.
   goes home at `defendMinStrength`: only when worn below it AND outweighed - Defense Swarms of at
   least `siegeBreakOffRatio` x its faction's points there (`navyHoldsOver`, via
   `defendCommitted`). The front runs' contested-door check then sends a Support sortie - only if
-  a task force (`guardFleetFP`) can clear the orbit it faces (`siegeOrbitNeeded`; run 6 sent 111
+  a task force can clear the orbit it faces (`siegeOrbitNeeded`; run 6 sent 111
   FP against 4,800), and an NPC Support sortie outweighed over its own front goes home
-  (`navyHoldsOver`, in `ThreatFleetOrders.poll`).
+  (`navyHoldsOver`, in `ThreatFleetOrders.poll`). (2026-09-29: the sortie is sized to the orbit
+  by `ThreatFleetOrders.buildSortie` - `guardFleetFP` is only its minimum - and is refused only
+  while the base's stock cannot provision it, `sortieReachFP`; before, one `guardFleetFP` force
+  was the most it could send, and a front under a strong swarm never got its door opened.)
   A front that cannot hold asks its runs for the troops that hold it (`holdGap`, with
-  `fabricateHoldMargin`), not just `frontReinforceFraction` of what it landed, and a run sails
+  `fabricateHoldMargin`) or back to the whole strength it landed at (`landedStrength`), whichever
+  is more (2026-09-29: it was `frontReinforceFraction`, 0.8, of what it landed), and a run sails
   for a small shortfall while the front cannot hold.
 - **One day over one world.** Fleets of one faction over a world bombard as one: the
   structures wear at the rate their combined points earn (`orbitPoints`) and the guns answer
@@ -620,8 +630,8 @@ raid pass (vanilla's own cadence, about every 3 days per fleet) while the world 
 worn and the troops could not hold - so a strike whose troops could hold on arrival lands at
 once and never bombards, which is what "disrupted 1 day from marines" was: the front's own
 suppression, no orbital siege, and the intended trade (see the landing gate above). The
-passes are the landings: `strikePassesPerColony` (3) per
-world, the first a landing, the rest reinforcements, and once they are spent or
+passes are the landings: `expeditionPasses` (fleets + 2; 2026-09-29, it was
+`strikePassesPerColony`, 3) per world, the first a landing, the rest reinforcements, and once they are spent or
 `siegeOrbitDays` (120) run out vanilla moves the group on to the next world in the sweep.
 Every slice plays vanilla's bombardment burst on the planet (`MarketCMD.addBombardVisual`,
 once per whole day of suppression added per world, so a slice that adds a tenth of a day
@@ -632,7 +642,10 @@ land at Gamma Hero II and then pay the batteries over Gamma Hero I with nothing 
 land): the fleet whose pass lands or reinforces a front leaves its expedition and holds the
 orbit over that world with no term - a faction's as an indefinite **Defend** order
 (`ThreatFleetOrders.adoptLandingDefend`, shown on the board with Recall), the swarm's on the
-`ThreatSwarmDefend` list - and every other expedition fleet in the system with nothing left
+`ThreatSwarmDefend` list (2026-09-29, closed economy: when the front is gone a faction's Defend
+fleet goes home on the tracked leg - `ThreatReturns.homeOf` where the entry names no base - and
+settles; a swarm fleet is bound to its colony's FP bank from spawn, so it re-banks on despawn by
+any road, at the nearest live colony if its own is gone) - and every other expedition fleet in the system with nothing left
 to land goes with it (`ThreatPurgeFGI.stayOnDefend`; a fleet still carrying a landing sweeps
 on). Defend is not Support: it fights whatever contests the orbit but bombards only while
 the front it covers cannot hold **or would not survive the next counter-attack**
@@ -1075,18 +1088,42 @@ on the ground-front poll (it was monthly):
 
 - **Sized to break the hold.** The relief is the Threat's points over the world
   (`pointsNear`, `ORBIT_HOLD_RANGE`) times `npcSiegeOrbitMargin` (1.5), less the guards
-  already bound there, built at the nearest base from fleets of `reliefFleetFP` (300
-  combat points) and merged into one "Relief Force" up to `softenMergeMaxShips`. Each fleet
-  must be provisioned at `expeditionMinProvisionsFraction` from the depot's stock above
-  its floor, so a depot runs out rather than conjuring fleets. With no swarm overhead,
+  already bound there, built at the nearest base whose depot can provision one
+  (`pickReliefBase`) from fleets of `reliefFleetFP` (300
+  combat points) and merged into one "Relief Force" up to `softenMergeMaxShips`. There is no
+  fleet cap (`sendRelief`, 2026-09-29: 50 fleets of `reliefFleetFP` held a relief to ~15,000 FP):
+  it builds until it reaches what is owed or the depot cannot provision another. Each fleet
+  is what the depot pays for in full (2026-09-29: a depot at `expeditionMinProvisionsFraction`
+  of one fleet's provisions used to send the whole fleet half paid), from the stock above
+  its floor, so a depot runs out rather than conjuring fleets. The nearest base alone was
+  often the invaded world itself, drained dry, and relief never sailed while Chicomoztoc
+  sat 3 ly away stocked (Nachiketa, 2026-09-29, verified on a clone of the user's save:
+  3,245 FP sailed on load, took the orbit, the garrison overran the beachhead). A colony
+  under a ground front donates nothing to logistics convoys (`ThreatConvoys.spare`), as it
+  already gave no siege. With no swarm overhead,
   one guard of `guardFleetFP` still goes, as before. The old flat 100-point guard
   (258 FP built) sat 2,600 units off Coatl against 2,812 FP for 76 days.
+- **The siege hull ledger (2026-09-29, closed economy).** The purge's counterpart to the
+  strike's bank ledger: `ThreatPurgeFGI.setLedger` books an NPC siege's fleet points at launch and
+  `settleLedger` settles them against the fleets that really spawn (shortfall from the base then
+  the donors, excess refunded, unpaid warships pruned, supplies stamped on each fleet and
+  refunded per fleet on arrival home). Details: docs/strategy-layer.md "Returns".
+- **Marines by convoy: sized to the need (2026-09-29).** `ThreatConvoys.planRelief` sends
+  what the counter-attack needs to beat the army by `siegeBeachheadMargin`
+  (`ThreatGroundFronts.reliefNeed`: 0 with no Threat front on the world or once the garrison
+  is enough; banked marines not yet armed count), less what is already at sea to the world
+  (`inbound`). Every colony in reach that can spare marines sends what it can of that, the
+  richest first, in parallel - it was one hull load (`convoyMarineCapacity`) from one donor
+  at a time per invaded world. An NPC donor reaches as far as its fuel
+  (`expeditionRangeLY`), not the flat `convoyRangeLY`.
 - **Relief before offensives.** While a faction owes relief it could send
   (`reliefOwed`), no base of it starts a new siege. Running sieges keep their fleets.
 - **Help after the landing.** While the swarm holds the orbit over the army, the owner
   posts a swarm bounty on the system (`ThreatSwarmBountyIntel.postRelief`, ends when the
   army is gone), and allies send relief for what the owner could not
-  (`ThreatCoalition.allyAid`, by standing and `allyAidChance`). Before this, allied
+  (`ThreatCoalition.allyAid`, by standing and `allyAidChance`; 2026-09-29: every willing helper
+  ships what it can spare until the shortage is covered, net of what is at sea - it was one
+  convoy per helped colony, one helper per need, clipped to a hull load). Before this, allied
   guards and Defend contracts stopped once the strike landed. The Defend contract itself
   still covers strikes in flight only.
 
@@ -1247,8 +1284,8 @@ the commodity (user, 2026-09-06).
 the same calls the planet dialog makes; gated by `pushBlockReason` - holding strength, as the
 dialog - and `entrenchBlockReason`; either also answers a checkpoint), Escort, Pull out,
 Supply (refused when the front wants nothing, `ThreatConvoys.supplyBlockReason` - unless
-the **Supply run** ladder over the table is set to Max, which asks for a hull load whether
-the front wants one or not; `ThreatConvoys.supplyAsk`, docs/player-aid.md "load ladders").
+the **Supply run** ladder over the table is set to Max, which asks for everything the base can
+spare above its floor (a hull load until 2026-09-29) whether the front wants it or not; `ThreatConvoys.supplyAsk`, docs/player-aid.md "load ladders").
 
 **What "dig in" and "push" mean.** Stance is the front's *order*, state is what its strength
 *earns*. Dug in (`STANCE_ENTRENCH`): attrition at the holding rate, armaments at base burn,
