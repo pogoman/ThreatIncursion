@@ -397,6 +397,7 @@ public class ThreatConvoys {
 				: Global.getSector().getClock().getElapsedDaysSince(targetsMemoStamp);
 		if (age < 0f || age >= 1f) {
 			targetsMemo.clear();
+			WANTS_MEMO.clear();
 			huntStaged.clear();
 			relayMemo.clear();
 			targetsMemoStamp = now;
@@ -435,6 +436,9 @@ public class ThreatConvoys {
 				// with headroom, one staging for its siege drops it only once it no
 				// longer fits at all
 				boolean wasHunt = hive.getId().equals(verdicts.get(base.getId()));
+				// what cheaper sieges the faction funds first out of the same network
+				float[] committed = committedBefore(base, wants);
+				for (int i = 0; i < have.length; i++) have[i] = Math.max(0f, have[i] - committed[i]);
 				boolean fits = siegeFundable(wants, have, wasHunt ? SIEGE_RETURN_SHARE : 1f);
 				if (fits) verdicts.remove(base.getId());
 				else verdicts.put(base.getId(), hive.getId());
@@ -455,6 +459,50 @@ public class ThreatConvoys {
 		targetsMemo.put(base.getId(), wants.clone());
 		return wants;
 	}
+
+	/**
+	 * The funding the faction's cheaper siege stagers claim out of the same
+	 * stock network as {@code base}, COMMODITIES order: each staging base read
+	 * its siege against the whole network's stock and banking alone, so a
+	 * dozen bases all staged for sieges on one pool, none ever reached its
+	 * target, and the fuel they held back starved the hunts (2026-09-29,
+	 * ti-h9b: 1,148 postponements in 40 months, the median pool 23% of need).
+	 * Now the faction funds its sieges cheapest first: a base's siege fits only
+	 * in what its network holds after every cheaper one that fits. Cheaper
+	 * sieges are read at their own verdicts (siegeStock, memoised a day); a
+	 * base reached while its own verdict is being read counts nothing.
+	 */
+	protected static float[] committedBefore(MarketAPI base, float[] wants) {
+		float[] out = new float[ThreatReserves.COMMODITIES.length];
+		if (base == null || base.getFaction() == null || ALLOCATING.contains(base.getId())) return out;
+		int fuel = ThreatAid.index(Commodities.FUEL);
+		ALLOCATING.add(base.getId());
+		try {
+			for (MarketAPI m : stockNetwork(base)) {
+				if (m == base || m.isPlayerOwned() || ALLOCATING.contains(m.getId())) continue;
+				StarSystemAPI hive = stagingHive(m);
+				if (hive == null) continue;
+				float[] w = WANTS_MEMO.get(m.getId());
+				if (w == null) {
+					w = IncursionManager.siegeWants(m, m.getFaction(), hive);
+					WANTS_MEMO.put(m.getId(), w);
+				}
+				// cheaper first; an equal want goes by id so two bases never both yield
+				if (w[fuel] > wants[fuel] || (w[fuel] == wants[fuel] && m.getId().compareTo(base.getId()) >= 0)) continue;
+				// its own verdict (memoised): a siege staged for, not a hunt
+				if (stagesForHunt(m)) continue;
+				for (int i = 0; i < out.length; i++) out[i] += w[i];
+			}
+		} finally {
+			ALLOCATING.remove(base.getId());
+		}
+		return out;
+	}
+
+	/** Bases whose siege verdict is being read (committedBefore): the walk never re-enters one. */
+	private static final java.util.Set<String> ALLOCATING = new java.util.HashSet<String>();
+	/** A day's siegeWants by staging base id (committedBefore); emptied with targetsMemo. */
+	private static final Map<String, float[]> WANTS_MEMO = new HashMap<String, float[]>();
 
 	/**
 	 * Whether the base stages for a hunting force, its siege being past what
