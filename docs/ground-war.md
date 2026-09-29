@@ -1906,6 +1906,21 @@ eradicated, 0 colonies lost, Threat hives 39 -> 38 - a stalemate.
   `WarSimScript` enemy + station strength) outweighs the strike its staging hive can muster
   (`ThreatColonyManager.peekGarrison`) by `siegeBreakOffRatio`.
 
-Open (design, for the user): the Threat still takes no colony in 540 d. A ~300-marine beachhead
+- **Relief strikes go to their front alone** (`launchStrike`): a strike whose target
+  `wantsExpedition` no longer sweeps the rest of the system, so the whole troop pool reinforces
+  the front it was sent for (swept, it split into even shares and the front got 300).
+- Review fixes (run N8): `ThreatPurgeFGI.finish` keeps an abort that vanilla's expired-route
+  finish would clear; `resolveOnArrival` leaves raze-only expeditions to their razing window
+  (`razesAll`); `beachheadLanding`'s fabricated troops join the pool and a live fleet that comes
+  up short keeps them aboard rather than land under the line; `swarmsMet` lives in sector
+  memory (a distant system's own memory may not tick its expiry).
+- **Measured, off-screen**: human sieges do not bombard themselves down - 14 large abstract
+  sieges in N5 lost 0-2.2% of their fleet to the guns. Live Defend fleets are untested (every
+  NPC siege in the harness resolves off-screen).
+- **900-day run (N7)**: Threat hives 38 -> 27 by day ~680, then back to 34 (total size 271 ->
+  223) as the swarm refounds razed worlds; 1 Threat ground victory.
+**Relief focus result (N9 540 d, N10 900 d, dba556f):** the swarm takes colonies - 3 by day 540 in both runs, 4 by day 900 (Asharu, Jangala, Nachiketa, Yama; Hegemony 12 -> 9) - while the humans eradicate 7 and raze 20, hives 39 -> 30 (size 273 -> 226). No snowball.
+
+Open (design, for the user): before the relief focus the Threat took almost no colony. A ~300-marine beachhead
 pushes at x2 casualties (`threatPushLossMult`), wears to half in ~2 months and is overrun while
 human relief convoys bring 200-1,800 marines; strike relief comes in 300-troop shares.
