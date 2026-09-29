@@ -89,6 +89,26 @@ public class ThreatIncConfig {
 	public static float defendRadius()      { return f("threatinc_defendRadius"); }
 	/** Whether colonies redistribute Defense Swarms to reinforce worn-down siblings. */
 	public static boolean reinforceEnabled()  { return b("threatinc_reinforceEnabled", true); }
+	/** Whether each hive system holds the garrison the war around it calls for and lets the rest go (ThreatPosture); off builds past the floor whenever the bank pays. */
+	public static boolean postureEnabled()    { return b("threatinc_postureEnabled", true); }
+	/** A system wants this much garrison over what its pressure needs by the siege's orbit margin. */
+	public static float postureMargin()       { return f("threatinc_postureMargin"); }
+	/** Garrison above want by this fraction (and one swarm) is let go: reinforcement, waves, strikes, recycling. */
+	public static float postureBand()         { return f("threatinc_postureBand"); }
+	/** Days between readings of every hive system's posture. */
+	public static float postureDays()         { return f("threatinc_postureDays"); }
+	/** Whether a sector stance (ThreatStance) decides where the surplus goes: pressing weak rivals, expanding, or consolidating. */
+	public static boolean stanceEnabled()     { return b("threatinc_stanceEnabled", true); }
+	/** The hive presses a rival it holds this many times the force of, in reach of it. */
+	public static float stancePressRatio()    { return f("threatinc_stancePressRatio"); }
+	/** A known world is weak when its defence is at most this share of what could be mustered against it (by siegeBreakOffRatio). */
+	public static float stanceWeakOdds()      { return f("threatinc_stanceWeakOdds"); }
+	/** The hive consolidates when this share of its systems is THREATENED or BESIEGED. */
+	public static float stanceConsolidateShare() { return f("threatinc_stanceConsolidateShare"); }
+	/** Days a stance holds before it may change (consolidating never waits). */
+	public static float stanceDwellDays()     { return f("threatinc_stanceDwellDays"); }
+	/** Pressing, the share of the posture's appetite expansion still gets. */
+	public static float stanceSecondaryShare() { return f("threatinc_stanceSecondaryShare"); }
 	/** A garrison swarm below this fraction of its fabricated fleet points no longer holds its slot. */
 	public static float garrisonUnderStrengthFraction() { return f("threatinc_garrisonUnderStrengthFraction"); }
 	public static boolean economyGatesGrowth(){ return b("threatinc_economyGatesGrowth", true); }
@@ -528,10 +548,6 @@ public class ThreatIncConfig {
 	public static float swarmBountyDays()     { return f("threatinc_swarmBountyDays"); }
 	/** Whether mobilised NPC bases with no siege of their own send hunting forces against bountied hives (ThreatSoftening). */
 	public static boolean softenEnabled()     { return b("threatinc_softenEnabled", true); }
-	/** Combat FP a hunting force brings per FP of Defense Swarm it hunts. */
-	public static float softenMargin()        { return f("threatinc_softenMargin"); }
-	/** A hunting force sails only with this much over what its muster will ask of it. */
-	public static float softenHeadroom()      { return f("threatinc_softenHeadroom"); }
 	/** Most combat FP in one fleet of a hunting force. */
 	public static float softenFleetFP()       { return f("threatinc_softenFleetFP"); }
 	/** Days a hunt order - an NPC hunting force, a coalition answer, or the player's Hunt - stays on the hunt. */
@@ -566,6 +582,8 @@ public class ThreatIncConfig {
 	public static float donorKeepFraction()   { return f("threatinc_donorKeepFraction"); }
 	/** Staging target as a multiple of one expedition's draw. */
 	public static float stagingTargetMult()   { return f("threatinc_stagingTargetMult"); }
+	/** Months of the faction's banking, on top of its stock in reach, a siege's fuel and supplies must fit in for a base to stage for it rather than for a hunt. */
+	public static float stagingHorizonMonths() { return f("threatinc_stagingHorizonMonths"); }
 	/** Days after which a convoy that has not arrived is written off. */
 	public static float convoyTimeoutDays()   { return f("threatinc_convoyTimeoutDays"); }
 	/** Whether the war board's fleet orders (guard, stage, intercept, siege, recall) are offered. */

@@ -153,6 +153,11 @@ public class ThreatSwarmDefend {
 			}
 			if (done) {
 				all.remove(e);
+				// the world is the swarm's now: its conquerors hold it
+				// (the old market is gone, or flipped, only when the ground war was won)
+				if (Factions.THREAT.equals(e.factionId)
+						&& (market == null || Factions.THREAT.equals(market.getFactionId()))
+						&& ThreatColonyManager.digInAtConquest(e.fleet)) continue;
 				sendHome(e);
 				continue;
 			}

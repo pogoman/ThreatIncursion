@@ -326,7 +326,8 @@ public class ThreatConvoys {
 	 * Target stock of each reserve commodity at a staging base, in
 	 * ThreatReserves.COMMODITIES order: what the siege the Siege button would
 	 * launch from here against its hive draws (IncursionManager.siegeWants -
-	 * the same figures the button and its prompt show), times
+	 * the same figures the button and its prompt show), or a hunting force's
+	 * while that siege is past the faction's means ({@link #siegeStock}), times
 	 * stagingTargetMult. All zeros for a world that is not a staging base.
 	 * Memoised per base for a day: each call is a
 	 * stagingHive sweep plus a full siegeSizes, and the planner asks for a
@@ -396,12 +397,24 @@ public class ThreatConvoys {
 				: Global.getSector().getClock().getElapsedDaysSince(targetsMemoStamp);
 		if (age < 0f || age >= 1f) {
 			targetsMemo.clear();
+			huntStaged.clear();
 			relayMemo.clear();
 			targetsMemoStamp = now;
 		}
 	}
 
-	/** {@link #stagingTargets} for the base's own siege alone, relays aside: what the siege from here draws, times stagingTargetMult. */
+	/**
+	 * {@link #stagingTargets} for the base's own siege alone, relays aside: what
+	 * the siege from here draws, times stagingTargetMult - or, while the faction
+	 * cannot pay for that siege ({@link #siegeFundable}), what a hunting force
+	 * from here against the same hive draws (ThreatSoftening.stagingWants,
+	 * 2026-09-29). Staged for Pelephanar's siege, weighed on 14,288 FP of
+	 * system swarms, Hegemony's staging bases and relays banked 100-560k fuel
+	 * against a faction total of 59.6k: none of it was ever spendable, and the
+	 * hunts that would have thinned the system went unpaid. Once hunts thin it enough the siege fits and the
+	 * target returns to it; relays follow either way (ownWants). The verdict holds
+	 * until it is clearly wrong ({@link #HUNT_VERDICTS}).
+	 */
 	protected static float[] siegeStock(MarketAPI base) {
 		if (base == null) return new float[] {0f, 0f, 0f, 0f};
 		ageTargetsMemo();
@@ -409,15 +422,119 @@ public class ThreatConvoys {
 		if (memo != null) return memo.clone();
 		float[] wants;
 		StarSystemAPI hive = stagingHive(base);
+		Map<String, String> verdicts = ThreatIncData.map(HUNT_VERDICTS);
 		if (hive == null) {
 			wants = new float[] {0f, 0f, 0f, 0f};
+			verdicts.remove(base.getId());
 		} else {
 			wants = IncursionManager.siegeWants(base, base.getFaction(), hive);
+			// the player orders their own sieges; only an NPC base stages for its hunt
+			if (!base.isPlayerOwned()) {
+				float[] have = fundingInReach(base);
+				// hysteresis: a base staging for a hunt goes back to its siege only
+				// with headroom, one staging for its siege drops it only once it no
+				// longer fits at all
+				boolean wasHunt = hive.getId().equals(verdicts.get(base.getId()));
+				boolean fits = siegeFundable(wants, have, wasHunt ? SIEGE_RETURN_SHARE : 1f);
+				if (fits) verdicts.remove(base.getId());
+				else verdicts.put(base.getId(), hive.getId());
+				int fuel = ThreatAid.index(Commodities.FUEL), supplies = ThreatAid.index(Commodities.SUPPLIES);
+				ThreatIncConfig.logOnChange("staging:" + base.getId(), fits ? "siege" : "hunt", "Staging: "
+						+ base.getName() + " stocks for " + (fits ? "its siege of " : "a hunting force against ")
+						+ hive.getName() + " - the siege wants " + (int) wants[fuel] + " fuel, " + (int) wants[supplies]
+						+ " supplies; in reach with " + (int) ThreatIncConfig.stagingHorizonMonths()
+						+ " months' banking: " + (int) have[fuel] + " fuel, " + (int) have[supplies] + " supplies");
+				if (!fits) {
+					wants = ThreatSoftening.stagingWants(base, hive);
+					huntStaged.add(base.getId());
+				}
+			}
 			float mult = ThreatIncConfig.stagingTargetMult();
 			for (int i = 0; i < wants.length; i++) wants[i] *= mult;
 		}
 		targetsMemo.put(base.getId(), wants.clone());
 		return wants;
+	}
+
+	/**
+	 * Whether the base stages for a hunting force, its siege being past what
+	 * the faction can pay for ({@link #siegeStock}): its staging bank is then
+	 * any hunt's in reach, not only one in its own staging hive
+	 * (ThreatSoftening.huntSpendable).
+	 */
+	public static boolean stagesForHunt(MarketAPI base) {
+		if (base == null) return false;
+		// fills the day's memo, and this set with it
+		siegeStock(base);
+		return huntStaged.contains(base.getId());
+	}
+
+	/**
+	 * Persistent: staging base id -> the hive whose hunt it stages for, while
+	 * its siege there is past the faction's means ({@link #siegeStock}). Epsilon
+	 * Mengryla I Forward Base, its siege needing 115-136k fuel against 117-120k
+	 * in reach, flipped between the two four times in one run, and each flip
+	 * turned its convoys around.
+	 */
+	protected static final String HUNT_VERDICTS = "threatinc_huntStagingVerdicts";
+	/** The share of the funding in reach a siege may need for a base staging for a hunt to go back to it. */
+	protected static final float SIEGE_RETURN_SHARE = 0.8f;
+
+	/**
+	 * Whether a siege's fuel and supplies ({@code wants}, COMMODITIES order) fit
+	 * in {@code have} ({@link #fundingInReach}). Marines and armaments are not
+	 * weighed: they are not what a hunt spends.
+	 */
+	protected static boolean siegeFundable(float[] wants, float[] have) {
+		return siegeFundable(wants, have, 1f);
+	}
+
+	/** As above, the siege needing at most {@code share} of each. */
+	protected static boolean siegeFundable(float[] wants, float[] have, float share) {
+		String[] cs = {Commodities.FUEL, Commodities.SUPPLIES};
+		for (String c : cs) {
+			int i = ThreatAid.index(c);
+			if (i >= 0 && wants[i] > have[i] * share) return false;
+		}
+		return true;
+	}
+
+	/**
+	 * What the faction can bring to the base within stagingHorizonMonths, in
+	 * COMMODITIES order: the stock of every market in its convoy network
+	 * ({@link #stockNetwork}) plus that many months of what each banks
+	 * (ThreatReserves.accrualPer30).
+	 */
+	protected static float[] fundingInReach(MarketAPI base) {
+		float[] out = new float[ThreatReserves.COMMODITIES.length];
+		float months = Math.max(0f, ThreatIncConfig.stagingHorizonMonths());
+		for (MarketAPI m : stockNetwork(base)) {
+			for (int i = 0; i < out.length; i++) {
+				String c = ThreatReserves.COMMODITIES[i];
+				out[i] += ThreatReserves.stock(m.getId(), c) + ThreatReserves.accrualPer30(m, c) * months;
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * The base and every market of its faction whose stock can reach it by
+	 * convoy, directly (IncursionManager.marketsReaching) or passed on through
+	 * others - the reach relays give it ({@link #relayPlan}).
+	 */
+	protected static List<MarketAPI> stockNetwork(MarketAPI base) {
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		if (base == null || base.getFaction() == null) return out;
+		java.util.Set<String> seen = new java.util.HashSet<String>();
+		out.add(base);
+		seen.add(base.getId());
+		// each market joins once, from the faction's finite list: the walk ends
+		for (int k = 0; k < out.size(); k++) {
+			for (MarketAPI m : IncursionManager.marketsReaching(base.getFaction(), out.get(k))) {
+				if (seen.add(m.getId())) out.add(m);
+			}
+		}
+		return out;
 	}
 
 	/** One commodity of {@link #stagingTargets}. */
@@ -428,11 +545,14 @@ public class ThreatConvoys {
 
 	/** {@link #siegeStock} by market id, good for a day from targetsMemoStamp. */
 	private static final Map<String, float[]> targetsMemo = new HashMap<String, float[]>();
+	/** Ids of the bases whose memoised {@link #siegeStock} is a hunting force's ({@link #stagesForHunt}); emptied with targetsMemo. */
+	private static final java.util.Set<String> huntStaged = new java.util.HashSet<String>();
 	private static long targetsMemoStamp = Long.MIN_VALUE;
 
 	/** Drops the stagingTargets memos; the faction view calls it as it renders, so a board order's effect shows on the same paused frame. */
 	public static void forgetStagingTargets() {
 		targetsMemo.clear();
+		huntStaged.clear();
 		relayMemo.clear();
 	}
 

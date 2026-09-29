@@ -35,13 +35,13 @@ import com.fs.starfarer.api.util.Misc;
  * (IncursionManager.hasSiegeableHive): the siege always comes first.
  *
  * <p>A hunting force carries no marines and lands nothing, so every point is a
- * warship: it is sized to beat the whole system's Defense Swarms
- * (softenMargin), as big as its depots can pay for (no ceiling, 2026-09-29),
+ * warship: it is sized to beat the whole system's Defense Swarms by the
+ * siege's orbit margin ({@link #margin}), as big as its depots can pay for (no ceiling, 2026-09-29),
  * split into fleets of at most softenFleetFP, and paid for as a siege is, in fuel and supplies. With
  * softenPool every base of the faction in reach chips in, nearest first. The
  * odds are counted on the warships the yards actually build (vanilla scales an
  * NPC fleet by its market), and a force that cannot beat its target's garrison
- * by the margin does not sail.
+ * as it will stand on arrival by the margin does not sail ({@link #musterFloorFP}).
  *
  * <p>The fleets MUSTER (2026-09-24 review): each flies blinkered to the hive
  * system's hyperspace anchor and waits there until the whole force is in, or
@@ -52,7 +52,8 @@ import com.fs.starfarer.api.util.Misc;
  * orbit gate reads - the strongest garrison among the worlds the siege is
  * fighting (a siege takes a subset of the system since 2026-09-27: the
  * caller's purge targets for a coalition answer, the poster's siegeTargets
- * for a bounty hunt, {@link Force#targetIds}) - or it does not sail; it
+ * for a bounty hunt, {@link Force#targetIds}; the whole system while its
+ * swarms are what the gate weighs, {@link #gateWorlds}) - or it does not sail; it
  * moves on to the next strongest of them only while what is left of it still
  * beats that garrison by the margin, and goes home whole when they are clear
  * or it falls below softenRetreatStrength of its strength when it went in or
@@ -143,10 +144,11 @@ public class ThreatSoftening {
 				if (faction == null || faction.isPlayerFaction()) continue;
 				if (hunting(factionId, system.getId())) continue;
 				if (hostileAt(faction, system.getId())) continue;
-				// against the worlds the poster's siege would take, from the best
+				// against what the poster's siege weighs (gateWorlds), from the best
 				// paid base first until one force sails (huntBases)
+				List<MarketAPI> worlds = gateWorlds(bounty.getFaction(), system, bounty.siegeTargets());
 				for (MarketAPI base : huntBases(faction, system)) {
-					if (send(faction, base, system, bounty.siegeTargets())) break;
+					if (send(faction, base, system, worlds)) break;
 				}
 			}
 		}
@@ -285,6 +287,22 @@ public class ThreatSoftening {
 			}
 		}
 		return best;
+	}
+
+	/**
+	 * The worlds a hunt that is to open a siege's orbit gate goes after
+	 * (2026-09-29): the siege's own ({@code targets}) while the strongest of
+	 * their garrisons is what the gate weighs; the whole system (null) while
+	 * the system's swarms, or what a called-off siege met there, outweigh it
+	 * (IncursionManager.siegeOrbitWeighed). Aimed at the siege's one world,
+	 * Thrial's forces beat Surgat's 75 FP over and over and stood down with it
+	 * clear, while the gate read 11k FP over its five siblings.
+	 */
+	protected static List<MarketAPI> gateWorlds(FactionAPI siegeFaction, StarSystemAPI system,
+			List<MarketAPI> targets) {
+		if (system == null || targets == null || targets.isEmpty()) return null;
+		return IncursionManager.siegeOrbitWeighed(siegeFaction, targets)
+				> IncursionManager.siegeOrbitFaced(targets) ? null : targets;
 	}
 
 	/** The ids of the worlds a force is sent against; null for the whole system. */
@@ -434,12 +452,17 @@ public class ThreatSoftening {
 	 * (siegeWaitsOnHunt) - then that siege's staging bank is spendable too, and
 	 * the base keeps only its floor and donor keep (2026-09-29). The siege cannot
 	 * sail until the swarm is thinned, and the staging bank starved the one force
-	 * that would thin it.
+	 * that would thin it. A base staging for a hunt, its siege past the
+	 * faction's means (ThreatConvoys.stagesForHunt), gives its bank to a hunt
+	 * in any system: it holds nothing for a siege that could sail.
 	 */
 	protected static float huntSpendable(MarketAPI base, StarSystemAPI system, String commodityId) {
 		if (base == null) return 0f;
-		// a forward base keeps its garrison's upkeep back (outpostKeep) either way
-		if (!siegeWaitsOnHunt(base, system)) return donorSpendable(base, commodityId);
+		// a forward base keeps its garrison's upkeep back (outpostKeep) either way;
+		// the memoised staging verdict first, the siege sweep only without it
+		if (!ThreatConvoys.stagesForHunt(base) && !siegeWaitsOnHunt(base, system)) {
+			return donorSpendable(base, commodityId);
+		}
 		if (ThreatReserves.committed(base, commodityId)) return 0f;
 		float keep = Math.max(ThreatReserves.floor(base, commodityId),
 				ThreatReserves.monthsCap(base, commodityId) * ThreatIncConfig.donorKeepFraction());
@@ -485,18 +508,78 @@ public class ThreatSoftening {
 	}
 
 	/**
-	 * The garrison a hunt of this colony must beat by the time it goes in: its
-	 * swarms now with headroom, or - a colony regrowing its swarms - the whole
-	 * garrison it refills to, at the strength of the swarms it has. Sized on the
-	 * swarms present, 15% of Run 7's forces met a garrison that had regrown
-	 * during the muster and stood down outmatched (rc1 review).
+	 * Fleet points a hunt brings per point of Defense Swarm it fights: the
+	 * siege's own orbit margin (npcSiegeOrbitMargin, 2026-09-29). softenMargin
+	 * 2.0 on top of a headroom 1.5 and a garrison refilled to its nominal size
+	 * asked 15,790 FP of a force against Alpha Mesh I's 3,158.
 	 */
-	protected static float musterFloorFP(MarketAPI colony) {
-		float fp = garrisonFP(colony);
-		int live = Math.max(1, ThreatColonyManager.countLiveGarrison(colony.getId()));
-		float refilled = fp / live * Math.max(live, ThreatColonyManager.nominalGarrison(colony));
-		return Math.max(0f, ThreatIncConfig.softenMargin())
-				* Math.max(fp * Math.max(1f, ThreatIncConfig.softenHeadroom()), refilled);
+	public static float margin() {
+		return Math.max(0f, ThreatIncConfig.npcSiegeOrbitMargin());
+	}
+
+	/**
+	 * The smallest force that sails against this colony, {@code days} before it
+	 * goes in: the garrison it will meet ({@link #garrisonOnArrivalFP}) by the
+	 * {@link #margin}. Sized on the swarms present, 15% of Run 7's forces met a
+	 * garrison that had regrown during the muster and stood down outmatched
+	 * (rc1 review).
+	 */
+	protected static float musterFloorFP(MarketAPI colony, float days) {
+		return margin() * garrisonOnArrivalFP(colony, days);
+	}
+
+	/**
+	 * The Defense Swarms over a colony {@code days} from now: those it owns now
+	 * (ThreatColonyManager.ownedFleetFP - its garrison, its raiders out and the
+	 * reinforcements flying in, all home by then), and - while its organs can
+	 * build - what its nexus's bank buys at once and its income over its upkeep
+	 * adds by then (the fabrication ledger). The regrowth the old refill-to-
+	 * nominal stood in for, which the bank may not pay for at all.
+	 */
+	protected static float garrisonOnArrivalFP(MarketAPI colony, float days) {
+		float fp = Math.max(garrisonFP(colony),
+				ThreatColonyManager.ownedFleetFP(colony, ThreatIncData.garrisonsFor(colony.getId())));
+		if (ThreatColonyManager.organDown(colony.getIndustry(ThreatColonyManager.FABRICATION_CORE))
+				|| !ThreatColonyManager.hasOperationalNexus(colony)) {
+			return fp;
+		}
+		float net = ThreatColonyManager.fabricationRatePerDay(colony) - ThreatColonyManager.upkeepPerDay(fp);
+		return fp + Math.max(0f, ThreatColonyManager.bankedFP(colony)) + Math.max(0f, net) * Math.max(0f, days);
+	}
+
+	/** Days before a force raised at the base goes in over the hive: its passage ({@link #passageDays}) and the muster's wait (softenMusterDays). */
+	protected static float arrivalDays(MarketAPI base, StarSystemAPI system) {
+		return passageDays(base, system) + Math.max(0f, ThreatIncConfig.softenMusterDays());
+	}
+
+	/** Days from the base to the hive: the passage at the board's pace (ThreatWarBoard.EST_LY_PER_DAY) and a day in-system. */
+	protected static float passageDays(MarketAPI base, StarSystemAPI system) {
+		float ly = base != null && base.getStarSystem() != null && system != null
+				? Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation()) : 0f;
+		return (float) Math.ceil(ly / ThreatWarBoard.EST_LY_PER_DAY) + 1f;
+	}
+
+	/**
+	 * What the smallest hunting force from the base against the hive draws, in
+	 * ThreatReserves.COMMODITIES order: the fuel and supplies
+	 * (ThreatFleetOrders.sortieWants) of {@link #musterFloorFP} against the
+	 * world the base's siege's orbit gate reads ({@link #strongest} of its
+	 * {@link #gateWorlds}). No marines or armaments: it lands
+	 * nothing. What a base stages while its siege is past the faction's means
+	 * (ThreatConvoys.siegeStock).
+	 */
+	public static float[] stagingWants(MarketAPI base, StarSystemAPI hive) {
+		float[] out = new float[ThreatReserves.COMMODITIES.length];
+		if (base == null || hive == null || base.getFaction() == null) return out;
+		MarketAPI first = strongest(hive.getId(), idsOf(gateWorlds(base.getFaction(), hive,
+				IncursionManager.siegeTargets(base, base.getFaction(), hive))));
+		if (first == null) return out;
+		float[] w = ThreatFleetOrders.sortieWants(base, musterFloorFP(first, arrivalDays(base, hive)),
+				hive.getLocation());
+		int fuel = ThreatAid.index(Commodities.FUEL), supplies = ThreatAid.index(Commodities.SUPPLIES);
+		if (fuel >= 0) out[fuel] = w[0];
+		if (supplies >= 0) out[supplies] = w[1];
+		return out;
 	}
 
 	/** Returns the share of a fleet's provisions the points it lost to pruning were drawn for. */
@@ -578,15 +661,14 @@ public class ThreatSoftening {
 		MarketAPI first = strongest(system.getId(), among);
 		if (first == null) return false;
 		String key = "huntwait:" + faction.getId() + ":" + system.getId();
-		float margin = Math.max(0f, ThreatIncConfig.softenMargin());
 		// the swarms reinforce while the force gathers (433 -> 1,329 FP over Zendar, Run 6):
-		// it sails with headroom over what the muster will ask of it
+		// it is sized to the garrison it will meet when it goes in (musterFloorFP)
 		// no ceiling on the force (user's rule 2026-09-29): what the depots can pay
 		// bounds it. softenMaxFP (12,000) and 30 fleets left every hive over ~4k FP
 		// a world unhunted for the 3.7-year test
-		float floor = musterFloorFP(first);
+		float floor = musterFloorFP(first, arrivalDays(base, system));
 		float want = IncursionManager.siegeOrbitFP(among != null ? targets
-				: IncursionManager.collectSiegeTargets(system)) * margin;
+				: IncursionManager.collectSiegeTargets(system)) * margin();
 		want = Math.max(floor, want);
 		List<MarketAPI> bases = contributors(faction, base, system);
 		// the markets that field no fleets pay toward the primary's
@@ -829,7 +911,7 @@ public class ThreatSoftening {
 			return;
 		}
 		CampaignClockAPI clock = Global.getSector().getClock();
-		float margin = Math.max(0f, ThreatIncConfig.softenMargin());
+		float margin = margin();
 
 		if (!f.engaged) {
 			float fp = 0f;
@@ -1155,7 +1237,7 @@ public class ThreatSoftening {
 			return;
 		}
 		IncursionManager.huntThinned(systemId);
-		if (!player && combatFP(o.fleet) < garrisonFP(next) * Math.max(0f, ThreatIncConfig.softenMargin())) {
+		if (!player && combatFP(o.fleet) < garrisonFP(next) * margin()) {
 			ThreatFleetOrders.standDown(o, "outmatched by " + next.getName());
 			return;
 		}

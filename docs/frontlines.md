@@ -174,7 +174,8 @@ falls, everything beyond it loses the bonus on the next day's update.
 - **Captured by someone else** (Nexerelin): the record is dropped and the
   condition removed; the market is theirs.
 
-**The Threat breaks the chain.** In `pickStrikeTarget` a link's weight is
+**The Threat breaks the chain.** In `pickStrikeTarget` (`strikeValue`, then the stance multiplier,
+docs/strategy-layer.md "Strike target weight") a link's weight is
 max(size, 3)² × `frontlineStrikeWeight` × (1 + links its loss would cut), in
 place of size². `isStrikeableWorld` admits links below size 3. The swarm still
 needs to have scouted the system (`ThreatSwarmScouts.swarmKnows`).

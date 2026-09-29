@@ -247,7 +247,8 @@ public class ThreatColonyManager {
 		}
 		registerConquest(planet, hive);
 		ThreatIncConfig.log("Conquest: " + name + " seeded as a size-" + size + " hive, "
-				+ hive.getIndustries().size() + " structures, " + (int) (had - fpBank(payer)) + " FP paid by " + payer
+				+ hive.getIndustries().size() + " structures, " + (int) (had - fpBank(payer)) + " FP paid by "
+				+ (ThreatIncData.resolveColonyMarket(payer) != null ? ThreatIncData.resolveColonyMarket(payer).getName() : payer)
 				+ (buildWaiting().containsKey(hive.getId()) ? " (the rest waits on its own bank)" : ""));
 		return hive;
 	}
@@ -1861,6 +1862,15 @@ public class ThreatColonyManager {
 		return desiredGarrison(market.getSize()).length;
 	}
 
+	/**
+	 * The swarm count a colony's garrison fills toward when nothing presses
+	 * it: its size table's (desiredGarrisonCount), or under posture its base
+	 * (ThreatPosture.baseCount - its reserve, and a forge's launch stock).
+	 */
+	public static int garrisonTargetCount(MarketAPI market) {
+		return ThreatPosture.enabled() ? ThreatPosture.baseCount(market) : desiredGarrisonCount(market);
+	}
+
 	/** Defense Swarms a colony always keeps home; it never musters these. */
 	public static int garrisonReserve(MarketAPI market) {
 		return Math.max(1, desiredGarrisonCount(market) / 2);
@@ -1881,14 +1891,38 @@ public class ThreatColonyManager {
 	/**
 	 * Defense Swarms ONE colony is willing to send out: only what stands above
 	 * its reserve, and only once the garrison is at full (economy-scaled)
-	 * strength - a colony still regrowing its swarms sends nothing.
+	 * strength - a colony still regrowing its swarms sends nothing. Where
+	 * its system is pressed (ThreatPosture.launchSpareFP) only the fleets
+	 * that fit inside what it holds above the pressure's need, largest first
+	 * as musterFrom takes them. Under posture "full strength" is the colony's
+	 * want, not its size table: a quiet colony at its reserve and launch stock
+	 * is full, and one short of it by less than a swarm (ThreatPosture.regrowing).
 	 */
 	public static int ownAvailableForLaunch(MarketAPI market) {
 		if (market == null) return 0;
-		int desired = desiredGarrisonCount(market);
 		int live = countLiveGarrison(market.getId());
-		if (live < desired) return 0;
-		return Math.max(0, live - garrisonReserve(market));
+		if (ThreatPosture.enabled()) {
+			if (ThreatPosture.regrowing(market, ownedFleetFP(market, ThreatIncData.garrisonsFor(market.getId())))) {
+				return 0;
+			}
+		} else if (live < desiredGarrisonCount(market)) {
+			return 0;
+		}
+		int n = Math.max(0, live - garrisonReserve(market));
+		float spare = ThreatPosture.launchSpareFP(market);
+		if (n <= 0 || spare == Float.MAX_VALUE) return n;
+		List<Float> fps = new ArrayList<Float>();
+		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(market.getId())) {
+			if (curr != null && curr.isAlive()) fps.add((float) curr.getFleetPoints());
+		}
+		java.util.Collections.sort(fps, java.util.Collections.reverseOrder());
+		int fit = 0;
+		for (int i = 0; i < n && i < fps.size(); i++) {
+			spare -= fps.get(i);
+			if (spare < 0f) break;
+			fit++;
+		}
+		return fit;
 	}
 
 	/**
@@ -2035,6 +2069,7 @@ public class ThreatColonyManager {
 		// (the nexus's rebuild clock this used to restart is gone: production
 		// banks continuously now, the fabrication ledger)
 		if (!despawn || taken <= 0) return taken;
+		ThreatPosture.noteConsumed(swarms);
 		ThreatIncConfig.log(swarms + " Defense Swarm(s) in " + taken + " fleet(s) mustered from "
 				+ market.getName() + " (" + countLiveGarrison(market.getId())
 				+ " remain on station)");
@@ -2078,29 +2113,46 @@ public class ThreatColonyManager {
 	 * Nearest colony that can fabricate and dispatch a wave at the target:
 	 * big enough, forge ready, and past the required economic bar - the
 	 * stability bar for claiming NEW systems, the lower projection bar for
-	 * consolidation (a strained hive may still fix itself locally).
+	 * consolidation (a strained hive may still fix itself locally). Under
+	 * posture (ThreatPosture) a colony of a pressed system keeps its forge
+	 * home, and the colony with the most swarms to spare goes first, the
+	 * nearest breaking a tie.
 	 */
 	public static MarketAPI pickForgeSource(StarSystemAPI target, boolean requireStable) {
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
+		int bestSpare = -1;
+		boolean bestPays = false;
+		boolean posture = ThreatPosture.enabled();
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (market.getSize() < ThreatIncConfig.spreadMinSize()) continue;
 			if (!hasReadyForge(market)) continue;
 			if (!hasOperationalNexus(market)) continue;
+			StarSystemAPI system = market.getStarSystem();
+			if (system == null) continue;
+			if (posture && ThreatPosture.pressed(system)) continue;
 			// the wave's substance is a mustered Defense Swarm: the colony (or a
 			// sibling in its system, launchPool) must have one to spare above
 			// its defensive reserve
-			if (garrisonAvailableForLaunch(market) < 1) continue;
+			int spare = garrisonAvailableForLaunch(market);
+			if (spare < 1) continue;
 			if (requireStable ? !isStableForExpansion(market) : !canProjectFleets(market)) continue;
-			StarSystemAPI system = market.getStarSystem();
-			if (system == null) continue;
 			float d = Misc.getDistanceLY(system.getLocation(), target.getLocation());
 			// colonization is fuel-bound exactly like strikes: a wave can only
 			// be sent as far as the fuel the hive network delivers to this
 			// colony will carry it. Cut their fuel and the swarm stops seeding.
 			if (d > fuelRangeLY(market)) continue;
-			if (d < bestDist) {
+			// a forge whose system can pay the founding goes before one that
+			// cannot (2026-09-29, ti-h8e: the swarm-richest forge was picked,
+			// failed its bill, and the claim waited months with 70k FP banked)
+			boolean pays = poolableFP(market) >= foundingFP(FOUNDING_CORE_STRUCTURES + 1);
+			boolean better;
+			if (best != null && pays != bestPays) better = pays;
+			else better = posture && spare != bestSpare ? spare > bestSpare : d < bestDist;
+			if (better) {
 				bestDist = d;
+				bestSpare = spare;
+				bestPays = pays;
 				best = market;
 			}
 		}
@@ -2354,7 +2406,7 @@ public class ThreatColonyManager {
 			peekGarrison(source, 1, swarmFP);
 			structuresFP = foundingFP(foundingStructuresEstimate(targetPlanet));
 			float bill = swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec) - swarmFP[0] + structuresFP;
-			if (bill > 0f && !canAffordFP(source, bill)) return false;
+			if (bill > 0f && !poolSystemBanks(source, bill)) return false;
 		}
 
 		CampaignFleetAPI fleet = ThreatFleetComposer.create(ThreatFleetComposer.JOB_SEEDING,
@@ -3250,6 +3302,16 @@ public class ThreatColonyManager {
 			int away = swarmsAway(marketId);
 			int fit = countFitGarrison(market);
 			boolean belowFloor = fit + away < desired;
+			// under posture the want is the floor (ThreatPosture: the reserve and
+			// a forge's launch stock, or the war's need) and the table only
+			// shapes what is built: what the colony holds and has inbound against
+			// it, never below one swarm
+			boolean posture = ThreatPosture.enabled();
+			if (posture) {
+				belowFloor = fleets.size() + away < 1
+						|| ThreatPosture.wantsGrowth(market, ownedFleetFP(market, fleets));
+				desired = ThreatPosture.baseCount(market);
+			}
 
 			// an unheld floor slot first, most demanding first; past the floor
 			// the table's rows in turn, so the garrison keeps its mix (counted in
@@ -3263,6 +3325,9 @@ public class ThreatColonyManager {
 			// a structure waiting on the bank comes before growth past the floor,
 			// or swarms cheaper than it would spend every FP as it banked
 			if (!belowFloor && buildWaiting().containsKey(marketId)) continue;
+			// nothing past the want: the bank keeps the rest for waves, strikes
+			// and foundings
+			if (posture && !belowFloor) continue;
 			// (2026-09-29: closed economy - the bank is the only bound. The nexus
 			// used to spend it at one swarm per garrisonRespawnDays, which the
 			// alarm quickened: a second, arbitrary cap on top of production. Now
@@ -3315,7 +3380,6 @@ public class ThreatColonyManager {
 					+ " (" + fleets.size() + ", floor " + desired + ", " + (int) cost + " FP, "
 					+ (int) bankedFP(market) + " FP banked)");
 		}
-		logUpkeepMonth();
 	}
 
 	/** The colony poll's cadence (IncursionManager's 0.4-0.6 day interval). */
@@ -3372,6 +3436,57 @@ public class ThreatColonyManager {
 	public static void creditFP(MarketAPI market, float fp) {
 		if (market == null || fp <= 0f) return;
 		fabBank().put(market.getId(), bankedFP(market) + fp);
+	}
+
+	/**
+	 * Whether the source's bank, topped up from its system's other colonies,
+	 * pays the bill; tops it up when it does. A sibling gives only while it
+	 * holds its garrison (ThreatPosture.regrowing) and only what it has banked.
+	 * Its Defense Swarms already pool for a launch (launchPool); its bank did
+	 * not, and a founding waited on one colony's bank while 42k FP sat in the
+	 * others (2026-09-29, ti-h8d).
+	 */
+	public static boolean poolSystemBanks(MarketAPI source, float bill) {
+		if (source == null) return false;
+		float short0 = bill - bankedFP(source);
+		if (short0 <= 0f) return true;
+		if (source.getStarSystem() == null) return false;
+		List<MarketAPI> givers = new ArrayList<MarketAPI>();
+		float can = 0f;
+		for (MarketAPI m : ThreatIncData.getLiveColonyMarkets(source.getStarSystem().getId())) {
+			if (m == source || bankedFP(m) <= 0f) continue;
+			if (ThreatPosture.regrowing(m, ownedFleetFP(m, ThreatIncData.garrisonsFor(m.getId())))) continue;
+			givers.add(m);
+			can += bankedFP(m);
+		}
+		if (can < short0) return false;
+		float left = short0;
+		StringBuilder from = new StringBuilder();
+		for (MarketAPI m : givers) {
+			if (left <= 0f) break;
+			float take = Math.min(left, bankedFP(m));
+			chargeFP(m, take);
+			creditFP(source, take);
+			left -= take;
+			if (from.length() > 0) from.append(", ");
+			from.append(m.getName()).append(' ').append((int) take);
+		}
+		ThreatIncConfig.log("Founding bill at " + source.getName() + ": " + (int) bill + " FP, "
+				+ (int) short0 + " pooled from " + from);
+		return true;
+	}
+
+	/** What poolSystemBanks could put toward a bill at the source: its bank and its siblings' that give. */
+	public static float poolableFP(MarketAPI source) {
+		if (source == null) return 0f;
+		float fp = bankedFP(source);
+		if (source.getStarSystem() == null) return fp;
+		for (MarketAPI m : ThreatIncData.getLiveColonyMarkets(source.getStarSystem().getId())) {
+			if (m == source || bankedFP(m) <= 0f) continue;
+			if (ThreatPosture.regrowing(m, ownedFleetFP(m, ThreatIncData.garrisonsFor(m.getId())))) continue;
+			fp += bankedFP(m);
+		}
+		return fp;
 	}
 
 	/** Whether the colony's bank pays for a fleet of this many points. */
@@ -3748,7 +3863,6 @@ public class ThreatColonyManager {
 	}
 
 	protected static final Map<String, UpkeepLog> UPKEEP_LOG = new java.util.HashMap<String, UpkeepLog>();
-	protected static long upkeepMonthStart = -1L;
 
 	protected static UpkeepLog upkeepLog(String marketId) {
 		UpkeepLog log = UPKEEP_LOG.get(marketId);
@@ -3763,14 +3877,8 @@ public class ThreatColonyManager {
 	 * Every 30 days: a line per colony whose month changed something - swarms
 	 * recycled, or its upkeep moved a tenth or more since the line before.
 	 */
-	public static void logUpkeepMonth() {
-		long now = Global.getSector().getClock().getTimestamp();
-		if (upkeepMonthStart < 0L) {
-			upkeepMonthStart = now;
-			return;
-		}
-		if (Global.getSector().getClock().getElapsedDaysSince(upkeepMonthStart) < 30f) return;
-		upkeepMonthStart = now;
+	public static void flushUpkeepMonth() {
+		ThreatPosture.logMonth();
 		for (Map.Entry<String, UpkeepLog> entry : UPKEEP_LOG.entrySet()) {
 			UpkeepLog log = entry.getValue();
 			boolean moved = log.lastLogged < 0f ? log.charged > 0f
@@ -4152,7 +4260,15 @@ public class ThreatColonyManager {
 		if (!ThreatIncConfig.reinforceEnabled()) return;
 		List<MarketAPI> colonies = ThreatIncData.getAllLiveColonyMarkets();
 		if (colonies.size() < 2) return;
+		// under posture each colony's want replaces the size table as what a
+		// garrison is filled toward (ThreatPosture): the nominal pass would
+		// shuffle swarms toward tables no colony is meant to reach
+		if (ThreatPosture.enabled()) redistributeByPressure(colonies);
+		else redistributeNominal(colonies);
+	}
 
+	/** redistributeGarrisons' pass toward the nominal size tables. */
+	protected static void redistributeNominal(List<MarketAPI> colonies) {
 		// every pairing there is, each poll (2026-09-29: reinforceMaxPerPoll, 2,
 		// is gone). The strict donor test is what ends the loop; the bound
 		// below is only a guard against a bug looping it forever - no knob:
@@ -4201,6 +4317,204 @@ public class ThreatColonyManager {
 			}
 			if (!dispatched) return;
 		}
+	}
+
+	/**
+	 * The pressure pass (ThreatPosture): a colony holding less than its want
+	 * (inbound included), the neediest first, draws whole fleets from siblings
+	 * holding more than their own want by the band and a swarm - and, for a
+	 * colony of a system under real attack (ThreatPosture.underAttack), from a
+	 * quiet system's colonies down to their reserve - same system first, then
+	 * the most to spare, then the nearest. A fleet goes only if the donor's
+	 * surplus covers it whole and it leaves the receiver no surplus to send
+	 * back: the largest that fits the deficit, else the smallest. The held
+	 * figures are kept here as fleets leave, and every dispatch takes a fleet
+	 * off a garrison, so the loop ends within the hive's fleet count.
+	 *
+	 * <p>No circuits (ti8c: 89 fleets sent in a month, round Sun Wukong - Zeta
+	 * Ranau II - Gamma Shevar II and back): a donor gives only from what is on
+	 * station, never while below its own want nor within DECAY_DAYS of being
+	 * sent a transfer, and a fleet sent is not sent again for as long.
+	 */
+	protected static void redistributeByPressure(List<MarketAPI> colonies) {
+		if (!ThreatPosture.enabled()) return;
+		final Map<String, Float> held = new java.util.HashMap<String, Float>();
+		final Map<String, Float> inbound = new java.util.HashMap<String, Float>();
+		int fleetsTotal = 0;
+		for (MarketAPI curr : colonies) {
+			held.put(curr.getId(), ownedFleetFP(curr, ThreatIncData.garrisonsFor(curr.getId())));
+			inbound.put(curr.getId(), ThreatPosture.inboundFP(curr.getId()));
+			fleetsTotal += countLiveGarrison(curr.getId());
+		}
+		float band = Math.max(0f, ThreatIncConfig.postureBand());
+		for (int n = 0; n <= fleetsTotal; n++) {
+			List<MarketAPI> receivers = new ArrayList<MarketAPI>();
+			final Map<String, Float> shortfall = new java.util.HashMap<String, Float>();
+			for (MarketAPI curr : colonies) {
+				if (curr.getPrimaryEntity() == null) continue;
+				float want = ThreatPosture.wantFP(curr);
+				if (want <= 0f) continue;
+				float deficit = want - held.get(curr.getId());
+				if (deficit <= 0f) continue;
+				receivers.add(curr);
+				shortfall.put(curr.getId(), deficit / want);
+			}
+			if (receivers.isEmpty()) return;
+			java.util.Collections.sort(receivers, new java.util.Comparator<MarketAPI>() {
+				public int compare(MarketAPI a, MarketAPI b) {
+					return Float.compare(shortfall.get(b.getId()), shortfall.get(a.getId()));
+				}
+			});
+
+			boolean dispatched = false;
+			for (MarketAPI receiver : receivers) {
+				float want = ThreatPosture.wantFP(receiver);
+				float deficit = want - held.get(receiver.getId());
+				float accept = deficit + want * band + ThreatPosture.oneSwarmFP(receiver);
+				// consolidating (ThreatStance), a merely THREATENED system is fed too
+				boolean attacked = ThreatPosture.underAttack(receiver.getStarSystem())
+						|| (ThreatStance.feedsPressed() && ThreatPosture.pressed(receiver.getStarSystem()));
+				MarketAPI donor = null;
+				CampaignFleetAPI pick = null;
+				boolean donorSame = false;
+				float donorSpare = 0f, donorDist = Float.MAX_VALUE;
+				for (MarketAPI curr : colonies) {
+					if (curr == receiver || curr.getPrimaryEntity() == null) continue;
+					if (!canRebuildGarrison(curr)) continue;
+					if (countLiveGarrison(curr.getId()) < 2) continue;
+					if (ThreatPosture.recentlyReceived(curr)) continue;
+					// what is on station, not what is flying in
+					float onStation = held.get(curr.getId()) - inbound.get(curr.getId());
+					if (onStation < ThreatPosture.wantFP(curr)) continue;
+					float spare = ThreatPosture.releasableFP(curr, onStation);
+					// a quiet system thins to its colonies' reserves for one under attack
+					if (attacked && !ThreatPosture.pressed(curr.getStarSystem())) {
+						spare = Math.max(spare, ThreatPosture.thinnableFP(curr, onStation));
+					}
+					if (spare <= 0f) continue;
+					if (!canReinforce(curr, receiver)) continue;
+					CampaignFleetAPI fleet = pressureFleet(curr, Math.min(spare, accept), deficit);
+					if (fleet == null) continue;
+					boolean same = curr.getStarSystem() == receiver.getStarSystem();
+					float dist = same ? 0f : Misc.getDistanceLY(curr.getStarSystem().getLocation(),
+							receiver.getStarSystem().getLocation());
+					boolean better;
+					if (donor == null) better = true;
+					else if (same != donorSame) better = same;
+					else if (spare != donorSpare) better = spare > donorSpare;
+					else better = dist < donorDist;
+					if (better) {
+						donor = curr;
+						pick = fleet;
+						donorSame = same;
+						donorSpare = spare;
+						donorDist = dist;
+					}
+				}
+				if (donor == null) {
+					// no fleet to spare anywhere in reach: a colony whose bank lies
+					// idle past its own want builds a swarm for the receiver instead
+					donor = fabricatorFor(colonies, receiver, held);
+					if (donor == null) continue;
+					pick = fabricateFor(donor, receiver);
+					if (pick == null) continue;
+					held.put(donor.getId(), held.get(donor.getId()) + pick.getFleetPoints());
+				}
+				// read before it leaves: the garrison list no longer holds it after
+				float fp = pick.getFleetPoints();
+				if (!sendReinforcement(donor, receiver, pick)) continue;
+				held.put(donor.getId(), held.get(donor.getId()) - fp);
+				held.put(receiver.getId(), held.get(receiver.getId()) + fp);
+				inbound.put(receiver.getId(), inbound.get(receiver.getId()) + fp);
+				ThreatPosture.noteTransfer(receiver, pick);
+				ThreatPosture.noteSent(fp);
+				ThreatIncConfig.log("Posture: " + donor.getName() + " sent " + (int) fp + " FP to "
+						+ receiver.getName() + " (" + held.get(receiver.getId()).intValue() + " of "
+						+ (int) want + " FP wanted)");
+				dispatched = true;
+				break;
+			}
+			if (!dispatched) return;
+		}
+	}
+
+	/**
+	 * A colony that can build a swarm for a receiver no garrison can spare one
+	 * for: it holds its own want, can fabricate and reach the receiver, and its
+	 * bank holds one rebuild of its own want plus the swarm. The richest such
+	 * bank goes first, same-system first. (2026-09-29, ti-h8f: 60-80k FP lay
+	 * banked at colonies at their want - a bank past the want is spent only by
+	 * the forges' waves and strikes - while pressed systems held 5-10k short.)
+	 */
+	protected static MarketAPI fabricatorFor(List<MarketAPI> colonies, MarketAPI receiver, Map<String, Float> held) {
+		int[] spec = cheapestRow(receiver);
+		if (spec == null) return null;
+		float cost = swarmCostEstimate(spec);
+		MarketAPI best = null;
+		boolean bestSame = false;
+		float bestIdle = 0f;
+		for (MarketAPI curr : colonies) {
+			if (curr == receiver || curr.getPrimaryEntity() == null || curr.getStarSystem() == null) continue;
+			if (!canRebuildGarrison(curr)) continue;
+			float want = ThreatPosture.wantFP(curr);
+			Float h = held.get(curr.getId());
+			if (h == null || h < want) continue;
+			float idle = bankedFP(curr) - want - cost;
+			if (idle < 0f) continue;
+			if (!canReinforce(curr, receiver)) continue;
+			boolean same = curr.getStarSystem() == receiver.getStarSystem();
+			boolean better = best == null || (same != bestSame ? same : idle > bestIdle);
+			if (better) {
+				best = curr;
+				bestSame = same;
+				bestIdle = idle;
+			}
+		}
+		return best;
+	}
+
+	/** The receiver's cheapest garrison row (its table's lowest tier), or null. */
+	protected static int[] cheapestRow(MarketAPI market) {
+		int[][] table = desiredGarrison(market.getSize());
+		int[] best = null;
+		for (int[] row : table) {
+			if (best == null || swarmCostEstimate(row) < swarmCostEstimate(best)) best = row;
+		}
+		return best;
+	}
+
+	/** Builds the receiver's cheapest swarm at the fabricator, paid from its bank, into its garrison to be sent on. */
+	protected static CampaignFleetAPI fabricateFor(MarketAPI fabricator, MarketAPI receiver) {
+		int[] spec = cheapestRow(receiver);
+		if (spec == null) return null;
+		Random random = new Random();
+		CampaignFleetAPI fleet = buildGarrisonSwarm(fabricator, spec, random);
+		if (fleet == null) return null;
+		float cost = fleet.getFleetPoints();
+		chargeFP(fabricator, cost);
+		learnSwarmCost(spec, cost);
+		placeGarrisonSwarm(fabricator, fleet, random);
+		ThreatIncData.garrisonsFor(fabricator.getId()).add(fleet);
+		ThreatIncConfig.log("Posture: " + fabricator.getName() + " fabricated a " + (int) cost + " FP swarm for "
+				+ receiver.getName() + " (" + (int) bankedFP(fabricator) + " FP banked)");
+		return fleet;
+	}
+
+	/**
+	 * The donor's fleet for the pressure pass: out of battle, no more than
+	 * {@code max} FP - the largest within the deficit, else the smallest.
+	 */
+	protected static CampaignFleetAPI pressureFleet(MarketAPI donor, float max, float deficit) {
+		CampaignFleetAPI fits = null, smallest = null;
+		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(donor.getId())) {
+			if (curr == null || !curr.isAlive() || curr.getBattle() != null) continue;
+			if (ThreatPosture.recentlyMoved(curr)) continue;
+			float fp = curr.getFleetPoints();
+			if (fp <= 0f || fp > max) continue;
+			if (fp <= deficit && (fits == null || fp > fits.getFleetPoints())) fits = curr;
+			if (smallest == null || fp < smallest.getFleetPoints()) smallest = curr;
+		}
+		return fits != null ? fits : smallest;
 	}
 
 	/**
@@ -4265,17 +4579,26 @@ public class ThreatColonyManager {
 	 * the player instead. Restored on arrival.
 	 */
 	protected static boolean dispatchReinforcement(MarketAPI source, MarketAPI target, int minTier) {
-		SectorEntityToken planet = target.getPrimaryEntity();
-		if (planet == null) return false;
-		List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(source.getId());
+		return sendReinforcement(source, target, smallestOfTier(source, minTier));
+	}
+
+	/** The colony's smallest live garrison fleet of at least this tier; null if none. */
+	protected static CampaignFleetAPI smallestOfTier(MarketAPI market, int minTier) {
 		CampaignFleetAPI pick = null;
-		for (CampaignFleetAPI curr : fleets) {
+		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(market.getId())) {
 			if (curr == null || !curr.isAlive()) continue;
 			if (swarmTier(curr) < minTier) continue;
 			if (pick == null || curr.getFleetPoints() < pick.getFleetPoints()) pick = curr;
 		}
-		if (pick == null) return false;
-		fleets.remove(pick);
+		return pick;
+	}
+
+	/** dispatchReinforcement with the fleet chosen: it leaves source's garrison and flies to target. */
+	protected static boolean sendReinforcement(MarketAPI source, MarketAPI target, CampaignFleetAPI pick) {
+		SectorEntityToken planet = target.getPrimaryEntity();
+		if (planet == null || pick == null) return false;
+		List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(source.getId());
+		if (!fleets.remove(pick)) return false;
 
 		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = pick.getMemoryWithoutUpdate();
 		mem.unset(GARRISON_FLAG);
@@ -4351,6 +4674,44 @@ public class ThreatColonyManager {
 			ThreatIncConfig.log("Reinforcement arrived at " + target.getName() + " ("
 					+ countLiveGarrison(targetId) + "/" + nominalGarrison(target) + ")");
 		}
+	}
+
+	/**
+	 * A strike's landing fleet over the world it just took (ThreatSwarmDefend,
+	 * the front gone): it digs in as the new hive's first garrison rather than
+	 * flying home (2026-09-29, ti-h8d: Asharu was seeded in Corvus with no
+	 * swarm over it while its conquerors flew away, and razed by 275 FP days
+	 * later). Its hulls leave the source's ledger for the garrison - the upkeep
+	 * now charges them where they stand. False when no live hive of the swarm's
+	 * lies under the fleet.
+	 */
+	public static boolean digInAtConquest(CampaignFleetAPI fleet) {
+		if (fleet == null || !fleet.isAlive() || fleet.getBattle() != null) return false;
+		if (!(fleet.getContainingLocation() instanceof StarSystemAPI)) return false;
+		MarketAPI hive = null;
+		float best = GARRISON_LEASH_RADIUS * 2f;
+		for (MarketAPI m : ThreatIncData.getLiveColonyMarkets(fleet.getContainingLocation().getId())) {
+			if (m.getPrimaryEntity() == null) continue;
+			float d = Misc.getDistance(fleet, m.getPrimaryEntity());
+			if (d <= best) {
+				best = d;
+				hive = m;
+			}
+		}
+		if (hive == null) return false;
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+		unbindLedger(fleet);
+		mem.unset(Misc.FLEET_RETURNING_TO_DESPAWN);
+		mem.set(GARRISON_FLAG, hive.getId());
+		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS);
+		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE, true);
+		fleet.clearAssignments();
+		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, hive.getPrimaryEntity(), 1000000f);
+		ThreatIncData.garrisonsFor(hive.getId()).add(fleet);
+		ThreatIncConfig.log("Conquest garrison: " + fleet.getName() + " (" + fleet.getFleetPoints()
+				+ " FP) digs in over " + hive.getName() + " (" + countLiveGarrison(hive.getId()) + "/"
+				+ nominalGarrison(hive) + ")");
+		return true;
 	}
 
 	/**
