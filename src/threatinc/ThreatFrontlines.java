@@ -1610,18 +1610,22 @@ public class ThreatFrontlines {
 	}
 
 	/**
-	 * Whether the faction's fuel is short of what its sieges stage for: its
-	 * markets' fuel stock under their staging banks (ThreatReserves.stagingBank)
-	 * summed.
+	 * Whether the faction is shorter of fuel than of supplies: each one's stock
+	 * over what its sieges stage for (ThreatReserves.stagingBank), summed over
+	 * its markets. Fuel under its staging banks alone (the first rule) held
+	 * true while the Hegemony sat on 735k fuel and 6k supplies, and its links
+	 * built 24 fuel plants to 17 Heavy Industries (h23a).
 	 */
 	protected static boolean fuelShort(String factionId) {
 		if (factionId == null) return false;
-		float have = 0f, want = 0f;
+		float fuel = 0f, fuelWant = 0f, supplies = 0f, suppliesWant = 0f;
 		for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
-			have += ThreatReserves.stock(m.getId(), Commodities.FUEL);
-			want += ThreatReserves.stagingBank(m, Commodities.FUEL);
+			fuel += ThreatReserves.stock(m.getId(), Commodities.FUEL);
+			fuelWant += ThreatReserves.stagingBank(m, Commodities.FUEL);
+			supplies += ThreatReserves.stock(m.getId(), Commodities.SUPPLIES);
+			suppliesWant += ThreatReserves.stagingBank(m, Commodities.SUPPLIES);
 		}
-		return have < want;
+		return fuel / Math.max(1f, fuelWant) < supplies / Math.max(1f, suppliesWant);
 	}
 
 	/**
@@ -1666,8 +1670,8 @@ public class ThreatFrontlines {
 		// 17's links took in 242k supplies and sent 8.5k back, and their upkeep
 		// stalled Hegemony's sieges for 16 months. Heavy Industry makes supplies,
 		// heavy armaments and ships - the last is the Military Base's too.
-		// Fuel Production too (2026-09-30), first while the faction's fuel is
-		// short of what its sieges stage for (fuelShort)
+		// Fuel Production too (2026-09-30), first while the faction is shorter
+		// of fuel than of supplies against what its sieges stage for (fuelShort)
 		boolean fuelFirst = fuelShort(market.getFactionId());
 		if (fuelFirst && s >= 3 && buildFuel(market, s)) return;
 		if (s >= 3 && ThreatIncConfig.frontlineHeavyIndustry()
