@@ -99,8 +99,11 @@ public class ThreatFrontlines {
 		public String factionId;
 		/** The hive system the link was founded toward (the log's and the board's reason). */
 		public String hiveSystemId;
+		/** Growth toward the next size, in days of the full pace (under size upkeep it runs down while the link starves). */
 		public float healthyDays;
 		public float starvedDays;
+		/** Under size upkeep: the share of its upkeep the link was paid on its last day (feedSize). */
+		public float fedShare;
 		public float idleDays;
 		/** The station fleet the loss listener is on (vanilla respawns it after repairs). */
 		public String stationFleetId;
@@ -291,6 +294,7 @@ public class ThreatFrontlines {
 		}
 		ThreatIncConfig.log("Census: threat hives " + hives + " (size " + hiveSizes + "), found "
 				+ known + ", " + ThreatColonyManager.hiveLedgerSummary() + ThreatFuel.monthSummary());
+		ThreatColonyUpkeep.logMonth();
 		// the month's upkeep and posture lines ride the census's own 30-day beat
 		ThreatColonyManager.flushUpkeepMonth();
 	}
@@ -418,13 +422,18 @@ public class ThreatFrontlines {
 			o.stationFleetId = station.getId();
 		}
 
-		boolean short_ = warShortage(market);
-		if (short_) {
-			o.starvedDays += days;
-			o.healthyDays = 0f;
-		} else {
-			o.healthyDays += days;
-			o.starvedDays = Math.max(0f, o.starvedDays - days);
+		// under size upkeep the link grows and starves on the supplies it is paid
+		// (feedSize), not on its commodity shortages
+		boolean sized = ThreatColonyUpkeep.enabled();
+		if (!sized) {
+			boolean short_ = warShortage(market);
+			if (short_) {
+				o.starvedDays += days;
+				o.healthyDays = 0f;
+			} else {
+				o.healthyDays += days;
+				o.starvedDays = Math.max(0f, o.starvedDays - days);
+			}
 		}
 
 		if (hasPurpose(o, market)) {
@@ -438,6 +447,12 @@ public class ThreatFrontlines {
 		}
 
 		if (!garrison(o, market, days)) return;
+
+		if (sized) {
+			feedSize(o, market, days);
+			build(market);
+			return;
+		}
 
 		if (o.starvedDays >= ThreatIncConfig.frontlineStarveDays()) {
 			o.starvedDays = 0f;
@@ -460,6 +475,78 @@ public class ThreatFrontlines {
 		}
 
 		build(market);
+	}
+
+	/**
+	 * The link's size upkeep for the day (ThreatColonyUpkeep, 2026-09-30):
+	 * its own stock pays all of it it can; its home base and the faction's
+	 * other markets in reach top it up to the break-even share - a link grows
+	 * on what it holds, and its faction sends what keeps it standing. What they
+	 * send arrives cut by the Threat's blockade over it (ThreatBlockade.cutOf),
+	 * and they pay only for what arrives. The share paid moves its growth as a
+	 * hive's does: a size per frontlineGrowDays paid in full, held at the
+	 * break-even share, a size lost per starveDaysPerSize paid nothing. Sizes 1
+	 * and 2 cost nothing, so no link starves out of existence.
+	 */
+	protected static void feedSize(Outpost o, MarketAPI market, float days) {
+		float perMonth = ThreatColonyUpkeep.perMonth(market.getSize());
+		float fed = 1f;
+		if (perMonth > 0f) {
+			float want = perMonth * days / 30f;
+			float free = ThreatReserves.available(market, Commodities.SUPPLIES)
+					- ThreatReserves.stagingBank(market, Commodities.SUPPLIES);
+			float own = ThreatReserves.drawAbove(market, Commodities.SUPPLIES, Math.min(want, Math.max(0f, free)));
+			float sent = 0f;
+			float sustain = ThreatColonyUpkeep.breakEven() * want;
+			float through = 1f - ThreatBlockade.cutOf(market);
+			if (own < sustain && through > 0f) {
+				float ask = (sustain - own) * through;
+				MarketAPI home = homeOf(o);
+				boolean homeReaches = home != null && Misc.getDistanceLY(home.getLocationInHyperspace(),
+						market.getLocationInHyperspace()) <= ThreatConvoys.stockReachLY(home);
+				if (homeReaches) sent += ThreatReserves.drawSpendable(home, Commodities.SUPPLIES, ask);
+				if (sent < ask) sent += payFromOthers(market, home, Commodities.SUPPLIES, ask - sent);
+			}
+			fed = Math.min(1f, (own + sent) / want);
+		}
+		o.fedShare = fed;
+		float rate = ThreatColonyUpkeep.growthRate(fed);
+		float perLevel = Math.max(1f, ThreatIncConfig.frontlineGrowDays());
+		if (rate > 0f) {
+			o.healthyDays += days * rate;
+			if (market.getSize() >= Misc.getMaxMarketSize(market)) {
+				// nothing left to grow into: a fed link banks its top level
+				o.healthyDays = Math.min(perLevel, o.healthyDays);
+				return;
+			}
+			if (o.healthyDays < perLevel) return;
+			// the next size only when a month of its upkeep can be had: a link that
+			// outgrows its stock starves straight back (h35a: Alpha Shero I, 4 <-> 5)
+			float next = ThreatColonyUpkeep.perMonth(market.getSize() + 1);
+			if (next > 0f && buildFunds(market) < next) {
+				o.healthyDays = perLevel;
+				return;
+			}
+			o.healthyDays = 0f;
+			CoreImmigrationPluginImpl.increaseMarketSize(market);
+			ThreatIncConfig.log("Frontline: " + market.getName() + " grew to size " + market.getSize()
+					+ " (paid " + Math.round(fed * 100f) + "% of its upkeep)");
+			return;
+		}
+		if (rate == 0f) return;
+		o.healthyDays += days * rate * perLevel / ThreatColonyUpkeep.starveDays();
+		// the size goes half a level below it (ThreatColonyUpkeep.SHRINK_MARGIN)
+		float floor = -ThreatColonyUpkeep.SHRINK_MARGIN * perLevel;
+		if (o.healthyDays >= floor) return;
+		if (market.getSize() <= 1) {
+			o.healthyDays = floor;
+			return;
+		}
+		float below = o.healthyDays / perLevel;
+		shrink(market);
+		o.healthyDays = Math.max(0f, (1f + below) * perLevel);
+		ThreatIncConfig.log("Frontline: " + market.getName() + " starved down to size " + market.getSize()
+				+ " (paid " + Math.round(fed * 100f) + "% of its upkeep)");
 	}
 
 	// ------------------------------------------------------------------

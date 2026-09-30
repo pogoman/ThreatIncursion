@@ -31,13 +31,68 @@ public class ThreatBlockade extends BaseMarketConditionPlugin {
 	/** Market memory: the penalty in force (0..1). */
 	public static final String KEY = "$threatinc_blockadePenalty";
 
-	/** Every human colony: add, resize or lift its blockade. */
+	/**
+	 * The other way round (2026-09-30, docs/ground-war.md "Blockade"): human
+	 * warships holding a hive world's orbit cut what it imports and exports,
+	 * half or all by the same strength test (hiveCut), while size upkeep is on
+	 * (ThreatColonyUpkeep) - the upkeep its own forge does not make arrives cut,
+	 * and vanilla's shipping is held at a disrupted port's trickle (half) or
+	 * nothing (all) by ThreatColonyManager.applyPortDisruption. Market memory:
+	 * the share cut. Shown by HiveBlockadeCondition.
+	 */
+	public static final String HIVE_ID = "threatinc_hive_blockaded";
+	public static final String HIVE_KEY = "$threatinc_hiveBlockade";
+
+	/** Every colony: add, resize or lift its blockade - a human one's by the Threat, a hive's by the humans. */
 	public static void sweep() {
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (market == null || !market.isInEconomy() || market.getPrimaryEntity() == null) continue;
-			if (Factions.THREAT.equals(market.getFactionId())) continue;
+			if (Factions.THREAT.equals(market.getFactionId())) {
+				syncHive(market);
+				continue;
+			}
 			sync(market);
 		}
+	}
+
+	public static void syncHive(MarketAPI market) {
+		float cut = ThreatColonyUpkeep.enabled() ? hiveCut(market) : 0f;
+		float had = market.getMemoryWithoutUpdate().getFloat(HIVE_KEY);
+		boolean has = market.hasCondition(HIVE_ID);
+		if (cut <= 0f) {
+			market.getMemoryWithoutUpdate().unset(HIVE_KEY);
+			if (has) market.removeCondition(HIVE_ID);
+		} else {
+			market.getMemoryWithoutUpdate().set(HIVE_KEY, cut);
+			if (!has) market.addCondition(HIVE_ID);
+		}
+		if (had != cut) {
+			ThreatIncConfig.log("Blockade of " + market.getName() + ": imports cut " + Math.round(cut * 100f)
+					+ "% (human " + (int) ThreatGroundFronts.hostilePointsNear(Factions.THREAT, market)
+					+ " FP over the swarm's " + (int) ThreatGroundFronts.friendlyPointsNear(Factions.THREAT, market) + ")");
+		}
+	}
+
+	/**
+	 * The share of a hive world's trade a human blockade cuts: the points of
+	 * the warships hostile to the swarm within ORBIT_HOLD_RANGE against the
+	 * swarm's own there, with penalty's thresholds - under 0.75 of them
+	 * nothing, under 1.25 half, else all.
+	 */
+	public static float hiveCut(MarketAPI market) {
+		float human = ThreatGroundFronts.hostilePointsNear(Factions.THREAT, market);
+		if (human <= 0f) return 0f;
+		float swarm = ThreatGroundFronts.friendlyPointsNear(Factions.THREAT, market);
+		if (human < swarm * 0.75f) return 0f;
+		if (human < swarm * 1.25f) return 0.5f;
+		return 1f;
+	}
+
+	/** The share of a forward base's imports the Threat's blockade over it cuts: 0, half or all. */
+	public static float cutOf(MarketAPI market) {
+		float full = ThreatIncConfig.blockadeAccessPenalty();
+		if (market == null || full <= 0f) return 0f;
+		return Math.max(0f, Math.min(1f, market.getMemoryWithoutUpdate().getFloat(KEY) / full));
 	}
 
 	public static void sync(MarketAPI market) {

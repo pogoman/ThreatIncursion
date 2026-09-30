@@ -33,8 +33,22 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 		float fab = ThreatColonyManager.computeFabricationMult(market);
 		float supply = ThreatColonyManager.computeSupplyMult(market);
 		float health = ThreatColonyManager.computeHealth(market);
+		boolean sized = ThreatColonyUpkeep.enabled();
 
-		tooltip.addPara("Vitality: %s (fabrication %s x supply %s)", opad,
+		if (sized) {
+			float upkeep = ThreatColonyUpkeep.perMonth(market.getSize());
+			if (upkeep <= 0f) {
+				tooltip.addPara("Upkeep: %s", opad, h, "none below size 3");
+			} else {
+				float fed = ThreatColonyUpkeep.fedShare(market);
+				tooltip.addPara("Supplies: %s of %s a month", opad,
+						fed < ThreatColonyUpkeep.breakEven() ? neg : h,
+						pct(fed), Misc.getWithDGS((int) upkeep));
+			}
+			float cut = ThreatColonyUpkeep.importCut(market);
+			if (cut > 0f) tooltip.addPara(INDENT + "Imports cut: %s", 3f, neg, pct(cut));
+		}
+		tooltip.addPara("Vitality: %s (fabrication %s x supply %s)", sized ? 3f : opad,
 				health < ThreatColonyManager.CRITICAL_HEALTH ? neg : h,
 				pct(health), pct(fab), pct(supply));
 
@@ -64,12 +78,27 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 
 		ThreatGroundFronts.GroundFront front =
 				ThreatGroundFronts.getFront(market.getId());
+		// under size upkeep a front or saturation holds a colony's growth, never its hunger
+		float pace = sized ? ThreatColonyManager.growthPace(market) : 0f;
 		if (front != null) {
 			tooltip.addPara("Strata held: %s of %s", opad, h,
 					"" + front.strataHeld, "" + market.getSize());
+		}
+		if (sized && pace < 0f) {
+			tooltip.addPara("Growth: %s, a size in %s days", front != null ? 3f : opad, neg, "starving",
+					"" + Math.max(1, (int) ThreatColonyManager.daysToLoseSize(market)));
+		} else if (front != null) {
 			tooltip.addPara("Growth: %s", 3f, neg, "halted");
 		} else if (ThreatRazing.saturated(market)) {
 			tooltip.addPara("Growth: %s", opad, neg, "halted under saturation");
+		} else if (sized) {
+			if (market.getSize() >= ThreatColonyManager.maxColonySize(market)) {
+				tooltip.addPara("Growth: %s", opad, h, "at its largest");
+			} else if (pace > 0f) {
+				tooltip.addPara("Growth: %s of full pace", opad, pace >= 1f ? h : neg, pct(pace));
+			} else {
+				tooltip.addPara("Growth: %s", opad, neg, "holding");
+			}
 		} else {
 			float growthMult = ThreatColonyManager.growthMultFor(health);
 			tooltip.addPara("Growth: %s", opad, growthMult >= 1f ? h : neg,

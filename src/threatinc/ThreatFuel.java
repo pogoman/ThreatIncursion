@@ -108,7 +108,10 @@ public class ThreatFuel {
 			if (com == null) continue;
 			unit = com.getCommodity().getEconUnit();
 			if (own) {
-				if (com.getMaxSupply() > 0) made += BaseIndustry.getSizeMult(com.getMaxSupply());
+				// what a blockade or a dead port keeps from leaving never reaches it (ThreatColonyUpkeep)
+				if (com.getMaxSupply() > 0) {
+					made += ThreatColonyUpkeep.reachesStock(m, commodityId, BaseIndustry.getSizeMult(com.getMaxSupply()));
+				}
 				continue;
 			}
 			float have = ThreatReserves.structuralAvailable(com);
@@ -188,12 +191,14 @@ public class ThreatFuel {
 
 	/**
 	 * What founding a colony costs in stock: a faction's forward base
-	 * (ThreatOutposts.npcCost), {supplies, fuel}; nothing while the Threat
-	 * pays no passage.
+	 * (ThreatOutposts.npcCost), {supplies, fuel}, and under size upkeep the
+	 * structures the colony is founded with (ThreatBuildCost.foundingKit);
+	 * nothing while the Threat pays no passage.
 	 */
 	public static float[] foundingCost() {
 		if (!enabled()) return new float[] { 0f, 0f };
-		return ThreatOutposts.npcCost();
+		float[] cost = ThreatOutposts.npcCost();
+		return new float[] { cost[0] + ThreatBuildCost.foundingKit(), cost[1] };
 	}
 
 	/** Whether both stocks hold a founding and the wave's fuel on top of it; notes the one short (noteShort). */

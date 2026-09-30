@@ -24,6 +24,7 @@ public class ThreatBuildCost {
 	protected static String pricedAs(String industryId) {
 		if (ThreatColonyManager.THREAT_GROUND_DEFENSES.equals(industryId)) return Industries.GROUNDDEFENSES;
 		if (ThreatColonyManager.THREAT_HEAVY_BATTERIES.equals(industryId)) return Industries.HEAVYBATTERIES;
+		if (ThreatColonyManager.SWARM_NEXUS.equals(industryId)) return Industries.PATROLHQ;
 		return industryId;
 	}
 
@@ -50,6 +51,20 @@ public class ThreatBuildCost {
 		float cost = credits(industryId) / price * Math.max(0f, ThreatIncConfig.structureSuppliesMult());
 		logOnce(industryId, cost);
 		return cost;
+	}
+
+	/**
+	 * Supplies a Seeding Swarm carries for the four structures its colony is
+	 * founded with - Population, Spaceport, Fabrication Core and Swarm Nexus,
+	 * the Nexus priced as the Patrol HQ it stands in for: 3,500 at vanilla's
+	 * prices (2026-09-30: with the forge's retooling gone under size upkeep,
+	 * a wave's price is what bounds the spread). 0 while structures are free
+	 * or size upkeep is off.
+	 */
+	public static float foundingKit() {
+		if (!enabled() || !ThreatColonyUpkeep.enabled()) return 0f;
+		return supplies(Industries.POPULATION) + supplies(Industries.SPACEPORT)
+				+ supplies(ThreatColonyManager.FABRICATION_CORE) + supplies(ThreatColonyManager.SWARM_NEXUS);
 	}
 
 	/** Days the structure takes to build: its spec's (0 for the hive's own, which have none). */

@@ -1990,6 +1990,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected float raidValue(MarketAPI market, Industry ind) {
 		if (ind == null || ind.isBuilding()) return 0f;
 		String id = ind.getId();
+		if (ThreatColonyUpkeep.enabled()) {
+			// under size upkeep the forge feeds the whole hive's growth and the
+			// Core no longer gates it - it still halts the swarms, as the Nexus does
+			if (ind == ThreatColonyManager.getForge(market) && ind.isFunctional()) return RAID_VALUE_CORE;
+			if (ThreatColonyManager.FABRICATION_CORE.equals(id)) return RAID_VALUE_NEXUS;
+		}
 		if (ThreatColonyManager.FABRICATION_CORE.equals(id)) return RAID_VALUE_CORE;
 		if (ThreatColonyManager.SWARM_NEXUS.equals(id)) return RAID_VALUE_NEXUS;
 		if (Industries.SPACEPORT.equals(id) || Industries.MEGAPORT.equals(id)) {

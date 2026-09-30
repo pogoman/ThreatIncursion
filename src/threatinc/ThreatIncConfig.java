@@ -476,6 +476,14 @@ public class ThreatIncConfig {
 	public static boolean threatSuppliesUpkeep()   { return b("threatinc_threatSuppliesUpkeep", true); }
 	public static boolean structuresCostSupplies() { return b("threatinc_structuresCostSupplies", true); }
 	public static float structureSuppliesMult()    { return f("threatinc_structureSuppliesMult"); }
+	public static boolean sizeUpkeep()             { return b("threatinc_sizeUpkeep", true); }
+	public static float sizeUpkeepAt3()            { return f("threatinc_sizeUpkeepAt3"); }
+	public static float sizeUpkeepRatio()          { return f("threatinc_sizeUpkeepRatio"); }
+	public static float upkeepBreakEven()          { return f("threatinc_upkeepBreakEven"); }
+	public static float starveDaysPerSize()        { return f("threatinc_starveDaysPerSize"); }
+	public static float feedShareExpand()          { return f("threatinc_feedShareExpand"); }
+	public static float feedSharePress()           { return f("threatinc_feedSharePress"); }
+	public static float feedShareConsolidate()     { return f("threatinc_feedShareConsolidate"); }
 	/** Supplies an expedition draws per fleet point. */
 	public static float expeditionSuppliesPerPoint() { return f("threatinc_expeditionSuppliesPerPoint"); }
 	public static boolean fleetUpkeep()            { return b("threatinc_fleetUpkeep", true); }

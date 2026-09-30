@@ -111,6 +111,19 @@ stockpile, so the player buying at a link doesn't starve it. A shortage resets
 the count. `frontlineStarveDays` of shortage shrinks it one size; at size 1 it
 is abandoned.
 
+**Under size upkeep** (2026-09-30, `sizeUpkeep`, the default; `feedSize`; docs/hive-economy.md
+"Size upkeep") a link grows and starves on supplies instead. From size 3 it costs the hive's
+curve - 100 a month at size 3, 250, 625, 1,563 at size 6 - paid daily: its own stock above its
+floor and staging bank pays all it can, and its home base and the faction's markets in reach
+(`payFromOthers`) top it up to the break-even half, what a hunt may take of each. A link grows on
+what it holds; its faction sends what keeps it standing. What they send arrives cut by the
+Threat's blockade over it (`ThreatBlockade.cutOf`: half or all), and they pay only for what
+arrives. The share paid moves it as a hive's moves: a size per `frontlineGrowDays` paid in full,
+held at half, a size lost per `starveDaysPerSize` (90) paid nothing, progress carried across. Sizes 1
+and 2 cost nothing, so no link starves away; commodity shortages no longer shrink it
+(`frontlineStarveDays` is the old rule's). Size changes log `Frontline: X grew to size N (paid P%
+of its upkeep)` / `starved down to size N`.
+
 **The builder** runs one project at a time, with vanilla build times. Each step
 waits until every commodity it demands can be had, judged by vanilla's own
 figures (`canSupply`). A step that can't be supplied doesn't block the steps

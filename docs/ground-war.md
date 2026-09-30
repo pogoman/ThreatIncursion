@@ -1173,6 +1173,20 @@ To verify: a colony whose Space column reads Threat shows Blockaded with -60%
 accessibility; the penalty halves when defenders come close and lifts when they win
 or the swarm leaves; the colony's import shortages follow.
 
+**The other way round** (2026-09-30, under size upkeep, docs/hive-economy.md "Size
+upkeep"). Warships hostile to the swarm over a hive world blockade it by the same
+test (`ThreatBlockade.hiveCut`: their points within `ORBIT_HOLD_RANGE` against the
+swarm's there - below 0.75x nothing, below 1.25x half, else all; the player's fleet
+counts). Condition `threatinc_hive_blockaded` (`HiveBlockadeCondition`, display only).
+The cut comes off what the world imports of its size upkeep - what its own forge does
+not make - and off what it exports to the hive's stock beyond its own upkeep; vanilla's
+shipping is held at the disrupted port's trickle (half) or nothing (all) by
+`applyPortDisruption`, since vanilla's accessibility barely moves same-faction shipping.
+A world paid under half its upkeep starves a size every 90 days at nothing: blockade
+the worlds that import, raid the forge of the ones that don't. A forward base
+blockaded by the Threat is fed the same way (`ThreatFrontlines.feedSize`, the Threat
+blockade's share cut off what its faction sends).
+
 ### A station that comes back (2026-09-08, built, untested)
 
 *The user: the Threat held the space over a core world it was sieging, "the siege went so long

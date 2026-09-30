@@ -164,6 +164,11 @@ public final class ThreatRazing {
 
 	/** A level razed: a size off, by vanilla's own steps - below size 3 too, which vanilla's reduceMarketSize refuses. */
 	protected static void reduceSize(MarketAPI market) {
+		reduceSize(market, "Razed a level of");
+	}
+
+	/** reduceSize, logged as {@code what} (a hive its upkeep starves, ThreatColonyManager.shrinkColony). */
+	protected static void reduceSize(MarketAPI market, String what) {
 		int old = market.getSize();
 		if (old <= 1) return;
 		market.removeCondition("population_" + old);
@@ -178,7 +183,7 @@ public final class ThreatRazing {
 		market.reapplyConditions();
 		market.reapplyIndustries();
 		ListenerUtil.reportColonySizeChanged(market, old);
-		ThreatIncConfig.log("Razed a level of " + market.getName() + ": size " + old + " -> " + market.getSize());
+		ThreatIncConfig.log(what + " " + market.getName() + ": size " + old + " -> " + market.getSize());
 	}
 
 	/** Whether saturation fell here within the last day or two: the colony does not grow while it lasts. */
