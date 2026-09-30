@@ -600,12 +600,14 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
 
 ### Parity - wartime fuel, plants for shortages, supplies upkeep (2026-09-30)
 
-- **Fuel at the war rate (A, `threatWartimeFuel`, off).** On, a hive plant's whole output counts, as
-  a faction's does under `reserveWartimeFuel` (`ThreatReserves.wartimeFuel`): no peacetime demand is
-  subtracted. h32a (60 months from the base save, on): the hive went from 3 plants to 17 by month
-  ~25, banked 108-186k fuel a month (4.8M stock) and took the sector - 91 hives, 142k FP, the
-  Hegemony down to 6 colonies, the independents gone. Off, a hive Spaceport's fuel demand (size-2)
-  eats a same-size plant's output and the hive banks 9-12k a month (h26a).
+- **Fuel at the war rate (A, replaced by structure costs below).** A hive plant's whole output
+  counted, as a faction's does under `reserveWartimeFuel`. h32a (60 months from the base save): the
+  hive went from 3 plants to 17 by month ~25, banked 108-186k fuel a month (4.8M stock) and took the
+  sector - 91 hives, 142k FP, the Hegemony down to 6 colonies, the independents gone. Back on the
+  surplus rule (h33a) a hive Spaceport's fuel demand (size-2) eats a same-size plant's output: 21
+  plants banked 0, and the hive's 9k a month was the sector's best exporter x
+  `reserveBankImportsMult`, whatever it built. Supplies the same: 4 forges made 24 units against 199
+  wanted by Spaceports.
 - **Plants for shortages (B).** A send held for fuel (`held`, not a Seeding Swarm) or founding short
   (`canFound`), or supplies upkeep unpaid, notes the stock short for `SHORT_DAYS` (30;
   `noteShort`/`shortOf`). `planHiveEconomy` answers after the bootstrap with a fuel plant or a forge,
@@ -625,7 +627,43 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
   took the swarm to 8-17k FP, with 70-137k FP banked and unspendable. Forges do not help:
   37 forges make 178 units of supplies, the hive's own structures (spaceports, stations, defences)
   demand 208, so 6 units a month reach the stock. Fuel went the other way: 27 plants, 138 units,
-  ~200k a month banked, 4.9M in stock.
+  ~200k a month banked, 4.9M in stock. (The 208 is Spaceport demand, size-2 a hive - not the
+  stations' or defences', which demand none.)
+
+### Structures cost supplies (2026-09-30, user's call; `ThreatBuildCost`)
+
+The Threat conjured industries: a structure cost one founding's FP and stood at once, and the stocks
+filled from the sector's best exporter whatever the hive built - so cutting a fuel plant or a forge
+changed nothing it could afford, and the planner copied every industry into every system. The two
+sides are not the same war (the Threat has years to spread before the factions mobilise), so this
+is asymmetric by design where it has to be, and the one rule where it can be.
+
+- **Cost.** A structure costs its vanilla build cost in credits at the supplies base price (100),
+  times `structureSuppliesMult` (1.0): Heavy Industry 5,000, Fuel Production 4,500, Refining 2,250,
+  Mining 1,000, Orbital Works 3,000 (an upgrade), Patrol HQ 3,000, Military Base 4,500, a station
+  2,500-10,000. The hive's ground defences and heavy batteries are priced as vanilla's (1,500 /
+  3,000). Logged once each: `Build cost: <id> N supplies (spec cost C, D days)`. Credits were ruled
+  out - nothing the player can hit. Metals were ruled out too: humans would have to stockpile them,
+  and cutting metals already bites through Heavy Industry.
+- **Time.** Vanilla build time (`startBuilding`; Orbital Works by `startUpgrading`, the forge
+  running on meanwhile). A structure under construction supplies nothing.
+- **The hive** (`buyStructure`, `affordStructure`) pays from its supplies stock; a build it cannot
+  pay waits (`buildWaiting`, the cost in `KEY_BUILD_WAITING_SUPPLIES`), notes supplies short, and
+  `buyWaitingStructures` retries once the stock holds it. Garrisons no longer wait behind a build:
+  fleet points are for hulls. Founding structures cost no FP (`foundingFP` is 0): a Seeding Swarm's
+  `npcCost` supplies and fuel pay for them, as a forward base's founding does. Free builds (save
+  heals, the debug war) stand at once.
+- **The hive earns what it makes** (`ThreatFuel.perMonth`): every plant's and forge's whole output x
+  econ unit x `reserveSurplusMult`. No Spaceport demand is taken off - it stands for trade traffic
+  and a hive runs none - and no import fallback, as a hive does not trade. At the base save that is
+  4 forges (24 units, ~18k supplies a month) and 8 fuel plants (48 units, ~72k fuel).
+- **Forward bases** (`ThreatFrontlines.startNew`, `upgrade`, `payBuild`) pay from the link's supplies
+  above its floor and staging bank, then the faction's other markets in reach (what a hunt may
+  take, `payFromOthers`). One project at a time, as before: an unaffordable one waits
+  (`Frontline: X waits on N supplies for <id>`). The swap of a fuel plant for a Heavy Industry
+  checks the price before it tears the plant down. Founding stays `npcCost`.
+- **Setting:** `structuresCostSupplies` (true). Off restores the FP costs, instant hive builds, free
+  link builds and the surplus-and-imports stock rule.
 
 ## Levers, verified
 

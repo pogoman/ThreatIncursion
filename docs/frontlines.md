@@ -116,6 +116,14 @@ waits until every commodity it demands can be had, judged by vanilla's own
 figures (`canSupply`). A step that can't be supplied doesn't block the steps
 after it.
 
+**Each step is paid in supplies** (2026-09-30, `structuresCostSupplies`; `payBuild`,
+`ThreatBuildCost`): its vanilla build cost at the supplies base price - Patrol HQ 3,000, Heavy
+Industry 5,000, Fuel Production 4,500, Military Base 4,500, station upgrades 5,000 / 10,000. The
+link's own supplies above its floor and staging bank go first, then what a hunt may take of the
+faction's other markets in reach (`payFromOthers`). A step it cannot pay for waits, and the link
+builds nothing else meanwhile (`Frontline: X waits on N supplies for <id>`). The Threat's planner
+pays the same prices from the hive's stock (docs/hive-economy.md).
+
 | Size | Step | Demand checked |
 | --- | --- | --- |
 | 3 | Patrol HQ | supplies, fuel, ships s−1 |
