@@ -1231,14 +1231,17 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   pooled provisions refund the same way ("refunds still land at the base"). Each base that sent a
   fleet rests `softenIntervalDays`.
 - Cost: fuel (FP / 25 x LY x `expeditionFuelPerPointLY`) and supplies (FP / 25 x
-  `expeditionSuppliesPerPoint`) drawn from the base's SPENDABLE stock
-  (`ThreatReserves.spendable`: above the floor, the donor keep share and the staging bank),
-  so a hunt never spends what convoys banked for the base's own siege (rc1 review: one hunt
+  `expeditionSuppliesPerPoint`) drawn from the base's stock above the floor and the staging bank
+  (`ThreatSoftening.donorSpendable`; donors the same), so a hunt never spends what convoys banked
+  for the base's own siege. 2026-09-30: not `ThreatReserves.spendable` any more - its donor keep
+  (half the months basis on top of the floor) is the convoys' reserve, and with it a hunt pooled
+  from 20-24 bases paid for 500-1,100 FP against the 5,250 its target needed (400 waits, 3
+  launches in 23 months); a hunt now draws to the floor as a sortie does (rc1 review: one hunt
   took Culann from 55,852 fuel to 3,765 and its siege postponed). **The exception
   (2026-09-29, `ThreatSoftening.huntSpendable`):** where the base's own siege of that system is
   blocked by the very swarm the hunt targets (`siegeWaitsOnHunt`: the system is the hive it
   stages for and `hasSiegeableHive` is false - its orbit gate is what the hunt thins), that
-  siege's staging bank is spendable too and the base keeps only its floor and donor keep;
+  siege's staging bank is spendable too and the base keeps only its floor;
   the siege cannot sail until the swarm is thinned, and the staging bank starved the one force
   that would thin it. A base staging for a hunt rather than its siege (`ThreatConvoys.stagesForHunt`,
   below) releases its bank to a hunt in ANY system, not only its own staging hive: it holds nothing
