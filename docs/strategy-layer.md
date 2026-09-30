@@ -1202,7 +1202,8 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   bank and its net income over the passage and muster (~86 days at 35 ly), but the posture spends
   banks wherever the pressure is, and the projection asked 8-13k FP of hunts that waited on fuel for
   months while it grew (822 waits, 1 launch in a 33-month test). A garrison reinforced during the
-  muster meets the go-in check (`advanceForce`), which stands the force down. 2026-09-29: `softenMargin` (2.0), `softenHeadroom` (1.5) and the refill-to-nominal
+  muster meets the go-in check (`advanceForce`), which sends the force against another hive
+  (STRIKES ELSEWHERE, below) or stands it down. 2026-09-29: `softenMargin` (2.0), `softenHeadroom` (1.5) and the refill-to-nominal
   rule are removed - stacked, they asked 15,790 FP of a force against Alpha Mesh I's 3,158 - and the
   projection replaces the regrowth the old refill stood in for, which the bank may not pay for at
   all. Sized on the swarms projected, not those present: 15% of Run 7's forces met a garrison that had
@@ -1287,14 +1288,31 @@ they can be stronger than a siege; a siegeable world in reach always comes first
 - In: all fleets `ORBIT_AGGRESSIVE` over the target garrison (the strongest of the siege's
   worlds; it goes in only if the fleets present beat it by the margin). When it is gone the
   force moves on to what the gate reads now - the next strongest of them - only if its
-  warships still beat that garrison by the margin, and goes home otherwise ("outmatched
-  by"). The whole force goes home (tracked leg, refund on arrival) when the siege's worlds
+  warships still beat that garrison by the margin; otherwise it strikes elsewhere (below) or
+  goes home ("outmatched by"). The whole force goes home (tracked leg, refund on arrival) when the siege's worlds
   are clear ("the siege's worlds are clear"; "the swarms are gone" for a force with no set), it falls below
   `softenRetreatStrength` (0.4) of its strength when it went in or last moved on, or
   `softenDays` (60) run out. Strength is what is IN the fight: the fleets that went in
   (`Force.inForce`) wherever they are, plus a straggler once it reaches the lead
   (`presentFP`), not stragglers that never came in (rc1 review: a force
   ground down to 41 FP at Rhesh still read 53%). A single hunt rebaselines when it moves on.
+- STRIKES ELSEWHERE (2026-09-30, `ThreatSoftening.divert`): a force outmatched at its muster,
+  or by the next garrison when it moves on, turns on another hive instead of going home. The
+  Threat's posture pours swarms into a hive a force gathers against (Epsilon Shero I: 621 FP
+  when the force was sized, 5,602 when it mustered, 10,921 against the next force), so the
+  swarms it drew left other hives thinner. Candidates are every live hive whose swarms,
+  standing and inbound (`garrisonNowFP`), the force's present warships beat by the margin, with
+  a standing garrison to kill, in no system a hostile faction works (`hostileAt`) or another of
+  its own forces hunts. The detour - the route's extra light-years by the new hive and home,
+  over going home from where it is, at the one-way rate (`detourFuel`) - is drawn from the
+  force's bases (`huntSpendable`) and then the first base's donors, and rides the fleets'
+  `MEM_FUEL`; a hive whose detour they cannot pay is out. Of the rest it takes the most standing
+  swarms per fuel the whole sortie burns (what it drew plus the detour). The force goes in at
+  once (no second muster) and its orders move to the new system (`Order.systemId`, targets
+  cleared). A "Hunting Force Turns" notice goes out when it changes system. None payable and
+  beatable: it stands down as before, and the log names why. First test (18 months): 5 forces
+  struck elsewhere, none stood down outmatched (30 fleet stand-downs before), 16 launches, 15
+  went in, 120 hunt battles against 45; the Threat ended at 45k FP of fleets against 63k.
 - A THINNED SYSTEM IS SIEGED NOW (the same night): when a hunt clears a colony's swarms,
   a force that fought goes home, or (rc1 review) any battle sinks Threat ships of a
   bountied system (`ThreatSwarmBountyIntel.thinned`), `IncursionManager.huntThinned` marks
