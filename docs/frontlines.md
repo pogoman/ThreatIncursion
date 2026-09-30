@@ -121,6 +121,7 @@ after it.
 | 3 | Patrol HQ | supplies, fuel, ships s−1 |
 | 3 | orbital → battlestation | crew 5, supplies 5 |
 | 3 | Heavy Industry, in the free industry slot | metals s, rare metals s−2 |
+| 3 | Fuel Production, in a free industry slot (before Heavy Industry while `fuelShort`) | volatiles s, heavy machinery s−2 |
 | 4 | Patrol HQ → Military Base | supplies, fuel, ships s+1 |
 | 4 | battlestation → star fortress | crew 7, supplies 7 |
 
@@ -131,6 +132,18 @@ armaments and ships (vanilla: s−2 of each), all of which the war banks. The sh
 also serve the Military Base. It takes the one industry slot at size 3; the
 Military Base takes the second at size 4. No Mining: a station's market does not
 hold its planet's deposits, and ore is nothing a link or the war needs.
+
+**Fuel Production** (2026-09-30, user's call; knob `frontlineFuelProduction`): no link
+made fuel, so a faction's fuel banking was capped by the sector's best single exporter
+(`ThreatReserves.productionShare`, ~16-18k a month) while its sieges wanted 40-115k each
+and were postponed 4,211 times in 71 months. Vanilla's Fuel Production makes s−2 fuel
+from volatiles s and heavy machinery s−2 and needs no resource condition. A link builds
+it before its Heavy Industry while the faction's fuel stock is under what its sieges
+stage for (`fuelShort`: stock summed against `ThreatReserves.stagingBank`), after it
+otherwise; each takes a slot, so a small link holds one of the two. First test (21 months,
+from the lt save): 25 links built it; fuel banking rose from 16.7k to 61.8k a month
+(Hegemony) and 19.9k to 36.8k (Persean), the Hegemony's stock from 29k to 109k, and
+16 sieges drew against 8 without it. A fuel link is now worth striking.
 
 No Ground Defenses or Heavy Batteries (2026-09-26): nothing lands on a
 station, and vanilla's pirate base has none. Links built before keep theirs.
@@ -439,6 +452,7 @@ All are in `settings.json` and LunaLib, under Frontline Outposts:
 - `frontlineGarrisonMargin` (1.25)
 - `frontlineUpkeepStockMonths` (12)
 - `frontlineHeavyIndustry` (true)
+- `frontlineFuelProduction` (true)
 - `frontlineRearGraceDays` (60)
 - `strikeDetection`
 - `strikeDetectLY` (4)

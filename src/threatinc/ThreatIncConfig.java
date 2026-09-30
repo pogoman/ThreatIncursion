@@ -429,6 +429,7 @@ public class ThreatIncConfig {
 	/** A frontline link is founded only with a garrison to hold it, which stays as long as the link stands. */
 	public static boolean frontlineGarrisonEnabled() { return b("threatinc_frontlineGarrisonEnabled", true); }
 	public static boolean frontlineHeavyIndustry()   { return b("threatinc_frontlineHeavyIndustry", true); }
+	public static boolean frontlineFuelProduction()  { return b("threatinc_frontlineFuelProduction", true); }
 	/** Smallest garrison a link gets, in fleet points, whatever the strikes in reach. */
 	public static float frontlineGarrisonFP() { return f("threatinc_frontlineGarrisonFP"); }
 	/** Garrison plus station must weigh this times the strongest Threat strike in reach (vanilla's raid strength). */
