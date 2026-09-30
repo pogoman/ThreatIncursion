@@ -99,10 +99,11 @@ public class ThreatFuel {
 			unit = com.getCommodity().getEconUnit();
 			float have = ThreatReserves.structuralAvailable(com);
 			if (have > 0f) banked += BaseIndustry.getSizeMult(have);
-			// fuel at the war rate (ThreatReserves.wartimeFuel, 2026-09-30): a plant's
-			// whole output, its own port's share too, as the factions' fuel counts
+			// fuel at the war rate (threatWartimeFuel, off by default): a plant's whole
+			// output, its own port's share too, as the factions' fuel counts. h32a
+			// with it on: 17 plants banked 108-186k a month and the hive took the sector
 			float own = Math.min(com.getMaxSupply(), ThreatReserves.structuralAvailable(com))
-					- (ThreatReserves.wartimeFuel(com) ? 0f : WarFootingDemand.peacetimeDemand(m, com));
+					- (hiveWartime(com) ? 0f : WarFootingDemand.peacetimeDemand(m, com));
 			if (own > 0f) made += BaseIndustry.getSizeMult(own);
 			if (com.getCommodityMarketData() != null) {
 				foreign = Math.max(foreign, com.getCommodityMarketData().getMaxExportGlobal());
@@ -110,6 +111,11 @@ public class ThreatFuel {
 		}
 		float budget = Math.max(made, BaseIndustry.getSizeMult(foreign) * ThreatIncConfig.reserveBankImportsMult());
 		return Math.min(banked, budget) * unit * ThreatIncConfig.reserveSurplusMult();
+	}
+
+	/** Whether the hive banks the commodity's whole output (threatWartimeFuel, fuel only). */
+	protected static boolean hiveWartime(CommodityOnMarketAPI com) {
+		return ThreatIncConfig.threatWartimeFuel() && ThreatReserves.wartimeFuel(com);
 	}
 
 	/**
@@ -300,7 +306,7 @@ public class ThreatFuel {
 			if (com.getMaxSupply() > 0) makers++;
 			output += com.getMaxSupply();
 			avail += ThreatReserves.structuralAvailable(com);
-			float d = ThreatReserves.wartimeFuel(com) ? 0f : WarFootingDemand.peacetimeDemand(m, com);
+			float d = hiveWartime(com) ? 0f : WarFootingDemand.peacetimeDemand(m, com);
 			demand += d;
 			own += Math.max(0f, Math.min(com.getMaxSupply(), ThreatReserves.structuralAvailable(com)) - d);
 		}

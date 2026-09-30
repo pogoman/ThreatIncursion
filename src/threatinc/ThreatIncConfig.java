@@ -474,6 +474,7 @@ public class ThreatIncConfig {
 	public static float expeditionFuelPerPointLY() { return f("threatinc_expeditionFuelPerPointLY"); }
 	public static boolean threatPaysPassage()      { return b("threatinc_threatPaysPassage", true); }
 	public static boolean threatSuppliesUpkeep()   { return b("threatinc_threatSuppliesUpkeep", true); }
+	public static boolean threatWartimeFuel()      { return b("threatinc_threatWartimeFuel", false); }
 	/** Supplies an expedition draws per fleet point. */
 	public static float expeditionSuppliesPerPoint() { return f("threatinc_expeditionSuppliesPerPoint"); }
 	public static boolean fleetUpkeep()            { return b("threatinc_fleetUpkeep", true); }

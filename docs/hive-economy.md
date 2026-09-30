@@ -600,8 +600,12 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
 
 ### Parity - wartime fuel, plants for shortages, supplies upkeep (2026-09-30)
 
-- **Fuel at the war rate (A).** A hive plant's whole output counts, as a faction's does under
-  `reserveWartimeFuel` (`ThreatReserves.wartimeFuel`): no peacetime demand is subtracted.
+- **Fuel at the war rate (A, `threatWartimeFuel`, off).** On, a hive plant's whole output counts, as
+  a faction's does under `reserveWartimeFuel` (`ThreatReserves.wartimeFuel`): no peacetime demand is
+  subtracted. h32a (60 months from the base save, on): the hive went from 3 plants to 17 by month
+  ~25, banked 108-186k fuel a month (4.8M stock) and took the sector - 91 hives, 142k FP, the
+  Hegemony down to 6 colonies, the independents gone. Off, a hive Spaceport's fuel demand (size-2)
+  eats a same-size plant's output and the hive banks 9-12k a month (h26a).
 - **Plants for shortages (B).** A send held for fuel (`held`, not a Seeding Swarm) or founding short
   (`canFound`), or supplies upkeep unpaid, notes the stock short for `SHORT_DAYS` (30;
   `noteShort`/`shortOf`). `planHiveEconomy` answers after the bootstrap with a fuel plant or a forge,
