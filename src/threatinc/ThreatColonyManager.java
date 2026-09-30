@@ -691,7 +691,7 @@ public class ThreatColonyManager {
 		// 2026-09-09; docs/hive-economy.md). The hive arms once it can pay.
 		if (size >= 6 && market.hasIndustry(THREAT_GROUND_DEFENSES) && defensesAffordable(market)) {
 			// the upgrade is a new structure: paid before the old one comes down
-			if (!affordStructure(market, payerId)) return;
+			if (!affordStructure(market, payerId, THREAT_HEAVY_BATTERIES)) return;
 			market.removeIndustry(THREAT_GROUND_DEFENSES, null, true);
 			buyStructure(market, THREAT_HEAVY_BATTERIES, payerId);
 			return;
@@ -738,10 +738,18 @@ public class ThreatColonyManager {
 
 		// upgrade an established forge to orbital works for better hulls - improves
 		// output/quality without changing the forge count
-		if (size >= 6 && market.hasIndustry(Industries.HEAVYINDUSTRY)) {
-			if (!affordStructure(market, payerId)) return;
-			market.removeIndustry(Industries.HEAVYINDUSTRY, null, true);
-			buyStructure(market, Industries.ORBITALWORKS, payerId);
+		// Paid in supplies it is vanilla's upgrade: the forge runs on while the
+		// works are built (startUpgrading), and is skipped while it is building
+		Industry heavy = market.getIndustry(Industries.HEAVYINDUSTRY);
+		if (size >= 6 && heavy != null && !heavy.isBuilding()) {
+			if (!affordStructure(market, payerId, Industries.ORBITALWORKS)) return;
+			if (payerId != null && ThreatBuildCost.enabled() && heavy.getSpec().getUpgrade() != null) {
+				ThreatFuel.pay(Commodities.SUPPLIES, ThreatBuildCost.supplies(Industries.ORBITALWORKS));
+				heavy.startUpgrading();
+			} else {
+				market.removeIndustry(Industries.HEAVYINDUSTRY, null, true);
+				buyStructure(market, Industries.ORBITALWORKS, payerId);
+			}
 			markEconomyDirty();
 			announce(ThreatNotice.titled("Forge World").bad()
 					.line("%s has restructured into a forge world", ThreatNotice.market(market))
@@ -2261,8 +2269,14 @@ public class ThreatColonyManager {
 	/** The structures foundColony gives every hive: Population, Spaceport, Fabrication Core, Swarm Nexus. */
 	public static final int FOUNDING_CORE_STRUCTURES = 4;
 
-	/** Fleet points this many founding structures cost (threatinc_foundingFPPerStructure each). */
+	/**
+	 * Fleet points this many founding structures cost (threatinc_foundingFPPerStructure
+	 * each); none while structures cost supplies (ThreatBuildCost) - fleet
+	 * points are for hulls, and a founding's structures come with what a
+	 * Seeding Swarm carries (ThreatFuel.loadFounding), as a forward base's do.
+	 */
 	public static float foundingFP(int structures) {
+		if (ThreatBuildCost.enabled()) return 0f;
 		return Math.max(0, structures) * Math.max(0f, ThreatIncConfig.foundingFPPerStructure());
 	}
 
@@ -2288,19 +2302,48 @@ public class ThreatColonyManager {
 		return ThreatIncData.map(KEY_BUILD_WAITING);
 	}
 
-	/** Whether payerId's bank covers one structure; if not, the colony's build waits (flagged). */
-	protected static boolean affordStructure(MarketAPI market, String payerId) {
+	/** Market id -> the supplies its waiting build costs (buyWaitingStructures tries again once the stock holds them). */
+	public static final String KEY_BUILD_WAITING_SUPPLIES = "threatinc_buildWaitingSupplies";
+
+	/**
+	 * Whether the structure can be paid for: from the hive's supplies stock
+	 * while structures cost supplies (ThreatBuildCost), else from payerId's FP
+	 * bank. If not, the colony's build waits (flagged) and a supplies shortfall
+	 * is noted (ThreatFuel.noteShort). A null payer builds free.
+	 */
+	protected static boolean affordStructure(MarketAPI market, String payerId, String industryId) {
+		if (payerId == null) return true;
+		if (ThreatBuildCost.enabled()) {
+			float cost = ThreatBuildCost.supplies(industryId);
+			if (ThreatFuel.stock(Commodities.SUPPLIES) >= cost) return true;
+			buildWaiting().put(market.getId(), true);
+			ThreatIncData.map(KEY_BUILD_WAITING_SUPPLIES).put(market.getId(), cost);
+			ThreatFuel.noteShort(Commodities.SUPPLIES);
+			return false;
+		}
 		float cost = foundingFP(1);
-		if (payerId == null || cost <= 0f || fpBank(payerId) >= cost) return true;
+		if (cost <= 0f || fpBank(payerId) >= cost) return true;
 		buildWaiting().put(market.getId(), true);
 		return false;
 	}
 
-	/** Adds the structure if payerId's bank pays for it (affordStructure); false if it waits. */
+	/**
+	 * Adds the structure if it is paid for (affordStructure); false if it
+	 * waits. Paid in supplies it is built over its vanilla build time
+	 * (startBuilding); a free one (null payer: save heals, the debug war)
+	 * stands at once.
+	 */
 	protected static boolean buyStructure(MarketAPI market, String industryId, String payerId) {
-		if (!affordStructure(market, payerId)) return false;
-		if (payerId != null) drawFP(payerId, foundingFP(1));
+		if (!affordStructure(market, payerId, industryId)) return false;
+		boolean supplies = payerId != null && ThreatBuildCost.enabled();
+		if (supplies) {
+			ThreatFuel.pay(Commodities.SUPPLIES, ThreatBuildCost.supplies(industryId));
+		} else if (payerId != null) {
+			drawFP(payerId, foundingFP(1));
+		}
 		market.addIndustry(industryId);
+		Industry ind = market.getIndustry(industryId);
+		if (supplies && ind != null && ThreatBuildCost.buildDays(industryId) > 0f) ind.startBuilding();
 		return true;
 	}
 
@@ -2327,12 +2370,18 @@ public class ThreatColonyManager {
 				buildWaiting().remove(id);
 				continue;
 			}
-			if (fpBank(id) < foundingFP(1)) continue;
+			if (ThreatBuildCost.enabled()) {
+				Object cost = ThreatIncData.map(KEY_BUILD_WAITING_SUPPLIES).get(id);
+				if (cost instanceof Float && ThreatFuel.stock(Commodities.SUPPLIES) < (Float) cost) continue;
+			} else if (fpBank(id) < foundingFP(1)) {
+				continue;
+			}
 			int had = market.getIndustries().size();
 			planHiveEconomy(market);
 			if (market.getIndustries().size() != had) {
 				ThreatIncConfig.log("Hive planner: waiting build bought at " + market.getName() + " ("
-						+ (int) fpBank(id) + " FP banked)");
+						+ (int) fpBank(id) + " FP banked, " + (int) ThreatFuel.stock(Commodities.SUPPLIES)
+						+ " supplies in stock)");
 			}
 		}
 	}
@@ -3390,7 +3439,8 @@ public class ThreatColonyManager {
 			if (bankedFP(market) < swarmCostEstimate(spec)) continue;
 			// a structure waiting on the bank comes before growth past the floor,
 			// or swarms cheaper than it would spend every FP as it banked
-			if (!belowFloor && buildWaiting().containsKey(marketId)) continue;
+			// (not while structures cost supplies: they wait on the hive's stock, not this bank)
+			if (!belowFloor && !ThreatBuildCost.enabled() && buildWaiting().containsKey(marketId)) continue;
 			// nothing past the want: the bank keeps the rest for waves, strikes
 			// and foundings
 			if (posture && !belowFloor) continue;

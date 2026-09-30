@@ -1605,8 +1605,7 @@ public class ThreatFrontlines {
 		if (!canSupply(market, Commodities.VOLATILES, s) || !canSupply(market, Commodities.HEAVY_MACHINERY, s - 2)) {
 			return false;
 		}
-		startNew(market, Industries.FUELPROD);
-		return true;
+		return startNew(market, Industries.FUELPROD);
 	}
 
 	/** Faction id -> when one of its links last turned a fuel plant into a Heavy Industry. */
@@ -1645,6 +1644,7 @@ public class ThreatFrontlines {
 		}
 		if (fuel < fuelWant || supplies >= suppliesWant) return false;
 		if (!canSupply(market, Commodities.METALS, s) || !canSupply(market, Commodities.RARE_METALS, s - 2)) return false;
+		if (!canPayBuild(market, Industries.HEAVYINDUSTRY)) return false;
 		market.removeIndustry(Industries.FUELPROD, null, false);
 		startNew(market, Industries.HEAVYINDUSTRY);
 		last.put(fid, Global.getSector().getClock().getTimestamp());
@@ -1778,18 +1778,60 @@ public class ThreatFrontlines {
 		return ok;
 	}
 
-	protected static void startNew(MarketAPI market, String id) {
+	/** Starts the structure if its supplies are paid (payBuild); false if it waits on them. */
+	protected static boolean startNew(MarketAPI market, String id) {
+		if (!payBuild(market, id)) return false;
 		market.addIndustry(id);
 		Industry ind = market.getIndustry(id);
 		if (ind != null) ind.startBuilding();
 		ThreatIncConfig.log("Frontline: " + market.getName() + " builds " + id);
+		return true;
 	}
 
 	protected static void upgrade(MarketAPI market, Industry ind) {
 		if (ind == null || ind.getSpec().getUpgrade() == null) return;
+		if (!payBuild(market, ind.getSpec().getUpgrade())) return;
 		ind.startUpgrading();
 		ThreatIncConfig.log("Frontline: " + market.getName() + " upgrades " + ind.getId()
 				+ " to " + ind.getSpec().getUpgrade());
+	}
+
+	/**
+	 * What the link can put toward a structure (2026-09-30, ThreatBuildCost):
+	 * its own supplies above its floor and staging bank, then what a hunt may
+	 * take of the faction's other markets whose stock reaches it - the markets
+	 * that pay its garrison's upkeep (payUpkeep).
+	 */
+	protected static float buildFunds(MarketAPI market) {
+		float funds = Math.max(0f, ThreatReserves.available(market, Commodities.SUPPLIES)
+				- ThreatReserves.stagingBank(market, Commodities.SUPPLIES));
+		for (MarketAPI m : IncursionManager.marketsReaching(market.getFaction(), market)) {
+			if (m != market && !isOutpost(m)) funds += ThreatReserves.spendable(m, Commodities.SUPPLIES);
+		}
+		return funds;
+	}
+
+	/** Whether the structure's supplies can be paid (buildFunds); free while structuresCostSupplies is off. */
+	protected static boolean canPayBuild(MarketAPI market, String id) {
+		float cost = ThreatBuildCost.supplies(id);
+		if (cost <= 0f || buildFunds(market) >= cost) return true;
+		ThreatIncConfig.logQuiet("fl_build_" + market.getId(), "Frontline: " + market.getName() + " waits on "
+				+ (int) cost + " supplies for " + id + " (" + (int) buildFunds(market) + " to hand)");
+		return false;
+	}
+
+	/** Pays the structure's supplies, the link first, then the others nearest first; false if it cannot. */
+	protected static boolean payBuild(MarketAPI market, String id) {
+		if (!canPayBuild(market, id)) return false;
+		float cost = ThreatBuildCost.supplies(id);
+		if (cost <= 0f) return true;
+		float free = Math.max(0f, ThreatReserves.available(market, Commodities.SUPPLIES)
+				- ThreatReserves.stagingBank(market, Commodities.SUPPLIES));
+		float link = ThreatReserves.drawAbove(market, Commodities.SUPPLIES, Math.min(cost, free));
+		float others = link < cost ? payFromOthers(market, null, Commodities.SUPPLIES, cost - link) : 0f;
+		ThreatIncConfig.log("Frontline: " + market.getName() + " pays " + (int) (link + others) + " of "
+				+ (int) cost + " supplies for " + id + " (link " + (int) link + ", other markets " + (int) others + ")");
+		return true;
 	}
 
 	/**
