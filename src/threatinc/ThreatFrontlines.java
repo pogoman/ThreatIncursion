@@ -1590,8 +1590,44 @@ public class ThreatFrontlines {
 	}
 
 	/**
-	 * One project at a time, in order: Patrol HQ, battlestation and Heavy
-	 * Industry (3), Military Base and star fortress (4) - each only if every commodity it
+	 * Starts Fuel Production in a free industry slot (frontlineFuelProduction,
+	 * 2026-09-30) if vanilla's inputs can be had here: volatiles at the
+	 * market's size and heavy machinery at size - 2; it makes size - 2 fuel.
+	 * No forward base made fuel, so a faction's fuel was capped by the sector's
+	 * best exporter (ThreatReserves.productionShare) while its sieges wanted
+	 * 40-115k each. True when it started.
+	 */
+	protected static boolean buildFuel(MarketAPI market, int s) {
+		if (!ThreatIncConfig.frontlineFuelProduction() || market.hasIndustry(Industries.FUELPROD)
+				|| Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) {
+			return false;
+		}
+		if (!canSupply(market, Commodities.VOLATILES, s) || !canSupply(market, Commodities.HEAVY_MACHINERY, s - 2)) {
+			return false;
+		}
+		startNew(market, Industries.FUELPROD);
+		return true;
+	}
+
+	/**
+	 * Whether the faction's fuel is short of what its sieges stage for: its
+	 * markets' fuel stock under their staging banks (ThreatReserves.stagingBank)
+	 * summed.
+	 */
+	protected static boolean fuelShort(String factionId) {
+		if (factionId == null) return false;
+		float have = 0f, want = 0f;
+		for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
+			have += ThreatReserves.stock(m.getId(), Commodities.FUEL);
+			want += ThreatReserves.stagingBank(m, Commodities.FUEL);
+		}
+		return have < want;
+	}
+
+	/**
+	 * One project at a time, in order: Patrol HQ, battlestation, Heavy
+	 * Industry and Fuel Production (3; fuel first while fuelShort), Military
+	 * Base and star fortress (4) - each only if every commodity it
 	 * demands can be had here
 	 * (canSupply). Demands are vanilla's (industries.csv / the industry
 	 * classes), s being the market size.
@@ -1629,7 +1665,11 @@ public class ThreatFrontlines {
 		// a war industry in the free industry slot (user's call 2026-09-27): run
 		// 17's links took in 242k supplies and sent 8.5k back, and their upkeep
 		// stalled Hegemony's sieges for 16 months. Heavy Industry makes supplies,
-		// heavy armaments and ships - the last is the Military Base's too
+		// heavy armaments and ships - the last is the Military Base's too.
+		// Fuel Production too (2026-09-30), first while the faction's fuel is
+		// short of what its sieges stage for (fuelShort)
+		boolean fuelFirst = fuelShort(market.getFactionId());
+		if (fuelFirst && s >= 3 && buildFuel(market, s)) return;
 		if (s >= 3 && ThreatIncConfig.frontlineHeavyIndustry()
 				&& !market.hasIndustry(Industries.HEAVYINDUSTRY) && !market.hasIndustry(Industries.ORBITALWORKS)
 				&& Misc.getNumIndustries(market) < Misc.getMaxIndustries(market)) {
@@ -1638,6 +1678,7 @@ public class ThreatFrontlines {
 				return;
 			}
 		}
+		if (!fuelFirst && s >= 3 && buildFuel(market, s)) return;
 		if (s >= 4 && market.hasIndustry(Industries.PATROLHQ)) {
 			if (canSupplyMilitary(market, s + 1)) {
 				upgrade(market, market.getIndustry(Industries.PATROLHQ));
