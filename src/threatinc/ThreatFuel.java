@@ -99,8 +99,10 @@ public class ThreatFuel {
 			unit = com.getCommodity().getEconUnit();
 			float have = ThreatReserves.structuralAvailable(com);
 			if (have > 0f) banked += BaseIndustry.getSizeMult(have);
+			// fuel at the war rate (ThreatReserves.wartimeFuel, 2026-09-30): a plant's
+			// whole output, its own port's share too, as the factions' fuel counts
 			float own = Math.min(com.getMaxSupply(), ThreatReserves.structuralAvailable(com))
-					- WarFootingDemand.peacetimeDemand(m, com);
+					- (ThreatReserves.wartimeFuel(com) ? 0f : WarFootingDemand.peacetimeDemand(m, com));
 			if (own > 0f) made += BaseIndustry.getSizeMult(own);
 			if (com.getCommodityMarketData() != null) {
 				foreign = Math.max(foreign, com.getCommodityMarketData().getMaxExportGlobal());
@@ -182,10 +184,49 @@ public class ThreatFuel {
 		return ThreatOutposts.npcCost();
 	}
 
-	/** Whether both stocks hold a founding and the wave's fuel on top of it. */
+	/** Whether both stocks hold a founding and the wave's fuel on top of it; notes the one short (noteShort). */
 	public static boolean canFound(float passageFuel) {
 		float[] cost = foundingCost();
-		return canPay(Commodities.SUPPLIES, cost[0]) && canPay(Commodities.FUEL, cost[1] + passageFuel);
+		boolean supplies = canPay(Commodities.SUPPLIES, cost[0]);
+		boolean fuel = canPay(Commodities.FUEL, cost[1] + passageFuel);
+		if (!supplies) noteShort(Commodities.SUPPLIES);
+		if (!fuel) noteShort(Commodities.FUEL);
+		return supplies && fuel;
+	}
+
+	/** Days a shortage stays noted: what the hive planner answers (shortOf). */
+	protected static final float SHORT_DAYS = 30f;
+
+	/**
+	 * Notes that the stock of the commodity fell short (2026-09-30): a send it
+	 * could not fuel, upkeep it could not pay. The hive planner builds another
+	 * plant for it while it is noted (ThreatColonyManager.planHiveEconomy).
+	 */
+	public static void noteShort(String commodityId) {
+		data().put("shortAt_" + commodityId, Global.getSector().getClock().getTimestamp());
+	}
+
+	/** Whether the stock of the commodity fell short within SHORT_DAYS. */
+	public static boolean shortOf(String commodityId) {
+		Object v = data().get("shortAt_" + commodityId);
+		return v instanceof Long && Global.getSector().getClock().getElapsedDaysSince((Long) v) < SHORT_DAYS;
+	}
+
+	/**
+	 * Whether the hive planner may answer the shortage with another plant: it
+	 * is short, and the last plant built for it has had SHORT_DAYS to show in
+	 * the month's take. h29a built 20 fuel plants in one tick for one noted
+	 * shortage.
+	 */
+	public static boolean mayAnswer(String commodityId) {
+		if (!shortOf(commodityId)) return false;
+		Object at = data().get("answeredAt_" + commodityId);
+		return !(at instanceof Long) || Global.getSector().getClock().getElapsedDaysSince((Long) at) >= SHORT_DAYS;
+	}
+
+	/** Notes that the planner built a plant for the shortage (mayAnswer). */
+	public static void answered(String commodityId) {
+		data().put("answeredAt_" + commodityId, Global.getSector().getClock().getTimestamp());
 	}
 
 	/** Loads a Seeding Swarm with its founding: drawn from the stocks, carried in the fleet's memory. */
@@ -220,6 +261,9 @@ public class ThreatFuel {
 	/** Notes a send the stock could not fuel, for the month's census line. */
 	public static void held(String what) {
 		add(HELD, 1f);
+		// every caller holds a send its fuel could not pay (a wave's founding
+		// notes its own shortfall, canFound)
+		if (!what.startsWith("a Seeding Swarm")) noteShort(Commodities.FUEL);
 		ThreatIncConfig.logQuiet("threatfuel_" + what, "Hive stock: " + what + " held, "
 				+ (int) stock() + " fuel and " + (int) stock(Commodities.SUPPLIES) + " supplies in stock");
 	}
@@ -242,6 +286,25 @@ public class ThreatFuel {
 		}
 		s.append(", sends held ").append((int) (held instanceof Float ? (Float) held : 0f));
 		data().put(HELD, 0f);
+		for (String c : STOCKED) ThreatIncConfig.log(sourcesLine(c));
 		return s.toString();
+	}
+
+	/** Where the month's stock of the commodity comes from, in units, for the log. */
+	protected static String sourcesLine(String commodityId) {
+		int makers = 0;
+		float output = 0f, avail = 0f, demand = 0f, own = 0f;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			CommodityOnMarketAPI com = m.getCommodityData(commodityId);
+			if (com == null) continue;
+			if (com.getMaxSupply() > 0) makers++;
+			output += com.getMaxSupply();
+			avail += ThreatReserves.structuralAvailable(com);
+			float d = ThreatReserves.wartimeFuel(com) ? 0f : WarFootingDemand.peacetimeDemand(m, com);
+			demand += d;
+			own += Math.max(0f, Math.min(com.getMaxSupply(), ThreatReserves.structuralAvailable(com)) - d);
+		}
+		return "Hive stock sources: " + commodityId + " makers " + makers + ", output " + (int) output
+				+ ", available " + (int) avail + ", own demand " + (int) demand + ", made " + (int) own;
 	}
 }

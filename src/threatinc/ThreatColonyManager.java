@@ -719,6 +719,23 @@ public class ThreatColonyManager {
 			if (countLink(link) == 0 && tryBuildLink(market, link, "first", false, payerId)) return;
 		}
 
+		// what the hive's stocks fell short of (2026-09-30, ThreatFuel.noteShort):
+		// another fuel plant while sends are held for fuel, another forge while
+		// its fleets' supplies upkeep goes unpaid. h26a held 470 sends for fuel
+		// and built no plant for them. One at a time, each given a month to show
+		// (ThreatFuel.mayAnswer)
+		for (int link = 0; link < CHAIN_LINKS.length; link++) {
+			String out = CHAIN_OUTPUTS[link];
+			String stock = Commodities.SHIPS.equals(out) ? Commodities.SUPPLIES : out;
+			if (!Commodities.FUEL.equals(stock) && !Commodities.SUPPLIES.equals(stock)) continue;
+			if (!ThreatFuel.mayAnswer(stock)) continue;
+			boolean placed = !hasLink(market, link);
+			if (tryBuildLink(market, link, stock + " short", false, payerId)) {
+				if (placed && hasLink(market, link)) ThreatFuel.answered(stock);
+				return;
+			}
+		}
+
 		// upgrade an established forge to orbital works for better hulls - improves
 		// output/quality without changing the forge count
 		if (size >= 6 && market.hasIndustry(Industries.HEAVYINDUSTRY)) {
@@ -3281,6 +3298,8 @@ public class ThreatColonyManager {
 		ThreatFuel.accrue();
 		// the fleets each bank paid for that are out in space (upkeep)
 		Map<String, Float> ledgerFP = ledgerFleetFP();
+		boolean suppliesUpkeep = ThreatIncConfig.threatSuppliesUpkeep();
+		Map<String, Float> ledgerSupplies = suppliesUpkeep ? ledgerFleetSupplies() : null;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			SectorEntityToken planet = market.getPrimaryEntity();
 			StarSystemAPI system = market.getStarSystem();
@@ -3305,6 +3324,11 @@ public class ThreatColonyManager {
 			accrueFabrication(market, income, upkeep);
 			// a bank that cannot carry its fleets gives some back (organs up or not)
 			recycleForUpkeep(market, fleets, income, upkeep);
+			if (suppliesUpkeep) {
+				Float outSupplies = ledgerSupplies.get(marketId);
+				paySupplies(market, fleets,
+						ownedFleetSupplies(market, fleets) + (outSupplies != null ? outSupplies : 0f));
+			}
 
 			// two hard on/off gates on fabrication. The Fabrication Core is the
 			// master switch for all growth: while it is down (missing, disrupted or
@@ -3362,6 +3386,8 @@ public class ThreatColonyManager {
 			// production pays for the garrison: the bank must hold what the swarm
 			// will cost (a strained hive banks slower; a starved one, nothing)
 			if (bankedFP(market) < swarmCostEstimate(spec)) continue;
+			// nor one the hive's supplies cannot keep up (paySupplies)
+			if (suppliesUpkeep && ThreatFuel.stock(Commodities.SUPPLIES) <= 0f) continue;
 			// a structure waiting on the bank comes before growth past the floor,
 			// or swarms cheaper than it would spend every FP as it banked
 			if (!belowFloor && buildWaiting().containsKey(marketId)) continue;
@@ -3803,9 +3829,104 @@ public class ThreatColonyManager {
 	// gate) and recycles its weakest swarms, so a garrison settles where its
 	// income meets its upkeep: income / rate.
 
-	/** Upkeep a day on this many fleet points (threatinc_garrisonUpkeepPerMonth per 30 days). */
+	/**
+	 * Upkeep a day on this many fleet points (threatinc_garrisonUpkeepPerMonth
+	 * per 30 days); none while the fleets pay supplies instead (paySupplies).
+	 */
 	public static float upkeepPerDay(float fleetFP) {
+		if (ThreatIncConfig.threatSuppliesUpkeep()) return 0f;
 		return Math.max(0f, fleetFP) * Math.max(0f, ThreatIncConfig.garrisonUpkeepPerMonth()) / 30f;
+	}
+
+	// (2026-09-30, user's call.) Every Threat fleet burns its hulls' vanilla
+	// supplies per month from the hive's stock (ThreatFuel), as the factions'
+	// fleets out and their links' garrisons do (ThreatUpkeep,
+	// ThreatFrontlines.payUpkeep) - in place of the FP upkeep above. Threat
+	// hulls run 0.3-1.1 supplies a fleet point a month (a Dominator 1.7); a
+	// 50k FP hive burns ~35-40k a month against the 6-8k its forges banked in
+	// h26a, so its forges now bound its fleets. What the stock cannot pay a
+	// colony answers by recycling standing swarms, as a bank below 0 did.
+
+	/** Supplies a month of the fleets the colony keeps near home (ownedFleetFP's set). */
+	public static float ownedFleetSupplies(MarketAPI market, List<CampaignFleetAPI> fleets) {
+		float s = 0f;
+		for (CampaignFleetAPI curr : fleets) {
+			if (curr != null && curr.isAlive()) s += ThreatFrontlines.maintenancePerMonth(curr);
+		}
+		String id = market.getId();
+		for (ThreatRaiders.Raider r : ThreatRaiders.raidersFrom(id)) {
+			if (r.fleet != null && r.fleet.isAlive()) s += ThreatFrontlines.maintenancePerMonth(r.fleet);
+		}
+		for (CampaignFleetAPI curr : ThreatIncData.reinforcementFleets().values()) {
+			if (curr == null || !curr.isAlive()) continue;
+			if (id.equals(curr.getMemoryWithoutUpdate().getString(REINFORCE_TARGET_KEY))) {
+				s += ThreatFrontlines.maintenancePerMonth(curr);
+			}
+		}
+		return s;
+	}
+
+	/** Market id -> supplies a month of the fleets bound to its ledger (ledgerFleetFP's set). */
+	protected static Map<String, Float> ledgerFleetSupplies() {
+		Map<String, Float> out = new java.util.HashMap<String, Float>();
+		for (com.fs.starfarer.api.campaign.LocationAPI loc : Global.getSector().getAllLocations()) {
+			for (CampaignFleetAPI curr : loc.getFleets()) {
+				if (!curr.isAlive()) continue;
+				com.fs.starfarer.api.campaign.rules.MemoryAPI mem = curr.getMemoryWithoutUpdate();
+				String home = mem.getString(LEDGER_HOME_KEY);
+				if (home == null || mem.contains(GARRISON_FLAG)) continue;
+				Float had = out.get(home);
+				out.put(home, (had != null ? had : 0f) + ThreatFrontlines.maintenancePerMonth(curr));
+			}
+		}
+		return out;
+	}
+
+	public static final String KEY_SUPPLIES_AT = "threatinc_hiveSuppliesAt";
+
+	/**
+	 * Pays the colony's fleets' supplies ({@code perMonth}) for the days since
+	 * its last payment from the hive's stock. What the stock cannot pay is
+	 * noted short (the planner builds a forge for it, ThreatFuel.noteShort)
+	 * and answered by recycling standing swarms, weakest first, each crediting
+	 * ThreatReturns.hullShare of its FP, until the upkeep they carried covers
+	 * what went unpaid. Out of battle only; one pass over the garrison.
+	 */
+	protected static void paySupplies(MarketAPI market, List<CampaignFleetAPI> fleets, float perMonth) {
+		String id = market.getId();
+		Map<String, Object> at = ThreatIncData.map(KEY_SUPPLIES_AT);
+		Object last = at.get(id);
+		long now = Global.getSector().getClock().getTimestamp();
+		at.put(id, now);
+		if (!(last instanceof Long)) return;
+		float days = Global.getSector().getClock().getElapsedDaysSince((Long) last);
+		if (days <= 0f || perMonth <= 0f) return;
+		float want = perMonth * days / 30f;
+		float paid = Math.min(want, ThreatFuel.stock(Commodities.SUPPLIES));
+		ThreatFuel.pay(Commodities.SUPPLIES, paid);
+		float unpaid = want - paid;
+		if (unpaid <= 0f) return;
+		ThreatFuel.noteShort(Commodities.SUPPLIES);
+		// the upkeep a month the stock could not carry
+		float cut = unpaid / days * 30f;
+		float share = ThreatReturns.hullShare();
+		int budget = fleets.size();
+		for (int i = 0; i < budget && cut > 0f; i++) {
+			CampaignFleetAPI victim = weakestWeakHolder(market);
+			if (victim == null || !fleets.contains(victim)) victim = smallestOnStation(fleets);
+			if (victim == null) return;
+			float fp = victim.getFleetPoints();
+			cut -= ThreatFrontlines.maintenancePerMonth(victim);
+			fleets.remove(victim);
+			victim.despawn();
+			creditFP(market, fp * share);
+			UpkeepLog log = upkeepLog(id);
+			log.recycled++;
+			log.recycledFP += fp;
+			ThreatIncConfig.log("Upkeep: " + market.getName() + " recycled a " + (int) fp + " FP swarm, "
+					+ (int) unpaid + " supplies of upkeep unpaid (" + (int) (fp * share) + " FP back, "
+					+ fleets.size() + " on station)");
+		}
 	}
 
 	/**
