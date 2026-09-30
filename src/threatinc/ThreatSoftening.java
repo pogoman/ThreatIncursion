@@ -939,9 +939,14 @@ public class ThreatSoftening {
 				return;
 			}
 			if (presentFP < need) {
-				standDownAll(f, orders, "outmatched at the muster, " + (int) presentFP + " FP against "
-						+ (int) need + " over " + target.getName());
-				return;
+				// the swarms gathered against it: strike where they came from (divert)
+				MarketAPI elsewhere = divert(f, orders, presentFP, target);
+				if (elsewhere == null) {
+					standDownAll(f, orders, "outmatched at the muster, " + (int) presentFP + " FP against "
+							+ (int) need + " over " + target.getName());
+					return;
+				}
+				target = elsewhere;
 			}
 			f.engaged = true;
 			sendIn(f, orders, mustered, target);
@@ -1031,12 +1036,17 @@ public class ThreatSoftening {
 			return;
 		}
 		float need = garrisonFP(next) * margin;
+		String was = f.systemId;
 		if (fp < need) {
-			standDownAll(f, orders, "outmatched by " + next.getName() + ", " + (int) fp + " FP against " + (int) need);
-			return;
+			MarketAPI elsewhere = divert(f, orders, fp, next);
+			if (elsewhere == null) {
+				standDownAll(f, orders, "outmatched by " + next.getName() + ", " + (int) fp + " FP against " + (int) need);
+				return;
+			}
+			next = elsewhere;
 		}
 		f.baseFP = fp;
-		IncursionManager.huntThinned(f.systemId);
+		IncursionManager.huntThinned(was);
 		sendIn(f, orders, lead != null ? Collections.singletonList(lead) : inLocation(orders, system), next);
 		ThreatIncConfig.log("Hunting force " + f.factionId + " moves on to " + next.getName() + " with "
 				+ (int) fp + " FP against " + (int) garrisonFP(next));
@@ -1178,6 +1188,128 @@ public class ThreatSoftening {
 
 	protected static MarketAPI baseOf(ThreatFleetOrders.Order o) {
 		return o.baseMarketId != null ? Global.getSector().getEconomy().getMarket(o.baseMarketId) : null;
+	}
+
+	/**
+	 * Where an outmatched force strikes instead (2026-09-30). The Threat's posture
+	 * pours swarms into a hive a force gathers against - Epsilon Shero I's 621 FP
+	 * when the force was sized was 5,602 when it mustered and 10,921 against the
+	 * next - and every force outmatched at its muster went home, its fuel spent
+	 * for nothing. The swarms it drew left other hives thinner: of every hive
+	 * whose swarms, standing and flying in (garrisonNowFP), the force beats by
+	 * the margin, the one with the most standing swarms to kill for the fuel the
+	 * whole sortie burns - what it drew and the detour ({@link #detourFuel}) -
+	 * which its bases and the first one's donors pay (huntSpendable,
+	 * donorSpendable). Not a system a hostile faction works (hostileAt) or
+	 * another of its own forces hunts. Moves the force and its orders to the
+	 * hive's system and returns the hive for the caller to send it in; null
+	 * when there is none, and the force stands down.
+	 */
+	protected static MarketAPI divert(Force f, List<ThreatFleetOrders.Order> orders, float fp, MarketAPI failed) {
+		FactionAPI faction = Global.getSector().getFaction(f.factionId);
+		StarSystemAPI at = f.systemId != null ? Global.getSector().getStarSystem(f.systemId) : null;
+		if (faction == null || at == null || fp <= 0f) return null;
+		float margin = margin();
+		float sunk = 0f;
+		List<MarketAPI> bases = new ArrayList<MarketAPI>();
+		for (ThreatFleetOrders.Order o : orders) {
+			sunk += o.fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL);
+			MarketAPI b = baseOf(o);
+			if (b != null && !bases.contains(b)) bases.add(b);
+		}
+		List<MarketAPI> donors = bases.isEmpty() ? null : huntDonors(faction, bases.get(0));
+		MarketAPI best = null;
+		float bestScore = 0f, bestCost = 0f;
+		int beatable = 0;
+		float cheapest = Float.MAX_VALUE, purseAt = 0f;
+		for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (hive == failed || hive.getPrimaryEntity() == null || !isHive(hive)) continue;
+			StarSystemAPI sys = hive.getStarSystem();
+			if (sys == null) continue;
+			float standing = garrisonFP(hive);
+			if (standing <= 0f || garrisonNowFP(hive) * margin > fp) continue;
+			if (sys != at && (hunting(f.factionId, sys.getId()) || hostileAt(faction, sys.getId()))) continue;
+			beatable++;
+			float cost = 0f;
+			for (ThreatFleetOrders.Order o : orders) cost += detourFuel(o, at, sys);
+			float purse = cost > 0f ? purse(bases, donors, sys) : 0f;
+			if (cost < cheapest) {
+				cheapest = cost;
+				purseAt = purse;
+			}
+			if (cost > 0f && purse < cost) continue;
+			float score = standing / Math.max(1f, sunk + cost);
+			if (score > bestScore) {
+				bestScore = score;
+				bestCost = cost;
+				best = hive;
+			}
+		}
+		if (best == null) {
+			ThreatIncConfig.log("Hunting force " + f.factionId + " outmatched over " + failed.getName()
+					+ ": no hive to strike instead, " + beatable + " it beats"
+					+ (beatable > 0 ? ", the cheapest a " + (int) cheapest + " fuel detour its bases and donors hold "
+							+ (int) purseAt + " of" : ""));
+			return null;
+		}
+		StarSystemAPI sys = best.getStarSystem();
+		// the detour, from the bases and then the donors, carried as the rest of
+		// the fleets' fuel so the lost hulls' share comes home (ThreatReturns.fuelBack)
+		List<String> from = new ArrayList<String>();
+		float got = 0f;
+		if (bestCost > 0f) {
+			for (MarketAPI b : bases) {
+				if (got >= bestCost) break;
+				float g = drawHunt(b, sys, Commodities.FUEL, bestCost - got);
+				got += g;
+				if (g >= 1f) from.add(b.getName() + " " + (int) g + " fuel");
+			}
+			if (got < bestCost && donors != null) got += drawDonors(donors, Commodities.FUEL, bestCost - got, from);
+			for (ThreatFleetOrders.Order o : orders) {
+				com.fs.starfarer.api.campaign.rules.MemoryAPI mem = o.fleet.getMemoryWithoutUpdate();
+				mem.set(ThreatReturns.MEM_FUEL, mem.getFloat(ThreatReturns.MEM_FUEL)
+						+ got * detourFuel(o, at, sys) / bestCost);
+			}
+		}
+		f.systemId = sys.getId();
+		f.targetIds = null;
+		for (ThreatFleetOrders.Order o : orders) o.systemId = f.systemId;
+		ThreatIncConfig.log("Hunting force " + f.factionId + " outmatched over " + failed.getName() + " ("
+				+ (int) garrisonFP(failed) + " FP): strikes " + best.getName() + " in " + sys.getName() + " instead, "
+				+ (int) fp + " FP against " + (int) garrisonFP(best) + " (" + (int) garrisonNowFP(best)
+				+ " with its swarms out and inbound), detour " + (int) got + " fuel"
+				+ (from.isEmpty() ? "" : ": " + Misc.getAndJoined(from)));
+		if (sys != at) {
+			ThreatNotice.titled("Hunting Force Turns").icon(faction)
+					.line("%s turns its hunting force from the %s", ThreatNotice.faction(faction),
+							at.getNameWithLowercaseTypeShort())
+					.line("It strikes the Defense Swarms over %s", ThreatNotice.market(best)).send();
+		}
+		return best;
+	}
+
+	/**
+	 * Fuel a fleet of the force draws to go from the system it is at by the hive
+	 * system and home, over going home from where it is: the route's extra
+	 * light-years at the one-way rate (ThreatReturns.RETURN_LEG_SHARE - its draw
+	 * paid the way out and back).
+	 */
+	protected static float detourFuel(ThreatFleetOrders.Order o, StarSystemAPI at, StarSystemAPI to) {
+		float ly = ThreatFuel.ly(at, to);
+		if (ly <= 0f) return 0f;
+		MarketAPI home = baseOf(o);
+		StarSystemAPI hs = home != null ? home.getStarSystem() : null;
+		float extra = hs == null ? 2f * ly : ly + ThreatFuel.ly(to, hs) - ThreatFuel.ly(at, hs);
+		if (extra <= 0f) return 0f;
+		return combatFP(o.fleet) / IncursionManager.FP_PER_RESPONSE_DIFFICULTY * extra
+				* ThreatIncConfig.expeditionFuelPerPointLY() * (1f - ThreatReturns.RETURN_LEG_SHARE);
+	}
+
+	/** Fuel the force's bases and the donors can give a hunt in the system. */
+	protected static float purse(List<MarketAPI> bases, List<MarketAPI> donors, StarSystemAPI system) {
+		float sum = donorsSpendable(donors, Commodities.FUEL);
+		for (MarketAPI b : bases) sum += huntSpendable(b, system, Commodities.FUEL);
+		return sum;
 	}
 
 	protected static void standDownAll(Force f, List<ThreatFleetOrders.Order> orders, String why) {
