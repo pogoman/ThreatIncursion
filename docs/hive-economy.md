@@ -580,9 +580,20 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
   fabricator picks skip what the stock cannot fuel) stay where they are sent and pay the way out
   only (`RETURN_LEG_SHARE`). Scouts pay one way along their whole route and home. Same-system moves
   are free. Nothing is refunded.
-- **Setting:** `threatPaysPassage` (true), in `settings.json` and LunaLib.
-- **Logs:** `Hive fuel: <what> held, N fuel in stock` (once per kind), and the monthly census line
-  ends `; fuel N (+M/mo, spent S, sends held H)`.
+- **Founding (2026-09-30):** a Seeding Swarm carries what a faction's forward base costs
+  (`ThreatOutposts.npcCost`: `outpostSupplies` 1,500, `outpostFuel` 800) on top of its hulls,
+  structures and passage - a single swarm founded a hive for its structures' fleet points alone. The
+  hive keeps a supplies stock beside its fuel, filled by the same rule (`ThreatFuel.perMonth(id)`;
+  a save from before it starts with `FAB_ENDOWMENT_DAYS` of banking). `launchColonizationWave` waits
+  while the stocks cannot pay (`canFound`), `loadFounding` draws them onto the fleet's memory, and
+  they go into the colony when it is founded (`settleFounding`), back into the stocks with a wave that
+  withdraws, and down with a wave shot down (`refundFounding`, `unloadFounding`). First test (18
+  months): supplies bank 4.5-7.5k a month and pile up (126k) with nothing else to spend them on;
+  fuel, spent on passage as fast as it banks, is what holds waves (5 in 18 months).
+- **Setting:** `threatPaysPassage` (true), in `settings.json` and LunaLib; it gates the founding
+  cost too.
+- **Logs:** `Hive stock: <what> held, N fuel and M supplies in stock` (once per kind), and the monthly
+  census line ends `; fuel N (+M/mo, spent S); supplies N (+M/mo, spent S), sends held H`.
 
 ## Levers, verified
 

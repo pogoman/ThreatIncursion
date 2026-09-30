@@ -734,7 +734,7 @@ public class ThreatReserves {
 		if (isBacked(market)) return baseline + vanillaStockpilePer30(market, commodityId);
 		CommodityOnMarketAPI com = market.getCommodityData(commodityId);
 		if (com == null) return baseline;
-		float surplus = surplusUnits(market, com);
+		float surplus = bankUnits(market, com);
 		if (surplus <= 0f) return baseline;
 		return baseline + BaseIndustry.getSizeMult(surplus) * com.getCommodity().getEconUnit()
 				* ThreatIncConfig.reserveSurplusMult()
@@ -771,9 +771,10 @@ public class ThreatReserves {
 			if (isBacked(m)) continue;
 			CommodityOnMarketAPI com = m.getCommodityData(commodityId);
 			if (com == null) continue;
-			banked += BaseIndustry.getSizeMult(surplusUnits(m, com));
+			banked += BaseIndustry.getSizeMult(bankUnits(m, com));
+			// wartime fuel: the producer's whole output, its own traffic's share too
 			float own = Math.min(com.getMaxSupply(), structuralAvailable(com))
-					- WarFootingDemand.peacetimeDemand(m, com);
+					- (wartimeFuel(com) ? 0f : WarFootingDemand.peacetimeDemand(m, com));
 			if (own > 0f) made += BaseIndustry.getSizeMult(own);
 			if (com.getCommodityMarketData() != null) {
 				foreign = Math.max(foreign, com.getCommodityMarketData().getMaxExportGlobal());
@@ -807,6 +808,30 @@ public class ThreatReserves {
 	public static float surplusUnits(MarketAPI market, CommodityOnMarketAPI com) {
 		if (com == null) return 0f;
 		return Math.max(0f, structuralAvailable(com) - WarFootingDemand.peacetimeDemand(market, com));
+	}
+
+	/**
+	 * Units a war faction's colony banks: its surplus ({@link #surplusUnits}),
+	 * but all of its fuel under {@link #wartimeFuel} - the fuel its peacetime
+	 * demand stands for is its civilian and trade traffic, which a war
+	 * requisitions, as a hive's fuel is all its fleets' (ThreatFuel). The
+	 * faction's banking stays held to what it makes or buys in
+	 * ({@link #productionShare}), where a producer's whole output counts.
+	 */
+	public static float bankUnits(MarketAPI market, CommodityOnMarketAPI com) {
+		if (com == null) return 0f;
+		return wartimeFuel(com) ? structuralAvailable(com) : surplusUnits(market, com);
+	}
+
+	/**
+	 * Fuel banks at the war rate (reserveWartimeFuel, 2026-09-30): at the
+	 * surplus rate a faction banked ~18.6k fuel a month - its producers' output
+	 * above their own spaceports' demand - and its sieges, wanting 40-115k fuel
+	 * each, were postponed 4,211 times in 71 months while marines piled up to
+	 * 500k.
+	 */
+	public static boolean wartimeFuel(CommodityOnMarketAPI com) {
+		return com != null && Commodities.FUEL.equals(com.getId()) && ThreatIncConfig.reserveWartimeFuel();
 	}
 
 	/** Vanilla's availability (units) less what this mod's own trade modifiers contribute to it. */
@@ -1028,7 +1053,7 @@ public class ThreatReserves {
 		}
 		s.available = com.getAvailable();
 		s.demand = com.getMaxDemand();
-		s.surplus = surplusUnits(market, com);
+		s.surplus = bankUnits(market, com);
 		s.per30 = accrualPer30(market, c);
 		s.cap = cap(market, c);
 		s.deficit = deficitUnits(com);
