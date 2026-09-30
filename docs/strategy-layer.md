@@ -83,6 +83,12 @@ player builds their own. A raid that disrupts the Waystation severs the base, ex
 raid on a Swarm Nexus severs a hive's. Knob `baseRequiresWaystation`. On the board a
 military world without one shows its structure in deficit yellow and "No Waystation" in
 the Staging column; the Stage button says why.
+**A forward base is a base from its founding (2026-09-30).** `isBase` also takes a link
+(`ThreatFrontlines.isOutpost`): its station and garrison field fleets and its Waystation holds the
+stock. Held to a Patrol HQ, which a link builds only at size 3 with military imports, the nearest
+base to a hive stayed a core world - Chicomoztoc staged Gamma Shevar and Thrial from 30+ ly - and
+the links the front was founded for staged nothing. First check (21 months): 7 of 11 sieges and 7
+of 9 hunts sailed from links, sieges at 1-18k fuel of passage against 30-43k from the core worlds.
 
 **Accrual** (NPC colonies; rewritten 2026-09-05 to docs/economy-coherence.md rule 1) runs on the fast
 poll, pro-rated per 30 days, and banks the colony's availability above its PEACETIME

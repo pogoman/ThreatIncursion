@@ -121,7 +121,7 @@ after it.
 | 3 | Patrol HQ | supplies, fuel, ships s−1 |
 | 3 | orbital → battlestation | crew 5, supplies 5 |
 | 3 | Heavy Industry, in the free industry slot | metals s, rare metals s−2 |
-| 3 | Fuel Production, in a free industry slot (before Heavy Industry while `fuelShort`) | volatiles s, heavy machinery s−2 |
+| 3 | Fuel Production, in a free industry slot (before Heavy Industry while `fuelShort`: shorter of fuel than of supplies) | volatiles s, heavy machinery s−2 |
 | 4 | Patrol HQ → Military Base | supplies, fuel, ships s+1 |
 | 4 | battlestation → star fortress | crew 7, supplies 7 |
 
@@ -139,7 +139,9 @@ made fuel, so a faction's fuel banking was capped by the sector's best single ex
 and were postponed 4,211 times in 71 months. Vanilla's Fuel Production makes s−2 fuel
 from volatiles s and heavy machinery s−2 and needs no resource condition. A link builds
 it before its Heavy Industry while the faction's fuel stock is under what its sieges
-stage for (`fuelShort`: stock summed against `ThreatReserves.stagingBank`), after it
+stage for, measured against its supplies the same way (`fuelShort`: each one's stock
+summed over its `ThreatReserves.stagingBank`; fuel against its staging banks alone kept
+building fuel plants while the Hegemony sat on 735k fuel and 6k supplies), after it
 otherwise; each takes a slot, so a small link holds one of the two. First test (21 months,
 from the lt save): 25 links built it; fuel banking rose from 16.7k to 61.8k a month
 (Hegemony) and 19.9k to 36.8k (Persean), the Hegemony's stock from 29k to 109k, and
