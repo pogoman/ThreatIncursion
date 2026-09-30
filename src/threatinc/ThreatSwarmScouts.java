@@ -207,9 +207,18 @@ public class ThreatSwarmScouts {
 	protected static Scout launch(MarketAPI colony, List<String> route, Random random) {
 		float budget = ThreatIncConfig.swarmScoutFleetPoints();
 		if (!ThreatColonyManager.canAffordFP(colony, budget)) return null;
+		// the route and home again comes from the hive's fuel (ThreatFuel): the
+		// whole path is flown, so it is paid one way along it
+		float fuel = ThreatFuel.passage(budget, routeLY(colony, route), false);
+		if (!ThreatFuel.canPay(fuel)) {
+			ThreatFuel.held("a scout from " + colony.getName());
+			return null;
+		}
 		CampaignFleetAPI fleet = ThreatFleetComposer.createScouts(budget, new Random(random.nextLong()));
 		if (fleet == null || fleet.isEmpty()) return null;
 		ThreatColonyManager.chargeFP(colony, fleet.getFleetPoints());
+		ThreatFuel.pay(Math.min(ThreatFuel.stock(),
+				ThreatFuel.passage(fleet.getFleetPoints(), routeLY(colony, route), false)));
 		// what survives is re-banked when it despawns home (2026-09-29: closed
 		// economy - it was charged and never bound, so every scout was spent whole)
 		ThreatColonyManager.bindToLedger(fleet, colony.getId());
@@ -233,5 +242,20 @@ public class ThreatSwarmScouts {
 
 		ThreatIncConfig.log("Scouting Swarm from " + colony.getName() + ": " + route);
 		return s;
+	}
+
+	/** Light-years from the colony down the route and home again. */
+	protected static float routeLY(MarketAPI colony, List<String> route) {
+		StarSystemAPI home = colony.getStarSystem();
+		if (home == null) return 0f;
+		float ly = 0f;
+		StarSystemAPI at = home;
+		for (String id : route) {
+			StarSystemAPI next = ThreatScoutRoute.systemById(id);
+			if (next == null) continue;
+			ly += ThreatFuel.ly(at, next);
+			at = next;
+		}
+		return ly + ThreatFuel.ly(at, home);
 	}
 }

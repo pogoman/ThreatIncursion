@@ -2406,6 +2406,12 @@ public class ThreatColonyManager {
 			peekGarrison(source, 1, swarmFP);
 			structuresFP = foundingFP(foundingStructuresEstimate(targetPlanet));
 			float bill = swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec) - swarmFP[0] + structuresFP;
+			// the way out comes from the hive's fuel (ThreatFuel); the wave stays
+			if (!ThreatFuel.canPay(ThreatFuel.passage(swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec),
+					ThreatFuel.ly(source.getStarSystem(), targetSystem), false))) {
+				ThreatFuel.held("a Seeding Swarm from " + source.getName());
+				return false;
+			}
 			if (bill > 0f && !poolSystemBanks(source, bill)) return false;
 		}
 
@@ -2432,6 +2438,8 @@ public class ThreatColonyManager {
 			chargeFP(source, structuresFP);
 			fleet.getMemoryWithoutUpdate().set(FOUNDING_FP_KEY, structuresFP);
 			fleet.getMemoryWithoutUpdate().set(FOUNDING_SOURCE_KEY, source.getId());
+			float fuel = ThreatFuel.passage(fleet.getFleetPoints(), ThreatFuel.ly(source.getStarSystem(), targetSystem), false);
+			ThreatFuel.pay(Math.min(ThreatFuel.stock(), fuel));
 			float retool = retoolForge(source, fleet.getFleetPoints());
 			ThreatIncConfig.log("Seeding Swarm from " + source.getName() + ": " + (int) fleet.getFleetPoints()
 					+ " FP of hulls, " + (int) structuresFP + " FP of structures, forge retooling "
@@ -3239,6 +3247,7 @@ public class ThreatColonyManager {
 		float hiveOutput = hiveShipOutput();
 		float hiveDraw = hiveNexusDraw();
 		endowSave(hiveOutput, hiveDraw);
+		ThreatFuel.accrue();
 		// the fleets each bank paid for that are out in space (upkeep)
 		Map<String, Float> ledgerFP = ledgerFleetFP();
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
@@ -4398,6 +4407,8 @@ public class ThreatColonyManager {
 					boolean same = curr.getStarSystem() == receiver.getStarSystem();
 					float dist = same ? 0f : Misc.getDistanceLY(curr.getStarSystem().getLocation(),
 							receiver.getStarSystem().getLocation());
+					// the way there comes from the hive's fuel (ThreatFuel)
+					if (!ThreatFuel.canPay(ThreatFuel.passage(fleet.getFleetPoints(), dist, false))) continue;
 					boolean better;
 					if (donor == null) better = true;
 					else if (same != donorSame) better = same;
@@ -4463,6 +4474,9 @@ public class ThreatColonyManager {
 			if (idle < 0f) continue;
 			if (!canReinforce(curr, receiver)) continue;
 			boolean same = curr.getStarSystem() == receiver.getStarSystem();
+			// a swarm the hive cannot fuel to the receiver is not built for it
+			if (!ThreatFuel.canPay(ThreatFuel.passage(cost,
+					ThreatFuel.ly(curr.getStarSystem(), receiver.getStarSystem()), false))) continue;
 			boolean better = best == null || (same != bestSame ? same : idle > bestIdle);
 			if (better) {
 				best = curr;
@@ -4598,7 +4612,16 @@ public class ThreatColonyManager {
 		SectorEntityToken planet = target.getPrimaryEntity();
 		if (planet == null || pick == null) return false;
 		List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(source.getId());
+		// the way there comes from the hive's fuel (ThreatFuel): a swarm it cannot
+		// fuel stays home
+		float fuel = ThreatFuel.passage(pick.getFleetPoints(),
+				ThreatFuel.ly(source.getStarSystem(), target.getStarSystem()), false);
+		if (!ThreatFuel.canPay(fuel)) {
+			ThreatFuel.held("a reinforcement from " + source.getName());
+			return false;
+		}
 		if (!fleets.remove(pick)) return false;
+		ThreatFuel.pay(fuel);
 
 		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = pick.getMemoryWithoutUpdate();
 		mem.unset(GARRISON_FLAG);
@@ -4616,7 +4639,7 @@ public class ThreatColonyManager {
 		ThreatIncData.reinforcementFleets().put(pick.getId(), pick);
 
 		// the source regrows what it sent from its own production (the
-		// fabrication ledger): moving a swarm costs nothing new
+		// fabrication ledger); the move itself cost its fuel
 		ThreatIncConfig.log("Reinforcement: Defense Swarm " + source.getName() + " -> "
 				+ target.getName() + " (" + countLiveGarrison(source.getId())
 				+ " remain at source; " + effectiveGarrison(target) + "/"

@@ -555,6 +555,35 @@ the whole sector, evaluated at the end of every posture pass (`ThreatPosture.pol
   best weak target ...` on a change and on the first pass after load; the monthly `Posture sector:`
   line ends `; stance X`.
 
+### Fuel - the hive pays passage (2026-09-30, `ThreatFuel`)
+
+Before this the swarm moved for free inside its fuel range while the factions paid for every
+light-year from shipped stock. In the 75-month test (h12a) it shipped 1,015 swarms between systems,
+grew to ~100k FP and massed 8-9k FP over any system a faction stocked a forward base against, while
+no faction could fuel a hunt of that size. Now both sides pay the same rate.
+
+- **Stock:** one for the whole hive (vanilla's broadcast availability already shares one fuel
+  plant's output with every hive world). It fills by a faction reserve's rule
+  (`accrualPer30` x `productionShare`): each world's fuel, `getSizeMult` of it x the fuel econ unit x
+  `reserveSurplusMult`, a month, summed and held to the better of what the hive makes above its own
+  demand and the sector's best exporter x `reserveBankImportsMult` (`ThreatFuel.perMonth`, accrued
+  each `maintainGarrisons` poll). A faction world banks only what is left over its peacetime demand,
+  its trade and civilian traffic; a hive world runs no trade fleets, so all its fuel is its fleets'.
+  Read as surplus, the imports that meet a hive Megaport's demand banked 0 and grounded every fleet
+  (first test). The cap made it ~9,000 a month on the test save, about one faction's banking. A save
+  from before it starts with `FAB_ENDOWMENT_DAYS` of banking. Cutting the hive's fuel (plants or
+  imports) now grounds it by stock as well as by range.
+- **Passage:** fleet points / 25 x light-years x `expeditionFuelPerPointLY` - the factions' rate,
+  which is their round trip. Strikes (`launchStrike`, the muster trimmed to what the stock fuels) and
+  raiders (`ThreatRaiders.detach`, to the convoy) pay both ways; Seeding Swarms
+  (`launchColonizationWave`) and reinforcements (`sendReinforcement`; the pressure pass's donor and
+  fabricator picks skip what the stock cannot fuel) stay where they are sent and pay the way out
+  only (`RETURN_LEG_SHARE`). Scouts pay one way along their whole route and home. Same-system moves
+  are free. Nothing is refunded.
+- **Setting:** `threatPaysPassage` (true), in `settings.json` and LunaLib.
+- **Logs:** `Hive fuel: <what> held, N fuel in stock` (once per kind), and the monthly census line
+  ends `; fuel N (+M/mo, spent S, sends held H)`.
+
 ## Levers, verified
 
 | Lever | Works on the hive? | Why |

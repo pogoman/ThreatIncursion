@@ -1053,18 +1053,28 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// n is read, the largest the bank pays for wins
 		java.util.List<ThreatColonyManager.MusterFleet> walk = ThreatColonyManager.peekMuster(colony, sendable);
 		float[] excessOf = new float[walk.size() + 1];
+		float[] fpOf = new float[walk.size() + 1];
 		for (int i = 0; i < walk.size(); i++) {
 			java.util.List<Integer> sizes = new ArrayList<Integer>();
 			for (int size : walk.get(i).sizes) sizes.add(strikeFleetSize(size));
-			excessOf[i + 1] = excessOf[i] + ThreatStrikeFGI.estimateFP(sizes) - walk.get(i).fp;
+			float est = ThreatStrikeFGI.estimateFP(sizes);
+			excessOf[i + 1] = excessOf[i] + est - walk.get(i).fp;
+			fpOf[i + 1] = fpOf[i] + est;
 		}
+		// the passage there and back comes out of the hive's fuel (ThreatFuel):
+		// the muster is also no bigger than the stock fuels
+		float ly = ThreatFuel.ly(source, target.getStarSystem());
 		int count = walk.size();
 		for (; count > 0; count--) {
 			float excess = excessOf[count];
+			if (!ThreatFuel.canPay(ThreatFuel.passage(fpOf[count], ly, true))) continue;
 			if (excess <= 0f || ThreatColonyManager.canAffordFP(colony, excess)) break;
 		}
 		if (count <= 0) {
-			if (sendable > 0) {
+			if (sendable > 0 && walk.size() > 0
+					&& !ThreatFuel.canPay(ThreatFuel.passage(fpOf[1], ly, true))) {
+				ThreatFuel.held("strike from " + colony.getName());
+			} else if (sendable > 0) {
 				ThreatIncConfig.log("Strike from " + colony.getName() + " held: the bank ("
 						+ (int) ThreatColonyManager.bankedFP(colony) + " FP) cannot re-embody even one swarm");
 			}
@@ -1092,6 +1102,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// Estimated swarm by swarm: a packed entry is no swarm's size
 		float drawn = Math.max(0f, ThreatStrikeFGI.estimateFP(swarmSizes) - paid[0]);
 		if (drawn > 0f) ThreatColonyManager.chargeFP(colony, drawn);
+		ThreatFuel.pay(Math.min(ThreatFuel.stock(),
+				ThreatFuel.passage(ThreatStrikeFGI.estimateFP(swarmSizes), ly, true)));
 
 		ThreatStrikeFGI strike = new ThreatStrikeFGI(params);
 		strike.setPacks(packs);
