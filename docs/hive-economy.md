@@ -300,8 +300,10 @@ points, and the bank is filled by what the hive's forges really make.
   (`threatinc_fabEndowPending`): each colony waits for the first poll at which its fabrication
   rate is above 0, so a colony whose economy has not yet recomputed is not endowed nothing.
 - **What else is unbounded now (2026-09-29, no arbitrary caps; forges, swarms and fuel are
-  the bounds).** Colonies grow to 10 (`HIVE_MAX_SIZE`, vanilla's `population_10`; the
-  `colonyMaxSize` knob, 8, is gone). A colonization wave per unclaimed planet
+  the bounds).** Colonies grew to 10 (`HIVE_MAX_SIZE`, vanilla's `population_10`) until
+  2026-09-30, when `colonyMaxSize` (8) came back (user's call): at month 62 of h26a, 27 of ~46
+  hives were size 10 and razing one cost ~1M fuel. `pinMaxSize` holds the cap, and a hive over it
+  loses a size a poll (`ThreatFrontlines.shrink`). A colonization wave per unclaimed planet
   (`tryExpandInSystem`), and a pending claim per free forge (`IncursionManager`); waves fly in
   parallel, each paid for by a mustered swarm. `pickChainPlanets` is no longer cut at five.
   One spare production link per held system. No scout limits. Raiders detach swarms until the

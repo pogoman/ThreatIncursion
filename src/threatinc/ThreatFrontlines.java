@@ -1609,6 +1609,51 @@ public class ThreatFrontlines {
 		return true;
 	}
 
+	/** Faction id -> when one of its links last turned a fuel plant into a Heavy Industry. */
+	public static final String KEY_SWAPPED = "threatinc_fuelSwapLast";
+
+	/**
+	 * Turns the link's Fuel Production into a Heavy Industry (2026-09-30) when
+	 * it has no slot for one and the faction's fuel covers all its sieges stage
+	 * for while its supplies do not (ThreatReserves.stagingBank, summed). A link
+	 * never builds on a slot it frees, so the build order's fuelShort cannot
+	 * swap it back: the swap only runs this way. One link a faction per
+	 * frontlineGrowDays, so the stocks answer before the next. h26a's links
+	 * built 51 fuel plants to 45 Heavy Industries, and the Hegemony sat on 1.5M
+	 * fuel while its sieges were postponed for supplies 1,591 times. True when
+	 * it swapped.
+	 */
+	protected static boolean swapFuelForHeavyIndustry(MarketAPI market, int s) {
+		if (!ThreatIncConfig.frontlineHeavyIndustry() || !market.hasIndustry(Industries.FUELPROD)
+				|| market.hasIndustry(Industries.HEAVYINDUSTRY) || market.hasIndustry(Industries.ORBITALWORKS)
+				|| Misc.getNumIndustries(market) < Misc.getMaxIndustries(market)) {
+			return false;
+		}
+		String fid = market.getFactionId();
+		Map<String, Object> last = ThreatIncData.map(KEY_SWAPPED);
+		Object at = last.get(fid);
+		if (at instanceof Long && Global.getSector().getClock().getElapsedDaysSince((Long) at)
+				< ThreatIncConfig.frontlineGrowDays()) {
+			return false;
+		}
+		float fuel = 0f, fuelWant = 0f, supplies = 0f, suppliesWant = 0f;
+		for (MarketAPI m : ThreatReserves.marketsOf(fid)) {
+			fuel += ThreatReserves.stock(m.getId(), Commodities.FUEL);
+			fuelWant += ThreatReserves.stagingBank(m, Commodities.FUEL);
+			supplies += ThreatReserves.stock(m.getId(), Commodities.SUPPLIES);
+			suppliesWant += ThreatReserves.stagingBank(m, Commodities.SUPPLIES);
+		}
+		if (fuel < fuelWant || supplies >= suppliesWant) return false;
+		if (!canSupply(market, Commodities.METALS, s) || !canSupply(market, Commodities.RARE_METALS, s - 2)) return false;
+		market.removeIndustry(Industries.FUELPROD, null, false);
+		startNew(market, Industries.HEAVYINDUSTRY);
+		last.put(fid, Global.getSector().getClock().getTimestamp());
+		ThreatIncConfig.log("Frontline: " + market.getName() + " turns its fuel plant into a Heavy Industry - "
+				+ fid + " fuel " + (int) fuel + " of " + (int) fuelWant + " staged for, supplies " + (int) supplies
+				+ " of " + (int) suppliesWant);
+		return true;
+	}
+
 	/**
 	 * Whether the faction is shorter of fuel than of supplies: each one's stock
 	 * over what its sieges stage for (ThreatReserves.stagingBank), summed over
@@ -1683,6 +1728,7 @@ public class ThreatFrontlines {
 			}
 		}
 		if (!fuelFirst && s >= 3 && buildFuel(market, s)) return;
+		if (s >= 3 && swapFuelForHeavyIndustry(market, s)) return;
 		if (s >= 4 && market.hasIndustry(Industries.PATROLHQ)) {
 			if (canSupplyMilitary(market, s + 1)) {
 				upgrade(market, market.getIndustry(Industries.PATROLHQ));

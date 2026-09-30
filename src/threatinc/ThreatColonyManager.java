@@ -189,30 +189,47 @@ public class ThreatColonyManager {
 
 	/**
 	 * The largest size a market can reach: vanilla defines population_1 through
-	 * population_10 and no more, so a hive grows to 10 (2026-09-29: the
-	 * colonyMaxSize knob, 8, is gone - the engine's own ceiling is the only one).
+	 * population_10 and no more.
 	 */
 	public static final int HIVE_MAX_SIZE = 10;
 
 	/**
-	 * Lifts a hive's vanilla max market size (Misc.MAX_COLONY_SIZE, the player's
-	 * 6) to HIVE_MAX_SIZE. Re-pinned every poll (updateColonyVitality) so hives
-	 * founded under the old knob catch up.
+	 * How big a hive may grow: colonyMaxSize (8), within the engine's
+	 * HIVE_MAX_SIZE. The knob was dropped for the engine's ceiling on
+	 * 2026-09-29 and restored on 2026-09-30 (user's call): at month 62 of
+	 * h26a, 27 of the Threat's ~46 worlds were size 10, and razing one cost
+	 * ~1M fuel.
+	 */
+	public static int hiveMaxSize() {
+		return Math.max(1, Math.min(HIVE_MAX_SIZE, ThreatIncConfig.colonyMaxSize()));
+	}
+
+	/**
+	 * Sets a hive's vanilla max market size (Misc.MAX_COLONY_SIZE, the player's
+	 * 6) to {@link #hiveMaxSize}. Re-pinned every poll (updateColonyVitality),
+	 * and a hive grown past it under an older rule loses a size a poll until it
+	 * is back under it.
 	 */
 	public static void pinMaxSize(MarketAPI market) {
 		if (market == null) return;
+		int cap = hiveMaxSize();
 		com.fs.starfarer.api.combat.StatBonus mod = market.getStats().getDynamic().getMod(Stats.MAX_MARKET_SIZE);
-		if (HIVE_MAX_SIZE > Misc.MAX_COLONY_SIZE) {
-			mod.modifyFlat("threatinc", HIVE_MAX_SIZE - Misc.MAX_COLONY_SIZE);
+		if (cap != Misc.MAX_COLONY_SIZE) {
+			mod.modifyFlat("threatinc", cap - Misc.MAX_COLONY_SIZE);
 		} else {
 			mod.unmodifyFlat("threatinc");
 		}
+		if (market.getSize() > cap) {
+			ThreatFrontlines.shrink(market);
+			ThreatIncConfig.log("Hive " + market.getName() + " shrinks to size " + market.getSize()
+					+ ", over the hive size cap of " + cap);
+		}
 	}
 
-	/** How big this hive can grow: vanilla's max market size, never past the last population condition. */
+	/** How big this hive can grow: vanilla's max market size, never past {@link #hiveMaxSize}. */
 	public static int maxColonySize(MarketAPI market) {
-		if (market == null) return HIVE_MAX_SIZE;
-		return Math.min(HIVE_MAX_SIZE, Misc.getMaxMarketSize(market));
+		if (market == null) return hiveMaxSize();
+		return Math.min(hiveMaxSize(), Misc.getMaxMarketSize(market));
 	}
 
 	/**
@@ -234,7 +251,7 @@ public class ThreatColonyManager {
 			market.getMemoryWithoutUpdate().set(ThreatGroundFronts.KILLED_BY_FLAG, Factions.THREAT, 60f);
 			return null;
 		}
-		int size = Math.max(1, Math.min(HIVE_MAX_SIZE, ThreatIncConfig.conquestHiveSize()));
+		int size = Math.max(1, Math.min(hiveMaxSize(), ThreatIncConfig.conquestHiveSize()));
 		// (2026-09-29: founding is paid) the conquering hive pays for the
 		// structures: the nearest colony whose bank covers the whole founding,
 		// else the nearest at all, for the four the hive cannot exist without

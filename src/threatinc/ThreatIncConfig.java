@@ -253,6 +253,7 @@ public class ThreatIncConfig {
 	public static boolean conquestConverts()  { return b("threatinc_conquestConverts", true); }
 	/** Size of the hive seeded on a conquered world. */
 	public static int conquestHiveSize()      { return i("threatinc_conquestHiveSize"); }
+	public static int colonyMaxSize()         { return i("threatinc_colonyMaxSize"); }
 
 	// ---- hive sieges ----
 
@@ -426,6 +427,7 @@ public class ThreatIncConfig {
 	}
 	/** Reserve banked per 30 days per unit of vanilla SURPLUS (availability above demand): surplus units x the commodity's econ unit x this (docs/economy-coherence.md rule 1). */
 	public static float reserveSurplusMult() { return f("threatinc_reserveSurplusMult"); }
+	public static float reserveTroopSurplusMult() { return f("threatinc_reserveTroopSurplusMult"); }
 	/** A frontline link is founded only with a garrison to hold it, which stays as long as the link stands. */
 	public static boolean frontlineGarrisonEnabled() { return b("threatinc_frontlineGarrisonEnabled", true); }
 	public static boolean frontlineHeavyIndustry()   { return b("threatinc_frontlineHeavyIndustry", true); }
