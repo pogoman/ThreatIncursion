@@ -4434,10 +4434,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * colony to sail from, stage at or ship to asks this; whether a faction
 	 * is in reach of a hive at all (ThreatWarState.hiveInReach) asks only
 	 * hasMilitary, since an NPC faction's mobilisation is what builds its
-	 * Waystations.
+	 * Waystations. A forward base (ThreatFrontlines link) is a base from its
+	 * founding (2026-09-30): its station and garrison field fleets and its
+	 * Waystation holds the stock. Held to a Patrol HQ, which a link builds only
+	 * at size 3 with military imports, the nearest base to a hive stayed a core
+	 * world 30+ ly out - Chicomoztoc staged Gamma Shevar and Thrial - and the
+	 * links the front was founded for staged nothing.
 	 */
 	protected static boolean isBase(MarketAPI market) {
-		return market != null && hasMilitary(market) && ThreatReserves.hasDepot(market);
+		return market != null && (hasMilitary(market) || ThreatFrontlines.isOutpost(market))
+				&& ThreatReserves.hasDepot(market);
 	}
 
 	@SuppressWarnings("unchecked")
