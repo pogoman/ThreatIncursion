@@ -184,6 +184,14 @@ threatinc_threatPaysPassage,Threat Pays Passage,Boolean,true,"Whether the Threat
 threatinc_threatSuppliesUpkeep,Threat Supplies Upkeep,Boolean,true,"Threat fleets away from home burn their hulls' vanilla supplies per month from the hive's stock; a month owed turns them back. Garrisons at home keep the fleet-point upkeep.",,
 threatinc_structuresCostSupplies,Structures Cost Supplies,Boolean,true,"Hive and forward-base structures cost their vanilla build cost in supplies and take vanilla build time. Off: hive structures cost fleet points and appear at once; forward-base structures are free.",,
 threatinc_structureSuppliesMult,Structure Supplies Cost,Double,1.0,"Multiplies what a structure costs in supplies (its vanilla build cost at the supplies base price).",0,10
+threatinc_sizeUpkeep,Size Upkeep,Boolean,true,"Hive worlds and forward bases pay a supplies upkeep that grows with their size; the share paid sets their growth, and a colony paid too little shrinks. Off: hive growth follows vitality and forward bases grow while supplied.",,
+threatinc_sizeUpkeepAt3,Size Upkeep at Size 3,Double,100,"Supplies a month a size-3 colony costs. Sizes 1 and 2 are free.",0,100000
+threatinc_sizeUpkeepRatio,Size Upkeep Ratio,Double,2.5,"How many times the size below it each size costs.",1,10
+threatinc_upkeepBreakEven,Upkeep Break-even,Double,0.5,"Share of its upkeep that holds a colony at its size: more grows it, less shrinks it.",0.05,0.95
+threatinc_starveDaysPerSize,Starving Days per Size,Double,90,"Days a colony paid none of its upkeep takes to lose a size.",10,1000
+threatinc_feedShareExpand,Feed Share Expanding,Double,0.5,"Share of the hive's monthly supplies, after its fleets away, that its colonies' upkeep may take while it expands. The rest is banked for forges and waves.",0,1
+threatinc_feedSharePress,Feed Share Pressing,Double,0.7,"As Feed Share Expanding, while the hive presses a rival.",0,1
+threatinc_feedShareConsolidate,Feed Share Consolidating,Double,0.9,"As Feed Share Expanding, while the hive consolidates under attack.",0,1
 threatinc_expeditionTransportMult,Expedition Transport Share,Double,0.3,"Troop-transport share of a cargo-carrying expedition fleet (vanilla composition multiplier). Too low and the marines drawn will not all fit - the remainder stays home.",0.05,1
 threatinc_convoyEnabled,Convoys Enabled,Boolean,true,"Whether mobilised factions ship reserves between their colonies by convoy. Off, each staging base fights with what it makes itself.",,
 threatinc_convoyRangeLY,Convoy Range (LY),Double,15,"Light-years a donor colony will ship to a staging base.",3,50

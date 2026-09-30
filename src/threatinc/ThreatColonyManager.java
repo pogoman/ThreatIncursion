@@ -597,12 +597,43 @@ public class ThreatColonyManager {
 
 	/** Launches the whole OG chain at once: one bootstrap swarm per chain planet. */
 	public static void launchOGChain(StarSystemAPI system, Random random) {
-		for (PlanetAPI planet : pickChainPlanets(system)) {
+		List<PlanetAPI> chain = pickChainPlanets(system);
+		PlanetAPI forge = seedForgePlanet(system, chain);
+		for (PlanetAPI planet : chain) {
 			// skip planets already colonized or already inbound
 			if (planet.getMarket() != null && !ThreatMapFog.conditionOnly(planet.getMarket())) continue;
 			if (ThreatIncData.waveFleets().containsKey(planet.getId())) continue;
+			if (planet == forge && planet.getMarket() != null) {
+				planet.getMarket().getMemoryWithoutUpdate().set(SEED_FORGE_KEY, true);
+			}
 			launchColonizationWave(null, system, planet, random);
 		}
+	}
+
+	/**
+	 * Market memory on the chain planet that lands with the hive's first forge
+	 * (2026-09-30). Each landing's one free build is Mining wherever there are
+	 * deposits, and a chain may be deposit worlds alone; with structures paid in
+	 * supplies and supplies made only by forges, such a hive could never buy
+	 * its first forge. planHiveEconomy builds Heavy Industry here instead, free,
+	 * while the hive has none.
+	 */
+	public static final String SEED_FORGE_KEY = "$threatinc_seedForge";
+
+	/** The chain planet the first forge lands on: the leanest that is not the chain's best ore, rare ore or volatiles world, else the leanest. */
+	protected static PlanetAPI seedForgePlanet(StarSystemAPI system, List<PlanetAPI> chain) {
+		if (chain.isEmpty()) return null;
+		List<PlanetAPI> sources = new ArrayList<PlanetAPI>();
+		for (String deposit : new String[] { Commodities.ORE, Commodities.RARE_ORE, Commodities.VOLATILES }) {
+			PlanetAPI best = bestPlanetForDeposit(system, deposit);
+			if (best != null) sources.add(best);
+		}
+		PlanetAPI leanest = null;
+		for (PlanetAPI planet : chain) {
+			if (!sources.contains(planet)) return planet;
+			if (leanest == null || depositScore(planet) < depositScore(leanest)) leanest = planet;
+		}
+		return leanest;
 	}
 
 	protected static boolean hasMiningDeposits(MarketAPI market) {
@@ -705,6 +736,17 @@ public class ThreatColonyManager {
 		}
 
 		if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) return;
+
+		// the opening chain's first forge (launchOGChain), before its Mining
+		if (market.getMemoryWithoutUpdate().getBoolean(SEED_FORGE_KEY)) {
+			market.getMemoryWithoutUpdate().unset(SEED_FORGE_KEY);
+			if (countLink(1) == 0 && getForge(market) == null
+					&& buyStructure(market, Industries.HEAVYINDUSTRY, payerId)) {
+				markEconomyDirty();
+				ThreatIncConfig.log("Hive planner: HEAVYINDUSTRY at " + market.getName() + " (seed forge)");
+				return;
+			}
+		}
 
 		// mine what the planet offers (Mining supplies nothing without deposits)
 		if (hasMiningDeposits(market) && !market.hasIndustry(Industries.MINING)) {
@@ -1171,7 +1213,7 @@ public class ThreatColonyManager {
 			boolean hb = market.hasIndustry(THREAT_HEAVY_BATTERIES);
 			boolean arms = ((size >= 3 && !gd && !hb) || (size >= 6 && gd)) && defensesAffordable(market);
 			if (!arms) {
-				if (size < cap && growthMultFor(computeHealth(market)) > 0f) continue;
+				if (size < cap && growing(market)) continue;
 				if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) continue;
 			}
 			planHiveEconomy(market);
@@ -1324,23 +1366,41 @@ public class ThreatColonyManager {
 		boolean had = market.getAccessibilityMod().getFlatBonuses().containsKey(PORT_DOWN_MOD_ID);
 		market.getAccessibilityMod().unmodifyFlat(PORT_DOWN_MOD_ID);
 		Industry port = getPort(market);
-		boolean down = ThreatIncConfig.disruptedPortShipping() >= 0
-				&& port != null && port.isDisrupted();
-		if (!down) {
-			if (had) ThreatIncConfig.log("Port back up at " + market.getName() + ": shipping restored");
+		int trickle = ThreatIncConfig.disruptedPortShipping();
+		boolean down = trickle >= 0 && port != null && port.isDisrupted();
+		// a human blockade over it (ThreatBlockade.syncHive): half holds shipping
+		// at the dead port's trickle, all at nothing - vanilla's own accessibility
+		// modifier barely moves same-faction shipping (5+ units at 0%)
+		float cut = market.getMemoryWithoutUpdate().getFloat(ThreatBlockade.HIVE_KEY);
+		int units = Integer.MAX_VALUE;
+		String why = null;
+		if (down || (cut > 0f && cut < 1f && trickle >= 0)) {
+			units = Math.max(0, trickle);
+			why = down ? "Port disrupted - skeleton docking only" : "Blockaded - skeleton docking only";
+		}
+		if (cut >= 1f) {
+			units = 0;
+			why = "Blockaded - nothing docks";
+		}
+		if (why == null) {
+			if (had) ThreatIncConfig.log("Shipping back up at " + market.getName());
 			return;
 		}
-		float target = portDownAccessibility();
+		float target = shippingAccessibility(units);
 		float current = market.getAccessibilityMod().computeEffective(0f);
 		if (current > target) {
-			market.getAccessibilityMod().modifyFlat(PORT_DOWN_MOD_ID, target - current,
-					"Port disrupted - skeleton docking only");
+			market.getAccessibilityMod().modifyFlat(PORT_DOWN_MOD_ID, target - current, why);
 		}
 		if (!had) {
-			ThreatIncConfig.log("Port disrupted at " + market.getName() + ": accessibility "
+			ThreatIncConfig.log(why + " at " + market.getName() + ": accessibility "
 					+ Math.round(current * 100f) + "% -> " + Math.round(target * 100f)
 					+ "%, shipping " + Misc.getShippingCapacity(market, true) + " units");
 		}
+	}
+
+	/** The accessibility that gives {@code units} of same-faction shipping (portDownAccessibility's rule). */
+	public static float shippingAccessibility(int units) {
+		return (Math.max(0, units) + 0.5f) * Misc.PER_UNIT_SHIPPING - Misc.SAME_FACTION_BONUS;
 	}
 
 	/** The colony's port: its Spaceport, or a Megaport an older save has not yet swapped out. */
@@ -2534,7 +2594,9 @@ public class ThreatColonyManager {
 			float fuel = ThreatFuel.passage(fleet.getFleetPoints(), ThreatFuel.ly(source.getStarSystem(), targetSystem), false);
 			ThreatFuel.pay(Math.min(ThreatFuel.stock(), fuel));
 			ThreatFuel.loadFounding(fleet);
-			float retool = retoolForge(source, fleet.getFleetPoints());
+			// under size upkeep a wave's price is its cargo and its swarm: the
+			// forge that sends it keeps working (docs/hive-economy.md "Size upkeep")
+			float retool = ThreatColonyUpkeep.enabled() ? 0f : retoolForge(source, fleet.getFleetPoints());
 			ThreatIncConfig.log("Seeding Swarm from " + source.getName() + ": " + (int) fleet.getFleetPoints()
 					+ " FP of hulls, " + (int) structuresFP + " FP of structures, "
 					+ (int) fleet.getMemoryWithoutUpdate().getFloat(ThreatFuel.MEM_FOUND_SUPPLIES) + " supplies and "
@@ -2681,7 +2743,12 @@ public class ThreatColonyManager {
 				boolean paidFounding = fleet.getMemoryWithoutUpdate().contains(FOUNDING_FP_KEY);
 				if (paidFounding && fleet.getBattle() != null) continue;
 				boolean conversion = existing.hasCondition(Conditions.DECIVILIZED);
-				MarketAPI market = foundColony(planet, 1);
+				// the four structures a colony is founded with came in the wave's
+				// cargo (ThreatBuildCost.foundingKit); under size upkeep its first
+				// build is bought from the stock like any other (planHiveEconomy)
+				String payer = paidFounding && ThreatColonyUpkeep.enabled() && ThreatBuildCost.enabled()
+						? existing.getId() : null;
+				MarketAPI market = foundColony(planet, 1, payer);
 				ThreatIncData.waveFleets().remove(planetId);
 				ThreatIncData.waveTargets().remove(planetId);
 				if (market == null) {
@@ -3087,6 +3154,11 @@ public class ThreatColonyManager {
 			applyHiveOrder(market);
 			pinMaxSize(market);
 
+			if (ThreatColonyUpkeep.enabled()) {
+				advanceFedGrowth(market, elapsedDays);
+				continue;
+			}
+
 			// no growth while a ground front is on the surface - a colony
 			// fighting inside its own strata builds no new ones - or while
 			// saturation falls on it (docs/suppression-balance.md v2)
@@ -3112,6 +3184,88 @@ public class ThreatColonyManager {
 	}
 
 	/**
+	 * Growth under size upkeep (ThreatColonyUpkeep, 2026-09-30): the colony's
+	 * progress moves at the pace the share of its upkeep paid gives - up toward
+	 * its next size at the old pace (colonyGrowthBaseDays x size) paid in full,
+	 * held at the break-even share, a level starved through per
+	 * starveDaysPerSize paid nothing. Progress is continuous across a size
+	 * lost, so a short siege costs progress and a long one sizes, and what was
+	 * lost regrows at the growth pace; the size goes SHRINK_MARGIN of a level
+	 * below it, and a world at its cap banks a full level while fed. A front on
+	 * the surface or saturation holds its growth, never its hunger; the
+	 * Fabrication Core no longer gates it.
+	 */
+	protected static void advanceFedGrowth(MarketAPI market, float elapsedDays) {
+		String id = market.getId();
+		int size = market.getSize();
+		float rate = ThreatColonyUpkeep.growthRate(ThreatColonyUpkeep.fedShare(market));
+		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size * IncursionManager.timeScale();
+		float progress = ThreatIncData.growthProgressDays(id);
+		if (rate > 0f) {
+			if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) return;
+			int cap = maxColonySize(market);
+			progress += elapsedDays * rate;
+			if (size >= cap) {
+				// nothing left to grow into: the fed world banks its top level
+				ThreatIncData.setGrowthProgressDays(id, Math.min(daysPerLevel, progress));
+				return;
+			}
+			if (progress >= daysPerLevel) {
+				growColony(market, cap);
+				return;
+			}
+			ThreatIncData.setGrowthProgressDays(id, progress);
+			return;
+		}
+		if (rate == 0f) return;
+		progress += elapsedDays * rate * daysPerLevel / (ThreatColonyUpkeep.starveDays() * IncursionManager.timeScale());
+		float floor = -ThreatColonyUpkeep.SHRINK_MARGIN * daysPerLevel;
+		if (progress >= floor || size <= 1) {
+			ThreatIncData.setGrowthProgressDays(id, Math.max(size <= 1 ? 0f : floor, progress));
+			return;
+		}
+		float below = progress / daysPerLevel;
+		shrinkColony(market);
+		float lower = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize() * IncursionManager.timeScale();
+		ThreatIncData.setGrowthProgressDays(id, Math.max(0f, (1f + below) * lower));
+	}
+
+	/** A size off a hive its upkeep starves (ThreatRazing.reduceSize's steps). */
+	protected static void shrinkColony(MarketAPI market) {
+		ThreatRazing.reduceSize(market, "Starved a level of");
+		announce(ThreatNotice.titled("Hive Starving").good()
+				.line("%s has shrunk to size %s", ThreatNotice.market(market), market.getSize()));
+	}
+
+	/** Whether the colony grows now: by the share of its upkeep paid under size upkeep, else by vitality. */
+	public static boolean growing(MarketAPI market) {
+		if (ThreatColonyUpkeep.enabled()) {
+			return ThreatColonyUpkeep.growthRate(ThreatColonyUpkeep.fedShare(market)) > 0f;
+		}
+		return growthMultFor(computeHealth(market)) > 0f;
+	}
+
+	/** The colony's growth pace now, of the full pace: paid share under size upkeep (negative while it starves), else vitality's. */
+	public static float growthPace(MarketAPI market) {
+		if (ThreatColonyUpkeep.enabled()) return ThreatColonyUpkeep.growthRate(ThreatColonyUpkeep.fedShare(market));
+		return growthMultFor(computeHealth(market));
+	}
+
+	/**
+	 * Days until a starving hive loses its size at the rate it starves now;
+	 * Float.MAX_VALUE for one that is not starving.
+	 */
+	public static float daysToLoseSize(MarketAPI market) {
+		if (market == null || !ThreatColonyUpkeep.enabled() || market.getSize() <= 1) return Float.MAX_VALUE;
+		float rate = growthPace(market);
+		if (rate >= 0f) return Float.MAX_VALUE;
+		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize() * IncursionManager.timeScale();
+		float perDay = -rate * daysPerLevel / (ThreatColonyUpkeep.starveDays() * IncursionManager.timeScale());
+		float left = ThreatIncData.growthProgressDays(market.getId()) + ThreatColonyUpkeep.SHRINK_MARGIN * daysPerLevel;
+		return Math.max(0f, left) / perDay;
+	}
+
+	/**
 	 * Days until a hive grows its next size at the rate it grows now
 	 * (updateColonyVitality's rule); Float.MAX_VALUE for a world that is not a
 	 * hive, is at its cap, starving, or held by a front or saturation.
@@ -3121,7 +3275,7 @@ public class ThreatColonyManager {
 		if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) return Float.MAX_VALUE;
 		int size = market.getSize();
 		if (size >= maxColonySize(market)) return Float.MAX_VALUE;
-		float growthMult = growthMultFor(computeHealth(market));
+		float growthMult = growthPace(market);
 		if (growthMult <= 0f) return Float.MAX_VALUE;
 		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size * IncursionManager.timeScale();
 		return Math.max(0f, daysPerLevel - ThreatIncData.growthProgressDays(market.getId())) / growthMult;
@@ -3349,6 +3503,17 @@ public class ThreatColonyManager {
 		Map<String, Float> ledgerFP = ledgerFleetFP();
 		boolean suppliesUpkeep = ThreatIncConfig.threatSuppliesUpkeep();
 		Map<String, Float> ledgerSupplies = suppliesUpkeep ? ledgerFleetSupplies() : null;
+		float fleetsSupplies = maintainColonyGarrisons(random, hiveOutput, hiveDraw, ledgerFP, suppliesUpkeep,
+				ledgerSupplies);
+		// the colonies' size upkeep, once the fleets away are paid: their supplies
+		// a month come off the production the colonies' growth share is taken from
+		ThreatColonyUpkeep.feed(fleetsSupplies);
+	}
+
+	/** maintainGarrisons' loop over the colonies; returns the supplies a month of their fleets away. */
+	protected static float maintainColonyGarrisons(Random random, float hiveOutput, float hiveDraw,
+			Map<String, Float> ledgerFP, boolean suppliesUpkeep, Map<String, Float> ledgerSupplies) {
+		float fleetsSupplies = 0f;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			SectorEntityToken planet = market.getPrimaryEntity();
 			StarSystemAPI system = market.getStarSystem();
@@ -3378,7 +3543,9 @@ public class ThreatColonyManager {
 			recycleForUpkeep(market, fleets, income, upkeep);
 			if (suppliesUpkeep) {
 				Float outSupplies = ledgerSupplies.get(marketId);
-				paySupplies(market, awayFleetSupplies(market) + (outSupplies != null ? outSupplies : 0f));
+				float away = awayFleetSupplies(market) + (outSupplies != null ? outSupplies : 0f);
+				fleetsSupplies += away;
+				paySupplies(market, away);
 			}
 
 			// two hard on/off gates on fabrication. The Fabrication Core is the
@@ -3496,6 +3663,7 @@ public class ThreatColonyManager {
 					+ " (" + fleets.size() + ", floor " + desired + ", " + (int) cost + " FP, "
 					+ (int) bankedFP(market) + " FP banked)");
 		}
+		return fleetsSupplies;
 	}
 
 	/** The colony poll's cadence (IncursionManager's 0.4-0.6 day interval). */

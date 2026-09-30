@@ -665,6 +665,95 @@ is asymmetric by design where it has to be, and the one rule where it can be.
 - **Setting:** `structuresCostSupplies` (true). Off restores the FP costs, instant hive builds, free
   link builds and the surplus-and-imports stock rule.
 
+### Size upkeep - growth is paid for (2026-09-30, user's call; `ThreatColonyUpkeep`)
+
+Growth was the last free thing: a hive grew a size every 60 days x size at full vitality whatever
+it cost, and the base save's hive stood on 33 size-8 worlds, 30 of them without a forge. Now a
+colony pays for its size and grows on what it is paid - the same rule for a hive world and a
+forward base, commodity-bound the way vanilla's economy is.
+
+- **Upkeep.** Size 3 and up costs `sizeUpkeepAt3` x `sizeUpkeepRatio`^(size-3) supplies a month:
+  100, 250, 625, 1,563, 3,906, 9,766 for sizes 3-8. A ratio of 2.5 is population^0.4 - vanilla's
+  population is x10 a size, which nothing could pay. Sizes 1 and 2 are free: a seed costs nothing
+  until it is a world, and a new chain has no income to pay with.
+- **Growth is the share paid** (`growthRate`). At `upkeepBreakEven` (0.5) of its upkeep a colony
+  holds its size; paid in full it grows at the old pace (60 days x size a size); below break-even
+  it starves through a level every `starveDaysPerSize` (90) paid nothing. Progress is continuous
+  across a size lost: a short siege costs progress, a long one sizes, and what is lost regrows at
+  the growth pace. The size goes half a level below it (`SHRINK_MARGIN`), so a colony just grown
+  does not lose it to the first lean week and one that loses it lands halfway back; a world at
+  its cap banks a full level while fed. A fed size-8 fortress paid nothing holds 135 days, then
+  loses a size every 90; regrowing 7 to 8 takes 420. A ground front or saturation holds growth,
+  never hunger. h35a, before the margin: the base save's 23 capped size-8 worlds, progress 0, all
+  lost a size in the first week. The Fabrication Core no longer gates growth; vitality
+  (fabrication x supply) still sets reach and counter-attacks.
+- **Feeding order** (`feed`, each poll, out of the production of the days fed after the fleets
+  away are paid):
+  1. Sustenance: the break-even share of every colony, forge worlds first, then the worlds nearest
+     the humans - up to the largest stance share of the production (`sustainShare`, 0.9), never
+     more. The hive always keeps a tithe for forges, waves and fleets: h35a let sustenance take
+     everything, and the base save's hive shrank until it did (26k of 29k a month) with nothing
+     left to buy the forges that would have fed it again. The leeway is the half level below its
+     size a colony's progress runs before the size goes (below), not the stock: a raided forge
+     stops growth at once and costs sizes only if it stays down.
+  2. Growth: the rest of each colony's upkeep, out of its stance's share (`feedShare`: expanding
+     0.5, pressing 0.7, consolidating 0.9), to a colony only while that share still holds its next
+     size's sustenance. Forges whose next size adds more output than sustenance first; then
+     pressing feeds the front, consolidating the biggest worlds, expanding the smallest. A stance
+     change never starves anyone - sustenance keeps its 0.9 - it only moves what growth gets.
+  - A size-2 world grows into size 3, where upkeep starts, only as it is fed for it (priced at
+    size 3's upkeep); a size-1 seed and a forge world below size 3 grow free. h35a let size 2
+    grow free: 76 worlds grew into size 3 unpaid and starved back.
+- **Blockades and ports.** What a world's own forge does not make it imports. A human blockade over
+  it cuts that half or all (`ThreatBlockade.hiveCut`, docs/ground-war.md "Blockade") and a disrupted
+  port halves it (`importCut`). A blockaded forge world keeps what its own upkeep takes and the rest
+  of its output cannot leave (`reachesStock`, in `ThreatFuel.perMonth`). So a blockade starves the
+  worlds that import; a forge world declines once its forge is raided too.
+- **Founding.** The forge no longer retools after a launch (`retoolForge` is skipped): a wave's
+  price is its cargo and its swarm. The cargo carries the colony's four structures too
+  (`ThreatBuildCost.foundingKit`: the Spaceport 500 and the Swarm Nexus priced as the Patrol HQ it
+  stands in for, 3,000; Population and the Core cost nothing in vanilla) - 5,000 supplies with
+  `npcCost`'s 1,500 - and the colony's first build is bought from the stock like any other.
+- **The opening chain's first forge** (`SEED_FORGE_KEY`). Each landing's one free build is Mining
+  wherever there are deposits, and a chain may be deposit worlds alone: with structures paid in
+  supplies and supplies made only by forges, such a hive could never buy its first forge (the
+  stock starts at 0). `launchOGChain` marks the leanest planet that is not the chain's best ore,
+  rare ore or volatiles world (else the leanest), and it lands with Heavy Industry, free. The
+  Pristine Nanoforge follows onto it (`maintainHomeRelics`).
+- **Sieges** (`ThreatPurgeFGI.raidValue`): a working forge is the top prize (100); the Core drops to
+  the Nexus's 60 - it still halts the swarms, not the growth.
+- **Readouts.** Hive Vitality's tooltip: the share of the month's upkeep paid, any import cut, and
+  the growth pace or the days to the next size lost. The board's size line counts down
+  (`s5 -> s4 ~40 d`). Census: `Colony upkeep: bill B (N/mo), paid S sustenance + G growth, short X;
+  stance S share F; growing a, holding b, shrinking c, free d; blockaded e, ports down f`. A size lost
+  logs `Starved a level of X: size a -> b`; a blockade's change `Blockade of X: imports cut N%`.
+- **Why these numbers** (h31a-h34a logs and saves, vanilla's source). A forge makes 750 supplies
+  and 100 FP a month per unit, size-2 of them (+1 Corrupted Nanoforge, +3 Pristine); Orbital Works
+  makes the same; nothing else makes supplies and a colony counts one forge. Against that straight
+  line an exponential curve gives every forge world a best size and a size where it stops paying
+  for itself. At these settings a forge's next size pays for its sustenance up to size 6; a plain
+  size-8 forge cannot hold itself (4,500 made, 4,883 sustenance), only the Pristine one can; a new
+  chain of five with one forge reaches size 5 with a surplus to buy its second. The base save's 33
+  size-8 worlds ask ~161k a month of sustenance against ~16k made, so it sheds toward forges at 6
+  and the rest at 4-5. A faction banks ~7k supplies a month; a size-4 link's sustenance is 125, a
+  size-6 link's 781. The one-off growth fee first proposed would have cost h34a 2.6k a month, 13%
+  of its output - too little to change a decision.
+- **Tests** (5 minutes each from the base save, ~19 months).
+  - h35a (sustenance drawn from the stock, no margin, size 2 growing free): 23 capped size-8
+    worlds lost a size in the first week; the hive shrank until sustenance took 26k of its 29k
+    a month and bought nothing more; 76 size-2 worlds grew into size 3 unpaid and starved back.
+  - h36a (the tithe, the margin, paid growth into size 3): size 269 -> 192 over ~13 months, then
+    held - sustenance ~31.5k of 35-39k a month, nothing short. The tithe bought forges: supplies
+    income 15.75k -> 39k a month, FP income 2.1k -> 5.2k. Fleets 101k -> 44k FP as the garrisons'
+    sizes fell (83k FP banked). No world bounced between sizes; links grew without flapping;
+    humans blockaded Ohai (224 FP over the swarm's 21) and Vassago (1,447 over 773). No colony
+    grew: an oversized hive holds at sustenance's 0.9 edge until its forges lift production past
+    its stance's share. No exceptions.
+- **Settings:** `sizeUpkeep` (true; off restores vitality growth, retooling, the free founding
+  structures and links that grow on shortage-free days), `sizeUpkeepAt3` (100), `sizeUpkeepRatio`
+  (2.5), `upkeepBreakEven` (0.5), `starveDaysPerSize` (90), `feedShareExpand` / `feedSharePress` /
+  `feedShareConsolidate` (0.5 / 0.7 / 0.9).
+
 ## Levers, verified
 
 | Lever | Works on the hive? | Why |
@@ -674,6 +763,8 @@ is asymmetric by design where it has to be, and the one rule where it can be.
 | Disrupt the Fabrication Core or Nexus | yes | machinery to 0 locally; hulls demand unmet; seen in vanilla's own tooltip as "0x" machinery |
 | Disrupt the port | yes, by the mod's rule above: a trickle, not a cut | vanilla alone: no, cap stays at 5+ units |
 | Piracy, hostility, other accessibility maluses | no | same 5-unit floor; cosmetic for the hive |
+| Raid a forge (size upkeep) | yes | its output leaves the stock: growth stops hive-wide at once, worlds starve once the stock is spent |
+| Blockade a hive world (size upkeep) | yes | its imports cut half or all and its shipping held at the port trickle or nothing; a forge world keeps its own output |
 
 ## What the war board shows because of this
 

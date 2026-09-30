@@ -2541,7 +2541,13 @@ public class ThreatWarBoard {
 			}
 			return new String[] {"%s %s", from, "contested"};
 		}
-		float growthMult = ThreatColonyManager.growthMultFor(health);
+		boolean sized = ThreatColonyUpkeep.enabled();
+		float growthMult = sized ? ThreatColonyManager.growthPace(market) : ThreatColonyManager.growthMultFor(health);
+		// under size upkeep a starving hive counts down to its next size lost
+		if (sized && growthMult < 0f && market.getSize() > 1) {
+			return new String[] {"%s -> %s", from, "s" + (market.getSize() - 1) + " ~"
+					+ Math.max(1, (int) ThreatColonyManager.daysToLoseSize(market)) + " d"};
+		}
 		int cap = ThreatColonyManager.maxColonySize(market);
 		if (market.getSize() >= cap) return new String[] {"%s %s", from, "max"};
 		if (growthMult <= 0f) return new String[] {"%s %s", from, "stalled"};
