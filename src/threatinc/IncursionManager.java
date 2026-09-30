@@ -247,6 +247,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			tryPurgeBombardments();
 		}
 		ThreatReturns.poll();
+		ThreatUpkeep.poll();
 		ThreatAidCapacity.poll();
 		ThreatOutposts.poll();
 		ThreatFrontlines.poll(random);

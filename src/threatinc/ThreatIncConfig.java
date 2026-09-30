@@ -472,6 +472,7 @@ public class ThreatIncConfig {
 	public static boolean threatPaysPassage()      { return b("threatinc_threatPaysPassage", true); }
 	/** Supplies an expedition draws per fleet point. */
 	public static float expeditionSuppliesPerPoint() { return f("threatinc_expeditionSuppliesPerPoint"); }
+	public static boolean fleetUpkeep()            { return b("threatinc_fleetUpkeep", true); }
 	/** Troop-transport share of a cargo-carrying expedition fleet (vanilla composition multiplier). */
 	public static float expeditionTransportMult() { return f("threatinc_expeditionTransportMult"); }
 	/** Whether mobilised factions run supply convoys between their colonies. */
