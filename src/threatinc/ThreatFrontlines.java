@@ -1803,13 +1803,19 @@ public class ThreatFrontlines {
 		});
 		// every pair (2026-09-29: the first 24 only, and a faction whose one open
 		// way lay further down the list never built toward it). It runs once per
-		// frontlinePlanDays, and returns at the first site found
+		// frontlinePlanDays, and returns at the first site founded. A site no
+		// base can garrison (2026-09-30: Epsilon Shero I, beside a big hive,
+		// wanted a 1.6-4k FP guard) moves on to the next pair - it used to
+		// return, and the Hegemony tried that one site for 40 months while
+		// hives 20-35 ly from any base never got a link toward them
 		int tries = 0;
+		Set<String> unguardable = new HashSet<String>();
 		for (Object[] pair : pairs) {
 			tries++;
 			StarSystemAPI hive = (StarSystemAPI) pair[0];
 			MarketAPI anchor = (MarketAPI) pair[1];
 			PlanetAPI site = pickSite(faction, anchor, hive, hop, reach);
+			if (site != null && unguardable.contains(site.getId())) continue;
 			if (site != null) {
 				MarketAPI payer = payer(faction, site);
 				if (payer == null) {
@@ -1832,7 +1838,8 @@ public class ThreatFrontlines {
 						ThreatReserves.deposit(payer.getId(), Commodities.FUEL, paid[1]);
 						ThreatIncConfig.logQuiet("fl_cannotguard_" + fid, "Frontline: " + fid
 								+ " cannot garrison a link at " + site.getName() + " - " + noGarrisonWhy);
-						return;
+						unguardable.add(site.getId());
+						continue;
 					}
 				}
 				MarketAPI link = found(faction, site, hive);
@@ -1842,6 +1849,7 @@ public class ThreatFrontlines {
 				return;
 			}
 		}
+		if (!unguardable.isEmpty()) return;   // sites exist; each was logged unguardable
 		Object[] first = pairs.get(0);
 		ThreatIncConfig.log("Frontline: " + fid + " has no site toward "
 				+ ((StarSystemAPI) first[0]).getName() + " (tried " + tries + " anchor(s))");
