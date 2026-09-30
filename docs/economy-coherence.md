@@ -148,7 +148,10 @@ fast-forward, a quicksave, and a reload on the rebuilt jar. No errors in the log
 
 1. **Accrual** - `ThreatReserves.accrualPer30`: `getSizeMult(max(0, available -
    maxDemand)) x econUnit x reserveSurplusMult` (1.0), militia trickle kept, the four
-   per-unit knobs retired. `available` excludes the mod's own trade modifiers (covers and
+   per-unit knobs retired. Marines and heavy armaments bank at `reserveTroopSurplusMult`
+   (0.5, 2026-09-30: vanilla's own rate for a stockpile's excess; `ThreatReserves.surplusMult`) -
+   at 1.0 the Hegemony banked 9.1k marines and 12.9k armaments a month while its sieges landed
+   ~700; at 0.5, 5.4k and 6.3k. `available` excludes the mod's own trade modifiers (covers and
    convoy landings, all sources prefixed `threatinc_`) - without that a convoy landing
    would bank itself for 120 days and shipments would breed stock. Player sales still
    count, as rule 4 wants.

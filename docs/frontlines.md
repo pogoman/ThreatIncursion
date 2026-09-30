@@ -133,6 +133,14 @@ also serve the Military Base. It takes the one industry slot at size 3; the
 Military Base takes the second at size 4. No Mining: a station's market does not
 hold its planet's deposits, and ore is nothing a link or the war needs.
 
+**Fuel plant to Heavy Industry** (2026-09-30, `swapFuelForHeavyIndustry`): a link with no
+slot for a Heavy Industry turns its Fuel Production into one when the faction's fuel covers all
+its sieges stage for and its supplies do not. It only runs this way - a link never builds on a
+slot it frees, so the build order cannot swap it back - one link a faction per
+`frontlineGrowDays`. h26a's links built 51 fuel plants to 45 Heavy Industries while the Hegemony
+sat on 1.5M fuel. Not seen yet in test: size-10 razing (~1M fuel) kept the staged-for fuel above
+the stock; the size-8 cap should bring it down.
+
 **Fuel Production** (2026-09-30, user's call; knob `frontlineFuelProduction`): no link
 made fuel, so a faction's fuel banking was capped by the sector's best single exporter
 (`ThreatReserves.productionShare`, ~16-18k a month) while its sieges wanted 40-115k each

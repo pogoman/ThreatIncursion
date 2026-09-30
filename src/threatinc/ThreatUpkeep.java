@@ -36,6 +36,8 @@ public class ThreatUpkeep {
 	/** Fleet memory: when the fleet's upkeep was last charged, and what it still owes. */
 	public static final String MEM_AT = "$threatinc_upkeepAt";
 	public static final String MEM_OWED = "$threatinc_upkeepOwed";
+	/** Fleet memory: sent home for unpaid upkeep ({@link #starve}); once. */
+	public static final String MEM_STARVED = "$threatinc_upkeepStarved";
 	/** Days between passes; each charges the days since the fleet's last. */
 	protected static final float PASS_DAYS = 5f;
 
@@ -59,6 +61,33 @@ public class ThreatUpkeep {
 			float[] t = e.getValue();
 			ThreatIncConfig.log("Fleet upkeep: " + e.getKey() + " " + (int) t[0] + " fleets out, paid " + (int) t[2]
 					+ " of " + (int) t[1] + " supplies" + (t[3] >= 1f ? ", " + (int) t[3] + " owed" : ""));
+		}
+	}
+
+	/**
+	 * A fleet that owes a month of upkeep goes home (2026-09-30): a hunt or
+	 * sortie stands down (ThreatFleetOrders.standDown), a siege is called off
+	 * (ThreatPurgeFGI.outOfSupplies). Anything else - a convoy, a fleet already
+	 * on its way home - runs on. Once per fleet. h26a's fleets ran ~25% of
+	 * their upkeep unpaid and fought on at full strength.
+	 */
+	protected static void starve(CampaignFleetAPI f, float owed) {
+		MemoryAPI mem = f.getMemoryWithoutUpdate();
+		if (mem.getBoolean(MEM_STARVED)) return;
+		for (ThreatFleetOrders.Order o : new java.util.ArrayList<ThreatFleetOrders.Order>(ThreatFleetOrders.all())) {
+			if (o.fleet != f) continue;
+			mem.set(MEM_STARVED, true);
+			ThreatFleetOrders.standDown(o, "out of supplies, " + (int) owed + " owed");
+			return;
+		}
+		for (com.fs.starfarer.api.campaign.comm.IntelInfoPlugin i
+				: Global.getSector().getIntelManager().getIntel(ThreatPurgeFGI.class)) {
+			ThreatPurgeFGI siege = (ThreatPurgeFGI) i;
+			if (siege.isEnded() || siege.isEnding() || siege.isAborted()) continue;
+			if (siege.getFleets() == null || !siege.getFleets().contains(f)) continue;
+			mem.set(MEM_STARVED, true);
+			siege.outOfSupplies(owed);
+			return;
 		}
 	}
 
@@ -88,6 +117,8 @@ public class ThreatUpkeep {
 		float left = Math.max(0f, ask - paid);
 		if (left > 0f) mem.set(MEM_OWED, left);
 		else mem.unset(MEM_OWED);
+		// a month of upkeep nobody could pay: its ships cannot be kept up out here
+		if (left > 0f && left >= ThreatFrontlines.maintenancePerMonth(f)) starve(f, left);
 		float[] t = tally.get(faction.getId());
 		if (t == null) {
 			t = new float[4];

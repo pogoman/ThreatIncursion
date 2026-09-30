@@ -29,12 +29,13 @@
 
 	# Colonies: growth pacing, garrison and colonization fleets. The hive runs
 	# a real, self-contained economy - shortages of metals or machinery stall
-	# growth. Colonies grow to vanilla's max market size (10); the hive builds
+	# growth. Colonies grow to colonyMaxSize (8, restored 2026-09-30); the hive builds
 	# a spare of each production link per system it holds, as its free
-	# industry slots allow (2026-09-29: colonyMaxSize 8 and chainRedundancy 3
-	# were caps). Every fleet it fields is paid from an FP bank per colony,
+	# industry slots allow (2026-09-29: chainRedundancy 3 was a cap).
+	# Every fleet it fields is paid from an FP bank per colony,
 	# filled by its forges' ship output at fabFPPerShipUnit FP per ship unit
 	# per 30 days - no bank, no build (a closed economy)
+	"threatinc_colonyMaxSize": 8,
 	"threatinc_colonyGrowthBaseDays": 60,
 	"threatinc_fabFPPerShipUnit": 100,
 	# a Seeding Swarm's hulls become its colony, not its garrison: the launching
@@ -493,6 +494,7 @@
 	# banks for its duration. Availability is vanilla's broadcast figure, so
 	# imported surplus banks too.
 	"threatinc_reserveSurplusMult": 1.0,
+	"threatinc_reserveTroopSurplusMult": 0.5,
 	"threatinc_reserveBankFromProduction": true,
 	"threatinc_reserveBankImportsMult": 1.0,
 	"threatinc_reserveWartimeFuel": true,

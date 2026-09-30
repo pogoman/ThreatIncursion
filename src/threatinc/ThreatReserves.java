@@ -737,8 +737,22 @@ public class ThreatReserves {
 		float surplus = bankUnits(market, com);
 		if (surplus <= 0f) return baseline;
 		return baseline + BaseIndustry.getSizeMult(surplus) * com.getCommodity().getEconUnit()
-				* ThreatIncConfig.reserveSurplusMult()
+				* surplusMult(commodityId)
 				* productionShare(market.getFactionId(), commodityId);
+	}
+
+	/**
+	 * The share of a unit of surplus banked a month: reserveSurplusMult (1.0)
+	 * for fuel and supplies; marines and heavy armaments bank at
+	 * reserveTroopSurplusMult (0.5, 2026-09-30), vanilla's own rate for a
+	 * stockpile's excess - at 1.0 the Hegemony banked 9.1k marines and 12.9k
+	 * armaments a month while its sieges landed ~700 a month (h26a).
+	 */
+	public static float surplusMult(String commodityId) {
+		if (Commodities.MARINES.equals(commodityId) || Commodities.HAND_WEAPONS.equals(commodityId)) {
+			return ThreatIncConfig.reserveTroopSurplusMult();
+		}
+		return ThreatIncConfig.reserveSurplusMult();
 	}
 
 	/** factionId|commodity -> {share, timestamp}; transient, recomputed daily. */

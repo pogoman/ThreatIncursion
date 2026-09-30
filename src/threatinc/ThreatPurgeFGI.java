@@ -744,6 +744,32 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 	}
 
+	/**
+	 * Its fleets could not be supplied (ThreatUpkeep): the siege turns home,
+	 * as a fleet whose ships go unsupplied cannot hold an orbit.
+	 */
+	public void outOfSupplies(float owed) {
+		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
+		com.fs.starfarer.api.campaign.StarSystemAPI system = null;
+		if (getParams() != null && getParams().raidParams != null) {
+			for (MarketAPI target : getParams().raidParams.allowedTargets) {
+				if (target != null && target.getStarSystem() != null) {
+					system = target.getStarSystem();
+					break;
+				}
+			}
+		}
+		setFailedButNotDefeated(true);
+		abort();
+		ThreatNotice.titled("Siege Out of Supplies").icon(faction)
+				.line("%s siege of the %s turns home", ThreatNotice.faction(faction),
+						system != null ? system.getNameWithLowercaseTypeShort() : "hive")
+				.line("Its fleets owe %s supplies", ThreatNotice.hl(Misc.getWithDGS((int) owed)))
+				.send();
+		ThreatIncConfig.log("Siege out of supplies (" + faction.getId() + ", "
+				+ (system != null ? system.getName() : "?") + "): " + (int) owed + " supplies of upkeep owed, turns home");
+	}
+
 	public float getMarinesAllotted() {
 		return marinesAllotted;
 	}

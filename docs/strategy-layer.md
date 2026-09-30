@@ -766,7 +766,11 @@ supplies per 25 FP a sortie whatever its time out, where vanilla ships burn ~1 p
 the factions' supplies piled up (Persean 11k to 239k in 71 months). First test (17 months): the
 Hegemony paid 58k and the Perseans 75k, all but ~150 of it; the Hegemony held 28k supplies at
 month 15 against 50k without it. Vanilla's own patrols pay through their markets' demand, which
-the reserves never bank; the player's and the Threat's fleets are not charged.
+the reserves never bank; the player's and the Threat's fleets are not charged. A fleet that owes a
+month of its upkeep goes home, once (`ThreatUpkeep.starve`, 2026-09-30): a hunt or sortie stands
+down "out of supplies", a siege is called off (`ThreatPurgeFGI.outOfSupplies`, "Siege Out of
+Supplies" notice); convoys and fleets already heading home run on. In h26a ~25% of upkeep went
+unpaid while the fleets fought on; the first check sent 34-39 hunting fleets home in 15 months.
 **Fuel is charged for the round trip (2026-09-29).** The passage is drawn at
 `expeditionFuelPerPointLY` a point per light-year, about vanilla's burn there and back, in one pool.
 `ThreatReturns.fuelBack` refunds only the return leg of the hulls lost from a fleet that comes home:
