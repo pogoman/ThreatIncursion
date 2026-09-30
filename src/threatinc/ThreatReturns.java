@@ -98,7 +98,9 @@ public class ThreatReturns {
 		float h = Math.max(0f, Math.min(1f, health));
 		float mult = ThreatIncConfig.returnRefundMult();
 		if (player) return drawn * mult * h;
-		float hull = hullShare();
+		// paying its ships' upkeep while out (ThreatUpkeep), its voyage is paid
+		// for: the whole draw comes back with the hulls
+		float hull = ThreatUpkeep.enabled() ? 1f : hullShare();
 		return drawn * h * (hull + (1f - hull) * mult);
 	}
 

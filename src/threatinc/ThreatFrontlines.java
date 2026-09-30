@@ -466,6 +466,15 @@ public class ThreatFrontlines {
 	// the garrison (2026-09-26): no paper bases
 	// ------------------------------------------------------------------
 
+	/** Whether the fleet guards a link: its upkeep is the link's (payUpkeep), not ThreatUpkeep's. */
+	public static boolean isGuard(CampaignFleetAPI fleet) {
+		if (fleet == null) return false;
+		for (Outpost o : all()) {
+			if (o.guards != null && o.guards.contains(fleet)) return true;
+		}
+		return false;
+	}
+
 	/** The garrison's fleets still alive. */
 	protected static List<CampaignFleetAPI> liveGuards(Outpost o) {
 		List<CampaignFleetAPI> live = new ArrayList<CampaignFleetAPI>();

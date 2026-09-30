@@ -749,6 +749,18 @@ splits the supplies drawn at launch: `returnHullShare` (0.8) of it paid for the 
 comes back in full at the surviving strength (what comes home intact is not destroyed); only
 the rest is the voyage, refunded at `returnRefundMult`. Losses are the real cost of a sortie.
 The player's fleets keep the old rule for supplies, all of it at `returnRefundMult`.
+**Fleet upkeep (2026-09-30, `ThreatUpkeep`, `fleetUpkeep` default on).** Every NPC fleet the layer
+provisioned (`ThreatReturns.MEM_HOME`: hunts, sieges, sorties, convoys) burns its ships' vanilla
+supplies per month (`ThreatFrontlines.maintenancePerMonth`, maintenance only - no repair or CR
+recovery) for each day it is out, charged every 5 days from its base's stock, then the faction's
+markets in reach (`payFromOthers`); what nobody can pay is owed on the fleet and asked again. A
+forward base's garrison is left to its link's upkeep (`isGuard`). With it the whole launch draw
+is the hulls' and comes back at the surviving strength (`suppliesBack`). The flat draw burned ~6
+supplies per 25 FP a sortie whatever its time out, where vanilla ships burn ~1 per FP a month, and
+the factions' supplies piled up (Persean 11k to 239k in 71 months). First test (17 months): the
+Hegemony paid 58k and the Perseans 75k, all but ~150 of it; the Hegemony held 28k supplies at
+month 15 against 50k without it. Vanilla's own patrols pay through their markets' demand, which
+the reserves never bank; the player's and the Threat's fleets are not charged.
 **Fuel is charged for the round trip (2026-09-29).** The passage is drawn at
 `expeditionFuelPerPointLY` a point per light-year, about vanilla's burn there and back, in one pool.
 `ThreatReturns.fuelBack` refunds only the return leg of the hulls lost from a fleet that comes home:
