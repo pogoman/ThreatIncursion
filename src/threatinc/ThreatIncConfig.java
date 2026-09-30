@@ -468,6 +468,7 @@ public class ThreatIncConfig {
 	public static float siegeExtraMarinesFactor() { return f("threatinc_siegeExtraMarinesFactor"); }
 	/** Fuel an expedition draws per fleet point per light-year. */
 	public static float expeditionFuelPerPointLY() { return f("threatinc_expeditionFuelPerPointLY"); }
+	public static boolean threatPaysPassage()      { return b("threatinc_threatPaysPassage", true); }
 	/** Supplies an expedition draws per fleet point. */
 	public static float expeditionSuppliesPerPoint() { return f("threatinc_expeditionSuppliesPerPoint"); }
 	/** Troop-transport share of a cargo-carrying expedition fleet (vanilla composition multiplier). */

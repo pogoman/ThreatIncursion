@@ -290,7 +290,7 @@ public class ThreatFrontlines {
 			if (ThreatScouts.sectorKnows(hive)) known++;
 		}
 		ThreatIncConfig.log("Census: threat hives " + hives + " (size " + hiveSizes + "), found "
-				+ known + ", " + ThreatColonyManager.hiveLedgerSummary());
+				+ known + ", " + ThreatColonyManager.hiveLedgerSummary() + ThreatFuel.monthSummary());
 		// the month's upkeep and posture lines ride the census's own 30-day beat
 		ThreatColonyManager.flushUpkeepMonth();
 	}

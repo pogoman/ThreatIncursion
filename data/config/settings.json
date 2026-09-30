@@ -585,6 +585,10 @@
 	# provisions drawn per fleet point: fuel per light-year, supplies flat
 	"threatinc_expeditionFuelPerPointLY": 10,
 	"threatinc_expeditionSuppliesPerPoint": 30,
+	# the Threat pays passage too, in fuel its own fuel plants bank (ThreatFuel):
+	# a fleet sent across hyperspace draws the rate above, one way for a fleet that
+	# stays (a Seeding Swarm, a reinforcement), both ways for a strike or a raid
+	"threatinc_threatPaysPassage": true,
 	# troop-transport share of a cargo-carrying expedition fleet
 	"threatinc_expeditionTransportMult": 0.3,
 	# convoys: donor colonies within range ship stock to staging bases (the

@@ -183,6 +183,13 @@ public class ThreatRaiders {
 			}
 		}
 		if (best == null) return null;
+		// there and back comes from the hive's fuel (ThreatFuel)
+		float fuel = ThreatFuel.passage(best.getFleetPoints(), hive.getStarSystem() == null ? 0f
+				: Misc.getDistanceLY(hive.getStarSystem().getLocation(), convoy.fleet.getLocationInHyperspace()), true);
+		if (!ThreatFuel.pay(fuel)) {
+			ThreatFuel.held("a raider from " + hive.getName());
+			return null;
+		}
 		garrison.remove(best);
 
 		MemoryAPI mem = best.getMemoryWithoutUpdate();
