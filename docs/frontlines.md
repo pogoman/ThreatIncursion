@@ -256,7 +256,9 @@ Strikes in flight in an older save have no hidden flag and stay visible.
 **Front and rear (2026-09-27, the user's call).** Only the front stands guard.
 For every found hive world that stages strikes, the faction's market nearest it is
 its front toward that hive (within 0.5 LY, so a whole system counts), if the hive's
-fuel reaches it. A link in a system with any hive world or any Threat fleet but a
+fuel reaches it - with the hive's reach its bill (2026-09-30, docs/hive-economy.md
+"Reach is the bill"), if the hive world would strike this faction first
+(`ThreatReach.facedFaction`). A link in a system with any hive world or any Threat fleet but a
 Scouting Swarm is at the front too (run 10's unguarded ground-victory bases died to
 theirs; run 15's Vlaan-Tone base died under a dead hive's 732 FP of leftover Defense
 Swarms; a scout visits every uncharted system with a strikeable world, and would flip
@@ -332,7 +334,8 @@ a single strike the month their garrison went home. So now:
   less the link's station, at least `frontlineGarrisonFP` (200, now a minimum).
   A strike is a hive world's own Defense Swarms re-embodied, so each found hive
   world that stages strikes (`strikeMinSize`) and whose fuel range reaches the
-  site is weighed by its largest live swarms above its home reserve (its live
+  site - billed reach, that has the site at its front by the rule above - is
+  weighed by its largest live swarms above its home reserve (its live
   count, if reinforcement filled it past its own). Each swarm counts at its
   route strength (`FleetGroupIntel`, 50 per size point), which is what vanilla's
   `FGRaidAction.autoresolve` weighs a strike by far from the player, where the

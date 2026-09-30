@@ -473,6 +473,8 @@ public class ThreatIncConfig {
 	/** Fuel an expedition draws per fleet point per light-year. */
 	public static float expeditionFuelPerPointLY() { return f("threatinc_expeditionFuelPerPointLY"); }
 	public static boolean threatPaysPassage()      { return b("threatinc_threatPaysPassage", true); }
+	/** The hive's fleets go any distance whose trip it can pay (ThreatReach); off, the old fuel radius. */
+	public static boolean billedReach()            { return b("threatinc_billedReach", true); }
 	public static boolean threatSuppliesUpkeep()   { return b("threatinc_threatSuppliesUpkeep", true); }
 	public static boolean structuresCostSupplies() { return b("threatinc_structuresCostSupplies", true); }
 	public static float structureSuppliesMult()    { return f("threatinc_structureSuppliesMult"); }

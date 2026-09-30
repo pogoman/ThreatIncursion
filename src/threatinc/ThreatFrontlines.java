@@ -295,6 +295,7 @@ public class ThreatFrontlines {
 		ThreatIncConfig.log("Census: threat hives " + hives + " (size " + hiveSizes + "), found "
 				+ known + ", " + ThreatColonyManager.hiveLedgerSummary() + ThreatFuel.monthSummary());
 		ThreatColonyUpkeep.logMonth();
+		ThreatReach.logMonth();
 		// the month's upkeep and posture lines ride the census's own 30-day beat
 		ThreatColonyManager.flushUpkeepMonth();
 	}
@@ -635,18 +636,33 @@ public class ThreatFrontlines {
 	}
 
 	/**
-	 * The strongest strike the Threat could send at a site: every found hive
-	 * world big enough to stage strikes whose fuel reaches it (the range
-	 * IncursionManager.pickStrikeTarget uses).
+	 * The strongest strike the Threat could send at a faction's site: every
+	 * found hive world big enough to stage strikes whose fuel reaches it (the
+	 * range IncursionManager.pickStrikeTarget uses) - or, billed reach
+	 * (ThreatReach), every one it stands at the front of: a hive world that
+	 * would strike the faction first, the site as near it as the faction's
+	 * nearest market (frontOf's rule).
 	 */
-	public static float strikeAt(SectorEntityToken site) {
+	public static float strikeAt(SectorEntityToken site, String factionId) {
+		boolean billed = ThreatReach.enabled();
+		List<MarketAPI> mine = billed && factionId != null ? ThreatReserves.marketsOf(factionId) : null;
 		float worst = 0f;
 		for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) {
 			StarSystemAPI sys = hive.getStarSystem();
 			if (sys == null || hive.getSize() < ThreatIncConfig.strikeMinSize()) continue;
 			if (!ThreatScouts.sectorKnows(hive)) continue;
 			float d = Misc.getDistanceLY(sys.getLocation(), site.getLocationInHyperspace());
-			if (d > ThreatColonyManager.fuelRangeLY(hive)) continue;
+			if (billed) {
+				if (factionId == null || !factionId.equals(ThreatReach.facedFaction(sys))) continue;
+				float best = d;
+				for (MarketAPI m : mine) {
+					if (m.getPrimaryEntity() == null) continue;
+					best = Math.min(best, Misc.getDistanceLY(sys.getLocation(), m.getLocationInHyperspace()));
+				}
+				if (d > best + FRONT_TOLERANCE_LY) continue;
+			} else if (d > ThreatColonyManager.fuelRangeLY(hive)) {
+				continue;
+			}
 			worst = Math.max(worst, strikeOf(hive));
 		}
 		return worst;
@@ -657,8 +673,8 @@ public class ThreatFrontlines {
 	 * reach x frontlineGarrisonMargin, less what the link's station weighs -
 	 * vanilla's autoresolve adds the two - and at least frontlineGarrisonFP.
 	 */
-	protected static float guardNeed(SectorEntityToken site, MarketAPI link) {
-		float need = strikeAt(site) * ThreatIncConfig.frontlineGarrisonMargin();
+	protected static float guardNeed(SectorEntityToken site, MarketAPI link, String factionId) {
+		float need = strikeAt(site, factionId) * ThreatIncConfig.frontlineGarrisonMargin();
 		if (link != null && link.getStarSystem() != null && link.getPrimaryEntity() != null) {
 			need -= WarSimScript.getStationStrength(link.getFaction(), link.getStarSystem(), link.getPrimaryEntity());
 		}
@@ -680,8 +696,9 @@ public class ThreatFrontlines {
 	/**
 	 * The links a faction holds at the front: for every found hive world that
 	 * stages strikes, the faction's market nearest it, when that is a link and
-	 * the hive's fuel reaches it, and every link in a system with a hive world
-	 * or Threat fleets.
+	 * the hive's fuel reaches it - billed reach (ThreatReach), when the hive
+	 * world would strike this faction first - and every link in a system with
+	 * a hive world or Threat fleets.
 	 * Those keep a standing garrison. The rest are
 	 * the rear: guarded only while a seen strike is bound for them
 	 * (onCallNeed). {@code extra} is a site about to be raised, reported as
@@ -718,7 +735,8 @@ public class ThreatFrontlines {
 				if (m.getPrimaryEntity() == null) continue;
 				best = Math.min(best, Misc.getDistanceLY(sys.getLocation(), m.getLocationInHyperspace()));
 			}
-			if (best > ThreatColonyManager.fuelRangeLY(hive)) continue;
+			if (ThreatReach.enabled() ? !factionId.equals(ThreatReach.facedFaction(sys))
+					: best > ThreatColonyManager.fuelRangeLY(hive)) continue;
 			for (MarketAPI m : mine) {
 				if (m.getPrimaryEntity() == null || !isOutpost(m)) continue;
 				if (Misc.getDistanceLY(sys.getLocation(), m.getLocationInHyperspace()) <= best + FRONT_TOLERANCE_LY) {
@@ -862,7 +880,7 @@ public class ThreatFrontlines {
 	/** What the link's guard must weigh today: the front's standing need, else what is coming at it. */
 	protected static float needNow(MarketAPI link) {
 		float need = onCallNeed(link);
-		if (isFront(link)) need = Math.max(need, guardNeed(link.getPrimaryEntity(), link));
+		if (isFront(link)) need = Math.max(need, guardNeed(link.getPrimaryEntity(), link, link.getFactionId()));
 		return need;
 	}
 
@@ -958,7 +976,7 @@ public class ThreatFrontlines {
 			if (base == null) noGarrisonWhy = "no base";
 			return base;
 		}
-		return garrisonBase(faction, site, guardNeed(site, null) / STRENGTH_PER_FP, front);
+		return garrisonBase(faction, site, guardNeed(site, null, faction.getId()) / STRENGTH_PER_FP, front);
 	}
 
 	/**
@@ -1184,7 +1202,7 @@ public class ThreatFrontlines {
 		ThreatIncConfig.log("Frontline: " + base.getName() + (topUp ? " reinforces " : " garrisons ")
 				+ market.getName() + " with " + fleets.size() + " fleet(s), " + (int) fp + " FP, strength "
 				+ (int) got + " of " + (int) str + (isFront(market)
-						? " (front; strike in reach " + (int) strikeAt(market.getPrimaryEntity()) + ")"
+						? " (front; strike in reach " + (int) strikeAt(market.getPrimaryEntity(), market.getFactionId()) + ")"
 						: " (rear; strike on its way " + (int) (onCallNeed(market) / ThreatIncConfig.frontlineGarrisonMargin()) + ")"));
 		return true;
 	}
@@ -1348,7 +1366,7 @@ public class ThreatFrontlines {
 		// the call may have turned back or borrowed a guard and still said no (its
 		// week's wait, or the rest unpaid): that guard counts toward
 		// the standing need, and only the rest is sent
-		float need = guardNeed(market.getPrimaryEntity(), market) - strengthOf(liveGuards(o));
+		float need = guardNeed(market.getPrimaryEntity(), market, market.getFactionId()) - strengthOf(liveGuards(o));
 		if (need < 30f * STRENGTH_PER_FP) {
 			o.unguardedDays = 0f; // held, or nothing in reach it must be guarded against
 			return true;
@@ -1384,7 +1402,7 @@ public class ThreatFrontlines {
 		if (!isFront(market)) return;
 		MarketAPI home = homeOf(o);
 		if (home == null || home.getPrimaryEntity() == null || !IncursionManager.isBase(home)) return;
-		float need = guardNeed(market.getPrimaryEntity(), market);
+		float need = guardNeed(market.getPrimaryEntity(), market, market.getFactionId());
 		float have = strengthOf(live);
 		if (have >= need * 0.8f) return;
 		float shortFP = (need - have) / STRENGTH_PER_FP;

@@ -97,7 +97,9 @@ public class ThreatStance {
 		MarketAPI market;
 		MarketAPI staging;
 		String sourceId;
-		float odds, value, needFP, musterFP;
+		float odds, value, needFP, musterFP, ly;
+		/** Value x (1 - odds), per day away under billed reach (ThreatReach.strikeDays). */
+		float score;
 	}
 
 	/** Staging market id -> FP of strike it builds past its want while pressing. Not saved: rebuilt each pass. */
@@ -274,14 +276,19 @@ public class ThreatStance {
 			if (!IncursionManager.isStrikeableWorld(m) || !ThreatSwarmScouts.swarmKnows(m)) continue;
 			known.add(m);
 		}
+		// billed reach (ThreatReach) has no radius: a hive system faces the
+		// faction it would strike first; off, every faction in its fuel reach
+		boolean billed = ThreatReach.enabled();
 		Map<String, Float> reach = new HashMap<String, Float>();
 		Map<String, StarSystemAPI> hives = new HashMap<String, StarSystemAPI>();
 		for (String systemId : p.systems.keySet()) {
 			StarSystemAPI system = Global.getSector().getStarSystem(systemId);
 			if (system == null) continue;
 			float r = 0f;
-			for (MarketAPI c : ThreatIncData.getLiveColonyMarkets(systemId)) {
-				r = Math.max(r, ThreatColonyManager.fuelRangeLY(c));
+			if (!billed) {
+				for (MarketAPI c : ThreatIncData.getLiveColonyMarkets(systemId)) {
+					r = Math.max(r, ThreatColonyManager.fuelRangeLY(c));
+				}
 			}
 			reach.put(systemId, r);
 			hives.put(systemId, system);
@@ -294,11 +301,18 @@ public class ThreatStance {
 			if (!hives.containsKey(e.getKey())) continue;
 			for (String f : e.getValue()) facing(facing, f).add(e.getKey());
 		}
-		for (MarketAPI m : known) {
+		if (billed) {
 			for (Map.Entry<String, StarSystemAPI> h : hives.entrySet()) {
-				if (Misc.getDistanceLY(h.getValue().getLocation(), m.getStarSystem().getLocation())
-						<= reach.get(h.getKey())) {
-					facing(facing, m.getFactionId()).add(h.getKey());
+				String f = ThreatReach.facedFaction(h.getValue());
+				if (f != null) facing(facing, f).add(h.getKey());
+			}
+		} else {
+			for (MarketAPI m : known) {
+				for (Map.Entry<String, StarSystemAPI> h : hives.entrySet()) {
+					if (Misc.getDistanceLY(h.getValue().getLocation(), m.getStarSystem().getLocation())
+							<= reach.get(h.getKey())) {
+						facing(facing, m.getFactionId()).add(h.getKey());
+					}
 				}
 			}
 		}
@@ -330,12 +344,9 @@ public class ThreatStance {
 				Target[] found = weakTargets(systemId, known, defMemo, ratios, pressNeed);
 				if (found[0] != null) {
 					picks.put(systemId, found[0]);
-					if (best == null || found[0].value * (1f - found[0].odds) > best.value * (1f - best.odds)) {
-						best = found[0];
-					}
+					if (best == null || found[0].score > best.score) best = found[0];
 				}
-				if (found[1] != null && (bestAny == null
-						|| found[1].value * (1f - found[1].odds) > bestAny.value * (1f - bestAny.odds))) {
+				if (found[1] != null && (bestAny == null || found[1].score > bestAny.score)) {
 					bestAny = found[1];
 				}
 			}
@@ -376,11 +387,12 @@ public class ThreatStance {
 		Target shown = best != null ? best : bestAny;
 		if (shown != null) {
 			why.append("; best weak target ").append(shown.market.getName()).append(" (")
-					.append(shown.market.getFactionId()).append(", odds ").append(String.format("%.2f", shown.odds))
+					.append(shown.market.getFactionId()).append(", ").append((int) shown.ly).append(" ly")
+					.append(", odds ").append(String.format("%.2f", shown.odds))
 					.append(", needs ").append((int) shown.needFP).append(" of ").append((int) shown.musterFP)
 					.append(" FP musterable at ").append(shown.staging.getName()).append(")");
 		} else {
-			why.append("; no weak target in reach");
+			why.append(billed ? "; no weak target" : "; no weak target in reach");
 		}
 		summary = why.toString();
 
@@ -443,15 +455,20 @@ public class ThreatStance {
 			float held = ThreatColonyManager.ownedFleetFP(c, ThreatIncData.garrisonsFor(c.getId()));
 			muster += Math.max(0f, held - ThreatPosture.minimumFP(c)) + Math.max(0f, ThreatColonyManager.bankedFP(c));
 		}
+		// billed reach (ThreatReach): no more than the colonies' spare supplies
+		// keep away, any distance whose passage the stock pays, worth per day away
+		boolean billed = ThreatReach.enabled();
+		if (billed) muster = Math.min(muster, Math.max(0f, ThreatReach.spare()) / ThreatReach.suppliesPerFP());
 		int swarms = (int) Math.floor(muster / rowFP);
 		if (swarms < 1) return out;
 		int perSwarm = IncursionManager.strikeFleetSize(expeditionSize(row));
 		float strength = strength(swarms * perSwarm);
 		float ratio = IncursionManager.breakOffRatio();
 		float weakOdds = Math.max(0f, ThreatIncConfig.stanceWeakOdds());
-		float range = ThreatColonyManager.fuelRangeLY(staging);
+		float range = billed ? Float.MAX_VALUE : ThreatColonyManager.fuelRangeLY(staging);
 		for (MarketAPI m : known) {
-			if (Misc.getDistanceLY(system.getLocation(), m.getStarSystem().getLocation()) > range) continue;
+			float ly = Misc.getDistanceLY(system.getLocation(), m.getStarSystem().getLocation());
+			if (ly > range) continue;
 			if (!IncursionManager.strikeAllowed(m)) continue;
 			float def = IncursionManager.targetDefence(m, defMemo);
 			float odds = strength > 0f ? def / (strength * ratio) : Float.MAX_VALUE;
@@ -469,11 +486,13 @@ public class ThreatStance {
 			int k = 1;
 			while (k < swarms && def / (strength(k * perSwarm) * ratio) > weakOdds) k++;
 			tg.needFP = k * rowFP;
-			float score = value * (1f - odds);
-			if (out[1] == null || score > out[1].value * (1f - out[1].odds)) out[1] = tg;
+			tg.ly = ly;
+			if (billed && !ThreatFuel.canPay(ThreatFuel.passage(tg.needFP, ly, true))) continue;
+			tg.score = value * (1f - odds) / (billed ? ThreatReach.strikeDays(ly) : 1f);
+			if (out[1] == null || tg.score > out[1].score) out[1] = tg;
 			Float r = ratios.get(m.getFactionId());
 			if (r == null || r < pressNeed) continue;
-			if (out[0] == null || score > out[0].value * (1f - out[0].odds)) out[0] = tg;
+			if (out[0] == null || tg.score > out[0].score) out[0] = tg;
 		}
 		return out;
 	}

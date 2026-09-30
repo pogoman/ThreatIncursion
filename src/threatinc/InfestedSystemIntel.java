@@ -179,29 +179,40 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				int garrison = ThreatColonyManager.countLiveGarrison(market.getId());
 				totalGarrison += garrison;
 
-				// "output" = the swarm's real fabrication output: ship hulls.
-				// A starved colony reads critical; a healthy young colony with no
-				// forge output yet is developing; a forging colony grades on how
-				// well its hulls are supplied.
-				boolean healthy = ThreatColonyManager.isEconomicallyHealthy(market);
-				float health = ThreatColonyManager.computeHealth(market);
-				float shipsAvail = ThreatColonyManager.shipsAvailable(market);
-				String output;
-				if (health < ThreatColonyManager.CRITICAL_HEALTH) {
-					output = "failing";
-				} else if (!healthy) {
-					output = "critical";
-				} else if (shipsAvail <= 0f) {
-					output = "developing";
-				} else if (ThreatColonyManager.shipSupplyMult(market) >= 0.75f) {
-					output = "nominal";
-				} else {
-					output = "strained";
-				}
 				line.append(". Hive Status %s, Defense Swarms %s");
-				hl.add(output + " (vitality " + (int) (health * 100f) + "%)");
-				hlColors.add("critical".equals(output) || "strained".equals(output)
-						|| "failing".equals(output) ? neg : h);
+				if (ThreatColonyUpkeep.enabled()) {
+					// size upkeep (2026-09-30): graded by the share of its
+					// upkeep paid - starving below break-even, else growing or
+					// holding - and the share itself (none below size 3)
+					int state = ThreatWarBoard.fedState(market);
+					boolean owes = ThreatColonyUpkeep.perMonth(market.getSize()) > 0f;
+					hl.add(ThreatWarBoard.fedStateName(state) + (owes ? " (fed "
+							+ ThreatWarBoard.pct(ThreatColonyUpkeep.fedShare(market)) + ")" : ""));
+					hlColors.add(state == ThreatWarBoard.STARVING ? neg : h);
+				} else {
+					// "output" = the swarm's real fabrication output: ship hulls.
+					// A starved colony reads critical; a healthy young colony with no
+					// forge output yet is developing; a forging colony grades on how
+					// well its hulls are supplied.
+					boolean healthy = ThreatColonyManager.isEconomicallyHealthy(market);
+					float health = ThreatColonyManager.computeHealth(market);
+					float shipsAvail = ThreatColonyManager.shipsAvailable(market);
+					String output;
+					if (health < ThreatColonyManager.CRITICAL_HEALTH) {
+						output = "failing";
+					} else if (!healthy) {
+						output = "critical";
+					} else if (shipsAvail <= 0f) {
+						output = "developing";
+					} else if (ThreatColonyManager.shipSupplyMult(market) >= 0.75f) {
+						output = "nominal";
+					} else {
+						output = "strained";
+					}
+					hl.add(output + " (vitality " + (int) (health * 100f) + "%)");
+					hlColors.add("critical".equals(output) || "strained".equals(output)
+							|| "failing".equals(output) ? neg : h);
+				}
 				hl.add("" + garrison);
 				hlColors.add(h);
 				// swarms mustered for a strike still fabricating in orbit: no
@@ -265,9 +276,22 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 		float days = ThreatIncData.daysInStage(systemId);
 		info.addPara("Time in current stage: %s days.", opad, h, "" + (int) days);
 
-		// strike reach: fuel-bought, network-fed
+		// strike reach: under billed reach (2026-09-30) the world the system
+		// would strike first, or that the hive can keep no swarm away from it;
+		// with it off, the fuel radius
 		MarketAPI staging = ThreatColonyManager.pickStrikeStaging(systemId, false);
-		if (staging != null) {
+		if (ThreatReach.enabled()) {
+			MarketAPI source = ThreatIncData.STAGE_COLONY.equals(stage)
+					? ThreatWarBoard.swarmSource(ThreatIncData.getLiveColonyMarkets(systemId), staging) : null;
+			String faced = system != null ? ThreatReach.facedFaction(system) : null;
+			if (source != null && ThreatWarBoard.grounded(source)) {
+				info.addPara("The hive can keep %s away from this system.", opad, pos, "no swarm");
+			} else if (staging != null && faced != null) {
+				info.addPara("First target from this system: %s, %s away.", opad,
+						new Color[] {ThreatWarBoard.factionColor(faced), neg}, ThreatWarState.displayName(faced),
+						(int) Math.ceil(ThreatReach.facedLY(system)) + " light-years");
+			}
+		} else if (staging != null) {
 			float range = ThreatColonyManager.fuelRangeLY(staging);
 			if (range > 0f) {
 				info.addPara("Strike reach from this system: %s, bought with the fuel its "
@@ -280,16 +304,29 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 		// ---- debug mode: full per-colony economic vitals + purge tool ----
 		if (ThreatIncConfig.debugMode() && ThreatIncData.STAGE_COLONY.equals(stage)) {
 			info.addSectionHeading("DEBUG - hive vitals", com.fs.starfarer.api.ui.Alignment.MID, opad);
+			boolean billed = ThreatReach.enabled();
+			boolean sized = ThreatColonyUpkeep.enabled();
+			String faced = billed && system != null ? ThreatReach.facedFaction(system) : null;
 			for (MarketAPI market : ThreatIncData.getLiveColonyMarkets(systemId)) {
 				float access = market.getAccessibilityMod().computeEffective(0f);
 				int shipPct = (int) (ThreatColonyManager.shipSupplyMult(market) * 100);
-				float fuelRange = ThreatColonyManager.fuelRangeLY(market);
-				int healthPct = (int) (ThreatIncData.lastHealth(market.getId()) * 100);
+				// billed reach: the world struck first, or no swarm the hive can
+				// keep away; else the fuel radius
+				String reach;
+				if (!billed) reach = (int) ThreatColonyManager.fuelRangeLY(market) + " ly";
+				else if (ThreatWarBoard.grounded(market)) reach = "no swarm away";
+				else if (faced == null) reach = "none known";
+				else reach = ThreatWarState.displayName(faced) + " "
+						+ (int) Math.ceil(ThreatReach.facedLY(system)) + " ly";
+				// size upkeep: the share of its upkeep paid; else vitality
+				String fed = sized ? ThreatWarBoard.pct(ThreatColonyUpkeep.fedShare(market))
+						: (int) (ThreatIncData.lastHealth(market.getId()) * 100) + "%";
 				int strataHeld = ThreatGroundFronts.strataHeld(market.getId());
 				info.addPara(market.getName() + " (size " + market.getSize() + "): "
-						+ "access %s, hull output %s, fuel reach %s, health %s, strata taken %s",
+						+ "access %s, hull output %s, " + (billed ? "first strike" : "fuel reach") + " %s, "
+						+ (sized ? "fed" : "health") + " %s, strata taken %s",
 						opad, h, (int) (access * 100) + "%", shipPct + "%",
-						(int) fuelRange + " ly", healthPct + "%", "" + strataHeld);
+						reach, fed, "" + strataHeld);
 
 				String disrupted = "";
 				for (com.fs.starfarer.api.campaign.econ.Industry ind : market.getIndustries()) {

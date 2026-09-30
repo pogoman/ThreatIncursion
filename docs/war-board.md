@@ -8,8 +8,9 @@ system, no seeding swarm in transit, no expedition in flight). The per-system
 machinery and as map anchors.
 
 The board **reads only**. Every figure comes from state the simulation already keeps; the only
-new arithmetic is the priority score, "systems within reach", distances, and the hive supply
-model. `design/war-effort/Round2.dc.html` is the layout it implements.
+new arithmetic is the priority score, "systems within reach" (billed reach off), distances, a
+system's share of its upkeep paid, and the hive supply model. `design/war-effort/Round2.dc.html`
+is the layout it implements.
 
 ## Layout, top to bottom
 
@@ -23,9 +24,10 @@ model. `design/war-effort/Round2.dc.html` is the layout it implements.
    worlds, mass, swarms sighted, expeditions out, sieges in, missions, hives burned.
 3. **Ledger**: stock table, one row per known system in priority order. Columns (wide / narrow
    below `NARROW_WIDTH` = 1050): `#`, System, Worlds (sizes largest first, "+n" overflow), Mass,
-   Vitality (bar + trend glyph drawn by the overlay), Swarms ("live/desired +mustered", plus a
+   Fed (Vitality with size upkeep off; bar + trend glyph drawn by the overlay - see "Fed and
+   vitality" below), Swarms ("live/desired +mustered", plus a
    glyph: green up = a nexus is growing replacements, red down = a short garrison whose nexus is
-   silenced, dash = all garrisons full), Reach,
+   silenced, dash = all garrisons full), Reach (see "Reach" below),
    Strikes (count), Activity (crests, drawn: every siege expedition, task force, intercept,
    Support or Defend sortie, front run and ground front against the system - as many as fit the column, the rest
    in the row tooltip), Supply (commodity icons, drawn), Core (ly, wide only). The
@@ -75,12 +77,16 @@ model. `design/war-effort/Round2.dc.html` is the layout it implements.
 5. **Colony cards**, three across wide / two narrow, `CARD_H`
    = 124 px, deliberately thin (Sept 2026): name, with the **Map** button (jumps the map to the
    planet) and **Colony** button flush right (`aboveRight(card, -24f)` with negative x offsets);
-   line A "Vitality n%  Swarms a/b  Reach n ly" (b is `garrisonTargetCount`, 2026-09-29: the
-   posture base count, not the size table's n; vitality in its health colour; "Swarms a/b of n"
-   in red when the hull shortage caps the garrison below the size table's n; "Decline n%"
-   replaces reach while declining) at full width - it wrapped when it shared the line; line B
+   line A "Fed n%  Swarms a/b  Reach n ly" (b is `garrisonTargetCount`, 2026-09-29: the
+   posture base count, not the size table's n; Fed is the world's share of its supplies upkeep
+   paid in the Fed colours below, "-" below size 3 - "Vitality n%" in its health colour with size
+   upkeep off; "Swarms a/b of n"
+   in red when the hull shortage caps the garrison below the size table's n; a ground front's
+   "Front" figure replaces reach while one is on the ground; Reach only from strike size, see
+   "Reach" below) at full width - it wrapped when it shared the line; line B
    "Def x  raze y fuel  tac z a day" (2026-09-28: the fuel to raze the hive from orbit through its shield, and a day of tactical bombardment by your fleet as it stands) with the size forecast right-aligned on the same line ("s5 -> s6
-   ~270 d", "s5 -> s4 ~22 d" red while declining, "s8 max", "s5 stalled"); then the organ icons
+   ~270 d", "s5 -> s4 ~22 d" while starving, "s8 max", "s5 holding" - "s5 stalled" with size
+   upkeep off; in the Fed figure's colour, red while a front or saturation takes it); then the organ icons
    along the bottom (industry sprites, red-tinted while disrupted, day
    count beneath), each with a hover tooltip naming the industry, its state, its output and its
    inputs (`industryTooltip`, an invisible `createUIElement` hover target inside the card with
@@ -120,15 +126,18 @@ Built by `buildEntries()` for every system in `ThreatIncData.stages()` the playe
 counts toward none of the strip's totals, and while nothing is found the board itself is off the
 intel list (`ThreatIncursionIntel.isHidden`). User's rule 2026-09-25, replacing the earlier gray
 "Unknown" rows. Per entry:
-stage, live markets, mass, size-weighted health and trend, swarms live/desired/mustered
+stage, live markets, mass, the share of its supplies upkeep paid (`fed`; size-weighted health
+with size upkeep off), whether a world starves and the days to the first size lost, the trend,
+swarms live/desired/mustered
 (`countLiveGarrison`, `garrisonTargetCount`, `preparingStrikeFleetCount`; 2026-09-29: "desired" is
 `garrisonTargetCount` - the size table's `desiredGarrisonCount` with posture off, posture's base count
 (reserve plus a forge's launch stock, docs/hive-economy.md "Posture") with it on, so a quiet colony
 shows full at its lean target and the fabrication trend arrow reads the same count) - all counted in
 fleets since 2026-09-29: a garrison fleet grown past one swarm (docs/hive-economy.md "Grown garrison
 fleets") counts once, and `preparingStrikeFleetCount` is the strike's packed fleets, not its swarms -
-staging colony and
-`fuelRangeLY` reach, inhabited systems inside reach, outbound ops (strikes from
+staging colony and - billed reach - the faction and light-years of the world the system would
+strike first (`ThreatReach.facedFaction` / `facedLY`) and whether it is grounded, or - billed reach
+off - `fuelRangeLY` reach and the inhabited systems inside it, outbound ops (strikes from
 `IncursionManager.getStrikeList()` where `params.source` is here; seeding swarms from
 `SeedingSwarmIntel`), inbound ops (`getPurgeList()` sieges targeting the system,
 `getResponseList()` task forces targeting a market here), open missions (`ThreatMissionIntel`
@@ -142,11 +151,38 @@ nearest player colony, the commodities produced, and the priority score.
 ## Priority score (`score(Entry)`)
 
 Most urgent first, each contributor also names the reason chip: strike(s) in flight from here
-(+1000 +50 each), living systems inside reach (+200 +40 each), a colony declining (+60), network
-impact (`ThreatMissionIntel.networkImpact`, x100; chip HOME HIVE / NETWORK LINK), mass (x8),
-proximity to the core (30 - ly). Non-colony stages score low (SEEDING / MARKED).
+(+1000 +50 each), living systems inside reach (+200 +40 each; billed reach: CAN STRIKE +200 flat, below), a
+colony declining or starving (+60; chip DECLINING, or STARVING with the days to the first size
+lost), network impact (`ThreatMissionIntel.networkImpact`, x100; chip HOME HIVE / NETWORK LINK),
+mass (x8), proximity to the core (30 - ly). The fallback chips are FOOTHOLD, STALLED (HOLDING
+under size upkeep) and ENTRENCHED. Non-colony stages score low (SEEDING / MARKED).
 
-## Vitality and needs - why 100% vitality with fuel short is correct
+Under billed reach every world is in reach of a trip the hive pays for, so a count of systems
+"in reach" means nothing and IN REACH is gone. Its tier goes to **CAN STRIKE** (+200, no
+per-system term): a staging colony, not grounded, and a known world to strike. Without it a big
+grounded system would rank level with one that can launch.
+
+## Fed and vitality
+
+Under size upkeep (`ThreatColonyUpkeep.enabled()`, 2026-09-30) the Vitality column is **Fed**:
+the system's share of its supplies upkeep paid at the last feed, weighted by each world's bill
+(`perMonth(size)` x `fedShare`), one tick at the break-even share (`upkeepBreakEven`, 0.5). It
+reuses the reserve key: white paid in full, yellow short of it, red below break-even
+(starving), grey "-" with nothing billed (every world below size 3). The glyph points down while
+a world starves or a front or saturation takes one, up while one grows, a dash otherwise. A
+world's state (`ThreatWarBoard.fedState`) is read off the engine's clocks: starving while
+`daysToLoseSize` runs, growing while `daysToNextSize` runs, else holding (at break-even, at its
+cap, or held by a front or saturation). The row tooltip adds "fed n%" to its title, a line of
+how many worlds grow, hold and starve, and one line per starving world (the size it falls to,
+the days). `InfestedSystemIntel`'s Hive Status and
+`ThreatSiegeReportIntel`'s current state grade the same way ("starving, fed 30%"), and
+`HiveVitalityCondition` drops its vitality line and the Core's worn figure. A hive's
+counter-attacks pace on min(1, fed / break-even) x (size - strata held) / size
+(`ThreatGroundFronts.hiveCounterAttackPace`, floored at 0.25 as before; no Core factor).
+
+With size upkeep off everything reads vitality, as below.
+
+### Vitality and needs - why 100% vitality with fuel short is correct
 
 `computeHealth` = fabrication (organs on/off) x supply, and supply averages the growth inputs
 (`ThreatColonyManager.growthInputs()`: ore, metals, heavy machinery, volatiles, plus rare ore
@@ -228,7 +264,21 @@ worlds. All the fuel in the sector is no use to a colony that only fields small 
 healthy size-4 hive world seeds 20 ly, a size-2 foothold 10, a size-8 world the fuel-bound 25,
 while a size-8 Hegemony High Command world at 250 percent strikes as far as its fuel allows. The
 flat `threatinc_responseRangeLY` (20) is gone. The mission board's faction-reach weighting uses
-the same per-world figure.
+the same per-world figure. For hive worlds this radius holds only with billed reach off.
+
+**Reach** on the board under billed reach (`ThreatReach.enabled()`, 2026-09-30; the hive has no
+radius, docs/hive-economy.md "Reach is the bill"): the light-years to the world the system would
+strike first (`ThreatReach.facedLY`, rounded up) in that world's owner's colour (`facedFaction`).
+"grounded", in the good colour, when the hive cannot keep one swarm away
+(`ThreatReach.canSustain(ThreatPosture.oneSwarmFP(...))` false) or its fuel stock is empty
+(`ThreatFuel.stock() <= 0`) - judged on the staging colony or, with none (an empty stock leaves
+`pickStrikeStaging` nothing), the biggest world of strike size (`ThreatWarBoard.swarmSource`).
+"-" when no colony here can stage, or it knows no world to strike. The card shows the same for
+each world of strike size, grounded on that world's own swarm; the row tooltip names the
+faction ("First target: Hegemony, 12 ly") or why it is grounded; `InfestedSystemIntel` says it
+in words. The column took a point of width from Activity to fit "grounded" (the crests Activity
+fits did not change). With billed reach off the old radius shows, red while a living system lies
+inside it.
 
 Disrupted defenses **wear** (Sept 2026, `ThreatColonyManager.disruptedDefenseResilience`, used
 by `ThreatGroundDefenses` and `SwarmNexus`): a structure's bonus falls linearly with the
@@ -243,10 +293,10 @@ disruption ends or on the monthly economy step, so `refreshWornDefenses` (fast p
 any hive world with a disrupted organ - the worn figure, and everything read off
 `getDefenderStr` (siege sizing at launch, raid odds, bombardment cost, the card's Def line),
 follows the clock daily. Sieges are sized once at launch against the figure then current;
-they do not resize en route. The same wear applies to the fabrication half of vitality
-(`ThreatColonyManager.wornDownFactor`): a disrupted Core runs at `coreDownFactor` when fresh
-and at zero once it carries `defenseWearDays`, so a Core hit again and again drags vitality
-below the flat 25 percent it used to floor at.
+they do not resize en route. With size upkeep off the same wear applies to the fabrication half
+of vitality (`ThreatColonyManager.wornDownFactor`): a disrupted Core runs at `coreDownFactor`
+when fresh and at zero once it carries `defenseWearDays`, so a Core hit again and again drags
+vitality below the flat 25 percent it used to floor at.
 
 **Raid doctrine** (Sept 2026, `ThreatPurgeFGI.pickRaidTarget` / `raidValue`): each commando
 raid lands on the industry worth most on that world right now. Fabrication Core 100 (the kill),

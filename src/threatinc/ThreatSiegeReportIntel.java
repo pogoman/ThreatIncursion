@@ -216,22 +216,37 @@ public class ThreatSiegeReportIntel extends BaseIntelPlugin {
 				info.addPara("Current state: %s", 3f, Misc.getTextColor(), pos,
 						"destroyed - the strata are cold");
 			} else {
-				float health = ThreatIncData.lastHealth(live.getId());
 				int strataHeld = ThreatGroundFronts.strataHeld(live.getId());
 				String grade;
-				if (health < ThreatColonyManager.CRITICAL_HEALTH) grade = "failing";
-				else if (health < ThreatIncConfig.growthStallHealth()) grade = "critical";
-				else if (health < ThreatIncConfig.growthFullHealth()) grade = "strained";
-				else grade = "nominal";
-				Color gradeColor = "failing".equals(grade) || "critical".equals(grade)
-						? neg : h;
+				Color gradeColor;
+				String label;
+				if (ThreatColonyUpkeep.enabled()) {
+					// size upkeep (2026-09-30): graded by the share of its upkeep
+					// paid - starving below break-even, else growing or holding -
+					// and the share itself (none below size 3)
+					int state = ThreatWarBoard.fedState(live);
+					grade = ThreatWarBoard.fedStateName(state);
+					if (ThreatColonyUpkeep.perMonth(live.getSize()) > 0f) {
+						grade += ", fed " + ThreatWarBoard.pct(ThreatColonyUpkeep.fedShare(live));
+					}
+					gradeColor = state == ThreatWarBoard.STARVING ? neg : h;
+					label = "";
+				} else {
+					float health = ThreatIncData.lastHealth(live.getId());
+					if (health < ThreatColonyManager.CRITICAL_HEALTH) grade = "failing";
+					else if (health < ThreatIncConfig.growthStallHealth()) grade = "critical";
+					else if (health < ThreatIncConfig.growthFullHealth()) grade = "strained";
+					else grade = "nominal";
+					gradeColor = "failing".equals(grade) || "critical".equals(grade) ? neg : h;
+					label = "hive vitality ";
+				}
 				if (strataHeld > 0) {
-					info.addPara("Current state: size %s, hive vitality %s, ground war "
+					info.addPara("Current state: size %s, " + label + "%s, ground war "
 							+ "at %s strata taken.", 3f, Misc.getTextColor(),
 							gradeColor, "" + live.getSize(), grade,
 							strataHeld + " of " + live.getSize());
 				} else {
-					info.addPara("Current state: size %s, hive vitality %s.", 3f,
+					info.addPara("Current state: size %s, " + label + "%s.", 3f,
 							Misc.getTextColor(), gradeColor, "" + live.getSize(), grade);
 				}
 			}

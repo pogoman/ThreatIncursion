@@ -52,7 +52,7 @@ import com.fs.starfarer.api.util.Misc;
  * player knows about the incursion: a header with the phase bar, a one-line
  * strip of sector totals, one custom-drawn ledger row per KNOWN infested
  * system in priority order, and for the selected system a grid of colony
- * cards (organ icons, vitality bar, garrison, fuel bill, reach) beside a table
+ * cards (organ icons, supplies paid, garrison, fuel bill, reach) beside a table
  * of every operation touching it.
  *
  * Design rules (see design/war-effort/Kit.dc.html): nothing on a row or card
@@ -182,16 +182,27 @@ public class ThreatWarBoard {
 		public String stage;
 		public List<MarketAPI> markets = new ArrayList<MarketAPI>();
 		public int mass;
-		/** Size-weighted average colony health, 0..1; -1 without colonies. */
+		/** Size-weighted average colony health, 0..1; -1 without colonies. Size upkeep off only. */
 		public float health = -1f;
-		/** +1 growing, 0 stalled, -1 declining. */
+		/** Size upkeep: the share of its worlds' supplies upkeep paid at the last feed, 0..1; -1 with nothing billed. */
+		public float fed = -1f;
+		/** Size upkeep: a world here is starving, the first to lose a size in {@code loseDays}. */
+		public boolean starving;
+		public float loseDays = Float.MAX_VALUE;
+		/** +1 growing, 0 stalled (holding), -1 declining or starving. */
 		public int trend;
 		public int swarmsLive, swarmsDesired, swarmsMustered;
 		/** +1 a nexus here is growing swarms, -1 one needs to but is silenced, 0 garrisons full. */
 		public int swarmTrend;
 		public MarketAPI staging;
+		/** Billed reach off: the staging colony's fuel radius, and the living systems inside it. */
 		public float reachLY;
 		public List<String> inReach = new ArrayList<String>();
+		/** Billed reach: the faction whose world the system would strike first (null: none known), and light-years to it. */
+		public String facedFaction;
+		public float facedLY = -1f;
+		/** Billed reach: the hive cannot keep one swarm away from here (swarmSource), or has no fuel. */
+		public boolean grounded;
 		public List<Op> outbound = new ArrayList<Op>();
 		public List<Op> inbound = new ArrayList<Op>();
 		/** Open defense-board contracts on this system's worlds, accepted ones first. */
@@ -260,17 +271,35 @@ public class ThreatWarBoard {
 		e.stage = ThreatIncData.stages().get(systemId);
 		e.markets = ThreatIncData.getLiveColonyMarkets(systemId);
 
+		boolean sized = ThreatColonyUpkeep.enabled();
 		float weightedHealth = 0f;
+		float bill = 0f, paid = 0f;
 		boolean anyDeclining = false;
 		boolean anyGrowing = false;
 		for (MarketAPI market : e.markets) {
 			e.mass += market.getSize();
-			float health = ThreatColonyManager.computeHealth(market);
-			weightedHealth += health * market.getSize();
 			// "declining" since the ground-war rework: a front is on the ground
 			// taking the colony apart, or saturation is razing it from orbit
-			if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) anyDeclining = true;
-			else if (ThreatColonyManager.growthMultFor(health) > 0f) anyGrowing = true;
+			boolean besieged = ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market);
+			if (sized) {
+				// size upkeep (2026-09-30): the share of the bill paid, and
+				// whether each world grows, holds or starves on it
+				float upkeep = ThreatColonyUpkeep.perMonth(market.getSize());
+				bill += upkeep;
+				paid += upkeep * ThreatColonyUpkeep.fedShare(market);
+				int state = fedState(market);
+				if (state == STARVING) {
+					e.starving = true;
+					e.loseDays = Math.min(e.loseDays, ThreatColonyManager.daysToLoseSize(market));
+				}
+				if (besieged) anyDeclining = true;
+				else if (state == GROWING) anyGrowing = true;
+			} else {
+				float health = ThreatColonyManager.computeHealth(market);
+				weightedHealth += health * market.getSize();
+				if (besieged) anyDeclining = true;
+				else if (ThreatColonyManager.growthMultFor(health) > 0f) anyGrowing = true;
+			}
 			int live = ThreatColonyManager.countLiveGarrison(market.getId());
 			int desired = ThreatColonyManager.garrisonTargetCount(market);
 			e.swarmsLive += live;
@@ -287,11 +316,21 @@ public class ThreatWarBoard {
 				}
 			}
 		}
-		if (e.mass > 0) e.health = weightedHealth / e.mass;
-		e.trend = anyDeclining ? -1 : (anyGrowing ? 1 : 0);
+		if (sized) e.fed = bill > 0f ? paid / bill : -1f;
+		else if (e.mass > 0) e.health = weightedHealth / e.mass;
+		e.trend = anyDeclining || e.starving ? -1 : (anyGrowing ? 1 : 0);
 
 		e.staging = ThreatColonyManager.pickStrikeStaging(systemId, false);
-		if (e.staging != null) {
+		if (ThreatReach.enabled()) {
+			// billed reach (2026-09-30): no radius - the world the system would
+			// strike first, and whether the hive can keep a swarm away at all
+			if (e.isColony()) {
+				e.facedFaction = ThreatReach.facedFaction(system);
+				e.facedLY = ThreatReach.facedLY(system);
+			}
+			MarketAPI source = swarmSource(e.markets, e.staging);
+			if (source != null) e.grounded = grounded(source);
+		} else if (e.staging != null) {
 			e.reachLY = ThreatColonyManager.fuelRangeLY(e.staging);
 			e.inReach = systemsInReach(system, e.reachLY);
 		}
@@ -689,10 +728,11 @@ public class ThreatWarBoard {
 	/**
 	 * What makes a system the one to deal with, most urgent first: an
 	 * expedition actually staging or in flight; living systems inside its
-	 * strike reach; a colony already declining that the sector should press;
-	 * the network's decisive link (the defense boards' impact figure); then
-	 * sheer mass and proximity to the core. The chip names the top
-	 * contributor so the ordering explains itself.
+	 * strike reach (billed reach, which has no radius: a strike the hive can
+	 * pay for at all - CAN STRIKE, +200 flat); a colony already declining or
+	 * starving that the sector should press; the network's decisive link (the
+	 * defense boards' impact figure); then sheer mass and proximity to the
+	 * core. The chip names the top contributor so the ordering explains itself.
 	 */
 	protected static void score(Entry e) {
 		Color neg = Misc.getNegativeHighlightColor();
@@ -747,7 +787,19 @@ public class ThreatWarBoard {
 					: "An expedition staged from here is in flight against " + strikeTarget + ".";
 			color = neg;
 		}
-		if (!e.inReach.isEmpty()) {
+		if (ThreatReach.enabled()) {
+			// every world is in reach of a paid trip, so a count of systems in
+			// reach means nothing: the tier goes to a system that can strike at
+			// all - a staging colony, a swarm the hive can keep away, a target
+			if (e.staging != null && !e.grounded && e.facedFaction != null) {
+				score += 200f;
+				if (chip == null) {
+					chip = "CAN STRIKE";
+					reason = "The hive can keep a swarm away from here.";
+					color = neg;
+				}
+			}
+		} else if (!e.inReach.isEmpty()) {
 			score += 200f + 40f * e.inReach.size();
 			if (chip == null) {
 				chip = "IN REACH " + e.inReach.size();
@@ -759,8 +811,13 @@ public class ThreatWarBoard {
 		if (declining) {
 			score += 60f;
 			if (chip == null) {
-				chip = "DECLINING";
-				reason = "A colony here is already declining - press the siege.";
+				if (e.starving) {
+					chip = "STARVING";
+					reason = "Starving - a size lost in ~" + Math.max(1, (int) e.loseDays) + " d.";
+				} else {
+					chip = "DECLINING";
+					reason = "A colony here is already declining - press the siege.";
+				}
 				color = pos;
 			}
 		}
@@ -777,6 +834,9 @@ public class ThreatWarBoard {
 			if (e.mass < ThreatIncConfig.strikeMinSize()) {
 				chip = "FOOTHOLD";
 				reason = "A young foothold, below strike size.";
+			} else if (e.trend == 0 && ThreatColonyUpkeep.enabled()) {
+				chip = "HOLDING";
+				reason = "Holding its size - no world here is growing.";
 			} else if (e.trend == 0) {
 				chip = "STALLED";
 				reason = "Growth stalled - its supply lines are choked.";
@@ -1824,9 +1884,11 @@ public class ThreatWarBoard {
 
 		Cols(float width) {
 			narrow = width < NARROW_WIDTH;
+			// Reach holds "grounded" (billed reach, 2026-09-30): a point off
+			// Activity, which fits the same number of crests either way
 			float[] frac = narrow
-					? new float[] {.03f, .16f, 0f, .10f, .05f, .13f, .09f, .07f, .06f, .14f, .17f, 0f}
-					: new float[] {.028f, .16f, 0f, .10f, .05f, .11f, .08f, .065f, .055f, .13f, .17f, .052f};
+					? new float[] {.03f, .16f, 0f, .10f, .05f, .13f, .09f, .08f, .06f, .13f, .17f, 0f}
+					: new float[] {.028f, .16f, 0f, .10f, .05f, .11f, .08f, .075f, .055f, .12f, .17f, .052f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
@@ -1876,7 +1938,11 @@ public class ThreatWarBoard {
 
 		// the stock table carries the text, the clicks and the tooltips
 		final Cols c = new Cols(width - 24f);
-		String[] names = {"#", "System", "Threat", "Worlds", "Mass", "Vitality", "Swarms",
+		// size upkeep and billed reach (2026-09-30): the vitality column is the
+		// share of the supplies upkeep paid, and reach the world struck first
+		final boolean sized = ThreatColonyUpkeep.enabled();
+		final boolean billed = ThreatReach.enabled();
+		String[] names = {"#", "System", "Threat", "Worlds", "Mass", sized ? "Fed" : "Vitality", "Swarms",
 				"Reach", "Strikes", "Activity", "Supply", "Core"};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < COLS; i++) {
@@ -1886,25 +1952,33 @@ public class ThreatWarBoard {
 		}
 		com.fs.starfarer.api.ui.UIPanelAPI table = main.beginTable2(threat, ROW_H, true, true, columns.toArray());
 		main.makeTableItemsClickable();
-		main.addTableHeaderTooltip(c.visibleIndex(RANK), "Priority: an expedition in flight, living "
-				+ "systems inside its strike reach, a colony already declining, its place in the "
-				+ "hive's supply chain, then mass and proximity to the core. The reason is the first "
-				+ "line of the row tooltip.");
+		main.addTableHeaderTooltip(c.visibleIndex(RANK), "Priority: an expedition in flight, "
+				+ (billed ? "a strike it can pay for" : "living systems inside its strike reach")
+				+ (sized ? ", a colony declining or starving" : ", a colony already declining")
+				+ ", its place in the hive's supply chain, then mass and proximity to the core. The "
+				+ "reason is the first line of the row tooltip.");
 		main.addTableHeaderTooltip(c.visibleIndex(WORLDS), "The size of every hive colony in the "
 				+ "system, largest first.");
 		main.addTableHeaderTooltip(c.visibleIndex(MASS), "Combined size of the hive colonies - "
 				+ "the swarm's fabrication mass.");
-		main.addTableHeaderTooltip(c.visibleIndex(VIT), "Size-weighted hive vitality (fabrication x "
-				+ "supply); the exact figure is in the row tooltip. Ticks mark the decline threshold "
-				+ "and the full-growth mark. Below the first a colony declines - the only way a "
-				+ "Threat colony dies.");
+		if (sized) {
+			main.addTableHeaderTooltip(c.visibleIndex(VIT), "Share of its supplies upkeep paid; the "
+					+ "tick is the share that holds a size.");
+		} else {
+			main.addTableHeaderTooltip(c.visibleIndex(VIT), "Size-weighted hive vitality (fabrication x "
+					+ "supply); the exact figure is in the row tooltip. Ticks mark the decline threshold "
+					+ "and the full-growth mark. Below the first a colony declines - the only way a "
+					+ "Threat colony dies.");
+		}
 		main.addTableHeaderTooltip(c.visibleIndex(SWARMS), "Defense Swarms in orbit / the garrison "
 				+ "the nexus builds toward; '+n' are swarms mustered for an expedition, still "
 				+ "fabricating in orbit. Green arrow: a nexus here is growing replacements. Red "
 				+ "arrow: a garrison is short and its nexus is silenced - nothing replaces the "
 				+ "losses. Dash: every garrison is full.");
-		main.addTableHeaderTooltip(c.visibleIndex(REACH), "How far its expeditions reach, bought "
-				+ "with the fuel the staging colony draws from the hive network.");
+		main.addTableHeaderTooltip(c.visibleIndex(REACH), billed
+				? "Light-years to the world it would strike first."
+				: "How far its expeditions reach, bought with the fuel the staging colony draws from "
+						+ "the hive network.");
 		main.addTableHeaderTooltip(c.visibleIndex(OUT), "Threat expeditions staged from this "
 				+ "system: strikes in flight and seeding swarms in transit. Details in the row tooltip.");
 		main.addTableHeaderTooltip(c.visibleIndex(IN), "Everything against it, by crest: siege "
@@ -1948,14 +2022,25 @@ public class ThreatWarBoard {
 			} else {
 				cell(cells, Alignment.MID, h, sizeDigits(e, c));
 				cell(cells, Alignment.MID, h, "" + e.mass);
-				cell(cells, Alignment.LMID, gray, ""); // the bar is drawn by the overlay
+				// the bar is drawn by the overlay; nothing billed (every world
+				// below size 3) has no bar
+				cell(cells, Alignment.LMID, gray, sized && e.fed < 0f ? "-" : "");
 				String swarms = e.swarmsLive + "/" + e.swarmsDesired
 						+ (e.swarmsMustered > 0 ? " +" + e.swarmsMustered : "");
 				cell(cells, Alignment.MID, e.swarmsLive == 0 ? pos
 						: (e.swarmsMustered > 0 ? neg : text), swarms);
 			}
-			cell(cells, Alignment.MID, e.reachLY > 0f ? (e.inReach.isEmpty() ? h : neg) : gray,
-					e.reachLY > 0f ? (int) e.reachLY + " ly" : "-");
+			if (billed) {
+				// grounded shows whatever else stops it; otherwise no staging
+				// colony strikes nothing, as with the old radius
+				boolean shown = e.grounded || e.staging != null;
+				String reach = shown ? reachText(e.grounded, e.facedFaction, e.facedLY) : "-";
+				cell(cells, Alignment.MID, shown ? reachColor(e.grounded, e.facedFaction) : gray,
+						main.shortenString(reach, c.w[REACH] - 2f * CELL_PAD));
+			} else {
+				cell(cells, Alignment.MID, e.reachLY > 0f ? (e.inReach.isEmpty() ? h : neg) : gray,
+						e.reachLY > 0f ? (int) e.reachLY + " ly" : "-");
+			}
 			cell(cells, Alignment.MID, e.outbound.isEmpty() ? gray : neg,
 					e.outbound.isEmpty() ? "-" : "" + e.outbound.size());
 			cell(cells, Alignment.MID, gray, e.inbound.isEmpty() ? "-" : ""); // crests by the overlay
@@ -2032,22 +2117,28 @@ public class ThreatWarBoard {
 
 	/**
 	 * Paints the ledger's graphics over the stock table: the selection marker,
-	 * the vitality bar and trend glyph, and the inbound crests. Uses each row
-	 * component's live position and scales the column budget to the drawn row
-	 * width, so it follows however the table lays itself out and never
-	 * intercepts the table's clicks.
+	 * the Fed bar (vitality with size upkeep off) and trend glyph, and the
+	 * inbound crests. Uses each row component's live position and scales the
+	 * column budget to the drawn row width, so it follows however the table
+	 * lays itself out and never intercepts the table's clicks.
 	 */
 	protected static class LedgerOverlay extends BaseCustomUIPanelPlugin {
 		protected List<Object> rows;
 		protected List<Entry> entries;
 		protected Cols c;
 		protected String selectedId;
+		/** Read once a build, not every frame: which figure the bar draws, and its ticks. */
+		protected boolean sized;
+		protected float[] ticks;
 
 		LedgerOverlay(List<Object> rows, List<Entry> entries, Cols c, String selectedId) {
 			this.rows = rows;
 			this.entries = entries;
 			this.c = c;
 			this.selectedId = selectedId;
+			sized = ThreatColonyUpkeep.enabled();
+			ticks = sized ? new float[] {ThreatColonyUpkeep.breakEven()}
+					: new float[] {ThreatColonyManager.CRITICAL_HEALTH, ThreatIncConfig.growthFullHealth()};
 		}
 
 		@Override
@@ -2109,12 +2200,16 @@ public class ThreatWarBoard {
 				// swarm production glyph at the right edge of the Swarms column
 				trend(x + (c.x[SWARMS] + c.w[SWARMS]) * scale - 10f, midY, e.swarmTrend, alphaMult);
 
-				// vitality bar fills the column, trend glyph at its right end
+				// the bar fills the column - the share of the supplies upkeep
+				// paid, or vitality with size upkeep off - trend glyph at its
+				// right end; nothing billed draws no bar (the cell reads "-")
 				float vx = x + c.x[VIT] * scale + CELL_PAD;
 				float vw = c.w[VIT] * scale - 2f * CELL_PAD - 18f;
-				bar(vx, midY - 4f, vw, 8f, e.health, healthColor(e.health),
-						new float[] {ThreatColonyManager.CRITICAL_HEALTH,
-								ThreatIncConfig.growthFullHealth()}, alphaMult);
+				if (!sized) {
+					bar(vx, midY - 4f, vw, 8f, e.health, healthColor(e.health), ticks, alphaMult);
+				} else if (e.fed >= 0f) {
+					bar(vx, midY - 4f, vw, 8f, e.fed, fedColor(e.fed), ticks, alphaMult);
+				}
 				trend(vx + vw + 10f, midY, e.trend, alphaMult);
 			}
 			glEnd();
@@ -2128,13 +2223,32 @@ public class ThreatWarBoard {
 		float w = tooltip.getWidthSoFar();
 		tooltip.addSectorMap(w, Math.round(w / 1.8f), e.system, 0f);
 		tooltip.addSpacer(10f);
+		boolean sized = ThreatColonyUpkeep.enabled();
 		String title = e.system.getNameWithNoType();
 		if (e.isColony()) {
 			title += " - " + e.markets.size() + (e.markets.size() == 1 ? " hive world" : " hive worlds")
-					+ ", mass " + e.mass + ", vitality " + (int) (e.health * 100f) + "%";
+					+ ", mass " + e.mass;
+			if (!sized) title += ", vitality " + (int) (e.health * 100f) + "%";
+			else if (e.fed >= 0f) title += ", fed " + pct(e.fed);
 		}
 		tooltip.addPara(title, Global.getSector().getFaction(Factions.THREAT).getBrightUIColor(), 6f);
 		tooltip.addPara(e.chip + " - " + e.reason, e.reasonColor, 4f);
+		if (sized && e.isColony()) {
+			// its worlds' growth, then one line per world losing a size
+			int[] states = new int[3];
+			for (MarketAPI m : e.markets) states[fedState(m) - STARVING]++;
+			List<String> split = new ArrayList<String>();
+			if (states[GROWING - STARVING] > 0) split.add(states[GROWING - STARVING] + " growing");
+			if (states[HOLDING - STARVING] > 0) split.add(states[HOLDING - STARVING] + " holding");
+			if (states[0] > 0) split.add(states[0] + " starving");
+			tooltip.addPara(join(split) + ".", text, 4f);
+			for (MarketAPI m : e.markets) {
+				if (fedState(m) != STARVING) continue;
+				tooltip.addPara(m.getName() + " is starving: size %s in ~%s d.", 4f, text,
+						Misc.getNegativeHighlightColor(), "" + (m.getSize() - 1),
+						"" + Math.max(1, (int) ThreatColonyManager.daysToLoseSize(m)));
+			}
+		}
 		if (!e.supplies.isEmpty()) {
 			tooltip.addPara("Makes:", text, 6f);
 			List<String> ids = new ArrayList<String>(e.supplies);
@@ -2162,7 +2276,16 @@ public class ThreatWarBoard {
 						4f, text, h, Misc.getDGSCredits(b.getReward()), "" + (int) b.daysRemaining());
 			}
 		}
-		if (!e.inReach.isEmpty()) {
+		if (ThreatReach.enabled()) {
+			if (e.grounded) {
+				tooltip.addPara("%s: " + (ThreatFuel.stock() <= 0f ? "the hive has no fuel."
+						: "the hive can keep no swarm away."), 4f, text, ThreatNotice.goodColor(), "Grounded");
+			} else if (e.staging != null && e.facedFaction != null) {
+				tooltip.addPara("First target: %s, %s.", 4f,
+						new Color[] {factionColor(e.facedFaction), h},
+						ThreatWarState.displayName(e.facedFaction), (int) Math.ceil(e.facedLY) + " ly");
+			}
+		} else if (!e.inReach.isEmpty()) {
 			tooltip.addPara("Within strike reach: %s.", 4f, text, h, join(
 					e.inReach.size() > 6 ? e.inReach.subList(0, 6) : e.inReach)
 					+ (e.inReach.size() > 6 ? " and " + (e.inReach.size() - 6) + " more" : ""));
@@ -2296,7 +2419,10 @@ public class ThreatWarBoard {
 
 	protected static CustomPanelAPI buildCard(TooltipMakerAPI main, final MarketAPI market,
 			float cardW, Entry e) {
-		final float health = ThreatColonyManager.computeHealth(market);
+		// vitality only with size upkeep off; under it the card reads the share
+		// of the supplies upkeep paid (2026-09-30)
+		final boolean sized = ThreatColonyUpkeep.enabled();
+		final float health = sized ? 0f : ThreatColonyManager.computeHealth(market);
 		final List<Industry> organs = organsOf(market);
 		// "declining" = a ground front or saturation is taking this colony
 		// apart (the card border lights up)
@@ -2359,9 +2485,13 @@ public class ThreatWarBoard {
 		card.addUIElement(probe).inTL(8f, 5f);
 		nameWidths.put(market.getId(), probe.computeStringWidth(name));
 		String[] forecast = forecastParts(market, health);
-		// size forecast, right-aligned on line B beside the fuel bill (line A needs its full width)
+		// size forecast, right-aligned on line B beside the fuel bill (line A needs its full width);
+		// under size upkeep in the Fed figure's colour
+		Color forecastColor = declining ? neg
+				: sized ? fedColor(ThreatColonyUpkeep.fedShare(market))
+				: health >= ThreatIncConfig.growthFullHealth() ? pos : h;
 		textHl(card, cardW - rightW - 8f, 45f, rightW, forecast[0], gray,
-				new Color[] {h, declining ? neg : health >= ThreatIncConfig.growthFullHealth() ? pos : h},
+				new Color[] {h, forecastColor},
 				new String[] {forecast[1], forecast[2]}, Alignment.RMID, true);
 
 		// disruption day counts centred under offline organs, and a hover target
@@ -2384,15 +2514,23 @@ public class ThreatWarBoard {
 			ix += iconStep;
 		}
 
-		// line A, above the organs: vitality, garrison, reach or decline
+		// line A, above the organs: supplies paid (vitality), garrison, reach or front
 		int live = ThreatColonyManager.countLiveGarrison(market.getId());
 		int desired = ThreatColonyManager.garrisonTargetCount(market);
 		int nominal = ThreatColonyManager.desiredGarrison(market.getSize()).length;
 		List<String> hlA = new ArrayList<String>();
 		List<Color> hlcA = new ArrayList<Color>();
-		StringBuilder a = new StringBuilder("Vitality %s    Swarms %s");
-		hlA.add((int) (health * 100f) + "%");
-		hlcA.add(healthColor(health));
+		StringBuilder a = new StringBuilder(sized ? "Fed %s    Swarms %s" : "Vitality %s    Swarms %s");
+		if (sized) {
+			// below size 3 a world has no upkeep to be paid
+			boolean owes = ThreatColonyUpkeep.perMonth(market.getSize()) > 0f;
+			float fed = ThreatColonyUpkeep.fedShare(market);
+			hlA.add(owes ? pct(fed) : "-");
+			hlcA.add(owes ? fedColor(fed) : gray);
+		} else {
+			hlA.add((int) (health * 100f) + "%");
+			hlcA.add(healthColor(health));
+		}
 		// "3/3 of 5": the hull shortage caps what the nexus grows toward, and a
 		// full garrison at the cap must not read as a full garrison. "(+2
 		// inbound)": reinforcements flying in from sibling colonies - on station
@@ -2419,10 +2557,18 @@ public class ThreatWarBoard {
 					: ThreatGroundFronts.STATE_HOLDING.equals(front.state) ? pos
 					: ThreatGroundFronts.STATE_GRINDING.equals(front.state) ? h : neg);
 		} else if (market.getSize() >= ThreatIncConfig.strikeMinSize()) {
-			float range = ThreatColonyManager.fuelRangeLY(market);
 			a.append("    Reach %s");
-			hlA.add(range > 0f ? (int) range + " ly" : "grounded");
-			hlcA.add(range > 0f ? neg : pos);
+			if (ThreatReach.enabled()) {
+				// billed reach: the world the system would strike first, in its
+				// owner's colour, unless the hive cannot keep this world's swarm away
+				boolean noSwarm = grounded(market);
+				hlA.add(reachText(noSwarm, e.facedFaction, e.facedLY));
+				hlcA.add(reachColor(noSwarm, e.facedFaction));
+			} else {
+				float range = ThreatColonyManager.fuelRangeLY(market);
+				hlA.add(range > 0f ? (int) range + " ly" : "grounded");
+				hlcA.add(range > 0f ? neg : pos);
+			}
 		}
 		textHl(card, 8f, 27f, cardW - 16f, a.toString(), gray, hlcA.toArray(new Color[0]),
 				hlA.toArray(new String[0]), Alignment.LMID, true);
@@ -2517,13 +2663,11 @@ public class ThreatWarBoard {
 		};
 	}
 
-	/** "s6 in 266 d" / "stalled"		return card;
-	}
-
 	/**
 	 * The size line, right-aligned on the card: {format, from, to} with the two
-	 * highlights - "s5 -> s6 ~105 d", "s5 -> s4 ~22 d" (declining), "s8 max",
-	 * "s5 stalled".
+	 * highlights - "s5 -> s6 ~105 d", "s5 -> s4 ~22 d" (starving), "s8 max",
+	 * "s5 holding" ("s5 stalled" with size upkeep off, which alone reads
+	 * {@code health}).
 	 */
 	protected static String[] forecastParts(MarketAPI market, float health) {
 		String id = market.getId();
@@ -2541,13 +2685,23 @@ public class ThreatWarBoard {
 			}
 			return new String[] {"%s %s", from, "contested"};
 		}
-		boolean sized = ThreatColonyUpkeep.enabled();
-		float growthMult = sized ? ThreatColonyManager.growthPace(market) : ThreatColonyManager.growthMultFor(health);
-		// under size upkeep a starving hive counts down to its next size lost
-		if (sized && growthMult < 0f && market.getSize() > 1) {
-			return new String[] {"%s -> %s", from, "s" + (market.getSize() - 1) + " ~"
-					+ Math.max(1, (int) ThreatColonyManager.daysToLoseSize(market)) + " d"};
+		if (ThreatColonyUpkeep.enabled()) {
+			// size upkeep: the engine's own clocks - a starving hive counts down
+			// to the size it loses; one fed only to break-even, or under
+			// saturation, holds
+			int size = market.getSize();
+			float lose = ThreatColonyManager.daysToLoseSize(market);
+			if (lose < Float.MAX_VALUE) {
+				return new String[] {"%s -> %s", from, "s" + (size - 1) + " ~" + Math.max(1, (int) lose) + " d"};
+			}
+			if (size >= ThreatColonyManager.maxColonySize(market)) return new String[] {"%s %s", from, "max"};
+			float next = ThreatColonyManager.daysToNextSize(market);
+			if (next < Float.MAX_VALUE) {
+				return new String[] {"%s -> %s", from, "s" + (size + 1) + " ~" + Math.max(1, (int) next) + " d"};
+			}
+			return new String[] {"%s %s", from, "holding"};
 		}
+		float growthMult = ThreatColonyManager.growthMultFor(health);
 		int cap = ThreatColonyManager.maxColonySize(market);
 		if (market.getSize() >= cap) return new String[] {"%s %s", from, "max"};
 		if (growthMult <= 0f) return new String[] {"%s %s", from, "stalled"};
@@ -2608,6 +2762,83 @@ public class ThreatWarBoard {
 		if (health < ThreatColonyManager.CRITICAL_HEALTH) return Misc.getNegativeHighlightColor();
 		if (health < ThreatIncConfig.growthFullHealth()) return Misc.getHighlightColor();
 		return ThreatNotice.goodColor();
+	}
+
+	/** A hive world's growth under size upkeep (fedState). */
+	public static final int STARVING = -1, HOLDING = 0, GROWING = 1;
+
+	/**
+	 * A hive world's growth under size upkeep, on the engine's own clocks:
+	 * STARVING while it is paid below the break-even share (a size lost in
+	 * ThreatColonyManager.daysToLoseSize), GROWING while it grows toward its
+	 * next size, else HOLDING - paid the break-even share, at its largest, or
+	 * held by a front or saturation.
+	 */
+	public static int fedState(MarketAPI market) {
+		if (ThreatColonyManager.daysToLoseSize(market) < Float.MAX_VALUE) return STARVING;
+		if (ThreatColonyManager.daysToNextSize(market) < Float.MAX_VALUE) return GROWING;
+		return HOLDING;
+	}
+
+	public static String fedStateName(int state) {
+		return state == STARVING ? "starving" : state == GROWING ? "growing" : "holding";
+	}
+
+	/**
+	 * A share of the supplies upkeep paid in the reserve key's colours: white
+	 * paid in full, yellow short of it, red below the break-even share
+	 * (starving), grey for nothing billed (a negative share).
+	 */
+	public static Color fedColor(float fed) {
+		if (fed < 0f) return Misc.getGrayColor();
+		if (fed < ThreatColonyUpkeep.breakEven()) return Misc.getNegativeHighlightColor();
+		// a share paid in full can land a rounding short of 1
+		if (fed < 0.995f) return Misc.getHighlightColor();
+		return Misc.getTextColor();
+	}
+
+	/** A share as a whole percentage, rounded. */
+	public static String pct(float share) {
+		return Math.round(share * 100f) + "%";
+	}
+
+	/** Billed reach: the hive cannot keep the colony's one swarm away, or has no fuel to send it. */
+	public static boolean grounded(MarketAPI market) {
+		return !ThreatReach.canSustain(ThreatPosture.oneSwarmFP(market)) || ThreatFuel.stock() <= 0f;
+	}
+
+	/**
+	 * The world a system's swarm is judged by for billed reach: its staging
+	 * colony, or with none - an empty fuel stock leaves pickStrikeStaging
+	 * nothing - its biggest world of strike size; null when it has none.
+	 */
+	public static MarketAPI swarmSource(List<MarketAPI> markets, MarketAPI staging) {
+		if (staging != null) return staging;
+		MarketAPI best = null;
+		for (MarketAPI m : markets) {
+			if (m.getSize() < ThreatIncConfig.strikeMinSize()) continue;
+			if (best == null || m.getSize() > best.getSize()) best = m;
+		}
+		return best;
+	}
+
+	/** Billed reach's figure: "grounded", light-years to the world struck first, or "-" with none known. */
+	protected static String reachText(boolean grounded, String facedFaction, float facedLY) {
+		if (grounded) return "grounded";
+		if (facedFaction == null || facedLY < 0f) return "-";
+		return (int) Math.ceil(facedLY) + " ly";
+	}
+
+	/** Its colour: the good colour grounded, the faced world's owner's colour, grey with none. */
+	protected static Color reachColor(boolean grounded, String facedFaction) {
+		if (grounded) return ThreatNotice.goodColor();
+		return factionColor(facedFaction);
+	}
+
+	/** A faction's own colour; grey for none. */
+	public static Color factionColor(String factionId) {
+		FactionAPI faction = factionId != null ? Global.getSector().getFaction(factionId) : null;
+		return faction != null ? faction.getBaseUIColor() : Misc.getGrayColor();
 	}
 
 	public static StarSystemAPI getSystem(String systemId) {

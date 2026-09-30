@@ -24,7 +24,8 @@ What the mod adds, all through vanilla's own surfaces:
 | Disrupted port capped at a few shipping units | one flat accessibility modifier, `applyPortDisruption` | vanilla keeps a disrupted port flagged as present, so it barely moves shipping; the hive's one route is its port (below) |
 
 Everything else the mod does with the economy is a *reader*: vitality averages how well the
-growth inputs (`CORE_INPUTS`) are fed; fuel reach is fuel available x `strikeLYPerFuel`;
+growth inputs (`CORE_INPUTS`) are fed (the legacy growth path only, size upkeep off); the
+factions' fuel reach is fuel available x `strikeLYPerFuel` (the hive's is its bill, `ThreatReach`);
 hull availability scales the garrison through vanilla's own ship-deficit multiplier; strike
 staging needs fuel and hulls available. And the planner (`planHiveEconomy`) only decides
 which vanilla industry to build where. No refactor is needed to "get back to vanilla" - the
@@ -55,14 +56,16 @@ Consequences the mod builds on:
   the flow misconception. `maintainHiveEconomy` re-plans size-capped colonies with a free
   slot every tick, so an existing hive fills in its redundancy without waiting for growth
   steps that never come.
-- Reach is `fuelRangeLY = strikeLYPerFuel x min(fuel available, expeditionFuelCapacity)`.
+- The hive's reach is its bill (`billedReach`, 2026-09-30): no radius, see "Reach is the bill"
+  below. The old rule - the factions' still, and the hive's with `billedReach` off - is
+  `fuelRangeLY = strikeLYPerFuel x min(fuel available, expeditionFuelCapacity)`.
   Fuel available is the biggest fuel plant's output at every colony, so every developed
-  system sees the same figure (25 ly = 5 units x 5); the capacity term is
+  system sees the same figure (20 ly = 5 units x 4); the capacity term is
   `threatinc_reachFuelCarry` (4) times the colony's fleet-size figure - vanilla's own
   `Stats.COMBAT_FLEET_SIZE_MULT` untouched for faction and player worlds (colony size 0.5 at
   size 3 to 1.75 at size 8, times doctrine, hull shortage, stability, alpha core, skills), and
-  vitality x size / 4 for hive worlds - so a healthy size-4 hive world reaches 20 ly, a size-2
-  foothold 10, a size-8 world the full fuel-bound 25, and a besieged world less as its vitality
+  vitality x size / 4 for hive worlds - so a healthy size-4 hive world reaches 16 ly, a size-2
+  foothold 8, a size-8 world the full fuel-bound 20, and a besieged world less as its vitality
   falls. Fuel rises only by growing the fuel world or feeding its inputs. Hive ports
   are Spaceports, never Megaports (retired Sept 2026, `ensureSpaceport` migrates old saves):
   a Spaceport wants fuel at size-2, exactly what a same-size plant makes, where a Megaport
@@ -527,11 +530,14 @@ the whole sector, evaluated at the end of every posture pass (`ThreatPosture.pol
   - A stance holds `stanceDwellDays` before it changes; entering CONSOLIDATE never waits.
 - **Strength per rival:** the hive's held FP in the hive systems facing that rival (systems it stages
   against, attacks or guards forward bases facing, plus systems within fuel reach of a known world of
-  theirs) over the rival's FP in reach (staged capacity, attacks running, forward guards, as posture
-  read them). The rival with most FP in reach is the strongest.
+  theirs - billed reach, the systems that would strike that rival first, `ThreatReach.facedFaction`)
+  over the rival's FP in reach (staged capacity, attacks running, forward guards, as posture read
+  them). The rival with most FP in reach is the strongest.
 - **Weak known targets:** each hive system not pressed at home, from its strike staging colony
   (`pickStrikeTarget`'s source), over known strikeable worlds (`swarmKnows`, `strikeAllowed`) within the
-  staging colony's `fuelRangeLY`; needs phase 2. Muster = its colonies' garrisons above minimum + banks.
+  staging colony's `fuelRangeLY` - billed reach, any whose passage the stock pays, the muster capped
+  at what the spare supplies keep away and the score taken per day away; needs phase 2. Muster = its
+  colonies' garrisons above minimum + banks.
   Odds = defence / (muster's strength x `siegeBreakOffRatio`), the strike gate's own figure. Weak when
   odds <= `stanceWeakOdds`. Ranked by `IncursionManager.strikeValue` x (1 - odds). Need = the fewest of
   the staging colony's heaviest size-table rows that bring the odds to weak.
@@ -685,8 +691,9 @@ forward base, commodity-bound the way vanilla's economy is.
   its cap banks a full level while fed. A fed size-8 fortress paid nothing holds 135 days, then
   loses a size every 90; regrowing 7 to 8 takes 420. A ground front or saturation holds growth,
   never hunger. h35a, before the margin: the base save's 23 capped size-8 worlds, progress 0, all
-  lost a size in the first week. The Fabrication Core no longer gates growth; vitality
-  (fabrication x supply) still sets reach and counter-attacks.
+  lost a size in the first week. The Fabrication Core no longer gates growth. Vitality
+  (fabrication x supply) is retired with it: reach is the bill (below) and a colony's
+  counter-attack pace is the supplies it is paid.
 - **Feeding order** (`feed`, each poll, out of the production of the days fed after the fleets
   away are paid):
   1. Sustenance: the break-even share of every colony, forge worlds first, then the worlds nearest
@@ -754,6 +761,60 @@ forward base, commodity-bound the way vanilla's economy is.
   (2.5), `upkeepBreakEven` (0.5), `starveDaysPerSize` (90), `feedShareExpand` / `feedSharePress` /
   `feedShareConsolidate` (0.5 / 0.7 / 0.9).
 
+### Reach is the bill (2026-09-30, user's call; `ThreatReach`)
+
+The hive had a radius: 4 ly x min(fuel available, vitality x size), 16-24 ly for a strike world.
+Once passage was paid from a banked stock the radius said nothing true - h36a banked 256k fuel and
+spent 65% of its income - while it walled the hive in: 18 of its 35 strikes flew at 80%+ of their
+reach, all 17 human core worlds ended out of reach, 76 of 113 strikeable markets lay beyond every
+hive's, and one scout flew in 19 months. Vanilla's own numbers say fleet size does not change
+range (a fleet's range is its tanks over its burn, and ten ships carry ten tanks; every Threat
+hull carries 200 ly of fuel, the Fabricator 1,000, human warships 15-33): size changes the bill.
+So the hive has no radius now. A fleet goes where its trip can be paid, and where to go is a choice.
+
+- **The bill.** Passage out of the fuel stock (`ThreatFuel.passage`, 0.4 fuel a FP a light-year
+  there and back), and the supplies the fleet burns while away - its hulls' vanilla supplies a
+  month, 0.78 a FP for the swarm's hulls, measured off the garrisons each day
+  (`ThreatReach.suppliesPerFP`) - over the days away at the board's 0.5 ly a day.
+- **The gate.** The stock must pay the passage, and the fleet's supplies a month must fit in the
+  spare (`ThreatColonyUpkeep.spareSupplies`): the production, less the fleets away, less every
+  colony's sustenance at its 0.9 cap. A trip never starves a colony; it can starve growth, since
+  fleets away are paid first. Launches between feeds commit their share (`ThreatReach.commit`).
+  Strikes, waves, scouts and raiders pass the gate; reinforcements pay passage only - a garrison
+  moving house is not a trip away.
+- **The choice.** Strikes weigh a world by what it is worth per day away: `strikeValue` over
+  `strikeDays` = 2 x ly / 0.5 + the 10.5-day muster. The muster is as many swarms as the spare keeps
+  away, the target any whose passage the stock pays. The stance's weak targets the same. A hive
+  system faces the faction it would strike first (`facedFaction`).
+- **Founding** may claim anywhere a forge can send a wave. A claim weighs its deposits' need and the
+  stance's lean as before, over the days a swarm needs from the network to get there times the days
+  a strike staged there would be away at the nearest faction world (the old weight's 1 + ly and
+  1 + ly² - the squared pull toward inhabited space leaned on the radius to keep the jump short),
+  times the share of it the hive could hold (`holdShare`): the days the nearest faction military
+  world that reaches the system needs to put a siege there (`razeArrivalDays`) over the days the
+  nearest hive world's swarms need to get there, 1 when the hive gets there first or no base
+  reaches it. The nearest forge sends the wave.
+- **Reinforcements** come from the nearest donor with FP to spare, then the nearest idle bank.
+- **Scouts** chart every uncharted system holding a strikeable world, nearest first, each route as
+  long as the scout's own tanks carry it there and home (200 ly for the swarm's hulls) and the stock
+  pays; the stops past that wait for the next scout.
+- **Raiders** hunt a convoy whose route's middle they reach before it does: half the route, both at
+  the board's one speed (`raiderRangeLY` with `billedReach` off).
+- **Phase 3** needs a known core world the stock can fuel one swarm to and back.
+- **Abstract strikes pay.** A strike far from the player flies as a route with no fleets; its swarms
+  burned nothing (h36a: no strike ever owed). They burn the hive's rate a FP now, from the muster on
+  (`ledgerFleetSupplies`, `ThreatStrikeFGI.abstractFP`).
+- **The factions read the front off it.** A link is at the front where a hive world that would strike
+  the faction first has it as the faction's nearest market; its guard is sized to those worlds'
+  strikes (`ThreatFrontlines.strikeAt`). Aid credit goes to the factions no farther from the hive
+  system than its first target; a mission's urgency is the days a strike from the nearest hive world
+  is away over the days one from this world is.
+- **Readouts.** Census: `Reach: spare S supplies/mo (fleets away F/mo, x a FP); strikes n (mean a,
+  max b ly); waves ...; sends ...; raids ...; scouts ...; hive spans X ly over N systems, facing
+  {faction=systems}`. Strike launches log their ly and days away, claims their distance from the hive
+  and the nearest faction world, waves and scouts their ly, the stance's best weak target its ly.
+- **Settings:** `billedReach` (true; off, the radius above and `raiderRangeLY`).
+
 ## Levers, verified
 
 | Lever | Works on the hive? | Why |
@@ -765,6 +826,8 @@ forward base, commodity-bound the way vanilla's economy is.
 | Piracy, hostility, other accessibility maluses | no | same 5-unit floor; cosmetic for the hive |
 | Raid a forge (size upkeep) | yes | its output leaves the stock: growth stops hive-wide at once, worlds starve once the stock is spent |
 | Blockade a hive world (size upkeep) | yes | its imports cut half or all and its shipping held at the port trickle or nothing; a forge world keeps its own output |
+| Cut its fuel (billed reach) | slowly | the fleets fly on the banked stock, wherever it was made; the hive is grounded only once the stock is spent |
+| Cut its supplies (billed reach) | yes | the spare goes first: with nothing spare after sustenance, no strike, wave, scout or raid launches |
 
 ## What the war board shows because of this
 
