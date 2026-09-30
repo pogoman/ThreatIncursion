@@ -372,6 +372,22 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 		return count;
 	}
 
+	protected static long closestDay = Long.MIN_VALUE;
+	protected static Object closestSector;
+	protected static float closestLY = Float.MAX_VALUE;
+
+	/** Light-years from the hive world nearest living space to its nearest inhabited world, once a day. */
+	protected static float closestHiveToLivingLY() {
+		long day = Global.getSector().getClock().getTimestamp() / 86400000L;
+		if (closestSector == Global.getSector() && closestDay == day) return closestLY;
+		float best = Float.MAX_VALUE;
+		for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) best = Math.min(best, nearestInhabitedLY(hive));
+		closestLY = best;
+		closestSector = Global.getSector();
+		closestDay = day;
+		return best;
+	}
+
 	/** Light-years from this colony to the nearest live inhabited world of strike size. */
 	protected static float nearestInhabitedLY(MarketAPI market) {
 		StarSystemAPI system = market.getStarSystem();
@@ -402,6 +418,16 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 	 * with the sector's core inside its comfortable radius.
 	 */
 	protected static float strikeUrgency(MarketAPI market) {
+		// billed reach (ThreatReach): no radius to measure the margin against -
+		// the hive world nearest living space is the most urgent, the rest by
+		// the days a strike from them is away against its days
+		if (ThreatReach.enabled()) {
+			if (!ThreatColonyManager.hasOperationalFuel(market)) return 0f;
+			float nearest = nearestInhabitedLY(market);
+			if (nearest == Float.MAX_VALUE) return 0f;
+			return Math.max(0f, Math.min(1f, ThreatReach.strikeDays(closestHiveToLivingLY())
+					/ ThreatReach.strikeDays(nearest)));
+		}
 		float range = ThreatColonyManager.fuelRangeLY(market);
 		if (range <= 0f) return 0f;
 		float nearest = nearestInhabitedLY(market);
@@ -1110,9 +1136,15 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 
 	/** Whether the world can currently put an expedition on a living system. */
 	protected boolean canReachLiving(MarketAPI market) {
-		float reach = ThreatColonyManager.fuelRangeLY(market);
 		float toLiving = nearestInhabitedLY(market);
-		return reach > 0f && toLiving != Float.MAX_VALUE && toLiving <= reach;
+		if (toLiving == Float.MAX_VALUE) return false;
+		// billed reach (ThreatReach): the hive pays a swarm's trip there and back
+		if (ThreatReach.enabled()) {
+			return ThreatColonyManager.hasOperationalFuel(market)
+					&& ThreatReach.canPay(ThreatPosture.oneSwarmFP(market), toLiving, true);
+		}
+		float reach = ThreatColonyManager.fuelRangeLY(market);
+		return reach > 0f && toLiving <= reach;
 	}
 
 	protected void addTargetSection(TooltipMakerAPI info, MarketAPI market, FactionAPI faction) {
@@ -1145,6 +1177,9 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 								+ "the next launch, not this one.";
 			}
 			info.addPara(line, opad);
+		} else if (canReachLiving(market) && ThreatReach.enabled()) {
+			info.addPara("The swarm can put an expedition on a living system from here. The "
+					+ "nearest lies %s light-years out.", opad, h, "" + (int) nearestInhabitedLY(market));
 		} else if (canReachLiving(market)) {
 			info.addPara("The swarm can put an expedition on a living system from here. The "
 					+ "nearest lies %s light-years out, inside this colony's %s light-year fuel "

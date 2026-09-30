@@ -19,8 +19,9 @@ import com.fs.starfarer.api.util.Misc;
 /**
  * The hive's RAIDER role - guerre de course (docs/design-theory.md 8.2).
  *
- * <p>When a mobilised faction's convoy sails, every hive colony within
- * raiderRangeLY of the route's midpoint that has Defense Swarms above its
+ * <p>When a mobilised faction's convoy sails, every hive colony that reaches
+ * the route's midpoint before the convoy does (billed reach, ThreatReach;
+ * off, within raiderRangeLY of it) that has Defense Swarms above its
  * defensive reserve may detach real garrison swarms to hunt it, until the
  * pack outweighs the convoy (consider): each swarm
  * leaves the garrison list (so the leash does not recall it), gets an
@@ -119,7 +120,10 @@ public class ThreatRaiders {
 		Vector2f a = from.starSystem().getLocation();
 		Vector2f b = to.starSystem().getLocation();
 		Vector2f mid = new Vector2f((a.x + b.x) / 2f, (a.y + b.y) / 2f);
-		float range = ThreatIncConfig.raiderRangeLY();
+		// billed reach (ThreatReach): a hive that reaches the route's middle
+		// before the convoy does - half the route, at the one speed the board
+		// estimates both at; off, raiderRangeLY
+		float range = ThreatReach.enabled() ? Misc.getDistanceLY(a, b) / 2f : ThreatIncConfig.raiderRangeLY();
 		List<MarketAPI> near = new ArrayList<MarketAPI>();
 		for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) {
 			StarSystemAPI system = hive.getStarSystem();
@@ -183,13 +187,18 @@ public class ThreatRaiders {
 			}
 		}
 		if (best == null) return null;
+		// the supplies it burns away come out of what the colonies leave (ThreatReach)
+		if (!ThreatReach.canSustain(best.getFleetPoints())) return null;
 		// there and back comes from the hive's fuel (ThreatFuel)
-		float fuel = ThreatFuel.passage(best.getFleetPoints(), hive.getStarSystem() == null ? 0f
-				: Misc.getDistanceLY(hive.getStarSystem().getLocation(), convoy.fleet.getLocationInHyperspace()), true);
+		float ly = hive.getStarSystem() == null ? 0f
+				: Misc.getDistanceLY(hive.getStarSystem().getLocation(), convoy.fleet.getLocationInHyperspace());
+		float fuel = ThreatFuel.passage(best.getFleetPoints(), ly, true);
 		if (!ThreatFuel.pay(fuel)) {
 			ThreatFuel.held("a raider from " + hive.getName());
 			return null;
 		}
+		ThreatReach.commit(best.getFleetPoints());
+		ThreatReach.note("raid", ly);
 		garrison.remove(best);
 
 		MemoryAPI mem = best.getMemoryWithoutUpdate();

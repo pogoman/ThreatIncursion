@@ -1234,6 +1234,9 @@ public class ThreatColonyManager {
 	 * never applied to pays one cheap scan. Returns the colonies grown.
 	 */
 	public static int healStalledBootstrap() {
+		// the fingerprint is a stored vitality: under size upkeep growth reads
+		// the supplies paid and the stored figure means nothing
+		if (ThreatColonyUpkeep.enabled()) return 0;
 		float stall = ThreatIncConfig.growthStallHealth();
 		if (countLink(0) > 0) return 0;
 		List<MarketAPI> frozen = new ArrayList<MarketAPI>();
@@ -1751,6 +1754,9 @@ public class ThreatColonyManager {
 	public static boolean hasOperationalFuel(MarketAPI market) {
 		if (!ThreatIncConfig.economyGatesGrowth()) return true;
 		if (market == null) return false;
+		// billed reach (ThreatReach): the fleets fly on the hive's banked fuel,
+		// wherever its plants made it - grounded only once the stock is spent
+		if (ThreatReach.enabled()) return ThreatFuel.stock() > 0f;
 		// gate on the hive ACTUALLY PRODUCING fuel (fuel reaching this colony via
 		// the group), not on a deficit: fuel demand is size-2, so a small colony
 		// demands ~0 fuel and would pass a deficit check with no fuel plant at all.
@@ -1764,8 +1770,10 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * How far expeditions from this colony reach, in light-years - one rule
-	 * for hive worlds, faction military worlds and the player's colonies:
+	 * How far expeditions from this colony reach, in light-years - the rule
+	 * for faction military worlds and the player's colonies, and for hive
+	 * worlds only with billedReach off (the hive's reach is its bill,
+	 * ThreatReach):
 	 *
 	 *   reach = strikeLYPerFuel x min(fuel available, fuel the fleets can carry)
 	 *
@@ -2226,6 +2234,9 @@ public class ThreatColonyManager {
 		int bestSpare = -1;
 		boolean bestPays = false;
 		boolean posture = ThreatPosture.enabled();
+		// billed reach (ThreatReach): any distance, the nearest forge first - the
+		// cheapest passage and the shortest days away
+		boolean billed = ThreatReach.enabled();
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (market.getSize() < ThreatIncConfig.spreadMinSize()) continue;
 			if (!hasReadyForge(market)) continue;
@@ -2240,16 +2251,17 @@ public class ThreatColonyManager {
 			if (spare < 1) continue;
 			if (requireStable ? !isStableForExpansion(market) : !canProjectFleets(market)) continue;
 			float d = Misc.getDistanceLY(system.getLocation(), target.getLocation());
-			// colonization is fuel-bound exactly like strikes: a wave can only
-			// be sent as far as the fuel the hive network delivers to this
-			// colony will carry it. Cut their fuel and the swarm stops seeding.
-			if (d > fuelRangeLY(market)) continue;
+			// the old radius: a wave only as far as the fuel the hive network
+			// delivers to this colony carries it. Billed, the stocks pay the way
+			// (launchColonizationWave)
+			if (!billed && d > fuelRangeLY(market)) continue;
 			// a forge whose system can pay the founding goes before one that
 			// cannot (2026-09-29, ti-h8e: the swarm-richest forge was picked,
 			// failed its bill, and the claim waited months with 70k FP banked)
 			boolean pays = poolableFP(market) >= foundingFP(FOUNDING_CORE_STRUCTURES + 1);
 			boolean better;
 			if (best != null && pays != bestPays) better = pays;
+			else if (billed) better = d != bestDist ? d < bestDist : spare > bestSpare;
 			else better = posture && spare != bestSpare ? spare > bestSpare : d < bestDist;
 			if (better) {
 				bestDist = d;
@@ -2565,6 +2577,12 @@ public class ThreatColonyManager {
 				ThreatFuel.held("a Seeding Swarm from " + source.getName());
 				return false;
 			}
+			// ...and the supplies it burns on the way out the colonies' spare (ThreatReach)
+			if (!ThreatReach.canSustain(swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec))) {
+				ThreatIncConfig.logQuiet("wavewait:" + source.getId(), "Seeding Swarm from " + source.getName()
+						+ " held: the colonies leave " + (int) ThreatReach.spare() + " supplies a month for fleets away");
+				return false;
+			}
 			if (bill > 0f && !poolSystemBanks(source, bill)) return false;
 		}
 
@@ -2591,13 +2609,17 @@ public class ThreatColonyManager {
 			chargeFP(source, structuresFP);
 			fleet.getMemoryWithoutUpdate().set(FOUNDING_FP_KEY, structuresFP);
 			fleet.getMemoryWithoutUpdate().set(FOUNDING_SOURCE_KEY, source.getId());
-			float fuel = ThreatFuel.passage(fleet.getFleetPoints(), ThreatFuel.ly(source.getStarSystem(), targetSystem), false);
+			float waveLY = ThreatFuel.ly(source.getStarSystem(), targetSystem);
+			float fuel = ThreatFuel.passage(fleet.getFleetPoints(), waveLY, false);
 			ThreatFuel.pay(Math.min(ThreatFuel.stock(), fuel));
 			ThreatFuel.loadFounding(fleet);
+			ThreatReach.commit(fleet.getFleetPoints());
+			ThreatReach.note("wave", waveLY);
 			// under size upkeep a wave's price is its cargo and its swarm: the
 			// forge that sends it keeps working (docs/hive-economy.md "Size upkeep")
 			float retool = ThreatColonyUpkeep.enabled() ? 0f : retoolForge(source, fleet.getFleetPoints());
-			ThreatIncConfig.log("Seeding Swarm from " + source.getName() + ": " + (int) fleet.getFleetPoints()
+			ThreatIncConfig.log("Seeding Swarm from " + source.getName() + " to " + targetSystem.getName()
+					+ " (" + (int) waveLY + " ly): " + (int) fleet.getFleetPoints()
 					+ " FP of hulls, " + (int) structuresFP + " FP of structures, "
 					+ (int) fleet.getMemoryWithoutUpdate().getFloat(ThreatFuel.MEM_FOUND_SUPPLIES) + " supplies and "
 					+ (int) (fleet.getMemoryWithoutUpdate().getFloat(ThreatFuel.MEM_FOUND_FUEL) + fuel)
@@ -4101,6 +4123,18 @@ public class ThreatColonyManager {
 				out.put(home, (had != null ? had : 0f) + ThreatFrontlines.maintenancePerMonth(curr));
 			}
 		}
+		// a strike far from the player flies as an abstract route with no fleets
+		// to weigh (2026-09-30: it burned nothing): its swarms burn what the hive's
+		// hulls burn a fleet point (ThreatReach.suppliesPerFP) from its muster on
+		for (Object o : IncursionManager.getStrikeList()) {
+			if (!(o instanceof ThreatStrikeFGI)) continue;
+			ThreatStrikeFGI strike = (ThreatStrikeFGI) o;
+			float fp = strike.abstractFP();
+			String home = strike.ledgerHome;
+			if (fp <= 0f || home == null) continue;
+			Float had = out.get(home);
+			out.put(home, (had != null ? had : 0f) + ThreatReach.suppliesPerMonth(fp));
+		}
 		return out;
 	}
 
@@ -4630,6 +4664,10 @@ public class ThreatColonyManager {
 		if (from == null || to == null) return false;
 		if (from == to) return true;
 		if (!hasOperationalFuel(source)) return false;
+		// billed reach (ThreatReach): any distance whose passage the stock pays
+		// (the callers' own test) - a garrison moving house is not a trip away,
+		// so no supplies gate
+		if (ThreatReach.enabled()) return true;
 		float d = Misc.getDistanceLY(from.getLocation(), to.getLocation());
 		return d <= fuelRangeLY(source);
 	}
@@ -4809,9 +4847,12 @@ public class ThreatColonyManager {
 							receiver.getStarSystem().getLocation());
 					// the way there comes from the hive's fuel (ThreatFuel)
 					if (!ThreatFuel.canPay(ThreatFuel.passage(fleet.getFleetPoints(), dist, false))) continue;
+					// billed reach: the nearest donor first - no radius keeps the
+					// richest garrison across the sector from being the one that sails
 					boolean better;
 					if (donor == null) better = true;
 					else if (same != donorSame) better = same;
+					else if (ThreatReach.enabled() && dist != donorDist) better = dist < donorDist;
 					else if (spare != donorSpare) better = spare > donorSpare;
 					else better = dist < donorDist;
 					if (better) {
@@ -4839,6 +4880,9 @@ public class ThreatColonyManager {
 				inbound.put(receiver.getId(), inbound.get(receiver.getId()) + fp);
 				ThreatPosture.noteTransfer(receiver, pick);
 				ThreatPosture.noteSent(fp);
+				if (donor.getStarSystem() != receiver.getStarSystem()) {
+					ThreatReach.note("send", ThreatFuel.ly(donor.getStarSystem(), receiver.getStarSystem()));
+				}
 				ThreatIncConfig.log("Posture: " + donor.getName() + " sent " + (int) fp + " FP to "
 						+ receiver.getName() + " (" + held.get(receiver.getId()).intValue() + " of "
 						+ (int) want + " FP wanted)");
@@ -4863,7 +4907,7 @@ public class ThreatColonyManager {
 		float cost = swarmCostEstimate(spec);
 		MarketAPI best = null;
 		boolean bestSame = false;
-		float bestIdle = 0f;
+		float bestIdle = 0f, bestLY = Float.MAX_VALUE;
 		for (MarketAPI curr : colonies) {
 			if (curr == receiver || curr.getPrimaryEntity() == null || curr.getStarSystem() == null) continue;
 			if (!canRebuildGarrison(curr)) continue;
@@ -4875,13 +4919,16 @@ public class ThreatColonyManager {
 			if (!canReinforce(curr, receiver)) continue;
 			boolean same = curr.getStarSystem() == receiver.getStarSystem();
 			// a swarm the hive cannot fuel to the receiver is not built for it
-			if (!ThreatFuel.canPay(ThreatFuel.passage(cost,
-					ThreatFuel.ly(curr.getStarSystem(), receiver.getStarSystem()), false))) continue;
-			boolean better = best == null || (same != bestSame ? same : idle > bestIdle);
+			float ly = ThreatFuel.ly(curr.getStarSystem(), receiver.getStarSystem());
+			if (!ThreatFuel.canPay(ThreatFuel.passage(cost, ly, false))) continue;
+			// billed reach: the nearest idle bank first, as the donors go
+			boolean better = best == null || (same != bestSame ? same
+					: ThreatReach.enabled() && ly != bestLY ? ly < bestLY : idle > bestIdle);
 			if (better) {
 				best = curr;
 				bestSame = same;
 				bestIdle = idle;
+				bestLY = ly;
 			}
 		}
 		return best;

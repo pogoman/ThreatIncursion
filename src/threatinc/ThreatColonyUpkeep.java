@@ -161,6 +161,24 @@ public class ThreatColonyUpkeep {
 		return Math.max(0f, Math.min(1f, share));
 	}
 
+	/**
+	 * Supplies a month the production leaves once the fleets away are paid and
+	 * every colony's sustenance fits under sustainShare, as the last feed read
+	 * it: what a new trip may burn without starving a colony (ThreatReach).
+	 * Unlimited with size upkeep off.
+	 */
+	public static float spareSupplies() {
+		if (!enabled()) return Float.MAX_VALUE;
+		Object v = data().get("spare");
+		return v instanceof Float ? (Float) v : ThreatFuel.perMonth(Commodities.SUPPLIES);
+	}
+
+	/** Supplies a month the fleets away burned at the last feed. */
+	public static float fleetsPerMonth() {
+		Object v = data().get("fleets");
+		return v instanceof Float ? (Float) v : 0f;
+	}
+
 	/** The share of the production, after fleets away, sustenance may take whatever the stance: the largest stance share. */
 	public static float sustainShare() {
 		float share = Math.max(ThreatIncConfig.feedShareExpand(),
@@ -221,6 +239,17 @@ public class ThreatColonyUpkeep {
 			n.frontLY = frontLY(m, humans);
 			needs.add(n);
 		}
+		// what a new trip may burn a month (ThreatReach): the production less
+		// the fleets away and the sustenance at its share - a trip never starves
+		// a colony
+		float sustainMonth = 0f;
+		for (Need n : needs) sustainMonth += n.sustain;
+		sustainMonth *= 30f / days;
+		float sustainCap = sustainShare();
+		data().put("fleets", Math.max(0f, fleetsPerMonth));
+		data().put("spare", ThreatFuel.perMonth(Commodities.SUPPLIES) - Math.max(0f, fleetsPerMonth)
+				- (sustainCap > 0f ? sustainMonth / sustainCap : sustainMonth));
+		ThreatReach.clearCommitted();
 		if (needs.isEmpty()) return;
 
 		float stock = ThreatFuel.stock(Commodities.SUPPLIES);

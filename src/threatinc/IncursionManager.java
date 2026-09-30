@@ -867,8 +867,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 		}
 
+		float fromHive = distanceToNearestInfested(target);
 		ThreatIncData.setStage(target.getId(), ThreatIncData.STAGE_SEEDED);
-		ThreatIncConfig.log("Spread to: " + target.getName());
+		ThreatIncConfig.log("Spread to: " + target.getName() + " (" + (int) fromHive + " ly from the hive, "
+				+ (int) distanceToNearestInhabited(target) + " ly from the nearest faction world)");
 	}
 
 	/**
@@ -1069,12 +1071,18 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		for (; count > 0; count--) {
 			float excess = excessOf[count];
 			if (!ThreatFuel.canPay(ThreatFuel.passage(fpOf[count], ly, true))) continue;
+			// ...and no bigger than the supplies the colonies leave keep away (ThreatReach)
+			if (!ThreatReach.canSustain(fpOf[count])) continue;
 			if (excess <= 0f || ThreatColonyManager.canAffordFP(colony, excess)) break;
 		}
 		if (count <= 0) {
 			if (sendable > 0 && walk.size() > 0
 					&& !ThreatFuel.canPay(ThreatFuel.passage(fpOf[1], ly, true))) {
 				ThreatFuel.held("strike from " + colony.getName());
+			} else if (sendable > 0 && walk.size() > 0 && !ThreatReach.canSustain(fpOf[1])) {
+				ThreatIncConfig.logQuiet("strikewait:" + colony.getId(), "Strike from " + colony.getName()
+						+ " held: the colonies leave " + (int) ThreatReach.spare() + " supplies a month, one swarm burns "
+						+ (int) ThreatReach.suppliesPerMonth(fpOf[1]));
 			} else if (sendable > 0) {
 				ThreatIncConfig.log("Strike from " + colony.getName() + " held: the bank ("
 						+ (int) ThreatColonyManager.bankedFP(colony) + " FP) cannot re-embody even one swarm");
@@ -1105,6 +1113,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (drawn > 0f) ThreatColonyManager.chargeFP(colony, drawn);
 		ThreatFuel.pay(Math.min(ThreatFuel.stock(),
 				ThreatFuel.passage(ThreatStrikeFGI.estimateFP(swarmSizes), ly, true)));
+		ThreatReach.commit(ThreatStrikeFGI.estimateFP(swarmSizes));
+		ThreatReach.note("strike", ly);
 
 		ThreatStrikeFGI strike = new ThreatStrikeFGI(params);
 		strike.setPacks(packs);
@@ -1122,7 +1132,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		else ThreatOmens.onStrikeLaunched(target);
 
 		ThreatIncConfig.log("Strike launched from " + source.getName() + " at " + target.getName()
-				+ " (" + mustered.size() + " swarm(s) mustered in " + packs.size() + " fleet(s), "
+				+ " (" + target.getFactionId() + ", " + (int) ly + " ly, ~" + (int) ThreatReach.strikeDays(ly)
+				+ " days away; " + mustered.size() + " swarm(s) mustered in " + packs.size() + " fleet(s), "
 				+ (int) paid[0] + " FP + "
 				+ (int) drawn + " drawn from the bank, sweeping "
 				+ params.raidParams.allowedTargets.size()
@@ -3986,13 +3997,17 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// hive claims ONLY systems whose deposits would fix its economy
 		boolean strainedHive = !ThreatColonyManager.anyNominalColony();
 
+		// billed reach (ThreatReach): a claim may be anywhere a forge can send a
+		// wave; what the hive could not defend is weighed, not walled off
+		boolean billed = ThreatReach.enabled();
+		List<MarketAPI> bases = billed ? siegeBases() : null;
 		WeightedRandomPicker<StarSystemAPI> picker = new WeightedRandomPicker<StarSystemAPI>(random);
 		for (StarSystemAPI system : Global.getSector().getStarSystems()) {
 			if (!isValidSpreadCandidate(system)) continue;
 
-			// reachable = some stable forge colony has the fuel to actually
-			// send a wave this far (fuel range enforced in pickForgeSource) -
-			// the swarm creeps exactly as far as its fuel carries it
+			// reachable = some stable forge colony can send a wave: the fuel
+			// to send it this far (the old radius, pickForgeSource), or billed,
+			// a forge the stocks pay the wave from
 			if (ThreatColonyManager.pickForgeSource(system, true) == null) continue;
 
 			float dInfested = distanceToNearestInfested(system);
@@ -4009,14 +4024,69 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// rare-ore worlds
 			float need = ThreatColonyManager.systemNeedScore(system, needs);
 			if (strainedHive && need <= 0f) continue;
-			float w = (1f + need * 0.01f)
-					/ ((1f + dInfested) * (1f + dInhabited * dInhabited));
+			float w;
+			if (billed) {
+				// billed reach (ThreatReach): both pulls in the bill's terms - per
+				// day a swarm needs from the network to reach it, per day a strike
+				// staged there is away at the nearest faction world - and the
+				// share of it the hive could hold. The squared pull toward
+				// inhabited space leaned on the radius to keep the jump short
+				w = (1f + need * 0.01f) * holdShare(system, bases)
+						/ (Math.max(1f, ThreatReach.days(dInfested)) * ThreatReach.strikeDays(dInhabited));
+			} else {
+				w = (1f + need * 0.01f)
+						/ ((1f + dInfested) * (1f + dInhabited * dInhabited));
+			}
 			// expanding to diversify, the swarm leans away from its strongest
 			// rival (ThreatStance)
 			w *= ThreatStance.spreadMult(system);
 			picker.add(system, w);
 		}
 		return picker.pick();
+	}
+
+	/**
+	 * Faction worlds that could put a siege on a hive world: a military
+	 * structure with fuel range (a mobilised faction builds the depot it stages
+	 * from, isBase).
+	 */
+	protected static List<MarketAPI> siegeBases() {
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (m.getStarSystem() == null || ThreatMapFog.hidden(m)) continue;
+			if (Factions.THREAT.equals(m.getFactionId()) || m.isPlayerOwned()) continue;
+			if (!hasMilitary(m) || expeditionRangeLY(m) <= 0f) continue;
+			out.add(m);
+		}
+		return out;
+	}
+
+	/**
+	 * The share of a claim the hive could hold (billed reach, 2026-09-30): the
+	 * days the nearest faction military world that reaches the system needs to
+	 * put a siege on it (razeArrivalDays) over the days the swarms of the nearest
+	 * hive world need to get there - 1 when the hive gets there first or no
+	 * base reaches it. This replaced the radius that held claims inside the
+	 * network's reach: the swarm may claim anywhere, and weighs what it could
+	 * not defend.
+	 */
+	protected float holdShare(StarSystemAPI system, List<MarketAPI> bases) {
+		float siege = Float.MAX_VALUE;
+		for (MarketAPI base : bases) {
+			float d = Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation());
+			if (d > expeditionRangeLY(base)) continue;
+			siege = Math.min(siege, razeArrivalDays(base, system));
+		}
+		if (siege == Float.MAX_VALUE) return 1f;
+		float support = Float.MAX_VALUE;
+		for (String systemId : ThreatIncData.colonyMarkets().keySet()) {
+			if (ThreatIncData.getLiveColonyMarkets(systemId).isEmpty()) continue;
+			StarSystemAPI hive = getSystem(systemId);
+			if (hive == null) continue;
+			support = Math.min(support, ThreatReach.days(Misc.getDistanceLY(hive.getLocation(), system.getLocation())));
+		}
+		if (support <= 0f) return 1f;
+		return Math.min(1f, siege / support);
 	}
 
 	protected boolean isValidSpreadCandidate(StarSystemAPI system) {
@@ -4135,17 +4205,39 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		boolean coreAllowed = getPhase() >= 3;
 		boolean playerAllowed = ThreatIncData.daysSincePlayerStruck() >= ThreatIncConfig.playerGraceDays();
 
-		// reach is fuel: how far the staging colony can actually project, from
-		// the fuel the hive network delivers to it (accessibility-mediated)
-		float rangeLY = ThreatColonyManager.fuelRangeLY(staging);
+		// reach is the bill (ThreatReach, 2026-09-30): any world whose passage the
+		// stock pays, with the muster the spare supplies keep away, weighed by
+		// what it is worth per day away. Off: the old fuel radius
+		boolean billed = ThreatReach.enabled();
+		float rangeLY = billed ? Float.MAX_VALUE : ThreatColonyManager.fuelRangeLY(staging);
 		if (rangeLY <= 0f) return null;
 
 		// the strike the colony would muster, in vanilla's strength units - the
-		// ones its off-screen fight is weighed in (strikeOutweighed)
+		// ones its off-screen fight is weighed in (strikeOutweighed); billed, no
+		// more swarms than the colonies' spare supplies keep away (launchStrike
+		// takes the same walk)
 		int points = 0;
-		for (int size : ThreatColonyManager.peekGarrison(staging,
-				ThreatColonyManager.garrisonAvailableForLaunch(staging))) {
-			points += strikeFleetSize(size);
+		float musterFP = 0f;
+		if (billed) {
+			for (ThreatColonyManager.MusterFleet mf : ThreatColonyManager.peekMuster(staging,
+					ThreatColonyManager.garrisonAvailableForLaunch(staging))) {
+				java.util.List<Integer> sizes = new ArrayList<Integer>();
+				for (int size : mf.sizes) sizes.add(strikeFleetSize(size));
+				float est = ThreatStrikeFGI.estimateFP(sizes);
+				if (!ThreatReach.canSustain(musterFP + est)) break;
+				for (int size : sizes) points += size;
+				musterFP += est;
+			}
+			if (points <= 0) {
+				ThreatIncConfig.logQuiet("strikewait:" + staging.getId(), "Strikes from " + staging.getName()
+						+ " wait: the colonies leave " + (int) ThreatReach.spare() + " supplies a month for fleets away");
+				return null;
+			}
+		} else {
+			for (int size : ThreatColonyManager.peekGarrison(staging,
+					ThreatColonyManager.garrisonAvailableForLaunch(staging))) {
+				points += strikeFleetSize(size);
+			}
 		}
 		float strikeStr = FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points);
 		java.util.Map<String, float[]> outweighed = new java.util.HashMap<String, float[]>();
@@ -4165,9 +4257,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 			float d = Misc.getDistanceLY(source.getLocation(), market.getStarSystem().getLocation());
 			if (d > rangeLY) continue;
+			// billed: the passage there and back comes out of the fuel stock
+			if (billed && !ThreatFuel.canPay(ThreatFuel.passage(musterFP, d, true))) continue;
 			if (strikeOutweighed(market, strikeStr, outweighed)) continue;
 
-			float w = strikeValue(market);
+			// billed, what the world is worth per day the strike is away: near
+			// unless far is worth the weeks
+			float w = strikeValue(market) / (billed ? ThreatReach.strikeDays(d) : 1f);
 			// a dry front of the swarm's is signalling: the next expedition
 			// answers it (2026-09-06)
 			if (ThreatGroundFronts.wantsExpedition(market)) {
@@ -4189,7 +4285,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	/**
 	 * What a world is worth striking: the swarm hunts concentration - the
 	 * bigger the world, the more biomass and technology to erase (distance is
-	 * paid in fuel, the range gate) - a frontline outpost is worth what hangs
+	 * paid in fuel and days away, ThreatReach) - a frontline outpost is worth what hangs
 	 * off it (docs/frontlines.md, "The Threat breaks the chain"), and the
 	 * swarm turns on whoever is hurting it (ThreatAlarm grudge).
 	 */
@@ -4302,14 +4398,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	protected static boolean coreWorldInReach(MarketAPI staging) {
 		StarSystemAPI source = staging.getStarSystem();
 		if (source == null) return false;
-		float rangeLY = ThreatColonyManager.fuelRangeLY(staging);
+		// billed reach (ThreatReach): a core world the stock fuels a swarm to and back
+		boolean billed = ThreatReach.enabled();
+		float rangeLY = billed ? Float.MAX_VALUE : ThreatColonyManager.fuelRangeLY(staging);
 		if (rangeLY <= 0f) return false;
+		float swarmFP = billed ? ThreatPosture.oneSwarmFP(staging) : 0f;
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (!isCoreWorld(market) || !isStrikeableWorld(market)) continue;
 			// pickStrikeTarget's own gate: a world its scouts have not charted is not in reach
 			if (!ThreatSwarmScouts.swarmKnows(market)) continue;
 			float d = Misc.getDistanceLY(source.getLocation(), market.getStarSystem().getLocation());
-			if (d <= rangeLY) return true;
+			if (d > rangeLY) continue;
+			if (billed && !ThreatFuel.canPay(ThreatFuel.passage(swarmFP, d, true))) continue;
+			return true;
 		}
 		return false;
 	}
@@ -4412,8 +4513,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * run on (ThreatColonyManager.fuelRangeLY). A size-8 Hegemony world fed by
 	 * Sindria reaches deep; a player colony capped at size 6 reaches what its
 	 * own fuel supply buys; a world with no fuel sends nothing. Replaced the
-	 * flat threatinc_responseRangeLY in Sept 2026 so both sides play by one
-	 * rule.
+	 * flat threatinc_responseRangeLY in Sept 2026 so both sides played by one
+	 * rule - until the hive's reach became its bill (ThreatReach, billedReach);
+	 * the factions keep this one.
 	 */
 	public static float expeditionRangeLY(MarketAPI base) {
 		// one rule for every side: fuel available, capped by what the base's

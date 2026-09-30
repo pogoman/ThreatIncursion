@@ -1104,6 +1104,12 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		return ledgerPaid;
 	}
 
+	/** Fleet points the strike holds while it flies unspawned - an abstract route, or still mustering - and 0 once spawned or over. */
+	public float abstractFP() {
+		if (ledgerHome == null || stillborn || isSpawnedFleets() || isEnding() || isEnded()) return 0f;
+		return ledgerPaid * ledgerShare();
+	}
+
 	/** {fabricators, escort tier} of the fleet createFleet builds for an expedition size, at the damage it spawns with. */
 	public static int[] specFor(int size, float damage) {
 		FabricatorEscortStrength strength;

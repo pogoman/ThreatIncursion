@@ -593,6 +593,11 @@
 	# a fleet sent across hyperspace draws the rate above, one way for a fleet that
 	# stays (a Seeding Swarm, a reinforcement), both ways for a strike or a raid
 	"threatinc_threatPaysPassage": true,
+	# reach is the bill (ThreatReach): the hive's fleets go any distance whose
+	# passage its fuel stock pays and whose supplies away fit in what its
+	# colonies' sustenance leaves, targets weighed by worth per day away; off,
+	# the old radius (strikeLYPerFuel x min(fuel available, vitality x size))
+	"threatinc_billedReach": true,
 	"threatinc_threatSuppliesUpkeep": true,
 	"threatinc_structuresCostSupplies": true,
 	"threatinc_structureSuppliesMult": 1.0,
@@ -634,9 +639,10 @@
 	"threatinc_frontRunsEnabled": true,
 	"threatinc_frontResupplyDays": 60,
 	"threatinc_frontRunWaitDays": 30,
-	# the hive hunts convoys: a hive colony within raiderRangeLY of a route's
-	# midpoint with Defense Swarms above its reserve detaches ONE to intercept
-	# the convoy for raiderDays, then brings it home to the garrison
+	# the hive hunts convoys: a hive colony that reaches a route's midpoint
+	# before the convoy does (billedReach; off, within raiderRangeLY of it) with
+	# Defense Swarms above its reserve detaches swarms to intercept the convoy
+	# for raiderDays, then brings them home to the garrison
 	"threatinc_raiderEnabled": true,
 	"threatinc_raiderRangeLY": 12,
 	"threatinc_raiderChance": 0.5,

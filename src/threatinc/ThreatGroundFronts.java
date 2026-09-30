@@ -41,7 +41,8 @@ import com.fs.starfarer.api.util.Misc;
  * only two ways: a ground victory, or saturation razed down to its last
  * level ({@link ThreatRazing}); starvation and bombardment short of that
  * only make the siege cheaper. The hive counter-attacks on a cadence paced by
- * its vitality and can retake strata from a front too weak to hold them.
+ * the supplies it is paid (vitality with size upkeep off) and can retake
+ * strata from a front too weak to hold them.
  *
  * <p>Everything ticks at flat daily rates on the colony poll: armaments burn
  * as upkeep (the stockpile IS the supply countdown, and a dry front fights at
@@ -313,8 +314,9 @@ public class ThreatGroundFronts {
 	/**
 	 * A hive world under siege. Its strata loss lives inside SwarmNexus.apply
 	 * and its tooltip is HiveVitalityCondition, so the market carries nothing
-	 * extra; its counter-attacks pace on vitality; its orbit is contested by
-	 * its Defense Swarms; its fall is eradication.
+	 * extra; its counter-attacks pace on the supplies it is paid
+	 * (hiveCounterAttackPace); its orbit is contested by its Defense Swarms;
+	 * its fall is eradication.
 	 */
 	public static final Theatre HIVE = new Theatre() {
 		public float defenderStrength(MarketAPI market) {
@@ -328,11 +330,11 @@ public class ThreatGroundFronts {
 			return defenderStrength(market);
 		}
 		public float counterAttackInterval(GroundFront front, MarketAPI market) {
-			// starve it and the counterstroke never comes - health still paces
-			// the hive underneath - and having the body to spare speeds it up
-			// on top, the same as a colony (user, 2026-09-08)
+			// starve it and the counterstroke never comes - the supplies it is
+			// paid still pace the hive underneath - and having the body to spare
+			// speeds it up on top, the same as a colony (user, 2026-09-08)
 			return ThreatIncConfig.frontCounterAttackDays()
-					/ Math.max(0.25f, ThreatColonyManager.computeHealth(market))
+					/ Math.max(0.25f, hiveCounterAttackPace(market))
 					/ counterAttackTempo(front, market);
 		}
 		public List<Industry> keyStructures(MarketAPI market) {
@@ -1101,16 +1103,33 @@ public class ThreatGroundFronts {
 	}
 
 	/**
-	 * Days until the colony's next counter-attack goes in. A hive paces on its
-	 * vitality (starve it and the counterstroke never comes); a human colony
-	 * paces on STABILITY - unrest, shortages and the shock of an invasion are
-	 * what stop a garrison organising - and a colony with a military command to
-	 * run the operation counter-attacks {@code colonyCounterAttackMilitaryMult}
-	 * times as often.
+	 * Days until the colony's next counter-attack goes in. A hive paces on the
+	 * supplies it is paid (hiveCounterAttackPace: starve it and the
+	 * counterstroke never comes); a human colony paces on STABILITY - unrest,
+	 * shortages and the shock of an invasion are what stop a garrison
+	 * organising - and a colony with a military command to run the operation
+	 * counter-attacks {@code colonyCounterAttackMilitaryMult} times as often.
 	 */
 	public static float counterAttackInterval(GroundFront front, MarketAPI market) {
 		if (market == null) return ThreatIncConfig.frontCounterAttackDays();
 		return Theatre.of(market).counterAttackInterval(front, market);
+	}
+
+	/**
+	 * What paces a hive world's counter-attacks, 0..1, before the tempo: under
+	 * size upkeep the share of its upkeep paid against the break-even share
+	 * (capped at 1) times the strata it still holds, (size - held) / size
+	 * (2026-09-30: supplies, not vitality; the Fabrication Core no longer
+	 * counts). With size upkeep off, vitality (computeHealth), which carries
+	 * the same strata factor.
+	 */
+	public static float hiveCounterAttackPace(MarketAPI market) {
+		if (market == null) return 0f;
+		if (!ThreatColonyUpkeep.enabled()) return ThreatColonyManager.computeHealth(market);
+		int size = market.getSize();
+		if (size <= 0) return 0f;
+		float fed = Math.min(1f, ThreatColonyUpkeep.fedShare(market) / ThreatColonyUpkeep.breakEven());
+		return fed * Math.max(0, size - strataHeld(market.getId())) / (float) size;
 	}
 
 	/** Days left on the counter-attack clock (0 = due now). Shown in the tooltips. */
@@ -1728,7 +1747,7 @@ public class ThreatGroundFronts {
 			}
 		}
 
-		// the colony counter-attacks on a cadence paced by its vitality (hive)
+		// the colony counter-attacks on a cadence paced by its supplies (hive)
 		// or its stability and military command (human): a starved or unstable
 		// world cannot mount them - which is what strangling an economy buys
 		hiveCounterAttack(front, market);
@@ -2010,7 +2029,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * defense figure against the front's (entrenchment-boosted) strength.
 	 * Losing costs marines and a held stratum; a beachhead beaten twice over
 	 * is destroyed outright. Cadence comes from {@link #counterAttackInterval}
-	 * - hive vitality on a hive world, stability and military command on a
+	 * - the supplies a hive world is paid, stability and military command on a
 	 * human one.
 	 */
 	/**
@@ -2243,7 +2262,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// Both theatres (user, 2026-09-08). A hive that outnumbers a beachhead
 		// answers it sooner for the same reason a colony does - having enough
 		// body to spare is what lets either mount the counterstroke at all.
-		// The hive's health still paces it underneath; this only scales that.
+		// The hive's supplies still pace it underneath; this only scales that.
 		float eff = effectiveStrength(front);
 		if (eff <= 0f) return clamp;
 		float ratio = ratioPow(counterAttackStrength(market) / Math.max(1f, eff));

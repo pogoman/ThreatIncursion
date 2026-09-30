@@ -153,7 +153,9 @@ public class ThreatSwarmScouts {
 		for (String systemId : systemIds) {
 			MarketAPI colony = pickStaging(systemId);
 			if (colony == null) continue;
-			float range = ThreatColonyManager.fuelRangeLY(colony);
+			// billed reach (ThreatReach): every uncharted system, a scout's route
+			// as long as its own tanks carry it (launch)
+			float range = ThreatReach.enabled() ? Float.MAX_VALUE : ThreatColonyManager.fuelRangeLY(colony);
 			while (true) {
 				List<String> route = planRoute(colony, range);
 				if (route.isEmpty() || launch(colony, route, random) == null) break;
@@ -207,15 +209,41 @@ public class ThreatSwarmScouts {
 	protected static Scout launch(MarketAPI colony, List<String> route, Random random) {
 		float budget = ThreatIncConfig.swarmScoutFleetPoints();
 		if (!ThreatColonyManager.canAffordFP(colony, budget)) return null;
+		// the supplies it burns away come out of what the colonies leave (ThreatReach)
+		if (!ThreatReach.canSustain(budget)) return null;
 		// the route and home again comes from the hive's fuel (ThreatFuel): the
 		// whole path is flown, so it is paid one way along it
 		float fuel = ThreatFuel.passage(budget, routeLY(colony, route), false);
-		if (!ThreatFuel.canPay(fuel)) {
+		// (billed reach trims the route to what the stock and the tanks carry once the scout is built)
+		if (!ThreatReach.enabled() && !ThreatFuel.canPay(fuel)) {
 			ThreatFuel.held("a scout from " + colony.getName());
 			return null;
 		}
 		CampaignFleetAPI fleet = ThreatFleetComposer.createScouts(budget, new Random(random.nextLong()));
 		if (fleet == null || fleet.isEmpty()) return null;
+		// billed reach: the route runs as far as the scout's own tanks carry it
+		// there and home - its hulls' vanilla fuel over their burn a light-year,
+		// 200 ly for the swarm's - and the stock pays; the stops past that wait
+		// for the next scout
+		if (ThreatReach.enabled()) {
+			float fuelCap = 0f, perLY = 0f;
+			for (com.fs.starfarer.api.fleet.FleetMemberAPI m : fleet.getFleetData().getMembersListCopy()) {
+				fuelCap += m.getHullSpec().getFuel();
+				perLY += m.getHullSpec().getFuelPerLY();
+			}
+			float tank = perLY > 0f ? fuelCap / perLY : Float.MAX_VALUE;
+			float fp = fleet.getFleetPoints();
+			while (route.size() > 1 && (routeLY(colony, route) > tank
+					|| !ThreatFuel.canPay(ThreatFuel.passage(fp, routeLY(colony, route), false)))) {
+				route = route.subList(0, route.size() - 1);
+			}
+			route = new ArrayList<String>(route);
+			if (routeLY(colony, route) > tank) return null;
+			if (!ThreatFuel.canPay(ThreatFuel.passage(fp, routeLY(colony, route), false))) {
+				ThreatFuel.held("a scout from " + colony.getName());
+				return null;
+			}
+		}
 		ThreatColonyManager.chargeFP(colony, fleet.getFleetPoints());
 		ThreatFuel.pay(Math.min(ThreatFuel.stock(),
 				ThreatFuel.passage(fleet.getFleetPoints(), routeLY(colony, route), false)));
@@ -240,7 +268,10 @@ public class ThreatSwarmScouts {
 		all().add(s);
 		ROUTE.sendTo(s, ThreatScoutRoute.systemById(route.get(0)));
 
-		ThreatIncConfig.log("Scouting Swarm from " + colony.getName() + ": " + route);
+		ThreatReach.commit(fleet.getFleetPoints());
+		ThreatReach.note("scout", routeLY(colony, route));
+		ThreatIncConfig.log("Scouting Swarm from " + colony.getName() + ": " + route + " (" + (int) routeLY(colony, route)
+				+ " ly there and home)");
 		return s;
 	}
 

@@ -559,13 +559,22 @@ public class ThreatAid {
 				.send();
 	}
 
-	/** Non-Threat, non-player factions with a colony within any of the hive system's colonies' strike reach. */
+	/**
+	 * Non-Threat, non-player factions with a colony within any of the hive
+	 * system's colonies' strike reach - billed reach (ThreatReach), no farther
+	 * than the world the hive would strike first.
+	 */
 	public static Set<String> factionsInStrikeReach(StarSystemAPI hive) {
 		Set<String> result = new LinkedHashSet<String>();
 		if (hive == null) return result;
 		float range = 0f;
-		for (MarketAPI colony : ThreatIncData.getLiveColonyMarkets(hive.getId())) {
-			range = Math.max(range, IncursionManager.expeditionRangeLY(colony));
+		if (ThreatReach.enabled()) {
+			float first = ThreatReach.facedLY(hive);
+			range = first >= 0f ? first + ThreatFrontlines.FRONT_TOLERANCE_LY : 0f;
+		} else {
+			for (MarketAPI colony : ThreatIncData.getLiveColonyMarkets(hive.getId())) {
+				range = Math.max(range, IncursionManager.expeditionRangeLY(colony));
+			}
 		}
 		if (range <= 0f) return result;
 		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {

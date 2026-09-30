@@ -13,8 +13,9 @@ import com.fs.starfarer.api.util.Misc;
  * market condition on every Threat colony. The vanilla colony UI's growth
  * number is meaningless for hive worlds (their growth is driven entirely by
  * {@link ThreatColonyManager#updateColonyVitality}); this tooltip shows the
- * numbers that actually matter - vitality (fabrication x supply), each organ's
- * status, and the growth pace.
+ * numbers that actually matter - the share of its supplies upkeep paid and any
+ * import cut (size upkeep; vitality, fabrication x supply, with it off), each
+ * organ's status, and the growth pace. The condition id keeps its old name.
  */
 public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 
@@ -30,10 +31,9 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
 
-		float fab = ThreatColonyManager.computeFabricationMult(market);
-		float supply = ThreatColonyManager.computeSupplyMult(market);
-		float health = ThreatColonyManager.computeHealth(market);
 		boolean sized = ThreatColonyUpkeep.enabled();
+		// vitality paces growth only with size upkeep off (2026-09-30)
+		float health = sized ? 0f : ThreatColonyManager.computeHealth(market);
 
 		if (sized) {
 			float upkeep = ThreatColonyUpkeep.perMonth(market.getSize());
@@ -47,19 +47,23 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 			}
 			float cut = ThreatColonyUpkeep.importCut(market);
 			if (cut > 0f) tooltip.addPara(INDENT + "Imports cut: %s", 3f, neg, pct(cut));
+		} else {
+			float fab = ThreatColonyManager.computeFabricationMult(market);
+			float supply = ThreatColonyManager.computeSupplyMult(market);
+			tooltip.addPara("Vitality: %s (fabrication %s x supply %s)", opad,
+					health < ThreatColonyManager.CRITICAL_HEALTH ? neg : h,
+					pct(health), pct(fab), pct(supply));
 		}
-		tooltip.addPara("Vitality: %s (fabrication %s x supply %s)", sized ? 3f : opad,
-				health < ThreatColonyManager.CRITICAL_HEALTH ? neg : h,
-				pct(health), pct(fab), pct(supply));
 
 		// the Core wears with its clock rather than switching off, so it shows
-		// its output; the port is on/off (applyPortDisruption zeroes shipping)
+		// its output while vitality counts it; the port is on/off
+		// (applyPortDisruption zeroes shipping)
 		Industry core = market.getIndustry(ThreatColonyManager.FABRICATION_CORE);
 		if (core == null) {
 			tooltip.addPara(INDENT + "Fabrication Core: %s", 3f, neg, "absent");
 		} else if (core.isDisrupted()) {
 			tooltip.addPara(INDENT + "Fabrication Core: %s (%s days)", 3f, neg,
-					pct(ThreatColonyManager.wornDownFactor(core,
+					sized ? "disrupted" : pct(ThreatColonyManager.wornDownFactor(core,
 							ThreatIncConfig.coreDownFactor())),
 					"" + (int) core.getDisruptedDays());
 		} else {
