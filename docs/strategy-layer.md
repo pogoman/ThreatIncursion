@@ -1196,11 +1196,13 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   no set) x `npcSiegeOrbitMargin` (1.5, the siege's own orbit margin, `ThreatSoftening.margin`),
   with no ceiling (2026-09-29: `softenMaxFP` 12,000 and
   `MAX_FLEETS` 30 left every hive over ~4k FP a world unhunted for a 3.7-year test; only what
-  the bases can pay bounds it), and never below the target's garrison projected to ARRIVAL x that
-  margin (`musterFloorFP`, `garrisonOnArrivalFP`: what the colony owns - its garrison, raiders out
-  and reinforcements inbound, all home by then - plus, while its Fabrication Core and Swarm Nexus
-  work, its bank and its net income minus upkeep over the passage and muster days,
-  `arrivalDays`). 2026-09-29: `softenMargin` (2.0), `softenHeadroom` (1.5) and the refill-to-nominal
+  the bases can pay bounds it), and never below the target's garrison NOW x that margin
+  (`musterFloorFP`, `garrisonNowFP`: what the colony owns - its garrison, raiders out and
+  reinforcements inbound). 2026-09-30: no projection of regrowth - the old floor added the hive's
+  bank and its net income over the passage and muster (~86 days at 35 ly), but the posture spends
+  banks wherever the pressure is, and the projection asked 8-13k FP of hunts that waited on fuel for
+  months while it grew (822 waits, 1 launch in a 33-month test). A garrison reinforced during the
+  muster meets the go-in check (`advanceForce`), which stands the force down. 2026-09-29: `softenMargin` (2.0), `softenHeadroom` (1.5) and the refill-to-nominal
   rule are removed - stacked, they asked 15,790 FP of a force against Alpha Mesh I's 3,158 - and the
   projection replaces the regrowth the old refill stood in for, which the bank may not pay for at
   all. Sized on the swarms projected, not those present: 15% of Run 7's forces met a garrison that had
