@@ -607,14 +607,16 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
   `noteShort`/`shortOf`). `planHiveEconomy` answers after the bootstrap with a fuel plant or a forge,
   one at a time: each gets `SHORT_DAYS` to show before the next (`mayAnswer`/`answered`). h29a,
   unpaced, built 20 fuel plants in one tick and 25 forges in two months.
-- **Supplies upkeep (C, `threatSuppliesUpkeep`, true).** Every Threat fleet - garrisons, raiders,
-  reinforcements in transit, and fleets out on the ledger - burns its hulls' vanilla supplies a
-  month (`ThreatFrontlines.maintenancePerMonth`) from the hive stock (`paySupplies`), replacing the
-  FP upkeep (`upkeepPerDay` is 0 while it is on). What goes unpaid notes supplies short and recycles
-  the colony's weakest garrison swarms (hull share back to the bank) until the month's shortfall is
-  cut (`Upkeep: X recycled a N FP swarm, M supplies of upkeep unpaid`). No colony fabricates while
-  the stock is empty.
-- **Result (h29a from h26 month 50, 5 months; h30a 3 more).** The 50k FP swarm burned 29-39k
+- **Supplies upkeep (C, `threatSuppliesUpkeep`, true).** Threat fleets away from home - raiders,
+  reinforcements in transit, and everything on the ledger (strikes, waves, scouts) - burn their
+  hulls' vanilla supplies a month (`ThreatFrontlines.maintenancePerMonth`) from the hive stock
+  (`paySupplies`), as the factions' fleets on the war's orders do (`ThreatUpkeep`). A garrison at
+  home is the hive's patrol: vanilla feeds patrols from the market's own supplies demand, which the
+  hive's structures already take, so it keeps the FP upkeep (`upkeepPerDay` on `garrisonFP`).
+  What goes unpaid notes supplies short and is owed; a month's worth owed turns the colony's
+  raiders home and aborts its strikes (`starveAway`, "Swarm Out of Supplies"; logged `Upkeep: X owes
+  N supplies for its fleets away`). A month paid in full clears the debt.
+- **First try, garrisons paying too (h29a from h26 month 50, 5 months; h30a 3 more).** The 50k FP swarm burned 29-39k
   supplies a month against 4.5-6.75k banked; the 310k stock ran out in 11 months and the recycling
   took the swarm to 8-17k FP, with 70-137k FP banked and unspendable. Forges do not help:
   37 forges make 178 units of supplies, the hive's own structures (spaceports, stations, defences)
