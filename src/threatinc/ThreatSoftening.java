@@ -383,9 +383,20 @@ public class ThreatSoftening {
 		return sum;
 	}
 
-	/** What one market can give a hunt: ThreatReserves.spendable, less a forward base's garrison upkeep ({@link #outpostKeep}). */
+	/**
+	 * What one market can give a hunt: its stock above the floor and its staging
+	 * bank, less a forward base's garrison upkeep ({@link #outpostKeep}). Not
+	 * ThreatReserves.spendable (2026-09-30): its donor keep - half the months
+	 * basis on top of the floor - is the convoys' reserve, and with it a hunt
+	 * pooled from 20-24 bases paid for 500-1,100 FP against the 5,250 its
+	 * target's swarms needed (400 waits, 3 launches in 23 months). A hunt now
+	 * draws to the floor as a sortie does (ThreatReserves.available); the staging
+	 * bank still stays for the base's own siege (Culann, rc1 review).
+	 */
 	protected static float donorSpendable(MarketAPI m, String commodityId) {
-		return Math.max(0f, ThreatReserves.spendable(m, commodityId) - outpostKeep(m, commodityId));
+		if (m == null || ThreatReserves.committed(m, commodityId)) return 0f;
+		float keep = Math.max(ThreatReserves.floor(m, commodityId), ThreatReserves.stagingBank(m, commodityId));
+		return Math.max(0f, ThreatReserves.stock(m.getId(), commodityId) - keep - outpostKeep(m, commodityId));
 	}
 
 	/**
@@ -450,7 +461,7 @@ public class ThreatSoftening {
 	 * Stock a hunt in this system may take from the base: ThreatReserves.spendable,
 	 * except where the base's own siege there waits on the hunt
 	 * (siegeWaitsOnHunt) - then that siege's staging bank is spendable too, and
-	 * the base keeps only its floor and donor keep (2026-09-29). The siege cannot
+	 * the base keeps only its floor (2026-09-29; the donor keep too until 2026-09-30). The siege cannot
 	 * sail until the swarm is thinned, and the staging bank starved the one force
 	 * that would thin it. A base staging for a hunt, its siege past the
 	 * faction's means (ThreatConvoys.stagesForHunt), gives its bank to a hunt
@@ -464,9 +475,8 @@ public class ThreatSoftening {
 			return donorSpendable(base, commodityId);
 		}
 		if (ThreatReserves.committed(base, commodityId)) return 0f;
-		float keep = Math.max(ThreatReserves.floor(base, commodityId),
-				ThreatReserves.monthsCap(base, commodityId) * ThreatIncConfig.donorKeepFraction());
-		return Math.max(0f, ThreatReserves.stock(base.getId(), commodityId) - keep - outpostKeep(base, commodityId));
+		// its bank too, down to the floor (2026-09-30: the donor keep went with it)
+		return Math.max(0f, ThreatReserves.available(base, commodityId) - outpostKeep(base, commodityId));
 	}
 
 	/** Takes up to {@code amount} of {@link #huntSpendable} stock; returns what was taken. */
