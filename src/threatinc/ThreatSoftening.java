@@ -41,7 +41,7 @@ import com.fs.starfarer.api.util.Misc;
  * softenPool every base of the faction in reach chips in, nearest first. The
  * odds are counted on the warships the yards actually build (vanilla scales an
  * NPC fleet by its market), and a force that cannot beat its target's garrison
- * as it will stand on arrival by the margin does not sail ({@link #musterFloorFP}).
+ * as it stands now by the margin does not sail ({@link #musterFloorFP}).
  *
  * <p>The fleets MUSTER (2026-09-24 review): each flies blinkered to the hive
  * system's hyperspace anchor and waits there until the whole force is in, or
@@ -518,45 +518,26 @@ public class ThreatSoftening {
 	}
 
 	/**
-	 * The smallest force that sails against this colony, {@code days} before it
-	 * goes in: the garrison it will meet ({@link #garrisonOnArrivalFP}) by the
-	 * {@link #margin}. Sized on the swarms present, 15% of Run 7's forces met a
-	 * garrison that had regrown during the muster and stood down outmatched
-	 * (rc1 review).
+	 * The smallest force that sails against this colony: the garrison over it
+	 * now ({@link #garrisonNowFP}) by the {@link #margin}. No projection of
+	 * regrowth (2026-09-30): the Threat's posture moves its banks and swarms
+	 * wherever the pressure is, so a hive's own bank and income over an 86-day
+	 * passage said little about the garrison a hunt would meet, and asked 8-13k
+	 * FP of hunts that then waited on their fuel for months while the projection
+	 * grew. A garrison reinforced during the muster is met by the go-in check,
+	 * which stands the force down (advanceForce).
 	 */
-	protected static float musterFloorFP(MarketAPI colony, float days) {
-		return margin() * garrisonOnArrivalFP(colony, days);
+	protected static float musterFloorFP(MarketAPI colony) {
+		return margin() * garrisonNowFP(colony);
 	}
 
 	/**
-	 * The Defense Swarms over a colony {@code days} from now: those it owns now
-	 * (ThreatColonyManager.ownedFleetFP - its garrison, its raiders out and the
-	 * reinforcements flying in, all home by then), and - while its organs can
-	 * build - what its nexus's bank buys at once and its income over its upkeep
-	 * adds by then (the fabrication ledger). The regrowth the old refill-to-
-	 * nominal stood in for, which the bank may not pay for at all.
+	 * The Defense Swarms a colony owns now: ThreatColonyManager.ownedFleetFP -
+	 * its garrison, its raiders out and the reinforcements flying in.
 	 */
-	protected static float garrisonOnArrivalFP(MarketAPI colony, float days) {
-		float fp = Math.max(garrisonFP(colony),
+	protected static float garrisonNowFP(MarketAPI colony) {
+		return Math.max(garrisonFP(colony),
 				ThreatColonyManager.ownedFleetFP(colony, ThreatIncData.garrisonsFor(colony.getId())));
-		if (ThreatColonyManager.organDown(colony.getIndustry(ThreatColonyManager.FABRICATION_CORE))
-				|| !ThreatColonyManager.hasOperationalNexus(colony)) {
-			return fp;
-		}
-		float net = ThreatColonyManager.fabricationRatePerDay(colony) - ThreatColonyManager.upkeepPerDay(fp);
-		return fp + Math.max(0f, ThreatColonyManager.bankedFP(colony)) + Math.max(0f, net) * Math.max(0f, days);
-	}
-
-	/** Days before a force raised at the base goes in over the hive: its passage ({@link #passageDays}) and the muster's wait (softenMusterDays). */
-	protected static float arrivalDays(MarketAPI base, StarSystemAPI system) {
-		return passageDays(base, system) + Math.max(0f, ThreatIncConfig.softenMusterDays());
-	}
-
-	/** Days from the base to the hive: the passage at the board's pace (ThreatWarBoard.EST_LY_PER_DAY) and a day in-system. */
-	protected static float passageDays(MarketAPI base, StarSystemAPI system) {
-		float ly = base != null && base.getStarSystem() != null && system != null
-				? Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation()) : 0f;
-		return (float) Math.ceil(ly / ThreatWarBoard.EST_LY_PER_DAY) + 1f;
 	}
 
 	/**
@@ -574,7 +555,7 @@ public class ThreatSoftening {
 		MarketAPI first = strongest(hive.getId(), idsOf(gateWorlds(base.getFaction(), hive,
 				IncursionManager.siegeTargets(base, base.getFaction(), hive))));
 		if (first == null) return out;
-		float[] w = ThreatFleetOrders.sortieWants(base, musterFloorFP(first, arrivalDays(base, hive)),
+		float[] w = ThreatFleetOrders.sortieWants(base, musterFloorFP(first),
 				hive.getLocation());
 		int fuel = ThreatAid.index(Commodities.FUEL), supplies = ThreatAid.index(Commodities.SUPPLIES);
 		if (fuel >= 0) out[fuel] = w[0];
@@ -661,12 +642,12 @@ public class ThreatSoftening {
 		MarketAPI first = strongest(system.getId(), among);
 		if (first == null) return false;
 		String key = "huntwait:" + faction.getId() + ":" + system.getId();
-		// the swarms reinforce while the force gathers (433 -> 1,329 FP over Zendar, Run 6):
-		// it is sized to the garrison it will meet when it goes in (musterFloorFP)
+		// sized to the garrison over the world now (musterFloorFP); if the swarms
+		// reinforce while it gathers, the go-in check stands it down
 		// no ceiling on the force (user's rule 2026-09-29): what the depots can pay
 		// bounds it. softenMaxFP (12,000) and 30 fleets left every hive over ~4k FP
 		// a world unhunted for the 3.7-year test
-		float floor = musterFloorFP(first, arrivalDays(base, system));
+		float floor = musterFloorFP(first);
 		float want = IncursionManager.siegeOrbitFP(among != null ? targets
 				: IncursionManager.collectSiegeTargets(system)) * margin();
 		want = Math.max(floor, want);
