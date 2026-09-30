@@ -6,40 +6,48 @@ import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
-import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
+import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * The hive's fuel (2026-09-30): the Threat pays passage the way the factions
- * do. A fleet sent across hyperspace draws fleet points / 25 x light-years x
- * expeditionFuelPerPointLY - the factions' own rate - from one stock the whole
- * hive shares, as vanilla's broadcast availability shares one fuel plant's
- * output with every hive world. The factions' rate is the round trip; a fleet
- * that stays where it is sent (a Seeding Swarm, a reinforcement) pays the way
- * out only (ThreatReturns.RETURN_LEG_SHARE).
+ * The hive's fuel and supplies (2026-09-30): the Threat pays passage and
+ * founds colonies the way the factions do. A fleet sent across hyperspace
+ * draws fleet points / 25 x light-years x expeditionFuelPerPointLY - the
+ * factions' own rate - from one fuel stock the whole hive shares, as vanilla's
+ * broadcast availability shares one fuel plant's output with every hive
+ * world. The factions' rate is the round trip; a fleet that stays where it is
+ * sent (a Seeding Swarm, a reinforcement) pays the way out only
+ * (ThreatReturns.RETURN_LEG_SHARE). A Seeding Swarm also carries what a
+ * faction's forward base costs (ThreatOutposts.npcCost: outpostSupplies,
+ * outpostFuel) from the two stocks - a single swarm founded a hive for its
+ * structures' fleet points alone.
  *
- * <p>The stock fills as a faction's reserve does (ThreatReserves.accrualPer30,
- * productionShare): each world's fuel, BaseIndustry.getSizeMult of it, x the
- * fuel econ unit x reserveSurplusMult, a month - summed over the hive, and no
- * more than it makes above its own demand or, if larger, the sector's best
- * exporter it imports from times reserveBankImportsMult. A faction world
- * banks only what is left over its peacetime demand, which stands for its
- * trade and civilian traffic; a hive world runs no trade fleets
- * (maintainGarrisons suppresses them), so its fuel is all its fleets'. Read
- * as surplus, the imports that meet a Megaport's demand banked 0 and grounded
- * every fleet (first test, 2026-09-30). Before this the swarm moved for free inside its
- * fuel range while the factions paid for every light-year, and in the
- * 75-month test it shipped 1,015 swarms between systems and grew to ~100k FP
- * while no faction could fuel a hunt against it.
+ * <p>Each stock fills as a faction's reserve does (ThreatReserves.accrualPer30,
+ * productionShare): each world's availability, BaseIndustry.getSizeMult of it,
+ * x the commodity's econ unit x reserveSurplusMult, a month - summed over the
+ * hive, and no more than it makes above its own demand or, if larger, the
+ * sector's best exporter it imports from times reserveBankImportsMult. A
+ * faction world banks only what is left over its peacetime demand, which
+ * stands for its trade and civilian traffic; a hive world runs no trade
+ * fleets (maintainGarrisons suppresses them), so its stock is all its fleets'.
+ * Read as surplus, the imports that meet a Megaport's demand banked 0 and
+ * grounded every fleet (first test, 2026-09-30). Before this the swarm moved
+ * for free inside its fuel range while the factions paid for every
+ * light-year, and in the 75-month test it shipped 1,015 swarms between
+ * systems and grew to ~100k FP while no faction could fuel a hunt against it.
  */
 public class ThreatFuel {
 
 	public static final String KEY = "threatinc_hiveFuel";
-	private static final String STOCK = "stock";
 	private static final String AT = "at";
-	private static final String SPENT = "spentMonth";
 	private static final String HELD = "heldMonth";
+	/** The two stocks: fuel keeps the keys it was saved under before supplies joined it. */
+	private static final String[] STOCKED = { Commodities.FUEL, Commodities.SUPPLIES };
+
+	/** Fleet memory: the supplies and fuel a Seeding Swarm carries to found its colony. */
+	public static final String MEM_FOUND_SUPPLIES = "$threatinc_foundSupplies";
+	public static final String MEM_FOUND_FUEL = "$threatinc_foundFuel";
 
 	protected static Map<String, Object> data() {
 		return ThreatIncData.map(KEY);
@@ -49,26 +57,44 @@ public class ThreatFuel {
 		return ThreatIncConfig.threatPaysPassage();
 	}
 
+	protected static String stockKey(String commodityId) {
+		return Commodities.FUEL.equals(commodityId) ? "stock" : "stock_" + commodityId;
+	}
+
+	protected static String spentKey(String commodityId) {
+		return Commodities.FUEL.equals(commodityId) ? "spentMonth" : "spentMonth_" + commodityId;
+	}
+
 	/** Fuel in the hive's stock. */
 	public static float stock() {
-		Object v = data().get(STOCK);
+		return stock(Commodities.FUEL);
+	}
+
+	/** The hive's stock of fuel or supplies. */
+	public static float stock(String commodityId) {
+		Object v = data().get(stockKey(commodityId));
 		return v instanceof Float ? (Float) v : 0f;
 	}
 
-	protected static void setStock(float fuel) {
-		data().put(STOCK, Math.max(0f, fuel));
+	protected static void setStock(String commodityId, float amount) {
+		data().put(stockKey(commodityId), Math.max(0f, amount));
+	}
+
+	/** Fuel the hive banks a month. */
+	public static float perMonth() {
+		return perMonth(Commodities.FUEL);
 	}
 
 	/**
-	 * Fuel the hive banks a month, by a faction reserve's rule
-	 * (ThreatReserves.accrualPer30 x productionShare): every world's fuel (a hive
-	 * runs no trade, so none of it is spoken for), held to the better of what the
-	 * hive makes and what it can import.
+	 * What the hive banks of the commodity a month, by a faction reserve's rule
+	 * (ThreatReserves.accrualPer30 x productionShare): every world's
+	 * availability (a hive runs no trade, so none of it is spoken for), held to
+	 * the better of what the hive makes and what it can import.
 	 */
-	public static float perMonth() {
+	public static float perMonth(String commodityId) {
 		float banked = 0f, made = 0f, foreign = 0f, unit = 0f;
 		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
-			CommodityOnMarketAPI com = m.getCommodityData(Commodities.FUEL);
+			CommodityOnMarketAPI com = m.getCommodityData(commodityId);
 			if (com == null) continue;
 			unit = com.getCommodity().getEconUnit();
 			float have = ThreatReserves.structuralAvailable(com);
@@ -85,21 +111,22 @@ public class ThreatFuel {
 	}
 
 	/**
-	 * Banks the fuel made since the last call; once a poll. The first sight of
-	 * the stock (a new game, or a save from before it) starts it at
+	 * Banks what was made since the last call; once a poll. The first sight of
+	 * a stock (a new game, or a save from before it) starts it at
 	 * FAB_ENDOWMENT_DAYS of production, as the FP banks were endowed.
 	 */
 	public static void accrue() {
 		long now = Global.getSector().getClock().getTimestamp();
 		Object last = data().get(AT);
 		data().put(AT, now);
-		if (!(last instanceof Long)) {
-			setStock(perMonth() * ThreatColonyManager.FAB_ENDOWMENT_DAYS / 30f);
-			return;
+		float days = last instanceof Long ? Global.getSector().getClock().getElapsedDaysSince((Long) last) : 0f;
+		for (String c : STOCKED) {
+			if (!data().containsKey(stockKey(c))) {
+				setStock(c, perMonth(c) * ThreatColonyManager.FAB_ENDOWMENT_DAYS / 30f);
+			} else if (days > 0f) {
+				setStock(c, stock(c) + perMonth(c) * days / 30f);
+			}
 		}
-		float days = Global.getSector().getClock().getElapsedDaysSince((Long) last);
-		if (days <= 0f) return;
-		setStock(stock() + perMonth() * days / 30f);
 	}
 
 	/** Light-years between two star systems (0 for the same one or a null). */
@@ -117,24 +144,84 @@ public class ThreatFuel {
 	}
 
 	public static boolean canPay(float fuel) {
-		return fuel <= 0f || stock() >= fuel;
+		return canPay(Commodities.FUEL, fuel);
+	}
+
+	public static boolean canPay(String commodityId, float amount) {
+		return amount <= 0f || stock(commodityId) >= amount;
 	}
 
 	/** Draws {@code fuel} from the stock; false (nothing drawn) if the stock is short. */
 	public static boolean pay(float fuel) {
-		if (fuel <= 0f) return true;
-		float have = stock();
-		if (have < fuel) return false;
-		setStock(have - fuel);
-		add(SPENT, fuel);
+		return pay(Commodities.FUEL, fuel);
+	}
+
+	public static boolean pay(String commodityId, float amount) {
+		if (amount <= 0f) return true;
+		float have = stock(commodityId);
+		if (have < amount) return false;
+		setStock(commodityId, have - amount);
+		add(spentKey(commodityId), amount);
 		return true;
+	}
+
+	/** Puts {@code amount} back in the stock (a withdrawing wave's cargo). */
+	public static void deposit(String commodityId, float amount) {
+		if (amount <= 0f) return;
+		setStock(commodityId, stock(commodityId) + amount);
+		add(spentKey(commodityId), -amount);
+	}
+
+	/**
+	 * What founding a colony costs in stock: a faction's forward base
+	 * (ThreatOutposts.npcCost), {supplies, fuel}; nothing while the Threat
+	 * pays no passage.
+	 */
+	public static float[] foundingCost() {
+		if (!enabled()) return new float[] { 0f, 0f };
+		return ThreatOutposts.npcCost();
+	}
+
+	/** Whether both stocks hold a founding and the wave's fuel on top of it. */
+	public static boolean canFound(float passageFuel) {
+		float[] cost = foundingCost();
+		return canPay(Commodities.SUPPLIES, cost[0]) && canPay(Commodities.FUEL, cost[1] + passageFuel);
+	}
+
+	/** Loads a Seeding Swarm with its founding: drawn from the stocks, carried in the fleet's memory. */
+	public static void loadFounding(com.fs.starfarer.api.campaign.CampaignFleetAPI fleet) {
+		float[] cost = foundingCost();
+		float supplies = Math.min(cost[0], stock(Commodities.SUPPLIES));
+		float fuel = Math.min(cost[1], stock(Commodities.FUEL));
+		pay(Commodities.SUPPLIES, supplies);
+		pay(Commodities.FUEL, fuel);
+		fleet.getMemoryWithoutUpdate().set(MEM_FOUND_SUPPLIES, supplies);
+		fleet.getMemoryWithoutUpdate().set(MEM_FOUND_FUEL, fuel);
+	}
+
+	/**
+	 * A wave's founding cargo: back in the stocks if it withdraws alive,
+	 * spent if it founded its colony, lost with it if it was shot down.
+	 * Returns {supplies, fuel} it carried.
+	 */
+	public static float[] unloadFounding(com.fs.starfarer.api.campaign.CampaignFleetAPI fleet, boolean returned) {
+		if (fleet == null) return new float[] { 0f, 0f };
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+		float[] carried = { mem.getFloat(MEM_FOUND_SUPPLIES), mem.getFloat(MEM_FOUND_FUEL) };
+		mem.unset(MEM_FOUND_SUPPLIES);
+		mem.unset(MEM_FOUND_FUEL);
+		if (returned && fleet.isAlive()) {
+			deposit(Commodities.SUPPLIES, carried[0]);
+			deposit(Commodities.FUEL, carried[1]);
+		}
+		return carried;
 	}
 
 	/** Notes a send the stock could not fuel, for the month's census line. */
 	public static void held(String what) {
 		add(HELD, 1f);
-		ThreatIncConfig.logQuiet("threatfuel_" + what, "Hive fuel: " + what + " held, "
-				+ (int) stock() + " fuel in stock");
+		ThreatIncConfig.logQuiet("threatfuel_" + what, "Hive stock: " + what + " held, "
+				+ (int) stock() + " fuel and " + (int) stock(Commodities.SUPPLIES) + " supplies in stock");
 	}
 
 	protected static void add(String key, float v) {
@@ -142,15 +229,19 @@ public class ThreatFuel {
 		data().put(key, (o instanceof Float ? (Float) o : 0f) + v);
 	}
 
-	/** The census's fuel clause, and the month's tallies reset. */
+	/** The census's stock clause, and the month's tallies reset. */
 	public static String monthSummary() {
 		if (!enabled()) return "";
-		Object spent = data().get(SPENT), held = data().get(HELD);
-		String s = "; fuel " + (int) stock() + " (+" + (int) perMonth() + "/mo, spent "
-				+ (int) (spent instanceof Float ? (Float) spent : 0f) + ", sends held "
-				+ (int) (held instanceof Float ? (Float) held : 0f) + ")";
-		data().put(SPENT, 0f);
+		Object held = data().get(HELD);
+		StringBuilder s = new StringBuilder();
+		for (String c : STOCKED) {
+			Object spent = data().get(spentKey(c));
+			s.append("; ").append(c).append(" ").append((int) stock(c)).append(" (+").append((int) perMonth(c))
+					.append("/mo, spent ").append((int) (spent instanceof Float ? (Float) spent : 0f)).append(")");
+			data().put(spentKey(c), 0f);
+		}
+		s.append(", sends held ").append((int) (held instanceof Float ? (Float) held : 0f));
 		data().put(HELD, 0f);
-		return s;
+		return s.toString();
 	}
 }

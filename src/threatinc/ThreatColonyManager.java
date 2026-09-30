@@ -2314,6 +2314,8 @@ public class ThreatColonyManager {
 		String source = mem.getString(FOUNDING_SOURCE_KEY);
 		mem.unset(FOUNDING_FP_KEY);
 		mem.unset(FOUNDING_SOURCE_KEY);
+		// its supplies and fuel went into the colony
+		ThreatFuel.unloadFounding(fleet, false);
 		int structures = market.getIndustries().size();
 		float diff = foundingFP(structures) - booked;
 		if (diff > 0f) {
@@ -2334,6 +2336,12 @@ public class ThreatColonyManager {
 	 */
 	protected static float refundFounding(CampaignFleetAPI fleet) {
 		if (fleet == null) return 0f;
+		// its supplies and fuel ride it: home with a wave that withdraws, lost with one shot down
+		float[] cargo = ThreatFuel.unloadFounding(fleet, true);
+		if (cargo[0] + cargo[1] > 0f) {
+			ThreatIncConfig.log("Founding cargo " + (fleet.isAlive() ? "back in the hive's stock" : "lost with the wave")
+					+ ": " + (int) cargo[0] + " supplies, " + (int) cargo[1] + " fuel");
+		}
 		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
 		if (!mem.contains(FOUNDING_FP_KEY)) return 0f;
 		float fp = mem.getFloat(FOUNDING_FP_KEY);
@@ -2406,8 +2414,10 @@ public class ThreatColonyManager {
 			peekGarrison(source, 1, swarmFP);
 			structuresFP = foundingFP(foundingStructuresEstimate(targetPlanet));
 			float bill = swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec) - swarmFP[0] + structuresFP;
-			// the way out comes from the hive's fuel (ThreatFuel); the wave stays
-			if (!ThreatFuel.canPay(ThreatFuel.passage(swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec),
+			// the way out comes from the hive's fuel (ThreatFuel); the wave stays.
+			// It carries what a faction's forward base costs, supplies and fuel
+			// (ThreatFuel.foundingCost), from the hive's stocks
+			if (!ThreatFuel.canFound(ThreatFuel.passage(swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec),
 					ThreatFuel.ly(source.getStarSystem(), targetSystem), false))) {
 				ThreatFuel.held("a Seeding Swarm from " + source.getName());
 				return false;
@@ -2440,9 +2450,13 @@ public class ThreatColonyManager {
 			fleet.getMemoryWithoutUpdate().set(FOUNDING_SOURCE_KEY, source.getId());
 			float fuel = ThreatFuel.passage(fleet.getFleetPoints(), ThreatFuel.ly(source.getStarSystem(), targetSystem), false);
 			ThreatFuel.pay(Math.min(ThreatFuel.stock(), fuel));
+			ThreatFuel.loadFounding(fleet);
 			float retool = retoolForge(source, fleet.getFleetPoints());
 			ThreatIncConfig.log("Seeding Swarm from " + source.getName() + ": " + (int) fleet.getFleetPoints()
-					+ " FP of hulls, " + (int) structuresFP + " FP of structures, forge retooling "
+					+ " FP of hulls, " + (int) structuresFP + " FP of structures, "
+					+ (int) fleet.getMemoryWithoutUpdate().getFloat(ThreatFuel.MEM_FOUND_SUPPLIES) + " supplies and "
+					+ (int) (fleet.getMemoryWithoutUpdate().getFloat(ThreatFuel.MEM_FOUND_FUEL) + fuel)
+					+ " fuel, forge retooling "
 					+ (int) retool + " days (" + (int) bankedFP(source) + " FP banked)");
 		}
 		fleet.setName("Seeding Swarm");

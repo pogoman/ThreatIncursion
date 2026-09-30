@@ -73,6 +73,14 @@ on vanilla's shortages before anything else.
    exporter (× `reserveBankImportsMult`, default 1) - once for the whole faction,
    however many markets import it. Without this a faction importing all its fuel
    banked none and could never sail a siege.
+   *Wartime fuel (2026-09-30, `reserveWartimeFuel`, default on):* fuel banks all of a
+   colony's availability, not only what is above its peacetime demand, and a producer's
+   whole output counts toward the budget (`ThreatReserves.bankUnits`, `wartimeFuel`) - the
+   peacetime share is civilian and trade traffic, which a war requisitions, as a hive's
+   fuel is all its fleets'. It moved little: `getSizeMult` is the identity, and a faction's
+   fuel budget is the sector's best single exporter (~11-12 units, 16-18k fuel a month), not
+   its own making. The 18-month test banked +17% (Hegemony) and +5% (Persean), and sieges
+   drew the same (10 draws, ~171k fuel). The import term is what binds fuel.
    *Player colonies (2026-09-05):* the reserve IS the vanilla resource stockpile, which
    vanilla fills by this same rule (excess at 0.5, production at 0.25, the Waystation's
    bonus, capped at `stockpileMaxMonths`); the mod adds only the militia and never
