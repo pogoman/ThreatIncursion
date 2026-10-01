@@ -116,6 +116,10 @@ on vanilla's shortages before anything else.
 6. **Reach stays vanilla fuel.** Expedition and convoy range keep reading vanilla fuel
    availability. "Short of fuel on the colony screen" therefore also means "cannot
    project", which is the same story told twice, not two stories.
+   *Amended 2026-10-01 (user's calls):* an NPC donor's convoy reach is what its reserve fuel
+   above the floor pays a convoy's voyage (docs/strategy-layer.md "Logistics reach"), and
+   an NPC base's expedition reach is the trip its reserve and donors pay (`humanBilledReach`,
+   "The factions' reach and stance" there). The player's expedition reach still reads vanilla fuel.
 7. **Units on the board are vanilla's.** The faction view's reserve columns keep item
    counts, but the colony tooltip and the War footing condition state each commodity in
    vanilla's units, one line each ("Fuel: 4,800 banked. Surplus 3 units; +1,200 a month,

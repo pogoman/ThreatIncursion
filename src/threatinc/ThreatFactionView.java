@@ -783,16 +783,16 @@ public class ThreatFactionView {
 						+ (siegeBase != null ? siegeBase.getName() : "the nearest base")
 						+ ", its landing the marines the siege-force selector is set to.");
 				right -= SMALL_BUTTON_W + 4f;
-				// Bombard only razes (docs/suppression-balance.md v2 section 9): its
-				// own gate - a hive saturation can still take, fuel past the passage
+				// Bombard only saturates (docs/suppression-balance.md v2 section 9): its
+				// own gate - a hive with no front, fuel past the passage
 				String bombardWhy = IncursionManager.bombardBlockReason(siegeBase, faction, e.system);
 				boolean bombardOk = mayOrder && e.isColony() && bombardWhy == null;
 				ButtonAPI bombard = intel.addGenericButton(main, SMALL_BUTTON_W + 12f, "Bombard",
 						BUTTON_BOMBARD + factionId + ":" + e.systemId);
 				bombard.getPosition().belowRight(hiveTable, -up).setXAlignOffset(right);
 				disableWith(main, bombard, bombardOk, blocked != null ? blocked : bombardWhy != null ? bombardWhy
-						: "Nothing there to wreck yet.",
-						"A wrecking expedition sails from "
+						: "Nothing there to bombard yet.",
+						"A bombing expedition sails from "
 						+ (siegeBase != null ? siegeBase.getName() : "the nearest base") + ".");
 				right -= SMALL_BUTTON_W + 12f + 4f;
 				ButtonAPI hunt = intel.addGenericButton(main, SMALL_BUTTON_W + 14f, "Hunt",
@@ -1126,8 +1126,7 @@ public class ThreatFactionView {
 		} else if (m.isPlayerOwned()) {
 			tooltip.addPara("No staging base of yours: its reserve stays home.", gray, 10f);
 		} else {
-			tooltip.addPara("No staging base within convoy range ("
-					+ (int) ThreatIncConfig.convoyRangeLY() + " ly): its reserve stays home.", gray, 10f);
+			tooltip.addPara("No staging base its fuel reaches: its reserve stays home.", gray, 10f);
 		}
 		// what the Defend and Aid buttons would send is on the buttons themselves
 		if (m.isPlayerOwned()) {
@@ -1189,7 +1188,7 @@ public class ThreatFactionView {
 			String kind = p.isPlayerCommissioned() ? "Commissioned" : "Expedition";
 			StarSystemAPI where = p.getParams() != null && p.getParams().raidParams != null
 					? p.getParams().raidParams.where : null;
-			String task = where != null ? (razesEvery(p) ? "wrecking the " : "besieging the ")
+			String task = where != null ? (razesEvery(p) ? "bombarding the " : "besieging the ")
 					+ where.getNameWithLowercaseTypeShort() : "-";
 			ThreatWarBoard.Op op = new ThreatWarBoard.Op();
 			ThreatWarBoard.statusOf(p, op, false);
@@ -1817,10 +1816,11 @@ public class ThreatFactionView {
 	/**
 	 * The Bombard order's confirm: the question and the numbers, one fact a
 	 * line - the fleets and their points of the base's free points, the fuel
-	 * it carries of what the razing takes and what it draws of the reserve,
-	 * then each hive as the fleets would raze it in turn
+	 * it carries of what the saturation takes and what it draws of the
+	 * reserve, then each hive as the fleets would saturate it in turn
 	 * (IncursionManager.razeRun): the days in orbit, about the fleet points the
-	 * guns take, and whether it falls.
+	 * guns take, and the days its structures are then down for (a hive has no
+	 * bar, ThreatRazing.razes).
 	 */
 	protected static void addBombardPrompt(TooltipMakerAPI prompt, MarketAPI base, FactionAPI faction,
 			StarSystemAPI system) {
@@ -1831,7 +1831,7 @@ public class ThreatFactionView {
 		float points = ThreatAidCapacity.expeditionPoints(sizes);
 		float[] fuel = IncursionManager.expeditionFuelCarried(base, system, targets, sizes,
 				IncursionManager.idsOf(targets));
-		prompt.addPara("Order a wrecking expedition from " + base.getName() + " against the "
+		prompt.addPara("Order a bombing expedition from " + base.getName() + " against the "
 				+ system.getNameWithLowercaseType() + "?", 0f);
 		if (faction.isPlayerFaction() && ThreatAidCapacity.enabled()) {
 			prompt.addPara("%s fleets holding %s of its %s FP free.", 10f, h, "" + sizes.size(),
@@ -1840,7 +1840,7 @@ public class ThreatFactionView {
 		} else {
 			prompt.addPara("%s fleets, %s FP.", 10f, h, "" + sizes.size(), Misc.getWithDGS((int) points));
 		}
-		prompt.addPara("Carries %s of the %s fuel the wrecking takes.", 3f, h,
+		prompt.addPara("Carries %s of the %s fuel the saturation takes.", 3f, h,
 				Misc.getWithDGS(Math.round(fuel[3])), Misc.getWithDGS(Math.round(fuel[4])));
 		prompt.addPara("Draws %s fuel of the %s in its reserve.", 3f, h,
 				Misc.getWithDGS(Math.round(fuel[5])), Misc.getWithDGS(Math.round(fuel[6])));
@@ -1852,10 +1852,13 @@ public class ThreatFactionView {
 				prompt.addPara(name + ": not reached.", 3f);
 			} else if (r[5] < 1f) {
 				prompt.addPara(name + ": no fuel left for it.", 3f);
+			} else if (!ThreatRazing.razes(targets.get(i))) {
+				prompt.addPara(name + ": %s days in orbit, about %s FP lost, down %s days.", 3f, h,
+						"" + (int) r[0], "" + Math.round(r[2]), "" + (int) r[6]);
 			} else {
 				boolean razed = r[3] >= 1f;
 				LabelAPI line = prompt.addPara(name + ": %s days in orbit, about %s FP lost, %s.", 3f, h,
-						"" + (int) r[0], "" + Math.round(r[2]), razed ? "wrecked" : "not wrecked");
+						"" + (int) r[0], "" + Math.round(r[2]), razed ? "razed" : "not razed");
 				line.setHighlightColors(h, h, razed ? h : neg);
 			}
 		}
@@ -1966,8 +1969,8 @@ public class ThreatFactionView {
 			List<MarketAPI> targets = IncursionManager.bombardTargets(system);
 			ThreatPurgeFGI purge = null;
 			if (why == null) {
-				// raze-only (docs/suppression-balance.md v2 section 9): every target
-				// razed, no marines, the razing fuel drawn from the base's reserve;
+				// saturation only (docs/suppression-balance.md v2 section 9): every
+				// target saturated, no marines, the fuel drawn from the base's reserve;
 				// the flotilla sized to outlast the guns, then fitted to its free points
 				purge = IncursionManager.launchSiegeExpedition(base, faction, system, targets,
 						IncursionManager.bombardFleetSizes(base, faction, targets), faction.isPlayerFaction(),
@@ -1975,15 +1978,15 @@ public class ThreatFactionView {
 				if (purge == null) why = IncursionManager.bombardBlockFacts(base, faction, system);
 			}
 			if (purge == null) {
-				ThreatNotice n = ThreatNotice.titled("Wrecking Refused").bad().icon(faction);
+				ThreatNotice n = ThreatNotice.titled("Bombing Refused").bad().icon(faction);
 				if (why != null) n.lines(why);
 				else n.line("No expedition could be raised at %s", ThreatNotice.market(base));
 				n.send();
 				return null;
 			}
-			ThreatNotice.titled("Wrecking Expedition").icon(faction)
+			ThreatNotice.titled("Bombing Expedition").icon(faction)
 					.line("From %s into the %s", ThreatNotice.market(base), system.getNameWithLowercaseType())
-					.line("To wreck %s from orbit", IncursionManager.worldNames(targets))
+					.line("To saturate %s from orbit", IncursionManager.worldNames(targets))
 					.send();
 			return "bombard";
 		}

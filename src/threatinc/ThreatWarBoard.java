@@ -2573,16 +2573,19 @@ public class ThreatWarBoard {
 		textHl(card, 8f, 27f, cardW - 16f, a.toString(), gray, hlcA.toArray(new Color[0]),
 				hlA.toArray(new String[0]), Alignment.LMID, true);
 
-		// line B: the fuel bill - wrecking it from orbit (a hive is wrecked, not
-		// razed: ThreatRazing.wreck), and a day of tactical bombardment by the
-		// player's fleet as it stands
+		// line B: the fuel bill for the player's fleet as it stands - a day of
+		// saturation (a hive has no bar to finish: ThreatRazing.razes; a colony
+		// shows what razing it takes) and a day of tactical bombardment
 		int defense = (int) MarketCMD.getDefenderStr(market, true);
-		int raze = Math.round(ThreatRazing.fuelToDestroyThrough(market));
-		int tac = Math.round(ThreatGroundFronts.bombardFuelPerDay(Global.getSector().getPlayerFleet().getFleetPoints()));
+		float fp = Global.getSector().getPlayerFleet().getFleetPoints();
+		boolean razes = ThreatRazing.razes(market);
+		int sat = Math.round(razes ? ThreatRazing.fuelToDestroyThrough(market)
+				: Math.max(0f, ThreatIncConfig.satFuelPerFPDay()) * fp);
+		int tac = Math.round(ThreatGroundFronts.bombardFuelPerDay(fp));
 		textHl(card, 8f, 45f, cardW - 16f - rightW,
-				"Def %s   " + (ThreatRazing.wrecksOnly(market) ? "wreck" : "raze") + " %s fuel   tac %s a day", gray,
+				"Def %s   " + (razes ? "raze %s fuel" : "sat %s a day") + "   tac %s a day", gray,
 				new Color[] {text, neg, text},
-				new String[] {Misc.getWithDGS(defense), Misc.getWithDGS(raze), Misc.getWithDGS(tac)},
+				new String[] {Misc.getWithDGS(defense), Misc.getWithDGS(sat), Misc.getWithDGS(tac)},
 				Alignment.LMID, true);
 
 		return card;

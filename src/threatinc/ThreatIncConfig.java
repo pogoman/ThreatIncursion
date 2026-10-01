@@ -503,11 +503,9 @@ public class ThreatIncConfig {
 	public static float expeditionTransportMult() { return f("threatinc_expeditionTransportMult"); }
 	/** Whether mobilised factions run supply convoys between their colonies. */
 	public static boolean convoyEnabled()     { return b("threatinc_convoyEnabled", true); }
-	/** Light-years a donor colony will ship to a staging base. */
-	public static float convoyRangeLY()       { return f("threatinc_convoyRangeLY"); }
-	/** The reference marine load a worthwhile sailing is measured in - not a cap (2026-09-29). */
+	/** The reference marine load a worthwhile sailing is measured in, and a pooled haul billed per (ThreatConvoys.haulPerUnit) - not a cap (2026-09-29). */
 	public static float convoyMarineCapacity() { return f("threatinc_convoyMarineCapacity"); }
-	/** The reference cargo load (armaments, fuel, supplies) a worthwhile sailing is measured in - not a cap (2026-09-29). */
+	/** The reference cargo load (armaments, fuel, supplies) a worthwhile sailing is measured in, and a pooled haul billed per - not a cap (2026-09-29). */
 	public static float convoyCargoCapacity() { return f("threatinc_convoyCargoCapacity"); }
 	/** Load the board's "Med" tier asks for, as a multiple of what the front or colony is short of. */
 	public static float convoyExtraLoadFactor() { return f("threatinc_convoyExtraLoadFactor"); }

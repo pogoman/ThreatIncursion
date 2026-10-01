@@ -46,9 +46,9 @@ import com.fs.starfarer.api.util.WeightedRandomPicker;
  * infestations on the uninhabited fringe, dispatches Seeding Swarms that found
  * real fabrication colonies, grows those colonies into a self-contained hive
  * economy, and - in later phases - launches strikes against inhabited worlds,
- * converting the dead ones into new colonies. Colonies die two ways only: a
- * siege won on the ground, or saturation razing them from orbit level by
- * level (ThreatRazing) - never a timer.
+ * converting the dead ones into new colonies. A hive dies only to a siege
+ * won on the ground - never to a timer, and never from orbit: saturation
+ * takes no size off it (ThreatRazing.razes).
  */
 public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ColonyPlayerHostileActListener,
@@ -1553,7 +1553,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			ThreatNotice n;
 			if (!razed.isEmpty() && razed.size() == targets.size()) {
 				// nothing to land on: the fleets carry fuel, not troops
-				n = ThreatNotice.titled("Wrecking Expedition").icon(faction)
+				n = ThreatNotice.titled("Bombing Expedition").icon(faction)
 						.line("%s has launched a bombing expedition into the %s.",
 								ThreatNotice.faction(faction), system.getNameWithLowercaseType());
 			} else if (preemptive) {
@@ -1580,7 +1580,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					n.line("Against the undefended Threat colony there.");
 				}
 			}
-			if (!razed.isEmpty()) n.line("To wreck %s from orbit.", worldNames(razed));
+			if (!razed.isEmpty()) n.line("To saturate %s from orbit.", worldNames(razed));
 			n.send();
 			ThreatIncConfig.log(faction.getId()
 					+ (preemptive ? " preemptive" : heavyAssault ? " heavy-assault" : "")
@@ -1776,28 +1776,47 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					+ " - the Path's willingness is " + String.format("%.2f", will) + " of 0.50");
 			return out;
 		}
+		float held = 0f;
 		for (MarketAPI m : marketsReaching(path, base)) {
-			if (!ThreatFrontlines.isOutpost(m)) out.add(m);
+			if (ThreatFrontlines.isOutpost(m)) continue;
+			out.add(m);
+			held += donorAvailable(m, base, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 		}
-		float held = siegePooled(null, out, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 		ThreatIncConfig.logQuiet(key, "Zealots: " + out.size() + " Path world(s) in reach of " + base.getName()
 				+ " offer " + faction.getId() + " " + (int) held + " marines");
 		return out;
 	}
 
-	/** Stock the siege base and its donors hold above their floors, for the launch's gates. */
+	/** Stock the siege base and its donors hold above their floors (the donors' net of the haul to the base), for the launch's gates. */
 	protected static float siegePooled(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId) {
-		float have = base != null ? ThreatReserves.available(base, commodityId) : 0f;
-		for (MarketAPI m : donors) have += donorAvailable(m, commodityId);
+		return ThreatReserves.available(base, commodityId) + donorsPooled(base, donors, commodityId);
+	}
+
+	/** The donors' part of {@link #siegePooled}: what they give a siege at {@code base}, net of the haul there. */
+	protected static float donorsPooled(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId) {
+		float have = 0f;
+		for (MarketAPI m : donors) have += donorAvailable(m, base, commodityId);
 		return have;
 	}
 
 	/**
-	 * What a donor gives a sibling's siege: its stock above the floor, less -
-	 * for a forward base - siegeOutpostKeepMonths of its garrison's supply
-	 * upkeep (ThreatFrontlines.payUpkeep), so the pool never recalls a garrison.
+	 * What a donor gives a siege at {@code base}: its stock above the floor
+	 * ({@link #donorHolds}), net of the haul there (ThreatConvoys.netOfHaul,
+	 * 2026-10-01: the stock goes aboard at the base, and with no radius left
+	 * it pays its passage like any convoy).
 	 */
-	protected static float donorAvailable(MarketAPI m, String commodityId) {
+	protected static float donorAvailable(MarketAPI m, MarketAPI base, String commodityId) {
+		return ThreatConvoys.netOfHaul(commodityId, donorHolds(m, commodityId),
+				donorHolds(m, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL),
+				ThreatConvoys.haulRate(m, base, commodityId));
+	}
+
+	/**
+	 * A donor's stock above the floor, less - for a forward base -
+	 * siegeOutpostKeepMonths of its garrison's supply upkeep
+	 * (ThreatFrontlines.payUpkeep), so the pool never recalls a garrison.
+	 */
+	protected static float donorHolds(MarketAPI m, String commodityId) {
 		float have = ThreatReserves.available(m, commodityId);
 		if (have <= 0f || !com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES.equals(commodityId) || !ThreatFrontlines.isOutpost(m)) return have;
 		return Math.max(0f, have - ThreatFrontlines.garrisonUpkeepAt(m)
@@ -1806,8 +1825,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	/**
 	 * Draws up to {@code amount} of a commodity for a siege: the base first,
-	 * then the donors nearest it first, each above its floor; logs what the
-	 * donors gave. Returns what was drawn.
+	 * then the donors nearest it first, each above its floor and paying its
+	 * haul to the base; logs what the donors gave. Returns what was drawn.
 	 */
 	protected static float siegeDraw(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId,
 			float amount, String label) {
@@ -1815,7 +1834,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		java.util.List<String> from = new ArrayList<String>();
 		for (MarketAPI m : donors) {
 			if (drawn >= amount) break;
-			float got = ThreatReserves.drawAbove(m, commodityId, Math.min(amount - drawn, donorAvailable(m, commodityId)));
+			float can = Math.min(amount - drawn, donorAvailable(m, base, commodityId));
+			if (can <= 0f) continue;
+			ThreatConvoys.payHaul(m, can, ThreatConvoys.haulRate(m, base, commodityId));
+			float got = ThreatReserves.drawAbove(m, commodityId, can);
 			drawn += got;
 			if (got >= 1f) from.add(m.getName() + " " + (int) got);
 		}
@@ -1976,7 +1998,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			float have = siegePooled(base, pool, c);
 			// the Path's zealots join the marines here as they do at the launch
 			// (zealotDonors), or the gate refuses a landing the launch could pay for
-			if (i == 0 && !faction.isPlayerFaction()) have += siegePooled(null, zealotDonors(faction, base, system), c);
+			if (i == 0 && !faction.isPlayerFaction()) have += donorsPooled(base, zealotDonors(faction, base, system), c);
 			if (have < wants[i] * minMarinesFraction(faction)) return false;
 		}
 		if (faction.isPlayerFaction() || base.getStarSystem() == null) return true;
@@ -1992,7 +2014,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (haveFuel < 0f) return false;
 		float fuelPerPoint = points > 0 ? (fuel[0] + fuel[1]) / points : 0f;
 		float suppliesPerPoint = siegeSuppliesPerPoint(base, faction, system,
-				siegeStayDays(landTargets(targets, raze), ThreatAidCapacity.expeditionPoints(sizes)));
+				siegeStayDays(landTargets(targets, raze), razeTargets(targets, raze),
+						ThreatAidCapacity.expeditionPoints(sizes)));
 		float payable = Float.MAX_VALUE;
 		if (fuelPerPoint > 0f) {
 			payable = Math.min(payable, haveFuel / fuelPerPoint);
@@ -2029,16 +2052,25 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	/**
 	 * Days a siege's flotilla of {@code fp} stays at its worlds: as long as its
 	 * commander would bombard the slowest of those it lands on
-	 * (ThreatGroundFronts.bombardPlan), and a day to land; a slice's days for
-	 * one that only wrecks or razes. Billed at siegeOrbitDays, the most it may
+	 * (ThreatGroundFronts.bombardPlan), and a day to land, or saturate those in
+	 * {@code razed} in turn (razeRun) - a hive's saturation runs to the
+	 * commander's stop, weeks, not the days a razing's bar took; at least a
+	 * slice's days. Billed at siegeOrbitDays, the most it may
 	 * stay, the gate asked ~299 supplies a point in h40a (review, 2026-10-01),
 	 * where the hive bills its strikes no stay at all (ThreatReach.strikeDays).
 	 */
-	public static float siegeStayDays(java.util.List<MarketAPI> land, float fp) {
+	public static float siegeStayDays(java.util.List<MarketAPI> land, java.util.List<MarketAPI> razed, float fp) {
 		float stay = ThreatGroundFronts.SIEGE_MAX_SLICE_DAYS;
-		if (land == null || fp <= 0f) return stay;
-		for (MarketAPI t : land) {
-			if (t != null) stay = Math.max(stay, ThreatGroundFronts.bombardPlan(t, fp)[0] + 1f);
+		if (fp <= 0f) return stay;
+		if (land != null) {
+			for (MarketAPI t : land) {
+				if (t != null) stay = Math.max(stay, ThreatGroundFronts.bombardPlan(t, fp)[0] + 1f);
+			}
+		}
+		if (razed != null && !razed.isEmpty()) {
+			float orbit = 0f;
+			for (float[] world : razeRun(razed, fp, -1f)) orbit += world[0];
+			stay = Math.max(stay, orbit);
 		}
 		return stay;
 	}
@@ -2741,8 +2773,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		java.util.List<MarketAPI> land = landTargets(targets, raze);
 		if (!raze.isEmpty() && land.isEmpty()) {
 			// nothing to land on: its fleets say what they are there for
-			params.raidParams.raidApproachText = "moving to raze";
-			params.raidParams.raidActionText = "razing";
+			params.raidParams.raidApproachText = "moving to bombard";
+			params.raidParams.raidActionText = "bombarding";
 			// an unspawned expedition acts only when its payload window ends
 			// (vanilla autoresolves at the segment's end): a siege's window is
 			// siegeOrbitDays, a razing's the days it razes for. At 120 days the
@@ -2807,7 +2839,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					? zealotDonors(faction, base, system) : new ArrayList<MarketAPI>();
 			marinePool.addAll(zealots);
 			for (MarketAPI m : marinePool) {
-				haveMarines += ThreatReserves.available(m, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
+				haveMarines += donorAvailable(m, base, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 			}
 			float minMarines = wants[0] * minMarinesFraction(faction);
 			// SHORT OF TROOPS, SOFTEN FIRST (2026-09-28, run 4): a base that
@@ -2865,7 +2897,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				float[] fuel = expeditionFuel(base, system, targets, params.fleetSizes, raze, shortLanding);
 				float fuelPerPoint = points > 0 ? (fuel[0] + fuel[1]) / points : 0f;
 				float suppliesPerPoint = siegeSuppliesPerPoint(base, faction, system,
-						siegeStayDays(land, ThreatAidCapacity.expeditionPoints(params.fleetSizes)));
+						siegeStayDays(land, razeTargets(targets, raze),
+								ThreatAidCapacity.expeditionPoints(params.fleetSizes)));
 				float haveFuel = Math.max(0f, siegePooled(base, provisionPool,
 						com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL) - fuel[2]);
 				float haveSupplies = siegePooled(base, provisionPool,
@@ -3101,7 +3134,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		for (MarketAPI target : targets) {
 			if (target == null) continue;
 			if (raze != null && raze.contains(target.getId())) {
-				razing += ThreatRazing.fuelToDestroyThrough(target, arrival);
+				razing += razingFuel(target, fp, arrival);
 			} else if (!ThreatGroundFronts.hasFront(target)) {
 				ordnance = Math.max(ordnance, siegeOrdnance(target, fp, shortLanding));
 			}
@@ -3193,7 +3226,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * razed whenever the flotilla and the fuel allow, whatever the landing
 	 * would cost: saturation finishes it faster than the push (2026-09-28) -
 	 * unless the front takes the last stratum first (daysToLastStratum).
-	 * Ids, in the targets' order: an earlier
+	 * A hive is not razed but saturated (ThreatRazing.razes, 2026-10-01): where
+	 * its landing is beyond the marines left and it still produces, for the
+	 * fuel of a stay to the commander's stop (razingFuel). Ids, in the
+	 * targets' order: an earlier
 	 * world's fuel is set aside, and its guns fought, before a later one is
 	 * weighed. Memoised per clock instant.
 	 */
@@ -3223,13 +3259,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float marinePrice = basePrice(com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 		float armsPrice = basePrice(com.fs.starfarer.api.impl.campaign.ids.Commodities.HAND_WEAPONS);
 		// the marines and armaments the landings already decided on take: a hive
-		// is wrecked only where its landing is beyond what is left (2026-10-01).
+		// is saturated only where its landing is beyond what is left (2026-10-01).
 		// Read as the launch reads them (siegeCanPay): the marine pool, the Path's
 		// zealots with the marines
 		java.util.List<MarketAPI> marinePool = ThreatIncConfig.siegePoolMarines() ? donors
 				: new ArrayList<MarketAPI>();
 		float marinesLeft = siegePooled(base, marinePool, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES)
-				+ siegePooled(null, zealotDonors(faction, base, system),
+				+ donorsPooled(base, zealotDonors(faction, base, system),
 						com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES);
 		float armsLeft = siegePooled(base, marinePool, com.fs.starfarer.api.impl.campaign.ids.Commodities.HAND_WEAPONS);
 		float minLanding = minMarinesFraction(faction);
@@ -3238,32 +3274,29 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float arrival = razeArrivalDays(base, system);
 		for (MarketAPI target : targets) {
 			if (target == null) continue;
-			boolean wreck = ThreatRazing.wrecksOnly(target);
+			boolean hive = !ThreatRazing.razes(target);
 			// a front of our own there: finish it by saturation whatever the
 			// landing would cost - razing is faster than the push (2026-09-28);
 			// anyone else's front stands on it, not ours to raze. A hive is never
-			// wrecked under a front: saturation cannot finish it, the front can
+			// saturated under a front: saturation cannot finish it, the front can
 			boolean ours = false;
 			ThreatGroundFronts.GroundFront ownFront = null;
 			if (ThreatGroundFronts.hasFront(target)) {
 				ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(target.getId());
-				if (wreck || front == null || !faction.getId().equals(ThreatGroundFronts.ownerOf(front))) continue;
+				if (hive || front == null || !faction.getId().equals(ThreatGroundFronts.ownerOf(front))) continue;
 				ours = true;
 				ownFront = front;
 			}
-			int layers = ThreatRazing.enemyLayers(target);
-			if (layers <= 0 || ThreatRazing.razeable(target) < layers) continue;
-			float fuel = ThreatRazing.fuelToDestroyThrough(target, arrival);
 			float marines = siegeRaidStrNeeded(java.util.Collections.singletonList(target));
 			float arms = ThreatGroundFronts.landingSupply(marines, ThreatIncConfig.npcFrontSupplyDays());
-			float razeCost = fuel * fuelPrice;
-			float siegeCost = marines * marinePrice + arms * armsPrice;
-			if (wreck) {
-				// WRECK OR LAND (2026-10-01, user's call): saturation only wrecks a
-				// hive (ThreatRazing.wreck), troops take it. Land wherever the
-				// marines left cover the landing the launch would commit; wreck a
-				// world still producing when they do not, its flotilla outlasting
-				// the guns and the reserve holding the fuel. The landing is weighed
+			if (hive) {
+				// SATURATE OR LAND (2026-10-01, user's call): saturation takes
+				// nothing off a hive (ThreatRazing.razes) - it wears every structure a
+				// day at a time, raises the unrest and halts the growth - and troops
+				// take it. Land wherever the marines left cover the landing the launch
+				// would commit; saturate a world still producing when they do not, its
+				// flotilla outlasting the guns and the reserve holding the fuel of a
+				// stay to the commander's stop (razingFuel). The landing is weighed
 				// first: it is the answer most of the time, and every base weighs
 				// every hive each pass (review, 2026-10-01)
 				float held = marinesLeft;
@@ -3274,8 +3307,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				}
 				String verdict;
 				String flotilla = "";
+				float fuel = 0f;
 				if (!producing(target)) {
-					verdict = "sieges - nothing standing worth wrecking";
+					verdict = "sieges - nothing standing worth saturating";
 				} else {
 					java.util.Set<String> with = new java.util.LinkedHashSet<String>(raze);
 					with.add(target.getId());
@@ -3283,33 +3317,40 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					java.util.List<Integer> sizes = siegeFleetSizes(difficulty, anyGarrisoned, heavyAssault, targets,
 							new ArrayList<MarketAPI>(), 0f, siegeFleetGoal(faction, targets, with));
 					float fp = ThreatAidCapacity.expeditionPoints(sizes);
+					float[] plan = ThreatGroundFronts.razePlan(target, fp, Float.MAX_VALUE);
+					fuel = plan[1];
 					float spare = pooled - expeditionPassage(base, system, sizes) - setAside;
 					if (fp < survives) {
-						verdict = "sieges - the guns would break a wrecking flotilla";
+						verdict = "sieges - the guns would break a saturating flotilla";
 					} else if (fuel > spare) {
-						verdict = "sieges - short of fuel to wreck it";
+						verdict = "sieges - short of fuel to saturate it";
 					} else {
-						verdict = "wrecks - the landing is beyond its marines";
+						verdict = "saturates - the landing is beyond its marines";
 					}
-					flotilla = " at " + (int) fp + " FP ("
+					flotilla = " for " + (int) plan[0] + " d at " + (int) fp + " FP ("
 							+ (survives < Float.MAX_VALUE ? "outlasts the guns from " + (int) Math.ceil(survives) + " FP"
 									: "no flotilla outlasts the guns")
 							+ ", " + Misc.getWithDGS(Math.round(Math.max(0f, spare))) + " fuel to spare)";
 				}
-				if (verdict.startsWith("wrecks")) {
+				if (verdict.startsWith("saturates")) {
 					raze.add(target.getId());
 					setAside += fuel;
 				} else {
 					marinesLeft = Math.max(0f, marinesLeft - marines);
 					armsLeft = Math.max(0f, armsLeft - arms);
 				}
-				ThreatIncConfig.logOnChange("raze:" + base.getId() + ":" + target.getId(), verdict, "Wreck or siege of "
-						+ target.getName() + " (size " + target.getSize() + ") from " + base.getName() + ": wrecking "
-						+ Misc.getWithDGS(Math.round(fuel)) + " fuel" + flotilla + ", landing "
-						+ Misc.getWithDGS(Math.round(marines)) + " marines of " + Misc.getWithDGS(Math.round(held))
-						+ " held - " + verdict);
+				ThreatIncConfig.logOnChange("raze:" + base.getId() + ":" + target.getId(), verdict,
+						"Saturate or siege of " + target.getName() + " (size " + target.getSize() + ") from "
+						+ base.getName() + ": saturating " + Misc.getWithDGS(Math.round(fuel)) + " fuel" + flotilla
+						+ ", landing " + Misc.getWithDGS(Math.round(marines)) + " marines of "
+						+ Misc.getWithDGS(Math.round(held)) + " held - " + verdict);
 				continue;
 			}
+			int layers = ThreatRazing.enemyLayers(target);
+			if (layers <= 0 || ThreatRazing.razeable(target) < layers) continue;
+			float fuel = ThreatRazing.fuelToDestroyThrough(target, arrival);
+			float razeCost = fuel * fuelPrice;
+			float siegeCost = marines * marinePrice + arms * armsPrice;
 			// the flotilla if it razed this world after those already razed, and
 			// landed nowhere (the least that sails): the orbit's fleets, grown to
 			// outlast the guns of every world it razes in turn (siegeFleetGoal)
@@ -3371,10 +3412,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			for (int i = order.size() - 1; i >= 0 && total > pooled; i--) {
 				String back = order.get(i);
 				MarketAPI world = Global.getSector().getEconomy().getMarket(back);
-				// a hive is wrecked only where its landing is beyond the marines:
+				// a hive is saturated only where its landing is beyond the marines:
 				// sent back to a siege, that landing held the whole siege back on
 				// its marines, the cheaper worlds with it (review, 2026-10-01)
-				if (world != null && ThreatRazing.wrecksOnly(world)) continue;
+				if (world != null && !ThreatRazing.razes(world)) continue;
 				java.util.List<String> fewer = new ArrayList<String>(order);
 				fewer.remove(i);
 				float less = siegeFuelTotal(base, faction, system, targets, difficulty, anyGarrisoned, heavyAssault,
@@ -3517,15 +3558,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * its expedition flies it: ThreatGroundFronts.razePlan a world at a time,
 	 * each on the fleet points and the fuel the last one left. Per world {days,
 	 * fuel spent, fleet points lost, 1 when razed, 1 when reached, fuel aboard
-	 * on arrival}. {@code fuel} is what it carries for all of them; negative,
+	 * on arrival, the days its least-worn structure is then down for}.
+	 * {@code fuel} is what it carries for all of them; negative,
 	 * each world has its own razing fuel aboard - the sizing's case. The losses
 	 * run against one abort line, GROUP_ABORT_FRACTION of what set out: a world
 	 * finished only below it is not razed, and once the guns have turned the
 	 * fleets for home they reach nothing more. A razing that runs out of days
-	 * moves on to the next world, as the expedition's stage does.
+	 * moves on to the next world, as the expedition's stage does. A hive is
+	 * saturated, not razed (ThreatRazing.razes): "razed" is its saturation run
+	 * to the commander's stop, and in the sizing's case it has the fuel that
+	 * stay burns aboard.
 	 */
 	public static float[][] razeRun(java.util.List<MarketAPI> worlds, float fp, float fuel) {
-		float[][] out = new float[worlds.size()][6];
+		float[][] out = new float[worlds.size()][7];
 		float start = Math.max(0f, fp);
 		float floor = start * ThreatGroundFronts.GROUP_ABORT_FRACTION;
 		float budget = ThreatIncConfig.siegeOrbitDays();
@@ -3535,8 +3580,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		for (int i = 0; i < worlds.size(); i++) {
 			MarketAPI world = worlds.get(i);
 			if (world == null || turned || fleet <= 0f || fleet < floor) continue;
-			float aboard = fuel < 0f ? ThreatRazing.fuelToDestroyThrough(world) : left;
+			float aboard = fuel >= 0f ? left
+					: ThreatRazing.razes(world) ? ThreatRazing.fuelToDestroyThrough(world) : Float.MAX_VALUE;
 			float[] plan = ThreatGroundFronts.razePlan(world, fleet, aboard, floor);
+			// a hive's stay with no limit on its fuel burnt what the stay took
+			if (aboard == Float.MAX_VALUE) aboard = plan[1];
 			boolean finished = plan[3] >= 1f;
 			out[i][0] = plan[0];
 			out[i][1] = plan[1];
@@ -3544,6 +3592,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			out[i][3] = finished && plan[2] >= floor ? 1f : 0f;
 			out[i][4] = 1f;
 			out[i][5] = aboard;
+			out[i][6] = plan[4];
 			// stopped short with days and fuel left: the guns stopped it, and
 			// the expedition turns for home
 			if (!finished && plan[0] < budget - 0.5f && aboard - plan[1] >= 1f) turned = true;
@@ -3554,7 +3603,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return out;
 	}
 
-	/** Whether a hive world still makes something a wreck would take: a forge, a fuel plant or its Fabrication Core in working order. */
+	/**
+	 * The fuel a razing of this world takes with fp over it: a colony's whole
+	 * bar (ThreatRazing.fuelToDestroyThrough, priced at {@code arrivalDays}),
+	 * or over a hive, which has no bar, what its saturation burns to the
+	 * commander's stop (ThreatGroundFronts.razePlan).
+	 */
+	public static float razingFuel(MarketAPI target, float fp, float arrivalDays) {
+		if (target == null) return 0f;
+		if (ThreatRazing.razes(target)) return ThreatRazing.fuelToDestroyThrough(target, arrivalDays);
+		return ThreatGroundFronts.razePlan(target, fp, Float.MAX_VALUE)[1];
+	}
+
+	/** Whether a hive world still makes something saturation would stop: a forge, a fuel plant or its Fabrication Core in working order. */
 	public static boolean producing(MarketAPI market) {
 		if (market == null) return false;
 		for (Industry ind : market.getIndustries()) {
@@ -3690,16 +3751,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	// ------------------------------------------------------------------
 
 	/**
-	 * The worlds the board's Bombard order razes in this system: every hive
-	 * saturation can still take (ThreatRazing.razeable), bar one a ground front
-	 * stands on - saturation over a front is the in-person menu's, which pays
-	 * danger close.
+	 * The worlds the board's Bombard order saturates in this system: every hive
+	 * with a structure for it to fall on - a hive has no bar
+	 * (ThreatRazing.razes), so the order presses it to the commander's stop -
+	 * bar one a ground front stands on: saturation over a front is the
+	 * in-person menu's, which pays danger close.
 	 */
 	public static java.util.List<MarketAPI> bombardTargets(StarSystemAPI system) {
 		java.util.List<MarketAPI> out = new ArrayList<MarketAPI>();
 		if (system == null) return out;
 		for (MarketAPI target : collectSiegeTargets(system)) {
-			if (ThreatGroundFronts.hasFront(target) || ThreatRazing.razeable(target) <= 0) continue;
+			if (ThreatGroundFronts.hasFront(target)) continue;
+			if (ThreatRazing.razes(target) ? ThreatRazing.razeable(target) <= 0
+					: ThreatGroundFronts.saturationTargets(target).isEmpty()) continue;
 			out.add(target);
 		}
 		return out;
@@ -3755,10 +3819,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	/**
 	 * Why the board's Bombard order would raise nothing now, or null if it
-	 * would sail: the Siege's gates that apply to a razing (a base, the free
-	 * fleet points for the smallest flotilla), a hive to raze, and fuel in the
-	 * base's reserve past the passage - short of the whole razing's, it sails
-	 * with what there is.
+	 * would sail: the Siege's gates that apply to a saturation (a base, the
+	 * free fleet points for the smallest flotilla), a hive to saturate, and
+	 * fuel in the base's reserve past the passage - short of the whole stay's,
+	 * it sails with what there is.
 	 */
 	public static String bombardBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
 		return ThreatNotice.text(bombardBlockFacts(base, faction, system));
@@ -3771,7 +3835,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					? "No military colony of yours has a Waystation" : "No base in reach");
 		}
 		java.util.List<MarketAPI> all = system != null ? collectSiegeTargets(system) : new ArrayList<MarketAPI>();
-		if (all.isEmpty()) return ThreatNotice.Reason.of("Nothing there to raze yet");
+		if (all.isEmpty()) return ThreatNotice.Reason.of("Nothing there to bombard yet");
 		java.util.List<MarketAPI> targets = bombardTargets(system);
 		if (targets.isEmpty()) {
 			boolean fronted = true;
@@ -3779,7 +3843,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				if (!ThreatGroundFronts.hasFront(hive)) fronted = false;
 			}
 			return ThreatNotice.Reason.of(fronted ? "A ground front stands on every hive there"
-					: "Nothing there to raze");
+					: "Nothing there to bombard");
 		}
 		if (faction == null) return null;
 		java.util.List<Integer> sizes = bombardSizes(base, faction, targets);
@@ -4770,16 +4834,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// fuel available, capped by what the base's fleets can carry
 		// (ThreatColonyManager.expeditionFuelCapacity)
 		return ThreatColonyManager.fuelRangeLY(base);
-	}
-
-	/**
-	 * How far a market's stock pools into a sibling's draw or ships without a
-	 * convoy of its own (ThreatConvoys.stockReachLY and the donor walks): the
-	 * fuel radius, whatever the expedition reach. Logistics between depots,
-	 * not a fleet's reach - and the bill of a base's reach reads that pool.
-	 */
-	public static float logisticsRangeLY(MarketAPI market) {
-		return ThreatColonyManager.fuelRangeLY(market);
 	}
 
 	/** A military structure: what fields fleets. Static so the mission board can ask the same question the purge logic does. */

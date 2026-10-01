@@ -1,7 +1,7 @@
 id,trigger,conditions,script,text,options,notes
 #RULESET_NAME ThreatIncursion,,,,,,
 threatinc_bombardSaturationSel,DialogOptionSelected,"$option == mktBombardSaturation score:1000
-!ThreatincNexCMD yields",ThreatincMarketCMD bombardSaturation,,,"Override: a day of saturation on any world - every building suppressed, fuel poured into the razing bar (a level a size, the last ends the colony); the atrocity list is owner-only on Threat colonies (docs/suppression-balance.md v2)"
+!ThreatincNexCMD yields",ThreatincMarketCMD bombardSaturation,,,"Override: a day of saturation on any world - every building suppressed; on a human colony fuel poured into the razing bar (a level a size, the last ends the colony), a hive has none; the atrocity list is owner-only on Threat colonies (docs/suppression-balance.md v2)"
 threatinc_bombardConfirmSel,DialogOptionSelected,"$option == mktBombardConfirm score:1000
 !ThreatincNexCMD yields",ThreatincMarketCMD bombardConfirm,,,"Override: one day of bombardment - the siege slice or the saturation slice, the ships the guns took named, unrest raised not stacked, the once-a-day lock; third parties stripped from the hostile list under the atrocity waiver"
 threatinc_bombardTacticalSel,DialogOptionSelected,"$option == mktBombardTactical score:1000

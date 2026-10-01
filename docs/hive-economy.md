@@ -1052,6 +1052,16 @@ patrols it does not run, commodity demand it cannot meet.
   the slot while either stock was wanted anywhere; under size upkeep supplies are short nearly
   always, and h40a banked 98k FP with no Bastion built. Swarm Command needs no slot. `maintainMilitaryTier` runs from the monthly sweep, after the planner; one structure a
   colony a tick still holds.
+- **Retirement** (`retireMilitary`, user's call 2026-10-01). The slot goes back to production
+  when the hive needs a producer and no world has a free slot to build it in. A need is a chain
+  link the hive has none of, or a stock's answer (`mayAnswer`: it runs dry). Once a month, after
+  the conversion, a standing Bastion or Command is torn down for it: a Bastion before a Command,
+  then the bigger world. The producer is bought first; a refusal tears nothing down and books its
+  price as demand (`heldBuild`). It takes its vanilla build time, as the Bastion took its own, so
+  neither swap is instant, and the stock counts it as coming (`comingPerMonth`) while it builds.
+  A structure still growing or upgrading stays, as does one under a front or saturation. Nothing
+  of its price comes back; the swarms it kept home stay, free to launch. Logged `Hive planner:
+  Swarm Bastion at X retired for <industry> (<reason>)`.
 - **Readouts.** The colony screen shows the industries.csv description, "Defense Swarms kept at
   home: N" and vanilla's ground-defence line. The planner logs `Hive planner: Swarm Bastion at X for
   N FP, R swarms home once it stands (F FP more)`.
@@ -1060,8 +1070,8 @@ patrols it does not run, commodity demand it cannot meet.
 `ThreatGroundFronts.payOrdnance` and `ordnanceAvailable` for the Threat side read and draw the hive's
 fuel stock. That is the tactical day at `bombardFuelPerFPDay` (0.04 a FP: a 1,000 FP Defend fleet
 burns 1,200 a month), paid by the Defend and Support slices. `ThreatStrikeFGI.saturationPass` pays
-the saturation pour at `satFuelPerFPDay` (2.86 a FP a day, up to what the razing needs) - the rates
-humans pay.
+the saturation pour at `satFuelPerFPDay` (2.86 a FP a day, up to what the human colony's razing
+needs) - the rates humans pay.
 - Short of a tactical day, a live slice bombards the share it can pay.
 - With nothing in stock the swarm does not bombard. A Defend fleet reads its orbit as done
   (`orbitDoneFor`): it fabricates troops if its front cannot hold, else it idles. A strike's

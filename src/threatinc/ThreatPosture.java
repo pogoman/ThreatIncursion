@@ -893,11 +893,11 @@ public class ThreatPosture {
 		float points = Float.MAX_VALUE;
 		if (fuelPerPoint > 0f) {
 			points = Math.min(points, (ThreatReserves.available(base, Commodities.FUEL)
-					+ ThreatSoftening.donorsSpendable(donors, Commodities.FUEL)) / fuelPerPoint);
+					+ ThreatSoftening.donorsSpendable(donors, base, Commodities.FUEL)) / fuelPerPoint);
 		}
 		if (suppliesPerPoint > 0f) {
 			points = Math.min(points, (ThreatReserves.available(base, Commodities.SUPPLIES)
-					+ ThreatSoftening.donorsSpendable(donors, Commodities.SUPPLIES)) / suppliesPerPoint);
+					+ ThreatSoftening.donorsSpendable(donors, base, Commodities.SUPPLIES)) / suppliesPerPoint);
 		}
 		return points >= Float.MAX_VALUE ? 0f : points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
 	}

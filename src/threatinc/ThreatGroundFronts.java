@@ -37,10 +37,10 @@ import com.fs.starfarer.api.util.Misc;
  * assaults the next stratum. Strata held subtract their share of the
  * size-anchored base defense (SwarmNexus) and of the colony's fabrication
  * (computeFabricationMult): each stratum taken weakens the hive. Taking the
- * final stratum destroys the Core and ERADICATES the colony. A colony dies
- * only two ways: a ground victory, or saturation razed down to its last
- * level ({@link ThreatRazing}); starvation and bombardment short of that
- * only make the siege cheaper. The hive counter-attacks on a cadence paced by
+ * final stratum destroys the Core and ERADICATES the colony. A hive dies
+ * only to a ground victory - saturation takes no size off it
+ * ({@link ThreatRazing#razes}); starvation and bombardment only make the
+ * siege cheaper. The hive counter-attacks on a cadence paced by
  * the supplies it is paid (vitality with size upkeep off) and can retake
  * strata from a front too weak to hold them.
  *
@@ -1858,8 +1858,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/**
 	 * The final stratum is taken and the Fabrication Core destroyed: the
-	 * colony is ERADICATED - one of the two ways a hive dies ({@link #hiveRazed}
-	 * is the other). The vanilla teardown
+	 * colony is ERADICATED - the only way a hive dies (saturation takes no size
+	 * off it, ThreatRazing.razes). The vanilla teardown
 	 * runs and the survivors come home; nothing is raised on the dead world
 	 * (2026-09-27). pollColonies reacts next poll.
 	 *
@@ -1960,47 +1960,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		}
 		market.getMemoryWithoutUpdate().set(KILLED_BY_FLAG, Factions.THREAT, 60f);
 		com.fs.starfarer.api.impl.campaign.intel.deciv.DecivTracker.decivilize(market, true);
-	}
-
-	/**
-	 * Saturation razed the hive's last stratum (docs/suppression-balance.md v2
-	 * section 4): the colony is gone. The ground victory's teardown without the
-	 * victory - eradication, any front on it brought home, and the swarm's
-	 * grudge and answer as for any hive it loses.
-	 */
-	protected static void hiveRazed(MarketAPI market, String razerFactionId) {
-		String razer = razerFactionId != null ? razerFactionId : Factions.PLAYER;
-		FactionAPI razerFaction = Global.getSector().getFaction(razer);
-		ThreatNotice n = ThreatNotice.titled("Hive Razed").good().icon(razerFaction);
-		if (Factions.PLAYER.equals(razer)) {
-			n.line("Your bombardment has razed %s.", ThreatNotice.market(market));
-		} else {
-			n.line("%s has razed %s from orbit.", ThreatNotice.faction(razerFaction),
-					ThreatNotice.market(market));
-		}
-		n.line("The strata are cold.").send();
-		ThreatIncConfig.log("Hive razed from orbit: " + market.getName() + " by " + razer);
-		StarSystemAPI where = market.getStarSystem();
-		// held before the teardown: the market's entity and position are the
-		// only handles on the world once decivilize has run
-		SectorEntityToken world = market.getPrimaryEntity();
-		Vector2f hyperLoc = market.getLocationInHyperspace();
-		GroundFront front = getFront(market.getId());
-		if (front != null) fronts().remove(market.getId());
-		ThreatColonyManager.eradicate(market);
-		if (front != null) {
-			ThreatOutposts.Outpost outpost = null;
-			if (world != null && ThreatIncConfig.outpostsEnabled()) {
-				outpost = ThreatOutposts.outpostAt(world.getId());
-				if (outpost != null && !outpost.alive()) outpost = null;
-			}
-			evacuate(front, outpost, hyperLoc);
-		}
-		if (!Factions.THREAT.equals(razer)) {
-			ThreatAlarm.add(razer, ThreatIncConfig.alarmPerEradication(),
-					"eradication of " + market.getName());
-			IncursionManager.retaliate(razer, where);
-		}
 	}
 
 	/**
@@ -2883,10 +2842,17 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * saturating it until it is razed as far as saturation goes, the fuel is
 	 * poured, the guns would take the fleet below vanilla's abort line, or
 	 * siegeOrbitDays: {days, fuel spent, fleet points left, 1 when the razing
-	 * is finished}. The same day saturationSlice delivers - every structure
-	 * worn, the fuel through the shield into the bar, never less spent than a
-	 * tactical day - and the unrest raised at once, so after the first day the
-	 * guns fire with the figure a stability of what is left allows.
+	 * is finished, the days the least-worn structure is then down for}. The
+	 * same day saturationSlice delivers - every structure worn, the fuel
+	 * through the shield into the bar, never less spent than a tactical day -
+	 * and the unrest raised at once, so after the first day the guns fire with
+	 * the figure a stability of what is left allows.
+	 *
+	 * <p>A hive has no bar (ThreatRazing.razes): its saturation is finished at
+	 * the commander's stop ({@link #bombardPlan}'s first test) - when a day
+	 * would add less than the day of repair the world makes on its own to
+	 * every structure it falls on, the shield included - and the fuel it burns
+	 * to get there is its price.
 	 */
 	public static float[] razePlan(MarketAPI market, float fp, float fuel) {
 		return razePlan(market, fp, fuel, Math.max(0f, fp) * GROUP_ABORT_FRACTION);
@@ -2895,11 +2861,16 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** As above, stopping before the fleet falls below {@code floorFP}: the abort line of an expedition that set out bigger than the fleet it has now. */
 	public static float[] razePlan(MarketAPI market, float fp, float fuel, float floorFP) {
 		float start = Math.max(0f, fp);
-		if (market == null) return new float[] { 0f, 0f, start, 0f };
+		if (market == null) return new float[] { 0f, 0f, start, 0f, 0f };
+		boolean bar = ThreatRazing.razes(market);
 		float need = ThreatRazing.fuelToDestroy(market);
-		if (need <= 0f) return new float[] { 0f, 0f, start, 1f };
-		if (start <= 0f) return new float[] { 0f, 0f, 0f, 0f };
+		if (bar && need <= 0f) return new float[] { 0f, 0f, start, 1f, 0f };
+		if (start <= 0f) return new float[] { 0f, 0f, 0f, 0f, 0f };
 		Theatre theatre = Theatre.of(market);
+		// the least-worn structure saturation falls on: it sets the stop over a
+		// hive, and every structure is down at least as long as it is
+		float top = 0f;
+		for (Industry ind : saturationTargets(market)) top = Math.max(top, theatre.condition(market, ind));
 		List<Industry> forts = theatre.fortifications(market);
 		boolean shield = ThreatShield.present(market);
 		float d0 = Math.max(1f, MarketCMD.getDefenderStr(market, true));
@@ -2928,30 +2899,61 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float budget = ThreatIncConfig.siegeOrbitDays();
 		float floor = Math.max(0f, floorFP);
 		float fleet = start;
+		// Float.MAX_VALUE: as much as the stay burns (a hive's price, IncursionManager.razingFuel)
 		float left = Math.max(0f, fuel);
+		float spent = 0f;
 		float reached = 0f;
+		boolean stopped = false;
 		float d = d0;
 		int day = 0;
-		while (day < budget && reached < need - 0.5f && left >= 1f) {
+		while (day < budget && (!bar || reached < need - 0.5f) && left >= 1f) {
 			float fire = firePer * d * gunShare(cond, bonus, gun);
 			if (fleet - fire < floor) break;
 			float through = shield ? 1f - absorbMax * s : 1f;
-			float pour = Math.min(Math.min(pourPer * fleet, left), (need - reached) / Math.max(0.01f, through));
-			// the day that finishes it pours what it takes and no more
-			boolean finishes = reached + pour * through >= need - 0.5f;
-			left -= Math.min(left, finishes ? pour : Math.max(pour, bombardFuelPerDay(fleet)));
-			reached += pour * through;
 			float weighted = fleet * perPoint;
 			float ratio = weighted / Math.max(1f, weighted + d);
+			if (!bar && Math.max(rate * ratio * top * through, shield ? rate * ratio * s * soak : 0f) < 1f) {
+				stopped = true;
+				break;
+			}
+			float pour = Math.min(pourPer * fleet, left);
+			if (bar) pour = Math.min(pour, (need - reached) / Math.max(0.01f, through));
+			// the day that finishes it pours what it takes and no more
+			boolean finishes = bar && reached + pour * through >= need - 0.5f;
+			float burn = Math.min(left, finishes ? pour : Math.max(pour, bombardFuelPerDay(fleet)));
+			left -= burn;
+			spent += burn;
+			reached += pour * through;
 			for (int i = 0; i < n; i++) {
 				cond[i] = Math.max(0f, cond[i] - rate * ratio * cond[i] * through / wear);
 			}
+			top = Math.max(0f, top - rate * ratio * top * through / wear);
 			if (shield) s = Math.max(0f, s - rate * ratio * s * soak / wear);
 			fleet -= fire;
 			day++;
 			d = fig.defence(cond, unrestMax, true);
 		}
-		return new float[] { day, Math.max(0f, fuel) - left, fleet, reached >= need - 0.5f ? 1f : 0f };
+		// a hive's stop on the first day is a fleet too light to wear anything, not a saturation done
+		boolean finished = bar ? reached >= need - 0.5f : stopped && day > 0;
+		return new float[] { day, spent, fleet, finished ? 1f : 0f, wear * (1f - top) };
+	}
+
+	/**
+	 * Whether saturation by fp has done what it usefully can over a hive (no
+	 * bar, ThreatRazing.razes): a day would add less than the day of repair
+	 * the world makes on its own to every structure it falls on and to the
+	 * shield - {@link #razePlan}'s stop, read now. Nothing to fall on: done.
+	 */
+	public static boolean saturationSpent(MarketAPI market, float fp) {
+		if (market == null || fp <= 0f) return true;
+		Theatre theatre = Theatre.of(market);
+		float rate = suppressionRate(market, fp, MarketCMD.getDefenderStr(market, true));
+		float through = ThreatShield.throughput(market);
+		for (Industry ind : saturationTargets(market)) {
+			if (rate * theatre.condition(market, ind) * through >= 1f) return false;
+		}
+		return !ThreatShield.present(market)
+				|| rate * ThreatShield.integrity(market) * Math.max(0f, ThreatIncConfig.shieldSoakMult()) < 1f;
 	}
 
 	/** The figure a plan reads for the fortifications' conditions: the base under them, times what stands, at the stability the bombardment's unrest leaves. */
@@ -3211,8 +3213,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * raised to bombardUnrestMax, its growth paused, and the fuel poured into
 	 * the razing bar ({@link ThreatRazing}) less what the shield turns aside.
 	 * Returns {fleet points the guns take, fuel spent, levels razed, 1 when the
-	 * colony is gone, 1 when the bar wrecked a hive}. Once it is gone nothing
-	 * else on it is touched; a wrecked hive stands, its razing done with.
+	 * colony is gone}. Once it is gone nothing else on it is touched. A hive
+	 * has no bar (ThreatRazing.razes): the fuel is burnt at the rate for the
+	 * day's wear alone, and the per-day rule is all saturation does to it.
 	 */
 	public static float[] saturationSlice(float fp, MarketAPI market, float days, float fuel,
 			boolean elapsed, boolean reapply, float defenceOverride, String razerFactionId, String reason) {
@@ -3223,7 +3226,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** As above for one of the fleets saturating the world together ({@link #siegeSlice(float, float, MarketAPI, float, boolean, boolean, float, String)}): each pours its own fuel and takes its share of the guns' answer. */
 	public static float[] saturationSlice(float fp, float orbitFP, MarketAPI market, float days, float fuel,
 			boolean elapsed, boolean reapply, float defenceOverride, String razerFactionId, String reason) {
-		float[] out = new float[5];
+		float[] out = new float[4];
 		if (market == null || days <= 0f || fp <= 0f) return out;
 		float defence = defenceOverride >= 0f ? defenceOverride
 				: Math.max(0f, MarketCMD.getDefenderStr(market, true));
@@ -3236,7 +3239,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float pour = ThreatRazing.deliverable(market, fp, days, fuel);
 		// never less than the tactical day it also flies - bar the day that
 		// finishes the razing, which pours what it takes and no more
-		boolean finishes = pour * through >= ThreatRazing.fuelToDestroy(market) - 0.5f;
+		boolean finishes = ThreatRazing.razes(market)
+				&& pour * through >= ThreatRazing.fuelToDestroy(market) - 0.5f;
 		out[1] = finishes ? pour : Math.max(pour, Math.min(Math.max(0f, fuel), bombardFuelPerDay(fp) * days));
 		markBesieged(market);
 		ThreatRazing.markSaturated(market, days);
@@ -3246,12 +3250,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		int[] razed = ThreatRazing.pour(market, pour * through, razerFactionId);
 		out[2] = razed[0];
 		out[3] = razed[1];
-		out[4] = razed[2];
 		ThreatIncConfig.log("saturationSlice " + market.getName() + " fp=" + String.format("%.0f", fp)
 				+ " days=" + String.format("%.2f", days) + " poured=" + String.format("%.0f", pour)
 				+ " through=" + String.format("%.2f", through) + " razed=" + razed[0]
-				+ (razed[1] > 0 ? " DESTROYED" : "") + (razed[2] > 0 ? " WRECKED" : "")
-				+ " loss=" + String.format("%.2f", out[0]));
+				+ (razed[1] > 0 ? " DESTROYED" : "") + " loss=" + String.format("%.2f", out[0]));
 		if (razed[1] > 0) return out;
 		if (reapply) finishSlice(market, touched, days);
 		return out;
@@ -3362,7 +3364,13 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (paid > 0f) mem.set(ThreatReturns.MEM_FUEL, carried - paid);
 		for (MarketAPI m : ordnanceSources(fleet, factionId)) {
 			if (paid >= fuel) break;
-			paid += ThreatReserves.drawSpendable(m, Commodities.FUEL, fuel - paid);
+			// fuel from another system pays its passage to the fleet (2026-10-01)
+			float rate = ThreatConvoys.haulRate(m, fleet.getLocationInHyperspace(), Commodities.FUEL);
+			float can = Math.min(fuel - paid, ThreatConvoys.netOfHaul(Commodities.FUEL,
+					ThreatReserves.spendable(m, Commodities.FUEL), 0f, rate));
+			if (can <= 0f) continue;
+			ThreatConvoys.payHaul(m, can, rate);
+			paid += ThreatReserves.drawSpendable(m, Commodities.FUEL, can);
 		}
 		return paid;
 	}
@@ -3378,7 +3386,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		}
 		if (fleet == null) return 0f;
 		float fuel = Math.max(0f, fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL));
-		for (MarketAPI m : ordnanceSources(fleet, factionId)) fuel += ThreatReserves.spendable(m, Commodities.FUEL);
+		for (MarketAPI m : ordnanceSources(fleet, factionId)) {
+			fuel += ThreatConvoys.netOfHaul(Commodities.FUEL, ThreatReserves.spendable(m, Commodities.FUEL), 0f,
+					ThreatConvoys.haulRate(m, fleet.getLocationInHyperspace(), Commodities.FUEL));
+		}
 		return fuel;
 	}
 
@@ -3388,8 +3399,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * from it (2026-09-29), only markets whose stock reaches where the fleet
 	 * stands (IncursionManager.marketsReaching, ThreatConvoys.stockReachLY):
 	 * the home base first if it does, then the faction's others nearest first.
-	 * Until then the home base paid at any range - fuel that never sailed. The
-	 * player's fleets keep their home base alone (its reach is any range).
+	 * Until then the home base paid at any range - fuel that never sailed; an
+	 * NPC's now pays its passage to the fleet (ThreatConvoys.haulRate,
+	 * 2026-10-01). The player's fleets keep their home base alone (its reach
+	 * is any range).
 	 */
 	protected static List<MarketAPI> ordnanceSources(CampaignFleetAPI fleet, String factionId) {
 		List<MarketAPI> out = new ArrayList<MarketAPI>();
@@ -3987,13 +4000,13 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * by hand), with npcRazeEnabled off, a world saturation cannot finish, a
 	 * contested orbit, or a front that takes the last stratum before the
 	 * razing would ({@link #daysToLastStratum}). Never over a hive either:
-	 * saturation only wrecks one (ThreatRazing.wrecksOnly), so it cannot
+	 * saturation takes no size off one (ThreatRazing.razes), so it cannot
 	 * finish the front (2026-10-01).
 	 */
 	public static boolean defendRazes(String factionId, MarketAPI market, CampaignFleetAPI fleet) {
 		if (fleet == null || factionId == null || market == null) return false;
 		if (Factions.THREAT.equals(factionId) || Factions.PLAYER.equals(factionId)) return false;
-		if (!ThreatIncConfig.npcRazeEnabled() || ThreatRazing.wrecksOnly(market)) return false;
+		if (!ThreatIncConfig.npcRazeEnabled() || !ThreatRazing.razes(market)) return false;
 		GroundFront front = getFront(market.getId());
 		if (front == null || !factionId.equals(ownerOf(front))) return false;
 		int layers = ThreatRazing.enemyLayers(market);

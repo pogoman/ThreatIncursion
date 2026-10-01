@@ -84,7 +84,7 @@ is the layout it implements.
    in red when the hull shortage caps the garrison below the size table's n; a ground front's
    "Front" figure replaces reach while one is on the ground; Reach only from strike size, see
    "Reach" below) at full width - it wrapped when it shared the line; line B
-   "Def x  raze y fuel  tac z a day" (2026-09-28: the fuel to raze the hive from orbit through its shield, and a day of tactical bombardment by your fleet as it stands) with the size forecast right-aligned on the same line ("s5 -> s6
+   "Def x  sat y a day  tac z a day" (2026-10-01: a day of saturation, `satFuelPerFPDay` x your fleet's FP as it stands, and a day of tactical bombardment by it; a hive has no bar to quote - a colony card would read "raze y fuel", the fuel through its shield) with the size forecast right-aligned on the same line ("s5 -> s6
    ~270 d", "s5 -> s4 ~22 d" while starving, "s8 max", "s5 holding" - "s5 stalled" with size
    upkeep off; in the Fed figure's colour, red while a front or saturation takes it); then the organ icons
    along the bottom (industry sprites, red-tinted while disrupted, day
@@ -226,16 +226,20 @@ swarm has never struck keeps no reserve, so it launches nothing - no expedition 
 `commissionEnabled` was removed from the config.
 
 **Bombard** (2026-09-28, built, untested; docs/suppression-balance.md v2 section 9) sits between
-Siege and Hunt on each hive row: a razing expedition, the player's twin of the NPC raze task. It
-takes the system's hives that saturation can still take and no front stands on
+Siege and Hunt on each hive row: a saturating expedition, the player's twin of the NPC raze task.
+It takes the system's hives with a structure for saturation to fall on and no front
 (`IncursionManager.bombardTargets`), sizes its fleets to outlast their guns in turn
 (`bombardFleetSizes`, `razeRun` over `ThreatGroundFronts.razePlan`), fits them to the base's free
-points like a Siege, and carries the passage then the razing fuel from the base's own reserve -
-less than the razing takes if that is all there is. The prompt is the fleets, the fuel carried of
-what the razing takes, the fuel drawn of the reserve, and a line per hive (days in orbit, about
-the FP the guns take, razed or not). Gated by `bombardBlockReason`; refused with a "Razing
-Refused" notice. To fit the third button the hives table went from System .30 / Actions .21 to
-.26 / .25. The Siege prompt also quotes the fuel its bombardment burns.
+points like a Siege, and carries the passage then the saturation's fuel - what each stay to the
+commander's stop burns - from the base's own reserve, less if that is all there is. A hive has no
+bar (2026-10-01, docs/ground-war.md "Saturation presses a hive"): the order presses each hive and
+never ends one. The confirm: "Order a bombing expedition from B against the S?", the fleets and
+their FP, "Carries X of the Y fuel the saturation takes.", the fuel drawn of the reserve, and per
+hive "Name: N days in orbit, about F FP lost, down D days." The launch notice is "Bombing
+Expedition" ("To saturate ... from orbit"); the fleets table reads "bombarding the ...". Gated by
+`bombardBlockReason`; refused with a "Bombing Refused" notice. To fit the third button the hives
+table went from System .30 / Actions .21 to .26 / .25. The Siege prompt also quotes the fuel its
+bombardment burns.
 
 Siege expeditions, NPC and commissioned alike, are **sized to the target** (Sept 2026,
 `IncursionManager.siegeFleetSizes`). Vanilla's raid effectiveness is `raidStr / (raidStr +

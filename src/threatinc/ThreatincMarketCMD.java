@@ -47,7 +47,8 @@ import com.fs.starfarer.api.util.Misc;
  * and the world's unrest is raised to what the bombardment has broken.</li>
  * <li><b>Saturation</b>: the same day on every building, and the fuel poured
  * into the colony's razing bar ({@link ThreatRazing}) - a level a size, the
- * last ends the colony. A hive dies to it as a human colony does.</li>
+ * last ends the colony. A hive has no bar ({@link ThreatRazing#razes}): over
+ * it saturation is the day alone, and takes nothing off its size.</li>
  * <li>Both share a once-a-day lock, like vanilla's raid cooldown.</li>
  * </ul>
  *
@@ -638,7 +639,8 @@ public class ThreatincMarketCMD extends MarketCMD {
 
 	/** What that day costs from the tanks: the pour, never less than a tactical day unless it finishes the razing, less the bombardment capability. */
 	protected int saturationFuel(float pour) {
-		boolean finishes = pour >= ThreatRazing.fuelToDestroyThrough(market) - 0.5f;
+		boolean finishes = ThreatRazing.razes(market)
+				&& pour >= ThreatRazing.fuelToDestroyThrough(market) - 0.5f;
 		float spent = finishes ? pour
 				: Math.max(pour, ThreatGroundFronts.bombardFuelPerDay(playerFleet.getFleetPoints()));
 		spent = Math.min(spent, playerFleet.getCargo().getFuel()) - bombardBonus();
@@ -836,15 +838,16 @@ public class ThreatincMarketCMD extends MarketCMD {
 			text.addPara("    Your front holds %s of %s " + theatre.layer() + "s; the bombs fall on the other %s.",
 					h, "" + (size - layers), "" + size, "" + layers);
 		}
-		if (ThreatRazing.razeable(market) <= 0) {
+		// a hive has no bar (ThreatRazing.razes): the day's wear, unrest and
+		// halted growth are all it buys, and the lines below say those
+		if (ThreatRazing.razes(market) && ThreatRazing.razeable(market) <= 0) {
 			text.addPara("    " + market.getName() + " cannot be razed any further.");
-		} else {
+		} else if (ThreatRazing.razes(market)) {
 			razingLines(pour * day.through, h, bad);
 			float rate = Math.max(0f, ThreatIncConfig.satFuelPerFPDay()) * fp;
 			float whole = ThreatRazing.fuelToDestroyThrough(market);
 			if (rate > 0f && whole > pour + 0.5f) {
-				text.addPara("    " + (ThreatRazing.wrecksOnly(market) ? "Wrecked" : "Razed")
-						+ " in about %s days at this rate: %s fuel in all.", h,
+				text.addPara("    Razed in about %s days at this rate: %s fuel in all.", h,
 						"" + (int) Math.ceil(whole / rate), Misc.getWithDGS(Math.round(whole)));
 			}
 		}
@@ -883,18 +886,6 @@ public class ThreatincMarketCMD extends MarketCMD {
 		int layers = ThreatRazing.enemyLayers(market);
 		int levels = ThreatRazing.razeable(market);
 		float bar = ThreatRazing.progress(market) + barFuel;
-		// a hive is wrecked, never razed: one price, no size off (ThreatRazing.wreck)
-		if (ThreatRazing.wrecksOnly(market)) {
-			float whole = ThreatRazing.fuelToDestroy(market) + ThreatRazing.progress(market);
-			if (bar >= whole - 0.5f) {
-				text.addPara("    Every structure on " + market.getName() + " down for %s days.", bad,
-						"" + (int) ThreatGroundFronts.siegeWornDays(market));
-			} else {
-				text.addPara("    Wrecked at %s of %s fuel.", h, Misc.getWithDGS(Math.round(bar)),
-						Misc.getWithDGS(Math.round(whole)));
-			}
-			return;
-		}
 		int razed = 0;
 		while (razed < levels) {
 			float need = ThreatRazing.levelFuel(layers - razed);
@@ -1004,13 +995,11 @@ public class ThreatincMarketCMD extends MarketCMD {
 				: "Recently bombarded";
 		float loss;
 		boolean destroyed = false;
-		boolean wrecked = false;
 		if (saturation) {
 			float[] out = ThreatGroundFronts.saturationSlice(fp, market, 1f, fuelAboard, true, false,
 					defence, Factions.PLAYER, reason);
 			loss = out[0];
 			destroyed = out[3] > 0f;
-			wrecked = out[4] > 0f;
 		} else {
 			loss = ThreatGroundFronts.siegeSlice(fp, market, 1f, true, false, defence, reason);
 			if (isThreatTarget()) applyDangerClose(suppression);
@@ -1029,10 +1018,6 @@ public class ThreatincMarketCMD extends MarketCMD {
 		if (destroyed) {
 			text.addPara(name + " destroyed.");
 		} else {
-			if (wrecked) {
-				text.addPara("Every structure on " + name + " down for %s days.", h,
-						"" + (int) ThreatGroundFronts.siegeWornDays(market));
-			}
 			if (market.getSize() < sizeBefore) {
 				text.addPara("Colony size reduced to %s.", bad, "" + market.getSize());
 			}

@@ -182,10 +182,11 @@ taken. Callers:
   bases, any with a reserve, each giving everything above its floor - no donor keep share,
   no staging hold; a market under a ground front gives nothing), nearest the base first,
   chosen by reach to the siege BASE (2026-09-29: `IncursionManager.marketsReaching` with
-  `ThreatConvoys.stockReachLY` = max(`convoyRangeLY`, the donor's `expeditionRangeLY`), unlimited
-  for the player - a donor's stock goes aboard at the base and none of it sails for the hive.
-  Each donor used to need its own strike range to the hive, which was 0 for any depot without
-  a military structure, shutting them all out: a bug), and waits while it cannot arm the landing to the marine gate's share
+  `ThreatConvoys.stockReachLY`, unlimited for the player - a donor's stock goes aboard at the
+  base and none of it sails for the hive. Each donor used to need its own strike range to the
+  hive, which was 0 for any depot without a military structure, shutting them all out: a bug.
+  Since 2026-10-01 a donor reaches as far as its fuel pays and gives net of its haul to the
+  base, `donorAvailable`: "Logistics reach" under Convoys), and waits while it cannot arm the landing to the marine gate's share
   (`minMarinesFraction`, all of it at `npcSiegeFullStrength`); a size-4 beachhead is
   ~2,400 troops and a full depot holds ~560. The system's siege base is the nearest
   (`siegeBaseFor`: it stages and is barred from hunting there while it could launch);
@@ -434,7 +435,7 @@ siege or hunt counts in full), so the hive holds a bigger garrison there - docs/
 "Posture".
 If the base is short by
 at least `convoyMinLoadFraction` (0.5) of a load or of the target (whichever is smaller),
-the same-faction colony within `convoyRangeLY` (15; the player's colonies at any range)
+the same-faction colony whose stock reaches the base (`stockReachLY`; the player's at any range)
 that holds the most above `donorKeepFraction` (0.5) of its own months cap - a staging
 base counts too, above that plus its own staging target (2026-09-24) - ships a convoy
 of everything it can spare that the base still wants, and every donor that can does the
@@ -452,20 +453,21 @@ not capped, so a staging base fills past its own cap. The base's short commoditi
 tried shortest first until one has a donor, and that donor sends everything it can spare
 that the base wants (2026-09-24: a base whose worst need nobody banked - Chicomoztoc's
 fuel - used to get no convoy at all). **Stage** (the hand order) is the
-override: `stageDonor` / `stageLoad` send whatever the best donor in range can spare, no
+override: `stageDonor` / `stageLoad` send whatever the best donor in reach can spare, no
 minimum, preferring donors that are not staging bases; the confirm prompt names the donor.
 The colony table's **Convoys** column reads **Staging base** (yellow) for a base, **to
 <base> N ly** (white) for a donor, a grey dash for a colony with no staging base to feed
-(its reserve stays home; an NPC donor looks only within `convoyRangeLY`, a player donor
-anywhere) and **No Waystation** where nothing sails or lands;
+(its reserve stays home; an NPC donor looks only as far as its fuel pays - tooltip "No staging
+base its fuel reaches" - a player donor anywhere) and **No Waystation** where nothing sails or lands;
 the row tooltip names the hive a base stocks for and the four targets.
 
 **NPC reach and front runs (2026-09-27, overnight after run 9).**
-- **Convoy reach:** an NPC donor now reaches a staging base as far as its own fuel does
-  (`IncursionManager.expeditionRangeLY`, at least `convoyRangeLY`). That is the range a
-  base stages at, and `stagingBaseFor` uses the same rule. In run 9 Hegemony's forward
+- **Convoy reach:** an NPC donor reached a staging base as far as its own fuel did
+  (`IncursionManager.expeditionRangeLY`, at least `convoyRangeLY`), the range a base
+  stages at, and `stagingBaseFor` used the same rule. In run 9 Hegemony's forward
   staging base Calu got 2 convoys in three years, while 65 others moved marines around its
-  core worlds, and its sieges waited on marines with 15k banked.
+  core worlds, and its sieges waited on marines with 15k banked. Since 2026-10-01 a donor
+  reaches as far as its fuel pays the voyage ("Logistics reach" below).
 - **Front-run source:** an NPC front run loads at whichever of the nearest base or the
   faction's markets in reach of the hive covers the most of its wants (`frontScore`).
   Links are excluded, as the base too (2026-09-27): a link in the hive's own system is
@@ -542,8 +544,9 @@ ordinary faction fleets, so the Threat hunts them and the player can raid them.
 **Escorts pay (2026-09-29, closed economy).** An NPC convoy's escort sails at the sortie's
 voyage rate (`ThreatConvoys.escortRate`: `expeditionSuppliesPerPoint` per
 `FP_PER_RESPONSE_DIFFICULTY` points, fuel for the distance), drawn from the donor's
-spendable stock (an outpost's whole stockpile) beyond the cargo it ships. The escort shrinks
-to what is paid (`paidEscort`), to none on a depot with nothing to spare, and the convoy
+spendable stock (an outpost's whole stockpile) beyond the cargo it ships, and shrinks to what
+is paid (`paidEscort`), to none. Since 2026-10-01 the voyage's fuel is paid whatever the escort,
+or nothing sails (below). The convoy
 comes home on the tracked leg (`ThreatReturns.sendHome`), its hulls re-banked at what
 survived. A convoy that never sailed refunds the escort in full (`refundEscort`). A player
 convoy's escort is its capacity ledger's business. An NPC convoy whose donor is gone or has
@@ -551,6 +554,54 @@ changed hands settles at its faction's nearest base (`ThreatFleetOrders.pickBase
 nearest colony (`fallbackHome`, `homeBase`); a front run's arrival no longer deposits leftovers
 into a depot that changed hands. A convoy that times out turns home and settles too (see
 "Resolution").
+
+**Logistics reach (user's call 2026-10-01: "old fuel radius should be abolished. supply fleets
+can go wherever if they have enough fuel.").**
+- **No radius.** `ThreatConvoys.stockReachLY(donor)` = the donor's fuel above its floor
+  (`ThreatReserves.available`) / `haulFuel(1)`: as far as its fuel pays a convoy's voyage.
+  `haulFuel(ly)` = `baseEscort()` (`convoyEscortFP`, 30) x `escortRate(ly)[0]` = 30 / 25 x
+  `expeditionFuelPerPointLY` (10) x ly = 12 fuel a light-year, so `convoyEscortFP` sets the reach
+  and every haul below (at 0 both are unlimited and free). It is the donor rule of the
+  staging planner (`stagingBaseFor`, `pickDonor`), relief (`planRelief`), Stage (`stageDonor`),
+  ally aid (`pickAllyDonor`), relays and every pool (`IncursionManager.marketsReaching`). The
+  player's markets reach any range. It was the larger of `convoyRangeLY` (15 ly) and the
+  market's fuel radius (`IncursionManager.logisticsRangeLY`), which nothing paid for; both are
+  gone, the setting `threatinc_convoyRangeLY` with them. `expeditionRangeLY` is a strike's
+  reach, not a logistics radius, and is unchanged.
+- **A convoy pays its voyage's fuel or stays home.** `buildHulls` builds nothing for an NPC
+  sailing whose donor cannot pay the voyage (`paysVoyage`): `haulFuel(ly)`, the fuel the base
+  escort's 30 FP burn, 12 a ly - whether staging, relief, relay, outpost return, front run or
+  pickup. It is paid from the donor's stock above its floor (`voyageStock`:
+  `ThreatReserves.available`, the measure its reach is read from; an outpost's whole
+  stockpile), then from the fuel the convoy ships (drawn by `payEscort` / `payEscortPart`, taken
+  off the load by `burn`); what it burns does not sail, so a donor shipping all the fuel it
+  spares still sails. A refused sailing logs `Convoy held:` with the fuel above the floor
+  against the bill, once a donor a month (`logHeld`).
+- **The escort is what is paid, down to none.** Up to the base escort its supplies (36 for
+  30 FP) come from the stock above the floor, then the supplies cargo; the value escort above it
+  (`convoyEscortPerThousand`) from spendable stock beside the cargo, fuel and supplies
+  (`paidEscort` / `payable`). A donor with no supplies to spare sends its convoy unescorted.
+  First (h43a) the whole base escort, supplies too, was paid from spendable stock or nothing
+  sailed: spendable stock is what a donor ships, so a convoy carrying no supplies found none,
+  and NPC sailings fell from 82 to 17. Paid from the stock above the floor (h44a), every
+  refusal was still a donor with thousands of fuel above its floor and 0 supplies - supplies
+  bind the whole economy - so supplies size the escort, never the voyage.
+- **Pools pay a haul.** Stock taken aboard elsewhere without a convoy - a siege's donors
+  (`IncursionManager.donorAvailable`, `siegeDraw`), a hunt's (`ThreatSoftening.donorGives`,
+  `drawDonors`, `ThreatPosture.siegeCapacityFP`), a link's upkeep, founding, builds and voyage
+  (`ThreatFrontlines.gives` / `drawGiven`), a fleet's ordnance (`ThreatGroundFronts.payOrdnance`) -
+  burns `ThreatConvoys.haulPerUnit(c, ly)` = `haulFuel(ly)` / the reference load
+  (`capacityFor`: `convoyMarineCapacity` 2,000, `convoyCargoCapacity` 6,000): 0.006 fuel a marine
+  a ly, 0.002 a unit of armaments, fuel or supplies - as if the stock sailed in reference loads,
+  each paying its voyage. `netOfHaul`: fuel pays its own passage out of the load (have /
+  (1 + rate)); anything else gives only as much as the donor's fuel above its floor pays for.
+  `payHaul` burns the haul from that fuel before the draw. No haul within a system or from the
+  player's markets (`haulRate` 0). Proportional, so a day's upkeep pays a day's share. The
+  hunt and upkeep pools (`ThreatSoftening.donorGives`, `ThreatFrontlines.gives`) first read the
+  haul against the donor's spendable fuel while drawing it from above the floor: a donor whose
+  fuel sat in a staging bank gave no supplies at all, and fleets standing down out of supplies
+  went from 17 to 47 in a test (h45a, 2026-10-01).
+- **Relays stay**: they carry stock past a donor whose fuel cannot pay the distance.
 
 ## The faction selector and faction view (ThreatFactionView)
 
@@ -605,7 +656,7 @@ cards with three stock tables, faction-coloured:
    dialog cannot grey its Confirm, so a button is disabled - the reason as its tooltip -
    whenever the order would raise nothing: Guard / Intercept / Escort by
    `ThreatAid.quoteDefend` / `quoteStrike` (a source colony with at least `aidGuardMinFP`
-   free), Stage by `ThreatConvoys.stageDonor` (a same-faction colony in convoy range that can
+   free), Stage by `ThreatConvoys.stageDonor` (a same-faction colony whose stock reaches it that can
    spare a worthwhile load), Supply / Pull out by `ThreatConvoys.supplyBlockReason` /
    `pullOutBlockReason` (a front, no run already bound there, the orbit clear or held, a
    base with something above its floor), Siege by `IncursionManager.siegeBlockReason` (the
@@ -927,8 +978,9 @@ and which hives are listed - the player's table is headed "Known hive systems" a
 lists every known one). What distance costs: fuel drawn at launch by points x
 light-years (`expeditionFuelPerPointLY`, best-effort), the real transit each way, and
 the capacity held for all of it. NPC navies and NPC factions' automatic traffic (the
-convoy planner's `convoyRangeLY` in `pickDonor` / `stagingBaseFor` / `planRelief` /
-`pickAllyDonor`, and `stagingHive`) keep their ranges: autonomy needs bounds, and a base
+convoy planner's donor reach in `pickDonor` / `stagingBaseFor` / `planRelief` /
+`pickAllyDonor` - `convoyRangeLY` then, since 2026-10-01 as far as the donor's fuel pays,
+"Logistics reach" - and `stagingHive`) keep their ranges: autonomy needs bounds, and a base
 is still "the nearest base" to its hive. The player's faction has no range anywhere,
 hand order or planner (2026-09-05 evening: Diggers, a fuel world 20 ly out, showed a dash
 in Convoys while Supplies could sail from it): its planner's donors feed the staging base
@@ -1240,7 +1292,8 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   (`ThreatFleetOrders.fold`, full refund).
 - POOLED (`softenPool`, default on): after the nearest base, every other base of the
   faction that reaches the hive on its own `expeditionRangeLY`, or the primary base within
-  `ThreatConvoys.stockReachLY` (max(`convoyRangeLY`, its `expeditionRangeLY`)), is not resting and has
+  `ThreatConvoys.stockReachLY` (as far as its fuel pays a convoy's voyage; until 2026-10-01
+  max(`convoyRangeLY`, its `expeditionRangeLY`)), is not resting and has
   no siege of its own chips in, nearest the hive first, until the force reaches its size
   (2026-09-29, `contributors`: the hive's range alone kept every depot behind the primary base out
   of the hunt; a base in reach of the primary chips in, its fleets paying fuel for the whole way).
@@ -1249,7 +1302,8 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   too (2026-09-29). Each gives what a hunt may take
   (`ThreatReserves.spendable`, less `outpostKeep` for a forward base: `siegeOutpostKeepMonths` of
   its garrison's supply upkeep, the keep it holds against a sibling's siege) toward the primary's fleets (`payableFP` counts it,
-  `payFromDonors` pays nearest first), and the "Hunting force waits" log line names them. What a
+  `payFromDonors` pays nearest first; since 2026-10-01 net of its haul to the primary, `donorGives`),
+  and the "Hunting force waits" log line names them. What a
   donor gives rides the fleet (`MEM_FUEL` / `MEM_SUPPLIES`) and comes home to the base the fleet
   returns to, as if a convoy had carried the stock - it is not refunded to the donors. A siege's
   pooled provisions refund the same way ("refunds still land at the base"). Each base that sent a
@@ -1459,15 +1513,19 @@ month, 0.94 before it has fleets out). No radius and no military structure neede
 base reaches from the day it holds stock (the "zero-reach link" bug is gone with the
 radius); an empty depot reaches nothing; a faction never mobilised has no reserve and
 reaches nothing. Memoised a day per base. The player's worlds keep the fuel radius.
-- **Logistics keep a radius.** Stock pooling between a faction's own markets
-  (`ThreatConvoys.stockReachLY`, the donor walks) reads `IncursionManager.logisticsRangeLY`,
-  the old fuel radius: depots hauling to depots, not a fleet's reach - and the bill reads that
-  pool, so it must not read the reach back.
+- **Logistics have no radius** (user's call 2026-10-01; "Logistics reach" under Convoys). Stock
+  pooling between a faction's own markets (`ThreatConvoys.stockReachLY`, the donor walks) reaches
+  as far as the donor's fuel above its floor pays a convoy's voyage, and what it pools pays
+  its haul. It reads the donor's own stock, never the reach: the bill reads that pool (net of the
+  haul), so it must not read the reach back. This section's first draft kept the old fuel radius
+  here (`IncursionManager.logisticsRangeLY`), which nothing paid for.
 - **A siege pays its whole trip.** The launch gate and `siegeCanPay` price a difficulty point
   at its deposit plus its supplies for `siegeTripDays` (muster and passage, the stay, passage
   home), so a far siege costs more than a near one and cheapestFirst weighs the distance. The
   stay is `siegeStayDays`: the days its commander would bombard the slowest world it lands on
-  (`bombardPlan`) and a day to land, or a slice's days for one that only wrecks. The first
+  (`bombardPlan`) and a day to land, or the days it saturates or razes the rest in turn
+  (`razeRun`: a hive's saturation runs to the commander's stop, weeks), whichever is longer, and
+  at least a slice's days. The first
   draft billed `siegeOrbitDays` (120), the most it may stay - ~299 supplies a point in h40a,
   where the hive bills its strikes no stay at all (review).
 - **Not reserved.** The trip is paid as it goes (`ThreatUpkeep`), not drawn at launch, so two
