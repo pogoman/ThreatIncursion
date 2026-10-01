@@ -338,11 +338,11 @@ public class ThreatSoftening {
 		float points = Float.MAX_VALUE;
 		if (fuelPerPoint > 0f) {
 			points = Math.min(points, (huntSpendable(base, system, Commodities.FUEL)
-					+ donorsSpendable(donors, Commodities.FUEL)) / fuelPerPoint);
+					+ donorsSpendable(donors, base, Commodities.FUEL)) / fuelPerPoint);
 		}
 		if (suppliesPerPoint > 0f) {
 			points = Math.min(points, (huntSpendable(base, system, Commodities.SUPPLIES)
-					+ donorsSpendable(donors, Commodities.SUPPLIES)) / suppliesPerPoint);
+					+ donorsSpendable(donors, base, Commodities.SUPPLIES)) / suppliesPerPoint);
 		}
 		return points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
 	}
@@ -375,12 +375,23 @@ public class ThreatSoftening {
 		return out;
 	}
 
-	/** What the donors can give a hunt of one commodity ({@link #donorSpendable}). */
-	protected static float donorsSpendable(List<MarketAPI> donors, String commodityId) {
+	/** What the donors can give a hunt's fleets at {@code to} of one commodity ({@link #donorGives}). */
+	protected static float donorsSpendable(List<MarketAPI> donors, MarketAPI to, String commodityId) {
 		if (donors == null) return 0f;
 		float sum = 0f;
-		for (MarketAPI m : donors) sum += donorSpendable(m, commodityId);
+		for (MarketAPI m : donors) sum += donorGives(m, to, commodityId);
 		return sum;
+	}
+
+	/**
+	 * What one donor gives a hunt's fleets at {@code to}: {@link #donorSpendable},
+	 * net of the haul there (ThreatConvoys.netOfHaul, 2026-10-01 - with no
+	 * radius left, stock pooled from afar pays its passage), read from the
+	 * fuel the haul is paid from, above the floor (ThreatConvoys.payHaul).
+	 */
+	protected static float donorGives(MarketAPI m, MarketAPI to, String commodityId) {
+		return ThreatConvoys.netOfHaul(commodityId, donorSpendable(m, commodityId),
+				ThreatReserves.available(m, Commodities.FUEL), ThreatConvoys.haulRate(m, to, commodityId));
 	}
 
 	/**
@@ -425,8 +436,8 @@ public class ThreatSoftening {
 		float fuel = mem.getFloat(ThreatReturns.MEM_FUEL);
 		float supplies = mem.getFloat(ThreatReturns.MEM_SUPPLIES);
 		List<String> from = new ArrayList<String>();
-		float moreFuel = drawDonors(donors, Commodities.FUEL, wants[0] - fuel, from);
-		float moreSupplies = drawDonors(donors, Commodities.SUPPLIES, wants[1] - supplies, from);
+		float moreFuel = drawDonors(donors, base, Commodities.FUEL, wants[0] - fuel, from);
+		float moreSupplies = drawDonors(donors, base, Commodities.SUPPLIES, wants[1] - supplies, from);
 		if (moreFuel <= 0f && moreSupplies <= 0f) return;
 		mem.set(ThreatReturns.MEM_FUEL, fuel + moreFuel);
 		mem.set(ThreatReturns.MEM_SUPPLIES, supplies + moreSupplies);
@@ -434,12 +445,16 @@ public class ThreatSoftening {
 				+ (int) moreSupplies + " supplies: " + Misc.getAndJoined(from));
 	}
 
-	/** Draws up to {@code want} from the donors in turn; names each that gave into {@code from}. */
-	protected static float drawDonors(List<MarketAPI> donors, String commodityId, float want, List<String> from) {
+	/** Draws up to {@code want} from the donors in turn, each paying its haul to {@code to}; names each that gave into {@code from}. */
+	protected static float drawDonors(List<MarketAPI> donors, MarketAPI to, String commodityId, float want,
+			List<String> from) {
 		float got = 0f;
 		for (MarketAPI m : donors) {
 			if (got >= want) break;
-			float g = ThreatReserves.draw(m.getId(), commodityId, Math.min(want - got, donorSpendable(m, commodityId)));
+			float can = Math.min(want - got, donorGives(m, to, commodityId));
+			if (can <= 0f) continue;
+			ThreatConvoys.payHaul(m, can, ThreatConvoys.haulRate(m, to, commodityId));
+			float g = ThreatReserves.draw(m.getId(), commodityId, can);
 			got += g;
 			if (g >= 1f) from.add(m.getName() + " " + (int) g + " " + commodityId);
 		}
@@ -603,7 +618,7 @@ public class ThreatSoftening {
 	 * fleets pay fuel for the whole way (payableFP); the hive's range alone kept
 	 * every depot behind the primary out of the hunt. In range of the primary is
 	 * the convoys' reach between two markets (ThreatConvoys.stockReachLY), as a
-	 * siege's donors: at least convoyRangeLY, whatever the base's own fuel.
+	 * siege's donors: as far as the base's fuel pays a convoy's voyage.
 	 * The markets that field no fleets pay toward the primary's (huntDonors).
 	 */
 	protected static List<MarketAPI> contributors(FactionAPI faction, MarketAPI primary, StarSystemAPI system) {
@@ -1264,7 +1279,9 @@ public class ThreatSoftening {
 				got += g;
 				if (g >= 1f) from.add(b.getName() + " " + (int) g + " fuel");
 			}
-			if (got < bestCost && donors != null) got += drawDonors(donors, Commodities.FUEL, bestCost - got, from);
+			if (got < bestCost && donors != null) {
+				got += drawDonors(donors, bases.isEmpty() ? null : bases.get(0), Commodities.FUEL, bestCost - got, from);
+			}
 			for (ThreatFleetOrders.Order o : orders) {
 				com.fs.starfarer.api.campaign.rules.MemoryAPI mem = o.fleet.getMemoryWithoutUpdate();
 				mem.set(ThreatReturns.MEM_FUEL, mem.getFloat(ThreatReturns.MEM_FUEL)
@@ -1307,7 +1324,7 @@ public class ThreatSoftening {
 
 	/** Fuel the force's bases and the donors can give a hunt in the system. */
 	protected static float purse(List<MarketAPI> bases, List<MarketAPI> donors, StarSystemAPI system) {
-		float sum = donorsSpendable(donors, Commodities.FUEL);
+		float sum = donorsSpendable(donors, bases.isEmpty() ? null : bases.get(0), Commodities.FUEL);
 		for (MarketAPI b : bases) sum += huntSpendable(b, system, Commodities.FUEL);
 		return sum;
 	}

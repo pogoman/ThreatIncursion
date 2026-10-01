@@ -161,50 +161,203 @@ public class ThreatConvoys {
 				points * ThreatIncConfig.expeditionSuppliesPerPoint()};
 	}
 
-	/** What the donor may spend on an escort: a colony's spendable stock (ThreatReserves.spendable), an outpost's whole stockpile. */
+	/** What the donor may spend on an escort above its base: a colony's spendable stock (ThreatReserves.spendable), an outpost's whole stockpile. */
 	protected static float escortStock(ThreatBases.Base donor, String commodityId) {
 		if (donor.isOutpost()) return ThreatReserves.stock(donor.id(), commodityId);
 		return ThreatReserves.spendable(donor.market, commodityId);
 	}
 
 	/**
+	 * What the donor may spend on a voyage and its base escort: a colony's
+	 * stock above its floor (ThreatReserves.available - what its reach is read
+	 * from, stockReachLY), an outpost's whole stockpile. The base escort was
+	 * first paid from the spendable stock, which a donor ships as cargo, and
+	 * its supplies decided whether anything sailed: a test's NPC sailings fell
+	 * from 82 to 17, every refusal a donor with fuel to spare and no supplies
+	 * above its floor (2026-10-01).
+	 */
+	protected static float voyageStock(ThreatBases.Base donor, String commodityId) {
+		if (donor.isOutpost()) return ThreatReserves.stock(donor.id(), commodityId);
+		return ThreatReserves.available(donor.market, commodityId);
+	}
+
+	/**
+	 * Whether the donor pays the voyage of {@code ly}: the fuel
+	 * {@link #baseEscort} points burn on it ({@link #haulFuel}), from its stock
+	 * above the floor ({@link #voyageStock}), then from the fuel it ships
+	 * ({@code fuelLoad}). It is the convoy's passage, burnt whatever escort
+	 * sails with it; a donor that cannot pay it sends nothing
+	 * ({@link #buildHulls}) - the user's rule, a supply fleet goes wherever its
+	 * fuel takes it (2026-10-01).
+	 */
+	protected static boolean paysVoyage(ThreatBases.Base donor, float ly, float fuelLoad) {
+		float bill = haulFuel(ly);
+		return bill <= 0f || Math.max(voyageStock(donor, Commodities.FUEL), Math.max(0f, fuelLoad)) >= bill - 0.5f;
+	}
+
+	/**
 	 * The escort points the donor pays a voyage of {@code ly} for, at most
-	 * {@code want}: the escort shrinks to what is paid, to none on a depot
-	 * with nothing to spare. The fuel and supplies the convoy ships as cargo
-	 * ({@code fuelLoad}, {@code suppliesLoad}) are not the escort's to spend.
-	 * A player convoy's escort is its ledger's business and is not charged here.
+	 * {@code want}: the escort shrinks to what is paid, to none - a donor with
+	 * no supplies to spare sends its convoy unescorted. Up to the base escort
+	 * ({@link #baseEscort}) it is paid from the stock above the floor
+	 * ({@link #voyageStock}), then from the fuel and supplies the convoy ships
+	 * as cargo ({@code fuelLoad}, {@code suppliesLoad}); above the base from
+	 * the spendable stock beside the cargo ({@link #escortStock}). The base
+	 * escort's fuel is the voyage's ({@link #paysVoyage}), paid whatever sails.
+	 * A player convoy's escort is its ledger's business and is not charged
+	 * here.
 	 */
 	protected static float paidEscort(ThreatBases.Base donor, float want, float ly, float fuelLoad,
 			float suppliesLoad) {
 		if (want <= 0f) return 0f;
 		float[] rate = escortRate(ly);
+		float base = Math.min(want, baseEscort());
 		float fp = want;
-		if (rate[0] > 0f) {
-			fp = Math.min(fp, Math.max(0f, escortStock(donor, Commodities.FUEL) - fuelLoad) / rate[0]);
-		}
-		if (rate[1] > 0f) {
-			fp = Math.min(fp, Math.max(0f, escortStock(donor, Commodities.SUPPLIES) - suppliesLoad) / rate[1]);
-		}
+		if (rate[0] > 0f) fp = Math.min(fp, payable(donor, Commodities.FUEL, base, rate[0], fuelLoad));
+		if (rate[1] > 0f) fp = Math.min(fp, payable(donor, Commodities.SUPPLIES, base, rate[1], suppliesLoad));
 		return Math.max(0f, fp);
 	}
 
+	/** The escort points one commodity pays for at {@code rate} a point: the base from the stock above the floor and the cargo, the rest from the spendable stock beside the cargo and the base's bill. */
+	protected static float payable(ThreatBases.Base donor, String commodityId, float base, float rate, float load) {
+		load = Math.max(0f, load);
+		float beside = Math.max(0f, voyageStock(donor, commodityId) - load);
+		float baseBill = base * rate;
+		if (beside + load < baseBill) return (beside + load) / rate;
+		float extra = escortStock(donor, commodityId) - load - Math.min(baseBill, beside);
+		return base + Math.max(0f, extra) / rate;
+	}
+
 	/**
-	 * Draws an escort of {@code escort} points' voyage from the donor and
-	 * records it on the fleet (ThreatReturns.provision), so the convoy's
-	 * return re-banks its hulls at what survived. Call after the hulls are
-	 * final: the launch strength is read here.
+	 * Draws a convoy's voyage and its escort of {@code escort} points from the
+	 * donor and records them on the fleet (ThreatReturns.provision), so the
+	 * return re-banks its hulls at what survived: the voyage's fuel
+	 * ({@link #paysVoyage}) and the base escort's supplies from the stock above
+	 * the floor beside the cargo, the cargo ({@code load}) for the rest; the
+	 * escort above the base from the spendable stock beside the cargo
+	 * (paidEscort). Call after the hulls are final: the launch strength is
+	 * read here. Returns {fuel, supplies} burnt from the cargo, which does not
+	 * sail.
 	 */
-	protected static void payEscort(CampaignFleetAPI fleet, ThreatBases.Base donor, float escort, float ly) {
+	protected static float[] payEscort(CampaignFleetAPI fleet, ThreatBases.Base donor, float escort, float ly,
+			float[] load) {
 		float[] rate = escortRate(ly);
-		float fuel = drawEscort(donor, Commodities.FUEL, escort * rate[0]);
-		float supplies = drawEscort(donor, Commodities.SUPPLIES, escort * rate[1]);
+		float base = baseEscort();
+		float over = Math.max(0f, escort - base);
+		float[] burnt = new float[2];
+		// the voyage's fuel whatever the escort; supplies only for the escort that sails
+		float fuel = payEscortPart(donor, Commodities.FUEL, base * rate[0], over * rate[0], load[2], burnt, 0);
+		float supplies = payEscortPart(donor, Commodities.SUPPLIES, Math.min(escort, base) * rate[1],
+				over * rate[1], load[3], burnt, 1);
 		ThreatReturns.provision(fleet, donor.id(), fuel, supplies);
+		return burnt;
+	}
+
+	/**
+	 * One commodity of an escort's voyage: the base's {@code baseBill} from
+	 * the stock above the floor beside the cargo, then the cargo (into
+	 * {@code burnt[k]}); the {@code extraBill} from the spendable stock beside
+	 * the cargo. Returns the whole drawn.
+	 */
+	protected static float payEscortPart(ThreatBases.Base donor, String commodityId, float baseBill, float extraBill,
+			float load, float[] burnt, int k) {
+		float drawn = 0f;
+		if (baseBill > 0f) {
+			drawn = drawVoyage(donor, commodityId,
+					Math.min(baseBill, Math.max(0f, voyageStock(donor, commodityId) - load)));
+			if (drawn < baseBill && load > 0f) {
+				burnt[k] = ThreatReserves.draw(donor.id(), commodityId, Math.min(baseBill - drawn, load));
+				drawn += burnt[k];
+			}
+		}
+		if (extraBill > 0f) {
+			drawn += drawEscort(donor, commodityId,
+					Math.min(extraBill, Math.max(0f, escortStock(donor, commodityId) - load)));
+		}
+		return drawn;
+	}
+
+	// ------------------------------------------------------------------
+	// reach and hauls (2026-10-01, the user's call: no fuel radius - a supply
+	// fleet goes wherever its fuel pays for)
+	// ------------------------------------------------------------------
+
+	/** The base escort (convoyEscortFP): what a convoy sails with when its donor's supplies pay for it, and whose fuel every voyage burns (haulFuel). */
+	public static float baseEscort() {
+		return Math.max(0f, ThreatIncConfig.convoyEscortFP());
+	}
+
+	/** Fuel a voyage of {@code ly} burns, the base escort's at escortRate, whatever escort sails: what any sailing that far costs at least. */
+	public static float haulFuel(float ly) {
+		return baseEscort() * escortRate(ly)[0];
+	}
+
+	/**
+	 * Fuel a unit of a commodity pooled across {@code ly} burns: as if it
+	 * sailed in reference loads ({@link #capacityFor}), each paying its
+	 * voyage. A pool takes a donor's stock aboard elsewhere without a
+	 * convoy - a siege's donors, a hunt's, a garrison's upkeep, a founding, a
+	 * fleet's ordnance - so it pays the passage here, in proportion: a day's
+	 * upkeep pays a day's share of it.
+	 */
+	public static float haulPerUnit(String commodityId, float ly) {
+		float load = capacityFor(commodityId);
+		return load > 0f ? haulFuel(ly) / load : 0f;
+	}
+
+	/** The haul rate for stock pooled from {@code donor} to a pool at {@code to}: none within a system, none for the player's (any range, as before). */
+	public static float haulRate(MarketAPI donor, MarketAPI to, String commodityId) {
+		if (to == null || to.getStarSystem() == null) return 0f;
+		return haulRate(donor, to.getStarSystem().getLocation(), commodityId);
+	}
+
+	/** As above to a hyperspace location: a fleet's supply line (ThreatGroundFronts.payOrdnance). */
+	public static float haulRate(MarketAPI donor, Vector2f at, String commodityId) {
+		if (donor == null || at == null || donor.getStarSystem() == null || donor.isPlayerOwned()) return 0f;
+		return haulPerUnit(commodityId, Misc.getDistanceLY(donor.getStarSystem().getLocation(), at));
+	}
+
+	/**
+	 * Of {@code have} a donor holds for a pool, what arrives paid for at
+	 * {@code perUnit} (haulRate): fuel pays its own passage out of the load;
+	 * anything else as much as {@code fuelHave} pays for.
+	 */
+	public static float netOfHaul(String commodityId, float have, float fuelHave, float perUnit) {
+		if (have <= 0f) return 0f;
+		if (perUnit <= 0f) return have;
+		if (Commodities.FUEL.equals(commodityId)) return have / (1f + perUnit);
+		return Math.min(have, Math.max(0f, fuelHave) / perUnit);
+	}
+
+	/** Burns the haul of {@code amount} pooled from {@code donor} (its fuel above the floor); call before the draw, with the amount netOfHaul allowed. */
+	public static void payHaul(MarketAPI donor, float amount, float perUnit) {
+		if (donor == null || amount <= 0f || perUnit <= 0f) return;
+		ThreatReserves.drawAbove(donor, Commodities.FUEL, amount * perUnit);
 	}
 
 	protected static float drawEscort(ThreatBases.Base donor, String commodityId, float amount) {
 		if (amount <= 0f) return 0f;
 		if (donor.isOutpost()) return ThreatReserves.draw(donor.id(), commodityId, amount);
 		return ThreatReserves.drawSpendable(donor.market, commodityId, amount);
+	}
+
+	/** Takes up to {@code amount} of {@link #voyageStock}; returns what was taken. */
+	protected static float drawVoyage(ThreatBases.Base donor, String commodityId, float amount) {
+		if (amount <= 0f) return 0f;
+		if (donor.isOutpost()) return ThreatReserves.draw(donor.id(), commodityId, amount);
+		return ThreatReserves.drawAbove(donor.market, commodityId, amount);
+	}
+
+	/** Donors whose unpaid base escort was logged, and when: one line a donor a month. */
+	protected static final Map<String, Long> HELD_LOGGED = new HashMap<String, Long>();
+
+	/** Logs a sailing whose donor cannot pay its voyage (paysVoyage): its fuel above the floor against the bill. */
+	protected static void logHeld(ThreatBases.Base from, float ly) {
+		Long last = HELD_LOGGED.get(from.id());
+		if (last != null && Global.getSector().getClock().getElapsedDaysSince(last) < 30f) return;
+		HELD_LOGGED.put(from.id(), Global.getSector().getClock().getTimestamp());
+		ThreatIncConfig.log("Convoy held: " + from.name() + " cannot pay a " + Math.round(ly) + " ly voyage (fuel "
+				+ Math.round(voyageStock(from, Commodities.FUEL)) + " of " + Math.round(haulFuel(ly)) + ")");
 	}
 
 	/** A convoy that never sailed: its escort's voyage back to the donor in full. */
@@ -283,30 +436,34 @@ public class ThreatConvoys {
 	}
 
 	/**
-	 * How far a market's stock reaches another market: convoyRangeLY, or as far
-	 * as its fuel does (IncursionManager.expeditionRangeLY) - the donor rule of
-	 * the staging planner, relief runs and the siege and hunt pools. The
-	 * player's at any range.
+	 * How far a market's stock reaches another market: as far as its fuel
+	 * above the floor pays a convoy's voyage ({@link #haulFuel}) - the
+	 * donor rule of the staging planner, relief, relays and every pool
+	 * (IncursionManager.marketsReaching). No radius: until 2026-10-01 it was
+	 * the larger of convoyRangeLY (15 ly) and the market's fuel radius
+	 * (strikeLYPerFuel x the fuel its fleets could carry), which nothing paid
+	 * for; the user abolished it - a supply fleet goes wherever its fuel
+	 * takes it. The player's at any range.
 	 */
 	public static float stockReachLY(MarketAPI donor) {
 		if (donor == null) return 0f;
 		if (donor.getFaction() != null && donor.getFaction().isPlayerFaction()) return Float.MAX_VALUE;
-		return Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.logisticsRangeLY(donor));
+		float perLY = haulFuel(1f);
+		return perLY > 0f ? ThreatReserves.available(donor, Commodities.FUEL) / perLY : Float.MAX_VALUE;
 	}
 
 	/**
-	 * The faction's nearest staging base within convoy range of this colony
-	 * (not itself), or null. The player's colonies feed a base at any range
-	 * (2026-09-05 evening: Diggers, a fuel world 20 ly out, showed a dash
-	 * while the Supplies button could sail from it - "distance costs time,
-	 * never permission" holds for the planner too).
+	 * The faction's nearest staging base this colony's stock reaches
+	 * ({@link #stockReachLY}; not itself), or null. The player's colonies feed
+	 * a base at any range (2026-09-05 evening: Diggers, a fuel world 20 ly
+	 * out, showed a dash while the Supplies button could sail from it -
+	 * "distance costs time, never permission" holds for the planner too).
 	 */
 	public static MarketAPI stagingBaseFor(MarketAPI colony) {
 		if (colony == null || colony.getStarSystem() == null || colony.getFaction() == null) return null;
-		// an NPC colony feeds a staging base as far as its fuel reaches, the range
-		// the base itself stages at (stagingHive); the flat convoyRangeLY kept
+		// as far as its fuel pays the voyage (run 9: the flat convoyRangeLY kept
 		// Hegemony's marines circling its core worlds while its forward staging
-		// base got two convoys in three years (run 9)
+		// base got two convoys in three years)
 		float range = stockReachLY(colony);
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
@@ -634,7 +791,8 @@ public class ThreatConvoys {
 
 	/**
 	 * RELAYS (2026-09-29). A market's stock reaches another only within
-	 * stockReachLY - convoyRangeLY, or a military world's fuel range - so a
+	 * stockReachLY - then convoyRangeLY or a military world's fuel range, since
+	 * 2026-10-01 as far as its fuel pays the voyage - so a
 	 * forward staging base drew on the two to six markets near it while the
 	 * core's fifteen could not reach it at all, and its sieges sailed from the
 	 * core at two to three times the passage (Chicomoztoc to Damar's Star, 31.9
@@ -938,7 +1096,7 @@ public class ThreatConvoys {
 	 * the richest first, in parallel. Until 2026-09-29 it was one hull load
 	 * (convoyMarineCapacity) from one donor at a time per invaded world, and
 	 * an NPC donor had to be within the flat convoyRangeLY - now it reaches as
-	 * far as its fuel, as the staging planner's donors do.
+	 * far as its fuel pays (stockReachLY), as the staging planner's donors do.
 	 */
 	protected static void planRelief(FactionAPI faction, Random random) {
 		List<MarketAPI> markets = ThreatReserves.marketsOf(faction.getId());
@@ -952,10 +1110,8 @@ public class ThreatConvoys {
 			final Map<MarketAPI, Float> spares = new HashMap<MarketAPI, Float>();
 			for (MarketAPI d : markets) {
 				if (d == besieged || d.getStarSystem() == null || d.getPrimaryEntity() == null) continue;
-				float reach = faction.isPlayerFaction() ? Float.MAX_VALUE
-						: Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.logisticsRangeLY(d));
 				if (Misc.getDistanceLY(d.getStarSystem().getLocation(),
-						besieged.getStarSystem().getLocation()) > reach) continue;
+						besieged.getStarSystem().getLocation()) > stockReachLY(d)) continue;
 				float s = spare(d, Commodities.MARINES);
 				if (s >= FRONT_RUN_MIN_MARINES) spares.put(d, s);
 			}
@@ -1483,9 +1639,9 @@ public class ThreatConvoys {
 	protected static Convoy sailFrontRun(Hulls h, ThreatBases.Base base, MarketAPI hive, FactionAPI faction,
 			boolean pickup, boolean paysEscort, float ly, SectorEntityToken door, Random random) {
 		CampaignFleetAPI fleet = h.fleet;
-		float[] load = h.ask;
 		float escort = builtEscort(h);
-		if (paysEscort) payEscort(fleet, base, escort, ly);
+		if (paysEscort) burn(h, payEscort(fleet, base, escort, ly, h.ask));
+		float[] load = h.ask;
 		StarSystemAPI system = base.starSystem();
 		SectorEntityToken from = base.entity();
 
@@ -1697,8 +1853,8 @@ public class ThreatConvoys {
 	 * Stage button greys out on null instead of the order failing after
 	 * Confirm. No range for the player's hand orders (2026-09-05, the user's
 	 * call: fuel reach is too many variables to model; distance costs time
-	 * and fuel, not permission) - convoyRangeLY bounds only NPC hand orders,
-	 * which no longer exist, and the planner.
+	 * and fuel, not permission); an NPC's as far as the donor's fuel pays
+	 * (stockReachLY).
 	 */
 	public static MarketAPI stageDonor(MarketAPI target, FactionAPI faction, int tier) {
 		return stageDonor(ThreatBases.of(target), faction, tier);
@@ -1709,14 +1865,13 @@ public class ThreatConvoys {
 		if (target == null || faction == null || !ThreatIncConfig.convoyEnabled()) return null;
 		if (target.starSystem() == null) return null;
 		if (!ThreatReserves.hasDepot(target)) return null; // nowhere to land it
-		float range = faction.isPlayerFaction() ? Float.MAX_VALUE : ThreatIncConfig.convoyRangeLY();
 		MarketAPI best = null;
 		float bestValue = 0f;
 		boolean bestIsStaging = true;
 		for (MarketAPI donor : ThreatReserves.marketsOf(faction.getId())) {
 			if (donor == target.market || donor.getStarSystem() == null) continue;
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
-					target.starSystem().getLocation()) > range) continue;
+					target.starSystem().getLocation()) > stockReachLY(donor)) continue;
 			float[] load = stageLoad(donor, target, tier);
 			float value = cargoValue(load[0], load[1], load[2], load[3]);
 			if (value <= 0f) continue;
@@ -1787,7 +1942,7 @@ public class ThreatConvoys {
 				* Math.min(capacityFor(commodityId), Math.max(0f, fullSpare));
 	}
 
-	/** The planner's donor: the colony in convoy range (the player's at any range) with the most to send; a staging base counts what it holds above its own siege's needs. */
+	/** The planner's donor: the colony whose stock reaches the base (stockReachLY; the player's at any range) with the most to send; a staging base counts what it holds above its own siege's needs. */
 	protected static MarketAPI pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId) {
 		return pickDonor(markets, base, commodityId, null);
 	}
@@ -1797,13 +1952,11 @@ public class ThreatConvoys {
 			java.util.Set<MarketAPI> skip) {
 		MarketAPI best = null;
 		float bestSend = 0f;
-		float range = base.isPlayerOwned() ? Float.MAX_VALUE : ThreatIncConfig.convoyRangeLY();
 		for (MarketAPI donor : markets) {
 			if (donor == base || donor.getStarSystem() == null) continue;
 			if (skip != null && skip.contains(donor)) continue;
-			// a donor reaches as far as its own fuel does (stagingBaseFor)
-			float reach = base.isPlayerOwned() ? range
-					: Math.max(range, IncursionManager.logisticsRangeLY(donor));
+			// a donor reaches as far as its own fuel pays (stagingBaseFor)
+			float reach = base.isPlayerOwned() ? Float.MAX_VALUE : stockReachLY(donor);
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					base.getStarSystem().getLocation()) > reach) continue;
 			float s = sendable(donor, base, commodityId);
@@ -1917,7 +2070,9 @@ public class ThreatConvoys {
 		boolean left = false;
 		for (int i = 0; i < remaining.length; i++) {
 			sailed[i] += got[i];
-			remaining[i] = Math.max(0f, remaining[i] - got[i]);
+			// what the escort burnt of the load is gone, not left for the next fleet
+			float burnt = h.burnt != null && i >= 2 ? h.burnt[i - 2] : 0f;
+			remaining[i] = Math.max(0f, remaining[i] - got[i] - burnt);
 			// loads are whole units: an ask of 40.6 is met by 40
 			if (got[i] < (float) Math.floor(h.ask[i])) whole = false;
 			if (remaining[i] >= 1f) left = true;
@@ -1929,13 +2084,14 @@ public class ThreatConvoys {
 	protected static Convoy sail(Hulls h, ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction,
 			boolean paysEscort, float ly, String recipientFactionId, boolean aid, Random random) {
 		CampaignFleetAPI fleet = h.fleet;
-		float[] load = h.ask;
 		StarSystemAPI system = donor.starSystem();
 		SectorEntityToken from = donor.entity();
 		SectorEntityToken to = base.entity();
-		// paid before the cargo is drawn: it was sized on the stock beside the load
+		// paid before the cargo is drawn: it was sized on the stock beside the
+		// load, and what it burnt of the load does not sail
 		float escort = builtEscort(h);
-		if (paysEscort) payEscort(fleet, donor, escort, ly);
+		if (paysEscort) burn(h, payEscort(fleet, donor, escort, ly, h.ask));
+		float[] load = h.ask;
 
 		system.addEntity(fleet);
 		fleet.setLocation(from.getLocation().x, from.getLocation().y);
@@ -2088,6 +2244,17 @@ public class ThreatConvoys {
 		float[] ask;
 		/** The escort points it was built with. */
 		float escort;
+		/** {fuel, supplies} its escort burnt of the ask (payEscort), or null. */
+		float[] burnt;
+	}
+
+	/** Takes what the escort burnt off the fleet's ask: that cargo does not sail. */
+	protected static void burn(Hulls h, float[] burnt) {
+		if (burnt == null || (burnt[0] <= 0f && burnt[1] <= 0f)) return;
+		h.burnt = burnt;
+		h.ask = h.ask.clone();
+		h.ask[2] = Math.max(0f, h.ask[2] - burnt[0]);
+		h.ask[3] = Math.max(0f, h.ask[3] - burnt[1]);
 	}
 
 	/**
@@ -2097,15 +2264,25 @@ public class ThreatConvoys {
 	 * least ten points each, as it always sailed), and an escort by cargo value
 	 * (docs/design-theory.md 8.2, Blackett: a rich convoy is a real fleet, a
 	 * trickle sails with a picket) - an NPC's only as much as the donor pays
-	 * for beside the {@code reserve} of fuel and supplies it ships as cargo.
-	 * With {@code grow}, fitHulls adds hulls up to the ship limit. Nothing is
-	 * paid, placed or drawn here: a fleet the split search passes over is
-	 * simply dropped.
+	 * for (paidEscort) with the {@code reserve} of fuel and supplies it ships
+	 * as cargo; null when the donor cannot pay the voyage (paysVoyage). With
+	 * {@code grow}, fitHulls adds hulls up to the ship
+	 * limit. Nothing is paid, placed or drawn here: a fleet the split search
+	 * passes over is simply dropped.
 	 */
 	protected static Hulls buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve,
 			float ly, boolean paysEscort, boolean frontRun, boolean grow, Random random) {
 		float escort = ThreatIncConfig.convoyEscortFP() + escortForValue(ask);
-		if (paysEscort) escort = paidEscort(from, escort, ly, reserve[2], reserve[3]);
+		if (paysEscort) {
+			// a supply fleet goes wherever its fuel takes it and no further (the
+			// radius abolished, 2026-10-01): a voyage unpaid stays home, and the
+			// escort shrinks to what is paid, to none
+			if (!paysVoyage(from, ly, reserve[2])) {
+				logHeld(from, ly);
+				return null;
+			}
+			escort = paidEscort(from, escort, ly, reserve[2], reserve[3]);
+		}
 		float cargoUnits = ask[1] + ask[2] + ask[3];
 		float freighterPts = Math.max(10f, cargoUnits / 60f);
 		float tankerPts = ask[2] > 0f ? Math.max(5f, ask[2] / 100f) : 0f;
@@ -2381,9 +2558,9 @@ public class ThreatConvoys {
 	/**
 	 * The helper's colony in reach of another faction's colony that can spare
 	 * the most of a commodity, or null. An NPC helper reaches as far as its
-	 * donor's fuel does, as the staging planner's donors (2026-09-29: the flat
-	 * convoyRangeLY, 15 ly, kept allies' stock out of reach of sieges their
-	 * fuel could reach); the player's at any range.
+	 * donor's fuel pays (stockReachLY), as the staging planner's donors
+	 * (2026-09-29: the flat convoyRangeLY, 15 ly, kept allies' stock out of
+	 * reach of sieges their fuel could reach); the player's at any range.
 	 */
 	public static MarketAPI pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId) {
 		if (helper == null || needy == null || needy.getStarSystem() == null) return null;
@@ -2391,8 +2568,7 @@ public class ThreatConvoys {
 		float bestSpare = 0f;
 		for (MarketAPI donor : ThreatReserves.marketsOf(helper.getId())) {
 			if (donor.getStarSystem() == null || donor.getPrimaryEntity() == null) continue;
-			float reach = helper.isPlayerFaction() ? Float.MAX_VALUE
-					: Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.logisticsRangeLY(donor));
+			float reach = helper.isPlayerFaction() ? Float.MAX_VALUE : stockReachLY(donor);
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					needy.getStarSystem().getLocation()) > reach) continue;
 			float s = spare(donor, commodityId);

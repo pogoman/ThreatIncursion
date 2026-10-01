@@ -251,14 +251,17 @@
 	# unrest a bombardment raises the world to, never stacked: tactical this x
 	# (1 - condition), saturation this
 	"threatinc_bombardUnrestMax": 10,
-	# saturation pours this much fuel per fleet point per day into the world's
-	# razing bar; destroying a size-4 colony takes satFuelSize4 fuel, each size
-	# up x3.2 (the built-up area). A razed level is a size off; the last ends
-	# the colony
+	# saturation burns this much fuel per fleet point per day. Over a human
+	# colony it pours into the razing bar: destroying a size 4 takes
+	# satFuelSize4 fuel, each size up x3.2 (the built-up area); a razed level is
+	# a size off, the last ends the colony. A hive has no bar (2026-10-01): the
+	# fuel buys the day's disruption, unrest and halted growth, never a size off
 	"threatinc_satFuelPerFPDay": 2.86,
 	"threatinc_satFuelSize4": 10000,
-	# NPC factions raze a hive from orbit instead of landing where that is the
-	# cheaper at vanilla base prices (docs/suppression-balance.md v2 section 8)
+	# NPC sieges saturate a hive from orbit instead of landing where its landing
+	# is beyond the marines they hold and it still produces (docs/ground-war.md,
+	# Saturation presses a hive); a colony is razed where that is the cheaper at
+	# vanilla base prices
 	"threatinc_npcRazeEnabled": true,
 	# a planetary shield is a military structure that wears on the same clock as
 	# any fortification, but what its condition buys is cover: an intact shield
@@ -301,8 +304,8 @@
 	# Hive sieges: every hive lives deep underground behind ground defenses
 	# anchored to COLONY SIZE (hiveDefensePerSize x size, times stability like
 	# any colony's, then multiplied by the defense industries - a size-8 hive's
-	# true figure runs five digits). A hive dies to a ground victory, or to
-	# saturation razed down to its last stratum.
+	# true figure runs five digits). A hive dies only to a ground victory:
+	# saturation keeps its structures down but never takes a size off it.
 	"threatinc_hiveDefensePerSize": 400,
 	# defense-structure scaling: defense mult = 1 + bonus per structure
 	"threatinc_groundDefensesBonus": 1.0,
@@ -636,18 +639,24 @@
 	"threatinc_feedShareConsolidate": 0.9,
 	# troop-transport share of a cargo-carrying expedition fleet
 	"threatinc_expeditionTransportMult": 0.3,
-	# convoys: donor colonies within range ship stock to staging bases (the
+	# convoys: donor colonies ship stock to staging bases (the
 	# faction's nearest military world to a live hive - where the Siege
 	# button sails from) until the base holds stagingTargetMult sieges'
 	# worth; a donor keeps donorKeepFraction of its own cap, and a staging
 	# base its own staging target on top; nothing sails for less than convoyMinLoadFraction of a
-	# load or of what the donor could spare when full, whichever is smaller
+	# load or of what the donor could spare when full, whichever is smaller.
+	# No radius (2026-10-01): an NPC donor reaches as far as its fuel above the
+	# floor pays the base escort's voyage (12 fuel a light-year); the player's any range
 	"threatinc_convoyEnabled": true,
-	"threatinc_convoyRangeLY": 15,
 	# fewer, larger, escorted (docs/design-theory.md 8.2): loads size to the
-	# whole shortfall, and these reference loads only measure the minimum
-	# worthwhile sailing (2026-09-29: they were caps); escort = base FP + per-thousand of cargo
-	# value (marines 1, armaments 0.5, fuel and supplies 0.1); the Stage
+	# whole shortfall, and these reference loads measure the minimum
+	# worthwhile sailing (2026-09-29: they were caps) and price a pool's haul
+	# (stock drawn from afar burns its share of a load's base escort voyage);
+	# escort = base FP + per-thousand of cargo
+	# value (marines 1, armaments 0.5, fuel and supplies 0.1); an NPC convoy
+	# that cannot pay its voyage's fuel (the base escort's, from its stock above
+	# the floor or its fuel cargo) stays home; the escort is what the donor's
+	# supplies pay for, down to none; the Stage
 	# button (a hand order) has no minimum load
 	"threatinc_convoyMarineCapacity": 2000,
 	"threatinc_convoyCargoCapacity": 6000,

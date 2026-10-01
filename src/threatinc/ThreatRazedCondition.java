@@ -32,21 +32,12 @@ public class ThreatRazedCondition extends BaseMarketConditionPlugin {
 			tooltip.addPara("%s cannot be razed any further.", 10f, h, market.getName());
 			return;
 		}
-		if (ThreatRazing.wrecksOnly(market)) {
-			// a hive is wrecked, not razed: one price, every structure down when paid
-			tooltip.addPara("Wrecked at %s of %s fuel.", 10f, neg,
-					Misc.getWithDGS(Math.round(ThreatRazing.progress(market))),
-					Misc.getWithDGS(Math.round(ThreatRazing.fuelToDestroy(market) + ThreatRazing.progress(market))));
-			tooltip.addPara("Wrecked with %s more fuel.", 3f, h,
-					Misc.getWithDGS(Math.round(ThreatRazing.fuelToDestroyThrough(market))));
-		} else {
-			int level = ThreatRazing.enemyLayers(market);
-			tooltip.addPara("Level %s: %s of %s fuel.", 10f, neg, "" + level,
-					Misc.getWithDGS(Math.round(ThreatRazing.progress(market))),
-					Misc.getWithDGS(Math.round(ThreatRazing.levelFuel(level))));
-			tooltip.addPara("Razed with %s more fuel.", 3f, h,
-					Misc.getWithDGS(Math.round(ThreatRazing.fuelToDestroyThrough(market))));
-		}
+		int level = ThreatRazing.enemyLayers(market);
+		tooltip.addPara("Level %s: %s of %s fuel.", 10f, neg, "" + level,
+				Misc.getWithDGS(Math.round(ThreatRazing.progress(market))),
+				Misc.getWithDGS(Math.round(ThreatRazing.levelFuel(level))));
+		tooltip.addPara("Razed with %s more fuel.", 3f, h,
+				Misc.getWithDGS(Math.round(ThreatRazing.fuelToDestroyThrough(market))));
 		if (ThreatRazing.saturated(market)) {
 			tooltip.addPara("Under saturation: no growth.", 3f, neg);
 		}

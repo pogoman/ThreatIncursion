@@ -1287,8 +1287,11 @@ public class ThreatColonyManager {
 		// lacks (2026-10-01) - before the sweep, so the slot it frees is filled
 		// by the conversion's own build and no other step sees it empty
 		MarketAPI converted = convertSurplus();
+		// and one military structure a month gives its slot back to production
+		// when the hive needs a producer and has no free slot (retireMilitary)
+		MarketAPI retired = converted == null ? retireMilitary() : null;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
-			if (market == converted) continue;
+			if (market == converted || market == retired) continue;
 			// a world that can now feed the batteries it lacks (or the heavy
 			// batteries it has outgrown) arms on this tick, not on its next
 			// growth step a season away - structures need no slot
@@ -1460,6 +1463,73 @@ public class ThreatColonyManager {
 		if (Industries.HEAVYINDUSTRY.equals(build)) return 0;
 		if (SwarmBastion.BASTION.equals(build)) return 2;
 		return 1;
+	}
+
+	/**
+	 * RETIREMENT (2026-10-01, user's call): the military tier gives its slot
+	 * back to production. Once a month hive-wide, when the hive needs a
+	 * producer - a chain link it has none of, or a stock's answer
+	 * (ThreatFuel.mayAnswer: the stock runs dry) - and no world of the hive has
+	 * a free slot to build it in, a standing Swarm Bastion or Swarm Command is
+	 * torn down for it: a Bastion before a Command, the bigger world first. The
+	 * producer is bought first (a refusal tears nothing down, and its price is
+	 * demand on the stock, heldBuild) and takes its vanilla build time, as the
+	 * Bastion took its own, so the swap is never instant either way; while it
+	 * builds, the stock counts it as coming (comingPerMonth) and is not answered
+	 * twice. A structure still growing or upgrading stays, as does one on a
+	 * world under a front or saturation. Nothing of its price comes back; the
+	 * swarms it kept home stay, free to launch. Returns the world, or null.
+	 */
+	public static MarketAPI retireMilitary() {
+		List<MarketAPI> picks = new ArrayList<MarketAPI>();
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			// a free slot anywhere builds it without tearing anything down
+			if (Misc.getNumIndustries(m) < Misc.getMaxIndustries(m)) return null;
+			Industry tier = SwarmBastion.of(m);
+			if (tier == null || tier.isBuilding()) continue;
+			if (ThreatGroundFronts.hasFront(m) || ThreatRazing.saturated(m)) continue;
+			picks.add(m);
+		}
+		if (picks.isEmpty()) return null;
+		int need = -1;
+		String label = null;
+		for (int link = 0; link < CHAIN_LINKS.length && need < 0; link++) {
+			String industry = CHAIN_LINKS[link];
+			if (Industries.REFINING.equals(industry) && !groupHasIndustry(Industries.MINING)) continue;
+			if (Industries.FUELPROD.equals(industry) && !groupHasVolatiles()) continue;
+			String stock = linkStock(link);
+			if (countLink(link) == 0) {
+				need = link;
+				label = "first";
+			} else if (stock != null && ThreatFuel.mayAnswer(stock)) {
+				need = link;
+				label = stock + " short";
+			}
+		}
+		if (need < 0) return null;
+		java.util.Collections.sort(picks, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				int c = SwarmBastion.tier(a) - SwarmBastion.tier(b);
+				return c != 0 ? c : b.getSize() - a.getSize();
+			}
+		});
+		String industry = CHAIN_LINKS[need];
+		for (MarketAPI m : picks) {
+			if (hasLink(m, need)) continue;
+			if (ThreatBuildCost.enabled() && ThreatFuel.stock(Commodities.SUPPLIES) < ThreatBuildCost.supplies(industry)) {
+				ThreatFuel.heldBuild(industry, ThreatBuildCost.supplies(industry));
+				return null;
+			}
+			String retired = SwarmBastion.of(m).getId();
+			if (!buyStructure(m, industry, m.getId())) return null;
+			m.removeIndustry(retired, null, false);
+			if (!"first".equals(label)) ThreatFuel.answered(linkStock(need));
+			markEconomyDirty();
+			ThreatIncConfig.log("Hive planner: " + structureName(retired) + " at " + m.getName() + " retired for "
+					+ industry + " (" + label + "), " + (int) ThreatFuel.stock(Commodities.SUPPLIES) + " supplies left");
+			return m;
+		}
+		return null;
 	}
 
 	/** The structure's name from its spec, for the log. */
@@ -3747,9 +3817,9 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * ERADICATION: the teardown of a Threat colony, by one of the two ways it
-	 * dies - a ground victory, or saturation razed to its last stratum
-	 * (docs/suppression-balance.md v2) - never a timer. Vitality bookkeeping
+	 * ERADICATION: the teardown of a Threat colony, by the one way it dies - a
+	 * ground victory - never a timer, and never from orbit (saturation takes
+	 * no size off a hive, ThreatRazing.razes). Vitality bookkeeping
 	 * cleared, then the vanilla decivilization teardown; pollColonies reacts
 	 * on the next poll.
 	 */

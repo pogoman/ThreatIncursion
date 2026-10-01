@@ -508,7 +508,7 @@ public class ThreatFrontlines {
 				MarketAPI home = homeOf(o);
 				boolean homeReaches = home != null && Misc.getDistanceLY(home.getLocationInHyperspace(),
 						market.getLocationInHyperspace()) <= ThreatConvoys.stockReachLY(home);
-				if (homeReaches) sent += ThreatReserves.drawSpendable(home, Commodities.SUPPLIES, ask);
+				if (homeReaches) sent += drawGiven(home, market, Commodities.SUPPLIES, ask);
 				if (sent < ask) sent += payFromOthers(market, home, Commodities.SUPPLIES, ask - sent);
 			}
 			fed = Math.min(1f, (own + sent) / want);
@@ -1064,9 +1064,31 @@ public class ThreatFrontlines {
 	protected static float othersPay(MarketAPI base, String commodityId) {
 		float sum = 0f;
 		for (MarketAPI m : IncursionManager.marketsReaching(base.getFaction(), base)) {
-			if (m != base && !isOutpost(m)) sum += ThreatReserves.spendable(m, commodityId);
+			if (m != base && !isOutpost(m)) sum += gives(m, base, commodityId);
 		}
 		return sum;
+	}
+
+	/**
+	 * What {@code m} gives a draw at {@code to}: what a hunt may take of it
+	 * (ThreatReserves.spendable), net of the haul there
+	 * (ThreatConvoys.netOfHaul, 2026-10-01 - with no radius left, stock
+	 * pooled from afar pays its passage). The haul is read from the fuel it
+	 * is paid from, above the floor (payHaul): read from the spendable fuel,
+	 * a donor whose fuel sat in a staging bank gave no supplies at all, and
+	 * fleets out of supplies went 17 -> 47 a test (h45a).
+	 */
+	protected static float gives(MarketAPI m, MarketAPI to, String commodityId) {
+		return ThreatConvoys.netOfHaul(commodityId, ThreatReserves.spendable(m, commodityId),
+				ThreatReserves.available(m, Commodities.FUEL), ThreatConvoys.haulRate(m, to, commodityId));
+	}
+
+	/** Draws up to {@code want} of what {@code m} gives a draw at {@code to} ({@link #gives}), the haul paid first; returns what was drawn. */
+	protected static float drawGiven(MarketAPI m, MarketAPI to, String commodityId, float want) {
+		float can = Math.min(want, gives(m, to, commodityId));
+		if (can <= 0f) return 0f;
+		ThreatConvoys.payHaul(m, can, ThreatConvoys.haulRate(m, to, commodityId));
+		return ThreatReserves.drawSpendable(m, commodityId, can);
 	}
 
 	/** Base memory: the fuel and supplies a garrison's voyage from it lacked past what the markets reaching it give (garrisonWants). */
@@ -1465,7 +1487,7 @@ public class ThreatFrontlines {
 		// the home base pays only when its stock reaches the link, like any other market
 		boolean homeReaches = home != null && Misc.getDistanceLY(home.getLocationInHyperspace(),
 				market.getLocationInHyperspace()) <= ThreatConvoys.stockReachLY(home);
-		float fromHome = link < want && homeReaches ? ThreatReserves.drawSpendable(home, Commodities.SUPPLIES, want - link) : 0f;
+		float fromHome = link < want && homeReaches ? drawGiven(home, market, Commodities.SUPPLIES, want - link) : 0f;
 		float paid = link + fromHome;
 		if (paid < want) paid += payFromOthers(market, home, Commodities.SUPPLIES, want - paid);
 		ThreatIncConfig.log("Frontline upkeep of " + market.getName() + "'s garrison: paid " + (int) paid + " of "
@@ -1495,7 +1517,7 @@ public class ThreatFrontlines {
 		});
 		for (MarketAPI m : others) {
 			if (paid >= want) break;
-			paid += ThreatReserves.drawSpendable(m, commodityId, want - paid);
+			paid += drawGiven(m, market, commodityId, want - paid);
 		}
 		return paid;
 	}
@@ -1504,7 +1526,7 @@ public class ThreatFrontlines {
 	protected static float othersSpendable(MarketAPI market, MarketAPI home, String commodityId) {
 		float sum = 0f;
 		for (MarketAPI m : IncursionManager.marketsReaching(market.getFaction(), market)) {
-			if (m != market && m != home && !isOutpost(m)) sum += ThreatReserves.spendable(m, commodityId);
+			if (m != market && m != home && !isOutpost(m)) sum += gives(m, market, commodityId);
 		}
 		return sum;
 	}
@@ -1951,7 +1973,7 @@ public class ThreatFrontlines {
 		float funds = Math.max(0f, ThreatReserves.available(market, Commodities.SUPPLIES)
 				- ThreatReserves.stagingBank(market, Commodities.SUPPLIES));
 		for (MarketAPI m : IncursionManager.marketsReaching(market.getFaction(), market)) {
-			if (m != market && !isOutpost(m)) funds += ThreatReserves.spendable(m, Commodities.SUPPLIES);
+			if (m != market && !isOutpost(m)) funds += gives(m, market, Commodities.SUPPLIES);
 		}
 		return funds;
 	}

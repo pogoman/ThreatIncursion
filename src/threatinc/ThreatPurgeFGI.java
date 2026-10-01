@@ -1160,7 +1160,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				&& ThreatGroundFronts.orbitContestedFor(getFaction().getId(), market)) {
 			return "clearing the orbit";
 		}
-		if (razes(market)) return "razing from orbit";
+		if (razes(market)) return ThreatRazing.razes(market) ? "razing from orbit" : "saturating from orbit";
 		return ThreatGroundFronts.landingPhase(market, abstractTroops(market), "besieging from orbit", ourFactionId(),
 				orbitDoneHere(market));
 	}
@@ -1725,7 +1725,9 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * ({@link #razeAbstract}). Nothing while the orbit is held against it: the
 	 * fleets fight for it first. True once the world is done with - razed,
 	 * razed as far as saturation goes, or the razing fuel spent - and then the
-	 * stage moves on; a world razed is gone, and nothing more touches it.
+	 * stage moves on; a world razed is gone, and nothing more touches it. A
+	 * hive has no bar (ThreatRazing.razes): it is done with at the commander's
+	 * stop (ThreatGroundFronts.saturationSpent), and it stands.
 	 */
 	protected boolean razePass(CampaignFleetAPI fleet, MarketAPI market) {
 		String ourId = ourFactionId();
@@ -1735,8 +1737,13 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			ThreatIncConfig.log("Razing of " + market.getName() + ": the orbit is contested");
 			return false;
 		}
-		if (ThreatRazing.razeable(market) <= 0) {
+		if (ThreatRazing.razes(market) && ThreatRazing.razeable(market) <= 0) {
 			ThreatIncConfig.log("Razing of " + market.getName() + ": razed as far as saturation goes");
+			return true;
+		}
+		if (!ThreatRazing.razes(market) && ThreatGroundFronts.saturationSpent(market,
+				ThreatGroundFronts.orbitPoints(ourId, market, fleet.getFleetPoints()))) {
+			ThreatIncConfig.log("Saturation of " + market.getName() + ": a day adds less than a day anywhere");
 			return true;
 		}
 		if (razeFuelLeft() < 1f) {
@@ -1755,14 +1762,13 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (paysOrdnance) razeFuel = Math.max(0f, razeFuel - out[1]);
 		float removed = ThreatGroundFronts.applyFleetLosses(fleet, out[0]);
 		boolean destroyed = out[3] > 0f;
-		boolean wrecked = out[4] > 0f;
-		if (destroyed || wrecked) recordRazing(id, name, size, true, wrecked);
+		if (destroyed) recordRazing(id, name, size, true);
 		ThreatIncConfig.log("Razing slice vs " + name + ": " + (int) fp + " FP for "
 				+ String.format("%.1f", days) + " d poured " + (int) out[1] + " fuel, " + (int) out[2]
-				+ " levels razed" + (destroyed ? ", destroyed" : "") + (wrecked ? ", wrecked" : "")
-				+ "; batteries cost " + String.format("%.1f", out[0]) + " FP (" + (int) removed + " removed)"
+				+ " levels razed" + (destroyed ? ", destroyed" : "") + "; batteries cost "
+				+ String.format("%.1f", out[0]) + " FP (" + (int) removed + " removed)"
 				+ (paysOrdnance ? "; " + (int) razeFuel + " razing fuel left" : ""));
-		return destroyed || wrecked;
+		return destroyed;
 	}
 
 	/**
@@ -1790,32 +1796,22 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			armamentsAllotted *= keep;
 		}
 		boolean destroyed = out[2] > 0f;
-		boolean wrecked = out[3] > 0f;
-		if (destroyed || wrecked) recordRazing(id, name, size, true, wrecked);
-		return destroyed || wrecked;
+		if (destroyed) recordRazing(id, name, size, true);
+		return destroyed;
 	}
 
 	/** The razing, for the sitrep: once when it begins, once when the world is gone. */
 	protected void recordRazing(String marketId, String marketName, int sizeBefore, boolean destroyed) {
-		recordRazing(marketId, marketName, sizeBefore, destroyed, false);
-	}
-
-	/** As above; {@code wrecked}, the end was a hive wrecked (ThreatRazing.wreck), which stands. */
-	protected void recordRazing(String marketId, String marketName, int sizeBefore, boolean done, boolean wrecked) {
 		if (siegeAnnounced == null) siegeAnnounced = new java.util.HashSet<String>();
-		if (!done && !siegeAnnounced.add(marketId)) return;
+		if (!destroyed && !siegeAnnounced.add(marketId)) return;
 		SiegeActionRecord rec = new SiegeActionRecord();
 		rec.marketId = marketId;
 		rec.marketName = marketName;
 		rec.sizeBefore = sizeBefore;
 		rec.timestamp = Global.getSector().getClock().getTimestamp();
-		rec.action = wrecked ? "Wrecked from orbit" : done ? "Razed from orbit" : "Saturation bombardment";
+		rec.action = destroyed ? "Razed from orbit" : "Saturation bombardment";
 		rec.success = true;
-		rec.destroyed = done && !wrecked;
-		if (wrecked) {
-			MarketAPI market = Global.getSector().getEconomy().getMarket(marketId);
-			if (market != null) rec.disruptDays = (int) ThreatGroundFronts.siegeWornDays(market);
-		}
+		rec.destroyed = destroyed;
 		siegeActions.add(rec);
 	}
 
@@ -1828,22 +1824,26 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * until the world is razed, saturation can take no more, the fuel is
 	 * poured (Float.MAX_VALUE: the swarm's, without limit), the group's abort
 	 * fraction or siegeOrbitDays. What it razes is real. Shared with the
-	 * swarm's saturation doctrine (ThreatStrikeFGI). Returns {fleet points
-	 * left, fuel left, 1 when the world is gone, 1 when a hive was wrecked}.
+	 * swarm's saturation doctrine (ThreatStrikeFGI). A hive has no bar
+	 * (ThreatRazing.razes): it is saturated to the commander's stop
+	 * (ThreatGroundFronts.saturationSpent) and stands. Returns {fleet points
+	 * left, fuel left, 1 when the world is gone}.
 	 */
 	public static float[] razeAbstract(MarketAPI market, float start, float abortFraction, float fuel,
 			String razerFactionId, String reason) {
-		float[] result = new float[] { start, fuel, 0f, 0f };
+		float[] result = new float[] { start, fuel, 0f };
 		if (market == null || start <= 0f) return result;
 		String name = market.getName();
+		boolean bar = ThreatRazing.razes(market);
 		float fp = start;
 		float elapsed = 0f;
 		float budget = ThreatIncConfig.siegeOrbitDays();
 		float perFP = Math.max(0f, ThreatIncConfig.satFuelPerFPDay());
 		while (fp > 0f && elapsed < budget && fp > start * abortFraction) {
-			if (ThreatRazing.razeable(market) <= 0 || fuel < 1f) break;
+			if (fuel < 1f) break;
+			if (bar ? ThreatRazing.razeable(market) <= 0 : ThreatGroundFronts.saturationSpent(market, fp)) break;
 			float days = ThreatGroundFronts.SIEGE_FIRST_SLICE_DAYS;
-			if (perFP > 0f) {
+			if (bar && perFP > 0f) {
 				float pour = Math.min(ThreatRazing.fuelToDestroyThrough(market), fuel);
 				days = Math.min(days, Math.max(1f, (float) Math.ceil(pour / (perFP * fp))));
 			}
@@ -1858,10 +1858,6 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				result[2] = 1f;
 				break;
 			}
-			if (out[4] > 0f) {
-				result[3] = 1f;
-				break;
-			}
 			ThreatGroundFronts.syncSiegeState(market);
 			market.reapplyIndustries();
 		}
@@ -1874,7 +1870,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		ThreatIncConfig.log("Abstract razing of " + name + " by " + razerFactionId + ": " + (int) elapsed
 				+ " d, " + (int) start + " -> " + (int) fp + " FP"
 				+ (fuel < Float.MAX_VALUE ? ", " + (int) fuel + " fuel left" : "")
-				+ (result[2] > 0f ? ", destroyed" : "") + (result[3] > 0f ? ", wrecked" : ""));
+				+ (result[2] > 0f ? ", destroyed" : ""));
 		return result;
 	}
 

@@ -9,7 +9,7 @@ produced the tables).
 
 Assumptions for every table: stability 10, no deficits, hazard 100%, no skills, no ground
 support, no planetary shield, LunaLib defaults. Colony theatre only (a hive runs the same duel
-at rate 30 / wear 300 and a quarter of the fuel).
+at rate 30 / wear 300 - before v2 at a quarter of the fuel - and has no razing bar, section 4).
 
 ## The defence figure
 
@@ -161,12 +161,12 @@ records what the build decided where the spec left it open. v1 at the bottom is 
    and transports for the fleet's size. An AI expedition's provisions set how long it can bomb.
 4. **Marines reach the guns only by landing.** No raiding party lands under intact batteries
    (Merville, Pointe du Hoc were parts of landings). The ground front is the marine route.
-5. **Saturation razes.** Only saturation can destroy a colony from orbit, and it is priced on
-   what it destroys.
+5. **Saturation razes a colony.** Only saturation can destroy a human colony from orbit, and it
+   is priced on what it destroys. A hive it presses and never razes (2026-10-01, section 4).
 6. **Return fire is set by the guns.** A battery fires at its own rate until silenced, so a
    bigger fleet that silences it sooner pays less (Lanchester, counter-battery).
-7. **No decline.** A colony dies only two ways: a siege won on the ground, or saturation to
-   destruction. The user rejected a Core-driven decline again on 2026-09-28 (it was first removed
+7. **No decline.** A human colony dies only two ways: a siege won on the ground, or saturation
+   to destruction; a hive only the first (2026-10-01). The user rejected a Core-driven decline again on 2026-09-28 (it was first removed
    2026-09-04, "no arbitrary timer").
 
 ### 1. Tactical bombardment (player) = the AI's hovering slice, one day at a time
@@ -239,6 +239,12 @@ Replaces vanilla's instant saturation on human colonies (today `bombardSaturatio
 straight to super) and the mod's hive saturation (`threatSatConfirm`, 20 days on everything,
 `hiveSatDisruptDays`, never reduces size).
 
+**A hive has no bar** (2026-10-01, user's call; docs/ground-war.md "Saturation presses a hive"):
+over a hive saturation is the lock, the structures, the growth pause and the unrest below, at
+2.86 fuel per FP a day, flown to the commander's stop - each structure's clock closing on the
+wear cap a day at a time, never a size off. The bar, its tables and combined arms are a human
+colony's.
+
 - **Once a day**, the shared bombardment lock. At least one day per bombardment.
 - **On the structures**: the tactical slice on every building (not just military), with the
   same diminishing returns, return fire and x condition.
@@ -266,7 +272,7 @@ straight to super) and the mod's hive saturation (`threatSatConfirm`, 20 days on
 
 | Size | Fuel for the top level | Fuel to destroy | 200 FP | 500 FP | 1,000 FP | 2,000 FP |
 | --- | --- | --- | --- | --- | --- | --- |
-| 2 (conquest seed hive) | 691 | 909 | 2 d | 1 d | 1 d | 1 d |
+| 2 | 691 | 909 | 2 d | 1 d | 1 d | 1 d |
 | 3 | 2,184 | 3,094 | 6 d | 3 d | 2 d | 1 d |
 | 4 | 6,907 | 10,000 | 18 d | 7 d | 4 d | 2 d |
 | 5 | 21,840 | 31,840 | 56 d | 23 d | 12 d | 6 d |
@@ -277,8 +283,8 @@ straight to super) and the mod's hive saturation (`threatSatConfirm`, 20 days on
 (Days to destroy.) A Prometheus holds 2,500 fuel: a size 4 is four tanker loads, a size 6 forty,
 a size 8 four hundred. Fleets over one world add their FP; fuel, not time, is the brake.
 
-**Combined arms: layers held count as size lost.** A colony is one stratum (hive) or district
-(human) per size, and held layers already come off the defence figure. Saturation is priced on
+**Combined arms: layers held count as size lost.** A human colony is one district per size, and
+held layers already come off the defence figure. Saturation is priced on
 **size - layers held**: marines take the expensive top layers, bombers finish the rest - or the
 marines keep pushing if no fuel is coming. Bombs fall on the enemy's layers only. If the front
 is thrown back, the price rises with it. A razed level is a size off, so it also lowers the base
@@ -309,8 +315,8 @@ the stability pin, is what stopped the old food-shortage penalties.
 
 The shield keeps soaking bombardment (`ThreatShield.soak`, `shieldAbsorbMax`, `shieldSoakMult`)
 for tactical and saturation alike, and saturation wears it like any structure, under the same
-diminishing returns. While it stands, the day's saturation delivery into the razing bar is cut by
-the share it absorbs. Raids and fronts ignore it, as today.
+diminishing returns. While it stands, the day's saturation delivery into a colony's razing bar is
+cut by the share it absorbs. Raids and fronts ignore it, as today.
 
 ### 7. Diplomacy - a ground front is an act of war
 
@@ -329,28 +335,30 @@ the share it absorbs. Raids and fronts ignore it, as today.
 
 - NPC and Threat hovering fleets bombard by rules 1 and 4 exactly: once a day, the x condition
   slice, guns-set return fire, fuel from provisions (no fuel, no bombardment).
-- **NPC raze task**: where saturation to destruction is cheaper than a siege (typically a
-  conquest seed or any small hive), send a bombing fleet with the fuel aboard, strong enough for
-  the Defense Swarms, ahead of or instead of a siege (`ThreatPurgeFGI`; `strikeSaturationEnabled`
-  for the swarm's side, default false today). Seed hive: about 900 fuel, 1-2 days.
+- **NPC raze task**: a bombing fleet with the fuel aboard, strong enough for the Defense Swarms,
+  instead of a siege (`ThreatPurgeFGI`; `strikeSaturationEnabled` for the swarm's side, default
+  false today). A colony is razed where that is cheaper than a siege; a hive, since 2026-10-01,
+  is only saturated to the commander's stop, where its landing is beyond the marines held and it
+  still produces (docs/ground-war.md "Saturation presses a hive").
 - `IncursionManager.siegeRaidStrNeeded` sizes landings against defences worn by the new rules.
 
 ### 9. The player's Bombard order (added 2026-09-28, the user's decision)
 
 The player gets the AI's raze expedition as a war-board order, on the same numbers. A
 **Bombard** button on a found hive's row sends a fleet sized for the orbit, with no marines and
-the raze fuel (`ThreatRazing.fuelToDestroyThrough`) from the player's stockpile. It fights the
-Defense Swarms for the orbit, then saturates the hive a day at a time until it is gone, or until
-the fuel runs out and it comes home. The order only razes. Tactical bombardment stays inside
-Siege (it bombards before it lands) and Support / Defend (over a front the player holds); the
-user chose raze-only over a tactical mode.
+the saturation's fuel from the player's stockpile. It fights the Defense Swarms for the orbit,
+then saturates each hive a day at a time to the commander's stop (a hive has no bar since
+2026-10-01: pressed, never razed), or until the fuel runs out and it comes home. The order only
+saturates. Tactical bombardment stays inside Siege (it bombards before it lands) and Support /
+Defend (over a front the player holds); the user chose raze-only over a tactical mode.
 
-Built the same day (untested): the targets are the system's hives saturation can still take with
-no front on them (combined arms stays with the menu, which pays danger close); several hives are
-razed in turn by one flotilla, sized to outlast every world's guns (`IncursionManager.razeRun`);
-the fleets fit the base's free points like a Siege and, like a Siege, are not sized against the
-Defense Swarms; the fuel comes from the base alone (the player's sieges never pool), passage
-first, and a reserve short of the full razing sends what it has.
+Built the same day (untested): the targets are the system's hives with a structure for
+saturation to fall on and no front on them (combined arms stays with the menu, which pays danger
+close); several hives are saturated in turn by one flotilla, sized to outlast every world's guns
+(`IncursionManager.razeRun`); the fleets fit the base's free points like a Siege and, like a
+Siege, are not sized against the Defense Swarms; the fuel - what each stay to the commander's
+stop burns (`razingFuel`) - comes from the base alone (the player's sieges never pool), passage
+first, and a reserve short of the whole sends what it has.
 
 ### The Kazeron heist, computed (the case that started this)
 
@@ -379,10 +387,10 @@ the raid alone keeps the transponder-off option.
 | `bombardReturnFirePerGunDefence` | 0.0008 | replaces `siegeBatteryAttritionPerDay`; was 0.008 until run 4 |
 | `bombardFPWorth` | 30 | new (run 4); defence a day must take off per fleet point lost (NPCs; the swarm uses `fabricateTroopsPerFP x mult / frontHoldFraction`) |
 | `bombardUnrestMax` | 10 | new; tactical unrest = this x (1 - condition) |
-| `satFuelPerFPDay` | 2.86 | new; saturation delivery |
-| `satFuelSize4` | 10,000 | new; anchor for fuel per level (x3.2 per size) |
+| `satFuelPerFPDay` | 2.86 | new; saturation delivery - a colony's bar, a hive's day of wear |
+| `satFuelSize4` | 10,000 | new; anchor for fuel per level (x3.2 per size); human colonies only |
 | `frontWearRate` | 12 | replaces `frontSuppressDaysPerDay`'s flat rate |
-| `npcRazeEnabled` | true | new (build); NPC raze task on/off |
+| `npcRazeEnabled` | true | new (build); NPC raze task on/off (a hive saturated, never razed) |
 | retire | - | `tacBombardSuppressDays`, `siegeBombardSliceDays`, `hiveSatDisruptDays`, `hiveTacDisruptDays` (check use), `falloutDays`, `fortificationRaidDanger`, `fortificationRaidDepthLoss` |
 
 Knob names are proposals. `hiveBombardCostMult` goes too (fuel no longer derives from D).
@@ -436,8 +444,10 @@ Knob names are proposals. `hiveBombardCostMult` goes too (fuel no longer derives
   at any range - fuel that never sailed). The supply line is `ThreatGroundFronts.ordnanceSources`:
   the home base when the fleet is in its home system; otherwise only markets whose stock reaches
   where the fleet stands (`IncursionManager.marketsReaching`, `ThreatConvoys.stockReachLY`), the
-  home base first if it does, then the faction's others nearest first. Player fleets use their home
-  base alone (its reach is any range). Out of both, they hold the orbit
+  home base first if it does, then the faction's others nearest first. Since 2026-10-01 an NPC
+  market's fuel from another system pays its own passage to the fleet out of the load, 0.002 fuel
+  a unit a light-year (`ThreatConvoys.haulRate` / `netOfHaul`; docs/strategy-layer.md "Logistics
+  reach"). Player fleets use their home base alone (its reach is any range). Out of both, they hold the orbit
   without bombarding ("out of fuel to bombard with"). A Defend fleet with no fuel over a front
   that cannot hold fabricates troops, since an empty tank counts as orbit done (`orbitDoneFor`).
   The swarm pays from the hive's fuel stock at the same rates since 2026-10-01
@@ -453,7 +463,8 @@ Knob names are proposals. `hiveBombardCostMult` goes too (fuel no longer derives
 - **Hive stability** is pinned at 10 minus recent unrest (`ThreatColonyManager.applyHiveOrder`),
   re-applied whenever bombardment raises the unrest.
 - **The razing bar** is a colony condition (`threatinc_razed`, `ThreatRazedCondition`), not a
-  line on the Population & Infrastructure row: that row's tooltip is vanilla's plugin.
+  line on the Population & Infrastructure row: that row's tooltip is vanilla's plugin. A hive has
+  none since 2026-10-01; an older save's is cleared on the next pour (`ThreatRazing.clearBar`).
 - **Danger close** (a front's own marines under the bombs) is per day now: 0.005 of the marines a
   day (was 0.05 a bombardment).
 - **Fabrication price**: 0.008 x days x D x the intact batteries' share - what the return fire
@@ -488,13 +499,14 @@ The AI half, and what reviewing it changed (same day):
   (`orbitPoints`: the faction's armed fleets over the world) and the guns answer once, each
   fleet taking its share by points. NPC expeditions, Support, Defend and the swarm's strikes all
   do this; the player's own fleet in the menu takes the whole day.
-- **The raze task.** An NPC razes a world when razing's fuel (at 25) costs less than the
+- **The raze task.** An NPC razes a colony when razing's fuel (at 25) costs less than the
   landing's marines (200) and armaments (500), the pooled reserve holds the fuel over the
   passage, and a flotilla grown until it outlasts the guns (`razePlan`) finishes within
-  `siegeOrbitDays`. Never a world with a front, a story-critical one, or a razing that would
-  leave the rest of a mixed siege short of fuel. The smallest fleet that survives a Heavy-Battery
-  hive's razing loses about two thirds of itself: 72 FP for a size 2, 292 for a size 4, 788 for
-  a size 6 (twice that loses about a sixth). `npcRazeEnabled` switches the task off.
+  `siegeOrbitDays`. Never a world another faction's front stands on, a story-critical one, or a
+  razing that would leave the rest of a mixed siege short of fuel. A hive is not priced this way
+  since 2026-10-01: it is saturated to the commander's stop only where its landing is beyond the
+  marines held and it still produces (docs/ground-war.md "Saturation presses a hive").
+  `npcRazeEnabled` switches the task off.
 - **Ordnance.** A siege expedition draws its passage, its ordnance (ONE world since 2026-09-29 -
   the dearest of the non-front targets, not each world it lands on: the first landing unloads
   every marine and the marine need is sized to the strongest target, so later worlds are never
@@ -513,12 +525,13 @@ The AI half, and what reviewing it changed (same day):
   and carry it - is a minimum fleet goal in `siegeFleetSizes` and `siegeFleetGoal`, and the
   launch has a new postpone reason for it: "the bombardment needs" N FP, beside "orbit" and
   "razing".)
-- **The swarm's saturation doctrine** (`strikeSaturationEnabled`, off) razes by the bar through
-  `saturationSlice`; a pass over a world not yet razed does not use up vanilla's pass count.
+- **The swarm's saturation doctrine** (`strikeSaturationEnabled`, off) razes human colonies by the
+  bar through `saturationSlice`; a pass over a world not yet razed does not use up vanilla's pass
+  count.
 - **Hive return fire - open.** The 0.008 was calibrated on a size-6 colony. A hive's figure is
   4-8 times a colony's, so its guns fire 19-58 FP a day (size 2-6 with Heavy Batteries) - about
   three times what the old attrition took from a 1,000 FP fleet, six times from a 500 FP one.
-  With the commander's stop the AI copes (it razes small hives and lands big on large ones), but
+  With the commander's stop the AI copes (it lands big, saturating only beyond its marines), but
   large Heavy-Battery hives may be beyond most NPC sieges. A separate hive rate is the knob to add
   if a test run agrees.
 - **Old saves.** Expeditions already out drew no ordnance: they bombard unpaid and raze nothing.

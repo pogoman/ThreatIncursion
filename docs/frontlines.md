@@ -397,7 +397,10 @@ a single strike the month their garrison went home. So now:
   garrisons out of the siege's savings); the home base and the others give only
   what a hunt may take (`ThreatReserves.spendable`: above the floor, the donor
   keep and the staging bank), so a garrison never spends what convoys banked for
-  a siege - its home is often the hive's staging base. A voyage is checked and
+  a siege - its home is often the hive's staging base. Since 2026-10-01 a market's
+  stock reaches as far as its fuel pays, and each pays out of its fuel the haul to
+  the market it pays at (`gives` / `drawGiven`, for upkeep, size upkeep, foundings,
+  builds and voyages alike; docs/strategy-layer.md "Logistics reach"). A voyage is checked and
   paid from the same stock, in full or the fleets stand down. Sieges pool from
   links like any other base (`IncursionManager.siegeDonors`). Every monthly
   payment is logged with who paid it.
