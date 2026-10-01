@@ -312,6 +312,68 @@ Line numbers are from 2026-10-01; verify them before editing.
 - **Docs:** `code-map.md` lines for the two new classes. `ground-war.md` and `frontlines.md` point
   here.
 
+## 8a. Every human-side read of the swarm (inventory, 2026-10-01)
+
+Mapped before the build, by symbol. "Remote" means it reads a sector list, a garrison list or a
+head-count with no fleet present; "on-site" means within `ORBIT_HOLD_RANGE` of the planet, in
+the same location.
+
+**Choke points.**
+- **A. `IncursionManager.siegeOrbitFP`** (and `ThreatSoftening.garrisonFP`, a pure forwarder)
+  is the only raw FP loop on the human side; no Threat code calls it. Switching it carries:
+  `siegeOrbitFaced` -> `easiestFirst` -> `siegeTargets` and everything that reads it;
+  `systemSwarms` and `siegeOrbitWeighed` -> `siegeOrbitNeeded` -> `siegeAffordable`, the launch's
+  orbit gate and its bounty, `siegeFleetGoal` -> `siegeCanPay`, `razeWorlds`, `siegeSizesFor`,
+  `bombardFleetSizes`; `ThreatFleetOrders.dispatchOrbit`; `ThreatConvoys.supportFor`;
+  `ThreatFactionStance.weakestTarget`; `ThreatSoftening.gateWorlds`;
+  `ThreatSwarmBountyIntel.orbitFP`; and through `garrisonFP` the hunts (`weakest`, `strongest`,
+  `huntTarget`, `send`, `advanceForce`, `divert`, `advanceSingle`).
+  Hazards: the log lines that print these switch too (print reported and seen side by side);
+  `gateWorlds` compares weighed with faced, so both must read one snapshot; `garrisonFP` serves
+  remote decisions and in-system ones alike.
+- **B. `ThreatSoftening.garrisonNowFP`** = max(`garrisonFP`, `ThreatColonyManager.ownedFleetFP`)
+  re-reads garrison + raiders out + reinforcements inbound live, so it leaks the live figure even
+  after A. It feeds `musterFloorFP` (-> `send`, `stagingWants` -> `ThreatConvoys`,
+  `dispatchHunt`) and `divert`. Switch it separately.
+- **C. Head-counts.** `ThreatColonyManager.countLiveGarrison` cannot be swapped (the Threat uses
+  it); re-point the human callers instead: `onPurgeCooldown`, `anyTargetGarrisoned` (which
+  carries `siegeDifficulty`, `siegeHeavyAssault`, `razeWorlds`, `siegeSizes`, the faction view),
+  `siegeHeavyAssault`, `ThreatGroundFronts.orbitContested(String)` (a remote head-count, unlike
+  `orbitContestedFor`; it is the convoy door in `ThreatConvoys.canRunTo`), `ThreatMissionIntel`
+  (difficulty and "defended by N Defense Swarms"), the board's system rows and colony cards,
+  `InfestedSystemIntel`, `ThreatFrontlines.strikeOf`. Their companions read the Threat's own
+  plans and also bypass: `garrisonTargetCount`, `inboundReinforcements`, `desiredGarrison`,
+  `hasOperationalNexus` (the board's trend arrow).
+- **D. `ThreatIncData.garrisonsFor`** is raw access the Threat uses too; human callers are
+  `siegeOrbitFP`, `ThreatFactionStance.evaluate`, `garrisonNowFP`, `ThreatFrontlines.strikeOf`.
+
+**Reads that bypass A and B:** `ThreatFactionStance.evaluate` ("theirs" = `ownedFleetFP` over
+the hives it faces); `ThreatFrontlines.strikeOf` (guard need from the garrison it could launch);
+the board, `InfestedSystemIntel`, `ThreatMissionIntel` (head-counts); the bounty's
+"Strongest swarms" bullet (live `siegeOrbitFaced` beside the post-time `siegeFP`); the convoy
+door's head-count.
+
+**Already fogged or on-site, left alone:** strike strengths once detected
+(`ThreatFrontlines.strikesOn`, `ThreatAidRequests.strikesAgainst`, behind
+`isHidden` / `isDetected`); `ThreatFrontlines.threatStrength` (WarSim in the link's own system,
+used as "> 0"); relief's `pointsNear` over the faction's own colony; the contest
+(`orbitContestedFor` / `orbitHeld` / `pointsNear`), `swarmOrbitStrength` and `coverHolds`;
+`ThreatBlockade`; the player's in-person dialog (`ThreatincMarketCMD.threatDefenders`);
+`siegeLeash`; the board's front tooltips (rates and days derived on-site).
+
+**Corrections found while mapping:**
+- `ThreatPurgeFGI.breaksOff` weighs every unfinished hive in the system, not only the planet its
+  fleets are at; in-system, so it counts as the siege's own eyes.
+- `breaksOffAbstract` is a whole-system WarSim read on arrival that no helper swap reaches
+  (section 5 replaces it).
+- `ThreatCoalition` and `ThreatAid` have no `sectorKnows` gate but inherit discovery: hunts act
+  only on posted bounties and calls only on a faction's siege.
+- The hunting force's muster may sit in hyperspace (`musterPoint`), so its go/no-go is not
+  always on-site: it reads the faction's report, which its eyes keep fresh once in the system.
+- Two methods are named `garrisonFP`: `ThreatSoftening.garrisonFP(MarketAPI)` (human) and
+  `ThreatColonyManager.garrisonFP(List)` (Threat upkeep).
+- `swarmsMet` / `noteSwarmsMet` was already a crude aged report; reports replace it.
+
 ## 9. Decisions for the user
 
 Answered 2026-10-01: "1 yes 2 yes 3 no 4 whatever recommended 5 yes", and 1 confirmed as "separate
