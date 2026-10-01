@@ -132,7 +132,8 @@ sinks Threat ships in a bountied system). `ThreatPosture` also reads `recentlyTh
 - `pressedFirst` / `pressingFirst` only reorder. `foundsLinks` governs forward-base founding.
 - `evaluate(faction, day)` from `refresh()` every 7 days per war faction: pressed (struck within
   60 d or a Threat front on its world), losing (decayed trend), ours = `forceFP`, theirs =
-  `ThreatColonyManager.ownedFleetFP` over every hive system whose `facedFaction` is this faction,
+  `ThreatColonyManager.ownedFleetFP` (planner build, 2026-10-01: the faction's report,
+  `ThreatIntel.systemFP`, over found systems) over every hive system whose `facedFaction` is this faction,
   best = `weakestTarget`. CONSOLIDATE = pressed and (losing or ratio < 1); PRESS = not pressed,
   not losing, a target, ratio >= `stancePressRatio`. Dwell `stanceDwellDays` except into
   CONSOLIDATE.
@@ -233,6 +234,8 @@ show `KIND_SUPPORT` rows. Ordnance comes daily from the supply line, not from th
   Retargets the force and posts "Hunting Force Turns".
 - Swarm reads: `garrisonFP` -> `IncursionManager.siegeOrbitFP`; `garrisonNowFP` adds
   `ThreatColonyManager.ownedFleetFP`; `gateWorlds` reads faced and weighed. All live and remote.
+  [Planner build, 2026-10-01: the FP reads are the faction's report (`attack-planner.md` 8a);
+  "faced" still reads Threat-side state (`attack-planner.md` section 11, "Still read live").]
 
 ## Coalition - `ThreatCoalition`
 

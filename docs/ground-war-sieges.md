@@ -427,3 +427,5 @@ The break-off before the fight stays free. Knob `abstractDefendersFight` (on). L
 "Off-screen fight in S (siege|strike): ...". The hive refills what it lost from its FP
 banks - their first real sink.
 
+Since 2026-10-01 an NPC siege off-screen fights this a day at a time over each world, striking the fleets it
+weighed there, and goes home outweighed (`abstractSiegeDaily`): [ground-war-code-paths.md](ground-war-code-paths.md) section 8.

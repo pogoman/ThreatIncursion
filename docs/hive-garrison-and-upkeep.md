@@ -11,7 +11,11 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
 - **Pressure** (per hive system, fleet points, read every `postureDays`): P = max(A, B) + C + D + F.
   It rises at once and decays over 30 days (`DECAY_DAYS`).
   - **A - attacks:** the warship points of every live NPC siege booked on the system's worlds, plus
-    hunts aimed at it and Support / Defend orders over its worlds (each fleet once).
+    hunts aimed at it and Support / Defend orders over its worlds (each fleet once), from dispatch
+    and at any distance. A siege counts only its spawned fleets (`attacksBySystem` reads
+    `getFleets()`): one still off-screen, the daily siege included, adds 0 here and acts only
+    through C and wounds (2026-10-01 log: Gamma Sonora under a 4,900 FP daily siege read
+    "attacks 0").
   - **B - staged capacity:** what the bases staging against the system could pay a force there
     (`ThreatSoftening.payableFP`, with hunt donors - capacity, not a siege's sizing, which reads the
     garrison and would chase its own tail). Weight 1.0 for a base staging for its siege, 0.5 for one
@@ -77,9 +81,12 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
      off. A colony holding less than its want (inbound counted), the neediest first, draws whole
      fleets from siblings: a donor gives what it holds above its own want x (1 + band) and one swarm,
      and must hold at least two fleets. Only a receiver in a system UNDER ATTACK may also draw the
-     colonies of quiet systems down to their minimum (`thinnableFP`). Same system first, then the most
-     to spare, then the nearest; the fleet must be covered whole by the donor's spare and leave the
-     receiver no surplus to send back (the largest within the deficit, else the smallest). No
+     colonies of quiet systems down to their minimum (`thinnableFP`), one fleet at a time: a donor must
+     still hold its want to give, so it gives one and stops below it until it refills. Same system
+     first, then the nearest, the most to spare breaking a tie (with billed reach off,
+     `ThreatReach.enabled`, the most to spare comes before the nearest); the fleet must be covered
+     whole by the donor's spare and leave the receiver no surplus to send back (the largest within
+     the deficit, else the smallest). No
      circuits (a test sent 89 fleets in a month round a ring of three systems and back):
      - a donor gives only from fleets on station (held less what is inbound), and never while below its
        own want;
@@ -108,6 +115,30 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   `pickForgeSource` prefers a forge whose system can pay the founding (`poolableFP` >= 5 x
   `foundingFPPerStructure`) over one that cannot, then ranks by launch-available swarms, then distance
   (before this the swarm-richest forge was picked, failed its bill and the claim waited months, ti-h8e).
+- **How fast it answers** (mapped 2026-10-01 for the war council's feints, `war-council.md` section 9):
+  - `ThreatPosture.poll` runs every `postureDays` inside the manager's 0.4-0.6 day tick, so passes are
+    5.0-5.6 days apart. An attack counts from its dispatch, so the swarm knows of it within a pass.
+  - Transfers (`redistributeGarrisons`) run every tick on the wants of the last pass, one fleet per
+    loop until no receiver can be served. A transfer is a real fleet (`GO_TO_LOCATION`) that can be
+    intercepted, counted inbound at once; `ThreatReach.days` assumes 0.5 ly a day. They land 0-15 days
+    after the pass, some 30+.
+  - What one attack pulls: about 0.83x the system's pressure (P / 1.5 x 1.25) less what it holds. A
+    force smaller than the garrison it threatens pulls nothing unless it sinks swarms (C). In the log,
+    Hadreel at P 13.6k holding 8.1k had 3.6k FP inbound one pass later, in fleets of 330-1,008 FP.
+  - A donor refills one swarm per colony per tick (`maintainGarrisons`) while its bank holds a swarm's
+    cost and its Core and Nexus stand (`canRebuildGarrison`): a banked donor is thin for 1-5 days.
+    Delta Sonora I sent 150, 151 and 164 FP and fabricated 140, 164 and 139 on the next three passes
+    (bank 604 -> 310). The lasting effect is the 30-day rest of the colonies that received.
+  - A force staging against a system raises its pressure through B before anything sails, so the
+    swarm reinforces the target first, and that system turns THREATENED and stops donating.
+- **What it does not do.** There are no reply swarms: `ThreatResponseIntel` is the human task force and
+  `ThreatSwarmDefend` holds conquered worlds. Retaliation comes only after a hive is eradicated
+  (`hiveGroundVictory`: grudge +10, then `IncursionManager.retaliate` strikes the winner at once).
+  Raids and strata add grudge (0.5 and 2), which reweights strike targets (`alarmTargetMult`);
+  `ThreatRaiders.consider` hunts convoys only; ground fronts counter-attack on a timer
+  (`frontCounterAttackDays` 40). Pressed systems' forges send no waves (`pickForgeSource`,
+  `trySpread`), and the CONSOLIDATE stance (half the systems pressed, or the hive count falling
+  while any is attacked; no dwell) leaves strikes to spoiling blows.
 - **Settings:** `postureEnabled` (true), `postureMargin` (1.25), `postureBand` (0.25), `postureDays` (5).
   State is primitive maps (`threatinc_posture`, `threatinc_postureLoss`, `threatinc_postureReceived`);
   the per-session wants are forgotten on load. A state of the older six-field layout reads as unread,

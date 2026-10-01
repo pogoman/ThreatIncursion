@@ -1,4 +1,4 @@
-# Attack planner and fog of war - DESIGN (2026-10-01, decided, being built)
+# Attack planner and fog of war - DESIGN (2026-10-01, decided; built, see section 11)
 
 The user's request of 2026-10-01: NPC factions plan their war from what they know at the time,
 hit in several places so that one blow is likely to land, and react when a fleet arrives
@@ -24,13 +24,16 @@ presses a hive".
   (`swarmsMet`, remembered 90 days). It never goes elsewhere.
 - **Sized for a convergence that never comes.** `npcSiegeOrbitSystem` assumes that a system's
   garrisons converge on a besieged world. A world's reserve never leaves it: only FP above 1.25x
-  a colony's want moves, and in a core the want is the reserve. Pelephanar's want is 11,032
+  a colony's want moves (and, for a system under attack, one fleet at a time from a quiet colony
+  at its want: corrected 2026-10-01, `hive-garrison-and-upkeep.md` "How fast it answers"), and in
+  a core the want is the reserve. Pelephanar's want is 11,032
   against a need of 200-466; Bastion and High Command multiply the reserve by 2 and 3. So a core
   world's own orbit holds 5-21% of its system, 0.9-2.5k. (ThreatPosture, ThreatColonyManager
   5307-5340.)
 - **The openings nobody takes.** What does move travels as real fleets, nearest donor first. It
-  lands 0-15 days after the 5-day pass that sends it, and some sends took 30+ days. A quiet system
-  drains to its reserve for a system under attack, and a fresh seed holds one swarm of 63-67 FP.
+  lands 0-15 days after the 5-day pass that sends it, and some sends took 30+ days. A quiet colony
+  gives a system under attack one fleet at a time and refills between (corrected 2026-10-01: it
+  does not drain to its reserve), and a fresh seed holds one swarm of 63-67 FP.
   In one h48a pass, 21 transfers moved 9.4k FP and left the donors with 2-8 swarms each. No
   faction struck any of them.
 
@@ -119,7 +122,10 @@ world it takes, at 1.0x:
 - `npcSiegeOrbitMargin` 1.5 -> 1.0;
 - `npcSiegeOrbitSystem` true -> false.
 
-In h48a's cores that is about 1-2.5k instead of 18-26k. A raid needs twice the reported swarms
+In h48a's cores that is about 1-2.5k instead of 18-26k. [Changed after h50a/h51a,
+2026-10-01: 1.5x per world. At 1.0x a siege calls off once the swarm has grown at all since the
+report (the call-off is at 1.0x its own FP), and 22-25 a run went home, most on day 1. The user
+chose 1.5x per world; the system's sum stays off.] A raid needs twice the reported swarms
 over its world (the contest rule's 0.5) and enough hulls to outlast the guns (section 4).
 
 **Choosing:**
@@ -254,7 +260,7 @@ core worlds that a watched siege loses.
 | `intelHalfLifeDays` | 30 | a report's trust halves every this many days |
 | `radarRangeLY` | 10 | = `frontlineReachLY`; forward bases, military worlds, the player's outposts |
 | `planConfidence` | 0.8 | the chance that at least one prong lands, reached before any prong grows |
-| `npcSiegeOrbitMargin` | 1.5 -> 1.0 | the padding goes |
+| `npcSiegeOrbitMargin` | 1.5 (1.0 in h50a/h51a) | per world now, not on the system's sum |
 | `npcSiegeOrbitSystem` | true -> false | a siege is sized on its strongest world, not the system's sum |
 | `siegeMetMemoryDays` | retire | reports age instead |
 
@@ -432,3 +438,208 @@ test, not before.
   `ThreatIntel.see` and in the on-site readers listed in section 1.
 - **The board** (a subagent reads the screenshots): ages and `Unknown` rows, with no exact
   figure for an unwatched system.
+
+## 11. Build notes (2026-10-01)
+
+Built in session e7a0fee3 against this design, under test from h50. Symbols, not line numbers.
+
+**`ThreatIntel`** (new). One `Report` per observer per system, kept in `threatinc_intelReports`:
+`worlds` (hive id -> {FP within `ORBIT_HOLD_RANGE`, fleets}), `nearFP`, `looseFP`, `day`,
+`source` and `seenBy`.
+- `see` writes a report from the live system. It is the only remote garrison read on the human
+  side. `look` is `see` gated by `sectorKnows` and `eyesIn`.
+- `advanceDay` runs once a calendar day from the war poll. Eyes give an EYES report: a fleet, a
+  non-hive colony, a front's owner or an unspawned route (`eyesIn`). Without eyes, radar gives a
+  RADAR report rounded to two figures (`radarSites`, `inRadar`).
+- `report` returns the observer's own report or a sharer's newer one. Sharers (`sharersOf`) are
+  the coalition `partners`, and for the player the factions at Cooperative. With
+  `intelFogOfWar` off it returns the live picture, memoised per clock instant.
+- Helpers: `trust(observer, system, moreDays)`, `figure` and `when`.
+- A move of half or more at any world, and a first picture of a system, are news to the
+  observer's planner and to its partners'. A scout's look is news to the observer, so the plans
+  waiting on recon go when it reports.
+- Lifecycle: `forget` on load, `reset` on a new campaign, `drop` when a system leaves the war.
+
+**`ThreatAttackPlanner`** (new). One `Plan` per faction in `threatinc_attackPlans`
+(`lastPlanned`, `news`, `prongs`).
+- `poll` runs once a calendar day:
+  - `resolve`: a siege prong resolves at its estimated arrival, or once no live siege of the
+    faction books its world. Either way it is news.
+  - `sailPending`: sends the raids held back to arrive with a siege.
+  - `plan`, when `planIntervalDays` have passed or news waits.
+- `plan` does three things:
+  - Recon (`ThreatScouts.recon`) for every found system that has a base in reach and a report
+    older than the half-life, or none.
+  - Sieges through `siegeOption`: every base of the faction in reach (`siegeBasesFor`) with
+    worlds ready (`siegeTargets`, `anySiegeReady`), in `cheapestFirst` order, led and ranked by
+    the first; `affordable` is the lead's `siegeAffordable`. The pressed system goes first, then
+    the landing, then the reported orbit. Until `chance` reaches `planConfidence`, each option
+    tries its bases in turn through `IncursionManager.launchPlanned` until one sails: the
+    launch's own gates postpone what the pools cannot pay, post the swarm bounty, and sail a
+    base short of marines that lands after softening, as the monthly pass did ("postponed" in
+    the Plan line). Once the chance is met the rest are "held", and a held option whose lead
+    cannot take the orbit still posts the bounty (`IncursionManager.orbitBounty`, the launch's
+    orbit gate alone), so hunts and the player thin what no siege of the faction can take.
+  - Raids: `planRaids`, `raidOption`, `leastForGain`.
+- Raids skip a world the report does not cover, such as a hive founded since: unseen is not
+  undefended.
+- `reliefOwed` holds raids as it holds sieges (the plan's raids, and `sailPending`, which waits).
+- `sailPending` drops a held raid when its world was booked by a siege since the plan, its
+  faction's own front holds the orbit, raids were turned off, or its world or base is lost, and
+  logs `Plan <f>: raid on <world> dropped - <why>`.
+- Recon skips a system a GO_TO never reaches (`ThreatScouts.unreachable`).
+- `leastForGain` is memoised per world for the calendar day (`GAIN_MEMO`, cleared in `forget`):
+  it reads only the world.
+- The log line is `Plan <faction> (<why>): ...`.
+
+**Raids.**
+- Size = max(least FP with `dailyGain` >= 1, reported FP / `orbitContestFraction` + 1,
+  `guardFleetFP`).
+- Value is the days down: `bombardPlan(world, fp, siegeOrbitDays, 0, false, worth 0, floor
+  1 - raidLossFraction)[4]`. Every `bombardPlan` return gained this fifth element.
+- Cost is the `sortieWants` fuel and supplies, plus `bombardFuelPerDay` x the planned days, at
+  base prices.
+- Score = cost / (days down x trust at arrival), best first. Each is pre-checked with
+  `sortieReachFP` and sent by `ThreatFleetOrders.dispatchRaid` whole: if short of the need it
+  does not sail.
+- Term = 2 x travel + planned stay + `RAID_SLACK_DAYS` (10).
+- Fallback, set after the funding loop (`fallbackFor`, `ThreatFleetOrders.setRaidFallback`):
+  the world with the most days down that this plan left unraided - unpaid, or no base in reach
+  - in the raid's own system, else anywhere. A world another raid of the plan strikes is never
+  free to divert to (`raidedByAnother`).
+
+**The raid order** (`ThreatFleetOrders`). New fields: `Order.raid`, `arrivalFP`,
+`arrivedTimestamp`, `contestedSince`, `fallbackId` and `raidId`, which is shared by the fleets of
+one raid.
+- `poll` gives a raid its own rules and skips the front rules (`supportLost`, `frontGone`).
+- A raid of several fleets is judged once it is all there: a fleet that arrived first waits
+  until its last sibling (same `raidId`) arrives, at most `RAID_GATHER_DAYS` (3; `gatherDays`).
+- `raidOver` ends a raid when:
+  - its term is served;
+  - the world is no longer the swarm's;
+  - at the world, `orbitContestedFor` holds for `RAID_CONTEST_GRACE_DAYS` (1);
+  - it has no ordnance for a day (`ordnanceAvailable` < `bombardFuelPerDay`): "out of ordnance";
+  - `dailyGain` falls below 1;
+  - its FP drops under arrivalFP x (1 - `raidLossFraction`).
+- `divertRaid` runs only within the raid's first two days at the world once gathered. It
+  re-checks the fallback against the faction's report with the raid's summed FP at the world
+  (`raidFP`; `raidedByAnother` skips the raid's own fleets) and pays the detour fuel
+  (`ThreatSoftening.detourFuel`) from the base's spendable stock. Otherwise `endRaid` runs:
+  `sendHome`, the "Raid over" log line, and news. A raid stood down (`standDown`, e.g. upkeep
+  starving it) is news too.
+- `hasRaid` is its own key, and `hasOrder` skips raids, so a front's Support and a raid never
+  block each other. `raidInSystem` keeps recon away from a system with a raid bound to it.
+- `tickSupport` bombs it unchanged under the label "Raid", and `enforceLeash` re-queues
+  "raiding X".
+- The board (`ThreatWarBoard.collectOrders`) lists it as "<Faction> raid", first "en route",
+  then "raiding". The faction view's order list shows "Raid".
+
+**Elsewhere.**
+- `ThreatGroundFronts.orbitContested(observer, market)` is the convoy door
+  (`ThreatConvoys.canRunTo`), read from the faction's report.
+- `ThreatScouts.Scout.recon`, `recon(faction, system)` and `reconInFlight`. `onEnter` writes a
+  SCOUT report.
+- `IncursionManager`:
+  - `launchPlanned`, and `announceSiege` (the launch notice, moved out of the pass);
+  - `tryPurgeBombardments` returns at once while `attackPlanner` is on;
+  - `huntThinned` is news for every faction;
+  - the siege readers take an observer;
+  - `noteSwarmsMet` writes an EYES report.
+- Off-screen NPC sieges run a day at a time over each world (`ThreatPurgeFGI.advanceDaily`,
+  knob `abstractSiegeDaily`): [ground-war-code-paths.md](ground-war-code-paths.md) section 8.
+
+**Hunts, stance, strikes.** These read the deciding faction's reports.
+- `ThreatSoftening`:
+  - `garrisonFP(observer, hive)` = `ThreatIntel.worldFP`.
+  - `garrisonNowFP(observer, hive)` is now the report alone; the `ownedFleetFP` leak is gone.
+  - `musterFloorFP`, `huntTarget`, `weakest`, `strongest` and `gateWorlds(observer, ...)` take
+    the observer, so weighed and faced read one report.
+  - `unseen` and `reported` ("3400 FP reported 41 days ago") are the log helpers.
+  - `advanceForce` and `advanceSingle` call `ThreatIntel.look` first when a fleet of theirs is
+    in the system.
+- A faction with no report of a bountied system raises no hunt there and stages nothing for it.
+- A hunt or force with no report of a system that still has hives flies on until its eyes see:
+  "no report" is not "gone".
+- Hunts take reports at face value, not weighed by trust.
+- Stance "theirs" = `ThreatIntel.systemFP` over the found systems facing the faction.
+- `ThreatFrontlines.strikeOf(observer, market)`: send = max(`garrisonTargetCount`, fleets seen)
+  - `garrisonReserve`. Each fleet seen counts at the average reported FP, read as the world's
+  heaviest size-table swarm.
+- `ThreatAid.quoteStrike` reads the player's report.
+- `ThreatFrontlines.threatSeen`: whether a link about to be raised stands at the front reads
+  the faction's eyes in the site's system (a victory base's fleets) or else its report
+  (`systemFP`); the links it holds read their own system, which they see.
+
+**The player's view** (the player's reports, Cooperative factions' included).
+- The board's Swarm FP column, total, strip and card show `ThreatIntel.figure`: `3,400 (41 d)`,
+  with the age left off when seen today, and "Unknown" for a system never seen.
+  `ThreatWarBoard.seenOver` is null for a world the report predates.
+- The garrison and target counts and the production arrow are gone. `InfestedSystemIntel` shows
+  the same figure.
+- Contracts: `ThreatMissionIntel.difficulty(observer, ...)` and `valueFor(observer, ...)` read
+  the garrison that the posting board last saw (`seenGarrisons`; `sponsorOf` names the board).
+- The bounty card: "Strongest swarms N FP as last seen X", and "Siege takes N FP".
+
+**Knobs.**
+- New: `intelFogOfWar` true, `intelHalfLifeDays` 30, `radarRangeLY` 10, `attackPlanner` true,
+  `planIntervalDays` 7, `planConfidence` 0.8, `raidLossFraction` 0.33, `abstractSiegeDaily` true.
+- Changed: `npcSiegeOrbitSystem` true -> false (migration 8, `LunaConfigBridge.bumpBoolean`).
+  `npcSiegeOrbitMargin` went 1.5 -> 1.0 with it and came back to 1.5 after h50a/h51a (user,
+  2026-10-01): migration 9 returns a store migration 8 moved.
+- Retired: `siegeMetMemoryDays`.
+
+**Fixes after the first runs** (h50a-h52a, 2026-10-01).
+- The calendar's days are negative (`ThreatPosture.today()` is about -642,000).
+  `siegeArrival` returned 0 for "no siege", so every raid waited for day 0: no raid sailed in
+  either run. It now returns -Float.MAX_VALUE. `Plan.lastPlanned` started at -1000, so a faction
+  planned on the week only once news had come; it now starts at -Float.MAX_VALUE, and a saved
+  -1000 counts as due.
+- A Plan line identical to the faction's last is not logged (h50a: 71% were); the next one that
+  differs ends `[after N unchanged plans]`. A plan with no siege clause no longer reads `):;`.
+- A sailed siege's clause ends `N FP sent` (`abstractFull`): the planner path logs no
+  `Siege sizing vs` line.
+- A raid's contest counts its own fleets wherever the leash has them (`raidOver`: the larger of
+  the friendly points at the world and `raidFP`). In h52a a 295 FP raid went home "114 FP of swarms
+  against 0" after a week of bombing, its fleet off after a swarm. A raid that arrives to more than
+  half its own FP goes home by design: its arrival writes the report the arrival line quotes.
+
+**Where the build departs from the design** (for the user):
+1. The board's figure reads `3,400 (41 d)`, not `3,400 · 41 d`: the middle dot may not exist in
+   the game's fonts.
+2. Stance: `siegeAllowed` gates sieges and raids alike (when consolidating, only a system facing
+   the faction), and recon always runs. The table in section 2 (EXPAND: raids and scouts only;
+   CONSOLIDATE: scouts only) was not built, so stance stays a priority, never a cap.
+3. A prong is never enlarged once the chance is met (v1).
+4. Observers are the player and the mobilised factions. A faction not yet at war keeps no
+   reports.
+5. The chance counts sieges only. Raids are funded after the same plan's sieges, from what the
+   pools still pay; nothing else limits them.
+6. A raid's contest grace is a day (two polls), not the first poll, because the hive refills its
+   garrison list every poll. A raid diverts only on a verdict in its first two days at the
+   world.
+7. A siege or raid at a system whose report is older than the half-life waits while the
+   faction's own recon party is on its way there.
+
+**Still read live, or open** (after the build and the fog audit of 2026-10-01):
+- Contracts count a world no report covers at its nominal garrison
+  (`ThreatColonyManager.nominalGarrison` in `seenGarrisons`).
+- The board's Reach "grounded" (`ThreatWarBoard.grounded`) reads the hive's live supply flow and
+  fuel (`ThreatReach.canSustain`, `ThreatFuel.stock`): resource state, not a swarm figure.
+- The board's Activity column shows raiders (`collectRaiders`) and seeding waves
+  (`collectSeeding`) live, with no detection gate; strikes are gated (`isDetected`).
+- The faction view's convoy rows say "HUNTED" from `ThreatRaiders.huntersOf`: raiders whose
+  target is the convoy, at any distance.
+- The bounty card can read "0 FP as last seen".
+- `ThreatAid`'s "No Defense Swarms in the %s to hunt" now shows for a system never seen.
+- Found while mapping for the war council (2026-10-01), not in 8a:
+  - `ThreatReach.facedFaction` / `facedLY` read Threat-side state (`getPhase`, `warOpen`,
+    `swarmKnows`, `strikeValue`) to say which faction a hive would strike first; the stance's
+    "theirs" and `siegeAllowed` use them.
+  - "Found" is sector-wide, not per faction: `knownSystems`, `weakestTarget`, `hiveInReach`,
+    `ThreatFrontlines.plan` and `siegeTargets` list live hives, sizes and tiers with no report
+    (only `planRaids` checks "founded since").
+  - `IncursionManager.onPurgeCooldown` reads `anyOrganDisrupted` live.
+- On-site by design, not leaks: the relief bounty's "Threat over X" (the poster's own colony
+  sees it), the front owner's orbit reads (`swarmOrbitStrength` and family, section 8a),
+  `ThreatincMarketCMD` (the player at the hive), a strike's FP once it is detected (one global
+  flag), and an unspawned daily siege weighing the world it sits over (its route is eyes).

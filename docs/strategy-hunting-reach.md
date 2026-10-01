@@ -105,8 +105,9 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   one shared point had hostile factions' forces fighting each other there). A base inside the
   system waits at home. They hold there. The force goes in when
   every fleet is in, or `softenMusterDays` (15) after the first arrived. It goes home if
-  none arrived within `softenDays`. It goes in only if the fleets present beat the weakest
-  garrison by the margin. If they do not but the whole force would, it waits up to
+  none arrived within `softenDays`. It goes in only if the fleets present beat the strongest
+  garrison of the siege's worlds by the margin (`advanceForce`, `strongest()`; "weakest" until
+  2026-09-26). If they do not but the whole force would, it waits up to
   `softenMusterStragglerMult` (3) muster spells for the stragglers. Where it musters is
   recorded on the force (`musterInSystem`/`musterEntityId`, or `musterX/Y`), so a
   contributor from another system counts at an in-system muster. A force that stands down without going in gets its
