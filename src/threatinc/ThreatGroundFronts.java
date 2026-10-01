@@ -2938,6 +2938,146 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return new float[] { day, spent, fleet, finished ? 1f : 0f, wear * (1f - top) };
 	}
 
+	/** Each rung of a squadron ladder is this many times the one below it ({@link #squadronLadder}). */
+	public static final float SQUADRON_STEP = 1.5f;
+
+	/**
+	 * BOMBING SQUADRON (2026-10-01, user's call): over a hive the flotilla
+	 * holds the orbit and only a squadron of it saturates - it drops the
+	 * bombs, pays the fuel, takes the guns' answer and turns back at its own
+	 * abort line, GROUP_ABORT_FRACTION of what went in ({@link #razePlan} on
+	 * the squadron). A small squadron wears a hive nearly as deep as the
+	 * whole flotilla for a fraction of the fuel - the fortifications it wears
+	 * stop answering, so the defence it meets falls as it goes (h47a, a
+	 * size-7 hive: 434 FP took 111 days, 119k fuel, 264 days down; 12,600 FP
+	 * 36 days, 1.3M fuel, 289 down) - but it takes longer, and the flotilla's
+	 * supplies run all the while. The commander sends the squadron that buys
+	 * a day of disruption cheapest: the fuel it pours and the flotilla's
+	 * supplies for the stay (ThreatReach.tripSupplies), at base prices, over
+	 * the days the hive is then down for - among the rungs of the ladder
+	 * ({@link #squadronLadder}) the flotilla holds that reach the stop on the
+	 * fuel aboard and leave the flotilla above {@code floorFP}. Short of the
+	 * fuel for any, the least squadron pours what there is; a flotilla too
+	 * light for the least flies it whole, as razePlan says. A world with a bar
+	 * (ThreatRazing.razes) is razed by the whole flotilla: the bar fixes the
+	 * fuel, and more fleet points pour it sooner.
+	 *
+	 * <p>Returns razePlan's figures for the flotilla - {days, fuel spent,
+	 * flotilla fleet points left, 1 when finished, days down} - then the
+	 * squadron's fleet points.
+	 */
+	public static float[] squadronPlan(MarketAPI market, float fp, float fuel, float floorFP, String factionId) {
+		float flotilla = Math.max(0f, fp);
+		if (market == null || flotilla <= 0f || ThreatRazing.razes(market)) {
+			return withSquadron(razePlan(market, flotilla, fuel, floorFP), flotilla);
+		}
+		List<float[]> ladder = squadronLadder(market, flotilla);
+		float fuelPrice = IncursionManager.basePrice(Commodities.FUEL);
+		float suppliesPrice = IncursionManager.basePrice(Commodities.SUPPLIES);
+		float[] best = null;
+		float[] least = null;
+		float bestCost = Float.MAX_VALUE;
+		for (float[] rung : ladder) {
+			if (rung[0] > flotilla + 0.5f) break;
+			if (rung[4] < 1f) continue;
+			if (least == null) least = rung;
+			if (rung[2] > fuel + 0.5f || flotilla - (rung[0] - rung[3]) < floorFP) continue;
+			float cost = (rung[2] * fuelPrice
+					+ ThreatReach.tripSupplies(factionId, flotilla, rung[1]) * suppliesPrice)
+					/ Math.max(1f, rung[5]);
+			if (cost < bestCost) {
+				bestCost = cost;
+				best = rung;
+			}
+		}
+		if (best != null) {
+			float squadron = Math.min(flotilla, best[0]);
+			return new float[] { best[1], best[2], flotilla - (squadron - best[3]), 1f, best[5], squadron };
+		}
+		if (least == null) return withSquadron(razePlan(market, flotilla, fuel, floorFP), flotilla);
+		float squadron = Math.min(flotilla, least[0]);
+		float[] plan = razePlan(market, squadron, fuel,
+				Math.max(squadron * GROUP_ABORT_FRACTION, floorFP - (flotilla - squadron)));
+		return new float[] { plan[0], plan[1], flotilla - (squadron - plan[2]), plan[3], plan[4], squadron };
+	}
+
+	private static float[] withSquadron(float[] plan, float squadron) {
+		return new float[] { plan[0], plan[1], plan[2], plan[3], plan[4], squadron };
+	}
+
+	/** Hive market id -> its squadron ladder for the clock instant in squadronStamp; not saved. */
+	private static final Map<String, List<float[]>> SQUADRON_LADDERS = new LinkedHashMap<String, List<float[]>>();
+	private static long squadronStamp = Long.MIN_VALUE;
+
+	/**
+	 * The squadrons a commander weighs over this hive ({@link #squadronPlan}):
+	 * the least that reaches the stop ({@link #leastSquadron}), then SQUADRON_STEP
+	 * times the rung below, climbed until one is past {@code upTo}. A rung is
+	 * {squadron FP, days, fuel, squadron FP left, 1 when finished, days down}:
+	 * razePlan on the squadron with the fuel its stay burns. Empty when no
+	 * squadron reaches the stop. Memoised per clock instant, so a sizing's
+	 * search climbs it once.
+	 */
+	private static List<float[]> squadronLadder(MarketAPI market, float upTo) {
+		long now = Global.getSector().getClock().getTimestamp();
+		if (now != squadronStamp) {
+			SQUADRON_LADDERS.clear();
+			squadronStamp = now;
+		}
+		List<float[]> ladder = SQUADRON_LADDERS.get(market.getId());
+		if (ladder == null) {
+			ladder = new ArrayList<float[]>();
+			SQUADRON_LADDERS.put(market.getId(), ladder);
+			float least = leastSquadron(market);
+			if (least > 0f) ladder.add(squadronRung(market, least));
+		}
+		// the guard only stops a runaway climb: 64 rungs is 10^11 times the least
+		for (int i = 0; !ladder.isEmpty() && i < 64; i++) {
+			float top = ladder.get(ladder.size() - 1)[0];
+			if (top >= upTo) break;
+			ladder.add(squadronRung(market, top * SQUADRON_STEP));
+		}
+		return ladder;
+	}
+
+	private static float[] squadronRung(MarketAPI market, float fp) {
+		float[] plan = razePlan(market, fp, Float.MAX_VALUE);
+		return new float[] { fp, plan[0], plan[1], plan[2], plan[3], plan[4] };
+	}
+
+	/**
+	 * The fewest fleet points that saturate this hive to the commander's stop
+	 * on their own (razePlan: above their abort line, within siegeOrbitDays):
+	 * lighter, a day wears less than a day and it stops before it starts, or
+	 * the guns sink it first. Bisected from a squadron as heavy as the
+	 * defence, doubled until one gets there; 0 when none does.
+	 */
+	private static float leastSquadron(MarketAPI market) {
+		float hi = Math.max(1f, MarketCMD.getDefenderStr(market, true)
+				/ Math.max(0.01f, ThreatIncConfig.siegeFPWeight()));
+		float lo = 0f;
+		boolean reaches = reachesStop(market, hi);
+		for (int i = 0; !reaches && i < 24; i++) {
+			lo = hi;
+			hi *= 2f;
+			reaches = reachesStop(market, hi);
+		}
+		if (!reaches) return 0f;
+		for (int i = 0; i < 40 && hi - lo > Math.max(1f, hi * 0.01f); i++) {
+			float mid = (lo + hi) / 2f;
+			if (reachesStop(market, mid)) {
+				hi = mid;
+			} else {
+				lo = mid;
+			}
+		}
+		return hi;
+	}
+
+	private static boolean reachesStop(MarketAPI market, float fp) {
+		return razePlan(market, fp, Float.MAX_VALUE)[3] >= 1f;
+	}
+
 	/**
 	 * Whether saturation by fp has done what it usefully can over a hive (no
 	 * bar, ThreatRazing.razes): a day would add less than the day of repair

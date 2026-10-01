@@ -149,6 +149,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected boolean paysOrdnance = false;
 	/** Worlds this expedition razes from orbit instead of landing on (IncursionManager.razeWorlds). */
 	protected java.util.Set<String> razeIds = new java.util.LinkedHashSet<String>();
+	/** Hive id -> the bombing squadron saturating it ({@link #squadron}): {fleet points sent in, fleet points left}. Null in a save from before squadrons. */
+	protected java.util.Map<String, float[]> squadrons;
 
 	public void setOrdnance(float tactical, float razing) {
 		ordnance = Math.max(0f, tactical);
@@ -1726,8 +1728,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * fleets fight for it first. True once the world is done with - razed,
 	 * razed as far as saturation goes, or the razing fuel spent - and then the
 	 * stage moves on; a world razed is gone, and nothing more touches it. A
-	 * hive has no bar (ThreatRazing.razes): it is done with at the commander's
-	 * stop (ThreatGroundFronts.saturationSpent), and it stands.
+	 * hive has no bar (ThreatRazing.razes): only its bombing squadron
+	 * ({@link #squadron}) saturates it, each fleet over it sending its share,
+	 * and it is done with at the commander's stop
+	 * (ThreatGroundFronts.saturationSpent) or once the guns turn the squadron
+	 * back, and it stands.
 	 */
 	protected boolean razePass(CampaignFleetAPI fleet, MarketAPI market) {
 		String ourId = ourFactionId();
@@ -1737,12 +1742,19 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			ThreatIncConfig.log("Razing of " + market.getName() + ": the orbit is contested");
 			return false;
 		}
-		if (ThreatRazing.razes(market) && ThreatRazing.razeable(market) <= 0) {
+		boolean bar = ThreatRazing.razes(market);
+		if (bar && ThreatRazing.razeable(market) <= 0) {
 			ThreatIncConfig.log("Razing of " + market.getName() + ": razed as far as saturation goes");
 			return true;
 		}
-		if (!ThreatRazing.razes(market) && ThreatGroundFronts.saturationSpent(market,
-				ThreatGroundFronts.orbitPoints(ourId, market, fleet.getFleetPoints()))) {
+		float fp = fleet.getFleetPoints();
+		float orbit = ThreatGroundFronts.orbitPoints(ourId, market, fp);
+		float[] squad = bar ? null : squadron(market, ourId, orbit);
+		if (squad != null && squad[1] < squad[0] * ThreatGroundFronts.GROUP_ABORT_FRACTION) {
+			ThreatIncConfig.log("Saturation of " + market.getName() + ": the guns turned its squadron back");
+			return true;
+		}
+		if (squad != null && ThreatGroundFronts.saturationSpent(market, squad[1])) {
 			ThreatIncConfig.log("Saturation of " + market.getName() + ": a day adds less than a day anywhere");
 			return true;
 		}
@@ -1754,21 +1766,46 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		String id = market.getId();
 		String name = market.getName();
 		int size = market.getSize();
-		float fp = fleet.getFleetPoints();
 		float days = ThreatGroundFronts.siegeSliceDays(fleet);
 		recordRazing(id, name, size, false);
-		float[] out = ThreatGroundFronts.saturationSlice(fp, ThreatGroundFronts.orbitPoints(ourId, market, fp),
-				market, days, razeFuelLeft(), true, true, -1f, ourId, razeReason());
+		// the fleets over the world bomb as one; over a hive that is the
+		// squadron, this fleet sending its share of it
+		float bombs = squad != null ? Math.min(orbit, squad[1]) : orbit;
+		float pours = fp * bombs / Math.max(1f, orbit);
+		float[] out = ThreatGroundFronts.saturationSlice(pours, bombs, market, days, razeFuelLeft(), true, true, -1f,
+				ourId, razeReason());
 		if (paysOrdnance) razeFuel = Math.max(0f, razeFuel - out[1]);
+		if (squad != null) squad[1] = Math.max(0f, squad[1] - out[0]);
 		float removed = ThreatGroundFronts.applyFleetLosses(fleet, out[0]);
 		boolean destroyed = out[3] > 0f;
 		if (destroyed) recordRazing(id, name, size, true);
-		ThreatIncConfig.log("Razing slice vs " + name + ": " + (int) fp + " FP for "
+		ThreatIncConfig.log("Razing slice vs " + name + ": " + (int) pours + " of " + (int) fp + " FP for "
 				+ String.format("%.1f", days) + " d poured " + (int) out[1] + " fuel, " + (int) out[2]
 				+ " levels razed" + (destroyed ? ", destroyed" : "") + "; batteries cost "
 				+ String.format("%.1f", out[0]) + " FP (" + (int) removed + " removed)"
 				+ (paysOrdnance ? "; " + (int) razeFuel + " razing fuel left" : ""));
 		return destroyed;
+	}
+
+	/**
+	 * The bombing squadron over this hive, {fleet points sent in, fleet points
+	 * left}: chosen when its saturation begins (ThreatGroundFronts.squadronPlan),
+	 * from the expedition's fleets and the razing fuel aboard, and kept until
+	 * the hive is done with. The guns' answer comes off it, and it turns back
+	 * at its own abort line; the rest of the flotilla holds the orbit.
+	 */
+	protected float[] squadron(MarketAPI market, String ourId, float orbit) {
+		if (squadrons == null) squadrons = new java.util.HashMap<String, float[]>();
+		float[] squad = squadrons.get(market.getId());
+		if (squad != null) return squad;
+		float flotilla = Math.max(orbit, liveFP());
+		float fp = ThreatGroundFronts.squadronPlan(market, flotilla, razeFuelLeft(),
+				flotilla * ThreatGroundFronts.GROUP_ABORT_FRACTION, ourId)[5];
+		squad = new float[] { fp, fp };
+		squadrons.put(market.getId(), squad);
+		ThreatIncConfig.log("Saturation of " + market.getName() + ": a squadron of " + (int) fp + " of "
+				+ (int) flotilla + " FP bombs, the rest hold the orbit");
+		return squad;
 	}
 
 	/**
@@ -1825,9 +1862,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * poured (Float.MAX_VALUE: the swarm's, without limit), the group's abort
 	 * fraction or siegeOrbitDays. What it razes is real. Shared with the
 	 * swarm's saturation doctrine (ThreatStrikeFGI). A hive has no bar
-	 * (ThreatRazing.razes): it is saturated to the commander's stop
-	 * (ThreatGroundFronts.saturationSpent) and stands. Returns {fleet points
-	 * left, fuel left, 1 when the world is gone}.
+	 * (ThreatRazing.razes): its bombing squadron (ThreatGroundFronts.squadronPlan)
+	 * saturates it to the commander's stop (ThreatGroundFronts.saturationSpent)
+	 * or its own abort line, and it stands. Returns {fleet points left, fuel
+	 * left, 1 when the world is gone}.
 	 */
 	public static float[] razeAbstract(MarketAPI market, float start, float abortFraction, float fuel,
 			String razerFactionId, String reason) {
@@ -1835,11 +1873,14 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (market == null || start <= 0f) return result;
 		String name = market.getName();
 		boolean bar = ThreatRazing.razes(market);
-		float fp = start;
+		// over a hive only the squadron bombs; the rest holds the orbit
+		float squad = bar ? start
+				: ThreatGroundFronts.squadronPlan(market, start, fuel, start * abortFraction, razerFactionId)[5];
+		float fp = squad;
 		float elapsed = 0f;
 		float budget = ThreatIncConfig.siegeOrbitDays();
 		float perFP = Math.max(0f, ThreatIncConfig.satFuelPerFPDay());
-		while (fp > 0f && elapsed < budget && fp > start * abortFraction) {
+		while (fp > 0f && elapsed < budget && fp > squad * abortFraction) {
 			if (fuel < 1f) break;
 			if (bar ? ThreatRazing.razeable(market) <= 0 : ThreatGroundFronts.saturationSpent(market, fp)) break;
 			float days = ThreatGroundFronts.SIEGE_FIRST_SLICE_DAYS;
@@ -1865,10 +1906,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			ThreatGroundFronts.syncSiegeState(market);
 			market.reapplyIndustries();
 		}
-		result[0] = fp;
+		result[0] = Math.max(0f, start - (squad - fp));
 		result[1] = fuel;
 		ThreatIncConfig.log("Abstract razing of " + name + " by " + razerFactionId + ": " + (int) elapsed
-				+ " d, " + (int) start + " -> " + (int) fp + " FP"
+				+ " d, " + (int) start + " -> " + (int) result[0] + " FP"
+				+ (bar ? "" : ", a squadron of " + (int) squad + " bombing")
 				+ (fuel < Float.MAX_VALUE ? ", " + (int) fuel + " fuel left" : "")
 				+ (result[2] > 0f ? ", destroyed" : ""));
 		return result;

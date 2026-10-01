@@ -339,7 +339,8 @@ cut by the share it absorbs. Raids and fronts ignore it, as today.
   instead of a siege (`ThreatPurgeFGI`; `strikeSaturationEnabled` for the swarm's side, default
   false today). A colony is razed where that is cheaper than a siege; a hive, since 2026-10-01,
   is only saturated to the commander's stop, where its landing is beyond the marines held and it
-  still produces (docs/ground-war.md "Saturation presses a hive").
+  still produces - by a bombing squadron while the flotilla holds the orbit (docs/ground-war.md
+  "Saturation presses a hive").
 - `IncursionManager.siegeRaidStrNeeded` sizes landings against defences worn by the new rules.
 
 ### 9. The player's Bombard order (added 2026-09-28, the user's decision)

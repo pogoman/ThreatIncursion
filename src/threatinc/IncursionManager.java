@@ -2015,7 +2015,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float fuelPerPoint = points > 0 ? (fuel[0] + fuel[1]) / points : 0f;
 		float suppliesPerPoint = siegeSuppliesPerPoint(base, faction, system,
 				siegeStayDays(landTargets(targets, raze), razeTargets(targets, raze),
-						ThreatAidCapacity.expeditionPoints(sizes)));
+						ThreatAidCapacity.expeditionPoints(sizes), faction.getId()));
 		float payable = Float.MAX_VALUE;
 		if (fuelPerPoint > 0f) {
 			payable = Math.min(payable, haveFuel / fuelPerPoint);
@@ -2053,13 +2053,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * Days a siege's flotilla of {@code fp} stays at its worlds: as long as its
 	 * commander would bombard the slowest of those it lands on
 	 * (ThreatGroundFronts.bombardPlan), and a day to land, or saturate those in
-	 * {@code razed} in turn (razeRun) - a hive's saturation runs to the
-	 * commander's stop, weeks, not the days a razing's bar took; at least a
-	 * slice's days. Billed at siegeOrbitDays, the most it may
+	 * {@code razed} in turn (razeRun, by {@code factionId}'s squadrons) - a
+	 * hive's saturation runs to the commander's stop, weeks, not the days a
+	 * razing's bar took; at least a slice's days. Billed at siegeOrbitDays, the most it may
 	 * stay, the gate asked ~299 supplies a point in h40a (review, 2026-10-01),
 	 * where the hive bills its strikes no stay at all (ThreatReach.strikeDays).
 	 */
-	public static float siegeStayDays(java.util.List<MarketAPI> land, java.util.List<MarketAPI> razed, float fp) {
+	public static float siegeStayDays(java.util.List<MarketAPI> land, java.util.List<MarketAPI> razed, float fp,
+			String factionId) {
 		float stay = ThreatGroundFronts.SIEGE_MAX_SLICE_DAYS;
 		if (fp <= 0f) return stay;
 		if (land != null) {
@@ -2069,7 +2070,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		if (razed != null && !razed.isEmpty()) {
 			float orbit = 0f;
-			for (float[] world : razeRun(razed, fp, -1f)) orbit += world[0];
+			for (float[] world : razeRun(razed, fp, -1f, factionId)) orbit += world[0];
 			stay = Math.max(stay, orbit);
 		}
 		return stay;
@@ -2781,7 +2782,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// hives grew a size before the bombs fell (Qaras, 2026-09-28)
 			float days = 0f;
 			for (float[] world : razeRun(razeTargets(targets, raze),
-					ThreatAidCapacity.expeditionPoints(fleetSizes), -1f)) {
+					ThreatAidCapacity.expeditionPoints(fleetSizes), -1f, faction.getId())) {
 				days += Math.max(1f, world[0]);
 			}
 			params.payloadDays = Math.max(2f, Math.min(params.payloadDays, (float) Math.ceil(days) + 1f));
@@ -2898,7 +2899,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				float fuelPerPoint = points > 0 ? (fuel[0] + fuel[1]) / points : 0f;
 				float suppliesPerPoint = siegeSuppliesPerPoint(base, faction, system,
 						siegeStayDays(land, razeTargets(targets, raze),
-								ThreatAidCapacity.expeditionPoints(params.fleetSizes)));
+								ThreatAidCapacity.expeditionPoints(params.fleetSizes), faction.getId()));
 				float haveFuel = Math.max(0f, siegePooled(base, provisionPool,
 						com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL) - fuel[2]);
 				float haveSupplies = siegePooled(base, provisionPool,
@@ -3134,7 +3135,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		for (MarketAPI target : targets) {
 			if (target == null) continue;
 			if (raze != null && raze.contains(target.getId())) {
-				razing += razingFuel(target, fp, arrival);
+				razing += razingFuel(target, fp, arrival, base != null ? base.getFactionId() : null);
 			} else if (!ThreatGroundFronts.hasFront(target)) {
 				ordnance = Math.max(ordnance, siegeOrdnance(target, fp, shortLanding));
 			}
@@ -3313,11 +3314,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				} else {
 					java.util.Set<String> with = new java.util.LinkedHashSet<String>(raze);
 					with.add(target.getId());
-					float survives = razeFleetPoints(razeTargets(targets, with));
+					float survives = razeFleetPoints(razeTargets(targets, with), faction.getId());
 					java.util.List<Integer> sizes = siegeFleetSizes(difficulty, anyGarrisoned, heavyAssault, targets,
 							new ArrayList<MarketAPI>(), 0f, siegeFleetGoal(faction, targets, with));
 					float fp = ThreatAidCapacity.expeditionPoints(sizes);
-					float[] plan = ThreatGroundFronts.razePlan(target, fp, Float.MAX_VALUE);
+					// the flotilla holds the orbit; its bombing squadron saturates
+					float[] plan = ThreatGroundFronts.squadronPlan(target, fp, Float.MAX_VALUE,
+							fp * ThreatGroundFronts.GROUP_ABORT_FRACTION, faction.getId());
 					fuel = plan[1];
 					float spare = pooled - expeditionPassage(base, system, sizes) - setAside;
 					if (fp < survives) {
@@ -3327,10 +3330,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					} else {
 						verdict = "saturates - the landing is beyond its marines";
 					}
-					flotilla = " for " + (int) plan[0] + " d at " + (int) fp + " FP ("
+					flotilla = " for " + (int) plan[0] + " d, " + (int) plan[5] + " of " + (int) fp
+							+ " FP bombing, down " + (int) plan[4] + " d ("
 							+ (survives < Float.MAX_VALUE ? "outlasts the guns from " + (int) Math.ceil(survives) + " FP"
 									: "no flotilla outlasts the guns")
-							+ ", " + Misc.getWithDGS(Math.round(Math.max(0f, spare))) + " fuel to spare)";
+							+ ", " + (spare >= 0f ? Misc.getWithDGS(Math.round(spare)) + " fuel to spare"
+									: Misc.getWithDGS(Math.round(-spare)) + " fuel short of the passage") + ")";
 				}
 				if (verdict.startsWith("saturates")) {
 					raze.add(target.getId());
@@ -3356,7 +3361,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// outlast the guns of every world it razes in turn (siegeFleetGoal)
 			java.util.Set<String> with = new java.util.LinkedHashSet<String>(raze);
 			with.add(target.getId());
-			float survives = razeFleetPoints(razeTargets(targets, with));
+			float survives = razeFleetPoints(razeTargets(targets, with), faction.getId());
 			java.util.List<Integer> sizes = siegeFleetSizes(difficulty, anyGarrisoned, heavyAssault, targets,
 					new ArrayList<MarketAPI>(), 0f, siegeFleetGoal(faction, targets, with));
 			float fp = ThreatAidCapacity.expeditionPoints(sizes);
@@ -3472,7 +3477,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		java.util.Set<String> razed = raze != null ? new java.util.HashSet<String>(raze) : null;
 		float goal = Math.max(siegeOrbitNeeded(faction, targets), siegeWearFP(landTargets(targets, razed)));
 		if (raze == null || raze.isEmpty()) return goal;
-		return Math.max(goal, razeFleetPoints(razeTargets(targets, raze)));
+		return Math.max(goal, razeFleetPoints(razeTargets(targets, raze), faction != null ? faction.getId() : null));
 	}
 
 	/** World ids in razing order -> {@link #razeFleetPoints}, for the clock instant in razeFPMemoStamp; not saved. */
@@ -3496,14 +3501,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * all. Float.MAX_VALUE when not even more than anyone could pay for does
 	 * (sectorPayableFP); 0 with nothing to raze. Memoised per clock instant.
 	 */
-	public static float razeFleetPoints(java.util.List<MarketAPI> worlds) {
+	public static float razeFleetPoints(java.util.List<MarketAPI> worlds, String factionId) {
 		if (worlds == null || worlds.isEmpty()) return 0f;
 		long now = Global.getSector().getClock().getTimestamp();
 		if (now != razeFPMemoStamp) {
 			RAZE_FP_MEMO.clear();
 			razeFPMemoStamp = now;
 		}
-		StringBuilder key = new StringBuilder();
+		StringBuilder key = new StringBuilder(factionId != null ? factionId : "-").append(':');
 		for (MarketAPI world : worlds) key.append(world != null ? world.getId() : "-").append('|');
 		Float memo = RAZE_FP_MEMO.get(key.toString());
 		if (memo != null) return memo;
@@ -3515,12 +3520,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float payable = Math.min(sectorPayableFP(),
 				(float) SIEGE_FLEETS_SANITY * 6 * FP_PER_RESPONSE_DIFFICULTY);
 		float hi = VANILLA_MAX_DIFFICULTY * FP_PER_RESPONSE_DIFFICULTY;
-		boolean razes = razesAll(worlds, hi);
+		boolean razes = razesAll(worlds, hi, factionId);
 		// the guard only stops a runaway search (2^64 top fleets); the payable
 		// ceiling is what ends it (under 17 doublings)
 		for (int i = 0; !razes && hi < payable && i < 64; i++) {
 			hi *= 2f;
-			razes = razesAll(worlds, hi);
+			razes = razesAll(worlds, hi, factionId);
 			if (i == 63 && !razes) {
 				ThreatIncConfig.log("Raze sizing hit the search guard at " + (long) hi + " FP");
 			}
@@ -3532,7 +3537,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			float lo = hi > VANILLA_MAX_DIFFICULTY * FP_PER_RESPONSE_DIFFICULTY ? hi / 2f : 0f;
 			for (int i = 0; i < 64 && hi - lo > 1f; i++) {
 				float mid = (lo + hi) / 2f;
-				if (razesAll(worlds, mid)) {
+				if (razesAll(worlds, mid, factionId)) {
 					hi = mid;
 				} else {
 					lo = mid;
@@ -3546,8 +3551,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/** Whether a flotilla of fp razes every one of these worlds in turn, each with its own razing fuel aboard, above the abort line throughout (razeRun). */
-	protected static boolean razesAll(java.util.List<MarketAPI> worlds, float fp) {
-		for (float[] world : razeRun(worlds, fp, -1f)) {
+	protected static boolean razesAll(java.util.List<MarketAPI> worlds, float fp, String factionId) {
+		for (float[] world : razeRun(worlds, fp, -1f, factionId)) {
 			if (world[3] < 1f) return false;
 		}
 		return true;
@@ -3555,10 +3560,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	/**
 	 * The razing of these worlds in turn by one flotilla of fp fleet points, as
-	 * its expedition flies it: ThreatGroundFronts.razePlan a world at a time,
-	 * each on the fleet points and the fuel the last one left. Per world {days,
-	 * fuel spent, fleet points lost, 1 when razed, 1 when reached, fuel aboard
-	 * on arrival, the days its least-worn structure is then down for}.
+	 * its expedition flies it: ThreatGroundFronts.squadronPlan a world at a
+	 * time, each on the fleet points and the fuel the last one left, a hive
+	 * saturated by the squadron {@code factionId}'s commander sends in. Per
+	 * world {days, fuel spent, fleet points lost, 1 when razed, 1 when reached,
+	 * fuel aboard on arrival, the days its least-worn structure is then down
+	 * for, the fleet points that bombed it}.
 	 * {@code fuel} is what it carries for all of them; negative,
 	 * each world has its own razing fuel aboard - the sizing's case. The losses
 	 * run against one abort line, GROUP_ABORT_FRACTION of what set out: a world
@@ -3569,8 +3576,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * to the commander's stop, and in the sizing's case it has the fuel that
 	 * stay burns aboard.
 	 */
-	public static float[][] razeRun(java.util.List<MarketAPI> worlds, float fp, float fuel) {
-		float[][] out = new float[worlds.size()][7];
+	public static float[][] razeRun(java.util.List<MarketAPI> worlds, float fp, float fuel, String factionId) {
+		float[][] out = new float[worlds.size()][8];
 		float start = Math.max(0f, fp);
 		float floor = start * ThreatGroundFronts.GROUP_ABORT_FRACTION;
 		float budget = ThreatIncConfig.siegeOrbitDays();
@@ -3582,7 +3589,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (world == null || turned || fleet <= 0f || fleet < floor) continue;
 			float aboard = fuel >= 0f ? left
 					: ThreatRazing.razes(world) ? ThreatRazing.fuelToDestroyThrough(world) : Float.MAX_VALUE;
-			float[] plan = ThreatGroundFronts.razePlan(world, fleet, aboard, floor);
+			float[] plan = ThreatGroundFronts.squadronPlan(world, fleet, aboard, floor, factionId);
 			// a hive's stay with no limit on its fuel burnt what the stay took
 			if (aboard == Float.MAX_VALUE) aboard = plan[1];
 			boolean finished = plan[3] >= 1f;
@@ -3593,6 +3600,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			out[i][4] = 1f;
 			out[i][5] = aboard;
 			out[i][6] = plan[4];
+			out[i][7] = plan[5];
 			// stopped short with days and fuel left: the guns stopped it, and
 			// the expedition turns for home
 			if (!finished && plan[0] < budget - 0.5f && aboard - plan[1] >= 1f) turned = true;
@@ -3606,13 +3614,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	/**
 	 * The fuel a razing of this world takes with fp over it: a colony's whole
 	 * bar (ThreatRazing.fuelToDestroyThrough, priced at {@code arrivalDays}),
-	 * or over a hive, which has no bar, what its saturation burns to the
-	 * commander's stop (ThreatGroundFronts.razePlan).
+	 * or over a hive, which has no bar, what the bombing squadron
+	 * {@code factionId}'s commander sends in burns to the stop
+	 * (ThreatGroundFronts.squadronPlan).
 	 */
-	public static float razingFuel(MarketAPI target, float fp, float arrivalDays) {
+	public static float razingFuel(MarketAPI target, float fp, float arrivalDays, String factionId) {
 		if (target == null) return 0f;
 		if (ThreatRazing.razes(target)) return ThreatRazing.fuelToDestroyThrough(target, arrivalDays);
-		return ThreatGroundFronts.razePlan(target, fp, Float.MAX_VALUE)[1];
+		return ThreatGroundFronts.squadronPlan(target, fp, Float.MAX_VALUE,
+				fp * ThreatGroundFronts.GROUP_ABORT_FRACTION, factionId)[1];
 	}
 
 	/** Whether a hive world still makes something saturation would stop: a forge, a fuel plant or its Fabrication Core in working order. */

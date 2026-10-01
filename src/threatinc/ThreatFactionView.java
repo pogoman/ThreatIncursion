@@ -1844,7 +1844,7 @@ public class ThreatFactionView {
 				Misc.getWithDGS(Math.round(fuel[3])), Misc.getWithDGS(Math.round(fuel[4])));
 		prompt.addPara("Draws %s fuel of the %s in its reserve.", 3f, h,
 				Misc.getWithDGS(Math.round(fuel[5])), Misc.getWithDGS(Math.round(fuel[6])));
-		float[][] run = IncursionManager.razeRun(targets, points, fuel[3]);
+		float[][] run = IncursionManager.razeRun(targets, points, fuel[3], faction.getId());
 		for (int i = 0; i < targets.size(); i++) {
 			String name = targets.get(i).getName();
 			float[] r = run[i];
@@ -1853,8 +1853,8 @@ public class ThreatFactionView {
 			} else if (r[5] < 1f) {
 				prompt.addPara(name + ": no fuel left for it.", 3f);
 			} else if (!ThreatRazing.razes(targets.get(i))) {
-				prompt.addPara(name + ": %s days in orbit, about %s FP lost, down %s days.", 3f, h,
-						"" + (int) r[0], "" + Math.round(r[2]), "" + (int) r[6]);
+				prompt.addPara(name + ": %s days in orbit, %s FP bombing, about %s FP lost, down %s days.", 3f, h,
+						"" + (int) r[0], Misc.getWithDGS((int) r[7]), "" + Math.round(r[2]), "" + (int) r[6]);
 			} else {
 				boolean razed = r[3] >= 1f;
 				LabelAPI line = prompt.addPara(name + ": %s days in orbit, about %s FP lost, %s.", 3f, h,

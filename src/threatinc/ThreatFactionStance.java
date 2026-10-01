@@ -326,7 +326,8 @@ public class ThreatFactionStance {
 			java.util.Set<String> raze = IncursionManager.razeWorlds(base, faction, sys, targets);
 			List<MarketAPI> land = IncursionManager.landTargets(targets, raze);
 			float days = Math.max(1f, IncursionManager.siegeTripDays(base, sys,
-					IncursionManager.siegeStayDays(land, IncursionManager.razeTargets(targets, raze), fp)));
+					IncursionManager.siegeStayDays(land, IncursionManager.razeTargets(targets, raze), fp,
+							faction.getId())));
 			float score = value * (1f - odds) / days;
 			if (best == null || score > bestScore) {
 				bestScore = score;
