@@ -1289,15 +1289,47 @@ the end of `siegeOrbitDays` (120) or the end of its fuel. `razePlan` flies it fo
 fuel spent, fleet points left, finished, days the least-worn target is then down}. Its fuel
 spent with no limit aboard is the stay's price (`IncursionManager.razingFuel`).
 
+**The flotilla holds the orbit; a squadron bombs** (2026-10-01, user's call;
+`ThreatGroundFronts.squadronPlan`). The defence a squadron meets falls as the fortifications it
+wears stop answering, so a small one wears a hive nearly as deep as the whole flotilla for a
+fraction of the fuel, only slower. h47a, size-7 hives at D 12,600, no shield:
+
+| Bombing | Days | Fuel | Days down |
+|---|---|---|---|
+| 434 FP (the least) | 111 | 119,000 | 264 |
+| 1,400 FP | 59 | 231,000 | 284 |
+| 4,200 FP | 42 | 502,000 | 288 |
+| 12,600 FP | 36 | 1,296,000 | 289 |
+| the whole 12-20k FP flotilla | 35 | 1.25-2.04M | 290 |
+
+The commander sends the squadron that buys a day down cheapest: its fuel plus the whole
+flotilla's supplies for the stay (`ThreatReach.tripSupplies`), at base prices, over the days
+the hive is then down. The candidates climb from the least squadron that reaches the stop on its
+own (bisected) by `SQUADRON_STEP` (1.5) up to the flotilla, memoised per market per clock
+instant; each must reach the stop above its own abort line on the fuel aboard and leave the
+flotilla above its line. Short of the fuel for any, the least pours what there is; a flotilla
+lighter than the least flies it whole. The squadron takes the guns' answer and turns back at
+0.33 of itself. Every planner reads it - the verdict, `razeRun` (so `razeFleetPoints`,
+`siegeStayDays`, the launch's payload days), `razingFuel`, the Bombard prompt - and the
+expedition flies it: `ThreatPurgeFGI.squadron` picks it when the hive's saturation begins, from
+`liveFP` and the razing fuel left, and keeps it with its losses; each fleet over the hive pours
+fp x squadron / orbit (`saturationSlice(share, squadron, ...)`), and the stop is read at the
+squadron's FP. An abstract razing (`razeAbstract`) does the same with its allotment. A colony
+with a bar is razed by the whole flotilla: the bar fixes the fuel, and more FP pour it sooner.
+
 **NPCs saturate what they cannot land on** (`IncursionManager.razeWorlds`): per hive of a siege
 the expedition lands wherever the marines its reserve still holds cover the landing
 (`minMarinesFraction`); short of that it saturates a world that still produces (`producing`: a
 forge, a fuel plant or its Fabrication Core working) if its flotilla outlasts the guns
 (`razeFleetPoints`) and the reserve holds the stay's fuel. Never a hive a front stands on.
-Logged "Saturate or siege of X (size N) from B: saturating F fuel for D d at P FP (...), landing
-M marines of H held - verdict", the verdict "saturates - the landing is beyond its marines" or
+Logged "Saturate or siege of X (size N) from B: saturating F fuel for D d, S of P FP bombing,
+down N d (...), landing M marines of H held - verdict", the verdict "saturates - the landing is beyond its marines" or
 "sieges - nothing standing worth saturating" / "- the guns would break a saturating flotilla" /
-"- short of fuel to saturate it". The last test left no NPC fuel to spare, so expect it rarely.
+"- short of fuel to saturate it". h48a, with the squadron: the planned fuel fell 4-13x (median
+9x) to 50k-278k and the stay grew (median 36 -> 81 days), squadrons 3-14% of the flotilla - and
+still not one saturated: on all 368 verdicts the pool fell short of the flotilla's own passage
+before any bomb (median pool 28k; the largest faction reserve 92k). The orbit's flotilla (5-26k
+FP against the Defense Swarms) is what NPCs cannot pay to send, not the bombs.
 The player saturates by the Bombard order (docs/war-board.md) or in person.
 
 **The wreck, rejected the same day** (cd56a30; user's call 2026-10-01): a hive's bar was one
@@ -1942,7 +1974,7 @@ Spec and build notes: docs/suppression-balance.md, "Bombardment and siege redesi
     "batteries cost" figures of a day add up to one day's return fire, not three.
 16. **Bombard.** Each hive row shows Siege, Bombard and Hunt without overlapping (the Actions
     column is wider). The prompt lists the fleets, "Carries X of the Y fuel the saturation
-    takes.", the fuel drawn, and per hive "Name: N days in orbit, about F FP lost, down D days.";
+    takes.", the fuel drawn, and per hive "Name: N days in orbit, S FP bombing, about F FP lost, down D days.";
     the expedition reads "bombarding the ..." on the fleets table, saturates its hives in turn to
     the commander's stop, and Recall brings the unburned fuel home. With no fuel past the
     passage the button is greyed and says so.

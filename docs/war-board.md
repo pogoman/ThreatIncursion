@@ -235,7 +235,7 @@ commander's stop burns - from the base's own reserve, less if that is all there 
 bar (2026-10-01, docs/ground-war.md "Saturation presses a hive"): the order presses each hive and
 never ends one. The confirm: "Order a bombing expedition from B against the S?", the fleets and
 their FP, "Carries X of the Y fuel the saturation takes.", the fuel drawn of the reserve, and per
-hive "Name: N days in orbit, about F FP lost, down D days." The launch notice is "Bombing
+hive "Name: N days in orbit, S FP bombing, about F FP lost, down D days." The launch notice is "Bombing
 Expedition" ("To saturate ... from orbit"); the fleets table reads "bombarding the ...". Gated by
 `bombardBlockReason`; refused with a "Bombing Refused" notice. To fit the third button the hives
 table went from System .30 / Actions .21 to .26 / .25. The Siege prompt also quotes the fuel its
