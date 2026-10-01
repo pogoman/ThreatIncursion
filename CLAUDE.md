@@ -79,6 +79,11 @@ Keep the main context lean - this codebase is large and discovery fills the wind
   by one in the main thread.
 - The user prefers this default: delegate simple/broad stuff to subagents rather than
   loading it all into the main thread.
+- Screenshots go to subagents. Every image read stays in context until compaction, so
+  in-game test screenshots are taken and read by a subagent that returns what it saw
+  (text, figures, anything wrong) - never Read a screenshot in the main thread unless
+  the user asks to see it there. The project `.claude/settings.json` also compacts at
+  350K (`CLAUDE_CODE_AUTO_COMPACT_WINDOW`) rather than near 1M.
 - `docs/code-map.md` lists what each class in `src/threatinc/` is for. Check it first to
   locate a feature or bug. When you add a new class - or change what an existing class is
   *for* - update its one line there in the same change; editing logic inside a class needs
