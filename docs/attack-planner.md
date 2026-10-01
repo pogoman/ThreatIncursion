@@ -1,10 +1,9 @@
-# Attack planner and fog of war - DESIGN (2026-10-01, for review, NOT built)
+# Attack planner and fog of war - DESIGN (2026-10-01, decided, being built)
 
 The user's request of 2026-10-01: NPC factions plan their war from what they know at the time,
 hit in several places so that one blow is likely to land, and react when a fleet arrives
 outmatched. No cheats: nobody reads the swarm's strength remotely, the player included, and
-forward bases get radar. This doc is the design for the user to check before anything is
-built. Section 9 lists the decisions still open.
+forward bases get radar. Section 9 records the user's answers (2026-10-01).
 
 ## Why: what h48a showed
 
@@ -187,7 +186,7 @@ NPC Support home when its faction holds no front there.
 - **A raid is the larger of the two.** So 300 FP reaches fresh seeds, stripped worlds and soft
   hives (D up to about 8,700), and never a core world's orbit.
 
-**What a day on station does** (the existing slice, `ThreatGroundFronts` 2589-2611):
+**What a day on station does** (the existing `supportSlice`, on the per-day primitives `returnFirePerDay`, `bombardFuelPerDay` and `suppressionRate`):
 - **Days down bought:** 30 x F / (F + D) x condition. Condition is what is left of the guns, and
   it falls as they are worn.
 - **FP lost to the guns:** 0.0008 x D x gun share, whatever the raid's size. The gun share is 0.5
@@ -199,7 +198,7 @@ NPC Support home when its faction holds no front there.
 
 **When it leaves:**
 - at the commander's stop: a day buys less than a day down, or a third of the raid is gone
-  (`ThreatGroundFronts` 2811-2827);
+  (the stop in `ThreatGroundFronts.bombardPlan`);
 - at the first poll that finds its orbit contested;
 - when the supplies for its stay run out.
 
@@ -291,8 +290,11 @@ Line numbers are from 2026-10-01; verify them before editing.
     `SiegeRaidAction.autoresolve` (1291-1296) and `ThreatAbstractBattle`.
 - **`ThreatFleetOrders`:** a raid flag on `Order` (143-214) and a need overload on
   `dispatchOrbit` (1309).
-  - `supportLost` (273) skips raids; a raid stands down on `orbitContestedFor` instead (GF
-    1404-1412).
+  - `supportLost` in `ThreatFleetOrders.poll` (false `navyHoldsOver`, which is false wherever the
+    faction owns no front) skips raids; a raid stands down on `orbitContestedFor` instead, once
+    arrived (friendly FP is 0 before arrival, so the bare test reads contested).
+  - A raid needs its own key apart from `hasSupport`, so a front's Support and a raid do not block
+    each other. Code paths: `strategy-code-paths.md` "What a raid order needs".
   - `tickSupport` (GF 4223) bombs unchanged.
 - **`ThreatSoftening`:** `send` (662), the muster (950) and `divert` (1223) read reports.
 - **`ThreatScouts`:**
@@ -311,6 +313,11 @@ Line numbers are from 2026-10-01; verify them before editing.
   here.
 
 ## 9. Decisions for the user
+
+Answered 2026-10-01: "1 yes 2 yes 3 no 4 whatever recommended 5 yes", and 1 confirmed as "separate
+change". So: the Threat keeps its remote reads for now (fogging it is its own later change); allies
+pool reports as made and the player gets the reports of factions at Cooperative; sieges do not
+divert in v1; off-screen sieges run a day at a time, built with the planner; tests run on ng7a clones.
 
 1. **Fog the Threat too, now or later?** The swarm reads several things exactly and remotely:
    - each staging base's fuel and supplies, as siege FP against the hive it stages for, so the

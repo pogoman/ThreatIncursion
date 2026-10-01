@@ -84,8 +84,11 @@ Keep the main context lean - this codebase is large and discovery fills the wind
   edit, draft the spec, and answer what you already can.
 - **Write findings down before compaction eats them.** When an agent or a test teaches you
   something `facts.md` lacks, add the one-line answer there in the same turn; a decision the
-  user makes goes in its Decisions list (and memory) the same turn. Park a long report in a
-  scratch file. After a compaction, re-read those instead of re-spawning the research.
+  user makes goes in its Decisions list (and memory) the same turn. A code map an agent
+  returns (a call chain, hook points, a lifecycle) goes into the topic doc that owns that
+  subsystem, by symbol rather than line number, and is committed - the user's rule 2026-10-01:
+  no session remaps what an earlier one mapped. Only a run's raw output stays in a scratch
+  file. After a compaction, re-read those instead of re-spawning the research.
 - Keep topic docs under about 40 KB so an agent reads the doc rather than the source. Split a
   doc by topic when it grows past that, and update `README.md` and `facts.md` pointers.
 - Complex work - designing an intricate feature, deciding the fix, writing the code - runs
