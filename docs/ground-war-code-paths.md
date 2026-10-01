@@ -176,5 +176,114 @@ restores the run-down on each slice, so the net matches the watched path.
 
 ## 8. The daily off-screen siege
 
-Built 2026-10-01 with the attack planner (decision 4 in [attack-planner.md](attack-planner.md)
-section 9). Build notes are in that doc's build section.
+Built 2026-10-01 (the user's decisions: an off-screen siege runs a day at a time, and an
+outmatched siege goes home - it never diverts). Siege expeditions (`ThreatPurgeFGI`): an NPC's,
+and one the player commissioned or sent, which never calls off (as live, `breaksOff`). Strikes
+(`ThreatStrikeFGI`) and razing-only purges keep the one-frame path. Knob `abstractSiegeDaily` (on). Symbols are `ThreatPurgeFGI`'s unless another class is named.
+
+**Taking it.** `advanceDaily` runs first in `advanceImpl`, before `resolveOnArrival`. When the
+route's current segment is the `SiegeRaidAction`, the expedition is unspawned and not
+`razesAll()`, `takeDaily` sets `dailySiege` (set once, never cleared - the knob gates only new
+sieges), starts `abstractDays` at floor(`seg.elapsed`) so an expedition in flight from an older
+save never catches up days already past, and widens `seg.daysMax` once to `abstractDays` +
+worlds x (`siegeOrbitDays` + 10). Siege day k runs once the segment has run k whole days (the
+planned due >= 0), at most `DAILY_CATCH_UP` = 3 a frame. Nothing runs once the fleets are real.
+
+**The worlds** (`dailyWorlds`, `dailyWorld`): vanilla autoresolve's targets in its order, the
+razing worlds first as in the live stages (`SiegeRaidAction.razingFirst`). The current one is
+`abstractWorld`; the next is the first not in `siegeResolved`. A world gone from the economy, or
+no longer the Threat's, is done with without a pass ("gone", "passed over").
+
+**One day** (`dailyDay`) over world W:
+1. Nothing aboard to land (cargo, `abstractTroops` < `frontMinMarines`, no front, not razed): W
+   ends with its passes and no fight - `siegePass`'s rule; the passes stand down.
+2. Weigh: hostile = the FP of `ThreatGroundFronts.hostileFleetsNear(faction, W)` - `pointsNear`'s
+   filter, factored into `countsNear`, so the fleets weighed are the fleets struck; ours =
+   `abstractAllotment()`.
+3. Go home when hostile >= ours x `siegeBreakOffRatio`, not commissioned, no front of its own down
+   (`holdsAFront`): `callOff`, with the live break-off's notice, log and swarm bounty.
+4. Fight when hostile > 0, both strengths as the day began: `ThreatAbstractBattle.foughtDay`
+   strikes exactly those fleets for min(0.75, 0.5 x ours / hostile) (`removeShare`; station and
+   player fleets are weighed, never struck) and books `ThreatPosture.addLoss` and both stance
+   trends each day (`book`, shared with `fought`). The expedition loses min(0.75, 0.5 x hostile /
+   ours) as route damage (`addRouteLoss`: 1 - (1 - damage)(1 - share)). Under vanilla's abort
+   line: "beaten", and vanilla aborts it that frame.
+5. Contested when the struck fleets' survivors are > 0 and >= ours x `orbitContestFraction` -
+   weighed here, because `orbitHeld` counts an abstract besieger as nothing. A contested day
+   counts toward W's window and has no slice; contested past `siegeOrbitDays`, W ends "held"
+   with no pass.
+6. A razing world takes its passes now (`abstractRaze`, the one-shot `razeAbstract`); so does a
+   world with a front standing (reinforce, or a raid).
+7. Land - W's passes - when `abstractWorldDays` >= `siegeOrbitDays` ("days"), when
+   `gunsWouldBreak` against `abstractFull()` x `groupAbortsMissionFPFraction` ("guns"), or when
+   `ThreatGroundFronts.abstractSiegeStep` says READY ("ready", or "dry" when the ordnance will not
+   buy half a day), DRY or GUNS. Otherwise the step bombards one day: `siegeSlice(elapsed=true,
+   reapply=false)`, the ordnance paid, `syncSiegeState`, `reapplyIndustries`, the loss booked as
+   route damage. `abstractSiege`'s one-frame loop runs the same step.
+
+**Ending a world** (`endWorld`): W goes into `siegeResolved` BEFORE its passes, so
+`orbitDoneHere` and `waitsInOrbit` read its siege as run and `abstractSiege` adds nothing (a
+razing marks itself in `abstractRaze`, which razes only the first time); `abstractLeft` = the
+allotment; `performRaid(null, W)` x `raidsPerColony`; W into `siegeResolved` again (covers a
+razing); one summary line; the per-world fields reset. The next day takes the next world. None
+left: `dailyDone` finishes the action and cuts `seg.daysMax` to elapsed + 0.1.
+
+**No double charging.** `resolveOnArrival` returns for a `dailySiege`, and
+`SiegeRaidAction.autoresolve` hands all four entries to `dailyAutoresolve`: no
+`breaksOffAbstract`, no vanilla damage loop, no `fought`. Spawned, it does nothing (the stages
+run it out); unspawned and unfinished, "window closed" ends the action where it is - only if
+something cut the window short. `ThreatPurgeFGI.abstractSiege` returns at once in a daily siege.
+
+**Route damage is the one ledger.** The fights, the batteries and a razing's toll (`abstractRaze`
+in a daily siege) are all route damage; the cargo is never scaled by left/start. The abstract
+landing (`unloadForLanding`) lands the allotment x (1 - damage) and empties the books - the rest
+died with the hulls; left there, it would land on the next world and come home in the refund.
+Refunds, upkeep, `settleLedger` and the spawn count see the battery toll: intended, the economy is
+closed.
+
+**Spawned mid-siege.** `spawnFleets` scales the cargo by 1 - damage before loading (once: the
+hand-off from the route ledger) and `pruneToAllotment` cuts the spawned fleets to
+`abstractAllotment()` with `pruneOne`, before `settleLedger`. Vanilla's spawn mostly comes out
+under it already: `GenericRaidFGI.createFleet` sets `fleetDamageTaken`, which strips about 0.8 x
+damage of each fleet on top of the fleets skipped, so spawned FP is about (1 - 0.5d)(1 - 0.8d) of
+the full flotilla against the abstract 1 - d (this corrects trap 2 above). On the first live tick
+`SiegeRaidAction.dailyStages` (from `computeSubstages`) drops the stages of worlds in
+`siegeResolved`, puts W's stage first with `siegeOrbitDays` - `abstractWorldDays` days, and raises
+`originalDuration` to the stages' `durDays`, so vanilla's late autoresolve never fires.
+Vanilla stamps `totalFPSpawned` from those survivors, so `noteSpawnFP` divides it once by
+1 - damage (`rebaseSpawnFP`, set in `spawnFleets`): the abort line and the refund's baseline
+(`baselineFP`, `poolsHome`) stay fractions of the flotilla as it sailed. Cargo with no berth after
+the prune goes home: it already paid its share of the damage (review 2026-10-01).
+
+**ThreatStrikeFGI diverges.** The swarm's strike keeps the one-frame path: `resolveOnArrival` ->
+`AnnihilationAction.autoresolve` -> `ThreatGroundFronts.abstractSiege`, now a loop over
+`abstractSiegeStep` with the old results unchanged. A razing-only purge keeps vanilla's window.
+
+**To verify in a test** (a siege the player is far from):
+1. "Daily siege takes over" once per siege, its window worlds x 130 d.
+2. One "Daily siege of W: n d, a -> b FP, k fight days, ..." per world, the days passing over
+   months rather than in one frame; no "Abstract siege of" or "Abstract break-off at" from a purge.
+3. Swarms over W: "Off-screen fight over W (daily siege)", the swarms losing ships day by day, and
+   a reply swarm reaching W while the siege runs.
+4. Outweighed: "Daily siege of W called off: X FP against Y", then "Siege called off over W".
+5. A landing: "landed (ready|dry|days)" or "guns", then "Front deployed at W".
+6. Flying near mid-siege: "Daily siege spawn" and "Daily siege taken up by live fleets", W's stage
+   first.
+7. "Expedition return to": no marines back from a siege that landed them all.
+
+Grep: "Daily siege", "Off-screen fight over", "Siege called off over", "Front deployed at",
+"siegeSlice".
+
+**Known gaps.** `siegeSlice` still logs every call: a line per world per day. With
+`abstractDefendersFight` off the attacker pays every fight day and the defenders nothing. The
+first live slice after a spawn is 3 days. The hostile list can hold non-Threat fleets while the
+call-off notice says "Defense Swarms". The knob overrides `abstractResolveOnArrival` for purges.
+The intel's days left show the months-long window. A mixed expedition fights before its razing's
+one-shot. Cargo that does not fit spawned fleets is lost when the expedition spawns damaged at
+the start, as before; mid-siege it goes home (above).
+
+**Booking.** A world the daily siege is done with (`siegeResolved`) is free while it fights the
+rest: `ThreatPurgeFGI.takes` filters `IncursionManager.bookedWorlds`, `siegeFactionsIn`,
+`siegeTargetsOf` and `ThreatAttackPlanner.siegeLive`, so other sieges, raids and a coalition
+reply see the world being fought, not one landed weeks ago. The faction view's expedition row
+shows the FP left (`abstractNow`) beside the marines left (`getMarinesAllotted`).
