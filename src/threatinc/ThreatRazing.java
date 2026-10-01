@@ -24,6 +24,17 @@ import com.fs.starfarer.api.util.Misc;
  * layers. A razed level is a size off, which also lowers the base defence the
  * front's hold test reads. A story-critical world stops at size 3 and is
  * never destroyed, as vanilla's saturation spares it.
+ *
+ * <p>A HIVE IS WRECKED, NOT RAZED (2026-10-01, user's call; docs/ground-war.md
+ * "Saturation wrecks a hive"): razing was the answer to size-8 hive systems
+ * no landing could take, and the size cap and size upkeep answer those now.
+ * Over a hive the bar is one price - vanilla's for a saturation bombardment,
+ * the world's defender strength in fuel ({@link #wreckFuel}) - and paying it
+ * wrecks the world ({@link #wreck}): every structure
+ * saturation reaches is disrupted for the theatre's full wear days, and the
+ * bar starts again. Nothing comes off its size and it never dies of it: a
+ * hive shrinks only as its upkeep starves it (ThreatColonyUpkeep) - which a
+ * wrecked forge world's lost output drives - and dies only to troops.
  */
 public final class ThreatRazing {
 
@@ -41,6 +52,11 @@ public final class ThreatRazing {
 	public static float levelFuel(int level) {
 		if (level <= 0) return 0f;
 		return (float) (Math.max(0f, ThreatIncConfig.satFuelSize4()) * Math.pow(10, level / 2.0) / SIZE4_WEIGHT);
+	}
+
+	/** Whether saturation here wrecks rather than razes: a hive's world, which loses no size to it and never dies of it. */
+	public static boolean wrecksOnly(MarketAPI market) {
+		return market != null && ThreatGroundFronts.Theatre.of(market) == ThreatGroundFronts.HIVE;
 	}
 
 	/** The colony's levels still its owner's: its size less the layers a front holds. */
@@ -62,11 +78,32 @@ public final class ThreatRazing {
 		return market == null ? 0f : Math.max(0f, market.getMemoryWithoutUpdate().getFloat(BAR_KEY));
 	}
 
-	/** Fuel still to reach the bar before the colony is gone (a story-critical world: down to its floor). */
+	/**
+	 * Fuel that wrecks a hive ({@link #wreck}): vanilla's price for a saturation
+	 * bombardment, the world's defender strength in fuel
+	 * (MarketCMD.getBombardmentCost, bombardFuelFraction), for vanilla's effect
+	 * less the size it takes - so a siege that wore the defences down first
+	 * wrecks for less. Priced as the razing bar's whole climb (2026-10-01, first
+	 * draft) a size-8 hive asked 1,010,000 fuel against ~12,600 defence: h40a
+	 * gave 910 wreck verdicts short of fuel, and no faction wrecked anything
+	 * above size 4.
+	 */
+	public static float wreckFuel(MarketAPI market) {
+		if (market == null) return 0f;
+		float str = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.getDefenderStr(market, true);
+		return Math.max(2f, str * com.fs.starfarer.api.Global.getSettings().getFloat("bombardFuelFraction"));
+	}
+
+	/** Fuel still to reach the bar before the colony is gone (a story-critical world: down to its floor); over a hive, before it is wrecked. */
 	public static float fuelToDestroy(MarketAPI market) {
 		int layers = enemyLayers(market);
 		int levels = razeable(market);
 		if (levels <= 0) return 0f;
+		// never nothing: a bar poured past the price (the defences worn, or the
+		// hive shrunk since) is paid by the next drop, where at zero no razing
+		// poured and none wrecked - the expedition came back and sailed again
+		// for ever (review, 2026-10-01)
+		if (wrecksOnly(market)) return Math.max(1f, wreckFuel(market) - progress(market));
 		float total = 0f;
 		for (int k = layers; k > layers - levels; k--) total += levelFuel(k);
 		return Math.max(0f, total - progress(market));
@@ -86,7 +123,8 @@ public final class ThreatRazing {
 	 */
 	public static float fuelToDestroyThrough(MarketAPI market, float days) {
 		float fuel = fuelToDestroyThrough(market);
-		if (market == null || razeable(market) <= 0) return fuel;
+		// a hive's wreck is priced on its defence, not its levels
+		if (market == null || razeable(market) <= 0 || wrecksOnly(market)) return fuel;
 		if (ThreatColonyManager.daysToNextSize(market) > days) return fuel;
 		return fuel + levelFuel(enemyLayers(market) + 1) / Math.max(0.01f, ThreatShield.throughput(market));
 	}
@@ -103,9 +141,10 @@ public final class ThreatRazing {
 		return Math.max(0f, fuel) * ThreatShield.throughput(market) < fuelForTopLevel(market) - 1f;
 	}
 
-	/** Fuel still to reach the bar before the top standing level falls. */
+	/** Fuel still to reach the bar before the top standing level falls - over a hive, before it is wrecked (one price, no levels). */
 	public static float fuelForTopLevel(MarketAPI market) {
 		if (razeable(market) <= 0) return 0f;
+		if (wrecksOnly(market)) return fuelToDestroy(market);
 		return Math.max(0f, levelFuel(enemyLayers(market)) - progress(market));
 	}
 
@@ -118,14 +157,28 @@ public final class ThreatRazing {
 	/**
 	 * Pours fuel that got past the shield into the bar: each level paid for is
 	 * a size off, and the last ends the colony ({@link ThreatGroundFronts#hiveRazed},
-	 * {@link ThreatGroundFronts#colonyRazed}). Returns {levels razed, 1 when
-	 * the colony is gone}.
+	 * {@link ThreatGroundFronts#colonyRazed}). Over a hive the whole bar paid
+	 * wrecks it instead ({@link #wreck}). Returns {levels razed, 1 when the
+	 * colony is gone, 1 when it is wrecked}.
 	 */
 	public static int[] pour(MarketAPI market, float fuel, String razerFactionId) {
-		int[] out = new int[2];
+		int[] out = new int[3];
 		if (market == null || fuel <= 0f) return out;
 		MemoryAPI mem = market.getMemoryWithoutUpdate();
 		float bar = progress(market) + fuel;
+		if (wrecksOnly(market)) {
+			// one price, every level the hive still holds; the same tolerance
+			float need = fuelToDestroy(market) + progress(market);
+			if (razeable(market) > 0 && bar >= need - 0.5f) {
+				mem.unset(BAR_KEY);
+				wreck(market, razerFactionId);
+				out[2] = 1;
+			} else {
+				mem.set(BAR_KEY, bar);
+			}
+			syncCondition(market);
+			return out;
+		}
 		while (razeable(market) > 0) {
 			float need = levelFuel(enemyLayers(market));
 			// a razing priced to the fuel pours the sum of the levels, which
@@ -151,6 +204,35 @@ public final class ThreatRazing {
 		mem.set(BAR_KEY, bar);
 		syncCondition(market);
 		return out;
+	}
+
+	/**
+	 * The hive's bar paid: every structure saturation reaches is down for the
+	 * theatre's full wear days (ThreatGroundFronts.siegeWornDays) - its forges,
+	 * plants, Fabrication Core and Nexus with the rest - and the bar starts
+	 * again. No size comes off.
+	 */
+	public static void wreck(MarketAPI market, String razerFactionId) {
+		if (market == null) return;
+		float cap = ThreatGroundFronts.siegeWornDays(market);
+		int n = 0;
+		for (com.fs.starfarer.api.campaign.econ.Industry ind : ThreatGroundFronts.saturationTargets(market)) {
+			if (ThreatGroundFronts.siegeDisruptDays(ind) >= cap) continue;
+			ind.setDisrupted(cap);
+			n++;
+		}
+		market.reapplyIndustries();
+		ThreatIncConfig.log("Wrecked " + market.getName() + " (size " + market.getSize() + ") by "
+				+ razerFactionId + ": " + n + " structures down " + (int) cap + " d");
+		com.fs.starfarer.api.campaign.FactionAPI razer = razerFactionId != null
+				? com.fs.starfarer.api.Global.getSector().getFaction(razerFactionId) : null;
+		// the player's own saturation reads it in the dialog
+		if (razer != null && !razer.isPlayerFaction()) {
+			ThreatNotice.titled("Hive Wrecked").icon(razer)
+					.line("%s saturated %s", ThreatNotice.faction(razer), ThreatNotice.market(market))
+					.line("Every structure down for %s days", ThreatNotice.hl("" + (int) cap))
+					.send();
+		}
 	}
 
 	/** The colony screen shows the bar while any of it stands ({@link ThreatRazedCondition}). */

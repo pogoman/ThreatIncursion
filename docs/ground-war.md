@@ -9,10 +9,11 @@ config knob (settings.json / LunaLib).
 **The colony is the fortress; the Core is the objective.** A size-S hive is S strata
 deep with the Fabrication Core at the center. There is NO decline timer any more -
 the old health-below-threshold decline engine is removed (rejected again 2026-09-28).
-**A colony dies two ways**: a ground victory - take every stratum, destroy the Core
-(`ThreatGroundFronts.groundVictory` -> `ThreatColonyManager.eradicate`) - or saturation
-razed down to its last level (2026-09-28, `ThreatRazing`, "Bombardment v2" below).
-Starvation and tactical bombardment only ever WEAKEN it. This holds for NPCs too - purge expeditions land
+**A hive dies one way** (2026-10-01): a ground victory - take every stratum, destroy the
+Core (`ThreatGroundFronts.groundVictory` -> `ThreatColonyManager.eradicate`). Saturation
+WRECKS a hive and no longer razes it ("Saturation wrecks a hive" below); a human colony
+can still be razed down to its last level (2026-09-28, `ThreatRazing`, "Bombardment v2"
+below). Starvation shrinks a hive and tactical bombardment weakens it; neither kills. This holds for NPCs too - purge expeditions land
 their own fronts (below) - and, since 2026-09-05, **for the swarm as well**: Threat
 strikes land Threat-owned fronts on inhabited worlds and can only kill a colony by
 taking its last stratum ("Threat ground assaults" below). The rule is symmetric.
@@ -581,7 +582,8 @@ kept as history where they say otherwise.
   guns, fuel from the base's reserve.
 - **Ordnance**: Support and Defend fleets pay the day's fuel from their provisions, then their
   home base's spendable reserve (`payOrdnance`); with none they stand idle ("out of fuel to
-  bombard with"). The swarm has no fuel economy and bombards free.
+  bombard with"). The swarm pays from the hive's fuel stock at the same rates (2026-10-01,
+  `threatPaysOrdnance`; docs/hive-economy.md "Idle stock" part 4) - it bombarded free before.
 - **Fronts** wear by their advantage (`frontWearRate` above); no fallout; saturation no longer
   kills a front. A landing is an act of war: vanilla's bombardment reputation hit, never covert.
 - **Hives take unrest**: stability is pinned at 10 less `RecentUnrest` every poll
@@ -599,7 +601,7 @@ suppresses and what answers:
 
 | | Hive (`Theatre.HIVE`) | Human colony (`Theatre.COLONY`) |
 | --- | --- | --- |
-| Fortifications | Ground Defenses / Heavy Batteries, Swarm Nexus | Ground Defenses, Heavy Batteries, Patrol HQ, Military Base, High Command (`ThreatSiegeMalus.FORTIFICATION_IDS`) |
+| Fortifications | Ground Defenses / Heavy Batteries, Swarm Nexus, Swarm Bastion / Swarm Command (2026-10-01, no battery) | Ground Defenses, Heavy Batteries, Patrol HQ, Military Base, High Command (`ThreatSiegeMalus.FORTIFICATION_IDS`) |
 | Clock (condition 1 -> 0) | `defenseWearDays` (300) | `fortificationDisruptDays` (180) |
 | Condition carrier | the organs themselves (`ThreatColonyManager.disruptedDefenseResilience`, a straight line to 0 - the old `disruptedDefenseFraction` step is gone) | `ThreatSiegeMalus` |
 | Suppression a day (the run-down made up) | `hiveSiegeSuppressDaysPerDay` (30) x F / (F + D) x condition | `siegeSuppressDaysPerDay` (12) x F / (F + D) x condition |
@@ -1260,6 +1262,58 @@ deciv-to-hive conversion picks the world up later.
 A story-critical world with `destroyStoryCritical` off is never targeted; if the knob is
 turned off mid-siege the front holds one stratum short (`lastStratumProtected`), pushes
 no further, and withers on its armaments.
+
+### Saturation wrecks a hive (2026-10-01, user's call)
+
+Razing existed for size-8 hive systems no landing could take; `colonyMaxSize` and size
+upkeep answer those now, so saturation no longer takes size off a hive or ends one. Over a
+hive the bar is one price, vanilla's for a saturation bombardment: the world's defender
+strength in fuel (`ThreatRazing.wreckFuel`, `MarketCMD.getDefenderStr` x
+`bombardFuelFraction`, 1), so a siege that wore the defences first wrecks for less - about
+12,600 fuel for an intact size-8 hive. The first draft kept the razing bar's whole climb
+(1,010,000 at size 8); h40a gave 910 wreck verdicts short of fuel and no wreck above size 4.
+Paying it wrecks the world (`ThreatRazing.wreck`): every structure saturation reaches - forges, plants, the
+Fabrication Core and Nexus with the rest - disrupted for the theatre's full wear days
+(`siegeWornDays`, 300), and the bar starts again. Each saturation day still suppresses,
+raises unrest and pauses growth as before. A hive shrinks only as its upkeep starves it
+(`ThreatColonyUpkeep`), which a wrecked forge world's lost output drives, and dies only to
+troops. Human colonies are razed as before (`ThreatRazing.wrecksOnly` is the hive test).
+
+**NPCs wreck to cripple producers** (`IncursionManager.razeWorlds`, user's call): per hive
+world of a siege, the expedition LANDS wherever the marines its reserve still holds cover
+the landing the launch would commit (`minMarinesFraction`); it WRECKS a world only when
+they do not, the world still produces (`IncursionManager.producing`: a forge, a fuel plant
+or its Fabrication Core in working order) and a wrecking flotilla outlasts the guns with
+the fuel in reserve. Never over a front (`defendRazes` stops over a hive too: saturation
+cannot finish a front). Logged "Wreck or siege of X: ... - wrecks/sieges - reason". The
+player's Bombard order and in-person saturation wreck a hive the same way; the board says
+"wreck", the sitrep "Wrecked from orbit" with the disruption days, and a notice
+"Hive Wrecked" goes out for an NPC's.
+
+### Off-screen fights cost both sides (2026-10-01, user's call)
+
+Why razes were free (ng3a: 29 razes cost the attackers 34 of 72,700 FP): off-screen no
+battle is simulated. The garrison only sized the flotilla (1.5x, about 1.8x after rounding
+to whole fleets) and set the break-off. Once committed, vanilla's
+`FGRaidAction.autoresolve` charges the ATTACKER min(0.75, 0.5 x defence / strength) per
+world raided - a refund haircut on human hulls (median expedition home at 83%) that the
+"34 FP" figure never counted, since that was only the battery toll (zero under size 3) -
+and never touches the defending fleets. The swarms of a razed world even rebound to the
+next colony.
+
+Now `ThreatAbstractBattle.fought` runs after vanilla's half of every off-screen fight -
+`ThreatPurgeFGI.SiegeRaidAction.autoresolve` and `ThreatStrikeFGI.AnnihilationAction.autoresolve`,
+both strengths read before vanilla's fight: every fleet vanilla counted in the defence
+(`WarSimScript.getEnemyStrength`: each faction with a market there hostile to the
+attacker; no stations, traders or smugglers) loses min(0.75, 0.5 x attacker / defence) of
+its fleet points as ships struck (civilian hulls a quarter as likely, the last ship by
+chance so small fleets lose their share on average; an emptied fleet is destroyed), and
+unspawned routes take it as route damage. A 1.5x siege kills 75% of the garrison and
+loses a third of itself per world raided. The exchange goes into the hive's loss ledger
+(`ThreatPosture.addLoss`) and the stance's attrition trend (`ThreatStance.noteTrend`).
+The break-off before the fight stays free. Knob `abstractDefendersFight` (on). Logged
+"Off-screen fight in S (siege|strike): ...". The hive refills what it lost from its FP
+banks - their first real sink.
 
 ### Player-facing readouts
 

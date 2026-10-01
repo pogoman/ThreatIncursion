@@ -109,7 +109,9 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * the bombardment every besieger flies (docs/suppression-balance.md v2) -
 	 * a tactical slice for a frontier strike, saturation razing the world level
 	 * by level for the rest ({@link #saturationPass}) - never vanilla's instant
-	 * bombardment. The swarm has no fuel economy: it pours without limit.
+	 * bombardment. Every day of it, tactical or saturation, is paid from the
+	 * hive's fuel stock (2026-10-01, ThreatFuel.paysOrdnance; it poured
+	 * without limit).
 	 */
 	@Override
 	protected GenericPayloadAction createPayloadAction() {
@@ -192,6 +194,30 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 					? strike.saturationPass(fleet, market)
 					: strike.harassPass(fleet, market);
 			if (done) passesSpent(market);
+		}
+
+		/**
+		 * An off-screen fight costs the defenders too ({@link ThreatAbstractBattle}):
+		 * both strengths read before vanilla's half of it, which charges the
+		 * strike alone.
+		 */
+		@Override
+		public void autoresolve() {
+			ThreatStrikeFGI strike = !isActionFinished() && intel instanceof ThreatStrikeFGI && getParams() != null
+					&& getParams().where != null && ThreatAbstractBattle.enabled() ? (ThreatStrikeFGI) intel : null;
+			float str = 0f, def = 0f, before = 0f;
+			java.util.Set<String> defenders = null;
+			if (strike != null) {
+				str = ThreatAbstractBattle.attackerStrength(strike.getFaction(), getParams().where, strike.getRoute());
+				def = ThreatAbstractBattle.defenderStrength(strike.getFaction(), getParams().where);
+				defenders = ThreatAbstractBattle.defenders(strike.getFaction(), getParams().where);
+				before = strike.fightingFP();
+			}
+			super.autoresolve();
+			if (strike != null) {
+				ThreatAbstractBattle.fought(strike.getFaction(), getParams().where, str, def,
+						before - strike.fightingFP(), "strike", defenders);
+			}
 		}
 
 		/**
@@ -441,9 +467,23 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		float fp = fleet.getFleetPoints();
 		// the swarm over the world bombards as one: one ratio, one answer from the guns
 		float orbit = ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fp);
-		if (ThreatGroundFronts.readyToLand(market, troops, Factions.THREAT,
-				ThreatGroundFronts.orbitSpent(market, orbit, 0f, false, ThreatGroundFronts.swarmWorth()))) return false;
+		// its ordnance comes out of the hive's fuel stock (2026-10-01, it was
+		// free): a stock that will not buy half a day ends the siege, and the
+		// troops land on what orbit left if they can hold - an abstract siege's rule
+		boolean dry = ThreatFuel.paysOrdnance()
+				&& ThreatGroundFronts.bombardDaysFor(ThreatFuel.stock(), fp) < 0.5f;
+		if (ThreatGroundFronts.readyToLand(market, troops, Factions.THREAT, dry
+				|| ThreatGroundFronts.orbitSpent(market, orbit, 0f, false, ThreatGroundFronts.swarmWorth()))) return false;
 		float days = ThreatGroundFronts.siegeSliceDays(fleet);
+		float want = ThreatGroundFronts.bombardFuelPerDay(fp) * days;
+		float paid = ThreatGroundFronts.payOrdnance(fleet, Factions.THREAT, want);
+		// short of the day's ordnance it bombards the share it could pay
+		if (want > 0f && paid < want) days *= paid / want;
+		if (days < 0.01f) {
+			ThreatIncConfig.logQuiet("siegefuel:" + market.getId(), "Siege of " + market.getName()
+					+ ": no fuel in the hive's stock");
+			return true;
+		}
 		ThreatGroundFronts.BombardDay est = ThreatGroundFronts.bombardDay(fp, market, false);
 		float loss = ThreatGroundFronts.siegeSlice(fp, orbit, market, days, true, true, -1f, "Orbital bombardment");
 		float removed = ThreatGroundFronts.applyFleetLosses(fleet, loss);
@@ -474,9 +514,21 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		// the swarm's gate (beachheadSurvives, as a purge's): it bombards until
 		// the landing it can make outlasts the first counter-attack or orbit is
 		// done - run N1's abstract strikes landed after 0 d and 37 of 42
-		// beachheads were overrun
-		float left = ThreatGroundFronts.abstractSiege(market, start, Math.max(worldShare(), troopsAboard),
-				groupAbortsMissionFPFraction, Factions.THREAT);
+		// beachheads were overrun. Each day's ordnance comes out of the hive's
+		// fuel stock (2026-10-01, payOrdnance's rule), and the days it ran dry
+		// short of are demand the stock did not meet
+		boolean pays = ThreatFuel.paysOrdnance();
+		float fuel = pays ? ThreatFuel.stock() : Float.MAX_VALUE;
+		float[] out = ThreatGroundFronts.abstractSiege(market, start, Math.max(worldShare(), troopsAboard),
+				groupAbortsMissionFPFraction, Factions.THREAT, fuel);
+		float left = out[0];
+		if (pays) {
+			ThreatFuel.pay(Math.min(Math.max(0f, fuel - out[1]), ThreatFuel.stock()));
+			if (out[3] > 0f) {
+				ThreatFuel.unmet(ThreatGroundFronts.bombardFuelPerDay(left)
+						* Math.max(0f, ThreatIncConfig.siegeOrbitDays() - out[2]), "siege of " + market.getName());
+			}
+		}
 		abstractLeft = left;
 		// the batteries' toll comes off the troops the ships were carrying
 		if (start > 0f && left < start) troopsAboard *= Math.max(0f, left / start);
@@ -573,17 +625,38 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * a live fleet's saturation for the days since its last pass
 	 * (ThreatGroundFronts.saturationSlice: every building suppressed, the guns'
 	 * answer, what it pours taking the colony a level at a time), an unspawned
-	 * strike's whole razing in one go (ThreatPurgeFGI.razeAbstract). The swarm
-	 * has no fuel economy and pours without limit. Nothing while the orbit is
-	 * held against it: the fleets fight for it first. True once the world is
-	 * done with: razed, or razed as far as saturation goes - a story-critical
-	 * world stops short of its last level, where destroyStoryCritical deals
-	 * the killing blow the razing refuses, as it did over vanilla's bombardment.
+	 * strike's whole razing in one go (ThreatPurgeFGI.razeAbstract). It pays
+	 * what it pours from the hive's fuel stock (2026-10-01,
+	 * ThreatFuel.paysOrdnance; it poured without limit): short of a tactical
+	 * day it bombards the share it can pay, with none it stands, and what the
+	 * stock could not pay is demand it did not meet (ThreatFuel.unmet). Nothing
+	 * while the orbit is held against it: the fleets fight for it first. True
+	 * once the world is done with: razed, or razed as far as saturation goes -
+	 * a story-critical world stops short of its last level, where
+	 * destroyStoryCritical deals the killing blow the razing refuses, as it did
+	 * over vanilla's bombardment.
 	 */
 	protected boolean saturationPass(CampaignFleetAPI fleet, MarketAPI market) {
 		if (ThreatRazing.razeable(market) <= 0) return razedAsFarAsItGoes(market);
 		if (fleet != null && ThreatGroundFronts.orbitContestedFor(Factions.THREAT, market)) {
 			ThreatIncConfig.log("Razing of " + market.getName() + ": the orbit is contested");
+			return false;
+		}
+		boolean pays = ThreatFuel.paysOrdnance();
+		if (pays && ThreatFuel.stock() < 1f) {
+			// nothing to pour: no bombardment this pass. A live fleet's day of it
+			// is demand the stock did not meet (once a day); an unspawned strike
+			// keeps its one go, its whole razing held as a send is
+			if (fleet != null) {
+				float fp = fleet.getFleetPoints();
+				ThreatFuel.groundedOrdnance(fleet, Math.max(ThreatGroundFronts.bombardFuelPerDay(fp),
+						ThreatRazing.deliverable(market, fp, 1f, Float.MAX_VALUE)));
+			} else {
+				ThreatFuel.canPay(ThreatRazing.fuelToDestroyThrough(market));
+				ThreatFuel.held("a razing of " + market.getName());
+			}
+			ThreatIncConfig.logQuiet("razefuel:" + market.getId(), "Razing of " + market.getName()
+					+ ": no fuel in the hive's stock");
 			return false;
 		}
 		// an unspawned strike razes each world once, in one go
@@ -598,9 +671,20 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			String name = market.getName();
 			float fp = fleet.getFleetPoints();
 			float days = ThreatGroundFronts.siegeSliceDays(fleet);
+			float fuel = Float.MAX_VALUE;
+			if (pays) {
+				fuel = ThreatFuel.stock();
+				// the day's want: its pour, never less than the tactical day it also flies
+				float tactical = ThreatGroundFronts.bombardFuelPerDay(fp) * days;
+				float want = Math.max(ThreatRazing.deliverable(market, fp, days, Float.MAX_VALUE), tactical);
+				ThreatFuel.unmet(want - fuel, "razing of " + name);
+				// short of the tactical day it bombards the share it can pay
+				if (tactical > fuel) days *= fuel / tactical;
+			}
 			float[] out = ThreatGroundFronts.saturationSlice(fp,
-					ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fp), market, days, Float.MAX_VALUE,
+					ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fp), market, days, fuel,
 					true, true, -1f, Factions.THREAT, BOMBARD_REASON);
+			if (pays) ThreatFuel.pay(Math.min(out[1], ThreatFuel.stock()));
 			float removed = ThreatGroundFronts.applyFleetLosses(fleet, out[0]);
 			destroyed = out[3] > 0f;
 			ThreatIncConfig.log("Razing slice vs " + name + ": " + (int) fp + " FP for "
@@ -608,9 +692,17 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 					+ " levels razed" + (destroyed ? ", destroyed" : "") + "; batteries cost "
 					+ String.format("%.1f", out[0]) + " FP (" + (int) removed + " removed)");
 		} else {
+			float fuel = pays ? ThreatFuel.stock() : Float.MAX_VALUE;
 			float[] out = ThreatPurgeFGI.razeAbstract(market, abstractStrength(), groupAbortsMissionFPFraction,
-					Float.MAX_VALUE, Factions.THREAT, BOMBARD_REASON);
+					fuel, Factions.THREAT, BOMBARD_REASON);
 			destroyed = out[2] > 0f;
+			if (pays) {
+				ThreatFuel.pay(Math.min(Math.max(0f, fuel - out[1]), ThreatFuel.stock()));
+				// it ran dry before the world was done: what was left to pour went unmet
+				if (!destroyed && out[1] < 1f && ThreatRazing.razeable(market) > 0) {
+					ThreatFuel.unmet(ThreatRazing.fuelToDestroyThrough(market), "razing of " + market.getName());
+				}
+			}
 		}
 		// razed: the teardown has run (ThreatGroundFronts.colonyRazed) and
 		// nothing else on the world is touched
@@ -644,6 +736,16 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		float days = fleet != null ? ThreatGroundFronts.siegeSliceDays(fleet)
 				: ThreatGroundFronts.SIEGE_FIRST_SLICE_DAYS;
 		float orbit = fleet != null ? ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fp) : fp;
+		// its ordnance from the hive's fuel stock (payOrdnance, 2026-10-01): the
+		// share it can pay, and with the stock empty the visit is spent on nothing
+		float want = ThreatGroundFronts.bombardFuelPerDay(fp) * days;
+		float paid = ThreatGroundFronts.payOrdnance(fleet, Factions.THREAT, want);
+		if (want > 0f && paid < want) days *= paid / want;
+		if (days < 0.01f) {
+			ThreatIncConfig.logQuiet("harassfuel:" + market.getId(), "Harassment of " + market.getName()
+					+ ": no fuel in the hive's stock");
+			return true;
+		}
 		float loss = ThreatGroundFronts.siegeSlice(fp, orbit, market, days, fleet != null, true, -1f,
 				BOMBARD_REASON);
 		float removed = fleet != null ? ThreatGroundFronts.applyFleetLosses(fleet, loss) : 0f;
@@ -1267,6 +1369,25 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * one less its route damage, less the hulls broken into troops
 	 * (fabricatedFP, on the planned sizes' scale).
 	 */
+	/** What the strike fights with now: its live fleets' points, or, never spawned, its planned points less route damage. */
+	protected float fightingFP() {
+		float fp = 0f;
+		if (isSpawnedFleets()) {
+			for (CampaignFleetAPI fleet : getFleets()) {
+				if (fleet != null && fleet.isAlive()) fp += fleet.getFleetPoints();
+			}
+			return fp;
+		}
+		if (getParams() != null && getParams().fleetSizes != null) {
+			for (Integer size : getParams().fleetSizes) {
+				if (size != null) fp += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+			}
+		}
+		float damage = getRoute() != null && getRoute().getExtra() != null && getRoute().getExtra().damage != null
+				? getRoute().getExtra().damage : 0f;
+		return fp * Math.max(0f, 1f - damage);
+	}
+
 	protected float ledgerShare() {
 		float planned = 0f;
 		if (getParams() != null && getParams().fleetSizes != null) {

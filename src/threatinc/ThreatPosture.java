@@ -377,6 +377,9 @@ public class ThreatPosture {
 			LOSSES_SEEN.put(battle, seen);
 		}
 		float lost = 0f, killed = 0f;
+		// each enemy faction's losses and its weight on the field, for its own
+		// exchange (ThreatFactionStance): the swarm's losses are shared by weight
+		java.util.Map<String, float[]> byFaction = new java.util.HashMap<String, float[]>();
 		for (CampaignFleetAPI fleet : battle.getSnapshotBothSides()) {
 			if (fleet == null || fleet.getFaction() == null) continue;
 			boolean ours = Factions.THREAT.equals(fleet.getFaction().getId());
@@ -385,6 +388,15 @@ public class ThreatPosture {
 			for (FleetMemberAPI m : Misc.getSnapshotMembersLost(fleet)) {
 				if (!seen.add(m.getId())) continue;
 				fp += m.getFleetPointCost();
+			}
+			if (!ours) {
+				float[] f = byFaction.get(fleet.getFaction().getId());
+				if (f == null) {
+					f = new float[2];
+					byFaction.put(fleet.getFaction().getId(), f);
+				}
+				f[0] += fp;
+				f[1] += fleet.getFleetPoints() + fp;
 			}
 			if (fp <= 0f) continue;
 			if (!ours) {
@@ -397,6 +409,12 @@ public class ThreatPosture {
 			if (ThreatIncData.colonyMarkets().containsKey(systemId)) addLoss(systemId, fp);
 		}
 		ThreatStance.noteTrend(lost, killed);
+		float weight = 0f;
+		for (float[] f : byFaction.values()) weight += f[1];
+		for (java.util.Map.Entry<String, float[]> e : byFaction.entrySet()) {
+			float share = weight > 0f ? e.getValue()[1] / weight : 0f;
+			ThreatFactionStance.noteTrend(e.getKey(), e.getValue()[0], lost * share);
+		}
 	}
 
 	protected static boolean hasThreat(List<CampaignFleetAPI> side) {

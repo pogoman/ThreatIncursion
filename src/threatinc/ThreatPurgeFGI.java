@@ -1282,7 +1282,9 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		/**
 		 * Off-screen, the commander's break-off comes before vanilla's fight
 		 * ({@link ThreatPurgeFGI#breaksOffAbstract}): an outweighed expedition
-		 * turns home rather than take vanilla's 75% for nothing.
+		 * turns home rather than take vanilla's 75% for nothing. A fight that
+		 * goes ahead costs the defenders too ({@link ThreatAbstractBattle}):
+		 * both strengths read before vanilla's half of it.
 		 */
 		@Override
 		public void autoresolve() {
@@ -1290,7 +1292,21 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 					&& ((ThreatPurgeFGI) intel).breaksOffAbstract(getParams(), this)) {
 				return;
 			}
+			ThreatPurgeFGI purge = !isActionFinished() && intel instanceof ThreatPurgeFGI && getParams() != null
+					&& getParams().where != null && ThreatAbstractBattle.enabled() ? (ThreatPurgeFGI) intel : null;
+			float str = 0f, def = 0f, before = 0f;
+			java.util.Set<String> defenders = null;
+			if (purge != null) {
+				str = ThreatAbstractBattle.attackerStrength(purge.getFaction(), getParams().where, purge.getRoute());
+				def = ThreatAbstractBattle.defenderStrength(purge.getFaction(), getParams().where);
+				defenders = ThreatAbstractBattle.defenders(purge.getFaction(), getParams().where);
+				before = purge.fightingFP();
+			}
 			super.autoresolve();
+			if (purge != null) {
+				ThreatAbstractBattle.fought(purge.getFaction(), getParams().where, str, def,
+						before - purge.fightingFP(), "siege", defenders);
+			}
 		}
 
 		/** Every pass the world has left, spent at once: vanilla's stage takes it as done. */
@@ -1660,6 +1676,15 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				groupAbortsMissionFPFraction);
 	}
 
+	/** Its upkeep while it has no fleets to bill (ThreatUpkeep.chargeAbstract): when last charged, and what is still owed. */
+	protected long upkeepAt;
+	protected float upkeepOwed;
+
+	/** What the expedition fights with now: its live fleets' points, or, never spawned, its allotment less route damage. */
+	protected float fightingFP() {
+		return isSpawnedFleets() ? liveFP() : abstractAllotment();
+	}
+
 	/** The fleet points the expedition's live fleets hold now, wherever they are - what vanilla weighs against its abort line. */
 	protected float liveFP() {
 		float fp = 0f;
@@ -1730,13 +1755,14 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (paysOrdnance) razeFuel = Math.max(0f, razeFuel - out[1]);
 		float removed = ThreatGroundFronts.applyFleetLosses(fleet, out[0]);
 		boolean destroyed = out[3] > 0f;
-		if (destroyed) recordRazing(id, name, size, true);
+		boolean wrecked = out[4] > 0f;
+		if (destroyed || wrecked) recordRazing(id, name, size, true, wrecked);
 		ThreatIncConfig.log("Razing slice vs " + name + ": " + (int) fp + " FP for "
 				+ String.format("%.1f", days) + " d poured " + (int) out[1] + " fuel, " + (int) out[2]
-				+ " levels razed" + (destroyed ? ", destroyed" : "") + "; batteries cost "
-				+ String.format("%.1f", out[0]) + " FP (" + (int) removed + " removed)"
+				+ " levels razed" + (destroyed ? ", destroyed" : "") + (wrecked ? ", wrecked" : "")
+				+ "; batteries cost " + String.format("%.1f", out[0]) + " FP (" + (int) removed + " removed)"
 				+ (paysOrdnance ? "; " + (int) razeFuel + " razing fuel left" : ""));
-		return destroyed;
+		return destroyed || wrecked;
 	}
 
 	/**
@@ -1764,22 +1790,32 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			armamentsAllotted *= keep;
 		}
 		boolean destroyed = out[2] > 0f;
-		if (destroyed) recordRazing(id, name, size, true);
-		return destroyed;
+		boolean wrecked = out[3] > 0f;
+		if (destroyed || wrecked) recordRazing(id, name, size, true, wrecked);
+		return destroyed || wrecked;
 	}
 
 	/** The razing, for the sitrep: once when it begins, once when the world is gone. */
 	protected void recordRazing(String marketId, String marketName, int sizeBefore, boolean destroyed) {
+		recordRazing(marketId, marketName, sizeBefore, destroyed, false);
+	}
+
+	/** As above; {@code wrecked}, the end was a hive wrecked (ThreatRazing.wreck), which stands. */
+	protected void recordRazing(String marketId, String marketName, int sizeBefore, boolean done, boolean wrecked) {
 		if (siegeAnnounced == null) siegeAnnounced = new java.util.HashSet<String>();
-		if (!destroyed && !siegeAnnounced.add(marketId)) return;
+		if (!done && !siegeAnnounced.add(marketId)) return;
 		SiegeActionRecord rec = new SiegeActionRecord();
 		rec.marketId = marketId;
 		rec.marketName = marketName;
 		rec.sizeBefore = sizeBefore;
 		rec.timestamp = Global.getSector().getClock().getTimestamp();
-		rec.action = destroyed ? "Razed from orbit" : "Saturation bombardment";
+		rec.action = wrecked ? "Wrecked from orbit" : done ? "Razed from orbit" : "Saturation bombardment";
 		rec.success = true;
-		rec.destroyed = destroyed;
+		rec.destroyed = done && !wrecked;
+		if (wrecked) {
+			MarketAPI market = Global.getSector().getEconomy().getMarket(marketId);
+			if (market != null) rec.disruptDays = (int) ThreatGroundFronts.siegeWornDays(market);
+		}
 		siegeActions.add(rec);
 	}
 
@@ -1793,11 +1829,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * poured (Float.MAX_VALUE: the swarm's, without limit), the group's abort
 	 * fraction or siegeOrbitDays. What it razes is real. Shared with the
 	 * swarm's saturation doctrine (ThreatStrikeFGI). Returns {fleet points
-	 * left, fuel left, 1 when the world is gone}.
+	 * left, fuel left, 1 when the world is gone, 1 when a hive was wrecked}.
 	 */
 	public static float[] razeAbstract(MarketAPI market, float start, float abortFraction, float fuel,
 			String razerFactionId, String reason) {
-		float[] result = new float[] { start, fuel, 0f };
+		float[] result = new float[] { start, fuel, 0f, 0f };
 		if (market == null || start <= 0f) return result;
 		String name = market.getName();
 		float fp = start;
@@ -1822,6 +1858,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				result[2] = 1f;
 				break;
 			}
+			if (out[4] > 0f) {
+				result[3] = 1f;
+				break;
+			}
 			ThreatGroundFronts.syncSiegeState(market);
 			market.reapplyIndustries();
 		}
@@ -1834,7 +1874,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		ThreatIncConfig.log("Abstract razing of " + name + " by " + razerFactionId + ": " + (int) elapsed
 				+ " d, " + (int) start + " -> " + (int) fp + " FP"
 				+ (fuel < Float.MAX_VALUE ? ", " + (int) fuel + " fuel left" : "")
-				+ (result[2] > 0f ? ", destroyed" : ""));
+				+ (result[2] > 0f ? ", destroyed" : "") + (result[3] > 0f ? ", wrecked" : ""));
 		return result;
 	}
 

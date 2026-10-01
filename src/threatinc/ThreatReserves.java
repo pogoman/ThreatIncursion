@@ -1135,14 +1135,28 @@ public class ThreatReserves {
 				}
 				// an NPC faction's mobilisation builds the depot its bases need:
 				// a Waystation at every military world with a spaceport (only
-				// one vanilla market ships with one); the player builds their own
+				// one vanilla market ships with one); the player builds their own.
+				// Paid as every structure is (2026-10-01, ThreatBuildCost): its
+				// vanilla build cost from the world's war reserve and its build
+				// time - short of the supplies, it waits for them
 				if (ThreatIncConfig.mobilisationBuildsWaystation() && !market.isPlayerOwned()
 						&& IncursionManager.hasMilitary(market) && market.hasSpaceport()
 						&& !market.hasIndustry(Industries.WAYSTATION)) {
-					market.addIndustry(Industries.WAYSTATION);
-					reapply = true;
-					ThreatIncConfig.log("War footing: " + market.getName() + " (" + factionId
-							+ ") builds a Waystation - its depot for the war");
+					float cost = ThreatBuildCost.supplies(Industries.WAYSTATION);
+					if (cost <= 0f || available(market, Commodities.SUPPLIES) >= cost) {
+						if (cost > 0f) drawAbove(market, Commodities.SUPPLIES, cost);
+						market.addIndustry(Industries.WAYSTATION);
+						Industry station = market.getIndustry(Industries.WAYSTATION);
+						if (cost > 0f && station != null && ThreatBuildCost.buildDays(Industries.WAYSTATION) > 0f) {
+							station.startBuilding();
+						}
+						reapply = true;
+						ThreatIncConfig.log("War footing: " + market.getName() + " (" + factionId
+								+ ") builds a Waystation for " + (int) cost + " supplies - its depot for the war");
+					} else {
+						ThreatIncConfig.logQuiet("waystation:" + market.getId(), "War footing: " + market.getName()
+								+ " (" + factionId + ") waits on " + (int) cost + " supplies for its Waystation");
+					}
 				}
 				if (reapply) {
 					market.reapplyIndustries();

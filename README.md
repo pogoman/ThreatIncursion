@@ -28,6 +28,10 @@ it.
   nexus itself and no replacements grow at all.
 - **Hive ground defenses / heavy batteries** - run on machinery and metals,
   not marines; they keep firing at reduced effect even while disrupted.
+- **Swarm Bastion / Swarm Command** - the hive's Military Base and High
+  Command, bought with fleet points its garrison does not need: twice and
+  three times the colony's reserve of Defense Swarms kept at home, and
+  stronger ground defences.
 
 **Strikes.** Colonies launch real, interceptable expeditions at inhabited
 worlds, mustered from their own Defense Swarms (a full garrison sends what

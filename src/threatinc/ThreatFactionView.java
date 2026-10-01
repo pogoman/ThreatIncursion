@@ -791,8 +791,8 @@ public class ThreatFactionView {
 						BUTTON_BOMBARD + factionId + ":" + e.systemId);
 				bombard.getPosition().belowRight(hiveTable, -up).setXAlignOffset(right);
 				disableWith(main, bombard, bombardOk, blocked != null ? blocked : bombardWhy != null ? bombardWhy
-						: "Nothing there to raze yet.",
-						"A razing expedition sails from "
+						: "Nothing there to wreck yet.",
+						"A wrecking expedition sails from "
 						+ (siegeBase != null ? siegeBase.getName() : "the nearest base") + ".");
 				right -= SMALL_BUTTON_W + 12f + 4f;
 				ButtonAPI hunt = intel.addGenericButton(main, SMALL_BUTTON_W + 14f, "Hunt",
@@ -1189,7 +1189,7 @@ public class ThreatFactionView {
 			String kind = p.isPlayerCommissioned() ? "Commissioned" : "Expedition";
 			StarSystemAPI where = p.getParams() != null && p.getParams().raidParams != null
 					? p.getParams().raidParams.where : null;
-			String task = where != null ? (razesEvery(p) ? "razing the " : "besieging the ")
+			String task = where != null ? (razesEvery(p) ? "wrecking the " : "besieging the ")
 					+ where.getNameWithLowercaseTypeShort() : "-";
 			ThreatWarBoard.Op op = new ThreatWarBoard.Op();
 			ThreatWarBoard.statusOf(p, op, false);
@@ -1831,7 +1831,7 @@ public class ThreatFactionView {
 		float points = ThreatAidCapacity.expeditionPoints(sizes);
 		float[] fuel = IncursionManager.expeditionFuelCarried(base, system, targets, sizes,
 				IncursionManager.idsOf(targets));
-		prompt.addPara("Order a razing expedition from " + base.getName() + " against the "
+		prompt.addPara("Order a wrecking expedition from " + base.getName() + " against the "
 				+ system.getNameWithLowercaseType() + "?", 0f);
 		if (faction.isPlayerFaction() && ThreatAidCapacity.enabled()) {
 			prompt.addPara("%s fleets holding %s of its %s FP free.", 10f, h, "" + sizes.size(),
@@ -1840,7 +1840,7 @@ public class ThreatFactionView {
 		} else {
 			prompt.addPara("%s fleets, %s FP.", 10f, h, "" + sizes.size(), Misc.getWithDGS((int) points));
 		}
-		prompt.addPara("Carries %s of the %s fuel the razing takes.", 3f, h,
+		prompt.addPara("Carries %s of the %s fuel the wrecking takes.", 3f, h,
 				Misc.getWithDGS(Math.round(fuel[3])), Misc.getWithDGS(Math.round(fuel[4])));
 		prompt.addPara("Draws %s fuel of the %s in its reserve.", 3f, h,
 				Misc.getWithDGS(Math.round(fuel[5])), Misc.getWithDGS(Math.round(fuel[6])));
@@ -1855,7 +1855,7 @@ public class ThreatFactionView {
 			} else {
 				boolean razed = r[3] >= 1f;
 				LabelAPI line = prompt.addPara(name + ": %s days in orbit, about %s FP lost, %s.", 3f, h,
-						"" + (int) r[0], "" + Math.round(r[2]), razed ? "razed" : "not razed");
+						"" + (int) r[0], "" + Math.round(r[2]), razed ? "wrecked" : "not wrecked");
 				line.setHighlightColors(h, h, razed ? h : neg);
 			}
 		}
@@ -1975,15 +1975,15 @@ public class ThreatFactionView {
 				if (purge == null) why = IncursionManager.bombardBlockFacts(base, faction, system);
 			}
 			if (purge == null) {
-				ThreatNotice n = ThreatNotice.titled("Razing Refused").bad().icon(faction);
+				ThreatNotice n = ThreatNotice.titled("Wrecking Refused").bad().icon(faction);
 				if (why != null) n.lines(why);
 				else n.line("No expedition could be raised at %s", ThreatNotice.market(base));
 				n.send();
 				return null;
 			}
-			ThreatNotice.titled("Razing Expedition").icon(faction)
+			ThreatNotice.titled("Wrecking Expedition").icon(faction)
 					.line("From %s into the %s", ThreatNotice.market(base), system.getNameWithLowercaseType())
-					.line("To raze %s from orbit", IncursionManager.worldNames(targets))
+					.line("To wreck %s from orbit", IncursionManager.worldNames(targets))
 					.send();
 			return "bombard";
 		}

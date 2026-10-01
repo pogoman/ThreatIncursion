@@ -25,6 +25,9 @@ public class ThreatBuildCost {
 		if (ThreatColonyManager.THREAT_GROUND_DEFENSES.equals(industryId)) return Industries.GROUNDDEFENSES;
 		if (ThreatColonyManager.THREAT_HEAVY_BATTERIES.equals(industryId)) return Industries.HEAVYBATTERIES;
 		if (ThreatColonyManager.SWARM_NEXUS.equals(industryId)) return Industries.PATROLHQ;
+		// the military tier (2026-10-01): the Military Base and High Command it stands in for
+		if (SwarmBastion.BASTION.equals(industryId)) return Industries.MILITARYBASE;
+		if (SwarmBastion.COMMAND.equals(industryId)) return Industries.HIGHCOMMAND;
 		return industryId;
 	}
 
@@ -65,6 +68,36 @@ public class ThreatBuildCost {
 		if (!enabled() || !ThreatColonyUpkeep.enabled()) return 0f;
 		return supplies(Industries.POPULATION) + supplies(Industries.SPACEPORT)
 				+ supplies(ThreatColonyManager.FABRICATION_CORE) + supplies(ThreatColonyManager.SWARM_NEXUS);
+	}
+
+	/**
+	 * Supplies a faction's forward base pays for the structures it is founded
+	 * with (ThreatFrontlines.found) - Population, Spaceport, Waystation and its
+	 * orbital station - as the hive's Seeding Swarm pays its kit (2026-10-01,
+	 * user's call): about 4,000 at vanilla's prices, which the founding used to
+	 * hand it free on top of ThreatOutposts.npcCost. 0 while structures are free.
+	 */
+	public static float linkKit(com.fs.starfarer.api.campaign.FactionAPI faction) {
+		if (!enabled() || faction == null) return 0f;
+		return supplies(Industries.POPULATION) + supplies(Industries.SPACEPORT) + supplies(Industries.WAYSTATION)
+				+ supplies(ThreatFrontlines.orbitalStationFor(faction));
+	}
+
+	/**
+	 * Fleet points the structure costs (2026-10-01, the hive's military tier):
+	 * its vanilla build cost in supplies, at what a fleet point costs in
+	 * supplies - expeditionSuppliesPerPoint for FP_PER_RESPONSE_DIFFICULTY
+	 * fleet points, 30 for 25, 1.2 a point, what a faction's expedition draws
+	 * to field one. A Military Base's 4,500 supplies is 3,750 FP, a High
+	 * Command's 1,500 is 1,250. Read whether or not structures cost supplies;
+	 * with no supplies a point, a structure's founding price
+	 * (foundingFPPerStructure).
+	 */
+	public static float fleetPoints(String industryId) {
+		float price = Global.getSettings().getCommoditySpec(Commodities.SUPPLIES).getBasePrice();
+		float perFP = ThreatIncConfig.expeditionSuppliesPerPoint() / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+		if (price <= 0f || perFP <= 0f) return Math.max(0f, ThreatIncConfig.foundingFPPerStructure());
+		return credits(industryId) / price * Math.max(0f, ThreatIncConfig.structureSuppliesMult()) / perFP;
 	}
 
 	/** Days the structure takes to build: its spec's (0 for the hive's own, which have none). */

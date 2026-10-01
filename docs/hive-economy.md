@@ -630,7 +630,8 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
   (`canFound`), or supplies upkeep unpaid, notes the stock short for `SHORT_DAYS` (30;
   `noteShort`/`shortOf`). `planHiveEconomy` answers after the bootstrap with a fuel plant or a forge,
   one at a time: each gets `SHORT_DAYS` to show before the next (`mayAnswer`/`answered`). h29a,
-  unpaced, built 20 fuel plants in one tick and 25 forges in two months.
+  unpaced, built 20 fuel plants in one tick and 25 forges in two months. Replaced 2026-10-01 by
+  the trailing demand ("Idle stock" below): only unpaid colony sustenance still notes a shortage.
 - **Supplies upkeep (C, `threatSuppliesUpkeep`, true).** Threat fleets away from home - raiders,
   reinforcements in transit, and everything on the ledger (strikes, waves, scouts) - burn their
   hulls' vanilla supplies a month (`ThreatFrontlines.maintenancePerMonth`) from the hive stock
@@ -929,6 +930,178 @@ cost the attackers 34 of 72,700 FP) - while the swarm only ever lands fronts (pa
 it besieges, it does not annihilate), and 17 of ng3a's 20 landings on core worlds were beaten.
 Open for the user: whether abstract razes and sieges should fight the defending fleets (both
 ways), and whether the swarm should raze too.
+
+### Idle stock: retire, convert, garrison (2026-10-01, user's call; built, untested)
+
+The overnight tests ended with the hive holding 160-300k FP in its colony banks and up to 538k fuel
+(ng5a) while supplies bound every trip. Every hive stock was additive and uncapped, and the
+planner only ever added producers: any held send, any unaffordable build (Orbital Works and Heavy
+Batteries included) and any unpaid upkeep noted a 30-day shortage that the planner answered with
+a plant (the logs count 59 fuel plants built "for fuel short" and 26 as spares, none ever retired).
+The spare step added copies until every hive system had one, whatever the stock. FP buys only
+fleets, and garrisons stop at the posture want, so the banks idled. Four rules now.
+
+**1. The planner reads a trailing demand, not a held trip** (`ThreatFuel`, `noteDemand`,
+`demandPerMonth`). Per stock (fuel, supplies) it keeps two decayed sums in persistent data: the
+demand A and the days observed B, both decaying by e^(-days / T). B grows by the days elapsed
+(`ageDemand`, each poll from `accrue`), so A / B x 30 is the mean monthly flow weighted toward the
+last T days. The window opens full: at the first poll B is T and A is T of the production then
+(nothing in a new game, before the hive lands), so demand reads as production until spending says
+otherwise and no producer is built or retired on no evidence. Opened empty (the first draft), the
+first days read as a month many times over: the lt save's 160k of founding fuel in its first month
+read 717k a month and "runs dry" for three months while the stock rose. Opened at zero, a loaded
+save read every plant as surplus. T is the producer's vanilla
+build time (`buildDays`: Fuel Production and Heavy Industry, 120 days each, floored at 30).
+Demand is everything `pay` draws (passage, founding cargo, structures, fleets' supplies, colony
+upkeep), less refunds (`deposit`, as much of the bill as has not decayed since it was paid: a
+wave's cargo back weeks later took unrelated demand with it). It also counts what was asked for
+and not paid:
+- a held send's bill: the last `canPay`/`pay` that failed. It is booked once a month per send
+  (`held`, `bookHold`), as the trip it would have flown that month; a Seeding Swarm books both
+  stocks, once a month per source forge, which sails one wave at a time.
+- the price of a first chain link or a shortage's answer the stock cannot pay (`heldBuild`, once a
+  month per industry - keyed by world, 15 forge-less colonies each booked the same forge). An
+  optional build that waits books nothing and notes nothing.
+- fleets' supplies left unpaid (`paySupplies`) and colony sustenance left unpaid
+  (`ThreatColonyUpkeep.feed`).
+- the swarm's bombardment unpaid (rule 4).
+
+With S the stock, P the production a month (`perMonth`), C the output of producers under
+construction (size - 2 units each, `comingPerMonth`), D the trailing demand a month and T in
+months (4):
+- **Runs dry** (`runsDry`): S < (D - P - C) x T. The stock and production over a build time cannot
+  cover the demand over it. It is read after 30 days of watching. It is the only shortage the
+  planner answers (`mayAnswer`: a plant or a forge, one a stock a month, unchanged), except unpaid
+  colony sustenance, which still notes supplies short for 30 days (`noteShort`). A send held for a
+  bill that next month's production pays is no shortage. Counting C stops a second plant going up
+  on a shortage the first one, still building, will answer.
+- **Surplus** (`surplus`): P >= D and S >= D x T, read after T of watching. The **bigger** step adds no
+  producer of a stock in surplus.
+- **Spare** (`wantsSpare`): S + (P + C - p_max) x T < D x T, i.e. losing the hive's biggest producer
+  would run it dry. The redundancy step adds a fuel plant or a forge only then (refineries keep the
+  old rule). Never before T of watching; always with structures free or passage off (the old rule).
+- **Surplus producer** (`surplusProducer`): the stock is in surplus and P - p_i >= D, its own output
+  p_i (`outputOf`) taken off. Retiring it never opens a gap: the stock alone covers T of demand,
+  the time a replacement takes.
+- **No oscillation.** After a retirement S >= D0 x T and P' >= D0. Runs dry then needs
+  D - P' > S / T >= D0, i.e. a demand more than doubled at once. A smaller rise has to drain the
+  stock down to (D - P') x T first, and that takes at least a build time. Spare is never wanted while
+  the stock is in surplus: S >= D x T contradicts the spare rule whenever P' >= p_max.
+
+**2. Surplus fuel plants are converted** (`ThreatColonyManager.convertSurplus`, `hiveConvertSurplus`,
+on). Once a month hive-wide (`mayConvert`, the answer's pace), before the planner's sweep, one fuel
+plant that is a surplus producer is torn down and its slot built into what the hive lacks
+(`conversionFor`). In order:
+- a forge, while supplies are not in surplus and the world (size 3+) has none;
+- else a missing chain link: Mining on deposits no hive world digs, or a first refinery, or a
+  refinery bigger than the hive's largest once that no longer covers the largest metals consumer;
+- else a Swarm Bastion (rule 3).
+
+Candidates:
+- Only slot-full worlds: a world with a free slot builds there without tearing anything down.
+- Never the last plant or the hive's biggest. The biggest stays so the bigger step has nothing to
+  rebuild.
+- Never a plant carrying a relic or an AI core: vanilla would drop it.
+- Never a world under a front or saturation.
+- Ranked forge, link, Bastion; then the bigger world (a forge there makes more, a Bastion keeps
+  more); then the plant that makes least.
+
+The new structure is paid before anything comes down: its supplies at its vanilla price and build
+time, or the Bastion's fleet points. One that cannot be paid tears nothing down. The vanilla
+one-copy rule is checked (no second forge, refinery or mine). Logged `Converted Fuel Production on
+X to Y: fuel S covers M months of demand (D/mo trailing, P/mo made, p/mo from this plant); price`.
+
+Forges are never retired. They make the fabrication bank's hulls as well as supplies, and the
+invest rule builds them from idle supplies on purpose (ng1b), so a forge retired would only be
+rebuilt. A size-8 plant makes 6 units x 1,500 = 9,000 fuel a month. ng5a's 82k a month against ~30k
+spent is about five plants' surplus, one converted a month while the stock covers four months of
+demand.
+
+**3. The hive's military tier** (`SwarmBastion`, `hiveMilitaryTier`, on). These are two slot-using
+industries.csv rows on one class: the Swarm Bastion (Military Base analogue, needs the Swarm Nexus,
+`industry, unraidable, tactical_bombardment`, vanilla's military base icon) and its upgrade,
+Swarm Command (High Command analogue, grown in place by `startUpgrading`). The player can never build
+either, as with the other hive rows. Vanilla's Military Base and High Command do nothing for a hive:
+patrols it does not run, commodity demand it cannot meet.
+- **Garrison floor.** `garrisonReserve` = the base reserve (half the hull-scaled size table, at least
+  one) x (1 + tier): doubled under a Bastion, tripled under Swarm Command. The posture minimum and
+  base, the launch reserve, raiders and the board's target all read it, so the swarms it adds are
+  fabricated from the bank, stay home whatever the posture wants, and then pay the 4%/month FP
+  upkeep: the ongoing sink. Vanilla's own multiples are steeper (a Patrol HQ's 2 patrols against a
+  Military Base's 6 and a High Command's 8 at size 6); the hive's reserve doubles and triples.
+  At size 6-8 that is 2 more of the table's rows a step, about 950 FP of HIGH swarms at the
+  default costs, so roughly 38 FP a month of upkeep a step. The floor counts while the structure
+  stands: built, or a Bastion upgrading. Disruption wears its defence bonus, not its floor.
+- **Defence.** Vanilla's own figures (`MilitaryBase.DEFENSE_BONUS_MILITARY` 0.2, `_COMMAND` 0.3)
+  multiply the ground defence, worn by disruption like the Nexus's (`disruptedDefenseResilience`).
+  It is in `Theatre.HIVE`'s key structures (a holding front suppresses it) and fortifications
+  (orbit wears it; it is no battery and does not fire), and in `hiveFortificationBonus`.
+- **Price.** The vanilla structure's build cost in supplies, converted at what a fleet point costs
+  in supplies (`ThreatBuildCost.fleetPoints`: `expeditionSuppliesPerPoint` for
+  `FP_PER_RESPONSE_DIFFICULTY` points, 30 for 25, 1.2 a point - what a faction's expedition draws to
+  field one). Military Base 4,500 supplies = 3,750 FP; High Command 1,500 = 1,250 FP. It is paid
+  from the colony's bank, its system's topping it up (`poolSystemBanks`, logged as `Swarm Bastion bill
+  at ...`), over vanilla's build time of 120 days each.
+- **When** (`militaryIdle`). The colony's garrison holds its want; its income carries the upkeep of
+  that garrison plus the swarms the tier adds; and its pooled banks hold the price, those swarms
+  (`militaryExtraFP`) and that upkeep over the build time. No number of its own. At size 8, holding
+  2,000 FP, a Bastion needs about 3,750 + 956 + 118 x 4 = ~5,200 FP banked.
+- **Where.** In a slot freed by a conversion (rule 2), or in a free slot when the colony's planner
+  turn built and wants nothing, unless a stock is wanted (`ThreatFuel.wanted`) whose producer the
+  world lacks: no forge while supplies are wanted, no fuel plant while fuel is. The first draft held
+  the slot while either stock was wanted anywhere; under size upkeep supplies are short nearly
+  always, and h40a banked 98k FP with no Bastion built. Swarm Command needs no slot. `maintainMilitaryTier` runs from the monthly sweep, after the planner; one structure a
+  colony a tick still holds.
+- **Readouts.** The colony screen shows the industries.csv description, "Defense Swarms kept at
+  home: N" and vanilla's ground-defence line. The planner logs `Hive planner: Swarm Bastion at X for
+  N FP, R swarms home once it stands (F FP more)`.
+
+**4. The swarm pays its bombardment fuel** (`threatPaysOrdnance`, on, with `threatPaysPassage`).
+`ThreatGroundFronts.payOrdnance` and `ordnanceAvailable` for the Threat side read and draw the hive's
+fuel stock. That is the tactical day at `bombardFuelPerFPDay` (0.04 a FP: a 1,000 FP Defend fleet
+burns 1,200 a month), paid by the Defend and Support slices. `ThreatStrikeFGI.saturationPass` pays
+the saturation pour at `satFuelPerFPDay` (2.86 a FP a day, up to what the razing needs) - the rates
+humans pay.
+- Short of a tactical day, a live slice bombards the share it can pay.
+- With nothing in stock the swarm does not bombard. A Defend fleet reads its orbit as done
+  (`orbitDoneFor`): it fabricates troops if its front cannot hold, else it idles. A strike's
+  saturation pass holds, and an unspawned strike keeps its one go.
+- What went unpaid is unmet demand (`ThreatFuel.unmet`, `groundedOrdnance`: one day a fleet a day).
+  A razing an empty stock holds is booked as a held send.
+- Human-side ordnance is unchanged.
+- The strike's own tactical slices pay too (`ThreatStrikeFGI.siegePass`, `harassPass`, through
+  `payOrdnance`), and so does its abstract siege (`abstractSiege`, the stock as its fuel budget).
+  A siege whose stock will not buy half a day counts orbit as done, as an abstract siege and every
+  human besieger do: the troops land on what orbit left if they can hold, else the fleet stands
+  over the world. A harassment with an empty stock spends its visit on nothing. An abstract siege
+  that ran dry books the days it had left at its surviving strength as unmet demand.
+
+**Readouts.** After each census a `Hive stock plan:` line for each stock: stock, trailing demand,
+production (+ building), the months the stock covers, and the verdict (runs dry / surplus / holds,
+wants a spare, still watching).
+
+**New game, ng7a (2026-10-01, 3 chunks).** The hive landed on 6 worlds and held 11 at the end.
+- About a year in, Gamma Sonora I raised a Swarm Bastion (3,749 FP, 2,873 of it pooled from four
+  sister banks), then a Swarm Command three months later (1,250 FP). Early on no stock reads
+  wanted, because demand is still being watched. Fleets still grew from 4.9k to 13.7k FP.
+- Supplies ran at the margin throughout: 62 in stock at the end, 29k made and 31k spent a month.
+- Fuel banked to 129k with one plant. No conversion, since that plant was the last; no second
+  plant, since the stock was in surplus. Then one strike paid ~55k for its passage: 4,041 FP at
+  Yama, 34 ly, five months of output. The plan turned from surplus to runs dry, wants a spare.
+
+**Loaded save, h42a (2026-10-01, the lt save, 18 months, after the review fixes).**
+- The window now opens at production. The first fuel reading was 64k a month (h40a: 717k),
+  easing to 24k by month 5.
+- The two fuel plants for a shortage came in months 7 and 9, after the stock fell from 98k to
+  16k. Two forges for supplies came while the stock sat near zero against ~90k a month of demand.
+- 16 Swarm Bastions and 14 Commands went up from month 6, about 78k FP: the idle FP's outlet.
+  Fleets still grew from 58.5k to 75.7k FP, with 32.8k banked at the end.
+
+**Settings:** `hiveConvertSurplus`, `hiveMilitaryTier`, `threatPaysOrdnance` (all true). Every other
+number is derived (build times, vanilla prices, the expedition supplies rate, the garrison's own
+rows and upkeep, the 30-day planner pace that was already there). Persistent state is primitives in
+`threatinc_hiveFuel` (`demand_`, `demandDays_`, `demandAt_`, `demandSince_` per stock, `convertedAt`)
+and `threatinc_hiveHeld` (send -> when booked, pruned monthly).
 
 ## Levers, verified
 

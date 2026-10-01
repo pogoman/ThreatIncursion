@@ -57,6 +57,12 @@ public class ThreatUpkeep {
 		for (LocationAPI loc : Global.getSector().getAllLocations()) {
 			for (CampaignFleetAPI f : loc.getFleets()) charge(f, now, tally);
 		}
+		// a siege that never spawned is away all the same (2026-10-01): with no
+		// fleet to bill, its sieges sailed off-screen for nothing a day
+		for (com.fs.starfarer.api.campaign.comm.IntelInfoPlugin i
+				: Global.getSector().getIntelManager().getIntel(ThreatPurgeFGI.class)) {
+			chargeAbstract((ThreatPurgeFGI) i, now, tally);
+		}
 		for (Map.Entry<String, float[]> e : tally.entrySet()) {
 			float[] t = e.getValue();
 			ThreatIncConfig.log("Fleet upkeep: " + e.getKey() + " " + (int) t[0] + " fleets out, paid " + (int) t[2]
@@ -89,6 +95,45 @@ public class ThreatUpkeep {
 			siege.outOfSupplies(owed);
 			return;
 		}
+	}
+
+	/**
+	 * An NPC siege whose fleets never spawned: its allotment's supplies a month
+	 * (ThreatReach.tripSupplies) for the days since its last pass, from its base
+	 * and then the markets whose stock reaches it, as a spawned fleet pays; a
+	 * month nobody can pay turns it home (ThreatPurgeFGI.outOfSupplies). Once
+	 * its fleets spawn they pay as fleets ({@link #charge}).
+	 */
+	protected static void chargeAbstract(ThreatPurgeFGI siege, long now, Map<String, float[]> tally) {
+		if (siege == null || siege.isEnded() || siege.isEnding() || siege.isAborted() || siege.isSpawnedFleets()) {
+			return;
+		}
+		FactionAPI faction = siege.getFaction();
+		if (faction == null || faction.isPlayerFaction() || Factions.THREAT.equals(faction.getId())) return;
+		MarketAPI home = siege.sourceBase();
+		if (home == null) return;
+		long at = siege.upkeepAt;
+		siege.upkeepAt = now;
+		if (at <= 0L) return;
+		float days = Global.getSector().getClock().getElapsedDaysSince(at);
+		if (days <= 0f) return;
+		float perMonth = ThreatReach.tripSupplies(faction.getId(), siege.fightingFP(), 30f);
+		float want = perMonth * days / 30f;
+		float ask = want + siege.upkeepOwed;
+		float paid = ThreatReserves.draw(home.getId(), Commodities.SUPPLIES, ask);
+		if (paid < ask) paid += ThreatFrontlines.payFromOthers(home, home, Commodities.SUPPLIES, ask - paid);
+		float left = Math.max(0f, ask - paid);
+		siege.upkeepOwed = left;
+		if (left > 0f && left >= perMonth) siege.outOfSupplies(left);
+		float[] t = tally.get(faction.getId());
+		if (t == null) {
+			t = new float[4];
+			tally.put(faction.getId(), t);
+		}
+		t[0] += 1f;
+		t[1] += want;
+		t[2] += paid;
+		t[3] += left;
 	}
 
 	protected static void charge(CampaignFleetAPI f, long now, Map<String, float[]> tally) {

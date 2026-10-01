@@ -342,6 +342,13 @@ public class ThreatOutposts {
 		return new float[] {ThreatIncConfig.outpostSupplies(), ThreatIncConfig.outpostFuel()};
 	}
 
+	/** [supplies, fuel] a faction's forward base costs: the founding (npcCost) and the structures it stands up with (ThreatBuildCost.linkKit). */
+	public static float[] linkCost(FactionAPI faction) {
+		float[] cost = npcCost();
+		cost[0] += ThreatBuildCost.linkKit(faction);
+		return cost;
+	}
+
 	/** Whether the faction could pay for an outpost at this planet right now (and from where). */
 	public static MarketAPI payingBase(FactionAPI faction, SectorEntityToken planet) {
 		if (faction == null || planet == null) return null;
@@ -350,7 +357,7 @@ public class ThreatOutposts {
 		if (faction.isPlayerFaction()) return nearest;
 		// any military world in reach that can pay, nearest first - the closest
 		// depot is often the emptiest one
-		float[] cost = npcCost();
+		float[] cost = linkCost(faction);
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
 		for (MarketAPI market : ThreatReserves.marketsOf(faction.getId())) {
@@ -358,8 +365,7 @@ public class ThreatOutposts {
 			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(),
 					planet.getLocationInHyperspace());
 			if (d > IncursionManager.expeditionRangeLY(market) || d >= bestDist) continue;
-			if (ThreatReserves.available(market, Commodities.SUPPLIES) < cost[0]) continue;
-			if (ThreatReserves.available(market, Commodities.FUEL) < cost[1]) continue;
+			if (!ThreatFrontlines.canFund(market, cost)) continue;
 			bestDist = d;
 			best = market;
 		}
@@ -659,6 +665,7 @@ public class ThreatOutposts {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
 			if (faction == null || faction.isPlayerFaction()) continue;
 			if (random.nextFloat() >= ThreatIncConfig.outpostChance()) continue;
+			if (!ThreatFactionStance.foundsLinks(faction, random)) continue;
 			for (PlanetAPI planet : open) {
 				if (holds(planet) || ThreatFrontlines.hiveNear(planet) == null) continue;
 				// no hive or hostile market in the system, one faction's links per system
@@ -667,9 +674,8 @@ public class ThreatOutposts {
 				if (base == null) continue;
 				// the founding is paid before the garrison is weighed: its voyage
 				// check reads the pool the founding draws from
-				float[] cost = npcCost();
-				float[] paid = { ThreatReserves.drawAbove(base, Commodities.SUPPLIES, cost[0]),
-						ThreatReserves.drawAbove(base, Commodities.FUEL, cost[1]) };
+				float[] cost = linkCost(faction);
+				float[] paid = ThreatFrontlines.drawFounding(base, cost);
 				// no paper bases: only where a base can spare it a garrison
 				MarketAPI guardBase = ThreatIncConfig.frontlineGarrisonEnabled()
 						? ThreatFrontlines.garrisonBase(faction, planet) : null;

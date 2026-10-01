@@ -558,6 +558,10 @@
 	# hostile to it over a hive it is taking reach this x its own (1 =
 	# outweighed); 0 fights on to vanilla's abort line (0.33 of what sailed)
 	"threatinc_siegeBreakOffRatio": 1.0,
+	# an off-screen fight costs the defenders too (ThreatAbstractBattle): every
+	# fleet defending the system loses min(0.75, half the attacker's strength
+	# over theirs), as vanilla charges the attacker the other way round
+	"threatinc_abstractDefendersFight": true,
 	# a sibling forward base pools its stock into a faction's siege, keeping
 	# back this many months of its own garrison's supply upkeep
 	"threatinc_siegeOutpostKeepMonths": 3,
@@ -598,9 +602,30 @@
 	# colonies' sustenance leaves, targets weighed by worth per day away; off,
 	# the old radius (strikeLYPerFuel x min(fuel available, vitality x size))
 	"threatinc_billedReach": true,
+	# the factions' reach is their bill too (2026-10-01): a base reaches as far
+	# as its war reserve and the donors pooling into it pay a siege flotilla's
+	# passage and its ships' supplies there and back; a siege's launch gate
+	# counts those supplies for its whole stay, and an expedition that never
+	# spawns pays its upkeep while away. Off, the fuel radius above
+	"threatinc_humanBilledReach": true,
+	# each mobilised faction keeps a stance of its own, as the hive does
+	# (ThreatFactionStance): PRESS a weak hive world it outweighs, EXPAND its
+	# forward bases toward the hive, or CONSOLIDATE when the swarm presses it
+	"threatinc_factionStanceEnabled": true,
 	"threatinc_threatSuppliesUpkeep": true,
 	"threatinc_structuresCostSupplies": true,
 	"threatinc_structureSuppliesMult": 1.0,
+	# idle stock (2026-10-01, docs/hive-economy.md "Idle stock"): the hive
+	# planner builds plants on the trailing demand (ThreatFuel.runsDry), and
+	# once a month turns a fuel plant its stock can spare into a forge, a
+	# missing chain link or a Swarm Bastion (hiveConvertSurplus); idle fleet
+	# points buy the Swarm Bastion and Swarm Command, which keep two and three
+	# times a colony's reserve of swarms at home (hiveMilitaryTier); the
+	# swarm's bombardment burns the hive's fuel at the rate everyone pays
+	# (threatPaysOrdnance)
+	"threatinc_hiveConvertSurplus": true,
+	"threatinc_hiveMilitaryTier": true,
+	"threatinc_threatPaysOrdnance": true,
 	"threatinc_sizeUpkeep": true,
 	"threatinc_sizeUpkeepAt3": 100,
 	"threatinc_sizeUpkeepRatio": 2.5,
