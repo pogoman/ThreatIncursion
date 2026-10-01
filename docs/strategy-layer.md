@@ -27,3 +27,4 @@ Split by topic on 2026-10-01; the sections are unchanged and keep their headings
 | The factions' reach and stance (2026-10-01, user's call) | [strategy-hunting-reach.md](strategy-hunting-reach.md) |
 | Not built yet | [strategy-hunting-reach.md](strategy-hunting-reach.md) |
 | Testing notes | [strategy-hunting-reach.md](strategy-hunting-reach.md) |
+| Code paths: siege pass, stance, orders, hunts, coalition (2026-10-01) | [strategy-code-paths.md](strategy-code-paths.md) |
