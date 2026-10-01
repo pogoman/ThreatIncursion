@@ -42,7 +42,8 @@ a reader of the swarm or a scout order.
 - **The poll**: `IntervalUtil(0.4f, 0.6f)` days, about two per day; then `ThreatIncConfig.enabled()`
   and `ThreatIncData.isStarted()`. Order: `ThreatWarState.poll` -> `ThreatReserves.poll` ->
   `ThreatConvoys.poll` -> `ThreatRaiders.poll` -> `ThreatScouts.poll` -> `ThreatSwarmScouts.poll` ->
-  `ThreatOmens.poll` -> `ThreatFleetOrders.poll` -> `ThreatSoftening.advanceHunts` -> the siege
+  `ThreatOmens.poll` -> `ThreatIntel.poll` -> the war council (`ThreatWarCouncil.poll`) ->
+  `ThreatAttackPlanner.poll` -> `ThreatFleetOrders.poll` -> `ThreatSoftening.advanceHunts` -> the siege
   pass (if `siegePassPending`) -> `ThreatReturns.poll` -> `ThreatUpkeep.poll` ->
   `ThreatAidCapacity.poll` -> `ThreatOutposts.poll` -> `ThreatFrontlines.poll` -> `detectStrikes` ->
   `ThreatPosture.poll` -> `maintainGarrisons`. A daily reader of the swarm goes just before

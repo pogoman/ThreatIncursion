@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 7;
+	static final int MIGRATION_VERSION = 9;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -53,7 +53,10 @@ class LunaConfigBridge {
 	 * v2): frontDangerCloseLossFraction 0.05 -> 0.005 per day of bombardment.
 	 * Version 7: coreDownFactor 1.0 -> 0.8 (bombardment v2), and
 	 * responseStrengthDivisor 20 -> 30 - its menu maximum was 20 under a
-	 * default of 30 until 0.7.0, so LunaLib stored the clamp.
+	 * default of 30 until 0.7.0, so LunaLib stored the clamp. Version 8 (the
+	 * attack planner): npcSiegeOrbitSystem true -> false. Version 9:
+	 * npcSiegeOrbitMargin back to 1.5 where version 8, on dev installs, had
+	 * moved it to 1.0.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
@@ -83,6 +86,17 @@ class LunaConfigBridge {
 				if (from < 7) {
 					changed |= bump(json, "threatinc_coreDownFactor", 1.0, 0.8, false);
 					changed |= bump(json, "threatinc_responseStrengthDivisor", 20, 30, false);
+				}
+				// 2026-10-01, the attack planner: a siege weighs the strongest world it
+				// takes (docs/attack-planner.md)
+				if (from < 8) {
+					changed |= bumpBoolean(json, "threatinc_npcSiegeOrbitSystem", true, false);
+				}
+				// version 8 also took the margin 1.5 -> 1.0, on dev installs only; h50a
+				// landed half the sieges, so 1.5 is back per world (user, 2026-10-01).
+				// Only a store version 8 moved returns; a released one never left 1.5
+				if (from == 8) {
+					changed |= bump(json, "threatinc_npcSiegeOrbitMargin", 1.0, 1.5, false);
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));
@@ -117,6 +131,23 @@ class LunaConfigBridge {
 		if (Math.abs(json.getDouble(key) - oldDefault) > 0.001) return false;
 		if (asInt) json.put(key, (int) Math.round(newDefault));
 		else json.put(key, newDefault);
+		return true;
+	}
+
+	/**
+	 * The Boolean twin of bump: getDouble on a stored JSON boolean throws,
+	 * and that would abort the whole migration on every launch.
+	 */
+	protected static boolean bumpBoolean(JSONObject json, String key, boolean oldDefault, boolean newDefault)
+			throws Exception {
+		if (!json.has(key)) return false;
+		Object stored = json.get(key);
+		boolean value;
+		if (stored instanceof Boolean) value = (Boolean) stored;
+		else if (stored instanceof String) value = Boolean.parseBoolean(((String) stored).trim());
+		else return false;
+		if (value != oldDefault) return false;
+		json.put(key, newDefault);
 		return true;
 	}
 }

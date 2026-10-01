@@ -177,6 +177,8 @@ public class ThreatFactionStance {
 		float day = today();
 		for (String fid : ThreatWarState.warFactionIds()) {
 			if (Factions.PLAYER.equals(fid) || Factions.THREAT.equals(fid) || ThreatWarState.excluded(fid)) continue;
+			// a war council sets its faction's stance from its strategy (set)
+			if (ThreatWarCouncil.governs(fid)) continue;
 			Float at = READ_AT.get(fid);
 			if (at != null && day - at < EVAL_DAYS && day >= at) continue;
 			FactionAPI faction = Global.getSector().getFaction(fid);
@@ -187,15 +189,38 @@ public class ThreatFactionStance {
 	}
 
 	/**
+	 * The war council's stance for its faction (ThreatWarCouncil; decision 9 of
+	 * docs/war-council.md): Hold is CONSOLIDATE, a play running PRESS on its
+	 * system, no play EXPAND. {@link #evaluate}'s fleet-point ratio is not read
+	 * for a faction a council governs. Logged on a change.
+	 */
+	public static void set(String fid, int next, String pressedSystemId, String why) {
+		if (!enabled() || fid == null) return;
+		float day = today();
+		float[] st = map(KEY_STATE).get(fid);
+		boolean hadState = st != null && st.length >= 2 && st[1] <= day;
+		int was = hadState ? (int) st[0] : EXPAND;
+		float since = hadState && was == next ? st[1] : day;
+		if (next == PRESS && pressedSystemId != null) TARGET.put(fid, pressedSystemId);
+		else TARGET.remove(fid);
+		READ_AT.put(fid, day);
+		if (next != was || !hadState) {
+			ThreatIncConfig.log("Faction stance: " + fid + " " + NAMES[was] + "->" + NAMES[next] + " - war council: " + why);
+		}
+		map(KEY_STATE).put(fid, new float[] { next, since });
+	}
+
+	/**
 	 * One faction's read: how pressed it is, the exchange, its force against
-	 * the swarm facing it, and the weakest hive system it could take now; then
+	 * the swarm facing it as its reports have it, and the weakest hive system it could take now; then
 	 * the pick, logged with its reasons when it changes.
 	 */
 	protected static void evaluate(FactionAPI faction, float day) {
 		String fid = faction.getId();
 		// pressed: struck lately, or a Threat front on one of its worlds
 		ThreatWarState.FactionWar war = ThreatWarState.get(fid);
-		float sinceStruck = war != null && war.lastStruckTimestamp > 0L
+		// the calendar's timestamps are negative: a "> 0" guard read every strike as never (2026-10-01)
+		float sinceStruck = war != null && war.lastStruckTimestamp != 0L
 				? Global.getSector().getClock().getElapsedDaysSince(war.lastStruckTimestamp) : Float.MAX_VALUE;
 		int fronts = 0;
 		for (ThreatGroundFronts.GroundFront f : ThreatGroundFronts.fronts().values()) {
@@ -210,16 +235,18 @@ public class ThreatFactionStance {
 		float ours = forceFP(faction);
 		boolean losing = t[0] > 0f && t[0] > t[1] && t[0] >= 0.05f * Math.max(1f, ours);
 
-		// the swarm facing it: every hive system that would strike it first
+		// the swarm facing it: every found hive system that would strike it first,
+		// as its reports have the system (ThreatIntel.systemFP - each fleet once;
+		// a system it never saw adds nothing)
+		String observer = ThreatIntel.observerOf(faction);
 		float theirs = 0f;
 		java.util.Set<String> seen = new java.util.HashSet<String>();
 		for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) {
 			StarSystemAPI sys = hive.getStarSystem();
 			if (sys == null || !seen.add(sys.getId())) continue;
+			if (!ThreatScouts.sectorKnows(sys.getId())) continue;
 			if (!fid.equals(ThreatReach.facedFaction(sys))) continue;
-			for (MarketAPI c : ThreatIncData.getLiveColonyMarkets(sys.getId())) {
-				theirs += ThreatColonyManager.ownedFleetFP(c, ThreatIncData.garrisonsFor(c.getId()));
-			}
+			theirs += ThreatIntel.systemFP(observer, sys.getId());
 		}
 		float ratio = theirs > 0f ? ours / theirs : (ours > 0f ? Float.MAX_VALUE : 0f);
 
@@ -247,7 +274,7 @@ public class ThreatFactionStance {
 					+ (pressed ? "pressed (struck " + (sinceStruck < Float.MAX_VALUE ? (int) sinceStruck + " d ago" : "never")
 							+ ", " + fronts + " Threat fronts)" : "not pressed")
 					+ "; exchange lost " + (int) t[0] + " sank " + (int) t[1]
-					+ "; force " + (int) ours + " vs " + (int) theirs + " FP facing it ("
+					+ "; force " + (int) ours + " vs " + (int) theirs + " FP reported facing it ("
 					+ (ratio >= Float.MAX_VALUE ? "inf" : String.format("%.2f", ratio)) + ")"
 					+ (best != null ? "; weakest target " + best[1] + " (score " + String.format("%.2f", (Float) best[2]) + ")"
 							: "; no siege it can pay for"));
@@ -310,7 +337,7 @@ public class ThreatFactionStance {
 			List<MarketAPI> targets = null;
 			for (MarketAPI b : IncursionManager.cheapestFirst(sys, mine)) {
 				List<MarketAPI> t = IncursionManager.siegeTargets(b, faction, sys);
-				if (t.isEmpty() || !IncursionManager.anySiegeReady(t)) continue;
+				if (t.isEmpty() || !IncursionManager.anySiegeReady(ThreatIntel.observerOf(faction), t)) continue;
 				if (!IncursionManager.siegeAffordable(b, faction, sys, t)) continue;
 				base = b;
 				targets = t;

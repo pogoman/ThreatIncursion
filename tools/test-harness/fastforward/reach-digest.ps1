@@ -1,5 +1,5 @@
 # Digest of a run's billed-reach behaviour from ti-<Tag>.txt (extract.ps1): the monthly Reach lines,
-# launches, holds, claims, waves, scouts, raids, stance, upkeep, census.
+# launches, holds, claims, waves, scouts, raids, stance, upkeep, census, the war council.
 param([string]$Tag = "x", [int]$N = 12, [int]$W = 230)
 $out = if ($env:THREATINC_TEST_OUT) { $env:THREATINC_TEST_OUT } else { Join-Path $env:TEMP "threatinc-tests" }
 $L = [System.IO.File]::ReadAllLines("$out\ti-$Tag.txt")
@@ -23,3 +23,13 @@ Show "Colony upkeep" '^Colony upkeep' 6 -Last
 Show "Census threat" '^Census: threat' 6 -Last
 Show "Eradicated" '^Colony eradicated' 30
 Show "Planner" '^Hive planner' 30
+# the war council (docs/war-council.md section 16)
+Show "Council strategy" '^Council \S+: strategy ' 30
+Show "Council focus" '^Council \S+: \S+ focus ' 20
+Show "Council picture" '^Council \S+: picture ' 12 -Last
+Show "Council stance" 'war council: ' 20
+Show "Play phases" '^Play \S+ \S+ \S+ at ' 60
+Show "Play outcomes" '^Play \S+: (success|failure|neutral) ' 40
+Show "Play forces" '^Play \S+ force ' 20
+Show "Play raids" '^Play \S+ \S+: raid on ' 20
+Show "Council errors" '^(Council \S+|Plays): error ' 10

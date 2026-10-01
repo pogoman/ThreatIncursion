@@ -170,6 +170,29 @@ public class ThreatCoalition {
 		return 0f;
 	}
 
+	/**
+	 * A faction's coalition partners: the other mobilised NPC factions it
+	 * would help (willingness above 0) and is not hostile to either way. They
+	 * pool their reports of the swarm as they are made (ThreatIntel, user's
+	 * answer 2a, 2026-10-01). Empty for the player, who reads the reports of
+	 * factions at Cooperative instead.
+	 */
+	public static List<String> partners(String factionId) {
+		List<String> out = new ArrayList<String>();
+		if (factionId == null || com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER.equals(factionId)) return out;
+		FactionAPI self = Global.getSector().getFaction(factionId);
+		if (self == null) return out;
+		for (String other : ThreatWarState.warFactionIds()) {
+			if (other.equals(factionId) || com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER.equals(other)) continue;
+			if (ThreatWarState.excluded(other)) continue;
+			FactionAPI them = Global.getSector().getFaction(other);
+			if (them == null || self.isHostileTo(them) || them.isHostileTo(self)) continue;
+			if (willingness(self, other) <= 0f && willingness(them, factionId) <= 0f) continue;
+			out.add(other);
+		}
+		return out;
+	}
+
 	/** Whether a guard task force is already bound for or over the colony. */
 	protected static boolean guardBoundFor(MarketAPI market) {
 		return ThreatFleetOrders.guardBoundFor(market.getId());

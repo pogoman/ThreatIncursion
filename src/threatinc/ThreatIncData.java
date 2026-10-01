@@ -381,6 +381,7 @@ public class ThreatIncData {
 		lastStrikeTimes().remove(systemId);
 		// a hive later re-seeded here has to be found again
 		discoveredSystems().remove(systemId);
+		ThreatIntel.drop(systemId);
 	}
 
 	/**

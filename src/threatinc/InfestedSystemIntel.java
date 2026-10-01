@@ -153,7 +153,11 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 						"" + markets.size(), "" + total);
 			}
 
-			int totalGarrison = 0;
+			// the swarms as the player last saw them (ThreatIntel, the fog of
+			// war, 2026-10-01): one report for the system, never the live garrisons
+			ThreatIntel.Report seen = ThreatIntel.report(Factions.PLAYER, systemId);
+			float seenFP = 0f;
+			boolean everySeen = seen != null;
 			for (MarketAPI market : markets) {
 				// per-highlight colors: healthy industries in the standard
 				// highlight, disrupted ones in red with their downtime - the
@@ -176,10 +180,12 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 						hlColors.add(h);
 					}
 				}
-				int garrison = ThreatColonyManager.countLiveGarrison(market.getId());
-				totalGarrison += garrison;
+				ThreatIntel.Report over = ThreatWarBoard.seenOver(seen, market);
+				float worldFP = over != null ? over.worldFP(market.getId()) : 0f;
+				seenFP += worldFP;
+				if (over == null) everySeen = false;
 
-				line.append(". Hive Status %s, Defense Swarms %s");
+				line.append(". Hive Status %s, Swarm FP %s");
 				if (ThreatColonyUpkeep.enabled()) {
 					// size upkeep (2026-09-30): graded by the share of its
 					// upkeep paid - starving below break-even, else growing or
@@ -213,8 +219,9 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 					hlColors.add("critical".equals(output) || "strained".equals(output)
 							|| "failing".equals(output) ? neg : h);
 				}
-				hl.add("" + garrison);
-				hlColors.add(h);
+				// "3,400 (41 d)", "Unknown" never seen
+				hl.add(ThreatIntel.figure(over, worldFP));
+				hlColors.add(over != null ? h : Misc.getGrayColor());
 				// swarms mustered for a strike still fabricating in orbit: no
 				// longer garrison, but very much still here until departure
 				int strikeSwarms = IncursionManager.preparingStrikeFleetCount(market);
@@ -248,7 +255,7 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 			info.addPara("The hive is one economy - cutting its supply lines and destroying "
 					+ "its link colonies starves every world in the network.", opad);
 
-			if (totalGarrison > 0) {
+			if (!everySeen || seenFP > 0f) {
 				info.addPara("Counterplay: the hive lives %s behind defenses anchored to its "
 						+ "size - no bombardment can reduce its population, and saturating a "
 						+ "world costs fuel equal to its full defense strength for mere days "
@@ -267,9 +274,10 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 						+ "orbit fight on, but nothing replaces them.", opad, pos,
 						"Swarm Nexus");
 			} else {
-				info.addPara("Every colony here lies %s - the garrisons have been destroyed. "
-						+ "Until replacement swarms are fabricated, its worlds can be bombarded "
-						+ "and raided unopposed.", opad, pos, "open to attack");
+				// what the player last saw, and when: the garrisons may have regrown since
+				info.addPara("Every colony here lay %s as last seen %s: no Defense Swarm held "
+						+ "its orbit.", opad, new Color[] {pos, h}, "open to attack",
+						ThreatIntel.when(seen));
 			}
 		}
 

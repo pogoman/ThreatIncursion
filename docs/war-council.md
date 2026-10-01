@@ -1,4 +1,4 @@
-# War council - DESIGN (2026-10-01, for the user to mark up; not built)
+# War council - DESIGN (2026-10-01; decisions answered the same day, section 11; build in progress)
 
 A strategic layer for the human factions: each one (and each coalition) holds a strategy for
 months and runs multi-phase plays - a massed joint strike, a feint that draws the swarm while the
@@ -124,7 +124,7 @@ cluster, never per fleet) is decision 2.
 | Strategy | Fits when | Plays it favours |
 | --- | --- | --- |
 | **Hold** | outmatched, or pressed (colonies struck, Threat fronts on our worlds) | relief first, recon, bombers on the hives that threaten us; no invasions |
-| **Starve** | even, with a cluster in reach | bombing campaigns that keep its Nexuses and defences down (and its forges, where the pools pay), then invasions of starved worlds |
+| **Starve** | outmatched or even, with a cluster in reach (outmatched added 2026-10-01 after h53b) | bombing campaigns that keep its Nexuses and defences down (and its forges, where the pools pay), then invasions of starved worlds |
 | **Roll back** | even or ahead against the frontier | recon, then invasions of isolated hives one at a time (feint and strike where a neighbour can reinforce) |
 | **Decapitate** | ahead, usually with a coalition, against a core | hammer, prepared by recon and bombers |
 
@@ -344,8 +344,8 @@ day.
 | sizes, tiers, industries | live planet facts: `MarketAPI.getSize()`, `SwarmBastion.tier` (1 Bastion, 2 Command), industries; `ThreatColonyManager.nominalGarrison` prices a world no report covers |
 | staleness | `ThreatIntel.age`, `trust` (half-life `intelHalfLifeDays` 30) |
 | our means | `ThreatReserves.factionStock`, `spendable`, `available`, `accrualPer30` (banked surplus a month, not gross output), `armedMarines`; `IncursionManager.siegeBasesFor`, `siegePooled`, `siegeDonors`, `expeditionRangeLY`; `ThreatConvoys.fundingInReach` (stock plus 6 months' accrual) |
-| links and forward bases | `ThreatFrontlines.all()`, `isFront`, `frontOf` |
-| pressure on us | `ThreatWarState.get(fid)`: `lastStruckTimestamp`, `strikesSuffered`; the stance's pressed test and `trend` (FP lost and sunk, 60-day decay: damage done, usable) |
+| links and forward bases | `ThreatFrontlines.all()` (the saved links). Not `isFront` or `frontOf`: they read live hives, `threatStrength` and `facedFaction` |
+| pressure on us | `ThreatWarState.get(fid)`: `lastStruckTimestamp` (the mobilisation time until a first strike), `strikesSuffered` (lifetime: the council diffs its monthly snapshots); the stance's pressed test and `trend` (FP lost and sunk, 60-day decay: damage done, usable) |
 | reach | `ThreatWarState.hiveInReach(faction)` (one boolean); per colony, max(`expeditionRangeLY`, `ThreatColonyManager.fuelRangeLY`) against known hives |
 | allies | `ThreatCoalition` partners, `ThreatWarState.warFactionIds()` |
 | template | `ThreatFrontlines.census()` already prints colonies, sizes, links, bases, reserves and stance per faction every 30 days (debug log) |
@@ -427,31 +427,24 @@ Note that "found" is sector-wide, not per faction (`attack-planner.md` section 1
 - **The stance:** `ThreatFactionStance` keeps its readers (`siegeAllowed`, `target`, `foundsLinks`,
   `pressedFirst`, `pressingFirst`); where its value comes from is decision 9.
 
-## 11. Decisions for the user
+## 11. Decisions (answered 2026-10-01)
 
-1. **Plays in v1:** hammer, feint and strike, starve then invade, recon in force? Bombers of
-   opportunity too?
-2. **Scale of the swarm:** worlds, sizes and tiers only, or also reported swarm FP summed per
-   cluster as a coarse band (never per fleet)?
-3. **Shares:** a hammer's share of the means (60%?), and the floor below which a muster disbands
-   rather than going in short?
-4. **Personalities:** the table in section 7, or different leanings?
-5. **Randomness:** how random (temperature), and should factions learn (section 6)?
-6. **Coalition hammer:** in v1, or after single-faction plays work?
-7. **The Threat:** keep its AI as is for now, or give it a council of its own later?
-8. **Feints and the Threat's fog.** Today the swarm sees every human force from the day it sails;
-   fogging that is the separate later change. Build feint and strike now in the close-range form
-   of section 9, or after the Threat's fog, where it deceives at any range?
-9. **The stance.** `ThreatFactionStance` (EXPAND / PRESS / CONSOLIDATE every 7 days, from an FP
-   ratio) gates sieges and link founding. Recommended: the council sets it from its strategy
-   (Hold is CONSOLIDATE; Starve, Roll back and Decapitate are PRESS; EXPAND when no play runs),
-   and `evaluate`'s ratio goes.
-10. **Off-screen sieges and the swarm's answer.** A siege still off-screen adds no attack FP to
-    the Threat's pressure, so the swarm reinforces against it only through losses and wounds, and
-    answers differently when the player is near. Count booked sieges whether spawned or not, as
-    the posture doc always meant? It makes sieges harder: the swarm reinforces sooner.
+Answers 1, 6, 9 and 10 were the user's choices; the rest were taken as proposed.
 
-## 12. Player's view (less is more)
+1. Plays in v1: all four (hammer, feint and strike, starve then invade, recon in force), plus
+   bombers of opportunity.
+2. Scale of the swarm: worlds, sizes, tiers and spread only. Never summed swarm fleet points.
+3. Shares: a hammer gets 60% of the means. Its muster disbands below half its share.
+4. Personalities: the table in section 7.
+5. Randomness: temperature 1, with learning on.
+6. Coalition hammer: in this build, built last.
+7. The Threat: its AI stays as is.
+8. Feints: the close-range form of section 9 now. Feints at any range wait for the Threat's fog.
+9. The stance: the council sets it. Hold is CONSOLIDATE; Starve, Roll back and Decapitate are
+   PRESS; EXPAND when no play runs. `evaluate`'s ratio no longer applies to governed factions.
+10. Off-screen sieges: count booked sieges, spawned or not, as the swarm's attack fleet points.
+
+## 12. Player's view (less is more; built as `ThreatWarCouncil.strategyLine` and the play rows of `ThreatFactionView.fleetRows`)
 
 - The faction view gets one line, e.g. "Strategy: Starve (Gamma Sonora), since m14".
 - Each running play is an operations row, e.g. "Hammer on Gamma Sonora: mustering at Mazalot,
@@ -472,16 +465,152 @@ Note that "found" is sector-wide, not per faction (`attack-planner.md` section 1
   changed; landings, hives eradicated and provisions spent per landing, against h51a/h52a.
 - Two runs of the same clone should choose different plays.
 
-## 14. Build order (next session)
+## 14. Build order (built 2026-10-01, session fbb85ee0)
 
-1. The per-play override of the enemy-FP gates (section 10) and the staging override, with no
-   change while `warCouncil` is off.
-2. Council skeleton, assessment and logging behind `warCouncil`, no plays. One run to read the
-   pictures it draws.
-3. Recon in force, then starve then invade: raids on Nexuses and defences first, saturation
-   expeditions where the pools pay.
-4. Hammer: staging, a muster of one force per faction, strike, exploit.
-5. Feint and strike, in the form decision 8 picks.
-6. Personalities, weighted chance, learning.
-7. Coalition hammer.
-8. The UI lines.
+Built in this order: the per-play gate and staging overrides; the council skeleton with its
+logging; recon in force; starve then invade; hammer; feint and strike in the close-range form;
+personalities, chance and learning; the coalition hammer; the UI lines.
+
+## 15. Build map (2026-10-01, the build session)
+
+Five maps made at the start of the build, by symbol. They correct section 10 where it differs.
+
+**Siege launch.** `IncursionManager.launchSiegeExpedition` (7, 8 and 9 arguments) uses a caller's
+`fleetSizes` as given: never grown, only trimmed (never below two fleets) when marines or
+provisions fall short. Its enemy-FP reads, all inside `isAtWar`, are the orbit gate (`fieldable <
+siegeOrbitNeeded`: postpone and post the bounty) and `siegeFleetGoal` feeding `mustPay`. `strGoal`,
+`siegeWearFP` and raze fleet points read the world's defence and structures: planet facts. With
+`razeGiven` null, `razeWorlds` sizes a hypothetical flotilla from swarm FP to choose raze or land,
+so a play passes its own raze set (empty: land everywhere). Prep is 7-14 days (`prepDays`) before
+travel. `siegeOrbitNeeded` sees only (faction, targets), so the play waiver is an argument of the
+launch, not a branch in `siegeOrbitNeeded`. Its other readers serve front support, never a siege or
+hunt (`ThreatConvoys.supportFor` -> `ThreatFleetOrders.dispatchOrbit`).
+
+**Siege outcome.** The launch returns the `ThreatPurgeFGI` (null on any refusal). The expedition
+has no owner field and no end reason: `callOff`, `outOfSupplies` and `abortPurgesAgainst` all
+`setFailedButNotDefeated(true); abort()`. Every end path runs `notifyEnding()` once. Landings are
+records in `siegeActions` ("Ground landing", success). A world taken is not an expedition event: it
+is `ThreatGroundFronts.hiveGroundVictory` (eradication). The purge list (`getPurgeList`) is never
+pruned, and the war board addresses it by index. An attached play keeps its expedition through
+`playId` (section 16).
+
+**Hunts.** `ThreatSoftening.Force` is saved (`forces()`; public fields, so new ones load as
+defaults). It has no hold flag: a force goes in when all its fleets are at the muster or
+`softenMusterDays` after the first arrival. `send` sizes from reports (`musterFloorFP`,
+`siegeOrbitFP` x `margin`) and pools `contributors()`. `ThreatFleetOrders.dispatchHunt(faction,
+base, hiveWorld, fp, forceId, muster)` builds one fleet with no payment gate: `send`'s
+`payableFP` budget is the gate. In `advanceForce` the go-in, the move-on and `divert` read reports x
+margin, and `divert` can move a force to another system. A hunt records no damage: only `baseFP`
+and its live `presentFP`. A force that is gone from `forces()` is over.
+
+**Raids.** `ThreatFleetOrders.dispatchRaid` pays whole from one base, with no donors, and returns
+the lead Order (`raidId` shared by its fleets). `raidOver` ends it for one of these: term served,
+world lost to the swarm, orbit contested, out of ordnance, a day buys less than a day down, or a
+third of the arrival FP lost. `endRaid` keeps no reason. Damage lives only in the structures' live
+clocks (`ThreatColonyManager.hasOperationalNexus`, `ThreatGroundFronts.siegeDisruptDays`), so a
+play samples them daily.
+
+**Scouts.** `ThreatScouts.recon(fid, system)` sends one 20 FP party, paid whole, or returns null.
+On arrival it writes an exact SCOUT report (`ThreatIntel.see`).
+
+**Reports.** `ThreatIntel.report` already pools partners' reports (newest wins), and keeps
+`float[]{FP, fleets}` per world, with no history. A play keeps its own baseline.
+`ThreatCoalition.partners(fid)` is recomputed on each call and never saved.
+
+**Staging.** `ThreatConvoys.stagingHive` is not memoised and has eight readers, the swarm's
+pressure read among them. `siegeStock` is memoised per base for the day (`targetsMemo`) and feeds
+fill, fence, donor keep and relays. A play's staging goes in at `siegeStock`'s cache miss (section 16).
+
+**The swarm's read of attacks.** `ThreatPosture.attacksBySystem` counts a siege's spawned fleets,
+and since decision 10 a booked siege's abstract flotilla too (`countsAbstract`).
+
+**The stance.** `ThreatFactionStance.refresh` has three callers (the planner's poll,
+`ThreatFrontlines`, the legacy pass). `TARGET` is not saved, so after a load the council sets it
+again. Under CONSOLIDATE, `siegeAllowed` still reads the live `facedFaction`.
+
+## 16. As built (2026-10-01, session fbb85ee0)
+
+`ThreatWarCouncil` is the strategic layer and `ThreatPlays` the operational one. Both are saved in
+`ThreatIncData` (`KEY`, `ThreatPlays.KEY`), both only run while `warCouncil` is on, and
+`ThreatWarCouncil.reset` clears them along with the play staging.
+
+**Daily order.** `IncursionManager.advance` runs `ThreatIntel.poll`, then `ThreatWarCouncil.poll`,
+then `ThreatAttackPlanner.poll`, which is a no-op while the council is on (`ThreatAttackPlanner.active`).
+`poll` steps each governed faction (`governs`: an NPC at war) in this order:
+1. `assess`, monthly or on the first day after a load, builds the `Picture` (transient, in `PICTURES`).
+2. The early-review triggers fire on a colony lost or the coalition changed.
+3. `record` keeps 24 monthly rows.
+4. `review` runs when due and draws the strategy.
+5. `ThreatPlays.plan` starts plays.
+6. `setStance` sets the stance.
+7. `logPicture` logs the picture.
+
+Then `ThreatPlays.advance` steps every play. The monthly siege pass (`tryPurgeBombardments`) and
+the stance's own evaluation (`ThreatFactionStance.refresh` skips governed factions) stay off. The
+council writes the stance through `ThreatFactionStance.set`.
+
+**The gate override is the `playId`.** These read it:
+- `launchSiegeExpedition`'s 10-argument overload skips `siegeOrbitNeeded`, the orbit term of
+  `siegeFleetGoal` (`weighOrbit`) and the Coalition Call. `playSiegeSizes` sizes the siege from the
+  play's fleet points, through the same `siegeFleetSizes` and `fitExpedition`.
+- `ThreatPurgeFGI.playId`: its break-off reads count the play's hunts in the system as its own
+  (`friendsNear` -> `ThreatSoftening.playFP`).
+- `ThreatSoftening.sendPlay` builds a `Force` with `playId` and `hold`. It shares `send`'s helpers
+  (`newForce`, `build`, `foldAll`) and pays from `playPayableFP` with no report sizing.
+
+In `advanceForce` a play's force:
+- stays put while `hold` is set;
+- once let go, goes in at `playTarget` with whatever has mustered (all its fleets count, so
+  "badly hurt" is measured from the whole);
+- moves on through the play's worlds with no need test or `divert`;
+- stands down when its play is gone or the council is off.
+
+**Staging override.** `ThreatConvoys.stageForPlay(base, playId, system, wants)` makes
+`stagingHive` name the play's system and `siegeStock` stock to the play's wants. A feint stages
+against the decoy A. `clearPlayStaging` ends it when the siege sails or the play ends.
+
+**Raids report back.** `ThreatFleetOrders.endRaid`, `standDown` and the destroyed path call
+`ThreatPlays.raidEnded`, which books each `raidId` once. "Driven off" covers an orbit contested, a
+third lost, and destroyed. A BOMBERS play ends with its raid.
+
+**Phases.** `Play.phase`, with the deadline in `phaseDue`:
+- HAMMER: `prepare` (stage, a scout if the report is stale) -> `muster` (`toMuster`: held forces,
+  `inviteJoint`) -> `strike` (`strike`: the siege at `councilHammerShare` x `siegeCapacityFP`,
+  target sets from all worlds down to one; `releaseDay` = arrival - `RELEASE_LEAD_DAYS`) ->
+  `exploit` (up to `MAX_EXTENSIONS` x `councilExploitDays`; a feint's bombers may sail here too) ->
+  `withdraw` (judged when the siege ends, or a check later).
+- FEINT: `watch`. The baseline is A's report on the day the squadron is over it (`feintArrived`),
+  and only a later report at `DREW` x that counts. Then `strike` from a base within
+  `councilStrikeMaxDays`, with bombers on B's Nexus.
+- STARVE: `bomb` checks every `councilStarveCheckDays`. It aborts on `councilStarveAbortRaids`
+  driven off in a row, hands over to a hammer (`fromId`: the starve's own siege is not in its way)
+  once a Nexus streak reaches `councilInvadeNexusDays`, and ends after `STARVE_MAX_CHECKS`. Its fuel
+  budget is `councilStarveShare` of the means each check; squadrons go only where `bombable`, and the
+  saturation siege sails from `richestBase`. It does not start if it can pay neither a
+  squadron nor a saturation siege. Under Starve, `plan` also weighs a hammer (x2) while the focus's
+  Nexuses are down.
+
+A muster below `councilMusterFloor` of its share disbands as a failure. Relief owed adds a day to
+`phaseDue` in prepare, muster, bomb and watch. `liveTargets(..., own(pl))` skips worlds booked by other
+sieges, but not the play's own. A world under another siege ends a play as neutral; a world no longer
+a hive calls `finish`. Probing raids share the monthly opportunity fuel (`oppLeft`). A recon on a system
+waits an intel half-life (`Council.reconDay`), after which the big play goes on the picture it has.
+
+**Outcomes.** `finish` and `end` decide the outcome:
+- success: a world taken, a landing, or `nexusDownDays` >= `councilInvadeNexusDays`;
+- failure: a disbanded muster, a starve aborted, a siege refused;
+- neutral otherwise, and every RECON.
+
+A decisive end calls `learn` on `TYPE:targetClass` and `strategy:S` (x1.25 or x0.8, clamped to
+0.25-4) and asks for an early review. A JOINT play learns nothing. A play that throws is ended
+(`advanceOne`), and so is one left without a phase.
+
+**Log lines** to grep:
+- `Council f: strategy A -> B (...)`;
+- `Council f: picture ...` and `Council f: S focus ...`;
+- `Play id TYPE f at target: a -> b (why)`;
+- `Play id: outcome (why; damage, N d)`;
+- `Play id force ...` (ThreatSoftening);
+- `Faction stance: f A->B - war council: ...`.
+
+Knobs are `threatinc_council*` in settings.json. Personalities live in `threatinc_councilPersonalities`.

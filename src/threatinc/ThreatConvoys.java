@@ -415,6 +415,13 @@ public class ThreatConvoys {
 	public static StarSystemAPI stagingHive(MarketAPI base) {
 		if (base == null || base.getStarSystem() == null || base.getFaction() == null) return null;
 		if (!IncursionManager.isBase(base)) return null;
+		// a war council play names the system (ThreatPlays): every reader agrees,
+		// the swarm's pressure read among them - staging telegraphs, decoy or not
+		PlayStaging play = playStagingOf(base);
+		if (play != null) {
+			StarSystemAPI named = Global.getSector().getStarSystem(play.systemId);
+			if (named != null) return named;
+		}
 		boolean player = base.isPlayerOwned();
 		boolean debug = ThreatIncConfig.debugMode();
 		float range = player ? Float.MAX_VALUE : IncursionManager.expeditionRangeLY(base);
@@ -579,8 +586,19 @@ public class ThreatConvoys {
 		float[] memo = targetsMemo.get(base.getId());
 		if (memo != null) return memo.clone();
 		float[] wants;
-		StarSystemAPI hive = stagingHive(base);
 		Map<String, String> verdicts = ThreatIncData.map(HUNT_VERDICTS);
+		// a play's staging: what its own expedition draws, priced when the play
+		// named the base - no siege of the swarm's size, no hunt verdict
+		PlayStaging play = playStagingOf(base);
+		if (play != null && play.wants != null) {
+			verdicts.remove(base.getId());
+			wants = new float[ThreatReserves.COMMODITIES.length];
+			float mult = ThreatIncConfig.stagingTargetMult();
+			for (int i = 0; i < wants.length && i < play.wants.length; i++) wants[i] = play.wants[i] * mult;
+			targetsMemo.put(base.getId(), wants.clone());
+			return wants;
+		}
+		StarSystemAPI hive = stagingHive(base);
 		if (hive == null) {
 			wants = new float[] {0f, 0f, 0f, 0f};
 			verdicts.remove(base.getId());
@@ -639,7 +657,8 @@ public class ThreatConvoys {
 				if (m == base || m.isPlayerOwned() || ALLOCATING.contains(m.getId())) continue;
 				StarSystemAPI hive = stagingHive(m);
 				if (hive == null) continue;
-				float[] w = WANTS_MEMO.get(m.getId());
+				PlayStaging play = playStagingOf(m);
+				float[] w = play != null && play.wants != null ? play.wants : WANTS_MEMO.get(m.getId());
 				if (w == null) {
 					w = IncursionManager.siegeWants(m, m.getFaction(), hive);
 					WANTS_MEMO.put(m.getId(), w);
@@ -759,6 +778,55 @@ public class ThreatConvoys {
 		targetsMemo.clear();
 		huntStaged.clear();
 		relayMemo.clear();
+	}
+
+	// ------------------------------------------------------------------
+	// a war council play's staging (ThreatPlays, docs/war-council.md section 16)
+	// ------------------------------------------------------------------
+
+	public static final String KEY_PLAY_STAGING = "threatinc_playStaging";
+
+	/** A base a play stages: the system it names (the target, or a decoy) and what its expedition draws, COMMODITIES order. */
+	public static class PlayStaging {
+		public String playId;
+		public String systemId;
+		public float[] wants;
+	}
+
+	/** Base market id -> its play's staging. Saved. */
+	public static Map<String, PlayStaging> playStaging() {
+		return ThreatIncData.map(KEY_PLAY_STAGING);
+	}
+
+	/** The play staging the base, or null; never while the war council is off. */
+	protected static PlayStaging playStagingOf(MarketAPI base) {
+		if (base == null || !ThreatIncConfig.warCouncil()) return null;
+		Map<String, PlayStaging> all = playStaging();
+		return all.isEmpty() ? null : all.get(base.getId());
+	}
+
+	/** The play stages the base against the system for its expedition's {@code wants} (IncursionManager.expeditionWants). */
+	public static void stageForPlay(MarketAPI base, String playId, StarSystemAPI system, float[] wants) {
+		if (base == null || system == null) return;
+		PlayStaging s = new PlayStaging();
+		s.playId = playId;
+		s.systemId = system.getId();
+		s.wants = wants != null ? wants.clone() : null;
+		playStaging().put(base.getId(), s);
+		forgetStagingTargets();
+	}
+
+	/** The play's bases stage as the faction's sieges would again. */
+	public static void clearPlayStaging(String playId) {
+		if (playId == null) return;
+		boolean any = false;
+		for (java.util.Iterator<PlayStaging> it = playStaging().values().iterator(); it.hasNext();) {
+			if (playId.equals(it.next().playId)) {
+				it.remove();
+				any = true;
+			}
+		}
+		if (any) forgetStagingTargets();
 	}
 
 	// ------------------------------------------------------------------
@@ -1435,7 +1503,8 @@ public class ThreatConvoys {
 	 */
 	public static String canRunTo(FactionAPI faction, MarketAPI hive) {
 		if (faction == null || hive == null) return "No front there.";
-		if (!ThreatGroundFronts.orbitContested(hive.getId())) return null;
+		// what the faction last saw over it, not the garrison list (the fog of war, 2026-10-01)
+		if (!ThreatGroundFronts.orbitContested(ThreatIntel.observerOf(faction), hive)) return null;
 		if (ThreatFleetOrders.friendlyOrbit(faction.getId(), hive.getId())) return null;
 		// an autoresolved siege's flotilla holding the orbit over its own front
 		// (run 9: Loka's run waited at the door while 5,900 FP of cover held it)

@@ -237,6 +237,8 @@ public class ThreatIncConfig {
 	public static float siegeFPWeight()       { return f("threatinc_siegeFPWeight"); }
 	/** Days a strike expedition holds orbit over a system before giving its siege up. */
 	public static float siegeOrbitDays()      { return f("threatinc_siegeOrbitDays"); }
+	/** An NPC siege expedition off-screen runs its siege a day at a time (ThreatPurgeFGI's daily siege), not in one frame on arrival. */
+	public static boolean abstractSiegeDaily() { return b("threatinc_abstractSiegeDaily", true); }
 	/** Strike-target weight multiplier for a world whose Threat front is dry and signalling for the next expedition. */
 	public static float strikeReinforceWeight() { return f("threatinc_strikeReinforceWeight"); }
 	/** Days a dry Threat front holds for the next expedition before its final push. */
@@ -545,11 +547,80 @@ public class ThreatIncConfig {
 	public static float scoutMemoryDays()     { return f("threatinc_scoutMemoryDays"); }
 	/** Combat fleet points of a scouting party. */
 	public static float scoutFleetPoints()    { return f("threatinc_scoutFleetPoints"); }
+	/** Fog of war on the swarm: factions and the player read reports, never the live swarm (ThreatIntel). */
+	public static boolean intelFogOfWar()     { return b("threatinc_intelFogOfWar", true); }
+	/** Days in which a report's trust halves. */
+	public static float intelHalfLifeDays()   { return f("threatinc_intelHalfLifeDays"); }
+	/** Light-years a forward base, military world or player outpost sees Threat systems by radar. */
+	public static float radarRangeLY()        { return f("threatinc_radarRangeLY"); }
+	/** Mobilised factions plan sieges, raids and recon (ThreatAttackPlanner); off = the monthly per-base pick. */
+	public static boolean attackPlanner()     { return b("threatinc_attackPlanner", true); }
+	/** Mobilised factions hold a strategy and run plays (ThreatWarCouncil, docs/war-council.md); it replaces the attack planner. Off = the planner as built. */
+	public static boolean warCouncil()        { return b("threatinc_warCouncil", true); }
+	/** Days between a council's assessments of what it knows. */
+	public static float councilAssessDays()   { return f("threatinc_councilAssessDays"); }
+	/** Days a council holds its strategy before it reviews it (jittered). */
+	public static float councilReviewDays()   { return f("threatinc_councilReviewDays"); }
+	/** How random a council's choices are: 0 always the best score, 1 in proportion to the scores, higher flatter. */
+	public static float councilTemperature()  { return f("threatinc_councilTemperature"); }
+	/** A challenger strategy must outscore the held one by this share. */
+	public static float councilSwitchMargin() { return f("threatinc_councilSwitchMargin"); }
+	/** Our weight over the known swarm's at which a council reads the war as even. */
+	public static float councilEvenRatio()    { return f("threatinc_councilEvenRatio"); }
+	/** Our weight over the known swarm's at which a council reads itself ahead. */
+	public static float councilAheadRatio()   { return f("threatinc_councilAheadRatio"); }
+	/** The band changes only once the ratio is past its edge by this share. */
+	public static float councilBandHysteresis() { return f("threatinc_councilBandHysteresis"); }
+	/** Light-years within which a known hive threatens a colony. */
+	public static float councilThreatLY()     { return f("threatinc_councilThreatLY"); }
+	/** Phase and review timings vary by up to this share either way. */
+	public static float councilJitter()       { return f("threatinc_councilJitter"); }
+	/** Factions learn which plays work (weights x1.25 on success, x0.8 on failure). */
+	public static boolean councilLearning()   { return b("threatinc_councilLearning", true); }
+	/** Share of the faction's means a hammer musters. */
+	public static float councilHammerShare()  { return f("threatinc_councilHammerShare"); }
+	/** A play's muster below this share of what it was sent with disbands instead of going in. */
+	public static float councilMusterFloor()  { return f("threatinc_councilMusterFloor"); }
+	/** Share of a hammer's fleet points that sails in its siege expedition; the rest hunts the orbits. */
+	/** Share of the faction's fuel a bombing campaign may burn. */
+	public static float councilStarveShare()  { return f("threatinc_councilStarveShare"); }
+	/** Share of the faction's means a feint sails with. */
+	public static float councilFeintShare()   { return f("threatinc_councilFeintShare"); }
+	/** Share of the faction's fuel bombers of opportunity may burn a month. */
+	public static float councilOpportunityShare() { return f("threatinc_councilOpportunityShare"); }
+	/** Fleet points of a doctrine bombing squadron. */
+	public static float councilSquadronFP()   { return f("threatinc_councilSquadronFP"); }
+	/** Days a play stages and scouts before it musters. */
+	public static float councilPrepareDays()  { return f("threatinc_councilPrepareDays"); }
+	/** Days a play's muster waits for its force before it goes with what it has. */
+	public static float councilMusterDays()   { return f("threatinc_councilMusterDays"); }
+	/** Days after the strike a play judges the damage done. */
+	public static float councilExploitDays()  { return f("threatinc_councilExploitDays"); }
+	/** Days between a bombing campaign's checks. */
+	public static float councilStarveCheckDays() { return f("threatinc_councilStarveCheckDays"); }
+	/** Raids driven off in a row that end a bombing campaign. */
+	public static int councilStarveAbortRaids() { return i("threatinc_councilStarveAbortRaids"); }
+	/** Days a target's Nexus must be down before a bombing campaign hands over to an invasion. */
+	public static float councilInvadeNexusDays() { return f("threatinc_councilInvadeNexusDays"); }
+	/** Days a feint has to draw the swarm before the strike goes anyway. */
+	public static float councilFeintWatchDays() { return f("threatinc_councilFeintWatchDays"); }
+	/** Days after the feint draws in which the strike must land. */
+	public static float councilFeintWindowDays() { return f("threatinc_councilFeintWindowDays"); }
+	/** Most days' sail from a feint's striking base to its target. */
+	public static float councilStrikeMaxDays() { return f("threatinc_councilStrikeMaxDays"); }
+	/** Days between a faction's plans, besides re-plans on news. */
+	public static float planIntervalDays()    { return f("threatinc_planIntervalDays"); }
+	/** The chance that at least one prong lands, reached by adding prongs. */
+	public static float planConfidence()      { return f("threatinc_planConfidence"); }
+	/** A raid goes home once it has lost this share of the fleet points it arrived with. */
+	public static float raidLossFraction()    { return f("threatinc_raidLossFraction"); }
+	/** The swarm counts a booked siege as an attack from dispatch, its fleets spawned or not (ThreatPosture.attacksBySystem). */
+	public static boolean threatSeesBookedSieges() { return b("threatinc_threatSeesBookedSieges", true); }
 	/** NPC sieges sail only with the marines and fleets their target needs; off = send what they can (trimmed to two fleets). */
 	public static boolean npcSiegeFullStrength() { return b("threatinc_npcSiegeFullStrength", true); }
 	/** NPC sieges sail only when their flotilla outweighs the target system's Defense Swarms; off = the garrison is not weighed. */
 	public static boolean npcSiegeOrbitGate() { return b("threatinc_npcSiegeOrbitGate", true); }
-	/** Fleet points an NPC flotilla brings per point of Defense Swarm over the target system. */
+	/** Fleet points an NPC flotilla brings per point of Defense Swarm its faction last saw over the strongest world it takes. */
 	public static float npcSiegeOrbitMargin() { return f("threatinc_npcSiegeOrbitMargin"); }
 	/** An NPC siege not yet landed turns home when hostile fleets over a world it is taking reach this x its own (0: fights to vanilla's abort line). */
 	public static float siegeBreakOffRatio() { return f("threatinc_siegeBreakOffRatio"); }
@@ -557,10 +628,8 @@ public class ThreatIncConfig {
 	public static boolean abstractDefendersFight() { return b("threatinc_abstractDefendersFight", true); }
 	/** Months of its garrison's supply upkeep a forward base keeps back when a sibling's siege pools its stock. */
 	public static float siegeOutpostKeepMonths() { return f("threatinc_siegeOutpostKeepMonths"); }
-	/** Days a faction weighs the swarms its called-off siege met in a system before it sails there again (0: forgets at once). */
-	public static float siegeMetMemoryDays() { return f("threatinc_siegeMetMemoryDays"); }
-	/** The orbit gate also weighs every Defense Swarm in the target system: they converge on a besieged world. */
-	public static boolean npcSiegeOrbitSystem() { return b("threatinc_npcSiegeOrbitSystem", true); }
+	/** The orbit gate also weighs every Defense Swarm reported in the target system (off: the strongest world it takes). */
+	public static boolean npcSiegeOrbitSystem() { return b("threatinc_npcSiegeOrbitSystem", false); }
 	/** A Threat strike relieves a front of its own that is losing ground, in reach, before it opens a new one. */
 	public static boolean strikeReliefFirst() { return b("threatinc_strikeReliefFirst", true); }
 	/** An unspawned expedition resolves a day after reaching its target, not at the end of vanilla's payload segment. */

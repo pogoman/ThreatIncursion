@@ -58,6 +58,8 @@ public class ThreatScouts {
 		public String factionId;
 		/** The origin this sortie is following up; null for a routine sweep. */
 		public String leadSystemId;
+		/** A recon sortie (ThreatAttackPlanner, 2026-10-01): sent to look again at a found Threat system, leadSystemId. */
+		public boolean recon;
 	}
 
 	/** A strike's origin a faction is looking for, and since when. */
@@ -230,8 +232,10 @@ public class ThreatScouts {
 			return ThreatIncData.discoveredSystems().contains(systemId);
 		}
 		protected boolean onEnter(Scout s, StarSystemAPI system, long now) {
-			if (!hasLiveHive(system.getId())) return false;
+			if (!hasLiveHive(system.getId())) return s.recon; // a recon's one stop is done either way
 			reveal(system.getId(), s.factionId);
+			// what it saw is its faction's report (ThreatIntel, the fog of war)
+			ThreatIntel.see(s.factionId, system, ThreatIntel.SCOUT);
 			return true; // the report is what counts
 		}
 		protected void onStay(Scout s, StarSystemAPI system, long now) {
@@ -301,6 +305,39 @@ public class ThreatScouts {
 			lastSweep().put(factionId, now);
 			launchRoutine(factionId, random);
 		}
+	}
+
+	/**
+	 * RECON (2026-10-01, ThreatAttackPlanner): one party from the faction's
+	 * nearest military world to a Threat system already found, to see it
+	 * again (ThreatIntel.see on arrival) and come home. Paid as any party; the
+	 * party, or null when scouting is off, the faction may not scout, one is
+	 * already on its way there, the system is one a GO_TO never reaches
+	 * (unreachable), or the depot cannot pay.
+	 */
+	public static Scout recon(String factionId, StarSystemAPI system) {
+		if (!enabled() || system == null || !mayScout(factionId) || unreachable(system)) return null;
+		if (reconInFlight(factionId, system.getId())) return null;
+		MarketAPI home = nearestBase(factionId, system.getLocation());
+		if (home == null) return null;
+		List<String> route = new ArrayList<String>();
+		route.add(system.getId());
+		Scout s = launch(factionId, home, route, system.getId());
+		if (s != null) {
+			s.recon = true;
+			ThreatIncConfig.log("Recon: " + factionId + " sends a party from " + home.getName() + " to look at the "
+					+ system.getName() + " again (report " + ThreatIntel.when(ThreatIntel.report(factionId, system))
+					+ ")");
+		}
+		return s;
+	}
+
+	/** Whether a recon party of the faction is on its way to the system. */
+	public static boolean reconInFlight(String factionId, String systemId) {
+		for (Scout s : all()) {
+			if (s.recon && !s.returning && factionId.equals(s.factionId) && systemId.equals(s.leadSystemId)) return true;
+		}
+		return false;
 	}
 
 	protected static boolean leadInFlight(String factionId, String systemId) {

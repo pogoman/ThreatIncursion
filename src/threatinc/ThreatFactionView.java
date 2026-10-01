@@ -254,6 +254,9 @@ public class ThreatFactionView {
 		boolean own = faction.isPlayerFaction();
 		ThreatNotice.Reason aidBlocked = own ? null : ThreatAid.canAid(faction);
 		boolean mayAid = !own && aidBlocked == null;
+		// the swarm as this faction last saw it (ThreatIntel, the fog of war): its
+		// hunts pick their worlds from its reports
+		String observer = ThreatIntel.observerOf(faction);
 
 		// ---- heading and the reserve totals ----
 		StringBuilder title = new StringBuilder(name).append(" - mobilised");
@@ -261,7 +264,7 @@ public class ThreatFactionView {
 			int days = (int) Global.getSector().getClock().getElapsedDaysSince(war.enteredTimestamp);
 			// a record with no usable timestamp (injected, or pre-dating the
 			// layer) just reads "mobilised"
-			if (war.enteredTimestamp > 0 && days >= 0 && days < 36500) {
+			if (war.enteredTimestamp != 0 && days >= 0 && days < 36500) {
 				title.append(" ").append(days).append(days == 1 ? " day ago" : " days ago");
 			}
 			title.append(" - ").append(war.strikesSuffered)
@@ -280,6 +283,14 @@ public class ThreatFactionView {
 		// buttons; up here only the one reason nothing can be ordered, if any
 		if (own && !mayOrder && blocked != null) main.addPara(blocked, gray, opad);
 		else if (!own && aidBlocked != null) main.addPara(aidBlocked.toString(), gray, opad);
+		// an NPC's war council: its strategy, the focus and how long it has held it
+		String strategy = ThreatWarCouncil.strategyLine(factionId);
+		if (strategy != null) {
+			String sname = ThreatWarCouncil.strategyName(ThreatWarCouncil.strategy(factionId));
+			LabelAPI line = main.addPara(strategy, text, opad);
+			line.setHighlight(sname);
+			line.setHighlightColors(h);
+		}
 
 		if (own) {
 			// the player's faction stands down by choice alone (docs/strategy-layer.md)
@@ -736,9 +747,9 @@ public class ThreatFactionView {
 					ButtonAPI detach = intel.addGenericButton(main, SMALL_BUTTON_W + 14f, "Hunt",
 							BUTTON_DETACH + factionId + ":" + f.huntKey);
 					detach.getPosition().belowRight(fleetTable, -up).setXAlignOffset(right);
-					disableWith(main, detach, mayOrder && ThreatSoftening.huntTarget(
+					disableWith(main, detach, mayOrder && ThreatSoftening.huntTarget(observer,
 							f.huntSystem.getId()) != null, blocked != null ? blocked
-							: "No Defense Swarms there to hunt.",
+							: "No Defense Swarms seen there.",
 							"This fleet leaves its group and hunts the Defense Swarms in the "
 							+ f.huntSystem.getNameWithLowercaseTypeShort() + " for "
 							+ (int) ThreatIncConfig.softenDays() + " days, then goes home.");
@@ -1144,6 +1155,21 @@ public class ThreatFactionView {
 		Color h = Misc.getHighlightColor();
 		Color pos = ThreatNotice.goodColor();
 		Color neg = Misc.getNegativeHighlightColor();
+		// the war council's plays, the reason the fleets below fly (docs/war-council.md)
+		if (ThreatWarCouncil.governs(factionId)) {
+			for (ThreatPlays.Play pl : ThreatPlays.of(factionId)) {
+				FleetRow f = new FleetRow();
+				f.kind = ThreatPlays.typeName(pl.type);
+				f.color = h;
+				f.name = ThreatPlays.boardTarget(pl);
+				f.task = ThreatPlays.phaseText(pl);
+				f.status = pl.held ? "held" : "under way";
+				f.strength = pl.plannedFP > 0f ? (int) pl.plannedFP + " FP" : "-";
+				int days = ThreatPlays.daysToNext(pl);
+				if (days >= 0) f.eta = days + " d";
+				rows.add(f);
+			}
+		}
 		// task forces
 		List<Object> responses = IncursionManager.getResponseList();
 		for (int i = 0; i < responses.size(); i++) {
@@ -1271,7 +1297,7 @@ public class ThreatFactionView {
 			ThreatFleetOrders.Order o = orders.get(i);
 			if (!factionId.equals(o.factionId)) continue;
 			FleetRow f = new FleetRow();
-			f.kind = ThreatFleetOrders.KIND_SUPPORT.equals(o.kind) ? "Support"
+			f.kind = ThreatFleetOrders.KIND_SUPPORT.equals(o.kind) ? (o.raid ? "Raid" : "Support")
 					: ThreatFleetOrders.KIND_DEFEND.equals(o.kind) ? "Defend"
 					: ThreatFleetOrders.KIND_HUNT.equals(o.kind) ? (o.aid ? "Aid hunt" : "Hunt")
 					: (o.aid ? "Aid " : "") + (ThreatFleetOrders.KIND_GUARD.equals(o.kind)
@@ -1379,15 +1405,9 @@ public class ThreatFactionView {
 				+ " - " + (int) fleet.getFleetPoints() + " FP";
 	}
 
-	/** The FP an unspawned expedition will field on arrival, estimated from its planned fleet sizes. */
+	/** The FP an unspawned expedition fields, estimated from its planned fleet sizes: a daily siege's less the damage booked, as its marines. */
 	protected static int abstractFP(ThreatPurgeFGI p) {
-		float fp = 0f;
-		if (p.getParams() != null && p.getParams().fleetSizes != null) {
-			for (Integer size : p.getParams().fleetSizes) {
-				if (size != null) fp += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
-			}
-		}
-		return Math.round(fp);
+		return Math.round(p.abstractNow());
 	}
 
 	/**
@@ -1657,11 +1677,12 @@ public class ThreatFactionView {
 		} else if (BUTTON_DETACH.equals(parts[0])) {
 			CampaignFleetAPI fleet = groupFleet(parts[2]);
 			StarSystemAPI hive = groupTargetSystem(parts[2]);
-			MarketAPI first = hive != null ? ThreatSoftening.huntTarget(hive.getId()) : null;
+			MarketAPI first = hive != null
+					? ThreatSoftening.huntTarget(ThreatIntel.observerOf(faction), hive.getId()) : null;
 			if (fleet == null || hive == null) {
 				prompt.addPara("That fleet is no longer with its group.", 0f);
 			} else if (first == null) {
-				prompt.addPara("No Defense Swarms there to hunt.", 0f);
+				prompt.addPara("No Defense Swarms seen there.", 0f);
 			} else {
 				prompt.addPara("Detach " + fleet.getName() + " to hunt the Defense Swarms in the %s for "
 						+ "%s days?", 0f, h,
@@ -1935,7 +1956,9 @@ public class ThreatFactionView {
 			if (base == null) return null;
 			List<MarketAPI> targets = IncursionManager.collectSiegeTargets(system);
 			if (targets.isEmpty()) return null;
-			boolean anyGarrisoned = IncursionManager.anyTargetGarrisoned(targets);
+			// the faction's own sizing: what it last saw over the worlds (ThreatIntel)
+			boolean anyGarrisoned = IncursionManager.anyTargetGarrisoned(
+					ThreatIntel.observerOf(faction), targets);
 			int difficulty = IncursionManager.computeSiegeDifficulty(targets, anyGarrisoned);
 			// the selected tier's landing goal: the need, the need x a knob, or
 			// every marine the base can spare (docs/player-aid.md) - the flotilla

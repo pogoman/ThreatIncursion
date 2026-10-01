@@ -81,6 +81,7 @@ threatinc_shieldSoakMult,Planetary Shield Soak,Double,1.0,"Disruption a planetar
 threatinc_shieldDefenseBonus,Planetary Shield Ground Defense,Double,0,"What a planetary shield adds to the colony's ground defense at full condition. Vanilla gives a flat 2 (a x3 multiplier) and strips all of it the moment the shield is disrupted; this mod gives the shield a different job - absorbing bombardment - so the default is 0. Set to 2 for vanilla's figure, applied in proportion to the shield's condition rather than as an on/off switch.",0,5
 
 threatinc_siegeOrbitDays,Siege Orbit Days,Double,120,"Days a strike or siege expedition holds orbit over each target world before giving the siege up and moving on.",20,400
+threatinc_abstractSiegeDaily,Off-Screen Sieges Run Daily,Boolean,true,"An NPC siege expedition away from the player fights, bombards and lands a day at a time, so swarms sent in reply can reach the world, and goes home when outmatched. Off: the whole siege resolves in one go a day after arrival.",,
 
 threatinc_strikeReinforceWeight,Reinforcement Target Weight,Double,4.0,"A world whose Threat front has run dry weighs this much more as the next strike's target: the front signals, the next expedition answers and resupplies it.",1,20
 threatinc_frontDryFinalPushDays,Dry Front Final Push (Days),Double,120,"Days a dry Threat front digs in waiting for the next expedition before it spends itself in a final push. The swarm does not extract.",10,400
@@ -166,12 +167,11 @@ threatinc_groundStrengthExponent,Ground Strength Exponent,Double,1.0,"Exponent o
 threatinc_expeditionMinMarinesFraction,Expedition Marine Floor,Double,0.5,"An expedition waits - and its base keeps calling convoys - unless the base holds this fraction of the marines the landing needs. 0 sails with whatever is there.",0,1
 threatinc_npcSiegeFullStrength,NPC Sieges at Full Strength,Boolean,true,"An NPC siege waits until its base holds all the marines it wants and can pay for the fleets that reach the target's ground-strength need and its orbit (or every fleet Siege Max Fleets allows, when that is fewer). Off: it sails with half the marines, cut down to as few as two fleets, which a strong hive's garrison often destroys before any landing.",,
 threatinc_npcSiegeOrbitGate,NPC Sieges Weigh the Orbit,Boolean,true,"An NPC siege sails only when its flotilla outweighs the Defense Swarms it faces by the margin below. A base that cannot field that much asks you to thin the swarms (an orbit contract). Off: the garrison is not weighed.",,
-threatinc_npcSiegeOrbitMargin,NPC Siege Orbit Margin,Double,1.5,"Fleet points an NPC siege brings per fleet point of Defense Swarm it faces. The flotilla grows toward it, up to Siege Max Fleets.",0.5,5
+threatinc_npcSiegeOrbitMargin,NPC Siege Orbit Margin,Double,1.5,"Fleet points an NPC siege brings per fleet point of Defense Swarm its faction last saw over the strongest world it takes. The flotilla grows toward it, up to Siege Max Fleets.",0.5,5
 threatinc_siegeBreakOffRatio,NPC Siege Break-Off,Double,1.0,"An NPC siege that has not landed turns home once the fleets opposing it over a hive reach this times its own. 0 fights on until the expedition is cut to a third.",0,5
 threatinc_abstractDefendersFight,Off-Screen Defenders Fight,Boolean,true,"An off-screen siege or strike costs the fleets defending the system too, not only the attacker. Off: only the attacker takes losses, as in vanilla.",,
 threatinc_siegeOutpostKeepMonths,Forward Base Keep (Months),Double,3,"Months of its garrison's supply upkeep a forward base keeps when a sibling's siege draws on its stock.",0,24
-threatinc_siegeMetMemoryDays,Called-Off Siege Memory (Days),Double,90,"Days a faction weighs the Defense Swarms that turned its siege back before it sails into that system again.",0,365
-threatinc_npcSiegeOrbitSystem,NPC Siege Weighs the System,Boolean,true,"The orbit margin is also measured against every Defense Swarm in the target system: they converge on a besieged world.",,
+threatinc_npcSiegeOrbitSystem,NPC Siege Weighs the System,Boolean,false,"The orbit margin is also measured against every Defense Swarm reported in the target system. Off: a world's reserve never leaves it, so a siege weighs the strongest world it takes.",,
 threatinc_strikeReliefFirst,Threat Relieves Its Fronts First,Boolean,true,"A Threat strike goes to a front of its own that is losing ground, when one is in reach, before it opens a new one.",,
 threatinc_abstractResolveOnArrival,Off-Screen Sieges Resolve on Arrival,Boolean,true,"An expedition resolved off-screen fights a day after it reaches its target, instead of when vanilla's payload window ends.",,
 threatinc_strikeDefenceGate,Threat Weighs the Defence,Boolean,true,"The swarm passes over a world whose system defence outweighs the strike it can muster.",,
@@ -226,6 +226,20 @@ threatinc_scoutStayDays,Scout Stay (Days),Double,2,"Days a scout sweeps an empty
 threatinc_scoutLegMaxDays,Scout Leg Limit (Days),Double,60,"Days a scout may spend reaching one stop before it skips it.",10,365
 threatinc_scoutMemoryDays,Scout Memory (Days),Double,180,"Days a system swept clear is left alone by routine sweeps. A new strike's follow-up ignores older sweeps.",0,720
 threatinc_scoutFleetPoints,Scout Fleet Points,Double,20,"Combat fleet points of a scouting party.",5,100
+threatinc_intelFogOfWar,Fog of War on the Swarm,Boolean,true,"Every faction, you included, knows the swarms only as last seen: by its fleets, colonies and scouts (exact) and by the radar of its forward bases, military worlds and outposts (rounded). Off: everyone reads the swarm exactly, anywhere.",,
+threatinc_intelHalfLifeDays,Report Half-Life (Days),Double,30,"A report's trust halves every this many days. Planners send more prongs on older reports, and scouts to refresh them.",5,180
+threatinc_radarRangeLY,Radar Range (LY),Double,10,"Forward bases, military worlds and your outposts see every found Threat system this close, every day, to two significant figures.",0,40
+threatinc_attackPlanner,Attack Planner,Boolean,true,"Mobilised factions plan their sieges, raids and recon from their reports, spreading their blows until one is likely to land. Off: each base picks a siege once a month.",,
+threatinc_planIntervalDays,Planning Interval (Days),Double,7,"Days between a faction's plans, besides the re-plans that news triggers.",1,60
+threatinc_planConfidence,Plan Confidence,Double,0.8,"A plan adds prongs at other worlds until the chance that at least one lands reaches this.",0.1,0.99
+threatinc_raidLossFraction,Raid Withdrawal Loss,Double,0.33,"A raid goes home once it has lost this share of the fleet points it arrived with.",0.05,0.9
+threatinc_threatSeesBookedSieges,Swarm Sees Booked Sieges,Boolean,true,"The swarm counts a siege as an attack on its target from the day it sails, whether or not its fleets are spawned near you.",,
+threatinc_warCouncil,War Council,Boolean,true,"Mobilised factions hold a strategy for months and run plays (massed strikes, feints, bombing campaigns) sized as shares of their means. Replaces the attack planner. Off: the attack planner.",,
+threatinc_councilReviewDays,Strategy Review (Days),Double,90,"Days a faction holds its strategy before it reviews it.",30,365
+threatinc_councilTemperature,Council Randomness,Double,1,"0: a faction always picks its best-scored strategy and play. 1: picks in proportion to the scores. Higher: flatter.",0,4
+threatinc_councilLearning,Factions Learn,Boolean,true,"A faction weighs the plays that worked against this war higher, and the ones that failed lower.",,
+threatinc_councilHammerShare,Hammer Share,Double,0.6,"Share of a faction's means a massed strike musters.",0.1,1
+threatinc_councilSquadronFP,Bombing Squadron (FP),Double,300,"Fleet points of a bombing squadron in a bombing campaign.",50,2000
 threatinc_swarmScouting,Swarm Scouting,Boolean,true,"The Threat strikes only systems its Scouting Swarms have charted. Scouts leave from colonies that could stage a strike (size, hulls, fuel, Swarm Nexus) without taking Defense Swarms, and fly within fuel reach. Off: the swarm knows every world.",,
 threatinc_swarmScoutFleetPoints,Scouting Swarm Fleet Points,Double,30,"Fleet points of a Scouting Swarm.",5,150
 threatinc_donorKeepFraction,Donor Keep Fraction,Double,0.5,"Fraction of its own cap a donor colony keeps back for itself.",0,1

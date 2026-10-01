@@ -66,6 +66,11 @@ import com.fs.starfarer.api.util.Misc;
  * has not found ({@link ThreatIncData#discoveredSystems()}) is named "Unknown",
  * carries no map in its tooltip, and cannot be selected for detail - its
  * figures are readable, its place is not. Debug mode names everything.
+ *
+ * The swarm figures - the Swarm FP column and total, the cards' Swarm FP -
+ * are the player's reports ({@link ThreatIntel}, the fog of war, 2026-10-01):
+ * the figure and its age, "Unknown" for a system never seen. Planet facts and
+ * the fronts stay live.
  */
 public class ThreatWarBoard {
 
@@ -191,9 +196,12 @@ public class ThreatWarBoard {
 		public float loseDays = Float.MAX_VALUE;
 		/** +1 growing, 0 stalled (holding), -1 declining or starving. */
 		public int trend;
-		public int swarmsLive, swarmsDesired, swarmsMustered;
-		/** +1 a nexus here is growing swarms, -1 one needs to but is silenced, 0 garrisons full. */
-		public int swarmTrend;
+		/**
+		 * The player's report of the system's swarms (ThreatIntel, the fog of
+		 * war): what their eyes, radar or Cooperative allies last saw; null when
+		 * never seen. The board shows no live swarm figure.
+		 */
+		public ThreatIntel.Report seen;
 		public MarketAPI staging;
 		/** Billed reach off: the staging colony's fuel radius, and the living systems inside it. */
 		public float reachLY;
@@ -300,22 +308,9 @@ public class ThreatWarBoard {
 				if (besieged) anyDeclining = true;
 				else if (ThreatColonyManager.growthMultFor(health) > 0f) anyGrowing = true;
 			}
-			int live = ThreatColonyManager.countLiveGarrison(market.getId());
-			int desired = ThreatColonyManager.garrisonTargetCount(market);
-			e.swarmsLive += live;
-			e.swarmsDesired += desired;
-			e.swarmsMustered += IncursionManager.preparingStrikeFleetCount(market);
-			// the nexus fabricates while the garrison is short and it is not disrupted
-			// (see ThreatColonyManager.maintainGarrisons); a silenced nexus with a
-			// short garrison is the strategic opening
-			if (live < desired) {
-				if (ThreatColonyManager.hasOperationalNexus(market)) {
-					if (e.swarmTrend == 0) e.swarmTrend = 1;
-				} else {
-					e.swarmTrend = -1;
-				}
-			}
 		}
+		// the swarms as the player last saw them, never the live garrisons
+		e.seen = ThreatIntel.report(Factions.PLAYER, systemId);
 		if (sized) e.fed = bill > 0f ? paid / bill : -1f;
 		else if (e.mass > 0) e.health = weightedHealth / e.mass;
 		e.trend = anyDeclining || e.starving ? -1 : (anyGrowing ? 1 : 0);
@@ -426,7 +421,8 @@ public class ThreatWarBoard {
 			op.faction = faction;
 			op.color = faction != null ? faction.getBaseUIColor() : Misc.getHighlightColor();
 			op.status = intercept ? "on station" : hunt ? (o.arrived ? "hunting" : "en route")
-					: defend ? "holding the orbit" : "supporting the siege";
+					: defend ? "holding the orbit" : o.raid ? (o.arrived ? "raiding" : "en route")
+					: "supporting the siege";
 			op.eta = o.indefinite() ? "-" : (int) Math.ceil(o.daysLeft()) + " d left";
 			String term = o.indefinite() ? " until the front there is gone."
 					: " for " + (int) Math.ceil(o.daysLeft()) + " more days.";
@@ -440,6 +436,9 @@ public class ThreatWarBoard {
 				op.who = name + " defend";
 				op.detail = name + " task force holding the orbit of " + o.targetName
 						+ ", bombarding only while its front cannot hold," + term;
+			} else if (o.raid) {
+				op.who = name + " raid";
+				op.detail = name + " task force bombing " + o.targetName + term;
 			} else {
 				op.who = name + " support";
 				op.detail = name + " task force holding the orbit of " + o.targetName
@@ -1825,11 +1824,17 @@ public class ThreatWarBoard {
 
 	/** Returns the strip panel so the faction selector can anchor below it (a sibling). */
 	protected static CustomPanelAPI addStrip(TooltipMakerAPI main, float width, List<Entry> entries) {
-		int worlds = 0, mass = 0, swarms = 0, outbound = 0, inbound = 0;
+		int worlds = 0, mass = 0, outbound = 0, inbound = 0;
+		// the swarms the player's reports hold; a system never seen adds nothing
+		float swarmFP = 0f;
+		boolean anySeen = false;
 		for (Entry e : entries) {
 			worlds += e.markets.size();
 			mass += e.mass;
-			swarms += e.swarmsLive;
+			if (e.seen != null) {
+				anySeen = true;
+				swarmFP += e.seen.totalFP();
+			}
 			outbound += e.outbound.size();
 			inbound += e.inbound.size();
 		}
@@ -1840,11 +1845,12 @@ public class ThreatWarBoard {
 		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 
-		String[] labels = {"Known systems", "Hive worlds", "Mass", "Swarms",
+		String[] labels = {"Known systems", "Hive worlds", "Mass", "Swarm FP",
 				"Expeditions out", "Sieges in", "Missions", "Hives burned"};
-		String[] values = {"" + entries.size(), "" + worlds, "" + mass, "" + swarms,
+		String[] values = {"" + entries.size(), "" + worlds, "" + mass,
+				anySeen ? Misc.getWithDGS(Math.round(swarmFP)) : "Unknown",
 				"" + outbound, "" + inbound, "" + missions, "" + burned};
-		Color[] colors = {h, h, h, h, outbound > 0 ? neg : h, inbound > 0 ? pos : h, h,
+		Color[] colors = {h, h, h, anySeen ? h : gray, outbound > 0 ? neg : h, inbound > 0 ? pos : h, h,
 				burned > 0 ? pos : h};
 
 		final float stripH = 42f;
@@ -1885,10 +1891,12 @@ public class ThreatWarBoard {
 		Cols(float width) {
 			narrow = width < NARROW_WIDTH;
 			// Reach holds "grounded" (billed reach, 2026-09-30): a point off
-			// Activity, which fits the same number of crests either way
+			// Activity, which fits the same number of crests either way. Swarm FP
+			// holds a report's figure and age, "12,400 (141 d)" (the fog of war,
+			// 2026-10-01): its points came off System, Worlds, Fed and Activity
 			float[] frac = narrow
-					? new float[] {.03f, .16f, 0f, .10f, .05f, .13f, .09f, .08f, .06f, .13f, .17f, 0f}
-					: new float[] {.028f, .16f, 0f, .10f, .05f, .11f, .08f, .075f, .055f, .12f, .17f, .052f};
+					? new float[] {.03f, .15f, 0f, .10f, .05f, .12f, .12f, .08f, .06f, .12f, .17f, 0f}
+					: new float[] {.028f, .15f, 0f, .09f, .05f, .10f, .12f, .075f, .055f, .11f, .17f, .052f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
@@ -1942,7 +1950,7 @@ public class ThreatWarBoard {
 		// share of the supplies upkeep paid, and reach the world struck first
 		final boolean sized = ThreatColonyUpkeep.enabled();
 		final boolean billed = ThreatReach.enabled();
-		String[] names = {"#", "System", "Threat", "Worlds", "Mass", sized ? "Fed" : "Vitality", "Swarms",
+		String[] names = {"#", "System", "Threat", "Worlds", "Mass", sized ? "Fed" : "Vitality", "Swarm FP",
 				"Reach", "Strikes", "Activity", "Supply", "Core"};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < COLS; i++) {
@@ -1970,11 +1978,8 @@ public class ThreatWarBoard {
 					+ "and the full-growth mark. Below the first a colony declines - the only way a "
 					+ "Threat colony dies.");
 		}
-		main.addTableHeaderTooltip(c.visibleIndex(SWARMS), "Defense Swarms in orbit / the garrison "
-				+ "the nexus builds toward; '+n' are swarms mustered for an expedition, still "
-				+ "fabricating in orbit. Green arrow: a nexus here is growing replacements. Red "
-				+ "arrow: a garrison is short and its nexus is silenced - nothing replaces the "
-				+ "losses. Dash: every garrison is full.");
+		main.addTableHeaderTooltip(c.visibleIndex(SWARMS), "Threat fleet points last seen in the "
+				+ "system, and days since.");
 		main.addTableHeaderTooltip(c.visibleIndex(REACH), billed
 				? "Light-years to the world it would strike first."
 				: "How far its expeditions reach, bought with the fuel the staging colony draws from "
@@ -2025,10 +2030,10 @@ public class ThreatWarBoard {
 				// the bar is drawn by the overlay; nothing billed (every world
 				// below size 3) has no bar
 				cell(cells, Alignment.LMID, gray, sized && e.fed < 0f ? "-" : "");
-				String swarms = e.swarmsLive + "/" + e.swarmsDesired
-						+ (e.swarmsMustered > 0 ? " +" + e.swarmsMustered : "");
-				cell(cells, Alignment.MID, e.swarmsLive == 0 ? pos
-						: (e.swarmsMustered > 0 ? neg : text), swarms);
+				// the player's report: its figure and age, "Unknown" never seen
+				float seenFP = e.seen != null ? e.seen.totalFP() : 0f;
+				cell(cells, Alignment.MID, e.seen == null ? gray : seenFP <= 0f ? pos : text,
+						ThreatIntel.figure(e.seen, seenFP));
 			}
 			if (billed) {
 				// grounded shows whatever else stops it; otherwise no staging
@@ -2196,9 +2201,6 @@ public class ThreatWarBoard {
 				}
 
 				if (!e.isColony()) continue;
-
-				// swarm production glyph at the right edge of the Swarms column
-				trend(x + (c.x[SWARMS] + c.w[SWARMS]) * scale - 10f, midY, e.swarmTrend, alphaMult);
 
 				// the bar fills the column - the share of the supplies upkeep
 				// paid, or vitality with size upkeep off - trend glyph at its
@@ -2514,13 +2516,11 @@ public class ThreatWarBoard {
 			ix += iconStep;
 		}
 
-		// line A, above the organs: supplies paid (vitality), garrison, reach or front
-		int live = ThreatColonyManager.countLiveGarrison(market.getId());
-		int desired = ThreatColonyManager.garrisonTargetCount(market);
-		int nominal = ThreatColonyManager.desiredGarrison(market.getSize()).length;
+		// line A, above the organs: supplies paid (vitality), the swarms as last
+		// seen, reach or front
 		List<String> hlA = new ArrayList<String>();
 		List<Color> hlcA = new ArrayList<Color>();
-		StringBuilder a = new StringBuilder(sized ? "Fed %s    Swarms %s" : "Vitality %s    Swarms %s");
+		StringBuilder a = new StringBuilder(sized ? "Fed %s    Swarm FP %s" : "Vitality %s    Swarm FP %s");
 		if (sized) {
 			// below size 3 a world has no upkeep to be paid
 			boolean owes = ThreatColonyUpkeep.perMonth(market.getSize()) > 0f;
@@ -2531,15 +2531,14 @@ public class ThreatWarBoard {
 			hlA.add((int) (health * 100f) + "%");
 			hlcA.add(healthColor(health));
 		}
-		// "3/3 of 5": the hull shortage caps what the nexus grows toward, and a
-		// full garrison at the cap must not read as a full garrison. "(+2
-		// inbound)": reinforcements flying in from sibling colonies - on station
-		// counts only what has landed, so a bare colony with help en route must
-		// not read as abandoned
-		int inbound = ThreatColonyManager.inboundReinforcements(market.getId());
-		hlA.add(live + "/" + desired + (desired < nominal ? " of " + nominal : "")
-				+ (inbound > 0 ? " (+" + inbound + " inbound)" : ""));
-		hlcA.add(live == 0 ? pos : desired < nominal ? neg : text);
+		// the player's report of the swarms over this world (ThreatIntel, the fog
+		// of war, 2026-10-01): its figure and age, "Unknown" never seen. Nothing
+		// of the hive's own plans - the garrison it builds toward, reinforcements
+		// in flight - shows: the player cannot see those either
+		ThreatIntel.Report over = seenOver(e.seen, market);
+		float seenFP = over != null ? over.worldFP(market.getId()) : 0f;
+		hlA.add(ThreatIntel.figure(over, seenFP));
+		hlcA.add(over == null ? gray : seenFP <= 0f ? pos : text);
 		// a deployed ground front is the siege in progress - it displaces Reach
 		// (a besieged world's strike range is not the question): strength, then
 		// stance or supply trouble, then strata taken of the colony's total
@@ -2805,6 +2804,15 @@ public class ThreatWarBoard {
 	/** A share as a whole percentage, rounded. */
 	public static String pct(float share) {
 		return Math.round(share * 100f) + "%";
+	}
+
+	/**
+	 * A report's view of one world (ThreatIntel): the report when it covers the
+	 * world; null when there is none or it predates the world (a hive founded
+	 * since), whose swarms were never seen.
+	 */
+	public static ThreatIntel.Report seenOver(ThreatIntel.Report r, MarketAPI world) {
+		return r != null && world != null && r.worlds.containsKey(world.getId()) ? r : null;
 	}
 
 	/** Billed reach: the hive cannot keep the colony's one swarm away, or has no fuel to send it. */
