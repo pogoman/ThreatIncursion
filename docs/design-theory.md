@@ -158,7 +158,7 @@ the strong grow without limit. Every fleet is paid for and what survives comes h
   swarm's ground exactly as its strata strip yours. The knob
   (`strikeSaturationEnabled`, default false) restores the old behaviour for anyone who
   wants the sector to feel arbitrary and doomed rather than contested; it is not the
-  design. See docs/ground-war.md, "Threat ground assaults".
+  design. See docs/ground-war-sieges.md, "Threat ground assaults".
 
 ## 4. Naval doctrine: orbit, convoys, interception
 

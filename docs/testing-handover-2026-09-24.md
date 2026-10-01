@@ -16,7 +16,7 @@ rules" and docs/strategy-layer.md.
 13 source files, the LunaLib CSV, five docs, this doc, and one new class,
 `ThreatScoutRoute.java`). `jars/ThreatInc.jar` is rebuilt from it and compiles clean. The set fixes the 15 findings of the code review over today's seven
 commits (014a58b..8da7a1a) plus two lower-confidence notes. What each fix is and why is in
-the docs it touched (`strategy-layer.md` "ONE SIZING" and the full-strength paragraph,
+the docs it touched (`strategy-reserves-sieges.md` "ONE SIZING" and the full-strength paragraph,
 `player-aid.md` bounty bullet, `design-theory.md` 8.6, `code-map.md`) and in the memory
 note `review-fixes-2026-09-24`. This doc is only how to prove them.
 

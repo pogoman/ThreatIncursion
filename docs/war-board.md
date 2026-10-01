@@ -131,7 +131,7 @@ with size upkeep off), whether a world starves and the days to the first size lo
 swarms live/desired/mustered
 (`countLiveGarrison`, `garrisonTargetCount`, `preparingStrikeFleetCount`; 2026-09-29: "desired" is
 `garrisonTargetCount` - the size table's `desiredGarrisonCount` with posture off, posture's base count
-(reserve plus a forge's launch stock, docs/hive-economy.md "Posture") with it on, so a quiet colony
+(reserve plus a forge's launch stock, docs/hive-garrison-and-upkeep.md "Posture") with it on, so a quiet colony
 shows full at its lean target and the fabrication trend arrow reads the same count) - all counted in
 fleets since 2026-09-29: a garrison fleet grown past one swarm (docs/hive-economy.md "Grown garrison
 fleets") counts once, and `preparingStrikeFleetCount` is the strike's packed fleets, not its swarms -
@@ -232,7 +232,7 @@ It takes the system's hives with a structure for saturation to fall on and no fr
 (`bombardFleetSizes`, `razeRun` over `ThreatGroundFronts.razePlan`), fits them to the base's free
 points like a Siege, and carries the passage then the saturation's fuel - what each stay to the
 commander's stop burns - from the base's own reserve, less if that is all there is. A hive has no
-bar (2026-10-01, docs/ground-war.md "Saturation presses a hive"): the order presses each hive and
+bar (2026-10-01, docs/ground-war-sieges.md "Saturation presses a hive"): the order presses each hive and
 never ends one. The confirm: "Order a bombing expedition from B against the S?", the fleets and
 their FP, "Carries X of the Y fuel the saturation takes.", the fuel drawn of the reserve, and per
 hive "Name: N days in orbit, S FP bombing, about F FP lost, down D days." The launch notice is "Bombing
@@ -271,7 +271,7 @@ flat `threatinc_responseRangeLY` (20) is gone. The mission board's faction-reach
 the same per-world figure. For hive worlds this radius holds only with billed reach off.
 
 **Reach** on the board under billed reach (`ThreatReach.enabled()`, 2026-09-30; the hive has no
-radius, docs/hive-economy.md "Reach is the bill"): the light-years to the world the system would
+radius, docs/hive-reach-and-stock.md "Reach is the bill"): the light-years to the world the system would
 strike first (`ThreatReach.facedLY`, rounded up) in that world's owner's colour (`facedFaction`).
 "grounded", in the good colour, when the hive cannot keep one swarm away
 (`ThreatReach.canSustain(ThreatPosture.oneSwarmFP(...))` false) or its fuel stock is empty

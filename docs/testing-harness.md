@@ -84,7 +84,7 @@ frames). Another session playing a different save changes what Continue loads - 
   (e.g. "May only anchor on siblings") leaves a small dialog titled "Starsector 0.98a-RC8" -
   `ui.ps1 -Action rect` then reports a ~221x114 client, which is how to detect a crash.
 - The jar is locked while the game runs: kill the game (cycle does) before `compile.ps1`.
-- Posture (2026-09-29, docs/hive-economy.md "Posture", debug logging on): grep `Posture:` for a
+- Posture (2026-09-29, docs/hive-garrison-and-upkeep.md "Posture", debug logging on): grep `Posture:` for a
   system's mode change (`Posture: <system> A->B pressure ...`), a fleet passed to a pressed sibling
   (`Posture: <donor> sent N FP to ...`) and a surplus fleet recycled (`Posture: <colony> recycled a
   ...`); grep `Posture sector:` for the monthly totals (held, want, surplus, quiet/pressed

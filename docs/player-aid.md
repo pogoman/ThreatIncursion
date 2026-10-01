@@ -72,7 +72,7 @@ game already computes for that colony, so the board can show the exact figures:
    the player leaves there in person. No purchase from the open market.
 3. *Reach.* None for the player's orders since 2026-09-05 evening (was
    `IncursionManager.expeditionRangeLY(market)`): any colony may send anywhere, paying
-   fuel by the distance and the time there and back - docs/strategy-layer.md "Ranges".
+   fuel by the distance and the time there and back - docs/strategy-orbit-outposts.md "Ranges".
 
 Ships are built by `FleetFactoryV3` with the source colony as `source` and
 `ignoreMarketFleetSizeMult` set, so the FP shown on the board is what sails, and quality
@@ -168,7 +168,7 @@ request accepts it.
   since 2026-09-27) - plus section 3's reputation doubled.
 - **Swarm bounty on the X system** (2026-09-24, untested; `ThreatSwarmBountyIntel`). Not a
   contract but vanilla's system bounty pointed at a hive: posted by a mobilised base whose
-  siege the Defense Swarms over the target hive system outweigh (docs/strategy-layer.md,
+  siege the Defense Swarms over the target hive system outweigh (docs/strategy-reserves-sieges.md,
   "weighs the orbit"), one per hive system. No accepting, no failing. For
   `swarmBountyDays` (60) it pays `swarmBountyPerFrigate` (1,500) per Threat ship the player
   destroys in that system - destroyer x2, cruiser x3, capital x5 (vanilla's system-bounty scale), times the player's share
@@ -406,7 +406,7 @@ To verify in-game, in this order:
    greyed with a one-line reason when the order would fail (short of fleet points, short
    of marines, no source colony with 50 FP free, no donor) instead of a Confirm that then
    does nothing. A Guard over an own colony from another: on station, the host's FP cell
-   rises by it (docs/strategy-layer.md "Staging fleets").
+   rises by it (docs/strategy-orbit-outposts.md "Staging fleets").
 2. Sindria (or any mobilised NPC faction) view: no order buttons; Defend and Aid on
    colony rows, each button's own tooltip naming the source colony and what it sends
    (the row tooltip no longer repeats it); Strike on hive rows; the aid fleet appears
