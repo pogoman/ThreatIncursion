@@ -475,9 +475,19 @@ public class ThreatIncConfig {
 	public static boolean threatPaysPassage()      { return b("threatinc_threatPaysPassage", true); }
 	/** The hive's fleets go any distance whose trip it can pay (ThreatReach); off, the old fuel radius. */
 	public static boolean billedReach()            { return b("threatinc_billedReach", true); }
+	/** The factions' reach is their bill too: no radius, a base reaching as far as its stock pays (ThreatReach.baseRangeLY). */
+	public static boolean humanBilledReach()       { return b("threatinc_humanBilledReach", true); }
+	/** Each mobilised faction keeps its own stance - PRESS, EXPAND, CONSOLIDATE - as the hive does (ThreatFactionStance). */
+	public static boolean factionStanceEnabled()   { return b("threatinc_factionStanceEnabled", true); }
 	public static boolean threatSuppliesUpkeep()   { return b("threatinc_threatSuppliesUpkeep", true); }
 	public static boolean structuresCostSupplies() { return b("threatinc_structuresCostSupplies", true); }
 	public static float structureSuppliesMult()    { return f("threatinc_structureSuppliesMult"); }
+	/** The hive planner turns a fuel plant its stock can spare into what it lacks, one a month (ThreatColonyManager.convertSurplus). */
+	public static boolean hiveConvertSurplus()     { return b("threatinc_hiveConvertSurplus", true); }
+	/** Hive colonies buy a Swarm Bastion and Swarm Command with idle fleet points (SwarmBastion). */
+	public static boolean hiveMilitaryTier()       { return b("threatinc_hiveMilitaryTier", true); }
+	/** The swarm's bombardment draws its fuel from the hive's stock, at the rate everyone pays (ThreatGroundFronts.payOrdnance). */
+	public static boolean threatPaysOrdnance()     { return b("threatinc_threatPaysOrdnance", true); }
 	public static boolean sizeUpkeep()             { return b("threatinc_sizeUpkeep", true); }
 	public static float sizeUpkeepAt3()            { return f("threatinc_sizeUpkeepAt3"); }
 	public static float sizeUpkeepRatio()          { return f("threatinc_sizeUpkeepRatio"); }
@@ -545,6 +555,8 @@ public class ThreatIncConfig {
 	public static float npcSiegeOrbitMargin() { return f("threatinc_npcSiegeOrbitMargin"); }
 	/** An NPC siege not yet landed turns home when hostile fleets over a world it is taking reach this x its own (0: fights to vanilla's abort line). */
 	public static float siegeBreakOffRatio() { return f("threatinc_siegeBreakOffRatio"); }
+	/** An off-screen fight costs the defending fleets too: min(0.75, half the attacker's strength over theirs) (ThreatAbstractBattle). */
+	public static boolean abstractDefendersFight() { return b("threatinc_abstractDefendersFight", true); }
 	/** Months of its garrison's supply upkeep a forward base keeps back when a sibling's siege pools its stock. */
 	public static float siegeOutpostKeepMonths() { return f("threatinc_siegeOutpostKeepMonths"); }
 	/** Days a faction weighs the swarms its called-off siege met in a system before it sails there again (0: forgets at once). */

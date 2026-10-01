@@ -116,6 +116,9 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		ThreatPosture.forget();
 		ThreatStance.forget();
 		ThreatReach.forget();
+		ThreatFactionStance.forget();
+		// and a stock's unmet bill held over from the session left (ThreatFuel.held)
+		ThreatFuel.forget();
 
 		// colonyMarkets keys that read lookups created before 0.7.0 made in-system
 		// expansion seed hives into inhabited core systems (rc1 review)

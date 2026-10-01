@@ -63,12 +63,26 @@ Vanilla numbers that do the work (verified in the API source and in
 player never found links; 2026-09-29: `frontlineMaxPerFaction` is gone - what a faction can
 found and garrison is bounded by its depots), while `frontlinesEnabled` is on. The knob gates founding only: links already
 standing are kept up, paid, guarded and pruned with it off. One link per pass:
-- **Cost:** the outpost cost (`outpostSupplies`, `outpostFuel`) once, drawn
-  from the war reserve of the faction's base nearest the site that holds it,
-  at any range. No base can pay, no link. It is drawn before the garrison is
-  weighed, so the voyage check reads what the founding leaves, and refunded if
-  no garrison can be had. There is no upkeep: a link lives on vanilla imports
-  like any market.
+- **Cost:** the outpost cost (`outpostSupplies`, `outpostFuel`) plus, since
+  2026-10-01, the structures it stands up with at their vanilla build cost
+  (`ThreatOutposts.linkCost`, `ThreatBuildCost.linkKit`: Population, Spaceport,
+  Waystation and the orbital station, about 4,000 supplies - as the hive's
+  Seeding Swarm pays its kit; they still stand at once, as the hive's do). Drawn
+  once by the faction's base nearest the site that can fund it, at any range:
+  its war reserve above the floor, then what the markets reaching it can spare
+  (`ThreatFrontlines.canFund`/`drawFounding`, `payFromOthers`) - read from one
+  base alone, 29 tries in h40a found no payer while the Persean League held ~22k
+  supplies across its markets. No base can fund it, no link. In a new game (ng7a) the
+  Hegemony, just mobilised and three 1,000-supply Waystations bought, held 64.5k supplies
+  across 12 colonies and still could not fund a 5,500-supply link. Not measured: likely the
+  floors (a quarter of six months' banking) and donor keep (half of it) holding most of a young
+  depot. It is drawn before the garrison
+  is weighed, so the voyage check reads what the founding leaves, and refunded
+  if no garrison can be had. Upkeep: size upkeep (`ThreatColonyUpkeep`, the
+  hive's table, from size 3) and its garrison's supplies (`payUpkeep`); the
+  structures themselves cost nothing to keep (user, 2026-10-01: not now).
+- **Stance:** a consolidating faction founds no link, a pressing one on
+  `stanceSecondaryShare` of its passes (`ThreatFactionStance.foundsLinks`).
 - **Target:** the nearest found live hive that none of the faction's bases or
   links is within `frontlineReachLY` of.
 - **Anchor:** the faction's colony, or connected link, nearest that hive.

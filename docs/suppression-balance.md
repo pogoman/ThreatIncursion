@@ -440,7 +440,8 @@ Knob names are proposals. `hiveBombardCostMult` goes too (fuel no longer derives
   base alone (its reach is any range). Out of both, they hold the orbit
   without bombarding ("out of fuel to bombard with"). A Defend fleet with no fuel over a front
   that cannot hold fabricates troops, since an empty tank counts as orbit done (`orbitDoneFor`).
-  The swarm pays nothing: it has no fuel economy.
+  The swarm pays from the hive's fuel stock at the same rates since 2026-10-01
+  (`threatPaysOrdnance`, docs/hive-economy.md "Idle stock" part 4); before that it paid nothing.
 - **One atrocity per saturation campaign** (`$threatinc_satAtrocity`, 30 days), not one a day: a
   70-day campaign counts once, as vanilla's one-shot did.
 - **Story-critical worlds** stop at size 3 and are never destroyed, as vanilla's saturation

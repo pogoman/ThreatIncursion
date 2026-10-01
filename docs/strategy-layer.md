@@ -167,7 +167,8 @@ taken. Callers:
   defences as the tactical pass leaves them: every fortification (the Nexus and the
   batteries) fully worn (`ThreatGroundFronts.wornDefenceFraction`) - and at no less than
   the Swarm Nexus anchor (`nexusAnchoredDefense / (1 + nexusDefenseBonus)`, its
-  bonus worn the same way): a young colony reads vanilla's shallow base until its Nexus
+  bonus worn the same way; since 2026-10-01 the anchor carries a standing Swarm Bastion's or
+  Command's x1.2 / x1.3 too): a young colony reads vanilla's shallow base until its Nexus
   goes up, and Run 7's landings of 300 met counter-attacks of 1,180. A flat 0.6 of the
   intact figure held only behind batteries, so landings on hives without them came ~28%
   short (Run 9); keyed on the key organs, a hive with only its Core or port down was sized
@@ -1441,6 +1442,63 @@ faction's military world; entering the origin announces the find and a board row
 it; no "dispatched a task force" line before that; the strike intel names no origin.
 Swarm side: "Scouting Swarm from X" in the log once phase 2 is reached, "Scouting Swarm
 charted Y" on arrival, and no "Strike launched" at a system before it is charted.
+
+## The factions' reach and stance (2026-10-01, user's call)
+
+"Humans should have the same reach and stance systems" as the hive (docs/hive-economy.md
+"Reach is the bill", `ThreatStance`).
+
+**Reach is the bill** (`humanBilledReach`, on). `IncursionManager.expeditionRangeLY` - every
+"is this base in reach" test the factions run (sieges, hunts, relief, staging, the hive's
+own read of who can siege its claims) - is `ThreatReach.baseRangeLY` for an NPC base: as far
+as its war reserve and the donors pooling into it (`siegeDonors`) pay the smallest siege
+flotilla's trip - two fleets of difficulty 5, 250 FP: its passage fuel (points x ly x
+`expeditionFuelPerPointLY`) and, above the hulls' deposit, its ships' supplies for a strike's
+days there and back (`ThreatReach.tripSupplies`: FP x the faction's measured supplies a FP a
+month, 0.94 before it has fleets out). No radius and no military structure needed: a forward
+base reaches from the day it holds stock (the "zero-reach link" bug is gone with the
+radius); an empty depot reaches nothing; a faction never mobilised has no reserve and
+reaches nothing. Memoised a day per base. The player's worlds keep the fuel radius.
+- **Logistics keep a radius.** Stock pooling between a faction's own markets
+  (`ThreatConvoys.stockReachLY`, the donor walks) reads `IncursionManager.logisticsRangeLY`,
+  the old fuel radius: depots hauling to depots, not a fleet's reach - and the bill reads that
+  pool, so it must not read the reach back.
+- **A siege pays its whole trip.** The launch gate and `siegeCanPay` price a difficulty point
+  at its deposit plus its supplies for `siegeTripDays` (muster and passage, the stay, passage
+  home), so a far siege costs more than a near one and cheapestFirst weighs the distance. The
+  stay is `siegeStayDays`: the days its commander would bombard the slowest world it lands on
+  (`bombardPlan`) and a day to land, or a slice's days for one that only wrecks. The first
+  draft billed `siegeOrbitDays` (120), the most it may stay - ~299 supplies a point in h40a,
+  where the hive bills its strikes no stay at all (review).
+- **Not reserved.** The trip is paid as it goes (`ThreatUpkeep`), not drawn at launch, so two
+  sieges admitted in one pass can count the same stock, and upkeep draws only what others
+  can spare (`payFromOthers`) where the gate counts the donors' stock above their floors. An
+  over-committed siege runs short and turns home (`outOfSupplies`). Open.
+- **An expedition that never spawns pays too.** `ThreatUpkeep.chargeAbstract`: an
+  off-screen siege has no fleet for the upkeep pass to bill, so its sieges sailed for free;
+  now its allotment's supplies a month come from its base (then the markets reaching it),
+  and a month owed turns it home (`outOfSupplies`), as a spawned fleet's does.
+
+**Stance** (`ThreatFactionStance`, `factionStanceEnabled`, on). Each mobilised NPC faction
+keeps the hive's three stances, read every 7 days, held `stanceDwellDays` except into
+CONSOLIDATE, logged "Faction stance: f A->B - reasons" and shown on the monthly census:
+- **CONSOLIDATE** - pressed (struck within 60 days, or a Threat front on one of its worlds)
+  and losing its exchange (`noteTrend`, fed by real battles via `ThreatPosture.noteBattle`
+  and off-screen fights via `ThreatAbstractBattle`) or outweighed by the swarm facing it
+  (hive systems whose `ThreatReach.facedFaction` is it): no new links, and sieges only at
+  hive systems facing it. A siege it may not sail does not hold its base back from hunting
+  (`hasSiegeableHive` skips it).
+- **PRESS** - not pressed, not losing, its force (fleets out plus what its depots' supplies
+  pay at a siege's price a FP) outweighs the swarm facing it by `stancePressRatio`, and a
+  base can take and pay for a siege now - any of its bases in reach, cheapest first, as
+  `tryPurgeBombardments` tries them (read from the nearest alone, PRESS fired once in h40a):
+  the system with the most target size for the least
+  orbit odds per day away is weighed first in `tryPurgeBombardments` and the pressing
+  faction's bases sail first there; links on `stanceSecondaryShare` of its passes.
+- **EXPAND** - otherwise: links toward the hive, sieges as they come.
+- **Open:** CONSOLIDATE holds while any Threat front stands on the faction's worlds and the
+  ratio is under 1, and the ratio's denominator moves with `facedFaction` (hegemony's "FP
+  facing it" read 88,088, 2,629 and 66,966 within h40a), so stances can swing.
 
 ## Not built yet
 

@@ -795,15 +795,16 @@ public class ThreatColonyManager {
 			if (countLink(link) == 0 && tryBuildLink(market, link, "first", false, payerId)) return;
 		}
 
-		// what the hive's stocks fell short of (2026-09-30, ThreatFuel.noteShort):
-		// another fuel plant while sends are held for fuel, another forge while
-		// its fleets' supplies upkeep goes unpaid. h26a held 470 sends for fuel
-		// and built no plant for them. One at a time, each given a month to show
-		// (ThreatFuel.mayAnswer)
+		// what the hive's stocks would run dry of (2026-09-30; 2026-10-01 on the
+		// trailing demand, ThreatFuel.runsDry): another fuel plant or forge while
+		// the stock and production cannot cover the demand over a producer's build
+		// time, another forge while the colonies' sustenance goes unpaid. h26a
+		// held 470 sends for fuel and built no plant for them; on any held send
+		// the overnight tests built 59, never retired. One at a time, each given
+		// a month to show (ThreatFuel.mayAnswer)
 		for (int link = 0; link < CHAIN_LINKS.length; link++) {
-			String out = CHAIN_OUTPUTS[link];
-			String stock = Commodities.SHIPS.equals(out) ? Commodities.SUPPLIES : out;
-			if (!Commodities.FUEL.equals(stock) && !Commodities.SUPPLIES.equals(stock)) continue;
+			String stock = linkStock(link);
+			if (stock == null) continue;
 			if (!ThreatFuel.mayAnswer(stock)) continue;
 			boolean placed = !hasLink(market, link);
 			if (tryBuildLink(market, link, stock + " short", false, payerId)) {
@@ -851,20 +852,40 @@ public class ThreatColonyManager {
 		}
 
 		// redundancy: every link at two copies before any at three, spare copies
-		// steered to the system holding the fewest
+		// steered to the system holding the fewest. A link that fills a stock
+		// (fuel plants, forges) adds a spare only while losing the hive's biggest
+		// producer would run it dry (2026-10-01, ThreatFuel.wantsSpare): the
+		// overnight tests put up 26 spare fuel plants, ng5a ending on 538k fuel
 		int target = redundancyTarget();
+		boolean[] spares = new boolean[CHAIN_LINKS.length];
+		for (int link = 0; link < CHAIN_LINKS.length; link++) {
+			String stock = linkStock(link);
+			spares[link] = stock == null || ThreatFuel.wantsSpare(stock);
+		}
 		for (int level = 1; level < target; level++) {
 			for (int link = 0; link < CHAIN_LINKS.length; link++) {
+				if (!spares[link]) continue;
 				if (countLink(link) <= level && tryBuildLink(market, link, "spare", true, payerId)) return;
 			}
 		}
 
 		// the chain is complete: a bigger copy of any link whose largest producer
-		// no longer covers the hive's largest consumer of its output
+		// no longer covers the hive's largest consumer of its output - never of a
+		// stock in surplus (ThreatFuel.surplus)
 		for (int link = 0; link < CHAIN_LINKS.length; link++) {
 			if (outputCovered(link) || size <= largestLinkSize(link)) continue;
+			String stock = linkStock(link);
+			if (stock != null && ThreatFuel.surplus(stock)) continue;
 			if (tryBuildLink(market, link, "bigger", false, payerId)) return;
 		}
+	}
+
+	/** The hive stock a chain link fills (ThreatFuel): fuel for a fuel plant, supplies for a forge; null for a refinery. */
+	protected static String linkStock(int link) {
+		String out = CHAIN_OUTPUTS[link];
+		if (Commodities.FUEL.equals(out)) return Commodities.FUEL;
+		if (Commodities.SHIPS.equals(out)) return Commodities.SUPPLIES;
+		return null;
 	}
 
 	/**
@@ -883,7 +904,16 @@ public class ThreatColonyManager {
 		if (Industries.REFINING.equals(industry) && !groupHasIndustry(Industries.MINING)) return false;
 		if (Industries.FUELPROD.equals(industry) && !groupHasVolatiles()) return false;
 		if (spread && !spreadAllows(market, link)) return false;
-		if (!buyStructure(market, industry, payerId)) return true;
+		if (!buyStructure(market, industry, payerId)) {
+			// a first copy or a shortage's answer the stock cannot pay is demand on
+			// it; an optional build (invest, spare, bigger) that waits is not
+			// (2026-10-01: every unpaid build noted supplies short). Booked by the
+			// industry, not the world: one need, however many worlds ask for it
+			if (payerId != null && ThreatBuildCost.enabled() && ("first".equals(label) || label.endsWith(" short"))) {
+				ThreatFuel.heldBuild(industry, ThreatBuildCost.supplies(industry));
+			}
+			return true;
+		}
 		markEconomyDirty();
 		ThreatIncConfig.log("Hive planner: " + industry + " (" + label + ") at " + market.getName());
 		return true;
@@ -1253,7 +1283,12 @@ public class ThreatColonyManager {
 	 * never the first copy of a link that vitality is itself made of.
 	 */
 	public static void maintainHiveEconomy() {
+		// one surplus fuel plant a month, hive-wide, turned into what the hive
+		// lacks (2026-10-01) - before the sweep, so the slot it frees is filled
+		// by the conversion's own build and no other step sees it empty
+		MarketAPI converted = convertSurplus();
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (market == converted) continue;
 			// a world that can now feed the batteries it lacks (or the heavy
 			// batteries it has outgrown) arms on this tick, not on its next
 			// growth step a season away - structures need no slot
@@ -1262,18 +1297,290 @@ public class ThreatColonyManager {
 			boolean gd = market.hasIndustry(THREAT_GROUND_DEFENSES);
 			boolean hb = market.hasIndustry(THREAT_HEAVY_BATTERIES);
 			boolean arms = ((size >= 3 && !gd && !hb) || (size >= 6 && gd)) && defensesAffordable(market);
+			// Swarm Command needs no slot either: a Bastion grows into it in place
+			boolean command = militaryUpgradeDue(market);
 			// a growing world plans on this tick too (2026-10-01): under size upkeep
 			// a growth step takes months, and a world that built only on its steps
 			// left its free slot empty that long - ng1b's bootstrap worlds reached
 			// size 3 at month 11 and built their refinery and fuel plant at 16.
 			// What a build costs in supplies and time is the pace now. Size upkeep
 			// off, growth is quick and builds on its steps as before
-			if (!arms) {
+			if (!arms && !command) {
 				if (!ThreatColonyUpkeep.enabled() && size < cap && growing(market)) continue;
 				if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) continue;
 			}
+			int before = buildSignature(market);
 			planHiveEconomy(market);
+			// the military tier comes last: only where the chain built and wants
+			// nothing this tick (maintainMilitaryTier)
+			if (buildSignature(market) == before && !buildWaiting().containsKey(market.getId())) {
+				maintainMilitaryTier(market);
+			}
 		}
+	}
+
+	/** What the planner changed on a colony shows here: its industries and how many of them are building. */
+	protected static int buildSignature(MarketAPI market) {
+		int building = 0;
+		for (Industry ind : market.getIndustries()) {
+			if (ind.isBuilding()) building++;
+		}
+		return market.getIndustries().size() * 100 + building;
+	}
+
+	// ------------------------------------------------------------------
+	// idle stock: surplus plants converted, idle fleet points garrisoned
+	// (2026-10-01, user's call; docs/hive-economy.md "Idle stock")
+	// ------------------------------------------------------------------
+
+	/** The chain link of this industry (CHAIN_LINKS), -1 for none. */
+	protected static int linkIndex(String industryId) {
+		for (int link = 0; link < CHAIN_LINKS.length; link++) {
+			if (CHAIN_LINKS[link].equals(industryId)) return link;
+		}
+		return -1;
+	}
+
+	/**
+	 * CONVERSION: once a month hive-wide (ThreatFuel.mayConvert), a fuel plant
+	 * the stock can spare (ThreatFuel.surplusProducer: production without it
+	 * still covers the trailing demand, and the stock covers that demand over a
+	 * plant's build time) is torn down on a world with no free slot, and the
+	 * slot given to what the hive lacks (conversionFor): a forge while supplies
+	 * are not in surplus and the world has none, else a chain link it is
+	 * missing, else a Swarm Bastion. The new structure is bought and grown like
+	 * any other; one that cannot be paid tears nothing down. Never the last
+	 * fuel plant nor the hive's biggest, never one carrying a relic, never on a
+	 * world under a front or saturation. Slot-full worlds only: a world with a
+	 * free slot builds there without tearing anything down. Forges are never
+	 * retired: they make the fabrication bank's hulls as well as supplies, and
+	 * the invest rule builds them from idle supplies on purpose. ng5a ended on
+	 * 538k fuel, its plants making 82k a month against ~30k spent. Returns the
+	 * world converted, or null.
+	 */
+	public static MarketAPI convertSurplus() {
+		if (!ThreatIncConfig.hiveConvertSurplus() || !ThreatFuel.planned() || !ThreatFuel.mayConvert()) return null;
+		String fuel = Commodities.FUEL;
+		int plants = linkIndex(Industries.FUELPROD);
+		if (plants < 0 || countLink(plants) <= 1 || !ThreatFuel.surplus(fuel)) return null;
+		// the hive's biggest plant stays
+		MarketAPI biggest = null;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (!m.hasIndustry(Industries.FUELPROD)) continue;
+			if (biggest == null || ThreatFuel.outputOf(m, fuel) > ThreatFuel.outputOf(biggest, fuel)) biggest = m;
+		}
+		final Map<MarketAPI, String> builds = new java.util.HashMap<MarketAPI, String>();
+		List<MarketAPI> picks = new ArrayList<MarketAPI>();
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (m == biggest) continue;
+			Industry plant = m.getIndustry(Industries.FUELPROD);
+			if (plant == null || plant.isBuilding()) continue;
+			if (Misc.getNumIndustries(m) < Misc.getMaxIndustries(m)) continue;
+			if (plant.getSpecialItem() != null || plant.getAICoreId() != null) continue;
+			if (ThreatGroundFronts.hasFront(m) || ThreatRazing.saturated(m)) continue;
+			if (!ThreatFuel.surplusProducer(m, fuel)) continue;
+			String build = conversionFor(m);
+			if (build == null || !conversionPayable(m, build)) continue;
+			builds.put(m, build);
+			picks.add(m);
+		}
+		if (picks.isEmpty()) return null;
+		// the slot worth most first: a forge, then a chain link, then the
+		// military tier; the bigger world (more output, more swarms), then the
+		// plant that makes least
+		java.util.Collections.sort(picks, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				int c = conversionRank(builds.get(a)) - conversionRank(builds.get(b));
+				if (c != 0) return c;
+				c = b.getSize() - a.getSize();
+				if (c != 0) return c;
+				return Float.compare(ThreatFuel.outputOf(a, Commodities.FUEL), ThreatFuel.outputOf(b, Commodities.FUEL));
+			}
+		});
+		MarketAPI m = picks.get(0);
+		String build = builds.get(m);
+		float stock = ThreatFuel.stock(fuel);
+		float demand = ThreatFuel.demandPerMonth(fuel);
+		float made = ThreatFuel.perMonth(fuel);
+		float output = ThreatFuel.outputOf(m, fuel);
+		// paid before anything comes down
+		String price;
+		if (SwarmBastion.BASTION.equals(build)) {
+			float fp = ThreatBuildCost.fleetPoints(build);
+			if (!payMilitary(m, build)) return null;
+			m.removeIndustry(Industries.FUELPROD, null, false);
+			addMilitary(m);
+			price = Misc.getWithDGS((int) fp) + " FP";
+		} else {
+			float supplies = ThreatBuildCost.supplies(build);
+			// bought first (addIndustry asks no slot): a refusal tears nothing down
+			if (!buyStructure(m, build, m.getId())) return null;
+			m.removeIndustry(Industries.FUELPROD, null, false);
+			price = Misc.getWithDGS((int) supplies) + " supplies";
+		}
+		markEconomyDirty();
+		ThreatFuel.converted();
+		ThreatIncConfig.log("Converted Fuel Production on " + m.getName() + " to " + structureName(build) + ": fuel "
+				+ (int) stock + " covers " + (demand > 0f ? String.format("%.1f", stock / demand) : "all")
+				+ " months of demand (" + (int) demand + "/mo trailing, " + (int) made + "/mo made, " + (int) output
+				+ "/mo from this plant); " + price);
+		return m;
+	}
+
+	/** What a fuel plant's slot on this world becomes (convertSurplus), or null for nothing worth tearing it down for. */
+	protected static String conversionFor(MarketAPI m) {
+		// a forge while the hive could use every unit of supplies it makes
+		if (m.getSize() >= 3 && getForge(m) == null && !ThreatFuel.surplus(Commodities.SUPPLIES)) {
+			return Industries.HEAVYINDUSTRY;
+		}
+		// a chain link it is missing: Mining on deposits nobody digs, a first
+		// refinery, or one bigger than the hive's largest once that no longer
+		// covers its largest consumer of metals
+		if (hasMiningDeposits(m) && !m.hasIndustry(Industries.MINING) && !minesNothingNew(m)) return Industries.MINING;
+		int refinery = linkIndex(Industries.REFINING);
+		if (refinery >= 0 && !m.hasIndustry(Industries.REFINING) && groupHasIndustry(Industries.MINING)
+				&& (countLink(refinery) == 0 || (!outputCovered(refinery) && m.getSize() > largestLinkSize(refinery)))) {
+			return Industries.REFINING;
+		}
+		// else the military tier, on a world with a Nexus and none yet
+		if (ThreatIncConfig.hiveMilitaryTier() && m.hasIndustry(SWARM_NEXUS) && SwarmBastion.of(m) == null) {
+			return SwarmBastion.BASTION;
+		}
+		return null;
+	}
+
+	/** Whether the conversion's build can be paid now: the supplies in stock, or for the military tier an idle bank (militaryIdle). */
+	protected static boolean conversionPayable(MarketAPI m, String build) {
+		if (SwarmBastion.BASTION.equals(build)) return militaryIdle(m, build);
+		return ThreatFuel.stock(Commodities.SUPPLIES) >= ThreatBuildCost.supplies(build);
+	}
+
+	/** Lower first: a forge, a chain link, the military tier. */
+	protected static int conversionRank(String build) {
+		if (Industries.HEAVYINDUSTRY.equals(build)) return 0;
+		if (SwarmBastion.BASTION.equals(build)) return 2;
+		return 1;
+	}
+
+	/** The structure's name from its spec, for the log. */
+	protected static String structureName(String industryId) {
+		try {
+			return Global.getSettings().getIndustrySpec(industryId).getName();
+		} catch (RuntimeException e) {
+			return industryId;
+		}
+	}
+
+	/**
+	 * THE MILITARY TIER (SwarmBastion): a colony whose chain built and wants
+	 * nothing this tick, and whose bank its garrison does not need
+	 * (militaryIdle), grows a Swarm Bastion in a free slot - unless a stock is
+	 * wanted (ThreatFuel.wanted) whose producer the world lacks, a free slot
+	 * being the chain's first - and later grows it into Swarm Command in place. Paid in fleet points from
+	 * the colony's bank, its system's topping it up (poolSystemBanks), at the
+	 * vanilla structure's price (ThreatBuildCost.fleetPoints); vanilla's build
+	 * time. The swarms the tier keeps home are then fabricated from the bank and
+	 * pay the garrison's upkeep: the sink for fleet points the hive banks and
+	 * has no other use for (ng4a: 297k FP banked).
+	 */
+	protected static void maintainMilitaryTier(MarketAPI market) {
+		if (!ThreatIncConfig.hiveMilitaryTier() || !market.hasIndustry(SWARM_NEXUS)) return;
+		Industry standing = SwarmBastion.of(market);
+		if (standing != null) {
+			if (!militaryUpgradeDue(market)) return;
+			float fp = ThreatBuildCost.fleetPoints(SwarmBastion.COMMAND);
+			if (!payMilitary(market, SwarmBastion.COMMAND)) return;
+			if (ThreatBuildCost.enabled() && ThreatBuildCost.buildDays(SwarmBastion.COMMAND) > 0f
+					&& standing.getSpec().getUpgrade() != null) {
+				standing.startUpgrading();
+			} else {
+				market.removeIndustry(SwarmBastion.BASTION, null, true);
+				market.addIndustry(SwarmBastion.COMMAND);
+			}
+			markEconomyDirty();
+			logMilitary(market, SwarmBastion.COMMAND, fp);
+			return;
+		}
+		if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) return;
+		// a free slot is the chain's first: held for a forge while supplies are
+		// wanted and the world has none, for a fuel plant while fuel is and it
+		// has none (a build the planner already chose waits in buildWaiting).
+		// Held while either stock was short anywhere, it was held for good under
+		// size upkeep: h40a ran short of supplies all run, 98k FP banked, no Bastion
+		if (ThreatFuel.wanted(Commodities.SUPPLIES) && getForge(market) == null) return;
+		if (ThreatFuel.wanted(Commodities.FUEL) && !market.hasIndustry(Industries.FUELPROD)) return;
+		if (!militaryIdle(market, SwarmBastion.BASTION)) return;
+		float fp = ThreatBuildCost.fleetPoints(SwarmBastion.BASTION);
+		if (!payMilitary(market, SwarmBastion.BASTION)) return;
+		addMilitary(market);
+		logMilitary(market, SwarmBastion.BASTION, fp);
+	}
+
+	/** Whether the colony's standing Swarm Bastion grows into Swarm Command now: not disrupted or building, and the bank idle for it. */
+	protected static boolean militaryUpgradeDue(MarketAPI market) {
+		if (!ThreatIncConfig.hiveMilitaryTier()) return false;
+		Industry bastion = market.getIndustry(SwarmBastion.BASTION);
+		if (bastion == null || bastion.isBuilding() || bastion.isDisrupted()) return false;
+		return militaryIdle(market, SwarmBastion.COMMAND);
+	}
+
+	/**
+	 * Whether the colony's fleet points sit idle enough for the tier's
+	 * structure: its garrison holds its want, its income carries the upkeep of
+	 * that garrison and of the swarms the structure adds (militaryExtraFP), and
+	 * its bank with its system's (poolableFP) holds the price, those swarms and
+	 * that upkeep over the structure's build time. No number of its own: the
+	 * price is the vanilla structure's, the rest the garrison's own rows and
+	 * upkeep rate.
+	 */
+	protected static boolean militaryIdle(MarketAPI market, String industryId) {
+		List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(market.getId());
+		float held = ownedFleetFP(market, fleets);
+		if (ThreatPosture.enabled()) {
+			if (held < ThreatPosture.wantFP(market)) return false;
+		} else if (countFitGarrison(market) + swarmsAway(market.getId()) < desiredGarrisonCount(market)) {
+			return false;
+		}
+		float extra = militaryExtraFP(market, industryId);
+		float upkeepMonth = upkeepPerDay(held + extra) * 30f;
+		if (fabricationRatePerDay(market) * 30f < upkeepMonth) return false;
+		float months = ThreatBuildCost.enabled() ? ThreatBuildCost.buildDays(industryId) / 30f : 0f;
+		return poolableFP(market) >= ThreatBuildCost.fleetPoints(industryId) + extra + upkeepMonth * months;
+	}
+
+	/** Fleet points of the swarms the structure adds to the colony's reserve: a base reserve's worth of the size table's next rows. */
+	protected static float militaryExtraFP(MarketAPI market, String industryId) {
+		int base = baseReserve(market);
+		int from = SwarmBastion.COMMAND.equals(industryId) ? 2 * base : base;
+		return ThreatPosture.rowsFP(market, from, base);
+	}
+
+	/** Pays the tier's structure from the colony's bank, its system's topping it up; false, nothing paid, if they cannot. */
+	protected static boolean payMilitary(MarketAPI market, String industryId) {
+		float price = ThreatBuildCost.fleetPoints(industryId);
+		if (!poolSystemBanks(market, price, structureName(industryId))) return false;
+		chargeFP(market, price);
+		return true;
+	}
+
+	/** Adds the Swarm Bastion to the colony, grown over vanilla's build time while structures take one. */
+	protected static void addMilitary(MarketAPI market) {
+		market.addIndustry(SwarmBastion.BASTION);
+		Industry ind = market.getIndustry(SwarmBastion.BASTION);
+		if (ind != null && ThreatBuildCost.enabled() && ThreatBuildCost.buildDays(SwarmBastion.BASTION) > 0f) {
+			ind.startBuilding();
+		}
+		markEconomyDirty();
+	}
+
+	protected static void logMilitary(MarketAPI market, String industryId, float fp) {
+		int reserve = baseReserve(market) * (SwarmBastion.COMMAND.equals(industryId) ? 3 : 2);
+		ThreatIncConfig.log("Hive planner: " + structureName(industryId) + " at " + market.getName() + " for "
+				+ (int) fp + " FP, " + reserve + " swarms home once it stands ("
+				+ (int) militaryExtraFP(market, industryId) + " FP more); " + (int) bankedFP(market) + " FP banked");
+		announce(ThreatNotice.titled(structureName(industryId)).bad()
+				.line("%s is growing a " + structureName(industryId), ThreatNotice.market(market))
+				.line("It will keep %s Defense Swarms at home", ThreatNotice.hl("" + reserve)));
 	}
 
 	/**
@@ -1450,11 +1757,12 @@ public class ThreatColonyManager {
 		if (current > target) {
 			market.getAccessibilityMod().modifyFlat(PORT_DOWN_MOD_ID, target - current, why);
 		}
-		if (!had) {
-			ThreatIncConfig.log(why + " at " + market.getName() + ": accessibility "
-					+ Math.round(current * 100f) + "% -> " + Math.round(target * 100f)
-					+ "%, shipping " + Misc.getShippingCapacity(market, true) + " units");
-		}
+		// a verdict line: a port already below the trickle's figure never takes
+		// the modifier, so "had" never held and it logged every poll (Qaras,
+		// 106 times in ng7a)
+		ThreatIncConfig.logOnChange("port:" + market.getId(), why, why + " at " + market.getName() + ": accessibility "
+				+ Math.round(current * 100f) + "% -> " + Math.round(target * 100f)
+				+ "%, shipping " + Misc.getShippingCapacity(market, true) + " units");
 	}
 
 	/** The accessibility that gives {@code units} of same-faction shipping (portDownAccessibility's rule). */
@@ -2037,8 +2345,19 @@ public class ThreatColonyManager {
 		return ThreatPosture.enabled() ? ThreatPosture.baseCount(market) : desiredGarrisonCount(market);
 	}
 
-	/** Defense Swarms a colony always keeps home; it never musters these. */
+	/**
+	 * Defense Swarms a colony always keeps home; it never musters these. Half
+	 * its size table (baseReserve), doubled under a Swarm Bastion and tripled
+	 * under Swarm Command (2026-10-01, SwarmBastion): the posture's minimum and
+	 * base and the launch reserve all read it, so the swarms the tier adds are
+	 * built from the bank and stay home whatever the posture wants.
+	 */
 	public static int garrisonReserve(MarketAPI market) {
+		return baseReserve(market) * (1 + SwarmBastion.tier(market));
+	}
+
+	/** The reserve without a military tier: half the (hull-scaled) size table, at least one swarm. */
+	public static int baseReserve(MarketAPI market) {
 		return Math.max(1, desiredGarrisonCount(market) / 2);
 	}
 
@@ -2436,8 +2755,10 @@ public class ThreatColonyManager {
 	/**
 	 * Whether the structure can be paid for: from the hive's supplies stock
 	 * while structures cost supplies (ThreatBuildCost), else from payerId's FP
-	 * bank. If not, the colony's build waits (flagged) and a supplies shortfall
-	 * is noted (ThreatFuel.noteShort). A null payer builds free.
+	 * bank. If not, the colony's build waits (flagged). It notes no shortage
+	 * (2026-10-01): an optional build the stock cannot pay - Orbital Works,
+	 * Heavy Batteries - is no reason for a forge; tryBuildLink books the
+	 * needed ones as demand (ThreatFuel.heldBuild). A null payer builds free.
 	 */
 	protected static boolean affordStructure(MarketAPI market, String payerId, String industryId) {
 		if (payerId == null) return true;
@@ -2446,7 +2767,8 @@ public class ThreatColonyManager {
 			if (ThreatFuel.stock(Commodities.SUPPLIES) >= cost) return true;
 			buildWaiting().put(market.getId(), true);
 			ThreatIncData.map(KEY_BUILD_WAITING_SUPPLIES).put(market.getId(), cost);
-			ThreatFuel.noteShort(Commodities.SUPPLIES);
+			// passage off: the old rule, an unpaid build is a month's shortage
+			if (!ThreatFuel.planned()) ThreatFuel.noteShort(Commodities.SUPPLIES);
 			return false;
 		}
 		float cost = foundingFP(1);
@@ -3830,6 +4152,11 @@ public class ThreatColonyManager {
 	 * others (2026-09-29, ti-h8d).
 	 */
 	public static boolean poolSystemBanks(MarketAPI source, float bill) {
+		return poolSystemBanks(source, bill, "Founding");
+	}
+
+	/** poolSystemBanks for a bill of this kind, named in the log ("Founding bill at ...", "Swarm Bastion bill at ..."). */
+	public static boolean poolSystemBanks(MarketAPI source, float bill, String what) {
 		if (source == null) return false;
 		float short0 = bill - bankedFP(source);
 		if (short0 <= 0f) return true;
@@ -3854,7 +4181,7 @@ public class ThreatColonyManager {
 			if (from.length() > 0) from.append(", ");
 			from.append(m.getName()).append(' ').append((int) take);
 		}
-		ThreatIncConfig.log("Founding bill at " + source.getName() + ": " + (int) bill + " FP, "
+		ThreatIncConfig.log(what + " bill at " + source.getName() + ": " + (int) bill + " FP, "
 				+ (int) short0 + " pooled from " + from);
 		return true;
 	}
@@ -4222,10 +4549,11 @@ public class ThreatColonyManager {
 	/**
 	 * Pays the supplies of the colony's fleets away ({@code perMonth}) for the
 	 * days since its last payment from the hive's stock. What the stock cannot
-	 * pay is noted short (the planner builds a forge for it, ThreatFuel.noteShort)
-	 * and owed; once a month's worth is owed the colony's raiders turn home and
-	 * its strikes back (starveAway), as a faction's fleets out of supplies do
-	 * (ThreatUpkeep.starve). A month paid in full clears the debt.
+	 * pay is demand it did not meet (ThreatFuel.noteDemand: the planner builds a
+	 * forge once the stock would run dry, ThreatFuel.runsDry) and owed; once a
+	 * month's worth is owed the colony's raiders turn home and its strikes back
+	 * (starveAway), as a faction's fleets out of supplies do (ThreatUpkeep.starve).
+	 * A month paid in full clears the debt.
 	 */
 	protected static void paySupplies(MarketAPI market, float perMonth) {
 		String id = market.getId();
@@ -4245,7 +4573,8 @@ public class ThreatColonyManager {
 			owedMap.remove(id);
 			return;
 		}
-		ThreatFuel.noteShort(Commodities.SUPPLIES);
+		ThreatFuel.noteDemand(Commodities.SUPPLIES, unpaid);
+		if (!ThreatFuel.planned()) ThreatFuel.noteShort(Commodities.SUPPLIES);
 		Object had = owedMap.get(id);
 		float owed = (had instanceof Float ? (Float) had : 0f) + unpaid;
 		if (owed < perMonth) {
@@ -5437,6 +5766,13 @@ public class ThreatColonyManager {
 			}
 			if (market.hasIndustry(THREAT_HEAVY_BATTERIES)) {
 				market.removeIndustry(THREAT_HEAVY_BATTERIES, null, false);
+			}
+			// the military tier is the hive's alone (SwarmBastion)
+			if (market.hasIndustry(SwarmBastion.BASTION)) {
+				market.removeIndustry(SwarmBastion.BASTION, null, false);
+			}
+			if (market.hasIndustry(SwarmBastion.COMMAND)) {
+				market.removeIndustry(SwarmBastion.COMMAND, null, false);
 			}
 			Industry pop = market.getIndustry(Industries.POPULATION);
 			// quantity 0 removes the (legacy) supply mod

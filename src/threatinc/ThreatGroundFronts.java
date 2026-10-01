@@ -338,12 +338,15 @@ public class ThreatGroundFronts {
 					/ counterAttackTempo(front, market);
 		}
 		public List<Industry> keyStructures(MarketAPI market) {
-			// the named organs - Core, Nexus, port and both defense structures
+			// the named organs - Core, Nexus, the military tier, port and both
+			// defense structures
 			List<Industry> list = new ArrayList<Industry>();
 			Industry core = market.getIndustry(ThreatColonyManager.FABRICATION_CORE);
 			if (core != null) list.add(core);
 			Industry nexus = market.getIndustry(ThreatColonyManager.SWARM_NEXUS);
 			if (nexus != null) list.add(nexus);
+			Industry bastion = SwarmBastion.of(market);
+			if (bastion != null) list.add(bastion);
 			Industry port = ThreatColonyManager.getPort(market);
 			if (port != null) list.add(port);
 			list.addAll(defenseStructures(market));
@@ -365,10 +368,13 @@ public class ThreatGroundFronts {
 		}
 		public List<Industry> fortifications(MarketAPI market) {
 			// the war-strata: both defence structures and the Nexus that
-			// commands them
+			// commands them, and the Swarm Bastion or Swarm Command over it
+			// (SwarmBastion, 2026-10-01) - orbit wears them, none of them fires
 			List<Industry> list = defenseStructures(market);
 			Industry nexus = market.getIndustry(ThreatColonyManager.SWARM_NEXUS);
 			if (nexus != null) list.add(nexus);
+			Industry bastion = SwarmBastion.of(market);
+			if (bastion != null) list.add(bastion);
 			for (java.util.Iterator<Industry> it = list.iterator(); it.hasNext();) {
 				Industry ind = it.next();
 				if (ind.isBuilding() && !ind.isUpgrading()) it.remove();
@@ -2565,9 +2571,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return cond / forts.size();
 	}
 
-	/** A hive fortification's defence bonus at full condition: the Nexus's, or a battery's after its deficits (SwarmNexus, ThreatGroundDefenses). */
+	/** A hive fortification's defence bonus at full condition: the Nexus's, the military tier's, or a battery's after its deficits (SwarmNexus, SwarmBastion, ThreatGroundDefenses). */
 	public static float hiveFortificationBonus(Industry ind) {
 		if (ThreatColonyManager.SWARM_NEXUS.equals(ind.getId())) return ThreatIncConfig.nexusDefenseBonus();
+		if (SwarmBastion.isTier(ind.getId())) return SwarmBastion.defenseBonus(ind.getId());
 		float bonus = ThreatColonyManager.THREAT_HEAVY_BATTERIES.equals(ind.getId())
 				? ThreatIncConfig.heavyBatteriesBonus() : ThreatIncConfig.groundDefensesBonus();
 		return bonus * ThreatSiegeMalus.deficitMult(ind, Commodities.HEAVY_MACHINERY, Commodities.METALS);
@@ -3204,7 +3211,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * raised to bombardUnrestMax, its growth paused, and the fuel poured into
 	 * the razing bar ({@link ThreatRazing}) less what the shield turns aside.
 	 * Returns {fleet points the guns take, fuel spent, levels razed, 1 when the
-	 * colony is gone}. Once it is gone nothing else on it is touched.
+	 * colony is gone, 1 when the bar wrecked a hive}. Once it is gone nothing
+	 * else on it is touched; a wrecked hive stands, its razing done with.
 	 */
 	public static float[] saturationSlice(float fp, MarketAPI market, float days, float fuel,
 			boolean elapsed, boolean reapply, float defenceOverride, String razerFactionId, String reason) {
@@ -3215,7 +3223,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** As above for one of the fleets saturating the world together ({@link #siegeSlice(float, float, MarketAPI, float, boolean, boolean, float, String)}): each pours its own fuel and takes its share of the guns' answer. */
 	public static float[] saturationSlice(float fp, float orbitFP, MarketAPI market, float days, float fuel,
 			boolean elapsed, boolean reapply, float defenceOverride, String razerFactionId, String reason) {
-		float[] out = new float[4];
+		float[] out = new float[5];
 		if (market == null || days <= 0f || fp <= 0f) return out;
 		float defence = defenceOverride >= 0f ? defenceOverride
 				: Math.max(0f, MarketCMD.getDefenderStr(market, true));
@@ -3238,10 +3246,12 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		int[] razed = ThreatRazing.pour(market, pour * through, razerFactionId);
 		out[2] = razed[0];
 		out[3] = razed[1];
+		out[4] = razed[2];
 		ThreatIncConfig.log("saturationSlice " + market.getName() + " fp=" + String.format("%.0f", fp)
 				+ " days=" + String.format("%.2f", days) + " poured=" + String.format("%.0f", pour)
 				+ " through=" + String.format("%.2f", through) + " razed=" + razed[0]
-				+ (razed[1] > 0 ? " DESTROYED" : "") + " loss=" + String.format("%.2f", out[0]));
+				+ (razed[1] > 0 ? " DESTROYED" : "") + (razed[2] > 0 ? " WRECKED" : "")
+				+ " loss=" + String.format("%.2f", out[0]));
 		if (razed[1] > 0) return out;
 		if (reapply) finishSlice(market, touched, days);
 		return out;
@@ -3328,15 +3338,23 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
-	 * What a fleet's bombardment costs in fuel it carries, paid: the swarm
-	 * carries none and pays nothing (it has no fuel economy); anyone else pays
-	 * from its own provisions ({@link ThreatReturns#MEM_FUEL}) first and then
-	 * from the spendable reserve of its supply line ({@link #ordnanceSources}).
+	 * What a fleet's bombardment costs in fuel, paid. The swarm carries none:
+	 * it pays from the hive's fuel stock at the same rate (ThreatFuel,
+	 * 2026-10-01 - it poured without limit), and what the stock cannot pay is
+	 * demand it did not meet (ThreatFuel.unmet). Anyone else pays from its own
+	 * provisions ({@link ThreatReturns#MEM_FUEL}) first and then from the
+	 * spendable reserve of its supply line ({@link #ordnanceSources}).
 	 * Returns the fuel actually paid, which may be short.
 	 */
 	public static float payOrdnance(CampaignFleetAPI fleet, String factionId, float fuel) {
 		if (fuel <= 0f) return 0f;
-		if (Factions.THREAT.equals(factionId)) return fuel;
+		if (Factions.THREAT.equals(factionId)) {
+			if (!ThreatFuel.paysOrdnance()) return fuel;
+			float paid = Math.min(fuel, ThreatFuel.stock());
+			ThreatFuel.pay(paid);
+			ThreatFuel.unmet(Commodities.FUEL, fuel - paid, "bombardment");
+			return paid;
+		}
 		if (fleet == null) return 0f;
 		MemoryAPI mem = fleet.getMemoryWithoutUpdate();
 		float carried = Math.max(0f, mem.getFloat(ThreatReturns.MEM_FUEL));
@@ -3349,9 +3367,15 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return paid;
 	}
 
-	/** The fuel a fleet could put into its bombardment now, without paying it ({@link #payOrdnance}). */
+	/** The fuel a fleet could put into its bombardment now, without paying it ({@link #payOrdnance}): the swarm's, the hive's stock. */
 	public static float ordnanceAvailable(CampaignFleetAPI fleet, String factionId) {
-		if (Factions.THREAT.equals(factionId)) return Float.MAX_VALUE;
+		if (Factions.THREAT.equals(factionId)) {
+			if (!ThreatFuel.paysOrdnance()) return Float.MAX_VALUE;
+			// with the stock empty a swarm fleet stands down (orbitDoneFor), and
+			// its day is demand the stock did not meet (once a day)
+			if (fleet != null) ThreatFuel.groundedOrdnance(fleet, bombardFuelPerDay(fleet.getFleetPoints()));
+			return ThreatFuel.stock();
+		}
 		if (fleet == null) return 0f;
 		float fuel = Math.max(0f, fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL));
 		for (MarketAPI m : ordnanceSources(fleet, factionId)) fuel += ThreatReserves.spendable(m, Commodities.FUEL);
@@ -3408,20 +3432,25 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/**
 	 * As above, paying each day's ordnance out of {@code fuel}: the siege stops
 	 * bombarding when the fuel will not buy another half day, and the troops
-	 * land on what orbit left. Returns {the points left, the fuel left}.
+	 * land on what orbit left. Returns {the points left, the fuel left, the
+	 * days it bombarded, 1 if it ran dry with the troops not ready to land}.
 	 */
 	public static float[] abstractSiege(MarketAPI market, float start, float troops,
 			float abortFraction, String factionId, float fuel) {
-		if (market == null || start <= 0f) return new float[] { start, fuel };
+		if (market == null || start <= 0f) return new float[] { start, fuel, 0f, 0f };
 		float fp = start;
 		float elapsed = 0f;
 		float step = SIEGE_FIRST_SLICE_DAYS;
 		float budget = ThreatIncConfig.siegeOrbitDays();
+		boolean dry = false;
 		while (fp > 0f && elapsed < budget && fp > start * abortFraction) {
 			if (readyToLand(market, troops, factionId, orbitDone(market, fp, fuel, troops,
 					factionId != null && !Factions.PLAYER.equals(factionId)))) break;
 			float days = Math.min(step, bombardDaysFor(fuel, fp));
-			if (days <= 0f) break;
+			if (days <= 0f) {
+				dry = true;
+				break;
+			}
 			// the guns would break the siege within the step: its commander lands
 			// on what orbit has left instead of turning for home
 			float fire = returnFirePerDay(market, Math.max(0f, MarketCMD.getDefenderStr(market, true))) * days;
@@ -3441,8 +3470,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		market.reapplyIndustries();
 		ThreatIncConfig.log("Abstract siege of " + market.getName() + ": " + (int) elapsed
 				+ " d, " + (int) start + " -> " + (int) fp + " FP"
-				+ (fuel < Float.MAX_VALUE ? ", " + (int) fuel + " fuel left" : ""));
-		return new float[] { fp, fuel };
+				+ (fuel < Float.MAX_VALUE ? ", " + (int) fuel + " fuel left" : "") + (dry ? ", ran dry" : ""));
+		return new float[] { fp, fuel, elapsed, dry ? 1f : 0f };
 	}
 
 	/**
@@ -3957,12 +3986,14 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * (it razes only as strikeSaturationEnabled says), the player (Bombard or
 	 * by hand), with npcRazeEnabled off, a world saturation cannot finish, a
 	 * contested orbit, or a front that takes the last stratum before the
-	 * razing would ({@link #daysToLastStratum}).
+	 * razing would ({@link #daysToLastStratum}). Never over a hive either:
+	 * saturation only wrecks one (ThreatRazing.wrecksOnly), so it cannot
+	 * finish the front (2026-10-01).
 	 */
 	public static boolean defendRazes(String factionId, MarketAPI market, CampaignFleetAPI fleet) {
 		if (fleet == null || factionId == null || market == null) return false;
 		if (Factions.THREAT.equals(factionId) || Factions.PLAYER.equals(factionId)) return false;
-		if (!ThreatIncConfig.npcRazeEnabled()) return false;
+		if (!ThreatIncConfig.npcRazeEnabled() || ThreatRazing.wrecksOnly(market)) return false;
 		GroundFront front = getFront(market.getId());
 		if (front == null || !factionId.equals(ownerOf(front))) return false;
 		int layers = ThreatRazing.enemyLayers(market);

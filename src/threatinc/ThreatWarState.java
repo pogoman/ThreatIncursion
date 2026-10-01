@@ -259,7 +259,10 @@ public class ThreatWarState {
 		for (MarketAPI market : ThreatReserves.marketsOf(faction.getId())) {
 			if (!IncursionManager.hasMilitary(market)) continue;
 			if (market.getStarSystem() == null) continue;
-			float range = IncursionManager.expeditionRangeLY(market);
+			// the fuel radius too: billed reach shrinks with the stock, and a
+			// faction that spent its stock is not out of the war (review, 2026-10-01)
+			float range = Math.max(IncursionManager.expeditionRangeLY(market),
+					ThreatColonyManager.fuelRangeLY(market));
 			for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) {
 				StarSystemAPI system = hive.getStarSystem();
 				if (system == null || !ThreatScouts.sectorKnows(hive)) continue;

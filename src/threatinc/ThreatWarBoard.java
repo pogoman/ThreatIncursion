@@ -2573,12 +2573,14 @@ public class ThreatWarBoard {
 		textHl(card, 8f, 27f, cardW - 16f, a.toString(), gray, hlcA.toArray(new Color[0]),
 				hlA.toArray(new String[0]), Alignment.LMID, true);
 
-		// line B: the fuel bill - razing it from orbit, and a day of tactical
-		// bombardment by the player's fleet as it stands
+		// line B: the fuel bill - wrecking it from orbit (a hive is wrecked, not
+		// razed: ThreatRazing.wreck), and a day of tactical bombardment by the
+		// player's fleet as it stands
 		int defense = (int) MarketCMD.getDefenderStr(market, true);
 		int raze = Math.round(ThreatRazing.fuelToDestroyThrough(market));
 		int tac = Math.round(ThreatGroundFronts.bombardFuelPerDay(Global.getSector().getPlayerFleet().getFleetPoints()));
-		textHl(card, 8f, 45f, cardW - 16f - rightW, "Def %s   raze %s fuel   tac %s a day", gray,
+		textHl(card, 8f, 45f, cardW - 16f - rightW,
+				"Def %s   " + (ThreatRazing.wrecksOnly(market) ? "wreck" : "raze") + " %s fuel   tac %s a day", gray,
 				new Color[] {text, neg, text},
 				new String[] {Misc.getWithDGS(defense), Misc.getWithDGS(raze), Misc.getWithDGS(tac)},
 				Alignment.LMID, true);

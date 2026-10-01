@@ -284,7 +284,10 @@ public class ThreatFrontlines {
 					+ ", reserve marines " + (int) ThreatReserves.factionStock(fid, Commodities.MARINES)
 					+ ", arms " + (int) ThreatReserves.factionStock(fid, Commodities.HAND_WEAPONS)
 					+ ", fuel " + (int) ThreatReserves.factionStock(fid, Commodities.FUEL)
-					+ ", supplies " + (int) ThreatReserves.factionStock(fid, Commodities.SUPPLIES));
+					+ ", supplies " + (int) ThreatReserves.factionStock(fid, Commodities.SUPPLIES)
+					+ (ThreatFactionStance.enabled() ? ", stance " + ThreatFactionStance.stanceName(fid)
+							+ (ThreatFactionStance.target(fid) != null ? " at " + ThreatFactionStance.target(fid) : "")
+							: ""));
 		}
 		int hives = 0, hiveSizes = 0, known = 0;
 		for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) {
@@ -1497,6 +1500,43 @@ public class ThreatFrontlines {
 		return paid;
 	}
 
+	/** What {@link #payFromOthers} could draw for {@code market} now. */
+	protected static float othersSpendable(MarketAPI market, MarketAPI home, String commodityId) {
+		float sum = 0f;
+		for (MarketAPI m : IncursionManager.marketsReaching(market.getFaction(), market)) {
+			if (m != market && m != home && !isOutpost(m)) sum += ThreatReserves.spendable(m, commodityId);
+		}
+		return sum;
+	}
+
+	/**
+	 * Whether a base can pay a link's founding {@code cost} ({supplies, fuel}):
+	 * its stock above the floor, the rest from what the faction's markets that
+	 * reach it can spare (payFromOthers), as a hive's founding draws the whole
+	 * hive's stock. From one base alone (2026-10-01, the kit added), 29 tries
+	 * found no payer while the Persean League held ~22k supplies across its
+	 * markets (review).
+	 */
+	public static boolean canFund(MarketAPI base, float[] cost) {
+		String[] ids = { Commodities.SUPPLIES, Commodities.FUEL };
+		for (int i = 0; i < 2; i++) {
+			float have = ThreatReserves.available(base, ids[i]);
+			if (have < cost[i] && have + othersSpendable(base, base, ids[i]) < cost[i]) return false;
+		}
+		return true;
+	}
+
+	/** Draws a founding {@link #canFund} passed: the base's stock above its floor, then the others'. Returns {supplies, fuel} drawn. */
+	public static float[] drawFounding(MarketAPI base, float[] cost) {
+		String[] ids = { Commodities.SUPPLIES, Commodities.FUEL };
+		float[] paid = new float[2];
+		for (int i = 0; i < 2; i++) {
+			paid[i] = ThreatReserves.drawAbove(base, ids[i], cost[i]);
+			if (paid[i] < cost[i]) paid[i] += payFromOthers(base, base, ids[i], cost[i] - paid[i]);
+		}
+		return paid;
+	}
+
 	/**
 	 * Real fleets from a base to hold a market's orbit: task forces summing
 	 * {@code fp}, on DEFEND_LOCATION for {@code days}, then home to settle
@@ -1997,11 +2037,15 @@ public class ThreatFrontlines {
 		}
 		if (hiveSystems.isEmpty()) return;
 
+		ThreatFactionStance.refresh();
 		for (String fid : ThreatWarState.warFactionIds()) {
 			if (Factions.PLAYER.equals(fid) || Factions.THREAT.equals(fid)) continue;
 			if (ThreatWarState.excluded(fid)) continue;
 			FactionAPI faction = Global.getSector().getFaction(fid);
 			if (faction == null) continue;
+			// its stance (ThreatFactionStance): consolidating founds nothing,
+			// pressing a share of its passes
+			if (!ThreatFactionStance.foundsLinks(faction, random)) continue;
 			// no cap: founding is paid from the reserves, and that is the limit
 			planFor(faction, hiveSystems);
 		}
@@ -2071,10 +2115,10 @@ public class ThreatFrontlines {
 					return;
 				}
 				// the founding is paid before the garrison is weighed: its voyage
-				// check reads the pool the founding draws from
-				float[] cost = ThreatOutposts.npcCost();
-				float[] paid = { ThreatReserves.drawAbove(payer, Commodities.SUPPLIES, cost[0]),
-						ThreatReserves.drawAbove(payer, Commodities.FUEL, cost[1]) };
+				// check reads the pool the founding draws from - the structures it
+				// stands up with included (ThreatOutposts.linkCost, 2026-10-01)
+				float[] cost = ThreatOutposts.linkCost(faction);
+				float[] paid = drawFounding(payer, cost);
 				// no paper bases: a link is founded only with a garrison to hold it
 				// against the strikes in reach, for as long as it stands
 				MarketAPI guardBase = null;
@@ -2132,20 +2176,20 @@ public class ThreatFrontlines {
 	}
 
 	/**
-	 * The faction's base nearest the site whose war reserve covers the
-	 * founding cost (the outpost cost), or null. No range: the stock sails up
-	 * the chain, and a tip far past every expedition range still gets built.
+	 * The faction's base nearest the site that can fund the founding
+	 * (linkCost, {@link #canFund}: its reserve and what the markets reaching it
+	 * spare), or null. No range: the stock sails up the chain, and a tip far
+	 * past every expedition range still gets built.
 	 */
 	protected static MarketAPI payer(FactionAPI faction, PlanetAPI site) {
-		float[] cost = ThreatOutposts.npcCost();
+		float[] cost = ThreatOutposts.linkCost(faction);
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
 		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
 			if (m.getStarSystem() == null || !IncursionManager.isBase(m)) continue;
 			float d = Misc.getDistanceLY(m.getLocationInHyperspace(), site.getLocationInHyperspace());
 			if (d >= bestDist) continue;
-			if (ThreatReserves.available(m, Commodities.SUPPLIES) < cost[0]) continue;
-			if (ThreatReserves.available(m, Commodities.FUEL) < cost[1]) continue;
+			if (!canFund(m, cost)) continue;
 			bestDist = d;
 			best = m;
 		}

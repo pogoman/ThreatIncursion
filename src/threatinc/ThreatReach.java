@@ -118,6 +118,116 @@ public class ThreatReach {
 		faced.clear();
 		committed = 0f;
 		ThreatSwarmScouts.lastTank = -1f;
+		factionDay = Long.MIN_VALUE;
+		factionSector = null;
+		factionPerFP.clear();
+		rangeMemo.clear();
+	}
+
+	// ------------------------------------------------------------------
+	// the factions' reach (2026-10-01, user's call): the same bill
+	// ------------------------------------------------------------------
+
+	/**
+	 * Supplies a month a fleet point of a human faction's ships burns, before
+	 * it has a fleet out to measure: a 3,000 FP hunt three months out burns
+	 * ~8.5k of vanilla maintenance (ThreatUpkeep's note).
+	 */
+	public static final float DEFAULT_FACTION_SUPPLIES_PER_FP = 0.94f;
+	/**
+	 * Difficulty points of the smallest siege flotilla - two fleets of
+	 * difficulty 5, siegeFleetSizes' floor: what a base's reach is measured
+	 * with. Anything bigger goes less far on the same stock.
+	 */
+	public static final int SMALLEST_FLOTILLA_POINTS = 10;
+
+	/**
+	 * Whether the factions' reach is their bill too (humanBilledReach): no
+	 * radius, a base reaching as far as its stock pays for. Off: the old
+	 * fuel radius (ThreatColonyManager.fuelRangeLY).
+	 */
+	public static boolean factionsBilled() {
+		return ThreatIncConfig.humanBilledReach();
+	}
+
+	protected static Object factionSector;
+	protected static long factionDay = Long.MIN_VALUE;
+	protected static final Map<String, Float> factionPerFP = new HashMap<String, Float>();
+	/** Base market id -> its billed reach, today's; cleared each day with factionPerFP. */
+	protected static final Map<String, Float> rangeMemo = new HashMap<String, Float>();
+
+	protected static void factionDay() {
+		long day = today();
+		if (factionSector == Global.getSector() && factionDay == day) return;
+		factionSector = Global.getSector();
+		factionDay = day;
+		factionPerFP.clear();
+		rangeMemo.clear();
+	}
+
+	/** Supplies a month a fleet point of this faction's ships burns: its fleets out, measured once a day. */
+	public static float suppliesPerFP(String factionId) {
+		if (factionId == null) return DEFAULT_FACTION_SUPPLIES_PER_FP;
+		if (com.fs.starfarer.api.impl.campaign.ids.Factions.THREAT.equals(factionId)) return suppliesPerFP();
+		factionDay();
+		Float memo = factionPerFP.get(factionId);
+		if (memo != null) return memo;
+		float supplies = 0f, fp = 0f;
+		for (com.fs.starfarer.api.campaign.LocationAPI loc : Global.getSector().getAllLocations()) {
+			for (CampaignFleetAPI f : loc.getFleets()) {
+				if (f == null || !f.isAlive() || f.isStationMode() || f.isPlayerFleet()) continue;
+				if (f.getFaction() == null || !factionId.equals(f.getFaction().getId())) continue;
+				if (ThreatReturns.homeOf(f) == null) continue;
+				supplies += ThreatFrontlines.maintenancePerMonth(f);
+				fp += f.getFleetPoints();
+			}
+		}
+		float out = fp > 0f && supplies > 0f ? supplies / fp : DEFAULT_FACTION_SUPPLIES_PER_FP;
+		factionPerFP.put(factionId, out);
+		return out;
+	}
+
+	/** Supplies a faction's fleet of {@code fp} burns away for {@code days}. */
+	public static float tripSupplies(String factionId, float fp, float days) {
+		return Math.max(0f, fp) * suppliesPerFP(factionId) * Math.max(0f, days) / 30f;
+	}
+
+	/**
+	 * How far a faction's base can send its smallest siege flotilla
+	 * (SMALLEST_FLOTILLA_POINTS) on what it and the donors pooling into it
+	 * hold: the passage's fuel (IncursionManager.expeditionPassage's
+	 * points x ly x expeditionFuelPerPointLY) and, above the hulls' deposit,
+	 * its ships' supplies for a strike's days there and back (strikeDays). No
+	 * radius: a full depot reaches across the sector, an empty one nowhere. A
+	 * base with no war reserve (a faction never mobilised) reaches nothing - it
+	 * has nothing banked to sail with. Memoised a day.
+	 */
+	public static float baseRangeLY(MarketAPI base) {
+		if (base == null || base.getFaction() == null || base.getStarSystem() == null) return 0f;
+		factionDay();
+		Float memo = rangeMemo.get(base.getId());
+		if (memo != null) return memo;
+		float out = 0f;
+		if (ThreatReserves.get(base.getId()) != null) {
+			java.util.List<MarketAPI> donors = ThreatIncConfig.siegePoolProvisions()
+					? IncursionManager.siegeDonors(base, base.getFaction(), base.getStarSystem())
+					: new ArrayList<MarketAPI>();
+			float fuel = IncursionManager.siegePooled(base, donors, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
+			float supplies = IncursionManager.siegePooled(base, donors,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
+			int points = SMALLEST_FLOTILLA_POINTS;
+			float fp = points * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+			float perLY = points * ThreatIncConfig.expeditionFuelPerPointLY();
+			float byFuel = perLY > 0f ? fuel / perLY : Float.MAX_VALUE;
+			float deposit = points * ThreatIncConfig.expeditionSuppliesPerPoint();
+			float perMonth = fp * suppliesPerFP(base.getFactionId());
+			float days = perMonth > 0f ? (supplies - deposit) * 30f / perMonth : Float.MAX_VALUE;
+			float bySupplies = days >= Float.MAX_VALUE ? Float.MAX_VALUE
+					: Math.max(0f, days - STRIKE_PREP_DAYS) * ThreatWarBoard.EST_LY_PER_DAY / 2f;
+			out = Math.max(0f, Math.min(byFuel, bySupplies));
+		}
+		rangeMemo.put(base.getId(), out);
+		return out;
 	}
 
 	/** Supplies a month committed to trips since the colonies' last feed recorded the spare. */

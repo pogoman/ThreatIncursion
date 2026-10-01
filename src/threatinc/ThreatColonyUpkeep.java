@@ -309,7 +309,12 @@ public class ThreatColonyUpkeep {
 			if (n.seed) share = t + (1f - t) * share;
 			n.market.getMemoryWithoutUpdate().set(MEM_FED, share);
 		}
-		if (short_ > 0f) ThreatFuel.noteShort(Commodities.SUPPLIES);
+		// sustenance unpaid is the one supplies shortage the planner answers on
+		// its own (ThreatFuel.noteShort), and it is demand the stock did not meet
+		if (short_ > 0f) {
+			ThreatFuel.noteShort(Commodities.SUPPLIES);
+			ThreatFuel.noteDemand(Commodities.SUPPLIES, short_);
+		}
 		add("bill", bill);
 		add("sustained", sustained);
 		add("grown", grown);

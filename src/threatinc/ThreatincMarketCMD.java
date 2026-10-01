@@ -843,7 +843,8 @@ public class ThreatincMarketCMD extends MarketCMD {
 			float rate = Math.max(0f, ThreatIncConfig.satFuelPerFPDay()) * fp;
 			float whole = ThreatRazing.fuelToDestroyThrough(market);
 			if (rate > 0f && whole > pour + 0.5f) {
-				text.addPara("    Razed in about %s days at this rate: %s fuel in all.", h,
+				text.addPara("    " + (ThreatRazing.wrecksOnly(market) ? "Wrecked" : "Razed")
+						+ " in about %s days at this rate: %s fuel in all.", h,
 						"" + (int) Math.ceil(whole / rate), Misc.getWithDGS(Math.round(whole)));
 			}
 		}
@@ -882,6 +883,18 @@ public class ThreatincMarketCMD extends MarketCMD {
 		int layers = ThreatRazing.enemyLayers(market);
 		int levels = ThreatRazing.razeable(market);
 		float bar = ThreatRazing.progress(market) + barFuel;
+		// a hive is wrecked, never razed: one price, no size off (ThreatRazing.wreck)
+		if (ThreatRazing.wrecksOnly(market)) {
+			float whole = ThreatRazing.fuelToDestroy(market) + ThreatRazing.progress(market);
+			if (bar >= whole - 0.5f) {
+				text.addPara("    Every structure on " + market.getName() + " down for %s days.", bad,
+						"" + (int) ThreatGroundFronts.siegeWornDays(market));
+			} else {
+				text.addPara("    Wrecked at %s of %s fuel.", h, Misc.getWithDGS(Math.round(bar)),
+						Misc.getWithDGS(Math.round(whole)));
+			}
+			return;
+		}
 		int razed = 0;
 		while (razed < levels) {
 			float need = ThreatRazing.levelFuel(layers - razed);
@@ -991,11 +1004,13 @@ public class ThreatincMarketCMD extends MarketCMD {
 				: "Recently bombarded";
 		float loss;
 		boolean destroyed = false;
+		boolean wrecked = false;
 		if (saturation) {
 			float[] out = ThreatGroundFronts.saturationSlice(fp, market, 1f, fuelAboard, true, false,
 					defence, Factions.PLAYER, reason);
 			loss = out[0];
 			destroyed = out[3] > 0f;
+			wrecked = out[4] > 0f;
 		} else {
 			loss = ThreatGroundFronts.siegeSlice(fp, market, 1f, true, false, defence, reason);
 			if (isThreatTarget()) applyDangerClose(suppression);
@@ -1014,6 +1029,10 @@ public class ThreatincMarketCMD extends MarketCMD {
 		if (destroyed) {
 			text.addPara(name + " destroyed.");
 		} else {
+			if (wrecked) {
+				text.addPara("Every structure on " + name + " down for %s days.", h,
+						"" + (int) ThreatGroundFronts.siegeWornDays(market));
+			}
 			if (market.getSize() < sizeBefore) {
 				text.addPara("Colony size reduced to %s.", bad, "" + market.getSize());
 			}

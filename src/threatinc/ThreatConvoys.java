@@ -291,7 +291,7 @@ public class ThreatConvoys {
 	public static float stockReachLY(MarketAPI donor) {
 		if (donor == null) return 0f;
 		if (donor.getFaction() != null && donor.getFaction().isPlayerFaction()) return Float.MAX_VALUE;
-		return Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.expeditionRangeLY(donor));
+		return Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.logisticsRangeLY(donor));
 	}
 
 	/**
@@ -953,7 +953,7 @@ public class ThreatConvoys {
 			for (MarketAPI d : markets) {
 				if (d == besieged || d.getStarSystem() == null || d.getPrimaryEntity() == null) continue;
 				float reach = faction.isPlayerFaction() ? Float.MAX_VALUE
-						: Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.expeditionRangeLY(d));
+						: Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.logisticsRangeLY(d));
 				if (Misc.getDistanceLY(d.getStarSystem().getLocation(),
 						besieged.getStarSystem().getLocation()) > reach) continue;
 				float s = spare(d, Commodities.MARINES);
@@ -1803,7 +1803,7 @@ public class ThreatConvoys {
 			if (skip != null && skip.contains(donor)) continue;
 			// a donor reaches as far as its own fuel does (stagingBaseFor)
 			float reach = base.isPlayerOwned() ? range
-					: Math.max(range, IncursionManager.expeditionRangeLY(donor));
+					: Math.max(range, IncursionManager.logisticsRangeLY(donor));
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					base.getStarSystem().getLocation()) > reach) continue;
 			float s = sendable(donor, base, commodityId);
@@ -2392,7 +2392,7 @@ public class ThreatConvoys {
 		for (MarketAPI donor : ThreatReserves.marketsOf(helper.getId())) {
 			if (donor.getStarSystem() == null || donor.getPrimaryEntity() == null) continue;
 			float reach = helper.isPlayerFaction() ? Float.MAX_VALUE
-					: Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.expeditionRangeLY(donor));
+					: Math.max(ThreatIncConfig.convoyRangeLY(), IncursionManager.logisticsRangeLY(donor));
 			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
 					needy.getStarSystem().getLocation()) > reach) continue;
 			float s = spare(donor, commodityId);
