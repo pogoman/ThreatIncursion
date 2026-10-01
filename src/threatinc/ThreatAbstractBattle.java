@@ -97,6 +97,22 @@ public final class ThreatAbstractBattle {
 		float share = defenderLoss(attackerStr, defenderStr);
 		java.util.Map<String, Float> byFaction = new java.util.HashMap<String, Float>();
 		float[] lost = share > 0f ? strike(attacker, where, share, byFaction, defenders) : new float[4];
+		book(attacker, where, lost, byFaction, attackerLostFP);
+		ThreatIncConfig.log("Off-screen fight in " + where.getName() + " (" + what + "): " + attacker.getId() + " "
+				+ (int) attackerStr + " vs " + (int) defenderStr + " defending (vanilla units); attacker lost "
+				+ (int) Math.max(0f, attackerLostFP) + " FP, defenders " + Math.round(share * 100f) + "%: "
+				+ (int) lost[0] + " Threat FP, " + (int) lost[1] + " other FP (" + (int) lost[2] + " fleets, "
+				+ (int) lost[3] + " routes)");
+	}
+
+	/**
+	 * The exchange booked: the Threat's ships lost into its hive system's loss
+	 * ledger, both sides into the stance's attrition ledger, each faction's own
+	 * into its stance. {@code lost} is {Threat FP, other FP, ...} struck from the
+	 * defence, {@code attackerLostFP} what the fight cost the attacker.
+	 */
+	protected static void book(FactionAPI attacker, StarSystemAPI where, float[] lost,
+			java.util.Map<String, Float> byFaction, float attackerLostFP) {
 		boolean threatAttacks = Factions.THREAT.equals(attacker.getId());
 		float attackerLost = Math.max(0f, attackerLostFP);
 		float threatLost = lost[0] + (threatAttacks ? attackerLost : 0f);
@@ -115,11 +131,48 @@ public final class ThreatAbstractBattle {
 				ThreatFactionStance.noteTrend(e.getKey(), e.getValue(), attackerLost * e.getValue() / lost[1]);
 			}
 		}
-		ThreatIncConfig.log("Off-screen fight in " + where.getName() + " (" + what + "): " + attacker.getId() + " "
-				+ (int) attackerStr + " vs " + (int) defenderStr + " defending (vanilla units); attacker lost "
-				+ (int) Math.max(0f, attackerLostFP) + " FP, defenders " + Math.round(share * 100f) + "%: "
-				+ (int) lost[0] + " Threat FP, " + (int) lost[1] + " other FP (" + (int) lost[2] + " fleets, "
-				+ (int) lost[3] + " routes)");
+	}
+
+	/**
+	 * One day of an off-screen siege's fight over a world (ThreatPurgeFGI's
+	 * daily siege), both strengths in fleet points as read when the day began:
+	 * each fleet the besieger weighed there
+	 * (ThreatGroundFronts.hostileFleetsNear) loses min(0.75, half the
+	 * besieger's points over theirs) as ships struck ({@link #removeShare}),
+	 * and the day is booked as {@link #fought} books a fight, with
+	 * {@code attackerLostFP} what the day cost the besieger. Station-mode
+	 * fleets and the player's are never struck (a hive has no station, and the
+	 * player near the world would have spawned the expedition). The knob
+	 * abstractDefendersFight off, the defenders lose nothing and nothing is
+	 * booked, as {@link #fought}. Logged quietly: it runs every day of a fight.
+	 * Returns the fleet points struck.
+	 */
+	public static float foughtDay(FactionAPI attacker, MarketAPI world, List<CampaignFleetAPI> defenders,
+			float attackerFP, float defenderFP, float attackerLostFP) {
+		if (!enabled() || attacker == null || world == null || world.getStarSystem() == null) return 0f;
+		StarSystemAPI where = world.getStarSystem();
+		float share = defenderLoss(attackerFP, defenderFP);
+		java.util.Map<String, Float> byFaction = new java.util.HashMap<String, Float>();
+		float[] lost = new float[4];
+		if (share > 0f && defenders != null) {
+			Random random = new Random();
+			for (CampaignFleetAPI fleet : defenders) {
+				if (fleet == null || fleet.getFaction() == null || !fleet.isAlive()) continue;
+				if (fleet.isStationMode() || fleet.isPlayerFleet()) continue;
+				String fid = fleet.getFaction().getId();
+				float fp = removeShare(fleet, share, random);
+				lost[Factions.THREAT.equals(fid) ? 0 : 1] += fp;
+				lost[2]++;
+				add(byFaction, fid, fp);
+			}
+		}
+		book(attacker, where, lost, byFaction, attackerLostFP);
+		ThreatIncConfig.logQuiet("dailyfight:" + attacker.getId() + ":" + world.getId(), "Off-screen fight over "
+				+ world.getName() + " (daily siege): " + attacker.getId() + " " + (int) attackerFP + " FP vs "
+				+ (int) defenderFP + " FP; attacker lost " + (int) Math.max(0f, attackerLostFP) + " FP, defenders "
+				+ Math.round(share * 100f) + "%: " + (int) lost[0] + " Threat FP, " + (int) lost[1] + " other FP ("
+				+ (int) lost[2] + " fleets)");
+		return lost[0] + lost[1];
 	}
 
 	/**

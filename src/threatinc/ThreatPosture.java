@@ -676,6 +676,18 @@ public class ThreatPosture {
 				}
 			}
 			if (systemId == null) continue;
+			// a booked siege counts from dispatch whether its fleets are spawned or not (user,
+			// 2026-10-01: the swarm answers it the same wherever the player is): while its route
+			// is abstract, by the flotilla it sails with, until its own fleets take over
+			if (purge instanceof ThreatPurgeFGI && countsAbstract((ThreatPurgeFGI) purge)) {
+				float fp = ((ThreatPurgeFGI) purge).abstractNow();
+				if (fp > 0f) {
+					Float had = out.get(systemId);
+					out.put(systemId, (had != null ? had : 0f) + fp);
+					pass.addForce(purge.getFaction().getId(), systemId, fp);
+				}
+				continue;
+			}
 			for (CampaignFleetAPI f : purge.getFleets()) {
 				add(out, systemId, f, counted, purge.getFaction().getId(), pass);
 			}
@@ -692,6 +704,19 @@ public class ThreatPosture {
 			if (systemId != null && hive.contains(systemId)) add(out, systemId, o.fleet, counted, o.factionId, pass);
 		}
 		return out;
+	}
+
+	/**
+	 * Whether a booked siege counts by its abstract flotilla (abstractNow): not
+	 * aborted or going home, and its fleets not yet all spawned - a spawn is
+	 * one-way, and from then on its fleets count. The abstract figure carries its
+	 * freighters and transports, so the count steps down a little at the spawn.
+	 */
+	protected static boolean countsAbstract(ThreatPurgeFGI purge) {
+		if (!ThreatIncConfig.threatSeesBookedSieges() || purge.isAborted()) return false;
+		if (purge.isSpawnedFleets() && !purge.isSpawning() && !purge.getFleets().isEmpty()) return false;
+		return purge.getCurrentAction() == null
+				|| !GenericRaidFGI.RETURN_ACTION.equals(purge.getCurrentAction().getId());
 	}
 
 	/** Counts one attacking fleet toward its system, and toward its faction's force in reach (ThreatStance). */

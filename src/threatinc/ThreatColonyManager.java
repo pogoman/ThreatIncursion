@@ -5967,6 +5967,9 @@ public class ThreatColonyManager {
 		ThreatScouts.reset();
 		ThreatSwarmScouts.reset();
 		ThreatOmens.reset();
+		ThreatIntel.reset();
+		ThreatAttackPlanner.reset();
+		ThreatWarCouncil.reset();
 		Global.getSector().getPersistentData().remove(IncursionManager.KEY_BOUNTY_ROTATION);
 		ThreatIncursionIntel summary = ThreatIncursionIntel.get();
 		if (summary != null) {

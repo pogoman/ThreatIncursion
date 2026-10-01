@@ -170,6 +170,23 @@ public class ThreatFleetOrders {
 		 * player's Hunt and on orders from before 2026-09-24.
 		 */
 		public String forceId;
+		/**
+		 * A RAID (2026-10-01, ThreatAttackPlanner): an NPC Support sortie over a
+		 * hive with no front of its own - it holds the orbit and bombs it, sized
+		 * by the planner. Never stood down for want of a front (supportLost);
+		 * leaves on the contest, the commander's stop, or a third of it lost.
+		 */
+		public boolean raid;
+		/** A raid's fleet points when it reached its world (0 until then). */
+		public float arrivalFP;
+		/** When a raid reached its world; 0 until then. */
+		public long arrivedTimestamp;
+		/** When a raid at its world first found the orbit contested; 0 while it is not. */
+		public long contestedSince;
+		/** The world a raid turned back on arrival strikes instead, if its fuel pays the detour; null none. */
+		public String fallbackId;
+		/** The raid this fleet sails in: every fleet of one dispatchRaid shares it. */
+		public String raidId;
 
 		/** No term: on station until recalled (a guard over one of the player's own colonies, guardOwnDays 0). */
 		public boolean indefinite() {
@@ -197,6 +214,7 @@ public class ThreatFleetOrders {
 				if (world != null && ThreatGroundFronts.orbitContestedFor(factionId, world)) {
 					return "clearing the orbit of " + targetName;
 				}
+				if (raid) return "raiding " + targetName;
 				if (KIND_SUPPORT.equals(kind)) return "supporting the siege of " + targetName;
 				if (world != null && ThreatGroundFronts.defendRazes(factionId, world, fleet)) {
 					return "razing " + targetName;
@@ -247,6 +265,10 @@ public class ThreatFleetOrders {
 							.line("Your task force was %s", o.task()).send();
 				}
 				ThreatIncConfig.log("Order lost (fleet destroyed): " + o.factionId + " " + o.task());
+				if (o.raid) {
+					ThreatAttackPlanner.news(o.factionId, "a raid on " + o.targetName + " was destroyed");
+					ThreatPlays.raidEnded(o, "destroyed");
+				}
 				continue;
 			}
 			if (!o.arrived && atStation(o)) {
@@ -256,6 +278,14 @@ public class ThreatFleetOrders {
 					if (KIND_GUARD.equals(o.kind)) ThreatAid.onGuardArrived(o);
 					else ThreatAid.onStrikeArrived(o);
 				}
+				if (o.raid) raidArrived(o);
+			}
+			if (o.raid) {
+				// a raid keeps its own rules (raidOver); the rest of the poll is for
+				// fronts' Support, which it is not
+				String why = raidOver(o);
+				if (why != null && !divertRaid(o, why)) endRaid(o, why);
+				continue;
 			}
 			// a guard whose outpost died (or was scuttled) has nothing left to hold
 			boolean stationGone = KIND_GUARD.equals(o.kind) && o.targetId != null
@@ -1130,7 +1160,7 @@ public class ThreatFleetOrders {
 	/** As above from a given base; {@code aid} marks the player's aid sortie (the board's hunt for another faction). */
 	public static Order dispatchHunt(FactionAPI faction, StarSystemAPI hive, MarketAPI base, boolean aid) {
 		if (faction == null || hive == null || base == null) return null;
-		MarketAPI target = ThreatSoftening.huntTarget(hive.getId());
+		MarketAPI target = ThreatSoftening.huntTarget(ThreatIntel.observerOf(faction), hive.getId());
 		if (target == null || target.getPrimaryEntity() == null) return null;
 		Order o;
 		if (faction.isPlayerFaction()) {
@@ -1144,7 +1174,7 @@ public class ThreatFleetOrders {
 			// sized to beat the garrison it starts on, as it stands now, by the
 			// siege's margin - the rule it moves on by (ThreatSoftening.advanceSingle) -
 			// or it does not sail
-			float need = ThreatSoftening.musterFloorFP(target);
+			float need = ThreatSoftening.musterFloorFP(ThreatIntel.observerOf(faction), target);
 			List<CampaignFleetAPI> fleets = buildSortie(base, faction, need, hive.getLocation(), true,
 					"a hunt in the " + hive.getNameWithLowercaseTypeShort());
 			if (fleets == null) return null;
@@ -1248,6 +1278,10 @@ public class ThreatFleetOrders {
 		all().remove(o);
 		if (o.fleet != null && o.fleet.isAlive()) ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId);
 		ThreatIncConfig.log("Order stood down (" + why + "): " + o.factionId + " " + o.task());
+		if (o.raid) {
+			ThreatAttackPlanner.news(o.factionId, "a raid on " + o.targetName + " stood down");
+			ThreatPlays.raidEnded(o, "stood down: " + why);
+		}
 	}
 
 	// ------------------------------------------------------------------
@@ -1448,15 +1482,244 @@ public class ThreatFleetOrders {
 		return hasOrder(KIND_DEFEND, factionId, hiveMarketId);
 	}
 
-	/** Whether this faction has a live order of the kind on the target. */
+	/** Whether this faction has a live order of the kind on the target; a raid is not a Support here ({@link #hasRaid}). */
 	public static boolean hasOrder(String kind, String factionId, String targetId) {
 		if (kind == null || factionId == null || targetId == null) return false;
 		for (Order o : all()) {
-			if (!kind.equals(o.kind)) continue;
+			if (!kind.equals(o.kind) || o.raid) continue;
 			if (!factionId.equals(o.factionId) || !targetId.equals(o.targetId)) continue;
 			if (o.fleet != null && o.fleet.isAlive() && !o.fleet.isExpired()) return true;
 		}
 		return false;
+	}
+
+	/** Whether this faction has a live raid on the world, sailing or on station. */
+	public static boolean hasRaid(String factionId, String hiveMarketId) {
+		if (factionId == null || hiveMarketId == null) return false;
+		for (Order o : all()) {
+			if (!o.raid || !factionId.equals(o.factionId) || !hiveMarketId.equals(o.targetId)) continue;
+			if (o.fleet != null && o.fleet.isAlive() && !o.fleet.isExpired()) return true;
+		}
+		return false;
+	}
+
+	// ------------------------------------------------------------------
+	// raids (ThreatAttackPlanner, 2026-10-01; docs/attack-planner.md section 4)
+	// ------------------------------------------------------------------
+
+	/** Days a raid's orbit may stay contested before it leaves: a poll or two, since the hive refills its garrison list every poll. */
+	public static final float RAID_CONTEST_GRACE_DAYS = 1f;
+
+	/** Days a raid's first fleet at the world waits for the rest of its raid before the contest and loss rules judge it. */
+	public static final float RAID_GATHER_DAYS = 3f;
+
+	/** The planner's fallback for every fleet of the raid the lead order belongs to. */
+	public static void setRaidFallback(Order lead, String fallbackId) {
+		if (lead == null) return;
+		for (Order o : all()) {
+			if (o == lead || (lead.raidId != null && lead.raidId.equals(o.raidId))) o.fallbackId = fallbackId;
+		}
+	}
+
+	/**
+	 * Days this fleet of a raid waits at the world for the rest of it: until its
+	 * last fleet arrived, at most RAID_GATHER_DAYS while one is still on its way.
+	 * A lone fleet's raid waits none.
+	 */
+	protected static float gatherDays(Order o) {
+		if (o.raidId == null || o.arrivedTimestamp == 0L) return 0f;
+		com.fs.starfarer.api.campaign.CampaignClockAPI clock = Global.getSector().getClock();
+		float mine = clock.getElapsedDaysSince(o.arrivedTimestamp);
+		float waited = 0f;
+		for (Order s : all()) {
+			if (s == o || !s.raid || !o.raidId.equals(s.raidId)) continue;
+			if (s.fleet == null || !s.fleet.isAlive() || s.fleet.isExpired()) continue;
+			if (!s.arrived || s.arrivedTimestamp == 0L) return RAID_GATHER_DAYS;
+			waited = Math.max(waited, mine - clock.getElapsedDaysSince(s.arrivedTimestamp));
+		}
+		return Math.min(RAID_GATHER_DAYS, waited);
+	}
+
+	/** Fleet points of the raid's fleets at its world: the order's own and those of the same raid that arrived. */
+	protected static float raidFP(Order o) {
+		float fp = o.fleet.getFleetPoints();
+		if (o.raidId == null) return fp;
+		for (Order s : all()) {
+			if (s == o || !s.raid || !o.raidId.equals(s.raidId) || !s.arrived) continue;
+			if (s.fleet != null && s.fleet.isAlive() && !s.fleet.isExpired()) fp += s.fleet.getFleetPoints();
+		}
+		return fp;
+	}
+
+	/**
+	 * A RAID on the hive world from the base: fleets of {@code need} points
+	 * (the planner's size - its world's guns and twice the swarms the faction
+	 * last saw over it), on a Support order flagged raid for {@code days},
+	 * then home. Paid as any NPC sortie (buildSortie, whole: short of the need
+	 * it does not sail). The lead order, or null.
+	 */
+	public static Order dispatchRaid(FactionAPI faction, MarketAPI hive, MarketAPI base, float need, float days,
+			String fallbackId) {
+		if (faction == null || faction.isPlayerFaction() || hive == null || hive.getPrimaryEntity() == null) return null;
+		if (base == null || base.getPrimaryEntity() == null || need <= 0f || days <= 0f) return null;
+		List<CampaignFleetAPI> fleets = buildSortie(base, faction, need, hive.getLocationInHyperspace(), true,
+				"raid on " + hive.getName());
+		if (fleets == null) return null;
+		String raidId = faction.getId() + ":" + hive.getId() + ":" + Global.getSector().getClock().getTimestamp();
+		Order lead = null;
+		for (CampaignFleetAPI f : fleets) {
+			f.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, hive.getPrimaryEntity(), days, "raiding " + hive.getName());
+			f.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(), 1000f,
+					"returning to " + base.getName());
+			Order o = record(f, faction, KIND_SUPPORT, base, hive.getId(), hive.getName(), days, true);
+			o.fallbackId = fallbackId;
+			o.raidId = raidId;
+			if (lead == null) lead = o;
+		}
+		return lead;
+	}
+
+	/** A raid reached its world: what it arrived with is its loss line's measure. */
+	protected static void raidArrived(Order o) {
+		o.arrivalFP = o.fleet.getFleetPoints();
+		o.arrivedTimestamp = Global.getSector().getClock().getTimestamp();
+		MarketAPI world = Global.getSector().getEconomy().getMarket(o.targetId);
+		ThreatIncConfig.log("Raid arrived: " + o.factionId + " " + o.fleet.getName() + " at " + (int) o.arrivalFP
+				+ " FP over " + o.targetName + ", " + (int) ThreatGroundFronts.hostilePointsNear(o.factionId, world)
+				+ " FP of swarms here, " + (int) ThreatIntel.worldFP(o.factionId, world) + " reported");
+	}
+
+	/**
+	 * Why the raid is over now, or null: its world is gone or no longer the
+	 * swarm's; at its world, the orbit contested past RAID_CONTEST_GRACE_DAYS,
+	 * a day that would buy less than a day down (the commander's stop), or a
+	 * third of it lost (raidLossFraction).
+	 */
+	protected static String raidOver(Order o) {
+		if (o.daysLeft() <= 0f) return "its term is served";
+		MarketAPI world = Global.getSector().getEconomy().getMarket(o.targetId);
+		if (world == null || !world.isInEconomy() || !Factions.THREAT.equals(world.getFactionId())) {
+			return "its world is no longer the swarm's";
+		}
+		if (!o.arrived) return null;
+		// the rest of its raid is on its way: judged when the raid is all there
+		if (Global.getSector().getClock().getElapsedDaysSince(o.arrivedTimestamp) < gatherDays(o)) return null;
+		long now = Global.getSector().getClock().getTimestamp();
+		// the raid's own fleets count while the leash walks one back from a chase (h52a: 295 FP
+		// sent home by 114 "against 0" after a week of bombing)
+		float hostile = ThreatGroundFronts.hostilePointsNear(o.factionId, world);
+		float friendly = Math.max(ThreatGroundFronts.friendlyPointsNear(o.factionId, world), raidFP(o));
+		if (ThreatGroundFronts.orbitContestedFor(o.factionId, world)
+				&& hostile >= friendly * Math.max(0f, ThreatIncConfig.orbitContestFraction())) {
+			if (o.contestedSince == 0L) o.contestedSince = now;
+			if (Global.getSector().getClock().getElapsedDaysSince(o.contestedSince) >= RAID_CONTEST_GRACE_DAYS) {
+				return "orbit contested, " + (int) hostile + " FP of swarms against " + (int) friendly;
+			}
+			return null;
+		}
+		o.contestedSince = 0L;
+		float fp = o.fleet.getFleetPoints();
+		// nothing left to bomb with: its own fuel and the stock that reaches it (supportSlice would idle)
+		if (ThreatGroundFronts.ordnanceAvailable(o.fleet, o.factionId) < ThreatGroundFronts.bombardFuelPerDay(fp)) {
+			return "out of ordnance";
+		}
+		// the day bombards with every fleet of the faction over the world, as the slice does (orbitPoints)
+		if (ThreatGroundFronts.dailyGain(world, ThreatGroundFronts.orbitPoints(o.factionId, world, fp)) < 1f) {
+			return "a day buys less than a day down";
+		}
+		float lossLine = o.arrivalFP * (1f - Math.max(0f, Math.min(1f, ThreatIncConfig.raidLossFraction())));
+		if (fp < lossLine) return "lost " + (int) (o.arrivalFP - fp) + " of " + (int) o.arrivalFP + " FP";
+		return null;
+	}
+
+	/**
+	 * A raid turned back within its first days at the world - it met swarms it
+	 * was not sized for - strikes its fallback instead, if the faction's report
+	 * of that world says it can (twice the swarms, and a day still buys a day
+	 * down) and its base's spendable fuel pays the detour
+	 * (ThreatSoftening.detourFuel). True when it went.
+	 */
+	protected static boolean divertRaid(Order o, String why) {
+		if (o.fallbackId == null || !o.arrived) return false;
+		// only a verdict on arrival diverts - once the raid is all there; a raid that has been bombing goes home
+		if (Global.getSector().getClock().getElapsedDaysSince(o.arrivedTimestamp)
+				> gatherDays(o) + RAID_CONTEST_GRACE_DAYS + 1f) {
+			return false;
+		}
+		MarketAPI from = Global.getSector().getEconomy().getMarket(o.targetId);
+		MarketAPI to = Global.getSector().getEconomy().getMarket(o.fallbackId);
+		o.fallbackId = null;
+		if (from == null || to == null || to == from || to.getPrimaryEntity() == null || !to.isInEconomy()) return false;
+		if (!Factions.THREAT.equals(to.getFactionId()) || raidedByAnother(o, to.getId())) return false;
+		// the raid's fleets at the world reach the same verdict and go together
+		float fp = raidFP(o);
+		float reported = ThreatIntel.worldFP(o.factionId, to);
+		if (fp <= reported / Math.max(0.01f, ThreatIncConfig.orbitContestFraction())) return false;
+		if (ThreatGroundFronts.dailyGain(to, fp) < 1f) return false;
+		MarketAPI base = Global.getSector().getEconomy().getMarket(o.baseMarketId);
+		float cost = ThreatSoftening.detourFuel(o, from.getStarSystem(), to.getStarSystem());
+		if (cost > 0f) {
+			if (base == null || ThreatReserves.spendable(base, Commodities.FUEL) < cost) return false;
+			float got = ThreatReserves.drawSpendable(base, Commodities.FUEL, cost);
+			// carried as the rest of its fuel, so a lost hull's share stays lost (ThreatReturns.fuelBack)
+			com.fs.starfarer.api.campaign.rules.MemoryAPI mem = o.fleet.getMemoryWithoutUpdate();
+			mem.set(ThreatReturns.MEM_FUEL, mem.getFloat(ThreatReturns.MEM_FUEL) + got);
+		}
+		o.targetId = to.getId();
+		o.targetName = to.getName();
+		o.arrived = false;
+		o.arrivalFP = 0f;
+		o.arrivedTimestamp = 0L;
+		o.contestedSince = 0L;
+		o.issuedTimestamp = Global.getSector().getClock().getTimestamp();
+		o.fleet.clearAssignments();
+		o.fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, to.getPrimaryEntity(), Math.max(1f, o.days),
+				"raiding " + to.getName());
+		if (base != null && base.getPrimaryEntity() != null) {
+			o.fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(), 1000f,
+					"returning to " + base.getName());
+		}
+		ThreatIncConfig.log("Raid diverted: " + o.factionId + " " + o.fleet.getName() + " turns from " + from.getName()
+				+ " (" + why + ") to " + to.getName() + ", " + (int) fp + " FP against " + (int) reported
+				+ " reported, detour " + (int) cost + " fuel");
+		ThreatAttackPlanner.news(o.factionId, "a raid turned from " + from.getName());
+		return true;
+	}
+
+	/** Whether another raid of the order's faction - not one of its own fleets - is on the world. */
+	protected static boolean raidedByAnother(Order mine, String hiveMarketId) {
+		for (Order o : all()) {
+			if (o == mine || !o.raid || !mine.factionId.equals(o.factionId) || !hiveMarketId.equals(o.targetId)) continue;
+			if (mine.raidId != null && mine.raidId.equals(o.raidId)) continue;
+			if (o.fleet != null && o.fleet.isAlive() && !o.fleet.isExpired()) return true;
+		}
+		return false;
+	}
+
+	/** Whether a raid of the faction is on its way to, or over, a world of the system. */
+	public static boolean raidInSystem(String factionId, String systemId) {
+		if (factionId == null || systemId == null) return false;
+		for (Order o : all()) {
+			if (!o.raid || !factionId.equals(o.factionId) || o.fleet == null || !o.fleet.isAlive()) continue;
+			MarketAPI world = o.targetId != null ? Global.getSector().getEconomy().getMarket(o.targetId) : null;
+			if (world != null && world.getStarSystem() != null && systemId.equals(world.getStarSystem().getId())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** The raid goes home on the tracked leg (refund on arrival), its days at the world in the log. */
+	protected static void endRaid(Order o, String why) {
+		all().remove(o);
+		ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId);
+		float days = o.arrivedTimestamp != 0L
+				? Global.getSector().getClock().getElapsedDaysSince(o.arrivedTimestamp) : 0f;
+		ThreatIncConfig.log("Raid over: " + o.factionId + " " + o.fleet.getName() + " over " + o.targetName
+				+ " (" + why + "), " + String.format("%.1f", days) + " days at the world, "
+				+ (int) o.arrivalFP + " -> " + (int) o.fleet.getFleetPoints() + " FP");
+		ThreatAttackPlanner.news(o.factionId, "a raid on " + o.targetName + " ended");
+		ThreatPlays.raidEnded(o, why);
 	}
 
 	/**
@@ -1526,6 +1789,12 @@ public class ThreatFleetOrders {
 
 	protected static Order record(CampaignFleetAPI fleet, FactionAPI faction, String kind,
 			MarketAPI base, String targetId, String targetName, float days) {
+		return record(fleet, faction, kind, base, targetId, targetName, days, false);
+	}
+
+	/** As above; {@code raid} flags a Support as a raid ({@link Order#raid}). */
+	protected static Order record(CampaignFleetAPI fleet, FactionAPI faction, String kind,
+			MarketAPI base, String targetId, String targetName, float days, boolean raid) {
 		Order o = new Order();
 		o.fleet = fleet;
 		o.factionId = faction.getId();
@@ -1535,6 +1804,7 @@ public class ThreatFleetOrders {
 		o.targetName = targetName;
 		o.issuedTimestamp = Global.getSector().getClock().getTimestamp();
 		o.days = days;
+		o.raid = raid;
 		all().add(o);
 		ThreatIncConfig.log("Order issued: " + faction.getId() + " " + o.task() + " from "
 				+ base.getName());
@@ -1556,7 +1826,7 @@ public class ThreatFleetOrders {
 		if (ThreatConvoys.isConvoy(fleet)) return null;
 		if (base == null) base = pickBase(faction, hive.getLocation());
 		if (base == null || base.getPrimaryEntity() == null) return null;
-		MarketAPI target = ThreatSoftening.huntTarget(hive.getId());
+		MarketAPI target = ThreatSoftening.huntTarget(ThreatIntel.observerOf(faction), hive.getId());
 		if (target == null || target.getPrimaryEntity() == null) return null;
 		float days = ThreatIncConfig.softenDays();
 		fleet.clearAssignments();
@@ -1857,8 +2127,8 @@ public class ThreatFleetOrders {
 			MarketAPI base = o.baseMarketId != null
 					? Global.getSector().getEconomy().getMarket(o.baseMarketId) : null;
 			float days = o.indefinite() ? NO_TERM_DAYS : Math.max(1f, o.daysLeft());
-			leash(o.fleet, world, days, orbitTask(o.kind, world.getName()),
-					base != null ? base.getPrimaryEntity() : null, orbitName(o.kind));
+			leash(o.fleet, world, days, o.raid ? "raiding " + world.getName() : orbitTask(o.kind, world.getName()),
+					base != null ? base.getPrimaryEntity() : null, o.raid ? "Raid" : orbitName(o.kind));
 		}
 	}
 

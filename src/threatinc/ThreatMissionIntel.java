@@ -500,21 +500,19 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 	/**
 	 * What taking this objective would cost a fleet, in abstract units: the
 	 * garrison to break, the colony's own size and ground defenses, the burn out
-	 * to it - and, for nexus targets, that the organ is buried deepest.
+	 * to it - and, for nexus targets, that the organ is buried deepest. The
+	 * garrison is the one the posting board last saw ({@link #seenGarrisons}).
 	 */
-	public static float difficulty(int type, MarketAPI market) {
+	public static float difficulty(String observer, int type, MarketAPI market) {
 		if (market == null) return 1f;
 
 		float d = market.getSize();
-		int own = ThreatColonyManager.countLiveGarrison(market.getId());
+		int[] seen = seenGarrisons(observer, market);
+		int own = seen[0];
 		d += 1.5f * own;
 
 		// sibling colonies in the same system: their Defense Swarms are in reach
-		StarSystemAPI system = market.getStarSystem();
-		if (system != null) {
-			int inSystem = ThreatColonyManager.countLiveGarrisonInSystem(system.getId());
-			d += 0.5f * Math.max(0, inSystem - own);
-		}
+		d += 0.5f * Math.max(0, seen[1] - own);
 
 		if (market.hasIndustry(Industries.HEAVYBATTERIES)
 				|| market.hasIndustry(ThreatColonyManager.THREAT_HEAVY_BATTERIES)) d += 3f;
@@ -532,6 +530,43 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 		d -= REACH_RELIEF * factionReachFactor(market);
 
 		return Math.max(1f, d);
+	}
+
+	/**
+	 * The observer's report of the world's system (ThreatIntel, the fog of
+	 * war, 2026-10-01), when it covers the world; null when it never saw it.
+	 */
+	protected static ThreatIntel.Report swarmReport(String observer, MarketAPI market) {
+		StarSystemAPI system = market != null ? market.getStarSystem() : null;
+		if (system == null) return null;
+		return ThreatWarBoard.seenOver(ThreatIntel.report(observer, system.getId()), market);
+	}
+
+	/**
+	 * Swarms the observer last saw over the world and over its system's
+	 * worlds, each fleet once: {own, in system}. Never the live garrisons. A
+	 * world it never saw counts the garrison its size calls for
+	 * (ThreatColonyManager.nominalGarrison), and its siblings theirs: unseen is
+	 * not undefended.
+	 */
+	protected static int[] seenGarrisons(String observer, MarketAPI market) {
+		ThreatIntel.Report r = swarmReport(observer, market);
+		if (r != null) return new int[] {r.worldFleets(market.getId()), r.nearFleets};
+		int own = ThreatColonyManager.nominalGarrison(market);
+		int inSystem = 0;
+		StarSystemAPI system = market.getStarSystem();
+		if (system != null) {
+			for (MarketAPI hive : ThreatIncData.getLiveColonyMarkets(system.getId())) {
+				inSystem += ThreatColonyManager.nominalGarrison(hive);
+			}
+		}
+		return new int[] {own, Math.max(own, inSystem)};
+	}
+
+	/** The faction whose board would post a contract on the world (pickSponsor): its observer id. */
+	protected static String sponsorOf(MarketAPI market) {
+		MarketAPI sponsor = pickSponsor(market);
+		return sponsor != null ? sponsor.getFactionId() : Factions.INDEPENDENT;
 	}
 
 	/**
@@ -645,10 +680,11 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 		return mult;
 	}
 
-	public static float valueFor(int tier, int type, MarketAPI market) {
+	/** The objective's value to the observer's board: its difficulty is what that board last saw. */
+	public static float valueFor(String observer, int tier, int type, MarketAPI market) {
 		float impact = networkImpact(type, market);
 		if (impact <= 0f) return 0f;
-		float value = tierValue(tier, impact, difficulty(type, market));
+		float value = tierValue(tier, impact, difficulty(observer, type, market));
 		if (tier == TIER_IMMEDIATE) value *= immediateThreatMult(market);
 		return value;
 	}
@@ -699,11 +735,14 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 			if (taken.contains(market.getId())) continue;
 			// a board posts contracts only on hives the sector has found
 			if (!ThreatScouts.sectorKnows(market)) continue;
+			// sized on what the faction that would post it last saw there
+			String observer = null;
 			for (int type = 0; type < TYPE_COUNT; type++) {
 				if (!isValidTarget(type, market)) continue;
 				float impact = networkImpact(type, market);
 				if (impact <= 0f) continue;
-				float difficulty = difficulty(type, market);
+				if (observer == null) observer = sponsorOf(market);
+				float difficulty = difficulty(observer, type, market);
 				float value = tierValue(tier, impact, difficulty);
 				if (tier == TIER_IMMEDIATE) value *= immediateThreatMult(market);
 				if (typesOnBoard.contains(type)) value *= 0.6f;
@@ -719,7 +758,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 	public float currentValue() {
 		MarketAPI market = getMarket();
 		if (market == null) return 0f;
-		return valueFor(getTier(), type, market);
+		return valueFor(factionId, getTier(), type, market);
 	}
 
 	/**
@@ -1164,15 +1203,27 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 		String batteries = "";
 		if (market.hasIndustry(Industries.HEAVYBATTERIES)
 				|| market.hasIndustry(ThreatColonyManager.THREAT_HEAVY_BATTERIES)) {
-			batteries = " and heavy batteries";
+			batteries = " defended by heavy batteries";
 		} else if (market.hasIndustry(Industries.GROUNDDEFENSES)
 				|| market.hasIndustry(ThreatColonyManager.THREAT_GROUND_DEFENSES)) {
-			batteries = " and ground defenses";
+			batteries = " defended by ground defenses";
 		}
-		info.addPara(market.getName() + " is a size %s hive colony defended by %s Defense Swarms"
-				+ batteries + ". Its population is buried beyond the reach of bombardment; only "
-				+ "decline kills it.", opad, h, "" + market.getSize(),
-				"" + ThreatColonyManager.countLiveGarrison(market.getId()));
+		info.addPara(market.getName() + " is a size %s hive colony" + batteries
+				+ ". Its population is buried beyond the reach of bombardment; only "
+				+ "decline kills it.", opad, h, "" + market.getSize());
+
+		// its swarms as the posting faction last saw them (ThreatIntel, the fog of war)
+		ThreatIntel.Report seen = swarmReport(factionId, market);
+		int seenFleets = seen != null ? seen.worldFleets(market.getId()) : 0;
+		if (seen == null) {
+			info.addPara("Its swarms have never been seen.", opad);
+		} else if (seenFleets > 0) {
+			info.addPara("Last seen %s with %s " + (seenFleets == 1 ? "swarm" : "swarms")
+					+ " over it: %s FP.", opad, h, ThreatIntel.when(seen), "" + seenFleets,
+					Misc.getWithDGS(Math.round(seen.worldFP(market.getId()))));
+		} else {
+			info.addPara("Last seen %s with no swarms over it.", opad, h, ThreatIntel.when(seen));
+		}
 
 		if (IncursionManager.isActiveStrikeSource(market)) {
 			String line = "An expedition staged from this world is in flight.";
@@ -1248,7 +1299,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 		}
 
 		info.addPara("Expected resistance: %s.", opad, h,
-				resistanceWord(difficulty(type, market)));
+				resistanceWord(difficulty(factionId, type, market)));
 
 		if (factionReachFactor(market) > 0f) {
 			info.addPara("Naval forces operate within %s light-years of the target. Expect task "

@@ -1391,6 +1391,15 @@ public class ThreatGroundFronts {
 	}
 
 	/**
+	 * As above from what the observer last saw over the world (ThreatIntel, the
+	 * fog of war, 2026-10-01): the convoy door's read (ThreatConvoys.canRunTo),
+	 * which is remote. A faction with a front there has eyes on it every day.
+	 */
+	public static boolean orbitContested(String observer, MarketAPI market) {
+		return market != null && ThreatIntel.worldFleets(observer, market) > 0;
+	}
+
+	/**
 	 * Is the space over this world held against the front's owner? Symmetric
 	 * with {@link #orbitContested}, which asks the question only one way round.
 	 *
@@ -1437,22 +1446,43 @@ public class ThreatGroundFronts {
 		return pointsNear(market, factionId, false);
 	}
 
+	/**
+	 * The fleets {@link #hostilePointsNear} weighs, as a list: an off-screen
+	 * fight over the world (ThreatPurgeFGI's daily siege) weighs their points
+	 * and strikes exactly these fleets.
+	 */
+	public static List<CampaignFleetAPI> hostileFleetsNear(String factionId, MarketAPI market) {
+		List<CampaignFleetAPI> out = new ArrayList<CampaignFleetAPI>();
+		if (market == null || factionId == null) return out;
+		SectorEntityToken world = market.getPrimaryEntity();
+		if (world == null || world.getContainingLocation() == null) return out;
+		for (CampaignFleetAPI fleet : world.getContainingLocation().getFleets()) {
+			if (countsNear(fleet, market, factionId, false)) out.add(fleet);
+		}
+		return out;
+	}
+
 	protected static float pointsNear(MarketAPI market, String factionId, boolean friendly) {
 		if (market == null || factionId == null) return 0f;
 		SectorEntityToken world = market.getPrimaryEntity();
 		if (world == null || world.getContainingLocation() == null) return 0f;
 		float fp = 0f;
 		for (CampaignFleetAPI fleet : world.getContainingLocation().getFleets()) {
-			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
-			if (fleet.getFleetPoints() <= 0f || fleet.getFaction() == null) continue;
-			// a passing freighter holds nothing
-			if (Misc.isTrader(fleet) || Misc.isSmuggler(fleet) || Misc.isScavenger(fleet)) continue;
-			boolean own = factionId.equals(fleet.getFaction().getId());
-			if (friendly ? !own : own || !fleet.getFaction().isHostileTo(factionId)) continue;
-			if (!nearWorld(fleet, market)) continue;
+			if (!countsNear(fleet, market, factionId, friendly)) continue;
 			fp += fleet.getFleetPoints();
 		}
 		return fp;
+	}
+
+	/** Whether a fleet counts at the world for {@link #pointsNear} and {@link #hostileFleetsNear}: one filter, so what is weighed is what is struck. */
+	protected static boolean countsNear(CampaignFleetAPI fleet, MarketAPI market, String factionId, boolean friendly) {
+		if (fleet == null || !fleet.isAlive() || fleet.isExpired()) return false;
+		if (fleet.getFleetPoints() <= 0f || fleet.getFaction() == null) return false;
+		// a passing freighter holds nothing
+		if (Misc.isTrader(fleet) || Misc.isSmuggler(fleet) || Misc.isScavenger(fleet)) return false;
+		boolean own = factionId.equals(fleet.getFaction().getId());
+		if (friendly ? !own : own || !fleet.getFaction().isHostileTo(factionId)) return false;
+		return nearWorld(fleet, market);
 	}
 
 	protected static boolean nearWorld(CampaignFleetAPI fleet, MarketAPI market) {
@@ -2773,15 +2803,28 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** As above, a day needing {@code worth} defence off per fleet point lost. */
 	public static float[] bombardPlan(MarketAPI market, float fp, float budget, float troops,
 			boolean beachhead, float worth) {
+		return bombardPlan(market, fp, budget, troops, beachhead, worth, GROUP_ABORT_FRACTION);
+	}
+
+	/**
+	 * As above, stopping before the fleet falls below {@code floorFraction} of
+	 * what it started with - a raid's line is a third lost (raidLossFraction,
+	 * ThreatAttackPlanner), an expedition's vanilla's abort line. A fifth
+	 * element: the days down the days flown buy, the most each day adds
+	 * anywhere on the world summed ({@link #dailyGain}'s figure, day by day) -
+	 * what a raid is worth.
+	 */
+	public static float[] bombardPlan(MarketAPI market, float fp, float budget, float troops,
+			boolean beachhead, float worth, float floorFraction) {
 		float start = Math.max(0f, fp);
-		if (market == null) return new float[] { 0f, 1f, start, 0f };
+		if (market == null) return new float[] { 0f, 1f, start, 0f, 0f };
 		float d0 = Math.max(1f, MarketCMD.getDefenderStr(market, true));
 		float lands0 = troops > 0f && troops >= troopsToLand(market, d0, d0, beachhead) ? 1f : 0f;
-		if (start <= 0f) return new float[] { 0f, 1f, start, lands0 };
+		if (start <= 0f) return new float[] { 0f, 1f, start, lands0, 0f };
 		Theatre theatre = Theatre.of(market);
 		List<Industry> forts = theatre.fortifications(market);
 		boolean shield = ThreatShield.present(market);
-		if (forts.isEmpty() && !shield) return new float[] { 0f, 1f, start, lands0 };
+		if (forts.isEmpty() && !shield) return new float[] { 0f, 1f, start, lands0, 0f };
 		int n = forts.size();
 		float[] cond = new float[n];
 		float[] next = new float[n];
@@ -2804,9 +2847,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float perPoint = Math.max(0f, ThreatIncConfig.siegeFPWeight());
 		worth = Math.max(0f, worth);
 		float firePer = Math.max(0f, ThreatIncConfig.bombardReturnFirePerGunDefence());
-		float floor = start * GROUP_ABORT_FRACTION;
+		float floor = start * Math.max(0f, Math.min(1f, floorFraction));
 		float fleet = start;
 		float d = d0;
+		float down = 0f;
 		int day = 0;
 		while (day < budget) {
 			float weighted = fleet * perPoint;
@@ -2828,13 +2872,14 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			System.arraycopy(next, 0, cond, 0, n);
 			if (shield) s = Math.max(0f, s - rate * ratio * s * soak / wear);
 			fleet -= fire;
+			down += gain;
 			day++;
 			// the figure the next day meets: the fortifications as they now
 			// stand, and the stability the day's unrest leaves
 			d = fig.defence(cond, -1f, true);
 		}
 		float lands = troops > 0f && troops >= troopsToLand(market, d, d0, beachhead) ? 1f : 0f;
-		return new float[] { day, Math.min(1f, d / d0), fleet, lands };
+		return new float[] { day, Math.min(1f, d / d0), fleet, lands, down };
 	}
 
 	/**
@@ -3593,31 +3638,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (market == null || start <= 0f) return new float[] { start, fuel, 0f, 0f };
 		float fp = start;
 		float elapsed = 0f;
-		float step = SIEGE_FIRST_SLICE_DAYS;
 		float budget = ThreatIncConfig.siegeOrbitDays();
+		float abortFP = start * abortFraction;
 		boolean dry = false;
-		while (fp > 0f && elapsed < budget && fp > start * abortFraction) {
-			if (readyToLand(market, troops, factionId, orbitDone(market, fp, fuel, troops,
-					factionId != null && !Factions.PLAYER.equals(factionId)))) break;
-			float days = Math.min(step, bombardDaysFor(fuel, fp));
-			if (days <= 0f) {
-				dry = true;
-				break;
-			}
-			// the guns would break the siege within the step: its commander lands
-			// on what orbit has left instead of turning for home
-			float fire = returnFirePerDay(market, Math.max(0f, MarketCMD.getDefenderStr(market, true))) * days;
-			if (fire > 0f && fp - fire < start * abortFraction) break;
-			// one frame: nothing runs down between steps. The stats are
-			// recomputed after every step - read once, the defence stayed at its
-			// intact figure all siege (Eventide, 1221 for 18 steps from 0.93 to
-			// 0.33), overpaying the guns and wearing the world too slowly
-			float cost = bombardFuelPerDay(fp) * days;
-			fp -= siegeSlice(fp, market, days, false, false);
-			if (fuel < Float.MAX_VALUE) fuel = Math.max(0f, fuel - cost);
-			elapsed += days;
-			syncSiegeState(market);
-			market.reapplyIndustries();
+		while (fp > 0f && elapsed < budget && fp > abortFP) {
+			// one frame: nothing runs down between steps
+			float[] out = abstractSiegeStep(market, fp, troops, abortFP, factionId, fuel, SIEGE_FIRST_SLICE_DAYS,
+					false);
+			if (out[3] == SIEGE_STEP_DRY) dry = true;
+			if (out[3] != SIEGE_STEP_SLICED) break;
+			fp = out[0];
+			fuel = out[1];
+			elapsed += out[2];
 		}
 		syncSiegeState(market);
 		market.reapplyIndustries();
@@ -3625,6 +3657,50 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				+ " d, " + (int) start + " -> " + (int) fp + " FP"
 				+ (fuel < Float.MAX_VALUE ? ", " + (int) fuel + " fuel left" : "") + (dry ? ", ran dry" : ""));
 		return new float[] { fp, fuel, elapsed, dry ? 1f : 0f };
+	}
+
+	/** {@link #abstractSiegeStep}'s verdict: it bombarded. */
+	public static final int SIEGE_STEP_SLICED = 0;
+	/** The troops could land now: orbit has done what it can for them, or they could hold as they are. */
+	public static final int SIEGE_STEP_READY = 1;
+	/** The ordnance buys no more bombardment. */
+	public static final int SIEGE_STEP_DRY = 2;
+	/** The guns' answer over the step would take the flotilla under its abort line: it lands on what orbit left. */
+	public static final int SIEGE_STEP_GUNS = 3;
+
+	/**
+	 * One step of an off-screen siege by {@code fp} abstract fleet points: none
+	 * when the troops could land ({@link #readyToLand}, {@link #orbitDone}), the
+	 * ordnance is spent, or the guns' answer over the step would take the
+	 * flotilla under {@code abortFP} ({@link #gunsWouldBreak}'s test over the
+	 * step's days); else up to {@code step} days of bombardment paid out of
+	 * {@code fuel}, and the world's stats recomputed. {@link #abstractSiege} runs
+	 * it in a loop in one frame; an NPC siege that runs a day at a time
+	 * (ThreatPurgeFGI's daily siege) runs it once a day with {@code elapsed}
+	 * true, so the clocks' run-down between days is made up. Returns {fleet
+	 * points left, fuel left, days bombarded, the verdict - SIEGE_STEP_*}.
+	 */
+	public static float[] abstractSiegeStep(MarketAPI market, float fp, float troops, float abortFP,
+			String factionId, float fuel, float step, boolean elapsed) {
+		if (readyToLand(market, troops, factionId, orbitDone(market, fp, fuel, troops,
+				factionId != null && !Factions.PLAYER.equals(factionId)))) {
+			return new float[] { fp, fuel, 0f, SIEGE_STEP_READY };
+		}
+		float days = Math.min(step, bombardDaysFor(fuel, fp));
+		if (days <= 0f) return new float[] { fp, fuel, 0f, SIEGE_STEP_DRY };
+		// the guns would break the siege within the step: its commander lands
+		// on what orbit has left instead of turning for home
+		float fire = returnFirePerDay(market, Math.max(0f, MarketCMD.getDefenderStr(market, true))) * days;
+		if (fire > 0f && fp - fire < abortFP) return new float[] { fp, fuel, 0f, SIEGE_STEP_GUNS };
+		// the stats are recomputed after every step - read once, the defence
+		// stayed at its intact figure all siege (Eventide, 1221 for 18 steps
+		// from 0.93 to 0.33), overpaying the guns and wearing the world too slowly
+		float cost = bombardFuelPerDay(fp) * days;
+		fp -= siegeSlice(fp, market, days, elapsed, false);
+		if (fuel < Float.MAX_VALUE) fuel = Math.max(0f, fuel - cost);
+		syncSiegeState(market);
+		market.reapplyIndustries();
+		return new float[] { fp, fuel, days, SIEGE_STEP_SLICED };
 	}
 
 	/**
@@ -4231,7 +4307,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			// a landing's station has no return leg queued behind its orbit, so
 			// it is kept there by hand; a termed sortie keeps vanilla's queue
 			if (o.indefinite()) ThreatSwarmDefend.holdOrbit(o.fleet, market, o.task());
-			String label = support ? "Support" : "Defend";
+			String label = support ? (o.raid ? "Raid" : "Support") : "Defend";
 			if (market.getPrimaryEntity() == null) continue;
 			// the orbit before the ground: stamped whether or not the fleet is
 			// on station yet, so it arrives with its reflexes already back

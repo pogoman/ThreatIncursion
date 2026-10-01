@@ -336,6 +336,9 @@ only while the raid action itself is current; the cargo line shows from launch.
 - The narrow (1080p, 997 px) fold has not been re-checked since the cards grew.
 - No sort toggles; one fixed priority order with the reason in the row tooltip.
 - Operations no longer have a table of their own; they live in the row tooltip.
+- An NPC faction view shows its war council: a strategy line under the heading
+  (`ThreatWarCouncil.strategyLine`), and one row per running play at the top of the fleets table
+  (`ThreatFactionView.fleetRows`; kind, target, phase, planned FP, days to the next check).
 - A faction view's fronts table names worlds in systems the player has not discovered (any
   landing of that faction shows), the one place the board breaks the fog-of-war rule in
   [intel-ui-platform.md](intel-ui-platform.md) trap 8. Asked for that way; revisit if it reads

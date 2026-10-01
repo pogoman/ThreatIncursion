@@ -42,7 +42,8 @@ import com.fs.starfarer.api.util.Misc;
  * bounty: its garrison's home system's, else the system it was caught in's
  * ({@link #paidBy}). It ends early only if the
  * hive system falls, or the base or its faction's war goes. The siege gate
- * reads the live garrison, so every swarm destroyed opens the siege sooner.
+ * reads the poster's report of the swarms (ThreatIntel, the fog of war,
+ * 2026-10-01), and so do the figures the bounty quotes, with its date.
  *
  * <p>RELIEF (2026-09-27): a mobilised NPC colony whose orbit the swarm holds
  * over a landed Threat army posts the same bounty on its own system
@@ -425,9 +426,26 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 		return !targets.isEmpty() ? targets : IncursionManager.collectSiegeTargets(system);
 	}
 
-	/** Defense Swarm points the siege faces now: the strongest of its worlds' (IncursionManager.siegeOrbitFaced). */
+	/**
+	 * The poster's observer id: the base's faction, whose eyes, radar and
+	 * partners' reports (ThreatIntel, the fog of war) the bounty quotes.
+	 */
+	protected String poster() {
+		return factionId;
+	}
+
+	/** The poster's report of the hive system, or null when it never saw it. */
+	protected ThreatIntel.Report report() {
+		return ThreatIntel.report(poster(), systemId);
+	}
+
+	/**
+	 * Defense Swarm points the siege faces as the poster last saw them: the
+	 * strongest of its worlds' (IncursionManager.siegeOrbitFaced), never the
+	 * live garrisons.
+	 */
 	protected float orbitFP() {
-		return IncursionManager.siegeOrbitFaced(siegeTargets());
+		return IncursionManager.siegeOrbitFaced(poster(), siegeTargets());
 	}
 
 	@Override
@@ -509,8 +527,15 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 							(int) ThreatGroundFronts.pointsNear(relieved, Factions.THREAT, true)));
 				}
 			} else {
-				info.addPara("Strongest swarms %s FP, siege takes %s", 0f, tc, h, Misc.getWithDGS((int) orbitFP()),
-						Misc.getWithDGS(siegeFP));
+				// the poster's report and its date, then what its siege can take
+				ThreatIntel.Report seen = report();
+				if (seen != null) {
+					info.addPara("Strongest swarms %s FP as last seen %s", 0f, tc, h,
+							Misc.getWithDGS((int) orbitFP()), ThreatIntel.when(seen));
+				} else {
+					info.addPara("Strongest swarms %s", 0f, tc, h, "unknown");
+				}
+				info.addPara("Siege takes %s FP", 0f, tc, h, Misc.getWithDGS(siegeFP));
 			}
 			addDays(info, "remaining", Math.max(0f, duration - elapsedDays), tc);
 		}

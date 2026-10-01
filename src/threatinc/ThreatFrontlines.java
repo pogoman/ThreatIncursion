@@ -605,37 +605,35 @@ public class ThreatFrontlines {
 	protected static final float STRIKE_FLEET_STRENGTH = 450f;
 
 	/**
-	 * The strike a hive world would send once its garrison is full: its
-	 * largest Defense Swarms above the reserve it keeps home
-	 * (ThreatColonyManager.garrisonAvailableForLaunch - reinforcement can fill
-	 * it past its own desired count) - a strike is those swarms re-embodied.
-	 * Each is weighed as vanilla's autoresolve weighs a strike far from the
-	 * player, where the fights happen: its route's strength (FleetGroupIntel,
-	 * 50 per size point - run 5's 27-point strikes weighed 1,350). Not the
-	 * swarm's own fleet strength: run 6 sized on that, ~4x the route figure
-	 * (a 1,350 strike read ~5,500), and no faction could afford one garrison.
-	 * Swarms not yet regrown count as the average.
+	 * The strike a hive world would send once its garrison is full, as the
+	 * observer last saw that garrison (its report, ThreatIntel - the fog of
+	 * war, 2026-10-01): its largest Defense Swarms above the reserve it keeps
+	 * home - the fleets seen over it, or its own target count if more
+	 * (reinforcement can fill it past that) - a strike is those swarms
+	 * re-embodied. Each is weighed as vanilla's autoresolve weighs a strike far
+	 * from the player, where the fights happen: its route's strength
+	 * (FleetGroupIntel, 50 per size point - run 5's 27-point strikes weighed
+	 * 1,350). Not the swarm's own fleet strength: run 6 sized on that, ~4x the
+	 * route figure (a 1,350 strike read ~5,500), and no faction could afford
+	 * one garrison. A report gives fleet points, not tiers: each fleet seen
+	 * counts as their average, read as swarms of the world's heaviest
+	 * size-table row (what musters send first, ThreatStance.heaviestRow) - at
+	 * least one, several for a grown fleet. With none seen, a size-9 fleet each.
 	 */
-	protected static float strikeOf(MarketAPI hive) {
-		int send = Math.max(ThreatColonyManager.garrisonTargetCount(hive),
-				ThreatColonyManager.countLiveGarrison(hive.getId())) - ThreatColonyManager.garrisonReserve(hive);
+	protected static float strikeOf(String observer, MarketAPI hive) {
+		int seen = ThreatIntel.worldFleets(observer, hive);
+		int send = Math.max(ThreatColonyManager.garrisonTargetCount(hive), seen)
+				- ThreatColonyManager.garrisonReserve(hive);
 		if (send <= 0) return 0f;
-		List<Float> live = new ArrayList<Float>();
-		float sum = 0f;
-		for (CampaignFleetAPI f : ThreatIncData.garrisonsFor(hive.getId())) {
-			if (f == null || !f.isAlive()) continue;
-			int size = IncursionManager.strikeFleetSize(ThreatColonyManager.expeditionSizeFor(f));
-			// a grown garrison fleet musters one expedition size per swarm it holds
-			float s = FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(hive.getFactionId(), size)
-					* ThreatColonyManager.swarmCount(f);
-			live.add(s);
-			sum += s;
+		float each = STRIKE_FLEET_STRENGTH;
+		int[] row = seen > 0 ? ThreatStance.heaviestRow(hive) : null;
+		float rowFP = row != null ? ThreatColonyManager.swarmCostEstimate(row) : 0f;
+		if (rowFP > 0f) {
+			int size = IncursionManager.strikeFleetSize(ThreatStance.expeditionSize(row));
+			float swarms = Math.max(1f, ThreatIntel.worldFP(observer, hive) / seen / rowFP);
+			each = FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(hive.getFactionId(), size) * swarms;
 		}
-		java.util.Collections.sort(live, java.util.Collections.reverseOrder());
-		float each = live.isEmpty() ? STRIKE_FLEET_STRENGTH : sum / live.size();
-		float str = 0f;
-		for (int i = 0; i < send; i++) str += i < live.size() ? live.get(i) : each;
-		return str;
+		return send * each;
 	}
 
 	/**
@@ -644,7 +642,8 @@ public class ThreatFrontlines {
 	 * range IncursionManager.pickStrikeTarget uses) - or, billed reach
 	 * (ThreatReach), every one it stands at the front of: a hive world that
 	 * would strike the faction first, the site as near it as the faction's
-	 * nearest market (frontOf's rule).
+	 * nearest market (frontOf's rule). Each weighed as the faction last saw it
+	 * (strikeOf, its reports).
 	 */
 	public static float strikeAt(SectorEntityToken site, String factionId) {
 		boolean billed = ThreatReach.enabled();
@@ -666,7 +665,8 @@ public class ThreatFrontlines {
 			} else if (d > ThreatColonyManager.fuelRangeLY(hive)) {
 				continue;
 			}
-			worst = Math.max(worst, strikeOf(hive));
+			// the site's faction weighs it: a faction's id is its observer id ("player" for the player)
+			worst = Math.max(worst, strikeOf(factionId, hive));
 		}
 		return worst;
 	}
@@ -718,7 +718,7 @@ public class ThreatFrontlines {
 			if (threatStrength(m.getStarSystem()) > 0f) front.add(m.getId());
 		}
 		if (extra != null && extra.getContainingLocation() instanceof StarSystemAPI
-				&& threatStrength((StarSystemAPI) extra.getContainingLocation()) > 0f) {
+				&& threatSeen(factionId, (StarSystemAPI) extra.getContainingLocation()) > 0f) {
 			front.add("extra");
 		}
 		for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) {
@@ -752,6 +752,18 @@ public class ThreatFrontlines {
 			}
 		}
 		return front;
+	}
+
+	/**
+	 * The Threat in a site's system as the faction raising a link there knows
+	 * it (fog of war, 2026-10-01): with its eyes there - a victory base's fleets
+	 * - the live strength (threatStrength), else the swarm FP of its report of
+	 * the system (ThreatIntel.systemFP; none, 0). With the fog off, live.
+	 */
+	protected static float threatSeen(String factionId, StarSystemAPI sys) {
+		String observer = ThreatIntel.observerOf(Global.getSector().getFaction(factionId));
+		if (!ThreatIntel.enabled() || ThreatIntel.eyesIn(sys).contains(observer)) return threatStrength(sys);
+		return ThreatIntel.systemFP(observer, sys.getId());
 	}
 
 	/**

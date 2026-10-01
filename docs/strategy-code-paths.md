@@ -62,21 +62,24 @@ world is wounded (`hasFront`, an organ disrupted, or `recentlyThinned(system)`).
 `hasSiegeableHive`, `cheapestFirst`, `siegeTargets` and `ThreatFactionStance.weakestTarget`. The
 pass itself never calls it; the money gates are inside the launch.
 
-### Orbit sizing (all live reads today)
+### Orbit sizing (from the faction's reports since 2026-10-01)
 
-`siegeOrbitFP(targets)` sums `getFleetPoints` over `ThreatIncData.garrisonsFor` ->
-`siegeOrbitFaced` (strongest world with `npcSiegeOrbitPerWorld`, else the sum) ->
-`siegeOrbitWeighed(faction, targets)` = max(faced, `swarmsMet`, `systemSwarms` while
-`npcSiegeOrbitSystem`) -> `siegeOrbitNeeded(faction, targets)` = weighed x `npcSiegeOrbitMargin`
+`siegeOrbitFP(observer, targets)` reads `ThreatIntel.worldFP` (the observer's report; live only with
+`intelFogOfWar` off) -> `siegeOrbitFaced(observer, targets)` (strongest world with
+`npcSiegeOrbitPerWorld`, else the sum) -> `siegeOrbitWeighed(faction, targets)` = faced, plus the
+report's `nearFP` while `npcSiegeOrbitSystem` -> `siegeOrbitNeeded(faction, targets)` = weighed x `npcSiegeOrbitMargin`
 (0 for the player or with `npcSiegeOrbitGate` off) -> `siegeFleetGoal(faction, targets, raze)` =
 max(orbit need, `siegeWearFP(landTargets)`, raze fleet points).
 
-`siegeOrbitNeeded` is recomputed in five places that must agree: the launch's orbit gate,
-`siegeFleetGoal`, `siegeAffordable`, `ThreatFleetOrders.dispatchOrbit` and
-`ThreatConvoys.supportFor`.
+`siegeOrbitNeeded(faction, targets)` has six readers that must agree: the launch's orbit gate,
+`siegeFleetGoal` (itself read by `siegeCanPay`, `razeWorlds`, `siegeFuelTotal`,
+`bombardFleetSizes`), `siegeAffordable`, `orbitBounty`, `ThreatFleetOrders.dispatchOrbit` and
+`ThreatConvoys.supportFor` (front support only). It sees only the faction and the targets, so a
+waiver inside it would also change `hasSiegeableHive`, `cheapestFirst`, `siegeTargets`, the planner
+and the stance; the war council waives the gates per launch instead (`war-council.md` section 15).
 
-`swarmsMet` is sector memory `$threatinc_swarmsMet_<faction>_<system>` for `siegeMetMemoryDays`
-(90), written only by `ThreatPurgeFGI.callOff` through `noteSwarmsMet`.
+`swarmsMet` and `siegeMetMemoryDays` are retired: `noteSwarmsMet`, called by
+`ThreatPurgeFGI.callOff`, writes an EYES report (`ThreatIntel.see`).
 
 ### The launch - `launchSiegeExpedition`
 

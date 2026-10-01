@@ -228,8 +228,10 @@ public class ThreatAid {
 			q.reason = ThreatNotice.Reason.of("No target");
 			return q;
 		}
-		// a hunt needs something to hunt (2026-09-24, Hunt replaced Intercept)
-		if (ThreatSoftening.huntTarget(hive.getId()) == null) {
+		// a hunt needs something to hunt (2026-09-24, Hunt replaced Intercept):
+		// swarms the player's reports show there (ThreatIntel)
+		if (ThreatSoftening.huntTarget(ThreatIntel.observerOf(Global.getSector().getPlayerFaction()),
+				hive.getId()) == null) {
 			q.reason = ThreatNotice.Reason.of("No Defense Swarms in the %s to hunt",
 					hive.getNameWithLowercaseTypeShort());
 			return q;

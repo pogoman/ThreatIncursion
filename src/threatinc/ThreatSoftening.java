@@ -41,7 +41,9 @@ import com.fs.starfarer.api.util.Misc;
  * softenPool every base of the faction in reach chips in, nearest first. The
  * odds are counted on the warships the yards actually build (vanilla scales an
  * NPC fleet by its market), and a force that cannot beat its target's garrison
- * as it stands now by the margin does not sail ({@link #musterFloorFP}).
+ * by the margin does not sail ({@link #musterFloorFP}). Every swarm figure is
+ * the deciding faction's report (ThreatIntel, the fog of war, 2026-10-01),
+ * refreshed by its fleets' own eyes once they are in the system.
  *
  * <p>The fleets MUSTER (2026-09-24 review): each flies blinkered to the hive
  * system's hyperspace anchor and waits there until the whole force is in, or
@@ -106,6 +108,15 @@ public class ThreatSoftening {
 		public boolean close;
 		/** Ids of the worlds the siege the force covers is fighting; null (and on older saves) for the whole system. */
 		public java.util.List<String> targetIds;
+		/**
+		 * The war council play this force serves (ThreatPlays), or null for a
+		 * bounty's force. A play sizes and sends its force ({@link #sendPlay}):
+		 * no go-in check, no divert, and it goes at the play's worlds in the
+		 * play's order ({@link #targetIds}).
+		 */
+		public String playId;
+		/** Held at the muster until its play lets it go ({@link #release}). */
+		public boolean hold;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -144,9 +155,10 @@ public class ThreatSoftening {
 				if (faction == null || faction.isPlayerFaction()) continue;
 				if (hunting(factionId, system.getId())) continue;
 				if (hostileAt(faction, system.getId())) continue;
-				// against what the poster's siege weighs (gateWorlds), from the best
-				// paid base first until one force sails (huntBases)
-				List<MarketAPI> worlds = gateWorlds(bounty.getFaction(), system, bounty.siegeTargets());
+				// against what the poster's siege weighs (gateWorlds) as this faction's
+				// reports have it, from the best paid base first until one force sails
+				// (huntBases)
+				List<MarketAPI> worlds = gateWorlds(ThreatIntel.observerOf(faction), system, bounty.siegeTargets());
 				for (MarketAPI base : huntBases(faction, system)) {
 					if (send(faction, base, system, worlds)) break;
 				}
@@ -237,23 +249,40 @@ public class ThreatSoftening {
 		return hive != null && hive.getStarSystem() != null ? hive.getStarSystem().getId() : null;
 	}
 
-	/** Defense Swarm points over one colony. */
-	protected static float garrisonFP(MarketAPI hive) {
-		return IncursionManager.siegeOrbitFP(Collections.singletonList(hive));
+	/**
+	 * Defense Swarm points over one colony as the observer last saw them: its
+	 * report (ThreatIntel.worldFP, the fog of war, 2026-10-01), never the live
+	 * garrison; 0 for a world it has never seen.
+	 */
+	protected static float garrisonFP(String observer, MarketAPI hive) {
+		return ThreatIntel.worldFP(observer, hive);
 	}
 
-	/** Where the player's single-fleet hunt in this system starts: the colony with the weakest standing garrison, or null when no colony has one. */
-	public static MarketAPI huntTarget(String systemId) {
-		return weakest(systemId);
+	/** Whether the observer has no report of a system that still has hives: unseen, which is not gone. */
+	protected static boolean unseen(String observer, String systemId) {
+		return systemId != null && !ThreatIntel.known(observer, systemId)
+				&& !ThreatIncData.getLiveColonyMarkets(systemId).isEmpty();
 	}
 
-	/** The colony of the system with the weakest standing garrison, or null when none has one. */
-	protected static MarketAPI weakest(String systemId) {
+	/** "3400 FP reported 41 days ago", for the log: the observer's figure over the world and its age. */
+	protected static String reported(String observer, MarketAPI hive) {
+		ThreatIntel.Report r = hive != null && hive.getStarSystem() != null
+				? ThreatIntel.report(observer, hive.getStarSystem().getId()) : null;
+		return r == null ? "none reported" : (int) r.worldFP(hive.getId()) + " FP reported " + ThreatIntel.when(r);
+	}
+
+	/** Where a single-fleet hunt in this system starts: the colony with the weakest garrison the observer saw, or null when it saw none. */
+	public static MarketAPI huntTarget(String observer, String systemId) {
+		return weakest(observer, systemId);
+	}
+
+	/** The colony of the system with the weakest garrison the observer saw, or null when it saw none. */
+	protected static MarketAPI weakest(String observer, String systemId) {
 		MarketAPI best = null;
 		float bestFP = Float.MAX_VALUE;
 		for (MarketAPI hive : ThreatIncData.getLiveColonyMarkets(systemId)) {
 			if (hive.getPrimaryEntity() == null) continue;
-			float fp = garrisonFP(hive);
+			float fp = garrisonFP(observer, hive);
 			if (fp <= 0f) continue;
 			if (fp < bestFP) {
 				bestFP = fp;
@@ -265,22 +294,22 @@ public class ThreatSoftening {
 
 	/**
 	 * A hunting force's target: the colony the siege's orbit gate reads - the
-	 * strongest standing garrison (IncursionManager.siegeOrbitFaced with
+	 * strongest garrison the observer saw (IncursionManager.siegeOrbitFaced with
 	 * npcSiegeOrbitPerWorld; summed, the gate still falls fastest here), or null
-	 * when no colony has one.
+	 * when it saw none.
 	 */
-	protected static MarketAPI strongest(String systemId) {
-		return strongest(systemId, null);
+	protected static MarketAPI strongest(String observer, String systemId) {
+		return strongest(observer, systemId, null);
 	}
 
 	/** As above among the worlds with these ids - the siege's targets - or the whole system for null. */
-	protected static MarketAPI strongest(String systemId, java.util.Collection<String> among) {
+	protected static MarketAPI strongest(String observer, String systemId, java.util.Collection<String> among) {
 		MarketAPI best = null;
 		float bestFP = 0f;
 		for (MarketAPI hive : ThreatIncData.getLiveColonyMarkets(systemId)) {
 			if (hive.getPrimaryEntity() == null) continue;
 			if (among != null && !among.contains(hive.getId())) continue;
-			float fp = garrisonFP(hive);
+			float fp = garrisonFP(observer, hive);
 			if (fp > bestFP) {
 				bestFP = fp;
 				best = hive;
@@ -296,13 +325,16 @@ public class ThreatSoftening {
 	 * the system's swarms, or what a called-off siege met there, outweigh it
 	 * (IncursionManager.siegeOrbitWeighed). Aimed at the siege's one world,
 	 * Thrial's forces beat Surgat's 75 FP over and over and stood down with it
-	 * clear, while the gate read 11k FP over its five siblings.
+	 * clear, while the gate read 11k FP over its five siblings. Both sides of
+	 * the comparison read the observer's one report (ThreatIntel.report) - the
+	 * deciding faction's, not the siege's.
 	 */
-	protected static List<MarketAPI> gateWorlds(FactionAPI siegeFaction, StarSystemAPI system,
+	protected static List<MarketAPI> gateWorlds(String observer, StarSystemAPI system,
 			List<MarketAPI> targets) {
 		if (system == null || targets == null || targets.isEmpty()) return null;
-		return IncursionManager.siegeOrbitWeighed(siegeFaction, targets)
-				> IncursionManager.siegeOrbitFaced(targets) ? null : targets;
+		FactionAPI eyes = observer != null ? Global.getSector().getFaction(observer) : null;
+		return IncursionManager.siegeOrbitWeighed(eyes, targets)
+				> IncursionManager.siegeOrbitFaced(observer, targets) ? null : targets;
 	}
 
 	/** The ids of the worlds a force is sent against; null for the whole system. */
@@ -544,7 +576,7 @@ public class ThreatSoftening {
 
 	/**
 	 * The smallest force that sails against this colony: the garrison over it
-	 * now ({@link #garrisonNowFP}) by the {@link #margin}. No projection of
+	 * as the observer last saw it ({@link #garrisonNowFP}) by the {@link #margin}. No projection of
 	 * regrowth (2026-09-30): the Threat's posture moves its banks and swarms
 	 * wherever the pressure is, so a hive's own bank and income over an 86-day
 	 * passage said little about the garrison a hunt would meet, and asked 8-13k
@@ -552,17 +584,19 @@ public class ThreatSoftening {
 	 * grew. A garrison reinforced during the muster is met by the go-in check,
 	 * which stands the force down (advanceForce).
 	 */
-	protected static float musterFloorFP(MarketAPI colony) {
-		return margin() * garrisonNowFP(colony);
+	protected static float musterFloorFP(String observer, MarketAPI colony) {
+		return margin() * garrisonNowFP(observer, colony);
 	}
 
 	/**
-	 * The Defense Swarms a colony owns now: ThreatColonyManager.ownedFleetFP -
-	 * its garrison, its raiders out and the reinforcements flying in.
+	 * The Defense Swarms over a colony as the observer last saw them: its
+	 * report, which counts every Threat fleet near the world - garrison,
+	 * raiders home, reinforcements arrived. Raiders out and reinforcements
+	 * still flying in (ThreatColonyManager.ownedFleetFP) are the hive's own
+	 * ledger, a live remote read, and went with the fog of war (2026-10-01).
 	 */
-	protected static float garrisonNowFP(MarketAPI colony) {
-		return Math.max(garrisonFP(colony),
-				ThreatColonyManager.ownedFleetFP(colony, ThreatIncData.garrisonsFor(colony.getId())));
+	protected static float garrisonNowFP(String observer, MarketAPI colony) {
+		return garrisonFP(observer, colony);
 	}
 
 	/**
@@ -570,17 +604,18 @@ public class ThreatSoftening {
 	 * ThreatReserves.COMMODITIES order: the fuel and supplies
 	 * (ThreatFleetOrders.sortieWants) of {@link #musterFloorFP} against the
 	 * world the base's siege's orbit gate reads ({@link #strongest} of its
-	 * {@link #gateWorlds}). No marines or armaments: it lands
+	 * {@link #gateWorlds}), all as the base's faction last saw them. No marines or armaments: it lands
 	 * nothing. What a base stages while its siege is past the faction's means
 	 * (ThreatConvoys.siegeStock).
 	 */
 	public static float[] stagingWants(MarketAPI base, StarSystemAPI hive) {
 		float[] out = new float[ThreatReserves.COMMODITIES.length];
 		if (base == null || hive == null || base.getFaction() == null) return out;
-		MarketAPI first = strongest(hive.getId(), idsOf(gateWorlds(base.getFaction(), hive,
+		String observer = ThreatIntel.observerOf(base.getFaction());
+		MarketAPI first = strongest(observer, hive.getId(), idsOf(gateWorlds(observer, hive,
 				IncursionManager.siegeTargets(base, base.getFaction(), hive))));
 		if (first == null) return out;
-		float[] w = ThreatFleetOrders.sortieWants(base, musterFloorFP(first),
+		float[] w = ThreatFleetOrders.sortieWants(base, musterFloorFP(observer, first),
 				hive.getLocation());
 		int fuel = ThreatAid.index(Commodities.FUEL), supplies = ThreatAid.index(Commodities.SUPPLIES);
 		if (fuel >= 0) out[fuel] = w[0];
@@ -661,19 +696,22 @@ public class ThreatSoftening {
 	 */
 	protected static boolean send(FactionAPI faction, MarketAPI base, StarSystemAPI system,
 			List<MarketAPI> targets) {
+		// every swarm figure here is the faction's report (ThreatIntel): a system
+		// it never saw has no world to aim at, and raises no force
+		String observer = ThreatIntel.observerOf(faction);
 		List<String> among = idsOf(targets);
 		// the world the siege's orbit gate reads, or nothing: a force that cannot
 		// be fielded or paid against it does not go for a weaker world instead
-		MarketAPI first = strongest(system.getId(), among);
+		MarketAPI first = strongest(observer, system.getId(), among);
 		if (first == null) return false;
 		String key = "huntwait:" + faction.getId() + ":" + system.getId();
-		// sized to the garrison over the world now (musterFloorFP); if the swarms
-		// reinforce while it gathers, the go-in check stands it down
+		// sized to the garrison over the world as last seen (musterFloorFP); if the
+		// swarms reinforce while it gathers, the go-in check stands it down
 		// no ceiling on the force (user's rule 2026-09-29): what the depots can pay
 		// bounds it. softenMaxFP (12,000) and 30 fleets left every hive over ~4k FP
 		// a world unhunted for the 3.7-year test
-		float floor = musterFloorFP(first);
-		float want = IncursionManager.siegeOrbitFP(among != null ? targets
+		float floor = musterFloorFP(observer, first);
+		float want = IncursionManager.siegeOrbitFP(observer, among != null ? targets
 				: IncursionManager.collectSiegeTargets(system)) * margin();
 		want = Math.max(floor, want);
 		List<MarketAPI> bases = contributors(faction, base, system);
@@ -689,31 +727,86 @@ public class ThreatSoftening {
 			ThreatIncConfig.logQuiet(key, "Hunting force waits at " + base.getName() + ": " + bases.size()
 					+ (bases.size() == 1 ? " base" : " bases") + (donors.isEmpty() ? "" : " and " + donors.size()
 					+ (donors.size() == 1 ? " donor" : " donors")) + " pay for " + (int) builds + " FP, "
-					+ first.getName() + "'s swarms need " + (int) floor);
+					+ first.getName() + "'s reported swarms need " + (int) floor);
 			return false;
 		}
 
 		long now = Global.getSector().getClock().getTimestamp();
+		Force force = newForce(faction, base, system, among, now);
+		SectorEntityToken muster = musterOf(force);
+		List<ThreatFleetOrders.Order> sent = new ArrayList<ThreatFleetOrders.Order>();
+		List<String> from = new ArrayList<String>();
+		float built = build(faction, base, bases, donors, system, first, want, force.id, muster, now, sent, from);
+		if (sent.isEmpty()) return false;
+		if (built < floor) {
+			float[] back = foldAll(sent);
+			ThreatIncConfig.log("Hunting force from " + base.getName() + " built " + (int) built + " FP of the "
+					+ (int) floor + " " + first.getName() + "'s reported swarms need - stood down, " + (int) back[0]
+					+ " fuel and " + (int) back[1] + " supplies back in the depots");
+			return false;
+		}
+		forces().put(force.id, force);
+		musterNotice(faction, system);
+		ThreatIncConfig.log("Hunting force from " + Misc.getAndJoined(from) + " to " + system.getName() + ": "
+				+ sent.size() + " fleets (" + shape(sent) + "), " + (int) built + " FP built (wanted " + (int) want + ", pays for "
+				+ (int) builds + ") against " + first.getName() + " first (" + reported(observer, first)
+				+ "), mustering");
+		return true;
+	}
+
+	/** A new force against the system, mustering in it when the primary base is there and at the faction's bearing off it otherwise. */
+	protected static Force newForce(FactionAPI faction, MarketAPI base, StarSystemAPI system, List<String> targetIds,
+			long now) {
 		Force force = new Force();
 		force.id = faction.getId() + ":" + system.getId() + ":" + now;
 		force.factionId = faction.getId();
 		force.systemId = system.getId();
 		force.launchedTimestamp = now;
-		force.targetIds = among;
-		SectorEntityToken muster;
-		if (base.getStarSystem() == system) {
-			muster = base.getPrimaryEntity();
+		force.targetIds = targetIds;
+		if (base.getStarSystem() == system && base.getPrimaryEntity() != null) {
 			force.musterInSystem = true;
-			force.musterEntityId = muster.getId();
+			force.musterEntityId = base.getPrimaryEntity().getId();
 		} else {
 			Vector2f at = musterPoint(system, faction.getId());
 			force.musterX = at.x;
 			force.musterY = at.y;
-			muster = Global.getSector().getHyperspace().createToken(at.x, at.y);
 		}
+		return force;
+	}
+
+	/** The token a new force's fleets sail to: the primary base's planet, or a point in hyperspace. */
+	protected static SectorEntityToken musterOf(Force force) {
+		if (force.musterInSystem) {
+			StarSystemAPI system = Global.getSector().getStarSystem(force.systemId);
+			SectorEntityToken at = system != null ? system.getEntityById(force.musterEntityId) : null;
+			if (at != null) return at;
+		}
+		return Global.getSector().getHyperspace().createToken(force.musterX, force.musterY);
+	}
+
+	protected static void musterNotice(FactionAPI faction, StarSystemAPI system) {
+		ThreatNotice n = ThreatNotice.titled("Hunting Force Musters").icon(faction);
+		if (faction.isPlayerFaction()) {
+			n.line("Your hunting force musters against the Defense Swarms in the %s",
+					system.getNameWithLowercaseTypeShort());
+		} else {
+			n.line("%s musters a hunting force against the Defense Swarms in the %s",
+					ThreatNotice.faction(faction), system.getNameWithLowercaseTypeShort());
+		}
+		n.send();
+	}
+
+	/**
+	 * A force's fleets, from each base in turn until {@code want} is built: each
+	 * asked in the points its depot pays for, at most softenFleetFP (or the
+	 * faction's learned fleet cap); the primary base's donors pay toward its
+	 * fleets. Fills {@code sent} and {@code from}; returns the warship FP built.
+	 */
+	protected static float build(FactionAPI faction, MarketAPI base, List<MarketAPI> bases, List<MarketAPI> donors,
+			StarSystemAPI system, MarketAPI first, float want, String forceId, SectorEntityToken muster, long now,
+			List<ThreatFleetOrders.Order> sent, List<String> from) {
+		float perFleet = Math.max(50f, ThreatIncConfig.softenFleetFP());
 		float built = 0f;
-		List<ThreatFleetOrders.Order> sent = new ArrayList<ThreatFleetOrders.Order>();
-		List<String> from = new ArrayList<String>();
 		for (MarketAPI b : bases) {
 			if (built >= want) break;
 			// asked in the points the depot pays for, at most perFleet
@@ -726,7 +819,7 @@ public class ThreatSoftening {
 				// the force came in a few points under its floor and folded (9430 of 9434)
 				if (ask < 25f) ask = Math.min(25f, budget);
 				if (ask < 25f) break;
-				ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchHunt(faction, b, first, ask, force.id, muster);
+				ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchHunt(faction, b, first, ask, forceId, muster);
 				if (o == null) break;
 				float got = combatFP(o.fleet);
 				if (got < 1f) {
@@ -758,40 +851,204 @@ public class ThreatSoftening {
 				from.add(b.getName());
 			}
 		}
-		if (sent.isEmpty()) return false;
-		if (built < floor) {
-			// the yards built short of the numbers: back into the depot, provisions refunded
-			// in full - the fleets never sailed, so the return rule's refund cut does not apply
-			float backFuel = 0f, backSupplies = 0f;
-			for (ThreatFleetOrders.Order o : sent) {
-				MarketAPI home = baseOf(o);
-				if (home != null && o.fleet != null) {
-					backFuel += o.fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL);
-					backSupplies += o.fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_SUPPLIES);
-					refundShort(o.fleet, home, 1f);
-				}
-				ThreatFleetOrders.fold(o, home);
+		return built;
+	}
+
+	/**
+	 * The yards built short of the numbers: back into the depot, provisions
+	 * refunded in full - the fleets never sailed, so the return rule's refund cut
+	 * does not apply. Returns {fuel, supplies} refunded.
+	 */
+	protected static float[] foldAll(List<ThreatFleetOrders.Order> sent) {
+		float backFuel = 0f, backSupplies = 0f;
+		for (ThreatFleetOrders.Order o : sent) {
+			MarketAPI home = baseOf(o);
+			if (home != null && o.fleet != null) {
+				backFuel += o.fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL);
+				backSupplies += o.fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_SUPPLIES);
+				refundShort(o.fleet, home, 1f);
 			}
-			ThreatIncConfig.log("Hunting force from " + base.getName() + " built " + (int) built + " FP of the "
-					+ (int) floor + " " + first.getName() + "'s swarms need - stood down, " + (int) backFuel
-					+ " fuel and " + (int) backSupplies + " supplies back in the depots");
-			return false;
+			ThreatFleetOrders.fold(o, home);
+		}
+		return new float[] { backFuel, backSupplies };
+	}
+
+	// ------------------------------------------------------------------
+	// a war council play's force (ThreatPlays, docs/war-council.md section 5)
+	// ------------------------------------------------------------------
+
+	/**
+	 * Raises a play's hunting force against the system: {@code want} FP, the
+	 * play's share of the means, built as {@link #send} builds - paid whole from
+	 * the bases' depots, the primary's donors chipping in - but sized by nothing
+	 * the swarm holds. Below {@code floor} it folds at once, provisions back.
+	 * Its worlds are {@code targets} in the play's order, the first the one it
+	 * aims at. Pools every base of the faction in reach ({@link #playBases}),
+	 * resting or not. With {@code hold} it waits at the muster for its play
+	 * ({@link #release}). Returns the force's id, or null when none sailed.
+	 */
+	public static String sendPlay(FactionAPI faction, MarketAPI base, StarSystemAPI system, List<MarketAPI> targets,
+			float want, float floor, String playId, boolean hold) {
+		if (faction == null || base == null || system == null || targets == null || want < 25f) return null;
+		MarketAPI first = null;
+		for (MarketAPI m : targets) {
+			if (m != null && isHive(m) && m.getPrimaryEntity() != null) {
+				first = m;
+				break;
+			}
+		}
+		if (first == null) return null;
+		List<MarketAPI> bases = playBases(faction, base, system);
+		List<MarketAPI> donors = huntDonors(faction, base);
+		long now = Global.getSector().getClock().getTimestamp();
+		Force force = newForce(faction, base, system, idsOf(targets), now);
+		force.playId = playId;
+		force.hold = hold;
+		SectorEntityToken muster = musterOf(force);
+		List<ThreatFleetOrders.Order> sent = new ArrayList<ThreatFleetOrders.Order>();
+		List<String> from = new ArrayList<String>();
+		float built = build(faction, base, bases, donors, system, first, want, force.id, muster, now, sent, from);
+		if (sent.isEmpty()) {
+			ThreatIncConfig.log("Play " + playId + " force: nothing built of " + (int) want + " FP from "
+					+ bases.size() + (bases.size() == 1 ? " base" : " bases"));
+			return null;
+		}
+		if (built < floor) {
+			float[] back = foldAll(sent);
+			ThreatIncConfig.log("Play " + playId + " force built " + (int) built + " of the " + (int) floor
+					+ " FP floor - folded, " + (int) back[0] + " fuel and " + (int) back[1] + " supplies back");
+			return null;
 		}
 		forces().put(force.id, force);
-		ThreatNotice n = ThreatNotice.titled("Hunting Force Musters").icon(faction);
-		if (faction.isPlayerFaction()) {
-			n.line("Your hunting force musters against the Defense Swarms in the %s",
-					system.getNameWithLowercaseTypeShort());
-		} else {
-			n.line("%s musters a hunting force against the Defense Swarms in the %s",
-					ThreatNotice.faction(faction), system.getNameWithLowercaseTypeShort());
+		musterNotice(faction, system);
+		ThreatIncConfig.log("Play " + playId + " force from " + Misc.getAndJoined(from) + " to " + system.getName()
+				+ ": " + sent.size() + " fleets (" + shape(sent) + "), " + (int) built + " FP built (share "
+				+ (int) want + "), " + (hold ? "held at the muster" : "mustering"));
+		return force.id;
+	}
+
+	/**
+	 * The bases a play's force draws on: the primary, then every other base of
+	 * the faction whose fuel reaches the system or whose convoys reach the
+	 * primary, nearest the system first ({@link #contributors} without its
+	 * resting and own-siege rules: the play's share is the allocation).
+	 */
+	protected static List<MarketAPI> playBases(FactionAPI faction, MarketAPI primary, StarSystemAPI system) {
+		List<MarketAPI> result = new ArrayList<MarketAPI>();
+		result.add(primary);
+		final Vector2f loc = system.getLocation();
+		Vector2f hub = primary.getStarSystem() != null ? primary.getStarSystem().getLocation() : loc;
+		List<MarketAPI> others = new ArrayList<MarketAPI>();
+		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
+			if (m == primary || m.getStarSystem() == null || !IncursionManager.isBase(m)) continue;
+			Vector2f at = m.getStarSystem().getLocation();
+			if (Misc.getDistanceLY(at, loc) > IncursionManager.expeditionRangeLY(m)
+					&& Misc.getDistanceLY(at, hub) > ThreatConvoys.stockReachLY(m)) continue;
+			others.add(m);
 		}
-		n.send();
-		ThreatIncConfig.log("Hunting force from " + Misc.getAndJoined(from) + " to " + system.getName() + ": "
-				+ sent.size() + " fleets (" + shape(sent) + "), " + (int) built + " FP built (wanted " + (int) want + ", pays for "
-				+ (int) builds + ") against " + first.getName() + " first (" + (int) garrisonFP(first)
-				+ " FP), mustering");
+		Collections.sort(others, new Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				return Float.compare(Misc.getDistanceLY(a.getStarSystem().getLocation(), loc),
+						Misc.getDistanceLY(b.getStarSystem().getLocation(), loc));
+			}
+		});
+		result.addAll(others);
+		return result;
+	}
+
+	/** What the faction's bases in reach could pay a play's force in the system for, in FP ({@link #payableFP} summed over {@link #playBases}). */
+	public static float playPayableFP(FactionAPI faction, MarketAPI primary, StarSystemAPI system) {
+		if (faction == null || primary == null || system == null) return 0f;
+		List<MarketAPI> donors = huntDonors(faction, primary);
+		float sum = 0f;
+		for (MarketAPI b : playBases(faction, primary, system)) sum += payableFP(b, system, b == primary ? donors : null);
+		return sum;
+	}
+
+	/** The live hunt orders of a force. */
+	protected static List<ThreatFleetOrders.Order> ordersOf(String forceId) {
+		List<ThreatFleetOrders.Order> out = new ArrayList<ThreatFleetOrders.Order>();
+		if (forceId == null) return out;
+		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
+			if (!ThreatFleetOrders.KIND_HUNT.equals(o.kind) || !forceId.equals(o.forceId)) continue;
+			if (o.fleet == null || !o.fleet.isAlive() || o.fleet.isExpired()) continue;
+			out.add(o);
+		}
+		return out;
+	}
+
+	/** Whether the force is still on the books. */
+	public static boolean forceAlive(String forceId) {
+		return forceId != null && forces().containsKey(forceId) && !ordersOf(forceId).isEmpty();
+	}
+
+	/** Whether the force has gone in. */
+	public static boolean engaged(String forceId) {
+		Force f = forceId != null ? forces().get(forceId) : null;
+		return f != null && f.engaged;
+	}
+
+	/** Warship FP of the force's fleets at its muster. */
+	public static float musteredFP(String forceId) {
+		Force f = forceId != null ? forces().get(forceId) : null;
+		StarSystemAPI system = f != null && f.systemId != null ? Global.getSector().getStarSystem(f.systemId) : null;
+		if (system == null) return 0f;
+		float fp = 0f;
+		for (ThreatFleetOrders.Order o : ordersOf(forceId)) {
+			if (atMuster(f, o, system)) fp += combatFP(o.fleet);
+		}
+		return fp;
+	}
+
+	/** Warship FP of every fleet of the force, wherever it is. */
+	public static float forceFP(String forceId) {
+		float fp = 0f;
+		for (ThreatFleetOrders.Order o : ordersOf(forceId)) fp += combatFP(o.fleet);
+		return fp;
+	}
+
+	/** Warship FP of the play's forces' fleets inside the system: they fight beside its siege (ThreatPurgeFGI.friendsNear). */
+	public static float playFP(String playId, StarSystemAPI system) {
+		if (playId == null || system == null || forces().isEmpty()) return 0f;
+		float fp = 0f;
+		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
+			if (!ThreatFleetOrders.KIND_HUNT.equals(o.kind) || o.forceId == null) continue;
+			if (o.fleet == null || !o.fleet.isAlive() || o.fleet.getContainingLocation() != system) continue;
+			Force f = forces().get(o.forceId);
+			if (f != null && playId.equals(f.playId)) fp += combatFP(o.fleet);
+		}
+		return fp;
+	}
+
+	/** Lets a held force go in at its next advance; false when it is gone. */
+	public static boolean release(String forceId) {
+		Force f = forceId != null ? forces().get(forceId) : null;
+		if (f == null) return false;
+		f.hold = false;
 		return true;
+	}
+
+	/** Stands the force down; a force that never went in gets its provisions back in full. */
+	public static void standDownForce(String forceId, String why) {
+		Force f = forceId != null ? forces().get(forceId) : null;
+		if (f == null) return;
+		standDownAll(f, ordersOf(forceId), why);
+	}
+
+	/**
+	 * The world a play's force goes at: the first of its play's worlds still the
+	 * swarm's, other than {@code after}; with {@code garrisoned}, only one its
+	 * faction's reports still show swarms over (or none reported at all).
+	 */
+	protected static MarketAPI playTarget(Force f, MarketAPI after, boolean garrisoned) {
+		if (f.targetIds == null) return null;
+		for (String id : f.targetIds) {
+			MarketAPI m = Global.getSector().getEconomy().getMarket(id);
+			if (m == null || m == after || !isHive(m) || m.getPrimaryEntity() == null) continue;
+			if (garrisoned && ThreatIntel.known(f.factionId, f.systemId) && garrisonFP(f.factionId, m) <= 0f) continue;
+			return m;
+		}
+		return null;
 	}
 
 	/** How close a follower must be to its lead to be merged into it. */
@@ -906,8 +1163,8 @@ public class ThreatSoftening {
 					.append(" ").append((int) fp).append(" FP @").append(dist);
 		}
 		ThreatIncConfig.log("Hunt battle near " + o.targetName + ": " + o.factionId + " side " + battle.getSideFor(o.fleet).size() + " fleets " + (int) ours
-				+ " FP vs " + (int) theirs + " FP (" + (target != null ? (int) garrisonFP(target) : 0)
-				+ " counted as the garrison): " + them);
+				+ " FP vs " + (int) theirs + " FP (garrison " + (target != null ? reported(o.factionId, target) : "none reported")
+				+ "): " + them);
 	}
 
 	protected static void advanceForce(Force f, List<ThreatFleetOrders.Order> orders) {
@@ -918,6 +1175,10 @@ public class ThreatSoftening {
 		}
 		CampaignClockAPI clock = Global.getSector().getClock();
 		float margin = margin();
+		// the force judges by its faction's report of the swarms; with fleets of
+		// its own in the system, their eyes write it fresh first
+		String observer = f.factionId;
+		if (!inLocation(orders, system).isEmpty()) ThreatIntel.look(observer, system);
 
 		if (!f.engaged) {
 			float fp = 0f;
@@ -934,6 +1195,27 @@ public class ThreatSoftening {
 			}
 			int present = mustered.size();
 			if (present > 0 && f.firstArrivalTimestamp == 0L) f.firstArrivalTimestamp = clock.getTimestamp();
+			if (f.playId != null) {
+				// a play's force: its play holds it and lets it go (ThreatPlays), with no
+				// go-in check - the play sized it, not the swarm. Let go, it goes in with
+				// what is at the muster; the stragglers follow the lead
+				if (!ThreatIncConfig.warCouncil() || !ThreatPlays.plays().containsKey(f.playId)) {
+					standDownAll(f, orders, "its play is over");
+					return;
+				}
+				if (f.hold) return;
+				MarketAPI target = playTarget(f, null, false);
+				if (target == null) {
+					standDownAll(f, orders, "its play's worlds are the swarm's no longer");
+					return;
+				}
+				goIn(f, orders, mustered, target, presentFP, observer);
+				// every fleet it sent is the force: let go at its deadline, the
+				// stragglers follow the lead in, and "badly hurt" is measured from all
+				for (ThreatFleetOrders.Order o : orders) f.inForce.add(o.fleet.getId());
+				f.baseFP = presentFP(f, orders, leadOf(f, orders), system);
+				return;
+			}
 			if (present == 0 && clock.getElapsedDaysSince(f.launchedTimestamp) >= ThreatIncConfig.softenDays()) {
 				standDownAll(f, orders, "never mustered");
 				return;
@@ -942,12 +1224,12 @@ public class ThreatSoftening {
 			boolean waited = f.firstArrivalTimestamp != 0L
 					&& clock.getElapsedDaysSince(f.firstArrivalTimestamp) >= ThreatIncConfig.softenMusterDays();
 			if (!all && !waited) return;
-			MarketAPI target = strongest(f.systemId, f.targetIds);
+			MarketAPI target = strongest(observer, f.systemId, f.targetIds);
 			if (target == null) {
-				standDownAll(f, orders, cleared(f));
+				standDownAll(f, orders, unseen(observer, f.systemId) ? "no report of the swarms" : cleared(f));
 				return;
 			}
-			float need = garrisonFP(target) * margin;
+			float need = garrisonFP(observer, target) * margin;
 			// the stragglers would carry it: wait for them, up to softenMusterStragglerMult muster spells
 			if (presentFP < need && fp >= need && clock.getElapsedDaysSince(f.firstArrivalTimestamp)
 					< Math.max(1f, ThreatIncConfig.softenMusterStragglerMult()) * ThreatIncConfig.softenMusterDays()) {
@@ -958,33 +1240,12 @@ public class ThreatSoftening {
 				MarketAPI elsewhere = divert(f, orders, presentFP, target);
 				if (elsewhere == null) {
 					standDownAll(f, orders, "outmatched at the muster, " + (int) presentFP + " FP against "
-							+ (int) need + " over " + target.getName());
+							+ (int) need + " over " + target.getName() + " (" + reported(observer, target) + ")");
 					return;
 				}
 				target = elsewhere;
 			}
-			f.engaged = true;
-			sendIn(f, orders, mustered, target);
-			// the mustered fleets fold into the lead before it sails. Merged only on
-			// the lead's heels, the lead reached the garrison first and fought it
-			// alone: every one of Run 7's 214 hunt battles had one hunter fleet
-			ThreatFleetOrders.Order lead = leadOf(f, orders);
-			if (lead != null && ThreatIncConfig.softenMerge()) {
-				for (ThreatFleetOrders.Order o : mustered) {
-					if (o != lead && mergeInto(lead, o, 2f * MUSTER_RANGE)) orders.remove(o);
-				}
-			}
-			f.baseFP = presentFP;
-			// the fleets that went in are the force's strength wherever they are (a
-			// follower a jump behind the lead has not left the fight); stragglers join
-			// it once they reach the lead
-			f.inForce = new java.util.HashSet<String>();
-			for (ThreatFleetOrders.Order o : mustered) {
-				if (orders.contains(o)) f.inForce.add(o.fleet.getId());
-			}
-			ThreatIncConfig.log("Hunting force " + f.factionId + " goes in over " + target.getName() + ": "
-					+ present + "/" + (orders.size() + present - countIn(orders, mustered)) + " fleets mustered, "
-					+ (int) presentFP + " FP against " + (int) garrisonFP(target));
+			goIn(f, orders, mustered, target, presentFP, observer);
 			return;
 		}
 
@@ -1041,21 +1302,37 @@ public class ThreatSoftening {
 				if (o != lead && withLead(lead, o)) o.fleet.getMemoryWithoutUpdate().unset(MemFlags.FLEET_IGNORES_OTHER_FLEETS);
 			}
 			ThreatIncConfig.log("Hunting force " + f.factionId + " closes on " + hive.getName() + ": "
-					+ orders.size() + " fleets, " + (int) fp + " FP present against " + (int) garrisonFP(hive));
+					+ orders.size() + " fleets, " + (int) fp + " FP present against " + reported(observer, hive));
 		}
-		if (hive != null && isHive(hive) && garrisonFP(hive) > 0f) return;
+		// no picture of the system (a force from an older save, or one raised on
+		// a partner's report it no longer reads): it flies on until its eyes see it
+		if (unseen(observer, f.systemId)) return;
+		if (hive != null && isHive(hive) && garrisonFP(observer, hive) > 0f) return;
+		if (f.playId != null) {
+			// a play's force moves on in its play's order, with no need test and no
+			// divert; its worlds clear, it holds the orbit over the last for the siege
+			MarketAPI after = playTarget(f, hive, true);
+			if (after == null) return;
+			f.baseFP = fp;
+			IncursionManager.huntThinned(f.systemId);
+			sendIn(f, orders, lead != null ? Collections.singletonList(lead) : inLocation(orders, system), after);
+			ThreatIncConfig.log("Play " + f.playId + " force " + f.factionId + " moves on to " + after.getName()
+					+ " with " + (int) fp + " FP (" + reported(observer, after) + ")");
+			return;
+		}
 		// on to what the gate reads now
-		MarketAPI next = strongest(f.systemId, f.targetIds);
+		MarketAPI next = strongest(observer, f.systemId, f.targetIds);
 		if (next == null) {
 			standDownAll(f, orders, cleared(f));
 			return;
 		}
-		float need = garrisonFP(next) * margin;
+		float need = garrisonFP(observer, next) * margin;
 		String was = f.systemId;
 		if (fp < need) {
 			MarketAPI elsewhere = divert(f, orders, fp, next);
 			if (elsewhere == null) {
-				standDownAll(f, orders, "outmatched by " + next.getName() + ", " + (int) fp + " FP against " + (int) need);
+				standDownAll(f, orders, "outmatched by " + next.getName() + ", " + (int) fp + " FP against " + (int) need
+						+ " (" + reported(observer, next) + ")");
 				return;
 			}
 			next = elsewhere;
@@ -1064,7 +1341,36 @@ public class ThreatSoftening {
 		IncursionManager.huntThinned(was);
 		sendIn(f, orders, lead != null ? Collections.singletonList(lead) : inLocation(orders, system), next);
 		ThreatIncConfig.log("Hunting force " + f.factionId + " moves on to " + next.getName() + " with "
-				+ (int) fp + " FP against " + (int) garrisonFP(next));
+				+ (int) fp + " FP against " + reported(observer, next));
+	}
+
+	/** A mustered force goes in over the target as one: the mustered fleets fold into the lead, and they are its strength from now. */
+	protected static void goIn(Force f, List<ThreatFleetOrders.Order> orders, List<ThreatFleetOrders.Order> mustered,
+			MarketAPI target, float presentFP, String observer) {
+		int present = mustered.size();
+		f.engaged = true;
+		sendIn(f, orders, mustered, target);
+		// the mustered fleets fold into the lead before it sails. Merged only on
+		// the lead's heels, the lead reached the garrison first and fought it
+		// alone: every one of Run 7's 214 hunt battles had one hunter fleet
+		ThreatFleetOrders.Order lead = leadOf(f, orders);
+		if (lead != null && ThreatIncConfig.softenMerge()) {
+			for (ThreatFleetOrders.Order o : mustered) {
+				if (o != lead && mergeInto(lead, o, 2f * MUSTER_RANGE)) orders.remove(o);
+			}
+		}
+		f.baseFP = presentFP;
+		// the fleets that went in are the force's strength wherever they are (a
+		// follower a jump behind the lead has not left the fight); stragglers join
+		// it once they reach the lead
+		f.inForce = new java.util.HashSet<String>();
+		for (ThreatFleetOrders.Order o : mustered) {
+			if (orders.contains(o)) f.inForce.add(o.fleet.getId());
+		}
+		ThreatIncConfig.log((f.playId != null ? "Play " + f.playId + " force " : "Hunting force ") + f.factionId
+				+ " goes in over " + target.getName() + ": " + present + "/"
+				+ (orders.size() + present - countIn(orders, mustered)) + " fleets mustered, " + (int) presentFP
+				+ " FP against " + reported(observer, target));
 	}
 
 	/** How close to the lead a fleet counts as with it: at the fight, and fighting beside it. */
@@ -1211,7 +1517,8 @@ public class ThreatSoftening {
 	 * when the force was sized was 5,602 when it mustered and 10,921 against the
 	 * next - and every force outmatched at its muster went home, its fuel spent
 	 * for nothing. The swarms it drew left other hives thinner: of every hive
-	 * whose swarms, standing and flying in (garrisonNowFP), the force beats by
+	 * whose swarms as its faction last saw them (its reports, garrisonNowFP -
+	 * a hive it never saw has none) the force beats by
 	 * the margin, the one with the most standing swarms to kill for the fuel the
 	 * whole sortie burns - what it drew and the detour ({@link #detourFuel}) -
 	 * which its bases and the first one's donors pay (huntSpendable,
@@ -1224,6 +1531,7 @@ public class ThreatSoftening {
 		FactionAPI faction = Global.getSector().getFaction(f.factionId);
 		StarSystemAPI at = f.systemId != null ? Global.getSector().getStarSystem(f.systemId) : null;
 		if (faction == null || at == null || fp <= 0f) return null;
+		String observer = f.factionId;
 		float margin = margin();
 		float sunk = 0f;
 		List<MarketAPI> bases = new ArrayList<MarketAPI>();
@@ -1241,8 +1549,8 @@ public class ThreatSoftening {
 			if (hive == failed || hive.getPrimaryEntity() == null || !isHive(hive)) continue;
 			StarSystemAPI sys = hive.getStarSystem();
 			if (sys == null) continue;
-			float standing = garrisonFP(hive);
-			if (standing <= 0f || garrisonNowFP(hive) * margin > fp) continue;
+			float standing = garrisonFP(observer, hive);
+			if (standing <= 0f || garrisonNowFP(observer, hive) * margin > fp) continue;
 			if (sys != at && (hunting(f.factionId, sys.getId()) || hostileAt(faction, sys.getId()))) continue;
 			beatable++;
 			float cost = 0f;
@@ -1292,9 +1600,8 @@ public class ThreatSoftening {
 		f.targetIds = null;
 		for (ThreatFleetOrders.Order o : orders) o.systemId = f.systemId;
 		ThreatIncConfig.log("Hunting force " + f.factionId + " outmatched over " + failed.getName() + " ("
-				+ (int) garrisonFP(failed) + " FP): strikes " + best.getName() + " in " + sys.getName() + " instead, "
-				+ (int) fp + " FP against " + (int) garrisonFP(best) + " (" + (int) garrisonNowFP(best)
-				+ " with its swarms out and inbound), detour " + (int) got + " fuel"
+				+ reported(observer, failed) + "): strikes " + best.getName() + " in " + sys.getName() + " instead, "
+				+ (int) fp + " FP against " + reported(observer, best) + ", detour " + (int) got + " fuel"
 				+ (from.isEmpty() ? "" : ": " + Misc.getAndJoined(from)));
 		if (sys != at) {
 			ThreatNotice.titled("Hunting Force Turns").icon(faction)
@@ -1361,11 +1668,18 @@ public class ThreatSoftening {
 			ThreatFleetOrders.standDown(o, "badly hurt");
 			return;
 		}
-		if (hive != null && isHive(hive) && garrisonFP(hive) > 0f) return;
 		// the system from the order: a colony a siege destroyed meanwhile
 		// is out of the economy, and its siblings may still field swarms
 		String systemId = huntSystemId(o);
-		MarketAPI next = systemId != null ? weakest(systemId) : null;
+		// it judges by its faction's report: in the system its own eyes write it
+		// fresh first; with no picture of a system that still has hives, it flies
+		// on until they do - unseen is not gone
+		String observer = o.factionId;
+		StarSystemAPI system = systemId != null ? Global.getSector().getStarSystem(systemId) : null;
+		if (system != null && o.fleet.getContainingLocation() == system) ThreatIntel.look(observer, system);
+		if (unseen(observer, systemId)) return;
+		if (hive != null && isHive(hive) && garrisonFP(observer, hive) > 0f) return;
+		MarketAPI next = systemId != null ? weakest(observer, systemId) : null;
 		if (next == null) {
 			if (player) {
 				ThreatNotice.titled("Swarms Hunted Down").good().icon(Global.getSector().getPlayerFaction())
@@ -1377,8 +1691,8 @@ public class ThreatSoftening {
 			return;
 		}
 		IncursionManager.huntThinned(systemId);
-		if (!player && combatFP(o.fleet) < garrisonFP(next) * margin()) {
-			ThreatFleetOrders.standDown(o, "outmatched by " + next.getName());
+		if (!player && combatFP(o.fleet) < garrisonFP(observer, next) * margin()) {
+			ThreatFleetOrders.standDown(o, "outmatched by " + next.getName() + ", " + reported(observer, next));
 			return;
 		}
 		if (player) {

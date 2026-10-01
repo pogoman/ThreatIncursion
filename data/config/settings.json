@@ -278,6 +278,11 @@
 	"threatinc_shieldDefenseBonus": 0,
 	# days an expedition holds orbit over each world before it gives the siege up
 	"threatinc_siegeOrbitDays": 120,
+	# an NPC siege expedition off-screen runs its siege a day at a time - the
+	# fight with the swarms over the world, the bombardment, the landing - and
+	# goes home when outmatched, instead of resolving it all in one frame a day
+	# after arrival. Swarm strikes keep the one-frame path
+	"threatinc_abstractSiegeDaily": true,
 	# a world whose Threat front is dry weighs this much more as the next
 	# strike's target: the front signals, the next expedition answers
 	"threatinc_strikeReinforceWeight": 4.0,
@@ -552,8 +557,10 @@
 	# false = send what it can (half the marines, trimmed to two fleets)
 	"threatinc_npcSiegeFullStrength": true,
 	# an NPC siege sails only when its flotilla's fleet points reach this
-	# multiple of the Defense Swarms over the target system; the flotilla
-	# grows toward it, paid from the pooled depots, and a base whose pool
+	# multiple of the Defense Swarms its faction last saw over the strongest
+	# world it takes (per world, not the system's sum; 1.5 since h50a, where
+	# 1.0 sent home every siege the swarm had outgrown since the report); the
+	# flotilla grows toward it, paid from the pooled depots, and a base whose pool
 	# cannot pay for it asks for the swarms to be thinned (a swarm bounty)
 	"threatinc_npcSiegeOrbitGate": true,
 	"threatinc_npcSiegeOrbitMargin": 1.5,
@@ -568,12 +575,10 @@
 	# a sibling forward base pools its stock into a faction's siege, keeping
 	# back this many months of its own garrison's supply upkeep
 	"threatinc_siegeOutpostKeepMonths": 3,
-	# a siege called off remembers the swarms it met in the system; the
-	# faction's next siege there must outweigh them until this many days pass
-	"threatinc_siegeMetMemoryDays": 90,
-	# the orbit gate also weighs every Defense Swarm in the target system -
-	# the garrisons converge on a besieged world
-	"threatinc_npcSiegeOrbitSystem": true,
+	# the orbit gate also weighs every Defense Swarm reported in the target
+	# system. false: a world's reserve never leaves it (only surplus moves),
+	# so the system's sum is a convergence that never comes
+	"threatinc_npcSiegeOrbitSystem": false,
 	# a Threat strike relieves a front of its own losing ground (in reach)
 	# before it opens a new one
 	"threatinc_strikeReliefFirst": true,
@@ -704,6 +709,77 @@
 	"threatinc_scoutLegMaxDays": 60,
 	"threatinc_scoutMemoryDays": 180,
 	"threatinc_scoutFleetPoints": 20,
+	# FOG OF WAR on the swarm (docs/attack-planner.md): each mobilised faction,
+	# and you, knows the swarms only from reports - what its fleets, worlds and
+	# scouts saw (exact) and its radar saw (forward bases, military worlds,
+	# your outposts, within radarRangeLY; two significant figures). A report's
+	# trust halves every intelHalfLifeDays. false = the old exact remote read.
+	"threatinc_intelFogOfWar": true,
+	"threatinc_intelHalfLifeDays": 30,
+	"threatinc_radarRangeLY": 10,
+	# the attack planner: each mobilised faction plans its sieges, raids and
+	# recon every planIntervalDays and on news, adding prongs at other worlds
+	# until the chance that one lands reaches planConfidence. false = each
+	# base picks its own siege once a month.
+	"threatinc_attackPlanner": true,
+	"threatinc_planIntervalDays": 7,
+	"threatinc_planConfidence": 0.8,
+	# a raid goes home once it has lost this share of the fleet points it
+	# arrived with
+	"threatinc_raidLossFraction": 0.33,
+	# the swarm counts a booked siege as an attack at its target from dispatch,
+	# its fleets spawned or not, so it answers alike wherever the player is
+	"threatinc_threatSeesBookedSieges": true,
+	# the war council (docs/war-council.md): each mobilised faction assesses
+	# what it knows every councilAssessDays, holds a strategy (Hold, Starve,
+	# Roll back, Decapitate) for about councilReviewDays, and runs plays -
+	# hammer, starve then invade, feint and strike, recon, bombers - sized as
+	# shares of its means, never by the swarm's fleet points. It replaces the
+	# attack planner and sets the faction stance. false = the planner as built.
+	"threatinc_warCouncil": true,
+	"threatinc_councilAssessDays": 30,
+	"threatinc_councilReviewDays": 90,
+	# 0 = always the best-scored choice; 1 = drawn in proportion to the scores
+	"threatinc_councilTemperature": 1.0,
+	"threatinc_councilSwitchMargin": 0.25,
+	# our weight (colony sizes, allies' at half) over the known swarm's
+	# (hive sizes + 2 x Bastion tier): the outmatched / even / ahead bands
+	"threatinc_councilEvenRatio": 1.0,
+	"threatinc_councilAheadRatio": 2.0,
+	"threatinc_councilBandHysteresis": 0.15,
+	"threatinc_councilThreatLY": 10,
+	"threatinc_councilJitter": 0.25,
+	"threatinc_councilLearning": true,
+	# shares of the means: a hammer's hunts and its siege (each of its own pool),
+	# a bombing campaign's and bombers of opportunity's fuel, a feint's squadron
+	"threatinc_councilHammerShare": 0.6,
+	"threatinc_councilMusterFloor": 0.5,
+	"threatinc_councilStarveShare": 0.3,
+	"threatinc_councilFeintShare": 0.1,
+	"threatinc_councilOpportunityShare": 0.05,
+	"threatinc_councilSquadronFP": 300,
+	# phase clocks (jittered by councilJitter)
+	"threatinc_councilPrepareDays": 30,
+	"threatinc_councilMusterDays": 30,
+	"threatinc_councilExploitDays": 30,
+	"threatinc_councilStarveCheckDays": 30,
+	"threatinc_councilStarveAbortRaids": 3,
+	"threatinc_councilInvadeNexusDays": 21,
+	"threatinc_councilFeintWatchDays": 15,
+	"threatinc_councilFeintWindowDays": 30,
+	"threatinc_councilStrikeMaxDays": 8,
+	# personalities: weights on the strategies (hold, starve, rollback,
+	# decapitate) and plays (hammer, feint, bombers, joint), shareMult on every
+	# play's share, musterMult on the muster's patience, switchMult on the
+	# margin a new strategy must win by. "default" covers any faction not named.
+	"threatinc_councilPersonalities": {
+		"default":         {"hold":1.4, "starve":0.9, "rollback":1.0, "decapitate":0.7, "hammer":0.8, "feint":0.8, "bombers":1.4, "joint":1.0, "shareMult":0.9, "musterMult":1.0, "switchMult":1.2},
+		"hegemony":        {"hold":0.8, "starve":0.9, "rollback":1.0, "decapitate":1.6, "hammer":1.5, "feint":0.8, "bombers":0.8, "joint":1.0, "shareMult":1.2, "musterMult":1.3, "switchMult":1.0},
+		"tritachyon":      {"hold":0.8, "starve":1.6, "rollback":1.0, "decapitate":0.7, "hammer":0.8, "feint":1.5, "bombers":1.5, "joint":0.8, "shareMult":0.9, "musterMult":1.0, "switchMult":1.0},
+		"persean":         {"hold":0.9, "starve":1.0, "rollback":1.5, "decapitate":1.0, "hammer":1.0, "feint":1.2, "bombers":1.0, "joint":1.5, "shareMult":1.0, "musterMult":1.0, "switchMult":1.0},
+		"sindrian_diktat": {"hold":1.0, "starve":1.5, "rollback":0.9, "decapitate":0.8, "hammer":0.9, "feint":1.0, "bombers":1.2, "joint":0.8, "shareMult":0.8, "musterMult":1.0, "switchMult":1.0},
+		"luddic_church":   {"hold":1.5, "starve":0.8, "rollback":1.3, "decapitate":0.8, "hammer":1.0, "feint":0.7, "bombers":0.8, "joint":1.0, "shareMult":1.0, "musterMult":1.2, "switchMult":2.0}
+	},
 	# the swarm scouts too (ThreatSwarmScouts): a strike may only target a
 	# system a Scouting Swarm has charted. A colony that passes the strike
 	# economy gates (size, hulls, fuel, Swarm Nexus - not the garrison) sends

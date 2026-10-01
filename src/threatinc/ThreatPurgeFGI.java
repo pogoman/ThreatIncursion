@@ -12,6 +12,9 @@ import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.econ.MutableCommodityQuantity;
+import com.fs.starfarer.api.impl.campaign.fleets.RouteManager.OptionalFleetData;
+import com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteData;
+import com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteSegment;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
@@ -161,6 +164,19 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	public void setRazeWorlds(java.util.Collection<String> ids) {
 		razeIds = new java.util.LinkedHashSet<String>();
 		if (ids != null) razeIds.addAll(ids);
+	}
+
+	/** The war council play this siege serves (ThreatPlays), or null for one the old launch sent. */
+	protected String playId;
+
+	public String getPlayId() { return playId; }
+
+	public void setPlayId(String id) { playId = id; }
+
+	/** The fleet points of this siege's play already in the target's system (its hunting forces): they fight beside it, so a break-off weighs them. 0 for a siege without a play. */
+	protected float friendsNear(MarketAPI world) {
+		if (playId == null || world == null || world.getStarSystem() == null) return 0f;
+		return ThreatSoftening.playFP(playId, world.getStarSystem());
 	}
 
 	/** Every world the expedition sailed for is one it razes. */
@@ -585,6 +601,13 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 		if (!ledgerSplit && isSpawnedFleets() && !isSpawning() && !getFleets().isEmpty()) {
 			ledgerSplit = true;
+			if (rebaseSpawnFP) {
+				// spawned mid daily siege: the survivors' FP back to the flotilla's
+				// (route damage d), so vanilla aborts at the same share of it and the
+				// refund scales by what survived, as the abstract siege does
+				rebaseSpawnFP = false;
+				setTotalFPSpawned(getTotalFPSpawned() / Math.max(0.05f, 1f - routeDamage()));
+			}
 			ThreatAidCapacity.splitGroup(this);
 			// calibrates the orbit gate's estimate (IncursionManager.siegeOrbitNeeded)
 			ThreatIncConfig.log("Siege fleets real: " + getFleets().size() + " fleets, "
@@ -610,9 +633,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * vanilla's autoresolve, whose performRaid runs the whole abstract siege
 	 * and the landing (abstractSiege) - only a day after arrival, and the
 	 * segment then ends so the route moves on. Knob: abstractResolveOnArrival.
+	 * An NPC siege the daily siege has taken ({@link #advanceDaily}) is never
+	 * resolved here: the swarm's strikes still are.
 	 */
 	public static void resolveOnArrival(com.fs.starfarer.api.impl.campaign.intel.group.FleetGroupIntel intel) {
 		if (intel == null || !ThreatIncConfig.abstractResolveOnArrival()) return;
+		if (intel instanceof ThreatPurgeFGI && ((ThreatPurgeFGI) intel).dailySiege) return;
 		if (intel.isSpawnedFleets() || intel.isEnding() || intel.isEnded() || intel.isAborted()) return;
 		com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteData route = intel.getRoute();
 		if (route == null) return;
@@ -662,7 +688,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				at = target;
 			}
 		}
-		if (at == null || worst < ours * ratio) return false;
+		if (at == null || worst < (ours + friendsNear(at)) * ratio) return false;
 		callOff(at, worst, ours, getTotalFPSpawned());
 		return true;
 	}
@@ -772,23 +798,56 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				+ (system != null ? system.getName() : "?") + "): " + (int) owed + " supplies of upkeep owed, turns home");
 	}
 
+	/** What is aboard: a daily siege still abstract books its toll as route damage, not off the cargo, so the survivors' share. */
 	public float getMarinesAllotted() {
-		return marinesAllotted;
+		return dailySiege && !everSpawned ? marinesAllotted * Math.max(0f, 1f - routeDamage()) : marinesAllotted;
 	}
 
 	public float getArmamentsAllotted() {
-		return armamentsAllotted;
+		return dailySiege && !everSpawned ? armamentsAllotted * Math.max(0f, 1f - routeDamage()) : armamentsAllotted;
 	}
+
+	/** The abstract FP the board shows beside its marines: a daily siege still abstract, the survivors' share; else as it sailed. */
+	public float abstractNow() {
+		return dailySiege && !everSpawned ? abstractAllotment() : abstractFull();
+	}
+
+	/**
+	 * Whether the expedition still takes the world: a target of a daily siege it
+	 * is done with (siegeResolved) is free for other sieges and raids while it
+	 * fights the rest (IncursionManager.bookedWorlds, siegeFactionsIn,
+	 * siegeTargetsOf; ThreatAttackPlanner.siegeLive).
+	 */
+	public static boolean takes(GenericRaidFGI purge, MarketAPI world) {
+		if (world == null) return false;
+		if (!(purge instanceof ThreatPurgeFGI)) return true;
+		ThreatPurgeFGI p = (ThreatPurgeFGI) purge;
+		return !p.dailySiege || p.siegeResolved == null || !p.siegeResolved.contains(world.getId());
+	}
+
+	/** A daily siege's fleets spawned mid-siege: their spawned FP is the survivors', re-based once they are real (noteSpawnFP). False on an older save. */
+	protected boolean rebaseSpawnFP;
 
 	/**
 	 * Spawn pass: reload the allotment onto the fresh fleets, then hand back
 	 * to the base whatever would not fit - the reserve was drawn for it, and
-	 * troops with no berth stay home rather than vanish.
+	 * troops with no berth stay home rather than vanish. Fleets spawned in
+	 * the middle of a daily siege take over what it left: the cargo less the
+	 * route damage it booked (it never took its toll off the cargo), and no
+	 * more fleet points than its flotilla had left ({@link #pruneToAllotment}).
 	 */
 	@Override
 	protected void spawnFleets() {
 		marinesLoaded = 0f;
 		armamentsLoaded = 0f;
+		boolean midSiege = dailySiege && !everSpawned;
+		if (midSiege && carriesCargo) {
+			float keep = Math.max(0f, 1f - routeDamage());
+			if (keep < 1f) {
+				marinesAllotted *= keep;
+				armamentsAllotted *= keep;
+			}
+		}
 		List<CampaignFleetAPI> before = new ArrayList<CampaignFleetAPI>(getFleets());
 		super.spawnFleets();
 		everSpawned = true;
@@ -796,14 +855,21 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		// spawn only once this returns
 		List<CampaignFleetAPI> spawned = new ArrayList<CampaignFleetAPI>(getFleets());
 		spawned.removeAll(before);
+		if (midSiege) {
+			pruneToAllotment(spawned);
+			// vanilla stamps the spawned FP from these survivors: the abort line and
+			// the refund's baseline are fractions of the flotilla as it sailed
+			rebaseSpawnFP = true;
+		}
 		settleLedger(spawned);
 		if (!carriesCargo) return;
 		MarketAPI base = params != null ? params.source : null;
 		float marinesLeft = marinesAllotted - marinesLoaded;
 		float armamentsLeft = armamentsAllotted - armamentsLoaded;
 		// a damaged expedition spawns fewer fleets (the missing ones were
-		// destroyed): their troops are gone, not home
-		if (base != null && routeDamage() <= 0f && (marinesLeft > 0f || armamentsLeft > 0f)) {
+		// destroyed): their troops are gone, not home - unless the cargo already
+		// paid its share of the damage (midSiege), when what has no berth goes home
+		if (base != null && (routeDamage() <= 0f || midSiege) && (marinesLeft > 0f || armamentsLeft > 0f)) {
 			ThreatReserves.deposit(base.getId(), Commodities.MARINES, marinesLeft);
 			ThreatReserves.deposit(base.getId(), Commodities.HAND_WEAPONS, armamentsLeft);
 			ThreatIncConfig.log("Expedition cargo: " + (int) marinesLeft + " marines, "
@@ -902,6 +968,26 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			if (fleet != null) fp += fleet.getFleetPoints();
 		}
 		return fp;
+	}
+
+	/**
+	 * Fleets spawned in the middle of a daily siege come out at no more than
+	 * the flotilla it had left ({@link #abstractAllotment}), cut by
+	 * {@link #pruneOne}: the hulls the route damage stands for died over the
+	 * world. Vanilla's spawn reads the damage its own way and mostly comes out
+	 * under it already. Once, before the hull ledger settles what sailed.
+	 */
+	protected void pruneToAllotment(List<CampaignFleetAPI> spawned) {
+		float cap = abstractAllotment();
+		float built = pointsOf(spawned);
+		float fielded = built;
+		while (fielded > cap + 0.01f) {
+			if (!pruneOne(spawned, fielded - cap)) break;
+			fielded = pointsOf(spawned);
+		}
+		ThreatIncConfig.log("Daily siege spawn (" + ourFactionId() + "): " + (int) built + " FP built against "
+				+ (int) cap + " FP left" + (fielded < built ? ", pruned " + (int) (built - fielded) + " FP" : "")
+				+ (abstractWorld != null ? "; " + abstractWorldDays + " d into " + abstractWorld : ""));
 	}
 
 	/**
@@ -1045,6 +1131,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	@Override
 	protected void advanceImpl(float amount) {
 		super.advanceImpl(amount);
+		// first: a siege it takes is never then resolved on arrival as well
+		advanceDaily();
 		resolveOnArrival(this);
 		noteSpawnFP();
 		if (!carriesCargo || !anyFleetLive()) return;
@@ -1098,6 +1186,14 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			float keep = 1f - routeDamage();
 			marines = marinesAllotted * keep;
 			armaments = armamentsAllotted * keep;
+			if (dailySiege) {
+				// the daily siege books its toll as route damage alone: the
+				// share it took died with the hulls, and none of it is left
+				// aboard to land on the next world or come home
+				marinesAllotted = 0f;
+				armamentsAllotted = 0f;
+				return new float[] {marines, armaments};
+			}
 		}
 		marinesAllotted = Math.max(0f, marinesAllotted - marines);
 		armamentsAllotted = Math.max(0f, armamentsAllotted - armaments);
@@ -1116,6 +1212,9 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		// says whether the fleets were ever real (else a spawned expedition would
 		// refund its allotment AND settle the same marines from cargo)
 		if (!everSpawned && (spawnedFleets || totalFPSpawned > 0f)) everSpawned = true;
+		// the daily siege's fields load as false, 0 and null from an older save:
+		// an expedition in flight is taken from the day it is at (advanceDaily),
+		// never made to catch up the days already past
 		return this;
 	}
 
@@ -1286,10 +1385,17 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		 * ({@link ThreatPurgeFGI#breaksOffAbstract}): an outweighed expedition
 		 * turns home rather than take vanilla's 75% for nothing. A fight that
 		 * goes ahead costs the defenders too ({@link ThreatAbstractBattle}):
-		 * both strengths read before vanilla's half of it.
+		 * both strengths read before vanilla's half of it. A siege the daily
+		 * siege has taken is never resolved here, by any of vanilla's entries
+		 * ({@link ThreatPurgeFGI#dailyAutoresolve}): it has fought and paid
+		 * day by day already.
 		 */
 		@Override
 		public void autoresolve() {
+			if (intel instanceof ThreatPurgeFGI && ((ThreatPurgeFGI) intel).dailySiege) {
+				((ThreatPurgeFGI) intel).dailyAutoresolve(this);
+				return;
+			}
 			if (!isActionFinished() && intel instanceof ThreatPurgeFGI
 					&& ((ThreatPurgeFGI) intel).breaksOffAbstract(getParams(), this)) {
 				return;
@@ -1318,16 +1424,62 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 
 		/**
+		 * The worlds it razes come first ({@link #razingFirst}); fleets spawned
+		 * in the middle of a daily siege take it up where it is
+		 * ({@link #dailyStages}).
+		 */
+		@Override
+		protected void computeSubstages() {
+			super.computeSubstages();
+			if (!(intel instanceof ThreatPurgeFGI) || stages == null || stages.isEmpty()) return;
+			ThreatPurgeFGI purge = (ThreatPurgeFGI) intel;
+			razingFirst(purge);
+			if (purge.dailySiege) dailyStages(purge);
+		}
+
+		/**
+		 * Fleets spawned in the middle of a daily siege take it up where it
+		 * is: the worlds it is done with are dropped, the world it was over
+		 * comes first with what is left of its siegeOrbitDays, and vanilla's
+		 * late autoresolve (directFleets, the player away past
+		 * originalDuration) never comes before the stages have run out - it is
+		 * never wanted for a daily siege. Here in the action's own body: the
+		 * fields are vanilla's protected ones.
+		 */
+		protected void dailyStages(ThreatPurgeFGI purge) {
+			originalDuration = Math.max(originalDuration, getDurDays());
+			java.util.Set<String> done = purge.siegeResolved != null ? purge.siegeResolved
+					: new java.util.HashSet<String>();
+			RaidSubstage at = null;
+			for (java.util.Iterator<RaidSubstage> it = stages.iterator(); it.hasNext();) {
+				RaidSubstage stage = it.next();
+				if (stage.markets.isEmpty()) continue;
+				boolean over = true;
+				for (com.fs.starfarer.api.campaign.SectorEntityToken e : stage.markets) {
+					MarketAPI m = e.getMarket();
+					if (m == null) continue;
+					if (!done.contains(m.getId())) over = false;
+					if (m.getId().equals(purge.abstractWorld)) at = stage;
+				}
+				if (over) it.remove();
+			}
+			if (at != null) {
+				stages.remove(at);
+				stages.add(0, at);
+				at.maxDuration = Math.max(1f, ThreatIncConfig.siegeOrbitDays() - purge.abstractWorldDays);
+			}
+			ThreatIncConfig.log("Daily siege taken up by live fleets: " + stages.size() + " stage(s) left"
+					+ (at != null ? ", " + purge.abstractWorld + " first for " + (int) at.maxDuration + " d" : ""));
+		}
+
+		/**
 		 * The worlds it razes come first: a razing is days, a siege months, and
 		 * a landing sends every fleet with nothing left aboard to hold its orbit
 		 * (stayOnDefend) - a razing left for after it would have no fleets to fly
 		 * it. Otherwise vanilla's order, nearest first.
 		 */
-		@Override
-		protected void computeSubstages() {
-			super.computeSubstages();
-			if (!(intel instanceof ThreatPurgeFGI) || stages == null || stages.size() < 2) return;
-			ThreatPurgeFGI purge = (ThreatPurgeFGI) intel;
+		protected void razingFirst(ThreatPurgeFGI purge) {
+			if (stages.size() < 2) return;
 			List<RaidSubstage> razing = new ArrayList<RaidSubstage>();
 			List<RaidSubstage> rest = new ArrayList<RaidSubstage>();
 			for (RaidSubstage stage : stages) {
@@ -1546,13 +1698,18 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 
 	/** The expedition's allotment in abstract FP less route damage: what each world's abstract siege starts from. */
 	protected float abstractAllotment() {
+		return abstractFull() * Math.max(0f, 1f - routeDamage());
+	}
+
+	/** The expedition's allotment in abstract FP as it sailed, before route damage: what vanilla's abort line is a fraction of. */
+	protected float abstractFull() {
 		float fp = 0f;
 		if (getParams() != null && getParams().fleetSizes != null) {
 			for (Integer size : getParams().fleetSizes) {
 				if (size != null) fp += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
 			}
 		}
-		return fp * Math.max(0f, 1f - routeDamage());
+		return fp;
 	}
 
 	/** The part of the abstract flotilla not yet left over a landing as cover. */
@@ -1812,7 +1969,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * An expedition that never spawned razes the world in one go
 	 * ({@link #razeAbstract}), its allotment less route damage standing in for
 	 * the fleets; the batteries' toll comes off what it carries as the
-	 * abstract siege's does. True once the world is razed.
+	 * abstract siege's does - or, in a daily siege, is booked as route damage,
+	 * its one ledger. True once the world is razed.
 	 */
 	protected boolean abstractRaze(MarketAPI market) {
 		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
@@ -1828,9 +1986,13 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (paysOrdnance) razeFuel = Math.max(0f, out[1]);
 		abstractLeft = out[0];
 		if (start > 0f && out[0] < start) {
-			float keep = Math.max(0f, out[0] / start);
-			marinesAllotted *= keep;
-			armamentsAllotted *= keep;
+			if (dailySiege) {
+				addRouteLoss(1f - out[0] / start);
+			} else {
+				float keep = Math.max(0f, out[0] / start);
+				marinesAllotted *= keep;
+				armamentsAllotted *= keep;
+			}
 		}
 		boolean destroyed = out[2] > 0f;
 		if (destroyed) recordRazing(id, name, size, true);
@@ -1921,9 +2083,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * siege of a world in one go ({@link ThreatGroundFronts#abstractSiege}),
 	 * its allotted strength less route damage standing in for the fleets and
 	 * its ordnance paying for each day: what that does not burn stays aboard
-	 * for the next world.
+	 * for the next world. Never in a daily siege: it ran the siege day by day
+	 * ({@link #dailyDay}) and marked the world before its passes.
 	 */
 	protected void abstractSiege(MarketAPI market) {
+		if (dailySiege) return;
 		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
 		if (market == null || !siegeResolved.add(market.getId())) return;
 		if (ThreatGroundFronts.getFront(market.getId()) != null) return;
@@ -1939,6 +2103,344 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			marinesAllotted *= keep;
 			armamentsAllotted *= keep;
 		}
+	}
+
+	// ---- the daily siege (docs/ground-war-code-paths.md section 8) ----
+	//
+	// A siege expedition the player is not near - an NPC's, and one the player
+	// commissioned or sent, which never calls off (as live: breaksOff) - runs
+	// its siege a day at a time (the user's decision 2026-10-01), on its payload segment's own
+	// clock, world by world: each day it weighs the fleets hostile to it over
+	// the world and goes home outmatched, fights a day, and bombards a day
+	// while the orbit is its own - so swarms sent in reply reach a siege that
+	// is still running. The landing is vanilla's passes, as the one-frame
+	// resolution delivers them. Route damage is its one ledger: fights,
+	// batteries and a razing's toll are booked there, never off the cargo.
+	// Knob: abstractSiegeDaily. ThreatStrikeFGI keeps the one-frame path.
+
+	/** The daily siege has this expedition's payload. Set once, never cleared; false on an older save. */
+	protected boolean dailySiege;
+	/** Whole days of the payload segment the daily siege has run. */
+	protected int abstractDays;
+	/** Market id of the world the daily siege is over; null between worlds. */
+	protected String abstractWorld;
+	/** Siege days spent on that world so far: days the orbit was contested and days it bombarded. */
+	protected int abstractWorldDays;
+	/** Abstract fleet points when that world's siege began, and its days of fighting: its summary line. */
+	protected float abstractWorldFP;
+	protected int abstractWorldFights;
+	/** Siege days one frame catches up at most. */
+	protected static final int DAILY_CATCH_UP = 3;
+
+	/**
+	 * Runs the siege days the payload segment owes. An unspawned NPC siege is
+	 * taken the first frame its route is over the target ({@link #takeDaily});
+	 * siege day k then runs once the segment has run k whole days, at most
+	 * DAILY_CATCH_UP in a frame. Nothing once the fleets are real: their
+	 * stages take it up (SiegeRaidAction.dailyStages).
+	 */
+	protected void advanceDaily() {
+		if (isSpawnedFleets() || isEnding() || isEnded() || isAborted()) return;
+		RouteData route = getRoute();
+		RouteSegment seg = route != null ? route.getCurrent() : null;
+		if (seg == null || seg.custom == null || seg.custom != raidAction) return;
+		if (!(raidAction instanceof SiegeRaidAction)) return;
+		SiegeRaidAction action = (SiegeRaidAction) raidAction;
+		if (action.isActionFinished()) return;
+		if (!dailySiege) {
+			// a razing-only expedition keeps vanilla's window (razeRun)
+			if (!ThreatIncConfig.abstractSiegeDaily() || razesAll() || getFaction() == null
+					|| abstractFull() <= 0f) return;
+			takeDaily(action, seg);
+		}
+		int owed = Math.min((int) Math.floor(seg.elapsed) - abstractDays, DAILY_CATCH_UP);
+		for (int i = 0; i < owed; i++) {
+			abstractDays++;
+			if (!dailyDay(action, seg)) return;
+		}
+	}
+
+	/**
+	 * Takes the payload for the daily siege, counting from the whole day the
+	 * segment is at - an expedition in flight when an older save loads never
+	 * catches up the days already past - and widens the segment once to a
+	 * window every world's siege fits in, so vanilla's segment end never comes
+	 * first.
+	 */
+	protected void takeDaily(SiegeRaidAction action, RouteSegment seg) {
+		dailySiege = true;
+		abstractDays = (int) Math.floor(seg.elapsed);
+		int worlds = dailyWorlds(action).size();
+		float window = abstractDays + Math.max(1, worlds) * (ThreatIncConfig.siegeOrbitDays() + 10f);
+		if (seg.daysMax < window) seg.daysMax = window;
+		ThreatIncConfig.log("Daily siege takes over " + whereName(action) + " (" + ourFactionId() + "): " + worlds
+				+ " world(s), " + (int) abstractAllotment() + " FP, window " + (int) seg.daysMax + " d");
+	}
+
+	/**
+	 * The worlds the daily siege takes in turn: those vanilla's autoresolve
+	 * would raid, in its order, the ones it razes first (as the live stages,
+	 * SiegeRaidAction.razingFirst).
+	 */
+	protected List<MarketAPI> dailyWorlds(SiegeRaidAction action) {
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		List<MarketAPI> sieges = new ArrayList<MarketAPI>();
+		com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction.FGRaidParams p = action.getParams();
+		if (p == null || p.where == null || getFaction() == null) return out;
+		for (MarketAPI market : Misc.getMarketsInLocation(p.where)) {
+			if (!p.allowAnyHostileMarket && !p.allowedTargets.contains(market)) continue;
+			if (!p.allowNonHostileTargets && !getFaction().isHostileTo(market.getFaction())) continue;
+			if (razes(market)) out.add(market);
+			else sieges.add(market);
+		}
+		out.addAll(sieges);
+		return out;
+	}
+
+	/**
+	 * The world the daily siege is over: the one it is at, else the next not
+	 * yet done with, its siege begun. A world gone from the economy or from
+	 * the Threat is done with, without a pass. Null when none is left.
+	 */
+	protected MarketAPI dailyWorld(SiegeRaidAction action) {
+		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
+		List<MarketAPI> worlds = dailyWorlds(action);
+		if (abstractWorld != null) {
+			MarketAPI at = null;
+			for (MarketAPI market : worlds) {
+				if (abstractWorld.equals(market.getId())) at = market;
+			}
+			if (at != null && ThreatGroundFronts.isHiveTarget(at)) return at;
+			dailySummary(at != null ? at.getName() : abstractWorld, abstractWorldDays, "gone");
+			siegeResolved.add(abstractWorld);
+			resetWorld();
+		}
+		for (MarketAPI market : worlds) {
+			if (siegeResolved.contains(market.getId())) continue;
+			if (!ThreatGroundFronts.isHiveTarget(market)) {
+				siegeResolved.add(market.getId());
+				ThreatIncConfig.log("Daily siege of " + market.getName() + ": no longer a hive, passed over");
+				continue;
+			}
+			abstractWorld = market.getId();
+			abstractWorldDays = 0;
+			abstractWorldFP = abstractAllotment();
+			abstractWorldFights = 0;
+			return market;
+		}
+		return null;
+	}
+
+	/**
+	 * One siege day over the world the daily siege is at: weigh, go home,
+	 * fight, then - the orbit its own - land or bombard. False when no more
+	 * days should run this frame (it went home, was beaten, or is done).
+	 */
+	protected boolean dailyDay(SiegeRaidAction action, RouteSegment seg) {
+		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
+		float frac = groupAbortsMissionFPFraction;
+		// past vanilla's abort line some other way: its abort follows this frame
+		if (faction == null || 1f - routeDamage() < frac) return false;
+		MarketAPI w = dailyWorld(action);
+		if (w == null) {
+			dailyDone(action, seg);
+			return false;
+		}
+		String ourId = faction.getId();
+		boolean razing = razes(w);
+		boolean front = ThreatGroundFronts.getFront(w.getId()) != null;
+		// nothing aboard to land: no siege of it (siegePass's rule), the passes stand down
+		if (!razing && !front && carriesCargo && abstractTroops(w) < ThreatIncConfig.frontMinMarines()) {
+			endWorld(action, w, "nothing to land", true);
+			return true;
+		}
+		// weigh: the fleets weighed are the fleets struck
+		List<CampaignFleetAPI> hostile = ThreatGroundFronts.hostileFleetsNear(ourId, w);
+		float enemy = livePoints(hostile);
+		float ours = abstractAllotment();
+		if (ours <= 0f) {
+			// nothing left to fight with (an abort line of 0): done
+			dailySummary(w.getName(), abstractWorldDays + 1, "beaten");
+			siegeResolved.add(w.getId());
+			resetWorld();
+			dailyDone(action, seg);
+			return false;
+		}
+		// go home outmatched, as the live commander does (breaksOff); a front down holds it
+		float ratio = ThreatIncConfig.siegeBreakOffRatio();
+		if (ratio > 0f && !playerCommissioned && !faction.isPlayerFaction()
+				&& enemy >= (ours + friendsNear(w)) * ratio && !holdsAFront()) {
+			ThreatIncConfig.log("Daily siege of " + w.getName() + " called off: " + (int) enemy + " FP against "
+					+ (int) ours);
+			dailySummary(w.getName(), abstractWorldDays + 1, "called off");
+			siegeResolved.add(w.getId());
+			resetWorld();
+			callOff(w, enemy, ours, abstractFull());
+			return false;
+		}
+		if (enemy > 0f) {
+			// a day of exchange, both strengths as the day began
+			float share = Math.min(ThreatAbstractBattle.MAX_LOSS, ThreatAbstractBattle.LOSS_PER_RATIO * enemy / ours);
+			addRouteLoss(share);
+			ThreatAbstractBattle.foughtDay(faction, w, hostile, ours, enemy, ours * share);
+			abstractWorldFights++;
+			if (1f - routeDamage() < frac) {
+				dailySummary(w.getName(), abstractWorldDays + 1, "beaten");
+				siegeResolved.add(w.getId());
+				resetWorld();
+				return false;
+			}
+			// contested, weighed here: orbitHeld counts an abstract besieger as nothing
+			float left = livePoints(hostile);
+			float now = abstractAllotment();
+			if (left > 0f && left >= now * Math.max(0f, ThreatIncConfig.orbitContestFraction())) {
+				if (abstractWorldDays >= ThreatIncConfig.siegeOrbitDays()) {
+					endWorld(action, w, "held", false);
+					return true;
+				}
+				abstractWorldDays++;
+				ThreatIncConfig.logQuiet(dailyKey(w), "Daily siege of " + w.getName() + ", day " + abstractWorldDays
+						+ ": the orbit is contested, " + (int) left + " FP against " + (int) now);
+				return true;
+			}
+		}
+		if (razing) {
+			endWorld(action, w, "razing", true);
+			return true;
+		}
+		if (front) {
+			endWorld(action, w, "front", true);
+			return true;
+		}
+		float fp = abstractAllotment();
+		String why;
+		if (abstractWorldDays >= ThreatIncConfig.siegeOrbitDays()) {
+			why = "days";
+		} else if (ThreatGroundFronts.gunsWouldBreak(w, fp, abstractFull(), frac)) {
+			why = "guns";
+		} else {
+			float[] out = ThreatGroundFronts.abstractSiegeStep(w, fp, abstractTroops(w), abstractFull() * frac, ourId,
+					ordnanceLeft(), 1f, true);
+			int verdict = (int) out[3];
+			if (verdict == ThreatGroundFronts.SIEGE_STEP_SLICED) {
+				if (fp > 0f && out[0] < fp) addRouteLoss(1f - out[0] / fp);
+				if (paysOrdnance) ordnance = Math.max(0f, out[1]);
+				abstractWorldDays++;
+				ThreatIncConfig.logQuiet(dailyKey(w), "Daily siege of " + w.getName() + ", day " + abstractWorldDays
+						+ ": bombarded, " + (int) fp + " -> " + (int) abstractAllotment() + " FP"
+						+ (paysOrdnance ? ", " + (int) ordnance + " ordnance left" : ""));
+				return true;
+			}
+			if (verdict == ThreatGroundFronts.SIEGE_STEP_GUNS) why = "guns";
+			else if (verdict == ThreatGroundFronts.SIEGE_STEP_DRY
+					|| ThreatGroundFronts.bombardDaysFor(ordnanceLeft(), fp) < 0.5f) why = "dry";
+			else why = "ready";
+		}
+		endWorld(action, w, why, true);
+		return true;
+	}
+
+	/**
+	 * Ends the daily siege of a world. With {@code passes}, vanilla's passes
+	 * over it as its autoresolve delivers them - the landing, a standing
+	 * front's reinforcement, a razing's one go ({@link #abstractRaze}) - the
+	 * world marked as sieged first, so the landing gate reads its orbit as
+	 * done ({@link #orbitDoneHere}) and abstractSiege adds nothing; a razing
+	 * marks itself. Done with either way: the next day takes the next world.
+	 */
+	protected void endWorld(SiegeRaidAction action, MarketAPI w, String why, boolean passes) {
+		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
+		boolean razing = razes(w);
+		if (!razing) siegeResolved.add(w.getId());
+		abstractLeft = abstractAllotment();
+		int days = abstractWorldDays + 1;
+		if (passes) {
+			int n = Math.max(1, action.getParams() != null ? action.getParams().raidsPerColony : 1);
+			for (int i = 0; i < n && !isEnding() && !isEnded() && !isAborted(); i++) {
+				action.performRaid(null, w);
+			}
+		}
+		siegeResolved.add(w.getId());
+		String said = why;
+		if (razing) {
+			said = "razing" + (w.isInEconomy() ? "" : ", destroyed");
+		} else if ("days".equals(why) || "dry".equals(why) || "ready".equals(why) || "guns".equals(why)) {
+			String ourId = ourFactionId();
+			said = ("guns".equals(why) ? "guns" : "landed (" + why + ")")
+					+ (ourId != null && ownFrontOn(w, ourId) ? "" : ", no front");
+		}
+		dailySummary(w.getName(), days, said);
+		resetWorld();
+	}
+
+	/** Every world done with: the payload ends, and the route turns for home. */
+	protected void dailyDone(SiegeRaidAction action, RouteSegment seg) {
+		action.setActionFinished(true);
+		seg.daysMax = Math.min(seg.daysMax, seg.elapsed + 0.1f);
+		ThreatIncConfig.log("Daily siege of " + whereName(action) + " done (" + ourFactionId() + "): "
+				+ (int) abstractAllotment() + " FP turn for home after " + abstractDays + " d");
+	}
+
+	/**
+	 * Vanilla's autoresolve, for a siege the daily siege has taken - from any
+	 * of its entries: the arrival, the segment's end, the live action's late
+	 * one, and with it vanilla's damage loop. Nothing is weighed or charged
+	 * again. The fleets real, their stages run it out. Still abstract and
+	 * unfinished, the window has closed on it (only if something cut the
+	 * segment short): the payload ends where it is.
+	 */
+	protected void dailyAutoresolve(SiegeRaidAction action) {
+		if (action.isActionFinished() || isSpawnedFleets()) return;
+		if (abstractWorld != null) {
+			MarketAPI w = Global.getSector().getEconomy().getMarket(abstractWorld);
+			dailySummary(w != null ? w.getName() : abstractWorld, abstractWorldDays, "window closed");
+			if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
+			siegeResolved.add(abstractWorld);
+			resetWorld();
+		}
+		ThreatIncConfig.log("Daily siege window closed over " + whereName(action) + " (" + ourFactionId() + ") after "
+				+ abstractDays + " d");
+		action.setActionFinished(true);
+	}
+
+	/** The one line a world's daily siege ends with. */
+	protected void dailySummary(String name, int days, String outcome) {
+		ThreatIncConfig.log("Daily siege of " + name + ": " + days + " d, " + (int) abstractWorldFP + " -> "
+				+ (int) abstractAllotment() + " FP, " + abstractWorldFights + " fight days, " + outcome);
+	}
+
+	protected void resetWorld() {
+		abstractWorld = null;
+		abstractWorldDays = 0;
+		abstractWorldFP = 0f;
+		abstractWorldFights = 0;
+	}
+
+	protected String dailyKey(MarketAPI w) {
+		return "dailysiege:" + ourFactionId() + ":" + w.getId();
+	}
+
+	protected static String whereName(SiegeRaidAction action) {
+		return action.getParams() != null && action.getParams().where != null
+				? action.getParams().where.getName() : "?";
+	}
+
+	/** Fleet points of the fleets in the list still alive. */
+	protected static float livePoints(List<CampaignFleetAPI> fleets) {
+		float fp = 0f;
+		for (CampaignFleetAPI fleet : fleets) {
+			if (fleet != null && fleet.isAlive() && !fleet.isExpired()) fp += fleet.getFleetPoints();
+		}
+		return fp;
+	}
+
+	/** Books a loss of {@code share} of the flotilla as route damage, as vanilla's autoresolve does: 1 - (1 - damage)(1 - share). */
+	protected void addRouteLoss(float share) {
+		if (share <= 0f || getRoute() == null) return;
+		OptionalFleetData extra = getRoute().getExtra();
+		if (extra == null) return;
+		float damage = extra.damage != null ? extra.damage : 0f;
+		extra.damage = Math.min(1f, 1f - (1f - damage) * (1f - Math.min(1f, share)));
 	}
 
 	/** The ground strength an unspawned expedition would land: its cargo, or vanilla's estimate of its raid strength. */
