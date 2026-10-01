@@ -2804,7 +2804,8 @@ public class ThreatWarBoard {
 
 	/** Billed reach: the hive cannot keep the colony's one swarm away, or has no fuel to send it. */
 	public static boolean grounded(MarketAPI market) {
-		return !ThreatReach.canSustain(ThreatPosture.oneSwarmFP(market)) || ThreatFuel.stock() <= 0f;
+		float days = ThreatReach.strikeDays(Math.max(0f, ThreatReach.facedLY(market.getStarSystem())));
+		return !ThreatReach.canSustain(ThreatPosture.oneSwarmFP(market), days) || ThreatFuel.stock() <= 0f;
 	}
 
 	/**

@@ -647,6 +647,26 @@ public class ThreatColonyManager {
 		return false;
 	}
 
+	/** Whether every commodity the colony's Mining would dig is dug already by another hive world's Mining. */
+	protected static boolean minesNothingNew(MarketAPI market) {
+		java.util.Set<String> dug = new java.util.HashSet<String>();
+		for (MarketAPI other : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (other == market || !other.hasIndustry(Industries.MINING)) continue;
+			for (MarketConditionAPI cond : other.getConditions()) {
+				String commodity = ResourceDepositsCondition.COMMODITY.get(cond.getId());
+				if (commodity != null && Industries.MINING.equals(ResourceDepositsCondition.INDUSTRY.get(commodity))) {
+					dug.add(commodity);
+				}
+			}
+		}
+		for (MarketConditionAPI cond : market.getConditions()) {
+			String commodity = ResourceDepositsCondition.COMMODITY.get(cond.getId());
+			if (commodity == null || !Industries.MINING.equals(ResourceDepositsCondition.INDUSTRY.get(commodity))) continue;
+			if (!dug.contains(commodity)) return false;
+		}
+		return true;
+	}
+
 	protected static boolean hasVolatilesDeposits(MarketAPI market) {
 		for (MarketConditionAPI cond : market.getConditions()) {
 			if (Commodities.VOLATILES.equals(
@@ -748,8 +768,22 @@ public class ThreatColonyManager {
 			}
 		}
 
-		// mine what the planet offers (Mining supplies nothing without deposits)
-		if (hasMiningDeposits(market) && !market.hasIndustry(Industries.MINING)) {
+		// mine what the planet offers (Mining supplies nothing without deposits) -
+		// but while a link of the chain has no first copy, a world whose deposits
+		// the hive already digs builds that link instead: availability is the best
+		// source, so a second mine of the same ore adds nothing (2026-10-01, ng1b:
+		// five of the six bootstrap worlds took Mining in their one slot, and the
+		// refinery and fuel plant waited 12 months for size 3 while 28k supplies
+		// sat idle - the new hive flew nothing for its first 16 months)
+		boolean mines = hasMiningDeposits(market) && !market.hasIndustry(Industries.MINING);
+		if (mines && minesNothingNew(market)) {
+			for (int link = 0; link < CHAIN_LINKS.length; link++) {
+				// the forge keeps its own road (the seed forge, then the bootstrap below)
+				if (Industries.HEAVYINDUSTRY.equals(CHAIN_LINKS[link])) continue;
+				if (countLink(link) == 0 && tryBuildLink(market, link, "first", false, payerId)) return;
+			}
+		}
+		if (mines) {
 			if (!buyStructure(market, Industries.MINING, payerId)) return;
 			markEconomyDirty();
 			ThreatIncConfig.log("Hive planner: MINING at " + market.getName());
@@ -775,6 +809,22 @@ public class ThreatColonyManager {
 			if (tryBuildLink(market, link, stock + " short", false, payerId)) {
 				if (placed && hasLink(market, link)) ThreatFuel.answered(stock);
 				return;
+			}
+		}
+
+		// idle supplies are invested (2026-10-01): every forge's whole output is
+		// the hive's stock - size - 2 units of 750 supplies and 100 FP a month -
+		// so a stock that pays a forge and a founding kit besides builds one on a
+		// world of output size that lacks it. The planner added forges only for a
+		// noted shortage or a spare per hive system: ng1b's one-system hive held
+		// one forge for its first two years, 28k supplies idle, and never grew
+		// past 13 worlds
+		if (size >= 3 && getForge(market) == null && ThreatBuildCost.enabled() && ThreatFuel.enabled()
+				&& ThreatFuel.stock(Commodities.SUPPLIES) >= ThreatBuildCost.supplies(Industries.HEAVYINDUSTRY)
+						+ ThreatFuel.foundingCost()[0]) {
+			for (int link = 0; link < CHAIN_LINKS.length; link++) {
+				if (!Industries.HEAVYINDUSTRY.equals(CHAIN_LINKS[link])) continue;
+				if (tryBuildLink(market, link, "invest", false, payerId)) return;
 			}
 		}
 
@@ -1185,10 +1235,10 @@ public class ThreatColonyManager {
 	 * are decided; but redundancy and bigger-copy targets move as the rest of
 	 * the hive changes (a system lost, a consumer grown), and a size-capped
 	 * colony never grows again, so on its own it would never fill a free slot
-	 * however far the hive fell below target. Re-plans capped colonies and
-	 * STALLED ones with a free industry slot - a colony that is still growing
-	 * builds on its growth steps - one industry per colony per tick, which is
-	 * about the pace of a vanilla construction anyway.
+	 * however far the hive fell below target. Re-plans every colony with a free
+	 * industry slot, growing or not (2026-10-01: under size upkeep a growth step
+	 * takes months) - one industry per colony per tick, which is about the pace
+	 * of a vanilla construction anyway.
 	 *
 	 * The stalled case is the one that used to deadlock (found 2026-09-09 in a
 	 * 467-day save whose home hive sat at five size-3 worlds): a colony below
@@ -1212,8 +1262,14 @@ public class ThreatColonyManager {
 			boolean gd = market.hasIndustry(THREAT_GROUND_DEFENSES);
 			boolean hb = market.hasIndustry(THREAT_HEAVY_BATTERIES);
 			boolean arms = ((size >= 3 && !gd && !hb) || (size >= 6 && gd)) && defensesAffordable(market);
+			// a growing world plans on this tick too (2026-10-01): under size upkeep
+			// a growth step takes months, and a world that built only on its steps
+			// left its free slot empty that long - ng1b's bootstrap worlds reached
+			// size 3 at month 11 and built their refinery and fuel plant at 16.
+			// What a build costs in supplies and time is the pace now. Size upkeep
+			// off, growth is quick and builds on its steps as before
 			if (!arms) {
-				if (size < cap && growing(market)) continue;
+				if (!ThreatColonyUpkeep.enabled() && size < cap && growing(market)) continue;
 				if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) continue;
 			}
 			planHiveEconomy(market);
@@ -2523,6 +2579,35 @@ public class ThreatColonyManager {
 	}
 
 	/**
+	 * The escort tier of a wave the colony fabricates: a fabricated wave is as
+	 * strong as the colony that built it - tier scales with the source's size,
+	 * upgraded by a thriving hull economy, downgraded by a strained or starved
+	 * one, the same shipSupplyMult lever that throttles garrisons and strikes.
+	 * A strained hive's expeditions genuinely suck: below-nominal drops a tier,
+	 * badly starved drops two.
+	 */
+	protected static int seedingEscort(MarketAPI source) {
+		int size = source.getSize();
+		int escortIdx = size >= 8 ? 2 : size >= 6 ? 1 : 0;
+		float mult = shipSupplyMult(source);
+		if (mult >= 0.9f && size >= 8) escortIdx = 3;
+		if (mult < STABLE_SHIP_SUPPLY_MULT && escortIdx > 0) escortIdx--;
+		if (mult < 0.4f && escortIdx > 0) escortIdx--;
+		return Math.max(0, Math.min(3, escortIdx));
+	}
+
+	/**
+	 * Fuel a founding from the colony at the target system takes from the
+	 * stock: the founding's own (ThreatFuel.foundingCost) and the wave's way
+	 * out, as launchColonizationWave bills it.
+	 */
+	public static float foundingFuel(MarketAPI source, StarSystemAPI target) {
+		int[] spec = { 1, seedingEscort(source) };
+		return ThreatFuel.foundingCost()[1] + ThreatFuel.passage(swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec),
+				ThreatFuel.ly(source.getStarSystem(), target), false);
+	}
+
+	/**
 	 * Dispatches a Seeding Swarm at the target planet. Source may be null only
 	 * for the initial incursion from the Abyss (bootstrap seeds); every later
 	 * wave launches from an established colony.
@@ -2536,18 +2621,7 @@ public class ThreatColonyManager {
 			// the one-time bootstrap from the Abyss: strength set by config
 			escortIdx = ThreatIncConfig.colonizationEscort();
 		} else {
-			// a fabricated wave is as strong as the colony that built it: tier
-			// scales with the source's size, upgraded by a thriving hull
-			// economy, downgraded by a strained or starved one - the same
-			// shipSupplyMult lever that throttles garrisons and strikes. A
-			// strained hive's expeditions genuinely suck: below-nominal drops
-			// a tier, badly starved drops two
-			int size = source.getSize();
-			escortIdx = size >= 8 ? 2 : size >= 6 ? 1 : 0;
-			float mult = shipSupplyMult(source);
-			if (mult >= 0.9f && size >= 8) escortIdx = 3;
-			if (mult < STABLE_SHIP_SUPPLY_MULT && escortIdx > 0) escortIdx--;
-			if (mult < 0.4f && escortIdx > 0) escortIdx--;
+			escortIdx = seedingEscort(source);
 		}
 		if (escortIdx < 0) escortIdx = 0;
 		if (escortIdx > 3) escortIdx = 3;
@@ -2577,10 +2651,13 @@ public class ThreatColonyManager {
 				ThreatFuel.held("a Seeding Swarm from " + source.getName());
 				return false;
 			}
-			// ...and the supplies it burns on the way out the colonies' spare (ThreatReach)
-			if (!ThreatReach.canSustain(swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec))) {
+			// ...and the supplies it burns on the way out the colonies' spare and the
+			// stock above its own kit (ThreatReach)
+			float waveDays = ThreatReach.daysAway(ThreatFuel.ly(source.getStarSystem(), targetSystem), false, 0f);
+			if (!ThreatReach.canSustain(swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec), waveDays)) {
 				ThreatIncConfig.logQuiet("wavewait:" + source.getId(), "Seeding Swarm from " + source.getName()
-						+ " held: the colonies leave " + (int) ThreatReach.spare() + " supplies a month for fleets away");
+						+ " held: the colonies leave " + (int) ThreatReach.spare() + " supplies a month and "
+						+ (int) ThreatReach.freeStock() + " in stock for fleets away");
 				return false;
 			}
 			if (bill > 0f && !poolSystemBanks(source, bill)) return false;

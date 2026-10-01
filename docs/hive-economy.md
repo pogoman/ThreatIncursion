@@ -53,9 +53,18 @@ Consequences the mod builds on:
   industry slots, `Misc.getMaxIndustries` - 2026-09-29: the `threatinc_chainRedundancy` knob, 3,
   is gone, and with it "every link at two before any at three"), then a bigger copy wherever the hive's largest consumer
   of an output outgrows its largest producer. The old `refineries >= forges` ratio rested on
-  the flow misconception. `maintainHiveEconomy` re-plans size-capped colonies with a free
-  slot every tick, so an existing hive fills in its redundancy without waiting for growth
-  steps that never come.
+  the flow misconception. `maintainHiveEconomy` re-plans every colony with a free slot every
+  tick, growing or not (2026-10-01: under size upkeep a growth step takes months, and ng1b's
+  bootstrap worlds reached size 3 at month 11 but built their refinery and fuel plant at 16).
+- **Except the banked outputs** (2026-10-01). Since the hive banks its forges' and plants' whole
+  output (`ThreatFuel`), a forge's count is supply: each is size - 2 units of 750 supplies and
+  100 FP a month to the stock, whoever else makes supplies. So a world of size 3+ with no forge
+  builds one ("invest") whenever the supplies stock pays a forge and a founding kit besides - the
+  planner used to add forges only for a noted shortage or a spare per hive system, and ng1b's
+  one-system new hive held one forge for two years with 28k supplies idle. And while a chain link
+  has no first copy, a world whose deposits the hive already mines builds that link instead of
+  a second, useless mine (`minesNothingNew`): ng1b's bootstrap put Mining on five of six worlds'
+  single slots and flew nothing for 16 months for want of a fuel plant.
 - The hive's reach is its bill (`billedReach`, 2026-09-30): no radius, see "Reach is the bill"
   below. The old rule - the factions' still, and the hive's with `billedReach` off - is
   `fuelRangeLY = strikeLYPerFuel x min(fuel available, expeditionFuelCapacity)`.
@@ -407,8 +416,11 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
     (`ThreatSoftening.payableFP`, with hunt donors - capacity, not a siege's sizing, which reads the
     garrison and would chase its own tail). Weight 1.0 for a base staging for its siege, 0.5 for one
     staging for a hunt (`stagesForHunt`). The most any one base of a faction could, then summed across
-    factions, each x (1 + grudge x `alarmTargetMult`) (`ThreatAlarm.targetMult`). `swarmsMet` is never
-    used.
+    factions. `swarmsMet` is never used. Not weighed by the grudge any more (2026-10-01): capacity is
+    the worst a faction can bring, and the need below already out-holds it by `postureMargin`; x (1 +
+    grudge x `alarmTargetMult`) rode the grudge's ratchet in h38a to x5.5 on average and x14.7 at worst
+    (243 swarms at a size-2 world; sends took half the fuel, feeding six frontier worlds that fell
+    anyway). The grudge still picks strike targets.
   - **C - losses:** Threat ships lost in the system lately, decaying (`noteBattle`, fed by
     `ThreatSwarmBountyIntel`'s battle listener; each ship once).
   - **D - hostiles:** hostile fleets present in the system that A did not already count.
@@ -776,24 +788,47 @@ So the hive has no radius now. A fleet goes where its trip can be paid, and wher
   there and back), and the supplies the fleet burns while away - its hulls' vanilla supplies a
   month, 0.78 a FP for the swarm's hulls, measured off the garrisons each day
   (`ThreatReach.suppliesPerFP`) - over the days away at the board's 0.5 ly a day.
-- **The gate.** The stock must pay the passage, and the fleet's supplies a month must fit in the
-  spare (`ThreatColonyUpkeep.spareSupplies`): the production, less the fleets away, less every
-  colony's sustenance at its 0.9 cap. A trip never starves a colony; it can starve growth, since
-  fleets away are paid first. Launches between feeds commit their share (`ThreatReach.commit`).
+- **The gate.** The stock must pay the passage, and the fleet's supplies must fit in the spare
+  (`ThreatColonyUpkeep.spareSupplies`): the production, less the fleets away, less every colony's
+  sustenance at its 0.9 cap. A trip never starves a colony; it can starve growth, since fleets away
+  are paid first. Launches between feeds commit their share (`ThreatReach.commit`). Its whole bill
+  counts, not the month's rate (2026-10-01, `canSustain(fp, days)`): the supplies a month over its
+  days away must fit in the spare over those days plus the stock above one founding kit
+  (`freeStock`) - on the rate alone ng1b's dying hive held a raider with 36k supplies banked and
+  ng2a sat on 30-84k. A spare already negative (fleets out past the flow) drains the stock first.
+  The colonies draw on the same stock: when a stock-paid trip's burn leaves the month's flow short
+  of their sustenance, the feed tops it up from the stock above one founding kit
+  (`ThreatColonyUpkeep.feed`), so such a trip never starves a colony either.
   Strikes, waves, scouts and raiders pass the gate; reinforcements pay passage only - a garrison
   moving house is not a trip away.
 - **The choice.** Strikes weigh a world by what it is worth per day away: `strikeValue` over
   `strikeDays` = 2 x ly / 0.5 + the 10.5-day muster. The muster is as many swarms as the spare keeps
   away, the target any whose passage the stock pays. The stance's weak targets the same. A hive
   system faces the faction it would strike first (`facedFaction`).
+- **Opening a war** (2026-10-01, `IncursionManager.warOpen`). A faction mobilises the day its first
+  world is struck (`ThreatWarState.recordStrike`), so a strike at a faction not yet at war starts
+  that war. Before phase 3 - a size-6+ forge world with a near-nominal hull economy and a known
+  core world the stock fuels a swarm to - the swarm strikes only a faction at war with it already,
+  one that has hurt it (a grudge, `ThreatAlarm`), or one that never mobilises (pirates, ownerless
+  stations); the player's worlds likewise open with the player's own mobilisation or a grudge.
+  The new game's first hive (ng1b) struck the Hegemony at month 26 with six worlds, the Hegemony
+  mobilised at 29, and every faction it struck mobilised 2-3 months after: it was razed over the
+  next eight years without taking a human world. The front (`facedFaction`), the stance's weak
+  targets and a strike's sweep of its target's system read the same rule (only the primary target
+  mobilises its faction, so a swept bystander would be struck without one).
 - **Founding** may claim anywhere a forge can send a wave. A claim weighs its deposits' need and the
   stance's lean as before, over the days a swarm needs from the network to get there times the days
-  a strike staged there would be away at the nearest faction world (the old weight's 1 + ly and
-  1 + ly² - the squared pull toward inhabited space leaned on the radius to keep the jump short),
+  a strike staged there would be away at the nearest world of a faction not yet at war with the hive
+  (the old weight's 1 + ly and 1 + ly² - the squared pull toward inhabited space leaned on the radius
+  to keep the jump short; a faction at war pulls nothing since 2026-10-01, ng3a's war claims having
+  gone a median 2 ly from a human world to be razed within a year),
   times the share of it the hive could hold (`holdShare`): the days the nearest faction military
   world that reaches the system needs to put a siege there (`razeArrivalDays`) over the days the
   nearest hive world's swarms need to get there, 1 when the hive gets there first or no base
-  reaches it. The nearest forge sends the wave.
+  reaches it. The nearest forge sends the wave. The best claim is taken, not drawn: with no radius
+  every system is a candidate and the far ones' small weights summed to a lottery ticket (h37a sent
+  2 of 17 claims 27-28 ly out on it). A claim whose founding and way out the fuel stock cannot pay
+  now is not taken (`ThreatColonyManager.foundingFuel`): it would hold its forge's claim for months.
 - **Reinforcements** come from the nearest donor with FP to spare, then the nearest idle bank.
 - **Scouts** chart every uncharted system holding a strikeable world, nearest first, each route as
   long as the scout's own tanks carry it there and home (200 ly for the swarm's hulls) and the stock
@@ -814,6 +849,86 @@ So the hive has no radius now. A fleet goes where its trip can be paid, and wher
   {faction=systems}`. Strike launches log their ly and days away, claims their distance from the hive
   and the nearest faction world, waves and scouts their ly, the stance's best weak target its ly.
 - **Settings:** `billedReach` (true; off, the radius above and `raiderRangeLY`).
+
+**h37a** (lt save, 3 x 110 s at 64x, ~20 months, 0 exceptions). The lt hive was grown under the old
+rules: its colonies' sustenance ran ~200k supplies a month against 37k made, so the spare opened at
+-176k and every strike waited (104 "Strikes from X wait" lines) for the ~15 months the colonies took
+to starve down to what the forges feed (bill 400k -> 65k a month, 12 -> 11 systems). Then ~2 strikes a
+month, 12 in all, 5-32 ly (mean 20): forward bases, and in phase 3 Yama, Chicomoztoc and Coatl, where
+the swarm landed fronts. A scout flew 121 ly through 17 systems; raiders caught two convoys. Hegemony
+razed Epsilon Shero and eradicated Alpha Mesh I; Persean fronts sat on two hive worlds. Supplies bind
+(stock 400-5,000, every Seeding Swarm held for its 5,000-supply kit); fuel does not (500-640k, the
+old rules' bank). A forge's net output peaks at size 6 (4 units x 750 against 781 sustenance) and is
+negative at 8 (4,500 against 4,883), which is why size upkeep starves the old save's size-8 worlds.
+
+**h38a** (h37a's end, 8 x 110 s, ~34 months, 0 exceptions). Past the starvation the spare opened
+(2-28k a month) and the war came alive: 58 strikes at 3-42 ly on four factions and the player's Haven,
+24 convoy raids, 13 scouts (21-79 ly routes), the hive from 11 to 22 systems (spanning 34 -> 69 ly),
+supplies made 37k -> 62k a month, the stance cycling EXPAND / CONSOLIDATE / PRESS on pressure. The
+legacy fuel bank ran dry (640k -> 0 in ~15 months), mostly on Posture sends into contested systems
+(100-230 a month, 11-30 ly; one claim beside the Hegemony, Ib Nwork in Onora, wanted 30k FP); the
+planner answered the noted fuel shortage with plants (fuel made 34k -> 66k a month). That is the
+spread-thin bill the design asked for: a claim near the humans is cheap to take and dear to hold.
+But the want was the grudge's, not the war's: ~x5.5 the staged capacity (see Posture, B), and a
+third of the sends fed six frontier worlds that all fell within five months, 22% of them
+disbanded in flight when their colony died.
+
+**h39a** (the lt save again, 3 x 110 s, ~22 months, 0 exceptions, on the night's last build: the
+planner's invest and first-link rules, forges fed first only while they make more than they eat,
+posture without the grudge, the stock-aware gate, `warOpen`): the same oversized hive recovered
+far faster - supplies made 16k -> 79k a month by month 5 (forges invested on worlds that had none,
+size-8 forges let shrink), the spare +11-19k a month from month 13, 50 strikes in 22 months against
+h37a's 12, 39 worlds and 62k FP at the end against 37 and 46k. FP banks to 162k: supplies bind the
+trips, and FP has no other outlet.
+
+**New game** (a mercenary start, Mar 206, pirates and Pathers set neutral to the player so no
+encounter stops the clock; 14 x 110 s covers ~11 years, the early sector being light). **ng1b**
+(the build above): the hive seeded Gamma Sonora at month 5 with six worlds and flew nothing for
+16 months - Mining took five of six single slots, the fuel plant waited for size 3 - while 28k
+supplies sat idle; it struck the Hegemony at month 26, the Hegemony mobilised at 29, and every
+faction it struck mobilised 2-3 months after. It peaked at 13 worlds (size 45, ~8k FP, 4.5-6.7k
+supplies a month) at months 37-40 and was razed down to nothing by month 132 - 9 of 13 losses
+raids from orbit (hegemony 9, persean 2, independent 2), never taking a human world; 50k supplies
+sat unspent at its death. **ng2a** (the planner's first links at founding, planning every month,
+investing idle supplies, posture without the grudge): the chain stood at founding and fuel flowed
+at month 13, 10 worlds by month 22, 15k supplies and 2.2k FP a month by month 55 - and the
+Hegemony, struck earlier, mobilised at month 20 and began razing at 30: 4-7 worlds from month 64,
+30-84k supplies and 15-26k FP idle. A faster hive only started its losing war sooner - hence
+`warOpen` and the stock-aware gate above.
+
+With `warOpen` the war became the hive's to start, and the same sector played out two ways.
+**ng3a**: peace through phase 2 (12 worlds, size 47 by month 33), phase 3 at month 34, then the
+Hegemony (37), Persean (39) and Luddic Church (44) struck and mobilised; the hive grew to 41 worlds
+(size 149, 45-60k FP, ~50k supplies a month) by month 61 and was pushed back to 27 by month 84 (the
+run stopped there on an encounter dialog): 35 of its worlds razed, 85 of its 104 strikes spent on
+forward bases the humans rebuilt, 17 of 20 landings on core worlds beaten, no core world taken.
+Its claims in the war went a median 2 ly from a human world and lived ~11 months; under
+CONSOLIDATE three size-7 forges grew to 8 and the bill went 35k -> 53k. **ng4a** (same build, the
+same sector, Fleets Ignore You on): the Hegemony mobilised at month 37, the Persean at 62, Luddic
+Path 64, Luddic Church 77; the hive lost 50 worlds and razed Nachiketa (42) and Sphinx (105), and
+out-expanded its losses to 78 worlds (size 317) by month 117 - ~150k FP of fleets, 124k supplies
+and 16.5k FP a month, 297k FP banked unspent (supplies bind its trips; FP has no other outlet). So
+the outcome is the war's, not the rules': a hive that loses its early fights is ground down, one
+that wins them snowballs. Then: claims feel no pull toward a faction at war (only `holdShare`'s
+risk), and consolidating grows the smallest worlds - a razing pours ~1k fuel into a size-2 world
+and 39k into a size 5 - not the biggest. **ng5a** (that build): phase 3 at month 37, the Luddic
+Church, Persean and Hegemony mobilised within six months (Tri-Tachyon at 108); the hive peaked at
+33 worlds at month 89 and held 22-28 to month 123 (60-84k FP), losing 71 young worlds to orbital
+razes and refounding as fast; no human world fell. Its supplies stock rose to 163k before trips
+drew it down; fuel ran to 538k (plants built for old shortages make 82k a month against ~30k
+spent) and FP to 217k banked. **ng6a** (the night's last build, with the 2026-10-01 review's fixes:
+the sweep reads `warOpen`, sustenance tops up from the stock): phase 3 at month 36, and the wars came
+one at a time - Hegemony 40, independents 56, Tri-Tachyon 65, Luddic Church 99; the hive grew to
+35 worlds by month 81 and held 32-38 to month 124 (50-80k FP, ~52k supplies a month), 179 strikes,
+Nachiketa razed at 45, 60 young worlds lost and refounded; 165k FP banked.
+
+What the new-game runs show, as of 2026-10-01: the war's outcome is decided by the asymmetry
+between the two doctrines more than by economy. Humans raze hive worlds from orbit - cheap, sized
+1.5x the garrison they weigh, the garrison never trading in an abstract razing (29 razes in ng3a
+cost the attackers 34 of 72,700 FP) - while the swarm only ever lands fronts (payload authority:
+it besieges, it does not annihilate), and 17 of ng3a's 20 landings on core worlds were beaten.
+Open for the user: whether abstract razes and sieges should fight the defending fleets (both
+ways), and whether the swarm should raze too.
 
 ## Levers, verified
 

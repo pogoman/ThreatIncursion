@@ -187,11 +187,13 @@ public class ThreatRaiders {
 			}
 		}
 		if (best == null) return null;
-		// the supplies it burns away come out of what the colonies leave (ThreatReach)
-		if (!ThreatReach.canSustain(best.getFleetPoints())) return null;
-		// there and back comes from the hive's fuel (ThreatFuel)
 		float ly = hive.getStarSystem() == null ? 0f
 				: Misc.getDistanceLY(hive.getStarSystem().getLocation(), convoy.fleet.getLocationInHyperspace());
+		// the supplies it burns away come out of what the colonies leave and the
+		// stock (ThreatReach): out to the convoy and home, and its hunt's days
+		float away = ThreatReach.daysAway(ly, true, ThreatIncConfig.raiderDays());
+		if (!ThreatReach.canSustain(best.getFleetPoints(), away)) return null;
+		// there and back comes from the hive's fuel (ThreatFuel)
 		float fuel = ThreatFuel.passage(best.getFleetPoints(), ly, true);
 		if (!ThreatFuel.pay(fuel)) {
 			ThreatFuel.held("a raider from " + hive.getName());
