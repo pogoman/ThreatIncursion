@@ -33,6 +33,7 @@ Split by topic on 2026-10-01; the sections are unchanged and keep their headings
 | Sieges from orbit - one duel, both theatres (2026-09-06, untested) | [ground-war-sieges.md](ground-war-sieges.md) |
 | Saturation presses a hive (2026-10-01, user's call) | [ground-war-sieges.md](ground-war-sieges.md) |
 | Off-screen fights cost both sides (2026-10-01, user's call) | [ground-war-sieges.md](ground-war-sieges.md) |
+| How a siege runs, watched and off-screen (code paths) | [ground-war-code-paths.md](ground-war-code-paths.md) |
 | Fabricating troops from the fleet (2026-09-08, built, untested) | [ground-war-orbit-control.md](ground-war-orbit-control.md) |
 | The swarm does not fight on armaments (2026-09-08, built, untested) | [ground-war-orbit-control.md](ground-war-orbit-control.md) |
 | The swarm holds the orbit | [ground-war-orbit-control.md](ground-war-orbit-control.md) |
