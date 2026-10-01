@@ -29,7 +29,7 @@ import com.fs.starfarer.api.util.Misc;
  * away (feed, once a poll):
  * <ol>
  * <li>Sustenance: the break-even share of every colony's upkeep, forge worlds
- * first, then the worlds nearest the humans - up to the largest stance share
+ * that make more than they eat first, then the worlds nearest the humans - up to the largest stance share
  * of the production (sustainShare, 0.9), never more: the hive always keeps a
  * tithe for forges, waves and fleets. h35a let sustenance take everything and
  * the base save's hive shrank until it did - 26k of 29k a month - with nothing
@@ -41,7 +41,7 @@ import com.fs.starfarer.api.util.Misc;
  * the production (feedShare: expanding 0.5, pressing 0.7, consolidating 0.9),
  * to a colony only while that share still holds its next size's sustenance.
  * Forges whose next size pays for itself first; then pressing feeds the front,
- * consolidating the biggest, expanding the smallest. A size-2 world grows into
+ * expanding and consolidating the smallest. A size-2 world grows into
  * size 3, where upkeep starts, only as it is fed for it (its growth priced at
  * size 3's upkeep); a size-1 seed and a forge world below size 3 grow free.
  * h35a let size 2 grow free: 76 worlds grew into size 3 unpaid and starved
@@ -232,7 +232,11 @@ public class ThreatColonyUpkeep {
 			float own = seed ? 0f : Math.min(n.want, local);
 			n.cap = own + (n.want - own) * (1f - importCut(m));
 			n.sustain = seed ? 0f : Math.min(t * n.want, n.cap);
-			n.forge = local > 0f;
+			// fed first while it makes more than it eats: a forge's size - 2 units
+			// of 750 against 0.5 x its upkeep peak at size 6 and fall short at 8
+			// (4,500 against 4,883) - the lt save's size-8 forges ate first and made
+			// less than they took
+			n.forge = local > 0f && local >= n.sustain;
 			n.forgeStepPays = n.forge && forgeStepPays(m, t);
 			n.grows = size < ThreatColonyManager.maxColonySize(m)
 					&& !ThreatGroundFronts.hasFront(m) && !ThreatRazing.saturated(m);
@@ -260,6 +264,17 @@ public class ThreatColonyUpkeep {
 		// first, then the front
 		Collections.sort(needs, SUSTAIN_ORDER);
 		float pool = Math.min(stock, sustainShare() * net);
+		// billed reach lets a trip draw on the stock (ThreatReach.canSustain(fp,
+		// days)), which takes its burn out of net: the stock above one founding
+		// kit makes the colonies' sustenance whole again, or a stock-paid trip
+		// would starve them with the supplies still banked (2026-10-01 review)
+		if (ThreatReach.enabled()) {
+			float sustenance = 0f;
+			for (Need n : needs) sustenance += n.sustain;
+			if (sustenance > pool) {
+				pool += Math.max(0f, Math.min(sustenance - pool, stock - pool - ThreatFuel.foundingCost()[0]));
+			}
+		}
 		float sustained = 0f, short_ = 0f, bill = 0f;
 		for (Need n : needs) {
 			if (!n.seed) bill += n.want;
@@ -323,9 +338,14 @@ public class ThreatColonyUpkeep {
 		return new Comparator<Need>() {
 			public int compare(Need a, Need b) {
 				if (a.forgeStepPays != b.forgeStepPays) return a.forgeStepPays ? -1 : 1;
+				// pressing feeds the front; expanding and consolidating the smallest.
+				// Consolidating fed the biggest until 2026-10-01: ng3a's three core
+				// forges grew 7 -> 8 on it (each step 2,930 supplies a month more for
+				// 750 more made) and the bill went 35k -> 53k while young worlds died
+				// cheap - a razing pours ~1k fuel into a size-2 world and 39k into a
+				// size 5, so holding is growing the small out of reach of it
 				int c;
 				if (stance == ThreatStance.PRESS) c = Float.compare(a.frontLY, b.frontLY);
-				else if (stance == ThreatStance.CONSOLIDATE) c = b.size - a.size;
 				else c = a.size - b.size;
 				return c != 0 ? c : Float.compare(a.frontLY, b.frontLY);
 			}

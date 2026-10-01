@@ -376,6 +376,13 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 	protected static Object closestSector;
 	protected static float closestLY = Float.MAX_VALUE;
 
+	/** On game load: let go of the campaign left behind. */
+	public static void forgetCaches() {
+		closestSector = null;
+		closestDay = Long.MIN_VALUE;
+		closestLY = Float.MAX_VALUE;
+	}
+
 	/** Light-years from the hive world nearest living space to its nearest inhabited world, once a day. */
 	protected static float closestHiveToLivingLY() {
 		long day = Global.getSector().getClock().getTimestamp() / 86400000L;

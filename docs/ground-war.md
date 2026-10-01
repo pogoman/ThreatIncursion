@@ -337,8 +337,11 @@ more tempo means more attempts, and every attempt spends marines, so a colony th
 outnumbers a front wins quickly **and pays for it**. That pairing is what stops the reinforce-
 and-forget move - the rescue works, but it burns the regiment that made it work.
 
-Hives keep pacing on vitality alone (`ThreatColonyManager.computeHealth`): a hive has no
-garrison to spare or withhold, so there is no ratio for the term to read.
+Hives pace on how well they are fed (`ThreatGroundFronts.hiveCounterAttackPace`, 2026-09-30):
+with size upkeep on, `min(1, fed share / break-even) x (size - strata held) / size`, so a starving
+hive, or one whose strata are mostly taken, strikes back slower; with it off, on vitality
+(`ThreatColonyManager.computeHealth`). A hive has no garrison to spare or withhold, so there is no
+ratio for the term to read.
 
 **4. Troops have quality.** See Veterancy below.
 
@@ -478,7 +481,7 @@ half rate.
 | Layers | strata, underground, one per size | districts, one per size |
 | Losing a layer | fabrication and per-stratum defence fall | garrison share, stability, accessibility fall; the district's industries are seized |
 | Orbital bombardment | suppresses the war-strata to nothing, the size-anchored strata untouched, weapon growths fire back | suppresses fortification to nothing, garrison untouched, batteries fire back |
-| Counter-attacks | paced by hive health | paced by stability and military command; strength is the garrison |
+| Counter-attacks | paced by the upkeep share fed and the strata still held | paced by stability and military command; strength is the garrison |
 | Victory | the Core dies: eradicated, the survivors come home | the last district falls: a hive is seeded on the spot |
 
 ### Bombardment v2 - the day of sorties (2026-09-28, built, untested)
@@ -1391,7 +1394,7 @@ Nexus bonus scaled by disruption; a colony's from vanilla's ground-defense stat 
 banked reserve marines - so the defenders "reinforce" exactly as their disrupted structures
 recover, and lose exactly what a holding front keeps suppressed and what each stratum strips.
 The Defenses column is that trend. The one enemy *action* is the counter-attack (every
-`frontCounterAttackDays` / vitality on a hive, / stability on a colony, faster with a military
+`frontCounterAttackDays` / the fed-and-held pace on a hive, / stability on a colony, faster with a military
 command), which retakes a stratum or batters the beachhead. Defense Swarms in orbit never
 fight on the ground; they contest the orbit, which is what blocks runs and landings. On a
 human world the swarm besieges, real reinforcement does exist: relief guards and marine

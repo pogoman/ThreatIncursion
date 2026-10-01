@@ -696,8 +696,13 @@ public class ThreatPosture {
 		r.attacks = a != null ? a : 0f;
 
 		// staged: what each base staging for this hive could pay a force here -
-		// the most any one of a faction's bases could, faction by faction,
-		// weighed by the faction's grudge (ThreatAlarm.targetMult)
+		// the most any one of a faction's bases could, faction by faction. Its
+		// capacity, not the grudge (2026-10-01): capacity is already the worst a
+		// faction can bring, and need = capacity / siege margin x postureMargin
+		// out-holds it. Weighed by ThreatAlarm.targetMult the want rode the
+		// grudge's ratchet - h38a held x5.5 on average (x14.7 once), 243 swarms
+		// at a size-2 world, and sends burned half the fuel feeding frontier
+		// worlds that fell anyway. The grudge picks strike targets (TARGETING)
 		Map<String, Float> byFaction = new HashMap<String, Float>();
 		for (MarketAPI base : IncursionManager.siegeBasesFor(system)) {
 			StarSystemAPI staging;
@@ -720,9 +725,8 @@ public class ThreatPosture {
 		}
 		float top = 0f;
 		for (Map.Entry<String, Float> e : byFaction.entrySet()) {
-			// the faction's force in reach counts its capacity, not the grudge
 			pass.addForce(e.getKey(), systemId, e.getValue());
-			float v = e.getValue() * ThreatAlarm.targetMult(e.getKey());
+			float v = e.getValue();
 			r.staged += v;
 			if (v > top) {
 				top = v;

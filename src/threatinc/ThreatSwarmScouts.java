@@ -201,6 +201,9 @@ public class ThreatSwarmScouts {
 		return ThreatScoutRoute.nearestFirst(candidates, home.getLocation());
 	}
 
+	/** Light-years there and home the last Scouting Swarm built carries in its tanks (billed reach); -1 before the first. */
+	protected static float lastTank = -1f;
+
 	/**
 	 * Fabricates a Scouting Swarm at the colony and sends it down the route; null
 	 * when the colony's nexus has not banked what it costs (the fabrication
@@ -209,8 +212,9 @@ public class ThreatSwarmScouts {
 	protected static Scout launch(MarketAPI colony, List<String> route, Random random) {
 		float budget = ThreatIncConfig.swarmScoutFleetPoints();
 		if (!ThreatColonyManager.canAffordFP(colony, budget)) return null;
-		// the supplies it burns away come out of what the colonies leave (ThreatReach)
-		if (!ThreatReach.canSustain(budget)) return null;
+		// the supplies it burns away come out of what the colonies leave and the
+		// stock (ThreatReach), over its route's days
+		if (!ThreatReach.canSustain(budget, ThreatReach.days(routeLY(colony, route)))) return null;
 		// the route and home again comes from the hive's fuel (ThreatFuel): the
 		// whole path is flown, so it is paid one way along it
 		float fuel = ThreatFuel.passage(budget, routeLY(colony, route), false);
@@ -218,6 +222,15 @@ public class ThreatSwarmScouts {
 		if (!ThreatReach.enabled() && !ThreatFuel.canPay(fuel)) {
 			ThreatFuel.held("a scout from " + colony.getName());
 			return null;
+		}
+		if (ThreatReach.enabled()) {
+			// not even the first stop and home: no scout is built to be scrapped
+			float firstLY = routeLY(colony, route.subList(0, 1));
+			if (lastTank > 0f && firstLY > lastTank) return null;
+			if (!ThreatFuel.canPay(ThreatFuel.passage(budget, firstLY, false))) {
+				ThreatFuel.held("a scout from " + colony.getName());
+				return null;
+			}
 		}
 		CampaignFleetAPI fleet = ThreatFleetComposer.createScouts(budget, new Random(random.nextLong()));
 		if (fleet == null || fleet.isEmpty()) return null;
@@ -232,6 +245,8 @@ public class ThreatSwarmScouts {
 				perLY += m.getHullSpec().getFuelPerLY();
 			}
 			float tank = perLY > 0f ? fuelCap / perLY : Float.MAX_VALUE;
+			// the longest tank yet: a small one never latches the pre-check shut
+			lastTank = Math.max(lastTank, tank);
 			float fp = fleet.getFleetPoints();
 			while (route.size() > 1 && (routeLY(colony, route) > tank
 					|| !ThreatFuel.canPay(ThreatFuel.passage(fp, routeLY(colony, route), false)))) {

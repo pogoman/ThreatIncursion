@@ -109,6 +109,17 @@ public class ThreatReach {
 		return Math.max(0f, fp) * suppliesPerFP();
 	}
 
+	/** On game load: nothing held of the campaign left behind, nothing committed on its timeline. */
+	public static void forget() {
+		perFPSector = null;
+		perFPDay = Long.MIN_VALUE;
+		facedSector = null;
+		facedDay = Long.MIN_VALUE;
+		faced.clear();
+		committed = 0f;
+		ThreatSwarmScouts.lastTank = -1f;
+	}
+
 	/** Supplies a month committed to trips since the colonies' last feed recorded the spare. */
 	protected static float committed = 0f;
 
@@ -123,10 +134,40 @@ public class ThreatReach {
 		return ThreatColonyUpkeep.spareSupplies() - committed;
 	}
 
-	/** Whether the hive can keep a fleet of {@code fp} away without starving a colony. Always, billed reach off. */
+	/** Whether the hive can keep a fleet of {@code fp} away without starving a colony, on the month's flow alone. Always, billed reach off. */
 	public static boolean canSustain(float fp) {
 		if (!enabled() || !ThreatColonyUpkeep.enabled()) return true;
 		return suppliesPerMonth(fp) <= spare();
+	}
+
+	/**
+	 * Whether the hive can pay a fleet of {@code fp} away for {@code days}: its
+	 * whole bill, the supplies a month over the trip, out of the flow over the
+	 * same months (spare, which a trip already out has lowered - negative, it is
+	 * a drain on the stock) and the stock above one founding kit (2026-10-01).
+	 * On the flow alone a hive with 36k supplies banked held a raider (ng1b):
+	 * a stock is what a flow short of a trip has to draw on.
+	 */
+	public static boolean canSustain(float fp, float days) {
+		if (!enabled() || !ThreatColonyUpkeep.enabled()) return true;
+		float need = suppliesPerMonth(fp);
+		float flow = spare();
+		if (need <= flow) return true;
+		float months = Math.max(1f, days) / 30f;
+		return need * months <= flow * months + freeStock();
+	}
+
+	/** The most fleet points canSustain lets away for {@code days}: the flow and the stock spread over the trip. */
+	public static float sustainableFP(float days) {
+		if (!enabled() || !ThreatColonyUpkeep.enabled()) return Float.MAX_VALUE;
+		float months = Math.max(1f, days) / 30f;
+		return Math.max(0f, spare() + freeStock() / months) / suppliesPerFP();
+	}
+
+	/** Supplies in stock above what one founding takes (ThreatFuel.foundingCost): what trips may draw on. */
+	public static float freeStock() {
+		return Math.max(0f, ThreatFuel.stock(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES)
+				- ThreatFuel.foundingCost()[0]);
 	}
 
 	/** A fleet of {@code fp} has left: its supplies a month come off the spare until the next feed counts it. */
@@ -136,7 +177,8 @@ public class ThreatReach {
 
 	/** Whether the hive can pay a trip: its passage from the fuel stock, its supplies away from the spare. */
 	public static boolean canPay(float fp, float ly, boolean roundTrip) {
-		return ThreatFuel.canPay(ThreatFuel.passage(fp, ly, roundTrip)) && canSustain(fp);
+		return ThreatFuel.canPay(ThreatFuel.passage(fp, ly, roundTrip))
+				&& canSustain(fp, roundTrip ? strikeDays(ly) : days(ly));
 	}
 
 	// ------------------------------------------------------------------
@@ -163,8 +205,17 @@ public class ThreatReach {
 		if (faced.containsKey(system.getId())) return faced.get(system.getId());
 		Object[] best = null;
 		float bestScore = 0f;
+		// the strike gate's standing filters (strikeAllowed): no core world before
+		// phase 3, no player world in its grace - not the strike already sailing
+		// at a world, which would flap the front every launch
+		int phase = IncursionManager.getPhase();
+		boolean coreOpen = phase >= 3;
+		boolean playerGrace = ThreatIncData.daysSincePlayerStruck() < ThreatIncConfig.playerGraceDays();
 		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (!IncursionManager.isStrikeableWorld(m) || !ThreatSwarmScouts.swarmKnows(m)) continue;
+			if (!coreOpen && IncursionManager.isCoreWorld(m)) continue;
+			if (playerGrace && m.isPlayerOwned()) continue;
+			if (!IncursionManager.warOpen(m, phase)) continue;
 			float ly = Misc.getDistanceLY(system.getLocation(), m.getStarSystem().getLocation());
 			float score = IncursionManager.strikeValue(m) / strikeDays(ly);
 			if (score > bestScore) {

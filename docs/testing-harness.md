@@ -199,6 +199,35 @@ board selector The Threat (446,167), Hegemony (713,167). The locale uses a decim
 this machine's LunaLib store, so no `[ThreatInc]` lines were written; read the state from a
 quicksaved clone instead (`threatinc_frontlines` lists every link, its faction, hive and guards).
 
+## Fast-forward runs and a new game (2026-10-01)
+
+`tools/test-harness/fastforward/` holds the scripts every balance run since 2026-09-29 used (they
+lived in a session scratchpad, and the first new-game recipe was lost with one). Outputs go to
+`$env:THREATINC_TEST_OUT`, default `%TEMP%\threatinc-tests`. At the `1600x900` pref:
+
+- `clone.ps1 -Base save_X_123 -From lt -To h40`: copy a save, refill the player fleet's supplies
+  and fuel (it runs dry and its CR falls over a long run), make the copy self-contained
+  (`saveDirName`) and point Continue at it.
+- `launch.ps1 [-MenuOnly]`: kill, launch, Play, wait for the menu, Continue until "Loading stage 39"
+  appears. The game rolls `starsector.log` over at ~50 MB; the waits and `extract.ps1` survive it.
+- `run.ps1 -Chunks 3 -Seconds 110 -SaveEvery 3 -Tag h40a`: hold Shift (64x with SpeedUp) in chunks,
+  report ThreatInc lines per chunk, quicksave. Three chunks are ~12-15 months of a developed save
+  and ~2 years of a new one. A chunk that writes nothing is a stopped clock (a dialog): one
+  Enter/Esc is tried, then the run stops with a shot to look at.
+- `extract.ps1 -Tag h40a`: the `[ThreatInc]` lines since the load, to `ti-h40a.txt`;
+  `census.ps1 -Tag h40a -Every 4` tabulates the hive's monthly census.
+
+**A new game**, as run for ng1-ng4 (a mercenary start, Normal, tutorial skipped):
+`launch.ps1 -MenuOnly`, then `step.ps1` a click at a time, reading each shot: New Game (1194,396);
+Name GENERATE (1078,263); 1. Continue (390,620); 4. mercenary (800,707); 1. Normal (405,620);
+2. Skip it (400,649); Start game (402,392), then ~90 s of generation. F5 once, quit, and
+`newgame-prep.ps1 -Base save_<Name>_<id> -To ng1` (a clone with supplies refilled, pirates and Pathers
+neutral to the player). The Threat is pinned hostile to everyone (`enforceThreatHostility`), so for
+an unattended run turn on **Debug & Testing > Fleets Ignore You** (`threatinc_debugPlayerIgnored`;
+`player-ignored.ps1 on`): a strike caught the test fleet in Corvus and held ng3a's clock. The LunaLib
+store is global - `player-ignored.ps1 off` afterwards. Keep the pristine save and clone a fresh `ngN`
+for each build, so runs compare from the same sector.
+
 ## Laptop panel only, game pref 2560x1440 (2026-09-23)
 
 With only the 1920x1080 panel connected, set the `resolution` pref to `1920x1080` for the run

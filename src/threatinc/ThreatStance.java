@@ -455,10 +455,14 @@ public class ThreatStance {
 			float held = ThreatColonyManager.ownedFleetFP(c, ThreatIncData.garrisonsFor(c.getId()));
 			muster += Math.max(0f, held - ThreatPosture.minimumFP(c)) + Math.max(0f, ThreatColonyManager.bankedFP(c));
 		}
-		// billed reach (ThreatReach): no more than the colonies' spare supplies
-		// keep away, any distance whose passage the stock pays, worth per day away
+		// billed reach (ThreatReach): no more than the colonies' spare supplies and
+		// the stock keep away for a strike at the system's first target, any
+		// distance whose passage the stock pays, worth per day away
 		boolean billed = ThreatReach.enabled();
-		if (billed) muster = Math.min(muster, Math.max(0f, ThreatReach.spare()) / ThreatReach.suppliesPerFP());
+		if (billed) {
+			muster = Math.min(muster,
+					ThreatReach.sustainableFP(ThreatReach.strikeDays(Math.max(0f, ThreatReach.facedLY(system)))));
+		}
 		int swarms = (int) Math.floor(muster / rowFP);
 		if (swarms < 1) return out;
 		int perSwarm = IncursionManager.strikeFleetSize(expeditionSize(row));

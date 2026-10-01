@@ -139,6 +139,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			Global.getSector().getPlayerFleet().getMemoryWithoutUpdate().set(TRIGGER_SENSOR_MODS, true);
 			ThreatIncConfig.log("Debug: granted Threat detection sensor mods.");
 		}
+		// testing aid: no fleet stops for the player's, so an unattended run is
+		// never held by an encounter dialog (2026-10-01: a Threat strike caught
+		// the new-game test fleet in Corvus and the clock sat stopped). Two days
+		// at a time, so switching it off lets it lapse
+		if (ThreatIncConfig.debugPlayerIgnored() && Global.getSector().getPlayerFleet() != null) {
+			Global.getSector().getPlayerFleet().getMemoryWithoutUpdate()
+					.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORED_BY_OTHER_FLEETS, true, 2f);
+		}
 
 		// old-layout saves must be migrated before anything touches colony data
 		if (ThreatIncData.isStarted()) {
@@ -986,7 +994,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// system, not a planet. Secondary targets pass the same filters that
 		// gated the primary pick (see pickStrikeTarget), minus the size floor:
 		// once the swarm commits to a system, its outposts burn too.
-		boolean coreAllowed = getPhase() >= 3;
+		int sweepPhase = getPhase();
+		boolean coreAllowed = sweepPhase >= 3;
 		boolean playerAllowed = ThreatIncData.daysSincePlayerStruck()
 				>= ThreatIncConfig.playerGraceDays();
 		// a relief strike goes to its front alone (2026-09-29, overnight run N6):
@@ -1000,6 +1009,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (other.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) continue;
 			if (!coreAllowed && other.getSize() >= 6) continue;
 			if (other.isPlayerOwned() && !playerAllowed) continue;
+			// nor a war the hive is not ready to open (warOpen): only the primary
+			// target mobilises its faction (recordStrike)
+			if (!warOpen(other, sweepPhase)) continue;
 			if (isActiveStrikeTarget(other)) continue;
 			if (!ThreatIncConfig.destroyStoryCritical() && Misc.isStoryCritical(other)) continue;
 			params.raidParams.allowedTargets.add(other);
@@ -1067,22 +1079,24 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// the passage there and back comes out of the hive's fuel (ThreatFuel):
 		// the muster is also no bigger than the stock fuels
 		float ly = ThreatFuel.ly(source, target.getStarSystem());
+		float daysAway = ThreatReach.strikeDays(ly);
 		int count = walk.size();
 		for (; count > 0; count--) {
 			float excess = excessOf[count];
 			if (!ThreatFuel.canPay(ThreatFuel.passage(fpOf[count], ly, true))) continue;
-			// ...and no bigger than the supplies the colonies leave keep away (ThreatReach)
-			if (!ThreatReach.canSustain(fpOf[count])) continue;
+			// ...and no bigger than the supplies the colonies leave and the stock keep away (ThreatReach)
+			if (!ThreatReach.canSustain(fpOf[count], daysAway)) continue;
 			if (excess <= 0f || ThreatColonyManager.canAffordFP(colony, excess)) break;
 		}
 		if (count <= 0) {
 			if (sendable > 0 && walk.size() > 0
 					&& !ThreatFuel.canPay(ThreatFuel.passage(fpOf[1], ly, true))) {
 				ThreatFuel.held("strike from " + colony.getName());
-			} else if (sendable > 0 && walk.size() > 0 && !ThreatReach.canSustain(fpOf[1])) {
+			} else if (sendable > 0 && walk.size() > 0 && !ThreatReach.canSustain(fpOf[1], daysAway)) {
 				ThreatIncConfig.logQuiet("strikewait:" + colony.getId(), "Strike from " + colony.getName()
-						+ " held: the colonies leave " + (int) ThreatReach.spare() + " supplies a month, one swarm burns "
-						+ (int) ThreatReach.suppliesPerMonth(fpOf[1]));
+						+ " held: the colonies leave " + (int) ThreatReach.spare() + " supplies a month and "
+						+ (int) ThreatReach.freeStock() + " in stock, one swarm burns "
+						+ (int) ThreatReach.suppliesPerMonth(fpOf[1]) + " a month for " + (int) daysAway + " days");
 			} else if (sendable > 0) {
 				ThreatIncConfig.log("Strike from " + colony.getName() + " held: the bank ("
 						+ (int) ThreatColonyManager.bankedFP(colony) + " FP) cannot re-embody even one swarm");
@@ -4000,15 +4014,25 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// billed reach (ThreatReach): a claim may be anywhere a forge can send a
 		// wave; what the hive could not defend is weighed, not walled off
 		boolean billed = ThreatReach.enabled();
-		List<MarketAPI> bases = billed ? siegeBases() : null;
+		Map<MarketAPI, Float> bases = billed ? siegeBases() : null;
+		List<org.lwjgl.util.vector.Vector2f> peace = billed ? unwarredLocations() : null;
 		WeightedRandomPicker<StarSystemAPI> picker = new WeightedRandomPicker<StarSystemAPI>(random);
+		StarSystemAPI best = null;
+		float bestW = 0f;
 		for (StarSystemAPI system : Global.getSector().getStarSystems()) {
 			if (!isValidSpreadCandidate(system)) continue;
 
 			// reachable = some stable forge colony can send a wave: the fuel
 			// to send it this far (the old radius, pickForgeSource), or billed,
 			// a forge the stocks pay the wave from
-			if (ThreatColonyManager.pickForgeSource(system, true) == null) continue;
+			MarketAPI source = ThreatColonyManager.pickForgeSource(system, true);
+			if (source == null) continue;
+			// billed: a claim whose founding and way out the fuel stock cannot pay
+			// now would hold its forge's claim for months while nearer ones wait
+			if (billed && !ThreatFuel.canPay(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL,
+					ThreatColonyManager.foundingFuel(source, system))) {
+				continue;
+			}
 
 			float dInfested = distanceToNearestInfested(system);
 			float dInhabited = distanceToNearestInhabited(system);
@@ -4028,11 +4052,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (billed) {
 				// billed reach (ThreatReach): both pulls in the bill's terms - per
 				// day a swarm needs from the network to reach it, per day a strike
-				// staged there is away at the nearest faction world - and the
-				// share of it the hive could hold. The squared pull toward
-				// inhabited space leaned on the radius to keep the jump short
+				// staged there is away at the nearest world of a faction not yet at
+				// war with it - and the share of it the hive could hold. The squared
+				// pull toward inhabited space leaned on the radius to keep the jump
+				// short. A faction at war is no pull (2026-10-01): its worlds are a
+				// siege's staging, weighed in holdShare - ng3a's claims in the war
+				// went a median 2 ly from a human world and were razed within ~11
+				// months, 35 of 62 worlds lost. Every faction at war: no pull at all
+				float dPeace = nearestLY(system, peace);
 				w = (1f + need * 0.01f) * holdShare(system, bases)
-						/ (Math.max(1f, ThreatReach.days(dInfested)) * ThreatReach.strikeDays(dInhabited));
+						/ (Math.max(1f, ThreatReach.days(dInfested)) * (dPeace >= 0f ? ThreatReach.strikeDays(dPeace) : 1f));
 			} else {
 				w = (1f + need * 0.01f)
 						/ ((1f + dInfested) * (1f + dInhabited * dInhabited));
@@ -4040,9 +4069,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// expanding to diversify, the swarm leans away from its strongest
 			// rival (ThreatStance)
 			w *= ThreatStance.spreadMult(system);
-			picker.add(system, w);
+			// billed, the best claim, not a draw: with no radius every system in
+			// the sector is a candidate, and the far ones' small weights summed
+			// to a lottery ticket - h37a sent 2 of 17 claims 27-28 ly out on it
+			if (billed) {
+				if (w > bestW) {
+					bestW = w;
+					best = system;
+				}
+			} else {
+				picker.add(system, w);
+			}
 		}
-		return picker.pick();
+		return billed ? best : picker.pick();
 	}
 
 	/**
@@ -4050,13 +4089,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * structure with fuel range (a mobilised faction builds the depot it stages
 	 * from, isBase).
 	 */
-	protected static List<MarketAPI> siegeBases() {
-		List<MarketAPI> out = new ArrayList<MarketAPI>();
+	protected static Map<MarketAPI, Float> siegeBases() {
+		// each base's range once per pick: holdShare reads it for every candidate
+		Map<MarketAPI, Float> out = new java.util.LinkedHashMap<MarketAPI, Float>();
 		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (m.getStarSystem() == null || ThreatMapFog.hidden(m)) continue;
 			if (Factions.THREAT.equals(m.getFactionId()) || m.isPlayerOwned()) continue;
-			if (!hasMilitary(m) || expeditionRangeLY(m) <= 0f) continue;
-			out.add(m);
+			if (!hasMilitary(m)) continue;
+			float range = expeditionRangeLY(m);
+			if (range <= 0f) continue;
+			out.put(m, range);
 		}
 		return out;
 	}
@@ -4070,11 +4112,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * network's reach: the swarm may claim anywhere, and weighs what it could
 	 * not defend.
 	 */
-	protected float holdShare(StarSystemAPI system, List<MarketAPI> bases) {
+	protected float holdShare(StarSystemAPI system, Map<MarketAPI, Float> bases) {
 		float siege = Float.MAX_VALUE;
-		for (MarketAPI base : bases) {
+		for (Map.Entry<MarketAPI, Float> e : bases.entrySet()) {
+			MarketAPI base = e.getKey();
 			float d = Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation());
-			if (d > expeditionRangeLY(base)) continue;
+			if (d > e.getValue()) continue;
 			siege = Math.min(siege, razeArrivalDays(base, system));
 		}
 		if (siege == Float.MAX_VALUE) return 1f;
@@ -4107,6 +4150,34 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (ThreatMapFog.hidden(market)) continue;
 			if (Factions.THREAT.equals(market.getFactionId())) continue;
 			float d = Misc.getDistanceLY(system.getLocation(), market.getStarSystem().getLocation());
+			if (best < 0 || d < best) best = d;
+		}
+		return best;
+	}
+
+	/**
+	 * Where the charted worlds of factions the hive is not at war with lie -
+	 * those a strike would open a war on (warOpen at phase 0): the pull a claim
+	 * feels toward the next war's targets.
+	 */
+	protected static List<org.lwjgl.util.vector.Vector2f> unwarredLocations() {
+		List<org.lwjgl.util.vector.Vector2f> out = new ArrayList<org.lwjgl.util.vector.Vector2f>();
+		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (market.getStarSystem() == null) continue;
+			if (ThreatMapFog.hidden(market)) continue;
+			if (Factions.THREAT.equals(market.getFactionId())) continue;
+			// (with the war layer off nobody is at war: every world pulls, as before)
+			if (ThreatWarState.enabled() && warOpen(market, 0)) continue;
+			out.add(market.getStarSystem().getLocation());
+		}
+		return out;
+	}
+
+	/** Light-years from the system to the nearest of {@code at}, or -1 when it is empty. */
+	protected static float nearestLY(StarSystemAPI system, List<org.lwjgl.util.vector.Vector2f> at) {
+		float best = -1f;
+		for (org.lwjgl.util.vector.Vector2f loc : at) {
+			float d = Misc.getDistanceLY(system.getLocation(), loc);
 			if (best < 0 || d < best) best = d;
 		}
 		return best;
@@ -4202,7 +4273,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * @param onlyFactionId restrict candidates to this faction's worlds (retaliation), or null
 	 */
 	protected MarketAPI pickStrikeTarget(MarketAPI staging, StarSystemAPI source, String onlyFactionId) {
-		boolean coreAllowed = getPhase() >= 3;
+		int phase = getPhase();
+		boolean coreAllowed = phase >= 3;
 		boolean playerAllowed = ThreatIncData.daysSincePlayerStruck() >= ThreatIncConfig.playerGraceDays();
 
 		// reach is the bill (ThreatReach, 2026-09-30): any world whose passage the
@@ -4219,18 +4291,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		int points = 0;
 		float musterFP = 0f;
 		if (billed) {
+			// days away at the system's first target (launchStrike re-reads it at the real one)
+			float daysAway = ThreatReach.strikeDays(Math.max(0f, ThreatReach.facedLY(source)));
 			for (ThreatColonyManager.MusterFleet mf : ThreatColonyManager.peekMuster(staging,
 					ThreatColonyManager.garrisonAvailableForLaunch(staging))) {
 				java.util.List<Integer> sizes = new ArrayList<Integer>();
 				for (int size : mf.sizes) sizes.add(strikeFleetSize(size));
 				float est = ThreatStrikeFGI.estimateFP(sizes);
-				if (!ThreatReach.canSustain(musterFP + est)) break;
+				if (!ThreatReach.canSustain(musterFP + est, daysAway)) break;
 				for (int size : sizes) points += size;
 				musterFP += est;
 			}
 			if (points <= 0) {
 				ThreatIncConfig.logQuiet("strikewait:" + staging.getId(), "Strikes from " + staging.getName()
-						+ " wait: the colonies leave " + (int) ThreatReach.spare() + " supplies a month for fleets away");
+						+ " wait: the colonies leave " + (int) ThreatReach.spare() + " supplies a month and "
+						+ (int) ThreatReach.freeStock() + " in stock for fleets away");
 				return null;
 			}
 		} else {
@@ -4250,6 +4325,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// size 6+ markets are "core worlds" - phase 3 only
 			if (!coreAllowed && isCoreWorld(market)) continue;
 			if (market.isPlayerOwned() && !playerAllowed) continue;
+			// no war opened before the hive is ready for it (warOpen)
+			if (!warOpen(market, phase)) continue;
 			if (onlyFactionId != null && !onlyFactionId.equals(market.getFactionId())) continue;
 			if (isActiveStrikeTarget(market)) continue; // one strike per world
 			// the swarm strikes only what it has scouted (ThreatSwarmScouts)
@@ -4319,10 +4396,32 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return fleets[1] + WarSimScript.getStationStrength(target.getFaction(), system, target.getPrimaryEntity());
 	}
 
+	/**
+	 * Whether a strike at the world starts no war the hive is not ready for
+	 * (2026-10-01): a faction mobilises the day its first world is struck
+	 * (ThreatWarState.recordStrike), so before phase 3 - an armada-capable hive
+	 * with a core world in reach - the swarm strikes only a faction at war with
+	 * it already, one that has hurt it (a grudge, ThreatAlarm), or one that
+	 * never mobilises (pirates, ownerless stations). ng1b's new hive struck the
+	 * Hegemony at month 26 with six worlds; the Hegemony mobilised at 29 and
+	 * razed it over the next eight years. The player's worlds likewise: the
+	 * player's own mobilisation, or a grudge, opens them.
+	 */
+	public static boolean warOpen(MarketAPI market, int phase) {
+		if (phase >= 3 || market == null || !ThreatWarState.enabled()) return true;
+		String factionId = market.isPlayerOwned() ? Factions.PLAYER : market.getFactionId();
+		// the cheap reads first: this runs per market per pick
+		if (ThreatWarState.isAtWar(factionId) || ThreatAlarm.grudge(factionId) > 0f) return true;
+		FactionAPI faction = Global.getSector().getFaction(factionId);
+		return faction == null || faction.isNeutralFaction() || ThreatWarState.excluded(factionId);
+	}
+
 	/** The strike gate's filters short of reach and weight: a world a strike may be aimed at now. */
 	protected static boolean strikeAllowed(MarketAPI market) {
 		if (!isStrikeableWorld(market)) return false;
-		if (getPhase() < 3 && isCoreWorld(market)) return false;
+		int phase = getPhase();
+		if (phase < 3 && isCoreWorld(market)) return false;
+		if (!warOpen(market, phase)) return false;
 		if (market.isPlayerOwned() && ThreatIncData.daysSincePlayerStruck() < ThreatIncConfig.playerGraceDays()) {
 			return false;
 		}

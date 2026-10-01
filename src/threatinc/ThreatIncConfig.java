@@ -764,6 +764,7 @@ public class ThreatIncConfig {
 	public static boolean debugForceStart()  { return b("threatinc_debugForceStart", false); }
 	public static boolean debugFastClock()   { return b("threatinc_debugFastClock", false); }
 	public static boolean debugGrantSensorMods() { return b("threatinc_debugGrantSensorMods", false); }
+	public static boolean debugPlayerIgnored() { return b("threatinc_debugPlayerIgnored", false); }
 	public static boolean debugReset()       { return b("threatinc_debugReset", false); }
 	// instant war (ThreatDebugWar): a connected network of mature hive systems
 	// founded at once and every faction mobilised, to test the war on a fresh save
