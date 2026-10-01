@@ -239,7 +239,7 @@ Replaces vanilla's instant saturation on human colonies (today `bombardSaturatio
 straight to super) and the mod's hive saturation (`threatSatConfirm`, 20 days on everything,
 `hiveSatDisruptDays`, never reduces size).
 
-**A hive has no bar** (2026-10-01, user's call; docs/ground-war.md "Saturation presses a hive"):
+**A hive has no bar** (2026-10-01, user's call; docs/ground-war-sieges.md "Saturation presses a hive"):
 over a hive saturation is the lock, the structures, the growth pause and the unrest below, at
 2.86 fuel per FP a day, flown to the commander's stop - each structure's clock closing on the
 wear cap a day at a time, never a size off. The bar, its tables and combined arms are a human
@@ -339,7 +339,7 @@ cut by the share it absorbs. Raids and fronts ignore it, as today.
   instead of a siege (`ThreatPurgeFGI`; `strikeSaturationEnabled` for the swarm's side, default
   false today). A colony is razed where that is cheaper than a siege; a hive, since 2026-10-01,
   is only saturated to the commander's stop, where its landing is beyond the marines held and it
-  still produces - by a bombing squadron while the flotilla holds the orbit (docs/ground-war.md
+  still produces - by a bombing squadron while the flotilla holds the orbit (docs/ground-war-sieges.md
   "Saturation presses a hive").
 - `IncursionManager.siegeRaidStrNeeded` sizes landings against defences worn by the new rules.
 
@@ -452,7 +452,7 @@ Knob names are proposals. `hiveBombardCostMult` goes too (fuel no longer derives
   without bombarding ("out of fuel to bombard with"). A Defend fleet with no fuel over a front
   that cannot hold fabricates troops, since an empty tank counts as orbit done (`orbitDoneFor`).
   The swarm pays from the hive's fuel stock at the same rates since 2026-10-01
-  (`threatPaysOrdnance`, docs/hive-economy.md "Idle stock" part 4); before that it paid nothing.
+  (`threatPaysOrdnance`, docs/hive-reach-and-stock.md "Idle stock" part 4); before that it paid nothing.
 - **One atrocity per saturation campaign** (`$threatinc_satAtrocity`, 30 days), not one a day: a
   70-day campaign counts once, as vanilla's one-shot did.
 - **Story-critical worlds** stop at size 3 and are never destroyed, as vanilla's saturation
@@ -506,7 +506,7 @@ The AI half, and what reviewing it changed (same day):
   `siegeOrbitDays`. Never a world another faction's front stands on, a story-critical one, or a
   razing that would leave the rest of a mixed siege short of fuel. A hive is not priced this way
   since 2026-10-01: it is saturated to the commander's stop only where its landing is beyond the
-  marines held and it still produces (docs/ground-war.md "Saturation presses a hive").
+  marines held and it still produces (docs/ground-war-sieges.md "Saturation presses a hive").
   `npcRazeEnabled` switches the task off.
 - **Ordnance.** A siege expedition draws its passage, its ordnance (ONE world since 2026-09-29 -
   the dearest of the non-front targets, not each world it lands on: the first landing unloads

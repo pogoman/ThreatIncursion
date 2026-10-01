@@ -125,7 +125,7 @@ stockpile, so the player buying at a link doesn't starve it. A shortage resets
 the count. `frontlineStarveDays` of shortage shrinks it one size; at size 1 it
 is abandoned.
 
-**Under size upkeep** (2026-09-30, `sizeUpkeep`, the default; `feedSize`; docs/hive-economy.md
+**Under size upkeep** (2026-09-30, `sizeUpkeep`, the default; `feedSize`; docs/hive-garrison-and-upkeep.md
 "Size upkeep") a link grows and starves on supplies instead. From size 3 it costs the hive's
 curve - 100 a month at size 3, 250, 625, 1,563 at size 6 - paid daily: its own stock above its
 floor and staging bank pays all it can, and its home base and the faction's markets in reach
@@ -233,7 +233,7 @@ falls, everything beyond it loses the bonus on the next day's update.
   condition removed; the market is theirs.
 
 **The Threat breaks the chain.** In `pickStrikeTarget` (`strikeValue`, then the stance multiplier,
-docs/strategy-layer.md "Strike target weight") a link's weight is
+docs/strategy-orbit-outposts.md "Strike target weight") a link's weight is
 max(size, 3)² × `frontlineStrikeWeight` × (1 + links its loss would cut), in
 place of size². `isStrikeableWorld` admits links below size 3. The swarm still
 needs to have scouted the system (`ThreatSwarmScouts.swarmKnows`).
@@ -270,7 +270,7 @@ Strikes in flight in an older save have no hidden flag and stay visible.
 **Front and rear (2026-09-27, the user's call).** Only the front stands guard.
 For every found hive world that stages strikes, the faction's market nearest it is
 its front toward that hive (within 0.5 LY, so a whole system counts), if the hive's
-fuel reaches it - with the hive's reach its bill (2026-09-30, docs/hive-economy.md
+fuel reaches it - with the hive's reach its bill (2026-09-30, docs/hive-reach-and-stock.md
 "Reach is the bill"), if the hive world would strike this faction first
 (`ThreatReach.facedFaction`). A link in a system with any hive world or any Threat fleet but a
 Scouting Swarm is at the front too (run 10's unguarded ground-victory bases died to
@@ -400,7 +400,7 @@ a single strike the month their garrison went home. So now:
   a siege - its home is often the hive's staging base. Since 2026-10-01 a market's
   stock reaches as far as its fuel pays, and each pays out of its fuel the haul to
   the market it pays at (`gives` / `drawGiven`, for upkeep, size upkeep, foundings,
-  builds and voyages alike; docs/strategy-layer.md "Logistics reach"). A voyage is checked and
+  builds and voyages alike; docs/strategy-convoys.md "Logistics reach"). A voyage is checked and
   paid from the same stock, in full or the fleets stand down. Sieges pool from
   links like any other base (`IncursionManager.siegeDonors`). Every monthly
   payment is logged with who paid it.
@@ -555,7 +555,7 @@ Load risks to watch:
 - **Relief only for links, not for colonies.** Relieving colonies too would
   shift the balance of every strike, and humans already win early.
   (Still true of strikes. A Threat army that has LANDED on a colony is relieved since
-  2026-09-27, sized to the swarm over it: docs/ground-war.md "Relief".)
+  2026-09-27, sized to the swarm over it: docs/ground-war-orbit-control.md "Relief".)
 - **Recording a strike (mobilisation) moved to detection,** with the response.
 
 ## 7. Not built
