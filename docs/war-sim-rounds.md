@@ -332,3 +332,27 @@ The gain is a larger swarm, not levels lost and regained: at the end of the mid-
 Clear mid-war and ahead in 76% of new-game seeds, the humans above their floor (18 / 21.8) on both starts - the same
 standing as round 17's winner. **The base from here** (120 seeds): new game humanScore 29, threatScore 1,636, hives killed
 6.5; mid-war 31 / 464.
+
+### 16e. The older verdicts on the built base (60 seeds)
+
+- `threatinc_stanceConsolidateShare` (round 19's one lever) is now noise from a new game: 0.35 / 0.65 / 0.75 give 1,622 /
+  1,668 / 1,939 against 1,569, ahead in 47% / 39% / 42% of seeds. What 0.75 bought before was fewer months in a stance that
+  overfed growth; the feed share took that at the source. The knob stays 0.5.
+- Relief: m (the mod's rule) humanScore 28.5 -> 30 (58% of seeds) new game, 31 -> 32.5 (60%) mid-war; rg (all relief goes
+  home) 33 (57%) and 36 (62%); bases destroyed halve in all four (clear) and the longest dead stretch grows mid-war (0.6 ->
+  0.8 y, 89% of seeds). 16a's verdict stands.
+
+### 16f. The siege gate's trip price against the burn (round 16's open question)
+
+Counters `siegeTrip.sieges`, `.priced` (the gate's supplies want less the deposit, at `HumanPlanner.launch`), `.burned` and
+`.owed` (`HumanSide.upkeep`, the siege's parcels from muster to home). New game, 30 seeds, built base
+(`compare -a "warsim_noop=0" -b "threatinc_warCouncil=false" -show siegeTrip.sieges,siegeTrip.priced,siegeTrip.burned,siegeTrip.owed`):
+
+| | sieges | trip priced | burned | owed |
+|---|---|---|---|---|
+| council | 20 | 36.3k | 23.9k (66%) | 1.2k |
+| planner | 304 | 699k | 336k (48%) | 16.4k |
+
+The gate asks 1.5x (council) to 2.1x (planner) the supplies a siege goes on to eat: a siege is home, or smaller, well
+inside the horizon it was priced for (which of the two was not split out). Round 17 already cut the price (`warsim_tripMult` 0.5,
+`warsim_tripFixedDays` 30) and the humans' score did not rise, so the margin is not what holds the sieges back. Closed.
