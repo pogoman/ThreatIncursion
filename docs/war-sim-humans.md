@@ -612,6 +612,14 @@ A humans-only lever needs its own knob in the mod (`ThreatReserves.accrualPer30`
 `reserveSurplusMult` back at 1.0 until it has one. This round's grid therefore runs on the humans-only base
 (`threatinc_reserveSurplusMult=1.0; warsim_accrualMult=1.5`), with the shared 1.5 as a cell against it.
 
+The same day the hives' banking was split off as `threatinc_hiveSurplusMult` (1.0; `ThreatFuel`, `ThreatColonyUpkeep`;
+`SwarmKnobs.surplusMult` reads it) and `reserveSurplusMult` 1.5 became the humans' alone (`ThreatReserves.surplusMult`). The
+new defaults against this base on the same 30 seeds (`compare`, `-killWeight 1`, `-months 104` / `48`): new game humanScore
+30 against 28.5, threatScore 864 against 886; mid-war 32.5 against 33.5, 336 against 338; every class share identical. The
+one real difference is marines: `warsim_accrualMult` scaled all four commodities, the knob leaves marines at
+`reserveTroopSurplusMult` as the mod does (and the simulator still puts armaments under `reserveSurplusMult`, where the mod
+has them under the troop share) - within seed noise on both starts.
+
 Cells, 30 seeds, both starts, every one on that base. Human side, ranked by humanScore: the shared 1.5 (both sides);
 relief to the besiegers (`warsim_reliefToBesiegers`, round 16 r); links waiting on an unpaid siege (`warsim_linkWaitsForSiege`,
 round 15 e); upkeep x0.5 (`warsim_suppliesPerFPMult`, a diagnostic - not a rule the mod may hold, round 17); the council's
