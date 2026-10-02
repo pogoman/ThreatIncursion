@@ -145,7 +145,7 @@ final class HumanIntel {
 		float[] cost = ReachRules.voyageCost(fp, 2f * base.sys.ly(to), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
 		float[] wants = { 0f, 0f, cost[0], cost[1] };
-		if (!HumanPools.pay(s, base, wants, false)) return false;
+		if (!HumanPools.pay(s, base, wants, false, "scout")) return false;
 		Parcel p = s.send(f.id, Parcel.Kind.SCOUT, base.sys, to, fp, 0);
 		HumanOrder o = new HumanOrder();
 		o.home = base;

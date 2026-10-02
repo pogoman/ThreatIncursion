@@ -106,7 +106,7 @@ final class HumanPlanner {
 				* s.knobs.f("threatinc_frontPushUpkeepMult") * s.knobs.f("threatinc_npcFrontSupplyDays") / 30f / 2f;
 		o.wants = new float[] { marines, arms, ReachRules.passageFuel(points, o.ly, fuelLY) + ordnance, supplies };
 		o.affordable = true;
-		java.util.List<World> donors = HumanPools.donors(s, base);
+		java.util.List<World> donors = HumanPools.donors(s, base, true);
 		for (int c = 0; c < 4; c++) {
 			if (HumanPools.payable(s, base, c, true, donors) < o.wants[c]) {
 				o.affordable = false;
@@ -206,7 +206,7 @@ final class HumanPlanner {
 			// siegeCanPay prices the whole trip; only the hulls' deposit is drawn now, ThreatUpkeep bills the rest as it goes
 			float[] draw = o.wants.clone();
 			draw[World.SUPPLIES] = o.fp / ReachRules.FP_PER_POINT * s.knobs.f("threatinc_expeditionSuppliesPerPoint");
-			if (!HumanPools.pay(s, o.base, draw, true)) continue;
+			if (!HumanPools.pay(s, o.base, draw, true, "siege")) continue;
 			launch(s, f, o);
 			sailed = true;
 			miss = PlannerRules.miss(miss, o.trust);
@@ -245,7 +245,7 @@ final class HumanPlanner {
 			float[] cost = ReachRules.voyageCost(escort, 2f * base.sys.ly(h.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 					s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
 			h.front.lastRunDay = s.day;
-			if (!HumanPools.pay(s, base, new float[] { marines, arms, cost[0], cost[1] }, false)) {
+			if (!HumanPools.pay(s, base, new float[] { marines, arms, cost[0], cost[1] }, false, "convoy")) {
 				s.count("frontRunWaits", 1);
 				continue;
 			}
@@ -301,7 +301,7 @@ final class HumanPlanner {
 		float[] cost = ReachRules.voyageCost(fp, 2f * opt.ly, s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
 		float ordnance = HumanFit.RAID_STAY_DAYS * BattleRules.bombardFuelPerDay(fp, s.knobs.f("threatinc_bombardFuelPerFPDay"));
-		if (!HumanPools.pay(s, opt.base, new float[] { 0f, 0f, cost[0] + ordnance, cost[1] }, false)) return;
+		if (!HumanPools.pay(s, opt.base, new float[] { 0f, 0f, cost[0] + ordnance, cost[1] }, false, "raid")) return;
 		f.lastRaidDay = s.day;
 		Parcel p = s.send(f.id, Parcel.Kind.SQUADRON, opt.base.sys, opt.hive.sys, fp, 0);
 		p.targetId = opt.hive.id;
@@ -324,6 +324,11 @@ final class HumanPlanner {
 	static void hunts(State s, Faction f) {
 		f.lastHuntDay = s.day;
 		if (!s.knobs.b("threatinc_softenEnabled", true)) return;
+		// round 14 trial a: no hunting force while a play's siege is staging or mustering - the siege has first call
+		if (HumanCouncil.siegeStaging(s, f)) {
+			s.count("huntsHeldForSiege", 1);
+			return;
+		}
 		float margin = s.knobs.f("threatinc_npcSiegeOrbitMargin");
 		int rest = s.knobs.i("threatinc_softenIntervalDays");
 		// hasSiegeableHive: a base with a siege it could sail today spends on that, not on hunting forces
@@ -394,7 +399,7 @@ final class HumanPlanner {
 		float[] cost = ReachRules.voyageCost(fp, 2f * base.sys.ly(target.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
 		// the voyage is paid at the muster; the ships' supplies are billed as they go (ThreatUpkeep)
-		if (!HumanPools.pay(s, base, new float[] { 0f, 0f, cost[0], cost[1] }, false)) {
+		if (!HumanPools.pay(s, base, new float[] { 0f, 0f, cost[0], cost[1] }, false, "hunt")) {
 			s.count("huntWaits", 1);
 			return;
 		}

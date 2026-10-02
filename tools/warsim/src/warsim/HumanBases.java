@@ -71,7 +71,7 @@ final class HumanBases {
 		for (World b : HumanPools.donors(s, anchorNearest(anchors, site))) {
 			if (b.base && !b.forwardBase && HumanPools.canPay(s, b, wants, false)) { payer = b; break; }
 		}
-		if (payer == null || !HumanPools.pay(s, payer, wants, false)) {
+		if (payer == null || !HumanPools.pay(s, payer, wants, false, "link")) {
 			s.count("linkCannotPay", 1);
 			s.log("Frontline: " + f.id + " cannot pay for a link at " + site + " - no base holds the stock");
 			return;
@@ -127,6 +127,9 @@ final class HumanBases {
 		return Math.max(s.knobs.f("threatinc_frontlineGarrisonFP"), strike * s.knobs.f("threatinc_frontlineGarrisonMargin"));
 	}
 
+	/** A guard's supplies a month per FP (HumanFit.GUARD_UPKEEP_PER_FP), x warsim_guardUpkeepMult (round 14 trial b). */
+	static float guardUpkeepPerFP(State s) { return HumanFit.GUARD_UPKEEP_PER_FP * s.knobs.f("warsim_guardUpkeepMult", 1f); }
+
 	/**
 	 * ThreatFrontlines.garrisonBase: why a standing garrison of needFP cannot be sent to a site, or null. The
 	 * garrisons' upkeep must stay within upkeepBudget (the supplies income plus the stock above the floors over
@@ -134,9 +137,9 @@ final class HumanBases {
 	 */
 	static String cannotGuard(State s, Faction f, StarSys site, float needFP) {
 		if (needFP <= 0f || !s.knobs.b("threatinc_frontlineGarrisonEnabled", true)) return null;
-		float upkeep = needFP * HumanFit.GUARD_UPKEEP_PER_FP, income = 0f, spare = 0f;
+		float upkeep = needFP * guardUpkeepPerFP(s), income = 0f, spare = 0f;
 		for (World w : s.worldsOf(f.id)) {
-			if (w.forwardBase && w.sys != site) upkeep += Math.max(w.guardFP, guardWanted(s, f, w)) * HumanFit.GUARD_UPKEEP_PER_FP;
+			if (w.forwardBase && w.sys != site) upkeep += Math.max(w.guardFP, guardWanted(s, f, w)) * guardUpkeepPerFP(s);
 			if (!w.hasReserve) continue;
 			income += w.accrualPer30[World.SUPPLIES];
 			spare += HumanPools.available(s, w, World.SUPPLIES);
@@ -172,7 +175,7 @@ final class HumanBases {
 		if (from == null) return;
 		float[] cost = ReachRules.voyageCost(want, from.sys.ly(w.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
-		if (!HumanPools.pay(s, from, new float[] { 0f, 0f, cost[0], cost[1] }, false)) {
+		if (!HumanPools.pay(s, from, new float[] { 0f, 0f, cost[0], cost[1] }, false, "guardVoyage")) {
 			s.count("guardCannotPay", 1);
 			s.log("Frontline: " + f.id + " cannot garrison " + w.name + " (" + (int) want + " FP)");
 			return;
@@ -199,21 +202,21 @@ final class HumanBases {
 
 			if (age > 0 && age % 30 == 0) {
 				// the garrison's month of supplies, from the base and then the pool; under half paid, it goes home
-				float due = w.guardFP * HumanFit.GUARD_UPKEEP_PER_FP;
-				if (due > 0f && !HumanPools.pay(s, w, new float[] { 0f, 0f, 0f, due }, false)) {
+				float due = w.guardFP * guardUpkeepPerFP(s);
+				if (due > 0f && !HumanPools.pay(s, w, new float[] { 0f, 0f, 0f, due }, false, "guardUpkeep")) {
 					float have = HumanPools.payable(s, w, World.SUPPLIES, false);
 					if (have < due * s.knobs.f("threatinc_upkeepBreakEven")) {
 						s.log("Frontline: garrison of " + w.name + " recalled, upkeep unpaid");
 						s.count("guardsRecalled", 1);
 						w.guardFP = 0f;
 					} else {
-						HumanPools.pay(s, w, new float[] { 0f, 0f, 0f, have }, false);
+						HumanPools.pay(s, w, new float[] { 0f, 0f, 0f, have }, false, "guardUpkeep");
 					}
 				}
 				// the colony's own upkeep from size 3, and growth on healthy days (ThreatColonyUpkeep)
 				float upkeep = w.size >= 3 ? s.knobs.f("threatinc_sizeUpkeepAt3")
 						* (float) Math.pow(s.knobs.f("threatinc_sizeUpkeepRatio"), w.size - 3) : 0f;
-				boolean fed = upkeep <= 0f || HumanPools.pay(s, w, new float[] { 0f, 0f, 0f, upkeep }, false);
+				boolean fed = upkeep <= 0f || HumanPools.pay(s, w, new float[] { 0f, 0f, 0f, upkeep }, false, "baseUpkeep");
 				if (fed) {
 					w.healthyDays += 30f;
 					w.starveDays = 0f;
