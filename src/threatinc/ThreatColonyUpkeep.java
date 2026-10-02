@@ -70,14 +70,13 @@ public class ThreatColonyUpkeep {
 
 	/** Supplies a month a colony of this size costs: 0 below size 3. */
 	public static float perMonth(int size) {
-		if (size < 3) return 0f;
-		return Math.max(0f, ThreatIncConfig.sizeUpkeepAt3())
-				* (float) Math.pow(Math.max(1f, ThreatIncConfig.sizeUpkeepRatio()), size - 3);
+		return threatinc.rules.HiveRules.sizeUpkeepPerMonth(size, ThreatIncConfig.sizeUpkeepAt3(),
+				ThreatIncConfig.sizeUpkeepRatio());
 	}
 
 	/** The share of its upkeep that holds a colony at its size. */
 	public static float breakEven() {
-		return Math.max(0.05f, Math.min(0.95f, ThreatIncConfig.upkeepBreakEven()));
+		return threatinc.rules.HiveRules.breakEven(ThreatIncConfig.upkeepBreakEven());
 	}
 
 	/** Days a colony paid nothing takes to starve through a level. */
@@ -112,9 +111,7 @@ public class ThreatColonyUpkeep {
 	 * nothing (a size lost per starveDays).
 	 */
 	public static float growthRate(float fed) {
-		float t = breakEven();
-		if (fed >= t) return Math.min(1f, (fed - t) / (1f - t));
-		return -Math.min(1f, (t - fed) / t);
+		return threatinc.rules.HiveRules.growthRate(fed, breakEven());
 	}
 
 	/** The share of a hive world's imports that does not arrive: a human blockade's, or half while its port is down. */
@@ -155,10 +152,12 @@ public class ThreatColonyUpkeep {
 	/** The share of the month's production, after fleets away, the hive lets its colonies' upkeep take (by stance). */
 	public static float feedShare() {
 		int stance = ThreatStance.stance();
-		float share = stance == ThreatStance.PRESS ? ThreatIncConfig.feedSharePress()
-				: stance == ThreatStance.CONSOLIDATE ? ThreatIncConfig.feedShareConsolidate()
-				: ThreatIncConfig.feedShareExpand();
-		return Math.max(0f, Math.min(1f, share));
+		return threatinc.rules.StanceRules.feedShare(
+				stance == ThreatStance.PRESS ? threatinc.rules.StanceRules.PRESS
+						: stance == ThreatStance.CONSOLIDATE ? threatinc.rules.StanceRules.CONSOLIDATE
+						: threatinc.rules.StanceRules.EXPAND,
+				ThreatIncConfig.feedShareExpand(), ThreatIncConfig.feedSharePress(),
+				ThreatIncConfig.feedShareConsolidate());
 	}
 
 	/**

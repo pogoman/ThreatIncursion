@@ -173,10 +173,9 @@ public class ThreatFuel {
 
 	/** Fuel a fleet of {@code fp} draws over {@code ly}: both ways, or the way out only. */
 	public static float passage(float fp, float ly, boolean roundTrip) {
-		if (!enabled() || fp <= 0f || ly <= 0f) return 0f;
-		float fuel = fp / IncursionManager.FP_PER_RESPONSE_DIFFICULTY * ly
-				* ThreatIncConfig.expeditionFuelPerPointLY();
-		return roundTrip ? fuel : fuel * (1f - ThreatReturns.RETURN_LEG_SHARE);
+		if (!enabled()) return 0f;
+		return threatinc.rules.SpreadRules.passageFuel(fp, ly, roundTrip, IncursionManager.FP_PER_RESPONSE_DIFFICULTY,
+				ThreatIncConfig.expeditionFuelPerPointLY(), ThreatReturns.RETURN_LEG_SHARE);
 	}
 
 	public static boolean canPay(float fuel) {

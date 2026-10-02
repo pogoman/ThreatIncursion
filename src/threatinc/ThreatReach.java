@@ -65,12 +65,12 @@ public class ThreatReach {
 
 	/** Days a fleet takes to cross {@code ly} at the board's estimated speed. */
 	public static float days(float ly) {
-		return Math.max(0f, ly) / ThreatWarBoard.EST_LY_PER_DAY;
+		return threatinc.rules.SpreadRules.days(ly, ThreatWarBoard.EST_LY_PER_DAY);
 	}
 
 	/** Days a fleet is away on a trip of {@code ly}: out, back as well if {@code roundTrip}, and {@code stay} besides. */
 	public static float daysAway(float ly, boolean roundTrip, float stay) {
-		return days(ly) * (roundTrip ? 2f : 1f) + Math.max(0f, stay);
+		return threatinc.rules.SpreadRules.daysAway(ly, roundTrip, stay, ThreatWarBoard.EST_LY_PER_DAY);
 	}
 
 	/** Days a strike at a world {@code ly} out is away from its garrison: its muster, there and back. */
@@ -280,15 +280,13 @@ public class ThreatReach {
 		float need = suppliesPerMonth(fp);
 		float flow = spare();
 		if (need <= flow) return true;
-		float months = Math.max(1f, days) / 30f;
-		return need * months <= flow * months + freeStock();
+		return threatinc.rules.StrikeRules.canSustain(need, flow, days, freeStock());
 	}
 
 	/** The most fleet points canSustain lets away for {@code days}: the flow and the stock spread over the trip. */
 	public static float sustainableFP(float days) {
 		if (!enabled() || !ThreatColonyUpkeep.enabled()) return Float.MAX_VALUE;
-		float months = Math.max(1f, days) / 30f;
-		return Math.max(0f, spare() + freeStock() / months) / suppliesPerFP();
+		return threatinc.rules.StrikeRules.sustainableFP(spare(), days, freeStock(), suppliesPerFP());
 	}
 
 	/** Supplies in stock above what one founding takes (ThreatFuel.foundingCost): what trips may draw on. */

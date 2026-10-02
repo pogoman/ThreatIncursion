@@ -4372,8 +4372,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				// went a median 2 ly from a human world and were razed within ~11
 				// months, 35 of 62 worlds lost. Every faction at war: no pull at all
 				float dPeace = nearestLY(system, peace);
-				w = (1f + need * 0.01f) * holdShare(system, bases)
-						/ (Math.max(1f, ThreatReach.days(dInfested)) * (dPeace >= 0f ? ThreatReach.strikeDays(dPeace) : 1f));
+				w = threatinc.rules.SpreadRules.billedWeight(need, holdShare(system, bases),
+						ThreatReach.days(dInfested), dPeace >= 0f ? ThreatReach.strikeDays(dPeace) : 1f);
 			} else {
 				w = (1f + need * 0.01f)
 						/ ((1f + dInfested) * (1f + dInhabited * dInhabited));
@@ -4713,7 +4713,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * swarm turns on whoever is hurting it (ThreatAlarm grudge).
 	 */
 	public static float strikeValue(MarketAPI market) {
-		float w = market.getSize() * market.getSize();
+		float w = threatinc.rules.StrikeRules.sizeValue(market.getSize());
 		if (ThreatFrontlines.isOutpost(market)) w = ThreatFrontlines.strikeWeight(market);
 		return w * ThreatAlarm.targetMult(market.getFactionId());
 	}

@@ -255,7 +255,7 @@ public class ThreatPosture {
 	public static float releasableFP(MarketAPI market, float heldFP) {
 		if (!enabled() || market == null) return 0f;
 		float band = Math.max(0f, ThreatIncConfig.postureBand());
-		return heldFP - wantFP(market) * (1f + band) - oneSwarmFP(market);
+		return threatinc.rules.PostureRules.releasableFP(heldFP, wantFP(market), band, oneSwarmFP(market));
 	}
 
 	/**
@@ -266,9 +266,7 @@ public class ThreatPosture {
 	 */
 	public static int claimCap(int freeForges) {
 		if (!enabled() || appetite < 0f) return freeForges;
-		float a = Math.min(1f, appetite) * ThreatStance.expansionShare();
-		if (a <= 0f || freeForges <= 0) return 0;
-		return Math.max(1, (int) Math.ceil(freeForges * a));
+		return threatinc.rules.PostureRules.claimCap(freeForges, appetite, ThreatStance.expansionShare());
 	}
 
 	public static float appetite() {
@@ -448,7 +446,7 @@ public class ThreatPosture {
 	}
 
 	protected static float decay(float days) {
-		return (float) Math.exp(-Math.max(0f, days) / DECAY_DAYS);
+		return threatinc.rules.PostureRules.decay(days, DECAY_DAYS);
 	}
 
 	// ------------------------------------------------------------------
@@ -880,9 +878,8 @@ public class ThreatPosture {
 	 * defaults. Never with no upkeep.
 	 */
 	public static float breakEvenDays() {
-		float upkeep = ThreatIncConfig.garrisonUpkeepPerMonth();
-		if (upkeep <= 0f) return Float.MAX_VALUE;
-		return Math.max(0f, 1f - ThreatReturns.hullShare()) / upkeep * 30f;
+		return threatinc.rules.PostureRules.breakEvenDays(ThreatReturns.hullShare(),
+				ThreatIncConfig.garrisonUpkeepPerMonth());
 	}
 
 	/**
