@@ -50,7 +50,7 @@ fault. A new counter in the monthly dump (`ThreatSimDump`) needs a game run; a l
 
 **Answered 2026-10-02 late:** 1 and 2 yes, 3 not intended (every faction guards its siege on screen or off) -
 all three built in the mod and the simulator's defaults, jar 21:15, untested in the game (`war-sim-calibration.md`
-11). 4 still open.
+11). 4: keep the guard "for now".
 
 1. **Mobilise every faction when the swarm reaches phase 3.** hw4c: the Diktat, first struck on day 3,000,
    mobilised that day and lost Sindria (size 7) to 1,419 troops landed within the month. Simulator trial
