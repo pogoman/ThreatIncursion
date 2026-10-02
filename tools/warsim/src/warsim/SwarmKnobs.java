@@ -9,6 +9,9 @@ final class SwarmKnobs {
 			foundingFPPerStructure, frontlineStrikeWeight;
 	final int spreadMinSize, strikeMinSize, maxSize, conquestSize;
 	final boolean conquestConverts, scouting, fog, militaryTier, startAtGameStart, stanceEnabled;
+	/** ThreatAlarm's grudge, the relief strike and the retaliation (IncursionManager.pickStrikeTarget, retaliate). */
+	final float alarmPerStratum, alarmPerEradication, alarmDecayPer30, alarmTargetMult, reinforceWeight;
+	final boolean alarm, reliefFirst, retaliation;
 
 	SwarmKnobs(Knobs k) {
 		tickDays = k.f("threatinc_tickDays");
@@ -55,6 +58,14 @@ final class SwarmKnobs {
 		militaryTier = k.b("threatinc_hiveMilitaryTier", true);
 		startAtGameStart = k.b("threatinc_startAtGameStart", true);
 		stanceEnabled = k.b("threatinc_stanceEnabled", true);
+		alarm = k.b("threatinc_alarmEnabled", true);
+		alarmPerStratum = k.f("threatinc_alarmPerStratum");
+		alarmPerEradication = k.f("threatinc_alarmPerEradication");
+		alarmDecayPer30 = k.f("threatinc_alarmDecayPer30");
+		alarmTargetMult = k.f("threatinc_alarmTargetMult");
+		reinforceWeight = k.f("threatinc_strikeReinforceWeight");
+		reliefFirst = k.b("threatinc_strikeReliefFirst", true);
+		retaliation = k.b("threatinc_retaliationEnabled", true);
 	}
 
 	/** Supplies a founding takes from the stock (ThreatFuel.foundingCost()[0]). */

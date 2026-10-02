@@ -110,6 +110,13 @@ public final class SwarmFit {
 	public static int overrunDays(Random r) { return 40 + r.nextInt(200); }
 	/** What a reinforcing pass adds to a front's life: the 12 reinforced fronts ran 187-751 days, median 405, on 1-3 passes. */
 	public static int reinforcedDays(Random r) { return 100 + r.nextInt(100); }
+	/**
+	 * The share of ticks an invaded colony at war still passes the strike gate (strikeOutweighed
+	 * against the defence its relief has raised; the dump's "defence" of Salamanca ran 440 -> 5058,
+	 * Tigra City 150 -> 1068 once at war, and pd9a logged 1,000+ "Strike gate: X passed over").
+	 * Stands in for a defence model of a colony at war: 28 "Strike pass (reinforce)" for 86 landings.
+	 */
+	public static final float INVADED_GATE_SHARE = 0.1f;
 	/** A world taken becomes a hive when it is a planet: Kanni and Qaras did, Kanta's Den (a station) did not. */
 	public static final float CONQUEST_HIVE_SHARE = 0.67f;
 	/**

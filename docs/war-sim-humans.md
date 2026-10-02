@@ -150,6 +150,13 @@ Where it misses, largest first:
    double's strike rate; "cannot pay for a link" (the mod's main brake, 260+ lines in pd9a)
    binds less with supplies plentiful.
 
+Joined with `SwarmSide` (2026-10-02, `check` on pd9a, 30 seeds, month 115, real | median [p10-p90]):
+sieges sailed 201 | 301 [171-376], landed 41 | 132 [98-159], fronts overrun by the hive 11 | 110
+[80-137], hives killed 23 | 14.5 [7-24], hunts 183 | 629+, bases founded 15 | 13, destroyed 9 | 6,
+given up 5 | 5. The front on a hive is the miss: `HumanSiege.frontDay` lands at the beachhead
+margin (E = 0.625 x defence), the push wears it and the next counter-attack has 2:1; pd9a's
+fronts were fed (supply runs, "Front reinforced", the flotilla holding the orbit) and won 24 of 41.
+
 ## 6. What the next jobs need
 
 One-liners for files this job does not own:

@@ -94,9 +94,21 @@ be made twice.
   are rolled once (`rollExpandable`).
 - **Strikes** (`tryStrikes`, `launchStrike`): each hive system, shuffled, one a tick; at least two
   spare swarms; every spare swarm sent, fewer while fuel or supplies cannot carry them; the
-  gate reads the strike at 300 a swarm against the defence last seen. On arrival
-  `BattleRules.lossShare` both ways; a forward base is destroyed at once; a world falls after
-  `groundDays` unless the human side kills the parcel; survivors fly home and are banked.
+  gate reads the strike at 300 a swarm against the defence last seen (`strikeFrom`). On arrival
+  `BattleRules.lossShare` both ways (the fleets pay, the world's `defence` is not worn); a
+  forward base is destroyed at once; at a colony the troops land and the hulls fly home to be banked.
+- **Landings** (`SwarmOps.land`, `fronts`; `Swarm.Landing` per world): troops = `TROOPS_PER_FP` x
+  the FP that reached the orbit, none under `LANDING_MIN_TROOPS`. Decided the day after: a colony
+  of a mobilised faction counter-attacks and overruns the beachhead after `overrunDays`
+  (`beachheadsOverrun`); one with no reserve (pirates, the Path, a faction not at war) falls after
+  `groundDays`. A later strike on an invaded world reinforces (`threatReinforcePasses`,
+  `reinforcedDays` more). The front itself (strata, counter-attack odds) is not modelled.
+- **Target weights** (`pickStrikeTarget`): `ThreatAlarm`'s grudge (`alarm`, `targetMult`,
+  `alarmDecay`; the human side calls `stratumTaken` and `hiveLost`), relief first with
+  `strikeReinforceWeight` for a front on a colony at war, passed by the gate on
+  `INVADED_GATE_SHARE` of ticks (`Landing.gateOpen`).
+- **Retaliation** (`IncursionManager.retaliate` -> `SwarmOps.hiveLost`): a hive eradicated draws
+  a strike at once at the winner from the nearest system that can muster one (`retaliations`).
 - **Fog** (`ThreatSwarmIntel`, `ThreatSwarmScouts`), the simple model chosen: a world is seen
   while within `swarmRadarRangeLY` of a hive system, and when a Scouting Swarm reaches its
   system. Each hive system may send one scout a tick to a random inhabited system unseen or
@@ -119,7 +131,12 @@ be made twice.
 | `EXPANSION_PLANET_SHARE` | 0.17 | 2 in-system waves over 12 spare planets by w1100 |
 | `STRIKE_UNITS_PER_SWARM`, `_PER_FP` | 300, 2.1 | strength 916/1200/900/1500 for 3/4/3/5 swarms |
 | `strikePrepDays` | 7-14 | `launchStrike` |
-| `groundDays` | 50-96 | Kanni 50, Kanta's Den 71, Qaras 96 |
+| `groundDays` | 50-96 | Kanni 50, Kanta's Den 71, Qaras 96; all 7 falls were pirate or Path worlds |
+| `TROOPS_PER_FP` | 0.8 | "Abstract siege of Salamanca: .. 700 FP" then "560 troops"; 0.80 in 47 of 60 landings |
+| `LANDING_MIN_TROOPS` | 50 | "Strike landing at X aborted: only N troops left aboard" |
+| `overrunDays` | 40-239 | 44 unreinforced fronts overrun after 19-248 days, p10 50, median 136, p90 228; 0 of 56 took the colony |
+| `reinforcedDays` | 100-199 | 12 reinforced fronts ran 187-751 days, median 405 |
+| `INVADED_GATE_SHARE` | 0.1 | 28 reinforcing passes for 86 landings; stands in for a colony at war's defence (dump: Salamanca 440 -> 5058) |
 | `CONQUEST_HIVE_SHARE` | 0.67 | Kanni and Qaras became hives, Kanta's Den did not |
 | `SCOUT_SHARE_PER_SYSTEM` | 0.6 | "Reach: .. scouts N": 1-2 with 2-3 systems, 2-9 with 8-10 |
 | `STALE_DAYS` | 30 | census "oldest 46 d; stale systems 2", none at 16 d |
@@ -191,6 +208,15 @@ system; RAIDER is banked at the nearest hive.
 `Hive` structure flags. Fields wanted in the dump are listed in the build report.
 
 ## 8. Known gaps
+
+- Joined with the human side (2026-10-02, `check` on pd9a, 30 seeds, 133 of 184 figures inside
+  p10-p90): strikes 160 [57-309] against 163, landings 92 against 86, beachheads overrun 65
+  against 56, hives 52 [19-91] against 56. Out: worlds lost 13 against 7 (pirate and Path worlds
+  fall to every landing; Chalcedon held one), supplies stock 273k against 16k and fuel 40k against
+  6k at the end (the sinks are missing, or the strikes held for supplies should have sailed).
+- A colony at war never falls and its defence is the start dump's: no model of armed marines,
+  relief convoys, strata or counter-attack odds (`ThreatGroundFronts` D against E, overrun at 2:1).
+  Hull break-up into troops (`beachheadLanding`) and "landing waits: bombardment" are not modelled.
 
 - The Bastion comes about 180 days early and garrisons at month 36 run about 1500 FP low: the
   simulated bank is 800-900 FP richer than the real one over months 17-24, the sink not found.
