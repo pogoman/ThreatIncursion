@@ -76,10 +76,12 @@ public final class SwarmFit {
 	/** Supplies a month a fleet point away burns: "Reach: .. fleets away N/mo, 0.50-0.57 a FP" w765-w949. */
 	public static final float SUPPLIES_PER_FP_AWAY = 0.5f;
 	/**
-	 * A spare planet of a held system carries deposits worth a wave: 2 in-system waves (w550
-	 * Yabazimua, w793 Zeta Vucub-Came II) over the 12 spare planets of the systems held by w1100.
+	 * A spare planet of a held system carries deposits worth a wave. Of the spare planets of the systems
+	 * held at month 60, the swarm had colonised 25 of 33 by pd9a's end and 43 of 44 by pd10a's (0.88). The
+	 * pace is the stock's and the forges' (SwarmOps.expandInSystem), not this share: it stood at 0.17, the
+	 * 2 in-system waves over 12 spare planets by w1100, while the simulator sent one such wave a pass.
 	 */
-	public static final float EXPANSION_PLANET_SHARE = 0.17f;
+	public static final float EXPANSION_PLANET_SHARE = 0.88f;
 	/**
 	 * A strike's strength in the gate's vanilla units: 300 a swarm - "strength 916 / 1200 / 900 / 1500"
 	 * for 3, 4, 3, 5 swarms of 391, 611, 422, 754 FP (w641-w914) - or 2.1 a FP for a fleet
