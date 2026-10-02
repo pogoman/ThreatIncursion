@@ -30,13 +30,16 @@ public final class Main {
 	static String[] SHOWN = { "hives", "hiveSize", "garrisonFP", "bank", "swarmFuel", "swarmSupplies",
 			"worlds", "basesHeld", "basesFounded", "basesDestroyed", "hivesFounded", "hiveLevels", "hivesKilled",
 			"worldsLost", "siegesSailed", "siegesLanded", "strikesLaunched", "threatScore", "humanScore",
+			"threatKills", "threatKills.worlds", "threatKills.bases", "humanKills", "mutual",
 			"turnover", "swings", "reversals", "contested", "deadYears" };
-	/** The run classes of docs/war-sim.md 7: back-and-forth from this many momentum swings, a stalemate from this many dead years. */
-	static final int BACK_AND_FORTH_SWINGS = 3;
-	/** Round 8 (2026-10-02): the class is back-and-forth on reversals too, this many per year of the run (swings read 0 in every run so far). */
-	static final double BACK_AND_FORTH_REVERSALS_PER_YEAR = 1.0;
-	static final double STALEMATE_DEAD_YEARS = 3;
-	static final String[] CLASSES = { "decided for the swarm", "decided for the humans", "back-and-forth", "stalemate", "other" };
+	/**
+	 * The run classes (docs/war-sim.md 7; the user's lead measure since 2026-10-02 round 11 is destruction by both
+	 * sides): "both sides" when mutual = min(threatKills, humanKills) a year since the first mobilisation reaches
+	 * MUTUAL_PER_YEAR; "one-sided" when one side's rate reaches it and the other's is under QUIET_PER_YEAR; "quiet"
+	 * when both are under QUIET_PER_YEAR. swings, reversals, contested and deadYears stay as columns.
+	 */
+	static final double MUTUAL_PER_YEAR = 1.0, QUIET_PER_YEAR = 0.25;
+	static final String[] CLASSES = { "decided for the swarm", "decided for the humans", "both sides", "one-sided", "quiet", "other" };
 	static final int[] CHECKPOINTS = { 12, 24, 36, 48, 72, 97 };
 
 	public static void main(String[] args) throws Exception {
@@ -79,14 +82,15 @@ public final class Main {
 			else throw new IllegalArgumentException("unknown option " + o);
 		}
 		Knobs knobs = Knobs.load(settings);
-		for (String s : sets) knobs.set(s);
+		// -set k=v, repeatable; one -set may also hold several, separated by ';' as -a/-b do
+		for (String s : sets) for (String t : s.split(";")) if (!t.trim().isEmpty()) knobs.set(t.trim());
 
 		String cmd = args[0];
 		if (cmd.equals("check")) {
 			if (dumps == null) throw new IllegalArgumentException("check needs -dumps <folder>");
 			// the real runs the gates are checked against (pd9a, pd10a) are planner runs: the council is off unless -set says otherwise
 			boolean said = false;
-			for (String s : sets) if (s.startsWith("threatinc_warCouncil")) said = true;
+			for (String s : sets) if (s.contains("threatinc_warCouncil")) said = true;
 			if (!said) knobs.set("threatinc_warCouncil=false");
 			if (dumps2 == null) {
 				check(dumps, knobs, seeds, killWeight, sizeExponent, log, null);
@@ -160,8 +164,8 @@ public final class Main {
 	/** docs/war-sim.md 7: spread plus killWeight x worlds destroyed, per side, per month. */
 	static void score(Sim.Result r, float killWeight) {
 		for (Map<String, Double> m : r.months) {
-			m.put("threatScore", m.get("threatSpread") + killWeight * m.get("threatKills"));
-			m.put("humanScore", m.get("humanSpread") + killWeight * m.get("humanKills"));
+			m.put("threatScore", m.get("threatSpread") + killWeight * m.get("threatKillCount"));
+			m.put("humanScore", m.get("humanSpread") + killWeight * m.get("humanKillCount"));
 		}
 		measures(r);
 	}
@@ -175,11 +179,13 @@ public final class Main {
 	 */
 	static void measures(Sim.Result r) {
 		Map<String, Double> first = r.months.get(0);
-		int swings = 0, lastSign = 0, reversals = 0, lastHalf = 0, quietSince = -1, decided = 0, decidedMonth = -1;
+		int swings = 0, lastSign = 0, reversals = 0, lastHalf = 0, quietSince = -1, decided = 0, decidedMonth = -1, mob = -1;
 		double dead = 0;
 		boolean hadHives = false, hadWorlds = false;
 		for (int i = 0; i < r.months.size(); i++) {
 			Map<String, Double> m = r.months.get(i);
+			// the first mobilisation (a mid-war start: month 0), the destruction rates' and deadYears' clock
+			if (mob < 0 && val(m, "mobilised") > 0) mob = i;
 			if (i > 0) {
 				Map<String, Double> was = r.months.get(i - 1);
 				if (val(m, "hivesKilled") + val(m, "worldsLost") + val(m, "basesDestroyed")
@@ -215,6 +221,17 @@ public final class Main {
 			hadWorlds |= worlds > 0;
 			double changed = swarmGround(m) - swarmGround(first) + humanGround(m) - humanGround(first);
 			m.put("turnover", i == 0 ? 0 : changed / (i / 12.0));
+			// destruction a year since the first mobilisation: worlds and bases the swarm destroyed, hives the humans killed
+			double years = mob < 0 || i <= mob ? 0 : (i - mob) / 12.0;
+			Map<String, Double> m0 = mob < 0 ? m : r.months.get(mob);
+			double worldsRate = years <= 0 ? 0 : (val(m, "worldsLost") - val(m0, "worldsLost")) / years;
+			double basesRate = years <= 0 ? 0 : (val(m, "basesDestroyed") - val(m0, "basesDestroyed")) / years;
+			double hivesRate = years <= 0 ? 0 : (val(m, "hivesKilled") - val(m0, "hivesKilled")) / years;
+			m.put("threatKills", worldsRate + basesRate);
+			m.put("threatKills.worlds", worldsRate);
+			m.put("threatKills.bases", basesRate);
+			m.put("humanKills", hivesRate);
+			m.put("mutual", Math.min(worldsRate + basesRate, hivesRate));
 			m.put("swings", (double) swings);
 			m.put("reversals", (double) reversals);
 			m.put("deadYears", dead);
@@ -237,10 +254,11 @@ public final class Main {
 		Map<String, Double> m = r.last();
 		if (val(m, "decided") > 0) return 0;
 		if (val(m, "decided") < 0) return 1;
-		if (val(m, "swings") >= BACK_AND_FORTH_SWINGS) return 2;
-		if (val(m, "reversals") >= BACK_AND_FORTH_REVERSALS_PER_YEAR * (r.months.size() - 1) / 12.0) return 2;
-		if (val(m, "deadYears") >= STALEMATE_DEAD_YEARS) return 3;
-		return 4;
+		double t = val(m, "threatKills"), h = val(m, "humanKills");
+		if (Math.min(t, h) >= MUTUAL_PER_YEAR) return 2;
+		if ((t >= MUTUAL_PER_YEAR && h < QUIET_PER_YEAR) || (h >= MUTUAL_PER_YEAR && t < QUIET_PER_YEAR)) return 3;
+		if (t < QUIET_PER_YEAR && h < QUIET_PER_YEAR) return 4;
+		return 5;
 	}
 
 	static String decidedText(Sim.Result r) {
@@ -416,6 +434,7 @@ public final class Main {
 			Map<String, int[]> events = events(log, first.startDay, months);
 			System.out.println("events from " + log.getFileName() + ", cumulative: real | sim median [p10 - p90]");
 			for (Map.Entry<String, int[]> e : events.entrySet()) {
+				if (e.getKey().equals("factionsMobilised")) continue; // dates the destruction rates below; no simulator counter
 				System.out.println(e.getKey());
 				for (int[] a : at) {
 					if (a[1] < 36) continue;
@@ -426,6 +445,24 @@ public final class Main {
 					if (ok) in++;
 					System.out.println(String.format("  month %3d %12s | %12s [%s - %s] %s", a[1], fmt(r),
 							fmt(pct(runs, a[1], e.getKey(), 0.5)), fmt(lo), fmt(hi), ok ? "in" : "OUT"));
+				}
+			}
+			// the real run's destruction a year since its first mobilisation (round 11), against the simulator's rates
+			int[] mobs = events.get("factionsMobilised");
+			int mob = -1;
+			for (int i = 0; mobs != null && i <= months; i++) if (mobs[i] > 0) { mob = i; break; }
+			if (mob >= 0 && months > mob) {
+				double years = (months - mob) / 12.0;
+				double worlds = (events.get("worldsLost")[months] - events.get("worldsLost")[mob]) / years;
+				double bases = (events.get("basesDestroyed")[months] - events.get("basesDestroyed")[mob]) / years;
+				double hives = (events.get("hivesKilled")[months] - events.get("hivesKilled")[mob]) / years;
+				System.out.println("destruction a year since the first mobilisation (month " + mob + ", to month " + months
+						+ "): real | sim median [p10 - p90]");
+				String[][] rows = { { "threatKills", fmt(worlds + bases) }, { "threatKills.worlds", fmt(worlds) },
+						{ "threatKills.bases", fmt(bases) }, { "humanKills", fmt(hives) }, { "mutual", fmt(Math.min(worlds + bases, hives)) } };
+				for (String[] row : rows) {
+					System.out.println(String.format("  %-20s %8s | %8s [%s - %s]", row[0], row[1], fmt(pct(runs, months, row[0], 0.5)),
+							fmt(pct(runs, months, row[0], 0.1)), fmt(pct(runs, months, row[0], 0.9))));
 				}
 			}
 		}
@@ -447,6 +484,7 @@ public final class Main {
 			{ "basesFounded", "^Frontline: \\w+ founded " },
 			{ "basesDestroyed", "^Frontline: \\w+ dismantled .*\\(station destroyed" },
 			{ "basesAbandoned", "^Frontline: \\w+ dismantled .*\\(no " },
+			{ "factionsMobilised", "^War footing: .* mobilised, " },
 			// the swarm's stance, in months: the monthly "Colony upkeep" line names it
 			{ "monthsExpand", "^Colony upkeep: .*stance EXPAND" },
 			{ "monthsPress", "^Colony upkeep: .*stance PRESS" },

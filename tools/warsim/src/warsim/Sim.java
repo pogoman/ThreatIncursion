@@ -133,8 +133,8 @@ public final class Sim {
 		for (Map.Entry<String, Double> e : s.counters.entrySet()) m.put(e.getKey(), e.getValue());
 		// the two sides' scores (docs/war-sim.md 7); kills are weighed by the caller
 		m.put("humanSpread", bases);
-		m.put("threatKills", s.counter("worldsLost") + s.counter("basesDestroyed"));
-		m.put("humanKills", s.counter("hivesKilled"));
+		m.put("threatKillCount", s.counter("worldsLost") + s.counter("basesDestroyed"));
+		m.put("humanKillCount", s.counter("hivesKilled"));
 		return m;
 	}
 }
