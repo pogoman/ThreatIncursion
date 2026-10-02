@@ -3853,13 +3853,7 @@ public class ThreatColonyManager {
 		// colony's garrison should be in the same weight class as the
 		// expedition it can send, not a fifth of it - force projection is the
 		// expensive posture, defense the cheap one.
-		if (size <= 2) return new int[][] {{0, low}};
-		if (size == 3) return new int[][] {{0, med}, {0, med}};
-		if (size == 4) return new int[][] {{0, med}, {0, med}, {0, med}};
-		if (size == 5) return new int[][] {{0, med}, {0, med}, {0, high}, {1, med}};
-		if (size == 6) return new int[][] {{0, high}, {0, high}, {0, high}, {1, high}};
-		if (size == 7) return new int[][] {{0, high}, {0, high}, {0, high}, {0, high}, {1, high}};
-		return new int[][] {{0, high}, {0, high}, {0, max}, {1, max}, {2, high}};
+		return threatinc.rules.HiveRules.desiredGarrison(size, low, med, high, max);
 	}
 
 	// ------------------------------------------------------------------
@@ -4499,10 +4493,8 @@ public class ThreatColonyManager {
 
 	/** fabricationRatePerDay with the hive totals already summed (once a poll). */
 	protected static float fabricationRatePerDay(MarketAPI market, float hiveOutput, float hiveDraw) {
-		float draw = nexusDraw(market);
-		if (draw <= 0f || hiveDraw <= 0f || hiveOutput <= 0f) return 0f;
-		float share = Math.min(1f, hiveOutput / hiveDraw);
-		return draw * share * fpPerShipUnit30d() / 30f;
+		return threatinc.rules.HiveRules.fabricationRatePerDay(nexusDraw(market), hiveOutput, hiveDraw,
+				fpPerShipUnit30d());
 	}
 
 	/**
@@ -4545,7 +4537,7 @@ public class ThreatColonyManager {
 
 	/** Upkeep a day on this many fleet points (threatinc_garrisonUpkeepPerMonth per 30 days). */
 	public static float upkeepPerDay(float fleetFP) {
-		return Math.max(0f, fleetFP) * Math.max(0f, ThreatIncConfig.garrisonUpkeepPerMonth()) / 30f;
+		return threatinc.rules.HiveRules.upkeepPerDay(fleetFP, ThreatIncConfig.garrisonUpkeepPerMonth());
 	}
 
 	/** Fleet points of the garrison on station (its list alone). */
@@ -4886,7 +4878,7 @@ public class ThreatColonyManager {
 	 * its size - what the swarm brought with it, not production.
 	 */
 	protected static void endowSeed(MarketAPI market) {
-		float fp = FAB_ENDOWMENT_DAYS * market.getSize() * fpPerShipUnit30d() / 30f;
+		float fp = threatinc.rules.HiveRules.seedEndowment(FAB_ENDOWMENT_DAYS, market.getSize(), fpPerShipUnit30d());
 		creditFP(market, fp);
 		ThreatIncConfig.log("Seed endowed at " + market.getName() + ": " + (int) fp + " FP");
 	}
@@ -4919,9 +4911,7 @@ public class ThreatColonyManager {
 			learned = fabCosts().get(costKey(ThreatFleetComposer.JOB_GARRISON, spec));
 			if (learned != null && learned > 0f) return learned;
 		}
-		float[] byTier = { 46f, 134f, 347f, 458f };
-		float base = byTier[Math.max(0, Math.min(byTier.length - 1, spec[1]))];
-		return base + 40f * Math.max(0, spec[0]);
+		return threatinc.rules.HiveRules.swarmCostFallback(spec[0], spec[1]);
 	}
 
 	/**

@@ -144,9 +144,10 @@ public class ThreatStance {
 	/** The share of the posture's appetite trySpread commits: all expanding, stanceSecondaryShare pressing, none consolidating. */
 	public static float expansionShare() {
 		int s = stance();
-		if (s == CONSOLIDATE) return 0f;
-		if (s == PRESS) return Math.max(0f, Math.min(1f, ThreatIncConfig.stanceSecondaryShare()));
-		return 1f;
+		return threatinc.rules.StanceRules.expansionShare(
+				s == CONSOLIDATE ? threatinc.rules.StanceRules.CONSOLIDATE
+						: s == PRESS ? threatinc.rules.StanceRules.PRESS : threatinc.rules.StanceRules.EXPAND,
+				ThreatIncConfig.stanceSecondaryShare());
 	}
 
 	/** The strike a pressing staging colony builds past its want; 0 otherwise. */
@@ -201,7 +202,7 @@ public class ThreatStance {
 		if (system == null || stance() != EXPAND || RIVAL_AT.isEmpty()) return 1f;
 		float best = Float.MAX_VALUE;
 		for (Vector2f at : RIVAL_AT) best = Math.min(best, Misc.getDistanceLY(system.getLocation(), at));
-		return (float) Math.sqrt(1f + best);
+		return threatinc.rules.StanceRules.spreadMult(best);
 	}
 
 	// ------------------------------------------------------------------
