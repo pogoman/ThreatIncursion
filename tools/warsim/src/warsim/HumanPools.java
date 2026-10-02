@@ -131,23 +131,21 @@ final class HumanPools {
 		return sum;
 	}
 
-	static boolean canPay(State s, World base, float[] wants, boolean siege) {
-		List<World> donors = null;
-		for (int c = 0; c < 4; c++) {
-			if (wants[c] <= 0f) continue;
-			if (donors == null) donors = donors(s, base);
-			if (payable(s, base, c, siege, donors) < wants[c]) return false;
-		}
+	static boolean canPay(State s, World base, float[] wants, boolean siege) { return canPay(s, base, wants, siege, donors(s, base)); }
+
+	static boolean canPay(State s, World base, float[] wants, boolean siege, List<World> donors) {
+		for (int c = 0; c < 4; c++) if (wants[c] > 0f && payable(s, base, c, siege, donors) < wants[c]) return false;
 		return true;
 	}
 
 	/** Draws the wants at the base, nearest depots first, each paying its haul in fuel. False (and nothing drawn) if short. */
 	static boolean pay(State s, World base, float[] wants, boolean siege) {
-		if (!canPay(s, base, wants, siege)) return false;
+		List<World> donors = donors(s, base);
+		if (!canPay(s, base, wants, siege, donors)) return false;
 		// fuel last: the other commodities' hauls are paid out of the donors' fuel
 		for (int c : new int[] { World.MARINES, World.ARMAMENTS, World.SUPPLIES, World.FUEL }) {
 			float need = wants[c];
-			for (World d : donors(s, base)) {
+			for (World d : donors) {
 				if (need <= 0f) break;
 				float per = perUnit(s, d, base, c);
 				float net = ReachRules.netOfHaul(c == World.FUEL, gives(s, d, base, c, siege), gives(s, d, base, World.FUEL, siege), per);

@@ -78,6 +78,9 @@ public final class State {
 		return out;
 	}
 
+	/** HumanPlanner.size's sizing loop by its input key - every figure the loop reads, so it holds for the run. */
+	public final Map<String, float[]> sizeMemo = new java.util.HashMap<String, float[]>();
+
 	/** Whether a live hive stands in the system (hivesIn(sys).isEmpty() without the list). */
 	public boolean hasHive(StarSys sys) {
 		for (Hive h : hives) if (!h.dead && h.sys == sys) return true;

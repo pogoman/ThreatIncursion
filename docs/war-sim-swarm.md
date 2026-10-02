@@ -365,3 +365,13 @@ only mutable static is `Main.SHOWN`, set before the runs). After: one run 1.9-2.
 30-seed compare 19 s. What is left, by the same profile: `HumanPlanner.size` (a bombardment plan per fleet step
 per option, rebuilt from scratch by every planner pass and again by `hunts`), `HumanPools.donors` sorts, and the
 posture poll's remaining per-system scans of contacts, parcels and worlds.
+
+Round 10 (same day): `HumanPlanner.size`'s sizing loop memoised on everything it reads (`State.sizeMemo`: hive id,
+size, siege clock, strata held, tier, nexus, our front's marines, the starting fleet; the knobs are a run's
+constants, so the memo holds for the run), `donors` listed once per `size`, `pay` and `canPay`, the posture poll's
+contacts, parcels and worlds grouped per system in one pass each (`SwarmPosture.sysSums`, summed in the old order;
+a muster staged elsewhere stays a hostile where it musters). Tables still byte-identical. After: one run 1.5-2.0 s,
+a 30-seed batch 12-14 s, a 30-seed compare 19 s (JVM start and load 0.15 s) - short of the 0.5 s / 10 s targets.
+Left, by the profile: `size` still misses whenever a hive's clock or the report moves (a bombardment plan per fleet
+step, `HumanSiege.bombardPlan`), `SwarmEconomy.held` scanning parcels per hive per day in `regrowing` and
+`buildSwarm`, and the 30 seeds on 12 cores finishing in waves.

@@ -68,17 +68,30 @@ final class HumanPlanner {
 				? (float) Math.floor(playFP / ReachRules.FP_PER_POINT) * ReachRules.FP_PER_POINT : roundUp(orbit));
 		float marines = 0f;
 		float[] plan = null;
-		// needAndWear: the least fleet that carries the marines its own bombardment leaves needed
-		for (;; fp += ReachRules.FP_PER_POINT) {
-			plan = HumanSiege.bombardPlan(s, h, fp, budget, 0f);
-			// raidStrNeededAt: sized on the larger of the defence as it stands and the Nexus anchor
-			// (nexusAnchoredDefense), worn by the share this plan's bombardment takes off what stands
-			float now = HumanSiege.defence(s, h);
-			float def = Math.max(now, HumanSiege.anchored(s, h)) * (now > 0f ? Math.min(1f, plan[1] / now) : 1f);
-			float beach = HumanSiege.troopsToLand(s, def);
-			marines = BattleRules.raidStrNeeded(def, 0.25f, 1.25f, beach);
-			if (front) marines = Math.max(s.knobs.f("threatinc_frontMinMarines"), beach - h.front.marines);
-			if (marines <= fp / ReachRules.FP_PER_POINT * perPoint || fp >= HumanFit.MAX_SIEGE_FP) break;
+		// the sizing loop's result, memoised on everything it reads (round 10): the hive's size, clock, strata held,
+		// tier and nexus, our front's marines, and the fleet it starts from (State.sizeMemo; the knobs are a run's constants)
+		int held = h.front != null ? h.front.strataHeld : 0;
+		String key = h.id + "|" + h.size + "|" + Float.floatToIntBits(h.siegeClock) + "|" + held + "|" + h.tier + "|" + h.nexus
+				+ "|" + (front ? Float.floatToIntBits(h.front.marines) : -1) + "|" + Float.floatToIntBits(fp);
+		float[] memo = s.sizeMemo.get(key);
+		if (memo != null) {
+			fp = memo[0];
+			marines = memo[1];
+			plan = new float[] { memo[2], memo[3], memo[4] };
+		} else {
+			// needAndWear: the least fleet that carries the marines its own bombardment leaves needed
+			for (;; fp += ReachRules.FP_PER_POINT) {
+				plan = HumanSiege.bombardPlan(s, h, fp, budget, 0f);
+				// raidStrNeededAt: sized on the larger of the defence as it stands and the Nexus anchor
+				// (nexusAnchoredDefense), worn by the share this plan's bombardment takes off what stands
+				float now = HumanSiege.defence(s, h);
+				float def = Math.max(now, HumanSiege.anchored(s, h)) * (now > 0f ? Math.min(1f, plan[1] / now) : 1f);
+				float beach = HumanSiege.troopsToLand(s, def);
+				marines = BattleRules.raidStrNeeded(def, 0.25f, 1.25f, beach);
+				if (front) marines = Math.max(s.knobs.f("threatinc_frontMinMarines"), beach - h.front.marines);
+				if (marines <= fp / ReachRules.FP_PER_POINT * perPoint || fp >= HumanFit.MAX_SIEGE_FP) break;
+			}
+			s.sizeMemo.put(key, new float[] { fp, marines, plan[0], plan[1], plan[2] });
 		}
 		o.fp = fp;
 		o.days = front ? 0f : plan[0];
@@ -93,15 +106,16 @@ final class HumanPlanner {
 				* s.knobs.f("threatinc_frontPushUpkeepMult") * s.knobs.f("threatinc_npcFrontSupplyDays") / 30f / 2f;
 		o.wants = new float[] { marines, arms, ReachRules.passageFuel(points, o.ly, fuelLY) + ordnance, supplies };
 		o.affordable = true;
+		java.util.List<World> donors = HumanPools.donors(s, base);
 		for (int c = 0; c < 4; c++) {
-			if (HumanPools.payable(s, base, c, true) < o.wants[c]) {
+			if (HumanPools.payable(s, base, c, true, donors) < o.wants[c]) {
 				o.affordable = false;
 				o.shortOf = World.COMMODITIES[c];
 				break;
 			}
 		}
 		// launchSiegeExpedition's provisions gate: payableFP < orbitNeed posts the swarm bounty
-		float paysFP = ReachRules.payablePoints(HumanPools.payable(s, base, World.FUEL, true), HumanPools.payable(s, base, World.SUPPLIES, true),
+		float paysFP = ReachRules.payablePoints(HumanPools.payable(s, base, World.FUEL, true, donors), HumanPools.payable(s, base, World.SUPPLIES, true, donors),
 				o.wants[World.FUEL] / points, o.wants[World.SUPPLIES] / points) * ReachRules.FP_PER_POINT;
 		o.orbitUnpaid = !o.affordable && orbit > 0f && paysFP < orbit;
 		return o;

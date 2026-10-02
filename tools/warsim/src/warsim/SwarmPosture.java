@@ -75,6 +75,12 @@ final class SwarmPosture {
 		}
 	}
 
+	static float[] sysSums(Map<StarSys, float[]> bySys, StarSys sys) {
+		float[] v = bySys.get(sys);
+		if (v == null) bySys.put(sys, v = new float[4]);
+		return v;
+	}
+
 	static StarSys nearestHiveSystem(State s, List<StarSys> systems, StarSys from) {
 		StarSys best = null;
 		for (StarSys sys : systems) {
@@ -173,47 +179,62 @@ final class SwarmPosture {
 			if (f == null || !f.mobilised) continue;
 			stagingOf.put(w, stagingHive(s, w, basesOf.get(w.faction)));
 		}
+		// the per-system sums in one pass each over contacts, parcels and worlds (round 10), summed in the same order
+		// as the per-system loops they replace: {attacks, staged, hostiles, forward}, and the staging caps by faction
+		Map<StarSys, float[]> bySys = new java.util.IdentityHashMap<StarSys, float[]>();
+		Map<StarSys, Map<String, Float>> capsBySys = new java.util.IdentityHashMap<StarSys, Map<String, Float>>();
+		// attacks: what the swarm has seen bound for the system within swarmContactDays (ThreatSwarmIntel.contactsOn)
+		for (Swarm.Contact c : sw.contacts.values()) {
+			if (c.sys != null && s.day - c.day <= contactDays) sysSums(bySys, c.sys)[0] += c.fp;
+		}
+		for (Parcel p : s.parcels) {
+			if (p.done || p.threat() || !p.holding) continue;
+			if (p.kind == Parcel.Kind.MUSTER) {
+				if (p.against != null) sysSums(bySys, p.against)[1] += p.fp;
+				// as the per-system loop read it: a muster staged against another system is a hostile where it musters
+				if (p.to != null && p.to != p.against && !attackKind(p.kind)) sysSums(bySys, p.to)[2] += p.fp;
+			}
+			// hostiles: fleets in the system no attack counted (guards, relief, convoys, scouts)
+			else if (p.to != null && !attackKind(p.kind)) sysSums(bySys, p.to)[2] += p.fp;
+		}
+		// staged: per faction, the most any one seen base staging for this system could pay a siege
+		// here from its own stock, by the sighting's trust (stagedBy / siegeCapacityFP, no donors)
+		float keepLY = s.knobs.f("threatinc_frontlineKeepLY");
+		for (World w : s.worlds) {
+			if (w.lost) continue;
+			float[] seen = sw.seen.get(w.id);
+			if (seen == null) continue;
+			float trust = (float) Math.pow(0.5, Math.max(0f, s.day - seen[0]) / half);
+			if (w.forwardBase && w.guardFP > 0f) {
+				StarSys near = nearestHive.get(w);
+				// forward: a forward base's guards count toward its nearest hive system only (ThreatFrontlines.hiveNear)
+				if (near != null && w.sys != near && w.sys.ly(near) <= keepLY) sysSums(bySys, near)[3] += w.guardFP * trust;
+			}
+			if (!w.base || !w.hasReserve) continue;
+			Faction f = s.factions.get(w.faction);
+			if (f == null || !f.mobilised) continue;
+			StarSys sys = stagingOf.get(w);
+			if (sys == null) continue;
+			float ly = w.sys.ly(sys);
+			float cap = threatinc.rules.ReachRules.payablePoints(HumanPools.available(s, w, World.FUEL),
+					HumanPools.available(s, w, World.SUPPLIES), ly * s.knobs.f("threatinc_expeditionFuelPerPointLY"),
+					s.knobs.f("threatinc_expeditionSuppliesPerPoint")) * threatinc.rules.ReachRules.FP_PER_POINT * trust;
+			if (cap >= Float.MAX_VALUE / 2f || cap <= 0f) continue;
+			Map<String, Float> byFaction = capsBySys.get(sys);
+			if (byFaction == null) capsBySys.put(sys, byFaction = new HashMap<String, Float>());
+			Float had = byFaction.get(w.faction);
+			if (had == null || cap > had) byFaction.put(w.faction, cap);
+		}
 		for (StarSys sys : systems) {
 			float[] sum = sums.get(sys.id);
 			float held = sum[0], bank = sum[1], base = sum[2], floor = sum[3];
 			// ThreatPosture.read: max(attacks, staged) + losses + hostiles + forward
-			float attacks = 0f, staged = 0f, hostiles = 0f, forward = 0f;
-			// attacks: what the swarm has seen bound for the system within swarmContactDays (ThreatSwarmIntel.contactsOn)
-			for (Swarm.Contact c : sw.contacts.values()) {
-				if (c.sys == sys && s.day - c.day <= contactDays) attacks += c.fp;
-			}
-			for (Parcel p : s.parcels) {
-				if (p.done || p.threat() || !p.holding) continue;
-				if (p.kind == Parcel.Kind.MUSTER && p.against == sys) staged += p.fp;
-				// hostiles: fleets in the system no attack counted (guards, relief, convoys, scouts)
-				else if (p.to == sys && !attackKind(p.kind)) hostiles += p.fp;
-			}
-			// staged: per faction, the most any one seen base staging for this system could pay a siege
-			// here from its own stock, by the sighting's trust (stagedBy / siegeCapacityFP, no donors)
-			Map<String, Float> byFaction = new HashMap<String, Float>();
-			for (World w : s.worlds) {
-				if (w.lost) continue;
-				float[] seen = sw.seen.get(w.id);
-				if (seen == null) continue;
-				float trust = (float) Math.pow(0.5, Math.max(0f, s.day - seen[0]) / half);
-				if (w.forwardBase && w.guardFP > 0f && w.sys != sys && nearestHive.get(w) == sys
-						&& w.sys.ly(sys) <= s.knobs.f("threatinc_frontlineKeepLY")) {
-					// forward: a forward base's guards count toward its nearest hive system only (ThreatFrontlines.hiveNear)
-					forward += w.guardFP * trust;
-				}
-				if (!w.base || !w.hasReserve) continue;
-				Faction f = s.factions.get(w.faction);
-				if (f == null || !f.mobilised || stagingOf.get(w) != sys) continue;
-				float ly = w.sys.ly(sys);
-				float cap = threatinc.rules.ReachRules.payablePoints(HumanPools.available(s, w, World.FUEL),
-						HumanPools.available(s, w, World.SUPPLIES), ly * s.knobs.f("threatinc_expeditionFuelPerPointLY"),
-						s.knobs.f("threatinc_expeditionSuppliesPerPoint")) * threatinc.rules.ReachRules.FP_PER_POINT * trust;
-				if (cap >= Float.MAX_VALUE / 2f || cap <= 0f) continue;
-				Float had = byFaction.get(w.faction);
-				if (had == null || cap > had) byFaction.put(w.faction, cap);
-			}
+			float[] at = bySys.get(sys);
+			float attacks = at == null ? 0f : at[0], staged = at == null ? 0f : at[1], hostiles = at == null ? 0f : at[2],
+					forward = at == null ? 0f : at[3];
 			float stagedCap = 0f;
-			for (Float v : byFaction.values()) stagedCap += v;
+			Map<String, Float> byFaction = capsBySys.get(sys);
+			if (byFaction != null) for (Float v : byFaction.values()) stagedCap += v;
 			staged = Math.max(staged, stagedCap);
 			float[] l = sw.losses.get(sys.id);
 			float losses = l == null ? 0f : l[0] * PostureRules.decay(s.day - l[1], SwarmFit.DECAY_DAYS);
@@ -245,7 +266,7 @@ final class SwarmPosture {
 				h.wantFP = Math.max(b, share);
 				want += h.wantFP;
 				if (h.front != null) wounded = true;
-				surplus += Math.max(0f, PostureRules.releasableFP(SwarmEconomy.held(s, h), h.wantFP, k.postureBand,
+				surplus += Math.max(0f, PostureRules.releasableFP(SwarmEconomy.held(h, inbound), h.wantFP, k.postureBand,
 						SwarmEconomy.oneSwarmFP(s, h)));
 			}
 			float ratio = held > 0f ? threat / held : (threat > 0f ? Float.MAX_VALUE : 0f);
@@ -276,7 +297,7 @@ final class SwarmPosture {
 			for (Hive h : s.hivesIn(sys)) {
 				if (h.forge) forges++;
 				if (mode > 1) continue;
-				quietSpare += Math.max(0f, SwarmEconomy.held(s, h) - h.wantFP) + Math.max(0f, h.bank - h.wantFP);
+				quietSpare += Math.max(0f, SwarmEconomy.held(h, inbound) - h.wantFP) + Math.max(0f, h.bank - h.wantFP);
 				quietWant += h.wantFP;
 				if (h.forge && SwarmEconomy.poolable(s, k, h) >= bill) forgesCovered++;
 			}
