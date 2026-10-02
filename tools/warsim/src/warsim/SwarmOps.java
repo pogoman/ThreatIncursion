@@ -57,6 +57,8 @@ final class SwarmOps {
 	static void tick(State s, SwarmKnobs k) {
 		for (Hive h : s.hives) h.outputSize = h.size;
 		radar(s, k);
+		alarmDecay(s, k);
+		for (Swarm.Landing l : s.swarm.landings.values()) l.gateOpen = s.rng.nextFloat() < SwarmFit.INVADED_GATE_SHARE;
 		launchClaims(s, k);
 		if (s.liveHives().isEmpty()) return;
 		SwarmEconomy.tick(s, k);
@@ -343,6 +345,58 @@ final class SwarmOps {
 		return StrikeRules.sizeValue(w.size);
 	}
 
+	// ---- ThreatAlarm: the swarm turns on whoever is hurting it ----
+
+	/** ThreatAlarm.raise, called by the human side: a stratum taken on a hive, a hive eradicated. */
+	static void alarm(State s, String factionId, float points) {
+		if (factionId == null || points <= 0f) return;
+		Float g = s.swarm.grudge.get(factionId);
+		s.swarm.grudge.put(factionId, (g == null ? 0f : g) + points);
+	}
+
+	/** ThreatAlarm.targetMult: the strike weight of a faction's worlds, 1 at no grudge. */
+	static float targetMult(State s, SwarmKnobs k, String factionId) {
+		Float g = s.swarm.grudge.get(factionId);
+		return !k.alarm || g == null ? 1f : 1f + g * k.alarmTargetMult;
+	}
+
+	/** ThreatAlarm.decay, on the tick. */
+	static void alarmDecay(State s, SwarmKnobs k) {
+		float keep = 1f - Math.max(0f, Math.min(1f, k.alarmDecayPer30));
+		for (String id : new ArrayList<String>(s.swarm.grudge.keySet())) {
+			float next = s.swarm.grudge.get(id) * keep;
+			if (next < 0.05f) s.swarm.grudge.remove(id);
+			else s.swarm.grudge.put(id, next);
+		}
+	}
+
+	/** The human side's hook for a stratum a front took on a hive (alarmPerStratum). */
+	static void stratumTaken(State s, String factionId) {
+		alarm(s, factionId, s.knobs.f("threatinc_alarmPerStratum"));
+	}
+
+	/**
+	 * IncursionManager.retaliate, called by the human side when a hive is eradicated: the grudge,
+	 * then an immediate strike at the winning faction from the nearest hive system that can muster
+	 * one and reach a world of theirs ("Retaliation: X -> Y", 15 in pd9a for 24 hives lost).
+	 */
+	static void hiveLost(State s, String factionId, StarSys near) {
+		SwarmKnobs k = new SwarmKnobs(s.knobs);
+		if (k.alarm) alarm(s, factionId, k.alarmPerEradication);
+		if (!k.retaliation || !k.alarm || SwarmPosture.phase(s) < 2) return;
+		List<StarSys> systems = SwarmEconomy.hiveSystems(s);
+		final StarSys at = near;
+		Collections.sort(systems, new Comparator<StarSys>() {
+			public int compare(StarSys a, StarSys b) { return Float.compare(a.ly(at), b.ly(at)); }
+		});
+		for (StarSys from : systems) {
+			if (strikeFrom(s, k, from, factionId)) {
+				s.count("retaliations", 1);
+				return;
+			}
+		}
+	}
+
 	/** The swarms a system could send, largest first: {hive index, fp}. */
 	static List<float[]> spares(State s, SwarmKnobs k, StarSys sys) {
 		List<float[]> out = new ArrayList<float[]>();
@@ -376,17 +430,27 @@ final class SwarmOps {
 	static void tryStrike(State s, SwarmKnobs k) {
 		List<StarSys> systems = SwarmEconomy.hiveSystems(s);
 		Collections.shuffle(systems, s.rng);
-		for (StarSys from : systems) {
-			if (SwarmEconomy.pressed(s, from)) continue;
+		for (StarSys from : systems) strikeFrom(s, k, from, null);
+	}
+
+	/** One hive system's strike (pickStrikeStaging, pickStrikeTarget, launchStrike); `only` restricts it to a faction's worlds. */
+	static boolean strikeFrom(State s, SwarmKnobs k, StarSys from, String only) {
+		{
+			if (SwarmEconomy.pressed(s, from)) return false;
 			List<float[]> spare = spares(s, k, from);
 			// pickStrikeStaging: a strike musters at least two swarms above the reserves
-			if (spare.size() < 2) continue;
+			if (spare.size() < 2) return false;
 			float full = spare.size() * SwarmFit.STRIKE_UNITS_PER_SWARM;
 			List<World> picks = new ArrayList<World>();
 			List<Float> weights = new ArrayList<Float>();
 			float total = 0f;
+			// relief before offensives (strikeReliefFirst): a front of the swarm's losing ground takes the strike
+			List<World> relief = new ArrayList<World>();
+			List<Float> reliefWeights = new ArrayList<Float>();
+			float reliefTotal = 0f;
 			for (World w : s.worlds) {
 				if (!strikeable(s, w)) continue;
+				if (only != null && !only.equals(w.faction)) continue;
 				float[] seen = s.swarm.seen.get(w.id);
 				if (seen == null || seen[1] >= full * k.breakOff) continue;
 				float odds = seen[1] / Math.max(1f, full * k.breakOff);
@@ -397,13 +461,31 @@ final class SwarmOps {
 				} else if (s.swarm.stance == Swarm.CONSOLIDATE) {
 					mult = odds <= k.weakOdds && w.forwardBase ? Math.max(0.05f, 1f - odds) : 0f;
 				}
-				float weight = strikeValue(k, w) / k.strikeDays(from.ly(w.sys)) * mult;
+				float weight = strikeValue(k, w) * targetMult(s, k, w.faction) / k.strikeDays(from.ly(w.sys));
+				// ThreatGroundFronts.wantsExpedition: a front the garrison is beating (here: one on a colony at war)
+				Swarm.Landing front = s.swarm.landings.get(w.id);
+				if (front != null && !front.falls && front.endDay != Integer.MIN_VALUE) {
+					// strikeOutweighed: an invaded colony at war is fed marines and relief, and most months the gate passes it over
+					if (!front.gateOpen) continue;
+					weight *= Math.max(1f, k.reinforceWeight);
+					if (k.reliefFirst) {
+						relief.add(w);
+						reliefWeights.add(weight);
+						reliefTotal += weight;
+					}
+				}
+				weight *= mult;
 				if (weight <= 0f) continue;
 				picks.add(w);
 				weights.add(weight);
 				total += weight;
 			}
-			if (picks.isEmpty()) continue;
+			if (!relief.isEmpty()) {
+				picks = relief;
+				weights = reliefWeights;
+				total = reliefTotal;
+			}
+			if (picks.isEmpty()) return false;
 			float roll = s.rng.nextFloat() * total;
 			World w = picks.get(picks.size() - 1);
 			for (int i = 0; i < picks.size(); i++) {
@@ -430,7 +512,7 @@ final class SwarmOps {
 					SwarmEconomy.noteDemand(s, Swarm.FUEL, k.passage(one, ly, true));
 				}
 				s.count("strikesHeld", 1);
-				continue;
+				return false;
 			}
 			SwarmEconomy.pay(s, Swarm.FUEL, k.passage(fp, ly, true));
 			Hive home = null;
@@ -451,6 +533,7 @@ final class SwarmOps {
 			s.count("strikesLaunched", 1);
 			s.log("Strike: " + (int) fp + " FP in " + count + " swarms from " + from + " at " + w + " ("
 					+ (int) ly + " ly, defence " + (int) s.swarm.seen.get(w.id)[1] + ")");
+			return true;
 		}
 	}
 

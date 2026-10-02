@@ -411,6 +411,7 @@ public final class HumanSide implements Side {
 			if (end.equals("victory")) {
 				s.log("Ground victory at " + h.name);
 				s.killHive(h, fr.faction);
+				SwarmOps.hiveLost(s, fr.faction, h.sys);
 				World at = HumanPools.nearestBase(s, fr.faction, h.sys, false);
 				HumanPools.deposit(at, new float[] { fr.marines, fr.armaments, 0f, 0f });
 				if (f.firstKillDay < 0) mark(s, f, "firstKill", f.firstKillDay = s.day - s.startDay);

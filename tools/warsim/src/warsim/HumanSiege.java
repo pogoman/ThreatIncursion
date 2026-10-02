@@ -265,6 +265,7 @@ final class HumanSiege {
 				if (f.pushDays >= s.knobs.f("threatinc_frontPushBaseDays")) {
 					f.pushDays = 0f;
 					f.strataHeld++;
+					SwarmOps.stratumTaken(s, f.faction);
 					f.checkpointLeft = s.knobs.f("threatinc_frontCheckpointDays");
 					if (f.strataHeld >= h.size) return "victory";
 					s.log("Front took stratum " + f.strataHeld + "/" + h.size + " at " + h.name);

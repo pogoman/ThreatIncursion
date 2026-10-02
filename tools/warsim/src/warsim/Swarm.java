@@ -85,8 +85,12 @@ public final class Swarm {
 		/** The day the front ends, and how: the garrison overruns it, or it takes the last district. */
 		public int endDay = Integer.MIN_VALUE;
 		public boolean falls;
+		/** Whether the strike gate passes the invaded world this tick (SwarmFit.INVADED_GATE_SHARE). */
+		public boolean gateOpen;
 	}
 
+	/** ThreatAlarm's grudge per faction: raised by strata taken and hives eradicated, fading by the month. */
+	public final Map<String, Float> grudge = new HashMap<String, Float>();
 	/** Threat fronts by world id. */
 	public final Map<String, Landing> landings = new LinkedHashMap<String, Landing>();
 	/** Worlds a strike is out against (one strike a world). */
