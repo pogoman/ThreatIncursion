@@ -121,6 +121,7 @@ final class HumanCouncil {
 		plan(s, f, c, p);
 		setStance(s, f, c);
 		advance(s, f, c);
+		reserveSiege(s, f, c);
 		if (due) {
 			// the mod's monthly "Council f: picture ..." line names the strategy: one a faction a month
 			s.count("council.months." + c.strategy, 1);
@@ -645,6 +646,50 @@ final class HumanCouncil {
 			if ((pl.type == HAMMER || pl.type == FEINT) && ("RECON".equals(pl.phase) || "PREPARE".equals(pl.phase) || "MUSTER".equals(pl.phase))) return true;
 		}
 		return false;
+	}
+
+	/**
+	 * Round 15 trials a and e: what the faction's staging hammers' sieges want today. For each hammer or feint in PREPARE
+	 * or MUSTER the first live world's siege is sized as strike will size it (planner sizing on the faction's report); the
+	 * supplies wanted sum to Faction.siegeWant and any unaffordable one sets Faction.siegeUnpaid. With
+	 * warsim_siegeReserve the want is spread over the faction's depots by their callable supplies (World.siegeReserve),
+	 * which HumanPools.reserve keeps from the forward-base line.
+	 */
+	static void reserveSiege(State s, Faction f, Council c) {
+		boolean reserve = s.knobs.b("warsim_siegeReserve", false), wait = s.knobs.b("warsim_linkWaitsForSiege", false);
+		f.siegeWant = 0f;
+		f.siegeUnpaid = false;
+		List<World> depots = s.worldsOf(f.id);
+		if (reserve) for (World w : depots) w.siegeReserve = 0f;
+		if (!reserve && !wait) return;
+		for (Play pl : c.plays) {
+			if ((pl.type != HAMMER && pl.type != FEINT) || !("PREPARE".equals(pl.phase) || "MUSTER".equals(pl.phase))) continue;
+			if (pl.base == null || pl.base.lost || f.reports.get(pl.sys) == null) continue;
+			List<Hive> targets = liveTargets(s, f, pl.targets, pl);
+			if (targets.isEmpty()) continue;
+			HumanPlanner.Option o = plannerSizing(s) ? HumanPlanner.size(s, f, targets.get(0), pl.base)
+					: HumanPlanner.size(s, f, targets.get(0), pl.base, share(s, f, "threatinc_councilHammerShare") * capacityFP(s, pl.base, pl.sys));
+			f.siegeWant += o.wants[World.SUPPLIES];
+			if (!o.affordable) f.siegeUnpaid = true;
+		}
+		if (f.siegeWant <= 0f) return;
+		s.count(f.siegeUnpaid ? "siegeWant.unpaidDays" : "siegeWant.paidDays", 1);
+		if (!reserve) return;
+		float callable = 0f;
+		for (World w : depots) if (w.hasReserve) callable += HumanPools.available(s, w, World.SUPPLIES);
+		if (callable <= 0f) return;
+		for (World w : depots) if (w.hasReserve) w.siegeReserve = f.siegeWant * HumanPools.available(s, w, World.SUPPLIES) / callable;
+		s.count("siegeReserveDays", 1);
+	}
+
+	/** Round 15 trial d (warsim_strategyReserve): the share of callable supplies the council keeps for sieges and saturation, by strategy. */
+	static float reserveShare(State s, String faction) {
+		Faction f = s.faction(faction);
+		if (f == null || !on(s) || !(f.council instanceof Council)) return 0f;
+		String st = ((Council) f.council).strategy;
+		if ("DECAPITATE".equals(st)) return 0.5f;
+		if ("STARVE".equals(st) || "ROLLBACK".equals(st)) return 1f / 3f;
+		return 0f;
 	}
 
 	/** ThreatPosture.siegeCapacityFP: what the base and its donors could send against the system at the siege's rates per point. */

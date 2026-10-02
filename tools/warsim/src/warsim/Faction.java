@@ -38,6 +38,12 @@ public final class Faction {
 	/** HumanCouncil.Council, while a war council governs the faction. */
 	public Object council;
 	public int firstBaseDay = -1, firstSiegeDay = -1, firstLandingDay = -1, firstKillDay = -1;
+	/**
+	 * Round 15 (HumanCouncil.reserveSiege, daily): the supplies the faction's staging hammers' sieges want, and whether
+	 * any of them is unpaid today at the stock the base can call on (warsim_siegeReserve, warsim_linkWaitsForSiege).
+	 */
+	public float siegeWant;
+	public boolean siegeUnpaid;
 
 	@Override public String toString() { return id; }
 }
