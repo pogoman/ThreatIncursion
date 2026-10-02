@@ -217,6 +217,9 @@ lived in a session scratchpad, and the first new-game recipe was lost with one).
   Enter/Esc is tried, then the run stops with a shot to look at.
 - `extract.ps1 -Tag h40a`: the `[ThreatInc]` lines since the load, to `ti-h40a.txt`;
   `census.ps1 -Tag h40a -Every 4` tabulates the hive's monthly census.
+- `simdump.ps1 -Save save_X_123ng9 -Name mid-war`: a start state for the offline simulator from any save
+  (`war-sim.md` 12): loads it with `threatinc_debugSimDump` on, waits for the dump, kills the game unsaved,
+  fills `tools/warsim/start/<Name>`, restores the knob and the Continue pref. About a minute.
 
 **A new game**, as run for ng1-ng4 (a mercenary start, Normal, tutorial skipped):
 `launch.ps1 -MenuOnly`, then `step.ps1` a click at a time, reading each shot: New Game (1194,396);
