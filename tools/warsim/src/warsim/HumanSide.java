@@ -10,8 +10,8 @@ import threatinc.rules.ReachRules;
 /**
  * The human factions: pools (HumanPools), mobilisation, intel (HumanIntel), forward bases
  * (HumanBases), the attack planner (HumanPlanner) and the sieges, raids, hunts and ground
- * fronts it sends (HumanSiege). The war council is not modelled: with threatinc_warCouncil
- * on, the planner runs anyway and councilNotModelled is counted once. docs/war-sim-humans.md.
+ * fronts it sends (HumanSiege). With threatinc_warCouncil on, the war council and its plays
+ * (HumanCouncil) stand in for the planner and the stance. docs/war-sim-humans.md.
  */
 public final class HumanSide implements Side {
 	/** -Dwarsim.humanTestSwarm=true: HumanTestSwarm stands in for the swarm side (calibration runs). */
@@ -60,7 +60,6 @@ public final class HumanSide implements Side {
 
 	@Override public void init(State s) {
 		testSwarm = Boolean.getBoolean("warsim.humanTestSwarm");
-		if (s.knobs.b("threatinc_warCouncil", false)) s.count("councilNotModelled", 1);
 		boolean atWar = false;
 		for (Faction f : s.factions.values()) {
 			f.strikesSeen = f.strikesSuffered;
@@ -148,10 +147,13 @@ public final class HumanSide implements Side {
 		HumanPools.daily(s);
 		HumanIntel.sweep(s);
 		int planDays = s.knobs.i("threatinc_planIntervalDays");
+		// ThreatAttackPlanner.active: the planner is off while the council is on; ThreatFactionStance.refresh skips a governed faction
+		boolean council = HumanCouncil.on(s);
 		for (Faction f : s.factions.values()) {
 			if (!f.mobilised || HumanIntel.excluded(s, f.id)) continue;
 			HumanIntel.scouting(s, f);
-			if (s.day - f.lastStanceDay >= HumanStance.EVAL_DAYS) HumanStance.evaluate(s, f);
+			if (council) HumanCouncil.daily(s, f);
+			else if (s.day - f.lastStanceDay >= HumanStance.EVAL_DAYS) HumanStance.evaluate(s, f);
 			if (s.day - f.lastFrontlineDay >= s.knobs.i("threatinc_frontlinePlanDays")) {
 				f.lastFrontlineDay = s.day;
 				int had = f.firstBaseDay;
@@ -159,7 +161,13 @@ public final class HumanSide implements Side {
 				if (had < 0 && f.firstBaseDay >= 0) mark(s, f, "firstBase", f.firstBaseDay);
 			}
 			HumanBases.daily(s, f);
-			if (PlannerRules.planDue(f.news, s.day, f.lastPlanDay, planDays)) HumanPlanner.plan(s, f);
+			if (!council) {
+				if (PlannerRules.planDue(f.news, s.day, f.lastPlanDay, planDays)) HumanPlanner.plan(s, f);
+			} else if (s.day - f.lastPlanDay >= planDays) {
+				// the front runs are ThreatGroundFronts' own, council or planner
+				f.lastPlanDay = s.day;
+				HumanPlanner.frontRuns(s, f);
+			}
 			if (s.day - f.lastHuntDay >= s.knobs.i("threatinc_softenIntervalDays")) HumanPlanner.hunts(s, f);
 		}
 		for (Parcel p : new ArrayList<Parcel>(s.parcels)) {
@@ -211,6 +219,7 @@ public final class HumanSide implements Side {
 					&& HumanSiege.land(s, p, o, end);
 			if (landed) {
 				s.count("siegesLanded", 1);
+				HumanCouncil.landed(o);
 				if (f.firstLandingDay < 0) mark(s, f, "firstLanding", f.firstLandingDay = s.day - s.startDay);
 			}
 			String key = end.equals("guns") ? (landed ? "guns" : "guns, no front") : end;
@@ -229,6 +238,7 @@ public final class HumanSide implements Side {
 			if (enemy > 0f) {
 				if (BattleRules.callsOff(enemy, p.fp, HumanSiege.friendsOf(s, p), s.knobs.f("threatinc_siegeBreakOffRatio"))) {
 					s.count("raidsCalledOff", 1);
+					o.drivenOff = true;
 					home(s, p, o);
 					return;
 				}
@@ -237,9 +247,17 @@ public final class HumanSide implements Side {
 			}
 			float perDay = BattleRules.bombardFuelPerDay(p.fp, s.knobs.f("threatinc_bombardFuelPerFPDay"));
 			boolean over = p.fp < BattleRules.raidLossLine(p.fp0, s.knobs.f("threatinc_raidLossFraction"))
-					|| o.orbitDays >= HumanFit.RAID_STAY_DAYS || BattleRules.bombardDaysFor(p.fuel, perDay) < 0.5f;
-			if (!over && !BattleRules.orbitContested(HumanSiege.enemyAt(s, h), p.fp + HumanSiege.friendsOf(s, p),
-					s.knobs.f("threatinc_orbitContestFraction"))) {
+					|| o.orbitDays >= (o.stayDays > 0 ? o.stayDays : HumanFit.RAID_STAY_DAYS) || BattleRules.bombardDaysFor(p.fuel, perDay) < 0.5f;
+			boolean contested = BattleRules.orbitContested(HumanSiege.enemyAt(s, h), p.fp + HumanSiege.friendsOf(s, p),
+					s.knobs.f("threatinc_orbitContestFraction"));
+			if (!over && contested && o.play != null && p.kind == Parcel.Kind.SQUADRON) {
+				// ThreatFleetOrders.endRaid "orbit contested": a play's squadron is driven off, it does not wait the swarms out
+				o.drivenOff = true;
+				s.count("raidsDrivenOff", 1);
+				home(s, p, o);
+				return;
+			}
+			if (!over && !contested) {
 				// a raid's bombing falls on the organs: the forge and the nexus go down with the clock
 				float[] step = HumanSiege.bombardDay(s, h, p.fp, h.siegeClock, 0);
 				p.fuel = Math.max(0f, p.fuel - perDay);
@@ -321,7 +339,7 @@ public final class HumanSide implements Side {
 	}
 
 	/** Turns a parcel for the base it settles at. */
-	private static void home(State s, Parcel p, HumanOrder o) {
+	static void home(State s, Parcel p, HumanOrder o) {
 		if (o.home == null || o.home.lost) o.home = HumanPools.nearestBase(s, p.owner, p.to, false);
 		if (o.home == null || p.fp < 1f) { p.done = true; return; }
 		o.returning = true;
@@ -334,7 +352,7 @@ public final class HumanSide implements Side {
 	}
 
 	/** ThreatReturns.settle: the deposit by health, the cargo aboard in full, unburned ordnance at returnRefundMult. */
-	private static void settle(State s, Parcel p, HumanOrder o) {
+	static void settle(State s, Parcel p, HumanOrder o) {
 		p.done = true;
 		World at = o.home != null && !o.home.lost ? o.home : HumanPools.nearestBase(s, p.owner, p.to, false);
 		if (at == null) return;

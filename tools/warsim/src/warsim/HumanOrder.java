@@ -20,4 +20,10 @@ final class HumanOrder {
 	float owed;
 	/** For a relief force: the forward base it garrisons. */
 	World guards;
+	/** The war council's play that sent it (HumanCouncil.Play), or null. */
+	Object play;
+	/** A raid the swarms drove off (ThreatFleetOrders.endRaid: orbit contested, or called off). */
+	boolean drivenOff;
+	/** A raid's days over its world when not RAID_STAY_DAYS (a play's squadron stays its check). */
+	int stayDays;
 }

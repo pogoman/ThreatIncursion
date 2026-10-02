@@ -45,7 +45,13 @@ final class HumanPlanner {
 	}
 
 	/** IncursionManager's sizing: the orbit (siegeOrbitNeeded), the marines (needAndWear), the provisions (expeditionWants). */
-	static Option size(State s, Faction f, Hive h, World base) {
+	static Option size(State s, Faction f, Hive h, World base) { return size(s, f, h, base, -1f); }
+
+	/**
+	 * playFP >= 0: a war council play's flotilla (IncursionManager.playSiegeSizes) - the landing the world's
+	 * ground defence needs, grown to the play's share of the means, never sized on the swarm's fleet points.
+	 */
+	static Option size(State s, Faction f, Hive h, World base, float playFP) {
 		Option o = new Option();
 		o.hive = h;
 		o.base = base;
@@ -54,11 +60,12 @@ final class HumanPlanner {
 		o.reported = r == null ? 0f : r.at(h);
 		float travel = ReachRules.siegeArrivalDays(o.ly, State.LY_PER_DAY);
 		o.trust = r == null ? 0f : PlannerRules.trust(s.day - r.day, travel, s.knobs.f("threatinc_intelHalfLifeDays"));
-		float orbit = o.reported * s.knobs.f("threatinc_npcSiegeOrbitMargin");
+		float orbit = playFP >= 0f ? 0f : o.reported * s.knobs.f("threatinc_npcSiegeOrbitMargin");
 		float perPoint = s.knobs.f("threatinc_siegeRaidStrPerPoint");
 		float budget = s.knobs.f("threatinc_siegeOrbitDays");
 		boolean front = h.front != null && f.id.equals(h.front.faction);
-		float fp = Math.max(HumanFit.MIN_SIEGE_FP, roundUp(orbit));
+		float fp = Math.max(HumanFit.MIN_SIEGE_FP, playFP >= 0f
+				? (float) Math.floor(playFP / ReachRules.FP_PER_POINT) * ReachRules.FP_PER_POINT : roundUp(orbit));
 		float marines = 0f;
 		float[] plan = null;
 		// needAndWear: the least fleet that carries the marines its own bombardment leaves needed
@@ -249,7 +256,7 @@ final class HumanPlanner {
 				* BattleRules.overrunOdds(s.knobs.f("threatinc_groundStrengthExponent")) < HumanSiege.defence(s, h);
 	}
 
-	static void launch(State s, Faction f, Option opt) {
+	static Parcel launch(State s, Faction f, Option opt) {
 		int prep = (int) (HumanFit.PREP_MIN_DAYS + HumanFit.PREP_SPAN_DAYS * s.rng.nextFloat());
 		Parcel p = muster(s, f, opt.base, opt.hive, opt.fp, prep, Parcel.Kind.SIEGE);
 		s.lastSiegeDay.put(opt.hive, s.day);
@@ -263,6 +270,7 @@ final class HumanPlanner {
 		s.log("Plan " + f.id + ": sieges " + opt.hive.name + " from " + opt.base.name + ", trust "
 				+ String.format("%.2f", opt.trust) + ", " + (int) opt.reported + " FP reported, " + (int) opt.fp
 				+ " FP sent, " + (int) p.marines + " marines");
+		return p;
 	}
 
 	/**
