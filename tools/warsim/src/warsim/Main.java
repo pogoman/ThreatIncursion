@@ -28,7 +28,12 @@ public final class Main {
 	/** The columns the batch, compare and check tables print. */
 	static final String[] SHOWN = { "hives", "hiveSize", "garrisonFP", "bank", "swarmFuel", "swarmSupplies",
 			"worlds", "basesHeld", "basesFounded", "basesDestroyed", "hivesFounded", "hiveLevels", "hivesKilled",
-			"worldsLost", "siegesSailed", "siegesLanded", "strikesLaunched", "threatScore", "humanScore" };
+			"worldsLost", "siegesSailed", "siegesLanded", "strikesLaunched", "threatScore", "humanScore",
+			"turnover", "swings", "deadYears" };
+	/** The run classes of docs/war-sim.md 7: back-and-forth from this many momentum swings, a stalemate from this many dead years. */
+	static final int BACK_AND_FORTH_SWINGS = 3;
+	static final double STALEMATE_DEAD_YEARS = 3;
+	static final String[] CLASSES = { "decided for the swarm", "decided for the humans", "back-and-forth", "stalemate", "other" };
 	static final int[] CHECKPOINTS = { 12, 24, 36, 48, 72, 97 };
 
 	public static void main(String[] args) throws Exception {
@@ -86,8 +91,11 @@ public final class Main {
 			score(r, killWeight);
 			if (out != null) csv(r, out);
 			table("seed " + seed, months, Arrays.asList(r));
+			System.out.println("outcome: " + CLASSES[outcome(r)] + decidedText(r));
 		} else if (cmd.equals("batch")) {
-			table(seeds + " seeds: median [p10 - p90]", months, runs(start, knobs, seeds, months, killWeight, sizeExponent));
+			List<Sim.Result> rs = runs(start, knobs, seeds, months, killWeight, sizeExponent);
+			table(seeds + " seeds: median [p10 - p90]", months, rs);
+			System.out.println(classes(rs));
 		} else if (cmd.equals("compare")) {
 			Knobs ka = knobs.copy(), kb = knobs.copy();
 			for (String s : a.split(";")) if (!s.trim().isEmpty()) ka.set(s.trim());
@@ -142,6 +150,87 @@ public final class Main {
 			m.put("threatScore", m.get("threatSpread") + killWeight * m.get("threatKills"));
 			m.put("humanScore", m.get("humanSpread") + killWeight * m.get("humanKills"));
 		}
+		measures(r);
+	}
+
+	/**
+	 * docs/war-sim.md 7, the whole outcome, as it stands at each month: turnover (worlds changing state a year),
+	 * swings (sign changes of the yearly momentum, the swarm's ground gained less the humans'), deadYears (the
+	 * longest stretch with no hive killed, no world lost and no base destroyed) and decided (1 the humans wiped
+	 * out, -1 the swarm, 0 neither) with decidedMonth.
+	 */
+	static void measures(Sim.Result r) {
+		Map<String, Double> first = r.months.get(0);
+		int swings = 0, lastSign = 0, quietSince = 0, decided = 0, decidedMonth = -1;
+		double dead = 0;
+		boolean hadHives = false, hadWorlds = false;
+		for (int i = 0; i < r.months.size(); i++) {
+			Map<String, Double> m = r.months.get(i);
+			if (i > 0) {
+				Map<String, Double> was = r.months.get(i - 1);
+				if (val(m, "hivesKilled") + val(m, "worldsLost") + val(m, "basesDestroyed")
+						> val(was, "hivesKilled") + val(was, "worldsLost") + val(was, "basesDestroyed")) quietSince = i;
+				dead = Math.max(dead, (i - quietSince) / 12.0);
+				if (i % 12 == 0) {
+					Map<String, Double> y = r.months.get(i - 12);
+					double mom = swarmGround(m) - swarmGround(y) - (humanGround(m) - humanGround(y));
+					int sign = mom > 0 ? 1 : mom < 0 ? -1 : 0;
+					// a year of zero momentum is no change of side
+					if (sign != 0) {
+						if (lastSign != 0 && sign != lastSign) swings++;
+						lastSign = sign;
+					}
+				}
+			}
+			double hives = val(m, "hives"), worlds = val(m, "worlds") + val(m, "basesHeld");
+			if (decided == 0 && hadHives && hives == 0) { decided = -1; decidedMonth = i; }
+			if (decided == 0 && hadWorlds && worlds == 0) { decided = 1; decidedMonth = i; }
+			hadHives |= hives > 0;
+			hadWorlds |= worlds > 0;
+			double changed = swarmGround(m) - swarmGround(first) + humanGround(m) - humanGround(first);
+			m.put("turnover", i == 0 ? 0 : changed / (i / 12.0));
+			m.put("swings", (double) swings);
+			m.put("deadYears", dead);
+			m.put("decided", (double) decided);
+			m.put("decidedMonth", (double) decidedMonth);
+		}
+	}
+
+	/** Ground the swarm gained: hives founded, human worlds and forward bases destroyed. */
+	static double swarmGround(Map<String, Double> m) { return val(m, "hivesFounded") + val(m, "worldsLost") + val(m, "basesDestroyed"); }
+
+	/** Ground the humans gained: hives killed, forward bases founded. */
+	static double humanGround(Map<String, Double> m) { return val(m, "hivesKilled") + val(m, "basesFounded"); }
+
+	/** The run's class, an index into CLASSES: the first that fits. */
+	static int outcome(Sim.Result r) {
+		Map<String, Double> m = r.last();
+		if (val(m, "decided") > 0) return 0;
+		if (val(m, "decided") < 0) return 1;
+		if (val(m, "swings") >= BACK_AND_FORTH_SWINGS) return 2;
+		if (val(m, "deadYears") >= STALEMATE_DEAD_YEARS) return 3;
+		return 4;
+	}
+
+	static String decidedText(Sim.Result r) {
+		return val(r.last(), "decided") != 0 ? " in month " + (int) val(r.last(), "decidedMonth") : "";
+	}
+
+	/** The share of the seeds ending in each class, and when the decided ones were decided. */
+	static String classes(List<Sim.Result> runs) {
+		int[] n = new int[CLASSES.length];
+		List<Double> when = new ArrayList<Double>();
+		for (Sim.Result r : runs) {
+			n[outcome(r)]++;
+			if (val(r.last(), "decided") != 0) when.add(val(r.last(), "decidedMonth"));
+		}
+		StringBuilder b = new StringBuilder("outcomes:");
+		for (int i = 0; i < n.length; i++) b.append(i > 0 ? "," : "").append(" ").append(CLASSES[i]).append(" ").append(Math.round(100.0 * n[i] / runs.size())).append("%");
+		if (!when.isEmpty()) {
+			java.util.Collections.sort(when);
+			b.append("; decided in month ").append(fmt(when.get(when.size() / 2))).append(" (median of ").append(when.size()).append(")");
+		}
+		return b.toString();
 	}
 
 	static double pct(List<Sim.Result> runs, int month, String col, double q) {
@@ -204,6 +293,8 @@ public final class Main {
 					fmt(mb) + " [" + fmt(pct(rb, end, col, 0.1)) + " - " + fmt(pct(rb, end, col, 0.9)) + "]",
 					n == 0 ? "-" : Math.round(100.0 * wins / n) + "%", clear ? "yes" : ""));
 		}
+		System.out.println("A " + classes(ra));
+		System.out.println("B " + classes(rb));
 	}
 
 	/**
