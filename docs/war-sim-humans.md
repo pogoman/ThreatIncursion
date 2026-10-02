@@ -300,3 +300,51 @@ month-36 row still inside; the losses are later months, where sieges and strikes
 Experiment switches, simulator only (`Knobs.set` accepts `warsim_*`): `warsim_seedPriceMult` (the Seeding Swarm's
 price, `SwarmKnobs.foundSupplies`) and `warsim_councilMajorPlays` (major plays a faction runs at once,
 `HumanCouncil.plan`; the mod's `ThreatPlays.major` allows one).
+
+## 8. Round 13: the council docs' open ideas, trialled (2026-10-02)
+
+Switches, all off by default, each mirrored from the doc's own words: `warsim_councilAlwaysSiege` (war-council-runs.md 5 A:
+the strategy picks where, not whether - Hold hammers the cluster that threatens it, Starve runs one campaign beside the
+hammer slot; `HumanCouncil.plan`), `warsim_councilMajorPerFP` (option B: the major-play limit is the faction's siege
+capacity over this many FP, `siegeCapacity` = each base's `capacityFP` against its nearest cluster, counted in
+`council.majorLimitDays`), `warsim_councilStarveToHammer` (option C: a starved campaign turns to the hammer in the same
+play, straight to the muster; `advanceStarve`, counter `starveToHammer`), `warsim_councilReliefPause=false` (4.5: plays
+are not held while relief is owed; `reliefPause`), `warsim_swarmConsolidateOnLosses` (swarm-strategy.md 4 decision 5, the
+doc's words: CONSOLIDATE when the hive count falls or a front stands on a hive, never on pressure; `SwarmPosture.stance`).
+The feint's own success test is counted at a feint play's end (`feint.drew`, `feint.notDrew`, `.landed`: did A's
+reports rise within the watch, did the strike then land). Decision 3's numbers, learning and temperature are the mod's
+knobs; the personalities trial sets `threatinc_councilPersonalities` to one `default` entry.
+
+All cells council on, radar off, planner sizing on (round 12's defaults), 30 seeds; the base cell equals round 12's
+"both" cell exactly. New game 104 months, ranked by mutual then humanScore (* outside the base cell's p10-p90):
+
+| cell | threatKills (w / b) | humanKills | mutual | scores T / H | hives | bases | classes | plays: hammers / starves / sieges sailed |
+|---|---|---|---|---|---|---|---|---|
+| A + B3000 + C | 3.5* (1.9 / 1.5*) | 1.9* | 1.9* | 714 / 2* | 90.5* | 2* | both 83 | 225 / 14.5 / 73.5 (140 short of supplies) |
+| relief pause off | 6.0 (2.1 / 3.9) | 1.0* | 1.0* | 873 / 8 | 133 | 8 | both 53, other 47 | 26.5 / 38.5 / 20 |
+| B, capacity / 3000 | 6.3 (2.0 / 4.3) | 0.9* | 0.9* | 1070 / 11.5 | 138 | 11.5 | both 47, one-sided 37 | 43 / 49 / 21.5 |
+| B, capacity / 6000 | 6.2 (2.0 / 4.2) | 0.6* | 0.6* | 908 / 12 | 132 | 12 | both 43, one-sided 30 | 31 / 33 / 16 |
+| A | 5.2* (2.0 / 3.0*) | 0.4 | 0.4 | 1103 / 3.5* | 138 | 3.5* | both 13, one-sided 37 | 65 / 15.5 / 13.5 (81.5 short of supplies) |
+| C | 7.7 (2.2 / 5.4) | 0.2 | 0.2 | 932 / 14.5 | 139 | 14.5 | one-sided 67 | 3 / 9 / 3 (2 turned to hammers) |
+| consolidate on losses | 6.9 (2.1 / 5.0) | 0.2 | 0.2 | 1085 / 13 | 151 | 13 | one-sided 70 | 5 / 10 / 2.5 |
+| personalities all Tri-Tachyon / all Hegemony | 7.9 / 7.4 | 0.2 / 0.2 | 0.2 / 0.2 | 1064 / 16, 1076 / 15 | 150 / 147 | 16 / 15 | one-sided 70 | 5 / 12 / 3, 5 / 10.5 / 2 |
+| temperature 2 / 0.5 | 6.8 / 6.9 | 0.2 / 0 | 0.2 / 0 | 869 / 16.5, 1032 / 13.5 | 129 / 143 | 16.5 / 13.5 | one-sided 67 / 80 | 7 / 8.5 / 3, 4 / 9.5 / 2 |
+| hammer share 0.8 / 0.4 | 6.9 / 6.9 | 0.1 / 0 | 0.1 / 0 | 1125 / 12, 1009 / 15 | 154 / 150 | 12 / 15 | one-sided 67 / 90 | 5 / 10 / 2 |
+| base; muster floor 0.25 / 0.75; learning off | 7.1 (2.2 / 4.7) | 0 | 0 | 967 / 13 | 144 | 13 | one-sided 73, other 27 | 5 / 11 / 2.5 |
+
+Mid-war 48 months: every cell's humanKills and mutual are 0 except relief pause off (0.3*, bases held 11.5 -> 8*). A
+again burns the bases (held 11.5 -> 5*, 48.5 sieges short of supplies), A+B+C 2*; B3000 sails 3* sieges to the base's 0;
+consolidate on losses puts the swarm in CONSOLIDATE 5.2 months of 48 (base 0; the start state's fronts on hives trigger it)
+and halves its founding (88.5 -> 54*, hives at the end 145 -> 110*).
+
+Reading. B is the one idea that raises the humans' killing without a cost: more plays at once, sieges sailed 2.5 -> 21.5,
+bases held intact; its gain is capped by the relief pause (`council.heldPlayDays` 4324 -> 19138). The relief pause is the
+main brake on everything - relief is owed about 70% of faction-days here (`council.reliefDays` 8713 of 12480), which round 7
+found the simulator overstates, so relief-off's 1.0 is an upper bound and B's 0.9 is the honest figure. A fails for the
+doc's own reason: a hammer per strategy without the means behind it - 81.5 of the sieges could not be supplied and the
+bases that paid were lost (13 -> 3.5), which is why A+B+C's 1.9 costs the humans' score (2). C changes nothing: a
+campaign reaches "starved" twice a run. Shares, the muster floor, learning, temperature and personalities move nothing
+clear of seed noise - with planner sizing the hammer share only sizes the hunting force. Feints: only A/A+B+C run them;
+they drew the swarm 0.5 of 2.5 and 2 of 10.5 times (mid 0 of 5.5), and the strike landed 0 times after a drawing feint, 2
+after one that did not - the feint as built does not pull. Decision 5 as worded consolidates more mid-war, not less:
+a single front on a hive is enough; the pressure path barely fires now (2.1 months of 104 in the base).
