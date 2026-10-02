@@ -36,7 +36,7 @@ public final class Main {
 		Path root = repoRoot();
 		Path settings = root.resolve("data/config/settings.json");
 		Path startDir = root.resolve("tools/warsim/start");
-		Path dumps = null, out = null;
+		Path dumps = null, out = null, log = null;
 		long seed = 1;
 		int seeds = 100, months = 100;
 		float killWeight = 0f, sizeExponent = 1f;
@@ -53,6 +53,7 @@ public final class Main {
 			else if (o.equals("-start")) startDir = Paths.get(args[++i]);
 			else if (o.equals("-settings")) settings = Paths.get(args[++i]);
 			else if (o.equals("-dumps")) dumps = Paths.get(args[++i]);
+			else if (o.equals("-log")) log = Paths.get(args[++i]);
 			else if (o.equals("-set")) sets.add(args[++i]);
 			else if (o.equals("-a")) a = args[++i];
 			else if (o.equals("-b")) b = args[++i];
@@ -66,7 +67,7 @@ public final class Main {
 		String cmd = args[0];
 		if (cmd.equals("check")) {
 			if (dumps == null) throw new IllegalArgumentException("check needs -dumps <folder>");
-			check(dumps, knobs, seeds, killWeight, sizeExponent);
+			check(dumps, knobs, seeds, killWeight, sizeExponent, log);
 			return;
 		}
 		Start start = start(startDir);
@@ -199,7 +200,7 @@ public final class Main {
 	 * A real run's monthly dumps beside the simulator started from the first of them: the
 	 * validation gates of docs/war-sim.md 6. "in" marks the real figure inside p10-p90.
 	 */
-	static void check(Path dir, Knobs knobs, int seeds, float killWeight, float sizeExponent) throws IOException {
+	static void check(Path dir, Knobs knobs, int seeds, float killWeight, float sizeExponent, Path log) throws IOException {
 		List<Path> files = dumpFiles(dir);
 		if (files.size() < 2) throw new IllegalStateException("need at least two dumps in " + dir);
 		Path map = mapFile(dir);
@@ -237,7 +238,73 @@ public final class Main {
 						fmt(pct(runs, a[1], col, 0.5)), fmt(lo), fmt(hi), ok ? "in" : "OUT"));
 			}
 		}
+		// the run's dated log beside the dumps (simdump-<name> -> ti-<name>.txt), or -log: events counted by month
+		if (log == null) {
+			String n = dir.getFileName().toString();
+			Path guess = dir.resolveSibling("ti-" + n.substring(n.indexOf('-') + 1) + ".txt");
+			if (n.startsWith("simdump-") && Files.exists(guess)) log = guess;
+		}
+		if (log != null) {
+			Map<String, int[]> events = events(log, first.startDay, months);
+			System.out.println("events from " + log.getFileName() + ", cumulative: real | sim median [p10 - p90]");
+			for (Map.Entry<String, int[]> e : events.entrySet()) {
+				System.out.println(e.getKey());
+				for (int[] a : at) {
+					if (a[1] < 36) continue;
+					double r = e.getValue()[a[1]], lo = pct(runs, a[1], e.getKey(), 0.1), hi = pct(runs, a[1], e.getKey(), 0.9);
+					boolean ok = r >= lo && r <= hi;
+					cells++;
+					if (ok) in++;
+					System.out.println(String.format("  month %3d %12s | %12s [%s - %s] %s", a[1], fmt(r),
+							fmt(pct(runs, a[1], e.getKey(), 0.5)), fmt(lo), fmt(hi), ok ? "in" : "OUT"));
+				}
+			}
+		}
 		System.out.println(in + " of " + cells + " real figures inside the simulator's p10-p90");
+	}
+
+	/** The log lines each event counter is read from (docs/war-sim.md 7), against the simulator's counter of that name. */
+	static final String[][] EVENTS = {
+			{ "strikesLaunched", "^Strike launched from " },
+			{ "threatLandings", "^Front deployed at .* \\(threat\\): " },
+			{ "beachheadsOverrun", "^Notice: Beachhead Overrun \\| The garrison of " },
+			{ "worldsLost", "^Threat ground victory at " },
+			{ "hivesFounded", "^Colony founded" },
+			{ "hivesKilled", "^Colony eradicated: " },
+			{ "siegesSailed", "^Expedition draw at " },
+			{ "siegesLanded", "^Front deployed at .* \\((?!threat)\\w+\\): " },
+			{ "frontsOverrun", "^Notice: Beachhead Overrun \\| A hive counter-attack" },
+			{ "huntsSailed", "^Hunting force from " },
+			{ "basesFounded", "^Frontline: \\w+ founded " },
+			{ "basesDestroyed", "^Frontline: \\w+ dismantled .*\\(station destroyed" },
+			{ "basesAbandoned", "^Frontline: \\w+ dismantled .*\\(no " },
+	};
+
+	/** Cumulative event counts by month since `startDay`, from a log dated by its "Clock: day N war M" lines. */
+	static Map<String, int[]> events(Path log, int startDay, int months) throws IOException {
+		Map<String, int[]> out = new java.util.LinkedHashMap<String, int[]>();
+		java.util.regex.Pattern[] pats = new java.util.regex.Pattern[EVENTS.length];
+		for (int i = 0; i < EVENTS.length; i++) {
+			out.put(EVENTS[i][0], new int[months + 2]);
+			pats[i] = java.util.regex.Pattern.compile(EVENTS[i][1]);
+		}
+		int day = startDay;
+		try (java.io.BufferedReader r = Files.newBufferedReader(log, java.nio.charset.StandardCharsets.ISO_8859_1)) {
+			for (String line = r.readLine(); line != null; line = r.readLine()) {
+				if (line.startsWith("Clock: day ")) {
+					day = Integer.parseInt(line.substring(11, line.indexOf(' ', 11)));
+					continue;
+				}
+				for (int i = 0; i < pats.length; i++) {
+					if (!pats[i].matcher(line).find()) continue;
+					// a row at month m is taken after m x 30 days: the event counts from the first month that has seen it
+					int m = Math.max(0, (day - startDay + 29) / 30);
+					int[] c = out.get(EVENTS[i][0]);
+					for (int j = m; j < c.length; j++) c[j]++;
+				}
+			}
+		}
+		return out;
 	}
 
 	static void csv(Sim.Result r, Path out) throws IOException {

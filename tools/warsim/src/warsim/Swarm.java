@@ -78,6 +78,17 @@ public final class Swarm {
 
 	// fog (ThreatSwarmIntel, simplified): world id -> {day seen, defence seen}
 	public final Map<String, float[]> seen = new HashMap<String, float[]>();
+	/** A Threat front on a human world (ThreatGroundFronts, a Threat-owned GroundFront), as SwarmOps.landing models it. */
+	public static final class Landing {
+		public float troops;
+		public int landedDay;
+		/** The day the front ends, and how: the garrison overruns it, or it takes the last district. */
+		public int endDay = Integer.MIN_VALUE;
+		public boolean falls;
+	}
+
+	/** Threat fronts by world id. */
+	public final Map<String, Landing> landings = new LinkedHashMap<String, Landing>();
 	/** Worlds a strike is out against (one strike a world). */
 	public final Set<String> struck = new HashSet<String>();
 	/** Human parcels' FP as last seen holding in a hive system, for the kills ledger. */

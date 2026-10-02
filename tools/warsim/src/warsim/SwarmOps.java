@@ -518,29 +518,84 @@ final class SwarmOps {
 		back.order = r;
 	}
 
-	/** The day's strikes on the ground: a fleet the defenders broke is gone, one whose assault is done takes the world. */
-	static void daily(State s, SwarmKnobs k) {
-		for (Parcel p : new ArrayList<Parcel>(s.parcels)) {
-			if (!p.threat() || p.kind != Parcel.Kind.STRIKE || !p.arrived || !p.holding) continue;
-			StrikeOrder o = orderOf(s, p);
-			if (o.target != null && o.groundEnd == Integer.MIN_VALUE) o.groundEnd = s.day + SwarmFit.groundDays(s.rng);
-			if (p.done || p.fp < 1f) {
-				p.done = true;
-				release(s, p);
+	/**
+	 * A strike's landing pass (ThreatStrikeFGI's "Strike pass (landing)" / "(reinforce)"): the troops go down
+	 * and the hulls go home. Troops are SwarmFit.TROOPS_PER_FP of what reached the orbit; under
+	 * LANDING_MIN_TROOPS the landing is called off ("Strike landing at X aborted").
+	 */
+	static void land(State s, Parcel p, World w) {
+		float troops = p.fp * SwarmFit.TROOPS_PER_FP;
+		if (troops < SwarmFit.LANDING_MIN_TROOPS) {
+			s.count("strikeLandingsAborted", 1);
+			return;
+		}
+		Swarm.Landing l = s.swarm.landings.get(w.id);
+		if (l != null) {
+			// the next expedition reinforces the front: the garrison needs that much longer to reach 2:1
+			l.troops += troops;
+			if (!l.falls && l.endDay != Integer.MIN_VALUE) l.endDay += SwarmFit.reinforcedDays(s.rng);
+			s.count("threatReinforcePasses", 1);
+			s.log("Strike pass (reinforce) vs " + w.name + ": " + (int) troops + " troops");
+			return;
+		}
+		l = new Swarm.Landing();
+		l.troops = troops;
+		l.landedDay = s.day;
+		s.swarm.landings.put(w.id, l);
+		s.count("threatLandings", 1);
+		s.log("Front deployed at " + w.name + " (threat): " + (int) troops + " troops");
+	}
+
+	/**
+	 * The day of the Threat's fronts (ThreatGroundFronts.tickFront on a Threat-owned front). A
+	 * colony whose faction is at war holds an armed reserve and counter-attacks until it has the
+	 * 2:1 that overruns the beachhead; one with no reserve (not mobilised, pirates, the Path)
+	 * loses its last district after SwarmFit.groundDays. Decided the day after the landing, when
+	 * the strike has mobilised whoever it can.
+	 */
+	static void fronts(State s, SwarmKnobs k) {
+		if (s.swarm.landings.isEmpty()) return;
+		for (String id : new ArrayList<String>(s.swarm.landings.keySet())) {
+			Swarm.Landing l = s.swarm.landings.get(id);
+			World w = s.world(id);
+			if (w == null || w.lost) {
+				s.swarm.landings.remove(id);
 				continue;
 			}
-			if (o.target == null || o.target.lost) {
-				goHome(s, p, p.to);
+			if (l.endDay == Integer.MIN_VALUE) {
+				if (s.day <= l.landedDay) continue;
+				l.falls = !s.faction(w.faction).mobilised;
+				l.endDay = l.landedDay + (l.falls ? SwarmFit.groundDays(s.rng) : SwarmFit.overrunDays(s.rng));
+			}
+			if (s.day < l.endDay) continue;
+			s.swarm.landings.remove(id);
+			if (!l.falls) {
+				s.count("beachheadsOverrun", 1);
+				SwarmPosture.noteTrend(s, l.troops / SwarmFit.TROOPS_PER_FP * 0.5f, 0f);
+				s.log("Counter-attack at " + w.name + " overran the beachhead");
 				continue;
 			}
-			if (s.day < o.groundEnd) continue;
-			World w = o.target;
 			s.loseWorld(w, true, "ground assault");
 			if (k.conquestConverts && s.rng.nextFloat() < SwarmFit.CONQUEST_HIVE_SHARE) {
 				Hive h = s.foundHive(w.sys, w.name, k.conquestSize);
 				rollExpandable(s, w.sys, 1);
 				SwarmEconomy.plan(s, k, h);
 			}
+		}
+	}
+
+	/** The day's strikes: the fronts, then any strike a dump loaded already holding lands what it carries. */
+	static void daily(State s, SwarmKnobs k) {
+		fronts(s, k);
+		for (Parcel p : new ArrayList<Parcel>(s.parcels)) {
+			if (!p.threat() || p.kind != Parcel.Kind.STRIKE || !p.arrived || !p.holding) continue;
+			StrikeOrder o = orderOf(s, p);
+			if (p.done || p.fp < 1f) {
+				p.done = true;
+				release(s, p);
+				continue;
+			}
+			if (o.target != null && !o.target.lost && !o.target.forwardBase) land(s, p, o.target);
 			goHome(s, p, p.to);
 		}
 		// a strike that vanished (destroyed in flight by the other side) frees its target
@@ -639,7 +694,7 @@ final class SwarmOps {
 		}
 		float lost = p.fp * BattleRules.lossShare(strength, defence);
 		float worn = 1f - BattleRules.lossShare(defence, strength);
-		w.defence *= worn;
+		// the fight costs the fleets that met it (ThreatAbstractBattle.fought), not the ground defence the gate reads
 		w.guardFP *= worn;
 		p.fp -= lost;
 		SwarmPosture.noteTrend(s, lost, 0f);
@@ -653,8 +708,8 @@ final class SwarmOps {
 			goHome(s, p, p.to);
 			return;
 		}
-		p.holding = true;
-		o.groundEnd = s.day + SwarmFit.groundDays(s.rng);
+		land(s, p, w);
+		goHome(s, p, p.to);
 	}
 
 	static void reinforcement(State s, Parcel p) {
