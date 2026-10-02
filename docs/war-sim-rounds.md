@@ -463,5 +463,8 @@ day 851.
 **The base from here** (homeWorlds 4, 60 seeds, new game): humanScore 29.5 [19.8-42.1], threatScore 1,701 [731-2,200],
 hives 124, hives killed 8, bases destroyed 22, both-sides 57%. The mid-war start is unchanged (its chain has landed).
 
-**Game check.** A new game must log `OG home system: <name> (.. N planets, the chain lands on 4)` and land four hives -
-result in facts.md "How many worlds does the swarm start on".
+**Game check, done** (run hw4, a new game on the built jar). `OG home system: Alpha Laphirial Star System (deposit wealth 52,
+8 planets, the chain lands on 4)`; four hives land on days 133-144 - Mining, Mining, Heavy Industry (the seed forge),
+refining. At size 4, days 495-505: the fuel plant, a second forge ("invest") and two more mines - the simulator's seed 3
+has them on days 496-504. The home's other four planets are taken on days 671-710 (`tryExpandInSystem`), the first claim
+outside it on day 732 (the simulator: 638), nine hives by day 933. No mod exception. The run went on to month 115 -> `war-sim-real-runs.md` 3
