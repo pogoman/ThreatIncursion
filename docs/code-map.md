@@ -113,3 +113,11 @@ to reconcile it.
 - `ThreatResponseIntel.java` — tracks a real NPC task force dispatched to retaliate against the colony that struck it.
 - `ThreatSiegeReportIntel.java` — after-action sitrep summarizing what a siege expedition did to each target colony.
 - `ThreatBountyIntel.java` — retired legacy intel class kept only so pre-rework saves deserialize and self-retire.
+
+### Pure rules shared with the offline simulator (`src/threatinc/rules/`)
+No game types; `tools/warsim` compiles these files as they stand (docs/war-sim-humans.md 1).
+- `BattleRules.java` — off-screen fight shares, the daily siege's exchange, call-off and contest, bombardment suppression, fuel and return fire, landing and raid lines.
+- `ReachRules.java` — voyage cost, passage fuel, trip supplies and days, base range, the pooled haul.
+- `ReserveRules.java` — reserve basis, floor, available and spendable stock, mobilisation seeding.
+- `PlannerRules.java` — report trust and movement, the plan's miss chance and due test, raid sizing and score.
+- `CouncilRules.java` — the war council's strategy scores, draw, jitter and learning.

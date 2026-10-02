@@ -2612,39 +2612,37 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** The defence the guns add: the figure times the batteries' share, D x (1 - 1 / their multiplier). */
 	public static float gunDefence(MarketAPI market, float defence) {
 		if (market == null) return 0f;
-		return Math.max(0f, defence) * Theatre.of(market).batteryShare(market);
+		return threatinc.rules.BattleRules.gunDefence(defence, Theatre.of(market).batteryShare(market));
 	}
 
 	/** Fleet points the guns take per day from whatever bombards the world - set by the guns, not the fleet. */
 	public static float returnFirePerDay(MarketAPI market, float defence) {
-		return Math.max(0f, ThreatIncConfig.bombardReturnFirePerGunDefence()) * gunDefence(market, defence);
+		return threatinc.rules.BattleRules.returnFirePerDay(ThreatIncConfig.bombardReturnFirePerGunDefence(),
+				gunDefence(market, defence));
 	}
 
 	/** Fuel a day of tactical bombardment burns for a fleet of fp. */
 	public static float bombardFuelPerDay(float fp) {
-		return Math.max(0f, ThreatIncConfig.bombardFuelPerFPDay()) * Math.max(0f, fp);
+		return threatinc.rules.BattleRules.bombardFuelPerDay(fp, ThreatIncConfig.bombardFuelPerFPDay());
 	}
 
 	/** Days of tactical bombardment this much fuel buys a fleet of fp; with no price, as long as it likes. */
 	public static float bombardDaysFor(float fuel, float fp) {
-		float perDay = bombardFuelPerDay(fp);
-		if (perDay <= 0f) return Float.MAX_VALUE;
-		return Math.max(0f, fuel) / perDay;
+		return threatinc.rules.BattleRules.bombardDaysFor(fuel, bombardFuelPerDay(fp));
 	}
 
 	/** Disruption days a day of bombardment adds to a structure still whole: the theatre's rate x fleet / (fleet + defence). */
 	public static float suppressionRate(MarketAPI market, float fp, float defence) {
 		if (market == null || fp <= 0f) return 0f;
-		float weighted = fp * Math.max(0f, ThreatIncConfig.siegeFPWeight());
-		return Theatre.of(market).suppressDaysPerDay() * weighted
-				/ Math.max(1f, weighted + Math.max(0f, defence));
+		return threatinc.rules.BattleRules.suppressionRate(fp, defence, ThreatIncConfig.siegeFPWeight(),
+				Theatre.of(market).suppressDaysPerDay());
 	}
 
 	/** A structure's condition after one more day at this rate (the clock gains rate x condition x cover). */
 	public static float conditionAfterDay(MarketAPI market, Industry ind, float rate, float through) {
 		Theatre theatre = Theatre.of(market);
-		float cond = theatre.condition(market, ind);
-		return Math.max(0f, cond - rate * cond * through / theatre.wearDays());
+		return threatinc.rules.BattleRules.conditionAfterDay(theatre.condition(market, ind), rate, through,
+				theatre.wearDays());
 	}
 
 	/**
@@ -2758,7 +2756,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/** Vanilla's FleetGroupIntel groupAbortsMissionFPFraction: an expedition cut below this share of what it set out with turns for home. */
-	public static final float GROUP_ABORT_FRACTION = 0.33f;
+	public static final float GROUP_ABORT_FRACTION = threatinc.rules.BattleRules.GROUP_ABORT_FRACTION;
 
 	/**
 	 * What a fleet of fp would make of the world by bombarding for as long as

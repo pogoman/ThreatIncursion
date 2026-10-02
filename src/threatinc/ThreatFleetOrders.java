@@ -839,11 +839,10 @@ public class ThreatFleetOrders {
 
 	/** {fuel, supplies} a task force of {@code fp} combat points from the base to {@code destinationHyper} is provisioned with. */
 	protected static float[] sortieWants(MarketAPI base, float fp, Vector2f destinationHyper) {
-		float points = fp / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
 		float dist = base.getStarSystem() == null || destinationHyper == null ? 0f
 				: Misc.getDistanceLY(base.getStarSystem().getLocation(), destinationHyper);
-		return new float[] { points * dist * ThreatIncConfig.expeditionFuelPerPointLY(),
-				points * ThreatIncConfig.expeditionSuppliesPerPoint() };
+		return threatinc.rules.ReachRules.voyageCost(fp, dist, ThreatIncConfig.expeditionFuelPerPointLY(),
+				ThreatIncConfig.expeditionSuppliesPerPoint());
 	}
 
 	/** Combat points the base's spendable stock (ThreatReserves.spendable) can provision a sortie to {@code destinationHyper} for. */
@@ -867,9 +866,7 @@ public class ThreatFleetOrders {
 				: ThreatReserves.available(base, Commodities.FUEL);
 		float supplies = spareOnly ? ThreatReserves.spendable(base, Commodities.SUPPLIES)
 				: ThreatReserves.available(base, Commodities.SUPPLIES);
-		float points = Float.MAX_VALUE;
-		if (per[0] > 0f) points = Math.min(points, fuel / per[0]);
-		if (per[1] > 0f) points = Math.min(points, supplies / per[1]);
+		float points = threatinc.rules.ReachRules.payablePoints(fuel, supplies, per[0], per[1]);
 		return points >= Float.MAX_VALUE ? Float.MAX_VALUE : points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
 	}
 
@@ -1627,7 +1624,7 @@ public class ThreatFleetOrders {
 		if (ThreatGroundFronts.dailyGain(world, ThreatGroundFronts.orbitPoints(o.factionId, world, fp)) < 1f) {
 			return "a day buys less than a day down";
 		}
-		float lossLine = o.arrivalFP * (1f - Math.max(0f, Math.min(1f, ThreatIncConfig.raidLossFraction())));
+		float lossLine = threatinc.rules.BattleRules.raidLossLine(o.arrivalFP, ThreatIncConfig.raidLossFraction());
 		if (fp < lossLine) return "lost " + (int) (o.arrivalFP - fp) + " of " + (int) o.arrivalFP + " FP";
 		return null;
 	}
