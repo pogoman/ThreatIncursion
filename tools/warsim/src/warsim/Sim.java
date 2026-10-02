@@ -84,6 +84,7 @@ public final class Sim {
 		m.put("month", (double) s.month());
 		m.put("hives", hives);
 		m.put("hiveSize", hiveSize);
+		m.put("meanHiveSize", hives > 0 ? hiveSize / hives : 0);
 		m.put("garrisonFP", garrison);
 		m.put("threatFleetFP", threatMobile);
 		m.put("bank", bank);
