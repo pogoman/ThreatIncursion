@@ -66,7 +66,7 @@ public final class ThreatAttackPlanner {
 	public static final String RAID = "raid";
 
 	/** Days a raid's term runs past its passage both ways and its planned stay: the time to fight for the orbit and settle. */
-	public static final float RAID_SLACK_DAYS = 10f;
+	public static final float RAID_SLACK_DAYS = threatinc.rules.PlannerRules.RAID_SLACK_DAYS;
 
 	/** Days a raid held back to arrive with a siege may wait past its day for the pools before it is dropped. */
 	public static final float PENDING_GRACE_DAYS = 5f;
@@ -169,7 +169,7 @@ public final class ThreatAttackPlanner {
 			resolve(p, today);
 			sailPending(p, faction, today);
 			// a last plan "after" today is the old -1000 sentinel of a save from the first build: due
-			if (!p.news && today >= p.lastPlanned && today - p.lastPlanned < Math.max(1f, ThreatIncConfig.planIntervalDays())) continue;
+			if (!threatinc.rules.PlannerRules.planDue(p.news, today, p.lastPlanned, ThreatIncConfig.planIntervalDays())) continue;
 			plan(p, faction, today, random);
 		}
 	}
@@ -213,7 +213,7 @@ public final class ThreatAttackPlanner {
 	public static float chance(Plan p) {
 		float miss = 1f;
 		for (Prong pr : p.prongs) {
-			if (SIEGE.equals(pr.kind)) miss *= 1f - Math.max(0f, Math.min(1f, pr.trust));
+			if (SIEGE.equals(pr.kind)) miss = threatinc.rules.PlannerRules.miss(miss, pr.trust);
 		}
 		return 1f - miss;
 	}
@@ -290,7 +290,7 @@ public final class ThreatAttackPlanner {
 
 		/** Its term: there and back, its planned stay, and the slack to fight for the orbit and settle. */
 		float days() {
-			return 2f * travel + stay + RAID_SLACK_DAYS;
+			return threatinc.rules.PlannerRules.raidDays(travel, stay);
 		}
 	}
 
@@ -558,8 +558,8 @@ public final class ThreatAttackPlanner {
 		float guns = leastForGain(world);
 		if (guns >= Float.MAX_VALUE) return null;
 		float reported = r.worldFP(world.getId());
-		float orbit = reported > 0f ? reported / Math.max(0.01f, ThreatIncConfig.orbitContestFraction()) + 1f : 0f;
-		float fp = Math.max(Math.max(guns, orbit), Math.max(1f, ThreatIncConfig.guardFleetFP()));
+		float orbit = threatinc.rules.PlannerRules.orbitToContest(reported, ThreatIncConfig.orbitContestFraction());
+		float fp = threatinc.rules.PlannerRules.raidFP(guns, orbit, ThreatIncConfig.guardFleetFP());
 		float floor = 1f - Math.max(0f, Math.min(1f, ThreatIncConfig.raidLossFraction()));
 		float[] run = ThreatGroundFronts.bombardPlan(world, fp, ThreatIncConfig.siegeOrbitDays(), 0f, false, 0f, floor);
 		if (run[4] < 1f) return null;
@@ -581,7 +581,7 @@ public final class ThreatAttackPlanner {
 		o.supplies = wants[1];
 		float cost = o.fuel * IncursionManager.basePrice(Commodities.FUEL)
 				+ o.supplies * IncursionManager.basePrice(Commodities.SUPPLIES);
-		o.score = cost / Math.max(0.01f, o.daysDown * Math.max(0.01f, o.trust));
+		o.score = threatinc.rules.PlannerRules.raidScore(cost, o.daysDown, o.trust);
 		return o;
 	}
 
@@ -617,17 +617,12 @@ public final class ThreatAttackPlanner {
 		return least;
 	}
 
-	protected static float leastForGainNow(MarketAPI world) {
-		float hi = 1000000f;
-		if (ThreatGroundFronts.dailyGain(world, hi) < 1f) return Float.MAX_VALUE;
-		float lo = 1f;
-		if (ThreatGroundFronts.dailyGain(world, lo) >= 1f) return lo;
-		for (int i = 0; i < 40 && hi - lo > 1f; i++) {
-			float mid = (lo + hi) * 0.5f;
-			if (ThreatGroundFronts.dailyGain(world, mid) >= 1f) hi = mid;
-			else lo = mid;
-		}
-		return (float) Math.ceil(hi);
+	protected static float leastForGainNow(final MarketAPI world) {
+		return threatinc.rules.PlannerRules.leastForGain(new threatinc.rules.PlannerRules.Gain() {
+			public float at(float fp) {
+				return ThreatGroundFronts.dailyGain(world, fp);
+			}
+		});
 	}
 
 	/** The day the faction's latest siege in flight at the system arrives; -Float.MAX_VALUE none (the calendar's days are negative). */

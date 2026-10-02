@@ -396,7 +396,7 @@ public class ThreatWarCouncil {
 		p.relief = ThreatFleetOrders.reliefOwed(faction);
 
 		// the band: our weight (allies at half) over the known swarm's, with hysteresis
-		p.ratio = (p.ourWeight + 0.5f * p.allyWeight) / Math.max(1f, p.swarmWeight);
+		p.ratio = threatinc.rules.CouncilRules.ratio(p.ourWeight, p.allyWeight, p.swarmWeight);
 		p.band = band(c.band, p.ratio);
 		c.band = p.band;
 		c.ratio = p.ratio;
@@ -413,13 +413,8 @@ public class ThreatWarCouncil {
 
 	/** The band for the ratio: it moves only once the ratio is past an edge by councilBandHysteresis. */
 	protected static int band(int was, float ratio) {
-		int raw = ratio >= edge(AHEAD) ? AHEAD : ratio >= edge(EVEN) ? EVEN : OUTMATCHED;
-		if (was < OUTMATCHED || was > AHEAD) return raw;
-		float h = Math.max(0f, ThreatIncConfig.councilBandHysteresis());
-		int b = was;
-		while (b < AHEAD && ratio >= edge(b + 1) * (1f + h)) b++;
-		while (b > OUTMATCHED && ratio < edge(b) * (1f - h)) b--;
-		return b;
+		return threatinc.rules.CouncilRules.band(was, ratio, edge(EVEN), edge(AHEAD),
+				ThreatIncConfig.councilBandHysteresis());
 	}
 
 	protected static void record(Council c, Picture p, float today) {
@@ -445,20 +440,11 @@ public class ThreatWarCouncil {
 		}
 		// pressed and outmatched both argue for holding: counted once, not summed (pd2a: pressed
 		// in 85% of months, so Hold scored 4.5 against an outmatched Starve's 1.3)
-		float hold = 0.5f + Math.max(p.pressed ? 2f : 0f, p.band == OUTMATCHED ? 2f : 0f) + (any ? 0f : 4f)
-				+ (p.relief ? 1f : 0f);
 		// starving is the weak side's play too (user, 2026-10-01, after h53b): outmatched, it
-		// scores with Hold, so an outmatched faction cuts production rather than sitting a year
-		float starve = !any ? 0f : (p.band == OUTMATCHED ? 2.5f : p.band == EVEN ? 2f : 1.5f) * (rich ? 1.3f : 1f);
-		float rollback = !frontier ? 0f : p.band == OUTMATCHED ? 0.3f : p.band == EVEN ? 1.5f : 2f;
-		float decap = !core ? 0f : p.band == AHEAD ? 2f * (p.partners.isEmpty() ? 1f : 1.5f) : p.band == EVEN ? 0.3f : 0f;
-		if (p.pressed) {
-			// the weak side's play is not halved by the pressure that comes with being weak
-			if (p.band != OUTMATCHED) starve *= 0.5f;
-			rollback *= 0.5f;
-			decap *= 0.5f;
-		}
-		float[] s = { hold, starve, rollback, decap };
+		// scores with Hold, so an outmatched faction cuts production rather than sitting a year;
+		// and the weak side's play is not halved by the pressure that comes with being weak
+		float[] s = threatinc.rules.CouncilRules.scores(any, frontier, core, rich, p.pressed, p.relief, p.band,
+				!p.partners.isEmpty());
 		for (int i = 0; i < s.length; i++) {
 			s[i] *= personality(c.factionId, STRATEGIES[i].toLowerCase()) * learned(c, "strategy:" + STRATEGIES[i]);
 		}
@@ -518,12 +504,8 @@ public class ThreatWarCouncil {
 		List<Float> w = new ArrayList<Float>();
 		for (Cluster k : p.clusters) {
 			if (!fits(strategy, k)) continue;
-			float near = 1f / (1f + k.ly / 10f);
-			float score;
-			if (HOLD.equals(strategy)) score = near;
-			else if (STARVE.equals(strategy)) score = (k.weight + (k.production ? 6f : 0f) + (k.core ? 4f : 0f)) * near;
-			else if (ROLLBACK.equals(strategy)) score = 10f / (1f + k.weight) * near;
-			else score = k.weight * near;
+			// STRATEGIES' order is CouncilRules' (HOLD 0, STARVE 1, ROLLBACK 2, DECAPITATE 3)
+			float score = threatinc.rules.CouncilRules.focusWeight(indexOf(strategy), k.ly, k.weight, k.production, k.core);
 			fit.add(k);
 			w.add(score);
 		}
@@ -570,32 +552,12 @@ public class ThreatWarCouncil {
 
 	/** An index drawn in proportion to weight^(1/temperature); temperature 0 picks the best. -1 when every weight is 0. */
 	public static int draw(float[] weights, Random random) {
-		float t = Math.max(0f, ThreatIncConfig.councilTemperature());
-		int best = -1;
-		for (int i = 0; i < weights.length; i++) {
-			if (weights[i] > 0f && (best < 0 || weights[i] > weights[best])) best = i;
-		}
-		if (best < 0 || t < 0.01f) return best;
-		double[] w = new double[weights.length];
-		double sum = 0d;
-		for (int i = 0; i < weights.length; i++) {
-			w[i] = weights[i] > 0f ? Math.pow(weights[i] / weights[best], 1d / t) : 0d;
-			sum += w[i];
-		}
-		if (sum <= 0d) return best;
-		double r = (random != null ? random.nextDouble() : Math.random()) * sum;
-		for (int i = 0; i < w.length; i++) {
-			r -= w[i];
-			if (r <= 0d && w[i] > 0d) return i;
-		}
-		return best;
+		return threatinc.rules.CouncilRules.draw(weights, ThreatIncConfig.councilTemperature(), random);
 	}
 
 	/** 1 +- councilJitter. */
 	public static float jitter(Random random) {
-		float j = Math.max(0f, Math.min(0.9f, ThreatIncConfig.councilJitter()));
-		float r = random != null ? random.nextFloat() : (float) Math.random();
-		return 1f + (2f * r - 1f) * j;
+		return threatinc.rules.CouncilRules.jitter(ThreatIncConfig.councilJitter(), random);
 	}
 
 	private static JSONObject personalities;
@@ -624,8 +586,7 @@ public class ThreatWarCouncil {
 	public static void learn(String fid, String key, boolean success) {
 		if (!ThreatIncConfig.councilLearning() || fid == null || key == null) return;
 		Council c = councilOf(fid);
-		float w = learned(c, key) * (success ? 1.25f : 0.8f);
-		c.learned.put(key, Math.max(0.25f, Math.min(4f, w)));
+		c.learned.put(key, threatinc.rules.CouncilRules.learn(learned(c, key), success));
 	}
 
 	// ------------------------------------------------------------------
