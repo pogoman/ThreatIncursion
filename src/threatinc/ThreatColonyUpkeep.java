@@ -128,7 +128,7 @@ public class ThreatColonyUpkeep {
 		CommodityOnMarketAPI com = market.getCommodityData(Commodities.SUPPLIES);
 		if (com == null || com.getMaxSupply() <= 0) return 0f;
 		return BaseIndustry.getSizeMult(com.getMaxSupply()) * com.getCommodity().getEconUnit()
-				* ThreatIncConfig.reserveSurplusMult();
+				* ThreatIncConfig.hiveSurplusMult();
 	}
 
 	/**
@@ -143,7 +143,7 @@ public class ThreatColonyUpkeep {
 		float keep = 0f;
 		if (Commodities.SUPPLIES.equals(commodityId)) {
 			CommodityOnMarketAPI com = market.getCommodityData(commodityId);
-			float perUnit = com != null ? com.getCommodity().getEconUnit() * ThreatIncConfig.reserveSurplusMult() : 0f;
+			float perUnit = com != null ? com.getCommodity().getEconUnit() * ThreatIncConfig.hiveSurplusMult() : 0f;
 			if (perUnit > 0f) keep = Math.min(units, perMonth(market.getSize()) / perUnit);
 		}
 		return keep + (units - keep) * (1f - cut);
@@ -324,7 +324,7 @@ public class ThreatColonyUpkeep {
 	protected static boolean forgeStepPays(MarketAPI m, float t) {
 		CommodityOnMarketAPI com = m.getCommodityData(Commodities.SUPPLIES);
 		if (com == null) return false;
-		float unit = com.getCommodity().getEconUnit() * ThreatIncConfig.reserveSurplusMult();
+		float unit = com.getCommodity().getEconUnit() * ThreatIncConfig.hiveSurplusMult();
 		int s = m.getSize();
 		return unit >= t * (perMonth(s + 1) - perMonth(s));
 	}

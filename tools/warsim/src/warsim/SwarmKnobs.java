@@ -28,7 +28,8 @@ final class SwarmKnobs {
 		dwellDays = k.f("threatinc_stanceDwellDays");
 		secondaryShare = k.f("threatinc_stanceSecondaryShare");
 		nanoChance = k.f("threatinc_forgeNanoforgeChance");
-		surplusMult = k.f("threatinc_reserveSurplusMult");
+		// the hive's own rate since 2026-10-02 (round 18: the shared knob at 1.5 fed the swarm more than the humans)
+		surplusMult = k.f("threatinc_hiveSurplusMult", 1f);
 		float margin = k.f("threatinc_npcSiegeOrbitMargin");
 		orbitMargin = margin > 0f ? margin : 1f;
 		float ratio = k.f("threatinc_siegeBreakOffRatio");

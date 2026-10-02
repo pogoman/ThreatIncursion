@@ -58,7 +58,10 @@ class LunaConfigBridge {
 	 * npcSiegeOrbitMargin back to 1.5 where version 8, on dev installs, had
 	 * moved it to 1.0. Version 10 (2026-10-02, no radar on either side): the
 	 * retired radarRangeLY and swarmRadarRangeLY are dropped from the store,
-	 * whatever they held.
+	 * whatever they held. Version 11 (2026-10-02, the war simulator's round
+	 * 17): reserveSurplusMult 1.0 -> 1.5. Round 18 then found the knob shared
+	 * with the hive's banking, so the hive's side was split off as
+	 * hiveSurplusMult (1.0) - a new key, which LunaLib defaults; no migration.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
