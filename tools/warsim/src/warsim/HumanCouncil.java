@@ -81,6 +81,7 @@ final class HumanCouncil {
 		List<Hive> targets = new ArrayList<Hive>();
 		Play from;
 		int started, musterDay, phaseDue = NEVER, checks, raids, drivenOff, offInRow, extensions, landed, landedAtCheck, taken, feintArrived = NEVER;
+		boolean feintDrew;
 		float plannedFP, nexusDownDays, nexusStreak, orbitDays, orbitAtCheck, fuelBudget, fuelSpent, fuelTotal;
 		float seenAtStart = -1f, seenAtCheck, seenLast = -1f, feintSeen;
 		boolean sieged;
@@ -359,13 +360,17 @@ final class HumanCouncil {
 
 	static void plan(State s, Faction f, Council c, Picture p) {
 		if (c.strategy == null || p == null) return;
-		// relief before offensives: no new play while it is owed
+		// relief before offensives: no new play while it is owed (warsim_councilReliefPause=false: round 13 trial 6, not held)
 		if (reliefOwed(s, f)) {
 			s.count("council.reliefDays", 1);
-			return;
+			if (reliefPause(s)) return;
 		}
 		opportunity(s, f, c, p);
 		float half = Math.max(1f, s.knobs.f("threatinc_intelHalfLifeDays"));
+		// warsim_councilAlwaysSiege (round 13 trial 1, war-council-runs.md 5 A): the strategy picks where, not whether -
+		// Hold sieges the hive that threatens it, Starve runs a hammer beside its campaign; a faction always has a
+		// hammer running when its means pay one
+		boolean always = s.knobs.b("warsim_councilAlwaysSiege", false);
 		if ("HOLD".equals(c.strategy)) {
 			// Hold: recon on the hives that threaten us, one a day; no invasions
 			for (Cluster k : p.clusters) {
@@ -373,17 +378,30 @@ final class HumanCouncil {
 				if (running(c, RECON, k.sys) || scoutInFlight(s, k.sys) || !reconDue(s, c, k.sys)) continue;
 				if (startRecon(s, f, c, k, "Hold: it threatens us") != null) break;
 			}
-			return;
+			if (!always) return;
 		}
-		// warsim_councilMajorPlays: an experiment's count of major plays a faction runs at once (the mod: one, ThreatPlays.major)
-		int majors = 0;
+		// warsim_councilMajorPlays: an experiment's count of major plays a faction runs at once (the mod: one, ThreatPlays.major);
+		// warsim_councilMajorPerFP (round 13 trial 2, option B): one major play per this much of the faction's siege capacity
+		int majors = 0, hammers = 0, starves = 0;
 		boolean atFocus = false;
 		for (Play pl : c.plays) {
 			if (pl.type != HAMMER && pl.type != STARVE && pl.type != FEINT) continue;
 			majors++;
+			if (pl.type == STARVE) starves++; else hammers++;
 			if (pl.sys == c.focus) atFocus = true;
 		}
-		if (majors >= Math.max(1, (int) s.knobs.f("warsim_councilMajorPlays", 1f))) return;
+		int limit = Math.max(1, (int) s.knobs.f("warsim_councilMajorPlays", 1f));
+		float perFP = s.knobs.f("warsim_councilMajorPerFP", 0f);
+		if (perFP > 0f) limit = Math.max(1, (int) (siegeCapacity(s, f, p) / perFP));
+		s.count("council.majorLimitDays", limit);
+		boolean starveOnly = false;
+		if (always) {
+			// the hammer slots count hammers and feints; one starve campaign may run beside them
+			if (hammers >= limit) {
+				if (!"STARVE".equals(c.strategy) || starves > 0) return;
+				starveOnly = true;
+			}
+		} else if (majors >= limit) return;
 		Cluster focus = atFocus ? null : p.cluster(c.focus);
 		if (atFocus) {
 			// the next play goes elsewhere: a few draws for a focus no play is running at
@@ -409,7 +427,11 @@ final class HumanCouncil {
 		Object[] feint = feintPlan(s, f, p, focus);
 		String[] types;
 		float[] w;
-		if ("STARVE".equals(c.strategy)) {
+		if (always) {
+			// every strategy sieges: the hammer family fills the slot; the starve campaign when only that is open
+			types = starveOnly ? new String[] { STARVE } : new String[] { HAMMER, FEINT };
+			w = starveOnly ? new float[] { 1f } : new float[] { 1.5f, feint != null ? 0.5f : 0f };
+		} else if ("STARVE".equals(c.strategy)) {
 			types = new String[] { STARVE, HAMMER };
 			w = new float[] { 1f, nexusesDown(focus) ? 2f : 0f };
 		} else if ("ROLLBACK".equals(c.strategy)) {
@@ -578,6 +600,21 @@ final class HumanCouncil {
 		pl.phaseDue = s.day + (int) (Math.max(1f, s.knobs.f("threatinc_councilPrepareDays")) * jitter(s));
 		phase(s, pl, "PREPARE", why + "; stages at " + base.name + (scout ? "; scout sent" : ""));
 		return pl;
+	}
+
+	/** warsim_councilReliefPause (default true, ThreatPlays.pausable): plays wait while relief is owed. */
+	static boolean reliefPause(State s) { return s.knobs.b("warsim_councilReliefPause", true); }
+
+	/** Option B's yardstick: the faction's siege capacity, each of its bases' capacityFP against the nearest known cluster. */
+	static float siegeCapacity(State s, Faction f, Picture p) {
+		float sum = 0f;
+		for (World w : s.worldsOf(f.id)) {
+			if (!w.base || !w.hasReserve) continue;
+			Cluster near = null;
+			for (Cluster k : p.clusters) if (near == null || w.sys.ly(k.sys) < w.sys.ly(near.sys)) near = k;
+			if (near != null) sum += capacityFP(s, w, near.sys);
+		}
+		return sum;
 	}
 
 	/** ThreatPosture.siegeCapacityFP: what the base and its donors could send against the system at the siege's rates per point. */
@@ -841,7 +878,7 @@ final class HumanCouncil {
 			int ended = raidsEnded(s, pl);
 			// relief before offensives: the next phase waits, the play is paused, not cancelled (ThreatPlays.pausable)
 			String ph = pl.phase;
-			if (relief && ("PREPARE".equals(ph) || "MUSTER".equals(ph) || "BOMB".equals(ph) || "WATCH".equals(ph))) {
+			if (relief && reliefPause(s) && ("PREPARE".equals(ph) || "MUSTER".equals(ph) || "BOMB".equals(ph) || "WATCH".equals(ph))) {
 				if (pl.phaseDue != NEVER) pl.phaseDue++;
 				s.count("council.heldPlayDays", 1);
 				continue;
@@ -968,6 +1005,7 @@ final class HumanCouncil {
 		float seen = seen(pl.f, pl.feint);
 		if (pl.feintArrived != NEVER && r != null && r.day > pl.feintArrived && seen >= DREW * Math.max(1f, pl.feintSeen)) {
 			s.count("feintsDrew", 1);
+			pl.feintDrew = true;
 			strike(s, c, pl, "the feint drew: " + (int) pl.feintSeen + " -> " + (int) seen + " FP reported");
 		} else if (s.day >= pl.phaseDue) {
 			strike(s, c, pl, "the feint drew nothing seen");
@@ -1128,6 +1166,17 @@ final class HumanCouncil {
 		}
 		if (pl.nexusStreak >= s.knobs.f("threatinc_councilInvadeNexusDays") && !regrowing) {
 			Cluster k = c.picture != null ? c.picture.cluster(pl.sys) : null;
+			// warsim_councilStarveToHammer (round 13 trial 3, option C): the starved campaign turns to the hammer in the
+			// same play - its base, its targets, straight to the muster, no fresh start and no PREPARE wait
+			if (s.knobs.b("warsim_councilStarveToHammer", false)) {
+				learn(s, c, STARVE + ":" + pl.targetClass, true);
+				pl.type = HAMMER;
+				pl.targets = liveTargets(s, f, pl.targets, pl);
+				s.count("starveToHammer", 1);
+				phase(s, pl, "PREPARE", "starved; the campaign turns to the hammer; " + line);
+				toMuster(s, c, pl);
+				return;
+			}
 			end(s, c, pl, SUCCESS, "starved, invasion next; " + line);
 			// the invasion follows on: the campaign's own saturation siege is not in its way
 			if (k != null && startHammer(s, f, c, k, "invade the starved system", pl) != null) s.count("starveInvasions", 1);
@@ -1200,6 +1249,11 @@ final class HumanCouncil {
 		s.log("Play " + pl.id + ": " + outcome + " (" + why + "; Nexus down " + (int) pl.nexusDownDays + " world-days, orbit held "
 				+ (int) pl.orbitDays + ", landed " + pl.landed + ", taken " + pl.taken + (pl.raids > 0 ? ", raids " + pl.raids + " ("
 						+ pl.drivenOff + " driven off)" : "") + ", " + (s.day - pl.started) + " d)");
+		// the feint's own success test (war-council.md 9): did A's reports rise after the feint, and did the strike then land
+		if (pl.type == FEINT && pl.feintArrived != NEVER) {
+			s.count(pl.feintDrew ? "feint.drew" : "feint.notDrew", 1);
+			if (pl.landed > 0 || pl.taken > 0) s.count(pl.feintDrew ? "feint.drew.landed" : "feint.notDrew.landed", 1);
+		}
 		boolean decisive = outcome != NEUTRAL;
 		if (!decisive || pl.type == RECON) return;
 		boolean ok = outcome == SUCCESS;

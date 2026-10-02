@@ -48,7 +48,7 @@ final class SwarmPosture {
 
 	/**
 	 * The swarm's sweep for attacks (ThreatSwarmIntel.sweep, simplified): a siege, hunt or squadron bound for
-	 * a hive system is seen by eyes once it is there and by radar inside swarmRadarRangeLY of it (every hive
+	 * a hive system is seen by eyes once it is there and by the old radar inside warsim_swarmRadarLY of it (every hive
 	 * system taken as having radar, as SwarmOps.radar does); a contact counts for swarmContactDays after.
 	 */
 	static void sight(State s, SwarmKnobs k, List<StarSys> systems) {
@@ -389,7 +389,13 @@ final class SwarmPosture {
 		}
 
 		float consolidateNeed = was == Swarm.CONSOLIDATE ? k.consolidateShare * SwarmFit.STANCE_LEAVE : k.consolidateShare;
-		boolean wantConsolidate = !breathing && (pressedShare >= consolidateNeed || (hiveDelta < 0 && attacked > 0));
+		// warsim_swarmConsolidateOnLosses (round 13 trial 10, swarm-strategy.md 4 decision 5, the doc's own words):
+		// CONSOLIDATE only on real losses - the hive count falling or a front on a hive - never on pressure alone
+		boolean frontOnHive = false;
+		for (Hive h : s.hives) if (!h.dead && h.front != null) frontOnHive = true;
+		boolean wantConsolidate = s.knobs.b("warsim_swarmConsolidateOnLosses", false)
+				? hiveDelta < 0 || frontOnHive
+				: !breathing && (pressedShare >= consolidateNeed || (hiveDelta < 0 && attacked > 0));
 		boolean wantPress = !losing && best != null && pressedShare < k.consolidateShare / 2f;
 		int next = wantConsolidate ? Swarm.CONSOLIDATE : wantPress ? Swarm.PRESS : Swarm.EXPAND;
 		if (next != was && next != Swarm.CONSOLIDATE && hadState && s.day - sw.stanceSince < Math.max(0f, k.dwellDays)) {
