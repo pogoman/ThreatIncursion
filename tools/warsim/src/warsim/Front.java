@@ -14,6 +14,11 @@ public final class Front {
 
 	/** Days dug in (entrenchment), days of consolidation left, the counter-attack clock. */
 	public float entrenchDays, checkpointLeft, counterClock;
+	/**
+	 * GroundFront.coverFP: what the flotilla that landed leaves over the front (ThreatPurgeFGI.stayOnDefend
+	 * for an unspawned siege). It contests the orbit while it is at least the swarm's FP at the planet.
+	 */
+	public float coverFP;
 	/** Pushing (true) or dug in: decided at landing and kept (ThreatGroundFronts' stance). */
 	public boolean pushing;
 	/** True once the human side has set the stance of a front it found in the start state. */
