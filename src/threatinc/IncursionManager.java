@@ -1020,8 +1020,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (other.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) continue;
 			if (!coreAllowed && other.getSize() >= 6) continue;
 			if (other.isPlayerOwned() && !playerAllowed) continue;
-			// nor a war the hive is not ready to open (warOpen): only the primary
-			// target mobilises its faction (recordStrike)
+			// nor a war the hive is not ready to open (warOpen): a swept world's
+			// faction mobilises as the primary's does (onStrikeDetected)
 			if (!warOpen(other, sweepPhase)) continue;
 			if (isActiveStrikeTarget(other)) continue;
 			if (!ThreatIncConfig.destroyStoryCritical() && Misc.isStoryCritical(other)) continue;
@@ -1220,6 +1220,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// no task force against a hive that died while the strike flew unseen
 		boolean hiveAlive = colony != null && colony.isInEconomy()
 				&& Factions.THREAT.equals(colony.getFactionId());
+		// every other faction with a world in the sweep is struck as well
+		// (2026-10-02, run hw3: from phase 3 the sweep takes in worlds of
+		// factions not at war, and only the primary's owner mobilised - the
+		// swarm landed on Nomios and Agreus 900 days before the independents
+		// did). One strike a faction; its scouts get the same lead
+		java.util.Set<String> struck = new java.util.HashSet<String>();
+		if (target != null) struck.add(target.getFactionId());
+		for (MarketAPI other : targets) {
+			if (other == null || other == target || !other.isInEconomy()) continue;
+			if (Factions.THREAT.equals(other.getFactionId()) || !struck.add(other.getFactionId())) continue;
+			ThreatWarState.recordStrike(other);
+			if (source != null && hiveAlive && !other.isPlayerOwned()) {
+				ThreatScouts.addLead(other.getFactionId(), source.getId());
+			}
+		}
 		if (target != null && source != null && hiveAlive && !target.isPlayerOwned()) {
 			// an NPC colony was struck: its scouts go looking for where the
 			// strike came from. A task force goes against the attacking colony's
