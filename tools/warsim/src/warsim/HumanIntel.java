@@ -76,11 +76,11 @@ final class HumanIntel {
 	 * The daily sweep (ThreatIntel.advanceDay): each observer with eyes in a hive system - any fleet of its own
 	 * there (a hunt, a siege, a convoy, a guard, a scout), a front of its own, a world of its own with its station -
 	 * sees it exactly, and its report stands and ages from the day the last leaves (the user's decision of
-	 * 2026-10-02, no radar). Radar (a military world or forward base of its own within radarRangeLY, two figures)
-	 * only while radarRangeLY > 0, kept for comparison.
+	 * 2026-10-02, no radar). The old radar (a military world or forward base of its own within warsim_radarLY, two
+	 * figures) only while that simulator switch is > 0, kept for comparison; the mod's radarRangeLY is gone (262ac76).
 	 */
 	static void sweep(State s) {
-		float radarLY = s.knobs.f("threatinc_radarRangeLY");
+		float radarLY = s.knobs.f("warsim_radarLY", 0f);
 		// the day's views, once (round 9): the systems with hives, and per faction where its eyes are and its radar worlds
 		java.util.Set<StarSys> hived = java.util.Collections.newSetFromMap(new IdentityHashMap<StarSys, Boolean>());
 		for (Hive h : s.hives) if (!h.dead) hived.add(h.sys);

@@ -110,8 +110,8 @@ be made twice.
 - **Retaliation** (`IncursionManager.retaliate` -> `SwarmOps.hiveLost`): a hive eradicated draws
   a strike at once at the winner from the nearest system that can muster one (`retaliations`).
 - **Fog** (`ThreatSwarmIntel`, `ThreatSwarmScouts`), the simple model chosen: a world is seen
-  while the swarm is in its system (a hive, a wave, a strike, a scout; `SwarmOps.radar`), by Bastion radar within
-  `swarmRadarRangeLY` only while that knob is > 0 (0 by default since 2026-10-02), and when a Scouting Swarm reaches its
+  while the swarm is in its system (a hive, a wave, a strike, a scout; `SwarmOps.radar`), by the old Bastion radar within
+  `warsim_swarmRadarLY` only while that simulator switch is > 0 (the mod's knob is gone since 262ac76), and when a Scouting Swarm reaches its
   system. Each hive system may send one scout a tick to a random inhabited system unseen or
   stale. A strike needs a sighting and reads its defence, however old. Contacts are not modelled.
 - **War open**: before a hive reaches size 6 only mobilised factions, pirates and the Path are
@@ -261,7 +261,7 @@ system; RAIDER is banked at the nearest hive.
 `ThreatPosture.read`'s five terms, raw = max(attacks, staged) + losses + hostiles + forward:
 
 - **attacks** (`SwarmPosture.sight`, `Swarm.contacts`): a siege, hunt or squadron bound for a hive system is a contact
-  once it is there (or inside `swarmRadarRangeLY` of it while that knob is > 0), and counts for `swarmContactDays` after it was last seen
+  once it is there (or inside `warsim_swarmRadarLY` of it while that switch is > 0), and counts for `swarmContactDays` after it was last seen
   (`ThreatSwarmIntel.contactsOn`). Simplified: every hive system has radar, as `SwarmOps.radar` already takes it.
 - **staged** (`SwarmPosture.stagingHive`): per faction, the most any one seen base staging for the system could pay a
   siege there from its own stock, by the sighting's trust (`ThreatPosture.stagedBy`, `siegeCapacityFP`,
@@ -431,10 +431,10 @@ human side (the council's siege rate), not among the swarm knobs tried.
 Two user decisions, put in as switches. (1) No radar on either side: `HumanIntel.sweep` gives a faction eyes in a
 hive system where any of its fleets holds, its front stands or its own world lies (its station and guard), exact,
 and the report stands and ages from the day the last leaves; radar from military worlds and bases only while
-`threatinc_radarRangeLY` > 0. `SwarmOps.radar` sees a world as it stands while the swarm is in its system (a hive
-system, or a wave, strike or scout holding or arrived there); Bastion radar only while `threatinc_swarmRadarRangeLY`
-> 0. `Main` sets both knobs to 0 after loading settings.json (the mod's file is not edited); `-set
-"threatinc_radarRangeLY=10;threatinc_swarmRadarRangeLY=10"` is the old behaviour. (2) `warsim_councilPlannerSizing`
+`warsim_radarLY` > 0. `SwarmOps.radar` sees a world as it stands while the swarm is in its system (a hive
+system, or a wave, strike or scout holding or arrived there); Bastion radar only while `warsim_swarmRadarLY`
+> 0 (the mod dropped both radar knobs in 262ac76, so these are the simulator's own switches, 0 unless set); `-set
+"warsim_radarLY=10;warsim_swarmRadarLY=10"` is the old behaviour. (2) `warsim_councilPlannerSizing`
 (default on): the council still chooses where and when, but `HumanCouncil.strike` sizes the siege as the planner
 does (`HumanPlanner.size` on the faction's report at `npcSiegeOrbitMargin`, no trimming below it, the bounty when
 the orbit is unpaid); a hammer with no report of its system runs the recon in force first (`reconFirst`,

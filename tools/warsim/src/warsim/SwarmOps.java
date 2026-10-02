@@ -78,8 +78,8 @@ final class SwarmOps {
 	/**
 	 * The swarm's daily sight (ThreatSwarmIntel): a world is seen as it stands while the swarm is in its system - a
 	 * hive's garrison, or any Threat fleet there (a wave, a strike, a scout) - and its last picture stands and ages
-	 * after (the user's decision of 2026-10-02, no radar). Bastion radar (every hive system within swarmRadarRangeLY)
-	 * only while that knob is > 0, kept for comparison.
+	 * after (the user's decision of 2026-10-02, no radar). The old Bastion radar (every hive system within
+	 * warsim_swarmRadarLY) only while that simulator switch is > 0, kept for comparison.
 	 */
 	static void radar(State s, SwarmKnobs k) {
 		List<StarSys> systems = SwarmEconomy.hiveSystems(s);

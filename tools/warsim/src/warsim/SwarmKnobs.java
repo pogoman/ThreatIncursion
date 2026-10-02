@@ -41,7 +41,8 @@ final class SwarmKnobs {
 		feedExpand = k.f("threatinc_feedShareExpand");
 		feedPress = k.f("threatinc_feedSharePress");
 		feedConsolidate = k.f("threatinc_feedShareConsolidate");
-		radarLY = k.f("threatinc_swarmRadarRangeLY");
+		// the mod's swarmRadarRangeLY is gone (262ac76, no radar); the simulator's own switch restores the old sight for comparison
+		radarLY = k.f("warsim_swarmRadarLY", 0f);
 		scoutFP = k.f("threatinc_swarmScoutFleetPoints");
 		outpostSupplies = k.f("threatinc_outpostSupplies");
 		seedPriceMult = k.f("warsim_seedPriceMult", 1f);

@@ -34,7 +34,7 @@ Test double for the swarm (calibration only): `java -Dwarsim.humanTestSwarm=true
   fuel, mobilisation seeding (`reserveInitialMonths`). `drain` is `ThreatUpkeep`'s payer.
 - `HumanIntel` - `ThreatIntel` + `ThreatHiveIntel`: a hive system must be found (scout lead from
   `Faction.lastStrikeFrom`, interval sweeps), reports per system that age (`PlannerRules.trust`),
-  eyes where its own ships, fronts or worlds are (no radar since 2026-10-02; `radarRangeLY` > 0 restores it for
+  eyes where its own ships, fronts or worlds are (no radar since 2026-10-02; `warsim_radarLY` > 0 restores it for
   comparison), news on `PlannerRules.moved`. Mobilised factions share reports.
 - `HumanStance` - `ThreatFactionStance`: read every 7 days; CONSOLIDATE founds no link and
   besieges only systems facing the faction, PRESS founds on `stanceSecondaryShare` of passes.
@@ -279,8 +279,8 @@ inputs or anything by date (no `Clock:` lines, no dumps).
   run). Round 6 took every faction at war as a partner, at half weight in the band: 62% of months outmatched
   against the real 82-90%.
 - **Per-observer intel** (`HumanIntel.sweep`, `file(.., observer)`; `ThreatIntel.advanceDay`): a report is the
-  observer's (its own fleet, front or world in the system; a military world or forward base within `radarRangeLY` only
-  while that knob is > 0, which the simulator sets to 0 by default)
+  observer's (its own fleet, front or world in the system; a military world or forward base within `warsim_radarLY` only
+  while that simulator switch is > 0; the mod's `radarRangeLY` is gone since 262ac76)
   and its partners'. Round 6 filed every sighting with every faction, so each council saw every hive fresh and
   bombers of opportunity always had a target (242 a run against 27-98).
 - **Relief owed** (`HumanCouncil.reliefOwed`; `ThreatFleetOrders.reliefOwed`, `ThreatPlays.pausable`): no new play, the
