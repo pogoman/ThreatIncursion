@@ -39,6 +39,12 @@ public final class State {
 	// human side
 	/** Hive systems the sector has found (ThreatHiveIntel.sectorKnows): nothing is planned against the rest. */
 	public final java.util.Set<StarSys> foundHiveSystems = new java.util.LinkedHashSet<StarSys>();
+	/**
+	 * Swarm bounties running, by hive system, to the day each ends (ThreatSwarmBountyIntel: posted when a
+	 * siege is outweighed in orbit, one a system, swarmBountyDays long). Hunting forces are raised only
+	 * against these (ThreatSoftening.tick).
+	 */
+	public final java.util.Map<StarSys, Integer> bounties = new java.util.LinkedHashMap<StarSys, Integer>();
 	/** The day the last siege was launched at a hive (ThreatIncData.lastPurgeTimes): the siege cooldown's clock. Looked up, never iterated. */
 	public final java.util.Map<Hive, Integer> lastSiegeDay = new java.util.HashMap<Hive, Integer>();
 

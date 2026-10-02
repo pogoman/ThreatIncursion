@@ -339,6 +339,7 @@ final class SwarmEconomy {
 		if (wantAway > 0f) {
 			float paid = Math.min(wantAway, sw.supplies);
 			pay(s, SUPPLIES, paid);
+			s.count("swarmSupplies.away", paid);
 			float unpaid = wantAway - paid;
 			if (unpaid <= 0f) {
 				sw.awayOwed = 0f;
@@ -496,6 +497,8 @@ final class SwarmEconomy {
 		}
 		float draw = Math.min(sustained + grown, sw.supplies);
 		pay(s, SUPPLIES, draw);
+		s.count("swarmSupplies.sustenance", Math.min(draw, sustained));
+		s.count("swarmSupplies.growth", Math.max(0f, draw - sustained));
 		for (Need n : needs) {
 			float share = n.want > 0f ? n.paid / n.want : 1f;
 			if (n.seed) share = t + (1f - t) * share;
@@ -643,6 +646,7 @@ final class SwarmEconomy {
 	static void buyWaiting(State s, SwarmKnobs k, Hive h) {
 		if (h.waiting == Hive.NONE) return;
 		if (!pay(s, SUPPLIES, h.waitingCost)) return;
+		s.count("swarmSupplies.structures", h.waitingCost);
 		place(s, h, h.waiting);
 		s.log("Hive planner: " + NAMES[h.waiting] + " at " + h.name);
 		if (h.waitingAnswers >= 0) {

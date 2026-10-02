@@ -35,6 +35,8 @@ final class SwarmOps {
 		/** Swarms mustered: the gate reads a strike at STRIKE_UNITS_PER_SWARM each. */
 		int swarms;
 		int groundEnd = Integer.MIN_VALUE;
+		/** On a Defend station over the front it landed or reinforced (ThreatSwarmDefend), until that front ends. */
+		boolean defending;
 	}
 
 	/** A fleet going home to be banked. */
@@ -229,6 +231,7 @@ final class SwarmOps {
 			return false;
 		}
 		SwarmEconomy.pay(s, Swarm.SUPPLIES, supplies);
+		s.count("swarmSupplies.founding", supplies);
 		SwarmEconomy.pay(s, Swarm.FUEL, fuel);
 		source.bank -= bill;
 		Parcel p = s.send(Parcel.THREAT, Parcel.Kind.WAVE, source.sys, target, SwarmFit.WAVE_FP,
@@ -603,14 +606,14 @@ final class SwarmOps {
 
 	/**
 	 * A strike's landing pass (ThreatStrikeFGI's "Strike pass (landing)" / "(reinforce)"): the troops go down
-	 * and the hulls go home. Troops are SwarmFit.TROOPS_PER_FP of what reached the orbit; under
+	 * and the hulls stay over the world while the front lives (defend). Troops are SwarmFit.TROOPS_PER_FP of what reached the orbit; under
 	 * LANDING_MIN_TROOPS the landing is called off ("Strike landing at X aborted").
 	 */
-	static void land(State s, Parcel p, World w) {
+	static boolean land(State s, Parcel p, World w) {
 		float troops = p.fp * SwarmFit.TROOPS_PER_FP;
 		if (troops < SwarmFit.LANDING_MIN_TROOPS) {
 			s.count("strikeLandingsAborted", 1);
-			return;
+			return false;
 		}
 		Swarm.Landing l = s.swarm.landings.get(w.id);
 		if (l != null) {
@@ -619,7 +622,7 @@ final class SwarmOps {
 			if (!l.falls && l.endDay != Integer.MIN_VALUE) l.endDay += SwarmFit.reinforcedDays(s.rng);
 			s.count("threatReinforcePasses", 1);
 			s.log("Strike pass (reinforce) vs " + w.name + ": " + (int) troops + " troops");
-			return;
+			return true;
 		}
 		l = new Swarm.Landing();
 		l.troops = troops;
@@ -627,6 +630,19 @@ final class SwarmOps {
 		s.swarm.landings.put(w.id, l);
 		s.count("threatLandings", 1);
 		s.log("Front deployed at " + w.name + " (threat): " + (int) troops + " troops");
+		return true;
+	}
+
+	/**
+	 * ThreatSwarmDefend: a strike that landed or reinforced a Threat front stays over the world, no term,
+	 * until the front ends; away from home it burns supplies all the while (SwarmEconomy, burns). The
+	 * world is free for the next strike's reinforcing pass.
+	 */
+	static void defend(State s, Parcel p) {
+		release(s, p);
+		orderOf(s, p).defending = true;
+		p.holding = true;
+		s.count("defendStations", 1);
 	}
 
 	/**
@@ -678,8 +694,13 @@ final class SwarmOps {
 				release(s, p);
 				continue;
 			}
-			if (o.target != null && !o.target.lost && !o.target.forwardBase) land(s, p, o.target);
-			goHome(s, p, p.to);
+			if (o.defending) {
+				if (o.target == null || o.target.lost || !s.swarm.landings.containsKey(o.target.id)) goHome(s, p, p.to);
+				else s.count("defendFPDays", p.fp);
+				continue;
+			}
+			if (o.target != null && !o.target.lost && !o.target.forwardBase && land(s, p, o.target)) defend(s, p);
+			else goHome(s, p, p.to);
 		}
 		// a strike that vanished (destroyed in flight by the other side) frees its target
 		if (!s.swarm.struck.isEmpty()) {
@@ -791,8 +812,8 @@ final class SwarmOps {
 			goHome(s, p, p.to);
 			return;
 		}
-		land(s, p, w);
-		goHome(s, p, p.to);
+		if (land(s, p, w)) defend(s, p);
+		else goHome(s, p, p.to);
 	}
 
 	static void reinforcement(State s, Parcel p) {

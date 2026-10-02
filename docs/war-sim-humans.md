@@ -202,3 +202,20 @@ and `HumanStance` must stand aside when a council sets the stance.
 Not modelled at all: guard and defend orders (`ThreatFleetOrders`), saturation as its own
 order, per-faction intel (mobilised factions share), the coalition call, contracts, the
 player, hive unrest in the defence, the siege leash, link structures and build time.
+
+## 6. Round 3 against pd9a: bounties gate the hunts
+
+- **Swarm bounties** (`State.bounties`, `HumanPlanner.postBounty`): one a hive system, `swarmBountyDays` long
+  (`ThreatSwarmBountyIntel.post`). Posted where the mod posts it: the planner's sized siege that the pool cannot
+  pay the orbit's fleets for (`Option.orbitUnpaid`, the provisions gate of `IncursionManager.launchSiegeExpedition`),
+  and a siege that calls off on arrival (`HumanSiege`, `ThreatPurgeFGI.breaksOff`). Counter `bountiesPosted`
+  (pd9a: 313 posted; seeds 1-2: 153-185).
+- **Hunts** (`HumanPlanner.hunts`) are raised only against a system with a bounty running (`ThreatSoftening.tick`),
+  from the base that pays for most (`payableFP`, as `huntBases` ranks them), wanting the system's reported
+  swarms by `npcSiegeOrbitMargin`, built at what the pool pays, and waiting under the floor of the strongest
+  world's (`ThreatSoftening.send`, `musterFloorFP`; counter `huntWaits`).
+- Result, month 115, real | median [p10-p90]: huntsSailed 183 | 267 [105-370] (was 478); force size median 575 FP
+  against 1,217. Not mirrored: contributor bases and donors (`contributors`, `huntDonors` - one base's pool pays here),
+  `hostileAt` (vanilla's start has only the Path hostile to the other hunters), the go-in check and moving on. The
+  simulated reports are honest; the garrisons a hunt meets are about half the real ones (the strongest world's report
+  read 749 FP at the median in pd9a), which is the swarm's concentration, below.

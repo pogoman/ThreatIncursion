@@ -227,3 +227,29 @@ system; RAIDER is banked at the nearest hive.
 - Contacts, the alarm's grudge, `extraWantFP`, relief strikes, sweeps of a whole system and
   the hold share are not modelled. `ThreatHiveMind` is a design, not built, and not modelled.
 - A garrison's fight with a siege is the human side's; the swarm side only reads the result.
+
+## 9. Round 3 against pd9a: where the supplies go
+
+- **Defend stations** (`SwarmOps.defend`, `StrikeOrder.defending`): a strike that landed or reinforced a Threat front
+  stays over the world until the front ends (`ThreatSwarmDefend`), burning supplies as a fleet away
+  (`SwarmOps.burns`); it no longer goes home on landing. pd9a's "Reach: .. fleets away" reads 30-41k FP away in years
+  7-9 (20-23k supplies a month) against 11-15k FP of reinforcements and raiders (dump `ownedFP - garrisonFP`); the
+  simulator had 17-26k FP and 8-9k supplies a month. Now 16-28k a month (counters `defendStations`, `defendFPDays`).
+  Not mirrored: `defendFabricates` (hulls broken up for troops) and relief forces fighting the station.
+- **The supplies ledger by outlet**: counters `swarmSupplies.away`, `.sustenance`, `.growth`, `.structures`,
+  `.founding` (the split of `swarmSuppliesSpent`). pd9a at month 100: made 77-84k, sustenance 47k of a 93k bill
+  ("Colony upkeep: bill"), growth 0-6k, away 20k.
+- **What is still off, and why**: sustenance. The simulated swarm pays 18-19k a month at total size 120-200 where
+  pd9a paid 47k at 172-185, because its hives are many and small (mean size 3.2-3.9 against 5.4; the upkeep curve
+  is convex). pd9a's `ThreatStance` sat in CONSOLIDATE 53 of the 72 months of years 3-8 (feed share 0.9, no founding;
+  hives 25 to 32 over months 60-96, then 36 to 56 in the last 7 months of EXPAND); the simulator's leaves CONSOLIDATE
+  a month after entering (seed 2: 31 changes against 22, EXPAND about 5 months in 6). Its pressure reads 4-8k where
+  pd9a's read 12-20k with 5 of 10 systems pressed. So it founds through the war, spreads over more systems, each
+  less pressed, and the supplies the bigger hives would eat pile up (month 115: 149k [5k-526k] against 16k).
+- **The strike gate** reads vanilla's fleet strength in the whole system plus the world's station
+  (`IncursionManager.strikeOutweighed`: `WarSimScript.getEnemyStrength`), not the ground defence the dumps carry:
+  "Strike gate: X passed over" gives one figure for every world of a system (Umbra, Sindria, Cruor, Volturn and
+  Nortia 987-6,332; Thulian Raider Base with Kazeron 1,412-1,866; Donn with Culann 994-2,078; Garnir 1,034-1,327).
+  `SwarmOps.defenceOf` reads the dump's `defence` (Donn 55, Garnir 55, Umbra 558), so the simulator takes pirate
+  worlds inside patrolled systems that pd9a's gate passed over (worldsLost 13 against 7). Needs the gate's figure in
+  the dumps; not fitted.

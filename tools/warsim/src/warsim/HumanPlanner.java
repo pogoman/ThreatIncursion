@@ -26,6 +26,8 @@ final class HumanPlanner {
 		float[] wants;
 		boolean affordable;
 		String shortOf;
+		/** The pool cannot pay for the orbit's fleets alone: the launch's provisions gate posts the bounty. */
+		boolean orbitUnpaid;
 	}
 
 	static float roundUp(float fp) { return (float) Math.ceil(fp / ReachRules.FP_PER_POINT) * ReachRules.FP_PER_POINT; }
@@ -91,7 +93,21 @@ final class HumanPlanner {
 				break;
 			}
 		}
+		// launchSiegeExpedition's provisions gate: payableFP < orbitNeed posts the swarm bounty
+		float paysFP = ReachRules.payablePoints(HumanPools.payable(s, base, World.FUEL, true), HumanPools.payable(s, base, World.SUPPLIES, true),
+				o.wants[World.FUEL] / points, o.wants[World.SUPPLIES] / points) * ReachRules.FP_PER_POINT;
+		o.orbitUnpaid = !o.affordable && orbit > 0f && paysFP < orbit;
 		return o;
+	}
+
+	/** ThreatSwarmBountyIntel.post: one bounty a system, swarmBountyDays long. */
+	static void postBounty(State s, StarSys sys, String by) {
+		if (!s.knobs.b("threatinc_swarmBountiesEnabled", true)) return;
+		Integer end = s.bounties.get(sys);
+		if (end != null && end > s.day) return;
+		s.bounties.put(sys, s.day + s.knobs.i("threatinc_swarmBountyDays"));
+		s.count("bountiesPosted", 1);
+		s.log("Swarm bounty posted by " + by + " on " + sys);
 	}
 
 	/**
@@ -163,6 +179,7 @@ final class HumanPlanner {
 				s.count("siegesPostponed", 1);
 				s.count("postponed." + o.shortOf, 1);
 				if (unpaid == null) unpaid = o;
+				if (o.orbitUnpaid) postBounty(s, o.hive.sys, f.id);
 				continue;
 			}
 			// siegeCanPay prices the whole trip; only the hulls' deposit is drawn now, ThreatUpkeep bills the rest as it goes
@@ -293,6 +310,9 @@ final class HumanPlanner {
 			if (o.affordable && !booked(s, null, o.hive, Parcel.Kind.SIEGE)) sieging.add(o.base);
 		}
 		for (StarSys sys : s.foundHiveSystems) {
+			// ThreatSoftening.tick: only against a system with a swarm bounty running
+			Integer bounty = s.bounties.get(sys);
+			if (bounty == null || bounty <= s.day || s.hivesIn(sys).isEmpty()) continue;
 			HumanIntel.Report r = f.reports.get(sys);
 			if (r == null || r.total() < 1f) continue;
 			// the strongest garrison reported is worked first (ThreatSoftening.gateWorlds)
@@ -308,15 +328,38 @@ final class HumanPlanner {
 			}
 			if (hunted) continue;
 			// huntBases: a base in fuel reach, not resting, with no siege of its own to spend on; the nearest
+			// (ranked by what it can pay a force there for, payableFP; the nearest breaks a tie)
 			World base = null;
+			float pays = 0f;
 			for (World w : s.worldsOf(f.id)) {
 				if (!w.base || !w.hasReserve || sieging.contains(w) || s.day - w.lastHuntDay < rest) continue;
 				if (w.sys.ly(sys) > HumanPools.rangeLY(s, w)) continue;
-				if (base == null || w.sys.ly(sys) < base.sys.ly(sys)) base = w;
+				float p = payableFP(s, w, sys);
+				if (p <= 0f) continue;
+				if (base == null || p > pays || p == pays && w.sys.ly(sys) < base.sys.ly(sys)) { base = w; pays = p; }
 			}
 			if (base == null) continue;
-			hunt(s, f, base, target, roundUp(r.total() * margin));
+			// ThreatSoftening.send: wanted, the whole system's reported swarms by the margin; the floor
+			// (musterFloorFP), the strongest world's; what the depots pay for is built, and under the
+			// floor the force waits ("Hunting force waits at")
+			float floor = r.at(target) * margin;
+			float want = Math.max(floor, r.total() * margin);
+			float fp = (float) Math.floor(Math.min(want, pays) / ReachRules.FP_PER_POINT) * ReachRules.FP_PER_POINT;
+			if (want <= pays) fp = roundUp(want);
+			if (fp < floor || fp <= 0f) {
+				s.count("huntWaits", 1);
+				continue;
+			}
+			hunt(s, f, base, target, fp);
 		}
+	}
+
+	/** ThreatSoftening.payableFP: the fleet points the base's pool can pay a force to the system and back for. */
+	static float payableFP(State s, World base, StarSys sys) {
+		float[] per = ReachRules.voyageCost(ReachRules.FP_PER_POINT, 2f * base.sys.ly(sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
+				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
+		return ReachRules.payablePoints(HumanPools.payable(s, base, World.FUEL, false), HumanPools.payable(s, base, World.SUPPLIES, false),
+				per[0], per[1]) * ReachRules.FP_PER_POINT;
 	}
 
 	private static void hunt(State s, Faction f, World base, Hive target, float fp) {
