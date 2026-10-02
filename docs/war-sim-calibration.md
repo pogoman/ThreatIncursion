@@ -324,6 +324,10 @@ hunts 59 | 70.5).
   `LANDING_MIN_TROOPS`. Not yet read strike by strike (a pass that waits may land on a later one). Pass lines in
   the logs (several a strike): hw4 105 `waits: bombardment still has work to do`, 36 `aborted`, 70 landings, 24 reinforce;
   hw4b 74, 36, 65, 54; hw3 48, 23, 65, 21.
+- **What the strikes aim at** (`Strike launched from` lines, whole runs): hw4 57 at forward bases, 103 at colonies,
+  6 at pirate worlds; hw4b 35, 139, 6; hw4c 34, 102, 8. A colony strike sweeps 1.5-1.7 worlds and the runs log
+  about half a landing a colony strike; a traced simulator seed sent 40, 196 and 10, one world a strike, and
+  landed 0.7 a colony strike. The simulator's excess is colony strikes that land.
 - **Fuel the game's swarm burns and the simulator's does not**: raiders (`ThreatRaiders`, about 100 detachments
   in hw4, 136 held for fuel) and the strikes' bombardment ordnance and razing (`ThreatGroundFronts.payOrdnance`,
   `ThreatStrikeFGI.saturationPass`). Not sized.
