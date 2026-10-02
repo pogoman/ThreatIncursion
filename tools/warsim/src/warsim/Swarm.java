@@ -73,6 +73,8 @@ public final class Swarm {
 	public final float[] demand = new float[2], demandDays = new float[2];
 	public final int[] answeredDay = { Integer.MIN_VALUE, Integer.MIN_VALUE };
 	public int demandSince = Integer.MIN_VALUE;
+	/** Send -> the day its hold was last booked as demand (ThreatFuel.KEY_HELD, SwarmEconomy.bookHold). */
+	public final java.util.Map<String, Integer> heldBooked = new java.util.HashMap<String, Integer>();
 	public int suppliesShortDay = Integer.MIN_VALUE;
 	/** Supplies a month the last feed left for trips (ThreatColonyUpkeep.spareSupplies), and what fleets away burn. */
 	public float spare, awayPerMonth, awayOwed;

@@ -80,7 +80,29 @@ final class SwarmKnobs {
 		wholeMuster = k.b("warsim_strikeWholeMuster", true);
 		landingRace = k.b("warsim_landingRace", false);
 		pathNeverMobilises = k.b("warsim_pathNeverMobilises", false);
+		postureLoop = k.b("warsim_postureLoop", true);
+		strikeDefends = k.b("warsim_strikeDefends", false);
+		holdsBookMonthly = k.b("warsim_holdsBookMonthly", true);
 	}
+
+	/**
+	 * Round 25: warsim_postureLoop (true) - the posture's transfers as the game runs them
+	 * (SwarmPosture.redistributeLoop: every day, any deficit, one swarm at a time until nothing goes); false is the
+	 * pass every postureDays that sends each receiver the donor's largest swarm.
+	 * warsim_strikeDefends (false) - true parks a strike's whole fleet over its landing until the front ends
+	 * (ThreatSwarmDefend, which only a spawned fleet does: a strike near the player); false sends it home after the
+	 * landing pass, as every strike of a player-less run ends.
+	 */
+	final boolean postureLoop, strikeDefends;
+
+	/**
+	 * Round 26: warsim_holdsBookMonthly (true) - a held send books its unpaid bill as demand on the stock once a
+	 * SHORT_DAYS a source (SwarmEconomy.bookHold, the game's ThreatFuel.bookHold), and a held reinforcement books its
+	 * passage, and a muster no world's passage is paid for books nothing (IncursionManager.pickStrikeTarget skips the
+	 * world, no held() follows); false books every held poll of a strike or a Seeding Swarm, the waiting muster's
+	 * passage among them, and no reinforcement.
+	 */
+	final boolean holdsBookMonthly;
 
 	/**
 	 * Round 24 (2026-10-02 night), three places the simulator's swarm was not the game's, each with its old behaviour

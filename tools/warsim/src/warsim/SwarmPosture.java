@@ -317,7 +317,8 @@ final class SwarmPosture {
 		}
 		if (k.stanceEnabled) stance(s, k, systems, sectorHeld, sumPressure, pressed, attackedSystems);
 		recycleSurplus(s, k, systems);
-		redistribute(s, k);
+		// the game's pass runs every day (SwarmSide.daily) when the loop is on
+		if (!k.postureLoop) redistribute(s, k);
 	}
 
 	// ------------------------------------------------------------------
@@ -442,6 +443,10 @@ final class SwarmPosture {
 
 	/** redistributeByPressure: a colony below its want is sent a spare swarm, else one fabricated for it by a colony at its want. */
 	static void redistribute(final State s, final SwarmKnobs k) {
+		if (k.postureLoop) {
+			redistributeLoop(s, k);
+			return;
+		}
 		List<Hive> receivers = new ArrayList<Hive>();
 		// held once per hive for the ranking (round 9): the sort read inbound's parcel scan per comparison
 		final Map<Hive, Float> heldNow = new java.util.IdentityHashMap<Hive, Float>();
@@ -512,9 +517,141 @@ final class SwarmPosture {
 		}
 	}
 
+	/**
+	 * ThreatColonyManager.redistributeByPressure as the game runs it (round 25, warsim_postureLoop): every day, any
+	 * colony below its want is a receiver; the neediest one a donor can serve is sent one swarm - the largest within
+	 * its deficit, else the donor's smallest, never more than the donor spares or the receiver accepts - from the
+	 * nearest donor, and the pass repeats until nothing goes. The old pass ran every postureDays and sent each
+	 * receiver one swarm, the donor's largest: half the game's sends.
+	 */
+	static void redistributeLoop(final State s, final SwarmKnobs k) {
+		List<Hive> hives = s.liveHives();
+		if (hives.size() < 2) return;
+		final Map<Hive, Float> held = new java.util.IdentityHashMap<Hive, Float>();
+		Map<Hive, Float> flying = new java.util.IdentityHashMap<Hive, Float>();
+		Map<String, Float> inbound = SwarmEconomy.inboundMap(s);
+		int fleets = 0;
+		boolean any = false;
+		for (Hive h : hives) {
+			Float in = inbound.get(h.id);
+			flying.put(h, in == null ? 0f : in);
+			held.put(h, h.garrisonFP + flying.get(h));
+			fleets += h.swarms.size();
+			if (h.wantFP > 0f && held.get(h) < h.wantFP) any = true;
+		}
+		if (!any) return;
+		for (int n = 0; n <= fleets; n++) {
+			List<Hive> receivers = new ArrayList<Hive>();
+			for (Hive h : hives) {
+				if (h.wantFP > 0f && held.get(h) < h.wantFP) receivers.add(h);
+			}
+			if (receivers.isEmpty()) return;
+			Collections.sort(receivers, new Comparator<Hive>() {
+				public int compare(Hive a, Hive b) {
+					float sa = (a.wantFP - held.get(a)) / a.wantFP;
+					float sb = (b.wantFP - held.get(b)) / b.wantFP;
+					return Float.compare(sb, sa);
+				}
+			});
+			boolean dispatched = false;
+			for (Hive to : receivers) {
+				float deficit = to.wantFP - held.get(to);
+				float accept = deficit + to.wantFP * k.postureBand + SwarmEconomy.oneSwarmFP(s, to);
+				Swarm.Post toPost = s.swarm.post.get(to.sys.id);
+				boolean attacked = toPost != null && (toPost.attacked || (s.swarm.stance == Swarm.CONSOLIDATE && toPost.mode >= 2));
+				Hive donor = null;
+				int pick = -1;
+				float donorSpare = 0f, donorDist = Float.MAX_VALUE;
+				for (Hive from : hives) {
+					if (from == to || from.swarms.size() < 2) continue;
+					if (from.lastReceivedDay != Integer.MIN_VALUE && s.day - from.lastReceivedDay < 30) continue;
+					// what is on station, not what is flying in
+					float onStation = held.get(from) - flying.get(from);
+					if (onStation < from.wantFP) continue;
+					float spare = PostureRules.releasableFP(onStation, from.wantFP, k.postureBand, SwarmEconomy.oneSwarmFP(s, from));
+					Swarm.Post fromPost = s.swarm.post.get(from.sys.id);
+					if (attacked && (fromPost == null || fromPost.mode < 2)) {
+						spare = Math.max(spare, onStation - SwarmEconomy.minimumFP(s, from));
+					}
+					if (spare <= 0f) continue;
+					// pressureFleet: the largest within the deficit, else the smallest
+					float max = Math.min(spare, accept);
+					int fits = -1, smallest = -1;
+					for (int i = 0; i < from.swarms.size(); i++) {
+						float fp = from.swarms.get(i);
+						if (fp <= 0f || fp > max) continue;
+						if (fp <= deficit && (fits < 0 || fp > from.swarms.get(fits))) fits = i;
+						if (smallest < 0 || fp < from.swarms.get(smallest)) smallest = i;
+					}
+					int at = fits >= 0 ? fits : smallest;
+					if (at < 0) continue;
+					float dist = from.sys == to.sys ? 0f : from.sys.ly(to.sys);
+					float passage = k.passage(from.swarms.get(at), dist, false);
+					if (!SwarmEconomy.canPay(s, Swarm.FUEL, passage)) {
+						// ThreatFuel.held("a reinforcement from .."): its passage is demand on the stock, once a SHORT_DAYS
+						if (k.holdsBookMonthly && SwarmEconomy.bookHold(s, k, "reinforcement " + from.name)) {
+							SwarmEconomy.noteDemand(s, Swarm.FUEL, passage);
+						}
+						continue;
+					}
+					if (donor == null || dist < donorDist || (dist == donorDist && spare > donorSpare)) {
+						donor = from;
+						pick = at;
+						donorSpare = spare;
+						donorDist = dist;
+					}
+				}
+				float fp;
+				if (donor != null) {
+					fp = donor.swarms.get(pick);
+					if (!SwarmEconomy.pay(s, Swarm.FUEL, k.passage(fp, donorDist, false))) continue;
+					donor.swarms.remove(pick);
+					donor.book();
+					held.put(donor, held.get(donor) - fp);
+				} else {
+					// fabricatorFor: the nearest colony at its want whose bank covers its own want and the swarm
+					int[][] table = SwarmEconomy.table(to);
+					int[] spec = table[0];
+					for (int[] row : table) if (SwarmEconomy.estimate(s, row) < SwarmEconomy.estimate(s, spec)) spec = row;
+					float cost = SwarmEconomy.estimate(s, spec);
+					float bestDist = Float.MAX_VALUE;
+					for (Hive from : hives) {
+						if (from == to || !from.nexusUp() || from.coreDown > 0f) continue;
+						if (held.get(from) < from.wantFP) continue;
+						if (from.bank - from.wantFP - cost < 0f) continue;
+						float dist = from.sys == to.sys ? 0f : from.sys.ly(to.sys);
+						if (!SwarmEconomy.canPay(s, Swarm.FUEL, k.passage(cost, dist, false))) continue;
+						if (donor == null || dist < bestDist) {
+							donor = from;
+							bestDist = dist;
+						}
+					}
+					if (donor == null) continue;
+					fp = SwarmFit.builtFP(spec[0], spec[1], s.rng);
+					if (!SwarmEconomy.pay(s, Swarm.FUEL, k.passage(fp, bestDist, false))) continue;
+					donor.bank -= fp;
+					SwarmEconomy.learn(s, spec, fp);
+					s.count("swarmsBuilt", 1);
+				}
+				dispatch(s, donor, to, fp);
+				held.put(to, held.get(to) + fp);
+				if (donor.sys != to.sys) flying.put(to, flying.get(to) + fp);
+				dispatched = true;
+				break;
+			}
+			if (!dispatched) return;
+		}
+	}
+
 	static void dispatch(State s, Hive from, Hive to, float fp) {
 		to.lastReceivedDay = s.day;
 		s.count("reinforcementsSent", 1);
+		s.count("reinforcementFP", fp);
+		if (from.sys != to.sys) {
+			// ThreatReach.note("send", ly): the game's monthly "Reach: .. sends N (mean M ly)"
+			s.count("reinforcementsCross", 1);
+			s.count("reinforcementLY", from.sys.ly(to.sys));
+		}
 		if (from.sys == to.sys) {
 			to.swarms.add(fp);
 			to.book();

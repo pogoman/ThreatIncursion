@@ -237,14 +237,13 @@ final class SwarmOps {
 		float ly = source.sys.ly(target);
 		float fuel = k.outpostFuel + k.passage(SwarmFit.WAVE_FP, ly, false);
 		float supplies = k.foundSupplies();
-		boolean ok = true;
-		if (!SwarmEconomy.canPay(s, Swarm.SUPPLIES, supplies)) {
-			SwarmEconomy.noteDemand(s, Swarm.SUPPLIES, supplies);
-			ok = false;
-		}
-		if (!SwarmEconomy.canPay(s, Swarm.FUEL, fuel)) {
-			SwarmEconomy.noteDemand(s, Swarm.FUEL, fuel);
-			ok = false;
+		boolean noSupplies = !SwarmEconomy.canPay(s, Swarm.SUPPLIES, supplies);
+		boolean noFuel = !SwarmEconomy.canPay(s, Swarm.FUEL, fuel);
+		boolean ok = !noSupplies && !noFuel;
+		// ThreatFuel.held("a Seeding Swarm from .."): one booking a source a SHORT_DAYS, of both bills
+		if (!ok && SwarmEconomy.bookHold(s, k, "wave " + source.name)) {
+			if (noSupplies) SwarmEconomy.noteDemand(s, Swarm.SUPPLIES, supplies);
+			if (noFuel) SwarmEconomy.noteDemand(s, Swarm.FUEL, fuel);
 		}
 		if (ok && !SwarmEconomy.canSustain(s, k, SwarmFit.WAVE_FP, k.days(ly))) ok = false;
 		if (!ok) {
@@ -572,8 +571,10 @@ final class SwarmOps {
 			}
 			if (picks.isEmpty()) {
 				if (unpaid > 0f) {
-					// every world in reach waits on fuel: the stock's demand, as a strike held for it books
-					SwarmEconomy.noteDemand(s, Swarm.FUEL, unpaid);
+					// every world in reach waits on fuel. The game books nothing: pickStrikeTarget passes over a world
+					// the muster's passage is not paid for and no held() follows (hw4: no "strike from .. held" in 115
+					// months), so a waiting strike is no demand and no fuel plant answers it. Booked before round 26
+					if (!k.holdsBookMonthly) SwarmEconomy.noteDemand(s, Swarm.FUEL, unpaid);
 					s.count("strikesHeldForFuel", 1);
 				}
 				return false;
@@ -607,7 +608,8 @@ final class SwarmOps {
 			}
 			if (count <= 0) {
 				float one = spare.get(spare.size() - 1)[1];
-				if (!SwarmEconomy.canPay(s, Swarm.FUEL, k.passage(one, ly, true))) {
+				if (!SwarmEconomy.canPay(s, Swarm.FUEL, k.passage(one, ly, true))
+						&& SwarmEconomy.bookHold(s, k, "strike " + from)) {
 					SwarmEconomy.noteDemand(s, Swarm.FUEL, k.passage(one, ly, true));
 				}
 				s.count("strikesHeld", 1);
@@ -968,7 +970,9 @@ final class SwarmOps {
 				else s.count("defendFPDays", p.fp);
 				continue;
 			}
-			if (o.target != null && !o.target.lost && !o.target.forwardBase && land(s, p, o.target)) defend(s, p);
+			// a strike nobody is near never spawns its fleets (the NPC war's every strike), so nothing stays over the
+			// landing: it ends and is re-banked at home ("Strike ledger: ended unspawned, N of M FP re-banked")
+			if (o.target != null && !o.target.lost && !o.target.forwardBase && land(s, p, o.target) && k.strikeDefends) defend(s, p);
 			else goHome(s, p, p.to);
 		}
 		// a strike that vanished (destroyed in flight by the other side) frees its target
@@ -1092,7 +1096,8 @@ final class SwarmOps {
 			goHome(s, p, p.to);
 			return;
 		}
-		if (land(s, p, w)) defend(s, p);
+		// warsim_strikeDefends: only a spawned strike stays over its landing; the NPC war's go home (see daily)
+		if (land(s, p, w) && k.strikeDefends) defend(s, p);
 		else goHome(s, p, p.to);
 	}
 

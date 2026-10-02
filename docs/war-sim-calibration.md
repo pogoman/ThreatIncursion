@@ -148,7 +148,7 @@ overrun clock is the fit.
 
 ## 4. What the game's logs showed on the way (2026-10-02, runs tr1, hw4, hw3)
 
-Scripts in section 6. Each is a fact of the game, not of the simulator.
+Scripts in section 9. Each is a fact of the game, not of the simulator.
 
 **What a Threat landing comes to.** Landings that ended, by the world's owner:
 
@@ -206,7 +206,9 @@ ended at 152 and 209 hives at month 108. hw4b sits above the simulator's band fr
 
 ## 5. Still out after round 24
 
-- **The posture's traffic** (section 4): half the game's sends, the fuel stock five times the game's.
+- **The posture's traffic** (section 4): half the game's sends, the fuel stock five times the game's. Round 25
+  (section 6) put the pass on the game's loop: 70% of the game's sends, the fuel stock unmoved. Rounds 25-26
+  (sections 6-7) closed it: strikes go home after their landing, and a held send books the game's fuel demand.
 - **Strikes and landings about twice the game's through month 84** (hw4 month 60: 23 strikes | 43 [38-51]); fuel
   for them is what the traffic would have burned.
 - **The swarm ends smaller than the game's with the whole muster**: hives at month 108, hw4 152 | 119 [93-140], tr1
@@ -218,8 +220,115 @@ ended at 152 and 209 hives at month 108. hw4b sits above the simulator's band fr
   away" there and back). Launch to first pass at the named target, single-world sweeps, in monthly buckets: hw3 24 d
   at 4 ly, 47 at 14, 92 at 24, 120 at 35 (about 0.3 ly a day); hw4 and tr1 read longer and noisier. Not fitted.
 
-## 6. Scripts (machine-local, `%TEMP%\threatinc-tests`)
+## 6. Round 25: the posture's transfers on the game's loop
 
+`ThreatColonyManager.redistributeByPressure` runs every half day (`IncursionManager.advance`), takes any colony below
+its want as a receiver, and sends the neediest one a donor can serve one swarm - the largest within its deficit, else
+the donor's smallest, capped by the donor's spare and what the receiver accepts - from the nearest donor, again and
+again until nothing goes (hw4: 4.1 sends on a day with sends, 801 receiver-days with two or more). The simulator ran
+its pass every `postureDays` and sent each receiver one swarm, the donor's largest. Built:
+`SwarmPosture.redistributeLoop`, on by default (`warsim_postureLoop=false` is the old pass); counters
+`reinforcementFP`, `reinforcementsCross`, `reinforcementLY`; monthly figures `wantFP` and `heldOfWant`.
+
+- 60 seeds, new game, month 104, old -> loop: transfers 1,519 [1,108-1,965] -> 2,215 [1,680-2,734] (clear, 93% of
+  seeds); nothing else clear - fuel spent 3,972k -> 3,975k, strikes 235 -> 219, hives 87.5 -> 86, bases destroyed
+  49 -> 42, threatScore 768 -> 775, humanScore 27 -> 27.5.
+- `check`, figures inside p10-p90 of 338: hw4a 224 -> 235, hw4b 178 -> 199, tr1a 247 -> 249, hw3a 216 -> 200.
+- Transfers at month 108, real | simulator: hw4 3,334 | 2,375 [1,864-2,769], hw4b 4,746 | 2,585, tr1 3,207 | 1,850,
+  hw3 2,748 | 1,961; inside the band to month 60 on all four, about 70% of the game's after.
+
+**The simulator's swarm was short of its own want, the game's is over it.** The game's monthly `Posture sector: held
+Xk want Yk` reads held 1.0-1.4 times want from year 4 on in all four runs (hw4 1.34 / 0.99 / 1.27 / 1.13 / 1.14 /
+1.24 by year); the simulator's `heldOfWant` was 0.8 [0.6-1.1] at month 36 and 0.6-0.8 after. A donor must hold its
+want, so the simulator had few donors. It had more fleet points in flight than at home (`threatFleetFP` 79.6k
+against a garrison of 66.4k at month 108) and 23-49k of them parked on Defend over beachheads (`defendFPDays` 42M by
+month 108).
+
+**The cause: a strike's fleet stayed over its landing; in a player-less war it goes home.** A strike far from the
+player never spawns its fleets: `doCustomRaidAction(fleet == null)` -> `stayOnDefend(null)` returns, the strike ends
+and logs `Strike ledger: ended unspawned, N of M FP re-banked` (117-174 a run). `Swarm defend` lines appear only at
+Asharu, Garnir and Jangala, where the test save's parked player fleet makes strikes spawn - a test-setup artefact,
+and the one place the two paths differ in the game (a spawned strike holds the orbit over its landing, an unspawned
+one does not). Built: `warsim_strikeDefends` (false; true parks the fleet until the front ends, the old behaviour).
+60 seeds, month 104, true -> false:
+
+| | parks (old) | goes home |
+|---|---|---|
+| hives | 86 | 140 [108-160] (clear) |
+| garrison FP | 64k | 139k |
+| held of want | 0.8 | 1.0 |
+| transfers | 2,215 | 3,080 (clear) |
+| hives killed | 3 | 0 |
+| sieges sailed, hunts | 9, 58 | 3, 32 |
+| strikes, landings | 219, 121 | 385, 219 (clear) |
+| fuel spent | 3,975k | 5,661k |
+| threatScore, humanScore | 775, 27.5 | 1,889, 19.5 |
+
+Swarm size, transfers and kills came to the game's (month 108: hives 113-209, garrison 101-241k, transfers
+2,748-4,746, kills 0-3); strikes and landings went to 2.5-4 times the game's (92-176, 45-60). Round 26 found why.
+
+## 7. Round 26: what a held send books as fuel demand
+
+`check` gained `swarmFuelPerMonth`, `fuelPlants` and `forges` (the dumps carry each hive's industries; a plant's
+output is `size - 2` units of 1,500, within 8% of the dump's `swarm.fuelPerMonth`). At month 108 of hw4 the game had
+18 fuel plants on 152 hives making 113k a month; the simulator 49 [43-55] on 181 making 259k. In the four runs the
+game's plants are 12-15% of its hives, nearly all on size 5 and up (hw4b 23 of 209, hw3 14 of 113, tr1 20 of 131);
+forges are 55-69%. hw4's planner log over 115 months: `fuelprod` 1 first, 5 `(fuel short)`, 20 `(spare)`. A traced
+seed of the simulator built 12-35 for a shortage and 2-18 spare.
+
+Two differences in `ThreatFuel`'s trailing demand, which the planner answers with a plant (`runsDry`):
+
+- **A held send books once a `SHORT_DAYS` a source** (`ThreatFuel.bookHold`, keyed "strike from X", "a Seeding Swarm
+  from X", "a reinforcement from X"). The simulator booked every held poll of a strike and of a Seeding Swarm, and
+  no reinforcement. Built: `SwarmEconomy.bookHold`.
+- **A muster that waits on fuel books nothing.** `IncursionManager.pickStrikeTarget` passes over a world the whole
+  muster's passage is not paid for (`continue`), so `launchStrike` only ever sees an affordable target and its
+  `ThreatFuel.held("strike from ..")` (one swarm's passage unpaid) is not reached: hw4 logged no `strike from ..
+  held` in 115 months, against 175 Seeding Swarm holds, 136 raider, 24 scout, 1 reinforcement. The simulator booked
+  the cheapest world's muster passage each time every world in reach waited on fuel.
+
+Both sit behind `warsim_holdsBookMonthly` (true; false is the old booking). 60 seeds, month 104, old -> new:
+
+| | old booking | the game's |
+|---|---|---|
+| fuel plants | 44 [22-51] | 19 [17-23] (clear) |
+| fuel a month | 227k | 120k (clear) |
+| fuel spent | 5,661k | 3,468k (clear) |
+| fuel stock | 113k | 54k (clear) |
+| strikes, landings | 385, 219 | 255, 155 |
+| forward bases destroyed | 61.5 | 31 (clear) |
+| sieges sailed, hunts | 3, 32 | 9, 48 |
+| hives, garrison FP | 140, 139k | 139, 149k |
+| hives killed, worlds lost | 0, 10 | 2, 9 |
+| supplies stock | 122k | 586k [72k-1,073k] |
+| threatScore, humanScore | 1,889, 19.5 | 1,995, 25 |
+| one-sided outcomes | 75% | 45% |
+
+The swarm's own score does not move (B > A in 63% of seeds, not clear): the plants it no longer builds were paying
+for strikes on forward bases, and their slots go to forges.
+
+`check`, figures inside p10-p90 of 368 (the three new rows included), old booking -> new: hw4a 196 -> 256, hw4b 201
+-> 261, tr1a 273 -> 296, hw3a 236 -> 269 - 906 -> 1,082 of 1,472. To month 60 every swarm row of hw4 and hw4b is
+inside or next to it (hw4 month 60: plants 6 | 6.5, fuel a month 31.5k | 30.8k, fuel stock 6.7k | 6.5k, strikes 23 |
+22, landings 17 | 16, sieges 3 | 2, hunts 5 | 6; month 108: plants 18 | 20, transfers 3,334 | 3,426, sieges 12 | 21,
+hunts 59 | 70.5).
+
+## 8. Still out after round 26
+
+- **Late-war strikes and landings**: hw4 month 108 strikes 138 | 218 [154-305], landings 52 | 136 [90-190]; hw4b
+  146 | 241, 60 | 147. Inside to month 60, strikes about 1.6 times and landings 2.5 times the game's after month 84.
+  A landing a strike: the game 0.38-0.49, the simulator 0.61.
+- **The supplies stock piles up late**: month 108 hw4 12k | 703k [427k-1,027k], hw4b 230k | 530k. The game's
+  `convertSurplus` / `retireMilitary` and what its late swarm spends supplies on are not checked against the
+  simulator's.
+- **Worlds lost**: hw4 2 | 10 at month 108 (hw4b 6 | 8.5, inside). The landings above.
+- **Forward bases destroyed early**: hw4 month 84 27 | 12 [6-16]; hw4b inside.
+- **Fuel stock at month 84**: hw4 746 | 42k, hw4b 5.6k | 37k (inside at 60 and 108).
+- **Months in CONSOLIDATE** and **strike travel** (section 5): not revisited.
+
+## 9. Scripts (machine-local, `%TEMP%\threatinc-tests`)
+
+`hivemix.pl <dump dir> <war days>` counts the hives' industries by size at the dumps nearest the days;
 `unmob.pl <ti log>` lists the landings on a world whose owner was not at war and tallies both kinds; `phases.pl <dump
 dir>` the war days a run changed phase; `churn.pl <ti log> [from] [to]` the posture's transfers - receivers, senders,
 what returned and what passed through.

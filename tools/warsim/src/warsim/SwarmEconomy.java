@@ -231,6 +231,19 @@ final class SwarmEconomy {
 		s.swarm.demand[c] = Math.max(0f, s.swarm.demand[c] + amount);
 	}
 
+	/**
+	 * ThreatFuel.bookHold: whether a send's hold is booked as demand now - once a SHORT_DAYS a send, however many
+	 * polls hold it. Before round 26 every held poll booked its bill, and the planner answered with fuel plants the
+	 * game never builds (49 against 18 at month 108 of hw4); warsim_holdsBookMonthly false restores that.
+	 */
+	static boolean bookHold(State s, SwarmKnobs k, String what) {
+		if (!k.holdsBookMonthly) return true;
+		Integer at = s.swarm.heldBooked.get(what);
+		if (at != null && s.day - at >= 0 && s.day - at < SwarmFit.SHORT_DAYS) return false;
+		s.swarm.heldBooked.put(what, s.day);
+		return true;
+	}
+
 	static boolean canPay(State s, int c, float amount) { return amount <= 0f || stock(s, c) >= amount; }
 
 	/** Draws from the stock, booking the demand; false, nothing drawn, if it is short. */
@@ -676,7 +689,7 @@ final class SwarmEconomy {
 		if (!pay(s, SUPPLIES, h.waitingCost)) return;
 		s.count("swarmSupplies.structures", h.waitingCost);
 		place(s, h, h.waiting);
-		s.log("Hive planner: " + NAMES[h.waiting] + " at " + h.name);
+		s.log("Hive planner: " + NAMES[h.waiting] + (h.waitingAnswers >= 0 ? " (short)" : "") + " at " + h.name);
 		if (h.waitingAnswers >= 0) {
 			s.swarm.answeredDay[h.waitingAnswers] = s.day;
 			// one answer a month: the other worlds waiting on the same shortage stand down

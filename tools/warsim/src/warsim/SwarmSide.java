@@ -87,6 +87,8 @@ public final class SwarmSide implements Side {
 			sw.nextPostureDay = s.day + Math.max(1, (int) k.postureDays);
 			SwarmPosture.poll(s, k);
 		}
+		// IncursionManager.advance: redistributeGarrisons runs every half day, on the wants of the last poll
+		if (k.postureLoop) SwarmPosture.redistribute(s, k);
 		if (s.day >= sw.nextTickDay) {
 			sw.nextTickDay += k.tickDays + SwarmFit.TICK_OVERRUN_DAYS;
 			SwarmOps.tick(s, k);
