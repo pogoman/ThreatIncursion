@@ -501,3 +501,98 @@ a relief that goes home when the strike is gone (so it is not a garrison with up
 the fleets actually burn (`upkeepWanted` / `upkeepOwed` against the gate's `siegeSuppliesPerPoint`); and whether the mod's
 sieges, priced at 117 a point, are postponed as often as the simulator's (12,606 postponements against 423 draws in pd10a
 says yes - the real council's 0-2 kills a run may be this gate).
+
+## 12. Round 17: the siege's price (2026-10-02)
+
+A knob grid on the price a report-sized siege must find in the pools, since round 16 found the gap 7x (the pools provision
+14% of the siege). The knobs are the mod's own where it has them, simulator switches where the mod's is a formula:
+
+- Hull deposit a point: `threatinc_expeditionSuppliesPerPoint` 30 -> 15, 10 (the gate's and the draw's alike).
+- Trip horizon the gate bills (the mod's `siegeStayDays` into `siegeTripDays`; here `HumanPlanner.size`'s `trip`):
+  `warsim_tripMult` 0.5, `warsim_tripFixedDays` 30. The burn (`HumanSide.upkeep`) is untouched: the fleets still eat as they go.
+- Upkeep a fleet point a month (`ReachRules.DEFAULT_SUPPLIES_PER_FP` 0.94, the mod's `ThreatReach.DEFAULT_FACTION_SUPPLIES_PER_FP`):
+  `warsim_suppliesPerFPMult` 0.5 through `HumanPlanner.suppliesPerFP`, read by the gate (`size`), the burn (`upkeep`), the
+  reach (`HumanPools.rangeLY`) and the stance's force (`HumanStance.forceFP`) alike.
+- Orbit margin `threatinc_npcSiegeOrbitMargin` 1.5 -> 1.25, 1.0 (the call-off on arrival stays: `HumanSiege.orbitDay`).
+- Full orbit not required: `threatinc_npcSiegeFullStrength=false`, mirrored in `HumanCouncil.strike` only - the hammer sails
+  the fleets the pools provision when they reach `threatinc_expeditionMinProvisionsFraction` (0.5) of the points, trimmed
+  (`playSiegesTrimmed`; the mod's `siegeCanPay` `mustPay` and "Expedition trimmed"). The planner's own path (`HumanPlanner.plan`)
+  still waits for the whole want, so a planner run does not mirror this knob.
+- Income ceiling: `warsim_accrualMult` 1.5, 2 (every commodity's accrual, not supplies alone).
+
+**Fidelity on the way.** Postponements: the simulator's planner (council off, new game, 30 seeds x 104 months) refuses
+`siegesPostponed` 13,189 [8,605-17,601] options and sails 361 [250-410] sieges; pd10a logged 12,606 "Expedition postponed"
+lines and 423 draws (preemptive purges included). The counts match; the make does not - the simulator's refusals are 7,661
+fuel against 3,857 supplies (`postponed.<c>`), where pd10a's lines hold fuel four times over and want supplies. The planner's
+farther options pay passage fuel the council's near hammers do not; the council's hammers are supplies-short in both
+(round 14), so the grid's reading stands.
+
+30 seeds, council on, radar off, planner sizing, killWeight 1; humanScore / threatScore, bases founded / held / destroyed,
+hives killed, hammers paid / unpaid, mutual, classes both / one-sided / other; * clear. Base: new game 21 / 842 (p10 560),
+52.5 / 12 / 22.5, 6, 27 / 14.5, 1.0, 53 / 20 / 27; mid-war 11.5 / 307 (p10 263), 38.5 / 11.5 / 15.5, 0, 3.5 / 1.5, 0, 0 / 73 / 27.
+
+| cell | new game | mid-war |
+|---|---|---|
+| deposit 15 | 20.5 / 855, 55.5 / 15 / 24.5, 6, 28.5 / 15.5, 0.9, 47 / 17 / 37 | 12.5 / 299, 43 / 12 / 20.5, 0, 2.5 / 2 |
+| deposit 10 | 19 / 1001, 54.5 / 13 / 22.5, 6, 20 / 22, 0.9, 47 / 13 / 40 | 13 / 305, 44.5 / 13 / 19, 0, 2 / 3.5 |
+| trip x0.5 | 19 / 871, 55 / 13 / 21.5, 4.5, 20.5 / 11, 0.7, 43 / 27 / 30 | 13.5 / 310, 40 / 13 / 16.5, 0, 4 / 1.5 |
+| trip 30 days | 19 / 913, 54 / 12.5 / 23.5, 4.5, 24.5 / 11.5, 0.7, 47 / 20 / 33 | 13 / 307, 39.5 / 12.5 / 17.5, 0, 4 / 1.5 |
+| upkeep x0.5 | 25.5 / 753, 56.5 / 14 / 24, 8, 31.5 / 12.5, 1.3, 60 / 17 / 23 | 14 / 322, 45.5 / 13.5 / 20, 0, 3 / 2 |
+| orbit margin 1.25 | 16.5 / 891, 54.5 / 12 / 25.5, 3.5, 17.5 / 14.5, 0.6, 37 / 30 / 33 | 13 / 319, 41 / 12.5 / 17, 0, 3 / 3 |
+| orbit margin 1.0 | 18.5 / 772, 48 / 10 / 18.5, 6.5, 32.5 / 15.5, 1.1, 53 / 27 / 20 | 12 / 308, 40 / 12 / 19, 0, 3 / 1.5 |
+| full orbit off | 21 / 845, 53 / 12 / 23.5, 6.5, 27 / 14.5, 1.0, 53 / 20 / 27 (0 trimmed) | 12.5 / 307, 38.5 / 12 / 15, 0, 3 / 1 |
+| income x1.5 (ceiling) | 28.5 / 886, 71.5 / 17 / 23.5, 8, 30.5 / 12, 1.3, 60 / 20 / 20 | 33.5* / 338, 76* / 33.5* / 33*, 0, 5 / 1.5 |
+| income x2 (ceiling) | 27.5 / 680, 68 / 15 / 27.5, 14, 51 / 15.5, 2.4, 83 / 7 / 10 | 42.5* / 349, 91* / 42.5* / 36.5*, 1, 6.5 / 3 |
+
+Reading the singles. Cutting what the gate asks without cutting what the fleets burn buys nothing: the deposit at 15 or 10
+and the trip at half or 30 days leave the score at 19-20.5 against 21 (more hammers reach the strike, paid ones do not rise -
+28.5, 20, 20.5, 24.5 against 27 - and at deposit 10 the unpaid rise to 22: cheaper sieges sail, starve on the way
+(`HumanSide.upkeep` bills the trip as it goes) and the Threat's score climbs to 1,001). The orbit margin is worse at either
+cut (16.5, 18.5). Full orbit off trims nothing (the pools provision 14%, the floor is 50%). The one price knob that moves the
+score is the burn itself: upkeep x0.5, gate and burn alike, 25.5 against 21 from a new game (kills 8, paid hammers 31.5,
+both-sides 60%) and 14 against 11.5 mid-war, the Threat's score 753 and 322 above p10 - not clear at 30 seeds. The income
+ceiling says where the bill becomes payable: x1.5 gives 28.5 and 33.5* (mid-war bases held 11.5 -> 33.5*), x2 27.5 and 42.5*
+with 14 kills and both-sides 83% from a new game - the humans' war is income-bound end to end, and the siege's supplies
+bill (the burn) is what the income cannot meet.
+
+Combinations on the one knob that moved, 30 seeds (same columns):
+
+| cell | new game | mid-war |
+|---|---|---|
+| upkeep x0.5 + deposit 15 | 26.5 / 847, 59 / 16 / 24.5, 8, 32.5 / 18.5, 1.3, 67 / 10 / 23 | 17 / 318, 51.5 / 16.5 / 22.5, 0, 5.5 / 2 |
+| upkeep x0.5 + full orbit off | 20 / 764, 55 / 12.5 / 24.5, 7.5, 29.5 / 12, 1.3, 63 / 13 / 23 (1 trimmed) | 14 / 326, 46.5 / 13.5 / 22, 0, 3.5 / 2 |
+| upkeep x0.5 + deposit 15 + full orbit off | 24.5 / 796, 59.5 / 16 / 25, 7.5, 31.5 / 18, 1.2, 60 / 7 / 33 | 17 / 318, 51.5 / 16 / 22, 0, 5 / 2 |
+
+Upkeep x0.5 at 60 seeds: new game 23 against 18 (bases held 13 against 10.5, kills 8 against 5), mid-war 16 against 12 (bases
+held 15.5 against 11.5); the Threat's score 797 and 321, both above p10 (560, 272).
+
+**What the mod can and cannot hold.** The upkeep rate is not a knob: `ThreatReach.suppliesPerFP(factionId)` measures the
+faction's fleets out - vanilla maintenance a month over fleet points (`ThreatFrontlines.maintenancePerMonth`), once a day -
+and 0.94 (`DEFAULT_FACTION_SUPPLIES_PER_FP`) is only the default before one sails. Upkeep x0.5 is therefore a 2x discount on
+the factions' real maintenance, which "no cheating either side" rules out as a mod rule; the cell measures the gap, it is
+not a candidate. The pools' accrual is a knob: `threatinc_reserveSurplusMult` (1.0; troops `reserveTroopSurplusMult` 0.5)
+scales the surplus share each colony banks a month (`ThreatReserves.accrualPer30`), which `warsim_accrualMult` stands for
+(it scales every commodity, troops included, so it overstates marines a little). So the income cells are buildable settings
+changes, not only a ceiling.
+
+Kill weight. At 0 (bases held alone) the order is the same: upkeep x0.5 13-15.5 against 10.5-11.5, income x1.5 17 and 33.5*,
+the price cuts 12.5-15 against 12. At 2 the kills term widens upkeep x0.5's lead from a new game (kills 8 against 5) and
+income x2's (14 against 6) and changes no order; mid-war no cell kills, so the weight is moot there. The Threat's score stays
+above the base's p10 in every cell at every weight; income x1.5 raises it (886 / 338 against 842 / 307: more worlds and bases
+to destroy), income x2 lowers it from a new game (680) through the 14 hives killed.
+
+**At 60 seeds.** Income x1.5: mid-war 32.5 against 12 (97% of seeds, clear; bases held 32 against 11.5*, founded 81.5
+against 39.5*), new game 27.5 against 18 (80% of seeds; the median clears the base's p90 27.1, bases held 17 against 10.5,
+kills 8 against 5, paid hammers 29 against 25); the Threat's score 849 and 336 against 829 and 308, above p10 (560, 272);
+classes new game both-sides 60% against 45%, mid-war one-sided 62% against 80% with no quiet seed, `deadYears` 0.6 / 0.5
+against 0.6 / 0.7. Upkeep x0.5 + deposit 15: 23 against 18 (71%) and 17 against 12 (72%), consistent, not clear, and not a
+rule the mod may hold. Upkeep x0.5 at 120 seeds from a new game: 22 against 18 (63%).
+
+**Verdict: `threatinc_reserveSurplusMult` 1.0 -> 1.5** (the pools bank half again the surplus share a month; the gate and
+the prices unchanged - the bill is real, the income was short of it). Clear mid-war, 80% of seeds from a new game, the
+Threat's score up not down, the war livelier on both measures. Caveats: the simulator scales every commodity's accrual
+including the militia's marines (`reserveTroopSurplusMult` is separate in the mod and was not raised); the colonies' base
+accrual is `HumanFit.ACCRUAL_BY_SIZE` fitted from the dumps, so x1.5 maps to the knob only as far as that fit holds; and
+facts.md "What is still free in the human war economy" lists the reserves' accrual as unpaid banking, so this widens a
+free flow - still production-bound (`reserveBankFromProduction`), not conjured. Confirm with the 5-minute mid-war game check
+(`strike.paid` should rise and bases held double) before the setting is kept.
