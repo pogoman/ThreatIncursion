@@ -122,7 +122,7 @@ public class ThreatRaiders {
 
 	/**
 	 * consider, weighing the convoy at convoyFP: its exact fleet points at
-	 * dispatch (fog off), or as the swarm saw it (sweep - radar rounds it).
+	 * dispatch (fog off), or as the swarm saw it (sweep).
 	 * Marks the convoy considered (CONSIDERED_FLAG), so the sweep never
 	 * rolls for it twice.
 	 */
@@ -193,11 +193,11 @@ public class ThreatRaiders {
 
 	/**
 	 * The swarm's fog (docs/threat-fog.md): a convoy is not rolled for at
-	 * dispatch, but the first day the swarm sees it - eyes in its system, or
-	 * a Bastion's radar on it in hyperspace (ThreatSwarmIntel.sees). Then
-	 * consider runs once, on the fleet points as seen (radar: two
-	 * significant figures). Called once a day by ThreatSwarmIntel.poll; a
-	 * no-op with the fog off, where ThreatConvoys rolls at dispatch.
+	 * dispatch, but the first day the swarm sees it - eyes in its system
+	 * (ThreatSwarmIntel.sees; nothing is seen in hyperspace). Then consider
+	 * runs once, on the fleet points as seen. Called once a day by
+	 * ThreatSwarmIntel.poll; a no-op with the fog off, where ThreatConvoys
+	 * rolls at dispatch.
 	 */
 	public static void sweep() {
 		if (!ThreatIncConfig.swarmFogOfWar() || !ThreatIncConfig.raiderEnabled()) return;
@@ -207,10 +207,9 @@ public class ThreatRaiders {
 			CampaignFleetAPI fleet = c.fleet;
 			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
 			if (fleet.getMemoryWithoutUpdate().getBoolean(CONSIDERED_FLAG)) continue;
-			String source = ThreatSwarmIntel.sees(fleet.getContainingLocation(), fleet.getLocationInHyperspace());
+			String source = ThreatSwarmIntel.sees(fleet.getContainingLocation());
 			if (source == null) continue;
 			float fp = fleet.getFleetPoints();
-			if (ThreatSwarmIntel.RADAR.equals(source)) fp = ThreatIntel.twoFigures(fp);
 			ThreatIncConfig.log("Swarm intel: sees " + c.factionId + " convoy of " + (int) fp
 					+ " FP bound for " + c.toName() + " by " + source);
 			LocationAPI at = fleet.getContainingLocation();

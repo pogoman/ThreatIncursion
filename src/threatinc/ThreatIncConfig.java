@@ -573,12 +573,8 @@ public class ThreatIncConfig {
 	public static boolean intelFogOfWar()     { return b("threatinc_intelFogOfWar", true); }
 	/** Days in which a report's trust halves. */
 	public static float intelHalfLifeDays()   { return f("threatinc_intelHalfLifeDays"); }
-	/** Light-years a forward base, military world or player outpost sees Threat systems by radar. */
-	public static float radarRangeLY()        { return f("threatinc_radarRangeLY"); }
 	/** The swarm's own fog of war: it knows humans only from its reports (ThreatSwarmIntel, docs/threat-fog.md); off = today's live reads. */
 	public static boolean swarmFogOfWar()     { return b("threatinc_swarmFogOfWar", true); }
-	/** Light-years a hive world with a Swarm Bastion or Command sees human fleets and bases by radar. */
-	public static float swarmRadarRangeLY()   { return f("threatinc_swarmRadarRangeLY"); }
 	/** Days a sighted human attack still counts toward a hive system's pressure after it was last seen. */
 	public static float swarmContactDays()    { return f("threatinc_swarmContactDays"); }
 	/** Mobilised factions plan sieges, raids and recon (ThreatAttackPlanner); off = the monthly per-base pick. */

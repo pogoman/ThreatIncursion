@@ -301,7 +301,7 @@ answers". **Yes, narrowly. A small feint does nothing.**
   counted at its target from dispatch, at any distance, and the posture pass that reads it runs
   every 5-5.6 days. A force staging against a system raised that system's pressure with its stock
   before anything sailed. Since decision 10 a booked off-screen siege counts too. With the fog on,
-  each of these counts only once the swarm's eyes, radar or scouts have seen it.
+  each of these counts only once the swarm's eyes or scouts have seen it (radar too, until 2026-10-02).
 - **What a feint pulls.** The feinted system's want is about 0.83x its pressure, and the deficit
   (want less what it holds) is what moves. So a feint pulls only when it outweighs the system's
   garrison by about 1.2x, or when it sinks swarms. A thinly held world makes the feint cheap: a

@@ -15,7 +15,7 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
     and at any distance. A siege still off-screen counts its as-sailed flotilla (`abstractNow`,
     knob `threatSeesBookedSieges`, decision 10 of 2026-10-01; before it, Gamma Sonora under a
     4,900 FP daily siege read "attacks 0"). With the swarm's fog on (`threat-fog.md`) A, B and F
-    count only what the swarm's eyes, radar or scouts saw (`ThreatSwarmIntel`).
+    count only what the swarm's eyes or scouts saw (`ThreatSwarmIntel`; no radar since 2026-10-02).
   - **B - staged capacity:** what the bases staging against the system could pay a force there
     (`ThreatSoftening.payableFP`, with hunt donors - capacity, not a siege's sizing, which reads the
     garrison and would chase its own tail). Weight 1.0 for a base staging for its siege, 0.5 for one

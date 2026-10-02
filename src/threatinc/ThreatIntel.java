@@ -8,8 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.lwjgl.util.vector.Vector2f;
-
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.FactionAPI;
@@ -28,15 +26,16 @@ import com.fs.starfarer.api.util.Misc;
  * count {@code ThreatGroundFronts.pointsNear} makes), those elsewhere in the
  * system, and the day it was seen and how.
  *
- * <p>Reports are made only where the observer can see: EYES - its fleet, its
- * colony or its ground army in the system (exact, every day while there, and
- * on arrival); RADAR - its forward bases and military worlds (the player's
- * outposts) within radarRangeLY (two significant figures, every day); a
- * SCOUT sent to look (exact, on arrival). Coalition partners pool what they
- * see; the player also gets the reports of factions at Cooperative (user's
- * answer 2a). A report keeps its figures as it ages; what falls is its TRUST,
- * 0.5 ^ (age / intelHalfLifeDays), and the planner spreads its blows by it
- * (ThreatAttackPlanner).
+ * <p>Reports are made only where the observer is present: EYES - any fleet of
+ * its (siege, hunt, convoy, scout, guard, relief, a passing trader), its
+ * colony, its ground army or an unspawned route of its in the system (exact,
+ * every day while there, and on arrival); a SCOUT sent to look (exact, on
+ * arrival). No radar on either side (user, 2026-10-02): the picture is real
+ * time while a ship is there, and from the day the last one leaves it stands
+ * and ages. Coalition partners pool what they see; the player also gets the
+ * reports of factions at Cooperative (user's answer 2a). A report keeps its
+ * figures as it ages; what falls is its TRUST, 0.5 ^ (age / intelHalfLifeDays),
+ * and the planner spreads its blows by it (ThreatAttackPlanner).
  *
  * <p>Planet facts - size, structures, the defence figure - stay live: they
  * change slowly and mostly by the observer's own hand. What moves is the
@@ -55,15 +54,14 @@ public final class ThreatIntel {
 	public static final String KEY_LAST_CENSUS = "threatinc_intelLastCensus";
 
 	public static final String EYES = "eyes";
-	public static final String RADAR = "radar";
 	public static final String SCOUT = "scout";
 
 	/** One observer's picture of one Threat system. */
 	public static class Report {
 		public String systemId;
-		/** The faction whose eyes or radar made it (an ally's, when shared). */
+		/** The faction whose eyes made it (an ally's, when shared). */
 		public String seenBy;
-		/** {@link #EYES}, {@link #RADAR} or {@link #SCOUT}. */
+		/** {@link #EYES} or {@link #SCOUT} ("radar" in a save from before 2026-10-02: it stands and ages like any other). */
 		public String source;
 		/** {@link ThreatPosture#today()} when seen. */
 		public float day;
@@ -107,10 +105,6 @@ public final class ThreatIntel {
 
 		public float age() {
 			return Math.max(0f, today() - day);
-		}
-
-		public boolean rounded() {
-			return RADAR.equals(source);
 		}
 	}
 
@@ -195,34 +189,20 @@ public final class ThreatIntel {
 				r.looseFleets++;
 			}
 		}
-		if (RADAR.equals(source)) {
-			for (float[] w : r.worlds.values()) w[0] = twoFigures(w[0]);
-			r.nearFP = twoFigures(r.nearFP);
-			r.looseFP = twoFigures(r.looseFP);
-		}
 		return r;
-	}
-
-	/** Radar's precision: two significant figures (3,412 -> 3,400; 63 -> 63). */
-	public static float twoFigures(float x) {
-		return threatinc.rules.PlannerRules.twoFigures(x);
 	}
 
 	/**
 	 * Writes the observer's report of the system from what is there now.
-	 * Called only where the observer has eyes or radar on it. A world whose
-	 * swarms moved by half or more since the observer's last look is news to
-	 * its planner (and its partners').
+	 * Called only where the observer has eyes on it. A world whose swarms
+	 * moved by half or more since the observer's last look is news to its
+	 * planner (and its partners').
 	 */
 	public static Report see(String observer, StarSystemAPI system, String source) {
 		if (observer == null || system == null || !enabled()) return null;
 		Report r = picture(system, observer, source);
 		Map<String, Report> mine = own(observer);
 		Report old = mine.get(system.getId());
-		// radar adds nothing to what eyes saw today
-		if (old != null && RADAR.equals(source) && !RADAR.equals(old.source) && old.day >= r.day - 0.99f) {
-			return old;
-		}
 		mine.put(system.getId(), r);
 		String moved = moved(old, r);
 		if (moved != null) {
@@ -235,7 +215,7 @@ public final class ThreatIntel {
 		} else if (old == null) {
 			ThreatIncConfig.log("Intel: " + observer + " first sees the " + system.getName() + " by " + source
 					+ ": " + (int) r.totalFP() + " FP (" + describe(r) + ")");
-			// a first picture - a recon party's, a new radar site's - is news as a move is
+			// a first picture - a recon party's, a fleet passing through - is news as a move is
 			ThreatAttackPlanner.news(observer, "a first look at the " + system.getName());
 			for (String partner : partnersOf(observer)) {
 				ThreatAttackPlanner.news(partner, "an ally's first look at the " + system.getName());
@@ -297,8 +277,10 @@ public final class ThreatIntel {
 
 	/**
 	 * The observers with eyes in the system: a fleet of theirs there (any
-	 * fleet - a passing freighter sees too), a colony there, a ground army on
-	 * one of its worlds, or an unspawned route of theirs passing through.
+	 * fleet of the faction - siege, hunt, convoy, scout, guard, relief, a
+	 * passing freighter), a colony there, a ground army on one of its worlds,
+	 * or an unspawned route of theirs passing through. The only way a report is
+	 * made (user, 2026-10-02: no radar).
 	 */
 	protected static Set<String> eyesIn(StarSystemAPI system) {
 		Set<String> out = new HashSet<String>();
@@ -348,49 +330,6 @@ public final class ThreatIntel {
 	}
 
 	// ------------------------------------------------------------------
-	// radar
-	// ------------------------------------------------------------------
-
-	/**
-	 * Where each observer's radar stands, in hyperspace: its forward bases and
-	 * military worlds (the watchers strike warning uses,
-	 * ThreatFrontlines.watches), and the player's outposts, which are
-	 * market-less.
-	 */
-	protected static Map<String, List<Vector2f>> radarSites() {
-		Map<String, List<Vector2f>> out = new HashMap<String, List<Vector2f>>();
-		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (!ThreatFrontlines.watches(market)) continue;
-			if (!IncursionManager.hasMilitary(market) && !ThreatFrontlines.isOutpost(market)) continue;
-			sitesOf(out, observerOf(market)).add(market.getLocationInHyperspace());
-		}
-		for (ThreatOutposts.Outpost o : ThreatOutposts.outpostsOf(Factions.PLAYER)) {
-			if (!o.alive() || o.entity == null) continue;
-			sitesOf(out, Factions.PLAYER).add(o.entity.getLocationInHyperspace());
-		}
-		return out;
-	}
-
-	private static List<Vector2f> sitesOf(Map<String, List<Vector2f>> sites, String observer) {
-		List<Vector2f> mine = sites.get(observer);
-		if (mine == null) {
-			mine = new ArrayList<Vector2f>();
-			sites.put(observer, mine);
-		}
-		return mine;
-	}
-
-	protected static boolean inRadar(List<Vector2f> sites, StarSystemAPI system) {
-		if (sites == null || sites.isEmpty()) return false;
-		float range = ThreatIncConfig.radarRangeLY();
-		Vector2f at = system.getLocation();
-		for (Vector2f site : sites) {
-			if (site != null && Misc.getDistanceLY(site, at) <= range) return true;
-		}
-		return false;
-	}
-
-	// ------------------------------------------------------------------
 	// the day
 	// ------------------------------------------------------------------
 
@@ -408,12 +347,11 @@ public final class ThreatIntel {
 
 	/**
 	 * Once a day: every observer with eyes in a found Threat system sees it
-	 * exactly, every one with radar on it sees it to two figures.
+	 * exactly; every other report stands and ages.
 	 */
 	public static void advanceDay() {
 		if (!enabled()) return;
 		List<String> observers = observers();
-		Map<String, List<Vector2f>> sites = radarSites();
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
 			if (ThreatIncData.getLiveColonyMarkets(systemId).isEmpty()) continue;
 			if (!ThreatScouts.sectorKnows(systemId)) continue;
@@ -421,11 +359,7 @@ public final class ThreatIntel {
 			if (system == null) continue;
 			Set<String> eyes = eyesIn(system);
 			for (String o : observers) {
-				if (eyes.contains(o)) {
-					see(o, system, EYES);
-				} else if (inRadar(sites.get(o), system)) {
-					see(o, system, RADAR);
-				}
+				if (eyes.contains(o)) see(o, system, EYES);
 			}
 		}
 		pruneDead();

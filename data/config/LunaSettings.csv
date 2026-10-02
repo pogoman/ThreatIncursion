@@ -226,11 +226,9 @@ threatinc_scoutStayDays,Scout Stay (Days),Double,2,"Days a scout sweeps an empty
 threatinc_scoutLegMaxDays,Scout Leg Limit (Days),Double,60,"Days a scout may spend reaching one stop before it skips it.",10,365
 threatinc_scoutMemoryDays,Scout Memory (Days),Double,180,"Days a system swept clear is left alone by routine sweeps. A new strike's follow-up ignores older sweeps.",0,720
 threatinc_scoutFleetPoints,Scout Fleet Points,Double,20,"Combat fleet points of a scouting party.",5,100
-threatinc_intelFogOfWar,Fog of War on the Swarm,Boolean,true,"Every faction, you included, knows the swarms only as last seen: by its fleets, colonies and scouts (exact) and by the radar of its forward bases, military worlds and outposts (rounded). Off: everyone reads the swarm exactly, anywhere.",,
+threatinc_intelFogOfWar,Fog of War on the Swarm,Boolean,true,"Every faction, you included, knows the swarms only as last seen by its fleets, colonies and scouts. Off: everyone reads the swarm exactly, anywhere.",,
 threatinc_intelHalfLifeDays,Report Half-Life (Days),Double,30,"A report's trust halves every this many days. Planners send more prongs on older reports, and scouts to refresh them.",5,180
-threatinc_radarRangeLY,Radar Range (LY),Double,10,"Forward bases, military worlds and your outposts see every found Threat system this close, every day, to two significant figures.",0,40
-threatinc_swarmFogOfWar,Fog of War for the Swarm,Boolean,true,"The swarm knows your attacks, bases and defences only as last seen: by its hives, fleets, fronts and Scouting Swarms (exact) and by the radar of its Bastion and Command worlds (rounded). Off: the swarm reads every human force exactly, anywhere.",,
-threatinc_swarmRadarRangeLY,Swarm Radar Range (LY),Double,10,"Hive worlds with a Swarm Bastion or Command see human fleets and bases this close, every day, to two significant figures.",0,40
+threatinc_swarmFogOfWar,Fog of War for the Swarm,Boolean,true,"The swarm knows your attacks, bases and defences only as last seen by its hives, fleets, fronts and Scouting Swarms. Off: the swarm reads every human force exactly, anywhere.",,
 threatinc_attackPlanner,Attack Planner,Boolean,true,"Mobilised factions plan their sieges, raids and recon from their reports, spreading their blows until one is likely to land. Off: each base picks a siege once a month.",,
 threatinc_planIntervalDays,Planning Interval (Days),Double,7,"Days between a faction's plans, besides the re-plans that news triggers.",1,60
 threatinc_planConfidence,Plan Confidence,Double,0.8,"A plan adds prongs at other worlds until the chance that at least one lands reaches this.",0.1,0.99

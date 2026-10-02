@@ -9,8 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.lwjgl.util.vector.Vector2f;
-
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.LocationAPI;
@@ -30,11 +28,10 @@ import com.fs.starfarer.api.util.Misc;
  * <p>EYES - a system with a live hive colony, any live Threat fleet
  * (garrisons, Scouting Swarms, raiders, Defend stations, spawned strike
  * fleets), an unspawned strike route passing through it, or a Threat ground
- * front: exact. RADAR - a hive world with a standing Swarm Bastion or Command
- * (SwarmBastion.tier, the mirror of the humans' military worlds) sees human
- * fleets and bases within swarmRadarRangeLY of it in hyperspace, to two
- * significant figures. SCOUT - a Scouting Swarm entering a system looks at
- * every human place there ({@link #scouted}), exact. Battles need nothing
+ * front: exact. SCOUT - a Scouting Swarm entering a system looks at every
+ * human place there ({@link #scouted}), exact. No radar (user, 2026-10-02):
+ * a place or contact is real time while a Threat ship is in its system, and
+ * from the day the last one leaves it stands and ages. Battles need nothing
  * new: a Threat fleet in a fight is in the system.
  *
  * <p>Two records. A CONTACT per human attack force seen - a siege, a hunt, a
@@ -68,7 +65,7 @@ public final class ThreatSwarmIntel {
 	/** System id -> day: systems seeded with scouting off (seedUnscouted), once each; cleared while the fog is off. */
 	protected static final String UNSCOUTED = "unscouted";
 
-	public static final String EYES = "eyes", RADAR = "radar", SCOUT = "scout";
+	public static final String EYES = "eyes", SCOUT = "scout";
 
 	/** One human attack force the swarm has seen coming. */
 	public static class Contact {
@@ -76,9 +73,9 @@ public final class ThreatSwarmIntel {
 		public String key, factionId;
 		/** The hive system it is bound for. */
 		public String systemId;
-		/** {@link #EYES} or {@link #RADAR}: how it was last seen. */
+		/** {@link #EYES}: how it was last seen ("radar" in a save from before 2026-10-02). */
 		public String source;
-		/** Fleet points as ThreatPosture.attacksBySystem counts them, when last seen (radar: two figures). */
+		/** Fleet points as ThreatPosture.attacksBySystem counts them, when last seen. */
 		public float fp;
 		/** {@link ThreatPosture#today()} of its first and its last sighting. */
 		public float firstDay, day;
@@ -87,7 +84,7 @@ public final class ThreatSwarmIntel {
 	/** One human base or world the swarm has seen, and what it saw there. */
 	public static class Place {
 		public String marketId, systemId, factionId;
-		/** {@link #EYES}, {@link #RADAR} or {@link #SCOUT}. */
+		/** {@link #EYES} or {@link #SCOUT} ("radar" in a save from before 2026-10-02). */
 		public String source;
 		/** The hive system it was staging for (ThreatConvoys.stagingHive); null for none. */
 		public String stagesFor;
@@ -153,26 +150,16 @@ public final class ThreatSwarmIntel {
 	private static final Set<String> STANDING = new HashSet<String>();
 	/** System id -> whether a live Threat fleet was in it when first asked today. */
 	private static final Map<String, Boolean> FLEET_EYES = new HashMap<String, Boolean>();
-	/** Where the hive's radar stands: its Bastion and Command worlds, in hyperspace. */
-	private static final List<Vector2f> RADAR_SITES = new ArrayList<Vector2f>();
 
-	/** Reads the standing eyes and the radar sites once a day ({@code force}: now, for the sweep). */
+	/** Reads the standing eyes once a day ({@code force}: now, for the sweep). */
 	protected static void senses(boolean force) {
 		long day = ThreatReach.today();
 		if (!force && day == senseDay) return;
 		senseDay = day;
 		STANDING.clear();
 		FLEET_EYES.clear();
-		RADAR_SITES.clear();
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
-			List<MarketAPI> hives = ThreatIncData.getLiveColonyMarkets(systemId);
-			if (hives.isEmpty()) continue;
-			STANDING.add(systemId);
-			for (MarketAPI hive : hives) {
-				if (hive.getPrimaryEntity() != null && SwarmBastion.tier(hive) >= 1) {
-					RADAR_SITES.add(hive.getLocationInHyperspace());
-				}
-			}
+			if (!ThreatIncData.getLiveColonyMarkets(systemId).isEmpty()) STANDING.add(systemId);
 		}
 		for (ThreatGroundFronts.GroundFront front : ThreatGroundFronts.fronts().values()) {
 			if (!ThreatGroundFronts.isThreatOwned(front)) continue;
@@ -200,16 +187,6 @@ public final class ThreatSwarmIntel {
 		}
 	}
 
-	/** An abstract route's place in hyperspace, or null. */
-	protected static Vector2f routeHyper(RouteManager.RouteData route) {
-		if (route == null || route.getCurrent() == null) return null;
-		try {
-			return route.getInterpolatedHyperLocation();
-		} catch (RuntimeException e) {
-			return null;
-		}
-	}
-
 	protected static boolean threatFleet(CampaignFleetAPI f) {
 		return f != null && f.isAlive() && f.getFaction() != null
 				&& Factions.THREAT.equals(f.getFaction().getId()) && f.getFleetPoints() > 0f;
@@ -232,30 +209,17 @@ public final class ThreatSwarmIntel {
 		return fleet.booleanValue();
 	}
 
-	protected static boolean inRadar(Vector2f at) {
-		if (at == null || RADAR_SITES.isEmpty()) return false;
-		float range = ThreatIncConfig.swarmRadarRangeLY();
-		if (range <= 0f) return false;
-		for (Vector2f site : RADAR_SITES) {
-			if (site != null && Misc.getDistanceLY(site, at) <= range) return true;
-		}
-		return false;
-	}
-
 	/**
-	 * Whether the swarm sees what is at {@code where} ({@code hyper} its place in
-	 * hyperspace): {@link #EYES} in a system it has eyes in, {@link #RADAR}
-	 * within a Bastion's range, else null.
+	 * Whether the swarm sees what is at {@code where}: {@link #EYES} in a
+	 * system it has eyes in, else null (nothing is seen in hyperspace).
 	 */
-	public static String sees(LocationAPI where, Vector2f hyper) {
+	public static String sees(LocationAPI where) {
 		senses(false);
-		if (where instanceof StarSystemAPI && eyesIn((StarSystemAPI) where)) return EYES;
-		return inRadar(hyper) ? RADAR : null;
+		return where instanceof StarSystemAPI && eyesIn((StarSystemAPI) where) ? EYES : null;
 	}
 
-	/** The better of two sightings: eyes over radar over none. */
+	/** The better of two sightings: eyes over none. */
 	protected static String better(String a, String b) {
-		if (EYES.equals(a) || EYES.equals(b)) return EYES;
 		return a != null ? a : b;
 	}
 
@@ -344,18 +308,17 @@ public final class ThreatSwarmIntel {
 			String source = null;
 			if (purge instanceof ThreatPurgeFGI && ThreatPosture.countsAbstract((ThreatPurgeFGI) purge)) {
 				fp = ((ThreatPurgeFGI) purge).abstractNow();
-				RouteManager.RouteData route = purge.getRoute();
-				source = sees(routeLocation(route), routeHyper(route));
+				source = sees(routeLocation(purge.getRoute()));
 				// fleets already spawning near the player are seen where they are
 				for (CampaignFleetAPI f : purge.getFleets()) {
 					if (f == null || !f.isAlive()) continue;
-					source = better(source, sees(f.getContainingLocation(), f.getLocationInHyperspace()));
+					source = better(source, sees(f.getContainingLocation()));
 				}
 			} else {
 				for (CampaignFleetAPI f : purge.getFleets()) {
 					if (f == null || !f.isAlive() || !counted.add(f)) continue;
 					fp += ThreatSoftening.combatFP(f);
-					source = better(source, sees(f.getContainingLocation(), f.getLocationInHyperspace()));
+					source = better(source, sees(f.getContainingLocation()));
 				}
 			}
 			if (fp <= 0f) continue;
@@ -382,7 +345,7 @@ public final class ThreatSwarmIntel {
 			if (fp <= 0f) continue;
 			String key = orderKey(o.fleet);
 			live.add(key);
-			String source = sees(o.fleet.getContainingLocation(), o.fleet.getLocationInHyperspace());
+			String source = sees(o.fleet.getContainingLocation());
 			if (source != null) note(key, o.factionId, systemId, fp, source, day, kind);
 		}
 		// a force that ended is seen to go (docs/threat-fog.md, decision 4)
@@ -405,7 +368,6 @@ public final class ThreatSwarmIntel {
 	/** Writes a sighting into the force's contact; its first is logged. */
 	protected static void note(String key, String factionId, String systemId, float fp, String source, float day,
 			String kind) {
-		if (RADAR.equals(source)) fp = ThreatIntel.twoFigures(fp);
 		Map<String, Contact> contacts = contactMap();
 		Contact c = contacts.get(key);
 		if (c == null) {
@@ -437,7 +399,7 @@ public final class ThreatSwarmIntel {
 			boolean wanted = IncursionManager.hasMilitary(m) || ThreatFrontlines.isOutpost(m)
 					|| (IncursionManager.isStrikeableWorld(m) && ThreatSwarmScouts.swarmKnows(m));
 			if (!wanted) continue;
-			String source = sees(m.getStarSystem(), m.getLocationInHyperspace());
+			String source = sees(m.getStarSystem());
 			if (source != null) record(m, source, day, memo, true);
 		}
 		prune();
@@ -483,8 +445,7 @@ public final class ThreatSwarmIntel {
 	 * want of a figure (IncursionManager.targetDefence). The staged threat and
 	 * the reach on the base's own stock alone: its donors' depots are elsewhere,
 	 * unseen (ThreatPosture.stagedBy, IncursionManager.seenSiegeBaseReachLY).
-	 * Radar's figures to two significant figures. A first sighting, or a figure
-	 * moved by half, is logged when {@code log}.
+	 * A first sighting, or a figure moved by half, is logged when {@code log}.
 	 */
 	protected static Place record(MarketAPI m, String source, float day, Map<String, float[]> memo, boolean log) {
 		StarSystemAPI staging = ThreatConvoys.stagingHive(m);
@@ -494,11 +455,6 @@ public final class ThreatSwarmIntel {
 		float guards = guardsOf(m);
 		float reach = spreadBase(m) ? IncursionManager.seenSiegeBaseReachLY(m) : 0f;
 		float defence = IncursionManager.liveTargetDefence(m, memo);
-		if (RADAR.equals(source)) {
-			staged = ThreatIntel.twoFigures(staged);
-			guards = ThreatIntel.twoFigures(guards);
-			defence = ThreatIntel.twoFigures(defence);
-		}
 		Map<String, Place> places = placeMap();
 		Place p = places.get(m.getId());
 		String was = p != null ? changed(p, stagesFor, staged, guards, defence) : null;
@@ -598,7 +554,7 @@ public final class ThreatSwarmIntel {
 	 * world", as swarmKnows reads it): every system holding a strikeable human
 	 * world counts as charted. Once per system per save (UNSCOUTED), one with no
 	 * place yet gets a place for each of its bases and strikeable worlds from a
-	 * live read, dated today; from then on only eyes and radar refresh it.
+	 * live read, dated today; from then on only eyes refresh it.
 	 */
 	protected static void seedUnscouted(float day) {
 		Map<String, Float> done = ThreatSwarmIntel.<Float>section(UNSCOUTED);
@@ -614,7 +570,7 @@ public final class ThreatSwarmIntel {
 				placed = placedSystems();
 				memo = new HashMap<String, float[]>();
 			}
-			// a system its eyes, radar or scouts already saw keeps what they saw
+			// a system its eyes or scouts already saw keeps what they saw
 			if (placed.contains(system.getId())) continue;
 			systems++;
 			for (MarketAPI w : Misc.getMarketsInLocation(system)) {
@@ -668,14 +624,13 @@ public final class ThreatSwarmIntel {
 			inSightFP += c.fp;
 		}
 		Set<String> systems = new HashSet<String>();
-		int eyes = 0, radar = 0, scout = 0;
+		int eyes = 0, scout = 0;
 		float oldest = 0f;
 		for (Place p : placeMap().values()) {
 			if (p == null) continue;
 			if (p.systemId != null) systems.add(p.systemId);
 			oldest = Math.max(oldest, age(p));
 			if (EYES.equals(p.source)) eyes++;
-			else if (RADAR.equals(p.source)) radar++;
 			else scout++;
 		}
 		int stale = 0;
@@ -688,7 +643,7 @@ public final class ThreatSwarmIntel {
 		}
 		ThreatIncConfig.log("Swarm intel census: contacts " + contactMap().size() + " (" + inSight + " in sight, "
 				+ (int) inSightFP + " FP); places " + placeMap().size() + " in " + systems.size() + " systems (eyes "
-				+ eyes + ", radar " + radar + ", scout " + scout + "), oldest " + days(oldest) + " d; stale systems "
+				+ eyes + ", scout " + scout + "), oldest " + days(oldest) + " d; stale systems "
 				+ stale + ", charted unseen " + unseen);
 	}
 
@@ -784,7 +739,6 @@ public final class ThreatSwarmIntel {
 		senseDay = Long.MIN_VALUE;
 		STANDING.clear();
 		FLEET_EYES.clear();
-		RADAR_SITES.clear();
 	}
 
 	/**

@@ -2,8 +2,9 @@
 
 The user's request of 2026-10-01: NPC factions plan their war from what they know at the time,
 hit in several places so that one blow is likely to land, and react when a fleet arrives
-outmatched. No cheats: nobody reads the swarm's strength remotely, the player included, and
-forward bases get radar. Section 9 records the user's answers (2026-10-01).
+outmatched. No cheats: nobody reads the swarm's strength remotely, the player included. Section 9
+records the user's answers (2026-10-01). Forward-base radar was built with it and removed on
+2026-10-02 (user: no radar on either side; presence is knowledge) - section 11, "No radar".
 
 ## Why: what h48a showed
 
@@ -63,15 +64,13 @@ swarms are what moves.
 
 | Source | Refreshed | Precision |
 | --- | --- | --- |
-| **Eyes** - any fleet of the observer in the system (siege, raid, hunt, scout, convoy, patrol), an abstract expedition whose route is in the system, a world of the observer there | daily while present, and on arrival | exact |
-| **Radar** - every forward base (frontline link) and military world | daily, every Threat system within `radarRangeLY` | two significant figures |
+| **Eyes** - any fleet of the observer in the system (siege, raid, hunt, scout, convoy, patrol, guard, relief), an abstract expedition whose route is in the system, a world or ground army of the observer there | daily while present, and on arrival | exact |
 | **Scouts** - a recon sortie sent to a known system | on arrival | exact |
 | **Allies** - decision 2 | when shared | as the ally saw it, with its date |
 
-- **Radar range is 10 ly,** the same as `frontlineReachLY`. A chain stops growing once a link is
-  within 10 ly of its hive, so the last link of every chain watches the hive it was built to
-  reach. Links stand 12 ly apart (`frontlineLinkLY`), so radar covers the frontier and never the
-  interior.
+- **No radar** (user, 2026-10-02; the forward-base radar of 2026-10-01 is gone, `ThreatIntel.eyesIn`
+  is the only source). A report is made only while something of the observer is in the system;
+  from the day the last ship leaves, the last picture stands and ages.
 - **Trust** = 0.5 ^ (age / `intelHalfLifeDays` 30). A watched system is always fresh. A system
   never seen is Unknown.
 - **Discovery is unchanged.** Finding a hive is still sector-wide news (`discoveredSystems`,
@@ -153,7 +152,7 @@ with no prong bound for it, gets a scout. A scout is a 20 FP fleet.
 **Coordination:**
 - Raids planned together with a siege sail so they arrive no earlier than the siege does.
 - The swarm answers a siege from the nearest systems first, and quiet ones drain to their reserve.
-  The siege's own eyes see the swarm gather; radar sees a watched donor thin. Either is news, and
+  The siege's own eyes see the swarm gather; a fleet passing a donor sees it thin. Either is news, and
   the re-plan makes the thinned world a raid target at once.
 - A faction's siege becomes a coalition Call (`ThreatCoalition`). A partner that answers adds its
   own raids or hunts against the systems the Call names.
@@ -243,11 +242,10 @@ core worlds that a watched siege loses.
 ## 6. The player's view
 
 - **The board's swarm figures are the player's reports:** the figure, then its age in days
-  (`3,400 · 41 d`), and `Unknown` when never seen. Radar figures are rounded. No new colours.
+  (`3,400 · 41 d`), and `Unknown` when never seen. No new colours.
 - **The player's sources:**
   - their own fleets in the system, including the Defend / Aid / Strike task forces;
   - their colonies there;
-  - their outposts (`ThreatOutposts`), which get the same radar as a forward base;
   - allies, if decision 2 says so.
 - **Text the player reads from someone else** - a bounty, a contract, a "Siege Called Off"
   notice - carries the poster's report and its date.
@@ -258,7 +256,7 @@ core worlds that a watched siege loses.
 | Knob | Default | Note |
 | --- | --- | --- |
 | `intelHalfLifeDays` | 30 | a report's trust halves every this many days |
-| `radarRangeLY` | 10 | = `frontlineReachLY`; forward bases, military worlds, the player's outposts |
+| `radarRangeLY` | removed 2026-10-02 | no radar on either side; LunaLib migration 10 drops a stored value |
 | `planConfidence` | 0.8 | the chance that at least one prong lands, reached before any prong grows |
 | `npcSiegeOrbitMargin` | 1.5 (1.0 in h50a/h51a) | per world now, not on the system's sum |
 | `npcSiegeOrbitSystem` | true -> false | a siege is sized on its strongest world, not the system's sum |
@@ -270,7 +268,7 @@ Line numbers are from 2026-10-01; verify them before editing.
 
 - **New `ThreatIntel`:** the reports, per observer per system, persisted with the war data.
   - `see(observer, system, source)` writes a report from the live system. It is called only where
-    the observer has eyes or radar.
+    the observer has eyes.
   - `orbitFP` / `looseFP` / `age` / `trust` read a report. Readers never touch live garrisons.
   - Precedent: `ThreatSwarmScouts` keeps the swarm's own charted-systems map (55-58).
 - **New `ThreatAttackPlanner`:**
@@ -307,9 +305,7 @@ Line numbers are from 2026-10-01; verify them before editing.
   - a recon sortie to a named, already-found system, reusing `ThreatScoutRoute`;
   - the three gates that skip found systems (380, 228-231, 116) let recon through;
   - on arrival it calls `see`.
-- **`ThreatFrontlines`:** the radar sweep, once a day, over links and military worlds (the same
-  watchers `detectedAt` uses for strikes, 2352-2377).
-- **`ThreatOutposts`:** the player's radar.
+- **`ThreatFrontlines`, `ThreatOutposts`:** nothing since 2026-10-02 (no radar).
 - **Player-facing readers switch to the player's reports:**
   - `ThreatWarBoard` (system rows 303-317 and 2028, colony cards 2517-2541);
   - `InfestedSystemIntel` (156-251);
@@ -414,8 +410,7 @@ divert in v1; off-screen sieges run a day at a time, built with the planner; tes
 5. **Test base:** a clone of ng7a (month 38, current rules) instead of the lt save.
    *Recommended:* yes.
 
-The rates (half-life 30 days, confidence 0.8, radar 10 ly) are first cuts. Tune them after a
-test, not before.
+The rates (half-life 30 days, confidence 0.8) are first cuts. Tune them after a test, not before.
 
 ## 10. Tests
 
@@ -448,9 +443,14 @@ Built in session e7a0fee3 against this design, under test from h50. Symbols, not
 `source` and `seenBy`.
 - `see` writes a report from the live system. It is the only remote garrison read on the human
   side. `look` is `see` gated by `sectorKnows` and `eyesIn`.
-- `advanceDay` runs once a calendar day from the war poll. Eyes give an EYES report: a fleet, a
-  non-hive colony, a front's owner or an unspawned route (`eyesIn`). Without eyes, radar gives a
-  RADAR report rounded to two figures (`radarSites`, `inRadar`).
+- `advanceDay` runs once a calendar day from the war poll. Eyes give an EYES report: any fleet of
+  the faction, a non-hive colony, a front's owner or an unspawned route (`eyesIn`). Without eyes
+  the last report stands and ages.
+- **No radar** (user, 2026-10-02). `radarSites`, `inRadar`, the RADAR source, `Report.rounded`,
+  `twoFigures` and the knob `radarRangeLY` are gone (`PlannerRules.twoFigures` stays for the
+  simulator). A save's old RADAR reports keep their `source` string and age like any other.
+  `LunaConfigBridge` migration 10 (`drop`) removes `threatinc_radarRangeLY` and
+  `threatinc_swarmRadarRangeLY` from a LunaLib store.
 - `report` returns the observer's own report or a sharer's newer one. Sharers (`sharersOf`) are
   the coalition `partners`, and for the player the factions at Cooperative. With
   `intelFogOfWar` off it returns the live picture, memoised per clock instant.
@@ -581,8 +581,9 @@ one raid.
 - The bounty card: "Strongest swarms N FP as last seen X", and "Siege takes N FP".
 
 **Knobs.**
-- New: `intelFogOfWar` true, `intelHalfLifeDays` 30, `radarRangeLY` 10, `attackPlanner` true,
-  `planIntervalDays` 7, `planConfidence` 0.8, `raidLossFraction` 0.33, `abstractSiegeDaily` true.
+- New: `intelFogOfWar` true, `intelHalfLifeDays` 30, `attackPlanner` true, `planIntervalDays` 7,
+  `planConfidence` 0.8, `raidLossFraction` 0.33, `abstractSiegeDaily` true (`radarRangeLY` 10 was
+  new here too and went on 2026-10-02).
 - Changed: `npcSiegeOrbitSystem` true -> false (migration 8, `LunaConfigBridge.bumpBoolean`).
   `npcSiegeOrbitMargin` went 1.5 -> 1.0 with it and came back to 1.5 after h50a/h51a (user,
   2026-10-01): migration 9 returns a store migration 8 moved.

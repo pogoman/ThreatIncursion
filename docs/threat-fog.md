@@ -5,7 +5,8 @@ not: it read every human attack from dispatch, every staging base's depot, forwa
 and a strike target's defence exactly, live and from any distance. That is why the war council's
 Starve, feints and bombers could not work (h53c-d, `facts.md`): the swarm massed over each target
 before anything arrived. The user's rule (2026-10-01): no cheats, fog for everyone; knowledge comes
-from eyes, radar in range and battles. The user asked for this change on 2026-10-01, after the
+from eyes and battles (radar too until 2026-10-02, when the user removed it from both sides: section
+4, "No radar"). The user asked for this change on 2026-10-01, after the
 council was committed (4a5ead4), as "the Threat's fog", deferred by attack-planner decision 1 and
 war-council decision 8.
 
@@ -81,10 +82,9 @@ The swarm keeps its own reports, a mirror of `ThreatIntel`, in a new class `Thre
 - **Eyes**: everything human in a system where the swarm has a live hive colony, any live Threat
   fleet (garrisons, Scouting Swarms, raiders, Defend stations, spawned strike fleets), an unspawned
   Threat strike route currently in it, or a Threat-owned ground front. Exact figures.
-- **Radar**: a hive world with a standing Swarm Bastion or Command (`SwarmBastion.tier` >= 1, the
-  mirror of the humans' military worlds) sees human fleets and bases within `swarmRadarRangeLY`
-  (default 10, as the humans' `radarRangeLY`) of its hyperspace position. FP to two significant
-  figures (`ThreatIntel.twoFigures`).
+- **No radar** (user, 2026-10-02; Bastion radar was built 2026-10-01 and removed with the humans'):
+  nothing is seen in hyperspace. A place or contact is real time while a Threat ship, hive or front
+  is in its system; from the day the last leaves it stands and ages.
 - **Scouts**: a Scouting Swarm entering a system (`ThreatSwarmScouts.ROUTE.onEnter`) looks at every
   human place there (source SCOUT, exact).
 - Battles need nothing new: a Threat fleet in a fight is in the system, so eyes.
@@ -93,7 +93,7 @@ The swarm keeps its own reports, a mirror of `ThreatIntel`, in a new class `Thre
 - A **Contact** per human attack force seen: key (`siege:` + the FGI's identity, `order:` + the
   order's fleet id), faction, the hive system it is bound for, FP as A counts it today, first and
   last day seen, source. A force's position: a spawned fleet's location (system: eyes test;
-  hyperspace: radar test on `getLocationInHyperspace`); an unspawned siege's route position
+  hyperspace: unseen); an unspawned siege's route position
   (interpolated hyperspace location, or its current system), only while `threatSeesBookedSieges`.
   An order still mustering at a base is seen only if that base is.
 - A **Place** per human base or world seen: market, system, faction, day, source, and what the
@@ -114,7 +114,7 @@ The swarm keeps its own reports, a mirror of `ThreatIntel`, in a new class `Thre
 - `strikeTargetMult`'s "staging against us" = the place's `stagesFor` is set.
 - `siegeBases` / `holdShare`: only bases with a place, at its `reachLY`.
 - `ThreatRaiders`: a convoy is not considered at dispatch. The sweep checks live convoys; the
-  first time one is seen (eyes or radar) `consider` runs, with the FP as seen.
+  first time one is seen (eyes) `consider` runs, with the FP as seen.
 - **Re-scouting**: `ThreatSwarmScouts.planRoute` also routes to charted systems holding a
   strikeable world whose newest place is older than `intelHalfLifeDays`, after the uncharted ones.
 - **Old saves**: the first sweep seeds a place for every human market in every charted system
@@ -129,7 +129,7 @@ flipped by a detected strike for NPCs; the player's button is the one leak, note
 **Decisions taken by default** (the user asked for the build without a question round; each is the
 mirror of the human side or the smaller change):
 1. Radar on Bastion and Command worlds only, at the humans' range (10 ly). Every hive seeing 10 ly
-   would see nearly every siege at dispatch again.
+   would see nearly every siege at dispatch again. [Overtaken 2026-10-02: no radar at all.]
 2. A sighted attack counts at its real target (the swarm reads intent once it sees a fleet).
    Attributing it to the nearest hive instead would make feints land on the wrong system.
 3. No arrival break-off for blind strikes: vanilla's autoresolve already skips a raid into an equal
@@ -139,7 +139,7 @@ mirror of the human side or the smaller change):
 ## 3. API (`ThreatSwarmIntel`, LF)
 
 ```java
-public static final String EYES = "eyes", RADAR = "radar", SCOUT = "scout";
+public static final String EYES = "eyes", SCOUT = "scout";   // RADAR went 2026-10-02
 public static class Contact { public String key, factionId, systemId, source;
                               public float fp, firstDay, day; }
 public static class Place   { public String marketId, systemId, factionId, source, stagesFor;
@@ -147,7 +147,7 @@ public static class Place   { public String marketId, systemId, factionId, sourc
 static boolean enabled();                        // ThreatIncConfig.swarmFogOfWar()
 static void poll();                              // once per day (own sweptDay latch)
 static void scouted(StarSystemAPI system);       // Scouting Swarm arrival
-static String sees(LocationAPI where, Vector2f hyper); // EYES / RADAR / null
+static String sees(LocationAPI where);           // EYES / null (nothing in hyperspace)
 static List<Contact> contactsOn(String hiveSystemId);  // seen within swarmContactDays
 static Place place(String marketId);             // null if never seen
 static List<Place> places();                     // every place (B, F, siegeBases)
@@ -161,7 +161,8 @@ system) and its target as `ThreatConvoys.stagingHive`. Under the fog it counts t
 stock only (section 4), so it is no longer exactly what the fog-off B reads.
 
 Knobs: `threatinc_swarmFogOfWar` (true; Luna "Fog of War for the Swarm"),
-`threatinc_swarmRadarRangeLY` (10; Luna), `threatinc_swarmContactDays` (10).
+`threatinc_swarmContactDays` (10). `threatinc_swarmRadarRangeLY` went on 2026-10-02 (LunaLib
+migration 10 drops a stored value).
 
 Logs: `Swarm intel: sees <faction> <kind> of N FP bound for <system> by <source>` on a contact's
 first sighting; `Swarm intel: <source> on <market> (<faction>): staged N for <system>, guards N,
@@ -198,11 +199,11 @@ untested in-game until the long new-game run. All files LF.
   fog-off reads are unchanged (`ThreatReach.rangeOn` is shared). **Still open:** whether a base
   counts as staging at all is `siegeBasesFor(staging).contains(m)`, which uses the donor-pooled
   range, so a yes/no still leaks; left because changing it changes which bases count.
-- Scouting off with the fog on left nothing to strike (no scout, so no place outside eyes and
-  radar). `seedUnscouted` now, while `ThreatSwarmScouts.enabled()` is false, seeds each system
+- Scouting off with the fog on left nothing to strike (no scout, so no place outside eyes).
+  `seedUnscouted` now, while `ThreatSwarmScouts.enabled()` is false, seeds each system
   holding a strikeable human world once per save (saved `UNSCOUTED` map), from a live read dated
   that day; systems already placed keep what was seen. Default taken: once per system, so a world
-  founded later in a seeded system waits for eyes or radar.
+  founded later in a seeded system waits for eyes.
 - The seed latch was static and reset on every load; it is the saved `SEEDED` flag now.
   `IncursionManager` calls `ThreatSwarmIntel.poll()` always; with the fog off it only runs
   `fogOff()`, which clears `SEEDED` and `UNSCOUTED` so re-enabling the fog seeds again.
@@ -213,6 +214,14 @@ untested in-game until the long new-game run. All files LF.
 - Convoys at sea in an old save were rolled at dispatch but carry no flag. `forget()` (on load)
   runs `migrateConvoys()`: no `threatinc_swarmIntel` store means a pre-fog save, a new game or a
   fog-off game, so every convoy is flagged as considered.
+
+**No radar (2026-10-02, the user's decision, both sides).** `ThreatSwarmIntel.RADAR`, `RADAR_SITES`,
+`inRadar`, `routeHyper` and the Bastion loop in `senses` are gone; `sees(LocationAPI)` answers EYES
+for a system the swarm has eyes in (`eyesIn`: a live hive, a Threat front, an unspawned strike
+route, or any live Threat fleet there today) and null anywhere else, hyperspace included. `note`
+and `record` no longer round. A save's "radar" contacts and places keep the string and age like
+any other. The census line reads `(eyes N, scout N)`. Knob `swarmRadarRangeLY` removed; LunaLib
+migration 10 (`LunaConfigBridge.drop`) deletes it from a store.
 
 **Knobs and logs** as section 3, plus `Swarm intel: seeded N place(s) in <system>` (old-save
 seeding) and `Swarm intel: scouting off - seeded N place(s) in M system(s)`. The fast-forward
