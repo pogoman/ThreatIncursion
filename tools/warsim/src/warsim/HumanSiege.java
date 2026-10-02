@@ -169,7 +169,11 @@ final class HumanSiege {
 		if (!front && p.marines < minMarines) return "nothing to land";
 		float enemy = enemyAt(s, h);
 		float ratio = s.knobs.f("threatinc_siegeBreakOffRatio");
-		if (!front && BattleRules.callsOff(enemy, p.fp, friendsOf(s, p), ratio)) return "called off";
+		if (!front && BattleRules.callsOff(enemy, p.fp, friendsOf(s, p), ratio)) {
+			// ThreatPurgeFGI.breaksOff posts the bounty on the swarms it met
+			HumanPlanner.postBounty(s, h.sys, p.owner);
+			return "called off";
+		}
 		if (enemy >= 1f) {
 			fight(s, p, h, enemy);
 			o.fights++;
