@@ -62,8 +62,12 @@ final class HumanPlanner {
 		// needAndWear: the least fleet that carries the marines its own bombardment leaves needed
 		for (;; fp += ReachRules.FP_PER_POINT) {
 			plan = HumanSiege.bombardPlan(s, h, fp, budget, 0f);
-			float beach = HumanSiege.troopsToLand(s, plan[1]);
-			marines = BattleRules.raidStrNeeded(plan[1], 0.25f, 1.25f, beach);
+			// raidStrNeededAt: sized on the larger of the defence as it stands and the Nexus anchor
+			// (nexusAnchoredDefense), worn by the share this plan's bombardment takes off what stands
+			float now = HumanSiege.defence(s, h);
+			float def = Math.max(now, HumanSiege.anchored(s, h)) * (now > 0f ? Math.min(1f, plan[1] / now) : 1f);
+			float beach = HumanSiege.troopsToLand(s, def);
+			marines = BattleRules.raidStrNeeded(def, 0.25f, 1.25f, beach);
 			if (front) marines = Math.max(s.knobs.f("threatinc_frontMinMarines"), beach - h.front.marines);
 			if (marines <= fp / ReachRules.FP_PER_POINT * perPoint || fp >= HumanFit.MAX_SIEGE_FP) break;
 		}

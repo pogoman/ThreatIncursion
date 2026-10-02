@@ -41,6 +41,17 @@ final class HumanSiege {
 		return defence(s, h, cond(s, h), held);
 	}
 
+	/**
+	 * IncursionManager.nexusAnchoredDefense: the size anchor over the strata left, times the Nexus bonus and
+	 * the military tier's. A siege is sized on this even while unrest or an earlier siege has the
+	 * defence down: pd9a landed 482-934 marines on size-2 hives, 1,282 and 1,585 on size 5.
+	 */
+	static float anchored(State s, Hive h) {
+		int left = Math.max(0, h.size - (h.front != null ? h.front.strataHeld : 0));
+		return s.knobs.f("threatinc_hiveDefensePerSize") * left * (1f + s.knobs.f("threatinc_nexusDefenseBonus"))
+				* HumanFit.TIER_MULT[Math.max(0, Math.min(2, h.tier))] * s.knobs.f("threatinc_groundDefenseMult");
+	}
+
 	/** The batteries' share of the fortification bonus (gunShare): the ground defences against the nexus. */
 	static float gunShare(State s, Hive h) {
 		if (!hasGuns(h)) return 0f;
@@ -110,7 +121,13 @@ final class HumanSiege {
 	}
 
 	/** The Threat's fleet points at a hive: its garrison and the fleets on station in the system. */
-	static float enemyAt(State s, Hive h) { return h.garrisonFP + s.holdingFP(h.sys, true); }
+	static float enemyAt(State s, Hive h) {
+		// the off-screen fight weighs every Threat fleet in the system (vanilla's autoresolve): "Off-screen fight
+		// over Gamma Vucub-Came I-L5 (daily siege): persean 3250 FP vs 2851 FP ... (14 fleets)", the hive's own 4
+		float fp = s.holdingFP(h.sys, true);
+		for (Hive o : s.hivesIn(h.sys)) fp += o.garrisonFP;
+		return fp;
+	}
 
 	/** Human fleet points on station in the system besides this parcel. */
 	static float friendsOf(State s, Parcel p) { return s.holdingFP(p.to, false) - (p.holding ? p.fp : 0f); }
@@ -133,9 +150,11 @@ final class HumanSiege {
 				q.fp *= 1f - share;
 			}
 		}
-		s.count("threatFPKilled", h.garrisonFP * taken);
-		h.garrisonFP *= 1f - taken;
-		if (h.garrisonFP < 1f) h.garrisonFP = 0f;   // the last fleet is sunk, not halved for ever
+		for (Hive o : s.hivesIn(h.sys)) {
+			s.count("threatFPKilled", o.garrisonFP * taken);
+			o.garrisonFP *= 1f - taken;
+			if (o.garrisonFP < 1f) o.garrisonFP = 0f;   // the last fleet is sunk, not halved for ever
+		}
 		s.count("siegeFightDays", 1);
 	}
 
@@ -201,6 +220,8 @@ final class HumanSiege {
 			h.front = f;
 			s.count("frontsOpened", 1);
 		}
+		// "Orbit cover over X: the persean flotilla holds it with 1032 FP" (59 in pd9a, 9 later lost)
+		h.front.coverFP = Math.max(h.front.coverFP, p.fp);
 		h.front.marines += p.marines;
 		h.front.armaments += p.armaments;
 		s.log("Front deployed at " + h.name + " (" + p.owner + "): " + (int) p.marines + " marines, "
@@ -221,10 +242,42 @@ final class HumanSiege {
 		return e;
 	}
 
-	/** One day of a human front on a hive. Returns "victory", "overrun", "collapsed" or null. */
+	/** ThreatGroundFronts.counterAttackInterval's clock rate on a hive: its body still standing, and the tempo of the force ratio. */
+	static float counterRate(State s, Hive h, Front f, float d, float e) {
+		float clamp = Math.max(1f, s.knobs.f("threatinc_counterAttackRatioClamp"));
+		float ratio = (float) Math.pow(d / Math.max(1f, e), s.knobs.f("threatinc_groundStrengthExponent"));
+		float tempo = Math.max(1f / clamp, Math.min(clamp, ratio));
+		float body = Math.max(0, h.size - f.strataHeld) / (float) Math.max(1, h.size);
+		return Math.max(0.25f, body) * tempo;
+	}
+
+	/** paceRatio: defence over strength, clamped 0.5-3 - days a stratum takes over frontPushBaseDays. */
+	static float pace(State s, float d, float e) {
+		float ratio = (float) Math.pow(d / Math.max(1f, e), s.knobs.f("threatinc_groundStrengthExponent"));
+		return Math.max(0.5f, Math.min(3f, ratio));
+	}
+
+	/**
+	 * ThreatGroundFronts.shouldBrace: a front holding no ground that the next counter-attack would
+	 * overrun out of its holes (overrunIfPushing: cover 1, past 2:1) digs in, unless its assault
+	 * takes the stratum first. pd9a: 1,000+ "Front at X braces for a counter-attack in N d".
+	 */
+	static boolean shouldBrace(State s, Hive h, Front f, float d, float e) {
+		if (!s.knobs.b("threatinc_frontBraceEnabled", true) || f.strataHeld > 0) return false;
+		if (d <= e || d <= e * BattleRules.overrunOdds(s.knobs.f("threatinc_groundStrengthExponent"))) return false;
+		float due = Math.max(0f, s.knobs.f("threatinc_frontCounterAttackDays") - f.counterClock) / counterRate(s, h, f, d, e);
+		float left = Math.max(0f, s.knobs.f("threatinc_frontPushBaseDays") - f.pushDays) * pace(s, d, e) + f.checkpointLeft;
+		return left > due;
+	}
+
+	/**
+	 * One day of a human front on a hive (ThreatGroundFronts.tickFront, hiveCounterAttack, the NPC
+	 * stance AI). Returns "victory", "overrun", "collapsed" or null.
+	 */
 	static String frontDay(State s, Hive h) {
 		Front f = h.front;
 		float exponent = s.knobs.f("threatinc_groundStrengthExponent");
+		float hold = s.knobs.f("threatinc_frontHoldFraction");
 		if (!f.adopted) {
 			// a front found in the start state: its stance from its strength
 			f.adopted = true;
@@ -232,36 +285,44 @@ final class HumanSiege {
 					>= defence(s, h);
 		}
 		boolean dry = f.armaments <= 0f;
+		// a dry front breaks off its assault and digs in; one a counter-attack would catch exposed braces
+		if (f.pushing && (dry || shouldBrace(s, h, f, defence(s, h), eff(s, f)))) f.pushing = false;
+		boolean consolidating = f.checkpointLeft > 0f;
+		boolean exposed = f.pushing && !consolidating;
 		// armaments burned, marines lost to the fighting and to a swarm holding the orbit
 		float burn = s.knobs.f("threatinc_frontArmamentsPerMarinePer30Days") * f.marines / 30f
-				* (f.pushing ? s.knobs.f("threatinc_frontPushUpkeepMult") : 1f);
+				* (exposed ? s.knobs.f("threatinc_frontPushUpkeepMult") : 1f);
 		f.armaments = Math.max(0f, f.armaments - burn);
-		float loss = (f.pushing ? s.knobs.f("threatinc_frontPushLossPer30Days")
+		float loss = (exposed ? s.knobs.f("threatinc_frontPushLossPer30Days")
 				: s.knobs.f("threatinc_frontMarineLossPer30Days")) / 30f;
 		if (dry) loss *= s.knobs.f("threatinc_frontUnsuppliedLossMult");
 		float e = eff(s, f);
-		float over = enemyAt(s, h);
-		if (over > 0f && s.holdingFP(h.sys, false) <= 0f) {
-			loss += s.knobs.f("threatinc_swarmFrontBombardPer30Days") / 30f * over / (over + Math.max(1f, e));
+		// swarmHoldsOrbit: the swarm at the planet in force (swarmOrbitMinFleetFP), no hostile fleet there and
+		// no flotilla's cover still outweighing it (swarmOrbitContested; once outweighed the cover is lost for good)
+		float over = h.garrisonFP;
+		if (f.coverFP > 0f && f.coverFP < over) {
+			s.count("coverLost", 1);
+			f.coverFP = 0f;
+		}
+		if (over >= s.knobs.f("threatinc_swarmOrbitMinFleetFP") && f.coverFP <= 0f && s.holdingFP(h.sys, false) <= 0f) {
+			loss += s.knobs.f("threatinc_swarmFrontBombardPer30Days") / 30f * over / (over + Math.max(1f, e * cover(s, f, exposed)));
 		}
 		f.marines -= f.marines * Math.min(1f, loss);
 		if (f.marines < s.knobs.f("threatinc_frontMinMarines")) return "collapsed";
-		f.entrenchDays += 1f;
+		// cover is dug while holding; an assault leaves it behind
+		if (!exposed) f.entrenchDays += 1f;
 
 		e = eff(s, f);
 		float d = defence(s, h);
-		f.state = e >= d * s.knobs.f("threatinc_frontHoldFraction") ? "holding"
-				: e >= d * s.knobs.f("threatinc_frontGrindFraction") ? "grinding" : "foothold";
+		f.state = e >= d * hold ? "holding" : e >= d * s.knobs.f("threatinc_frontGrindFraction") ? "grinding" : "foothold";
 		// the front wears the fortifications it faces
 		suppress(s, h, s.knobs.f("threatinc_frontWearRate") * e / Math.max(1f, e + d));
 
-		float pace = (float) Math.pow(d / Math.max(1f, e), exponent);
-		pace = Math.max(0.5f, Math.min(3f, pace));
 		if (f.pushing) {
 			if (f.checkpointLeft > 0f) {
 				f.checkpointLeft -= 1f;
-			} else {
-				f.pushDays += 1f / pace;
+			} else if (e >= d * hold) {
+				f.pushDays += 1f / pace(s, d, e);
 				if (f.pushDays >= s.knobs.f("threatinc_frontPushBaseDays")) {
 					f.pushDays = 0f;
 					f.strataHeld++;
@@ -273,25 +334,35 @@ final class HumanSiege {
 			}
 		}
 		// the hive's counter-attack, the sooner the more it outweighs the front
-		f.counterClock += Math.max(0.25f, pace);
+		f.counterClock += counterRate(s, h, f, d, e);
 		if (f.counterClock >= s.knobs.f("threatinc_frontCounterAttackDays")) {
 			f.counterClock = 0f;
-			float cover = f.pushing ? 1f : 1f + (s.knobs.f("threatinc_frontEntrenchDefenseBonus") - 1f)
-					* Math.min(1f, f.entrenchDays / Math.max(1f, s.knobs.f("threatinc_frontEntrenchDays")));
-			float guard = e * cover;
+			float guard = e * cover(s, f, f.pushing && f.checkpointLeft <= 0f);
 			if (d > guard) {
 				s.count("counterAttacks", 1);
 				f.marines *= 1f - s.knobs.f("threatinc_frontCounterAttackLossFraction");
+				// thrown back or battered, the front's cover is spoilt (hiveCounterAttack)
+				f.entrenchDays *= s.knobs.f("threatinc_frontEntrenchKeptFraction");
 				if (f.strataHeld > 0) {
 					f.strataHeld--;
-					f.entrenchDays *= s.knobs.f("threatinc_frontEntrenchKeptFraction");
+					f.pushDays = 0f;
+					f.pushing = false;
 				} else if (d > guard * BattleRules.overrunOdds(exponent)) {
 					s.log("Counter-attack at " + h.name + " overran the beachhead (" + (int) d + " vs " + (int) guard + ")");
 					return "overrun";
 				}
 			}
 		}
+		// the NPC stance AI: push whenever strong enough and supplied, dig in otherwise
+		if (!f.pushing && f.armaments > 0f && eff(s, f) >= d * hold && !shouldBrace(s, h, f, d, eff(s, f))) f.pushing = true;
 		return null;
+	}
+
+	/** coverMult: a dug-in front fights from cover, an assault leaves it behind. */
+	static float cover(State s, Front f, boolean exposed) {
+		if (exposed) return 1f;
+		return 1f + (s.knobs.f("threatinc_frontEntrenchDefenseBonus") - 1f)
+				* Math.min(1f, f.entrenchDays / Math.max(1f, s.knobs.f("threatinc_frontEntrenchDays")));
 	}
 
 	/** PlannerRules.leastForGain over this hive: the least fleet whose day of bombardment adds a day. */
