@@ -718,3 +718,25 @@ hunt share alone, which neither the mod nor the mirror defines. (b) does what it
 plays recycle faster (a stood-down play ends instead of watching), which lifts paid sieges and kills, but humanScore does
 not follow (median up, 44% of seeds). (c) at 0.1 is the best human cell of the round on the new game and is noise on the
 mid-war start; the 60-seed rerun is in section 13's verdict.
+
+## 15. Round 19: the consolidate share's shape; converting the hunts' FP into a paid siege (2026-10-02)
+
+On the new defaults (`reserveSurplusMult` 1.5 humans, `hiveSurplusMult` 1.0), 60 seeds, new game 104 months, `-killWeight 1`
+with the kill-weight-2 score printed alongside (`Main.score`: `humanScoreK2`, `threatScoreK2`, no second run). Mid-war is
+not rerun for the consolidate share (0.75 reproduced the base to the digit there, section 13) nor for `huntMinShare` 0.1 and
+`noHuntsAlone` (31.5 / 30 against 32.5 / 33.5 at 60 / 30 seeds, section 13-14).
+
+New switch `warsim_hammerWaitsForSiege` N (`HumanCouncil.strike`, `Play.waitSince`, `WAIT_RETRY_DAYS` 10): a hammer whose
+siege the pools cannot pay at STRIKE holds its mustered hunts at the base (`HumanOrder.sailDay` back to `HELD`; the
+muster's upkeep runs on) and re-tries the siege every 10 days (`musterCheck` waits for `phaseDue`) until N days have passed,
+then stands down (`hammer.waitExpired`). `hammer.waitPaid` counts the sieges a wait bought; `hammer.waitRetries` the
+re-tries (each is also a `strike.unpaid`). Relief that goes home once its strike is gone (2c) was not built - time.
+
+Every command, from the repository root with `tools/warsim/out` built (`tools/warsim/build.ps1`), is
+`java -cp tools\warsim\out warsim.Main compare -a warsim_noop=0 -b <cell> -start tools\warsim\start\pd9a-newgame -seeds 60
+-months 104 -killWeight 1` (mid-war: `pd9a-month114`, `-months 48`), `<cell>` one of
+`threatinc_stanceConsolidateShare=0.65|0.75|0.85`, `warsim_noHuntsAlone=true`, `warsim_huntMinShare=0.1`,
+`warsim_hammerWaitsForSiege=60|120`.
+
+**Results: pending** - the seven new-game compares were running when this section was committed; the next session fills
+the table from the same commands.
