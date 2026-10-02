@@ -86,13 +86,22 @@ final class SwarmPosture {
 
 	/** ThreatConvoys.stagingHive: the nearest found hive system in the base's reach that no nearer base of its faction serves. */
 	static StarSys stagingHive(State s, World base) {
+		List<World> bases = new ArrayList<World>();
+		for (World w : s.worldsOf(base.faction)) if (w.base && w.hasReserve) bases.add(w);
+		return stagingHive(s, base, bases);
+	}
+
+	/** With the faction's bases (HumanPools.nearestBase's candidates, in s.worlds order) already listed. */
+	static StarSys stagingHive(State s, World base, List<World> bases) {
 		float range = HumanPools.rangeLY(s, base);
 		StarSys best = null;
 		for (StarSys sys : s.foundHiveSystems) {
-			if (s.hivesIn(sys).isEmpty()) continue;
+			if (!s.hasHive(sys)) continue;
 			float d = base.sys.ly(sys);
 			if (d > range || (best != null && d >= base.sys.ly(best))) continue;
-			if (HumanPools.nearestBase(s, base.faction, sys, false) != base) continue;
+			World nearest = null;
+			for (World w : bases) if (nearest == null || w.sys.ly(sys) < nearest.sys.ly(sys)) nearest = w;
+			if (nearest != base) continue;
 			best = sys;
 		}
 		return best;
@@ -117,10 +126,11 @@ final class SwarmPosture {
 
 		float sectorHeld = 0f, sectorBase = 0f;
 		Map<String, float[]> sums = new HashMap<String, float[]>();
+		Map<String, Float> inbound = SwarmEconomy.inboundMap(s);
 		for (StarSys sys : systems) {
 			float held = 0f, bank = 0f, base = 0f, floor = 0f;
 			for (Hive h : s.hivesIn(sys)) {
-				held += SwarmEconomy.held(s, h);
+				held += SwarmEconomy.held(h, inbound);
 				bank += Math.max(0f, h.bank);
 				base += SwarmEconomy.baseFP(s, k, h);
 				floor += SwarmEconomy.floorFP(s, h);
@@ -145,6 +155,24 @@ final class SwarmPosture {
 		float quietSpare = 0f, quietWant = 0f, sumPressure = 0f;
 		int forges = 0, forgesCovered = 0, pressed = 0, attackedSystems = 0;
 		float bill = SwarmFit.FOUNDING_BILL_STRUCTURES * k.foundingFPPerStructure;
+		// per seen world, once a poll and not once per system (round 9): its nearest hive system and the hive it stages for
+		Map<World, StarSys> nearestHive = new java.util.IdentityHashMap<World, StarSys>();
+		Map<World, StarSys> stagingOf = new java.util.IdentityHashMap<World, StarSys>();
+		Map<String, List<World>> basesOf = new HashMap<String, List<World>>();
+		for (World w : s.worlds) {
+			if (w.lost || !w.base || !w.hasReserve) continue;
+			List<World> bases = basesOf.get(w.faction);
+			if (bases == null) basesOf.put(w.faction, bases = new ArrayList<World>());
+			bases.add(w);
+		}
+		for (World w : s.worlds) {
+			if (w.lost || !sw.seen.containsKey(w.id)) continue;
+			if (w.forwardBase && w.guardFP > 0f) nearestHive.put(w, nearestHiveSystem(s, systems, w.sys));
+			if (!w.base || !w.hasReserve) continue;
+			Faction f = s.factions.get(w.faction);
+			if (f == null || !f.mobilised) continue;
+			stagingOf.put(w, stagingHive(s, w, basesOf.get(w.faction)));
+		}
 		for (StarSys sys : systems) {
 			float[] sum = sums.get(sys.id);
 			float held = sum[0], bank = sum[1], base = sum[2], floor = sum[3];
@@ -168,14 +196,14 @@ final class SwarmPosture {
 				float[] seen = sw.seen.get(w.id);
 				if (seen == null) continue;
 				float trust = (float) Math.pow(0.5, Math.max(0f, s.day - seen[0]) / half);
-				if (w.forwardBase && w.guardFP > 0f && w.sys != sys && nearestHiveSystem(s, systems, w.sys) == sys
+				if (w.forwardBase && w.guardFP > 0f && w.sys != sys && nearestHive.get(w) == sys
 						&& w.sys.ly(sys) <= s.knobs.f("threatinc_frontlineKeepLY")) {
 					// forward: a forward base's guards count toward its nearest hive system only (ThreatFrontlines.hiveNear)
 					forward += w.guardFP * trust;
 				}
 				if (!w.base || !w.hasReserve) continue;
 				Faction f = s.factions.get(w.faction);
-				if (f == null || !f.mobilised || stagingHive(s, w) != sys) continue;
+				if (f == null || !f.mobilised || stagingOf.get(w) != sys) continue;
 				float ly = w.sys.ly(sys);
 				float cap = threatinc.rules.ReachRules.payablePoints(HumanPools.available(s, w, World.FUEL),
 						HumanPools.available(s, w, World.SUPPLIES), ly * s.knobs.f("threatinc_expeditionFuelPerPointLY"),
@@ -388,13 +416,18 @@ final class SwarmPosture {
 	/** redistributeByPressure: a colony below its want is sent a spare swarm, else one fabricated for it by a colony at its want. */
 	static void redistribute(final State s, final SwarmKnobs k) {
 		List<Hive> receivers = new ArrayList<Hive>();
+		// held once per hive for the ranking (round 9): the sort read inbound's parcel scan per comparison
+		final Map<Hive, Float> heldNow = new java.util.IdentityHashMap<Hive, Float>();
+		Map<String, Float> inbound = SwarmEconomy.inboundMap(s);
 		for (Hive h : s.liveHives()) {
-			if (SwarmEconomy.held(s, h) < h.wantFP - SwarmEconomy.rowsFP(s, h, 0, 1) * 0.5f) receivers.add(h);
+			float held = SwarmEconomy.held(h, inbound);
+			heldNow.put(h, held);
+			if (held < h.wantFP - SwarmEconomy.rowsFP(s, h, 0, 1) * 0.5f) receivers.add(h);
 		}
 		Collections.sort(receivers, new Comparator<Hive>() {
 			public int compare(Hive a, Hive b) {
-				float sa = (a.wantFP - SwarmEconomy.held(s, a)) / Math.max(1f, a.wantFP);
-				float sb = (b.wantFP - SwarmEconomy.held(s, b)) / Math.max(1f, b.wantFP);
+				float sa = (a.wantFP - heldNow.get(a)) / Math.max(1f, a.wantFP);
+				float sb = (b.wantFP - heldNow.get(b)) / Math.max(1f, b.wantFP);
 				return Float.compare(sb, sa);
 			}
 		});
@@ -409,7 +442,7 @@ final class SwarmPosture {
 			for (Hive from : donors) {
 				if (from == to || from.swarms.size() < 2) continue;
 				if (from.lastReceivedDay != Integer.MIN_VALUE && s.day - from.lastReceivedDay < 30) continue;
-				float held = SwarmEconomy.held(s, from);
+				float held = SwarmEconomy.held(from, inbound);
 				if (held < from.wantFP) continue;
 				Swarm.Post fromPost = s.swarm.post.get(from.sys.id);
 				boolean quiet = fromPost == null || fromPost.mode == 0;
@@ -426,6 +459,7 @@ final class SwarmPosture {
 				from.swarms.remove(at);
 				from.book();
 				dispatch(s, from, to, fp);
+				inbound = SwarmEconomy.inboundMap(s);
 				sent = true;
 				break;
 			}
@@ -437,7 +471,7 @@ final class SwarmPosture {
 			float cost = SwarmEconomy.estimate(s, spec);
 			for (Hive from : donors) {
 				if (from == to || !from.nexusUp() || from.coreDown > 0f) continue;
-				if (SwarmEconomy.held(s, from) < from.wantFP) continue;
+				if (SwarmEconomy.held(from, inbound) < from.wantFP) continue;
 				if (from.bank - from.wantFP - cost < 0f) continue;
 				float fp = SwarmFit.builtFP(spec[0], spec[1], s.rng);
 				if (!SwarmEconomy.pay(s, Swarm.FUEL, k.passage(fp, from.sys.ly(to.sys), false))) continue;
@@ -445,6 +479,7 @@ final class SwarmPosture {
 				SwarmEconomy.learn(s, spec, fp);
 				s.count("swarmsBuilt", 1);
 				dispatch(s, from, to, fp);
+				inbound = SwarmEconomy.inboundMap(s);
 				break;
 			}
 		}

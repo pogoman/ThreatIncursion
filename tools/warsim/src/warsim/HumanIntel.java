@@ -79,23 +79,47 @@ final class HumanIntel {
 	 */
 	static void sweep(State s) {
 		float radarLY = s.knobs.f("threatinc_radarRangeLY");
+		// the day's views, once (round 9): the systems with hives, and per faction where its eyes are and its radar worlds
+		java.util.Set<StarSys> hived = java.util.Collections.newSetFromMap(new IdentityHashMap<StarSys, Boolean>());
+		for (Hive h : s.hives) if (!h.dead) hived.add(h.sys);
+		if (hived.isEmpty()) return;
+		Map<String, java.util.Set<StarSys>> eyesOf = new java.util.HashMap<String, java.util.Set<StarSys>>();
+		Map<String, java.util.List<World>> radarOf = new java.util.HashMap<String, java.util.List<World>>();
+		for (Faction f : s.factions.values()) {
+			if (!f.mobilised) continue;
+			eyesOf.put(f.id, java.util.Collections.newSetFromMap(new IdentityHashMap<StarSys, Boolean>()));
+			radarOf.put(f.id, new java.util.ArrayList<World>());
+		}
+		for (Parcel p : s.parcels) {
+			if (p.done || !p.holding) continue;
+			java.util.Set<StarSys> eyes = eyesOf.get(p.owner);
+			if (eyes != null) eyes.add(p.to);
+		}
+		for (Hive h : s.hives) {
+			if (h.dead || h.front == null) continue;
+			java.util.Set<StarSys> eyes = eyesOf.get(h.front.faction);
+			if (eyes != null) eyes.add(h.sys);
+		}
+		for (World w : s.worlds) {
+			if (w.lost || !w.hasReserve || !HumanPools.military(w)) continue;
+			java.util.List<World> radar = radarOf.get(w.faction);
+			if (radar != null) radar.add(w);
+		}
 		for (StarSys sys : s.systems.values()) {
-			if (s.hivesIn(sys).isEmpty()) continue;
+			if (!hived.contains(sys)) continue;
 			Report exact = null, radar = null;
 			for (int pass = 0; pass < 2; pass++) {
 				// radar first: a partner's radar report does not overwrite what one's own eyes saw today
 				for (Faction f : s.factions.values()) {
 					if (!f.mobilised) continue;
-					boolean eyes = false;
-					for (Parcel p : s.parcels) if (!p.done && p.holding && p.to == sys && p.owner.equals(f.id)) { eyes = true; break; }
-					if (!eyes) for (Hive h : s.hivesIn(sys)) if (h.front != null && f.id.equals(h.front.faction)) eyes = true;
+					boolean eyes = eyesOf.get(f.id).contains(sys);
 					if (eyes) {
 						if (pass == 1) file(s, sys, exact != null ? exact : (exact = see(s, sys, false)), f.id);
 						continue;
 					}
 					if (pass == 1) continue;
-					for (World w : s.worldsOf(f.id)) {
-						if (!w.hasReserve || !HumanPools.military(w) || w.sys.ly(sys) > radarLY) continue;
+					for (World w : radarOf.get(f.id)) {
+						if (w.sys.ly(sys) > radarLY) continue;
 						file(s, sys, radar != null ? radar : (radar = see(s, sys, true)), f.id);
 						break;
 					}
@@ -129,7 +153,7 @@ final class HumanIntel {
 	static void scoutArrived(State s, Parcel p) {
 		float lead = s.knobs.f("threatinc_scoutLeadRadiusLY");
 		for (StarSys sys : s.systems.values()) {
-			if (sys.ly(p.to) > lead || s.hivesIn(sys).isEmpty()) continue;
+			if (sys.ly(p.to) > lead || !s.hasHive(sys)) continue;
 			boolean fresh = !s.foundHiveSystems.contains(sys);
 			file(s, sys, see(s, sys, sys != p.to), p.owner);
 			if (fresh) {
@@ -148,7 +172,7 @@ final class HumanIntel {
 		if (f.strikesSuffered > f.strikesSeen) {
 			f.strikesSeen = f.strikesSuffered;
 			StarSys lead = f.lastStrikeFrom;
-			if (lead == null || s.hivesIn(lead).isEmpty()) lead = nearestUnfound(s, f);
+			if (lead == null || !s.hasHive(lead)) lead = nearestUnfound(s, f);
 			if (lead != null) scout(s, f, lead);
 		}
 		if (s.day - f.lastScoutDay < s.knobs.i("threatinc_scoutIntervalDays")) return;
@@ -156,7 +180,7 @@ final class HumanIntel {
 		float range = s.knobs.f("threatinc_scoutRangeLY");
 		float half = s.knobs.f("threatinc_intelHalfLifeDays");
 		for (StarSys sys : s.systems.values()) {
-			if (s.hivesIn(sys).isEmpty()) continue;
+			if (!s.hasHive(sys)) continue;
 			Report r = f.reports.get(sys);
 			boolean found = s.foundHiveSystems.contains(sys);
 			// a found system is looked at again once its report is two half-lives old

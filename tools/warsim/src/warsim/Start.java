@@ -29,6 +29,16 @@ public final class Start {
 			sys.planets = (int) Json.num(j.get("planets"), 0f);
 			s.systems.put(sys.id, sys);
 		}
+		// the distance table, once a run (round 9): every ly() call was a sqrt in the hot loops
+		{
+			int i = 0;
+			for (StarSys sys : s.systems.values()) sys.index = i++;
+			int n = s.systems.size();
+			for (StarSys a : s.systems.values()) {
+				a.dist = new float[n];
+				for (StarSys b : s.systems.values()) a.dist[b.index] = a == b ? 0f : a.compute(b);
+			}
+		}
 		s.day = s.startDay = (int) Json.num(dump.get("day"), 0f);
 
 		Map<String, Object> sw = Json.obj(dump.get("swarm"));

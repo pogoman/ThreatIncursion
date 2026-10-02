@@ -32,7 +32,7 @@ final class HumanBases {
 		StarSys goal = null;
 		float goalLY = Float.MAX_VALUE;
 		for (StarSys sys : s.foundHiveSystems) {
-			if (s.hivesIn(sys).isEmpty()) continue;
+			if (!s.hasHive(sys)) continue;
 			float near = Float.MAX_VALUE;
 			boolean reached = false;
 			for (World a : anchors) {
@@ -48,7 +48,7 @@ final class HumanBases {
 		StarSys site = null;
 		float siteLY = Float.MAX_VALUE;
 		for (StarSys sys : s.systems.values()) {
-			if (sys.planets <= 0 || sys == goal || !s.hivesIn(sys).isEmpty()) continue;
+			if (sys.planets <= 0 || sys == goal || s.hasHive(sys)) continue;
 			float left = sys.ly(goal);
 			if (left >= siteLY) continue;
 			boolean ok = false;
@@ -106,10 +106,11 @@ final class HumanBases {
 	static float strikeAt(State s, Faction f, StarSys at) {
 		float worst = -1f;
 		int min = s.knobs.i("threatinc_strikeMinSize");
-		for (Hive h : s.liveHives()) {
-			if (h.size < min || !s.foundHiveSystems.contains(h.sys)) continue;
+		List<World> ours = s.worldsOf(f.id);
+		for (Hive h : s.hives) {
+			if (h.dead || h.size < min || !s.foundHiveSystems.contains(h.sys)) continue;
 			float d = at.ly(h.sys), best = d;
-			for (World m : s.worldsOf(f.id)) best = Math.min(best, m.sys.ly(h.sys));
+			for (World m : ours) best = Math.min(best, m.sys.ly(h.sys));
 			if (d > best + 0.5f) continue;
 			HumanIntel.Report r = f.reports.get(h.sys);
 			worst = Math.max(worst, (r == null ? 0f : r.at(h)) * HumanFit.STRIKE_SEND_SHARE);
@@ -232,7 +233,7 @@ final class HumanBases {
 			w.unguardedDays = wanted <= 0f || w.guardFP >= HumanFit.MIN_GUARD_FP ? 0 : w.unguardedDays + 1;
 			boolean hive = false;
 			for (StarSys sys : s.foundHiveSystems) {
-				if (sys.ly(w.sys) <= keepLY && !s.hivesIn(sys).isEmpty()) { hive = true; break; }
+				if (sys.ly(w.sys) <= keepLY && s.hasHive(sys)) { hive = true; break; }
 			}
 			w.idleDays = hive ? 0 : w.idleDays + 1;
 			String why = w.unguardedDays >= abandon ? "no garrison to hold it"

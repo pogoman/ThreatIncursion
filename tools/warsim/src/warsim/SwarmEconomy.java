@@ -57,6 +57,22 @@ final class SwarmEconomy {
 	/** ownedFleetFP: the garrison and the reinforcements flying in. */
 	static float held(State s, Hive h) { return h.garrisonFP + inbound(s, h); }
 
+	/** inbound for every hive in one parcel scan, by hive id (round 9: the posture poll read it per hive per comparison). */
+	static java.util.Map<String, Float> inboundMap(State s) {
+		java.util.Map<String, Float> m = new java.util.HashMap<String, Float>();
+		for (Parcel p : s.parcels) {
+			if (p.done || !p.threat() || p.kind != Parcel.Kind.REINFORCEMENT || p.targetId == null) continue;
+			Float was = m.get(p.targetId);
+			m.put(p.targetId, (was == null ? 0f : was) + p.fp);
+		}
+		return m;
+	}
+
+	static float held(Hive h, java.util.Map<String, Float> inbound) {
+		Float in = inbound.get(h.id);
+		return h.garrisonFP + (in == null ? 0f : in);
+	}
+
 	static int[][] table(Hive h) {
 		return HiveRules.desiredGarrison(h.size, SwarmFit.LOW, SwarmFit.MEDIUM, SwarmFit.HIGH, SwarmFit.MAXIMUM);
 	}
@@ -577,21 +593,31 @@ final class SwarmEconomy {
 	}
 
 	static List<StarSys> hiveSystems(State s) {
+		java.util.Set<StarSys> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<StarSys, Boolean>());
 		List<StarSys> out = new ArrayList<StarSys>();
-		for (Hive h : s.hives) if (!h.dead && !out.contains(h.sys)) out.add(h.sys);
+		for (Hive h : s.hives) if (!h.dead && seen.add(h.sys)) out.add(h.sys);
 		return out;
 	}
 
 	/** spreadAllows: a spare copy goes to a system among the leanest, unless no leaner one could ever take it. */
 	static boolean spreadAllows(State s, SwarmKnobs k, Hive h, int link) {
-		List<StarSys> systems = hiveSystems(s);
+		// the count of the link per hive system in one pass (round 9: was countIn per system per call)
+		java.util.Map<StarSys, int[]> counts = new java.util.IdentityHashMap<StarSys, int[]>();
+		List<StarSys> systems = new ArrayList<StarSys>();
+		for (Hive o : s.hives) {
+			if (o.dead) continue;
+			int[] n = counts.get(o.sys);
+			if (n == null) { counts.put(o.sys, n = new int[1]); systems.add(o.sys); }
+			if (has(o, link)) n[0]++;
+		}
 		int min = Integer.MAX_VALUE;
-		for (StarSys sys : systems) min = Math.min(min, countIn(s, sys, link));
-		if (countIn(s, h.sys, link) <= min) return true;
+		for (StarSys sys : systems) min = Math.min(min, counts.get(sys)[0]);
+		int[] own = counts.get(h.sys);
+		if ((own == null ? 0 : own[0]) <= min) return true;
 		for (StarSys sys : systems) {
-			if (countIn(s, sys, link) > min) continue;
-			for (Hive o : s.hivesIn(sys)) {
-				if (has(o, link)) continue;
+			if (counts.get(sys)[0] > min) continue;
+			for (Hive o : s.hives) {
+				if (o.dead || o.sys != sys || has(o, link)) continue;
 				if (o.industries() < SwarmFit.maxIndustries(o.size) || o.size < k.maxSize) return false;
 			}
 		}

@@ -78,6 +78,12 @@ public final class State {
 		return out;
 	}
 
+	/** Whether a live hive stands in the system (hivesIn(sys).isEmpty() without the list). */
+	public boolean hasHive(StarSys sys) {
+		for (Hive h : hives) if (!h.dead && h.sys == sys) return true;
+		return false;
+	}
+
 	public List<Hive> liveHives() {
 		List<Hive> out = new ArrayList<Hive>();
 		for (Hive h : hives) if (!h.dead) out.add(h);

@@ -63,7 +63,7 @@ final class HumanStance {
 		boolean losing = f.trendLost > 0f && f.trendLost > f.trendKilled && f.trendLost >= 0.05f * Math.max(1f, ours);
 		float theirs = 0f;
 		for (StarSys sys : s.foundHiveSystems) {
-			if (s.hivesIn(sys).isEmpty() || !f.id.equals(faced(s, sys))) continue;
+			if (!s.hasHive(sys) || !f.id.equals(faced(s, sys))) continue;
 			HumanIntel.Report r = f.reports.get(sys);
 			if (r != null) theirs += r.total();
 		}
