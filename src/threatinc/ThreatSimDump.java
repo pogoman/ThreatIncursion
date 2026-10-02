@@ -44,7 +44,8 @@ public class ThreatSimDump {
 				+ Global.getSector().getClock().getDateString() + ")");
 		if (!ThreatIncConfig.debugSimDump()) return;
 		Object last = Global.getSector().getPersistentData().get(KEY_LAST_DUMP);
-		if (last instanceof Long && day - (Long) last < DUMP_DAYS) return;
+		// the first poll of a session always dumps, so any save loaded with the switch on is a start
+		if (mapWritten && last instanceof Long && day - (Long) last < DUMP_DAYS) return;
 		Global.getSector().getPersistentData().put(KEY_LAST_DUMP, day);
 		try {
 			if (!mapWritten) {

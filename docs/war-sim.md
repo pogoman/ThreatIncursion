@@ -243,3 +243,20 @@ them. A new game's first dumps hold no hives: the swarm has not landed.
   the swarm's contacts, plans and plays in progress, the loss ledgers and posture timers. Dump
   v2 adds them; `Start` loads fleets as `Parcel`s with no order, which each side treats as a
   default order of its kind.
+
+**Dump v2 and starts from a save (2026-10-02, run in game).** `ThreatSimDump.state` also writes
+`fleets` (`fleets()`: strikes, sieges and saturations, waves, reinforcements, raiders, musters,
+hunts, squadrons, guards, convoys; owner, FP, from, to, target, days out, cargo), `knowledge`
+(each faction's `ThreatIntel` reports as ages, found systems, the swarm's `ThreatSwarmIntel`
+places, grudges), `strategy` (councils with learned weights, plays in progress) and `war`
+(phase, home, the stance ledger, stages). A section that throws is named in a `...Error` key and
+the rest is written. `Start.fill` loads `fleets` as `Parcel`s with no order; the rest is on
+`State.dump` for the sides to read. The first poll of a session always dumps, so
+`tools/test-harness/fastforward/simdump.ps1 -Save <folder> -Name <name>` loads a save, takes one
+dump, kills the game unsaved and fills `tools/warsim/start/<name>/` in about a minute. Kept
+starts: `pd9a-newgame` (day 4 of the PoseidonDeimos game, no hives yet) and `pd9a-month114`
+(56 hives, 51 worlds, 166 fleets in motion).
+
+**pd9a (2026-10-02),** the first dated run with dumps: the planner (council off), 114 months, 0
+exceptions; 56 hives at the end, 24 eradicated, 7 human worlds taken, 15 forward bases founded
+and 14 lost. Extract `ti-pd9a.txt`, 116 monthly dumps in `simdump-pd9a` (test output folder).
