@@ -251,9 +251,14 @@ final class SwarmOps {
 	static void expandInSystem(State s, SwarmKnobs k) {
 		for (StarSys sys : SwarmEconomy.hiveSystems(s)) {
 			Integer n = s.swarm.expandable.get(sys.id);
-			if (n == null || n <= 0 || waveBound(s, sys) || SwarmEconomy.pressed(s, sys)) continue;
-			if (launchWave(s, k, sys)) s.swarm.expandable.put(sys.id, n - 1);
-			return;
+			if (n == null || n <= 0 || SwarmEconomy.pressed(s, sys)) continue;
+			// ThreatColonyManager.tryExpandInSystem (since 2026-09-29): a wave per unclaimed planet in every held
+			// system, as many as the nearest ready forges have swarms and stock for - not one a pass
+			while (n > 0 && launchWave(s, k, sys)) {
+				n--;
+				s.swarm.expandable.put(sys.id, n);
+				s.count("wavesInSystem", 1);
+			}
 		}
 	}
 

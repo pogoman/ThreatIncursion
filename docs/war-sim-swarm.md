@@ -281,3 +281,28 @@ with the new rows. Month 115, real | median [p10-p90]: monthsConsolidate 53 | 36
 36.6k [21.6k-51.3k], still OUT from month 84; swarmSupplies 15.9k | 94k [5k-305k]; strikes 163 | 189 [90-292];
 hivesKilled 23 | 23.5 [17-30]; huntsSailed 183 | 244 [118-364]. Stance changes 11-12 a run against 22. The low
 branch remains: the p10 seeds leave CONSOLIDATE near month 60 and do not return (13 months).
+
+## 11. Round 5: two real runs, two branches
+
+pd9a and pd10a (one recipe) agree to month 36 and part at month 45. Both entered CONSOLIDATE at w1253-1254 with
+5-6 of 10 systems pressed. pd9a's first enemy was the Persean League (mobilised w1126): 13 sieges and 4 landings over
+w1260-1440 kept 5 of 10 systems pressed and the stance held to w1510, founding nothing. pd10a's was the Hegemony
+(w1121): 8 sieges and 1 landing over the same days, "pressed 3/9" at w1348, and the stance went to EXPAND for 356
+days: 17 hives to 31, 10 systems to 16. After that 7 pressed systems were under the `stanceConsolidateShare` of 16,
+so sieges at twice pd9a's rate (10-14 a quarter) only brushed CONSOLIDATE. The loop: EXPAND feeds growth 0.5 of the
+net, the supplies left over pay Seeding Swarms (5,000 each; pd10a sent 78 in years 6-8 with none held, pd9a held 52
+of 72), more systems dilute the pressed share, and the stance cannot return. CONSOLIDATE feeds 0.9, the Seeding
+Swarms wait on supplies, the system count stays, and the same sieges keep the share.
+
+The simulator had the loop but not the EXPAND branch's pace: `SwarmOps.expandInSystem` sent one in-system wave a
+pass, where `ThreatColonyManager.tryExpandInSystem` sends a wave for every unclaimed resource planet of every held
+system, as far as the forges have swarms and the stock pays (pd10a: up to 7 Seeding Swarms a tick, 5 of them into
+held systems). Mirrored (counter `wavesInSystem`); `SwarmFit.EXPANSION_PLANET_SHARE` 0.17 to 0.88, the share of
+spare planets the swarm did colonise in systems held since month 60 (25 of 33 and 43 of 44).
+
+`check -dumps A -dumps2 B [-log2 ..]` (`Main.both`) runs each real against the simulator from its own start and
+reports, per row and month, whether p10-p90 covers both and whether both lie on one side of the median.
+Result, 30 seeds: pd9a 155 of 218, pd10a 130 of 193 (106 before); 93 of 168 cells cover both. Month 96, pd9a |
+pd10a | median [p10-p90]: hives 32 | 90 | 70 [30-120]; garrisonFP 54k | 79k | 44k [31k-92k]; hivesFounded 45 | 118 |
+96 [49-133]; hivesKilled 16 | 35 | 19 [11-26]; monthsConsolidate 47 | 10 | 22 [15-36]; swarmSupplies 303 | 349k |
+10k [4k-174k].

@@ -18,6 +18,7 @@ import java.util.stream.Stream;
  * warsim run     [-seed N] [-months N] [-out file.csv] [-v]
  * warsim batch   [-seeds N] [-months N]
  * warsim compare -a k=v[;k=v] -b k=v[;k=v] [-seeds N] [-months N]
+ * warsim check   -dumps A [-log a.txt] [-dumps2 B [-log2 b.txt]] [-seeds N]   (two real runs: coverage of both, and bias)
  * warsim check   -dumps folder [-seeds N]      the simulator beside a real run's monthly dumps
  * Common: -start folder (threatinc_simmap.json + a threatinc_simdump_d*.json; default tools/warsim/start),
  *         -settings file, -set key=value (repeatable), -killWeight x, -sizeExponent x.
@@ -36,7 +37,7 @@ public final class Main {
 		Path root = repoRoot();
 		Path settings = root.resolve("data/config/settings.json");
 		Path startDir = root.resolve("tools/warsim/start");
-		Path dumps = null, out = null, log = null;
+		Path dumps = null, dumps2 = null, out = null, log = null, log2 = null;
 		long seed = 1;
 		int seeds = 100, months = 100;
 		float killWeight = 0f, sizeExponent = 1f;
@@ -54,6 +55,8 @@ public final class Main {
 			else if (o.equals("-settings")) settings = Paths.get(args[++i]);
 			else if (o.equals("-dumps")) dumps = Paths.get(args[++i]);
 			else if (o.equals("-log")) log = Paths.get(args[++i]);
+			else if (o.equals("-dumps2")) dumps2 = Paths.get(args[++i]);
+			else if (o.equals("-log2")) log2 = Paths.get(args[++i]);
 			else if (o.equals("-set")) sets.add(args[++i]);
 			else if (o.equals("-a")) a = args[++i];
 			else if (o.equals("-b")) b = args[++i];
@@ -67,7 +70,14 @@ public final class Main {
 		String cmd = args[0];
 		if (cmd.equals("check")) {
 			if (dumps == null) throw new IllegalArgumentException("check needs -dumps <folder>");
-			check(dumps, knobs, seeds, killWeight, sizeExponent, log);
+			if (dumps2 == null) {
+				check(dumps, knobs, seeds, killWeight, sizeExponent, log, null);
+			} else {
+				Map<String, double[]> ra = new java.util.LinkedHashMap<String, double[]>(), rb = new java.util.LinkedHashMap<String, double[]>();
+				check(dumps, knobs, seeds, killWeight, sizeExponent, log, ra);
+				check(dumps2, knobs, seeds, killWeight, sizeExponent, log2, rb);
+				both(dumps.getFileName().toString(), ra, dumps2.getFileName().toString(), rb);
+			}
 			return;
 		}
 		Start start = start(startDir);
@@ -200,7 +210,42 @@ public final class Main {
 	 * A real run's monthly dumps beside the simulator started from the first of them: the
 	 * validation gates of docs/war-sim.md 6. "in" marks the real figure inside p10-p90.
 	 */
-	static void check(Path dir, Knobs knobs, int seeds, float killWeight, float sizeExponent, Path log) throws IOException {
+	/**
+	 * Two real runs of one recipe against the simulator, each from its own start (-dumps A -dumps2 B): per row and
+	 * month they share, whether p10-p90 covers both reals, and whether both fall on the same side of the median
+	 * (a bias) or one on each (spread).
+	 */
+	static void both(String nameA, Map<String, double[]> a, String nameB, Map<String, double[]> b) {
+		System.out.println("two real runs, " + nameA + " and " + nameB + ": realA | realB | sim median [p10 - p90] from A's start (B is judged against the runs from its own)");
+		int cells = 0, covered = 0, low = 0, high = 0, split = 0;
+		Map<String, int[]> rows = new java.util.LinkedHashMap<String, int[]>(); // {cells, both covered, both above, both below}
+		for (Map.Entry<String, double[]> e : a.entrySet()) {
+			double[] x = e.getValue(), y = b.get(e.getKey());
+			if (y == null) continue;
+			String row = e.getKey().substring(0, e.getKey().indexOf('@'));
+			int[] r = rows.get(row);
+			if (r == null) rows.put(row, r = new int[4]);
+			boolean cov = x[0] >= x[1] && x[0] <= x[3] && y[0] >= y[1] && y[0] <= y[3];
+			// a real above its simulator median on both runs: the simulator reads low
+			boolean above = x[0] > x[2] && y[0] > y[2], below = x[0] < x[2] && y[0] < y[2];
+			cells++;
+			r[0]++;
+			if (cov) { covered++; r[1]++; }
+			if (above) { low++; r[2]++; } else if (below) { high++; r[3]++; } else split++;
+			System.out.println(String.format("  %-18s %12s | %12s | %12s [%s - %s]  %s%s", e.getKey().replace('@', ' '), fmt(x[0]), fmt(y[0]),
+					fmt(x[2]), fmt(x[1]), fmt(x[3]), cov ? "both in" : "NOT both", above ? ", sim low on both" : below ? ", sim high on both" : ""));
+		}
+		System.out.println("by row: cells, both covered, simulator low on both, simulator high on both");
+		for (Map.Entry<String, int[]> e : rows.entrySet()) {
+			int[] r = e.getValue();
+			System.out.println(String.format("  %-18s %2d %2d %2d %2d%s", e.getKey(), r[0], r[1], r[2], r[3],
+					r[2] == r[0] ? "  BIAS low" : r[3] == r[0] ? "  BIAS high" : ""));
+		}
+		System.out.println(covered + " of " + cells + " cells cover both real runs; simulator low on both in " + low
+				+ ", high on both in " + high + ", between or level in " + split);
+	}
+
+	static void check(Path dir, Knobs knobs, int seeds, float killWeight, float sizeExponent, Path log, Map<String, double[]> out) throws IOException {
 		List<Path> files = dumpFiles(dir);
 		if (files.size() < 2) throw new IllegalStateException("need at least two dumps in " + dir);
 		Path map = mapFile(dir);
@@ -232,6 +277,7 @@ public final class Main {
 			for (int[] a : at) {
 				double r = val(real.get(a[0]), col), lo = pct(runs, a[1], col, 0.1), hi = pct(runs, a[1], col, 0.9);
 				boolean ok = r >= lo && r <= hi;
+				if (out != null) out.put(col + "@" + a[1], new double[] { r, lo, pct(runs, a[1], col, 0.5), hi });
 				cells++;
 				if (ok) in++;
 				System.out.println(String.format("  month %3d %12s | %12s [%s - %s] %s", a[1], fmt(r),
@@ -253,6 +299,7 @@ public final class Main {
 					if (a[1] < 36) continue;
 					double r = e.getValue()[a[1]], lo = pct(runs, a[1], e.getKey(), 0.1), hi = pct(runs, a[1], e.getKey(), 0.9);
 					boolean ok = r >= lo && r <= hi;
+					if (out != null) out.put(e.getKey() + "@" + a[1], new double[] { r, lo, pct(runs, a[1], e.getKey(), 0.5), hi });
 					cells++;
 					if (ok) in++;
 					System.out.println(String.format("  month %3d %12s | %12s [%s - %s] %s", a[1], fmt(r),
