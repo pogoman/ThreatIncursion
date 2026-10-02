@@ -148,7 +148,7 @@ overrun clock is the fit.
 
 ## 4. What the game's logs showed on the way (2026-10-02, runs tr1, hw4, hw3)
 
-Scripts in section 9. Each is a fact of the game, not of the simulator.
+Scripts in section 10. Each is a fact of the game, not of the simulator.
 
 **What a Threat landing comes to.** Landings that ended, by the world's owner:
 
@@ -335,7 +335,34 @@ hunts 59 | 70.5).
 - **Fuel stock at month 84**: hw4 746 | 42k, hw4b 5.6k | 37k (inside at 60 and 108).
 - **Months in CONSOLIDATE** and **strike travel** (section 5): not revisited.
 
-## 9. Scripts (machine-local, `%TEMP%\threatinc-tests`)
+## 9. Round 27, a rule trial: every faction mobilises when the swarm reaches a phase
+
+Run hw4c (`war-sim-real-runs.md` 6): a faction the swarm leaves alone until phase 3 mobilises on the strike that
+lands on it and has a month to arm - the Diktat lost Sindria. The trial, no mod symbol behind it:
+`warsim_mobiliseAtPhase` (0 = off; `HumanSide.daily`) mobilises every faction the war does not exclude once
+`SwarmPosture.phase` reaches the figure, struck or not. The simulator's strikes do not sweep, so its factions
+mobilise one target at a time, as the game did before the sweep fix. 60 seeds, new game, month 104, round 26's
+defaults:
+
+| | struck first (0) | at phase 3 | at phase 2 |
+|---|---|---|---|
+| human worlds lost | 9 [6-10] | 5 [2-8] (clear) | 2.5 [0-6] (clear) |
+| hives | 139 [106-173] | 103 [49-141] | 80 [0-121] (clear) |
+| hives killed | 2 | 10 | 8 |
+| sieges sailed | 9 | 35.5 (clear) | 35.5 (clear) |
+| swarm strikes, landings | 255, 155 | 151, 74 (clear) | 108, 38.5 (clear) |
+| threatScore | 1,995 [1,470-2,576] | 1,641 [670-2,171] | 1,275 [285-1,944] (clear) |
+| humanScore | 25 [15-53.5] | 35 [25-56] (69% of seeds) | 28 [18-46] |
+| contested systems | 19 | 26 | 24 |
+| deadYears | 0.9 | 0.6 | 2.2 (clear) |
+| outcomes: both sides / one-sided | 28% / 45% | 83% / 3% | 42% / 3%, decided for the humans 12% |
+
+Phase 3 is the cell: worlds lost halve, the humans' p10 rises (15 -> 25), the war is two-sided in 83% of seeds
+against 28%, and no seed is decided. Phase 2 is too early: the swarm is beaten in one seed in eight and the dead
+years double. Neither score moves clear of the noise at phase 3 (the humans' up in 69% of seeds, the swarm's down
+in 72%). A rule change, so the user's call - offered, not built in the mod.
+
+## 10. Scripts (machine-local, `%TEMP%\threatinc-tests`)
 
 `hivemix.pl <dump dir> <war days>` counts the hives' industries by size at the dumps nearest the days;
 `unmob.pl <ti log>` lists the landings on a world whose owner was not at war and tallies both kinds; `phases.pl <dump
