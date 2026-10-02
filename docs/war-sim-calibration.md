@@ -411,6 +411,10 @@ overshoot in the mod:
 - **Every strike landed.** The game sizes a first landing to outlast the first counter-attack
   (`ThreatStrikeFGI.beachheadLanding`: `beachheadTroops`, the shortfall broken out of the hulls, held back if
   they cannot make it). Now in `SwarmOps.land`, `warsim_beachheadRule` true.
+- **A holding front's garrison stood whole.** A Threat front that holds suppresses the world's key structures, and
+  vanilla's ground defence falls with them: under a holding front a colony kept 0.26 of its pre-war garrison in the
+  hw4d dumps (0.40 in hw4c; a grinding front about all of it). Now `SwarmOps.suppressed`, `warsim_frontHoldSuppress`
+  0.65 off the garrison while `Swarm.Landing.holding`.
 - **The guard's size** is its first pack: `warsim_guardSwarmsPerFleet` 1.42 (hw4d: 5.6 fleets a strike); about 0.20
   of a strike's FP stays (game 0.17-0.22).
 - **The mod: fuel booked whole.** The waiting muster booked its whole passage each `SHORT_DAYS`; hw4d's plants
@@ -427,10 +431,17 @@ overshoot in the mod:
 | + break-up and engine | 311 | 16 / 39.5 / 54 | | |
 | + garrison | 304 | 9 / 20 / 40 | 278 of 378 | 143 |
 | + beachhead | 340 | 9 / 22 / 41.5 | 288 | 149 |
+| + holding suppresses the garrison | 341 | 13.5 / 35.5 / 53 | 288 | 152 |
+
+With the suppression hw4d's landings and overruns fit (month 125: landings 125 | 150 [127-161], was 215; overruns
+46 | 90.5, was 160; to month 96 overruns 40 | 45.5). Worlds lost now run ahead of the game from month 84 (the game
+lost none from day 1,890 to 3,000, then 38 in 700 days; the simulator loses them steadily).
 
 Still out: the strikes and landings of a run without fuel booking (hw4c month 108: strikes 127 | 241, landings
 56 | 149). hw4d's strikes match (252 | 269): the booking raised the game's strikes to the simulator's, so the gap
-is the old rule's fuel, not the landing pass.
+is the old rule's fuel, not the landing pass. The other lead is the game's 118 `waits: bombardment still has work to
+do` in hw4c (50 in hw4d): `doCustomRaidAction` lands only when `readyToLand` passes - the strike's own abstract siege
+of the world resolved (`abstractOrbitDone`) or the troops hold as they are - and the simulator has no wait.
 
 Options for the collapse, 60 seeds from the new game to month 130 (`r31`, before the beachhead rule): guards that
 do not feed their fronts, worlds lost 10 against 44 (clear), humanScore 24 against 16; the rules before round 28,

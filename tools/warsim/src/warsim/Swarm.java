@@ -100,6 +100,8 @@ public final class Swarm {
 		public boolean engine, pushing;
 		public float entrenchDays, pushDays, checkpointLeft, counterClock;
 		public int strataHeld;
+		/** The front holds (frontCanHold): its key structures are down, and the garrison with them (SwarmOps.suppressed). */
+		public boolean holding;
 	}
 
 	/** ThreatAlarm's grudge per faction: raised by strata taken and hives eradicated, fading by the month. */
