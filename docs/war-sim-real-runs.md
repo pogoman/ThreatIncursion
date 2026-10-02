@@ -20,24 +20,26 @@ month 108 and 168 (size 665, 204k FP of fleets) at month 113 - the upper half of
 month 108). It struck 176 times by month 108 (simulator 109 [45-251]) and spent 2 months in CONSOLIDATE where the
 simulator's swarm spends 32 [11-57]: nothing the humans did made it draw in.
 
-**The humans do far less than the simulator's.** First mobilisation month 47. Cumulative at months 60 / 84 / 108, real
-against the simulator's median [p10-p90]:
+**The humans.** First mobilisation month 47. Cumulative at months 60 / 84 / 108 (recounted 2026-10-02 night: the first
+reading took the STARVE plays' saturation expeditions for sieges and left the HAMMER plays' forces out of the hunts,
+`war-sim-calibration.md` 1):
 
-| | real | simulator |
-|---|---|---|
-| sieges sailed | 8 / 19 / 28 | 14 / 37 / 49.5 [16-82] |
-| sieges landed | 1 / 4 / 4 | 7.5 / 20 / 24 [8-50] |
-| hunts sailed | 0 / 7 / 18 | 29 / 71.5 / 111 [65-161] |
-| hives killed | 1 / 2 / 3 | 4 / 12 / 14 [4-26] |
-| forward bases founded | 8 / 32 / 50 | 10 / 23 / 35.5 [26-57] |
-| forward bases destroyed | 4 / 18 / 35 | 3 / 8 / 16 [8-24] |
-| forward bases held | 4 / 10 / 6 | 5 / 7 / 11.5 [5-22] |
+| | real |
+|---|---|
+| sieges sailed | 5 / 7 / 8 |
+| saturation expeditions sailed | 3 / 12 / 20 |
+| sieges landed | 1 / 4 / 4 |
+| hunts sailed (bounty hunts and play forces) | 6 / 19 / 36 |
+| hives killed | 1 / 2 / 3 |
+| forward bases founded | 8 / 32 / 50 |
+| forward bases destroyed | 4 / 18 / 35 |
+| forward bases held | 4 / 10 / 6 |
 
-A year, since the first mobilisation: the Threat destroys 8.2 (7.2 of them forward bases) against the simulator's 4.2
-[2.5-6.5]; the humans 0.5 against 2.3 [0.6-4.2]. One siege in seven lands (the simulator: one in two); of the
-expeditions that ended, 17 were aborted, 8 destroyed, 5 completed, and 11 sieges were called off over the
-orbit. The simulator's humans are too effective by a factor of about five in hives killed, and its links survive twice
-as well. That gap, not a knob, is the next thing to work on (section 2).
+A year, since the first mobilisation: the Threat destroys 8.2 (7.2 of them forward bases), the humans 0.5. Half the
+sieges that sail land (4 of 8); of the expeditions that ended, 17 were aborted, 8 destroyed, 5 completed, and 11 sieges
+were called off over the orbit. The first reading - a simulator whose humans were "five times too effective" - was the
+miscount, the simulator's saturation price and three faults in its swarm; where the simulator stands against this run
+now is `war-sim-calibration.md` 3.
 
 **Guards called against a seen strike** (`guard-digest.ps1 -Tag tr1b`, months 50-113; the question of
 `war-sim-rounds.md` 16a): 73 calls to a front link (`strike in reach`), 19 to a rear link (`strike on its way`), 6
@@ -57,16 +59,16 @@ So the game's sieges are short of fuel as the simulator's are; the supplies-shor
 run's. The simulator prices a saturation at one world's stay (`HumanCouncil.saturate`), the game at every world of the
 play.
 
-## 2. What to do about the gap (proposals, not built)
+## 2. What was done about the gap
 
-1. **Find where the simulator's humans get their kills.** Its sieges land one time in two, the game's one in seven.
-   Compare, in the simulator and in `ti-tr1.txt`, what a siege meets on arrival (the `Siege called off over <world>: N
-   FP of swarms against N` lines and `Abstract break-off` against the simulator's break-off counters) before touching
-   any knob: a simulator that lands too easily ranks every human knob wrongly.
-2. **Price the saturation as it is flown** - one world at a time, each paid when the last is done - in the game, or
-   price every world in the simulator; then let the simulator say which the humans' score prefers.
-3. **The hunts.** 18 in nine years against 111: read the hunt gate (`ThreatSoftening`) against the simulator's
-   `huntsSailed` rule the same way.
+All three proposals of the first reading were followed up the same night (`war-sim-calibration.md`):
+
+1. *Where the simulator's humans get their kills.* The landing rate was a miscount (half the game's sieges land), and
+   the simulator's swarm had three faults that fed its humans targets and time (calibration 3).
+2. *The saturation's price.* The simulator now sets aside every world's whole saturation, as the game does
+   (`warsim_saturationFuelSize2`); paying for the worlds the pools afford instead is noise on the humans' score, so the
+   game keeps its rule (calibration 1).
+3. *The hunts.* The rule is mirrored; the counter was not (36 hunts by month 108, not 18).
 
 ## 3. hw4 (2026-10-02 evening): 115 months on the new default, four home worlds, council on
 
@@ -82,29 +84,30 @@ days 495-505 as the simulator has them, the home's other four planets on days 67
 **Four worlds against three, one run each: no difference to see.** Hives at months 12 / 24 / 36 / 48 / 60 / 84 / 108:
 hw4 4 / 8 / 17 / 19 / 23 / 49 / 152, tr1 3 / 3 / 13 / 22 / 23 / 48 / 131; 171 at month 115 against 165 at month 114.
 The simulator's medians are 171 [137-205] from four worlds and 68.5 [8-137] from three at month 108: tr1 ran at the top
-of its band, hw4 in the lower half of its own. Two runs cannot tell the two settings apart; that three is the easier
-war rests on the simulator alone until more runs of each are in.
+of its band, hw4 in the lower half of its own. Two runs cannot tell the two settings apart, and nor can hw3 and hw4b
+on hw4's own sector (sections 4 and 5); that three is the easier war rests on the simulator alone.
 
-**The humans, again far behind the simulator's.** First mobilisation month 46. Cumulative at months 60 / 84 / 108:
+**The humans.** First mobilisation month 46. Cumulative at months 60 / 84 / 108 (recounted as section 1's):
 
-| | real | simulator |
-|---|---|---|
-| sieges sailed | 7 / 27 / 36 | 10 / 28.5 / 31 [18-45] |
-| sieges landed | 0 / 4 / 5 | 5 / 12 / 12.5 [9-20] |
-| hunts sailed | 3 / 13 / 28 | 20 / 78.5 / 101 [59-139] |
-| hives killed | 0 / 1 / 1 | 2 / 6.5 / 7 [4-11] |
-| forward bases founded | 13 / 36 / 57 | 11 / 30 / 52 [47-70] |
-| forward bases destroyed | 6 / 27 / 43 | 3 / 10.5 / 21 [15-29] |
-| forward bases held | 7 / 7 / 6 | 6 / 10.5 / 19 [11-36] |
-| human worlds lost | 1 / 1 / 2 | 7 / 9.5 / 14 [12-16] |
-| swarm strikes launched | 23 / 67 / 138 | 35.5 / 93 / 228 [169-284] |
-| swarm landings | 17 / 29 / 52 | 15 / 45.5 / 114 [79-145] |
+| | real |
+|---|---|
+| sieges sailed | 3 / 11 / 12 |
+| saturation expeditions sailed | 4 / 16 / 24 |
+| sieges landed | 0 / 4 / 5 |
+| hunts sailed (bounty hunts and play forces) | 5 / 33 / 59 |
+| hives killed | 0 / 1 / 1 |
+| forward bases founded | 13 / 36 / 57 |
+| forward bases destroyed | 6 / 27 / 43 |
+| forward bases held | 7 / 7 / 6 |
+| human worlds lost | 1 / 1 / 2 |
+| swarm strikes launched | 23 / 67 / 138 |
+| swarm landings | 17 / 29 / 52 |
 
-The sieges sail as often as the simulator's now and land one time in seven, as in tr1 (27 expeditions aborted, 5
-completed, 21 sieges called off over the orbit - 225-2,700 FP sailed against 605-6,499 FP of swarms). New in this run:
-the simulator's swarm is too effective as well - it takes 14 worlds where the game's took 2 (4 by month 115, 55 of 59
-worlds standing), striking 228 times against 138. What the game's swarm does destroy is forward bases: 43 of 57.
-Stances: EXPAND 83 months, PRESS 27, CONSOLIDATE 4 (feed shares 0.5 / 0.7 / 0.5).
+5 of the 12 sieges landed (27 expeditions of every kind aborted, 5 completed, 21 sieges called off over the orbit -
+225-2,700 FP sailed against 605-6,499 FP of swarms). The swarm took 2 worlds by month 108 (4 by month 115, 55 of 59
+standing); what it destroys is forward bases, 43 of 57. Of its 54 landings that ended, 43 were overrun by the garrison,
+7 ground down and 4 took the world, all four pirate (`war-sim-calibration.md` 4). Stances: EXPAND 83 months, PRESS 27, CONSOLIDATE 4
+(feed shares 0.5 / 0.7 / 0.5).
 
 **Guards** (`guard-digest.ps1 -Tag hw4`): 57 calls to a front link, 22 to a rear link, 1 guard sent behind the front, 9
 turned back; 19 links faced a strike with no guard called, all "cannot pay the voyage" (157-6,462 FP), 20 could not be
@@ -115,7 +118,64 @@ guarded on later polls. About 1.1 calls a war-month (tr1: 1.4).
 alone 39). 29 saturation expeditions sailed, 103 times "no saturation expedition the pools pay". Plays: 396 begun, 28
 successes, 55 failures, 198 neutral.
 
-**What it adds to section 2.** Proposal 1 stands and widens: before ranking any knob, find why the simulator's sieges
-land (one in two against one in seven) and why its strikes take worlds (14 against 2) - both sides hit harder in the
-simulator than in the game, and both real runs agree on it. Proposal 2 (the saturation's fuel) and 3 (the hunts: 28
-against 101) read the same in this run.
+**What it added.** The simulator's swarm took 14 worlds where the game's took 2: the question that found the three
+faults of `war-sim-calibration.md` 3.
+
+## 4. hw3 (2026-10-02 night): 120 months from three home worlds, the same sector as hw4
+
+`threatinc_homeWorlds` 3 on a second clone of hw4's save (`...ng3`), everything else as hw4, one sitting to war day
+3,605. Dumps `tools/warsim/validation/hw3a` (121 months and the map); log `%TEMP%\threatinc-tests\ti-hw3.txt`. No mod
+exception. `check` (round 24's simulator): 216 of 330 figures inside p10-p90 (hw4a 223, tr1a 247).
+
+**Three worlds against four on one sector: still nothing to see.** Hives at months 12 / 24 / 36 / 48 / 60 / 84 / 108:
+hw3 3 / 3 / 14 / 20 / 30 / 54 / 113 (198 at month 120), hw4 4 / 8 / 17 / 19 / 23 / 49 / 152. The fourth world shows
+for two years and is gone by the third.
+
+**The humans.** First mobilisation month 48 (the Hegemony, struck at Eventide). Cumulative at months 60 / 84 / 108:
+
+| | real |
+|---|---|
+| sieges sailed | 2 / 7 / 9 |
+| saturation expeditions sailed | 0 / 5 / 12 |
+| sieges landed | 0 / 3 / 4 |
+| hunts sailed (bounty hunts and play forces) | 2 / 19 / 54 |
+| hives killed | 0 / 1 / 2 |
+| forward bases founded | 3 / 15 / 43 |
+| forward bases destroyed | 1 / 4 / 21 |
+| forward bases held | 2 / 5 / 10 |
+| human worlds lost | 4 / 6 / 6 |
+| swarm strikes launched | 13 / 41 / 92 |
+| swarm landings | 14 / 29 / 45 |
+
+The humans came later and thinner than in hw4 (the independents and Tri-Tachyon mobilised only in month 88), and the
+swarm lost less to them: 21 bases destroyed for 43 founded.
+
+**What it added: the six worlds lost.** Two were pirate and one the Path's (Epiphany, 800 troops); Salamanca, Nomios
+and Agreus fell to 240-300 troops because their owners were not at war when a strike aimed at a neighbour swept them -
+a bug, fixed (`war-sim-calibration.md` 4, "A swept world's owner did not mobilise").
+
+## 5. hw4b (2026-10-02 night): hw4 again - what two runs of one setting on one sector differ by
+
+A third clone of the same save (`...ng4`), `threatinc_homeWorlds` 4, the build that writes `gate` into the dumps, to
+war day 3,408. Dumps `tools/warsim/validation/hw4b` (114 months and the map); log `ti-hw4b.txt`, digest
+`digest-hw4b.txt`. No mod exception. `check`: 178 of 338 figures inside p10-p90.
+
+| month 108 | hw4 | hw4b | hw3 (three worlds) |
+|---|---|---|---|
+| hives | 152 | 209 | 113 |
+| garrison FP | 140k | 241k | 151k |
+| human worlds lost | 2 | 6 | 6 |
+| hives killed | 1 | 0 | 2 |
+| sieges sailed / landed | 12 / 5 | 15 / 3 | 9 / 4 |
+| saturation expeditions sailed | 24 | 22 | 12 |
+| hunts sailed | 59 | 86 | 54 |
+| forward bases founded / destroyed | 57 / 43 | 40 / 26 | 43 / 21 |
+| swarm strikes / landings | 138 / 52 | 146 / 60 | 92 / 45 |
+| first mobilisation | month 46 | month 44 | month 48 |
+
+The same save and setting ended 171 hives and 4 worlds lost at month 115 (hw4) and 253 hives and 10 worlds lost at
+month 113 (hw4b, Chicomoztoc among them, no hive killed in the whole run, 35 of 41 forward bases lost). One run of a
+setting says little: the two four-world runs differ by more than either does from the three-world one. Guards
+(`digest-hw4b.txt`): 45 calls to a front link, 8 to a rear link, 14 links faced a strike with no guard called
+("cannot pay the voyage"). Postponements: 514, all provisions, supplies short in 510. The swarm never entered
+CONSOLIDATE. Skathi fell to 200 troops with Tri-Tachyon not at war - section 4's bug again.

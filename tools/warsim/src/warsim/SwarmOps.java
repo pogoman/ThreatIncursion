@@ -99,7 +99,7 @@ final class SwarmOps {
 	}
 
 	/** What a strike meets: the world's own defence and, at a forward base, the garrison the human side keeps there. */
-	static float defenceOf(World w) { return w.defence + w.guardFP * SwarmFit.STRIKE_UNITS_PER_FP; }
+	static float defenceOf(World w) { return (w.gate >= 0f ? w.gate : w.defence) + w.guardFP * SwarmFit.STRIKE_UNITS_PER_FP; }
 
 	// ------------------------------------------------------------------
 	// spread
@@ -333,7 +333,7 @@ final class SwarmOps {
 			for (World w : s.worlds) {
 				if (w.lost) continue;
 				float ly = sys.ly(w.sys);
-				if (!s.faction(w.faction).mobilised && !SwarmFit.neverMobilises(w.faction)) {
+				if (!s.faction(w.faction).mobilised && !neverMobilises(s, w.faction)) {
 					if (dPeace < 0f || ly < dPeace) dPeace = ly;
 				}
 				if (w.faction.equals(rival)) dRival = Math.min(dRival, ly);
@@ -375,6 +375,16 @@ final class SwarmOps {
 	// strikes and scouts
 	// ------------------------------------------------------------------
 
+	/**
+	 * A faction the swarm strikes before it is at war with it and whose worlds keep no armed reserve: the game's
+	 * threatinc_warExcludedFactions (IncursionManager.warOpen, pirates). warsim_pathNeverMobilises adds the Path, as the
+	 * simulator had it before round 24.
+	 */
+	static boolean neverMobilises(State s, String factionId) {
+		if (s.knobs.b("warsim_pathNeverMobilises", false)) return SwarmFit.neverMobilises(factionId);
+		return HumanIntel.excluded(s, factionId);
+	}
+
 	static boolean strikeable(State s, World w) {
 		if (w.lost || s.swarm.struck.contains(w.id)) return false;
 		if (!w.forwardBase && w.size < 3) return false;
@@ -382,7 +392,7 @@ final class SwarmOps {
 		if (phase < 2) return false;
 		if (phase < 3) {
 			if (w.size >= 6 && !w.forwardBase) return false;
-			if (!s.faction(w.faction).mobilised && !SwarmFit.neverMobilises(w.faction)) return false;
+			if (!s.faction(w.faction).mobilised && !neverMobilises(s, w.faction)) return false;
 		}
 		return true;
 	}
@@ -487,7 +497,26 @@ final class SwarmOps {
 			List<float[]> spare = spares(s, k, from);
 			// pickStrikeStaging: a strike musters at least two swarms above the reserves
 			if (spare.size() < 2) return false;
-			float full = spare.size() * SwarmFit.STRIKE_UNITS_PER_SWARM;
+			// pickStrikeTarget's walk (warsim_strikeWholeMuster): the muster is the swarms the spare supplies keep away
+			// for the days to the nearest world it could strike, and it sails whole or not at all
+			int muster = spare.size();
+			float musterFP = 0f, unpaid = 0f;
+			if (k.wholeMuster) {
+				float faced = Float.MAX_VALUE;
+				for (World w : s.worlds) if (strikeable(s, w)) faced = Math.min(faced, from.ly(w.sys));
+				if (faced == Float.MAX_VALUE) return false;
+				muster = 0;
+				for (float[] sp : spare) {
+					if (!SwarmEconomy.canSustain(s, k, musterFP + sp[1], k.strikeDays(faced))) break;
+					musterFP += sp[1];
+					muster++;
+				}
+				if (muster <= 0) {
+					s.count("strikesHeld", 1);
+					return false;
+				}
+			}
+			float full = muster * SwarmFit.STRIKE_UNITS_PER_SWARM;
 			List<World> picks = new ArrayList<World>();
 			List<Float> weights = new ArrayList<Float>();
 			float total = 0f;
@@ -499,7 +528,16 @@ final class SwarmOps {
 				if (!strikeable(s, w)) continue;
 				if (only != null && !only.equals(w.faction)) continue;
 				float[] seen = s.swarm.seen.get(w.id);
-				if (seen == null || seen[1] >= full * k.breakOff) continue;
+				if (seen == null) continue;
+				if (k.wholeMuster) {
+					// the passage there and back for the whole muster comes out of the fuel stock, or the world is no candidate
+					float passage = k.passage(musterFP, from.ly(w.sys), true);
+					if (!SwarmEconomy.canPay(s, Swarm.FUEL, passage)) {
+						if (unpaid <= 0f || passage < unpaid) unpaid = passage;
+						continue;
+					}
+				}
+				if (seen[1] >= full * k.breakOff) continue;
 				float odds = seen[1] / Math.max(1f, full * k.breakOff);
 				float mult = 1f;
 				if (s.swarm.stance == Swarm.PRESS) {
@@ -532,7 +570,14 @@ final class SwarmOps {
 				weights = reliefWeights;
 				total = reliefTotal;
 			}
-			if (picks.isEmpty()) return false;
+			if (picks.isEmpty()) {
+				if (unpaid > 0f) {
+					// every world in reach waits on fuel: the stock's demand, as a strike held for it books
+					SwarmEconomy.noteDemand(s, Swarm.FUEL, unpaid);
+					s.count("strikesHeldForFuel", 1);
+				}
+				return false;
+			}
 			float roll = s.rng.nextFloat() * total;
 			World w = picks.get(picks.size() - 1);
 			for (int i = 0; i < picks.size(); i++) {
@@ -544,7 +589,7 @@ final class SwarmOps {
 			}
 			float ly = from.ly(w.sys);
 			float days = k.strikeDays(ly);
-			int count = spare.size();
+			int count = muster;
 			if (k.strikeSizedMargin > 0f) {
 				// round 20 trial (warsim_strikeSizedMargin): the swarms the defence last seen calls for, the largest first
 				int need = (int) Math.ceil(s.swarm.seen.get(w.id)[1] * k.strikeSizedMargin / SwarmFit.STRIKE_UNITS_PER_SWARM);
@@ -714,7 +759,9 @@ final class SwarmOps {
 				continue;
 			}
 			if (l.endDay == Integer.MIN_VALUE) {
-				if (s.day <= l.landedDay) continue;
+				// the day after the humans have answered the landing (HumanSide.daily mobilises the struck faction the day
+				// after it; warsim_landingRace decides a day early, before it has)
+				if (s.day <= l.landedDay + (k.landingRace ? 0 : 1)) continue;
 				l.falls = !s.faction(w.faction).mobilised;
 				if (!l.falls && k.coloniesFall) {
 					// warsim_coloniesFall: the front engine instead of the overrun clock; the strike gate reads an open-ended front

@@ -256,8 +256,9 @@ system; RAIDER is banked at the nearest hive.
   "Strike gate: X passed over" gives one figure for every world of a system (Umbra, Sindria, Cruor, Volturn and
   Nortia 987-6,332; Thulian Raider Base with Kazeron 1,412-1,866; Donn with Culann 994-2,078; Garnir 1,034-1,327).
   `SwarmOps.defenceOf` reads the dump's `defence` (Donn 55, Garnir 55, Umbra 558), so the simulator takes pirate
-  worlds inside patrolled systems that pd9a's gate passed over (worldsLost 13 against 7). Needs the gate's figure in
-  the dumps; not fitted.
+  worlds inside patrolled systems that pd9a's gate passed over (worldsLost 13 against 7). Since 2026-10-02 the
+  dumps carry the gate's figure and `defenceOf` reads it (`war-sim-calibration.md` 2); it was not what lost the
+  simulator its worlds (calibration 3).
 
 ## 10. Round 4 against pd9a: the pressure the stance reads
 

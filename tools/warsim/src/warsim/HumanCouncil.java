@@ -516,6 +516,8 @@ final class HumanCouncil {
 		s.log("Play " + pl.id + " " + pl.type + " " + pl.f.id + " at " + pl.sys + ": " + (pl.phase != null ? pl.phase : "start")
 				+ " -> " + next + " (" + why + ")");
 		if (pl.phase == null) s.count("plays." + pl.type, 1);
+		// check reads these against the game's "Play .. TYPE ..: muster -> strike" lines
+		s.count("phase." + pl.type + "." + next.toLowerCase(java.util.Locale.ROOT), 1);
 		pl.phase = next;
 	}
 
@@ -1375,11 +1377,33 @@ final class HumanCouncil {
 		float[] cost = ReachRules.voyageCost(fp, 2f * pl.base.sys.ly(pl.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
 		float ordnance = stay * BattleRules.bombardFuelPerDay(fp, s.knobs.f("threatinc_bombardFuelPerFPDay"));
+		// round 23, the game's price (IncursionManager.expeditionFuel over the raze set): each world's whole saturation
+		// (razingFuel: a squadron pouring satFuelPerFPDay to the commander's stop - hw4's "Saturate or siege" lines read
+		// 47k fuel at size 4, 59-75k at 5, 150-188k at 7, about 3,000 x size squared) for EVERY world of the play, set
+		// aside whole or the expedition does not sail. warsim_saturationFuelSize2 0 is the old price (a tactical stay
+		// over the first world); warsim_saturateAffordable sails for the worlds the pools pay, first to last, not all or none
+		float size2 = s.knobs.f("warsim_saturationFuelSize2", 3000f);
+		List<Hive> raze = new ArrayList<Hive>();
+		if (size2 > 0f) {
+			boolean affordable = s.knobs.b("warsim_saturateAffordable", false);
+			raze.addAll(targets);
+			while (true) {
+				ordnance = 0f;
+				for (Hive x : raze) ordnance += saturationFuel(x, size2);
+				if (!affordable || raze.size() <= 1
+						|| HumanPools.canPay(s, pl.base, new float[] { 0f, 0f, cost[0] + ordnance, cost[1] }, true, "saturation")) break;
+				raze.remove(raze.size() - 1);
+			}
+			h = raze.remove(0);
+		}
 		if (!HumanPools.pay(s, pl.base, new float[] { 0f, 0f, cost[0] + ordnance, cost[1] }, true, "saturation")) { s.count("saturate.unpaid", 1); return; }
 		Parcel p = s.send(pl.f.id, Parcel.Kind.SATURATION, pl.base.sys, pl.sys, fp, 0);
 		p.targetId = h.id;
 		p.fuel = ordnance;
 		HumanOrder o = new HumanOrder();
+		o.razeNext = raze;
+		o.satFuelSize2 = size2;
+		s.count("saturationWorlds", 1 + raze.size());
 		o.home = pl.base;
 		o.target = h;
 		o.trust = 1f;
@@ -1391,6 +1415,11 @@ final class HumanCouncil {
 		pl.sieged = true;
 		s.count("saturationsSailed", 1);
 		s.log("Play " + pl.id + " STARVE: saturation expedition of " + (int) fp + " FP sails from " + pl.base.name);
+	}
+
+	/** The fuel one hive's whole saturation burns in the game (round 23): size2 x its size squared. */
+	static float saturationFuel(Hive h, float size2) {
+		return size2 * h.size * h.size;
 	}
 
 	// ---- ending ----
@@ -1409,6 +1438,7 @@ final class HumanCouncil {
 			if (live(p) && p.kind == Parcel.Kind.MUSTER) HumanSide.settle(s, p, (HumanOrder) p.order);
 		}
 		s.count("plays." + pl.type + "." + outcome, 1);
+		s.count("playsEnded." + outcome, 1);
 		s.count("playDays." + pl.type, s.day - pl.started);
 		// round 18 addendum: what the hunts alone achieve - a hammer that reached STRIKE split by whether its siege sailed
 		if (pl.type == HAMMER && pl.struck) {

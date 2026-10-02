@@ -95,6 +95,8 @@ public final class Start {
 			w.forwardBase = Json.bool(j.get("forwardBase"), false);
 			w.base = Json.bool(j.get("base"), false);
 			w.defence = Json.num(j.get("defence"), 0f);
+			// warsim_orbitGate=false: the ground figure at the strike gate, as before the dumps carried the orbit's
+			w.gate = s.knobs == null || s.knobs.b("warsim_orbitGate", true) ? Json.num(j.get("gate"), -1f) : -1f;
 			Map<String, Object> stock = Json.obj(j.get("stock"));
 			Map<String, Object> accrual = Json.obj(j.get("accrualPer30"));
 			w.hasReserve = j.get("stock") != null;
