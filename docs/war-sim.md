@@ -226,3 +226,20 @@ them. A new game's first dumps hold no hives: the swarm has not landed.
 - Ownership, so the two sides can be built apart: the swarm side owns `Hive`, `Swarm`,
   `SwarmSide` and `Swarm*.java`; the human side owns `World`, `Faction`, `Front`, `HumanSide` and
   `Human*.java`. Shared rules live in `src/threatinc/rules/` (`BattleRules` so far).
+
+## 12. Starting states and timing (the user, 2026-10-02)
+
+- **Timing is validated, not only counts.** How the seed colony sets up, how long a hive takes to
+  bank the FP, supplies and fuel for its first spread, the interval between foundings; and for a
+  faction, the days from mobilising to its first forward base, first siege, first landing. Each
+  is read from the dated run (`Clock:` lines) and set beside the simulator's figure.
+- **Any save is a start.** A dump is taken from whatever save is loaded: with
+  `threatinc_debugSimDump` on, the first poll after a load writes one. `warsim -start <folder>`
+  then runs from it. A folder of starts is kept under `tools/warsim/start/<name>/` (the new game
+  at day 0, and established saves such as `lt`).
+- **A mid-war start needs what is in motion and what is remembered**, which the first dump
+  lacks: fleets in flight on both sides (strikes, waves, reinforcements, sieges, hunts,
+  squadrons, convoys, staged musters), pending claims, each faction's reports and found hives,
+  the swarm's contacts, plans and plays in progress, the loss ledgers and posture timers. Dump
+  v2 adds them; `Start` loads fleets as `Parcel`s with no order, which each side treats as a
+  default order of its kind.
