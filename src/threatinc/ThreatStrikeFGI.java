@@ -141,6 +141,8 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		public void performRaid(com.fs.starfarer.api.campaign.CampaignFleetAPI fleet,
 				com.fs.starfarer.api.campaign.econ.MarketAPI market) {
 			if (market == null || !market.isInEconomy()) return;
+			// an unspawned strike whose every fleet stayed over its landings has nothing left to pass with
+			if (fleet == null && intel instanceof ThreatStrikeFGI && ((ThreatStrikeFGI) intel).abstractSpent()) return;
 
 			// a forward base is a station, as vanilla's pirate base is: no
 			// landing, no bombardment - the station is the base (2026-09-26)
@@ -928,16 +930,115 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * pass landed or reinforced the front leaves the expedition for a Defend
 	 * station over the world ({@link ThreatSwarmDefend}) - holding the orbit,
 	 * bombarding only while the front cannot hold - and the rest sweep on.
+	 * An unspawned strike leaves one of its fleets the same way (guardUnspawned).
 	 * Knob: landingDefendEnabled.
 	 */
 	protected void stayOnDefend(CampaignFleetAPI fleet, MarketAPI market) {
-		if (fleet == null || market == null) return;
+		if (market == null) return;
 		if (!ThreatIncConfig.landingDefendEnabled()) return;
+		if (fleet == null) {
+			guardUnspawned(market);
+			return;
+		}
 		if (!detach(fleet)) return;
 		if (ThreatSwarmDefend.attach(fleet, market, Factions.THREAT,
 				getParams() != null ? getParams().source : null) == null) {
 			giveReturnAssignments(fleet); // out of the group and refused: home, not adrift
 		}
+	}
+
+	/** Worlds an unspawned strike has left a guard over (guardUnspawned): one each. */
+	protected Set<String> guarded;
+
+	/**
+	 * Whether an unspawned strike has left every fleet it had over its landings
+	 * (guardUnspawned): its remaining passes are nobody's, as a spawned strike's
+	 * whose last fleet stayed.
+	 */
+	public boolean abstractSpent() {
+		return !isSpawnedFleets() && guarded != null && !guarded.isEmpty()
+				&& getParams() != null && getParams().fleetSizes != null && getParams().fleetSizes.isEmpty();
+	}
+
+	/**
+	 * Every faction guards its landing on screen or off (the user, 2026-10-02):
+	 * a strike far from the player never spawns, so before this its landing was
+	 * left with no fleet over it and the strike went home (hw4: 117-174
+	 * "ended unspawned" a run, Swarm defend only where the test save's parked
+	 * fleet spawned strikes). Its first fleet - one params.fleetSizes entry,
+	 * the pack spawnFleets would build - is built now over the world and put on
+	 * Defend, as the spawned fleet that landed is. The entry leaves the strike,
+	 * which keeps the rest of what it held; the bank pays the guard's points
+	 * beyond its share or takes back what it fell short, as at a spawn, and the
+	 * guard re-banks itself on despawn (bound to the ledger, finishFleet).
+	 */
+	protected void guardUnspawned(MarketAPI market) {
+		if (isSpawnedFleets() || stillborn || ledgerHome == null) return;
+		if (market.getPrimaryEntity() == null || market.getPrimaryEntity().getContainingLocation() == null) return;
+		if (getParams() == null || getParams().fleetSizes == null || getParams().fleetSizes.isEmpty()) return;
+		if (guarded != null && guarded.contains(market.getId())) return;
+		List<Integer> sizes = getParams().fleetSizes;
+		int planned = 0;
+		for (Integer s : sizes) if (s != null) planned += s;
+		Integer entry = sizes.get(0);
+		float share0 = ledgerShare();
+		float held = ledgerPaid * share0;
+		if (entry == null || planned <= 0 || held <= 0f) return;
+		float share = held * entry / planned;
+		Float damage = getRoute() != null && getRoute().getExtra() != null ? getRoute().getExtra().damage : null;
+
+		// the pack spawnFleets would have built for this entry
+		List<Integer> pack = null;
+		if (packs != null) {
+			for (List<Integer> p : packs) {
+				if (packSize(p) == entry) {
+					pack = p;
+					break;
+				}
+			}
+		}
+		float before = ledgerBuilt;
+		packsLeft = new ArrayList<List<Integer>>();
+		if (pack != null) packsLeft.add(pack);
+		overflow = new ArrayList<CampaignFleetAPI>();
+		List<CampaignFleetAPI> built = new ArrayList<CampaignFleetAPI>();
+		CampaignFleetAPI fleet = createFleet(entry, damage != null ? damage : 0f);
+		if (fleet != null) built.add(fleet);
+		for (CampaignFleetAPI extra : overflow) {
+			finishFleet(extra);
+			built.add(extra);
+		}
+		packsLeft = null;
+		overflow = null;
+		if (built.isEmpty()) return;
+
+		// the entry leaves the strike; fabricatedFP scales with the planned
+		// points, so ledgerShare - and what the rest holds - is unchanged
+		sizes.remove(0);
+		if (pack != null) packs.remove(pack);
+		if (planned > 0) fabricatedFP *= (planned - entry) / (float) planned;
+		ledgerPaid = share0 > 0f ? Math.max(0f, ledgerPaid - share / share0) : ledgerPaid;
+		float diff = (ledgerBuilt - before) - share;
+		if (diff > 0f) {
+			ThreatColonyManager.drawFP(ledgerHome, diff);
+		} else if (diff < 0f) {
+			ThreatColonyManager.creditHome(ledgerHome, -diff, ledgerNear());
+		}
+		if (guarded == null) guarded = new HashSet<String>();
+		guarded.add(market.getId());
+
+		com.fs.starfarer.api.campaign.SectorEntityToken world = market.getPrimaryEntity();
+		for (CampaignFleetAPI guard : built) {
+			world.getContainingLocation().addEntity(guard);
+			guard.setLocation(world.getLocation().x, world.getLocation().y);
+			if (ThreatSwarmDefend.attach(guard, market, Factions.THREAT,
+					getParams().source) == null) {
+				giveReturnAssignments(guard); // refused: home, not adrift
+			}
+		}
+		ThreatIncConfig.log("Strike guard over " + market.getName() + ": the unspawned strike leaves "
+				+ built.size() + " fleet(s), " + (int) (ledgerBuilt - before) + " FP, on Defend ("
+				+ (int) share + " of its " + (int) held + " held); " + sizes.size() + " fleet(s) left");
 	}
 
 	/**

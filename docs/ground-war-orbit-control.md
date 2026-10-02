@@ -182,6 +182,17 @@ The cover contests the orbit while it is at least the
 swarm's FP there. Once the swarm outweighs it, the cover is lost for good and logged
 ("Orbit cover over ... lost").
 
+**The swarm guards its unspawned landings too (2026-10-02, the user: "every faction should guard
+their siege on screen or off").** Before, only a spawned strike - one near the player - left its landing
+fleet on `ThreatSwarmDefend`; an unspawned one went home after the pass (`Strike ledger: ended unspawned`,
+117-174 a run in hw4). Now `ThreatStrikeFGI.stayOnDefend` with no fleet calls `guardUnspawned`: the strike's
+first `params.fleetSizes` entry - the pack `spawnFleets` would build - is built over the world and put on
+Defend, one guard a world a strike. The entry leaves the strike (`fabricatedFP` scaled so `ledgerShare` holds);
+the bank pays the guard beyond its share of what the strike held or takes back what it fell short, as at a
+spawn, and the guard re-banks on despawn (ledger-bound). A strike whose every entry stayed passes no more
+(`abstractSpent`, checked in `AnnihilationAction.performRaid`). Unlike the humans' `coverFP`, the swarm's
+guard is a real fleet, so every reader of a live Defend station applies. Log: `Strike guard over X`.
+
 **This replaced the scour** (removed 2026-09-08, user). The hive used to saturation-bomb its
 OWN surface once the swarm had held the orbit unopposed for `threatScourDays`, annihilating
 the front to the last marine and closing the ground with fallout for `falloutDays`. That rule

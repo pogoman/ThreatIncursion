@@ -532,7 +532,8 @@ final class SwarmOps {
 					// the passage there and back for the whole muster comes out of the fuel stock, or the world is no candidate
 					float passage = k.passage(musterFP, from.ly(w.sys), true);
 					if (!SwarmEconomy.canPay(s, Swarm.FUEL, passage)) {
-						if (unpaid <= 0f || passage < unpaid) unpaid = passage;
+						// a world the strike would take but for its fuel (past the gate): the cheapest is booked below
+						if (seen[1] < full * k.breakOff && (unpaid <= 0f || passage < unpaid)) unpaid = passage;
 						continue;
 					}
 				}
@@ -571,10 +572,12 @@ final class SwarmOps {
 			}
 			if (picks.isEmpty()) {
 				if (unpaid > 0f) {
-					// every world in reach waits on fuel. The game books nothing: pickStrikeTarget passes over a world
-					// the muster's passage is not paid for and no held() follows (hw4: no "strike from .. held" in 115
-					// months), so a waiting strike is no demand and no fuel plant answers it. Booked before round 26
+					// every world it would strike waits on fuel: the cheapest passage is demand, once a SHORT_DAYS a
+					// source (IncursionManager.pickStrikeTarget, threatinc_strikeWaitBooksFuel, 2026-10-02; before, the
+					// game booked nothing - hw4 logged no "strike from .. held" in 115 months). Every poll before round 26
 					if (!k.holdsBookMonthly) SwarmEconomy.noteDemand(s, Swarm.FUEL, unpaid);
+					else if (k.strikeWaitBooksFuel && only == null && SwarmEconomy.bookHold(s, k, "strike " + from))
+						SwarmEconomy.noteDemand(s, Swarm.FUEL, unpaid);
 					s.count("strikesHeldForFuel", 1);
 				}
 				return false;

@@ -368,6 +368,33 @@ against 28%, and no seed is decided. Phase 2 is too early: the swarm is beaten i
 years double. Neither score moves clear of the noise at phase 3 (the humans' up in 69% of seeds, the swarm's down
 in 72%). A rule change, so the user's call - offered, not built in the mod.
 
+## 11. Round 28: the user's three answers, built (2026-10-02 late)
+
+The handover's section 3, items 1-3, answered: mobilise at phase 3 - yes; book a fuel-waiting strike's passage -
+yes; only a spawned strike guarding its landing - "not intended, every faction should guard their siege on screen
+or off". Built in the mod (`IncursionManager.mobiliseAtPhase`, `pickStrikeTarget`'s `waitedOn`,
+`ThreatStrikeFGI.guardUnspawned`) and in the simulator as defaults (`threatinc_mobiliseAtPhase` 3,
+`threatinc_strikeWaitBooksFuel` true, `warsim_strikeDefends` true). The simulator's booking now takes only a world
+past the gate, as the mod's does. 60 seeds, new game, month 104, the old rules against each and all:
+
+| | old | phase-3 mobilisation | guards | fuel booking | all three |
+|---|---|---|---|---|---|
+| hives | 139 [106-173] | 103 | 120 | 110 | 76 [37-100] (clear) |
+| garrison FP | 149k | 112k | 107k | 107k | 52k (clear) |
+| strikes | 255 | 151 (clear) | 202 | 362 | 193 |
+| worlds lost | 9 | 5 (clear) | 8 | 10 | 6 |
+| sieges sailed | 9 | 35.5 (clear) | 13 | 4 | 24.5 |
+| hives killed | 2 | 10 | 4 | 1 | 9 |
+| threatScore | 1,995 [1,470-2,576] | 1,641 | 1,590 | 1,477 | 817 [505-1,184] (clear) |
+| humanScore | 25 [15-53.5] | 35 [25-56] | 30 | 24 [12.9-51] | 35.5 [21.8-56.1] |
+| outcomes both sides / one-sided | 28% / 45% | 83% / 3% | 37% / 33% | 17% / 58% | 75% / 2% |
+
+The fuel booking alone is not the free change the handover expected (section 7 had the swarm's score unmoved): with
+the gate applied the plants it builds take forge slots, the garrison falls by a third, strikes rise 40% and the
+humans' p10 falls under the base's. Together the swarm ends at about 40% of its old score and the humans a
+third up; the war is two-sided in three seeds in four. `check` against hw4a-c is not re-run: the game runs were on
+the old rules, so the new defaults are expected to miss the swarm rows until a run on this jar.
+
 ## 10. Scripts (machine-local, `%TEMP%\threatinc-tests`)
 
 `hivemix.pl <dump dir> <war days>` counts the hives' industries by size at the dumps nearest the days;

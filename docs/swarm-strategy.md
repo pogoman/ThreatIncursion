@@ -24,7 +24,8 @@ system per 30 days, and no global cap ("the bank is the limit").
 - Target filter: `isStrikeableWorld`, core worlds only at phase 3, `playerGraceDays` 120, `warOpen`
   (before phase 3 only factions at war, grudged or never mobilising), one strike per world
   (`isActiveStrikeTarget`), `swarmKnows` and, under the swarm's fog, `strikeSeen`;
-  `ThreatFuel.canPay` the passage; `strikeOutweighed` skips a world whose defence >= (strike + the
+  `ThreatFuel.canPay` the passage (a muster every world of which waits only on fuel books the cheapest
+  passage as demand, `ThreatFuel.held("strike from ..")`, knob `strikeWaitBooksFuel`, 2026-10-02); `strikeOutweighed` skips a world whose defence >= (strike + the
   swarm's own strength already in that system) x `siegeBreakOffRatio` 1.0.
 - Weight: `strikeValue` (size squared or a link's weight, x (1 + 0.2 x grudge)) /
   `ThreatReach.strikeDays` (4 x ly + prep) x `ThreatStance.strikeTargetMult`. A 0-ly world weighs
@@ -45,7 +46,8 @@ system per 30 days, and no global cap ("the bank is the limit").
 `fabricateTroopsPerFP` when the share is short), reinforce (`landOrReinforce`; really the next strike,
 since a dry front weighs x4). Troops: `strikeTroopsPerPoint` 20 x difficulty points, per world
 max(300, pool / worlds), called off under `frontMinMarines` 50. The landing fleet stays as a
-`ThreatSwarmDefend` station. A human colony falls only by `colonyGroundVictory`; with
+`ThreatSwarmDefend` station; an unspawned strike builds its first fleet over the world for it
+(`guardUnspawned`, 2026-10-02, `ground-war-orbit-control.md`). A human colony falls only by `colonyGroundVictory`; with
 `conquestConverts` it becomes a size-2 hive at once (`convertConquered`, paid by `conquestPayer`),
 else it is decivilised and `tryConversions` claims the ruin. Harassment and saturation passes are
 dormant (`strikeSaturationEnabled` false). Most strikes resolve off-screen (15 of 21 in h53d).
