@@ -30,6 +30,8 @@ final class HumanCouncil {
 	static final String[] BANDS = { "outmatched", "even", "ahead" };
 	static final String RECON = "RECON", HAMMER = "HAMMER", FEINT = "FEINT", STARVE = "STARVE", BOMBERS = "BOMBERS";
 	static final String SUCCESS = "success", FAILURE = "failure", NEUTRAL = "neutral";
+	/** Round 19: days between a waiting hammer's siege re-tries (warsim_hammerWaitsForSiege). */
+	static final int WAIT_RETRY_DAYS = 10;
 	static final int NEVER = Integer.MIN_VALUE / 2, HELD = Integer.MAX_VALUE / 2;
 	/** ThreatWarCouncil.STRIKE_WINDOW_DAYS, HISTORY; ThreatPlays.MAX_EXTENSIONS, STARVE_MAX_CHECKS, DREW, FRESH_DAYS, RECON_FRESH_DAYS, ALL_IN. */
 	static final float STRIKE_WINDOW_DAYS = 90f, DREW = 1.2f, ALL_IN = 0.95f;
@@ -80,6 +82,8 @@ final class HumanCouncil {
 		World base;
 		List<Hive> targets = new ArrayList<Hive>();
 		Play from;
+		/** Round 19 (warsim_hammerWaitsForSiege): the day the mustered hunts first waited at the base on an unpaid siege. */
+		int waitSince = NEVER;
 		int started, musterDay, phaseDue = NEVER, checks, raids, drivenOff, offInRow, extensions, landed, landedAtCheck, taken, feintArrived = NEVER;
 		boolean feintDrew;
 		float plannedFP, nexusDownDays, nexusStreak, orbitDays, orbitAtCheck, fuelBudget, fuelSpent, fuelTotal;
@@ -1088,6 +1092,8 @@ final class HumanCouncil {
 		// the force is all in once its voyage to the bearing is done (it waits at its base here)
 		boolean allIn = mustered >= ALL_IN * pl.plannedFP && s.day >= pl.musterDay + State.travelDays(pl.base.sys.ly(pl.sys));
 		if (!allIn && s.day < pl.phaseDue && mustered > 0f) return;
+		// round 19: waiting at the base on an unpaid siege, the siege is re-tried on its day, not daily
+		if (pl.waitSince != NEVER && s.day < pl.phaseDue) return;
 		float against = floorBase(s, pl);
 		float floor = Math.max(0f, s.knobs.f("threatinc_councilMusterFloor")) * against;
 		if (mustered < floor) {
@@ -1208,6 +1214,25 @@ final class HumanCouncil {
 			end(s, c, pl, FAILURE, why + "; neither the siege nor a hunting force could be paid (" + (int) siegeFP + " FP siege share)");
 			return;
 		}
+		// round 19 (warsim_hammerWaitsForSiege N): no siege paid, the mustered hunts hold at the base (upkeep still paid) and the
+		// siege is re-tried every WAIT_RETRY_DAYS until N days have passed, then the play stands down
+		int wait = (int) s.knobs.f("warsim_hammerWaitsForSiege", 0f);
+		if (pl.siege == null && pl.type == HAMMER && wait > 0 && anyForceAlive(pl)) {
+			if (pl.waitSince == NEVER) pl.waitSince = s.day;
+			if (s.day - pl.waitSince < wait) {
+				for (Parcel p : pl.forces) if (live(p) && p.kind == Parcel.Kind.MUSTER) ((HumanOrder) p.order).sailDay = HELD;
+				pl.phaseDue = s.day + WAIT_RETRY_DAYS;
+				s.count("hammer.waitRetries", 1);
+				s.count("hammer.waitDays", WAIT_RETRY_DAYS);
+				s.log("Play " + pl.id + " MUSTER: no siege paid, the hunts wait at " + pl.base.name + " (" + (s.day - pl.waitSince) + " of " + wait + " d)");
+				return;
+			}
+			standDownForces(s, pl);
+			s.count("hammer.waitExpired", 1);
+			end(s, c, pl, FAILURE, why + "; no siege paid in " + wait + " days of waiting, the hunts stand down");
+			return;
+		}
+		if (pl.siege != null && pl.waitSince != NEVER) s.count("hammer.waitPaid", 1);
 		// round 18 addendum (b) warsim_noHuntsAlone: no siege paid, the play stands down rather than sending the hunts alone
 		if (pl.siege == null && pl.type == HAMMER && s.knobs.b("warsim_noHuntsAlone", false)) {
 			standDownForces(s, pl);

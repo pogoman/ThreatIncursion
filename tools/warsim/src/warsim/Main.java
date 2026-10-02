@@ -29,7 +29,7 @@ public final class Main {
 	/** The columns the batch, compare and check tables print. */
 	static String[] SHOWN = { "hives", "hiveSize", "garrisonFP", "bank", "swarmFuel", "swarmSupplies",
 			"worlds", "basesHeld", "basesFounded", "basesDestroyed", "hivesFounded", "hiveLevels", "hivesKilled",
-			"worldsLost", "siegesSailed", "siegesLanded", "strikesLaunched", "threatScore", "humanScore",
+			"worldsLost", "siegesSailed", "siegesLanded", "strikesLaunched", "threatScore", "humanScore", "threatScoreK2", "humanScoreK2",
 			"threatKills", "threatKills.worlds", "threatKills.bases", "humanKills", "mutual",
 			"turnover", "swings", "reversals", "contested", "deadYears" };
 	/**
@@ -169,6 +169,9 @@ public final class Main {
 		for (Map<String, Double> m : r.months) {
 			m.put("threatScore", m.get("threatSpread") + killWeight * m.get("threatKillCount"));
 			m.put("humanScore", m.get("humanSpread") + killWeight * m.get("humanKillCount"));
+			// round 19: the kill-weight 2 sensitivity without a second run
+			m.put("threatScoreK2", m.get("threatSpread") + 2.0 * m.get("threatKillCount"));
+			m.put("humanScoreK2", m.get("humanSpread") + 2.0 * m.get("humanKillCount"));
 		}
 		measures(r);
 	}
