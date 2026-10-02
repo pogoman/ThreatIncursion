@@ -77,17 +77,10 @@ Keep the main context lean - this codebase is large and discovery fills the wind
   agent; at most a grep to confirm the symbol still says so.
 - Locating code is never delegated (grep `docs/symbols.md`, above). Delegate only bulk reading
   that would flood the window - a run's log, a set of dumps, screenshots - and self-contained
-  legwork, to a subagent
-  (`Explore` for read-only searches, `general-purpose` for multi-step lookups). The subagent
-  reads the files in its own context and returns just the conclusion, so the main window only
-  pays for the answer, not the file dumps. Reach for this whenever answering means
-  sweeping several files, docs, or CSVs - e.g. "where is X wired up", "what pattern does
-  Y follow", "which configs reference Z". This includes the discovery phase of complex
-  work you will finish yourself - tracing a bug through the call chain, mapping a lifecycle,
-  reading the game log is discovery, not building, so it goes to a subagent even when the
-  design or fix stays here. Rule of thumb: if you are about to open more than two or three
-  files you were not pointed at by name, stop and send an `Explore` subagent to do the
-  sweep, then act on its conclusion in this session.
+  legwork, to a subagent (`Explore` for read-only sweeps, `general-purpose` for multi-step
+  lookups); it returns just the conclusion, so the main window pays for the answer, not the
+  dumps. Tracing a call chain is done here: grep the index for each symbol and read the methods
+  at their lines - a chain of five methods is five short reads, not an agent.
 - **Brief research agents narrowly.** Subagents remember nothing either, so hand each one
   question, the `facts.md` lines and doc sections you already have, and the files to check.
   Ask for medium breadth, aim for about 10 minutes, and say "confirm or correct this" rather
@@ -110,12 +103,9 @@ Keep the main context lean - this codebase is large and discovery fills the wind
   lower tiers (`Explore` -> sonnet, lookups -> sonnet/haiku). The global
   `pin-subagent-model` hook downgrades subagents spawned without a model, so an unspecified
   build agent may land on a cheaper tier - pass the model explicitly for build work.
-- "Points at directly" means a named file or an explicit line range - read those here. A
-  feature or symbol named only by concept ("the recall path", "how sieges land") is a
-  discovery target, not a pointer: fan it out to a subagent rather than opening files one
-  by one in the main thread.
-- The user prefers this default: delegate simple/broad stuff to subagents rather than
-  loading it all into the main thread.
+- A feature named only by concept ("the recall path", "how sieges land") is a grep of
+  `docs/symbols.md` and `docs/facts.md`, then a read of the methods found - not an agent.
+- Never read a class of thousands of lines whole; read the methods the index names.
 - Screenshots go to subagents. Every image read stays in context until compaction, so
   in-game test screenshots are taken and read by a subagent that returns what it saw
   (text, figures, anything wrong) - never Read a screenshot in the main thread unless
