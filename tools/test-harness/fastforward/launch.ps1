@@ -1,6 +1,7 @@
 # Launch Starsector at the 1600x900 pref and Continue into whatever the prefs key points at.
 # -MenuOnly stops at the main menu (for a new game). Survives the game rolling starsector.log over.
-param([switch]$MenuOnly)
+# -ContinueX/-ContinueY: where the menu's Continue sits (it moves with the display scaling).
+param([switch]$MenuOnly, [int]$ContinueX = 1190, [int]$ContinueY = 282)
 $h = Split-Path $PSScriptRoot -Parent
 $core = "C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core"
 $log = "$core\starsector.log"
@@ -23,9 +24,18 @@ $deadline = (Get-Date).AddSeconds(60)
 do { Start-Sleep 1; $r = UI -Action rect } while ($r -eq "NOWINDOW" -and (Get-Date) -lt $deadline)
 Start-Sleep 3
 Place 200 150 | Out-Null
-UI -Action click -X 298 -Y 254 | Out-Null
+# the launcher's size follows the display scaling (597x373 at 125%): Play sits at the same share of
+# it, and a missed click is retried for as long as the launcher is the window up
 $deadline = (Get-Date).AddSeconds(180)
-do { Start-Sleep 3; $r = UI -Action rect } while ($r -notlike "*client 1600x900*" -and (Get-Date) -lt $deadline)
+do {
+  $r = UI -Action rect
+  if ($r -match 'client (\d+)x(\d+)' -and [int]$Matches[1] -lt 1000) {
+    "$(El)s launcher: $r"
+    UI -Action click -X ([int]([int]$Matches[1] * 298 / 597)) -Y ([int]([int]$Matches[2] * 254 / 373)) | Out-Null
+  }
+  Start-Sleep 5
+  $r = UI -Action rect
+} while ($r -notlike "*client 1600x900*" -and (Get-Date) -lt $deadline)
 "$(El)s window: $r"
 Place 0 0 | Out-Null
 $deadline = (Get-Date).AddSeconds(300)
@@ -38,7 +48,7 @@ Start-Sleep 8
 "$(El)s menu"
 if ($MenuOnly) { return }
 for ($a = 1; $a -le 4; $a++) {
-  UI -Action click -X 1190 -Y 282 | Out-Null
+  UI -Action click -X $ContinueX -Y $ContinueY | Out-Null
   $deadline = (Get-Date).AddSeconds(60)
   do {
     Start-Sleep 3
