@@ -119,9 +119,12 @@ final class HumanPools {
 	}
 
 	/** What the base can call on of one commodity: its own above the floor, and each donor's net of the haul. */
-	static float payable(State s, World base, int c, boolean siege) {
+	static float payable(State s, World base, int c, boolean siege) { return payable(s, base, c, siege, donors(s, base)); }
+
+	/** With the donors already listed (round 9: a range or a canPay asked for the same sorted list two to four times). */
+	static float payable(State s, World base, int c, boolean siege, List<World> donors) {
 		float sum = 0f;
-		for (World d : donors(s, base)) {
+		for (World d : donors) {
 			float have = gives(s, d, base, c, siege);
 			sum += ReachRules.netOfHaul(c == World.FUEL, have, gives(s, d, base, World.FUEL, siege), perUnit(s, d, base, c));
 		}
@@ -129,7 +132,12 @@ final class HumanPools {
 	}
 
 	static boolean canPay(State s, World base, float[] wants, boolean siege) {
-		for (int c = 0; c < 4; c++) if (wants[c] > 0f && payable(s, base, c, siege) < wants[c]) return false;
+		List<World> donors = null;
+		for (int c = 0; c < 4; c++) {
+			if (wants[c] <= 0f) continue;
+			if (donors == null) donors = donors(s, base);
+			if (payable(s, base, c, siege, donors) < wants[c]) return false;
+		}
 		return true;
 	}
 
@@ -187,7 +195,8 @@ final class HumanPools {
 
 	/** ThreatReach.baseRangeLY on what the base can call on. */
 	static float rangeLY(State s, World base) {
-		return ReachRules.baseRangeLY(payable(s, base, World.FUEL, true), payable(s, base, World.SUPPLIES, true),
+		List<World> donors = donors(s, base);
+		return ReachRules.baseRangeLY(payable(s, base, World.FUEL, true, donors), payable(s, base, World.SUPPLIES, true, donors),
 				s.knobs.f("threatinc_expeditionFuelPerPointLY"), s.knobs.f("threatinc_expeditionSuppliesPerPoint"),
 				ReachRules.DEFAULT_SUPPLIES_PER_FP, HumanFit.PREP_MIN_DAYS + HumanFit.PREP_SPAN_DAYS, State.LY_PER_DAY);
 	}

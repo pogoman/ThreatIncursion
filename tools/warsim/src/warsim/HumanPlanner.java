@@ -317,10 +317,12 @@ final class HumanPlanner {
 		for (Option o : options(s, f)) {
 			if (o.affordable && !booked(s, null, o.hive, Parcel.Kind.SIEGE)) sieging.add(o.base);
 		}
+		// each base's range once (round 9), until a hunt sails and the pools change
+		java.util.Map<World, Float> ranges = new java.util.IdentityHashMap<World, Float>();
 		for (StarSys sys : s.foundHiveSystems) {
 			// ThreatSoftening.tick: only against a system with a swarm bounty running
 			Integer bounty = s.bounties.get(sys);
-			if (bounty == null || bounty <= s.day || s.hivesIn(sys).isEmpty()) continue;
+			if (bounty == null || bounty <= s.day || !s.hasHive(sys)) continue;
 			HumanIntel.Report r = f.reports.get(sys);
 			if (r == null || r.total() < 1f) continue;
 			// the strongest garrison reported is worked first (ThreatSoftening.gateWorlds)
@@ -341,7 +343,9 @@ final class HumanPlanner {
 			float pays = 0f;
 			for (World w : s.worldsOf(f.id)) {
 				if (!w.base || !w.hasReserve || sieging.contains(w) || s.day - w.lastHuntDay < rest) continue;
-				if (w.sys.ly(sys) > HumanPools.rangeLY(s, w)) continue;
+				Float range = ranges.get(w);
+				if (range == null) ranges.put(w, range = HumanPools.rangeLY(s, w));
+				if (w.sys.ly(sys) > range) continue;
 				float p = payableFP(s, w, sys);
 				if (p <= 0f) continue;
 				if (base == null || p > pays || p == pays && w.sys.ly(sys) < base.sys.ly(sys)) { base = w; pays = p; }
@@ -359,6 +363,7 @@ final class HumanPlanner {
 				continue;
 			}
 			hunt(s, f, base, target, fp);
+			ranges.clear();
 		}
 	}
 
@@ -366,7 +371,8 @@ final class HumanPlanner {
 	static float payableFP(State s, World base, StarSys sys) {
 		float[] per = ReachRules.voyageCost(ReachRules.FP_PER_POINT, 2f * base.sys.ly(sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
-		return ReachRules.payablePoints(HumanPools.payable(s, base, World.FUEL, false), HumanPools.payable(s, base, World.SUPPLIES, false),
+		java.util.List<World> donors = HumanPools.donors(s, base);
+		return ReachRules.payablePoints(HumanPools.payable(s, base, World.FUEL, false, donors), HumanPools.payable(s, base, World.SUPPLIES, false, donors),
 				per[0], per[1]) * ReachRules.FP_PER_POINT;
 	}
 

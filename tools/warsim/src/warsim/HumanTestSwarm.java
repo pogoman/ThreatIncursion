@@ -101,7 +101,7 @@ final class HumanTestSwarm {
 		StarSys best = null;
 		float bestLY = Float.MAX_VALUE;
 		for (StarSys sys : s.systems.values()) {
-			if (sys.planets <= 0 || !s.hivesIn(sys).isEmpty()) continue;
+			if (sys.planets <= 0 || s.hasHive(sys)) continue;
 			boolean taken = false;
 			for (World w : s.worlds) if (!w.lost && w.sys == sys) { taken = true; break; }
 			if (taken) continue;

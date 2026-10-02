@@ -346,3 +346,22 @@ or a counter-siege of the conquered hive - which neither the planner nor the cou
 figure (15 a size plus marines) is a guess against one number (Donn 55), and the humans' own navy over an
 invaded colony and their relief convoys are not modelled, so B overstates how fast a defended colony falls
 (the real runs: 0 of 56 at war).
+
+## 13. Round 9: speed (2026-10-02)
+
+A 104-month run had slowed to about 10 s alone (17-24 s under load) and a 30-seed batch to 69 s since rounds 6-7.
+Sampled with `jcmd Thread.print` on one run, the costs were, in order: `SwarmPosture.poll` calling `stagingHive`
+(two `HumanPools.payable` sorts and a `nearestBase` scan) once per hive system per seen base instead of once per
+base, and `SwarmEconomy.held` scanning the parcels per hive per comparison in `redistribute`; `HumanIntel.sweep`
+re-scanning the parcels, hives and worlds per faction per system per day; `SwarmEconomy.spreadAllows` recounting
+every system per link; `StarSys.ly` a sqrt per call; `hivesIn(..).isEmpty()` allocating a list per test. Fixed
+without changing a figure (the 30-seed batch tables for council and planner are byte-identical before and after):
+per-poll maps of each base's staging hive and nearest hive system and of the factions' bases, `inboundMap` once
+per poll and after each dispatch, `sweep` from per-faction eyes sets and radar lists built once a day, one-pass
+link counts, a distance table built in `Start.fill` (`StarSys.index`, `dist`), `State.hasHive`, `strikeAt` with
+the faction's worlds listed once, `payable` taking a donors list (`rangeLY`, `canPay`, `payableFP`), `hunts`
+caching each base's range until a hunt sails. Seeds already ran in parallel (`Main.runs`, a parallel stream; the
+only mutable static is `Main.SHOWN`, set before the runs). After: one run 1.9-2.5 s, a 30-seed batch 12-17 s, a
+30-seed compare 19 s. What is left, by the same profile: `HumanPlanner.size` (a bombardment plan per fleet step
+per option, rebuilt from scratch by every planner pass and again by `hunts`), `HumanPools.donors` sorts, and the
+posture poll's remaining per-system scans of contacts, parcels and worlds.
