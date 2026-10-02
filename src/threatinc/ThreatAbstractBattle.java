@@ -43,9 +43,9 @@ public final class ThreatAbstractBattle {
 	private ThreatAbstractBattle() {}
 
 	/** Vanilla's cap on what one off-screen fight takes (FGRaidAction.autoresolve). */
-	public static final float MAX_LOSS = 0.75f;
+	public static final float MAX_LOSS = threatinc.rules.BattleRules.MAX_LOSS;
 	/** Vanilla's loss per unit of the other side's strength over one's own. */
-	public static final float LOSS_PER_RATIO = 0.5f;
+	public static final float LOSS_PER_RATIO = threatinc.rules.BattleRules.LOSS_PER_RATIO;
 
 	public static boolean enabled() {
 		return ThreatIncConfig.abstractDefendersFight();
@@ -76,8 +76,7 @@ public final class ThreatAbstractBattle {
 
 	/** The share of its fleet points each defender loses to an attacker of {@code attackerStr} against {@code defenderStr}. */
 	public static float defenderLoss(float attackerStr, float defenderStr) {
-		if (attackerStr <= 0f || defenderStr <= 0f) return 0f;
-		return Math.min(MAX_LOSS, LOSS_PER_RATIO * attackerStr / defenderStr);
+		return threatinc.rules.BattleRules.defenderLoss(attackerStr, defenderStr);
 	}
 
 	/**

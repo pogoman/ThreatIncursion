@@ -36,6 +36,12 @@ public final class State {
 	public boolean verbose;
 	private int nextParcel = 1, nextId = 1;
 
+	// human side
+	/** Hive systems the sector has found (ThreatHiveIntel.sectorKnows): nothing is planned against the rest. */
+	public final java.util.Set<StarSys> foundHiveSystems = new java.util.LinkedHashSet<StarSys>();
+	/** The day the last siege was launched at a hive (ThreatIncData.lastPurgeTimes): the siege cooldown's clock. Looked up, never iterated. */
+	public final java.util.Map<Hive, Integer> lastSiegeDay = new java.util.HashMap<Hive, Integer>();
+
 	// ---- time and travel ----
 
 	public int month() { return (day - startDay) / 30; }

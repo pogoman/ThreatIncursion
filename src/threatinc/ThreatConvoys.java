@@ -156,9 +156,8 @@ public class ThreatConvoys {
 	 * per FP_PER_RESPONSE_DIFFICULTY points, fuel for the distance.
 	 */
 	protected static float[] escortRate(float ly) {
-		float points = 1f / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
-		return new float[] {points * Math.max(0f, ly) * ThreatIncConfig.expeditionFuelPerPointLY(),
-				points * ThreatIncConfig.expeditionSuppliesPerPoint()};
+		return threatinc.rules.ReachRules.voyageCost(1f, Math.max(0f, ly), ThreatIncConfig.expeditionFuelPerPointLY(),
+				ThreatIncConfig.expeditionSuppliesPerPoint());
 	}
 
 	/** What the donor may spend on an escort above its base: a colony's spendable stock (ThreatReserves.spendable), an outpost's whole stockpile. */
@@ -301,8 +300,7 @@ public class ThreatConvoys {
 	 * upkeep pays a day's share of it.
 	 */
 	public static float haulPerUnit(String commodityId, float ly) {
-		float load = capacityFor(commodityId);
-		return load > 0f ? haulFuel(ly) / load : 0f;
+		return threatinc.rules.ReachRules.haulPerUnit(haulFuel(ly), capacityFor(commodityId));
 	}
 
 	/** The haul rate for stock pooled from {@code donor} to a pool at {@code to}: none within a system, none for the player's (any range, as before). */
@@ -323,10 +321,7 @@ public class ThreatConvoys {
 	 * anything else as much as {@code fuelHave} pays for.
 	 */
 	public static float netOfHaul(String commodityId, float have, float fuelHave, float perUnit) {
-		if (have <= 0f) return 0f;
-		if (perUnit <= 0f) return have;
-		if (Commodities.FUEL.equals(commodityId)) return have / (1f + perUnit);
-		return Math.min(have, Math.max(0f, fuelHave) / perUnit);
+		return threatinc.rules.ReachRules.netOfHaul(Commodities.FUEL.equals(commodityId), have, fuelHave, perUnit);
 	}
 
 	/** Burns the haul of {@code amount} pooled from {@code donor} (its fuel above the floor); call before the draw, with the amount netOfHaul allowed. */
