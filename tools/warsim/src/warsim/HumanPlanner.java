@@ -290,6 +290,10 @@ final class HumanPlanner {
 		HumanOrder o = (HumanOrder) p.order;
 		o.trust = opt.trust;
 		o.deposit = opt.fp / ReachRules.FP_PER_POINT * s.knobs.f("threatinc_expeditionSuppliesPerPoint");
+		// round 20's diagnostic: the trip the gate priced (its supplies want less the deposit) against what the siege eats
+		// (HumanSide.upkeep's siegeTrip.burned, .owed)
+		s.count("siegeTrip.priced", Math.max(0f, opt.wants[World.SUPPLIES] - o.deposit));
+		s.count("siegeTrip.sieges", 1);
 		p.marines = opt.wants[World.MARINES];
 		p.armaments = opt.wants[World.ARMAMENTS];
 		// aboard: the ordnance (the passage is burned on the way)
