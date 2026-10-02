@@ -345,7 +345,9 @@ Run hw4c (`war-sim-real-runs.md` 6): a faction the swarm leaves alone until phas
 lands on it and has a month to arm - the Diktat lost Sindria. The trial, no mod symbol behind it:
 `warsim_mobiliseAtPhase` (0 = off; `HumanSide.daily`) mobilises every faction the war does not exclude once
 `SwarmPosture.phase` reaches the figure, struck or not. The simulator's strikes do not sweep, so its factions
-mobilise one target at a time, as the game did before the sweep fix. 60 seeds, new game, month 104, round 26's
+mobilise one target at a time; its timing is the fixed game's all the same (`check` row `mobilised`, hw4c | simulator:
+month 48 5 | 3.5, 60 5 | 5, 84 6 | 6, 108 7 | 7; the runs before the fix were slower, hw4b 2, 4, 4, 6), so the
+trial's gain is over the jar as it stands: the first factions nine months sooner, the last two four years. 60 seeds, new game, month 104, round 26's
 defaults:
 
 | | struck first (0) | at phase 3 | at phase 2 |
