@@ -77,7 +77,23 @@ final class SwarmKnobs {
 		scoutsAnySize = k.b("warsim_scoutsAnySize", false);
 		homeWorlds = Math.max(3, k.i("threatinc_homeWorlds"));
 		homeMinesOnly = k.b("warsim_homeMinesOnly", false);
+		wholeMuster = k.b("warsim_strikeWholeMuster", true);
+		landingRace = k.b("warsim_landingRace", false);
+		pathNeverMobilises = k.b("warsim_pathNeverMobilises", false);
 	}
+
+	/**
+	 * Round 24 (2026-10-02 night), three places the simulator's swarm was not the game's, each with its old behaviour
+	 * behind a switch (docs/war-sim-calibration.md 3):
+	 * warsim_strikeWholeMuster (true) - a strike is the whole muster the spare supplies keep away, weighed at the gate
+	 * as that, and a world whose passage the fuel does not pay for that muster is no candidate
+	 * (IncursionManager.pickStrikeTarget); false sends the largest part of the muster the fuel pays, gated as the whole.
+	 * warsim_landingRace (false) - true decides a landing's fate before the struck faction has mobilised, so the first
+	 * colony the swarm invades of every faction falls on the pirates' clock (the bug: SwarmOps.fronts ran a day early).
+	 * warsim_pathNeverMobilises (false) - true takes the Path with the pirates as a faction that never mobilises
+	 * (struck before phase 3, its worlds falling on the clock); the game excludes threatinc_warExcludedFactions alone.
+	 */
+	final boolean wholeMuster, landingRace, pathNeverMobilises;
 
 	/**
 	 * threatinc_homeWorlds (ThreatIncConfig.homeWorlds, round 22): the worlds the opening chain lands on, in a home

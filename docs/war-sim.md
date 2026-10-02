@@ -199,6 +199,9 @@ Reversals and contested systems stay as secondary readouts.
   spread per month.
 - `warsim compare A.set B.set` runs both on the same seeds and reports which differences exceed
   the spread.
+- `warsim check -dumps tools\warsim\validation\<run> -seeds 30 -log <ti log>` sets a real run beside the
+  simulator from the run's own home; `run -home <system id>` starts one seed there. What the event rows
+  count, the gate in the dumps and the switches of rounds 23-24: `war-sim-calibration.md`.
 - First questions: council tempo options A-D (`war-council-runs.md` 5), hunt upkeep, the Starve
   circle, then the Hive Mind's decisions (`swarm-strategy.md` 4) as prototypes before they are
   built in the mod.

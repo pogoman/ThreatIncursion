@@ -28,4 +28,7 @@ final class HumanOrder {
 	boolean drivenOff;
 	/** A raid's days over its world when not RAID_STAY_DAYS (a play's squadron stays its check). */
 	int stayDays;
+	/** A saturation expedition's further worlds, in order, and the game's price knob it sailed on (0: the tactical stay). */
+	java.util.List<Hive> razeNext;
+	float satFuelSize2;
 }

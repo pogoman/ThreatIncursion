@@ -238,6 +238,7 @@ public final class HumanSide implements Side {
 			if (enemy > 0f) {
 				if (BattleRules.callsOff(enemy, p.fp, HumanSiege.friendsOf(s, p), s.knobs.f("threatinc_siegeBreakOffRatio"))) {
 					s.count("raidsCalledOff", 1);
+					if (p.kind == Parcel.Kind.SATURATION) s.count("saturationsCalledOff", 1);
 					o.drivenOff = true;
 					home(s, p, o);
 					return;
@@ -246,6 +247,22 @@ public final class HumanSide implements Side {
 				o.fights++;
 			}
 			float perDay = BattleRules.bombardFuelPerDay(p.fp, s.knobs.f("threatinc_bombardFuelPerFPDay"));
+			// the game's saturation (round 23): this world's whole price poured over the stay, then the next world of the raze set
+			boolean priced = p.kind == Parcel.Kind.SATURATION && o.satFuelSize2 > 0f;
+			if (priced) perDay = HumanCouncil.saturationFuel(h, o.satFuelSize2) / Math.max(1, o.stayDays);
+			if (priced && o.orbitDays >= o.stayDays && o.razeNext != null) {
+				Hive next = null;
+				while (!o.razeNext.isEmpty() && next == null) {
+					Hive x = o.razeNext.remove(0);
+					if (!x.dead) next = x;
+				}
+				if (next != null && p.fp >= BattleRules.raidLossLine(p.fp0, s.knobs.f("threatinc_raidLossFraction"))) {
+					o.target = next;
+					p.targetId = next.id;
+					o.orbitDays = 0;
+					return;
+				}
+			}
 			boolean over = p.fp < BattleRules.raidLossLine(p.fp0, s.knobs.f("threatinc_raidLossFraction"))
 					|| o.orbitDays >= (o.stayDays > 0 ? o.stayDays : HumanFit.RAID_STAY_DAYS) || BattleRules.bombardDaysFor(p.fuel, perDay) < 0.5f;
 			boolean contested = BattleRules.orbitContested(HumanSiege.enemyAt(s, h), p.fp + HumanSiege.friendsOf(s, p),
@@ -384,6 +401,7 @@ public final class HumanSide implements Side {
 			o.arrivedDay = s.day;
 			HumanIntel.file(s, p.to, HumanIntel.see(s, p.to, false), p.owner);
 			if (p.kind == Parcel.Kind.SIEGE) s.count("siegesArrived", 1);
+			if (p.kind == Parcel.Kind.SQUADRON) s.count("squadronsArrived", 1);
 			return;
 		case SCOUT:
 			HumanIntel.scoutArrived(s, p);

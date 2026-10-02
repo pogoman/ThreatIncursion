@@ -54,7 +54,7 @@ public final class Main {
 		float killWeight = 0f, sizeExponent = 1f;
 		boolean verbose = false;
 		List<String> sets = new ArrayList<String>();
-		String a = "", b = "";
+		String a = "", b = "", home = null;
 		for (int i = 1; i < args.length; i++) {
 			String o = args[i];
 			if (o.equals("-v")) verbose = true;
@@ -63,6 +63,8 @@ public final class Main {
 			else if (o.equals("-months")) months = Integer.parseInt(args[++i]);
 			else if (o.equals("-out")) out = Paths.get(args[++i]);
 			else if (o.equals("-start")) startDir = Paths.get(args[++i]);
+			// -home <system id>: the opening chain lands there (a real run's home for a traced single seed, as check does)
+			else if (o.equals("-home")) home = args[++i];
 			else if (o.equals("-settings")) settings = Paths.get(args[++i]);
 			else if (o.equals("-dumps")) dumps = Paths.get(args[++i]);
 			else if (o.equals("-log")) log = Paths.get(args[++i]);
@@ -106,6 +108,7 @@ public final class Main {
 			return;
 		}
 		Start start = start(startDir);
+		if (home != null) start.ogSystem = home;
 		if (cmd.equals("run")) {
 			Sim.Result r = Sim.run(start, knobs, seed, months, sizeExponent, verbose);
 			score(r, killWeight);
@@ -490,15 +493,35 @@ public final class Main {
 	/** The log lines each event counter is read from (docs/war-sim.md 7), against the simulator's counter of that name. */
 	static final String[][] EVENTS = {
 			{ "strikesLaunched", "^Strike launched from " },
+			// the posture's transfers between the swarm's own colonies (SwarmPosture.dispatch), each a one-way passage in fuel
+			{ "reinforcementsSent", "^Posture: .+ sent \\d+ FP to " },
 			{ "threatLandings", "^Front deployed at .* \\(threat\\): " },
 			{ "beachheadsOverrun", "^Notice: Beachhead Overrun \\| The garrison of " },
 			{ "worldsLost", "^Threat ground victory at " },
 			{ "hivesFounded", "^Colony founded" },
 			{ "hivesKilled", "^Colony eradicated: " },
-			{ "siegesSailed", "^Expedition draw at " },
+			// a siege's draw carries no razing fuel; a draw that does is the STARVE play's saturation expedition
+			// (counted as a siege until round 23: hw4's 41 "sieges" were 13 sieges and 29 saturations)
+			{ "siegesSailed", "^Expedition draw at .*razing 0\\)" },
+			{ "saturationsSailed", " STARVE: saturation expedition of \\d+ FP sails" },
+			{ "squadronsArrived", "^Raid arrived: " },
+			{ "siege.beaten", "^Daily siege of [^:]*: \\d+ d, .* fight days, beaten$" },
+			{ "siege.called off", "^Daily siege of [^:]*: \\d+ d, .* fight days, called off$" },
+			{ "siege.landed (ready)", "^Daily siege of [^:]*: \\d+ d, .* fight days, landed \\(ready\\)$" },
+			{ "siege.landed (dry)", "^Daily siege of [^:]*: \\d+ d, .* fight days, landed \\(dry\\)$" },
+			{ "plays.RECON", "^Play \\S+ RECON .*: start -> " },
+			{ "plays.HAMMER", "^Play \\S+ HAMMER .*: start -> " },
+			{ "plays.STARVE", "^Play \\S+ STARVE .*: start -> " },
+			{ "plays.BOMBERS", "^Play \\S+ BOMBERS .*: start -> " },
+			{ "phase.HAMMER.strike", "^Play \\S+ HAMMER .*: muster -> strike" },
+			{ "playsEnded.success", "^Play \\S+: success \\(" },
+			{ "playsEnded.failure", "^Play \\S+: failure \\(" },
+			{ "playsEnded.neutral", "^Play \\S+: neutral \\(" },
 			{ "siegesLanded", "^Front deployed at .* \\((?!threat)\\w+\\): " },
 			{ "frontsOverrun", "^Notice: Beachhead Overrun \\| A hive counter-attack" },
-			{ "huntsSailed", "^Hunting force from " },
+			// the simulator's hunts are the bounty hunts and the HAMMER plays' forces alike (both HUNT parcels); the
+			// game logs a play's force under its play (round 23: hw4's 28 "hunts" were 37 bounty hunts and 33 play forces)
+			{ "huntsSailed", "^Hunting force from |^Play \\S+ force \\S+ goes in over " },
 			{ "basesFounded", "^Frontline: \\w+ founded " },
 			{ "basesDestroyed", "^Frontline: \\w+ dismantled .*\\(station destroyed" },
 			{ "basesAbandoned", "^Frontline: \\w+ dismantled .*\\(no " },
