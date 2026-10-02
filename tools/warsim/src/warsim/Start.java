@@ -147,6 +147,9 @@ public final class Start {
 			int m = mode.equals("WATCHFUL") ? 1 : mode.equals("THREATENED") ? 2 : mode.equals("BESIEGED") ? 3 : 0;
 			s.swarm.posture.put(Json.str(j.get("system"), ""), new float[] { Json.num(j.get("pressure"), 0f), m });
 		}
+		if (sw.get("ogSystem") != null) s.swarm.ogSystemId = Json.str(sw.get("ogSystem"), null);
+		if (sw.get("nextTickDays") != null) s.swarm.nextTickDay = s.day + Json.num(sw.get("nextTickDays"), 0f);
+		HumanSide.load(s, dump);
 	}
 
 	/** An organ is "none", "up", or the days it stays disrupted. */
