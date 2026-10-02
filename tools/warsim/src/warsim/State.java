@@ -26,6 +26,8 @@ public final class State {
 	public final Map<String, Faction> factions = new LinkedHashMap<String, Faction>();
 	public final List<Parcel> parcels = new ArrayList<Parcel>();
 	public final Swarm swarm = new Swarm();
+	/** The start dump as read (ThreatSimDump), for what Start does not load into fields: knowledge, strategy, war. */
+	public Map<String, Object> dump = new LinkedHashMap<String, Object>();
 
 	/** Cumulative counters, by name; every one becomes a column of the monthly table. */
 	public final Map<String, Double> counters = new TreeMap<String, Double>();
