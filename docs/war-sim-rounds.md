@@ -381,7 +381,7 @@ laptop was needed, and in-game tests are paused until the user says. Its 51 mont
 
 - `warsim_ogChain` (`SwarmKnobs.ogChain`, 0 = the five-world chain): the worlds the opening lands on. `SwarmOps.chainRole`
   gives them the mod's builds - four worlds forge, refining, two mines; three or fewer forge and mines - and the home counts
-  as full (`SwarmOps.wave`, `rollExpandable`).
+  as full (`SwarmOps.wave`, `rollExpandable`). Replaced the same evening by `threatinc_homeWorlds` (section 18).
 - `Start.ogSystem` forces the home system. `check` (`Main.check`) now reads both from a run dumped before the landing - the
   home and the landed chain from the first dump with hives - and prints `home system <name>, opening chain of <n>`.
   `-set warsim_checkOwnHome=true` restores the old behaviour (each seed picks its own home).
@@ -422,6 +422,46 @@ five-world one. The late fuel plant is not what costs: on seed 3 the chains of t
 500 and send the first Seeding Swarm on day 760 (the base on day 486), and four ends level with five. What costs is the
 home itself - three worlds, no refinery at the landing, nothing left to grow into.
 
-**Not built; one question for the user.** Whether a three-planet home is wanted is what the game is, not a number:
+**One question for the user, answered the same evening (section 18).** Whether a three-planet home is wanted is what the game is, not a number:
 `canSupportFullChain` asking four colonisable planets (falling back to three when no system has four) would give every
 sector the opening pd9a had; leaving it gives some sectors a slow, more even war. The simulator says four is enough.
+
+## 18. Round 22: the home worlds become a setting (2026-10-02 evening)
+
+The user's answer to round 21's question (facts.md Decisions, "The swarm's home worlds are a setting, not luck"): how many
+worlds the swarm starts on is a config value, four by default, three allowed as the easier game. `strikeMinSize` stays 4.
+
+**Built.** `threatinc_homeWorlds` (4; LunaLib 3-8; a new key, so no migration; it acts at the start of a war only).
+`IncursionManager.pickOGSystem` asks that many colonisable planets of the home (`ThreatColonyManager.canSupportChain`),
+stepping down to three in a sector with no such system; `pickChainPlanets` lands the opening on exactly that many - the
+best ore, rare ore and volatiles worlds, then the leanest - and the home's other planets are taken later by
+`tryExpandInSystem`, paid for like any wave. The simulator reads the same key (`SwarmKnobs.homeWorlds`, `SwarmOps.pickOG`,
+`homeChain`) in place of round 21's `warsim_ogChain`, and `check` sets it to what the real run landed: the three checks
+read as in section 17 (tr1a 59 of 93, pd9a 40 and pd10a 63 of 90).
+
+**What the setting does** (60 seeds, new game, 104 months, kill weight 1; A -> B, the share is the seeds where B's
+threatScore leads):
+
+| homeWorlds | threatScore | hives | hives killed | sieges sailed | both sides / one-sided |
+|---|---|---|---|---|---|
+| 5 -> 4 | 1,569 [741-2,695] -> 1,701 [731-2,200], 47% | 131 -> 124 | 7.5 -> 8 | 24 -> 27.5 | 55% / 17% -> 57% / 15% |
+| 4 -> 3 | 1,701 -> 878 [369-1,715], 23% | 124 -> 77 | 8 -> 13.5 | 27.5 -> 44.5 | 57% / 15% -> 85% / 3% |
+| 4 -> 6 | 1,701 -> 1,261 [508-2,650], 48% | 124 -> 106 | 8 -> 12.5 | 27.5 -> 47 | 57% / 15% -> 73% / 10% |
+| 4 -> 8 | 1,701 -> 1,375 [671-2,675], 45% | 124 -> 120 | 8 -> 10 | 27.5 -> 33 | 57% / 15% -> 73% / 7% |
+
+humanScore is 29-31.5 in every cell. Four is the old five-world opening; three is the easier war; six and eight are noise
+against four - the setting has two positions that differ. More free landings buy nothing because the home's spare planets
+are taken within two years either way (seed 3: all ten planets of the home held by day 750 from three landings and from four).
+
+**Why three is weaker - not the refinery.** A four-world opening of a forge and three mines (`warsim_homeMinesOnly`; run
+as `warsim_ogChain=4` before the rename) scores 1,750 against 1,717 with the refinery, 52% of seeds. Seed 3's trace: at
+size 4, about day 500, each world fills its second slot. Three worlds use theirs to complete the chain (refinery, fuel
+plant, the forge world's mine); the fourth world's second slot is a second forge - day 504 against day 778 - and a claim
+is pending per free forge, so the four-world swarm claims its second system on day 669 where the three-world one waits to
+day 851.
+
+**The base from here** (homeWorlds 4, 60 seeds, new game): humanScore 29.5 [19.8-42.1], threatScore 1,701 [731-2,200],
+hives 124, hives killed 8, bases destroyed 22, both-sides 57%. The mid-war start is unchanged (its chain has landed).
+
+**Game check.** A new game must log `OG home system: <name> (.. N planets, the chain lands on 4)` and land four hives -
+result in facts.md "How many worlds does the swarm start on".

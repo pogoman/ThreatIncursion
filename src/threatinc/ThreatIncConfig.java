@@ -94,6 +94,8 @@ public class ThreatIncConfig {
 	public static int triggerColonySize()    { return i("threatinc_triggerColonySize"); }
 	public static float tickDays()           { return f("threatinc_tickDays"); }
 	public static int initialSeeds()         { return i("threatinc_initialSeeds"); }
+	/** Worlds the opening chain lands on, and the planets the home system must have (pickOGSystem, pickChainPlanets); at least the three a chain needs. */
+	public static int homeWorlds()           { return Math.max(3, i("threatinc_homeWorlds")); }
 	public static float seedToColonyDays()   { return f("threatinc_seedToColonyDays"); }
 	public static int spreadMinSize()        { return i("threatinc_spreadMinSize"); }
 

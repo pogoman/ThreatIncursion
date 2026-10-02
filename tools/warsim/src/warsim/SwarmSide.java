@@ -18,7 +18,7 @@ public final class SwarmSide implements Side {
 
 		if (!underWay && !inFlight && sw.claims.isEmpty()) {
 			// a new game: the chain out of the Abyss is claimed on day 0 and lands seedToColonyDays later
-			StarSys og = SwarmOps.pickOG(s);
+			StarSys og = SwarmOps.pickOG(s, k.homeWorlds);
 			if (og != null) {
 				Swarm.Claim c = new Swarm.Claim();
 				c.sys = og;

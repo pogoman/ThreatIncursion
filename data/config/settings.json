@@ -24,6 +24,11 @@
 	# whole production chain is founded at once from the Abyss. initialSeeds
 	# above 1 adds that many extra single-colony fringe footholds beyond it.
 	"threatinc_initialSeeds": 1,
+	# homeWorlds: the worlds the swarm lands on at the start, in a home system
+	# with at least that many planets (the most the sector has, if none does).
+	# 3 is the easier war (its second forge, and so its spread, come about a
+	# year later); above 4 the simulator finds no difference (war-sim-rounds 18).
+	"threatinc_homeWorlds": 4,
 	"threatinc_seedToColonyDays": 120,
 	"threatinc_spreadMinSize": 3,
 
