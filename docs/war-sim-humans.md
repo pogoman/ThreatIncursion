@@ -596,3 +596,117 @@ accrual is `HumanFit.ACCRUAL_BY_SIZE` fitted from the dumps, so x1.5 maps to the
 facts.md "What is still free in the human war economy" lists the reserves' accrual as unpaid banking, so this widens a
 free flow - still production-bound (`reserveBankFromProduction`), not conjured. Confirm with the 5-minute mid-war game check
 (`strike.paid` should rise and bases held double) before the setting is kept.
+
+## 13. Round 18: the knob is shared; re-tests on the humans-only base; the swarm's levers (2026-10-02)
+
+**The built change is not round 17's cell.** `threatinc_reserveSurplusMult` is read by `ThreatReserves` (the factions' pools)
+and by `ThreatFuel` and `ThreatColonyUpkeep` (the hives' banking of their production); in the simulator `SwarmKnobs.surplusMult`
+scales `SwarmEconomy`'s income the same way, and the human pools did not read the knob at all until this round
+(`HumanPools.daily` now scales the accrual fit by `reserveSurplusMult` / 1.0, marines by `reserveTroopSurplusMult` / 0.5).
+Round 17's winning cell was `warsim_accrualMult` 1.5 - the humans alone. With settings.json at 1.5 for both sides (30 seeds):
+new game hives 185 [138-230] against 117, threatScore 4,109 [2,887-4,947] against 842 (round 17's cell 886), humanScore 17.5
+against 21 (cell 28.5), kills 2.5 against 6 (cell 8), paid hammers 11.5 against 27, both-sides 37%; mid-war hives 226 against
+145, threatScore 867 against 307 (cell 338), humanScore 20 against 11.5 (cell 33.5), kills 0, one-sided 97%. The swarm's
+production is the larger base, so a shared multiplier hands it the bigger gain and the humans end below their old score.
+A humans-only lever needs its own knob in the mod (`ThreatReserves.accrualPer30`'s multiplier split from the hives'), or
+`reserveSurplusMult` back at 1.0 until it has one. This round's grid therefore runs on the humans-only base
+(`threatinc_reserveSurplusMult=1.0; warsim_accrualMult=1.5`), with the shared 1.5 as a cell against it.
+
+Cells, 30 seeds, both starts, every one on that base. Human side, ranked by humanScore: the shared 1.5 (both sides);
+relief to the besiegers (`warsim_reliefToBesiegers`, round 16 r); links waiting on an unpaid siege (`warsim_linkWaitsForSiege`,
+round 15 e); upkeep x0.5 (`warsim_suppliesPerFPMult`, a diagnostic - not a rule the mod may hold, round 17); the council's
+major plays per FP (`threatinc_councilMajorPlayFP` 3000 -> 2000, 5000); the muster floor (`threatinc_councilMusterFloor` 0.5
+-> 0.25, 0.75); the humans' accrual at 1.25 and 2.0 (`warsim_accrualMult`) to show where 1.5 sits. Swarm side, ranked by
+threatScore with humanScore not under the base's p10 and no quieter war: the Seeding Swarm's price (`warsim_seedPriceMult`
+0.75, 1.25; `SwarmKnobs.foundSupplies`), the EXPAND feed share (`threatinc_feedShareExpand` 0.5 -> 0.35, 0.7), the
+CONSOLIDATE trigger share (`threatinc_stanceConsolidateShare` 0.5 -> 0.25, 0.75), the relief strike's weight
+(`threatinc_strikeReinforceWeight` 4 -> 2, 8). Not knobs, so not cells: the Bastion's timing (`SwarmFit.BASTION_DAYS` 120 and
+`BASTION_FP`, bought from idle fabrication in `SwarmEconomy.militaryTier`) and a strike reserve share (the simulator's
+strikes are sized by `StrikeRules.sustainableFP` on the spare stock, no share knob).
+
+**New game, 30 seeds** (humanScore, threatScore, bases founded/held/destroyed, hives killed, hammers paid/unpaid, mutual,
+both-sides share; `*` clear). The humans-only base: 28.5 [17.8-50], 886 [563-2,320], 71.5/17/23.5, 8, 30.5/12, 1.3, 60%
+(one-sided 20%, quiet 0%, other 20%) - round 17's cell reproduced (28.5, 886).
+
+| cell | humanScore | threatScore | bases f/h/d | kills | paid/unpaid | mutual | both |
+|---|---|---|---|---|---|---|---|
+| shared 1.5 (both sides) | 17.5 | 4,109* | 84/13.5/51* | 2.5 | 11.5/8 | 0.4 | 37% |
+| r relief to besiegers | 33 | 788 | 58.5/16/15* | 8.5 | 28.5/14 | 1.4 | 60% |
+| e links wait on siege | 27.5 | 970 | 64/16.5/22.5 | 8 | 26/12 | 1.2 | 60% |
+| upkeep x0.5 (diagnostic) | 28.5 | 767 | 70.5/13.5/29 | 12 | 48/10 | 2.0 | 77% |
+| councilMajorPlayFP 2000 | 27 | 713 | 67/15.5/26 | 9.5 | 34/16 | 1.5 | 60% |
+| councilMajorPlayFP 5000 | 30 | 773 | 64.5/19.5/25 | 9 | 27.5/10.5 | 1.5 | 57% |
+| councilMusterFloor 0.25 | 27.5 | 886 | 69.5/16/23 | 8 | 30.5/12.5 | 1.3 | 60% |
+| councilMusterFloor 0.75 | 28.5 | 881 | 71.5/17/23.5 | 8 | 30.5/12 | 1.3 | 60% |
+| accrual 1.25 | 24.5 | 807 | 61/14/25 | 9 | 28.5/14 | 1.5 | 63% |
+| accrual 2.0 | 27.5 | 680 | 68/15/27.5 | 14 | 51/15.5 | 2.4 | 83% |
+| seedPriceMult 0.75 | 23 | 540 | 49.5/9/19.5 | 14 | 43/10.5 | 2.1 | 57% |
+| seedPriceMult 1.25 | 25 | 588 | 61/12/24 | 14 | 41.5/16.5 | 2.2 | 87% |
+| feedShareExpand 0.35 | 27.5 | 924 | 70/15.5/26.5 | 7 | 23.5/15 | 1.2 | 53% |
+| feedShareExpand 0.7 | 26 | 755 | 68/15/23 | 11 | 33/16 | 1.7 | 67% |
+| stanceConsolidateShare 0.25 | 20 | 648 | 52.5/10/24 | 12.5 | 44.5/16 | 2.2 | 87% |
+| stanceConsolidateShare 0.75 | 32.5 | 1,587 | 74.5/21.5/25.5 | 5.5 | 24/17 | 1.0 | 50% |
+
+The muster floor at 0.25 and 0.75 moves nothing (0.5's figures to the half-point): the floor is a share of the FP the play
+sent (`Play.plannedFP`, as `ThreatPlays`), so a muster that lost nothing en route always clears it. Section 14 takes that up.
+`threatinc_strikeReinforceWeight` 2 and 8 reproduce the base to the digit on both starts: `SwarmOps.strike` multiplies a
+relief target's weight by it, and the pick never turns on that weight, so the knob is not testable here.
+
+**Mid-war, 30 seeds.** Base 33.5 [14.8-49.1], 338 [294-373], 76/33.5/33, kills 0, 5/1.5, mutual 0, one-sided 73% (both 0%, quiet 0%) -
+round 17's cell again (33.5, 338). Hammers hardly fire from month 114 (10 plays, 5 paid, 0 kills a run), so the start is
+decided by links and guards, and the humans' accrual is the only lever that moves it: `warsim_accrualMult` 1.0 -> 11.5
+(round 17), 1.25 -> 20.5, 1.5 -> 33.5, 2.0 -> 42.5 (new game 21, 24.5, 28.5, 27.5 - it saturates at 1.5 there).
+
+| cell | humanScore | threatScore | bases f/h/d | paid/unpaid | note |
+|---|---|---|---|---|---|
+| shared 1.5 (both sides) | 20 | 867* | 104/20/74.5* | 1*/0.5 | one-sided 97% |
+| r relief to besiegers | 33.5 | 327 | 68.5/33.5/14* | 5/2.5 | destroyed bases halved, score flat |
+| e links wait on siege | 33 | 329 | 79.5/33/29.5 | 5.5/2 | |
+| upkeep x0.5 (diagnostic) | 36.5 | 339 | 87/36/36.5 | 8/3 | |
+| councilMajorPlayFP 2000 / 5000 | 34 / 31.5 | 325 / 345 | 80/33.5/28.5, 82.5/31/37 | 5/4, 4/1 | |
+| councilMusterFloor 0.25 / 0.75 | 33.5 | 338 | base to the digit | | inert (section 14) |
+| accrual 1.25 / 2.0 | 20.5 / 42.5 | 322 / 349 | 59.5/20/26, 91/42.5/36.5 | 3/1.5, 6.5/3 | |
+| seedPriceMult 0.75 / 1.25 | 33 / 34 | 409* / 294 | 79/33/36, 77.5/33/30 | 3.5/2, 4/1.5 | cheaper seeds: new game 540, mid 409 - the signs disagree |
+| feedShareExpand 0.35 / 0.7 | 33.5 / 33 | 338 / 365 | base, 81/32/34 | | 0.35 inert at mid-war |
+| stanceConsolidateShare 0.25 / 0.75 | 33 / 33.5 | 333 / 338 | 76.5/32/31, base | | 0.75 inert at mid-war |
+
+**60 seeds** (the cells nearest a win; new base 27.5 [16-40.5], 849 [546-2,264]; mid base 32.5 [14.9-49], 336 [293-372]):
+`warsim_huntMinShare` 0.1 new 30 (65% of seeds), mid 31.5 - noise; `warsim_reliefToBesiegers` new 28.5, mid 33.5, bases
+destroyed 25 -> 14* and 35 -> 14* - the only clear effect of the round, and the score does not follow it (fewer links sail,
+round 16); `threatinc_stanceConsolidateShare` 0.75 new threatScore 1,382 [637-2,364] against 849 (76% of seeds), humanScore
+32.5 above the base's p10, both-sides 53% against 65%, mid-war identical to the base - the one swarm candidate, not clear by
+the rule (medians inside each other's bands); a 120-seed new-game rerun would settle it.
+
+**Verdict: no change on either side.** The humans-only base holds round 17's figures on both starts; nothing clears it. The
+swarm's levers at hand (seed price, feed share, consolidate trigger, relief weight) are inert or mixed at mid-war; the new
+game shows one candidate (consolidate at 0.75) to rerun. Hypotheses for round 19: a humans-only income knob in the mod (the
+precondition for any of this to be buildable); the CONSOLIDATE share at 0.75 at 120 seeds; a hunt-share want of the
+hammer's own (section 14, so a muster floor can judge something); the relief rule paired with a cheaper link so the bases it
+saves are not paid for in links unsailed.
+
+## 14. Round 18 addendum: the muster floor judges nothing; what the hunts alone achieve (2026-10-02)
+
+In the mod and the mirror alike, `plannedFP` is the FP `force` actually sent (`councilHammerShare` x the payable FP, if at
+least 25 FP), so `councilMusterFloor x plannedFP` only fails a muster that lost ships en route: `hammer.underFloor` is 0 a
+run [0-1] on both starts. The hunts then sail whether or not the siege is paid ("the hunts go alone"). Counters split a
+hammer that reached STRIKE by whether its siege sailed (`HumanCouncil.end`, `Play.struck`/`sieged`): on the humans-only
+base, new game, 9 hammers a run [4.9-19.6] go alone against 28 [6-70] with a siege; the hunts alone take 0 worlds in every
+run and lose 1,142 FP of hunt fleets a run [321-3,036] (the sieged hammers take 1.5 [0-6.1] and lose 5,422 FP of hunts).
+Mid-war: 1 alone a run [0-6.2], 0 taken, 56 FP lost; 4.5 sieged, 0 taken [0-1]. The hunts alone are a pure loss: roughly a
+fifth of the hunt FP the hammers lose, no world taken.
+
+Three switches, off by default, 30 seeds on the humans-only base (humanScore new / mid; base 28.5 / 33.5):
+
+| switch | symbol | new | mid | what moved |
+|---|---|---|---|---|
+| (a) floor vs want | `warsim_musterFloorVsWant`, `HumanCouncil.floorBase` | 27 | 34 | fails 26 musters a run (of 57.5 hammers): paid sieges 30.5 -> 17.5, kills 8 -> 5, hunts alone 9 -> 2 |
+| (b) no hunts alone | `warsim_noHuntsAlone` | 30 (44% of seeds) | 30 | 9.5 stand-downs a run, hunts alone 0; kills 8 -> 13 (65%), paid 30.5 -> 37, plays 59 -> 75.5, mutual 1.3 -> 2.0 |
+| (c) hunt share >= 0.1 of the strongest world | `warsim_huntMinShare` | 33.5 (64%) | 30.5 | 2 plays a run fail at PREPARE; hunts alone 9 -> 7.5 |
+| (c) hunt share >= 0.25 | `warsim_huntMinShare` | 32 (59%) | 32.5 | 5.5 fail a run; hunts alone 9 -> 7.5 |
+
+(a) is wrong as a rule: the want `floorBase` compares against is the report-sized siege plus the hunt share, and the
+muster holds only the hunts, so it fails the plays whose siege the pools would have paid. The floor would need a want for the
+hunt share alone, which neither the mod nor the mirror defines. (b) does what it says - no hunt is lost alone - and the
+plays recycle faster (a stood-down play ends instead of watching), which lifts paid sieges and kills, but humanScore does
+not follow (median up, 44% of seeds). (c) at 0.1 is the best human cell of the round on the new game and is noise on the
+mid-war start; the 60-seed rerun is in section 13's verdict.
