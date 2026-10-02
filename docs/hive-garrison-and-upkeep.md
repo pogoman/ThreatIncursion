@@ -341,14 +341,14 @@ forward base, commodity-bound the way vanilla's economy is.
 - **Feeding order** (`feed`, each poll, out of the production of the days fed after the fleets
   away are paid):
   1. Sustenance: the break-even share of every colony, forge worlds first, then the worlds nearest
-     the humans - up to the largest stance share of the production (`sustainShare`, 0.9), never
+     the humans - up to the largest stance share of the production (`sustainShare`, 0.7), never
      more. The hive always keeps a tithe for forges, waves and fleets: h35a let sustenance take
      everything, and the base save's hive shrank until it did (26k of 29k a month) with nothing
      left to buy the forges that would have fed it again. The leeway is the half level below its
      size a colony's progress runs before the size goes (below), not the stock: a raided forge
      stops growth at once and costs sizes only if it stays down.
   2. Growth: the rest of each colony's upkeep, out of its stance's share (`feedShare`: expanding
-     0.5, pressing 0.7, consolidating 0.9), to a colony only while that share still holds its next
+     0.5, pressing 0.7, consolidating 0.5), to a colony only while that share still holds its next
      size's sustenance. Forges whose next size adds more output than sustenance first; then
      pressing feeds the front, consolidating the biggest worlds, expanding the smallest. A stance
      change never starves anyone - sustenance keeps its 0.9 - it only moves what growth gets.
@@ -403,5 +403,6 @@ forward base, commodity-bound the way vanilla's economy is.
 - **Settings:** `sizeUpkeep` (true; off restores vitality growth, retooling, the free founding
   structures and links that grow on shortage-free days), `sizeUpkeepAt3` (100), `sizeUpkeepRatio`
   (2.5), `upkeepBreakEven` (0.5), `starveDaysPerSize` (90), `feedShareExpand` / `feedSharePress` /
-  `feedShareConsolidate` (0.5 / 0.7 / 0.9).
+  `feedShareConsolidate` (0.5 / 0.7 / 0.5; consolidating was 0.9 until the simulator's round 20,
+  `war-sim-rounds.md` 16 - the largest of the three is `sustainShare`).
 

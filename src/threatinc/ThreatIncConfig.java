@@ -452,7 +452,7 @@ public class ThreatIncConfig {
 	/** Reserve banked per 30 days per unit of vanilla SURPLUS (availability above demand): surplus units x the commodity's econ unit x this (docs/economy-coherence.md rule 1). */
 	public static float reserveSurplusMult() { return f("threatinc_reserveSurplusMult"); }
 	public static float reserveTroopSurplusMult() { return f("threatinc_reserveTroopSurplusMult"); }
-	/** The hive's banking rate per unit its plants and forges make (ThreatFuel.perMonth, ThreatColonyUpkeep): split from reserveSurplusMult 2026-10-02, when the war simulator's round 18 showed the shared knob at 1.5 fed the swarm more than the humans (docs/war-sim-humans.md 13). */
+	/** The hive's banking rate per unit its plants and forges make (ThreatFuel.perMonth, ThreatColonyUpkeep): split from reserveSurplusMult 2026-10-02, when the war simulator's round 18 showed the shared knob at 1.5 fed the swarm more than the humans (docs/war-sim-rounds.md 13). */
 	public static float hiveSurplusMult() { return f("threatinc_hiveSurplusMult"); }
 	/** A frontline link is founded only with a garrison to hold it, which stays as long as the link stands. */
 	public static boolean frontlineGarrisonEnabled() { return b("threatinc_frontlineGarrisonEnabled", true); }
