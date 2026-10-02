@@ -18,6 +18,8 @@ public final class World {
 	/** A base fleets stage from (IncursionManager.isBase). */
 	public boolean base;
 	public float defence;
+	/** The colony's garrison proper (ThreatGroundFronts.colonyGarrison): the dump's defence less its armed marines; -1 unknown. */
+	public float garrison = -1f;
 	/** What the strike gate reads (the dump's "gate": the system's fleets and the world's station, vanilla units); -1 in a dump older than round 23, where the ground figure stands in. */
 	public float gate = -1f;
 	/** True once the faction has a reserve here (mobilised). */

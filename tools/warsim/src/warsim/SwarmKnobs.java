@@ -82,7 +82,14 @@ final class SwarmKnobs {
 		pathNeverMobilises = k.b("warsim_pathNeverMobilises", false);
 		postureLoop = k.b("warsim_postureLoop", true);
 		strikeDefends = k.b("warsim_strikeDefends", true);
+		guardSwarmsPerFleet = k.f("warsim_guardSwarmsPerFleet", 1.42f);
+		guardFeedsFront = k.b("warsim_guardFeedsFront", true);
+		fabricate = k.b("threatinc_fabricateEnabled", true);
+		fabricateTroopsPerFP = Math.max(0.01f, k.f("threatinc_fabricateTroopsPerFP", 10f));
+		fabricateHoldMargin = Math.max(1f, k.f("threatinc_fabricateHoldMargin", 1.05f));
+		guardFirstPackMult = k.f("warsim_guardFirstPackMult", 1f);
 		strikeWaitBooksFuel = k.b("threatinc_strikeWaitBooksFuel", true);
+		strikeWaitBooksWhole = k.b("warsim_strikeWaitBooksWhole", false);
 		holdsBookMonthly = k.b("warsim_holdsBookMonthly", true);
 	}
 
@@ -98,6 +105,23 @@ final class SwarmKnobs {
 	final boolean postureLoop, strikeDefends;
 
 	/**
+	 * The guard a landing strike leaves is its first fleet (ThreatStrikeFGI.guardUnspawned): a strike of n swarms flies as
+	 * round(n / warsim_guardSwarmsPerFleet) fleets, and the first, the largest, is warsim_guardFirstPackMult times the
+	 * even share. warsim_guardSwarmsPerFleet 0 parks the whole strike.
+	 */
+	final float guardSwarmsPerFleet, guardFirstPackMult;
+
+	/**
+	 * warsim_guardFeedsFront (true) - a guarded landing on a colony at war fights the front engine (SwarmOps.threatFrontDay)
+	 * and its guard breaks hulls into troops while the front cannot hold (SwarmOps.feed, ThreatGroundFronts.fabricateTroops:
+	 * threatinc_fabricateTroopsPerFP troops a point, up to the hold line x threatinc_fabricateHoldMargin). Run hw4d's guards
+	 * turned 4,153 FP into 41,718 troops and the fronts outlasted the defenders' marines; the overrun clock cannot. false: the
+	 * clock for every landing, as before.
+	 */
+	final boolean guardFeedsFront, fabricate;
+	final float fabricateTroopsPerFP, fabricateHoldMargin;
+
+	/**
 	 * Round 26: warsim_holdsBookMonthly (true) - a held send books its unpaid bill as demand on the stock once a
 	 * SHORT_DAYS a source (SwarmEconomy.bookHold, the game's ThreatFuel.bookHold), and a held reinforcement books its
 	 * passage, and a muster no world's passage is paid for books nothing (IncursionManager.pickStrikeTarget skips the
@@ -111,6 +135,8 @@ final class SwarmKnobs {
 	 * the cheapest passage as demand, once a SHORT_DAYS a source (IncursionManager.pickStrikeTarget, ThreatFuel.held).
 	 */
 	final boolean strikeWaitBooksFuel;
+	/** warsim_strikeWaitBooksWhole (false): book the whole cheapest passage, as run hw4d's jar did; false books what the stock is short of it (ThreatFuel.heldShort). */
+	final boolean strikeWaitBooksWhole;
 
 	/**
 	 * Round 24 (2026-10-02 night), three places the simulator's swarm was not the game's, each with its old behaviour

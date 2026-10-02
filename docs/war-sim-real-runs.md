@@ -219,3 +219,44 @@ The run sits between hw4 and hw4b on every swarm figure - inside the noise of se
 what the fix does to the war's course. Guards (`digest-hw4c.txt`): 61 calls to a front link, 14 to a rear link, 10
 links faced a strike with no guard called. Postponements: 417, all provisions. 106 strikes ended unspawned and
 re-banked.
+
+## 7. hw4d (2026-10-02 late, overnight): the user's three rules, and the swarm wins
+
+A fifth clone (`...ng6`), the jar of 49ca0e2: every faction mobilises at phase 3, a strike waiting on fuel books
+its passage, an unspawned strike guards its landing. To war day 3,793 (month 125; the first leg stopped at 3,469 and
+a second ran on from its quicksave). Dumps `tools/warsim/validation/hw4d`, log `ti-hw4d.txt`. No mod exception.
+
+| | hw4c m108 | hw4d m108 | hw4d m125 |
+|---|---|---|---|
+| hives | 179 | 143 | 243 |
+| garrison FP | 189k | 129k | 299k |
+| human worlds lost | 8 | 25 | 51 (5 left) |
+| hives killed | 0 | 5 | 5 |
+| sieges sailed / landed | 4 / 1 | 13 / 5 | 13 / 5 |
+| swarm strikes / landings | 127 / 56 | 252 / 111 | 295 / 125 |
+| fuel plants / forges | 25 / 104 | 50 / 66 | 41 / 155 |
+| swarm fuel in stock | 71k | 447k | 3,522k |
+| first mobilisation | month 44 | month 35, all seven | |
+
+**All three rules fired.** Phase 3 came on day 1,066 and mobilised all seven factions in one notice (hw4c: day
+1,320 for five, the Diktat at 3,000). 196 strike guards (first on day 1,361), 264 strikes ended unspawned, 30
+spawned. 143 fuel holds booked from 25 hives.
+
+**The humans held every colony to day 3,030, then lost 38 in 700 days.** Falls by notice: six to day 1,890, none
+to 3,000, then one to five a month. The Hegemony went from 12 colonies to 2, the Persean League and Tri-Tachyon to
+none. What changed is the guard: it bombards, then breaks its hulls into troops while its front cannot hold
+(`ThreatGroundFronts.fabricateTroops`, 10 troops a point). 217 break-ups turned 4,153 FP into 41,718 troops (hw4c:
+31, 720 FP, 7,296 troops), 145 of them after day 2,900. Guarded landings ended 16 taken, 7 ground down, 41 overrun
+before day 2,900, and 30 taken, 9 ground down, 2 overrun after. The fronts the guards keep alive bleed the
+defenders' marines (Persean 19k on day 2,300 to 3k on 3,032, Hegemony 31k to 12k by 3,275), and once those are
+gone the garrisons cannot overrun anything.
+
+**The fuel booking overshot.** It booked the whole muster's passage, which grows with the garrison, once a
+`SHORT_DAYS` per staging hive. The planner answered with plants: production 42k a month at month 48 (hw4c 12k),
+stock 271k at month 60 and 3.5M at month 125, while strikes still waited. The stock also pays every guard's
+bombardment (`ordnanceAvailable` reads it), so nothing ran them dry. Fixed the next morning: book only the
+shortfall, the passage less the stock (`ThreatFuel.heldShort`).
+
+**The simulator missed it, then caught it.** It had no hull break-up and its fronts used a guess of 15 garrison a
+size (Sindria 105 against the game's 3,120). With both fixed (`war-sim-calibration.md` 12) it puts worlds lost at
+9 / 20 / 40 at months 84 / 108 / 125 against the game's 7 / 25 / 51.

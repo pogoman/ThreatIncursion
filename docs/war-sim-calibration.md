@@ -395,6 +395,48 @@ humans' p10 falls under the base's. Together the swarm ends at about 40% of its 
 third up; the war is two-sided in three seeds in four. `check` against hw4a-c is not re-run: the game runs were on
 the old rules, so the new defaults are expected to miss the swarm rows until a run on this jar.
 
+## 12. Round 29: hw4d, the guards' troops, and the colonies' real garrison (2026-10-03 night)
+
+Run hw4d on the round-28 jar (`war-sim-real-runs.md` 7) lost 51 human worlds by month 125, 38 of them after day
+3,000; `check` with the round-28 simulator put it at 9 [6-10]. Three faults, all in the simulator, and one
+overshoot in the mod:
+
+- **No hull break-up.** A guard that bombarded what it can breaks its hulls into troops while its front cannot hold
+  (`ThreatGroundFronts.fabricateTroops`, 10 a point, up to the hold line x 1.05). hw4d: 4,153 FP became 41,718
+  troops. Now `SwarmOps.feed`, and a guarded landing on a colony at war fights the front engine
+  (`threatFrontDay`) rather than the overrun clock: `warsim_guardFeedsFront` true.
+- **A guessed garrison.** The engine's colony was 15 a size plus marines; the game's is vanilla's ground defence
+  (`colonyGarrison`), Sindria 3,120 against 105. Now the dump's `defence` less its armed marines (`World.garrison`,
+  `Start`), `warsim_colonyGarrison` true. This is why `warsim_coloniesFall` over-predicted losses in round 26.
+- **Every strike landed.** The game sizes a first landing to outlast the first counter-attack
+  (`ThreatStrikeFGI.beachheadLanding`: `beachheadTroops`, the shortfall broken out of the hulls, held back if
+  they cannot make it). Now in `SwarmOps.land`, `warsim_beachheadRule` true.
+- **The guard's size** is its first pack: `warsim_guardSwarmsPerFleet` 1.42 (hw4d: 5.6 fleets a strike); about 0.20
+  of a strike's FP stays (game 0.17-0.22).
+- **The mod: fuel booked whole.** The waiting muster booked its whole passage each `SHORT_DAYS`; hw4d's plants
+  made 63k a month against 31k spent at month 60. Now the shortfall (`ThreatFuel.heldShort`). In the simulator
+  the two bookings do not differ (60 seeds, 130 months: worlds lost 42.5 against 44): its fuel piles up only after
+  a collapse, with nothing left to strike.
+
+`check`, 30 seeds (hw4d with `warsim_strikeWaitBooksWhole=true`, its jar's booking; hw4c with the round-27 rules):
+
+| | hw4d inside | hw4d worlds lost m84 / m108 / m125 | hw4c inside | hw4c landings m108 |
+|---|---|---|---|---|
+| game | | 7 / 25 / 51 | | 56 |
+| round 28 | 327 of 422 | 4 / 7 / 9 | | |
+| + break-up and engine | 311 | 16 / 39.5 / 54 | | |
+| + garrison | 304 | 9 / 20 / 40 | 278 of 378 | 143 |
+| + beachhead | 340 | 9 / 22 / 41.5 | 288 | 149 |
+
+Still out: the strikes and landings of a run without fuel booking (hw4c month 108: strikes 127 | 241, landings
+56 | 149). hw4d's strikes match (252 | 269): the booking raised the game's strikes to the simulator's, so the gap
+is the old rule's fuel, not the landing pass.
+
+Options for the collapse, 60 seeds from the new game to month 130 (`r31`, before the beachhead rule): guards that
+do not feed their fronts, worlds lost 10 against 44 (clear), humanScore 24 against 16; the rules before round 28,
+10 against 44, humanScore 19.5 against 16, threatScore 4,045 against 4,097. The break-up rate does not matter: 5 or
+2.5 troops a point both lose 39 worlds, the guards just spend more hulls.
+
 ## 10. Scripts (machine-local, `%TEMP%\threatinc-tests`)
 
 `hivemix.pl <dump dir> <war days>` counts the hives' industries by size at the dumps nearest the days;

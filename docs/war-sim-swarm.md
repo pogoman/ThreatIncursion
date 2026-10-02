@@ -328,12 +328,17 @@ no mod symbol behind them, test whether that is the whole story (`SwarmKnobs.bas
 - `warsim_coloniesFall`: a landing on a colony at war fights `SwarmOps.threatFrontDay`, `HumanSiege.frontDay`
   mirrored for a Threat-owned front (no armaments, pushing losses x `threatPushLossMult`, a district per
   `frontPushBaseDays` at the pace, counter-attacks on the hive clock, overrun at 2:1) against
-  `SwarmOps.colonyDefence`: `SwarmFit.COLONY_GROUND_PER_SIZE` 15 a size plus the reserve marines of `World.stock`
+  `SwarmOps.colonyDefence`: the colony's garrison (`World.garrison`, the dump's `defence` less its armed marines,
+  since round 29; `warsim_colonyGarrison=false` is the old `SwarmFit.COLONY_GROUND_PER_SIZE` 15 a size) plus the reserve marines of `World.stock`
   (x `reserveDefenseMult`), whole when holding and at `MARINE_COUNTER_ATTACK_MULT` 0.25 when counter-attacking;
   the defenders bleed `defenderLossPer30Days` of the engaged and `defenderCounterAttackLossFraction` a
   counter-attack. A reinforcing pass adds troops (`SwarmOps.land`). Worlds with no reserve keep the `groundDays`
   clock. Counters `threatFrontsEngine`, `coloniesFallen`, `threatFrontsCollapsed`, `colonyCounterAttacks`,
-  `threatStrataTaken`. `Main.outcome` also classes a run back-and-forth on `reversals` at
+  `threatStrataTaken`. Since round 29 a GUARDED landing on a colony at war fights it whatever this switch says
+  (`warsim_guardFeedsFront` true), its guard breaking hulls into troops while the front cannot hold (`SwarmOps.feed`,
+  counters `fpFabricated`, `troopsFabricated`), and every first landing is sized to outlast the first counter-attack
+  (`warsim_beachheadRule` true, `SwarmOps.beachheadTroops`; `fpFabricatedBeachhead`, `strikeLandingsHeldBack`) -
+  `war-sim-calibration.md` 12. `Main.outcome` also classes a run back-and-forth on `reversals` at
   `BACK_AND_FORTH_REVERSALS_PER_YEAR` 1 (9 in 104 months, 4 in 48).
 
 Result, 30 seeds, median (clear = outside the seed noise). New game 104 months, council: A moves only bases

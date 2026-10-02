@@ -24,8 +24,8 @@ system per 30 days, and no global cap ("the bank is the limit").
 - Target filter: `isStrikeableWorld`, core worlds only at phase 3, `playerGraceDays` 120, `warOpen`
   (before phase 3 only factions at war, grudged or never mobilising), one strike per world
   (`isActiveStrikeTarget`), `swarmKnows` and, under the swarm's fog, `strikeSeen`;
-  `ThreatFuel.canPay` the passage (a muster every world of which waits only on fuel books the cheapest
-  passage as demand, `ThreatFuel.held("strike from ..")`, knob `strikeWaitBooksFuel`, 2026-10-02); `strikeOutweighed` skips a world whose defence >= (strike + the
+  `ThreatFuel.canPay` the passage (a muster every world of which waits only on fuel books what the stock is short of the cheapest
+  passage as demand, `ThreatFuel.heldShort("strike from ..", passage)`, knob `strikeWaitBooksFuel`, 2026-10-02; the shortfall alone since 2026-10-03); `strikeOutweighed` skips a world whose defence >= (strike + the
   swarm's own strength already in that system) x `siegeBreakOffRatio` 1.0.
 - Weight: `strikeValue` (size squared or a link's weight, x (1 + 0.2 x grudge)) /
   `ThreatReach.strikeDays` (4 x ly + prep) x `ThreatStance.strikeTargetMult`. A 0-ly world weighs

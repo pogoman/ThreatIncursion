@@ -984,7 +984,6 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		float share0 = ledgerShare();
 		float held = ledgerPaid * share0;
 		if (entry == null || planned <= 0 || held <= 0f) return;
-		float share = held * entry / planned;
 		Float damage = getRoute() != null && getRoute().getExtra() != null ? getRoute().getExtra().damage : null;
 
 		// the pack spawnFleets would have built for this entry
@@ -997,6 +996,20 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 				}
 			}
 		}
+		// its share of what the strike holds, by what its swarms are expected to
+		// weigh against the rest's: by size points the first, largest pack came
+		// out at 1.35 times its share (run hw4d, 191 guards), the bank paying the rest
+		float weight = entry, total = planned;
+		if (pack != null) {
+			float all = 0f;
+			for (List<Integer> p : packs) all += estimateFP(p);
+			float mine = estimateFP(pack);
+			if (all > 0f && mine > 0f) {
+				weight = mine;
+				total = all;
+			}
+		}
+		float share = held * weight / total;
 		float before = ledgerBuilt;
 		packsLeft = new ArrayList<List<Integer>>();
 		if (pack != null) packsLeft.add(pack);

@@ -188,7 +188,9 @@ fleet on `ThreatSwarmDefend`; an unspawned one went home after the pass (`Strike
 117-174 a run in hw4). Now `ThreatStrikeFGI.stayOnDefend` with no fleet calls `guardUnspawned`: the strike's
 first `params.fleetSizes` entry - the pack `spawnFleets` would build - is built over the world and put on
 Defend, one guard a world a strike. The entry leaves the strike (`fabricatedFP` scaled so `ledgerShare` holds);
-the bank pays the guard beyond its share of what the strike held or takes back what it fell short, as at a
+its share of what the strike held is weighted by `estimateFP` of its pack against all packs (by size points
+until 2026-10-03, which built guards at 1.35x their share in hw4d against 0.96x for a spawn); the bank pays the
+guard beyond that share or takes back what it fell short, as at a
 spawn, and the guard re-banks on despawn (ledger-bound). A strike whose every entry stayed passes no more
 (`abstractSpent`, checked in `AnnihilationAction.performRaid`). Unlike the humans' `coverFP`, the swarm's
 guard is a real fleet, so every reader of a live Defend station applies. Log: `Strike guard over X`.
