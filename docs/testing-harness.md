@@ -218,7 +218,8 @@ the `resolution` pref is `1600x900` (restore 3440x1440 after). What differs from
 - The launcher is 805x503 at 100% scaling; `launch.ps1` now clicks Play at its share of whatever
   size the launcher has and retries while the launcher is still up.
 - The main menu sits elsewhere: Continue (1290,256), New Game (1298,387) - pass
-  `launch.ps1 -ContinueX 1290 -ContinueY 256`. The new-game screens too: character Continue
+  `launch.ps1 -ContinueX 1290 -ContinueY 256`. The new-game screens too: Generate (1106,237)
+  when the name field is empty (run hw4: Continue does nothing without a name), character Continue
   (330,645), the mercenary start (700,744), Normal (350,645), Skip it (340,678), then a skill
   screen with Start game (344,382). Generation takes under a minute.
 - A screen grab of the game window is white (`ui.ps1 -Action shot`, and so `run.ps1`'s per-chunk
