@@ -35,6 +35,8 @@ public final class Faction {
 	public int stance, stanceSince = Integer.MIN_VALUE / 2, lastStanceDay = Integer.MIN_VALUE / 2, trendDay;
 	public float trendLost, trendKilled;
 	/** Timing marks, days since the run began (-1 = not yet): the calibration targets of docs/war-sim-humans.md. */
+	/** HumanCouncil.Council, while a war council governs the faction. */
+	public Object council;
 	public int firstBaseDay = -1, firstSiegeDay = -1, firstLandingDay = -1, firstKillDay = -1;
 
 	@Override public String toString() { return id; }

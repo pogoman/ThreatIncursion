@@ -20,13 +20,14 @@ import java.util.stream.Stream;
  * warsim compare -a k=v[;k=v] -b k=v[;k=v] [-seeds N] [-months N]
  * warsim check   -dumps A [-log a.txt] [-dumps2 B [-log2 b.txt]] [-seeds N]   (two real runs: coverage of both, and bias)
  * warsim check   -dumps folder [-seeds N]      the simulator beside a real run's monthly dumps
- * Common: -start folder (threatinc_simmap.json + a threatinc_simdump_d*.json; default tools/warsim/start),
+ * Common: -show col,col (more columns: any counter),
+ *         -start folder (threatinc_simmap.json + a threatinc_simdump_d*.json; default tools/warsim/start),
  *         -settings file, -set key=value (repeatable), -killWeight x, -sizeExponent x.
  */
 public final class Main {
 
 	/** The columns the batch, compare and check tables print. */
-	static final String[] SHOWN = { "hives", "hiveSize", "garrisonFP", "bank", "swarmFuel", "swarmSupplies",
+	static String[] SHOWN = { "hives", "hiveSize", "garrisonFP", "bank", "swarmFuel", "swarmSupplies",
 			"worlds", "basesHeld", "basesFounded", "basesDestroyed", "hivesFounded", "hiveLevels", "hivesKilled",
 			"worldsLost", "siegesSailed", "siegesLanded", "strikesLaunched", "threatScore", "humanScore",
 			"turnover", "swings", "deadYears" };
@@ -65,6 +66,12 @@ public final class Main {
 			else if (o.equals("-set")) sets.add(args[++i]);
 			else if (o.equals("-a")) a = args[++i];
 			else if (o.equals("-b")) b = args[++i];
+			else if (o.equals("-show")) {
+				// more columns (any counter) for the run, batch and compare tables: -show plays.HAMMER,plays.HAMMER.success
+				List<String> all = new ArrayList<String>(Arrays.asList(SHOWN));
+				all.addAll(Arrays.asList(args[++i].split(",")));
+				SHOWN = all.toArray(new String[0]);
+			}
 			else if (o.equals("-killWeight")) killWeight = Float.parseFloat(args[++i]);
 			else if (o.equals("-sizeExponent")) sizeExponent = Float.parseFloat(args[++i]);
 			else throw new IllegalArgumentException("unknown option " + o);
@@ -75,6 +82,10 @@ public final class Main {
 		String cmd = args[0];
 		if (cmd.equals("check")) {
 			if (dumps == null) throw new IllegalArgumentException("check needs -dumps <folder>");
+			// the real runs the gates are checked against (pd9a, pd10a) are planner runs: the council is off unless -set says otherwise
+			boolean said = false;
+			for (String s : sets) if (s.startsWith("threatinc_warCouncil")) said = true;
+			if (!said) knobs.set("threatinc_warCouncil=false");
 			if (dumps2 == null) {
 				check(dumps, knobs, seeds, killWeight, sizeExponent, log, null);
 			} else {
