@@ -387,3 +387,55 @@ ceiling test (e) buys forward bases, not sieges, and halving guard upkeep (b) do
 sieges is who can be called on (c, 36.5 paid, 1.5 a year) because a siege's supplies are the one faction's callable
 stock while the forward-base line spends first. Holding hunts for the siege (a) helps nothing: hunts take 4% of the
 supplies. Lowering the orbit margin cuts the FP need but the supplies want scales with the fleet it still needs.
+
+## 10. Round 15: allocation rules for the siege's supplies (2026-10-02)
+
+Five rules the mod could hold, each a switch off by default, no fitted constants. All take `HumanPools.gives(.., what)`: a
+non-siege payment of supplies is cut by `HumanPools.reserve(s, depot, what)`, the purpose being the round-14 ledger's name
+(`forwardLine`: link, guardVoyage, guardUpkeep, baseUpkeep). `HumanBases.plan`, `cannotGuard` (`spareFor`) and the garrison
+upkeep pass their purpose; `drain` (fleet upkeep) and every siege payment (`siege=true`) are untouched.
+
+- (a) `warsim_siegeReserve`: a staging play's siege has first call. `HumanCouncil.reserveSiege` (daily, after `advance`)
+  sizes the first live world of every hammer or feint in PREPARE or MUSTER as `strike` will (`HumanPlanner.size` on the
+  faction's report), sums the supplies wanted to `Faction.siegeWant`, and spreads it over the faction's depots by their
+  callable supplies (`World.siegeReserve`); the forward-base line spends only what is left. Counters `siegeReserveDays`,
+  `siegeWant.paidDays` / `.unpaidDays` (faction-days a staging siege was / was not affordable).
+- (b) `warsim_siegeSplit` (0.25, 0.5): a standing share of each depot's callable supplies kept from every non-siege purpose.
+- (c) `warsim_maxLinks` (2, 4): `HumanBases.plan` founds no link while the faction holds that many forward bases (`linkCapped`).
+- (d) `warsim_strategyReserve`: (b)'s share set by the council's strategy (`HumanCouncil.reserveShare`: Hold 0, Starve and
+  Rollback 1/3, Decapitate 1/2; 0 under the planner).
+- (e) `warsim_linkWaitsForSiege`: no new link while `Faction.siegeUnpaid` (any staging siege of (a)'s sizing unaffordable
+  today; `linkHeldForSiege`).
+
+Ranked by the humans' own score (facts.md "The data decides balance"): `humanScore` = bases held + killWeight x hives killed,
+killWeight 1, subject to `threatScore` not under the base's p10 and the quiet and stalemate shares not above the base's;
+`mutual`, `turnover`, `deadYears` and the classes are diagnostics. The base cell is round 14's exactly.
+
+30 seeds, council on, radar off, planner sizing; new game 104 months (base `threatScore` p10 560) and mid-war 48 months
+(p10 263). humanScore / threatScore, bases founded / held, hives killed, hammers paid / unpaid, mutual, classes
+(both-sides / one-sided / other). * = clear of the base's seed noise (`Main.compare`).
+
+| cell | new game | mid-war |
+|---|---|---|
+| base | 21 / 842, 52.5 / 12, 6, 27 / 14.5, 1.0, 53 / 20 / 27 | 11.5 / 307, 38.5 / 11.5, 0, 3.5 / 1.5, 0, 0 / 73 / 27 |
+| a first call | 18 / 835, 53 / 12, 4, 18 / 14, 0.6, 43 / 27 / 30 | 12.5 / 313, 41.5 / 12, 0, 3.5 / 2.5, 0, 0 / 77 / 23 |
+| b split 25% | 18 / 921, 49 / 12, 5, 16.5 / 9.5, 0.8, 37 / 27 / 37 | 11.5 / 301, 36.5 / 11.5, 0, 3 / 1, 0, 0 / 83 / 17 |
+| b split 50% | 15.5 / 794, 43 / 9, 4, 20 / 12.5, 0.6, 37 / 20 / 43 | 10.5 / 296, 31.5 / 10.5, 0, 4 / 1, 0, 0 / 80 / 20 |
+| c cap 2 | 10.5 / 807, 28* / 6*, 5.5, 20.5 / 13.5, 0.9, 50 / 17 / 33 | 7 / 300, 18* / 6.5, 0, 4 / 3, 0, 0 / 67 / 33 |
+| c cap 4 | 15.5 / 815, 45 / 10.5, 5, 21 / 13.5, 0.8, 47 / 20 / 33 | 11 / 301, 30.5 / 10, 0, 4 / 2, 0, 0 / 70 / 30 |
+| d by strategy | 17 / 775, 49.5 / 11, 5, 16 / 12.5, 0.8, 37 / 17 / 47 | 12.5 / 298, 36 / 12.5, 0, 3.5 / 2, 0, 0 / 80 / 20 |
+| e link waits | 20.5 / 802, 52 / 11, 6.5, 25.5 / 14, 1.1, 53 / 20 / 27 | 14 / 299, 38 / 14, 0, 5 / 2, 0, 0 / 80 / 20 |
+
+Reading. No cell raises the humans' score from a new game; every reserve (a, b, d) lowers paid hammers (27 -> 16-20) rather
+than raising them, and the caps (c) only cost bases. The mechanism: a hammer needs a base of the faction in the cluster's
+range (`startHammer`'s `baseOf`), and the forward bases are what put one there - so what starves the forward-base line starves
+the hammers with it (`plays.HAMMER` 52 -> 32-42 under a, b, d). First call (a) had a reserve standing 2,749 faction-days but
+the staging siege was already affordable on 2,003 of them: the unpaid hammers are unpaid at `strike`, not at staging, and
+the stock they lack is not what links spent since. Only e holds the base's score (20.5 / 21 new game; 14 / 11.5 mid-war,
+70% of seeds, not clear) because it holds few links back (20.5 a run). At 60 seeds e is noise too: new game 19 against 18
+(56% of seeds), mid-war 13 against 12 (63%), paid hammers 21.5 against 25 and 3 against 3. Kill weight: at 0 the score is bases held, where
+nothing beats the base from a new game and e leads mid-war; at 2 no cell's kills (4-6.5 against 6) change the order.
+Bases held moved up only in e mid-war; down in b50 and both caps. Verdict: no change to the mod. Next hypotheses: a counter-
+siege or relief sized to the enemy at the base (round 8's missing answer); the siege's own supplies want (trip upkeep in
+`ReachRules.siegeSuppliesPerPoint`) against what the mod actually draws; and why `strike.unpaid` is flat at 14 under every
+allocation - what those hammers' bases hold on the day, by `strike.shortBy`.
