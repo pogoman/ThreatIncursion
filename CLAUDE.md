@@ -7,6 +7,16 @@ doc section it names, then the source. In session 18c7e7b4 (2026-10-01), 20-40 m
 research agents re-derived answers that were already in the docs, and the user had to repeat
 decisions three times. `docs/README.md` indexes the topic docs.
 
+**Finding code is a grep, not an agent** (user's rule 2026-10-02). `docs/symbols.md` is generated
+at every build (`tools/gen-symbols.pl`): one line per method of `src/threatinc`, as
+`Class.method(params) :line - what it does`, 3,500 of them. To find where something is decided,
+Grep it for a word of the behaviour ("landing", "bounty", "upkeep") or the symbol, then Read that
+method at its line (`offset` / `limit`, 60-150 lines) in the main thread. Never read
+`symbols.md` whole (400 KB) and never send an agent to "map" or "find" code: an agent starts
+with nothing and spends 30-60 minutes re-reading 6,000-line classes. A method with no javadoc
+shows without a description - when you work out what one does, add its one-sentence javadoc so
+the next grep finds it.
+
 Quick facts:
 - Build: `compile.ps1` (JDK on PATH) writes `jars/ThreatInc.jar`. The game locks the
   jar while running - close it (or kill `java.exe`) before building. Run it out of process
@@ -65,7 +75,9 @@ Keep the main context lean - this codebase is large and discovery fills the wind
 
 - Look up first (top of this file). A question `facts.md` or a doc section answers needs no
   agent; at most a grep to confirm the symbol still says so.
-- Delegate the rest of discovery and any simple, self-contained legwork to a subagent
+- Locating code is never delegated (grep `docs/symbols.md`, above). Delegate only bulk reading
+  that would flood the window - a run's log, a set of dumps, screenshots - and self-contained
+  legwork, to a subagent
   (`Explore` for read-only searches, `general-purpose` for multi-step lookups). The subagent
   reads the files in its own context and returns just the conclusion, so the main window only
   pays for the answer, not the file dumps. Reach for this whenever answering means
