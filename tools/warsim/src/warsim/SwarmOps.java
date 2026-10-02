@@ -577,7 +577,9 @@ final class SwarmOps {
 					// game booked nothing - hw4 logged no "strike from .. held" in 115 months). Every poll before round 26
 					if (!k.holdsBookMonthly) SwarmEconomy.noteDemand(s, Swarm.FUEL, unpaid);
 					else if (k.strikeWaitBooksFuel && only == null && SwarmEconomy.bookHold(s, k, "strike " + from))
-						SwarmEconomy.noteDemand(s, Swarm.FUEL, unpaid);
+						// ThreatFuel.heldShort: the shortfall alone (warsim_strikeWaitBooksWhole: the whole passage, run hw4d's jar)
+						SwarmEconomy.noteDemand(s, Swarm.FUEL, k.strikeWaitBooksWhole ? unpaid
+								: Math.max(0f, unpaid - SwarmEconomy.stock(s, Swarm.FUEL)));
 					s.count("strikesHeldForFuel", 1);
 				}
 				return false;
@@ -726,6 +728,22 @@ final class SwarmOps {
 			s.log("Strike pass (reinforce) vs " + w.name + ": " + (int) troops + " troops");
 			return true;
 		}
+		if (s.knobs.b("warsim_beachheadRule", true)) {
+			// ThreatStrikeFGI.beachheadLanding: a first landing is sized to outlast the world's first counter-attack, the
+			// shortfall broken out of the strike's hulls; a strike without the hulls for it is held back
+			float need = beachheadTroops(s, w);
+			if (troops < need) {
+				float perFP = Math.max(0.01f, s.knobs.f("threatinc_fabricateTroopsPerFP"));
+				float fp = (need - troops) / perFP;
+				if (!s.knobs.b("threatinc_fabricateEnabled", true) || fp > p.fp - GUARD_SPARED_FP) {
+					s.count("strikeLandingsHeldBack", 1);
+					return false;
+				}
+				p.fp -= fp;
+				troops = need;
+				s.count("fpFabricatedBeachhead", fp);
+			}
+		}
 		l = new Swarm.Landing();
 		l.troops = troops;
 		l.landedDay = s.day;
@@ -740,8 +758,33 @@ final class SwarmOps {
 	 * until the front ends; away from home it burns supplies all the while (SwarmEconomy, burns). The
 	 * world is free for the next strike's reinforcing pass.
 	 */
-	static void defend(State s, Parcel p) {
+	static void defend(State s, SwarmKnobs k, Parcel p) {
 		release(s, p);
+		// the game leaves one fleet - the first, largest pack - over the landing and sends the rest home
+		// (ThreatStrikeFGI.stayOnDefend / guardUnspawned); warsim_guardSwarmsPerFleet 0 parks the whole strike
+		if (k.guardSwarmsPerFleet > 0f) {
+			int swarms = Math.max(1, orderOf(s, p).swarms);
+			int fleets = Math.max(1, Math.round(swarms / k.guardSwarmsPerFleet));
+			float stay = p.fp * Math.min(1f, k.guardFirstPackMult / fleets);
+			if (stay < p.fp - 1f) {
+				float rest = p.fp - stay;
+				p.fp0 *= stay / p.fp;
+				p.fp = stay;
+				Hive home = orderOf(s, p).home;
+				if (home == null || home.dead) {
+					home = null;
+					for (Hive h : s.hives) if (!h.dead && (home == null || h.sys.ly(p.to) < home.sys.ly(p.to))) home = h;
+				}
+				if (home != null) {
+					Parcel back = s.send(Parcel.THREAT, Parcel.Kind.REINFORCEMENT, p.to, home.sys, rest, 0);
+					Rebank r = new Rebank();
+					r.home = home;
+					back.order = r;
+				}
+				s.count("guardFPSentHome", rest);
+			}
+		}
+		s.count("guardFPStayed", p.fp);
 		orderOf(s, p).defending = true;
 		p.holding = true;
 		s.count("defendStations", 1);
@@ -768,7 +811,8 @@ final class SwarmOps {
 				// after it; warsim_landingRace decides a day early, before it has)
 				if (s.day <= l.landedDay + (k.landingRace ? 0 : 1)) continue;
 				l.falls = !s.faction(w.faction).mobilised;
-				if (!l.falls && k.coloniesFall) {
+				boolean fed = k.guardFeedsFront && !guards(s, w).isEmpty();
+				if (!l.falls && (k.coloniesFall || fed)) {
 					// warsim_coloniesFall: the front engine instead of the overrun clock; the strike gate reads an open-ended front
 					l.engine = true;
 					l.endDay = Integer.MAX_VALUE;
@@ -780,6 +824,7 @@ final class SwarmOps {
 				}
 			}
 			if (l.engine) {
+				if (k.guardFeedsFront) feed(s, k, w, l);
 				String end = threatFrontDay(s, w, l);
 				if (end == null) continue;
 				s.swarm.landings.remove(id);
@@ -861,8 +906,67 @@ final class SwarmOps {
 	static float colonyDefence(State s, World w, int held, boolean counterAttack) {
 		float marines = w.hasReserve ? Math.max(0f, w.stock[World.MARINES]) * s.knobs.f("threatinc_reserveDefenseMult") : 0f;
 		if (counterAttack) marines *= SwarmFit.MARINE_COUNTER_ATTACK_MULT;
-		float d = SwarmFit.COLONY_GROUND_PER_SIZE * w.size + marines;
+		// warsim_colonyGarrison (true): the dump's garrison (ThreatGroundFronts.colonyGarrison), else the old guess of 15 a size
+		float garrison = s.knobs.b("warsim_colonyGarrison", true) && w.garrison >= 0f ? w.garrison : SwarmFit.COLONY_GROUND_PER_SIZE * w.size;
+		float d = garrison + marines;
 		return d * Math.max(0, w.size - held) / (float) Math.max(1, w.size) * s.knobs.f("threatinc_groundDefenseMult");
+	}
+
+	/**
+	 * ThreatGroundFronts.beachheadTroops: the troops whose landing strength (frontLandingMult) beats the world's first
+	 * counter-attack (colonyDefence's counter-attack figure) by threatinc_siegeBeachheadMargin at the overrun odds.
+	 */
+	static float beachheadTroops(State s, World w) {
+		float margin = s.knobs.f("threatinc_siegeBeachheadMargin");
+		if (margin <= 0f) return 0f;
+		float odds = BattleRules.overrunOdds(s.knobs.f("threatinc_groundStrengthExponent"));
+		return colonyDefence(s, w, 0, true) * margin / Math.max(0.01f, s.knobs.f("threatinc_frontLandingMult") * odds);
+	}
+
+	/** The strikes on a Defend station over the world's Threat front (ThreatSwarmDefend). */
+	static List<Parcel> guards(State s, World w) {
+		List<Parcel> out = new ArrayList<Parcel>();
+		for (Parcel p : s.parcels) {
+			if (p.done || !p.threat() || p.kind != Parcel.Kind.STRIKE || !p.holding || !(p.order instanceof StrikeOrder)) continue;
+			StrikeOrder o = (StrikeOrder) p.order;
+			if (o.defending && o.target == w) out.add(p);
+		}
+		return out;
+	}
+
+	/**
+	 * ThreatGroundFronts.fabricateTroops: a guard over a Threat front that cannot hold (frontCanHold: effective strength
+	 * under the hold line) breaks its hulls into troops, threatinc_fabricateTroopsPerFP a point, up to the hold line x
+	 * threatinc_fabricateHoldMargin (holdGap, at the front's footing). It spares a hull or two (the flagship and the last
+	 * hull); the battery toll on the drop is not charged. The game also waits until orbit has done what it can (orbitDoneFor).
+	 */
+	static void feed(State s, SwarmKnobs k, World w, Swarm.Landing l) {
+		if (!k.fabricate) return;
+		float want = colonyDefence(s, w, l.strataHeld, false) * s.knobs.f("threatinc_frontHoldFraction");
+		float mult = Math.max(0.01f, threatMult(s, l));
+		if (l.troops * mult >= want) return;
+		float gap = Math.max(0f, want * k.fabricateHoldMargin - l.troops * mult) / mult;
+		for (Parcel p : guards(s, w)) {
+			if (gap <= 0f) break;
+			float give = Math.min(gap / k.fabricateTroopsPerFP, p.fp - GUARD_SPARED_FP);
+			if (give <= 0f) continue;
+			p.fp -= give;
+			l.troops += give * k.fabricateTroopsPerFP;
+			gap -= give * k.fabricateTroopsPerFP;
+			s.count("fpFabricated", give);
+			s.count("troopsFabricated", give * k.fabricateTroopsPerFP);
+		}
+	}
+
+	/** The FP a guard keeps when it breaks up its hulls: the flagship and the last hull (fabricateTroops' canGive). */
+	static final float GUARD_SPARED_FP = 8f;
+
+	/** The front's strength per troop: frontLandingMult, rising to frontEntrenchMaxMult as it digs in (entrenchMult). */
+	static float threatMult(State s, Swarm.Landing l) {
+		float landing = s.knobs.f("threatinc_frontLandingMult");
+		float full = s.knobs.f("threatinc_frontEntrenchMaxMult");
+		float dug = Math.min(1f, l.entrenchDays / Math.max(1f, s.knobs.f("threatinc_frontEntrenchDays")));
+		return landing + (full - landing) * dug;
 	}
 
 	/** warsim_coloniesFall: the Threat front's troops as fighting strength (HumanSiege.eff without armaments: needsArms false). */
@@ -975,7 +1079,7 @@ final class SwarmOps {
 			}
 			// a strike nobody is near never spawns its fleets (the NPC war's every strike), so nothing stays over the
 			// landing: it ends and is re-banked at home ("Strike ledger: ended unspawned, N of M FP re-banked")
-			if (o.target != null && !o.target.lost && !o.target.forwardBase && land(s, p, o.target) && k.strikeDefends) defend(s, p);
+			if (o.target != null && !o.target.lost && !o.target.forwardBase && land(s, p, o.target) && k.strikeDefends) defend(s, k, p);
 			else goHome(s, p, p.to);
 		}
 		// a strike that vanished (destroyed in flight by the other side) frees its target
@@ -1100,7 +1204,7 @@ final class SwarmOps {
 			return;
 		}
 		// warsim_strikeDefends: only a spawned strike stays over its landing; the NPC war's go home (see daily)
-		if (land(s, p, w) && k.strikeDefends) defend(s, p);
+		if (land(s, p, w) && k.strikeDefends) defend(s, k, p);
 		else goHome(s, p, p.to);
 	}
 

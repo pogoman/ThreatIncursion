@@ -4733,15 +4733,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			picker.add(market, w);
 		}
 		if (!relief.isEmpty()) return relief.pick();
-		// every world it would strike waits on fuel: the cheapest passage is
-		// demand on the stock, once a SHORT_DAYS a source (ThreatFuel.held), so
+		// every world it would strike waits on fuel: what the stock is short of
+		// the cheapest passage is demand on it, once a SHORT_DAYS a source (ThreatFuel.heldShort), so
 		// the planner can answer it with a plant (the user, 2026-10-02; before,
 		// a waiting muster booked nothing - hw4 logged no "strike from .. held"
 		// in 115 months, docs/war-sim-calibration.md 7). Knob strikeWaitBooksFuel
 		if (picker.isEmpty() && waitedOn < Float.MAX_VALUE && onlyFactionId == null
 				&& ThreatIncConfig.strikeWaitBooksFuel()) {
-			ThreatFuel.canPay(waitedOn); // keeps the bill for held() to book
-			ThreatFuel.held("strike from " + staging.getName());
+			ThreatFuel.heldShort("strike from " + staging.getName(), waitedOn);
 		}
 		return picker.pick();
 	}

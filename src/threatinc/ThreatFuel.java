@@ -586,6 +586,21 @@ public class ThreatFuel {
 	}
 
 	/**
+	 * A send held for a fuel bill the stock falls short of, booking the
+	 * shortfall alone (IncursionManager.pickStrikeTarget's waiting muster):
+	 * a whole muster's passage grows with the garrison, and booking all of it
+	 * each SHORT_DAYS made the planner build plants without end - run hw4d,
+	 * fuel made 63k a month against 31k spent and 271k in stock at month 60,
+	 * strikes still waiting. The shortfall shrinks as the stock fills.
+	 */
+	public static void heldShort(String what, float bill) {
+		float shortfall = bill - stock();
+		if (shortfall <= 0f) return;
+		UNMET.put(Commodities.FUEL, shortfall);
+		held(what);
+	}
+
+	/**
 	 * A build the planner needs and the supplies stock cannot pay - a chain
 	 * link's first copy, a shortage's answer (ThreatColonyManager.tryBuildLink):
 	 * its price is demand on the stock, once a SHORT_DAYS while it waits. An

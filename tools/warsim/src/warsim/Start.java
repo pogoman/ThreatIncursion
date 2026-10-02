@@ -104,6 +104,9 @@ public final class Start {
 				w.stock[c] = Json.num(stock.get(World.COMMODITIES[c]), 0f);
 				w.accrualPer30[c] = Json.num(accrual.get(World.COMMODITIES[c]), 0f);
 			}
+			// Theatre.COLONY.defenderStrength = colonyGarrison + armed marines x reserveDefenseMult: the garrison is the rest
+			float marineMult = s.knobs != null ? s.knobs.f("threatinc_reserveDefenseMult") : 1f;
+			w.garrison = Math.max(0f, w.defence - (w.hasReserve ? w.stock[World.MARINES] * marineMult : 0f));
 			w.front = front(j.get("front"));
 			w.foundedDay = s.day;
 			s.worlds.add(w);

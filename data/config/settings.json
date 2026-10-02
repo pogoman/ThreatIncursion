@@ -513,9 +513,9 @@
 	"threatinc_reserveSurplusMult": 1.5,
 	"threatinc_reserveTroopSurplusMult": 0.5,
 	"threatinc_hiveSurplusMult": 1.0,
-	# a strike muster every world in reach of which waits on fuel books the
-	# cheapest passage as demand on the hive's fuel stock (once a SHORT_DAYS a
-	# source), so the planner can build a plant for it
+	# a strike muster every world in reach of which waits on fuel books what
+	# the hive's fuel stock is short of the cheapest passage as demand on it
+	# (once a SHORT_DAYS a source), so the planner can build a plant for it
 	"threatinc_strikeWaitBooksFuel": true,
 	"threatinc_reserveBankFromProduction": true,
 	"threatinc_reserveBankImportsMult": 1.0,
