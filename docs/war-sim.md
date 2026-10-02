@@ -185,6 +185,12 @@ humans, back-and-forth (`swings` >= `Main.BACK_AND_FORTH_SWINGS` 3), stalemate (
 `turnover`, `reversals` and `contested` rise; matching pd9a is a test of the simulator's fidelity,
 not a goal for the game.
 
+**Lead with destruction (the user, later the same day):** ownership switches were the wrong lens.
+The measures that matter are `threatKills` (worlds and forward bases destroyed by the swarm, per
+year), `humanKills` (hives killed, per year) and `mutual`, the smaller of the two: high when both
+sides destroy, zero when either sits passive. Classes key on them: both sides, one-sided, quiet.
+Reversals and contested systems stay as secondary readouts.
+
 ## 7a. Using it
 
 - `warsim run -seed 7 -months 100` writes a monthly CSV (hives, sizes, FP, stocks, stance, kills,
