@@ -212,6 +212,35 @@ restoring the prefs `continue` and `resolution` and the store's `debugLogging` /
 `debugPlayerIgnored` afterwards. The LunaLib marker here is 7 and the store holds no feed-share
 keys, so the marker-12 bump is a no-op on this machine (the CSV default applies).
 
+**The docked laptop, first runs (2026-10-02 evening).** The fast-forward scripts work docked once
+the `resolution` pref is `1600x900` (restore 3440x1440 after). What differs from the first machine:
+
+- The launcher is 805x503 at 100% scaling; `launch.ps1` now clicks Play at its share of whatever
+  size the launcher has and retries while the launcher is still up.
+- The main menu sits elsewhere: Continue (1290,256), New Game (1298,387) - pass
+  `launch.ps1 -ContinueX 1290 -ContinueY 256`. The new-game screens too: character Continue
+  (330,645), the mercenary start (700,744), Normal (350,645), Skip it (340,678), then a skill
+  screen with Start game (344,382). Generation takes under a minute.
+- A screen grab of the game window is white (`ui.ps1 -Action shot`, and so `run.ps1`'s per-chunk
+  shots); `step.ps1 -Game` shoots with `gameshot.ps1` instead (one PNG a shot lands in
+  `Starsector\screenshots`).
+- The first launch moved the LunaLib marker 7 -> 12 ("LunaLib settings moved" logged) and LunaLib
+  added the missing keys: all 370 live keys then equal the CSV defaults (about a hundred retired
+  keys linger in the store, unread).
+- For a long run: `shiftspeed_mult` 48 in `saves\common\LunaSettings\shiftspeed.json.data` (the
+  user plays at 6 here), vanilla autosave off (`"autosave/On"` in the prefs value
+  `gameplay/Settings`), `debugLogging`, `debugSimDump` and Fleets Ignore You on. The originals are
+  in `%TEMP%\threatinc-tests\backup-20261002`, with a `restore.ps1` that puts them back.
+- `tail-ti.ps1 -Tag t` (started before `launch.ps1`, detached) follows `starsector.log` and
+  appends the `[ThreatInc]` lines to `ti-<Tag>.txt` and exceptions to `exc-<Tag>.txt` as they are
+  written, across rollovers - no walk back through `.log.N` afterwards. `runto.ps1 -Days 3300
+  -Tag t` (detached; tool background tasks die at 10 minutes here) runs rounds of `run.ps1` until
+  the `Clock:` lines show that many game days, appends to `run-<Tag>.txt` and leaves
+  `run-<Tag>.done` with the reason it ended. `guard-digest.ps1 -Tag t` counts the guard calls and
+  the siege postponements by make.
+- Pristine new game: `save_TerrellRamsey_2380916986271647281` (2026-10-02, the round-20 build,
+  mercenary, Normal); `...ng1` is its first clone, run as `tr1a`.
+
 ## Fast-forward runs and a new game (2026-10-01)
 
 `tools/test-harness/fastforward/` holds the scripts every balance run since 2026-09-29 used (they
