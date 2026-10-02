@@ -216,7 +216,7 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
 - **Stock:** one for the whole hive (vanilla's broadcast availability already shares one fuel
   plant's output with every hive world). It fills by a faction reserve's rule
   (`accrualPer30` x `productionShare`): each world's fuel, `getSizeMult` of it x the fuel econ unit x
-  `reserveSurplusMult`, a month, summed and held to the better of what the hive makes above its own
+  `hiveSurplusMult` (1.0; the hive's own rate since 2026-10-02, split from `reserveSurplusMult`), a month, summed and held to the better of what the hive makes above its own
   demand and the sector's best exporter x `reserveBankImportsMult` (`ThreatFuel.perMonth`, accrued
   each `maintainGarrisons` poll). A faction world banks only what is left over its peacetime demand,
   its trade and civilian traffic; a hive world runs no trade fleets, so all its fuel is its fleets'.
@@ -304,7 +304,7 @@ is asymmetric by design where it has to be, and the one rule where it can be.
   `npcCost` supplies and fuel pay for them, as a forward base's founding does. Free builds (save
   heals, the debug war) stand at once.
 - **The hive earns what it makes** (`ThreatFuel.perMonth`): every plant's and forge's whole output x
-  econ unit x `reserveSurplusMult`. No Spaceport demand is taken off - it stands for trade traffic
+  econ unit x `hiveSurplusMult`. No Spaceport demand is taken off - it stands for trade traffic
   and a hive runs none - and no import fallback, as a hive does not trade. At the base save that is
   4 forges (24 units, ~18k supplies a month) and 8 fuel plants (48 units, ~72k fuel).
 - **Forward bases** (`ThreatFrontlines.startNew`, `upgrade`, `payBuild`) pay from the link's supplies

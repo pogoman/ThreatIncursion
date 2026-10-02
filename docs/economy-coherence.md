@@ -151,7 +151,7 @@ Built in one session and verified on the clone save (`...182493833221313174zz`, 
 fast-forward, a quicksave, and a reload on the rebuilt jar. No errors in the log.
 
 1. **Accrual** - `ThreatReserves.accrualPer30`: `getSizeMult(max(0, available -
-   maxDemand)) x econUnit x reserveSurplusMult` (1.0), militia trickle kept, the four
+   maxDemand)) x econUnit x reserveSurplusMult` (1.0; 1.5 since 2026-10-02, the war simulator's round 17), militia trickle kept, the four
    per-unit knobs retired. Marines and heavy armaments bank at `reserveTroopSurplusMult`
    (0.5, 2026-09-30: vanilla's own rate for a stockpile's excess; `ThreatReserves.surplusMult`) -
    at 1.0 the Hegemony banked 9.1k marines and 12.9k armaments a month while its sieges landed

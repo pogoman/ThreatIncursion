@@ -91,8 +91,9 @@ of 9 hunts sailed from links, sieges at 1-18k fuel of passage against 30-43k fro
 poll, pro-rated per 30 days, and banks the colony's availability above its PEACETIME
 demand (`WarFootingDemand.peacetimeDemand`: the highest demand any structure but the War
 footing declares), in econ units, times the commodity's econ unit (1,500 fuel, 750
-supplies, 200 heavy armaments, 100 marines) times `reserveSurplusMult` (1.0; vanilla's
-own local-resources stockpiles pile up excess at 0.5). Marines add the militia trickle
+supplies, 200 heavy armaments, 100 marines) times `reserveSurplusMult` (1.5 since 2026-10-02, the war simulator's round 17 - the
+factions' alone, the hive banks at `hiveSurplusMult`; vanilla's own local-resources
+stockpiles pile up excess at 0.5). Marines add the militia trickle
 (`reserveBaselinePerSize`). Vanilla imports only up to demand (verified: every
 import-fed colony reads available = demand), so an importer banks the War footing's
 share - its N units, as far as they arrive - and a producer banks that plus its local
