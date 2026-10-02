@@ -30,7 +30,7 @@ public final class Main {
 	static String[] SHOWN = { "hives", "hiveSize", "garrisonFP", "bank", "swarmFuel", "swarmSupplies",
 			"worlds", "basesHeld", "basesFounded", "basesDestroyed", "hivesFounded", "hiveLevels", "hivesKilled",
 			"worldsLost", "siegesSailed", "siegesLanded", "strikesLaunched", "threatScore", "humanScore",
-			"turnover", "swings", "deadYears" };
+			"turnover", "swings", "reversals", "contested", "deadYears" };
 	/** The run classes of docs/war-sim.md 7: back-and-forth from this many momentum swings, a stalemate from this many dead years. */
 	static final int BACK_AND_FORTH_SWINGS = 3;
 	static final double STALEMATE_DEAD_YEARS = 3;
@@ -166,13 +166,14 @@ public final class Main {
 
 	/**
 	 * docs/war-sim.md 7, the whole outcome, as it stands at each month: turnover (worlds changing state a year),
-	 * swings (sign changes of the yearly momentum, the swarm's ground gained less the humans'), deadYears (the
-	 * longest stretch with no hive killed, no world lost and no base destroyed) and decided (1 the humans wiped
+	 * swings (sign changes of the yearly momentum, the swarm's ground gained less the humans'), reversals (the same
+	 * per half-year, net of the swarm's peaceful foundings), deadYears (the longest stretch since the first
+	 * mobilisation with no hive killed, no world lost and no base destroyed) and decided (1 the humans wiped
 	 * out, -1 the swarm, 0 neither) with decidedMonth.
 	 */
 	static void measures(Sim.Result r) {
 		Map<String, Double> first = r.months.get(0);
-		int swings = 0, lastSign = 0, quietSince = 0, decided = 0, decidedMonth = -1;
+		int swings = 0, lastSign = 0, reversals = 0, lastHalf = 0, quietSince = -1, decided = 0, decidedMonth = -1;
 		double dead = 0;
 		boolean hadHives = false, hadWorlds = false;
 		for (int i = 0; i < r.months.size(); i++) {
@@ -181,7 +182,19 @@ public final class Main {
 				Map<String, Double> was = r.months.get(i - 1);
 				if (val(m, "hivesKilled") + val(m, "worldsLost") + val(m, "basesDestroyed")
 						> val(was, "hivesKilled") + val(was, "worldsLost") + val(was, "basesDestroyed")) quietSince = i;
-				dead = Math.max(dead, (i - quietSince) / 12.0);
+				// the quiet opening is not a stalemate: the clock starts at the first mobilisation
+				if (quietSince < 0 && val(m, "mobilised") > 0) quietSince = val(was, "mobilised") > 0 ? i - 1 : i;
+				if (quietSince >= 0) dead = Math.max(dead, (i - quietSince) / 12.0);
+				if (i % 6 == 0) {
+					// reversals: per half-year, on ground taken from or lost to the enemy alone (no peaceful foundings)
+					Map<String, Double> y = r.months.get(i - 6);
+					double mom = swarmTaken(m) - swarmTaken(y) - (humanGround(m) - humanGround(y));
+					int sign = mom > 0 ? 1 : mom < 0 ? -1 : 0;
+					if (sign != 0) {
+						if (lastHalf != 0 && sign != lastHalf) reversals++;
+						lastHalf = sign;
+					}
+				}
 				if (i % 12 == 0) {
 					Map<String, Double> y = r.months.get(i - 12);
 					double mom = swarmGround(m) - swarmGround(y) - (humanGround(m) - humanGround(y));
@@ -201,6 +214,7 @@ public final class Main {
 			double changed = swarmGround(m) - swarmGround(first) + humanGround(m) - humanGround(first);
 			m.put("turnover", i == 0 ? 0 : changed / (i / 12.0));
 			m.put("swings", (double) swings);
+			m.put("reversals", (double) reversals);
 			m.put("deadYears", dead);
 			m.put("decided", (double) decided);
 			m.put("decidedMonth", (double) decidedMonth);
@@ -209,6 +223,9 @@ public final class Main {
 
 	/** Ground the swarm gained: hives founded, human worlds and forward bases destroyed. */
 	static double swarmGround(Map<String, Double> m) { return val(m, "hivesFounded") + val(m, "worldsLost") + val(m, "basesDestroyed"); }
+
+	/** Ground the swarm took from the humans: worlds and forward bases destroyed. */
+	static double swarmTaken(Map<String, Double> m) { return val(m, "worldsLost") + val(m, "basesDestroyed"); }
 
 	/** Ground the humans gained: hives killed, forward bases founded. */
 	static double humanGround(Map<String, Double> m) { return val(m, "hivesKilled") + val(m, "basesFounded"); }

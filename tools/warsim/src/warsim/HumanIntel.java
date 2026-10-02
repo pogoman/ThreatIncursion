@@ -55,35 +55,52 @@ final class HumanIntel {
 	}
 
 	/** Files a report with every faction at war; news to the planner where the swarms moved (ThreatIntel.moved). */
-	static void file(State s, StarSys sys, Report r) {
+	static void file(State s, StarSys sys, Report r) { file(s, sys, r, null); }
+
+	/**
+	 * ThreatIntel.see: the report is the observer's and its coalition partners' (ThreatCoalition.partners,
+	 * HumanCouncil.partner); observer null files it with every faction at war (a start state's knowledge).
+	 */
+	static void file(State s, StarSys sys, Report r, String observer) {
 		s.foundHiveSystems.add(sys);
 		for (Faction f : s.factions.values()) {
 			if (!f.mobilised) continue;
+			if (observer != null && !f.id.equals(observer) && !HumanCouncil.partner(f.id, observer)) continue;
 			Report was = f.reports.get(sys);
 			if (was == null || PlannerRules.moved(was.total(), r.total()) || was.over.size() != r.over.size()) f.news = true;
 			f.reports.put(sys, r);
 		}
 	}
 
-	/** The daily sweep: eyes (a fleet on station, a front) or radar (a base within radarRangeLY). */
+	/**
+	 * The daily sweep (ThreatIntel.advanceDay): each observer with eyes in a hive system (a fleet of its own on
+	 * station, a front of its own) sees it exactly; one with radar on it (a military world or forward base of its
+	 * own within radarRangeLY) to two figures.
+	 */
 	static void sweep(State s) {
 		float radarLY = s.knobs.f("threatinc_radarRangeLY");
 		for (StarSys sys : s.systems.values()) {
 			if (s.hivesIn(sys).isEmpty()) continue;
-			boolean eyes = s.holdingFP(sys, false) > 0f;
-			if (!eyes) {
-				for (Hive h : s.hivesIn(sys)) if (h.front != null && !Parcel.THREAT.equals(h.front.faction)) eyes = true;
-			}
-			boolean radar = false;
-			if (!eyes) {
-				for (World w : s.worlds) {
-					if (w.lost || !w.hasReserve || !HumanPools.military(w)) continue;
-					Faction f = s.factions.get(w.faction);
-					if (f == null || !f.mobilised) continue;
-					if (w.sys.ly(sys) <= radarLY) { radar = true; break; }
+			Report exact = null, radar = null;
+			for (int pass = 0; pass < 2; pass++) {
+				// radar first: a partner's radar report does not overwrite what one's own eyes saw today
+				for (Faction f : s.factions.values()) {
+					if (!f.mobilised) continue;
+					boolean eyes = false;
+					for (Parcel p : s.parcels) if (!p.done && p.holding && p.to == sys && p.owner.equals(f.id)) { eyes = true; break; }
+					if (!eyes) for (Hive h : s.hivesIn(sys)) if (h.front != null && f.id.equals(h.front.faction)) eyes = true;
+					if (eyes) {
+						if (pass == 1) file(s, sys, exact != null ? exact : (exact = see(s, sys, false)), f.id);
+						continue;
+					}
+					if (pass == 1) continue;
+					for (World w : s.worldsOf(f.id)) {
+						if (!w.hasReserve || !HumanPools.military(w) || w.sys.ly(sys) > radarLY) continue;
+						file(s, sys, radar != null ? radar : (radar = see(s, sys, true)), f.id);
+						break;
+					}
 				}
 			}
-			if (eyes || radar) file(s, sys, see(s, sys, !eyes));
 		}
 	}
 
@@ -114,7 +131,7 @@ final class HumanIntel {
 		for (StarSys sys : s.systems.values()) {
 			if (sys.ly(p.to) > lead || s.hivesIn(sys).isEmpty()) continue;
 			boolean fresh = !s.foundHiveSystems.contains(sys);
-			file(s, sys, see(s, sys, sys != p.to));
+			file(s, sys, see(s, sys, sys != p.to), p.owner);
 			if (fresh) {
 				s.count("hiveSystemsFound", 1);
 				s.log("Scout of " + p.owner + " found the hives of " + sys);

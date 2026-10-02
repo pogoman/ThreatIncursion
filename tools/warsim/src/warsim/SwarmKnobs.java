@@ -44,6 +44,7 @@ final class SwarmKnobs {
 		radarLY = k.f("threatinc_swarmRadarRangeLY");
 		scoutFP = k.f("threatinc_swarmScoutFleetPoints");
 		outpostSupplies = k.f("threatinc_outpostSupplies");
+		seedPriceMult = k.f("warsim_seedPriceMult", 1f);
 		outpostFuel = k.f("threatinc_outpostFuel");
 		hullShare = k.f("threatinc_returnHullShare");
 		foundingFPPerStructure = k.f("threatinc_foundingFPPerStructure");
@@ -69,7 +70,10 @@ final class SwarmKnobs {
 	}
 
 	/** Supplies a founding takes from the stock (ThreatFuel.foundingCost()[0]). */
-	float foundSupplies() { return outpostSupplies + SwarmFit.FOUNDING_KIT; }
+	/** warsim_seedPriceMult: an experiment's multiplier on the Seeding Swarm's price (1 = the mod's 5,000 supplies). */
+	float seedPriceMult = 1f;
+
+	float foundSupplies() { return (outpostSupplies + SwarmFit.FOUNDING_KIT) * seedPriceMult; }
 
 	float sizeUpkeep(int size) { return threatinc.rules.HiveRules.sizeUpkeepPerMonth(size, upkeepAt3, upkeepRatio); }
 

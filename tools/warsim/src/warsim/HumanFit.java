@@ -86,6 +86,14 @@ final class HumanFit {
 	static final float RAID_STAY_DAYS = 10f;
 
 	/**
+	 * ThreatCoalition.partners: mobilised factions that would help each other by vanilla's standing at a new game.
+	 * The council runs' pictures name only these as allies: "weight 24 + allies 4 (luddic_path)" (luddic_church,
+	 * pd4a-pd8a) and "weight 19 + allies 49 (persean)" (sindrian_diktat, pd5a, pd6a, pd8a); every other faction's
+	 * picture has none (66 of 280 pictures with allies in pd4a, 54 of 338 in pd8a).
+	 */
+	static final String[][] COALITION_PAIRS = { { "luddic_church", "luddic_path" }, { "persean", "sindrian_diktat" } };
+
+	/**
 	 * A start state with factions at war but no intel in the dump: every hive standing is taken
 	 * as found and reported as of the start day. A default, not a fit.
 	 */

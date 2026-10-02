@@ -57,7 +57,7 @@ final class HumanStance {
 		if (!s.knobs.b("threatinc_stanceEnabled", true)) { f.stance = EXPAND; return; }
 		boolean pressed = f.lastStruckDay > Integer.MIN_VALUE / 4 && f.strikesSuffered > 0
 				&& s.day - f.lastStruckDay < PRESSURE_DAYS;
-		for (World w : s.worldsOf(f.id)) if (w.front != null && Parcel.THREAT.equals(w.front.faction)) pressed = true;
+		for (World w : s.worldsOf(f.id)) if (s.swarm.landings.containsKey(w.id)) pressed = true;
 		decay(s, f);
 		float ours = forceFP(s, f);
 		boolean losing = f.trendLost > 0f && f.trendLost > f.trendKilled && f.trendLost >= 0.05f * Math.max(1f, ours);
