@@ -67,7 +67,7 @@ final class HumanPools {
 				* ReserveRules.floorBasis(basis(s, w, c), w.capSeen[c], 0f, 1f);
 		if (w.forwardBase && c == World.SUPPLIES) {
 			// IncursionManager.siegeDonors: a forward base keeps its garrison's upkeep back
-			f = Math.max(f, s.knobs.f("threatinc_siegeOutpostKeepMonths") * w.guardFP * HumanFit.GUARD_UPKEEP_PER_FP);
+			f = Math.max(f, s.knobs.f("threatinc_siegeOutpostKeepMonths") * w.guardFP * HumanBases.guardUpkeepPerFP(s));
 		}
 		return f;
 	}
@@ -94,15 +94,29 @@ final class HumanPools {
 				float cap = basis(s, w, c);
 				if (cap > w.capSeen[c]) w.capSeen[c] = ReserveRules.basisAtFullShare(cap, 0f, 1f);
 				// no ceiling: pd9a's census has hegemony's marines at 12644 on 12 colonies banking about 50 a month each
-				w.stock[c] += w.accrualPer30[c] / 30f;
+				// warsim_accrualMult (round 14 trial e): the pools' accrual scaled, a ceiling test
+				float in = w.accrualPer30[c] / 30f * s.knobs.f("warsim_accrualMult", 1f);
+				w.stock[c] += in;
+				s.count("income." + World.COMMODITIES[c], in);
 			}
 		}
 	}
 
 	/** The faction's depots, the base first and then the nearest. */
-	static List<World> donors(State s, final World base) {
+	static List<World> donors(State s, final World base) { return donors(s, base, false); }
+
+	/**
+	 * warsim_coalitionPays (round 14 trial c): a siege's provisions are called on across the coalition's depots
+	 * (HumanCouncil.partner), not the one faction's; anything else, and with the switch off, the faction's own.
+	 */
+	static List<World> donors(State s, final World base, boolean siege) {
+		boolean coalition = siege && s.knobs.b("warsim_coalitionPays", false);
 		List<World> out = new ArrayList<World>();
-		for (World w : s.worldsOf(base.faction)) if (w.hasReserve) out.add(w);
+		for (World w : s.worlds) {
+			if (w.lost || !w.hasReserve) continue;
+			if (!w.faction.equals(base.faction) && !(coalition && HumanCouncil.partner(base.faction, w.faction))) continue;
+			out.add(w);
+		}
 		Collections.sort(out, new Comparator<World>() {
 			public int compare(World a, World b) { return Float.compare(a.sys.ly(base.sys), b.sys.ly(base.sys)); }
 		});
@@ -119,7 +133,7 @@ final class HumanPools {
 	}
 
 	/** What the base can call on of one commodity: its own above the floor, and each donor's net of the haul. */
-	static float payable(State s, World base, int c, boolean siege) { return payable(s, base, c, siege, donors(s, base)); }
+	static float payable(State s, World base, int c, boolean siege) { return payable(s, base, c, siege, donors(s, base, siege)); }
 
 	/** With the donors already listed (round 9: a range or a canPay asked for the same sorted list two to four times). */
 	static float payable(State s, World base, int c, boolean siege, List<World> donors) {
@@ -131,7 +145,7 @@ final class HumanPools {
 		return sum;
 	}
 
-	static boolean canPay(State s, World base, float[] wants, boolean siege) { return canPay(s, base, wants, siege, donors(s, base)); }
+	static boolean canPay(State s, World base, float[] wants, boolean siege) { return canPay(s, base, wants, siege, donors(s, base, siege)); }
 
 	static boolean canPay(State s, World base, float[] wants, boolean siege, List<World> donors) {
 		for (int c = 0; c < 4; c++) if (wants[c] > 0f && payable(s, base, c, siege, donors) < wants[c]) return false;
@@ -139,9 +153,17 @@ final class HumanPools {
 	}
 
 	/** Draws the wants at the base, nearest depots first, each paying its haul in fuel. False (and nothing drawn) if short. */
-	static boolean pay(State s, World base, float[] wants, boolean siege) {
-		List<World> donors = donors(s, base);
+	static boolean pay(State s, World base, float[] wants, boolean siege) { return pay(s, base, wants, siege, "other"); }
+
+	/** The same, booked to the ledger by purpose (round 14): spend.<what>.<commodity> and spendBy.<faction>.<what>.<commodity>. */
+	static boolean pay(State s, World base, float[] wants, boolean siege, String what) {
+		List<World> donors = donors(s, base, siege);
 		if (!canPay(s, base, wants, siege, donors)) return false;
+		for (int c = 0; c < 4; c++) {
+			if (wants[c] <= 0f) continue;
+			s.count("spend." + what + "." + World.COMMODITIES[c], wants[c]);
+			s.count("spendBy." + base.faction + "." + what + "." + World.COMMODITIES[c], wants[c]);
+		}
 		// fuel last: the other commodities' hauls are paid out of the donors' fuel
 		for (int c : new int[] { World.MARINES, World.ARMAMENTS, World.SUPPLIES, World.FUEL }) {
 			float need = wants[c];
@@ -172,6 +194,8 @@ final class HumanPools {
 			if (take <= 0f) continue;
 			d.stock[c] -= take;
 			paid += take;
+			s.count("spend.fleetUpkeep." + World.COMMODITIES[c], take);
+			s.count("spendBy." + home.faction + ".fleetUpkeep." + World.COMMODITIES[c], take);
 		}
 		return paid;
 	}

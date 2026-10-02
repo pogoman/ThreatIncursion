@@ -237,6 +237,8 @@ in place of `HumanStance.evaluate` and `HumanPlanner.plan` (`ThreatAttackPlanner
 | `HumanCouncil.force` | `ThreatSoftening.sendPlay`, `playPayableFP` | The held hunting force: a MUSTER parcel at `councilHammerShare` x `HumanPlanner.payableFP` that sails on the siege's day. |
 | `HumanPlanner.size(.., playFP)` | `IncursionManager.playSiegeSizes` | The play's siege under share sizing (`warsim_councilPlannerSizing=false`): no orbit term, grown to the share of `HumanCouncil.capacityFP` (`ThreatPosture.siegeCapacityFP`); `strike` trims it to what the pools pay, down to the fleet that carries the landing (the provisions gate of `launchSiegeExpedition`, "Expedition trimmed"). |
 | `HumanCouncil.plannerSizing`, `reconFirst`, `reconInForce`, `reconCheck` | the user's decision of 2026-10-02 (the mod's change is in hand) | Default on: the council still picks where and when, but `strike` sizes the siege as the planner does (`HumanPlanner.size` on the faction's report, `npcSiegeOrbitMargin`, no trimming; unaffordable posts the bounty), and a hammer with no report of its system runs the recon in force first (RECON phase, `playsReconFirst`) and sizes when the report is in. |
+| `HumanCouncil.pausable`, `siegeCapacity`, `plan`'s `limit` | `ThreatPlays.pausable`, `siegeCapacityFP`, `majorLimit` (bc623ed) | Round 14: relief owed holds only PREPARE, a MUSTER under `councilMusterFloor` x planned FP, BOMB/WATCH with no squadron out and no siege sailed; major plays = max(1, capacity / `councilMajorPlayFP`), capacity each distinct base of the picture's clusters against its nearest cluster. Joint plays are not mirrored. |
+| `HumanPools.pay(.., what)`, `drain`, `daily` | the ledger (round 14) | Every pool payment is booked `spend.<what>.<commodity>` and `spendBy.<faction>.<what>.<commodity>` (siege, playSiege, saturation, hunt, huntForce, squadron, raid, scout, convoy, guardVoyage, guardUpkeep, baseUpkeep, link, fleetUpkeep); accrual is `income.<commodity>`. `HumanCouncil.strike` counts `strike.paid` / `strike.unpaid` and, for an unpaid first world, `strike.shortBy.<c>` against `strike.held.<c>`, `strike.needFP` against `strike.paysFP`. Switches off by default: `warsim_siegeFirstCall` (no hunts while a hammer stages), `warsim_guardUpkeepMult`, `warsim_coalitionPays` (a siege calls on partners' depots), `warsim_accrualMult`. |
 | `HumanCouncil.squadron`, `squadronFP`, `squadronBase`, `fuelCost`, `bombable`, `raidsEnded` | `ThreatPlays`, the same names (`raidEnded`) | A play's raid: a SQUADRON parcel with `HumanOrder.play` and `stayDays`; `HumanSide.station` sends it home driven off on a contested orbit (`ThreatFleetOrders.endRaid`), planner raids as before. |
 
 Counters: `council.months.<STRATEGY>` (a faction-month, as the mod's monthly `Council f: picture` line),
@@ -348,3 +350,40 @@ clear of seed noise - with planner sizing the hammer share only sizes the huntin
 they drew the swarm 0.5 of 2.5 and 2 of 10.5 times (mid 0 of 5.5), and the strike landed 0 times after a drawing feint, 2
 after one that did not - the feint as built does not pull. Decision 5 as worded consolidates more mid-war, not less:
 a single front on a hive is enough; the pressure path barely fires now (2.1 months of 104 in the base).
+
+## 9. Round 14: paying is the brake (2026-10-02)
+
+The mod's new defaults mirrored (`pausable`, `siegeCapacity`, `councilMajorPlayFP` 3000). Base cell, council, radar off,
+planner sizing, 30 seeds. New game 104 months: threatKills 6 (2.1 / 3.7), humanKills 1.0 [0.1 - 2.5], mutual 1.0, scores
+805 / 12, hives 117 [56 - 180], bases 12, both sides 53%; hammers 52 a run, 27 reached STRIKE and paid a siege, 14.5
+did not; 137 starve checks found no saturation the pools pay (48.5 sailed). Mid-war 48 months: humanKills 0, 3.5 paid,
+1.5 unpaid. The seeds are bimodal (hives 56-180), so no trial's humanKills is clear of noise at 30 seeds.
+
+**What the unpaid were short of** (per unpaid hammer, first world): the report-sized siege needs 1,790 FP, the base pays
+the voyage of 256; short of supplies by 3,260 against 2,260 callable (10.5 of 14.5 short of supplies, 2.5 of fuel, 1 of
+marines; fuel callable 24,500, marines 5,100). Mid-war: 6,200 FP needed, 1,100 paid, short 9,840 supplies against 13,200.
+Supplies are the brake; fuel and marines are not.
+
+**Where the supplies go** (new game, a year, income 183k): forward-base links 60k, guard upkeep 46k, fleet upkeep 44k,
+base (colony size) upkeep 27k, guard voyages 8.6k, saturation 8.3k, hunts 7.9k + hunting forces 5.2k, squadrons 5.9k,
+scouts 3.5k, play sieges 2.5k (1.4%). Per faction (play sieges / hunts / guard upkeep / fleet upkeep): hegemony
+358 / 2,026 / 12,230 / 14,769, persean 714 / 1,673 / 12,115 / 10,621, tritachyon 337 / 827 / 5,860 / 5,195. Mid-war
+(income 377k): links 128k, fleet upkeep 113k, guard upkeep 99k, play sieges 611. Fuel (income 379k): saturation 75k,
+guard voyages 54k, hunts 32k, scouts 24k, squadrons 18k, sieges 6k. The forward-base line (links, guards, their
+voyages) takes about two thirds of the supplies; sieges get one or two percent.
+
+| cell (new game) | threatKills (w / b) | humanKills | mutual | T / H | hives | bases | hammers paid / unpaid | classes |
+|---|---|---|---|---|---|---|---|---|
+| base | 6 (2.1 / 3.7) | 1.0 | 1.0 | 805 / 12 | 117 | 12 | 27 / 14.5 | both 53 |
+| a hunts held while a hammer stages | 6 (2.0 / 3.9) | 0.5 | 0.5 | 863 / 13.5 | 135 | 13.5 | 13 / 14 (89.5* hunts held) | both 30 |
+| b guard upkeep x0.5 | 6.2 (2.0 / 4.2) | 0.8 | 0.8 | 768 / 17.5 | 115 | 17.5 | 19.5 / 14 | both 37 |
+| c coalition pays | 5.7 (2.0 / 3.7) | 1.5 | 1.5 | 799 / 12 | 120 | 12 | 36.5 / 14.5 (73 saturations) | both 60 |
+| d orbit margin 1.25 / 1.0 | 6.1 / 5 | 0.6 / 1.1 | 0.6 / 1.1 | 857 / 12, 738 / 10 | 123 / 107 | 12 / 10 | 17.5 / 14.5, 32.5 / 15.5 | both 37 / 53 |
+| e accrual x1.5 | 5.7 (1.8 / 3.9) | 1.3 | 1.3 | 850 / 17 | 124 | 17 | 30.5 / 12 | both 60 |
+
+Mid-war: humanKills 0 in every cell; b lifts bases held 11.5 -> 19, e 11.5 -> 33.5* and the swarm's bases destroyed 3.9 ->
+8.3* (more to destroy), c sails 32.5* saturations (21.5). Reading: the pools are not short, the allocation is - the
+ceiling test (e) buys forward bases, not sieges, and halving guard upkeep (b) does the same; the one lever that moves
+sieges is who can be called on (c, 36.5 paid, 1.5 a year) because a siege's supplies are the one faction's callable
+stock while the forward-base line spends first. Holding hunts for the siege (a) helps nothing: hunts take 4% of the
+supplies. Lowering the orbit margin cuts the FP need but the supplies want scales with the fleet it still needs.

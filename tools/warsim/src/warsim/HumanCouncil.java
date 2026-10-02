@@ -360,10 +360,10 @@ final class HumanCouncil {
 
 	static void plan(State s, Faction f, Council c, Picture p) {
 		if (c.strategy == null || p == null) return;
-		// relief before offensives: no new play while it is owed (warsim_councilReliefPause=false: round 13 trial 6, not held)
+		// relief before offensives: no new play while it is owed
 		if (reliefOwed(s, f)) {
 			s.count("council.reliefDays", 1);
-			if (reliefPause(s)) return;
+			return;
 		}
 		opportunity(s, f, c, p);
 		float half = Math.max(1f, s.knobs.f("threatinc_intelHalfLifeDays"));
@@ -380,8 +380,8 @@ final class HumanCouncil {
 			}
 			if (!always) return;
 		}
-		// warsim_councilMajorPlays: an experiment's count of major plays a faction runs at once (the mod: one, ThreatPlays.major);
-		// warsim_councilMajorPerFP (round 13 trial 2, option B): one major play per this much of the faction's siege capacity
+		// ThreatPlays.majorLimit (the mod since bc623ed, from round 13's option B): one major play per councilMajorPlayFP of
+		// the faction's siege capacity, at least one; warsim_councilMajorPlays raises the floor for an experiment
 		int majors = 0, hammers = 0, starves = 0;
 		boolean atFocus = false;
 		for (Play pl : c.plays) {
@@ -391,8 +391,8 @@ final class HumanCouncil {
 			if (pl.sys == c.focus) atFocus = true;
 		}
 		int limit = Math.max(1, (int) s.knobs.f("warsim_councilMajorPlays", 1f));
-		float perFP = s.knobs.f("warsim_councilMajorPerFP", 0f);
-		if (perFP > 0f) limit = Math.max(1, (int) (siegeCapacity(s, f, p) / perFP));
+		float perFP = s.knobs.f("threatinc_councilMajorPlayFP", 0f);
+		if (perFP > 0f) limit = Math.max(limit, (int) (siegeCapacity(s, f, p) / perFP));
 		s.count("council.majorLimitDays", limit);
 		boolean starveOnly = false;
 		if (always) {
@@ -602,19 +602,49 @@ final class HumanCouncil {
 		return pl;
 	}
 
-	/** warsim_councilReliefPause (default true, ThreatPlays.pausable): plays wait while relief is owed. */
-	static boolean reliefPause(State s) { return s.knobs.b("warsim_councilReliefPause", true); }
+	/**
+	 * ThreatPlays.pausable (the mod since bc623ed): relief owed holds only a play whose forces are not yet under way -
+	 * PREPARE, a MUSTER under councilMusterFloor x its planned FP, a campaign or watch with no squadron out and no
+	 * siege sailed. A strike, exploit or withdrawal runs on; recon is never held.
+	 */
+	static boolean pausable(State s, Play pl) {
+		String ph = pl.phase;
+		if ("PREPARE".equals(ph)) return true;
+		if ("MUSTER".equals(ph)) {
+			float mustered = 0f;
+			for (Parcel p : pl.forces) if (live(p)) mustered += p.fp;
+			return pl.plannedFP <= 0f || mustered < Math.max(0f, s.knobs.f("threatinc_councilMusterFloor")) * pl.plannedFP;
+		}
+		if ("BOMB".equals(ph) || "WATCH".equals(ph)) {
+			if (pl.sieged) return false;
+			for (Parcel p : pl.squadrons) if (live(p)) return false;
+			return true;
+		}
+		return false;
+	}
 
-	/** Option B's yardstick: the faction's siege capacity, each of its bases' capacityFP against the nearest known cluster. */
+	/** ThreatPlays.siegeCapacityFP: each distinct base of the picture's clusters that is the faction's, against its nearest cluster. */
 	static float siegeCapacity(State s, Faction f, Picture p) {
 		float sum = 0f;
-		for (World w : s.worldsOf(f.id)) {
-			if (!w.base || !w.hasReserve) continue;
-			Cluster near = null;
-			for (Cluster k : p.clusters) if (near == null || w.sys.ly(k.sys) < w.sys.ly(near.sys)) near = k;
-			if (near != null) sum += capacityFP(s, w, near.sys);
+		java.util.Set<World> seen = java.util.Collections.newSetFromMap(new IdentityHashMap<World, Boolean>());
+		for (Cluster k : p.clusters) {
+			for (World w : k.bases) {
+				if (w == null || w.lost || !f.id.equals(w.faction) || !seen.add(w)) continue;
+				Cluster near = null;
+				for (Cluster o : p.clusters) if (near == null || w.sys.ly(o.sys) < w.sys.ly(near.sys)) near = o;
+				if (near != null) sum += capacityFP(s, w, near.sys);
+			}
 		}
 		return sum;
+	}
+
+	/** Round 14 trial a (warsim_siegeFirstCall): true while the faction has a hammer or feint staging or mustering - its siege has first call on the pools. */
+	static boolean siegeStaging(State s, Faction f) {
+		if (!s.knobs.b("warsim_siegeFirstCall", false) || !on(s)) return false;
+		for (Play pl : council(f).plays) {
+			if ((pl.type == HAMMER || pl.type == FEINT) && ("RECON".equals(pl.phase) || "PREPARE".equals(pl.phase) || "MUSTER".equals(pl.phase))) return true;
+		}
+		return false;
 	}
 
 	/** ThreatPosture.siegeCapacityFP: what the base and its donors could send against the system at the siege's rates per point. */
@@ -759,7 +789,7 @@ final class HumanCouncil {
 		float[] cost = ReachRules.voyageCost(fp, 2f * base.sys.ly(h.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
 		float ordnance = stay * BattleRules.bombardFuelPerDay(fp, s.knobs.f("threatinc_bombardFuelPerFPDay"));
-		if (!HumanPools.pay(s, base, new float[] { 0f, 0f, cost[0] + ordnance, cost[1] }, false)) return null;
+		if (!HumanPools.pay(s, base, new float[] { 0f, 0f, cost[0] + ordnance, cost[1] }, false, "squadron")) return null;
 		Parcel p = s.send(pl.f.id, Parcel.Kind.SQUADRON, base.sys, h.sys, fp, delay);
 		p.targetId = h.id;
 		p.fuel = ordnance;
@@ -878,7 +908,7 @@ final class HumanCouncil {
 			int ended = raidsEnded(s, pl);
 			// relief before offensives: the next phase waits, the play is paused, not cancelled (ThreatPlays.pausable)
 			String ph = pl.phase;
-			if (relief && reliefPause(s) && ("PREPARE".equals(ph) || "MUSTER".equals(ph) || "BOMB".equals(ph) || "WATCH".equals(ph))) {
+			if (relief && pl.type != RECON && pausable(s, pl)) {
 				if (pl.phaseDue != NEVER) pl.phaseDue++;
 				s.count("council.heldPlayDays", 1);
 				continue;
@@ -944,7 +974,7 @@ final class HumanCouncil {
 		if (fp < 25f || target == null) return null;
 		float[] cost = ReachRules.voyageCost(fp, 2f * pl.base.sys.ly(pl.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
-		if (!HumanPools.pay(s, pl.base, new float[] { 0f, 0f, cost[0], cost[1] }, false)) return null;
+		if (!HumanPools.pay(s, pl.base, new float[] { 0f, 0f, cost[0], cost[1] }, false, "huntForce")) return null;
 		Parcel p = HumanPlanner.muster(s, pl.f, pl.base, target, fp, hold ? HELD - s.day : 0, Parcel.Kind.HUNT);
 		HumanOrder o = (HumanOrder) p.order;
 		o.deposit = cost[1];
@@ -1051,10 +1081,21 @@ final class HumanCouncil {
 			}
 			if (!o.affordable) s.count("playSiege.short." + o.shortOf, 1);
 			if (!o.affordable && planner && o.orbitUnpaid) HumanPlanner.postBounty(s, h.sys, pl.f.id);
+			if (!o.affordable && h == targets.get(0)) {
+				// round 14: what the first world's siege was short of, by how much, against what the base could call on
+				java.util.List<World> donors = HumanPools.donors(s, pl.base, true);
+				for (int ci = 0; ci < 4; ci++) {
+					float can = HumanPools.payable(s, pl.base, ci, true, donors);
+					s.count("strike.held." + World.COMMODITIES[ci], can);
+					if (o.wants[ci] > can) s.count("strike.shortBy." + World.COMMODITIES[ci], o.wants[ci] - can);
+				}
+				s.count("strike.needFP", o.fp);
+				s.count("strike.paysFP", HumanPlanner.payableFP(s, pl.base, pl.sys));
+			}
 			if (!o.affordable) continue;
 			float[] draw = o.wants.clone();
 			draw[World.SUPPLIES] = o.fp / ReachRules.FP_PER_POINT * s.knobs.f("threatinc_expeditionSuppliesPerPoint");
-			if (!HumanPools.pay(s, pl.base, draw, true)) continue;
+			if (!HumanPools.pay(s, pl.base, draw, true, "playSiege")) continue;
 			pl.siege = HumanPlanner.launch(s, pl.f, o);
 			((HumanOrder) pl.siege.order).play = pl;
 			pl.sieged = true;
@@ -1062,6 +1103,7 @@ final class HumanCouncil {
 			break;
 		}
 		pl.seenAtStart = pl.seenAtCheck = seen(pl.f, pl.sys);
+		s.count(pl.siege != null ? "strike.paid" : "strike.unpaid", 1);
 		// the hunts are let go to arrive with the siege: from the same base, they sail on its day
 		int sail = pl.siege != null ? ((HumanOrder) pl.siege.order).sailDay : s.day;
 		for (Parcel p : pl.forces) if (live(p) && p.kind == Parcel.Kind.MUSTER) ((HumanOrder) p.order).sailDay = sail;
@@ -1211,7 +1253,7 @@ final class HumanCouncil {
 		float[] cost = ReachRules.voyageCost(fp, 2f * pl.base.sys.ly(pl.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
 		float ordnance = stay * BattleRules.bombardFuelPerDay(fp, s.knobs.f("threatinc_bombardFuelPerFPDay"));
-		if (!HumanPools.pay(s, pl.base, new float[] { 0f, 0f, cost[0] + ordnance, cost[1] }, true)) return;
+		if (!HumanPools.pay(s, pl.base, new float[] { 0f, 0f, cost[0] + ordnance, cost[1] }, true, "saturation")) { s.count("saturate.unpaid", 1); return; }
 		Parcel p = s.send(pl.f.id, Parcel.Kind.SATURATION, pl.base.sys, pl.sys, fp, 0);
 		p.targetId = h.id;
 		p.fuel = ordnance;
