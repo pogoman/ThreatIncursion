@@ -259,6 +259,12 @@ Whether a remote session is on: the last `chromoting` event in the Application l
 autosave off, Shift 48x, the three debug switches, Continue at the save); the user's own values
 are put back by `%TEMP%\threatinc-tests\backup-20261002\restore.ps1`.
 
+**A locked laptop takes no input (2026-10-02 late).** Left idle for about 45 minutes after a run, the laptop locks
+(`LogonUI.exe` running, `Screen.AllScreens` empty): the launcher comes up but the Play click never lands, and
+`launch.ps1` waits out its deadlines. Check `Get-Process LogonUI` before launching. Run hw4d was started by a
+detached watcher (`%TEMP%\threatinc-tests\hw4d-go.ps1`) that waits for the lock to clear and two idle minutes,
+then launches, runs `runto.ps1`, wraps up and runs `restore.ps1` - a pattern for a run the user starts from afar.
+
 ## Fast-forward runs and a new game (2026-10-01)
 
 `tools/test-harness/fastforward/` holds the scripts every balance run since 2026-09-29 used (they
