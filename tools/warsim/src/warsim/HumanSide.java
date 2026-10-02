@@ -136,10 +136,10 @@ public final class HumanSide implements Side {
 			if (h.siegeClock > 0f) HumanSiege.setClock(s, h, h.siegeClock - 1f);
 			if (h.nexus && h.nexusDown > 0f) s.count("nexusDownDays", 1);
 		}
-		// round 27 trial, no mod symbol behind it: warsim_mobiliseAtPhase (0 = off) - every faction the war does not
-		// exclude mobilises once the swarm reaches that phase, struck or not (hw4c: the Diktat, first struck in phase
-		// 3, lost Sindria to the strike that mobilised it)
-		int alarmPhase = (int) s.knobs.f("warsim_mobiliseAtPhase", 0f);
+		// IncursionManager.mobiliseAtPhase (threatinc_mobiliseAtPhase, 3; 0 = off): every faction the war does not
+		// exclude mobilises once the swarm reaches that phase, struck or not (round 27's trial, built 2026-10-02 -
+		// hw4c: the Diktat, first struck in phase 3, lost Sindria to the strike that mobilised it)
+		int alarmPhase = (int) s.knobs.f("threatinc_mobiliseAtPhase");
 		boolean alarm = alarmPhase > 0 && SwarmPosture.phase(s) >= alarmPhase;
 		for (Faction f : new ArrayList<Faction>(s.factions.values())) {
 			if (!f.mobilised && (f.strikesSuffered > 0 || alarm) && !HumanIntel.excluded(s, f.id)

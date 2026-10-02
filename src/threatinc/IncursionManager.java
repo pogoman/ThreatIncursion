@@ -434,6 +434,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatOutposts.planNPC(random);
 		manageMissions();
 		checkPhaseAnnouncements();
+		mobiliseAtPhase();
 		// importers see this tick's new industries, ports and relics now, not
 		// on vanilla's next monthly economy step
 		ThreatColonyManager.flushEconomy();
@@ -4686,6 +4687,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// relief before offensives, the swarm's as the navies' (2026-09-29): a
 		// front of its own losing ground in reach takes the strike
 		WeightedRandomPicker<MarketAPI> relief = new WeightedRandomPicker<MarketAPI>(random);
+		// the cheapest passage of a world passed over only for its fuel
+		float waitedOn = Float.MAX_VALUE;
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (!isStrikeableWorld(market)) continue;
 			// size 6+ markets are "core worlds" - phase 3 only
@@ -4703,8 +4706,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			float d = Misc.getDistanceLY(source.getLocation(), market.getStarSystem().getLocation());
 			if (d > rangeLY) continue;
 			// billed: the passage there and back comes out of the fuel stock
-			if (billed && !ThreatFuel.canPay(ThreatFuel.passage(musterFP, d, true))) continue;
+			float passage = billed ? ThreatFuel.passage(musterFP, d, true) : 0f;
+			boolean unpaid = billed && !ThreatFuel.canPay(passage);
 			if (strikeOutweighed(market, strikeStr, outweighed)) continue;
+			// a world the strike would take but for its fuel: the cheapest is booked below
+			if (unpaid) {
+				if (passage < waitedOn) waitedOn = passage;
+				continue;
+			}
 
 			// billed, what the world is worth per day the strike is away: near
 			// unless far is worth the weeks
@@ -4724,6 +4733,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			picker.add(market, w);
 		}
 		if (!relief.isEmpty()) return relief.pick();
+		// every world it would strike waits on fuel: the cheapest passage is
+		// demand on the stock, once a SHORT_DAYS a source (ThreatFuel.held), so
+		// the planner can answer it with a plant (the user, 2026-10-02; before,
+		// a waiting muster booked nothing - hw4 logged no "strike from .. held"
+		// in 115 months, docs/war-sim-calibration.md 7). Knob strikeWaitBooksFuel
+		if (picker.isEmpty() && waitedOn < Float.MAX_VALUE && onlyFactionId == null
+				&& ThreatIncConfig.strikeWaitBooksFuel()) {
+			ThreatFuel.canPay(waitedOn); // keeps the bill for held() to book
+			ThreatFuel.held("strike from " + staging.getName());
+		}
 		return picker.pick();
 	}
 
@@ -4943,6 +4962,36 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (canStrikeCore && ThreatIncConfig.phase3Enabled()) return 3;
 		if (canStrike) return 2;
 		return 1;
+	}
+
+	/**
+	 * Every faction mobilises once the swarm reaches mobiliseAtPhase (default
+	 * 3), struck or not (the user, 2026-10-02; run hw4c: the Diktat, first
+	 * struck in phase 3, mobilised that day and lost Sindria within the month;
+	 * simulator round 27: worlds lost 9 -> 5, docs/war-sim-calibration.md 9).
+	 * The player's faction is excepted: mobilising is their choice, on the board.
+	 * One notice names every faction it moved.
+	 */
+	protected void mobiliseAtPhase() {
+		int at = ThreatIncConfig.mobiliseAtPhase();
+		if (at <= 0 || !ThreatWarState.enabled() || getPhase() < at) return;
+		java.util.Set<String> owners = new java.util.LinkedHashSet<String>();
+		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
+			if (market.isPlayerOwned() || market.getFactionId() == null) continue;
+			if (Factions.THREAT.equals(market.getFactionId()) || ThreatWarState.isAtWar(market.getFactionId())) continue;
+			owners.add(market.getFactionId());
+		}
+		if (owners.isEmpty()) return;
+		ThreatNotice n = null;
+		for (String id : owners) {
+			FactionAPI faction = Global.getSector().getFaction(id);
+			if (faction == null || faction.isPlayerFaction()) continue;
+			if (ThreatWarState.mobilise(faction, "the swarm reached phase " + at, false) == null) continue;
+			if (n == null) n = ThreatNotice.titled("Sector Mobilised");
+			n.line("%s has mobilised for war against the Threat.", ThreatNotice.faction(faction));
+		}
+		if (n != null) n.send();
 	}
 
 	protected void checkPhaseAnnouncements() {

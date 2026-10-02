@@ -497,6 +497,10 @@
 	# raiders, not a navy. A record already on a save is dropped on the next
 	# poll (reserves kept).
 	"threatinc_warExcludedFactions": "pirates",
+	# every faction not excluded mobilises once the swarm reaches this phase,
+	# struck or not (3 = an armada-capable hive with a core world in reach);
+	# 0 = only on being struck. The player's faction mobilises by choice.
+	"threatinc_mobiliseAtPhase": 3,
 	# Economy coherence (docs/economy-coherence.md): a colony banks what
 	# arrives above its PEACETIME demand - the War footing's share as far as
 	# it is met, plus any surplus beyond - each 30 days: those units x the
@@ -509,6 +513,10 @@
 	"threatinc_reserveSurplusMult": 1.5,
 	"threatinc_reserveTroopSurplusMult": 0.5,
 	"threatinc_hiveSurplusMult": 1.0,
+	# a strike muster every world in reach of which waits on fuel books the
+	# cheapest passage as demand on the hive's fuel stock (once a SHORT_DAYS a
+	# source), so the planner can build a plant for it
+	"threatinc_strikeWaitBooksFuel": true,
 	"threatinc_reserveBankFromProduction": true,
 	"threatinc_reserveBankImportsMult": 1.0,
 	"threatinc_reserveWartimeFuel": true,

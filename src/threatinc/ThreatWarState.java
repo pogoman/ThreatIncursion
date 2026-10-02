@@ -103,6 +103,11 @@ public class ThreatWarState {
 	 * Returns the record, or null if the faction was already at war.
 	 */
 	public static FactionWar mobilise(FactionAPI faction, String why) {
+		return mobilise(faction, why, true);
+	}
+
+	/** As above; {@code notify} false sends no notice (the caller sends one for several, IncursionManager.mobiliseAtPhase). */
+	public static FactionWar mobilise(FactionAPI faction, String why, boolean notify) {
 		if (!enabled() || faction == null) return null;
 		String id = faction.getId();
 		// never the pseudo "neutral" faction: ownerless stations get struck too,
@@ -121,7 +126,7 @@ public class ThreatWarState {
 		// round an importer seeded nothing but militia (2026-09-24)
 		ThreatReserves.syncWarFooting(warFactionIds());
 		ThreatReserves.seed(id);
-		ThreatNotice.titled("Mobilised for War").icon(faction)
+		if (notify) ThreatNotice.titled("Mobilised for War").icon(faction)
 				.line("%s has mobilised for war against the Threat.", ThreatNotice.faction(faction))
 				.line("Its colonies now stock marines, armaments, fuel and supplies.")
 				.send();
