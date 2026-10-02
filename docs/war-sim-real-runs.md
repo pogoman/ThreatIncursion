@@ -179,3 +179,43 @@ setting says little: the two four-world runs differ by more than either does fro
 (`digest-hw4b.txt`): 45 calls to a front link, 8 to a rear link, 14 links faced a strike with no guard called
 ("cannot pay the voyage"). Postponements: 514, all provisions, supplies short in 510. The swarm never entered
 CONSOLIDATE. Skathi fell to 200 troops with Tri-Tachyon not at war - section 4's bug again.
+
+## 6. hw4c (2026-10-02 night): the first run with the sweep fix
+
+A fourth clone of the save (`...ng5`), `threatinc_homeWorlds` 4, the jar of 20:00 with
+`IncursionManager.onStrikeDetected` mobilising every faction in a strike's sweep, to war day 3,282 (stopped there
+for time; month 109). Dumps `tools/warsim/validation/hw4c` (110 months and the map); log `ti-hw4c.txt`, digest
+`digest-hw4c.txt`. No mod exception. `check`: 269 of 368 figures inside p10-p90 (hw4 256, hw4b 261).
+
+| month 108 | hw4 | hw4b | hw4c (sweep fix) |
+|---|---|---|---|
+| hives | 152 | 209 | 179 |
+| garrison FP | 140k | 241k | 189k |
+| human worlds lost | 2 | 6 | 8 |
+| hives killed | 1 | 0 | 0 |
+| sieges sailed / landed | 12 / 5 | 15 / 3 | 4 / 1 |
+| saturation expeditions sailed | 24 | 22 | 32 |
+| hunts sailed | 59 | 86 | 69 |
+| forward bases founded / destroyed | 57 / 43 | 40 / 26 | 49 / 32 |
+| swarm strikes / landings | 138 / 52 | 146 / 60 | 127 / 56 |
+| fuel plants / forges | 18 / 84 | 23 / 144 | 25 / 104 |
+| first mobilisation | month 46 | month 44 | month 44 |
+
+**The fix works.** The first strike that swept a second faction's world mobilised it: a strike at Kanni (pirates)
+logged `luddic_path mobilised (struck at Chalcedon)` and `persean mobilised (struck at Olinadu)` on day 1,320; five
+factions were at war by day 1,380 (hw4: day 1,475; hw4b: day 1,650 for four, the Path at 2,940), Tri-Tachyon on day
+2,400 and the Diktat on day 3,000. No Threat landing came down on a world whose owner was not at war (`unmob.pl`: at
+war, 4 taken, 5 ground down, 24 overrun; hw4b 1 of 1 not at war taken, hw3 3 of 3).
+
+**It does not save the world the mobilising strike lands on.** The Diktat was struck for the first time on day
+3,000 (a strike at Nortia sweeping five worlds of Askonia), mobilised that day with its reserve seed, and 1,419
+troops landed on Sindria within the month: its counter-attack battered the beachhead once (1,065 against 824), the
+next was repelled (199 against 333), and the capital (size 7) fell a stratum a month, the last on about day 3,240. A
+faction the swarm leaves alone until phase 3 has a month between its first alarm and the landing. The other faction
+world lost was Laicaille Habitat (Persean, at war since day 1,320) to 2,126 troops and a reinforcing pass, in the
+swarm's 180-hive year; the rest were six pirate worlds and the Path's Chalcedon and Epiphany.
+
+The run sits between hw4 and hw4b on every swarm figure - inside the noise of section 5, so it says nothing of
+what the fix does to the war's course. Guards (`digest-hw4c.txt`): 61 calls to a front link, 14 to a rear link, 10
+links faced a strike with no guard called. Postponements: 417, all provisions. 106 strikes ended unspawned and
+re-banked.
