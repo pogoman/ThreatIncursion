@@ -1020,6 +1020,29 @@ public class ThreatSoftening {
 		return fp;
 	}
 
+	/** The play's hunting fleets within ORBIT_HOLD_RANGE of the world (ThreatGroundFronts.nearWorld): they fight its daily siege's fight beside it and share its losses (ThreatPurgeFGI.dailyDay). */
+	public static List<CampaignFleetAPI> playFleetsNear(String playId, MarketAPI world) {
+		List<CampaignFleetAPI> out = new ArrayList<CampaignFleetAPI>();
+		if (playId == null || world == null || forces().isEmpty()) return out;
+		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
+			if (!ThreatFleetOrders.KIND_HUNT.equals(o.kind) || o.forceId == null) continue;
+			if (o.fleet == null || !o.fleet.isAlive() || o.fleet.isExpired() || o.fleet.isPlayerFleet()) continue;
+			if (!ThreatGroundFronts.nearWorld(o.fleet, world)) continue;
+			Force f = forces().get(o.forceId);
+			if (f != null && playId.equals(f.playId)) out.add(o.fleet);
+		}
+		return out;
+	}
+
+	/** Days a held force needs from its hyperspace muster to its system's edge; 0 for one mustered in the system, or gone. */
+	public static float passageDays(String forceId) {
+		Force f = forceId != null ? forces().get(forceId) : null;
+		if (f == null || f.musterInSystem || f.systemId == null) return 0f;
+		StarSystemAPI s = Global.getSector().getStarSystem(f.systemId);
+		if (s == null) return 0f;
+		return ThreatReach.days(Misc.getDistanceLY(new Vector2f(f.musterX, f.musterY), s.getLocation()));
+	}
+
 	/** Lets a held force go in at its next advance; false when it is gone. */
 	public static boolean release(String forceId) {
 		Force f = forceId != null ? forces().get(forceId) : null;

@@ -443,7 +443,9 @@ public class ThreatWarCouncil {
 			if (k.core) core = true;
 			if (k.core || k.production) rich = true;
 		}
-		float hold = 0.5f + (p.pressed ? 2f : 0f) + (p.band == OUTMATCHED ? 2f : 0f) + (any ? 0f : 4f)
+		// pressed and outmatched both argue for holding: counted once, not summed (pd2a: pressed
+		// in 85% of months, so Hold scored 4.5 against an outmatched Starve's 1.3)
+		float hold = 0.5f + Math.max(p.pressed ? 2f : 0f, p.band == OUTMATCHED ? 2f : 0f) + (any ? 0f : 4f)
 				+ (p.relief ? 1f : 0f);
 		// starving is the weak side's play too (user, 2026-10-01, after h53b): outmatched, it
 		// scores with Hold, so an outmatched faction cuts production rather than sitting a year
@@ -451,7 +453,8 @@ public class ThreatWarCouncil {
 		float rollback = !frontier ? 0f : p.band == OUTMATCHED ? 0.3f : p.band == EVEN ? 1.5f : 2f;
 		float decap = !core ? 0f : p.band == AHEAD ? 2f * (p.partners.isEmpty() ? 1f : 1.5f) : p.band == EVEN ? 0.3f : 0f;
 		if (p.pressed) {
-			starve *= 0.5f;
+			// the weak side's play is not halved by the pressure that comes with being weak
+			if (p.band != OUTMATCHED) starve *= 0.5f;
 			rollback *= 0.5f;
 			decap *= 0.5f;
 		}

@@ -382,6 +382,7 @@ public class ThreatIncData {
 		// a hive later re-seeded here has to be found again
 		discoveredSystems().remove(systemId);
 		ThreatIntel.drop(systemId);
+		ThreatSwarmIntel.drop(systemId);
 	}
 
 	/**

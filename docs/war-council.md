@@ -297,12 +297,11 @@ point and a date, standing for joining) is v2.
 Mapped 2026-10-01. The mechanism, by symbol, is in `hive-garrison-and-upkeep.md`, "How fast it
 answers". **Yes, narrowly. A small feint does nothing.**
 
-- **It sees everything at once.** The Threat's pressure reads are exact and live; fogging them is
-  the separate later change. An attack counts at its target from dispatch, at any distance, and
-  the posture pass that reads it runs every 5-5.6 days. A force staging against a system raises
-  that system's pressure with its stock before anything sails. The one gap is a siege still
-  off-screen: it counts nothing as an attack until it spawns, and the swarm meets it only through
-  its losses and wounds. That is a discrepancy, not a design (decision 10).
+- **It saw everything at once** (until the swarm's fog, 2026-10-01, `threat-fog.md`). An attack
+  counted at its target from dispatch, at any distance, and the posture pass that reads it runs
+  every 5-5.6 days. A force staging against a system raised that system's pressure with its stock
+  before anything sailed. Since decision 10 a booked off-screen siege counts too. With the fog on,
+  each of these counts only once the swarm's eyes, radar or scouts have seen it.
 - **What a feint pulls.** The feinted system's want is about 0.83x its pressure, and the deficit
   (want less what it holds) is what moves. So a feint pulls only when it outweighs the system's
   garrison by about 1.2x, or when it sinks swarms. A thinly held world makes the feint cheap: a
@@ -530,6 +529,9 @@ again. Under CONSOLIDATE, `siegeAllowed` still reads the live `facedFaction`.
 
 ## 16. As built (2026-10-01, session fbb85ee0)
 
+What long runs showed, and the fixes since: `war-council-runs.md` (pd2a: Hold won 70% of months,
+bombers learned nothing; both fixed 2026-10-01).
+
 `ThreatWarCouncil` is the strategic layer and `ThreatPlays` the operational one. Both are saved in
 `ThreatIncData` (`KEY`, `ThreatPlays.KEY`), both only run while `warCouncil` is on, and
 `ThreatWarCouncil.reset` clears them along with the play staging.
@@ -576,7 +578,8 @@ third lost, and destroyed. A BOMBERS play ends with its raid.
 **Phases.** `Play.phase`, with the deadline in `phaseDue`:
 - HAMMER: `prepare` (stage, a scout if the report is stale) -> `muster` (`toMuster`: held forces,
   `inviteJoint`) -> `strike` (`strike`: the siege at `councilHammerShare` x `siegeCapacityFP`,
-  target sets from all worlds down to one; `releaseDay` = arrival - `RELEASE_LEAD_DAYS`) ->
+  target sets from all worlds down to one; hunts let go at estimated arrival - `RELEASE_LEAD_DAYS`, or sooner on the siege's live
+  ETA, `siegeNear`) ->
   `exploit` (up to `MAX_EXTENSIONS` x `councilExploitDays`; a feint's bombers may sail here too) ->
   `withdraw` (judged when the siege ends, or a check later).
 - FEINT: `watch`. The baseline is A's report on the day the squadron is over it (`feintArrived`),

@@ -12,10 +12,10 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   It rises at once and decays over 30 days (`DECAY_DAYS`).
   - **A - attacks:** the warship points of every live NPC siege booked on the system's worlds, plus
     hunts aimed at it and Support / Defend orders over its worlds (each fleet once), from dispatch
-    and at any distance. A siege counts only its spawned fleets (`attacksBySystem` reads
-    `getFleets()`): one still off-screen, the daily siege included, adds 0 here and acts only
-    through C and wounds (2026-10-01 log: Gamma Sonora under a 4,900 FP daily siege read
-    "attacks 0").
+    and at any distance. A siege still off-screen counts its as-sailed flotilla (`abstractNow`,
+    knob `threatSeesBookedSieges`, decision 10 of 2026-10-01; before it, Gamma Sonora under a
+    4,900 FP daily siege read "attacks 0"). With the swarm's fog on (`threat-fog.md`) A, B and F
+    count only what the swarm's eyes, radar or scouts saw (`ThreatSwarmIntel`).
   - **B - staged capacity:** what the bases staging against the system could pay a force there
     (`ThreatSoftening.payableFP`, with hunt donors - capacity, not a siege's sizing, which reads the
     garrison and would chase its own tail). Weight 1.0 for a base staging for its siege, 0.5 for one

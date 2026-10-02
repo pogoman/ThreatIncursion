@@ -2129,6 +2129,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	/** Abstract fleet points when that world's siege began, and its days of fighting: its summary line. */
 	protected float abstractWorldFP;
 	protected int abstractWorldFights;
+	/** Days that world's siege has waited for its play's hunts to come up (dailyDay); at most HUNT_WAIT_DAYS. */
+	protected int abstractWorldWaits;
+	/** Days a daily siege outweighed alone waits for its play's hunts in the system to reach the world. */
+	protected static final int HUNT_WAIT_DAYS = 3;
 	/** Siege days one frame catches up at most. */
 	protected static final int DAILY_CATCH_UP = 3;
 
@@ -2271,18 +2275,33 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (ratio > 0f && !playerCommissioned && !faction.isPlayerFaction()
 				&& enemy >= (ours + friendsNear(w)) * ratio && !holdsAFront()) {
 			ThreatIncConfig.log("Daily siege of " + w.getName() + " called off: " + (int) enemy + " FP against "
-					+ (int) ours);
+					+ (int) ours + " + " + (int) friendsNear(w) + " of its hunts in the system");
 			dailySummary(w.getName(), abstractWorldDays + 1, "called off");
 			siegeResolved.add(w.getId());
 			resetWorld();
 			callOff(w, enemy, ours, abstractFull());
 			return false;
 		}
+		// the play's hunts at the world fight beside it (war-council.md 4.1: the hunt forces
+		// fight for the orbits and the siege comes with them); pd4a's 2,650 FP siege fought
+		// 3,805 alone with 3,213 FP of its hunts in the system
+		List<CampaignFleetAPI> friends = playId != null ? ThreatSoftening.playFleetsNear(playId, w)
+				: new ArrayList<CampaignFleetAPI>();
+		float allies = livePoints(friends);
+		if (enemy > 0f && ratio > 0f && enemy >= (ours + allies) * ratio && friendsNear(w) > allies
+				&& abstractWorldWaits < HUNT_WAIT_DAYS) {
+			// outweighed without the hunts still on their way in: wait for them a day or three
+			abstractWorldWaits++;
+			ThreatIncConfig.logQuiet(dailyKey(w), "Daily siege of " + w.getName() + " waits for its hunts, day "
+					+ abstractWorldWaits + ": " + (int) enemy + " FP against " + (int) ours + " + " + (int) allies);
+			return true;
+		}
 		if (enemy > 0f) {
-			// a day of exchange, both strengths as the day began
-			float share = Math.min(ThreatAbstractBattle.MAX_LOSS, ThreatAbstractBattle.LOSS_PER_RATIO * enemy / ours);
+			// a day of exchange, both strengths as the day began; the hunts there pay the same share
+			float mine = ours + allies;
+			float share = Math.min(ThreatAbstractBattle.MAX_LOSS, ThreatAbstractBattle.LOSS_PER_RATIO * enemy / mine);
 			addRouteLoss(share);
-			ThreatAbstractBattle.foughtDay(faction, w, hostile, ours, enemy, ours * share);
+			ThreatAbstractBattle.foughtDay(faction, w, hostile, mine, enemy, ours * share, friends, share);
 			abstractWorldFights++;
 			if (1f - routeDamage() < frac) {
 				dailySummary(w.getName(), abstractWorldDays + 1, "beaten");
@@ -2292,7 +2311,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			}
 			// contested, weighed here: orbitHeld counts an abstract besieger as nothing
 			float left = livePoints(hostile);
-			float now = abstractAllotment();
+			float now = abstractAllotment() + livePoints(friends);
 			if (left > 0f && left >= now * Math.max(0f, ThreatIncConfig.orbitContestFraction())) {
 				if (abstractWorldDays >= ThreatIncConfig.siegeOrbitDays()) {
 					endWorld(action, w, "held", false);
@@ -2414,6 +2433,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		abstractWorldDays = 0;
 		abstractWorldFP = 0f;
 		abstractWorldFights = 0;
+		abstractWorldWaits = 0;
 	}
 
 	protected String dailyKey(MarketAPI w) {

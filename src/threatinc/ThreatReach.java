@@ -212,22 +212,39 @@ public class ThreatReach {
 			java.util.List<MarketAPI> donors = ThreatIncConfig.siegePoolProvisions()
 					? IncursionManager.siegeDonors(base, base.getFaction(), base.getStarSystem())
 					: new ArrayList<MarketAPI>();
-			float fuel = IncursionManager.siegePooled(base, donors, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
-			float supplies = IncursionManager.siegePooled(base, donors,
-					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
-			int points = SMALLEST_FLOTILLA_POINTS;
-			float fp = points * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
-			float perLY = points * ThreatIncConfig.expeditionFuelPerPointLY();
-			float byFuel = perLY > 0f ? fuel / perLY : Float.MAX_VALUE;
-			float deposit = points * ThreatIncConfig.expeditionSuppliesPerPoint();
-			float perMonth = fp * suppliesPerFP(base.getFactionId());
-			float days = perMonth > 0f ? (supplies - deposit) * 30f / perMonth : Float.MAX_VALUE;
-			float bySupplies = days >= Float.MAX_VALUE ? Float.MAX_VALUE
-					: Math.max(0f, days - STRIKE_PREP_DAYS) * ThreatWarBoard.EST_LY_PER_DAY / 2f;
-			out = Math.max(0f, Math.min(byFuel, bySupplies));
+			out = rangeOn(base, donors);
 		}
 		rangeMemo.put(base.getId(), out);
 		return out;
+	}
+
+	/**
+	 * baseRangeLY on the base's own stock alone, no donor pooled: the reach the
+	 * swarm sees at the base, its donors' depots elsewhere and unseen
+	 * (IncursionManager.seenSiegeBaseReachLY, ThreatSwarmIntel). Not memoised.
+	 */
+	public static float ownRangeLY(MarketAPI base) {
+		if (base == null || base.getFaction() == null || base.getStarSystem() == null) return 0f;
+		if (ThreatReserves.get(base.getId()) == null) return 0f;
+		factionDay();
+		return rangeOn(base, new ArrayList<MarketAPI>());
+	}
+
+	/** baseRangeLY's reach on what the base and the given donors pool. */
+	protected static float rangeOn(MarketAPI base, java.util.List<MarketAPI> donors) {
+		float fuel = IncursionManager.siegePooled(base, donors, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
+		float supplies = IncursionManager.siegePooled(base, donors,
+				com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
+		int points = SMALLEST_FLOTILLA_POINTS;
+		float fp = points * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+		float perLY = points * ThreatIncConfig.expeditionFuelPerPointLY();
+		float byFuel = perLY > 0f ? fuel / perLY : Float.MAX_VALUE;
+		float deposit = points * ThreatIncConfig.expeditionSuppliesPerPoint();
+		float perMonth = fp * suppliesPerFP(base.getFactionId());
+		float days = perMonth > 0f ? (supplies - deposit) * 30f / perMonth : Float.MAX_VALUE;
+		float bySupplies = days >= Float.MAX_VALUE ? Float.MAX_VALUE
+				: Math.max(0f, days - STRIKE_PREP_DAYS) * ThreatWarBoard.EST_LY_PER_DAY / 2f;
+		return Math.max(0f, Math.min(byFuel, bySupplies));
 	}
 
 	/** Supplies a month committed to trips since the colonies' last feed recorded the spare. */
@@ -323,6 +340,8 @@ public class ThreatReach {
 		boolean playerGrace = ThreatIncData.daysSincePlayerStruck() < ThreatIncConfig.playerGraceDays();
 		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (!IncursionManager.isStrikeableWorld(m) || !ThreatSwarmScouts.swarmKnows(m)) continue;
+			// in the swarm's fog, only a world it has seen (true for every world, off)
+			if (!IncursionManager.strikeSeen(m)) continue;
 			if (!coreOpen && IncursionManager.isCoreWorld(m)) continue;
 			if (playerGrace && m.isPlayerOwned()) continue;
 			if (!IncursionManager.warOpen(m, phase)) continue;

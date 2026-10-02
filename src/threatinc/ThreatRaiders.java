@@ -9,6 +9,7 @@ import org.lwjgl.util.vector.Vector2f;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.FleetAssignment;
+import com.fs.starfarer.api.campaign.LocationAPI;
 import com.fs.starfarer.api.campaign.SectorEntityToken;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
@@ -19,7 +20,8 @@ import com.fs.starfarer.api.util.Misc;
 /**
  * The hive's RAIDER role - guerre de course (docs/design-theory.md 8.2).
  *
- * <p>When a mobilised faction's convoy sails, every hive colony that reaches
+ * <p>When a mobilised faction's convoy sails (with the swarm's fog on, when
+ * the swarm first sees it - sweep), every hive colony that reaches
  * the route's midpoint before the convoy does (billed reach, ThreatReach;
  * off, within raiderRangeLY of it) that has Defense Swarms above its
  * defensive reserve may detach real garrison swarms to hunt it, until the
@@ -37,6 +39,11 @@ public class ThreatRaiders {
 
 	public static final String KEY_RAIDERS = "threatinc_raiders";
 	public static final String RAIDER_FLAG = "$threatinc_raider";
+	/** Convoy fleet memory: the hives have rolled for this convoy (consider), at dispatch or on sight. */
+	public static final String CONSIDERED_FLAG = "$threatinc_raidConsidered";
+
+	/** The sweep's dice (a roll at dispatch uses the convoy planner's). */
+	protected static final Random RANDOM = new Random();
 
 	/** Distance from home at which a returning raider is back on station. */
 	public static final float HOME_RANGE = 600f;
@@ -109,7 +116,31 @@ public class ThreatRaiders {
 	 * reserve test thins itself as swarms leave.
 	 */
 	public static void consider(ThreatConvoys.Convoy convoy, Random random) {
-		if (!ThreatIncConfig.raiderEnabled() || convoy == null || convoy.fleet == null) return;
+		if (convoy == null || convoy.fleet == null) return;
+		consider(convoy, random, convoy.fleet.getFleetPoints());
+	}
+
+	/**
+	 * consider, weighing the convoy at convoyFP: its exact fleet points at
+	 * dispatch (fog off), or as the swarm saw it (sweep - radar rounds it).
+	 * Marks the convoy considered (CONSIDERED_FLAG), so the sweep never
+	 * rolls for it twice.
+	 */
+	public static void consider(ThreatConvoys.Convoy convoy, Random random, float convoyFP) {
+		consider(convoy, random, convoyFP, null);
+	}
+
+	/**
+	 * consider, for a convoy the sweep sighted in {@code seenIn} (null: none):
+	 * the hives of that system roll too, and first - the convoy is at their
+	 * door, wherever the route's midpoint lies (a front run is first seen at
+	 * the hive it sails to, which sits on the half-route boundary).
+	 */
+	protected static void consider(ThreatConvoys.Convoy convoy, Random random, float convoyFP,
+			final StarSystemAPI seenIn) {
+		if (convoy == null || convoy.fleet == null) return;
+		convoy.fleet.getMemoryWithoutUpdate().set(CONSIDERED_FLAG, true);
+		if (!ThreatIncConfig.raiderEnabled()) return;
 		// either end may be an outpost (a front run's or a return's, or a hand
 		// order to the player's)
 		ThreatBases.Base from = ThreatBases.of(convoy.fromMarketId);
@@ -128,7 +159,7 @@ public class ThreatRaiders {
 		for (MarketAPI hive : ThreatIncData.getAllLiveColonyMarkets()) {
 			StarSystemAPI system = hive.getStarSystem();
 			if (system == null || hive.getPrimaryEntity() == null) continue;
-			if (Misc.getDistanceLY(system.getLocation(), mid) > range) continue;
+			if (system != seenIn && Misc.getDistanceLY(system.getLocation(), mid) > range) continue;
 			// a raider needs only a swarm above the defensive reserve, not a
 			// full garrison (expeditions demand full strength; a hunt is a
 			// cheaper commitment - and garrisons are rarely full in a war)
@@ -137,15 +168,17 @@ public class ThreatRaiders {
 			near.add(hive);
 		}
 		if (near.isEmpty()) return;
-		// nearest hive rolls first; the first success takes it
+		// nearest hive rolls first (those where it was sighted before any); the first success takes it
 		final Vector2f m = mid;
 		java.util.Collections.sort(near, new java.util.Comparator<MarketAPI>() {
 			public int compare(MarketAPI x, MarketAPI y) {
+				boolean xs = x.getStarSystem() == seenIn, ys = y.getStarSystem() == seenIn;
+				if (xs != ys) return xs ? -1 : 1;
 				return Float.compare(Misc.getDistanceLY(x.getStarSystem().getLocation(), m),
 						Misc.getDistanceLY(y.getStarSystem().getLocation(), m));
 			}
 		});
-		float need = convoy.fleet.getFleetPoints() * RAIDER_MARGIN;
+		float need = convoyFP * RAIDER_MARGIN;
 		for (MarketAPI hive : near) {
 			if (packFP(convoy.fleet) >= need) return;
 			if (random.nextFloat() >= ThreatIncConfig.raiderChance()) continue;
@@ -155,6 +188,33 @@ public class ThreatRaiders {
 							> ThreatColonyManager.garrisonReserve(hive)) {
 				if (detach(hive, convoy) == null) break;
 			}
+		}
+	}
+
+	/**
+	 * The swarm's fog (docs/threat-fog.md): a convoy is not rolled for at
+	 * dispatch, but the first day the swarm sees it - eyes in its system, or
+	 * a Bastion's radar on it in hyperspace (ThreatSwarmIntel.sees). Then
+	 * consider runs once, on the fleet points as seen (radar: two
+	 * significant figures). Called once a day by ThreatSwarmIntel.poll; a
+	 * no-op with the fog off, where ThreatConvoys rolls at dispatch.
+	 */
+	public static void sweep() {
+		if (!ThreatIncConfig.swarmFogOfWar() || !ThreatIncConfig.raiderEnabled()) return;
+		List<ThreatConvoys.Convoy> convoys = ThreatConvoys.all();
+		if (convoys.isEmpty()) return;
+		for (ThreatConvoys.Convoy c : new ArrayList<ThreatConvoys.Convoy>(convoys)) {
+			CampaignFleetAPI fleet = c.fleet;
+			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+			if (fleet.getMemoryWithoutUpdate().getBoolean(CONSIDERED_FLAG)) continue;
+			String source = ThreatSwarmIntel.sees(fleet.getContainingLocation(), fleet.getLocationInHyperspace());
+			if (source == null) continue;
+			float fp = fleet.getFleetPoints();
+			if (ThreatSwarmIntel.RADAR.equals(source)) fp = ThreatIntel.twoFigures(fp);
+			ThreatIncConfig.log("Swarm intel: sees " + c.factionId + " convoy of " + (int) fp
+					+ " FP bound for " + c.toName() + " by " + source);
+			LocationAPI at = fleet.getContainingLocation();
+			consider(c, RANDOM, fp, at instanceof StarSystemAPI ? (StarSystemAPI) at : null);
 		}
 	}
 
