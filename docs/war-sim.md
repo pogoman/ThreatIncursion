@@ -159,6 +159,25 @@ The log lines the score reads, once dated by `Clock:`: `Colony founded`, `Colony
 `Colony eradicated`, `Threat ground victory at`, `Frontline: <faction> founded` and
 `Frontline: <faction> dismantled (<why>)`.
 
+**What makes a run good (the user, 2026-10-02).** The aim is a dynamic, emergent war, not a
+deterministic one; variation between runs is welcome while the average is good. A run is judged
+by its whole outcome, never by its distance from an expected run:
+
+| Run | Verdict |
+| --- | --- |
+| Both sides win and lose ground, back and forth | best |
+| One side annihilates the other | interesting |
+| Neither side attacks | boring |
+| Years pass and neither side changes the situation (stalemate) | worst |
+
+So beside the two scores, `batch` and `compare` report per run: `turnover` (worlds changing
+state a year: hives founded and killed, human worlds lost, forward bases founded and destroyed),
+`swings` (times the yearly momentum - net ground gained by the swarm less the humans' - changes
+sign), `deadYears` (the longest stretch with no hive killed, no world lost and no base
+destroyed, in years) and `decided` (one side wiped out, and when). A change is good when, over
+the seeds, `deadYears` falls and `turnover` and `swings` rise; matching pd9a is a test of the
+simulator's fidelity, not a goal for the game.
+
 ## 7a. Using it
 
 - `warsim run -seed 7 -months 100` writes a monthly CSV (hives, sizes, FP, stocks, stance, kills,
