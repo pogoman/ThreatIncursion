@@ -179,10 +179,14 @@ public class ThreatSimDump {
 	/** Every human world, forward bases included (flagged). */
 	protected static JSONArray worlds() throws Exception {
 		JSONArray out = new JSONArray();
+		java.util.Map<String, float[]> memo = new java.util.HashMap<String, float[]>();
 		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (m.isHidden() || m.isPlanetConditionMarketOnly() || m.getPrimaryEntity() == null) continue;
 			if (Factions.THREAT.equals(m.getFactionId()) || m.getStarSystem() == null) continue;
 			JSONObject o = new JSONObject();
+			// what the strike gate reads (strikeOutweighed): the system's hostile fleets and the world's
+			// station in vanilla units, live - "defence" below is the ground figure a landing meets
+			o.put("gate", IncursionManager.liveTargetDefence(m, memo));
 			o.put("id", m.getId());
 			o.put("name", m.getName());
 			o.put("faction", m.getFactionId());
