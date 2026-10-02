@@ -2,7 +2,8 @@
 
 Built 2026-10-02. The human side of the offline simulator (`tools/warsim/`, spec `war-sim.md`):
 `warsim.HumanSide` and the `Human*` classes beside it. It runs the attack planner; with
-`threatinc_warCouncil` on it still runs the planner and counts `councilNotModelled` once.
+`threatinc_warCouncil` on (the mod's default) the war council and its plays run instead (`HumanCouncil`, section 7); `check` turns it off, the real
+runs it reads (pd9a, pd10a) being planner runs.
 
 Run: `tools\warsim\warsim.ps1 run -start <dump folder> -months 60 [-seed N] [-v] [-set key=value]`.
 Test double for the swarm (calibration only): `java -Dwarsim.humanTestSwarm=true
@@ -194,10 +195,7 @@ the organ clocks (`nexusDown`, `forgeDown`, `coreDown`) - the human side runs `H
 and `fortification` down and writes `nexusDown`; humans reduce `Hive.garrisonFP` and the fp of
 Threat parcels holding in the system.
 
-The council job needs: `HumanPlanner.size` / `launch` / `muster` (a play's siege, with
-`CouncilRules` for the strategy draw), `HumanPlanner.hunt` for a play's held force (hold = a MUSTER
-that does not sail until released), `HumanSiege.friendsOf` already counts hunts beside a siege,
-and `HumanStance` must stand aside when a council sets the stance.
+The council job is done: section 7.
 
 Not modelled at all: guard and defend orders (`ThreatFleetOrders`), saturation as its own
 order, per-faction intel (mobilised factions share), the coalition call, contracts, the
@@ -219,3 +217,57 @@ player, hive unrest in the defence, the siege leash, link structures and build t
   `hostileAt` (vanilla's start has only the Path hostile to the other hunters), the go-in check and moving on. The
   simulated reports are honest; the garrisons a hunt meets are about half the real ones (the strongest world's report
   read 749 FP at the median in pd9a), which is the swarm's concentration, below.
+
+## 7. Round 6: the war council and its plays (`HumanCouncil`)
+
+Switched by `threatinc_warCouncil` (`HumanCouncil.on`). With it on, `HumanSide.daily` runs `HumanCouncil.daily`
+in place of `HumanStance.evaluate` and `HumanPlanner.plan` (`ThreatAttackPlanner.active`,
+`ThreatFactionStance.refresh`); the front runs (`HumanPlanner.frontRuns`) and the bounty hunts
+(`HumanPlanner.hunts`, `ThreatSoftening.tick`) run either way.
+
+| Simulator | Mod | What |
+|---|---|---|
+| `HumanCouncil.assess` | `ThreatWarCouncil.assess` | Monthly `Picture`: a `Cluster` per reported hive system (weight = sizes + 2 x tier, core, frontier, production, stale, threatens, the bases in range nearest first), our weight, partners' at half, strikes in 90 days from the history, Threat fronts, the band (`CouncilRules.ratio`, `band`). |
+| `HumanCouncil.review`, `fits`, `focus` | `ThreatWarCouncil.scores`, `review`, `fits`, `focus` | `CouncilRules.scores` x personality x learned weight, the held strategy x (1 + switch margin), `CouncilRules.draw`, the review day jittered; the focus by `CouncilRules.focusWeight`. Early review on a colony lost, a partner more or fewer, a play's decisive end. |
+| `HumanCouncil.personality`, `learned`, `learn` | the same names | `threatinc_councilPersonalities`; `CouncilRules.learn` on `TYPE:targetClass` and `strategy:S`. |
+| `HumanCouncil.setStance` | `ThreatWarCouncil.setStance` | Hold consolidates, a major play presses, else expand (`Faction.stance`, read by `HumanBases` as before). |
+| `HumanCouncil.plan`, `opportunity`, `startRecon`, `startHammer`, `startStarve`, `feintPlan`, `startFeint` | `ThreatPlays`, the same names | One major play at a time on the focus; play weights by strategy x personality x learned; Hold only recons what threatens; bombers of opportunity within the month's fuel share (`oppLeft`), a world that drove one off rested a half-life. |
+| `HumanCouncil.advance`, `sample`, `toMuster`, `musterCheck`, `watchCheck`, `strike`, `strikeCheck`, `exploitCheck`, `advanceStarve`, `saturate`, `finish`, `end` | `ThreatPlays`, the same names | The phases and the verdict by damage done: a world taken, a landing (`HumanCouncil.landed`, from `HumanSide.station`), or Nexus-days down >= `councilInvadeNexusDays`. |
+| `HumanCouncil.force` | `ThreatSoftening.sendPlay`, `playPayableFP` | The held hunting force: a MUSTER parcel at `councilHammerShare` x `HumanPlanner.payableFP` that sails on the siege's day. |
+| `HumanPlanner.size(.., playFP)` | `IncursionManager.playSiegeSizes` | The play's siege: no orbit term, grown to the share of `HumanCouncil.capacityFP` (`ThreatPosture.siegeCapacityFP`); `strike` trims it to what the pools pay, down to the fleet that carries the landing (the provisions gate of `launchSiegeExpedition`, "Expedition trimmed"). |
+| `HumanCouncil.squadron`, `squadronFP`, `squadronBase`, `fuelCost`, `bombable`, `raidsEnded` | `ThreatPlays`, the same names (`raidEnded`) | A play's raid: a SQUADRON parcel with `HumanOrder.play` and `stayDays`; `HumanSide.station` sends it home driven off on a contested orbit (`ThreatFleetOrders.endRaid`), planner raids as before. |
+
+Counters: `council.months.<STRATEGY>` (a faction-month, as the mod's monthly `Council f: picture` line),
+`council.band.<band>`, `council.pressedMonths`, `council.switches`, `plays.<TYPE>`, `plays.<TYPE>.<outcome>`,
+`playSieges`, `playSiegesTrimmed`, `playForces`, `playSquadrons`, `playSquadronsDrivenOff`, `saturationsSailed`,
+`starveInvasions`, `feintsDrew`. `-show a,b` adds any of them to the `run`, `batch` and `compare` tables.
+
+Not mirrored, candidates to lift or model later: relief owed (no relief of an invaded world in the simulator, so
+no play is held and Hold never scores its +1); a partner's joint force (`inviteJoint`); the play's staging and
+its decoy (`stage`, `ThreatConvoys.stageForPlay`); the muster at a bearing (the held force waits at its base);
+one siege a hive, so a hammer besieges its first payable world only; the saturation expedition is a SATURATION
+parcel over one world; the coalition is every faction at war (`HumanIntel`), so "the coalition changed" fires at
+each mobilisation.
+
+**Council against planner, and against the real council runs** (30 seeds from `start/pd9a-newgame`, 104 months,
+median [p10-p90]; real: pd4a, pd5a, pd6a, pd8a, 97-105 months, log extracts without dumps or dates):
+
+| | sim planner | sim council | real council runs |
+|---|---|---|---|
+| hives at the end | 78 [35-140] | 125 [64-168] | 236, 191, 201, 152 |
+| hives killed | 20 [12-29] | 8 [5-12] | 1, 2, 1, 0 |
+| sieges sailed (+ saturations) | 284 [167-361] | 23 [17-32] + 39 [30-44] | 15, 29, 26, 29 (`Expedition draw at`, both kinds) |
+| human worlds lost | 13 [10-16] | 14 [10-16] | 39, 22, 8, 8 |
+| forward bases founded / held | 21 / 0 [0-1] | 43 [37-56] / 8 [5-12] | 9/0, 42/0, 20/0, 50/3 |
+| faction-months Hold / Starve / Roll back / Decapitate | - | 48% / 41% / 10% / 1% | 52-59% / 36-46% / 3-5% / 0-1% |
+| band outmatched, months pressed | - | 62%, 61% | 82-90%, 67-85% |
+| hammers (succeeded) | - | 28 [21-42] (75%) | 7, 16, 8, 8 (25-71%) |
+| starves (succeeded) | - | 40 [30-44] (29%) | 13, 19, 22, 23 (9-32%) |
+| bombers (succeeded) | - | 242 [154-307] (18%) | 34, 98, 27, 35 (26-39%) |
+| recons, feints | - | 1, 2 | 0-44, 0 |
+
+The strategy shares, the starve campaigns' verdicts and the direction of every council-against-planner
+difference agree. The simulated council is about twice as active as the real one (hammers 3x, starves 2x,
+bombers 3-7x), kills 8 hives where the real ones killed 0-2, and leaves the swarm at about half the real size;
+it holds 8 forward bases where the real runs held 0-3. The logs cannot validate the plays' sizes, the band's
+inputs or anything by date (no `Clock:` lines, no dumps).
