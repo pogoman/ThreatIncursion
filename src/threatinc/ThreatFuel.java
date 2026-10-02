@@ -29,7 +29,7 @@ import com.fs.starfarer.api.util.Misc;
  *
  * <p>Each stock fills as a faction's reserve does (ThreatReserves.accrualPer30,
  * productionShare): each world's availability, BaseIndustry.getSizeMult of it,
- * x the commodity's econ unit x reserveSurplusMult, a month - summed over the
+ * x the commodity's econ unit x hiveSurplusMult (the swarm's own rate since 2026-10-02), a month - summed over the
  * hive, and no more than it makes above its own demand or, if larger, the
  * sector's best exporter it imports from times reserveBankImportsMult. A
  * faction world banks only what is left over its peacetime demand, which
@@ -105,7 +105,7 @@ public class ThreatFuel {
 	 * What the hive banks of the commodity a month. While structures cost
 	 * supplies (ThreatBuildCost) the hive earns what it makes: every plant's
 	 * and forge's whole output, getSizeMult of it x the econ unit x
-	 * reserveSurplusMult, summed. No Spaceport demand is taken off - vanilla's
+	 * hiveSurplusMult, summed. No Spaceport demand is taken off - vanilla's
 	 * stands for trade and civilian traffic, and a hive runs none (its fleets pay
 	 * passage from the stock instead) - and nothing comes from imports, as a
 	 * hive does not trade. With it off, a faction reserve's rule
@@ -138,9 +138,9 @@ public class ThreatFuel {
 				foreign = Math.max(foreign, com.getCommodityMarketData().getMaxExportGlobal());
 			}
 		}
-		if (own) return made * unit * ThreatIncConfig.reserveSurplusMult();
+		if (own) return made * unit * ThreatIncConfig.hiveSurplusMult();
 		float budget = Math.max(made, BaseIndustry.getSizeMult(foreign) * ThreatIncConfig.reserveBankImportsMult());
-		return Math.min(banked, budget) * unit * ThreatIncConfig.reserveSurplusMult();
+		return Math.min(banked, budget) * unit * ThreatIncConfig.hiveSurplusMult();
 	}
 
 	/**
@@ -398,7 +398,7 @@ public class ThreatFuel {
 		CommodityOnMarketAPI com = market != null ? market.getCommodityData(commodityId) : null;
 		if (com == null || com.getMaxSupply() <= 0) return 0f;
 		return ThreatColonyUpkeep.reachesStock(market, commodityId, BaseIndustry.getSizeMult(com.getMaxSupply()))
-				* com.getCommodity().getEconUnit() * ThreatIncConfig.reserveSurplusMult();
+				* com.getCommodity().getEconUnit() * ThreatIncConfig.hiveSurplusMult();
 	}
 
 	/** The most any one hive world puts in the stock a month. */
@@ -416,7 +416,7 @@ public class ThreatFuel {
 	 */
 	public static float comingPerMonth(String commodityId) {
 		float unit = Global.getSettings().getCommoditySpec(commodityId).getEconUnit()
-				* ThreatIncConfig.reserveSurplusMult();
+				* ThreatIncConfig.hiveSurplusMult();
 		float sum = 0f;
 		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
 			Industry p = producerOn(m, commodityId);
