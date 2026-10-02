@@ -46,7 +46,7 @@ final class HumanStance {
 		float fp = 0f;
 		for (Parcel p : s.parcels) if (!p.done && p.owner.equals(f.id)) fp += p.fp;
 		float perFP = s.knobs.f("threatinc_expeditionSuppliesPerPoint") / ReachRules.FP_PER_POINT
-				+ ReachRules.DEFAULT_SUPPLIES_PER_FP * s.knobs.f("threatinc_siegeOrbitDays") / 30f;
+				+ HumanPlanner.suppliesPerFP(s) * s.knobs.f("threatinc_siegeOrbitDays") / 30f;
 		float supplies = 0f;
 		for (World w : s.worldsOf(f.id)) if (w.hasReserve) supplies += HumanPools.available(s, w, World.SUPPLIES);
 		return fp + supplies / perFP;

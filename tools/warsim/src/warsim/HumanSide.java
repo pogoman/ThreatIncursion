@@ -447,7 +447,7 @@ public final class HumanSide implements Side {
 			if (p.done || p.threat() || !(p.order instanceof HumanOrder)) continue;
 			HumanOrder o = (HumanOrder) p.order;
 			if (p.kind == Parcel.Kind.RELIEF || p.kind == Parcel.Kind.CONVOY || p.kind == Parcel.Kind.SCOUT) continue;
-			float due = ReachRules.tripSupplies(p.fp, ReachRules.DEFAULT_SUPPLIES_PER_FP, 5f);
+			float due = ReachRules.tripSupplies(p.fp, HumanPlanner.suppliesPerFP(s), 5f);
 			s.count("upkeepWanted", due);
 			// what it carries first (a siege is provisioned for its trip), then the faction's depots
 			float aboard = Math.min(due, Math.max(0f, p.supplies));
@@ -456,7 +456,7 @@ public final class HumanSide implements Side {
 			if (due > 0f && o.home != null && !o.home.lost) due -= HumanPools.drain(s, o.home, World.SUPPLIES, due);
 			o.owed += Math.max(0f, due);
 			s.count("upkeepOwed", Math.max(0f, due));
-			if (!o.returning && o.owed >= ReachRules.tripSupplies(p.fp, ReachRules.DEFAULT_SUPPLIES_PER_FP, 30f)) {
+			if (!o.returning && o.owed >= ReachRules.tripSupplies(p.fp, HumanPlanner.suppliesPerFP(s), 30f)) {
 				s.count("stoodDownUnpaid", 1);
 				if (p.kind == Parcel.Kind.MUSTER) settle(s, p, o);
 				else home(s, p, o);

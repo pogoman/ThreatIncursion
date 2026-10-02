@@ -1128,11 +1128,15 @@ final class HumanCouncil {
 			// round 16 trial b (warsim_hammerSailsPartial): a hammer whose provisions pay at least councilMusterFloor of the
 			// report-sized orbit sails with the fleets they pay for and judges on arrival (HumanSiege.orbitDay's call-off);
 			// short of marines it still waits
-			if (!o.affordable && planner && s.knobs.b("warsim_hammerSailsPartial", false) && !World.COMMODITIES[World.MARINES].equals(o.shortOf)
-					&& o.paysFP >= Math.max(HumanFit.MIN_SIEGE_FP, s.knobs.f("threatinc_councilMusterFloor") * o.fp)) {
+			// round 17: the mod's own gate with threatinc_npcSiegeFullStrength=false sails what the pools provision at or above
+			// expeditionMinProvisionsFraction of the points, trimmed (IncursionManager.siegeCanPay's mustPay; "Expedition trimmed")
+			boolean fullStrength = s.knobs.b("threatinc_npcSiegeFullStrength", true);
+			float floor = !fullStrength ? s.knobs.f("threatinc_expeditionMinProvisionsFraction") : s.knobs.f("threatinc_councilMusterFloor");
+			if (!o.affordable && planner && (!fullStrength || s.knobs.b("warsim_hammerSailsPartial", false)) && !World.COMMODITIES[World.MARINES].equals(o.shortOf)
+					&& o.paysFP >= Math.max(HumanFit.MIN_SIEGE_FP, floor * o.fp)) {
 				HumanPlanner.Option part = HumanPlanner.size(s, pl.f, h, pl.base, o.paysFP);
 				if (part.affordable && part.fp < o.fp) {
-					s.count("playSiegesPartial", 1);
+					s.count(fullStrength ? "playSiegesPartial" : "playSiegesTrimmed", 1);
 					s.count("playSiegesPartial.fpShare", part.fp / o.fp);
 					o = part;
 				}
