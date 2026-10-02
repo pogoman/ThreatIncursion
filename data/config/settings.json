@@ -642,7 +642,9 @@
 	"threatinc_starveDaysPerSize": 90,
 	"threatinc_feedShareExpand": 0.5,
 	"threatinc_feedSharePress": 0.7,
-	"threatinc_feedShareConsolidate": 0.9,
+	# consolidating 0.9 -> 0.5 (2026-10-02, the war simulator's round 20): the largest of the three
+	# is also the share sustenance may take in any stance (ThreatColonyUpkeep.sustainShare), now 0.7
+	"threatinc_feedShareConsolidate": 0.5,
 	# troop-transport share of a cargo-carrying expedition fleet
 	"threatinc_expeditionTransportMult": 0.3,
 	# convoys: donor colonies ship stock to staging bases (the

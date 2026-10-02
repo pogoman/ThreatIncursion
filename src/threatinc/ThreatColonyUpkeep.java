@@ -30,7 +30,7 @@ import com.fs.starfarer.api.util.Misc;
  * <ol>
  * <li>Sustenance: the break-even share of every colony's upkeep, forge worlds
  * that make more than they eat first, then the worlds nearest the humans - up to the largest stance share
- * of the production (sustainShare, 0.9), never more: the hive always keeps a
+ * of the production (sustainShare, 0.7), never more: the hive always keeps a
  * tithe for forges, waves and fleets. h35a let sustenance take everything and
  * the base save's hive shrank until it did - 26k of 29k a month - with nothing
  * left to buy the forges that would have fed it again. The leeway is the half
@@ -38,7 +38,7 @@ import com.fs.starfarer.api.util.Misc;
  * (SHRINK_MARGIN), not the stock: a raided forge stops growth at once and
  * costs sizes only if it stays down.</li>
  * <li>Growth: the rest of each colony's upkeep, out of its stance's share of
- * the production (feedShare: expanding 0.5, pressing 0.7, consolidating 0.9),
+ * the production (feedShare: expanding 0.5, pressing 0.7, consolidating 0.5),
  * to a colony only while that share still holds its next size's sustenance.
  * Forges whose next size pays for itself first; then pressing feeds the front,
  * expanding and consolidating the smallest. A size-2 world grows into
