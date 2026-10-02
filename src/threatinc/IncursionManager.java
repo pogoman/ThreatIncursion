@@ -2767,11 +2767,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	/**
 	 * As above, for a play of the war council ({@code playId} non-null,
-	 * ThreatPlays; docs/war-council.md section 5): its fleets are the play's share
-	 * of the means, so the gates that read the swarm - the orbit gate and the
-	 * orbit's term of the fleet goal - do not apply. The marines, the provisions
-	 * and what the ground and the guns need still do. The expedition carries the
-	 * play's id, and calls no allies to the door: a joint play has its own path.
+	 * ThreatPlays; docs/war-council.md section 16): the council decided when
+	 * and where, so the orbit gate (postpone and bounty) does not apply - its
+	 * hunts go in beside the siege and the siege judges the orbit on arrival.
+	 * Its fleets are sized as the planner's (siegeSizesFor, 2026-10-02), so
+	 * the fleet goal weighs the orbit for it too: the orbit's fleets are not
+	 * for trimming. The marines, the provisions and what the ground and the
+	 * guns need apply as always. The expedition carries the play's id, and
+	 * calls no allies to the door: a joint play has its own path.
 	 */
 	public static ThreatPurgeFGI launchSiegeExpedition(MarketAPI base, FactionAPI faction,
 			StarSystemAPI system, java.util.List<MarketAPI> targets,
@@ -2874,8 +2877,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// cannot pay for the orbit's fleets
 			float orbitNeed = playId != null ? 0f : siegeOrbitNeeded(faction, targets);
 			// the fleet points the siege sails with at least: the orbit's, and
-			// what outlasts the guns of the worlds it razes (siegeFleetGoal)
-			float fleetGoal = siegeFleetGoal(faction, targets, raze, playId == null);
+			// what outlasts the guns of the worlds it razes (siegeFleetGoal); a
+			// play's siege is sized on the orbit too since 2026-10-02
+			float fleetGoal = siegeFleetGoal(faction, targets, raze);
 			float fieldable = ThreatAidCapacity.expeditionPoints(params.fleetSizes);
 			if (orbitNeed > 0f && fieldable < orbitNeed) {
 				float garrison = siegeOrbitWeighed(faction, targets);
@@ -3781,30 +3785,28 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 */
 	public static java.util.List<Integer> siegeSizesFor(MarketAPI base, FactionAPI faction,
 			java.util.List<MarketAPI> targets, float marineGoal) {
-		if (base == null || faction == null || targets.isEmpty()) return new java.util.ArrayList<Integer>();
-		boolean anyGarrisoned = anyTargetGarrisoned(ThreatIntel.observerOf(faction), targets);
-		int difficulty = siegeDifficulty(base, faction, targets, anyGarrisoned);
-		java.util.Set<String> raze = razeWorlds(base, faction, targets.get(0).getStarSystem(), targets);
-		java.util.List<Integer> sizes = siegeFleetSizes(difficulty, anyGarrisoned,
-				siegeHeavyAssault(faction, targets), targets, landTargets(targets, raze), marineGoal,
-				siegeFleetGoal(faction, targets, raze));
-		return ThreatAidCapacity.fitExpedition(base, faction, sizes, false);
+		return siegeSizesFor(base, faction, targets, marineGoal, null);
 	}
 
 	/**
-	 * A war council play's flotilla (ThreatPlays; docs/war-council.md section 5):
-	 * the siege's own shape, quality from the base's strength, the landing the
-	 * worlds' ground defence needs (a planet fact), grown to {@code playFP} -
-	 * the play's share of the means, never the swarm's fleet points. It lands on
-	 * every world but those in {@code raze} (null or empty: lands everywhere;
-	 * all of them: a bombing expedition, no landing).
+	 * As above, razing the worlds in {@code razeGiven} rather than those the
+	 * faction's navy would pick (razeWorlds; null: the navy's) - a war council
+	 * play's saturation expedition (ThreatPlays.saturate). THE sizing of every
+	 * NPC siege: the planner's (launchPlanned) and, since 2026-10-02 (the
+	 * user's decision), a play's too - the swarms the faction's report shows
+	 * over the strongest world it takes x npcSiegeOrbitMargin (siegeFleetGoal,
+	 * siegeOrbitNeeded), the landing and the guns; never a share of the means.
 	 */
-	public static java.util.List<Integer> playSiegeSizes(MarketAPI base, FactionAPI faction,
-			java.util.List<MarketAPI> targets, float playFP, java.util.Set<String> raze) {
+	public static java.util.List<Integer> siegeSizesFor(MarketAPI base, FactionAPI faction,
+			java.util.List<MarketAPI> targets, float marineGoal, java.util.Set<String> razeGiven) {
 		if (base == null || faction == null || targets == null || targets.isEmpty()) return new java.util.ArrayList<Integer>();
-		int difficulty = siegeDifficulty(base, faction, targets, true);
-		java.util.List<Integer> sizes = siegeFleetSizes(difficulty, true, false, targets,
-				landTargets(targets, raze), 0f, Math.max(0f, playFP));
+		boolean anyGarrisoned = anyTargetGarrisoned(ThreatIntel.observerOf(faction), targets);
+		int difficulty = siegeDifficulty(base, faction, targets, anyGarrisoned);
+		java.util.Set<String> raze = razeGiven != null ? razeGiven
+				: razeWorlds(base, faction, targets.get(0).getStarSystem(), targets);
+		java.util.List<Integer> sizes = siegeFleetSizes(difficulty, anyGarrisoned,
+				siegeHeavyAssault(faction, targets), targets, landTargets(targets, raze), marineGoal,
+				siegeFleetGoal(faction, targets, raze));
 		return ThreatAidCapacity.fitExpedition(base, faction, sizes, false);
 	}
 
