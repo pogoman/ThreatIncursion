@@ -46,6 +46,58 @@ final class SwarmPosture {
 				|| kind == Parcel.Kind.SQUADRON;
 	}
 
+	/**
+	 * The swarm's sweep for attacks (ThreatSwarmIntel.sweep, simplified): a siege, hunt or squadron bound for
+	 * a hive system is seen by eyes once it is there and by radar inside swarmRadarRangeLY of it (every hive
+	 * system taken as having radar, as SwarmOps.radar does); a contact counts for swarmContactDays after.
+	 */
+	static void sight(State s, SwarmKnobs k, List<StarSys> systems) {
+		Swarm sw = s.swarm;
+		float contactDays = s.knobs.f("threatinc_swarmContactDays");
+		for (Parcel p : s.parcels) {
+			if (p.done || p.threat() || !attackKind(p.kind) || !systems.contains(p.to)) continue;
+			if (p.order instanceof HumanOrder && ((HumanOrder) p.order).returning) continue;
+			boolean seen = p.holding || p.arrived || !k.fog;
+			if (!seen) {
+				float span = Math.max(1f, p.arriveDay - p.departDay);
+				float left = p.from.ly(p.to) * Math.max(0f, Math.min(1f, (p.arriveDay - s.day) / span));
+				seen = left <= k.radarLY;
+			}
+			if (!seen) continue;
+			Swarm.Contact c = sw.contacts.get(p.id);
+			if (c == null) sw.contacts.put(p.id, c = new Swarm.Contact());
+			c.sys = p.to;
+			c.day = s.day;
+			c.fp = p.fp;
+		}
+		for (Iterator<Swarm.Contact> it = sw.contacts.values().iterator(); it.hasNext();) {
+			if (s.day - it.next().day > contactDays) it.remove();
+		}
+	}
+
+	static StarSys nearestHiveSystem(State s, List<StarSys> systems, StarSys from) {
+		StarSys best = null;
+		for (StarSys sys : systems) {
+			if (!s.foundHiveSystems.contains(sys)) continue;
+			if (best == null || sys.ly(from) < best.ly(from)) best = sys;
+		}
+		return best;
+	}
+
+	/** ThreatConvoys.stagingHive: the nearest found hive system in the base's reach that no nearer base of its faction serves. */
+	static StarSys stagingHive(State s, World base) {
+		float range = HumanPools.rangeLY(s, base);
+		StarSys best = null;
+		for (StarSys sys : s.foundHiveSystems) {
+			if (s.hivesIn(sys).isEmpty()) continue;
+			float d = base.sys.ly(sys);
+			if (d > range || (best != null && d >= base.sys.ly(best))) continue;
+			if (HumanPools.nearestBase(s, base.faction, sys, false) != base) continue;
+			best = sys;
+		}
+		return best;
+	}
+
 	static void poll(State s, SwarmKnobs k) {
 		Swarm sw = s.swarm;
 		List<StarSys> systems = SwarmEconomy.hiveSystems(s);
@@ -86,21 +138,65 @@ final class SwarmPosture {
 		}
 		sw.posture.clear();
 
+		sight(s, k, systems);
+		float contactDays = s.knobs.f("threatinc_swarmContactDays");
+		float half = Math.max(1f, s.knobs.f("threatinc_intelHalfLifeDays"));
+
 		float quietSpare = 0f, quietWant = 0f, sumPressure = 0f;
 		int forges = 0, forgesCovered = 0, pressed = 0, attackedSystems = 0;
 		float bill = SwarmFit.FOUNDING_BILL_STRUCTURES * k.foundingFPPerStructure;
 		for (StarSys sys : systems) {
 			float[] sum = sums.get(sys.id);
 			float held = sum[0], bank = sum[1], base = sum[2], floor = sum[3];
-			float attacks = 0f, staged = 0f;
+			// ThreatPosture.read: max(attacks, staged) + losses + hostiles + forward
+			float attacks = 0f, staged = 0f, hostiles = 0f, forward = 0f;
+			// attacks: what the swarm has seen bound for the system within swarmContactDays (ThreatSwarmIntel.contactsOn)
+			for (Swarm.Contact c : sw.contacts.values()) {
+				if (c.sys == sys && s.day - c.day <= contactDays) attacks += c.fp;
+			}
 			for (Parcel p : s.parcels) {
 				if (p.done || p.threat() || !p.holding) continue;
-				if (p.to == sys && attackKind(p.kind)) attacks += p.fp;
 				if (p.kind == Parcel.Kind.MUSTER && p.against == sys) staged += p.fp;
+				// hostiles: fleets in the system no attack counted (guards, relief, convoys, scouts)
+				else if (p.to == sys && !attackKind(p.kind)) hostiles += p.fp;
 			}
+			// staged: per faction, the most any one seen base staging for this system could pay a siege
+			// here from its own stock, by the sighting's trust (stagedBy / siegeCapacityFP, no donors)
+			Map<String, Float> byFaction = new HashMap<String, Float>();
+			for (World w : s.worlds) {
+				if (w.lost) continue;
+				float[] seen = sw.seen.get(w.id);
+				if (seen == null) continue;
+				float trust = (float) Math.pow(0.5, Math.max(0f, s.day - seen[0]) / half);
+				if (w.forwardBase && w.guardFP > 0f && w.sys != sys && nearestHiveSystem(s, systems, w.sys) == sys
+						&& w.sys.ly(sys) <= s.knobs.f("threatinc_frontlineKeepLY")) {
+					// forward: a forward base's guards count toward its nearest hive system only (ThreatFrontlines.hiveNear)
+					forward += w.guardFP * trust;
+				}
+				if (!w.base || !w.hasReserve) continue;
+				Faction f = s.factions.get(w.faction);
+				if (f == null || !f.mobilised || stagingHive(s, w) != sys) continue;
+				float ly = w.sys.ly(sys);
+				float cap = threatinc.rules.ReachRules.payablePoints(HumanPools.available(s, w, World.FUEL),
+						HumanPools.available(s, w, World.SUPPLIES), ly * s.knobs.f("threatinc_expeditionFuelPerPointLY"),
+						s.knobs.f("threatinc_expeditionSuppliesPerPoint")) * threatinc.rules.ReachRules.FP_PER_POINT * trust;
+				if (cap >= Float.MAX_VALUE / 2f || cap <= 0f) continue;
+				Float had = byFaction.get(w.faction);
+				if (had == null || cap > had) byFaction.put(w.faction, cap);
+			}
+			float stagedCap = 0f;
+			for (Float v : byFaction.values()) stagedCap += v;
+			staged = Math.max(staged, stagedCap);
 			float[] l = sw.losses.get(sys.id);
 			float losses = l == null ? 0f : l[0] * PostureRules.decay(s.day - l[1], SwarmFit.DECAY_DAYS);
-			float raw = Math.max(attacks, staged) + losses;
+			float raw = Math.max(attacks, staged) + losses + hostiles + forward;
+			if (s.verbose) {
+				s.count("pressure.attacks", attacks);
+				s.count("pressure.staged", staged);
+				s.count("pressure.losses", losses);
+				s.count("pressure.hostiles", hostiles);
+				s.count("pressure.forward", forward);
+			}
 			Swarm.Post post = sw.post.get(sys.id);
 			if (post == null) sw.post.put(sys.id, post = new Swarm.Post());
 			float carried = post.day == Integer.MIN_VALUE ? 0f
@@ -138,7 +234,7 @@ final class SwarmPosture {
 			post.bank = bank;
 			post.mode = mode;
 			post.day = s.day;
-			post.attacked = attacks > 0f;
+			post.attacked = attacks > 0f || hostiles > 0f;
 			if (surplus > 0f) {
 				if (Float.isNaN(post.surplusSince)) post.surplusSince = s.day;
 			} else {

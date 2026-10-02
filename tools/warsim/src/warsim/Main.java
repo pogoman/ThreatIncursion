@@ -224,7 +224,7 @@ public final class Main {
 			if (m > 0 && (m % 12 == 0 || i == files.size() - 1)) at.add(new int[] { i, m });
 		}
 		List<Sim.Result> runs = runs(start, knobs, seeds, months, killWeight, sizeExponent);
-		String[] cols = { "hives", "hiveSize", "garrisonFP", "bank", "swarmFuel", "swarmSupplies", "worlds", "basesHeld" };
+		String[] cols = { "hives", "hiveSize", "meanHiveSize", "garrisonFP", "bank", "swarmFuel", "swarmSupplies", "worlds", "basesHeld" };
 		System.out.println("real run " + dir.getFileName() + " against " + seeds + " seeds: real | sim median [p10 - p90]");
 		int in = 0, cells = 0;
 		for (String col : cols) {
@@ -278,6 +278,10 @@ public final class Main {
 			{ "basesFounded", "^Frontline: \\w+ founded " },
 			{ "basesDestroyed", "^Frontline: \\w+ dismantled .*\\(station destroyed" },
 			{ "basesAbandoned", "^Frontline: \\w+ dismantled .*\\(no " },
+			// the swarm's stance, in months: the monthly "Colony upkeep" line names it
+			{ "monthsExpand", "^Colony upkeep: .*stance EXPAND" },
+			{ "monthsPress", "^Colony upkeep: .*stance PRESS" },
+			{ "monthsConsolidate", "^Colony upkeep: .*stance CONSOLIDATE" },
 	};
 
 	/** Cumulative event counts by month since `startDay`, from a log dated by its "Clock: day N war M" lines. */

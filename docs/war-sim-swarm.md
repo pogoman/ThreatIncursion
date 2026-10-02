@@ -243,7 +243,7 @@ system; RAIDER is banked at the nearest hive.
   pd9a paid 47k at 172-185, because its hives are many and small (mean size 3.2-3.9 against 5.4; the upkeep curve
   is convex). pd9a's `ThreatStance` sat in CONSOLIDATE 53 of the 72 months of years 3-8 (feed share 0.9, no founding;
   hives 25 to 32 over months 60-96, then 36 to 56 in the last 7 months of EXPAND); the simulator's leaves CONSOLIDATE
-  a month after entering (seed 2: 31 changes against 22, EXPAND about 5 months in 6). Its pressure reads 4-8k where
+  a month after entering (seed 2: 31 changes against 22). Its pressure reads 4-8k where
   pd9a's read 12-20k with 5 of 10 systems pressed. So it founds through the war, spreads over more systems, each
   less pressed, and the supplies the bigger hives would eat pile up (month 115: 149k [5k-526k] against 16k).
 - **The strike gate** reads vanilla's fleet strength in the whole system plus the world's station
@@ -253,3 +253,31 @@ system; RAIDER is banked at the nearest hive.
   `SwarmOps.defenceOf` reads the dump's `defence` (Donn 55, Garnir 55, Umbra 558), so the simulator takes pirate
   worlds inside patrolled systems that pd9a's gate passed over (worldsLost 13 against 7). Needs the gate's figure in
   the dumps; not fitted.
+
+## 10. Round 4 against pd9a: the pressure the stance reads
+
+`SwarmPosture.poll` read only attack parcels holding in the system and forces mustering against it. It now reads
+`ThreatPosture.read`'s five terms, raw = max(attacks, staged) + losses + hostiles + forward:
+
+- **attacks** (`SwarmPosture.sight`, `Swarm.contacts`): a siege, hunt or squadron bound for a hive system is a contact
+  once it is there or inside `swarmRadarRangeLY` of it, and counts for `swarmContactDays` after it was last seen
+  (`ThreatSwarmIntel.contactsOn`). Simplified: every hive system has radar, as `SwarmOps.radar` already takes it.
+- **staged** (`SwarmPosture.stagingHive`): per faction, the most any one seen base staging for the system could pay a
+  siege there from its own stock, by the sighting's trust (`ThreatPosture.stagedBy`, `siegeCapacityFP`,
+  `ThreatConvoys.stagingHive`); the mustering forces stay as a floor under it.
+- **hostiles**: human fleets in the system that are no attack (guards, relief, convoys, scouts).
+- **forward**: a seen forward base's guards, toward its nearest found hive system inside `frontlineKeepLY`
+  (`ThreatFrontlines.hiveNear`), by trust.
+- A system is attacked on attacks or hostiles. Verbose runs count the terms (`pressure.attacks` and so on); seeds 2
+  and 5 read attacks and staged about equal, forward a fifth of either, hostiles next to nothing.
+
+Check rows added: `meanHiveSize`, and the swarm's stance in months (`monthsExpand`, `monthsPress`,
+`monthsConsolidate`; real from the monthly "Colony upkeep: .. stance X" line). The `stanceDays.*` counters are the
+human factions' stances (`HumanStance`), not the swarm's.
+
+Result, 30 seeds: 143 of the 184 earlier figures inside p10-p90 (126 after round 3, 135 after round 2), 168 of 218
+with the new rows. Month 115, real | median [p10-p90]: monthsConsolidate 53 | 36 [13-51] (in through month 72: 28 |
+24 [12-31]); hives 56 | 41 [20-80]; hiveSize 222 | 141 [97-234]; meanHiveSize in at 7 of 10 months; garrisonFP 65.7k |
+36.6k [21.6k-51.3k], still OUT from month 84; swarmSupplies 15.9k | 94k [5k-305k]; strikes 163 | 189 [90-292];
+hivesKilled 23 | 23.5 [17-30]; huntsSailed 183 | 244 [118-364]. Stance changes 11-12 a run against 22. The low
+branch remains: the p10 seeds leave CONSOLIDATE near month 60 and do not return (13 months).

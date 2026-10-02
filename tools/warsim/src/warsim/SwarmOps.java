@@ -685,6 +685,10 @@ final class SwarmOps {
 
 	/** The day's strikes: the fronts, then any strike a dump loaded already holding lands what it carries. */
 	static void daily(State s, SwarmKnobs k) {
+		if (!s.liveHives().isEmpty()) {
+			s.count(s.swarm.stance == Swarm.CONSOLIDATE ? "monthsConsolidate" : s.swarm.stance == Swarm.PRESS ? "monthsPress"
+					: "monthsExpand", 1f / 30f);
+		}
 		fronts(s, k);
 		for (Parcel p : new ArrayList<Parcel>(s.parcels)) {
 			if (!p.threat() || p.kind != Parcel.Kind.STRIKE || !p.arrived || !p.holding) continue;

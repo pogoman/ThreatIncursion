@@ -45,6 +45,13 @@ public final class Swarm {
 	}
 
 	public final Map<String, Post> post = new HashMap<String, Post>();
+	/** ThreatSwarmIntel.Contact: an attack seen bound for a hive system, by parcel id. */
+	public static final class Contact {
+		public StarSys sys;
+		public int day;
+		public float fp;
+	}
+	public final Map<Integer, Contact> contacts = new HashMap<Integer, Contact>();
 	/** Garrison FP lost per hive system, decaying: {fp, day}. */
 	public final Map<String, float[]> losses = new HashMap<String, float[]>();
 	public float appetite = -1f;
