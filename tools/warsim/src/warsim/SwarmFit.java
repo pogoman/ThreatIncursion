@@ -88,8 +88,28 @@ public final class SwarmFit {
 	public static final float STRIKE_UNITS_PER_SWARM = 300f, STRIKE_UNITS_PER_FP = 2.1f;
 	/** A strike's muster before it sails: launchStrike's 7-14 days. */
 	public static int strikePrepDays(Random r) { return 7 + r.nextInt(8); }
-	/** Days from a landing to the ground victory: Kanni 50 (w761-w811), Kanta's Den 71 (w843-w914), Qaras 96 (w955-w1051). */
+	/**
+	 * Days from a landing to the ground victory: Kanni 50 (w761-w811), Kanta's Den 71 (w843-w914), Qaras 96
+	 * (w955-w1051); also Lost Astropolis 71, Kapteyn Starworks 72, Garnir 51, Epiphany 89. All seven
+	 * were worlds with no armed reserve: pirates, the Path, or a faction not yet mobilised.
+	 */
 	public static int groundDays(Random r) { return 50 + r.nextInt(47); }
+	/**
+	 * Troops a strike lands per fleet point that reached the orbit: "Abstract siege of Salamanca: 0 d,
+	 * 700 -> 700 FP" then "Strike pass (landing) vs Salamanca: 560 troops" (w1777); 2075 FP -> 1660
+	 * (w1937); 0.80 in 47 of pd9a's 60 landings (strikeTroopsPerPoint 20 a difficulty point of 25 FP).
+	 */
+	public static final float TROOPS_PER_FP = 0.8f;
+	/** IncursionManager's floor: "Strike landing at X aborted: only N troops left aboard for it" under 50. */
+	public static final float LANDING_MIN_TROOPS = 50f;
+	/**
+	 * Days from a landing on a colony at war to "Counter-attack at X overran the beachhead": pd9a's 44
+	 * fronts that were never reinforced ran 19-248 days, p10 50, median 136, p90 228 (the garrison
+	 * counter-attacks every 2-6 weeks at 1.3-1.9:1 and overruns at 2:1). None of the 56 took a colony.
+	 */
+	public static int overrunDays(Random r) { return 40 + r.nextInt(200); }
+	/** What a reinforcing pass adds to a front's life: the 12 reinforced fronts ran 187-751 days, median 405, on 1-3 passes. */
+	public static int reinforcedDays(Random r) { return 100 + r.nextInt(100); }
 	/** A world taken becomes a hive when it is a planet: Kanni and Qaras did, Kanta's Den (a station) did not. */
 	public static final float CONQUEST_HIVE_SHARE = 0.67f;
 	/**
