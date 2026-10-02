@@ -199,6 +199,19 @@ board selector The Threat (446,167), Hegemony (713,167). The locale uses a decim
 this machine's LunaLib store, so no `[ThreatInc]` lines were written; read the state from a
 quicksaved clone instead (`threatinc_frontlines` lists every link, its faction, hive and guards).
 
+**The same laptop docked (state read 2026-10-02, nothing launched).** One display, the 3440x1440
+monitor at 100%; game pref `resolution` 3440x1440. `fastforward\launch.ps1` and `run.ps1` are
+written for the 1600x900 pref (Play 298,254, Continue 1190,282, the "client 1600x900" check) and
+do not fit this state as they stand; `cycle.ps1`'s defaults are the 3440x1440 set. ShiftSpeed is
+at 6 here: `%TEMP%\ng\on29\long-N1.txt` logged 90 game days for 150 s of held Shift, 0.6 days a
+second, so 5 minutes of hold is about 6 months. No test save here (`ng9`, `ng10` are on the first
+machine): the saves are the user's own campaigns (two `StarLord`, 37 hives, Hegemony mobilised,
+saved 2026-09-29, older than fog, the attack planner and the council; six older `SaturnHadean`
+with a mod no longer enabled). A check here means `clone.ps1` on a `StarLord` save, never F5, and
+restoring the prefs `continue` and `resolution` and the store's `debugLogging` /
+`debugPlayerIgnored` afterwards. The LunaLib marker here is 7 and the store holds no feed-share
+keys, so the marker-12 bump is a no-op on this machine (the CSV default applies).
+
 ## Fast-forward runs and a new game (2026-10-01)
 
 `tools/test-harness/fastforward/` holds the scripts every balance run since 2026-09-29 used (they
