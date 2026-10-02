@@ -212,8 +212,9 @@ assessment. Every strategy runs it before committing a big play to a stale pictu
 
 `ThreatFleetOrders.planRelief` stays as it is: a colony under a Threat front gets relief before
 any play. Today `reliefOwed` blocks only new work and never pauses anything already running, so
-the council checks `reliefOwed(faction)` itself. While relief is owed, it holds each play's next
-phase. The play is paused, not cancelled.
+the council checks `reliefOwed(faction)` itself. While relief is owed, it holds the next phase of
+each play whose forces are not yet under way (`ThreatPlays.pausable`, 2026-10-02; section 16). The
+play is paused, not cancelled.
 
 ### 4.6 Bombers of opportunity (bounded)
 
@@ -627,8 +628,7 @@ third lost, and destroyed. A BOMBERS play ends with its raid.
   squadron nor a saturation siege. Under Starve, `plan` also weighs a hammer (x2) while the focus's
   Nexuses are down.
 
-A muster below `councilMusterFloor` of its share disbands as a failure. Relief owed adds a day to
-`phaseDue` in prepare, muster, bomb and watch. `liveTargets(..., own(pl))` skips worlds booked by other
+A muster below `councilMusterFloor` of its share disbands as a failure. `liveTargets(..., own(pl))` skips worlds booked by other
 sieges, but not the play's own. A world under another siege ends a play as neutral; a world no longer
 a hive calls `finish`. Probing raids share the monthly opportunity fuel (`oppLeft`). A recon on a system
 waits an intel half-life (`Council.reconDay`), after which the big play goes on the picture it has.
@@ -649,5 +649,16 @@ A decisive end calls `learn` on `TYPE:targetClass` and `strategy:S` (x1.25 or x0
 - `Play id: outcome (why; damage, N d)`;
 - `Play id force ...` (ThreatSoftening);
 - `Faction stance: f A->B - war council: ...`.
+
+**Major plays scale with means (2026-10-02, simulator round 13 option B).** `ThreatPlays.plan` and
+`inviteJoint` allow `majorLimit` major plays at once: max(1, `siegeCapacityFP(faction, picture)` /
+`councilMajorPlayFP`), the capacity being each base of the picture's clusters against its nearest
+cluster (`ThreatPosture.siegeCapacityFP`). The next play draws a focus no major play of the faction
+runs at (`majorAt`); `setStance` still presses at the first (`major`).
+
+**Relief holds only what is not under way (2026-10-02, the same round).** `ThreatPlays.pausable`:
+relief owed adds a day to `phaseDue` only in prepare, a muster under `councilMusterFloor` of
+`plannedFP`, and a bomb or watch with no squadron alive and no siege sailed; strike, exploit and
+withdraw run on.
 
 Knobs are `threatinc_council*` in settings.json. Personalities live in `threatinc_councilPersonalities`.

@@ -137,13 +137,64 @@ public class ThreatPlays {
 		return out;
 	}
 
-	/** The faction's major play (a hammer, a bombing campaign, a feint, or its share of a partner's hammer), or null. */
+	/** The faction's first major play (a hammer, a bombing campaign, a feint, or its share of a partner's hammer), or null. */
 	public static Play major(String fid) {
 		for (Play pl : plays().values()) {
 			if (fid == null || !fid.equals(pl.factionId)) continue;
-			if (HAMMER.equals(pl.type) || STARVE.equals(pl.type) || FEINT.equals(pl.type) || JOINT.equals(pl.type)) return pl;
+			if (isMajor(pl)) return pl;
 		}
 		return null;
+	}
+
+	protected static boolean isMajor(Play pl) {
+		return HAMMER.equals(pl.type) || STARVE.equals(pl.type) || FEINT.equals(pl.type) || JOINT.equals(pl.type);
+	}
+
+	/** How many major plays the faction runs. */
+	protected static int majors(String fid) {
+		int n = 0;
+		for (Play pl : plays().values()) {
+			if (fid != null && fid.equals(pl.factionId) && isMajor(pl)) n++;
+		}
+		return n;
+	}
+
+	/** Whether one of the faction's major plays runs at the system. */
+	protected static boolean majorAt(String fid, String systemId) {
+		for (Play pl : plays().values()) {
+			if (fid != null && fid.equals(pl.factionId) && isMajor(pl) && systemId != null && systemId.equals(pl.systemId)) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Major plays the faction may run at once (simulator round 13, option B, 2026-10-02): one per
+	 * councilMajorPlayFP of its siege capacity, at least one.
+	 */
+	protected static int majorLimit(String fid, ThreatWarCouncil.Picture p) {
+		FactionAPI faction = fid != null ? Global.getSector().getFaction(fid) : null;
+		float per = ThreatIncConfig.councilMajorPlayFP();
+		if (faction == null || p == null || per <= 0f) return 1;
+		return Math.max(1, (int) (siegeCapacityFP(faction, p) / per));
+	}
+
+	/** The faction's siege capacity: each base of the picture's clusters, against the nearest cluster (ThreatPosture.siegeCapacityFP). */
+	protected static float siegeCapacityFP(FactionAPI faction, ThreatWarCouncil.Picture p) {
+		float sum = 0f;
+		List<MarketAPI> seen = new ArrayList<MarketAPI>();
+		for (ThreatWarCouncil.Cluster k : p.clusters) {
+			for (MarketAPI m : k.bases) {
+				if (m == null || seen.contains(m) || !faction.getId().equals(m.getFactionId()) || !m.isInEconomy()) continue;
+				seen.add(m);
+				StarSystemAPI near = null;
+				for (ThreatWarCouncil.Cluster o : p.clusters) {
+					StarSystemAPI s = system(o.systemId);
+					if (s != null && (near == null || ly(m, s) < ly(m, near))) near = s;
+				}
+				if (near != null) sum += ThreatPosture.siegeCapacityFP(m, near, ThreatSoftening.huntDonors(faction, m));
+			}
+		}
+		return sum;
 	}
 
 	protected static boolean running(String fid, String type, String systemId) {
@@ -176,12 +227,18 @@ public class ThreatPlays {
 			}
 			return;
 		}
-		if (major(fid) != null) return;
+		// one major play per councilMajorPlayFP of the faction's siege capacity (option B, 2026-10-02)
+		if (majors(fid) >= majorLimit(fid, p)) return;
 		ThreatWarCouncil.Cluster focus = p.cluster(c.focusId);
-		if (focus == null || !ThreatWarCouncil.fits(c.strategy, focus)) {
-			c.focusId = ThreatWarCouncil.focus(c, p, c.strategy, random);
-			focus = p.cluster(c.focusId);
+		if (focus == null || !ThreatWarCouncil.fits(c.strategy, focus) || majorAt(fid, focus.systemId)) {
+			// the next play goes where none of the faction's runs: a few draws
+			focus = null;
+			for (int i = 0; i < 5 && focus == null; i++) {
+				ThreatWarCouncil.Cluster k = p.cluster(ThreatWarCouncil.focus(c, p, c.strategy, random));
+				if (k != null && !majorAt(fid, k.systemId)) focus = k;
+			}
 			if (focus == null) return;
+			c.focusId = focus.systemId;
 		}
 		if (running(fid, RECON, focus.systemId)) return;
 		// a big play waits for a fresh picture (section 4.4); after one recon that
@@ -610,8 +667,28 @@ public class ThreatPlays {
 		}
 	}
 
+	/**
+	 * Whether relief owed holds the play: only one whose forces are not yet under way (simulator
+	 * round 13, 2026-10-02) - staging, a muster under its floor, a campaign or watch with no
+	 * squadron out and no siege sailed. A strike, exploit or withdrawal runs on.
+	 */
 	protected static boolean pausable(Play pl) {
-		return PREPARE.equals(pl.phase) || MUSTER.equals(pl.phase) || BOMB.equals(pl.phase) || WATCH.equals(pl.phase);
+		if (PREPARE.equals(pl.phase)) return true;
+		if (MUSTER.equals(pl.phase)) {
+			float mustered = 0f;
+			for (String f : forcesOf(pl)) {
+				if (ThreatSoftening.forceAlive(f)) mustered += ThreatSoftening.musteredFP(f);
+			}
+			return pl.plannedFP <= 0f || mustered < Math.max(0f, ThreatIncConfig.councilMusterFloor()) * pl.plannedFP;
+		}
+		if (BOMB.equals(pl.phase) || WATCH.equals(pl.phase)) {
+			if (pl.sieged) return false;
+			for (String raid : pl.raidIds) {
+				if (raidAlive(raid)) return false;
+			}
+			return true;
+		}
+		return false;
 	}
 
 	/** The day's damage done at the target: Nexus-days down, orbit-days held, the swarms its reports show. */
@@ -705,7 +782,7 @@ public class ThreatPlays {
 		int joined = 0;
 		for (String partner : ThreatCoalition.partners(pl.factionId)) {
 			if (partner == null || partner.equals(pl.factionId) || !ThreatWarCouncil.governs(partner)) continue;
-			if (major(partner) != null) continue;
+			if (majors(partner) >= majorLimit(partner, ThreatWarCouncil.picture(partner))) continue;
 			float chance = Math.min(1f, 0.6f * ThreatWarCouncil.personality(partner, "joint")
 					* ThreatWarCouncil.personality(pl.factionId, "joint"));
 			if (random.nextFloat() >= chance) continue;

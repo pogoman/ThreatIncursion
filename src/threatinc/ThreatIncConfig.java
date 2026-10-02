@@ -614,6 +614,8 @@ public class ThreatIncConfig {
 	public static float councilOpportunityShare() { return f("threatinc_councilOpportunityShare"); }
 	/** Fleet points of a doctrine bombing squadron. */
 	public static float councilSquadronFP()   { return f("threatinc_councilSquadronFP"); }
+	/** Siege capacity per major play a faction may run at once (at least one). */
+	public static float councilMajorPlayFP()  { return f("threatinc_councilMajorPlayFP"); }
 	/** Days a play stages and scouts before it musters. */
 	public static float councilPrepareDays()  { return f("threatinc_councilPrepareDays"); }
 	/** Days a play's muster waits for its force before it goes with what it has. */
