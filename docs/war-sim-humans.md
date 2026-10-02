@@ -133,7 +133,7 @@ on, 212 sieges and 11 kills in 54 months with the test double; with the skeleton
 
 Where it misses, largest first:
 
-1. **Landings twice pd9a's, kills twice.** pd9a ended 150 daily sieges: called off 53, beaten
+1. **Landings twice pd9a's, kills twice.** (Fixed in the joined run, see the end of this section.) pd9a ended 150 daily sieges: called off 53, beaten
    33, landed 40, front 13, nothing to land 8. Sim, of 179: called off 18, beaten 52, landed 94.
    The call-off is the swarm answering a muster, which the test double barely does; expect the
    real `SwarmSide` to move this. pd9a's landings came on day 1 (median); the sim's after a
@@ -150,12 +150,26 @@ Where it misses, largest first:
    double's strike rate; "cannot pay for a link" (the mod's main brake, 260+ lines in pd9a)
    binds less with supplies plentiful.
 
-Joined with `SwarmSide` (2026-10-02, `check` on pd9a, 30 seeds, month 115, real | median [p10-p90]):
-sieges sailed 201 | 301 [171-376], landed 41 | 132 [98-159], fronts overrun by the hive 11 | 110
-[80-137], hives killed 23 | 14.5 [7-24], hunts 183 | 629+, bases founded 15 | 13, destroyed 9 | 6,
-given up 5 | 5. The front on a hive is the miss: `HumanSiege.frontDay` lands at the beachhead
-margin (E = 0.625 x defence), the push wears it and the next counter-attack has 2:1; pd9a's
-fronts were fed (supply runs, "Front reinforced", the flotilla holding the orbit) and won 24 of 41.
+Joined with `SwarmSide` (2026-10-02, round 2, `check` on pd9a, 30 seeds, month 115, real | median
+[p10-p90]; 135 of 184 figures in): sieges sailed 201 | 199 [120-273], landed 41 | 48.5 [34-60],
+fronts overrun by the hive 11 | 16 [11-22], hives killed 23 | 31 [21-39], hunts 183 | 478 [302-619].
+What round 2 changed, each a mod rule the simulator lacked:
+
+- `HumanSiege.enemyAt` / `fight`: the orbit fight weighs and wears every garrison in the system
+  (vanilla's autoresolve; "Off-screen fight over Gamma Vucub-Came I-L5 ... 2851 FP (14 fleets)").
+- `HumanPlanner.size`: the landing is sized on `HumanSiege.anchored` (`nexusAnchoredDefense`) when
+  that is over the defence as it stands, worn by the plan's share (`raidStrNeededAt`). pd9a landed
+  482-934 marines on size-2 hives and 1,282-1,585 on size 5; the simulator had sent 840 at size 5.
+- `Front.coverFP` (`GroundFront.coverFP`): the flotilla that landed covers the front from the
+  swarm's bombardment until the garrison at the planet outweighs it (`coverLost`; pd9a 59 set, 9 lost).
+- `HumanSiege.frontDay`: the NPC stance AI (`shouldBrace`, dig in when dry, push again when it can
+  hold), cover dug only while not assaulting (`cover`), a stratum lost digs the front in, the
+  counter-attack clock `counterRate` (strata left over size x tempo clamped by `counterAttackRatioClamp`).
+
+Still out: hunts 2.6 times pd9a's and small (the force is `margin` x the report as in
+`musterFloorFP`, but the simulator's reports of a hunted system are a few FP - its garrisons there
+are sunk and not refilled as the mod's posture refills them; pd9a's forces were 202-3,201 FP, median
+1,217). Hives killed run a third high from month 84. The hive's fed share in `counterRate` is taken as 1.
 
 ## 6. What the next jobs need
 
