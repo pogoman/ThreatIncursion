@@ -270,3 +270,12 @@ that outmatches what stood there (`strikesHeldOff` counts the rest). First joine
 against pd9a, 30 seeds x 114 months in 14 s: 58 of 80 figures inside p10-p90, all of months
 0-36; from month 48 the swarm overruns the humans (see facts.md, "Does the joined simulator
 match pd9a?"). Fitting the joined war is the open job.
+
+**Four fitting rounds and pd10a (2026-10-02).** Rounds 1-4 (Threat landings as fronts, the
+grudge and relief strikes, human fronts as the mod runs them, bounties before hunts, Defend
+stations, the five pressure terms) took the check against pd9a to 168 of 218 figures inside
+p10-p90; the two side docs hold each change by symbol. pd10a, the same recipe on the jar with
+the lifted rules, then ran a different war from month 36: 90 hives at month 96 against pd9a's
+32, 10 months of CONSOLIDATE against 53. The lift was reviewed hunk by hunk and is equivalent,
+so this is the game's own run-to-run spread, wider than the simulator's. The target is the
+envelope of both runs, not either one.
