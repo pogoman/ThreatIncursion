@@ -241,6 +241,18 @@ the `resolution` pref is `1600x900` (restore 3440x1440 after). What differs from
 - Pristine new game: `save_TerrellRamsey_2380916986271647281` (2026-10-02, the round-20 build,
   mercenary, Normal); `...ng1` is its first clone, run as `tr1a`.
 
+**The harness yields the machine (2026-10-02).** The first long run died an hour in: the user
+connected by Chrome Remote Desktop and joined a call, and the game process was gone ten seconds
+later (the log ends on "Error initializing music source - AL error 40964", no crash report) - a
+topmost game window that keeps taking the foreground is in the way of anyone at the laptop. Since
+then `hold.ps1` lets the key go and prints `FOREGROUND LOST` when another window holds the
+foreground for a second, `run.ps1` stops on it, and `runto.ps1` never takes the foreground back
+after its first round: it stops with `STOPPED: FOREGROUND LOST` and sends the game window behind
+the others, left running at normal speed. Start `runto.ps1` again with the same `-Tag` when the
+machine is free (the day count is from the tag's first `Clock:` line). Whether a remote session is
+on: the last `chromoting` event in the Application log (id 1 connect, 2 disconnect). Do not start
+a run while the user is at the laptop or on a call - ask first.
+
 ## Fast-forward runs and a new game (2026-10-01)
 
 `tools/test-harness/fastforward/` holds the scripts every balance run since 2026-09-29 used (they

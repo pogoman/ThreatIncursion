@@ -12,6 +12,8 @@ import java.util.Map;
  */
 public final class Start {
 	private final Map<String, Object> map, dump;
+	/** The home system the opening chain lands in, when the caller knows it (Main.check reads it from a real run's dumps); else the dump's, else SwarmOps.pickOG. */
+	public String ogSystem;
 
 	public Start(Path mapFile, Path dumpFile) throws IOException {
 		map = Json.obj(Json.parse(new String(Files.readAllBytes(mapFile), StandardCharsets.UTF_8)));
@@ -158,6 +160,7 @@ public final class Start {
 			s.swarm.posture.put(Json.str(j.get("system"), ""), new float[] { Json.num(j.get("pressure"), 0f), m });
 		}
 		if (sw.get("ogSystem") != null) s.swarm.ogSystemId = Json.str(sw.get("ogSystem"), null);
+		if (ogSystem != null) s.swarm.ogSystemId = ogSystem;
 		if (sw.get("nextTickDays") != null) s.swarm.nextTickDay = s.day + Json.num(sw.get("nextTickDays"), 0f);
 		HumanSide.load(s, dump);
 	}

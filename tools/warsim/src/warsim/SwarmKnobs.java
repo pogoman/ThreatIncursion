@@ -75,7 +75,17 @@ final class SwarmKnobs {
 		strikeSizedMargin = Math.max(0f, k.f("warsim_strikeSizedMargin", 0f));
 		sustainShare = Math.max(0f, k.f("warsim_sustainShare", 0f));
 		scoutsAnySize = k.b("warsim_scoutsAnySize", false);
+		ogChain = Math.max(0, (int) k.f("warsim_ogChain", 0f));
 	}
+
+	/**
+	 * warsim_ogChain (round 21): how many colonies the opening chain lands, in a home system with no planet to spare
+	 * (ThreatColonyManager.canSupportFullChain asks three colonisable planets, and each landing's free build is Mining
+	 * wherever there are deposits). 0 = the five-world chain of pd9a: forge, fuel plant, refining, two mines. Four
+	 * land forge, refining and two mines; three or fewer a forge and mines - the refinery and the fuel plant then wait
+	 * for a second industry slot at size 4 (SwarmEconomy.choose), as in tr1a, whose swarm made no fuel for 16 months.
+	 */
+	final int ogChain;
 
 	/** warsim_scoutsAnySize: scouts sail from a hive of any size with a nexus, as the simulator had it before round 20 (the mod asks strikeMinSize). */
 	final boolean scoutsAnySize;

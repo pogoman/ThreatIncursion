@@ -401,6 +401,18 @@ public final class Main {
 			State s = new State();
 			s.knobs = knobs;
 			new Start(map, f).fill(s);
+			// a run dumped from before the landing: its home system and how many colonies its opening chain landed are
+			// read off the first dump that has hives (round 21: tr1a opened in a three-planet system, the simulator in
+			// one of its own choosing with the five-world chain)
+			// -set warsim_checkOwnHome=true: the simulator picks its own home for each seed, as check did before round 21
+			if (real.size() > 0 && start.ogSystem == null && !s.liveHives().isEmpty() && val(real.get(0), "hives") == 0
+					&& !knobs.b("warsim_checkOwnHome", false)) {
+				StarSys home = s.liveHives().get(0).sys;
+				int landed = s.hivesIn(home).size();
+				start.ogSystem = home.id;
+				if (landed < SwarmFit.OG_CHAIN && !knobs.has("warsim_ogChain")) knobs.set("warsim_ogChain=" + landed);
+				System.out.println("home system " + home.name + ", opening chain of " + landed + (knobs.has("warsim_ogChain") ? " (warsim_ogChain " + knobs.i("warsim_ogChain") + ")" : ""));
+			}
 			real.add(Sim.row(s));
 		}
 		State first = new State();
