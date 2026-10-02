@@ -124,7 +124,11 @@ final class HumanPools {
 				if (cap > w.capSeen[c]) w.capSeen[c] = ReserveRules.basisAtFullShare(cap, 0f, 1f);
 				// no ceiling: pd9a's census has hegemony's marines at 12644 on 12 colonies banking about 50 a month each
 				// warsim_accrualMult (round 14 trial e): the pools' accrual scaled, a ceiling test
-				float in = w.accrualPer30[c] / 30f * s.knobs.f("warsim_accrualMult", 1f);
+				// round 18: the accrual fit (HumanFit.ACCRUAL_BY_SIZE, BASE_RATE, the dumps) was taken at reserveSurplusMult 1.0 and
+				// reserveTroopSurplusMult 0.5 (ThreatReserves.accrualPer30), so the knobs scale it from there
+				float mult = c == World.MARINES ? s.knobs.f("threatinc_reserveTroopSurplusMult", 0.5f) / 0.5f
+						: s.knobs.f("threatinc_reserveSurplusMult", 1f);
+				float in = w.accrualPer30[c] / 30f * mult * s.knobs.f("warsim_accrualMult", 1f);
 				w.stock[c] += in;
 				s.count("income." + World.COMMODITIES[c], in);
 			}
