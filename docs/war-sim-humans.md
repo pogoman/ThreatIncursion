@@ -738,5 +738,24 @@ Every command, from the repository root with `tools/warsim/out` built (`tools/wa
 `threatinc_stanceConsolidateShare=0.65|0.75|0.85`, `warsim_noHuntsAlone=true`, `warsim_huntMinShare=0.1`,
 `warsim_hammerWaitsForSiege=60|120`.
 
-**Results: pending** - the seven new-game compares were running when this section was committed; the next session fills
-the table from the same commands.
+**Results** (new game, 60 seeds; base on the new defaults: humanScore 29 [18-44.3], K2 38.5; threatScore 844 [556-2,243],
+K2 880; bases founded/held/destroyed 64/17/26, kills 10, hammers paid/unpaid 33/14, mutual 1.7, both-sides 63%):
+
+| cell | humanScore (K2) | threatScore (K2) | seeds | bases f/h/d | kills | paid/unpaid | mutual | both | verdict |
+|---|---|---|---|---|---|---|---|---|---|
+| consolidateShare 0.65 | 31 (44) | 1,066 (1,108) | T 60% | 74/17.5/27.5 | 9.5 | 33/15 | 1.7 | 63% | not clear |
+| consolidateShare 0.75 | 30 (39) | 1,520 (1,553) | T 76% | 75/21/27.5 | 6 | 21/16 | 1.0 | 52% | not clear: [657-2,402] inside [556-2,243] |
+| consolidateShare 0.85 | 31 (40) | 1,176 (1,228) | T 63% | 75.5/21/27 | 7 | 24/15 | 1.2 | 55% | not clear; the peak is 0.75 |
+| noHuntsAlone | 26.5 (35) | 810 (853) | H 39% | 62.5/16/25.5 | 8.5 | 32.5/16 | 1.5 | 63% | no - round 18's 30-seed gain was noise |
+| huntMinShare 0.1 | 30 (38) | 755 (804) | H 57% | 68.5/17/25 | 8.5 | 33/12 | 1.5 | 63% | no - noise at 60 seeds, as on the old base |
+| hammerWaitsForSiege 60 | 27 (39) | 782 (825) | H 43% | 67/14.5/25 | 9 | 32.5/38 | 1.5 | 63% | no: 5 sieges a run bought by the wait (`hammer.waitPaid`), 2 waits expire, 33 re-tries, and the muster's upkeep costs more bases than the sieges win |
+| hammerWaitsForSiege 120 | pending | | | | | | | | |
+
+The consolidate share's shape peaks at 0.75 (0.5 -> 844, 0.65 -> 1,066, 0.75 -> 1,520, 0.85 -> 1,176) without a
+quieter war (both-sides 63% -> 52% at 0.75, quiet 0% throughout) and with the humans above their p10 (30-31 against 18) -
+the swarm's one lever of the round, and not clear by the rule at 60 seeds because the seed spread of threatScore (p10-p90
+556-2,243) is three times the gain. Kill weight 2 ranks every cell the same as weight 1.
+
+**Verdict so far: no change on either side.** The hunts-alone FP (round 18) cannot be turned into sieges by waiting: the
+wait buys 5 sieges a run but the held muster's upkeep is paid from the same pools the links draw on, and bases held fall
+17 -> 14.5. Standing the hunts down outright (noHuntsAlone) saves the FP and changes nothing the score sees.
