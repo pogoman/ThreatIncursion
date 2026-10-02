@@ -170,13 +170,20 @@ by its whole outcome, never by its distance from an expected run:
 | Neither side attacks | boring |
 | Years pass and neither side changes the situation (stalemate) | worst |
 
-So beside the two scores, `batch` and `compare` report per run: `turnover` (worlds changing
-state a year: hives founded and killed, human worlds lost, forward bases founded and destroyed),
-`swings` (times the yearly momentum - net ground gained by the swarm less the humans' - changes
-sign), `deadYears` (the longest stretch with no hive killed, no world lost and no base
-destroyed, in years) and `decided` (one side wiped out, and when). A change is good when, over
-the seeds, `deadYears` falls and `turnover` and `swings` rise; matching pd9a is a test of the
-simulator's fidelity, not a goal for the game.
+So beside the two scores, `run`, `batch` and `compare` report per run (`Main.measures`, `Sim.hands`):
+`turnover` (worlds changing state a year: hives founded and killed, human worlds lost, forward bases
+founded and destroyed); `swings` (times the yearly momentum - ground gained by the swarm, its peaceful
+foundings included, less the humans' - changes sign); `reversals` (the same per half-year on ground
+taken from or lost to the enemy alone: worlds and bases destroyed for the swarm, hives killed and
+bases founded for the humans); `contested` (star systems that changed hands more than once: a side's
+presence there lost is one change, won back after a loss another); `deadYears` (the longest stretch
+since the first mobilisation - the run's start for a mid-war state - with no hive killed, no world
+lost and no base destroyed, in years); and `decided` (one side wiped out, and when). `batch` and
+`compare` also print the share of seeds in each class: decided for the swarm, decided for the
+humans, back-and-forth (`swings` >= `Main.BACK_AND_FORTH_SWINGS` 3), stalemate (`deadYears` >=
+`Main.STALEMATE_DEAD_YEARS` 3), other. A change is good when, over the seeds, `deadYears` falls and
+`turnover`, `reversals` and `contested` rise; matching pd9a is a test of the simulator's fidelity,
+not a goal for the game.
 
 ## 7a. Using it
 

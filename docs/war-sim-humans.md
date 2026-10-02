@@ -242,12 +242,10 @@ Counters: `council.months.<STRATEGY>` (a faction-month, as the mod's monthly `Co
 `playSieges`, `playSiegesTrimmed`, `playForces`, `playSquadrons`, `playSquadronsDrivenOff`, `saturationsSailed`,
 `starveInvasions`, `feintsDrew`. `-show a,b` adds any of them to the `run`, `batch` and `compare` tables.
 
-Not mirrored, candidates to lift or model later: relief owed (no relief of an invaded world in the simulator, so
-no play is held and Hold never scores its +1); a partner's joint force (`inviteJoint`); the play's staging and
+Not mirrored, candidates to lift or model later: the relief itself (round 7 mirrors the gate only); a partner's joint force (`inviteJoint`); the play's staging and
 its decoy (`stage`, `ThreatConvoys.stageForPlay`); the muster at a bearing (the held force waits at its base);
 one siege a hive, so a hammer besieges its first payable world only; the saturation expedition is a SATURATION
-parcel over one world; the coalition is every faction at war (`HumanIntel`), so "the coalition changed" fires at
-each mobilisation.
+parcel over one world.
 
 **Council against planner, and against the real council runs** (30 seeds from `start/pd9a-newgame`, 104 months,
 median [p10-p90]; real: pd4a, pd5a, pd6a, pd8a, 97-105 months, log extracts without dumps or dates):
@@ -271,3 +269,31 @@ difference agree. The simulated council is about twice as active as the real one
 bombers 3-7x), kills 8 hives where the real ones killed 0-2, and leaves the swarm at about half the real size;
 it holds 8 forward bases where the real runs held 0-3. The logs cannot validate the plays' sizes, the band's
 inputs or anything by date (no `Clock:` lines, no dumps).
+
+**Round 7: why the round-6 council was 2-3x too active, by mechanism.** The table above is round 6's; the fixes:
+
+- **Coalition** (`HumanFit.COALITION_PAIRS`, `HumanCouncil.partner`; `ThreatCoalition.partners`): the real pictures
+  name allies only for luddic_church + luddic_path and persean + sindrian_diktat (54-132 of 280-358 pictures a
+  run). Round 6 took every faction at war as a partner, at half weight in the band: 62% of months outmatched
+  against the real 82-90%.
+- **Per-observer intel** (`HumanIntel.sweep`, `file(.., observer)`; `ThreatIntel.advanceDay`): a report is the
+  observer's (its own fleet or front in the system, its own military world or forward base within `radarRangeLY`)
+  and its partners'. Round 6 filed every sighting with every faction, so each council saw every hive fresh and
+  bombers of opportunity always had a target (242 a run against 27-98).
+- **Relief owed** (`HumanCouncil.reliefOwed`; `ThreatFleetOrders.reliefOwed`, `ThreatPlays.pausable`): no new play, the
+  waiting phases held, Hold +1. The simulator sends no relief, so it is owed while the Threat front stands
+  (`Swarm.landings`) and a base pays a `reliefFleetFP` fleet there: 63% of faction-days, surely more than the mod's
+  (6-12 "held in .. (relief owed)" lines a run).
+- **Threat fronts** are `Swarm.landings`, not `World.front`: the council's `fronts` and `HumanStance.evaluate`'s
+  `pressed` read the wrong field and never saw one.
+
+Council after the fixes (30 seeds, 104 months) against the real council runs: hammers 6 [2-11] (7-16), starves
+12.5 [9-19] (13-25), bombers 33 [11-57] (27-98), sieges + saturations 5 + 12.5 (15-29), hives killed 2 [0-4] (0-2),
+hives at the end 135 [92-178] (152-236), outmatched 96% (82-90%), pressed 76% (67-85%), Hold / Starve / Roll back
+51 / 46 / 3% (52-59 / 36-46 / 3-5%). Still off: forward bases founded 70 [58-91] and held 11.5 [7-19] (9-50, 0-3).
+The planner gate moved with the intel and stance fixes: pd9a 155 -> 130 of 218 (139 with the intel fix alone), every
+month-36 row still inside; the losses are later months, where sieges and strikes were already high.
+
+Experiment switches, simulator only (`Knobs.set` accepts `warsim_*`): `warsim_seedPriceMult` (the Seeding Swarm's
+price, `SwarmKnobs.foundSupplies`) and `warsim_councilMajorPlays` (major plays a faction runs at once,
+`HumanCouncil.plan`; the mod's `ThreatPlays.major` allows one).
