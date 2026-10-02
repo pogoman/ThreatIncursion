@@ -375,3 +375,52 @@ a 30-seed batch 12-14 s, a 30-seed compare 19 s (JVM start and load 0.15 s) - sh
 Left, by the profile: `size` still misses whenever a hive's clock or the report moves (a bombardment plan per fleet
 step, `HumanSiege.bombardPlan`), `SwarmEconomy.held` scanning parcels per hive per day in `regrowing` and
 `buildSwarm`, and the 30 seeds on 12 cores finishing in waves.
+
+## 14. Round 11: destruction as the lead measure (2026-10-02)
+
+The user changed the lead measure: ownership swings and reversals were the wrong lens, what matters is successful
+colony destruction by both sides. `Main.measures` now puts in every row the rates a year since the first
+mobilisation (the first month with `mobilised` > 0; a mid-war start counts from month 0, as `deadYears` does):
+`threatKills` = worlds + forward bases destroyed by the swarm (`threatKills.worlds`, `threatKills.bases`),
+`humanKills` = hives killed, `mutual` = min of the two. `Main.outcome` keys on them (`MUTUAL_PER_YEAR` 1.0,
+`QUIET_PER_YEAR` 0.25): "both sides" when mutual >= 1 a year, "one-sided" when one rate is >= 1 and the other
+< 0.25, "quiet" when both are < 0.25, else "other"; the decided classes stay first. The swings/reversals class is
+gone; `swings`, `reversals`, `contested`, `deadYears` stay as columns. The score's cumulative kill counts are
+`threatKillCount` / `humanKillCount` (`Sim.row`). `check` ends with the real run's rates since its first "War
+footing: ... mobilised" line (`EVENTS` `factionsMobilised`, not compared as a counter) against the simulator's.
+`-set` now also takes `k=v;k=v`.
+
+Real runs (planner check, pd9a start, 30 seeds): pd9a since month 38 to 115: threatKills 1.9 (0.5 worlds / 1.4
+bases), humanKills 3.6, mutual 1.9; pd10a to month 112: 9.4 (2.4 / 7.0), 7.3, 7.3. Simulator median 4.2 (1.7 /
+2.5), 3.5, 3.5 [2.5 - 4.4]. The simulated planner sits between the two real runs on every rate; the simulated
+council kills 0-0.3 hives a year against the game's 3.6-7.3 (the known gap, war-council.md s16).
+
+Grid, 30 seeds, last month medians, a lever marked * where its median lies outside the baseline's p10-p90:
+
+| cell | threatKills (worlds / bases) | humanKills | mutual | classes |
+|---|---|---|---|---|
+| new council base | 9.8 (2.1 / 7.5) [7.7 - 11.8] | 0.3 [0 - 0.6] | 0.3 | one-sided 47, other 53 |
+| new council consolidate 0.33 / 0.25 | 8.9 / 8.6 | 0.3 / 0.3 | 0.3 / 0.3 | both 3 / 0 |
+| new council feed 0.7 | 8.3 | 0.2 | 0.2 | one-sided 70 |
+| new council seed x2 | 8.2 | 0.3 | 0.3 | one-sided 30, other 70 |
+| new council two plays | 8.7 | 0.3 | 0.3 | both 7 |
+| new council A / B / A+B | 7.6* / 13.4* (6.5 / 6.7) / 11.5 | 0.3 / 0.2 / 0.3 | 0.3 / 0.2 / 0.3 | both 0 / 0 / 3 |
+| new planner base | 4.7 (1.9 / 2.9) [3.7 - 5.4] | 3.9 [2.7 - 5.0] | 3.9 [2.7 - 4.6] | both 100 |
+| new planner consolidate 0.33 / 0.25 | 4.6 / 4.5 | 2.8 / 2.0* | 2.8 / 2.0* | both 100 / 93 |
+| new planner feed 0.7 / seed x2 | 4.7 / 4.9 | 3.3 / 3.1 | 3.3 / 3.1 | both 100 |
+| new planner A / B / A+B | 4.0 / 8.4* (6.2 / 2.2) / 8.2* | 3.4 / 2.8 / 2.7 | 2.9 / 2.8 / 2.7 | both 100 |
+| mid council base | 8.8 (0.8 / 8) [6.2 - 11.1] | 0 | 0 | one-sided 93 |
+| mid council every lever but B | 7.4 - 8.5 | 0 | 0 | one-sided 90 - 97 |
+| mid council B / A+B | 13* (8.3 / 4.5) / 11.8* | 0 | 0 | one-sided 93 / 90 |
+| mid planner base | 0.9 (0.8 / 0.1) [0.8 - 1.3] | 1.8 [1.2 - 2.5] | 0.9 [0.8 - 1.3] | both 50, other 50 |
+| mid planner consolidate / feed / seed / A | 0.9 / 0.8 / 0.9 / 0.8 | 1.8 - 2.3 / 1.5 / 2.3 / 1.8 | 0.9 / 0.8 / 0.9 / 0.8 | both 50 / 30 / 50 / 37 |
+| mid planner B / A+B | 8.4* (8.3 / 0) / 8.3* | 1.4 / 1.3 | 1.4* / 1.3 | both 83 / 83 |
+
+Reading: `mutual` is bounded by `humanKills` everywhere, so it is the humans' hive killing that sets the class. The
+council's rate (0-0.3 a year) is under the quiet line in every cell and no swarm-side lever (stance, feed, seed
+price, plays) moves it; the planner's is 1.8-3.9, which is why the planner start is "both sides". Of the swarm
+levers only B (colonies fall) is clear of seed noise and it raises `threatKills` alone (worlds 2 -> 6 a year
+new, 0.8 -> 8.3 mid); it raises `mutual` only mid-war planner (0.9 -> 1.4, because the baseline sat at the
+line). Consolidate 0.25 lowers the planner's `humanKills` (3.9 -> 2.0, clear). A (bases hold) lowers
+`threatKills.bases` by about a quarter, inside noise. Nothing raised `humanKills`: the lever for `mutual` is on the
+human side (the council's siege rate), not among the swarm knobs tried.
