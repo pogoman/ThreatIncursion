@@ -75,13 +75,21 @@ final class SwarmOps {
 		}
 	}
 
-	/** Worlds inside the Bastions' radar are seen as they stand (ThreatSwarmIntel, simplified to every hive system). */
+	/**
+	 * The swarm's daily sight (ThreatSwarmIntel): a world is seen as it stands while the swarm is in its system - a
+	 * hive's garrison, or any Threat fleet there (a wave, a strike, a scout) - and its last picture stands and ages
+	 * after (the user's decision of 2026-10-02, no radar). Bastion radar (every hive system within swarmRadarRangeLY)
+	 * only while that knob is > 0, kept for comparison.
+	 */
 	static void radar(State s, SwarmKnobs k) {
 		List<StarSys> systems = SwarmEconomy.hiveSystems(s);
+		java.util.Set<StarSys> present = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<StarSys, Boolean>());
+		present.addAll(systems);
+		for (Parcel p : s.parcels) if (!p.done && p.threat() && (p.holding || p.arrived)) present.add(p.to);
 		for (World w : s.worlds) {
 			if (w.lost) continue;
-			boolean inRange = !k.fog;
-			for (StarSys sys : systems) if (sys.ly(w.sys) <= k.radarLY) inRange = true;
+			boolean inRange = !k.fog || present.contains(w.sys);
+			if (!inRange && k.radarLY > 0f) for (StarSys sys : systems) if (sys.ly(w.sys) <= k.radarLY) inRange = true;
 			if (inRange) s.swarm.seen.put(w.id, new float[] { s.day, defenceOf(w) });
 		}
 	}
