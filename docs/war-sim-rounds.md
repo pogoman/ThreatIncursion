@@ -356,3 +356,72 @@ Counters `siegeTrip.sieges`, `.priced` (the gate's supplies want less the deposi
 The gate asks 1.5x (council) to 2.1x (planner) the supplies a siege goes on to eat: a siege is home, or smaller, well
 inside the horizon it was priced for (which of the two was not split out). Round 17 already cut the price (`warsim_tripMult` 0.5,
 `warsim_tripFixedDays` 30) and the humans' score did not rise, so the margin is not what holds the sieges back. Closed.
+
+## 17. Round 21: a real run from a three-planet home (2026-10-02 evening, the docked laptop)
+
+**The real run `tr1a`.** A new game on the docked laptop (`testing-harness.md`), council on, the shipped defaults (LunaLib
+marker 12, all 370 live knobs at their CSV values), fast-forwarded 1,519 game days - 50 months - and stopped there: the
+laptop was needed, and in-game tests are paused until the user says. Its 51 monthly dumps and map are in
+`tools/warsim/validation/tr1a`; the log `ti-tr1a.txt` is machine-local. What it showed:
+
+- **The built consolidate share, in part.** `Colony upkeep: ... share` reads 0.5 in EXPAND (28 months) and 0.7 in PRESS
+  (21 months); the swarm never entered CONSOLIDATE by month 50, so 0.5 there is still unseen. No mod exception.
+- **A lean home.** `IncursionManager.pickOGSystem` took Alpha Garbhodaka, three planets - the least
+  `ThreatColonyManager.canSupportFullChain` allows. The chain landed Mining, Heavy Industry (the seed forge), Mining: each
+  landing's free build is Mining wherever there are deposits, and a size-3 hive has one industry slot, so there was no
+  refinery and no fuel plant until a world reached size 4. Fuel income read +0 a month in months 5-20 while supplies piled
+  to 44k. Hives 3 / 3 / 13 / 22 at months 12 / 24 / 36 / 48 (first spread month 27), no strike by month 36, 9 by month 50.
+  pd9a and pd10a (Gamma Vucub-Came, a five-world chain) sent the first Seeding Swarm on day 489 and the first strike on day
+  641: this war started about a year later.
+- **The humans at month 50:** first mobilisation month 47, one forward base (the League's Sun Wukong, garrisoned at its
+  founding: 1 front guard call, 0 rear), 4 council plays, 1 siege sailed, none landed, 0 postponements. The guard-call and
+  postponement counts round 20 asked for need months 50-110 - still owed.
+
+**The simulator learns the lean opening.** It always landed five waves (`SwarmFit.OG_CHAIN`), whatever the home.
+
+- `warsim_ogChain` (`SwarmKnobs.ogChain`, 0 = the five-world chain): the worlds the opening lands on. `SwarmOps.chainRole`
+  gives them the mod's builds - four worlds forge, refining, two mines; three or fewer forge and mines - and the home counts
+  as full (`SwarmOps.wave`, `rollExpandable`).
+- `Start.ogSystem` forces the home system. `check` (`Main.check`) now reads both from a run dumped before the landing - the
+  home and the landed chain from the first dump with hives - and prints `home system <name>, opening chain of <n>`.
+  `-set warsim_checkOwnHome=true` restores the old behaviour (each seed picks its own home).
+
+Against the three real runs, 30 seeds, figures inside the simulator's p10-p90:
+
+| run | own home each seed | the run's real home |
+|---|---|---|
+| tr1a (council on, with its log, 93 figures) | 50 | 59 |
+| pd9a (90 figures) | 57 | 40 |
+| pd10a (90 figures) | 69 | 63 |
+
+tr1a's opening now fits to the digit (hives 3 / 3 / 13 against 3 / 3 / 13 [11-14], hive size 9 / 12 / 39). Its misses from
+the real home: the real swarm is larger at months 48-50 (22 hives against 17 [15-20]) and holds more (garrison FP 15.2k
+against 9.3k, bank 5.0k against 2.7k), strikes less (9 against 20 [14-26]) and spends longer in PRESS (21 months against
+12); the humans had founded no base by month 48 where the simulator has 5. pd9a and pd10a fit worse from their real home
+because the old bands were wide with the homes the seeds drew, not because the simulator changed: from Gamma Vucub-Came
+its swarm outgrows pd9a from month 60 (hives 36.5 [32-39] / 43 / 59 against 25 / 28 / 30 at months 60 / 72 / 84; bank,
+garrison FP and fuel above the band from month 84) and still covers pd10a. The two real runs share that home and end at 32
+and 90 hives: the game varies more from one home than the simulator does.
+
+**What a lean home does to the war** (60 seeds, new game `pd9a-newgame`, 104 months, kill weight 1; base -> cell, `*` clear):
+
+| | base (5) | `warsim_ogChain=3` | `warsim_ogChain=4` |
+|---|---|---|---|
+| threatScore | 1,569 [741-2,695] | 691 [294-1,690], ahead in 17% of seeds | 1,717, 40% - noise |
+| hives at the end | 131 | 62.5* | 130 |
+| hives founded | 136 | 76.5* | |
+| bases destroyed | 26.5 | 17* | |
+| hives killed | 7.5 | 13 (69% of seeds) | |
+| sieges sailed | 24 | 49 | |
+| humanScore | 28.5 | 30 (55%) | 28 |
+| mutual destruction | 1.3 | 2.1 | |
+| outcome: both sides / one-sided / decided for the humans | 55% / 17% / 0% | 83% / 0% / 5% (median month 82) | |
+
+Reading. A three-world home halves the swarm by month 104 and gives the more two-sided war; a four-world home is the
+five-world one. The late fuel plant is not what costs: on seed 3 the chains of three and four both buy the plant about day
+500 and send the first Seeding Swarm on day 760 (the base on day 486), and four ends level with five. What costs is the
+home itself - three worlds, no refinery at the landing, nothing left to grow into.
+
+**Not built; one question for the user.** Whether a three-planet home is wanted is what the game is, not a number:
+`canSupportFullChain` asking four colonisable planets (falling back to three when no system has four) would give every
+sector the opening pd9a had; leaving it gives some sectors a slow, more even war. The simulator says four is enough.

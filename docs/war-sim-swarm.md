@@ -84,8 +84,11 @@ be made twice.
   faction the whole swarm outweighs by `stancePressRatio`, at odds within `stanceWeakOdds` of
   the system's spare swarms. The pressing colony's extra want (`extraWantFP`) is not modelled.
 - **Opening** (`pickOGSystem`): an empty system with room for the chain, at least half as far
-  from any world as the farthest; `Swarm.ogSystemId` overrides. Claimed on day 0, five free
-  waves `seedToColonyDays` later, each landing with a structure of the chain.
+  from any world as the farthest; `Swarm.ogSystemId` overrides (`Start.ogSystem`, which `check`
+  sets from the real run's dumps). Claimed on day 0, five free waves `seedToColonyDays` later,
+  each landing with a structure of the chain. `warsim_ogChain` (round 21) lands fewer, with the
+  mod's builds for a small home (`SwarmOps.chainRole`: four worlds forge, refining, two mines;
+  three forge and two mines) - `war-sim-rounds.md` 17.
 - **Spread** (`trySpread`, `launchColonizationWave`): one claim a tick under `claimCap(free forges)`,
   the first gated on fuel; the weight is the shared one with the need score a random draw and
   the hold share 1; a claim matures in `seedToColonyDays` and launches at a tick from
@@ -122,7 +125,7 @@ be made twice.
 | Constant | Value | Fitted from (pd9a, war day) |
 |---|---|---|
 | `TICK_OVERRUN_DAYS` | 0.35 | "Spread to" lines w368..w1066, 23 ticks in 698 days |
-| `OG_CHAIN` | 5 | 5 hives at month 5 in both runs |
+| `OG_CHAIN` | 5 | 5 hives at month 5 in both runs (pd9a, pd10a); tr1a's three-planet home landed 3 - `warsim_ogChain` |
 | `bootstrapTravelDays` | 12-22 | waves w126, landings w138-w148 |
 | `bootstrapSwarmFP` | 700-745 | 3,618 FP in 5 fleets at month 5 |
 | `waveLandingDays` | 8-13 beyond the passage | launch to "Colony founded" 11-18 days at 1-4 ly |

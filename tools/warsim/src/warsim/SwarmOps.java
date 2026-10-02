@@ -184,19 +184,32 @@ final class SwarmOps {
 		return best;
 	}
 
+	/**
+	 * The structure the i-th landing of an opening chain of n brings (WaveOrder.role). Five or more: the fitted chain,
+	 * forge, fuel plant, refining, then mines. Four: forge, refining, mines. Fewer: a forge and mines - the mod's
+	 * landings mine wherever there are deposits, the forge is the one build it forces (SEED_FORGE_KEY), and the first
+	 * refinery and fuel plant are bought when a second industry slot opens (SwarmEconomy.choose).
+	 */
+	static int chainRole(int i, int n) {
+		if (n >= SwarmFit.OG_CHAIN) return i;
+		if (i == 0) return 0;
+		return n == 4 && i == 1 ? 2 : 3;
+	}
+
 	/** Seeded systems whose 120 days are up send their wave; one the stocks cannot pay waits, its demand booked. */
 	static void launchClaims(State s, SwarmKnobs k) {
 		for (Swarm.Claim c : new ArrayList<Swarm.Claim>(s.swarm.claims)) {
 			if (s.day - c.day < k.seedToColonyDays) continue;
 			if (c.bootstrap) {
 				s.swarm.claims.remove(c);
-				s.log("Bootstrap: " + SwarmFit.OG_CHAIN + " waves to " + c.sys);
-				for (int i = 0; i < SwarmFit.OG_CHAIN; i++) {
+				int chain = k.ogChain > 0 ? k.ogChain : SwarmFit.OG_CHAIN;
+				s.log("Bootstrap: " + chain + " waves to " + c.sys);
+				for (int i = 0; i < chain; i++) {
 					Parcel p = s.send(Parcel.THREAT, Parcel.Kind.WAVE, c.sys, c.sys, SwarmFit.bootstrapSwarmFP(s.rng),
 							SwarmFit.bootstrapTravelDays(s.rng));
 					WaveOrder o = new WaveOrder();
 					o.bootstrap = true;
-					o.role = i;
+					o.role = chainRole(i, chain);
 					p.order = o;
 				}
 				continue;
@@ -945,7 +958,8 @@ final class SwarmOps {
 					: o.role == 2 ? Hive.REFINING : Hive.MINING);
 			h.forgeBuilding = 0f;
 			h.fuelPlantBuilding = 0f;
-			if (first) rollExpandable(s, p.to, SwarmFit.OG_CHAIN);
+			// warsim_ogChain: a home with no planet to spare (the chain took them all)
+			if (first) rollExpandable(s, p.to, k.ogChain > 0 ? Math.max(k.ogChain, p.to.planets) : SwarmFit.OG_CHAIN);
 		} else {
 			if (first) rollExpandable(s, p.to, 1);
 			SwarmEconomy.plan(s, k, h);

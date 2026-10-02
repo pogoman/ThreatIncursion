@@ -15,12 +15,15 @@ if ($Unpause) { UI -Action key -Text " " | Out-Null; Start-Sleep 1 }
 else {
   # probe: if 20 s of fast-forward writes nothing, the clock is paused - one space starts it
   $p0 = Count
-  powershell -NoProfile -ExecutionPolicy Bypass -File "$h\hold.ps1" -Key shift -Seconds 20 | Out-Null
+  $hd = powershell -NoProfile -ExecutionPolicy Bypass -File "$h\hold.ps1" -Key shift -Seconds 20
+  # another window took the foreground: someone is using the machine - leave it to them
+  if ("$hd" -like "*FOREGROUND LOST*") { "FOREGROUND LOST - stopping ($hd)"; return }
   if ((Count) -eq $p0) { UI -Action key -Text " " | Out-Null; Start-Sleep 1; "probe: was paused, unpaused" } else { "probe: running" }
 }
 for ($i = 1; $i -le $Chunks; $i++) {
   $c0 = Count
-  powershell -NoProfile -ExecutionPolicy Bypass -File "$h\hold.ps1" -Key shift -Seconds $Seconds | Out-Null
+  $hd = powershell -NoProfile -ExecutionPolicy Bypass -File "$h\hold.ps1" -Key shift -Seconds $Seconds
+  if ("$hd" -like "*FOREGROUND LOST*") { "FOREGROUND LOST - stopping ($hd)"; break }
   $r = UI -Action rect
   $c1 = Count
   $shot = "$out\$Tag-$i.png"
