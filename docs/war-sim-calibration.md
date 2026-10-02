@@ -317,7 +317,16 @@ hunts 59 | 70.5).
 
 - **Late-war strikes and landings**: hw4 month 108 strikes 138 | 218 [154-305], landings 52 | 136 [90-190]; hw4b
   146 | 241, 60 | 147. Inside to month 60, strikes about 1.6 times and landings 2.5 times the game's after month 84.
-  A landing a strike: the game 0.38-0.49, the simulator 0.61.
+  A landing a strike: the game 0.38-0.49, the simulator 0.61. The lead: `ThreatStrikeFGI.doCustomRaidAction` lands
+  a pass only when `ThreatGroundFronts.readyToLand` says so - the strike's siege of the world is done
+  (`abstractOrbitDone`) or the troops hold as they are - and `beachheadLanding` holds back a landing the first
+  counter-attack would overrun; `SwarmOps.strike` lands every strike that is not broken off and has
+  `LANDING_MIN_TROOPS`. Not yet read strike by strike (a pass that waits may land on a later one). Pass lines in
+  the logs (several a strike): hw4 105 `waits: bombardment still has work to do`, 36 `aborted`, 70 landings, 24 reinforce;
+  hw4b 74, 36, 65, 54; hw3 48, 23, 65, 21.
+- **Fuel the game's swarm burns and the simulator's does not**: raiders (`ThreatRaiders`, about 100 detachments
+  in hw4, 136 held for fuel) and the strikes' bombardment ordnance and razing (`ThreatGroundFronts.payOrdnance`,
+  `ThreatStrikeFGI.saturationPass`). Not sized.
 - **The supplies stock piles up late**: month 108 hw4 12k | 703k [427k-1,027k], hw4b 230k | 530k. The game's
   `convertSurplus` / `retireMilitary` and what its late swarm spends supplies on are not checked against the
   simulator's.
