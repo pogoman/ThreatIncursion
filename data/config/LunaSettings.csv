@@ -6,6 +6,7 @@ threatinc_colonySizeTrigger,Colony Size Trigger,Boolean,true,"Alternate start tr
 threatinc_triggerColonySize,Trigger Colony Size,Int,6,"Player colony size that wakes the swarm (6 = vanilla max via natural growth).",4,10
 threatinc_tickDays,Days per Tick,Double,30,"How often the war clock advances. Higher = slower everything.",5,120
 threatinc_initialSeeds,Initial Seed Systems,Int,1,"The war begins from one resource-complete OG home system (its full mining/refining/forge chain is founded at once from the Abyss). Values above 1 add that many extra single-colony fringe footholds beyond the OG.",1,6
+threatinc_homeWorlds,Home Worlds,Int,4,"Worlds the Threat lands on at the start. 3 is an easier war. New games only.",3,8
 threatinc_seedToColonyDays,Seed to Colony Days,Double,120,"Days a seeded system incubates before a Seeding Swarm is dispatched to found a fabrication colony there.",30,720
 threatinc_spreadMinSize,Wave Source Min Size,Int,3,"Minimum colony size before it can dispatch colonization waves.",1,8
 colonyHeader,Colony Header,Header,Fabrication Colonies,"The swarm founds real colonies that grow from size 1 and run a genuinely self-contained hive economy: their mining worlds feed refineries feed forge worlds that build the ships. Shortages of metals or machinery stall growth; hull shortages shrink garrisons and strikes. Cut supply lines and destroy link colonies to starve the network.",,

@@ -122,22 +122,24 @@ final class SwarmOps {
 
 	/**
 	 * IncursionManager.pickOGSystem: any empty system that can carry the full chain (here: room
-	 * for its OG_CHAIN planets) at least half as far from the nearest world as the farthest such
-	 * system, picked at random.
+	 * for its homeWorlds planets; the most planets any has, down to three, when none does) at least
+	 * half as far from the nearest world as the farthest such system, picked at random.
 	 */
-	static StarSys pickOG(State s) {
+	static StarSys pickOG(State s, int homeWorlds) {
 		if (s.swarm.ogSystemId != null && s.systems.get(s.swarm.ogSystemId) != null) {
 			return s.systems.get(s.swarm.ogSystemId);
 		}
 		List<StarSys> viable = new ArrayList<StarSys>();
 		StarSys most = null;
 		float maxDist = -1f;
-		for (StarSys sys : s.systems.values()) {
-			if (inhabited(s, sys)) continue;
-			if (most == null || sys.planets > most.planets) most = sys;
-			if (sys.planets < SwarmFit.OG_CHAIN) continue;
-			viable.add(sys);
-			maxDist = Math.max(maxDist, nearestWorldLY(s, sys));
+		for (int worlds = homeWorlds; worlds >= 3 && viable.isEmpty(); worlds--) {
+			for (StarSys sys : s.systems.values()) {
+				if (inhabited(s, sys)) continue;
+				if (most == null || sys.planets > most.planets) most = sys;
+				if (sys.planets < worlds) continue;
+				viable.add(sys);
+				maxDist = Math.max(maxDist, nearestWorldLY(s, sys));
+			}
 		}
 		List<StarSys> open = new ArrayList<StarSys>();
 		for (StarSys sys : viable) if (nearestWorldLY(s, sys) >= maxDist * 0.5f) open.add(sys);
@@ -188,12 +190,19 @@ final class SwarmOps {
 	 * The structure the i-th landing of an opening chain of n brings (WaveOrder.role). Five or more: the fitted chain,
 	 * forge, fuel plant, refining, then mines. Four: forge, refining, mines. Fewer: a forge and mines - the mod's
 	 * landings mine wherever there are deposits, the forge is the one build it forces (SEED_FORGE_KEY), and the first
-	 * refinery and fuel plant are bought when a second industry slot opens (SwarmEconomy.choose).
+	 * refinery and fuel plant are bought when a second industry slot opens (SwarmEconomy.choose). minesOnly
+	 * (warsim_homeMinesOnly): a forge and mines whatever n - round 22 found the makeup makes no difference at four.
 	 */
-	static int chainRole(int i, int n) {
-		if (n >= SwarmFit.OG_CHAIN) return i;
+	static int chainRole(int i, int n, boolean minesOnly) {
 		if (i == 0) return 0;
+		if (minesOnly) return 3;
+		if (n >= SwarmFit.OG_CHAIN) return i;
 		return n == 4 && i == 1 ? 2 : 3;
+	}
+
+	/** ThreatColonyManager.pickChainPlanets: the opening lands on homeWorlds planets of the home, or on all it has when it has fewer. */
+	static int homeChain(SwarmKnobs k, StarSys home) {
+		return home.planets > 0 ? Math.min(k.homeWorlds, home.planets) : k.homeWorlds;
 	}
 
 	/** Seeded systems whose 120 days are up send their wave; one the stocks cannot pay waits, its demand booked. */
@@ -202,14 +211,14 @@ final class SwarmOps {
 			if (s.day - c.day < k.seedToColonyDays) continue;
 			if (c.bootstrap) {
 				s.swarm.claims.remove(c);
-				int chain = k.ogChain > 0 ? k.ogChain : SwarmFit.OG_CHAIN;
+				int chain = homeChain(k, c.sys);
 				s.log("Bootstrap: " + chain + " waves to " + c.sys);
 				for (int i = 0; i < chain; i++) {
 					Parcel p = s.send(Parcel.THREAT, Parcel.Kind.WAVE, c.sys, c.sys, SwarmFit.bootstrapSwarmFP(s.rng),
 							SwarmFit.bootstrapTravelDays(s.rng));
 					WaveOrder o = new WaveOrder();
 					o.bootstrap = true;
-					o.role = chainRole(i, chain);
+					o.role = chainRole(i, chain, k.homeMinesOnly);
 					p.order = o;
 				}
 				continue;
@@ -958,8 +967,8 @@ final class SwarmOps {
 					: o.role == 2 ? Hive.REFINING : Hive.MINING);
 			h.forgeBuilding = 0f;
 			h.fuelPlantBuilding = 0f;
-			// warsim_ogChain: a home with no planet to spare (the chain took them all)
-			if (first) rollExpandable(s, p.to, k.ogChain > 0 ? Math.max(k.ogChain, p.to.planets) : SwarmFit.OG_CHAIN);
+			// the home's planets past the chain are taken later (tryExpandInSystem)
+			if (first) rollExpandable(s, p.to, homeChain(k, p.to));
 		} else {
 			if (first) rollExpandable(s, p.to, 1);
 			SwarmEconomy.plan(s, k, h);

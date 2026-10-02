@@ -319,7 +319,7 @@ points, and the bank is filled by what the hive's forges really make.
   hives were size 10 and razing one cost ~1M fuel. `pinMaxSize` holds the cap, and a hive over it
   loses a size a poll (`ThreatFrontlines.shrink`). A colonization wave per unclaimed planet
   (`tryExpandInSystem`), and a pending claim per free forge (`IncursionManager`); waves fly in
-  parallel, each paid for by a mustered swarm. `pickChainPlanets` is no longer cut at five.
+  parallel, each paid for by a mustered swarm. `pickChainPlanets` was no longer cut at five; since 2026-10-02 it lands `threatinc_homeWorlds` (4, the user's setting), the home's other planets going to `tryExpandInSystem`.
   One spare production link per held system. No scout limits. Raiders detach swarms until the
   pack outweighs the convoy by 1.5x. `maxInfestedSystems` is gone. Strikes pool the whole
   system's colonies for the muster (`garrisonAvailableForLaunch`). Siege sizing follows the same

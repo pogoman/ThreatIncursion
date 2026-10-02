@@ -378,7 +378,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					ThreatColonyManager.systemHasDeposit(og, com.fs.starfarer.api.impl.campaign.ids.Commodities.RARE_ORE));
 			ThreatIncConfig.log("OG home system: " + og.getName()
 					+ " (deposit wealth " + (int) ThreatColonyManager.systemDepositWealth(og)
-					+ ", " + ThreatColonyManager.countColonizablePlanets(og) + " planets)");
+					+ ", " + ThreatColonyManager.countColonizablePlanets(og) + " planets, the chain lands on "
+					+ ThreatColonyManager.pickChainPlanets(og).size() + ")");
 		}
 
 		// optional extra fringe footholds beyond the OG (single colonies, fed
@@ -4291,16 +4292,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * richest core-adjacent prize, just the most remote viable one.
 	 */
 	protected StarSystemAPI pickOGSystem() {
-		// pass 1: every viable full-chain system, and the deepest fringe distance
+		// pass 1: every viable full-chain system, and the deepest fringe distance.
+		// A sector with no system of homeWorlds planets takes the most it has,
+		// down to the three a chain needs
 		List<StarSystemAPI> viable = new ArrayList<StarSystemAPI>();
 		float maxDist = -1f;
-		for (StarSystemAPI system : Global.getSector().getStarSystems()) {
-			if (!isValidSpreadCandidate(system)) continue;
-			if (!ThreatColonyManager.canSupportFullChain(system)) continue;
-			float d = distanceToNearestInhabited(system);
-			if (d <= 0) continue;
-			viable.add(system);
-			if (d > maxDist) maxDist = d;
+		for (int worlds = ThreatIncConfig.homeWorlds(); worlds >= 3 && viable.isEmpty(); worlds--) {
+			for (StarSystemAPI system : Global.getSector().getStarSystems()) {
+				if (!isValidSpreadCandidate(system)) continue;
+				if (!ThreatColonyManager.canSupportChain(system, worlds)) continue;
+				float d = distanceToNearestInhabited(system);
+				if (d <= 0) continue;
+				viable.add(system);
+				if (d > maxDist) maxDist = d;
+			}
 		}
 		// pass 2: "far enough out" is a threshold, not a maximization - any
 		// system in the outer half of the viable fringe qualifies, and the OG is

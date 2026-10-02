@@ -512,9 +512,17 @@ public class ThreatColonyManager {
 	 * Deposits must be MODERATE or better: a sparse/trace deposit supplies at
 	 * size-3 against demands of size or size+2, a home economy that can never
 	 * stabilize no matter how it develops - a degenerate start, not a viable OG.
+	 *
+	 * Enough planets is homeWorlds (user's decision 2026-10-02: how many worlds
+	 * the swarm starts on is a setting, not the luck of the system drawn).
 	 */
 	public static boolean canSupportFullChain(StarSystemAPI system) {
-		return countColonizablePlanets(system) >= 3
+		return canSupportChain(system, ThreatIncConfig.homeWorlds());
+	}
+
+	/** canSupportFullChain for a chain of the given number of worlds (IncursionManager.pickOGSystem steps down when no system has homeWorlds). */
+	public static boolean canSupportChain(StarSystemAPI system, int worlds) {
+		return countColonizablePlanets(system) >= worlds
 				&& bestDepositMod(system, Commodities.ORE) >= 0
 				&& bestDepositMod(system, Commodities.RARE_ORE) >= 0
 				&& bestDepositMod(system, Commodities.VOLATILES) >= 0;
@@ -540,12 +548,19 @@ public class ThreatColonyManager {
 
 	/**
 	 * The planets to colonize to stand up a complete production chain: the
-	 * richest ore world, the richest volatiles world, and every other
-	 * colonisable planet to host refining and heavy industry, distinct
-	 * (2026-09-29: no longer cut at five - the waves and garrisons that must
-	 * take and hold each world are the bound).
+	 * richest ore world, the richest volatiles world, and the leanest other
+	 * colonisable planets to host refining and heavy industry, distinct,
+	 * homeWorlds of them (2026-10-02; the system's other planets are taken
+	 * later by tryExpandInSystem, paid for like any wave).
 	 */
 	public static List<PlanetAPI> pickChainPlanets(StarSystemAPI system) {
+		List<PlanetAPI> all = pickChainPlanetsUncut(system);
+		int worlds = Math.max(1, ThreatIncConfig.homeWorlds());
+		return all.size() > worlds ? new ArrayList<PlanetAPI>(all.subList(0, worlds)) : all;
+	}
+
+	/** Every colonisable planet of the system in chain order: the best ore, rare ore and volatiles worlds, then the rest leanest first. */
+	protected static List<PlanetAPI> pickChainPlanetsUncut(StarSystemAPI system) {
 		List<PlanetAPI> chosen = new ArrayList<PlanetAPI>();
 
 		// cover every deposit the chain needs; one planet often carries several,

@@ -246,12 +246,17 @@ connected by Chrome Remote Desktop and joined a call, and the game process was g
 later (the log ends on "Error initializing music source - AL error 40964", no crash report) - a
 topmost game window that keeps taking the foreground is in the way of anyone at the laptop. Since
 then `hold.ps1` lets the key go and prints `FOREGROUND LOST` when another window holds the
-foreground for a second, `run.ps1` stops on it, and `runto.ps1` never takes the foreground back
-after its first round: it stops with `STOPPED: FOREGROUND LOST` and sends the game window behind
-the others, left running at normal speed. Start `runto.ps1` again with the same `-Tag` when the
-machine is free (the day count is from the tag's first `Clock:` line). Whether a remote session is
-on: the last `chromoting` event in the Application log (id 1 connect, 2 disconnect). Do not start
-a run while the user is at the laptop or on a call - ask first.
+foreground for a second and `run.ps1` stops on it. `runto.ps1` then waits: a toast or a chat popup
+took the foreground nine minutes into run `tr1b` with nobody at the laptop, so it carries on once
+the game has the foreground back or nobody has touched keyboard or mouse for `-IdleSeconds` (90),
+and stops with `STOPPED: FOREGROUND LOST`, the game window sent behind the others and left running
+at normal speed, only after `-WaitMinutes` (20) of someone at work. Start `runto.ps1` again with
+the same `-Tag` when the machine is free (the day count is from the tag's first `Clock:` line).
+Whether a remote session is on: the last `chromoting` event in the Application log (id 1 connect,
+2 disconnect). Do not start a run while the user is at the laptop or on a call - ask first.
+`run-settings.ps1 -Save <save>` sets everything a long run needs on this laptop (1600x900,
+autosave off, Shift 48x, the three debug switches, Continue at the save); the user's own values
+are put back by `%TEMP%\threatinc-tests\backup-20261002\restore.ps1`.
 
 ## Fast-forward runs and a new game (2026-10-01)
 
