@@ -904,11 +904,25 @@ final class SwarmOps {
 	 * MARINE_COUNTER_ATTACK_MULT when counter-attacking (ThreatGroundFronts' defenderStrength / counterAttackStrength).
 	 */
 	static float colonyDefence(State s, World w, int held, boolean counterAttack) {
+		return colonyDefence(s, w, held, 1f, counterAttack);
+	}
+
+	/**
+	 * The garrison a holding Threat front leaves standing: a front that holds suppresses the world's key structures
+	 * (Theatre.keyStructures - ground defences, batteries, the military), and vanilla's ground defence falls with them.
+	 * warsim_frontHoldSuppress 0.65 is fitted to the dumps (2026-10-03): a colony under a holding front kept 0.26 of its
+	 * pre-war garrison in hw4d and 0.40 in hw4c, under a grinding one about all of it.
+	 */
+	static float suppressed(State s, Swarm.Landing l) {
+		return l != null && l.holding ? 1f - Math.max(0f, Math.min(1f, s.knobs.f("warsim_frontHoldSuppress", 0.65f))) : 1f;
+	}
+
+	static float colonyDefence(State s, World w, int held, float garrisonMult, boolean counterAttack) {
 		float marines = w.hasReserve ? Math.max(0f, w.stock[World.MARINES]) * s.knobs.f("threatinc_reserveDefenseMult") : 0f;
 		if (counterAttack) marines *= SwarmFit.MARINE_COUNTER_ATTACK_MULT;
 		// warsim_colonyGarrison (true): the dump's garrison (ThreatGroundFronts.colonyGarrison), else the old guess of 15 a size
 		float garrison = s.knobs.b("warsim_colonyGarrison", true) && w.garrison >= 0f ? w.garrison : SwarmFit.COLONY_GROUND_PER_SIZE * w.size;
-		float d = garrison + marines;
+		float d = garrison * garrisonMult + marines;
 		return d * Math.max(0, w.size - held) / (float) Math.max(1, w.size) * s.knobs.f("threatinc_groundDefenseMult");
 	}
 
@@ -941,8 +955,8 @@ final class SwarmOps {
 	 * hull); the battery toll on the drop is not charged. The game also waits until orbit has done what it can (orbitDoneFor).
 	 */
 	static void feed(State s, SwarmKnobs k, World w, Swarm.Landing l) {
-		if (!k.fabricate) return;
-		float want = colonyDefence(s, w, l.strataHeld, false) * s.knobs.f("threatinc_frontHoldFraction");
+		if (!k.fabricate || !s.knobs.b("warsim_guardFabricates", true)) return;
+		float want = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false) * s.knobs.f("threatinc_frontHoldFraction");
 		float mult = Math.max(0.01f, threatMult(s, l));
 		if (l.troops * mult >= want) return;
 		float gap = Math.max(0f, want * k.fabricateHoldMargin - l.troops * mult) / mult;
@@ -988,8 +1002,8 @@ final class SwarmOps {
 		float hold = s.knobs.f("threatinc_frontHoldFraction");
 		float clamp = Math.max(1f, s.knobs.f("threatinc_counterAttackRatioClamp"));
 		float odds = BattleRules.overrunOdds(exponent);
-		float d = colonyDefence(s, w, l.strataHeld, false);
-		float ca = colonyDefence(s, w, l.strataHeld, true);
+		float d = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false);
+		float ca = colonyDefence(s, w, l.strataHeld, suppressed(s, l), true);
 		float e = threatEff(s, l);
 		// shouldBrace: a front holding no ground that the next counter-attack would overrun digs in
 		if (l.pushing && l.strataHeld == 0 && ca > e * odds) l.pushing = false;
@@ -1005,8 +1019,8 @@ final class SwarmOps {
 			w.stock[World.MARINES] = Math.max(0f, w.stock[World.MARINES] - engaged * s.knobs.f("threatinc_defenderLossPer30Days") / 30f);
 		}
 		e = threatEff(s, l);
-		d = colonyDefence(s, w, l.strataHeld, false);
-		ca = colonyDefence(s, w, l.strataHeld, true);
+		d = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false);
+		ca = colonyDefence(s, w, l.strataHeld, suppressed(s, l), true);
 		if (l.pushing) {
 			if (l.checkpointLeft > 0f) {
 				l.checkpointLeft -= 1f;
@@ -1048,6 +1062,7 @@ final class SwarmOps {
 				}
 			}
 		}
+		l.holding = threatEff(s, l) >= colonyDefence(s, w, l.strataHeld, suppressed(s, l), false) * hold;
 		// the stance: push whenever strong enough, dig in otherwise
 		if (!l.pushing && threatEff(s, l) >= d * hold && !(l.strataHeld == 0 && ca > threatEff(s, l) * odds)) l.pushing = true;
 		return null;
