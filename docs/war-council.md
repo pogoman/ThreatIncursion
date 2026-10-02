@@ -222,6 +222,11 @@ unguarded. It is the one reactive element, and it is bounded by its share, not b
 
 ## 5. Sizing: shares of the means
 
+**Superseded 2026-10-02 (the user):** a play's siege is sized as the planner sizes one, from the
+faction's report (`IncursionManager.siegeSizesFor`; facts.md "Where is a siege sized?"). Sizing from
+a report is planning; the hack is reading the live garrison. Hunts, decoys and squadrons keep
+their shares. The rest of this section is the 2026-10-01 design as first built.
+
 **Overtaken for sieges on 2026-10-02 (the user's decision):** a play's siege - the hammer's, the
 feint's strike, the starve's saturation expedition and its invasion - is sized exactly as the attack
 planner sizes one (`IncursionManager.siegeSizesFor`: the strongest world in the faction's report x
@@ -291,7 +296,7 @@ point and a date, standing for joining) is v2.
 **Goes, or is replaced:**
 - the attack planner's per-world allocation, its trust-and-chance prong arithmetic, and planning
   on news;
-- FP-based sizing for a play's forces;
+- FP-based sizing for a play's forces [reinstated 2026-10-02 from reports, section 5];
 - `ThreatFactionStance.evaluate`'s FP ratio (decision 9).
 
 **Kept off:** the monthly siege pass, as under the planner.
@@ -299,6 +304,10 @@ point and a date, standing for joining) is v2.
 **Knob:** `warCouncil`. Off falls back to the attack planner as built, so runs can compare.
 
 ## 9. Does the swarm take the bait? (feint feasibility)
+
+**2026-10-02:** radar is gone on both sides (facts.md "How does a faction see a hive system?"), so
+staged stock and a sailing force are seen only by Threat ships present; a feint deceives at any
+range and staging no longer telegraphs. The analysis below predates that.
 
 Mapped 2026-10-01. The mechanism, by symbol, is in `hive-garrison-and-upkeep.md`, "How fast it
 answers". **Yes, narrowly. A small feint does nothing.**
@@ -439,6 +448,7 @@ Answers 1, 6, 9 and 10 were the user's choices; the rest were taken as proposed.
 1. Plays in v1: all four (hammer, feint and strike, starve then invade, recon in force), plus
    bombers of opportunity.
 2. Scale of the swarm: worlds, sizes, tiers and spread only. Never summed swarm fleet points.
+   [2026-10-02: for the assessment. A play's siege is sized from the report's fleet points, never live ones.]
 3. Shares: a hammer gets 60% of the means. Its muster disbands below half its share.
 4. Personalities: the table in section 7.
 5. Randomness: temperature 1, with learning on.
