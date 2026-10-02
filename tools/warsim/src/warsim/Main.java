@@ -82,6 +82,11 @@ public final class Main {
 			else throw new IllegalArgumentException("unknown option " + o);
 		}
 		Knobs knobs = Knobs.load(settings);
+		// the user's decision of 2026-10-02 (facts.md "No radar; presence is knowledge"), ahead of the mod's settings.json:
+		// no radar on either side; a side's picture of a system is live while any of its ships is there and ages after.
+		// The old behaviour: -set "threatinc_radarRangeLY=10;threatinc_swarmRadarRangeLY=10".
+		knobs.set("threatinc_radarRangeLY=0");
+		knobs.set("threatinc_swarmRadarRangeLY=0");
 		// -set k=v, repeatable; one -set may also hold several, separated by ';' as -a/-b do
 		for (String s : sets) for (String t : s.split(";")) if (!t.trim().isEmpty()) knobs.set(t.trim());
 

@@ -34,7 +34,8 @@ Test double for the swarm (calibration only): `java -Dwarsim.humanTestSwarm=true
   fuel, mobilisation seeding (`reserveInitialMonths`). `drain` is `ThreatUpkeep`'s payer.
 - `HumanIntel` - `ThreatIntel` + `ThreatHiveIntel`: a hive system must be found (scout lead from
   `Faction.lastStrikeFrom`, interval sweeps), reports per system that age (`PlannerRules.trust`),
-  radar from bases within `radarRangeLY`, news on `PlannerRules.moved`. Mobilised factions share reports.
+  eyes where its own ships, fronts or worlds are (no radar since 2026-10-02; `radarRangeLY` > 0 restores it for
+  comparison), news on `PlannerRules.moved`. Mobilised factions share reports.
 - `HumanStance` - `ThreatFactionStance`: read every 7 days; CONSOLIDATE founds no link and
   besieges only systems facing the faction, PRESS founds on `stanceSecondaryShare` of passes.
   `faced` is the nearest world's owner (the mod's `ThreatReach.faced` also applies the strike gate).
@@ -234,7 +235,8 @@ in place of `HumanStance.evaluate` and `HumanPlanner.plan` (`ThreatAttackPlanner
 | `HumanCouncil.plan`, `opportunity`, `startRecon`, `startHammer`, `startStarve`, `feintPlan`, `startFeint` | `ThreatPlays`, the same names | One major play at a time on the focus; play weights by strategy x personality x learned; Hold only recons what threatens; bombers of opportunity within the month's fuel share (`oppLeft`), a world that drove one off rested a half-life. |
 | `HumanCouncil.advance`, `sample`, `toMuster`, `musterCheck`, `watchCheck`, `strike`, `strikeCheck`, `exploitCheck`, `advanceStarve`, `saturate`, `finish`, `end` | `ThreatPlays`, the same names | The phases and the verdict by damage done: a world taken, a landing (`HumanCouncil.landed`, from `HumanSide.station`), or Nexus-days down >= `councilInvadeNexusDays`. |
 | `HumanCouncil.force` | `ThreatSoftening.sendPlay`, `playPayableFP` | The held hunting force: a MUSTER parcel at `councilHammerShare` x `HumanPlanner.payableFP` that sails on the siege's day. |
-| `HumanPlanner.size(.., playFP)` | `IncursionManager.playSiegeSizes` | The play's siege: no orbit term, grown to the share of `HumanCouncil.capacityFP` (`ThreatPosture.siegeCapacityFP`); `strike` trims it to what the pools pay, down to the fleet that carries the landing (the provisions gate of `launchSiegeExpedition`, "Expedition trimmed"). |
+| `HumanPlanner.size(.., playFP)` | `IncursionManager.playSiegeSizes` | The play's siege under share sizing (`warsim_councilPlannerSizing=false`): no orbit term, grown to the share of `HumanCouncil.capacityFP` (`ThreatPosture.siegeCapacityFP`); `strike` trims it to what the pools pay, down to the fleet that carries the landing (the provisions gate of `launchSiegeExpedition`, "Expedition trimmed"). |
+| `HumanCouncil.plannerSizing`, `reconFirst`, `reconInForce`, `reconCheck` | the user's decision of 2026-10-02 (the mod's change is in hand) | Default on: the council still picks where and when, but `strike` sizes the siege as the planner does (`HumanPlanner.size` on the faction's report, `npcSiegeOrbitMargin`, no trimming; unaffordable posts the bounty), and a hammer with no report of its system runs the recon in force first (RECON phase, `playsReconFirst`) and sizes when the report is in. |
 | `HumanCouncil.squadron`, `squadronFP`, `squadronBase`, `fuelCost`, `bombable`, `raidsEnded` | `ThreatPlays`, the same names (`raidEnded`) | A play's raid: a SQUADRON parcel with `HumanOrder.play` and `stayDays`; `HumanSide.station` sends it home driven off on a contested orbit (`ThreatFleetOrders.endRaid`), planner raids as before. |
 
 Counters: `council.months.<STRATEGY>` (a faction-month, as the mod's monthly `Council f: picture` line),
@@ -277,7 +279,8 @@ inputs or anything by date (no `Clock:` lines, no dumps).
   run). Round 6 took every faction at war as a partner, at half weight in the band: 62% of months outmatched
   against the real 82-90%.
 - **Per-observer intel** (`HumanIntel.sweep`, `file(.., observer)`; `ThreatIntel.advanceDay`): a report is the
-  observer's (its own fleet or front in the system, its own military world or forward base within `radarRangeLY`)
+  observer's (its own fleet, front or world in the system; a military world or forward base within `radarRangeLY` only
+  while that knob is > 0, which the simulator sets to 0 by default)
   and its partners'. Round 6 filed every sighting with every faction, so each council saw every hive fresh and
   bombers of opportunity always had a target (242 a run against 27-98).
 - **Relief owed** (`HumanCouncil.reliefOwed`; `ThreatFleetOrders.reliefOwed`, `ThreatPlays.pausable`): no new play, the

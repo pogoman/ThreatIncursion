@@ -110,7 +110,8 @@ be made twice.
 - **Retaliation** (`IncursionManager.retaliate` -> `SwarmOps.hiveLost`): a hive eradicated draws
   a strike at once at the winner from the nearest system that can muster one (`retaliations`).
 - **Fog** (`ThreatSwarmIntel`, `ThreatSwarmScouts`), the simple model chosen: a world is seen
-  while within `swarmRadarRangeLY` of a hive system, and when a Scouting Swarm reaches its
+  while the swarm is in its system (a hive, a wave, a strike, a scout; `SwarmOps.radar`), by Bastion radar within
+  `swarmRadarRangeLY` only while that knob is > 0 (0 by default since 2026-10-02), and when a Scouting Swarm reaches its
   system. Each hive system may send one scout a tick to a random inhabited system unseen or
   stale. A strike needs a sighting and reads its defence, however old. Contacts are not modelled.
 - **War open**: before a hive reaches size 6 only mobilised factions, pirates and the Path are
@@ -260,7 +261,7 @@ system; RAIDER is banked at the nearest hive.
 `ThreatPosture.read`'s five terms, raw = max(attacks, staged) + losses + hostiles + forward:
 
 - **attacks** (`SwarmPosture.sight`, `Swarm.contacts`): a siege, hunt or squadron bound for a hive system is a contact
-  once it is there or inside `swarmRadarRangeLY` of it, and counts for `swarmContactDays` after it was last seen
+  once it is there (or inside `swarmRadarRangeLY` of it while that knob is > 0), and counts for `swarmContactDays` after it was last seen
   (`ThreatSwarmIntel.contactsOn`). Simplified: every hive system has radar, as `SwarmOps.radar` already takes it.
 - **staged** (`SwarmPosture.stagingHive`): per faction, the most any one seen base staging for the system could pay a
   siege there from its own stock, by the sighting's trust (`ThreatPosture.stagedBy`, `siegeCapacityFP`,
@@ -424,3 +425,49 @@ new, 0.8 -> 8.3 mid); it raises `mutual` only mid-war planner (0.9 -> 1.4, becau
 line). Consolidate 0.25 lowers the planner's `humanKills` (3.9 -> 2.0, clear). A (bases hold) lowers
 `threatKills.bases` by about a quarter, inside noise. Nothing raised `humanKills`: the lever for `mutual` is on the
 human side (the council's siege rate), not among the swarm knobs tried.
+
+## 15. Round 12: no radar, planner-sized plays (2026-10-02)
+
+Two user decisions, put in as switches. (1) No radar on either side: `HumanIntel.sweep` gives a faction eyes in a
+hive system where any of its fleets holds, its front stands or its own world lies (its station and guard), exact,
+and the report stands and ages from the day the last leaves; radar from military worlds and bases only while
+`threatinc_radarRangeLY` > 0. `SwarmOps.radar` sees a world as it stands while the swarm is in its system (a hive
+system, or a wave, strike or scout holding or arrived there); Bastion radar only while `threatinc_swarmRadarRangeLY`
+> 0. `Main` sets both knobs to 0 after loading settings.json (the mod's file is not edited); `-set
+"threatinc_radarRangeLY=10;threatinc_swarmRadarRangeLY=10"` is the old behaviour. (2) `warsim_councilPlannerSizing`
+(default on): the council still chooses where and when, but `HumanCouncil.strike` sizes the siege as the planner
+does (`HumanPlanner.size` on the faction's report at `npcSiegeOrbitMargin`, no trimming below it, the bounty when
+the orbit is unpaid); a hammer with no report of its system runs the recon in force first (`reconFirst`,
+`reconInForce`, RECON phase, `reconCheck`; counter `playsReconFirst`). Neither the mod's planner nor the simulator's
+widens the orbit as trust decays - both spread prongs instead (attack-planner.md, "Spread before size") - so no
+widening was added.
+
+Grid, 30 seeds, last-month medians (* outside the old cell's p10-p90):
+
+| cell | threatKills (w / b) | humanKills | mutual | scores T / H | hives | bases held | classes |
+|---|---|---|---|---|---|---|---|
+| new council old | 9.4 (2.1 / 7.3) | 0.2 | 0.2 | 874 / 11 | 135 | 11 | one-sided 60, both 3 |
+| new council radar off | 7.3* (2.1 / 5.1*) | 0.2 | 0.2 | 1084 / 12.5 | 147 | 12.5 | one-sided 63 |
+| new council sizing | 8.4 (2.1 / 6.1) | 0.2 | 0.2 | 861 / 11 | 128 | 11 | one-sided 63 |
+| new council both | 7.1* (2.2 / 4.7*) | 0* | 0* | 967 / 13 | 144 | 13 | one-sided 73 |
+| new planner old | 4.4 (1.9 / 2.9) | 3.3 | 3.3 | 758 / 0 | 90 | 0 | both 100 |
+| new planner radar off | 3.9 (1.9 / 1.9) | 3.0 | 2.9 | 1033 / 0 | 129 | 0 | both 97 |
+| mid council old | 8.8 (0.8 / 8) | 0 | 0 | 285 / 9.5 | 145 | 9.5 | one-sided 93 |
+| mid council radar off | 5.6* (0.8 / 4.9*) | 0 | 0 | 284 / 12 | 144 | 12 | one-sided 93 |
+| mid council sizing | 8.6 (0.8 / 7.9) | 0 | 0 | 294 / 10 | 148 | 10 | one-sided 97 |
+| mid council both | 5.6* (0.8 / 4.9*) | 0 | 0 | 283 / 11.5 | 145 | 11.5 | one-sided 100 |
+| mid planner old | 0.8 (0.8 / 0) | 1.8 | 0.8 | 311 / 0 | 145 | 0 | both 43 |
+| mid planner radar off | 0.8 (0.8 / 0) | 1.0 | 0.8 | 312 / 0 | 151 | 0 | both 13 |
+
+Reading: radar off is the clear change. The swarm destroys a third fewer forward bases (7.3 -> 5.1 new, 8 -> 4.9
+mid; a strike now needs a sighting of the base from a hive system or a swarm there), the humans scout three times
+as much (`scoutsSailed` 561 -> 1611) and kill fewer hives (planner 3.3 -> 3.0 new, 1.8 -> 1.0 mid, both-sides
+43% -> 13%), so more hives stand at the end (new game 135 -> 147 council, 90 -> 129 planner). Planner sizing of
+plays is inside seed noise everywhere: the council sailed 3-4 play sieges a run before and after (relief owed
+pauses its plays, `council.heldPlayDays`; its recon plays outnumber hammers 30 to 1), so how a siege is sized
+changes nothing until it sails more of them; `playsReconFirst` stayed 0 because the council's own old-picture gate
+already runs a recon before a hammer. `mutual` is still bounded by `humanKills` in every cell.
+
+Check with radar off (the real runs had radar): pd9a 130 -> 115 of 218 figures inside p10-p90, pd10a 130 -> 143.
+Simulated destruction since the first mobilisation 4.2 -> 3.4 threatKills a year (bases 2.5 -> 1.7), humanKills
+3.5 -> 2.9, mutual 3.5 -> 2.7; pd9a's real mutual 1.9 is now inside the band [1.9 - 3.5], pd10a's 7.3 further out.

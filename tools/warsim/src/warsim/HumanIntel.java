@@ -73,9 +73,11 @@ final class HumanIntel {
 	}
 
 	/**
-	 * The daily sweep (ThreatIntel.advanceDay): each observer with eyes in a hive system (a fleet of its own on
-	 * station, a front of its own) sees it exactly; one with radar on it (a military world or forward base of its
-	 * own within radarRangeLY) to two figures.
+	 * The daily sweep (ThreatIntel.advanceDay): each observer with eyes in a hive system - any fleet of its own
+	 * there (a hunt, a siege, a convoy, a guard, a scout), a front of its own, a world of its own with its station -
+	 * sees it exactly, and its report stands and ages from the day the last leaves (the user's decision of
+	 * 2026-10-02, no radar). Radar (a military world or forward base of its own within radarRangeLY, two figures)
+	 * only while radarRangeLY > 0, kept for comparison.
 	 */
 	static void sweep(State s) {
 		float radarLY = s.knobs.f("threatinc_radarRangeLY");
@@ -101,7 +103,11 @@ final class HumanIntel {
 			if (eyes != null) eyes.add(h.sys);
 		}
 		for (World w : s.worlds) {
-			if (w.lost || !w.hasReserve || !HumanPools.military(w)) continue;
+			if (w.lost) continue;
+			// presence: a world of the faction's in a hive system is its eyes there (its station and guard)
+			java.util.Set<StarSys> eyes = eyesOf.get(w.faction);
+			if (eyes != null && hived.contains(w.sys)) eyes.add(w.sys);
+			if (radarLY <= 0f || !w.hasReserve || !HumanPools.military(w)) continue;
 			java.util.List<World> radar = radarOf.get(w.faction);
 			if (radar != null) radar.add(w);
 		}

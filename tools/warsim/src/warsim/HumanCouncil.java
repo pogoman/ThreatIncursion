@@ -497,10 +497,21 @@ final class HumanCouncil {
 
 	static Play startRecon(State s, Faction f, Council c, Cluster k, String why) {
 		Play pl = newPlay(s, f, c, RECON, k);
-		World base = HumanPools.nearestBase(s, f.id, k.sys, false);
-		int travel = base != null ? State.travelDays(base.sys.ly(k.sys)) : 30;
-		boolean scout = !scoutInFlight(s, k.sys) && HumanIntel.scout(s, f, k.sys);
-		// one probing raid at the doctrine size, paid from the month's opportunity share
+		if (!reconInForce(s, f, c, pl, "SCOUT", why)) {
+			cancel(c, pl);
+			return null;
+		}
+		return pl;
+	}
+
+	/**
+	 * The recon in force: a scout and one probing raid at the doctrine size, paid from the month's opportunity share;
+	 * the play's next phase is due when they could have reported. False when neither could go.
+	 */
+	static boolean reconInForce(State s, Faction f, Council c, Play pl, String next, String why) {
+		World base = HumanPools.nearestBase(s, f.id, pl.sys, false);
+		int travel = base != null ? State.travelDays(base.sys.ly(pl.sys)) : 30;
+		boolean scout = !scoutInFlight(s, pl.sys) && HumanIntel.scout(s, f, pl.sys);
 		Hive world = firstLive(pl);
 		boolean probe = false;
 		if (world != null) {
@@ -512,14 +523,37 @@ final class HumanCouncil {
 				probe = true;
 			}
 		}
-		if (!scout && !probe) {
-			cancel(c, pl);
-			return null;
-		}
-		c.reconDay.put(k.sys, s.day);
+		if (!scout && !probe) return false;
+		c.reconDay.put(pl.sys, s.day);
 		pl.phaseDue = s.day + travel + 15;
-		phase(s, pl, "SCOUT", why + (scout ? "; scout sent" : "") + (probe ? "; probing raid" : ""));
-		return pl;
+		phase(s, pl, next, why + (scout ? "; scout sent" : "") + (probe ? "; probing raid" : ""));
+		return true;
+	}
+
+	/**
+	 * warsim_councilPlannerSizing (the user's decision of 2026-10-02, default on): a play's siege is sized as the
+	 * planner sizes one, on the faction's report of the target (HumanPlanner.size with no play share), not as a
+	 * share of the means; a play with no report of its system starts with the recon in force and sizes when the
+	 * report arrives.
+	 */
+	static boolean plannerSizing(State s) { return s.knobs.b("warsim_councilPlannerSizing", true); }
+
+	/** Under planner sizing, a play without a report of its system goes to RECON first; true when it did. */
+	static boolean reconFirst(State s, Council c, Play pl, String why) {
+		if (!plannerSizing(s) || pl.f.reports.get(pl.sys) != null || "RECON".equals(pl.phase)) return false;
+		if (!reconInForce(s, pl.f, c, pl, "RECON", why + "; no report of " + pl.sys)) return false;
+		s.count("playsReconFirst", 1);
+		return true;
+	}
+
+	static void reconCheck(State s, Council c, Play pl) {
+		if (pl.f.reports.get(pl.sys) != null) {
+			pl.phaseDue = s.day + (int) (Math.max(1f, s.knobs.f("threatinc_councilPrepareDays")) * jitter(s));
+			phase(s, pl, "PREPARE", "the report is in; stages at " + pl.base.name);
+		} else if (s.day >= pl.phaseDue) {
+			standDownForces(s, pl);
+			end(s, c, pl, NEUTRAL, "no report of its system by its day");
+		}
 	}
 
 	static World baseOf(Cluster k, Faction f) {
@@ -538,6 +572,7 @@ final class HumanCouncil {
 			return null;
 		}
 		pl.base = base;
+		if (reconFirst(s, c, pl, why)) return pl;
 		float half = Math.max(1f, s.knobs.f("threatinc_intelHalfLifeDays"));
 		boolean scout = age(s, f, k.sys) >= 0.5f * half && !scoutInFlight(s, k.sys) && HumanIntel.scout(s, f, k.sys);
 		pl.phaseDue = s.day + (int) (Math.max(1f, s.knobs.f("threatinc_councilPrepareDays")) * jitter(s));
@@ -846,7 +881,9 @@ final class HumanCouncil {
 
 	static void advanceStrike(State s, Council c, Play pl) {
 		String ph = pl.phase;
-		if ("PREPARE".equals(ph)) {
+		if ("RECON".equals(ph)) {
+			reconCheck(s, c, pl);
+		} else if ("PREPARE".equals(ph)) {
 			if (s.day >= pl.phaseDue) toMuster(s, c, pl);
 		} else if ("MUSTER".equals(ph)) {
 			musterCheck(s, c, pl);
@@ -955,20 +992,27 @@ final class HumanCouncil {
 			end(s, c, pl, NEUTRAL, "another siege has its worlds");
 			return;
 		}
+		// planner sizing: no report of the target system yet - the recon in force first, the forces stand by
+		if (reconFirst(s, c, pl, why)) return;
 		if (pl.type == FEINT && pl.forces.isEmpty()) force(s, pl, true);
+		boolean planner = plannerSizing(s);
 		float siegeFP = share(s, pl.f, "threatinc_councilHammerShare") * capacityFP(s, pl.base, pl.sys);
 		// one siege a hive here: the first world the pools pay the landing for (the mod drops worlds from the end until it can)
 		for (Hive h : targets) {
-			HumanPlanner.Option o = HumanPlanner.size(s, pl.f, h, pl.base, siegeFP);
+			// planner sizing: the orbit the report shows at npcSiegeOrbitMargin and the landing the world needs, as
+			// HumanPlanner.plan sizes a siege (no widening by trust: the planner spreads prongs instead); unaffordable
+			// posts the bounty as the planner's provisions gate does and is not trimmed below what the report needs
+			HumanPlanner.Option o = planner ? HumanPlanner.size(s, pl.f, h, pl.base) : HumanPlanner.size(s, pl.f, h, pl.base, siegeFP);
 			// IncursionManager.launchSiegeExpedition's provisions gate: the fleets beyond those the landing needs
 			// are trimmed to what the depot pays for ("Expedition trimmed at"); under them the siege waits
-			for (float fp = siegeFP * 0.8f; !o.affordable && o.fp > HumanFit.MIN_SIEGE_FP; fp *= 0.8f) {
+			for (float fp = siegeFP * 0.8f; !planner && !o.affordable && o.fp > HumanFit.MIN_SIEGE_FP; fp *= 0.8f) {
 				float was = o.fp;
 				o = HumanPlanner.size(s, pl.f, h, pl.base, fp);
 				if (o.fp >= was) break;
 				if (o.affordable) s.count("playSiegesTrimmed", 1);
 			}
 			if (!o.affordable) s.count("playSiege.short." + o.shortOf, 1);
+			if (!o.affordable && planner && o.orbitUnpaid) HumanPlanner.postBounty(s, h.sys, pl.f.id);
 			if (!o.affordable) continue;
 			float[] draw = o.wants.clone();
 			draw[World.SUPPLIES] = o.fp / ReachRules.FP_PER_POINT * s.knobs.f("threatinc_expeditionSuppliesPerPoint");
