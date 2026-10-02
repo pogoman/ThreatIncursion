@@ -67,7 +67,17 @@ final class SwarmKnobs {
 		reinforceWeight = k.f("threatinc_strikeReinforceWeight");
 		reliefFirst = k.b("threatinc_strikeReliefFirst", true);
 		retaliation = k.b("threatinc_retaliationEnabled", true);
+		basesHold = k.b("warsim_basesHold", false);
+		coloniesFall = k.b("warsim_coloniesFall", false);
 	}
+
+	/**
+	 * Round-8 hypotheses (2026-10-02), off by default, no mod symbol behind either: warsim_basesHold - a forward
+	 * base's station is not destroyed by the strike that sinks its guard, it falls to a station siege
+	 * (SwarmOps.stationSiegeDay); warsim_coloniesFall - a Threat landing on a colony at war fights the front engine
+	 * (SwarmOps.threatFrontDay) instead of the overrun clock.
+	 */
+	final boolean basesHold, coloniesFall;
 
 	/** Supplies a founding takes from the stock (ThreatFuel.foundingCost()[0]). */
 	/** warsim_seedPriceMult: an experiment's multiplier on the Seeding Swarm's price (1 = the mod's 5,000 supplies). */

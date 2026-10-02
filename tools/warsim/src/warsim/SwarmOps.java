@@ -37,6 +37,9 @@ final class SwarmOps {
 		int groundEnd = Integer.MIN_VALUE;
 		/** On a Defend station over the front it landed or reinforced (ThreatSwarmDefend), until that front ends. */
 		boolean defending;
+		/** warsim_basesHold: holding a forward base's orbit with its guard sunk, and for how many days (a station siege). */
+		boolean besieging;
+		int siegeDays;
 	}
 
 	/** A fleet going home to be banked. */
@@ -624,7 +627,7 @@ final class SwarmOps {
 		if (l != null) {
 			// the next expedition reinforces the front: the garrison needs that much longer to reach 2:1
 			l.troops += troops;
-			if (!l.falls && l.endDay != Integer.MIN_VALUE) l.endDay += SwarmFit.reinforcedDays(s.rng);
+			if (!l.falls && !l.engine && l.endDay != Integer.MIN_VALUE) l.endDay += SwarmFit.reinforcedDays(s.rng);
 			s.count("threatReinforcePasses", 1);
 			s.log("Strike pass (reinforce) vs " + w.name + ": " + (int) troops + " troops");
 			return true;
@@ -669,7 +672,36 @@ final class SwarmOps {
 			if (l.endDay == Integer.MIN_VALUE) {
 				if (s.day <= l.landedDay) continue;
 				l.falls = !s.faction(w.faction).mobilised;
-				l.endDay = l.landedDay + (l.falls ? SwarmFit.groundDays(s.rng) : SwarmFit.overrunDays(s.rng));
+				if (!l.falls && k.coloniesFall) {
+					// warsim_coloniesFall: the front engine instead of the overrun clock; the strike gate reads an open-ended front
+					l.engine = true;
+					l.endDay = Integer.MAX_VALUE;
+					l.pushing = l.troops * s.knobs.f("threatinc_frontLandingMult")
+							* BattleRules.overrunOdds(s.knobs.f("threatinc_groundStrengthExponent")) >= colonyDefence(s, w, 0, false);
+					s.count("threatFrontsEngine", 1);
+				} else {
+					l.endDay = l.landedDay + (l.falls ? SwarmFit.groundDays(s.rng) : SwarmFit.overrunDays(s.rng));
+				}
+			}
+			if (l.engine) {
+				String end = threatFrontDay(s, w, l);
+				if (end == null) continue;
+				s.swarm.landings.remove(id);
+				if (!end.equals("victory")) {
+					s.count(end.equals("overrun") ? "beachheadsOverrun" : "threatFrontsCollapsed", 1);
+					SwarmPosture.noteTrend(s, l.troops / SwarmFit.TROOPS_PER_FP * 0.5f, 0f);
+					s.log("Threat front at " + w.name + " " + end);
+					continue;
+				}
+				s.log("Threat front took the last district of " + w.name);
+				s.count("coloniesFallen", 1);
+				s.loseWorld(w, true, "ground assault (front engine)");
+				if (k.conquestConverts && s.rng.nextFloat() < SwarmFit.CONQUEST_HIVE_SHARE) {
+					Hive h = s.foundHive(w.sys, w.name, k.conquestSize);
+					rollExpandable(s, w.sys, 1);
+					SwarmEconomy.plan(s, k, h);
+				}
+				continue;
 			}
 			if (s.day < l.endDay) continue;
 			s.swarm.landings.remove(id);
@@ -688,6 +720,138 @@ final class SwarmOps {
 		}
 	}
 
+	/**
+	 * warsim_basesHold: a day of a station siege. A guard back on station (HumanBases.garrison's relief) fights the
+	 * besiegers as a strike is fought: one that outweighs them lifts the siege, one that does not is sunk. With no guard
+	 * the siege counts a day; at SwarmFit.STATION_SIEGE_DAYS the station falls.
+	 */
+	static void stationSiegeDay(State s, SwarmKnobs k, Parcel p, StrikeOrder o) {
+		World w = o.target;
+		if (w == null || w.lost) {
+			goHome(s, p, p.to);
+			return;
+		}
+		if (w.guardFP >= 1f) {
+			float strength = strength(p);
+			float defence = defenceOf(w);
+			boolean lifted = defence >= strength;
+			float lost = p.fp * BattleRules.lossShare(strength, defence);
+			float worn = 1f - BattleRules.lossShare(defence, strength);
+			w.guardFP *= worn;
+			p.fp -= lost;
+			SwarmPosture.noteTrend(s, lost, 0f);
+			if (lifted) {
+				s.count("stationSiegesLifted", 1);
+				s.log("Station siege of " + w.name + " lifted by its relief");
+				goHome(s, p, p.to);
+				return;
+			}
+			w.guardFP = 0f;
+			s.count("stationReliefsSunk", 1);
+		}
+		o.siegeDays++;
+		s.count("stationSiegeDays", 1);
+		if (o.siegeDays < SwarmFit.STATION_SIEGE_DAYS) return;
+		s.loseWorld(w, true, "station destroyed after a " + o.siegeDays + "-day siege");
+		goHome(s, p, p.to);
+	}
+
+	/**
+	 * warsim_coloniesFall: a colony's ground strength over the districts left - its own ground defence
+	 * (SwarmFit.COLONY_GROUND_PER_SIZE a size) and the reserve's armed marines, whole when holding the line and at
+	 * MARINE_COUNTER_ATTACK_MULT when counter-attacking (ThreatGroundFronts' defenderStrength / counterAttackStrength).
+	 */
+	static float colonyDefence(State s, World w, int held, boolean counterAttack) {
+		float marines = w.hasReserve ? Math.max(0f, w.stock[World.MARINES]) * s.knobs.f("threatinc_reserveDefenseMult") : 0f;
+		if (counterAttack) marines *= SwarmFit.MARINE_COUNTER_ATTACK_MULT;
+		float d = SwarmFit.COLONY_GROUND_PER_SIZE * w.size + marines;
+		return d * Math.max(0, w.size - held) / (float) Math.max(1, w.size) * s.knobs.f("threatinc_groundDefenseMult");
+	}
+
+	/** warsim_coloniesFall: the Threat front's troops as fighting strength (HumanSiege.eff without armaments: needsArms false). */
+	static float threatEff(State s, Swarm.Landing l) {
+		float landing = s.knobs.f("threatinc_frontLandingMult");
+		float full = s.knobs.f("threatinc_frontEntrenchMaxMult");
+		float dug = Math.min(1f, l.entrenchDays / Math.max(1f, s.knobs.f("threatinc_frontEntrenchDays")));
+		return l.troops * (landing + (full - landing) * dug);
+	}
+
+	/**
+	 * warsim_coloniesFall: one day of a Threat front on a colony at war, HumanSiege.frontDay mirrored (tickFront on a
+	 * Threat-owned front): no armaments, pushing losses x threatPushLossMult, the defenders bleeding
+	 * defenderLossPer30Days of the engaged and defenderCounterAttackLossFraction per counter-attack out of the reserve's
+	 * marines (ThreatReserves.spendDefendingMarines). Returns "victory", "overrun", "collapsed" or null.
+	 */
+	static String threatFrontDay(State s, World w, Swarm.Landing l) {
+		float exponent = s.knobs.f("threatinc_groundStrengthExponent");
+		float hold = s.knobs.f("threatinc_frontHoldFraction");
+		float clamp = Math.max(1f, s.knobs.f("threatinc_counterAttackRatioClamp"));
+		float odds = BattleRules.overrunOdds(exponent);
+		float d = colonyDefence(s, w, l.strataHeld, false);
+		float ca = colonyDefence(s, w, l.strataHeld, true);
+		float e = threatEff(s, l);
+		// shouldBrace: a front holding no ground that the next counter-attack would overrun digs in
+		if (l.pushing && l.strataHeld == 0 && ca > e * odds) l.pushing = false;
+		boolean exposed = l.pushing && l.checkpointLeft <= 0f;
+		float loss = (exposed ? s.knobs.f("threatinc_frontPushLossPer30Days") * s.knobs.f("threatinc_threatPushLossMult")
+				: s.knobs.f("threatinc_frontMarineLossPer30Days")) / 30f;
+		l.troops -= l.troops * Math.min(1f, loss);
+		if (l.troops < s.knobs.f("threatinc_frontMinMarines")) return "collapsed";
+		if (!exposed) l.entrenchDays += 1f;
+		// the defenders bleed on the frontage (engaged = the smaller force), out of the reserve's marines
+		float engaged = Math.min(w.stock[World.MARINES], l.troops);
+		if (w.hasReserve && engaged > 0f) {
+			w.stock[World.MARINES] = Math.max(0f, w.stock[World.MARINES] - engaged * s.knobs.f("threatinc_defenderLossPer30Days") / 30f);
+		}
+		e = threatEff(s, l);
+		d = colonyDefence(s, w, l.strataHeld, false);
+		ca = colonyDefence(s, w, l.strataHeld, true);
+		if (l.pushing) {
+			if (l.checkpointLeft > 0f) {
+				l.checkpointLeft -= 1f;
+			} else if (e >= d * hold) {
+				float pace = Math.max(0.5f, Math.min(3f, (float) Math.pow(d / Math.max(1f, e), exponent)));
+				l.pushDays += 1f / pace;
+				if (l.pushDays >= s.knobs.f("threatinc_frontPushBaseDays")) {
+					l.pushDays = 0f;
+					l.strataHeld++;
+					l.checkpointLeft = s.knobs.f("threatinc_frontCheckpointDays");
+					s.count("threatStrataTaken", 1);
+					if (l.strataHeld >= w.size) return "victory";
+					s.log("Threat front took district " + l.strataHeld + "/" + w.size + " at " + w.name);
+				}
+			}
+		}
+		// the colony's counter-attack, the sooner the more it outweighs the front
+		float tempo = Math.max(1f / clamp, Math.min(clamp, (float) Math.pow(ca / Math.max(1f, e), exponent)));
+		float body = Math.max(0, w.size - l.strataHeld) / (float) Math.max(1, w.size);
+		l.counterClock += Math.max(0.25f, body) * tempo;
+		if (l.counterClock >= s.knobs.f("threatinc_frontCounterAttackDays")) {
+			l.counterClock = 0f;
+			float cover = exposed ? 1f : 1f + (s.knobs.f("threatinc_frontEntrenchDefenseBonus") - 1f)
+					* Math.min(1f, l.entrenchDays / Math.max(1f, s.knobs.f("threatinc_frontEntrenchDays")));
+			float guard = e * cover;
+			if (w.hasReserve && engaged > 0f) {
+				w.stock[World.MARINES] = Math.max(0f, w.stock[World.MARINES] - engaged * s.knobs.f("threatinc_defenderCounterAttackLossFraction"));
+			}
+			if (ca > guard) {
+				s.count("colonyCounterAttacks", 1);
+				l.troops *= 1f - s.knobs.f("threatinc_frontCounterAttackLossFraction");
+				l.entrenchDays *= s.knobs.f("threatinc_frontEntrenchKeptFraction");
+				if (l.strataHeld > 0) {
+					l.strataHeld--;
+					l.pushDays = 0f;
+					l.pushing = false;
+				} else if (ca > guard * odds) {
+					return "overrun";
+				}
+			}
+		}
+		// the stance: push whenever strong enough, dig in otherwise
+		if (!l.pushing && threatEff(s, l) >= d * hold && !(l.strataHeld == 0 && ca > threatEff(s, l) * odds)) l.pushing = true;
+		return null;
+	}
+
 	/** The day's strikes: the fronts, then any strike a dump loaded already holding lands what it carries. */
 	static void daily(State s, SwarmKnobs k) {
 		if (!s.liveHives().isEmpty()) {
@@ -701,6 +865,10 @@ final class SwarmOps {
 			if (p.done || p.fp < 1f) {
 				p.done = true;
 				release(s, p);
+				continue;
+			}
+			if (o.besieging) {
+				stationSiegeDay(s, k, p, o);
 				continue;
 			}
 			if (o.defending) {
@@ -816,6 +984,15 @@ final class SwarmOps {
 			// the station falls when the strike outmatches what stood there; else the guard has held it
 			if (strength > defence) {
 				w.guardFP = 0f;
+				if (k.basesHold) {
+					// warsim_basesHold: the guard is sunk, the station stands; the strike holds the orbit (stationSiegeDay)
+					o.besieging = true;
+					o.siegeDays = 0;
+					p.holding = true;
+					s.count("stationSieges", 1);
+					s.log("Station siege of " + w.name + " begun by " + (int) p.fp + " FP");
+					return;
+				}
 				s.loseWorld(w, true, "station destroyed by a Threat strike");
 			} else s.count("strikesHeldOff", 1);
 			goHome(s, p, p.to);

@@ -94,6 +94,10 @@ public final class Swarm {
 		public boolean falls;
 		/** Whether the strike gate passes the invaded world this tick (SwarmFit.INVADED_GATE_SHARE). */
 		public boolean gateOpen;
+		/** warsim_coloniesFall: the front engine's state (as Front holds it for a human front on a hive). */
+		public boolean engine, pushing;
+		public float entrenchDays, pushDays, checkpointLeft, counterClock;
+		public int strataHeld;
 	}
 
 	/** ThreatAlarm's grudge per faction: raised by strata taken and hives eradicated, fading by the month. */
