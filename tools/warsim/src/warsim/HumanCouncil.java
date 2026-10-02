@@ -19,7 +19,7 @@ import threatinc.rules.ReachRules;
  * focus (hammer, feint and strike, starve then invade), recon on a stale picture and bombers of
  * opportunity, each sized as a share of the faction's means and judged by the damage done. The
  * verdicts teach the weights (learn). The council sets the faction's stance (setStance).
- * Not mirrored: relief owed (the sim has no relief of an invaded world), a partner's joint force
+ * Not mirrored: the relief itself (it is owed while a Threat front stands), a partner's joint force
  * (inviteJoint), a play's staging and its decoy (stage), the muster at a bearing (a held force
  * waits at its base and sails with the siege).
  */
@@ -51,7 +51,7 @@ final class HumanCouncil {
 		final List<Cluster> clusters = new ArrayList<Cluster>();
 		float swarmWeight, ourWeight, allyWeight, ratio, fuel;
 		int band, colonies, strikes, fronts, partners;
-		boolean pressed;
+		boolean pressed, relief;
 
 		Cluster cluster(StarSys sys) {
 			for (Cluster k : clusters) if (k.sys == sys) return k;
@@ -145,9 +145,9 @@ final class HumanCouncil {
 			}
 		}
 		p.colonies = ours.size();
-		// ThreatCoalition.partners: the simulator takes every faction at war as a partner (HumanIntel)
+		// ThreatCoalition.partners: the factions at war that would help each other (HumanFit.COALITION_PAIRS)
 		for (Faction o : s.factions.values()) {
-			if (o == f || !o.mobilised || HumanIntel.excluded(s, o.id)) continue;
+			if (o == f || !o.mobilised || HumanIntel.excluded(s, o.id) || !partner(f.id, o.id)) continue;
 			p.partners++;
 			for (World w : s.worldsOf(o.id)) p.allyWeight += w.size;
 		}
@@ -189,13 +189,37 @@ final class HumanCouncil {
 			else before = f.strikesSuffered > 0 && s.day - f.lastStruckDay < STRIKE_WINDOW_DAYS ? f.strikesSuffered - 1 : f.strikesSuffered;
 		}
 		p.strikes = Math.max(0, f.strikesSuffered - (int) before);
-		for (World w : ours) if (w.front != null && Parcel.THREAT.equals(w.front.faction)) p.fronts++;
+		for (World w : ours) if (s.swarm.landings.containsKey(w.id)) p.fronts++;
 		p.pressed = p.strikes > 0 || p.fronts > 0;
+		p.relief = reliefOwed(s, f);
 		p.ratio = CouncilRules.ratio(p.ourWeight, p.allyWeight, p.swarmWeight);
 		p.band = CouncilRules.band(c.band, p.ratio, s.knobs.f("threatinc_councilEvenRatio"), s.knobs.f("threatinc_councilAheadRatio"),
 				s.knobs.f("threatinc_councilBandHysteresis"));
 		c.band = p.band;
 		return p;
+	}
+
+	static boolean partner(String a, String b) {
+		for (String[] pair : HumanFit.COALITION_PAIRS) {
+			if (pair[0].equals(a) && pair[1].equals(b) || pair[1].equals(a) && pair[0].equals(b)) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * ThreatFleetOrders.reliefOwed: a Threat army stands on one of the faction's worlds and a base of the faction
+	 * can provision a relief fleet (reliefFleetFP) to it. The simulator sends no relief, so it is owed for as long
+	 * as the front stands; in the mod it ends once the guards bound there meet the goal.
+	 */
+	static boolean reliefOwed(State s, Faction f) {
+		float fleet = s.knobs.f("threatinc_reliefFleetFP");
+		for (World w : s.worldsOf(f.id)) {
+			if (!s.swarm.landings.containsKey(w.id)) continue;
+			for (World b : s.worldsOf(f.id)) {
+				if (b.base && b.hasReserve && HumanPlanner.payableFP(s, b, w.sys) >= fleet) return true;
+			}
+		}
+		return false;
 	}
 
 	/** threatinc_councilPersonalities: the faction's figure for the key, its "default" entry's, or 1 (ThreatWarCouncil.personality). */
@@ -235,7 +259,7 @@ final class HumanCouncil {
 			if (k.core) core = true;
 			if (k.core || k.production) rich = true;
 		}
-		float[] sc = CouncilRules.scores(any, frontier, core, rich, p.pressed, false, p.band, p.partners > 0);
+		float[] sc = CouncilRules.scores(any, frontier, core, rich, p.pressed, p.relief, p.band, p.partners > 0);
 		for (int i = 0; i < sc.length; i++) {
 			sc[i] *= personality(s, f.id, STRATEGIES[i].toLowerCase()) * learned(c, "strategy:" + STRATEGIES[i]);
 		}
@@ -335,6 +359,11 @@ final class HumanCouncil {
 
 	static void plan(State s, Faction f, Council c, Picture p) {
 		if (c.strategy == null || p == null) return;
+		// relief before offensives: no new play while it is owed
+		if (reliefOwed(s, f)) {
+			s.count("council.reliefDays", 1);
+			return;
+		}
 		opportunity(s, f, c, p);
 		float half = Math.max(1f, s.knobs.f("threatinc_intelHalfLifeDays"));
 		if ("HOLD".equals(c.strategy)) {
@@ -346,9 +375,26 @@ final class HumanCouncil {
 			}
 			return;
 		}
-		if (major(c) != null) return;
-		Cluster focus = p.cluster(c.focus);
-		if (focus == null || !fits(c.strategy, focus)) {
+		// warsim_councilMajorPlays: an experiment's count of major plays a faction runs at once (the mod: one, ThreatPlays.major)
+		int majors = 0;
+		boolean atFocus = false;
+		for (Play pl : c.plays) {
+			if (pl.type != HAMMER && pl.type != STARVE && pl.type != FEINT) continue;
+			majors++;
+			if (pl.sys == c.focus) atFocus = true;
+		}
+		if (majors >= Math.max(1, (int) s.knobs.f("warsim_councilMajorPlays", 1f))) return;
+		Cluster focus = atFocus ? null : p.cluster(c.focus);
+		if (atFocus) {
+			// the next play goes elsewhere: a few draws for a focus no play is running at
+			for (int i = 0; i < 5 && focus == null; i++) {
+				Cluster k = p.cluster(focus(s, c, p, c.strategy));
+				boolean busy = k == null;
+				for (Play pl : c.plays) if (k != null && pl.sys == k.sys) busy = true;
+				if (!busy) focus = k;
+			}
+			if (focus == null) return;
+		} else if (focus == null || !fits(c.strategy, focus)) {
 			c.focus = focus(s, c, p, c.strategy);
 			focus = p.cluster(c.focus);
 			if (focus == null) return;
@@ -384,7 +430,7 @@ final class HumanCouncil {
 		if (started == null) {
 			s.count("council.noStart." + types[pick], 1);
 			// another cluster tomorrow, not a wait until the review
-			c.focus = null;
+			if (!atFocus) c.focus = null;
 		}
 	}
 
@@ -753,10 +799,18 @@ final class HumanCouncil {
 	}
 
 	static void advance(State s, Faction f, Council c) {
+		boolean relief = reliefOwed(s, f);
 		for (Play pl : new ArrayList<Play>(c.plays)) {
 			if (!c.plays.contains(pl)) continue;
 			sample(s, pl);
 			int ended = raidsEnded(s, pl);
+			// relief before offensives: the next phase waits, the play is paused, not cancelled (ThreatPlays.pausable)
+			String ph = pl.phase;
+			if (relief && ("PREPARE".equals(ph) || "MUSTER".equals(ph) || "BOMB".equals(ph) || "WATCH".equals(ph))) {
+				if (pl.phaseDue != NEVER) pl.phaseDue++;
+				s.count("council.heldPlayDays", 1);
+				continue;
+			}
 			if (pl.type == RECON) {
 				if (s.day > pl.started + 1 && age(s, f, pl.sys) < RECON_FRESH_DAYS) end(s, c, pl, NEUTRAL, "the picture is fresh");
 				else if (s.day >= pl.phaseDue) end(s, c, pl, NEUTRAL, "no fresh report by its day");

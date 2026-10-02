@@ -34,7 +34,8 @@ public final class Knobs {
 		int eq = assignment.indexOf('=');
 		if (eq < 0) throw new IllegalArgumentException("expected key=value: " + assignment);
 		String key = assignment.substring(0, eq).trim();
-		if (!values.containsKey(key)) throw new IllegalArgumentException("no such knob in settings.json: " + key);
+		// warsim_*: the simulator's own experiment switches, not in settings.json (read with a default)
+		if (!values.containsKey(key) && !key.startsWith("warsim_")) throw new IllegalArgumentException("no such knob in settings.json: " + key);
 		values.put(key, Json.parse(assignment.substring(eq + 1).trim()));
 	}
 
@@ -44,6 +45,11 @@ public final class Knobs {
 		Object v = values.get(key);
 		if (!(v instanceof Number)) throw new IllegalArgumentException("knob missing or not a number: " + key);
 		return ((Number) v).floatValue();
+	}
+
+	public float f(String key, float def) {
+		Object v = values.get(key);
+		return v instanceof Number ? ((Number) v).floatValue() : def;
 	}
 
 	public int i(String key) { return (int) f(key); }

@@ -382,7 +382,7 @@ public final class HumanSide implements Side {
 			}
 			p.holding = true;
 			o.arrivedDay = s.day;
-			HumanIntel.file(s, p.to, HumanIntel.see(s, p.to, false));
+			HumanIntel.file(s, p.to, HumanIntel.see(s, p.to, false), p.owner);
 			if (p.kind == Parcel.Kind.SIEGE) s.count("siegesArrived", 1);
 			return;
 		case SCOUT:

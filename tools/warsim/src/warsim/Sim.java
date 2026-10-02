@@ -35,6 +35,8 @@ public final class Sim {
 
 		Result r = new Result();
 		r.seed = seed;
+		Map<StarSys, int[]> hands = new java.util.IdentityHashMap<StarSys, int[]>();
+		hands(s, hands, true);
 		r.months.add(row(s));
 		int end = s.startDay + months * 30;
 		while (s.day < end) {
@@ -42,9 +44,37 @@ public final class Sim {
 			swarm.daily(s);
 			humans.daily(s);
 			arrivals(s, swarm, humans);
+			hands(s, hands, false);
 			if ((s.day - s.startDay) % 30 == 0) r.months.add(row(s));
 		}
 		return r;
+	}
+
+	/**
+	 * docs/war-sim.md 7, `contested`: the systems that changed hands more than once. Per system and side (the
+	 * swarm's hives, the humans' worlds and bases), a presence lost is one change and one won back after a loss
+	 * another; a system at its second change is counted once. {swarm there, humans there, swarm lost, humans lost, changes}
+	 */
+	private static void hands(State s, Map<StarSys, int[]> hands, boolean first) {
+		java.util.Set<StarSys> swarm = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<StarSys, Boolean>());
+		java.util.Set<StarSys> humans = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<StarSys, Boolean>());
+		for (Hive h : s.hives) if (!h.dead) swarm.add(h.sys);
+		for (World w : s.worlds) if (!w.lost) humans.add(w.sys);
+		for (StarSys sys : swarm) if (!hands.containsKey(sys)) hands.put(sys, new int[5]);
+		for (StarSys sys : humans) if (!hands.containsKey(sys)) hands.put(sys, new int[5]);
+		for (Map.Entry<StarSys, int[]> e : hands.entrySet()) {
+			int[] h = e.getValue();
+			boolean[] now = { swarm.contains(e.getKey()), humans.contains(e.getKey()) };
+			for (int side = 0; side < 2 && !first; side++) {
+				boolean was = h[side] != 0;
+				int changes = h[4];
+				if (was && !now[side]) { h[2 + side] = 1; h[4]++; }
+				else if (!was && now[side] && h[2 + side] != 0) h[4]++;
+				if (changes < 2 && h[4] >= 2) s.count("contested", 1);
+			}
+			h[0] = now[0] ? 1 : 0;
+			h[1] = now[1] ? 1 : 0;
+		}
 	}
 
 	private static void arrivals(State s, Side swarm, Side humans) {
@@ -98,7 +128,7 @@ public final class Sim {
 		m.put("mobilised", mobilised);
 		// the counters every run reports, present even when zero
 		for (String c : new String[] { "threatSpread", "hivesFounded", "hiveLevels", "hivesKilled", "worldsLost",
-				"basesFounded", "basesDestroyed", "basesAbandoned", "siegesSailed", "siegesLanded", "strikesLaunched" })
+				"basesFounded", "basesDestroyed", "basesAbandoned", "siegesSailed", "siegesLanded", "strikesLaunched", "contested" })
 			m.put(c, s.counter(c));
 		for (Map.Entry<String, Double> e : s.counters.entrySet()) m.put(e.getKey(), e.getValue());
 		// the two sides' scores (docs/war-sim.md 7); kills are weighed by the caller
