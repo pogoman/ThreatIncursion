@@ -461,7 +461,9 @@ final class SwarmEconomy {
 		float sustainMonth = 0f;
 		for (Need n : needs) sustainMonth += n.sustain;
 		sustainMonth *= 30f / days;
-		float sustainCap = Math.max(0f, Math.min(1f, Math.max(k.feedExpand, Math.max(k.feedPress, k.feedConsolidate))));
+		// ThreatColonyUpkeep.sustainShare: the largest stance share; warsim_sustainShare (round 20) sets it apart from them
+		float sustainCap = k.sustainShare > 0f ? Math.min(1f, k.sustainShare)
+				: Math.max(0f, Math.min(1f, Math.max(k.feedExpand, Math.max(k.feedPress, k.feedConsolidate))));
 		float madeMonth = perMonth(s, k, SUPPLIES);
 		sw.spare = madeMonth - sw.awayPerMonth - (sustainCap > 0f ? sustainMonth / sustainCap : sustainMonth);
 		if (needs.isEmpty()) return;

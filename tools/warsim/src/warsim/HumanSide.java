@@ -390,7 +390,20 @@ public final class HumanSide implements Side {
 			settle(s, p, o);
 			return;
 		case RELIEF:
-			if (o.guards != null && !o.guards.lost) o.guards.guardFP += p.fp;
+			if (o.guards != null && !o.guards.lost) {
+				o.guards.guardFP += p.fp;
+				if (o.relief) {
+					o.guards.reliefFP += p.fp;
+					o.guards.reliefFP0 += p.fp;
+					o.guards.reliefDeposit += o.deposit;
+					o.guards.reliefHome = o.home;
+				}
+			} else if (o.relief && s.knobs.b("warsim_reliefGoesHome", false)) {
+				// round 20: the base fell before its relief came; the relief turns for home
+				s.count("reliefToBesiegers.tooLate", 1);
+				home(s, p, o);
+				return;
+			}
 			p.done = true;
 			return;
 		case CONVOY: {

@@ -71,7 +71,32 @@ final class SwarmKnobs {
 		retaliation = k.b("threatinc_retaliationEnabled", true);
 		basesHold = k.b("warsim_basesHold", false);
 		coloniesFall = k.b("warsim_coloniesFall", false);
+		consolidateExpansion = Math.max(0f, Math.min(1f, k.f("warsim_consolidateExpansionShare", 0f)));
+		strikeSizedMargin = Math.max(0f, k.f("warsim_strikeSizedMargin", 0f));
+		sustainShare = Math.max(0f, k.f("warsim_sustainShare", 0f));
+		scoutsAnySize = k.b("warsim_scoutsAnySize", false);
 	}
+
+	/** warsim_scoutsAnySize: scouts sail from a hive of any size with a nexus, as the simulator had it before round 20 (the mod asks strikeMinSize). */
+	final boolean scoutsAnySize;
+
+	/**
+	 * warsim_sustainShare (round 20): the share of the supplies' net that sustenance may take whatever the stance
+	 * (ThreatColonyUpkeep.sustainShare), set apart from the stance shares it is the largest of in the mod; 0 = as the mod.
+	 * Found because threatinc_feedShareConsolidate 0.9 -> 0.7 moved the mid-war start, where the swarm spends no month
+	 * in CONSOLIDATE: the knob is also the sustain cap.
+	 */
+	final float sustainShare;
+
+	/**
+	 * Round-20 rule trials for the swarm (2026-10-02), off at 0, no mod symbol behind either:
+	 * warsim_consolidateExpansionShare - a consolidating swarm keeps claiming systems at this share of its claim cap
+	 * (StanceRules.expansionShare gives CONSOLIDATE 0), leaning away from the strongest rival as EXPAND does
+	 * (SwarmOps.trySpread); warsim_strikeSizedMargin - a strike takes only the swarms the defence last seen calls for
+	 * x this margin, at least two, and the rest stay for the next strike or a Seeding Swarm (SwarmOps.strikeFrom
+	 * sends every spare swarm).
+	 */
+	final float consolidateExpansion, strikeSizedMargin;
 
 	/**
 	 * Round-8 hypotheses (2026-10-02), off by default, no mod symbol behind either: warsim_basesHold - a forward

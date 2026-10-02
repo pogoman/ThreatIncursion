@@ -20,6 +20,8 @@ final class HumanOrder {
 	float owed;
 	/** For a relief force: the forward base it garrisons. */
 	World guards;
+	/** A relief against a reported strike (HumanBases.garrison's relief), not the standing guard. */
+	boolean relief;
 	/** The war council's play that sent it (HumanCouncil.Play), or null. */
 	Object play;
 	/** A raid the swarms drove off (ThreatFleetOrders.endRaid: orbit contested, or called off). */

@@ -39,6 +39,12 @@ public final class World {
 	 * this as the base's defenders and takes its losses off it.
 	 */
 	public float guardFP;
+	/**
+	 * Round 20 (warsim_reliefGoesHome): the part of guardFP that came as relief against a reported strike
+	 * (HumanBases.garrison's relief), what it arrived with, its deposit and the base it sailed from.
+	 */
+	public float reliefFP, reliefFP0, reliefDeposit;
+	public World reliefHome;
 	/** Days a front link has stood without the least garrison; days with no found hive in reach. */
 	public int unguardedDays, idleDays;
 	/** Healthy days toward the next size; days starved toward losing one (ThreatColonyUpkeep). */
