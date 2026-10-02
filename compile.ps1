@@ -28,3 +28,8 @@ New-Item -ItemType Directory -Force (Join-Path $PSScriptRoot "jars") | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "jar failed" }
 
 Write-Host "Built jars\ThreatInc.jar"
+
+# the symbol index agents grep instead of mapping the code (docs/symbols.md)
+$perl = (Get-Command perl -ErrorAction SilentlyContinue).Source
+if (-not $perl) { $perl = "C:\Program Files\Git\usr\bin\perl.exe" }
+if (Test-Path $perl) { & $perl (Join-Path $PSScriptRoot "tools\gen-symbols.pl") } else { Write-Host "perl not found: docs\symbols.md not refreshed" }

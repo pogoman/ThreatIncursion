@@ -7,6 +7,7 @@ Everything here was verified in the running game unless marked otherwise.
 | --- | --- |
 | [facts.md](facts.md) | Grep first. One-line standing answers ("why are there 20k FP fleets", "what gates a convoy") and the user's design decisions, each with the symbol and the doc section that holds the detail. |
 | [code-map.md](code-map.md) | One line per class in `src/threatinc/`, grouped by subsystem. Start here to find which file owns a feature or bug before diving in. |
+| [symbols.md](symbols.md) | GENERATED at every build (`tools/gen-symbols.pl`), grep only, never read whole: one line per method of `src/threatinc` with its line number and the first sentence of its javadoc. The way to find where a behaviour is decided. |
 | [intel-ui-platform.md](intel-ui-platform.md) | What the vanilla intel large-description API can and cannot draw, and the traps that crash or silently break it. Read before any custom intel UI work. |
 | [war-board.md](war-board.md) | How `ThreatWarBoard` is built: data model, priority score, hive supply model, ledger, cards, buttons, tooltips, and the design decisions behind them. |
 | [hive-economy.md](hive-economy.md) | How vanilla's economy really behaves (availability is a broadcast, shipping capacity is `10 x accessibility + 5`) and what that means for the hive planner; then the Threat's closed economy: the FP bank, paid founding, garrison upkeep. Read before touching `planHiveEconomy` or anything that reasons about shortages. |
