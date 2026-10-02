@@ -443,10 +443,21 @@ is the old rule's fuel, not the landing pass. The other lead is the game's 118 `
 do` in hw4c (50 in hw4d): `doCustomRaidAction` lands only when `readyToLand` passes - the strike's own abstract siege
 of the world resolved (`abstractOrbitDone`) or the troops hold as they are - and the simulator has no wait.
 
-Options for the collapse, 60 seeds from the new game to month 130 (`r31`, before the beachhead rule): guards that
-do not feed their fronts, worlds lost 10 against 44 (clear), humanScore 24 against 16; the rules before round 28,
-10 against 44, humanScore 19.5 against 16, threatScore 4,045 against 4,097. The break-up rate does not matter: 5 or
-2.5 troops a point both lose 39 worlds, the guards just spend more hulls.
+Options for the collapse, 60 seeds from the new game to month 130, the simulator with all of the above (`r34`,
+`r32b`):
+
+| month 130 | defaults | no break-up (`threatinc_fabricateEnabled=false`) | beachhead break-up only, guards do not feed | rules before round 28 |
+|---|---|---|---|---|
+| worlds left / lost | 3.5 / 55.5 | 36.5 / 22.5 (clear) | 21.5 / 37.5 | 49 / 10 |
+| hives / hives killed | 276 / 8.5 | 179 / 20.5 (clear) | 234 / 15 | 201 / 2 |
+| threatScore | 4,076 | 2,798 | 3,360 | 4,195 |
+| humanScore | 9 [3-26.6] | 30.5 [17.9-60.6] (clear) | 19 [6.9-60.1] | 22.5 [11-46.5] |
+| landings held back (no hulls for the beachhead) | 1 | 198 | 1 | 2 |
+| outcomes | swarm wins 12%, both sides 52% | both sides 98% | both sides 78% | both sides 22%, one-sided 47% |
+
+The break-up rate does not matter (`r31c`, before the suppression: 5 or 2.5 troops a point both lose 39 worlds,
+the guards just spend more hulls). The third column has no mod knob: the Defend break-up and the beachhead's read
+one switch (`fabricateEnabled`).
 
 ## 10. Scripts (machine-local, `%TEMP%\threatinc-tests`)
 

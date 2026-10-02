@@ -102,9 +102,11 @@ public final class Sim {
 			want += h.wantFP;
 			bank += h.bank;
 		}
-		double worlds = 0, worldSize = 0, bases = 0;
+		double worlds = 0, worldSize = 0, bases = 0, marines = 0;
 		for (World w : s.worlds) {
 			if (w.lost) continue;
+			// the defenders' reserve: the stockpiled marines of every colony and base whose faction keeps one (the dumps' stock)
+			if (w.hasReserve) marines += w.stock[World.MARINES];
 			if (w.forwardBase) bases++;
 			else { worlds++; worldSize += w.size; }
 		}
@@ -135,6 +137,7 @@ public final class Sim {
 		m.put("worlds", worlds);
 		m.put("worldSize", worldSize);
 		m.put("basesHeld", bases);
+		m.put("humanMarines", marines);
 		m.put("humanFleetFP", humanMobile);
 		m.put("mobilised", mobilised);
 		// the counters every run reports, present even when zero
