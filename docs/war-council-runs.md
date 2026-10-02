@@ -177,7 +177,7 @@ level, none sizing on enemy FP:
 
 *Built (2026-10-02):* B, as `ThreatPlays.majorLimit` with `threatinc_councilMajorPlayFP` 3000, and
 relief no longer pausing a play under way (`ThreatPlays.pausable`), both picked by the simulator's
-round 13 (`war-sim-humans.md` 8). A burned the paying bases there; C and D are not built.
+round 13 (`war-sim-council-trials.md` 8). A burned the paying bases there; C and D are not built.
 
 *Recommended before the simulator:* A + B, then C; a long new-game run against pd7a's 30 hives at month 97. On the
 swarm's side, Hive Mind decision 5 (`swarm-strategy.md` 4: CONSOLIDATE only on real losses)

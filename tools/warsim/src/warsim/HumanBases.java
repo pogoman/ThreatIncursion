@@ -196,7 +196,8 @@ final class HumanBases {
 		if (!s.knobs.b("threatinc_frontlineGarrisonEnabled", true)) return;
 		float want = wanted - w.guardFP;
 		for (Parcel p : s.parcels) {
-			if (!p.done && p.kind == Parcel.Kind.RELIEF && p.owner.equals(f.id) && p.to == w.sys) want -= p.fp;
+			if (!p.done && p.kind == Parcel.Kind.RELIEF && p.owner.equals(f.id) && p.to == w.sys
+					&& !(p.order instanceof HumanOrder && ((HumanOrder) p.order).returning)) want -= p.fp;
 		}
 		if (want < 1f) return;
 		w.guardAskedDay = s.day;
@@ -220,8 +221,40 @@ final class HumanBases {
 		o.home = from;
 		o.guards = w;
 		o.deposit = cost[1];
+		o.relief = relief;
 		p.order = o;
 		s.count("guardsSailed", 1);
+	}
+
+	/**
+	 * Round 20 trial (warsim_reliefGoesHome, on top of warsim_reliefToBesiegers): with no reported strike left bearing
+	 * on the base, the relief that answered one sails for the base it came from and settles there (HumanSide.settle:
+	 * its deposit by health), so it is not a garrison with upkeep. The standing guard stays. The way home is paid in
+	 * fuel like the way out; unpaid, it waits a day.
+	 */
+	static void reliefHome(State s, Faction f, World w) {
+		float leave = Math.min(w.reliefFP, w.guardFP);
+		World home = w.reliefHome != null && !w.reliefHome.lost ? w.reliefHome : HumanPools.nearestBase(s, f.id, w.sys, true);
+		if (home != null && leave >= 1f) {
+			float[] cost = ReachRules.voyageCost(leave, w.sys.ly(home.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"), 0f);
+			if (!HumanPools.pay(s, home, new float[] { 0f, 0f, cost[0], 0f }, false, "guardVoyage")) {
+				s.count("reliefToBesiegers.homeUnpaid", 1);
+				return;
+			}
+			Parcel p = s.send(f.id, Parcel.Kind.RELIEF, w.sys, home.sys, leave, 0);
+			p.fp0 = Math.max(leave, w.reliefFP0);
+			HumanOrder o = new HumanOrder();
+			o.home = home;
+			o.returning = true;
+			o.relief = true;
+			o.deposit = w.reliefDeposit;
+			p.order = o;
+			s.count("reliefToBesiegers.wentHome", 1);
+			s.count("reliefToBesiegers.wentHomeFP", leave);
+		}
+		w.guardFP -= leave;
+		w.reliefFP = w.reliefFP0 = w.reliefDeposit = 0f;
+		w.reliefHome = null;
 	}
 
 	/** One day of every forward base of a faction: garrison, upkeep, growth, giving up. */
@@ -233,7 +266,13 @@ final class HumanBases {
 			HumanPools.ensure(s, w);
 			int age = s.day - w.foundedDay;
 			float wanted = guardWanted(s, f, w);
-			float against = guardAgainst(s, w, besiegers(s, f, w));
+			float strike = besiegers(s, f, w);
+			float against = guardAgainst(s, w, strike);
+			if (w.reliefFP > w.guardFP) w.reliefFP = w.guardFP;
+			// warsim_reliefRearGoesHome is the mod's rule (ThreatFrontlines.garrison: a rear link's called guard goes home
+			// once no seen strike is bound for it); warsim_reliefGoesHome sends the front's called guard home too
+			if (w.reliefFP > 0f && strike <= 0f && (s.knobs.b("warsim_reliefGoesHome", false)
+					|| (wanted <= 0f && s.knobs.b("warsim_reliefRearGoesHome", false)))) reliefHome(s, f, w);
 			if (against > wanted && w.guardFP < against) {
 				// trial r: relief sized to the reported strike, asked at once (the retry gate is for the standing guard)
 				s.count("reliefToBesiegers.days", 1);

@@ -277,8 +277,14 @@ final class SwarmOps {
 	static void trySpread(State s, SwarmKnobs k) {
 		int pending = 0;
 		for (Swarm.Claim c : s.swarm.claims) if (!c.bootstrap) pending++;
-		int cap = PostureRules.claimCap(freeForges(s, k), s.swarm.appetite,
-				StanceRules.expansionShare(s.swarm.stance, k.secondaryShare));
+		float share = StanceRules.expansionShare(s.swarm.stance, k.secondaryShare);
+		// round 20 trial (warsim_consolidateExpansionShare): a consolidating swarm keeps claiming at this share
+		boolean leansAway = s.swarm.stance == Swarm.EXPAND;
+		if (s.swarm.stance == Swarm.CONSOLIDATE && k.consolidateExpansion > 0f) {
+			share = Math.max(share, k.consolidateExpansion);
+			leansAway = true;
+		}
+		int cap = PostureRules.claimCap(freeForges(s, k), s.swarm.appetite, share);
 		if (pending >= cap) return;
 
 		// the strongest rival in the field, for the expanding stance's lean away from it
@@ -312,7 +318,7 @@ final class SwarmOps {
 			}
 			float weight = SpreadRules.billedWeight(SwarmFit.needScore(s.rng), 1f, k.days(dHive),
 					dPeace >= 0f ? k.strikeDays(dPeace) : 1f);
-			if (s.swarm.stance == Swarm.EXPAND && rival != null) weight *= StanceRules.spreadMult(dRival);
+			if (leansAway && rival != null) weight *= StanceRules.spreadMult(dRival);
 			if (best == null || weight > bestWeight) {
 				best = sys;
 				bestWeight = weight;
@@ -517,6 +523,13 @@ final class SwarmOps {
 			float ly = from.ly(w.sys);
 			float days = k.strikeDays(ly);
 			int count = spare.size();
+			if (k.strikeSizedMargin > 0f) {
+				// round 20 trial (warsim_strikeSizedMargin): the swarms the defence last seen calls for, the largest first
+				int need = (int) Math.ceil(s.swarm.seen.get(w.id)[1] * k.strikeSizedMargin / SwarmFit.STRIKE_UNITS_PER_SWARM);
+				int sized = Math.max(2, Math.min(count, need));
+				if (sized < count) s.count("strikesSized", 1);
+				count = sized;
+			}
 			float fp = 0f;
 			for (; count > 0; count--) {
 				fp = 0f;
@@ -574,8 +587,9 @@ final class SwarmOps {
 		for (StarSys from : SwarmEconomy.hiveSystems(s)) {
 			if (targets.isEmpty()) return;
 			if (s.rng.nextFloat() >= SwarmFit.SCOUT_SHARE_PER_SYSTEM) continue;
+			// ThreatSwarmScouts.pickStaging: a hive of strikeMinSize with its nexus up (warsim_scoutsAnySize: the simulator before round 20)
 			boolean nexus = false;
-			for (Hive h : s.hivesIn(from)) if (h.nexusUp()) nexus = true;
+			for (Hive h : s.hivesIn(from)) if (h.nexusUp() && (h.size >= k.strikeMinSize || k.scoutsAnySize)) nexus = true;
 			if (!nexus) continue;
 			StarSys target = targets.get(s.rng.nextInt(targets.size()));
 			float ly = from.ly(target);
@@ -746,6 +760,7 @@ final class SwarmOps {
 			float lost = p.fp * BattleRules.lossShare(strength, defence);
 			float worn = 1f - BattleRules.lossShare(defence, strength);
 			w.guardFP *= worn;
+			w.reliefFP *= worn;
 			p.fp -= lost;
 			SwarmPosture.noteTrend(s, lost, 0f);
 			if (lifted) {
@@ -985,6 +1000,7 @@ final class SwarmOps {
 		float worn = 1f - BattleRules.lossShare(defence, strength);
 		// the fight costs the fleets that met it (ThreatAbstractBattle.fought), not the ground defence the gate reads
 		w.guardFP *= worn;
+		w.reliefFP *= worn;
 		p.fp -= lost;
 		SwarmPosture.noteTrend(s, lost, 0f);
 		s.count("strikesLanded", 1);
