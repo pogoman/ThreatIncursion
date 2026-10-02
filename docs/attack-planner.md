@@ -446,6 +446,9 @@ Built in session e7a0fee3 against this design, under test from h50. Symbols, not
 - `advanceDay` runs once a calendar day from the war poll. Eyes give an EYES report: any fleet of
   the faction, a non-hive colony, a front's owner or an unspawned route (`eyesIn`). Without eyes
   the last report stands and ages.
+- **The council's sieges are sized here too** (user, 2026-10-02): `ThreatPlays.strike`, `saturate`
+  and `stage` call `IncursionManager.siegeSizesFor`, the sizing `launchPlanned` uses; a play with no
+  report of its target sends recon and waits (`war-council.md` section 16, "Sized by the planner").
 - **No radar** (user, 2026-10-02). `radarSites`, `inRadar`, the RADAR source, `Report.rounded`,
   `twoFigures` and the knob `radarRangeLY` are gone (`PlannerRules.twoFigures` stays for the
   simulator). A save's old RADAR reports keep their `source` string and age like any other.

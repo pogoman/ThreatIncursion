@@ -222,6 +222,12 @@ unguarded. It is the one reactive element, and it is bounded by its share, not b
 
 ## 5. Sizing: shares of the means
 
+**Overtaken for sieges on 2026-10-02 (the user's decision):** a play's siege - the hammer's, the
+feint's strike, the starve's saturation expedition and its invasion - is sized exactly as the attack
+planner sizes one (`IncursionManager.siegeSizesFor`: the strongest world in the faction's report x
+`npcSiegeOrbitMargin`, the landing, the guns). Share-of-means sizing stays for the hunts, decoys
+and squadrons only. Section 16, "Sized by the planner".
+
 - **Means** are what the faction's pools can pay for the play's whole horizon: passage fuel,
   supplies and marines, at the prices sieges and sorties already pay (section 10). A force the
   depot cannot pay whole stays home, as now.
@@ -551,10 +557,28 @@ Then `ThreatPlays.advance` steps every play. The monthly siege pass (`tryPurgeBo
 the stance's own evaluation (`ThreatFactionStance.refresh` skips governed factions) stay off. The
 council writes the stance through `ThreatFactionStance.set`.
 
+**Sized by the planner (2026-10-02, the user's decision; simulator round 11 showed share-sized
+plays killing 0-2 hives a run).** `ThreatPlays.strike`, `saturate` and `stage` call
+`IncursionManager.siegeSizesFor` - the planner's own sizing (`launchPlanned` calls the same): the
+swarms the faction's report shows over the strongest world the siege takes x `npcSiegeOrbitMargin`
+(`siegeFleetGoal` -> `siegeOrbitNeeded` -> `siegeOrbitFaced`), the landing the ground defence
+needs, the guns of the worlds it razes, fitted to the base (`fitExpedition`). `saturate` passes its
+raze set (every target) through the new `siegeSizesFor(base, faction, targets, marineGoal,
+razeGiven)` overload; `playSiegeSizes` and `fundingFP` are gone, and so is every
+`councilHammerShare` / `councilStarveShare` x `siegeCapacityFP` siege figure. Nothing reads a hive's
+live garrison: the report alone. The hunts (`toMuster`, `inviteJoint`, a feint's), the feint's
+squadron and the bombing budgets keep their shares. With no report of the target (`strike`), the
+play sends `ThreatScouts.recon`, moves to `muster` and waits until `Play.sizeBy` (twice the
+passage + 15 d) for one; it fails on that day without one. `plan` starts a RECON play instead of a
+big one on a focus with no report (clusters are built from known systems, so this is a guard). The
+strike's log line names the reported figure: `siege of N FP sails ... against M FP reported over
+the strongest world`.
+
 **The gate override is the `playId`.** These read it:
-- `launchSiegeExpedition`'s 10-argument overload skips `siegeOrbitNeeded`, the orbit term of
-  `siegeFleetGoal` (`weighOrbit`) and the Coalition Call. `playSiegeSizes` sizes the siege from the
-  play's fleet points, through the same `siegeFleetSizes` and `fitExpedition`.
+- `launchSiegeExpedition`'s 10-argument overload skips `siegeOrbitNeeded` (no postponement or
+  bounty: the council decided when, and its hunts go in beside the siege) and the Coalition Call.
+  Since 2026-10-02 `siegeFleetGoal` weighs the orbit for a play's siege too, so the provisions trim
+  never cuts the orbit's fleets; the pool pays them or the launch postpones.
 - `ThreatPurgeFGI.playId`: its break-off reads count the play's hunts in the system as its own
   (`friendsNear` -> `ThreatSoftening.playFP`).
 - `ThreatSoftening.sendPlay` builds a `Force` with `playId` and `hold`. It shares `send`'s helpers
@@ -577,7 +601,7 @@ third lost, and destroyed. A BOMBERS play ends with its raid.
 
 **Phases.** `Play.phase`, with the deadline in `phaseDue`:
 - HAMMER: `prepare` (stage, a scout if the report is stale) -> `muster` (`toMuster`: held forces,
-  `inviteJoint`) -> `strike` (`strike`: the siege at `councilHammerShare` x `siegeCapacityFP`,
+  `inviteJoint`) -> `strike` (`strike`: the siege sized by `siegeSizesFor` (planner sizing, 2026-10-02),
   target sets from all worlds down to one; hunts let go at estimated arrival - `RELEASE_LEAD_DAYS`, or sooner on the siege's live
   ETA, `siegeNear`) ->
   `exploit` (up to `MAX_EXTENSIONS` x `councilExploitDays`; a feint's bombers may sail here too) ->
@@ -589,7 +613,7 @@ third lost, and destroyed. A BOMBERS play ends with its raid.
   driven off in a row, hands over to a hammer (`fromId`: the starve's own siege is not in its way)
   once a Nexus streak reaches `councilInvadeNexusDays`, and ends after `STARVE_MAX_CHECKS`. Its fuel
   budget is `councilStarveShare` of the means each check; squadrons go only where `bombable`, and the
-  saturation siege sails from `richestBase`. It does not start if it can pay neither a
+  saturation siege sails from `richestBase`, sized by `siegeSizesFor` with its raze set (2026-10-02). It does not start if it can pay neither a
   squadron nor a saturation siege. Under Starve, `plan` also weighs a hammer (x2) while the focus's
   Nexuses are down.
 
