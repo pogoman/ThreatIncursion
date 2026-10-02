@@ -439,3 +439,65 @@ Bases held moved up only in e mid-war; down in b50 and both caps. Verdict: no ch
 siege or relief sized to the enemy at the base (round 8's missing answer); the siege's own supplies want (trip upkeep in
 `ReachRules.siegeSuppliesPerPoint`) against what the mod actually draws; and why `strike.unpaid` is flat at 14 under every
 allocation - what those hammers' bases hold on the day, by `strike.shortBy`.
+
+## 11. Round 16: the shortfall's anatomy, partial sailings, relief to the besieged (2026-10-02)
+
+**Anatomy of an unpaid hammer** (new game, base cell, `strike.shortBy` / `strike.held` / `strike.needFP` / `strike.paysFP`
+over 14.5 unpaid a run): the report-sized siege needs 1,790 FP (72 points); the pools provision 256 FP. Short of supplies
+3,260 against 2,260 callable; fuel 356k callable against a shortfall only in 2.5 of 14.5; marines 1 of 14.5. The supplies
+want per point (`HumanPlanner.size`, `ReachRules.siegeSuppliesPerPoint`) is the 30-a-point hull deposit plus the ships'
+upkeep for the whole trip, 25 FP x 0.94 a month x `siegeTripDays` / 30 - about 77 a point at the trips these sieges make
+(muster 15 days, passage out at 0.5 ly a day, the bombard plan's stay, passage home): the trip is two thirds of the want.
+Only the deposit is drawn at the launch; the trip is billed as it goes (`HumanSide.upkeep`). The shortfall is deep, not
+marginal: the pools provision 14% of the siege (256 of 1,790 FP), so a rule that sails what is payable above the 50% muster
+floor (trial b below) fires on 0 hammers a run (p90 2) - the unpaid hammers are seven times short, which is why no
+allocation of the same pools (round 15) moved `strike.unpaid` and why `strike.paid` tracks `plays.HAMMER` instead.
+
+**The mod's want is the same kind, and harsher.** pd10a's gate lines (`IncursionManager.siegeCanPay`: "Expedition postponed at
+Hanuman Forward Base against Enyen: 41159/9455 fuel, 8822/11845 supplies across 16 markets pay for 75 of the 101 points
+(needs 101)"; 12,606 such lines, 423 draws, 65 trims) price about 117 supplies a point - `siegeStayDays` takes the slowest
+world's bombard plan and any razing - and require every point (`npcSiegeFullStrength` true: `mustPay` = the orbit's points),
+fuel four times over. The draw is the deposit alone ("840/840 supplies"). So the simulator's want is of the right make and
+if anything kind; no fidelity fix is owed. The coordinator's trial (a), every base in range paying, is already how both work:
+`HumanPools.donors(.., siege=true)` is the faction's every depot down to its floor, as the mod's `siegeDonors` ("across 16
+markets"); `richestBase` picks only where the siege stages.
+
+Switches, off by default:
+- (b) `warsim_hammerSailsPartial` (`HumanCouncil.strike`): a hammer whose provisions pay at least `councilMusterFloor` of
+  the report-sized orbit (`Option.paysFP`, the gate's payable) sails with the fleets they pay for (`HumanPlanner.size(..,
+  playFP)`, grown to carry the landing) and judges on arrival (`HumanSiege.orbitDay`'s call-off); short of marines it waits.
+  Counters `playSiegesPartial`, `.fpShare`.
+- (c) `warsim_tripBilledOut` (`HumanPlanner.size`): the gate prices the voyage out and the stay; the way home is billed as
+  it goes like every other fleet's upkeep. The draw is unchanged.
+- (r) `warsim_reliefToBesiegers` (`HumanBases.besiegers`, `guardAgainst`, `garrison(.., wanted, relief)`): a Threat strike
+  bearing on or besieging a forward base that the faction has a report of (arrived, or in flight from a hive system in
+  `Faction.reports`) calls at once for a relief sized to its strength x `frontlineGarrisonMargin` over the base's own
+  defence, from the pools, past the upkeep budget (`cannotGuard`) but not past the voyage's price. Round 8's missing
+  answer. Trialled with bases falling at once (the default) and under `warsim_basesHold` (the 30-day station siege a
+  relief can lift in `SwarmOps.stationSiegeDay`).
+
+30 seeds, same settings and objective as round 15. humanScore / threatScore, bases founded / held / destroyed, hives killed,
+hammers paid / unpaid, mutual, classes (both / one-sided / other); * clear. The rh pair's base is `warsim_basesHold=true`.
+
+| cell | new game | mid-war |
+|---|---|---|
+| base | 21 / 842, 52.5 / 12 / 22.5, 6, 27 / 14.5, 1.0, 53 / 20 / 27 | 11.5 / 307, 38.5 / 11.5 / 15.5, 0, 3.5 / 1.5, 0, 0 / 73 / 27 |
+| b partial sailing | 21 / 845, 53 / 12 / 23.5, 6.5, 27 / 14.5, 1.0, 53 / 20 / 27 (0 partial) | 12.5 / 307, 38.5 / 12 / 15, 0, 3 / 1, 0, 0 / 70 / 30 |
+| c trip billed out | 21 / 873, 55.5 / 13 / 22.5, 6, 24.5 / 14, 1.0, 50 / 20 / 30 | 13.5 / 307, 38.5 / 13 / 15, 0, 3.5 / 1.5, 0, 0 / 73 / 27 |
+| r relief | 21 / 831, 44.5 / 13 / 12.5*, 5, 16.5 / 11.5, 0.8, 43 / 23 / 33 | 10.5 / 303, 28 / 10 / 7.5*, 0, 3 / 2, 0, 0 / 77 / 23 |
+| basesHold alone | 21 / 842, 55.5 / 14 / 19.5, 4, 15 / 15, 0.7, 47 / 23 / 30 | 14 / 301, 37 / 14 / 13.5, 0, 3 / 2, 0, 0 / 70 / 30 |
+| rh relief + basesHold | 21 / 774, 39.5* / 14.5 / 7*, 5.5, 16 / 12.5, 1.0, 50 / 23 / 27 | 14 / 295, 31 / 14 / 4.5*, 0, 5 / 2.5, 0, 0 / 70 / 30 |
+
+Reading. Partial sailing never fires (above) and billing the trip out moves nothing: the trip home is a tenth of the want.
+Relief to the besieged does what it says - bases destroyed halve, clear in both starts and both base worlds (22.5 -> 12.5,
+19.5 -> 7, 15.5 -> 7.5, 13.5 -> 4.5; station sieges lifted 1.5 -> 5.5) - yet the humans' score does not move (21 / 21, 50%
+of seeds; mid-war 10.5 against 11.5): the relief's voyages and the garrisons it leaves behind (sized to the strike x margin,
+past the upkeep budget) spend the same supplies the links and the hammers wanted - bases founded 52.5 -> 44.5, paid hammers
+27 -> 16.5, garrisons recalled unpaid 25.5 -> 34 - so bases held ends 13 against 12 and the war slows (`deadYears` 0.6 ->
+0.8, mid-war 0.7 -> 1.0). Kill weight: at 0 r leads on bases held by one (61% of seeds); at 2 the order is unchanged; the
+Threat's score falls under r (its bases destroyed) but stays above the base's p10 at every weight. Verdict: no change. The
+supplies are the one budget behind links, guards, relief and sieges, and every rule so far moves spending between them. Next:
+a relief that goes home when the strike is gone (so it is not a garrison with upkeep); the siege's trip price against what
+the fleets actually burn (`upkeepWanted` / `upkeepOwed` against the gate's `siegeSuppliesPerPoint`); and whether the mod's
+sieges, priced at 117 a point, are postponed as often as the simulator's (12,606 postponements against 423 draws in pd10a
+says yes - the real council's 0-2 kills a run may be this gate).
