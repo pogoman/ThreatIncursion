@@ -247,6 +247,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatIntel.poll();
 		ThreatWarCouncil.poll(random);
 		ThreatAttackPlanner.poll(random);
+		// the dated line and the simulator's monthly state (docs/war-sim.md 5)
+		ThreatSimDump.poll();
 		ThreatFleetOrders.poll();
 		// hunting forces muster, move on and break off on the poll, not the monthly tick
 		ThreatSoftening.advanceHunts();

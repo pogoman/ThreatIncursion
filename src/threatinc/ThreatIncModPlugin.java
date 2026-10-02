@@ -121,6 +121,7 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		ThreatFuel.forget();
 		ThreatIntel.forget();
 		ThreatSwarmIntel.forget();
+		ThreatSimDump.forget();
 		ThreatAttackPlanner.forget();
 		ThreatWarCouncil.forget();
 
