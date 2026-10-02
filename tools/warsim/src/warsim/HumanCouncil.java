@@ -85,6 +85,8 @@ final class HumanCouncil {
 		float plannedFP, nexusDownDays, nexusStreak, orbitDays, orbitAtCheck, fuelBudget, fuelSpent, fuelTotal;
 		float seenAtStart = -1f, seenAtCheck, seenLast = -1f, feintSeen;
 		boolean sieged;
+		/** Round 18: the play reached STRIKE (its hunts were released, with or without a siege). */
+		boolean struck;
 		Parcel siege;
 		final List<Parcel> forces = new ArrayList<Parcel>(), squadrons = new ArrayList<Parcel>();
 	}
@@ -614,7 +616,7 @@ final class HumanCouncil {
 		if ("MUSTER".equals(ph)) {
 			float mustered = 0f;
 			for (Parcel p : pl.forces) if (live(p)) mustered += p.fp;
-			return pl.plannedFP <= 0f || mustered < Math.max(0f, s.knobs.f("threatinc_councilMusterFloor")) * pl.plannedFP;
+			return pl.plannedFP <= 0f || mustered < Math.max(0f, s.knobs.f("threatinc_councilMusterFloor")) * floorBase(s, pl);
 		}
 		if ("BOMB".equals(ph) || "WATCH".equals(ph)) {
 			if (pl.sieged) return false;
@@ -1039,11 +1041,35 @@ final class HumanCouncil {
 			strike(s, c, pl, "no hunting force paid");
 			return;
 		}
+		// round 18 addendum (c) warsim_huntMinShare: the hunt share must reach this share of the strongest reported world's FP
+		float minShare = s.knobs.f("warsim_huntMinShare", 0f);
+		if (minShare > 0f) {
+			float strongest = 0f;
+			for (Hive h : pl.targets) strongest = Math.max(strongest, worldFP(pl.f, h));
+			if (strongest > 0f && pl.plannedFP < minShare * strongest) {
+				standDownForces(s, pl);
+				s.count("hammer.huntUnderShare", 1);
+				end(s, c, pl, FAILURE, "hunt share " + (int) pl.plannedFP + " FP under " + minShare + " of " + (int) strongest + " reported");
+				return;
+			}
+		}
 		pl.musterDay = s.day;
 		// the voyage to the bearing, then the muster's own days
 		pl.phaseDue = s.day + State.travelDays(pl.base.sys.ly(pl.sys)) + (int) (Math.max(1f, s.knobs.f("threatinc_councilMusterDays"))
 				* personality(s, pl.f.id, "musterMult") * jitter(s));
 		phase(s, pl, "MUSTER", (int) pl.plannedFP + " FP sent to the muster");
+	}
+
+	/**
+	 * What the muster floor is a share of: the FP sent (plannedFP; the mod's ThreatPlays and this mirror, so the floor can
+	 * only fail a play through losses en route), or with warsim_musterFloorVsWant (round 18 addendum a) the play's want -
+	 * the report-sized siege of its first live world (HumanPlanner.size) plus the hunt share sent.
+	 */
+	static float floorBase(State s, Play pl) {
+		if (!s.knobs.b("warsim_musterFloorVsWant", false)) return pl.plannedFP;
+		Hive h = firstLive(pl);
+		if (h == null || pl.base == null || pl.base.lost || pl.f.reports.get(pl.sys) == null) return pl.plannedFP;
+		return HumanPlanner.size(s, pl.f, h, pl.base).fp + pl.plannedFP;
 	}
 
 	static void standDownForces(State s, Play pl) {
@@ -1062,10 +1088,12 @@ final class HumanCouncil {
 		// the force is all in once its voyage to the bearing is done (it waits at its base here)
 		boolean allIn = mustered >= ALL_IN * pl.plannedFP && s.day >= pl.musterDay + State.travelDays(pl.base.sys.ly(pl.sys));
 		if (!allIn && s.day < pl.phaseDue && mustered > 0f) return;
-		float floor = Math.max(0f, s.knobs.f("threatinc_councilMusterFloor")) * pl.plannedFP;
+		float against = floorBase(s, pl);
+		float floor = Math.max(0f, s.knobs.f("threatinc_councilMusterFloor")) * against;
 		if (mustered < floor) {
 			standDownForces(s, pl);
-			end(s, c, pl, FAILURE, "mustered " + (int) mustered + " of " + (int) pl.plannedFP + " FP by its day");
+			s.count("hammer.underFloor", 1);
+			end(s, c, pl, FAILURE, "mustered " + (int) mustered + " of " + (int) against + " FP by its day");
 			return;
 		}
 		strike(s, c, pl, (allIn ? "all in, " : "its day, ") + (int) mustered + " of " + (int) pl.plannedFP + " FP at the muster");
@@ -1180,6 +1208,14 @@ final class HumanCouncil {
 			end(s, c, pl, FAILURE, why + "; neither the siege nor a hunting force could be paid (" + (int) siegeFP + " FP siege share)");
 			return;
 		}
+		// round 18 addendum (b) warsim_noHuntsAlone: no siege paid, the play stands down rather than sending the hunts alone
+		if (pl.siege == null && pl.type == HAMMER && s.knobs.b("warsim_noHuntsAlone", false)) {
+			standDownForces(s, pl);
+			s.count("hammer.stoodDownUnpaid", 1);
+			end(s, c, pl, FAILURE, why + "; no siege paid, the hunts stand down");
+			return;
+		}
+		pl.struck = true;
 		phase(s, pl, "STRIKE", why + "; " + (pl.siege != null ? "siege of " + (int) pl.siege.fp + " FP sails from " + pl.base.name
 				: "no siege paid (" + (int) siegeFP + " FP share), the hunts go alone"));
 	}
@@ -1349,6 +1385,16 @@ final class HumanCouncil {
 		}
 		s.count("plays." + pl.type + "." + outcome, 1);
 		s.count("playDays." + pl.type, s.day - pl.started);
+		// round 18 addendum: what the hunts alone achieve - a hammer that reached STRIKE split by whether its siege sailed
+		if (pl.type == HAMMER && pl.struck) {
+			String kind = pl.sieged ? "hammer.sieged" : "hammer.huntsAlone";
+			float lost = 0f;
+			for (Parcel p : pl.forces) if (p.fp0 > 0f) lost += Math.max(0f, p.fp0 - (p.done && p.fp <= 0f ? 0f : p.fp));
+			s.count(kind, 1);
+			s.count(kind + ".taken", pl.taken);
+			s.count(kind + ".huntFPLost", lost);
+			s.count(kind + "." + outcome, 1);
+		}
 		s.log("Play " + pl.id + ": " + outcome + " (" + why + "; Nexus down " + (int) pl.nexusDownDays + " world-days, orbit held "
 				+ (int) pl.orbitDays + ", landed " + pl.landed + ", taken " + pl.taken + (pl.raids > 0 ? ", raids " + pl.raids + " ("
 						+ pl.drivenOff + " driven off)" : "") + ", " + (s.day - pl.started) + " d)");
