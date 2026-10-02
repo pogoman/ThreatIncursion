@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 10;
+	static final int MIGRATION_VERSION = 11;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -104,6 +104,11 @@ class LunaConfigBridge {
 				if (from < 10) {
 					changed |= drop(json, "threatinc_radarRangeLY");
 					changed |= drop(json, "threatinc_swarmRadarRangeLY");
+				}
+				// 2026-10-02, the war simulator (round 17): council sieges were short of supplies 7x and the
+				// pools' income the only admissible lever; 1.5 chosen over 60 seeds (docs/war-sim-humans.md 12)
+				if (from < 11) {
+					changed |= bump(json, "threatinc_reserveSurplusMult", 1.0, 1.5, false);
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));
