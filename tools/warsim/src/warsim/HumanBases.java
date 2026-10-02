@@ -166,20 +166,46 @@ final class HumanBases {
 		return null;
 	}
 
+	/**
+	 * Round 16 trial r (warsim_reliefToBesiegers): the Threat strike bearing on or besieging a forward base that the
+	 * faction has a report of - arrived (the base's own eyes), or in flight from a hive system in Faction.reports - in the
+	 * strike's defence units (SwarmOps.strength); 0 for none.
+	 */
+	static float besiegers(State s, Faction f, World w) {
+		if (!s.knobs.b("warsim_reliefToBesiegers", false)) return 0f;
+		float worst = 0f;
+		for (Parcel p : s.parcels) {
+			if (p.done || !p.threat() || p.kind != Parcel.Kind.STRIKE || p.to != w.sys) continue;
+			if (!p.arrived && !f.reports.containsKey(p.from)) continue;
+			worst = Math.max(worst, SwarmOps.strength(p));
+		}
+		return worst;
+	}
+
+	/** The guard a reported strike at the base calls for: its strength x frontlineGarrisonMargin over the base's own defence, in guard FP. */
+	static float guardAgainst(State s, World w, float strength) {
+		if (strength <= 0f) return 0f;
+		return Math.max(0f, (strength * s.knobs.f("threatinc_frontlineGarrisonMargin") - w.defence) / SwarmFit.STRIKE_UNITS_PER_FP);
+	}
+
 	/** Asks the nearest colony base for the garrison the link lacks: a RELIEF parcel, paid like any voyage. */
-	static void garrison(State s, Faction f, World w) {
+	static void garrison(State s, Faction f, World w) { garrison(s, f, w, guardWanted(s, f, w), false); }
+
+	/** The same for a given guard; `relief` (trial r) is a relief against a reported strike, which the upkeep budget does not hold back. */
+	static void garrison(State s, Faction f, World w, float wanted, boolean relief) {
 		if (!s.knobs.b("threatinc_frontlineGarrisonEnabled", true)) return;
-		float want = guardWanted(s, f, w) - w.guardFP;
+		float want = wanted - w.guardFP;
 		for (Parcel p : s.parcels) {
 			if (!p.done && p.kind == Parcel.Kind.RELIEF && p.owner.equals(f.id) && p.to == w.sys) want -= p.fp;
 		}
 		if (want < 1f) return;
 		w.guardAskedDay = s.day;
 		String why = cannotGuard(s, f, w.sys, want + w.guardFP);
-		if (why != null && why.startsWith("upkeep")) {
+		if (why != null && why.startsWith("upkeep") && !relief) {
 			s.count("guardOverBudget", 1);
 			return;
 		}
+		if (relief) s.count("reliefToBesiegers.asked", 1);
 		World from = HumanPools.nearestBase(s, f.id, w.sys, true);
 		if (from == null) return;
 		float[] cost = ReachRules.voyageCost(want, from.sys.ly(w.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
@@ -207,7 +233,12 @@ final class HumanBases {
 			HumanPools.ensure(s, w);
 			int age = s.day - w.foundedDay;
 			float wanted = guardWanted(s, f, w);
-			if (w.guardFP < wanted * 0.8f && s.day - w.guardAskedDay >= HumanFit.GUARD_RETRY_DAYS) garrison(s, f, w);
+			float against = guardAgainst(s, w, besiegers(s, f, w));
+			if (against > wanted && w.guardFP < against) {
+				// trial r: relief sized to the reported strike, asked at once (the retry gate is for the standing guard)
+				s.count("reliefToBesiegers.days", 1);
+				garrison(s, f, w, against, true);
+			} else if (w.guardFP < wanted * 0.8f && s.day - w.guardAskedDay >= HumanFit.GUARD_RETRY_DAYS) garrison(s, f, w);
 
 			if (age > 0 && age % 30 == 0) {
 				// the garrison's month of supplies, from the base and then the pool; under half paid, it goes home

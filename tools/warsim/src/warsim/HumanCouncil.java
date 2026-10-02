@@ -1125,6 +1125,18 @@ final class HumanCouncil {
 				if (o.affordable) s.count("playSiegesTrimmed", 1);
 			}
 			if (!o.affordable) s.count("playSiege.short." + o.shortOf, 1);
+			// round 16 trial b (warsim_hammerSailsPartial): a hammer whose provisions pay at least councilMusterFloor of the
+			// report-sized orbit sails with the fleets they pay for and judges on arrival (HumanSiege.orbitDay's call-off);
+			// short of marines it still waits
+			if (!o.affordable && planner && s.knobs.b("warsim_hammerSailsPartial", false) && !World.COMMODITIES[World.MARINES].equals(o.shortOf)
+					&& o.paysFP >= Math.max(HumanFit.MIN_SIEGE_FP, s.knobs.f("threatinc_councilMusterFloor") * o.fp)) {
+				HumanPlanner.Option part = HumanPlanner.size(s, pl.f, h, pl.base, o.paysFP);
+				if (part.affordable && part.fp < o.fp) {
+					s.count("playSiegesPartial", 1);
+					s.count("playSiegesPartial.fpShare", part.fp / o.fp);
+					o = part;
+				}
+			}
 			if (!o.affordable && planner && o.orbitUnpaid) HumanPlanner.postBounty(s, h.sys, pl.f.id);
 			if (!o.affordable && h == targets.get(0)) {
 				// round 14: what the first world's siege was short of, by how much, against what the base could call on

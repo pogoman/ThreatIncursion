@@ -28,6 +28,8 @@ final class HumanPlanner {
 		String shortOf;
 		/** The pool cannot pay for the orbit's fleets alone: the launch's provisions gate posts the bounty. */
 		boolean orbitUnpaid;
+		/** Fleet points the base and its donors provision at this siege's prices per point (the launch gate's payable). */
+		float paysFP;
 	}
 
 	static float roundUp(float fp) { return (float) Math.ceil(fp / ReachRules.FP_PER_POINT) * ReachRules.FP_PER_POINT; }
@@ -99,6 +101,9 @@ final class HumanPlanner {
 		float fuelLY = s.knobs.f("threatinc_expeditionFuelPerPointLY");
 		float ordnance = o.days * BattleRules.bombardFuelPerDay(fp, s.knobs.f("threatinc_bombardFuelPerFPDay"));
 		float trip = ReachRules.siegeTripDays(o.ly, o.days, State.LY_PER_DAY);
+		// round 16 trial c (warsim_tripBilledOut): the gate prices the voyage out and the stay; the way home is billed as it
+		// goes (ThreatUpkeep), as every other fleet's upkeep is - the draw (the hulls' deposit) is unchanged either way
+		if (s.knobs.b("warsim_tripBilledOut", false)) trip -= ReachRules.days(o.ly, State.LY_PER_DAY);
 		float supplies = points * ReachRules.siegeSuppliesPerPoint(s.knobs.f("threatinc_expeditionSuppliesPerPoint"),
 				ReachRules.DEFAULT_SUPPLIES_PER_FP, trip);
 		// landingSupply: armaments for npcFrontSupplyDays of a pushing front
@@ -118,6 +123,7 @@ final class HumanPlanner {
 		float paysFP = ReachRules.payablePoints(HumanPools.payable(s, base, World.FUEL, true, donors), HumanPools.payable(s, base, World.SUPPLIES, true, donors),
 				o.wants[World.FUEL] / points, o.wants[World.SUPPLIES] / points) * ReachRules.FP_PER_POINT;
 		o.orbitUnpaid = !o.affordable && orbit > 0f && paysFP < orbit;
+		o.paysFP = paysFP;
 		return o;
 	}
 
