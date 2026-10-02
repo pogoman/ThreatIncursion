@@ -80,10 +80,39 @@ final class HumanPools {
 	 * What a depot gives a base: a siege calls on every depot down to its floor (siegeDonors); anything
 	 * else takes the base's own above the floor and only the spendable of the rest (ThreatReserves.spendable).
 	 */
-	static float gives(State s, World d, World base, int c, boolean siege) {
-		if (siege || d == base) return available(s, d, c);
-		return ReserveRules.spendable(d.stock[c], floor(s, d, c), basis(s, d, c), s.knobs.f("threatinc_donorKeepFraction"), 0f);
+	static float gives(State s, World d, World base, int c, boolean siege) { return gives(s, d, base, c, siege, null); }
+
+	/** The same, less what the depot holds back from this purpose (round 15: reserve). */
+	static float gives(State s, World d, World base, int c, boolean siege, String what) {
+		float have = siege || d == base ? available(s, d, c)
+				: ReserveRules.spendable(d.stock[c], floor(s, d, c), basis(s, d, c), s.knobs.f("threatinc_donorKeepFraction"), 0f);
+		if (siege || what == null || c != World.SUPPLIES) return have;
+		return Math.max(0f, have - reserve(s, d, what));
 	}
+
+	/** The forward-base line of the round-14 ledger: links, garrison voyages and upkeep, the base's own upkeep. */
+	static boolean forwardLine(String what) {
+		return "link".equals(what) || "guardVoyage".equals(what) || "guardUpkeep".equals(what) || "baseUpkeep".equals(what);
+	}
+
+	/**
+	 * Round 15: the supplies a depot keeps back from a non-siege purpose - the larger of
+	 * (a) warsim_siegeReserve: its share of a staging hammer's siege provisions (World.siegeReserve, set daily by
+	 *     HumanCouncil.reserveSiege), which only the forward-base line (forwardLine) may not spend;
+	 * (b) warsim_siegeSplit: a standing share of its callable supplies, reserved from every non-siege purpose;
+	 * (d) warsim_strategyReserve: the same share set by the council's strategy (HumanCouncil.reserveShare).
+	 */
+	static float reserve(State s, World d, String what) {
+		float r = 0f;
+		if (forwardLine(what) && s.knobs.b("warsim_siegeReserve", false)) r = d.siegeReserve;
+		float share = s.knobs.f("warsim_siegeSplit", 0f);
+		if (s.knobs.b("warsim_strategyReserve", false)) share = Math.max(share, HumanCouncil.reserveShare(s, d.faction));
+		if (share > 0f) r = Math.max(r, share * available(s, d, World.SUPPLIES));
+		return r;
+	}
+
+	/** A depot's own supplies above its floor less its reserve from this purpose (HumanBases.cannotGuard's budget). */
+	static float spareFor(State s, World d, int c, String what) { return gives(s, d, d, c, false, what); }
 
 	/** One day's banking for every depot of a mobilised faction. */
 	static void daily(State s) {
@@ -136,19 +165,28 @@ final class HumanPools {
 	static float payable(State s, World base, int c, boolean siege) { return payable(s, base, c, siege, donors(s, base, siege)); }
 
 	/** With the donors already listed (round 9: a range or a canPay asked for the same sorted list two to four times). */
-	static float payable(State s, World base, int c, boolean siege, List<World> donors) {
+	static float payable(State s, World base, int c, boolean siege, List<World> donors) { return payable(s, base, c, siege, donors, null); }
+
+	/** The same for a named purpose (round 15: less each depot's reserve from it). */
+	static float payable(State s, World base, int c, boolean siege, String what) { return payable(s, base, c, siege, donors(s, base, siege), what); }
+
+	static float payable(State s, World base, int c, boolean siege, List<World> donors, String what) {
 		float sum = 0f;
 		for (World d : donors) {
-			float have = gives(s, d, base, c, siege);
-			sum += ReachRules.netOfHaul(c == World.FUEL, have, gives(s, d, base, World.FUEL, siege), perUnit(s, d, base, c));
+			float have = gives(s, d, base, c, siege, what);
+			sum += ReachRules.netOfHaul(c == World.FUEL, have, gives(s, d, base, World.FUEL, siege, what), perUnit(s, d, base, c));
 		}
 		return sum;
 	}
 
-	static boolean canPay(State s, World base, float[] wants, boolean siege) { return canPay(s, base, wants, siege, donors(s, base, siege)); }
+	static boolean canPay(State s, World base, float[] wants, boolean siege) { return canPay(s, base, wants, siege, donors(s, base, siege), null); }
 
-	static boolean canPay(State s, World base, float[] wants, boolean siege, List<World> donors) {
-		for (int c = 0; c < 4; c++) if (wants[c] > 0f && payable(s, base, c, siege, donors) < wants[c]) return false;
+	static boolean canPay(State s, World base, float[] wants, boolean siege, String what) { return canPay(s, base, wants, siege, donors(s, base, siege), what); }
+
+	static boolean canPay(State s, World base, float[] wants, boolean siege, List<World> donors) { return canPay(s, base, wants, siege, donors, null); }
+
+	static boolean canPay(State s, World base, float[] wants, boolean siege, List<World> donors, String what) {
+		for (int c = 0; c < 4; c++) if (wants[c] > 0f && payable(s, base, c, siege, donors, what) < wants[c]) return false;
 		return true;
 	}
 
@@ -158,7 +196,7 @@ final class HumanPools {
 	/** The same, booked to the ledger by purpose (round 14): spend.<what>.<commodity> and spendBy.<faction>.<what>.<commodity>. */
 	static boolean pay(State s, World base, float[] wants, boolean siege, String what) {
 		List<World> donors = donors(s, base, siege);
-		if (!canPay(s, base, wants, siege, donors)) return false;
+		if (!canPay(s, base, wants, siege, donors, what)) return false;
 		for (int c = 0; c < 4; c++) {
 			if (wants[c] <= 0f) continue;
 			s.count("spend." + what + "." + World.COMMODITIES[c], wants[c]);
@@ -170,7 +208,7 @@ final class HumanPools {
 			for (World d : donors) {
 				if (need <= 0f) break;
 				float per = perUnit(s, d, base, c);
-				float net = ReachRules.netOfHaul(c == World.FUEL, gives(s, d, base, c, siege), gives(s, d, base, World.FUEL, siege), per);
+				float net = ReachRules.netOfHaul(c == World.FUEL, gives(s, d, base, c, siege, what), gives(s, d, base, World.FUEL, siege, what), per);
 				float take = Math.min(need, net);
 				if (take <= 0f) continue;
 				d.stock[c] -= take;

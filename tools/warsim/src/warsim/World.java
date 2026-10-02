@@ -49,6 +49,11 @@ public final class World {
 	public int guardAskedDay = Integer.MIN_VALUE / 2;
 	/** True once the accrual has been modelled or read (HumanPools.ensure). */
 	public boolean pooled;
+	/**
+	 * Round 15 trial a (warsim_siegeReserve): supplies of this depot reserved today for a staging play's siege,
+	 * which the forward-base line (links, garrison voyages) cannot spend; set daily by HumanCouncil.reserveSiege.
+	 */
+	public float siegeReserve;
 
 	@Override public String toString() { return name + " (" + faction + ", " + size + ")"; }
 }
