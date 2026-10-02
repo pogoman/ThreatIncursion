@@ -7,6 +7,8 @@ decides something, add the line in the same turn. Symbols, never line numbers.
 
 ## Decisions (the user's)
 
+- **How a run is scored** (2026-10-02) Humans: forward bases set up and held, at its simplest the number held at the end of the run. Threat: colonies founded plus size levels gained during the run, weighted up the scale (7 to 8 counts more than 2 to 3), so a run from an established save scores too. Both: worlds destroyed (hives by humans; human colonies and forward bases by the Threat), so neither side scores by sitting passive. The weights are to be played with; start on spread alone and watch what emerges. Offline simulator approved the same day, with the shared rules package, two more planner runs and monthly dumps. -> `war-sim.md` 7, memory `run-scoring`
+
 - **No arbitrary ceilings** (2026-09-29) No hard caps on force sizes, fleet counts or FP maxima; limits come from real resources. A cap found is removed without asking. -> memory `no-arbitrary-ceilings`, `design-theory.md` 2a
 - **Closed economy** (2026-09-29) Every fleet, either side, is paid from finite production, banked and spent; strength is moved, never conjured. -> memory `no-arbitrary-ceilings`
 - **No nerfing a side's strategy** (2026-09-29) Do not nerf the Threat to help humans (pausing swarm transfers was rejected); fix stuck AI by finding the cap, not adding a rule. -> memory `no-arbitrary-ceilings`
@@ -222,6 +224,8 @@ decides something, add the line in the same turn. Symbols, never line numbers.
 - **How are Threat fleets composed?** `ThreatFleetComposer` re-spends vanilla's escort FP per archetype (host, vanguard, battery, tide, hunter, scout) for jobs strike, garrison, seeding, scout. `ThreatFleetComposer.pickArchetype` -> `fleet-archetypes.md` "How a fleet is composed"
 
 ## Tooling and testing
+
+- **Can balance be tested without the game?** Specced 2026-10-02, not built: an offline simulator in `tools/warsim/` sharing pure rules with the mod (`src/threatinc/rules/`), calibrated from the run extracts and validated in three gates (swarm alone to month 36, pd7a, pd4a-pd8a). The logs cannot be replayed (runs part on any change) and lack game dates and the star map: the mod needs a `Clock:` line and a state dump first. -> `war-sim.md`
 
 - **What state must be cleared on game load?** Every static holding `Global.getSector()`: `ThreatReach.forget()` nulls them and zeroes `committed`; `ThreatIncModPlugin.onGameLoad` also clears `ThreatFrontlines.forgetCaches`, `ThreatReserves.forgetCaches`, `ThreatStance.forget`. Add any new static there. -> `engine-code-paths.md` 1
 - **Does loading an old save behave like a new game?** No. A hive stock first seen is endowed `FAB_ENDOWMENT_DAYS` 180 of production (on lt: ~54k supplies + 160k fuel, spent in one pass on spare copies), and the save's territory and fleets are a head start. A save drifted by a broken rule is not a fair test of its fix. Judge balance on a new game, over several runs: six runs of one sector ranged from extinction to a 78-world snowball.
