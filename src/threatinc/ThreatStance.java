@@ -169,6 +169,8 @@ public class ThreatStance {
 	 * staging against a hive, or a forward base, at weak odds - else 0.
 	 */
 	public static float strikeTargetMult(MarketAPI market, StarSystemAPI source, float odds) {
+		// no defence figure (a world the swarm's fog has never seen, targetDefence): no strike
+		if (odds >= Float.MAX_VALUE && ThreatSwarmIntel.enabled()) return 0f;
 		int s = stance();
 		if (s == EXPAND || market == null) return 1f;
 		float weakness = Math.max(0f, 1f - odds);
@@ -179,8 +181,19 @@ public class ThreatStance {
 			return mult;
 		}
 		if (odds > ThreatIncConfig.stanceWeakOdds()) return 0f;
-		boolean staging = ThreatFrontlines.isOutpost(market) || ThreatConvoys.stagingHive(market) != null;
+		boolean staging = ThreatFrontlines.isOutpost(market) || stagingAgainstHive(market);
 		return staging ? Math.max(0.05f, weakness) : 0f;
+	}
+
+	/**
+	 * Whether the base stages against a hive: the human's own pick
+	 * (ThreatConvoys.stagingHive), or in the swarm's fog what it last saw the
+	 * base staging for (ThreatSwarmIntel.Place.stagesFor).
+	 */
+	protected static boolean stagingAgainstHive(MarketAPI market) {
+		if (!ThreatSwarmIntel.enabled()) return ThreatConvoys.stagingHive(market) != null;
+		ThreatSwarmIntel.Place seen = ThreatSwarmIntel.place(market.getId());
+		return seen != null && seen.stagesFor != null;
 	}
 
 	/** Expanding, a spread candidate far from the strongest rival's worlds weighs more; 1 otherwise. */
@@ -475,6 +488,8 @@ public class ThreatStance {
 			if (ly > range) continue;
 			if (!IncursionManager.strikeAllowed(m)) continue;
 			float def = IncursionManager.targetDefence(m, defMemo);
+			// a world the swarm's fog has never seen has no figure: not weak
+			if (def >= Float.MAX_VALUE) continue;
 			float odds = strength > 0f ? def / (strength * ratio) : Float.MAX_VALUE;
 			if (odds > weakOdds) continue;
 			float value = IncursionManager.strikeValue(m);

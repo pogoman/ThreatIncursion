@@ -1757,7 +1757,8 @@ public class ThreatConvoys {
 				+ faction.getId() + " " + base.name() + " -> " + hive.getName() + " ("
 				+ (int) c.marines + " marines, " + (int) c.armaments + " armaments; escort "
 				+ (int) escort + " FP, " + fleet.getFleetData().getNumMembers() + " ships)");
-		ThreatRaiders.consider(c, random);
+		// the hive may come for it - with the swarm's fog on, once it sees it (ThreatRaiders.sweep)
+		if (!ThreatIncConfig.swarmFogOfWar()) ThreatRaiders.consider(c, random);
 		return c;
 	}
 
@@ -2213,8 +2214,8 @@ public class ThreatConvoys {
 				+ (int) c.armaments + " armaments, " + (int) c.fuel + " fuel, "
 				+ (int) c.supplies + " supplies; escort " + (int) escort + " FP, "
 				+ fleet.getFleetData().getNumMembers() + " ships)");
-		// the hive may come for it
-		ThreatRaiders.consider(c, random);
+		// the hive may come for it - with the swarm's fog on, once it sees it (ThreatRaiders.sweep)
+		if (!ThreatIncConfig.swarmFogOfWar()) ThreatRaiders.consider(c, random);
 		return c;
 	}
 

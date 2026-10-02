@@ -19,8 +19,30 @@ public class ThreatIncConfig {
 		return lunaEnabled;
 	}
 
+	private static java.util.Set<String> lunaKeys = null;
+
+	/**
+	 * Whether LunaLib holds this knob: its row is in our LunaSettings.csv. A
+	 * settings.json-only knob (most of the war council's) is never asked of
+	 * LunaLib, which logs an error per read of a key it lacks (34k in ng2a).
+	 */
+	private static boolean luna(String key) {
+		if (!lunaAvailable()) return false;
+		if (lunaKeys == null) {
+			java.util.Set<String> keys = new java.util.HashSet<String>();
+			try {
+				org.json.JSONArray rows = Global.getSettings().loadCSV("data/config/LunaSettings.csv", MOD_ID);
+				for (int r = 0; r < rows.length(); r++) keys.add(rows.getJSONObject(r).optString("fieldID"));
+			} catch (Throwable t) {
+				return true; // unreadable: ask LunaLib as before
+			}
+			lunaKeys = keys;
+		}
+		return lunaKeys.contains(key);
+	}
+
 	private static int i(String key) {
-		if (lunaAvailable()) {
+		if (luna(key)) {
 			Integer v = LunaConfigBridge.getInt(key);
 			if (v != null) return v;
 		}
@@ -28,7 +50,7 @@ public class ThreatIncConfig {
 	}
 
 	private static float f(String key) {
-		if (lunaAvailable()) {
+		if (luna(key)) {
 			Float v = LunaConfigBridge.getFloat(key);
 			if (v != null) return v;
 		}
@@ -36,7 +58,7 @@ public class ThreatIncConfig {
 	}
 
 	private static String s(String key, String def) {
-		if (lunaAvailable()) {
+		if (luna(key)) {
 			try {
 				String v = LunaConfigBridge.getString(key);
 				if (v != null) return v;
@@ -53,7 +75,7 @@ public class ThreatIncConfig {
 	}
 
 	private static boolean b(String key, boolean def) {
-		if (lunaAvailable()) {
+		if (luna(key)) {
 			Boolean v = LunaConfigBridge.getBoolean(key);
 			if (v != null) return v;
 		}
@@ -553,6 +575,12 @@ public class ThreatIncConfig {
 	public static float intelHalfLifeDays()   { return f("threatinc_intelHalfLifeDays"); }
 	/** Light-years a forward base, military world or player outpost sees Threat systems by radar. */
 	public static float radarRangeLY()        { return f("threatinc_radarRangeLY"); }
+	/** The swarm's own fog of war: it knows humans only from its reports (ThreatSwarmIntel, docs/threat-fog.md); off = today's live reads. */
+	public static boolean swarmFogOfWar()     { return b("threatinc_swarmFogOfWar", true); }
+	/** Light-years a hive world with a Swarm Bastion or Command sees human fleets and bases by radar. */
+	public static float swarmRadarRangeLY()   { return f("threatinc_swarmRadarRangeLY"); }
+	/** Days a sighted human attack still counts toward a hive system's pressure after it was last seen. */
+	public static float swarmContactDays()    { return f("threatinc_swarmContactDays"); }
 	/** Mobilised factions plan sieges, raids and recon (ThreatAttackPlanner); off = the monthly per-base pick. */
 	public static boolean attackPlanner()     { return b("threatinc_attackPlanner", true); }
 	/** Mobilised factions hold a strategy and run plays (ThreatWarCouncil, docs/war-council.md); it replaces the attack planner. Off = the planner as built. */

@@ -44,6 +44,11 @@ import com.fs.starfarer.api.util.Misc;
  * pressed one down to its reserve), then to waves and strikes, and once it
  * has stood idle past the upkeep's break-even it is recycled. State is
  * primitive maps only (threatinc_posture, _postureLoss).
+ *
+ * <p>In the swarm's fog (ThreatSwarmIntel, docs/threat-fog.md) the attacks,
+ * the staged threat and the forward guards are what it has seen, the last two
+ * by how far each sighting is still trusted; losses, hostiles in the system
+ * and wounds are its own and stay live.
  */
 public class ThreatPosture {
 
@@ -594,7 +599,10 @@ public class ThreatPosture {
 								ThreatAlarm.grudge(r.stagedBy)) : "")
 						+ ", attacks " + (int) r.attacks + ", losses30d " + (int) r.losses
 						+ ", hostiles " + (int) r.hostiles + ", forward " + (int) r.forward
-						+ (r.wounded ? ", wounded" : "") + ") want " + (int) want + " (base " + (int) base
+						+ (r.wounded ? ", wounded" : "")
+						// staged, attacks and forward are the swarm's reports, by trust (ThreatSwarmIntel)
+						+ (ThreatSwarmIntel.enabled() ? ", as seen" : "")
+						+ ") want " + (int) want + " (base " + (int) base
 						+ ", need " + (int) need + ") held " + (int) held
 						+ " (+" + (int) inbound + " inbound) bank " + (int) bank);
 			}
@@ -659,10 +667,20 @@ public class ThreatPosture {
 	 * live siege booked on its worlds, and every sortie working it (hunts by
 	 * their system, Support and Defend by their hive world). Each fleet once,
 	 * into {@code counted}, so the hostiles-present sweep does not count it again.
+	 *
+	 * <p>In the swarm's fog (ThreatSwarmIntel, docs/threat-fog.md) the figure is
+	 * the attacks it has seen bound for each system lately (contactsOn), at the
+	 * fleet points it saw; a live force's fleets still go into {@code counted}
+	 * while its contact is in sight (ThreatSwarmIntel.inSight) - the hostiles
+	 * sweep reads only fleets in the system, which the hive's own eyes see, so
+	 * it must not count a sighted attack a second time, nor miss an unsighted one.
 	 */
 	protected static Map<String, Float> attacksBySystem(Set<String> hive, Set<CampaignFleetAPI> counted,
 			ThreatStance.Pass pass) {
 		Map<String, Float> out = new HashMap<String, Float>();
+		boolean fog = ThreatSwarmIntel.enabled();
+		// fogged, the live forces below only mark their fleets counted (add, tally null)
+		Map<String, Float> tally = fog ? null : out;
 		for (Object curr : IncursionManager.getPurgeList()) {
 			if (!(curr instanceof GenericRaidFGI)) continue;
 			GenericRaidFGI purge = (GenericRaidFGI) curr;
@@ -681,15 +699,18 @@ public class ThreatPosture {
 			// is abstract, by the flotilla it sails with, until its own fleets take over
 			if (purge instanceof ThreatPurgeFGI && countsAbstract((ThreatPurgeFGI) purge)) {
 				float fp = ((ThreatPurgeFGI) purge).abstractNow();
-				if (fp > 0f) {
+				if (fp > 0f && tally != null) {
 					Float had = out.get(systemId);
 					out.put(systemId, (had != null ? had : 0f) + fp);
 					pass.addForce(purge.getFaction().getId(), systemId, fp);
 				}
 				continue;
 			}
+			// fogged, a force not yet in sight (no contact - the sweep is daily, this
+			// pass may fall later the same day) leaves its fleets to the hostiles sweep
+			if (fog && !ThreatSwarmIntel.inSight(ThreatSwarmIntel.siegeKey(purge))) continue;
 			for (CampaignFleetAPI f : purge.getFleets()) {
-				add(out, systemId, f, counted, purge.getFaction().getId(), pass);
+				add(tally, systemId, f, counted, purge.getFaction().getId(), pass);
 			}
 		}
 		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
@@ -701,7 +722,19 @@ public class ThreatPosture {
 				MarketAPI world = ThreatIncData.resolveColonyMarket(o.targetId);
 				if (world != null && world.getStarSystem() != null) systemId = world.getStarSystem().getId();
 			}
-			if (systemId != null && hive.contains(systemId)) add(out, systemId, o.fleet, counted, o.factionId, pass);
+			if (systemId == null || !hive.contains(systemId)) continue;
+			if (fog && !ThreatSwarmIntel.inSight(ThreatSwarmIntel.orderKey(o.fleet))) continue;
+			add(tally, systemId, o.fleet, counted, o.factionId, pass);
+		}
+		if (!fog) return out;
+		// what the swarm has seen coming at each system, each force under its faction
+		for (String systemId : hive) {
+			for (ThreatSwarmIntel.Contact c : ThreatSwarmIntel.contactsOn(systemId)) {
+				if (c == null || c.fp <= 0f) continue;
+				Float had = out.get(systemId);
+				out.put(systemId, (had != null ? had : 0f) + c.fp);
+				pass.addForce(c.factionId, systemId, c.fp);
+			}
 		}
 		return out;
 	}
@@ -719,10 +752,11 @@ public class ThreatPosture {
 				|| !GenericRaidFGI.RETURN_ACTION.equals(purge.getCurrentAction().getId());
 	}
 
-	/** Counts one attacking fleet toward its system, and toward its faction's force in reach (ThreatStance). */
+	/** Counts one attacking fleet toward its system, and toward its faction's force in reach (ThreatStance); with {@code out} null, only marks it counted. */
 	protected static void add(Map<String, Float> out, String systemId, CampaignFleetAPI f, Set<CampaignFleetAPI> counted,
 			String factionId, ThreatStance.Pass pass) {
 		if (f == null || !f.isAlive() || !counted.add(f)) return;
+		if (out == null) return;
 		float fp = ThreatSoftening.combatFP(f);
 		Float had = out.get(systemId);
 		out.put(systemId, (had != null ? had : 0f) + fp);
@@ -747,24 +781,34 @@ public class ThreatPosture {
 		// at a size-2 world, and sends burned half the fuel feeding frontier
 		// worlds that fell anyway. The grudge picks strike targets (TARGETING)
 		Map<String, Float> byFaction = new HashMap<String, Float>();
-		for (MarketAPI base : IncursionManager.siegeBasesFor(system)) {
-			StarSystemAPI staging;
-			if (stagingMemo.containsKey(base.getId())) {
-				staging = stagingMemo.get(base.getId());
-			} else {
-				staging = ThreatConvoys.stagingHive(base);
-				stagingMemo.put(base.getId(), staging);
+		boolean fog = ThreatSwarmIntel.enabled();
+		if (fog) {
+			// in the swarm's fog, what it last saw each base stage for this
+			// system, by how far that sighting is still to be trusted
+			for (ThreatSwarmIntel.Place p : ThreatSwarmIntel.places()) {
+				if (p == null || p.factionId == null || !systemId.equals(p.stagesFor)) continue;
+				float cap = p.stagedFP * ThreatSwarmIntel.trust(p);
+				if (cap <= 0f) continue;
+				Float had = byFaction.get(p.factionId);
+				if (had == null || cap > had) byFaction.put(p.factionId, cap);
 			}
-			if (staging != system) continue;
-			FactionAPI faction = base.getFaction();
-			if (faction == null) continue;
-			List<MarketAPI> donors = ThreatSoftening.huntDonors(faction, base);
-			float cap = ThreatConvoys.stagesForHunt(base)
-					? 0.5f * ThreatSoftening.payableFP(base, system, donors)
-					: siegeCapacityFP(base, system, donors);
-			if (Float.isNaN(cap) || Float.isInfinite(cap) || cap <= 0f) continue;
-			Float had = byFaction.get(faction.getId());
-			if (had == null || cap > had) byFaction.put(faction.getId(), cap);
+		} else {
+			for (MarketAPI base : IncursionManager.siegeBasesFor(system)) {
+				StarSystemAPI staging;
+				if (stagingMemo.containsKey(base.getId())) {
+					staging = stagingMemo.get(base.getId());
+				} else {
+					staging = ThreatConvoys.stagingHive(base);
+					stagingMemo.put(base.getId(), staging);
+				}
+				if (staging != system) continue;
+				FactionAPI faction = base.getFaction();
+				if (faction == null) continue;
+				float cap = stagedCapacity(base, system);
+				if (cap <= 0f) continue;
+				Float had = byFaction.get(faction.getId());
+				if (had == null || cap > had) byFaction.put(faction.getId(), cap);
+			}
 		}
 		float top = 0f;
 		for (Map.Entry<String, Float> e : byFaction.entrySet()) {
@@ -791,15 +835,29 @@ public class ThreatPosture {
 		// above) - each base counts toward its nearest hive system only
 		// (ThreatFrontlines.hiveNear); counted toward every system in reach, one
 		// guard pool read as 4,867 FP of pressure on a dozen systems at once
-		for (ThreatFrontlines.Outpost o : outposts) {
-			MarketAPI m = ThreatFrontlines.marketOf(o);
-			if (m == null || m.getStarSystem() == system) continue;
-			if (ThreatFrontlines.hiveNear(m.getPrimaryEntity()) != system) continue;
-			for (CampaignFleetAPI g : ThreatFrontlines.liveGuards(o)) {
-				if (g.getContainingLocation() == system || counted.contains(g)) continue;
-				float fp = ThreatSoftening.combatFP(g);
+		if (fog) {
+			// in the swarm's fog, the guards it last saw at each forward base, by trust
+			for (ThreatSwarmIntel.Place p : ThreatSwarmIntel.places()) {
+				if (p == null || p.guardsFP <= 0f) continue;
+				MarketAPI m = Global.getSector().getEconomy().getMarket(p.marketId);
+				if (m == null || !m.isInEconomy() || m.getStarSystem() == system) continue;
+				if (ThreatFrontlines.hiveNear(m.getPrimaryEntity()) != system) continue;
+				float fp = p.guardsFP * ThreatSwarmIntel.trust(p);
+				if (fp <= 0f) continue;
 				r.forward += fp;
-				pass.addForce(o.factionId, systemId, fp);
+				pass.addForce(p.factionId, systemId, fp);
+			}
+		} else {
+			for (ThreatFrontlines.Outpost o : outposts) {
+				MarketAPI m = ThreatFrontlines.marketOf(o);
+				if (m == null || m.getStarSystem() == system) continue;
+				if (ThreatFrontlines.hiveNear(m.getPrimaryEntity()) != system) continue;
+				for (CampaignFleetAPI g : ThreatFrontlines.liveGuards(o)) {
+					if (g.getContainingLocation() == system || counted.contains(g)) continue;
+					float fp = ThreatSoftening.combatFP(g);
+					r.forward += fp;
+					pass.addForce(o.factionId, systemId, fp);
+				}
 			}
 		}
 
@@ -901,6 +959,41 @@ public class ThreatPosture {
 			out.put(source.getId(), had != null ? Math.max(had, founding) : founding);
 		}
 		return out;
+	}
+
+	/**
+	 * The staged threat one base puts on the hive system as the swarm sees it
+	 * there - B's per-base figure (read) on the base's own stock alone, its
+	 * donors' depots elsewhere and unseen: 0 when it does not stage for that
+	 * system (ThreatConvoys.stagingHive). The swarm's sweep records it as it
+	 * sees the base (ThreatSwarmIntel.record).
+	 */
+	public static float stagedBy(MarketAPI base, String hiveSystemId) {
+		if (base == null || hiveSystemId == null) return 0f;
+		StarSystemAPI staging = ThreatConvoys.stagingHive(base);
+		if (staging == null || !hiveSystemId.equals(staging.getId())) return 0f;
+		return stagedCapacity(base, staging, null);
+	}
+
+	/**
+	 * What a base staging against {@code system} could pay a force there: its
+	 * siege capacity, or half what it could pay a hunt for a base that stages
+	 * for one (ThreatConvoys.stagesForHunt). 0 for none, or an unreadable figure.
+	 */
+	protected static float stagedCapacity(MarketAPI base, StarSystemAPI system) {
+		FactionAPI faction = base.getFaction();
+		if (faction == null) return 0f;
+		return stagedCapacity(base, system, ThreatSoftening.huntDonors(faction, base));
+	}
+
+	/** stagedCapacity with the donors pooled into it ({@code null}: the base's own stock alone). */
+	protected static float stagedCapacity(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors) {
+		if (base.getFaction() == null) return 0f;
+		float cap = ThreatConvoys.stagesForHunt(base)
+				? 0.5f * ThreatSoftening.payableFP(base, system, donors)
+				: siegeCapacityFP(base, system, donors);
+		if (Float.isNaN(cap) || Float.isInfinite(cap) || cap <= 0f) return 0f;
+		return cap;
 	}
 
 	/**

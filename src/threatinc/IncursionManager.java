@@ -237,6 +237,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatRaiders.poll();
 		ThreatScouts.poll(random);
 		ThreatSwarmScouts.poll(random);
+		// what the swarm sees of the humans today (docs/threat-fog.md); its own
+		// daily latch, and before ThreatPosture.poll reads the reports (off, it
+		// only drops its seeding flags, so switching it back on seeds again)
+		ThreatSwarmIntel.poll();
 		// until a hive is found the sector only hears it (docs/omens.md)
 		ThreatOmens.poll();
 		// what each faction sees today, then what it plans from it (docs/attack-planner.md)
@@ -4396,20 +4400,49 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * from, isBase). The reach weighed is the larger of the base's bill
 	 * (expeditionRangeLY) and the fuel radius: a faction not yet mobilised has
 	 * no reserve to bill, but would have one the day the swarm struck it, and
-	 * a claim beside it is not safe for that (2026-10-01).
+	 * a claim beside it is not safe for that (2026-10-01). In the swarm's fog
+	 * (ThreatSwarmIntel) only the bases it has seen, at the reach it saw.
 	 */
 	protected static Map<MarketAPI, Float> siegeBases() {
+		boolean fog = ThreatSwarmIntel.enabled();
 		// each base's range once per pick: holdShare reads it for every candidate
 		Map<MarketAPI, Float> out = new java.util.LinkedHashMap<MarketAPI, Float>();
 		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (m.getStarSystem() == null || ThreatMapFog.hidden(m)) continue;
 			if (Factions.THREAT.equals(m.getFactionId()) || m.isPlayerOwned()) continue;
 			if (!hasMilitary(m)) continue;
-			float range = Math.max(expeditionRangeLY(m), ThreatColonyManager.fuelRangeLY(m));
+			float range;
+			if (fog) {
+				ThreatSwarmIntel.Place seen = ThreatSwarmIntel.place(m.getId());
+				if (seen == null) continue;
+				range = seen.reachLY;
+			} else {
+				range = liveSiegeBaseReachLY(m);
+			}
 			if (range <= 0f) continue;
 			out.put(m, range);
 		}
 		return out;
+	}
+
+	/**
+	 * The reach siegeBases weighs a base at today: the larger of its bill
+	 * (expeditionRangeLY) and its fuel radius. The swarm's eyes and scouts
+	 * record seenSiegeBaseReachLY instead (ThreatSwarmIntel.Place.reachLY).
+	 */
+	public static float liveSiegeBaseReachLY(MarketAPI m) {
+		return Math.max(expeditionRangeLY(m), ThreatColonyManager.fuelRangeLY(m));
+	}
+
+	/**
+	 * liveSiegeBaseReachLY as the swarm sees it at the base: the bill on the
+	 * base's own stock alone (ThreatReach.ownRangeLY), with no donor pooled -
+	 * their depots are elsewhere, unseen - and its fuel radius.
+	 */
+	public static float seenSiegeBaseReachLY(MarketAPI m) {
+		float bill = ThreatReach.factionsBilled() && !m.isPlayerOwned() && !Factions.THREAT.equals(m.getFactionId())
+				? ThreatReach.ownRangeLY(m) : ThreatColonyManager.fuelRangeLY(m);
+		return Math.max(bill, ThreatColonyManager.fuelRangeLY(m));
 	}
 
 	/**
@@ -4638,8 +4671,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (!warOpen(market, phase)) continue;
 			if (onlyFactionId != null && !onlyFactionId.equals(market.getFactionId())) continue;
 			if (isActiveStrikeTarget(market)) continue; // one strike per world
-			// the swarm strikes only what it has scouted (ThreatSwarmScouts)
+			// the swarm strikes only what it has scouted (ThreatSwarmScouts) - and,
+			// in its fog, a world it has a defence figure for (strikeSeen)
 			if (!ThreatSwarmScouts.swarmKnows(market)) continue;
+			if (!strikeSeen(market)) continue;
 
 			float d = Misc.getDistanceLY(source.getLocation(), market.getStarSystem().getLocation());
 			if (d > rangeLY) continue;
@@ -4688,21 +4723,46 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * The defence a strike at the world meets, in vanilla strength units: the
-	 * hostile fleets of its system and its station, as strikeOutweighed weighs
-	 * them (the system's fleets memoised in {@code memo}, {Threat, enemy}).
+	 * The defence a strike at the world meets, in vanilla strength units, as the
+	 * swarm knows it. With its fog (ThreatSwarmIntel, docs/threat-fog.md) the
+	 * figure it last saw there - Float.MAX_VALUE for a world it has never seen,
+	 * which has no figure and is no strike candidate (strikeSeen); off, the live
+	 * read (liveTargetDefence).
 	 */
 	protected static float targetDefence(MarketAPI target, java.util.Map<String, float[]> memo) {
+		if (!ThreatSwarmIntel.enabled()) return liveTargetDefence(target, memo);
+		ThreatSwarmIntel.Place seen = target != null ? ThreatSwarmIntel.place(target.getId()) : null;
+		return seen != null ? seen.defenceFP : Float.MAX_VALUE;
+	}
+
+	/**
+	 * The defence a strike at the world meets today, in vanilla strength units:
+	 * the hostile fleets of its system and its station, as strikeOutweighed
+	 * weighs them (the system's fleets memoised in {@code memo}, {Threat, enemy}).
+	 * The swarm's eyes and scouts record it (ThreatSwarmIntel); its readers go
+	 * through targetDefence.
+	 */
+	public static float liveTargetDefence(MarketAPI target, java.util.Map<String, float[]> memo) {
 		StarSystemAPI system = target.getStarSystem();
 		if (system == null) return 0f;
-		float[] fleets = memo.get(system.getId());
+		// memo may be null: a single read (the swarm's sweep) memoises nothing
+		float[] fleets = memo != null ? memo.get(system.getId()) : null;
 		if (fleets == null) {
 			FactionAPI threat = Global.getSector().getFaction(Factions.THREAT);
 			fleets = new float[] { WarSimScript.getFactionStrength(threat, system),
 					WarSimScript.getEnemyStrength(threat, system, true) };
-			memo.put(system.getId(), fleets);
+			if (memo != null) memo.put(system.getId(), fleets);
 		}
 		return fleets[1] + WarSimScript.getStationStrength(target.getFaction(), system, target.getPrimaryEntity());
+	}
+
+	/**
+	 * With the swarm's fog (ThreatSwarmIntel), whether it has seen the world: one
+	 * never seen has no defence figure (targetDefence) and is no strike candidate
+	 * until a scout or its eyes look. Off, every world.
+	 */
+	protected static boolean strikeSeen(MarketAPI market) {
+		return !ThreatSwarmIntel.enabled() || ThreatSwarmIntel.place(market.getId()) != null;
 	}
 
 	/**
@@ -4735,7 +4795,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			return false;
 		}
 		if (isActiveStrikeTarget(market)) return false;
-		return ThreatSwarmScouts.swarmKnows(market);
+		return ThreatSwarmScouts.swarmKnows(market) && strikeSeen(market);
 	}
 
 	/**
@@ -4763,8 +4823,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			memo.put(system.getId(), fleets);
 		}
 		float ours = strikeStr + fleets[0];
-		float def = fleets[1]
-				+ WarSimScript.getStationStrength(target.getFaction(), system, target.getPrimaryEntity());
+		// the defence as the swarm knows it (targetDefence): in its fog the figure
+		// last seen there; off, the live read above
+		float def = targetDefence(target, memo);
 		boolean out = def >= ours * ratio;
 		if (out) {
 			ThreatIncConfig.logQuiet("strikegate:" + key, "Strike gate: " + target.getName() + " passed over, defence "
@@ -4814,7 +4875,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (!isCoreWorld(market) || !isStrikeableWorld(market)) continue;
 			// pickStrikeTarget's own gate: a world its scouts have not charted is not in reach
-			if (!ThreatSwarmScouts.swarmKnows(market)) continue;
+			if (!ThreatSwarmScouts.swarmKnows(market) || !strikeSeen(market)) continue;
 			float d = Misc.getDistanceLY(source.getLocation(), market.getStarSystem().getLocation());
 			if (d > rangeLY) continue;
 			if (billed && !ThreatFuel.canPay(ThreatFuel.passage(swarmFP, d, true))) continue;

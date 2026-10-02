@@ -51,11 +51,18 @@ public final class ThreatAbstractBattle {
 		return ThreatIncConfig.abstractDefendersFight();
 	}
 
-	/** The attacker's strength in the system as vanilla's autoresolve reads it: its fleets and routes there, and its own route once expired. */
+	/**
+	 * The attacker's strength in the system as vanilla's autoresolve reads it:
+	 * its fleets and routes there, and its own route once expired - unless the
+	 * route is still located there (a base in the target system: its return
+	 * leg starts in it), which getFactionStrength already counted. pd6a's
+	 * 14,900-unit saturation from Salamanca fought Yma as 30,507.
+	 */
 	public static float attackerStrength(FactionAPI attacker, StarSystemAPI where, RouteData route) {
 		if (attacker == null || where == null) return 0f;
 		float str = WarSimScript.getFactionStrength(attacker, where);
-		if (route != null && route.isExpired() && route.getExtra() != null) {
+		if (route != null && route.isExpired() && route.getExtra() != null
+				&& !RouteManager.getInstance().getRoutesInLocation(where).contains(route)) {
 			str += route.getExtra().getStrengthModifiedByDamage();
 		}
 		return str;
@@ -149,11 +156,34 @@ public final class ThreatAbstractBattle {
 	 */
 	public static float foughtDay(FactionAPI attacker, MarketAPI world, List<CampaignFleetAPI> defenders,
 			float attackerFP, float defenderFP, float attackerLostFP) {
+		return foughtDay(attacker, world, defenders, attackerFP, defenderFP, attackerLostFP, null, 0f);
+	}
+
+	/**
+	 * As above, with {@code friends} - the besieger's own fleets at the world
+	 * (its play's hunts, ThreatSoftening.playFleetsNear) - fighting beside it:
+	 * {@code attackerFP} includes theirs, and each loses {@code friendShare} of
+	 * its ships as the besieger's flotilla loses that share of its route, their
+	 * loss added to what the day cost the attacker.
+	 */
+	public static float foughtDay(FactionAPI attacker, MarketAPI world, List<CampaignFleetAPI> defenders,
+			float attackerFP, float defenderFP, float attackerLostFP, List<CampaignFleetAPI> friends, float friendShare) {
 		if (!enabled() || attacker == null || world == null || world.getStarSystem() == null) return 0f;
 		StarSystemAPI where = world.getStarSystem();
 		float share = defenderLoss(attackerFP, defenderFP);
 		java.util.Map<String, Float> byFaction = new java.util.HashMap<String, Float>();
 		float[] lost = new float[4];
+		int hunts = 0;
+		float huntsLost = 0f;
+		if (friendShare > 0f && friends != null && !friends.isEmpty()) {
+			Random random = new Random();
+			for (CampaignFleetAPI fleet : friends) {
+				if (fleet == null || !fleet.isAlive() || fleet.isStationMode() || fleet.isPlayerFleet()) continue;
+				hunts++;
+				huntsLost += removeShare(fleet, friendShare, random);
+			}
+			attackerLostFP += huntsLost;
+		}
 		if (share > 0f && defenders != null) {
 			Random random = new Random();
 			for (CampaignFleetAPI fleet : defenders) {
@@ -167,9 +197,12 @@ public final class ThreatAbstractBattle {
 			}
 		}
 		book(attacker, where, lost, byFaction, attackerLostFP);
-		ThreatIncConfig.logQuiet("dailyfight:" + attacker.getId() + ":" + world.getId(), "Off-screen fight over "
-				+ world.getName() + " (daily siege): " + attacker.getId() + " " + (int) attackerFP + " FP vs "
-				+ (int) defenderFP + " FP; attacker lost " + (int) Math.max(0f, attackerLostFP) + " FP, defenders "
+		// every day logged (a siege fights a handful): pd6a's one line a month hid days 2-10
+		ThreatIncConfig.log("Off-screen fight over "
+				+ world.getName() + " (daily siege): " + attacker.getId() + " " + (int) attackerFP + " FP"
+				+ (hunts > 0 ? " with " + hunts + " hunting fleets" : "") + " vs "
+				+ (int) defenderFP + " FP; attacker lost " + (int) Math.max(0f, attackerLostFP) + " FP"
+				+ (hunts > 0 ? " (hunts " + (int) huntsLost + ")" : "") + ", defenders "
 				+ Math.round(share * 100f) + "%: " + (int) lost[0] + " Threat FP, " + (int) lost[1] + " other FP ("
 				+ (int) lost[2] + " fleets)");
 		return lost[0] + lost[1];

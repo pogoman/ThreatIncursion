@@ -30,6 +30,10 @@ import com.fs.starfarer.api.util.Misc;
  * ledger): a colony that has not banked a scout's fleet points sends none.
  * They keep the swarm's stealth, pick no fights, and fade out at home.
  *
+ * <p>In the swarm's fog (ThreatSwarmIntel, docs/threat-fog.md) a scout reports
+ * every human place in each system it enters, and after the unknown systems
+ * the charted ones whose reports have gone stale are scouted again.
+ *
  * <p>Knob swarmScouting off: the swarm knows every world, as before.
  */
 public class ThreatSwarmScouts {
@@ -109,6 +113,9 @@ public class ThreatSwarmScouts {
 			return "Scouting Swarm";
 		}
 		protected boolean knownStop(String systemId) {
+			// in the swarm's fog a charted stop whose reports went stale is a
+			// re-scout (planRoute), not skipped
+			if (ThreatSwarmIntel.enabled() && ThreatSwarmIntel.stale(systemId)) return false;
 			return known().containsKey(systemId);
 		}
 		protected boolean onEnter(Scout s, StarSystemAPI system, long now) {
@@ -120,6 +127,8 @@ public class ThreatSwarmScouts {
 				ThreatIncConfig.log("Scouting Swarm charted " + system.getName());
 				ThreatOmens.onSwarmScouted(system);
 			}
+			// and, in its fog, reports every human place there (ThreatSwarmIntel)
+			if (ThreatSwarmIntel.enabled()) ThreatSwarmIntel.scouted(system);
 			return false;
 		}
 		protected String stayVerb() {
@@ -150,6 +159,7 @@ public class ThreatSwarmScouts {
 	protected static void launchAll(Random random) {
 		List<String> systemIds = new ArrayList<String>(ThreatIncData.colonyMarkets().keySet());
 		Collections.shuffle(systemIds, random);
+		List<StarSystemAPI> claims = ThreatSwarmIntel.enabled() ? pendingClaims() : null;
 		for (String systemId : systemIds) {
 			MarketAPI colony = pickStaging(systemId);
 			if (colony == null) continue;
@@ -160,7 +170,39 @@ public class ThreatSwarmScouts {
 				List<String> route = planRoute(colony, range);
 				if (route.isEmpty() || launch(colony, route, random) == null) break;
 			}
+			// in the swarm's fog, then the charted systems it has not looked at
+			// in a while (ThreatSwarmIntel.stale): its figures there are old. A
+			// pass of their own, so an uncharted stop no tank reaches does not
+			// hold up the near ones
+			if (!ThreatSwarmIntel.enabled()) continue;
+			// spreading comes first: a re-scout waits while the stock is short of the
+			// dearest pending claim's founding (pd2a: 478 re-scouts drained the fuel a
+			// 25-30 ly founding needed, and no outward claim was made for 14 months)
+			float reserve = claimReserve(colony, claims);
+			while (ThreatFuel.stock() >= reserve) {
+				List<String> route = planRoute(colony, range, true);
+				if (route.isEmpty() || launch(colony, route, random) == null) break;
+			}
 		}
+	}
+
+	/** The systems of the pending outward claims (SEEDED, not a bootstrap seed). */
+	protected static List<StarSystemAPI> pendingClaims() {
+		List<StarSystemAPI> out = new ArrayList<StarSystemAPI>();
+		Map<String, String> stages = ThreatIncData.stages();
+		for (StarSystemAPI s : Global.getSector().getStarSystems()) {
+			if (ThreatIncData.STAGE_SEEDED.equals(stages.get(s.getId()))
+					&& !ThreatIncData.bootstrapSeeds().contains(s.getId())) out.add(s);
+		}
+		return out;
+	}
+
+	/** The fuel the dearest pending claim's founding would take from the colony (ThreatColonyManager.foundingFuel); 0 with none. */
+	protected static float claimReserve(MarketAPI colony, List<StarSystemAPI> claims) {
+		float most = 0f;
+		if (claims == null) return most;
+		for (StarSystemAPI s : claims) most = Math.max(most, ThreatColonyManager.foundingFuel(colony, s));
+		return most;
 	}
 
 	/**
@@ -186,6 +228,15 @@ public class ThreatSwarmScouts {
 	 * scout's route.
 	 */
 	protected static List<String> planRoute(MarketAPI colony, float rangeLY) {
+		return planRoute(colony, rangeLY, false);
+	}
+
+	/**
+	 * As above; {@code rescout}, in the swarm's fog, through the charted non-hive
+	 * systems holding a strikeable world whose reports have gone stale
+	 * (ThreatSwarmIntel.stale) instead of the unknown ones.
+	 */
+	protected static List<String> planRoute(MarketAPI colony, float rangeLY, boolean rescout) {
 		StarSystemAPI home = colony.getStarSystem();
 		if (home == null || rangeLY <= 0f) return new ArrayList<String>();
 		List<String> taken = ROUTE.taken();
@@ -194,7 +245,16 @@ public class ThreatSwarmScouts {
 			if (!IncursionManager.isStrikeableWorld(market)) continue;
 			StarSystemAPI system = market.getStarSystem();
 			if (system.getCenter() == null || candidates.contains(system)) continue;
-			if (knowsSystem(system) || taken.contains(system.getId())) continue;
+			if (taken.contains(system.getId())) continue;
+			if (rescout) {
+				if (!known().containsKey(system.getId())
+						|| !ThreatIncData.getLiveColonyMarkets(system.getId()).isEmpty()
+						|| !ThreatSwarmIntel.stale(system.getId())) {
+					continue;
+				}
+			} else if (knowsSystem(system)) {
+				continue;
+			}
 			if (Misc.getDistanceLY(home.getLocation(), system.getLocation()) > rangeLY) continue;
 			candidates.add(system);
 		}

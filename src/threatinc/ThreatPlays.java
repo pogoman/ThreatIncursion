@@ -12,6 +12,7 @@ import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
+import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
 import com.fs.starfarer.api.util.Misc;
 
 /**
@@ -64,6 +65,8 @@ public class ThreatPlays {
 	protected static final float DREW = 1.2f;
 	/** Bombers of opportunity trust "unguarded" from a report at most this old. */
 	protected static final float FRESH_DAYS = 10f;
+	/** Hive market memory, + faction id: its bombers were driven off there lately (set for a report half-life). */
+	protected static final String REPULSED_FLAG = "$threatinc_bombersRepulsed_";
 	/** A recon is done when its system's report is this fresh. */
 	protected static final float RECON_FRESH_DAYS = 2f;
 
@@ -484,8 +487,10 @@ public class ThreatPlays {
 						|| !r.worlds.containsKey(id)) continue;
 				if (r.worldFP(id) > 0f || !ThreatColonyManager.hasOperationalNexus(m)) continue;
 				if (ThreatFleetOrders.hasRaid(fid, id)) continue;
+				if (m.getMemoryWithoutUpdate().getBoolean(REPULSED_FLAG + fid)) continue;
 				cand.add(m);
-				w.add((float) m.getSize());
+				// what drove squadrons off before weighs less (pd2a: 48 of 55 failed, nothing learned)
+				w.add(m.getSize() * ThreatWarCouncil.learned(c, BOMBERS + ":" + k.targetClass()));
 			}
 		}
 		if (cand.isEmpty()) return;
@@ -783,8 +788,9 @@ public class ThreatPlays {
 	 * sized by the play's share of what the base and its donors can field
 	 * (ThreatPosture.siegeCapacityFP); every world it can carry marines for,
 	 * the most first. A feint sends its hunting force now. The hunts are let go
-	 * RELEASE_LEAD_DAYS before the siege arrives, the feint's bombers sail to
-	 * arrive with it.
+	 * RELEASE_LEAD_DAYS before the siege's estimated arrival, or sooner when its
+	 * live ETA says it is nearer ({@link #siegeNear}); the feint's bombers sail
+	 * to arrive with it.
 	 */
 	protected static void strike(Play pl, FactionAPI faction, float today, Random random, String why) {
 		MarketAPI base = market(pl.baseId);
@@ -876,9 +882,25 @@ public class ThreatPlays {
 				+ (sent ? " sail, " + (int) fp + " FP" : " not paid"));
 	}
 
+	/**
+	 * The play's siege is due at its worlds within the hunts' passage from
+	 * their muster (ThreatSoftening.passageDays) and RELEASE_LEAD_DAYS, or is
+	 * there already, by its live ETA: the hunts go now, whatever the strike's
+	 * estimate said. pd6a's Qaras siege landed and took the world before its
+	 * hunts, let go on the estimate, sailed.
+	 */
+	protected static boolean siegeNear(Play pl) {
+		if (!pl.sieged) return false;
+		ThreatPurgeFGI purge = purgeOf(pl.id);
+		if (!live(purge)) return false;
+		float lead = RELEASE_LEAD_DAYS;
+		for (String f : forcesOf(pl)) lead = Math.max(lead, RELEASE_LEAD_DAYS + ThreatSoftening.passageDays(f));
+		return purge.getETAUntil(GenericRaidFGI.PAYLOAD_ACTION) <= lead;
+	}
+
 	protected static void strikeCheck(Play pl, FactionAPI faction, float today, Random random) {
 		sendBombers(pl, faction, today);
-		if (today < pl.releaseDay) {
+		if (today < pl.releaseDay && !siegeNear(pl)) {
 			if (!pl.sieged && !anyForceAlive(pl)) end(pl, FAILURE, "its forces are gone before the strike", today);
 			return;
 		}
@@ -1171,6 +1193,14 @@ public class ThreatPlays {
 		if (decisive && !RECON.equals(pl.type) && !JOINT.equals(pl.type)) {
 			boolean ok = SUCCESS.equals(outcome);
 			ThreatWarCouncil.learn(pl.factionId, pl.type + ":" + pl.targetClass, ok);
+			if (BOMBERS.equals(pl.type) && !ok) {
+				// a world that drove a squadron off rests a report half-life (pd2a: Beta Welo I x11)
+				for (String id : pl.targetIds) {
+					MarketAPI w = market(id);
+					if (w != null) w.getMemoryWithoutUpdate().set(REPULSED_FLAG + pl.factionId, true,
+							Math.max(1f, ThreatIncConfig.intelHalfLifeDays()));
+				}
+			}
 			if (!BOMBERS.equals(pl.type)) {
 				ThreatWarCouncil.learn(pl.factionId, "strategy:" + pl.strategy, ok);
 				ThreatWarCouncil.reviewSoon(pl.factionId, "play " + pl.id + " " + pl.type + " " + outcome);

@@ -120,6 +120,7 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// and a stock's unmet bill held over from the session left (ThreatFuel.held)
 		ThreatFuel.forget();
 		ThreatIntel.forget();
+		ThreatSwarmIntel.forget();
 		ThreatAttackPlanner.forget();
 		ThreatWarCouncil.forget();
 

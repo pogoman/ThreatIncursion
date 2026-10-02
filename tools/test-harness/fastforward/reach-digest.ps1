@@ -1,5 +1,5 @@
 # Digest of a run's billed-reach behaviour from ti-<Tag>.txt (extract.ps1): the monthly Reach lines,
-# launches, holds, claims, waves, scouts, raids, stance, upkeep, census, the war council.
+# launches, holds, claims, waves, scouts, raids, stance, upkeep, census, the war council, the swarm's fog.
 param([string]$Tag = "x", [int]$N = 12, [int]$W = 230)
 $out = if ($env:THREATINC_TEST_OUT) { $env:THREATINC_TEST_OUT } else { Join-Path $env:TEMP "threatinc-tests" }
 $L = [System.IO.File]::ReadAllLines("$out\ti-$Tag.txt")
@@ -33,3 +33,10 @@ Show "Play outcomes" '^Play \S+: (success|failure|neutral) ' 40
 Show "Play forces" '^Play \S+ force ' 20
 Show "Play raids" '^Play \S+ \S+: raid on ' 20
 Show "Council errors" '^(Council \S+|Plays): error ' 10
+# the swarm's fog of war (docs/threat-fog.md): first sightings by source, convoys among them, places, census
+Show "Swarm sees by eyes" '^Swarm intel: sees .* by eyes\b' 20
+Show "Swarm sees by radar" '^Swarm intel: sees .* by radar\b' 20
+Show "Swarm sees by scout" '^Swarm intel: sees .* by scout\b' 20
+Show "Swarm sees convoys" '^Swarm intel: sees \S+ convoy of ' 12
+Show "Swarm places" '^Swarm intel: (eyes|radar|scout) on ' 30
+Show "Swarm census" '^Swarm intel census:' 12 -Last

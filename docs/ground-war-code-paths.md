@@ -200,13 +200,18 @@ no longer the Threat's, is done with without a pass ("gone", "passed over").
 2. Weigh: hostile = the FP of `ThreatGroundFronts.hostileFleetsNear(faction, W)` - `pointsNear`'s
    filter, factored into `countsNear`, so the fleets weighed are the fleets struck; ours =
    `abstractAllotment()`.
-3. Go home when hostile >= ours x `siegeBreakOffRatio`, not commissioned, no front of its own down
+3. Go home when hostile >= (ours + the play's hunts anywhere in W's system, `friendsNear` ->
+   `ThreatSoftening.playFP`) x `siegeBreakOffRatio`, not commissioned, no front of its own down
    (`holdsAFront`): `callOff`, with the live break-off's notice, log and swarm bounty.
-4. Fight when hostile > 0, both strengths as the day began: `ThreatAbstractBattle.foughtDay`
-   strikes exactly those fleets for min(0.75, 0.5 x ours / hostile) (`removeShare`; station and
+3a. (2026-10-02) The play's hunts within `ORBIT_HOLD_RANGE` of W (`ThreatSoftening.playFleetsNear`)
+   fight beside it. Outweighed without them while more of them are in the system, it waits for them
+   up to `HUNT_WAIT_DAYS` 3 (`abstractWorldWaits`, "waits for its hunts").
+4. Fight when hostile > 0, both strengths as the day began, ours including those hunts:
+   `ThreatAbstractBattle.foughtDay` (the overload with `friends`) strikes exactly those fleets for
+   min(0.75, 0.5 x ours / hostile) (`removeShare`; station and
    player fleets are weighed, never struck) and books `ThreatPosture.addLoss` and both stance
-   trends each day (`book`, shared with `fought`). The expedition loses min(0.75, 0.5 x hostile /
-   ours) as route damage (`addRouteLoss`: 1 - (1 - damage)(1 - share)). Under vanilla's abort
+   trends each day (`book`, shared with `fought`). The expedition, and each hunt beside it
+   (`removeShare`, added to the attacker's loss), loses min(0.75, 0.5 x hostile / ours) as route damage (`addRouteLoss`: 1 - (1 - damage)(1 - share)). Under vanilla's abort
    line: "beaten", and vanilla aborts it that frame.
 5. Contested when the struck fleets' survivors are > 0 and >= ours x `orbitContestFraction` -
    weighed here, because `orbitHeld` counts an abstract besieger as nothing. A contested day
