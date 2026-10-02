@@ -90,12 +90,16 @@ public final class Sim {
 	/** The state as one row: what stands now, then every cumulative counter. */
 	static Map<String, Double> row(State s) {
 		Map<String, Double> m = new LinkedHashMap<String, Double>();
-		double hives = 0, hiveSize = 0, garrison = 0, bank = 0;
+		double hives = 0, hiveSize = 0, garrison = 0, bank = 0, want = 0, fuelUnits = 0, fuelPlants = 0, forges = 0;
 		for (Hive h : s.hives) {
 			if (h.dead) continue;
 			hives++;
+			fuelUnits += h.fuelUnits();
+			if (h.fuelPlant) fuelPlants++;
+			if (h.forge) forges++;
 			hiveSize += h.size;
 			garrison += h.garrisonFP;
+			want += h.wantFP;
 			bank += h.bank;
 		}
 		double worlds = 0, worldSize = 0, bases = 0;
@@ -116,9 +120,16 @@ public final class Sim {
 		m.put("hiveSize", hiveSize);
 		m.put("meanHiveSize", hives > 0 ? hiveSize / hives : 0);
 		m.put("garrisonFP", garrison);
+		// the game's monthly "Posture sector: held Xk want Yk": the hives' wants summed, and what they hold of it
+		m.put("wantFP", want);
+		m.put("heldOfWant", want > 0 ? garrison / want : 0);
 		m.put("threatFleetFP", threatMobile);
 		m.put("bank", bank);
 		m.put("swarmFuel", (double) s.swarm.fuel);
+		// the dump's swarm.fuelPerMonth at hiveSurplusMult 1: the fuel plants' output a month
+		m.put("swarmFuelPerMonth", fuelUnits * SwarmFit.FUEL_UNIT);
+		m.put("fuelPlants", fuelPlants);
+		m.put("forges", forges);
 		m.put("swarmSupplies", (double) s.swarm.supplies);
 		m.put("stance", (double) s.swarm.stance);
 		m.put("worlds", worlds);
