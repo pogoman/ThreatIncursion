@@ -28,5 +28,27 @@ public final class World {
 	public int foundedDay;
 	public boolean lost;
 
+	// ---- the human side's own ----
+
+	/** IncursionManager.hasMilitary, when the dump says (HumanSide.load); null = unknown, HumanFit guesses. */
+	public Boolean military;
+	/** The largest months basis the depot has seen (ThreatReserves.noteBasis), per commodity. */
+	public final float[] capSeen = new float[4];
+	/**
+	 * Fleet points guarding a forward base (ThreatFrontlines' garrison). The swarm side reads
+	 * this as the base's defenders and takes its losses off it.
+	 */
+	public float guardFP;
+	/** Days a front link has stood without the least garrison; days with no found hive in reach. */
+	public int unguardedDays, idleDays;
+	/** Healthy days toward the next size; days starved toward losing one (ThreatColonyUpkeep). */
+	public float healthyDays, starveDays;
+	/** The day a garrison was last asked for. */
+	/** The day this base last sent a hunting force (ThreatSoftening.resting). */
+	public int lastHuntDay = Integer.MIN_VALUE / 2;
+	public int guardAskedDay = Integer.MIN_VALUE / 2;
+	/** True once the accrual has been modelled or read (HumanPools.ensure). */
+	public boolean pooled;
+
 	@Override public String toString() { return name + " (" + faction + ", " + size + ")"; }
 }

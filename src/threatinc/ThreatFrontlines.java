@@ -587,9 +587,8 @@ public class ThreatFrontlines {
 
 	/** [fuel, supplies] a garrison of this size costs to sail this far, as the response task force pays. */
 	protected static float[] voyageCost(float fp, float ly) {
-		float points = fp / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
-		return new float[] { points * ly * ThreatIncConfig.expeditionFuelPerPointLY(),
-				points * ThreatIncConfig.expeditionSuppliesPerPoint() };
+		return threatinc.rules.ReachRules.voyageCost(fp, ly, ThreatIncConfig.expeditionFuelPerPointLY(),
+				ThreatIncConfig.expeditionSuppliesPerPoint());
 	}
 
 	/**

@@ -375,7 +375,7 @@ public class ThreatReserves {
 	public static float available(MarketAPI market, String commodityId) {
 		if (market == null) return 0f;
 		if (committed(market, commodityId)) return 0f;
-		return Math.max(0f, stock(market.getId(), commodityId) - floor(market, commodityId));
+		return threatinc.rules.ReserveRules.available(stock(market.getId(), commodityId), floor(market, commodityId));
 	}
 
 	/**
@@ -619,8 +619,9 @@ public class ThreatReserves {
 			Float seen = r.capSeen.get(commodityId);
 			if (seen != null) {
 				float base = baselineMonths(market, commodityId);
-				float atShare = seen > base ? base + (seen - base) * basisShare(market, commodityId) : seen;
-				if (atShare > basis) basis = atShare;
+				// the share is read only when the record stands above the baseline, as before the lift
+				float share = seen > base ? basisShare(market, commodityId) : 1f;
+				basis = threatinc.rules.ReserveRules.floorBasis(basis, seen, base, share);
 			}
 		}
 		return basis * (market.isPlayerOwned() ? ThreatIncConfig.playerReserveFloorFraction()
@@ -639,7 +640,7 @@ public class ThreatReserves {
 		if (r == null || basis <= 0f) return;
 		float base = baselineMonths(market, c);
 		float share = basisShare(market, c);
-		if (share > 0f && basis > base) basis = base + (basis - base) / share;
+		basis = threatinc.rules.ReserveRules.basisAtFullShare(basis, base, share);
 		if (r.capSeen == null) r.capSeen = new LinkedHashMap<String, Float>();
 		Float seen = r.capSeen.get(c);
 		if (seen == null || basis > seen) r.capSeen.put(c, basis);
@@ -673,10 +674,8 @@ public class ThreatReserves {
 	public static float spendable(MarketAPI market, String commodityId) {
 		if (market == null) return 0f;
 		if (committed(market, commodityId)) return 0f;
-		float keep = Math.max(floor(market, commodityId),
-				monthsBasis(market, commodityId) * ThreatIncConfig.donorKeepFraction()
-						+ stagingBank(market, commodityId));
-		return Math.max(0f, stock(market.getId(), commodityId) - keep);
+		return threatinc.rules.ReserveRules.spendable(stock(market.getId(), commodityId), floor(market, commodityId),
+				monthsBasis(market, commodityId), ThreatIncConfig.donorKeepFraction(), stagingBank(market, commodityId));
 	}
 
 	/** Takes up to {@code amount} of {@link #spendable} stock; returns what was taken. */
@@ -736,9 +735,9 @@ public class ThreatReserves {
 		if (com == null) return baseline;
 		float surplus = bankUnits(market, com);
 		if (surplus <= 0f) return baseline;
-		return baseline + BaseIndustry.getSizeMult(surplus) * com.getCommodity().getEconUnit()
-				* surplusMult(commodityId)
-				* productionShare(market.getFactionId(), commodityId);
+		return threatinc.rules.ReserveRules.accrualPer30(baseline, BaseIndustry.getSizeMult(surplus),
+				com.getCommodity().getEconUnit(), surplusMult(commodityId),
+				productionShare(market.getFactionId(), commodityId));
 	}
 
 	/**
@@ -922,7 +921,7 @@ public class ThreatReserves {
 			return vanillaStockpileLimit(market, commodityId)
 					+ militiaPer30(market, commodityId) * ThreatIncConfig.reserveCapMonths();
 		}
-		return accrualPer30(market, commodityId) * ThreatIncConfig.reserveCapMonths();
+		return threatinc.rules.ReserveRules.monthsBasis(accrualPer30(market, commodityId), ThreatIncConfig.reserveCapMonths());
 	}
 
 	/** Old name of {@link #monthsBasis}, kept for callers not yet moved over; a reference, not a cap. */
@@ -1322,8 +1321,9 @@ public class ThreatReserves {
 				noteBasis(market, r, c, per30 * ThreatIncConfig.reserveCapMonths());
 				// (2026-09-29: no longer clipped to reserveCapMonths - that is
 				// a reference now, not a cap)
-				float start = per30 * months;
-				if (read(r, c) < start) write(r, c, start);
+				float have = read(r, c);
+				float start = threatinc.rules.ReserveRules.seeded(have, per30, months);
+				if (have < start) write(r, c, start);
 			}
 		}
 		ThreatIncConfig.log("Reserve seed: " + factionId + " mobilised with " + (int) months

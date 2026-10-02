@@ -367,15 +367,12 @@ public class ThreatSoftening {
 		float dist = Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation());
 		float fuelPerPoint = dist * ThreatIncConfig.expeditionFuelPerPointLY();
 		float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
-		float points = Float.MAX_VALUE;
-		if (fuelPerPoint > 0f) {
-			points = Math.min(points, (huntSpendable(base, system, Commodities.FUEL)
-					+ donorsSpendable(donors, base, Commodities.FUEL)) / fuelPerPoint);
-		}
-		if (suppliesPerPoint > 0f) {
-			points = Math.min(points, (huntSpendable(base, system, Commodities.SUPPLIES)
-					+ donorsSpendable(donors, base, Commodities.SUPPLIES)) / suppliesPerPoint);
-		}
+		// a price of 0 leaves its stock unread, as before the lift: the pools are read only where they bind
+		float fuel = fuelPerPoint > 0f ? huntSpendable(base, system, Commodities.FUEL)
+				+ donorsSpendable(donors, base, Commodities.FUEL) : 0f;
+		float supplies = suppliesPerPoint > 0f ? huntSpendable(base, system, Commodities.SUPPLIES)
+				+ donorsSpendable(donors, base, Commodities.SUPPLIES) : 0f;
+		float points = threatinc.rules.ReachRules.payablePoints(fuel, supplies, fuelPerPoint, suppliesPerPoint);
 		return points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
 	}
 

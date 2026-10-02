@@ -688,7 +688,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				at = target;
 			}
 		}
-		if (at == null || worst < (ours + friendsNear(at)) * ratio) return false;
+		if (at == null || !threatinc.rules.BattleRules.callsOff(worst, ours, friendsNear(at), ratio)) return false;
 		callOff(at, worst, ours, getTotalFPSpawned());
 		return true;
 	}
@@ -2273,7 +2273,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		// go home outmatched, as the live commander does (breaksOff); a front down holds it
 		float ratio = ThreatIncConfig.siegeBreakOffRatio();
 		if (ratio > 0f && !playerCommissioned && !faction.isPlayerFaction()
-				&& enemy >= (ours + friendsNear(w)) * ratio && !holdsAFront()) {
+				&& threatinc.rules.BattleRules.callsOff(enemy, ours, friendsNear(w), ratio) && !holdsAFront()) {
 			ThreatIncConfig.log("Daily siege of " + w.getName() + " called off: " + (int) enemy + " FP against "
 					+ (int) ours + " + " + (int) friendsNear(w) + " of its hunts in the system");
 			dailySummary(w.getName(), abstractWorldDays + 1, "called off");
@@ -2299,7 +2299,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (enemy > 0f) {
 			// a day of exchange, both strengths as the day began; the hunts there pay the same share
 			float mine = ours + allies;
-			float share = Math.min(ThreatAbstractBattle.MAX_LOSS, ThreatAbstractBattle.LOSS_PER_RATIO * enemy / mine);
+			float share = threatinc.rules.BattleRules.dayShare(mine, enemy);
 			addRouteLoss(share);
 			ThreatAbstractBattle.foughtDay(faction, w, hostile, mine, enemy, ours * share, friends, share);
 			abstractWorldFights++;
@@ -2312,7 +2312,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			// contested, weighed here: orbitHeld counts an abstract besieger as nothing
 			float left = livePoints(hostile);
 			float now = abstractAllotment() + livePoints(friends);
-			if (left > 0f && left >= now * Math.max(0f, ThreatIncConfig.orbitContestFraction())) {
+			if (threatinc.rules.BattleRules.orbitContested(left, now, ThreatIncConfig.orbitContestFraction())) {
 				if (abstractWorldDays >= ThreatIncConfig.siegeOrbitDays()) {
 					endWorld(action, w, "held", false);
 					return true;

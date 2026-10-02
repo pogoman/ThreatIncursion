@@ -205,9 +205,7 @@ public final class ThreatIntel {
 
 	/** Radar's precision: two significant figures (3,412 -> 3,400; 63 -> 63). */
 	public static float twoFigures(float x) {
-		if (x <= 0f) return 0f;
-		double mag = Math.pow(10, Math.floor(Math.log10(x)) - 1);
-		return (float) (Math.round(x / mag) * mag);
+		return threatinc.rules.PlannerRules.twoFigures(x);
 	}
 
 	/**
@@ -258,7 +256,7 @@ public final class ThreatIntel {
 		for (String id : ids) {
 			float a = old.worldFP(id);
 			float b = now.worldFP(id);
-			if (Math.abs(b - a) < 0.5f * Math.max(a, b) || Math.abs(b - a) < 1f) continue;
+			if (!threatinc.rules.PlannerRules.moved(a, b)) continue;
 			MarketAPI m = Global.getSector().getEconomy().getMarket(id);
 			if (sb == null) sb = new StringBuilder();
 			else sb.append(", ");
@@ -575,8 +573,7 @@ public final class ThreatIntel {
 	public static float trust(String observer, String systemId, float moreDays) {
 		Report r = report(observer, systemId);
 		if (r == null) return 0f;
-		float half = Math.max(1f, ThreatIncConfig.intelHalfLifeDays());
-		return (float) Math.pow(0.5, (r.age() + Math.max(0f, moreDays)) / half);
+		return threatinc.rules.PlannerRules.trust(r.age(), moreDays, ThreatIncConfig.intelHalfLifeDays());
 	}
 
 	/** The board's figure for a report: "3,400 (41 d)", the age left off when seen today; "Unknown" when never seen. */
