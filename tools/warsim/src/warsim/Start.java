@@ -111,6 +111,36 @@ public final class Start {
 			f.strategy = Json.str(j.get("strategy"), "");
 		}
 
+		s.dump = dump;
+		// fleets in flight or on station (dump v2): parcels with no order, which each side reads as a default of its kind
+		for (Object o : Json.arr(dump.get("fleets"))) {
+			Map<String, Object> j = Json.obj(o);
+			Parcel.Kind kind;
+			try {
+				kind = Parcel.Kind.valueOf(Json.str(j.get("kind"), ""));
+			} catch (IllegalArgumentException e) {
+				continue;
+			}
+			StarSys to = s.systems.get(Json.str(j.get("to"), ""));
+			StarSys from = s.systems.get(Json.str(j.get("from"), ""));
+			if (to == null) to = s.systems.get(Json.str(j.get("at"), ""));
+			if (to == null) continue;
+			float eta = Json.num(j.get("etaDays"), -1f);
+			boolean there = Json.bool(j.get("arrived"), false) || (kind == Parcel.Kind.MUSTER);
+			Parcel p = s.send(Json.str(j.get("owner"), ""), kind, from != null ? from : to, to, Json.num(j.get("fp"), 0f), 0);
+			p.targetId = Json.str(j.get("target"), "");
+			p.marines = Math.max(0f, Json.num(j.get("marines"), 0f));
+			p.armaments = Math.max(0f, Json.num(j.get("armaments"), 0f));
+			p.fuel = Math.max(0f, Json.num(j.get("fuel"), 0f));
+			p.supplies = Math.max(0f, Json.num(j.get("supplies"), 0f));
+			if (kind == Parcel.Kind.MUSTER) p.against = to;
+			if (there) {
+				p.arriveDay = s.day;
+				p.arrived = true;
+				p.holding = true;
+			} else if (eta >= 0f) p.arriveDay = s.day + Math.max(1, (int) Math.ceil(eta));
+		}
+
 		for (Object o : Json.arr(sw.get("posture"))) {
 			Map<String, Object> j = Json.obj(o);
 			String mode = Json.str(j.get("mode"), "QUIET");
