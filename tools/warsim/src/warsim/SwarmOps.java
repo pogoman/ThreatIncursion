@@ -75,13 +75,16 @@ final class SwarmOps {
 			if (w.lost) continue;
 			boolean inRange = !k.fog;
 			for (StarSys sys : systems) if (sys.ly(w.sys) <= k.radarLY) inRange = true;
-			if (inRange) s.swarm.seen.put(w.id, new float[] { s.day, w.defence });
+			if (inRange) s.swarm.seen.put(w.id, new float[] { s.day, defenceOf(w) });
 		}
 	}
 
 	static void see(State s, StarSys sys) {
-		for (World w : s.worlds) if (!w.lost && w.sys == sys) s.swarm.seen.put(w.id, new float[] { s.day, w.defence });
+		for (World w : s.worlds) if (!w.lost && w.sys == sys) s.swarm.seen.put(w.id, new float[] { s.day, defenceOf(w) });
 	}
+
+	/** What a strike meets: the world's own defence and, at a forward base, the garrison the human side keeps there. */
+	static float defenceOf(World w) { return w.defence + w.guardFP * SwarmFit.STRIKE_UNITS_PER_FP; }
 
 	// ------------------------------------------------------------------
 	// spread
@@ -445,9 +448,6 @@ final class SwarmOps {
 			o.swarms = count;
 			p.order = o;
 			s.swarm.struck.add(w.id);
-			Faction f = s.faction(w.faction);
-			f.strikesSuffered++;
-			f.lastStruckDay = s.day;
 			s.count("strikesLaunched", 1);
 			s.log("Strike: " + (int) fp + " FP in " + count + " swarms from " + from + " at " + w + " ("
 					+ (int) ly + " ly, defence " + (int) s.swarm.seen.get(w.id)[1] + ")");
@@ -624,20 +624,32 @@ final class SwarmOps {
 			return;
 		}
 		see(s, p.to);
+		// a strike is hidden until it arrives: the faction suffers it here, and its scouts get the lead
+		Faction f = s.faction(w.faction);
+		f.strikesSuffered++;
+		f.lastStruckDay = s.day;
+		f.lastStrikeFrom = p.from;
 		float strength = strength(p);
-		if (w.defence >= strength * k.breakOff) {
+		float defence = defenceOf(w);
+		if (defence >= strength * k.breakOff) {
 			s.count("strikesBrokenOff", 1);
 			s.log("Strike broke off at " + w);
 			goHome(s, p, p.to);
 			return;
 		}
-		float lost = p.fp * BattleRules.lossShare(strength, w.defence);
-		w.defence *= 1f - BattleRules.lossShare(w.defence, strength);
+		float lost = p.fp * BattleRules.lossShare(strength, defence);
+		float worn = 1f - BattleRules.lossShare(defence, strength);
+		w.defence *= worn;
+		w.guardFP *= worn;
 		p.fp -= lost;
 		SwarmPosture.noteTrend(s, lost, 0f);
 		s.count("strikesLanded", 1);
 		if (w.forwardBase) {
-			s.loseWorld(w, true, "station destroyed by a Threat strike");
+			// the station falls when the strike outmatches what stood there; else the guard has held it
+			if (strength > defence) {
+				w.guardFP = 0f;
+				s.loseWorld(w, true, "station destroyed by a Threat strike");
+			} else s.count("strikesHeldOff", 1);
 			goHome(s, p, p.to);
 			return;
 		}
