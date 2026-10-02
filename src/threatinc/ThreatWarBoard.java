@@ -198,7 +198,7 @@ public class ThreatWarBoard {
 		public int trend;
 		/**
 		 * The player's report of the system's swarms (ThreatIntel, the fog of
-		 * war): what their eyes, radar or Cooperative allies last saw; null when
+		 * war): what their eyes or Cooperative allies last saw; null when
 		 * never seen. The board shows no live swarm figure.
 		 */
 		public ThreatIntel.Report seen;

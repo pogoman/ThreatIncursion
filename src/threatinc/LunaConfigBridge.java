@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 9;
+	static final int MIGRATION_VERSION = 10;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -56,7 +56,9 @@ class LunaConfigBridge {
 	 * default of 30 until 0.7.0, so LunaLib stored the clamp. Version 8 (the
 	 * attack planner): npcSiegeOrbitSystem true -> false. Version 9:
 	 * npcSiegeOrbitMargin back to 1.5 where version 8, on dev installs, had
-	 * moved it to 1.0.
+	 * moved it to 1.0. Version 10 (2026-10-02, no radar on either side): the
+	 * retired radarRangeLY and swarmRadarRangeLY are dropped from the store,
+	 * whatever they held.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
@@ -98,6 +100,11 @@ class LunaConfigBridge {
 				if (from == 8) {
 					changed |= bump(json, "threatinc_npcSiegeOrbitMargin", 1.0, 1.5, false);
 				}
+				// 2026-10-02: no radar on either side (docs/threat-fog.md); the knobs went
+				if (from < 10) {
+					changed |= drop(json, "threatinc_radarRangeLY");
+					changed |= drop(json, "threatinc_swarmRadarRangeLY");
+				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));
 					// LunaLib re-reads its stored file
@@ -131,6 +138,13 @@ class LunaConfigBridge {
 		if (Math.abs(json.getDouble(key) - oldDefault) > 0.001) return false;
 		if (asInt) json.put(key, (int) Math.round(newDefault));
 		else json.put(key, newDefault);
+		return true;
+	}
+
+	/** Removes a retired knob from the store, whatever it held; true when it was there. */
+	protected static boolean drop(JSONObject json, String key) {
+		if (!json.has(key)) return false;
+		json.remove(key);
 		return true;
 	}
 

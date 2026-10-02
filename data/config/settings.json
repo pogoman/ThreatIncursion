@@ -711,21 +711,18 @@
 	"threatinc_scoutFleetPoints": 20,
 	# FOG OF WAR on the swarm (docs/attack-planner.md): each mobilised faction,
 	# and you, knows the swarms only from reports - what its fleets, worlds and
-	# scouts saw (exact) and its radar saw (forward bases, military worlds,
-	# your outposts, within radarRangeLY; two significant figures). A report's
-	# trust halves every intelHalfLifeDays. false = the old exact remote read.
+	# scouts saw, exact, while there; the last picture stands and ages once they
+	# leave (no radar, 2026-10-02). A report's trust halves every
+	# intelHalfLifeDays. false = the old exact remote read.
 	"threatinc_intelFogOfWar": true,
 	"threatinc_intelHalfLifeDays": 30,
-	"threatinc_radarRangeLY": 10,
 	# FOG OF WAR for the swarm (docs/threat-fog.md): the swarm knows human
 	# attacks, bases and defences only as it saw them - by eyes (a hive, a
-	# Threat fleet or front in the system; exact), by the radar of hive worlds
-	# with a Swarm Bastion or Command (within swarmRadarRangeLY; two
-	# significant figures) and by its Scouting Swarms. A sighted attack counts
-	# for swarmContactDays after it was last seen; a place's trust halves every
-	# intelHalfLifeDays. false = the swarm's old exact remote read.
+	# Threat fleet or front in the system; exact) and by its Scouting Swarms.
+	# A sighted attack counts for swarmContactDays after it was last seen; a
+	# place's trust halves every intelHalfLifeDays. false = the swarm's old
+	# exact remote read.
 	"threatinc_swarmFogOfWar": true,
-	"threatinc_swarmRadarRangeLY": 10,
 	"threatinc_swarmContactDays": 10,
 	# the attack planner: each mobilised faction plans its sieges, raids and
 	# recon every planIntervalDays and on news, adding prongs at other worlds

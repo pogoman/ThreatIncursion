@@ -427,8 +427,8 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 	}
 
 	/**
-	 * The poster's observer id: the base's faction, whose eyes, radar and
-	 * partners' reports (ThreatIntel, the fog of war) the bounty quotes.
+	 * The poster's observer id: the base's faction, whose eyes and partners'
+	 * reports (ThreatIntel, the fog of war) the bounty quotes.
 	 */
 	protected String poster() {
 		return factionId;
