@@ -258,6 +258,6 @@ final class HumanPools {
 		List<World> donors = donors(s, base);
 		return ReachRules.baseRangeLY(payable(s, base, World.FUEL, true, donors), payable(s, base, World.SUPPLIES, true, donors),
 				s.knobs.f("threatinc_expeditionFuelPerPointLY"), s.knobs.f("threatinc_expeditionSuppliesPerPoint"),
-				ReachRules.DEFAULT_SUPPLIES_PER_FP, HumanFit.PREP_MIN_DAYS + HumanFit.PREP_SPAN_DAYS, State.LY_PER_DAY);
+				HumanPlanner.suppliesPerFP(s), HumanFit.PREP_MIN_DAYS + HumanFit.PREP_SPAN_DAYS, State.LY_PER_DAY);
 	}
 }

@@ -34,6 +34,9 @@ final class HumanPlanner {
 
 	static float roundUp(float fp) { return (float) Math.ceil(fp / ReachRules.FP_PER_POINT) * ReachRules.FP_PER_POINT; }
 
+	/** ThreatReach.DEFAULT_FACTION_SUPPLIES_PER_FP x warsim_suppliesPerFPMult (round 17): the gate's price and the fleets' burn alike. */
+	static float suppliesPerFP(State s) { return ReachRules.DEFAULT_SUPPLIES_PER_FP * s.knobs.f("warsim_suppliesPerFPMult", 1f); }
+
 	static boolean booked(State s, Faction f, Hive h, Parcel.Kind... kinds) {
 		for (Parcel p : s.parcels) {
 			// f == null: booked by any faction (IncursionManager.siegeTargets skips a hive an expedition is already out for)
@@ -104,8 +107,12 @@ final class HumanPlanner {
 		// round 16 trial c (warsim_tripBilledOut): the gate prices the voyage out and the stay; the way home is billed as it
 		// goes (ThreatUpkeep), as every other fleet's upkeep is - the draw (the hulls' deposit) is unchanged either way
 		if (s.knobs.b("warsim_tripBilledOut", false)) trip -= ReachRules.days(o.ly, State.LY_PER_DAY);
+		// round 17: the trip horizon the gate bills (the mod's siegeStayDays / siegeTripDays) scaled, or a fixed number of days
+		trip *= s.knobs.f("warsim_tripMult", 1f);
+		float fixed = s.knobs.f("warsim_tripFixedDays", 0f);
+		if (fixed > 0f) trip = fixed;
 		float supplies = points * ReachRules.siegeSuppliesPerPoint(s.knobs.f("threatinc_expeditionSuppliesPerPoint"),
-				ReachRules.DEFAULT_SUPPLIES_PER_FP, trip);
+				suppliesPerFP(s), trip);
 		// landingSupply: armaments for npcFrontSupplyDays of a pushing front
 		float arms = marines * s.knobs.f("threatinc_frontArmamentsPerMarinePer30Days")
 				* s.knobs.f("threatinc_frontPushUpkeepMult") * s.knobs.f("threatinc_npcFrontSupplyDays") / 30f / 2f;
