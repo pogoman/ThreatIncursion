@@ -260,3 +260,13 @@ starts: `pd9a-newgame` (day 4 of the PoseidonDeimos game, no hives yet) and `pd9
 **pd9a (2026-10-02),** the first dated run with dumps: the planner (council off), 114 months, 0
 exceptions; 56 hives at the end, 24 eradicated, 7 human worlds taken, 15 forward bases founded
 and 14 lost. Extract `ti-pd9a.txt`, 116 monthly dumps in `simdump-pd9a` (test output folder).
+
+**The two sides joined (2026-10-02).** `SwarmSide` and `HumanSide` run together (`Sim.run`);
+`Start.fill` ends with `HumanSide.load`. The seams: a strike meets `SwarmOps.defenceOf` (the
+world's defence plus its forward-base guard, `World.guardFP` x `SwarmFit.STRIKE_UNITS_PER_FP`)
+and wears both; a faction suffers a strike when it arrives, not when it sails (`SwarmOps.strike`
+sets `strikesSuffered`, `lastStruckDay`, `lastStrikeFrom`); a station falls only to a strike
+that outmatches what stood there (`strikesHeldOff` counts the rest). First joined check
+against pd9a, 30 seeds x 114 months in 14 s: 58 of 80 figures inside p10-p90, all of months
+0-36; from month 48 the swarm overruns the humans (see facts.md, "Does the joined simulator
+match pd9a?"). Fitting the joined war is the open job.
