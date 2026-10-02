@@ -119,6 +119,18 @@ public final class SwarmFit {
 	 * Stands in for a defence model of a colony at war: 28 "Strike pass (reinforce)" for 86 landings.
 	 */
 	public static final float INVADED_GATE_SHARE = 0.1f;
+	/**
+	 * warsim_basesHold (hypothesis, round 8): days a strike must hold a forward base's orbit with its guard sunk before
+	 * the station falls - the coordinator's "30 days, as sieges on hives work"; nothing in the mod or a run fits it.
+	 */
+	public static final int STATION_SIEGE_DAYS = 30;
+	/**
+	 * warsim_coloniesFall (hypothesis, round 8): a colony's own ground defence per size, the vanilla figure the
+	 * strike gate ignores (facts.md: Donn's ground defence 55 against a fleet gate of 1,447); the armed marines of
+	 * the reserve (w.stock, x reserveDefenseMult) are the rest, at marineCounterAttackMult 0.25 when they counter-attack
+	 * (ground-war-defenders.md "Holding a line and going over the top are different jobs").
+	 */
+	public static final float COLONY_GROUND_PER_SIZE = 15f, MARINE_COUNTER_ATTACK_MULT = 0.25f;
 	/** A world taken becomes a hive when it is a planet: Kanni and Qaras did, Kanta's Den (a station) did not. */
 	public static final float CONQUEST_HIVE_SHARE = 0.67f;
 	/**

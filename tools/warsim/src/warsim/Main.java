@@ -33,6 +33,8 @@ public final class Main {
 			"turnover", "swings", "reversals", "contested", "deadYears" };
 	/** The run classes of docs/war-sim.md 7: back-and-forth from this many momentum swings, a stalemate from this many dead years. */
 	static final int BACK_AND_FORTH_SWINGS = 3;
+	/** Round 8 (2026-10-02): the class is back-and-forth on reversals too, this many per year of the run (swings read 0 in every run so far). */
+	static final double BACK_AND_FORTH_REVERSALS_PER_YEAR = 1.0;
 	static final double STALEMATE_DEAD_YEARS = 3;
 	static final String[] CLASSES = { "decided for the swarm", "decided for the humans", "back-and-forth", "stalemate", "other" };
 	static final int[] CHECKPOINTS = { 12, 24, 36, 48, 72, 97 };
@@ -236,6 +238,7 @@ public final class Main {
 		if (val(m, "decided") > 0) return 0;
 		if (val(m, "decided") < 0) return 1;
 		if (val(m, "swings") >= BACK_AND_FORTH_SWINGS) return 2;
+		if (val(m, "reversals") >= BACK_AND_FORTH_REVERSALS_PER_YEAR * (r.months.size() - 1) / 12.0) return 2;
 		if (val(m, "deadYears") >= STALEMATE_DEAD_YEARS) return 3;
 		return 4;
 	}

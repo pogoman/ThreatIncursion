@@ -306,3 +306,43 @@ Result, 30 seeds: pd9a 155 of 218, pd10a 130 of 193 (106 before); 93 of 168 cell
 pd10a | median [p10-p90]: hives 32 | 90 | 70 [30-120]; garrisonFP 54k | 79k | 44k [31k-92k]; hivesFounded 45 | 118 |
 96 [49-133]; hivesKilled 16 | 35 | 19 [11-26]; monthsConsolidate 47 | 10 | 22 [15-36]; swarmSupplies 303 | 349k |
 10k [4k-174k].
+
+## 12. Round 8: two structural hypotheses (2026-10-02)
+
+Both real runs end with the humans holding 0-3 forward bases and the swarm having taken only undefended pirate or
+Path worlds, so no ground changes hands twice and `reversals` cannot rise. Two switches, off by default and with
+no mod symbol behind them, test whether that is the whole story (`SwarmKnobs.basesHold`, `coloniesFall`):
+
+- `warsim_basesHold`: a strike that outmatches a forward base sinks its guard but not the station
+  (`SwarmOps.strike`); it holds the orbit as a station siege (`StrikeOrder.besieging`, `stationSiegeDay`) and the
+  base falls after `SwarmFit.STATION_SIEGE_DAYS` 30 with no guard back. A guard the faction sends meanwhile
+  (`HumanBases.garrison`, sized to the wanted guard as always) fights the besiegers as a strike is fought: one that
+  outweighs them lifts the siege, one that does not is sunk. Counters `stationSieges`, `stationSiegesLifted`,
+  `stationReliefsSunk`, `stationSiegeDays`.
+- `warsim_coloniesFall`: a landing on a colony at war fights `SwarmOps.threatFrontDay`, `HumanSiege.frontDay`
+  mirrored for a Threat-owned front (no armaments, pushing losses x `threatPushLossMult`, a district per
+  `frontPushBaseDays` at the pace, counter-attacks on the hive clock, overrun at 2:1) against
+  `SwarmOps.colonyDefence`: `SwarmFit.COLONY_GROUND_PER_SIZE` 15 a size plus the reserve marines of `World.stock`
+  (x `reserveDefenseMult`), whole when holding and at `MARINE_COUNTER_ATTACK_MULT` 0.25 when counter-attacking;
+  the defenders bleed `defenderLossPer30Days` of the engaged and `defenderCounterAttackLossFraction` a
+  counter-attack. A reinforcing pass adds troops (`SwarmOps.land`). Worlds with no reserve keep the `groundDays`
+  clock. Counters `threatFrontsEngine`, `coloniesFallen`, `threatFrontsCollapsed`, `colonyCounterAttacks`,
+  `threatStrataTaken`. `Main.outcome` also classes a run back-and-forth on `reversals` at
+  `BACK_AND_FORTH_REVERSALS_PER_YEAR` 1 (9 in 104 months, 4 in 48).
+
+Result, 30 seeds, median (clear = outside the seed noise). New game 104 months, council: A moves only bases
+destroyed (47.5 -> 33.5): 44.5 station sieges, 4 lifted, 5 reliefs sunk - the wanted guard never matches a
+strike (`strikesHeldOff` 0), and the relief is the same guard again. B: 154 engine fronts, 26.5 colonies fallen,
+worlds lost 14.5 -> 42, bases held 11.5 -> 2, Threat score 875 -> 1627; reversals 5 -> 4, contested 18 -> 13.5.
+A+B as B. Planner: A nothing; B worlds lost 14 -> 39.5, turnover 22 -> 30, hives 86 -> 149 (90%), reversals 3 -> 4,
+contested 15. Month 114 + 48, council: A nothing (32.5 sieges); B and A+B one-sided - worlds lost 3 -> 33,
+hives 145 -> 219, bases held 9.5 -> 3, reversals 3 -> 0, contested 13 -> 6, deadYears 0.5 -> 0.3, all clear.
+Planner: A nothing (0.5 sieges: the planner founds no bases there); B and A+B worlds lost 3 -> 33, hives 143 -> 222, turnover
+27 -> 53, reversals 1 -> 0, deadYears 1.0 -> 0.4, contested 4 unchanged, all clear.
+Reading: ground that can change hands twice does not make the war back-and-forth on its own. A alone changes
+nothing because nothing the faction sends can lift a siege; B alone hands the swarm the colonies and the
+measures fall. The reversal needs the other side to answer in the same place - a relief sized to the besiegers,
+or a counter-siege of the conquered hive - which neither the planner nor the council does. The colony-defence
+figure (15 a size plus marines) is a guess against one number (Donn 55), and the humans' own navy over an
+invaded colony and their relief convoys are not modelled, so B overstates how fast a defended colony falls
+(the real runs: 0 of 56 at war).
