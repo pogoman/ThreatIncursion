@@ -146,9 +146,9 @@ next strike reinforces. Two things in the game's code the simulator lacked:
 - `warsim_invadedGateShare` replaces the constant 0.1 (fitted on pd9a, before guards entered the gate). At 0.5 one
   seed splits 127 new fronts / 157 reinforcements (game 114 / 86) and loses more worlds. Not checked across runs.
 
-**The runaway swarm - the open question.** With break-up off (hw4f, hw4g) the game's swarm stops growing from month
-96: garrison 41-59k FP, hive size 328-450, supplies in stock 4-7k on 70k a month. The simulator's keeps growing: at
-month 134 a 350k garrison, size 1,401, 307 hives against 167, 374k supplies. On hw4d (as built) the two match (252
-and 243 hives). The gap opens before conquests can explain it (month 108: 31 more hives, 9 more worlds lost) and is
-why the simulator cannot judge the break-up lever. Next: what caps the game's swarm when it does not conquer -
-founding (`hivesFounded` 145 against 106 at month 108), size upkeep, or what it spends its supplies on.
+**The runaway swarm - inside the game's spread.** With break-up off hw4g's swarm stopped growing from month 96
+(garrison 41-59k FP, hive size 328-450, supplies in stock 4-7k on 70k a month) while the simulator's kept growing
+(month 134: a 350k garrison, size 1,401, 307 hives against 167, 374k supplies). hw4h, the same setting on a fresh
+clone (`war-sim-real-runs.md` 11), ran away as the simulator does: month 134 hives 305, size 1,319, garrison 366k,
+360k supplies, all on the simulator's medians. So the late swarm is not a simulator fault the two runs can show; the
+landings (246 against 105-109) and overruns (187 against 42-62) are, and they come from the fronts above.
