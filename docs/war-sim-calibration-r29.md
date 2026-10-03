@@ -213,7 +213,8 @@ a lead sweep visits the others in turn), and one arrival ended three RECON plays
 (a council's recon reports its own system) is built, off: RECON plays 12 -> 14 days (seed 3), so not the cause.
 Not found yet: the scouts' trip (nearest base,
 `State.travelDays`, 2 days a light year), and the game's reports shared between factions (its intel census reads
-"eyes from luddic_church" in luddic_path's picture).
+"eyes from luddic_church" in luddic_path's picture). The game sent 67 recon parties in hw4h (`^Recon: ` lines), back
+home a median 34 days later (FIFO-matched to `Scout of F home`), so most of its 184 RECON plays end without one.
 
 **Why the Defend-off fronts died young (2026-10-03, 05:00-05:15).** Landings a strike match the game on two settings
 (as built 0.36 against 0.42, no break-up 0.33 against 0.30) and not on Defend off (0.58 against 0.33): with no guard
