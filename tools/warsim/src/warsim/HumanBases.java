@@ -282,12 +282,33 @@ final class HumanBases {
 				if (w.reliefFP >= 1f) reliefHome(s, f, w);
 				continue;
 			}
+			// threatinc_reliefStays false (the mod before 2026-10-03): relief left guardDays after it came, and the next was asked
+			if (w.reliefFP >= 1f && !s.knobs.b("threatinc_reliefStays", true)
+					&& s.day - w.reliefSinceDay >= s.knobs.i("threatinc_guardDays")) {
+				s.count("reliefInvaded.termEnded", 1);
+				reliefHome(s, f, w);
+				continue;
+			}
 			if (w.reliefFP >= 1f && s.day % 30 == 0) {
 				float due = w.reliefFP * guardUpkeepPerFP(s);
 				if (!HumanPools.pay(s, w, new float[] { 0f, 0f, 0f, due }, false, "guardUpkeep")) {
 					s.count("reliefInvaded.unpaid", 1);
 					reliefHome(s, f, w);
 					continue;
+				}
+			}
+			if (w.reliefFP >= 1f) {
+				// relief-days over a landing; on the overrun clock (no front engine) nothing it does reaches the army
+				s.count("reliefInvaded.days", 1);
+				if (!s.swarm.landings.get(w.id).engine) s.count("reliefInvaded.clockDays", 1);
+				// warsim_reliefFightDays: a relief on station keeps fighting the guard (ThreatGroundFronts.tickRelief -> fightOrbit:
+				// the game's aggressive orbit engages every Threat fleet over the world); 0, only on arrival (HumanSide.arrive)
+				int every = (int) s.knobs.f("warsim_reliefFightDays", 0f);
+				if (every > 0 && s.knobs.b("warsim_reliefFights", false) && s.day - w.reliefFightDay >= every
+						&& !SwarmOps.guards(s, w).isEmpty()) {
+					w.reliefFightDay = s.day;
+					s.count("reliefInvaded.fights", 1);
+					SwarmOps.reliefFight(s, w);
 				}
 			}
 			if (w.guardFP >= reliefGoal(s, w) || s.day - w.guardAskedDay < HumanFit.GUARD_RETRY_DAYS) continue;

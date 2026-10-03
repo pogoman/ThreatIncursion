@@ -418,6 +418,7 @@ public final class HumanSide implements Side {
 			if (o.guards != null && !o.guards.lost) {
 				o.guards.guardFP += p.fp;
 				if (o.relief) {
+					if (o.guards.reliefFP < 1f) o.guards.reliefSinceDay = s.day;
 					o.guards.reliefFP += p.fp;
 					o.guards.reliefFP0 += p.fp;
 					o.guards.reliefDeposit += o.deposit;
