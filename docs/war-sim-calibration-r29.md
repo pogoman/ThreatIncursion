@@ -374,3 +374,25 @@ humans' gain is relief at all plus the orbit gate on the break-up, a rule the ga
 bombardment, is self-limiting by design: it holds fire once the defenders are winning. In the game the bigger gap is
 relief that never comes: in hw4p, 14 of the 32 worlds taken got none, most refused with `no base in reach can
 provision it` (`facts.md`, "Does a human fleet over its own invaded world hurt the Threat army?").
+
+## Supplies income (2026-10-04)
+
+The simulator shows the game's supplies famine (`war-sim-real-runs.md` 21). On hw4r its human supplies fall from
+498k at month 60 to 116k at month 120 and 53k at month 132 (game: 674k, 51k, 35k). Its income is about 46k a month,
+against the game's 53k from the dumps. The check now carries `humanFuel` and `humanSupplies`. The supplies probe
+`warsim_suppliesAccrualMult` scales supplies income alone, standing in for `reserveWartimeSupplies`, because the
+dumps do not carry the availability that rule banks. hw4r, 30 seeds, human worlds held (game: 54, 49, 34):
+
+| supplies income | month 108 | month 120 | month 132 | supplies, month 120 | hives, month 120 | inside |
+|---|---|---|---|---|---|---|
+| x1 | 30 | 15.5 | 7 | 116k | 214 | 334 of 538 |
+| x2 | 39.5 | 27.5 | 16 | 1.05M | 194 | 375 of 538 |
+| x4 | 42.5 | 33 | 18.5 | 5.8M | 164 | 368 of 538 |
+
+Supplies income is a strong lever. Doubling it keeps 12 more worlds at month 120, and the check fits the game run
+better. Beyond that the supplies pile up unspent, so something under double may be enough. How much the wartime rule
+adds in game is for a game run to show.
+
+The simulator never counted the surplus multiplier twice in a check run. A dumped `accrualPer30` already holds it, but
+check runs bank by `HumanFit.ACCRUAL_BY_SIZE`, fitted at 1.0, so `Start` now divides a dumped figure without
+changing any check result (`warsim_accrualAsDumped`).

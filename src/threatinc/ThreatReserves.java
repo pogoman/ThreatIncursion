@@ -785,9 +785,9 @@ public class ThreatReserves {
 			CommodityOnMarketAPI com = m.getCommodityData(commodityId);
 			if (com == null) continue;
 			banked += BaseIndustry.getSizeMult(bankUnits(m, com));
-			// wartime fuel: the producer's whole output, its own traffic's share too
+			// wartime fuel and supplies: the producer's whole output, its own traffic's share too
 			float own = Math.min(com.getMaxSupply(), structuralAvailable(com))
-					- (wartimeFuel(com) ? 0f : WarFootingDemand.peacetimeDemand(m, com));
+					- (wartime(com) ? 0f : WarFootingDemand.peacetimeDemand(m, com));
 			if (own > 0f) made += BaseIndustry.getSizeMult(own);
 			if (com.getCommodityMarketData() != null) {
 				foreign = Math.max(foreign, com.getCommodityMarketData().getMaxExportGlobal());
@@ -825,7 +825,7 @@ public class ThreatReserves {
 
 	/**
 	 * Units a war faction's colony banks: its surplus ({@link #surplusUnits}),
-	 * but all of its fuel under {@link #wartimeFuel} - the fuel its peacetime
+	 * but all of its fuel and supplies under {@link #wartime} - what its peacetime
 	 * demand stands for is its civilian and trade traffic, which a war
 	 * requisitions, as a hive's fuel is all its fleets' (ThreatFuel). The
 	 * faction's banking stays held to what it makes or buys in
@@ -833,7 +833,12 @@ public class ThreatReserves {
 	 */
 	public static float bankUnits(MarketAPI market, CommodityOnMarketAPI com) {
 		if (com == null) return 0f;
-		return wartimeFuel(com) ? structuralAvailable(com) : surplusUnits(market, com);
+		return wartime(com) ? structuralAvailable(com) : surplusUnits(market, com);
+	}
+
+	/** Whether the commodity banks at the war rate, the colony's whole availability: fuel ({@link #wartimeFuel}) or supplies ({@link #wartimeSupplies}). */
+	public static boolean wartime(CommodityOnMarketAPI com) {
+		return wartimeFuel(com) || wartimeSupplies(com);
 	}
 
 	/**
@@ -845,6 +850,18 @@ public class ThreatReserves {
 	 */
 	public static boolean wartimeFuel(CommodityOnMarketAPI com) {
 		return com != null && Commodities.FUEL.equals(com.getId()) && ThreatIncConfig.reserveWartimeFuel();
+	}
+
+	/**
+	 * Supplies bank at the war rate too (reserveWartimeSupplies, 2026-10-04):
+	 * at the surplus rate the human factions banked ~53k supplies a month
+	 * against ~40k of fleet upkeep and ~14k of hunts, garrisons and sieges,
+	 * and every faction's supplies ran dry by
+	 * months 84-120 while its fuel sat at 50k-1M (hw4p, hw4q, hw4r); relief
+	 * then could not sail from any base at all.
+	 */
+	public static boolean wartimeSupplies(CommodityOnMarketAPI com) {
+		return com != null && Commodities.SUPPLIES.equals(com.getId()) && ThreatIncConfig.reserveWartimeSupplies();
 	}
 
 	/** Vanilla's availability (units) less what this mod's own trade modifiers contribute to it. */
