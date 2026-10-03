@@ -441,3 +441,30 @@ and 12 strikes held back. Fronts: first counter-attacks overran 7 of 96, later o
 **What it says about the simulator.** Check 343 of 466 inside (the Defend-off setting). Worlds lost at month 127 sit
 inside (26 against 37.5 [12.9 - 49]), as do landings (136 against 210 [108 - 269]), hives and marines; beachheads overrun
 stay under the p10 (62 against 156 [88 - 212]): the Defend-off gap of `war-sim-calibration-r29.md`.
+
+## 15. hw4l (2026-10-03 overnight): as built, a fourth time
+
+A fourth as-built run on a thirteenth clone (`...ng14`, the 0387fd8 jar, every knob as shipped), to month 132.
+Dumps `tools/warsim/validation/hw4l`, log `ti-hw4l.txt`.
+
+| | m72 | m96 | m108 | m120 | m132 |
+|---|---|---|---|---|---|
+| human worlds lost | 2 | 2 | 6 | 21 | 43 (16 left) |
+| defenders' marines | 87k | 94k | 78k | 48k | 7k |
+| hives / killed | 34 / 1 | 74 / 1 | 105 / 1 | 144 / 1 | 272 / 1 |
+| swarm strikes / landings | 67 / 25 | 151 / 48 | 220 / 72 | 285 / 102 | 315 / 118 |
+| NPC sieges sailed | 3 | 4 | 4 | 5 | 5 |
+
+**The as-built shape again, late.** Two worlds lost at month 96, 21 at month 120, 40 at month 126 (the log's ground
+victories) and 43 at month 132, as the defenders' marines fell from 78k to 7k in two years. At month 126 the four
+as-built runs stand at 52, 39, 21 and 40 (median 39.5), the three Defend-off runs at 21, 20 and 26. Guards broke up
+2,867 FP of hulls into 28,670 troops in 119 break-ups, beachheads 1,244 FP in 40 landings; no strike held back. Fronts:
+first counter-attacks overran 1 of 83, later ones 49 of 508 (ratio p50 1.56, p90 2.07); 50 fronts overrun, 35 won.
+NPC sieges sailed 5, the fewest of any run, and the humans killed one hive. Guards: 200 placed, 117 stood down with
+their front standing, a median 26 days after placement; of the fronts overrun, 31 had lost their guard over a month
+before and 12 never had one (`war-sim-calibration-r29.md` "The guards go home").
+
+**What it says about the simulator.** Check 338 of 466 inside. The simulator loses worlds a year early here (the game sits under
+its p10 from month 84 to 120: month 96 2 against 21.5 [12 - 28], month 120 21 against 46 [28.9 - 52]) and is level by the end (43 against 53 [39.9 - 56.1]);
+its marines fall sooner (month 108: 78k against 37k). Landings and overruns sit inside to month 132 (118 against 131,
+50 against 68.5).
