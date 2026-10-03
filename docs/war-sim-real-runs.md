@@ -344,3 +344,27 @@ times against 109: its strikes muster 1.5-2 times the game's swarms late in the 
 colony strikes against the game's about half (the game's 212 colony strikes ran 110 abstract sieges; 41 of 270
 arrival fights were lost outright, and the rest of the gap was not traced). The game runs, not the simulator, are
 the evidence for the break-up decision.
+
+## 11. hw4h (2026-10-03 overnight): beachheads only, again
+
+A repeat of hw4g's setting on a ninth clone (`...ng10`, same jar, `threatinc_fabricateDefendEnabled` false), to
+month 134. Dumps `tools/warsim/validation/hw4h`, log `ti-hw4h.txt`.
+
+| | m72 | m96 | m108 | m120 | m134 |
+|---|---|---|---|---|---|
+| human worlds lost | 2 | 3 | 3 | 7 | 33 (26 left) |
+| defenders' marines | 94k | 133k | 136k | 117k | 61k |
+| hives / killed | 34 / 3 | 85 / 4 | 121 / 4 | 190 / 4 | 305 / 4 |
+| swarm strikes / landings | 63 / 20 | 133 / 35 | 179 / 45 | 251 / 78 | 319 / 105 |
+| NPC sieges sailed | 5 | 11 | 11 | 11 | 11 |
+
+**The same setting, a different war.** hw4h held longer than hw4g (7 worlds lost at month 120 against 16), then lost
+26 in the last 14 months. Its swarm did not stop growing as hw4g's did: at month 134 305 hives against 167, hive size
+1,319 against 450, a 366k garrison against 59k, 360k supplies in stock against 7k. 42 beachheads broke up 1,955 FP
+into 19,707 troops (hw4g 1,443 FP).
+
+**What it says about the simulator.** The runaway swarm of `war-sim-calibration-r29.md` ("Fronts, the gate and the
+runaway swarm") is inside the game's own spread: hw4h's month-134 swarm (hives 305, size 1,319, garrison 366k) sits
+on the simulator's medians (293, 1,482, 389k), hw4g's far under them. Landings and overruns stay out on both runs:
+the simulator lands 246 times by month 134 against 105-109 and overruns 187 beachheads against 42-62. Check: 337 of
+514 inside.
