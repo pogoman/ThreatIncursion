@@ -242,3 +242,25 @@ Seed 3, month 126, fronts / overruns / worlds lost (the game's in brackets):
 
 With all three the later ratios are 1.58-1.65 / 1.95-2.07 on every setting, the game's shape. Veterancy with dilution
 but no clock: Defend off 178 / 120 / 41; the clock alone: 247 / 191 (the fronts then bleed out instead).
+
+**The check on all five runs** (30 seeds each, inside / distance over all rows / over the war rows; base is the
+defaults since 05:00):
+
+| | inside | all rows | war rows | hw4d | hw4e | hw4f | hw4g | hw4h |
+|---|---|---|---|---|---|---|---|---|
+| base | 1,794 | 1,036 | 171 | 365 | 369 | 338 | 350 | 372 |
+| clock + dilution + veterancy | 1,735 | 984 | 155 | 319 | 305 | 339 | 379 | 393 |
+| veterancy + dilution | 1,724 | 1,019 | 158 | 338 | 332 | 313 | 345 | 396 |
+| clock + dilution | 1,771 | 1,022 | 167 | 350 | 330 | 316 | 386 | 389 |
+
+All three give the best medians and the Defend-off runs gain 50 cells, but veterancy makes the as-built fronts too
+safe: month 120 overruns 23.5 against hw4d's 46, landings 84 against 123 (clock + dilution: 48 and 108). On Defend
+off (hw4h, month 120) landings / overruns go 206 / 153 (base) -> 186 / 130 (clock + dilution) -> 142 / 84.5 (all
+three) against the game's 78-90 / 37-53. Per landing that is now the game's (0.39 landings a strike against
+0.31-0.38, 0.60 of fronts overrun against 0.47-0.59); what is left is the strike count, 366 against 239-251.
+On the two newest runs (hw4i no break-up, hw4j as built) the rules buy nothing: inside 699 (base), 659 (all three),
+662 (clock + dilution), 655 (veterancy + dilution), distances level (410-424); hw4j loses 37-51 cells to each. Over
+all seven runs base keeps the most inside (2,493 of 3,454) against 2,394-2,433, all three the best distances (1,448
+-> 1,394, war rows 240 -> 224). **All three stay off**: they fix the Defend-off fronts and break the as-built ones,
+so something in how a fed front ages is still missing (the game lands, reinforces and breaks hulls in at
+`npcLandingVeterancy` 0.15 as the simulator now does). Not traced.
