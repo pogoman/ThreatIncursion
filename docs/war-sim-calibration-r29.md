@@ -264,3 +264,7 @@ all seven runs base keeps the most inside (2,493 of 3,454) against 2,394-2,433, 
 -> 1,394, war rows 240 -> 224). **All three stay off**: they fix the Defend-off fronts and break the as-built ones,
 so something in how a fed front ages is still missing (the game lands, reinforces and breaks hulls in at
 `npcLandingVeterancy` 0.15 as the simulator now does). Not traced.
+Relief to invaded colonies (`warsim_reliefToInvaded`), on the thought that the game's relief sinks the guards that
+feed its fronts: alone it costs 69 cells and the distances (2,424, 1,484 / 257); with the three rules it gets 2,432
+inside and 1,399 / 229 (hw4d back to 349, hw4e and hw4j still 307 and 343). The best medians of the night, still 61
+cells under base, so it stays off too (a default changes only when both measures improve).
