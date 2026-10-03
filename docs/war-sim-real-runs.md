@@ -418,3 +418,26 @@ simulator's p10 at every month (month 120: 10 against 46 [28.9 - 52]; month 133:
 the defenders' marines over its p90 (35k at month 133 against 3.5k [1.9k - 19.5k]); strikes, overruns, hives and NPC
 sieges inside. With hw4d (on the simulator's median) and hw4e (under it), the game's spread on one setting is wider
 than the simulator's.
+
+## 14. hw4k (2026-10-03 overnight): beachheads only, a third time
+
+A third run of the Defend-off setting on a twelfth clone (`...ng13`, the 0387fd8 jar, `threatinc_fabricateDefendEnabled`
+false), to month 127. Dumps `tools/warsim/validation/hw4k`, log `ti-hw4k.txt`.
+
+| | m72 | m96 | m108 | m120 | m127 |
+|---|---|---|---|---|---|
+| human worlds lost | 3 | 4 | 6 | 11 | 26 (33 left) |
+| defenders' marines | 104k | 99k | 96k | 74k | 39k |
+| hives / killed | 39 / 1 | 75 / 4 | 107 / 4 | 195 / 4 | 239 / 4 |
+| swarm strikes / landings | 58 / 22 | 144 / 52 | 209 / 72 | 281 / 114 | 325 / 136 |
+| NPC sieges sailed | 5 | 19 | 21 | 21 | 21 |
+
+**The same shape as hw4h.** It held to 11 worlds lost at month 120, then lost 15 in seven months as the defenders'
+marines fell from 74k to 39k. At month 126 (the logs' ground victories) the three Defend-off runs stood at 21, 20 and
+26, against 52, 39 and 21 as built and 21 and 42 with no break-up. Beachheads broke up 1,633 FP of hulls in 54 landings
+and 12 strikes held back. Fronts: first counter-attacks overran 7 of 96, later ones 55 of 457 (ratio p50 1.63, p90
+2.09); 62 fronts overrun, 20 won. NPC sieges sailed 21, more than any other run (hw4g 11).
+
+**What it says about the simulator.** Check 343 of 466 inside (the Defend-off setting). Worlds lost at month 127 sit
+inside (26 against 37.5 [12.9 - 49]), as do landings (136 against 210 [108 - 269]), hives and marines; beachheads overrun
+stay under the p10 (62 against 156 [88 - 212]): the Defend-off gap of `war-sim-calibration-r29.md`.
