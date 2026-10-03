@@ -135,7 +135,10 @@ final class HumanIntel {
 	}
 
 	/** Sends a recon party (scoutFleetPoints) from the faction's nearest base; false if none can pay. */
-	static boolean scout(State s, Faction f, StarSys to) {
+	static boolean scout(State s, Faction f, StarSys to) { return scout(s, f, to, false); }
+
+	/** As above; `recon` marks a council's one-stop recon scout. */
+	static boolean scout(State s, Faction f, StarSys to, boolean recon) {
 		for (Parcel p : s.parcels) {
 			if (!p.done && p.kind == Parcel.Kind.SCOUT && p.to == to && !p.threat()) return true;
 		}
@@ -150,6 +153,7 @@ final class HumanIntel {
 		HumanOrder o = new HumanOrder();
 		o.home = base;
 		o.deposit = cost[1];
+		o.recon = recon;
 		p.order = o;
 		s.count("scoutsSailed", 1);
 		return true;
@@ -158,8 +162,12 @@ final class HumanIntel {
 	/** A scout on the spot: the hives of that system and of those within scoutLeadRadiusLY are found. */
 	static void scoutArrived(State s, Parcel p) {
 		float lead = s.knobs.f("threatinc_scoutLeadRadiusLY");
+		// warsim_reconOneStop (2026-10-03): the game's recon scout has one stop and reports the system it enters
+		// (ThreatScouts.onEnter); filing every hive system within the lead radius at once ended other RECON plays early
+		boolean oneStop = p.order instanceof HumanOrder && ((HumanOrder) p.order).recon && s.knobs.b("warsim_reconOneStop", false);
 		for (StarSys sys : s.systems.values()) {
 			if (sys.ly(p.to) > lead || !s.hasHive(sys)) continue;
+			if (oneStop && sys != p.to) continue;
 			boolean fresh = !s.foundHiveSystems.contains(sys);
 			file(s, sys, see(s, sys, sys != p.to), p.owner);
 			if (fresh) {

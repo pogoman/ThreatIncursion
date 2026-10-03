@@ -201,4 +201,16 @@ the defenders' bleed (`ThreatGroundFronts` tick: `frontLose`, `bleedDefenders`, 
 asked before, so a front at 1.99:1 pushed on, bled past 2 and the day's counter-attack overran it. Every first
 counter-attack that overran in the simulator did so at 2.03-2.04, on a front still pushing: 24 of 138 (seed 3), where
 the game's first counter-attacks overran 1 of 85 (hw4g) and 1 of 74 (hw4h) (`ovr.pl`). `warsim_braceAfterAttrition`
-asks in the game's order: 4 of 139. Across hw4d-h the check rose 1,735 -> 1,794 inside (every run gained), the war rows' distance fell 177 -> 171, all rows' 1,026 -> 1,036; on since 05:00. Total overruns hardly move (seed 3: 121): the fronts die later instead (overrun at a median 192 days against 164).
+asks in the game's order: 4 of 139. Across hw4d-h the check rose 1,735 -> 1,794 inside (every run gained), the war rows' distance fell 177 -> 171, all rows' 1,026 -> 1,036; on since 05:00. Total overruns hardly move (seed 3: 121): the fronts die later instead (overrun at a median 192 days against 164). With the brace in, veterancy costs 108 cells inside (1,794 -> 1,686; hw4d, hw4e and hw4f lose 22-46 each) for distances a little better (all rows 1,036 -> 1,029, war rows 171 -> 166, both from the Defend-off runs): part of what it had fixed was the late brace, so it stays off.
+
+**The councils play twice as often.** With the strategies on the game's (3-4 factions on HOLD, 3-4 on STARVE), the
+simulator's councils start about twice the plays (hw4h's settings, month 134: RECON 332 against 184, BOMBERS 40
+against 18, HAMMER 57 against 25) but half the STARVE (28 against 52). Its RECON plays end on a fresh picture in a
+median 11 days against the game's 23 (`plays.pl`; the end rule and `RECON_FRESH_DAYS` 2 are the game's), and its
+STARVE plays run 56 days against 179, BOMBERS 21 against 40. The simulator's scout filed a report for every hive
+system within `scoutLeadRadiusLY` 6 on arrival, where the game's reports the system it enters (`ThreatScouts.onEnter`;
+a lead sweep visits the others in turn), and one arrival ended three RECON plays on one day. `warsim_reconOneStop`
+(a council's recon reports its own system) is built, off: RECON plays 12 -> 14 days (seed 3), so not the cause.
+Not found yet: the scouts' trip (nearest base,
+`State.travelDays`, 2 days a light year), and the game's reports shared between factions (its intel census reads
+"eyes from luddic_church" in luddic_path's picture).

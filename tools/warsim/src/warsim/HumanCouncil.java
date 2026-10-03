@@ -545,7 +545,7 @@ final class HumanCouncil {
 	static boolean reconInForce(State s, Faction f, Council c, Play pl, String next, String why) {
 		World base = HumanPools.nearestBase(s, f.id, pl.sys, false);
 		int travel = base != null ? State.travelDays(base.sys.ly(pl.sys)) : 30;
-		boolean scout = !scoutInFlight(s, pl.sys) && HumanIntel.scout(s, f, pl.sys);
+		boolean scout = !scoutInFlight(s, pl.sys) && HumanIntel.scout(s, f, pl.sys, true);
 		Hive world = firstLive(pl);
 		boolean probe = false;
 		if (world != null) {
@@ -608,7 +608,7 @@ final class HumanCouncil {
 		pl.base = base;
 		if (reconFirst(s, c, pl, why)) return pl;
 		float half = Math.max(1f, s.knobs.f("threatinc_intelHalfLifeDays"));
-		boolean scout = age(s, f, k.sys) >= 0.5f * half && !scoutInFlight(s, k.sys) && HumanIntel.scout(s, f, k.sys);
+		boolean scout = age(s, f, k.sys) >= 0.5f * half && !scoutInFlight(s, k.sys) && HumanIntel.scout(s, f, k.sys, true);
 		pl.phaseDue = s.day + (int) (Math.max(1f, s.knobs.f("threatinc_councilPrepareDays")) * jitter(s));
 		phase(s, pl, "PREPARE", why + "; stages at " + base.name + (scout ? "; scout sent" : ""));
 		return pl;
