@@ -245,6 +245,18 @@ rebuilt. A size-8 plant makes 6 units x 1,500 = 9,000 fuel a month. ng5a's 82k a
 spent is about five plants' surplus, one converted a month while the stock covers four months of
 demand.
 
+**Fuel tight, supplies idle: a fuel plant before the forge** (2026-10-03, run hw4n;
+`threatinc_investFuelWhenTight`, on). Because forges never retire, the invest rule could lock the hive
+out of fuel. Fuel sat at `holds, wants a spare` for months - tight (`ThreatFuel.wantsSpare`: losing
+the biggest plant would run it dry) but not running dry, so no shortage answer came, and the spare
+step stops at the redundancy target - while supplies piled up and the invest step put a forge in
+every free slot. hw4n stalled on it at month 60-72: 18 -> 21 hives (other runs 32-39), forges stuck at
+21, 64k -> 209k supplies, no landing for two years. Now the planner builds a fuel plant (`fuel tight`)
+ahead of the forge on a world that lacks one while fuel is tight and supplies pay the plant and a
+founding kit, one a month with the shortage answers (`ThreatFuel.mayInvest`). Simulator, 30 seeds,
+at 5 troops a FP: p10 hives at month 120 141-144 -> 160-176, median worlds lost unchanged. It does
+not touch the other stall, hw4g's, where supplies never reached a forge's price.
+
 **3. The hive's military tier** (`SwarmBastion`, `hiveMilitaryTier`, on). These are two slot-using
 industries.csv rows on one class: the Swarm Bastion (Military Base analogue, needs the Swarm Nexus,
 `industry, unraidable, tactical_bombardment`, vanilla's military base icon) and its upgrade,

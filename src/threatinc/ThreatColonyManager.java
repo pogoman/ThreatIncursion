@@ -828,6 +828,27 @@ public class ThreatColonyManager {
 			}
 		}
 
+		// idle supplies build a fuel plant while fuel is tight (2026-10-03, run hw4n,
+		// threatinc_investFuelWhenTight): losing the biggest plant would run the stock
+		// dry (ThreatFuel.wantsSpare) but it is not yet running dry, so no shortage
+		// answer comes, and the spare step stops at the redundancy target - while the
+		// invest step below put a forge in every free slot. Forges never retire: hw4n
+		// sat fuel-starved on 209k supplies with no slot left for a plant. One a
+		// SHORT_DAYS, paced with the shortage answers (ThreatFuel.mayInvest)
+		if (ThreatIncConfig.investFuelWhenTight() && ThreatBuildCost.enabled() && ThreatFuel.enabled()
+				&& ThreatFuel.mayInvest(Commodities.FUEL) && ThreatFuel.wantsSpare(Commodities.FUEL)
+				&& ThreatFuel.stock(Commodities.SUPPLIES) >= ThreatBuildCost.supplies(Industries.FUELPROD)
+						+ ThreatFuel.foundingCost()[0]) {
+			for (int link = 0; link < CHAIN_LINKS.length; link++) {
+				if (!Commodities.FUEL.equals(linkStock(link))) continue;
+				boolean placed = !hasLink(market, link);
+				if (tryBuildLink(market, link, "fuel tight", false, payerId)) {
+					if (placed && hasLink(market, link)) ThreatFuel.answered(Commodities.FUEL);
+					return;
+				}
+			}
+		}
+
 		// idle supplies are invested (2026-10-01): every forge's whole output is
 		// the hive's stock - size - 2 units of 750 supplies and 100 FP a month -
 		// so a stock that pays a forge and a founding kit besides builds one on a

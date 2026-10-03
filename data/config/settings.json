@@ -513,6 +513,10 @@
 	"threatinc_reserveSurplusMult": 1.5,
 	"threatinc_reserveTroopSurplusMult": 0.5,
 	"threatinc_hiveSurplusMult": 1.0,
+	# idle supplies build a fuel plant instead of a forge while fuel is tight - losing the biggest plant would
+	# run it dry (ThreatFuel.wantsSpare) - one a month; forges never retire, and with fuel at "holds, wants a
+	# spare" the invest step put a forge in every free slot (2026-10-03, run hw4n: fuel-starved on 209k supplies)
+	"threatinc_investFuelWhenTight": true,
 	# a strike muster every world in reach of which waits on fuel books what
 	# the hive's fuel stock is short of the cheapest passage as demand on it
 	# (once a SHORT_DAYS a source), so the planner can build a plant for it

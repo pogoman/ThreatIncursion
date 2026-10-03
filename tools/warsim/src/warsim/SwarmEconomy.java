@@ -667,6 +667,15 @@ final class SwarmEconomy {
 			h.waitingAnswers = FUEL;
 			return Hive.FUELPLANT;
 		}
+		// threatinc_investFuelWhenTight (2026-10-03, hw4n): idle supplies build a fuel plant while fuel is tight
+		// (wantsSpare), one a SHORT_DAYS - with fuel at "holds, wants a spare" forges took every free slot, and forges
+		// never retire
+		if (k.investFuelWhenTight && !h.fuelPlant && wantsSpare(s, k, FUEL)
+				&& (s.swarm.answeredDay[FUEL] == Integer.MIN_VALUE || s.day - s.swarm.answeredDay[FUEL] >= SwarmFit.SHORT_DAYS)
+				&& s.swarm.supplies >= SwarmFit.COST_FUELPLANT + k.foundSupplies()) {
+			h.waitingAnswers = FUEL;
+			return Hive.FUELPLANT;
+		}
 		// idle supplies are invested in a forge
 		if (h.size >= 3 && !h.forge && s.swarm.supplies >= SwarmFit.COST_FORGE + k.foundSupplies()) return Hive.FORGE;
 		if (h.size >= 6 && h.forgeBuilt() && !h.orbitalWorks) return Hive.ORBITAL;
