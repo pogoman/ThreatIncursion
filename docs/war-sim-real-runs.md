@@ -393,3 +393,38 @@ FP, the two-plant fuel rule), on an eighteenth clone (`...ng19`), to war day 394
 The simulator saw the same direction but far less bombardment (0.7-2k troops a run,
 `war-sim-calibration-r29.md` "Relief that holds and bombards"). Its relief fights the guard only on arrival and runs
 a fifth of its landings on the overrun clock, where nothing reaches the army.
+
+## 21. hw4r (2026-10-03 night): relief from any distance, and the human supplies famine
+
+hw4q's settings plus da46fc1: relief sails from the nearest base that can provision it, at any distance
+(`pickReliefBase`). Nineteenth clone (`...ng20`), to war day 4181 (month 139). Dumps in `tools/warsim/validation/hw4r`;
+the check puts 321 of 514 figures inside. Log counts to month 126, hw4q in brackets (`relieflife.pl`, `reliefdist.pl`,
+`guardwin.pl`, `stocks.pl` in `%TEMP%\threatinc-tests`):
+
+- Worlds lost: 5 by month 108, 9 by month 120, 15 by month 126 (4, 20, 34). Then 37 by month 139: 22 worlds fell in
+  the last 13 months, the core among them (Sindria m125, Eventide, Sphinx and Tigra City m132, Kazeron and Chicomoztoc m135).
+- Relief sails further. Of 257 relief fleets placed on the map, 59 came from the invaded world's own system (115 of 215).
+  Distance: median 2.6 ly (0), p90 8.2 ly (5.1), 9 over 10 ly (1). 274 sent, 106k FP (232, 130k). Each stayed a median
+  112 days, and they bombarded on 2,339 relief-days, killing about 8,500 troops for 52,000 fuel. One landing was
+  bombarded out. The guards broke up 4,343 FP into 21,715 troops (3,803 into 19,015).
+- The swarm was smaller all war: at month 120, hives 107 (175), garrison 78k FP (193k), landings 81 (123), hives
+  killed 12 (2), defenders' marines 81k (69k).
+- **Then relief stopped, for want of supplies.** Relief sent by half-year: 79 in months 108-113, 63 in 114-119, 44 in
+  120-125, then none. Refusals rose 29 -> 53 -> 115 -> 148. `no base can provision it` now means that no base of the
+  faction anywhere has the stock. War-reserve fuel / supplies by faction (worlds in brackets):
+
+  | month | Hegemony | Persean | Tri-Tachyon | Independent | Luddic Church |
+  |---|---|---|---|---|---|
+  | 60 | 684k / 317k (13) | 250k / 28k (15) | 417k / 120k (8) | 260k / 163k (15) | 385k / 23k (7) |
+  | 84 | 894k / 19k (15) | 488k / 28k (15) | 304k / 30k (8) | 423k / 133k (13) | 390k / 14k (6) |
+  | 108 | 1015k / 15k (12) | 530k / 22k (12) | 493k / 8k (5) | 131k / 29k (16) | 305k / 7k (4) |
+  | 132 | 472k / 5k (10) | 75k / 10k (6) | 259k / 3k (3) | 69k / 12k (10) | 228k / 3k (4) |
+
+  hw4p and hw4q show the same famine: supplies are under 20k by months 84-108 and near nothing by months 120-132,
+  while fuel stays at 50k-1M. By month 126, fleet upkeep alone cost the human factions 1.9-2.3M supplies in each run,
+  and 0.3-0.5M more went unpaid (`Fleet upkeep:` lines). Each relief fleet needs its flat supplies (`reliefWants`,
+  `expeditionSuppliesPerPoint`). Once the supplies are gone, no base can send relief at any distance, and the late
+  collapse follows. The cause is in the banking rule. Since 2026-09-30, fuel banks the producers' whole output
+  (`ThreatReserves.wartimeFuel`, `threatinc_reserveWartimeFuel`), but supplies bank only availability above peacetime
+  demand (`surplusUnits`), and every fleet's monthly upkeep is drawn from that same supplies reserve (`ThreatUpkeep.charge`).
+  A relief fleet of 300 FP needs 180 of its 360 supplies at the base before it sails (`canProvisionRelief`).
