@@ -29,16 +29,16 @@ pushed. Read section 1, then section 2's question.
 
 ## 2. Waiting on you: the Defend break-up
 
-Worlds lost (of 59), game runs on the hw4 sector, council on:
+Human worlds lost to the swarm (of 59; fewer is better for the humans), game runs on the hw4 sector, council on:
 
-| | as built | Defend break-up off (beachheads keep it) | no break-up at all |
-|---|---|---|---|
-| runs | hw4d, hw4e, hw4j, hw4l | hw4g, hw4h, hw4k | hw4f, hw4i |
-| worlds lost, month 108 | 25, 3, 5, 6 | 7, 3, 6 | 8, 15 |
-| worlds lost, month 126 (log count) | 52, 39, 21, 40 | 21, 20, 26 | 21, 42 |
-| worlds lost, end (month) | 51 (125), 37 (126), 37 (133), 43 (132) | 22 (134), 33 (134), 26 (127) | 26 (133), 42 (130) |
-| defenders' marines, end | 9k, 14k, 35k, 7k | 71k, 61k, 39k | 63k, 35k |
-| hives killed | 5, 3, 3, 1 | 3, 4, 4 | 9, 4 |
+| | as built | Defend break-up off (beachheads keep it) | no break-up at all | 1 troop a FP (hw4m, after the night) |
+|---|---|---|---|---|
+| runs | hw4d, hw4e, hw4j, hw4l | hw4g, hw4h, hw4k | hw4f, hw4i | hw4m |
+| worlds lost, month 108 | 25, 3, 5, 6 | 7, 3, 6 | 8, 15 | 9 |
+| worlds lost, month 126 (log count) | 52, 39, 21, 40 | 21, 20, 26 | 21, 42 | 26 |
+| worlds lost, end (month) | 51 (125), 37 (126), 37 (133), 43 (132) | 22 (134), 33 (134), 26 (127) | 26 (133), 42 (130) | 33 (132) |
+| defenders' marines, end | 9k, 14k, 35k, 7k | 71k, 61k, 39k | 63k, 35k | 34k |
+| hives killed | 5, 3, 3, 1 | 3, 4, 4 | 9, 4 | 1 |
 
 - **Keep it (as built).** In three of four runs the swarm overran the sector by month 126 of a player-less game, and
   the humans' score fell under the p10 guard you kept on 2026-10-02. In the fourth (hw4j) it held to month 120.

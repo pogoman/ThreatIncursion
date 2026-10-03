@@ -468,3 +468,33 @@ before and 12 never had one (`war-sim-calibration-r29.md` "The guards go home").
 its p10 from month 84 to 120: month 96 2 against 21.5 [12 - 28], month 120 21 against 46 [28.9 - 52]) and is level by the end (43 against 53 [39.9 - 56.1]);
 its marines fall sooner (month 108: 78k against 37k). Landings and overruns sit inside to month 132 (118 against 131,
 50 against 68.5).
+
+## 16. hw4m (2026-10-03 morning): 1 troop a broken-up FP
+
+The user asked for 1:1 (2026-10-03): `threatinc_fabricateTroopsPerFP` 1 instead of 10, guards and beachheads alike,
+everything else as built, on a fourteenth clone (`...ng15`, the 0387fd8 jar), to month 132. Dumps
+`tools/warsim/validation/hw4m`, log `ti-hw4m.txt`.
+
+| | m72 | m96 | m108 | m120 | m132 |
+|---|---|---|---|---|---|
+| human worlds lost | 0 | 3 | 9 | 11 | 33 (26 left) |
+| defenders' marines | 102k | 115k | 97k | 63k | 34k |
+| hives / killed | 38 / 1 | 112 / 1 | 154 / 1 | 208 / 1 | 253 / 1 |
+| swarm strikes / landings | 42 / 15 | 161 / 49 | 225 / 72 | 295 / 93 | 346 / 122 |
+| NPC sieges sailed | 3 | 5 | 8 | 9 | 9 |
+
+**In the Defend-off band.** Worlds lost by the log's ground victories: 9 at month 108, 12 at 120, 26 at 126, 32 at 130.
+At month 126 that is the Defend-off runs' range (21, 20, 26), against as built's 52, 39, 21, 40. It still lost 21
+worlds in its last year.
+
+**The swarm pays for its troops in hulls.** Guards broke up 15,835 FP into 15,835 troops in 109 break-ups (hw4l, at 10:
+2,867 FP into 28,670), and beachheads 12,425 FP in 48 landings (hw4l 1,244 FP in 40): 28,260 FP of hulls, five to seven
+times any as-built run's, for about half the troops. 72 strikes held back short of their beachhead (hw4l none; the
+no-break-up runs 100-137). The swarm's garrisons stood at 103k FP at month 120 (hw4l 179k). Fronts: 55 overrun, 25
+won, 28 open at the end; first counter-attacks overran 5 of 82, later ones 50 of 463 (ratio p50 1.57, p90 2.06).
+Guards: 221 placed, 105 stood down with their front standing.
+
+**What it says about the simulator.** With the 1:1 setting the check gets 280 of 466 inside; with the as-built setting
+318. The simulator over-kills fronts the guards cannot feed (month 120: overruns 110 against 47, landings 163 against
+93, worlds lost 31.5 against 11), as it does on Defend off (`war-sim-calibration-r29.md` "Why the Defend-off fronts
+died young"). Its prediction for 1:1 (48 lost by month 132) overshot the game's 33.
