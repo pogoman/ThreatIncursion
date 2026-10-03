@@ -320,3 +320,57 @@ overruns rise again (hw4d 77.5, hw4j 87.5 at month 120 against 46 and 48); witho
 Every guard the simulator lets go costs it overruns the game does not have, so its fronts' own staying power (the
 counter-attack shape without a feed) is the gap, not the guards. At month 120 the game's as-built runs alone span
 10-49 worlds lost (hw4j, hw4d), wider than any of these rules moves the simulator's medians.
+
+## Relief that holds and bombards (2026-10-03 evening)
+
+The mod's relief now stays until the Threat army is gone and bombards it while the defenders are losing
+(`ground-war-orbit-control.md` "Relief"). The simulator mirrors both on the shared knobs: `threatinc_reliefStays`
+(false: relief goes home `threatinc_guardDays` after it first stood over the world, `HumanBases.reliefInvaded`) and
+`threatinc_reliefBombardPer30Days` (`SwarmOps.reliefBombard`, on the front engine only). It also lacked a rule the game has
+always had: the swarm's guard breaks no hulls up while human fleets over the world contest the orbit
+(`warsim_feedNeedsOrbit`, on; it bites only with relief on, and the base reproduces to the figure, hw4p 377 inside).
+All of it needs `warsim_reliefToInvaded` + `warsim_reliefFights` + `warsim_guardStandDown` + `warsim_reliefTakesGuard`.
+These are off by default, so the base is unchanged.
+
+Five runs at today's defaults (30 seeds; hw4e/hw4j and hw4o/hw4p start from one sector each and give the same figures,
+so three starts). Simulator medians at month 120 (month 132 in brackets, where the run reaches it), rl0 no relief,
+rl1 relief as before (90 days, then home), rl2 relief stays, rl3 stays and bombards (the mod now):
+
+| | hw4d | hw4e | hw4p |
+|---|---|---|---|
+| worlds lost rl0 / rl1 / rl2 / rl3 | 43 / 33.5 / 32.5 / 31 | 43 / 32 / 33 / 33 (53 / 48 / 47.5 / 45.5) | 43.5 / 32 / 30 / 28 (52 / 47.5 / 46.5 / 44) |
+| hives | 217 / 253 / 252 / 245 | 198 / 259 / 243 / 242 | 214 / 250 / 242 / 229 |
+| garrison FP | 211k / 234k / 229k / 228k | 205k / 238k / 222k / 221k | 218k / 248k / 219k / 214k |
+| defenders' marines | 18k / 57k / 58k / 64k | 17k / 55k / 61k / 61k | 18k / 59k / 64k / 70k |
+| troops broken up | 100k / 34k / 29k / 29k | 102k / 33k / 27k / 29k | 104k / 33k / 30k / 29k |
+
+What moved the war is the orbit gate on the break-up, which every relief run has: the guards' troops fall by two
+thirds and worlds lost by a quarter. Staying and bombarding then take 1-4 more worlds off by month 120-132, with a
+smaller swarm (hives -3 to -8%, garrison -3 to -14%) and more defenders' marines (+7-11k), in the same direction on
+all three starts but inside the seeds' spread. The bombardment itself is small: 291-388 days a run, 659-894 troops
+in all, no landing destroyed, never short of fuel. Raising its rate does not help (rl4 2.0, rl5 6.0): troops killed
+go 0.9k -> 1.8k -> 2.9k, but it fires on fewer days (343 -> 254 -> 161), because it tips the front to the defenders and
+then holds fire, as designed; worlds lost stay at 30-34. **The rate stays 0.60.**
+
+Where relief spends its days over a landing (rl3, month 120, hw4d / hw4p; `reliefInvaded.days`,
+`reliefBombard.guardOver`, `.winning`): 27k / 26k relief-days, of which 70% beside a Threat guard, 22% over a landing on
+the overrun clock (no front engine, so nothing reaches the army), 6% with the defenders winning, 1.3% bombarding. The
+70% is a simulator gap: its relief fought the guard only on arrival (`HumanSide` RELIEF), then both sat over the world.
+In the game, relief on an aggressive orbit engages every Threat fleet there (`ThreatGroundFronts.tickRelief` ->
+`fightOrbit`). `warsim_reliefFightDays` (0 off) makes it fight again every N days while a guard is over the world.
+With it on, a relief keeps fighting (1,700-2,000 fights a run, daily or weekly much the same), and the picture
+changes but the answer does not. Month 120, hw4d / hw4e / hw4p (month 132 hw4p), rl1f old relief and rl3f the mod now,
+both fighting daily: worlds lost 34.5 / 34 / 29.5 (46) against 32 / 32.5 / 31.5 (44), hives 252 / 244 / 238 against
+238 / 243 / 222. The guards win some of these fights: they wear the relief down (relief-days over a landing 27k ->
+10-11k), so the orbit is contested a third as often (`feedRefusedContested` 380 -> 120-140 guard-months) and the guards
+break up more (29k -> 39-40k troops). The bombardment fires three times as often (904-985 days), killing 1.9-2.1k
+troops, and still destroys no landing. Inside counts are mixed (hw4p 382 -> 367, hw4d 352 -> 358), so
+`warsim_reliefFightDays` stays off.
+
+**Verdict.** In the simulator the new relief takes 0-4 worlds lost off the old one by months 120-132, the same way on
+all three starts, with a smaller swarm. That is inside the seeds' spread, and the simulator lands twice the game's
+beachheads and overruns three times as many (`facts.md`, "Can the simulator judge the break-up lever?"). Most of the
+humans' gain is relief at all plus the orbit gate on the break-up, a rule the game already had. The new part, the
+bombardment, is self-limiting by design: it holds fire once the defenders are winning. In the game the bigger gap is
+relief that never comes: in hw4p, 14 of the 32 worlds taken got none, most refused with `no base in reach can
+provision it` (`facts.md`, "Does a human fleet over its own invaded world hurt the Threat army?").

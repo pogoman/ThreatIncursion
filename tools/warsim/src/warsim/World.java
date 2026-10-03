@@ -54,6 +54,10 @@ public final class World {
 	 */
 	public float reliefFP, reliefFP0, reliefDeposit;
 	public World reliefHome;
+	/** The day relief first stood over an invaded colony (threatinc_reliefStays false: it goes home threatinc_guardDays after). */
+	public int reliefSinceDay;
+	/** The day relief over an invaded colony last fought the swarm's guard there (warsim_reliefFightDays). Days can be negative (a dump's clock), so it starts far back. */
+	public int reliefFightDay = Integer.MIN_VALUE / 2;
 	/** Days a front link has stood without the least garrison; days with no found hive in reach. */
 	public int unguardedDays, idleDays;
 	/** Healthy days toward the next size; days starved toward losing one (ThreatColonyUpkeep). */

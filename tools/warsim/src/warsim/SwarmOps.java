@@ -1162,6 +1162,13 @@ final class SwarmOps {
 	static void feed(State s, SwarmKnobs k, World w, Swarm.Landing l) {
 		if (!k.fabricate || !s.knobs.b("threatinc_fabricateDefendEnabled", true)
 				|| !s.knobs.b("warsim_guardFabricates", true)) return;
+		// warsim_feedNeedsOrbit: the game breaks no hulls up while the orbit is contested (orbitDoneFor ->
+		// orbitContestedFor) - human fleets over the world at orbitContestFraction of the guard's FP or more
+		if (s.knobs.b("warsim_feedNeedsOrbit", true) && w.guardFP >= 1f
+				&& w.guardFP >= s.knobs.f("threatinc_orbitContestFraction") * guardFP(s, w)) {
+			s.count("feedRefusedContested", 1f / 30f);
+			return;
+		}
 		float want = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false) * s.knobs.f("threatinc_frontHoldFraction");
 		float mult = Math.max(0.01f, threatMult(s, l) * vetEffect(s, l));
 		if (l.troops * mult >= want) return;
@@ -1267,6 +1274,10 @@ final class SwarmOps {
 				: s.knobs.f("threatinc_frontMarineLossPer30Days")) / 30f;
 		l.troops -= l.troops * Math.min(1f, loss * vetLoss(s, l.level));
 		if (l.troops < s.knobs.f("threatinc_frontMinMarines")) return "collapsed";
+		if (reliefBombard(s, w, l, ca, odds) && l.troops < s.knobs.f("threatinc_frontMinMarines")) {
+			s.count("reliefBombard.destroyed", 1);
+			return "collapsed";
+		}
 		if (!exposed && !braceAfter) l.entrenchDays += 1f;
 		// the defenders bleed on the frontage (engaged = the smaller force), out of the reserve's marines
 		float engaged = Math.min(w.stock[World.MARINES], l.troops);
@@ -1348,6 +1359,45 @@ final class SwarmOps {
 		// the stance: push whenever strong enough, dig in otherwise
 		if (!l.pushing && threatEff(s, l) >= d * hold && !(l.strataHeld == 0 && ca > threatEff(s, l) * odds)) l.pushing = true;
 		return null;
+	}
+
+	/**
+	 * ThreatGroundFronts.tickReliefBombard (2026-10-03): relief holding the orbit over its own invaded colony (w.reliefFP,
+	 * warsim_reliefToInvaded) with no Threat guard there bombards the army while the defenders are losing - it pushes, or
+	 * it holds and the next counter-attack would not overrun it - at threatinc_reliefBombardPer30Days x fp / (fp + the
+	 * army's strength) x its veterancy loss. The day's fuel (bombardFuelPerFPDay) comes out of the pools of the base it
+	 * sailed from, only while they can still pay its way home after it (the game keeps the passage home of what it
+	 * carries). Returns whether it fired.
+	 */
+	static boolean reliefBombard(State s, World w, Swarm.Landing l, float ca, float odds) {
+		float rate = s.knobs.f("threatinc_reliefBombardPer30Days", 0f);
+		float fp = w.reliefFP;
+		if (rate <= 0f || fp < 1f || w.forwardBase) return false;
+		if (!guards(s, w).isEmpty()) {
+			s.count("reliefBombard.guardOver", 1);
+			return false;
+		}
+		float e = threatEff(s, l);
+		if (!l.pushing && !(l.holding && !(l.strataHeld == 0 && ca > e * odds))) {
+			s.count("reliefBombard.winning", 1);
+			return false;
+		}
+		World home = w.reliefHome != null && !w.reliefHome.lost ? w.reliefHome : HumanPools.nearestBase(s, w.faction, w.sys, true);
+		if (home == null) return false;
+		float fuel = BattleRules.bombardFuelPerDay(fp, s.knobs.f("threatinc_bombardFuelPerFPDay"));
+		if (fuel > 0f) {
+			float back = threatinc.rules.ReachRules.voyageCost(fp, w.sys.ly(home.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"), 0f)[0];
+			if (HumanPools.payable(s, home, World.FUEL, false, "reliefBombard") < fuel + back
+					|| !HumanPools.pay(s, home, new float[] { 0f, 0f, fuel, 0f }, false, "reliefBombard")) {
+				s.count("reliefBombard.noFuel", 1);
+				return false;
+			}
+		}
+		float lost = l.troops * Math.min(1f, rate / 30f * fp / Math.max(1f, fp + e) * vetLoss(s, l.level));
+		l.troops -= lost;
+		s.count("reliefBombard.days", 1);
+		s.count("reliefBombard.troops", lost);
+		return true;
 	}
 
 	/** The day's strikes: the fronts, then any strike a dump loaded already holding lands what it carries. */
