@@ -458,6 +458,8 @@ public class ThreatIncConfig {
 	public static float reserveTroopSurplusMult() { return f("threatinc_reserveTroopSurplusMult"); }
 	/** The hive's banking rate per unit its plants and forges make (ThreatFuel.perMonth, ThreatColonyUpkeep): split from reserveSurplusMult 2026-10-02, when the war simulator's round 18 showed the shared knob at 1.5 fed the swarm more than the humans (docs/war-sim-rounds.md 13). */
 	public static float hiveSurplusMult() { return f("threatinc_hiveSurplusMult"); }
+	/** Whether idle supplies build a fuel plant instead of a forge while fuel is tight (ThreatColonyManager's invest step, ThreatFuel.wantsSpare). */
+	public static boolean investFuelWhenTight() { return b("threatinc_investFuelWhenTight", true); }
 	/** A strike muster every world in reach of which waits on fuel books what the stock is short of the cheapest passage as demand (IncursionManager.pickStrikeTarget, ThreatFuel.heldShort). */
 	public static boolean strikeWaitBooksFuel() { return b("threatinc_strikeWaitBooksFuel", true); }
 	/** A frontline link is founded only with a garrison to hold it, which stays as long as the link stands. */

@@ -89,6 +89,7 @@ final class SwarmKnobs {
 		fabricateHoldMargin = Math.max(1f, k.f("threatinc_fabricateHoldMargin", 1.05f));
 		guardFirstPackMult = k.f("warsim_guardFirstPackMult", 1f);
 		strikeWaitBooksFuel = k.b("threatinc_strikeWaitBooksFuel", true);
+		investFuelWhenTight = k.b("threatinc_investFuelWhenTight", true);
 		strikeWaitBooksWhole = k.b("warsim_strikeWaitBooksWhole", false);
 		holdsBookMonthly = k.b("warsim_holdsBookMonthly", true);
 	}
@@ -119,6 +120,8 @@ final class SwarmKnobs {
 	 * clock for every landing, as before.
 	 */
 	final boolean guardFeedsFront, fabricate;
+	/** threatinc_investFuelWhenTight: idle supplies build a fuel plant while fuel is tight (SwarmEconomy.choose). */
+	final boolean investFuelWhenTight;
 	final float fabricateTroopsPerFP, fabricateHoldMargin;
 
 	/**

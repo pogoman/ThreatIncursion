@@ -286,6 +286,12 @@ public class ThreatFuel {
 		return !(at instanceof Long) || Global.getSector().getClock().getElapsedDaysSince((Long) at) >= SHORT_DAYS;
 	}
 
+	/** Whether a SHORT_DAYS has passed since the planner last built a producer of the commodity for its stock (answered): the pacing of mayAnswer without its shortage. */
+	public static boolean mayInvest(String commodityId) {
+		Object at = data().get("answeredAt_" + commodityId);
+		return !(at instanceof Long) || Global.getSector().getClock().getElapsedDaysSince((Long) at) >= SHORT_DAYS;
+	}
+
 	/** Notes that the planner built a plant for the shortage (mayAnswer). */
 	public static void answered(String commodityId) {
 		data().put("answeredAt_" + commodityId, Global.getSector().getClock().getTimestamp());
