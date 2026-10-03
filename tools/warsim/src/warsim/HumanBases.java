@@ -212,7 +212,7 @@ final class HumanBases {
 			s.count("guardOverBudget", 1);
 			return;
 		}
-		if (relief) s.count("reliefToBesiegers.asked", 1);
+		if (relief) s.count(w.forwardBase ? "reliefToBesiegers.asked" : "reliefInvaded.asked", 1);
 		World from = HumanPools.nearestBase(s, f.id, w.sys, true);
 		if (from == null) return;
 		float[] cost = ReachRules.voyageCost(want, from.sys.ly(w.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
@@ -230,6 +230,10 @@ final class HumanBases {
 		o.relief = relief;
 		p.order = o;
 		s.count("guardsSailed", 1);
+		if (relief && !w.forwardBase) {
+			s.count("reliefInvaded.sentFP", want);
+			s.log("Relief: " + f.id + " sends " + (int) want + " FP from " + from.name + " to invaded " + w.name);
+		}
 	}
 
 	/**
@@ -261,6 +265,44 @@ final class HumanBases {
 		w.guardFP -= leave;
 		w.reliefFP = w.reliefFP0 = w.reliefDeposit = 0f;
 		w.reliefHome = null;
+	}
+
+	/**
+	 * warsim_reliefToInvaded: ThreatFleetOrders.planRelief. A Threat army on one of a mobilised faction's colonies gets a
+	 * task force over it sized to break the swarm's hold (reliefGoal) less the guards already there, from the nearest
+	 * base that pays the voyage; it fights the swarm's guard on arrival (SwarmOps.reliefFight), pays its upkeep while out
+	 * (a month unpaid sends it home, ThreatUpkeep.starve) and goes home with the front. The game sent 293-566 such fleets a
+	 * run, 126k-210k FP (hw4d, hw4h, hw4g); the simulator sent relief to forward bases only.
+	 */
+	static void reliefInvaded(State s, Faction f) {
+		if (!s.knobs.b("warsim_reliefToInvaded", false)) return;
+		for (World w : s.worldsOf(f.id)) {
+			if (w.forwardBase || w.lost) continue;
+			if (!s.swarm.landings.containsKey(w.id) || !f.mobilised) {
+				if (w.reliefFP >= 1f) reliefHome(s, f, w);
+				continue;
+			}
+			if (w.reliefFP >= 1f && s.day % 30 == 0) {
+				float due = w.reliefFP * guardUpkeepPerFP(s);
+				if (!HumanPools.pay(s, w, new float[] { 0f, 0f, 0f, due }, false, "guardUpkeep")) {
+					s.count("reliefInvaded.unpaid", 1);
+					reliefHome(s, f, w);
+					continue;
+				}
+			}
+			if (w.guardFP >= reliefGoal(s, w) || s.day - w.guardAskedDay < HumanFit.GUARD_RETRY_DAYS) continue;
+			garrison(s, f, w, reliefGoal(s, w), true);
+		}
+	}
+
+	/**
+	 * ThreatFleetOrders.reliefGoal: what lifting the swarm's hold over the world takes - the Threat guard's FP over it x
+	 * npcSiegeOrbitMargin, or one guardFleetFP to deny the next landing with none overhead.
+	 */
+	static float reliefGoal(State s, World w) {
+		float threat = 0f;
+		for (Parcel p : SwarmOps.guards(s, w)) threat += p.fp;
+		return threat <= 0f ? s.knobs.f("threatinc_guardFleetFP", 100f) : threat * Math.max(1f, s.knobs.f("threatinc_npcSiegeOrbitMargin", 1.5f));
 	}
 
 	/** One day of every forward base of a faction: garrison, upkeep, growth, giving up. */
