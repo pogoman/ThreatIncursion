@@ -223,7 +223,10 @@ public class ThreatCoalition {
 						if (helper == null || helper.isPlayerFaction()) continue;
 						float w = willingness(helper, needyId);
 						if (w <= 0f || random.nextFloat() >= w * chance) continue;
-						MarketAPI base = ThreatFleetOrders.pickBase(helper, market.getLocationInHyperspace());
+						// relief from the nearest base that can provision it at any distance, as the
+						// owner's own (pickReliefBase, 2026-10-03); a guard against a strike keeps pickBase
+						MarketAPI base = owed > 0f ? ThreatFleetOrders.pickReliefBase(helper, market)
+								: ThreatFleetOrders.pickBase(helper, market.getLocationInHyperspace());
 						if (base == null) continue;
 						if (owed > 0f) {
 							if (ThreatFleetOrders.sendRelief(helper, market, base, owed) <= 0f) continue;
