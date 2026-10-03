@@ -39,6 +39,9 @@ public final class State {
 	// human side
 	/** Hive systems the sector has found (ThreatHiveIntel.sectorKnows): nothing is planned against the rest. */
 	public final java.util.Set<StarSys> foundHiveSystems = new java.util.LinkedHashSet<StarSys>();
+	/** HumanStance.faced for the day: the faction each hive system would strike first, cached by facedDay. */
+	public final Map<StarSys, String> faced = new java.util.HashMap<StarSys, String>();
+	public int facedDay = Integer.MIN_VALUE;
 	/**
 	 * Swarm bounties running, by hive system, to the day each ends (ThreatSwarmBountyIntel: posted when a
 	 * siege is outweighed in orbit, one a system, swarmBountyDays long). Hunting forces are raised only

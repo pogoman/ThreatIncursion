@@ -3856,7 +3856,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * cutting itself up (the user, 2026-09-08).
 	 */
 	public static boolean defendFabricates(String factionId, MarketAPI market, CampaignFleetAPI fleet) {
-		if (!ThreatIncConfig.fabricateEnabled()) return false;
+		if (!ThreatIncConfig.fabricateDefendEnabled()) return false;
 		// the swarm's alone: bioships go down as troops, a navy's hulls do not
 		if (!Factions.THREAT.equals(factionId) || market == null) return false;
 		GroundFront front = getFront(market.getId());
@@ -3869,12 +3869,14 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * What a DEFEND fleet's day must take off per fleet point lost. A faction's:
 	 * bombardFPWorth, what the hull cost it. The swarm's: what the hull would
 	 * become ({@link #hullWorth}) - at its front's footing over its own front
-	 * that cannot hold, where it can go down as troops, else at the landing's.
+	 * that cannot hold, where it can go down as troops, else at the landing's (always
+	 * the landing's with fabricateDefendEnabled off).
 	 */
 	public static float defendWorth(String factionId, MarketAPI market) {
 		if (!Factions.THREAT.equals(factionId)) return Math.max(0f, ThreatIncConfig.bombardFPWorth());
 		GroundFront front = market != null ? getFront(market.getId()) : null;
-		if (front == null || !factionId.equals(ownerOf(front)) || frontCanHold(front, market)) return swarmWorth();
+		if (front == null || !factionId.equals(ownerOf(front)) || frontCanHold(front, market)
+				|| !ThreatIncConfig.fabricateDefendEnabled()) return swarmWorth();
 		return hullWorth(entrenchMult(front));
 	}
 
@@ -4027,7 +4029,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		MarketAPI market = Global.getSector().getEconomy().getMarket(marketId);
 		if (market == null) return false;
 		if (!Factions.THREAT.equals(factionId)) return navyHoldsOver(fleet, factionId, market);
-		if (!ThreatIncConfig.fabricateEnabled()) return false;
+		if (!ThreatIncConfig.fabricateDefendEnabled()) return false;
 		if (defendFabricates(factionId, market, fleet)) return true;
 		GroundFront front = getFront(marketId);
 		return front != null && factionId != null && factionId.equals(ownerOf(front))
@@ -4338,7 +4340,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		GroundFront front = market != null ? getFront(market.getId()) : null;
 		if (front == null || factionId == null || !factionId.equals(ownerOf(front))) return "no front of its own";
 		if (frontCanHold(front, market)) return "the front holds";
-		if (!ThreatIncConfig.fabricateEnabled() || !Factions.THREAT.equals(factionId)) {
+		if (!ThreatIncConfig.fabricateDefendEnabled() || !Factions.THREAT.equals(factionId)) {
 			return "bombardment has done what it can";
 		}
 		return "bombardment has done what it can, and it has nothing left to send down";

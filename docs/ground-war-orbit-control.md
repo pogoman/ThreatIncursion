@@ -94,6 +94,9 @@ for the front on X".
 
 Knobs: `fabricateEnabled` (true), `fabricateTroopsPerFP` (25), `fabricateHoldMargin` (1.05),
 `fabricateSupplyDays` (30). Off, a Defend fleet with the defences fully worn simply holds the orbit as before.
+`fabricateDefendEnabled` (true, 2026-10-03) turns off only the Defend fleet's break-up: a strike short of its beachhead
+still breaks hulls (`ThreatStrikeFGI.beachheadLanding`), and the Defend fleet's stop reads the landing's worth
+(`defendWorth` returns `swarmWorth`).
 
 ### The swarm does not fight on armaments (2026-09-08, built, untested)
 

@@ -140,6 +140,12 @@ public final class Sim {
 		m.put("humanMarines", marines);
 		m.put("humanFleetFP", humanMobile);
 		m.put("mobilised", mobilised);
+		// the war councils' strategies this month (the dumps' factions[].strategy): how many factions hold each
+		for (String st : new String[] { "HOLD", "STARVE", "ROLLBACK", "DECAPITATE" }) {
+			double n = 0;
+			for (Faction f : s.factions.values()) if (st.equals(f.strategy)) n++;
+			m.put("strategy." + st, n);
+		}
 		// the counters every run reports, present even when zero
 		for (String c : new String[] { "threatSpread", "hivesFounded", "hiveLevels", "hivesKilled", "worldsLost",
 				"basesFounded", "basesDestroyed", "basesAbandoned", "siegesSailed", "siegesLanded", "strikesLaunched", "contested" })

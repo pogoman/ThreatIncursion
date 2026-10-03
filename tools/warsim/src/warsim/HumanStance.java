@@ -19,12 +19,19 @@ final class HumanStance {
 
 	/** ThreatReach.facedFaction: the owner of the world a hive system would strike first - the nearest. */
 	static String faced(State s, StarSys sys) {
+		if (s.facedDay != s.day) {
+			s.faced.clear();
+			s.facedDay = s.day;
+		}
+		if (s.faced.containsKey(sys)) return s.faced.get(sys);
 		World best = null;
 		for (World w : s.worlds) {
 			if (w.lost) continue;
 			if (best == null || w.sys.ly(sys) < best.sys.ly(sys)) best = w;
 		}
-		return best == null ? null : best.faction;
+		String id = best == null ? null : best.faction;
+		s.faced.put(sys, id);
+		return id;
 	}
 
 	/** ThreatFactionStance.noteTrend: a fight's fleet points lost and sunk. */

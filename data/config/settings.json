@@ -876,6 +876,9 @@
 	# defendMinStrength stand-down: it commits until the front stands or falls.
 	# The flagship and the last hull are always spared.
 	"threatinc_fabricateEnabled": true,
+	# off: the Defend fleet no longer breaks up hulls over its front; a strike short of its
+	# beachhead still does (2026-10-03, the overnight option: hw4d's guards' troops won the war)
+	"threatinc_fabricateDefendEnabled": true,
 	"threatinc_fabricateTroopsPerFP": 10,
 	"threatinc_fabricateHoldMargin": 1.05,
 	"threatinc_fabricateSupplyDays": 30,

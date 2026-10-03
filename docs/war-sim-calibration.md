@@ -435,13 +435,18 @@ overshoot in the mod:
 
 With the suppression hw4d's landings and overruns fit (month 125: landings 125 | 150 [127-161], was 215; overruns
 46 | 90.5, was 160; to month 96 overruns 40 | 45.5). Worlds lost now run ahead of the game from month 84 (the game
-lost none from day 1,890 to 3,000, then 38 in 700 days; the simulator loses them steadily).
+lost none from day 1,890 to 3,000, then 38 in 700 days; the simulator loses them steadily; only month 96 falls
+outside the band, 7 | 22 [10.8-27.1]). Not the marines: `check` now compares the defenders' reserve (`humanMarines`,
+the stockpiled marines of every world that keeps one; 351 of 433 inside), and the simulator tracks it through the
+collapse - month 84 85.9k | 92.2k, 108 33.7k | 26.4k, 125 9.3k | 3.6k.
 
 Still out: the strikes and landings of a run without fuel booking (hw4c month 108: strikes 127 | 241, landings
 56 | 149). hw4d's strikes match (252 | 269): the booking raised the game's strikes to the simulator's, so the gap
-is the old rule's fuel, not the landing pass. The other lead is the game's 118 `waits: bombardment still has work to
-do` in hw4c (50 in hw4d): `doCustomRaidAction` lands only when `readyToLand` passes - the strike's own abstract siege
-of the world resolved (`abstractOrbitDone`) or the troops hold as they are - and the simulator has no wait.
+is the old rule's fuel, not the landing pass. The game's `waits: bombardment still has work to do` (118 in hw4c,
+50 in hw4d) are not lost landings: they are the sweep's other worlds after the first took every troop aboard
+(`Strike pass (landing) vs Athulf: 240 troops; 0 still aboard`, then Fikenhild and Suddene wait, no abstract siege
+of theirs resolved). The gap is what the strikes aim at (section 8: the game's go to forward bases a third of the
+time).
 
 Options for the collapse, 60 seeds from the new game to month 130, the simulator with all of the above (`r34`,
 `r32b`):
@@ -456,8 +461,32 @@ Options for the collapse, 60 seeds from the new game to month 130, the simulator
 | outcomes | swarm wins 12%, both sides 52% | both sides 98% | both sides 78% | both sides 22%, one-sided 47% |
 
 The break-up rate does not matter (`r31c`, before the suppression: 5 or 2.5 troops a point both lose 39 worlds,
-the guards just spend more hulls). The third column has no mod knob: the Defend break-up and the beachhead's read
-one switch (`fabricateEnabled`).
+the guards just spend more hulls). The third column is `threatinc_fabricateDefendEnabled=false` since 2026-10-03 (the mod knob, default true;
+the simulator reads it in `SwarmOps.feed`, as it did `warsim_guardFabricates`).
+
+**hw4e** (`war-sim-real-runs.md` 8, the fuel fix): 344 of 433 inside. The simulator loses worlds a year early on it
+(month 108: 32.5 against 3) because the game's swarm consolidated 13 months by month 72 (simulator 4.6) and struck
+forward bases; across hw4c, hw4d and hw4e the game's months in CONSOLIDATE (0, 5, 15) straddle the simulator's
+medians (1.7, 9.6, 7.8), so that is the run's draw, not a bias.
+
+**Forward bases, late.** On all three runs the simulator founds 2-4 times as many links a month after month 84
+(month 108: game 43-54, simulator 61-103) and abandons more (hw4e: 7 against 21.5, every one "no garrison to hold
+it"; single seeds 31-58). The price matches (5,500 supplies, 800 fuel), the cadence too (`frontlinePlanDays`), and
+the refusals for want of stock (game 127 after month 84 in hw4e, simulator `linkCannotPay` 122 to month 108). One
+difference found: the game's front is only the links a hive would strike first (`ThreatFrontlines.frontOf`,
+`ThreatReach.facedFaction`), the simulator's every faction's nearest. `warsim_frontFacedOnly` (`HumanBases.strikeAt`)
+adds the rule; it fits worse on all three runs (hw4c 293 -> 262 of 388, hw4d 351 -> 341, hw4e 344 -> 342) because
+the garrisons it spares become more links (founded 129 at hw4e month 108), so it is off. The gap is what the
+factions' pools hold late, which no `check` row reads yet.
+
+**STARVE, late.** The game starts 1.5-2 times the simulator's STARVE plays after month 84 (`plays.STARVE` month
+108: 28-35 against 15.5-19) while spending less time in the strategy: new `check` rows `strategy.HOLD`,
+`strategy.STARVE`, `strategy.ROLLBACK` (factions holding each, from the dumps' `factions[].strategy` and
+`Faction.strategy`) put hw4d's councils in STARVE 0 at months 84-96 against the simulator's 4, all seven in HOLD at
+96 against 2.5. A game council in STARVE runs several plays at once (Tri-Tachyon #2, #4, #6, #8 sailed within 80
+days of day 1,724), each failing on "no squadron (every Nexus is reported guarded)", and a failed one reviews the
+strategy at once (STARVE -> ROLLBACK -> STARVE in 50 days). Both sides cap plays by `majorLimit`; not traced
+further. With the three rows hw4d is 374 of 466 inside.
 
 ## 10. Scripts (machine-local, `%TEMP%\threatinc-tests`)
 
