@@ -742,6 +742,12 @@ public class ThreatIncConfig {
 	public static float defendMinStrength()   { return f("threatinc_defendMinStrength"); }
 	/** Whether a Defend fleet with nothing left to bombard breaks up its own hulls into troops for its front (docs/ground-war.md "Fabricating troops from the fleet"). */
 	public static boolean fabricateEnabled()  { return b("threatinc_fabricateEnabled", true); }
+	/**
+	 * Whether a swarm Defend fleet over its own failing front breaks up hulls into troops
+	 * (fabricateEnabled must be on too). Off, only a strike short of its beachhead does
+	 * (ThreatStrikeFGI.beachheadLanding); the guard holds orbit and bombards.
+	 */
+	public static boolean fabricateDefendEnabled() { return fabricateEnabled() && b("threatinc_fabricateDefendEnabled", true); }
 	/** Troops landed per fleet point of hulls broken up. */
 	public static float fabricateTroopsPerFP(){ return f("threatinc_fabricateTroopsPerFP"); }
 	/** How far past the hold line fabrication aims, so the front does not oscillate on the boundary. */

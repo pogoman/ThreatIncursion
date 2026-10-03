@@ -258,5 +258,43 @@ bombardment (`ordnanceAvailable` reads it), so nothing ran them dry. Fixed the n
 shortfall, the passage less the stock (`ThreatFuel.heldShort`).
 
 **The simulator missed it, then caught it.** It had no hull break-up and its fronts used a guess of 15 garrison a
-size (Sindria 105 against the game's 3,120). With both fixed (`war-sim-calibration.md` 12) it puts worlds lost at
-9 / 20 / 40 at months 84 / 108 / 125 against the game's 7 / 25 / 51.
+size (Sindria 105 against the game's 3,120). With break-up, the real garrison, the beachhead rule and holding
+fronts suppressing the garrison (`war-sim-calibration.md` 12) it puts worlds lost at 13.5 / 35.5 / 53 at months
+84 / 108 / 125 against the game's 7 / 25 / 51, and the defenders' marines (`humanMarines`) inside the band at every
+month: 85k at month 84 to 9k at 125 in the game. 351 of 433 figures inside.
+
+## 8. hw4e (2026-10-03 overnight): the fuel fix, and the collapse a year later
+
+A sixth clone (`...ng7`), the jar of cbc5b2e: a waiting strike books only the stock's shortfall of its passage
+(`ThreatFuel.heldShort`), a guard's share is weighted by `estimateFP`. To war day 3,814 (month 127). Dumps
+`tools/warsim/validation/hw4e`, log `ti-hw4e.txt`. No mod exception.
+
+| | hw4d m108 | hw4e m108 | hw4d m125 | hw4e m126 |
+|---|---|---|---|---|
+| hives | 143 | 108 | 243 | 224 |
+| garrison FP | 129k | 90k | 299k | 258k |
+| human worlds lost | 25 | 3 | 51 | 37 (17 left) |
+| defenders' marines | 34k | 75k | 9k | 14k |
+| hives killed | 5 | 3 | 5 | 3 |
+| sieges sailed / landed | 13 / 5 | 12 / 5 | 13 / 5 | 12 / 5 |
+| swarm strikes / landings | 252 / 111 | 222 / 73 | 295 / 125 | 323 / 128 |
+| fuel plants / forges | 50 / 66 | 35 / 75 | 41 / 155 | 46 / 132 |
+| swarm fuel in stock | 447k | 108k | 3,522k | 1,101k |
+
+**The fuel fix worked.** Stock 24-36k at months 48-72 (hw4d 72-228k), plants 4-9 (9-10), and every check row of
+fuel inside the band to month 72. The late stock still climbs (1.1M at month 126) because the hives that make it
+outgrow what the guards burn; the simulator's does the same (3.0M median).
+
+**The collapse came a year later, by the same road.** Phase 3 on day 1,067, all seven factions. 187 guards (built
+against their share 1.00, was 1.35), 232 break-ups turned 4,996 FP into 50,089 troops. Three worlds fell to day
+1,650, none to day 3,240, then 37 in 570 days, as the defenders' marines went from 103k at month 96 to 14k at 126.
+Guarded landings ended 5 taken, 7 ground down, 27 overrun before day 2,900 and 31 taken, 17 ground down, 16 overrun
+after. Without the guards' troops the fronts are overrun; with them they outlast the marines.
+
+**Why a year later: the swarm consolidated.** Its garrisons were short of want (day 1,714: held 15.6k, want
+22.7k), so `ThreatStance` held CONSOLIDATE for 13 months by month 72 (the simulator 4.6, p90 14.5). Under it only
+forward bases are struck: 42 of the 72 strikes launched in months 60-84 went at forward bases, which nothing lands
+on, and 10 of the 72 landed (the simulator lands about half). Hives grew to 25 at month 72 against 51 in hw4d. The
+simulator, which mostly presses, loses worlds a year early: 32.5 at month 108 against 3, inside again from month
+120 (47.5 against 21, 52.5 against 37). 344 of 433 figures inside. Strikes per launch year by target, and landings
+per strike, come from `sl.pl` (machine-local, below the handover).

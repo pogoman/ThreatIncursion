@@ -733,6 +733,9 @@ final class SwarmOps {
 			// shortfall broken out of the strike's hulls; a strike without the hulls for it is held back
 			float need = beachheadTroops(s, w);
 			if (troops < need) {
+				s.count("beachheadsShort", 1);
+				s.count("beachheadsShortAboard", troops / Math.max(1f, need));
+				s.log("Beachhead at " + w.name + ": needs " + (int) need + ", " + (int) troops + " aboard");
 				float perFP = Math.max(0.01f, s.knobs.f("threatinc_fabricateTroopsPerFP"));
 				float fp = (need - troops) / perFP;
 				if (!s.knobs.b("threatinc_fabricateEnabled", true) || fp > p.fp - GUARD_SPARED_FP) {
@@ -929,12 +932,18 @@ final class SwarmOps {
 	/**
 	 * ThreatGroundFronts.beachheadTroops: the troops whose landing strength (frontLandingMult) beats the world's first
 	 * counter-attack (colonyDefence's counter-attack figure) by threatinc_siegeBeachheadMargin at the overrun odds.
+	 * The game sizes it when the strike lands, after its bombardment has suppressed the key structures (readyToLand
+	 * waits for orbitSpent), so vanilla's garrison is read suppressed: warsim_landingSuppress, 0.65 like a holding
+	 * front (2026-10-03: Kazeron's 4,300 garrison counter-attacked at about 770 when hw4e landed, 18%; the needs the
+	 * game logged were 20-50% of the unsuppressed figure, and the simulator came up short on 69% of its landings
+	 * against the game's 26%).
 	 */
 	static float beachheadTroops(State s, World w) {
 		float margin = s.knobs.f("threatinc_siegeBeachheadMargin");
 		if (margin <= 0f) return 0f;
 		float odds = BattleRules.overrunOdds(s.knobs.f("threatinc_groundStrengthExponent"));
-		return colonyDefence(s, w, 0, true) * margin / Math.max(0.01f, s.knobs.f("threatinc_frontLandingMult") * odds);
+		float left = 1f - Math.max(0f, Math.min(1f, s.knobs.f("warsim_landingSuppress", 0.65f)));
+		return colonyDefence(s, w, 0, left, true) * margin / Math.max(0.01f, s.knobs.f("threatinc_frontLandingMult") * odds);
 	}
 
 	/** The strikes on a Defend station over the world's Threat front (ThreatSwarmDefend). */
@@ -955,7 +964,8 @@ final class SwarmOps {
 	 * hull); the battery toll on the drop is not charged. The game also waits until orbit has done what it can (orbitDoneFor).
 	 */
 	static void feed(State s, SwarmKnobs k, World w, Swarm.Landing l) {
-		if (!k.fabricate || !s.knobs.b("warsim_guardFabricates", true)) return;
+		if (!k.fabricate || !s.knobs.b("threatinc_fabricateDefendEnabled", true)
+				|| !s.knobs.b("warsim_guardFabricates", true)) return;
 		float want = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false) * s.knobs.f("threatinc_frontHoldFraction");
 		float mult = Math.max(0.01f, threatMult(s, l));
 		if (l.troops * mult >= want) return;
