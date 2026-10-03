@@ -119,7 +119,7 @@ final class HumanBases {
 		// warsim_frontFacedOnly: billed reach (ThreatFrontlines.strikeAt / frontOf), only a hive that would strike this
 		// faction first. Off by default: on, the garrisons it spares become more links (founded 129 against the game's 54
 		// at hw4e month 108) and check falls on all three runs (hw4c 293 -> 262 of 388);
-		// the founding gap lies in the pools' late stock (war-sim-calibration.md 12)
+		// the founding gap lies in the pools' late stock (war-sim-calibration-r29.md)
 		boolean faced = s.knobs.b("warsim_frontFacedOnly", false) && s.knobs.b("threatinc_billedReach", true);
 		for (Hive h : s.hives) {
 			if (h.dead || h.size < min || !s.foundHiveSystems.contains(h.sys)) continue;

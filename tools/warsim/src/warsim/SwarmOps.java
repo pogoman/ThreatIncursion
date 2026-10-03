@@ -714,10 +714,20 @@ final class SwarmOps {
 	 * LANDING_MIN_TROOPS the landing is called off ("Strike landing at X aborted").
 	 */
 	static boolean land(State s, Parcel p, World w) {
-		float troops = p.fp * SwarmFit.TROOPS_PER_FP;
+		return land(s, p, w, p.fp * SwarmFit.TROOPS_PER_FP, Float.MAX_VALUE) > 0f;
+	}
+
+	/**
+	 * One world's landing out of a strike's troop pool (ThreatStrikeFGI.availableLanding, then beachheadLanding): it
+	 * puts down the world's share of the pool or what its beachhead needs, whichever is more, out of what is still
+	 * aboard; a beachhead the troops aboard cannot make is broken out of the hulls or held back. Returns the troops
+	 * put down, 0 when none.
+	 */
+	static float land(State s, Parcel p, World w, float aboard, float share) {
+		float troops = Math.min(aboard, share);
 		if (troops < SwarmFit.LANDING_MIN_TROOPS) {
 			s.count("strikeLandingsAborted", 1);
-			return false;
+			return 0f;
 		}
 		Swarm.Landing l = s.swarm.landings.get(w.id);
 		if (l != null) {
@@ -726,25 +736,28 @@ final class SwarmOps {
 			if (!l.falls && !l.engine && l.endDay != Integer.MIN_VALUE) l.endDay += SwarmFit.reinforcedDays(s.rng);
 			s.count("threatReinforcePasses", 1);
 			s.log("Strike pass (reinforce) vs " + w.name + ": " + (int) troops + " troops");
-			return true;
+			return troops;
 		}
 		if (s.knobs.b("warsim_beachheadRule", true)) {
 			// ThreatStrikeFGI.beachheadLanding: a first landing is sized to outlast the world's first counter-attack, the
 			// shortfall broken out of the strike's hulls; a strike without the hulls for it is held back
 			float need = beachheadTroops(s, w);
 			if (troops < need) {
-				s.count("beachheadsShort", 1);
-				s.count("beachheadsShortAboard", troops / Math.max(1f, need));
-				s.log("Beachhead at " + w.name + ": needs " + (int) need + ", " + (int) troops + " aboard");
-				float perFP = Math.max(0.01f, s.knobs.f("threatinc_fabricateTroopsPerFP"));
-				float fp = (need - troops) / perFP;
-				if (!s.knobs.b("threatinc_fabricateEnabled", true) || fp > p.fp - GUARD_SPARED_FP) {
-					s.count("strikeLandingsHeldBack", 1);
-					return false;
+				float carried = Math.min(aboard, need);
+				if (carried < need) {
+					s.count("beachheadsShort", 1);
+					s.count("beachheadsShortAboard", carried / Math.max(1f, need));
+					s.log("Beachhead at " + w.name + ": needs " + (int) need + ", " + (int) carried + " aboard");
+					float perFP = Math.max(0.01f, s.knobs.f("threatinc_fabricateTroopsPerFP"));
+					float fp = (need - carried) / perFP;
+					if (!s.knobs.b("threatinc_fabricateEnabled", true) || fp > p.fp - GUARD_SPARED_FP) {
+						s.count("strikeLandingsHeldBack", 1);
+						return 0f;
+					}
+					p.fp -= fp;
+					s.count("fpFabricatedBeachhead", fp);
 				}
-				p.fp -= fp;
 				troops = need;
-				s.count("fpFabricatedBeachhead", fp);
 			}
 		}
 		l = new Swarm.Landing();
@@ -753,7 +766,44 @@ final class SwarmOps {
 		s.swarm.landings.put(w.id, l);
 		s.count("threatLandings", 1);
 		s.log("Front deployed at " + w.name + " (threat): " + (int) troops + " troops");
-		return true;
+		return troops;
+	}
+
+	/**
+	 * The strike's sweep (IncursionManager's strike params, FGRaidType.SEQUENTIAL): the expedition works through every
+	 * eligible world in the target system, the picked one first, and each takes the world's share of the troop pool -
+	 * an even split, never under threatinc_strikeFrontMinTroops - or its beachhead, whichever is more. A strike for a
+	 * front of its own goes to it alone (strikeReliefFirst). Returns the first world landed or reinforced, which its
+	 * guard stays over, or null. 2026-10-03: the game's fronts started at 720 troops (hw4f median), the simulator's at
+	 * 2,000 when it put the whole strike down on its target. Off by default (warsim_strikeSweep): the game's first world
+	 * takes the whole pool (median 0 left aboard after a landing in hw4e and hw4f), and with the sweep on the simulator's
+	 * larger strikes (1.5-2x the game's swarms late in the war) land 1.5-1.7x the game's landings on all three runs.
+	 */
+	static World sweep(State s, Parcel p, World target) {
+		if (!s.knobs.b("warsim_strikeSweep", false) || s.swarm.landings.containsKey(target.id))
+			return land(s, p, target) ? target : null;
+		List<World> worlds = new ArrayList<World>();
+		worlds.add(target);
+		int phase = SwarmPosture.phase(s);
+		for (World o : s.worlds) {
+			if (o == target || o.lost || o.sys != target.sys || s.swarm.struck.contains(o.id)) continue;
+			if (phase < 3 && (o.size >= 6 && !o.forwardBase
+					|| !s.faction(o.faction).mobilised && !neverMobilises(s, o.faction))) continue;
+			worlds.add(o);
+		}
+		float aboard = p.fp * SwarmFit.TROOPS_PER_FP;
+		float share = Math.max(s.knobs.f("threatinc_strikeFrontMinTroops"), aboard / worlds.size());
+		World first = null;
+		for (World w : worlds) {
+			if (w.forwardBase) continue;
+			if (aboard < SwarmFit.LANDING_MIN_TROOPS) break;
+			float put = land(s, p, w, aboard, share);
+			if (put <= 0f) continue;
+			aboard -= put;
+			if (first == null) first = w;
+		}
+		if (worlds.size() > 1) s.count("strikeSweepWorlds", worlds.size());
+		return first;
 	}
 
 	/**
@@ -1104,8 +1154,11 @@ final class SwarmOps {
 			}
 			// a strike nobody is near never spawns its fleets (the NPC war's every strike), so nothing stays over the
 			// landing: it ends and is re-banked at home ("Strike ledger: ended unspawned, N of M FP re-banked")
-			if (o.target != null && !o.target.lost && !o.target.forwardBase && land(s, p, o.target) && k.strikeDefends) defend(s, k, p);
-			else goHome(s, p, p.to);
+			World put = o.target != null && !o.target.lost && !o.target.forwardBase ? sweep(s, p, o.target) : null;
+			if (put != null && k.strikeDefends) {
+				o.target = put;
+				defend(s, k, p);
+			} else goHome(s, p, p.to);
 		}
 		// a strike that vanished (destroyed in flight by the other side) frees its target
 		if (!s.swarm.struck.isEmpty()) {
@@ -1229,8 +1282,11 @@ final class SwarmOps {
 			return;
 		}
 		// warsim_strikeDefends: only a spawned strike stays over its landing; the NPC war's go home (see daily)
-		if (land(s, p, w) && k.strikeDefends) defend(s, k, p);
-		else goHome(s, p, p.to);
+		World put = sweep(s, p, w);
+		if (put != null && k.strikeDefends) {
+			o.target = put;
+			defend(s, k, p);
+		} else goHome(s, p, p.to);
 	}
 
 	static void reinforcement(State s, Parcel p) {

@@ -338,7 +338,7 @@ no mod symbol behind them, test whether that is the whole story (`SwarmKnobs.bas
   (`warsim_guardFeedsFront` true), its guard breaking hulls into troops while the front cannot hold (`SwarmOps.feed`,
   counters `fpFabricated`, `troopsFabricated`), and every first landing is sized to outlast the first counter-attack
   (`warsim_beachheadRule` true, `SwarmOps.beachheadTroops`; `fpFabricatedBeachhead`, `strikeLandingsHeldBack`) -
-  `war-sim-calibration.md` 12. `Main.outcome` also classes a run back-and-forth on `reversals` at
+  `war-sim-calibration-r29.md`. `Main.outcome` also classes a run back-and-forth on `reversals` at
   `BACK_AND_FORTH_REVERSALS_PER_YEAR` 1 (9 in 104 months, 4 in 48).
 
 Result, 30 seeds, median (clear = outside the seed noise). New game 104 months, council: A moves only bases

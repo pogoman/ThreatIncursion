@@ -259,7 +259,7 @@ shortfall, the passage less the stock (`ThreatFuel.heldShort`).
 
 **The simulator missed it, then caught it.** It had no hull break-up and its fronts used a guess of 15 garrison a
 size (Sindria 105 against the game's 3,120). With break-up, the real garrison, the beachhead rule and holding
-fronts suppressing the garrison (`war-sim-calibration.md` 12) it puts worlds lost at 13.5 / 35.5 / 53 at months
+fronts suppressing the garrison (`war-sim-calibration-r29.md`) it puts worlds lost at 13.5 / 35.5 / 53 at months
 84 / 108 / 125 against the game's 7 / 25 / 51, and the defenders' marines (`humanMarines`) inside the band at every
 month: 85k at month 84 to 9k at 125 in the game. 351 of 433 figures inside.
 
@@ -298,3 +298,49 @@ on, and 10 of the 72 landed (the simulator lands about half). Hives grew to 25 a
 simulator, which mostly presses, loses worlds a year early: 32.5 at month 108 against 3, inside again from month
 120 (47.5 against 21, 52.5 against 37). 344 of 433 figures inside. Strikes per launch year by target, and landings
 per strike, come from `sl.pl` (machine-local, below the handover).
+
+## 9. hw4f (2026-10-03 overnight): no hull break-up at all
+
+A seventh clone (`...ng8`), hw4e's jar, `threatinc_fabricateEnabled` false: no guard breaks hulls, and a strike
+short of its beachhead holds back. To month 133. Dumps `tools/warsim/validation/hw4f`, log `ti-hw4f.txt`.
+
+| | m72 | m96 | m108 | m120 | m133 |
+|---|---|---|---|---|---|
+| human worlds lost | 4 | 7 | 8 | 8 | 26 |
+| defenders' marines | 114k | 139k | 149k | 105k | 63k |
+| hives / killed | 36 / 5 | 72 / 8 | 84 / 9 | 115 / 9 | 164 / 9 |
+| swarm strikes / landings | 46 / 16 | 127 / 34 | 181 / 46 | 263 / 74 | 332 / 99 |
+| NPC sieges sailed | 7 | 16 | 17 | 17 | 17 |
+
+**Two-sided until month 120, then the same decline, slower.** Eight worlds lost by month 120, 18 more in the last
+13 months as the marines fell from 149k to 63k. 137 strikes held back (one a world and five days), none of them
+landing on that world within 45 days; nine hives killed, the most of any hw4 run.
+
+**What it showed the simulator.** It held back about twice as often as the game, which sent the hunt for the
+cause to the beachhead's need (`war-sim-calibration-r29.md`, "Beachheads and landing troops"): the game sizes it
+after bombardment, and its strikes carry about half the simulator's troops. The NPC sieges stay out: 17 in the
+game, 41-52 in the simulator, not traced.
+
+## 10. hw4g (2026-10-03 overnight): break-up for beachheads only
+
+An eighth clone (`...ng9`), the jar of 0387fd8 with `threatinc_fabricateDefendEnabled` false: a Defend fleet holds
+orbit and bombards but never breaks hulls; a strike short of its beachhead still does. To month 134. Dumps
+`tools/warsim/validation/hw4g`, log `ti-hw4g.txt`.
+
+| | m72 | m96 | m108 | m120 | m134 |
+|---|---|---|---|---|---|
+| human worlds lost | 3 | 5 | 7 | 16 | 22 (36 left) |
+| defenders' marines | 105k | 112k | 94k | 77k | 71k |
+| hives / killed | 35 / 3 | 79 / 3 | 107 / 3 | 135 / 3 | 167 / 3 |
+| swarm strikes / landings | 37 / 10 | 123 / 44 | 188 / 74 | 239 / 90 | 298 / 109 |
+| NPC sieges sailed | 8 | 11 | 11 | 11 | 11 |
+
+**The fewest worlds lost of the four.** 42 beachheads broke up 1,443 FP into 14,602 troops (hw4e's guards: 4,996
+FP into 50,089); two landings held back. The marines end at 71k, the most of any run, and the sector is still
+two-sided at month 134.
+
+**The simulator cannot judge this lever.** For hw4g's settings it loses 50.5 worlds by month 134 and lands 246
+times against 109: its strikes muster 1.5-2 times the game's swarms late in the war, and it lands on 84% of its
+colony strikes against the game's about half (the game's 212 colony strikes ran 110 abstract sieges; 41 of 270
+arrival fights were lost outright, and the rest of the gap was not traced). The game runs, not the simulator, are
+the evidence for the break-up decision.
