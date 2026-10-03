@@ -5,7 +5,7 @@ the simulator and in how `check` reads a log. Start here before trusting a `chec
 
 ## 1. Round 23 (2026-10-02 night): the counters were not counting the same things
 
-`war-sim-real-runs.md` 1-3 read the game's humans as a fifth as effective as the simulator's and proposed finding
+`war-sim-real-runs-oct2.md` 1-3 read the game's humans as a fifth as effective as the simulator's and proposed finding
 "where the simulator's sieges land too easily". Most of that gap was the instrument and one price.
 
 **`check` counted two things under one name** (`Main.EVENTS`):
@@ -45,7 +45,7 @@ The scores do not move clearly (humanScore ahead in 64% of seeds, threatScore 50
 `check` with both fixes: hw4a 204 of 330 figures inside p10-p90 (163 before the price), tr1a 241 of 330 (170).
 
 **Trial: raze what the pools pay** (`warsim_saturateAffordable`: the worlds of the play the pools pay, first to last,
-instead of all or none - the proposal of `war-sim-real-runs.md` 2). Noise: saturations 17 -> 18, humanScore 36.5 ->
+instead of all or none - the proposal of `war-sim-real-runs-oct2.md` 2). Noise: saturations 17 -> 18, humanScore 36.5 ->
 36.5 (57% of seeds), hives killed 7 -> 6.5. Not built in the game.
 
 **What is still out, both runs** (real | simulator at month 108, hw4 then tr1):
@@ -200,7 +200,7 @@ and dispersing its garrison - by design, and the place a player's feint would bi
 [1,539-2,054], tr1 3,207 against 1,195 [714-1,642], hw4b 4,746 against 1,748 [1,390-2,165]; so its fuel piles up
 (60-90k at month 108 against the game's 11-14k) and it strikes about twice as often through month 84.
 
-**Run-to-run noise is as large as the settings** (`war-sim-real-runs.md` 5): hw4 and hw4b, one save and one setting,
+**Run-to-run noise is as large as the settings** (`war-sim-real-runs-oct2.md` 5): hw4 and hw4b, one save and one setting,
 ended at 152 and 209 hives at month 108. hw4b sits above the simulator's band from month 48 (209 against 113
 [79-127]; 178 of 338 figures inside).
 
@@ -341,7 +341,7 @@ hunts 59 | 70.5).
 
 ## 9. Round 27, a rule trial: every faction mobilises when the swarm reaches a phase
 
-Run hw4c (`war-sim-real-runs.md` 6): a faction the swarm leaves alone until phase 3 mobilises on the strike that
+Run hw4c (`war-sim-real-runs-oct2.md` 6): a faction the swarm leaves alone until phase 3 mobilises on the strike that
 lands on it and has a month to arm - the Diktat lost Sindria. The trial, no mod symbol behind it:
 `warsim_mobiliseAtPhase` (0 = off; `HumanSide.daily`) mobilises every faction the war does not exclude once
 `SwarmPosture.phase` reaches the figure, struck or not. The simulator's strikes do not sweep, so its factions

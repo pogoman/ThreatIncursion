@@ -467,4 +467,4 @@ hives 124, hives killed 8, bases destroyed 22, both-sides 57%. The mid-war start
 8 planets, the chain lands on 4)`; four hives land on days 133-144 - Mining, Mining, Heavy Industry (the seed forge),
 refining. At size 4, days 495-505: the fuel plant, a second forge ("invest") and two more mines - the simulator's seed 3
 has them on days 496-504. The home's other four planets are taken on days 671-710 (`tryExpandInSystem`), the first claim
-outside it on day 732 (the simulator: 638), nine hives by day 933. No mod exception. The run went on to month 115 -> `war-sim-real-runs.md` 3
+outside it on day 732 (the simulator: 638), nine hives by day 933. No mod exception. The run went on to month 115 -> `war-sim-real-runs-oct2.md` 3
