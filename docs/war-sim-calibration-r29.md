@@ -214,3 +214,30 @@ a lead sweep visits the others in turn), and one arrival ended three RECON plays
 Not found yet: the scouts' trip (nearest base,
 `State.travelDays`, 2 days a light year), and the game's reports shared between factions (its intel census reads
 "eyes from luddic_church" in luddic_path's picture).
+
+**Why the Defend-off fronts died young (2026-10-03, 05:00-05:15).** Landings a strike match the game on two settings
+(as built 0.36 against 0.42, no break-up 0.33 against 0.30) and not on Defend off (0.58 against 0.33): with no guard
+feeding them the simulator's fronts are overrun sooner, and each next strike makes a new landing where the game's
+reinforces. The game's counter-attack ratio has one shape on every setting - later counter-attacks p50 1.56-1.58, p90
+2.02-2.03, 7-10% of them overrunning (hw4d-i, `ovr.pl`) - and its overrun fronts last a median 3-6 counter-attacks.
+The simulator's drifts whenever the guards do not feed: p90 3.65 (Defend off) and 4.74 (no break-up), about 40%
+overrunning, overrun fronts dead after 2. Three game rules it lacked, all built off:
+- `warsim_wearClock`: the garrison follows the key structures' disruption clock (`ThreatGroundFronts.suppress`: a
+  holding front wears them, a grinding one - 0.10 of the defence, hysteresis 0.1 - the ground defences and batteries,
+  `frontWearRate` x e / (e + d) days a day, running down a day a day, capped at 1.2 x `defenseWearDays`), not the
+  front's holding flag. Off, the garrison came back x2.9 the day a front stopped holding.
+- `warsim_reinforceDilutes`: troops joining a front dilute its entrenchment (`resupply`: `entrenchDays *= before /
+  (before + arriving)`) and, with veterancy, its level - the guard's break-up too, which the simulator fed in at the
+  front's own level and cover.
+- veterancy (`warsim_veterancy`): a front's losses fall as it ages (level +0.1-0.12 a counter-attack).
+
+Seed 3, month 126, fronts / overruns / worlds lost (the game's in brackets):
+
+| Setting | base | all three | game |
+|---|---|---|---|
+| As built (hw4d) | 131 / 73 / 46 | 90 / 32 / 48 | 125 / 46 / 52 (hw4e 37) |
+| No break-up (hw4f) | 137 / 85 / 32 | 105 / 47 / 47 | 99 / 37 / 20 (hw4i 41) |
+| Defend off (hw4h) | 244 / 184 / 53 | 121 / 66 / 23 | 105 / 42 / 19 (hw4g 19) |
+
+With all three the later ratios are 1.58-1.65 / 1.95-2.07 on every setting, the game's shape. Veterancy with dilution
+but no clock: Defend off 178 / 120 / 41; the clock alone: 247 / 191 (the fronts then bleed out instead).
