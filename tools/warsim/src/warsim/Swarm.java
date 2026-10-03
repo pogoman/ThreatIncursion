@@ -102,6 +102,10 @@ public final class Swarm {
 		public int strataHeld;
 		/** The front holds (frontCanHold): its key structures are down, and the garrison with them (SwarmOps.suppressed). */
 		public boolean holding;
+		/** warsim_veterancy: the front's level (ThreatMarineXP.frontLevel): npcLandingVeterancy at landing, raised by each counter-attack. */
+		public float level;
+		/** Counter-attacks the colony has made on the front (the first comes later: SwarmOps.threatFrontDay). */
+		public int counterAttacks;
 	}
 
 	/** ThreatAlarm's grudge per faction: raised by strata taken and hives eradicated, fading by the month. */
