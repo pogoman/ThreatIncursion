@@ -303,5 +303,14 @@ The simulator's relief also sent a guard home whenever it outweighed it, committ
 for; under `warsim_guardStandDown` that is gone (a guard fights on, worn, until `standsDown` or dead: the last two
 rows). With the front rules the overruns come nearer (hw4d 65, hw4j 71 against 46 and 48) and the war rows are the
 best of the night (227), but 86 cells under base. **All off**; the as-built fronts still die about 1.4x as often as
-the game's once the guards can leave. What is left is how hard the game's relief hits a guard (one battle in the
-simulator a relief arrival, several fleets a day in the game, `planRelief`), not measured.
+the game's once the guards can leave.
+
+**How fast the game's relief takes a guard out** (`guardlife.pl`, hw4d/e/g/h/j/k): of 181-222 guards placed, 106-143
+stand down a median 23-35 days after placement (p25 8-16, p75 49-98), after a median 360-717 FP of relief was sent to
+their world (about one task force, `planRelief` sizes it to the guard x `npcSiegeOrbitMargin`). Their logged FP stays
+at the first figure until the stand-down (median ratio 1.00): one battle takes a guard below a third. The simulator's
+`reliefFight` wears it by `BattleRules.lossShare` - the next thing to compare is how many of its guards one relief
+arrival takes below `defendMinStrength`, and how soon.
+One seed (hw4j, as built, every rule above on, no drive-off): 50 stand-downs against the game's 106, yet 81 overruns
+against 59 - half the game's stand-downs and still more overruns, so with the front rules on it is not the guards
+leaving that over-kills the simulator's as-built fronts.
