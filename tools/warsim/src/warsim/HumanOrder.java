@@ -18,6 +18,8 @@ final class HumanOrder {
 	float deposit;
 	/** Upkeep unpaid so far (ThreatUpkeep): a month of it owed and the force stands down. */
 	float owed;
+	/** A council's recon scout (ThreatScouts.recon): one stop, its own system's report (warsim_reconOneStop). */
+	boolean recon;
 	/** For a relief force: the forward base it garrisons. */
 	World guards;
 	/** A relief against a reported strike (HumanBases.garrison's relief), not the standing guard. */
