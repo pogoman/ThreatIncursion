@@ -1371,7 +1371,7 @@ public class ThreatWarBoard {
 		}
 		// the swarm bombarding from orbit is part of this figure, not on top of
 		// it: name its share so the two lines cannot be read as additive
-		float fromOrbit = ThreatGroundFronts.swarmBombardPer30Days(f, m);
+		float fromOrbit = ThreatGroundFronts.swarmBombardPer30Days(f, m) + ThreatGroundFronts.reliefBombardPer30Days(f, m);
 		String orbitNote = fromOrbit <= 0f ? ""
 				: ", " + ThreatGroundFronts.perDay(fromOrbit) + " of it from orbit";
 		tooltip.addPara("Losses %s troops a day at the " + (pushing ? "assault" : "holding")

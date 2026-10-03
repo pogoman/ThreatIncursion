@@ -187,6 +187,12 @@ public class ThreatFleetOrders {
 		public String fallbackId;
 		/** The raid this fleet sails in: every fleet of one dispatchRaid shares it. */
 		public String raidId;
+		/**
+		 * A relief force (sendRelief) over an invaded world: it bombards the Threat
+		 * army there while the defenders are losing (ThreatGroundFronts.tickReliefBombard)
+		 * and, with no term (reliefStays), holds the orbit until the army is gone.
+		 */
+		public boolean relief;
 
 		/** No term: on station until recalled (a guard over one of the player's own colonies, guardOwnDays 0). */
 		public boolean indefinite() {
@@ -200,7 +206,7 @@ public class ThreatFleetOrders {
 		}
 
 		public String task() {
-			if (KIND_GUARD.equals(kind)) return "guarding " + targetName;
+			if (KIND_GUARD.equals(kind)) return (relief ? "relieving " : "guarding ") + targetName;
 			if (KIND_INTERCEPT.equals(kind)) return "intercepting at " + targetName;
 			if (KIND_HUNT.equals(kind)) {
 				return (ThreatSoftening.mustering(this) ? "mustering to hunt the swarms over "
@@ -303,7 +309,12 @@ public class ThreatFleetOrders {
 			boolean supportLost = KIND_SUPPORT.equals(o.kind) && !o.aid && !Factions.PLAYER.equals(o.factionId)
 					&& !ThreatGroundFronts.navyHoldsOver(o.fleet, o.factionId, o.targetId != null
 							? Global.getSector().getEconomy().getMarket(o.targetId) : null);
-			if (o.daysLeft() <= 0f || stationGone || frontGone || supportLost) {
+			// a relief with no term holds until the Threat army on its world is gone,
+			// or it is worn AND outweighed (2026-10-03, the user: relief stays until
+			// the invaders are defeated)
+			boolean reliefDone = KIND_GUARD.equals(o.kind) && o.relief && o.indefinite()
+					&& ThreatGroundFronts.reliefDone(o.fleet, o.targetId);
+			if (o.daysLeft() <= 0f || stationGone || frontGone || supportLost || reliefDone) {
 				all().remove(o);
 				if (o.aid && o.arrived && KIND_GUARD.equals(o.kind)) ThreatAid.onGuardCompleted(o);
 				// a hunting force's follower still wears the force's blinkers; home unable to react otherwise
@@ -311,7 +322,7 @@ public class ThreatFleetOrders {
 				// time served: home on the tracked leg, refund on arrival
 				ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId);
 				ThreatIncConfig.log("Order " + (stationGone ? "void - station gone: "
-						: frontGone || supportLost ? "stood down: " : "complete: ")
+						: frontGone || supportLost || reliefDone ? "stood down: " : "complete: ")
 						+ o.factionId + " " + o.task());
 			}
 		}
@@ -692,14 +703,26 @@ public class ThreatFleetOrders {
 				sailing.add(f);
 			}
 		}
-		float days = ThreatIncConfig.guardDays();
+		// (2026-10-03, the user: relief holds the orbit until the invaders are
+		// defeated) with no term it stays until the poll stands it down
+		// (ThreatGroundFronts.reliefDone) and goes home on the tracked leg
+		boolean stays = ThreatIncConfig.reliefStays();
+		float days = stays ? 0f : ThreatIncConfig.guardDays();
 		for (CampaignFleetAPI fleet : sailing) {
 			fleet.setName("Relief Force");
-			fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, target.getPrimaryEntity(), days,
-					"relieving " + target.getName());
-			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
-					1000f, "returning to " + base.getName());
+			if (stays) {
+				fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, target.getPrimaryEntity(), 1000f,
+						"relieving " + target.getName());
+				fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, target.getPrimaryEntity(), NO_TERM_DAYS,
+						"relieving " + target.getName());
+			} else {
+				fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, target.getPrimaryEntity(), days,
+						"relieving " + target.getName());
+				fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, base.getPrimaryEntity(),
+						1000f, "returning to " + base.getName());
+			}
 			Order o = record(fleet, faction, KIND_GUARD, base, target.getId(), target.getName(), days);
+			o.relief = true;
 			if (!faction.getId().equals(target.getFactionId())) o.recipientFactionId = target.getFactionId();
 		}
 		return sent;
@@ -2116,7 +2139,9 @@ public class ThreatFleetOrders {
 	 */
 	public static void enforceLeash() {
 		for (Order o : all()) {
-			if (!KIND_SUPPORT.equals(o.kind) && !KIND_DEFEND.equals(o.kind)) continue;
+			// a relief holding its world until the army is gone is a station too (2026-10-03)
+			boolean relief = KIND_GUARD.equals(o.kind) && o.relief && o.indefinite();
+			if (!KIND_SUPPORT.equals(o.kind) && !KIND_DEFEND.equals(o.kind) && !relief) continue;
 			if (o.fleet == null || !o.fleet.isAlive() || o.fleet.isExpired()) continue;
 			MarketAPI world = o.targetId != null
 					? Global.getSector().getEconomy().getMarket(o.targetId) : null;
@@ -2124,8 +2149,10 @@ public class ThreatFleetOrders {
 			MarketAPI base = o.baseMarketId != null
 					? Global.getSector().getEconomy().getMarket(o.baseMarketId) : null;
 			float days = o.indefinite() ? NO_TERM_DAYS : Math.max(1f, o.daysLeft());
-			leash(o.fleet, world, days, o.raid ? "raiding " + world.getName() : orbitTask(o.kind, world.getName()),
-					base != null ? base.getPrimaryEntity() : null, o.raid ? "Raid" : orbitName(o.kind));
+			String task = o.raid ? "raiding " + world.getName()
+					: relief ? "relieving " + world.getName() : orbitTask(o.kind, world.getName());
+			leash(o.fleet, world, days, task, base != null ? base.getPrimaryEntity() : null,
+					o.raid ? "Raid" : relief ? "Relief" : orbitName(o.kind));
 		}
 	}
 
