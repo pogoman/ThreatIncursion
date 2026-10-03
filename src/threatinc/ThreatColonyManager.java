@@ -841,6 +841,9 @@ public class ThreatColonyManager {
 						+ ThreatFuel.foundingCost()[0]) {
 			for (int link = 0; link < CHAIN_LINKS.length; link++) {
 				if (!Commodities.FUEL.equals(linkStock(link))) continue;
+				// (2026-10-03, run hw4o: with one plant losing it always runs fuel dry, and
+				// the step took a home world's forge slot at month 24)
+				if (countLink(link) < ThreatIncConfig.investFuelMinPlants()) continue;
 				boolean placed = !hasLink(market, link);
 				if (tryBuildLink(market, link, "fuel tight", false, payerId)) {
 					if (placed && hasLink(market, link)) ThreatFuel.answered(Commodities.FUEL);

@@ -525,3 +525,37 @@ but not dry, so no plant came, and the invest step filled every free slot with a
 
 **The simulator** (`chk-hw4n-x`, the 5:1 setting): 337 of 466 inside, every war row far above the game from month 84 (its
 swarm does not stall). Its own prediction for 5 is nearly as built (`facts.md` "And 5 troops a broken-up FP?").
+
+## 18. hw4o (2026-10-03 afternoon): 5 troops a broken-up FP and the fuel-tight plant - an early human win
+
+5 troops a broken-up FP and `threatinc_investFuelWhenTight` on (3eb2212), on a sixteenth clone (`...ng17`), to month
+140. Dumps `tools/warsim/validation/hw4o`, log `ti-hw4o.txt`.
+
+| | m72 | m96 | m108 | m120 | m132 |
+|---|---|---|---|---|---|
+| human worlds lost | 1 | 1 | 1 | 1 | 1 |
+| defenders' marines | 111k | 175k | 216k | 234k | 236k |
+| hives / killed | 13 / 5 | 27 / 7 | 46 / 7 | 67 / 7 | 85 / 7 |
+| swarm strikes / landings | 47 / 18 | 80 / 22 | 97 / 24 | 121 / 29 | 170 / 38 |
+| swarm forges | 10 | 11 | 11 | 23 | 29 |
+
+**The fuel stall is gone.** From month 30 to 120 the fuel plan reads `holds` (13k-122k in stock); the step built 8 plants
+(`fuel tight`), and no strike or wave waited on fuel before month 110 (`fuel.pl`). The humans won the early war: they
+eradicated seven hives by month 85, four of them in the home region: Qaras (month 48), Epsilon
+Laphirial II (64), Delta Laphirial I (66), and Alpha Laphirial VI (67), the main forge and the source of most waves, which
+no earlier run lost. The hive sieges came early: 99 siege slices on hives in war year 3, against 0 (hw4l) and 26 (hw4n).
+The swarm founded one wave a year in years 3-5 (hw4n 1 / 1 / 18), sat on 112k-176k supplies, and lost one human world in
+140 months. The run tests neither the break-up ratio (24 guard break-ups, 29 landings by month 120) nor the fix's effect
+on the war.
+
+**But the step cost a home forge.** At day 741 the step put a fuel plant on Alpha Laphirial I-B where hw4n, from the same
+save, built a forge on Alpha Laphirial III (day 764). With one plant, losing the biggest always runs fuel dry, so
+`wantsSpare` was no test of tightness, and the shortage answer came at month 29 in both runs anyway. The home system
+ran three forges against hw4n's four until Alpha Laphirial II got one at month 42 (hw4n's fourth, on Alpha Laphirial
+III, had orbital works by month 39). The swarm was already a hive behind before the step (7 against 8 at month 24, one
+wave fewer in war year 2) and three behind at month 36 (14 against 17, 6.1k garrison FP against 8.0k-9.5k). How much of
+that the missing forge explains is not shown; run-to-run noise is larger than one forge (hw4 against hw4b, 152 against
+209 hives). Fixed the same day: `threatinc_investFuelMinPlants` 2. hw4n's stall ran on 4-6 plants against 6 hive
+systems (`plants.pl` on its dumps), so the step still covers it. Simulator (`chk-hw4*-t5`, `-t5f`, `-t5g`): the one-plant
+version cut the median forges at month 36 from 4.5 to 4; the two-plant rule keeps them and is otherwise as without the
+step (`hive-reach-and-stock.md` "Idle stock").

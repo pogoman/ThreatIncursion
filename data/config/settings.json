@@ -517,6 +517,9 @@
 	# run it dry (ThreatFuel.wantsSpare) - one a month; forges never retire, and with fuel at "holds, wants a
 	# spare" the invest step put a forge in every free slot (2026-10-03, run hw4n: fuel-starved on 209k supplies)
 	"threatinc_investFuelWhenTight": true,
+	# ...once the hive has this many fuel plants: with one, losing the biggest always runs it dry, and the step put
+	# a fuel plant where a home forge would have stood (2026-10-03, run hw4o, month 24)
+	"threatinc_investFuelMinPlants": 2,
 	# a strike muster every world in reach of which waits on fuel books what
 	# the hive's fuel stock is short of the cheapest passage as demand on it
 	# (once a SHORT_DAYS a source), so the planner can build a plant for it

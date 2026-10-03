@@ -90,6 +90,7 @@ final class SwarmKnobs {
 		guardFirstPackMult = k.f("warsim_guardFirstPackMult", 1f);
 		strikeWaitBooksFuel = k.b("threatinc_strikeWaitBooksFuel", true);
 		investFuelWhenTight = k.b("threatinc_investFuelWhenTight", true);
+		investFuelMinPlants = k.i("threatinc_investFuelMinPlants");
 		strikeWaitBooksWhole = k.b("warsim_strikeWaitBooksWhole", false);
 		holdsBookMonthly = k.b("warsim_holdsBookMonthly", true);
 	}
@@ -122,6 +123,8 @@ final class SwarmKnobs {
 	final boolean guardFeedsFront, fabricate;
 	/** threatinc_investFuelWhenTight: idle supplies build a fuel plant while fuel is tight (SwarmEconomy.choose). */
 	final boolean investFuelWhenTight;
+	/** threatinc_investFuelMinPlants: the fuel plants the hive needs before investFuelWhenTight applies. */
+	final int investFuelMinPlants;
 	final float fabricateTroopsPerFP, fabricateHoldMargin;
 
 	/**
