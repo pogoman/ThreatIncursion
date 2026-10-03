@@ -519,7 +519,9 @@ by month 96-108). With few staging hives its strikes were too small for the gate
 `passed over` again and again (Chicomoztoc, Eochu Bres and the Thulian Raider Base 17 times each) and ended unspawned,
 and there was no landing for two years. Guards broke up 2,237 FP into 11,185 troops in 39 break-ups (hw4l 119); 1
 strike held back. A stall like hw4g's late one, earlier and deeper - the swarm economy noise of `war-sim-calibration-r29.md`
-"Why hw4g's swarm stalled and hw4h's did not", this time on fuel.
+"Why hw4g's swarm stalled and hw4h's did not", this time on fuel. The cause was a planner flaw, fixed the same day: fuel was tight
+but not dry, so no plant came, and the invest step filled every free slot with a forge (`hive-reach-and-stock.md`
+"Idle stock", `threatinc_investFuelWhenTight`).
 
 **The simulator** (`chk-hw4n-x`, the 5:1 setting): 337 of 466 inside, every war row far above the game from month 84 (its
 swarm does not stall). Its own prediction for 5 is nearly as built (`facts.md` "And 5 troops a broken-up FP?").
