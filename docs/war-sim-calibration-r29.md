@@ -268,3 +268,40 @@ Relief to invaded colonies (`warsim_reliefToInvaded`), on the thought that the g
 feed its fronts: alone it costs 69 cells and the distances (2,424, 1,484 / 257); with the three rules it gets 2,432
 inside and 1,399 / 229 (hw4d back to 349, hw4e and hw4j still 307 and 343). The best medians of the night, still 61
 cells under base, so it stays off too (a default changes only when both measures improve).
+
+## The guards go home (2026-10-03, 06:30-07:00)
+
+**In the game a guard rarely sees its front's end.** `guardend.pl` (the last `Swarm defend over <world>` line before
+each overrun; an idle guard logs at least once in 30 days, `logQuiet`) and `standdown.pl` (each stand-down, and whether
+its front ended that day): 108-157 stand-downs a run (hw4d 144 of 150, hw4e 107 of 114, hw4g 157 of 175, hw4h 114 of
+116, hw4j 108 of 110, hw4k 138 of 145) came with the front still standing, against 204-222 guards placed
+(`Swarm defend: ... stays over`). Of the fronts later overrun, 38 of 57 (hw4j) and 44 of 65 (hw4k) had lost their
+guard over a month before; 7-8 never had one. The guards over unspawned strikes are real fleets
+(`ThreatStrikeFGI.guardUnspawned`), and the relief fleets `planRelief` sends (several a day over a busy front) wear
+them in vanilla battles: Culann's guard 283 -> 133 FP "in a battle", Athulf's 333 -> 157, then a stand-down
+(`ThreatSwarmDefend.tick`: below `defendMinStrength` 0.33 of its arrival FP, unless `defendCommitted` - it has
+broken hulls into troops). The note under "Relief to invaded colonies" that the game logs no such fight was wrong:
+it logs the wear and the stand-down, not the battle.
+
+**The simulator's guards stood to the end**: on seed 3 every one of its 73 overruns had its guard over it (156-188
+FP; the verbose counter-attack line now prints `guard N FP`). `warsim_guardStandDown` (`SwarmOps.standsDown`, off)
+builds the game's rule; it needs `warsim_reliefToInvaded` + `warsim_reliefFights` for anything to wear the guard. On
+seed 3 (hw4j, as built) it sends 76-77 guards home (game 110) and the overruns go 33 (the three front rules) -> 93
+(game 59). The seven-run check (inside / distance all / war rows):
+
+| | inside | all rows | war rows | hw4d | hw4e | hw4f | hw4g | hw4h | hw4i | hw4j |
+|---|---|---|---|---|---|---|---|---|---|---|
+| base | 2,493 | 1,448 | 240 | 365 | 369 | 338 | 350 | 372 | 307 | 392 |
+| relief fights + stand-down | 2,379 | 1,488 | 271 | 350 | 364 | 298 | 304 | 359 | 303 | 401 |
+| the same + the three front rules | 2,452 | 1,417 | 231 | 346 | 338 | 361 | 349 | 385 | 309 | 364 |
+| relief fights + stand-down, no drive-off | 2,422 | 1,530 | 282 | 375 | 369 | 314 | 329 | 369 | 285 | 381 |
+| the same + the three front rules | 2,407 | 1,405 | 227 | 342 | 309 | 362 | 355 | 393 | 316 | 330 |
+
+With the front rules the as-built fronts swing from too safe to too fragile (hw4d month 120 overruns 84.5 against the
+game's 46; the front rules alone 23.5), while its worlds lost fall short (37 against 49).
+The simulator's relief also sent a guard home whenever it outweighed it, committed or not, which the game has no rule
+for; under `warsim_guardStandDown` that is gone (a guard fights on, worn, until `standsDown` or dead: the last two
+rows). With the front rules the overruns come nearer (hw4d 65, hw4j 71 against 46 and 48) and the war rows are the
+best of the night (227), but 86 cells under base. **All off**; the as-built fronts still die about 1.4x as often as
+the game's once the guards can leave. What is left is how hard the game's relief hits a guard (one battle in the
+simulator a relief arrival, several fleets a day in the game, `planRelief`), not measured.

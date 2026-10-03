@@ -37,6 +37,9 @@ final class SwarmOps {
 		int groundEnd = Integer.MIN_VALUE;
 		/** On a Defend station over the front it landed or reinforced (ThreatSwarmDefend), until that front ends. */
 		boolean defending;
+		/** The guard's FP when it went on Defend (ThreatSwarmDefend.Entry.fp0), and whether it has broken hulls into troops. */
+		float defendFP0;
+		boolean fabricated;
 		/** warsim_basesHold: holding a forward base's orbit with its guard sunk, and for how many days (a station siege). */
 		boolean besieging;
 		int siegeDays;
@@ -876,6 +879,7 @@ final class SwarmOps {
 		}
 		s.count("guardFPStayed", p.fp);
 		orderOf(s, p).defending = true;
+		orderOf(s, p).defendFP0 = p.fp;
 		p.holding = true;
 		s.count("defendStations", 1);
 	}
@@ -1094,6 +1098,12 @@ final class SwarmOps {
 		w.guardFP *= worn;
 		w.reliefFP *= worn;
 		SwarmPosture.noteTrend(s, lost, 0f);
+		// warsim_guardStandDown: the game has no outweighed rule for a Threat guard - it fights on, worn, until it is
+		// below defendMinStrength uncommitted (standsDown) or dead
+		if (s.knobs.b("warsim_guardStandDown", false)) {
+			s.count(defence > strength ? "reliefInvaded.wonFight" : "reliefInvaded.beaten", 1);
+			return;
+		}
 		if (defence > strength) {
 			for (Parcel p : gs) goHome(s, p, p.to);
 			s.count("reliefInvaded.lifted", 1);
@@ -1101,6 +1111,25 @@ final class SwarmOps {
 		} else {
 			s.count("reliefInvaded.beaten", 1);
 		}
+	}
+
+	/**
+	 * warsim_guardStandDown (2026-10-03): ThreatSwarmDefend.tick sends a guard home once it is worn below
+	 * threatinc_defendMinStrength of its strength on arrival, unless it has committed by breaking hulls into troops
+	 * (ThreatGroundFronts.defendCommitted). In the game the relief fleets wear it there: 108-157 stand-downs a run with the
+	 * front still standing, and most overrun fronts had lost their guard over a month before.
+	 */
+	static boolean standsDown(State s, Parcel p, StrikeOrder o) {
+		if (!s.knobs.b("warsim_guardStandDown", false) || o.defendFP0 <= 0f) return false;
+		if (o.fabricated && s.knobs.b("threatinc_fabricateDefendEnabled", true)) return false;
+		return p.fp < o.defendFP0 * s.knobs.f("threatinc_defendMinStrength", 0.33f);
+	}
+
+	/** The FP of the strikes holding Defend over a world (guards), for the verbose log. */
+	static float guardFP(State s, World w) {
+		float fp = 0f;
+		for (Parcel p : guards(s, w)) fp += p.fp;
+		return fp;
 	}
 
 	/** The strikes on a Defend station over the world's Threat front (ThreatSwarmDefend). */
@@ -1132,6 +1161,7 @@ final class SwarmOps {
 			float give = Math.min(gap / k.fabricateTroopsPerFP, p.fp - GUARD_SPARED_FP);
 			if (give <= 0f) continue;
 			p.fp -= give;
+			orderOf(s, p).fabricated = true;
 			reinforceFront(s, l, give * k.fabricateTroopsPerFP, false);
 			gap -= give * k.fabricateTroopsPerFP;
 			s.count("fpFabricated", give);
@@ -1290,7 +1320,8 @@ final class SwarmOps {
 				if (s.verbose) s.log("Counter-attack at " + w.name + (l.strataHeld == 0 && ca > guard * odds ? " overran" : " battered")
 						+ " the beachhead (" + (int) ca + " vs " + (int) guard + ")"
 						+ " [troops " + (int) l.troops + ", garrison " + (int) w.garrison + " x " + suppressed(s, l) + ", marines " + (int) w.stock[World.MARINES]
-						+ ", holding " + l.holding + ", pushing " + l.pushing + ", dug " + (int) l.entrenchDays + ", day " + (s.day - l.landedDay) + "]");
+						+ ", holding " + l.holding + ", pushing " + l.pushing + ", dug " + (int) l.entrenchDays + ", day " + (s.day - l.landedDay)
+							+ ", guard " + (int) guardFP(s, w) + " FP]");
 				l.troops *= 1f - s.knobs.f("threatinc_frontCounterAttackLossFraction") * vetLoss(s, l.level);
 				l.entrenchDays *= s.knobs.f("threatinc_frontEntrenchKeptFraction");
 				if (l.strataHeld > 0) {
@@ -1330,6 +1361,11 @@ final class SwarmOps {
 			}
 			if (o.defending) {
 				if (o.target == null || o.target.lost || !s.swarm.landings.containsKey(o.target.id)) goHome(s, p, p.to);
+				else if (standsDown(s, p, o)) {
+					s.count("guardStoodDown", 1);
+					if (s.verbose) s.log("Swarm defend over " + o.target.name + " stands down at " + (int) p.fp + " of " + (int) o.defendFP0 + " FP");
+					goHome(s, p, p.to);
+				}
 				else s.count("defendFPDays", p.fp);
 				continue;
 			}

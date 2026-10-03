@@ -423,7 +423,7 @@ public final class HumanSide implements Side {
 					o.guards.reliefDeposit += o.deposit;
 					o.guards.reliefHome = o.home;
 				}
-				// warsim_reliefToInvaded: over a Threat front it meets the swarm's guard (warsim_reliefFights: the game logs no such fight off screen;
+				// warsim_reliefToInvaded: over a Threat front it meets the swarm's guard (warsim_reliefFights: the game logs the wear and the stand-downs, not the battle;
 				// on, the simulator's relief drove off 35 guards a run and hw4d stopped collapsing - 39.5 worlds lost against 51)
 				if (!o.guards.forwardBase && s.knobs.b("warsim_reliefToInvaded", false) && s.knobs.b("warsim_reliefFights", false)) SwarmOps.reliefFight(s, o.guards);
 			} else if (o.relief && s.knobs.b("warsim_reliefGoesHome", false)) {
