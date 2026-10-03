@@ -801,7 +801,8 @@ final class SwarmOps {
 		l.landedDay = s.day;
 		s.swarm.landings.put(w.id, l);
 		s.count("threatLandings", 1);
-		s.log("Front deployed at " + w.name + " (threat): " + (int) troops + " troops");
+		s.log("Front deployed at " + w.name + " (threat): " + (int) troops + " troops"
+				+ (s.verbose ? " [need " + (int) beachheadTroops(s, w) + ", ca " + (int) colonyDefence(s, w, 0, 1f, true) + ", garrison " + (int) w.garrison + ", marines " + (int) w.stock[World.MARINES] + "]" : ""));
 		return troops;
 	}
 
@@ -1159,14 +1160,18 @@ final class SwarmOps {
 		float d = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false);
 		float ca = colonyDefence(s, w, l.strataHeld, suppressed(s, l), true);
 		float e = threatEff(s, l);
-		// shouldBrace: a front holding no ground that the next counter-attack would overrun digs in
-		if (l.pushing && l.strataHeld == 0 && ca > e * odds) l.pushing = false;
+		// shouldBrace: a front holding no ground that the next counter-attack would overrun digs in. warsim_braceAfterAttrition
+		// (2026-10-03): the game asks after the day's attrition and the defenders' bleed (ThreatGroundFronts' tick), so a front
+		// at 1.99:1 that bleeds past 2 braces; asked before, it pushed on and the day's counter-attack overran it at 2.03. On since
+		// 2026-10-03 05:00: across hw4d-h the check rose 1,735 -> 1,794 inside, the war rows' distance 177 -> 171
+		boolean braceAfter = s.knobs.b("warsim_braceAfterAttrition", true);
+		if (!braceAfter && l.pushing && l.strataHeld == 0 && ca > e * odds) l.pushing = false;
 		boolean exposed = l.pushing && l.checkpointLeft <= 0f;
 		float loss = (exposed ? s.knobs.f("threatinc_frontPushLossPer30Days") * s.knobs.f("threatinc_threatPushLossMult")
 				: s.knobs.f("threatinc_frontMarineLossPer30Days")) / 30f;
 		l.troops -= l.troops * Math.min(1f, loss * vetLoss(s, l.level));
 		if (l.troops < s.knobs.f("threatinc_frontMinMarines")) return "collapsed";
-		if (!exposed) l.entrenchDays += 1f;
+		if (!exposed && !braceAfter) l.entrenchDays += 1f;
 		// the defenders bleed on the frontage (engaged = the smaller force), out of the reserve's marines
 		float engaged = Math.min(w.stock[World.MARINES], l.troops);
 		if (w.hasReserve && engaged > 0f) {
@@ -1176,6 +1181,13 @@ final class SwarmOps {
 		e = threatEff(s, l);
 		d = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false);
 		ca = colonyDefence(s, w, l.strataHeld, suppressed(s, l), true);
+		if (braceAfter) {
+			if (l.pushing && l.strataHeld == 0 && ca > e * odds) {
+				l.pushing = false;
+				exposed = false;
+			}
+			if (!exposed) l.entrenchDays += 1f;
+		}
 		if (l.pushing) {
 			if (l.checkpointLeft > 0f) {
 				l.checkpointLeft -= 1f;
@@ -1220,7 +1232,9 @@ final class SwarmOps {
 			if (ca > guard) {
 				s.count("colonyCounterAttacks", 1);
 				if (s.verbose) s.log("Counter-attack at " + w.name + (l.strataHeld == 0 && ca > guard * odds ? " overran" : " battered")
-						+ " the beachhead (" + (int) ca + " vs " + (int) guard + ")");
+						+ " the beachhead (" + (int) ca + " vs " + (int) guard + ")"
+						+ " [troops " + (int) l.troops + ", garrison " + (int) w.garrison + " x " + suppressed(s, l) + ", marines " + (int) w.stock[World.MARINES]
+						+ ", holding " + l.holding + ", pushing " + l.pushing + ", dug " + (int) l.entrenchDays + ", day " + (s.day - l.landedDay) + "]");
 				l.troops *= 1f - s.knobs.f("threatinc_frontCounterAttackLossFraction") * vetLoss(s, l.level);
 				l.entrenchDays *= s.knobs.f("threatinc_frontEntrenchKeptFraction");
 				if (l.strataHeld > 0) {

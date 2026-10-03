@@ -445,6 +445,16 @@ public final class Main {
 						fmt(pct(runs, a[1], col, 0.5)), fmt(lo), fmt(hi), ok ? "in" : "OUT"));
 			}
 		}
+		// -Dwarsim.cols=a,b: census rows printed the same way but left out of the inside count, so it stays comparable
+		for (String col : System.getProperty("warsim.cols", "").split(",")) {
+			if (col.isEmpty()) continue;
+			System.out.println(col + " (not counted)");
+			for (int[] a : at) {
+				double r = val(real.get(a[0]), col), lo = pct(runs, a[1], col, 0.1), hi = pct(runs, a[1], col, 0.9);
+				System.out.println(String.format("  month %3d %12s | %12s [%s - %s] %s", a[1], fmt(r),
+						fmt(pct(runs, a[1], col, 0.5)), fmt(lo), fmt(hi), r >= lo && r <= hi ? "in" : "OUT"));
+			}
+		}
 		// the run's dated log beside the dumps (simdump-<name> -> ti-<name>.txt), or -log: events counted by month
 		if (log == null) {
 			String n = dir.getFileName().toString();

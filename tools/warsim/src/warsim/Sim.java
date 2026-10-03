@@ -1,11 +1,13 @@
 package warsim;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 /** One run: load the start state, step the days, record a row a month. */
 public final class Sim {
@@ -91,9 +93,14 @@ public final class Sim {
 	static Map<String, Double> row(State s) {
 		Map<String, Double> m = new LinkedHashMap<String, Double>();
 		double hives = 0, hiveSize = 0, garrison = 0, bank = 0, want = 0, fuelUnits = 0, fuelPlants = 0, forges = 0;
+		// the hive systems, and those a strike can stage from (a hive of strikeMinSize: pickStrikeStaging)
+		Set<StarSys> hiveSystems = new HashSet<StarSys>(), staging = new HashSet<StarSys>();
+		float stageSize = s.knobs.f("threatinc_strikeMinSize", 4f);
 		for (Hive h : s.hives) {
 			if (h.dead) continue;
 			hives++;
+			hiveSystems.add(h.sys);
+			if (h.size >= stageSize) staging.add(h.sys);
 			fuelUnits += h.fuelUnits();
 			if (h.fuelPlant) fuelPlants++;
 			if (h.forge) forges++;
@@ -132,6 +139,8 @@ public final class Sim {
 		m.put("swarmFuelPerMonth", fuelUnits * SwarmFit.FUEL_UNIT);
 		m.put("fuelPlants", fuelPlants);
 		m.put("forges", forges);
+		m.put("hiveSystems", (double) hiveSystems.size());
+		m.put("stagingSystems", (double) staging.size());
 		m.put("swarmSupplies", (double) s.swarm.supplies);
 		m.put("stance", (double) s.swarm.stance);
 		m.put("worlds", worlds);

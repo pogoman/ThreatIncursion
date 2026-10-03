@@ -146,7 +146,14 @@ next strike reinforces. Two things in the game's code the simulator lacked:
   raises both sides: strength x (1 + level), losses x (1 - 0.5 level). The game's batterings cost a front 2-4% of
   its landing, the simulator's a flat 10%. `warsim_veterancy` (fronts and colony marines, diluted by raw marines) is
   built, off: with the pace it moves the medians closer (distance 1,014, war rows 168) but narrows the bands
-  (inside 1,677).
+  (inside 1,677). The game log shows it at work (`caidx.pl`): Salamanca's front in hw4g lost 100, 83, 69, 57, 47, 43
+  and 40 marines to seven batterings in a row (marines x 0.10 x `lossMult`, the level up about 0.12 a counter-attack)
+  while the colony's counter-attack rose 4-5% a time (3,227 -> 4,142). By counter-attack index the game's guard
+  grows (406, 504, 556 ... 1,121 from the ninth) at a ratio of 1.5-1.7; the simulator's without veterancy falls (585,
+  535, 442, 383) at 1.5-2.2 and its fronts are overrun after 3-4. With it (hw4g's settings, seed 3) the guard holds
+  670-810 at 1.5-1.9 and overrun fronts live 164 days against the game's 168. Off by default all the same: it
+  removes the slow-swarm seeds (hives at month 132 [255-340] against [142-330] without it), so hw4g's plateau (162)
+  falls outside.
 - `warsim_invadedGateShare` replaces the constant 0.1 (fitted on pd9a, before guards entered the gate). At 0.5 one
   seed splits 127 new fronts / 157 reinforcements (game 114 / 86) and loses more worlds. Not checked across runs.
 
@@ -165,3 +172,33 @@ the guards are short; they sailed 70 sieges on hw4d against the game's 13).
 clone (`war-sim-real-runs.md` 11), ran away as the simulator does: month 134 hives 305, size 1,319, garrison 366k,
 360k supplies, all on the simulator's medians. So the late swarm is not a simulator fault the two runs can show; the
 landings (246 against 105-109) and overruns (187 against 42-62) are, and they come from the fronts above.
+
+**Why hw4g's swarm stalled and hw4h's did not.** Both on one setting and one jar. hw4g's supply stock sat at 3-15k
+from month 48 to the end; hw4h's climbed from month 96 (21k, 55k, 97k, 256k). The hive planner's invest rule builds a
+forge on a size-3+ world only while the stock pays a forge and a founding kit besides (`hive-economy.md` "Except the
+banked outputs"): in months 84-120 hw4h's planner logged 88 `heavyindustry (invest)` and 49 `ORBITALWORKS`, hw4g's
+none. Forges stayed at 21-24 in hw4g (hw4h 42 -> 185), so the supplies never came. Hives go on founding (hive
+systems: hw4g 72 at month 132, hw4h 67), but few grow: systems with a size-4 hive, the ones a strike can stage from,
+stayed at 10-11 in hw4g against 43 in hw4h. The check prints both as rows that are not counted
+(`-Dwarsim.cols=hiveSystems,stagingSystems`): the simulator's hive systems sit on both runs (70.5 at month 132), its
+staging systems at 20 / 28.5 / 42 / 56.5 by months 96-132 [p10 5-8], about 1.3x hw4h's.
+
+## After the pace (2026-10-03, 04:30-05:00)
+
+**The options table with the pace and veterancy on** (r41, 30 seeds, month 130; the game's in brackets): as built 49.5
+worlds lost (51, 37), 108 landings (125, 128), 48.5 overruns (46); no break-up 27 (26), 104 (99), 54.5 (37); Defend
+break-up off 40 (22, 33), 192 (109, 105), 133 (62, 42). With the pace alone (r40) as built lands 144 and Defend off
+247. So the first two columns now sit on the game; only Defend off stays out, at about 1.8x the landings.
+
+**Where the Defend-off landings come from.** By how each front ended, the simulator's fronts now behave as the game's:
+overrun fronts took a median 5 counter-attacks in both, 20-24% of them reinforced on the way (`fstat.pl`). The
+simulator has more of them: on hw4g's settings (seed 3, veterancy on) 178 fronts against 114, 121 overrun against
+62, 41 won against 18, 16 open at the end against 27. That is 404 strikes against 298 (the staging systems above) and
+0.45 new fronts a strike against 0.38.
+
+**The brace came a day late.** The game's front asks whether to break off its assault after the day's attrition and
+the defenders' bleed (`ThreatGroundFronts` tick: `frontLose`, `bleedDefenders`, then `shouldBrace`); the simulator
+asked before, so a front at 1.99:1 pushed on, bled past 2 and the day's counter-attack overran it. Every first
+counter-attack that overran in the simulator did so at 2.03-2.04, on a front still pushing: 24 of 138 (seed 3), where
+the game's first counter-attacks overran 1 of 85 (hw4g) and 1 of 74 (hw4h) (`ovr.pl`). `warsim_braceAfterAttrition`
+asks in the game's order: 4 of 139. Across hw4d-h the check rose 1,735 -> 1,794 inside (every run gained), the war rows' distance fell 177 -> 171, all rows' 1,026 -> 1,036; on since 05:00. Total overruns hardly move (seed 3: 121): the fronts die later instead (overrun at a median 192 days against 164).
