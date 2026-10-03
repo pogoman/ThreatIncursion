@@ -1032,6 +1032,36 @@ final class SwarmOps {
 		return colonyDefence(s, w, 0, left, true) * margin / Math.max(0.01f, s.knobs.f("threatinc_frontLandingMult") * odds);
 	}
 
+	/**
+	 * warsim_reliefToInvaded: a relief arriving over a Threat front fights the swarm's guard there (the game's relief meets
+	 * the Defend fleet, on screen or off). The guards' strength is warsim_guardUnitsPerFP a FP against the guard's
+	 * strength(); each side loses BattleRules.lossShare as in an arrival fight, and a Threat guard outweighed goes home.
+	 */
+	static void reliefFight(State s, World w) {
+		List<Parcel> gs = guards(s, w);
+		if (gs.isEmpty() || w.guardFP < 1f) return;
+		float strength = 0f;
+		for (Parcel p : gs) strength += strength(p);
+		float defence = w.guardFP * s.knobs.f("warsim_guardUnitsPerFP", SwarmFit.STRIKE_UNITS_PER_FP);
+		float lostShare = BattleRules.lossShare(strength, defence);
+		float worn = 1f - BattleRules.lossShare(defence, strength);
+		float lost = 0f;
+		for (Parcel p : gs) {
+			lost += p.fp * lostShare;
+			p.fp -= p.fp * lostShare;
+		}
+		w.guardFP *= worn;
+		w.reliefFP *= worn;
+		SwarmPosture.noteTrend(s, lost, 0f);
+		if (defence > strength) {
+			for (Parcel p : gs) goHome(s, p, p.to);
+			s.count("reliefInvaded.lifted", 1);
+			s.log("Relief over " + w.name + " drove off the swarm's guard (" + (int) defence + " vs " + (int) strength + ")");
+		} else {
+			s.count("reliefInvaded.beaten", 1);
+		}
+	}
+
 	/** The strikes on a Defend station over the world's Threat front (ThreatSwarmDefend). */
 	static List<Parcel> guards(State s, World w) {
 		List<Parcel> out = new ArrayList<Parcel>();
@@ -1168,8 +1198,9 @@ final class SwarmOps {
 		// warsim_counterAttackPace: the game's colony paces on stability/10 and its military command
 		// (Theatre.COLONY.counterAttackInterval), which the simulator does not hold; fitted to the hw4d-g logs, where the
 		// later counter-attacks came every 25-28 days (pace 0.9-1.05 backed out at the tempo) and the first after a
-		// landing at 57-60 (pace 0.39-0.52: the invasion's shock), against the simulator's 18 and 25 at pace 1
-		float pace = s.knobs.f("warsim_counterAttackPace", 1f) * (l.counterAttacks == 0 ? s.knobs.f("warsim_firstCounterAttackPace", 1f) : 1f);
+		// landing at 57-60 (pace 0.39-0.52: the invasion's shock), against the simulator's 18 and 25 at pace 1.
+		// On since 2026-10-03: across hw4d-h the check rose 1,718 -> 1,735 inside and the medians' distance fell 1,111 -> 1,027
+		float pace = s.knobs.f("warsim_counterAttackPace", 0.68f) * (l.counterAttacks == 0 ? s.knobs.f("warsim_firstCounterAttackPace", 0.55f) : 1f);
 		l.counterClock += Math.max(0.25f, body) * tempo * pace;
 		if (l.counterClock >= s.knobs.f("threatinc_frontCounterAttackDays")) {
 			l.counterClock = 0f;

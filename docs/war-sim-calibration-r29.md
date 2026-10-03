@@ -138,13 +138,26 @@ next strike reinforces. Two things in the game's code the simulator lacked:
   (`Theatre.COLONY.counterAttackInterval`); the simulator holds no stability. The game's first counter-attack came
   54-60 days after the landing (pace backed out at the tempo 0.39-0.52), later ones every 25-28 (0.9-1.05); the
   simulator's 23 and 18. `warsim_counterAttackPace` 0.68 and `warsim_firstCounterAttackPace` 0.55 fit the intervals.
-  Inside: hw4g 323 -> 346, hw4f 320 -> 336, hw4d 376 -> 341, hw4e 362 -> 349. Off (two up, two down).
+  Inside: hw4g 323 -> 346, hw4f 320 -> 336, hw4d 376 -> 341, hw4e 362 -> 349, hw4h 337 -> 363 (1,718 -> 1,735);
+  the medians' summed distance (`mdist.pl`, |ln(sim / real)| over every cell) 1,111 -> 1,027, the war rows' 192 ->
+  177. On by default since 2026-10-03 04:20. On hw4d the human councils then start half the game's offensive plays
+  (BOMBERS 14 against 29) - the rows it loses.
 - *Veterancy* (`ThreatMarineXP`). A swarm front lands at 0.15 (`npcLandingVeterancy`) and every counter-attack
   raises both sides: strength x (1 + level), losses x (1 - 0.5 level). The game's batterings cost a front 2-4% of
   its landing, the simulator's a flat 10%. `warsim_veterancy` (fronts and colony marines, diluted by raw marines) is
-  built, off: with the pace it fits worse on all four runs (320, 324, 329, 346).
+  built, off: with the pace it moves the medians closer (distance 1,014, war rows 168) but narrows the bands
+  (inside 1,677).
 - `warsim_invadedGateShare` replaces the constant 0.1 (fitted on pd9a, before guards entered the gate). At 0.5 one
   seed splits 127 new fronts / 157 reinforcements (game 114 / 86) and loses more worlds. Not checked across runs.
+
+**Relief to invaded colonies** (`ThreatFleetOrders.planRelief`): the game sends a task force to every invaded colony,
+sized to the swarm's guard over it x `npcSiegeOrbitMargin` (or `guardFleetFP`), from the nearest base - 293-566
+fleets a run, 126k-210k FP (hw4d, hw4h, hw4g). The simulator sent relief to forward bases only.
+`warsim_reliefToInvaded` (`HumanBases.reliefInvaded`) builds it, off; its volume matches (one hw4g seed: 797 fleets,
+215k FP). Alone it is neutral (inside 1,670, distance 1,098). Two parts are separate knobs, both off and both worse:
+`warsim_reliefFights` (the relief fights the swarm's guard on arrival; the game logs no such fight off screen, and it
+stopped hw4d's collapse: 39.5 worlds lost against 51) and `warsim_reliefOwedShort` (councils owe relief only while
+the guards are short; they sailed 70 sieges on hw4d against the game's 13).
 
 **The runaway swarm - inside the game's spread.** With break-up off hw4g's swarm stopped growing from month 96
 (garrison 41-59k FP, hive size 328-450, supplies in stock 4-7k on 70k a month) while the simulator's kept growing
