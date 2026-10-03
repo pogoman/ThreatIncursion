@@ -235,6 +235,13 @@ on the ground-front poll (it was monthly):
   already gave no siege. With no swarm overhead,
   one guard of `guardFleetFP` still goes, as before. The old flat 100-point guard
   (258 FP built) sat 2,600 units off Coatl against 2,812 FP for 76 days.
+- **Any distance (2026-10-03, the user: "Why wouldn't a far away base be allowed to send relief?").** `pickReliefBase`
+  takes the nearest base whose depot can provision one relief fleet at its distance; `canProvisionRelief` prices the
+  voyage by the light-year, and the time is the voyage's. It used to skip any base beyond its expedition range
+  (`expeditionRangeLY`, `ThreatReach.baseRangeLY`), which is how far a whole siege could sail on the depot, so a base
+  that could pay for relief but not a siege counted as out of reach: 11 of the 30 worlds taken in hw4q (14 of 32 in
+  hw4p) got none. An ally's relief (`ThreatCoalition.allyAid`) picks its base the same way; an ally's guard against
+  a strike still uses `pickBase`. Marine convoys already had no radius (`ThreatConvoys.stockReachLY`, 2026-10-01).
 - **The siege hull ledger (2026-09-29, closed economy).** The purge's counterpart to the
   strike's bank ledger: `ThreatPurgeFGI.setLedger` books an NPC siege's fleet points at launch and
   `settleLedger` settles them against the fleets that really spawn (shortfall from the base then

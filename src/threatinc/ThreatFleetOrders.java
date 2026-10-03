@@ -561,7 +561,7 @@ public class ThreatFleetOrders {
 
 	/**
 	 * Whether one of the faction's own invaded worlds is still owed relief a
-	 * base of the faction can reach and provision. A siege waits for it:
+	 * base of the faction can provision, at any distance. A siege waits for it:
 	 * relief draws on the depots first (user, 2026-09-27).
 	 */
 	public static boolean reliefOwed(FactionAPI faction) {
@@ -602,7 +602,7 @@ public class ThreatFleetOrders {
 				MarketAPI base = pickReliefBase(faction, market);
 				if (base == null) {
 					ThreatIncConfig.logQuiet("relief-none:" + market.getId(), "Relief: " + factionId
-							+ " cannot relieve invaded " + market.getName() + " - no base in reach can provision it (owed "
+							+ " cannot relieve invaded " + market.getName() + " - no base can provision it (owed "
 							+ (int) owed + ")");
 					continue;
 				}
@@ -617,10 +617,14 @@ public class ThreatFleetOrders {
 	}
 
 	/**
-	 * The base a relief sails from: the nearest in reach whose depot can
-	 * provision one relief fleet. The nearest alone is often the invaded world
-	 * itself, drained by its front, and relief never sailed while a stocked
-	 * base sat 3 ly away (Nachiketa, 2026-09-29).
+	 * The base a relief sails from: the nearest whose depot can provision one
+	 * relief fleet at its distance (canProvisionRelief prices the voyage by the
+	 * light-year). The nearest alone is often the invaded world itself, drained
+	 * by its front, and relief never sailed while a stocked base sat 3 ly away
+	 * (Nachiketa, 2026-09-29). No radius (2026-10-03, the user): it was a
+	 * siege expedition's reach (expeditionRangeLY), so a base that could pay
+	 * for relief but not a siege counted as out of reach - 11 of the 30 worlds
+	 * taken in hw4q got no relief at all.
 	 */
 	public static MarketAPI pickReliefBase(FactionAPI faction, MarketAPI target) {
 		MarketAPI best = null;
@@ -629,7 +633,7 @@ public class ThreatFleetOrders {
 		for (MarketAPI market : ThreatReserves.marketsOf(faction.getId())) {
 			if (market.getStarSystem() == null || !IncursionManager.isBase(market)) continue;
 			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(), hyperLoc);
-			if (d > IncursionManager.expeditionRangeLY(market) || d >= bestDist) continue;
+			if (d >= bestDist) continue;
 			if (!canProvisionRelief(market, target)) continue;
 			bestDist = d;
 			best = market;
