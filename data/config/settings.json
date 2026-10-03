@@ -441,6 +441,13 @@
 	# annihilating it on a timer (the scour, removed 2026-09-08): this
 	# fraction of the front per 30 days, scaled by its weight over the planet
 	"threatinc_swarmFrontBombardPer30Days": 0.60,
+	# a relief force holding the orbit over its own invaded world bombards the Threat army on the same formula while
+	# the defenders are losing (the army pushes, or holds and the next counter-attack would not overrun it), paying
+	# fuel from what it carries above its passage home and then its supply line (2026-10-03, the user); 0 off
+	"threatinc_reliefBombardPer30Days": 0.60,
+	# relief holds the orbit until the Threat army is gone, or until it is worn below defendMinStrength and the swarm
+	# there outweighs it by siegeBreakOffRatio; false: guardDays and home, as before (2026-10-03, the user)
+	"threatinc_reliefStays": true,
 	"threatinc_swarmOrbitMinFleetFP": 50,
 
 	# The stratum campaign: a size-S hive is S strata deep with the Fabrication

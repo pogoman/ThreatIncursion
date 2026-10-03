@@ -260,6 +260,25 @@ on the ground-front poll (it was monthly):
   convoy per helped colony, one helper per need, clipped to a hull load). Before this, allied
   guards and Defend contracts stopped once the strike landed. The Defend contract itself
   still covers strikes in flight only.
+- **Holds until the army is gone (2026-10-03, the user: "relief should stay until invaders defeated").** With
+  `threatinc_reliefStays` on, relief has no term: `sendRelief` queues the voyage and an orbit with no end, the
+  order is leashed like a Defend (`enforceLeash`, "Relief"), and `ThreatGroundFronts.tickRelief` keeps it on its
+  orbit and fighting while any Threat fleet is over the world. It goes home (`ThreatFleetOrders.poll`,
+  `ThreatGroundFronts.reliefDone`) when the Threat army is gone, beaten or the world fallen, or when it is worn
+  below `defendMinStrength` AND the swarm there outweighs it by `siegeBreakOffRatio`, a navy's Defend's rule;
+  `planRelief` then sends what the swarm there asks. While it holds the orbit nothing comes down: the swarm's
+  landings, its guard's bombardment (`supportSlice`) and its break-up (`fabricateTroops`) all refuse a contested
+  orbit, as they always did, and the marine convoys get through. Before, relief left after `guardDays` (90).
+- **Bombards the army while the defenders are losing (2026-10-03, the user).** Breaking hulls up for troops gives
+  up the orbit, and the side that takes it now uses it. `tickReliefBombard`, on the front's tick beside
+  `tickSwarmBombard`, uses the swarm's formula: `reliefBombardPer30Days` (0.60) of the army per 30 days, times the
+  relief's points over the army's defence strength, times its veterancy loss multiplier. It fires only with no Threat
+  fleet over the world and while `defendersLosing`: the army is pushing, or it holds and the next counter-attack
+  would not overrun it, which is what keeps a Defend fleet's guns cold, seen from the other side. Each fleet pays
+  `bombardFuelPerDay` from what it carries above its passage home (`reliefFuelHome`) and then its supply line
+  (`payOrdnance` with `keep`). A fleet that cannot pay a day does not fire, so it never burns the fuel it needs to
+  stay or go home. An army bombarded below `frontMinMarines` is destroyed ("Threat Landing Destroyed"). The board's
+  Losses figure includes it (`attritionPer30Days`). The simulator has no relief bombardment; its relief rules are off.
 
 To verify: Coatl-like siege gets a Relief Force at about 1.5x the Threat FP within a
 day of loading; it engages rather than keeping its distance; a depot too dry to

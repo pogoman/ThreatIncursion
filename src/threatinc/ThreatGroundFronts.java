@@ -1229,7 +1229,7 @@ public class ThreatGroundFronts {
 		// bombardment separately from this rate, so a readout that stopped at
 		// the ground rate understated what a front under an unopposed swarm
 		// actually bleeds - and the Losses column is the at-a-glance number.
-		return front.marines * rate + swarmBombardPer30Days(front, market);
+		return front.marines * rate + swarmBombardPer30Days(front, market) + reliefBombardPer30Days(front, market);
 	}
 
 	/**
@@ -1535,6 +1535,7 @@ public class ThreatGroundFronts {
 	public static void poll(float elapsedDays) {
 		if (elapsedDays <= 0f) return;
 		tickSupport(elapsedDays);
+		tickRelief();
 		ThreatSwarmDefend.tick(elapsedDays);
 		sweepSieges();
 		ThreatBlockade.sweep();
@@ -1792,6 +1793,10 @@ public class ThreatGroundFronts {
 		// the swarm's answer to an army on its world: hold the orbit
 		// the swarm grinds a front it has the orbit over (2026-09-08)
 		tickSwarmBombard(front, market, elapsedDays);
+		if (getFront(front.marketId) == null) return; // bombarded to nothing
+		// ...and the defenders' answer to a Threat army on theirs: a relief that
+		// holds the orbit bombards it while they are losing (2026-10-03, the user)
+		tickReliefBombard(front, market, elapsedDays);
 		if (getFront(front.marketId) == null) return; // bombarded to nothing
 
 		// dry AND too weak even to grind, the campaign is lost. An NPC or player
@@ -2094,6 +2099,159 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float fp = swarmOrbitStrength(market);
 		float ratio = fp / Math.max(1f, fp + defenseStrength(front));
 		return front.marines * per30 * ratio * ThreatMarineXP.frontLossMult(front);
+	}
+
+	// ------------------------------------------------------------------
+	// relief over an invaded world (2026-10-03, the user): breaking hulls up
+	// for troops gives up the orbit, and the side that takes it uses it - the
+	// relief holds the space until the Threat army is gone (no landing, no
+	// bombardment, no break-up while it does) and grinds the army from orbit
+	// while the defenders are losing, on fuel it can spare
+	// ------------------------------------------------------------------
+
+	/** Memory key (market): the day's relief-bombardment line is logged. */
+	protected static final String RELIEF_LOG_KEY = "$threatinc_reliefBombardLogged";
+
+	/**
+	 * Keeps each relief with no term on its orbit (a battle can empty its
+	 * queue) and fighting the swarm there: the leash's hold-station blinders
+	 * come off while Threat fleets are over the world (ThreatFleetOrders.enforceLeash).
+	 */
+	protected static void tickRelief() {
+		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
+			if (!o.relief || !o.indefinite() || o.fleet == null || !o.fleet.isAlive() || o.fleet.isExpired()) continue;
+			MarketAPI market = o.targetId != null ? Global.getSector().getEconomy().getMarket(o.targetId) : null;
+			if (market == null || market.getPrimaryEntity() == null) continue;
+			ThreatSwarmDefend.holdOrbit(o.fleet, market, o.task());
+			ThreatFleetOrders.fightOrbit(o.fleet, threatOverWorld(market));
+		}
+	}
+
+	/**
+	 * Whether a relief with no term goes home (ThreatFleetOrders.poll): the
+	 * Threat army on its world is gone - beaten, or the world fell - or the
+	 * relief is worn below defendMinStrength AND the swarm over the world
+	 * outweighs it by siegeBreakOffRatio, a navy's Defend's rule
+	 * ({@link #navyHoldsOver}). planRelief then sends what the swarm there asks.
+	 */
+	public static boolean reliefDone(CampaignFleetAPI fleet, String marketId) {
+		MarketAPI market = marketId != null ? Global.getSector().getEconomy().getMarket(marketId) : null;
+		if (market == null || !isThreatOwned(getFront(marketId))) return true;
+		if (fleet == null || fleet.getFaction() == null) return true;
+		if (ThreatReturns.orderHealth(fleet) >= ThreatIncConfig.defendMinStrength()) return false;
+		float ratio = ThreatIncConfig.siegeBreakOffRatio();
+		if (ratio <= 0f) return false;
+		float ours = orbitPoints(fleet.getFaction().getId(), market, fleet.getFleetPoints());
+		return pointsNear(market, Factions.THREAT, true) >= ours * ratio;
+	}
+
+	/** Whether any Threat fleet is over the world: a relief fights it before it bombards anything. */
+	protected static boolean threatOverWorld(MarketAPI market) {
+		return pointsNear(market, Factions.THREAT, true) > 0f;
+	}
+
+	/**
+	 * Whether the defenders are not winning against a Threat army: it is
+	 * pushing, or it holds and the next counter-attack would not overrun it -
+	 * what keeps a Defend fleet's guns cold over its own front
+	 * ({@link #defendBombards}), seen from the other side.
+	 */
+	public static boolean defendersLosing(GroundFront front, MarketAPI market) {
+		if (front == null || market == null) return false;
+		if (STANCE_PUSH.equals(front.stance)) return true;
+		return frontCanHold(front, market) && !counterAttackOverruns(front, market);
+	}
+
+	/**
+	 * The fuel a relief keeps of what it carries: its passage home, a fleet of
+	 * its points over its base's distance at expeditionFuelPerPointLY (the
+	 * rate relief is provisioned at, ThreatFleetOrders.reliefWants). It
+	 * bombards with the rest and its supply line's spare, never the way home.
+	 */
+	public static float reliefFuelHome(CampaignFleetAPI fleet, MarketAPI market) {
+		if (fleet == null || market == null) return 0f;
+		String home = ThreatReturns.homeOf(fleet);
+		MarketAPI base = home != null ? Global.getSector().getEconomy().getMarket(home) : null;
+		if (base == null || base.getStarSystem() == null) return 0f;
+		float ly = Misc.getDistanceLY(base.getStarSystem().getLocation(), market.getLocationInHyperspace());
+		return fleet.getFleetPoints() / IncursionManager.FP_PER_RESPONSE_DIFFICULTY * ly
+				* ThreatIncConfig.expeditionFuelPerPointLY();
+	}
+
+	/**
+	 * The relief forces that bombard this Threat army now: on station over its
+	 * world, no Threat fleet there to fight first, the defenders losing
+	 * ({@link #defendersLosing}), each with the fuel for {@code days} above
+	 * its passage home ({@link #reliefFuelHome}). Empty otherwise.
+	 */
+	protected static List<ThreatFleetOrders.Order> reliefBombarding(GroundFront front, MarketAPI market, float days) {
+		List<ThreatFleetOrders.Order> out = new ArrayList<ThreatFleetOrders.Order>();
+		if (front == null || market == null || !isThreatOwned(front) || isHiveTarget(market)) return out;
+		if (ThreatIncConfig.reliefBombardPer30Days() <= 0f || market.getPrimaryEntity() == null) return out;
+		if (threatOverWorld(market) || !defendersLosing(front, market)) return out;
+		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
+			if (!o.relief || !market.getId().equals(o.targetId)) continue;
+			if (o.fleet == null || !o.fleet.isAlive() || o.fleet.isExpired()) continue;
+			if (!ThreatFleetOrders.nearPlanet(o.fleet, market.getPrimaryEntity())) continue;
+			float need = bombardFuelPerDay(o.fleet.getFleetPoints()) * days;
+			if (ordnanceAvailable(o.fleet, o.factionId, reliefFuelHome(o.fleet, market)) < need) continue;
+			out.add(o);
+		}
+		return out;
+	}
+
+	/**
+	 * Troops the relief over the world bombards off this Threat army per 30
+	 * days - the tick's own arithmetic ({@link #tickReliefBombard}); 0 when no
+	 * relief fires. The board quotes it.
+	 */
+	public static float reliefBombardPer30Days(GroundFront front, MarketAPI market) {
+		float fp = 0f;
+		for (ThreatFleetOrders.Order o : reliefBombarding(front, market, 1f)) fp += o.fleet.getFleetPoints();
+		return reliefBombardPer30Days(front, fp);
+	}
+
+	/** The swarm's formula ({@link #swarmBombardPer30Days}) for {@code fp} of relief: reliefBombardPer30Days of the army, by the relief's weight against what the army puts in the way and its veterancy. */
+	protected static float reliefBombardPer30Days(GroundFront front, float fp) {
+		if (front == null || fp <= 0f) return 0f;
+		float ratio = fp / Math.max(1f, fp + defenseStrength(front));
+		return front.marines * Math.max(0f, ThreatIncConfig.reliefBombardPer30Days()) * ratio
+				* ThreatMarineXP.frontLossMult(front);
+	}
+
+	/** A poll of the relief over a Threat army ({@link #reliefBombarding}): each firing fleet pays its fuel, the army loses the troops, and one that falls below frontMinMarines is destroyed. */
+	protected static void tickReliefBombard(GroundFront front, MarketAPI market, float elapsedDays) {
+		if (elapsedDays <= 0f) return;
+		List<ThreatFleetOrders.Order> firing = reliefBombarding(front, market, elapsedDays);
+		if (firing.isEmpty()) return;
+		float fp = 0f;
+		float fuel = 0f;
+		for (ThreatFleetOrders.Order o : firing) {
+			float f = o.fleet.getFleetPoints();
+			fuel += payOrdnance(o.fleet, o.factionId, bombardFuelPerDay(f) * elapsedDays, reliefFuelHome(o.fleet, market));
+			fp += f;
+		}
+		float per30 = reliefBombardPer30Days(front, fp);
+		float loss = per30 / 30f * elapsedDays;
+		if (loss <= 0f) return;
+		ThreatMarineXP.frontLose(front, loss);
+		MemoryAPI mem = market.getMemoryWithoutUpdate();
+		if (!mem.getBoolean(RELIEF_LOG_KEY)) {
+			mem.set(RELIEF_LOG_KEY, true, 1f);
+			ThreatIncConfig.log("Relief over " + market.getName() + ": " + firing.size() + " fleet(s) at " + (int) fp
+					+ " FP bombard the Threat army - " + perDay(per30) + " troops a day for "
+					+ (int) (fuel / elapsedDays) + " fuel a day, " + (int) front.marines + " left");
+		}
+		if (front.marines < ThreatIncConfig.frontMinMarines()) {
+			ThreatNotice.titled("Threat Landing Destroyed").good()
+					.line("The Threat landing on %s has been bombarded to nothing from orbit.",
+							ThreatNotice.market(market))
+					.line("The surface is clear.")
+					.send();
+			ThreatIncConfig.log("Front at " + market.getName() + " (threat) destroyed by relief bombardment");
+			fronts().remove(front.marketId);
+			reapply(front.marketId);
+		}
 	}
 
 	/**
@@ -3532,6 +3690,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * Returns the fuel actually paid, which may be short.
 	 */
 	public static float payOrdnance(CampaignFleetAPI fleet, String factionId, float fuel) {
+		return payOrdnance(fleet, factionId, fuel, 0f);
+	}
+
+	/** As {@link #payOrdnance(CampaignFleetAPI, String, float)}, never touching the last {@code keep} of what the fleet carries (a relief's passage home, {@link #reliefFuelHome}). */
+	public static float payOrdnance(CampaignFleetAPI fleet, String factionId, float fuel, float keep) {
 		if (fuel <= 0f) return 0f;
 		if (Factions.THREAT.equals(factionId)) {
 			if (!ThreatFuel.paysOrdnance()) return fuel;
@@ -3543,7 +3706,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (fleet == null) return 0f;
 		MemoryAPI mem = fleet.getMemoryWithoutUpdate();
 		float carried = Math.max(0f, mem.getFloat(ThreatReturns.MEM_FUEL));
-		float paid = Math.min(carried, fuel);
+		float paid = Math.min(Math.max(0f, carried - Math.max(0f, keep)), fuel);
 		if (paid > 0f) mem.set(ThreatReturns.MEM_FUEL, carried - paid);
 		for (MarketAPI m : ordnanceSources(fleet, factionId)) {
 			if (paid >= fuel) break;
@@ -3560,6 +3723,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/** The fuel a fleet could put into its bombardment now, without paying it ({@link #payOrdnance}): the swarm's, the hive's stock. */
 	public static float ordnanceAvailable(CampaignFleetAPI fleet, String factionId) {
+		return ordnanceAvailable(fleet, factionId, 0f);
+	}
+
+	/** As {@link #ordnanceAvailable(CampaignFleetAPI, String)}, less the last {@code keep} of what the fleet carries ({@link #payOrdnance(CampaignFleetAPI, String, float, float)}). */
+	public static float ordnanceAvailable(CampaignFleetAPI fleet, String factionId, float keep) {
 		if (Factions.THREAT.equals(factionId)) {
 			if (!ThreatFuel.paysOrdnance()) return Float.MAX_VALUE;
 			// with the stock empty a swarm fleet stands down (orbitDoneFor), and
@@ -3568,7 +3736,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			return ThreatFuel.stock();
 		}
 		if (fleet == null) return 0f;
-		float fuel = Math.max(0f, fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL));
+		float fuel = Math.max(0f, fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL) - Math.max(0f, keep));
 		for (MarketAPI m : ordnanceSources(fleet, factionId)) {
 			fuel += ThreatConvoys.netOfHaul(Commodities.FUEL, ThreatReserves.spendable(m, Commodities.FUEL), 0f,
 					ThreatConvoys.haulRate(m, fleet.getLocationInHyperspace(), Commodities.FUEL));

@@ -357,6 +357,10 @@ public class ThreatIncConfig {
 	public static float frontDangerCloseLossFraction() { return f("threatinc_frontDangerCloseLossFraction"); }
 	/** Fraction of an enemy front's troops the swarm kills per 30 days while it holds the orbit over its own hive unopposed. */
 	public static float swarmFrontBombardPer30Days() { return f("threatinc_swarmFrontBombardPer30Days"); }
+	/** Threat troops a relief force over its invaded world bombards per 30 days while the defenders are losing (ThreatGroundFronts.tickReliefBombard); 0 off. */
+	public static float reliefBombardPer30Days() { return f("threatinc_reliefBombardPer30Days"); }
+	/** Whether a relief force holds its world's orbit until the Threat army there is gone (ThreatFleetOrders.sendRelief); off, guardDays and home. */
+	public static boolean reliefStays() { return b("threatinc_reliefStays", true); }
 	/** Minimum total Threat fleet points in orbit for the swarm to hold it (a bombardment is a fleet operation, not a lone frigate). */
 	public static float swarmOrbitMinFleetFP() { return f("threatinc_swarmOrbitMinFleetFP"); }
 
