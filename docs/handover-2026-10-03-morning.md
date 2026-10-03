@@ -120,7 +120,10 @@ gate and the runaway swarm"):
   battles, on screen or off, and a guard below a third of its arrival FP goes home unless it has started breaking
   hulls. Most overrun fronts had lost their guard over a month before. The simulator's guards stood to the end.
   `warsim_guardStandDown` (dd6f8b2) builds the rule: with the front rules, as-built overruns come to 1.4x the game's
-  (from half) and the war rows are the best yet (227), but 2,407-2,452 inside against 2,493. Off.
+  (from half) and the war rows are the best yet (227), but 2,407-2,452 inside against 2,493. Off. A relief that takes
+  an uncommitted guard home in one battle, as the game's does (`warsim_reliefTakesGuard`, fb784dd), is worse (2,390,
+  overruns 1.7x). Every guard the simulator lets go costs it overruns the game does not have: the gap is in its
+  fronts' own staying power, not the guards.
 
 ## 5. Still out
 
