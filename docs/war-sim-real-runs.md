@@ -498,3 +498,28 @@ Guards: 221 placed, 105 stood down with their front standing.
 318. The simulator over-kills fronts the guards cannot feed (month 120: overruns 110 against 47, landings 163 against
 93, worlds lost 31.5 against 11), as it does on Defend off (`war-sim-calibration-r29.md` "Why the Defend-off fronts
 died young"). Its prediction for 1:1 (48 lost by month 132) overshot the game's 33.
+
+## 17. hw4n (2026-10-03 midday): 5 troops a broken-up FP - a stalled swarm
+
+The user's middle step (2026-10-03): `threatinc_fabricateTroopsPerFP` 5, everything else as built, on a fifteenth clone
+(`...ng16`, the 0387fd8 jar), to month 127. Dumps `tools/warsim/validation/hw4n`, log `ti-hw4n.txt`.
+
+| | m72 | m96 | m108 | m120 | m126 |
+|---|---|---|---|---|---|
+| human worlds lost | 2 | 2 | 3 | 5 | 5 (54 left) |
+| defenders' marines | 100k | 141k | 139k | 119k | 118k |
+| hives / killed | 21 / 2 | 89 / 2 | 125 / 2 | 166 / 2 | 175 / 2 |
+| swarm strikes / landings | 40 / 16 | 96 / 16 | 135 / 36 | 178 / 50 | 194 / 56 |
+| swarm forges | 16 | 21 | 21 | 21 | 21 |
+
+**It says little about the ratio: the swarm stalled before break-up came into play.** From month 60 to 72 every
+other run grew from about 20 hives to 32-39; hw4n went 18 -> 21, its fuel short (4-6k against hw4l's 19-64k; the hive
+planner's `fuelprod (fuel short)` lines), while 64k-209k supplies piled up unspent and forges stopped at 21 (hw4l 39-66
+by month 96-108). With few staging hives its strikes were too small for the gate: from month 72 to 96 they were
+`passed over` again and again (Chicomoztoc, Eochu Bres and the Thulian Raider Base 17 times each) and ended unspawned,
+and there was no landing for two years. Guards broke up 2,237 FP into 11,185 troops in 39 break-ups (hw4l 119); 1
+strike held back. A stall like hw4g's late one, earlier and deeper - the swarm economy noise of `war-sim-calibration-r29.md`
+"Why hw4g's swarm stalled and hw4h's did not", this time on fuel.
+
+**The simulator** (`chk-hw4n-x`, the 5:1 setting): 337 of 466 inside, every war row far above the game from month 84 (its
+swarm does not stall). Its own prediction for 5 is nearly as built (`facts.md` "And 5 troops a broken-up FP?").
