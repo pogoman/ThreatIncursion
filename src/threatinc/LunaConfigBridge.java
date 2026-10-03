@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 12;
+	static final int MIGRATION_VERSION = 13;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -63,6 +63,7 @@ class LunaConfigBridge {
 	 * with the hive's banking, so the hive's side was split off as
 	 * hiveSurplusMult (1.0) - a new key, which LunaLib defaults; no migration.
 	 * Version 12 (2026-10-02, round 20): feedShareConsolidate 0.9 -> 0.5.
+	 * Version 13 (2026-10-03, the user): fabricateTroopsPerFP 10 -> 5.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
@@ -119,6 +120,11 @@ class LunaConfigBridge {
 				// stance - 0.7 leaves the swarm more for its Seeding Swarms (docs/war-sim-rounds.md 16)
 				if (from < 12) {
 					changed |= bump(json, "threatinc_feedShareConsolidate", 0.9, 0.5, false);
+				}
+				// 2026-10-03, the user: at 10 a guard's broken-up hulls fed its front past the defenders' marines
+				// (docs/war-sim-real-runs.md 9-17)
+				if (from < 13) {
+					changed |= bump(json, "threatinc_fabricateTroopsPerFP", 10, 5, false);
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));
