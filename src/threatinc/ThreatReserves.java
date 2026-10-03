@@ -779,6 +779,17 @@ public class ThreatReserves {
 			float age = Global.getSector().getClock().getElapsedDaysSince((Long) cached[1]);
 			if (age >= 0f && age < 1f) return (Float) cached[0];
 		}
+		float share = shareFigures(factionId, commodityId)[4];
+		SHARE_CACHE.put(key, new Object[] { share, now });
+		return share;
+	}
+
+	/**
+	 * The figures behind {@link #productionShare}, in units: {made, the
+	 * sector's best single exporter, budget, banked, share}. Logged monthly
+	 * by the ledger, to show which term binds.
+	 */
+	public static float[] shareFigures(String factionId, String commodityId) {
 		float made = 0f, banked = 0f, foreign = 0f;
 		for (MarketAPI m : marketsOf(factionId)) {
 			if (isBacked(m)) continue;
@@ -800,8 +811,7 @@ public class ThreatReserves {
 		float budget = Math.max(made,
 				BaseIndustry.getSizeMult(foreign) * ThreatIncConfig.reserveBankImportsMult());
 		float share = banked <= 0f ? 1f : Math.min(1f, budget / banked);
-		SHARE_CACHE.put(key, new Object[] { share, now });
-		return share;
+		return new float[] { made, foreign, budget, banked, share };
 	}
 
 	/** Drops the tithe and production-share memos, so a loaded game never reads the previous campaign's (game load). */
@@ -1309,6 +1319,13 @@ public class ThreatReserves {
 					sb.append("]");
 				}
 				ThreatIncConfig.log(sb.toString());
+			}
+			// the faction's banking bound (productionShare): which term binds
+			for (String c : new String[] { Commodities.FUEL, Commodities.SUPPLIES }) {
+				float[] f = shareFigures(factionId, c);
+				ThreatIncConfig.log("Reserve budget: " + factionId + " " + label(c) + " made " + Math.round(f[0])
+						+ ", sector's best exporter " + Math.round(f[1]) + ", budget " + Math.round(f[2])
+						+ ", banked " + Math.round(f[3]) + " units, share " + Math.round(f[4] * 100f) + "%");
 			}
 		}
 	}
