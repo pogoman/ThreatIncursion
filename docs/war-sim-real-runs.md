@@ -559,3 +559,26 @@ that the missing forge explains is not shown; run-to-run noise is larger than on
 systems (`plants.pl` on its dumps), so the step still covers it. Simulator (`chk-hw4*-t5`, `-t5f`, `-t5g`): the one-plant
 version cut the median forges at month 36 from 4.5 to 4; the two-plant rule keeps them and is otherwise as without the
 step (`hive-reach-and-stock.md` "Idle stock").
+
+## 19. hw4p (2026-10-03 afternoon): 5 troops a broken-up FP, the two-plant fuel rule - as built
+
+The defaults since 3adaa16 (5 troops a broken-up FP, `investFuelMinPlants` 2), seventeenth clone (`...ng18`), to month
+133. Dumps `tools/warsim/validation/hw4p`, log `ti-hw4p.txt`.
+
+| | m72 | m96 | m108 | m120 | m126 | m133 |
+|---|---|---|---|---|---|---|
+| human worlds lost (log count) | 2 | 5 | 8 | 24 | 35 | 40 |
+| defenders' marines | 84k | 109k | 90k | 51k | - | 19k |
+| hives / killed | 49 / 1 | 86 / 2 | 125 / 2 | 163 / 2 | - | 202 / 2 |
+| swarm strikes / landings | 72 / 31 | 172 / 57 | 233 / 91 | 296 / 120 | - | 338 / 139 |
+
+**At month 126, 35 worlds lost: inside the as-built range** (52, 39, 21, 40 at 10 troops a point), not the Defend-off
+band (21, 20, 26). That fits the simulator's prediction that 5 is close to 10. Guards broke up 8,959 FP into 44,795
+troops in 215 break-ups, against 2,867-4,754 FP into 28,670-47,540 troops in 119-199 at 10. They spend two to three
+times the hulls for about the same troops, and their fronts still outlast the defenders' marines (66 overrun).
+
+**The fuel rule.** The home forges came on hw4n's days (Alpha Laphirial VI day 738, III day 765), and the fuel-tight
+step fired 5 times, all from month 54 on. There was no stall: 49 hives at month 72, the most of any hw4 run, with
+supplies spent (350 in stock). Fuel ran short at times and got its plants (19 `fuel short` answers). Late in the war it
+piled up (593k-739k from month 126) as demand fell from 193k to 88k a month: plants built for the war's peak
+outlived it.
