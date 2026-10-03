@@ -130,6 +130,9 @@ final class HumanPools {
 				float mult = c == World.MARINES || c == World.ARMAMENTS
 						? s.knobs.f("threatinc_reserveTroopSurplusMult", 0.5f) / 0.5f
 						: s.knobs.f("threatinc_reserveSurplusMult", 1f);
+				// warsim_suppliesAccrualMult (2026-10-04): supplies income alone scaled, a stand-in for the wartime supplies rule
+				// (ThreatReserves.wartimeSupplies), which banks availability the dumps do not carry
+				if (c == World.SUPPLIES) mult *= s.knobs.f("warsim_suppliesAccrualMult", 1f);
 				float in = w.accrualPer30[c] / 30f * mult * s.knobs.f("warsim_accrualMult", 1f);
 				w.stock[c] += in;
 				s.count("income." + World.COMMODITIES[c], in);

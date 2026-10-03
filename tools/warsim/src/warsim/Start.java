@@ -104,6 +104,16 @@ public final class Start {
 				w.stock[c] = Json.num(stock.get(World.COMMODITIES[c]), 0f);
 				w.accrualPer30[c] = Json.num(accrual.get(World.COMMODITIES[c]), 0f);
 			}
+			// the dump's accrual is ThreatReserves.accrualPer30, the surplus multipliers already in it, and HumanPools.daily
+			// applies them again: take them out here (2026-10-04). Check runs never kept a dumped accrual - their worlds bank
+			// by HumanFit.ACCRUAL_BY_SIZE, fitted at 1.0 - so this changed none of them; warsim_accrualAsDumped=true skips it
+			if (s.knobs != null && !s.knobs.b("warsim_accrualAsDumped", false)) {
+				float troop = s.knobs.f("threatinc_reserveTroopSurplusMult", 0.5f) / 0.5f, surplus = s.knobs.f("threatinc_reserveSurplusMult", 1f);
+				for (int c = 0; c < 4; c++) {
+					float mult = c == World.MARINES || c == World.ARMAMENTS ? troop : surplus;
+					if (mult > 0f) w.accrualPer30[c] /= mult;
+				}
+			}
 			// Theatre.COLONY.defenderStrength = colonyGarrison + armed marines x reserveDefenseMult: the garrison is the rest
 			float marineMult = s.knobs != null ? s.knobs.f("threatinc_reserveDefenseMult") : 1f;
 			w.garrison = Math.max(0f, w.defence - (w.hasReserve ? w.stock[World.MARINES] * marineMult : 0f));
