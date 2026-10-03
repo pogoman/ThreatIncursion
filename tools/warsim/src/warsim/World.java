@@ -24,6 +24,11 @@ public final class World {
 	public float gate = -1f;
 	/** True once the faction has a reserve here (mobilised). */
 	public boolean hasReserve;
+	/**
+	 * warsim_veterancy: the armed marines' level (ThreatMarineXP.colonyLevel, 0 raw to 1 elite) and the stock it was
+	 * last read at; new marines come in raw and dilute it (SwarmOps.colonyLevel).
+	 */
+	public float marineLevel, marineSeen;
 	public final float[] stock = new float[4];
 	public final float[] accrualPer30 = new float[4];
 	/** For a forward base, the hive system it was founded toward. */

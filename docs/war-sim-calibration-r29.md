@@ -116,3 +116,39 @@ about twice the game's landings). Three findings from the game's logs against it
   regrowing and pressed systems send nothing), so the gap is in the state: more spare swarms a system. Not found.
   It also explains why the 0 setting fits hw4f's landings: an inflated need offsets an inflated pool.
 
+## Fronts, the gate and the runaway swarm (2026-10-03, 03:20-04:10)
+
+**The strike gate grows with the guards, not with time** (`gg.pl`). In the hw4d/f/g dumps a world with no human guard
+(GUARD, HUNT or MUSTER, arrived) in its system kept its day-5 gate to day 3,600 (median ratio 0.9-1.1); one with a
+guard read 1.1-1.5 units per guard FP above it. The game's gate counts every hostile fleet in the system; the
+simulator counted the world's own guard only, at the Threat strike's 2.1 units a FP. `warsim_gateSystemGuards` (the
+system's guards, worn together) and `warsim_guardUnitsPerFP` (1.3) are built, off: landings and worlds lost move under
+3% (inside: hw4d 376 -> 369, hw4f 320 -> 291, hw4g 323 -> 328).
+
+**How the game's colony strikes end** (`life2.pl`; hw4g, hw4f in brackets): of 224 (272), a new front 81 (78), an
+existing front reinforced 74 (64), fought and no landing 19 (56), no off-screen fight logged 39 (62), outweighed at
+arrival 11 (12); median FP lost in a won fight 0.29 (0.25). The simulator on hw4g's settings (seed 3): 243 new fronts,
+34 reinforcements.
+
+**The simulator's beachheads die twice as fast** (`flife.pl`, `first.pl`, `pace.pl`). Overrun fronts lived a median
+157-173 days in the game (p25 76-107), 83 in the simulator (p25 26); open at the end 45-59 against 12;
+`beachheadsOverrun` at hw4g's month 120 156 against 53. Each overrun frees the world for a new front where the game's
+next strike reinforces. Two things in the game's code the simulator lacked:
+- *Cadence.* A colony counter-attacks every 40 / (stability / 10) / 1.5 with a military command / tempo days
+  (`Theatre.COLONY.counterAttackInterval`); the simulator holds no stability. The game's first counter-attack came
+  54-60 days after the landing (pace backed out at the tempo 0.39-0.52), later ones every 25-28 (0.9-1.05); the
+  simulator's 23 and 18. `warsim_counterAttackPace` 0.68 and `warsim_firstCounterAttackPace` 0.55 fit the intervals.
+  Inside: hw4g 323 -> 346, hw4f 320 -> 336, hw4d 376 -> 341, hw4e 362 -> 349. Off (two up, two down).
+- *Veterancy* (`ThreatMarineXP`). A swarm front lands at 0.15 (`npcLandingVeterancy`) and every counter-attack
+  raises both sides: strength x (1 + level), losses x (1 - 0.5 level). The game's batterings cost a front 2-4% of
+  its landing, the simulator's a flat 10%. `warsim_veterancy` (fronts and colony marines, diluted by raw marines) is
+  built, off: with the pace it fits worse on all four runs (320, 324, 329, 346).
+- `warsim_invadedGateShare` replaces the constant 0.1 (fitted on pd9a, before guards entered the gate). At 0.5 one
+  seed splits 127 new fronts / 157 reinforcements (game 114 / 86) and loses more worlds. Not checked across runs.
+
+**The runaway swarm - the open question.** With break-up off (hw4f, hw4g) the game's swarm stops growing from month
+96: garrison 41-59k FP, hive size 328-450, supplies in stock 4-7k on 70k a month. The simulator's keeps growing: at
+month 134 a 350k garrison, size 1,401, 307 hives against 167, 374k supplies. On hw4d (as built) the two match (252
+and 243 hives). The gap opens before conquests can explain it (month 108: 31 more hives, 9 more worlds lost) and is
+why the simulator cannot judge the break-up lever. Next: what caps the game's swarm when it does not conquer -
+founding (`hivesFounded` 145 against 106 at month 108), size upkeep, or what it spends its supplies on.

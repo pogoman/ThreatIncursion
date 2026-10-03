@@ -63,9 +63,17 @@ final class SwarmOps {
 		for (Hive h : s.hives) h.outputSize = h.size;
 		radar(s, k);
 		alarmDecay(s, k);
-		for (Swarm.Landing l : s.swarm.landings.values()) l.gateOpen = s.rng.nextFloat() < SwarmFit.INVADED_GATE_SHARE;
+		// warsim_invadedGateShare (SwarmFit.INVADED_GATE_SHARE 0.1, fitted on pd9a before relief guards entered the gate
+		// through defenceOf; the hw4 runs reinforced 86 fronts against 114 new ones in hw4g)
+		float invadedShare = s.knobs.f("warsim_invadedGateShare", SwarmFit.INVADED_GATE_SHARE);
+		for (Swarm.Landing l : s.swarm.landings.values()) l.gateOpen = s.rng.nextFloat() < invadedShare;
 		launchClaims(s, k);
 		if (s.liveHives().isEmpty()) return;
+		// -v: each hive's swarms against its reserve, to set beside the dumps' garrisonFleets (2026-10-03)
+		if (s.verbose) for (Hive h : s.liveHives())
+			s.log("Hive " + h.name + " in " + h.sys.id + ": size " + h.size + ", swarms " + h.swarms.size() + ", reserve "
+					+ SwarmEconomy.reserve(h) + ", spare " + SwarmEconomy.available(s, k, h) + ", held "
+					+ (int) h.garrisonFP + " of " + (int) SwarmEconomy.want(s, k, h));
 		SwarmEconomy.tick(s, k);
 		expandInSystem(s, k);
 		trySpread(s, k);
@@ -90,16 +98,42 @@ final class SwarmOps {
 			if (w.lost) continue;
 			boolean inRange = !k.fog || present.contains(w.sys);
 			if (!inRange && k.radarLY > 0f) for (StarSys sys : systems) if (sys.ly(w.sys) <= k.radarLY) inRange = true;
-			if (inRange) s.swarm.seen.put(w.id, new float[] { s.day, defenceOf(w) });
+			if (inRange) s.swarm.seen.put(w.id, new float[] { s.day, defenceOf(s, w) });
 		}
 	}
 
 	static void see(State s, StarSys sys) {
-		for (World w : s.worlds) if (!w.lost && w.sys == sys) s.swarm.seen.put(w.id, new float[] { s.day, defenceOf(w) });
+		for (World w : s.worlds) if (!w.lost && w.sys == sys) s.swarm.seen.put(w.id, new float[] { s.day, defenceOf(s, w) });
 	}
 
-	/** What a strike meets: the world's own defence and, at a forward base, the garrison the human side keeps there. */
-	static float defenceOf(World w) { return (w.gate >= 0f ? w.gate : w.defence) + w.guardFP * SwarmFit.STRIKE_UNITS_PER_FP; }
+	/**
+	 * What a strike meets: the world's own defence and the human guards. The game's gate
+	 * (IncursionManager.liveTargetDefence) reads every hostile fleet in the system, so a guard covers each world
+	 * there: warsim_gateSystemGuards sums the system's guards (off: the world's own). In the hw4d/f/g dumps a world
+	 * with no guard in its system kept its day-5 gate (median ratio 0.9-1.1 to day 3,600), one with a guard read
+	 * 1.1-1.5 units per guard FP over it (warsim_guardUnitsPerFP; 2.1 is the Threat strike's rate, the old reading).
+	 */
+	static float defenceOf(State s, World w) {
+		return (w.gate >= 0f ? w.gate : w.defence) + guardsAt(s, w) * s.knobs.f("warsim_guardUnitsPerFP", SwarmFit.STRIKE_UNITS_PER_FP);
+	}
+
+	/** The human guard FP a strike at the world meets: its own, or with warsim_gateSystemGuards its system's. */
+	static float guardsAt(State s, World w) {
+		if (!s.knobs.b("warsim_gateSystemGuards", false)) return w.guardFP;
+		float sum = 0f;
+		for (World o : s.worlds) if (!o.lost && o.sys == w.sys) sum += o.guardFP;
+		return sum;
+	}
+
+	/** An arrival fight's wear on the guards that met it: the world's own, or with warsim_gateSystemGuards its system's. */
+	static void wearGuards(State s, World w, float worn) {
+		boolean system = s.knobs.b("warsim_gateSystemGuards", false);
+		for (World o : s.worlds) {
+			if (o != w && (!system || o.lost || o.sys != w.sys)) continue;
+			o.guardFP *= worn;
+			o.reliefFP *= worn;
+		}
+	}
 
 	// ------------------------------------------------------------------
 	// spread
@@ -732,6 +766,7 @@ final class SwarmOps {
 		Swarm.Landing l = s.swarm.landings.get(w.id);
 		if (l != null) {
 			// the next expedition reinforces the front: the garrison needs that much longer to reach 2:1
+			if (vet(s)) l.level = (l.level * l.troops + landingLevel(s) * troops) / Math.max(1f, l.troops + troops);
 			l.troops += troops;
 			if (!l.falls && !l.engine && l.endDay != Integer.MIN_VALUE) l.endDay += SwarmFit.reinforcedDays(s.rng);
 			s.count("threatReinforcePasses", 1);
@@ -762,6 +797,7 @@ final class SwarmOps {
 		}
 		l = new Swarm.Landing();
 		l.troops = troops;
+		if (vet(s)) l.level = landingLevel(s);
 		l.landedDay = s.day;
 		s.swarm.landings.put(w.id, l);
 		s.count("threatLandings", 1);
@@ -927,12 +963,11 @@ final class SwarmOps {
 		}
 		if (w.guardFP >= 1f) {
 			float strength = strength(p);
-			float defence = defenceOf(w);
+			float defence = defenceOf(s, w);
 			boolean lifted = defence >= strength;
 			float lost = p.fp * BattleRules.lossShare(strength, defence);
 			float worn = 1f - BattleRules.lossShare(defence, strength);
-			w.guardFP *= worn;
-			w.reliefFP *= worn;
+			wearGuards(s, w, worn);
 			p.fp -= lost;
 			SwarmPosture.noteTrend(s, lost, 0f);
 			if (lifted) {
@@ -972,6 +1007,7 @@ final class SwarmOps {
 
 	static float colonyDefence(State s, World w, int held, float garrisonMult, boolean counterAttack) {
 		float marines = w.hasReserve ? Math.max(0f, w.stock[World.MARINES]) * s.knobs.f("threatinc_reserveDefenseMult") : 0f;
+		if (vet(s)) marines *= 1f + colonyLevel(w) * s.knobs.f("threatinc_marineVeterancyEffectMax", 1f);
 		if (counterAttack) marines *= SwarmFit.MARINE_COUNTER_ATTACK_MULT;
 		// warsim_colonyGarrison (true): the dump's garrison (ThreatGroundFronts.colonyGarrison), else the old guess of 15 a size
 		float garrison = s.knobs.b("warsim_colonyGarrison", true) && w.garrison >= 0f ? w.garrison : SwarmFit.COLONY_GROUND_PER_SIZE * w.size;
@@ -1017,7 +1053,7 @@ final class SwarmOps {
 		if (!k.fabricate || !s.knobs.b("threatinc_fabricateDefendEnabled", true)
 				|| !s.knobs.b("warsim_guardFabricates", true)) return;
 		float want = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false) * s.knobs.f("threatinc_frontHoldFraction");
-		float mult = Math.max(0.01f, threatMult(s, l));
+		float mult = Math.max(0.01f, threatMult(s, l) * vetEffect(s, l));
 		if (l.troops * mult >= want) return;
 		float gap = Math.max(0f, want * k.fabricateHoldMargin - l.troops * mult) / mult;
 		for (Parcel p : guards(s, w)) {
@@ -1048,7 +1084,35 @@ final class SwarmOps {
 		float landing = s.knobs.f("threatinc_frontLandingMult");
 		float full = s.knobs.f("threatinc_frontEntrenchMaxMult");
 		float dug = Math.min(1f, l.entrenchDays / Math.max(1f, s.knobs.f("threatinc_frontEntrenchDays")));
-		return l.troops * (landing + (full - landing) * dug);
+		return l.troops * (landing + (full - landing) * dug) * vetEffect(s, l);
+	}
+
+	/** warsim_veterancy (ThreatMarineXP, 2026-09-08 in the mod): fronts and colony marines carry a level, off: none. */
+	static boolean vet(State s) { return s.knobs.b("warsim_veterancy", false); }
+
+	static float landingLevel(State s) { return Math.max(0f, Math.min(1f, s.knobs.f("threatinc_npcLandingVeterancy", 0.15f))); }
+
+	/** ThreatMarineXP.effectMult at the front's level. */
+	static float vetEffect(State s, Swarm.Landing l) {
+		return vet(s) ? 1f + l.level * s.knobs.f("threatinc_marineVeterancyEffectMax", 1f) : 1f;
+	}
+
+	/** ThreatMarineXP.lossMult at a level. */
+	static float vetLoss(State s, float level) {
+		return vet(s) ? Math.max(0.05f, 1f - level * s.knobs.f("threatinc_marineVeterancyLossReduction", 0.5f)) : 1f;
+	}
+
+	/** The colony's marine level, diluted by the raw marines that came in since it was last read. */
+	static float colonyLevel(World w) {
+		float now = Math.max(0f, w.stock[World.MARINES]);
+		if (now > w.marineSeen && now > 0f) w.marineLevel *= w.marineSeen / now;
+		w.marineSeen = now;
+		return w.marineLevel;
+	}
+
+	/** ThreatMarineXP.xpGain as a level: the side that was outmatched learns the most. */
+	static float levelGain(State s, float own, float enemy) {
+		return (1f - own / Math.max(1f, own + enemy)) * s.knobs.f("threatinc_marineXpPerBattle", 0.2f);
 	}
 
 	/**
@@ -1070,13 +1134,14 @@ final class SwarmOps {
 		boolean exposed = l.pushing && l.checkpointLeft <= 0f;
 		float loss = (exposed ? s.knobs.f("threatinc_frontPushLossPer30Days") * s.knobs.f("threatinc_threatPushLossMult")
 				: s.knobs.f("threatinc_frontMarineLossPer30Days")) / 30f;
-		l.troops -= l.troops * Math.min(1f, loss);
+		l.troops -= l.troops * Math.min(1f, loss * vetLoss(s, l.level));
 		if (l.troops < s.knobs.f("threatinc_frontMinMarines")) return "collapsed";
 		if (!exposed) l.entrenchDays += 1f;
 		// the defenders bleed on the frontage (engaged = the smaller force), out of the reserve's marines
 		float engaged = Math.min(w.stock[World.MARINES], l.troops);
 		if (w.hasReserve && engaged > 0f) {
-			w.stock[World.MARINES] = Math.max(0f, w.stock[World.MARINES] - engaged * s.knobs.f("threatinc_defenderLossPer30Days") / 30f);
+			w.stock[World.MARINES] = Math.max(0f, w.stock[World.MARINES] - engaged * s.knobs.f("threatinc_defenderLossPer30Days") / 30f
+					* (vet(s) ? vetLoss(s, colonyLevel(w)) : 1f));
 		}
 		e = threatEff(s, l);
 		d = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false);
@@ -1100,18 +1165,32 @@ final class SwarmOps {
 		// the colony's counter-attack, the sooner the more it outweighs the front
 		float tempo = Math.max(1f / clamp, Math.min(clamp, (float) Math.pow(ca / Math.max(1f, e), exponent)));
 		float body = Math.max(0, w.size - l.strataHeld) / (float) Math.max(1, w.size);
-		l.counterClock += Math.max(0.25f, body) * tempo;
+		// warsim_counterAttackPace: the game's colony paces on stability/10 and its military command
+		// (Theatre.COLONY.counterAttackInterval), which the simulator does not hold; fitted to the hw4d-g logs, where the
+		// later counter-attacks came every 25-28 days (pace 0.9-1.05 backed out at the tempo) and the first after a
+		// landing at 57-60 (pace 0.39-0.52: the invasion's shock), against the simulator's 18 and 25 at pace 1
+		float pace = s.knobs.f("warsim_counterAttackPace", 1f) * (l.counterAttacks == 0 ? s.knobs.f("warsim_firstCounterAttackPace", 1f) : 1f);
+		l.counterClock += Math.max(0.25f, body) * tempo * pace;
 		if (l.counterClock >= s.knobs.f("threatinc_frontCounterAttackDays")) {
 			l.counterClock = 0f;
+			l.counterAttacks++;
 			float cover = exposed ? 1f : 1f + (s.knobs.f("threatinc_frontEntrenchDefenseBonus") - 1f)
 					* Math.min(1f, l.entrenchDays / Math.max(1f, s.knobs.f("threatinc_frontEntrenchDays")));
 			float guard = e * cover;
 			if (w.hasReserve && engaged > 0f) {
-				w.stock[World.MARINES] = Math.max(0f, w.stock[World.MARINES] - engaged * s.knobs.f("threatinc_defenderCounterAttackLossFraction"));
+				w.stock[World.MARINES] = Math.max(0f, w.stock[World.MARINES] - engaged * s.knobs.f("threatinc_defenderCounterAttackLossFraction")
+						* (vet(s) ? vetLoss(s, colonyLevel(w)) : 1f));
+			}
+			if (vet(s)) {
+				// what each side learns is fixed by the fight it walked into (ThreatGroundFronts' counter-attack)
+				l.level = Math.min(1f, l.level + levelGain(s, guard, ca));
+				if (w.hasReserve) w.marineLevel = Math.min(1f, colonyLevel(w) + levelGain(s, ca, guard));
 			}
 			if (ca > guard) {
 				s.count("colonyCounterAttacks", 1);
-				l.troops *= 1f - s.knobs.f("threatinc_frontCounterAttackLossFraction");
+				if (s.verbose) s.log("Counter-attack at " + w.name + (l.strataHeld == 0 && ca > guard * odds ? " overran" : " battered")
+						+ " the beachhead (" + (int) ca + " vs " + (int) guard + ")");
+				l.troops *= 1f - s.knobs.f("threatinc_frontCounterAttackLossFraction") * vetLoss(s, l.level);
 				l.entrenchDays *= s.knobs.f("threatinc_frontEntrenchKeptFraction");
 				if (l.strataHeld > 0) {
 					l.strataHeld--;
@@ -1248,7 +1327,7 @@ final class SwarmOps {
 		f.lastStruckDay = s.day;
 		f.lastStrikeFrom = p.from;
 		float strength = strength(p);
-		float defence = defenceOf(w);
+		float defence = defenceOf(s, w);
 		if (defence >= strength * k.breakOff) {
 			s.count("strikesBrokenOff", 1);
 			s.log("Strike broke off at " + w);
@@ -1258,8 +1337,7 @@ final class SwarmOps {
 		float lost = p.fp * BattleRules.lossShare(strength, defence);
 		float worn = 1f - BattleRules.lossShare(defence, strength);
 		// the fight costs the fleets that met it (ThreatAbstractBattle.fought), not the ground defence the gate reads
-		w.guardFP *= worn;
-		w.reliefFP *= worn;
+		wearGuards(s, w, worn);
 		p.fp -= lost;
 		SwarmPosture.noteTrend(s, lost, 0f);
 		s.count("strikesLanded", 1);
