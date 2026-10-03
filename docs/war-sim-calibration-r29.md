@@ -314,3 +314,9 @@ arrival takes below `defendMinStrength`, and how soon.
 One seed (hw4j, as built, every rule above on, no drive-off): 50 stand-downs against the game's 106, yet 81 overruns
 against 59 - half the game's stand-downs and still more overruns, so with the front rules on it is not the guards
 leaving that over-kills the simulator's as-built fronts.
+The game-faithful middle, `warsim_reliefTakesGuard` (a relief that outweighs the guard takes it home in one battle
+unless it has broken hulls; committed guards stay): with the front rules 2,390 inside / 1,430 / 231, and the as-built
+overruns rise again (hw4d 77.5, hw4j 87.5 at month 120 against 46 and 48); without them 2,379 / 1,487 / 274. Off.
+Every guard the simulator lets go costs it overruns the game does not have, so its fronts' own staying power (the
+counter-attack shape without a feed) is the gap, not the guards. At month 120 the game's as-built runs alone span
+10-49 worlds lost (hw4j, hw4d), wider than any of these rules moves the simulator's medians.

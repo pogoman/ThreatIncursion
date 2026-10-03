@@ -1101,6 +1101,16 @@ final class SwarmOps {
 		// warsim_guardStandDown: the game has no outweighed rule for a Threat guard - it fights on, worn, until it is
 		// below defendMinStrength uncommitted (standsDown) or dead
 		if (s.knobs.b("warsim_guardStandDown", false)) {
+			// warsim_reliefTakesGuard: in the game one relief task force (sized past the guard, planRelief) takes an
+			// uncommitted guard below a third in one battle, a median 23-35 days after it is placed
+			if (defence > strength && s.knobs.b("warsim_reliefTakesGuard", false)) {
+				for (Parcel p : gs) {
+					StrikeOrder o = orderOf(s, p);
+					if (o.fabricated && s.knobs.b("threatinc_fabricateDefendEnabled", true)) continue;
+					s.count("guardStoodDown", 1);
+					goHome(s, p, p.to);
+				}
+			}
 			s.count(defence > strength ? "reliefInvaded.wonFight" : "reliefInvaded.beaten", 1);
 			return;
 		}
