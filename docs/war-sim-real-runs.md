@@ -368,3 +368,26 @@ runaway swarm") is inside the game's own spread: hw4h's month-134 swarm (hives 3
 on the simulator's medians (293, 1,482, 389k), hw4g's far under them. Landings and overruns stay out on both runs:
 the simulator lands 246 times by month 134 against 105-109 and overruns 187 beachheads against 42-62. Check: 337 of
 514 inside.
+
+## 12. hw4i (2026-10-03 overnight): no break-up, again
+
+A repeat of hw4f's setting on a tenth clone (`...ng11`, the 0387fd8 jar, `threatinc_fabricateEnabled` false), to
+month 130. Dumps `tools/warsim/validation/hw4i`, log `ti-hw4i.txt`.
+
+| | m72 | m96 | m108 | m120 | m130 |
+|---|---|---|---|---|---|
+| human worlds lost | 4 | 9 | 15 | 31 | 42 (17 left) |
+| defenders' marines | 96k | 126k | 106k | 41k | 35k |
+| hives / killed | 40 / 3 | 84 / 4 | 116 / 4 | 164 / 4 | 264 / 4 |
+| swarm strikes / landings | 55 / 21 | 154 / 44 | 225 / 72 | 296 / 104 | 317 / 112 |
+| NPC sieges sailed | 5 | 7 | 8 | 8 | 8 |
+
+**No break-up is no safer.** hw4f lost 8 worlds by month 120 and 26 by month 133 on this setting; hw4i lost 31 by
+month 120 and 42 by month 130, more than either beachheads-only run. Its swarm grew as hw4h's did (264 hives, a 300k
+garrison, 143 forges at month 130), the defenders' marines fell from 126k at month 96 to 35k, and a strike short of
+its beachhead held back 100 times (hw4f 137). Fronts behaved as in hw4f: first counter-attacks overran 2 of 72,
+overrun fronts took a median 6 counter-attacks; it won 32 fronts against hw4f's 21.
+
+**What it says about the simulator.** Check 307 of 466 inside. Its worlds lost at month 130 (42) sit just above the
+simulator's p90 (34 [19.3 - 41.3]), beachheads overrun under its p10 (36 against 81 [52 - 109]), NPC sieges far
+under (8 against 35.5). With hw4f the two runs span 26-42 worlds lost on one setting.
