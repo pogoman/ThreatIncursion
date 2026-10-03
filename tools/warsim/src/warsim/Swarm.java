@@ -102,6 +102,10 @@ public final class Swarm {
 		public int strataHeld;
 		/** The front holds (frontCanHold): its key structures are down, and the garrison with them (SwarmOps.suppressed). */
 		public boolean holding;
+		/** warsim_wearClock: the key structures' disruption clock in days (ThreatGroundFronts.suppress), -1 until set. */
+		public float wear = -1f;
+		/** warsim_wearClock: the front's state with the game's hysteresis - 2 holding, 1 grinding, 0 foothold. */
+		public int state = 2;
 		/** warsim_veterancy: the front's level (ThreatMarineXP.frontLevel): npcLandingVeterancy at landing, raised by each counter-attack. */
 		public float level;
 		/** Counter-attacks the colony has made on the front (the first comes later: SwarmOps.threatFrontDay). */

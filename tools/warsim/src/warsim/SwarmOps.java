@@ -766,8 +766,7 @@ final class SwarmOps {
 		Swarm.Landing l = s.swarm.landings.get(w.id);
 		if (l != null) {
 			// the next expedition reinforces the front: the garrison needs that much longer to reach 2:1
-			if (vet(s)) l.level = (l.level * l.troops + landingLevel(s) * troops) / Math.max(1f, l.troops + troops);
-			l.troops += troops;
+			reinforceFront(s, l, troops, true);
 			if (!l.falls && !l.engine && l.endDay != Integer.MIN_VALUE) l.endDay += SwarmFit.reinforcedDays(s.rng);
 			s.count("threatReinforcePasses", 1);
 			s.log("Strike pass (reinforce) vs " + w.name + ": " + (int) troops + " troops");
@@ -797,6 +796,7 @@ final class SwarmOps {
 		}
 		l = new Swarm.Landing();
 		l.troops = troops;
+		l.wear = landingWear(s);
 		if (vet(s)) l.level = landingLevel(s);
 		l.landedDay = s.day;
 		s.swarm.landings.put(w.id, l);
@@ -1003,7 +1003,47 @@ final class SwarmOps {
 	 * pre-war garrison in hw4d and 0.40 in hw4c, under a grinding one about all of it.
 	 */
 	static float suppressed(State s, Swarm.Landing l) {
-		return l != null && l.holding ? 1f - Math.max(0f, Math.min(1f, s.knobs.f("warsim_frontHoldSuppress", 0.65f))) : 1f;
+		if (l == null) return 1f;
+		float most = Math.max(0f, Math.min(1f, s.knobs.f("warsim_frontHoldSuppress", 0.65f)));
+		if (wearClock(s)) return 1f - most * Math.min(1f, Math.max(0f, l.wear) / wearDays(s));
+		return l.holding ? 1f - most : 1f;
+	}
+
+	/**
+	 * warsim_wearClock (2026-10-03): the garrison follows the key structures' disruption clock, as the game's does
+	 * (fortificationCondition, a structure's condition falling with its clock over defenseWearDays), not the front's
+	 * holding state. A holding front wears the key structures and a grinding one the ground defences and batteries
+	 * (ThreatGroundFronts' tick, the simulator wearing all of them for either), frontWearRate x e / (e + d) days a day,
+	 * and the clock runs down a day a day - so a front that stops holding keeps the garrison down while it grinds, and
+	 * after that for as long as the clock takes to run out. Off, suppression lifted the day the front stopped holding:
+	 * the garrison came back x2.9 at once and the next counter-attack overran the front (sv-h3: Yama's 532 -> 1,114).
+	 */
+	static boolean wearClock(State s) {
+		return s.knobs.b("warsim_wearClock", false);
+	}
+
+	static float wearDays(State s) {
+		return Math.max(1f, s.knobs.f("threatinc_defenseWearDays", 300f));
+	}
+
+	/** The clock a landing finds: orbit has worn the structures to where the beachhead was sized (warsim_landingSuppress). */
+	static float landingWear(State s) {
+		float most = Math.max(0.01f, Math.min(1f, s.knobs.f("warsim_frontHoldSuppress", 0.65f)));
+		return wearDays(s) * Math.min(1f, s.knobs.f("warsim_landingSuppress", 0.65f) / most);
+	}
+
+	/** warsim_wearClock: a day of ThreatGroundFronts' state and suppression on a Threat front. */
+	static void wearDay(State s, World w, Swarm.Landing l) {
+		if (l.wear < 0f) l.wear = landingWear(s);
+		float d = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false);
+		float e = threatEff(s, l);
+		float band = Math.max(0f, Math.min(0.5f, s.knobs.f("threatinc_frontStateHysteresis")));
+		float holdLine = d * s.knobs.f("threatinc_frontHoldFraction") * (l.state == 2 ? 1f - band : 1f);
+		float grindLine = d * s.knobs.f("threatinc_frontGrindFraction") * (l.state >= 1 ? 1f - band : 1f);
+		l.state = e >= holdLine ? 2 : e >= grindLine ? 1 : 0;
+		l.holding = l.state == 2;
+		if (l.state > 0) l.wear += s.knobs.f("threatinc_frontWearRate") * e / Math.max(1f, e + d);
+		l.wear = Math.max(0f, Math.min(wearDays(s) * 1.2f, l.wear - 1f));
 	}
 
 	static float colonyDefence(State s, World w, int held, float garrisonMult, boolean counterAttack) {
@@ -1092,11 +1132,26 @@ final class SwarmOps {
 			float give = Math.min(gap / k.fabricateTroopsPerFP, p.fp - GUARD_SPARED_FP);
 			if (give <= 0f) continue;
 			p.fp -= give;
-			l.troops += give * k.fabricateTroopsPerFP;
+			reinforceFront(s, l, give * k.fabricateTroopsPerFP, false);
 			gap -= give * k.fabricateTroopsPerFP;
 			s.count("fpFabricated", give);
 			s.count("troopsFabricated", give * k.fabricateTroopsPerFP);
 		}
+	}
+
+	/**
+	 * Troops joining a Threat front (ThreatGroundFronts.resupply - a strike's reinforcing pass, or hulls a guard broke
+	 * up): they come in at npcLandingVeterancy, the merged level the weighted average. warsim_reinforceDilutes
+	 * (2026-10-03): they have not dug the cover the front has, so its entrenchment dilutes in the same proportion, as the
+	 * game's does; and the level dilutes on the guard's break-up too, which only a strike's pass did before.
+	 */
+	static void reinforceFront(State s, Swarm.Landing l, float troops, boolean pass) {
+		if (troops <= 0f) return;
+		float before = Math.max(0f, l.troops);
+		boolean dilutes = s.knobs.b("warsim_reinforceDilutes", false);
+		if (dilutes) l.entrenchDays *= before / Math.max(1f, before + troops);
+		if (vet(s) && (pass || dilutes)) l.level = (l.level * before + landingLevel(s) * troops) / Math.max(1f, before + troops);
+		l.troops = before + troops;
 	}
 
 	/** The FP a guard keeps when it breaks up its hulls: the flagship and the last hull (fabricateTroops' canGive). */
@@ -1157,6 +1212,7 @@ final class SwarmOps {
 		float hold = s.knobs.f("threatinc_frontHoldFraction");
 		float clamp = Math.max(1f, s.knobs.f("threatinc_counterAttackRatioClamp"));
 		float odds = BattleRules.overrunOdds(exponent);
+		if (l.wear < 0f) l.wear = landingWear(s);
 		float d = colonyDefence(s, w, l.strataHeld, suppressed(s, l), false);
 		float ca = colonyDefence(s, w, l.strataHeld, suppressed(s, l), true);
 		float e = threatEff(s, l);
@@ -1246,7 +1302,8 @@ final class SwarmOps {
 				}
 			}
 		}
-		l.holding = threatEff(s, l) >= colonyDefence(s, w, l.strataHeld, suppressed(s, l), false) * hold;
+		if (wearClock(s)) wearDay(s, w, l);
+		else l.holding = threatEff(s, l) >= colonyDefence(s, w, l.strataHeld, suppressed(s, l), false) * hold;
 		// the stance: push whenever strong enough, dig in otherwise
 		if (!l.pushing && threatEff(s, l) >= d * hold && !(l.strataHeld == 0 && ca > threatEff(s, l) * odds)) l.pushing = true;
 		return null;
