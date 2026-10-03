@@ -391,3 +391,30 @@ overrun fronts took a median 6 counter-attacks; it won 32 fronts against hw4f's 
 **What it says about the simulator.** Check 307 of 466 inside. Its worlds lost at month 130 (42) sit just above the
 simulator's p90 (34 [19.3 - 41.3]), beachheads overrun under its p10 (36 against 81 [52 - 109]), NPC sieges far
 under (8 against 35.5). With hw4f the two runs span 26-42 worlds lost on one setting.
+
+## 13. hw4j (2026-10-03 overnight): as built, again
+
+A third run of the default setting on an eleventh clone (`...ng12`, the 0387fd8 jar, both break-ups on), to month
+133. Dumps `tools/warsim/validation/hw4j`, log `ti-hw4j.txt`.
+
+| | m72 | m96 | m108 | m120 | m133 |
+|---|---|---|---|---|---|
+| human worlds lost | 1 | 3 | 5 | 10 | 37 (22 left) |
+| defenders' marines | 114k | 159k | 136k | 108k | 35k |
+| hives / killed | 32 / 1 | 72 / 3 | 110 / 3 | 179 / 3 | 268 / 3 |
+| swarm strikes / landings | 53 / 18 | 121 / 40 | 197 / 55 | 283 / 91 | 355 / 129 |
+| NPC sieges sailed | 4 | 6 | 6 | 6 | 6 |
+
+**As built is not doomed by month 120 either.** hw4d had lost 49 worlds by month 120, hw4e 21, hw4j 10; counted
+from the ground victories in the logs, by month 126 the three stood at 52, 39 and 21 - and the beachheads-only runs
+(hw4g, hw4h) at 21 and 20, no break-up (hw4f, hw4i) at 21 and 42. hw4j then lost 27 worlds in its last 13 months,
+as hw4h lost 25 in its last 14: on every setting the sector can go late. Its guards broke up 4,754 FP of hulls into
+47,540 troops in 183 break-ups (hw4d 3,226 FP in 171), beachheads 1,870 FP in 52 landings; 4
+strikes held back. Fronts as in every run: first counter-attacks overran 3 of 88, later ones 53 of 527 (ratio p50
+1.60, p90 2.03); 56 fronts overrun, 29 won.
+
+**What it says about the simulator.** Check 392 of 514 inside, its best this round. Worlds lost sit under the
+simulator's p10 at every month (month 120: 10 against 46 [28.9 - 52]; month 133: 37 against 54 [41.8 - 56.1]), and
+the defenders' marines over its p90 (35k at month 133 against 3.5k [1.9k - 19.5k]); strikes, overruns, hives and NPC
+sieges inside. With hw4d (on the simulator's median) and hw4e (under it), the game's spread on one setting is wider
+than the simulator's.
