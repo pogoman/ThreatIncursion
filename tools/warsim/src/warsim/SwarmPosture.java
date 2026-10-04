@@ -380,7 +380,7 @@ final class SwarmPosture {
 		boolean losing = t[0] >= SwarmFit.SIGNIFICANT_LOSS * Math.max(1f, sumHeld) && t[1] < t[0];
 
 		int n = systems.size();
-		float pressedShare = StanceRules.pressedShare(pressed, n, s.knobs.i("threatinc_stanceMinSystems"));
+		float pressedShare = n > 0 ? pressed / (float) n : 0f;
 		boolean hadState = sw.stanceSince != Integer.MIN_VALUE;
 		int was = hadState ? sw.stance : Swarm.EXPAND;
 		boolean breathing = attacked == 0 && (!hadState || sw.lastPressure < 0f || pressure <= sw.lastPressure);
@@ -426,9 +426,16 @@ final class SwarmPosture {
 		for (Hive h : s.hives) if (!h.dead && h.front != null) frontOnHive = true;
 		boolean wantConsolidate = s.knobs.b("warsim_swarmConsolidateOnLosses", false)
 				? hiveDelta < 0 || frontOnHive
-				: !breathing && (pressedShare >= consolidateNeed || (hiveDelta < 0 && attacked > 0));
+				: !breathing && (StanceRules.pressedEnough(pressed, n, consolidateNeed, k.consolidateMinPressed) || (hiveDelta < 0 && attacked > 0));
 		boolean wantPress = !losing && best != null && pressedShare < k.consolidateShare / 2f;
 		int next = wantConsolidate ? Swarm.CONSOLIDATE : wantPress ? Swarm.PRESS : Swarm.EXPAND;
+		// what holds CONSOLIDATE, an evaluation at a time (round 30): the share, losses under attack, or the share met
+		// but under stanceConsolidateMinPressed
+		if (!breathing) {
+			boolean byShare = StanceRules.pressedEnough(pressed, n, consolidateNeed, k.consolidateMinPressed);
+			if (wantConsolidate) s.count(byShare ? "consolidate.byShare" : "consolidate.byLosses", 1);
+			if (!byShare && StanceRules.pressedEnough(pressed, n, consolidateNeed, 0)) s.count("consolidate.floorBlocked", 1);
+		}
 		if (next != was && next != Swarm.CONSOLIDATE && hadState && s.day - sw.stanceSince < Math.max(0f, k.dwellDays)) {
 			next = was;
 		}

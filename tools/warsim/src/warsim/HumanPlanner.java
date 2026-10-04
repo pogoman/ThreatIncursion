@@ -413,6 +413,7 @@ final class HumanPlanner {
 	}
 
 	private static void hunt(State s, Faction f, World base, Hive target, float fp) {
+		if (HumanCouncil.starveOnly(s)) return;
 		float[] cost = ReachRules.voyageCost(fp, 2f * base.sys.ly(target.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
 		// the voyage is paid at the muster; the ships' supplies are billed as they go (ThreatUpkeep)
