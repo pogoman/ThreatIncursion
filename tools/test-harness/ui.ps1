@@ -10,7 +10,8 @@ param(
   [int[]]$Crop = @(),
   [int]$X = 0,
   [int]$Y = 0,
-  [string]$Text = ""
+  [string]$Text = "",
+  [long]$Hwnd = 0
 )
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
@@ -55,7 +56,8 @@ function Get-GameWindow {
   return $h
 }
 
-$h = Get-GameWindow
+# -Hwnd: one window of several games running side by side
+$h = if ($Hwnd -ne 0) { [IntPtr]$Hwnd } else { Get-GameWindow }
 if ($h -eq [IntPtr]::Zero) { Write-Output "NOWINDOW"; exit 0 }
 $cr = New-Object Win+RECT
 [Win]::GetClientRect($h, [ref]$cr) | Out-Null

@@ -4,8 +4,9 @@
 # and leave it running: unlike extract.ps1 it never depends on how many rolled-over logs the game
 # keeps (three, 50 MB each - a long run with debugLogging can write more). Ends when
 # tail-<Tag>.stop appears in the output dir.
-param([string]$Tag = "x", [switch]$FromStart)
-$log = "C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\starsector.log"
+param([string]$Tag = "x", [switch]$FromStart, [string]$Log = "")
+# -Log: the log of one of several games running side by side (its own logs folder)
+$log = if ($Log) { $Log } else { "C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\starsector.log" }
 $out = if ($env:THREATINC_TEST_OUT) { $env:THREATINC_TEST_OUT } else { Join-Path $env:TEMP "threatinc-tests" }
 New-Item -ItemType Directory -Force $out | Out-Null
 $ti = "$out\ti-$Tag.txt"; $ex = "$out\exc-$Tag.txt"; $stop = "$out\tail-$Tag.stop"

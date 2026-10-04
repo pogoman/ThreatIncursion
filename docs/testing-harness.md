@@ -312,3 +312,32 @@ click misses. Main menu Continue is at **(1350,372)** there, not (1392,372). Scr
 game work, but `gameshot.ps1` is what was used. Clicking a planet from ~200 su docks in a few
 seconds; the clock runs meanwhile (two days passed on one approach).
 
+
+## Side-by-side runs (2026-10-04)
+
+`fastforward\sbs.ps1 -Tags hw6a,hw6b,hw6c -Days 3750` runs several new games at once and fast-forwards them
+together. Trial `sa`/`sb`: two games ran 210 and 212 days a minute each, against 215 for one game alone, so the
+batch time is one run's (about 40 minutes) whatever the count, up to what memory holds (2.8 GB a game).
+Untested so far: more than two games, a run past war day 580, the stall nudges and the pause for a user.
+
+- **Each game has its own folders**, `saves\_sbs\<tag>\saves` and `...\logs`, given on its command line
+  (`-Dcom.fs.starfarer.settings.paths.saves` / `.logs`; `start.bat` there is `starsector.bat`'s java line with
+  the two paths changed). `saves` is the one place under the game a script may create a folder; the Starsector
+  folder itself refuses. Its `saves\common` is a copy taken after `run-settings.ps1`, so each game has its own
+  LunaLib store (`-Knobs "tag:k=v;k=v|tag2:k=v"` edits one game's only, nothing to put back) and its own
+  `threatinc_sim*` dumps. `tail-ti.ps1 -Log` follows its own `starsector.log` into `ti-<tag>.txt`.
+- **The launcher prefs are shared**, so the games are launched in turn, about 70 seconds each: `continue` is
+  set to `..\saves\_sbs\<tag>\saves\<clone>` (the game takes a path into another saves folder), the window is
+  found by its process (`ui.ps1 -Hwnd`, `place.ps1 -Hwnd`), Play and Continue are clicked, and a Space POSTED
+  to the window starts the clock. From then on no window needs the foreground.
+- **Fast-forward needs Shift held system-wide.** A Shift posted to the window alone does nothing (trial
+  `sbs1`: 7 days a minute, the same as no key): LWJGL's `WindowsKeyboard.poll` lets go of Left Shift whenever
+  `GetAsyncKeyState` says the key is not physically down. That test is system-wide and not tied to the
+  foreground, so the script holds Left Shift with `keybd_event` and posts the key-down to every game window four
+  times a second. While it is held, typing on the machine is shifted: the script lets go the moment keyboard or
+  mouse is touched (`GetLastInputInfo`) and takes it up again after `-IdleSeconds` 60 of quiet; the games run on
+  at normal speed meanwhile.
+- It never saves a game, kills each game at its day, copies the dumps to `tools\warsim\validation\<tag>`,
+  deletes the clone and restores the user's settings. Status in `%TEMP%\threatinc-tests\sbs-status.txt`.
+- `launch.ps1` leaves a console at `pause` for every game it has started (42 had piled up by 2026-10-04);
+  `sbs.ps1` starts the java line alone and leaves none.

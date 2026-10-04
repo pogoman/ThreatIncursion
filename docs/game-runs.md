@@ -6,7 +6,8 @@ test (`facts.md` Decisions). Earlier runs are in `war-sim-real-runs.md` (hw4d-hw
 
 How a run is made: `%TEMP%\threatinc-tests\run-go.ps1 -Tag <tag> -Clone <ngN> -Days 3750` - a new game on the hw4
 sector, fast-forwarded to war day 3750, about 40 minutes, the user's settings restored after
-(`testing-harness.md`). The log is `%TEMP%\threatinc-tests\ti-<tag>.txt`, the monthly dumps
+(`testing-harness.md`). Several at once: `tools/test-harness/fastforward/sbs.ps1 -Tags a,b,c -Days 3750`, the
+batch in one run's time (`testing-harness.md`, "Side-by-side runs"). The log is `%TEMP%\threatinc-tests\ti-<tag>.txt`, the monthly dumps
 `tools/warsim/validation/<tag>`. Digests, in `tools/test-harness/digest/`:
 
 - `uat.pl <tag> [month]`: worlds lost, hives, months in each stance, where CONSOLIDATE was entered, Threat
