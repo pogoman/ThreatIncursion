@@ -18,6 +18,10 @@ final class HumanOrder {
 	float deposit;
 	/** Upkeep unpaid so far (ThreatUpkeep): a month of it owed and the force stands down. */
 	float owed;
+	/** Round 33 (warsim_scoutRoutes): a sweep's route (ThreatScouts.planRoute), the stop it is at, the lead it sweeps for (null: routine). */
+	java.util.List<StarSys> route;
+	int stop;
+	StarSys lead;
 	/** A council's recon scout (ThreatScouts.recon): one stop, its own system's report (warsim_reconOneStop). */
 	boolean recon;
 	/** For a relief force: the forward base it garrisons. */

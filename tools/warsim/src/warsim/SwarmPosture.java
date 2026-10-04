@@ -19,6 +19,7 @@ import threatinc.rules.StrikeRules;
  * cap, releasable and break-even formulas are threatinc.rules calls; the reading is modelled.
  */
 final class SwarmPosture {
+	static final String[] MODES = { "QUIET", "WATCHFUL", "THREATENED", "BESIEGED" };
 	private SwarmPosture() {}
 
 	/** Garrison FP lost in a system: feeds its pressure and the stance's exchange ledger. */
@@ -97,6 +98,12 @@ final class SwarmPosture {
 		int ref = Math.max(st[0], st[2]);
 		float cred = (float) Math.pow(0.5, Math.max(0, s.day - ref) / half);
 		return Math.max(s.knobs.f("threatinc_postureStagedFloor", 0f), cred);
+	}
+
+	static String whoOf(Map<String, String> who, StarSys sys, Map<String, Float> byFaction) {
+		StringBuilder b = new StringBuilder();
+		for (Map.Entry<String, Float> e : byFaction.entrySet()) b.append(e.getKey()).append(" ").append(e.getValue().intValue()).append(" (").append(who.get(sys.id + "|" + e.getKey())).append("); ");
+		return b.toString();
 	}
 
 	static float[] sysSums(Map<StarSys, float[]> bySys, StarSys sys) {
@@ -207,6 +214,7 @@ final class SwarmPosture {
 		// as the per-system loops they replace: {attacks, staged, hostiles, forward}, and the staging caps by faction
 		Map<StarSys, float[]> bySys = new java.util.IdentityHashMap<StarSys, float[]>();
 		Map<StarSys, Map<String, Float>> capsBySys = new java.util.IdentityHashMap<StarSys, Map<String, Float>>();
+		Map<String, String> stagedWho = new HashMap<String, String>();
 		// attacks: what the swarm has seen bound for the system within swarmContactDays (ThreatSwarmIntel.contactsOn)
 		for (Swarm.Contact c : sw.contacts.values()) {
 			if (c.sys != null && s.day - c.day <= contactDays) sysSums(bySys, c.sys)[0] += c.fp;
@@ -250,6 +258,7 @@ final class SwarmPosture {
 			if (byFaction == null) capsBySys.put(sys, byFaction = new HashMap<String, Float>());
 			Float had = byFaction.get(w.faction);
 			if (had == null || cap > had) byFaction.put(w.faction, cap);
+			if (s.verbose && (had == null || cap > had)) stagedWho.put(sys.id + "|" + w.faction, w.name + " " + (int) ly + " ly fuel " + (int) HumanPools.available(s, w, World.FUEL) + " supplies " + (int) HumanPools.available(s, w, World.SUPPLIES) + " trust " + String.format("%.2f", trust));
 		}
 		boolean organWounds = s.knobs.b("warsim_woundByOrgans", false);
 		for (StarSys sys : systems) {
@@ -306,6 +315,8 @@ final class SwarmPosture {
 			else if (ratio >= SwarmFit.WATCHFUL_ENTER || (was >= 1 && ratio >= SwarmFit.WATCHFUL_LEAVE)) mode = 1;
 			else mode = 0;
 
+			if (mode != was) s.log("Posture: " + sys + " " + MODES[Math.max(0, was)] + "->" + MODES[mode] + " pressure " + (int) pressure + " (staged " + (int) staged
+					+ ", attacks " + (int) attacks + ", losses " + (int) losses + ", hostiles " + (int) hostiles + ", forward " + (int) forward + ") held " + (int) held + (byFaction == null ? "" : " by " + whoOf(stagedWho, sys, byFaction)));
 			post.pressure = pressure;
 			post.want = want;
 			post.need = need;
@@ -542,7 +553,7 @@ final class SwarmPosture {
 				if (from == to || !from.nexusUp() || from.coreDown > 0f) continue;
 				if (SwarmEconomy.held(from, inbound) < from.wantFP) continue;
 				if (from.bank - from.wantFP - cost < 0f) continue;
-				float fp = SwarmFit.builtFP(spec[0], spec[1], s.rng);
+				float fp = SwarmFit.builtFP(s, spec);
 				if (!SwarmEconomy.pay(s, Swarm.FUEL, k.passage(fp, from.sys.ly(to.sys), false))) continue;
 				from.bank -= fp;
 				SwarmEconomy.learn(s, spec, fp);
@@ -664,7 +675,7 @@ final class SwarmPosture {
 						}
 					}
 					if (donor == null) continue;
-					fp = SwarmFit.builtFP(spec[0], spec[1], s.rng);
+					fp = SwarmFit.builtFP(s, spec);
 					if (!SwarmEconomy.pay(s, Swarm.FUEL, k.passage(fp, bestDist, false))) continue;
 					donor.bank -= fp;
 					SwarmEconomy.learn(s, spec, fp);

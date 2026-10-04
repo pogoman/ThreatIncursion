@@ -414,12 +414,13 @@ final class SwarmEconomy {
 		int n = h.swarms.size();
 		int[] spec = t[n < t.length ? n : n % t.length];
 		if (h.bank < estimate(s, spec)) return false;
-		float fp = SwarmFit.builtFP(spec[0], spec[1], s.rng);
+		float fp = SwarmFit.builtFP(s, spec);
 		h.bank -= fp;
 		learn(s, spec, fp);
 		h.swarms.add(fp);
 		h.book();
 		s.count("swarmsBuilt", 1);
+		s.count("swarmFPBuilt", fp);
 		return true;
 	}
 

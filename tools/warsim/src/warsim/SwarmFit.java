@@ -66,13 +66,33 @@ public final class SwarmFit {
 	/** Days a paid wave takes beyond its passage: launch to "Colony founded" 11-18 days at 1-4 ly (w489/w500 .. w1035/w1050). */
 	public static int waveLandingDays(Random r) { return 8 + r.nextInt(6); }
 	/**
-	 * What a swarm of a tier comes out at: "Garrison fleet fabricated" and "Posture: .. fabricated"
-	 * lines - size-1 swarms 81-100, MEDIUM 104-172, HIGH 289-376; MAXIMUM never seen, the mod's table.
+	 * What a swarm of a tier comes out at, before the fabricators: "Garrison fleet fabricated" lines - size-1 swarms
+	 * 81-100, MEDIUM 104-172, HIGH 289-376; MAXIMUM never seen, the mod's table. Round 33 (2026-10-04): LOW 67 and
+	 * HIGH 345 from the learned costs the dumps' wantFP implies (ThreatPosture.rowsFP of swarmCostEstimate), every
+	 * forge hive of hw4p, hw4s, hw4z and hw5b with no need: size 1-2 want 67 (one LOW row), size 3-4 143 (MEDIUM),
+	 * size 7 1346 (four HIGH rows), size 6 tier 1 less tier 0 two HIGH rows (2606 - 1911).
 	 */
 	public static float builtFP(int fabricators, int tier, Random r) {
-		float mean = tier <= LOW ? 90f : tier == MEDIUM ? 140f : tier == HIGH ? 340f : 458f;
-		return (mean + 40f * fabricators) * (0.78f + 0.44f * r.nextFloat());
+		return builtFP(fabricators, tier, r, FABRICATOR_FP);
 	}
+
+	public static float builtFP(int fabricators, int tier, Random r, float perFabricator) {
+		float mean = tier <= LOW ? 67f : tier == MEDIUM ? 143f : tier == HIGH ? 345f : 455f;
+		return (mean + perFabricator * fabricators) * (0.78f + 0.44f * r.nextFloat());
+	}
+
+	/** builtFP with the warsim_fabricatorFP override (40 before round 33). */
+	static float builtFP(State s, int[] spec) {
+		return builtFP(spec[0], spec[1], s.rng, s.knobs.f("warsim_fabricatorFP", FABRICATOR_FP));
+	}
+
+	/**
+	 * What a fabricator adds to a swarm: the dumps' wants put the size-5 table's {1, MEDIUM} row at 1355 - 286 - 345 =
+	 * 724 (tier 1 1661, tier 2 2713 agree) and size 6's {1, HIGH} at 1911 - 3 x 345 = 876 (2606 and 3869 agree) - a
+	 * fabricator 580 and 530 over its escort. The mod's fallback table (HiveRules.swarmCostFallback) says 40; the
+	 * simulator used it until round 33, so its size-5 hives wanted 800 against the game's 1355.
+	 */
+	public static final float FABRICATOR_FP = 555f;
 	/**
 	 * Supplies a month a fleet point away burns: "Reach: .. fleets away N/mo, 0.73 a FP", the weighted mean of 331 lines of
 	 * hw4p, hw4z and hw5b (0.71-0.74 a run; w765-w949 read 0.50-0.57, before strikes burned off-screen). Round 32
