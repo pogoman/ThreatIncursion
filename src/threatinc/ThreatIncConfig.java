@@ -133,6 +133,12 @@ public class ThreatIncConfig {
 	public static float postureRecallLY() { return f("threatinc_postureRecallLY"); }
 	/** Whether a system under attack masses its spare swarms, then its neighbours', at its worlds short of their need, and a launch leaves the need home (ThreatPosture.massWithin, strikeCapFP). */
 	public static boolean postureMass() { return b("threatinc_postureMass", false); }
+	/** Whether a hive system defends as one: a force over one of its worlds draws the spare swarms of the others, and a siege seen coming fights them from its first day (ThreatPosture.rally, defenders). */
+	public static boolean systemDefence() { return b("threatinc_systemDefence", true); }
+	/** How far the swarms standing for a world must outweigh the force over it before its system sends no more; 0 = every spare swarm. */
+	public static float systemDefenceMargin() { return f("threatinc_systemDefenceMargin"); }
+	/** Whether the humans read a seen strike as bound for its system, not for its worlds: guards, help and mobilisation key off the system (ThreatFrontlines.boundFor). */
+	public static boolean strikeSeenBySystem() { return b("threatinc_strikeSeenBySystem", true); }
 	/** Whether a sector stance (ThreatStance) decides where the surplus goes: pressing weak rivals, expanding, or consolidating. */
 	public static boolean stanceEnabled()     { return b("threatinc_stanceEnabled", true); }
 	/** The hive presses a rival it holds this many times the force of, in reach of it. */

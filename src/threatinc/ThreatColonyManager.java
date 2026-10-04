@@ -2526,6 +2526,15 @@ public class ThreatColonyManager {
 	 * whether or not it is at its want. On station and out of battle.
 	 */
 	public static List<CampaignFleetAPI> spareFleets(MarketAPI market) {
+		return spareFleets(market, true);
+	}
+
+	/**
+	 * As above; with {@code withinNeed} false, every fleet above the reserve
+	 * count whatever the colony's own need (ThreatPosture.rally: a need split
+	 * by the tables holds nothing at a world no force is over).
+	 */
+	public static List<CampaignFleetAPI> spareFleets(MarketAPI market, boolean withinNeed) {
 		List<CampaignFleetAPI> out = new ArrayList<CampaignFleetAPI>();
 		if (market == null) return out;
 		List<CampaignFleetAPI> live = new ArrayList<CampaignFleetAPI>();
@@ -2539,7 +2548,7 @@ public class ThreatColonyManager {
 				return b.getFleetPoints() - a.getFleetPoints();
 			}
 		});
-		float spare = ThreatPosture.launchSpareFP(market);
+		float spare = withinNeed ? ThreatPosture.launchSpareFP(market) : Float.MAX_VALUE;
 		for (int i = 0; i < n; i++) {
 			CampaignFleetAPI curr = live.get(i);
 			if (spare != Float.MAX_VALUE) {

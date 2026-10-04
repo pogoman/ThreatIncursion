@@ -1007,8 +1007,7 @@ public class ThreatFactionView {
 			if (!(curr instanceof GenericRaidFGI)) continue;
 			GenericRaidFGI fgi = (GenericRaidFGI) curr;
 			if (fgi.isEnded() || fgi.isEnding() || fgi.isHidden()) continue;
-			if (fgi.getParams() == null || fgi.getParams().raidParams == null) continue;
-			if (fgi.getParams().raidParams.allowedTargets.contains(market)) n++;
+			if (ThreatFrontlines.boundFor(fgi, market)) n++;
 		}
 		return n;
 	}

@@ -171,8 +171,7 @@ public class ThreatAidRequests {
 			if (fgi.isEnded() || fgi.isEnding()) continue;
 			// nobody asks for help against a strike nobody has seen (docs/frontlines.md)
 			if (fgi.isHidden()) continue;
-			if (fgi.getParams() == null || fgi.getParams().raidParams == null) continue;
-			if (fgi.getParams().raidParams.allowedTargets.contains(market)) result.add(fgi);
+			if (ThreatFrontlines.boundFor(fgi, market)) result.add(fgi);
 		}
 		return result;
 	}

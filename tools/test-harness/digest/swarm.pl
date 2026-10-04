@@ -25,6 +25,7 @@ for my $tag (@ARGV) {
   ($recalls, $recallFP) = (0, 0);
   my ($war, %launchDay, @recallDays) = (0);
   my ($massed, $massedFP, $massedFar, $massedFarFP, %heldHome) = (0, 0, 0, 0);
+  my ($rallied, $ralliedFP, $seenComing, $unseen, %ends) = (0, 0, 0, 0);
   while (my $l = <$h>) {
     if ($l =~ /^Clock: day -?\d+ war (\d+)/) { $war = $1; next; }
     if ($l =~ /^Census: threat hives (\d+).*?fleets (\d+) FP, income (\d+) FP/) {
@@ -52,7 +53,19 @@ for my $tag (@ARGV) {
     }
     if ($l =~ /^Garrison fleet fabricated at .*?, (\d+) FP,/) { if ($found) { $built++; $builtFP += $1; } next; }
     # the humans' side: sieges that reached a hive system, and the escorts built for them
-    if ($l =~ /^Daily siege takes over .*?, (\d+) FP/) { $arrived++; $arrivedFP += $1; next; }
+    if ($l =~ /^Daily siege takes over .*?, (\d+) FP/) {
+      $arrived++; $arrivedFP += $1;
+      $seenComing++ if $l =~ /, seen coming/;
+      $unseen++ if $l =~ /, unseen/;
+      next;
+    }
+    # how each world's siege ended (the daily siege's summary line)
+    if ($l =~ /^Daily siege of .+?: \d+ d, \d+ -> \d+ FP, \d+ fight days, (called off|beaten|held|landed|front|razing|guns|nothing to land|gone|window closed)/) {
+      $ends{$1}++;
+      next;
+    }
+    # the system defends as one (systemDefence): spare swarms sent to the world a force is over
+    if ($l =~ /^Posture: .*? rallied (\d+) FP to /) { $rallied++; $ralliedFP += $1; next; }
     if ($l =~ /: escort of (\d+) FP built/) { $escorts++; $escortFP += $1; next; }
     if ($l =~ /^Seeding Swarm from /) { $found ? $seedAfter++ : $seedBefore++; next; }
     if ($l =~ /^Strike launched from .*? at (.*?) \(/) { $launchDay{$1} = $war; }
@@ -125,6 +138,10 @@ for my $tag (@ARGV) {
   printf "  defence massed: %d fleets (%s FP) within a system, %d (%s FP) from neighbours; strikes held home %d times at %d colonies\n",
     $massed, k($massedFP), $massedFar, k($massedFarFP), $heldDays, scalar(keys %heldHome)
     if $massed || $massedFar || $heldDays;
+  printf "  system defence: %d fleets rallied (%s FP); sieges seen coming %d, unseen %d\n", $rallied, k($ralliedFP),
+    $seenComing, $unseen if $rallied || $seenComing || $unseen;
+  print "  sieges over a world ended: ", join(", ", map { "$_ $ends{$_}" } sort { $ends{$b} <=> $ends{$a} } keys %ends), "\n"
+    if %ends;
   my @gfp = map { $guardFP{$_} } @guardOrder; my @gfl = map { $guardFleets{$_} } @guardOrder;
   printf "  strike guards: %d worlds, median %s FP in %d fleet(s) a world, most %s FP\n", scalar(@guardOrder),
     k(median(@gfp)), median(@gfl), k((sort { $b <=> $a } @gfp)[0] || 0);

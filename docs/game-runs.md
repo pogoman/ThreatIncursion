@@ -485,12 +485,10 @@ times only: the massing leaves nothing to launch.
 
 The mass also chases the attack: a world gave within 30 days of receiving in 53-59% of moves.
 
-**Proposed, the user's call** (nothing built; the figures above are `swarm.pl` and `mass.pl`):
-
-- (a) Recommended: mass to the force, where it is going. A sighting carries the siege's target world; a world's
-  need is the FP bound for it or over it at the margin (losses and the rest of the pressure stay split by the
-  tables, as growth and not as a call); the massing sends that much from the first sighting. Mends 1 and 3, and
-  2 with them: what is not called stays home to seed and strike.
-- (b) With (a) or alone: a neighbour gives only what it holds above its own want, so its launch stock stays.
-- (c) Leave it off - hw8's launch-then-recall is the better build on these six runs - and take the partial
-  recall and the offence diagnosis of section 6 instead.
+**What the user chose (2026-10-05).** Not a sighting that carries the target world (my first proposal,
+rejected: a sighting tells the system, for both sides) but the system defending as one: the fight stays at
+the world, the system's spare swarms are sent there sized to the force over it, and a siege seen coming
+fights them from its first day. Built the same night with the humans' system-only reading of a strike,
+untested: `swarm-defence.md` "The system defends as one", `frontlines.md` "A seen strike tells its system".
+The massing stays off; a neighbour giving only above its own want, the partial recall and the offence
+diagnosis of section 6 are still open.

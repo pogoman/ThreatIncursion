@@ -145,10 +145,11 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   count falling while any is attacked; no dwell) left strikes to spoiling blows; both rules are now
   off by default (below).
 - **The defence since 2026-10-04** - the swarm's restraints removed, strikes come home, the defence
-  massed (`postureMass`): `swarm-defence.md`.
+  massed (`postureMass`, off), the system defending as one (`systemDefence`): `swarm-defence.md`.
 - **Settings:** `postureEnabled` (true), `postureMargin` (1.25), `postureBand` (0.25), `postureDays` (5),
   `postureStagedShare` (0), `postureTriage` (false), `postureNeedAtAttack` (true),
-  `posturePressedForgesHome` (false), `postureRecallLY` (10), `postureMass` (false); settings.json only, no
+  `posturePressedForgesHome` (false), `postureRecallLY` (10), `postureMass` (false), `systemDefence` (true),
+  `systemDefenceMargin` (1.25); settings.json only, no
   LunaLib rows but `postureRecallLY`.
   State is primitive maps (`threatinc_posture`, `threatinc_postureLoss`, `threatinc_postureReceived`);
   the per-session wants are forgotten on load. A state of the older six-field layout reads as unread,

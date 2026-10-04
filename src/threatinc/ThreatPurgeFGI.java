@@ -2135,6 +2135,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 
 	/** The daily siege has this expedition's payload. Set once, never cleared; false on an older save. */
 	protected boolean dailySiege;
+	/** The swarm had this siege in sight when it came down (takeDaily): the system's swarms on their way fight it from the first day. */
+	protected boolean seenComing;
 	/** Whole days of the payload segment the daily siege has run. */
 	protected int abstractDays;
 	/** Market id of the world the daily siege is over; null between worlds. */
@@ -2192,10 +2194,19 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		int worlds = dailyWorlds(action).size();
 		float window = abstractDays + Math.max(1, worlds) * (ThreatIncConfig.siegeOrbitDays() + 10f);
 		if (seg.daysMax < window) seg.daysMax = window;
+		// seen before it came down - the picket, a scout, a swarm on its road: the system's
+		// swarms meet it as one (ThreatPosture.defenders); without the swarm's fog, always
+		seenComing = !ThreatSwarmIntel.enabled() || ThreatSwarmIntel.inSight(ThreatSwarmIntel.siegeKey(this));
 		ThreatIncConfig.log("Daily siege takes over " + whereName(action) + " (" + ourFactionId() + "): " + worlds
-				+ " world(s), " + (int) abstractAllotment() + " FP, window " + (int) seg.daysMax + " d");
+				+ " world(s), " + (int) abstractAllotment() + " FP, window " + (int) seg.daysMax + " d"
+				+ (seenComing ? ", seen coming" : ", unseen"));
 		// the hive answers a siege over its world the day it arrives
 		ThreatPosture.alarm();
+	}
+
+	/** The world this siege is fighting over off-screen today, its fleets unspawned; null otherwise (ThreatPosture.siegesAt). */
+	protected String dailyWorldId() {
+		return dailySiege && !isSpawnedFleets() ? abstractWorld : null;
 	}
 
 	/**
@@ -2277,7 +2288,6 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 		// weigh: the fleets weighed are the fleets struck
 		List<CampaignFleetAPI> hostile = ThreatGroundFronts.hostileFleetsNear(ourId, w);
-		float enemy = livePoints(hostile);
 		float ours = abstractAllotment();
 		if (ours <= 0f) {
 			// nothing left to fight with (an abort line of 0): done
@@ -2287,6 +2297,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			dailyDone(action, seg);
 			return false;
 		}
+		// the hive's system defends as one: its spare swarms are sent to the world, and a
+		// siege seen coming fights those on their way from its first day (ThreatPosture.rally)
+		ThreatPosture.rally(w, ours + friendsNear(w));
+		hostile = ThreatPosture.defenders(w, hostile, seenComing);
+		float enemy = livePoints(hostile);
 		// go home outmatched, as the live commander does (breaksOff); a front down holds it
 		float ratio = ThreatIncConfig.siegeBreakOffRatio();
 		if (ratio > 0f && !playerCommissioned && !faction.isPlayerFaction()

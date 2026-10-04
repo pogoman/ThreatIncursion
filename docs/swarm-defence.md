@@ -1,8 +1,8 @@
-# The swarm's defence - restraints removed, strikes come home, the defence massed (2026-10-04)
+# The swarm's defence - restraints removed, strikes come home, the defence massed, the system as one
 
 Split from `hive-garrison-and-upkeep.md` "Posture" on 2026-10-04: that section holds the pressure, want,
-modes and transfers these build on. Test results: `game-runs.md` 4-7. The hive picket that sees a siege
-coming is in `threat-fog.md` 4.
+modes and transfers these build on. Test results: `game-runs.md` 4-7 (the last bullet is untested). The
+hive picket that sees a siege coming is in `threat-fog.md` 4.
 
 - **The swarm's restraints removed (2026-10-04, built 68d019a, tested hw7: `game-runs.md` 5; the user: "remove
   artificial constraints on the swarm like we just did for humans"; diagnosis `game-runs.md` 4).** Each
@@ -67,7 +67,37 @@ coming is in `threat-fog.md` 4.
   world full of light fleets read as below its minimum while a launch, which reserves by fleet count,
   took most of them. Knob `postureMass` (false since hw9 = the hw8 build, launch then recall). As built it
   masses to a need 2.4-4.3 times the siege over the world, strips every system in range, leaves nothing to
-  seed or strike, and still arrives after the siege; the mend proposed is `game-runs.md` 7 (a). Logs:
+  seed or strike, and still arrives after the siege; its mend is the next bullet. Logs:
   `Posture: <donor> massed N FP at <world> (G FP short of NEED)`, with `, X ly` before the bracket from
   a neighbour, and `Strike from <colony> held: <reason>`. Judgement calls, not the user's words:
   neighbours give, the reserve count stays home, the call is read per world, a recall stays whole.
+- **The system defends as one (2026-10-05, the user: "I'm assuming they defend the system just don't know
+  the exact world until the attack arrives ... Why don't they just defend the jump point then"; of the two
+  shapes offered, "simplicity and the middle version"; built, untested).** The fight stays at the world -
+  no battle at the jump point - but the world's siege meets the system's force:
+  1. `ThreatPosture.rally(world, attackFP)`: a force is over a hive world, and the system's other worlds
+     send it their spare swarms - every fleet above each one's `garrisonReserve` count
+     (`ThreatColonyManager.spareFleets(c, false)`: the colony's own need does not hold them), out of battle;
+     a world with a hostile fleet near it, an unspawned siege over it or an army on it sends none. The
+     lightest fleet that covers the gap, else the heaviest, until the Threat points at the world plus those
+     already bound for it reach the force x `systemDefenceMargin` (1.25; 0 = every spare swarm). The
+     unspawned sieges at the world that day weigh together (`siegesAt`). Sent by `sendReinforcement`, so
+     seated on arrival and marked as a transfer.
+  2. Called by an unspawned siege each day it fights (`ThreatPurgeFGI.dailyDay`, with its own points plus
+     its play's hunts in the system) and by the posture pass for every colony with hostile fleets near it
+     (`poll`: hunts, a spawned siege, the player's fleet).
+  3. `ThreatPosture.defenders`: a siege the swarm had in sight when it came down (`seenComing`, read in
+     `takeDaily` from `ThreatSwarmIntel.inSight`; always, with the swarm's fog off) fights the fleets at the
+     world and the swarms bound for it anywhere in its system (`boundFor`: `REINFORCE_TARGET_KEY`), from
+     its first day - weighed for the call-off, struck in the exchange, counted for the contested orbit.
+     One that came unseen fights them as they arrive, as before.
+
+  Against hw9's three faults: it sends what the force over the world calls for, not the system's whole
+  pressure; only its own system gives; and the swarms count the day the siege comes down, not 2-4 days
+  later. A human system already defends this way off-screen (vanilla's autoresolve weighs every defender
+  in the system). The humans learn it as they learn any swarm met: a called-off siege books what it
+  faced (`noteSwarmsMet`), and the next is sized to that. Knobs `systemDefence` (true),
+  `systemDefenceMargin` (1.25); `postureMass` stays off. Logs: `Posture: <donor> rallied N FP to <world>
+  (H FP stood against A)`, and `Daily siege takes over ... , seen coming|unseen`. My calls, not the user's
+  words: sized to the force (so the rest can answer a second siege), each world's reserve count stays
+  home, real forces (hunts, the player) draw the rally too, an unseen siege gets no first-day force.

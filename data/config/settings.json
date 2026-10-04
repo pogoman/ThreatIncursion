@@ -115,6 +115,16 @@
 	# 2.4-4.3 times the siege over the world, every system in range is
 	# stripped and nothing is left to seed or strike (docs/game-runs.md 7)
 	"threatinc_postureMass": false,
+	# THE SYSTEM DEFENDS AS ONE (2026-10-05, the user): a force over a hive
+	# world draws the spare swarms of its system's other worlds - every fleet
+	# above each one's reserve count, a world itself under attack sending
+	# none - until what stands for the world outweighs the force by
+	# systemDefenceMargin (0 = every spare swarm). A siege the swarm saw
+	# coming fights those swarms from its first day, wherever in the system
+	# they are; one that came unseen fights them as they arrive.
+	# false = each world meets a siege with its own garrison, as before
+	"threatinc_systemDefence": true,
+	"threatinc_systemDefenceMargin": 1.25,
 	# Stance: each posture pass the hive decides what its surplus is for.
 	# PRESS - it holds stancePressRatio times a rival's force in reach, knows a
 	# world of that rival whose defence is at most stanceWeakOdds of what it
@@ -1154,6 +1164,11 @@
 	# task force answer from then on. Off: every strike is known at launch
 	"threatinc_strikeDetection": true,
 	"threatinc_strikeDetectLY": 4,
+	# A seen strike tells the humans its system, not its worlds (2026-10-05,
+	# the user): every faction holding a world there mobilises, every link
+	# there calls its guard and every colony there may ask for help.
+	# false = they read the exact worlds on the strike's list, as before
+	"threatinc_strikeSeenBySystem": true,
 
 	# fabrication factor the moment the Fabrication Core is disrupted (health =
 	# fab x supply); from there it wears linearly to zero at defenseWearDays.
