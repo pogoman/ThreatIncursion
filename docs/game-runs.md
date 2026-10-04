@@ -130,4 +130,27 @@ reserve at the end, 16-25k drawn by sieges in ten years.
 bombing first, no escort paid ahead of the landing, no break-off on arrival (`facts.md`, "Does the swarm raze
 human colonies").
 
+**Why each link is there** (the user's question, 2026-10-04: "why the strategy layer is preventing? Is there
+some assumed tactical benefit?"). The council was built on 2026-10-01 to replace the attack planner's sieges
+sized to reported FP and re-planned on news with committed, coordinated plays (`war-council.md`, "Why"). None
+of that asks for restraint. The restraint is in the tables written to fill it in:
+
+| link | the benefit assumed | what the runs say |
+|---|---|---|
+| 1 band | none: fleet FP was ruled out as a measure, so strength became colony sizes against hive sizes | one faction against the whole known swarm reads outmatched from about 16 hives on, whatever its fleets, marines and stock |
+| 2 Hold, "no invasions" | an outmatched or pressed side that attacks loses its force and its worlds | never tested. Landing sieges, when they sail, are called off 0-1 times a run and 4 of 35 landings were overrun. Relief is separate and already goes first |
+| 3 bomb before invading | a hive with its Nexuses down is cheaper to land on | never measured. Most bombing expeditions do not get to bomb (link 4), and the invasion waits on them |
+| 4 bombing paid whole, sails alone | a campaign that cannot run dry half-way | 29-37 called off on arrival a run; fuel for 44-64 sailings a run, no hive killed by them |
+| 5 squadrons need an unguarded Nexus | h53c: squadrons sent alone into 600-3,500 FP were all driven off | real, but the fix was a gate, not an escort |
+| 6 escort of 60% of the means | the swarm reinforces 2-5x by arrival (h50a-h52a, a quarter of sieges landed), so mass wins the orbit | real: the orbit is won. But it is sized to the purse (17-30x the report), not the target, and paid before the siege |
+| 7 system lock, 8 one landing | bookkeeping: one siege's bill and marines per world (2026-09-29) | no tactical claim |
+| 9 one play per 3,000 FP | concentration: one committed play at a time ("commit, then check"), loosened to one per 3,000 FP on 2026-10-02 | the loosening was sized by the simulator's round 13, not a game run |
+
+Against it: pd7a (2026-10-02, one run), the council off and the old planner sailing about 2 sieges a month,
+landed 43 sieges and killed 27 hives by month 97 and held the swarm at 30 hives, against 1-2 hives killed and
+155-201 hives in the council runs of that week. Its write-up said the planner's strength was tempo, many
+systems pressed at once, and proposed "every strategy sieges: strategy picks where, not whether"
+(`war-council-runs.md` 4, option A). That was dropped because it "burned the paying bases" in the simulator's
+round 13. No game run has tried it.
+
 **Open, the user's call** (options as put to the user 2026-10-04): what replaces links 1-9.
