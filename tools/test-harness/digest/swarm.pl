@@ -79,7 +79,7 @@ for my $tag (@ARGV) {
       next;
     }
     # a strike that stayed home (logQuiet: one line a colony each time the reason changes, or a month)
-    if ($l =~ /^Strike from (.*?) held: /) { $heldHome{$1}++; next; }
+    if ($l =~ /^Strike from (.*?) held: .* (?:FP short of|against a need of) /) { $heldHome{$1}++; next; }
     if ($l =~ /^Front deployed at .* \(threat\)/) { $landings++; next; }
     if ($l =~ /^Notice: Beachhead Overrun \| A hive counter-attack/) { $humanOverrun++; next; }
     if ($l =~ /^Notice: Beachhead Overrun/) { $overrun++; next; }
