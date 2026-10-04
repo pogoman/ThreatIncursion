@@ -144,7 +144,7 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   (`pickForgeSource`, `trySpread`) and the CONSOLIDATE stance (half the systems pressed, or the hive
   count falling while any is attacked; no dwell) left strikes to spoiling blows; both rules are now
   off by default (below).
-- **The swarm's restraints removed (2026-10-04, built 68d019a, not game-tested; the user: "remove
+- **The swarm's restraints removed (2026-10-04, built 68d019a, tested hw7: `game-runs.md` 5; the user: "remove
   artificial constraints on the swarm like we just did for humans"; diagnosis `game-runs.md` 4).** Each
   rule keeps a knob that puts it back.
   - `postureStagedShare` 0 (was 1): a depot's capacity is no pressure. `poll` reads max(A, B x share).
