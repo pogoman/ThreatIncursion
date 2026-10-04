@@ -27,6 +27,8 @@ batch in one run's time (`testing-harness.md`, "Side-by-side runs"). The log is 
   strikes and their guards, sieges first seen by eyes or picket, strikes recalled and how long after launch,
   landings both ways.
 - `hives.pl <tag> <day> [system]`: one monthly dump's hives: held, fleets, want, need, bank, organs.
+- `mass.pl <tags>`: the massing (`postureMass`): fleets massed by year, moves between systems, give-backs
+  within 30 days, FP massed before and after each siege came down.
 
 ## 1. hw5e-hw5g (2026-10-04): the stance floor and the marine headroom
 
@@ -439,3 +441,56 @@ run another test": `swarm-defence.md` "The defence is massed", tested in section
 - (c) Send only the fleets that cover the gap and let the rest of the strike fly on (fault 3).
 - (d) The swarm's offence: 228k FP took no world. A diagnosis of its landings (240-1,480 troops, 352 days of
   relief bombardment logged after m96) is a separate read of these logs.
+
+## 7. hw9a-hw9c (2026-10-04 night): the defence massed
+
+Build `0dfa536`, `postureMass` on (`massWithin`, the recall, `massFromNeighbours`, the launch hold:
+`swarm-defence.md`). 37 minutes, no exception, no council error. **The swarm is exterminated in 3 of 3. The
+knob is off again (`postureMass` false = the hw8 build).**
+
+| | hw9a | hw9b | hw9c | hw8a / b / c |
+|---|---|---|---|---|
+| extinct | m124 | m91 | m105 | never / 3 hives at m123 / m89 |
+| hives m60, m84, m108 | 16, 16, 27 | 12, 8, 0 | 14, 9, 0 | 27, 70, 107 / 17, 27, 8 / 9, 2, 0 |
+| months in CONSOLIDATE since found | 68 of 80 | 47 of 51 | 48 of 64 | 7 of 82 / 66 of 83 / 46 of 48 |
+| seeding swarms since found | 27 | 8 | 10 | 190 / 33 / 1 |
+| strikes since found (recalled) | 14 (10) | 2 (3) | 7 (6) | 184 (118) / 26 (23) / 1 (2) |
+| fleets massed in a system, from neighbours | 1,009, 805 | 379, 97 | 611, 294 | - |
+| FP massed | 421k | 117k | 168k | recalled 130k / 28k / 0.8k |
+| sieges down, called off | 222, 29 | 110, 18 | 95, 13 | 373, 113 / 162, 19 / 66, 8 |
+| first day, siege against swarms over the world | 1.4k v 385 | 1.4k v 367 | 1.3k v 313 | 1.5k v 601 / 1.6k v 464 / 1.4k v 307 |
+| sieges met at parity or better | 9 of 158 | 2 of 68 | 4 of 73 | 19 of 272 / 7 of 122 / 1 of 45 |
+| Threat FP lost a human FP | 1.31 | 1.35 | 1.39 | 1.34 / 1.42 / 1.45 |
+| human landings, hives eradicated | 44, 40 | 25, 20 | 25, 22 | 30, 22 / 44, 38 / 17, 14 |
+| human worlds lost | 2 | 1 | 1 | 0 / 0 / 1 |
+| fuel in stock at the end | 1,656k | 584k | 601k | 10k / 536k / 612k |
+
+**What works.** The pass moves the fleets (`Posture: X massed N FP at Y`), nothing is spent on strikes that
+never sail (hw9a 77-151k fuel a year after contact, hw8a 0.25-1.86M), and the launch hold was reached 6 / 1 / 2
+times only: the massing leaves nothing to launch.
+
+**Why it loses.**
+
+1. It calls for far more than the fight. The need the pass puts on an attacked world is its system's whole
+   pressure - every force seen bound for the system in 10 days, plus 30 days of losses - laid on the worlds a
+   force is over (`overWorlds`): a median 3.2 / 2.4 / 4.3 times the siege that came down. The calls do not close,
+   so every hive system within 10 ly is stripped to its reserve count (805 of hw9a's 1,814 moves crossed systems).
+2. Nothing is left to grow or strike. A stripped colony is below its want (`regrowing`) and musters no wave or
+   strike: CONSOLIDATE 47-68 months, 8-27 seeding swarms since contact, 0.6-1.7M fuel unspent. hw8's side door
+   took only what a strike had mustered and left the rest to seed (hw8a 190).
+3. It arrives after the siege. Until a siege comes down the need is split by the size tables, so the median
+   massed toward a system in the 10 days before one landed is 0 FP in all three (a mean 0.7-1.1k in the 10 days
+   after), and those fleets arrive one at a time into a garrison already outnumbered. First-day defence and
+   parity are no better than hw8; sieges called off 13-16% (hw8a 30%, hw8b and hw8c 12%).
+
+The mass also chases the attack: a world gave within 30 days of receiving in 53-59% of moves.
+
+**Proposed, the user's call** (nothing built; the figures above are `swarm.pl` and `mass.pl`):
+
+- (a) Recommended: mass to the force, where it is going. A sighting carries the siege's target world; a world's
+  need is the FP bound for it or over it at the margin (losses and the rest of the pressure stay split by the
+  tables, as growth and not as a call); the massing sends that much from the first sighting. Mends 1 and 3, and
+  2 with them: what is not called stays home to seed and strike.
+- (b) With (a) or alone: a neighbour gives only what it holds above its own want, so its launch stock stays.
+- (c) Leave it off - hw8's launch-then-recall is the better build on these six runs - and take the partial
+  recall and the offence diagnosis of section 6 instead.

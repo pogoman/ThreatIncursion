@@ -110,8 +110,11 @@
 	# turned, it draws the spare of the hive systems within postureRecallLY.
 	# No strike sails from a system still short, or past one in that range;
 	# an attacked system launches only what it holds above its need.
-	# false = the launch-then-recall of hw8
-	"threatinc_postureMass": true,
+	# false = the launch-then-recall of hw8. OFF since hw9 (2026-10-05): as
+	# built it exterminated the swarm in 3 of 3 - the need it masses to is
+	# 2.4-4.3 times the siege over the world, every system in range is
+	# stripped and nothing is left to seed or strike (docs/game-runs.md 7)
+	"threatinc_postureMass": false,
 	# Stance: each posture pass the hive decides what its surplus is for.
 	# PRESS - it holds stancePressRatio times a rival's force in reach, knows a
 	# world of that rival whose defence is at most stanceWeakOdds of what it

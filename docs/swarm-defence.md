@@ -44,8 +44,9 @@ coming is in `threat-fog.md` 4.
   `ThreatSwarmIntel.note` calls `ThreatPosture.sighted` on a siege's first sighting: the pass runs that
   day. Log: `Posture: strike recalled to <system> - N FP in M fleet(s), ...`.
 - **The defence is massed (2026-10-04, the user: "If you recommend that then do it and run another test";
-  built 2f0b270, untested).** hw8 massed by a side door: a strike mustered its system's spare swarms and
-  the next pass recalled it (`game-runs.md` 6). The pass now does it itself, in this order at the end of
+  built 2f0b270, game-tested hw9 and OFF since: the swarm was exterminated in 3 of 3, `game-runs.md` 7).**
+  hw8 massed by a side door: a strike mustered its system's spare swarms and the next pass recalled it
+  (`game-runs.md` 6). With `postureMass` on the pass does it itself, in this order at the end of
   `ThreatPosture.poll`:
   1. `massWithin`: each attacked system with a world short of its own need by more than a swarm sends its
      colonies' spare fleets there. Spare is the launch's measure (`ThreatColonyManager.spareFleets`): the
@@ -64,7 +65,9 @@ coming is in `threat-fog.md` 4.
   `canRebuildGarrison`) but marks what it moves (`noteTransfer`). The transfer pass
   (`redistributeByPressure`) could not mass: it reserves in fleet points (`thinnableFP`), so a Bastion
   world full of light fleets read as below its minimum while a launch, which reserves by fleet count,
-  took most of them. Knob `postureMass` (true; false = the hw8 build, launch then recall). Logs:
+  took most of them. Knob `postureMass` (false since hw9 = the hw8 build, launch then recall). As built it
+  masses to a need 2.4-4.3 times the siege over the world, strips every system in range, leaves nothing to
+  seed or strike, and still arrives after the siege; the mend proposed is `game-runs.md` 7 (a). Logs:
   `Posture: <donor> massed N FP at <world> (G FP short of NEED)`, with `, X ly` before the bracket from
   a neighbour, and `Strike from <colony> held: <reason>`. Judgement calls, not the user's words:
   neighbours give, the reserve count stays home, the call is read per world, a recall stays whole.

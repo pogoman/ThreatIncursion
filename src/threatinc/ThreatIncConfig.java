@@ -132,7 +132,7 @@ public class ThreatIncConfig {
 	/** Range (LY) at which a hive system under attack and short of its need calls home a strike not yet at its work and nearer it than its target (ThreatPosture.recallStrikes); 0 = off. */
 	public static float postureRecallLY() { return f("threatinc_postureRecallLY"); }
 	/** Whether a system under attack masses its spare swarms, then its neighbours', at its worlds short of their need, and a launch leaves the need home (ThreatPosture.massWithin, strikeCapFP). */
-	public static boolean postureMass() { return b("threatinc_postureMass", true); }
+	public static boolean postureMass() { return b("threatinc_postureMass", false); }
 	/** Whether a sector stance (ThreatStance) decides where the surplus goes: pressing weak rivals, expanding, or consolidating. */
 	public static boolean stanceEnabled()     { return b("threatinc_stanceEnabled", true); }
 	/** The hive presses a rival it holds this many times the force of, in reach of it. */
