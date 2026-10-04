@@ -829,8 +829,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (market.getSize() < ThreatIncConfig.spreadMinSize()) continue;
 			if (!ThreatColonyManager.hasReadyForge(market)) continue;
 			if (!ThreatColonyManager.isStableForExpansion(market)) continue;
-			// a forge of a pressed system stays home (ThreatPosture)
-			if (ThreatPosture.pressed(market.getStarSystem())) continue;
+			// a forge of a pressed system stays home only under posturePressedForgesHome
+			// (off since 2026-10-04): what it may launch is already what it holds
+			// above the pressure's need (ThreatPosture.launchSpareFP)
+			if (ThreatIncConfig.posturePressedForgesHome() && ThreatPosture.pressed(market.getStarSystem())) continue;
 			freeForges++;
 			ThreatIncConfig.log("Spread-capable forge: " + market.getName() + " (size "
 					+ market.getSize()

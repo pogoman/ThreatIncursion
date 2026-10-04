@@ -2194,6 +2194,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (seg.daysMax < window) seg.daysMax = window;
 		ThreatIncConfig.log("Daily siege takes over " + whereName(action) + " (" + ourFactionId() + "): " + worlds
 				+ " world(s), " + (int) abstractAllotment() + " FP, window " + (int) seg.daysMax + " d");
+		// the hive answers a siege over its world the day it arrives
+		ThreatPosture.alarm();
 	}
 
 	/**

@@ -2727,7 +2727,7 @@ public class ThreatColonyManager {
 			if (!hasOperationalNexus(market)) continue;
 			StarSystemAPI system = market.getStarSystem();
 			if (system == null) continue;
-			if (posture && ThreatPosture.pressed(system)) continue;
+			if (posture && ThreatIncConfig.posturePressedForgesHome() && ThreatPosture.pressed(system)) continue;
 			// the wave's substance is a mustered Defense Swarm: the colony (or a
 			// sibling in its system, launchPool) must have one to spare above
 			// its defensive reserve
@@ -5299,6 +5299,7 @@ public class ThreatColonyManager {
 			fleetsTotal += countLiveGarrison(curr.getId());
 		}
 		float band = Math.max(0f, ThreatIncConfig.postureBand());
+		boolean atAttack = ThreatIncConfig.postureNeedAtAttack();
 		for (int n = 0; n <= fleetsTotal; n++) {
 			List<MarketAPI> receivers = new ArrayList<MarketAPI>();
 			final Map<String, Float> shortfall = new java.util.HashMap<String, Float>();
@@ -5337,12 +5338,16 @@ public class ThreatColonyManager {
 					if (ThreatPosture.recentlyReceived(curr)) continue;
 					// what is on station, not what is flying in
 					float onStation = held.get(curr.getId()) - inbound.get(curr.getId());
-					if (onStation < ThreatPosture.wantFP(curr)) continue;
+					// a colony the war asks nothing of thins to its reserve for one under
+					// attack, its launch stock included and whether or not it holds its own
+					// want (2026-10-04, postureNeedAtAttack; it gave only from a quiet system
+					// and only while at its want: hw6, the stock was a founding's or a
+					// strike's, never the defence's, and a colony short of it gave nothing)
+					boolean thin = attacked && (atAttack ? ThreatPosture.needFP(curr) <= 0f
+							: !ThreatPosture.pressed(curr.getStarSystem()));
+					if (!(thin && atAttack) && onStation < ThreatPosture.wantFP(curr)) continue;
 					float spare = ThreatPosture.releasableFP(curr, onStation);
-					// a quiet system thins to its colonies' reserves for one under attack
-					if (attacked && !ThreatPosture.pressed(curr.getStarSystem())) {
-						spare = Math.max(spare, ThreatPosture.thinnableFP(curr, onStation));
-					}
+					if (thin) spare = Math.max(spare, ThreatPosture.thinnableFP(curr, onStation));
 					if (spare <= 0f) continue;
 					if (!canReinforce(curr, receiver)) continue;
 					CampaignFleetAPI fleet = pressureFleet(curr, Math.min(spare, accept), deficit);

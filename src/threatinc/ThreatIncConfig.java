@@ -121,6 +121,14 @@ public class ThreatIncConfig {
 	public static float postureBand()         { return f("threatinc_postureBand"); }
 	/** Days between readings of every hive system's posture. */
 	public static float postureDays()         { return f("threatinc_postureDays"); }
+	/** The share of what a base staging for a hive system could pay that counts as pressure on it (0: only forces seen). */
+	public static float postureStagedShare()  { return f("threatinc_postureStagedShare"); }
+	/** Whether a system the whole hive could not hold above its bases is written off (its need 0). */
+	public static boolean postureTriage()     { return b("threatinc_postureTriage", false); }
+	/** Whether a system's need stands at the worlds a force is over, and colonies the war asks nothing of give down to their reserve for one under attack. */
+	public static boolean postureNeedAtAttack() { return b("threatinc_postureNeedAtAttack", true); }
+	/** Whether a forge of a THREATENED or BESIEGED system sends no wave and counts toward no claim, whatever it holds above the need. */
+	public static boolean posturePressedForgesHome() { return b("threatinc_posturePressedForgesHome", false); }
 	/** Whether a sector stance (ThreatStance) decides where the surplus goes: pressing weak rivals, expanding, or consolidating. */
 	public static boolean stanceEnabled()     { return b("threatinc_stanceEnabled", true); }
 	/** The hive presses a rival it holds this many times the force of, in reach of it. */
@@ -135,6 +143,10 @@ public class ThreatIncConfig {
 	public static float stanceDwellDays()     { return f("threatinc_stanceDwellDays"); }
 	/** Pressing, the share of the posture's appetite expansion still gets. */
 	public static float stanceSecondaryShare() { return f("threatinc_stanceSecondaryShare"); }
+	/** Consolidating, the share of the posture's appetite expansion still gets (0: no new claims). */
+	public static float stanceConsolidateSpreadShare() { return f("threatinc_stanceConsolidateSpreadShare"); }
+	/** Whether a consolidating hive strikes any world by its weakness, spoiling blows first (off: spoiling blows only). */
+	public static boolean stanceConsolidateStrikes() { return b("threatinc_stanceConsolidateStrikes", true); }
 	/** A garrison swarm below this fraction of its fabricated fleet points no longer holds its slot. */
 	public static float garrisonUnderStrengthFraction() { return f("threatinc_garrisonUnderStrengthFraction"); }
 	public static boolean economyGatesGrowth(){ return b("threatinc_economyGatesGrowth", true); }
@@ -758,6 +770,8 @@ public class ThreatIncConfig {
 	public static float defendDays()          { return f("threatinc_defendDays"); }
 	/** Whether an expedition fleet that has landed or reinforced a front stays over it on Defend (and one with nothing left to land joins it). */
 	public static boolean landingDefendEnabled() { return b("threatinc_landingDefendEnabled", true); }
+	/** Whether an unspawned strike leaves its share of its fleets over each landing, all of them over the last (off: one fleet a landing, the rest go home). */
+	public static boolean strikeGuardWhole()  { return b("threatinc_strikeGuardWhole", true); }
 	/** A landing's Defend stands down once the batteries have ground the fleet below this fraction of its strength. */
 	public static float defendMinStrength()   { return f("threatinc_defendMinStrength"); }
 	/** Whether a Defend fleet with nothing left to bombard breaks up its own hulls into troops for its front (docs/ground-war.md "Fabricating troops from the fleet"). */

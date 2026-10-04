@@ -141,9 +141,16 @@ public class ThreatStance {
 	// what the rest of the hive reads
 	// ------------------------------------------------------------------
 
-	/** The share of the posture's appetite trySpread commits: all expanding, stanceSecondaryShare pressing, none consolidating. */
+	/**
+	 * The share of the posture's appetite trySpread commits: all expanding,
+	 * stanceSecondaryShare pressing, stanceConsolidateSpreadShare consolidating
+	 * (1 since 2026-10-04; it was none - hw6: no founding from the month the
+	 * humans attacked, and income fell with every hive lost). The defence has
+	 * first call either way: a forge launches only what it holds above the need.
+	 */
 	public static float expansionShare() {
 		int s = stance();
+		if (s == CONSOLIDATE) return Math.max(0f, Math.min(1f, ThreatIncConfig.stanceConsolidateSpreadShare()));
 		return threatinc.rules.StanceRules.expansionShare(
 				s == CONSOLIDATE ? threatinc.rules.StanceRules.CONSOLIDATE
 						: s == PRESS ? threatinc.rules.StanceRules.PRESS : threatinc.rules.StanceRules.EXPAND,
@@ -166,8 +173,10 @@ public class ThreatStance {
 	 * The strike pick's weight for this world from this hive system, given the
 	 * odds the strike gate reads (defence over strike times siegeBreakOffRatio).
 	 * Pressing: the weaker, the likelier, and the world the stance picked for
-	 * the system above all. Consolidating: a spoiling blow only - a base
-	 * staging against a hive, or a forward base, at weak odds - else 0.
+	 * the system above all. Consolidating: the weaker, the likelier, and a
+	 * spoiling blow - a base staging against a hive, or a forward base - above
+	 * all (2026-10-04, stanceConsolidateStrikes; it was a spoiling blow at weak
+	 * odds or nothing, and the strike gate already refuses the outweighed).
 	 */
 	public static float strikeTargetMult(MarketAPI market, StarSystemAPI source, float odds) {
 		// no defence figure (a world the swarm's fog has never seen, targetDefence): no strike
@@ -181,8 +190,12 @@ public class ThreatStance {
 			if (market.getId().equals(picked)) mult *= TARGET_WEIGHT;
 			return mult;
 		}
-		if (odds > ThreatIncConfig.stanceWeakOdds()) return 0f;
 		boolean staging = ThreatFrontlines.isOutpost(market) || stagingAgainstHive(market);
+		if (ThreatIncConfig.stanceConsolidateStrikes()) {
+			float mult = Math.max(0.05f, weakness);
+			return staging ? mult * TARGET_WEIGHT : mult;
+		}
+		if (odds > ThreatIncConfig.stanceWeakOdds()) return 0f;
 		return staging ? Math.max(0.05f, weakness) : 0f;
 	}
 

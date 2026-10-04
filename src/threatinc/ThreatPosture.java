@@ -105,7 +105,7 @@ public class ThreatPosture {
 	protected static int nQuiet, nPressed;
 	/** Hive systems the last pass wrote off (triage in poll); transient, for the change log. */
 	protected static final Set<String> INDEFENSIBLE = new HashSet<String>();
-	/** The last pass's forges in quiet systems, and those whose bank pays a founding. */
+	/** The last pass's forges (those of quiet systems alone under posturePressedForgesHome), and those whose bank pays a founding. */
 	protected static int nForges, nForgesCovered;
 	/** This month's releases, for the monthly line. */
 	protected static int sentFleets, consumedSwarms, recycledFleets;
@@ -497,6 +497,11 @@ public class ThreatPosture {
 		float postureMargin = Math.max(0f, ThreatIncConfig.postureMargin());
 		float band = Math.max(0f, ThreatIncConfig.postureBand());
 		float bill = ThreatColonyManager.foundingFP(ThreatColonyManager.FOUNDING_CORE_STRUCTURES + 1);
+		// the swarm's own restraints, removed 2026-10-04 (docs/game-runs.md 4); each knob puts one back
+		float stagedShare = Math.max(0f, ThreatIncConfig.postureStagedShare());
+		boolean triage = ThreatIncConfig.postureTriage();
+		boolean forgesHome = ThreatIncConfig.posturePressedForgesHome();
+		Map<String, Float> sieges = ThreatIncConfig.postureNeedAtAttack() ? siegesOver() : null;
 
 		COLONY.clear();
 		sumHeld = sumWant = sumSurplus = 0f;
@@ -519,7 +524,10 @@ public class ThreatPosture {
 			if (system == null) continue;
 			List<MarketAPI> colonies = ThreatIncData.getLiveColonyMarkets(systemId);
 			Reading r = read(system, colonies, attacks, counted, stagingMemo, outposts, day, pass);
-			float raw = Math.max(r.attacks, r.staged) + r.losses + r.hostiles + r.forward;
+			// forces seen, not what a depot could pay (postureStagedShare, 0 since 2026-10-04): a
+			// siege is sized to the swarm reported at its world, and the capacity read wrote
+			// systems off against forces nobody sent (hw6b: Yma at 37,550 "staged")
+			float raw = Math.max(r.attacks, r.staged * stagedShare) + r.losses + r.hostiles + r.forward;
 
 			float[] prev = state().get(systemId);
 			// a reading stamped after today is not this timeline's: start afresh
@@ -543,13 +551,15 @@ public class ThreatPosture {
 				bank += ThreatColonyManager.bankedFP(c);
 			}
 			float need = pressure / margin * postureMargin;
-			// TRIAGE: a system the whole hive could not hold even stripping every
-			// other to its base is not fed - its want falls back to its base and
-			// the swarms it would have drained go on elsewhere (ti-h8d: Corvus
-			// read a 37k want against a 40k-FP hive; transfers sort the emptiest
-			// receiver first and would have stripped the quiet hives into it)
+			// TRIAGE (postureTriage, off since 2026-10-04): a system the whole hive
+			// could not hold even stripping every other to its base is not fed - its
+			// want falls back to its base and the swarms it would have drained go on
+			// elsewhere (ti-h8d: Corvus read a 37k want against a 40k-FP hive;
+			// transfers sort the emptiest receiver first and would have stripped the
+			// quiet hives into it). Off: hw6 wrote off every attacked system, the home
+			// system and its 12.9k FP included, and each fell with what stood over it
 			float gatherable = held + bank + Math.max(0f, (sectorHeld - held) - (sectorBase - base));
-			boolean hopeless = pressure / margin > gatherable;
+			boolean hopeless = triage && pressure / margin > gatherable;
 			if (hopeless != INDEFENSIBLE.contains(systemId)) {
 				if (hopeless) INDEFENSIBLE.add(systemId);
 				else INDEFENSIBLE.remove(systemId);
@@ -558,12 +568,14 @@ public class ThreatPosture {
 						+ " FP, the hive could gather " + (int) gatherable);
 			}
 			if (hopeless) need = 0f;
-			// each colony its base or its share of the need, split by the tables
+			// each colony its base or its share of the need: where the attack has come
+			// down, the worlds it is over (overWorlds), else split by the tables
+			float[] over = sieges != null ? overWorlds(colonies, sieges, pressure) : null;
 			float[] wants = new float[colonies.size()];
 			float[] needs = new float[colonies.size()];
 			float want = 0f;
 			for (int i = 0; i < colonies.size(); i++) {
-				float share = floor > 0f ? floors[i] / floor : 1f / colonies.size();
+				float share = over != null ? over[i] : floor > 0f ? floors[i] / floor : 1f / colonies.size();
 				needs[i] = need * share;
 				wants[i] = Math.max(bases[i], needs[i]);
 				want += wants[i];
@@ -617,13 +629,16 @@ public class ThreatPosture {
 				// too (2026-09-29, ti-h8e: 71k FP banked against 47k held while
 				// appetite read the fleets alone and sat at 0.1-0.3)
 				appetiteSurplus += Math.max(0f, held - want) + Math.max(0f, bank - want);
+			} else {
+				nPressed++;
+			}
+			// a pressed system's forges count too unless they stay home (posturePressedForgesHome)
+			if (mode <= WATCHFUL || !forgesHome) {
 				for (MarketAPI c : colonies) {
 					if (ThreatColonyManager.getForge(c) == null) continue;
 					forges++;
 					if (ThreatColonyManager.poolableFP(c) >= bill) forgesCovered++;
 				}
-			} else {
-				nPressed++;
 			}
 		}
 		// a system the hive lost forgets its reading, and a ledger long quiet its losses
@@ -748,6 +763,86 @@ public class ThreatPosture {
 		if (purge.isSpawnedFleets() && !purge.isSpawning() && !purge.getFleets().isEmpty()) return false;
 		return purge.getCurrentAction() == null
 				|| !GenericRaidFGI.RETURN_ACTION.equals(purge.getCurrentAction().getId());
+	}
+
+	/**
+	 * Hive world -> warship points of the sieges over it whose fleets have not
+	 * spawned (abstractNow): they fight the swarms at the world off-screen
+	 * (ThreatPurgeFGI's daily siege) with no fleet in the system for the
+	 * hostiles sweep or overWorlds to read. A spawned siege's fleets are read
+	 * where they are.
+	 */
+	protected static Map<String, Float> siegesOver() {
+		Map<String, Float> out = new HashMap<String, Float>();
+		for (Object curr : IncursionManager.getPurgeList()) {
+			if (!(curr instanceof ThreatPurgeFGI)) continue;
+			ThreatPurgeFGI purge = (ThreatPurgeFGI) curr;
+			if (purge.isEnded() || purge.isEnding() || purge.isAborted()) continue;
+			if (purge.isSpawnedFleets() && !purge.isSpawning() && !purge.getFleets().isEmpty()) continue;
+			if (!purge.isCurrent(GenericRaidFGI.PAYLOAD_ACTION)) continue;
+			if (purge.getParams() == null || purge.getParams().raidParams == null) continue;
+			float fp = purge.abstractNow();
+			if (fp <= 0f) continue;
+			for (MarketAPI target : purge.getParams().raidParams.allowedTargets) {
+				if (target == null) continue;
+				Float had = out.get(target.getId());
+				out.put(target.getId(), (had != null ? had : 0f) + fp);
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * A siege has come down on a hive world: the next pass reads the hive at
+	 * once rather than up to postureDays later (ThreatPurgeFGI.takeDaily - an
+	 * outnumbered garrison loses three quarters of itself a day).
+	 */
+	public static void alarm() {
+		if (ThreatIncConfig.postureNeedAtAttack()) lastPoll = Long.MIN_VALUE;
+	}
+
+	/** A world is singled out only by a force of at least this share of its system's pressure: a scout passing moves nothing. */
+	protected static final float OVER_MIN_SHARE = 0.1f;
+
+	/**
+	 * Each colony's share of its system's need once the attack has come down
+	 * (2026-10-04, postureNeedAtAttack): by the warship points over each world -
+	 * hostile fleets at it and the unspawned sieges on it (siegesOver) - a world
+	 * with an army on it and nothing over it weighing as the average of those.
+	 * Null while no world is singled out: the need is then split by the tables,
+	 * as it always was. The orbit is contested at the world
+	 * (ThreatGroundFronts.orbitHeld), not across the system, so split by the
+	 * tables under attack the world a siege came down on fought with its own
+	 * garrison while its siblings kept theirs (hw6b, the home system holding
+	 * 12.9k FP: Alpha Laphirial II met a siege of 1,925 FP with 1,432 and
+	 * Alpha Laphirial IV one of 1,968 with 956, each garrison gone in three days).
+	 */
+	protected static float[] overWorlds(List<MarketAPI> colonies, Map<String, Float> sieges, float pressure) {
+		float[] w = new float[colonies.size()];
+		float sum = 0f;
+		int n = 0;
+		for (int i = 0; i < w.length; i++) {
+			MarketAPI c = colonies.get(i);
+			Float siege = sieges.get(c.getId());
+			w[i] = ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c) + (siege != null ? siege : 0f);
+			if (w[i] <= 0f) continue;
+			sum += w[i];
+			n++;
+		}
+		if (sum < pressure * OVER_MIN_SHARE) {
+			java.util.Arrays.fill(w, 0f);
+			sum = 0f;
+			n = 0;
+		}
+		float each = n > 0 ? sum / n : 1f;
+		for (int i = 0; i < w.length; i++) {
+			if (w[i] > 0f || !ThreatGroundFronts.hasFront(colonies.get(i))) continue;
+			w[i] = each;
+			sum += each;
+		}
+		if (sum <= 0f) return null;
+		for (int i = 0; i < w.length; i++) w[i] /= sum;
+		return w;
 	}
 
 	/** Counts one attacking fleet toward its system, and toward its faction's force in reach (ThreatStance); with {@code out} null, only marks it counted. */

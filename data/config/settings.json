@@ -69,19 +69,35 @@
 	# and Nexus both up) and always keeps one swarm home.
 	"threatinc_reinforceEnabled": true,
 	# Posture: every postureDays each hive system weighs the war around it
-	# (attacks running, what the bases staging for it could pay, recent
-	# losses, hostiles present, forward bases in reach) and wants the garrison
-	# that pressure needs - by the siege's orbit margin, times postureMargin -
-	# or its size tables' floor, whichever is more. Nothing is built past the
-	# want; garrison above it by postureBand and one swarm is let go to pressed
-	# siblings, waves and strikes, and recycled once it has stood idle past the
-	# upkeep's break-even. A quiet hive thins to its reserve to spread; a
-	# pressed one keeps its forges home. Off: the nexus builds past the floor
-	# whenever its bank pays, as before.
+	# (attacks seen bound for it, recent losses, hostiles present, forward
+	# bases in reach) and wants the garrison that pressure needs - by the
+	# siege's orbit margin, times postureMargin - or its size tables' floor,
+	# whichever is more. Nothing is built past the want; garrison above it by
+	# postureBand and one swarm is let go to pressed siblings, waves and
+	# strikes, and recycled once it has stood idle past the upkeep's
+	# break-even. A quiet hive thins to its reserve to spread; a pressed one
+	# launches only what it holds above the need. Off: the nexus builds past
+	# the floor whenever its bank pays, as before.
 	"threatinc_postureEnabled": true,
 	"threatinc_postureMargin": 1.25,
 	"threatinc_postureBand": 0.25,
 	"threatinc_postureDays": 5,
+	# The swarm's own restraints, removed 2026-10-04 (docs/game-runs.md 4);
+	# each knob puts one back. postureStagedShare: the share of what a base
+	# staging for a hive system COULD pay that counts as pressure on it (was
+	# 1: sieges are sized to the swarm reported, not to the depot, and the
+	# capacity read wrote systems off against forces nobody sent).
+	# postureTriage: a system the whole hive could not hold above its bases is
+	# written off and not fed. postureNeedAtAttack: a system's need stands at
+	# the worlds a force is over or an army is on, not split by the size
+	# tables, and a colony the war asks nothing of gives down to its reserve -
+	# its launch stock included - for one under attack. posturePressedForgesHome:
+	# a forge of a threatened or besieged system sends no wave and counts
+	# toward no claim, whatever it holds above the need.
+	"threatinc_postureStagedShare": 0,
+	"threatinc_postureTriage": false,
+	"threatinc_postureNeedAtAttack": true,
+	"threatinc_posturePressedForgesHome": false,
 	# Stance: each posture pass the hive decides what its surplus is for.
 	# PRESS - it holds stancePressRatio times a rival's force in reach, knows a
 	# world of that rival whose defence is at most stanceWeakOdds of what it
@@ -89,10 +105,10 @@
 	# pressed: the staging colony builds that strike and aims it; expansion
 	# gets stanceSecondaryShare of its appetite. CONSOLIDATE - that share of
 	# its systems pressed, or hives lost under attack, with no breathing room:
-	# no new claims, quiet colonies feed pressed systems, spoiling strikes at
-	# bases staging against it only. EXPAND otherwise, seeding away from the
-	# strongest rival. A stance holds stanceDwellDays (consolidating never
-	# waits). Off: posture alone, as before.
+	# quiet colonies feed pressed systems and its strikes go for bases staging
+	# against it first. EXPAND otherwise, seeding away from the strongest
+	# rival. A stance holds stanceDwellDays (consolidating never waits). Off:
+	# posture alone, as before.
 	"threatinc_stanceEnabled": true,
 	"threatinc_stancePressRatio": 1.5,
 	"threatinc_stanceWeakOdds": 0.5,
@@ -102,6 +118,11 @@
 	"threatinc_stanceConsolidateMinPressed": 2,
 	"threatinc_stanceDwellDays": 30,
 	"threatinc_stanceSecondaryShare": 0.5,
+	# Consolidating (2026-10-04, it stopped both): the share of its appetite
+	# the hive still spends on new claims (was 0), and whether it strikes any
+	# world by its weakness rather than spoiling blows alone.
+	"threatinc_stanceConsolidateSpreadShare": 1,
+	"threatinc_stanceConsolidateStrikes": true,
 	# A garrison slot is a promise of a certain weight of defense. A swarm shot
 	# below this fraction of the fleet points it was fabricated with, or one of a
 	# lower tier than the slot wants (a small colony's swarm sent to a big one),
@@ -890,6 +911,11 @@
 	"threatinc_defendEnabled": true,
 	"threatinc_defendDays": 60,
 	"threatinc_landingDefendEnabled": true,
+	# A strike far from the player never spawns its fleets. It leaves its
+	# share of them over each landing, and all it has left over the last
+	# (2026-10-04; off: one fleet a landing and the rest go home, as before -
+	# hw6b: a strike of 4,219 FP left 291 over Chicomoztoc).
+	"threatinc_strikeGuardWhole": true,
 	"threatinc_defendMinStrength": 0.33,
 	# FABRICATING TROOPS FROM THE FLEET (2026-09-08; the swarm's alone since
 	# 2026-09-28 - a navy's hulls do not become marines). A swarm Defend fleet bombards
