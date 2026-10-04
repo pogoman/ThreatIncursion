@@ -1875,6 +1875,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return ThreatReserves.available(base, commodityId) + donorsPooled(base, donors, commodityId);
 	}
 
+	/** The marines a siege from {@code base} against the system could put aboard now, as the launch reads them: the base's and its donors' above their floors, and the Path's zealots. */
+	protected static float siegeMarinesPooled(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
+		String marines = com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES;
+		java.util.List<MarketAPI> pool = ThreatIncConfig.siegePoolMarines() && !faction.isPlayerFaction()
+				? siegeDonors(base, faction, system) : new ArrayList<MarketAPI>();
+		float have = siegePooled(base, pool, marines);
+		if (!faction.isPlayerFaction()) have += donorsPooled(base, zealotDonors(faction, base, system), marines);
+		return have;
+	}
+
 	/** The donors' part of {@link #siegePooled}: what they give a siege at {@code base}, net of the haul there. */
 	protected static float donorsPooled(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId) {
 		float have = 0f;
@@ -2069,8 +2079,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 */
 	protected static boolean siegeCanPay(MarketAPI base, FactionAPI faction, StarSystemAPI system,
 			java.util.List<MarketAPI> targets, java.util.List<Integer> sizes) {
+		return siegeCanPay(base, faction, system, targets, sizes, null);
+	}
+
+	/** As above, razing the worlds in {@code razeGiven} rather than those the faction's navy would pick (null: razeWorlds) - a war council play's siege (ThreatPlays). */
+	protected static boolean siegeCanPay(MarketAPI base, FactionAPI faction, StarSystemAPI system,
+			java.util.List<MarketAPI> targets, java.util.List<Integer> sizes, java.util.Set<String> razeGiven) {
 		if (sizes.isEmpty() || !ThreatWarState.isAtWar(faction)) return true;
-		java.util.Set<String> raze = razeWorlds(base, faction, system, targets);
+		java.util.Set<String> raze = razeGiven != null ? razeGiven : razeWorlds(base, faction, system, targets);
 		float[] wants = expeditionWants(base, system, targets, sizes, raze);
 		java.util.List<MarketAPI> donors = !faction.isPlayerFaction()
 				? siegeDonors(base, faction, system) : new ArrayList<MarketAPI>();

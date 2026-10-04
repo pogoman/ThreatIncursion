@@ -153,4 +153,5 @@ systems pressed at once, and proposed "every strategy sieges: strategy picks whe
 (`war-council-runs.md` 4, option A). That was dropped because it "burned the paying bases" in the simulator's
 round 13. No game run has tried it.
 
-**Open, the user's call** (options as put to the user 2026-10-04): what replaces links 1-9.
+**Decided 2026-10-04** ("Ok proceed with recommended"): links 1-3 and 5-9 are replaced by the four changes in
+`war-council-invasions.md`; link 4 (relief first) stays, the user's rule. Runs: section 3.

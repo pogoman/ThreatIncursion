@@ -244,9 +244,10 @@ threatinc_warCouncil,War Council,Boolean,true,"Mobilised factions hold a strateg
 threatinc_councilReviewDays,Strategy Review (Days),Double,90,"Days a faction holds its strategy before it reviews it.",30,365
 threatinc_councilTemperature,Council Randomness,Double,1,"0: a faction always picks its best-scored strategy and play. 1: picks in proportion to the scores. Higher: flatter.",0,4
 threatinc_councilLearning,Factions Learn,Boolean,true,"A faction weighs the plays that worked against this war higher, and the ones that failed lower.",,
-threatinc_councilHammerShare,Hammer Share,Double,0.6,"Share of a faction's means a massed strike musters.",0.1,1
+threatinc_councilEscortMargin,Escort Margin,Double,4,"An invasion's escort is the swarm its faction last saw in the system times this, and at least its sieges' own fleet points.",0,20
+threatinc_councilInvadeDays,Invasion Pass (Days),Double,7,"Days between a faction's invasion passes. Each pass it invades every hive its stock pays a landing on, easiest first.",1,90
+threatinc_councilHammerShare,Escort Ceiling,Double,0.6,"The most of a faction's means an invasion's escort takes.",0.1,1
 threatinc_councilSquadronFP,Bombing Squadron (FP),Double,300,"Fleet points of a bombing squadron in a bombing campaign.",50,2000
-threatinc_councilMajorPlayFP,Major Play (FP),Double,3000,"Siege capacity a faction needs per major play (massed strike, feint, bombing campaign) it runs at once; always at least one.",500,20000
 threatinc_swarmScouting,Swarm Scouting,Boolean,true,"The Threat strikes only systems its Scouting Swarms have charted. Scouts leave from colonies that could stage a strike (size, hulls, fuel, Swarm Nexus) without taking Defense Swarms, and fly within fuel reach. Off: the swarm knows every world.",,
 threatinc_swarmScoutFleetPoints,Scouting Swarm Fleet Points,Double,30,"Fleet points of a Scouting Swarm.",5,150
 threatinc_donorKeepFraction,Donor Keep Fraction,Double,0.5,"Fraction of its own cap a donor colony keeps back for itself.",0,1

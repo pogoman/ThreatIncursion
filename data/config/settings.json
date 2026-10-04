@@ -796,16 +796,24 @@
 	"threatinc_councilThreatLY": 10,
 	"threatinc_councilJitter": 0.25,
 	"threatinc_councilLearning": true,
-	# shares of the means: a hammer's hunts and its siege (each of its own pool),
-	# a bombing campaign's and bombers of opportunity's fuel, a feint's squadron
+	# a play's escort (2026-10-04): the swarm its faction's report shows in the
+	# system x councilEscortMargin, at least its sieges' own fleet points, sent
+	# after the sieges are paid; never more than councilHammerShare of the means
+	"threatinc_councilEscortMargin": 4,
 	"threatinc_councilHammerShare": 0.6,
+	# an older save's muster only: below this share of what it sent it disbands
 	"threatinc_councilMusterFloor": 0.5,
+	# shares of the means: a bombing campaign's and bombers of opportunity's
+	# fuel, a feint's squadron
 	"threatinc_councilStarveShare": 0.3,
 	"threatinc_councilFeintShare": 0.1,
 	"threatinc_councilOpportunityShare": 0.05,
 	"threatinc_councilSquadronFP": 300,
-	# one major play (hammer, feint, bombing campaign) per this much siege capacity, at least one
-	"threatinc_councilMajorPlayFP": 3000,
+	# the invasion line: every this many days a faction invades each hive its
+	# pools pay a landing on, the easiest first, whatever its strategy
+	"threatinc_councilInvadeDays": 7,
+	# a strike with no siege paid on its day waits this long for stock
+	"threatinc_councilStrikeWaitDays": 30,
 	# phase clocks (jittered by councilJitter)
 	"threatinc_councilPrepareDays": 30,
 	"threatinc_councilMusterDays": 30,
