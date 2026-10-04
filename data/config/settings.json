@@ -98,6 +98,12 @@
 	"threatinc_postureTriage": false,
 	"threatinc_postureNeedAtAttack": true,
 	"threatinc_posturePressedForgesHome": false,
+	# STRIKES COME HOME (2026-10-04, the user): a hive system under attack and
+	# short of its need calls in the strikes within postureRecallLY of it that
+	# are still preparing or travelling out and nearer it than their target,
+	# the nearest first; their fleets join its garrisons. A strike mid-siege,
+	# close to its target or on its way home flies on. 0 = off
+	"threatinc_postureRecallLY": 10,
 	# Stance: each posture pass the hive decides what its surplus is for.
 	# PRESS - it holds stancePressRatio times a rival's force in reach, knows a
 	# world of that rival whose defence is at most stanceWeakOdds of what it

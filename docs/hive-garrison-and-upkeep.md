@@ -169,9 +169,23 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
     x`TARGET_WEIGHT`. `StanceRules.expansionShare` (shared with the frozen simulator) is unchanged;
     the mod no longer asks it about CONSOLIDATE.
   - `strikeGuardWhole` true: `ground-war-orbit-control.md`, "The swarm guards its unspawned landings too".
+- **Strikes come home (2026-10-04, the user: "should be able to deviate those that are convenient", not
+  one "already mid siege or close to its target"; built, jar 19:43, untested).** `poll` lists each
+  system that is attacked (attacks, hostiles or losses) and short of its need by more than its cheapest
+  swarm; `recallStrikes` calls in, shortest system first and nearest strike first, each strike within
+  `postureRecallLY` (10, 0 = off; Luna "Strike Recall Range (LY)") that is `ThreatStrikeFGI.recallable`
+  (pre-launch, PREPARE or TRAVEL; not in its payload, not with a guard left, not returning) and nearer
+  the system than its first target, whichever hive launched it, until the gap closes. A strike comes
+  whole: `recallTo` builds an unspawned one where its route stands (`spawnFleets`, the bank settling as
+  at a spawn), detaches every fleet, heaviest first to the world still shortest
+  (`ThreatColonyManager.sendToGarrison`: off the ledger, a reinforcement's blinders, seated by
+  `checkReinforcementArrivals`), then aborts as a withdrawal with nothing to re-bank. A strike spends
+  `prepDays` 7-14 at its colony, so one launched just before a siege is seen is usually still there.
+  `ThreatSwarmIntel.note` calls `ThreatPosture.sighted` on a siege's first sighting: the pass runs that
+  day. Log: `Posture: strike recalled to <system> - N FP in M fleet(s), ...`.
 - **Settings:** `postureEnabled` (true), `postureMargin` (1.25), `postureBand` (0.25), `postureDays` (5),
   `postureStagedShare` (0), `postureTriage` (false), `postureNeedAtAttack` (true),
-  `posturePressedForgesHome` (false); settings.json only, no LunaLib rows.
+  `posturePressedForgesHome` (false), `postureRecallLY` (10); settings.json only, no LunaLib rows but the last.
   State is primitive maps (`threatinc_posture`, `threatinc_postureLoss`, `threatinc_postureReceived`);
   the per-session wants are forgotten on load. A state of the older six-field layout reads as unread,
   so the first pass after loading an old save starts its pressure afresh, once (the 7-field layout

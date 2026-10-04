@@ -42,8 +42,10 @@ import com.fs.starfarer.api.util.Misc;
  * postureBand and a swarm is let go - to a sibling short of its want first
  * (ThreatColonyManager.redistributeByPressure; a quiet colony gives a
  * pressed one down to its reserve), then to waves and strikes, and once it
- * has stood idle past the upkeep's break-even it is recycled. State is
- * primitive maps only (threatinc_posture, _postureLoss).
+ * has stood idle past the upkeep's break-even it is recycled. A system
+ * under attack and short of its need also calls home the strikes that are
+ * convenient (recallStrikes). State is primitive maps only
+ * (threatinc_posture, _postureLoss).
  *
  * <p>In the swarm's fog (ThreatSwarmIntel, docs/threat-fog.md) the attacks,
  * the staged threat and the forward guards are what it has seen, the last two
@@ -460,6 +462,15 @@ public class ThreatPosture {
 		boolean wounded;
 	}
 
+	/** A system under attack and short of its need (poll): what recallStrikes may call strikes home for. */
+	protected static class Call {
+		StarSystemAPI system;
+		/** Each colony's need less what it holds, inbound included. */
+		Map<MarketAPI, Float> shortBy = new java.util.LinkedHashMap<MarketAPI, Float>();
+		/** The system's need, what it is short of it, and its cheapest swarm - a gap smaller than that calls nothing. */
+		float need, shortFP, swarm = Float.MAX_VALUE;
+	}
+
 	/**
 	 * Every postureDays (IncursionManager.advance, before maintainGarrisons):
 	 * reads every hive system's pressure and want, logs the systems whose
@@ -502,6 +513,7 @@ public class ThreatPosture {
 		boolean triage = ThreatIncConfig.postureTriage();
 		boolean forgesHome = ThreatIncConfig.posturePressedForgesHome();
 		Map<String, Float> sieges = ThreatIncConfig.postureNeedAtAttack() ? siegesOver() : null;
+		List<Call> calls = ThreatIncConfig.postureRecallLY() > 0f ? new ArrayList<Call>() : null;
 
 		COLONY.clear();
 		sumHeld = sumWant = sumSurplus = 0f;
@@ -592,6 +604,20 @@ public class ThreatPosture {
 			else if (ratio >= WATCHFUL_ENTER || (was >= WATCHFUL && ratio >= WATCHFUL_LEAVE)) mode = WATCHFUL;
 			else mode = QUIET;
 			boolean attacked = r.attacks > 0f || r.hostiles > 0f || lostLately(systemId, day);
+			// under attack and short of its need: the strikes that are convenient come home (recallStrikes)
+			if (calls != null && attacked && need > held) {
+				Call call = new Call();
+				call.system = system;
+				call.need = need;
+				call.shortFP = need - held;
+				for (int i = 0; i < colonies.size(); i++) {
+					MarketAPI c = colonies.get(i);
+					if (c.getPrimaryEntity() == null) continue;
+					call.shortBy.put(c, needs[i] - helds[i]);
+					call.swarm = Math.min(call.swarm, rowsFP(c, 0, 1));
+				}
+				if (!call.shortBy.isEmpty() && call.shortFP > call.swarm) calls.add(call);
+			}
 
 			float surplus = 0f;
 			for (int i = 0; i < colonies.size(); i++) {
@@ -661,6 +687,62 @@ public class ThreatPosture {
 		// where the surplus goes (PRESS, EXPAND, CONSOLIDATE)
 		ThreatStance.evaluate(pass, day, sumHeld);
 		recycleSurplus(systemIds, day);
+		if (calls != null) recallStrikes(calls);
+	}
+
+	/**
+	 * STRIKES COME HOME (2026-10-04, the user: "should be able to deviate
+	 * those that are convenient", not "a strike that is already mid siege or
+	 * close to its target"). A system under attack and short of its need calls
+	 * in the strikes within postureRecallLY of it that can still be turned
+	 * (ThreatStrikeFGI.recallable: preparing or travelling out) and are nearer
+	 * it than their target - whichever hive launched them - the nearest first,
+	 * the shortest system first, until it holds its need. Each comes whole:
+	 * its fleets join the garrisons of the worlds shortest
+	 * (ThreatStrikeFGI.recallTo). Knob: postureRecallLY, 0 = off.
+	 */
+	protected static void recallStrikes(List<Call> calls) {
+		if (calls.isEmpty()) return;
+		float range = ThreatIncConfig.postureRecallLY();
+		java.util.Collections.sort(calls, new java.util.Comparator<Call>() {
+			public int compare(Call a, Call b) {
+				return Float.compare(b.shortFP, a.shortFP);
+			}
+		});
+		Set<ThreatStrikeFGI> tried = new HashSet<ThreatStrikeFGI>();
+		for (Call call : calls) {
+			while (call.shortFP > call.swarm) {
+				ThreatStrikeFGI best = null;
+				float bestLY = Float.MAX_VALUE, bestOn = 0f;
+				for (Object curr : new ArrayList<Object>(IncursionManager.getStrikeList())) {
+					if (!(curr instanceof ThreatStrikeFGI)) continue;
+					ThreatStrikeFGI strike = (ThreatStrikeFGI) curr;
+					if (tried.contains(strike) || !strike.recallable()) continue;
+					org.lwjgl.util.vector.Vector2f at = strike.hyperLocation();
+					MarketAPI target = strike.firstTarget();
+					if (at == null || target == null) continue;
+					float ly = Misc.getDistanceLY(at, call.system.getLocation());
+					if (ly > range || ly >= bestLY) continue;
+					// nearer its target than the hive: it flies on
+					float on = Misc.getDistanceLY(at, target.getLocationInHyperspace());
+					if (on <= ly) continue;
+					best = strike;
+					bestLY = ly;
+					bestOn = on;
+				}
+				if (best == null) break;
+				tried.add(best);
+				MarketAPI target = best.firstTarget();
+				int fleets = best.isSpawnedFleets() ? best.getFleets().size() : best.getParams().fleetSizes.size();
+				float sent = best.recallTo(call.shortBy);
+				if (sent <= 0f) continue;
+				ThreatIncConfig.log("Posture: strike recalled to " + call.system.getName() + " - " + (int) sent
+						+ " FP in " + fleets + " fleet(s), " + String.format("%.1f", bestLY) + " ly out and "
+						+ String.format("%.1f", bestOn) + " ly from " + target.getName() + "; the system was "
+						+ (int) call.shortFP + " FP short of " + (int) call.need);
+				call.shortFP -= sent;
+			}
+		}
 	}
 
 	/** Fleet points of reinforcements flying to this colony. */
@@ -799,6 +881,11 @@ public class ThreatPosture {
 	 */
 	public static void alarm() {
 		if (ThreatIncConfig.postureNeedAtAttack()) lastPoll = Long.MIN_VALUE;
+	}
+
+	/** A siege first seen bound for a hive system (ThreatSwarmIntel.note): the next pass reads the hive at once, so a strike it calls home turns that day. */
+	public static void sighted() {
+		if (ThreatIncConfig.postureRecallLY() > 0f) lastPoll = Long.MIN_VALUE;
 	}
 
 	/** A world is singled out only by a force of at least this share of its system's pressure: a scout passing moves nothing. */

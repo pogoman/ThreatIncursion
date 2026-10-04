@@ -5605,6 +5605,34 @@ public class ThreatColonyManager {
 	}
 
 	/**
+	 * A fleet from outside the garrisons - a recalled strike's
+	 * (ThreatStrikeFGI.recallTo) - flies to the colony and joins its garrison
+	 * on arrival, as a reinforcement does (checkReinforcementArrivals), with a
+	 * reinforcement's blinders. Its hulls leave the ledger that paid for them:
+	 * the garrison's upkeep charges them where they stand (digInAtConquest).
+	 * Its passage was paid at launch, there and back.
+	 */
+	public static boolean sendToGarrison(CampaignFleetAPI fleet, MarketAPI target) {
+		SectorEntityToken planet = target != null ? target.getPrimaryEntity() : null;
+		if (planet == null || fleet == null || !fleet.isAlive()) return false;
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+		unbindLedger(fleet);
+		mem.unset(Misc.FLEET_RETURNING_TO_DESPAWN);
+		mem.set(REINFORCE_TARGET_KEY, target.getId());
+		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
+		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
+		makeDetectable(fleet);
+
+		fleet.clearAssignments();
+		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, planet, 365f,
+				"returning to the hive");
+		// fallback so the fleet doesn't wander if arrival detection ever misses
+		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
+		ThreatIncData.reinforcementFleets().put(fleet.getId(), fleet);
+		return true;
+	}
+
+	/**
 	 * Polls in-transit reinforcements: a swarm that reaches its target planet
 	 * joins that colony's garrison (flag, orbit and hunting reflexes restored);
 	 * one whose target colony has meanwhile died is disbanded; one killed en

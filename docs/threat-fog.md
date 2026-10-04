@@ -244,6 +244,9 @@ through the one-argument `sees`: no base, world or convoy is seen from hyperspac
 days of warning before a siege enters the system; a force inside the picket is re-seen daily, so
 its contact does not fade. Nothing in flight changes: routes do not meet, blinkered fleets stay
 blinkered. The log's first sighting reads `... by picket`. Built, jar 19:18, not game-tested.
+A siege's first sighting, by any sense, makes the posture pass due that day (`ThreatPosture.sighted`,
+while `postureRecallLY` is above 0), so a strike it calls home turns at once
+(`hive-garrison-and-upkeep.md`, "Strikes come home").
 
 **Knobs and logs** as section 3, plus `Swarm intel: seeded N place(s) in <system>` (old-save
 seeding) and `Swarm intel: scouting off - seeded N place(s) in M system(s)`. The fast-forward

@@ -428,6 +428,7 @@ public final class ThreatSwarmIntel {
 			contacts.put(key, c);
 			ThreatIncConfig.log("Swarm intel: sees " + factionId + " " + kind + " of " + (int) fp + " FP bound for "
 					+ systemName(systemId) + " by " + source);
+			if ("siege".equals(kind)) ThreatPosture.sighted();
 		}
 		c.factionId = factionId;
 		c.systemId = systemId;

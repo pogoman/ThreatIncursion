@@ -342,7 +342,7 @@ swarm kept producing under attack: 74k FP of income after contact against hw6a's
    falls a median 77-91 days later (quickest 30-40; hw6: 86-103, so section 3's "in a month" was its quickest
    case). 15-19 hives eradicated a run; the hive overran 0-1 landings and 0-6 sieges were called off in orbit.
 
-**Open, the user's call** (nothing built but the picket under b):
+**Open, the user's call** (nothing built but the picket and the recall under b):
 
 - (a) Mass the defence, the one option that only uses what the swarm has: a system's swarms answer a siege as
   one force. Siblings give everything, reserve included; the force goes over one world at a time, the siege it
@@ -352,7 +352,10 @@ swarm kept producing under attack: 74k FP of income after contact against hw6a's
   know they sailed (its scouts watching the staging base), or `postureStagedShare` above 0 as a crude stand-in.
   **The seeing half was built the same evening (the user: "Yeah give same picket"):** a human attack force in
   hyperspace within `swarmPicketLY` 4 of a live hive is seen (`ThreatSwarmIntel.sees(where, hyper)`,
-  `threat-fog.md` 4 "The hive picket"), about 5 days before it enters the system. Untested. Nothing holds or
-  recalls a strike on it yet.
+  `threat-fog.md` 4 "The hive picket"), about 5 days before it enters the system. **The recall followed (the
+  user: "should be able to deviate those that are convenient"):** a system attacked and short of its need calls
+  in the strikes within `postureRecallLY` 10 still preparing or travelling out and nearer it than their target;
+  their fleets join its garrisons (`ThreatPosture.recallStrikes`, `hive-garrison-and-upkeep.md` "Strikes come
+  home"). Both untested. `swarm.pl` prints sieges first seen by source and strikes recalled.
 - (c) Its means: what a hive costs on the ground, what the forges make, a defender's edge in orbit. Balance.
 - (d) Leave it: found at m38-44, the swarm is gone by m65-90.

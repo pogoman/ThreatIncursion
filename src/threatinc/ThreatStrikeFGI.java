@@ -14,6 +14,8 @@ import com.fs.starfarer.api.fleet.FleetMemberAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
 import com.fs.starfarer.api.impl.campaign.ids.Stats;
+import com.fs.starfarer.api.impl.campaign.fleets.RouteManager;
+import com.fs.starfarer.api.impl.campaign.intel.group.FGAction;
 import com.fs.starfarer.api.impl.campaign.intel.group.FGRaidAction;
 import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
 import com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.BombardType;
@@ -923,6 +925,114 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 				: Math.max(0f, getTotalFPSpawned() - spawnFP));
 		ThreatPurgeFGI.cutLoose(fleet);
 		return true;
+	}
+
+	// ------------------------------------------------------------------
+	// recalled to defend (ThreatPosture.recallStrikes)
+	// ------------------------------------------------------------------
+
+	/**
+	 * Whether the strike can still be turned for home: not over, not
+	 * stillborn, and not yet at its work - preparing at its colony or
+	 * travelling out. One that has begun its payload, left a guard over a
+	 * landing, or is on its way home is left alone.
+	 */
+	public boolean recallable() {
+		if (isEnded() || isEnding() || isAborted() || isSucceeded() || isFailed() || stillborn) return false;
+		if (guarded != null && !guarded.isEmpty()) return false;
+		if (getParams() == null || getParams().fleetSizes == null) return false;
+		if (isInPreLaunchDelay()) return true;
+		FGAction curr = getCurrentAction();
+		return curr != null && (PREPARE_ACTION.equals(curr.getId()) || TRAVEL_ACTION.equals(curr.getId()));
+	}
+
+	/** Where the strike is now, in hyperspace: its first live fleet's place, else - never spawned - its route's; null with neither. */
+	public org.lwjgl.util.vector.Vector2f hyperLocation() {
+		for (CampaignFleetAPI fleet : getFleets()) {
+			if (fleet != null && fleet.isAlive() && fleet.getContainingLocation() != null) {
+				return fleet.getLocationInHyperspace();
+			}
+		}
+		if (isSpawnedFleets()) return null;
+		RouteManager.RouteData route = getRoute();
+		if (route == null || route.getCurrent() == null) return null;
+		try {
+			return route.getInterpolatedHyperLocation();
+		} catch (RuntimeException e) {
+			// a segment with neither end: nowhere
+			return null;
+		}
+	}
+
+	/** The first world it is bound for, or null. */
+	public MarketAPI firstTarget() {
+		if (getParams() == null || getParams().raidParams == null) return null;
+		for (MarketAPI target : getParams().raidParams.allowedTargets) {
+			if (target != null && target.getPrimaryEntity() != null) return target;
+		}
+		return null;
+	}
+
+	/**
+	 * RECALLED TO DEFEND (2026-10-04, the user): the strike turns for a hive
+	 * system under attack. Its fleets leave the expedition, the heaviest
+	 * first, each for the world still shortest of its need ({@code shortBy},
+	 * counted down as they go), and join its garrison on arrival
+	 * (ThreatColonyManager.sendToGarrison). A strike that never spawned is
+	 * built where its route stands first, the bank settling the difference
+	 * as at a spawn (spawnFleets). The expedition then ends as a withdrawal
+	 * with nothing left to re-bank. Returns the fleet points sent; 0, and the
+	 * strike untouched, when it could not be turned.
+	 */
+	public float recallTo(Map<MarketAPI, Float> shortBy) {
+		if (!recallable() || shortBy == null || shortBy.isEmpty()) return 0f;
+		org.lwjgl.util.vector.Vector2f at = hyperLocation();
+		if (!isSpawnedFleets()) {
+			if (getRoute() == null || getRoute().getCurrent() == null || getParams().fleetSizes.isEmpty()) return 0f;
+			spawnFleets();
+			setSpawnedFleets(true);
+		}
+		List<CampaignFleetAPI> turning = new ArrayList<CampaignFleetAPI>();
+		for (CampaignFleetAPI fleet : getFleets()) {
+			if (fleet != null && fleet.isAlive()) turning.add(fleet);
+		}
+		java.util.Collections.sort(turning, new java.util.Comparator<CampaignFleetAPI>() {
+			public int compare(CampaignFleetAPI a, CampaignFleetAPI b) {
+				return b.getFleetPoints() - a.getFleetPoints();
+			}
+		});
+		float sent = 0f;
+		for (CampaignFleetAPI fleet : turning) {
+			MarketAPI to = null;
+			float most = -Float.MAX_VALUE;
+			for (Map.Entry<MarketAPI, Float> e : shortBy.entrySet()) {
+				if (e.getKey() == null || e.getKey().getPrimaryEntity() == null || e.getValue() == null) continue;
+				if (e.getValue() > most) {
+					most = e.getValue();
+					to = e.getKey();
+				}
+			}
+			if (to == null) break;
+			// vanilla places a built fleet on its route; one it could not place starts where the route stood
+			if (fleet.getContainingLocation() == null) {
+				if (at == null) at = to.getLocationInHyperspace();
+				Global.getSector().getHyperspace().addEntity(fleet);
+				fleet.setLocation(at.x, at.y);
+			}
+			if (!detach(fleet)) continue;
+			float fp = fleet.getFleetPoints();
+			if (!ThreatColonyManager.sendToGarrison(fleet, to)) {
+				giveReturnAssignments(fleet); // refused: home by vanilla's road, not adrift
+				continue;
+			}
+			ThreatPosture.noteTransfer(to, fleet);
+			shortBy.put(to, most - fp);
+			sent += fp;
+		}
+		// a withdrawal, not a defeat (addHiddenOriginStatus, vanilla's status)
+		setFailedButNotDefeated(true);
+		abort();
+		return sent;
 	}
 
 	/**
