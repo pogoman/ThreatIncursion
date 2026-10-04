@@ -174,7 +174,12 @@ taken. Callers:
   until the beachhead survives the first counter-attack (`ThreatGroundFronts.readyToLand`
   with the faction, `beachheadSurvives`), or orbit has done all it can. Landing at 0 siege
   days against the intact defence, 10 of 22 NPC beachheads of Run 7 were overrun (rc1
-  review). The player's landing stays the commander's call. An NPC siege short of marines
+  review). Since 2026-10-04 (round 31): the marines wanted are x `siegeMarineHeadroom` (2) -
+  they are cargo, and a 43-87 day siege lost 15-57% of them with its hulls (hw4s) - and an
+  NPC first landing still short of `beachheadSurvives` when orbit is done is not made at all
+  (`siegeNoDoomedLanding`, `ThreatPurgeFGI.doCustomRaidAction`): no landing, no commando
+  raid, the marines sail home. 10 of hw4s's 11 human landings came through the orbit-done
+  branch, at 329-827 against first counter-attacks of 520-780. The player's landing stays the commander's call. An NPC siege short of marines
   - or armaments - at its base draws the rest from its faction's other markets in reach
   (`siegePoolMarines`, `IncursionManager.siegeDonors`, 2026-09-26: colonies as well as
   bases, any with a reserve, each giving everything above its floor - no donor keep share,

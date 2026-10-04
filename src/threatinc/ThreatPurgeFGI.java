@@ -1580,6 +1580,21 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				: ThreatGroundFronts.landingBlocked(ourId, market, fleet != null);
 		ThreatGroundFronts.GroundFront standing = ThreatGroundFronts.getFront(market.getId());
 
+		// NO DOOMED BEACHHEAD (siegeNoDoomedLanding): readyToLand lets an NPC first
+		// landing go once orbit has done all it can, beachhead or not, and 10 of
+		// 11 hw4s landings came that way, overrun by the first counter-attack
+		// (329 against 780). Short of the beachhead, nothing goes down - no
+		// landing, no commando raid - and the marines sail home for the next one
+		if (landingBlocked == null && standing == null && ourId != null
+				&& !com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER.equals(ourId)
+				&& ThreatIncConfig.siegeNoDoomedLanding() && !ThreatGroundFronts.beachheadSurvives(market, groundStr)) {
+			ThreatIncConfig.logQuiet("doomed:" + rec.marketId, "Siege pass at " + rec.marketName + ": no landing - "
+					+ (int) groundStr + " troops would not outlast a counter-attack of "
+					+ (int) ThreatGroundFronts.counterAttackStrength(market) + " (need "
+					+ ThreatGroundFronts.beachheadTroops(market) + ")");
+			return;
+		}
+
 		// REINFORCEMENT: a front of our own already stands on this world (the
 		// gate has said so - a foreign one would have blocked the landing), so
 		// the expedition feeds it instead of raiding - the troops and

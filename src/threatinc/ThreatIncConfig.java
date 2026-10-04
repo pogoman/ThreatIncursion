@@ -144,6 +144,10 @@ public class ThreatIncConfig {
 	public static float siegeRaidStrPerPoint() { return f("threatinc_siegeRaidStrPerPoint"); }
 	/** A siege lands this much over the 2:1 odds at which the hive overruns a fresh beachhead; 0 sizes for the raids only. */
 	public static float siegeBeachheadMargin() { return f("threatinc_siegeBeachheadMargin"); }
+	/** An NPC siege carries its landing's marines times this, for those lost with the hulls on the way in. */
+	public static float siegeMarineHeadroom() { return f("threatinc_siegeMarineHeadroom"); }
+	/** An NPC first landing short of the beachhead is not made, even once orbit is done. */
+	public static boolean siegeNoDoomedLanding() { return b("threatinc_siegeNoDoomedLanding", false); }
 	/** Whether an NPC siege short of marines (and armaments) at its base draws them from its faction's other markets in reach, each above its floor. */
 	public static boolean siegePoolMarines()  { return b("threatinc_siegePoolMarines", true); }
 	/** Whether an NPC siege's fuel and supplies gate and draw pool its faction's other markets in reach the same way (2026-09-26). */

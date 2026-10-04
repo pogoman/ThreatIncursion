@@ -84,5 +84,52 @@ Benches (30 seeds; council, saturation gate, organ wounds, one-stop recon on):
 - Big swarms are untouched: with 8+ systems a share of 0.5 already means 4+ pressed.
 - Starve-only humans (the floor's purest case) run away either way: the double is not the game.
 - Built in the mod (`ThreatStance.evaluate` -> `StanceRules.pressedEnough`, `ThreatIncConfig.stanceConsolidateMinPressed`,
-  LunaLib row; no migration, the row is new). Game UAT owed: a supplied run (share 1) to month 120, against hw4s's
-  89 months consolidating at 14 hives, with 1 world lost.
+  LunaLib row; no migration, the row is new). Game UAT waits until the simulated war is clean (user, 2026-10-04:
+  no UAT while the simulator still shows problems; section 6).
+
+## 5. Round 31: the overrun invasions (2026-10-04)
+
+**The game (hw4s).** A STARVE that holds a Nexus down ends "starved, invasion next" and opens a HAMMER to invade
+(13 times). Every human landing on a hive came in under its first counter-attack:
+
+| landing | siege days, FP | carried, landed | first counter | end |
+|---|---|---|---|---|
+| Epsilon II (Persean) | 87 d, 1150 -> 498 | 758, 329 | 780 | overrun |
+| Alpha VI (Hegemony) | 55 d, 4300 -> 3090 | ~768, 552 | 600 | overrun |
+| Beta II (Hegemony) | 59 d, 950 -> 708 | ~519, 387 | 520 | overrun |
+| Epsilon C I (Persean) | 43 d, 3208 -> 2681 | ~686, 574 | 650 | battered, overrun later |
+| Epsilon II (Independent) | 9 d, 2275 -> 2133 | ~882, 827 | 650 | held, overrun later at 1140 |
+
+Two faults. The marines are cargo and die with the hulls a long siege loses (15-57% over 43-87 days), while the
+launch sizes them at the bare beachhead line. And `ThreatGroundFronts.readyToLand` lets an NPC first landing go once
+orbit is done without `beachheadSurvives`; 10 of 11 landings came that way ("landed (ready)").
+
+**The simulator** kept marines whole in the orbital fight and under the guns: `HumanSiege.hullsLost`, now always on
+(`warsim_marinesDieWithHulls`, default true). With it the month-44 bench's overruns go 4 -> 8 (game 6) and its
+doomed landings show the game's pattern (560-650 marines against Alpha's 4,000-9,500 counter-attacks, "dry").
+
+**The fix**, mod and simulator: `siegeMarineHeadroom` (the wanted marines x N, `IncursionManager.raidStrNeededAt`,
+so the flotilla grows to carry them) and `siegeNoDoomedLanding` (`ThreatPurgeFGI.doCustomRaidAction`, `HumanSiege.land`:
+short of the beachhead, no landing and no raid, the marines sail home). 30 seeds, marines die with hulls:
+
+| bench, last checkpoint | as built | refusal only | headroom 1.5 only | 1.5 + refusal | **2 + refusal** | game |
+|---|---|---|---|---|---|---|
+| m80 hives killed | 9.5 | 7.5 | 11.5 | 10.5 | **17** | 5 |
+| m80 overruns / landings | 4 / 17 | 0 / 9 | 4 / 21 | 0.5 / 14.5 | **1 / 27.5** | 6 / 11 |
+| m80 hives at the end | 38.5 | 39.5 | 30.5 | 39 | **28.5** | 14 |
+| m80 worlds lost | 5.5 | 5 | 6 | 5.5 | **4.5** | 1 |
+| m44 hives killed | 16 | 9.5 | 16 | 16 | **21.5** | 5 |
+| m44 overruns / landings | 8 / 52 | 0 / 16 | 5.5 / 45.5 | 1 / 30.5 | **1 / 40.5** | 6 / 11 |
+| m44 months CONSOLIDATE | 67 | 96.5 | 66 | 65 | **61.5** | 89 |
+
+Refusal alone makes the humans passive (they land a third as often); headroom turns the marines it saves into kills.
+Built defaults: headroom 2, refusal on (LunaLib rows; new, no migration). The from-start hw4s check is unchanged by
+it (3 landings either way) - see section 6.
+
+## 6. The simulated war is not clean yet (what blocks UAT)
+
+- **From the start the swarm runs away**: full hw4s check, as built or fixed, 381-388 hives and 58 worlds lost by
+  month 144 against the game's 14 and 1; the humans land 3 sieges (game 11). Benches from the game's own state
+  (month 44, 80) are near the game; the opening months are not. This is the next fault to reproduce and fix.
+- **From the game's state the humans over-attack**: 138-143 hammers against 23 (section 3); kills 17-21 against 5.
+

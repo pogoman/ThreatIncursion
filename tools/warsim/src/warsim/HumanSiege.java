@@ -132,6 +132,19 @@ final class HumanSiege {
 	/** Human fleet points on station in the system besides this parcel. */
 	static float friendsOf(State s, Parcel p) { return s.holdingFP(p.to, false) - (p.holding ? p.fp : 0f); }
 
+	/**
+	 * warsim_marinesDieWithHulls (round 31): the game's marines and armaments are cargo on the ships, and go down with
+	 * the hulls the orbit costs (hw4s, Epsilon Laphirial II: 1150 -> 498 FP, 758 marines drawn, 329 landed). On by default: the
+	 * simulator had kept them whole, so its long sieges landed in full.
+	 */
+	static void hullsLost(State s, Parcel p, float fraction) {
+		if (!s.knobs.b("warsim_marinesDieWithHulls", true) || fraction <= 0f) return;
+		float kept = Math.max(0f, 1f - Math.min(1f, fraction));
+		if (p.marines > 0f) s.count("marinesLostAboard", p.marines * (1f - kept));
+		p.marines *= kept;
+		p.armaments *= kept;
+	}
+
 	/** One day's exchange: the besieger and its friends lose dayShare, the defenders defenderLoss. */
 	static void fight(State s, Parcel p, Hive h, float enemy) {
 		float friends = friendsOf(s, p);
@@ -148,6 +161,7 @@ final class HumanSiege {
 				s.count("humanFPLost", q.fp * share);
 				HumanStance.note(s, s.faction(q.owner), q.fp * share, q == p ? enemy * taken : 0f);
 				q.fp *= 1f - share;
+				hullsLost(s, q, share);
 			}
 		}
 		for (Hive o : s.hivesIn(h.sys)) {
@@ -199,6 +213,7 @@ final class HumanSiege {
 		float perDay = BattleRules.bombardFuelPerDay(p.fp, s.knobs.f("threatinc_bombardFuelPerFPDay"));
 		if (BattleRules.bombardDaysFor(p.fuel, perDay) < 0.5f) return "landed (dry)";
 		p.fuel = Math.max(0f, p.fuel - perDay);
+		hullsLost(s, p, step[1] / Math.max(1f, p.fp));
 		p.fp -= step[1];
 		suppress(s, h, step[0]);
 		o.orbitDays++;
@@ -213,6 +228,14 @@ final class HumanSiege {
 		boolean own = h.front != null && p.owner.equals(h.front.faction);
 		if (h.front != null && !own) return false;
 		if (!own && p.marines < s.knobs.f("threatinc_frontMinMarines")) return false;
+		// siegeNoDoomedLanding (round 31, ThreatPurgeFGI.doCustomRaidAction): a first landing short of the beachhead its
+		// first counter-attack leaves is not made, whatever ended the siege (orbit done, dry, days, guns)
+		if (!own && s.knobs.b("threatinc_siegeNoDoomedLanding", false) && p.marines < troopsToLand(s, defence(s, h))) {
+			s.count("landingRefused", 1);
+			s.log("Siege of " + h.name + ": no landing - " + (int) p.marines + " marines would not outlast a counter-attack of "
+					+ (int) defence(s, h));
+			return false;
+		}
 		if (!own) {
 			Front f = new Front();
 			f.faction = p.owner;

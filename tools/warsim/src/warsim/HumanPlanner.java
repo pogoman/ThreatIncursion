@@ -92,7 +92,8 @@ final class HumanPlanner {
 				float now = HumanSiege.defence(s, h);
 				float def = Math.max(now, HumanSiege.anchored(s, h)) * (now > 0f ? Math.min(1f, plan[1] / now) : 1f);
 				float beach = HumanSiege.troopsToLand(s, def);
-				marines = BattleRules.raidStrNeeded(def, 0.25f, 1.25f, beach);
+				// siegeMarineHeadroom (round 31): the marines the orbit's hull losses take on the way in (IncursionManager.raidStrNeededAt)
+				marines = BattleRules.raidStrNeeded(def, 0.25f, 1.25f, beach) * Math.max(1f, s.knobs.f("threatinc_siegeMarineHeadroom"));
 				if (front) marines = Math.max(s.knobs.f("threatinc_frontMinMarines"), beach - h.front.marines);
 				if (marines <= fp / ReachRules.FP_PER_POINT * perPoint || fp >= HumanFit.MAX_SIEGE_FP) break;
 			}
