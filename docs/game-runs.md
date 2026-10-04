@@ -22,6 +22,10 @@ batch in one run's time (`testing-harness.md`, "Side-by-side runs"). The log is 
   bound, sailings, call-offs, landings.
 - `hammer.pl <tags>`: each invasion play (HAMMER) from start to end: muster, siege paid or not, landings.
 - `supplies.pl <tags>`: where the human factions' supplies and fuel go, against their income.
+- `swarm.pl <tags>`: the swarm's side: when it is found and extinct, write-offs, transfers, what met each siege
+  on its first day, FP each side lost over hive worlds, its means against the sieges and escorts sent, seedings,
+  strikes and their guards, landings both ways.
+- `hives.pl <tag> <day> [system]`: one monthly dump's hives: held, fleets, want, need, bank, organs.
 
 ## 1. hw5e-hw5g (2026-10-04): the stance floor and the marine headroom
 
@@ -275,10 +279,73 @@ it back) or a shortage (left, named).
   growth share of supplies while consolidating (`feedShareConsolidate`, the user's round 20), phase gates.
 - The user's call, not touched: what a hive costs on the ground (300-2,300 marines took one in a month).
 
-**Built 2026-10-04, commit 68d019a (local). Not game-tested**: the batch hw7a-hw7c did not start, the screen was
-locked (`sbs.ps1`: "LOCKED - nothing run"). To run: `sbs.ps1 -Tags hw7a,hw7b,hw7c -Days 3750`, then
-`%TEMP%\threatinc-tests\hw6-digest.sh` with the tags changed. Read against section 3: hives over time,
-"written off" (expect none), `Posture: ... sent` transfers into besieged worlds, off-screen fights over hive
-worlds (defender FP), foundings after first contact, `Strike guard over` fleets a landing, Threat landings
-overrun, worlds lost, exceptions. A knob per rule allows a run with one put back
+**Built 2026-10-04, commit 68d019a. Game-tested the same evening in hw7a-hw7c (section 5)**: all seven work as
+built, and the swarm is still exterminated. A knob per rule allows a run with one put back
 (`-Knobs "hw7c:threatinc_strikeGuardWhole=false"`).
+
+## 5. hw7a-hw7c (2026-10-04 evening): the swarm's restraints removed
+
+Build 68d019a on shipped defaults, three new games side by side (`sbs.ps1 -Tags hw7a,hw7b,hw7c -Days 3750`), run
+to day 3750 in 29 minutes of fast-forward (131 days a minute each). No exception and no play or council error.
+Read with `swarm.pl` on both batches (its months run one lower than `uat.pl`'s in section 3).
+
+**Result: the removals do what they were built to do, and the humans still exterminate the swarm in 3 of 3
+runs.** hw7a lasted 15 months longer than any hw6 run; hw7b and hw7c went as hw6 did.
+
+| | hw7a | hw7b | hw7c | hw6a-hw6c |
+| --- | --- | --- | --- | --- |
+| First hive found / swarm extinct | m41 / m90 | m38 / m67 | m39 / m65 | m41-44 / m65-75 |
+| Swarm at first contact | 17.0k FP, 2.3k FP/mo | 10.2k, 1.5k | 14.5k, 1.5k | 15.0-23.9k, 2.4-3.3k |
+| Systems written off | 0 | 0 | 0 | 13-15 |
+| Transfers after contact | 228 (35.3k FP) | 125 (16.9k) | 167 (27.4k) | 76-129 (10.4-21.0k) |
+| A siege's first day, siege against garrison (median) | 1.4k FP against 356 | 1.2k against 163 | 930 against 169 | 1.3-1.7k against 168-206 |
+| Sieges met at parity or better | 1 of 54 | 0 of 36 | 1 of 29 | 0-1 of 32-36 |
+| Lost over hive worlds, Threat / human | 56.3k / 39.4k FP | 27.7k / 19.7k | 18.5k / 13.5k | 18.7-27.0k / 12.9-19.0k |
+| Swarms built after contact | 332 (68.0k FP) | 164 (27.1k) | 192 (31.9k) | 103-190 (21.5-37.8k) |
+| Seedings after contact | 5 | 4 | 0 | 2 |
+| Strike guard over a landing (median) | 2 fleets, 0.9k FP | 7 fleets, 2.0k | 3 fleets, 1.0k | 1 fleet, 0.3-0.9k |
+| Threat landings / overrun by the garrison | 9 / 8 | 5 / 3 | 6 / 4 | 10-17 / 7-12 |
+| Human worlds lost | 0 | 2 | 2 | 0-2 |
+| Human sieges arrived | 74 (111k FP) | 55 (68k) | 40 (48k) | 44-48 (63-75k) |
+| Escorts | 38 (122k FP) | 21 (101k) | 17 (72k) | 22-28 (60-97k) |
+| Human landings / overrun by the hive / hives eradicated | 20 / 1 / 19 | 17 / 0 / 17 | 15 / 0 / 15 | 19-20 / 1-2 / 18 |
+
+**The rules, one by one.** Nothing is written off (1, 2). An attacked world draws from its siblings in the pass
+its siege arrives on: Beta Laphirial I (hw7a) took eight transfers from six colonies (3, 4). The swarm seeds
+a little more after contact (5, 4, 0 against 2); it launched 5, 3 and 0 strikes while consolidating (hw6: 9, 2,
+3), no visible change (5). A strike leaves 2-7 fleets a landing (7); 6 was not read separately. In hw7a the
+swarm kept producing under attack: 74k FP of income after contact against hw6a's 36k, 332 swarms built against
+190, 39k FP of besiegers killed against 19k.
+
+**Why it still loses: what is left is its means and where it puts them** (hw7a unless said).
+
+1. **It is outbuilt, 2.6-4.5 to 1.** After contact the humans brought 48-111k FP of sieges and 72-122k FP of
+   escorts; the swarm had 10-17k FP and built 27-68k more. A shortage, not a rule.
+2. **It trades at 0.7, every run.** Over hive worlds the swarm loses 1.4 FP for each human FP (1.37-1.43; hw6
+   1.42-1.50). A side outnumbered at the world loses three quarters of its own a day and kills half its own
+   (`BattleRules`), and every garrison is outnumbered at its own world. The home system held 6,920 FP on eight
+   worlds the day the first of five sieges arrived (10,375 FP in six days): II met 2,238 FP with 961, V 725 with
+   429, IV 725 with 424, III 3,425 with 550, I-A 4,635 with 1,784. No siege outweighed the system; each
+   outweighed its world. A week in, five worlds held 0-35 FP and Alpha Laphirial VI, with nothing over it, held
+   1,936 FP in 9 fleets (`hives.pl hw7a -642841`): a sibling gives down to its reserve (`minimumFP`: half its
+   size table, doubled or tripled under a Bastion or Command), and it had sent five fleets that week, one to
+   each of five worlds. Transfers arrive a fleet at a time (150-350 FP) and die at the same rate.
+3. **The home system sent half its fleet away a week before the blow.** It held 12.9k FP at m43. The five sieges
+   sailed from Cordiance Forward Base on Oct 7; on Dec 3 the system, QUIET with a need of 0, launched 6,938 FP
+   in 20 fleets at Eochu Bres, 134 days away; the sieges arrived Dec 10. The swarm reads a siege once it is in
+   the system, and nothing recalls a strike. That strike landed 3,980 troops and held the orbit with all 20
+   fleets; Tri-Tachyon's relief was 10,503 FP and the beachhead was overrun in m53.
+4. **Once a landing is down the hive is lost.** Landings are a median 851-1,208 marines; the Fabrication Core
+   falls a median 77-91 days later (quickest 30-40; hw6: 86-103, so section 3's "in a month" was its quickest
+   case). 15-19 hives eradicated a run; the hive overran 0-1 landings and 0-6 sieges were called off in orbit.
+
+**Open, the user's call** (nothing built):
+
+- (a) Mass the defence, the one option that only uses what the swarm has: a system's swarms answer a siege as
+  one force. Siblings give everything, reserve included; the force goes over one world at a time, the siege it
+  outweighs first; a garrison that cannot hold falls back on it instead of dying where it stands. Where it
+  outnumbers 1.5:1 the trade turns from 0.7 to 1.5.
+- (b) Strikes and the blow: hold or recall a strike when sieges are in flight for its system. The swarm has to
+  know they sailed (its scouts watching the staging base), or `postureStagedShare` above 0 as a crude stand-in.
+- (c) Its means: what a hive costs on the ground, what the forges make, a defender's edge in orbit. Balance.
+- (d) Leave it: found at m38-44, the swarm is gone by m65-90.
