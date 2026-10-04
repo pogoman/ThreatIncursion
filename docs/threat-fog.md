@@ -243,7 +243,7 @@ through the one-argument `sees`: no base, world or convoy is seen from hyperspac
 1,500 units a day (vanilla `RouteLocationCalculator.getTravelDays`), 0.75 ly, so 4 ly is about 5
 days of warning before a siege enters the system; a force inside the picket is re-seen daily, so
 its contact does not fade. Nothing in flight changes: routes do not meet, blinkered fleets stay
-blinkered. The log's first sighting reads `... by picket`. Built, jar 19:18, not game-tested.
+blinkered. The log's first sighting reads `... by picket`. Game-tested hw8 (`game-runs.md` 6): 60-64% of sieges first seen by it.
 A siege's first sighting, by any sense, makes the posture pass due that day (`ThreatPosture.sighted`,
 while `postureRecallLY` is above 0), so a strike it calls home turns at once
 (`hive-garrison-and-upkeep.md`, "Strikes come home").

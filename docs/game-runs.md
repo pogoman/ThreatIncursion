@@ -24,7 +24,8 @@ batch in one run's time (`testing-harness.md`, "Side-by-side runs"). The log is 
 - `supplies.pl <tags>`: where the human factions' supplies and fuel go, against their income.
 - `swarm.pl <tags>`: the swarm's side: when it is found and extinct, write-offs, transfers, what met each siege
   on its first day, FP each side lost over hive worlds, its means against the sieges and escorts sent, seedings,
-  strikes and their guards, landings both ways.
+  strikes and their guards, sieges first seen by eyes or picket, strikes recalled and how long after launch,
+  landings both ways.
 - `hives.pl <tag> <day> [system]`: one monthly dump's hives: held, fleets, want, need, bank, organs.
 
 ## 1. hw5e-hw5g (2026-10-04): the stance floor and the marine headroom
@@ -356,6 +357,84 @@ swarm kept producing under attack: 74k FP of income after contact against hw6a's
   user: "should be able to deviate those that are convenient"):** a system attacked and short of its need calls
   in the strikes within `postureRecallLY` 10 still preparing or travelling out and nearer it than their target;
   their fleets join its garrisons (`ThreatPosture.recallStrikes`, `hive-garrison-and-upkeep.md` "Strikes come
-  home"). Both untested. `swarm.pl` prints sieges first seen by source and strikes recalled.
+  home"). Both game-tested in hw8, section 6. `swarm.pl` prints sieges first seen by source and strikes recalled.
 - (c) Its means: what a hive costs on the ground, what the forges make, a defender's edge in orbit. Balance.
 - (d) Leave it: found at m38-44, the swarm is gone by m65-90.
+
+## 6. hw8a-hw8c (2026-10-04 night): the hive picket and the strike recall
+
+Build 5875df2 on shipped defaults, three new games side by side (`sbs.ps1 -Tags hw8a,hw8b,hw8c -Days 3750`), run
+to day 3750 in 51 minutes of fast-forward (74 days a minute each: hw8a's swarm reached 154 hives and slowed the
+batch). No exception and no play or council error. By year: `%TEMP%\threatinc-tests\hw8-phases.pl <tags>`.
+
+**Result: both work as built, and the swarm is no longer exterminated on schedule.** In hw8a it runs away (154
+hives, 245k FP of fleets at m122), in hw8b it holds four years and is then ground down (3 hives at m123), in
+hw8c it dies as in hw7 (m89). It takes one human world in three runs.
+
+| | hw8a | hw8b | hw8c | hw7a-hw7c |
+| --- | --- | --- | --- | --- |
+| First hive found / swarm extinct | m40 / never | m40 / never (3 hives left) | m40 / m89 | m38-41 / m65-90 |
+| Hives, fleets at m60 / m84 / m120 | 27, 30k / 70, 58k / 150, 228k | 17, 23k / 27, 24k / 5, 1k | 9, 5k / 2, 0 / 0 | 3-10, 1-5k / 0-2 / 0 |
+| Swarm at first contact | 15.6k FP, 2.3k FP/mo | 12.9k, 2.3k | 9.5k, 1.5k | 10.2-17.0k, 1.5-2.3k |
+| Sieges first seen by the picket | 251 of 411 | 111 of 173 | 41 of 68 | no picket |
+| Strikes launched after contact / recalled | 184 / 118 (130k FP) | 26 / 23 (28k) | 1 / 2 (0.8k) | 2-12 / no recall |
+| Days from launch to recall (median) | 3 | 4 | 0 and 34 | |
+| Transfers after contact | 7,571 (1,265k FP) | 1,493 (263k) | 150 (31k) | 125-228 (17-35k) |
+| A siege's first day, siege against garrison (median) | 1.5k FP against 601 | 1.6k against 464 | 1.4k against 307 | 0.9-1.4k against 163-356 |
+| Sieges met at parity or better | 19 of 272 | 7 of 122 | 1 of 45 | 0-1 of 29-54 |
+| Sieges called off in orbit | 107 | 19 | 8 | 0-6 |
+| Lost over hive worlds, Threat FP a human FP | 1.34 | 1.42 | 1.45 | 1.37-1.43 |
+| Swarms built after contact | 6,013 (1,134k FP) | 1,531 (284k) | 193 (47k) | 164-332 (27-68k) |
+| Seedings after contact | 190 | 33 | 1 | 0-5 |
+| Human sieges arrived | 373 (471k FP) | 162 (243k) | 66 (96k) | 40-74 (48-111k) |
+| Escorts | 207 (495k FP) | 77 (391k) | 18 (84k) | 17-38 (72-122k) |
+| Human landings / overrun by the hive / hives eradicated | 30 / 8 / 22 | 44 / 5 / 38 | 17 / 3 / 14 | 15-20 / 0-1 / 15-19 |
+| Threat landings / overrun or bombarded | 17 / 11 | 2 / 2 | 4 / 3 | 5-9 / 3-9 |
+| Human worlds lost | 0 | 0 | 1 | 0-2 |
+
+**The picket** first sees 60-64% of sieges a run, each about five days before it enters the hive system; the
+rest are seen at a base or world the swarm has eyes on. Each first sighting runs the posture pass that day.
+
+**The recall** fires on nearly every strike launched after contact, a median 3-4 days after its launch, while it
+is still preparing at its colony (0.0 ly out) or a system over. Its fleets are built where the route stands and
+arrive as reinforcements over 10-25 days (hw8a's first: 17 fleets from Alpha to Beta Laphirial, 3.2 ly, 14 down
+by day 25). The strike ends as a withdrawal.
+
+**What the recall turned out to be: the swarm massing its defence.** A strike musters every spare swarm of its
+system (`launchPool`: each colony's swarms above its reserve and its own need, and since rule 4 of section 4 a
+world with no force over it has no need). The next pass reads the system short and sends the whole strike to
+the worlds shortest. hw8a, Dec c209: 2,808 FP in 7 fleets called into Alpha Laphirial, 6,174 FP short of 9,694;
+twelve days on Alpha Laphirial III held 2,261 FP against an Independent siege of 550, which turned home. The
+swarm trades no better (1.34-1.45 Threat FP a human FP, as hw7): it wins by turning sieges away before they
+land. hw8a's humans landed 30 times in 365 expeditions and had 95 called off against a median 1.7 times their
+FP; it kept its hives and their income (1,210k FP after contact against hw7a's 74k) and seeded 190 worlds.
+
+Where no strike launches there is nothing to call home and a system is defended as in hw7. hw8c launched one
+strike after contact (9.5k FP at contact, 46 of 48 months in CONSOLIDATE). hw8b held 17-29 hives to m84 on 21
+recalls, then wanted two to three times what it held (m60: 22.9k FP held, 52.8k wanted), launched 6 strikes in
+years 7-10, and lost 38 hives to 44 landings; its humans built escorts of a median 3.5k FP (hw8a: 1.2k of 11.2k
+wanted, 14 not built at all).
+
+**What it costs.**
+
+1. Fuel. A recalled strike has paid its passage out and back at launch. hw8a spent what it made: 0.25-0.6M
+   fuel a year in years 4-8, 0.96M in year 9 and 1.86M in year 10 as it built fuel makers (36k a month made at
+   m60, 100k at m108, 256k at m122); its stock stood at 0-45k from year 7 and 194 launches were held for fuel
+   after m96. When the stock is dry no strike launches, and the massing stops with it.
+2. The offence. A system short of its need calls every strike in range home, so after contact few sail. hw8a at
+   80-228k FP (m96 on) launched 100 strikes, 44 recalled; it landed 13 times, 10 were overrun or bombarded, and
+   it took no world in ten years. Not diagnosed further.
+3. A strike comes whole. hw8a sent 5,269 FP to Beta Laphirial for a gap of 1,447, hw8b 5,135 for 606; of the
+   130k FP hw8a called home 36k was above the gap it was called for, of hw8b's 28k, 12k.
+
+**Open, the user's call** (nothing built):
+
+- (a) Make the massing deliberate, recommended. The pass itself sends a system's spare swarms to its worlds that
+  are short - option (a) of section 5 - and a launch musters only what the system holds above its need. No fuel
+  is spent on strikes that never sail, the defence no longer waits on the monthly launch, and strikes sail again
+  once home is covered. The launch half was drafted and taken back out
+  (`%TEMP%\threatinc-tests\strike-hold.patch`): on its own it ends the massing and puts the swarm back to hw7.
+- (b) Leave it as built.
+- (c) Send only the fleets that cover the gap and let the rest of the strike fly on (fault 3).
+- (d) The swarm's offence: 228k FP took no world. A diagnosis of its landings (240-1,480 troops, 352 days of
+  relief bombardment logged after m96) is a separate read of these logs.

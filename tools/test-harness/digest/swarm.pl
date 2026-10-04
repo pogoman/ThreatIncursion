@@ -23,7 +23,9 @@ for my $tag (@ARGV) {
   my ($arrived, $arrivedFP, $escorts, $escortFP) = (0, 0, 0, 0);
   my (%seen, $recalls, $recallFP);
   ($recalls, $recallFP) = (0, 0);
+  my ($war, %launchDay, @recallDays) = (0);
   while (my $l = <$h>) {
+    if ($l =~ /^Clock: day -?\d+ war (\d+)/) { $war = $1; next; }
     if ($l =~ /^Census: threat hives (\d+).*?fleets (\d+) FP, income (\d+) FP/) {
       $month++;
       if ($found && !$atFound) { $atFound = $2; $incFound = $3; }
@@ -52,6 +54,7 @@ for my $tag (@ARGV) {
     if ($l =~ /^Daily siege takes over .*?, (\d+) FP/) { $arrived++; $arrivedFP += $1; next; }
     if ($l =~ /: escort of (\d+) FP built/) { $escorts++; $escortFP += $1; next; }
     if ($l =~ /^Seeding Swarm from /) { $found ? $seedAfter++ : $seedBefore++; next; }
+    if ($l =~ /^Strike launched from .*? at (.*?) \(/) { $launchDay{$1} = $war; }
     if ($l =~ /^Strike launched from .*?(\d+) FP \+ (\d+) drawn/) {
       $strikes++; $strikeFP += $1 + $2;
       if ($found) { $strikesAfter++; $strikeAfterFP += $1 + $2; }
@@ -64,7 +67,11 @@ for my $tag (@ARGV) {
     }
     # what it saw coming (the hive picket) and the strikes it called home for it
     if ($l =~ /^Swarm intel: sees \S+ siege of \d+ FP bound for .* by (\w+)/) { $seen{$1}++; next; }
-    if ($l =~ /^Posture: strike recalled to .*? - (\d+) FP in (\d+) fleet/) { $recalls++; $recallFP += $1; next; }
+    if ($l =~ /^Posture: strike recalled to .*? - (\d+) FP in (\d+) fleet.*? ly from (.*?); the system/) {
+      $recalls++; $recallFP += $1;
+      push @recallDays, $war - $launchDay{$3} if exists $launchDay{$3};
+      next;
+    }
     if ($l =~ /^Front deployed at .* \(threat\)/) { $landings++; next; }
     if ($l =~ /^Notice: Beachhead Overrun \| A hive counter-attack/) { $humanOverrun++; next; }
     if ($l =~ /^Notice: Beachhead Overrun/) { $overrun++; next; }
@@ -102,8 +109,9 @@ for my $tag (@ARGV) {
   printf "  against it: %d sieges arrived (%s FP), %d escorts (%s FP)\n", $arrived, k($arrivedFP), $escorts, k($escortFP);
   printf "  growth: seeding swarms %d before found, %d since\n", $seedBefore, $seedAfter;
   printf "  strikes: %d (%s FP), since found %d (%s FP)\n", $strikes, k($strikeFP), $strikesAfter, k($strikeAfterFP);
-  printf "  sieges first seen: %s; strikes recalled %d (%s FP)\n",
-    join(", ", map { "$_ $seen{$_}" } sort keys %seen) || "none", $recalls, k($recallFP);
+  printf "  sieges first seen: %s; strikes recalled %d (%s FP), a median %s days after launch\n",
+    join(", ", map { "$_ $seen{$_}" } sort keys %seen) || "none", $recalls, k($recallFP),
+    @recallDays ? median(@recallDays) : "-";
   my @gfp = map { $guardFP{$_} } @guardOrder; my @gfl = map { $guardFleets{$_} } @guardOrder;
   printf "  strike guards: %d worlds, median %s FP in %d fleet(s) a world, most %s FP\n", scalar(@guardOrder),
     k(median(@gfp)), median(@gfl), k((sort { $b <=> $a } @gfp)[0] || 0);

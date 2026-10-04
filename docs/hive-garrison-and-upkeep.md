@@ -170,7 +170,7 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
     the mod no longer asks it about CONSOLIDATE.
   - `strikeGuardWhole` true: `ground-war-orbit-control.md`, "The swarm guards its unspawned landings too".
 - **Strikes come home (2026-10-04, the user: "should be able to deviate those that are convenient", not
-  one "already mid siege or close to its target"; built, jar 19:43, untested).** `poll` lists each
+  one "already mid siege or close to its target"; built, game-tested hw8: `game-runs.md` 6).** `poll` lists each
   system that is attacked (attacks, hostiles or losses) and short of its need by more than its cheapest
   swarm; `recallStrikes` calls in, shortest system first and nearest strike first, each strike within
   `postureRecallLY` (10, 0 = off; Luna "Strike Recall Range (LY)") that is `ThreatStrikeFGI.recallable`
