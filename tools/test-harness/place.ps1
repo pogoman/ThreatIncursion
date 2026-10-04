@@ -1,5 +1,5 @@
 # Force the Starsector window on-screen at X,Y (topmost) and print its client rect.
-param([int]$X = 0, [int]$Y = 0, [switch]$NoTopmost)
+param([int]$X = 0, [int]$Y = 0, [switch]$NoTopmost, [long]$Hwnd = 0)
 Add-Type @"
 using System; using System.Runtime.InteropServices;
 public class WP {
@@ -14,12 +14,13 @@ public class WP {
 "@ -ErrorAction SilentlyContinue
 [WP]::SetProcessDPIAware() | Out-Null   # physical pixels at display scaling above 100%
 $p = Get-Process -Name java -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -like "*Starsector*" } | Select-Object -First 1
-if (-not $p) { Write-Output "NOWINDOW"; exit 0 }
-$h = $p.MainWindowHandle
+if (-not $p -and $Hwnd -eq 0) { Write-Output "NOWINDOW"; exit 0 }
+# -Hwnd: one window of several games running side by side
+$h = if ($Hwnd -ne 0) { [IntPtr]$Hwnd } else { $p.MainWindowHandle }
 [WP]::ShowWindow($h, 9) | Out-Null
 $after = if ($NoTopmost) { [IntPtr](-2) } else { [IntPtr](-1) }
 [WP]::SetWindowPos($h, $after, $X, $Y, 0, 0, 0x41) | Out-Null
 Start-Sleep -Milliseconds 500
 $cr = New-Object WP+RECT; [WP]::GetClientRect($h, [ref]$cr) | Out-Null
 $o = New-Object WP+POINT; [WP]::ClientToScreen($h, [ref]$o) | Out-Null
-Write-Output ("PLACED pid {0} client {1}x{2} at {3},{4}" -f $p.Id, $cr.Right, $cr.Bottom, $o.X, $o.Y)
+Write-Output ("PLACED pid {0} client {1}x{2} at {3},{4}" -f $(if ($p) { $p.Id }), $cr.Right, $cr.Bottom, $o.X, $o.Y)
