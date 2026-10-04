@@ -410,7 +410,7 @@ final class SwarmPosture {
 					if (ratio < pressNeed) continue;
 					float odds = seen[1] / Math.max(1f, muster * k.breakOff);
 					if (odds > k.weakOdds) continue;
-					float score = SwarmOps.strikeValue(k, w) * (1f - odds) / k.strikeDays(sys.ly(w.sys));
+					float score = SwarmOps.strikeValue(s, k, w) * (1f - odds) / k.strikeDays(sys.ly(w.sys));
 					if (best == null || score > bestScore) {
 						best = w;
 						bestScore = score;

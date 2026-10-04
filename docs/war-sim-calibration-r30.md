@@ -133,3 +133,54 @@ it (3 landings either way) - see section 6.
   (month 44, 80) are near the game; the opening months are not. This is the next fault to reproduce and fix.
 - **From the game's state the humans over-attack**: 138-143 hammers against 23 (section 3); kills 17-21 against 5.
 
+## 7. Round 32 (2026-10-04): the share-1 war, from the game's state
+
+Target: the simulated hw5b/hw4z (share 1) wars lost 19.5/13.5 worlds by month 120 against the game's 2/3, with
+landings 183/120 against 55/78; hw4p (share 0) was in range. Checks run with the B set (section 2) on hw5b, hw4z
+and hw4p, 30 seeds; scripts in `%TEMP%\threatinc-tests\sim20261004` (`chk3.sh`, `b3.sh`, `cmp.pl`, `sfight2.pl`,
+`fronts.pl`, `spend.pl`, `sflow.pl`, `income.pl`).
+
+**Built (simulator only, all fidelity to the mod):**
+- Human accrual refit (`HumanFit.ACCRUAL_SHARE0/1`, `BASE_SHARE0/1`): ledger medians of the first 48 prints per
+  world, interpolated by `reserveWartimeSuppliesShare`; the pd7a table ran about half the game's fuel. The
+  mobilisation seed and `basis()` read the same rate (`HumanPools.refRate`). Income now matches: 2.53M supplies by
+  m72 against hw4z's 2.49M.
+- Relief and guards, now default on: relief to invaded colonies fights the Threat guard and takes its place
+  (`warsim_reliefToInvaded`, `reliefFights`, `guardStandDown`, `reliefTakesGuard`), relief sails in whole fleets of
+  `reliefFleetFP` x 1.195 (the game's ~358 FP), and a Threat guard lasts the game's life (`warsim_guardLife`:
+  median 11-15 days, `SwarmFit.GUARD_LIFE_DECILES`).
+- `strikeValue` counts a forward base's cut links (`warsim_strikeCutLinks`, `ThreatFrontlines.strikeWeight`).
+- `warsim_frontFacedOnly` on: a base stands a garrison only where a hive would strike its faction first, as
+  `ThreatFrontlines.strikeAt` does under billed reach. Off, the swarm saw 68% of bases guarded (median 1,607 units)
+  against the game's 190-330 and aimed at colonies 2:1 where hw5b's aimed at bases 2:1.
+- `SwarmFit.SUPPLIES_PER_FP_AWAY` 0.5 -> 0.73 (the game's Reach lines, 0.71-0.74 a run; knob
+  `warsim_suppliesPerFPAway`).
+
+| m120, real \| sim median | worlds lost | landings | hives | swarm supplies |
+|---|---|---|---|---|
+| hw5b before round 32 | 2 \| 19.5 | 55 \| 183 | 167 \| 138 | 168k \| 570k |
+| hw5b now | 2 \| 11.5 | 55 \| 86.5 | 167 \| 110 | 168k \| 309k |
+| hw4z before | 3 \| 13.5 | 78 \| 120 | 131 \| 99.5 | 24k \| 869k |
+| hw4z now | 3 \| 10.5 | 78 \| 59 | 131 \| 82 | 24k \| 545k |
+| hw4p before | 24 \| 20.5 | 120 \| 210 | 163 \| 151 | 6k \| 627k |
+| hw4p now | 24 \| 13.5 | 120 \| 142 | 163 \| 142 | 6k \| 180k |
+
+**Still out, by cause (next steps in this order):**
+1. **Fronts on armed colonies finish too often.** hw4z's game fronts end overrun (73, median 200 days), ground down
+   (10) or standing (20, most at stratum 0); its 5 losses were all no-reserve worlds. The simulator's front engine
+   takes 6-9.5 reserve colonies a seed at share 1, often from one oversize landing (seed 1: 6,338 FP -> 4,986 troops
+   on Athulf, beachhead 412, four districts in 72 days with no counter-attack). Game landings: median 650-745 troops,
+   p90 1,660-2,140; the simulator's median 1,119, p90 3,670.
+2. **Strikes grow too big late**: hw4z medians 2,300-2,500 FP in years 8-9 against the game's 600-1,000 at the same
+   count a year. The swarm still piles supplies (`canSustain` passes everything); hives now run under the game's, so
+   the fix is in the flows, not the burn: made 5.09M against 4.40M, sustenance 1.75M against 1.24M by m120, and the
+   game's ~1.5M unaccounted (structures and the rest) against the simulator's 0.67M on structures.
+3. **Arrival break-off**: the game's strikes meet a live defence (`liveTargetDefence`: every hostile fleet in the
+   system plus the station) and 15-28% arrive outweighed; the simulator's arrival reads the start dump's gate plus
+   guards and breaks off 1-8%.
+4. **Human supplies late**: the game's fall to 136-285k by m120, the simulator's stay 0.9-1.0M. `ThreatUpkeep.charge`
+   bills every fleet with a home (relief, convoys, scouts too) at vanilla maintenance: hw4z 3.34M against the
+   simulator's 1.8M (orders only).
+5. **Bases held 2-5x the game's** with faced-only on (hw4z 69 against 14): the spared garrison budget founds links.
+6. The humans' 3.5x sieges (section 6) remain.
+

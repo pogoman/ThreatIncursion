@@ -18,6 +18,12 @@ final class HumanPools {
 
 	/** The accrual the dump did not give: by size for a colony, by rate and surplus for a forward base. */
 	static void ensure(State s, World w) {
+		boolean pd7a = s.knobs.b("warsim_accrualFitPd7a", false);
+		if (w.forwardBase && !pd7a) {
+			fitted(s, w, HumanFit.BASE_SHARE0, HumanFit.BASE_SHARE1, Math.max(1, Math.min(6, w.size)) - 1);
+			w.pooled = true;
+			return;
+		}
 		if (w.forwardBase) {
 			int units = w.size >= 6 ? 2 : 1;
 			w.accrualPer30[World.MARINES] = HumanFit.BASE_RATE[World.MARINES] * units;
@@ -32,8 +38,19 @@ final class HumanPools {
 		float sum = 0f;
 		for (int c = 0; c < 4; c++) sum += w.accrualPer30[c];
 		if (sum > 0f) return;
-		float[] by = HumanFit.ACCRUAL_BY_SIZE[Math.max(3, Math.min(8, w.size)) - 3];
+		int row = Math.max(3, Math.min(8, w.size)) - 3;
+		if (!pd7a) {
+			fitted(s, w, HumanFit.ACCRUAL_SHARE0, HumanFit.ACCRUAL_SHARE1, row);
+			return;
+		}
+		float[] by = HumanFit.ACCRUAL_BY_SIZE[row];
 		System.arraycopy(by, 0, w.accrualPer30, 0, 4);
+	}
+
+	/** The round-32 fit's row, interpolated between the share-0 and share-1 tables by reserveWartimeSuppliesShare. */
+	private static void fitted(State s, World w, float[][] share0, float[][] share1, int row) {
+		float t = Math.max(0f, Math.min(1f, s.knobs.f("threatinc_reserveWartimeSuppliesShare", 0f)));
+		for (int c = 0; c < 4; c++) w.accrualPer30[c] = share0[row][c] + (share1[row][c] - share0[row][c]) * t;
 	}
 
 	static boolean military(World w) {
@@ -51,15 +68,37 @@ final class HumanPools {
 		for (World w : s.worldsOf(f.id)) {
 			ensure(s, w);
 			w.hasReserve = true;
-			for (int c = 0; c < 4; c++) w.stock[c] = ReserveRules.seeded(w.stock[c], w.accrualPer30[c], months);
+			for (int c = 0; c < 4; c++) w.stock[c] = ReserveRules.seeded(w.stock[c], refRate(s, w, c), months);
 			if (waystations && military(w)) w.base = true;
 		}
 		s.count("factionsMobilised", 1);
 		s.log("War footing: " + f.id + " mobilised");
 	}
 
+	/**
+	 * A depot's banking per 30 days, ThreatReserves.accrualPer30: the fit or dump (taken at reserveSurplusMult 1.0 and
+	 * reserveTroopSurplusMult 0.5, round 18) scaled by the knobs; marines and heavy armaments bank at the troop rate.
+	 * warsim_accrualMult (round 14 trial e) scales all of it, warsim_suppliesAccrualMult (2026-10-04) supplies alone.
+	 */
+	static float rate(State s, World w, int c) {
+		float mult = c == World.MARINES || c == World.ARMAMENTS
+				? s.knobs.f("threatinc_reserveTroopSurplusMult", 0.5f) / 0.5f
+				: s.knobs.f("threatinc_reserveSurplusMult", 1f);
+		if (c == World.SUPPLIES) mult *= s.knobs.f("warsim_suppliesAccrualMult", 1f);
+		return w.accrualPer30[c] * mult * s.knobs.f("warsim_accrualMult", 1f);
+	}
+
+	/**
+	 * The rate the seed, the basis and the guards' budget read. The game reads ThreatReserves.accrualPer30, multipliers
+	 * in, for all three; until round 32 the simulator read the bare fit (seeds a third short at reserveSurplusMult 1.5).
+	 * warsim_rawAccrualRefs=true restores that.
+	 */
+	static float refRate(State s, World w, int c) {
+		return s.knobs.b("warsim_rawAccrualRefs", false) ? w.accrualPer30[c] : rate(s, w, c);
+	}
+
 	static float basis(State s, World w, int c) {
-		return ReserveRules.monthsBasis(w.accrualPer30[c], s.knobs.f("threatinc_reserveCapMonths"));
+		return ReserveRules.monthsBasis(refRate(s, w, c), s.knobs.f("threatinc_reserveCapMonths"));
 	}
 
 	static float floor(State s, World w, int c) {
@@ -123,17 +162,7 @@ final class HumanPools {
 				float cap = basis(s, w, c);
 				if (cap > w.capSeen[c]) w.capSeen[c] = ReserveRules.basisAtFullShare(cap, 0f, 1f);
 				// no ceiling: pd9a's census has hegemony's marines at 12644 on 12 colonies banking about 50 a month each
-				// warsim_accrualMult (round 14 trial e): the pools' accrual scaled, a ceiling test
-				// round 18: the accrual fit (HumanFit.ACCRUAL_BY_SIZE, BASE_RATE, the dumps) was taken at reserveSurplusMult 1.0 and
-				// reserveTroopSurplusMult 0.5 (ThreatReserves.accrualPer30), so the knobs scale it from there; marines and
-				// heavy armaments both bank at the troop rate (ThreatReserves.surplusMult)
-				float mult = c == World.MARINES || c == World.ARMAMENTS
-						? s.knobs.f("threatinc_reserveTroopSurplusMult", 0.5f) / 0.5f
-						: s.knobs.f("threatinc_reserveSurplusMult", 1f);
-				// warsim_suppliesAccrualMult (2026-10-04): supplies income alone scaled, a stand-in for the wartime supplies rule
-				// (ThreatReserves.wartimeSupplies), which banks availability the dumps do not carry
-				if (c == World.SUPPLIES) mult *= s.knobs.f("warsim_suppliesAccrualMult", 1f);
-				float in = w.accrualPer30[c] / 30f * mult * s.knobs.f("warsim_accrualMult", 1f);
+				float in = rate(s, w, c) / 30f;
 				w.stock[c] += in;
 				s.count("income." + World.COMMODITIES[c], in);
 			}

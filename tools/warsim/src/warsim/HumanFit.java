@@ -25,6 +25,34 @@ final class HumanFit {
 	static final float[] BASE_RATE = { 33f, 42f, 174f, 375f };
 
 	/**
+	 * A task force's whole-fleet points per combat point (ThreatAidCapacity.taskForcePoints): a relief fleet of reliefFleetFP
+	 * 300 logs "sends 357-360 FP" (hw4p, hw4z, hw5b), support hulls included.
+	 */
+	static final float FLEET_POINTS_PER_COMBAT_FP = 1.195f;
+
+	/**
+	 * Round 32 (2026-10-04) refit of ACCRUAL_BY_SIZE: the pd7a table predates war-footing banking and
+	 * runs about half the game's fuel. Medians of the first 48 prints per world of "Reserve ledger" lines,
+	 * fuel and supplies divided by the runs' reserveSurplusMult 1.5 (HumanPools.daily puts it back).
+	 * Colony sizes 3..8 at reserveWartimeSuppliesShare 0 (hw4m, hw4p) and 1 (hw4s, hw5b, hw5d);
+	 * HumanPools.ensure interpolates by the share. warsim_accrualFitPd7a=true keeps the old tables.
+	 */
+	static final float[][] ACCRUAL_SHARE0 = {
+			{ 48f, 69f, 420f, 545f }, { 53f, 61f, 723f, 535f }, { 53f, 56f, 1285f, 482f },
+			{ 80f, 100f, 1369f, 833f }, { 60f, 111f, 1846f, 600f }, { 40f, 190f, 1443f, 833f } };
+	static final float[][] ACCRUAL_SHARE1 = {
+			{ 41f, 56f, 369f, 411f }, { 46f, 55f, 720f, 529f }, { 51f, 52f, 1235f, 711f },
+			{ 80f, 105f, 1548f, 893f }, { 63f, 173f, 2333f, 1304f }, { 40f, 190f, 1692f, 1167f } };
+
+	/** The same refit for forward bases by market size 1..6 (BASE_RATE's successor). */
+	static final float[][] BASE_SHARE0 = {
+			{ 31f, 50f, 402f, 461f }, { 38f, 52f, 596f, 469f }, { 41f, 52f, 785f, 477f },
+			{ 46f, 50f, 937f, 421f }, { 53f, 56f, 1055f, 469f }, { 110f, 173f, 1978f, 833f } };
+	static final float[][] BASE_SHARE1 = {
+			{ 35f, 55f, 512f, 517f }, { 39f, 52f, 667f, 500f }, { 45f, 50f, 800f, 476f },
+			{ 50f, 52f, 1043f, 617f }, { 55f, 55f, 1224f, 686f }, { 98f, 186f, 2011f, 1133f } };
+
+	/**
 	 * IncursionManager.hasMilitary for a world whose dump carries no "military" flag: the
 	 * dump's "base" is false until the faction mobilises. "Hunting force waits at Mazalot: 7 bases"
 	 * against persean's 9 colonies of size 5 and up.
