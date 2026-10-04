@@ -73,8 +73,13 @@ public final class SwarmFit {
 		float mean = tier <= LOW ? 90f : tier == MEDIUM ? 140f : tier == HIGH ? 340f : 458f;
 		return (mean + 40f * fabricators) * (0.78f + 0.44f * r.nextFloat());
 	}
-	/** Supplies a month a fleet point away burns: "Reach: .. fleets away N/mo, 0.50-0.57 a FP" w765-w949. */
-	public static final float SUPPLIES_PER_FP_AWAY = 0.5f;
+	/**
+	 * Supplies a month a fleet point away burns: "Reach: .. fleets away N/mo, 0.73 a FP", the weighted mean of 331 lines of
+	 * hw4p, hw4z and hw5b (0.71-0.74 a run; w765-w949 read 0.50-0.57, before strikes burned off-screen). Round 32
+	 * (2026-10-04): at 0.5 the simulated swarm burned 0.85M on fleets away by month 120 against hw4z's 1.38M and piled
+	 * 850k supplies against the game's 24k. warsim_suppliesPerFPAway overrides it.
+	 */
+	public static final float SUPPLIES_PER_FP_AWAY = 0.73f;
 	/**
 	 * A spare planet of a held system carries deposits worth a wave. Of the spare planets of the systems
 	 * held at month 60, the swarm had colonised 25 of 33 by pd9a's end and 43 of 44 by pd10a's (0.88). The
@@ -111,6 +116,21 @@ public final class SwarmFit {
 	 */
 	public static int overrunDays(Random r) { return 40 + r.nextInt(200); }
 	/** What a reinforcing pass adds to a front's life: the 12 reinforced fronts ran 187-751 days, median 405, on 1-3 passes. */
+	/**
+	 * warsim_guardLife (round 32, 2026-10-04): days a Threat guard holds Defend over a human colony before the colony's
+	 * own orbit defence (vanilla's station and patrols, which the simulator does not hold) grinds it below
+	 * defendMinStrength and ThreatSwarmDefend.tick sends it home. Deciles of 247 game guards that stood down with their
+	 * front still up ("Strike guard over X" to "Swarm defend over X stands down", hw4s, hw4w, hw4z, hw5b, hw5d), the
+	 * same at every guard size: 0, 4, 5, 7, 10, 12, 15, 19, 23, 38, max 128.
+	 */
+	static final float[] GUARD_LIFE_DECILES = { 0f, 4f, 5f, 7f, 10f, 12f, 15f, 19f, 23f, 38f, 128f };
+
+	public static int guardLifeDays(Random r) {
+		float q = r.nextFloat() * 10f;
+		int i = Math.min(9, (int) q);
+		return Math.round(GUARD_LIFE_DECILES[i] + (GUARD_LIFE_DECILES[i + 1] - GUARD_LIFE_DECILES[i]) * (q - i));
+	}
+
 	public static int reinforcedDays(Random r) { return 100 + r.nextInt(100); }
 	/**
 	 * The share of ticks an invaded colony at war still passes the strike gate (strikeOutweighed

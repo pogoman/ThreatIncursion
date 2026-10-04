@@ -117,10 +117,11 @@ final class HumanBases {
 		int min = s.knobs.i("threatinc_strikeMinSize");
 		List<World> ours = s.worldsOf(f.id);
 		// warsim_frontFacedOnly: billed reach (ThreatFrontlines.strikeAt / frontOf), only a hive that would strike this
-		// faction first. Off by default: on, the garrisons it spares become more links (founded 129 against the game's 54
-		// at hw4e month 108) and check falls on all three runs (hw4c 293 -> 262 of 388);
-		// the founding gap lies in the pools' late stock (war-sim-calibration-r29.md)
-		boolean faced = s.knobs.b("warsim_frontFacedOnly", false) && s.knobs.b("threatinc_billedReach", true);
+		// faction first. On since round 32 (2026-10-04): off, 68% of the swarm's readings of a forward base saw a garrison
+		// (median 1,607 defence units) against the game's ~20-30% (median 190-330), so the simulated swarm aimed at
+		// colonies 2:1 where hw5b's aimed at bases 2:1. Its cost: bases held run 2-5x the game's (the spared garrison
+		// budget founds links; the founding gap lies in the pools' late stock, war-sim-calibration-r29.md)
+		boolean faced = s.knobs.b("warsim_frontFacedOnly", true) && s.knobs.b("threatinc_billedReach", true);
 		for (Hive h : s.hives) {
 			if (h.dead || h.size < min || !s.foundHiveSystems.contains(h.sys)) continue;
 			if (faced && !f.id.equals(HumanStance.faced(s, h.sys))) continue;
@@ -156,7 +157,7 @@ final class HumanBases {
 		for (World w : s.worldsOf(f.id)) {
 			if (w.forwardBase && w.sys != site) upkeep += Math.max(w.guardFP, guardWanted(s, f, w)) * guardUpkeepPerFP(s);
 			if (!w.hasReserve) continue;
-			income += w.accrualPer30[World.SUPPLIES];
+			income += HumanPools.refRate(s, w, World.SUPPLIES);
 			spare += HumanPools.spareFor(s, w, World.SUPPLIES, "guardUpkeep");
 		}
 		float months = s.knobs.f("threatinc_frontlineUpkeepStockMonths");
@@ -213,6 +214,14 @@ final class HumanBases {
 			return;
 		}
 		if (relief) s.count(w.forwardBase ? "reliefToBesiegers.asked" : "reliefInvaded.asked", 1);
+		// ThreatFleetOrders.sendRelief builds relief from whole fleets of reliefFleetFP until the owed is covered (Sindria,
+		// hw5b: "sends 359 FP ... (owed 100)"); until round 32 (2026-10-04) the simulator sent the bare shortfall, top-ups of
+		// 27-45 FP, and its relief ran a median 150-165 FP against the game's 357-360 (hw4p, hw4z, hw5b).
+		// warsim_reliefWholeFleets=false restores that
+		if (relief && !w.forwardBase && s.knobs.b("warsim_reliefWholeFleets", true)) {
+			float fleet = s.knobs.f("threatinc_reliefFleetFP", 300f) * HumanFit.FLEET_POINTS_PER_COMBAT_FP;
+			if (fleet >= 1f) want = (float) Math.ceil(want / fleet) * fleet;
+		}
 		World from = HumanPools.nearestBase(s, f.id, w.sys, true);
 		if (from == null) return;
 		float[] cost = ReachRules.voyageCost(want, from.sys.ly(w.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
@@ -275,7 +284,7 @@ final class HumanBases {
 	 * run, 126k-210k FP (hw4d, hw4h, hw4g); the simulator sent relief to forward bases only.
 	 */
 	static void reliefInvaded(State s, Faction f) {
-		if (!s.knobs.b("warsim_reliefToInvaded", false)) return;
+		if (!s.knobs.b("warsim_reliefToInvaded", true)) return;
 		for (World w : s.worldsOf(f.id)) {
 			if (w.forwardBase || w.lost) continue;
 			if (!s.swarm.landings.containsKey(w.id) || !f.mobilised) {
@@ -304,7 +313,7 @@ final class HumanBases {
 				// warsim_reliefFightDays: a relief on station keeps fighting the guard (ThreatGroundFronts.tickRelief -> fightOrbit:
 				// the game's aggressive orbit engages every Threat fleet over the world); 0, only on arrival (HumanSide.arrive)
 				int every = (int) s.knobs.f("warsim_reliefFightDays", 0f);
-				if (every > 0 && s.knobs.b("warsim_reliefFights", false) && s.day - w.reliefFightDay >= every
+				if (every > 0 && s.knobs.b("warsim_reliefFights", true) && s.day - w.reliefFightDay >= every
 						&& !SwarmOps.guards(s, w).isEmpty()) {
 					w.reliefFightDay = s.day;
 					s.count("reliefInvaded.fights", 1);

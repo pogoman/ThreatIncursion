@@ -287,8 +287,11 @@ final class SwarmEconomy {
 	}
 
 	/** ThreatReach.canSustain(fp, days): the trip's supplies out of the spare flow, else the flow and the free stock over it. */
+	/** Supplies a month a fleet point away burns (SwarmFit.SUPPLIES_PER_FP_AWAY, warsim_suppliesPerFPAway). */
+	static float awayRate(State s) { return s.knobs.f("warsim_suppliesPerFPAway", SwarmFit.SUPPLIES_PER_FP_AWAY); }
+
 	static boolean canSustain(State s, SwarmKnobs k, float fp, float days) {
-		float need = fp * SwarmFit.SUPPLIES_PER_FP_AWAY;
+		float need = fp * awayRate(s);
 		if (need <= s.swarm.spare) return true;
 		float free = Math.max(0f, s.swarm.supplies - k.foundSupplies());
 		return threatinc.rules.StrikeRules.canSustain(need, s.swarm.spare, days, free);
@@ -359,11 +362,12 @@ final class SwarmEconomy {
 		}
 		sw.fuel += perMonth(s, k, FUEL) / 30f;
 		sw.supplies += perMonth(s, k, SUPPLIES) / 30f;
+		s.count("swarmSupplies.made", perMonth(s, k, SUPPLIES) / 30f);
 
 		// fleets away burn supplies (ThreatColonyManager.paySupplies)
 		float away = 0f;
 		for (Parcel p : s.parcels) if (SwarmOps.burns(s, p)) away += p.fp;
-		sw.awayPerMonth = away * SwarmFit.SUPPLIES_PER_FP_AWAY;
+		sw.awayPerMonth = away * awayRate(s);
 		float wantAway = sw.awayPerMonth / 30f;
 		if (wantAway > 0f) {
 			float paid = Math.min(wantAway, sw.supplies);

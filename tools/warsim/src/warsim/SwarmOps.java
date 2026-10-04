@@ -39,6 +39,10 @@ final class SwarmOps {
 		boolean defending;
 		/** The guard's FP when it went on Defend (ThreatSwarmDefend.Entry.fp0), and whether it has broken hulls into troops. */
 		float defendFP0;
+		/** The day it went on Defend, for the guard's life (guardLife.*). */
+		int defendDay;
+		/** warsim_guardLife: the day the colony's orbit defence has worn it out (SwarmFit.guardLifeDays). */
+		int defendEnds = Integer.MAX_VALUE;
 		boolean fabricated;
 		/** warsim_basesHold: holding a forward base's orbit with its guard sunk, and for how many days (a station siege). */
 		boolean besieging;
@@ -101,12 +105,25 @@ final class SwarmOps {
 			if (w.lost) continue;
 			boolean inRange = !k.fog || present.contains(w.sys);
 			if (!inRange && k.radarLY > 0f) for (StarSys sys : systems) if (sys.ly(w.sys) <= k.radarLY) inRange = true;
-			if (inRange) s.swarm.seen.put(w.id, new float[] { s.day, defenceOf(s, w) });
+			if (inRange) seen(s, w);
 		}
 	}
 
+	/** The swarm records the world's defence as it is today (ThreatSwarmIntel.record); warsim_logSeen logs each reading. */
+	static void seen(State s, World w) {
+		float d = defenceOf(s, w);
+		s.swarm.seen.put(w.id, new float[] { s.day, d });
+		if (w.forwardBase) {
+			s.count("seenBase.n", 1);
+			if (guardsAt(s, w) > 0f) s.count("seenBase.guarded", 1);
+			if (d > 1000f) s.count("seenBase.over1000", 1);
+		}
+		if (s.verbose && s.knobs.b("warsim_logSeen", false))
+			s.log("Seen " + (w.forwardBase ? "base " : "colony ") + w.name + ": defence " + (int) d + ", gate " + (int) gate(s, w) + ", guards " + (int) guardsAt(s, w));
+	}
+
 	static void see(State s, StarSys sys) {
-		for (World w : s.worlds) if (!w.lost && w.sys == sys) s.swarm.seen.put(w.id, new float[] { s.day, defenceOf(s, w) });
+		for (World w : s.worlds) if (!w.lost && w.sys == sys) seen(s, w);
 	}
 
 	/**
@@ -117,7 +134,19 @@ final class SwarmOps {
 	 * 1.1-1.5 units per guard FP over it (warsim_guardUnitsPerFP; 2.1 is the Threat strike's rate, the old reading).
 	 */
 	static float defenceOf(State s, World w) {
-		return (w.gate >= 0f ? w.gate : w.defence) + guardsAt(s, w) * s.knobs.f("warsim_guardUnitsPerFP", SwarmFit.STRIKE_UNITS_PER_FP);
+		return gate(s, w) + guardsAt(s, w) * s.knobs.f("warsim_guardUnitsPerFP", SwarmFit.STRIKE_UNITS_PER_FP);
+	}
+
+	/**
+	 * The world's own figure (the dump's gate, liveTargetDefence, or its defence). warsim_gateWarMult (round 32,
+	 * 2026-10-04): a colony's gate is read once, from the start dump, before the war; in the game it is the system's
+	 * live fleets and station, and once its faction mobilises it runs a median 2.1-2.7 times the first dump's
+	 * (months 48-120 over the first, per colony: hw4d 2.70, hw4m 2.08, hw4p 2.09, hw4z 2.34, hw5b 2.71, hw5d 2.13).
+	 */
+	static float gate(State s, World w) {
+		float g = w.gate >= 0f ? w.gate : w.defence;
+		if (!w.forwardBase && w.hasReserve) g *= s.knobs.f("warsim_gateWarMult", 1f);
+		return g;
 	}
 
 	/** The human guard FP a strike at the world meets: its own, or with warsim_gateSystemGuards its system's. */
@@ -438,6 +467,54 @@ final class SwarmOps {
 		return StrikeRules.sizeValue(w.size);
 	}
 
+	/**
+	 * IncursionManager.strikeValue: a forward base is worth what hangs off it, ThreatFrontlines.strikeWeight's
+	 * (1 + cutBy). Until round 32 (2026-10-04) the simulator left the cut links out, so its swarm valued a chain's
+	 * root at a leaf's and struck colonies twice as often as bases where the game did the reverse (hw5b, life2.pl:
+	 * game 233 of 355 strikes at bases, simulator 118-145 of 380). warsim_strikeCutLinks=false restores it.
+	 */
+	static float strikeValue(State s, SwarmKnobs k, World w) {
+		float v = strikeValue(k, w);
+		if (w.forwardBase && s.knobs.b("warsim_strikeCutLinks", true)) v *= 1 + cutBy(s, w);
+		return v;
+	}
+
+	/** ThreatFrontlines.cutBy: links of the faction that lose their relay to a colony if this one falls. */
+	static int cutBy(State s, World w) {
+		java.util.Set<World> now = connected(s, w.faction, null), after = connected(s, w.faction, w);
+		int n = 0;
+		for (World x : now) if (x != w && !after.contains(x)) n++;
+		return n;
+	}
+
+	/** ThreatFrontlines.connected: the faction's links within frontlineLinkLY hops of its colonies, without one world. */
+	static java.util.Set<World> connected(State s, String faction, World without) {
+		List<World> links = new ArrayList<World>(), reached = new ArrayList<World>();
+		for (World x : s.worlds) {
+			if (x.lost || x == without || !faction.equals(x.faction)) continue;
+			if (x.forwardBase) links.add(x);
+			else reached.add(x);
+		}
+		float hop = s.knobs.f("threatinc_frontlineLinkLY");
+		java.util.Set<World> result = new java.util.HashSet<World>();
+		boolean grew = true;
+		while (grew) {
+			grew = false;
+			for (World link : new ArrayList<World>(links)) {
+				for (World r : reached) {
+					if (link.sys.ly(r.sys) <= hop) {
+						result.add(link);
+						reached.add(link);
+						links.remove(link);
+						grew = true;
+						break;
+					}
+				}
+			}
+		}
+		return result;
+	}
+
 	// ---- ThreatAlarm: the swarm turns on whoever is hurting it ----
 
 	/** ThreatAlarm.raise, called by the human side: a stratum taken on a hive, a hive eradicated. */
@@ -574,7 +651,11 @@ final class SwarmOps {
 						continue;
 					}
 				}
-				if (seen[1] >= full * k.breakOff) continue;
+				if (seen[1] >= full * k.breakOff) {
+					s.count(w.forwardBase ? "gatePassed.base" : "gatePassed.colony", 1);
+					continue;
+				}
+				s.count(w.forwardBase ? "gateOpen.base" : "gateOpen.colony", 1);
 				float odds = seen[1] / Math.max(1f, full * k.breakOff);
 				float mult = 1f;
 				if (s.swarm.stance == Swarm.PRESS) {
@@ -583,7 +664,7 @@ final class SwarmOps {
 				} else if (s.swarm.stance == Swarm.CONSOLIDATE) {
 					mult = odds <= k.weakOdds && w.forwardBase ? Math.max(0.05f, 1f - odds) : 0f;
 				}
-				float weight = strikeValue(k, w) * targetMult(s, k, w.faction) / k.strikeDays(from.ly(w.sys));
+				float weight = strikeValue(s, k, w) * targetMult(s, k, w.faction) / k.strikeDays(from.ly(w.sys));
 				// ThreatGroundFronts.wantsExpedition: a front the garrison is beating (here: one on a colony at war)
 				Swarm.Landing front = s.swarm.landings.get(w.id);
 				if (front != null && !front.falls && front.endDay != Integer.MIN_VALUE) {
@@ -674,6 +755,7 @@ final class SwarmOps {
 			p.order = o;
 			s.swarm.struck.add(w.id);
 			s.count("strikesLaunched", 1);
+			s.count(w.forwardBase ? "strikesAt.base" : "strikesAt.colony", 1);
 			s.log("Strike: " + (int) fp + " FP in " + count + " swarms from " + from + " at " + w + " ("
 					+ (int) ly + " ly, defence " + (int) s.swarm.seen.get(w.id)[1] + ")");
 			return true;
@@ -880,6 +962,10 @@ final class SwarmOps {
 		s.count("guardFPStayed", p.fp);
 		orderOf(s, p).defending = true;
 		orderOf(s, p).defendFP0 = p.fp;
+		orderOf(s, p).defendDay = s.day;
+		if (s.knobs.b("warsim_guardLife", true) && orderOf(s, p).target != null && !orderOf(s, p).target.forwardBase)
+			orderOf(s, p).defendEnds = s.day + SwarmFit.guardLifeDays(s.rng);
+		if (s.verbose) s.log("Strike guard over " + orderOf(s, p).target.name + ": " + (int) p.fp + " FP on Defend");
 		p.holding = true;
 		s.count("defendStations", 1);
 	}
@@ -1100,14 +1186,15 @@ final class SwarmOps {
 		SwarmPosture.noteTrend(s, lost, 0f);
 		// warsim_guardStandDown: the game has no outweighed rule for a Threat guard - it fights on, worn, until it is
 		// below defendMinStrength uncommitted (standsDown) or dead
-		if (s.knobs.b("warsim_guardStandDown", false)) {
+		if (s.knobs.b("warsim_guardStandDown", true)) {
 			// warsim_reliefTakesGuard: in the game one relief task force (sized past the guard, planRelief) takes an
 			// uncommitted guard below a third in one battle, a median 23-35 days after it is placed
-			if (defence > strength && s.knobs.b("warsim_reliefTakesGuard", false)) {
+			if (defence > strength && s.knobs.b("warsim_reliefTakesGuard", true)) {
 				for (Parcel p : gs) {
 					StrikeOrder o = orderOf(s, p);
 					if (o.fabricated && s.knobs.b("threatinc_fabricateDefendEnabled", true)) continue;
 					s.count("guardStoodDown", 1);
+					guardEnded(s, o, "relief");
 					goHome(s, p, p.to);
 				}
 			}
@@ -1115,7 +1202,10 @@ final class SwarmOps {
 			return;
 		}
 		if (defence > strength) {
-			for (Parcel p : gs) goHome(s, p, p.to);
+			for (Parcel p : gs) {
+				if (orderOf(s, p).defending) guardEnded(s, orderOf(s, p), "relief");
+				goHome(s, p, p.to);
+			}
 			s.count("reliefInvaded.lifted", 1);
 			s.log("Relief over " + w.name + " drove off the swarm's guard (" + (int) defence + " vs " + (int) strength + ")");
 		} else {
@@ -1130,7 +1220,7 @@ final class SwarmOps {
 	 * front still standing, and most overrun fronts had lost their guard over a month before.
 	 */
 	static boolean standsDown(State s, Parcel p, StrikeOrder o) {
-		if (!s.knobs.b("warsim_guardStandDown", false) || o.defendFP0 <= 0f) return false;
+		if (!s.knobs.b("warsim_guardStandDown", true) || o.defendFP0 <= 0f) return false;
 		if (o.fabricated && s.knobs.b("threatinc_fabricateDefendEnabled", true)) return false;
 		return p.fp < o.defendFP0 * s.knobs.f("threatinc_defendMinStrength", 0.33f);
 	}
@@ -1400,6 +1490,12 @@ final class SwarmOps {
 		return true;
 	}
 
+	/** Counts a guard's days on Defend by how it ended (guardLife.<why>.n / .days), the game's guard life to compare. */
+	static void guardEnded(State s, StrikeOrder o, String why) {
+		s.count("guardLife." + why + ".n", 1);
+		s.count("guardLife." + why + ".days", s.day - o.defendDay);
+	}
+
 	/** The day's strikes: the fronts, then any strike a dump loaded already holding lands what it carries. */
 	static void daily(State s, SwarmKnobs k) {
 		if (!s.liveHives().isEmpty()) {
@@ -1411,6 +1507,7 @@ final class SwarmOps {
 			if (!p.threat() || p.kind != Parcel.Kind.STRIKE || !p.arrived || !p.holding) continue;
 			StrikeOrder o = orderOf(s, p);
 			if (p.done || p.fp < 1f) {
+				if (o.defending) guardEnded(s, o, "dead");
 				p.done = true;
 				release(s, p);
 				continue;
@@ -1420,8 +1517,22 @@ final class SwarmOps {
 				continue;
 			}
 			if (o.defending) {
-				if (o.target == null || o.target.lost || !s.swarm.landings.containsKey(o.target.id)) goHome(s, p, p.to);
+				if (o.target == null || o.target.lost || !s.swarm.landings.containsKey(o.target.id)) {
+					guardEnded(s, o, "front gone");
+					goHome(s, p, p.to);
+				}
+				else if (s.day >= o.defendEnds && !(o.fabricated && s.knobs.b("threatinc_fabricateDefendEnabled", true))) {
+					// warsim_guardLife: the orbit defence has ground it below defendMinStrength; what is left goes home
+					float left = Math.min(p.fp, o.defendFP0 * s.knobs.f("threatinc_defendMinStrength", 0.33f) * 0.9f);
+					s.count("guardFPWornByOrbit", p.fp - left);
+					SwarmPosture.noteTrend(s, p.fp - left, 0f);
+					p.fp = left;
+					guardEnded(s, o, "worn");
+					if (s.verbose) s.log("Swarm defend over " + o.target.name + " stands down, worn by the orbit to " + (int) p.fp + " of " + (int) o.defendFP0 + " FP");
+					goHome(s, p, p.to);
+				}
 				else if (standsDown(s, p, o)) {
+					guardEnded(s, o, "stood down");
 					s.count("guardStoodDown", 1);
 					if (s.verbose) s.log("Swarm defend over " + o.target.name + " stands down at " + (int) p.fp + " of " + (int) o.defendFP0 + " FP");
 					goHome(s, p, p.to);
@@ -1528,6 +1639,7 @@ final class SwarmOps {
 		float defence = defenceOf(s, w);
 		if (defence >= strength * k.breakOff) {
 			s.count("strikesBrokenOff", 1);
+			s.count(w.forwardBase ? "strikesBrokenOff.base" : "strikesBrokenOff.colony", 1);
 			s.log("Strike broke off at " + w);
 			goHome(s, p, p.to);
 			return;

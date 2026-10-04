@@ -225,7 +225,7 @@ final class HumanCouncil {
 			if (!s.swarm.landings.containsKey(w.id)) continue;
 			// warsim_reliefOwedShort (with warsim_reliefToInvaded): owed while the guards there are short of the goal
 			// (ThreatFleetOrders.reliefShort); on, the councils sailed 70 sieges on hw4d against the game's 13
-			if (s.knobs.b("warsim_reliefToInvaded", false) && s.knobs.b("warsim_reliefOwedShort", false) && w.guardFP >= HumanBases.reliefGoal(s, w)) continue;
+			if (s.knobs.b("warsim_reliefToInvaded", true) && s.knobs.b("warsim_reliefOwedShort", false) && w.guardFP >= HumanBases.reliefGoal(s, w)) continue;
 			for (World b : s.worldsOf(f.id)) {
 				if (b.base && b.hasReserve && HumanPlanner.payableFP(s, b, w.sys) >= fleet) return true;
 			}
