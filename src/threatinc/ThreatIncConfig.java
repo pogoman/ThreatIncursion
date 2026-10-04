@@ -482,8 +482,8 @@ public class ThreatIncConfig {
 	/** With banking by production: the share of the sector's best single exporter a faction may bank of what it does not make. */
 	public static float reserveBankImportsMult() { return f("threatinc_reserveBankImportsMult"); }
 	public static boolean reserveWartimeFuel()     { return b("threatinc_reserveWartimeFuel", true); }
-	/** Supplies bank at the war rate, the colony's whole availability, as fuel does (ThreatReserves.wartimeSupplies). */
-	public static boolean reserveWartimeSupplies() { return b("threatinc_reserveWartimeSupplies", true); }
+	/** The share of a colony's peacetime supplies demand that banks on top of its surplus in wartime: 0 the surplus rule, 1 its whole availability as fuel (ThreatReserves.wartimeShare). */
+	public static float reserveWartimeSuppliesShare() { return f("threatinc_reserveWartimeSuppliesShare"); }
 	/** Vanilla demand units the War footing condition adds at colony size 5 (scaled by size / 5, rounded up); 0 = none (rule 2). */
 	public static float warFootingDemandUnits() { return f("threatinc_warFootingDemandUnits"); }
 	/** Most of the stock at hand the depot spends per issue covering the colony's own shortage (rule 3). */

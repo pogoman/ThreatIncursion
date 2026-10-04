@@ -380,7 +380,7 @@ provision it` (`facts.md`, "Does a human fleet over its own invaded world hurt t
 The simulator shows the game's supplies famine (`war-sim-real-runs.md` 21). On hw4r its human supplies fall from
 498k at month 60 to 116k at month 120 and 53k at month 132 (game: 674k, 51k, 35k). Its income is about 46k a month,
 against the game's 53k from the dumps. The check now carries `humanFuel` and `humanSupplies`. The supplies probe
-`warsim_suppliesAccrualMult` scales supplies income alone, standing in for `reserveWartimeSupplies`, because the
+`warsim_suppliesAccrualMult` scales supplies income alone, standing in for `reserveWartimeSuppliesShare`, because the
 dumps do not carry the availability that rule banks. hw4r, 30 seeds, human worlds held (game: 54, 49, 34):
 
 | supplies income | month 108 | month 120 | month 132 | supplies, month 120 | hives, month 120 | inside |
