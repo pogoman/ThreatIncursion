@@ -6,7 +6,8 @@ and a strike target's defence exactly, live and from any distance. That is why t
 Starve, feints and bombers could not work (h53c-d, `facts.md`): the swarm massed over each target
 before anything arrived. The user's rule (2026-10-01): no cheats, fog for everyone; knowledge comes
 from eyes and battles (radar too until 2026-10-02, when the user removed it from both sides: section
-4, "No radar"). The user asked for this change on 2026-10-01, after the
+4, "No radar"; since 2026-10-04 the hives keep a picket for attack forces in flight: section 4, "The
+hive picket"). The user asked for this change on 2026-10-01, after the
 council was committed (4a5ead4), as "the Threat's fog", deferred by attack-planner decision 1 and
 war-council decision 8.
 
@@ -83,8 +84,11 @@ The swarm keeps its own reports, a mirror of `ThreatIntel`, in a new class `Thre
   fleet (garrisons, Scouting Swarms, raiders, Defend stations, spawned strike fleets), an unspawned
   Threat strike route currently in it, or a Threat-owned ground front. Exact figures.
 - **No radar** (user, 2026-10-02; Bastion radar was built 2026-10-01 and removed with the humans'):
-  nothing is seen in hyperspace. A place or contact is real time while a Threat ship, hive or front
+  no place is seen from hyperspace. A place or contact is real time while a Threat ship, hive or front
   is in its system; from the day the last leaves it stands and ages.
+- **Picket** (user, 2026-10-04): a human attack force in hyperspace within `swarmPicketLY` (4) of a
+  live hive is seen, exact - the humans' strike picket mirrored. Forces in flight only (section 4,
+  "The hive picket").
 - **Scouts**: a Scouting Swarm entering a system (`ThreatSwarmScouts.ROUTE.onEnter`) looks at every
   human place there (source SCOUT, exact).
 - Battles need nothing new: a Threat fleet in a fight is in the system, so eyes.
@@ -93,7 +97,7 @@ The swarm keeps its own reports, a mirror of `ThreatIntel`, in a new class `Thre
 - A **Contact** per human attack force seen: key (`siege:` + the FGI's identity, `order:` + the
   order's fleet id), faction, the hive system it is bound for, FP as A counts it today, first and
   last day seen, source. A force's position: a spawned fleet's location (system: eyes test;
-  hyperspace: unseen); an unspawned siege's route position
+  hyperspace: the picket); an unspawned siege's route position
   (interpolated hyperspace location, or its current system), only while `threatSeesBookedSieges`.
   An order still mustering at a base is seen only if that base is.
 - A **Place** per human base or world seen: market, system, faction, day, source, and what the
@@ -139,7 +143,7 @@ mirror of the human side or the smaller change):
 ## 3. API (`ThreatSwarmIntel`, LF)
 
 ```java
-public static final String EYES = "eyes", SCOUT = "scout";   // RADAR went 2026-10-02
+public static final String EYES = "eyes", PICKET = "picket", SCOUT = "scout";   // RADAR went 2026-10-02
 public static class Contact { public String key, factionId, systemId, source;
                               public float fp, firstDay, day; }
 public static class Place   { public String marketId, systemId, factionId, source, stagesFor;
@@ -147,7 +151,8 @@ public static class Place   { public String marketId, systemId, factionId, sourc
 static boolean enabled();                        // ThreatIncConfig.swarmFogOfWar()
 static void poll();                              // once per day (own sweptDay latch)
 static void scouted(StarSystemAPI system);       // Scouting Swarm arrival
-static String sees(LocationAPI where);           // EYES / null (nothing in hyperspace)
+static String sees(LocationAPI where);           // places, convoys: EYES / null
+static String sees(LocationAPI where, Vector2f hyper);  // attack forces: EYES / PICKET / null
 static List<Contact> contactsOn(String hiveSystemId);  // seen within swarmContactDays
 static Place place(String marketId);             // null if never seen
 static List<Place> places();                     // every place (B, F, siegeBases)
@@ -161,8 +166,9 @@ system) and its target as `ThreatConvoys.stagingHive`. Under the fog it counts t
 stock only (section 4), so it is no longer exactly what the fog-off B reads.
 
 Knobs: `threatinc_swarmFogOfWar` (true; Luna "Fog of War for the Swarm"),
-`threatinc_swarmContactDays` (10). `threatinc_swarmRadarRangeLY` went on 2026-10-02 (LunaLib
-migration 10 drops a stored value).
+`threatinc_swarmContactDays` (10), `threatinc_swarmPicketLY` (4; Luna "Hive Picket Range (LY)";
+0 = off). `threatinc_swarmRadarRangeLY` went on 2026-10-02 (LunaLib migration 10 drops a stored
+value).
 
 Logs: `Swarm intel: sees <faction> <kind> of N FP bound for <system> by <source>` on a contact's
 first sighting; `Swarm intel: <source> on <market> (<faction>): staged N for <system>, guards N,
@@ -222,6 +228,22 @@ route, or any live Threat fleet there today) and null anywhere else, hyperspace 
 and `record` no longer round. A save's "radar" contacts and places keep the string and age like
 any other. The census line reads `(eyes N, scout N)`. Knob `swarmRadarRangeLY` removed; LunaLib
 migration 10 (`LunaConfigBridge.drop`) deletes it from a store.
+
+**The hive picket (2026-10-04, the user's decision: "Yeah give same picket don't worry about
+changing in flight behaviour otherwise").** hw7a-hw7c showed the swarm first saw 55-64% of sieges
+the day they entered the hive system, while the humans saw every strike weeks out from a forward
+base (`game-runs.md` 5). The hives now keep the humans' strike picket
+(`ThreatFrontlines.detectedAt`): `senses` lists one hyperspace site per system with a live hive
+(`PICKET_SITES`; every hive, not Bastion worlds only - in hw7a at month 43 one hive of the home
+system's eight was a Bastion), and `sees(where, hyper)` answers EYES in a system with eyes, else
+PICKET when `where` is hyperspace and `hyper` is within `swarmPicketLY` of a site (`inPicket`).
+`sweepContacts` asks it for an unspawned siege (`routeLocation`, `routeHyper`), a spawned siege
+fleet and an order's fleet; figures are exact, as the humans' are. Places and convoys still go
+through the one-argument `sees`: no base, world or convoy is seen from hyperspace. A route flies
+1,500 units a day (vanilla `RouteLocationCalculator.getTravelDays`), 0.75 ly, so 4 ly is about 5
+days of warning before a siege enters the system; a force inside the picket is re-seen daily, so
+its contact does not fade. Nothing in flight changes: routes do not meet, blinkered fleets stay
+blinkered. The log's first sighting reads `... by picket`. Built, jar 19:18, not game-tested.
 
 **Knobs and logs** as section 3, plus `Swarm intel: seeded N place(s) in <system>` (old-save
 seeding) and `Swarm intel: scouting off - seeded N place(s) in M system(s)`. The fast-forward

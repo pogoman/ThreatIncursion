@@ -35,7 +35,7 @@ Show "Play raids" '^Play \S+ \S+: raid on ' 20
 Show "Council errors" '^(Council \S+|Plays): error ' 10
 # the swarm's fog of war (docs/threat-fog.md): first sightings by source, convoys among them, places, census
 Show "Swarm sees by eyes" '^Swarm intel: sees .* by eyes\b' 20
-Show "Swarm sees by radar" '^Swarm intel: sees .* by radar\b' 20
+Show "Swarm sees by picket" '^Swarm intel: sees .* by picket\b' 20
 Show "Swarm sees by scout" '^Swarm intel: sees .* by scout\b' 20
 Show "Swarm sees convoys" '^Swarm intel: sees \S+ convoy of ' 12
 Show "Swarm places" '^Swarm intel: (eyes|radar|scout) on ' 30
