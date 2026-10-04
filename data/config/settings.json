@@ -104,6 +104,14 @@
 	# the nearest first; their fleets join its garrisons. A strike mid-siege,
 	# close to its target or on its way home flies on. 0 = off
 	"threatinc_postureRecallLY": 10,
+	# MASS THE DEFENCE (2026-10-04, the user): a system under attack sends the
+	# spare swarms of its own colonies - what a launch would muster - to its
+	# worlds short of their need; still short once the strikes in reach have
+	# turned, it draws the spare of the hive systems within postureRecallLY.
+	# No strike sails from a system still short, or past one in that range;
+	# an attacked system launches only what it holds above its need.
+	# false = the launch-then-recall of hw8
+	"threatinc_postureMass": true,
 	# Stance: each posture pass the hive decides what its surplus is for.
 	# PRESS - it holds stancePressRatio times a rival's force in reach, knows a
 	# world of that rival whose defence is at most stanceWeakOdds of what it

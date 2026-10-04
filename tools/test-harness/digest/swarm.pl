@@ -24,6 +24,7 @@ for my $tag (@ARGV) {
   my (%seen, $recalls, $recallFP);
   ($recalls, $recallFP) = (0, 0);
   my ($war, %launchDay, @recallDays) = (0);
+  my ($massed, $massedFP, $massedFar, $massedFarFP, %heldHome) = (0, 0, 0, 0);
   while (my $l = <$h>) {
     if ($l =~ /^Clock: day -?\d+ war (\d+)/) { $war = $1; next; }
     if ($l =~ /^Census: threat hives (\d+).*?fleets (\d+) FP, income (\d+) FP/) {
@@ -72,6 +73,13 @@ for my $tag (@ARGV) {
       push @recallDays, $war - $launchDay{$3} if exists $launchDay{$3};
       next;
     }
+    # the defence massed (postureMass): spare swarms sent to a short world, from its system or a neighbour's
+    if ($l =~ /^Posture: .*? massed (\d+) FP at .*?(, [\d.]+ ly)? \(/) {
+      if ($2) { $massedFar++; $massedFarFP += $1; } else { $massed++; $massedFP += $1; }
+      next;
+    }
+    # a strike that stayed home (logQuiet: one line a colony each time the reason changes, or a month)
+    if ($l =~ /^Strike from (.*?) held: /) { $heldHome{$1}++; next; }
     if ($l =~ /^Front deployed at .* \(threat\)/) { $landings++; next; }
     if ($l =~ /^Notice: Beachhead Overrun \| A hive counter-attack/) { $humanOverrun++; next; }
     if ($l =~ /^Notice: Beachhead Overrun/) { $overrun++; next; }
@@ -112,6 +120,11 @@ for my $tag (@ARGV) {
   printf "  sieges first seen: %s; strikes recalled %d (%s FP), a median %s days after launch\n",
     join(", ", map { "$_ $seen{$_}" } sort keys %seen) || "none", $recalls, k($recallFP),
     @recallDays ? median(@recallDays) : "-";
+  my $heldDays = 0;
+  $heldDays += $_ for values %heldHome;
+  printf "  defence massed: %d fleets (%s FP) within a system, %d (%s FP) from neighbours; strikes held home %d times at %d colonies\n",
+    $massed, k($massedFP), $massedFar, k($massedFarFP), $heldDays, scalar(keys %heldHome)
+    if $massed || $massedFar || $heldDays;
   my @gfp = map { $guardFP{$_} } @guardOrder; my @gfl = map { $guardFleets{$_} } @guardOrder;
   printf "  strike guards: %d worlds, median %s FP in %d fleet(s) a world, most %s FP\n", scalar(@guardOrder),
     k(median(@gfp)), median(@gfl), k((sort { $b <=> $a } @gfp)[0] || 0);

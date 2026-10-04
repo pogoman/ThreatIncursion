@@ -99,6 +99,8 @@ public class ThreatPosture {
 
 	/** Market id -> {want, need}: its base or its share of the need by its floor; rebuilt each pass. Not saved. */
 	protected static final Map<String, float[]> COLONY = new HashMap<String, float[]>();
+	/** The last pass's calls, each less what its recalls sent (recallStrikes): a launch reads them (strikeCapFP). Not saved. */
+	protected static final List<Call> CALLS = new ArrayList<Call>();
 	protected static long lastPoll = Long.MIN_VALUE;
 	/** Expansion appetite from the last pass; below 0 before the first (trySpread then acts as before). */
 	protected static float appetite = -1f;
@@ -122,6 +124,7 @@ public class ThreatPosture {
 	/** Called on load: nothing of the session left behind carries into the loaded game. */
 	public static void forget() {
 		COLONY.clear();
+		CALLS.clear();
 		INDEFENSIBLE.clear();
 		LOSSES_SEEN.clear();
 		lastPoll = Long.MIN_VALUE;
@@ -513,9 +516,11 @@ public class ThreatPosture {
 		boolean triage = ThreatIncConfig.postureTriage();
 		boolean forgesHome = ThreatIncConfig.posturePressedForgesHome();
 		Map<String, Float> sieges = ThreatIncConfig.postureNeedAtAttack() ? siegesOver() : null;
-		List<Call> calls = ThreatIncConfig.postureRecallLY() > 0f ? new ArrayList<Call>() : null;
+		boolean mass = ThreatIncConfig.postureMass();
+		List<Call> calls = mass || ThreatIncConfig.postureRecallLY() > 0f ? new ArrayList<Call>() : null;
 
 		COLONY.clear();
+		CALLS.clear();
 		sumHeld = sumWant = sumSurplus = 0f;
 		nQuiet = nPressed = 0;
 		float appetiteWant = 0f, appetiteSurplus = 0f;
@@ -604,8 +609,9 @@ public class ThreatPosture {
 			else if (ratio >= WATCHFUL_ENTER || (was >= WATCHFUL && ratio >= WATCHFUL_LEAVE)) mode = WATCHFUL;
 			else mode = QUIET;
 			boolean attacked = r.attacks > 0f || r.hostiles > 0f || lostLately(systemId, day);
-			// under attack and short of its need: the strikes that are convenient come home (recallStrikes)
-			if (calls != null && attacked && need > held) {
+			// under attack and short of its need: the strikes that are convenient come home
+			// (recallStrikes); massing, a world short of its own need calls too (massWithin)
+			if (calls != null && attacked && (mass ? need > 0f : need > held)) {
 				Call call = new Call();
 				call.system = system;
 				call.need = need;
@@ -616,7 +622,11 @@ public class ThreatPosture {
 					call.shortBy.put(c, needs[i] - helds[i]);
 					call.swarm = Math.min(call.swarm, rowsFP(c, 0, 1));
 				}
-				if (!call.shortBy.isEmpty() && call.shortFP > call.swarm) calls.add(call);
+				boolean worldShort = false;
+				if (mass) {
+					for (Float gap : call.shortBy.values()) worldShort |= gap > call.swarm;
+				}
+				if (!call.shortBy.isEmpty() && (call.shortFP > call.swarm || worldShort)) calls.add(call);
 			}
 
 			float surplus = 0f;
@@ -687,7 +697,164 @@ public class ThreatPosture {
 		// where the surplus goes (PRESS, EXPAND, CONSOLIDATE)
 		ThreatStance.evaluate(pass, day, sumHeld);
 		recycleSurplus(systemIds, day);
-		if (calls != null) recallStrikes(calls);
+		if (calls != null) {
+			// the system's own spare first, then the strikes that can turn, then its neighbours' spare
+			if (mass) {
+				for (Call call : calls) massWithin(call);
+			}
+			if (ThreatIncConfig.postureRecallLY() > 0f) recallStrikes(calls);
+			if (mass) massFromNeighbours(calls, systemIds);
+			CALLS.addAll(calls);
+		}
+	}
+
+	/**
+	 * Massing the defence, a system under attack sends the spare swarms of its
+	 * own colonies (ThreatColonyManager.spareFleets, what a launch would
+	 * muster) to its worlds short of their need by more than a swarm. The
+	 * shortest world first, each taking the lightest fleet that covers its
+	 * gap, else the heaviest. The call then stands at what its worlds still
+	 * lack: a reserve on a sibling world is not over the world attacked.
+	 * (2026-10-04, the user: "If you recommend that then do it". hw8 massed by
+	 * launching a strike and recalling it days later, its fuel spent.)
+	 * Knob: postureMass.
+	 */
+	protected static void massWithin(Call call) {
+		Map<CampaignFleetAPI, MarketAPI> pool = new java.util.LinkedHashMap<CampaignFleetAPI, MarketAPI>();
+		for (MarketAPI c : call.shortBy.keySet()) {
+			for (CampaignFleetAPI f : ThreatColonyManager.spareFleets(c)) pool.put(f, c);
+		}
+		while (!pool.isEmpty()) {
+			MarketAPI to = shortest(call);
+			if (to == null || call.shortBy.get(to) <= call.swarm) break;
+			float gap = call.shortBy.get(to);
+			CampaignFleetAPI pick = pickFor(pool.keySet(), gap);
+			MarketAPI donor = pool.remove(pick);
+			float fp = pick.getFleetPoints();
+			if (donor == to || !ThreatColonyManager.sendReinforcement(donor, to, pick)) continue;
+			noteTransfer(to, pick);
+			noteSent(fp);
+			call.shortBy.put(to, gap - fp);
+			call.shortBy.put(donor, call.shortBy.get(donor) + fp);
+			ThreatIncConfig.log("Posture: " + donor.getName() + " massed " + (int) fp + " FP at " + to.getName()
+					+ " (" + (int) gap + " FP short of " + (int) needFP(to) + ")");
+		}
+		float left = 0f;
+		for (Float gap : call.shortBy.values()) left += Math.max(0f, gap);
+		call.shortFP = left;
+	}
+
+	/**
+	 * A system still short once its own spare is massed and the strikes in
+	 * reach have turned (massWithin, recallStrikes) draws the spare swarms of
+	 * the hive systems within postureRecallLY that are not calling themselves,
+	 * the nearest first, each paying its passage (sendReinforcement) - the
+	 * swarms hw8's recall took from the neighbours' strikes.
+	 */
+	protected static void massFromNeighbours(List<Call> calls, List<String> systemIds) {
+		final float range = ThreatIncConfig.postureRecallLY();
+		if (range <= 0f) return;
+		Set<StarSystemAPI> calling = new HashSet<StarSystemAPI>();
+		for (Call call : calls) calling.add(call.system);
+		for (final Call call : calls) {
+			if (call.shortFP <= call.swarm) continue;
+			List<StarSystemAPI> near = new ArrayList<StarSystemAPI>();
+			for (String id : systemIds) {
+				StarSystemAPI s = Global.getSector().getStarSystem(id);
+				if (s == null || calling.contains(s)) continue;
+				if (Misc.getDistanceLY(s.getLocation(), call.system.getLocation()) <= range) near.add(s);
+			}
+			java.util.Collections.sort(near, new java.util.Comparator<StarSystemAPI>() {
+				public int compare(StarSystemAPI a, StarSystemAPI b) {
+					return Float.compare(Misc.getDistanceLY(a.getLocation(), call.system.getLocation()),
+							Misc.getDistanceLY(b.getLocation(), call.system.getLocation()));
+				}
+			});
+			for (StarSystemAPI s : near) {
+				if (call.shortFP <= call.swarm) break;
+				Map<CampaignFleetAPI, MarketAPI> pool = new java.util.LinkedHashMap<CampaignFleetAPI, MarketAPI>();
+				for (MarketAPI c : ThreatIncData.getLiveColonyMarkets(s.getId())) {
+					if (c.getPrimaryEntity() == null) continue;
+					for (CampaignFleetAPI f : ThreatColonyManager.spareFleets(c)) pool.put(f, c);
+				}
+				float ly = Misc.getDistanceLY(s.getLocation(), call.system.getLocation());
+				while (!pool.isEmpty() && call.shortFP > call.swarm) {
+					MarketAPI to = shortest(call);
+					if (to == null || call.shortBy.get(to) <= 0f) break;
+					float gap = call.shortBy.get(to);
+					CampaignFleetAPI pick = pickFor(pool.keySet(), gap);
+					MarketAPI donor = pool.remove(pick);
+					float fp = pick.getFleetPoints();
+					if (!ThreatColonyManager.canReinforce(donor, to)) continue;
+					if (!ThreatColonyManager.sendReinforcement(donor, to, pick)) continue;
+					noteTransfer(to, pick);
+					noteSent(fp);
+					ThreatReach.note("send", ly);
+					call.shortBy.put(to, gap - fp);
+					call.shortFP -= fp;
+					ThreatIncConfig.log("Posture: " + donor.getName() + " massed " + (int) fp + " FP at "
+							+ to.getName() + ", " + String.format("%.1f", ly) + " ly (" + (int) gap + " FP short of "
+							+ (int) needFP(to) + ")");
+				}
+			}
+		}
+	}
+
+	/** The call's world shortest of its need; null with none on the map. */
+	protected static MarketAPI shortest(Call call) {
+		MarketAPI to = null;
+		float most = -Float.MAX_VALUE;
+		for (Map.Entry<MarketAPI, Float> e : call.shortBy.entrySet()) {
+			if (e.getKey().getPrimaryEntity() == null || e.getValue() <= most) continue;
+			most = e.getValue();
+			to = e.getKey();
+		}
+		return to;
+	}
+
+	/** The lightest fleet that covers the gap, else the heaviest. */
+	protected static CampaignFleetAPI pickFor(java.util.Collection<CampaignFleetAPI> fleets, float gap) {
+		CampaignFleetAPI covers = null, heaviest = null;
+		for (CampaignFleetAPI f : fleets) {
+			if (heaviest == null || f.getFleetPoints() > heaviest.getFleetPoints()) heaviest = f;
+			if (f.getFleetPoints() >= gap && (covers == null || f.getFleetPoints() < covers.getFleetPoints())) covers = f;
+		}
+		return covers != null ? covers : heaviest;
+	}
+
+	/**
+	 * Fleet points a strike staged in this system may muster while the defence
+	 * is massed (postureMass): a strike the next pass would call home does not
+	 * sail. Nothing while its own system, or one in recall range nearer than
+	 * the target, was still short at the last pass (massWithin); from its own
+	 * system, attacked, only what it holds above its need. Float.MAX_VALUE
+	 * with neither. hw8: every strike launched after contact came home 0-5
+	 * days later, its fuel spent.
+	 *
+	 * @param why takes the reason in [0] when the figure is not Float.MAX_VALUE; may be null
+	 */
+	public static float strikeCapFP(StarSystemAPI source, MarketAPI target, String[] why) {
+		if (!enabled() || source == null || !ThreatIncConfig.postureMass()) return Float.MAX_VALUE;
+		float range = ThreatIncConfig.postureRecallLY();
+		float on = target != null ? Misc.getDistanceLY(source.getLocation(), target.getLocationInHyperspace())
+				: Float.MAX_VALUE;
+		for (Call call : CALLS) {
+			if (call.system == null || call.shortFP <= call.swarm) continue;
+			if (call.system != source) {
+				float ly = Misc.getDistanceLY(source.getLocation(), call.system.getLocation());
+				if (ly > range || on <= ly) continue;
+			}
+			if (why != null) why[0] = call.system.getName() + " is " + (int) call.shortFP + " FP short of " + (int) call.need;
+			return 0f;
+		}
+		float[] s = state().get(source.getId());
+		if (s == null || s.length < S_LEN || s[S_ATTACKED] <= 0f || s[S_NEED] <= 0f) return Float.MAX_VALUE;
+		float held = 0f;
+		for (MarketAPI c : ThreatIncData.getLiveColonyMarkets(source.getId())) {
+			held += ThreatColonyManager.ownedFleetFP(c, ThreatIncData.garrisonsFor(c.getId()));
+		}
+		if (why != null) why[0] = source.getName() + " holds " + (int) held + " FP against a need of " + (int) s[S_NEED];
+		return Math.max(0f, held - s[S_NEED]);
 	}
 
 	/**
