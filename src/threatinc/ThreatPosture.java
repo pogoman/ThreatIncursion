@@ -1050,9 +1050,9 @@ public class ThreatPosture {
 		if (ThreatIncConfig.postureNeedAtAttack()) lastPoll = Long.MIN_VALUE;
 	}
 
-	/** A siege first seen bound for a hive system (ThreatSwarmIntel.note): the next pass reads the hive at once, so a strike it calls home turns that day. */
+	/** A siege first seen bound for a hive system (ThreatSwarmIntel.note): the next pass reads the hive at once, so the swarms it masses and a strike it calls home turn that day. */
 	public static void sighted() {
-		if (ThreatIncConfig.postureRecallLY() > 0f) lastPoll = Long.MIN_VALUE;
+		if (ThreatIncConfig.postureMass() || ThreatIncConfig.postureRecallLY() > 0f) lastPoll = Long.MIN_VALUE;
 	}
 
 	/** A world is singled out only by a force of at least this share of its system's pressure: a scout passing moves nothing. */
