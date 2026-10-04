@@ -1,11 +1,11 @@
 # War council: invasions without restraints (built 2026-10-04)
 
 The user's rule (2026-10-04): the humans play to win; a rule that stops a faction with the means
-from attacking is a fault to remove. `game-runs.md` 2 lists the nine links that held the council's
+from attacking is a fault to remove. `game-runs-humans.md` 2 lists the nine links that held the council's
 factions back and what each assumed. The user approved four changes the same day ("Ok proceed with
 recommended"). This is what was built. It supersedes `war-council.md` sections 3 (Hold: "no
 invasions"), 4.1 (the muster ahead of the strike), 4.3 (the saturation expedition) and 16 ("Major
-plays scale with means"). Game runs: `game-runs.md` 3.
+plays scale with means"). Game runs: `game-runs-humans.md` 3.
 
 ## 1. The four changes
 
