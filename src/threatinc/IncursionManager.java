@@ -2447,7 +2447,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 		float threshold = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.DISRUPTION_THRESHOLD;
 		float raid = def * threshold / Math.max(0.01f, 1f - threshold) * SIEGE_RAID_HEADROOM;
-		return Math.max(raid, beachheadNeeded(def));
+		// the marines are cargo: the hulls the orbit costs take theirs down with them (hw4s, Epsilon Laphirial II:
+		// 1150 -> 498 FP over 87 days, 758 drawn, 329 landed against 780), so carry for the losses on the way in
+		return Math.max(raid, beachheadNeeded(def)) * Math.max(1f, ThreatIncConfig.siegeMarineHeadroom());
 	}
 
 	/** A hive's defender strength once its Swarm Nexus stands (SwarmNexus: the size anchor over the strata left, times the Nexus bonus and a standing Swarm Bastion's or Command's), batteries aside. */

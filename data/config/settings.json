@@ -1132,6 +1132,12 @@
 	# counter-attack: this much over the 2:1 odds that overrun a fresh landing
 	# (0 sizes the landing for the raids alone)
 	"threatinc_siegeBeachheadMargin": 1.25,
+	# ...times this, for the marines that go down with the hulls the orbit
+	# costs (a 60-90 day siege loses 25-35% of its ships, cargo with them)
+	"threatinc_siegeMarineHeadroom": 2.0,
+	# an NPC first landing that would not outlast the first counter-attack is
+	# not made, even once orbit has done all it can: the marines sail home
+	"threatinc_siegeNoDoomedLanding": true,
 	# an NPC siege short of marines (or armaments) at its base draws the rest
 	# from its faction's other markets in reach - colonies as well as bases,
 	# each above its floor - nearest the base first (2026-09-26: sibling bases'
