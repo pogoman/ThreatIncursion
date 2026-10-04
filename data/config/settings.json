@@ -96,10 +96,10 @@
 	"threatinc_stanceEnabled": true,
 	"threatinc_stancePressRatio": 1.5,
 	"threatinc_stanceWeakOdds": 0.5,
-	# ...counted over at least stanceMinSystems systems (0 = off): one besieged
-	# system of two is not half the hive pressed.
 	"threatinc_stanceConsolidateShare": 0.5,
-	"threatinc_stanceMinSystems": 0,
+	# ...and at least stanceConsolidateMinPressed of them, or every one (0 =
+	# the share alone): one besieged system of two is not half the hive.
+	"threatinc_stanceConsolidateMinPressed": 2,
 	"threatinc_stanceDwellDays": 30,
 	"threatinc_stanceSecondaryShare": 0.5,
 	# A garrison slot is a promise of a certain weight of defense. A swarm shot

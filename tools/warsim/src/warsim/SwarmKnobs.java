@@ -7,7 +7,7 @@ final class SwarmKnobs {
 			orbitMargin, breakOff, fuelPerPointLY, upkeepAt3, upkeepRatio, breakEven, starveDays, feedExpand,
 			feedPress, feedConsolidate, radarLY, scoutFP, outpostSupplies, outpostFuel, hullShare,
 			foundingFPPerStructure, frontlineStrikeWeight;
-	final int spreadMinSize, strikeMinSize, maxSize, conquestSize;
+	final int spreadMinSize, strikeMinSize, maxSize, conquestSize, consolidateMinPressed;
 	final boolean conquestConverts, scouting, fog, militaryTier, startAtGameStart, stanceEnabled;
 	/** ThreatAlarm's grudge, the relief strike and the retaliation (IncursionManager.pickStrikeTarget, retaliate). */
 	final float alarmPerStratum, alarmPerEradication, alarmDecayPer30, alarmTargetMult, reinforceWeight;
@@ -25,6 +25,7 @@ final class SwarmKnobs {
 		pressRatio = k.f("threatinc_stancePressRatio");
 		weakOdds = k.f("threatinc_stanceWeakOdds");
 		consolidateShare = k.f("threatinc_stanceConsolidateShare");
+		consolidateMinPressed = k.i("threatinc_stanceConsolidateMinPressed");
 		dwellDays = k.f("threatinc_stanceDwellDays");
 		secondaryShare = k.f("threatinc_stanceSecondaryShare");
 		nanoChance = k.f("threatinc_forgeNanoforgeChance");

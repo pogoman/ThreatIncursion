@@ -595,7 +595,15 @@ final class HumanCouncil {
 		return null;
 	}
 
+	/**
+	 * warsim_humansStarveOnly (round 30, a test double): the councils starve - squadrons and saturations - but no hammer,
+	 * invasion, feint or hunt sails. The game's humans of hw4s from month 66: Epsilon's organs held down for 65 months, its
+	 * invasions overrun, no hive killed - the wound that holds a two-system swarm in CONSOLIDATE.
+	 */
+	static boolean starveOnly(State s) { return s.knobs.b("warsim_humansStarveOnly", false); }
+
 	static Play startHammer(State s, Faction f, Council c, Cluster k, String why, Play from) {
+		if (starveOnly(s)) return null;
 		World base = baseOf(k, f);
 		if (base == null) return null;
 		Play pl = newPlay(s, f, c, HAMMER, k);
@@ -762,6 +770,7 @@ final class HumanCouncil {
 	}
 
 	static Play startFeint(State s, Faction f, Council c, Cluster b, Cluster a, World base, String why) {
+		if (starveOnly(s)) return null;
 		Hive aim = null;
 		for (Hive h : liveTargets(s, f, a.hives, null)) if (aim == null || h.size < aim.size) aim = h;
 		if (aim == null) return null;

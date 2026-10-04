@@ -370,7 +370,8 @@ public class ThreatStance {
 		float consolidateEnter = Math.max(0f, ThreatIncConfig.stanceConsolidateShare());
 		float consolidateNeed = was == CONSOLIDATE ? consolidateEnter * LEAVE : consolidateEnter;
 		boolean wantConsolidate = !breathing
-				&& (pressedShare >= consolidateNeed || (hiveDelta < 0 && attacked > 0));
+				&& (threatinc.rules.StanceRules.pressedEnough(pressed, n, consolidateNeed,
+						ThreatIncConfig.stanceConsolidateMinPressed()) || (hiveDelta < 0 && attacked > 0));
 		boolean wantPress = !losing && best != null && pressedShare < consolidateEnter / 2f;
 		int next = wantConsolidate ? CONSOLIDATE : wantPress ? PRESS : EXPAND;
 		// a stance holds its dwell, but defence never waits

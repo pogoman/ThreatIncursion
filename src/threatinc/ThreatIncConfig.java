@@ -129,6 +129,8 @@ public class ThreatIncConfig {
 	public static float stanceWeakOdds()      { return f("threatinc_stanceWeakOdds"); }
 	/** The hive consolidates when this share of its systems is THREATENED or BESIEGED. */
 	public static float stanceConsolidateShare() { return f("threatinc_stanceConsolidateShare"); }
+	/** ...and at least this many systems are, or every one (0 = the share alone). */
+	public static int stanceConsolidateMinPressed() { return i("threatinc_stanceConsolidateMinPressed"); }
 	/** Days a stance holds before it may change (consolidating never waits). */
 	public static float stanceDwellDays()     { return f("threatinc_stanceDwellDays"); }
 	/** Pressing, the share of the posture's appetite expansion still gets. */

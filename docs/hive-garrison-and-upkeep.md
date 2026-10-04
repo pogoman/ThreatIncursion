@@ -164,9 +164,10 @@ the whole sector, evaluated at the end of every posture pass (`ThreatPosture.pol
 - **Breathing room:** no system under attack and sector pressure no higher than at the last pass (true
   on the first pass). It blocks CONSOLIDATE.
 - **Enter and hold:**
-  - CONSOLIDATE: no breathing room and (pressed share >= `stanceConsolidateShare`, or hive count down
-    over the window while a system is under attack). Held until the pressed share falls below 0.8 x
-    `stanceConsolidateShare`. Checked first.
+  - CONSOLIDATE: no breathing room and (pressed share >= `stanceConsolidateShare` with at least
+    `stanceConsolidateMinPressed` systems pressed, or all of them - `StanceRules.pressedEnough` - or hive
+    count down over the window while a system is under attack). Held until the pressed share falls below
+    0.8 x `stanceConsolidateShare` (the floor still applies). Checked first.
   - PRESS: not losing, pressed share < half of `stanceConsolidateShare`, and a weak target of a rival
     outweighed >= `stancePressRatio` exists. Held while that ratio stays >= 0.8 x `stancePressRatio`.
   - Else EXPAND.
@@ -198,7 +199,7 @@ the whole sector, evaluated at the end of every posture pass (`ThreatPosture.pol
   - CONSOLIDATE: `claimCap` 0; `redistributeByPressure` treats a THREATENED receiver as under attack
     (`feedsPressed`), so quiet colonies may feed it.
 - **Settings:** `stanceEnabled` (true), `stancePressRatio` (1.5), `stanceWeakOdds` (0.5),
-  `stanceConsolidateShare` (0.5), `stanceDwellDays` (30), `stanceSecondaryShare` (0.5), in `settings.json`
+  `stanceConsolidateShare` (0.5), `stanceConsolidateMinPressed` (2), `stanceDwellDays` (30), `stanceSecondaryShare` (0.5), in `settings.json`
   and LunaLib. Persistent state, primitives: `threatinc_stance` {stance, day entered, sector pressure},
   `threatinc_stanceTrend` {lost, killed, day}, `threatinc_stanceHives` {day, live colonies, ...}. The
   targets and extra wants are rebuilt each pass and forgotten on load (`ThreatStance.forget`).
