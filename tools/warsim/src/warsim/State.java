@@ -39,6 +39,8 @@ public final class State {
 	// human side
 	/** Hive systems the sector has found (ThreatHiveIntel.sectorKnows): nothing is planned against the rest. */
 	public final java.util.Set<StarSys> foundHiveSystems = new java.util.LinkedHashSet<StarSys>();
+	/** Round 33: ThreatScouts.swept - the day a sector party last swept each system (warsim_scoutRoutes). */
+	public final Map<StarSys, Integer> swept = new java.util.HashMap<StarSys, Integer>();
 	/** HumanStance.faced for the day: the faction each hive system would strike first, cached by facedDay. */
 	public final Map<StarSys, String> faced = new java.util.HashMap<StarSys, String>();
 	public int facedDay = Integer.MIN_VALUE;

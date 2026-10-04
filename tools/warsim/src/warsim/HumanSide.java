@@ -423,6 +423,10 @@ public final class HumanSide implements Side {
 			if (p.kind == Parcel.Kind.SQUADRON) s.count("squadronsArrived", 1);
 			return;
 		case SCOUT:
+			if (o.route != null) {
+				if (HumanIntel.routeStop(s, p, o)) settle(s, p, o);
+				return;
+			}
 			HumanIntel.scoutArrived(s, p);
 			settle(s, p, o);
 			return;

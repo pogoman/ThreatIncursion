@@ -311,9 +311,11 @@ final class SwarmOps {
 			if (noSupplies) SwarmEconomy.noteDemand(s, Swarm.SUPPLIES, supplies);
 			if (noFuel) SwarmEconomy.noteDemand(s, Swarm.FUEL, fuel);
 		}
-		if (ok && !SwarmEconomy.canSustain(s, k, SwarmFit.WAVE_FP, k.days(ly))) ok = false;
+		boolean noSustain = ok && !SwarmEconomy.canSustain(s, k, SwarmFit.WAVE_FP, k.days(ly));
+		if (noSustain) ok = false;
 		if (!ok) {
 			s.count("wavesHeld", 1);
+			s.count(noSupplies ? "wavesHeld.supplies" : noFuel ? "wavesHeld.fuel" : "wavesHeld.sustain", 1);
 			s.log("Wave held: " + target);
 			return false;
 		}
@@ -326,6 +328,7 @@ final class SwarmOps {
 			source.swarms.add(fp);
 			source.book();
 			s.count("wavesHeld", 1);
+			s.count("wavesHeld.bill", 1);
 			return false;
 		}
 		SwarmEconomy.pay(s, Swarm.SUPPLIES, supplies);

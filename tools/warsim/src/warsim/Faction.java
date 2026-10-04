@@ -23,6 +23,8 @@ public final class Faction {
 	public StarSys lastStrikeFrom;
 	/** Strikes already answered (mobilisation, a scouting lead). */
 	public int strikesSeen;
+	/** Round 33 (warsim_scoutRoutes): ThreatScouts.addLead - each strike origin not yet found, by the day its lead began. */
+	public final Map<StarSys, Integer> leads = new LinkedHashMap<StarSys, Integer>();
 	/** ThreatIntel's reports, one per hive system this faction (or a partner) has seen. */
 	public final Map<StarSys, HumanIntel.Report> reports = new LinkedHashMap<StarSys, HumanIntel.Report>();
 	/** Clocks: the planner's last pass, the frontline's, the hunts', the scouts', the raids'. */

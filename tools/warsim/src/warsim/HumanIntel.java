@@ -1,6 +1,8 @@
 package warsim;
 
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 
 import threatinc.rules.PlannerRules;
@@ -159,8 +161,149 @@ final class HumanIntel {
 		return true;
 	}
 
+	// ---- round 33 (warsim_scoutRoutes): the sector's parties walk routes (ThreatScouts.launchSorties) ----
+
+	static boolean routes(State s) { return s.knobs.b("warsim_scoutRoutes", true); }
+
+	/**
+	 * ThreatScouts.launchSorties: a faction with leads sends a party a route over each lead's area until nothing is
+	 * left to sweep (a lead with nothing left and no party out is spent); one with none sweeps around every military
+	 * world each scoutIntervalDays. Before round 33 a lead's scout sailed straight to the strike's origin and filed
+	 * every hive system within scoutLeadRadiusLY at once (hw4z seed 3: five systems on day 1199; the game found them
+	 * one at a time over days 1283-1528), and the routine sweep sailed only to systems with a hive.
+	 */
+	static void sorties(State s, Faction f) {
+		if (!f.leads.isEmpty()) {
+			for (java.util.Iterator<Map.Entry<StarSys, Integer>> it = f.leads.entrySet().iterator(); it.hasNext();) {
+				Map.Entry<StarSys, Integer> e = it.next();
+				StarSys origin = e.getKey();
+				if (s.foundHiveSystems.contains(origin) || !s.hasHive(origin)) { it.remove(); continue; }
+				World home = HumanPools.nearestBase(s, f.id, origin, false);
+				boolean launched = false, unpaid = false;
+				while (home != null) {
+					List<StarSys> route = planRoute(s, home.sys, origin, s.knobs.f("threatinc_scoutLeadRadiusLY"), e.getValue());
+					if (route.isEmpty()) break;
+					if (!sendRoute(s, f, home, route, origin)) { unpaid = true; break; }
+					launched = true;
+				}
+				if (!launched && !unpaid && !leadInFlight(s, f, origin)) it.remove();
+			}
+			return;
+		}
+		if (s.day - f.lastScoutDay < s.knobs.i("threatinc_scoutIntervalDays")) return;
+		f.lastScoutDay = s.day;
+		List<World> bases = new ArrayList<World>();
+		for (World w : s.worldsOf(f.id)) if (HumanPools.military(w)) bases.add(w);
+		java.util.Collections.shuffle(bases, s.rng);
+		for (World home : bases) {
+			while (true) {
+				List<StarSys> route = planRoute(s, home.sys, home.sys, s.knobs.f("threatinc_scoutRangeLY"), Integer.MIN_VALUE);
+				if (route.isEmpty() || !sendRoute(s, f, home, route, null)) break;
+			}
+		}
+	}
+
+	static boolean leadInFlight(State s, Faction f, StarSys origin) {
+		for (Parcel p : s.parcels) {
+			if (p.done || p.kind != Parcel.Kind.SCOUT || !f.id.equals(p.owner)) continue;
+			if (p.order instanceof HumanOrder && ((HumanOrder) p.order).lead == origin) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * ThreatScouts.planRoute: the systems within radius of the centre - not found, uninhabited, with a planet, on no
+	 * other party's route, not swept since the lead began (leadSince) or within scoutMemoryDays - nearest first from
+	 * home, each next stop nearer the last than home is (ThreatScoutRoute.nearestFirst; the rest is another party's).
+	 */
+	static List<StarSys> planRoute(State s, StarSys home, StarSys centre, float radius, int leadSince) {
+		java.util.Set<StarSys> taken = new java.util.HashSet<StarSys>();
+		for (Parcel p : s.parcels) {
+			if (p.done || p.kind != Parcel.Kind.SCOUT || !(p.order instanceof HumanOrder)) continue;
+			HumanOrder o = (HumanOrder) p.order;
+			if (o.route != null) taken.addAll(o.route.subList(o.stop, o.route.size()));
+		}
+		java.util.Set<StarSys> inhabited = new java.util.HashSet<StarSys>();
+		for (World w : s.worlds) if (!w.lost) inhabited.add(w.sys);
+		int memory = s.knobs.i("threatinc_scoutMemoryDays");
+		List<StarSys> candidates = new ArrayList<StarSys>();
+		for (StarSys sys : s.systems.values()) {
+			if (sys.planets <= 0 || sys.ly(centre) > radius) continue;
+			if (s.foundHiveSystems.contains(sys) || taken.contains(sys) || inhabited.contains(sys)) continue;
+			Integer when = s.swept.get(sys);
+			if (when != null && (leadSince != Integer.MIN_VALUE ? when >= leadSince : s.day - when < memory)) continue;
+			candidates.add(sys);
+		}
+		List<StarSys> route = new ArrayList<StarSys>();
+		StarSys at = home;
+		while (!candidates.isEmpty()) {
+			StarSys next = null;
+			float best = Float.MAX_VALUE;
+			for (StarSys c : candidates) {
+				float d = c.ly(at);
+				if (!route.isEmpty() && d >= c.ly(home)) continue;
+				if (d < best) { best = d; next = c; }
+			}
+			if (next == null) break;
+			candidates.remove(next);
+			route.add(next);
+			at = next;
+		}
+		return route;
+	}
+
+	/** Pays a party for the route there and home (scoutFleetPoints) and sends it to the first stop; false if unpaid. */
+	static boolean sendRoute(State s, Faction f, World home, List<StarSys> route, StarSys lead) {
+		float ly = 0f;
+		StarSys at = home.sys;
+		for (StarSys sys : route) { ly += at.ly(sys); at = sys; }
+		ly += at.ly(home.sys);
+		float fp = s.knobs.f("threatinc_scoutFleetPoints");
+		float[] cost = ReachRules.voyageCost(fp, ly, s.knobs.f("threatinc_expeditionFuelPerPointLY"),
+				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
+		float[] wants = { 0f, 0f, cost[0], cost[1] };
+		if (!HumanPools.pay(s, home, wants, false, "scout")) return false;
+		Parcel p = s.send(f.id, Parcel.Kind.SCOUT, home.sys, route.get(0), fp, 0);
+		HumanOrder o = new HumanOrder();
+		o.home = home;
+		o.deposit = cost[1];
+		o.route = route;
+		o.lead = lead;
+		p.order = o;
+		s.count("scoutsSailed", 1);
+		return true;
+	}
+
+	/**
+	 * A routed party at a stop (ThreatScoutRoute's walker, ThreatScouts.onEnter / onStay): a stop someone found meanwhile
+	 * is passed over; a live hive is revealed and the party's work is done; else it sweeps scoutStayDays and flies on.
+	 * True when the party is done (the caller settles it).
+	 */
+	static boolean routeStop(State s, Parcel p, HumanOrder o) {
+		StarSys sys = p.to;
+		if (!s.foundHiveSystems.contains(sys)) {
+			s.swept.put(sys, s.day);
+			if (s.hasHive(sys)) {
+				file(s, sys, see(s, sys, false), p.owner);
+				s.count("hiveSystemsFound", 1);
+				s.log("Scout of " + p.owner + " found the hives of " + sys + " (stop " + (o.stop + 1) + " of " + o.route.size() + ")");
+				return true;
+			}
+		}
+		o.stop++;
+		while (o.stop < o.route.size() && s.foundHiveSystems.contains(o.route.get(o.stop))) o.stop++;
+		if (o.stop >= o.route.size()) return true;
+		StarSys next = o.route.get(o.stop);
+		p.from = sys;
+		p.to = next;
+		p.arrived = false;
+		p.arriveDay = s.day + s.knobs.i("threatinc_scoutStayDays") + State.travelDays(sys.ly(next));
+		return false;
+	}
+
 	/** A scout on the spot: the hives of that system and of those within scoutLeadRadiusLY are found. */
 	static void scoutArrived(State s, Parcel p) {
+		if (p.order instanceof HumanOrder && ((HumanOrder) p.order).route != null) return;
 		float lead = s.knobs.f("threatinc_scoutLeadRadiusLY");
 		// warsim_reconOneStop (2026-10-03): the game's recon scout has one stop and reports the system it enters
 		// (ThreatScouts.onEnter); filing every hive system within the lead radius at once ended other RECON plays early
@@ -187,8 +330,11 @@ final class HumanIntel {
 			f.strikesSeen = f.strikesSuffered;
 			StarSys lead = f.lastStrikeFrom;
 			if (lead == null || !s.hasHive(lead)) lead = nearestUnfound(s, f);
-			if (lead != null) scout(s, f, lead);
+			if (routes(s)) { if (lead != null && !f.leads.containsKey(lead)) f.leads.put(lead, s.day); }
+			else if (lead != null) scout(s, f, lead);
 		}
+		// the sector's parties walk routes and stop at the first hive; a found system is looked at again by the council's RECON
+		if (routes(s)) { sorties(s, f); return; }
 		if (s.day - f.lastScoutDay < s.knobs.i("threatinc_scoutIntervalDays")) return;
 		f.lastScoutDay = s.day;
 		float range = s.knobs.f("threatinc_scoutRangeLY");

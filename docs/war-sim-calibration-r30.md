@@ -184,3 +184,44 @@ and hw4p, 30 seeds; scripts in `%TEMP%\threatinc-tests\sim20261004` (`chk3.sh`, 
 5. **Bases held 2-5x the game's** with faced-only on (hw4z 69 against 14): the spared garrison budget founds links.
 6. The humans' 3.5x sieges (section 6) remain.
 
+
+## 8. Round 33 (2026-10-04): the swarm's stall was the humans' early hammers, which were the scouts' oracle
+
+**Diagnosis (hw4z seed 3, per-system posture lines, `warsim_logSeen`-style log added to `SwarmPosture`).** The
+simulated swarm sat in CONSOLIDATE over months 43-90 (game: 52-64) and founded nothing, so it piled supplies. Its
+THREATENED systems read *staged* pressure from human hammer musters: 34,775 FP mustering against Beta Laphirial on
+day 1301. The councils hammered early because they knew the hives early. Two faults:
+
+1. **Scouts were oracles.** A lead's scout sailed straight to the strike's true origin and filed every hive system
+   within `scoutLeadRadiusLY` at once (five Laphirial systems on day 1199), and the routine sweep sailed only to
+   systems with a hive. The game's parties (`ThreatScouts.launchSorties`) walk a route through the unknown,
+   uninhabited planet systems within the radius, nearest first from home, stay `scoutStayDays` a stop, and end at
+   the first live hive: hw4z found its hives one system at a time over days 1283-1528.
+2. **Swarm costs.** `SwarmFit.builtFP` used the mod's fallback table, +40 FP a fabricator. The dumps' `wantFP`
+   (`ThreatPosture.rowsFP` of the learned `swarmCostEstimate`) put a fabricator at about +555: size-5 hives want
+   1,355 in the game against the simulator's 800, and held 2,020 FP against 910 at day 904.
+
+**Built** (both on by default):
+- `warsim_scoutRoutes` (`HumanIntel.sorties`, `planRoute`, `routeStop`; `Faction.leads`, `State.swept`): leads
+  persist until their origin is found, a party per route until nothing is left to sweep, routine sweeps only for a
+  faction with no lead; a found system is looked at again only by the council's RECON.
+- `SwarmFit.FABRICATOR_FP` 555 (`warsim_fabricatorFP`), LOW 67, HIGH 345.
+
+**Results** (30-seed checks, month 120, real | round 32 | round 33):
+
+| run | worlds lost | landings | hives | hives killed | swarm supplies | sieges | months consolidating | human supplies |
+|---|---|---|---|---|---|---|---|---|
+| hw4z | 3 \| 10 \| 14 | 78 \| 65 \| 134 | 131 \| 95 \| 125 | 4 \| 19 \| 9 | 24k \| 545k \| 22k | 15 \| 52.5 \| 24.5 | 7 \| 33 \| 4.8 | 136k \| 1.0M \| 2.0M |
+| hw5b | 2 \| 9 \| 12.5 | 55 \| 81.5 \| 130 | 167 \| 95 \| 126 | 2 \| 23 \| 10 | 168k \| 336k \| 15k | 15 \| 66.5 \| 31 | 0 \| 17 \| 2.4 | 285k \| 0.9M \| 1.8M |
+| hw4p | 24 \| 11.5 \| 14 | 120 \| 95.5 \| 145 | 163 \| 121 \| 128 | 2 \| 12 \| 7.5 | 6k \| 247k \| 14k | 8 \| 38 \| 19 | 1 \| 22.5 \| 4 | 42k \| 0.3M \| 1.05M |
+
+The swarm side now fits: supplies, stance, hives, strikes. The fabricator refit alone moved nothing outside the
+seed noise; the routes did it. What is out is the human side: the humans sail half the sieges they did, their
+supplies pile to 1-2M where the game's run down to 42-285k, and colonies fall (12.5-14 against 2-3 on the
+supplied runs).
+
+**Still out, next:**
+1. The human supplies pile (section 7, cause 4: the game bills relief, convoys and scouts at vanilla maintenance).
+2. Worlds lost on the supplied runs: colonies fall early (first loss day 882-1145 against the game's 1450-2320),
+   and a hive inside a human system is found at once, so the hammers still start early on those seeds.
+3. The first strikes: day 729-1094 with 389-2,962 FP against the game's 976-1190 with 3,000-6,000.
