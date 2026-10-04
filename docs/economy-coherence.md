@@ -81,8 +81,8 @@ on vanilla's shortages before anything else.
    fuel budget is the sector's best single exporter (~11-12 units, 16-18k fuel a month), not
    its own making. The 18-month test banked +17% (Hegemony) and +5% (Persean), and sieges
    drew the same (10 draws, ~171k fuel). The import term is what binds fuel.
-   *Wartime supplies (2026-10-04, `reserveWartimeSupplies`, default on):* supplies bank
-   the same way (`wartimeSupplies`). Under the surplus rule every human faction's supplies
+   *Wartime supplies (2026-10-04, `reserveWartimeSuppliesShare`, default 1):* supplies bank
+   the same way: that share of the peacetime demand on top of the surplus (`wartimeShare`; 0 is the surplus rule). Under the surplus rule every human faction's supplies
    ran dry by months 84-120 in hw4p, hw4q and hw4r while fuel piled up: about 53k a month
    banked against about 40k of fleet upkeep (`ThreatUpkeep`) and about 14k of hunts,
    garrisons and sieges, so relief could not sail (`war-sim-real-runs.md` 21). The same
