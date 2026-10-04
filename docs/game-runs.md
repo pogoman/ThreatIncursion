@@ -356,7 +356,7 @@ swarm kept producing under attack: 74k FP of income after contact against hw6a's
   `threat-fog.md` 4 "The hive picket"), about 5 days before it enters the system. **The recall followed (the
   user: "should be able to deviate those that are convenient"):** a system attacked and short of its need calls
   in the strikes within `postureRecallLY` 10 still preparing or travelling out and nearer it than their target;
-  their fleets join its garrisons (`ThreatPosture.recallStrikes`, `hive-garrison-and-upkeep.md` "Strikes come
+  their fleets join its garrisons (`ThreatPosture.recallStrikes`, `swarm-defence.md` "Strikes come
   home"). Both game-tested in hw8, section 6. `swarm.pl` prints sieges first seen by source and strikes recalled.
 - (c) Its means: what a hive costs on the ground, what the forges make, a defender's edge in orbit. Balance.
 - (d) Leave it: found at m38-44, the swarm is gone by m65-90.
@@ -427,7 +427,8 @@ wanted, 14 not built at all).
 3. A strike comes whole. hw8a sent 5,269 FP to Beta Laphirial for a gap of 1,447, hw8b 5,135 for 606; of the
    130k FP hw8a called home 36k was above the gap it was called for, of hw8b's 28k, 12k.
 
-**Open, the user's call** (nothing built):
+**Open, the user's call** ((a) built the same night on the user's word, "If you recommend that then do it and
+run another test": `swarm-defence.md` "The defence is massed", tested in section 7; the rest not built):
 
 - (a) Make the massing deliberate, recommended. The pass itself sends a system's spare swarms to its worlds that
   are short - option (a) of section 5 - and a launch musters only what the system holds above its need. No fuel

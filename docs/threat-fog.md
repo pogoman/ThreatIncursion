@@ -246,7 +246,7 @@ its contact does not fade. Nothing in flight changes: routes do not meet, blinke
 blinkered. The log's first sighting reads `... by picket`. Game-tested hw8 (`game-runs.md` 6): 60-64% of sieges first seen by it.
 A siege's first sighting, by any sense, makes the posture pass due that day (`ThreatPosture.sighted`,
 while `postureRecallLY` is above 0), so a strike it calls home turns at once
-(`hive-garrison-and-upkeep.md`, "Strikes come home").
+(`swarm-defence.md`, "Strikes come home").
 
 **Knobs and logs** as section 3, plus `Swarm intel: seeded N place(s) in <system>` (old-save
 seeding) and `Swarm intel: scouting off - seeded N place(s) in M system(s)`. The fast-forward
