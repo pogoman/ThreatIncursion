@@ -332,8 +332,11 @@ swarm kept producing under attack: 74k FP of income after contact against hw6a's
    each of five worlds. Transfers arrive a fleet at a time (150-350 FP) and die at the same rate.
 3. **The home system sent half its fleet away a week before the blow.** It held 12.9k FP at m43. The five sieges
    sailed from Cordiance Forward Base on Oct 7; on Dec 3 the system, QUIET with a need of 0, launched 6,938 FP
-   in 20 fleets at Eochu Bres, 134 days away; the sieges arrived Dec 10. The swarm reads a siege once it is in
-   the system, and nothing recalls a strike. That strike landed 3,980 troops and held the orbit with all 20
+   in 20 fleets at Eochu Bres, 134 days away; the sieges arrived Dec 10 and were first seen Dec 9. The swarm
+   sees a siege only where it has eyes that day and nothing in hyperspace: 55-64% of sieges a run were first
+   seen the day they entered the hive system, the rest at dispatch from a base it had eyes on, and such a
+   contact fades after 10 days of a median 30 in flight (`facts.md`, "Does either side see an attack coming").
+   The humans detected all 26 strikes from a world or base, weeks out. Nothing recalls a strike. That strike landed 3,980 troops and held the orbit with all 20
    fleets; Tri-Tachyon's relief was 10,503 FP and the beachhead was overrun in m53.
 4. **Once a landing is down the hive is lost.** Landings are a median 851-1,208 marines; the Fabrication Core
    falls a median 77-91 days later (quickest 30-40; hw6: 86-103, so section 3's "in a month" was its quickest
