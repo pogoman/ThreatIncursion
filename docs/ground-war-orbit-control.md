@@ -190,7 +190,10 @@ their siege on screen or off").** Before, only a spawned strike - one near the p
 fleet on `ThreatSwarmDefend`; an unspawned one went home after the pass (`Strike ledger: ended unspawned`,
 117-174 a run in hw4). Now `ThreatStrikeFGI.stayOnDefend` with no fleet calls `guardUnspawned`: the strike's
 first `params.fleetSizes` entry - the pack `spawnFleets` would build - is built over the world and put on
-Defend, one guard a world a strike. The entry leaves the strike (`fabricatedFP` scaled so `ledgerShare` holds);
+Defend, one guard a world a strike. Since 2026-10-04 (`strikeGuardWhole`, built 68d019a, not game-tested) it
+leaves its share of the fleets, not one: `guardShare` = what it has left over the worlds it may still land on,
+rounded up, and all of them once fewer than `frontMinMarines` troops are aboard; `guardOne` builds each. In
+hw6b a strike of 4,219 FP left 291 FP over Chicomoztoc and took the rest home (`game-runs.md` 4). The entry leaves the strike (`fabricatedFP` scaled so `ledgerShare` holds);
 its share of what the strike held is weighted by `estimateFP` of its pack against all packs (by size points
 until 2026-10-03, which built guards at 1.35x their share in hw4d against 0.96x for a spawn); the bank pays the
 guard beyond that share or takes back what it fell short, as at a

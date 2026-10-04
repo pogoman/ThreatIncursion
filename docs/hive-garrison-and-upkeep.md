@@ -8,8 +8,10 @@ Until now every nexus built past its size table whenever its bank paid, and only
 90-100k FP of mostly idle standing fleets. `ThreatPosture` weighs the war around each hive system and
 holds the garrison that war calls for, no more. `postureEnabled` false gives the old behaviour.
 
-- **Pressure** (per hive system, fleet points, read every `postureDays`): P = max(A, B) + C + D + F.
-  It rises at once and decays over 30 days (`DECAY_DAYS`).
+- **Pressure** (per hive system, fleet points, read every `postureDays`): P = max(A, B x
+  `postureStagedShare`) + C + D + F. It rises at once and decays over 30 days (`DECAY_DAYS`).
+  `postureStagedShare` is 0 since 2026-10-04: B is still read (the log, the stance) but is no pressure -
+  see "The swarm's restraints removed" below.
   - **A - attacks:** the warship points of every live NPC siege booked on the system's worlds, plus
     hunts aimed at it and Support / Defend orders over its worlds (each fleet once), from dispatch
     and at any distance. A siege still off-screen counts its as-sailed flotilla (`abstractNow`,
@@ -33,7 +35,9 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   - **E - wounds** are not pressure: a ground front on a world, a disrupted organ or a recently thinned
     system (`recentlyThinned`) force BESIEGED.
 - **Want** (per colony) = max(base, its share of need). Need = P / `npcSiegeOrbitMargin` x
-  `postureMargin`, split across the system's colonies by their size tables' cost (`floorFP`).
+  `postureMargin`, split across the system's colonies by their size tables' cost (`floorFP`) - until
+  the attack comes down on a world: then it stands at the worlds a force is over or an army is on
+  (`overWorlds`, 2026-10-04, below).
   Base (`baseFP`) = the colony's `garrisonReserve` swarm count costed at the table's cheapest rows
   (`minimumFP`, always at least one swarm) plus, at a forge colony of at least
   min(`spreadMinSize`, `strikeMinSize`), `LAUNCH_STOCK` (2) more rows (`stockFP`) - the substance of
@@ -41,7 +45,7 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   full table cost more than upkeep let the hive hold, so the want never left a surplus).
   While the sector stance is PRESS, a staging colony's want also gains the strike stock its target
   needs (`ThreatStance.extraWantFP`, added in `wantFP`; see "Stance").
-- **Triage** (write-off). A system whose P / `npcSiegeOrbitMargin` exceeds what the hive could
+- **Triage** (write-off; `postureTriage`, off since 2026-10-04). A system whose P / `npcSiegeOrbitMargin` exceeds what the hive could
   gather there - its held + its bank + the sector's held above its bases elsewhere - is written off:
   its need is zeroed, so its want falls back to its base and transfers stop feeding it (a 37k want
   against a 40k-FP hive would have stripped the quiet hives into it, ti-h8d). Read every pass, so it
@@ -136,10 +140,38 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   (`hiveGroundVictory`: grudge +10, then `IncursionManager.retaliate` strikes the winner at once).
   Raids and strata add grudge (0.5 and 2), which reweights strike targets (`alarmTargetMult`);
   `ThreatRaiders.consider` hunts convoys only; ground fronts counter-attack on a timer
-  (`frontCounterAttackDays` 40). Pressed systems' forges send no waves (`pickForgeSource`,
-  `trySpread`), and the CONSOLIDATE stance (half the systems pressed, or the hive count falling
-  while any is attacked; no dwell) leaves strikes to spoiling blows.
-- **Settings:** `postureEnabled` (true), `postureMargin` (1.25), `postureBand` (0.25), `postureDays` (5).
+  (`frontCounterAttackDays` 40). Until 2026-10-04 pressed systems' forges sent no waves
+  (`pickForgeSource`, `trySpread`) and the CONSOLIDATE stance (half the systems pressed, or the hive
+  count falling while any is attacked; no dwell) left strikes to spoiling blows; both rules are now
+  off by default (below).
+- **The swarm's restraints removed (2026-10-04, built 68d019a, not game-tested; the user: "remove
+  artificial constraints on the swarm like we just did for humans"; diagnosis `game-runs.md` 4).** Each
+  rule keeps a knob that puts it back.
+  - `postureStagedShare` 0 (was 1): a depot's capacity is no pressure. `poll` reads max(A, B x share).
+  - `postureTriage` false: no system is written off; its need is never zeroed.
+  - `postureNeedAtAttack` true. (a) `overWorlds`: once a force is over a world - hostile fleets within
+    `ORBIT_HOLD_RANGE` (`ThreatGroundFronts.hostilePointsNear`) plus the unspawned sieges in their payload
+    over it (`siegesOver`, `ThreatPurgeFGI.abstractNow`) - the system's need is split by those points;
+    a world with an army on it and nothing over it weighs as their average; a force under a tenth of
+    the pressure (`OVER_MIN_SHARE`, a scout) singles nothing out, and with no world singled out the
+    tables split it as before. The orbit is contested at the world (`orbitHeld`), so the tables' split
+    left the attacked world its own garrison. (b) `redistributeByPressure`: for a receiver under attack,
+    a donor whose own need is 0 gives down to its reserve (`thinnableFP`), its launch stock included
+    and whether or not it holds its own want - same system first. Before, only a colony of a system not
+    pressed, and only one at its want. (c) `ThreatPosture.alarm` (from `ThreatPurgeFGI.takeDaily`): a
+    siege arriving makes the next pass due at once.
+  - `posturePressedForgesHome` false: a pressed system's forge may send a wave and counts toward a
+    claim; `launchSpareFP` still limits it to what it holds above the need. The appetite's forge
+    count takes every system's forges.
+  - `stanceConsolidateSpreadShare` 1 (was 0) and `stanceConsolidateStrikes` true
+    (`ThreatStance.expansionShare`, `strikeTargetMult`): consolidating, the hive still claims, and
+    strikes any world by its weakness, a base staging against a hive or a forward base weighing
+    x`TARGET_WEIGHT`. `StanceRules.expansionShare` (shared with the frozen simulator) is unchanged;
+    the mod no longer asks it about CONSOLIDATE.
+  - `strikeGuardWhole` true: `ground-war-orbit-control.md`, "The swarm guards its unspawned landings too".
+- **Settings:** `postureEnabled` (true), `postureMargin` (1.25), `postureBand` (0.25), `postureDays` (5),
+  `postureStagedShare` (0), `postureTriage` (false), `postureNeedAtAttack` (true),
+  `posturePressedForgesHome` (false); settings.json only, no LunaLib rows.
   State is primitive maps (`threatinc_posture`, `threatinc_postureLoss`, `threatinc_postureReceived`);
   the per-session wants are forgotten on load. A state of the older six-field layout reads as unread,
   so the first pass after loading an old save starts its pressure afresh, once (the 7-field layout

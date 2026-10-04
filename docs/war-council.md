@@ -336,7 +336,8 @@ answers". **Yes, narrowly. A small feint does nothing.**
   is the colonies that received transfers: they cannot donate for 30 days.
 - **No other answer.** There are no reply swarms. Retaliation comes only after a hive is
   eradicated. Raids and strata add grudge, which reweights the Threat's strike targets. Under many
-  attacks, its stance turns CONSOLIDATE: forges stay home and strikes become spoiling blows.
+  attacks, its stance turns CONSOLIDATE: forges stay home and strikes become spoiling blows (both
+  rules off by default since 2026-10-04, `hive-garrison-and-upkeep.md`).
 
 **What that means for plays, before the Threat's fog:**
 - A feint cannot hide the main blow. The main force is seen the day it sails, and its target is

@@ -38,16 +38,16 @@ system per 30 days, and no global cap ("the bank is the limit").
   world; it sweeps every eligible world in the target system (a relief strike goes to its front only).
 - Stopped by: the hive's fuel stock (the binding limit in h53d: 3-3,000 in stock against 50-77k a
   month spent; up to 31 sends held a month), the supplies spare, a bank that cannot re-embody, a
-  Nexus or forge raid while preparing (`abortStrikesFrom`), CONSOLIDATE (non-spoiling targets weigh
-  0), and the strike gate (104 "passed over" lines on 33 targets, defence a mean 2.4x the strike).
+  Nexus or forge raid while preparing (`abortStrikesFrom`), CONSOLIDATE (non-spoiling targets weighed
+  0 until 2026-10-04, `stanceConsolidateStrikes`), and the strike gate (104 "passed over" lines on 33 targets, defence a mean 2.4x the strike).
 
 **What a strike does** (`ThreatStrikeFGI.AnnihilationAction`): besiege (`siegePass`,
 `ThreatGroundFronts.siegeSlice`), land (`readyToLand`, `beachheadLanding` breaks hulls into troops at
 `fabricateTroopsPerFP` when the share is short), reinforce (`landOrReinforce`; really the next strike,
 since a dry front weighs x4). Troops: `strikeTroopsPerPoint` 20 x difficulty points, per world
 max(300, pool / worlds), called off under `frontMinMarines` 50. The landing fleet stays as a
-`ThreatSwarmDefend` station; an unspawned strike builds its first fleet over the world for it
-(`guardUnspawned`, 2026-10-02, `ground-war-orbit-control.md`). A human colony falls only by `colonyGroundVictory`; with
+`ThreatSwarmDefend` station; an unspawned strike builds its share of its fleets over the world for it
+(`guardUnspawned`, 2026-10-02; one fleet until `strikeGuardWhole`, 2026-10-04, `ground-war-orbit-control.md`). A human colony falls only by `colonyGroundVictory`; with
 `conquestConverts` it becomes a size-2 hive at once (`convertConquered`, paid by `conquestPayer`),
 else it is decivilised and `tryConversions` claims the ruin. Harassment and saturation passes are
 dormant (`strikeSaturationEnabled` false). Most strikes resolve off-screen (15 of 21 in h53d).
