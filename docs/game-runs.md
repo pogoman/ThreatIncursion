@@ -16,6 +16,11 @@ sector, fast-forwarded to war day 3750, about 40 minutes, the user's settings re
 - `mflow.pl <tags>`: marines drawn by sieges, landed, lost in counter-attacks, issued as shortage cover.
 - `mdump.pl <tags>` (from `tools/warsim/validation`): marine income a month from the dumps.
 - `prof2.pl <jstack dumps>`: where the game's main thread is (`facts.md`, "How fast does a long run go").
+- `council.pl <tag>`: what each human council read (band, ratio) and chose, by faction-month.
+- `funnel.pl <tags>`: the human offence from strategy to dead hive: plays started, postponements and their
+  bound, sailings, call-offs, landings.
+- `hammer.pl <tags>`: each invasion play (HAMMER) from start to end: muster, siege paid or not, landings.
+- `supplies.pl <tags>`: where the human factions' supplies and fuel go, against their income.
 
 ## 1. hw5e-hw5g (2026-10-04): the stance floor and the marine headroom
 
@@ -53,3 +58,75 @@ were banking (+3.8k a month against +4.1-7.2k).
 
 **Open, the user's call:** whether this level of Threat pressure is the war wanted. The humans' offence is the
 short side: 8-14 landings on hives in ten years against 60-99 Threat landings.
+
+## 2. What stops the humans attacking (hw5e-hw5g, read 2026-10-04)
+
+The user's question: "what is stopping the humans from attacking more? The humans should play to win just like
+the threat should. There should be no artificial constraints. If there is a shortage that should be identified
+and questioned." Read from the three logs of section 1 and the code, to month 120. Nothing was changed.
+
+**It is not a shortage.** Over the war the council factions earned 6.4-7.5M supplies and 11.9-12.8M fuel and
+held a mean 12-17k marines each. The sieges that land troops, the only thing that kills a hive, drew 17-29k
+supplies (0.2-0.4% of the income) and 61-119k fuel (under 1%), and 12-22 of them sailed in ten years.
+
+| where the means went | hw5e | hw5f | hw5g |
+|---|---|---|---|
+| Supplies income / fuel income | 6.4M / 11.9M | 7.4M / 12.8M | 7.5M / 12.6M |
+| Upkeep of fleets out (hunts, mostly) | 3.4M supplies | 2.7M | 3.1M |
+| Forward base structures | 649k supplies | 814k | 737k |
+| Shortage cover | 512k supplies, 1.6M fuel | 552k, 2.2M | 433k, 1.5M |
+| Guard, support and raid orders | 508k supplies, 3.6M fuel | 442k, 2.7M | 504k, 3.1M |
+| Bombing-only (saturation) expeditions | 67k supplies, 5.1M fuel (64 sailed) | 56k, 3.5M (44) | 62k, 3.7M (59) |
+| Landing sieges | 22k supplies, 100k fuel (18 sailed) | 17k, 61k (12) | 29k, 119k (22) |
+| Hunt orders stood down out of supplies | 416 | 301 | 413 |
+
+(`supplies.pl`. Fuel drawn by an expedition called off comes home; 2.4-4.0M fuel was returned. The tally
+accounts for about 70% of the supplies income; forward-base garrison upkeep is not in it.)
+
+**The chain, each link with its count.** Rules first, in the order a faction meets them:
+
+1. **The band.** `ThreatWarCouncil.assess`: a faction's weight is the sum of its colony sizes (allies at half),
+   the swarm's is the size plus twice the military tier of every hive it knows of. Fleets, marines and stock are
+   not in it. One faction against the whole known swarm reads outmatched in 57-84% of faction-months (median
+   ratio 0.35-0.47). `CouncilRules.scores` then gives an outmatched faction Hold 2.5, Starve 2.5-3.25, Roll back
+   0.3 (0.15 pressed), Decapitate 0: it draws an invasion strategy about 1 time in 20. Shares of faction-months:
+   Hold 40-45%, Starve 42-56%, Roll back plus Decapitate 2-13%. hw5g, the least outmatched run, killed the most.
+2. **Hold attacks nothing.** `ThreatPlays.plan` returns after recon. No play at all ran in 38-58% of
+   faction-months with a hive known; an invasion play ran in 14-33%.
+3. **Starve must bomb before it may invade.** Under Starve the invasion's weight is 0 until every Nexus of the
+   system is down (`plan`: `nexusesDown(focus) ? 2f : 0f`). Bombing cannot kill a hive.
+4. **The bombing expedition is all or nothing.** `ThreatPlays.saturate` sets aside the fuel to bomb every hive
+   in the system to the commander's stop before it sails (`expeditionFuel` sums `razingFuel`): a median
+   312-416k against a 24-29k passage and a faction stock of 215-269k. Postponed 422-888 times a run, "no
+   saturation expedition the pools pay" 158-170 times. The 44-64 that sailed went alone, with no hunts beside
+   them, and 29-37 were called off on arrival (`ThreatPurgeFGI.breaksOffAbstract`: the system's swarms at a
+   median 1.5-1.9x its strength). Landing sieges, which sail with hunts, were called off 0-1 times a run.
+5. **Squadrons need an unguarded Nexus.** `ThreatPlays.bombable`: "every Nexus is reported guarded and no
+   orbit is ours" 50-79 times against 14-26 squadrons sent.
+6. **The invasion pays its escort first and its siege last.** `ThreatPlays.toMuster` sends a hunting force of
+   `councilHammerShare` 0.6 of what the pools pay: a median 5.3-7.5k FP at the muster against a median 344-444 FP
+   reported over the target, 17-30x, and 5-7x the siege (775-950 FP). It is held at the muster for weeks on
+   vanilla maintenance. The siege is launched after, from one base (`baseOf`), at full strength or not at all
+   (`npcSiegeFullStrength`): 3-10 hammers a run struck with "no siege paid", every one short of supplies
+   (6,098 of 7,189; 6,602 of 6,781) while the pool held 150-375k fuel.
+7. **Other sieges lock the system.** 7-12 hammers a run ended "another siege has its worlds"
+   (`ThreatPlays.liveTargets`, `bookedWorlds`): a bombing expedition books every hive of the system.
+8. **One siege, one landing.** The first landing takes every marine aboard (`ThreatPurgeFGI.unloadForLanding`):
+   12-22 landing sieges made 8-14 landings of about 1,000 marines; 73% of hammers landed nothing. 3-16
+   landings were refused as doomed (`siegeNoDoomedLanding`), where the answer to hand was more marines.
+9. **The ceiling.** One major play per `councilMajorPlayFP` 3,000 FP of siege capacity (`majorLimit`), a
+   median 90-100 days each; a strategy is held `councilReviewDays` 90.
+
+Of 29-54 hammers started a run, 12-22 struck with a siege and 8-14 landed.
+
+**The one real shortage is supplies, and it is self-inflicted.** Stock is about a month of income (74-108k a
+faction against 215-269k fuel) because fleet upkeep takes 37-54% of it, and that upkeep is the hunting forces:
+301-416 hunt orders a run stood down unpaid. The hunts are sized to the purse, not the target (link 6). Fuel is
+not short: the largest draw is the bombing expeditions that cannot kill. Marines are not short: 67-125k in
+reserve at the end, 16-25k drawn by sieges in ten years.
+
+**The swarm has none of these links.** A strike lands where the stance and the hive stock allow: no band, no
+bombing first, no escort paid ahead of the landing, no break-off on arrival (`facts.md`, "Does the swarm raze
+human colonies").
+
+**Open, the user's call** (options as put to the user 2026-10-04): what replaces links 1-9.
