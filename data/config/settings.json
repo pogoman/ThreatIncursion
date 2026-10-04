@@ -96,7 +96,10 @@
 	"threatinc_stanceEnabled": true,
 	"threatinc_stancePressRatio": 1.5,
 	"threatinc_stanceWeakOdds": 0.5,
+	# ...counted over at least stanceMinSystems systems (0 = off): one besieged
+	# system of two is not half the hive pressed.
 	"threatinc_stanceConsolidateShare": 0.5,
+	"threatinc_stanceMinSystems": 0,
 	"threatinc_stanceDwellDays": 30,
 	"threatinc_stanceSecondaryShare": 0.5,
 	# A garrison slot is a promise of a certain weight of defense. A swarm shot
@@ -755,6 +758,11 @@
 	# exact remote read.
 	"threatinc_swarmFogOfWar": true,
 	"threatinc_swarmContactDays": 10,
+	# A faction's staged stock read against a hive system halves every
+	# postureStagedHalfLifeDays it sends nothing there (down to
+	# postureStagedFloor); an attack seen bound there makes it whole. 0 = off.
+	"threatinc_postureStagedHalfLifeDays": 0,
+	"threatinc_postureStagedFloor": 0,
 	# the attack planner: each mobilised faction plans its sieges, raids and
 	# recon every planIntervalDays and on news, adding prongs at other worlds
 	# until the chance that one lands reaches planConfidence. false = each

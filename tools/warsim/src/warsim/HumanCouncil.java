@@ -1375,7 +1375,7 @@ final class HumanCouncil {
 		Hive h = targets.get(0);
 		float fp = share(s, pl.f, "threatinc_councilStarveShare") * capacityFP(s, pl.base, pl.sys);
 		fp = (float) Math.floor(fp / ReachRules.FP_PER_POINT) * ReachRules.FP_PER_POINT;
-		if (fp < HumanFit.MIN_SIEGE_FP) return;
+		if (fp < HumanFit.MIN_SIEGE_FP && !s.knobs.b("warsim_saturationGameGate", false)) return;
 		float stay = s.knobs.f("threatinc_siegeOrbitDays");
 		float[] cost = ReachRules.voyageCost(fp, 2f * pl.base.sys.ly(pl.sys), s.knobs.f("threatinc_expeditionFuelPerPointLY"),
 				s.knobs.f("threatinc_expeditionSuppliesPerPoint"));
@@ -1387,7 +1387,31 @@ final class HumanCouncil {
 		// over the first world); warsim_saturateAffordable sails for the worlds the pools pay, first to last, not all or none
 		float size2 = s.knobs.f("warsim_saturationFuelSize2", 3000f);
 		List<Hive> raze = new ArrayList<Hive>();
-		if (size2 > 0f) {
+		float deposit = cost[1];
+		if (s.knobs.b("warsim_saturationGameGate", false) && size2 > 0f) {
+			// round 30 (2026-10-04), the game's gate (ThreatPlays.saturate -> siegeSizesFor with the raze set ->
+			// launchSiegeExpedition): the flotilla is sized on the reported orbit x the margin, not on the pools' share;
+			// it stays over the raze set in turn (siegeStayDays, about warsim_saturationDaysPerWorld a world: hw4s's
+			// "Saturate or siege" lines read 110 d), its supplies billed for that whole trip, and every world's razing fuel
+			// set aside - all of it paid, or it waits (hw4s: 429 of its 432 postponements, 0 fuel past the razing)
+			HumanIntel.Report r = pl.f.reports.get(pl.sys);
+			float orbit = r == null ? 0f : r.total() * s.knobs.f("threatinc_npcSiegeOrbitMargin");
+			ordnance = 0f;
+			for (Hive x : targets) ordnance += saturationFuel(x, size2);
+			// razeFleetPoints (the least fleet that razes them in turn and outlasts the guns) as the razing fuel over
+			// warsim_saturationFuelPerFP: hw4s's postponements need 2,650-7,450 FP for 270k-765k fuel, 86-176 a point, median ~100
+			float razeFP = ordnance / Math.max(1f, s.knobs.f("warsim_saturationFuelPerFP", 100f));
+			fp = HumanPlanner.roundUp(Math.max(HumanFit.MIN_SIEGE_FP, Math.max(orbit, razeFP)));
+			float points = fp / ReachRules.FP_PER_POINT;
+			float ly = pl.base.sys.ly(pl.sys);
+			float days = Math.max(stay, s.knobs.f("warsim_saturationDaysPerWorld", 110f) * targets.size());
+			float supplies = points * ReachRules.siegeSuppliesPerPoint(s.knobs.f("threatinc_expeditionSuppliesPerPoint"),
+					HumanPlanner.suppliesPerFP(s), ReachRules.siegeTripDays(ly, days, State.LY_PER_DAY));
+			cost = new float[] { ReachRules.passageFuel(points, ly, s.knobs.f("threatinc_expeditionFuelPerPointLY")), supplies };
+			deposit = points * s.knobs.f("threatinc_expeditionSuppliesPerPoint");
+			raze.addAll(targets);
+			h = raze.remove(0);
+		} else if (size2 > 0f) {
 			boolean affordable = s.knobs.b("warsim_saturateAffordable", false);
 			raze.addAll(targets);
 			while (true) {
@@ -1399,7 +1423,14 @@ final class HumanCouncil {
 			}
 			h = raze.remove(0);
 		}
-		if (!HumanPools.pay(s, pl.base, new float[] { 0f, 0f, cost[0] + ordnance, cost[1] }, true, "saturation")) { s.count("saturate.unpaid", 1); return; }
+		s.count("saturate.tried", 1);
+		if (!HumanPools.pay(s, pl.base, new float[] { 0f, 0f, cost[0] + ordnance, cost[1] }, true, "saturation")) {
+			s.count("saturate.unpaid", 1);
+			s.log("Play " + pl.id + " STARVE: no saturation expedition the pools pay (" + (int) fp + " FP, " + (int) (cost[0] + ordnance)
+					+ " fuel of " + (int) HumanPools.payable(s, pl.base, World.FUEL, true) + ", " + (int) cost[1] + " supplies of "
+					+ (int) HumanPools.payable(s, pl.base, World.SUPPLIES, true) + ")");
+			return;
+		}
 		Parcel p = s.send(pl.f.id, Parcel.Kind.SATURATION, pl.base.sys, pl.sys, fp, 0);
 		p.targetId = h.id;
 		p.fuel = ordnance;
@@ -1410,7 +1441,7 @@ final class HumanCouncil {
 		o.home = pl.base;
 		o.target = h;
 		o.trust = 1f;
-		o.deposit = cost[1];
+		o.deposit = deposit;
 		o.play = pl;
 		o.stayDays = Math.max(1, (int) stay);
 		p.order = o;

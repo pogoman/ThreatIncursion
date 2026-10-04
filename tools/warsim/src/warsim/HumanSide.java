@@ -155,9 +155,21 @@ public final class HumanSide implements Side {
 		int planDays = s.knobs.i("threatinc_planIntervalDays");
 		// ThreatAttackPlanner.active: the planner is off while the council is on; ThreatFactionStance.refresh skips a governed faction
 		boolean council = HumanCouncil.on(s);
+		// warsim_humansNoOffence (round 30, a test double): the humans bank, scout, found and guard their bases and relieve
+		// their worlds, but start no play, siege or hunt - the game's humans of hw4s from month 44 (5 hives killed in 100 months)
+		boolean offence = !s.knobs.b("warsim_humansNoOffence", false);
 		for (Faction f : s.factions.values()) {
 			if (!f.mobilised || HumanIntel.excluded(s, f.id)) continue;
 			HumanIntel.scouting(s, f);
+			if (!offence) {
+				if (s.day - f.lastFrontlineDay >= s.knobs.i("threatinc_frontlinePlanDays")) {
+					f.lastFrontlineDay = s.day;
+					HumanBases.plan(s, f);
+				}
+				HumanBases.daily(s, f);
+				HumanBases.reliefInvaded(s, f);
+				continue;
+			}
 			if (council) HumanCouncil.daily(s, f);
 			else if (s.day - f.lastStanceDay >= HumanStance.EVAL_DAYS) HumanStance.evaluate(s, f);
 			if (s.day - f.lastFrontlineDay >= s.knobs.i("threatinc_frontlinePlanDays")) {

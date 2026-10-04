@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import threatinc.rules.PostureRules;
+import threatinc.rules.StanceRules;
 import threatinc.rules.StrikeRules;
 
 /**
@@ -69,10 +70,33 @@ final class SwarmPosture {
 			c.sys = p.to;
 			c.day = s.day;
 			c.fp = p.fp;
+			if (p.owner != null) {
+				int[] st = sw.staging.get(p.owner + "|" + p.to.id);
+				if (st != null) st[2] = s.day;
+			}
 		}
 		for (Iterator<Swarm.Contact> it = sw.contacts.values().iterator(); it.hasNext();) {
 			if (s.day - it.next().day > contactDays) it.remove();
 		}
+	}
+
+	/**
+	 * Round 30 (2026-10-04, the hw4s stall): how far the swarm still believes a faction's staged stock against a system.
+	 * A depot is not a fleet: staging that has sent nothing at the system for a while halves every
+	 * threatinc_postureStagedHalfLifeDays since its last attack there (or since the staging was first read), down to
+	 * threatinc_postureStagedFloor; an attack seen bound there makes it whole again. A faction that stops staging there
+	 * for a half-life starts afresh. 0 days: off (always whole, the read as built).
+	 */
+	static float stagedCredibility(State s, String faction, StarSys sys) {
+		float half = s.knobs.f("threatinc_postureStagedHalfLifeDays", 0f);
+		if (half <= 0f || faction == null) return 1f;
+		String key = faction + "|" + sys.id;
+		int[] st = s.swarm.staging.get(key);
+		if (st == null || s.day - st[1] > half) s.swarm.staging.put(key, st = new int[] { s.day, s.day, Integer.MIN_VALUE });
+		st[1] = s.day;
+		int ref = Math.max(st[0], st[2]);
+		float cred = (float) Math.pow(0.5, Math.max(0, s.day - ref) / half);
+		return Math.max(s.knobs.f("threatinc_postureStagedFloor", 0f), cred);
 	}
 
 	static float[] sysSums(Map<StarSys, float[]> bySys, StarSys sys) {
@@ -218,13 +242,16 @@ final class SwarmPosture {
 			float ly = w.sys.ly(sys);
 			float cap = threatinc.rules.ReachRules.payablePoints(HumanPools.available(s, w, World.FUEL),
 					HumanPools.available(s, w, World.SUPPLIES), ly * s.knobs.f("threatinc_expeditionFuelPerPointLY"),
-					s.knobs.f("threatinc_expeditionSuppliesPerPoint")) * threatinc.rules.ReachRules.FP_PER_POINT * trust;
+					s.knobs.f("threatinc_expeditionSuppliesPerPoint")) * threatinc.rules.ReachRules.FP_PER_POINT * trust
+					* s.knobs.f("warsim_stagedMult", 1f);
 			if (cap >= Float.MAX_VALUE / 2f || cap <= 0f) continue;
+			cap *= stagedCredibility(s, w.faction, sys);
 			Map<String, Float> byFaction = capsBySys.get(sys);
 			if (byFaction == null) capsBySys.put(sys, byFaction = new HashMap<String, Float>());
 			Float had = byFaction.get(w.faction);
 			if (had == null || cap > had) byFaction.put(w.faction, cap);
 		}
+		boolean organWounds = s.knobs.b("warsim_woundByOrgans", false);
 		for (StarSys sys : systems) {
 			float[] sum = sums.get(sys.id);
 			float held = sum[0], bank = sum[1], base = sum[2], floor = sum[3];
@@ -266,6 +293,9 @@ final class SwarmPosture {
 				h.wantFP = Math.max(b, share);
 				want += h.wantFP;
 				if (h.front != null) wounded = true;
+				// round 30: ThreatPosture.read's wound is also an organ down (ThreatColonyManager.anyOrganDisrupted) - hw4s's
+				// Epsilon read BESIEGED for 65 months on its starved Nexuses and Ports alone
+				if (organWounds && (h.nexusDown > 0f || h.coreDown > 0f)) wounded = true;
 				surplus += Math.max(0f, PostureRules.releasableFP(SwarmEconomy.held(h, inbound), h.wantFP, k.postureBand,
 						SwarmEconomy.oneSwarmFP(s, h)));
 			}
@@ -350,7 +380,7 @@ final class SwarmPosture {
 		boolean losing = t[0] >= SwarmFit.SIGNIFICANT_LOSS * Math.max(1f, sumHeld) && t[1] < t[0];
 
 		int n = systems.size();
-		float pressedShare = n > 0 ? pressed / (float) n : 0f;
+		float pressedShare = StanceRules.pressedShare(pressed, n, s.knobs.i("threatinc_stanceMinSystems"));
 		boolean hadState = sw.stanceSince != Integer.MIN_VALUE;
 		int was = hadState ? sw.stance : Swarm.EXPAND;
 		boolean breathing = attacked == 0 && (!hadState || sw.lastPressure < 0f || pressure <= sw.lastPressure);
