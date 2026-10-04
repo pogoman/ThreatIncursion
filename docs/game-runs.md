@@ -155,3 +155,60 @@ round 13. No game run has tried it.
 
 **Decided 2026-10-04** ("Ok proceed with recommended"): links 1-3 and 5-9 are replaced by the four changes in
 `war-council-invasions.md`; link 4 (relief first) stays, the user's rule. Runs: section 3.
+
+## 3. hw6a-hw6c (2026-10-04 evening): the council's restraints removed
+
+Build c3bc019 (`war-council-invasions.md`): the invasion line, sieges before a report-sized escort, saturation
+of the worlds the pools pay, one siege a world, no play cap. Three new games side by side on shipped defaults
+(`sbs.ps1 -Tags hw6a,hw6b,hw6c`), 123-142 days a minute each. Stopped at months 78-89, once every swarm was
+extinct. No exception and no play or council error in any run.
+
+**Result: the humans exterminate the swarm in 3 of 3 runs, 24-34 months after they find it.**
+
+| | hw6a | hw6b | hw6c | hw5e-hw5g (to m120) |
+| --- | --- | --- | --- | --- |
+| First hive found / first siege sails | m42 / m42 | m45 / m45 | m42 / m42 | - |
+| Swarm at its peak | 18 hives m46, 11.3k FP, 2.7k FP/mo | 17 hives m51, 16.3k FP, 3.5k FP/mo | 17 hives m51, 9.4k FP, 2.5k FP/mo | 96-154 hives at m120 |
+| Swarm extinct | m76 | m70 | m66 | never |
+| Landing sieges sailed | 50 (79k FP, 86k marines) | 49 (70k FP, 91k marines) | 49 (65k FP, 81k marines) | 12-22 |
+| Escorts | 28 (59k FP) | 23 (92k FP) | 22 (97k FP) | 29-54 musters, 5.3-7.5k FP each |
+| Escort against the report (median) | 1.6k FP against 235 | 2.1k against 518 | 1.1k against 258 | 17-30x |
+| Human landings / overrun by the hive | 19 / 1 | 20 / 2 | 19 / 1 | 8-14 / 0-2 |
+| Sieges called off | 6 | 0 | 0 | 0-1 (bombing 29-37) |
+| Hives eradicated | 18 | 18 | 18 | 6-14 |
+| Threat landings / overrun by the garrison | 13 / 12 | 17 / 11 | 10 / 7 | 60-99 |
+| Human worlds lost | 0 | 2 | 2 | 3-8 |
+| Fleet upkeep | 733k supplies (17% of income) | 761k (18%) | 657k (15%) | 2.7-3.4M (37-54%) |
+
+**The four changes do what they were built to do.** The invasion line started 15-19 of the 23-27 hammers; 21-22
+of them struck, 1-4 waited for stock; no hammer sailed hunts without a siege; a siege is a median 1.2k FP with
+1.2-1.5k marines; the escort is 4.0-4.1x the report; 16-17 sieges a run were added to a strike already out. No
+expedition was postponed for fuel or supplies (422-888 a run before). The factions held a mean 152-231k supplies
+and 317-429k fuel each: nothing was short.
+
+**What it exposes: the swarm at first contact is no match for humans that attack.** The restraints were what
+kept it alive. From the log (hw6b):
+
+1. **It starts the war itself, and badly.** The swarm's first landings come the month it is found (m45): 1,200
+   troops each on Chicomoztoc (8 strata) and Coatl, then 58-660 troops on a dozen garrisoned worlds. 7-12 of its
+   10-17 landings are overrun by the garrison.
+2. **Its hives stand almost unguarded.** The swarm holds 9-16k FP, most of it in the home system (13k FP reported
+   in Alpha Laphirial); an outlying hive has 25-121 FP over it (off-screen fights: 889 FP against 25, 435 against
+   72, 1,147 against 121). Its posture wanted 2,157 FP at Wotan and held 86.
+3. **A hive falls to a few hundred marines.** Hlidskjalf: 448 marines sail, 300 land in m49, the Fabrication
+   Core is destroyed in m50. Landings of 300-2,300 troops took 18 hives a run; the hive overran 1-2.
+4. **Being attacked stops it growing.** Its stance goes CONSOLIDATE at m48-49 (2-4 systems pressed), which stops
+   founding; income falls from 2.5-3.5k FP a month to 200-400 by m55.
+
+The humans sent 65-79k FP of sieges and 59-97k FP of escorts in two years against a swarm of 9-16k FP earning
+2.5-3.5k FP a month.
+
+**Open, the user's call:** what the swarm is at first contact. Options as put to the user 2026-10-04:
+(a) leave it: an annihilation is a good run by the 2026-10-02 scoring, but it is the same run every time and over
+before a player matters; (b) ask of the swarm what was asked of the humans - what stops it defending and
+attacking well (points 1, 2 and 4 are its own rules) - and fix those; (c) make a hive cost more on the ground
+(point 3); (d) put the human restraints back - ruled out by the user's rule.
+
+**Harness.** Three games at once ran at 123-142 days a minute each (two: 210), so about the same days a minute in
+total; the wrap-up (dumps copied, settings restored) works, and closing the games by hand ends a batch cleanly
+("GAME GONE").
