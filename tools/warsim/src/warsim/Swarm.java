@@ -87,6 +87,11 @@ public final class Swarm {
 
 	// fog (ThreatSwarmIntel, simplified): world id -> {day seen, defence seen}
 	public final Map<String, float[]> seen = new HashMap<String, float[]>();
+	/**
+	 * Staged credibility (round 30, threatinc_postureStagedHalfLifeDays): faction|system -> {first day its staging was read
+	 * there, last day it was, last day one of its attacks was seen bound there}.
+	 */
+	public final Map<String, int[]> staging = new HashMap<String, int[]>();
 	/** A Threat front on a human world (ThreatGroundFronts, a Threat-owned GroundFront), as SwarmOps.landing models it. */
 	public static final class Landing {
 		public float troops;

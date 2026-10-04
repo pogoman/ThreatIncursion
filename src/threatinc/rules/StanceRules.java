@@ -11,6 +11,16 @@ public final class StanceRules {
 	public static final int PRESS = 1;
 	public static final int CONSOLIDATE = 2;
 
+	/**
+	 * The share of the hive's systems that are pressed, for the CONSOLIDATE test (ThreatStance.evaluate), over at least
+	 * {@code minSystems} systems: a swarm of two systems with one besieged is not "half pressed" (hw4s, 2026-10-04: one
+	 * starved system of two held it in CONSOLIDATE, which founds nothing, for 65 months). 0 = the plain share.
+	 */
+	public static float pressedShare(int pressed, int systems, int minSystems) {
+		int n = Math.max(systems, Math.max(0, minSystems));
+		return n > 0 ? pressed / (float) n : 0f;
+	}
+
 	/** The share of the surplus the stance gives expansion (ThreatStance.expansionShare). */
 	public static float expansionShare(int stance, float secondaryShare) {
 		if (stance == CONSOLIDATE) return 0f;
