@@ -2520,6 +2520,38 @@ public class ThreatColonyManager {
 	}
 
 	/**
+	 * The garrison fleets a colony gives a world under attack (ThreatPosture's
+	 * massing): what a launch would muster of them (ownAvailableForLaunch) -
+	 * the largest above its reserve, within what it holds above its own need -
+	 * whether or not it is at its want. On station and out of battle.
+	 */
+	public static List<CampaignFleetAPI> spareFleets(MarketAPI market) {
+		List<CampaignFleetAPI> out = new ArrayList<CampaignFleetAPI>();
+		if (market == null) return out;
+		List<CampaignFleetAPI> live = new ArrayList<CampaignFleetAPI>();
+		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(market.getId())) {
+			if (curr != null && curr.isAlive()) live.add(curr);
+		}
+		int n = live.size() - garrisonReserve(market);
+		if (n <= 0) return out;
+		java.util.Collections.sort(live, new java.util.Comparator<CampaignFleetAPI>() {
+			public int compare(CampaignFleetAPI a, CampaignFleetAPI b) {
+				return b.getFleetPoints() - a.getFleetPoints();
+			}
+		});
+		float spare = ThreatPosture.launchSpareFP(market);
+		for (int i = 0; i < n; i++) {
+			CampaignFleetAPI curr = live.get(i);
+			if (spare != Float.MAX_VALUE) {
+				spare -= curr.getFleetPoints();
+				if (spare < 0f) break;
+			}
+			if (curr.getBattle() == null) out.add(curr);
+		}
+		return out;
+	}
+
+	/**
 	 * The colonies an expedition staged here draws swarms from: the staging
 	 * colony first, then the others of its system - a sublight hop away, and
 	 * each keeps its own reserve home.

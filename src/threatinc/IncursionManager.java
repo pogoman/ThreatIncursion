@@ -1095,6 +1095,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float ly = ThreatFuel.ly(source, target.getStarSystem());
 		float daysAway = ThreatReach.strikeDays(ly);
 		int count = walk.size();
+		// ...and while the defence is massed, no bigger than the posture leaves free (ThreatPosture.strikeCapFP)
+		String[] why = { null };
+		float cap = ThreatPosture.strikeCapFP(source, target, why);
+		if (cap < Float.MAX_VALUE) {
+			float sum = 0f;
+			count = 0;
+			while (count < walk.size() && sum + walk.get(count).fp <= cap) sum += walk.get(count++).fp;
+			if (count <= 0) {
+				if (walk.size() > 0) {
+					ThreatIncConfig.logQuiet("strikehome:" + colony.getId(), "Strike from " + colony.getName()
+							+ " held: " + why[0]);
+				}
+				return null;
+			}
+		}
 		for (; count > 0; count--) {
 			float excess = excessOf[count];
 			if (!ThreatFuel.canPay(ThreatFuel.passage(fpOf[count], ly, true))) continue;
