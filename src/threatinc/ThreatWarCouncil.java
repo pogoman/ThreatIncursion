@@ -536,11 +536,12 @@ public class ThreatWarCouncil {
 	protected static void setStance(Council c, FactionAPI faction) {
 		String fid = faction.getId();
 		ThreatPlays.Play major = ThreatPlays.major(fid);
-		if (HOLD.equals(c.strategy)) {
-			ThreatFactionStance.set(fid, ThreatFactionStance.CONSOLIDATE, null, "Hold");
-		} else if (major != null) {
+		// a faction with a major play out presses, whatever its strategy: Hold invades too (2026-10-04)
+		if (major != null) {
 			ThreatFactionStance.set(fid, ThreatFactionStance.PRESS, major.systemId,
 					c.strategy + ", " + major.type + " " + major.id);
+		} else if (HOLD.equals(c.strategy)) {
+			ThreatFactionStance.set(fid, ThreatFactionStance.CONSOLIDATE, null, "Hold");
 		} else {
 			ThreatFactionStance.set(fid, ThreatFactionStance.EXPAND, null, c.strategy + ", no play running");
 		}

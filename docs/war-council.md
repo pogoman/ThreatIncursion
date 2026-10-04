@@ -9,6 +9,11 @@ it saw. Build: a later session (user, 2026-10-01: "write it up then will do in a
 Decision: `facts.md` "Strategy, not FP matching"; memory `strategic-controller`. Sections 9 and 10
 come from three code maps made the same day; section 11 holds the user's open decisions.
 
+**Superseded in part 2026-10-04** (`war-council-invasions.md`): every strategy invades, Hold
+included (section 3); the hammer has no muster ahead of its strike and its escort is sized to the
+reported swarm (4.1, 5); the saturation expedition takes the worlds it can pay (4.3); sieges are
+one a world and the play cap is gone (16, "Major plays scale with means").
+
 ## Why
 
 **What the user asked** (2026-10-01, after h52a): "There shouldn't be any sizing based on enemy

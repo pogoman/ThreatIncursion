@@ -11,7 +11,7 @@ for my $tag (@ARGV) { open my $f, '<', "$ENV{TEMP}/threatinc-tests/ti-$tag.txt" 
       $n{"$ty started"}++ if $m =~ /^start -> /;
       if ($ty eq 'STARVE') { $n{'starve.noSaturationPaid'}++ if $m =~ /^no saturation expedition the pools pay/; $n{'starve.noSquadronGuarded'}++ if $m =~ /^no squadron \(every Nexus/; $n{'starve.noSquadronPay'}++ if $m =~ /^no squadron \(no base pays/;
         $n{'starve.saturationSails'}++ if $m =~ /^saturation expedition of/; $n{'starve.squadron'}++ if $m =~ /^squadron of/; $n{'starve.drivenOff'}++ if $m =~ /driven off$/ }
-      if ($ty eq 'HAMMER') { $n{'hammer.strike'}++ if $m =~ /^muster -> strike/ } next }
+      if ($ty eq 'HAMMER') { $n{'hammer.strike'}++ if $m =~ /^\w+ -> strike/; $n{'hammer.sieges'}++ if $m =~ /^siege of [\d.]+ FP sails/ } next }
     if (/^Play \w+#\d+: (\w+) \(([^;)]*)/) { $n{"end: $2"}++ if $2 =~ /starved, invasion next|no fresh report|picture is fresh|ran its course/; next }
     if (/^Council \w+: no (\w+) on .*? can start/) { $n{"council.no$1"}++; next }
     $n{landed}++ if /^Notice: Expedition Landed/; $n{doomed}++ if /^Siege pass at .*: no landing - /; $n{eradicated}++ if /^Notice: Hive Eradicated/;
@@ -22,5 +22,5 @@ for my $tag (@ARGV) { open my $f, '<', "$ENV{TEMP}/threatinc-tests/ti-$tag.txt" 
   printf "plays started: %s | council could not start: HAMMER %d, STARVE %d\n", join(', ', map { /^(\w+) started/; "$1 $n{$_}" } sort grep { / started$/ } keys %n), $n{'council.noHAMMER'} || 0, $n{'council.noSTARVE'} || 0;
   printf "STARVE months: saturation not paid %d, sailed %d | squadron sent %d, none (every Nexus guarded) %d, none (no base pays) %d | raids driven off %d\n", map { $n{$_} || 0 } qw(starve.noSaturationPaid starve.saturationSails starve.squadron starve.noSquadronGuarded starve.noSquadronPay starve.drivenOff);
   printf "postponed %d: fuel short %d, supplies short %d, both %d; nothing left past the razing set-aside in %d; median set-aside %dk against a %dk trip; median faction fuel %dk\n", $n{postponed} || 0, $n{'pp.fuel'} || 0, $n{'pp.supplies'} || 0, $n{'pp.both'} || 0, $n{'pp.nothingPastRazing'} || 0, med(@raze) / 1000, med(@trip) / 1000, med(@fuelMeans) / 1000;
-  printf "expeditions sailed %d (hammers that struck %d), called off in orbit %d (median defenders %.2fx its FP), landed %d, landings refused as doomed %d, hives eradicated %d, hunting forces %d\n", $n{sailed} || 0, $n{'hammer.strike'} || 0, $n{calledOff} || 0, med(@defR), $n{landed} || 0, $n{doomed} || 0, $n{eradicated} || 0, $n{hunts} || 0;
+  printf "expeditions sailed %d (hammers that struck %d, their sieges %d), called off in orbit %d (median defenders %.2fx its FP), landed %d, landings refused as doomed %d, hives eradicated %d, hunting forces %d\n", $n{sailed} || 0, $n{'hammer.strike'} || 0, $n{'hammer.sieges'} || 0, $n{calledOff} || 0, med(@defR), $n{landed} || 0, $n{doomed} || 0, $n{eradicated} || 0, $n{hunts} || 0;
   printf "play ends: %s\n", join(', ', map { /^end: (.*)/; "$1 $n{$_}" } sort grep { /^end: / } keys %n) }

@@ -28,14 +28,18 @@ import com.fs.starfarer.api.util.Misc;
  * ThreatSoftening.sendPlay).
  *
  * <ul>
- * <li>HAMMER: prepare (stage, scout) -> muster (hunting forces held at the
- * bearing, a partner's too) -> strike (the siege sails, the hunts go in as it
- * nears) -> exploit (stay while orbits are held, landings come or the swarm
- * thins; else withdraw).</li>
+ * <li>HAMMER: prepare (stage, scout) -> strike (its sieges sail, one a world
+ * and the easiest first, paid before anything else; then its escort, a hunting
+ * force sized to the swarm its reports show, held at the bearing and let go as
+ * the sieges near) -> exploit (stay while orbits are held, landings come or the
+ * swarm thins; else withdraw). Short of stock at its day it waits in muster,
+ * tried again daily. The invasion line ({@link #invade}) starts one wherever
+ * the pools pay a landing now, under every strategy, and strikes the same day
+ * (user, 2026-10-04: the humans play to win).</li>
  * <li>STARVE: bomb (squadrons rotate over the Nexuses, a saturation expedition
- * when the pools pay; checked every councilStarveCheckDays) -> hands over to a
- * hammer once a Nexus has been down councilInvadeNexusDays and the garrison is
- * not regrowing.</li>
+ * of the worlds the pools pay, with its own escort; checked every
+ * councilStarveCheckDays) -> hands over to a hammer once a Nexus has been down
+ * councilInvadeNexusDays and the garrison is not regrowing.</li>
  * <li>FEINT: a squadron at a small neighbour A while the strike base stages
  * against A -> watch A's reports rise -> strike B from close, bombers on B's
  * Nexus arriving with the siege -> exploit.</li>
@@ -96,6 +100,8 @@ public class ThreatPlays {
 		public float bomberDay = NEVER;
 		/** The day by which a report of the target must arrive for the siege to be sized (strike); NEVER until it waits. */
 		public float sizeBy = NEVER;
+		/** Days the strike has waited for stock to pay a siege (0 on an older save: not yet waited). */
+		public float payWaited;
 		/** The day a feint's squadron reached the decoy, when the watch's baseline is read. */
 		public float feintArrived = NEVER;
 		/** The Nexus world bombers strike as the siege arrives (a feint's), until they sail. */
@@ -150,16 +156,7 @@ public class ThreatPlays {
 		return HAMMER.equals(pl.type) || STARVE.equals(pl.type) || FEINT.equals(pl.type) || JOINT.equals(pl.type);
 	}
 
-	/** How many major plays the faction runs. */
-	protected static int majors(String fid) {
-		int n = 0;
-		for (Play pl : plays().values()) {
-			if (fid != null && fid.equals(pl.factionId) && isMajor(pl)) n++;
-		}
-		return n;
-	}
-
-	/** Whether one of the faction's major plays runs at the system. */
+	/** Whether one of the faction's major plays runs at the system: one a system, and as many systems as its pools pay (the cap of one per councilMajorPlayFP went 2026-10-04). */
 	protected static boolean majorAt(String fid, String systemId) {
 		for (Play pl : plays().values()) {
 			if (fid != null && fid.equals(pl.factionId) && isMajor(pl) && systemId != null && systemId.equals(pl.systemId)) return true;
@@ -167,34 +164,16 @@ public class ThreatPlays {
 		return false;
 	}
 
-	/**
-	 * Major plays the faction may run at once (simulator round 13, option B, 2026-10-02): one per
-	 * councilMajorPlayFP of its siege capacity, at least one.
-	 */
-	protected static int majorLimit(String fid, ThreatWarCouncil.Picture p) {
-		FactionAPI faction = fid != null ? Global.getSector().getFaction(fid) : null;
-		float per = ThreatIncConfig.councilMajorPlayFP();
-		if (faction == null || p == null || per <= 0f) return 1;
-		return Math.max(1, (int) (siegeCapacityFP(faction, p) / per));
+	/** A hammer or a feint not yet withdrawing: its sieges and escort are its system's (the invasion line starts no second one there). */
+	protected static boolean striking(Play pl) {
+		return (HAMMER.equals(pl.type) || FEINT.equals(pl.type)) && !WITHDRAW.equals(pl.phase);
 	}
 
-	/** The faction's siege capacity: each base of the picture's clusters, against the nearest cluster (ThreatPosture.siegeCapacityFP). */
-	protected static float siegeCapacityFP(FactionAPI faction, ThreatWarCouncil.Picture p) {
-		float sum = 0f;
-		List<MarketAPI> seen = new ArrayList<MarketAPI>();
-		for (ThreatWarCouncil.Cluster k : p.clusters) {
-			for (MarketAPI m : k.bases) {
-				if (m == null || seen.contains(m) || !faction.getId().equals(m.getFactionId()) || !m.isInEconomy()) continue;
-				seen.add(m);
-				StarSystemAPI near = null;
-				for (ThreatWarCouncil.Cluster o : p.clusters) {
-					StarSystemAPI s = system(o.systemId);
-					if (s != null && (near == null || ly(m, s) < ly(m, near))) near = s;
-				}
-				if (near != null) sum += ThreatPosture.siegeCapacityFP(m, near, ThreatSoftening.huntDonors(faction, m));
-			}
+	protected static boolean strikingAt(String fid, String systemId) {
+		for (Play pl : plays().values()) {
+			if (fid.equals(pl.factionId) && striking(pl) && systemId != null && systemId.equals(pl.systemId)) return true;
 		}
-		return sum;
+		return false;
 	}
 
 	protected static boolean running(String fid, String type, String systemId) {
@@ -215,10 +194,12 @@ public class ThreatPlays {
 		// relief before offensives (user, 2026-09-27): no new play while it is owed
 		if (ThreatFleetOrders.reliefOwed(faction)) return;
 		opportunity(c, faction, p, today, random);
+		// the strategy picks where its own plays go, never whether the faction attacks (user, 2026-10-04)
+		invade(c, faction, p, today, random);
 		String observer = ThreatIntel.observerOf(faction);
 		float half = Math.max(1f, ThreatIncConfig.intelHalfLifeDays());
 		if (ThreatWarCouncil.HOLD.equals(c.strategy)) {
-			// Hold: recon on the hives that threaten us, one a day; no invasions
+			// Hold: recon on the hives that threaten us, one a day; its invasions are the line's
 			for (ThreatWarCouncil.Cluster k : p.clusters) {
 				if (!k.threatens || ThreatIntel.age(observer, k.systemId) < half) continue;
 				if (running(fid, RECON, k.systemId) || ThreatScouts.reconInFlight(fid, k.systemId)) continue;
@@ -227,8 +208,6 @@ public class ThreatPlays {
 			}
 			return;
 		}
-		// one major play per councilMajorPlayFP of the faction's siege capacity (option B, 2026-10-02)
-		if (majors(fid) >= majorLimit(fid, p)) return;
 		ThreatWarCouncil.Cluster focus = p.cluster(c.focusId);
 		if (focus == null || !ThreatWarCouncil.fits(c.strategy, focus) || majorAt(fid, focus.systemId)) {
 			// the next play goes where none of the faction's runs: a few draws
@@ -296,6 +275,86 @@ public class ThreatPlays {
 		}
 	}
 
+	/** No world razed: a siege that lands on every world it takes. */
+	protected static final java.util.Set<String> NO_RAZE = java.util.Collections.<String>emptySet();
+
+	/**
+	 * The invasion line (user, 2026-10-04: the humans play to win, no artificial
+	 * constraints): under every strategy, Hold included, the faction invades each
+	 * hive its pools pay a landing on now, the easiest first
+	 * (IncursionManager.easiestFirst), the worlds whose last siege is not recent
+	 * before the others (IncursionManager.onPurgeCooldown: an order, never a
+	 * stop). A strike of its own already at a system sails that system's next
+	 * sieges itself. Every councilInvadeDays, on the faction's own day. Each
+	 * siege sails the day its play starts ({@link #strike}), so the next hive is
+	 * weighed against what is left; what stops it is marines, fuel and supplies.
+	 */
+	protected static void invade(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p,
+			float today, Random random) {
+		String fid = faction.getId();
+		long every = Math.max(1L, (long) ThreatIncConfig.councilInvadeDays());
+		if (Math.floorMod(ThreatReach.today() + (fid.hashCode() & 0xff), every) != 0L) return;
+		String observer = ThreatIntel.observerOf(faction);
+		// a strike of its own already at a system takes that system's next worlds itself
+		for (Play pl : of(fid)) {
+			if (!striking(pl) || !pl.sieged) continue;
+			StarSystemAPI s = system(pl.systemId);
+			MarketAPI base = s != null ? baseFor(pl) : null;
+			if (base == null) continue;
+			float[] more = besiege(pl, faction, base, s, IncursionManager.easiestFirst(observer,
+					liveTargets(faction, pl.targetIds, own(pl))), random);
+			if (more[0] > 0f) {
+				ThreatIncConfig.log("Play " + pl.id + " " + pl.type + ": " + (int) more[0]
+						+ (more[0] == 1f ? " more siege sails" : " more sieges sail"));
+			}
+		}
+		// the worlds whose last siege is not recent first, as the attack planner takes them (siegeTargets)
+		List<MarketAPI> ready = new ArrayList<MarketAPI>(), recent = new ArrayList<MarketAPI>();
+		for (ThreatWarCouncil.Cluster k : p.clusters) {
+			if (!k.inReach() || strikingAt(fid, k.systemId)) continue;
+			// a siege is sized by the faction's report of the system (strike)
+			if (ThreatIntel.report(observer, k.systemId) == null) continue;
+			for (MarketAPI w : liveTargets(faction, k.hiveIds)) {
+				(IncursionManager.onPurgeCooldown(observer, w) ? recent : ready).add(w);
+			}
+		}
+		List<MarketAPI> hives = IncursionManager.easiestFirst(observer, ready);
+		hives.addAll(IncursionManager.easiestFirst(observer, recent));
+		java.util.Set<String> started = new java.util.HashSet<String>();
+		for (MarketAPI w : hives) {
+			StarSystemAPI s = w.getStarSystem();
+			ThreatWarCouncil.Cluster k = s != null ? p.cluster(s.getId()) : null;
+			// one hammer a system: it takes the system's other worlds itself (besiege)
+			if (k == null || started.contains(k.systemId)) continue;
+			MarketAPI base = payingBase(k, faction, s, w);
+			if (base == null) continue;
+			started.add(k.systemId);
+			Play pl = startHammer(c, faction, p, k, today, random, "invades " + w.getName()
+					+ ", the easiest hive its pools pay a landing on", null, base);
+			if (pl != null && !pl.sieged) {
+				// the launch refused what the read allowed: not held for stock, the next pass weighs it again
+				end(pl, NEUTRAL, "its siege could not be paid after all", today);
+				return;
+			}
+		}
+	}
+
+	/** The cluster's nearest base whose pools man, arm and provision a landing siege of the world now (IncursionManager.siegeCanPay), or null. */
+	protected static MarketAPI payingBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s, MarketAPI w) {
+		List<MarketAPI> one = java.util.Collections.singletonList(w);
+		float need = IncursionManager.siegeRaidStrNeeded(one) * IncursionManager.minMarinesFraction(faction);
+		for (MarketAPI m : k.bases) {
+			if (m == null || !faction.getId().equals(m.getFactionId()) || !m.isInEconomy()) continue;
+			// its own front takes the world before a siege from here could arrive
+			if (IncursionManager.frontFinishesFirst(m, faction, s, w)) continue;
+			// the marines first: the cheap read, and what most landings are short of
+			if (IncursionManager.siegeMarinesPooled(m, faction, s) < need) continue;
+			List<Integer> sizes = IncursionManager.siegeSizesFor(m, faction, one, 0f, NO_RAZE);
+			if (!sizes.isEmpty() && IncursionManager.siegeCanPay(m, faction, s, one, sizes, NO_RAZE)) return m;
+		}
+		return null;
+	}
+
 	protected static Play newPlay(ThreatWarCouncil.Council c, String type, ThreatWarCouncil.Cluster k, float today) {
 		Play pl = new Play();
 		pl.id = c.factionId + "#" + (++c.nextPlay);
@@ -354,9 +413,19 @@ public class ThreatPlays {
 	/** A hammer; {@code fromId} names the play it follows on from (a starve), whose siege is not in its way. */
 	protected static Play startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p,
 			ThreatWarCouncil.Cluster k, float today, Random random, String why, String fromId) {
+		return startHammer(c, faction, p, k, today, random, why, fromId, null);
+	}
+
+	/**
+	 * As above from {@code from} (null: the cluster's first base, after staging and scouting).
+	 * Given a base, its pools pay a siege now (the invasion line): it strikes today, with nothing
+	 * to stage. Null when it did not start, or ended in its strike.
+	 */
+	protected static Play startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p,
+			ThreatWarCouncil.Cluster k, float today, Random random, String why, String fromId, MarketAPI from) {
 		StarSystemAPI s = system(k.systemId);
 		if (s == null || !k.inReach()) return null;
-		MarketAPI base = baseOf(k, faction.getId());
+		MarketAPI base = from != null ? from : baseOf(k, faction.getId());
 		if (base == null) return null;
 		List<String> ownPlays = new ArrayList<String>();
 		if (fromId != null) ownPlays.add(fromId);
@@ -364,8 +433,14 @@ public class ThreatPlays {
 		if (targets.isEmpty()) return null;
 		Play pl = newPlay(c, HAMMER, k, today);
 		pl.fromId = fromId;
-		pl.targetIds = ids(targets);
+		// the easiest first: the order its sieges sail in and its escort hunts in
+		pl.targetIds = ids(IncursionManager.easiestFirst(ThreatIntel.observerOf(faction), targets));
 		pl.baseId = base.getId();
+		if (from != null) {
+			phase(pl, PREPARE, why + "; from " + base.getName(), today);
+			strike(pl, faction, today, random, "its siege is paid today");
+			return plays().containsKey(pl.id) ? pl : null;
+		}
 		// staging telegraphs (section 9): one time in two, a base that reaches
 		// another known system stages against that and turns at the last
 		StarSystemAPI stageAt = s;
@@ -724,7 +799,9 @@ public class ThreatPlays {
 	/** A hammer's and a feint's phases. */
 	protected static void advanceStrike(Play pl, FactionAPI faction, float today, Random random) {
 		if (PREPARE.equals(pl.phase)) {
-			if (today >= pl.phaseDue) toMuster(pl, faction, today, random);
+			// the sieges first, then their escort (user, 2026-10-04): no muster ahead of the strike
+			boolean due = today >= pl.phaseDue;
+			strike(pl, faction, today, random, due ? "its day" : "its stock is in", !due);
 		} else if (MUSTER.equals(pl.phase)) {
 			musterCheck(pl, faction, today, random);
 		} else if (WATCH.equals(pl.phase)) {
@@ -734,55 +811,51 @@ public class ThreatPlays {
 		} else if (EXPLOIT.equals(pl.phase)) {
 			exploitCheck(pl, faction, today, random);
 		} else if (WITHDRAW.equals(pl.phase)) {
-			if (!live(purgeOf(pl.id))) finish(pl, today, "its siege is over");
+			if (!siegeLive(pl.id)) finish(pl, today, "its siege is over");
 			else if (today >= pl.phaseDue) finish(pl, today, "its siege fights on alone");
 		}
 	}
 
-	protected static void toMuster(Play pl, FactionAPI faction, float today, Random random) {
-		MarketAPI base = market(pl.baseId);
-		StarSystemAPI s = system(pl.systemId);
-		if (base == null || !pl.factionId.equals(base.getFactionId()) || s == null) {
-			end(pl, FAILURE, "its base is lost", today);
-			return;
-		}
-		if (!anyHive(pl.targetIds)) {
-			finish(pl, today, "its worlds are the swarm's no longer");
-			return;
-		}
-		List<MarketAPI> targets = liveTargets(faction, pl.targetIds, own(pl));
-		if (targets.isEmpty()) {
-			end(pl, NEUTRAL, "another siege has its worlds", today);
-			return;
-		}
-		float huntFP = share(pl.factionId, ThreatIncConfig.councilHammerShare())
+	/**
+	 * The play's escort (user, 2026-10-04): a hunting force sized to the swarm, not the purse - the
+	 * fleet points its faction's report shows in the system x councilEscortMargin, at least its
+	 * sieges' own, never past the share of the means a hammer once mustered whole
+	 * (councilHammerShare) - sent once its sieges are paid and held at the bearing until they near.
+	 * Partners make up what its own bases could not build ({@link #inviteJoint}). A play with a
+	 * force already out (an older save's muster) keeps it.
+	 */
+	protected static void escort(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> targets,
+			float siegeFP, float today, Random random) {
+		if (!forcesOf(pl).isEmpty()) return;
+		float seen = ThreatIntel.systemFP(ThreatIntel.observerOf(faction), s.getId());
+		float want = Math.max(Math.max(0f, ThreatIncConfig.councilEscortMargin()) * seen, siegeFP);
+		float most = share(pl.factionId, ThreatIncConfig.councilHammerShare())
 				* ThreatSoftening.playPayableFP(faction, base, s);
-		String forceId = huntFP >= 25f ? ThreatSoftening.sendPlay(faction, base, s, targets, huntFP,
-				Math.max(0f, ThreatIncConfig.councilMusterFloor()) * huntFP, pl.id, true) : null;
+		float fp = Math.min(want, most);
+		String forceId = fp >= 25f ? ThreatSoftening.sendPlay(faction, base, s, targets, fp, 0f, pl.id, true) : null;
+		float built = 0f;
 		if (forceId != null) {
 			pl.forceIds.add(forceId);
-			pl.plannedFP += ThreatSoftening.forceFP(forceId);
+			built = ThreatSoftening.forceFP(forceId);
+			pl.plannedFP += built;
 		}
-		int partners = inviteJoint(pl, faction, s, targets, today, random);
-		if (pl.plannedFP <= 0f) {
-			// no hunt paid: the siege goes alone
-			strike(pl, faction, today, random, "no hunting force paid (" + (int) huntFP + " FP share)");
-			return;
-		}
-		// the voyage to the bearing, then the muster's own days (h53b: a 30-day muster 39 ly out never filled)
-		pl.phaseDue = today + ThreatReach.days(ly(base, s)) + Math.max(1f, ThreatIncConfig.councilMusterDays())
-				* ThreatWarCouncil.personality(pl.factionId, "musterMult") * ThreatWarCouncil.jitter(random);
-		phase(pl, MUSTER, (int) pl.plannedFP + " FP sent to the muster" + (partners > 0 ? ", " + partners
-				+ (partners == 1 ? " partner" : " partners") + " with it" : ""), today);
+		int partners = want - built >= 25f ? inviteJoint(pl, faction, s, targets, want - built, today, random) : 0;
+		ThreatIncConfig.log("Play " + pl.id + " " + pl.type + ": escort of " + (int) built + " FP built of " + (int) want
+				+ " wanted (" + (int) seen + " FP reported in " + s.getName() + ", its sieges " + (int) siegeFP + " FP; "
+				+ (int) most + " FP its share pays)" + (partners > 0 ? ", " + partners
+						+ (partners == 1 ? " partner" : " partners") + " with it" : ""));
 	}
 
-	/** A partner joins the hammer with its own force, held at its own bearing (section 7). Returns how many joined. */
-	protected static int inviteJoint(Play pl, FactionAPI faction, StarSystemAPI s, List<MarketAPI> targets, float today,
-			Random random) {
+	/**
+	 * Partners join the hammer with their own forces, held at their own bearings (section 7), until
+	 * {@code want} FP of its escort is made up. Returns how many joined.
+	 */
+	protected static int inviteJoint(Play pl, FactionAPI faction, StarSystemAPI s, List<MarketAPI> targets, float want,
+			float today, Random random) {
 		int joined = 0;
 		for (String partner : ThreatCoalition.partners(pl.factionId)) {
+			if (want < 25f) break;
 			if (partner == null || partner.equals(pl.factionId) || !ThreatWarCouncil.governs(partner)) continue;
-			if (majors(partner) >= majorLimit(partner, ThreatWarCouncil.picture(partner))) continue;
 			float chance = Math.min(1f, 0.6f * ThreatWarCouncil.personality(partner, "joint")
 					* ThreatWarCouncil.personality(pl.factionId, "joint"));
 			if (random.nextFloat() >= chance) continue;
@@ -795,11 +868,11 @@ public class ThreatPlays {
 				}
 			}
 			if (pf == null || pbase == null) continue;
-			float fp = share(partner, ThreatIncConfig.councilHammerShare()) * ThreatSoftening.playPayableFP(pf, pbase, s);
+			float fp = Math.min(want, share(partner, ThreatIncConfig.councilHammerShare())
+					* ThreatSoftening.playPayableFP(pf, pbase, s));
 			if (fp < 25f) continue;
 			// the partner's force carries the lead's id: the lead's siege counts it beside it (ThreatPurgeFGI.friendsNear)
-			String forceId = ThreatSoftening.sendPlay(pf, pbase, s, targets, fp,
-					Math.max(0f, ThreatIncConfig.councilMusterFloor()) * fp, pl.id, true);
+			String forceId = ThreatSoftening.sendPlay(pf, pbase, s, targets, fp, 0f, pl.id, true);
 			if (forceId == null) continue;
 			ThreatWarCouncil.Council pc = ThreatWarCouncil.councilOf(partner);
 			Play j = newPlay(pc, JOINT, null, today);
@@ -812,6 +885,7 @@ public class ThreatPlays {
 			pl.plannedFP += j.plannedFP;
 			phase(j, MUSTER, "joins " + pl.id + " (" + pl.factionId + ") with " + (int) j.plannedFP + " FP from "
 					+ pbase.getName(), today);
+			want -= j.plannedFP;
 			joined++;
 		}
 		return joined;
@@ -833,7 +907,16 @@ public class ThreatPlays {
 		return false;
 	}
 
+	/**
+	 * A play in muster waits for a report to size its sieges by, or for stock to pay one: the strike
+	 * is tried again each day ({@link #strike} ends it on its day). An older save's muster, its
+	 * hunting forces sent ahead of the siege, strikes once they are in or its day comes.
+	 */
 	protected static void musterCheck(Play pl, FactionAPI faction, float today, Random random) {
+		if (!anyForceAlive(pl)) {
+			strike(pl, faction, today, random, "waited " + (int) Math.max(0f, today - pl.phaseStart) + " d");
+			return;
+		}
 		float mustered = 0f, sent = 0f;
 		for (String f : forcesOf(pl)) {
 			if (!ThreatSoftening.forceAlive(f)) continue;
@@ -876,21 +959,31 @@ public class ThreatPlays {
 	}
 
 	/**
-	 * The strike (sections 4.1 and 4.2): the siege sails from the play's base,
-	 * sized as the attack planner sizes one (IncursionManager.siegeSizesFor:
-	 * the swarms the faction's report shows over the strongest world it takes x
-	 * npcSiegeOrbitMargin, the landing, the guns; user, 2026-10-02 - no share of
-	 * the means); every world it can carry marines for, the most first. With no
-	 * report of the system the play sends recon and waits in MUSTER until one
-	 * arrives ({@link Play#sizeBy}), and fails on its day without one. A feint
-	 * sends its hunting force now. The hunts are let go RELEASE_LEAD_DAYS before
-	 * the siege's estimated arrival, or sooner when its live ETA says it is
-	 * nearer ({@link #siegeNear}); the feint's bombers sail to arrive with it.
+	 * The strike (sections 4.1 and 4.2; reworked 2026-10-04, the user's "the
+	 * humans play to win"). The sieges first: one a world, the easiest first,
+	 * each with its own landing and booked to its world alone ({@link #besiege}),
+	 * sized as the attack planner sizes one (IncursionManager.siegeSizesFor: the
+	 * swarms the faction's report shows over the world x npcSiegeOrbitMargin, the
+	 * landing; user, 2026-10-02 - no share of the means). Then the escort, sized
+	 * to the swarm reported in the system ({@link #escort}), held at its bearing
+	 * and let go RELEASE_LEAD_DAYS before the sieges' estimated arrival, or
+	 * sooner when a live ETA says one is nearer ({@link #siegeNear}); a feint's
+	 * bombers sail to arrive with them. No hunting force sails without a siege.
+	 * With no report of the system the play sends recon and waits in MUSTER until
+	 * one arrives ({@link Play#sizeBy}), and fails on its day without one; with
+	 * no siege the pools pay it waits there for stock, tried again each day, and
+	 * fails after councilStrikeWaitDays. A base lost, it strikes from another of
+	 * the faction's in reach.
 	 */
 	protected static void strike(Play pl, FactionAPI faction, float today, Random random, String why) {
-		MarketAPI base = market(pl.baseId);
+		strike(pl, faction, today, random, why, false);
+	}
+
+	/** As above; {@code early}: tried before its day (prepare), where a strike with no report or no siege paid yet changes nothing. */
+	protected static void strike(Play pl, FactionAPI faction, float today, Random random, String why, boolean early) {
 		StarSystemAPI s = system(pl.systemId);
-		if (base == null || !pl.factionId.equals(base.getFactionId()) || s == null) {
+		MarketAPI base = s != null ? baseFor(pl) : null;
+		if (base == null) {
 			standDownForces(pl, "its base is lost");
 			end(pl, FAILURE, "its base is lost", today);
 			return;
@@ -910,6 +1003,7 @@ public class ThreatPlays {
 		// the siege is sized by the faction's report of the system, as the planner's is
 		// (user, 2026-10-02): with none, recon in force first and the play waits for it
 		if (ThreatIntel.report(observer, s.getId()) == null) {
+			if (early) return;
 			if (pl.sizeBy == NEVER) {
 				boolean inFlight = ThreatScouts.reconInFlight(pl.factionId, s.getId());
 				boolean sent = !inFlight && ThreatScouts.recon(pl.factionId, s) != null;
@@ -925,36 +1019,33 @@ public class ThreatPlays {
 			}
 			return;
 		}
-		if (FEINT.equals(pl.type) && pl.forceIds.isEmpty()) {
-			float huntFP = share(pl.factionId, ThreatIncConfig.councilHammerShare())
-					* ThreatSoftening.playPayableFP(faction, base, s);
-			String forceId = huntFP >= 25f ? ThreatSoftening.sendPlay(faction, base, s, targets, huntFP,
-					Math.max(0f, ThreatIncConfig.councilMusterFloor()) * huntFP, pl.id, true) : null;
-			if (forceId != null) {
-				pl.forceIds.add(forceId);
-				pl.plannedFP += ThreatSoftening.forceFP(forceId);
-			}
-		}
+		targets = IncursionManager.easiestFirst(observer, targets);
 		float faced = IncursionManager.siegeOrbitFaced(observer, targets);
-		ThreatPurgeFGI purge = null;
-		for (int n = targets.size(); n >= 1 && purge == null; n--) {
-			List<MarketAPI> set = new ArrayList<MarketAPI>(targets.subList(0, n));
-			List<Integer> sizes = IncursionManager.siegeSizesFor(base, faction, set, 0f);
-			if (sizes.isEmpty()) continue;
-			purge = IncursionManager.launchSiegeExpedition(base, faction, s, set, sizes, false, random, 0f, null,
-					pl.id);
+		float[] sailed = besiege(pl, faction, base, s, targets, random);
+		if (sailed[0] <= 0f) {
+			if (early) return;
+			// the staging stays: the convoys bring the base what its sieges draw
+			float wait = Math.max(0f, ThreatIncConfig.councilStrikeWaitDays());
+			if (pl.payWaited >= wait) {
+				standDownForces(pl, "no siege paid");
+				end(pl, FAILURE, why + "; no siege the pools pay in " + (int) pl.payWaited + " d (" + (int) faced
+						+ " FP reported over the strongest world)", today);
+				return;
+			}
+			if (pl.payWaited <= 0f) {
+				phase(pl, MUSTER, why + "; no siege the pools pay yet (" + (int) faced
+						+ " FP reported over the strongest world), waits up to " + (int) wait + " d for stock", today);
+			}
+			pl.payWaited += 1f;
+			pl.phaseDue = today + 1f;
+			return;
 		}
 		ThreatConvoys.clearPlayStaging(pl.id);
 		pl.seenAtStart = pl.seenAtCheck = ThreatIntel.systemFP(observer, pl.systemId);
-		float arrive;
-		if (purge != null) {
-			pl.sieged = true;
-			arrive = today + IncursionManager.razeArrivalDays(base, s);
-			pl.releaseDay = Math.max(today, arrive - RELEASE_LEAD_DAYS);
-		} else {
-			arrive = today;
-			pl.releaseDay = today;
-		}
+		pl.sieged = true;
+		escort(pl, faction, base, s, targets, sailed[1], today, random);
+		float arrive = today + IncursionManager.razeArrivalDays(base, s);
+		pl.releaseDay = Math.max(today, arrive - RELEASE_LEAD_DAYS);
 		if (FEINT.equals(pl.type)) {
 			// bombers on B's Nexus, arriving with the main force
 			for (MarketAPI m : targets) {
@@ -967,18 +1058,60 @@ public class ThreatPlays {
 				}
 			}
 		}
-		if (purge == null && forcesOf(pl).isEmpty()) {
-			end(pl, FAILURE, why + "; neither the siege nor a hunting force could be paid (" + (int) faced
-					+ " FP reported over the strongest world)", today);
-			return;
-		}
 		pl.phaseDue = pl.releaseDay;
-		phase(pl, STRIKE, why + "; " + (purge != null ? "siege of " + purge.abstractFull() + " FP sails from "
-				+ base.getName() + " against " + (int) faced + " FP reported over the strongest world, arrives in "
-				+ (int) (arrive - today) + " d" : "no siege paid (" + (int) faced
-				+ " FP reported over the strongest world), the hunts go alone")
+		phase(pl, STRIKE, why + "; " + (int) sailed[0] + (sailed[0] == 1f ? " siege" : " sieges") + ", " + (int) sailed[1]
+				+ " FP, sail from " + base.getName() + " against " + (int) faced
+				+ " FP reported over the strongest world, arrive in " + (int) (arrive - today) + " d; escort "
+				+ (int) pl.plannedFP + " FP"
 				+ (pl.bomberWorldId != null ? "; bombers on " + market(pl.bomberWorldId).getName() + " in "
 						+ (int) (pl.bomberDay - today) + " d" : ""), today);
+	}
+
+	/**
+	 * The play's sieges (user, 2026-10-04): one a world, each landing on its own
+	 * world and booking that world alone, in the order given, for as long as the
+	 * base's pools pay (IncursionManager.siegeCanPay) - a siege of several worlds
+	 * carried the landing of the strongest and put every marine down on the first
+	 * (ThreatPurgeFGI.unloadForLanding), and booked them all. Worlds a siege
+	 * already takes are passed over, the play's own included. {sieges sailed,
+	 * their fleet points}.
+	 */
+	protected static float[] besiege(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> worlds,
+			Random random) {
+		float n = 0f, fp = 0f;
+		java.util.Set<MarketAPI> taken = IncursionManager.bookedWorlds(pl.fromId != null
+				? java.util.Collections.singletonList(pl.fromId) : null);
+		for (MarketAPI w : worlds) {
+			if (taken.contains(w) || IncursionManager.frontFinishesFirst(base, faction, s, w)) continue;
+			List<MarketAPI> one = new ArrayList<MarketAPI>();
+			one.add(w);
+			List<Integer> sizes = IncursionManager.siegeSizesFor(base, faction, one, 0f, NO_RAZE);
+			if (sizes.isEmpty() || !IncursionManager.siegeCanPay(base, faction, s, one, sizes, NO_RAZE)) continue;
+			ThreatPurgeFGI purge = IncursionManager.launchSiegeExpedition(base, faction, s, one, sizes, false, random, 0f,
+					NO_RAZE, pl.id);
+			if (purge == null) continue;
+			n += 1f;
+			fp += purge.abstractFull();
+			ThreatIncConfig.log("Play " + pl.id + " " + pl.type + ": siege of " + (int) purge.abstractFull()
+					+ " FP sails from " + base.getName() + " for " + w.getName() + ", "
+					+ (int) purge.getMarinesAllotted() + " marines aboard");
+		}
+		return new float[] { n, fp };
+	}
+
+	/** The play's base, or - that one lost - the first of the faction's still in reach of its system (the picture's), which it moves to; null when none is. */
+	protected static MarketAPI baseFor(Play pl) {
+		MarketAPI base = market(pl.baseId);
+		if (base != null && pl.factionId.equals(base.getFactionId())) return base;
+		ThreatWarCouncil.Picture p = ThreatWarCouncil.picture(pl.factionId);
+		ThreatWarCouncil.Cluster k = p != null ? p.cluster(pl.systemId) : null;
+		MarketAPI next = k != null ? baseOf(k, pl.factionId) : null;
+		if (next != null) {
+			ThreatIncConfig.log("Play " + pl.id + " " + pl.type + ": its base is lost, it strikes from " + next.getName());
+			ThreatConvoys.clearPlayStaging(pl.id);
+			pl.baseId = next.getId();
+		}
+		return next;
 	}
 
 	/** A feint's bombers on B's Nexus sail on their day, in the strike or after the release. */
@@ -1005,11 +1138,13 @@ public class ThreatPlays {
 	 */
 	protected static boolean siegeNear(Play pl) {
 		if (!pl.sieged) return false;
-		ThreatPurgeFGI purge = purgeOf(pl.id);
-		if (!live(purge)) return false;
 		float lead = RELEASE_LEAD_DAYS;
 		for (String f : forcesOf(pl)) lead = Math.max(lead, RELEASE_LEAD_DAYS + ThreatSoftening.passageDays(f));
-		return purge.getETAUntil(GenericRaidFGI.PAYLOAD_ACTION) <= lead;
+		// the nearest of its sieges sets the day
+		for (ThreatPurgeFGI purge : purgesOf(pl.id)) {
+			if (live(purge) && purge.getETAUntil(GenericRaidFGI.PAYLOAD_ACTION) <= lead) return true;
+		}
+		return false;
 	}
 
 	protected static void strikeCheck(Play pl, FactionAPI faction, float today, Random random) {
@@ -1030,8 +1165,7 @@ public class ThreatPlays {
 
 	protected static void exploitCheck(Play pl, FactionAPI faction, float today, Random random) {
 		sendBombers(pl, faction, today);
-		ThreatPurgeFGI purge = purgeOf(pl.id);
-		boolean siege = live(purge);
+		boolean siege = siegeLive(pl.id);
 		boolean forces = anyForceAlive(pl);
 		if (!siege && !forces) {
 			finish(pl, today, "its forces are spent or home");
@@ -1040,13 +1174,31 @@ public class ThreatPlays {
 		if (today < pl.phaseDue) return;
 		float held = pl.orbitDays - pl.orbitAtCheck;
 		pl.orbitAtCheck = pl.orbitDays;
-		int landed = landings(purge);
+		int landed = landings(pl.id);
 		boolean thinning = pl.seenAtCheck > 0f && pl.seenLast >= 0f && pl.seenLast < 0.8f * pl.seenAtCheck;
 		boolean landing = landed > pl.landed;
 		pl.landed = Math.max(pl.landed, landed);
 		String damage = "orbit held " + (int) held + " world-days, " + landed + " landings, swarm seen "
 				+ (int) pl.seenAtCheck + " -> " + (int) Math.max(0f, pl.seenLast) + " FP";
 		pl.seenAtCheck = pl.seenLast;
+		// the system's other worlds, as the pools come to pay them: the play stays for the sieges it adds
+		MarketAPI base = (siege || forces) && system(pl.systemId) != null ? baseFor(pl) : null;
+		if (base != null) {
+			float[] more = besiege(pl, faction, base, system(pl.systemId), IncursionManager.easiestFirst(
+					ThreatIntel.observerOf(faction), liveTargets(faction, pl.targetIds, own(pl))), random);
+			if (more[0] > 0f) {
+				pl.phaseDue = today + Math.max(1f, ThreatIncConfig.councilExploitDays()) * ThreatWarCouncil.jitter(random);
+				ThreatIncConfig.log("Play " + pl.id + " " + pl.type + ": stays, " + (int) more[0]
+						+ (more[0] == 1f ? " more siege sails (" : " more sieges sail (") + damage + ")");
+				return;
+			}
+		}
+		// a siege the invasion line added since (invade) is still on its way: its escort waits for it
+		if (forces && siegeInbound(pl.id)) {
+			pl.phaseDue = today + Math.max(1f, ThreatIncConfig.councilExploitDays()) * ThreatWarCouncil.jitter(random);
+			ThreatIncConfig.log("Play " + pl.id + " " + pl.type + ": stays, a siege of its own is on its way (" + damage + ")");
+			return;
+		}
 		if (pl.extensions < MAX_EXTENSIONS && (held > 0f || landing || thinning)) {
 			pl.extensions++;
 			pl.phaseDue = today + Math.max(1f, ThreatIncConfig.councilExploitDays()) * ThreatWarCouncil.jitter(random);
@@ -1067,6 +1219,16 @@ public class ThreatPlays {
 		if (!anyHive(pl.targetIds)) {
 			finish(pl, today, "its worlds are the swarm's no longer");
 			return;
+		}
+		// the saturation expedition's escort: held until the expedition nears, home when it is over
+		if (pl.sieged && anyForceAlive(pl)) {
+			if (!siegeLive(pl.id)) {
+				standDownForces(pl, "its expedition is over");
+			} else if (!pl.released && siegeNear(pl)) {
+				pl.released = true;
+				for (String f : forcesOf(pl)) ThreatSoftening.release(f);
+				ThreatIncConfig.log("Play " + pl.id + " STARVE: the escort goes in as the expedition nears");
+			}
 		}
 		// squadrons in rotation over the Nexuses, one sent a day, the one its reports
 		// show least guarded first (where, not how big: the squadron is the doctrine size)
@@ -1163,6 +1325,12 @@ public class ThreatPlays {
 	 * (section 4.3): it razes, it lands nothing. Sized as the planner sizes a
 	 * siege that razes these worlds (IncursionManager.siegeSizesFor with the
 	 * raze set: the reported orbit x the margin, and the guns; 2026-10-02).
+	 * It takes as many of the play's worlds as the pools pay the razing fuel
+	 * of, the worlds with a Nexus first and the smallest of them first, and
+	 * books those alone (2026-10-04: set aside for every hive of the system,
+	 * a median 312-416k fuel, it was postponed 422-888 times a run and held
+	 * the whole system against invasion). It sails with an escort
+	 * ({@link #escort}: alone, 29-37 a run were called off on arrival).
 	 */
 	protected static void saturate(Play pl, FactionAPI faction, Random random) {
 		if (pl.sieged) return;
@@ -1170,23 +1338,36 @@ public class ThreatPlays {
 		StarSystemAPI s = system(pl.systemId);
 		if (base == null || s == null || !pl.factionId.equals(base.getFactionId())) return;
 		List<MarketAPI> targets = new ArrayList<MarketAPI>();
+		java.util.Set<MarketAPI> booked = IncursionManager.bookedWorlds(own(pl));
 		for (MarketAPI m : IncursionManager.bombardTargets(s)) {
-			if (pl.targetIds.contains(m.getId()) && !IncursionManager.bookedWorlds(own(pl)).contains(m)) targets.add(m);
+			if (pl.targetIds.contains(m.getId()) && !booked.contains(m)) targets.add(m);
 		}
 		if (targets.isEmpty()) return;
-		java.util.Set<String> raze = IncursionManager.idsOf(targets);
-		List<Integer> sizes = IncursionManager.siegeSizesFor(base, faction, targets, 0f, raze);
-		if (sizes.isEmpty()) return;
-		ThreatPurgeFGI purge = IncursionManager.launchSiegeExpedition(base, faction, s, targets, sizes, false, random,
-				0f, raze, pl.id);
+		java.util.Collections.sort(targets, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				boolean na = ThreatColonyManager.hasOperationalNexus(a), nb = ThreatColonyManager.hasOperationalNexus(b);
+				if (na != nb) return na ? -1 : 1;
+				return a.getSize() - b.getSize();
+			}
+		});
+		ThreatPurgeFGI purge = null;
+		List<MarketAPI> set = targets;
+		for (int n = targets.size(); n >= 1 && purge == null; n--) {
+			set = new ArrayList<MarketAPI>(targets.subList(0, n));
+			java.util.Set<String> raze = IncursionManager.idsOf(set);
+			List<Integer> sizes = IncursionManager.siegeSizesFor(base, faction, set, 0f, raze);
+			if (sizes.isEmpty() || !IncursionManager.siegeCanPay(base, faction, s, set, sizes, raze)) continue;
+			purge = IncursionManager.launchSiegeExpedition(base, faction, s, set, sizes, false, random, 0f, raze, pl.id);
+		}
 		if (purge != null) {
 			pl.sieged = true;
 			ThreatIncConfig.log("Play " + pl.id + " STARVE: saturation expedition of " + (int) purge.abstractFull()
-					+ " FP sails from " + base.getName() + " to raze " + targets.size() + " worlds");
+					+ " FP sails from " + base.getName() + " to raze " + set.size() + " of " + targets.size() + " worlds");
+			escort(pl, faction, base, s, set, purge.abstractFull(), ThreatPosture.today(), random);
 		} else {
 			ThreatIncConfig.logOnChange("playSaturate:" + pl.id, "no", "Play " + pl.id
-					+ " STARVE: no saturation expedition the pools pay ("
-					+ (int) IncursionManager.siegeFleetGoal(faction, targets, raze) + " FP needed)");
+					+ " STARVE: no saturation expedition the pools pay, even of one world ("
+					+ (int) IncursionManager.siegeFleetGoal(faction, set, IncursionManager.idsOf(set)) + " FP needed)");
 		}
 	}
 
@@ -1282,7 +1463,7 @@ public class ThreatPlays {
 
 	/** The verdict by the damage done: a world taken or landed on, or a Nexus down councilInvadeNexusDays. */
 	protected static void finish(Play pl, float today, String why) {
-		pl.landed = Math.max(pl.landed, landings(purgeOf(pl.id)));
+		pl.landed = Math.max(pl.landed, landings(pl.id));
 		pl.taken = 0;
 		for (String id : pl.targetIds) {
 			if (!ThreatWarCouncil.isHive(market(id))) pl.taken++;
@@ -1357,20 +1538,28 @@ public class ThreatPlays {
 
 	/**
 	 * The play's staging (section 16): the base stocks what the play's own
-	 * expedition against {@code s} draws, sized as the strike will size it
-	 * (IncursionManager.siegeSizesFor, the report as it stands today), against
-	 * {@code stageAt}.
+	 * sieges against {@code s} draw, one a world as the strike will sail them
+	 * ({@link #besiege}; IncursionManager.siegeSizesFor, the report as it stands
+	 * today), against {@code stageAt}.
 	 */
 	protected static void stage(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> targets,
 			StarSystemAPI stageAt) {
-		List<Integer> sizes = IncursionManager.siegeSizesFor(base, faction, targets, 0f);
-		if (sizes.isEmpty()) return;
-		float[] wants = IncursionManager.expeditionWants(base, s, targets, sizes,
-				IncursionManager.razeWorlds(base, faction, s, targets));
-		ThreatConvoys.stageForPlay(base, pl.id, stageAt, wants);
+		float[] wants = null;
+		for (MarketAPI w : targets) {
+			List<MarketAPI> one = java.util.Collections.singletonList(w);
+			List<Integer> sizes = IncursionManager.siegeSizesFor(base, faction, one, 0f, NO_RAZE);
+			if (sizes.isEmpty()) continue;
+			float[] add = IncursionManager.expeditionWants(base, s, one, sizes, NO_RAZE);
+			if (wants == null) {
+				wants = add;
+			} else {
+				for (int i = 0; i < wants.length && i < add.length; i++) wants[i] += add[i];
+			}
+		}
+		if (wants != null) ThreatConvoys.stageForPlay(base, pl.id, stageAt, wants);
 	}
 
-	/** A share of the means, by the faction's personality (shareMult): the hunts, decoys and squadrons of a play, never its siege. */
+	/** A share of the means, by the faction's personality (shareMult): the most a play's escort takes, its decoys and squadrons, never its siege. */
 	protected static float share(String fid, float share) {
 		return Math.max(0f, share) * ThreatWarCouncil.personality(fid, "shareMult");
 	}
@@ -1452,6 +1641,43 @@ public class ThreatPlays {
 			if (o instanceof ThreatPurgeFGI && playId.equals(((ThreatPurgeFGI) o).getPlayId())) return (ThreatPurgeFGI) o;
 		}
 		return null;
+	}
+
+	/** Every siege expedition of the play: a hammer sails one a world (besiege). */
+	protected static List<ThreatPurgeFGI> purgesOf(String playId) {
+		List<ThreatPurgeFGI> out = new ArrayList<ThreatPurgeFGI>();
+		if (playId == null) return out;
+		for (Object o : IncursionManager.getPurgeList()) {
+			if (o instanceof ThreatPurgeFGI && playId.equals(((ThreatPurgeFGI) o).getPlayId())) out.add((ThreatPurgeFGI) o);
+		}
+		return out;
+	}
+
+	/** Whether one of the play's sieges is still out. */
+	protected static boolean siegeLive(String playId) {
+		for (ThreatPurgeFGI purge : purgesOf(playId)) {
+			if (live(purge)) return true;
+		}
+		return false;
+	}
+
+	/** Whether one of the play's sieges is still mustering or on its way out. */
+	protected static boolean siegeInbound(String playId) {
+		for (ThreatPurgeFGI purge : purgesOf(playId)) {
+			if (!live(purge)) continue;
+			com.fs.starfarer.api.impl.campaign.intel.group.FGAction action = purge.getCurrentAction();
+			String id = action != null ? action.getId() : null;
+			if (purge.isInPreLaunchDelay() || GenericRaidFGI.PREPARE_ACTION.equals(id)
+					|| GenericRaidFGI.TRAVEL_ACTION.equals(id)) return true;
+		}
+		return false;
+	}
+
+	/** The landings of all the play's sieges. */
+	protected static int landings(String playId) {
+		int n = 0;
+		for (ThreatPurgeFGI purge : purgesOf(playId)) n += landings(purge);
+		return n;
 	}
 
 	protected static boolean live(ThreatPurgeFGI purge) {
