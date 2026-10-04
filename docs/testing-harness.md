@@ -318,7 +318,10 @@ seconds; the clock runs meanwhile (two days passed on one approach).
 `fastforward\sbs.ps1 -Tags hw6a,hw6b,hw6c -Days 3750` runs several new games at once and fast-forwards them
 together. Trial `sa`/`sb`: two games ran 210 and 212 days a minute each, against 215 for one game alone, so the
 batch time is one run's (about 40 minutes) whatever the count, up to what memory holds (2.8 GB a game).
-Untested so far: more than two games, a run past war day 580, the stall nudges and the pause for a user.
+Batch hw6a-hw6c (2026-10-04): three games ran 123-142 days a minute each to war day 2,340-2,680, about the same
+days a minute in total as two, so a third game buys a replicate, not time. The wrap-up works (dumps copied,
+settings restored), and closing the games by hand ends a batch cleanly ("GAME GONE"). Untested so far: the
+stall nudges and the pause for a user.
 
 - **Each game has its own folders**, `saves\_sbs\<tag>\saves` and `...\logs`, given on its command line
   (`-Dcom.fs.starfarer.settings.paths.saves` / `.logs`; `start.bat` there is `starsector.bat`'s java line with
