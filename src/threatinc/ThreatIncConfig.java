@@ -129,6 +129,8 @@ public class ThreatIncConfig {
 	public static boolean postureNeedAtAttack() { return b("threatinc_postureNeedAtAttack", true); }
 	/** Whether a forge of a THREATENED or BESIEGED system sends no wave and counts toward no claim, whatever it holds above the need. */
 	public static boolean posturePressedForgesHome() { return b("threatinc_posturePressedForgesHome", false); }
+	/** Range (LY) at which a hive system under attack and short of its need calls home a strike not yet at its work and nearer it than its target (ThreatPosture.recallStrikes); 0 = off. */
+	public static float postureRecallLY() { return f("threatinc_postureRecallLY"); }
 	/** Whether a sector stance (ThreatStance) decides where the surplus goes: pressing weak rivals, expanding, or consolidating. */
 	public static boolean stanceEnabled()     { return b("threatinc_stanceEnabled", true); }
 	/** The hive presses a rival it holds this many times the force of, in reach of it. */
