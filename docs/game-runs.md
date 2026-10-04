@@ -207,8 +207,78 @@ The humans sent 65-79k FP of sieges and 59-97k FP of escorts in two years agains
 (a) leave it: an annihilation is a good run by the 2026-10-02 scoring, but it is the same run every time and over
 before a player matters; (b) ask of the swarm what was asked of the humans - what stops it defending and
 attacking well (points 1, 2 and 4 are its own rules) - and fix those; (c) make a hive cost more on the ground
-(point 3); (d) put the human restraints back - ruled out by the user's rule.
+(point 3); (d) put the human restraints back - ruled out by the user's rule. **Decided the same evening: (b)**,
+the humans left alone for now (section 4).
 
 **Harness.** Three games at once ran at 123-142 days a minute each (two: 210), so about the same days a minute in
 total; the wrap-up (dumps copied, settings restored) works, and closing the games by hand ends a batch cleanly
 ("GAME GONE").
+
+## 4. What stops the swarm defending and attacking (hw6a-hw6c, read 2026-10-04 evening)
+
+The user's call after section 3: "we need to remove artificial constraints on the swarm like we just did for
+humans". Read from the hw6 logs (figures hw6b) and the code. Each link is a rule (removed, with a knob that puts
+it back) or a shortage (left, named).
+
+**Defence: 12.9k FP in the home system, and each world fought alone.**
+
+1. **A depot's capacity counted as an attack.** `ThreatPosture.read` took what a base staging for a hive system
+   could pay (`Place.stagedFP`) as pressure: Yma read 37,550 "staged", Wotan 15,040. Since section 3 a siege is
+   sized to the swarm reported at its world (1-3k FP), so nobody sends that force. Rule. Removed:
+   `postureStagedShare` 0, pressure is the forces seen (attacks, hostiles, losses, forward guards).
+2. **Systems were written off.** Triage zeroed the need of a system the hive "could not hold": 13-15 write-offs
+   a run, every attacked system, the home system included (m45: "Wotan written off - pressure 2303 needs 1535,
+   the hive could gather 916" with 12.9k FP held). What it could gather left out every colony's launch stock.
+   A written-off system is not reinforced. Rule. Removed: `postureTriage` off.
+3. **The launch stock was never the defence's.** A colony's base want is its reserve plus two swarms kept for
+   the next wave or strike (the home system's base alone: 12,074 FP). A donor gave only above its want and only
+   from a quiet system, so a colony short of its stock gave nothing. Rule. Removed: a colony the war asks
+   nothing of gives down to its reserve for one under attack (`redistributeByPressure`, `postureNeedAtAttack`).
+4. **The need was split by the size tables, the orbit is fought at the world.** Alpha Laphirial II met a siege
+   of 1,925 FP with the 1,432 FP over it (1,432 -> 449 -> 121 in three days), Alpha Laphirial IV one of 1,968
+   with 956, in a system holding 12.9k. Rule. Removed: the need stands at the worlds a force is over or an army
+   is on (`ThreatPosture.overWorlds`, `siegesOver`), their siblings give down to their reserve, and a siege
+   arriving makes the next pass due at once (`ThreatPosture.alarm`; it was up to 5 days).
+
+**Growth: being attacked stopped it.**
+
+5. **CONSOLIDATE stopped every new claim and every strike but a spoiling blow.** Entered m48-50 with 2-4 systems
+   pressed; no founding after m46. Rule. Removed: `stanceConsolidateSpreadShare` 1, `stanceConsolidateStrikes`
+   (any world by its weakness, a base staging against a hive weighing x10). Consolidating still feeds pressed
+   systems.
+6. **A pressed system's forges stayed home whatever they held.** `trySpread` and `pickForgeSource` skipped them.
+   Rule, and a second gate on top of `launchSpareFP`, which already lets a colony launch only what it holds
+   above the need. Removed: `posturePressedForgesHome` off.
+
+**Offence: the strike went home and left its landing.**
+
+7. **An unspawned strike left one fleet a landing.** The m42 strike on Aztlan, 4,219 FP in 13 fleets, landed
+   1,200 troops each on Chicomoztoc and Coatl, left 291 and 325 FP over them and took the rest home (2,306 of
+   3,573 FP re-banked). A relief of 714 FP took each orbit. A spawned strike ends with every fleet over a front
+   (`joinDefend`); 7-12 of 10-17 landings a run were overrun. Rule (the off-screen path's). Removed: its share of
+   the fleets stays over each landing, all it has left over the last (`ThreatStrikeFGI.guardShare`,
+   `strikeGuardWhole`).
+
+**Shortages and what is left alone.**
+
+- Fleets away: 8-10k of hw6b's 20-26k FP from m41 to m53 were two strikes from the home system (5,017 FP at
+  Arcadia from m38, 4,219 at Aztlan from m42), 130-150 days out. Not a rule: the swarm chose them before it was
+  found. Nothing recalls a strike when home is attacked (new behaviour, not built).
+- Income fell from 3,500 FP a month (m50) to 200 (m53) and 0 (m61) with 5.4-5.9k FP banked: income is 0 at a
+  colony whose Core or Nexus is down and its bank cannot build (`fabricationRatePerDay`, `canRebuildGarrison`).
+  A consequence of losing the orbit, not a rule.
+- An off-screen fight costs each side half the other's points a day, at most three quarters of its own
+  (`BattleRules`): a garrison outnumbered 1.5:1 or worse trades at two thirds. Feeding a fight is not a
+  grinder, which is why the triage could go.
+- Left alone: the strike gate (13-25 "passed over" a month: no strike on odds it loses), one strike a hive
+  system a month, strike weight size squared over days (Chicomoztoc, 8 strata, as an opening target), half the
+  growth share of supplies while consolidating (`feedShareConsolidate`, the user's round 20), phase gates.
+- The user's call, not touched: what a hive costs on the ground (300-2,300 marines took one in a month).
+
+**Built 2026-10-04, commit 68d019a (local). Not game-tested**: the batch hw7a-hw7c did not start, the screen was
+locked (`sbs.ps1`: "LOCKED - nothing run"). To run: `sbs.ps1 -Tags hw7a,hw7b,hw7c -Days 3750`, then
+`%TEMP%\threatinc-tests\hw6-digest.sh` with the tags changed. Read against section 3: hives over time,
+"written off" (expect none), `Posture: ... sent` transfers into besieged worlds, off-screen fights over hive
+worlds (defender FP), foundings after first contact, `Strike guard over` fleets a landing, Threat landings
+overrun, worlds lost, exceptions. A knob per rule allows a run with one put back
+(`-Knobs "hw7c:threatinc_strikeGuardWhole=false"`).
