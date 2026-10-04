@@ -971,19 +971,53 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * which keeps the rest of what it held; the bank pays the guard's points
 	 * beyond its share or takes back what it fell short, as at a spawn, and the
 	 * guard re-banks itself on despawn (bound to the ledger, finishFleet).
+	 *
+	 * <p>Its share of the fleets, not one (2026-10-04, strikeGuardWhole; guardShare):
+	 * a spawned strike ends with every fleet over a front (joinDefend), and an
+	 * unspawned one took the rest home - hw6b, a strike of 4,219 FP left 291 FP
+	 * over Chicomoztoc and 325 over Coatl, a relief of 714 FP took each orbit,
+	 * and 7-12 of 10-17 landings a run were overrun.
 	 */
 	protected void guardUnspawned(MarketAPI market) {
 		if (isSpawnedFleets() || stillborn || ledgerHome == null) return;
 		if (market.getPrimaryEntity() == null || market.getPrimaryEntity().getContainingLocation() == null) return;
 		if (getParams() == null || getParams().fleetSizes == null || getParams().fleetSizes.isEmpty()) return;
 		if (guarded != null && guarded.contains(market.getId())) return;
+		int leave = ThreatIncConfig.strikeGuardWhole() ? guardShare(market) : 1;
+		for (int n = 0; n < leave && !getParams().fleetSizes.isEmpty(); n++) {
+			if (!guardOne(market)) break;
+		}
+	}
+
+	/**
+	 * Fleets an unspawned strike leaves over this landing: an even share of
+	 * what it has left over the worlds it may still land on, this one among
+	 * them, rounded up - and all of them once too few troops are aboard to land
+	 * anywhere else, as a spawned strike's fleets with nothing left to land
+	 * join a front it did land (joinDefend).
+	 */
+	protected int guardShare(MarketAPI market) {
+		int fleets = getParams().fleetSizes.size();
+		if (troopsAboard < ThreatIncConfig.frontMinMarines() || getParams().raidParams == null) return fleets;
+		int worlds = 0;
+		for (MarketAPI target : getParams().raidParams.allowedTargets) {
+			if (target == null || !target.isInEconomy() || target.getPrimaryEntity() == null) continue;
+			if (Factions.THREAT.equals(target.getFactionId())) continue;
+			if (target != market && guarded != null && guarded.contains(target.getId())) continue;
+			worlds++;
+		}
+		return Math.max(1, (int) Math.ceil(fleets / (float) Math.max(1, worlds)));
+	}
+
+	/** One fleet of an unspawned strike - its first entry - built over the world and put on Defend (guardUnspawned); false when none was. */
+	protected boolean guardOne(MarketAPI market) {
 		List<Integer> sizes = getParams().fleetSizes;
 		int planned = 0;
 		for (Integer s : sizes) if (s != null) planned += s;
 		Integer entry = sizes.get(0);
 		float share0 = ledgerShare();
 		float held = ledgerPaid * share0;
-		if (entry == null || planned <= 0 || held <= 0f) return;
+		if (entry == null || planned <= 0 || held <= 0f) return false;
 		Float damage = getRoute() != null && getRoute().getExtra() != null ? getRoute().getExtra().damage : null;
 
 		// the pack spawnFleets would have built for this entry
@@ -1023,7 +1057,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		}
 		packsLeft = null;
 		overflow = null;
-		if (built.isEmpty()) return;
+		if (built.isEmpty()) return false;
 
 		// the entry leaves the strike; fabricatedFP scales with the planned
 		// points, so ledgerShare - and what the rest holds - is unchanged
@@ -1052,6 +1086,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		ThreatIncConfig.log("Strike guard over " + market.getName() + ": the unspawned strike leaves "
 				+ built.size() + " fleet(s), " + (int) (ledgerBuilt - before) + " FP, on Defend ("
 				+ (int) share + " of its " + (int) held + " held); " + sizes.size() + " fleet(s) left");
+		return true;
 	}
 
 	/**
