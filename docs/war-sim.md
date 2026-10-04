@@ -4,6 +4,15 @@ SPEC 2026-10-02, approved the same day (section 10), build in progress. A standa
 strategic war (swarm against the human factions) outside the game, in seconds, over many seeds,
 so balance and strategy changes are tried offline and only the winners get an in-game run.
 
+**FROZEN 2026-10-04 at round 33 (`0dfbf42`), the user's decision** (`facts.md` Decisions, "The game is the
+test"). About 700 lines of rules are shared with the mod (`src/threatinc/rules/`); the other 10,000 re-implement
+it and are fitted to game runs, so every mod rule change put the fit out, and 33 rounds did not bring the joined
+war level with the game (round 33, month 120: worlds lost 12.5-14 against 2-3, human supplies 1-2M against
+136-285k). It is not calibrated further, and a mismatch with the game is its fault, not the mod's. What still
+reads true off it is the table in `handover-2026-10-02-night.md` 2: ranking a knob or a rule over seeds, large
+effects - never absolute worlds lost, late strikes or landings, or months in a stance. The unfinished round 34
+is on the branch `warsim-round-34-parked`.
+
 ## 1. Why
 
 - A 100-month in-game run takes about 33 minutes plus analysis; one night bought five runs
