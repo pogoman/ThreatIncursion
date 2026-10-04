@@ -613,6 +613,8 @@ public class ThreatIncConfig {
 	public static boolean swarmFogOfWar()     { return b("threatinc_swarmFogOfWar", true); }
 	/** Days a sighted human attack still counts toward a hive system's pressure after it was last seen. */
 	public static float swarmContactDays()    { return f("threatinc_swarmContactDays"); }
+	/** Hyperspace range (LY) at which a live hive sees a human attack force in flight (ThreatSwarmIntel.sees); 0 = off. */
+	public static float swarmPicketLY()       { return f("threatinc_swarmPicketLY"); }
 	/** Mobilised factions plan sieges, raids and recon (ThreatAttackPlanner); off = the monthly per-base pick. */
 	public static boolean attackPlanner()     { return b("threatinc_attackPlanner", true); }
 	/** Mobilised factions hold a strategy and run plays (ThreatWarCouncil, docs/war-council.md); it replaces the attack planner. Off = the planner as built. */

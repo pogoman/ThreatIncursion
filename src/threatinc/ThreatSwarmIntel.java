@@ -18,6 +18,7 @@ import com.fs.starfarer.api.impl.campaign.fleets.RouteManager;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
 import com.fs.starfarer.api.util.Misc;
+import org.lwjgl.util.vector.Vector2f;
 
 /**
  * THE SWARM'S FOG OF WAR (2026-10-01, user's call; docs/threat-fog.md) - the
@@ -29,10 +30,13 @@ import com.fs.starfarer.api.util.Misc;
  * (garrisons, Scouting Swarms, raiders, Defend stations, spawned strike
  * fleets), an unspawned strike route passing through it, or a Threat ground
  * front: exact. SCOUT - a Scouting Swarm entering a system looks at every
- * human place there ({@link #scouted}), exact. No radar (user, 2026-10-02):
- * a place or contact is real time while a Threat ship is in its system, and
- * from the day the last one leaves it stands and ages. Battles need nothing
- * new: a Threat fleet in a fight is in the system.
+ * human place there ({@link #scouted}), exact. PICKET (user, 2026-10-04) -
+ * a human attack force in hyperspace within swarmPicketLY of a live hive,
+ * exact: the humans' strike picket (ThreatFrontlines.detectedAt), mirrored.
+ * It sees forces in flight only. No radar otherwise (user, 2026-10-02): a
+ * place is real time while a Threat ship is in its system, and from the day
+ * the last one leaves it stands and ages. Battles need nothing new: a Threat
+ * fleet in a fight is in the system.
  *
  * <p>Two records. A CONTACT per human attack force seen - a siege, a hunt, a
  * support or defend sortie, a raid - bound for a hive system, at the fleet
@@ -65,7 +69,7 @@ public final class ThreatSwarmIntel {
 	/** System id -> day: systems seeded with scouting off (seedUnscouted), once each; cleared while the fog is off. */
 	protected static final String UNSCOUTED = "unscouted";
 
-	public static final String EYES = "eyes", SCOUT = "scout";
+	public static final String EYES = "eyes", PICKET = "picket", SCOUT = "scout";
 
 	/** One human attack force the swarm has seen coming. */
 	public static class Contact {
@@ -73,7 +77,7 @@ public final class ThreatSwarmIntel {
 		public String key, factionId;
 		/** The hive system it is bound for. */
 		public String systemId;
-		/** {@link #EYES}: how it was last seen ("radar" in a save from before 2026-10-02). */
+		/** {@link #EYES} or {@link #PICKET}: how it was last seen ("radar" in a save from before 2026-10-02). */
 		public String source;
 		/** Fleet points as ThreatPosture.attacksBySystem counts them, when last seen. */
 		public float fp;
@@ -150,6 +154,8 @@ public final class ThreatSwarmIntel {
 	private static final Set<String> STANDING = new HashSet<String>();
 	/** System id -> whether a live Threat fleet was in it when first asked today. */
 	private static final Map<String, Boolean> FLEET_EYES = new HashMap<String, Boolean>();
+	/** Where the hive picket stands: each system with a live hive colony, in hyperspace. */
+	private static final List<Vector2f> PICKET_SITES = new ArrayList<Vector2f>();
 
 	/** Reads the standing eyes once a day ({@code force}: now, for the sweep). */
 	protected static void senses(boolean force) {
@@ -158,8 +164,17 @@ public final class ThreatSwarmIntel {
 		senseDay = day;
 		STANDING.clear();
 		FLEET_EYES.clear();
+		PICKET_SITES.clear();
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
-			if (!ThreatIncData.getLiveColonyMarkets(systemId).isEmpty()) STANDING.add(systemId);
+			List<MarketAPI> hives = ThreatIncData.getLiveColonyMarkets(systemId);
+			if (hives.isEmpty()) continue;
+			STANDING.add(systemId);
+			// a system's hives share one place in hyperspace
+			for (MarketAPI hive : hives) {
+				if (hive == null || hive.getPrimaryEntity() == null) continue;
+				PICKET_SITES.add(new Vector2f(hive.getLocationInHyperspace()));
+				break;
+			}
 		}
 		for (ThreatGroundFronts.GroundFront front : ThreatGroundFronts.fronts().values()) {
 			if (!ThreatGroundFronts.isThreatOwned(front)) continue;
@@ -183,6 +198,16 @@ public final class ThreatSwarmIntel {
 			return route.getCurrent().getCurrentContainingLocation();
 		} catch (RuntimeException e) {
 			// a segment with neither end: nowhere to see it
+			return null;
+		}
+	}
+
+	/** Where an abstract route is now in hyperspace, or null. */
+	protected static Vector2f routeHyper(RouteManager.RouteData route) {
+		if (route == null || route.getCurrent() == null) return null;
+		try {
+			return route.getInterpolatedHyperLocation();
+		} catch (RuntimeException e) {
 			return null;
 		}
 	}
@@ -211,15 +236,39 @@ public final class ThreatSwarmIntel {
 
 	/**
 	 * Whether the swarm sees what is at {@code where}: {@link #EYES} in a
-	 * system it has eyes in, else null (nothing is seen in hyperspace).
+	 * system it has eyes in, else null (a place or convoy is never seen from
+	 * hyperspace; an attack force is, by the picket - the two-argument sees).
 	 */
 	public static String sees(LocationAPI where) {
 		senses(false);
 		return where instanceof StarSystemAPI && eyesIn((StarSystemAPI) where) ? EYES : null;
 	}
 
-	/** The better of two sightings: eyes over none. */
+	/** Whether the hyperspace point is within swarmPicketLY of a live hive. */
+	protected static boolean inPicket(Vector2f at) {
+		if (at == null || PICKET_SITES.isEmpty()) return false;
+		float range = ThreatIncConfig.swarmPicketLY();
+		if (range <= 0f) return false;
+		for (Vector2f site : PICKET_SITES) {
+			if (Misc.getDistanceLY(site, at) <= range) return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Whether the swarm sees a human attack force at {@code where}:
+	 * {@link #EYES} in a system it has eyes in; {@link #PICKET} in hyperspace
+	 * at {@code hyper}, within swarmPicketLY of a live hive; else null.
+	 */
+	public static String sees(LocationAPI where, Vector2f hyper) {
+		String eyes = sees(where);
+		if (eyes != null) return eyes;
+		return where != null && where.isHyperspace() && inPicket(hyper) ? PICKET : null;
+	}
+
+	/** The better of two sightings: eyes, then the picket, over none. */
 	protected static String better(String a, String b) {
+		if (EYES.equals(a) || EYES.equals(b)) return EYES;
 		return a != null ? a : b;
 	}
 
@@ -285,8 +334,9 @@ public final class ThreatSwarmIntel {
 	 * does (each fleet once, sieges first): one the swarm sees has its contact
 	 * written at the figure that read counts. A siege still abstract is seen
 	 * where its route is, and counts only while threatSeesBookedSieges
-	 * (countsAbstract); an order mustering at its base where its fleet is. A
-	 * force that ended, or counts nothing now, loses its contact.
+	 * (countsAbstract); an order mustering at its base where its fleet is. In
+	 * hyperspace the hive picket sees them (sees). A force that ended, or
+	 * counts nothing now, loses its contact.
 	 */
 	protected static void sweepContacts(Set<String> hive, float day) {
 		Set<String> live = new HashSet<String>();
@@ -308,17 +358,18 @@ public final class ThreatSwarmIntel {
 			String source = null;
 			if (purge instanceof ThreatPurgeFGI && ThreatPosture.countsAbstract((ThreatPurgeFGI) purge)) {
 				fp = ((ThreatPurgeFGI) purge).abstractNow();
-				source = sees(routeLocation(purge.getRoute()));
+				RouteManager.RouteData route = purge.getRoute();
+				source = sees(routeLocation(route), routeHyper(route));
 				// fleets already spawning near the player are seen where they are
 				for (CampaignFleetAPI f : purge.getFleets()) {
 					if (f == null || !f.isAlive()) continue;
-					source = better(source, sees(f.getContainingLocation()));
+					source = better(source, sees(f.getContainingLocation(), f.getLocationInHyperspace()));
 				}
 			} else {
 				for (CampaignFleetAPI f : purge.getFleets()) {
 					if (f == null || !f.isAlive() || !counted.add(f)) continue;
 					fp += ThreatSoftening.combatFP(f);
-					source = better(source, sees(f.getContainingLocation()));
+					source = better(source, sees(f.getContainingLocation(), f.getLocationInHyperspace()));
 				}
 			}
 			if (fp <= 0f) continue;
@@ -345,7 +396,7 @@ public final class ThreatSwarmIntel {
 			if (fp <= 0f) continue;
 			String key = orderKey(o.fleet);
 			live.add(key);
-			String source = sees(o.fleet.getContainingLocation());
+			String source = sees(o.fleet.getContainingLocation(), o.fleet.getLocationInHyperspace());
 			if (source != null) note(key, o.factionId, systemId, fp, source, day, kind);
 		}
 		// a force that ended is seen to go (docs/threat-fog.md, decision 4)
