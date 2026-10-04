@@ -144,48 +144,12 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   (`pickForgeSource`, `trySpread`) and the CONSOLIDATE stance (half the systems pressed, or the hive
   count falling while any is attacked; no dwell) left strikes to spoiling blows; both rules are now
   off by default (below).
-- **The swarm's restraints removed (2026-10-04, built 68d019a, tested hw7: `game-runs.md` 5; the user: "remove
-  artificial constraints on the swarm like we just did for humans"; diagnosis `game-runs.md` 4).** Each
-  rule keeps a knob that puts it back.
-  - `postureStagedShare` 0 (was 1): a depot's capacity is no pressure. `poll` reads max(A, B x share).
-  - `postureTriage` false: no system is written off; its need is never zeroed.
-  - `postureNeedAtAttack` true. (a) `overWorlds`: once a force is over a world - hostile fleets within
-    `ORBIT_HOLD_RANGE` (`ThreatGroundFronts.hostilePointsNear`) plus the unspawned sieges in their payload
-    over it (`siegesOver`, `ThreatPurgeFGI.abstractNow`) - the system's need is split by those points;
-    a world with an army on it and nothing over it weighs as their average; a force under a tenth of
-    the pressure (`OVER_MIN_SHARE`, a scout) singles nothing out, and with no world singled out the
-    tables split it as before. The orbit is contested at the world (`orbitHeld`), so the tables' split
-    left the attacked world its own garrison. (b) `redistributeByPressure`: for a receiver under attack,
-    a donor whose own need is 0 gives down to its reserve (`thinnableFP`), its launch stock included
-    and whether or not it holds its own want - same system first. Before, only a colony of a system not
-    pressed, and only one at its want. (c) `ThreatPosture.alarm` (from `ThreatPurgeFGI.takeDaily`): a
-    siege arriving makes the next pass due at once.
-  - `posturePressedForgesHome` false: a pressed system's forge may send a wave and counts toward a
-    claim; `launchSpareFP` still limits it to what it holds above the need. The appetite's forge
-    count takes every system's forges.
-  - `stanceConsolidateSpreadShare` 1 (was 0) and `stanceConsolidateStrikes` true
-    (`ThreatStance.expansionShare`, `strikeTargetMult`): consolidating, the hive still claims, and
-    strikes any world by its weakness, a base staging against a hive or a forward base weighing
-    x`TARGET_WEIGHT`. `StanceRules.expansionShare` (shared with the frozen simulator) is unchanged;
-    the mod no longer asks it about CONSOLIDATE.
-  - `strikeGuardWhole` true: `ground-war-orbit-control.md`, "The swarm guards its unspawned landings too".
-- **Strikes come home (2026-10-04, the user: "should be able to deviate those that are convenient", not
-  one "already mid siege or close to its target"; built, game-tested hw8: `game-runs.md` 6).** `poll` lists each
-  system that is attacked (attacks, hostiles or losses) and short of its need by more than its cheapest
-  swarm; `recallStrikes` calls in, shortest system first and nearest strike first, each strike within
-  `postureRecallLY` (10, 0 = off; Luna "Strike Recall Range (LY)") that is `ThreatStrikeFGI.recallable`
-  (pre-launch, PREPARE or TRAVEL; not in its payload, not with a guard left, not returning) and nearer
-  the system than its first target, whichever hive launched it, until the gap closes. A strike comes
-  whole: `recallTo` builds an unspawned one where its route stands (`spawnFleets`, the bank settling as
-  at a spawn), detaches every fleet, heaviest first to the world still shortest
-  (`ThreatColonyManager.sendToGarrison`: off the ledger, a reinforcement's blinders, seated by
-  `checkReinforcementArrivals`), then aborts as a withdrawal with nothing to re-bank. A strike spends
-  `prepDays` 7-14 at its colony, so one launched just before a siege is seen is usually still there.
-  `ThreatSwarmIntel.note` calls `ThreatPosture.sighted` on a siege's first sighting: the pass runs that
-  day. Log: `Posture: strike recalled to <system> - N FP in M fleet(s), ...`.
+- **The defence since 2026-10-04** - the swarm's restraints removed, strikes come home, the defence
+  massed (`postureMass`): `swarm-defence.md`.
 - **Settings:** `postureEnabled` (true), `postureMargin` (1.25), `postureBand` (0.25), `postureDays` (5),
   `postureStagedShare` (0), `postureTriage` (false), `postureNeedAtAttack` (true),
-  `posturePressedForgesHome` (false), `postureRecallLY` (10); settings.json only, no LunaLib rows but the last.
+  `posturePressedForgesHome` (false), `postureRecallLY` (10), `postureMass` (true); settings.json only, no
+  LunaLib rows but `postureRecallLY`.
   State is primitive maps (`threatinc_posture`, `threatinc_postureLoss`, `threatinc_postureReceived`);
   the per-session wants are forgotten on load. A state of the older six-field layout reads as unread,
   so the first pass after loading an old save starts its pressure afresh, once (the 7-field layout
