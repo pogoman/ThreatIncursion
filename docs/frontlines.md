@@ -262,6 +262,22 @@ Threat is everyone's enemy. When a strike is detected:
   hive is found;
 - links among the targets call their guard.
 
+**A seen strike tells its system, not its worlds (2026-10-05, the user:
+"humans shouldn't know the exact world just the system"; built, untested).**
+`ThreatFrontlines.boundFor(strike, market)` is true for every market of the
+strike's system (`raidParams.where`), not only those on its list, and every
+reader goes through it: `strikesOn` (the guard's weight, ETA, rear grace and
+upkeep, `ThreatFleetOrders.guardNeed`), `sendRelief` (every link of the system
+calls; `neighbourGuards` still nets one guard against the others'),
+`ThreatAidRequests.strikesAgainst` (help requests, the allies' guard) and the
+faction view's count. `IncursionManager.struckWorlds` gives `onStrikeDetected`
+every human-held world of the system, the largest of a faction that fights
+first: each faction there mobilises and gets the lead, and the first one's
+task force sails. So a faction the hive left off its list (`warOpen`, the size
+floor, the player's grace) now answers too. The strike's own intel still names
+the worlds once it is over them. Knob `strikeSeenBySystem` (true; false = the
+worlds on the list).
+
 A strike can now be seen weeks after launch. So its "New" tag counts from
 detection, the task force only sails if the hive still lives, and targets that
 have left the economy are skipped. All of those used to happen at launch.

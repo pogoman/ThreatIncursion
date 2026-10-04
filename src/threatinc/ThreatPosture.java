@@ -706,6 +706,15 @@ public class ThreatPosture {
 			if (mass) massFromNeighbours(calls, systemIds);
 			CALLS.addAll(calls);
 		}
+		// a force over a world draws its system's spare swarms (rally); an unspawned
+		// siege calls its own each day it fights (ThreatPurgeFGI.dailyDay)
+		if (ThreatIncConfig.systemDefence()) {
+			for (String systemId : systemIds) {
+				for (MarketAPI c : ThreatIncData.getLiveColonyMarkets(systemId)) {
+					rally(c, ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c));
+				}
+			}
+		}
 	}
 
 	/**
@@ -820,6 +829,109 @@ public class ThreatPosture {
 			if (f.getFleetPoints() >= gap && (covers == null || f.getFleetPoints() < covers.getFleetPoints())) covers = f;
 		}
 		return covers != null ? covers : heaviest;
+	}
+
+	/**
+	 * THE SYSTEM DEFENDS AS ONE (2026-10-05, the user: "I'm assuming they defend
+	 * the system just don't know the exact world until the attack arrives";
+	 * of the two shapes offered, "simplicity and the middle version" - the
+	 * fight stays at the world). A force of {@code attackFP} is over the hive
+	 * world: the system's other worlds send it their spare swarms - every
+	 * fleet above each one's reserve count (ThreatColonyManager.spareFleets),
+	 * a world with a force over it or an army on it sending none - the
+	 * lightest that covers the gap else the heaviest, until what stands for
+	 * the world, the swarms already on their way counted, outweighs the force
+	 * by systemDefenceMargin (0: every one). The unspawned sieges fighting
+	 * over the world today weigh together. hw9 massed to the system's whole
+	 * pressure, 2.4-4.3 times the siege, from every system in reach; this
+	 * sends what the force over the world calls for, from its own system.
+	 * Knob: systemDefence.
+	 */
+	public static void rally(MarketAPI world, float attackFP) {
+		if (!enabled() || !ThreatIncConfig.systemDefence() || world == null || attackFP <= 0f) return;
+		if (world.getPrimaryEntity() == null || world.getStarSystem() == null) return;
+		List<MarketAPI> colonies = ThreatIncData.getLiveColonyMarkets(world.getStarSystem().getId());
+		boolean hive = false;
+		for (MarketAPI c : colonies) hive |= c.getId().equals(world.getId());
+		if (!hive) return;
+		Map<String, Float> sieged = siegesAt();
+		Float all = sieged.get(world.getId());
+		if (all != null && all > attackFP) attackFP = all;
+		float margin = ThreatIncConfig.systemDefenceMargin();
+		float want = margin > 0f ? attackFP * margin : Float.MAX_VALUE;
+		float have = ThreatGroundFronts.friendlyPointsNear(Factions.THREAT, world);
+		for (CampaignFleetAPI f : boundFor(world)) {
+			if (!ThreatGroundFronts.nearWorld(f, world)) have += f.getFleetPoints();
+		}
+		if (have >= want) return;
+		Map<CampaignFleetAPI, MarketAPI> pool = new java.util.LinkedHashMap<CampaignFleetAPI, MarketAPI>();
+		for (MarketAPI c : colonies) {
+			if (c.getId().equals(world.getId()) || c.getPrimaryEntity() == null) continue;
+			if (sieged.containsKey(c.getId()) || ThreatGroundFronts.hasFront(c)
+					|| ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c) > 0f) continue;
+			for (CampaignFleetAPI f : ThreatColonyManager.spareFleets(c, false)) pool.put(f, c);
+		}
+		while (!pool.isEmpty() && have < want) {
+			CampaignFleetAPI pick = pickFor(pool.keySet(), want - have);
+			MarketAPI donor = pool.remove(pick);
+			float fp = pick.getFleetPoints();
+			if (!ThreatColonyManager.sendReinforcement(donor, world, pick)) continue;
+			noteTransfer(world, pick);
+			noteSent(fp);
+			ThreatIncConfig.log("Posture: " + donor.getName() + " rallied " + (int) fp + " FP to " + world.getName()
+					+ " (" + (int) have + " FP stood against " + (int) attackFP + ")");
+			have += fp;
+		}
+	}
+
+	/**
+	 * The fleets a siege over the hive world fights today
+	 * (ThreatPurgeFGI.dailyDay): those at the world, {@code near}, and the
+	 * swarms bound for it inside its system (rally, a transfer, a strike
+	 * called home), as if they had met the siege on its way in. Only a siege
+	 * the swarm saw coming meets them so; one that came unseen fights them as
+	 * they arrive.
+	 */
+	public static List<CampaignFleetAPI> defenders(MarketAPI world, List<CampaignFleetAPI> near, boolean seenComing) {
+		if (!seenComing || !enabled() || !ThreatIncConfig.systemDefence()) return near;
+		List<CampaignFleetAPI> out = new ArrayList<CampaignFleetAPI>(near);
+		for (CampaignFleetAPI f : boundFor(world)) {
+			if (!out.contains(f)) out.add(f);
+		}
+		return out;
+	}
+
+	/** The swarms on their way to the world's garrison and already in its system (ThreatColonyManager.sendReinforcement, sendToGarrison). */
+	protected static List<CampaignFleetAPI> boundFor(MarketAPI world) {
+		List<CampaignFleetAPI> out = new ArrayList<CampaignFleetAPI>();
+		if (world == null || world.getPrimaryEntity() == null) return out;
+		for (CampaignFleetAPI f : ThreatIncData.reinforcementFleets().values()) {
+			if (f == null || !f.isAlive() || f.isExpired()) continue;
+			if (f.getContainingLocation() != world.getPrimaryEntity().getContainingLocation()) continue;
+			if (world.getId().equals(f.getMemoryWithoutUpdate().getString(ThreatColonyManager.REINFORCE_TARGET_KEY))) {
+				out.add(f);
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * Hive world -> fleet points of the unspawned sieges over it today: the
+	 * world each daily siege is at (ThreatPurgeFGI.dailyWorldId), not every
+	 * world on its list as siegesOver reads.
+	 */
+	protected static Map<String, Float> siegesAt() {
+		Map<String, Float> out = new HashMap<String, Float>();
+		for (Object curr : IncursionManager.getPurgeList()) {
+			if (!(curr instanceof ThreatPurgeFGI)) continue;
+			ThreatPurgeFGI purge = (ThreatPurgeFGI) curr;
+			if (purge.isEnded() || purge.isEnding() || purge.isAborted()) continue;
+			String at = purge.dailyWorldId();
+			if (at == null) continue;
+			Float had = out.get(at);
+			out.put(at, (had != null ? had : 0f) + purge.abstractAllotment());
+		}
+		return out;
 	}
 
 	/**

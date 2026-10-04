@@ -813,10 +813,23 @@ public class ThreatFrontlines {
 			// struck and going home: run 15's called guards stayed a median 155
 			// days, the strike's whole return leg
 			if (strike.isSucceeded() || strike.isFailed() || strike.isCurrent(GenericRaidFGI.RETURN_ACTION)) continue;
-			if (strike.getParams() == null || strike.getParams().raidParams == null) continue;
-			if (strike.getParams().raidParams.allowedTargets.contains(market)) out.add(strike);
+			if (boundFor(strike, market)) out.add(strike);
 		}
 		return out;
+	}
+
+	/**
+	 * Whether the humans read the strike as bound for the market: for its
+	 * system, every world there alike (2026-10-05, the user: "humans shouldn't
+	 * know the exact world just the system"). With strikeSeenBySystem off, for
+	 * the worlds on its list, as before.
+	 */
+	public static boolean boundFor(GenericRaidFGI strike, MarketAPI market) {
+		if (strike == null || market == null || strike.getParams() == null
+				|| strike.getParams().raidParams == null) return false;
+		StarSystemAPI where = strike.getParams().raidParams.where;
+		if (ThreatIncConfig.strikeSeenBySystem() && where != null) return market.getStarSystem() == where;
+		return strike.getParams().raidParams.allowedTargets.contains(market);
 	}
 
 	/** A strike's raid strength as vanilla's autoresolve weighs it far from the player: its routes' (strikeOf). */
@@ -2396,10 +2409,11 @@ public class ThreatFrontlines {
 	public static void sendRelief(ThreatStrikeFGI strike, Random random) {
 		if (!ThreatIncConfig.frontlineReliefEnabled() || !ThreatIncConfig.frontlineGarrisonEnabled()) return;
 		if (strike.getParams() == null || strike.getParams().raidParams == null) return;
-		for (MarketAPI target : strike.getParams().raidParams.allowedTargets) {
-			if (target == null || !target.isInEconomy() || !isOutpost(target)) continue;
-			Outpost o = find(target);
-			if (o != null) relieve(o, target);
+		// every link the strike is read as bound for: those of its system (boundFor)
+		for (Outpost o : new ArrayList<Outpost>(all())) {
+			MarketAPI target = marketOf(o);
+			if (target == null || !target.isInEconomy() || !boundFor(strike, target)) continue;
+			relieve(o, target);
 		}
 	}
 

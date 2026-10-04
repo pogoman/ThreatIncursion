@@ -1227,7 +1227,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (strike.getParams() == null || strike.getParams().raidParams == null) return;
 		MarketAPI colony = strike.getParams().source;
 		StarSystemAPI source = colony != null ? colony.getStarSystem() : null;
-		java.util.List<MarketAPI> targets = strike.getParams().raidParams.allowedTargets;
+		java.util.List<MarketAPI> targets = struckWorlds(strike);
 		MarketAPI target = targets.isEmpty() ? null : targets.get(0);
 		// seen late, the world may already be gone
 		if (target != null && !target.isInEconomy()) target = null;
@@ -1238,7 +1238,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// no task force against a hive that died while the strike flew unseen
 		boolean hiveAlive = colony != null && colony.isInEconomy()
 				&& Factions.THREAT.equals(colony.getFactionId());
-		// every other faction with a world in the sweep is struck as well
+		// every other faction with a world in the sweep - since 2026-10-05 in
+		// the system, the humans not knowing the worlds (struckWorlds) - is struck as well
 		// (2026-10-02, run hw3: from phase 3 the sweep takes in worlds of
 		// factions not at war, and only the primary's owner mobilised - the
 		// swarm landed on Nomios and Agreus 900 days before the independents
@@ -1261,6 +1262,34 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			dispatchFactionResponse(target, source, colony);
 		}
 		ThreatFrontlines.sendRelief(strike, random);
+	}
+
+	/**
+	 * The worlds the humans read a seen strike as bound for: every world they
+	 * hold in its system, the largest of a faction that fights first
+	 * (2026-10-05, the user: "humans shouldn't know the exact world just the
+	 * system"). With strikeSeenBySystem off, the worlds on its list, the
+	 * picked one first, as before.
+	 */
+	protected static java.util.List<MarketAPI> struckWorlds(ThreatStrikeFGI strike) {
+		StarSystemAPI where = strike.getParams().raidParams.where;
+		if (!ThreatIncConfig.strikeSeenBySystem() || where == null) return strike.getParams().raidParams.allowedTargets;
+		java.util.List<MarketAPI> out = new ArrayList<MarketAPI>();
+		for (MarketAPI m : Global.getSector().getEconomy().getMarkets(where)) {
+			if (m == null || m.getPrimaryEntity() == null || m.getFaction() == null) continue;
+			if (Factions.THREAT.equals(m.getFactionId())) continue;
+			if (m.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) continue;
+			out.add(m);
+		}
+		java.util.Collections.sort(out, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				boolean fa = !a.isPlayerOwned() && !ThreatWarState.excluded(a.getFactionId());
+				boolean fb = !b.isPlayerOwned() && !ThreatWarState.excluded(b.getFactionId());
+				if (fa != fb) return fa ? -1 : 1;
+				return b.getSize() - a.getSize();
+			}
+		});
+		return out;
 	}
 
 	/**
