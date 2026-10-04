@@ -86,8 +86,12 @@ on vanilla's shortages before anything else.
    ran dry by months 84-120 in hw4p, hw4q and hw4r while fuel piled up: about 53k a month
    banked against about 40k of fleet upkeep (`ThreatUpkeep`) and about 14k of hunts,
    garrisons and sieges, so relief could not sail (`war-sim-real-runs.md` 21). The same
-   import term caps it, so a faction that buys its supplies in may bank little more.
-   Untested in game.
+   import term caps only what a faction buys in: a producer's own output counts whole, so at 1
+   the producers bank 12-21 units against a cap of about 10 (~93k a month in all). Tested in
+   twelve game runs overnight 2026-10-04 (`war-sim-real-runs.md` 22): from 0.1 up, 1-5 worlds
+   lost to months 128-144 against 15-37 at 0. Full depots read to the swarm as staged
+   sieges and can hold it in CONSOLIDATE for years at any share (`stanceConsolidateShare`
+   0.75 shortened it in testing, without ending it). The value is the user's to pick.
    *Player colonies (2026-09-05):* the reserve IS the vanilla resource stockpile, which
    vanilla fills by this same rule (excess at 0.5, production at 0.25, the Waystation's
    bonus, capped at `stockpileMaxMonths`); the mod adds only the militia and never

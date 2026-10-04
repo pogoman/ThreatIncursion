@@ -428,3 +428,60 @@ the check puts 321 of 514 figures inside. Log counts to month 126, hw4q in brack
   (`ThreatReserves.wartimeFuel`, `threatinc_reserveWartimeFuel`), but supplies bank only availability above peacetime
   demand (`surplusUnits`), and every fleet's monthly upkeep is drawn from that same supplies reserve (`ThreatUpkeep.charge`).
   A relief fleet of 300 FP needs 180 of its 360 supplies at the base before it sails (`canProvisionRelief`).
+
+## 22. hw4s-hw5d (2026-10-04 overnight): the wartime supplies share
+
+hw4r's settings, with supplies banked as fuel is (7fe2a9f; as a share since 4eb2a8d,
+`threatinc_reserveWartimeSuppliesShare`, `ThreatReserves.wartimeShare`): a war faction banks that share of its worlds'
+peacetime supplies demand on top of their surplus. 0 is the surplus rule hw4p-hw4r ran on. Break-up 5 troops a FP.
+Clones `...ng21` to `...ng32`, each to war day 3750 or a little past (months 127-144). Dumps in
+`tools/warsim/validation/hw4s` to `hw4z` and `hw5a` to `hw5d`. Counts to month 120 unless named; worlds lost are
+`Colony Lost` notices:
+
+| run | share | worlds lost m108 / m120 / m126 / end | supplies banked a month | hives m120 | landings m120 | months CONSOLIDATE m120 | relief sent / refused m120 | check |
+|---|---|---|---|---|---|---|---|---|
+| hw4r | 0 (old build) | 5 / 9 / 15 / 37 (m139) | 42-59k, then 27k -> 0 | 107 | 81 | 16 | 237 / 145 | 321 / 514 |
+| hw4u | 0 | 5 / 17 / 26 / 29 (m128) | 39-52k, then 16k | 147 | 101 | 14 | 208 / 210 | 326 / 488 |
+| hw4x | 0.1 | 2 / 2 / 2 / 5 (m132) | 26-67k, wobbling | 119 | 40 | 36 | 82 / 21 | 292 / 488 |
+| hw4w | 0.25 | 1 / 1 / 1 / 1 (m131) | 60-68k | 143 | 47 | 27 | 105 / 9 | 291 / 488 |
+| hw4z | 0.25 | 2 / 3 / 3 / 5 (m136) | 60-68k | 131 | 78 | 7 | 172 / 21 | 364 / 538 |
+| hw5c | 0.25 | 3 / 3 / 3 / 3 (m128) | 55-68k | 48 | 17 | 53 | 31 / 0 | 351 / 488 |
+| hw4v | 0.5 | 2 / 2 / 2 / 3 (m134) | 61-68k | 101 | 40 | 24 | 58 / 5 | 312 / 538 |
+| hw4s | 1 | 1 / 1 / 1 / 1 (m144) | 77-99k | 14 | 12 | 72 | 20 / 0 | 304 / 538 |
+| hw4t | 1 | 1 / 1 / 1 / 1 (m137) | ~93k | 65 | 24 | 57 | 39 / 2 | 295 / 538 |
+| hw4y | 1 | 2 / 2 / 2 / 2 (m142) | 74-92k | 101 | 20 | 39 | 25 / 0 | 330 / 538 |
+| hw5a | 1, consolidate share 0.75 | 1 / 1 / 1 / 3 (m134) | 69-121k | 116 | 40 | 2 | 58 / 0 | 317 / 538 |
+| hw5b | 1, consolidate share 0.75 | 2 / 2 / 3 / 6 (m130) | 71-119k | 167 | 55 | 0 | 108 / 1 | 328 / 488 |
+| hw5d | 1, consolidate share 0.75 | 1 / 1 / 1 / 1 (m127) | 69-138k | 75 | 22 | 31 | 35 / 0 | 268 / 488 |
+
+- **Two states, not a slope.** About 44k a month starves the humans, and the late collapse follows. At about 60k or
+  more they lose 1-6 worlds as far as the runs went (months 127-144). The new monthly `Reserve budget:` line shows
+  why the step is sharp. A faction's budget is its own making or the sector's best single exporter, whichever is
+  more (`productionShare`), 9-10 units (~11k a month) here. At share 0 Hegemony, Persean and the independents
+  already sit at it, while Diktat, Tri-Tachyon and the Church bank their small surplus (3, 6 and 3 units): about 39
+  units, 44k. Share 0.25 lifts them toward the cap (55 units, ~62k) and 0.5 to it (60, ~67k). At 1 a producer's
+  whole output counts as its making (Hegemony 14-18 units, Persean 12-13, Church 12, Tri-Tachyon 21 at month 120):
+  about 83 units, 93k.
+- **0.1 is the edge.** hw4x held to month 126, then its income fell to 26-37k, refusals passed sendings and 3 worlds
+  fell in 6 months. hw4u (0, same build) shows the famine is the rule's doing, not the build's: 26 lost by month 126.
+- **Supplied, the swarm stalls in CONSOLIDATE, at any share.** `ThreatPosture` reads each staging base's stock as the
+  siege it could pay (`siegeCapacityFP`, the lesser of fuel and supplies over their price a point). Supplies bound it
+  before. Full depots make the staged FP balloon, hive systems turn THREATENED, and `ThreatStance` holds
+  CONSOLIDATE, which founds nothing. A consolidating swarm stays at 4-10 systems, where a few pressed systems keep it
+  at the 0.5 threshold, so it oscillates for years until an expand window takes it past about 11. Five of the eight
+  supplied runs on the default stance spent 36-72 of their first 120 months there (the share-0 runs 14-16). hw4s is
+  the extreme: its 14 hives sat in 2 systems, one pressed by Tri-Tachyon's staged 12.5k and forward 8.3k FP, so
+  `pressedShare` 0.5 held it from year 4 to the end. A lower share does not prevent it: hw5c (0.25) sat at 4-8
+  systems for 53 months and had 48 hives at month 120. It is not a misread: sieges have had no fleet ceiling since
+  2026-09-29, so the stock does pay that siege. But the humans send it rarely (one major play a faction,
+  `ThreatPlays.major`); their sieges and hunts a year matched hw4r.
+- **`stanceConsolidateShare` 0.75 shortens the stall but does not end it** (hw5a, hw5b, hw5d, all at share 1). The
+  swarm then needs three systems in four pressed to consolidate: 2, 0 and 31 months, against 39-72 on the default
+  stance. hw5d still had 6 of 7 systems pressed at month 57 and shrank to 4 systems by month 83. Hives at month 120:
+  116, 167 and 75; landings 40, 55 and 22. The humans lost 3, 6 and 1 worlds: the knob frees the swarm more often
+  but moves the balance little. The root is the staged read itself.
+- **The simulator cannot choose the share.** It banks supplies by `HumanFit` (fitted to the surplus rule), and its
+  swarm spends 4-8 months in CONSOLIDATE in every check, where the default-stance runs spent 7-72. Its supplies-income
+  probe on hw4r (`war-sim-calibration-r29.md` "Supplies income") moves the right way at about a quarter of the
+  strength: x2 and x4 give 10 and 11 months, 194 and 164 hives at month 120.
+- Open for the user (the share, the stall, the balance): `handover-2026-10-04-morning.md`.
