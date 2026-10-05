@@ -237,6 +237,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatRaiders.poll();
 		ThreatScouts.poll(random);
 		ThreatSwarmScouts.poll(random);
+		ThreatSwarmPatrols.poll(random);
 		// what the swarm sees of the humans today (docs/threat-fog.md); its own
 		// daily latch, and before ThreatPosture.poll reads the reports (off, it
 		// only drops its seeding flags, so switching it back on seeds again)
@@ -1210,6 +1211,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				com.fs.starfarer.api.campaign.LocationAPI loc = route.getCurrent() != null
 						? route.getCurrent().getCurrentContainingLocation() : null;
 				by = ThreatFrontlines.detectedAt(loc, route.getInterpolatedHyperLocation());
+				// unseen by any world: a patrol out there may meet it (ThreatScouts.sight)
+				if (by == null) {
+					float fp = 0f;
+					if (strike.getParams() != null && strike.getParams().fleetSizes != null) {
+						for (Integer size : strike.getParams().fleetSizes) {
+							if (size != null) fp += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+						}
+					}
+					ThreatScouts.sight(strike, loc, route.getInterpolatedHyperLocation(), fp, true);
+				}
 			}
 			// the payload has begun: it is at the target, seen or not
 			if (by == null && strike.getCurrentAction() != null
@@ -1219,6 +1230,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (by == null) continue;
 			strike.markDetected(by);
 			onStrikeDetected(strike);
+		}
+	}
+
+	/** A patrol brought home the sighting of a strike (ThreatScouts.deliver): seen now, if it still flies unseen. */
+	public static void strikeReported(String key, String by) {
+		if (instance == null || key == null) return;
+		for (Object curr : new ArrayList<Object>(getStrikeList())) {
+			if (!(curr instanceof ThreatStrikeFGI)) continue;
+			ThreatStrikeFGI strike = (ThreatStrikeFGI) curr;
+			if (strike.isDetected() || strike.isEnded() || strike.isEnding()) continue;
+			if (!key.equals(ThreatScouts.strikeKey(strike))) continue;
+			strike.markDetected(by);
+			instance.onStrikeDetected(strike);
+			return;
 		}
 	}
 

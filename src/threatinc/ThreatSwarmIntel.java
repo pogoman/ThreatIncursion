@@ -69,7 +69,7 @@ public final class ThreatSwarmIntel {
 	/** System id -> day: systems seeded with scouting off (seedUnscouted), once each; cleared while the fog is off. */
 	protected static final String UNSCOUTED = "unscouted";
 
-	public static final String EYES = "eyes", PICKET = "picket", SCOUT = "scout";
+	public static final String EYES = "eyes", PICKET = "picket", SCOUT = "scout", PATROL = "patrol";
 
 	/** One human attack force the swarm has seen coming. */
 	public static class Contact {
@@ -223,7 +223,10 @@ public final class ThreatSwarmIntel {
 		Boolean fleet = FLEET_EYES.get(system.getId());
 		if (fleet == null) {
 			fleet = Boolean.FALSE;
+			boolean carried = ThreatIncConfig.carriedIntel();
 			for (CampaignFleetAPI f : system.getFleets()) {
+				// a patrol or a scout out there sees, and must bring it home (ThreatSwarmPatrols)
+				if (carried && ThreatSwarmPatrols.carrier(f)) continue;
 				if (threatFleet(f)) {
 					fleet = Boolean.TRUE;
 					break;
@@ -246,6 +249,8 @@ public final class ThreatSwarmIntel {
 
 	/** Whether the hyperspace point is within swarmPicketLY of a live hive. */
 	protected static boolean inPicket(Vector2f at) {
+		// patrols are the hive's eyes in hyperspace now (ThreatSwarmPatrols, 2026-10-05)
+		if (ThreatSwarmPatrols.enabled()) return false;
 		if (at == null || PICKET_SITES.isEmpty()) return false;
 		float range = ThreatIncConfig.swarmPicketLY();
 		if (range <= 0f) return false;
@@ -376,6 +381,20 @@ public final class ThreatSwarmIntel {
 			String key = siegeKey(purge);
 			live.add(key);
 			if (source != null) note(key, purge.getFaction().getId(), systemId, fp, source, day, "siege");
+			else if (purge instanceof ThreatPurgeFGI && ThreatPosture.countsAbstract((ThreatPurgeFGI) purge)
+					&& purge.getFleets().isEmpty()) {
+				// unseen by the hive: a patrol out there may meet it
+				RouteManager.RouteData route = purge.getRoute();
+				ThreatSwarmPatrols.meet(key, purge.getFaction().getId(), systemId, fp, "siege",
+						routeLocation(route), routeHyper(route), (ThreatPurgeFGI) purge);
+			} else {
+				for (CampaignFleetAPI f : purge.getFleets()) {
+					if (f == null || !f.isAlive()) continue;
+					ThreatSwarmPatrols.meet(key, purge.getFaction().getId(), systemId, fp, "siege",
+							f.getContainingLocation(), f.getLocationInHyperspace(), null);
+					break;
+				}
+			}
 		}
 		for (ThreatFleetOrders.Order o : ThreatFleetOrders.all()) {
 			if (o.fleet == null || !o.fleet.isAlive()) continue;
@@ -398,6 +417,8 @@ public final class ThreatSwarmIntel {
 			live.add(key);
 			String source = sees(o.fleet.getContainingLocation(), o.fleet.getLocationInHyperspace());
 			if (source != null) note(key, o.factionId, systemId, fp, source, day, kind);
+			else ThreatSwarmPatrols.meet(key, o.factionId, systemId, fp, kind,
+					o.fleet.getContainingLocation(), o.fleet.getLocationInHyperspace(), null);
 		}
 		// a force that ended is seen to go (docs/threat-fog.md, decision 4)
 		contactMap().keySet().retainAll(live);

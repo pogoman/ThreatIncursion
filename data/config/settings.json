@@ -117,6 +117,27 @@
 	# friendly system (a relay in reach), and is lost with it. false = known the
 	# moment it is seen
 	"threatinc_carriedIntel": true,
+	# PATROLS (2026-10-05, the user): once at war each side keeps patrols out on
+	# the systems around what it holds, nearest first, in place of the humans'
+	# 60-day sweeps within scoutRangeLY and of both 4 ly sighting rules
+	# (strikeDetectLY, swarmPicketLY). A patrol sees what is in its system and
+	# forces within patrolSightLY in hyperspace, and brings it home. A side's
+	# budget (patrolFPPerBase a military world; swarmPatrolFPPerSystem a hive
+	# system) flies as patrols of scoutFleetPoints / swarmPatrolFP, doubled in
+	# size for every patrol lost until patrolCalmDays pass without a loss.
+	# Meeting a force that flies as a route is settled by strength and burn
+	"threatinc_patrolsEnabled": true,
+	"threatinc_patrolSightLY": 1,
+	"threatinc_patrolStops": 6,
+	"threatinc_patrolFPPerBase": 40,
+	"threatinc_patrolCalmDays": 120,
+	"threatinc_swarmPatrolFP": 30,
+	"threatinc_swarmPatrolFPPerSystem": 120,
+	"threatinc_swarmPatrolMemoryDays": 45,
+	"threatinc_patrolBurnBombers": 6,
+	"threatinc_patrolBurnSiege": 7,
+	"threatinc_patrolBurnRaid": 8,
+	"threatinc_patrolBurnStrike": 9,
 	# MASS THE DEFENCE (2026-10-04, the user): a system under attack sends the
 	# spare swarms of its own colonies - what a launch would muster - to its
 	# worlds short of their need; still short once the strikes in reach have

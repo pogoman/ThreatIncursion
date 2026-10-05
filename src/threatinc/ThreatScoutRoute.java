@@ -2,6 +2,7 @@ package threatinc;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.lwjgl.util.vector.Vector2f;
 
@@ -88,6 +89,9 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 	/** The party is in a friendly system: one thing it carried is filed. */
 	protected void deliver(S s, Object seen) {}
 
+	/** The party did not come back: destroyed, or faded with no home left. */
+	protected void onLost(S s) {}
+
 	/** Takes what the party saw aboard; it is known when the party is next in a friendly system. */
 	protected void carry(S s, Object seen) {
 		if (s.carried == null) s.carried = new ArrayList<Object>();
@@ -112,12 +116,14 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 		if (fleet == null || !fleet.isAlive() || fleet.isExpired()) {
 			all().remove(s);
 			int unfiled = s.carried != null ? s.carried.size() : 0;
-			// home between two polls: a fleet that despawned at its world still has its ships
-			if (unfiled > 0 && s.returning && fleet != null && fleet.getFleetPoints() > 0) {
+			// home: it despawned at its world (HomeMark), not in a fight on the way
+			boolean home = s.returning && fleet != null && fleet.getMemoryWithoutUpdate().getBoolean(HOME_FLAG);
+			if (unfiled > 0 && home) {
 				report(s);
 				unfiled = 0;
 			}
-			ThreatIncConfig.log(describe(s) + (s.returning ? " home" : " lost")
+			if (!home) onLost(s);
+			ThreatIncConfig.log(describe(s) + (home ? " home" : " lost")
 					+ (unfiled > 0 ? ", and " + unfiled + " sighting(s) with it" : ""));
 			return;
 		}
@@ -218,8 +224,107 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 			return;
 		}
 		onReturn(s);
+		s.fleet.addEventListener(new HomeMark());
 		s.fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, home.getPrimaryEntity(), 1000f,
 				returnLabel(s, home));
+	}
+
+	/** Set on a party that despawned at its home rather than died on the way (HomeMark). */
+	public static final String HOME_FLAG = "$threatinc_scoutHome";
+
+	/** Marks a returning party that reached its world, so advance can tell home from lost. */
+	public static class HomeMark implements com.fs.starfarer.api.campaign.listeners.FleetEventListener {
+		public void reportFleetDespawnedToListener(CampaignFleetAPI fleet,
+				com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param) {
+			if (reason == com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason.REACHED_DESTINATION) {
+				fleet.getMemoryWithoutUpdate().set(HOME_FLAG, true);
+			}
+		}
+		public void reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner,
+				com.fs.starfarer.api.campaign.BattleAPI battle) {
+		}
+	}
+
+	// ------------------------------------------------------------------
+	// patrols: how many and how big, and meeting a force (2026-10-05)
+	// ------------------------------------------------------------------
+
+	public static final String KEY_LEVEL = "threatinc_patrolLevel";
+	public static final String KEY_LOSS = "threatinc_patrolLastLoss";
+
+	/** Losses a side's patrols have not yet forgotten: each doubles their size and halves their number. */
+	public static int level(String key) {
+		Map<String, Integer> levels = ThreatIncData.map(KEY_LEVEL);
+		Integer v = levels.get(key);
+		return v != null ? Math.max(0, v.intValue()) : 0;
+	}
+
+	/** A patrol of this side did not come back. */
+	public static void lost(String key) {
+		Map<String, Integer> levels = ThreatIncData.map(KEY_LEVEL);
+		Map<String, Long> last = ThreatIncData.map(KEY_LOSS);
+		levels.put(key, level(key) + 1);
+		last.put(key, Global.getSector().getClock().getTimestamp());
+	}
+
+	/** patrolCalmDays without a loss forgets one. */
+	public static void calm(String key) {
+		int level = level(key);
+		if (level <= 0) return;
+		Map<String, Long> last = ThreatIncData.map(KEY_LOSS);
+		Long when = last.get(key);
+		if (when != null && Global.getSector().getClock().getElapsedDaysSince(when) < ThreatIncConfig.patrolCalmDays()) return;
+		Map<String, Integer> levels = ThreatIncData.map(KEY_LEVEL);
+		levels.put(key, level - 1);
+		last.put(key, Global.getSector().getClock().getTimestamp());
+	}
+
+	/** Whether the fleet sees what is at {@code where}: in the same system, or within patrolSightLY in hyperspace. */
+	public static boolean near(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.LocationAPI where, Vector2f hyper) {
+		if (fleet == null || where == null || fleet.getContainingLocation() == null) return false;
+		if (!where.isHyperspace()) return fleet.getContainingLocation() == where;
+		if (!fleet.getContainingLocation().isHyperspace() || hyper == null) return false;
+		return Misc.getDistanceLY(fleet.getLocationInHyperspace(), hyper) <= ThreatIncConfig.patrolSightLY();
+	}
+
+	public static final int DESTROYED = 0, RUNS = 1, FIGHTS = 2;
+
+	/**
+	 * A patrol meets a force that flies as a route, of {@code forceFP} at
+	 * {@code forceBurn} (the user, 2026-10-05: "depending on the speed of the
+	 * incoming fleet it might be able to eliminate the patrol. Or the patrol
+	 * might be big enough to eliminate the incoming fleet"). Slower and no
+	 * stronger, the patrol is destroyed; stronger and at least as fast, the
+	 * two fight a day - the patrol loses ships, the force route damage, each
+	 * by BattleRules.defenderLoss; otherwise one of them gets away and the
+	 * patrol runs with what it saw.
+	 */
+	public static int meetAbstract(CampaignFleetAPI patrol, float forceFP, float forceBurn,
+			com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteData route, String who, String what) {
+		float fp = patrol.getFleetPoints();
+		float burn = patrol.getFleetData().getBurnLevel();
+		boolean stronger = fp > forceFP;
+		boolean faster = burn >= forceBurn;
+		if (!stronger && !faster) {
+			ThreatIncConfig.log(who + " (" + (int) fp + " FP, burn " + (int) burn + ") was caught by " + what + " of "
+					+ (int) forceFP + " FP (burn " + (int) forceBurn + ") and destroyed");
+			patrol.despawn(com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason.DESTROYED_BY_BATTLE, null);
+			return DESTROYED;
+		}
+		if (stronger && faster) {
+			float forceShare = threatinc.rules.BattleRules.defenderLoss(fp, forceFP);
+			float ownShare = threatinc.rules.BattleRules.defenderLoss(forceFP, fp);
+			float lostOwn = ThreatAbstractBattle.removeShare(patrol, ownShare, new java.util.Random());
+			if (route != null && route.getExtra() != null && forceShare > 0f) {
+				float had = route.getExtra().damage != null ? route.getExtra().damage : 0f;
+				route.getExtra().damage = Math.min(1f, 1f - (1f - had) * (1f - Math.min(1f, forceShare)));
+			}
+			ThreatIncConfig.log(who + " (" + (int) fp + " FP, burn " + (int) burn + ") caught " + what + " of "
+					+ (int) forceFP + " FP (burn " + (int) forceBurn + "): the force lost " + Math.round(forceShare * 100f)
+					+ "%, the patrol " + (int) lostOwn + " FP");
+			return patrol.isAlive() && patrol.getFleetPoints() > 0 ? FIGHTS : DESTROYED;
+		}
+		return RUNS;
 	}
 
 	// ------------------------------------------------------------------

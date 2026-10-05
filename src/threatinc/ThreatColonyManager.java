@@ -6069,6 +6069,7 @@ public class ThreatColonyManager {
 		// both sides' scouting starts over with the war: parties out fade, charts and leads go
 		ThreatScouts.reset();
 		ThreatSwarmScouts.reset();
+		ThreatSwarmPatrols.reset();
 		ThreatOmens.reset();
 		ThreatIntel.reset();
 		ThreatSwarmIntel.reset();
