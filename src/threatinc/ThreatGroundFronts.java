@@ -343,7 +343,10 @@ public class ThreatGroundFronts {
 			List<Industry> list = new ArrayList<Industry>();
 			Industry core = market.getIndustry(ThreatColonyManager.FABRICATION_CORE);
 			if (core != null) list.add(core);
-			Industry nexus = market.getIndustry(ThreatColonyManager.SWARM_NEXUS);
+			// the Nexus is not a target since 2026-10-05 (the user): the sieges' tactical
+			// bombardment put it down within a month of contact and the swarm's whole
+			// income with it (docs/game-runs-2.md 12); saturation still reaches it
+			Industry nexus = ThreatIncConfig.nexusBombardable() ? market.getIndustry(ThreatColonyManager.SWARM_NEXUS) : null;
 			if (nexus != null) list.add(nexus);
 			Industry bastion = SwarmBastion.of(market);
 			if (bastion != null) list.add(bastion);

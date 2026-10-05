@@ -321,6 +321,8 @@ public class ThreatIncConfig {
 	public static float heavyBatteriesBonus() { return f("threatinc_heavyBatteriesBonus"); }
 	/** Swarm Nexus defense bonus: defense mult = 1 + bonus (x1.5 at 0.5). */
 	public static float nexusDefenseBonus()   { return f("threatinc_nexusDefenseBonus"); }
+	/** Whether tactical bombardment wears a hive's Swarm Nexus with its defence structures (ThreatGroundFronts HIVE.fortifications); saturation reaches it either way. */
+	public static boolean nexusBombardable() { return b("threatinc_nexusBombardable", false); }
 	/** Disruption days on a structure's clock at which its bonus has worn to nothing (0 = no wear); the hive's fortification clock. */
 	public static float defenseWearDays()     { return f("threatinc_defenseWearDays"); }
 	/** Marine-loss multiplier when raiding hive worlds. */

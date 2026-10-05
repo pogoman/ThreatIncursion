@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 13;
+	static final int MIGRATION_VERSION = 14;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -64,6 +64,7 @@ class LunaConfigBridge {
 	 * hiveSurplusMult (1.0) - a new key, which LunaLib defaults; no migration.
 	 * Version 12 (2026-10-02, round 20): feedShareConsolidate 0.9 -> 0.5.
 	 * Version 13 (2026-10-03, the user): fabricateTroopsPerFP 10 -> 5.
+	 * Version 14 (2026-10-05, the user): nexusDefenseBonus 0.5 -> 0.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
@@ -125,6 +126,10 @@ class LunaConfigBridge {
 				// (docs/war-sim-real-runs.md 9-17)
 				if (from < 13) {
 					changed |= bump(json, "threatinc_fabricateTroopsPerFP", 10, 5, false);
+				}
+				// 2026-10-05, the user: the Nexus is no bombardment target and gives no defence bonus
+				if (from < 14) {
+					changed |= bump(json, "threatinc_nexusDefenseBonus", 0.5, 0, false);
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));

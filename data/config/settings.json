@@ -376,7 +376,10 @@
 	# defense-structure scaling: defense mult = 1 + bonus per structure
 	"threatinc_groundDefensesBonus": 1.0,
 	"threatinc_heavyBatteriesBonus": 2.0,
-	"threatinc_nexusDefenseBonus": 0.5,
+	# 0 since 2026-10-05 (the user): the Nexus gives no defence bonus and is no
+	# target of tactical bombardment (nexusBombardable; saturation reaches it)
+	"threatinc_nexusDefenseBonus": 0,
+	"threatinc_nexusBombardable": false,
 	# ...wearing down under disruption: the bonus falls linearly with the
 	# disruption days on the structure's clock, to nothing at this many - the
 	# hive's fortification clock. The same wear applies to a disrupted Core's
