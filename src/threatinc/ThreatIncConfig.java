@@ -130,6 +130,8 @@ public class ThreatIncConfig {
 	/** Whether a forge of a THREATENED or BESIEGED system sends no wave and counts toward no claim, whatever it holds above the need. */
 	public static boolean posturePressedForgesHome() { return b("threatinc_posturePressedForgesHome", false); }
 	/** Range (LY) at which a hive system under attack and short of its need calls home a strike not yet at its work and nearer it than its target (ThreatPosture.recallStrikes); 0 = off. */
+	/** Whether a detected strike gives the factions it sweeps a scouting lead to its origin system (ThreatScouts.addLead); off, it only mobilises them. */
+	public static boolean strikeLeads() { return b("threatinc_strikeLeads", false); }
 	public static float postureRecallLY() { return f("threatinc_postureRecallLY"); }
 	/** Whether a recalled strike sends home only the fleets that cover what the system is short and sails on with the rest (ThreatStrikeFGI.recallTo); off, it comes home whole. */
 	public static boolean postureRecallPartial() { return b("threatinc_postureRecallPartial", true); }
