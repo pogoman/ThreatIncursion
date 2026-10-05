@@ -332,3 +332,23 @@ strikes paid from it alone, at least `strikeStagedMinFP` 3,000; `strikeStagedGar
 - The fund takes months to fill, so the war opens at day 1129-1218 (hw20: 915) and the hive is found at m41-43.
 - Hive survival is back in hw19's range (hw19: 17 / 4 / 119 at m120); human worlds lost still 1 a game: the strikes go
   to the closest targets, which are forward bases.
+
+## 20. hw23a-hw23c (2026-10-06): the strike fund with strikes of at least 8,000 FP (a trial)
+
+Build 1c814ff: as hw22 with `strikeStagedMinFP` 8,000.
+
+| | hw23a | hw23b | hw23c |
+|---|---|---|---|
+| First strike / first hive found, war day | 1492 / 1605 | 1401 / 1531 | 1490 / 1599 |
+| Found, month (hives then) | 52 (25) | 49 (17) | 52 (21) |
+| Hives at m120 (peak) | 91 (97) | 185 (191) | 105 (110) |
+| Strikes (mean FP, max) | 32 (8,306, 11,104) | 34 (8,600, 12,190) | 31 (8,495, 11,899) |
+| Strikes at colonies / Threat landings | 15 / 28 | 26 / 37 | 17 / 24 |
+| Human worlds lost | 13 | 23 | 14 |
+| Forward bases founded / destroyed by a strike | 70 / 16 | 35 / 7 | 69 / 13 |
+| Human landings / hives eradicated | 56 / 51 | 44 / 36 | 54 / 43 |
+
+- The swarm wins all three: 13-23 human worlds lost (every batch before: 0-2), 91-185 hives at m120.
+- Two things changed at once: strikes of 8-12k FP take colonies (28-37 landings), and the fund takes until day
+  1401-1492 to fill, so the hive is found at m49-52 (hw22: m41-43; hw19: m42-50) - 1-2 years more of growth. hw24
+  separates them (the fund share 0.5, the war opening sooner).
