@@ -108,6 +108,13 @@
 	# fleets that cover the system's shortfall and sails on with the rest; false =
 	# it comes home whole (hw15: 90-94% of strikes recalled, 3,353 FP for 218 short)
 	"threatinc_postureRecallPartial": true,
+	# Staged strikes (the user, 2026-10-05): a strike is built for its target
+	# from the whole hive's bank at a staging world, sized to outweigh the
+	# defence last seen there by the margin; the closest known target first,
+	# forward bases included; the garrisons stay home and nothing is recalled.
+	# false: a system's spare swarms muster, and the recall above.
+	"threatinc_strikeStaged": true,
+	"threatinc_strikeStagedMargin": 1.5,
 	# NO LEAD FROM A STRIKE (2026-10-05, the user): a strike mobilises the factions
 	# it sweeps and tells nothing of its origin; hives are found only by parties
 	# entering their system. true = the struck faction's scouts sail to the origin

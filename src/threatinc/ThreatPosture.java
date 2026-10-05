@@ -999,6 +999,8 @@ public class ThreatPosture {
 	 * Knob: postureRecallLY, 0 = off.
 	 */
 	protected static void recallStrikes(List<Call> calls) {
+		// a staged strike is no garrison: nothing to call home (the user, 2026-10-05)
+		if (ThreatIncConfig.strikeStaged()) return;
 		if (calls.isEmpty()) return;
 		float range = ThreatIncConfig.postureRecallLY();
 		java.util.Collections.sort(calls, new java.util.Comparator<Call>() {
