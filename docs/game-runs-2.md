@@ -215,3 +215,26 @@ again: 2 hives at m120, extinct m99, extinct m67** (hw15: 19, 100, 120 hives), a
 - hw15's 76-215 strikes were the same swarms launched and recalled over and over; let go, a strike is made 6-17
   times a run. Most are 270-800 FP at 27-41 ly; three in hw16a were 4.6-5.0k FP.
 - The found share at m48 is 75-88%, above hw15b and hw15c (68-72%), so part of the gap may be the share.
+
+## 15. hw17a-hw17c (2026-10-05): a recalled strike sends home only what the system is short
+
+Build `1a535b2` (`postureRecallPartial` true; the rest as hw15). No council error. **Extinct m92, m109, m96.** The
+change works as built and changes little: the shortfall is at least the strike in 29 of 38 recalls at m71-m83
+(715 FP called to a system 5,487 FP short), so the strike comes home whole; the rest sailed on after 1, 3 and 3
+recalls. In hw15c only 40 of 203 recalls had a shortfall below the strike; the 3,353 FP for 218 FP that prompted
+the change was not typical.
+
+| | hw17a | hw17b | hw17c | hw15a / b / c |
+|---|---|---|---|---|
+| hives m48, m60, m72, m84 | 12, 17, 13, 5 | 14, 8, 5, 2 | 16, 8, 3, 2 | 21, 27, 35, 37 / 19, 20, 30, 50 / 18, 20, 44, 46 |
+| found (month), found at m48 | m36, 11 of 12 | m36, 14 of 14 | m41, 13 of 16 | m42, 7 of 21 / m40, 13 of 19 / m40, 13 of 18 |
+| strikes launched, recalls, sailed on after | 22, 21, 1 | 10, 10, 3 | 14, 10, 3 | 76-215, 90-94% recalled |
+| Threat landings, overrun, human worlds lost | 4, 2, 1 | 2, 3, 1 | 9, 10, 1 | 5, 5, 0 / 4, 4, 0 / 5, 4, 1 |
+| sieges arrived, human landings, hives eradicated | 139, 28, 27 | 115, 23, 21 | 62, 19, 17 | 415, 66, 58 / 474, 48, 22 / 521, 43, 34 |
+| Threat FP lost a human FP | 1.34 | 1.38 | 1.42 | 1.42 / 1.30 / 1.28 |
+
+- The batch does not test the change against hw15: these swarms were found earlier (m36 twice) and 81-100% found
+  at m48, the share that died in hw11-hw13; hw15's were 33-72%. Three games a batch do not separate a change from
+  the found share.
+- The swarm's shortfalls are thousands of FP against strikes of hundreds: defence takes any strike in range,
+  whole or in part.
