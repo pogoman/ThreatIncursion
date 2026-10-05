@@ -707,11 +707,14 @@ public class ThreatPosture {
 			CALLS.addAll(calls);
 		}
 		// a force over a world draws its system's spare swarms (rally); an unspawned
-		// siege calls its own each day it fights (ThreatPurgeFGI.dailyDay)
+		// siege calls its own each day it fights (ThreatPurgeFGI.dailyDay). The
+		// flotilla an unspawned landing left over its army (coverFP) is a force
+		// too: hw10 rallied until the day the army landed and then let 0.9-1.2k FP
+		// of cover hold the orbit for the 1-5 months the world took to fall
 		if (ThreatIncConfig.systemDefence()) {
 			for (String systemId : systemIds) {
 				for (MarketAPI c : ThreatIncData.getLiveColonyMarkets(systemId)) {
-					rally(c, ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c));
+					rally(c, ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c) + ThreatGroundFronts.coverOver(c));
 				}
 			}
 		}

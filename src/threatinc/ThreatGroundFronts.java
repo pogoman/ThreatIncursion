@@ -2329,6 +2329,13 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return false;
 	}
 
+	/** The FP an autoresolved flotilla left holding the orbit over its army on this hive world (coverFP): 0 with no such front, or once the swarm has outweighed it. */
+	public static float coverOver(MarketAPI market) {
+		if (market == null) return 0f;
+		GroundFront front = getFront(market.getId());
+		return front != null && !isThreatOwned(front) ? Math.max(0f, front.coverFP) : 0f;
+	}
+
 	/** Whether this faction's front on the world holds its orbit with an autoresolved flotilla's cover (coverFP) that still outweighs the swarm there. */
 	public static boolean coverHolds(MarketAPI market, String factionId) {
 		if (market == null || factionId == null) return false;
