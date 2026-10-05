@@ -4331,6 +4331,32 @@ public class ThreatColonyManager {
 		return true;
 	}
 
+	public static final String KEY_STRIKE_FUND = "threatinc_strikeFund";
+
+	/**
+	 * THE STRIKE FUND (a trial of 2026-10-05, after hw20: the banks hold
+	 * nothing, production becoming garrison as it is banked, so a strike paid
+	 * from them stayed two swarms): strikeFundShare of every colony's
+	 * production is set aside, hive-wide, and staged strikes are built from
+	 * it alone (IncursionManager.stagedPlan). Fleet points.
+	 */
+	public static float strikeFund() {
+		Object v = Global.getSector().getPersistentData().get(KEY_STRIKE_FUND);
+		return v instanceof Float ? (Float) v : 0f;
+	}
+
+	public static void addStrikeFund(float fp) {
+		Global.getSector().getPersistentData().put(KEY_STRIKE_FUND, Math.max(0f, strikeFund() + fp));
+	}
+
+	/** Moves the bill from the strike fund to the staging colony's bank, which the launch then draws it from; false when the fund is short. */
+	public static boolean spendStrikeFund(MarketAPI staging, float bill) {
+		if (staging == null || bill > strikeFund() + 0.5f) return false;
+		addStrikeFund(-bill);
+		creditFP(staging, bill);
+		return true;
+	}
+
 	/** Every live colony of the hive that gives to a staged strike's bill: banked, and holding its garrison (ThreatPosture.regrowing). */
 	protected static List<MarketAPI> hiveGivers(MarketAPI source) {
 		List<MarketAPI> givers = new ArrayList<MarketAPI>();
@@ -4649,7 +4675,10 @@ public class ThreatColonyManager {
 		float days = Global.getSector().getClock().getElapsedDaysSince(last);
 		if (days <= 0f) return;
 		float fp = days * ratePerDay;
-		if (fp > 0f) creditFP(market, fp);
+		// the strike fund's share of the production never reaches the colony's bank (strikeFundShare)
+		float fund = fp > 0f ? fp * Math.max(0f, Math.min(1f, ThreatIncConfig.strikeFundShare())) : 0f;
+		if (fund > 0f) addStrikeFund(fund);
+		if (fp - fund > 0f) creditFP(market, fp - fund);
 		float owed = days * upkeepPerDay;
 		if (owed > 0f) {
 			chargeFP(market, owed);
@@ -6125,6 +6154,7 @@ public class ThreatColonyManager {
 		ThreatScouts.reset();
 		ThreatSwarmScouts.reset();
 		ThreatSwarmPatrols.reset();
+		Global.getSector().getPersistentData().remove(KEY_STRIKE_FUND);
 		ThreatOmens.reset();
 		ThreatIntel.reset();
 		ThreatSwarmIntel.reset();

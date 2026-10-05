@@ -292,3 +292,23 @@ of the hive, sized to 1.5 x the defence last seen, closest known target first.
 - The strikes it does send land: 17 bases destroyed in hw20a (1 in hw19a). Not enough to hold: extinct at m68 and m108.
 - Human landings are overrun by the hive 1-2 times a game against 4-13: the banks that regrow a besieged garrison are
   the banks the strikes spend.
+
+## 18. hw21a-hw21c (2026-10-05): staged strikes take the hive's spare garrison swarms first (a trial)
+
+Build 1005e77: `strikeStagedGarrisons` true on the hw20 build (`IncursionManager.stagedPlan`, `stagedSpares`).
+
+| | hw21a | hw21b | hw21c |
+|---|---|---|---|
+| First strike / first hive found, war day | 976 / 1165 | 916 / 1101 | 915 / 1123 |
+| Found, month | 37 | 36 | 36 |
+| Hives at found (peak) | 17 | 14 | 16 |
+| Extinct, month | 96 | 79 | 112 |
+| Strikes (mean FP, max) | 21 (852, 2,012) | 13 (669, 1,686) | 22 (838, 1,632) |
+| Forward bases founded / destroyed by a strike | 19 / 5 | 21 / 4 | 34 / 9 |
+| Threat landings / human worlds lost | 12 / 1 | 5 / 2 | 9 / 2 |
+
+- The hive has no spare: 35-39 garrison swarms taken in the first 60 months of a game, then "spares 0 FP of swarms".
+  A garrison settles where the colony's income meets its upkeep (4% a month of its fleets), so production stands as
+  garrison within the reserve; nothing is above it.
+- Strikes are the size of hw20's; all three games extinct. Six of six staged games (hw20, hw21) end worse than hw19:
+  the war opens at day 915-976 (hw19: 1246-1362), the hive is found at m36-38 with 14-17 hives.

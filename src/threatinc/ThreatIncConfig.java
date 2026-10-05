@@ -172,6 +172,10 @@ public class ThreatIncConfig {
 	public static boolean strikeStagedGarrisons() { return b("threatinc_strikeStagedGarrisons", false); }
 	/** Light-years from the staging system within which a staged strike gathers spare swarms; 0 = the whole hive. */
 	public static float strikeStagedGatherLY() { return fd("threatinc_strikeStagedGatherLY", 0f); }
+	/** Share of every hive colony's fabrication set aside in the hive's strike fund, which alone pays staged strikes (ThreatColonyManager.strikeFund); 0 = no fund, the pooled banks pay. */
+	public static float strikeFundShare() { return fd("threatinc_strikeFundShare", 0f); }
+	/** The least fleet points a strike paid from the strike fund sails with. */
+	public static float strikeStagedMinFP() { return fd("threatinc_strikeStagedMinFP", 0f); }
 	public static boolean postureRecallPartial() { return b("threatinc_postureRecallPartial", true); }
 	/** Whether a system under attack masses its spare swarms, then its neighbours', at its worlds short of their need, and a launch leaves the need home (ThreatPosture.massWithin, strikeCapFP). */
 	public static boolean postureMass() { return b("threatinc_postureMass", false); }
