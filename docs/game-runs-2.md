@@ -269,3 +269,26 @@ The user: "They only mobilise when they are attacked."
   with the patrol running home.
 - Outcomes spread as wide as in hw15 (extinct, held at 17, runaway at 119), so this batch does not show what the
   change did to the balance.
+
+## 17. hw20a-hw20c (2026-10-05): staged strikes paid from the hive's banks, the recall gone
+
+Build 2e00823: `strikeStaged` true, `strikeStagedMargin` 1.5 (facts, Decisions). Strikes are built from the pooled banks
+of the hive, sized to 1.5 x the defence last seen, closest known target first.
+
+| | hw20a | hw20b | hw20c | hw19 (garrison strikes, recall) |
+|---|---|---|---|---|
+| First strike, war day | 915 | 916 | 946 | 1246-1362 |
+| Found, month | 38 | 36 | 37 | 42-50 |
+| Hives at m120 (peak) | 9 (27) | 0, extinct m108 (17) | 0, extinct m68 (17) | 17 / 4 / 119 |
+| Strikes (FP) | 45 (44.9k) | 12 (10.9k) | 4 (4.7k) | 70 / 37 / 247 |
+| Forward bases founded / destroyed by a strike | 47 / 17 | 29 / 3 | 13 / 0 | 52 / 1, 55 / 1, 116 / 24 |
+| Threat landings / human worlds lost | 10 / 1 | 5 / 2 | 4 / 2 | 9 / 2, 8 / 1, 25 / 2 |
+| Human landings / overrun by the hive | 73 / 1 | 33 / 2 | 20 / 2 | 69 / 13, 48 / 4, 60 / 10 |
+
+- The banks are no store: the pool read 22-1,400 FP after most launches (production goes into the garrisons as it is
+  banked), so every strike after the first few is the two-swarm minimum, 650-1,000 FP - the size of the old strikes.
+- The defence the swarm holds for a forward base is often its founding figure (120), so 1.5 x it asks for nothing.
+- A strike no longer waits on a full garrison, so the war opens 300-450 days earlier and the hive is found at m36-38.
+- The strikes it does send land: 17 bases destroyed in hw20a (1 in hw19a). Not enough to hold: extinct at m68 and m108.
+- Human landings are overrun by the hive 1-2 times a game against 4-13: the banks that regrow a besieged garrison are
+  the banks the strikes spend.

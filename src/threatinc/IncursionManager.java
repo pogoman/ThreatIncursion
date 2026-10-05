@@ -1101,14 +1101,26 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// built for the purpose from the whole hive's bank, sized to the
 			// target; the garrisons stay home (the user, 2026-10-05)
 			float[] stagedDef = { 0f };
-			java.util.List<Integer> staged = stagedSizes(colony, source, target, new java.util.HashMap<String, float[]>(), stagedDef);
-			if (staged == null) return null;
-			float bill = ThreatStrikeFGI.estimateFP(staged);
-			if (!ThreatColonyManager.poolHiveBanks(colony, bill, "Strike")) return null;
-			return sendStrike(params, colony, source, target, staged, 0f,
+			StagedPlan plan = stagedPlan(colony, source, target, new java.util.HashMap<String, float[]>(), stagedDef, null);
+			if (plan == null) return null;
+			if (!ThreatColonyManager.poolHiveBanks(colony, plan.bankFP, "Strike")) return null;
+			// the spare garrison fleets leave their worlds; the rest is built
+			float[] paid = { 0f };
+			java.util.List<Integer> swarmSizes = new ArrayList<Integer>();
+			int taken = 0;
+			for (int i = 0; i < plan.from.size(); i++) {
+				for (int sz : ThreatColonyManager.consumeGarrison(plan.from.get(i), plan.counts.get(i), paid)) {
+					swarmSizes.add(strikeFleetSize(sz));
+					taken++;
+				}
+			}
+			for (int i = 0; i < plan.built; i++) swarmSizes.add(plan.sizes.get(plan.sizes.size() - 1 - i));
+			if (swarmSizes.isEmpty()) return null;
+			return sendStrike(params, colony, source, target, swarmSizes, paid[0],
 					ThreatFuel.ly(source, target.getStarSystem()),
-					" [staged: sized to a defence of " + (int) stagedDef[0] + ", hive bank after "
-							+ (int) (ThreatColonyManager.hivePoolableFP(colony) - bill) + " FP]");
+					" [staged: " + taken + " swarm(s) of " + plan.from.size() + " system(s), " + plan.built
+							+ " built; defence seen " + (int) stagedDef[0] + ", hive bank before "
+							+ (int) ThreatColonyManager.hivePoolableFP(colony) + " FP]");
 		}
 		int sendable = ThreatColonyManager.garrisonAvailableForLaunch(colony);
 		// (2026-09-29: closed economy - the fleets are re-embodied at their
@@ -4901,6 +4913,67 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 */
 	protected java.util.List<Integer> stagedSizes(MarketAPI staging, StarSystemAPI source, MarketAPI target,
 			java.util.Map<String, float[]> memo, float[] defOut) {
+		StagedPlan plan = stagedPlan(staging, source, target, memo, defOut, null);
+		return plan != null ? plan.sizes : null;
+	}
+
+	/** A staged strike as planned: its swarms' expedition sizes, and the garrison fleets it takes from which colonies. */
+	protected static class StagedPlan {
+		java.util.List<Integer> sizes = new ArrayList<Integer>();
+		java.util.List<MarketAPI> from = new ArrayList<MarketAPI>();
+		java.util.List<Integer> counts = new ArrayList<Integer>();
+		/** Estimated fleet points of the whole strike, and of what the banks pay of it (built swarms, and re-embodiment above what the garrison swarms weigh). */
+		float fp, bankFP;
+		int built;
+	}
+
+	/** One hive system's spare for a staged strike: its staging colony and the garrison fleets it could muster (ThreatColonyManager.peekMuster). */
+	protected static class StagedSpare {
+		MarketAPI colony;
+		java.util.List<ThreatColonyManager.MusterFleet> walk;
+		float ly;
+	}
+
+	/**
+	 * The spare Defense Swarms of every hive system, nearest the source first
+	 * (strikeStagedGarrisons; 2026-10-05, after hw20: the banks hold a few
+	 * hundred FP at any time - the production goes into the garrisons - so a
+	 * strike paid from them alone stays two swarms; the hive's mass is its
+	 * garrisons, as a faction's is its stock).
+	 */
+	protected java.util.List<StagedSpare> stagedSpares(final StarSystemAPI source) {
+		java.util.List<StagedSpare> out = new ArrayList<StagedSpare>();
+		if (!ThreatIncConfig.strikeStagedGarrisons() || source == null) return out;
+		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
+			MarketAPI c = ThreatColonyManager.pickStrikeStaging(systemId, true);
+			StarSystemAPI sys = getSystem(systemId);
+			if (c == null || sys == null) continue;
+			int avail = ThreatColonyManager.garrisonAvailableForLaunch(c);
+			if (avail <= 0) continue;
+			StagedSpare s = new StagedSpare();
+			s.colony = c;
+			s.walk = ThreatColonyManager.peekMuster(c, avail);
+			s.ly = Misc.getDistanceLY(source.getLocation(), sys.getLocation());
+			if (!s.walk.isEmpty()) out.add(s);
+		}
+		java.util.Collections.sort(out, new java.util.Comparator<StagedSpare>() {
+			public int compare(StagedSpare x, StagedSpare y) {
+				return Float.compare(x.ly, y.ly);
+			}
+		});
+		return out;
+	}
+
+	/**
+	 * stagedSizes with what it takes from where. With strikeStagedGarrisons
+	 * the strike is every spare garrison fleet of the hive within
+	 * strikeStagedGatherLY of the staging system that the fuel, the supplies
+	 * and the banks (for the re-embodiment's excess) pay for - the mass, not a
+	 * match of the defence - and swarms built from the banks only to reach
+	 * the margin over the defence seen, or two swarms.
+	 */
+	protected StagedPlan stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target,
+			java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares) {
 		if (staging == null || source == null || target == null || target.getStarSystem() == null) return null;
 		float def = targetDefence(target, memo);
 		if (def >= Float.MAX_VALUE) return null;
@@ -4910,29 +4983,61 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float bank = ThreatColonyManager.hivePoolableFP(staging);
 		float ly = ThreatFuel.ly(source, target.getStarSystem());
 		float daysAway = ThreatReach.strikeDays(ly);
-		java.util.List<Integer> sizes = new ArrayList<Integer>();
+		StagedPlan plan = new StagedPlan();
 		int points = 0;
 		String why = null;
-		while (true) {
-			sizes.add(size);
-			points += size;
-			float fp = ThreatStrikeFGI.estimateFP(sizes);
-			if (fp > bank) { why = "the hive banks " + (int) bank + " FP"; break; }
-			if (sizes.size() < 2) continue;
-			if (FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) < need) continue;
-			if (!ThreatFuel.canPay(ThreatFuel.passage(fp, ly, true))) {
-				why = "the fuel stock does not pay the passage of " + (int) fp + " FP over " + (int) ly + " ly";
-				if (defOut != null && ThreatIncConfig.strikeWaitBooksFuel()) {
-					ThreatFuel.heldShort("strike from " + staging.getName(), ThreatFuel.passage(fp, ly, true));
+		if (spares == null) spares = stagedSpares(source);
+		float gather = ThreatIncConfig.strikeStagedGatherLY();
+		boolean full = false;
+		for (StagedSpare s : spares) {
+			if (full || (gather > 0f && s.ly > gather)) break;
+			int count = 0;
+			for (ThreatColonyManager.MusterFleet mf : s.walk) {
+				java.util.List<Integer> sizes = new ArrayList<Integer>();
+				for (int sz : mf.sizes) sizes.add(strikeFleetSize(sz));
+				float est = ThreatStrikeFGI.estimateFP(sizes);
+				float excess = Math.max(0f, est - mf.fp);
+				if (plan.bankFP + excess > bank || !ThreatFuel.canPay(ThreatFuel.passage(plan.fp + est, ly, true))
+						|| !ThreatReach.canSustain(plan.fp + est, daysAway)) {
+					full = true;
+					break;
 				}
-				break;
+				plan.sizes.addAll(sizes);
+				for (int sz : sizes) points += sz;
+				plan.fp += est;
+				plan.bankFP += excess;
+				count++;
 			}
-			if (!ThreatReach.canSustain(fp, daysAway)) {
-				why = "the spare supplies do not keep " + (int) fp + " FP away " + (int) daysAway + " days";
-				break;
+			if (count > 0) {
+				plan.from.add(s.colony);
+				plan.counts.add(count);
 			}
-			return sizes;
 		}
+		while (plan.sizes.size() < 2
+				|| FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) < need) {
+			java.util.List<Integer> one = new ArrayList<Integer>();
+			one.add(size);
+			float est = ThreatStrikeFGI.estimateFP(one);
+			if (plan.bankFP + est > bank) {
+				why = "the hive banks " + (int) bank + " FP and spares " + (int) plan.fp + " FP of swarms";
+				break;
+			}
+			plan.sizes.add(size);
+			points += size;
+			plan.fp += est;
+			plan.bankFP += est;
+			plan.built++;
+		}
+		if (why == null && !ThreatFuel.canPay(ThreatFuel.passage(plan.fp, ly, true))) {
+			why = "the fuel stock does not pay the passage of " + (int) plan.fp + " FP over " + (int) ly + " ly";
+			if (defOut != null && ThreatIncConfig.strikeWaitBooksFuel()) {
+				ThreatFuel.heldShort("strike from " + staging.getName(), ThreatFuel.passage(plan.fp, ly, true));
+			}
+		}
+		if (why == null && !ThreatReach.canSustain(plan.fp, daysAway)) {
+			why = "the spare supplies do not keep " + (int) plan.fp + " FP away " + (int) daysAway + " days";
+		}
+		if (why == null) return plan;
 		// only the closest candidate speaks and books fuel (defOut set)
 		if (defOut != null) ThreatIncConfig.logQuiet("strikestaged:" + staging.getId(), "Staged strike from "
 				+ staging.getName() + " at " + target.getName() + " (" + (int) ly + " ly, defence " + (int) def
@@ -4974,8 +5079,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		});
 		java.util.Map<String, float[]> memo = new java.util.HashMap<String, float[]>();
 		boolean first = true;
+		java.util.List<StagedSpare> spares = stagedSpares(source);
 		for (MarketAPI market : near) {
-			if (stagedSizes(staging, source, market, memo, first ? new float[1] : null) != null) return market;
+			if (stagedPlan(staging, source, market, memo, first ? new float[1] : null, spares) != null) return market;
 			first = false;
 		}
 		return null;

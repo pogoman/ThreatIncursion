@@ -115,6 +115,11 @@
 	# false: a system's spare swarms muster, and the recall above.
 	"threatinc_strikeStaged": true,
 	"threatinc_strikeStagedMargin": 1.5,
+	# ...and takes the spare Defense Swarms of the hive's systems first (those
+	# within GatherLY of the staging system; 0 = all), the banks building only
+	# what is missing. A trial of 2026-10-05 (hw21), not the user's decision.
+	"threatinc_strikeStagedGarrisons": true,
+	"threatinc_strikeStagedGatherLY": 0,
 	# NO LEAD FROM A STRIKE (2026-10-05, the user): a strike mobilises the factions
 	# it sweeps and tells nothing of its origin; hives are found only by parties
 	# entering their system. true = the struck faction's scouts sail to the origin
