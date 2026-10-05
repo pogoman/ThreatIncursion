@@ -168,6 +168,10 @@ public class ThreatIncConfig {
 	public static boolean strikeStaged() { return b("threatinc_strikeStaged", true); }
 	/** A staged strike outweighs the defence last seen at its target by this (IncursionManager.stagedSizes). */
 	public static float strikeStagedMargin() { return fd("threatinc_strikeStagedMargin", 1.5f); }
+	/** A staged strike takes the spare Defense Swarms of the hive's systems first, the banks building only what is missing (IncursionManager.stagedPlan). Off: built from the banks alone. */
+	public static boolean strikeStagedGarrisons() { return b("threatinc_strikeStagedGarrisons", false); }
+	/** Light-years from the staging system within which a staged strike gathers spare swarms; 0 = the whole hive. */
+	public static float strikeStagedGatherLY() { return fd("threatinc_strikeStagedGatherLY", 0f); }
 	public static boolean postureRecallPartial() { return b("threatinc_postureRecallPartial", true); }
 	/** Whether a system under attack masses its spare swarms, then its neighbours', at its worlds short of their need, and a launch leaves the need home (ThreatPosture.massWithin, strikeCapFP). */
 	public static boolean postureMass() { return b("threatinc_postureMass", false); }
