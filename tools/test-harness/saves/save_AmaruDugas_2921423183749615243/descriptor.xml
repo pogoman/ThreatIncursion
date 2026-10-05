@@ -1,0 +1,363 @@
+<?xml version="1.0" ?>
+<SaveGameData z="1">
+<portraitName>graphics/portraits/portrait_luddic05.png</portraitName>
+<characterName>Amaru Dugas</characterName>
+<saveFileVersion>0.6</saveFileVersion>
+<gameVersion>0.98a-RC8</gameVersion>
+<characterLevel>1</characterLevel>
+<compressed>false</compressed>
+<isIronMode>false</isIronMode>
+<difficulty>normal</difficulty>
+<gameDate z="2">
+<secondsPerDay>10.0</secondsPerDay>
+<timestamp>-55660819204000</timestamp>
+</gameDate>
+<saveDate z="3">2026-10-02 16:09:25.880 UTC</saveDate>
+<slotCreationTimestamp>1790957365880</slotCreationTimestamp>
+<allModsEverEnabled z="4">
+<EnabledModData z="5">
+<spec z="6">
+<id>commwars</id>
+<desc>Success paints a target. Factions whose export markets you muscle in on develop grievances - first diplomatic notes, then ultimatums, then enforcement fleets sent to disrupt your industries and raid your stockpiles. Comply, pay them off, or defy them and fight. Military buildup draws the same attention. Grow strong enough and no single faction dares press a demand alone... so they form coalitions. Standalone; configurable via LunaLib (optional).</desc>
+<name>Commerce Wars</name>
+<gameVersion z="7">
+<major>0.98</major>
+<minor>8</minor>
+<patch></patch>
+<string>0.98a-RC8</string>
+<minorIsRC>true</minorIsRC>
+</gameVersion>
+<versionInfo z="8">
+<major>0.3</major>
+<minor>2</minor>
+<patch></patch>
+<string>0.3.2</string>
+<minorIsRC>false</minorIsRC>
+</versionInfo>
+<author>Tristan</author>
+<path>C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\..\mods\CommerceWars</path>
+<dirName>CommerceWars</dirName>
+<totalConversion>false</totalConversion>
+<utility>false</utility>
+<modPluginClassName>commwars.CommWarsModPlugin</modPluginClassName>
+<fullOverrides z="9"></fullOverrides>
+<jars z="10">
+<st>jars/CommWars.jar</st>
+</jars>
+<requiredMemoryMB>0</requiredMemoryMB>
+<dependencies z="11"></dependencies>
+</spec>
+</EnabledModData>
+<EnabledModData z="12">
+<spec z="13">
+<id>lw_lazylib</id>
+<desc>A collection of classes to aid modding. Not a mod in itself, but required by certain other mods.</desc>
+<name>LazyLib</name>
+<gameVersion z="14">
+<major>0.98</major>
+<minor>5</minor>
+<patch></patch>
+<string>0.98a-RC5</string>
+<minorIsRC>true</minorIsRC>
+</gameVersion>
+<versionInfo z="15">
+<major>3</major>
+<minor>0</minor>
+<patch>0</patch>
+<minorIsRC>false</minorIsRC>
+</versionInfo>
+<author>LazyWizard</author>
+<path>C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\..\mods\LazyLib-3.0.0</path>
+<dirName>LazyLib-3.0.0</dirName>
+<totalConversion>false</totalConversion>
+<utility>true</utility>
+<modPluginClassName>org.lazywizard.lazylib.LazyLib</modPluginClassName>
+<fullOverrides z="16"></fullOverrides>
+<jars z="17">
+<st>jars/LazyLib.jar</st>
+<st>jars/LazyLib-Kotlin.jar</st>
+<st>jars/internal/LazyLib-Console.jar</st>
+<st>jars/internal/Kotlin-Runtime.jar</st>
+</jars>
+<requiredMemoryMB>0</requiredMemoryMB>
+<dependencies z="18"></dependencies>
+</spec>
+</EnabledModData>
+<EnabledModData z="19">
+<spec z="20">
+<id>lunalib</id>
+<desc>Library including utilities for players and mod developers.</desc>
+<name>LunaLib</name>
+<gameVersion z="21">
+<major>0.98</major>
+<minor>5</minor>
+<patch></patch>
+<string>0.98a-RC5</string>
+<minorIsRC>true</minorIsRC>
+</gameVersion>
+<versionInfo z="22">
+<major>2</major>
+<minor>0</minor>
+<patch>4</patch>
+<string>2.0.4</string>
+<minorIsRC>false</minorIsRC>
+</versionInfo>
+<author>Lukas04</author>
+<path>C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\..\mods\LunaLib-2.0.4</path>
+<dirName>LunaLib-2.0.4</dirName>
+<totalConversion>false</totalConversion>
+<utility>false</utility>
+<modPluginClassName>lunalib.LunaLibPlugin</modPluginClassName>
+<fullOverrides z="23"></fullOverrides>
+<jars z="24">
+<st>jars/LunaLib.jar</st>
+<st>jars/libs/fuzzywuzzy-1.3.0.jar</st>
+</jars>
+<requiredMemoryMB>0</requiredMemoryMB>
+<dependencies z="25">
+<ModDependency z="26">
+<id>lw_lazylib</id>
+<name>LazyLib</name>
+<version z="27">
+<major></major>
+<minor></minor>
+<patch></patch>
+<string></string>
+<minorIsRC>false</minorIsRC>
+</version>
+</ModDependency>
+</dependencies>
+</spec>
+</EnabledModData>
+<EnabledModData z="28">
+<spec z="29">
+<id>piratepat</id>
+<desc>The black market is pirate infrastructure - and every credit that moves through the underworld is revenue for it. Your smuggling, the sector's own illegal trade, and commissions placed through underworld contacts all feed a pirate war chest that finances raids and new bases. Order goods no legal market sells - stolen from real colonies by real raids. Optionally (off by default), smuggling leaves you a debt rather than a bounty: one compounding balance a collection house buys up and collects fleet-to-fleet, with no pay-off button anywhere. One collector fleet, sized off your own: pay, or destroy every officer aboard and the debt dies with them. Stop paying on terms and your paper gets sold to the pirates, who quote figures they made up. Fading wariness and a closed-loop pirate economy you can starve or bankroll. Standalone. Configurable via LunaLib (optional).</desc>
+<name>Piracy Reworked</name>
+<gameVersion z="30">
+<major>0.98</major>
+<minor>8</minor>
+<patch></patch>
+<string>0.98a-RC8</string>
+<minorIsRC>true</minorIsRC>
+</gameVersion>
+<versionInfo z="31">
+<major>0.2</major>
+<minor>0</minor>
+<patch></patch>
+<string>0.2.0</string>
+<minorIsRC>false</minorIsRC>
+</versionInfo>
+<author>Tristan</author>
+<path>C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\..\mods\PiratePatronage</path>
+<dirName>PiratePatronage</dirName>
+<totalConversion>false</totalConversion>
+<utility>false</utility>
+<modPluginClassName>piratepat.PiratePatModPlugin</modPluginClassName>
+<fullOverrides z="32"></fullOverrides>
+<jars z="33">
+<st>jars/PiratePat.jar</st>
+</jars>
+<requiredMemoryMB>0</requiredMemoryMB>
+<dependencies z="34"></dependencies>
+</spec>
+</EnabledModData>
+<EnabledModData z="35">
+<spec z="36">
+<id>remret</id>
+<desc>A late-game colony crisis: the Remnant network takes note of your destruction of its kind. Every Remnant warship you kill - and especially every Nexus - feeds a threat assessment that ends in a retaliatory strike against your colonies. Configurable in-game via LunaLib (optional).</desc>
+<name>Remnant Retribution</name>
+<gameVersion z="37">
+<major>0.98</major>
+<minor>5</minor>
+<patch></patch>
+<string>0.98a-RC5</string>
+<minorIsRC>true</minorIsRC>
+</gameVersion>
+<versionInfo z="38">
+<major>0.3</major>
+<minor>1</minor>
+<patch></patch>
+<string>0.3.1</string>
+<minorIsRC>false</minorIsRC>
+</versionInfo>
+<author>Tristan</author>
+<path>C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\..\mods\RemnantRetribution</path>
+<dirName>RemnantRetribution</dirName>
+<totalConversion>false</totalConversion>
+<utility>false</utility>
+<modPluginClassName>remret.RemRetModPlugin</modPluginClassName>
+<fullOverrides z="39"></fullOverrides>
+<jars z="40">
+<st>jars/RemRet.jar</st>
+</jars>
+<requiredMemoryMB>0</requiredMemoryMB>
+<dependencies z="41"></dependencies>
+</spec>
+</EnabledModData>
+<EnabledModData z="42">
+<spec z="43">
+<id>shiftspeed</id>
+<desc>Sets the Shift 'speed up time' multiplier (campaignSpeedupMult) from an in-game setting instead of a hand-edited core file. Applies everywhere on the campaign map. Configurable via LunaLib (optional); works standalone with a settings.json fallback.</desc>
+<name>Shift Speed</name>
+<gameVersion z="44">
+<major>0.98</major>
+<minor>8</minor>
+<patch></patch>
+<string>0.98a-RC8</string>
+<minorIsRC>true</minorIsRC>
+</gameVersion>
+<versionInfo z="45">
+<major>0.1</major>
+<minor>0</minor>
+<patch></patch>
+<string>0.1.0</string>
+<minorIsRC>false</minorIsRC>
+</versionInfo>
+<author>Tristan</author>
+<path>C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\..\mods\ShiftSpeed</path>
+<dirName>ShiftSpeed</dirName>
+<totalConversion>false</totalConversion>
+<utility>true</utility>
+<modPluginClassName>shiftspeed.ShiftSpeedModPlugin</modPluginClassName>
+<fullOverrides z="46"></fullOverrides>
+<jars z="47">
+<st>jars/ShiftSpeed.jar</st>
+</jars>
+<requiredMemoryMB>0</requiredMemoryMB>
+<dependencies z="48"></dependencies>
+</spec>
+</EnabledModData>
+<EnabledModData z="49">
+<spec z="50">
+<id>speedUp</id>
+<desc>Adds a key binding to speed the game up. Hold the middle mouse button or press the caps lock key. Controls are fully customizable.</desc>
+<name>SpeedUp</name>
+<gameVersion z="51">
+<major>0.98</major>
+<minor>7</minor>
+<patch></patch>
+<string>0.98a-RC7</string>
+<minorIsRC>true</minorIsRC>
+</gameVersion>
+<versionInfo z="52">
+<major>1</major>
+<minor>2</minor>
+<patch>2</patch>
+<string>1.2.2</string>
+<minorIsRC>false</minorIsRC>
+</versionInfo>
+<author>DarkRevenant</author>
+<path>C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\..\mods\SpeedUp-1.2.2</path>
+<dirName>SpeedUp-1.2.2</dirName>
+<totalConversion>false</totalConversion>
+<utility>true</utility>
+<modPluginClassName>org.dark.speedup.SUModPlugin</modPluginClassName>
+<fullOverrides z="53"></fullOverrides>
+<jars z="54">
+<st>jars/SpeedUp.jar</st>
+</jars>
+<requiredMemoryMB>0</requiredMemoryMB>
+<dependencies z="55"></dependencies>
+</spec>
+</EnabledModData>
+<EnabledModData z="56">
+<spec z="57">
+<id>threatinc</id>
+<desc>The Threat does not stay in the abyss. Once woken, the fabricator swarms colonize the sector's fringe - founding real colonies that mine, refine, and forge for a closed hive economy - then strike outward at inhabited space, converging on the core worlds. Fight the network, not just the fleets: cut its supply chains, sabotage expeditions in fabrication, and lay siege to the entrenched hives - land a persistent ground front of marines and heavy armaments, take the hive stratum by stratum, and destroy the Fabrication Core at its center - eradication is a ground victory, not a timer. Standalone; pairs with Remnant Retribution. Configurable via LunaLib (optional).</desc>
+<name>The Abyssal War</name>
+<gameVersion z="58">
+<major>0.98</major>
+<minor>8</minor>
+<patch></patch>
+<string>0.98a-RC8</string>
+<minorIsRC>true</minorIsRC>
+</gameVersion>
+<versionInfo z="59">
+<major>0.7</major>
+<minor>0</minor>
+<patch></patch>
+<string>0.7.0</string>
+<minorIsRC>false</minorIsRC>
+</versionInfo>
+<author>Tristan</author>
+<path>C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\..\mods\ThreatIncursion</path>
+<dirName>ThreatIncursion</dirName>
+<totalConversion>false</totalConversion>
+<utility>false</utility>
+<modPluginClassName>threatinc.ThreatIncModPlugin</modPluginClassName>
+<fullOverrides z="60"></fullOverrides>
+<jars z="61">
+<st>jars/ThreatInc.jar</st>
+</jars>
+<requiredMemoryMB>0</requiredMemoryMB>
+<dependencies z="62"></dependencies>
+</spec>
+</EnabledModData>
+<EnabledModData z="63">
+<spec z="64">
+<id>ups</id>
+<desc>Makes the Planetary Shield actually shield the planet: while operational it absorbs the brunt of tactical and saturation bombardment - halved disruption, halved stability loss, no pollution, and the colony cannot be reduced in size or decivilized. In exchange it no longer boosts ground defenses (all configurable in-game via LunaLib, optional).</desc>
+<name>Useful Planetary Shield</name>
+<gameVersion z="65">
+<major>0.98</major>
+<minor>5</minor>
+<patch></patch>
+<string>0.98a-RC5</string>
+<minorIsRC>true</minorIsRC>
+</gameVersion>
+<versionInfo z="66">
+<major>0.1</major>
+<minor>4</minor>
+<patch></patch>
+<string>0.1.4</string>
+<minorIsRC>false</minorIsRC>
+</versionInfo>
+<author>Tristan</author>
+<path>C:\Program Files (x86)\Fractal Softworks\Starsector\starsector-core\..\mods\UsefulPlanetaryShield</path>
+<dirName>UsefulPlanetaryShield</dirName>
+<totalConversion>false</totalConversion>
+<utility>false</utility>
+<modPluginClassName>ups.UPSModPlugin</modPluginClassName>
+<fullOverrides z="67"></fullOverrides>
+<jars z="68">
+<st>jars/UPS.jar</st>
+</jars>
+<requiredMemoryMB>0</requiredMemoryMB>
+<dependencies z="69"></dependencies>
+</spec>
+</EnabledModData>
+</allModsEverEnabled>
+<enabledMods z="70">
+<EnabledModData z="71">
+<spec ref="6"></spec>
+</EnabledModData>
+<EnabledModData z="72">
+<spec ref="13"></spec>
+</EnabledModData>
+<EnabledModData z="73">
+<spec ref="20"></spec>
+</EnabledModData>
+<EnabledModData z="74">
+<spec ref="29"></spec>
+</EnabledModData>
+<EnabledModData z="75">
+<spec ref="36"></spec>
+</EnabledModData>
+<EnabledModData z="76">
+<spec ref="43"></spec>
+</EnabledModData>
+<EnabledModData z="77">
+<spec ref="50"></spec>
+</EnabledModData>
+<EnabledModData z="78">
+<spec ref="57"></spec>
+</EnabledModData>
+<EnabledModData z="79">
+<spec ref="64"></spec>
+</EnabledModData>
+</enabledMods>
+<desc></desc>
+<locDesc>Corvus Star System</locDesc>
+<autosave>false</autosave>
+</SaveGameData>

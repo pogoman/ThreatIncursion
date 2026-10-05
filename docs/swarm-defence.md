@@ -111,8 +111,8 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
 
   The cover over a landed army draws the rally too (2026-10-05, built after hw10, untested). A hive takes
   1-5 months to fall once an army is down (`game-runs.md` 8, `fall.pl`), and an unspawned landing leaves
-  its flotilla over the army as an abstract figure (`GroundFront.coverFP`, median 0.9-1.2k FP) that
+  its flotilla over the army as an abstract figure (`GroundFront.coverFP`, median 0.9-1.5k FP) that
   `hostilePointsNear` does not see: hw10's rally stopped the day the army landed, and the swarm outweighed
-  the cover in 7 of 21 / 4 of 48 / 0 of 26 landings. `poll` now adds `ThreatGroundFronts.coverOver(c)` to
+  the cover in 7 of 16 / 3 of 31 / 0 of 21 landings. `poll` now adds `ThreatGroundFronts.coverOver(c)` to
   the force it rallies against; once the swarms over the world outweigh the cover it is lost
   (`swarmOrbitContested`) and the swarm bombards the army (`tickSwarmBombard`).

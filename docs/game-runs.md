@@ -36,6 +36,12 @@ batch in one run's time (`testing-harness.md`, "Side-by-side runs"). The log is 
   what a day of exchange on every call-off would have cost each side.
 - `fall.pl <tags>`: how long a hive takes to fall: days a siege spent over its world by ending, and by hive
   size the days from the first siege fight to the landing and from the landing to the last stratum.
+- `cover.pl <tags>`: the orbit cover an unspawned landing leaves over its army: how many the swarm outweighed
+  and when, what was rallied or sent to the world meanwhile, how each landing ended.
+- `batch.sh <month> <tags>`: all of the above for a batch in one go, for a findings file a checkpoint.
+
+Running a batch on another machine (setup, the pristine save, the settings backup):
+`handover-2026-10-05-testing.md`.
 
 Sections 1-3 (hw5e-hw6c: the stance floor, what stopped the humans attacking, the council's restraints
 removed) are in `game-runs-humans.md`, under their numbers.
@@ -383,7 +389,7 @@ stay is short (called off day 1; beaten in a median 5-21 days; one that lands ha
 last stratum a median 10 days at size 1, 42 at size 2, 62 at 3, 83 at 4, 87 at 5, 121 at 6, 139 at 7, and from
 the first siege fight over a world to its fall a median 165-545 days a run. No hive above size 1 fell in under
 22 days. Through those months the landing's flotilla holds the orbit as an abstract cover (`coverFP`, median
-0.9-1.2k FP) and the rally did not see it: the swarm outweighed the cover in 7 of 21 / 4 of 48 / 0 of 26
+0.9-1.5k FP) and the rally did not see it: the swarm outweighed the cover in 7 of 16 / 3 of 31 / 0 of 21
 landings, and overran 2 of 16 / 1 of 31 / 5 of 21 armies. Gamma Laphirial II (hw10b, size 3): 411 marines
 landed under 400 FP of cover on day 1832 and took the hive 72 days later; the swarm, with 16-21k FP of fleets,
 sent it one fleet of 146 FP. Fixed after the batch (the rally reads the cover, `swarm-defence.md`), untested.
