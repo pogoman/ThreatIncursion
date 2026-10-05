@@ -9,7 +9,8 @@ $p = Get-Content "$bk\prefs.json" -Raw | ConvertFrom-Json
 if ($p.continue) { Set-ItemProperty $key -Name continue -Value $p.continue }
 Set-ItemProperty $key -Name resolution -Value $p.resolution
 Set-ItemProperty $key -Name fullscreen -Value $p.fullscreen
-Set-ItemProperty $key -Name 'gameplay/Settings' -Value $p.gameplaySettings
+if ($p.gameplaySettings) { Set-ItemProperty $key -Name 'gameplay/Settings' -Value $p.gameplaySettings }
+else { Remove-ItemProperty $key -Name 'gameplay/Settings' -ErrorAction SilentlyContinue }
 $common = 'C:\Program Files (x86)\Fractal Softworks\Starsector\saves\common'
 if (Test-Path "$bk\LunaSettings_shiftspeed.json.data") {
   Copy-Item "$bk\LunaSettings_shiftspeed.json.data" "$common\LunaSettings\shiftspeed.json.data" -Force

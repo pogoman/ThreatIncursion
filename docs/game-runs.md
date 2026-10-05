@@ -393,3 +393,69 @@ the first siege fight over a world to its fall a median 165-545 days a run. No h
 landings, and overran 2 of 16 / 1 of 31 / 5 of 21 armies. Gamma Laphirial II (hw10b, size 3): 411 marines
 landed under 400 FP of cover on day 1832 and took the hive 72 days later; the swarm, with 16-21k FP of fleets,
 sent it one fleet of 146 FP. Fixed after the batch (the rally reads the cover, `swarm-defence.md`), untested.
+
+## 9. hw11a-hw11c (2026-10-05, on a second machine): the rally reads the cover over a landed army
+
+Build `e5ce9b9` on shipped defaults (`systemDefence` on, margin 1.25, `strikeSeenBySystem` on, `postureMass`
+off). 33 minutes of fast-forward, no exception, no council error. **The rally now reaches a covered world, but
+to one landing in five and with too little: the covers fall no more often than in hw10 and the hives die as
+before.** Two runs extinct, one at 3 hives and falling; all three had 78-93% of their hives found at m48, the
+band that died in hw8 and hw10.
+
+| | hw11a | hw11b | hw11c | hw10a / b / c |
+|---|---|---|---|---|
+| extinct | m81 | never (3 hives at m123) | m78 | never (175) / m93 / m74 |
+| hives m60, m84, m108 | 11, 0, 0 | 14, 25, 18 | 6, 0, 0 | 25, 64, 124 / 25, 3, 0 / 7, 0, 0 |
+| hives the humans had found at m48 | 14 of 16 | 14 of 18 | 13 of 14 | 9 of 14 / 15 of 17 / 13 of 15 |
+| landings left under cover (median cover) | 19 (1,362 FP) | 45 (1,137 FP) | 21 (688 FP) | 16 (924) / 31 (1,493) / 21 (1,312) |
+| landings a rally reached while the cover stood | 3 | 11 | 0 | - |
+| rallied to a world while its cover stood | 11 fleets (3.2k FP) | 32 (4.7k FP) | 0 | 1 (115 FP) / 1 (100 FP) / 0 |
+| other transfers to it meanwhile | 19 (2.9k FP) | 256 (27.6k FP) | 8 (1.0k FP) | 139 (16.4k) / 36 (5.1k) / 15 (1.7k) |
+| covers the swarm outweighed (median days after the landing) | 1 (57) | 8 (28) | 3 (25) | 7 (27) / 3 (38) / 0 |
+| landings ended: hive eradicated, army overrun | 18, 1 | 42, 2 | 17, 4 | 14, 2 / 30, 1 / 16, 5 |
+| of the covers lost: hive eradicated anyway, army overrun | 0, 1 | 8, 0 | 1, 2 | 6, 1 / 3, 0 / - |
+| sieges down, called off | 75, 7 | 263, 61 | 55, 4 | 432, 244 / 146, 34 / 60, 12 |
+| sieges ended `front` (FP down) | 22 (43.1k) | 31 (45.7k) | 7 (9.5k) | not read |
+| fleets rallied in all (FP) | 153 (33.8k) | 1,333 (253.6k) | 76 (14.6k) | 2,902 (501k) / 603 (126k) / 164 (31k) |
+| Threat FP lost a human FP | 1.15 | 1.31 | 1.40 | 1.25 / 1.35 / 1.31 |
+| seeding swarms, strikes, since found | 3, 4 | 41, 27 | 0, 1 | 221, 173 / 26, 20 / 1, 2 |
+| human worlds lost | 1 | 0 | 1 | 2 / 0 / 1 |
+
+Against the handover's six questions (`handover-2026-10-05-testing.md` 6):
+
+1. **The rally reaches a covered world, rarely.** 11 / 32 / 0 fleets against 1 / 1 / 0, and the `Posture: X
+   rallied` lines name worlds with an army on them - but 3 of 19 / 11 of 45 / 0 of 21 landings drew any, and
+   the ordinary transfers still carry more (hw11b 27.6k FP against 4.7k). Read from `rally`, not yet measured
+   in a log: a donor with a siege over it, an army on it or a hostile fleet near it gives nothing, and the
+   humans land on a system's hives together (hw11a, Alpha Laphirial: nine landings between day 1578 and day
+   2158, each standing 81-750 days), so the worlds that could give are the ones excluded. hw11c had 734 FP of
+   fleets left at m60 and nothing to send.
+2. **The swarm does not take the orbit back more often.** 1 of 19 / 8 of 45 / 3 of 21 covers outweighed, a
+   median 57 / 28 / 25 days after the landing (hw10: 7 of 16 / 3 of 31 / 0 of 21 at 27-38 days).
+3. **It does not save the hive.** Of the 12 covers lost, 9 hives were eradicated anyway and 3 armies overrun;
+   hw11b lost 8 covers and all 8 hives. Armies overrun 1 / 2 / 4 of the landings (hw10 2 / 1 / 5). So both
+   links are short: the rally rarely arrives, and a lost cover rarely turns the ground (`tickSwarmBombard`,
+   `swarmFrontBombardPer30Days` 0.60).
+4. **The war** follows the found share, as in hw8 and hw10: 88% / 78% / 93% found at m48, extinct m81 / 3
+   hives at m123 / extinct m78. No run fell in the 41-64% band that survived before, so the batch says nothing
+   about a runaway. hw11b recovered to 38 hives at m89 with 18-23 of 25-31 found, then fell.
+5. **No side effect seen.** Sieges called off 9% / 23% / 7% (hw10 56% / 23% / 20%): the cover rally did not
+   starve the defence against the next siege - it sent 3.2k and 4.7k FP in whole runs.
+6. **No exception, no council error** (exceptions file 270 bytes, vanilla's noise, on this machine too).
+
+**Proposed, the user's call (nothing built).**
+
+- Let a world with an army on it or a siege over it still give its spare to a neighbour whose cover it can
+  outweigh, or count the system's covers together and mass on the lightest first. As built the rule that
+  protects a donor empties the pool exactly when the system is being taken world by world.
+- What a regained orbit is worth: 9 of 12 hives fell after the cover was lost. The bombardment rate and the
+  hive's counter-attack are the figures to look at before more fleets are sent to win an orbit that does not
+  save the world.
+- A log line when `rally` finds the world short and the pool empty (which donors were excluded and why), so
+  the first proposal is measured rather than read from the code. This one is instrumentation only.
+
+**The harness on a second machine.** The first launch failed at the launcher (`Error loading settings`):
+`run-settings.ps1` wrote the prefs value `gameplay/Settings` empty on a machine that had never had one. Fixed:
+it is edited only where it exists, and `restore-settings.ps1` removes it when the backup has none. On such a
+machine vanilla autosave is left as it is; a clone is deleted at the end either way. Three games ran in 6.4 GB
+of free memory at 113 days a minute each.
