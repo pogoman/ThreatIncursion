@@ -1,7 +1,7 @@
 # The swarm's defence - restraints removed, strikes come home, the defence massed, the system as one
 
 Split from `hive-garrison-and-upkeep.md` "Posture" on 2026-10-04: that section holds the pressure, want,
-modes and transfers these build on. Test results: `game-runs.md` 4-7 (the cover rally: `game-runs.md` 9). The
+modes and transfers these build on. Test results: `game-runs.md` 4-7 (the cover rally: `game-runs-2.md` 9). The
 hive picket that sees a siege coming is in `threat-fog.md` 4.
 
 - **The swarm's restraints removed (2026-10-04, built 68d019a, tested hw7: `game-runs.md` 5; the user: "remove
@@ -116,7 +116,7 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   the cover in 7 of 16 / 3 of 31 / 0 of 21 landings. `poll` now adds `ThreatGroundFronts.coverOver(c)` to
   the force it rallies against; once the swarms over the world outweigh the cover it is lost
   (`swarmOrbitContested`) and the swarm bombards the army (`tickSwarmBombard`).
-  hw11 (`game-runs.md` 9): the rally reached 3 of 19 / 11 of 45 / 0 of 21 covered landings (11 / 32 / 0
+  hw11 (`game-runs-2.md` 9): the rally reached 3 of 19 / 11 of 45 / 0 of 21 covered landings (11 / 32 / 0
   fleets, against 1 / 1 / 0), the covers fell no more often (1 / 8 / 3) and 9 of the 12 hives whose cover
   was lost were eradicated anyway. Read from `rally`: the donors it excludes (an army on them, a siege over
   them, a hostile fleet near) are the system's other worlds when the humans land on them together.
