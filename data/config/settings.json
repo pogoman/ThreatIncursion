@@ -125,6 +125,11 @@
 	# false = each world meets a siege with its own garrison, as before
 	"threatinc_systemDefence": true,
 	"threatinc_systemDefenceMargin": 1.25,
+	# Only when it is enough (2026-10-05, the user: as the humans turn back
+	# from a world too well guarded): the swarms at the world, those bound
+	# for it and the system's spare must together outweigh the force, or none
+	# is sent. false = whatever is spare is sent
+	"threatinc_systemDefenceOnlyIfEnough": true,
 	# Stance: each posture pass the hive decides what its surplus is for.
 	# PRESS - it holds stancePressRatio times a rival's force in reach, knows a
 	# world of that rival whose defence is at most stanceWeakOdds of what it

@@ -848,6 +848,9 @@ public class ThreatPosture {
 	 * over the world today weigh together. hw9 massed to the system's whole
 	 * pressure, 2.4-4.3 times the siege, from every system in reach; this
 	 * sends what the force over the world calls for, from its own system.
+	 * Nothing is sent when all of it together would not outweigh the force
+	 * (systemDefenceOnlyIfEnough; hw11: 9 of 12 hives fell after the swarm
+	 * had won their orbit back, and the fleets sent were lost with them).
 	 * Knob: systemDefence.
 	 */
 	public static void rally(MarketAPI world, float attackFP) {
@@ -873,6 +876,16 @@ public class ThreatPosture {
 			if (sieged.containsKey(c.getId()) || ThreatGroundFronts.hasFront(c)
 					|| ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c) > 0f) continue;
 			for (CampaignFleetAPI f : ThreatColonyManager.spareFleets(c, false)) pool.put(f, c);
+		}
+		// what cannot outweigh the force is not sent to die under it: the swarms stay where they stand
+		if (ThreatIncConfig.systemDefenceOnlyIfEnough()) {
+			float gather = have;
+			for (CampaignFleetAPI f : pool.keySet()) gather += f.getFleetPoints();
+			if (gather < attackFP) {
+				if (!pool.isEmpty()) ThreatIncConfig.log("Posture: no rally to " + world.getName() + " (" + (int) gather
+						+ " FP could stand against " + (int) attackFP + ")");
+				return;
+			}
 		}
 		while (!pool.isEmpty() && have < want) {
 			CampaignFleetAPI pick = pickFor(pool.keySet(), want - have);
