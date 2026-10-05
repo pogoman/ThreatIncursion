@@ -124,8 +124,12 @@ No exception, no council error. **Worse or the same: extinct m74, m63, and 1 hiv
 
 ## 12. hw14a-hw14c (2026-10-05): the Nexus off the tactical target list, its defence bonus gone
 
-Build `d53ecf9` (`nexusBombardable` false, `nexusDefenseBonus` 0; the rest shipped defaults, rally only if
-enough on). No council error; the exceptions files are vanilla's two hull-spec lines. **No run extinct: 4 hives
+**Build `d53ecf9` did not do what the heading says.** Its `nexusBombardable` gate went into HIVE `keyStructures`
+(what a holding ground front suppresses), not `fortifications` (what tactical bombardment wears). So this batch
+tested: no Nexus defence bonus, a holding army no longer suppresses the Nexus, and **tactical bombardment still
+puts it down** (hw14a: 15-20 days after the first bombing day, e.g. Epsilon Laphirial IV bombed day 1367, Nexus
+down day 1384, landed day 3188). The gate was moved to `fortifications` afterwards; that build has no run yet.
+The rest shipped defaults, rally only if enough on. No council error; the exceptions files are vanilla's two hull-spec lines. **No run extinct: 4 hives
 and fading, 29, and 52 and growing at m120** - the first batch with a swarm alive in all three. The found share at
 m48 is lower than in hw11-hw13 (67% / 72% / 25% against 78-100%): hw14c sits in the band that ran away before
 (hw10a 64%), hw14a and hw14b between the bands, so the batch does not separate the change from the share.
@@ -143,11 +147,12 @@ m48 is lower than in hw11-hw13 (67% / 72% / 25% against 78-100%): hw14c sits in 
 | seeding swarms, strikes since found | 28, 42 | 57, 41 | 110, 91 | 3, 4 / 41, 27 / 0, 1 |
 | Threat landings, human worlds lost | 12, 2 | 5, 0 | 2, 0 | 6, 1 / 4, 0 / 6, 1 |
 
-- The income holds through the first year of sieges (`organs.pl`): the Nexus is down only where saturation or
-  the army reaches it (longest read 277-286 days, not the 360 cap).
+- More hives can earn at m52-m60 than in hw11a, but not because the Nexus is spared: bombardment still downs it
+  (`organs.pl`; longest read 277-286 days, the 300 bombardment cap, no longer the front's 360). The cause is not
+  established: fewer hives were found by m48, and most of hw14a's were first bombed late (around day 1699).
 - The swarm rebuilds what it loses: 1,512 / 2,165 / 3,418 swarms built since found (hw11: 186 / 1,822 / 137),
   28 / 57 / 110 seeding swarms, and the hives overrun 9-13 armies a run (hw11: 1-4) although their ground
-  defence is a third lower.
+  defence is a third lower; why is not established.
 - It still trades at 1.32-1.37 over its own worlds and takes 0-2 human worlds: it survives by out-seeding its
   losses, not by winning fights. hw14a's income failed from m96 (8 of 15 able to earn, 0 of 6 at m112).
 - hw14c is growing at m120 (52 hives, 54k FP of fleets, 458 sieges absorbed): whether that is a runaway needs
