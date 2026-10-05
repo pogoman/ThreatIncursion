@@ -2327,7 +2327,8 @@ public class ThreatColonyManager {
 			// a strike musters at least two Defense Swarms above the reserves -
 			// the system's colonies pool theirs (garrisonAvailableForLaunch,
 			// 2026-09-29), each at full garrison or adding nothing
-			if (requireReadyForge && garrisonAvailableForLaunch(curr) < 2) continue;
+			// (a staged strike is built from the banks: no garrison is asked of it)
+			if (requireReadyForge && !ThreatIncConfig.strikeStaged() && garrisonAvailableForLaunch(curr) < 2) continue;
 			if (!hasOperationalFuel(curr)) continue;
 			// expeditions are staged by the military organ, vanilla-style: a
 			// disrupted Swarm Nexus launches nothing (see MilitaryBase's own
@@ -4327,6 +4328,60 @@ public class ThreatColonyManager {
 		}
 		ThreatIncConfig.log(what + " bill at " + source.getName() + ": " + (int) bill + " FP, "
 				+ (int) short0 + " pooled from " + from);
+		return true;
+	}
+
+	/** Every live colony of the hive that gives to a staged strike's bill: banked, and holding its garrison (ThreatPosture.regrowing). */
+	protected static List<MarketAPI> hiveGivers(MarketAPI source) {
+		List<MarketAPI> givers = new ArrayList<MarketAPI>();
+		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
+			for (MarketAPI m : ThreatIncData.getLiveColonyMarkets(systemId)) {
+				if (m == source || bankedFP(m) <= 0f) continue;
+				if (ThreatPosture.regrowing(m, ownedFleetFP(m, ThreatIncData.garrisonsFor(m.getId())))) continue;
+				givers.add(m);
+			}
+		}
+		return givers;
+	}
+
+	/** What the whole hive could put toward a staged strike at the source: its bank and every giver's (hiveGivers). */
+	public static float hivePoolableFP(MarketAPI source) {
+		if (source == null) return 0f;
+		float fp = Math.max(0f, bankedFP(source));
+		for (MarketAPI m : hiveGivers(source)) fp += bankedFP(m);
+		return fp;
+	}
+
+	/**
+	 * poolSystemBanks across the whole hive, for a staged strike (the user,
+	 * 2026-10-05: built from the whole hive's bank, as the humans pay a siege
+	 * from their pooled means): the richest givers first.
+	 */
+	public static boolean poolHiveBanks(MarketAPI source, float bill, String what) {
+		if (source == null) return false;
+		float short0 = bill - bankedFP(source);
+		if (short0 <= 0f) return true;
+		List<MarketAPI> givers = hiveGivers(source);
+		float can = 0f;
+		for (MarketAPI m : givers) can += bankedFP(m);
+		if (can < short0) return false;
+		java.util.Collections.sort(givers, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				return Float.compare(bankedFP(b), bankedFP(a));
+			}
+		});
+		float left = short0;
+		int n = 0;
+		for (MarketAPI m : givers) {
+			if (left <= 0f) break;
+			float take = Math.min(left, bankedFP(m));
+			chargeFP(m, take);
+			creditFP(source, take);
+			left -= take;
+			n++;
+		}
+		ThreatIncConfig.log(what + " bill at " + source.getName() + ": " + (int) bill + " FP, "
+				+ (int) short0 + " pooled from " + n + " colonies of the hive");
 		return true;
 	}
 

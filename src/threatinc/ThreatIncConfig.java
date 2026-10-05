@@ -164,6 +164,10 @@ public class ThreatIncConfig {
 	public static float patrolBurnStrike() { return fd("threatinc_patrolBurnStrike", 9f); }
 	public static float postureRecallLY() { return f("threatinc_postureRecallLY"); }
 	/** Whether a recalled strike sends home only the fleets that cover what the system is short and sails on with the rest (ThreatStrikeFGI.recallTo); off, it comes home whole. */
+	/** A strike is built for its target from the whole hive's bank at a staging world, the garrisons stay home and nothing is recalled (IncursionManager.stagedSizes, pickStagedTarget; the user, 2026-10-05). Off: the system's spare swarms muster, and the recall. */
+	public static boolean strikeStaged() { return b("threatinc_strikeStaged", true); }
+	/** A staged strike outweighs the defence last seen at its target by this (IncursionManager.stagedSizes). */
+	public static float strikeStagedMargin() { return fd("threatinc_strikeStagedMargin", 1.5f); }
 	public static boolean postureRecallPartial() { return b("threatinc_postureRecallPartial", true); }
 	/** Whether a system under attack masses its spare swarms, then its neighbours', at its worlds short of their need, and a launch leaves the need home (ThreatPosture.massWithin, strikeCapFP). */
 	public static boolean postureMass() { return b("threatinc_postureMass", false); }

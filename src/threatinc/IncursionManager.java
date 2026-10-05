@@ -948,8 +948,37 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		}
 	}
 
+	/** The staged strike pass: of every staging world's closest payable target, the closest of all sails - one a pass. */
+	protected void tryStagedStrike() {
+		MarketAPI bestColony = null, bestTarget = null;
+		StarSystemAPI bestSource = null;
+		float bestLY = Float.MAX_VALUE;
+		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
+			MarketAPI colony = ThreatColonyManager.pickStrikeStaging(systemId, true);
+			StarSystemAPI source = getSystem(systemId);
+			if (colony == null || source == null) continue;
+			MarketAPI target = pickStrikeTarget(colony, source);
+			if (target == null) continue;
+			float ly = Misc.getDistanceLY(source.getLocation(), target.getStarSystem().getLocation());
+			if (ThreatGroundFronts.wantsExpedition(target) && ThreatIncConfig.strikeReliefFirst()) ly -= 100000f;
+			if (ly < bestLY) {
+				bestLY = ly;
+				bestColony = colony;
+				bestSource = source;
+				bestTarget = target;
+			}
+		}
+		if (bestColony == null) return;
+		if (launchStrike(bestColony, bestSource, bestTarget) == null) return;
+		if (!ThreatIncConfig.hiveFogOfWar()) ThreatIncData.markDiscovered(bestSource.getId());
+	}
+
 	protected void tryStrikes() {
 		if (getPhase() < 2) return;
+		if (ThreatIncConfig.strikeStaged()) {
+			tryStagedStrike();
+			return;
+		}
 		// (2026-09-29: closed economy - no concurrency cap: a strike is paid
 		// from its colony's bank, and that is the limit)
 
@@ -1068,6 +1097,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// swarm that left orbit. The nexus grows replacements as its bank
 		// pays, so strike tempo is bought with real fleets - and
 		// killing a colony's swarms directly starves its next strike.
+		if (ThreatIncConfig.strikeStaged()) {
+			// built for the purpose from the whole hive's bank, sized to the
+			// target; the garrisons stay home (the user, 2026-10-05)
+			float[] stagedDef = { 0f };
+			java.util.List<Integer> staged = stagedSizes(colony, source, target, new java.util.HashMap<String, float[]>(), stagedDef);
+			if (staged == null) return null;
+			float bill = ThreatStrikeFGI.estimateFP(staged);
+			if (!ThreatColonyManager.poolHiveBanks(colony, bill, "Strike")) return null;
+			return sendStrike(params, colony, source, target, staged, 0f,
+					ThreatFuel.ly(source, target.getStarSystem()),
+					" [staged: sized to a defence of " + (int) stagedDef[0] + ", hive bank after "
+							+ (int) (ThreatColonyManager.hivePoolableFP(colony) - bill) + " FP]");
+		}
 		int sendable = ThreatColonyManager.garrisonAvailableForLaunch(colony);
 		// (2026-09-29: closed economy - the fleets are re-embodied at their
 		// expedition size, which can weigh more than the swarms that left: a
@@ -1136,11 +1178,22 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float[] paid = { 0f };
 		java.util.List<Integer> mustered = ThreatColonyManager.consumeGarrison(colony, count, paid);
 		if (mustered.isEmpty()) return null;
+		java.util.List<Integer> swarmSizes = new ArrayList<Integer>();
+		for (int size : mustered) swarmSizes.add(strikeFleetSize(size));
+		return sendStrike(params, colony, source, target, swarmSizes, paid[0], ly, null);
+	}
+
+	/**
+	 * The launch itself, for swarms mustered from the garrison (launchStrike)
+	 * or built for the strike (strikeStaged): packs them, draws what they
+	 * weigh above {@code paid} from the staging colony's bank, pays the
+	 * passage and books the strike. {@code note} ends the log line.
+	 */
+	protected ThreatStrikeFGI sendStrike(GenericRaidParams params, MarketAPI colony, StarSystemAPI source,
+			MarketAPI target, java.util.List<Integer> swarmSizes, float paid, float ly, String note) {
 		// each swarm is re-embodied as EXACTLY the swarm that left orbit (its
 		// fabrication tier rides the fleet's memory); the strength multiplier
 		// up- or down-tiers the re-embodiment for players who want it
-		java.util.List<Integer> swarmSizes = new ArrayList<Integer>();
-		for (int size : mustered) swarmSizes.add(strikeFleetSize(size));
 		// ...and the swarms fly packed, as few fleets as maxShipsInAIFleet
 		// allows (2026-09-29 review: a fleet a swarm, dozens of them): an
 		// entry a fleet, its swarms' sizes summed, so the strength is the
@@ -1153,7 +1206,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// the estimated excess is drawn now and booked on the strike; the
 		// spawn settles the rest against what the fleets really weigh.
 		// Estimated swarm by swarm: a packed entry is no swarm's size
-		float drawn = Math.max(0f, ThreatStrikeFGI.estimateFP(swarmSizes) - paid[0]);
+		float drawn = Math.max(0f, ThreatStrikeFGI.estimateFP(swarmSizes) - paid);
 		if (drawn > 0f) ThreatColonyManager.chargeFP(colony, drawn);
 		ThreatFuel.pay(Math.min(ThreatFuel.stock(),
 				ThreatFuel.passage(ThreatStrikeFGI.estimateFP(swarmSizes), ly, true)));
@@ -1162,7 +1215,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 		ThreatStrikeFGI strike = new ThreatStrikeFGI(params);
 		strike.setPacks(packs);
-		strike.setLedger(colony.getId(), paid[0] + drawn);
+		strike.setLedger(colony.getId(), paid + drawn);
 		Global.getSector().getIntelManager().addIntel(strike);
 		getStrikeList().add(strike);
 
@@ -1177,11 +1230,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 		ThreatIncConfig.log("Strike launched from " + source.getName() + " at " + target.getName()
 				+ " (" + target.getFactionId() + ", " + (int) ly + " ly, ~" + (int) ThreatReach.strikeDays(ly)
-				+ " days away; " + mustered.size() + " swarm(s) mustered in " + packs.size() + " fleet(s), "
-				+ (int) paid[0] + " FP + "
+				+ " days away; " + swarmSizes.size() + " swarm(s) mustered in " + packs.size() + " fleet(s), "
+				+ (int) paid + " FP + "
 				+ (int) drawn + " drawn from the bank, sweeping "
 				+ params.raidParams.allowedTargets.size()
-				+ " world(s) in " + target.getStarSystem().getName() + ")");
+				+ " world(s) in " + target.getStarSystem().getName() + ")" + (note != null ? note : ""));
 		return strike;
 	}
 
@@ -4729,6 +4782,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * @param onlyFactionId restrict candidates to this faction's worlds (retaliation), or null
 	 */
 	protected MarketAPI pickStrikeTarget(MarketAPI staging, StarSystemAPI source, String onlyFactionId) {
+		if (ThreatIncConfig.strikeStaged()) return pickStagedTarget(staging, source, onlyFactionId);
 		int phase = getPhase();
 		boolean coreAllowed = phase >= 3;
 		boolean playerAllowed = ThreatIncData.daysSincePlayerStruck() >= ThreatIncConfig.playerGraceDays();
@@ -4832,6 +4886,99 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			ThreatFuel.heldShort("strike from " + staging.getName(), waitedOn);
 		}
 		return picker.pick();
+	}
+
+	/**
+	 * STAGED STRIKES (the user, 2026-10-05: "Yes and yes. Also they should
+	 * prioritise the closest known targets including forward bases"): a strike
+	 * is built for its target from the whole hive's bank at a staging world,
+	 * as the humans build a siege from their pooled means, and the garrisons
+	 * stay home - so nothing is recalled (ThreatPosture.recallStrikes).
+	 * The swarms it takes to outweigh the defence the swarm last saw at the
+	 * world by strikeStagedMargin, at least two; null when the hive's banks,
+	 * the fuel stock or the spare supplies do not pay for them.
+	 * {@code defOut[0]} takes the defence it was sized to.
+	 */
+	protected java.util.List<Integer> stagedSizes(MarketAPI staging, StarSystemAPI source, MarketAPI target,
+			java.util.Map<String, float[]> memo, float[] defOut) {
+		if (staging == null || source == null || target == null || target.getStarSystem() == null) return null;
+		float def = targetDefence(target, memo);
+		if (def >= Float.MAX_VALUE) return null;
+		if (defOut != null) defOut[0] = def;
+		float need = def * ThreatIncConfig.strikeStagedMargin();
+		int size = strikeFleetSize(Math.min(9, staging.getSize() + 3));
+		float bank = ThreatColonyManager.hivePoolableFP(staging);
+		float ly = ThreatFuel.ly(source, target.getStarSystem());
+		float daysAway = ThreatReach.strikeDays(ly);
+		java.util.List<Integer> sizes = new ArrayList<Integer>();
+		int points = 0;
+		String why = null;
+		while (true) {
+			sizes.add(size);
+			points += size;
+			float fp = ThreatStrikeFGI.estimateFP(sizes);
+			if (fp > bank) { why = "the hive banks " + (int) bank + " FP"; break; }
+			if (sizes.size() < 2) continue;
+			if (FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) < need) continue;
+			if (!ThreatFuel.canPay(ThreatFuel.passage(fp, ly, true))) {
+				why = "the fuel stock does not pay the passage of " + (int) fp + " FP over " + (int) ly + " ly";
+				if (defOut != null && ThreatIncConfig.strikeWaitBooksFuel()) {
+					ThreatFuel.heldShort("strike from " + staging.getName(), ThreatFuel.passage(fp, ly, true));
+				}
+				break;
+			}
+			if (!ThreatReach.canSustain(fp, daysAway)) {
+				why = "the spare supplies do not keep " + (int) fp + " FP away " + (int) daysAway + " days";
+				break;
+			}
+			return sizes;
+		}
+		// only the closest candidate speaks and books fuel (defOut set)
+		if (defOut != null) ThreatIncConfig.logQuiet("strikestaged:" + staging.getId(), "Staged strike from "
+				+ staging.getName() + " at " + target.getName() + " (" + (int) ly + " ly, defence " + (int) def
+				+ ") waits: " + why);
+		return null;
+	}
+
+	/**
+	 * The staged strike's target from this staging world: the closest world
+	 * the swarm knows that the hive can pay a strike for (stagedSizes), a
+	 * front of its own short of troops first (strikeReliefFirst). Forward
+	 * bases are worlds like any other here.
+	 */
+	protected MarketAPI pickStagedTarget(MarketAPI staging, final StarSystemAPI source, String onlyFactionId) {
+		int phase = getPhase();
+		boolean coreAllowed = phase >= 3;
+		boolean playerAllowed = ThreatIncData.daysSincePlayerStruck() >= ThreatIncConfig.playerGraceDays();
+		List<MarketAPI> near = new ArrayList<MarketAPI>();
+		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (!isStrikeableWorld(market)) continue;
+			if (!coreAllowed && isCoreWorld(market)) continue;
+			if (market.isPlayerOwned() && !playerAllowed) continue;
+			if (!warOpen(market, phase)) continue;
+			if (onlyFactionId != null && !onlyFactionId.equals(market.getFactionId())) continue;
+			if (isActiveStrikeTarget(market)) continue;
+			if (!ThreatSwarmScouts.swarmKnows(market) || !strikeSeen(market)) continue;
+			near.add(market);
+		}
+		final boolean reliefFirst = ThreatIncConfig.strikeReliefFirst();
+		java.util.Collections.sort(near, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				if (reliefFirst) {
+					boolean ra = ThreatGroundFronts.wantsExpedition(a), rb = ThreatGroundFronts.wantsExpedition(b);
+					if (ra != rb) return ra ? -1 : 1;
+				}
+				return Float.compare(Misc.getDistanceLY(source.getLocation(), a.getStarSystem().getLocation()),
+						Misc.getDistanceLY(source.getLocation(), b.getStarSystem().getLocation()));
+			}
+		});
+		java.util.Map<String, float[]> memo = new java.util.HashMap<String, float[]>();
+		boolean first = true;
+		for (MarketAPI market : near) {
+			if (stagedSizes(staging, source, market, memo, first ? new float[1] : null) != null) return market;
+			first = false;
+		}
+		return null;
 	}
 
 	/**
