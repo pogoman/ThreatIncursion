@@ -188,3 +188,30 @@ run away: 19, 100 and 120 hives at m120.**
 - hw15a, the least found at m48, is the one in decline (39 hives at m83, 19 at m120, 58 eradicated): the humans
   there landed 66 times and lost 7 armies.
 - A check at m55-m60 already showed the change (Nexus up under bombardment); only the end state needed m120.
+
+## 14. hw16a-hw16c (2026-10-05): the strike recall off on the hw15 build
+
+Build `c16e063`, `postureRecallLY` 0 (checked in each game's LunaLib store). No council error. **The swarm dies
+again: 2 hives at m120, extinct m99, extinct m67** (hw15: 19, 100, 120 hives), and takes 2, 2 and 1 human worlds
+(Qaras and Kanta's Den twice, Kapteyn Starworks).
+
+| | hw16a | hw16b | hw16c | hw15a / b / c |
+|---|---|---|---|---|
+| hives m48, m60, m72, m84 | 16, 16, 8, 2 | 17, 15, 8, 3 | 16, 5, 0, 0 | 21, 27, 35, 37 / 19, 20, 30, 50 / 18, 20, 44, 46 |
+| found at m48 | 12 of 16 | 14 of 17 | 14 of 16 | 7 of 21 / 13 of 19 / 13 of 18 |
+| strikes since found (FP) | 12 (15k) | 17 (13k) | 6 (5k) | 76 / 124 / 215, 90-94% recalled |
+| Threat landings, overrun, human worlds lost | 17, 14, 2 | 14, 12, 2 | 9, 6, 1 | 5, 5, 0 / 4, 4, 0 / 5, 4, 1 |
+| guards left over landings (FP), hulls broken up | 31 (12.8k), 60 FP | 29 (9.9k), 72 FP | 28 (10.9k), 0 | 16, 0 / 10, 0 / 18, 51 FP |
+| relief forces (FP) | 21 (33.6k) | 18 (19.8k) | 8 (16.5k) | 9 (10.7k) / 5 (10.6k) / 5 (12.9k) |
+| fleets rallied to the defence | 207 (50k FP) | 184 (44k) | 119 (23k) | 834 (197k) / 3,191 (606k) / 2,207 (416k) |
+| seeding swarms since found | 6 | 7 | 2 | 93 / 159 / 198 |
+| sieges arrived, human landings, hives eradicated | 133, 20, 18 | 109, 24, 22 | 66, 17, 17 | 415, 66, 58 / 474, 48, 22 / 521, 43, 34 |
+| Threat FP lost a human FP | 1.36 | 1.42 | 1.33 | 1.42 / 1.30 / 1.28 |
+
+- Every strike arrives and three times as many landings are made, but 32 of 40 are overrun: relief outweighs the
+  guards about 2 to 1 (33.6k FP of relief against 12.8k of guards in hw16a) and the guards break up 0-72 FP.
+- What sails does not come back to defend: the hives halve between m60 and m72 in all three, with a fifth of
+  hw15's rallies. This is hw13's result on a build whose Nexus is safe from bombardment.
+- hw15's 76-215 strikes were the same swarms launched and recalled over and over; let go, a strike is made 6-17
+  times a run. Most are 270-800 FP at 27-41 ly; three in hw16a were 4.6-5.0k FP.
+- The found share at m48 is 75-88%, above hw15b and hw15c (68-72%), so part of the gap may be the share.
