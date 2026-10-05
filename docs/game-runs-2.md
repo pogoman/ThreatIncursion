@@ -121,3 +121,33 @@ No exception, no council error. **Worse or the same: extinct m74, m63, and 1 hiv
 - The humans' sieges are not drawn off: 45-73 arrive in the 20-40 months the swarm lasts.
 - Found 88-100% at m48, the dying band, so three runs do not show the recall saves a swarm; they show that
   removing it does not.
+
+## 12. hw14a-hw14c (2026-10-05): the Nexus off the tactical target list, its defence bonus gone
+
+Build `d53ecf9` (`nexusBombardable` false, `nexusDefenseBonus` 0; the rest shipped defaults, rally only if
+enough on). No council error; the exceptions files are vanilla's two hull-spec lines. **No run extinct: 4 hives
+and fading, 29, and 52 and growing at m120** - the first batch since hw10 with a swarm alive in all three, on
+the same found share that killed hw11-hw13.
+
+| | hw14a | hw14b | hw14c | hw11a / b / c |
+|---|---|---|---|---|
+| hives m60, m84, m108, m120 | 30, 21, 7, 4 | 19, 29, 35, 29 | 20, 41, 44, 52 | 11, 0, 0, 0 / 14, 25, 18, 6 / 6, 0, 0, 0 |
+| found at m48 | 18 of 21 | 16 of 18 | 14 of 16 | 14 of 16 / 14 of 18 / 13 of 14 |
+| hives able to earn, m52 and m60 | 25 of 25, 21 of 30 | 16 of 21, 11 of 19 | 12 of 16, 18 of 19 | 6 of 16, 2 of 10 (hw11a) |
+| swarm income since found | 268k FP | 372k | 705k | 47k / 318k / 27k |
+| sieges arrived (FP) | 287 (329k) | 301 (400k) | 458 (698k) | 75 (106k) / 263 (355k) / 55 (56k) |
+| sieges called off | 73 | 92 | 215 | 7 / 61 / 4 |
+| human landings, hives eradicated, armies overrun | 52, 39, 11 | 49, 39, 9 | 46, 32, 13 | 19, 18, 1 / 45, 42, 2 / 21, 17, 4 |
+| Threat FP lost a human FP | 1.37 | 1.32 | 1.33 | 1.15 / 1.31 / 1.40 |
+| seeding swarms, strikes since found | 28, 42 | 57, 41 | 110, 91 | 3, 4 / 41, 27 / 0, 1 |
+| Threat landings, human worlds lost | 12, 2 | 5, 0 | 2, 0 | 6, 1 / 4, 0 / 6, 1 |
+
+- The income holds through the first year of sieges (`organs.pl`): the Nexus is down only where saturation or
+  the army reaches it (longest read 277-286 days, not the 360 cap).
+- The swarm rebuilds what it loses: 1,512 / 2,165 / 3,418 swarms built since found (hw11: 186 / 1,822 / 137),
+  28 / 57 / 110 seeding swarms, and the hives overrun 9-13 armies a run (hw11: 1-4) although their ground
+  defence is a third lower.
+- It still trades at 1.32-1.37 over its own worlds and takes 0-2 human worlds: it survives by out-seeding its
+  losses, not by winning fights. hw14a's income failed from m96 (8 of 15 able to earn, 0 of 6 at m112).
+- hw14c is growing at m120 (52 hives, 54k FP of fleets, 458 sieges absorbed): whether that is a runaway needs
+  a longer run.
