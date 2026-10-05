@@ -2381,7 +2381,8 @@ public class ThreatFrontlines {
 			}
 			return null;
 		}
-		float range = ThreatIncConfig.strikeDetectLY();
+		// patrols are the humans' eyes in hyperspace now (ThreatScouts.sight, 2026-10-05)
+		float range = ThreatIncConfig.patrolsEnabled() ? 0f : ThreatIncConfig.strikeDetectLY();
 		if (range <= 0f || hyperLoc == null) return null;
 		Vector2f p = hyperLoc;
 		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {

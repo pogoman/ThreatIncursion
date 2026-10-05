@@ -134,6 +134,34 @@ public class ThreatIncConfig {
 	public static boolean strikeLeads() { return b("threatinc_strikeLeads", false); }
 	/** Whether a scout's sighting is known only once the scout is back in a friendly system, and lost with it (ThreatScoutRoute.carry); off, it is known the moment it is seen. */
 	public static boolean carriedIntel() { return b("threatinc_carriedIntel", true); }
+	private static float fd(String key, float def) {
+		try {
+			return f(key);
+		} catch (Throwable t) {
+			return def;
+		}
+	}
+	/** Whether both sides keep patrols once at war, in place of the humans' 60-day sweeps and both 4 ly sighting rules (ThreatScouts.launchPatrols, ThreatSwarmPatrols). */
+	public static boolean patrolsEnabled() { return b("threatinc_patrolsEnabled", true); }
+	/** Light-years at which a patrol sees a force in hyperspace. */
+	public static float patrolSightLY() { return fd("threatinc_patrolSightLY", 1f); }
+	/** Stops on one patrol's route. */
+	public static int patrolStops() { return (int) fd("threatinc_patrolStops", 6f); }
+	/** Fleet points of patrols a human faction keeps out for each of its military worlds. */
+	public static float patrolFPPerBase() { return fd("threatinc_patrolFPPerBase", 40f); }
+	/** Days without losing a patrol after which a side forgets one loss (its patrols halve in size and double in number). */
+	public static float patrolCalmDays() { return fd("threatinc_patrolCalmDays", 120f); }
+	/** Fleet points of one Patrol Swarm before any loss. */
+	public static float swarmPatrolFP() { return fd("threatinc_swarmPatrolFP", 30f); }
+	/** Fleet points of Patrol Swarms a hive system keeps out. */
+	public static float swarmPatrolFPPerSystem() { return fd("threatinc_swarmPatrolFPPerSystem", 120f); }
+	/** Days a system is left alone after a Patrol Swarm's visit. */
+	public static float swarmPatrolMemoryDays() { return fd("threatinc_swarmPatrolMemoryDays", 45f); }
+	/** The burn of a human expedition flying as a route when a patrol meets it: bombers hauling razing fuel, a siege with transports, a raid; and of a Threat strike. */
+	public static float patrolBurnBombers() { return fd("threatinc_patrolBurnBombers", 6f); }
+	public static float patrolBurnSiege() { return fd("threatinc_patrolBurnSiege", 7f); }
+	public static float patrolBurnRaid() { return fd("threatinc_patrolBurnRaid", 8f); }
+	public static float patrolBurnStrike() { return fd("threatinc_patrolBurnStrike", 9f); }
 	public static float postureRecallLY() { return f("threatinc_postureRecallLY"); }
 	/** Whether a recalled strike sends home only the fleets that cover what the system is short and sails on with the rest (ThreatStrikeFGI.recallTo); off, it comes home whole. */
 	public static boolean postureRecallPartial() { return b("threatinc_postureRecallPartial", true); }

@@ -60,6 +60,13 @@ public class ThreatScouts {
 		public String leadSystemId;
 		/** A recon sortie (ThreatAttackPlanner, 2026-10-01): sent to look again at a found Threat system, leadSystemId. */
 		public boolean recon;
+		/** A patrol of its faction's budget (launchPatrols, 2026-10-05) rather than a lead's or a recon party. */
+		public boolean patrol;
+	}
+
+	/** A Threat strike in flight a party saw and is carrying home: the strike's key (strikeKey). */
+	public static class StrikeSeen {
+		public String key;
 	}
 
 	/** A hive system a party saw and is carrying home (ThreatScoutRoute.Party.carried): the find and its picture. */
@@ -277,7 +284,18 @@ public class ThreatScouts {
 			}
 			return false;
 		}
+		protected void onLost(Scout s) {
+			if (!s.patrol) return;
+			ThreatScoutRoute.lost(levelKey(s.factionId));
+			ThreatIncConfig.log("Patrol of " + s.factionId + " did not come back: patrols now "
+					+ (int) patrolSize(s.factionId) + " FP each");
+		}
 		protected void deliver(Scout s, Object seen) {
+			if (seen instanceof StrikeSeen) {
+				// the warning is home: the strike is seen, if it still flies unseen
+				IncursionManager.strikeReported(((StrikeSeen) seen).key, "a patrol of " + s.factionId);
+				return;
+			}
 			if (!(seen instanceof Find)) return;
 			Find find = (Find) seen;
 			StarSystemAPI system = ThreatScoutRoute.systemById(find.systemId);
@@ -346,6 +364,10 @@ public class ThreatScouts {
 				continue;
 			}
 			if (!ThreatWarState.isAtWar(factionId)) continue;
+			if (ThreatIncConfig.patrolsEnabled()) {
+				launchPatrols(factionId, random);
+				continue;
+			}
 			Long last = lastSweep().get(factionId);
 			if (last != null && Global.getSector().getClock().getElapsedDaysSince(last)
 					< ThreatIncConfig.scoutIntervalDays()) continue;
@@ -430,6 +452,109 @@ public class ThreatScouts {
 		}
 	}
 
+	protected static String levelKey(String factionId) {
+		return "f:" + factionId;
+	}
+
+	/** The size a faction's patrols are built at: scoutFleetPoints doubled for every loss not yet forgotten. */
+	protected static float patrolSize(String factionId) {
+		return ThreatIncConfig.scoutFleetPoints() * (float) Math.pow(2, ThreatScoutRoute.level(levelKey(factionId)));
+	}
+
+	/**
+	 * PATROLS (2026-10-05, the user): a mobilised faction keeps patrols out
+	 * instead of sweeping a radius every scoutIntervalDays. Its budget is
+	 * patrolFPPerBase a military world, flown as patrols of patrolSize - many
+	 * small ones until they start going missing, then fewer and heavier
+	 * (ThreatScoutRoute.level). Each takes the nearest patrolStops systems not
+	 * swept within scoutMemoryDays from its base, with no radius: the ring
+	 * widens as the near systems are swept and comes round again as the
+	 * memory lapses. A faction that is consolidating keeps them within
+	 * scoutRangeLY.
+	 */
+	protected static void launchPatrols(String factionId, Random random) {
+		ThreatScoutRoute.calm(levelKey(factionId));
+		List<MarketAPI> bases = new ArrayList<MarketAPI>();
+		for (MarketAPI market : ThreatReserves.marketsOf(factionId)) {
+			if (market.getStarSystem() != null && IncursionManager.hasMilitary(market)) bases.add(market);
+		}
+		if (bases.isEmpty()) return;
+		float size = patrolSize(factionId);
+		int want = Math.max(1, (int) (ThreatIncConfig.patrolFPPerBase() * bases.size() / size));
+		int out = 0;
+		for (Scout s : all()) {
+			if (s.patrol && factionId.equals(s.factionId)) out++;
+		}
+		boolean close = ThreatFactionStance.enabled()
+				&& ThreatFactionStance.stance(factionId) == ThreatFactionStance.CONSOLIDATE;
+		float radius = close ? ThreatIncConfig.scoutRangeLY() : Float.MAX_VALUE;
+		int stops = Math.max(1, ThreatIncConfig.patrolStops());
+		Collections.shuffle(bases, random);
+		boolean any = true;
+		while (out < want && any) {
+			any = false;
+			for (MarketAPI home : bases) {
+				if (out >= want) break;
+				List<String> route = planRoute(home, home.getStarSystem().getLocation(), radius, 0L);
+				if (route.isEmpty()) continue;
+				if (route.size() > stops) route = new ArrayList<String>(route.subList(0, stops));
+				Scout s = launch(factionId, home, route, null, size);
+				if (s == null) continue;
+				s.patrol = true;
+				out++;
+				any = true;
+			}
+		}
+	}
+
+	/** A strike's key for a sighting: its route's seed, which the save keeps. */
+	protected static String strikeKey(ThreatStrikeFGI strike) {
+		Long seed = strike.getRoute() != null ? strike.getRoute().getSeed() : null;
+		return "strike:" + (seed != null ? seed.toString() : "i" + System.identityHashCode(strike));
+	}
+
+	/**
+	 * A Threat strike no world of the humans sees is at {@code where} today
+	 * (IncursionManager.detectStrikes): every party in the same system, or
+	 * within patrolSightLY of it in hyperspace, sees it. Against a strike
+	 * flying as a route the meeting is settled by speed and strength
+	 * (ThreatScoutRoute.meetAbstract); a party that gets away turns for home,
+	 * and the strike is seen when it is in a friendly system (deliver).
+	 */
+	public static void sight(ThreatStrikeFGI strike, com.fs.starfarer.api.campaign.LocationAPI where, Vector2f hyper,
+			float fp, boolean abstractForce) {
+		if (!ThreatIncConfig.patrolsEnabled() || where == null) return;
+		String key = strikeKey(strike);
+		for (Scout s : new ArrayList<Scout>(all())) {
+			CampaignFleetAPI fleet = s.fleet;
+			if (fleet == null || !fleet.isAlive() || !ThreatScoutRoute.near(fleet, where, hyper)) continue;
+			boolean first = true;
+			if (s.carried != null) {
+				for (Object o : s.carried) {
+					if (o instanceof StrikeSeen && key.equals(((StrikeSeen) o).key)) first = false;
+				}
+			}
+			if (first) {
+				StrikeSeen seen = new StrikeSeen();
+				seen.key = key;
+				ROUTE.carry(s, seen);
+			}
+			int outcome = ThreatScoutRoute.RUNS;
+			if (abstractForce && strike.getRoute() != null) {
+				outcome = ThreatScoutRoute.meetAbstract(fleet, fp, ThreatIncConfig.patrolBurnStrike(), strike.getRoute(),
+						"Scout of " + s.factionId, "a Threat strike");
+			}
+			if (outcome == ThreatScoutRoute.DESTROYED) continue; // advance books it lost
+			if (outcome == ThreatScoutRoute.RUNS && !s.returning) {
+				if (first) {
+					ThreatIncConfig.log("Scout of " + s.factionId + " saw a Threat strike of " + (int) fp
+							+ " FP and turns for home with it");
+				}
+				ROUTE.goHome(s);
+			}
+		}
+	}
+
 	protected static MarketAPI nearestBase(String factionId, Vector2f where) {
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
@@ -500,9 +625,13 @@ public class ThreatScouts {
 	}
 
 	protected static Scout launch(String factionId, MarketAPI home, List<String> route, String leadSystemId) {
+		return launch(factionId, home, route, leadSystemId, ThreatIncConfig.scoutFleetPoints());
+	}
+
+	/** As above, a party of {@code fp} fleet points (a patrol's size, patrolSize). */
+	protected static Scout launch(String factionId, MarketAPI home, List<String> route, String leadSystemId, float fp) {
 		StarSystemAPI homeSystem = home.getStarSystem();
 		if (homeSystem == null || home.getPrimaryEntity() == null) return null;
-		float fp = ThreatIncConfig.scoutFleetPoints();
 		// (2026-09-29: closed economy - a party sailed for free.) It pays what
 		// any NPC sortie pays, from the home's spendable reserve: supplies at
 		// the voyage rate per point (a point is FP_PER_RESPONSE_DIFFICULTY
