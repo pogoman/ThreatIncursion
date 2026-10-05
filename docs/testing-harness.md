@@ -342,5 +342,10 @@ stall nudges and the pause for a user.
   at normal speed meanwhile.
 - It never saves a game, kills each game at its day, copies the dumps to `tools\warsim\validation\<tag>`,
   deletes the clone and restores the user's settings. Status in `%TEMP%\threatinc-tests\sbs-status.txt`.
+- **On a machine that has not run it** (2026-10-05): the pristine save is in the repo
+  (`tools\test-harness\saves\save_AmaruDugas_2921423183749615243`, to copy into `Starsector\saves\`), and
+  `fastforward\backup-settings.ps1` is run once before the first batch - it writes the settings backup and
+  the `restore.ps1` that the wrap-up runs (`%TEMP%\threatinc-tests\backup-20261002`). The whole checklist:
+  `handover-2026-10-05-testing.md` 2.
 - `launch.ps1` leaves a console at `pause` for every game it has started (42 had piled up by 2026-10-04);
   `sbs.ps1` starts the java line alone and leaves none.
