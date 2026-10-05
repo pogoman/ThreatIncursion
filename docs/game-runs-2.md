@@ -126,13 +126,14 @@ No exception, no council error. **Worse or the same: extinct m74, m63, and 1 hiv
 
 Build `d53ecf9` (`nexusBombardable` false, `nexusDefenseBonus` 0; the rest shipped defaults, rally only if
 enough on). No council error; the exceptions files are vanilla's two hull-spec lines. **No run extinct: 4 hives
-and fading, 29, and 52 and growing at m120** - the first batch since hw10 with a swarm alive in all three, on
-the same found share that killed hw11-hw13.
+and fading, 29, and 52 and growing at m120** - the first batch with a swarm alive in all three. The found share at
+m48 is lower than in hw11-hw13 (67% / 72% / 25% against 78-100%): hw14c sits in the band that ran away before
+(hw10a 64%), hw14a and hw14b between the bands, so the batch does not separate the change from the share.
 
 | | hw14a | hw14b | hw14c | hw11a / b / c |
 |---|---|---|---|---|
 | hives m60, m84, m108, m120 | 30, 21, 7, 4 | 19, 29, 35, 29 | 20, 41, 44, 52 | 11, 0, 0, 0 / 14, 25, 18, 6 / 6, 0, 0, 0 |
-| found at m48 | 18 of 21 | 16 of 18 | 14 of 16 | 14 of 16 / 14 of 18 / 13 of 14 |
+| found at m48 | 14 of 21 | 13 of 18 | 4 of 16 | 14 of 16 / 14 of 18 / 13 of 14 |
 | hives able to earn, m52 and m60 | 25 of 25, 21 of 30 | 16 of 21, 11 of 19 | 12 of 16, 18 of 19 | 6 of 16, 2 of 10 (hw11a) |
 | swarm income since found | 268k FP | 372k | 705k | 47k / 318k / 27k |
 | sieges arrived (FP) | 287 (329k) | 301 (400k) | 458 (698k) | 75 (106k) / 263 (355k) / 55 (56k) |
