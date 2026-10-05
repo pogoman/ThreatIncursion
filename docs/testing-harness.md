@@ -230,7 +230,8 @@ the `resolution` pref is `1600x900` (restore 3440x1440 after). What differs from
   keys linger in the store, unread).
 - For a long run: `shiftspeed_mult` 48 in `saves\common\LunaSettings\shiftspeed.json.data` (the
   user plays at 6 here), vanilla autosave off (`"autosave/On"` in the prefs value
-  `gameplay/Settings`), `debugLogging`, `debugSimDump` and Fleets Ignore You on. The originals are
+  `gameplay/Settings`; a machine that never changed its gameplay settings has no such value and is left without -
+  an empty one stops the launcher with `Error loading settings`), `debugLogging`, `debugSimDump` and Fleets Ignore You on. The originals are
   in `%TEMP%\threatinc-tests\backup-20261002`, with a `restore.ps1` that puts them back.
 - `tail-ti.ps1 -Tag t` (started before `launch.ps1`, detached) follows `starsector.log` and
   appends the `[ThreatInc]` lines to `ti-<Tag>.txt` and exceptions to `exc-<Tag>.txt` as they are

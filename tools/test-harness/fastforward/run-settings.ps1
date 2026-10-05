@@ -10,8 +10,9 @@ $esc = [regex]::Replace($Save, '[A-Z]', { param($m) '/' + $m.Value })
 Set-ItemProperty $key -Name continue -Value "..\saves\$esc"
 Set-ItemProperty $key -Name resolution -Value '1600x900'
 Set-ItemProperty $key -Name fullscreen -Value 'false'
-$g = (Get-ItemProperty $key).'gameplay/Settings' -replace '"autosave/On":true', '"autosave/On":false'
-Set-ItemProperty $key -Name 'gameplay/Settings' -Value $g
+# a machine whose gameplay settings were never changed has no such value, and an empty one stops the launcher
+$g = (Get-ItemProperty $key).'gameplay/Settings'
+if ($g) { Set-ItemProperty $key -Name 'gameplay/Settings' -Value ($g -replace '"autosave/On":true', '"autosave/On":false') }
 $ss = "$saves\common\LunaSettings\shiftspeed.json.data"
 $t = [IO.File]::ReadAllText($ss); $t = [regex]::Replace($t, '"shiftspeed_mult":\s*[\d.]+', '"shiftspeed_mult": 48')
 [IO.File]::WriteAllText($ss, $t, (New-Object System.Text.UTF8Encoding($false)))
