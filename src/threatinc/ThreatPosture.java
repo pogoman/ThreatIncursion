@@ -992,9 +992,11 @@ public class ThreatPosture {
 	 * in the strikes within postureRecallLY of it that can still be turned
 	 * (ThreatStrikeFGI.recallable: preparing or travelling out) and are nearer
 	 * it than their target - whichever hive launched them - the nearest first,
-	 * the shortest system first, until it holds its need. Each comes whole:
-	 * its fleets join the garrisons of the worlds shortest
-	 * (ThreatStrikeFGI.recallTo). Knob: postureRecallLY, 0 = off.
+	 * the shortest system first, until it holds its need. Its fleets join the
+	 * garrisons of the worlds shortest (ThreatStrikeFGI.recallTo): only those
+	 * that cover what is short since 2026-10-05 (postureRecallPartial, the
+	 * user), the rest sailing on; whole with the knob off.
+	 * Knob: postureRecallLY, 0 = off.
 	 */
 	protected static void recallStrikes(List<Call> calls) {
 		if (calls.isEmpty()) return;
@@ -1029,10 +1031,12 @@ public class ThreatPosture {
 				tried.add(best);
 				MarketAPI target = best.firstTarget();
 				int fleets = best.isSpawnedFleets() ? best.getFleets().size() : best.getParams().fleetSizes.size();
-				float sent = best.recallTo(call.shortBy);
+				float sent = best.recallTo(call.shortBy, ThreatIncConfig.postureRecallPartial()
+						? call.shortFP - call.swarm : Float.MAX_VALUE);
 				if (sent <= 0f) continue;
+				boolean sailsOn = !best.isEnded() && !best.isEnding() && !best.isAborted();
 				ThreatIncConfig.log("Posture: strike recalled to " + call.system.getName() + " - " + (int) sent
-						+ " FP in " + fleets + " fleet(s), " + String.format("%.1f", bestLY) + " ly out and "
+						+ " FP" + (sailsOn ? " (the rest sails on)" : "") + " of " + fleets + " fleet(s), " + String.format("%.1f", bestLY) + " ly out and "
 						+ String.format("%.1f", bestOn) + " ly from " + target.getName() + "; the system was "
 						+ (int) call.shortFP + " FP short of " + (int) call.need);
 				call.shortFP -= sent;

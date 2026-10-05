@@ -131,6 +131,8 @@ public class ThreatIncConfig {
 	public static boolean posturePressedForgesHome() { return b("threatinc_posturePressedForgesHome", false); }
 	/** Range (LY) at which a hive system under attack and short of its need calls home a strike not yet at its work and nearer it than its target (ThreatPosture.recallStrikes); 0 = off. */
 	public static float postureRecallLY() { return f("threatinc_postureRecallLY"); }
+	/** Whether a recalled strike sends home only the fleets that cover what the system is short and sails on with the rest (ThreatStrikeFGI.recallTo); off, it comes home whole. */
+	public static boolean postureRecallPartial() { return b("threatinc_postureRecallPartial", true); }
 	/** Whether a system under attack masses its spare swarms, then its neighbours', at its worlds short of their need, and a launch leaves the need home (ThreatPosture.massWithin, strikeCapFP). */
 	public static boolean postureMass() { return b("threatinc_postureMass", false); }
 	/** Whether a hive system defends as one: a force over one of its worlds draws the spare swarms of the others, and a siege seen coming fights them from its first day (ThreatPosture.rally, defenders). */
