@@ -81,7 +81,7 @@ for my $tag (@ARGV) {
     }
     # what it saw coming (the hive picket) and the strikes it called home for it
     if ($l =~ /^Swarm intel: sees \S+ siege of \d+ FP bound for .* by (\w+)/) { $seen{$1}++; next; }
-    if ($l =~ /^Posture: strike recalled to .*? - (\d+) FP in (\d+) fleet.*? ly from (.*?); the system/) {
+    if ($l =~ /^Posture: strike recalled to .*? - (\d+) FP(?: \(the rest sails on\))? (?:in|of) (\d+) fleet.*? ly from (.*?); the system/) {
       $recalls++; $recallFP += $1;
       push @recallDays, $war - $launchDay{$3} if exists $launchDay{$3};
       next;
