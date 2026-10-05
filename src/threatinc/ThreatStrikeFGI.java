@@ -983,10 +983,18 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * as at a spawn (spawnFleets). The expedition then ends as a withdrawal
 	 * with nothing left to re-bank. Returns the fleet points sent; 0, and the
 	 * strike untouched, when it could not be turned.
+	 *
+	 * <p>ONLY WHAT IS SHORT (2026-10-05, the user; postureRecallPartial):
+	 * with {@code needFP} below the strike's strength only the fleets that
+	 * cover it turn - the smallest that covers what is left, else the
+	 * heaviest - and the rest sail on; an unspawned strike builds them an
+	 * entry at a time (buildFirst). Before, 3,353 FP came home for a system
+	 * 218 FP short (hw15c) and 90-94% of strikes never arrived.
 	 */
-	public float recallTo(Map<MarketAPI, Float> shortBy) {
+	public float recallTo(Map<MarketAPI, Float> shortBy, float needFP) {
 		if (!recallable() || shortBy == null || shortBy.isEmpty()) return 0f;
 		org.lwjgl.util.vector.Vector2f at = hyperLocation();
+		if (!isSpawnedFleets() && needFP < Float.MAX_VALUE) return recallUnspawned(shortBy, needFP, at);
 		if (!isSpawnedFleets()) {
 			if (getRoute() == null || getRoute().getCurrent() == null || getParams().fleetSizes.isEmpty()) return 0f;
 			spawnFleets();
@@ -1002,17 +1010,16 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			}
 		});
 		float sent = 0f;
-		for (CampaignFleetAPI fleet : turning) {
-			MarketAPI to = null;
-			float most = -Float.MAX_VALUE;
-			for (Map.Entry<MarketAPI, Float> e : shortBy.entrySet()) {
-				if (e.getKey() == null || e.getKey().getPrimaryEntity() == null || e.getValue() == null) continue;
-				if (e.getValue() > most) {
-					most = e.getValue();
-					to = e.getKey();
-				}
+		while (!turning.isEmpty() && sent < needFP) {
+			// heaviest first; of those that cover what is left, the smallest
+			CampaignFleetAPI fleet = turning.get(0);
+			for (CampaignFleetAPI f : turning) {
+				if (f.getFleetPoints() >= needFP - sent) fleet = f;
 			}
+			turning.remove(fleet);
+			MarketAPI to = shortest(shortBy);
 			if (to == null) break;
+			float most = shortBy.get(to);
 			// vanilla places a built fleet on its route; one it could not place starts where the route stood
 			if (fleet.getContainingLocation() == null) {
 				if (at == null) at = to.getLocationInHyperspace();
@@ -1029,9 +1036,67 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			shortBy.put(to, most - fp);
 			sent += fp;
 		}
+		// the rest sails on
+		if (!getFleets().isEmpty() && sent >= needFP) return sent;
 		// a withdrawal, not a defeat (addHiddenOriginStatus, vanilla's status)
 		setFailedButNotDefeated(true);
 		abort();
+		return sent;
+	}
+
+	/** The world of {@code shortBy} furthest below its need, or null. */
+	protected static MarketAPI shortest(Map<MarketAPI, Float> shortBy) {
+		MarketAPI to = null;
+		float most = -Float.MAX_VALUE;
+		for (Map.Entry<MarketAPI, Float> e : shortBy.entrySet()) {
+			if (e.getKey() == null || e.getKey().getPrimaryEntity() == null || e.getValue() == null) continue;
+			if (e.getValue() > most) {
+				most = e.getValue();
+				to = e.getKey();
+			}
+		}
+		return to;
+	}
+
+	/**
+	 * A strike that never spawned gives up only what is short (recallTo):
+	 * its entries are built one at a time where its route stands
+	 * (buildFirst, the ledger settled as for a guard) and sent to the worlds
+	 * shortest, until the need is covered. It sails on with what is left,
+	 * and ends as a withdrawal when nothing is.
+	 */
+	protected float recallUnspawned(Map<MarketAPI, Float> shortBy, float needFP, org.lwjgl.util.vector.Vector2f at) {
+		if (stillborn || ledgerHome == null || getParams().fleetSizes.isEmpty()) return 0f;
+		float sent = 0f;
+		while (sent < needFP && !getParams().fleetSizes.isEmpty()) {
+			List<CampaignFleetAPI> built = buildFirst(null);
+			if (built == null) break;
+			for (CampaignFleetAPI fleet : built) {
+				MarketAPI to = shortest(shortBy);
+				if (to == null) to = getParams().source;
+				if (to == null || to.getPrimaryEntity() == null) {
+					giveReturnAssignments(fleet);
+					continue;
+				}
+				org.lwjgl.util.vector.Vector2f from = at != null ? at : to.getLocationInHyperspace();
+				Global.getSector().getHyperspace().addEntity(fleet);
+				fleet.setLocation(from.x, from.y);
+				detach(fleet);
+				float fp = fleet.getFleetPoints();
+				if (!ThreatColonyManager.sendToGarrison(fleet, to)) {
+					giveReturnAssignments(fleet); // refused: home by vanilla's road, not adrift
+					continue;
+				}
+				ThreatPosture.noteTransfer(to, fleet);
+				Float was = shortBy.get(to);
+				if (was != null) shortBy.put(to, was - fp);
+				sent += fp;
+			}
+		}
+		if (getParams().fleetSizes.isEmpty()) {
+			setFailedButNotDefeated(true);
+			abort();
+		}
 		return sent;
 	}
 
@@ -1119,15 +1184,22 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		return Math.max(1, (int) Math.ceil(fleets / (float) Math.max(1, worlds)));
 	}
 
-	/** One fleet of an unspawned strike - its first entry - built over the world and put on Defend (guardUnspawned); false when none was. */
-	protected boolean guardOne(MarketAPI market) {
+	/**
+	 * Builds the first entry of an unspawned strike - the pack spawnFleets
+	 * would have built for it - and takes it out of the strike, the bank
+	 * settling its points against its share of what the strike holds
+	 * (guardOne, recallUnspawned). The fleets are in no location yet. Null
+	 * when none was built; {@code out}, when given, gets the points built,
+	 * the share and what the strike held.
+	 */
+	protected List<CampaignFleetAPI> buildFirst(float[] out) {
 		List<Integer> sizes = getParams().fleetSizes;
 		int planned = 0;
 		for (Integer s : sizes) if (s != null) planned += s;
 		Integer entry = sizes.get(0);
 		float share0 = ledgerShare();
 		float held = ledgerPaid * share0;
-		if (entry == null || planned <= 0 || held <= 0f) return false;
+		if (entry == null || planned <= 0 || held <= 0f) return null;
 		Float damage = getRoute() != null && getRoute().getExtra() != null ? getRoute().getExtra().damage : null;
 
 		// the pack spawnFleets would have built for this entry
@@ -1167,7 +1239,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		}
 		packsLeft = null;
 		overflow = null;
-		if (built.isEmpty()) return false;
+		if (built.isEmpty()) return null;
 
 		// the entry leaves the strike; fabricatedFP scales with the planned
 		// points, so ledgerShare - and what the rest holds - is unchanged
@@ -1181,6 +1253,19 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		} else if (diff < 0f) {
 			ThreatColonyManager.creditHome(ledgerHome, -diff, ledgerNear());
 		}
+		if (out != null) {
+			out[0] = ledgerBuilt - before;
+			out[1] = share;
+			out[2] = held;
+		}
+		return built;
+	}
+
+	/** One fleet of an unspawned strike - its first entry - built over the world and put on Defend (guardUnspawned); false when none was. */
+	protected boolean guardOne(MarketAPI market) {
+		float[] n = new float[3];
+		List<CampaignFleetAPI> built = buildFirst(n);
+		if (built == null) return false;
 		if (guarded == null) guarded = new HashSet<String>();
 		guarded.add(market.getId());
 
@@ -1194,8 +1279,8 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			}
 		}
 		ThreatIncConfig.log("Strike guard over " + market.getName() + ": the unspawned strike leaves "
-				+ built.size() + " fleet(s), " + (int) (ledgerBuilt - before) + " FP, on Defend ("
-				+ (int) share + " of its " + (int) held + " held); " + sizes.size() + " fleet(s) left");
+				+ built.size() + " fleet(s), " + (int) n[0] + " FP, on Defend ("
+				+ (int) n[1] + " of its " + (int) n[2] + " held); " + getParams().fleetSizes.size() + " fleet(s) left");
 		return true;
 	}
 
