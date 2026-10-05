@@ -118,8 +118,13 @@
 	# ...and takes the spare Defense Swarms of the hive's systems first (those
 	# within GatherLY of the staging system; 0 = all), the banks building only
 	# what is missing. A trial of 2026-10-05 (hw21), not the user's decision.
-	"threatinc_strikeStagedGarrisons": true,
+	"threatinc_strikeStagedGarrisons": false,
 	"threatinc_strikeStagedGatherLY": 0,
+	# The strike fund (a trial of 2026-10-05, hw22 on): this share of every hive
+	# colony's fabrication is set aside hive-wide and alone pays staged strikes,
+	# each of at least MinFP fleet points. 0 = no fund, the pooled banks pay.
+	"threatinc_strikeFundShare": 0.3,
+	"threatinc_strikeStagedMinFP": 3000,
 	# NO LEAD FROM A STRIKE (2026-10-05, the user): a strike mobilises the factions
 	# it sweeps and tells nothing of its origin; hives are found only by parties
 	# entering their system. true = the struck faction's scouts sail to the origin

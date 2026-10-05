@@ -1103,7 +1103,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			float[] stagedDef = { 0f };
 			StagedPlan plan = stagedPlan(colony, source, target, new java.util.HashMap<String, float[]>(), stagedDef, null);
 			if (plan == null) return null;
-			if (!ThreatColonyManager.poolHiveBanks(colony, plan.bankFP, "Strike")) return null;
+			if (ThreatIncConfig.strikeFundShare() > 0f) {
+				if (!ThreatColonyManager.spendStrikeFund(colony, plan.bankFP)) return null;
+			} else if (!ThreatColonyManager.poolHiveBanks(colony, plan.bankFP, "Strike")) return null;
 			// the spare garrison fleets leave their worlds; the rest is built
 			float[] paid = { 0f };
 			java.util.List<Integer> swarmSizes = new ArrayList<Integer>();
@@ -1119,8 +1121,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			return sendStrike(params, colony, source, target, swarmSizes, paid[0],
 					ThreatFuel.ly(source, target.getStarSystem()),
 					" [staged: " + taken + " swarm(s) of " + plan.from.size() + " system(s), " + plan.built
-							+ " built; defence seen " + (int) stagedDef[0] + ", hive bank before "
-							+ (int) ThreatColonyManager.hivePoolableFP(colony) + " FP]");
+							+ " built; defence seen " + (int) stagedDef[0] + (ThreatIncConfig.strikeFundShare() > 0f
+									? ", strike fund left " + (int) ThreatColonyManager.strikeFund()
+									: ", hive bank before " + (int) ThreatColonyManager.hivePoolableFP(colony)) + " FP]");
 		}
 		int sendable = ThreatColonyManager.garrisonAvailableForLaunch(colony);
 		// (2026-09-29: closed economy - the fleets are re-embodied at their
@@ -4980,7 +4983,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (defOut != null) defOut[0] = def;
 		float need = def * ThreatIncConfig.strikeStagedMargin();
 		int size = strikeFleetSize(Math.min(9, staging.getSize() + 3));
-		float bank = ThreatColonyManager.hivePoolableFP(staging);
+		// with a strike fund the strike is paid from it alone, and is at least strikeStagedMinFP
+		boolean funded = ThreatIncConfig.strikeFundShare() > 0f;
+		float minFP = funded ? ThreatIncConfig.strikeStagedMinFP() : 0f;
+		float bank = funded ? ThreatColonyManager.strikeFund() : ThreatColonyManager.hivePoolableFP(staging);
 		float ly = ThreatFuel.ly(source, target.getStarSystem());
 		float daysAway = ThreatReach.strikeDays(ly);
 		StagedPlan plan = new StagedPlan();
@@ -5013,13 +5019,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				plan.counts.add(count);
 			}
 		}
-		while (plan.sizes.size() < 2
+		while (plan.sizes.size() < 2 || plan.fp < minFP
 				|| FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) < need) {
 			java.util.List<Integer> one = new ArrayList<Integer>();
 			one.add(size);
 			float est = ThreatStrikeFGI.estimateFP(one);
 			if (plan.bankFP + est > bank) {
-				why = "the hive banks " + (int) bank + " FP and spares " + (int) plan.fp + " FP of swarms";
+				why = (funded ? "the strike fund holds " : "the hive banks ") + (int) bank + " FP and spares "
+						+ (int) (plan.fp - plan.bankFP) + " FP of swarms";
 				break;
 			}
 			plan.sizes.add(size);
