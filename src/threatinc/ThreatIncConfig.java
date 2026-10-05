@@ -132,6 +132,8 @@ public class ThreatIncConfig {
 	/** Range (LY) at which a hive system under attack and short of its need calls home a strike not yet at its work and nearer it than its target (ThreatPosture.recallStrikes); 0 = off. */
 	/** Whether a detected strike gives the factions it sweeps a scouting lead to its origin system (ThreatScouts.addLead); off, it only mobilises them. */
 	public static boolean strikeLeads() { return b("threatinc_strikeLeads", false); }
+	/** Whether a scout's sighting is known only once the scout is back in a friendly system, and lost with it (ThreatScoutRoute.carry); off, it is known the moment it is seen. */
+	public static boolean carriedIntel() { return b("threatinc_carriedIntel", true); }
 	public static float postureRecallLY() { return f("threatinc_postureRecallLY"); }
 	/** Whether a recalled strike sends home only the fleets that cover what the system is short and sails on with the rest (ThreatStrikeFGI.recallTo); off, it comes home whole. */
 	public static boolean postureRecallPartial() { return b("threatinc_postureRecallPartial", true); }

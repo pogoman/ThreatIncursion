@@ -112,6 +112,11 @@
 	# it sweeps and tells nothing of its origin; hives are found only by parties
 	# entering their system. true = the struck faction's scouts sail to the origin
 	"threatinc_strikeLeads": false,
+	# INFORMATION TRAVELS BY SHIP (2026-10-05, the user): what a scouting party or
+	# a Scouting Swarm sees is known to its side only once it is back in a
+	# friendly system (a relay in reach), and is lost with it. false = known the
+	# moment it is seen
+	"threatinc_carriedIntel": true,
 	# MASS THE DEFENCE (2026-10-04, the user): a system under attack sends the
 	# spare swarms of its own colonies - what a launch would muster - to its
 	# worlds short of their need; still short once the strikes in reach have

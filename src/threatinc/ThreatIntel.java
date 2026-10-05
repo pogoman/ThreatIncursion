@@ -200,8 +200,26 @@ public final class ThreatIntel {
 	 */
 	public static Report see(String observer, StarSystemAPI system, String source) {
 		if (observer == null || system == null || !enabled()) return null;
-		Report r = picture(system, observer, source);
+		return file(observer, system, picture(system, observer, source), source);
+	}
+
+	/** What the observer's party sees in the system now, not yet filed: a scout carries it home (ThreatScouts, file). */
+	public static Report look(String observer, StarSystemAPI system, String source) {
+		if (observer == null || system == null || !enabled()) return null;
+		return picture(system, observer, source);
+	}
+
+	/**
+	 * Files a picture as the observer's report of the system - see's second
+	 * half, and where a scout's carried picture lands when it is home; its
+	 * day stays the day it was seen. An older picture than the one held is
+	 * dropped.
+	 */
+	public static Report file(String observer, StarSystemAPI system, Report r, String source) {
+		if (observer == null || system == null || r == null || !enabled()) return null;
 		Map<String, Report> mine = own(observer);
+		Report held = mine.get(system.getId());
+		if (held != null && held.day > r.day) return held;
 		Report old = mine.get(system.getId());
 		mine.put(system.getId(), r);
 		String moved = moved(old, r);
