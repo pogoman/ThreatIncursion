@@ -238,3 +238,34 @@ the change was not typical.
   the found share.
 - The swarm's shortfalls are thousands of FP against strikes of hundreds: defence takes any strike in range,
   whole or in part.
+
+## 16. hw19a-hw19c (2026-10-05): information by ship - no strike leads, carried sightings, patrols, no phase mobilisation
+
+Build c67316e: `strikeLeads` false, `carriedIntel` true, `patrolsEnabled` true, `threatinc_mobiliseAtPhase` 0
+(`information-by-ship.md`). hw18 (the same without the mobilisation change) was stopped at about month 65: every
+faction mobilised at phase 3 on war day 1066 and patrols found the first hive 50-105 days later, before any strike.
+The user: "They only mobilise when they are attacked."
+
+| | hw19a | hw19b | hw19c | hw15 (picket, leads, phase 3) |
+|---|---|---|---|---|
+| First strike detected = first mobilisation, war day | 1356 | 1362 | 1246 | - |
+| First hive known, days after it | 71 | 175 | 58 | - |
+| Found, month | 46 | 50 | 42 | 42 / 40 / 40 |
+| Hives at m120 (peak) | 17 (32) | 4 (27), extinct m121 | 119 (121) | 19 / 100 / 120 |
+| Sieges arrived | 326 | 237 | 462 | - |
+| Sieges seen coming / unseen | 107 / 219 | 44 / 193 | 203 / 259 | 415-521 / 0 |
+| Sieges first seen by eyes / by patrol | 224 / 160 | 199 / 63 | 231 / 381 | - |
+| Sieges ended beaten / landed / called off | 127 / 92 / 79 | 105 / 58 / 32 | 150 / 97 / 200 | - |
+| Strikes (recalled) | 70 (75) | 37 (45) | 247 (303) | - |
+| Threat landings / human worlds lost | 9 / 2 | 8 / 1 | 25 / 2 | 5 / 0, 4 / 0, 5 / 1 |
+| Human landings / hives eradicated | 69 / 52 | 48 / 44 | 60 / 49 | - |
+
+- No exceptions (270 bytes each). Nobody mobilised before a strike began over a human world.
+- The search alone finds the first hive 2-6 months after the first strike; the month it is found moved from 40-42 to 42-50.
+- The swarm sees 19-44% of sieges before they arrive (the picket saw every one in hw15); the rest are first seen in
+  its own system.
+- Patrol size followed losses on both sides (humans to 160 FP, swarm to 240 FP in hw18) and came back down.
+  No patrol was destroyed by a force flying as a route (`meetAbstract` never returned DESTROYED): every meeting ended
+  with the patrol running home.
+- Outcomes spread as wide as in hw15 (extinct, held at 17, runaway at 119), so this batch does not show what the
+  change did to the balance.
