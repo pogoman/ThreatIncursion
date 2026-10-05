@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 14;
+	static final int MIGRATION_VERSION = 15;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -130,6 +130,10 @@ class LunaConfigBridge {
 				// 2026-10-05, the user: the Nexus is no bombardment target and gives no defence bonus
 				if (from < 14) {
 					changed |= bump(json, "threatinc_nexusDefenseBonus", 0.5, 0, false);
+				}
+				// 2026-10-05, the user: a faction mobilises only when attacked, never by the swarm's phase
+				if (from < 15) {
+					changed |= bump(json, "threatinc_mobiliseAtPhase", 3, 0, false);
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));

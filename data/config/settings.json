@@ -600,7 +600,8 @@
 	# every faction not excluded mobilises once the swarm reaches this phase,
 	# struck or not (3 = an armada-capable hive with a core world in reach);
 	# 0 = only on being struck. The player's faction mobilises by choice.
-	"threatinc_mobiliseAtPhase": 3,
+	# 0 since 2026-10-05 (the user): "They only mobilise when they are attacked."
+	"threatinc_mobiliseAtPhase": 0,
 	# Economy coherence (docs/economy-coherence.md): a colony banks what
 	# arrives above its PEACETIME demand - the War footing's share as far as
 	# it is met, plus any surplus beyond - each 30 days: those units x the

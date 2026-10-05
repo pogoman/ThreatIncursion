@@ -5053,8 +5053,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * Every faction mobilises once the swarm reaches mobiliseAtPhase (default
-	 * 3), struck or not (the user, 2026-10-02; run hw4c: the Diktat, first
+	 * Every faction mobilises once the swarm reaches mobiliseAtPhase, struck or
+	 * not; off (0) by default since 2026-10-05, the user: "They only mobilise
+	 * when they are attacked" (before: 3, the user, 2026-10-02; run hw4c: the Diktat, first
 	 * struck in phase 3, mobilised that day and lost Sindria within the month;
 	 * simulator round 27: worlds lost 9 -> 5, docs/war-sim-calibration.md 9).
 	 * The player's faction is excepted: mobilising is their choice, on the board.
@@ -5084,12 +5085,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	protected void checkPhaseAnnouncements() {
 		if (getPhase() >= 3 && !ThreatIncData.isPhase3Announced()) {
+			// no notice (the user, 2026-10-05): nobody knows of the swarm until the first attack
 			ThreatIncData.setPhase3Announced();
-			ThreatNotice.titled("Core Worlds in Reach").bad()
-					.line("Threat strike fleets have been sighted on approach vectors toward "
-							+ "the %s.", "core worlds")
-					.line("Nowhere in the sector is beyond their reach any longer.")
-					.send();
 		}
 	}
 
