@@ -34,6 +34,8 @@ batch in one run's time (`testing-harness.md`, "Side-by-side runs"). The log is 
   strikes and recalls.
 - `calloff.pl <tags>`: how the sieges over hive worlds ended and the FP each ending left, the fight days, and
   what a day of exchange on every call-off would have cost each side.
+- `fall.pl <tags>`: how long a hive takes to fall: days a siege spent over its world by ending, and by hive
+  size the days from the first siege fight to the landing and from the landing to the last stratum.
 
 Sections 1-3 (hw5e-hw6c: the stance floor, what stopped the humans attacking, the council's restraints
 removed) are in `game-runs-humans.md`, under their numbers.
@@ -374,3 +376,14 @@ has mobilised at phase 3 before a strike is seen (struck-at mobilisations 1 / 0 
   without the pursuit it also spares the humans' fleets, so the two belong together.
 - What closes 3 to 1 is the swarm's means (the ground cost of a hive, forge output, a defender's edge in
   orbit) or its staying unfound - the open list of section 6 and `swarm-strategy.md` 3.
+
+**How long a world takes to fall (the user's question the same morning; `fall.pl`).** Months. A siege fleet's
+stay is short (called off day 1; beaten in a median 5-21 days; one that lands has been over the world a median
+2-29 days, up to 116), and the orbit is decided in its first days. The ground is not: from the landing to the
+last stratum a median 10 days at size 1, 42 at size 2, 62 at 3, 83 at 4, 87 at 5, 121 at 6, 139 at 7, and from
+the first siege fight over a world to its fall a median 165-545 days a run. No hive above size 1 fell in under
+22 days. Through those months the landing's flotilla holds the orbit as an abstract cover (`coverFP`, median
+0.9-1.2k FP) and the rally did not see it: the swarm outweighed the cover in 7 of 21 / 4 of 48 / 0 of 26
+landings, and overran 2 of 16 / 1 of 31 / 5 of 21 armies. Gamma Laphirial II (hw10b, size 3): 411 marines
+landed under 400 FP of cover on day 1832 and took the hive 72 days later; the swarm, with 16-21k FP of fleets,
+sent it one fleet of 146 FP. Fixed after the batch (the rally reads the cover, `swarm-defence.md`), untested.
