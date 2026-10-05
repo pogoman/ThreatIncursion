@@ -29,6 +29,11 @@ batch in one run's time (`testing-harness.md`, "Side-by-side runs"). The log is 
 - `hives.pl <tag> <day> [system]`: one monthly dump's hives: held, fleets, want, need, bank, organs.
 - `mass.pl <tags>`: the massing (`postureMass`): fleets massed by year, moves between systems, give-backs
   within 30 days, FP massed before and after each siege came down.
+- `months.pl <tag> [from] [to]`: one run by month: the swarm's census (hives, hives found, fleets, income,
+  fuel), FP each side lost over its worlds, sieges arrived / called off / beaten / landed, fleets rallied,
+  strikes and recalls.
+- `calloff.pl <tags>`: how the sieges over hive worlds ended and the FP each ending left, the fight days, and
+  what a day of exchange on every call-off would have cost each side.
 
 Sections 1-3 (hw5e-hw6c: the stance floor, what stopped the humans attacking, the council's restraints
 removed) are in `game-runs-humans.md`, under their numbers.
@@ -300,7 +305,72 @@ The mass also chases the attack: a world gave within 30 days of receiving in 53-
 **What the user chose (2026-10-05).** Not a sighting that carries the target world (my first proposal,
 rejected: a sighting tells the system, for both sides) but the system defending as one: the fight stays at
 the world, the system's spare swarms are sent there sized to the force over it, and a siege seen coming
-fights them from its first day. Built the same night with the humans' system-only reading of a strike,
-untested: `swarm-defence.md` "The system defends as one", `frontlines.md` "A seen strike tells its system".
-The massing stays off; a neighbour giving only above its own want, the partial recall and the offence
-diagnosis of section 6 are still open.
+fights them from its first day. Built the same night with the humans' system-only reading of a strike:
+`swarm-defence.md` "The system defends as one", `frontlines.md` "A seen strike tells its system"; game-tested
+in section 8. The massing stays off; a neighbour giving only above its own want, the partial recall and the
+offence diagnosis of section 6 are still open.
+
+## 8. hw10a-hw10c (2026-10-05): the system defends as one
+
+Build `eb7a1f1`: `systemDefence` on (margin 1.25), `strikeSeenBySystem` on, `postureMass` off. 53 minutes, no
+exception, no council error. **The defence works as built and the outcome is hw8's: one runaway, two
+exterminated.** Three runs a side cannot tell that from the spread between runs.
+
+| | hw10a | hw10b | hw10c | hw8a / b / c |
+|---|---|---|---|---|
+| extinct | never (175 hives at m123) | m93 | m74 | never (150) / 3 hives at m123 / m89 |
+| hives m60, m84, m108 | 25, 64, 124 | 25, 3, 0 | 7, 0, 0 | 27, 70, 107 / 17, 27, 8 / 9, 2, 0 |
+| hives the humans had found, m48 and m60 | 9 of 14, 9 of 25 | 15 of 17, 21 of 25 | 13 of 15, 7 of 7 | 10 of 16, 15 of 27 / 7 of 17, 5 of 17 / 10 of 13, 9 of 9 |
+| months in CONSOLIDATE since found | 4 of 97 | 39 of 51 | 34 of 38 | 7 of 82 / 66 of 83 / 46 of 48 |
+| seeding swarms since found | 221 | 26 | 1 | 190 / 33 / 1 |
+| strikes since found (recalled) | 173 (104) | 20 (17) | 2 (2) | 184 (118) / 26 (23) / 1 (2) |
+| fleets rallied to a world attacked (FP) | 2,902 (501k) | 603 (126k) | 164 (31k) | - |
+| sieges down, of them seen coming | 432, 432 | 146, 146 | 60, 60 | 373 / 162 / 66, not read |
+| sieges ended: called off, beaten, landed or on a front | 244, 155, 27 | 34, 37, 71 | 12, 18, 30 | 98, 215, 52 / 16, 71, 72 / 8, 17, 35 |
+| FP a called-off siege took home | 94% | 98% | 87% | 79% / 87% / 68% |
+| FP the sieges lost over the worlds, of what came down | 34% | 25% | 25% | 53% / 43% / 32% |
+| first day, siege against swarms over the world | 1.4k v 999 | 1.3k v 337 | 1.2k v 167 | 1.5k v 601 / 1.6k v 464 / 1.4k v 307 |
+| sieges met at parity or better | 37 of 174 | 8 of 84 | 2 of 41 | 19 of 272 / 7 of 122 / 1 of 45 |
+| Threat FP lost a human FP | 1.25 | 1.35 | 1.31 | 1.34 / 1.42 / 1.45 |
+| human FP sent (sieges + escorts) v swarm FP built, since found | 1,166k v 1,114k | 351k v 121k | 158k v 27k | 966k v 1,134k / 633k v 284k / 180k v 46k |
+| human landings, hives eradicated | 16, 14 | 31, 30 | 21, 16 | 30, 22 / 44, 38 / 17, 14 |
+| human worlds lost | 2 | 0 | 1 | 0 / 0 / 1 |
+
+**What works.** Every siege was seen coming (638 of 638), so the unseen branch never ran. The rally fires
+(`Posture: X rallied N FP to Y`) and the swarms bound for the world count the day the siege comes down: sieges
+called off 56% / 23% / 20% (hw8 26% / 10% / 12%), 85% of them before a single fight day, and the trade is
+better in all three. Reinforcements sent against arrived are as in hw8 (92% / 93% / 82% against 96% / 95% /
+91%): the rallied fleets are not dying on the way. The humans' system-only reading is neutral: every faction
+has mobilised at phase 3 before a strike is seen (struck-at mobilisations 1 / 0 / 0), strikes detected 79 / 10 /
+1 (hw8 88 / 8 / 3), guard orders 470 / 103 / 41 (479 / 90 / 10), "faces the strike short" 20 / 0 / 0 (28 / 0 / 0).
+
+**Why two still die.**
+
+1. A massed defence saves the world and kills nothing. A siege fights only while it outweighs the swarms over
+   the world (`BattleRules.callsOff`, `siegeBreakOffRatio` 1); outweighed, it turns home the same day and pays
+   nothing. So the better the swarm masses, the cheaper it is to attack: a siege that fights and is beaten
+   leaves 72-74% of its FP behind, one that is called off 2-13%, and the rally turns the first kind into the
+   second (hw10a 155 beaten and 244 called off, hw8a 215 and 98). The sieges lost 25-34% of the FP they
+   brought down against 32-53% in hw8, and the fleets spared come back. Every fight the swarm does get is one
+   it entered outweighed (the defence was the heavier side on 51 of 844 / 11 of 446 / 4 of 216 fight days).
+2. The war follows how many sieges come, and that follows how much of the swarm the humans have found. At
+   m60 hw10a and hw10b both hold 25 hives. In hw10a 9 are found: over m53-m70 1.7 sieges a month (2.3k FP)
+   come down against an income of 4.1-7.2k FP a month, and the swarm grows in the dark. In hw10b 21 are found:
+   5.2 sieges a month (7.1k FP) against 4.8-5.8k (less after m65), and it is gone 33 months later. The same split holds over
+   the six runs: found 41-64% of the hives at m48, alive at m123; 77-88%, extinct by m74-m93. No shape of
+   defence closes 3 to 1.
+3. Pressed, it neither seeds nor strikes. hw10b: CONSOLIDATE 39 of 51 months, 26 seeding swarms and 20
+   strikes since found, fuel 26k at m54 and 418k at m70. Not a rule (CONSOLIDATE has not stopped spreading
+   since `68d019a`): its fleets are in the defence and its colonies under their want, as in hw8b and hw8c.
+
+**Proposed, the user's call (nothing built).**
+
+- A called-off siege pays one day of the exchange as it turns away - the pursuit a fight at the jump point
+  would have given. At the weights on the call-off lines (swarms 2.2 / 1.4 / 2.1 to 1) that day costs the
+  humans 201k / 35k / 5k FP and the swarm 143k / 27k / 4k, and the trade in the siege fights goes from 1.22 /
+  1.33 / 1.32 to 0.90 / 1.06 / 1.15 Threat FP a human FP (`calloff.pl`). It is a rule on the humans' sieges, and
+  alone it would not have saved hw10b or hw10c (35k of 351k FP sent, 5k of 158k).
+- Keep `systemDefence` and `strikeSeenBySystem` on. The first did what was asked and improved the trade;
+  without the pursuit it also spares the humans' fleets, so the two belong together.
+- What closes 3 to 1 is the swarm's means (the ground cost of a hive, forge output, a defender's edge in
+  orbit) or its staying unfound - the open list of section 6 and `swarm-strategy.md` 3.

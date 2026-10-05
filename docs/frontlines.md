@@ -263,7 +263,8 @@ Threat is everyone's enemy. When a strike is detected:
 - links among the targets call their guard.
 
 **A seen strike tells its system, not its worlds (2026-10-05, the user:
-"humans shouldn't know the exact world just the system"; built, untested).**
+"humans shouldn't know the exact world just the system"; built `eb7a1f1`,
+game-tested hw10a-hw10c: no measurable change, `game-runs.md` 8).**
 `ThreatFrontlines.boundFor(strike, market)` is true for every market of the
 strike's system (`raidParams.where`), not only those on its list, and every
 reader goes through it: `strikesOn` (the guard's weight, ETA, rear grace and
