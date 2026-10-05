@@ -100,9 +100,71 @@ public class ThreatSwarmPatrols {
 		for (Patrol p : new ArrayList<Patrol>(all())) {
 			ROUTE.advance(p);
 		}
+		logApproaches();
 		// the swarm patrols once it is at war: it has struck, and someone has mobilised
 		if (IncursionManager.getPhase() < 2 || ThreatWarState.warFactionIds().isEmpty()) return;
 		launchAll(random);
+	}
+
+	/** Pair of fleet ids -> {closest distance, whether in hyperspace, the two sizes}; not saved. */
+	protected static final Map<String, float[]> APPROACH = new java.util.HashMap<String, float[]>();
+
+	/**
+	 * Debug log of how close each Patrol Swarm comes to each human scouting
+	 * party or patrol (the user, 2026-10-05: "worth logging how close they get
+	 * to each other"): one line when a pair that shared a system, or came
+	 * within 2 ly in hyperspace, parts or one of them is gone - the closest
+	 * distance (units in a system, light-years in hyperspace), both sizes and
+	 * which of the two still flies.
+	 */
+	protected static void logApproaches() {
+		if (!ThreatIncConfig.debugLogging()) return;
+		java.util.Set<String> together = new java.util.HashSet<String>();
+		Map<String, String> names = new java.util.HashMap<String, String>();
+		for (Patrol p : all()) {
+			CampaignFleetAPI a = p.fleet;
+			if (a == null || !a.isAlive() || a.getContainingLocation() == null) continue;
+			for (ThreatScouts.Scout s : ThreatScouts.all()) {
+				CampaignFleetAPI b = s.fleet;
+				if (b == null || !b.isAlive() || b.getContainingLocation() != a.getContainingLocation()) continue;
+				boolean hyper = a.getContainingLocation().isHyperspace();
+				float d = hyper ? Misc.getDistanceLY(a.getLocationInHyperspace(), b.getLocationInHyperspace())
+						: Misc.getDistance(a.getLocation(), b.getLocation());
+				if (hyper && d > 2f) continue;
+				String key = a.getId() + "|" + b.getId();
+				together.add(key);
+				float[] v = APPROACH.get(key);
+				if (v == null) {
+					v = new float[] { d, hyper ? 1f : 0f, a.getFleetPoints(), b.getFleetPoints() };
+					APPROACH.put(key, v);
+				} else if (d < v[0] || (!hyper && v[1] > 0f)) {
+					// a system's units replace hyperspace light-years: the closer meeting
+					v[0] = d;
+					v[1] = hyper ? 1f : 0f;
+				}
+				names.put(key, (s.patrol ? "patrol" : "scouting party") + " of " + s.factionId + " in "
+						+ a.getContainingLocation().getNameWithLowercaseType());
+				v = APPROACH.get(key);
+				if (v.length == 4) APPROACH.put(key, new float[] { v[0], v[1], v[2], v[3], a.getFleetPoints(), b.getFleetPoints() });
+				else { v[4] = a.getFleetPoints(); v[5] = b.getFleetPoints(); }
+			}
+		}
+		for (java.util.Iterator<Map.Entry<String, float[]>> it = APPROACH.entrySet().iterator(); it.hasNext();) {
+			Map.Entry<String, float[]> e = it.next();
+			if (together.contains(e.getKey())) continue;
+			float[] v = e.getValue();
+			it.remove();
+			String[] ids = e.getKey().split("\|");
+			boolean swarmUp = false, humanUp = false;
+			for (Patrol p : all()) if (p.fleet != null && p.fleet.isAlive() && p.fleet.getId().equals(ids[0])) swarmUp = true;
+			for (ThreatScouts.Scout s : ThreatScouts.all()) if (s.fleet != null && s.fleet.isAlive() && s.fleet.getId().equals(ids[1])) humanUp = true;
+			ThreatIncConfig.log(String.format(
+					"Patrols passed: a Patrol Swarm (%d FP) and a human party (%d FP) came within %s; last together %d FP and %d FP; after: swarm %s, human %s",
+					Math.round(v[2]), Math.round(v[3]),
+					v[1] > 0f ? String.format("%.2f ly in hyperspace", v[0]) : Math.round(v[0]) + " units in a system",
+					Math.round(v.length > 4 ? v[4] : v[2]), Math.round(v.length > 4 ? v[5] : v[3]),
+					swarmUp ? "flies" : "gone", humanUp ? "flies" : "gone"));
+		}
 	}
 
 	/** RESET War: the patrols out fade and the ring's memory goes. */
