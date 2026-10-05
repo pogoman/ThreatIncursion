@@ -62,6 +62,12 @@ public class ThreatScouts {
 		public boolean recon;
 	}
 
+	/** A hive system a party saw and is carrying home (ThreatScoutRoute.Party.carried): the find and its picture. */
+	public static class Find {
+		public String systemId;
+		public ThreatIntel.Report report;
+	}
+
 	/** A strike's origin a faction is looking for, and since when. */
 	public static class Lead {
 		public String systemId;
@@ -243,10 +249,41 @@ public class ThreatScouts {
 		}
 		protected boolean onEnter(Scout s, StarSystemAPI system, long now) {
 			if (!hasLiveHive(system.getId())) return s.recon; // a recon's one stop is done either way
+			if (ThreatIncConfig.carriedIntel()) {
+				// seen, not yet known: the find and its picture sail home with
+				// the party and are lost with it (2026-10-05, the user)
+				Find find = new Find();
+				find.systemId = system.getId();
+				find.report = ThreatIntel.look(s.factionId, system, ThreatIntel.SCOUT);
+				carry(s, find);
+				ThreatIncConfig.log("Scout of " + s.factionId + " saw a hive in the " + system.getName()
+						+ " and turns for home with it");
+				return true;
+			}
 			reveal(system.getId(), s.factionId);
 			// what it saw is its faction's report (ThreatIntel, the fog of war)
 			ThreatIntel.see(s.factionId, system, ThreatIntel.SCOUT);
 			return true; // the report is what counts
+		}
+		/** A system where its own faction, or one not hostile to it, keeps a colony: the relay carries the find to all. */
+		protected boolean friendly(Scout s, StarSystemAPI system) {
+			FactionAPI mine = Global.getSector().getFaction(s.factionId);
+			for (MarketAPI market : Global.getSector().getEconomy().getMarkets(system)) {
+				if (ThreatMapFog.hidden(market) || market.getPrimaryEntity() == null) continue;
+				if (Factions.THREAT.equals(market.getFactionId())) continue;
+				if (market.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) continue;
+				if (s.factionId.equals(market.getFactionId())) return true;
+				if (mine != null && !mine.isHostileTo(market.getFactionId())) return true;
+			}
+			return false;
+		}
+		protected void deliver(Scout s, Object seen) {
+			if (!(seen instanceof Find)) return;
+			Find find = (Find) seen;
+			StarSystemAPI system = ThreatScoutRoute.systemById(find.systemId);
+			if (system == null) return;
+			if (hasLiveHive(find.systemId)) reveal(find.systemId, s.factionId);
+			ThreatIntel.file(s.factionId, system, find.report, ThreatIntel.SCOUT);
 		}
 		protected void onStay(Scout s, StarSystemAPI system, long now) {
 			swept().put(system.getId(), now);

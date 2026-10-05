@@ -46,6 +46,13 @@ public class ThreatSwarmScouts {
 	public static class Scout extends ThreatScoutRoute.Party {
 	}
 
+	/** A system a Scouting Swarm charted and is carrying home (ThreatScoutRoute.Party.carried): when, and the places it saw. */
+	public static class Chart {
+		public String systemId;
+		public long when;
+		public List<ThreatSwarmIntel.Place> places;
+	}
+
 	@SuppressWarnings("unchecked")
 	public static List<Scout> all() {
 		Object val = Global.getSector().getPersistentData().get(KEY_SCOUTS);
@@ -119,6 +126,17 @@ public class ThreatSwarmScouts {
 			return known().containsKey(systemId);
 		}
 		protected boolean onEnter(Scout s, StarSystemAPI system, long now) {
+			if (ThreatIncConfig.carriedIntel()) {
+				// seen, not yet known: the chart sails home with the swarm
+				// and is lost with it (2026-10-05, the user)
+				Chart chart = new Chart();
+				chart.systemId = system.getId();
+				chart.when = now;
+				chart.places = ThreatSwarmIntel.looked(system);
+				carry(s, chart);
+				ThreatOmens.onSwarmScouted(system);
+				return false;
+			}
 			// in the system is enough: the swarm sees what lives there
 			if (!known().containsKey(system.getId())) {
 				known().put(system.getId(), now);
@@ -130,6 +148,25 @@ public class ThreatSwarmScouts {
 			// and, in its fog, reports every human place there (ThreatSwarmIntel)
 			if (ThreatSwarmIntel.enabled()) ThreatSwarmIntel.scouted(system);
 			return false;
+		}
+		/** A system with a live hive: the swarm there knows what the scout knows. */
+		protected boolean friendly(Scout s, StarSystemAPI system) {
+			return !ThreatIncData.getLiveColonyMarkets(system.getId()).isEmpty();
+		}
+		protected void deliver(Scout s, Object seen) {
+			if (!(seen instanceof Chart)) return;
+			Chart chart = (Chart) seen;
+			StarSystemAPI system = ThreatScoutRoute.systemById(chart.systemId);
+			if (system == null) return;
+			if (!known().containsKey(chart.systemId)) {
+				known().put(chart.systemId, chart.when);
+				ThreatColonyManager.announce(ThreatNotice.titled("System Charted").bad()
+						.line("A Scouting Swarm has charted the %s.", system.getNameWithLowercaseType()));
+				ThreatIncConfig.log("Scouting Swarm charted " + system.getName());
+			}
+			if (chart.places != null) {
+				for (ThreatSwarmIntel.Place p : chart.places) ThreatSwarmIntel.file(p, true);
+			}
 		}
 		protected String stayVerb() {
 			return "charting";

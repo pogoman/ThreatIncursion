@@ -500,15 +500,35 @@ public final class ThreatSwarmIntel {
 	 * A first sighting, or a figure moved by half, is logged when {@code log}.
 	 */
 	protected static Place record(MarketAPI m, String source, float day, Map<String, float[]> memo, boolean log) {
+		return file(snapshot(m, source, day, memo), log);
+	}
+
+	/** The place as it stands now, read where the swarm has eyes or a scout; not filed. */
+	protected static Place snapshot(MarketAPI m, String source, float day, Map<String, float[]> memo) {
 		StarSystemAPI staging = ThreatConvoys.stagingHive(m);
-		String stagesFor = staging != null ? staging.getId() : null;
-		float staged = staging != null && IncursionManager.siegeBasesFor(staging).contains(m)
-				? ThreatPosture.stagedBy(m, stagesFor) : 0f;
-		float guards = guardsOf(m);
-		float reach = spreadBase(m) ? IncursionManager.seenSiegeBaseReachLY(m) : 0f;
-		float defence = IncursionManager.liveTargetDefence(m, memo);
+		Place s = new Place();
+		s.marketId = m.getId();
+		s.systemId = m.getStarSystem().getId();
+		s.factionId = m.isPlayerOwned() ? Factions.PLAYER : m.getFactionId();
+		s.source = source;
+		s.day = day;
+		s.stagesFor = staging != null ? staging.getId() : null;
+		s.stagedFP = staging != null && IncursionManager.siegeBasesFor(staging).contains(m)
+				? ThreatPosture.stagedBy(m, s.stagesFor) : 0f;
+		s.guardsFP = guardsOf(m);
+		s.reachLY = spreadBase(m) ? IncursionManager.seenSiegeBaseReachLY(m) : 0f;
+		s.defenceFP = IncursionManager.liveTargetDefence(m, memo);
+		return s;
+	}
+
+	/** Files a snapshot as the swarm's place for that world (record's second half); one older than the place held is dropped. */
+	protected static Place file(Place s, boolean log) {
+		String stagesFor = s.stagesFor;
+		float staged = s.stagedFP, guards = s.guardsFP, reach = s.reachLY, defence = s.defenceFP, day = s.day;
+		String source = s.source;
 		Map<String, Place> places = placeMap();
-		Place p = places.get(m.getId());
+		Place p = places.get(s.marketId);
+		if (p != null && p.day > day) return p;
 		String was = p != null ? changed(p, stagesFor, staged, guards, defence) : null;
 		boolean first = p == null;
 		// a defence that swings as fleets come and go was re-logged daily (3,024 lines in pd2a)
@@ -516,11 +536,11 @@ public final class ThreatSwarmIntel {
 		if (was != null && !retarget && day - p.loggedDay < RELOG_DAYS) was = null;
 		if (first) {
 			p = new Place();
-			p.marketId = m.getId();
-			places.put(m.getId(), p);
+			p.marketId = s.marketId;
+			places.put(s.marketId, p);
 		}
-		p.systemId = m.getStarSystem().getId();
-		p.factionId = m.isPlayerOwned() ? Factions.PLAYER : m.getFactionId();
+		p.systemId = s.systemId;
+		p.factionId = s.factionId;
 		p.source = source;
 		p.day = day;
 		p.stagesFor = stagesFor;
@@ -530,7 +550,8 @@ public final class ThreatSwarmIntel {
 		p.defenceFP = defence;
 		if (log && (first || was != null)) {
 			p.loggedDay = day;
-			ThreatIncConfig.log("Swarm intel: " + source + " on " + m.getName() + " (" + p.factionId + "): staged "
+			MarketAPI m = Global.getSector().getEconomy().getMarket(s.marketId);
+			ThreatIncConfig.log("Swarm intel: " + source + " on " + (m != null ? m.getName() : s.marketId) + " (" + p.factionId + "): staged "
 					+ (int) staged + " for " + systemName(stagesFor) + ", guards " + (int) guards + ", defence "
 					+ (int) defence + (was != null ? " (was " + was + ")" : ""));
 		}
@@ -650,13 +671,24 @@ public final class ThreatSwarmIntel {
 	 * looks at every human base and strikeable world there, exact.
 	 */
 	public static void scouted(StarSystemAPI system) {
-		if (system == null || !enabled()) return;
+		for (Place p : looked(system)) file(p, true);
+	}
+
+	/**
+	 * What a Scouting Swarm sees in the system now, not yet filed: it carries
+	 * the places home (ThreatSwarmScouts, 2026-10-05) and they are filed there
+	 * (file), dated the day they were seen.
+	 */
+	public static List<Place> looked(StarSystemAPI system) {
+		List<Place> out = new ArrayList<Place>();
+		if (system == null || !enabled()) return out;
 		float day = today();
 		Map<String, float[]> memo = new HashMap<String, float[]>();
 		for (MarketAPI m : Misc.getMarketsInLocation(system)) {
 			if (!humanPlace(m) || !scoutWorthy(m)) continue;
-			record(m, SCOUT, day, memo, true);
+			out.add(snapshot(m, SCOUT, day, memo));
 		}
+		return out;
 	}
 
 	/** Once a month, the swarm's picture in one line: contacts, places, the oldest, stale systems. */

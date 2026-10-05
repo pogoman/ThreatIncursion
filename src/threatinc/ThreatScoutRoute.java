@@ -47,6 +47,13 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 		public boolean returning;
 		/** When the party was sent toward the current leg; 0 on saves before 2026-09-24. */
 		public long legSince;
+		/**
+		 * What it has seen and not yet brought home (2026-10-05, the user:
+		 * "information travels by ship"): each side's own records, filed
+		 * when the party is next in a friendly system ({@link #friendly},
+		 * {@link #deliver}) and lost with it. Null on older saves.
+		 */
+		public List<Object> carried;
 	}
 
 	/** A star system by id, null for a null id: the direct lookup, this runs per party per poll. */
@@ -76,6 +83,24 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 	protected void onReturn(S s) {}
 	/** The return leg, for its assignment. */
 	protected abstract String returnLabel(S s, MarketAPI home);
+	/** Whether what the party carries is known to its side once it is in this system: a relay is in reach. */
+	protected boolean friendly(S s, StarSystemAPI system) { return false; }
+	/** The party is in a friendly system: one thing it carried is filed. */
+	protected void deliver(S s, Object seen) {}
+
+	/** Takes what the party saw aboard; it is known when the party is next in a friendly system. */
+	protected void carry(S s, Object seen) {
+		if (s.carried == null) s.carried = new ArrayList<Object>();
+		s.carried.add(seen);
+	}
+
+	/** Files everything the party carries (deliver), once. */
+	protected void report(S s) {
+		if (s.carried == null || s.carried.isEmpty()) return;
+		List<Object> seen = new ArrayList<Object>(s.carried);
+		s.carried.clear();
+		for (Object o : seen) deliver(s, o);
+	}
 
 	// ------------------------------------------------------------------
 	// the walk
@@ -86,8 +111,20 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 		CampaignFleetAPI fleet = s.fleet;
 		if (fleet == null || !fleet.isAlive() || fleet.isExpired()) {
 			all().remove(s);
-			ThreatIncConfig.log(describe(s) + (s.returning ? " home" : " lost"));
+			int unfiled = s.carried != null ? s.carried.size() : 0;
+			// home between two polls: a fleet that despawned at its world still has its ships
+			if (unfiled > 0 && s.returning && fleet != null && fleet.getFleetPoints() > 0) {
+				report(s);
+				unfiled = 0;
+			}
+			ThreatIncConfig.log(describe(s) + (s.returning ? " home" : " lost")
+					+ (unfiled > 0 ? ", and " + unfiled + " sighting(s) with it" : ""));
 			return;
+		}
+		// what it carries is known the day it is in a friendly system
+		if (s.carried != null && !s.carried.isEmpty() && fleet.getContainingLocation() instanceof StarSystemAPI
+				&& friendly(s, (StarSystemAPI) fleet.getContainingLocation())) {
+			report(s);
 		}
 		if (s.returning) return; // GO_TO_LOCATION_AND_DESPAWN does the rest
 		if (s.leg >= s.route.size()) {
