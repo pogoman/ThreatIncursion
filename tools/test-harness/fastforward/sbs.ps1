@@ -92,8 +92,9 @@ KillGames
 # the run settings into the shared store (resolution, autosave off, Shift at 48x, the debug switches); every
 # game's own copy of saves\common is taken after, so restore.ps1 at the end leaves the user's as it was
 powershell -NoProfile -ExecutionPolicy Bypass -File "$ff\run-settings.ps1" -Save $base | Out-Null
-$knobs = @{}
-foreach ($part in ($Knobs -split '\|' | Where-Object { $_ })) { $t, $kv = $part -split ':', 2; $knobs[$t] = $kv }
+# not $knobs: PowerShell names ignore case, and that is the -Knobs string itself
+$knobOf = @{}
+foreach ($part in ($Knobs -split '\|' | Where-Object { $_ })) { $t, $kv = $part -split ':', 2; $knobOf[$t] = $kv }
 $java = (Get-Content "$core\starsector.bat" -TotalCount 1)
 # the windows side by side where the screen is wide enough, overlapping where it is not
 [SBS]::SetProcessDPIAware() | Out-Null
@@ -114,10 +115,10 @@ foreach ($tag in $Tags) {
   Move-Item "$saves\$name" "$inst\saves\$name"
   Copy-Item "$saves\common" "$inst\saves\common" -Recurse
   Get-ChildItem "$inst\saves\common" -Filter 'threatinc_sim*' | Remove-Item -Force
-  if ($knobs[$tag]) {
+  if ($knobOf[$tag]) {
     $store = "$inst\saves\common\LunaSettings\threatinc.json.data"
     $t = [IO.File]::ReadAllText($store)
-    foreach ($kv in $knobs[$tag].Split(';')) {
+    foreach ($kv in $knobOf[$tag].Split(';')) {
       $k, $v = $kv.Split('=')
       $pat = '"' + [regex]::Escape($k) + '":\s*[^,\r\n}]+'
       if ($t -match $pat) { $t = [regex]::Replace($t, $pat, '"' + $k + '": ' + $v) }

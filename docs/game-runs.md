@@ -459,3 +459,32 @@ Against the handover's six questions (`handover-2026-10-05-testing.md` 6):
 it is edited only where it exists, and `restore-settings.ps1` removes it when the backup has none. On such a
 machine vanilla autosave is left as it is; a clone is deleted at the end either way. Three games ran in 6.4 GB
 of free memory at 113 days a minute each.
+
+## 10. hw12a-hw12c (2026-10-05): rally only if enough; troops a broken-up FP 10; forge output doubled
+
+Build `72724b4` (`systemDefenceOnlyIfEnough` on) in all three; hw12b `fabricateTroopsPerFP` 10 (set 10.01:
+a store at version 11 migrates an exact 10 back to 5), hw12c `fabFPPerShipUnit` 200. No exception, no council
+error. **None of the three saves the swarm.**
+
+| | hw12a (rule) | hw12b (+ troops 10) | hw12c (+ forges x2) | hw11a / b / c |
+|---|---|---|---|---|
+| extinct | m95 | never (2 hives at m120) | never (5 unfound at m120) | m81 / never (3) / m78 |
+| hives m60, m84, m108 | 16, 6, 0 | 14, 17, 12 | 23, 22, 5 | 11, 0, 0 / 14, 25, 18 / 6, 0, 0 |
+| found at m48 | 14 of 18 | 15 of 17 | 11 of 18 | 14 of 16 / 14 of 18 / 13 of 14 |
+| swarm income since found | 95k FP | 282k | 369k | 47k / 318k / 27k |
+| sieges arrived (FP), escorts (FP) | 114 (170k), 53 (152k) | 263 (425k), 96 (229k) | 254 (553k), 107 (284k) | 75 (106k), 36 (167k) / 263 (355k), 109 (509k) / 55 (56k), 28 (62k) |
+| sieges called off | 17 | 110 | 135 | 7 / 61 / 4 |
+| Threat FP lost a human FP | 1.37 | 1.36 | 1.29 | 1.15 / 1.31 / 1.40 |
+| rallies sent, declined (`no rally`) | 222, 526 | 589, 1,245 | 743, 398 | 153 / 1,333 / 76, - |
+| covers lost, of landings; those hives eradicated anyway | 5 of 32; 1 | 4 of 45; 3 | 11 of 37; 9 | 1 of 19; 0 / 8 of 45; 8 / 3 of 21; 1 |
+| seeding swarms, strikes since found (recalled, all) | 12, 7 (9) | 42, 39 (35) | 43, 51 (48) | 3, 4 (2) / 41, 27 (25) / 0, 1 (1) |
+| Threat landings, human worlds lost | 6, 0 | 5, 1 | 7, 0 | 6, 1 / 4, 0 / 6, 1 |
+
+- The rule declines 398-1,245 rallies a run and changes no outcome that three runs can show.
+- Troops at 10 has nothing to act on: the swarm lands 5-7 times a run, and 35 of 40 strikes are called home.
+- Doubled forges gave 70k FP of fleets at the peak and four times hw12a's income; the humans sent 553k FP of
+  sieges, 135 of 254 turned away with 97% of their FP (section 8, "a massed defence saves the world and kills
+  nothing"), the trade stayed 1.29, and 48 of 54 strikes were recalled (108k of 127k FP). It fell from 22
+  hives at m84 to 5 at m108.
+- Common to all nine runs of hw10-hw12: the swarm loses 1.15-1.40 FP a human FP over its own worlds, an
+  outweighed siege leaves free, and the strikes turn home within a median 2-5 days.
