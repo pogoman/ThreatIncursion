@@ -343,10 +343,7 @@ public class ThreatGroundFronts {
 			List<Industry> list = new ArrayList<Industry>();
 			Industry core = market.getIndustry(ThreatColonyManager.FABRICATION_CORE);
 			if (core != null) list.add(core);
-			// the Nexus is not a target since 2026-10-05 (the user): the sieges' tactical
-			// bombardment put it down within a month of contact and the swarm's whole
-			// income with it (docs/game-runs-2.md 12); saturation still reaches it
-			Industry nexus = ThreatIncConfig.nexusBombardable() ? market.getIndustry(ThreatColonyManager.SWARM_NEXUS) : null;
+			Industry nexus = market.getIndustry(ThreatColonyManager.SWARM_NEXUS);
 			if (nexus != null) list.add(nexus);
 			Industry bastion = SwarmBastion.of(market);
 			if (bastion != null) list.add(bastion);
@@ -374,7 +371,11 @@ public class ThreatGroundFronts {
 			// commands them, and the Swarm Bastion or Swarm Command over it
 			// (SwarmBastion, 2026-10-01) - orbit wears them, none of them fires
 			List<Industry> list = defenseStructures(market);
-			Industry nexus = market.getIndustry(ThreatColonyManager.SWARM_NEXUS);
+			// the Nexus is not a target of tactical bombardment since 2026-10-05 (the
+			// user): it went down within a month of a siege's first day and the hive's
+			// income with it. Saturation still reaches it (saturationTargets) and so
+			// does a front that holds (keyStructures)
+			Industry nexus = ThreatIncConfig.nexusBombardable() ? market.getIndustry(ThreatColonyManager.SWARM_NEXUS) : null;
 			if (nexus != null) list.add(nexus);
 			Industry bastion = SwarmBastion.of(market);
 			if (bastion != null) list.add(bastion);
