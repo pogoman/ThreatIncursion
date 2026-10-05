@@ -73,7 +73,7 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   neighbours give, the reserve count stays home, the call is read per world, a recall stays whole.
 - **The system defends as one (2026-10-05, the user: "I'm assuming they defend the system just don't know
   the exact world until the attack arrives ... Why don't they just defend the jump point then"; of the two
-  shapes offered, "simplicity and the middle version"; built, untested).** The fight stays at the world -
+  shapes offered, "simplicity and the middle version"; built `eb7a1f1`, game-tested hw10a-hw10c).** The fight stays at the world -
   no battle at the jump point - but the world's siege meets the system's force:
   1. `ThreatPosture.rally(world, attackFP)`: a force is over a hive world, and the system's other worlds
      send it their spare swarms - every fleet above each one's `garrisonReserve` count
@@ -101,3 +101,10 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   (H FP stood against A)`, and `Daily siege takes over ... , seen coming|unseen`. My calls, not the user's
   words: sized to the force (so the rest can answer a second siege), each world's reserve count stays
   home, real forces (hunts, the player) draw the rally too, an unseen siege gets no first-day force.
+
+  In the game (hw10a-hw10c, `game-runs.md` 8): it works as built - every siege seen coming, 164-2,902
+  fleets rallied a run, sieges called off 20-56% (hw8 10-26%), the trade 1.25-1.35 Threat FP a human FP
+  (1.34-1.45) - and the outcome is hw8's, one runaway and two exterminated. A siege that meets the massed
+  defence turns home the same day with 87-98% of its FP (`callOff`: outweighed, it pays nothing), where
+  one that fights and is beaten leaves 72-74% behind: the rally saves the world and spares the fleet.
+  Proposed, the user's call: a called-off siege pays a day of the exchange as it turns away.
