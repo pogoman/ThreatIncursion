@@ -317,7 +317,10 @@ seconds; the clock runs meanwhile (two days passed on one approach).
 ## Side-by-side runs (2026-10-04)
 
 `fastforward\sbs.ps1 -Tags hw6a,hw6b,hw6c -Days 3750` runs several new games at once and fast-forwards them
-together. Trial `sa`/`sb`: two games ran 210 and 212 days a minute each, against 215 for one game alone, so the
+together. **Check a batch mid-run (the user, 2026-10-05):** the monthly dumps are readable while the games
+play (`saves_sbs<tag>savesmmon	hreatinc_simdump_*`; copy them to a scratch `<tag>` folder and run
+`organs.pl <tag>` there). Sieges arrive around m45-m47, so a look at m55-m60, 20 minutes in, shows whether a
+change took; run to m125 only when the question is the end state (extinction, runaway). Trial `sa`/`sb`: two games ran 210 and 212 days a minute each, against 215 for one game alone, so the
 batch time is one run's (about 40 minutes) whatever the count, up to what memory holds (2.8 GB a game).
 Batch hw6a-hw6c (2026-10-04): three games ran 123-142 days a minute each to war day 2,340-2,680, about the same
 days a minute in total as two, so a third game buys a replicate, not time. The wrap-up works (dumps copied,
