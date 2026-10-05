@@ -120,3 +120,8 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   fleets, against 1 / 1 / 0), the covers fell no more often (1 / 8 / 3) and 9 of the 12 hives whose cover
   was lost were eradicated anyway. Read from `rally`: the donors it excludes (an army on them, a siege over
   them, a hostile fleet near) are the system's other worlds when the humans land on them together.
+
+  Only when it is enough (2026-10-05, the user, after hw11; built, untested): `rally` sends nothing unless
+  the swarms at the world, those bound for it and the pool together outweigh the force
+  (`systemDefenceOnlyIfEnough`, on) - the swarm's mirror of a siege's call-off. Log: `Posture: no rally to
+  <world> (N FP could stand against M)`.

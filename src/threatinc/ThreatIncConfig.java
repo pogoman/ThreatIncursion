@@ -137,6 +137,8 @@ public class ThreatIncConfig {
 	public static boolean systemDefence() { return b("threatinc_systemDefence", true); }
 	/** How far the swarms standing for a world must outweigh the force over it before its system sends no more; 0 = every spare swarm. */
 	public static float systemDefenceMargin() { return f("threatinc_systemDefenceMargin"); }
+	/** Whether a system rallies to a world only when the swarms there, those bound for it and its spare together outweigh the force over it; short of that none is sent (ThreatPosture.rally). */
+	public static boolean systemDefenceOnlyIfEnough() { return b("threatinc_systemDefenceOnlyIfEnough", true); }
 	/** Whether the humans read a seen strike as bound for its system, not for its worlds: guards, help and mobilisation key off the system (ThreatFrontlines.boundFor). */
 	public static boolean strikeSeenBySystem() { return b("threatinc_strikeSeenBySystem", true); }
 	/** Whether a sector stance (ThreatStance) decides where the surplus goes: pressing weak rivals, expanding, or consolidating. */
