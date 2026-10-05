@@ -312,3 +312,23 @@ Build 1005e77: `strikeStagedGarrisons` true on the hw20 build (`IncursionManager
   garrison within the reserve; nothing is above it.
 - Strikes are the size of hw20's; all three games extinct. Six of six staged games (hw20, hw21) end worse than hw19:
   the war opens at day 915-976 (hw19: 1246-1362), the hive is found at m36-38 with 14-17 hives.
+
+## 19. hw22a-hw22c (2026-10-06): a hive-wide strike fund pays staged strikes (a trial)
+
+Build f464a23: `strikeFundShare` 0.3 of every colony's fabrication set aside (`ThreatColonyManager.strikeFund`), staged
+strikes paid from it alone, at least `strikeStagedMinFP` 3,000; `strikeStagedGarrisons` false.
+
+| | hw22a | hw22b | hw22c |
+|---|---|---|---|
+| First strike / first hive found, war day | 1218 / 1338 | 1129 / 1263 | 1156 / 1279 |
+| Found, month | 43 | 41 | 41 |
+| Hives at m120 (peak) | 6 (25) | 43 (65) | 0, extinct m92 (21) |
+| Strikes (mean FP, max) | 32 (3,404, 3,726) | 62 (3,459, 3,831) | 16 (3,588, 4,694) |
+| Forward bases founded / destroyed by a strike | 49 / 19 | 82 / 36 | 30 / 6 |
+| Threat landings / human worlds lost | 6 / 1 | 12 / 1 | 5 / 1 |
+| Human landings / hives eradicated | 98 / 88 | 125 / 117 | 38 / 35 |
+
+- Strikes are 3,400-3,600 FP, five times hw20's, and kill 20-44% of the forward bases founded (hw19: 2%, 2%, 21%).
+- The fund takes months to fill, so the war opens at day 1129-1218 (hw20: 915) and the hive is found at m41-43.
+- Hive survival is back in hw19's range (hw19: 17 / 4 / 119 at m120); human worlds lost still 1 a game: the strikes go
+  to the closest targets, which are forward bases.
