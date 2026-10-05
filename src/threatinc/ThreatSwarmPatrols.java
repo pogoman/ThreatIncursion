@@ -154,7 +154,7 @@ public class ThreatSwarmPatrols {
 			if (together.contains(e.getKey())) continue;
 			float[] v = e.getValue();
 			it.remove();
-			String[] ids = e.getKey().split("\|");
+			String[] ids = e.getKey().split("\\|");
 			boolean swarmUp = false, humanUp = false;
 			for (Patrol p : all()) if (p.fleet != null && p.fleet.isAlive() && p.fleet.getId().equals(ids[0])) swarmUp = true;
 			for (ThreatScouts.Scout s : ThreatScouts.all()) if (s.fleet != null && s.fleet.isAlive() && s.fleet.getId().equals(ids[1])) humanUp = true;

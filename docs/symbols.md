@@ -3670,31 +3670,32 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSwarmIntel.reset()` :865 - A new campaign (ThreatColonyManager.resetIncursion):
 - `ThreatSwarmIntel.drop(String systemId)` :875 - A system left the war (ThreatIncData.clearSystem):
 
-## ThreatSwarmPatrols (336 lines)
+## ThreatSwarmPatrols (398 lines)
 - `ThreatSwarmPatrols.all()` :70
 - `ThreatSwarmPatrols.enabled()` :84
 - `ThreatSwarmPatrols.carrier(CampaignFleetAPI fleet)` :89 - Whether the fleet is a Patrol Swarm or a Scouting Swarm:
 - `ThreatSwarmPatrols.poll(Random random)` :95
-- `ThreatSwarmPatrols.reset()` :109 - RESET War:
-- `ThreatSwarmPatrols.all()` :116
-- `ThreatSwarmPatrols.describe(Patrol p)` :119
-- `ThreatSwarmPatrols.knownStop(String systemId)` :122
-- `ThreatSwarmPatrols.onEnter(Patrol p, StarSystemAPI system, long now)` :125
-- `ThreatSwarmPatrols.onStay(Patrol p, StarSystemAPI system, long now)` :128
-- `ThreatSwarmPatrols.stayVerb()` :131
-- `ThreatSwarmPatrols.homeOf(Patrol p)` :134
-- `ThreatSwarmPatrols.returnLabel(Patrol p, MarketAPI home)` :141
-- `ThreatSwarmPatrols.friendly(Patrol p, StarSystemAPI system)` :144
-- `ThreatSwarmPatrols.deliver(Patrol p, Object seen)` :147
-- `ThreatSwarmPatrols.onLost(Patrol p)` :154
-- `ThreatSwarmPatrols.levelKey(String systemId)` :161
-- `ThreatSwarmPatrols.size(String systemId)` :166 - The size a hive system's patrols are built at:
-- `ThreatSwarmPatrols.launchAll(Random random)` :170
-- `ThreatSwarmPatrols.planRoute(MarketAPI colony, int stops)` :201 - The nearest systems around the colony's that no hive and no one else holds, not on another patrol's route and not patrolled within swarmPatrolMemoryDays, in the order a patrol flies them.
-- `ThreatSwarmPatrols.compare(StarSystemAPI a, StarSystemAPI b)` :217
-- `ThreatSwarmPatrols.launch(MarketAPI colony, String systemId, List<String> route, float size, Random random)` :243 - Fabricates a Patrol Swarm of about size FP at the colony and sends it round the route;
-- `ThreatSwarmPatrols.meet(String key, String factionId, String systemId, float fp, String kind, LocationAPI where, Vector2f hyper, ThreatPurgeFGI siege)` :288 - A human attack force the hive's own eyes do not see is at where (hyper in hyperspace) today (ThreatSwarmIntel.sweepContacts):
-- `ThreatSwarmPatrols.forceBurn(ThreatPurgeFGI siege)` :331 - The burn a human expedition flying as a route makes:
+- `ThreatSwarmPatrols.logApproaches()` :120 - Debug log of how close each Patrol Swarm comes to each human scouting party or patrol (the user, 2026-10-05:
+- `ThreatSwarmPatrols.reset()` :171 - RESET War:
+- `ThreatSwarmPatrols.all()` :178
+- `ThreatSwarmPatrols.describe(Patrol p)` :181
+- `ThreatSwarmPatrols.knownStop(String systemId)` :184
+- `ThreatSwarmPatrols.onEnter(Patrol p, StarSystemAPI system, long now)` :187
+- `ThreatSwarmPatrols.onStay(Patrol p, StarSystemAPI system, long now)` :190
+- `ThreatSwarmPatrols.stayVerb()` :193
+- `ThreatSwarmPatrols.homeOf(Patrol p)` :196
+- `ThreatSwarmPatrols.returnLabel(Patrol p, MarketAPI home)` :203
+- `ThreatSwarmPatrols.friendly(Patrol p, StarSystemAPI system)` :206
+- `ThreatSwarmPatrols.deliver(Patrol p, Object seen)` :209
+- `ThreatSwarmPatrols.onLost(Patrol p)` :216
+- `ThreatSwarmPatrols.levelKey(String systemId)` :223
+- `ThreatSwarmPatrols.size(String systemId)` :228 - The size a hive system's patrols are built at:
+- `ThreatSwarmPatrols.launchAll(Random random)` :232
+- `ThreatSwarmPatrols.planRoute(MarketAPI colony, int stops)` :263 - The nearest systems around the colony's that no hive and no one else holds, not on another patrol's route and not patrolled within swarmPatrolMemoryDays, in the order a patrol flies them.
+- `ThreatSwarmPatrols.compare(StarSystemAPI a, StarSystemAPI b)` :279
+- `ThreatSwarmPatrols.launch(MarketAPI colony, String systemId, List<String> route, float size, Random random)` :305 - Fabricates a Patrol Swarm of about size FP at the colony and sends it round the route;
+- `ThreatSwarmPatrols.meet(String key, String factionId, String systemId, float fp, String kind, LocationAPI where, Vector2f hyper, ThreatPurgeFGI siege)` :350 - A human attack force the hive's own eyes do not see is at where (hyper in hyperspace) today (ThreatSwarmIntel.sweepContacts):
+- `ThreatSwarmPatrols.forceBurn(ThreatPurgeFGI siege)` :393 - The burn a human expedition flying as a route makes:
 
 ## ThreatSwarmScouts (404 lines)
 - `ThreatSwarmScouts.all()` :57
