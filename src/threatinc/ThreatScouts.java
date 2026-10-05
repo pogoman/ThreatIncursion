@@ -130,8 +130,16 @@ public class ThreatScouts {
 		ThreatIncConfig.log("Hive found in " + where + " by " + finderFactionId);
 	}
 
-	/** A strike from originSystemId has hit this faction: it goes looking. */
+	/**
+	 * A strike from originSystemId has hit this faction: it goes looking.
+	 * Not since 2026-10-05 (the user; strikeLeads false): a strike mobilises
+	 * and tells nothing of where it came from - a hive is found by a party
+	 * that enters its system (onEnter), a colony beside it or an army on it
+	 * (revealNeighbours). In hw15 and hw17 the first strike's lead found the
+	 * home cluster within 0-5 months in six runs of six.
+	 */
 	public static void addLead(String factionId, String originSystemId) {
+		if (!ThreatIncConfig.strikeLeads()) return;
 		if (!enabled() || !mayScout(factionId) || originSystemId == null) return;
 		if (sectorKnows(originSystemId)) return;
 		List<Lead> list = leads().get(factionId);
@@ -169,6 +177,8 @@ public class ThreatScouts {
 			return;
 		}
 		revealNeighbours();
+		// leads an older save still holds are dropped with the rule
+		if (!ThreatIncConfig.strikeLeads() && !leads().isEmpty()) leads().clear();
 		for (Scout s : new ArrayList<Scout>(all())) {
 			ROUTE.advance(s);
 		}

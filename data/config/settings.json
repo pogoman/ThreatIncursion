@@ -108,6 +108,10 @@
 	# fleets that cover the system's shortfall and sails on with the rest; false =
 	# it comes home whole (hw15: 90-94% of strikes recalled, 3,353 FP for 218 short)
 	"threatinc_postureRecallPartial": true,
+	# NO LEAD FROM A STRIKE (2026-10-05, the user): a strike mobilises the factions
+	# it sweeps and tells nothing of its origin; hives are found only by parties
+	# entering their system. true = the struck faction's scouts sail to the origin
+	"threatinc_strikeLeads": false,
 	# MASS THE DEFENCE (2026-10-04, the user): a system under attack sends the
 	# spare swarms of its own colonies - what a launch would muster - to its
 	# worlds short of their need; still short once the strikes in reach have
