@@ -157,3 +157,34 @@ m48 is lower than in hw11-hw13 (67% / 72% / 25% against 78-100%): hw14c sits in 
   losses, not by winning fights. hw14a's income failed from m96 (8 of 15 able to earn, 0 of 6 at m112).
 - hw14c is growing at m120 (52 hives, 54k FP of fleets, 458 sieges absorbed): whether that is a runaway needs
   a longer run.
+
+## 13. hw15a-hw15c (2026-10-05): the Nexus really off the tactical target list
+
+Build `c16e063` (the gate in HIVE `fortifications`; `nexusDefenseBonus` 0; a holding front suppresses the Nexus
+again). No council error; the exceptions files are vanilla's two hull-spec lines. `organs.pl` confirms the
+change: a bombed hive's Nexus stays up until an army lands (hw15a Epsilon Laphirial IV bombed day 1397, landed
+2320, Nexus down 2345), and hives bombed since days 1500-1800 still earn at m90. **No run extinct; two of three
+run away: 19, 100 and 120 hives at m120.**
+
+| | hw15a | hw15b | hw15c | hw14a / b / c |
+|---|---|---|---|---|
+| hives m60, m84, m108, m120 | 27, 37, 24, 19 | 20, 50, 70, 100 | 20, 46, 105, 120 | 30, 21, 7, 4 / 19, 29, 35, 29 / 20, 41, 44, 52 |
+| found at m48 | 7 of 21 | 13 of 19 | 13 of 18 | 14 of 21 / 13 of 18 / 4 of 16 |
+| fleets FP at m120 | 27.8k | 114.2k | 177.3k | |
+| swarm income since found | 540k FP | 887k | 1,050k | 268k / 372k / 705k |
+| sieges arrived (FP) | 415 (604k) | 474 (856k) | 521 (773k) | 287 (329k) / 301 (400k) / 458 (698k) |
+| sieges called off | 151 | 273 | 322 | 73 / 92 / 215 |
+| human landings, hives eradicated, armies overrun | 66, 58, 7 | 48, 22, 24 | 43, 34, 7 | 52, 39, 11 / 49, 39, 9 / 46, 32, 13 |
+| Threat FP lost a human FP | 1.42 | 1.30 | 1.28 | 1.37 / 1.32 / 1.33 |
+| seeding swarms, strikes since found | 93, 76 | 159, 124 | 198, 215 | 28, 42 / 57, 41 / 110, 91 |
+| Threat landings, human worlds lost | 5, 0 | 4, 0 | 5, 1 | 12, 2 / 5, 0 / 2, 0 |
+
+- The found share no longer decides it: hw15b and hw15c were 68-72% found at m48, the band that died in
+  hw11-hw13, and both grow without pause from m60 (EXPAND 75-77 of 82-83 months since found).
+- Income since found is two to four times hw14's on like shares, and the humans answer with more sieges
+  (415-521) of which 36-62% are called off.
+- The swarm still does not win fights (1.28-1.42 over its own worlds) and takes 0-1 human worlds in ten years
+  with 76-215 strikes: it grows by seeding (93-198 swarms), not by conquest.
+- hw15a, the least found at m48, is the one in decline (39 hives at m83, 19 at m120, 58 eradicated): the humans
+  there landed 66 times and lost 7 armies.
+- A check at m55-m60 already showed the change (Nexus up under bombardment); only the end state needed m120.
