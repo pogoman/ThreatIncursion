@@ -352,3 +352,20 @@ Build 1c814ff: as hw22 with `strikeStagedMinFP` 8,000.
 - Two things changed at once: strikes of 8-12k FP take colonies (28-37 landings), and the fund takes until day
   1401-1492 to fill, so the hive is found at m49-52 (hw22: m41-43; hw19: m42-50) - 1-2 years more of growth. hw24
   separates them (the fund share 0.5, the war opening sooner).
+
+## 21. hw24a-hw24c (2026-10-06): the strike fund at 0.5, strikes of at least 8,000 FP (a trial)
+
+Build 8ad3875: as hw23 with `strikeFundShare` 0.5.
+
+| | hw24a | hw24b | hw24c |
+|---|---|---|---|
+| First strike / first hive found, war day | 1310 / 1445 | 1310 / 1435 | 1308 / 1416 |
+| Found, month (hives then) | 47 (20) | 46 (22) | 46 (18) |
+| Hives at m120 (peak) | 1, extinct m107 (22) | 104 (109) | 51 (53) |
+| Strikes (mean FP) | 12 (8,186) | 46 (8,300) | 41 (8,373) |
+| Threat landings / human worlds lost | 4 / 1 | 27 / 21 | 20 / 6 |
+| Forward bases founded / destroyed by a strike | 22 / 9 | 63 / 21 | 63 / 22 |
+| Human landings / hives eradicated | 33 / 25 | 48 / 37 | 66 / 51 |
+
+- The fund fills sooner (war day 1308-1310, found m46-47, hw23: 1401-1492, m49-52) and half the production never
+  becomes garrison: one game extinct, two won. Outcomes spread again where hw23's did not.
