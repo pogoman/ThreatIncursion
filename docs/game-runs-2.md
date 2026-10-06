@@ -604,3 +604,19 @@ surplus, never seen. Hegemony supplies banked 25 / 8 / 58 units at 1.0 (hw31a 16
 counts. Every pool 0 free at the end: hunts waiting 2,121 / 1,155 / 1,823, postponed 598 / 775 / 922 - production-bound
 now, not rule-bound. Sieges 87 / 86 / 154, hives eradicated 30 / 14 / 36 (14 / 0 / 30). Swarm 153 / 165 / 155 hives,
 267k / 378k / 206k FP, 18-45k FP/mo against 2-6k of yards a faction. Dumps: `tools/warsim/validation/hw32a-c`.
+
+## 33. hw33 - yards build a navy, full runs (2026-10-06)
+
+Three new games on 57dc3bb9 (`ThreatHulls.built`: yard output beyond losses adds to the standing hulls), the hw4 sector; a and b to war
+day 3797 / 3762, c stopped at 2881 for the first run on a second sector (hw34). No exceptions. The first split result: hw33a the
+humans win - the swarm peaks at 34 hives / 24k FP (d1805-2045), Hegemony hulls 6k -> 32k (d2405) -> 69k (d3005), hives 29 -> 4 -> 0
+(last eradicated d3379); end navies 117k / 89k / 78k / 78k FP all free, yards still adding 500-1,400 a month, 460k-1.3M fuel and
+356-748k supplies; all 47 bases dismantled, 29 for no hive in reach. hw33b the swarm wins on one world: it landed on Chicomoztoc
+(Hegemony Orbital Works) at d1627 against 709 FP free (relief 303 of 4,266 owed), took it at the third landing d2481, and Hegemony
+eradicated the hive at d2561 - its yards 1,400 -> 0, 6.5k lost on 5.8k, 0 free from d2405; its four forward bases queued Heavy
+Industry and none could pay the 5,000 supplies (27k left, 7k/mo). Persean alone (24k, 10.7k free); swarm 40 hives d2405, 60 d3005,
+128 d3725, 206k supplies/mo. hw33c to d2881 tracked a (31 -> 24 hives, Hegemony 28.8k / 16k free). Against hw32 (a / b / c):
+hunting forces waiting on hulls 57 / 440 / 99 (1,155-2,121), postponed 26 / 251 / 56 (598-922), sieges sailed 164 / 241 / 153,
+completed 82 / 75 / 64 (22-39), hives eradicated 44 / 40 / 35 (7-18), founded 41 / 162 / 55 (163-168); bases founded 47 / 91 / 56,
+no garrison 2 / 36 / 10, struck 15 / 35 / 31; Heavy Industry 29 / 17 / 17, fuel plants 26 / 11 / 14. Supplies now bind the humans:
+b and c end at 15-55k a faction. Dumps: `tools/warsim/validation/hw33a-c`, logs `ti-hw33*-keep.txt`.
