@@ -3209,43 +3209,49 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatReturns.settle(CampaignFleetAPI fleet, MarketAPI home, boolean flownHome)` :385 - As above;
 - `ThreatReturns.settle(CampaignFleetAPI fleet, ThreatBases.Base home, boolean flownHome)` :389
 
-## ThreatScoutRoute (374 lines)
-- `ThreatScoutRoute.systemById(String systemId)` :61 - A star system by id, null for a null id:
+## ThreatScoutRoute (464 lines)
+- `ThreatScoutRoute.systemById(String systemId)` :66 - A star system by id, null for a null id:
 ### what a side decides
-- `ThreatScoutRoute.all()` :70 - Every party of this side, out or returning:
-- `ThreatScoutRoute.describe(S s)` :72 - The party in a log line:
-- `ThreatScoutRoute.knownStop(String systemId)` :74 - Whether the side already knows the system, so a party skips the stop.
-- `ThreatScoutRoute.onEnter(S s, StarSystemAPI system, long now)` :76 - What the party does on entering a stop;
-- `ThreatScoutRoute.onStay(S s, StarSystemAPI system, long now)` :78 - The party has stayed its days at a stop with nothing to report.
-- `ThreatScoutRoute.stayVerb()` :80 - What the party is doing in a system, for its assignment:
-- `ThreatScoutRoute.homeOf(S s)` :82 - Where the party reports back to;
-- `ThreatScoutRoute.onReturn(S s)` :84 - The party is about to sail home.
-- `ThreatScoutRoute.returnLabel(S s, MarketAPI home)` :86 - The return leg, for its assignment.
-- `ThreatScoutRoute.friendly(S s, StarSystemAPI system)` :88 - Whether what the party carries is known to its side once it is in this system:
-- `ThreatScoutRoute.deliver(S s, Object seen)` :90 - The party is in a friendly system:
-- `ThreatScoutRoute.onLost(S s)` :93 - The party did not come back:
-- `ThreatScoutRoute.carry(S s, Object seen)` :96 - Takes what the party saw aboard;
-- `ThreatScoutRoute.report(S s)` :102 - Files everything the party carries (deliver), once.
+- `ThreatScoutRoute.all()` :75 - Every party of this side, out or returning:
+- `ThreatScoutRoute.describe(S s)` :77 - The party in a log line:
+- `ThreatScoutRoute.knownStop(String systemId)` :79 - Whether the side already knows the system, so a party skips the stop.
+- `ThreatScoutRoute.onEnter(S s, StarSystemAPI system, long now)` :81 - What the party does on entering a stop;
+- `ThreatScoutRoute.onStay(S s, StarSystemAPI system, long now)` :83 - The party has stayed its days at a stop with nothing to report.
+- `ThreatScoutRoute.stayVerb()` :85 - What the party is doing in a system, for its assignment:
+- `ThreatScoutRoute.homeOf(S s)` :87 - Where the party reports back to;
+- `ThreatScoutRoute.onReturn(S s)` :89 - The party is about to sail home.
+- `ThreatScoutRoute.returnLabel(S s, MarketAPI home)` :91 - The return leg, for its assignment.
+- `ThreatScoutRoute.friendly(S s, StarSystemAPI system)` :93 - Whether what the party carries is known to its side once it is in this system:
+- `ThreatScoutRoute.deliver(S s, Object seen)` :95 - The party is in a friendly system:
+- `ThreatScoutRoute.onLost(S s)` :98 - The party did not come back:
+- `ThreatScoutRoute.carry(S s, Object seen)` :101 - Takes what the party saw aboard;
+- `ThreatScoutRoute.report(S s)` :107 - Files everything the party carries (deliver), once.
 ### the walk
-- `ThreatScoutRoute.advance(S s)` :114 - One poll's step for a party:
-- `ThreatScoutRoute.nextLeg(S s)` :169
-- `ThreatScoutRoute.sendTo(S s, StarSystemAPI system)` :185
-- `ThreatScoutRoute.recallAll()` :200 - The side stopped scouting (its knob turned off):
-- `ThreatScoutRoute.clearAll()` :211 - RESET War:
-- `ThreatScoutRoute.goHome(S s)` :218
-- `ThreatScoutRoute.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :237 - Marks a returning party that reached its world, so advance can tell home from lost.
-- `ThreatScoutRoute.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :243
+- `ThreatScoutRoute.advance(S s)` :120 - One poll's step for a party:
+- `ThreatScoutRoute.nextLeg(S s)` :189
+- `ThreatScoutRoute.sendTo(S s, StarSystemAPI system)` :205
+- `ThreatScoutRoute.recallAll()` :220 - The side stopped scouting (its knob turned off):
+- `ThreatScoutRoute.clearAll()` :231 - RESET War:
+- `ThreatScoutRoute.goHome(S s)` :238
+- `ThreatScoutRoute.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :257 - Marks a returning party that reached its world, so advance can tell home from lost.
+- `ThreatScoutRoute.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :263
+### debug: what the patrols are doing (2026-10-06, the user)
+- `ThreatScoutRoute.logArrival(S s, StarSystemAPI system)` :279 - One line on arrival at a stop:
+- `ThreatScoutRoute.BattleMark(ThreatScoutRoute<S> route, S party)` :302
+- `ThreatScoutRoute.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :306
+- `ThreatScoutRoute.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :309
+- `ThreatScoutRoute.census(String side, String levels)` :325 - The monthly census line for this side, and the counters reset:
 ### patrols: how many and how big, and meeting a force (2026-10-05)
-- `ThreatScoutRoute.level(String key)` :256 - Losses a side's patrols have not yet forgotten:
-- `ThreatScoutRoute.lost(String key)` :263 - A patrol of this side did not come back.
-- `ThreatScoutRoute.calm(String key)` :271 - patrolCalmDays without a loss forgets one.
-- `ThreatScoutRoute.near(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.LocationAPI where, Vector2f hyper)` :283 - Whether the fleet sees what is at where:
-- `ThreatScoutRoute.meetAbstract(CampaignFleetAPI patrol, float forceFP, float forceBurn, com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteData route, String who, String what)` :302 - A patrol meets a force that flies as a route, of forceFP at forceBurn (the user, 2026-10-05:
+- `ThreatScoutRoute.level(String key)` :346 - Losses a side's patrols have not yet forgotten:
+- `ThreatScoutRoute.lost(String key)` :353 - A patrol of this side did not come back.
+- `ThreatScoutRoute.calm(String key)` :361 - patrolCalmDays without a loss forgets one.
+- `ThreatScoutRoute.near(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.LocationAPI where, Vector2f hyper)` :373 - Whether the fleet sees what is at where:
+- `ThreatScoutRoute.meetAbstract(CampaignFleetAPI patrol, float forceFP, float forceBurn, com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteData route, String who, String what)` :392 - A patrol meets a force that flies as a route, of forceFP at forceBurn (the user, 2026-10-05:
 ### planning
-- `ThreatScoutRoute.taken()` :335 - The stops every party of this side still has ahead of it:
-- `ThreatScoutRoute.nearestFirst(List<StarSystemAPI> candidates, Vector2f from)` :353 - The candidates as a route, nearest-first from where the party starts, each leg measured from the stop before.
+- `ThreatScoutRoute.taken()` :425 - The stops every party of this side still has ahead of it:
+- `ThreatScoutRoute.nearestFirst(List<StarSystemAPI> candidates, Vector2f from)` :443 - The candidates as a route, nearest-first from where the party starts, each leg measured from the stop before.
 
-## ThreatScouts (740 lines)
+## ThreatScouts (750 lines)
 - `ThreatScouts.all()` :85
 - `ThreatScouts.enabled()` :108
 - `ThreatScouts.sectorKnows(String systemId)` :117 - Whether the sector knows of the hive in this system - the gate on every NPC war effort against it.
@@ -3254,46 +3260,47 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatScouts.addLead(String factionId, String originSystemId)` :154 - A strike from originSystemId has hit this faction:
 - `ThreatScouts.mayScout(String factionId)` :173
 ### the poll
-- `ThreatScouts.poll(Random random)` :186
-- `ThreatScouts.reset()` :203 - RESET War:
-- `ThreatScouts.revealNeighbours()` :216 - A hive in a system where anyone else keeps a colony is no secret;
-- `ThreatScouts.hasLiveHive(String systemId)` :241
-- `ThreatScouts.all()` :247 - The route walker, with what the sector's parties do at a stop.
-- `ThreatScouts.describe(Scout s)` :250
-- `ThreatScouts.knownStop(String systemId)` :253
-- `ThreatScouts.onEnter(Scout s, StarSystemAPI system, long now)` :257
-- `ThreatScouts.friendly(Scout s, StarSystemAPI system)` :276 - A system where its own faction, or one not hostile to it, keeps a colony:
-- `ThreatScouts.onLost(Scout s)` :287
-- `ThreatScouts.deliver(Scout s, Object seen)` :293
-- `ThreatScouts.onStay(Scout s, StarSystemAPI system, long now)` :306
-- `ThreatScouts.stayVerb()` :309
-- `ThreatScouts.homeOf(Scout s)` :312
-- `ThreatScouts.returnLabel(Scout s, MarketAPI home)` :317
-- `ThreatScouts.pruneLeads()` :323 - A lead ends when its origin is known or its hive is gone.
+- `ThreatScouts.census()` :187 - The humans' patrol census line (ThreatScoutRoute.census), with each mobilised faction's level.
+- `ThreatScouts.poll(Random random)` :196
+- `ThreatScouts.reset()` :213 - RESET War:
+- `ThreatScouts.revealNeighbours()` :226 - A hive in a system where anyone else keeps a colony is no secret;
+- `ThreatScouts.hasLiveHive(String systemId)` :251
+- `ThreatScouts.all()` :257 - The route walker, with what the sector's parties do at a stop.
+- `ThreatScouts.describe(Scout s)` :260
+- `ThreatScouts.knownStop(String systemId)` :263
+- `ThreatScouts.onEnter(Scout s, StarSystemAPI system, long now)` :267
+- `ThreatScouts.friendly(Scout s, StarSystemAPI system)` :286 - A system where its own faction, or one not hostile to it, keeps a colony:
+- `ThreatScouts.onLost(Scout s)` :297
+- `ThreatScouts.deliver(Scout s, Object seen)` :303
+- `ThreatScouts.onStay(Scout s, StarSystemAPI system, long now)` :316
+- `ThreatScouts.stayVerb()` :319
+- `ThreatScouts.homeOf(Scout s)` :322
+- `ThreatScouts.returnLabel(Scout s, MarketAPI home)` :327
+- `ThreatScouts.pruneLeads()` :333 - A lead ends when its origin is known or its hive is gone.
 ### sorties
-- `ThreatScouts.launchSorties(Random random)` :341
-- `ThreatScouts.recon(String factionId, StarSystemAPI system)` :387 - RECON (2026-10-01, ThreatAttackPlanner):
-- `ThreatScouts.reconInFlight(String factionId, String systemId)` :405 - Whether a recon party of the faction is on its way to the system.
-- `ThreatScouts.leadInFlight(String factionId, String systemId)` :412
-- `ThreatScouts.launchLead(String factionId, Lead lead)` :424 - Sweeps the area around a strike's origin from the faction's nearest military world.
-- `ThreatScouts.launchRoutine(String factionId, Random random)` :440 - Sweeps the unexplored space around every one of the faction's military worlds (2026-09-29:
-- `ThreatScouts.levelKey(String factionId)` :455
-- `ThreatScouts.patrolSize(String factionId)` :460 - The size a faction's patrols are built at:
-- `ThreatScouts.launchPatrols(String factionId, Random random)` :475 - PATROLS (2026-10-05, the user):
-- `ThreatScouts.strikeKey(ThreatStrikeFGI strike)` :511 - A strike's key for a sighting:
-- `ThreatScouts.sight(ThreatStrikeFGI strike, com.fs.starfarer.api.campaign.LocationAPI where, Vector2f hyper, float fp, boolean abstractForce)` :524 - A Threat strike no world of the humans sees is at where today (IncursionManager.detectStrikes):
-- `ThreatScouts.nearestBase(String factionId, Vector2f where)` :558
-- `ThreatScouts.planRoute(MarketAPI home, Vector2f centre, float radiusLY, long leadSince)` :582 - A route (ThreatScoutRoute.nearestFirst) through the systems within radius of the centre, from home:
-- `ThreatScouts.sweptLately(String systemId, long leadSince)` :597
-- `ThreatScouts.unreachable(StarSystemAPI system)` :605 - Abyssal pockets and hidden-theme systems:
-- `ThreatScouts.hasPlanet(StarSystemAPI system)` :610
-- `ThreatScouts.inhabited(StarSystemAPI system)` :618 - Anyone but the swarm keeps a colony there - revealNeighbours covers those.
-- `ThreatScouts.launch(String factionId, MarketAPI home, List<String> route, String leadSystemId)` :627
-- `ThreatScouts.launch(String factionId, MarketAPI home, List<String> route, String leadSystemId, float fp)` :632 - As above, a party of fp fleet points (a patrol's size, patrolSize).
-- `ThreatScouts.voyageCost(float fp, float ly)` :694 - [fuel, supplies] a party of this many fleet points pays to sail this far, as a task force pays.
-- `ThreatScouts.routeLY(MarketAPI home, List<String> route)` :701 - Light-years of the route out:
-- `ThreatScouts.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :720 - On a scouting party:
-- `ThreatScouts.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :736
+- `ThreatScouts.launchSorties(Random random)` :351
+- `ThreatScouts.recon(String factionId, StarSystemAPI system)` :397 - RECON (2026-10-01, ThreatAttackPlanner):
+- `ThreatScouts.reconInFlight(String factionId, String systemId)` :415 - Whether a recon party of the faction is on its way to the system.
+- `ThreatScouts.leadInFlight(String factionId, String systemId)` :422
+- `ThreatScouts.launchLead(String factionId, Lead lead)` :434 - Sweeps the area around a strike's origin from the faction's nearest military world.
+- `ThreatScouts.launchRoutine(String factionId, Random random)` :450 - Sweeps the unexplored space around every one of the faction's military worlds (2026-09-29:
+- `ThreatScouts.levelKey(String factionId)` :465
+- `ThreatScouts.patrolSize(String factionId)` :470 - The size a faction's patrols are built at:
+- `ThreatScouts.launchPatrols(String factionId, Random random)` :485 - PATROLS (2026-10-05, the user):
+- `ThreatScouts.strikeKey(ThreatStrikeFGI strike)` :520 - A strike's key for a sighting:
+- `ThreatScouts.sight(ThreatStrikeFGI strike, com.fs.starfarer.api.campaign.LocationAPI where, Vector2f hyper, float fp, boolean abstractForce)` :533 - A Threat strike no world of the humans sees is at where today (IncursionManager.detectStrikes):
+- `ThreatScouts.nearestBase(String factionId, Vector2f where)` :567
+- `ThreatScouts.planRoute(MarketAPI home, Vector2f centre, float radiusLY, long leadSince)` :591 - A route (ThreatScoutRoute.nearestFirst) through the systems within radius of the centre, from home:
+- `ThreatScouts.sweptLately(String systemId, long leadSince)` :606
+- `ThreatScouts.unreachable(StarSystemAPI system)` :614 - Abyssal pockets and hidden-theme systems:
+- `ThreatScouts.hasPlanet(StarSystemAPI system)` :619
+- `ThreatScouts.inhabited(StarSystemAPI system)` :627 - Anyone but the swarm keeps a colony there - revealNeighbours covers those.
+- `ThreatScouts.launch(String factionId, MarketAPI home, List<String> route, String leadSystemId)` :636
+- `ThreatScouts.launch(String factionId, MarketAPI home, List<String> route, String leadSystemId, float fp, boolean patrol)` :641 - As above, a party of fp fleet points (a patrol's size, patrolSize).
+- `ThreatScouts.voyageCost(float fp, float ly)` :704 - [fuel, supplies] a party of this many fleet points pays to sail this far, as a task force pays.
+- `ThreatScouts.routeLY(MarketAPI home, List<String> route)` :711 - Light-years of the route out:
+- `ThreatScouts.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :730 - On a scouting party:
+- `ThreatScouts.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :746
 
 ## ThreatShield (112 lines)
 - `ThreatShield.ThreatShield()` :42 - The planetary shield as a military structure.
@@ -3692,32 +3699,33 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSwarmIntel.reset()` :865 - A new campaign (ThreatColonyManager.resetIncursion):
 - `ThreatSwarmIntel.drop(String systemId)` :875 - A system left the war (ThreatIncData.clearSystem):
 
-## ThreatSwarmPatrols (398 lines)
+## ThreatSwarmPatrols (415 lines)
 - `ThreatSwarmPatrols.all()` :70
 - `ThreatSwarmPatrols.enabled()` :84
 - `ThreatSwarmPatrols.carrier(CampaignFleetAPI fleet)` :89 - Whether the fleet is a Patrol Swarm or a Scouting Swarm:
 - `ThreatSwarmPatrols.poll(Random random)` :95
-- `ThreatSwarmPatrols.logApproaches()` :120 - Debug log of how close each Patrol Swarm comes to each human scouting party or patrol (the user, 2026-10-05:
-- `ThreatSwarmPatrols.reset()` :171 - RESET War:
-- `ThreatSwarmPatrols.all()` :178
-- `ThreatSwarmPatrols.describe(Patrol p)` :181
-- `ThreatSwarmPatrols.knownStop(String systemId)` :184
-- `ThreatSwarmPatrols.onEnter(Patrol p, StarSystemAPI system, long now)` :187
-- `ThreatSwarmPatrols.onStay(Patrol p, StarSystemAPI system, long now)` :190
-- `ThreatSwarmPatrols.stayVerb()` :193
-- `ThreatSwarmPatrols.homeOf(Patrol p)` :196
-- `ThreatSwarmPatrols.returnLabel(Patrol p, MarketAPI home)` :203
-- `ThreatSwarmPatrols.friendly(Patrol p, StarSystemAPI system)` :206
-- `ThreatSwarmPatrols.deliver(Patrol p, Object seen)` :209
-- `ThreatSwarmPatrols.onLost(Patrol p)` :216
-- `ThreatSwarmPatrols.levelKey(String systemId)` :223
-- `ThreatSwarmPatrols.size(String systemId)` :228 - The size a hive system's patrols are built at:
-- `ThreatSwarmPatrols.launchAll(Random random)` :232
-- `ThreatSwarmPatrols.planRoute(MarketAPI colony, int stops)` :263 - The nearest systems around the colony's that no hive and no one else holds, not on another patrol's route and not patrolled within swarmPatrolMemoryDays, in the order a patrol flies them.
-- `ThreatSwarmPatrols.compare(StarSystemAPI a, StarSystemAPI b)` :279
-- `ThreatSwarmPatrols.launch(MarketAPI colony, String systemId, List<String> route, float size, Random random)` :305 - Fabricates a Patrol Swarm of about size FP at the colony and sends it round the route;
-- `ThreatSwarmPatrols.meet(String key, String factionId, String systemId, float fp, String kind, LocationAPI where, Vector2f hyper, ThreatPurgeFGI siege)` :350 - A human attack force the hive's own eyes do not see is at where (hyper in hyperspace) today (ThreatSwarmIntel.sweepContacts):
-- `ThreatSwarmPatrols.forceBurn(ThreatPurgeFGI siege)` :393 - The burn a human expedition flying as a route makes:
+- `ThreatSwarmPatrols.logApproaches()` :121 - Debug log of how close each Patrol Swarm comes to each human scouting party or patrol (the user, 2026-10-05:
+- `ThreatSwarmPatrols.census()` :173 - Once a month, both sides' patrol census (ThreatScoutRoute.census) with their current levels.
+- `ThreatSwarmPatrols.reset()` :188 - RESET War:
+- `ThreatSwarmPatrols.all()` :195
+- `ThreatSwarmPatrols.describe(Patrol p)` :198
+- `ThreatSwarmPatrols.knownStop(String systemId)` :201
+- `ThreatSwarmPatrols.onEnter(Patrol p, StarSystemAPI system, long now)` :204
+- `ThreatSwarmPatrols.onStay(Patrol p, StarSystemAPI system, long now)` :207
+- `ThreatSwarmPatrols.stayVerb()` :210
+- `ThreatSwarmPatrols.homeOf(Patrol p)` :213
+- `ThreatSwarmPatrols.returnLabel(Patrol p, MarketAPI home)` :220
+- `ThreatSwarmPatrols.friendly(Patrol p, StarSystemAPI system)` :223
+- `ThreatSwarmPatrols.deliver(Patrol p, Object seen)` :226
+- `ThreatSwarmPatrols.onLost(Patrol p)` :233
+- `ThreatSwarmPatrols.levelKey(String systemId)` :240
+- `ThreatSwarmPatrols.size(String systemId)` :245 - The size a hive system's patrols are built at:
+- `ThreatSwarmPatrols.launchAll(Random random)` :249
+- `ThreatSwarmPatrols.planRoute(MarketAPI colony, int stops)` :280 - The nearest systems around the colony's that no hive and no one else holds, not on another patrol's route and not patrolled within swarmPatrolMemoryDays, in the order a patrol flies them.
+- `ThreatSwarmPatrols.compare(StarSystemAPI a, StarSystemAPI b)` :296
+- `ThreatSwarmPatrols.launch(MarketAPI colony, String systemId, List<String> route, float size, Random random)` :322 - Fabricates a Patrol Swarm of about size FP at the colony and sends it round the route;
+- `ThreatSwarmPatrols.meet(String key, String factionId, String systemId, float fp, String kind, LocationAPI where, Vector2f hyper, ThreatPurgeFGI siege)` :367 - A human attack force the hive's own eyes do not see is at where (hyper in hyperspace) today (ThreatSwarmIntel.sweepContacts):
+- `ThreatSwarmPatrols.forceBurn(ThreatPurgeFGI siege)` :410 - The burn a human expedition flying as a route makes:
 
 ## ThreatSwarmScouts (404 lines)
 - `ThreatSwarmScouts.all()` :57

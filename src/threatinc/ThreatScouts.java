@@ -183,6 +183,16 @@ public class ThreatScouts {
 	// the poll
 	// ------------------------------------------------------------------
 
+	/** The humans' patrol census line (ThreatScoutRoute.census), with each mobilised faction's level. */
+	public static void census() {
+		StringBuilder lv = new StringBuilder();
+		for (String f : ThreatWarState.warFactionIds()) {
+			int l = ThreatScoutRoute.level(levelKey(f));
+			if (l > 0) lv.append(lv.length() > 0 ? ", " : "").append(f).append(' ').append(l);
+		}
+		ROUTE.census("humans", lv.length() > 0 ? lv.toString() : "none raised");
+	}
+
 	public static void poll(Random random) {
 		if (!enabled()) {
 			// switched off mid-game: the parties out go home rather than sit on their patrol
@@ -498,9 +508,8 @@ public class ThreatScouts {
 				List<String> route = planRoute(home, home.getStarSystem().getLocation(), radius, 0L);
 				if (route.isEmpty()) continue;
 				if (route.size() > stops) route = new ArrayList<String>(route.subList(0, stops));
-				Scout s = launch(factionId, home, route, null, size);
+				Scout s = launch(factionId, home, route, null, size, true);
 				if (s == null) continue;
-				s.patrol = true;
 				out++;
 				any = true;
 			}
@@ -625,11 +634,11 @@ public class ThreatScouts {
 	}
 
 	protected static Scout launch(String factionId, MarketAPI home, List<String> route, String leadSystemId) {
-		return launch(factionId, home, route, leadSystemId, ThreatIncConfig.scoutFleetPoints());
+		return launch(factionId, home, route, leadSystemId, ThreatIncConfig.scoutFleetPoints(), false);
 	}
 
 	/** As above, a party of {@code fp} fleet points (a patrol's size, patrolSize). */
-	protected static Scout launch(String factionId, MarketAPI home, List<String> route, String leadSystemId, float fp) {
+	protected static Scout launch(String factionId, MarketAPI home, List<String> route, String leadSystemId, float fp, boolean patrol) {
 		StarSystemAPI homeSystem = home.getStarSystem();
 		if (homeSystem == null || home.getPrimaryEntity() == null) return null;
 		// (2026-09-29: closed economy - a party sailed for free.) It pays what
@@ -681,11 +690,12 @@ public class ThreatScouts {
 		s.route = route;
 		s.leg = 0;
 		s.leadSystemId = leadSystemId;
+		s.patrol = patrol;
 		all().add(s);
 		ROUTE.sendTo(s, ThreatScoutRoute.systemById(route.get(0)));
 
-		ThreatIncConfig.log("Scouting party of " + factionId + " from " + home.getName()
-				+ (leadSystemId != null ? " (lead)" : " (sweep)") + ": " + route
+		ThreatIncConfig.log((s.patrol ? "Patrol of " : "Scouting party of ") + factionId + " from " + home.getName()
+				+ (leadSystemId != null ? " (lead)" : s.patrol ? " (" + (int) fp + " FP)" : " (sweep)") + ": " + route
 				+ " (" + (int) fuel + " fuel, " + (int) supplies + " supplies drawn)");
 		return s;
 	}

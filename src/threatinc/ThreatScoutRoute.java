@@ -55,6 +55,11 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 		 * {@link #deliver}) and lost with it. Null on older saves.
 		 */
 		public List<Object> carried;
+		/** Debug bookkeeping (2026-10-06, the user: "more logging so we can see what the patrols are doing"): set on the first poll out. */
+		public boolean watched;
+		public long launchedTimestamp;
+		public float launchFP;
+		public int fights, won, stops;
 	}
 
 	/** A star system by id, null for a null id: the direct lookup, this runs per party per poll. */
@@ -102,6 +107,7 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 	protected void report(S s) {
 		if (s.carried == null || s.carried.isEmpty()) return;
 		List<Object> seen = new ArrayList<Object>(s.carried);
+		filed += seen.size();
 		s.carried.clear();
 		for (Object o : seen) deliver(s, o);
 	}
@@ -123,9 +129,21 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 				unfiled = 0;
 			}
 			if (!home) onLost(s);
+			if (home) cameHome++; else lostN++;
+			if (fleet != null) FATES.put(fleet.getId(), home ? "home" : "lost");
+			float days = s.launchedTimestamp != 0L ? Global.getSector().getClock().getElapsedDaysSince(s.launchedTimestamp) : 0f;
 			ThreatIncConfig.log(describe(s) + (home ? " home" : " lost")
-					+ (unfiled > 0 ? ", and " + unfiled + " sighting(s) with it" : ""));
+					+ (unfiled > 0 ? ", and " + unfiled + " sighting(s) with it" : "")
+					+ " (out " + (int) days + " days, " + s.stops + " of " + s.route.size() + " stops, " + s.fights + " fight(s), "
+					+ s.won + " won; sailed at " + (int) s.launchFP + " FP" + (home && fleet != null ? ", back with " + (int) fleet.getFleetPoints() : "") + ")");
 			return;
+		}
+		if (!s.watched) {
+			s.watched = true;
+			s.launchedTimestamp = Global.getSector().getClock().getTimestamp();
+			s.launchFP = fleet.getFleetPoints();
+			launched++;
+			fleet.addEventListener(new BattleMark<S>(this, s));
 		}
 		// what it carries is known the day it is in a friendly system
 		if (s.carried != null && !s.carried.isEmpty() && fleet.getContainingLocation() instanceof StarSystemAPI
@@ -155,6 +173,8 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 		}
 		if (s.enteredTimestamp == 0L) {
 			s.enteredTimestamp = now;
+			s.stops++;
+			logArrival(s, target);
 			if (onEnter(s, target, now)) {
 				goHome(s);
 				return;
@@ -243,6 +263,76 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 		public void reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner,
 				com.fs.starfarer.api.campaign.BattleAPI battle) {
 		}
+	}
+
+	// ------------------------------------------------------------------
+	// debug: what the patrols are doing (2026-10-06, the user)
+	// ------------------------------------------------------------------
+
+	/** Since the last census: parties first seen out, home, lost, and sightings filed. */
+	public int launched, cameHome, lostN, filed;
+
+	/** Fleet id -> "home" or "lost", for every party that ended since the load (ThreatSwarmPatrols.logApproaches). */
+	public static final Map<String, String> FATES = new java.util.HashMap<String, String>();
+
+	/** One line on arrival at a stop: which stop, how long out, and the other side's fleets in the system. */
+	protected void logArrival(S s, StarSystemAPI system) {
+		if (!ThreatIncConfig.debugLogging() || s.fleet == null) return;
+		int others = 0;
+		float fp = 0f;
+		Map<String, Integer> who = new java.util.HashMap<String, Integer>();
+		for (CampaignFleetAPI f : system.getFleets()) {
+			if (f == s.fleet || !f.isAlive() || f.getFaction() == null) continue;
+			if (f.getFaction() == s.fleet.getFaction() || !f.getFaction().isHostileTo(s.fleet.getFaction())) continue;
+			others++;
+			fp += f.getFleetPoints();
+			Integer n = who.get(f.getFaction().getId());
+			who.put(f.getFaction().getId(), n == null ? 1 : n + 1);
+		}
+		float days = s.launchedTimestamp != 0L ? Global.getSector().getClock().getElapsedDaysSince(s.launchedTimestamp) : 0f;
+		ThreatIncConfig.log(describe(s) + " at " + system.getName() + " (stop " + s.stops + " of " + s.route.size() + ", day "
+				+ (int) days + " out, " + (int) s.fleet.getFleetPoints() + " FP): " + (others == 0 ? "no hostile fleet"
+				: others + " hostile fleet(s), " + (int) fp + " FP " + who));
+	}
+
+	/** Logs every battle a party is in, and counts it. The route is not saved (transient): after a load the line names the fleet. */
+	public static class BattleMark<S extends Party> implements com.fs.starfarer.api.campaign.listeners.FleetEventListener {
+		protected transient ThreatScoutRoute<S> route;
+		protected S party;
+		public BattleMark(ThreatScoutRoute<S> route, S party) {
+			this.route = route;
+			this.party = party;
+		}
+		public void reportFleetDespawnedToListener(CampaignFleetAPI fleet,
+				com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param) {
+		}
+		public void reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner,
+				com.fs.starfarer.api.campaign.BattleAPI battle) {
+			if (party == null) return;
+			party.fights++;
+			boolean won = primaryWinner != null && battle != null && battle.getSnapshotSideFor(fleet) != null
+					&& battle.getSnapshotSideFor(primaryWinner) == battle.getSnapshotSideFor(fleet);
+			if (won) party.won++;
+			String where = fleet.getContainingLocation() != null ? fleet.getContainingLocation().getName() : "?";
+			ThreatIncConfig.log((route != null ? route.describe(party) : fleet.getNameWithFaction())
+					+ (won ? " won a battle" : " lost a battle") + " in " + where
+					+ (primaryWinner != null && !won ? " to " + primaryWinner.getNameWithFaction() : "")
+					+ ", now " + (int) fleet.getFleetPoints() + " FP of " + (int) party.launchFP + (fleet.isAlive() ? "" : " (destroyed)"));
+		}
+	}
+
+	/** The monthly census line for this side, and the counters reset: parties out and returning, their FP, and the month's launches, returns, losses and sightings. */
+	public void census(String side, String levels) {
+		int out = 0, back = 0;
+		float fp = 0f;
+		for (S s : all()) {
+			if (s.fleet == null || !s.fleet.isAlive()) continue;
+			if (s.returning) back++; else out++;
+			fp += s.fleet.getFleetPoints();
+		}
+		ThreatIncConfig.log("Patrol census (" + side + "): " + out + " out, " + back + " returning, " + (int) fp + " FP; levels " + levels
+				+ "; this month launched " + launched + ", home " + cameHome + ", lost " + lostN + ", sightings filed " + filed);
+		launched = cameHome = lostN = filed = 0;
 	}
 
 	// ------------------------------------------------------------------
