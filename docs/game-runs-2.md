@@ -369,3 +369,20 @@ Build 8ad3875: as hw23 with `strikeFundShare` 0.5.
 
 - The fund fills sooner (war day 1308-1310, found m46-47, hw23: 1401-1492, m49-52) and half the production never
   becomes garrison: one game extinct, two won. Outcomes spread again where hw23's did not.
+
+## 22. hw25a-hw25c (2026-10-06): hw23 repeated (fund 0.3, strikes of at least 8,000 FP)
+
+Build 1c090f1, the hw23 setting again.
+
+| | hw25a | hw25b | hw25c |
+|---|---|---|---|
+| First strike / first hive found, war day | 1463 / 1565 | 1460 / 1590 | 1493 / 1601 |
+| Found, month (hives then) | 51 (22) | 51 (22) | 52 (25) |
+| Hives at m120 (peak) | 139 (141) | 127 (128) | 64 (65) |
+| Strikes (mean FP) | 32 (8,267) | 33 (8,334) | 31 (8,173) |
+| Threat landings / human worlds lost | 31 / 19 | 25 / 11 | 17 / 10 |
+| Forward bases founded / destroyed by a strike | 44 / 14 | 41 / 10 | 43 / 15 |
+| Human landings / hives eradicated | 39 / 28 | 50 / 40 | 59 / 49 |
+
+- Holds: six of six games at this setting end with the swarm at 64-185 hives and 10-23 human worlds lost. The
+  opening is the same to the month (war day 1401-1493, found m49-52).
