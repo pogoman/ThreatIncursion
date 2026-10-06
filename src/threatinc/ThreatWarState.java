@@ -240,6 +240,19 @@ public class ThreatWarState {
 				ThreatIncConfig.log("War mode: dropped " + id + " (excluded from mobilisation)");
 			}
 		}
+		// the swarm gone from the sector (sl2, 2026-10-06: two factions flew patrols five years after the last hive)
+		if (ThreatIncConfig.warStandDownOnEradication() && ThreatIncursionIntel.isEradicated()) {
+			for (String id : new ArrayList<String>(wars().keySet())) {
+				if (Factions.PLAYER.equals(id)) continue;
+				FactionAPI faction = Global.getSector().getFaction(id);
+				wars().remove(id);
+				ThreatReserves.syncWarFooting(warFactionIds());
+				ThreatColonyManager.announce(ThreatNotice.titled("Stood Down").icon(faction)
+						.line("%s has stood down from war footing.", faction == null ? id : ThreatNotice.faction(faction))
+						.line("The swarm is gone from the sector."));
+				ThreatIncConfig.log("War mode: " + id + " stood down - the swarm is eradicated");
+			}
+		}
 		float days = ThreatIncConfig.warModeStandDownDays();
 		if (days <= 0f) return;
 		for (String id : new ArrayList<String>(wars().keySet())) {

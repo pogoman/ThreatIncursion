@@ -521,6 +521,8 @@ public class ThreatIncConfig {
 	public static boolean strategyEnabled()  { return b("threatinc_strategyEnabled", true); }
 	/** Days after its last strike a faction stands down (if no hive is in reach); 0 = never. */
 	public static float warModeStandDownDays() { return f("threatinc_warModeStandDownDays"); }
+	/** Every mobilised NPC faction stands down once the swarm is eradicated (ThreatIncursionIntel.isEradicated); the player's faction stands down by order only. */
+	public static boolean warStandDownOnEradication() { return b("threatinc_warStandDownOnEradication", true); }
 	/**
 	 * Faction ids that never mobilise (comma-separated; "pirates" by default):
 	 * the Threat still strikes their worlds and they stay hostile to it, but
