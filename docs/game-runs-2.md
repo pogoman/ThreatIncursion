@@ -632,3 +632,17 @@ aid fired 115 times here (peacetime shortages exist in this sector) against 0 in
 wave to Blue stalled alive for ten years (facts, "Why did hw34b's swarm do nothing"), the hive had fuel 0 throughout, three
 size-7 hives on 840k supplies and 76k FP banked, 0 strikes, and the game ran 190 days a minute. Logs `ti-hw34a/b-keep.txt`; dumps
 kept in `tools/warsim/validation/hw34a-b`.
+
+## 35. hw35 - trade convoys, holds and the wave fix, three runs on the second sector (2026-10-06)
+
+Three new games on 8421ab1a on `save_AphelionDysnomia_4103534775338436064`, to war day 3699 (a, ended by hand) / 3789 / 3759, no
+exceptions. The wave fix: every game's bootstrap wave to Blue stalled in the Ala system ("had not arrived in 330 days, in the
+system"), was re-steered, stalled again and was moved to its orbit; every game had a war (hw34b had none). Hives at the end 91 /
+0 / 48 (b: 32 at d2409, 11 at d2709, 0 by d3789), founded 118 / 47 / 112, eradicated 34 / 48 / 65; sieges sailed 162 / 110 / 311,
+completed 69 / 68 / 113. Navies: a Persean 11.7k with 10.3k lost and yards 0, Tri-Tachyon 13k; b Persean 134k, Independent 150k,
+Tri-Tachyon 71k, Church 53k all free; c Persean 45k (41k free), Tri-Tachyon 60k, Hegemony 25k. Supplies a faction at the end
+19-39k / 32k-817k / 16-51k. Holds: 37 / 12 / 42 bases held supplies for the shortage's producer; Heavy Industry built 19 / 33 / 25,
+fuel plants 17 / 33 / 15. Trade convoys 7 / 9 / 16, of which supplies 1 / 2 / 3: it sails across standings (Persean -> Tri-Tachyon
+at Suspicious, Church -> Independent at Neutral) but almost only fuel, which everyone hoards (250k-2.9M) - no war faction reads
+surplus in supplies (banking >= trailing demand and four months in stock) while the war runs. Bases founded-and-dismantled 68 / 14 /
+69 (a: 40 no garrison; c: 47 struck), standing 24 / 45 / 27. Dumps `tools/warsim/validation/hw35a-c`, logs `ti-hw35*-keep.txt`.
