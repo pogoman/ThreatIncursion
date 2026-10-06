@@ -589,3 +589,18 @@ For the user: hull scale (`hullPoolMult`, `fabFPPerShipUnit`, the forge invest r
 against 50-65 forges); forward-base build order (Heavy Industry first, the swap keyed on hull debt); the reserve accrual that
 buys nothing; scouts gated on hulls (exempt them like convoys?); guards holding hulls for good. Dumps: hw31c
 `tools/warsim/validation/hw31c`, a and b when they finish.
+
+## 32. hw32 - the faction stock plan and one banking rate, full runs (2026-10-06)
+
+Three new games on 3b19fa78 (`ThreatFactionStock` driving `ThreatFrontlines.build`, `reserveSurplusMult` 1.0), to war
+day 3752-3763, no exceptions. Against hw31 by run: bases founded 96 / 79 / 73 (79 / ~49 / 42); abandoned for no garrison
+33 / 65 / 13 (64 / ? / 15) - a halved per base founded, c level, b worse (its Tri-Tachyon never built a yard, 645 FP lost on
+a 270 pool, Hegemony's yards stayed at 800); struck 22 / 8 / 17. Heavy Industry built 43 / 23 / 41 (19 / - / 19), fuel
+plants 38 / 19 / 39, Military Bases 23 / 9 / 33 (1 / 0 / 12); yards at the end Hegemony 2,900 / 800 / 5,800 FP/mo (200 /
+3,600 / 3,800), Persean 2,700 / 1,300 / 1,700, Tri-Tachyon 2,100 / 0 / 2,100, Independent 3,700 / 1,300 / 2,700. The plan
+line reads as meant (`hulls 0 free of 2175, 343 to rebuild at 400/mo (short)`); zero conversions fired - Heavy Industry
+goes up before any fuel plant, so no surplus plant ever stands to be torn down, and the Patrol HQ path needs hulls in
+surplus, never seen. Hegemony supplies banked 25 / 8 / 58 units at 1.0 (hw31a 16 at 1.5): forward-base Heavy Industry now
+counts. Every pool 0 free at the end: hunts waiting 2,121 / 1,155 / 1,823, postponed 598 / 775 / 922 - production-bound
+now, not rule-bound. Sieges 87 / 86 / 154, hives eradicated 30 / 14 / 36 (14 / 0 / 30). Swarm 153 / 165 / 155 hives,
+267k / 378k / 206k FP, 18-45k FP/mo against 2-6k of yards a faction. Dumps: `tools/warsim/validation/hw32a-c`.
