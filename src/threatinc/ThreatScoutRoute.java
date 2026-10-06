@@ -60,6 +60,8 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 		public long launchedTimestamp;
 		public float launchFP;
 		public int fights, won, stops;
+		/** Fleet points at the last poll it was alive: a despawned fleet reports 0. */
+		public float lastFP;
 	}
 
 	/** A star system by id, null for a null id: the direct lookup, this runs per party per poll. */
@@ -135,7 +137,7 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 			ThreatIncConfig.log(describe(s) + (home ? " home" : " lost")
 					+ (unfiled > 0 ? ", and " + unfiled + " sighting(s) with it" : "")
 					+ " (out " + (int) days + " days, " + s.stops + " of " + s.route.size() + " stops, " + s.fights + " fight(s), "
-					+ s.won + " won; sailed at " + (int) s.launchFP + " FP" + (home && fleet != null ? ", back with " + (int) fleet.getFleetPoints() : "") + ")");
+					+ s.won + " won; sailed at " + (int) s.launchFP + " FP" + (home ? ", back with " + (int) s.lastFP : "") + ")");
 			return;
 		}
 		if (!s.watched) {
@@ -145,6 +147,7 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 			launched++;
 			fleet.addEventListener(new BattleMark<S>(this, s));
 		}
+		s.lastFP = fleet.getFleetPoints();
 		// what it carries is known the day it is in a friendly system
 		if (s.carried != null && !s.carried.isEmpty() && fleet.getContainingLocation() instanceof StarSystemAPI
 				&& friendly(s, (StarSystemAPI) fleet.getContainingLocation())) {
