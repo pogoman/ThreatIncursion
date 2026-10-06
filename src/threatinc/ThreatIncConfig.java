@@ -174,7 +174,7 @@ public class ThreatIncConfig {
 	public static float strikeStagedGatherLY() { return fd("threatinc_strikeStagedGatherLY", 0f); }
 	/** Share of every hive colony's fabrication set aside in the hive's strike fund, which alone pays staged strikes (ThreatColonyManager.strikeFund); 0 = no fund, the pooled banks pay. */
 	public static float strikeFundShare() { return fd("threatinc_strikeFundShare", 0f); }
-	/** The least fleet points a strike paid from the strike fund sails with. */
+	/** The least fleet points the war's OPENING strike (no faction mobilised yet) sails with; every later strike is sized to its target (the user, 2026-10-06). */
 	public static float strikeStagedMinFP() { return fd("threatinc_strikeStagedMinFP", 0f); }
 	/** With a strike fund, the war's first strike (no faction at war yet) waits until the fund holds this many fleet points; 0 = no wait. */
 	public static float strikeStagedOpenFP() { return fd("threatinc_strikeStagedOpenFP", 0f); }
