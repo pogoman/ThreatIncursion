@@ -4987,6 +4987,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		boolean funded = ThreatIncConfig.strikeFundShare() > 0f;
 		float minFP = funded ? ThreatIncConfig.strikeStagedMinFP() : 0f;
 		float bank = funded ? ThreatColonyManager.strikeFund() : ThreatColonyManager.hivePoolableFP(staging);
+		// the war's first strike waits until the fund holds strikeStagedOpenFP (a trial of 2026-10-06, hw27:
+		// does the swarm win on the size of its strikes or on the growth before the war opens?)
+		if (funded && ThreatWarState.warFactionIds().isEmpty() && bank < ThreatIncConfig.strikeStagedOpenFP()) {
+			if (defOut != null) ThreatIncConfig.logQuiet("strikeopen", "Staged strike waits to open the war: the strike fund holds "
+					+ (int) bank + " of " + (int) ThreatIncConfig.strikeStagedOpenFP() + " FP");
+			return null;
+		}
 		float ly = ThreatFuel.ly(source, target.getStarSystem());
 		float daysAway = ThreatReach.strikeDays(ly);
 		StagedPlan plan = new StagedPlan();

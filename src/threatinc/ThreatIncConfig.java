@@ -176,6 +176,8 @@ public class ThreatIncConfig {
 	public static float strikeFundShare() { return fd("threatinc_strikeFundShare", 0f); }
 	/** The least fleet points a strike paid from the strike fund sails with. */
 	public static float strikeStagedMinFP() { return fd("threatinc_strikeStagedMinFP", 0f); }
+	/** With a strike fund, the war's first strike (no faction at war yet) waits until the fund holds this many fleet points; 0 = no wait. */
+	public static float strikeStagedOpenFP() { return fd("threatinc_strikeStagedOpenFP", 0f); }
 	public static boolean postureRecallPartial() { return b("threatinc_postureRecallPartial", true); }
 	/** Whether a system under attack masses its spare swarms, then its neighbours', at its worlds short of their need, and a launch leaves the need home (ThreatPosture.massWithin, strikeCapFP). */
 	public static boolean postureMass() { return b("threatinc_postureMass", false); }
