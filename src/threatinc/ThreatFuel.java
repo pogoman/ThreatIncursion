@@ -568,7 +568,8 @@ public class ThreatFuel {
 	 * Notes a send the stock could not pay, for the month's census line, and
 	 * books its unmet bill as demand on the stock (noteDemand): the fuel the
 	 * last canPay or pay that failed asked for, and for a Seeding Swarm the
-	 * supplies of its founding too (canFound). A send held poll after poll is
+	 * supplies of its founding too (canFound), for a strike the supplies
+	 * shortfall. A send held poll after poll is
 	 * booked once a SHORT_DAYS, as the trip it would have flown that month.
 	 * Before 2026-10-01 every hold noted a month's fuel shortage, which the
 	 * planner answered with a plant whatever the stock and production.
@@ -581,6 +582,12 @@ public class ThreatFuel {
 		if (bookHold(what)) {
 			if (fuel != null) noteDemand(Commodities.FUEL, fuel);
 			if (wave && supplies != null) noteDemand(Commodities.SUPPLIES, supplies);
+			// a strike books the shortfall alone, as heldShort books its fuel
+			// (2026-10-06, hw36a: its supplies were never booked, so the planner
+			// never saw the strike the garrison's upkeep starved)
+			if (!wave && supplies != null && supplies > stock(Commodities.SUPPLIES)) {
+				noteDemand(Commodities.SUPPLIES, supplies - stock(Commodities.SUPPLIES));
+			}
 		}
 		// structures free or passage off: the old rule, a hold is a month's shortage
 		if (!planned()) {

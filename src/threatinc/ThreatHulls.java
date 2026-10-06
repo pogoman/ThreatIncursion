@@ -269,9 +269,32 @@ public class ThreatHulls {
 				ThreatIncConfig.log("Hulls: " + ThreatWarState.displayName(factionId) + " rebuilt its losses");
 			}
 			if (made > 0f && ThreatWarState.isAtWar(factionId)) {
-				builtMap().put(factionId, built(factionId) + made);
+				// supplies-bound (the user, 2026-10-06, hw36): the yards bank no
+				// hull the faction's supplies surplus cannot keep up
+				float add = Math.min(made, suppliesKeepFP(factionId));
+				if (add > 0f) builtMap().put(factionId, built(factionId) + add);
+				if (add < made) {
+					ThreatIncConfig.logQuiet("hull_idle_" + factionId, "Hulls: " + ThreatWarState.displayName(factionId)
+							+ " yards idle: " + (int) ((made - add) * 30f / days) + " FP/mo its supplies cannot keep ("
+							+ (int) ThreatFactionStock.perMonth(factionId, Commodities.SUPPLIES) + " banked, "
+							+ (int) ThreatFactionStock.demandPerMonth(factionId, Commodities.SUPPLIES) + " demand a month)");
+				}
 			}
 		}
+	}
+
+	/**
+	 * Fleet points of hulls the faction's supplies surplus - what its reserves
+	 * bank a month less their trailing demand, the standing upkeep already paid
+	 * among it - would keep up at {@link #standingRate}. No bound with standing
+	 * upkeep off.
+	 */
+	public static float suppliesKeepFP(String factionId) {
+		float rate = standingRate(factionId);
+		if (rate <= 0f) return Float.MAX_VALUE;
+		float spare = ThreatFactionStock.perMonth(factionId, Commodities.SUPPLIES)
+				- ThreatFactionStock.demandPerMonth(factionId, Commodities.SUPPLIES);
+		return Math.max(0f, spare) / rate;
 	}
 
 	// ------------------------------------------------------------------
@@ -341,6 +364,8 @@ public class ThreatHulls {
 			paid += ThreatReserves.drawAbove(m, Commodities.SUPPLIES, want - paid);
 		}
 		float unpaid = Math.max(0f, want - paid);
+		// the unpaid is demand the faction's planner builds for (ThreatFactionStock.shortest)
+		if (unpaid > 0f) ThreatFactionStock.noteDemand(factionId, Commodities.SUPPLIES, unpaid);
 		float lost = unpaid > 0f ? starve(factionId, unpaid / rate, unpaid) : 0f;
 		float[] t = upkeepTally.get(factionId);
 		if (t == null) {
