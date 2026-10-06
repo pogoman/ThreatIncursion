@@ -267,6 +267,129 @@ public class ThreatFactionStock {
 		data().put(key(f, "*", "converted"), Global.getSector().getClock().getTimestamp());
 	}
 
+	// ------------------------------------------------------------------
+	// the shortage's answer held (user, 2026-10-06, hw33b): a producer a
+	// market cannot pay for yet reserves its price there - upkeep, hunts and
+	// other markets' builds draw the market only above it (ThreatReserves.floor)
+	// ------------------------------------------------------------------
+
+	/** Days a hold stands unrenewed: the builder renews it every pass (ThreatFrontlines.build), so a lapsed one is a base that stopped building. */
+	protected static final float HOLD_DAYS = 10f;
+
+	protected static String holdKey(MarketAPI market, String field) {
+		return "hold|" + market.getId() + "|" + field;
+	}
+
+	/**
+	 * Holds supplies at the market for the producer it cannot pay for: the
+	 * price less what it has to hand. hw33b's Hegemony lost its yards with
+	 * Chicomoztoc and queued Heavy Industry on four bases for 1,200 days, each
+	 * read "5,000 wanted, 1,008 to hand" while its fleets' upkeep took the rest
+	 * - the navy starving the yards meant to rebuild it.
+	 */
+	public static void hold(MarketAPI market, String industryId, float wanted) {
+		if (market == null || industryId == null || wanted <= 0f) return;
+		Map<String, Object> d = data();
+		d.put(holdKey(market, "industry"), industryId);
+		d.put(holdKey(market, "wanted"), Float.valueOf(wanted));
+		d.put(holdKey(market, "at"), Global.getSector().getClock().getTimestamp());
+	}
+
+	/** Lifts the market's hold (the builder's own pass, which reads the whole stock, and a build that paid). */
+	public static void release(MarketAPI market) {
+		if (market == null) return;
+		Map<String, Object> d = data();
+		d.remove(holdKey(market, "industry"));
+		d.remove(holdKey(market, "wanted"));
+		d.remove(holdKey(market, "at"));
+	}
+
+	/** Supplies the market holds for a producer it cannot yet pay; 0 without a live hold. */
+	public static float held(MarketAPI market) {
+		if (market == null) return 0f;
+		Object at = data().get(holdKey(market, "at"));
+		if (!(at instanceof Long)) return 0f;
+		if (Global.getSector().getClock().getElapsedDaysSince((Long) at) > HOLD_DAYS) return 0f;
+		return num(holdKey(market, "wanted"));
+	}
+
+	/** The producer the market holds for, or null. */
+	public static String heldIndustry(MarketAPI market) {
+		if (market == null || held(market) <= 0f) return null;
+		Object v = data().get(holdKey(market, "industry"));
+		return v instanceof String ? (String) v : null;
+	}
+
+	/** The faction's market holding supplies for a producer, the one holding the most; null without one. */
+	public static MarketAPI heldMarket(String f) {
+		MarketAPI best = null;
+		float most = 0f;
+		for (MarketAPI m : ThreatReserves.marketsOf(f)) {
+			float h = held(m);
+			if (h > most) {
+				most = h;
+				best = m;
+			}
+		}
+		return best;
+	}
+
+	// ------------------------------------------------------------------
+	// trade through the war (user, 2026-10-06): what an ally's convoy brings
+	// ------------------------------------------------------------------
+
+	/**
+	 * What an ally's convoy should bring the faction of the commodity: a held
+	 * producer's price still wanted (supplies), else what the stock runs dry
+	 * by before a producer could stand - (demand - production - coming) x
+	 * build months, less the stock; 0 when the plan reads neither.
+	 */
+	public static float aidNeed(String f, String c) {
+		if (f == null || c == null) return 0f;
+		float need = 0f;
+		if (Commodities.SUPPLIES.equals(c)) {
+			MarketAPI m = heldMarket(f);
+			if (m != null) need = held(m);
+		}
+		if (runsDry(f, c)) {
+			float months = buildDays(c) / 30f;
+			float gap = (demandPerMonth(f, c) - perMonth(f, c) - comingPerMonth(f, c)) * months - stock(f, c);
+			need = Math.max(need, gap);
+		}
+		return Math.max(0f, need);
+	}
+
+	/** Where the convoy lands: the market holding for a producer, else the faction's depot with the least of the commodity. */
+	public static MarketAPI aidTarget(String f, String c) {
+		if (f == null || c == null) return null;
+		if (Commodities.SUPPLIES.equals(c)) {
+			MarketAPI m = heldMarket(f);
+			if (m != null && ThreatReserves.hasDepot(m)) return m;
+		}
+		MarketAPI best = null;
+		float least = Float.MAX_VALUE;
+		for (MarketAPI m : ThreatReserves.marketsOf(f)) {
+			if (m.getStarSystem() == null || m.getPrimaryEntity() == null || !ThreatReserves.hasDepot(m)) continue;
+			float s = ThreatReserves.stock(m.getId(), c);
+			if (s < least) {
+				least = s;
+				best = m;
+			}
+		}
+		return best;
+	}
+
+	/** Whether allies may sail the faction another convoy of the stock: the last has had SHORT_DAYS to land. */
+	public static boolean mayAid(String f, String c) {
+		Object at = data().get(key(f, c, "aided"));
+		return !(at instanceof Long) || Global.getSector().getClock().getElapsedDaysSince((Long) at) >= SHORT_DAYS;
+	}
+
+	/** Notes that allies sailed the faction a convoy of the stock. */
+	public static void aided(String f, String c) {
+		data().put(key(f, c, "aided"), Global.getSector().getClock().getTimestamp());
+	}
+
 	/** One line of the faction's plan for the log: each stock, its months of cover and verdict. */
 	public static String describe(String f) {
 		StringBuilder b = new StringBuilder();

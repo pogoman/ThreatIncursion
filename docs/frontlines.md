@@ -149,7 +149,14 @@ Industry 5,000, Fuel Production 4,500, Military Base 4,500, station upgrades 5,0
 link's own supplies above its floor and staging bank go first, then what a hunt may take of the
 faction's other markets in reach (`payFromOthers`). A step it cannot pay for waits, and the link
 builds nothing else meanwhile (`Frontline: X waits on N supplies for <id>`). The Threat's planner
-pays the same prices from the hive's stock (docs/hive-economy.md).
+pays the same prices from the hive's stock (docs/hive-economy.md). **The shortage's answer first** (user, 2026-10-06):
+when the producer of what the faction is shortest of is wanted here and cannot be paid, the
+market holds the price still wanted above its floor until the next pass
+(`ThreatFactionStock.hold`, read by `ThreatReserves.floor`), so fleet upkeep, hunts and other
+markets' builds no longer draw what the yard is saving for (`Frontline: X holds N supplies for
+heavyindustry (hulls short)`); an ally's convoy lands where it is held (docs/player-aid.md 5).
+hw33b: four Hegemony bases read "5,000 wanted, 1,008 to hand" for 1,200 days while the
+navy's upkeep took the rest.
 
 | Size | Step | Demand checked |
 | --- | --- | --- |

@@ -258,6 +258,15 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
 - **Logs:** `Hive stock: <what> held, N fuel and M supplies in stock` (once per kind), and the monthly
   census line ends `; fuel N (+M/mo, spent S); supplies N (+M/mo, spent S), sends held H`.
   `Hive stock sources: <c> makers, output, available, own demand, made` (units) follows each census.
+- **A wave that stalls (2026-10-06, hw34b):** a Seeding Swarm neither founded nor dead
+  `seedingWaveStallDays` (180) plus 30 a light year after launch (`WAVE_LAUNCH_KEY`, `WAVE_LY_KEY` on
+  the fleet) is re-steered once (`Wave re-steered`); stalled again, a bootstrap wave is moved into its
+  system beside its planet (`Wave unstuck` - the Abyss's incursion, before anyone can see it) and a
+  colony's wave is withdrawn and refunded (`Wave stalled`). A wave in a battle or held by an outpost
+  does not count. hw34b: the bootstrap wave to Blue, the Ala system's volatiles world, sat in the
+  system from war day 159 to 3579 with every hull; `tryBuildLink` builds no fuel plant without
+  volatiles in the hive, so the hive had fuel 0 for ten years and nothing could sail - no seed, no
+  scout, no strike - and the humans never learned it existed.
 
 ### Parity - wartime fuel, plants for shortages, supplies upkeep (2026-09-30)
 

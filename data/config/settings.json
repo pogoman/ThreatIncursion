@@ -646,6 +646,10 @@
 	# ...once the hive has this many fuel plants: with one, losing the biggest always runs it dry, and the step put
 	# a fuel plant where a home forge would have stood (2026-10-03, run hw4o, month 24)
 	"threatinc_investFuelMinPlants": 2,
+	# a seeding wave neither founded nor dead this many days (plus 30 a light year) after launch is
+	# re-steered once, then a bootstrap wave is moved to its planet's orbit and a colony's wave lost
+	# (2026-10-06, hw34b: a bootstrap wave stalled ten years and the hive never had volatiles for fuel)
+	"threatinc_seedingWaveStallDays": 180,
 	# a strike muster every world in reach of which waits on fuel books what
 	# the hive's fuel stock is short of the cheapest passage as demand on it
 	# (once a SHORT_DAYS a source), so the planner can build a plant for it

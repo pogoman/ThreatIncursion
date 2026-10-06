@@ -548,6 +548,8 @@ public class ThreatIncConfig {
 	public static boolean investFuelWhenTight() { return b("threatinc_investFuelWhenTight", true); }
 	/** The fuel plants the hive needs before investFuelWhenTight applies: with one, ThreatFuel.wantsSpare is always true. */
 	public static int investFuelMinPlants() { return i("threatinc_investFuelMinPlants"); }
+	/** Days a seeding wave may take beyond 30 a light year before it counts as stalled: re-steered once, then moved in (bootstrap) or lost (ThreatColonyManager.checkWaveArrivals). */
+	public static float seedingWaveStallDays() { return f("threatinc_seedingWaveStallDays"); }
 	/** A strike muster every world in reach of which waits on fuel books what the stock is short of the cheapest passage as demand (IncursionManager.pickStrikeTarget, ThreatFuel.heldShort). */
 	public static boolean strikeWaitBooksFuel() { return b("threatinc_strikeWaitBooksFuel", true); }
 	/** A frontline link is founded only with a garrison to hold it, which stays as long as the link stands. */

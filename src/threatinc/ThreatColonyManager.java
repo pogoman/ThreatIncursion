@@ -3211,6 +3211,10 @@ public class ThreatColonyManager {
 				"seeding " + targetSystem.getNameWithLowercaseTypeShort());
 		// fallback so the fleet doesn't wander if arrival detection ever misses
 		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, targetPlanet, 1000000f);
+		// the stall clock (checkWaveArrivals): a bootstrap wave crosses its 3-5 ly of fringe
+		fleet.getMemoryWithoutUpdate().set(WAVE_LAUNCH_KEY, Global.getSector().getClock().getTimestamp());
+		fleet.getMemoryWithoutUpdate().set(WAVE_LY_KEY, source != null && source.getStarSystem() != null
+				? ThreatFuel.ly(source.getStarSystem(), targetSystem) : 5f);
 
 		// a system receiving its first colony shows as "colonizing"; in-system
 		// expansion of an established colony system doesn't change its stage
@@ -3235,6 +3239,30 @@ public class ThreatColonyManager {
 	 * Polls in-transit waves: founds the colony on arrival, reverts/clears on
 	 * wave death, withdraws if someone claimed the planet first.
 	 */
+	/** When the wave sailed (checkWaveArrivals reads the stall from it; stamped at launch, or at first sight for a wave from an older save). */
+	public static final String WAVE_LAUNCH_KEY = "$threatinc_waveLaunch";
+	/** Light years the wave had to cross, stamped at launch. */
+	public static final String WAVE_LY_KEY = "$threatinc_waveLY";
+	/** Set once the wave has been re-steered after a stall. */
+	public static final String WAVE_RESTEERED_KEY = "$threatinc_waveResteered";
+
+	/** Days a wave may take: seedingWaveStallDays plus 30 a light year of its passage. */
+	protected static float waveStallDays(CampaignFleetAPI fleet) {
+		float ly = fleet.getMemoryWithoutUpdate().contains(WAVE_LY_KEY)
+				? fleet.getMemoryWithoutUpdate().getFloat(WAVE_LY_KEY) : 5f;
+		return ThreatIncConfig.seedingWaveStallDays() + 30f * ly;
+	}
+
+	/** Whether the wave has been out longer than its passage allows (waveStallDays) without founding; stamps a wave never stamped. */
+	protected static boolean waveStalled(CampaignFleetAPI fleet, PlanetAPI planet) {
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+		if (!mem.contains(WAVE_LAUNCH_KEY)) {
+			mem.set(WAVE_LAUNCH_KEY, Global.getSector().getClock().getTimestamp());
+			return false;
+		}
+		return Global.getSector().getClock().getElapsedDaysSince(mem.getLong(WAVE_LAUNCH_KEY)) > waveStallDays(fleet);
+	}
+
 	public static void checkWaveArrivals(Random random) {
 		for (String planetId : new ArrayList<String>(ThreatIncData.waveFleets().keySet())) {
 			CampaignFleetAPI fleet = ThreatIncData.waveFleets().get(planetId);
@@ -3295,6 +3323,52 @@ public class ThreatColonyManager {
 			// an outpost stands over it: no colony can be founded until the
 			// station falls - the wave stays and fights (ThreatOutposts)
 			if (ThreatOutposts.holds(planet)) continue;
+
+			// a wave neither arrived nor dead past its passage (hw34b, 2026-10-06:
+			// the bootstrap wave to Blue sat in the Ala system from war day 159
+			// to 3579 with every hull, and the hive it would have given its
+			// volatiles never built a fuel plant - ten years with nothing able to
+			// sail): re-steered once; stalled again, a bootstrap wave is moved
+			// into its system beside its planet (the Abyss's incursion, before
+			// anyone could see it), a colony's wave is lost and refunded
+			if (fleet.getBattle() == null && waveStalled(fleet, planet)) {
+				com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+				if (!mem.getBoolean(WAVE_RESTEERED_KEY)) {
+					mem.set(WAVE_RESTEERED_KEY, true);
+					mem.set(WAVE_LAUNCH_KEY, Global.getSector().getClock().getTimestamp());
+					fleet.clearAssignments();
+					fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, planet, 365f,
+							"seeding " + system.getNameWithLowercaseTypeShort());
+					fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
+					ThreatIncConfig.log("Wave re-steered: the wave to " + planet.getName() + " (" + system.getName()
+							+ ") had not arrived in " + (int) waveStallDays(fleet) + " days"
+							+ (fleet.getContainingLocation() == system ? ", in the system" : ", in hyperspace"));
+					continue;
+				}
+				if (mem.getBoolean(BOOTSTRAP_WAVE_FLAG)) {
+					mem.unset(WAVE_RESTEERED_KEY);
+					mem.set(WAVE_LAUNCH_KEY, Global.getSector().getClock().getTimestamp());
+					if (fleet.getContainingLocation() != system) {
+						fleet.getContainingLocation().removeEntity(fleet);
+						system.addEntity(fleet);
+					}
+					Vector2f at = planet.getLocation();
+					fleet.setLocation(at.x + planet.getRadius() + 200f, at.y);
+					fleet.clearAssignments();
+					fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
+					ThreatIncConfig.log("Wave unstuck: the bootstrap wave to " + planet.getName()
+							+ " moved to its orbit after stalling twice");
+					continue;
+				}
+				ThreatIncData.waveFleets().remove(planetId);
+				ThreatIncData.waveTargets().remove(planetId);
+				refundFounding(fleet);
+				if (firstColony) ThreatIncData.clearSystem(systemId);
+				retireFleet(fleet, system);
+				ThreatIncConfig.log("Wave stalled: the wave to " + planet.getName() + " (" + system.getName()
+						+ ") withdrawn after stalling twice");
+				continue;
+			}
 
 			// someone colonized it mid-flight: withdraw
 			MarketAPI existing = planet.getMarket();

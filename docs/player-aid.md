@@ -220,6 +220,18 @@ general case, driven by relationships between factions (`FactionAPI.getRelations
   back.
 - The war board logs each one ("Hegemony sends 1,500 fuel to Sindria - Cooperative") so
   the player can see the sector's alliances at work.
+- **Trade through the war** (user, 2026-10-06, `ThreatCoalition.aidStockPlans`): the triggers
+  above read vanilla's peacetime market, so a war faction with an empty war reserve was never
+  "in need" - hw33b's Hegemony sat on 27k supplies for 1,200 days with its yards a hive and no
+  ally sent a unit. Now a faction whose stock plan reads short (`ThreatFactionStock.aidNeed`: a
+  producer a base holds supplies for and cannot pay, else a stock that runs dry before a
+  producer could stand) is sent a real convoy by every war faction whose plan reads surplus
+  of it - the helper's colony in reach with the most to spare (`pickAllyDonor`), landing at
+  the base that holds for the producer, else the depot with the least - until the need is
+  covered net of what is at sea, one sailing a faction a month per stock. Any two war
+  factions not hostile to each other trade, whatever their standing, with no chance roll:
+  it is trade, not charity. Logged `Ally aid: <helper> for <needy>: ... (for its
+  heavyindustry | supplies runs dry)`.
 
 ## 6. What goes, what stays
 
