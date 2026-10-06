@@ -155,8 +155,9 @@ pays the same prices from the hive's stock (docs/hive-economy.md).
 | --- | --- | --- |
 | 3 | Patrol HQ | supplies, fuel, ships s−1 |
 | 3 | orbital → battlestation | crew 5, supplies 5 |
-| 3 | Heavy Industry, in the free industry slot | metals s, rare metals s−2 |
-| 3 | Fuel Production, in a free industry slot (before Heavy Industry while `fuelShort`: shorter of fuel than of supplies) | volatiles s, heavy machinery s−2 |
+| 3 | the producer of what the faction is shortest of (`ThreatFactionStock.shortest`): Heavy Industry for hulls or supplies, Fuel Production for fuel - in a free slot, else by conversion (`convertFor`) | as below |
+| 3 | Heavy Industry, in a free industry slot | metals s, rare metals s−2 |
+| 3 | Fuel Production, in a free industry slot | volatiles s, heavy machinery s−2 |
 | 4 | Patrol HQ → Military Base | supplies, fuel, ships s+1 |
 | 4 | battlestation → star fortress | crew 7, supplies 7 |
 
@@ -168,24 +169,34 @@ also serve the Military Base. It takes the one industry slot at size 3; the
 Military Base takes the second at size 4. No Mining: a station's market does not
 hold its planet's deposits, and ore is nothing a link or the war needs.
 
-**Fuel plant to Heavy Industry** (2026-09-30, `swapFuelForHeavyIndustry`): a link with no
-slot for a Heavy Industry turns its Fuel Production into one when the faction's fuel covers all
-its sieges stage for and its supplies do not. It only runs this way - a link never builds on a
-slot it frees, so the build order cannot swap it back - one link a faction per
-`frontlineGrowDays`. h26a's links built 51 fuel plants to 45 Heavy Industries while the Hegemony
-sat on 1.5M fuel. Not seen yet in test: size-10 razing (~1M fuel) kept the staged-for fuel above
-the stock; the size-8 cap should bring it down.
-
+**The faction's stock plan** (2026-10-06, user's decision: "human and threat build logic should be
+identical ... build to bridge the shortage, and ... decommission industry or structure in favour of
+new structure to address shortage, but this shouldnt be instant"; `ThreatFactionStock`): the hive's
+`ThreatFuel` rules read per faction over its war reserves. Every reserve draw is demand on the
+faction's trailing window (`noteDemand`, e-folded over a producer's 120-day build time); a stock
+**runs dry** when stock < (demand − banking − producers building) × build months, and is in
+**surplus** when banking covers the demand and the stock covers it over a build time. Hulls are the
+third stock, read off the hull pool: **short** with nothing free to send or a debt the yards cannot
+rebuild within a build time, in **surplus** with no debt and hulls free. `shortest` is hulls first
+(they bound every expedition in hw31), then the drier of fuel and supplies. A link builds its
+producer in a free slot, one answer a faction a month (`mayAnswer`); with no slot free it tears
+down a producer of a stock in surplus whose loss still leaves the banking over the demand
+(`surplusProducer`) - a fuel plant for a Heavy Industry, a Heavy Industry for a fuel plant - or,
+with hulls to spare, its Patrol HQ (the hive's `retireMilitary`); one conversion a faction a
+month, the new structure paid before anything comes down and built over its vanilla build time.
+Log: `Frontline: X answers hulls - hegemony: fuel ... (covers N months, surplus); ... hulls F free
+of S, D to rebuild at P/mo (short)` and `Frontline: X turns its fuelprod into a heavyindustry
+(hulls short) - ...`. Before this, `fuelShort` (fuel against supplies, each over its staging
+banks) picked fuel first and `swapFuelForHeavyIndustry` ran one way: hw31's links built fuel
+first 8 / 9 / 16 times to Heavy Industry first 2 / 4 / 0 on 350k-1.1M fuel while every expedition
+waited on hulls (`game-runs-2.md` 31).
 **Fuel Production** (2026-09-30, user's call; knob `frontlineFuelProduction`): no link
 made fuel, so a faction's fuel banking was capped by the sector's best single exporter
 (`ThreatReserves.productionShare`, ~16-18k a month) while its sieges wanted 40-115k each
 and were postponed 4,211 times in 71 months. Vanilla's Fuel Production makes s−2 fuel
 from volatiles s and heavy machinery s−2 and needs no resource condition. A link builds
-it before its Heavy Industry while the faction's fuel stock is under what its sieges
-stage for, measured against its supplies the same way (`fuelShort`: each one's stock
-summed over its `ThreatReserves.stagingBank`; fuel against its staging banks alone kept
-building fuel plants while the Hegemony sat on 735k fuel and 6k supplies), after it
-otherwise; each takes a slot, so a small link holds one of the two. First test (21 months,
+it when fuel is what its faction runs dry of (the stock plan above); each takes a slot, so a
+small link holds one of the two. First test (21 months,
 from the lt save): 25 links built it; fuel banking rose from 16.7k to 61.8k a month
 (Hegemony) and 19.9k to 36.8k (Persean), the Hegemony's stock from 29k to 109k, and
 16 sieges drew against 8 without it. A fuel link is now worth striking.

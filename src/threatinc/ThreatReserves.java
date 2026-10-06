@@ -344,6 +344,13 @@ public class ThreatReserves {
 		else if (Commodities.SUPPLIES.equals(c)) r.supplies = value;
 	}
 
+	/** What a draw took, as demand on the faction's stock plan (ThreatFactionStock.noteDemand). */
+	protected static void noteSpent(String marketId, String commodityId, float taken) {
+		if (taken <= 0f) return;
+		MarketAPI market = Global.getSector().getEconomy().getMarket(marketId);
+		if (market != null) ThreatFactionStock.noteDemand(market.getFactionId(), commodityId, taken);
+	}
+
 	/** Takes up to {@code amount}; returns what was actually taken. */
 	public static float draw(String marketId, String commodityId, float amount) {
 		if (amount <= 0f) return 0f;
@@ -351,6 +358,7 @@ public class ThreatReserves {
 		if (cargo != null) {
 			float taken = Math.min(cargo.getCommodityQuantity(commodityId), amount);
 			if (taken > 0f) cargo.removeCommodity(commodityId, taken);
+			noteSpent(marketId, commodityId, taken);
 			return Math.max(0f, taken);
 		}
 		ColonyReserve r = get(marketId);
@@ -358,6 +366,7 @@ public class ThreatReserves {
 		float have = read(r, commodityId);
 		float taken = Math.min(have, amount);
 		write(r, commodityId, have - taken);
+		noteSpent(marketId, commodityId, taken);
 		return taken;
 	}
 
