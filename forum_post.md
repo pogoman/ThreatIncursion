@@ -1,152 +1,226 @@
-# The Abyssal War
+[center][size=20pt][b]The Abyssal War[/b][/size]
+[i]v0.7.0 - the core fights back - for Starsector 0.98a-RC8[/i][/center]
 
-*v0.4.0 - the swarm colonizes the sector - for Starsector 0.98a-RC8*
+[hr]
 
----
+[size=14pt][b]Download[/b][/size]
 
-The Threat does not stay in the abyss. Once woken - by the vanilla story, or simply because your colonies grew large enough to be noticed - the fabricator swarms spread from the sector's darkest fringe. Not as event fleets on a timer: as **real colonies** that mine, refine, forge, and grow, feeding a closed hive economy that builds every fleet the swarm fields. Left alone, it converges on the core worlds and the sector's lights go out one by one.
+[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.7.0/AbyssalWar-0.7.0.zip]AbyssalWar-0.7.0.zip[/url]
 
-**The Abyssal War** is a standalone, vanilla-only mod. You do not fight a spawner - you fight a war economy.
+Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher. It extracts to [tt]mods/ThreatIncursion[/tt] - overwrite your existing folder rather than keeping both. Saves made with Threat Incursion carry over: the mod id has not changed.
 
----
+[hr]
 
-## Download
+[size=14pt][b]Core concept[/b][/size]
+At game start a new system in the outer reaches of the sector will be seeded with several Threat colonies. Once these colonies develop they will spread to neighbouring systems in the search for resources to fund new colonies, which is what they need to expand the hive. As they get within a certain distance of the core worlds, they will start sending out first-strike parties and attempt to siege any planet within range. Human factions will mobilise when attacked and enter a war economy, leading to counter attacks and strikes of their own.
 
-[ThreatIncursion-0.4.0.zip](https://github.com/pogoman/ThreatIncursion/releases/download/v0.4.0/ThreatIncursion-0.4.0.zip)
+[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/ThreatBoard.png[/img]
+[i]The Threat: every system you have found, in priority order - vitality, swarms, reach, strikes out, and what each one makes.[/i][/center]
+[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/LeagueBoard.png[/img]
+[i]Any mobilised faction, read the same way: the Persean League's reserves, its two fronts on Gamma Brador, and the aid you can send.[/i][/center]
 
-Extract into your Starsector `mods/` folder and enable it in the launcher.
+[size=14pt][b]Starting scenarios[/b][/size]
 
-**NOTE**: If you would like the Threat to invade the sector from a new game start/immediately before reaching size 6 colony you can configure this in the mod options.
+I have balanced core world strength such that the Threat no longer steam roll through the core worlds once they get in range. This means there is a lot of breathing room for the player to get setup. Note the core worlds will be able to hold their own for a time but ive balanced so they will eventually lose without player help. If this is not your jam and you want to have a chill start you can change when the Threat spawn, to be after the Abyssal questline finishes, or when your first colony reaches size 6. 
 
----
+[b]Note: [/b] If you are midway through a playthrough you can temporarily enable the Instant War setting, load your save, wait for the system to populate then save and exit and disable instant war. You can also change how many systems are instantly colonised and their general size and strength.
 
-## A real hive economy
+[size=14pt][b]Player mobilisation[/b][/size]
 
-The swarm founds actual markets on the uninhabited fringe. They grow from size 1, build Mining, Refining, Heavy Industry and Fuel Production as their worlds allow, and trade with each other - ore feeds refineries, metals feed forges, forges build the hulls, fuel buys reach. Vanilla economy rules, closed hive group.
+Once you have your own colonies you can mobilise to enter the war yourself. You will have a set amount of resources available depending on your colony industries, size and military structures. You will have complete control over your fleets and supplies and where to direct your war engine.
 
-[Hive economy diagram](https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/Picture1.png)
+[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/PlayerBoard.png[/img]
+[i]Your own war: colony reserves and convoys, your own front pushing on the hive world Gamma Hero I, and the fleets supplying and defending it.[/i][/center]
 
-Which means **every link is a target**:
+[size=14pt][b]Bombardment and raid changes[/b][/size]
+Sat bombardments have been modified to be extremely fuel inefficient. Tac bombardments are much more efficient but only disrupt military structures a few days at a time, and if ground defenses or heavy batteries exist they will eliminate some of your ships in orbit proportional to current ground strength vs your fleet strength. In vanilla military structures all give a multiplicative increase to ground strength. In this mod this multiplier is reduced proportional to disruption days. By far the most efficient way to disrupt military structures is with marines, but costs will be high at the beginning.
 
-* Cut their **rare ore** and ship quality craters across the whole network.
-* Cut their **fuel** and expansion and strikes are grounded - strike range is literally bought with fuel.
-* Cut **metals or machinery** and forges starve, garrisons thin, colonies stop growing.
-* Destroy the link colonies outright and every surviving world feels the loss.
+There are a lot of mechanics at play here but all are explained in various tooltips. Any uncertainties just ask and i will clarify.
 
----
+[size=14pt][b]Sieges[/b][/size]
+[img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/SiegeMechanics.png[/img]
 
-## The organs of a hive world
+It is important to note while you can override marine actions they will function autonomously and react to various events like counter attacks and bombardments themselves. I'm listing the various interactions below but dont stress and think you have to manage them all. Ultimately if you want a siege to properly succeed make sure your control the space above the planet and it should be enough for the marines to get the job done. If they need resupply it will be automatically sent from the nearest colony assuming it has spare resources and FP. Otherwise you can always resupply them yourself. Keep in mind the Threat will send defensive swarms from neighbouring systems to take back control and if left alone will start bombing your marines from orbit.
 
-* **Fabrication Core** - there is no line between the hive's population and its industrial plant. The Core supplies the hive's heavy machinery - and its wellbeing anchors the colony's growth: knock it out and the colony starts dying.
-* **Swarm Nexus** - the military organ, the hive's answer to a Patrol HQ: it continuously grows Defense Swarms, idling (and consuming nothing) once the garrison is full. Expeditions are **mustered from the standing garrison** - every fleet comes from somewhere - so killing a colony's swarms IS disrupting it. Disrupt the nexus itself and no replacements grow at all.
-* **Hive ground defenses and heavy batteries** - fed on machinery and metals, not marines. Machines do not rout: the weapon growths keep firing at reduced effect even while disrupted, so bombardment never becomes free.
+The Threat will support their own sieges by reinforcing the front with their own ships which can be broken apart to form ground units which are sent down from orbit. This will reduce their overall FP in orbit proportional to the amount of reinforcements sent.
 
----
+[list]
+[li]Whichever faction controls the orbit affects the ground battle below, in the form of direct fire support.[/li]
+[li]A contested orbit blocks bombardment, landings, supply convoys and withdrawals, so it is always the first fight.[/li]
+[li]As the siege progresses military structures on the planet are disrupted proportional to the strength of the attackers, and their bonuses reduce proportional to disruption duration.[/li]
+[li]Fortifications shoot back. A fleet parked in orbit bleeds hulls to the batteries, faster the better defended the world.[/li]
+[li]Orbit alone can only take a world so far - there is a floor it cannot grind past. Getting past it needs boots on the ground.[/li]
+[li]Troops land either once the defences are suppressed as far as orbit can take them, or immediately if the force is already large enough to hold the ground. Ships or marines - your choice which you spend.[/li]
+[li]A front can dig in or push. Digging in builds entrenchment over time and keeps casualties low. Pushing takes ground a layer at a time - strata on a hive, districts on a colony - but at heavy losses and no cover.[/li]
+[li]Fronts burn armaments. A dry front bleeds badly and fights at half strength. The Threat is the exception: its fronts need no supply, but pay double casualties whenever they assault.[/li]
+[li]The defender counter-attacks periodically, faster the more it outnumbers the front. Losing one costs troops and hands a layer back; a front holding no ground can be wiped outright.[/li]
+[li]Marines gain veterancy through the campaign, fighting harder and dying less, and carry that experience back to your fleet when they withdraw.[/li]
+[li]Take a hive and it is destroyed, you get a free outpost on the ruin stocked with whatever your troops had left, and the Threat holds a grudge over it.[/li]
+[li]Lose a colony to the Threat and it decivilises, with a new hive seeded on the wreckage.[/li]
+[li]Fleets can be sent to Support a front, which bombards regardless, or Defend it, which only fires when the front actually needs it and never while your own troops are assaulting.[/li]
+[li]Tactical bombardment counts as a short siege run. With your own troops on the ground you can call it in danger close - it costs you marines, but reaches organs orbit cannot otherwise touch.[/li]
+[li]Everything moves by real convoy. Supply runs, reinforcements and relief are fleets that can be intercepted and looted.[/li]
+[/list]
 
-## Expeditions
+[hr]
 
-Hive colonies launch real expeditions at inhabited space - fleets you can scout, intercept, and fight alongside the defenders against. Every expedition is **mustered from the colony's own Defense Swarms**: a full garrison sends what stands above its defensive reserve, and the fleets that leave orbit ARE the expedition - kill a colony's swarms and you have grounded it. Each expedition sweeps its whole target system, bombarding every world it can reach **at most once**: frontier colonies harass with tactical bombardment, developed worlds deliver a saturation pass per world. Erasing a large colony takes the hive a campaign, not a visit.
+For Starsector 0.98a-RC8. LunaLib optional, Nexerelin compatible. Safe to add mid-save; removing it mid-war breaks the save. Every number is configurable via LunaLib (Shift+F2) or [tt]data/config/settings.json[/tt].
 
-[Strike expedition](https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/Picture10.png)
+[size=14pt][b]Changelog[/b][/size]
 
-An expedition still being **fabricated** at its staging colony can be strangled in the crib - raid the forge or the Swarm Nexus, or bombard the colony, before the fleets depart and the operation is stillborn. Once it departs, it is autonomous: meet it in space or defend the target.
+[b]0.7.0 - the core fights back[/b]
+[spoiler]
+[b]Human navies now open the war at full strength and win early ground victories.[/b] In testing they burned 10 hive worlds in the first two years, where before they burned one in five; the hive still grinds them down if the player stays out.
 
-Worlds the swarm kills, it colonizes. The swarm does not abandon its kills.
+[b]Hive fog of war[/b]
+[list]
+[li]A strike no longer reveals where it came from. The struck faction gets a lead and sends scouting parties to sweep the systems around it. Sieges, task forces and contracts act only on hives someone has found.[/li]
+[li]The swarm scouts too: it only strikes worlds its Scouting Swarms have charted.[/li]
+[li]Fleet archetypes: 12 new Threat variants, and strike, garrison, seeding and scout swarms are each built to their own shape.[/li]
+[/list]
+[b]NPC navies[/b]
+[list]
+[li]Depots fill from the war's supply (importers used to bank nothing once mobilised) and start full the moment a faction mobilises.[/li]
+[li]Sieges actually launch: staging bases bank toward the siege, and convoys carry full loads of marines, fuel and supplies.[/li]
+[li]Sieges sail at full strength and weigh the Defense Swarms first. A base the swarms outweigh posts a swarm bounty, paid per Threat ship by hull size.[/li]
+[li]Landings are sized to survive the hive's first counter-attack, with marines pooled from the faction's other bases. When the nearest base cannot pay for a siege, the next nearest sails instead.[/li]
+[li]Hunting forces: a base with no siege of its own hunts a bountied hive's Defense Swarms. Fleets from every base in reach muster outside the system and go in as one fleet. Allies answer a siege call with a hunting force.[/li]
+[/list]
+[b]Player[/b]
+[list]
+[li]Hunt replaces Intercept: send a task force to hunt a hive's Defense Swarms from the board. Your hunting fleets collect swarm bounties on their own.[/li]
+[li]Raid the fortifications: a colony's Ground Defenses, Heavy Batteries, Patrol HQ, Military Base and High Command are on the Disrupt raid list at Heavy danger. Raids wear them down past the orbital floor, and every raid's days count in full. Committing many marines to one structure costs more against a strong garrison, so several shallow raids beat one deep one. Off with Nexerelin, whose own bombardment covers it.[/li]
+[li]The war board lists only the hive systems you have found, and stays off the intel list until you find the first.[/li]
+[/list]
+[b]Fixes[/b]
+[list]
+[li]Help requests now withdraw and expire; Defend windows close.[/li]
+[li]Hive worlds no longer post survey, analyze or procurement missions.[/li]
+[li]A hunting force that never fights gets its fuel and supplies back in full.[/li]
+[li]A swarm out raiding or reinforcing keeps its slot at home, so garrisons no longer overshoot the cap.[/li]
+[li]Hives no longer found colonies in inhabited core systems.[/li]
+[li]NPC sieges bombard until their landing can survive the first counter-attack, and pool armaments as well as marines.[/li]
+[li]Siege landings, NPC and yours, are sized for the defences orbit can actually wear down: a hive without batteries no longer gets a landing too small to hold.[/li]
+[li]Hunting forces of hostile factions no longer meet at the same hive, and a force fights as one fleet (capped at 90 ships).[/li]
+[li]Hunts no longer spend what a base has banked for its own siege.[/li]
+[li]Your hunting fleets are no longer paid twice when you fight beside them; bounty standing comes once per battle.[/li]
+[li]Hunt is no longer offered on convoys.[/li]
+[li]Siege fleets no longer shuttle back and forth between worlds.[/li]
+[li]The disabled Aid/Defend tooltip names the real requirement: a military structure and a Waystation.[/li]
+[/list]
+With LunaLib, the first launch moves Siege Max Fleets (10 to 25) and Mobilisation Stock (3 to 6) to the new defaults if they still hold the old ones; values you set yourself are kept.
+[/spoiler]
+[b]0.6.2 - Nexerelin compatible[/b]
+[spoiler]
+[b]Nexerelin now works alongside the mod.[/b] Before, the mod's military-options menu replaced Nexerelin's on every world, so the Invade option never appeared.
+[list]
+[li]With Nexerelin loaded, human colonies get Nexerelin's menu, Invade included. Hive worlds keep this mod's menu with Ground operations.[/li]
+[li]No Nexerelin invasion lands on a colony the swarm is besieging. The AI doesn't target it, invasion fleets already on their way are called off, and an AI ground battle already on the surface is cancelled with no change of owner. The player's Invade is greyed with the reason. It all lifts when the siege ends.[/li]
+[li]Nexerelin leaves the swarm out of its diplomacy: no peace, alliances, agents or victory count, and its own invasions and raids never target a hive.[/li]
+[li]With Nexerelin loaded, the player's tactical bombardment of a human colony is Nexerelin's version; against hives it is still the siege slice.[/li]
+[/list]
+[b]Fixes[/b]
+[list]
+[li]Defense contracts are posted only in the name of a faction mobilised against the swarm, and an offer is withdrawn if its sponsor stands down.[/li]
+[li]Aid can be handed over through the station or base commander in the comm directory, as well as the dock menu. A contract's term now counts real days (a 120-day contract used to expire in 12).[/li]
+[li]Phase 3 ("core worlds in reach") needs a strikeable size-6+ world within the armada-capable hive's fuel range, so it is only announced when a strike could actually go there, and cutting the hive's fuel can push it back.[/li]
+[/list]
+[/spoiler]
+[b]0.6.1 - the hive arms once it can pay[/b]
+[spoiler]
+[b]Fix: the hive never grew past size 3.[/b] Every hive world built its Ground Defenses at size 3, and those batteries demand metals the hive could not yet make - a size-3 world has one industry slot and Mining holds it. The unmet demand held vitality on the stall floor, so no world reached size 4, no refinery was ever built, and the whole war stayed dormant (Reach and Strikes dashed, Swarms idle). Present since 0.4.0; every save started on 0.6.0 is affected.
+[list]
+[li]The hive now builds Ground Defenses and Heavy Batteries only when it can feed them - the machinery and metals they demand at least half-met, the same bar a growth input must clear. A bare mining world grows to 4, builds its refinery, and arms on the next tick.[/li]
+[li][b]Existing saves heal on load.[/b] A frozen hive - no refinery anywhere, size-3 worlds with batteries on the stall floor and no free slot - gets each such world the one size the freeze cost it and its production chain stood up in the same load. Expect a burst of "expanded to size 4" messages the first time you load.[/li]
+[li]The monthly sweep re-plans stalled colonies too, not only size-capped ones, and arms a world the tick it can afford to.[/li]
+[li]New debug lever, Hive Floor Size (LunaLib, Debug): grows every hive colony below a set size through the normal growth step, once per value. For catching a save up further after the freeze.[/li]
+[/list]
+[/spoiler]
+[b]0.6.0 - the war layer[/b]
+[spoiler]
+Threat Incursion is now The Abyssal War. The mod id is unchanged, so existing saves keep working.
 
----
+[b]Ground war[/b]
+[list]
+[li]Eradication is a ground campaign, not a decline timer: land marines, take the strata, kill the Fabrication Core.[/li]
+[li]Ground fronts push, dig in or withdraw; armaments burn per marine per day, so what a front carries is how long it lasts.[/li]
+[li]Fronts push the moment troops land at holding strength; a dug-in front stays dug in until the next landing.[/li]
+[li]Sieges fight for the orbit first. Bombardment wears fortification to a floor and no further - a front on the ground takes it the rest of the way.[/li]
+[li]Threat strikes land fronts of their own on inhabited worlds, dig in, then make a final push.[/li]
+[li]Colony defense is garrison troops times fortification, each worn down separately, with an orbital floor under the structures.[/li]
+[li]Marines arm over weeks, take casualties, count toward counter-attacks, and carry veterancy both ways with your fleet's marine pool.[/li]
+[li]Support and Defend fleet orders: hold the orbit, run the siege slice, or fight only while the front cannot hold.[/li]
+[li]A Defend fleet at the orbital floor can break up its own hulls into troops for the front.[/li]
+[li]Planetary shields buy real cover against orbital bombardment.[/li]
+[li]The hive scours an unopposed enemy front after three days.[/li]
+[/list]
 
-## How to siege a Threat colony - the guide
+[b]Strategy layer[/b]
+[list]
+[li]NPC factions enter war mode when the Threat strikes them; you mobilise or stand down yourself.[/li]
+[li]Every colony banks a visible reserve of marines, heavy armaments, fuel and supplies.[/li]
+[li]Convoys carry that stock physically - escort them, or let the swarm's raiders have them.[/li]
+[li]Fleet orders from the board: guard, stage, intercept, support, defend, siege, recall.[/li]
+[li]Guarding your own colony stages the fleet there: its strength counts at the host and folds into sorties.[/li]
+[li]Faction view shows any mobilised faction's colonies, reserves and fleets, with a totals row and a colour key.[/li]
+[li]Min / Med / Max load ladders on sieges, supply runs and convoy loads.[/li]
+[li]Recalled and expired fleets sail home and return their surviving cargo.[/li]
+[li]Sieges are leashed to the contested orbit; strays are recalled instead of chasing across the sector.[/li]
+[/list]
 
-Every hive lives **deep underground** behind ground defenses anchored to its size - 400 points per size, immune to unrest (the machines do not riot), multiplied by its defense industries into the thousands - and **no bombardment can reduce its population**. There is exactly one way a Threat colony dies: its **Hive Vitality** collapses and its population declines to size 1. Everything below is in service of that.
+[b]Player aid and outposts[/b]
+[list]
+[li]NPC factions are autonomous now: you aid them, you do not command them.[/li]
+[li]Send Defend, Resupply, Reinforce or Strike from your own colonies, gated by a capacity ledger and reserve stock, earning standing on arrival.[/li]
+[li]Factions post their needs as ordinary missions - deliver by colony fleet, or in person at the dock.[/li]
+[li]Allies send each other aid by standing, without you.[/li]
+[li]Build an outpost over any uncolonised world, or take one free by ground victory. Dock at it for storage, or decommission it.[/li]
+[li]A later colony on that world inherits the outpost.[/li]
+[/list]
 
-[Hive Vitality tooltip](https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/Picture9.png)
+[b]Economy[/b]
+[list]
+[li]War reserves are the colony's real resource stockpile, not a separate hidden ledger.[/li]
+[li]Mobilised colonies carry the War Footing condition, so the war shows as genuine demand and a real shortage on the colony screen.[/li]
+[li]Depots cover the colony's own shortages before they fund anything else.[/li]
+[li]Convoys land as trade at the receiving colony.[/li]
+[li]Bases need a Waystation; NPC mobilisation builds them.[/li]
+[/list]
 
-**Step 0 - read the colony.** Every hive world carries a **Hive Vitality** condition in the colony screen. Vitality = **fabrication x supply**: whether the fabrication organs (Fabrication Core, Swarm Nexus) are RUNNING at all, times how well-fed the production chain is. Below 35 percent vitality the colony **declines**; the tooltip shows the live rate, a projected date for the next stratum lost and for total collapse, and - crucially - whether the current disruptions last long enough to get there, or whether you will need to come back and siege again. The vanilla growth number means nothing on hive worlds; this tooltip is the truth.
+[b]Escalation[/b]
+[list]
+[li]Grudge and alarm: the swarm answers whoever hurts it most, and alarm speeds hive fabrication.[/li]
+[li]A ground victory draws retaliation from the nearest hive.[/li]
+[li]Coalition fleets answer a mobilised faction's call during a siege.[/li]
+[li]Defense Swarms detach to raid convoys, then return to their garrison.[/li]
+[/list]
 
-**Step 1 - defeat the Defense Swarms.** They are leashed to their colony and cannot be lured out of position. No ground operation is possible while defenders hold orbit.
+[b]Board[/b]
+[list]
+[li]Ground Fronts table, per system, with order buttons on every front.[/li]
+[li]Per-fleet rows with Recall and Intercept.[/li]
+[li]Colony rows open vanilla's own colony screen.[/li]
+[li]Purge commissions removed; sieges launch from the faction view.[/li]
+[li]Tooltips rewritten: one line per fact, and every button says what pressing it does - or why it cannot be pressed.[/li]
+[li]The intel list row reads at vanilla's own size now, next to Colony Crises.[/li]
+[/list]
 
-**Step 2 - suppress the war-strata.** Tactical bombardment costs a quarter of the saturation bill and craters the exposed ground defenses, batteries, and nexus for around 60 days. Machines do not rout - disrupted defense structures keep firing at half effect - but that halving cuts the price of everything that follows: cheaper follow-up bombardment, and far more effective (and less bloody) marine raids.
+[b]Testing[/b]
+[list]
+[li]Instant War (LunaLib, Debug): stands up a mature sector-wide war on a fresh save in one toggle.[/li]
+[/list]
+[/spoiler]
 
-**Step 3 - kill the Fabrication Core.** The Core is the growth organ: while it is disrupted the colony declines, full stop, no matter how well-supplied it is. It cannot be tac-bombed - it is buried too deep - so it takes **marines** (EXTREME raid danger; the hive defends its heart and the counter-swarms bleed every corridor) or the short disruption of a saturation pass. Marine raids are the deepest cut in the game: months of disruption against the organ YOU choose.
+[hr]
+[center][size=14pt][b]Recommended mod collection for ultimate late game experience[/b][/size][/center]
+[center][i]Standalone, safe to add mid-save, can be run together or separately.[/i][/center]
 
-**Step 4 - keep the pressure on.** Decline accrues continuously - every single day of a disrupted Core banks damage - and accelerates the longer the colony stays under. The meter does NOT heal while any organ is still disrupted, so successive visits stack. Size matters: small colonies die fast (a size-2 seed declines at double rate), capitals resist (size 8 at half rate) - but a shrinking colony speeds up as it goes. Expect a foothold to collapse after a few months of suppression and a size-8 capital to take a multi-year campaign of repeated sieges.
+[list]
+[*][b][url=https://fractalsoftworks.com/forum/index.php?topic=35955]The Abyssal War[/url][/b] — the Threat colonizes the sector and invades the core worlds. 
+[*][b][url=https://fractalsoftworks.com/forum/index.php?topic=35957]Commerce Wars[/url][/b] — dominate a faction's markets or the military balance and they push back: ultimatums, tribute, enforcement fleets.
+[*][b][url=https://fractalsoftworks.com/forum/index.php?topic=35956]Piracy Reworked[/url][/b] — the underworld runs on your money: black-market trade funds a self-sustaining pirate war economy.
+[*][b][url=https://fractalsoftworks.com/forum/index.php?topic=35940]Remnant Retribution[/url][/b] — a late-game colony crisis.
+[*][b][url=https://fractalsoftworks.com/forum/index.php?topic=35939]Useful Planetary Shield[/url][/b] — **INCOMPATIBLE WITH THIS MOD** 
+[/list]
 
-**The economic alternative - starve it.** Supply is the other half of vitality. The hive is one closed economy: disrupt a hub colony's Megaport or forge, cut its rare ore, or let pirate activity strangle its shipping, and **several sister colonies** can slide into decline at once without a single marine landing on them. Saturation bombardment still has a role here - it disrupts EVERY industry at once for a few days at the full defense price - as the sledgehammer that flips a wavering system.
-
-**Or pay someone else.** From the infested-system intel you can **commission a purge expedition** (see below) to run this whole playbook for you.
-
----
-
-## The sector fights back
-
-* Struck factions dispatch **task forces** against the staging colony's garrison.
-* **Siege expeditions** descend on hive colonies: tactical bombardments and commando raids that push entrenched hives into decline, outright saturation of young footholds - and, rarest and heaviest, full assaults on defended hives, sailing with extra escorts to fight through the Defense Swarms. Each expedition posts a detailed after-action sitrep of what it did to every planet. An accepted contract completes whoever lands the last blow.
-* **Commission your own** - from the infested-system intel, hire the same siege expedition the navies run: mustered at your nearest military colony in range, sized to the target system's defenses, built with YOUR doctrine and blueprints. Priced by flotilla size and distance, paid up front, no refunds - the expedition is autonomous and reports back when it's done.
-* From phase 3 the colonial defense boards offer **contracts against hive infrastructure** - ordinary missions, like a survey or derelict posting: they arrive over the comm network, must be accepted before they expire, and once accepted give you 120 days to deliver. A strategic tier names the target that would actually break the swarm, an immediate tier the cheapest cut still worth making - re-scored as the network shifts, with colonies actively staging expeditions jumping the queue. Contracts pay for destruction, half for disruption, and failing or abandoning one costs reputation with the sponsoring faction.
-
-Escalation is capability, not calendar: phases advance when the swarm can genuinely stage strikes or field armadas, and burning forges, cutting fuel, or silencing nexuses genuinely regresses the danger.
-
----
-
-## Configuration
-
-Everything above is tunable. With [**LunaLib**](https://fractalsoftworks.com/forum/index.php?topic=25658.0) enabled (optional) you get a live in-game settings menu (Shift+F2) - spread rates, strike strength, contract rewards and deadlines, ground defense scale, siege costs and decline pacing, story-critical world destruction, all of it. Without LunaLib the mod reads the same values from `data/config/settings.json` and runs fine standalone.
-
----
-
-## Requirements & compatibility
-
-* **Starsector 0.98a-RC8**
-* **LunaLib** - optional, for the in-game config menu
-* Vanilla-only - no other hard dependencies
-* Safe to **add** to an existing save
-* **Removing** it from a save with the war active will break that save
-
----
-
-## Changelog
-
-**v0.4.0** - the siege
-
-* The hive siege rework: the Fragment Fabricator bombardment shield is gone. Every hive lives deep underground behind defenses anchored to colony size (400/size, unrest-immune - bombardment no longer sends its own defenses into a death spiral - multiplied by its defense industries) - and NO bombardment reduces its population, ever. Saturation costs the full defense figure for ~20 days of disruption; tactical bombardment now works on hive worlds, costs a quarter of the bill, and suppresses the war-strata for ~60 days; marine raids cut deepest, and the Fabrication Core is EXTREME raid danger - the hive defends its heart.
-* Colony decline - the only way a hive dies: Hive Vitality = fabrication organs (Core dominant, then Nexus) x supply satisfaction. Colonies under 35 percent vitality decline, accruing CONTINUOUSLY (every disrupted day counts) and accelerating the longer the pressure holds, until population falls to size 1 and the hive collapses. Size is resilience: small colonies die at double rate, capitals at half - and a shrinking colony speeds up. The meter does not heal while any organ is disrupted. Growth scales smoothly with vitality instead of a binary shortage gate; supply-chain strikes can push several sister colonies into decline at once.
-* Hive Vitality is a real market condition on every hive world: live vitality breakdown, per-organ status, decline rate, projected next-stratum and total-collapse dates, and whether the current disruptions are enough to finish the job or the siege must be renewed.
-* NPC purges became siege expeditions: tactical bombardments and commando raids (combined-arms ground strength across the whole flotilla) that feed the same decline engine - never saturation; navies can't insta-delete colonies either. Wounded colonies draw follow-up expeditions on a short cooldown - navies press an advantage - and defended hives can draw a full assault with extra escorts on a stretched cooldown. Every expedition posts a detailed after-action sitrep: actions per planet, industries disrupted, estimated marine losses, each colony's current state.
-* Player-commissioned expeditions: hire that same siege expedition from your own military colonies via the infested-system intel - sized to the job, built with your doctrine and blueprints, priced by flotilla and distance, paid up front, full sitrep on completion.
-* Every siege and decline number is configurable in LunaLib: defense per size, structure bonuses, disrupted-defense fraction, bombardment costs and durations, decline rate/threshold/acceleration/size anchor, organ health factors, growth thresholds, NPC siege tempo, commission pricing.
-* Bounties are now regular missions. Defense-board contracts arrive over the comm network like a survey or derelict posting, sit on the board for 90 days, and must be accepted before they expire; accepting one gives you 120 days to complete it, and failing the deadline or abandoning costs reputation with the sponsoring faction (the navy nearest the target). Offers can still be withdrawn for a better target until you accept - an accepted contract is yours and never withdrawn, and accepted contracts don't count against the three offers on the board. Old standing bounties in existing saves are retired on load and re-issued as contracts. Settings keys renamed from bounty to mission; LunaLib users re-check their values.
-
-**v0.3.0** - total war
-
-* The pooled-swarm economy: every expedition (strike or colonization wave) is mustered from the staging colony's real Defense Swarms - each fleet that departs is a swarm that leaves orbit, re-embodied at exactly its fabricated tier. The Swarm Nexus never self-disrupts; it continuously grows replacements (slower when the hive is hull-starved, up to 4x), idles and consumes nothing at full garrison, and an idle nexus banks no finished swarms - any loss starts the rebuild clock fresh. Killing swarms IS the disruption.
-* Colonies launch only from a full garrison, always keeping a defensive reserve (half, minimum one) home. The infestation intel shows mustered "Strike Swarms" separately while an expedition fabricates in orbit.
-* Strikes sweep their whole target system, bombarding every world at most once per expedition - no more grinding one planet while its neighbors watch.
-* Faction task forces are real battle groups now: direct-fleet-point generation (a max-difficulty fleet is ~250 FP), strength measured at their home base, and strength beyond the per-fleet cap spills into up to 4 fleets per response. When their target dies they redirect to the nearest surviving Threat colony and keep hunting.
-* Purge expeditions campaign through the WHOLE system - every Threat colony there is on the target list, and they stand down only when none remain or they are destroyed. Small footholds (size 3 and under, configurable) are purged preemptively, garrison or not.
-* Any strike-size hive colony with hulls, fuel and a ready Swarm Nexus can stage expeditions - mature systems without their own shipyards now launch too, and staging duty rotates across the hive instead of always falling to the founding system.
-* Max Concurrent Strikes / Responses settings accept 0 = unlimited, and both now default to unlimited. Existing saves keep their stored values - lower/raise them in the LunaLib menu.
-* Nexus disruption now pays bounty board rewards (it is always enemy action now); size-3 colonies field 2 swarms instead of 3; fixed the doubled task force faction name.
-
-**v0.2.0** - first public release
-
-* Full planetary-takeover rework: the swarm founds real growing colonies with a closed, interdictable hive economy.
-* Hive structures: Fabrication Core, Swarm Nexus, marine-free ground defenses.
-* Fragment Fabricator bombardment shield and the raid-to-steal kill chain.
-* Tiered strike payloads, sabotage window for expeditions in fabrication, garrison leash.
-* Two-tier live bounty boards, faction task forces and purge expeditions.
-
----
-
-### Recommended mod collection for ultimate late game experience
-
-*Standalone, vanilla-only, safe to add mid-save — designed to stack.*
-
-* [**The Abyssal War**](https://fractalsoftworks.com/forum/index.php?topic=35955) (v0.4.0) — the swarm colonizes the sector and raids the core worlds. Disrupt their supply chains and besiege the entrenched hives into decline.
-* [**Commerce Wars**](https://fractalsoftworks.com/forum/index.php?topic=35957) (v0.2.0) — dominate a faction's markets or the military balance and they push back: ultimatums, tribute, enforcement fleets.
-* [**Piracy Reworked**](https://fractalsoftworks.com/forum/index.php?topic=35956) (v0.1.0) — the underworld runs on your money: black-market trade funds a self-sustaining pirate war economy.
-* [**Remnant Retribution**](https://fractalsoftworks.com/forum/index.php?topic=35940) (v0.3.1) — a late-game colony crisis: prosper too hard and the Remnant come to collect.
-* [**Useful Planetary Shield**](https://fractalsoftworks.com/forum/index.php?topic=35939) (v0.1.2) — planetary shields finally do something: they absorb orbital bombardment.
-
----
-
-*Disclaimer: This post and these mods were written using Claude's Fable AI model. Design and testing by pogoman.*
+[size=10pt][i]Disclaimer: These mods were written using Claude's Fable AI model. Design and testing by pogoman.[/i][/size]
