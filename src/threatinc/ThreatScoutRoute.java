@@ -46,6 +46,8 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 		/** When the current leg's system was entered; 0 while in transit. */
 		public long enteredTimestamp;
 		public boolean returning;
+		/** When it turned for home (sl2, 2026-10-06: 15 Patrol Swarms sat "returning" for five years after their hives died). */
+		public long returnSince;
 		/** When the party was sent toward the current leg; 0 on saves before 2026-09-24. */
 		public long legSince;
 		/**
@@ -153,7 +155,10 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 				&& friendly(s, (StarSystemAPI) fleet.getContainingLocation())) {
 			report(s);
 		}
-		if (s.returning) return; // GO_TO_LOCATION_AND_DESPAWN does the rest
+		if (s.returning) {
+			checkReturn(s);
+			return; // GO_TO_LOCATION_AND_DESPAWN does the rest
+		}
 		if (s.leg >= s.route.size()) {
 			goHome(s);
 			return;
@@ -238,11 +243,40 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 		all().clear();
 	}
 
+	/**
+	 * A returning party that will never get home is dismissed as home: its
+	 * world is gone (a hive eradicated, a forward base dismantled - the
+	 * despawn's target with it), it has run out of orders, or it has been
+	 * returning for twice scoutLegMaxDays. sl2 (2026-10-06): 15 Patrol Swarms
+	 * and ~15 human parties stood "returning" for five years after the war.
+	 */
+	protected void checkReturn(S s) {
+		CampaignFleetAPI fleet = s.fleet;
+		MarketAPI home = homeOf(s);
+		String why = null;
+		if (home == null || home.getPrimaryEntity() == null || home.getPrimaryEntity().getContainingLocation() == null) {
+			why = "its world is gone";
+		} else if (fleet.getCurrentAssignment() == null) {
+			why = "it ran out of orders";
+		} else if (s.returnSince != 0L && Global.getSector().getClock().getElapsedDaysSince(s.returnSince)
+				> 2f * ThreatIncConfig.scoutLegMaxDays()) {
+			why = (int) Global.getSector().getClock().getElapsedDaysSince(s.returnSince) + " days returning";
+		}
+		if (why == null) return;
+		if (s.carried != null && !s.carried.isEmpty() && home != null) report(s);
+		ThreatIncConfig.log(describe(s) + " dismissed: " + why);
+		// counted home, not lost: no level raised for a party nobody destroyed
+		fleet.getMemoryWithoutUpdate().set(HOME_FLAG, true);
+		Misc.fadeAndExpire(fleet);
+	}
+
 	protected void goHome(S s) {
 		s.returning = true;
+		s.returnSince = Global.getSector().getClock().getTimestamp();
 		s.fleet.clearAssignments();
 		MarketAPI home = homeOf(s);
 		if (home == null || home.getPrimaryEntity() == null) {
+			s.fleet.getMemoryWithoutUpdate().set(HOME_FLAG, true); // no world to reach: home, not lost
 			Misc.fadeAndExpire(s.fleet);
 			return;
 		}

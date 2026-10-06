@@ -3209,47 +3209,48 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatReturns.settle(CampaignFleetAPI fleet, MarketAPI home, boolean flownHome)` :385 - As above;
 - `ThreatReturns.settle(CampaignFleetAPI fleet, ThreatBases.Base home, boolean flownHome)` :389
 
-## ThreatScoutRoute (467 lines)
-- `ThreatScoutRoute.systemById(String systemId)` :68 - A star system by id, null for a null id:
+## ThreatScoutRoute (501 lines)
+- `ThreatScoutRoute.systemById(String systemId)` :70 - A star system by id, null for a null id:
 ### what a side decides
-- `ThreatScoutRoute.all()` :77 - Every party of this side, out or returning:
-- `ThreatScoutRoute.describe(S s)` :79 - The party in a log line:
-- `ThreatScoutRoute.knownStop(String systemId)` :81 - Whether the side already knows the system, so a party skips the stop.
-- `ThreatScoutRoute.onEnter(S s, StarSystemAPI system, long now)` :83 - What the party does on entering a stop;
-- `ThreatScoutRoute.onStay(S s, StarSystemAPI system, long now)` :85 - The party has stayed its days at a stop with nothing to report.
-- `ThreatScoutRoute.stayVerb()` :87 - What the party is doing in a system, for its assignment:
-- `ThreatScoutRoute.homeOf(S s)` :89 - Where the party reports back to;
-- `ThreatScoutRoute.onReturn(S s)` :91 - The party is about to sail home.
-- `ThreatScoutRoute.returnLabel(S s, MarketAPI home)` :93 - The return leg, for its assignment.
-- `ThreatScoutRoute.friendly(S s, StarSystemAPI system)` :95 - Whether what the party carries is known to its side once it is in this system:
-- `ThreatScoutRoute.deliver(S s, Object seen)` :97 - The party is in a friendly system:
-- `ThreatScoutRoute.onLost(S s)` :100 - The party did not come back:
-- `ThreatScoutRoute.carry(S s, Object seen)` :103 - Takes what the party saw aboard;
-- `ThreatScoutRoute.report(S s)` :109 - Files everything the party carries (deliver), once.
+- `ThreatScoutRoute.all()` :79 - Every party of this side, out or returning:
+- `ThreatScoutRoute.describe(S s)` :81 - The party in a log line:
+- `ThreatScoutRoute.knownStop(String systemId)` :83 - Whether the side already knows the system, so a party skips the stop.
+- `ThreatScoutRoute.onEnter(S s, StarSystemAPI system, long now)` :85 - What the party does on entering a stop;
+- `ThreatScoutRoute.onStay(S s, StarSystemAPI system, long now)` :87 - The party has stayed its days at a stop with nothing to report.
+- `ThreatScoutRoute.stayVerb()` :89 - What the party is doing in a system, for its assignment:
+- `ThreatScoutRoute.homeOf(S s)` :91 - Where the party reports back to;
+- `ThreatScoutRoute.onReturn(S s)` :93 - The party is about to sail home.
+- `ThreatScoutRoute.returnLabel(S s, MarketAPI home)` :95 - The return leg, for its assignment.
+- `ThreatScoutRoute.friendly(S s, StarSystemAPI system)` :97 - Whether what the party carries is known to its side once it is in this system:
+- `ThreatScoutRoute.deliver(S s, Object seen)` :99 - The party is in a friendly system:
+- `ThreatScoutRoute.onLost(S s)` :102 - The party did not come back:
+- `ThreatScoutRoute.carry(S s, Object seen)` :105 - Takes what the party saw aboard;
+- `ThreatScoutRoute.report(S s)` :111 - Files everything the party carries (deliver), once.
 ### the walk
-- `ThreatScoutRoute.advance(S s)` :122 - One poll's step for a party:
-- `ThreatScoutRoute.nextLeg(S s)` :192
-- `ThreatScoutRoute.sendTo(S s, StarSystemAPI system)` :208
-- `ThreatScoutRoute.recallAll()` :223 - The side stopped scouting (its knob turned off):
-- `ThreatScoutRoute.clearAll()` :234 - RESET War:
-- `ThreatScoutRoute.goHome(S s)` :241
-- `ThreatScoutRoute.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :260 - Marks a returning party that reached its world, so advance can tell home from lost.
-- `ThreatScoutRoute.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :266
+- `ThreatScoutRoute.advance(S s)` :124 - One poll's step for a party:
+- `ThreatScoutRoute.nextLeg(S s)` :197
+- `ThreatScoutRoute.sendTo(S s, StarSystemAPI system)` :213
+- `ThreatScoutRoute.recallAll()` :228 - The side stopped scouting (its knob turned off):
+- `ThreatScoutRoute.clearAll()` :239 - RESET War:
+- `ThreatScoutRoute.checkReturn(S s)` :253 - A returning party that will never get home is dismissed as home:
+- `ThreatScoutRoute.goHome(S s)` :273
+- `ThreatScoutRoute.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :294 - Marks a returning party that reached its world, so advance can tell home from lost.
+- `ThreatScoutRoute.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :300
 ### debug: what the patrols are doing (2026-10-06, the user)
-- `ThreatScoutRoute.logArrival(S s, StarSystemAPI system)` :282 - One line on arrival at a stop:
-- `ThreatScoutRoute.BattleMark(ThreatScoutRoute<S> route, S party)` :305
-- `ThreatScoutRoute.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :309
-- `ThreatScoutRoute.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :312
-- `ThreatScoutRoute.census(String side, String levels)` :328 - The monthly census line for this side, and the counters reset:
+- `ThreatScoutRoute.logArrival(S s, StarSystemAPI system)` :316 - One line on arrival at a stop:
+- `ThreatScoutRoute.BattleMark(ThreatScoutRoute<S> route, S party)` :339
+- `ThreatScoutRoute.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :343
+- `ThreatScoutRoute.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :346
+- `ThreatScoutRoute.census(String side, String levels)` :362 - The monthly census line for this side, and the counters reset:
 ### patrols: how many and how big, and meeting a force (2026-10-05)
-- `ThreatScoutRoute.level(String key)` :349 - Losses a side's patrols have not yet forgotten:
-- `ThreatScoutRoute.lost(String key)` :356 - A patrol of this side did not come back.
-- `ThreatScoutRoute.calm(String key)` :364 - patrolCalmDays without a loss forgets one.
-- `ThreatScoutRoute.near(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.LocationAPI where, Vector2f hyper)` :376 - Whether the fleet sees what is at where:
-- `ThreatScoutRoute.meetAbstract(CampaignFleetAPI patrol, float forceFP, float forceBurn, com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteData route, String who, String what)` :395 - A patrol meets a force that flies as a route, of forceFP at forceBurn (the user, 2026-10-05:
+- `ThreatScoutRoute.level(String key)` :383 - Losses a side's patrols have not yet forgotten:
+- `ThreatScoutRoute.lost(String key)` :390 - A patrol of this side did not come back.
+- `ThreatScoutRoute.calm(String key)` :398 - patrolCalmDays without a loss forgets one.
+- `ThreatScoutRoute.near(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.LocationAPI where, Vector2f hyper)` :410 - Whether the fleet sees what is at where:
+- `ThreatScoutRoute.meetAbstract(CampaignFleetAPI patrol, float forceFP, float forceBurn, com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteData route, String who, String what)` :429 - A patrol meets a force that flies as a route, of forceFP at forceBurn (the user, 2026-10-05:
 ### planning
-- `ThreatScoutRoute.taken()` :428 - The stops every party of this side still has ahead of it:
-- `ThreatScoutRoute.nearestFirst(List<StarSystemAPI> candidates, Vector2f from)` :446 - The candidates as a route, nearest-first from where the party starts, each leg measured from the stop before.
+- `ThreatScoutRoute.taken()` :462 - The stops every party of this side still has ahead of it:
+- `ThreatScoutRoute.nearestFirst(List<StarSystemAPI> candidates, Vector2f from)` :480 - The candidates as a route, nearest-first from where the party starts, each leg measured from the stop before.
 
 ## ThreatScouts (750 lines)
 - `ThreatScouts.all()` :85
