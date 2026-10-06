@@ -298,37 +298,44 @@ public class ThreatHulls {
 	}
 
 	// ------------------------------------------------------------------
-	// standing upkeep: the hulls at home pay their supplies (the user,
-	// 2026-10-06, after hw33-35: "we don't want the game to be decided by who
-	// reaches the compound threshold first"; a navy settles where production
-	// pays it). The hive's garrisons pay the same way
-	// (ThreatColonyManager.payGarrisonSupplies).
+	// standing upkeep: the navy the yards built beyond vanilla's table pays its
+	// supplies (the user, 2026-10-06, after hw33-37: "we don't want the game to
+	// be decided by who reaches the compound threshold first", then "every world
+	// both sides has innate patrols based on vanilla systems and custom mod
+	// actions draw on the tangible resources"). Vanilla's patrols - the standing
+	// figure, a hive's garrison - are vanilla's to keep: its Military Base
+	// demand, its shortages cutting fleet size and quality, which the figure
+	// reads. Only what the mod adds is charged.
 	// ------------------------------------------------------------------
 
 	public static final String KEY_UPKEEP_AT = "threatinc_hullUpkeepAt";
 	/** Since the last month line: factionId -> {wanted, paid, FP lost}. */
 	protected static final Map<String, float[]> upkeepTally = new HashMap<String, float[]>();
 
-	/** Supplies a month one of the faction's hulls at home costs: its ships' maintenance per FP (ThreatReach.suppliesPerFP) times standingUpkeepMult. */
+	/** Supplies a month one of the faction's built hulls at home costs: its ships' maintenance per FP (ThreatReach.suppliesPerFP) times standingUpkeepMult. */
 	public static float standingRate(String factionId) {
 		return ThreatReach.suppliesPerFP(factionId) * ThreatIncConfig.standingUpkeepMult();
 	}
 
-	/** Supplies a month the faction's hulls at home cost: its free hulls at {@link #standingRate}. */
+	/** The faction's built hulls at home: the fleets out are held against vanilla's patrols first, so what is free beyond them is the navy held. */
+	public static float builtAtHome(String factionId) {
+		return Math.max(0f, Math.min(built(factionId), freeFP(factionId)));
+	}
+
+	/** Supplies a month the faction's built hulls at home cost, at {@link #standingRate}. */
 	public static float standingUpkeepPerMonth(String factionId) {
-		return freeFP(factionId) * standingRate(factionId);
+		return builtAtHome(factionId) * standingRate(factionId);
 	}
 
 	/**
-	 * Daily: every mobilised NPC faction's hulls at home (freeFP - the fleets
-	 * out pay as fleets, ThreatUpkeep; the debt is hulls that do not exist)
-	 * cost their maintenance for the days since the last call, each market
-	 * paying its standing share from its reserve above its floor and holds,
-	 * then any market of the faction above its floor. A hull-month nobody paid
-	 * is a hull lost ({@link #starve}): the yards' navy first, then the debt
-	 * the yards rebuild - so a navy shrinks to what the faction's supplies keep
-	 * up, as the hive's garrison does. Not the player's faction (its fleets
-	 * keep the old rule too, ThreatUpkeep).
+	 * Daily: every mobilised NPC faction's built hulls at home (builtAtHome -
+	 * the fleets out pay as fleets, ThreatUpkeep; vanilla's patrols are
+	 * vanilla's to keep) cost their maintenance for the days since the last
+	 * call, each market paying its standing share from its reserve above its
+	 * floor and holds, then any market of the faction above its floor. A
+	 * hull-month nobody paid is a built hull lost ({@link #starve}) - so the
+	 * navy beyond the table shrinks to what the faction's supplies keep up.
+	 * Not the player's faction (its fleets keep the old rule too, ThreatUpkeep).
 	 */
 	public static void maintain() {
 		if (!enabled() || ThreatIncConfig.standingUpkeepMult() <= 0f) return;
@@ -347,7 +354,7 @@ public class ThreatHulls {
 
 	protected static void maintain(String factionId, float days) {
 		float rate = standingRate(factionId);
-		float home = freeFP(factionId);
+		float home = builtAtHome(factionId);
 		if (home <= 0f || rate <= 0f) return;
 		float want = home * rate * days / 30f;
 		List<MarketAPI> markets = marketsOf(factionId);
@@ -377,13 +384,11 @@ public class ThreatHulls {
 		t[2] += lost;
 	}
 
-	/** Hulls the faction could not keep up: off its built navy first, then onto the debt its yards rebuild. Returns the FP struck. */
+	/** Built hulls the faction could not keep up, struck off its navy (never a debt: vanilla's patrols are not charged). Returns the FP struck. */
 	protected static float starve(String factionId, float fp, float unpaid) {
+		fp = Math.min(fp, built(factionId));
 		if (fp <= 0f) return 0f;
-		float fromBuilt = Math.min(fp, built(factionId));
-		if (fromBuilt > 0f) builtMap().put(factionId, built(factionId) - fromBuilt);
-		float toDebt = fp - fromBuilt;
-		if (toDebt > 0f) debts().put(factionId, debt(factionId) + toDebt);
+		builtMap().put(factionId, built(factionId) - fp);
 		ThreatIncConfig.logQuiet("hull_starve_" + factionId, "Hulls: " + ThreatWarState.displayName(factionId)
 				+ " cannot keep up " + (int) fp + " FP (" + (int) unpaid + " supplies unpaid): " + (int) built(factionId)
 				+ " built, " + (int) debt(factionId) + " lost, " + (int) freeFP(factionId) + " free");

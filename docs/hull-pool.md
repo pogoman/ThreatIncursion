@@ -57,27 +57,28 @@ they mobilise. No shipyard, no replacement and no growth. The hive keeps no such
 are rebuilt by its forge bank as before, and only its **want** changes (`ThreatPosture.minimumFP` = the hive's standing hulls, at least
 one swarm; the launch stock on top as before).
 
-**Standing upkeep** (`maintain`, daily; the user, 2026-10-06, after hw33-35 went to whichever
-side's hulls compounded first: "we don't want the game to be decided by who reaches the compound
-threshold first"): a mobilised NPC faction's hulls at home - `freeFP`; the fleets out pay as fleets
-(`ThreatUpkeep`), the debt is hulls that do not exist - cost their ships' maintenance a month,
-`standingRate` = `ThreatReach.suppliesPerFP(faction)` (its fleets out measured, 0.94 by default)
-x `standingUpkeepMult` (1). Each market pays its standing share from its reserve above its floor
-and holds (`ThreatReserves.drawAbove`), then any market of the faction above its floor. A
-hull-month nobody paid is a hull lost (`starve`: unpaid / rate FP, off `built` first, then onto
-the debt), so a navy shrinks to what the faction's supplies keep up and grows only while its yards
-outbuild what it cannot pay. The month line reads `Hulls: … standing upkeep paid X of Y supplies,
-Z FP starved`. Not the player's faction (its fleets keep the old rule too). The hive's garrisons
-pay the same rate from the hive's stock (`docs/hive-garrison-and-upkeep.md`, "Standing upkeep").
+**Standing upkeep of the built navy** (`maintain`, daily; the user, 2026-10-06 - after hw33-35 went to
+whichever side's hulls compounded first, and after hw36-37 showed that charging vanilla's patrol figure
+double-counts what vanilla does: "every world both sides has innate patrols based on vanilla systems and
+custom mod actions draw on the tangible resources"). Vanilla's patrols - the standing figure, the
+hive's garrison - are vanilla's to keep: the Military Base demands supplies, fuel and ships, a
+shortage cuts fleet size and quality, and the figure reads both. Only the navy the yards built beyond
+the table is charged: `builtAtHome` = min(`built`, `freeFP`) (the fleets out hold vanilla's patrols
+first and pay as fleets, `ThreatUpkeep`) x `standingRate` = `ThreatReach.suppliesPerFP(faction)` (its
+fleets out measured, 0.94 by default) x `standingUpkeepMult` (1) a month. Each market pays its standing
+share from its reserve above its floor and holds (`ThreatReserves.drawAbove`), then any market of the
+faction above its floor. A hull-month nobody paid is a built hull lost (`starve`: unpaid / rate FP, never
+a debt), and the unpaid is booked as demand for the faction's planner. The month line reads `Hulls: …
+standing upkeep paid X of Y supplies, Z FP starved`. Not the player's faction (its fleets keep the old
+rule too).
 
-**Supplies-bound growth** (the user, 2026-10-06, after hw36): the yards bank no built hull the
-faction's supplies surplus cannot keep - `rebuild` adds at most `suppliesKeepFP` = (what the reserves
-bank a month, `ThreatFactionStock.perMonth`, less their trailing demand, the standing upkeep paid
-among it) / `standingRate`; losses still rebuild first, and the rest of the output is idle (`Hulls: X
-yards idle: N FP/mo its supplies cannot keep`). Unpaid standing upkeep is booked as demand
-(`ThreatFactionStock.noteDemand`), so the faction's planner builds for it. In hw36 the charge alone
-did not settle the navies: the hive's grew to its want on forge FP and its strikes starved instead
-(`game-runs-2.md` 36).
+**Supplies-bound growth** (the user, 2026-10-06): the yards bank no built hull the faction's supplies
+surplus cannot keep - `rebuild` adds at most `suppliesKeepFP` = (what the reserves bank a month,
+`ThreatFactionStock.perMonth`, less their trailing demand) / `standingRate`; losses still rebuild
+first, and the rest of the output is idle (`Hulls: X yards idle: N FP/mo its supplies cannot keep`).
+hw36 charged vanilla's figure and the hive's garrison too and hw37 gated the garrison's growth: the swarm
+spent every supply it made holding a garrison it could not use and the humans won 3-0 (`game-runs-2.md`
+36-37); both were cut the same evening.
 
 ## 3. Where it binds
 
