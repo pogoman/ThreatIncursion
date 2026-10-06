@@ -403,3 +403,44 @@ Build 389aeec: as hw23 with `strikeStagedMinFP` 5,000.
 
 - Between hw22 (3,000) and hw23/25 (8,000) on every count: the opening (day 1279-1280), the found month (44-46),
   the outcome (two won, one extinct), the worlds lost (2-13).
+
+## 24. hw27a-hw27c (2026-10-06): 3,000 FP strikes, the war opened only once the fund holds 8,000 FP (a trial)
+
+Build b2e7e79: as hw22 (`strikeStagedMinFP` 3,000) with `strikeStagedOpenFP` 8,000 - the war's first strike waits for
+the fund the 8,000 FP setting waits for, then the strikes are hw22's size.
+
+| | hw27a | hw27b | hw27c |
+|---|---|---|---|
+| First strike / first hive found, war day | 1401 / 1529 | 1371 / 1512 | 1311 / 1414 |
+| Found, month (hives then) | 49 (24) | 49 (21) | 46 (21) |
+| Hives at m120 (peak) | 15 (33) | 82 (82) | 40 (48) |
+| Strikes (mean FP) | 45 (3,244) | 64 (3,424) | 58 (3,404) |
+| Threat landings / human worlds lost | 14 / 2 | 19 / 1 | 26 / 1 |
+| Forward bases founded / destroyed by a strike | 74 / 25 | 82 / 42 | 66 / 28 |
+| Human landings / hives eradicated | 64 / 54 | 152 / 137 | 82 / 75 |
+
+- Size and timing separate cleanly. The later opening alone keeps the hive alive (three of three survive, hw22: one
+  extinct) but takes no worlds (1-2 lost, as every batch before hw23); 8,000 FP strikes take them (10-23).
+
+## 25. The night of 2026-10-05/06 in one table, and what was left on
+
+Every batch three games from the same save, 3,750 days. Columns: hives at m120 (extinct month), human worlds lost.
+
+| Batch | Build | a | b | c |
+|---|---|---|---|---|
+| hw19 | garrison strikes, recall, information by ship | 17 / 2 | ext m121 / 1 | 119 / 2 |
+| hw20 | staged strikes from the banks, no recall | 9 / 1 | ext m108 / 2 | ext m68 / 2 |
+| hw21 | + the hive's spare garrison swarms | ext m96 / 1 | ext m79 / 2 | ext m112 / 2 |
+| hw22 | strike fund 0.3, strikes >= 3,000 FP | 6 / 1 | 43 / 1 | ext m92 / 1 |
+| hw23 | fund 0.3, >= 8,000 | 91 / 13 | 185 / 23 | 105 / 14 |
+| hw24 | fund 0.5, >= 8,000 | ext m107 / 1 | 104 / 21 | 51 / 6 |
+| hw25 | hw23 again | 139 / 19 | 127 / 11 | 64 / 10 |
+| hw26 | fund 0.3, >= 5,000 | 58 / 4 | ext m115 / 2 | 58 / 13 |
+| hw27 | fund 0.3, >= 3,000, opened at an 8,000 fund | 15 / 2 | 82 / 1 | 40 / 1 |
+
+- Ranked by the swarm's own score (colonies and worlds destroyed, `run-scoring`): hw23/hw25's setting wins outright,
+  six of six. Left on in `settings.json` as the defaults: `strikeStaged` true, `strikeFundShare` 0.3,
+  `strikeStagedMinFP` 8000, `strikeStagedOpenFP` 0, `strikeStagedGarrisons` false, `strikeStagedMargin` 1.5. Whether
+  the swarm should win this often is the user's call; `strikeStagedMinFP` 3000-5000 gives the contested range.
+- Two mechanisms, separately measured: how late the war opens decides whether the hive survives; how big its strikes
+  are decides whether it takes worlds.
