@@ -555,3 +555,37 @@ went to the strike fund. **Defect:** out exceeded standing everywhere (Tri-Tachy
 convoys and scouting parties were committed at spawn but never gated at launch, so freighters held the warship hulls and
 every hunt and siege read 0 free. Fixed for hw31: convoys draw no hulls, scouts and patrols launch only with hulls free
 (`hull-pool.md` 3). Dumps: `tools/warsim/validation/hw30a-c`.
+
+## 31. hw31 - the hull pool, convoys exempt and scouts gated, to war day 3,100-3,750 (2026-10-06)
+
+Three new games on 7d8e6459; c ran to day 3,758, a and b read at ~3,130-3,150. No exceptions. Hives 107 / 94 / 88 (size
+471 / 479 / 395), swarm fleets 175k / 232k / 178k FP on 54 / 65 / 52 forges (21-26k FP/mo); eradicated 14 / 0 / 30; Threat
+strikes 114 / 105 / 200, human sieges 91 / 34 / 105; the core held (hw30 lost Chicomoztoc by day 2000). c held the swarm at
+25-30 hives from day 2000 to 2574 before it regrew. Pools at the end: Hegemony 1.2k / 3.2k / 8.4k standing (c built Military
+Bases and starfortresses on its forward bases; yards 200 / 3,600 / 3,800 FP/mo), Persean 2.7-6.7k, Tri-Tachyon 0.3-1.1k,
+Independent 0.5-3.2k - every pool out to the last hull, out > standing where a faction's bases died with fleets away.
+
+**Stockpiles.** Swarm: fuel-bound days 600-1000 (first plant ~day 497, producing from ~740), supplies-bound 1000-1900
+(stock 1-9k against 28-40k/mo spent; 53-85 sends held, last at 1886-2069), then nothing held: fuel hoarded 230-555k (10-28
+months' cover), supplies about one month's spend (b 117k against 172k/mo at the end). Humans: never short of either - the
+reserve starts at mobilisation (day 1535) and nothing spends it: 350k-1.1M fuel and 110-520k supplies a faction by day 3000.
+All 476 / 437 / 493 "Expedition postponed" lines had both resources over the bill: hull-bound. "Hunting force waits" 815 /
+889 / 320. The only resource bind: 75 / 26 / 54 "short of fuel to saturate" at a single base's own fuel.
+
+**Builds.** Hive: fuel plants 11 / 10 / 7 in the shortage window (days 1164-1559), Heavy Industry for supplies 6 / 9 / 4
+(1131-1836), spare refineries 18-22, and when fuel overshot it converted 6 / 6 / 3 fuel plants back (to Heavy Industry and
+Bastions); neither shortage recurred. Humans: core worlds build only Waystations (26-27); forward bases one fixed sequence
+(Patrol HQ +120 d, station +60, fuel plant / Heavy Industry +120 each, then Military Base, starfortress), fuel first 8 / 9 /
+16 bases against Heavy Industry first 2 / 4 / 0; the fuel-to-Heavy-Industry swap never fired; most founded bases died within
+~120 d (24 / 22 / 37 dismantled, 23 of c's by strikes). The wrong priority under the pool: fuel never binds, yards do.
+
+**Fog.** First hive found 18-50 days after the first mobilisation, always from a same-faction sighting carried home in a
+median 14-15 days; no cross-faction sharing (Mam: Hegemony day 1596, Persean 2964); "found" is per system, hence 88/91 by day
+3000 on ~25-30 find lines. Tri-Tachyon in b and luddic_path in a stayed blind: hull-starved pools kept their parties home
+(the scout gate). Swarm: 550-600 patrols (127-143 d out, 88-90% of stops empty), 1,060-1,270 scouting swarms; seen sieges
+rallied within 30 d 11/37, 6/21, 17/41, "no rally (could stand against)" x65. Human parties 36-373 a faction, 5-11% fight.
+
+For the user: hull scale (`hullPoolMult`, `fabFPPerShipUnit`, the forge invest rule - humans 1-8k pools and 0.2-3.8k/mo yards
+against 50-65 forges); forward-base build order (Heavy Industry first, the swap keyed on hull debt); the reserve accrual that
+buys nothing; scouts gated on hulls (exempt them like convoys?); guards holding hulls for good. Dumps: hw31c
+`tools/warsim/validation/hw31c`, a and b when they finish.
