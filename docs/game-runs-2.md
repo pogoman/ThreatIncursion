@@ -437,6 +437,7 @@ Every batch three games from the same save, 3,750 days. Columns: hives at m120 (
 | hw25 | hw23 again | 139 / 19 | 127 / 11 | 64 / 10 |
 | hw26 | fund 0.3, >= 5,000 | 58 / 4 | ext m115 / 2 | 58 / 13 |
 | hw27 | fund 0.3, >= 3,000, opened at an 8,000 fund | 15 / 2 | 82 / 1 | 40 / 1 |
+| hw28 | fund 0.3, >= 5,000, opened at an 8,000 fund | 108 / 16 | 129 / 14 | ext m119 / 1 |
 
 - Ranked by the swarm's own score (colonies and worlds destroyed, `run-scoring`): hw23/hw25's setting wins outright,
   six of six. Left on in `settings.json` as the defaults: `strikeStaged` true, `strikeFundShare` 0.3,
@@ -444,3 +445,19 @@ Every batch three games from the same save, 3,750 days. Columns: hives at m120 (
   the swarm should win this often is the user's call; `strikeStagedMinFP` 3000-5000 gives the contested range.
 - Two mechanisms, separately measured: how late the war opens decides whether the hive survives; how big its strikes
   are decides whether it takes worlds.
+
+## 26. hw28a-hw28c (2026-10-06): 5,000 FP strikes, the war opened at an 8,000 FP fund (a trial)
+
+Build 79599c1 with `strikeStagedMinFP` 5,000 and `strikeStagedOpenFP` 8,000.
+
+| | hw28a | hw28b | hw28c |
+|---|---|---|---|
+| First strike / first hive found, war day | 1310 / 1416 | 1400 / 1528 | 1430 / 1516 |
+| Hives at m120 (peak) | 108 (118) | 129 (135) | 1, extinct m119 (29) |
+| Strikes (mean FP) | 58 (5,753) | 56 (5,546) | 19 (5,406) |
+| Threat landings / human worlds lost | 40 / 16 | 39 / 14 | 7 / 1 |
+| Forward bases founded / destroyed by a strike | 53 / 17 | 58 / 19 | 60 / 9 |
+| Human landings / hives eradicated | 49 / 41 | 45 / 35 | 57 / 46 |
+
+- Two games as decisive as the 8,000 setting, one lost late: the contested range is narrow and the outcome still
+  turns on the first years of the war. Added to the §25 table.
