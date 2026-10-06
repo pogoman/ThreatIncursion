@@ -1117,6 +1117,38 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionStance.forceFP(FactionAPI faction)` :291 - The FP the faction could field:
 - `ThreatFactionStance.weakestTarget(FactionAPI faction)` :320 - {system id, name, score} of the hive system a base of the faction in reach - the cheapest that can - takes and pays for now (IncursionManager.siegeAffordable) with the most worth for the least odds pe
 
+## ThreatFactionStock (288 lines)
+- `ThreatFactionStock.key(String factionId, String commodityId, String field)` :39
+- `ThreatFactionStock.num(String key)` :43
+- `ThreatFactionStock.producerId(String commodityId)` :49 - The industry a forward base builds for the stock:
+- `ThreatFactionStock.producerOn(MarketAPI market, String commodityId)` :54 - The market's producer of the stock, built or building;
+- `ThreatFactionStock.buildDays(String commodityId)` :62 - Days a new producer takes to stand (vanilla's build time), never under SHORT_DAYS;
+### trailing demand: what the reserves paid out (ThreatReserves.draw), decayed
+- `ThreatFactionStock.ageDemand(String f, String c)` :72 - Brings the faction's trailing sums up to now;
+- `ThreatFactionStock.watch(String factionId)` :94 - Opens or ages the faction's windows (ThreatFrontlines.build, each pass):
+- `ThreatFactionStock.noteDemand(String factionId, String commodityId, float amount)` :101 - Demand on the faction's reserves of the commodity:
+- `ThreatFactionStock.demandPerMonth(String f, String c)` :109 - The trailing demand on the faction's reserves a month, over the last build time.
+- `ThreatFactionStock.observed(String f, String c, float days)` :125 - Whether the faction's demand has been watched at least this many days.
+### the stocks
+- `ThreatFactionStock.stock(String f, String c)` :135 - The faction's war reserves of the commodity, every market summed.
+- `ThreatFactionStock.outputOf(MarketAPI m, String c)` :142 - What the market banks of the commodity a month (ThreatReserves.accrualPer30).
+- `ThreatFactionStock.perMonth(String f, String c)` :147 - What the faction's reserves take in a month, every market summed.
+- `ThreatFactionStock.comingPerMonth(String f, String c)` :159 - What the producers under construction on the faction's markets will bank a month once they stand:
+- `ThreatFactionStock.runsDry(String f, String c)` :175 - Whether the faction runs dry of the commodity before a new producer could stand:
+- `ThreatFactionStock.surplus(String f, String c)` :184 - Whether the stock is in surplus:
+- `ThreatFactionStock.surplusProducer(MarketAPI m, String c)` :192 - Whether the market's producer of the commodity can go:
+### hulls: the hull pool read as a stock
+- `ThreatFactionStock.hullsShort(String f)` :210 - Whether the faction is short of hulls:
+- `ThreatFactionStock.hullsSurplus(String f)` :218 - Whether the faction has hulls to spare:
+### what a faction wants built, and the pacing
+- `ThreatFactionStock.shortest(String f)` :232 - The stock the faction is shortest of - hulls first (they bound every expedition in hw31), then of fuel and supplies the one with fewer months of stock against its trailing demand - or null when nothin
+- `ThreatFactionStock.months(String f, String c)` :243 - Months the stock covers its trailing demand;
+- `ThreatFactionStock.mayAnswer(String f, String c)` :249 - Whether the faction may answer the stock with another producer:
+- `ThreatFactionStock.answered(String f, String c)` :255 - Notes that a forward base started a producer for the stock.
+- `ThreatFactionStock.mayConvert(String f)` :260 - Whether the faction may tear a surplus producer down now:
+- `ThreatFactionStock.converted(String f)` :266 - Notes that a forward base tore a producer down.
+- `ThreatFactionStock.describe(String f)` :271 - One line of the faction's plan for the log:
+
 ## ThreatFactionView (2325 lines)
 ### selector row (both views)
 - `ThreatFactionView.selectorIds()` :109 - The factions the selector offers:
@@ -1426,10 +1458,11 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFrontlines.dismantle(Outpost o, MarketAPI market, String why)` :1708 - Takes the link down the way vanilla tears a market down (DecivTracker, PirateBaseIntel.notifyEnding):
 - `ThreatFrontlines.repairMercRoutes()` :1738 - Save repair:
 - `ThreatFrontlines.carryStockHome(Outpost o, MarketAPI market)` :1757 - Moves a link's reserve to the faction's nearest other market that is not a link.
-- `ThreatFrontlines.buildFuel(MarketAPI market, int s)` :1792 - Starts Fuel Production in a free industry slot (frontlineFuelProduction, 2026-09-30) if vanilla's inputs can be had here:
-- `ThreatFrontlines.swapFuelForHeavyIndustry(MarketAPI market, int s)` :1817 - Turns the link's Fuel Production into a Heavy Industry (2026-09-30) when it has no slot for one and the faction's fuel covers all its sieges stage for while its supplies do not (ThreatReserves.staging
-- `ThreatFrontlines.fuelShort(String factionId)` :1856 - Whether the faction is shorter of fuel than of supplies:
-- `ThreatFrontlines.build(MarketAPI market)` :1876 - One project at a time, in order:
+- `ThreatFrontlines.canSupplyProducer(MarketAPI market, int s, String producer)` :1789 - Whether vanilla's inputs for the producer can be had here:
+- `ThreatFrontlines.wantsProducer(MarketAPI market, String producer)` :1797 - Whether the knob for the producer is on and the link has none of it (an Orbital Works counts as a Heavy Industry).
+- `ThreatFrontlines.buildProducer(MarketAPI market, int s, String producer)` :1815 - Starts the producer in a free industry slot if its inputs can be had (canSupplyProducer) and its supplies are paid (startNew).
+- `ThreatFrontlines.convertFor(MarketAPI market, int s, String want, String producer)` :1835 - With no slot free, the link tears a producer of a stock its faction has in surplus down for the producer of the one it runs dry of (ThreatFactionStock, the hive's convertSurplus for a faction):
+- `ThreatFrontlines.build(MarketAPI market)` :1870 - One project at a time, in order:
 - `ThreatFrontlines.canSupplyMilitary(MarketAPI market, int qty)` :1938
 - `ThreatFrontlines.canSupply(MarketAPI market, String commodity, int qty)` :1950 - Whether this market gets qty of the commodity:
 - `ThreatFrontlines.startNew(MarketAPI market, String id)` :1974 - Starts the structure if its supplies are paid (payBuild);
@@ -3108,7 +3141,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatReach.num(Object o)` :382
 - `ThreatReach.logMonth()` :389 - The month's reach line for the census log - the spare, the trips flown and how far the hive has spread - and the tallies reset.
 
-## ThreatReserves (1400 lines)
+## ThreatReserves (1409 lines)
 - `ThreatReserves.get(String marketId)` :130
 - `ThreatReserves.getOrCreate(String marketId)` :135
 - `ThreatReserves.clear(String marketId)` :145
@@ -3127,60 +3160,61 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatReserves.hasDepot(ThreatBases.Base base)` :325 - As above for either kind of base:
 - `ThreatReserves.read(ColonyReserve r, String c)` :331
 - `ThreatReserves.write(ColonyReserve r, String c, float value)` :339
-- `ThreatReserves.draw(String marketId, String commodityId, float amount)` :348 - Takes up to amount;
-- `ThreatReserves.available(MarketAPI market, String commodityId)` :375 - Stock above the colony's floor - what a sortie may actually take.
-- `ThreatReserves.committed(MarketAPI market, String commodityId)` :388 - Stock that is fighting and cannot be shipped:
+- `ThreatReserves.noteSpent(String marketId, String commodityId, float taken)` :348 - What a draw took, as demand on the faction's stock plan (ThreatFactionStock.noteDemand).
+- `ThreatReserves.draw(String marketId, String commodityId, float amount)` :355 - Takes up to amount;
+- `ThreatReserves.available(MarketAPI market, String commodityId)` :384 - Stock above the colony's floor - what a sortie may actually take.
+- `ThreatReserves.committed(MarketAPI market, String commodityId)` :397 - Stock that is fighting and cannot be shipped:
 ### the garrison: which marines are actually armed, and how good they are
-- `ThreatReserves.armedMarines(MarketAPI market)` :405 - Marines that are called up, armed and posted:
-- `ThreatReserves.depositArmed(MarketAPI market, float marines, float level)` :428 - Marines arriving already trained and equipped - a front falling back onto a base, or survivors garrisoning what they took.
-- `ThreatReserves.armReturning(MarketAPI market, float marines, float level)` :439 - The bookkeeping half of #depositArmed, for callers that have already banked the bodies by another route (a returning convoy settles through ThreatBases).
-- `ThreatReserves.seedMarineArming()` :471 - Seeds the arming ramp for every colony that has not carried one, so a save upgraded to this build counts the marines it was ALREADY sitting on as armed - and everything shipped in afterwards has to be
-- `ThreatReserves.ensureMarineSeed(String marketId)` :501 - Records the ramp at the CURRENT stock before something is added to it, so the arrival has to be worked up rather than counting as a garrison that was always there.
-- `ThreatReserves.marineXp(MarketAPI market)` :513 - The colony's marine veterancy pool (ThreatMarineXP).
-- `ThreatReserves.addMarineXp(MarketAPI market, float gain)` :520 - Grants the colony's marines experience, clamped to the armed headcount.
-- `ThreatReserves.spendDefendingMarines(MarketAPI market, float amount)` :536 - Marines killed defending.
-- `ThreatReserves.tickMarineArming(MarketAPI market)` :555 - Advances the arming ramp.
-- `ThreatReserves.floor(MarketAPI market, String commodityId)` :614 - The home garrison's stock:
-- `ThreatReserves.noteBasis(MarketAPI market, ColonyReserve r, String c, float basis)` :639 - Remembers the months basis a depot banked at, so its floor survives the colony falling into deficit.
-- `ThreatReserves.baselineMonths(MarketAPI market, String commodityId)` :650 - Months of the banking the production share does not scale:
-- `ThreatReserves.basisShare(MarketAPI market, String commodityId)` :656 - The production share a colony's banking is scaled by;
-- `ThreatReserves.drawAbove(MarketAPI market, String commodityId, float amount)` :661 - Takes up to amount, never below the floor;
-- `ThreatReserves.spendable(MarketAPI market, String commodityId)` :674 - Stock a hunting force may take from this base:
-- `ThreatReserves.drawSpendable(MarketAPI market, String commodityId, float amount)` :682 - Takes up to amount of #spendable stock;
-- `ThreatReserves.deposit(String marketId, String commodityId, float amount)` :688 - Adds stock (a convoy arriving, a withdrawn front returning).
+- `ThreatReserves.armedMarines(MarketAPI market)` :414 - Marines that are called up, armed and posted:
+- `ThreatReserves.depositArmed(MarketAPI market, float marines, float level)` :437 - Marines arriving already trained and equipped - a front falling back onto a base, or survivors garrisoning what they took.
+- `ThreatReserves.armReturning(MarketAPI market, float marines, float level)` :448 - The bookkeeping half of #depositArmed, for callers that have already banked the bodies by another route (a returning convoy settles through ThreatBases).
+- `ThreatReserves.seedMarineArming()` :480 - Seeds the arming ramp for every colony that has not carried one, so a save upgraded to this build counts the marines it was ALREADY sitting on as armed - and everything shipped in afterwards has to be
+- `ThreatReserves.ensureMarineSeed(String marketId)` :510 - Records the ramp at the CURRENT stock before something is added to it, so the arrival has to be worked up rather than counting as a garrison that was always there.
+- `ThreatReserves.marineXp(MarketAPI market)` :522 - The colony's marine veterancy pool (ThreatMarineXP).
+- `ThreatReserves.addMarineXp(MarketAPI market, float gain)` :529 - Grants the colony's marines experience, clamped to the armed headcount.
+- `ThreatReserves.spendDefendingMarines(MarketAPI market, float amount)` :545 - Marines killed defending.
+- `ThreatReserves.tickMarineArming(MarketAPI market)` :564 - Advances the arming ramp.
+- `ThreatReserves.floor(MarketAPI market, String commodityId)` :623 - The home garrison's stock:
+- `ThreatReserves.noteBasis(MarketAPI market, ColonyReserve r, String c, float basis)` :648 - Remembers the months basis a depot banked at, so its floor survives the colony falling into deficit.
+- `ThreatReserves.baselineMonths(MarketAPI market, String commodityId)` :659 - Months of the banking the production share does not scale:
+- `ThreatReserves.basisShare(MarketAPI market, String commodityId)` :665 - The production share a colony's banking is scaled by;
+- `ThreatReserves.drawAbove(MarketAPI market, String commodityId, float amount)` :670 - Takes up to amount, never below the floor;
+- `ThreatReserves.spendable(MarketAPI market, String commodityId)` :683 - Stock a hunting force may take from this base:
+- `ThreatReserves.drawSpendable(MarketAPI market, String commodityId, float amount)` :691 - Takes up to amount of #spendable stock;
+- `ThreatReserves.deposit(String marketId, String commodityId, float amount)` :697 - Adds stock (a convoy arriving, a withdrawn front returning).
 ### accrual - rule 1: what arrives above peacetime needs banks
-- `ThreatReserves.accrualPer30(MarketAPI market, String commodityId)` :726 - What this colony adds to a reserve per 30 days:
-- `ThreatReserves.surplusMult(String commodityId)` :750 - The share of a unit of surplus banked a month:
-- `ThreatReserves.productionShare(String factionId, String commodityId)` :773 - The faction banks what it makes (2026-09-26):
-- `ThreatReserves.shareFigures(String factionId, String commodityId)` :792 - The figures behind #productionShare, in units:
-- `ThreatReserves.forgetCaches()` :819 - Drops the tithe and production-share memos, so a loaded game never reads the previous campaign's (game load).
-- `ThreatReserves.surplusUnits(MarketAPI market, CommodityOnMarketAPI com)` :832 - Units of availability above the colony's peacetime demand (the War footing's own left out), this mod's own trade modifiers excluded;
-- `ThreatReserves.bankUnits(MarketAPI market, CommodityOnMarketAPI com)` :846 - Units a war faction's colony banks:
-- `ThreatReserves.wartimeShare(CommodityOnMarketAPI com)` :859 - The share of the colony's peacetime demand that banks on top of its surplus:
-- `ThreatReserves.wartimeFuel(CommodityOnMarketAPI com)` :874 - Fuel banks at the war rate (reserveWartimeFuel, 2026-09-30):
-- `ThreatReserves.wartimeSupplies(CommodityOnMarketAPI com)` :887 - Supplies bank at the war rate too (reserveWartimeSuppliesShare, 2026-10-04, the share of peacetime demand that banks;
-- `ThreatReserves.structuralAvailable(CommodityOnMarketAPI com)` :892 - Vanilla's availability (units) less what this mod's own trade modifiers contribute to it.
-- `ThreatReserves.ownModUnits(CommodityOnMarketAPI com, String onlySource)` :906 - Whole econ units this mod's trade modifiers contribute to availability - every threatinc_ source, or one named source.
-- `ThreatReserves.coverQuantity(CommodityOnMarketAPI com)` :921 - Quantity of the depot's cover in force for this commodity, 0 if none.
-- `ThreatReserves.cap(MarketAPI market, String commodityId)` :933 - The colony's REFERENCE stock of a commodity - months of its own banking plus its staging bank - for "how full" readouts.
-- `ThreatReserves.stagingBank(MarketAPI market, String commodityId)` :946 - What an NPC staging base holds for the siege it stages (2026-09-24):
-- `ThreatReserves.monthsBasis(MarketAPI market, String commodityId)` :960 - Months of the colony's own banking (reserveCapMonths of it):
-- `ThreatReserves.monthsCap(MarketAPI market, String commodityId)` :969 - Old name of #monthsBasis, kept for callers not yet moved over;
+- `ThreatReserves.accrualPer30(MarketAPI market, String commodityId)` :735 - What this colony adds to a reserve per 30 days:
+- `ThreatReserves.surplusMult(String commodityId)` :759 - The share of a unit of surplus banked a month:
+- `ThreatReserves.productionShare(String factionId, String commodityId)` :782 - The faction banks what it makes (2026-09-26):
+- `ThreatReserves.shareFigures(String factionId, String commodityId)` :801 - The figures behind #productionShare, in units:
+- `ThreatReserves.forgetCaches()` :828 - Drops the tithe and production-share memos, so a loaded game never reads the previous campaign's (game load).
+- `ThreatReserves.surplusUnits(MarketAPI market, CommodityOnMarketAPI com)` :841 - Units of availability above the colony's peacetime demand (the War footing's own left out), this mod's own trade modifiers excluded;
+- `ThreatReserves.bankUnits(MarketAPI market, CommodityOnMarketAPI com)` :855 - Units a war faction's colony banks:
+- `ThreatReserves.wartimeShare(CommodityOnMarketAPI com)` :868 - The share of the colony's peacetime demand that banks on top of its surplus:
+- `ThreatReserves.wartimeFuel(CommodityOnMarketAPI com)` :883 - Fuel banks at the war rate (reserveWartimeFuel, 2026-09-30):
+- `ThreatReserves.wartimeSupplies(CommodityOnMarketAPI com)` :896 - Supplies bank at the war rate too (reserveWartimeSuppliesShare, 2026-10-04, the share of peacetime demand that banks;
+- `ThreatReserves.structuralAvailable(CommodityOnMarketAPI com)` :901 - Vanilla's availability (units) less what this mod's own trade modifiers contribute to it.
+- `ThreatReserves.ownModUnits(CommodityOnMarketAPI com, String onlySource)` :915 - Whole econ units this mod's trade modifiers contribute to availability - every threatinc_ source, or one named source.
+- `ThreatReserves.coverQuantity(CommodityOnMarketAPI com)` :930 - Quantity of the depot's cover in force for this commodity, 0 if none.
+- `ThreatReserves.cap(MarketAPI market, String commodityId)` :942 - The colony's REFERENCE stock of a commodity - months of its own banking plus its staging bank - for "how full" readouts.
+- `ThreatReserves.stagingBank(MarketAPI market, String commodityId)` :955 - What an NPC staging base holds for the siege it stages (2026-09-24):
+- `ThreatReserves.monthsBasis(MarketAPI market, String commodityId)` :969 - Months of the colony's own banking (reserveCapMonths of it):
+- `ThreatReserves.monthsCap(MarketAPI market, String commodityId)` :978 - Old name of #monthsBasis, kept for callers not yet moved over;
 ### rule 3: the depot counters the colony's own shortage first
-- `ThreatReserves.deficitUnits(CommodityOnMarketAPI com)` :978 - Units the colony is short of the commodity - demand above availability, the depot's own cover ignored.
-- `ThreatReserves.localDeficitUnits(MarketAPI market, CommodityOnMarketAPI com)` :991 - Units short of the colony's PEACETIME demand, the depot's own cover ignored - what the depot covers.
-- `ThreatReserves.coverShortage(MarketAPI market, ColonyReserve r, String c)` :1012 - While a mobilised colony is short of a reserve commodity for its own peacetime needs (#localDeficitUnits) and no cover is in force, the governor issues one:
-- `ThreatReserves.coverSpendable(MarketAPI market, float stock, String c, float fraction)` :1040 - What one cover issue may spend:
+- `ThreatReserves.deficitUnits(CommodityOnMarketAPI com)` :987 - Units the colony is short of the commodity - demand above availability, the depot's own cover ignored.
+- `ThreatReserves.localDeficitUnits(MarketAPI market, CommodityOnMarketAPI com)` :1000 - Units short of the colony's PEACETIME demand, the depot's own cover ignored - what the depot covers.
+- `ThreatReserves.coverShortage(MarketAPI market, ColonyReserve r, String c)` :1021 - While a mobilised colony is short of a reserve commodity for its own peacetime needs (#localDeficitUnits) and no cover is in force, the governor issues one:
+- `ThreatReserves.coverSpendable(MarketAPI market, float stock, String c, float fraction)` :1049 - What one cover issue may spend:
 ### rule 7: one commodity at one colony, in vanilla's units and ours
-- `ThreatReserves.status(MarketAPI market, String c)` :1083
+- `ThreatReserves.status(MarketAPI market, String c)` :1092
 ### rule 2: mobilisation is vanilla demand - the War footing condition
-- `ThreatReserves.syncWarFooting(List<String> warring)` :1150 - Every colony of a mobilised faction carries the War footing condition (the colony screen's face of the war:
-- `ThreatReserves.marketsOf(String factionId)` :1225 - Every market currently flying this faction's flag (hidden markets excluded).
-- `ThreatReserves.poll(float elapsedDays)` :1244 - The fast poll, pro-rated per 30 days, for every colony of every mobilised faction:
-- `ThreatReserves.logLedger(List<String> warring, float elapsedDays)` :1307 - Debug logging:
-- `ThreatReserves.seed(String factionId)` :1357 - Mobilisation stock:
-- `ThreatReserves.factionStock(String factionId, String commodityId)` :1382 - Total stock of a commodity across a faction's colonies (for the board).
-- `ThreatReserves.label(String commodityId)` :1393
+- `ThreatReserves.syncWarFooting(List<String> warring)` :1159 - Every colony of a mobilised faction carries the War footing condition (the colony screen's face of the war:
+- `ThreatReserves.marketsOf(String factionId)` :1234 - Every market currently flying this faction's flag (hidden markets excluded).
+- `ThreatReserves.poll(float elapsedDays)` :1253 - The fast poll, pro-rated per 30 days, for every colony of every mobilised faction:
+- `ThreatReserves.logLedger(List<String> warring, float elapsedDays)` :1316 - Debug logging:
+- `ThreatReserves.seed(String factionId)` :1366 - Mobilisation stock:
+- `ThreatReserves.factionStock(String factionId, String commodityId)` :1391 - Total stock of a commodity across a faction's colonies (for the board).
+- `ThreatReserves.label(String commodityId)` :1402
 
 ## ThreatResponseIntel (404 lines)
 - `ThreatResponseIntel.ThreatResponseIntel(java.util.List<CampaignFleetAPI> fleets, FactionAPI faction, String baseName, com.fs.starfarer.api.campaign.econ.MarketAPI targetColony, String targetSystemName)` :41
