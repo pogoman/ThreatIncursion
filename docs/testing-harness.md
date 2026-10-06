@@ -322,6 +322,10 @@ play (`saves_sbs<tag>savesmmon	hreatinc_simdump_*`; copy them to a scratch `<ta
 `organs.pl <tag>` there). Sieges arrive around m45-m47, so a look at m55-m60, 20 minutes in, shows whether a
 change took; run to m125 only when the question is the end state (extinction, runaway). Trial `sa`/`sb`: two games ran 210 and 212 days a minute each, against 215 for one game alone, so the
 batch time is one run's (about 40 minutes) whatever the count, up to what memory holds (2.8 GB a game).
+**An old save instead of the new game:** `-Bases "sat=save_SaturnHadean_8807243588242812142;sl=save_StarLord_1669224817518795825"`
+clones that save for the tag as it is (`clone.ps1`, no relation edit) - the upgrade test of 2026-10-06. Enable every mod the
+save's `descriptor.xml` lists first (the missing-mod prompt would block the Continue click). `savefields.pl campaign.xml` lists
+the mod classes and fields a save holds, for the static check against `javap -p` of the jar (facts: "Will a 0.6 / 0.7 save load").
 Batch hw6a-hw6c (2026-10-04): three games ran 123-142 days a minute each to war day 2,340-2,680, about the same
 days a minute in total as two, so a third game buys a replicate, not time. The wrap-up works (dumps copied,
 settings restored), and closing the games by hand ends a batch cleanly ("GAME GONE"). Untested so far: the

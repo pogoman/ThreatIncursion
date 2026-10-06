@@ -461,3 +461,20 @@ Build 79599c1 with `strikeStagedMinFP` 5,000 and `strikeStagedOpenFP` 8,000.
 
 - Two games as decisive as the 8,000 setting, one lost late: the contested range is narrow and the outcome still
   turns on the first years of the war. Added to the §25 table.
+
+## 27. sat / sl - old saves on the current build (2026-10-06)
+
+The upgrade test the user asked for: the latest Saturn save (`save_SaturnHadean_8807243588242812142`, mod 0.6.0, 2026-09-07, war
+day 2361) and StarLord save (`save_StarLord_1669224817518795825`, a 0.7.0 dev build of 2026-09-30, war day 5420), cloned as they
+are (`sbs.ps1 -Bases`) and run 100-120 days each.
+
+- Both load in about 3 minutes and run with no exception (`exc-*` at the clean 270 bytes). Static check first: every mod class and
+  field the saves hold still exists in the jar (`tools/test-harness/savefields.pl` vs `javap -p`).
+- On load: planetary shields migrated, marine arming seeded (45 colonies), the hive ledger opened with the 180-day endowment (51k FP
+  over 29 colonies on sat), the swarm intel seeded from charted systems on sl.
+- The strike fund starts at 0 and reached 7,729 FP (sat) / 5,317 FP (sl) by day 120: an upgraded campaign sees its first staged
+  strike 4-6 months in, none before. 37 / 28 "waits: the strike fund holds" lines, the nearest known target each pass.
+- Patrols fly from the first poll: sat 21 Patrol Swarms out at the first census (546 FP), sl 24 out + 18 human patrols; patrols
+  gave up on 7 / 12 unreachable stops. The new logging worked (arrivals, battles, home lines); the home line said "back with 0"
+  because a despawned fleet reports 0 FP - fixed to the last live reading the same day.
+- Not a balance run: an old save carries its drift (facts, "Does loading an old save behave like a new game?").
