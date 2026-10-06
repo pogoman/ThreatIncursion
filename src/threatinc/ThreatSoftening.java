@@ -373,7 +373,8 @@ public class ThreatSoftening {
 		float supplies = suppliesPerPoint > 0f ? huntSpendable(base, system, Commodities.SUPPLIES)
 				+ donorsSpendable(donors, base, Commodities.SUPPLIES) : 0f;
 		float points = threatinc.rules.ReachRules.payablePoints(fuel, supplies, fuelPerPoint, suppliesPerPoint);
-		return points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+		// and the hulls: no more than the faction's free pool (ThreatHulls, 2026-10-06)
+		return ThreatHulls.cap(base, points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY);
 	}
 
 	/**
@@ -720,6 +721,7 @@ public class ThreatSoftening {
 		// the market's fleet-size multiplier on top was unpaid)
 		float builds = 0f;
 		for (MarketAPI b : bases) builds += payableFP(b, system, b == base ? donors : null);
+		builds = ThreatHulls.cap(base, builds); // the bases share one pool
 		if (builds < floor) {
 			ThreatIncConfig.logQuiet(key, "Hunting force waits at " + base.getName() + ": " + bases.size()
 					+ (bases.size() == 1 ? " base" : " bases") + (donors.isEmpty() ? "" : " and " + donors.size()
@@ -826,6 +828,7 @@ public class ThreatSoftening {
 					ThreatFleetOrders.fold(o, b);
 					break;
 				}
+				budget = Math.max(0f, budget - got); // the hulls built are out of the pool now
 				// the base paid what it could of the ask; the donors pay the rest
 				if (b == base) payFromDonors(o.fleet, b, donors, system, ask);
 				float share = Math.min(1f, got / Math.max(1f, ask));
@@ -959,7 +962,7 @@ public class ThreatSoftening {
 		List<MarketAPI> donors = huntDonors(faction, primary);
 		float sum = 0f;
 		for (MarketAPI b : playBases(faction, primary, system)) sum += payableFP(b, system, b == primary ? donors : null);
-		return sum;
+		return ThreatHulls.cap(primary, sum); // the bases share one pool (ThreatHulls)
 	}
 
 	/** The live hunt orders of a force. */

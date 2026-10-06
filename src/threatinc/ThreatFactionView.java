@@ -334,7 +334,9 @@ public class ThreatFactionView {
 			main.addTableHeaderTooltip(2, "Expeditions, task forces and convoys sail from military "
 					+ "worlds with a Waystation.");
 			main.addTableHeaderTooltip(3, "Ground defense - what a hive landing must beat.");
-			main.addTableHeaderTooltip(4, "Fleet points free to sail from here now (task forces on "
+			main.addTableHeaderTooltip(4, ThreatHulls.enabled()
+					? "Standing hulls: the fleet points of the patrols the colony keeps; the Total row is the faction's free / standing hulls."
+					: "Fleet points free to sail from here now (task forces on "
 					+ "station here included) / the colony's own fleet capacity.");
 			if (own) {
 				main.addTableHeaderTooltip(5, "In the colony's resource stockpile, militia included.");
@@ -1061,13 +1063,17 @@ public class ThreatFactionView {
 			return;
 		}
 		int[] f = ThreatAidCapacity.figures(m);
+		if (ThreatHulls.enabled()) {
+			// the hull pool: the colony's standing hulls; the faction's free pool is the total row's
+			ThreatWarBoard.cell(cells, Alignment.MID, text, Misc.getWithDGS(f[0]));
+			return;
+		}
 		ThreatWarBoard.cell(cells, Alignment.MID, fleetColor(f[4], text),
 				Misc.getWithDGS(f[4]) + "/" + Misc.getWithDGS(f[0]));
 	}
 
 	protected static boolean onLedger(MarketAPI m) {
-		return m != null && m.isPlayerOwned() && ThreatAidCapacity.enabled()
-				&& ThreatAidCapacity.capacityFP(m) > 0f;
+		return m != null && ThreatAidCapacity.applies(m) && ThreatAidCapacity.capacityFP(m) > 0f;
 	}
 
 	protected static Color fleetColor(float free, Color text) {
@@ -1100,6 +1106,14 @@ public class ThreatFactionView {
 		}
 		if (!any) {
 			ThreatWarBoard.cell(cells, Alignment.MID, Misc.getGrayColor(), "");
+			return;
+		}
+		if (ThreatHulls.enabled()) {
+			// the hull pool: the faction's free hulls over its standing hulls
+			String fid = rows.get(0).market.getFactionId();
+			int free = Math.round(ThreatHulls.freeFP(fid));
+			ThreatWarBoard.cell(cells, Alignment.MID, fleetColor(free, plain),
+					Misc.getWithDGS(free) + "/" + Misc.getWithDGS(Math.round(ThreatHulls.standingFP(fid))));
 			return;
 		}
 		ThreatWarBoard.cell(cells, Alignment.MID, fleetColor(best, plain),

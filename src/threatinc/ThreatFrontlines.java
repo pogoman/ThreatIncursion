@@ -1167,7 +1167,8 @@ public class ThreatFrontlines {
 		float fp = Float.MAX_VALUE;
 		if (per[0] > 0f) fp = Math.min(fp, pooled(base, Commodities.FUEL) / per[0]);
 		if (per[1] > 0f) fp = Math.min(fp, pooled(base, Commodities.SUPPLIES) / per[1]);
-		return fp == Float.MAX_VALUE ? fp : Math.max(0f, fp * 0.999f);
+		fp = fp == Float.MAX_VALUE ? fp : Math.max(0f, fp * 0.999f);
+		return ThreatHulls.cap(base, fp); // and the faction's free hulls (ThreatHulls, 2026-10-06)
 	}
 
 	/** Guards a link just raised, if it stands at the front or a strike is on its way. */

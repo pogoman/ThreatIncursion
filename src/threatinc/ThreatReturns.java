@@ -212,6 +212,15 @@ public class ThreatReturns {
 		fleet.getMemoryWithoutUpdate().set(MEM_FUEL, fuel);
 		fleet.getMemoryWithoutUpdate().set(MEM_SUPPLIES, supplies);
 		fleet.getMemoryWithoutUpdate().set(MEM_FP0, fleet.getFleetPoints());
+		// the hull pool (ThreatHulls, 2026-10-06): an NPC navy's fleet holds its
+		// hulls against its faction's pool from here until it is home (release) or
+		// lost (a debt). The player's are committed by the order that built them
+		if (ThreatHulls.enabled() && !playerFleet(fleet) && ThreatAidCapacity.heldBy(fleet) == null) {
+			MarketAPI base = baseMarketId != null ? Global.getSector().getEconomy().getMarket(baseMarketId) : null;
+			if (base != null && ThreatAidCapacity.applies(base) && fleet.getFleetPoints() > 0) {
+				ThreatAidCapacity.commit(base, fleet.getFleetPoints(), fleet, fleet.getNameWithFaction());
+			}
+		}
 	}
 
 	public static String homeOf(CampaignFleetAPI fleet) {
@@ -258,6 +267,7 @@ public class ThreatReturns {
 		SectorEntityToken to = home != null ? home.entity() : null;
 		if (to == null) {
 			fleet.clearAssignments();
+			ThreatAidCapacity.release(fleet, null); // the hulls are the pool's again (ThreatHulls)
 			Misc.fadeAndExpire(fleet);
 			return false;
 		}
@@ -341,12 +351,14 @@ public class ThreatReturns {
 			SectorEntityToken to = home != null ? home.entity() : null;
 			if (to == null) {
 				all().remove(r);
+				ThreatAidCapacity.release(fleet, null);
 				Misc.fadeAndExpire(fleet);
 				continue;
 			}
 			float days = Global.getSector().getClock().getElapsedDaysSince(r.departedTimestamp);
 			if (days > ThreatIncConfig.convoyTimeoutDays()) {
 				all().remove(r);
+				ThreatAidCapacity.release(fleet, null);
 				Misc.fadeAndExpire(fleet);
 				ThreatIncConfig.log("Return timed out: " + r.factionId + " fleet bound for "
 						+ home.name());

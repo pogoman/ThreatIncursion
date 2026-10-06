@@ -268,6 +268,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatReturns.poll();
 		ThreatUpkeep.poll();
 		ThreatAidCapacity.poll();
+		ThreatHulls.rebuild(); // the yards pay down the hull debt (ThreatHulls)
 		ThreatOutposts.poll();
 		ThreatFrontlines.poll(random);
 		detectStrikes();
@@ -3161,6 +3162,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				float payable = Float.MAX_VALUE;
 				if (fuelPerPoint > 0f) payable = Math.min(payable, haveFuel / fuelPerPoint);
 				if (suppliesPerPoint > 0f) payable = Math.min(payable, haveSupplies / suppliesPerPoint);
+				// and the hulls: the faction's free pool, in points (ThreatHulls, 2026-10-06)
+				if (ThreatHulls.enabled()) {
+					payable = Math.min(payable, ThreatHulls.freeFP(base.getFactionId()) / FP_PER_RESPONSE_DIFFICULTY);
+				}
 				// full strength (2026-09-24): the fleets that reach the target's
 				// ground strength, its orbit and a razing's guns are not for
 				// trimming - the depot pays for them or the siege waits, whatever
