@@ -76,3 +76,16 @@ A route's burn is a knob by what it carries: `patrolBurnBombers` 6 (razing fuel 
 - Whether Patrol Swarms catch scouting parties through the fleet AI off-screen.
 - How many sieges the hive sees coming (the picket saw 60-64% about five days out).
 - Patrol losses and the size each side's patrols settle at.
+
+## 6. The log (debugLogging)
+
+One line each, grep `ti-<tag>.txt`:
+
+- `Patrol of F from X (N FP): [route]` / `Scouting party of F from X (lead|sweep): [route]` (ThreatScouts.launch); the swarm side logs its own launches in ThreatSwarmPatrols.launch.
+- `<party> at <system> (stop i of n, day D out, N FP): no hostile fleet | K hostile fleet(s), F FP {faction=count}` on arrival at every stop (ThreatScoutRoute.logArrival).
+- `<party> won|lost a battle in <system> [to <fleet>], now N FP of L` for every battle (ThreatScoutRoute.BattleMark, a fleet listener added on the first poll out).
+- `<party> home|lost[, and N sighting(s) with it] (out D days, i of n stops, K fight(s), W won; sailed at L FP[, back with N])` (ThreatScoutRoute.advance).
+- `Patrols passed: ...; after: swarm home|lost|flies, human home|lost|flies` - the closest a Patrol Swarm and a human party came (ThreatSwarmPatrols.logApproaches; fates from ThreatScoutRoute.FATES, not saved).
+- `Patrol census (swarm|humans): N out, M returning, F FP; levels <key level, ...>; this month launched A, home B, lost C, sightings filed D` every 30 days (ThreatScoutRoute.census, from ThreatSwarmPatrols.census).
+
+First seen in a run: none yet (built 2026-10-06).

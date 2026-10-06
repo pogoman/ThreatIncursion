@@ -101,6 +101,7 @@ public class ThreatSwarmPatrols {
 			ROUTE.advance(p);
 		}
 		logApproaches();
+		census();
 		// the swarm patrols once it is at war: it has struck, and someone has mobilised
 		if (IncursionManager.getPhase() < 2 || ThreatWarState.warFactionIds().isEmpty()) return;
 		launchAll(random);
@@ -155,16 +156,32 @@ public class ThreatSwarmPatrols {
 			float[] v = e.getValue();
 			it.remove();
 			String[] ids = e.getKey().split("\\|");
-			boolean swarmUp = false, humanUp = false;
-			for (Patrol p : all()) if (p.fleet != null && p.fleet.isAlive() && p.fleet.getId().equals(ids[0])) swarmUp = true;
-			for (ThreatScouts.Scout s : ThreatScouts.all()) if (s.fleet != null && s.fleet.isAlive() && s.fleet.getId().equals(ids[1])) humanUp = true;
+			// home, lost (ThreatScoutRoute.FATES) or still flying
+			String swarmFate = ThreatScoutRoute.FATES.get(ids[0]), humanFate = ThreatScoutRoute.FATES.get(ids[1]);
 			ThreatIncConfig.log(String.format(
 					"Patrols passed: a Patrol Swarm (%d FP) and a human party (%d FP) came within %s; last together %d FP and %d FP; after: swarm %s, human %s",
 					Math.round(v[2]), Math.round(v[3]),
 					v[1] > 0f ? String.format("%.2f ly in hyperspace", v[0]) : Math.round(v[0]) + " units in a system",
 					Math.round(v.length > 4 ? v[4] : v[2]), Math.round(v.length > 4 ? v[5] : v[3]),
-					swarmUp ? "flies" : "gone", humanUp ? "flies" : "gone"));
+					swarmFate != null ? swarmFate : "flies", humanFate != null ? humanFate : "flies"));
 		}
+	}
+
+	protected static long censusAt;
+
+	/** Once a month, both sides' patrol census (ThreatScoutRoute.census) with their current levels. */
+	protected static void census() {
+		if (!ThreatIncConfig.debugLogging()) return;
+		long now = Global.getSector().getClock().getTimestamp();
+		if (censusAt != 0L && Global.getSector().getClock().getElapsedDaysSince(censusAt) < 30f) return;
+		censusAt = now;
+		StringBuilder lv = new StringBuilder();
+		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
+			int l = ThreatScoutRoute.level(levelKey(systemId));
+			if (l > 0) lv.append(lv.length() > 0 ? ", " : "").append(systemId).append(' ').append(l);
+		}
+		ROUTE.census("swarm", lv.length() > 0 ? lv.toString() : "none raised");
+		ThreatScouts.census();
 	}
 
 	/** RESET War: the patrols out fade and the ring's memory goes. */
