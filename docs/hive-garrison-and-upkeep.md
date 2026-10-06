@@ -300,6 +300,20 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
   demand 208, so 6 units a month reach the stock. Fuel went the other way: 27 plants, 138 units,
   ~200k a month banked, 4.9M in stock. (The 208 is Spaceport demand, size-2 a hive - not the
   stations' or defences', which demand none.)
+- **Standing upkeep (2026-10-06, the user, `standingUpkeepMult` 1; `payGarrisonSupplies`).**
+  The garrison at home pays its supplies after all - the user's answer to hw33-35, where the war
+  went to whichever side's hulls compounded first because holding a navy cost nothing on either
+  side (a faction's hulls at home paid nothing; the hive's garrison paid FP, which its forges
+  rebuilt). `garrisonFP` x `ThreatReach.suppliesPerFP()` (the swarm's hulls' maintenance per FP,
+  measured on its garrisons) x `standingUpkeepMult`, for the days `paySupplies` charged, from the
+  hive stock; the unpaid is demand for the planner and owed (`KEY_GARRISON_OWED`), and once the
+  owed reaches the smallest swarm on station's month that swarm is lost - despawned, no FP back
+  (logged `Upkeep: X lost a N FP swarm for M supplies of garrison upkeep unpaid`; the month line
+  `Upkeep month: … lost K swarm(s) of N FP to unpaid supplies`). The garrison still pays its FP to
+  the bank: that is what the forges rebuild. The factions' hulls at home pay the same way
+  (`ThreatHulls.maintain`, `docs/hull-pool.md` 2). h29a (above) is what this costs the swarm with
+  no answer in supplies; the planner's answer is forges, and `fleetsSupplies` passed to
+  `ThreatColonyUpkeep.feed` now includes the garrisons, so size upkeep comes after them.
 
 ### Structures cost supplies (2026-09-30, user's call; `ThreatBuildCost`)
 

@@ -773,6 +773,12 @@
 	# forward bases toward the hive, or CONSOLIDATE when the swarm presses it
 	"threatinc_factionStanceEnabled": true,
 	"threatinc_threatSuppliesUpkeep": true,
+	# standing upkeep (2026-10-06, hw33-35: the war went to whoever's hulls compounded first):
+	# hulls at home - a faction's free hulls, a hive's garrison - pay their ships' vanilla
+	# maintenance a month times this, from the reserves above floors and holds and from the
+	# hive's stock; a hull-month unpaid is a hull lost (built first, then the debt; the hive's
+	# smallest swarm). 0 turns it off
+	"threatinc_standingUpkeepMult": 1.0,
 	"threatinc_structuresCostSupplies": true,
 	"threatinc_structureSuppliesMult": 1.0,
 	# idle stock (2026-10-01, docs/hive-economy.md "Idle stock"): the hive

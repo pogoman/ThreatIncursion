@@ -275,6 +275,97 @@ public class ThreatHulls {
 	}
 
 	// ------------------------------------------------------------------
+	// standing upkeep: the hulls at home pay their supplies (the user,
+	// 2026-10-06, after hw33-35: "we don't want the game to be decided by who
+	// reaches the compound threshold first"; a navy settles where production
+	// pays it). The hive's garrisons pay the same way
+	// (ThreatColonyManager.payGarrisonSupplies).
+	// ------------------------------------------------------------------
+
+	public static final String KEY_UPKEEP_AT = "threatinc_hullUpkeepAt";
+	/** Since the last month line: factionId -> {wanted, paid, FP lost}. */
+	protected static final Map<String, float[]> upkeepTally = new HashMap<String, float[]>();
+
+	/** Supplies a month one of the faction's hulls at home costs: its ships' maintenance per FP (ThreatReach.suppliesPerFP) times standingUpkeepMult. */
+	public static float standingRate(String factionId) {
+		return ThreatReach.suppliesPerFP(factionId) * ThreatIncConfig.standingUpkeepMult();
+	}
+
+	/** Supplies a month the faction's hulls at home cost: its free hulls at {@link #standingRate}. */
+	public static float standingUpkeepPerMonth(String factionId) {
+		return freeFP(factionId) * standingRate(factionId);
+	}
+
+	/**
+	 * Daily: every mobilised NPC faction's hulls at home (freeFP - the fleets
+	 * out pay as fleets, ThreatUpkeep; the debt is hulls that do not exist)
+	 * cost their maintenance for the days since the last call, each market
+	 * paying its standing share from its reserve above its floor and holds,
+	 * then any market of the faction above its floor. A hull-month nobody paid
+	 * is a hull lost ({@link #starve}): the yards' navy first, then the debt
+	 * the yards rebuild - so a navy shrinks to what the faction's supplies keep
+	 * up, as the hive's garrison does. Not the player's faction (its fleets
+	 * keep the old rule too, ThreatUpkeep).
+	 */
+	public static void maintain() {
+		if (!enabled() || ThreatIncConfig.standingUpkeepMult() <= 0f) return;
+		Object at = Global.getSector().getPersistentData().get(KEY_UPKEEP_AT);
+		long now = Global.getSector().getClock().getTimestamp();
+		float days = at instanceof Long ? Global.getSector().getClock().getElapsedDaysSince((Long) at) : 0f;
+		Global.getSector().getPersistentData().put(KEY_UPKEEP_AT, now);
+		if (days <= 0f) return;
+		FactionAPI player = Global.getSector().getPlayerFaction();
+		for (String factionId : new ArrayList<String>(ThreatWarState.warFactionIds())) {
+			if (Factions.THREAT.equals(factionId)) continue;
+			if (player != null && factionId.equals(player.getId())) continue;
+			maintain(factionId, days);
+		}
+	}
+
+	protected static void maintain(String factionId, float days) {
+		float rate = standingRate(factionId);
+		float home = freeFP(factionId);
+		if (home <= 0f || rate <= 0f) return;
+		float want = home * rate * days / 30f;
+		List<MarketAPI> markets = marketsOf(factionId);
+		float standing = 0f;
+		for (MarketAPI m : markets) standing += standingFP(m);
+		float paid = 0f;
+		if (standing > 0f) {
+			for (MarketAPI m : markets) {
+				paid += ThreatReserves.drawAbove(m, Commodities.SUPPLIES, want * standingFP(m) / standing);
+			}
+		}
+		for (MarketAPI m : markets) {
+			if (paid >= want) break;
+			paid += ThreatReserves.drawAbove(m, Commodities.SUPPLIES, want - paid);
+		}
+		float unpaid = Math.max(0f, want - paid);
+		float lost = unpaid > 0f ? starve(factionId, unpaid / rate, unpaid) : 0f;
+		float[] t = upkeepTally.get(factionId);
+		if (t == null) {
+			t = new float[3];
+			upkeepTally.put(factionId, t);
+		}
+		t[0] += want;
+		t[1] += paid;
+		t[2] += lost;
+	}
+
+	/** Hulls the faction could not keep up: off its built navy first, then onto the debt its yards rebuild. Returns the FP struck. */
+	protected static float starve(String factionId, float fp, float unpaid) {
+		if (fp <= 0f) return 0f;
+		float fromBuilt = Math.min(fp, built(factionId));
+		if (fromBuilt > 0f) builtMap().put(factionId, built(factionId) - fromBuilt);
+		float toDebt = fp - fromBuilt;
+		if (toDebt > 0f) debts().put(factionId, debt(factionId) + toDebt);
+		ThreatIncConfig.logQuiet("hull_starve_" + factionId, "Hulls: " + ThreatWarState.displayName(factionId)
+				+ " cannot keep up " + (int) fp + " FP (" + (int) unpaid + " supplies unpaid): " + (int) built(factionId)
+				+ " built, " + (int) debt(factionId) + " lost, " + (int) freeFP(factionId) + " free");
+		return fp;
+	}
+
+	// ------------------------------------------------------------------
 	// what the pool can pay
 	// ------------------------------------------------------------------
 
@@ -314,6 +405,10 @@ public class ThreatHulls {
 		List<String> ids = new ArrayList<String>(ThreatWarState.warFactionIds());
 		FactionAPI player = Global.getSector().getPlayerFaction();
 		if (player != null && !ids.contains(player.getId())) ids.add(player.getId());
-		for (String id : ids) ThreatIncConfig.log("Hulls: " + describe(id));
+		for (String id : ids) {
+			float[] t = upkeepTally.remove(id);
+			ThreatIncConfig.log("Hulls: " + describe(id) + (t != null ? "; standing upkeep paid " + (int) t[1] + " of "
+					+ (int) t[0] + " supplies" + (t[2] >= 1f ? ", " + (int) t[2] + " FP starved" : "") : ""));
+		}
 	}
 }
