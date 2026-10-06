@@ -327,6 +327,7 @@ threatinc_outpostTier,Outpost Tier,Int,1,"1 orbital station, 2 battlestation, 3 
 threatinc_outpostCredits,Outpost Cost (Credits),Double,150000,"What you pay for an outpost.",0,2000000
 threatinc_outpostSupplies,Outpost Cost (Supplies),Double,1500,"Supplies a mobilised faction's base pays for an outpost.",0,20000
 threatinc_outpostFuel,Outpost Cost (Fuel),Double,800,"Fuel a mobilised faction's base pays for an outpost.",0,20000
+threatinc_seedingWaveStallDays,Seeding Wave Stall Days,Double,180,"Days a Seeding Swarm may take beyond 30 a light year before it counts as stalled: re-steered once, then a bootstrap wave is moved to its planet and a hive's wave is lost.",30,1000
 threatinc_outpostChance,Outpost Build Chance,Double,0.3,"Chance per 30-day tick that a mobilised faction fortifies an open purged world within reach of a base that can pay.",0,1
 pathHeader,Path Header,Header,Luddic Path,"The Path fights with people and cells, not industry.",,
 threatinc_pathTithes,Pather Tithes,Boolean,true,"Every Pather cell on another faction's world sends the Path supplies, fuel and recruits each month.",,

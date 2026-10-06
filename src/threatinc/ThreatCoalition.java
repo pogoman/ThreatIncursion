@@ -9,6 +9,7 @@ import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.RepLevel;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
+import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.util.Misc;
 
 /**
@@ -269,6 +270,62 @@ public class ThreatCoalition {
 						need -= amount;
 					}
 				}
+			}
+		}
+		aidStockPlans(ids, random);
+	}
+
+	/**
+	 * Trade through the war (user, 2026-10-06): a war faction whose stock plan
+	 * reads short of fuel or supplies - a producer it cannot pay for, or a
+	 * stock that runs dry before one could stand (ThreatFactionStock.aidNeed)
+	 * - is sent a real convoy by every war faction whose plan reads surplus of
+	 * it, each from its colony in reach with the most to spare, until the need
+	 * is covered net of what is at sea; one sailing a faction a month per
+	 * stock. Any two war factions not hostile to each other trade, whatever
+	 * their standing: the shortage rule above reads vanilla's peacetime market,
+	 * never the war reserve, so in hw33b the Hegemony sat on 27k supplies for
+	 * 1,200 days with its yards a hive and no ally sent a unit.
+	 */
+	protected static void aidStockPlans(List<String> ids, Random random) {
+		String[] stocks = { Commodities.FUEL, Commodities.SUPPLIES };
+		for (String needyId : ids) {
+			FactionAPI needy = Global.getSector().getFaction(needyId);
+			if (needy == null || needy.isPlayerFaction() || ThreatWarState.excluded(needyId)) continue;
+			for (String c : stocks) {
+				if (!ThreatFactionStock.mayAid(needyId, c)) continue;
+				float need = ThreatFactionStock.aidNeed(needyId, c);
+				if (need <= 0f) continue;
+				MarketAPI to = ThreatFactionStock.aidTarget(needyId, c);
+				if (to == null) continue;
+				need -= ThreatConvoys.inbound(to.getId())[ThreatAid.index(c)];
+				float unit = Global.getSettings().getCommoditySpec(c).getEconUnit();
+				if (need < unit) continue;
+				boolean sailed = false;
+				for (String helperId : ids) {
+					if (need < unit) break;
+					if (helperId.equals(needyId) || ThreatWarState.excluded(helperId)) continue;
+					FactionAPI helper = Global.getSector().getFaction(helperId);
+					if (helper == null || helper.isPlayerFaction()) continue;
+					if (helper.isHostileTo(needy) || needy.isHostileTo(helper)) continue;
+					if (!ThreatFactionStock.surplus(helperId, c)) continue;
+					MarketAPI donor = ThreatConvoys.pickAllyDonor(helper, to, c);
+					if (donor == null) continue;
+					float amount = Math.min(need, ThreatConvoys.spare(donor, c));
+					if (amount < unit) continue;
+					float[] load = new float[ThreatReserves.COMMODITIES.length];
+					load[ThreatAid.index(c)] = amount;
+					ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, to, helper, load, random, needyId, false);
+					if (convoy == null) continue;
+					String held = ThreatFactionStock.heldIndustry(to);
+					report(helper, needy, "Allied Convoy Sails", "sends %s %s from %s to %s (%s)",
+							Misc.getWithDGS((int) amount), ThreatReserves.label(c), ThreatNotice.market(donor),
+							ThreatNotice.market(to), held != null && Commodities.SUPPLIES.equals(c)
+									? "for its " + held : ThreatReserves.label(c) + " runs dry");
+					need -= amount;
+					sailed = true;
+				}
+				if (sailed) ThreatFactionStock.aided(needyId, c);
 			}
 		}
 	}

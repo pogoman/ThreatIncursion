@@ -633,8 +633,14 @@ public class ThreatReserves {
 				basis = threatinc.rules.ReserveRules.floorBasis(basis, seen, base, share);
 			}
 		}
-		return basis * (market.isPlayerOwned() ? ThreatIncConfig.playerReserveFloorFraction()
+		float floor = basis * (market.isPlayerOwned() ? ThreatIncConfig.playerReserveFloorFraction()
 				: ThreatIncConfig.reserveFloorFraction());
+		// the shortage's answer first (user, 2026-10-06): supplies held for a
+		// producer the market cannot yet pay sit above the floor, so upkeep and
+		// hunts leave them (ThreatFactionStock.hold; the builder's own pass
+		// releases the hold before it reads the stock)
+		if (Commodities.SUPPLIES.equals(commodityId)) floor += ThreatFactionStock.held(market);
+		return floor;
 	}
 
 	/**

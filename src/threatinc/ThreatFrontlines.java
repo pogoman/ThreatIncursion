@@ -1866,8 +1866,33 @@ public class ThreatFrontlines {
 	 * (industries.csv / the industry classes), s being the market size. The
 	 * hive's planner for a faction (user's decision 2026-10-06): hw31's links
 	 * built fuel first on 350k-1.1M fuel while every expedition waited on hulls.
+	 *
+	 * <p>The shortage's answer first (user, 2026-10-06): the pass reads the
+	 * whole stock (the hold released), and if the shortage's producer is wanted
+	 * here and cannot be paid, the market holds the price still wanted above
+	 * its floor until the next pass (ThreatFactionStock.hold) - upkeep and
+	 * hunts no longer draw what the yard is saving for, and an ally's convoy
+	 * lands where it is held (ThreatCoalition.aidStockPlans).
 	 */
 	protected static void build(MarketAPI market) {
+		ThreatFactionStock.release(market);
+		buildStep(market);
+		int s = market.getSize();
+		String fid = market.getFactionId();
+		String want = s >= 3 ? ThreatFactionStock.shortest(fid) : null;
+		if (want == null) return;
+		String producer = ThreatFactionStock.producerId(want);
+		if (!wantsProducer(market, producer) || !canSupplyProducer(market, s, producer)) return;
+		if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) return;
+		float cost = ThreatBuildCost.supplies(producer);
+		float funds = buildFunds(market);
+		if (cost <= 0f || funds >= cost) return;
+		ThreatFactionStock.hold(market, producer, cost - funds);
+		ThreatIncConfig.logQuiet("fl_hold_" + market.getId(), "Frontline: " + market.getName() + " holds "
+				+ (int) (cost - funds) + " supplies for " + producer + " (" + want + " short)");
+	}
+
+	protected static void buildStep(MarketAPI market) {
 		for (Industry ind : market.getIndustries()) {
 			// Population reads as upgrading whenever the market is below its
 			// max size - vanilla's growth bar, not a project

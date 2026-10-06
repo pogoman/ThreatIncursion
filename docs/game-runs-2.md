@@ -620,3 +620,15 @@ hunting forces waiting on hulls 57 / 440 / 99 (1,155-2,121), postponed 26 / 251 
 completed 82 / 75 / 64 (22-39), hives eradicated 44 / 40 / 35 (7-18), founded 41 / 162 / 55 (163-168); bases founded 47 / 91 / 56,
 no garrison 2 / 36 / 10, struck 15 / 35 / 31; Heavy Industry 29 / 17 / 17, fuel plants 26 / 11 / 14. Supplies now bind the humans:
 b and c end at 15-55k a faction. Dumps: `tools/warsim/validation/hw33a-c`, logs `ti-hw33*-keep.txt`.
+
+## 34. hw34 - the second sector (AphelionDysnomia), two runs on the navy build (2026-10-06)
+
+Two new games on 57dc3bb9 (a16eb264 docs) on `save_AphelionDysnomia_4103534775338436064`, the first sector other than hw4; the
+swarm lands in the Ala system (Beszel, Labraxas, Strathcona, Blue), an edge system by the Persean League. hw34a to war day
+3759: the opening strike at Cibola (persean, 31 ly, 135 days) on day 1407; all seven factions mobilise over the run (Church,
+Path and Diktat too, Hegemony last); the swarm wins, 114 hives, 1.3M fuel / 550k supplies, 153 founded against 47 eradicated,
+242 sieges sailed; human navies 9-20k FP a faction with 2-19k lost at the end, 93 bases founded and dismantled. The old ally
+aid fired 115 times here (peacetime shortages exist in this sector) against 0 in hw31-33. hw34b never had a war: the bootstrap
+wave to Blue stalled alive for ten years (facts, "Why did hw34b's swarm do nothing"), the hive had fuel 0 throughout, three
+size-7 hives on 840k supplies and 76k FP banked, 0 strikes, and the game ran 190 days a minute. Logs `ti-hw34a/b-keep.txt`; dumps
+kept in `tools/warsim/validation/hw34a-b`.
