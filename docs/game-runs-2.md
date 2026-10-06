@@ -386,3 +386,20 @@ Build 1c090f1, the hw23 setting again.
 
 - Holds: six of six games at this setting end with the swarm at 64-185 hives and 10-23 human worlds lost. The
   opening is the same to the month (war day 1401-1493, found m49-52).
+
+## 23. hw26a-hw26c (2026-10-06): the strike fund with strikes of at least 5,000 FP (a trial)
+
+Build 389aeec: as hw23 with `strikeStagedMinFP` 5,000.
+
+| | hw26a | hw26b | hw26c |
+|---|---|---|---|
+| First strike / first hive found, war day | 1280 / 1388 | 1279 / 1415 | 1280 / 1379 |
+| Found, month (hives then) | 45 (20) | 46 (22) | 44 (25) |
+| Hives at m120 (peak) | 58 (63) | 0, extinct m115 (30) | 58 (59) |
+| Strikes (mean FP) | 49 (5,456) | 25 (5,445) | 47 (5,424) |
+| Threat landings / human worlds lost | 26 / 4 | 9 / 2 | 32 / 13 |
+| Forward bases founded / destroyed by a strike | 86 / 31 | 52 / 12 | 63 / 15 |
+| Human landings / hives eradicated | 63 / 54 | 60 / 57 | 53 / 46 |
+
+- Between hw22 (3,000) and hw23/25 (8,000) on every count: the opening (day 1279-1280), the found month (44-46),
+  the outcome (two won, one extinct), the worlds lost (2-13).
