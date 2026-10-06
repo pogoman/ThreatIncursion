@@ -4255,6 +4255,18 @@ public class ThreatColonyManager {
 			// nothing past the want: the bank keeps the rest for waves, strikes
 			// and foundings
 			if (posture && !belowFloor) continue;
+			// supplies-bound (the user, 2026-10-06, hw36a: grown to the want on
+			// forge FP, the garrison took every supply the hive made and its
+			// strikes starved): no swarm the hive's supplies surplus cannot keep
+			// up; a colony's first swarm always
+			if (fleets.size() + away >= 1 && !suppliesKeepSwarm(swarmCostEstimate(spec))) {
+				ThreatIncConfig.logQuiet("garrison_supplies_" + marketId, "Garrison growth at " + market.getName()
+						+ " waits on supplies: " + (int) ThreatFuel.perMonth(Commodities.SUPPLIES) + " made, "
+						+ (int) ThreatFuel.demandPerMonth(Commodities.SUPPLIES) + " demand a month, a "
+						+ (int) swarmCostEstimate(spec) + " FP swarm costs " + (int) (swarmCostEstimate(spec)
+						* ThreatReach.suppliesPerFP() * ThreatIncConfig.standingUpkeepMult()));
+				continue;
+			}
 			// (2026-09-29: closed economy - the bank is the only bound. The nexus
 			// used to spend it at one swarm per garrisonRespawnDays, which the
 			// alarm quickened: a second, arbitrary cap on top of production. Now
@@ -4893,6 +4905,18 @@ public class ThreatColonyManager {
 
 	/** Persistent: market id -> supplies its garrison at home owes (payGarrisonSupplies). */
 	public static final String KEY_GARRISON_OWED = "threatinc_hiveGarrisonOwed";
+
+	/**
+	 * Whether the hive's supplies surplus - what its worlds put in the stock a
+	 * month less the trailing demand on it, the garrisons' upkeep and the
+	 * sends held among it - keeps up a swarm of this FP at the standing rate.
+	 * Always with standing upkeep off.
+	 */
+	public static boolean suppliesKeepSwarm(float fp) {
+		float rate = ThreatReach.suppliesPerFP() * ThreatIncConfig.standingUpkeepMult();
+		if (rate <= 0f) return true;
+		return ThreatFuel.perMonth(Commodities.SUPPLIES) - ThreatFuel.demandPerMonth(Commodities.SUPPLIES) >= fp * rate;
+	}
 
 	/** Supplies a month the colony's garrison at home costs: its FP at the swarm's maintenance per FP times standingUpkeepMult. */
 	public static float garrisonSuppliesPerMonth(List<CampaignFleetAPI> fleets) {

@@ -70,6 +70,15 @@ outbuild what it cannot pay. The month line reads `Hulls: … standing upkeep pa
 Z FP starved`. Not the player's faction (its fleets keep the old rule too). The hive's garrisons
 pay the same rate from the hive's stock (`docs/hive-garrison-and-upkeep.md`, "Standing upkeep").
 
+**Supplies-bound growth** (the user, 2026-10-06, after hw36): the yards bank no built hull the
+faction's supplies surplus cannot keep - `rebuild` adds at most `suppliesKeepFP` = (what the reserves
+bank a month, `ThreatFactionStock.perMonth`, less their trailing demand, the standing upkeep paid
+among it) / `standingRate`; losses still rebuild first, and the rest of the output is idle (`Hulls: X
+yards idle: N FP/mo its supplies cannot keep`). Unpaid standing upkeep is booked as demand
+(`ThreatFactionStock.noteDemand`), so the faction's planner builds for it. In hw36 the charge alone
+did not settle the navies: the hive's grew to its want on forge FP and its strikes starved instead
+(`game-runs-2.md` 36).
+
 ## 3. Where it binds
 
 - NPC hunts and plays: `ThreatSoftening.payableFP` capped at the faction's free hulls, the sum

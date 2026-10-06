@@ -314,6 +314,16 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
   (`ThreatHulls.maintain`, `docs/hull-pool.md` 2). h29a (above) is what this costs the swarm with
   no answer in supplies; the planner's answer is forges, and `fleetsSupplies` passed to
   `ThreatColonyUpkeep.feed` now includes the garrisons, so size upkeep comes after them.
+- **Supplies-bound growth (2026-10-06, the user, after hw36a; `suppliesKeepSwarm`).** The charge
+  alone settled nothing: the garrison is grown from forge FP to the posture want, so it took every
+  supply the hive made (76k/mo, 43 forges built to pay it) and its strikes starved - no war in
+  3,750 days. Now `maintainColonyGarrisons` grows no swarm the hive's supplies surplus
+  (`ThreatFuel.perMonth` less `demandPerMonth`, the garrisons' upkeep and the sends held among
+  it) cannot keep at the standing rate; a colony's first swarm always (logged `Garrison growth at X
+  waits on supplies: …`). The FP bank then holds what it cannot feed for waves, strikes and
+  foundings. A held strike books its supplies shortfall as demand (`ThreatFuel.held`), as its fuel
+  always was, so the planner sees it. The factions' yards are bound the same way
+  (`ThreatHulls.suppliesKeepFP`, `docs/hull-pool.md` 2).
 
 ### Structures cost supplies (2026-09-30, user's call; `ThreatBuildCost`)
 
