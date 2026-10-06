@@ -478,3 +478,33 @@ are (`sbs.ps1 -Bases`) and run 100-120 days each.
   gave up on 7 / 12 unreachable stops. The new logging worked (arrivals, battles, home lines); the home line said "back with 0"
   because a despawned fleet reports 0 FP - fixed to the last live reading the same day.
 - Not a balance run: an old save carries its drift (facts, "Does loading an old save behave like a new game?").
+
+## 28. sl2 - the StarLord campaign played out alone (2026-10-06)
+
+The user: "run it until one side wins i want to see what happens without my intervention". `save_StarLord_1669224817518795825`
+(war day 5420, Jan c221, 61 hives, Hegemony and the League mobilised) cloned as it was, Fleets Ignore You on, run 5,770 days.
+
+**The humans win, ten years in.** Hives 61 -> 75 (Aug c222, the peak) -> 24 (Nov c229) -> 0; the last hive, Vassago, fell on
+6 Apr c231 (war day 9165) to a League front. The war board then hid itself (`ThreatIncursionIntel.isHidden`: no known system
+infested), which is what the user saw as "the Abyssal War tab was gone" in Major Events. The game ran five more years of
+nothing until the player fleet ran out of supplies and vanilla's accident report paused it.
+
+| | sl2 |
+|---|---|
+| Hives found / eradicated | 101 / 411 |
+| Human landings / sieges called off | 424 / 93 |
+| Forward bases founded / destroyed by a strike | 118 / 24 |
+| Staged strikes (mean FP) | 35 (8,207) |
+| Threat landings / human colonies lost | 1 (Mazalot) / 0 |
+| Factions mobilised during the run | 1 (Independent) |
+
+- The strike fund started at 0 on the old save and the first staged strike flew ~5 months in; 35 strikes in ten years, one
+  landing, no colony taken - against 424 human landings. Strikes went mostly at forward bases (24 of 118 destroyed), the
+  nearest known target. An established human war machine (two factions mobilised for 15 years) outproduces the fund 10:1.
+- Mid-war upgrade note: the hive count still rose for 18 months after the load (61 -> 75), then fell 7-10 a year.
+- **Bug found and fixed:** 15 Patrol Swarms (448 FP) stood "returning" from the last hive's death to the end, and ~15 human
+  parties likewise - a party whose home world is gone (hive eradicated, forward base dismantled) never despawns.
+  `ThreatScoutRoute.checkReturn` dismisses a returning party whose world is gone, that has no orders left, or that has been
+  returning twice `scoutLegMaxDays`; counted home, not lost (no level raised). Dismissals log "<party> dismissed: why".
+- **Open (design, the user's):** `warModeStandDownDays` is 0, so Hegemony and the League stayed mobilised and flew patrols
+  for five years after the swarm was extinct. A stand-down on `ThreatIncursionIntel.isEradicated` would end the war footing.
