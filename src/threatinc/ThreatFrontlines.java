@@ -1782,96 +1782,90 @@ public class ThreatFrontlines {
 	}
 
 	/**
-	 * Starts Fuel Production in a free industry slot (frontlineFuelProduction,
-	 * 2026-09-30) if vanilla's inputs can be had here: volatiles at the
-	 * market's size and heavy machinery at size - 2; it makes size - 2 fuel.
-	 * No forward base made fuel, so a faction's fuel was capped by the sector's
-	 * best exporter (ThreatReserves.productionShare) while its sieges wanted
-	 * 40-115k each. True when it started.
+	 * Whether vanilla's inputs for the producer can be had here: Fuel
+	 * Production volatiles at the market's size and heavy machinery at size -
+	 * 2; Heavy Industry metals at size and rare metals at size - 2.
 	 */
-	protected static boolean buildFuel(MarketAPI market, int s) {
-		if (!ThreatIncConfig.frontlineFuelProduction() || market.hasIndustry(Industries.FUELPROD)
-				|| Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) {
-			return false;
+	protected static boolean canSupplyProducer(MarketAPI market, int s, String producer) {
+		if (Industries.FUELPROD.equals(producer)) {
+			return canSupply(market, Commodities.VOLATILES, s) && canSupply(market, Commodities.HEAVY_MACHINERY, s - 2);
 		}
-		if (!canSupply(market, Commodities.VOLATILES, s) || !canSupply(market, Commodities.HEAVY_MACHINERY, s - 2)) {
-			return false;
-		}
-		return startNew(market, Industries.FUELPROD);
+		return canSupply(market, Commodities.METALS, s) && canSupply(market, Commodities.RARE_METALS, s - 2);
 	}
 
-	/** Faction id -> when one of its links last turned a fuel plant into a Heavy Industry. */
-	public static final String KEY_SWAPPED = "threatinc_fuelSwapLast";
+	/** Whether the knob for the producer is on and the link has none of it (an Orbital Works counts as a Heavy Industry). */
+	protected static boolean wantsProducer(MarketAPI market, String producer) {
+		if (Industries.FUELPROD.equals(producer)) {
+			return ThreatIncConfig.frontlineFuelProduction() && !market.hasIndustry(Industries.FUELPROD);
+		}
+		return ThreatIncConfig.frontlineHeavyIndustry() && !market.hasIndustry(Industries.HEAVYINDUSTRY)
+				&& !market.hasIndustry(Industries.ORBITALWORKS);
+	}
 
 	/**
-	 * Turns the link's Fuel Production into a Heavy Industry (2026-09-30) when
-	 * it has no slot for one and the faction's fuel covers all its sieges stage
-	 * for while its supplies do not (ThreatReserves.stagingBank, summed). A link
-	 * never builds on a slot it frees, so the build order's fuelShort cannot
-	 * swap it back: the swap only runs this way. One link a faction per
-	 * frontlineGrowDays, so the stocks answer before the next. h26a's links
-	 * built 51 fuel plants to 45 Heavy Industries, and the Hegemony sat on 1.5M
-	 * fuel while its sieges were postponed for supplies 1,591 times. True when
-	 * it swapped.
+	 * Starts the producer in a free industry slot if its inputs can be had
+	 * (canSupplyProducer) and its supplies are paid (startNew). Fuel
+	 * Production (frontlineFuelProduction, 2026-09-30) makes size - 2 fuel: no
+	 * forward base made fuel, so a faction's fuel was capped by the sector's
+	 * best exporter while its sieges wanted 40-115k each. Heavy Industry
+	 * (frontlineHeavyIndustry, user's call 2026-09-27) makes supplies, heavy
+	 * armaments and ships - the yards that rebuild the hull pool. True when it
+	 * started.
 	 */
-	protected static boolean swapFuelForHeavyIndustry(MarketAPI market, int s) {
-		if (!ThreatIncConfig.frontlineHeavyIndustry() || !market.hasIndustry(Industries.FUELPROD)
-				|| market.hasIndustry(Industries.HEAVYINDUSTRY) || market.hasIndustry(Industries.ORBITALWORKS)
-				|| Misc.getNumIndustries(market) < Misc.getMaxIndustries(market)) {
+	protected static boolean buildProducer(MarketAPI market, int s, String producer) {
+		if (!wantsProducer(market, producer) || Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) {
 			return false;
 		}
+		if (!canSupplyProducer(market, s, producer)) return false;
+		return startNew(market, producer);
+	}
+
+	/**
+	 * With no slot free, the link tears a producer of a stock its faction has
+	 * in surplus down for the producer of the one it runs dry of
+	 * (ThreatFactionStock, the hive's convertSurplus for a faction): a fuel
+	 * plant for a Heavy Industry while supplies or hulls are short and fuel
+	 * is spare, a Heavy Industry for a fuel plant the other way; failing
+	 * that, with hulls to spare, its Patrol HQ (the hive's retireMilitary).
+	 * The new structure is paid first (a refusal tears nothing down) and
+	 * takes its vanilla build time - never instant. One a faction a month.
+	 * Never a producer still building, nor one carrying an item or a core.
+	 * True when it converted.
+	 */
+	protected static boolean convertFor(MarketAPI market, int s, String want, String producer) {
 		String fid = market.getFactionId();
-		Map<String, Object> last = ThreatIncData.map(KEY_SWAPPED);
-		Object at = last.get(fid);
-		if (at instanceof Long && Global.getSector().getClock().getElapsedDaysSince((Long) at)
-				< ThreatIncConfig.frontlineGrowDays()) {
-			return false;
+		if (!ThreatFactionStock.mayConvert(fid) || !wantsProducer(market, producer)) return false;
+		if (!canSupplyProducer(market, s, producer) || !canPayBuild(market, producer)) return false;
+		String spareStock = Industries.FUELPROD.equals(producer) ? Commodities.SUPPLIES : Commodities.FUEL;
+		Industry spare = ThreatFactionStock.producerOn(market, spareStock);
+		String retired = null;
+		if (spare != null && !spare.isBuilding() && !spare.isUpgrading() && spare.getSpecialItem() == null
+				&& spare.getAICoreId() == null && ThreatFactionStock.surplusProducer(market, spareStock)) {
+			retired = spare.getId();
+		} else if (market.hasIndustry(Industries.PATROLHQ) && ThreatFactionStock.hullsSurplus(fid)) {
+			Industry hq = market.getIndustry(Industries.PATROLHQ);
+			if (hq != null && !hq.isBuilding() && !hq.isUpgrading()) retired = hq.getId();
 		}
-		float fuel = 0f, fuelWant = 0f, supplies = 0f, suppliesWant = 0f;
-		for (MarketAPI m : ThreatReserves.marketsOf(fid)) {
-			fuel += ThreatReserves.stock(m.getId(), Commodities.FUEL);
-			fuelWant += ThreatReserves.stagingBank(m, Commodities.FUEL);
-			supplies += ThreatReserves.stock(m.getId(), Commodities.SUPPLIES);
-			suppliesWant += ThreatReserves.stagingBank(m, Commodities.SUPPLIES);
-		}
-		if (fuel < fuelWant || supplies >= suppliesWant) return false;
-		if (!canSupply(market, Commodities.METALS, s) || !canSupply(market, Commodities.RARE_METALS, s - 2)) return false;
-		if (!canPayBuild(market, Industries.HEAVYINDUSTRY)) return false;
-		market.removeIndustry(Industries.FUELPROD, null, false);
-		startNew(market, Industries.HEAVYINDUSTRY);
-		last.put(fid, Global.getSector().getClock().getTimestamp());
-		ThreatIncConfig.log("Frontline: " + market.getName() + " turns its fuel plant into a Heavy Industry - "
-				+ fid + " fuel " + (int) fuel + " of " + (int) fuelWant + " staged for, supplies " + (int) supplies
-				+ " of " + (int) suppliesWant);
+		if (retired == null) return false;
+		market.removeIndustry(retired, null, false);
+		if (!startNew(market, producer)) return false;
+		ThreatFactionStock.converted(fid);
+		ThreatFactionStock.answered(fid, want);
+		ThreatIncConfig.log("Frontline: " + market.getName() + " turns its " + retired + " into a " + producer
+				+ " (" + want + " short) - " + fid + ": " + ThreatFactionStock.describe(fid));
 		return true;
 	}
 
 	/**
-	 * Whether the faction is shorter of fuel than of supplies: each one's stock
-	 * over what its sieges stage for (ThreatReserves.stagingBank), summed over
-	 * its markets. Fuel under its staging banks alone (the first rule) held
-	 * true while the Hegemony sat on 735k fuel and 6k supplies, and its links
-	 * built 24 fuel plants to 17 Heavy Industries (h23a).
-	 */
-	protected static boolean fuelShort(String factionId) {
-		if (factionId == null) return false;
-		float fuel = 0f, fuelWant = 0f, supplies = 0f, suppliesWant = 0f;
-		for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
-			fuel += ThreatReserves.stock(m.getId(), Commodities.FUEL);
-			fuelWant += ThreatReserves.stagingBank(m, Commodities.FUEL);
-			supplies += ThreatReserves.stock(m.getId(), Commodities.SUPPLIES);
-			suppliesWant += ThreatReserves.stagingBank(m, Commodities.SUPPLIES);
-		}
-		return fuel / Math.max(1f, fuelWant) < supplies / Math.max(1f, suppliesWant);
-	}
-
-	/**
-	 * One project at a time, in order: Patrol HQ, battlestation, Heavy
-	 * Industry and Fuel Production (3; fuel first while fuelShort), Military
-	 * Base and star fortress (4) - each only if every commodity it
-	 * demands can be had here
-	 * (canSupply). Demands are vanilla's (industries.csv / the industry
-	 * classes), s being the market size.
+	 * One project at a time, in order: Patrol HQ, battlestation, the producer
+	 * of what the faction is shortest of (ThreatFactionStock.shortest: hulls,
+	 * then the drier of fuel and supplies) in a free slot or by conversion
+	 * (convertFor), then Heavy Industry and Fuel Production in a free slot,
+	 * Military Base and star fortress (4) - each only if every commodity it
+	 * demands can be had here (canSupply). Demands are vanilla's
+	 * (industries.csv / the industry classes), s being the market size. The
+	 * hive's planner for a faction (user's decision 2026-10-06): hw31's links
+	 * built fuel first on 350k-1.1M fuel while every expedition waited on hulls.
 	 */
 	protected static void build(MarketAPI market) {
 		for (Industry ind : market.getIndustries()) {
@@ -1886,6 +1880,8 @@ public class ThreatFrontlines {
 			}
 		}
 		int s = market.getSize();
+		String fid = market.getFactionId();
+		ThreatFactionStock.watch(fid);
 		// no ground works: nothing lands on a station (vanilla's pirate base
 		// has none either). What cannot be supplied waits; the steps after it
 		// still get their turn
@@ -1903,24 +1899,28 @@ public class ThreatFrontlines {
 				return;
 			}
 		}
-		// a war industry in the free industry slot (user's call 2026-09-27): run
-		// 17's links took in 242k supplies and sent 8.5k back, and their upkeep
-		// stalled Hegemony's sieges for 16 months. Heavy Industry makes supplies,
-		// heavy armaments and ships - the last is the Military Base's too.
-		// Fuel Production too (2026-09-30), first while the faction is shorter
-		// of fuel than of supplies against what its sieges stage for (fuelShort)
-		boolean fuelFirst = fuelShort(market.getFactionId());
-		if (fuelFirst && s >= 3 && buildFuel(market, s)) return;
-		if (s >= 3 && ThreatIncConfig.frontlineHeavyIndustry()
-				&& !market.hasIndustry(Industries.HEAVYINDUSTRY) && !market.hasIndustry(Industries.ORBITALWORKS)
-				&& Misc.getNumIndustries(market) < Misc.getMaxIndustries(market)) {
-			if (canSupply(market, Commodities.METALS, s) && canSupply(market, Commodities.RARE_METALS, s - 2)) {
-				startNew(market, Industries.HEAVYINDUSTRY);
-				return;
+		// the shortage's answer: in a free slot, else by conversion
+		String want = s >= 3 ? ThreatFactionStock.shortest(fid) : null;
+		if (want != null && ThreatFactionStock.mayAnswer(fid, want)) {
+			String producer = ThreatFactionStock.producerId(want);
+			if (wantsProducer(market, producer)) {
+				if (Misc.getNumIndustries(market) < Misc.getMaxIndustries(market)) {
+					if (buildProducer(market, s, producer)) {
+						ThreatFactionStock.answered(fid, want);
+						ThreatIncConfig.log("Frontline: " + market.getName() + " answers " + want + " - " + fid + ": "
+								+ ThreatFactionStock.describe(fid));
+						return;
+					}
+				} else if (convertFor(market, s, want, producer)) {
+					return;
+				}
 			}
 		}
-		if (!fuelFirst && s >= 3 && buildFuel(market, s)) return;
-		if (s >= 3 && swapFuelForHeavyIndustry(market, s)) return;
+		// a war industry in a free slot (user's call 2026-09-27): run 17's
+		// links took in 242k supplies and sent 8.5k back, and their upkeep
+		// stalled Hegemony's sieges for 16 months. Yards first: the hull pool
+		if (s >= 3 && buildProducer(market, s, Industries.HEAVYINDUSTRY)) return;
+		if (s >= 3 && buildProducer(market, s, Industries.FUELPROD)) return;
 		if (s >= 4 && market.hasIndustry(Industries.PATROLHQ)) {
 			if (canSupplyMilitary(market, s + 1)) {
 				upgrade(market, market.getIndustry(Industries.PATROLHQ));
