@@ -610,6 +610,9 @@
 	# days after its last strike a faction stands down (only if no hive is in
 	# reach of its military worlds); 0 = mobilised for good
 	"threatinc_warModeStandDownDays": 0,
+	# every mobilised NPC faction stands down once the swarm is gone from the
+	# sector (the player's by order only); the user, 2026-10-06
+	"threatinc_warStandDownOnEradication": true,
 	# Factions that never mobilise, comma-separated ids. The Threat still
 	# strikes their worlds and they stay hostile to it, but they raise no task
 	# forces, sieges, convoys or fronts and keep no war reserve - vanilla

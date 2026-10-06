@@ -1,18 +1,18 @@
 [center][size=20pt][b]The Abyssal War[/b][/size]
-[i]v0.7.0 - the core fights back - for Starsector 0.98a-RC8[/i][/center]
+[i]v0.8.0 - information travels by ship - for Starsector 0.98a-RC8[/i][/center]
 
 [hr]
 
 [size=14pt][b]Download[/b][/size]
 
-[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.7.0/AbyssalWar-0.7.0.zip]AbyssalWar-0.7.0.zip[/url]
+[url=https://github.com/pogoman/ThreatIncursion/releases/download/v0.8.0/AbyssalWar-0.8.0.zip]AbyssalWar-0.8.0.zip[/url]
 
 Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher. It extracts to [tt]mods/ThreatIncursion[/tt] - overwrite your existing folder rather than keeping both. Saves made with Threat Incursion carry over: the mod id has not changed.
 
 [hr]
 
 [size=14pt][b]Core concept[/b][/size]
-At game start a new system in the outer reaches of the sector will be seeded with several Threat colonies. Once these colonies develop they will spread to neighbouring systems in the search for resources to fund new colonies, which is what they need to expand the hive. As they get within a certain distance of the core worlds, they will start sending out first-strike parties and attempt to siege any planet within range. Human factions will mobilise when attacked and enter a war economy, leading to counter attacks and strikes of their own.
+At game start a new system in the outer reaches of the sector will be seeded with several Threat colonies. Once these colonies develop they will spread to neighbouring systems in the search for resources to fund new colonies, which is what they need to expand the hive. Once the hive can pay for it, it strikes the nearest human world it has charted, and a faction struck mobilises: a war economy, patrols, forward bases pushed toward the hives it finds, sieges and hunts. Neither side knows anything a ship of its own has not seen and carried home - no radar, no instant knowledge - so the war is as much about finding the enemy as fighting it. Both sides pay for every fleet from what their worlds produce; nothing is capped.
 
 [center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/ThreatBoard.png[/img]
 [i]The Threat: every system you have found, in priority order - vitality, swarms, reach, strikes out, and what each one makes.[/i][/center]
@@ -67,6 +67,60 @@ The Threat will support their own sieges by reinforcing the front with their own
 For Starsector 0.98a-RC8. LunaLib optional, Nexerelin compatible. Safe to add mid-save; removing it mid-war breaks the save. Every number is configurable via LunaLib (Shift+F2) or [tt]data/config/settings.json[/tt].
 
 [size=14pt][b]Changelog[/b][/size]
+
+[b]0.8.0 - information travels by ship[/b]
+[spoiler]
+[b]Nobody knows anything they have not seen.[/b] No radar on either side: a hive is found when a fleet enters its system and gets home to tell of it, a siege is seen coming when a Patrol Swarm meets it and returns. The war is now fought between two AIs that both pay for everything they field, and in new-game tests at the defaults the swarm wins most sector-wide wars without the player - the core worlds hold for years, not forever. Playthroughs from 0.6 and 0.7 load and carry on (see the end).
+
+[b]Information and patrols[/b]
+[list]
+[li]A strike no longer tells the struck faction where it came from. Factions find hives only by fleets entering the system - scouting parties, patrols, convoys, task forces - and a find counts when the party is back in a friendly system. A party destroyed on the way takes its sighting with it; a find is shared with every mobilised faction.[/li]
+[li]Both sides fly patrols from the first attack: human patrols sweep the systems around their worlds, Patrol Swarms walk the ring around each hive system and widen it as the war goes on. A patrol that meets a siege or strike force it cannot outrun is destroyed; faster and weaker it runs home with the warning; stronger it fights. Patrols grow and thin out with their losses.[/li]
+[li]The hive's distance picket and the humans' radar are gone; what each side knows is on the board as reports, and stale reports age out.[/li]
+[li]A faction mobilises only when one of its worlds is attacked - no more mobilising because the swarm is "in reach". Nobody knows of the swarm before the first attack.[/li]
+[li]Omens: foreboding messages before any hive is found - ships missing, beacons gone quiet, the fringe going dark.[/li]
+[/list]
+[b]The swarm attacks as a hive[/b]
+[list]
+[li]Staged strikes: a strike is built from the whole hive's strike fund - a share of every hive world's production set aside for the war - at the hive world nearest the target, sized to one and a half times the defence last seen there and never under 8,000 FP. Before, a single hive world struck with its own spare swarms, which it never had.[/li]
+[li]The nearest known target goes first, forward bases included; a forward base whose station a strike destroys is gone with it.[/li]
+[li]Strikes are no longer recalled to defend: a strike out stays out, and the system under attack defends as one, massing its spare swarms at the worlds that are short - but sends no defence it cannot win with.[/li]
+[li]The Swarm Nexus is no longer a tactical bombardment target and gives the hive no defence bonus; the swarm's stance (hold, consolidate, expand) follows the pressure on its systems.[/li]
+[li]The opening lands on a set number of home worlds (default 4). Hives cap at size 8.[/li]
+[/list]
+[b]The factions fight as a council[/b]
+[list]
+[li]Every mobilised faction runs a strategy each month - decapitate, hold, starve and invade among them - and plays it with joint strikes, decoys and bombers, invasions once a hive's defences are down, sized from what its own ships have reported.[/li]
+[li]Forward bases: mobilised factions push chains of real outposts toward the hives they have found, and siege and hunt from them. A base builds fuel production or heavy industry by what the faction is short of, is guarded from the faction's stock, and is dismantled when nobody can pay to hold it.[/li]
+[li]Relief sails from any distance and holds the orbit over a besieged colony until the Threat army on the ground is gone, bombarding it while the defenders lose. Hunting forces that find a hive thinly held strike it instead of going home.[/li]
+[li]Human blockades of hive worlds starve them; the humans' own sieges are the cheapest first.[/li]
+[li]Once the swarm is gone from the sector every faction stands down from war footing (the player's by order only).[/li]
+[/list]
+[b]A closed war economy - no caps[/b]
+[list]
+[li]No faction, and not the swarm, has a cap on the forces it fields: every fleet is paid for from production. Fleets out on the war's orders burn supplies upkeep and turn back when a month is owed; passage is paid in fuel on both sides; structures cost their vanilla build cost in supplies and take their vanilla build time, hive and forward base alike.[/li]
+[li]Hive worlds pay supplies upkeep by size, grow on the share they pay and shrink when starved; a hive banks its plants' and forges' output and spends the bank on swarms, founding and the strike fund. Garrisons at home pay fleet-point upkeep as the hive's patrols.[/li]
+[li]Reach is what the fuel and supplies pay for - no logistics radius anywhere. Wartime fuel and supplies bank like reserves.[/li]
+[/list]
+[b]Sieges and bombardment[/b]
+[list]
+[li]Bombardment runs by the day: a flotilla over a hive holds the orbit while a squadron bombs, sorties are paid in fuel and supplies per day down, and saturation, tactical and siege bombardment all wear a world on the same per-day engine.[/li]
+[li]Razing disrupts and never desizes a hive; off-screen fights cost both sides.[/li]
+[li]Siege landings are sized on each hive's own floor; hunts are sized on the garrison over the world now, not a projected regrowth.[/li]
+[/list]
+[b]Player[/b]
+[list]
+[li]Notices: every event is a titled notice with one fact a line, factions and worlds in their colours; click one to open the colony or the board.[/li]
+[li]The map fogs what you have not found; the board shows the hive systems you know and the reports your side's ships have carried home.[/li]
+[/list]
+[b]Fixes[/b]
+[list]
+[li]A scouting party or patrol whose home world is gone (hive eradicated, forward base dismantled) no longer flies forever; it is dismissed as home.[/li]
+[li]Guards time their turn-back like a new guard; no homebound fleet leaks.[/li]
+[li]Hive fuel is back to the surplus rule by default: at the war rate the hive took the sector in one night's run.[/li]
+[/list]
+[b]Existing saves.[/b] Saves from 0.6 and 0.7 load (tested on a 0.6.0 and a 0.7.0 campaign, 16 and 10 years of war in). The strike fund starts empty, so the swarm's first staged strike comes four to six months after the upgrade; factions already mobilised stay so; hives already found stay found. With LunaLib, the first launch moves changed defaults to the new values if they still hold the old ones (Siege Orbit System off, radar settings dropped, Fabricate Troops per FP 10 to 5, Nexus Defence Bonus 0.5 to 0, Mobilise at Phase 3 to off); values you set yourself are kept.
+[/spoiler]
 
 [b]0.7.0 - the core fights back[/b]
 [spoiler]
