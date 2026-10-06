@@ -248,6 +248,9 @@ public class ThreatConvoys {
 		float fuel = payEscortPart(donor, Commodities.FUEL, base * rate[0], over * rate[0], load[2], burnt, 0);
 		float supplies = payEscortPart(donor, Commodities.SUPPLIES, Math.min(escort, base) * rate[1],
 				over * rate[1], load[3], burnt, 1);
+		// freighters draw no hulls from the faction's pool (ThreatHulls; hw30: supply fleets held
+		// more than the pool had and no warship could sail)
+		fleet.getMemoryWithoutUpdate().set(ThreatReturns.MEM_NO_HULLS, true);
 		ThreatReturns.provision(fleet, donor.id(), fuel, supplies);
 		return burnt;
 	}
@@ -1904,7 +1907,7 @@ public class ThreatConvoys {
 			}
 			load[i] = Math.min(want, ThreatReserves.available(donor, c));
 		}
-		if (donor.isPlayerOwned()) {
+		if (donor.isPlayerOwned() && !ThreatHulls.enabled()) { // freighters draw no hulls from the pool
 			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor), load);
 		}
 		return load;
@@ -2081,7 +2084,7 @@ public class ThreatConvoys {
 		// load is clamped to what they carry, the fleet is never grown past the
 		// ledger (nothing sails over-extended), and it is never split; NPC
 		// convoys and outpost returns grow to fit their load
-		boolean ledger = faction.isPlayerFaction() && donor.market != null;
+		boolean ledger = faction.isPlayerFaction() && donor.market != null && !ThreatHulls.enabled();
 		if (ledger) {
 			// the colony's own hulls: staged warships never fold into a convoy
 			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor.market), load);
@@ -2198,7 +2201,7 @@ public class ThreatConvoys {
 		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, from, 1000f,
 				"returning to " + donor.name());
 		all().add(c);
-		if (faction.isPlayerFaction() && donor.market != null) {
+		if (faction.isPlayerFaction() && donor.market != null && !ThreatHulls.enabled()) {
 			float[] loaded = {c.marines, c.armaments, c.fuel, c.supplies};
 			ThreatAidCapacity.commit(donor.market, ThreatAidCapacity.convoyPoints(loaded), fleet,
 					"convoy to " + base.name());

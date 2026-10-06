@@ -543,3 +543,15 @@ is a different field from the census ledger), the patrol or stand-down code, exc
 What the run points at, for the user: (a) the currency - a swarm whose garrisons are being killed faster than its forges replace them cannot turn a
 million fuel and half a million supplies into one ship; (b) the opening - the first strikes should perhaps not fan out across four factions'
 worlds in 150 days; (c) 30% of production to strikes at forward bases while the hives starve of garrison.
+
+## 30. hw30 - the hull pool's first batch, stopped at war day ~2000 (2026-10-06)
+
+Three new games on the hull pool as first built (2e18c918). Hegemony's pool read 4,430 FP standing and 1,400 FP/mo of yards at
+mobilisation (estimate 6,000 / 600); the hive's want 7.6-9.8k for 19-23 hives before anyone woke (hw29a 17k for 20). By war
+day 2000: 31 / 32 / 38 hives; human colonies lost 7 / 8 / 13 (Chicomoztoc, Yama, Coatl, Qaras among them - Hegemony's pool
+fell to 674 and its yards to 200 FP/mo with its worlds); hives eradicated 2 / 2 / 0; hunts 9 / 2 / 4, sieges 0 / 2 / 0,
+sieges postponed 46 / 51 / 71; Threat strikes 56 / 60 / 42 (hw29a: 12 by day 1833) - the garrison want down, the surplus
+went to the strike fund. **Defect:** out exceeded standing everywhere (Tri-Tachyon 2,314 FP out of a 197 FP pool): supply
+convoys and scouting parties were committed at spawn but never gated at launch, so freighters held the warship hulls and
+every hunt and siege read 0 free. Fixed for hw31: convoys draw no hulls, scouts and patrols launch only with hulls free
+(`hull-pool.md` 3). Dumps: `tools/warsim/validation/hw30a-c`.

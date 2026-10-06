@@ -61,6 +61,8 @@ public class ThreatReturns {
 	public static final String MEM_FP_ORDER = "$threatinc_fpAtOrder";
 	/** Fleet memory: the last settle kept the fleet on station (ThreatAidCapacity.release). */
 	public static final String MEM_KEPT = "$threatinc_keptOnStation";
+	/** Fleet memory: the fleet draws no hulls from its faction's pool - a convoy of freighters (ThreatHulls; vanilla's trade fleets are no patrols). */
+	public static final String MEM_NO_HULLS = "$threatinc_noHulls";
 
 	/**
 	 * Distance past the two hulls' radii at which a fleet counts as arrived
@@ -215,7 +217,8 @@ public class ThreatReturns {
 		// the hull pool (ThreatHulls, 2026-10-06): an NPC navy's fleet holds its
 		// hulls against its faction's pool from here until it is home (release) or
 		// lost (a debt). The player's are committed by the order that built them
-		if (ThreatHulls.enabled() && !playerFleet(fleet) && ThreatAidCapacity.heldBy(fleet) == null) {
+		if (ThreatHulls.enabled() && !playerFleet(fleet) && ThreatAidCapacity.heldBy(fleet) == null
+				&& !fleet.getMemoryWithoutUpdate().getBoolean(MEM_NO_HULLS)) {
 			MarketAPI base = baseMarketId != null ? Global.getSector().getEconomy().getMarket(baseMarketId) : null;
 			if (base != null && ThreatAidCapacity.applies(base) && fleet.getFleetPoints() > 0) {
 				ThreatAidCapacity.commit(base, fleet.getFleetPoints(), fleet, fleet.getNameWithFaction());
