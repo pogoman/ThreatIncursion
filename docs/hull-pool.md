@@ -46,11 +46,15 @@ its fleet points against it (`ThreatAidCapacity`'s ledger, now every faction's) 
 (`release`); what does not come home - a fleet destroyed, or the lost part of one that returns
 - is a **debt** (`lose`). `freeFP` = standing - out - debt, never below 0.
 
-**Rebuilding** (`rebuild`, daily): a faction's debt is paid down only by its shipyards - Heavy
-Industry and Orbital Works' SHIPS supply (`shipUnits`, read as the hive's `forgeOutput`) x
-`fabFPPerShipUnit` (100) a month. No shipyard, no replacement: a faction fields its standing
-navy once. The hive keeps no debt here: its garrisons are rebuilt by its forge bank as before,
-and only its **want** changes (`ThreatPosture.minimumFP` = the hive's standing hulls, at least
+**Rebuilding and building** (`rebuild`, daily): a faction's shipyards - Heavy Industry and
+Orbital Works' SHIPS supply (`shipUnits`, read as the hive's `forgeOutput`) x `fabFPPerShipUnit`
+(100) a month - pay its losses down first, and while the faction is at war what is left adds to
+its **built** hulls (`built`, `KEY_BUILT`): standing over vanilla's patrols, lost like any other, no
+cap (the user, 2026-10-06: "its a wartime economy why would they stop producing"; until then yard
+output beyond the losses did nothing, and a navy never grew - hw32 humans 3.4k FP/mo of yards against
+the hive's 45k, 7.7k hulls against 378k, `game-runs-2.md` 32). The player's yards build the same once
+they mobilise. No shipyard, no replacement and no growth. The hive keeps no such ledger: its garrisons
+are rebuilt by its forge bank as before, and only its **want** changes (`ThreatPosture.minimumFP` = the hive's standing hulls, at least
 one swarm; the launch stock on top as before).
 
 ## 3. Where it binds
@@ -80,9 +84,9 @@ one swarm; the launch stock on top as before).
   coloured by free (white enough for a guard, yellow a minimum, red less). Row tooltip: standing
   hulls with the patrol counts, fleet size and quality; the faction's pool; the yards' rebuild
   rate.
-- Log: `Hulls: <faction> hulls S FP: O out, L lost, F free; yards P FP/mo` monthly with the sim
+- Log: `Hulls: <faction> hulls S FP (B built): O out, L lost, F free; yards P FP/mo` monthly with the sim
   dump; `Hulls: <faction> lost N FP with <fleet>; D FP to rebuild at P FP/mo` per loss.
-- Dump: per faction `hulls`, `hullsOut`, `hullsLost`, `hullsFree`, `hullYards`.
+- Dump: per faction `hulls`, `hullsBuilt`, `hullsOut`, `hullsLost`, `hullsFree`, `hullYards`.
 
 ## 5. The scale (estimates before the first run)
 

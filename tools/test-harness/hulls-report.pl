@@ -27,7 +27,7 @@ for my $f (@files) {
 	my @parts;
 	for my $fa (@{$d->{factions} || []}) {
 		next unless defined $fa->{hulls};
-		push @parts, sprintf("%s %d/%d/%d/%d y%d", $fa->{id}, $fa->{hulls}, $fa->{hullsOut},
+		push @parts, sprintf("%s %d(+%d)/%d/%d/%d y%d", $fa->{id}, $fa->{hulls}, $fa->{hullsBuilt} || 0, $fa->{hullsOut},
 			$fa->{hullsLost}, $fa->{hullsFree}, $fa->{hullYards});
 	}
 	printf "d%-5d hives %-3s garrisons %-6d %s\n", $d->{warDay} || 0, $hives, $fleets,

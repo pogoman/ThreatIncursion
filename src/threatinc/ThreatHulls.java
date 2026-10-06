@@ -49,6 +49,8 @@ public class ThreatHulls {
 
 	public static final String KEY_DEBT = "threatinc_hullDebt";
 	public static final String KEY_REBUILT = "threatinc_hullRebuiltAt";
+	/** Persistent: factionId -> fleet points of hulls its yards built beyond its losses - the war navy. */
+	public static final String KEY_BUILT = "threatinc_hullBuilt";
 
 	/** Mean combat points of vanilla's patrol weights (MilitaryBase.getPatrolCombatFP: 15-25, 30-45, 50-75). */
 	public static final float LIGHT_FP = 20f, MEDIUM_FP = 37.5f, HEAVY_FP = 62.5f;
@@ -144,9 +146,9 @@ public class ThreatHulls {
 		return result;
 	}
 
-	/** The faction's standing hulls: its markets' summed. */
+	/** The faction's standing hulls: its markets' summed, plus what its yards built (built). */
 	public static float standingFP(String factionId) {
-		float sum = 0f;
+		float sum = built(factionId);
 		for (MarketAPI m : marketsOf(factionId)) sum += standingFP(m);
 		return sum;
 	}
@@ -208,33 +210,66 @@ public class ThreatHulls {
 				+ (int) productionFP(factionId) + " FP/mo");
 	}
 
+	// ------------------------------------------------------------------
+	// the navy: hulls the yards built beyond the losses (the user, 2026-10-06:
+	// "its a wartime economy why would they stop producing"; no caps)
+	// ------------------------------------------------------------------
+
+	@SuppressWarnings("unchecked")
+	protected static Map<String, Float> builtMap() {
+		Object val = Global.getSector().getPersistentData().get(KEY_BUILT);
+		if (!(val instanceof Map)) {
+			val = new HashMap<String, Float>();
+			Global.getSector().getPersistentData().put(KEY_BUILT, val);
+		}
+		return (Map<String, Float>) val;
+	}
+
+	/** Fleet points of hulls the faction's yards have built beyond its losses: standing hulls over vanilla's patrols, lost like any other. */
+	public static float built(String factionId) {
+		Float b = factionId != null ? builtMap().get(factionId) : null;
+		return b != null ? Math.max(0f, b) : 0f;
+	}
+
 	/**
-	 * Daily: each indebted faction's shipyards pay down its debt at their
-	 * month's output, pro rata to the days since the last call.
+	 * Daily: every mobilised faction's shipyards (and any faction's with a
+	 * loss to rebuild) make their month's output pro rata to the days since
+	 * the last call; it pays the losses down first, and what is left adds to
+	 * the faction's built hulls - a navy that grows with its yards for as
+	 * long as it is at war, as the hive's grows with its forges. Nothing
+	 * caps it; what caps a yard is its market's size and inputs.
 	 */
 	public static void rebuild() {
 		if (!enabled()) return;
-		Map<String, Float> debts = debts();
-		if (debts.isEmpty()) return;
 		Object at = Global.getSector().getPersistentData().get(KEY_REBUILT);
 		long now = Global.getSector().getClock().getTimestamp();
 		float days = at instanceof Long ? Global.getSector().getClock().getElapsedDaysSince((Long) at) : 0f;
 		Global.getSector().getPersistentData().put(KEY_REBUILT, now);
 		if (days <= 0f) return;
-		for (String factionId : new ArrayList<String>(debts.keySet())) {
-			float d = debts.get(factionId);
-			if (d <= 0f) {
-				debts.remove(factionId);
-				continue;
-			}
+		Map<String, Float> debts = debts();
+		List<String> ids = new ArrayList<String>(ThreatWarState.warFactionIds());
+		for (String id : debts.keySet()) if (!ids.contains(id)) ids.add(id);
+		for (String factionId : ids) {
+			if (Factions.THREAT.equals(factionId)) continue;
 			float made = productionFP(factionId) * days / 30f;
-			if (made <= 0f) continue;
-			float left = Math.max(0f, d - made);
-			if (left <= 0f) {
+			Float d = debts.get(factionId);
+			if (d != null && d <= 0f) {
 				debts.remove(factionId);
+				d = null;
+			}
+			if (made <= 0f) continue;
+			if (d != null) {
+				float left = d - made;
+				if (left > 0f) {
+					debts.put(factionId, left);
+					continue;
+				}
+				debts.remove(factionId);
+				made = -left;
 				ThreatIncConfig.log("Hulls: " + ThreatWarState.displayName(factionId) + " rebuilt its losses");
-			} else {
-				debts.put(factionId, left);
+			}
+			if (made > 0f && ThreatWarState.isAtWar(factionId)) {
+				builtMap().put(factionId, built(factionId) + made);
 			}
 		}
 	}
@@ -266,9 +301,9 @@ public class ThreatHulls {
 		return Math.min(payable, freeFP(base.getFactionId()));
 	}
 
-	/** One line for a faction: standing, out, lost, free, and the month's output. */
+	/** One line for a faction: standing (built by its yards), out, lost, free, and the month's output. */
 	public static String describe(String factionId) {
-		return ThreatWarState.displayName(factionId) + " hulls " + (int) standingFP(factionId) + " FP: "
+		return ThreatWarState.displayName(factionId) + " hulls " + (int) standingFP(factionId) + " FP (" + (int) built(factionId) + " built): "
 				+ (int) committedFP(factionId) + " out, " + (int) debt(factionId) + " lost, "
 				+ (int) freeFP(factionId) + " free; yards " + (int) productionFP(factionId) + " FP/mo";
 	}

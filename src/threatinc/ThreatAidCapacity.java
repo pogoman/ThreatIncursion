@@ -596,7 +596,8 @@ public class ThreatAidCapacity {
 			lines.add(ThreatWarState.displayName(fid) + " pool: " + Math.round(ThreatHulls.freeFP(fid)) + " of "
 					+ Math.round(ThreatHulls.standingFP(fid)) + " FP free; " + Math.round(ThreatHulls.committedFP(fid))
 					+ " out, " + Math.round(ThreatHulls.debt(fid)) + " lost.");
-			lines.add("Shipyards rebuild " + Math.round(ThreatHulls.productionFP(fid)) + " FP a month.");
+			lines.add("Shipyards add " + Math.round(ThreatHulls.productionFP(fid)) + " FP a month, losses first; "
+					+ Math.round(ThreatHulls.built(fid)) + " FP built so far.");
 			return lines;
 		}
 		if (f[0] <= 0) {

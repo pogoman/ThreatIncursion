@@ -238,6 +238,7 @@ public class ThreatSimDump {
 			o.put("hulls", (int) ThreatHulls.standingFP(fid));
 			o.put("hullsOut", (int) ThreatHulls.committedFP(fid));
 			o.put("hullsLost", (int) ThreatHulls.debt(fid));
+			o.put("hullsBuilt", (int) ThreatHulls.built(fid));
 			o.put("hullsFree", (int) ThreatHulls.freeFP(fid));
 			o.put("hullYards", (int) ThreatHulls.productionFP(fid));
 			out.put(o);
