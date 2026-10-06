@@ -269,6 +269,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatUpkeep.poll();
 		ThreatAidCapacity.poll();
 		ThreatHulls.rebuild(); // the yards pay down the hull debt (ThreatHulls)
+		ThreatHulls.maintain(); // the hulls at home pay their supplies, or are lost
 		ThreatOutposts.poll();
 		ThreatFrontlines.poll(random);
 		detectStrikes();

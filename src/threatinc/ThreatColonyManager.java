@@ -4185,7 +4185,11 @@ public class ThreatColonyManager {
 				Float outSupplies = ledgerSupplies.get(marketId);
 				float away = awayFleetSupplies(market) + (outSupplies != null ? outSupplies : 0f);
 				fleetsSupplies += away;
-				paySupplies(market, away);
+				float days = paySupplies(market, away);
+				// standing upkeep: the garrison at home pays its supplies too
+				float home = garrisonSuppliesPerMonth(fleets);
+				fleetsSupplies += home;
+				payGarrisonSupplies(market, fleets, home, days);
 			}
 
 			// two hard on/off gates on fabrication. The Fabrication Core is the
@@ -4853,22 +4857,67 @@ public class ThreatColonyManager {
 	 * forge once the stock would run dry, ThreatFuel.runsDry) and owed; once a
 	 * month's worth is owed the colony's raiders turn home and its strikes back
 	 * (starveAway), as a faction's fleets out of supplies do (ThreatUpkeep.starve).
-	 * A month paid in full clears the debt.
+	 * A month paid in full clears the debt. Returns the days charged (0 on the
+	 * first call), for payGarrisonSupplies.
 	 */
-	protected static void paySupplies(MarketAPI market, float perMonth) {
+	protected static float paySupplies(MarketAPI market, float perMonth) {
 		String id = market.getId();
 		Map<String, Object> at = ThreatIncData.map(KEY_SUPPLIES_AT);
 		Object last = at.get(id);
 		long now = Global.getSector().getClock().getTimestamp();
 		at.put(id, now);
-		if (!(last instanceof Long)) return;
+		if (!(last instanceof Long)) return 0f;
 		float days = Global.getSector().getClock().getElapsedDaysSince((Long) last);
-		if (days <= 0f || perMonth <= 0f) return;
+		if (days <= 0f || perMonth <= 0f) return days;
 		float want = perMonth * days / 30f;
 		float paid = Math.min(want, ThreatFuel.stock(Commodities.SUPPLIES));
 		ThreatFuel.pay(Commodities.SUPPLIES, paid);
 		float unpaid = want - paid;
 		Map<String, Object> owedMap = ThreatIncData.map(KEY_SUPPLIES_OWED);
+		if (unpaid <= 0f) {
+			owedMap.remove(id);
+			return days;
+		}
+		ThreatFuel.noteDemand(Commodities.SUPPLIES, unpaid);
+		if (!ThreatFuel.planned()) ThreatFuel.noteShort(Commodities.SUPPLIES);
+		Object had = owedMap.get(id);
+		float owed = (had instanceof Float ? (Float) had : 0f) + unpaid;
+		if (owed < perMonth) {
+			owedMap.put(id, owed);
+			return days;
+		}
+		owedMap.remove(id);
+		starveAway(market, owed);
+		return days;
+	}
+
+	/** Persistent: market id -> supplies its garrison at home owes (payGarrisonSupplies). */
+	public static final String KEY_GARRISON_OWED = "threatinc_hiveGarrisonOwed";
+
+	/** Supplies a month the colony's garrison at home costs: its FP at the swarm's maintenance per FP times standingUpkeepMult. */
+	public static float garrisonSuppliesPerMonth(List<CampaignFleetAPI> fleets) {
+		return garrisonFP(fleets) * ThreatReach.suppliesPerFP() * ThreatIncConfig.standingUpkeepMult();
+	}
+
+	/**
+	 * Standing upkeep (the user, 2026-10-06; ThreatHulls.maintain is the
+	 * factions' side): the colony's garrison at home pays its ships' supplies
+	 * for the days since the colony's last payment from the hive's stock, as
+	 * its fleets away do (paySupplies). What the stock cannot pay is demand for
+	 * the planner and owed; once the owed reaches a swarm's month, the smallest
+	 * swarm on station is lost - no fleet points back, as a faction's unpaid
+	 * hulls are lost (ThreatHulls.starve). A garrison still pays its fleet
+	 * points to the bank (accrueFabrication): that is what the forges rebuild.
+	 */
+	protected static void payGarrisonSupplies(MarketAPI market, List<CampaignFleetAPI> fleets, float perMonth,
+			float days) {
+		if (days <= 0f || perMonth <= 0f) return;
+		String id = market.getId();
+		float want = perMonth * days / 30f;
+		float paid = Math.min(want, ThreatFuel.stock(Commodities.SUPPLIES));
+		ThreatFuel.pay(Commodities.SUPPLIES, paid);
+		float unpaid = want - paid;
+		Map<String, Object> owedMap = ThreatIncData.map(KEY_GARRISON_OWED);
 		if (unpaid <= 0f) {
 			owedMap.remove(id);
 			return;
@@ -4877,12 +4926,24 @@ public class ThreatColonyManager {
 		if (!ThreatFuel.planned()) ThreatFuel.noteShort(Commodities.SUPPLIES);
 		Object had = owedMap.get(id);
 		float owed = (had instanceof Float ? (Float) had : 0f) + unpaid;
-		if (owed < perMonth) {
-			owedMap.put(id, owed);
-			return;
+		float rate = ThreatReach.suppliesPerFP() * ThreatIncConfig.standingUpkeepMult();
+		int budget = fleets.size();
+		for (int i = 0; i < budget; i++) {
+			CampaignFleetAPI victim = smallestOnStation(fleets);
+			if (victim == null) break;
+			float fp = victim.getFleetPoints();
+			if (fp <= 0f || owed < fp * rate) break;
+			owed -= fp * rate;
+			fleets.remove(victim);
+			victim.despawn();
+			UpkeepLog log = upkeepLog(id);
+			log.starved++;
+			log.starvedFP += fp;
+			ThreatIncConfig.log("Upkeep: " + market.getName() + " lost a " + (int) fp + " FP swarm for " + (int) (fp * rate)
+					+ " supplies of garrison upkeep unpaid (" + (int) owed + " still owed, " + fleets.size() + " on station)");
 		}
-		owedMap.remove(id);
-		starveAway(market, owed);
+		if (owed > 0f) owedMap.put(id, owed);
+		else owedMap.remove(id);
 	}
 
 	/** The colony's fleets away owe a month of supplies: its raiders turn home, its strikes back. */
@@ -5005,6 +5066,8 @@ public class ThreatColonyManager {
 		float charged;
 		int recycled;
 		float recycledFP;
+		int starved;
+		float starvedFP;
 		float lastLogged = -1f;
 	}
 
@@ -5029,18 +5092,22 @@ public class ThreatColonyManager {
 			UpkeepLog log = entry.getValue();
 			boolean moved = log.lastLogged < 0f ? log.charged > 0f
 					: Math.abs(log.charged - log.lastLogged) >= 0.1f * Math.max(1f, log.lastLogged);
-			if (log.recycled > 0 || moved) {
+			if (log.recycled > 0 || log.starved > 0 || moved) {
 				MarketAPI market = ThreatIncData.resolveColonyMarket(entry.getKey());
 				ThreatIncConfig.log("Upkeep month: " + (market != null ? market.getName() : entry.getKey())
 						+ " paid " + (int) log.charged + " FP"
 						+ (log.recycled > 0 ? ", recycled " + log.recycled + " swarm(s) of " + (int) log.recycledFP
 								+ " FP" : "")
+						+ (log.starved > 0 ? ", lost " + log.starved + " swarm(s) of " + (int) log.starvedFP
+								+ " FP to unpaid supplies" : "")
 						+ " (" + (int) fpBank(entry.getKey()) + " FP banked)");
 				log.lastLogged = log.charged;
 			}
 			log.charged = 0f;
 			log.recycled = 0;
 			log.recycledFP = 0f;
+			log.starved = 0;
+			log.starvedFP = 0f;
 		}
 	}
 

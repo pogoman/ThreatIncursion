@@ -57,6 +57,19 @@ they mobilise. No shipyard, no replacement and no growth. The hive keeps no such
 are rebuilt by its forge bank as before, and only its **want** changes (`ThreatPosture.minimumFP` = the hive's standing hulls, at least
 one swarm; the launch stock on top as before).
 
+**Standing upkeep** (`maintain`, daily; the user, 2026-10-06, after hw33-35 went to whichever
+side's hulls compounded first: "we don't want the game to be decided by who reaches the compound
+threshold first"): a mobilised NPC faction's hulls at home - `freeFP`; the fleets out pay as fleets
+(`ThreatUpkeep`), the debt is hulls that do not exist - cost their ships' maintenance a month,
+`standingRate` = `ThreatReach.suppliesPerFP(faction)` (its fleets out measured, 0.94 by default)
+x `standingUpkeepMult` (1). Each market pays its standing share from its reserve above its floor
+and holds (`ThreatReserves.drawAbove`), then any market of the faction above its floor. A
+hull-month nobody paid is a hull lost (`starve`: unpaid / rate FP, off `built` first, then onto
+the debt), so a navy shrinks to what the faction's supplies keep up and grows only while its yards
+outbuild what it cannot pay. The month line reads `Hulls: … standing upkeep paid X of Y supplies,
+Z FP starved`. Not the player's faction (its fleets keep the old rule too). The hive's garrisons
+pay the same rate from the hive's stock (`docs/hive-garrison-and-upkeep.md`, "Standing upkeep").
+
 ## 3. Where it binds
 
 - NPC hunts and plays: `ThreatSoftening.payableFP` capped at the faction's free hulls, the sum
