@@ -1,0 +1,4802 @@
+{
+ "date": "Sep 21, c215",
+ "day": -640737,
+ "factions": [
+  {
+   "hullYards": 900,
+   "hulls": 8751,
+   "hullsBuilt": 5825,
+   "hullsFree": 7265,
+   "hullsLost": 152,
+   "hullsOut": 1334,
+   "id": "persean",
+   "strategy": "HOLD",
+   "strikesSuffered": 14
+  },
+  {
+   "hullYards": 500,
+   "hulls": 14330,
+   "hullsBuilt": 13818,
+   "hullsFree": 3236,
+   "hullsLost": 2488,
+   "hullsOut": 8606,
+   "id": "independent",
+   "strategy": "ROLLBACK",
+   "strikesSuffered": 5
+  },
+  {
+   "hullYards": 900,
+   "hulls": 5743,
+   "hullsBuilt": 4842,
+   "hullsFree": 80,
+   "hullsLost": 245,
+   "hullsOut": 5418,
+   "id": "luddic_church",
+   "strategy": "STARVE",
+   "strikesSuffered": 4
+  },
+  {
+   "hullYards": 0,
+   "hulls": 1313,
+   "hullsBuilt": 0,
+   "hullsFree": 38,
+   "hullsLost": 1252,
+   "hullsOut": 23,
+   "id": "luddic_path",
+   "strategy": "STARVE",
+   "strikesSuffered": 3
+  },
+  {
+   "hullYards": 500,
+   "hulls": 10569,
+   "hullsBuilt": 9921,
+   "hullsFree": 10509,
+   "hullsLost": 0,
+   "hullsOut": 60,
+   "id": "tritachyon",
+   "strategy": "HOLD",
+   "strikesSuffered": 1
+  }
+ ],
+ "fleets": [
+  {
+   "armaments": 0,
+   "base": "threatinc_fl_375c0",
+   "etaDays": 0,
+   "fp": 748.79833984375,
+   "from": "eros",
+   "fuel": 0,
+   "kind": "SIEGE",
+   "marines": 0,
+   "owner": "persean",
+   "play": "persean#4",
+   "spawned": false,
+   "target": "market_system_1bb6:planet_2",
+   "to": "zahratna"
+  },
+  {
+   "armaments": 510.66766357421875,
+   "base": "threatinc_fl_38f28",
+   "etaDays": 0,
+   "fp": 363.8507080078125,
+   "from": "gamma azathe armurrus",
+   "fuel": 0,
+   "kind": "SIEGE",
+   "marines": 510.9230041503906,
+   "owner": "independent",
+   "play": "independent#2",
+   "spawned": false,
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "armaments": 575.1718139648438,
+   "base": "threatinc_fl_38f28",
+   "etaDays": 0,
+   "fp": 737.8432006835938,
+   "from": "gamma azathe armurrus",
+   "fuel": 0,
+   "kind": "SIEGE",
+   "marines": 575.3260498046875,
+   "owner": "independent",
+   "play": "independent#3",
+   "spawned": false,
+   "target": "market_system_11c3:planet_7",
+   "to": "hadon veleset"
+  },
+  {
+   "armaments": 925.49658203125,
+   "base": "threatinc_fl_38f28",
+   "etaDays": 35.460121154785156,
+   "fp": 2525,
+   "from": "gamma azathe armurrus",
+   "fuel": 0,
+   "kind": "SIEGE",
+   "marines": 925,
+   "owner": "independent",
+   "play": "independent#2",
+   "spawned": false,
+   "target": "market_system 1233_moon_system_1233_system_1233:planet_1_0",
+   "to": "gargeneiron"
+  },
+  {
+   "armaments": 1333.333251953125,
+   "base": "threatinc_fl_38f28",
+   "etaDays": 38.172767639160156,
+   "fp": 1525,
+   "from": "gamma azathe armurrus",
+   "fuel": 0,
+   "kind": "SIEGE",
+   "marines": 1333,
+   "owner": "independent",
+   "play": "independent#2",
+   "spawned": false,
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 48.210208892822266,
+   "fp": 646,
+   "from": "",
+   "kind": "WAVE",
+   "owner": "threat",
+   "target": "system_2169:planet_4",
+   "to": "zendar"
+  },
+  {
+   "etaDays": 0,
+   "fp": 311,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1266_moon_system_1266_system_1266:planet_6_2",
+   "to": "ala"
+  },
+  {
+   "etaDays": 0,
+   "fp": 155,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1266_moon_system_1266_system_1266:planet_2_3",
+   "to": "ala"
+  },
+  {
+   "etaDays": 12.536014556884766,
+   "fp": 394,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1bb6:planet_2",
+   "to": "zahratna"
+  },
+  {
+   "etaDays": 13.30936336517334,
+   "fp": 151,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1bb6:planet_2",
+   "to": "zahratna"
+  },
+  {
+   "etaDays": 0,
+   "fp": 345,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1266:planet_6",
+   "to": "ala"
+  },
+  {
+   "etaDays": 0,
+   "fp": 406,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1266:planet_2",
+   "to": "ala"
+  },
+  {
+   "etaDays": 12.871511459350586,
+   "fp": 400,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1bb6:planet_2",
+   "to": "zahratna"
+  },
+  {
+   "etaDays": 3.2113332748413086,
+   "fp": 344,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 0,
+   "fp": 426,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1266:planet_4",
+   "to": "ala"
+  },
+  {
+   "etaDays": 0,
+   "fp": 347,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1266:planet_2_L5",
+   "to": "ala"
+  },
+  {
+   "etaDays": 0,
+   "fp": 317,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1266_moon_system_1266_system_1266:planet_2_3",
+   "to": "ala"
+  },
+  {
+   "etaDays": 0,
+   "fp": 363,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1266:planet_4",
+   "to": "ala"
+  },
+  {
+   "etaDays": 0,
+   "fp": 330,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1266_moon_system_1266_system_1266:planet_2_0",
+   "to": "ala"
+  },
+  {
+   "etaDays": 0,
+   "fp": 326,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1266:planet_2_L5",
+   "to": "ala"
+  },
+  {
+   "etaDays": 12.536014556884766,
+   "fp": 272,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1bb6:planet_2",
+   "to": "zahratna"
+  },
+  {
+   "etaDays": 0,
+   "fp": 282,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1266_moon_system_1266_system_1266:planet_6_2",
+   "to": "ala"
+  },
+  {
+   "etaDays": 8.071281433105469,
+   "fp": 333,
+   "from": "gamma enyen",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 0,
+   "fp": 313,
+   "from": "gamma enyen",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1202:planet_3_L5",
+   "to": "gamma enyen"
+  },
+  {
+   "etaDays": 0,
+   "fp": 365,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1266_moon_system_1266_system_1266:planet_2_3",
+   "to": "ala"
+  },
+  {
+   "etaDays": 0,
+   "fp": 331,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1266_moon_system_1266_system_1266:planet_6_2",
+   "to": "ala"
+  },
+  {
+   "etaDays": 0,
+   "fp": 354,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1266:planet_4",
+   "to": "ala"
+  },
+  {
+   "etaDays": 0,
+   "fp": 307,
+   "from": "gamma enyen",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1202:planet_3",
+   "to": "gamma enyen"
+  },
+  {
+   "etaDays": 6.665925979614258,
+   "fp": 393,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1233_moon_system_1233_system_1233:planet_1_0",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 6.665925979614258,
+   "fp": 382,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1233_moon_system_1233_system_1233:planet_1_0",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 0,
+   "fp": 30,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 11c3_moon_system_11c3_system_11c3:planet_4_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 310,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_3",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 385,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 334,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_3",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 318,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_4",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 25,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_7",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 285,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 331,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 11c3_moon_system_11c3_system_11c3:planet_4_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 316,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 389,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_3",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 84,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 342,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 312,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 302,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 257,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 151,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 149,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 140,
+   "from": "hadon veleset",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 0,
+   "fp": 91,
+   "from": "barax",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 0,
+   "fp": 78,
+   "from": "barax",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 0,
+   "fp": 68,
+   "from": "barax",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 0,
+   "fp": 78,
+   "from": "barax",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 0,
+   "fp": 78,
+   "from": "barax",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 0,
+   "fp": 87,
+   "from": "barax",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 0,
+   "fp": 37,
+   "from": "barax",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 0,
+   "fp": 74,
+   "from": "barax",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 0,
+   "fp": 72,
+   "from": "barax",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 0,
+   "fp": 45,
+   "from": "epsilon azathe armurrus",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1cdd:planet_6",
+   "to": "epsilon azathe armurrus"
+  },
+  {
+   "etaDays": 0,
+   "fp": 43,
+   "from": "epsilon azathe armurrus",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1cdd:planet_6",
+   "to": "epsilon azathe armurrus"
+  },
+  {
+   "etaDays": 1.2194157838821411,
+   "fp": 52,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 2.1564579010009766,
+   "fp": 98,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1cdd:planet_6",
+   "to": "epsilon azathe armurrus"
+  },
+  {
+   "etaDays": 2.3108723163604736,
+   "fp": 44,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 2.3014872074127197,
+   "fp": 67,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 14.924971580505371,
+   "fp": 58,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 7.687959671020508,
+   "fp": 99,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 0,
+   "fp": 93,
+   "from": "epsilon azathe armurrus",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1cdd:planet_6",
+   "to": "epsilon azathe armurrus"
+  },
+  {
+   "etaDays": 10.542412757873535,
+   "fp": 61,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 13.5482177734375,
+   "fp": 64,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1756:planet_7",
+   "to": "barax"
+  },
+  {
+   "etaDays": 18.345184326171875,
+   "fp": 95,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1cdd:planet_6",
+   "to": "epsilon azathe armurrus"
+  },
+  {
+   "etaDays": 4.607189178466797,
+   "fp": 171,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1233_moon_system_1233_system_1233:planet_1_0",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 3.690319061279297,
+   "fp": 150,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system 1233_moon_system_1233_system_1233:planet_1_0",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 11.6600980758667,
+   "fp": 76,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 3.6440677642822266,
+   "fp": 92,
+   "from": "",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 4.513580799102783,
+   "fp": 39,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 4.513580799102783,
+   "fp": 75,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1233:planet_0",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 4.513580799102783,
+   "fp": 52,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1233:planet_0",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 2.99902606010437,
+   "fp": 312,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_11c3:planet_7",
+   "to": "hadon veleset"
+  },
+  {
+   "etaDays": 4.513580799102783,
+   "fp": 62,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1233:planet_0",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 4.513580799102783,
+   "fp": 100,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1233:planet_0",
+   "to": "gargeneiron"
+  },
+  {
+   "etaDays": 14.271563529968262,
+   "fp": 85,
+   "from": "ala",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1cdd:planet_6",
+   "to": "epsilon azathe armurrus"
+  },
+  {
+   "etaDays": 8.071281433105469,
+   "fp": 96,
+   "from": "gamma enyen",
+   "kind": "REINFORCEMENT",
+   "owner": "threat",
+   "target": "market_system_1233:planet_0",
+   "to": "gargeneiron"
+  },
+  {
+   "engaged": true,
+   "etaDays": -1,
+   "fp": 859,
+   "from": "",
+   "hold": false,
+   "id": "persean:alpha brigador:-55367856784000",
+   "kind": "MUSTER",
+   "owner": "persean",
+   "play": "persean#5",
+   "target": "",
+   "to": "alpha brigador"
+  },
+  {
+   "engaged": true,
+   "etaDays": -1,
+   "fp": 4868,
+   "from": "",
+   "hold": false,
+   "id": "independent:gargeneiron:-55364311216000",
+   "kind": "MUSTER",
+   "owner": "independent",
+   "play": "independent#2",
+   "target": "",
+   "to": "gargeneiron"
+  },
+  {
+   "engaged": true,
+   "etaDays": -1,
+   "fp": 1644,
+   "from": "",
+   "hold": false,
+   "id": "independent:hadon veleset:-55364311216000",
+   "kind": "MUSTER",
+   "owner": "independent",
+   "play": "independent#3",
+   "target": "",
+   "to": "hadon veleset"
+  },
+  {
+   "arrived": true,
+   "at": "alpha brigador",
+   "base": "threatinc_fl_375c0",
+   "daysLeft": 2.009998321533203,
+   "etaDays": 0,
+   "force": "persean:alpha brigador:-55367856784000",
+   "fp": 954,
+   "from": "eros",
+   "kind": "HUNT",
+   "owner": "persean",
+   "target": "market_system_14cd:planet_0",
+   "to": "alpha brigador"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 889,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 4,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 255,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 243,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 230,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 327,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 243,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 258,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 251,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 245,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 240,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 235,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 243,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 318,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 249,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 332,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 254,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 233,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 308,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": true,
+   "at": "gargeneiron",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 39.96666717529297,
+   "etaDays": 0,
+   "force": "independent:gargeneiron:-55364311216000",
+   "fp": 235,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_1233:planet_3",
+   "to": "gargeneiron"
+  },
+  {
+   "arrived": false,
+   "at": "hadon veleset",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 36.996665954589844,
+   "etaDays": -1,
+   "force": "independent:hadon veleset:-55364311216000",
+   "fp": 950,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "arrived": false,
+   "at": "hadon veleset",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 36.996665954589844,
+   "etaDays": -1,
+   "force": "independent:hadon veleset:-55364311216000",
+   "fp": 325,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "arrived": false,
+   "at": "hadon veleset",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 36.996665954589844,
+   "etaDays": -1,
+   "force": "independent:hadon veleset:-55364311216000",
+   "fp": 318,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "arrived": false,
+   "at": "hadon veleset",
+   "base": "threatinc_fl_38f28",
+   "daysLeft": 36.996665954589844,
+   "etaDays": -1,
+   "force": "independent:hadon veleset:-55364311216000",
+   "fp": 312,
+   "from": "gamma azathe armurrus",
+   "kind": "HUNT",
+   "owner": "independent",
+   "target": "market_system_11c3:planet_1",
+   "to": "hadon veleset"
+  },
+  {
+   "arrived": false,
+   "at": "",
+   "base": "hesperus",
+   "daysLeft": 29.269548416137695,
+   "etaDays": -1,
+   "force": "",
+   "fp": 354,
+   "from": "eos exodus",
+   "kind": "SQUADRON",
+   "owner": "luddic_church",
+   "target": "market_system_bea:planet_2",
+   "to": "gamma qufu"
+  },
+  {
+   "armaments": 0,
+   "etaDays": 21.889705657958984,
+   "fp": 50,
+   "from": "arcadia",
+   "fuel": 0,
+   "kind": "CONVOY",
+   "marines": 0,
+   "owner": "independent",
+   "supplies": 1209,
+   "target": "threatinc_fl_38f28",
+   "to": "gamma azathe armurrus"
+  },
+  {
+   "armaments": 1190,
+   "etaDays": 6.4498209953308105,
+   "fp": 57,
+   "from": "askonia",
+   "fuel": 342,
+   "kind": "CONVOY",
+   "marines": 1199,
+   "owner": "independent",
+   "supplies": 0,
+   "target": "threatinc_fl_3a963",
+   "to": "gull motley"
+  }
+ ],
+ "forwardBases": [
+  {
+   "faction": "luddic_church",
+   "hiveSystem": "alpha azathe armurrus",
+   "market": "threatinc_fl_3222b"
+  },
+  {
+   "faction": "luddic_church",
+   "hiveSystem": "alpha azathe armurrus",
+   "market": "threatinc_fl_32515"
+  },
+  {
+   "faction": "luddic_church",
+   "hiveSystem": "alpha azathe armurrus",
+   "market": "threatinc_fl_33363"
+  },
+  {
+   "faction": "luddic_path",
+   "hiveSystem": "alpha azathe armurrus",
+   "market": "threatinc_fl_34137"
+  },
+  {
+   "faction": "luddic_path",
+   "hiveSystem": "ala",
+   "market": "threatinc_fl_34c0a"
+  },
+  {
+   "faction": "luddic_path",
+   "hiveSystem": "alpha azathe armurrus",
+   "market": "threatinc_fl_34fb4"
+  },
+  {
+   "faction": "persean",
+   "hiveSystem": "ala",
+   "market": "threatinc_fl_36d63"
+  },
+  {
+   "faction": "persean",
+   "hiveSystem": "ala",
+   "market": "threatinc_fl_375c0"
+  },
+  {
+   "faction": "luddic_church",
+   "hiveSystem": "beta cormoran",
+   "market": "threatinc_fl_375c7"
+  },
+  {
+   "faction": "luddic_path",
+   "hiveSystem": "beta cormoran",
+   "market": "threatinc_fl_3761b"
+  },
+  {
+   "faction": "independent",
+   "hiveSystem": "ala",
+   "market": "threatinc_fl_38ab3"
+  },
+  {
+   "faction": "independent",
+   "hiveSystem": "alpha azathe armurrus",
+   "market": "threatinc_fl_38f28"
+  },
+  {
+   "faction": "luddic_path",
+   "hiveSystem": "ala",
+   "market": "threatinc_fl_393c0"
+  },
+  {
+   "faction": "persean",
+   "hiveSystem": "ala",
+   "market": "threatinc_fl_39bc8"
+  },
+  {
+   "faction": "independent",
+   "hiveSystem": "beta cormoran",
+   "market": "threatinc_fl_39bcf"
+  },
+  {
+   "faction": "persean",
+   "hiveSystem": "ala",
+   "market": "threatinc_fl_3a14a"
+  },
+  {
+   "faction": "persean",
+   "hiveSystem": "barax",
+   "market": "threatinc_fl_3a95c"
+  },
+  {
+   "faction": "independent",
+   "hiveSystem": "beta cormoran",
+   "market": "threatinc_fl_3a963"
+  },
+  {
+   "faction": "luddic_church",
+   "hiveSystem": "epsilon azathe armurrus",
+   "market": "threatinc_fl_3a96a"
+  },
+  {
+   "faction": "luddic_path",
+   "hiveSystem": "beta cormoran",
+   "market": "threatinc_fl_3a9b4"
+  },
+  {
+   "faction": "luddic_church",
+   "hiveSystem": "hadon veleset",
+   "market": "threatinc_fl_3cb73"
+  },
+  {
+   "faction": "luddic_path",
+   "hiveSystem": "gamma qufu",
+   "market": "threatinc_fl_3cb7a"
+  },
+  {
+   "faction": "independent",
+   "hiveSystem": "ergates",
+   "market": "threatinc_fl_3d058"
+  },
+  {
+   "faction": "luddic_path",
+   "hiveSystem": "gamma qufu",
+   "market": "threatinc_fl_3d05f"
+  },
+  {
+   "faction": "independent",
+   "hiveSystem": "ergates",
+   "market": "threatinc_fl_3ec4e"
+  }
+ ],
+ "hives": [
+  {
+   "bank": 1703.854736328125,
+   "core": "up",
+   "daysSinceGrowth": 2433.300048828125,
+   "defence": 9360,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 2667,
+   "garrisonFleets": 8,
+   "growthDays": 230.53257751464844,
+   "id": "market_system 1266_moon_system_1266_system_1266:planet_2_0",
+   "name": "Beszel",
+   "nanoforge": "",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 2997,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "ala",
+   "tier": 2,
+   "wantFP": 2657.029296875
+  },
+  {
+   "bank": 1643.018310546875,
+   "core": "up",
+   "daysSinceGrowth": 2432.820068359375,
+   "defence": 9360,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "up",
+   "garrisonFP": 1804,
+   "garrisonFleets": 7,
+   "growthDays": 115.20732116699219,
+   "id": "market_system_1266:planet_4",
+   "name": "Labraxas",
+   "nanoforge": "corrupted_nanoforge",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 2947,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "ala",
+   "tier": 2,
+   "wantFP": 2657.029296875
+  },
+  {
+   "bank": 2712.73291015625,
+   "core": "up",
+   "daysSinceGrowth": 2430.203369140625,
+   "defence": 9360,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "up",
+   "garrisonFP": 1994,
+   "garrisonFleets": 5,
+   "growthDays": 35.191524505615234,
+   "id": "market_system 1266_moon_system_1266_system_1266:planet_2_3",
+   "name": "Strathcona",
+   "nanoforge": "pristine_nanoforge",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 2831,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "ala",
+   "tier": 2,
+   "wantFP": 2657.029296875
+  },
+  {
+   "bank": 2652.1171875,
+   "core": "up",
+   "daysSinceGrowth": 1613.336669921875,
+   "defence": 9360,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 2596,
+   "garrisonFleets": 7,
+   "growthDays": -73.60851287841797,
+   "id": "market_system_1266:planet_6",
+   "name": "Blue",
+   "nanoforge": "corrupted_nanoforge",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 2941,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "ala",
+   "tier": 2,
+   "wantFP": 2657.029296875
+  },
+  {
+   "bank": 2707.597412109375,
+   "core": "up",
+   "daysSinceGrowth": 1418.806640625,
+   "defence": 9360,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 2631,
+   "garrisonFleets": 12,
+   "growthDays": -87.8135986328125,
+   "id": "market_system_1266:planet_2",
+   "name": "Svaron",
+   "nanoforge": "corrupted_nanoforge",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 3037,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "ala",
+   "tier": 2,
+   "wantFP": 2657.029296875
+  },
+  {
+   "bank": 2678.3876953125,
+   "core": "up",
+   "daysSinceGrowth": 1273.5167236328125,
+   "defence": 9360,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 2013,
+   "garrisonFleets": 6,
+   "growthDays": -119.62841796875,
+   "id": "market_system_1266:planet_2_L5",
+   "name": "Acorn",
+   "nanoforge": "corrupted_nanoforge",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 2686,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "ala",
+   "tier": 2,
+   "wantFP": 2657.029296875
+  },
+  {
+   "bank": 2115.842041015625,
+   "core": "up",
+   "daysSinceGrowth": 1099.9000244140625,
+   "defence": 7800,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 1959,
+   "garrisonFleets": 4,
+   "growthDays": 133.4120635986328,
+   "id": "market_system 1266_moon_system_1266_system_1266:planet_6_2",
+   "name": "Xanthe Che",
+   "nanoforge": "",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 2883,
+   "siegeClock": 0,
+   "size": 5,
+   "system": "ala",
+   "tier": 2,
+   "wantFP": 2131.061767578125
+  },
+  {
+   "bank": 699.6958618164062,
+   "core": "up",
+   "daysSinceGrowth": 1076.4200439453125,
+   "defence": 9360,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 2339,
+   "garrisonFleets": 6,
+   "growthDays": 19.610340118408203,
+   "id": "market_system 11c3_moon_system_11c3_system_11c3:planet_4_1",
+   "name": "New Pender",
+   "nanoforge": "corrupted_nanoforge",
+   "needFP": 1736.105712890625,
+   "nexus": "up",
+   "ownedFP": 2700,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "hadon veleset",
+   "tier": 2,
+   "wantFP": 2657.029296875
+  },
+  {
+   "bank": 2419.4091796875,
+   "core": "up",
+   "daysSinceGrowth": 840.443359375,
+   "defence": 8118,
+   "forge": "up",
+   "fortification": 0.9296371936798096,
+   "fuelPlant": "none",
+   "garrisonFP": 2276,
+   "garrisonFleets": 6,
+   "growthDays": -1.1919665336608887,
+   "id": "market_system_11c3:planet_1",
+   "name": "Ranau",
+   "nanoforge": "",
+   "needFP": 1736.105712890625,
+   "nexus": "up",
+   "ownedFP": 4999,
+   "siegeClock": 21.108848571777344,
+   "size": 6,
+   "system": "hadon veleset",
+   "tier": 2,
+   "wantFP": 2601.248046875
+  },
+  {
+   "bank": 1270.7513427734375,
+   "core": "up",
+   "daysSinceGrowth": 873.5800170898438,
+   "defence": 9360,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 2889,
+   "garrisonFleets": 7,
+   "growthDays": -3.820274591445923,
+   "id": "market_system_11c3:planet_4",
+   "name": "Kharon",
+   "nanoforge": "",
+   "needFP": 1736.105712890625,
+   "nexus": "up",
+   "ownedFP": 3207,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "hadon veleset",
+   "tier": 2,
+   "wantFP": 2657.029296875
+  },
+  {
+   "bank": 75.49030303955078,
+   "core": "up",
+   "daysSinceGrowth": 726.8599853515625,
+   "defence": 6345,
+   "forge": "up",
+   "fortification": 0.7649697065353394,
+   "fuelPlant": "none",
+   "garrisonFP": 0,
+   "garrisonFleets": 0,
+   "growthDays": -19.746444702148438,
+   "id": "market_system_11c3:planet_3",
+   "name": "Ogion",
+   "nanoforge": "",
+   "needFP": 1736.105712890625,
+   "nexus": "up",
+   "ownedFP": 1033,
+   "siegeClock": 70.50909423828125,
+   "size": 6,
+   "system": "hadon veleset",
+   "tier": 2,
+   "wantFP": 2545.466796875
+  },
+  {
+   "bank": 33.187644958496094,
+   "core": "up",
+   "daysSinceGrowth": 639.2466430664062,
+   "defence": 5708,
+   "forge": "up",
+   "fortification": 0.7519931793212891,
+   "fuelPlant": "none",
+   "garrisonFP": 309,
+   "garrisonFleets": 1,
+   "growthDays": -126.17890930175781,
+   "id": "market_system_11c3:planet_7",
+   "name": "Knossos",
+   "nanoforge": "",
+   "needFP": 1736.105712890625,
+   "nexus": "up",
+   "ownedFP": 646,
+   "siegeClock": 74.40205383300781,
+   "size": 6,
+   "system": "hadon veleset",
+   "tier": 2,
+   "wantFP": 2545.466796875
+  },
+  {
+   "bank": 2669.54443359375,
+   "core": "up",
+   "daysSinceGrowth": 1269.0933837890625,
+   "defence": 9360,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 2976,
+   "garrisonFleets": 9,
+   "growthDays": 132.42689514160156,
+   "id": "market_system 1202_moon_system_1202_system_1202:planet_3_2",
+   "name": "Gamma Enyen I-A",
+   "nanoforge": "corrupted_nanoforge",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 2976,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "gamma enyen",
+   "tier": 2,
+   "wantFP": 2657.029296875
+  },
+  {
+   "bank": 194.77684020996094,
+   "core": "up",
+   "daysSinceGrowth": 989.1133422851562,
+   "defence": 8640,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 1650,
+   "garrisonFleets": 5,
+   "growthDays": 1.922265887260437,
+   "id": "market_system_1202:planet_3",
+   "name": "Gamma Enyen I",
+   "nanoforge": "",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 1957,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "gamma enyen",
+   "tier": 1,
+   "wantFP": 1614.66259765625
+  },
+  {
+   "bank": 1588.56103515625,
+   "core": "up",
+   "daysSinceGrowth": 650.7999877929688,
+   "defence": 7200,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 1400,
+   "garrisonFleets": 4,
+   "growthDays": -1.3253250122070312,
+   "id": "market_system_1202:planet_3_L5",
+   "name": "Gamma Enyen I-L5",
+   "nanoforge": "",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 1713,
+   "siegeClock": 0,
+   "size": 6,
+   "system": "gamma enyen",
+   "tier": 0,
+   "wantFP": 1606.9385986328125
+  },
+  {
+   "bank": 123.0654067993164,
+   "core": "up",
+   "daysSinceGrowth": 345.4533386230469,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 102,
+   "garrisonFleets": 1,
+   "growthDays": 0,
+   "id": "market_system_1202:planet_5",
+   "name": "Gamma Enyen II",
+   "nanoforge": "",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 102,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "gamma enyen",
+   "tier": 0,
+   "wantFP": 75
+  },
+  {
+   "bank": 156.19703674316406,
+   "core": "up",
+   "daysSinceGrowth": 1157.8800048828125,
+   "defence": 3200,
+   "forge": "up",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 1778,
+   "garrisonFleets": 14,
+   "growthDays": 86.89696502685547,
+   "id": "market_system 1233_moon_system_1233_system_1233:planet_1_0",
+   "name": "Gream",
+   "nanoforge": "",
+   "needFP": 4979.57373046875,
+   "nexus": "up",
+   "ownedFP": 2874,
+   "siegeClock": 0,
+   "size": 4,
+   "system": "gargeneiron",
+   "tier": 0,
+   "wantFP": 4979.57373046875
+  },
+  {
+   "bank": 14.165788650512695,
+   "core": "up",
+   "daysSinceGrowth": 49.563331604003906,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 929,
+   "garrisonFleets": 8,
+   "growthDays": 0,
+   "id": "market_system_1233:planet_3",
+   "name": "Dawud",
+   "nanoforge": "",
+   "needFP": 768.3012084960938,
+   "nexus": "up",
+   "ownedFP": 1813,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "gargeneiron",
+   "tier": 0,
+   "wantFP": 768.3012084960938
+  },
+  {
+   "bank": 1.4026572704315186,
+   "core": "up",
+   "daysSinceGrowth": 2.136666774749756,
+   "defence": 400,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 0,
+   "garrisonFleets": 0,
+   "growthDays": 2.128265380859375,
+   "id": "market_system_1233:planet_0",
+   "name": "Morphegoros",
+   "nanoforge": "",
+   "needFP": 768.3012084960938,
+   "nexus": "up",
+   "ownedFP": 385,
+   "siegeClock": 0,
+   "size": 1,
+   "system": "gargeneiron",
+   "tier": 0,
+   "wantFP": 768.3012084960938
+  },
+  {
+   "bank": 14.547772407531738,
+   "core": "up",
+   "daysSinceGrowth": 866.3233032226562,
+   "defence": 1070,
+   "forge": "none",
+   "fortification": 0.7265368700027466,
+   "fuelPlant": "none",
+   "garrisonFP": 36,
+   "garrisonFleets": 3,
+   "growthDays": 59.54708480834961,
+   "id": "market_system_1cdd:planet_6",
+   "name": "Epsilon Azathe Armurrus IV",
+   "nanoforge": "",
+   "needFP": 1156.62646484375,
+   "nexus": "up",
+   "ownedFP": 495,
+   "siegeClock": 82.03893280029297,
+   "size": 2,
+   "system": "epsilon azathe armurrus",
+   "tier": 0,
+   "wantFP": 1156.62646484375
+  },
+  {
+   "bank": 185.92926025390625,
+   "core": "up",
+   "daysSinceGrowth": 873.1666870117188,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 237,
+   "garrisonFleets": 1,
+   "growthDays": 78.99678039550781,
+   "id": "market_system_1cb2:planet_5",
+   "name": "Zeta Azathe Armurrus II",
+   "nanoforge": "",
+   "needFP": 112.71046447753906,
+   "nexus": "up",
+   "ownedFP": 237,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "zeta azathe armurrus",
+   "tier": 0,
+   "wantFP": 112.71046447753906
+  },
+  {
+   "bank": 127.14427185058594,
+   "core": "up",
+   "daysSinceGrowth": 826.7533569335938,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 228,
+   "garrisonFleets": 2,
+   "growthDays": 90.23494720458984,
+   "id": "market_system_1d44:planet_0",
+   "name": "Alpha Azathe Armurrus I",
+   "nanoforge": "",
+   "needFP": 34.85542297363281,
+   "nexus": "up",
+   "ownedFP": 228,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "alpha azathe armurrus",
+   "tier": 0,
+   "wantFP": 75
+  },
+  {
+   "bank": 185.85574340820312,
+   "core": "up",
+   "daysSinceGrowth": 705.3966674804688,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 240,
+   "garrisonFleets": 1,
+   "growthDays": 105.54883575439453,
+   "id": "market_system_bea:planet_2",
+   "name": "Gamma Qufu I",
+   "nanoforge": "",
+   "needFP": 147.5,
+   "nexus": "up",
+   "ownedFP": 240,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "gamma qufu",
+   "tier": 0,
+   "wantFP": 147.5
+  },
+  {
+   "bank": 1700.6275634765625,
+   "core": 125.92014,
+   "daysSinceGrowth": 610.1799926757812,
+   "defence": 400,
+   "forge": "none",
+   "fortification": 1,
+   "front": {
+    "armaments": 734.1409912109375,
+    "faction": "persean",
+    "marines": 894.6290283203125,
+    "stance": "consolidate",
+    "state": "holding",
+    "strataHeld": 1
+   },
+   "fuelPlant": "none",
+   "garrisonFP": 341,
+   "garrisonFleets": 10,
+   "growthDays": 0,
+   "id": "market_system_1bb6:planet_2",
+   "name": "Qiqirn",
+   "nanoforge": "",
+   "needFP": 1504.1912841796875,
+   "nexus": 125.92014,
+   "ownedFP": 1558,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "zahratna",
+   "tier": 0,
+   "wantFP": 1504.1912841796875
+  },
+  {
+   "bank": 134.80418395996094,
+   "core": "up",
+   "daysSinceGrowth": 566.1666870117188,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 139,
+   "garrisonFleets": 1,
+   "growthDays": 0,
+   "id": "market_system_1b50:planet_2",
+   "name": "Cimmeria",
+   "nanoforge": "",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 139,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "conflagration",
+   "tier": 0,
+   "wantFP": 75
+  },
+  {
+   "bank": 132.87281799316406,
+   "core": "up",
+   "daysSinceGrowth": 492.8766784667969,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 97,
+   "garrisonFleets": 1,
+   "growthDays": 0,
+   "id": "market_system_1b7a:planet_1",
+   "name": "Meros",
+   "nanoforge": "",
+   "needFP": 8.707720756530762,
+   "nexus": "up",
+   "ownedFP": 97,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "ergates",
+   "tier": 0,
+   "wantFP": 75
+  },
+  {
+   "bank": 109.97628784179688,
+   "core": "up",
+   "daysSinceGrowth": 455.2099914550781,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 156,
+   "garrisonFleets": 1,
+   "growthDays": 25.442283630371094,
+   "id": "market_system_1d11:planet_3",
+   "name": "Delta Azathe Armurrus III",
+   "nanoforge": "",
+   "needFP": 2.3795995712280273,
+   "nexus": "up",
+   "ownedFP": 156,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "delta azathe armurrus",
+   "tier": 0,
+   "wantFP": 75
+  },
+  {
+   "bank": 525.5743408203125,
+   "core": "up",
+   "daysSinceGrowth": 419.32666015625,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 1526,
+   "garrisonFleets": 14,
+   "growthDays": 39.55528259277344,
+   "id": "market_system_1756:planet_7",
+   "name": "Jiao",
+   "nanoforge": "",
+   "needFP": 2180.7734375,
+   "nexus": "up",
+   "ownedFP": 2634,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "barax",
+   "tier": 0,
+   "wantFP": 2180.7734375
+  },
+  {
+   "bank": 313.97186279296875,
+   "core": "up",
+   "daysSinceGrowth": 360.3066711425781,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 356,
+   "garrisonFleets": 3,
+   "growthDays": 1.7140681743621826,
+   "id": "market_system_17b2:planet_1",
+   "name": "Chlorr",
+   "nanoforge": "",
+   "needFP": 265.8333435058594,
+   "nexus": "up",
+   "ownedFP": 356,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "milinbu",
+   "tier": 0,
+   "wantFP": 265.8333435058594
+  },
+  {
+   "bank": 132.22882080078125,
+   "core": "up",
+   "daysSinceGrowth": 185.66000366210938,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 88,
+   "garrisonFleets": 1,
+   "growthDays": 0,
+   "id": "market_system_1b8e:planet_2",
+   "name": "Beta Cormoran I",
+   "nanoforge": "",
+   "needFP": 3.9013683795928955,
+   "nexus": "up",
+   "ownedFP": 88,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "beta cormoran",
+   "tier": 0,
+   "wantFP": 75
+  },
+  {
+   "bank": 85.02359771728516,
+   "core": "up",
+   "daysSinceGrowth": 41.38333511352539,
+   "defence": 800,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 88,
+   "garrisonFleets": 1,
+   "growthDays": 0,
+   "id": "market_system_150e:planet_0",
+   "name": "Gamma Samarat I",
+   "nanoforge": "",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 88,
+   "siegeClock": 0,
+   "size": 2,
+   "system": "gamma samarat",
+   "tier": 0,
+   "wantFP": 75
+  },
+  {
+   "bank": 51.89638900756836,
+   "core": "up",
+   "daysSinceGrowth": 40.9566650390625,
+   "defence": 400,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 125,
+   "garrisonFleets": 2,
+   "growthDays": 40.83747482299805,
+   "id": "market_system_1563:planet_0",
+   "name": "Beta Samarat I",
+   "nanoforge": "",
+   "needFP": 0,
+   "nexus": "up",
+   "ownedFP": 125,
+   "siegeClock": 0,
+   "size": 1,
+   "system": "beta samarat",
+   "tier": 0,
+   "wantFP": 75
+  },
+  {
+   "bank": 40.841522216796875,
+   "core": "up",
+   "daysSinceGrowth": 33.88333511352539,
+   "defence": 400,
+   "forge": "none",
+   "fortification": 1,
+   "fuelPlant": "none",
+   "garrisonFP": 90,
+   "garrisonFleets": 1,
+   "growthDays": 33.7869758605957,
+   "id": "market_system_f42:planet_2",
+   "name": "Delta Atlon I",
+   "nanoforge": "",
+   "needFP": 16.945594787597656,
+   "nexus": "up",
+   "ownedFP": 90,
+   "siegeClock": 0,
+   "size": 1,
+   "system": "delta atlon",
+   "tier": 0,
+   "wantFP": 75
+  }
+ ],
+ "knowledge": {
+  "found": [
+   "alpha azathe armurrus",
+   "milinbu",
+   "gamma qufu",
+   "delta azathe armurrus",
+   "ala",
+   "beta cormoran",
+   "ergates",
+   "epsilon azathe armurrus",
+   "zahratna",
+   "hadon veleset",
+   "barax",
+   "gargeneiron",
+   "conflagration",
+   "zeta azathe armurrus",
+   "delta atlon"
+  ],
+  "grudges": {
+   "luddic_church": 14.904754638671875,
+   "persean": 45.071998596191406
+  },
+  "reports": [
+   {
+    "ageDays": 2.125,
+    "faction": "luddic_church",
+    "fp": 456,
+    "source": "eyes",
+    "system": "alpha azathe armurrus"
+   },
+   {
+    "ageDays": 0,
+    "faction": "luddic_church",
+    "fp": 712,
+    "source": "eyes",
+    "system": "milinbu"
+   },
+   {
+    "ageDays": 65.875,
+    "faction": "luddic_church",
+    "fp": 326,
+    "source": "eyes",
+    "system": "gamma qufu"
+   },
+   {
+    "ageDays": 83.875,
+    "faction": "luddic_church",
+    "fp": 418,
+    "source": "scout",
+    "system": "delta azathe armurrus"
+   },
+   {
+    "ageDays": 179.5625,
+    "faction": "luddic_church",
+    "fp": 47399,
+    "source": "scout",
+    "system": "ala"
+   },
+   {
+    "ageDays": 45.125,
+    "faction": "luddic_church",
+    "fp": 401,
+    "source": "eyes",
+    "system": "beta cormoran"
+   },
+   {
+    "ageDays": 66.3125,
+    "faction": "luddic_church",
+    "fp": 194,
+    "source": "scout",
+    "system": "ergates"
+   },
+   {
+    "ageDays": 0,
+    "faction": "luddic_church",
+    "fp": 253,
+    "source": "eyes",
+    "system": "epsilon azathe armurrus"
+   },
+   {
+    "ageDays": 0,
+    "faction": "luddic_church",
+    "fp": 682,
+    "source": "eyes",
+    "system": "zahratna"
+   },
+   {
+    "ageDays": 11,
+    "faction": "luddic_church",
+    "fp": 1071,
+    "source": "eyes",
+    "system": "barax"
+   },
+   {
+    "ageDays": 69.1875,
+    "faction": "luddic_church",
+    "fp": 278,
+    "source": "scout",
+    "system": "conflagration"
+   },
+   {
+    "ageDays": 31.875,
+    "faction": "luddic_church",
+    "fp": 316,
+    "source": "eyes",
+    "system": "zeta azathe armurrus"
+   },
+   {
+    "ageDays": 18.4375,
+    "faction": "luddic_church",
+    "fp": 180,
+    "source": "scout",
+    "system": "delta atlon"
+   },
+   {
+    "ageDays": 757,
+    "faction": "luddic_path",
+    "fp": 158,
+    "source": "eyes",
+    "system": "alpha azathe armurrus"
+   },
+   {
+    "ageDays": 0,
+    "faction": "independent",
+    "fp": 682,
+    "source": "eyes",
+    "system": "zahratna"
+   },
+   {
+    "ageDays": 0,
+    "faction": "independent",
+    "fp": 26983,
+    "source": "eyes",
+    "system": "hadon veleset"
+   },
+   {
+    "ageDays": 0,
+    "faction": "independent",
+    "fp": 5033,
+    "source": "eyes",
+    "system": "gargeneiron"
+   },
+   {
+    "ageDays": 0,
+    "faction": "persean",
+    "fp": 682,
+    "source": "eyes",
+    "system": "zahratna"
+   },
+   {
+    "ageDays": 42.5,
+    "faction": "persean",
+    "fp": 278,
+    "source": "scout",
+    "system": "conflagration"
+   }
+  ],
+  "swarmPlaces": [
+   {
+    "ageDays": 115.75,
+    "defenceFP": 436.40625,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "cibola"
+   },
+   {
+    "ageDays": 115.75,
+    "defenceFP": 556.40625,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "madeira"
+   },
+   {
+    "ageDays": 0,
+    "defenceFP": 4475.5068359375,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "laicaille_habitat"
+   },
+   {
+    "ageDays": 0,
+    "defenceFP": 4475.5068359375,
+    "faction": "pirates",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "station_kapteyn"
+   },
+   {
+    "ageDays": 113.75,
+    "defenceFP": 0,
+    "faction": "luddic_path",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "chalcedon"
+   },
+   {
+    "ageDays": 113.75,
+    "defenceFP": 0,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "olinadu"
+   },
+   {
+    "ageDays": 113.75,
+    "defenceFP": 0,
+    "faction": "pirates",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "kanni"
+   },
+   {
+    "ageDays": 146.875,
+    "defenceFP": 295.04296875,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "athulf"
+   },
+   {
+    "ageDays": 146.875,
+    "defenceFP": 295.04296875,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "fikenhild"
+   },
+   {
+    "ageDays": 146.875,
+    "defenceFP": 175.04296875,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "suddene"
+   },
+   {
+    "ageDays": 146.875,
+    "defenceFP": 175.04296875,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 7878.4140625,
+    "world": "ailmar"
+   },
+   {
+    "ageDays": 128.9375,
+    "defenceFP": 1464.641357421875,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "kazeron"
+   },
+   {
+    "ageDays": 128.9375,
+    "defenceFP": 1464.641357421875,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "eldfell"
+   },
+   {
+    "ageDays": 128.9375,
+    "defenceFP": 1464.641357421875,
+    "faction": "pirates",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "thule_pirate_station"
+   },
+   {
+    "ageDays": 103.5625,
+    "defenceFP": 875.0634765625,
+    "faction": "luddic_church",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "gilead"
+   },
+   {
+    "ageDays": 103.5625,
+    "defenceFP": 395.0634460449219,
+    "faction": "luddic_church",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "asher"
+   },
+   {
+    "ageDays": 431.125,
+    "defenceFP": 1005.9918823242188,
+    "faction": "luddic_church",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "tartessus"
+   },
+   {
+    "ageDays": 431.125,
+    "defenceFP": 1005.9918823242188,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "baetis"
+   },
+   {
+    "ageDays": 431.125,
+    "defenceFP": 1005.9918823242188,
+    "faction": "luddic_church",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "hesperus"
+   },
+   {
+    "ageDays": 128.9375,
+    "defenceFP": 20.753904342651367,
+    "faction": "luddic_path",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "epiphany"
+   },
+   {
+    "ageDays": 121,
+    "defenceFP": 195.4300079345703,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "new_maxios"
+   },
+   {
+    "ageDays": 121,
+    "defenceFP": 75.43000030517578,
+    "faction": "pirates",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "kantas_den"
+   },
+   {
+    "ageDays": 121,
+    "defenceFP": 195.4300079345703,
+    "faction": "tritachyon",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "tibicena"
+   },
+   {
+    "ageDays": 219.6875,
+    "defenceFP": 326.3792419433594,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "nomios"
+   },
+   {
+    "ageDays": 219.6875,
+    "defenceFP": 421.4533386230469,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "arcadia_station"
+   },
+   {
+    "ageDays": 219.6875,
+    "defenceFP": 326.3792419433594,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "agreus"
+   },
+   {
+    "ageDays": 426.25,
+    "defenceFP": 2734.322509765625,
+    "faction": "sindrian_diktat",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "sindria"
+   },
+   {
+    "ageDays": 426.25,
+    "defenceFP": 2614.322509765625,
+    "faction": "sindrian_diktat",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "volturn"
+   },
+   {
+    "ageDays": 426.25,
+    "defenceFP": 2494.322509765625,
+    "faction": "sindrian_diktat",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "cruor"
+   },
+   {
+    "ageDays": 426.25,
+    "defenceFP": 2494.322509765625,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "nortia"
+   },
+   {
+    "ageDays": 426.25,
+    "defenceFP": 2494.322509765625,
+    "faction": "pirates",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "umbra"
+   },
+   {
+    "ageDays": 482,
+    "defenceFP": 417.375,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "raesvelg"
+   },
+   {
+    "ageDays": 482,
+    "defenceFP": 537.375,
+    "faction": "tritachyon",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "skathi"
+   },
+   {
+    "ageDays": 482,
+    "defenceFP": 657.375,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "ragnar_complex"
+   },
+   {
+    "ageDays": 414.8125,
+    "defenceFP": 1165.80419921875,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "asharu"
+   },
+   {
+    "ageDays": 414.8125,
+    "defenceFP": 1165.80419921875,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "jangala"
+   },
+   {
+    "ageDays": 414.8125,
+    "defenceFP": 1165.80419921875,
+    "faction": "pirates",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "corvus_IIIa"
+   },
+   {
+    "ageDays": 0,
+    "defenceFP": 103.30874633789062,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "mairaath"
+   },
+   {
+    "ageDays": 0,
+    "defenceFP": 223.30874633789062,
+    "faction": "pirates",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "mairaath_abandoned_station2"
+   },
+   {
+    "ageDays": 0,
+    "defenceFP": 223.30874633789062,
+    "faction": "tritachyon",
+    "guardsFP": 0,
+    "stagedFP": 16826.5234375,
+    "world": "port_tse"
+   },
+   {
+    "ageDays": 491.375,
+    "defenceFP": 428.2486572265625,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "ancyra_market"
+   },
+   {
+    "ageDays": 491.375,
+    "defenceFP": 308.2486572265625,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "derinkuyu_market"
+   },
+   {
+    "ageDays": 479.5625,
+    "defenceFP": 619.5499877929688,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "tigra_city"
+   },
+   {
+    "ageDays": 479.5625,
+    "defenceFP": 499.54998779296875,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "eventide"
+   },
+   {
+    "ageDays": 479.5625,
+    "defenceFP": 499.54998779296875,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "orthrus"
+   },
+   {
+    "ageDays": 479.5625,
+    "defenceFP": 499.54998779296875,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "sphinx"
+   },
+   {
+    "ageDays": 600.5625,
+    "defenceFP": 2774.35400390625,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "chicomoztoc"
+   },
+   {
+    "ageDays": 600.5625,
+    "defenceFP": 2294.35400390625,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "coatl"
+   },
+   {
+    "ageDays": 651.6875,
+    "defenceFP": 446.25,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "yama"
+   },
+   {
+    "ageDays": 651.6875,
+    "defenceFP": 566.25,
+    "faction": "hegemony",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "nachiketa"
+   },
+   {
+    "ageDays": 0,
+    "defenceFP": 353.5516357421875,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "mazalot"
+   },
+   {
+    "ageDays": 0,
+    "defenceFP": 353.5516357421875,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "ilm"
+   },
+   {
+    "ageDays": 0,
+    "defenceFP": 473.5516357421875,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "yesod"
+   },
+   {
+    "ageDays": 408.375,
+    "defenceFP": 3730.65771484375,
+    "faction": "tritachyon",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "culann"
+   },
+   {
+    "ageDays": 408.375,
+    "defenceFP": 3730.65771484375,
+    "faction": "tritachyon",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "eochu_bres"
+   },
+   {
+    "ageDays": 408.375,
+    "defenceFP": 3730.65771484375,
+    "faction": "independent",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "cethlenn"
+   },
+   {
+    "ageDays": 408.375,
+    "defenceFP": 3730.65771484375,
+    "faction": "pirates",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "donn"
+   },
+   {
+    "ageDays": 255.1875,
+    "defenceFP": 86.32499694824219,
+    "faction": "pirates",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "qaras"
+   },
+   {
+    "ageDays": 255.1875,
+    "defenceFP": 86.32499694824219,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "salamanca"
+   },
+   {
+    "ageDays": 130.875,
+    "defenceFP": 178.810546875,
+    "faction": "luddic_church",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "threatinc_fl_32515"
+   },
+   {
+    "ageDays": 131.9375,
+    "defenceFP": 1726.4671630859375,
+    "faction": "luddic_church",
+    "guardsFP": 0,
+    "stagedFP": 240.4323272705078,
+    "world": "threatinc_fl_3222b"
+   },
+   {
+    "ageDays": 44.625,
+    "defenceFP": 3142.18310546875,
+    "faction": "luddic_church",
+    "guardsFP": 1510,
+    "stagedFP": 0,
+    "world": "threatinc_fl_33363"
+   },
+   {
+    "ageDays": 150.625,
+    "defenceFP": 112.79296875,
+    "faction": "luddic_path",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "972a"
+   },
+   {
+    "ageDays": 150.625,
+    "defenceFP": 232.79296875,
+    "faction": "luddic_path",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "threatinc_fl_34137"
+   },
+   {
+    "ageDays": 146.3125,
+    "defenceFP": 120.00000762939453,
+    "faction": "luddic_path",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "threatinc_fl_34fb4"
+   },
+   {
+    "ageDays": 134.5625,
+    "defenceFP": 120.00000762939453,
+    "faction": "luddic_path",
+    "guardsFP": 0,
+    "stagedFP": 689.132080078125,
+    "world": "threatinc_fl_34c0a"
+   },
+   {
+    "ageDays": 91.9375,
+    "defenceFP": 396.9071960449219,
+    "faction": "independent",
+    "guardsFP": 166,
+    "stagedFP": 0,
+    "world": "threatinc_fl_38ab3"
+   },
+   {
+    "ageDays": 16,
+    "defenceFP": 120.00000762939453,
+    "faction": "independent",
+    "guardsFP": 191,
+    "stagedFP": 0,
+    "world": "threatinc_fl_38f28"
+   },
+   {
+    "ageDays": 127.5,
+    "defenceFP": 159.75,
+    "faction": "luddic_church",
+    "guardsFP": 194,
+    "stagedFP": 0,
+    "world": "threatinc_fl_375c7"
+   },
+   {
+    "ageDays": 96.1875,
+    "defenceFP": 120.00000762939453,
+    "faction": "luddic_path",
+    "guardsFP": 0,
+    "stagedFP": 480.60125732421875,
+    "world": "threatinc_fl_3761b"
+   },
+   {
+    "ageDays": 105.1875,
+    "defenceFP": 120.00000762939453,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "threatinc_fl_36d63"
+   },
+   {
+    "ageDays": 7.125,
+    "defenceFP": 790.522705078125,
+    "faction": "luddic_church",
+    "guardsFP": 375,
+    "stagedFP": 337.1177062988281,
+    "world": "threatinc_fl_3a96a"
+   },
+   {
+    "ageDays": 0,
+    "defenceFP": 381.2282409667969,
+    "faction": "independent",
+    "guardsFP": 177,
+    "stagedFP": 111.28290557861328,
+    "world": "threatinc_fl_3a963"
+   },
+   {
+    "ageDays": 32.375,
+    "defenceFP": 120.00000762939453,
+    "faction": "persean",
+    "guardsFP": 0,
+    "stagedFP": 0,
+    "world": "threatinc_fl_3a14a"
+   }
+  ]
+ },
+ "strategy": {
+  "councils": [
+   {
+    "band": 2,
+    "faction": "persean",
+    "focus": "beta chird bogotanma",
+    "heldDays": 5.1875,
+    "learned": {
+     "HAMMER:frontier": 1.953125,
+     "strategy:HOLD": 1.25,
+     "strategy:ROLLBACK": 1.5625
+    },
+    "ratio": 18.5,
+    "reviewInDays": 80.6875,
+    "strategy": "HOLD"
+   },
+   {
+    "band": 1,
+    "faction": "independent",
+    "focus": "",
+    "heldDays": 56.9375,
+    "learned": {},
+    "ratio": 1,
+    "reviewInDays": 19,
+    "strategy": "ROLLBACK"
+   },
+   {
+    "band": 0,
+    "faction": "luddic_church",
+    "focus": "gamma qufu",
+    "heldDays": 0,
+    "learned": {
+     "HAMMER:frontier": 0.64000004529953,
+     "strategy:HOLD": 1,
+     "strategy:ROLLBACK": 0.64000004529953
+    },
+    "ratio": 0.6197916865348816,
+    "reviewInDays": 91.5,
+    "strategy": "STARVE"
+   },
+   {
+    "band": 0,
+    "faction": "luddic_path",
+    "focus": "",
+    "heldDays": 119,
+    "learned": {
+     "HAMMER:frontier": 0.25,
+     "strategy:ROLLBACK": 0.25
+    },
+    "ratio": 0.5520833134651184,
+    "reviewInDays": 23.1875,
+    "strategy": "STARVE"
+   },
+   {
+    "band": 2,
+    "faction": "tritachyon",
+    "focus": "",
+    "heldDays": 750.75,
+    "learned": {},
+    "ratio": 24,
+    "reviewInDays": 93.25,
+    "strategy": "HOLD"
+   }
+  ],
+  "plays": [
+   {
+    "base": "threatinc_fl_375c0",
+    "faction": "persean",
+    "id": "persean#4",
+    "phase": "exploit",
+    "phaseDueInDays": 22.8125,
+    "system": "zahratna",
+    "type": "HAMMER"
+   },
+   {
+    "base": "threatinc_fl_375c0",
+    "faction": "persean",
+    "id": "persean#5",
+    "phase": "exploit",
+    "phaseDueInDays": 18.3125,
+    "system": "alpha brigador",
+    "type": "HAMMER"
+   },
+   {
+    "base": "threatinc_fl_38f28",
+    "faction": "independent",
+    "id": "independent#2",
+    "phase": "exploit",
+    "phaseDueInDays": 14.25,
+    "system": "gargeneiron",
+    "type": "HAMMER"
+   },
+   {
+    "base": "threatinc_fl_38f28",
+    "faction": "independent",
+    "id": "independent#3",
+    "phase": "exploit",
+    "phaseDueInDays": 1.25,
+    "system": "hadon veleset",
+    "type": "HAMMER"
+   },
+   {
+    "base": "",
+    "faction": "luddic_church",
+    "id": "luddic_church#78",
+    "phase": "scout",
+    "phaseDueInDays": 24.3125,
+    "system": "gamma qufu",
+    "type": "RECON"
+   }
+  ]
+ },
+ "swarm": {
+  "fuel": 578656.5,
+  "fuelPerMonth": 16500,
+  "posture": [
+   {
+    "mode": "QUIET",
+    "pressure": 0,
+    "system": "ala"
+   },
+   {
+    "mode": "BESIEGED",
+    "pressure": 10416.6337890625,
+    "system": "hadon veleset"
+   },
+   {
+    "mode": "QUIET",
+    "pressure": 0,
+    "system": "gamma enyen"
+   },
+   {
+    "mode": "THREATENED",
+    "pressure": 7819.4111328125,
+    "system": "gargeneiron"
+   },
+   {
+    "mode": "BESIEGED",
+    "pressure": 1387.9517822265625,
+    "system": "epsilon azathe armurrus"
+   },
+   {
+    "mode": "WATCHFUL",
+    "pressure": 135.2525634765625,
+    "system": "zeta azathe armurrus"
+   },
+   {
+    "mode": "QUIET",
+    "pressure": 41.826507568359375,
+    "system": "alpha azathe armurrus"
+   },
+   {
+    "mode": "WATCHFUL",
+    "pressure": 177,
+    "system": "gamma qufu"
+   },
+   {
+    "mode": "BESIEGED",
+    "pressure": 1805.029541015625,
+    "system": "zahratna"
+   },
+   {
+    "mode": "QUIET",
+    "pressure": 0,
+    "system": "conflagration"
+   },
+   {
+    "mode": "QUIET",
+    "pressure": 10.449264526367188,
+    "system": "ergates"
+   },
+   {
+    "mode": "QUIET",
+    "pressure": 2.8555195331573486,
+    "system": "delta azathe armurrus"
+   },
+   {
+    "mode": "BESIEGED",
+    "pressure": 2616.92822265625,
+    "system": "barax"
+   },
+   {
+    "mode": "WATCHFUL",
+    "pressure": 319,
+    "system": "milinbu"
+   },
+   {
+    "mode": "QUIET",
+    "pressure": 4.681642055511475,
+    "system": "beta cormoran"
+   },
+   {
+    "mode": "QUIET",
+    "pressure": 0,
+    "system": "gamma samarat"
+   },
+   {
+    "mode": "QUIET",
+    "pressure": 0,
+    "system": "beta samarat"
+   },
+   {
+    "mode": "QUIET",
+    "pressure": 20.334712982177734,
+    "system": "delta atlon"
+   }
+  ],
+  "stance": "CONSOLIDATE",
+  "supplies": 1776.7484130859375,
+  "suppliesPerMonth": 50250
+ },
+ "war": {
+  "home": "ala",
+  "phase": 3,
+  "stages": {
+   "ala": "colony",
+   "alpha azathe armurrus": "colony",
+   "asphodel": "seeded",
+   "barax": "colony",
+   "beta cormoran": "colony",
+   "beta samarat": "colony",
+   "beta xophiel": "seeded",
+   "conflagration": "colony",
+   "delta atlon": "colony",
+   "delta azathe armurrus": "colony",
+   "epsilon azathe armurrus": "colony",
+   "ergates": "colony",
+   "gamma enyen": "colony",
+   "gamma qufu": "colony",
+   "gamma samarat": "colony",
+   "gargeneiron": "colony",
+   "hadon veleset": "colony",
+   "kepheus": "seeded",
+   "milinbu": "colony",
+   "morga": "seeded",
+   "new labrador": "seeded",
+   "zahratna": "colony",
+   "zendar": "colonizing",
+   "zeta azathe armurrus": "colony",
+   "zeta toyol": "seeded"
+  },
+  "threatKilledFP": 12363.9365234375,
+  "threatLostFP": 15746.2822265625
+ },
+ "warDay": 3489,
+ "worlds": [
+  {
+   "base": false,
+   "defence": 281,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 352.55316162109375,
+   "id": "ancyra_market",
+   "name": "Ancyra",
+   "size": 5,
+   "system": "galatia"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 290.32257080078125,
+    "hand_weapons": 50,
+    "marines": 42.22222137451172,
+    "supplies": 493.9024353027344
+   },
+   "base": false,
+   "defence": 266.32281494140625,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 232.55316162109375,
+   "id": "derinkuyu_market",
+   "name": "Derinkuyu Mining Station",
+   "size": 4,
+   "stock": {
+    "fuel": 23340.482421875,
+    "hand_weapons": 386.2328186035156,
+    "marines": 212.1308135986328,
+    "supplies": 750.3053588867188
+   },
+   "system": "galatia"
+  },
+  {
+   "base": false,
+   "defence": 3120,
+   "faction": "sindrian_diktat",
+   "forwardBase": false,
+   "gate": 2764.71337890625,
+   "id": "sindria",
+   "name": "Sindria",
+   "size": 7,
+   "system": "askonia"
+  },
+  {
+   "base": false,
+   "defence": 1200,
+   "faction": "sindrian_diktat",
+   "forwardBase": false,
+   "gate": 2644.71337890625,
+   "id": "volturn",
+   "name": "Volturn",
+   "size": 7,
+   "system": "askonia"
+  },
+  {
+   "base": false,
+   "defence": 400,
+   "faction": "sindrian_diktat",
+   "forwardBase": false,
+   "gate": 2524.71337890625,
+   "id": "cruor",
+   "name": "Cruor",
+   "size": 5,
+   "system": "askonia"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1741.9354248046875,
+    "hand_weapons": 50,
+    "marines": 42.22222137451172,
+    "supplies": 740.8536376953125
+   },
+   "base": true,
+   "defence": 940.3225708007812,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 2524.71337890625,
+   "id": "nortia",
+   "name": "Nortia",
+   "size": 4,
+   "stock": {
+    "fuel": 77977.6953125,
+    "hand_weapons": 1194.2333984375,
+    "marines": 662.1305541992188,
+    "supplies": 1125.4581298828125
+   },
+   "system": "askonia"
+  },
+  {
+   "base": false,
+   "defence": 558,
+   "faction": "pirates",
+   "forwardBase": false,
+   "gate": 2524.71337890625,
+   "id": "umbra",
+   "name": "Umbra",
+   "size": 5,
+   "system": "askonia"
+  },
+  {
+   "base": false,
+   "defence": 4538,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 2710.91650390625,
+   "id": "chicomoztoc",
+   "name": "Chicomoztoc",
+   "size": 8,
+   "system": "aztlan"
+  },
+  {
+   "base": false,
+   "defence": 1440,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 2230.91650390625,
+   "id": "coatl",
+   "name": "Coatl",
+   "size": 5,
+   "system": "aztlan"
+  },
+  {
+   "base": false,
+   "defence": 128,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 637.6749877929688,
+   "id": "tigra_city",
+   "name": "Tigra City",
+   "size": 4,
+   "system": "samarra"
+  },
+  {
+   "base": false,
+   "defence": 1221,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 517.6749877929688,
+   "id": "eventide",
+   "name": "Eventide",
+   "size": 7,
+   "system": "samarra"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 870.9677124023438,
+    "hand_weapons": 50,
+    "marines": 42.22222137451172,
+    "supplies": 493.9024353027344
+   },
+   "base": false,
+   "defence": 1923.322998046875,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 517.6749877929688,
+   "id": "orthrus",
+   "name": "Orthrus",
+   "size": 4,
+   "stock": {
+    "fuel": 35890.05078125,
+    "hand_weapons": 2384.233642578125,
+    "marines": 1861.1309814453125,
+    "supplies": 763.8497314453125
+   },
+   "system": "samarra"
+  },
+  {
+   "base": false,
+   "defence": 720,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 517.6749877929688,
+   "id": "sphinx",
+   "name": "Sphinx",
+   "size": 5,
+   "system": "samarra"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 870.9677124023438,
+    "hand_weapons": 50,
+    "marines": 42.22222137451172,
+    "supplies": 493.9024353027344
+   },
+   "base": false,
+   "defence": 1938.322998046875,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 1296.737060546875,
+   "id": "asharu",
+   "name": "Asharu",
+   "size": 4,
+   "stock": {
+    "fuel": 39980.296875,
+    "hand_weapons": 2384.233642578125,
+    "marines": 1861.1309814453125,
+    "supplies": 985.1123046875
+   },
+   "system": "corvus"
+  },
+  {
+   "base": false,
+   "defence": 3240,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 1296.737060546875,
+   "id": "jangala",
+   "name": "Jangala",
+   "size": 6,
+   "system": "corvus"
+  },
+  {
+   "base": false,
+   "defence": 40,
+   "faction": "pirates",
+   "forwardBase": false,
+   "gate": 1296.737060546875,
+   "id": "corvus_IIIa",
+   "name": "Garnir",
+   "size": 3,
+   "system": "corvus"
+  },
+  {
+   "base": false,
+   "defence": 611,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 626.059326171875,
+   "id": "raesvelg",
+   "name": "Raesvelg",
+   "size": 5,
+   "system": "valhalla"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 3214.285888671875,
+    "hand_weapons": 100,
+    "marines": 70,
+    "supplies": 1582.03125
+   },
+   "base": true,
+   "defence": 2349.188720703125,
+   "faction": "tritachyon",
+   "forwardBase": false,
+   "gate": 746.059326171875,
+   "id": "skathi",
+   "name": "Skathi",
+   "size": 4,
+   "stock": {
+    "fuel": 77450.875,
+    "hand_weapons": 3097.8974609375,
+    "marines": 2168.5283203125,
+    "supplies": 23743.119140625
+   },
+   "system": "valhalla"
+  },
+  {
+   "base": false,
+   "defence": 960,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 866.059326171875,
+   "id": "ragnar_complex",
+   "name": "Ragnar Complex",
+   "size": 5,
+   "system": "valhalla"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 580.6451416015625,
+    "hand_weapons": 50,
+    "marines": 37.22222137451172,
+    "supplies": 493.9024353027344
+   },
+   "base": false,
+   "defence": 1812.3265380859375,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 407.9417419433594,
+   "id": "nomios",
+   "name": "Nomios",
+   "size": 3,
+   "stock": {
+    "fuel": 26199.541015625,
+    "hand_weapons": 2384.233642578125,
+    "marines": 1685.038818359375,
+    "supplies": 17318.65234375
+   },
+   "system": "arcadia"
+  },
+  {
+   "base": false,
+   "defence": 180,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 503.0158386230469,
+   "id": "arcadia_station",
+   "name": "Citadel Arcadia",
+   "size": 4,
+   "system": "arcadia"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1741.9354248046875,
+    "hand_weapons": 50,
+    "marines": 47.22222137451172,
+    "supplies": 740.8536376953125
+   },
+   "base": false,
+   "defence": 1354.3206787109375,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 407.9417419433594,
+   "id": "agreus",
+   "name": "Agreus",
+   "size": 5,
+   "stock": {
+    "fuel": 78752.8125,
+    "hand_weapons": 1802.23291015625,
+    "marines": 1200.224365234375,
+    "supplies": 33718.390625
+   },
+   "system": "arcadia"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1161.290283203125,
+    "hand_weapons": 100,
+    "marines": 47.22222137451172,
+    "supplies": 740.8536376953125
+   },
+   "base": false,
+   "defence": 1543.66259765625,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 190,
+   "id": "new_maxios",
+   "name": "Nova Maxios",
+   "size": 5,
+   "stock": {
+    "fuel": 25431.970703125,
+    "hand_weapons": 4725.04052734375,
+    "marines": 1124.5662841796875,
+    "supplies": 1216.184814453125
+   },
+   "system": "magec"
+  },
+  {
+   "base": false,
+   "defence": 154,
+   "faction": "pirates",
+   "forwardBase": false,
+   "gate": 70,
+   "id": "kantas_den",
+   "name": "Kanta's Den",
+   "size": 4,
+   "system": "magec"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 3857.14306640625,
+    "hand_weapons": 100,
+    "marines": 75,
+    "supplies": 1898.4375
+   },
+   "base": true,
+   "defence": 2734.98583984375,
+   "faction": "tritachyon",
+   "forwardBase": false,
+   "gate": 190,
+   "id": "tibicena",
+   "name": "Tibicena",
+   "size": 5,
+   "stock": {
+    "fuel": 115579.21875,
+    "hand_weapons": 1899.3089599609375,
+    "marines": 2323.421142578125,
+    "supplies": 46361.91796875
+   },
+   "system": "magec"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 2290.908935546875,
+    "hand_weapons": 105.88235473632812,
+    "marines": 68.33333587646484,
+    "supplies": 1401.923095703125
+   },
+   "base": false,
+   "defence": 2162.596435546875,
+   "faction": "luddic_church",
+   "forwardBase": false,
+   "gate": 975.3839721679688,
+   "id": "tartessus",
+   "name": "Tartessus",
+   "size": 7,
+   "stock": {
+    "fuel": 72820.1953125,
+    "hand_weapons": 1211.1749267578125,
+    "marines": 363.90411376953125,
+    "supplies": 33887.1015625
+   },
+   "system": "eos exodus"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 2032.258056640625,
+    "hand_weapons": 50,
+    "marines": 47.22222137451172,
+    "supplies": 864.3292846679688
+   },
+   "base": true,
+   "defence": 501.999755859375,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 975.3839721679688,
+   "id": "baetis",
+   "name": "Baetis",
+   "size": 5,
+   "stock": {
+    "fuel": 26752.873046875,
+    "hand_weapons": 144.3494415283203,
+    "marines": 160.90342712402344,
+    "supplies": 1313.034423828125
+   },
+   "system": "eos exodus"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 2290.908935546875,
+    "hand_weapons": 52.94117736816406,
+    "marines": 58.333335876464844,
+    "supplies": 1090.3846435546875
+   },
+   "base": true,
+   "defence": 1636.18408203125,
+   "faction": "luddic_church",
+   "forwardBase": false,
+   "gate": 975.3839721679688,
+   "id": "hesperus",
+   "name": "Hesperus",
+   "size": 5,
+   "stock": {
+    "fuel": 39877.51953125,
+    "hand_weapons": 520.035888671875,
+    "marines": 557.3003540039062,
+    "supplies": 25585.94140625
+   },
+   "system": "eos exodus"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1928.571533203125,
+    "hand_weapons": 200,
+    "marines": 75,
+    "supplies": 2214.84375
+   },
+   "base": true,
+   "defence": 4157.98583984375,
+   "faction": "tritachyon",
+   "forwardBase": false,
+   "gate": 1676.822998046875,
+   "id": "culann",
+   "name": "Culann",
+   "size": 5,
+   "stock": {
+    "fuel": 7452.01318359375,
+    "hand_weapons": 4396.9482421875,
+    "marines": 2323.421142578125,
+    "supplies": 3364.650634765625
+   },
+   "system": "hybrasil"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 5142.857421875,
+    "hand_weapons": 200,
+    "marines": 130,
+    "supplies": 2531.25
+   },
+   "base": true,
+   "defence": 4423.1748046875,
+   "faction": "tritachyon",
+   "forwardBase": false,
+   "gate": 2156.822998046875,
+   "id": "eochu_bres",
+   "name": "Eochu Bres",
+   "size": 6,
+   "stock": {
+    "fuel": 150974.90625,
+    "hand_weapons": 4183.22607421875,
+    "marines": 2742.662841796875,
+    "supplies": 12944.62109375
+   },
+   "system": "hybrasil"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 580.6451416015625,
+    "hand_weapons": 50,
+    "marines": 42.22222137451172,
+    "supplies": 493.9024353027344
+   },
+   "base": false,
+   "defence": 1915.322998046875,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 1676.822998046875,
+   "id": "cethlenn",
+   "name": "Cethlenn",
+   "size": 4,
+   "stock": {
+    "fuel": 30846.642578125,
+    "hand_weapons": 2052.851318359375,
+    "marines": 1861.1309814453125,
+    "supplies": 810.7898559570312
+   },
+   "system": "hybrasil"
+  },
+  {
+   "base": false,
+   "defence": 55,
+   "faction": "pirates",
+   "forwardBase": false,
+   "gate": 1676.822998046875,
+   "id": "donn",
+   "name": "Donn",
+   "size": 4,
+   "system": "hybrasil"
+  },
+  {
+   "base": false,
+   "defence": 266,
+   "faction": "pirates",
+   "forwardBase": false,
+   "gate": 140.31094360351562,
+   "id": "qaras",
+   "name": "Qaras",
+   "size": 5,
+   "system": "yma"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1350,
+    "hand_weapons": 39.130435943603516,
+    "marines": 46.05263137817383,
+    "supplies": 619.89794921875
+   },
+   "base": true,
+   "defence": 1320.34326171875,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 140.31094360351562,
+   "id": "salamanca",
+   "name": "Salamanca",
+   "size": 5,
+   "stock": {
+    "fuel": 72666.3359375,
+    "hand_weapons": 2218.6513671875,
+    "marines": 881.2244873046875,
+    "supplies": 941.7098388671875
+   },
+   "system": "yma"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 900,
+    "hand_weapons": 39.130435943603516,
+    "marines": 46.05263137817383,
+    "supplies": 619.89794921875
+   },
+   "base": false,
+   "defence": 493.6480712890625,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 416.630859375,
+   "id": "cibola",
+   "name": "Cibola",
+   "size": 5,
+   "stock": {
+    "fuel": 4686.51416015625,
+    "hand_weapons": 173.94723510742188,
+    "marines": 233.5247802734375,
+    "supplies": 941.7098388671875
+   },
+   "system": "tyle"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1800,
+    "hand_weapons": 78.26087188720703,
+    "marines": 72.10526275634766,
+    "supplies": 929.846923828125
+   },
+   "base": true,
+   "defence": 4349.6201171875,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 536.630859375,
+   "id": "madeira",
+   "name": "Madeira",
+   "size": 6,
+   "stock": {
+    "fuel": 38879.90625,
+    "hand_weapons": 1237.894287109375,
+    "marines": 1934.6204833984375,
+    "supplies": 1225.01171875
+   },
+   "system": "tyle"
+  },
+  {
+   "base": false,
+   "defence": 750,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 663.75,
+   "id": "yama",
+   "name": "Yama",
+   "size": 6,
+   "system": "naraka"
+  },
+  {
+   "base": false,
+   "defence": 1440,
+   "faction": "hegemony",
+   "forwardBase": false,
+   "gate": 783.75,
+   "id": "nachiketa",
+   "name": "Nachiketa",
+   "size": 5,
+   "system": "naraka"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 2618.181640625,
+    "hand_weapons": 105.88235473632812,
+    "marines": 68.33333587646484,
+    "supplies": 1401.923095703125
+   },
+   "base": true,
+   "defence": 3361.4306640625,
+   "faction": "luddic_church",
+   "forwardBase": false,
+   "gate": 670.6754760742188,
+   "id": "gilead",
+   "name": "Gilead",
+   "size": 7,
+   "stock": {
+    "fuel": 8046.23291015625,
+    "hand_weapons": 2119.810302734375,
+    "marines": 670.7549438476562,
+    "supplies": 4233.7822265625
+   },
+   "system": "canaan"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1309.0908203125,
+    "hand_weapons": 105.88235473632812,
+    "marines": 58.333335876464844,
+    "supplies": 934.6154174804688
+   },
+   "base": false,
+   "defence": 790.3504638671875,
+   "faction": "luddic_church",
+   "forwardBase": false,
+   "gate": 190.6754608154297,
+   "id": "asher",
+   "name": "Asher",
+   "size": 5,
+   "stock": {
+    "fuel": 57258.42578125,
+    "hand_weapons": 1608.071533203125,
+    "marines": 481.46673583984375,
+    "supplies": 2846.635986328125
+   },
+   "system": "canaan"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 900,
+    "hand_weapons": 39.130435943603516,
+    "marines": 46.05263137817383,
+    "supplies": 413.26531982421875
+   },
+   "base": false,
+   "defence": 1226.68896484375,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 103.30874633789062,
+   "id": "mairaath",
+   "name": "Mairaath",
+   "size": 5,
+   "stock": {
+    "fuel": 47507.23828125,
+    "hand_weapons": 2218.6513671875,
+    "marines": 1020.9369506835938,
+    "supplies": 627.8065185546875
+   },
+   "system": "mayasura"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 2000,
+    "hand_weapons": 0,
+    "marines": 20,
+    "supplies": 1084.8214111328125
+   },
+   "base": false,
+   "defence": 94,
+   "faction": "pirates",
+   "forwardBase": false,
+   "gate": 223.30874633789062,
+   "id": "mairaath_abandoned_station2",
+   "name": "Lost Astropolis",
+   "size": 4,
+   "stock": {
+    "fuel": 0,
+    "hand_weapons": 0,
+    "marines": 0,
+    "supplies": 0
+   },
+   "system": "mayasura"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 3857.14306640625,
+    "hand_weapons": 100,
+    "marines": 70,
+    "supplies": 1898.4375
+   },
+   "base": true,
+   "defence": 3134.187255859375,
+   "faction": "tritachyon",
+   "forwardBase": false,
+   "gate": 223.30874633789062,
+   "id": "port_tse",
+   "name": "Port Tse Franchise Station",
+   "size": 4,
+   "stock": {
+    "fuel": 124694.78125,
+    "hand_weapons": 4115.89501953125,
+    "marines": 2829.52685546875,
+    "supplies": 41423.4765625
+   },
+   "system": "mayasura"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 675,
+    "hand_weapons": 39.130435943603516,
+    "marines": 41.05263137817383,
+    "supplies": 413.26531982421875
+   },
+   "base": false,
+   "defence": 296.5849609375,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 313.0693664550781,
+   "id": "athulf",
+   "name": "Athulf",
+   "size": 4,
+   "stock": {
+    "fuel": 3514.885498046875,
+    "hand_weapons": 1509.1685791015625,
+    "marines": 210.4175567626953,
+    "supplies": 627.8065185546875
+   },
+   "system": "westernesse"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1125,
+    "hand_weapons": 78.26087188720703,
+    "marines": 72.10526275634766,
+    "supplies": 826.5306396484375
+   },
+   "base": true,
+   "defence": 1267.54931640625,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 313.0693664550781,
+   "id": "fikenhild",
+   "name": "Fikenhild",
+   "size": 6,
+   "stock": {
+    "fuel": 22914.513671875,
+    "hand_weapons": 602.31982421875,
+    "marines": 352.8638610839844,
+    "supplies": 1255.613037109375
+   },
+   "system": "westernesse"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 900,
+    "hand_weapons": 39.130435943603516,
+    "marines": 46.05263137817383,
+    "supplies": 619.89794921875
+   },
+   "base": false,
+   "defence": 482.6435241699219,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 193.06935119628906,
+   "id": "suddene",
+   "name": "Suddene",
+   "size": 5,
+   "stock": {
+    "fuel": 43088.9765625,
+    "hand_weapons": 1612.650634765625,
+    "marines": 233.52481079101562,
+    "supplies": 941.7098388671875
+   },
+   "system": "westernesse"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1451.6129150390625,
+    "hand_weapons": 50,
+    "marines": 47.22222137451172,
+    "supplies": 617.3780517578125
+   },
+   "base": true,
+   "defence": 670.999755859375,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 193.06935119628906,
+   "id": "ailmar",
+   "name": "Ailmar",
+   "size": 5,
+   "stock": {
+    "fuel": 2818.450439453125,
+    "hand_weapons": 144.3494415283203,
+    "marines": 160.90342712402344,
+    "supplies": 1888.502685546875
+   },
+   "system": "westernesse"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1800,
+    "hand_weapons": 78.26087188720703,
+    "marines": 56.05263137817383,
+    "supplies": 929.846923828125
+   },
+   "base": true,
+   "defence": 3158.4677734375,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 353.5516357421875,
+   "id": "mazalot",
+   "name": "Mazalot",
+   "size": 7,
+   "stock": {
+    "fuel": 17467.13671875,
+    "hand_weapons": 1019.6513671875,
+    "marines": 1340.020751953125,
+    "supplies": 1412.564697265625
+   },
+   "system": "zagan"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1741.9354248046875,
+    "hand_weapons": 50,
+    "marines": 47.22222137451172,
+    "supplies": 740.8536376953125
+   },
+   "base": true,
+   "defence": 566.999755859375,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 353.5516357421875,
+   "id": "ilm",
+   "name": "Ilm",
+   "size": 5,
+   "stock": {
+    "fuel": 35199.71484375,
+    "hand_weapons": 1494.3876953125,
+    "marines": 160.90342712402344,
+    "supplies": 1116.317138671875
+   },
+   "system": "zagan"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1350,
+    "hand_weapons": 39.130435943603516,
+    "marines": 46.05263137817383,
+    "supplies": 619.89794921875
+   },
+   "base": true,
+   "defence": 1578.34326171875,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 473.5516357421875,
+   "id": "yesod",
+   "name": "Yesod",
+   "size": 5,
+   "stock": {
+    "fuel": 66178.2578125,
+    "hand_weapons": 2218.6513671875,
+    "marines": 1067.224609375,
+    "supplies": 941.7098388671875
+   },
+   "system": "zagan"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1800,
+    "hand_weapons": 156.52174377441406,
+    "marines": 56.05263137817383,
+    "supplies": 929.846923828125
+   },
+   "base": true,
+   "defence": 4879.9716796875,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 1478.6854248046875,
+   "id": "kazeron",
+   "name": "Kazeron",
+   "size": 7,
+   "stock": {
+    "fuel": 20920.947265625,
+    "hand_weapons": 6771.24658203125,
+    "marines": 561.0441284179688,
+    "supplies": 1567.5390625
+   },
+   "system": "thule"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1161.290283203125,
+    "hand_weapons": 50,
+    "marines": 47.22222137451172,
+    "supplies": 493.9024353027344
+   },
+   "base": false,
+   "defence": 314.999755859375,
+   "faction": "independent",
+   "forwardBase": false,
+   "gate": 1478.6854248046875,
+   "id": "eldfell",
+   "name": "Eldfell",
+   "size": 5,
+   "stock": {
+    "fuel": 1906.3731689453125,
+    "hand_weapons": 144.3494415283203,
+    "marines": 160.90342712402344,
+    "supplies": 1438.98046875
+   },
+   "system": "thule"
+  },
+  {
+   "base": false,
+   "defence": 384,
+   "faction": "pirates",
+   "forwardBase": false,
+   "gate": 1478.6854248046875,
+   "id": "thule_pirate_station",
+   "name": "Thulian Raider Base",
+   "size": 4,
+   "system": "thule"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 2256.818359375,
+    "hand_weapons": 100,
+    "marines": 72.5,
+    "supplies": 1915.9090576171875
+   },
+   "base": true,
+   "defence": 624.1063232421875,
+   "faction": "luddic_path",
+   "forwardBase": false,
+   "gate": 26.683591842651367,
+   "id": "epiphany",
+   "name": "Epiphany",
+   "size": 4,
+   "stock": {
+    "fuel": 62099.1953125,
+    "hand_weapons": 474.7104187011719,
+    "marines": 344.49371337890625,
+    "supplies": 4658.83740234375
+   },
+   "system": "al gebbar"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1711.3636474609375,
+    "hand_weapons": 0,
+    "marines": 87.5,
+    "supplies": 75
+   },
+   "base": true,
+   "defence": 485.6310119628906,
+   "faction": "luddic_path",
+   "forwardBase": false,
+   "gate": 4.00146484375,
+   "id": "chalcedon",
+   "name": "Chalcedon",
+   "size": 5,
+   "stock": {
+    "fuel": 6695.18896484375,
+    "hand_weapons": 0.78460693359375,
+    "marines": 331.93316650390625,
+    "supplies": 950.605224609375
+   },
+   "system": "kumari kandam"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 675,
+    "hand_weapons": 39.130435943603516,
+    "marines": 41.05263137817383,
+    "supplies": 516.5816650390625
+   },
+   "base": false,
+   "defence": 334.6319580078125,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 4.00146484375,
+   "id": "olinadu",
+   "name": "Olinadu",
+   "size": 4,
+   "stock": {
+    "fuel": 37807.4375,
+    "hand_weapons": 2218.6513671875,
+    "marines": 210.41758728027344,
+    "supplies": 784.7581787109375
+   },
+   "system": "kumari kandam"
+  },
+  {
+   "base": false,
+   "defence": 35,
+   "faction": "pirates",
+   "forwardBase": false,
+   "gate": 4.00146484375,
+   "id": "kanni",
+   "name": "Kanni",
+   "size": 3,
+   "system": "kumari kandam"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1125,
+    "hand_weapons": 39.130435943603516,
+    "marines": 41.05263137817383,
+    "supplies": 619.89794921875
+   },
+   "base": true,
+   "defence": 669.2017822265625,
+   "faction": "persean",
+   "forwardBase": false,
+   "gate": 4475.5068359375,
+   "id": "laicaille_habitat",
+   "name": "Laicaille Habitat",
+   "size": 4,
+   "stock": {
+    "fuel": 4733.51318359375,
+    "hand_weapons": 116.03983306884766,
+    "marines": 210.4175567626953,
+    "supplies": 941.7098388671875
+   },
+   "system": "isirah"
+  },
+  {
+   "base": false,
+   "defence": 120,
+   "faction": "pirates",
+   "forwardBase": false,
+   "gate": 4475.5068359375,
+   "id": "station_kapteyn",
+   "name": "Kapteyn Starworks",
+   "size": 4,
+   "system": "isirah"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 2618.181640625,
+    "hand_weapons": 211.76470947265625,
+    "marines": 96.66667175292969,
+    "supplies": 1246.1539306640625
+   },
+   "base": true,
+   "defence": 964.9985961914062,
+   "faction": "luddic_church",
+   "forwardBase": true,
+   "gate": 363.53515625,
+   "id": "threatinc_fl_3222b",
+   "name": "Gamma Deina I Forward Base",
+   "size": 6,
+   "stock": {
+    "fuel": 29775.3359375,
+    "hand_weapons": 2426.04931640625,
+    "marines": 306.8484802246094,
+    "supplies": 1915.482177734375
+   },
+   "system": "gamma deina"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 2618.181640625,
+    "hand_weapons": 105.88235473632812,
+    "marines": 96.66667175292969,
+    "supplies": 1246.1539306640625
+   },
+   "base": true,
+   "defence": 857.2552490234375,
+   "faction": "luddic_church",
+   "forwardBase": true,
+   "gate": 360.61114501953125,
+   "id": "threatinc_fl_32515",
+   "name": "Eleuthia Forward Base",
+   "size": 6,
+   "stock": {
+    "fuel": 39633.87890625,
+    "hand_weapons": 300.33599853515625,
+    "marines": 199.10513305664062,
+    "supplies": 2419.35986328125
+   },
+   "system": "hera"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1636.363525390625,
+    "hand_weapons": 52.94117736816406,
+    "marines": 53.333335876464844,
+    "supplies": 934.6154174804688
+   },
+   "base": true,
+   "defence": 391.85186767578125,
+   "faction": "luddic_church",
+   "forwardBase": true,
+   "gate": 2904.72314453125,
+   "id": "threatinc_fl_33363",
+   "name": "Sentinel Forward Base",
+   "size": 4,
+   "stock": {
+    "fuel": 10556.185546875,
+    "hand_weapons": 658.11669921875,
+    "marines": 301.1929931640625,
+    "supplies": 1723.1331787109375
+   },
+   "system": "beta brigador"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 4438.63671875,
+    "hand_weapons": 200,
+    "marines": 202.5,
+    "supplies": 2376.13623046875
+   },
+   "base": true,
+   "defence": 982.3843994140625,
+   "faction": "luddic_path",
+   "forwardBase": true,
+   "gate": 289.68359375,
+   "id": "threatinc_fl_34137",
+   "name": "Alpha Far Salish I Forward Base",
+   "size": 6,
+   "stock": {
+    "fuel": 35651.37890625,
+    "hand_weapons": 388.9694519042969,
+    "marines": 528.2595825195312,
+    "supplies": 6316.77587890625
+   },
+   "system": "alpha far salish"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1711.3636474609375,
+    "hand_weapons": 0,
+    "marines": 72.5,
+    "supplies": 75
+   },
+   "base": true,
+   "defence": 415.9823303222656,
+   "faction": "luddic_path",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_34c0a",
+   "name": "Epsilon Grendusa I Forward Base",
+   "size": 4,
+   "stock": {
+    "fuel": 3653.124267578125,
+    "hand_weapons": 0,
+    "marines": 354.3697509765625,
+    "supplies": 976.3575439453125
+   },
+   "system": "epsilon grendusa"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1711.3636474609375,
+    "hand_weapons": 0,
+    "marines": 87.5,
+    "supplies": 75
+   },
+   "base": true,
+   "defence": 543.2156982421875,
+   "faction": "luddic_path",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_34fb4",
+   "name": "Gamma Grendusa I Forward Base",
+   "size": 5,
+   "stock": {
+    "fuel": 3163.134521484375,
+    "hand_weapons": 0.37300872802734375,
+    "marines": 434.89019775390625,
+    "supplies": 825.3648681640625
+   },
+   "system": "gamma grendusa"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 900,
+    "hand_weapons": 39.130435943603516,
+    "marines": 36.05263137817383,
+    "supplies": 413.26531982421875
+   },
+   "base": true,
+   "defence": 226.05838012695312,
+   "faction": "persean",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_36d63",
+   "name": "Gamma Far Salish I Forward Base",
+   "size": 3,
+   "stock": {
+    "fuel": 3771.796875,
+    "hand_weapons": 173.94723510742188,
+    "marines": 168.74830627441406,
+    "supplies": 1104.1029052734375
+   },
+   "system": "gamma far salish"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 900,
+    "hand_weapons": 39.130435943603516,
+    "marines": 36.05263137817383,
+    "supplies": 413.26531982421875
+   },
+   "base": true,
+   "defence": 1747.7420654296875,
+   "faction": "persean",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_375c0",
+   "name": "Baslag Forward Base",
+   "size": 3,
+   "stock": {
+    "fuel": 5359.005859375,
+    "hand_weapons": 1368.9473876953125,
+    "marines": 1684.4320068359375,
+    "supplies": 22.69709014892578
+   },
+   "system": "eros"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1309.0908203125,
+    "hand_weapons": 52.94117736816406,
+    "marines": 48.333335876464844,
+    "supplies": 623.0769653320312
+   },
+   "base": true,
+   "defence": 1453.9722900390625,
+   "faction": "luddic_church",
+   "forwardBase": true,
+   "gate": 1045.7509765625,
+   "id": "threatinc_fl_375c7",
+   "name": "Alpha Hufra I Forward Base",
+   "size": 3,
+   "stock": {
+    "fuel": 9422.1181640625,
+    "hand_weapons": 2288.87548828125,
+    "marines": 1390.897216796875,
+    "supplies": 2984.12353515625
+   },
+   "system": "alpha hufra"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1711.3636474609375,
+    "hand_weapons": 100,
+    "marines": 107.5,
+    "supplies": 535.227294921875
+   },
+   "base": true,
+   "defence": 915.5830688476562,
+   "faction": "luddic_path",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_3761b",
+   "name": "Beta Hufra I Forward Base",
+   "size": 3,
+   "stock": {
+    "fuel": 6272.82958984375,
+    "hand_weapons": 976.4301147460938,
+    "marines": 976.6067504882812,
+    "supplies": 2022.10888671875
+   },
+   "system": "beta hufra"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 870.9677124023438,
+    "hand_weapons": 50,
+    "marines": 32.22222137451172,
+    "supplies": 493.9024353027344
+   },
+   "base": true,
+   "defence": 137.4098358154297,
+   "faction": "independent",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_38ab3",
+   "name": "Beta Atlon I Forward Base",
+   "size": 2,
+   "stock": {
+    "fuel": 1429.7799072265625,
+    "hand_weapons": 144.3494415283203,
+    "marines": 112.02645874023438,
+    "supplies": 1286.7906494140625
+   },
+   "system": "beta atlon"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 870.9677124023438,
+    "hand_weapons": 50,
+    "marines": 32.22222137451172,
+    "supplies": 493.9024353027344
+   },
+   "base": true,
+   "defence": 394.6078796386719,
+   "faction": "independent",
+   "forwardBase": true,
+   "gate": 8220,
+   "id": "threatinc_fl_38f28",
+   "name": "Gamma Azathe Armurrus I Forward Base",
+   "size": 2,
+   "stock": {
+    "fuel": 3834.844482421875,
+    "hand_weapons": 811.4827270507812,
+    "marines": 799.3762817382812,
+    "supplies": 1677.54443359375
+   },
+   "system": "gamma azathe armurrus"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1711.3636474609375,
+    "hand_weapons": 100,
+    "marines": 92.5,
+    "supplies": 1915.9090576171875
+   },
+   "base": true,
+   "defence": 302.34051513671875,
+   "faction": "luddic_path",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_393c0",
+   "name": "Delta Deina I Forward Base",
+   "size": 2,
+   "stock": {
+    "fuel": 8994.3056640625,
+    "hand_weapons": 332.50177001953125,
+    "marines": 281.11065673828125,
+    "supplies": 4750.3720703125
+   },
+   "system": "delta deina"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 675,
+    "hand_weapons": 39.130435943603516,
+    "marines": 31.052631378173828,
+    "supplies": 413.26531982421875
+   },
+   "base": true,
+   "defence": 105.09974670410156,
+   "faction": "persean",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_39bc8",
+   "name": "Maida Forward Base",
+   "size": 2,
+   "stock": {
+    "fuel": 1582.9803466796875,
+    "hand_weapons": 103.87732696533203,
+    "marines": 84.6939926147461,
+    "supplies": 627.8064575195312
+   },
+   "system": "kardashev"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 290.32257080078125,
+    "hand_weapons": 0,
+    "marines": 32.22222137451172,
+    "supplies": 246.9512176513672
+   },
+   "base": true,
+   "defence": 107.39714050292969,
+   "faction": "independent",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_39bcf",
+   "name": "Hassa Forward Base",
+   "size": 2,
+   "stock": {
+    "fuel": 1169.155517578125,
+    "hand_weapons": 72.02477264404297,
+    "marines": 87.01376342773438,
+    "supplies": 930.243408203125
+   },
+   "system": "hargor"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 675,
+    "hand_weapons": 39.130435943603516,
+    "marines": 31.052631378173828,
+    "supplies": 413.26531982421875
+   },
+   "base": true,
+   "defence": 92.90674591064453,
+   "faction": "persean",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_3a14a",
+   "name": "New Caldwell Forward Base",
+   "size": 2,
+   "stock": {
+    "fuel": 1203.7244873046875,
+    "hand_weapons": 84.51924896240234,
+    "marines": 65.50099182128906,
+    "supplies": 692.0004272460938
+   },
+   "system": "asphodel"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 450,
+    "hand_weapons": 39.130435943603516,
+    "marines": 26.052631378173828,
+    "supplies": 413.26531982421875
+   },
+   "base": true,
+   "defence": 58.91828155517578,
+   "faction": "persean",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_3a95c",
+   "name": "Megaron Forward Base",
+   "size": 1,
+   "stock": {
+    "fuel": 873.8945922851562,
+    "hand_weapons": 65.24527740478516,
+    "marines": 47.416839599609375,
+    "supplies": 736.6656494140625
+   },
+   "system": "khthon"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 580.6451416015625,
+    "hand_weapons": 50,
+    "marines": 27.22222328186035,
+    "supplies": 493.9024353027344
+   },
+   "base": true,
+   "defence": 832.663818359375,
+   "faction": "independent",
+   "forwardBase": true,
+   "gate": 381.2282409667969,
+   "id": "threatinc_fl_3a963",
+   "name": "Tuchulcha Forward Base",
+   "size": 1,
+   "stock": {
+    "fuel": 1027.577392578125,
+    "hand_weapons": 848.2033081054688,
+    "marines": 821.1847534179688,
+    "supplies": 874.3931884765625
+   },
+   "system": "gull motley"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 654.54541015625,
+    "hand_weapons": 52.94117736816406,
+    "marines": 38.333335876464844,
+    "supplies": 623.0769653320312
+   },
+   "base": true,
+   "defence": 1628.1368408203125,
+   "faction": "luddic_church",
+   "forwardBase": true,
+   "gate": 440.9284973144531,
+   "id": "threatinc_fl_3a96a",
+   "name": "Beta Xophiel I Forward Base",
+   "size": 1,
+   "stock": {
+    "fuel": 1762.910400390625,
+    "hand_weapons": 2577.856201171875,
+    "marines": 1853.5247802734375,
+    "supplies": 2129.9736328125
+   },
+   "system": "beta xophiel"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1165.9091796875,
+    "hand_weapons": 100,
+    "marines": 77.5,
+    "supplies": 1915.9090576171875
+   },
+   "base": true,
+   "defence": 147.4054412841797,
+   "faction": "luddic_path",
+   "forwardBase": true,
+   "gate": 632.4630126953125,
+   "id": "threatinc_fl_3a9b4",
+   "name": "Pelephanar Forward Base",
+   "size": 1,
+   "stock": {
+    "fuel": 3586.2265625,
+    "hand_weapons": 177.34854125976562,
+    "marines": 137.88853454589844,
+    "supplies": 3070.3896484375
+   },
+   "system": "accreter-hkere"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 654.54541015625,
+    "hand_weapons": 52.94117736816406,
+    "marines": 38.333335876464844,
+    "supplies": 623.0769653320312
+   },
+   "base": true,
+   "defence": 59.701629638671875,
+   "faction": "luddic_church",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_3cb73",
+   "name": "Gamma Blost Dantalion I Forward Base",
+   "size": 1,
+   "stock": {
+    "fuel": 853.7786865234375,
+    "hand_weapons": 73.74322509765625,
+    "marines": 51.04827117919922,
+    "supplies": 769.9700317382812
+   },
+   "system": "gamma blost dantalion"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1165.9091796875,
+    "hand_weapons": 100,
+    "marines": 77.5,
+    "supplies": 1455.6817626953125
+   },
+   "base": true,
+   "defence": 102.86966705322266,
+   "faction": "luddic_path",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_3cb7a",
+   "name": "Issorile Forward Base",
+   "size": 1,
+   "stock": {
+    "fuel": 2321.613525390625,
+    "hand_weapons": 126.30838012695312,
+    "marines": 98.00418853759766,
+    "supplies": 1721.0101318359375
+   },
+   "system": "sagon"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 580.6451416015625,
+    "hand_weapons": 50,
+    "marines": 27.22222328186035,
+    "supplies": 493.9024353027344
+   },
+   "base": true,
+   "defence": 22.32636260986328,
+   "faction": "independent",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_3d058",
+   "name": "Comiaken Forward Base",
+   "size": 1,
+   "stock": {
+    "fuel": 443.5741271972656,
+    "hand_weapons": 38.52220153808594,
+    "marines": 20.79249382019043,
+    "supplies": 377.73773193359375
+   },
+   "system": "pi-ramses"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 1165.9091796875,
+    "hand_weapons": 100,
+    "marines": 77.5,
+    "supplies": 535.227294921875
+   },
+   "base": true,
+   "defence": 37.71710968017578,
+   "faction": "luddic_path",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_3d05f",
+   "name": "Alpha Morgothi I Forward Base",
+   "size": 1,
+   "stock": {
+    "fuel": 867.5758666992188,
+    "hand_weapons": 73.43031311035156,
+    "marines": 56.9324951171875,
+    "supplies": 393.95843505859375
+   },
+   "system": "alpha morgothi"
+  },
+  {
+   "accrualPer30": {
+    "fuel": 580.6451416015625,
+    "hand_weapons": 50,
+    "marines": 27.22222328186035,
+    "supplies": 493.9024353027344
+   },
+   "base": true,
+   "defence": 12.70159912109375,
+   "faction": "independent",
+   "forwardBase": true,
+   "gate": 120.00000762939453,
+   "id": "threatinc_fl_3ec4e",
+   "name": "Alpha Brigador I Forward Base",
+   "size": 1,
+   "stock": {
+    "fuel": 112.32301330566406,
+    "hand_weapons": 9.73579216003418,
+    "marines": 5.28961706161499,
+    "supplies": 95.54695129394531
+   },
+   "system": "alpha brigador"
+  }
+ ]
+}
