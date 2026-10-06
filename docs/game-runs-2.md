@@ -523,10 +523,14 @@ hw29a: 4 -> 24 hives by war day 1840, 0 by day 3462; hw29b 36 hives / 5 colonies
    1658. A 20-hive swarm with 17,000 FP of garrisons faced four war economies from the first year of the war.
 2. **Every hive was found inside 18 months.** Found 4 (day 1654) -> 20 (day 1840) -> 24 of 24 (day 2024): four factions'
    patrols and 104 hunting forces walked the whole ring. The fog bought the swarm nothing once the war was open.
-3. **It consolidated to death.** Stance CONSOLIDATE from day 1840 to extinction - 4.5 years - because two or more systems
-   were always pressed (`stanceConsolidateMinPressed` 2 of 12). In CONSOLIDATE it founded nothing: 17 colonies in the whole
-   game, the last on day ~2500, two late waves destroyed. Meanwhile it banked **1.7 million fuel and 450,000 supplies** it never
-   spent (fuel plan: "covers 39 / 69 / 139 months; surplus") and earned 4,000-5,200 FP a month at its peak.
+3. **It was drowning in the wrong resources.** Stance CONSOLIDATE from day 1840 to extinction, but the stance no longer blocks
+   founding (`stanceConsolidateSpreadShare` 1 since 2026-10-04) - I first wrote this run up as "consolidated to death" and
+   that was wrong. Swarms are bought with FP and FP comes only from forge output (`facts.md` "How is a Threat fleet paid
+   for?"); fuel and supplies buy no ship. Every posture line from day 1840 reads `want 23k, held 10k, surplus 0.0k`: the forges'
+   4-5k FP a month went whole into garrison replacement and the hunts ate it, so seeding (650 FP of hulls from the same pool)
+   got nothing - 17 colonies in the game, 4 waves in the last 4.5 years, 2 destroyed. More FP needs more forges, every size-3+
+   hive had one (dump d2825: 9 forged worlds of 11, the 2 new hives size 1), more forges needs more hives. Meanwhile it banked
+   **1.7 million fuel and 450,000 supplies** it could spend on nothing.
 4. **The garrisons were ground down faster than the income rebuilt them.** Fleets 26,353 FP (day 1654) -> 11,703 (day 2024)
    -> 15,376 -> 8,556 -> 7,199 -> 3,633 (day 3127): 46 / 103 / 73 / 63 hunts a year and 42 landings (mean 1,248 troops,
    max 4,667) killed 1 / 10 / 6 / 5 / 9 / 2 hives a year. 232 defence rallies in year 4 and 137 in year 5 were sent and lost.
@@ -536,6 +540,6 @@ hw29a: 4 -> 24 hives by war day 1840, 0 by day 3462; hw29b 36 hives / 5 colonies
 Not the cause: fuel or supplies (surplus throughout after day 1654; the dump's `swarm.fuel` reads 0 in many months because it
 is a different field from the census ledger), the patrol or stand-down code, exceptions (none).
 
-What the run points at, for the user: (a) the stance - a swarm pressed in two systems of twelve stops expanding for good, and
-spends nothing of a million-fuel bank; (b) the opening - the first strikes should perhaps not fan out across four factions'
+What the run points at, for the user: (a) the currency - a swarm whose garrisons are being killed faster than its forges replace them cannot turn a
+million fuel and half a million supplies into one ship; (b) the opening - the first strikes should perhaps not fan out across four factions'
 worlds in 150 days; (c) 30% of production to strikes at forward bases while the hives starve of garrison.
