@@ -606,7 +606,7 @@ public class ThreatIncConfig {
 	/** Each mobilised faction keeps its own stance - PRESS, EXPAND, CONSOLIDATE - as the hive does (ThreatFactionStance). */
 	public static boolean factionStanceEnabled()   { return b("threatinc_factionStanceEnabled", true); }
 	public static boolean threatSuppliesUpkeep()   { return b("threatinc_threatSuppliesUpkeep", true); }
-	/** Standing upkeep (the user, 2026-10-06): hulls at home - a faction's free hulls, a hive's garrison - pay their ships' maintenance a month times this; 0 turns it off (ThreatHulls.maintain, ThreatColonyManager.payGarrisonSupplies). */
+	/** Standing upkeep (the user, 2026-10-06): the hulls a faction's yards built beyond vanilla's patrol table pay their ships' maintenance a month times this while at home; vanilla's patrols and the hive's garrison are vanilla's to keep. 0 turns it off (ThreatHulls.maintain). */
 	public static float standingUpkeepMult()       { return f("threatinc_standingUpkeepMult"); }
 	public static boolean structuresCostSupplies() { return b("threatinc_structuresCostSupplies", true); }
 	public static float structureSuppliesMult()    { return f("threatinc_structureSuppliesMult"); }
