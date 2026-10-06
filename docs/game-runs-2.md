@@ -508,3 +508,34 @@ nothing until the player fleet ran out of supplies and vanilla's accident report
   returning twice `scoutLegMaxDays`; counted home, not lost (no level raised). Dismissals log "<party> dismissed: why".
 - **Open (design, the user's):** `warModeStandDownDays` is 0, so Hegemony and the League stayed mobilised and flew patrols
   for five years after the swarm was extinct. A stand-down on `ThreatIncursionIntel.isEradicated` would end the war footing.
+
+## 29. hw29a - how the swarm went extinct with the floor on the opening strike only (2026-10-06)
+
+Batch sl3 / hw29a / hw29b (the user's StarLord save and two new games), the first with `strikeStagedMinFP` binding the
+opening strike only. Stopped at 3,750 days on the user's word; only hw29a is written up - "what went wrong in that run".
+hw29a: 4 -> 24 hives by war day 1840, 0 by day 3462; hw29b 36 hives / 5 colonies lost; sl3 145 hives / 20 colonies lost.
+
+**What went wrong, in order:**
+
+1. **The opening strike woke everyone at once.** The 8,101 FP strike sailed on day 1461 at Yama; the next three, now sized to
+   their targets (4,401 / 677 / 2,031 FP), went at Chicomoztoc, Qaras and Culann within 150 days - the closest known targets
+   were in four factions' systems. Hegemony, the League, Tri-Tachyon and the Independents all mobilised between days 1533 and
+   1658. A 20-hive swarm with 17,000 FP of garrisons faced four war economies from the first year of the war.
+2. **Every hive was found inside 18 months.** Found 4 (day 1654) -> 20 (day 1840) -> 24 of 24 (day 2024): four factions'
+   patrols and 104 hunting forces walked the whole ring. The fog bought the swarm nothing once the war was open.
+3. **It consolidated to death.** Stance CONSOLIDATE from day 1840 to extinction - 4.5 years - because two or more systems
+   were always pressed (`stanceConsolidateMinPressed` 2 of 12). In CONSOLIDATE it founded nothing: 17 colonies in the whole
+   game, the last on day ~2500, two late waves destroyed. Meanwhile it banked **1.7 million fuel and 450,000 supplies** it never
+   spent (fuel plan: "covers 39 / 69 / 139 months; surplus") and earned 4,000-5,200 FP a month at its peak.
+4. **The garrisons were ground down faster than the income rebuilt them.** Fleets 26,353 FP (day 1654) -> 11,703 (day 2024)
+   -> 15,376 -> 8,556 -> 7,199 -> 3,633 (day 3127): 46 / 103 / 73 / 63 hunts a year and 42 landings (mean 1,248 troops,
+   max 4,667) killed 1 / 10 / 6 / 5 / 9 / 2 hives a year. 232 defence rallies in year 4 and 137 in year 5 were sent and lost.
+5. **The strike fund bought nothing that mattered.** 30% of production -> 54 strikes, 46 of them at forward bases (27
+   destroyed, 58 founded) and 2 colonies taken. The humans' economy never felt it; the swarm's lost a third of its income to it.
+
+Not the cause: fuel or supplies (surplus throughout after day 1654; the dump's `swarm.fuel` reads 0 in many months because it
+is a different field from the census ledger), the patrol or stand-down code, exceptions (none).
+
+What the run points at, for the user: (a) the stance - a swarm pressed in two systems of twelve stops expanding for good, and
+spends nothing of a million-fuel bank; (b) the opening - the first strikes should perhaps not fan out across four factions'
+worlds in 150 days; (c) 30% of production to strikes at forward bases while the hives starve of garrison.
