@@ -7,7 +7,10 @@ import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
+import com.fs.starfarer.api.impl.campaign.ids.Factions;
+import com.fs.starfarer.api.impl.campaign.ids.Stats;
 import com.fs.starfarer.api.impl.campaign.intel.group.FleetGroupIntel;
+import com.fs.starfarer.api.util.Misc;
 
 /**
  * CAPACITY LEDGER (docs/player-aid.md section 2): what one of the player's
@@ -82,16 +85,33 @@ public class ThreatAidCapacity {
 	}
 
 	public static boolean enabled() {
-		return ThreatWarState.enabled() && ThreatIncConfig.aidEnabled();
+		return ThreatWarState.enabled() && (ThreatIncConfig.aidEnabled() || ThreatHulls.enabled());
+	}
+
+	/**
+	 * Whether the ledger applies to this market's fleets: the player's under
+	 * the aid rule; every faction's with the hull pool (ThreatHulls, 2026-10-06).
+	 */
+	public static boolean applies(MarketAPI market) {
+		if (market == null || !enabled()) return false;
+		if (ThreatHulls.enabled()) return !Factions.THREAT.equals(market.getFactionId());
+		return market.isPlayerOwned() && ThreatIncConfig.aidEnabled();
 	}
 
 	// ------------------------------------------------------------------
 	// capacity
 	// ------------------------------------------------------------------
 
-	/** Fleet points the colony can have at sea at once; 0 without a military structure. */
+	/**
+	 * Fleet points the colony can have at sea at once; 0 without a military
+	 * structure. With the hull pool its standing hulls by vanilla's patrol
+	 * figures (ThreatHulls.standingFP, any faction); else the player's
+	 * aidBaseFP allowance at the colony's fleet size.
+	 */
 	public static float capacityFP(MarketAPI market) {
-		if (market == null || !market.isPlayerOwned()) return 0f;
+		if (market == null) return 0f;
+		if (ThreatHulls.enabled()) return applies(market) ? ThreatHulls.standingFP(market) : 0f;
+		if (!market.isPlayerOwned()) return 0f;
 		if (!IncursionManager.isBase(market)) return 0f;
 		return ThreatIncConfig.aidBaseFP() * ThreatColonyManager.fleetSizeMult(market);
 	}
@@ -105,10 +125,15 @@ public class ThreatAidCapacity {
 		return sum;
 	}
 
-	/** The colony's own points not at sea: its capacity less what it has out. */
+	/**
+	 * The colony's own points not at sea. Under the aid rule its capacity less
+	 * what it has out; under the hull pool the whole faction's free hulls
+	 * (ThreatHulls.freeFP) - ships fly themselves to the base that stages them.
+	 */
 	public static float ownFreeFP(MarketAPI market) {
 		if (market == null) return 0f;
 		if (!enabled()) return Float.MAX_VALUE / 4f;
+		if (ThreatHulls.enabled()) return applies(market) ? ThreatHulls.freeFP(market.getFactionId()) : 0f;
 		return capacityFP(market) - committedFP(market.getId());
 	}
 
@@ -347,11 +372,23 @@ public class ThreatAidCapacity {
 			}
 		}
 		if (staged && ThreatFleetOrders.restation(fleet, mine, home)) return true;
+		// the hull pool: what did not come home is a debt the yards rebuild
+		// (ThreatHulls.lose) - the fleet's strength now over its strength at launch
+		float health = ThreatHulls.enabled() ? Math.max(0f, Math.min(1f, ThreatReturns.health(fleet))) : 1f;
 		for (Commitment c : mine) {
 			all().remove(c);
-			ThreatIncConfig.log("Capacity: " + (int) c.fp + " FP back from " + c.label);
+			if (health < 1f) lostPart(c, c.fp * (1f - health));
+			ThreatIncConfig.log("Capacity: " + (int) (c.fp * health) + " FP back from " + c.label
+					+ (health < 1f ? " (" + (int) (c.fp * (1f - health)) + " lost)" : ""));
 		}
 		return false;
+	}
+
+	/** Books the part of an entry that did not come home against its faction's hull debt. */
+	protected static void lostPart(Commitment c, float fp) {
+		if (!ThreatHulls.enabled() || c == null || fp <= 0f) return;
+		MarketAPI m = c.marketId != null ? Global.getSector().getEconomy().getMarket(c.marketId) : null;
+		if (m != null) ThreatHulls.lose(m.getFactionId(), fp, c.label);
 	}
 
 	/**
@@ -372,6 +409,7 @@ public class ThreatAidCapacity {
 					float health = c.group instanceof ThreatPurgeFGI
 							? ((ThreatPurgeFGI) c.group).survivingFraction() : 1f;
 					if (c.hostMarketId != null && ThreatFleetOrders.restation(c, health)) continue;
+					if (health < 1f) lostPart(c, c.fp * (1f - health));
 					ThreatIncConfig.log("Capacity: " + (int) c.fp + " FP back from " + c.label
 							+ " (expedition over)");
 				}
@@ -382,6 +420,12 @@ public class ThreatAidCapacity {
 				continue;
 			}
 			boolean dead = !c.fleet.isAlive() || c.fleet.isExpired();
+			if (dead && ThreatHulls.enabled()) {
+				// the hull pool: a lost fleet is a debt its faction's yards rebuild, not a clock
+				all().remove(c);
+				lostPart(c, c.fp);
+				continue;
+			}
 			if (dead && c.lostTimestamp == 0L) {
 				c.lostTimestamp = now;
 				ThreatIncConfig.log("Capacity: " + c.label + " lost - " + (int) c.fp
@@ -536,6 +580,25 @@ public class ThreatAidCapacity {
 		List<String> lines = new ArrayList<String>();
 		if (market == null) return lines;
 		int[] f = figures(market);
+		if (ThreatHulls.enabled()) {
+			// the hull pool: the colony's standing hulls and the faction's pool, one fact a line
+			if (f[0] <= 0) {
+				lines.add("No standing hulls: a Patrol HQ, Military Base or High Command is needed.");
+			} else {
+				lines.add("Standing hulls " + f[0] + " FP: " + ThreatHulls.patrols(market, Stats.PATROL_NUM_LIGHT_MOD)
+						+ " light, " + ThreatHulls.patrols(market, Stats.PATROL_NUM_MEDIUM_MOD) + " medium, "
+						+ ThreatHulls.patrols(market, Stats.PATROL_NUM_HEAVY_MOD) + " heavy patrols; fleet size "
+						+ Math.round(ThreatColonyManager.fleetSizeMult(market) * 100f) + "%, quality "
+						+ Math.round(Misc.getShipQuality(market) * 100f) + "%.");
+				lines.add(f[1] + " FP sent from here is out.");
+			}
+			String fid = market.getFactionId();
+			lines.add(ThreatWarState.displayName(fid) + " pool: " + Math.round(ThreatHulls.freeFP(fid)) + " of "
+					+ Math.round(ThreatHulls.standingFP(fid)) + " FP free; " + Math.round(ThreatHulls.committedFP(fid))
+					+ " out, " + Math.round(ThreatHulls.debt(fid)) + " lost.");
+			lines.add("Shipyards rebuild " + Math.round(ThreatHulls.productionFP(fid)) + " FP a month.");
+			return lines;
+		}
 		if (f[0] <= 0) {
 			lines.add("No fleet capacity: a Patrol HQ, Military Base or High Command is needed.");
 			return lines;

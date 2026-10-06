@@ -1,3 +1,4 @@
+| [hull-pool.md](hull-pool.md) | BUILT 2026-10-06: one hull economy for the player, the NPC factions and the hive from vanilla's own patrol counts, patrol FP, quality and fleet size; fleets hold their FP against the faction's pool until home, losses are rebuilt only from Heavy Industry ships output; where it binds, what it shows, the scale. |
 # Knowledge base
 
 Notes written while building The Abyssal War intel screen (Sept 2026).

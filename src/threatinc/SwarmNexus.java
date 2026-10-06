@@ -43,6 +43,12 @@ public class SwarmNexus extends BaseIndustry {
 				market.getSize());
 		demand(com.fs.starfarer.api.impl.campaign.ids.Commodities.HEAVY_MACHINERY,
 				Math.max(1, market.getSize() - 2));
+		// the patrols vanilla would keep over a hive of this size and military tier
+		// (ThreatHulls.patrolTable: the Nexus a Patrol HQ, a Bastion a Military Base,
+		// Swarm Command a High Command) - what the hull pool reads as its standing
+		// hulls and the posture as its garrison want (ThreatHulls, 2026-10-06)
+		ThreatHulls.applyPatrols(market, getModId(3),
+				ThreatHulls.patrolTable(market.getSize(), SwarmBastion.tier(market)));
 		// wears down with the disruption days on the clock, like the batteries
 		float resilience = ThreatColonyManager.disruptedDefenseResilience(this);
 		com.fs.starfarer.api.combat.StatBonus defense = market.getStats().getDynamic()
@@ -89,6 +95,7 @@ public class SwarmNexus extends BaseIndustry {
 		defense.unmodifyMult(getModId());
 		defense.unmodifyFlat(getModId(1));
 		defense.unmodifyMult(getModId(2));
+		ThreatHulls.unapplyPatrols(market, getModId(3));
 	}
 
 	// hive-only organ: never offered in the player's construction picker

@@ -315,6 +315,10 @@ public class ThreatPosture {
 	 */
 	public static float minimumFP(MarketAPI market) {
 		if (market == null) return 0f;
+		// the hull pool (ThreatHulls, 2026-10-06): the garrison a hive keeps is what
+		// vanilla would keep over a world of its size and military tier, read as a
+		// human world's is; the table still shapes what is built
+		if (ThreatHulls.enabled()) return Math.max(ThreatHulls.standingFP(market), rowsFP(market, 0, 1));
 		return rowsFP(market, 0, ThreatColonyManager.garrisonReserve(market));
 	}
 

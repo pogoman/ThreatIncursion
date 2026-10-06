@@ -894,7 +894,8 @@ public class ThreatFleetOrders {
 		float supplies = spareOnly ? ThreatReserves.spendable(base, Commodities.SUPPLIES)
 				: ThreatReserves.available(base, Commodities.SUPPLIES);
 		float points = threatinc.rules.ReachRules.payablePoints(fuel, supplies, per[0], per[1]);
-		return points >= Float.MAX_VALUE ? Float.MAX_VALUE : points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+		float fp = points >= Float.MAX_VALUE ? Float.MAX_VALUE : points * IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
+		return ThreatHulls.cap(base, fp); // and no more hulls than the faction's pool holds free (ThreatHulls)
 	}
 
 	/**

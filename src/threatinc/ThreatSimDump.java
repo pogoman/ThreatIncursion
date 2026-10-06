@@ -47,6 +47,7 @@ public class ThreatSimDump {
 		// the first poll of a session always dumps, so any save loaded with the switch on is a start
 		if (mapWritten && last instanceof Long && day - (Long) last < DUMP_DAYS) return;
 		Global.getSector().getPersistentData().put(KEY_LAST_DUMP, day);
+		ThreatHulls.logMonth(); // every side's hull pool, with the month's state
 		try {
 			if (!mapWritten) {
 				Global.getSettings().writeTextFileToCommon("threatinc_simmap.json", map().toString(1));
@@ -234,6 +235,11 @@ public class ThreatSimDump {
 			o.put("strikesSuffered", w == null ? 0 : w.strikesSuffered);
 			String strategy = ThreatWarCouncil.strategy(fid);
 			o.put("strategy", strategy == null ? "" : strategy);
+			o.put("hulls", (int) ThreatHulls.standingFP(fid));
+			o.put("hullsOut", (int) ThreatHulls.committedFP(fid));
+			o.put("hullsLost", (int) ThreatHulls.debt(fid));
+			o.put("hullsFree", (int) ThreatHulls.freeFP(fid));
+			o.put("hullYards", (int) ThreatHulls.productionFP(fid));
 			out.put(o);
 		}
 		return out;

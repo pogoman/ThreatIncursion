@@ -864,6 +864,10 @@ public class ThreatIncConfig {
 
 	// ---- player aid (docs/player-aid.md) ----
 
+	/** One hull economy from vanilla's figures, every side (ThreatHulls; the user, 2026-10-06): standing hulls from patrol counts, losses rebuilt from ships output only. Off: the player's aidBaseFP allowance and free NPC hulls. */
+	public static boolean hullPool()          { return b("threatinc_hullPool", true); }
+	/** Multiplies every market's standing hulls (1 = vanilla's patrol figure). */
+	public static float hullPoolMult()        { return f("threatinc_hullPoolMult"); }
 	/** Whether the player can send aid from their colonies and the capacity ledger applies. */
 	public static boolean aidEnabled()        { return b("threatinc_aidEnabled", true); }
 	/** Fleet points a player colony can have at sea at 100% fleet size. */

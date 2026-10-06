@@ -1067,6 +1067,22 @@
 	# returnRefundMult. Your own fleets keep the rule above.
 	"threatinc_returnHullShare": 0.8,
 
+	# The hull pool (docs/hull-pool.md; the user, 2026-10-06): one hull economy
+	# for the player, the NPC factions and the hive, from vanilla's own figures.
+	# A market's standing hulls are the patrols vanilla keeps over it (its
+	# military structure and size set the counts, 20 / 37.5 / 62.5 FP a light /
+	# medium / heavy patrol) adjusted as vanilla adjusts a fleet's strength:
+	# quality (the faction's best shipyard - a pristine nanoforge anywhere -
+	# stability, doctrine), the market's fleet size and its officer doctrine. A
+	# faction's pool is the sum; every fleet the war sends holds its FP against
+	# it until home, and what does not come back is a debt rebuilt only from
+	# Heavy Industry / Orbital Works ships output at fabFPPerShipUnit. No
+	# shipyard, no replacement. The hive's garrison want is the same figure.
+	# Off: NPC hulls are free (supplies and fuel alone pay a fleet) and the
+	# player has the aidBaseFP allowance below.
+	"threatinc_hullPool": true,
+	"threatinc_hullPoolMult": 1,
+
 	# Player aid (docs/player-aid.md): what you send from your own colonies to
 	# other factions, from the war board. Capacity is the colony's vanilla
 	# "Fleet size %" times aidBaseFP in fleet points; every fleet you launch
