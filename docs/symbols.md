@@ -376,7 +376,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAid.aidConvoysFor(String recipientFactionId)` :627
 - `ThreatAid.keep(Commodities c)` :638 - Unused-import guard.
 
-## ThreatAidCapacity (623 lines)
+## ThreatAidCapacity (624 lines)
 - `ThreatAidCapacity.all()` :78
 - `ThreatAidCapacity.enabled()` :87
 - `ThreatAidCapacity.applies(MarketAPI market)` :95 - Whether the ledger applies to this market's fleets:
@@ -1867,31 +1867,33 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundWarCondition.days(float d)` :142
 - `ThreatGroundWarCondition.fmt(float f)` :147
 
-## ThreatHulls (284 lines)
-- `ThreatHulls.enabled()` :56 - Mean combat points of vanilla's patrol weights (MilitaryBase.getPatrolCombatFP:
+## ThreatHulls (319 lines)
+- `ThreatHulls.enabled()` :58 - Mean combat points of vanilla's patrol weights (MilitaryBase.getPatrolCombatFP:
 ### vanilla's patrol table, for the hive's own structures
-- `ThreatHulls.patrolTable(int size, int tier)` :71 - The patrols vanilla's MilitaryBase.apply sets for a market of this size under a Patrol HQ (tier 0), a Military Base (1) or a High Command (2), as {light, medium, heavy}.
-- `ThreatHulls.applyPatrols(MarketAPI market, String modId, int[] counts)` :90 - Sets the market's patrol counts to the table's, under the given modifier id.
-- `ThreatHulls.unapplyPatrols(MarketAPI market, String modId)` :97
+- `ThreatHulls.patrolTable(int size, int tier)` :73 - The patrols vanilla's MilitaryBase.apply sets for a market of this size under a Patrol HQ (tier 0), a Military Base (1) or a High Command (2), as {light, medium, heavy}.
+- `ThreatHulls.applyPatrols(MarketAPI market, String modId, int[] counts)` :92 - Sets the market's patrol counts to the table's, under the given modifier id.
+- `ThreatHulls.unapplyPatrols(MarketAPI market, String modId)` :99
 ### standing hulls
-- `ThreatHulls.patrols(MarketAPI market, String stat)` :109 - Vanilla's patrol count of one weight over the market.
-- `ThreatHulls.patrolFP(MarketAPI market)` :118 - The combat points of the patrols vanilla would keep over the market, unadjusted:
-- `ThreatHulls.standingFP(MarketAPI market)` :130 - The market's standing hulls:
-- `ThreatHulls.marketsOf(String factionId)` :138 - The faction's markets that count:
-- `ThreatHulls.standingFP(String factionId)` :148 - The faction's standing hulls:
+- `ThreatHulls.patrols(MarketAPI market, String stat)` :111 - Vanilla's patrol count of one weight over the market.
+- `ThreatHulls.patrolFP(MarketAPI market)` :120 - The combat points of the patrols vanilla would keep over the market, unadjusted:
+- `ThreatHulls.standingFP(MarketAPI market)` :132 - The market's standing hulls:
+- `ThreatHulls.marketsOf(String factionId)` :140 - The faction's markets that count:
+- `ThreatHulls.standingFP(String factionId)` :150 - The faction's standing hulls:
 ### production: what rebuilds a loss
-- `ThreatHulls.shipUnits(MarketAPI market)` :163 - Hull units the market's shipyard makes a month:
-- `ThreatHulls.productionFP(String factionId)` :174 - Fleet points of hulls the faction's shipyards make a month:
+- `ThreatHulls.shipUnits(MarketAPI market)` :165 - Hull units the market's shipyard makes a month:
+- `ThreatHulls.productionFP(String factionId)` :176 - Fleet points of hulls the faction's shipyards make a month:
 ### the debt: hulls lost, not yet rebuilt
-- `ThreatHulls.debt(String factionId)` :195 - Fleet points of hulls the faction has lost and not yet rebuilt.
-- `ThreatHulls.lose(String factionId, float fp, String label)` :201 - Books hulls lost:
-- `ThreatHulls.rebuild()` :215 - Daily:
+- `ThreatHulls.debt(String factionId)` :197 - Fleet points of hulls the faction has lost and not yet rebuilt.
+- `ThreatHulls.lose(String factionId, float fp, String label)` :203 - Books hulls lost:
+### the navy: hulls the yards built beyond the losses (the user, 2026-10-06:
+- `ThreatHulls.built(String factionId)` :229 - Fleet points of hulls the faction's yards have built beyond its losses:
+- `ThreatHulls.rebuild()` :242 - Daily:
 ### what the pool can pay
-- `ThreatHulls.committedFP(String factionId)` :247 - Fleet points the faction's fleets out hold against the pool (the ledger's live entries).
-- `ThreatHulls.freeFP(String factionId)` :258 - Hulls the faction can send now:
-- `ThreatHulls.cap(MarketAPI base, float payable)` :264 - Caps a reserve's payable fleet points at the faction's free hulls;
-- `ThreatHulls.describe(String factionId)` :270 - One line for a faction:
-- `ThreatHulls.logMonth()` :277 - The month line for the log:
+- `ThreatHulls.committedFP(String factionId)` :282 - Fleet points the faction's fleets out hold against the pool (the ledger's live entries).
+- `ThreatHulls.freeFP(String factionId)` :293 - Hulls the faction can send now:
+- `ThreatHulls.cap(MarketAPI base, float payable)` :299 - Caps a reserve's payable fleet points at the faction's free hulls;
+- `ThreatHulls.describe(String factionId)` :305 - One line for a faction:
+- `ThreatHulls.logMonth()` :312 - The month line for the log:
 
 ## ThreatIncCampaignPlugin (48 lines)
 - `ThreatIncCampaignPlugin.getId()` :21
@@ -3414,7 +3416,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSiegeReportIntel.countDestroyed()` :115
 - `ThreatSiegeReportIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :124
 
-## ThreatSimDump (493 lines)
+## ThreatSimDump (494 lines)
 - `ThreatSimDump.forget()` :34
 - `ThreatSimDump.poll()` :39
 - `ThreatSimDump.map()` :65 - Every star system, in light years.
@@ -3426,19 +3428,19 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSimDump.worlds()` :181 - Every human world, forward bases included (flagged).
 - `ThreatSimDump.forwardBases()` :216
 - `ThreatSimDump.factions()` :228
-- `ThreatSimDump.finite(float v)` :251
-- `ThreatSimDump.systemOf(MarketAPI m)` :255
-- `ThreatSimDump.systemOf(String marketId)` :259
-- `ThreatSimDump.system(String id)` :263
-- `ThreatSimDump.systemOf(CampaignFleetAPI f)` :270 - Where a fleet is now:
-- `ThreatSimDump.etaDays(CampaignFleetAPI f, String toSystemId)` :275
-- `ThreatSimDump.fleet(String owner, String kind, float fp, String from, String to, String target, float etaDays)` :281
-- `ThreatSimDump.targetsOf(List<MarketAPI> targets)` :294
-- `ThreatSimDump.fleets()` :301 - Every fleet in flight or on station, either side, in the simulator's terms.
-- `ThreatSimDump.skipped(String what, Throwable t)` :400
-- `ThreatSimDump.knowledge()` :405 - What each side knows of the other, as ages in days.
-- `ThreatSimDump.strategy()` :443 - Councils and their plays in progress.
-- `ThreatSimDump.war()` :479
+- `ThreatSimDump.finite(float v)` :252
+- `ThreatSimDump.systemOf(MarketAPI m)` :256
+- `ThreatSimDump.systemOf(String marketId)` :260
+- `ThreatSimDump.system(String id)` :264
+- `ThreatSimDump.systemOf(CampaignFleetAPI f)` :271 - Where a fleet is now:
+- `ThreatSimDump.etaDays(CampaignFleetAPI f, String toSystemId)` :276
+- `ThreatSimDump.fleet(String owner, String kind, float fp, String from, String to, String target, float etaDays)` :282
+- `ThreatSimDump.targetsOf(List<MarketAPI> targets)` :295
+- `ThreatSimDump.fleets()` :302 - Every fleet in flight or on station, either side, in the simulator's terms.
+- `ThreatSimDump.skipped(String what, Throwable t)` :401
+- `ThreatSimDump.knowledge()` :406 - What each side knows of the other, as ages in days.
+- `ThreatSimDump.strategy()` :444 - Councils and their plays in progress.
+- `ThreatSimDump.war()` :480
 
 ## ThreatSoftening (1733 lines)
 - `ThreatSoftening.mustering(ThreatFleetOrders.Order o)` :138 - Whether the order's fleet is still mustering with its force.
