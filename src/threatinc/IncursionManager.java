@@ -4983,9 +4983,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (defOut != null) defOut[0] = def;
 		float need = def * ThreatIncConfig.strikeStagedMargin();
 		int size = strikeFleetSize(Math.min(9, staging.getSize() + 3));
-		// with a strike fund the strike is paid from it alone, and is at least strikeStagedMinFP
+		// with a strike fund the strike is paid from it alone. The war's OPENING strike - nobody mobilised
+		// yet - sails with at least strikeStagedMinFP, so the hive is strong before the first attack
+		// wakes the humans (the user, 2026-10-06: the floor was never meant for every strike; sl2 spent
+		// 8,169 FP on each 120-defence forward base). Every later strike is sized to its target alone.
 		boolean funded = ThreatIncConfig.strikeFundShare() > 0f;
-		float minFP = funded ? ThreatIncConfig.strikeStagedMinFP() : 0f;
+		float minFP = funded && ThreatWarState.warFactionIds().isEmpty() ? ThreatIncConfig.strikeStagedMinFP() : 0f;
 		float bank = funded ? ThreatColonyManager.strikeFund() : ThreatColonyManager.hivePoolableFP(staging);
 		// the war's first strike waits until the fund holds strikeStagedOpenFP (a trial of 2026-10-06, hw27:
 		// does the swarm win on the size of its strikes or on the growth before the war opens?)

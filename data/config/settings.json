@@ -120,9 +120,12 @@
 	# what is missing. A trial of 2026-10-05 (hw21), not the user's decision.
 	"threatinc_strikeStagedGarrisons": false,
 	"threatinc_strikeStagedGatherLY": 0,
-	# The strike fund (trials hw22-hw27, 2026-10-05/06; 0.3 and 8000 won six of six games for the swarm): this share of every hive
-	# colony's fabrication is set aside hive-wide and alone pays staged strikes,
-	# each of at least MinFP fleet points. 0 = no fund, the pooled banks pay.
+	# The strike fund: this share of every hive colony's fabrication is set aside
+	# hive-wide and alone pays staged strikes; 0 = no fund, the pooled banks pay.
+	# The war's OPENING strike - nobody mobilised yet - sails with at least MinFP, so
+	# the hive is strong before the first attack wakes the humans; every later strike
+	# is sized to its target (the user, 2026-10-06; the hw22-hw28 trials had wrongly
+	# applied the floor to every strike).
 	"threatinc_strikeFundShare": 0.3,
 	"threatinc_strikeStagedMinFP": 8000,
 	# ...and the war's first strike waits until the fund holds OpenFP (trial hw27).
