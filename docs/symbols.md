@@ -939,7 +939,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatColonyUpkeep.take(String key)` :384
 - `ThreatColonyUpkeep.logMonth()` :391 - The month's upkeep line for the census log, and the month's tallies reset.
 
-## ThreatConvoys (2721 lines)
+## ThreatConvoys (2724 lines)
 - `ThreatConvoys.isFrontRun()` :87 - On the first fleet of a sailing split across several (a load past vanilla's maxShipsInAIFleet):
 - `ThreatConvoys.fromName()` :92 - The sender:
 - `ThreatConvoys.toName()` :97 - The destination:
@@ -957,121 +957,121 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatConvoys.paidEscort(ThreatBases.Base donor, float want, float ly, float fuelLoad, float suppliesLoad)` :209 - The escort points the donor pays a voyage of ly for, at most want:
 - `ThreatConvoys.payable(ThreatBases.Base donor, String commodityId, float base, float rate, float load)` :221 - The escort points one commodity pays for at rate a point:
 - `ThreatConvoys.payEscort(CampaignFleetAPI fleet, ThreatBases.Base donor, float escort, float ly, float[] load)` :241 - Draws a convoy's voyage and its escort of escort points from the donor and records them on the fleet (ThreatReturns.provision), so the return re-banks its hulls at what survived:
-- `ThreatConvoys.payEscortPart(ThreatBases.Base donor, String commodityId, float baseBill, float extraBill, float load, float[] burnt, int k)` :261 - One commodity of an escort's voyage:
+- `ThreatConvoys.payEscortPart(ThreatBases.Base donor, String commodityId, float baseBill, float extraBill, float load, float[] burnt, int k)` :264 - One commodity of an escort's voyage:
 ### reach and hauls (2026-10-01, the user's call: no fuel radius - a supply
-- `ThreatConvoys.baseEscort()` :285 - The base escort (convoyEscortFP):
-- `ThreatConvoys.haulFuel(float ly)` :290 - Fuel a voyage of ly burns, the base escort's at escortRate, whatever escort sails:
-- `ThreatConvoys.haulPerUnit(String commodityId, float ly)` :302 - Fuel a unit of a commodity pooled across ly burns:
-- `ThreatConvoys.haulRate(MarketAPI donor, MarketAPI to, String commodityId)` :307 - The haul rate for stock pooled from donor to a pool at to:
-- `ThreatConvoys.haulRate(MarketAPI donor, Vector2f at, String commodityId)` :313 - As above to a hyperspace location:
-- `ThreatConvoys.netOfHaul(String commodityId, float have, float fuelHave, float perUnit)` :323 - Of have a donor holds for a pool, what arrives paid for at perUnit (haulRate):
-- `ThreatConvoys.payHaul(MarketAPI donor, float amount, float perUnit)` :328 - Burns the haul of amount pooled from donor (its fuel above the floor);
-- `ThreatConvoys.drawEscort(ThreatBases.Base donor, String commodityId, float amount)` :333
-- `ThreatConvoys.drawVoyage(ThreatBases.Base donor, String commodityId, float amount)` :340 - Takes up to amount of #voyageStock;
-- `ThreatConvoys.logHeld(ThreatBases.Base from, float ly)` :350 - Logs a sailing whose donor cannot pay its voyage (paysVoyage):
-- `ThreatConvoys.refundEscort(CampaignFleetAPI fleet, ThreatBases.Base donor)` :359 - A convoy that never sailed:
-- `ThreatConvoys.inbound(String marketId)` :377 - Cargo still at sea to this base, in ThreatReserves.COMMODITIES order:
+- `ThreatConvoys.baseEscort()` :288 - The base escort (convoyEscortFP):
+- `ThreatConvoys.haulFuel(float ly)` :293 - Fuel a voyage of ly burns, the base escort's at escortRate, whatever escort sails:
+- `ThreatConvoys.haulPerUnit(String commodityId, float ly)` :305 - Fuel a unit of a commodity pooled across ly burns:
+- `ThreatConvoys.haulRate(MarketAPI donor, MarketAPI to, String commodityId)` :310 - The haul rate for stock pooled from donor to a pool at to:
+- `ThreatConvoys.haulRate(MarketAPI donor, Vector2f at, String commodityId)` :316 - As above to a hyperspace location:
+- `ThreatConvoys.netOfHaul(String commodityId, float have, float fuelHave, float perUnit)` :326 - Of have a donor holds for a pool, what arrives paid for at perUnit (haulRate):
+- `ThreatConvoys.payHaul(MarketAPI donor, float amount, float perUnit)` :331 - Burns the haul of amount pooled from donor (its fuel above the floor);
+- `ThreatConvoys.drawEscort(ThreatBases.Base donor, String commodityId, float amount)` :336
+- `ThreatConvoys.drawVoyage(ThreatBases.Base donor, String commodityId, float amount)` :343 - Takes up to amount of #voyageStock;
+- `ThreatConvoys.logHeld(ThreatBases.Base from, float ly)` :353 - Logs a sailing whose donor cannot pay its voyage (paysVoyage):
+- `ThreatConvoys.refundEscort(CampaignFleetAPI fleet, ThreatBases.Base donor)` :362 - A convoy that never sailed:
+- `ThreatConvoys.inbound(String marketId)` :380 - Cargo still at sea to this base, in ThreatReserves.COMMODITIES order:
 ### logistics AI (slow tick)
-- `ThreatConvoys.stagingHive(MarketAPI base)` :410 - A STAGING BASE is the military world a siege sails from:
-- `ThreatConvoys.stockReachLY(MarketAPI donor)` :450 - How far a market's stock reaches another market:
-- `ThreatConvoys.stagingBaseFor(MarketAPI colony)` :464 - The faction's nearest staging base this colony's stock reaches (#stockReachLY;
-- `ThreatConvoys.stagingTargets(MarketAPI base)` :502 - Target stock of each reserve commodity at a staging base, in ThreatReserves.COMMODITIES order:
-- `ThreatConvoys.bankTargets(MarketAPI base)` :512 - What the base keeps banked for sieges, its own and those it relays for:
-- `ThreatConvoys.withVoyage(MarketAPI base, float[] bank)` :525 - The targets bank raised to what a garrison's voyage from the base waits on (ThreatFrontlines.garrisonWants, 2026-09-29):
-- `ThreatConvoys.bankTarget(MarketAPI base, String commodityId)` :540 - One commodity of #bankTargets.
-- `ThreatConvoys.ownWants(MarketAPI m)` :546 - A market's own targets, relays aside:
-- `ThreatConvoys.ageTargetsMemo()` :551 - Drops the day's memos when a day has passed since they were drawn.
-- `ThreatConvoys.siegeStock(MarketAPI base)` :578 - #stagingTargets for the base's own siege alone, relays aside:
-- `ThreatConvoys.committedBefore(MarketAPI base, float[] wants)` :645 - The funding the faction's cheaper siege stagers claim out of the same stock network as base, COMMODITIES order:
-- `ThreatConvoys.stagesForHunt(MarketAPI base)` :684 - Whether the base stages for a hunting force, its siege being past what the faction can pay for (#siegeStock):
-- `ThreatConvoys.siegeFundable(float[] wants, float[] have)` :707 - Whether a siege's fuel and supplies (wants, COMMODITIES order) fit in have (#fundingInReach).
-- `ThreatConvoys.siegeFundable(float[] wants, float[] have, float share)` :712 - As above, the siege needing at most share of each.
-- `ThreatConvoys.fundingInReach(MarketAPI base)` :727 - What the faction can bring to the base within stagingHorizonMonths, in COMMODITIES order:
-- `ThreatConvoys.stockNetwork(MarketAPI base)` :744 - The base and every market of its faction whose stock can reach it by convoy, directly (IncursionManager.marketsReaching) or passed on through others - the reach relays give it (#relayPlan).
-- `ThreatConvoys.stagingTarget(MarketAPI base, String commodityId)` :760 - One commodity of #stagingTargets.
-- `ThreatConvoys.forgetStagingTargets()` :772 - Drops the stagingTargets memos;
+- `ThreatConvoys.stagingHive(MarketAPI base)` :413 - A STAGING BASE is the military world a siege sails from:
+- `ThreatConvoys.stockReachLY(MarketAPI donor)` :453 - How far a market's stock reaches another market:
+- `ThreatConvoys.stagingBaseFor(MarketAPI colony)` :467 - The faction's nearest staging base this colony's stock reaches (#stockReachLY;
+- `ThreatConvoys.stagingTargets(MarketAPI base)` :505 - Target stock of each reserve commodity at a staging base, in ThreatReserves.COMMODITIES order:
+- `ThreatConvoys.bankTargets(MarketAPI base)` :515 - What the base keeps banked for sieges, its own and those it relays for:
+- `ThreatConvoys.withVoyage(MarketAPI base, float[] bank)` :528 - The targets bank raised to what a garrison's voyage from the base waits on (ThreatFrontlines.garrisonWants, 2026-09-29):
+- `ThreatConvoys.bankTarget(MarketAPI base, String commodityId)` :543 - One commodity of #bankTargets.
+- `ThreatConvoys.ownWants(MarketAPI m)` :549 - A market's own targets, relays aside:
+- `ThreatConvoys.ageTargetsMemo()` :554 - Drops the day's memos when a day has passed since they were drawn.
+- `ThreatConvoys.siegeStock(MarketAPI base)` :581 - #stagingTargets for the base's own siege alone, relays aside:
+- `ThreatConvoys.committedBefore(MarketAPI base, float[] wants)` :648 - The funding the faction's cheaper siege stagers claim out of the same stock network as base, COMMODITIES order:
+- `ThreatConvoys.stagesForHunt(MarketAPI base)` :687 - Whether the base stages for a hunting force, its siege being past what the faction can pay for (#siegeStock):
+- `ThreatConvoys.siegeFundable(float[] wants, float[] have)` :710 - Whether a siege's fuel and supplies (wants, COMMODITIES order) fit in have (#fundingInReach).
+- `ThreatConvoys.siegeFundable(float[] wants, float[] have, float share)` :715 - As above, the siege needing at most share of each.
+- `ThreatConvoys.fundingInReach(MarketAPI base)` :730 - What the faction can bring to the base within stagingHorizonMonths, in COMMODITIES order:
+- `ThreatConvoys.stockNetwork(MarketAPI base)` :747 - The base and every market of its faction whose stock can reach it by convoy, directly (IncursionManager.marketsReaching) or passed on through others - the reach relays give it (#relayPlan).
+- `ThreatConvoys.stagingTarget(MarketAPI base, String commodityId)` :763 - One commodity of #stagingTargets.
+- `ThreatConvoys.forgetStagingTargets()` :775 - Drops the stagingTargets memos;
 ### a war council play's staging (ThreatPlays, docs/war-council.md section 16)
-- `ThreatConvoys.playStagingOf(MarketAPI base)` :797 - The play staging the base, or null;
-- `ThreatConvoys.stageForPlay(MarketAPI base, String playId, StarSystemAPI system, float[] wants)` :804 - The play stages the base against the system for its expedition's wants (IncursionManager.expeditionWants).
-- `ThreatConvoys.clearPlayStaging(String playId)` :815 - The play's bases stage as the faction's sieges would again.
+- `ThreatConvoys.playStagingOf(MarketAPI base)` :800 - The play staging the base, or null;
+- `ThreatConvoys.stageForPlay(MarketAPI base, String playId, StarSystemAPI system, float[] wants)` :807 - The play stages the base against the system for its expedition's wants (IncursionManager.expeditionWants).
+- `ThreatConvoys.clearPlayStaging(String playId)` :818 - The play's bases stage as the faction's sieges would again.
 ### relays: stock carried on toward a staging base past its donors' reach
-- `ThreatConvoys.relayTargets(MarketAPI market)` :847 - What a market holds to pass on, in ThreatReserves.COMMODITIES order:
-- `ThreatConvoys.relayPlan(FactionAPI faction)` :877 - RELAYS (2026-09-29).
-- `ThreatConvoys.drawRelays(FactionAPI faction, RelayPlan plan)` :893
-- `ThreatConvoys.pickRelay(FactionAPI faction, MarketAPI needy, Map<MarketAPI, Integer> reached)` :969 - The relay for a market its donors cannot keep stocked, or null:
-- `ThreatConvoys.ownSpare(RelayPlan plan, MarketAPI donor, int i)` :998 - What a donor could send of commodity i by the plan so far:
-- `ThreatConvoys.ownKeep(MarketAPI m, int i)` :1007 - The stock a market keeps of commodity i for itself, relays aside:
-- `ThreatConvoys.relayHold(MarketAPI relay, MarketAPI to, String commodityId)` :1018 - What a relay holds for the market it passes stock on to:
-- `ThreatConvoys.capacityFor(String commodityId)` :1041 - A REFERENCE load (convoyMarineCapacity / convoyCargoCapacity):
-- `ThreatConvoys.shortfall(MarketAPI base, float[] targets)` :1047 - What a base is short of its targets, net of its stock and of what is already at sea to it (#inbound).
-- `ThreatConvoys.worthSailing(String commodityId, float shortBy, float target)` :1057 - Whether a shortfall is worth a sailing:
-- `ThreatConvoys.planLogistics(Random random)` :1074 - One planning pass:
-- `ThreatConvoys.compare(Integer a, Integer b)` :1101
-- `ThreatConvoys.compare(Object[] a, Object[] b)` :1108
-- `ThreatConvoys.planRelief(FactionAPI faction, Random random)` :1164 - RELIEF:
-- `ThreatConvoys.compare(MarketAPI a, MarketAPI b)` :1183
-- `ThreatConvoys.planOutpostReturns(FactionAPI faction, Random random)` :1230 - An outpost's stockpile is the forward base for front runs in its own system;
-- `ThreatConvoys.outpostHome(FactionAPI faction, ThreatOutposts.Outpost o)` :1250 - Where an outpost's stock ships home once its system holds no hive:
-- `ThreatConvoys.nearestColony(FactionAPI faction, Vector2f hyperLoc)` :1258 - The faction's nearest colony to a hyperspace location, military or not.
+- `ThreatConvoys.relayTargets(MarketAPI market)` :850 - What a market holds to pass on, in ThreatReserves.COMMODITIES order:
+- `ThreatConvoys.relayPlan(FactionAPI faction)` :880 - RELAYS (2026-09-29).
+- `ThreatConvoys.drawRelays(FactionAPI faction, RelayPlan plan)` :896
+- `ThreatConvoys.pickRelay(FactionAPI faction, MarketAPI needy, Map<MarketAPI, Integer> reached)` :972 - The relay for a market its donors cannot keep stocked, or null:
+- `ThreatConvoys.ownSpare(RelayPlan plan, MarketAPI donor, int i)` :1001 - What a donor could send of commodity i by the plan so far:
+- `ThreatConvoys.ownKeep(MarketAPI m, int i)` :1010 - The stock a market keeps of commodity i for itself, relays aside:
+- `ThreatConvoys.relayHold(MarketAPI relay, MarketAPI to, String commodityId)` :1021 - What a relay holds for the market it passes stock on to:
+- `ThreatConvoys.capacityFor(String commodityId)` :1044 - A REFERENCE load (convoyMarineCapacity / convoyCargoCapacity):
+- `ThreatConvoys.shortfall(MarketAPI base, float[] targets)` :1050 - What a base is short of its targets, net of its stock and of what is already at sea to it (#inbound).
+- `ThreatConvoys.worthSailing(String commodityId, float shortBy, float target)` :1060 - Whether a shortfall is worth a sailing:
+- `ThreatConvoys.planLogistics(Random random)` :1077 - One planning pass:
+- `ThreatConvoys.compare(Integer a, Integer b)` :1104
+- `ThreatConvoys.compare(Object[] a, Object[] b)` :1111
+- `ThreatConvoys.planRelief(FactionAPI faction, Random random)` :1167 - RELIEF:
+- `ThreatConvoys.compare(MarketAPI a, MarketAPI b)` :1186
+- `ThreatConvoys.planOutpostReturns(FactionAPI faction, Random random)` :1233 - An outpost's stockpile is the forward base for front runs in its own system;
+- `ThreatConvoys.outpostHome(FactionAPI faction, ThreatOutposts.Outpost o)` :1253 - Where an outpost's stock ships home once its system holds no hive:
+- `ThreatConvoys.nearestColony(FactionAPI faction, Vector2f hyperLoc)` :1261 - The faction's nearest colony to a hyperspace location, military or not.
 ### front runs: supply and withdrawal (docs/design-theory.md 8.3)
-- `ThreatConvoys.convoyBoundForFront(String hiveMarketId)` :1277
-- `ThreatConvoys.pickupBoundFor(String hiveMarketId)` :1285 - Whether a withdrawal run is already on its way to this front.
-- `ThreatConvoys.inboundFront(String hiveMarketId)` :1293 - [marines, armaments] aboard the supply runs already at sea to this front (the hold, while the fleet lives).
-- `ThreatConvoys.frontWants(ThreatGroundFronts.GroundFront front, MarketAPI hive)` :1305 - What a friendly front wants brought:
-- `ThreatConvoys.pickFrontBase(FactionAPI faction, MarketAPI hive, boolean pickup, float[] wants)` :1337 - Where a front run sails from.
-- `ThreatConvoys.pickFrontBase(FactionAPI faction, MarketAPI hive, boolean pickup, float[] wants, java.util.Set<String> skip)` :1343 - As above, passing over the bases in skip (ids of those already drawn on this pass).
-- `ThreatConvoys.colonyBase(FactionAPI faction, Vector2f hyperLoc, MarketAPI link)` :1384 - The faction's nearest colony base by hyperspace distance, at any range and never a link;
-- `ThreatConvoys.frontScore(MarketAPI m, float[] wants)` :1401 - How much of a front run's wants a market covers, 0-2 (marines + armaments, each as a share).
-- `ThreatConvoys.planFrontRuns(FactionAPI faction, Random random)` :1420 - Every friendly front of a mobilised faction with no pickup already bound for it:
-- `ThreatConvoys.canRunTo(FactionAPI faction, MarketAPI hive)` :1499 - Why no run can sail to this world now, or null.
-- `ThreatConvoys.supportFor(FactionAPI faction, MarketAPI hive)` :1520 - Sends one Support sortie to clear a contested orbit, if none is out already (a Defend on its way there counts).
-- `ThreatConvoys.supplyAsk(ThreatGroundFronts.GroundFront front, MarketAPI hive, int tier)` :1546 - What the board's Supply order asks the base for at a load tier:
-- `ThreatConvoys.supplyFront(MarketAPI hive, FactionAPI faction, int tier, Random random)` :1574 - The board's Supply order:
-- `ThreatConvoys.supplyBlockReason(FactionAPI faction, MarketAPI hive, int tier)` :1590 - Why the board's Supply order at this load tier would send nothing now, or null if a run would sail.
-- `ThreatConvoys.pullOutBlockReason(FactionAPI faction, MarketAPI hive)` :1620 - Why the board's Pull out order would send nothing now, or null if a run would sail.
-- `ThreatConvoys.pullOutFront(MarketAPI hive, FactionAPI faction, Random random)` :1633 - The board's Pull out order:
-- `ThreatConvoys.dispatchFrontRun(ThreatBases.Base base, MarketAPI hive, ThreatGroundFronts.GroundFront front, FactionAPI faction, float[] load, boolean pickup, Random random)` :1659 - Builds the run at the base:
-- `ThreatConvoys.sailFrontRun(Hulls h, ThreatBases.Base base, MarketAPI hive, FactionAPI faction, boolean pickup, boolean paysEscort, float ly, SectorEntityToken door, Random random)` :1703 - One front run of the sailing:
-- `ThreatConvoys.pollFrontRun(Convoy c)` :1766 - A front run inside the hive system:
-- `ThreatConvoys.stageTo(MarketAPI target, FactionAPI faction, int tier, Random random)` :1855 - A player-ordered staging run (the board's Supplies button):
-- `ThreatConvoys.stageTo(ThreatBases.Base target, FactionAPI faction, int tier, Random random)` :1860 - As above to either kind of base - a colony, or the player's outpost (its station is the depot).
-- `ThreatConvoys.stageLoad(MarketAPI donor, MarketAPI target, int tier)` :1882 - What a hand-ordered convoy from this donor carries to this target at a load tier:
-- `ThreatConvoys.stageLoad(MarketAPI donor, ThreatBases.Base target, int tier)` :1887 - As above to either kind of base.
-- `ThreatConvoys.stageDonor(MarketAPI target, FactionAPI faction, int tier)` :1924 - The colony a Stage order to this target would load at:
-- `ThreatConvoys.stageDonor(ThreatBases.Base target, FactionAPI faction, int tier)` :1929 - As above to either kind of base.
-- `ThreatConvoys.spare(MarketAPI donor, String commodityId)` :1955 - Stock a colony can spare:
-- `ThreatConvoys.sendable(MarketAPI donor, MarketAPI base, String commodityId)` :1991 - What a donor may send a base of one commodity:
-- `ThreatConvoys.minLoad(MarketAPI donor, String commodityId)` :2003 - The least worth a sailing from this donor (a floor, not a cap):
-- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId)` :2011 - The planner's donor:
-- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId, java.util.Set<MarketAPI> skip)` :2016 - As above, passing over the donors in skip (those already drawn on this pass).
-- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random)` :2043 - Builds the convoy fleet at the donor, loads the cargo aboard (clamped to what the hulls can actually carry), draws exactly that from the donor's reserve, and sends it to the base.
-- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2053 - As above, bound for another faction's colony:
-- `ThreatConvoys.dispatch(ThreatBases.Base donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2059
-- `ThreatConvoys.dispatch(ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2077 - The convoy itself, from either kind of base:
-- `ThreatConvoys.sailed(Hulls h, Convoy c, float[] remaining, float[] sailed)` :2132 - Books what one fleet of a sailing loaded:
-- `ThreatConvoys.sail(Hulls h, ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, boolean paysEscort, float ly, String recipientFactionId, boolean aid, Random random)` :2149 - One convoy of the sailing:
-- `ThreatConvoys.trimToHulls(Convoy c)` :2224 - After an off-screen fight vanilla removes hulls but not their cargo:
-- `ThreatConvoys.fitHulls(CampaignFleetAPI fleet, FactionAPI faction, float marines, float cargoUnits, float fuel, Random random)` :2267 - Adds the faction's own personnel, freighter and tanker hulls until the load fits (2026-09-24).
+- `ThreatConvoys.convoyBoundForFront(String hiveMarketId)` :1280
+- `ThreatConvoys.pickupBoundFor(String hiveMarketId)` :1288 - Whether a withdrawal run is already on its way to this front.
+- `ThreatConvoys.inboundFront(String hiveMarketId)` :1296 - [marines, armaments] aboard the supply runs already at sea to this front (the hold, while the fleet lives).
+- `ThreatConvoys.frontWants(ThreatGroundFronts.GroundFront front, MarketAPI hive)` :1308 - What a friendly front wants brought:
+- `ThreatConvoys.pickFrontBase(FactionAPI faction, MarketAPI hive, boolean pickup, float[] wants)` :1340 - Where a front run sails from.
+- `ThreatConvoys.pickFrontBase(FactionAPI faction, MarketAPI hive, boolean pickup, float[] wants, java.util.Set<String> skip)` :1346 - As above, passing over the bases in skip (ids of those already drawn on this pass).
+- `ThreatConvoys.colonyBase(FactionAPI faction, Vector2f hyperLoc, MarketAPI link)` :1387 - The faction's nearest colony base by hyperspace distance, at any range and never a link;
+- `ThreatConvoys.frontScore(MarketAPI m, float[] wants)` :1404 - How much of a front run's wants a market covers, 0-2 (marines + armaments, each as a share).
+- `ThreatConvoys.planFrontRuns(FactionAPI faction, Random random)` :1423 - Every friendly front of a mobilised faction with no pickup already bound for it:
+- `ThreatConvoys.canRunTo(FactionAPI faction, MarketAPI hive)` :1502 - Why no run can sail to this world now, or null.
+- `ThreatConvoys.supportFor(FactionAPI faction, MarketAPI hive)` :1523 - Sends one Support sortie to clear a contested orbit, if none is out already (a Defend on its way there counts).
+- `ThreatConvoys.supplyAsk(ThreatGroundFronts.GroundFront front, MarketAPI hive, int tier)` :1549 - What the board's Supply order asks the base for at a load tier:
+- `ThreatConvoys.supplyFront(MarketAPI hive, FactionAPI faction, int tier, Random random)` :1577 - The board's Supply order:
+- `ThreatConvoys.supplyBlockReason(FactionAPI faction, MarketAPI hive, int tier)` :1593 - Why the board's Supply order at this load tier would send nothing now, or null if a run would sail.
+- `ThreatConvoys.pullOutBlockReason(FactionAPI faction, MarketAPI hive)` :1623 - Why the board's Pull out order would send nothing now, or null if a run would sail.
+- `ThreatConvoys.pullOutFront(MarketAPI hive, FactionAPI faction, Random random)` :1636 - The board's Pull out order:
+- `ThreatConvoys.dispatchFrontRun(ThreatBases.Base base, MarketAPI hive, ThreatGroundFronts.GroundFront front, FactionAPI faction, float[] load, boolean pickup, Random random)` :1662 - Builds the run at the base:
+- `ThreatConvoys.sailFrontRun(Hulls h, ThreatBases.Base base, MarketAPI hive, FactionAPI faction, boolean pickup, boolean paysEscort, float ly, SectorEntityToken door, Random random)` :1706 - One front run of the sailing:
+- `ThreatConvoys.pollFrontRun(Convoy c)` :1769 - A front run inside the hive system:
+- `ThreatConvoys.stageTo(MarketAPI target, FactionAPI faction, int tier, Random random)` :1858 - A player-ordered staging run (the board's Supplies button):
+- `ThreatConvoys.stageTo(ThreatBases.Base target, FactionAPI faction, int tier, Random random)` :1863 - As above to either kind of base - a colony, or the player's outpost (its station is the depot).
+- `ThreatConvoys.stageLoad(MarketAPI donor, MarketAPI target, int tier)` :1885 - What a hand-ordered convoy from this donor carries to this target at a load tier:
+- `ThreatConvoys.stageLoad(MarketAPI donor, ThreatBases.Base target, int tier)` :1890 - As above to either kind of base.
+- `ThreatConvoys.stageDonor(MarketAPI target, FactionAPI faction, int tier)` :1927 - The colony a Stage order to this target would load at:
+- `ThreatConvoys.stageDonor(ThreatBases.Base target, FactionAPI faction, int tier)` :1932 - As above to either kind of base.
+- `ThreatConvoys.spare(MarketAPI donor, String commodityId)` :1958 - Stock a colony can spare:
+- `ThreatConvoys.sendable(MarketAPI donor, MarketAPI base, String commodityId)` :1994 - What a donor may send a base of one commodity:
+- `ThreatConvoys.minLoad(MarketAPI donor, String commodityId)` :2006 - The least worth a sailing from this donor (a floor, not a cap):
+- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId)` :2014 - The planner's donor:
+- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId, java.util.Set<MarketAPI> skip)` :2019 - As above, passing over the donors in skip (those already drawn on this pass).
+- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random)` :2046 - Builds the convoy fleet at the donor, loads the cargo aboard (clamped to what the hulls can actually carry), draws exactly that from the donor's reserve, and sends it to the base.
+- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2056 - As above, bound for another faction's colony:
+- `ThreatConvoys.dispatch(ThreatBases.Base donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2062
+- `ThreatConvoys.dispatch(ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2080 - The convoy itself, from either kind of base:
+- `ThreatConvoys.sailed(Hulls h, Convoy c, float[] remaining, float[] sailed)` :2135 - Books what one fleet of a sailing loaded:
+- `ThreatConvoys.sail(Hulls h, ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, boolean paysEscort, float ly, String recipientFactionId, boolean aid, Random random)` :2152 - One convoy of the sailing:
+- `ThreatConvoys.trimToHulls(Convoy c)` :2227 - After an off-screen fight vanilla removes hulls but not their cargo:
+- `ThreatConvoys.fitHulls(CampaignFleetAPI fleet, FactionAPI faction, float marines, float cargoUnits, float fuel, Random random)` :2270 - Adds the faction's own personnel, freighter and tanker hulls until the load fits (2026-09-24).
 ### splitting a load across fleets (2026-09-29: vanilla's ship limit)
-- `ThreatConvoys.fleetShipLimit()` :2301 - The most ships an AI fleet may have:
-- `ThreatConvoys.burn(Hulls h, float[] burnt)` :2317 - Takes what the escort burnt off the fleet's ask:
-- `ThreatConvoys.buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve, float ly, boolean paysEscort, boolean frontRun, boolean grow, Random random)` :2338 - Builds one convoy fleet at from for ask:
-- `ThreatConvoys.escortForValue(float[] ask)` :2374 - The escort points a load's cargo value calls for, over the convoyEscortFP every convoy sails with.
-- `ThreatConvoys.builtEscort(Hulls h)` :2383 - The escort points the donor pays for:
-- `ThreatConvoys.holds(CampaignFleetAPI fleet, float[] ask)` :2389 - The smallest share of its ask the fleet's berths, hold or tanks take;
-- `ThreatConvoys.nextHulls(Split split, float[] remaining, ThreatBases.Base from, FactionAPI faction, float ly, boolean paysEscort, boolean frontRun, Random random)` :2435 - The next fleet of a sailing:
-- `ThreatConvoys.addHull(CampaignFleetAPI fleet, FactionAPI faction, float missing, float largeAt, float mediumAt, String large, String medium, String small, Random random)` :2479 - One hull of the size the shortfall calls for, falling back to smaller ones;
-- `ThreatConvoys.loadCommodity(CargoAPI cargo, String donorId, String commodityId, float wanted)` :2496
+- `ThreatConvoys.fleetShipLimit()` :2304 - The most ships an AI fleet may have:
+- `ThreatConvoys.burn(Hulls h, float[] burnt)` :2320 - Takes what the escort burnt off the fleet's ask:
+- `ThreatConvoys.buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve, float ly, boolean paysEscort, boolean frontRun, boolean grow, Random random)` :2341 - Builds one convoy fleet at from for ask:
+- `ThreatConvoys.escortForValue(float[] ask)` :2377 - The escort points a load's cargo value calls for, over the convoyEscortFP every convoy sails with.
+- `ThreatConvoys.builtEscort(Hulls h)` :2386 - The escort points the donor pays for:
+- `ThreatConvoys.holds(CampaignFleetAPI fleet, float[] ask)` :2392 - The smallest share of its ask the fleet's berths, hold or tanks take;
+- `ThreatConvoys.nextHulls(Split split, float[] remaining, ThreatBases.Base from, FactionAPI faction, float ly, boolean paysEscort, boolean frontRun, Random random)` :2438 - The next fleet of a sailing:
+- `ThreatConvoys.addHull(CampaignFleetAPI fleet, FactionAPI faction, float missing, float largeAt, float mediumAt, String large, String medium, String small, Random random)` :2482 - One hull of the size the shortfall calls for, falling back to smaller ones;
+- `ThreatConvoys.loadCommodity(CargoAPI cargo, String donorId, String commodityId, float wanted)` :2499
 ### resolution (fast poll)
-- `ThreatConvoys.poll()` :2516 - Distance from the destination entity at which a convoy counts as arrived (ThreatReturns.arrived).
-- `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :2556
-- `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :2617 - Whether the convoy's destination still belongs to whom it was sent to.
-- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :2630 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
-- `ThreatConvoys.stripLandedMods()` :2651 - Strips the landing trade modifiers older builds left on markets (rule 5).
-- `ThreatConvoys.lost(Convoy c)` :2663
-- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :2684 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
-- `ThreatConvoys.homeBase(Convoy c)` :2695 - Where a convoy settles:
-- `ThreatConvoys.returnHome(Convoy c)` :2709 - Recalled, timed out, or its destination is gone:
+- `ThreatConvoys.poll()` :2519 - Distance from the destination entity at which a convoy counts as arrived (ThreatReturns.arrived).
+- `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :2559
+- `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :2620 - Whether the convoy's destination still belongs to whom it was sent to.
+- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :2633 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
+- `ThreatConvoys.stripLandedMods()` :2654 - Strips the landing trade modifiers older builds left on markets (rule 5).
+- `ThreatConvoys.lost(Convoy c)` :2666
+- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :2687 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
+- `ThreatConvoys.homeBase(Convoy c)` :2698 - Where a convoy settles:
+- `ThreatConvoys.returnHome(Convoy c)` :2712 - Recalled, timed out, or its destination is gone:
 
 ## ThreatDebugWar (428 lines)
 - `ThreatDebugWar.poll(IncursionManager manager, Random random)` :58 - From IncursionManager.advance, once the incursion has started.
@@ -3214,31 +3214,31 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatResponseIntel.createIntelInfo(TooltipMakerAPI info, ListInfoMode mode)` :341
 - `ThreatResponseIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :354
 
-## ThreatReturns (448 lines)
-- `ThreatReturns.hullShare()` :87 - The hull share of a supplies draw, 0..1 (returnHullShare;
-- `ThreatReturns.suppliesBack(float drawn, float health, boolean player)` :96 - Supplies refunded of drawn at surviving strength health:
-- `ThreatReturns.fuelBack(float drawn, float health)` :123 - Voyage fuel refunded of drawn to a fleet home at surviving strength health (2026-09-29):
-- `ThreatReturns.fuelBack(float drawn, float health, boolean flownHome)` :128 - As above;
-- `ThreatReturns.playerFleet(CampaignFleetAPI fleet)` :136 - Whether the fleet is the player's, for the refund rule (#suppliesBack).
-- `ThreatReturns.arrived(CampaignFleetAPI fleet, SectorEntityToken to)` :141 - Whether the fleet is at the entity:
-- `ThreatReturns.onLeg(CampaignFleetAPI fleet, SectorEntityToken to, String text)` :154 - Keeps a fleet on its leg to an entity.
-- `ThreatReturns.etaDays(Return r)` :170 - Days until a fleet on a tracked leg is home, at the board's rough hyperspace pace (ThreatWarBoard.EST_LY_PER_DAY) plus a day for the in-system leg;
-- `ThreatReturns.all()` :198
-- `ThreatReturns.provision(CampaignFleetAPI fleet, String baseMarketId, float fuel, float supplies)` :208 - Records on the fleet what it was provisioned with, for the refund on return.
-- `ThreatReturns.homeOf(CampaignFleetAPI fleet)` :226
-- `ThreatReturns.rebaseline(CampaignFleetAPI fleet)` :232 - Stamps the order baseline #orderHealth reads at the fleet's points now;
-- `ThreatReturns.health(CampaignFleetAPI fleet)` :238 - Surviving strength, 0..1:
-- `ThreatReturns.orderHealth(CampaignFleetAPI fleet)` :250 - Surviving strength for an order's stand-down rule, 0..1:
-- `ThreatReturns.sendHome(CampaignFleetAPI fleet, String factionId, String homeMarketId)` :264 - Sends the fleet home on a tracked leg.
-- `ThreatReturns.orderRanOut(CampaignFleetAPI fleet)` :310 - Whether a fleet's order has run out with nothing after it (2026-09-29:
-- `ThreatReturns.tracked(CampaignFleetAPI fleet)` :319 - Whether the fleet is on a tracked leg home now (not yet settled).
-- `ThreatReturns.untrack(CampaignFleetAPI fleet)` :332 - Takes a fleet off its tracked leg for a new duty:
-- `ThreatReturns.poll()` :340
-- `ThreatReturns.settle(CampaignFleetAPI fleet, MarketAPI home)` :382 - The fleet is home:
-- `ThreatReturns.kept(CampaignFleetAPI fleet)` :387 - Whether the last settle kept the fleet on station:
-- `ThreatReturns.settle(CampaignFleetAPI fleet, ThreatBases.Base home)` :392 - As above, for a home that may be a colony or an outpost.
-- `ThreatReturns.settle(CampaignFleetAPI fleet, MarketAPI home, boolean flownHome)` :397 - As above;
-- `ThreatReturns.settle(CampaignFleetAPI fleet, ThreatBases.Base home, boolean flownHome)` :401
+## ThreatReturns (451 lines)
+- `ThreatReturns.hullShare()` :89 - The hull share of a supplies draw, 0..1 (returnHullShare;
+- `ThreatReturns.suppliesBack(float drawn, float health, boolean player)` :98 - Supplies refunded of drawn at surviving strength health:
+- `ThreatReturns.fuelBack(float drawn, float health)` :125 - Voyage fuel refunded of drawn to a fleet home at surviving strength health (2026-09-29):
+- `ThreatReturns.fuelBack(float drawn, float health, boolean flownHome)` :130 - As above;
+- `ThreatReturns.playerFleet(CampaignFleetAPI fleet)` :138 - Whether the fleet is the player's, for the refund rule (#suppliesBack).
+- `ThreatReturns.arrived(CampaignFleetAPI fleet, SectorEntityToken to)` :143 - Whether the fleet is at the entity:
+- `ThreatReturns.onLeg(CampaignFleetAPI fleet, SectorEntityToken to, String text)` :156 - Keeps a fleet on its leg to an entity.
+- `ThreatReturns.etaDays(Return r)` :172 - Days until a fleet on a tracked leg is home, at the board's rough hyperspace pace (ThreatWarBoard.EST_LY_PER_DAY) plus a day for the in-system leg;
+- `ThreatReturns.all()` :200
+- `ThreatReturns.provision(CampaignFleetAPI fleet, String baseMarketId, float fuel, float supplies)` :210 - Records on the fleet what it was provisioned with, for the refund on return.
+- `ThreatReturns.homeOf(CampaignFleetAPI fleet)` :229
+- `ThreatReturns.rebaseline(CampaignFleetAPI fleet)` :235 - Stamps the order baseline #orderHealth reads at the fleet's points now;
+- `ThreatReturns.health(CampaignFleetAPI fleet)` :241 - Surviving strength, 0..1:
+- `ThreatReturns.orderHealth(CampaignFleetAPI fleet)` :253 - Surviving strength for an order's stand-down rule, 0..1:
+- `ThreatReturns.sendHome(CampaignFleetAPI fleet, String factionId, String homeMarketId)` :267 - Sends the fleet home on a tracked leg.
+- `ThreatReturns.orderRanOut(CampaignFleetAPI fleet)` :313 - Whether a fleet's order has run out with nothing after it (2026-09-29:
+- `ThreatReturns.tracked(CampaignFleetAPI fleet)` :322 - Whether the fleet is on a tracked leg home now (not yet settled).
+- `ThreatReturns.untrack(CampaignFleetAPI fleet)` :335 - Takes a fleet off its tracked leg for a new duty:
+- `ThreatReturns.poll()` :343
+- `ThreatReturns.settle(CampaignFleetAPI fleet, MarketAPI home)` :385 - The fleet is home:
+- `ThreatReturns.kept(CampaignFleetAPI fleet)` :390 - Whether the last settle kept the fleet on station:
+- `ThreatReturns.settle(CampaignFleetAPI fleet, ThreatBases.Base home)` :395 - As above, for a home that may be a colony or an outpost.
+- `ThreatReturns.settle(CampaignFleetAPI fleet, MarketAPI home, boolean flownHome)` :400 - As above;
+- `ThreatReturns.settle(CampaignFleetAPI fleet, ThreatBases.Base home, boolean flownHome)` :404
 
 ## ThreatScoutRoute (501 lines)
 - `ThreatScoutRoute.systemById(String systemId)` :70 - A star system by id, null for a null id:
@@ -3283,7 +3283,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatScoutRoute.taken()` :462 - The stops every party of this side still has ahead of it:
 - `ThreatScoutRoute.nearestFirst(List<StarSystemAPI> candidates, Vector2f from)` :480 - The candidates as a route, nearest-first from where the party starts, each leg measured from the stop before.
 
-## ThreatScouts (750 lines)
+## ThreatScouts (757 lines)
 - `ThreatScouts.all()` :85
 - `ThreatScouts.enabled()` :108
 - `ThreatScouts.sectorKnows(String systemId)` :117 - Whether the sector knows of the hive in this system - the gate on every NPC war effort against it.
@@ -3329,10 +3329,10 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatScouts.inhabited(StarSystemAPI system)` :627 - Anyone but the swarm keeps a colony there - revealNeighbours covers those.
 - `ThreatScouts.launch(String factionId, MarketAPI home, List<String> route, String leadSystemId)` :636
 - `ThreatScouts.launch(String factionId, MarketAPI home, List<String> route, String leadSystemId, float fp, boolean patrol)` :641 - As above, a party of fp fleet points (a patrol's size, patrolSize).
-- `ThreatScouts.voyageCost(float fp, float ly)` :704 - [fuel, supplies] a party of this many fleet points pays to sail this far, as a task force pays.
-- `ThreatScouts.routeLY(MarketAPI home, List<String> route)` :711 - Light-years of the route out:
-- `ThreatScouts.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :730 - On a scouting party:
-- `ThreatScouts.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :746
+- `ThreatScouts.voyageCost(float fp, float ly)` :711 - [fuel, supplies] a party of this many fleet points pays to sail this far, as a task force pays.
+- `ThreatScouts.routeLY(MarketAPI home, List<String> route)` :718 - Light-years of the route out:
+- `ThreatScouts.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :737 - On a scouting party:
+- `ThreatScouts.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :753
 
 ## ThreatShield (112 lines)
 - `ThreatShield.ThreatShield()` :42 - The planetary shield as a military structure.

@@ -652,6 +652,13 @@ public class ThreatScouts {
 				|| ThreatReserves.spendable(home, Commodities.SUPPLIES) < cost[1]) {
 			return null;
 		}
+		// and the hulls: a party of warships draws on the faction's pool (ThreatHulls);
+		// without the hulls free it does not sail (hw30: scouts committed unchecked
+		// put Tri-Tachyon 2,300 FP out on a 200 FP pool)
+		if (ThreatHulls.enabled() && !Factions.THREAT.equals(factionId)
+				&& ThreatHulls.freeFP(factionId) < fp) {
+			return null;
+		}
 		FleetParamsV3 params = new FleetParamsV3(
 				home,
 				home.getLocationInHyperspace(),

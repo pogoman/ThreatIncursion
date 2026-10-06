@@ -66,7 +66,10 @@ one swarm; the launch stock on top as before).
   faction's free pool (ships fly themselves to the base that stages them), staged task forces
   fold in as before. `aidBaseFP` and `aidRebuildDays` only apply with the pool off.
 - Commit: `ThreatReturns.provision` commits every NPC fleet at its fleet points (the player's
-  are committed by the order that built them). Release: `ThreatReturns.settle`, and the three
+  are committed by the order that built them). **Convoys draw no hulls** (`ThreatReturns.MEM_NO_HULLS`;
+  vanilla's trade fleets are no patrols) and scouting parties and patrols launch only with the hulls free
+  (`ThreatScouts.launch`) - my call after hw30, where supply fleets and scouts committed unchecked put
+  Tri-Tachyon 2,300 FP out on a 200 FP pool and no warship could sail; the user to review. Release: `ThreatReturns.settle`, and the three
   disbands that never settled (home gone, timed out). Loss: `ThreatAidCapacity.poll` (a dead
   fleet is a debt at once, no clock) and `release` (the part that did not come back, by
   `ThreatReturns.health`).
