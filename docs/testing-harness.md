@@ -409,3 +409,6 @@ a game runs 90-130 days a minute whether alone (hw58a: 1490 -> 3802 in 25 minute
 and a batch from the checkpoint to war day 3800 takes about 30 minutes. The user: "no yeah do 3 at
 once" - `sbs.ps1 -Tags hw59a,hw59b,hw59c -Bases "hw59a=save_Xck1;hw59b=save_Xck1;hw59c=save_Xck1"
 -Days 2300`. The Bash loop of single runs stays as an option when one answer is wanted soonest.
+**ck2 (2026-10-07, 22:14):** made on the exposure build (b21a12d0): with no human world known every hive holds
+one swarm a colony and banks the rest, so the war opened at war day 2231 (ck1: 1545; last save 2179) with
+40k FP left in the fund after an 8k opener. Batches from `save_AphelionDysnomia_4103534775338436064ck2`.

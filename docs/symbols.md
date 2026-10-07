@@ -25,7 +25,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `HiveVitalityCondition.createTooltipAfterDescription(TooltipMakerAPI tooltip, boolean expanded)` :28
 - `HiveVitalityCondition.pct(float f)` :113
 
-## IncursionManager (6108 lines)
+## IncursionManager (6113 lines)
 - `IncursionManager.isDone()` :84 - Set once the bootstrap heal has run this session (transient:
 - `IncursionManager.runWhilePaused()` :88
 - `IncursionManager.advance(float amount)` :95 - The live manager (transient, re-created each load), for static callers such as retaliation.
@@ -204,56 +204,56 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `IncursionManager.setPricedFP(float fp)` :4993 - Caps the plan of the strike about to launch at the size its campaign priced (pricedFP);
 - `IncursionManager.setLaunchingEarmark(java.util.Map<String, Integer> earmark)` :5008 - Sets the launching held prong's earmark (hive system id -> fleets);
 - `IncursionManager.launchingEarmarkCovers(MarketAPI colony)` :5020 - Whether the held prong launching now earmarked garrison fleets of this colony's system:
-- `IncursionManager.stagedSpares(final StarSystemAPI source)` :5040 - The garrison fleets a staged strike may take, every colony of the hive weighed (the user, 2026-10-07:
-- `IncursionManager.compare(StagedSpare x, StagedSpare y)` :5114
-- `IncursionManager.spare(MarketAPI colony, java.util.List<ThreatColonyManager.MusterFleet> walk, float ly, int tier, float dist, int size)` :5122
-- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares)` :5144 - stagedSizes with what it takes from where.
-- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares, float bankLimit, float defGiven)` :5155 - stagedPlan against a bank of bankLimit fleet points instead of what the fund (or the banks) holds now:
-- `IncursionManager.stagedCandidates(String onlyFactionId)` :5265 - Every world a staged strike could sail at today:
-- `IncursionManager.pickStagedTarget(MarketAPI staging, final StarSystemAPI source, String onlyFactionId)` :5289 - The staged strike's target from this staging world:
-- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :5293
-- `IncursionManager.strikeValue(MarketAPI market)` :5319 - What a world is worth striking:
-- `IncursionManager.breakOffRatio()` :5326 - siegeBreakOffRatio, 1 when unset:
-- `IncursionManager.targetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :5338 - The defence a strike at the world meets, in vanilla strength units, as the swarm knows it.
-- `IncursionManager.liveTargetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :5351 - The defence a strike at the world meets today, in vanilla strength units:
-- `IncursionManager.strikeSeen(MarketAPI market)` :5370 - With the swarm's fog (ThreatSwarmIntel), whether it has seen the world:
-- `IncursionManager.warOpen(MarketAPI market, int phase)` :5385 - Whether a strike at the world starts no war the hive is not ready for (2026-10-01):
-- `IncursionManager.strikeAllowed(MarketAPI market)` :5395 - The strike gate's filters short of reach and weight:
-- `IncursionManager.strikeOutweighed(MarketAPI target, float strikeStr, java.util.Map<String, float[]> memo)` :5417 - The strike gate (2026-09-29, overnight run N4):
-- `IncursionManager.isStrikeableWorld(MarketAPI market)` :5451 - A world the swarm could ever send a strike at:
-- `IncursionManager.isCoreWorld(MarketAPI market)` :5463 - Size 6+ is a core world:
-- `IncursionManager.coreWorldInReach(MarketAPI staging)` :5473 - Whether an armada-capable hive could actually reach a core world:
+- `IncursionManager.stagedSpares(final StarSystemAPI source)` :5042 - The garrison fleets a staged strike may take, every colony of the hive weighed (the user, 2026-10-07:
+- `IncursionManager.compare(StagedSpare x, StagedSpare y)` :5119
+- `IncursionManager.spare(MarketAPI colony, java.util.List<ThreatColonyManager.MusterFleet> walk, float ly, int tier, float dist, int size)` :5127
+- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares)` :5149 - stagedSizes with what it takes from where.
+- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares, float bankLimit, float defGiven)` :5160 - stagedPlan against a bank of bankLimit fleet points instead of what the fund (or the banks) holds now:
+- `IncursionManager.stagedCandidates(String onlyFactionId)` :5270 - Every world a staged strike could sail at today:
+- `IncursionManager.pickStagedTarget(MarketAPI staging, final StarSystemAPI source, String onlyFactionId)` :5294 - The staged strike's target from this staging world:
+- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :5298
+- `IncursionManager.strikeValue(MarketAPI market)` :5324 - What a world is worth striking:
+- `IncursionManager.breakOffRatio()` :5331 - siegeBreakOffRatio, 1 when unset:
+- `IncursionManager.targetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :5343 - The defence a strike at the world meets, in vanilla strength units, as the swarm knows it.
+- `IncursionManager.liveTargetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :5356 - The defence a strike at the world meets today, in vanilla strength units:
+- `IncursionManager.strikeSeen(MarketAPI market)` :5375 - With the swarm's fog (ThreatSwarmIntel), whether it has seen the world:
+- `IncursionManager.warOpen(MarketAPI market, int phase)` :5390 - Whether a strike at the world starts no war the hive is not ready for (2026-10-01):
+- `IncursionManager.strikeAllowed(MarketAPI market)` :5400 - The strike gate's filters short of reach and weight:
+- `IncursionManager.strikeOutweighed(MarketAPI target, float strikeStr, java.util.Map<String, float[]> memo)` :5422 - The strike gate (2026-09-29, overnight run N4):
+- `IncursionManager.isStrikeableWorld(MarketAPI market)` :5456 - A world the swarm could ever send a strike at:
+- `IncursionManager.isCoreWorld(MarketAPI market)` :5468 - Size 6+ is a core world:
+- `IncursionManager.coreWorldInReach(MarketAPI staging)` :5478 - Whether an armada-capable hive could actually reach a core world:
 ### phases, bookkeeping, helpers
-- `IncursionManager.getPhase()` :5497
-- `IncursionManager.mobiliseAtPhase()` :5539 - Every faction mobilises once the swarm reaches mobiliseAtPhase, struck or not;
-- `IncursionManager.checkPhaseAnnouncements()` :5561
-- `IncursionManager.getResponseList()` :5571
-- `IncursionManager.countActiveResponses()` :5580
-- `IncursionManager.findResponseBase(FactionAPI faction, StarSystemAPI hiveSystem)` :5595
-- `IncursionManager.expeditionRangeLY(MarketAPI base)` :5626 - How far a colony can send a task force or siege expedition:
-- `IncursionManager.hasMilitary(MarketAPI market)` :5637 - A military structure:
-- `IncursionManager.isBase(MarketAPI market)` :5656 - A BASE:
-- `IncursionManager.getStrikeList()` :5662
-- `IncursionManager.countActiveStrikes()` :5671
-- `IncursionManager.isActiveStrikeTarget(MarketAPI market)` :5680 - Whether an active strike is already aimed at this market.
-- `IncursionManager.isActiveStrikeSource(MarketAPI market)` :5699 - Whether this colony is the staging world of a strike currently in flight (launchStrike sets params.source to the staging market).
-- `IncursionManager.strikeSatPasses(int stagingSize)` :5721 - Bombardment passes an expedition may deliver PER WORLD.
-- `IncursionManager.expeditionPasses(int fleets)` :5735 - Passes a ground-doctrine siege or strike has per world:
-- `IncursionManager.preparingStrikeFleetCount(MarketAPI market)` :5744 - Fleets of a strike currently PREPARING at this colony - the mustered swarms re-embodying in orbit before departure;
-- `IncursionManager.hasPreparingStrikeFrom(MarketAPI market)` :5761 - Whether some strike staged from this colony is still in its recall window.
-- `IncursionManager.abortStrikesFrom(String marketId, String marketName, String cause)` :5795 - Recalls every in-flight strike staged from the given colony - the counterplay mirror of the launch.
-- `IncursionManager.siegeFactionsIn(String systemId)` :5824 - Factions with a siege expedition still running against a colony of the system.
-- `IncursionManager.siegeTargetsOf(String factionId, String systemId)` :5844 - The worlds the faction's running siege of the system is fighting (its purge's targets);
-- `IncursionManager.abortPurgesAgainst(String marketId, String marketName, String cause)` :5873 - Stands down every in-flight purge expedition whose ENTIRE target list is dead.
-- `IncursionManager.sweepOrphanedExpeditions()` :5914 - Catch-all for expeditions orphaned outside the event hooks:
-- `IncursionManager.upgradeInFlightStrikes()` :5964 - Clamps in-flight SATURATION strikes to the sweep doctrine's one pass per world.
-- `IncursionManager.dedupDecivIntel()` :5996 - Removes duplicate "X - Destroyed" / "X - Decivilized" intel entries:
-- `IncursionManager.firstTargetId(GenericRaidFGI purge)` :6024
-- `IncursionManager.getPurgeList()` :6032
-- `IncursionManager.countActivePurges()` :6041
-- `IncursionManager.countActiveFGIs(List<Object> list)` :6045
-- `IncursionManager.getSystem(String systemId)` :6068
-- `IncursionManager.syncSystemMarkers()` :6079 - Keeps one map-visible intel marker per infested system:
+- `IncursionManager.getPhase()` :5502
+- `IncursionManager.mobiliseAtPhase()` :5544 - Every faction mobilises once the swarm reaches mobiliseAtPhase, struck or not;
+- `IncursionManager.checkPhaseAnnouncements()` :5566
+- `IncursionManager.getResponseList()` :5576
+- `IncursionManager.countActiveResponses()` :5585
+- `IncursionManager.findResponseBase(FactionAPI faction, StarSystemAPI hiveSystem)` :5600
+- `IncursionManager.expeditionRangeLY(MarketAPI base)` :5631 - How far a colony can send a task force or siege expedition:
+- `IncursionManager.hasMilitary(MarketAPI market)` :5642 - A military structure:
+- `IncursionManager.isBase(MarketAPI market)` :5661 - A BASE:
+- `IncursionManager.getStrikeList()` :5667
+- `IncursionManager.countActiveStrikes()` :5676
+- `IncursionManager.isActiveStrikeTarget(MarketAPI market)` :5685 - Whether an active strike is already aimed at this market.
+- `IncursionManager.isActiveStrikeSource(MarketAPI market)` :5704 - Whether this colony is the staging world of a strike currently in flight (launchStrike sets params.source to the staging market).
+- `IncursionManager.strikeSatPasses(int stagingSize)` :5726 - Bombardment passes an expedition may deliver PER WORLD.
+- `IncursionManager.expeditionPasses(int fleets)` :5740 - Passes a ground-doctrine siege or strike has per world:
+- `IncursionManager.preparingStrikeFleetCount(MarketAPI market)` :5749 - Fleets of a strike currently PREPARING at this colony - the mustered swarms re-embodying in orbit before departure;
+- `IncursionManager.hasPreparingStrikeFrom(MarketAPI market)` :5766 - Whether some strike staged from this colony is still in its recall window.
+- `IncursionManager.abortStrikesFrom(String marketId, String marketName, String cause)` :5800 - Recalls every in-flight strike staged from the given colony - the counterplay mirror of the launch.
+- `IncursionManager.siegeFactionsIn(String systemId)` :5829 - Factions with a siege expedition still running against a colony of the system.
+- `IncursionManager.siegeTargetsOf(String factionId, String systemId)` :5849 - The worlds the faction's running siege of the system is fighting (its purge's targets);
+- `IncursionManager.abortPurgesAgainst(String marketId, String marketName, String cause)` :5878 - Stands down every in-flight purge expedition whose ENTIRE target list is dead.
+- `IncursionManager.sweepOrphanedExpeditions()` :5919 - Catch-all for expeditions orphaned outside the event hooks:
+- `IncursionManager.upgradeInFlightStrikes()` :5969 - Clamps in-flight SATURATION strikes to the sweep doctrine's one pass per world.
+- `IncursionManager.dedupDecivIntel()` :6001 - Removes duplicate "X - Destroyed" / "X - Decivilized" intel entries:
+- `IncursionManager.firstTargetId(GenericRaidFGI purge)` :6029
+- `IncursionManager.getPurgeList()` :6037
+- `IncursionManager.countActivePurges()` :6046
+- `IncursionManager.countActiveFGIs(List<Object> list)` :6050
+- `IncursionManager.getSystem(String systemId)` :6073
+- `IncursionManager.syncSystemMarkers()` :6084 - Keeps one map-visible intel marker per infested system:
 
 ## InfestedSystemIntel (375 lines)
 - `InfestedSystemIntel.InfestedSystemIntel(String systemId)` :28
@@ -2973,7 +2973,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPlays.ly(MarketAPI base, StarSystemAPI s)` :1757
 - `ThreatPlays.threat(MarketAPI m)` :1763 - Whether the market is the swarm's (for callers outside the council).
 
-## ThreatPosture (1610 lines)
+## ThreatPosture (1633 lines)
 - `ThreatPosture.enabled()` :123 - Battle -> ids of the Threat ships already booked:
 - `ThreatPosture.forget()` :128 - Called on load:
 - `ThreatPosture.today()` :154 - The campaign clock in days, for the saved day stamps:
@@ -2995,56 +2995,58 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPosture.appetite()` :280
 - `ThreatPosture.thinnableFP(MarketAPI market, float heldFP)` :288 - What a colony of a quiet system gives one under attack (underAttack) may leave it with:
 - `ThreatPosture.nearestKnownHumanLY(StarSystemAPI system)` :297 - Light-years from the hive system to the nearest human world the swarm has seen (ThreatSwarmIntel.places, a forward base among them), or Float.MAX_VALUE for none.
-- `ThreatPosture.exposure(float lastSeenDay, float day, float nearestLY)` :318 - DEFENCE IN DEPTH (the user, 2026-10-07):
-- `ThreatPosture.exposure(StarSystemAPI system)` :330 - The system's exposure as of its last reading (exposure), 1 unread.
-- `ThreatPosture.floorFP(MarketAPI market)` :337 - Fleet points of the colony's size table (swarmCostEstimate of every row):
-- `ThreatPosture.baseCount(MarketAPI market)` :347 - The swarms baseFP stands for:
-- `ThreatPosture.baseFP(MarketAPI market)` :353 - What a colony wants with nothing pressing it:
-- `ThreatPosture.minimumFP(MarketAPI market)` :362 - The garrison no launch takes (ThreatColonyManager.garrisonReserve swarms) at the table's cheapest rows - musters send the largest, so the reserve that stays home is the smallest.
-- `ThreatPosture.stockFP(MarketAPI market)` :376 - A colony that can launch (a forge, and the size for a wave or a strike) keeps LAUNCH_STOCK swarms above its reserve, the table's next rows:
-- `ThreatPosture.rowsFP(MarketAPI market, int from, int n)` :384 - The cost of n rows of the colony's size table from the cheapest, the from-th on (in turn past the table, as maintainGarrisons builds).
-- `ThreatPosture.oneSwarmFP(MarketAPI market)` :396 - The heaviest swarm of the colony's size table:
-- `ThreatPosture.noteSent(float fp)` :405
-- `ThreatPosture.noteConsumed(int swarms)` :410
+- `ThreatPosture.nearestKnownHumanSystem(StarSystemAPI system)` :303 - The system of the nearest human world the swarm has seen (ThreatSwarmIntel.places), or null for none.
+- `ThreatPosture.frontline(StarSystemAPI system)` :329 - THE FRONT (the user, 2026-10-07:
+- `ThreatPosture.exposure(float lastSeenDay, float day, float nearestLY)` :341 - DEFENCE IN DEPTH (the user, 2026-10-07):
+- `ThreatPosture.exposure(StarSystemAPI system)` :353 - The system's exposure as of its last reading (exposure), 1 unread.
+- `ThreatPosture.floorFP(MarketAPI market)` :360 - Fleet points of the colony's size table (swarmCostEstimate of every row):
+- `ThreatPosture.baseCount(MarketAPI market)` :370 - The swarms baseFP stands for:
+- `ThreatPosture.baseFP(MarketAPI market)` :376 - What a colony wants with nothing pressing it:
+- `ThreatPosture.minimumFP(MarketAPI market)` :385 - The garrison no launch takes (ThreatColonyManager.garrisonReserve swarms) at the table's cheapest rows - musters send the largest, so the reserve that stays home is the smallest.
+- `ThreatPosture.stockFP(MarketAPI market)` :399 - A colony that can launch (a forge, and the size for a wave or a strike) keeps LAUNCH_STOCK swarms above its reserve, the table's next rows:
+- `ThreatPosture.rowsFP(MarketAPI market, int from, int n)` :407 - The cost of n rows of the colony's size table from the cheapest, the from-th on (in turn past the table, as maintainGarrisons builds).
+- `ThreatPosture.oneSwarmFP(MarketAPI market)` :419 - The heaviest swarm of the colony's size table:
+- `ThreatPosture.noteSent(float fp)` :428
+- `ThreatPosture.noteConsumed(int swarms)` :433
 ### losses (ThreatSwarmBountyIntel.Kills)
-- `ThreatPosture.noteBattle(BattleAPI battle)` :424 - Books a battle the swarm fought, each ship once:
-- `ThreatPosture.hasThreat(List<CampaignFleetAPI> side)` :478
-- `ThreatPosture.addLoss(String systemId, float fp)` :485
-- `ThreatPosture.lossFP(String systemId, float day)` :491 - The system's loss ledger decayed to this day;
-- `ThreatPosture.lostLately(String systemId, float day)` :498 - Whether the system lost ships in the last DECAY_DAYS.
-- `ThreatPosture.decay(float days)` :503
+- `ThreatPosture.noteBattle(BattleAPI battle)` :447 - Books a battle the swarm fought, each ship once:
+- `ThreatPosture.hasThreat(List<CampaignFleetAPI> side)` :501
+- `ThreatPosture.addLoss(String systemId, float fp)` :508
+- `ThreatPosture.lossFP(String systemId, float day)` :514 - The system's loss ledger decayed to this day;
+- `ThreatPosture.lostLately(String systemId, float day)` :521 - Whether the system lost ships in the last DECAY_DAYS.
+- `ThreatPosture.decay(float days)` :526
 ### the pass
-- `ThreatPosture.poll()` :533 - Every postureDays (IncursionManager.advance, before maintainGarrisons):
-- `ThreatPosture.massWithin(Call call)` :800 - Massing the defence, a system under attack sends the spare swarms of its own colonies (ThreatColonyManager.spareFleets, what a launch would muster) to its worlds short of their need by more than a swa
-- `ThreatPosture.massFromNeighbours(List<Call> calls, List<String> systemIds)` :832 - A system still short once its own spare is massed and the strikes in reach have turned (massWithin, recallStrikes) draws the spare swarms of the hive systems within postureRecallLY that are not callin
-- `ThreatPosture.compare(StarSystemAPI a, StarSystemAPI b)` :846
-- `ThreatPosture.shortest(Call call)` :882 - The call's world shortest of its need;
-- `ThreatPosture.pickFor(java.util.Collection<CampaignFleetAPI> fleets, float gap)` :894 - The lightest fleet that covers the gap, else the heaviest.
-- `ThreatPosture.rally(MarketAPI world, float attackFP)` :922 - THE SYSTEM DEFENDS AS ONE (2026-10-05, the user:
-- `ThreatPosture.defenders(MarketAPI world, List<CampaignFleetAPI> near, boolean seenComing)` :977 - The fleets a siege over the hive world fights today (ThreatPurgeFGI.dailyDay):
-- `ThreatPosture.boundFor(MarketAPI world)` :987 - The swarms on their way to the world's garrison and already in its system (ThreatColonyManager.sendReinforcement, sendToGarrison).
-- `ThreatPosture.strikeCapFP(StarSystemAPI source, MarketAPI target, String[] why)` :1030 - Fleet points a strike staged in this system may muster while the defence is massed (postureMass):
-- `ThreatPosture.recallStrikes(List<Call> calls)` :1067 - STRIKES COME HOME (2026-10-04, the user:
-- `ThreatPosture.compare(Call a, Call b)` :1073
-- `ThreatPosture.inboundFP(String marketId)` :1116 - Fleet points of reinforcements flying to this colony.
-- `ThreatPosture.countsAbstract(ThreatPurgeFGI purge)` :1210 - Whether a booked siege counts by its abstract flotilla (abstractNow):
-- `ThreatPosture.alarm()` :1249 - A siege has come down on a hive world:
-- `ThreatPosture.sighted()` :1254 - A siege first seen bound for a hive system (ThreatSwarmIntel.note):
-- `ThreatPosture.overWorlds(List<MarketAPI> colonies, Map<String, Float> sieges, float pressure)` :1274 - Each colony's share of its system's need once the attack has come down (2026-10-04, postureNeedAtAttack):
-- `ThreatPosture.add(Map<String, Float> out, String systemId, CampaignFleetAPI f, Set<CampaignFleetAPI> counted, String factionId, ThreatStance.Pass pass)` :1303 - Counts one attacking fleet toward its system, and toward its faction's force in reach (ThreatStance);
-- `ThreatPosture.read(StarSystemAPI system, List<MarketAPI> colonies, Map<String, Float> attacks, Set<CampaignFleetAPI> counted, Map<String, StarSystemAPI> stagingMemo, List<ThreatFrontlines.Outpost> outposts, float day, ThreatStance.Pass pass)` :1314 - One system's pressure, component by component.
+- `ThreatPosture.poll()` :556 - Every postureDays (IncursionManager.advance, before maintainGarrisons):
+- `ThreatPosture.massWithin(Call call)` :823 - Massing the defence, a system under attack sends the spare swarms of its own colonies (ThreatColonyManager.spareFleets, what a launch would muster) to its worlds short of their need by more than a swa
+- `ThreatPosture.massFromNeighbours(List<Call> calls, List<String> systemIds)` :855 - A system still short once its own spare is massed and the strikes in reach have turned (massWithin, recallStrikes) draws the spare swarms of the hive systems within postureRecallLY that are not callin
+- `ThreatPosture.compare(StarSystemAPI a, StarSystemAPI b)` :869
+- `ThreatPosture.shortest(Call call)` :905 - The call's world shortest of its need;
+- `ThreatPosture.pickFor(java.util.Collection<CampaignFleetAPI> fleets, float gap)` :917 - The lightest fleet that covers the gap, else the heaviest.
+- `ThreatPosture.rally(MarketAPI world, float attackFP)` :945 - THE SYSTEM DEFENDS AS ONE (2026-10-05, the user:
+- `ThreatPosture.defenders(MarketAPI world, List<CampaignFleetAPI> near, boolean seenComing)` :1000 - The fleets a siege over the hive world fights today (ThreatPurgeFGI.dailyDay):
+- `ThreatPosture.boundFor(MarketAPI world)` :1010 - The swarms on their way to the world's garrison and already in its system (ThreatColonyManager.sendReinforcement, sendToGarrison).
+- `ThreatPosture.strikeCapFP(StarSystemAPI source, MarketAPI target, String[] why)` :1053 - Fleet points a strike staged in this system may muster while the defence is massed (postureMass):
+- `ThreatPosture.recallStrikes(List<Call> calls)` :1090 - STRIKES COME HOME (2026-10-04, the user:
+- `ThreatPosture.compare(Call a, Call b)` :1096
+- `ThreatPosture.inboundFP(String marketId)` :1139 - Fleet points of reinforcements flying to this colony.
+- `ThreatPosture.countsAbstract(ThreatPurgeFGI purge)` :1233 - Whether a booked siege counts by its abstract flotilla (abstractNow):
+- `ThreatPosture.alarm()` :1272 - A siege has come down on a hive world:
+- `ThreatPosture.sighted()` :1277 - A siege first seen bound for a hive system (ThreatSwarmIntel.note):
+- `ThreatPosture.overWorlds(List<MarketAPI> colonies, Map<String, Float> sieges, float pressure)` :1297 - Each colony's share of its system's need once the attack has come down (2026-10-04, postureNeedAtAttack):
+- `ThreatPosture.add(Map<String, Float> out, String systemId, CampaignFleetAPI f, Set<CampaignFleetAPI> counted, String factionId, ThreatStance.Pass pass)` :1326 - Counts one attacking fleet toward its system, and toward its faction's force in reach (ThreatStance);
+- `ThreatPosture.read(StarSystemAPI system, List<MarketAPI> colonies, Map<String, Float> attacks, Set<CampaignFleetAPI> counted, Map<String, StarSystemAPI> stagingMemo, List<ThreatFrontlines.Outpost> outposts, float day, ThreatStance.Pass pass)` :1337 - One system's pressure, component by component.
 ### recycling: the last road for surplus
-- `ThreatPosture.breakEvenDays()` :1429 - Days a surplus fleet must stand idle before recycling it is cheaper than keeping it:
-- `ThreatPosture.recycleSurplus(List<String> systemIds, float day)` :1442 - Recycles what each colony holds above want by the band and one swarm:
-- `ThreatPosture.stagedBy(MarketAPI base, String hiveSystemId)` :1517 - The staged threat one base puts on the hive system as the swarm sees it there - B's per-base figure (read) on the base's own stock alone, its donors' depots elsewhere and unseen:
-- `ThreatPosture.stagedCapacity(MarketAPI base, StarSystemAPI system)` :1529 - What a base staging against system could pay a force there:
-- `ThreatPosture.stagedCapacity(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors)` :1536 - stagedCapacity with the donors pooled into it (null:
-- `ThreatPosture.siegeCapacityFP(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors)` :1552 - Fleet points a base staging a siege against system could send:
+- `ThreatPosture.breakEvenDays()` :1452 - Days a surplus fleet must stand idle before recycling it is cheaper than keeping it:
+- `ThreatPosture.recycleSurplus(List<String> systemIds, float day)` :1465 - Recycles what each colony holds above want by the band and one swarm:
+- `ThreatPosture.stagedBy(MarketAPI base, String hiveSystemId)` :1540 - The staged threat one base puts on the hive system as the swarm sees it there - B's per-base figure (read) on the base's own stock alone, its donors' depots elsewhere and unseen:
+- `ThreatPosture.stagedCapacity(MarketAPI base, StarSystemAPI system)` :1552 - What a base staging against system could pay a force there:
+- `ThreatPosture.stagedCapacity(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors)` :1559 - stagedCapacity with the donors pooled into it (null:
+- `ThreatPosture.siegeCapacityFP(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors)` :1575 - Fleet points a base staging a siege against system could send:
 ### the monthly line (ThreatColonyManager.flushUpkeepMonth, from the census)
-- `ThreatPosture.logMonth()` :1573
-- `ThreatPosture.topBanks(int n)` :1592 - The n largest colony banks, "name fp" each, for the monthly line.
-- `ThreatPosture.compare(MarketAPI a, MarketAPI b)` :1595
-- `ThreatPosture.k(float fp)` :1607
+- `ThreatPosture.logMonth()` :1596
+- `ThreatPosture.topBanks(int n)` :1615 - The n largest colony banks, "name fp" each, for the monthly line.
+- `ThreatPosture.compare(MarketAPI a, MarketAPI b)` :1618
+- `ThreatPosture.k(float fp)` :1630
 
 ## ThreatPurgeFGI (2731 lines)
 - `ThreatPurgeFGI.ThreatPurgeFGI(GenericRaidParams params, boolean playerCommissioned)` :115
@@ -3888,7 +3890,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSwarmIntel.reset()` :927 - A new campaign (ThreatColonyManager.resetIncursion):
 - `ThreatSwarmIntel.drop(String systemId)` :937 - A system left the war (ThreatIncData.clearSystem):
 
-## ThreatSwarmPatrols (415 lines)
+## ThreatSwarmPatrols (438 lines)
 - `ThreatSwarmPatrols.all()` :70
 - `ThreatSwarmPatrols.enabled()` :84
 - `ThreatSwarmPatrols.carrier(CampaignFleetAPI fleet)` :89 - Whether the fleet is a Patrol Swarm or a Scouting Swarm:
@@ -3911,10 +3913,12 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSwarmPatrols.size(String systemId)` :245 - The size a hive system's patrols are built at:
 - `ThreatSwarmPatrols.launchAll(Random random)` :249
 - `ThreatSwarmPatrols.planRoute(MarketAPI colony, int stops)` :280 - The nearest systems around the colony's that no hive and no one else holds, not on another patrol's route and not patrolled within swarmPatrolMemoryDays, in the order a patrol flies them.
-- `ThreatSwarmPatrols.compare(StarSystemAPI a, StarSystemAPI b)` :296
-- `ThreatSwarmPatrols.launch(MarketAPI colony, String systemId, List<String> route, float size, Random random)` :322 - Fabricates a Patrol Swarm of about size FP at the colony and sends it round the route;
-- `ThreatSwarmPatrols.meet(String key, String factionId, String systemId, float fp, String kind, LocationAPI where, Vector2f hyper, ThreatPurgeFGI siege)` :367 - A human attack force the hive's own eyes do not see is at where (hyper in hyperspace) today (ThreatSwarmIntel.sweepContacts):
-- `ThreatSwarmPatrols.forceBurn(ThreatPurgeFGI siege)` :410 - The burn a human expedition flying as a route makes:
+- `ThreatSwarmPatrols.compare(StarSystemAPI a, StarSystemAPI b)` :302
+- `ThreatSwarmPatrols.compare(StarSystemAPI a, StarSystemAPI b)` :309
+- `ThreatSwarmPatrols.corridorLY(Vector2f p, Vector2f a, Vector2f b)` :336 - Light-years from the point to the nearest point of the segment a-b (hyperspace units in, as Misc.getDistanceLY reads them).
+- `ThreatSwarmPatrols.launch(MarketAPI colony, String systemId, List<String> route, float size, Random random)` :345 - Fabricates a Patrol Swarm of about size FP at the colony and sends it round the route;
+- `ThreatSwarmPatrols.meet(String key, String factionId, String systemId, float fp, String kind, LocationAPI where, Vector2f hyper, ThreatPurgeFGI siege)` :390 - A human attack force the hive's own eyes do not see is at where (hyper in hyperspace) today (ThreatSwarmIntel.sweepContacts):
+- `ThreatSwarmPatrols.forceBurn(ThreatPurgeFGI siege)` :433 - The burn a human expedition flying as a route makes:
 
 ## ThreatSwarmScouts (404 lines)
 - `ThreatSwarmScouts.all()` :57

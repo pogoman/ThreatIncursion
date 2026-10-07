@@ -162,7 +162,9 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   `S_EXPOSURE` (8), `S_LEN` 9 - a 7-field reading loads as unread, once. Logs `Posture: <system> exposure
   0.00 -> 1.00 (hostiles seen 3 d ago | no hostile seen, nearest known human world 12 ly | none)` on a
   change of 0.25, and `x 0.40 exposure` after the base in the mode-change line. `exposure(system)` reads
-  the last pass's figure.
+  the last pass's figure. **The front** (`frontline`) is any exposure above 0: no strike takes a front colony below its
+  want (`IncursionManager.stagedSpares`) and its patrols fly the corridor toward the humans
+  (`ThreatSwarmPatrols.planRoute`) - the user, 2026-10-07, after hw59 stripped besieged systems for one strike.
 - **Settings:** `postureEnabled` (true), `postureMargin` (1.25), `postureBand` (0.25), `postureDays` (5),
   `postureStagedShare` (0), `postureTriage` (false), `postureNeedAtAttack` (true),
   `posturePressedForgesHome` (false), `postureRecallLY` (10), `postureMass` (false), `systemDefence` (true),

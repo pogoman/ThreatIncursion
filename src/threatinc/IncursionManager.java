@@ -5025,8 +5025,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * The garrison fleets a staged strike may take, every colony of the hive weighed (the user, 2026-10-07:
 	 * "no hard never take, just weighted ... prefer far back and with most swarms first, further better than
 	 * bigger by a little, but prefer not to strip a world clean"). Two tiers: every colony's fleets above
-	 * its posture want (tier 1; above its reserve with the posture off) before any colony's fleets below
-	 * it (tier 2, down to its last fleet). Within a tier, the colonies by score: spareGatherDistanceShare
+	 * its posture want (tier 1; above its reserve with the posture off) before any REAR colony's fleets below
+	 * it (tier 2, down to its last fleet) - a front colony (ThreatPosture.frontline: any exposure to a known
+	 * human world or hostiles seen) is never taken below its want (the user, 2026-10-07, after hw59: "frontline
+	 * worlds should never be stripped, whether humans know about them or not"). Within a tier, the colonies by score: spareGatherDistanceShare
 	 * of the colony's distance from the nearest known human world (the safest first - the humans strike
 	 * what is near them) and the rest its surplus (the user: "then from those highest above the posture
 	 * threshold" - its fleets above its want in tier 1, its live fleets in tier 2), each against the
@@ -5073,7 +5075,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				}
 				k1 = Math.min(k1, walk.size());
 				if (k1 > 0) mine.add(spare(m, walk.subList(0, k1), ly, 1, dist, k1));
-				if (k1 < walk.size()) mine.add(spare(m, walk.subList(k1, walk.size()), ly, 2, dist, live));
+				// THE FRONT is never stripped (the user, 2026-10-07; hw59a: one 10k strike at a forward base took 52
+				// fleets from all 15 colonies, besieged systems included, and nine of them fell in the months after):
+				// only a rear colony - no exposure, ThreatPosture.frontline - offers what it holds below its want
+				if (k1 < walk.size() && !ThreatPosture.frontline(sys)) mine.add(spare(m, walk.subList(k1, walk.size()), ly, 2, dist, live));
 			}
 			// the held prongs' earmarked fleets come off the least preferred end: tier 2 first, the last colony first
 			int others = ThreatOffensive.earmarked(systemId);

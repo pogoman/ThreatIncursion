@@ -50,7 +50,11 @@ Both sides, once at war. The budget is fixed FP; its split into patrols follows 
   from phase 2 with a faction mobilised. Budget `swarmPatrolFPPerSystem` 120, base size `swarmPatrolFP` 30. Route:
   the nearest `patrolStops` systems no hive and no human holds, not patrolled within `swarmPatrolMemoryDays` 45
   (3 stops while the system is attacked). Paid from the fabrication bank, fuel and supplies as a Scouting Swarm;
-  aggressive, so the game's fleet AI has it hunt scouting parties.
+  aggressive, so the game's fleet AI has it hunt scouting parties. THE CORRIDOR (the user, 2026-10-07: "the threat
+  patrols should traverse the space between the front and human colonies once they are found to prevent scouts
+  getting through"): a FRONT system's patrols (`ThreatPosture.frontline`) take instead the `patrolStops` systems
+  nearest the line from home to the nearest human world the swarm has seen (`ThreatSwarmPatrols.corridorLY`,
+  `ThreatPosture.nearestKnownHumanSystem`) - where the humans' parties come from; a rear system keeps its ring.
 
 ## 4. A patrol meets a force
 
