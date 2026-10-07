@@ -403,3 +403,9 @@ then"): batches run as a Bash loop over single `sbs.ps1` calls from the checkpoi
 `for g in a b c; do powershell ... sbs.ps1 -Tags hw57$g -Bases "hw57$g=save_Xck1" -Days 2300 -MaxMinutes 45; done`,
 each game ~11 minutes of fast-forward plus a 3-minute load. `watch.sh` ends only after two quiet polls
 without a game, so the gap between games does not stop it.
+**Correction (2026-10-07, later):** the single-game figure above was the EMPTY pre-war phase. At war
+a game runs 90-130 days a minute whether alone (hw58a: 1490 -> 3802 in 25 minutes) or one of three
+(hw56: ~130 a game), each on its own cores - so three at once give three times the results an hour,
+and a batch from the checkpoint to war day 3800 takes about 30 minutes. The user: "no yeah do 3 at
+once" - `sbs.ps1 -Tags hw59a,hw59b,hw59c -Bases "hw59a=save_Xck1;hw59b=save_Xck1;hw59c=save_Xck1"
+-Days 2300`. The Bash loop of single runs stays as an option when one answer is wanted soonest.
