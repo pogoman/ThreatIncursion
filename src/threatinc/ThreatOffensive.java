@@ -65,6 +65,9 @@ public class ThreatOffensive {
 		}
 		if (stagings.isEmpty()) return;
 		List<MarketAPI> candidates = im.stagedCandidates(null);
+		for (MarketAPI m : new ArrayList<MarketAPI>(candidates)) {
+			if (scheduled(m)) candidates.remove(m);
+		}
 		if (candidates.isEmpty()) return;
 
 		// relief first: a front of the swarm's own short of troops (strikeReliefFirst)
@@ -158,25 +161,111 @@ public class ThreatOffensive {
 			return;
 		}
 
-		// launch: every prong of the campaign the fund pays, the most valuable first
-		int sent = 0;
+		// launch: every prong of the campaign the fund pays, the most valuable first - the farthest
+		// sails today and the rest wait so all arrive together (the user, 2026-10-07): a prong's
+		// bill leaves the fund now and comes back the day it sails (poll)
+		float arriveIn = 0f;
+		for (Prong p : campaign) arriveIn = Math.max(arriveIn, arrival(p.ly));
+		int sent = 0, held = 0;
 		float sentFP = 0f;
 		StringBuilder at = new StringBuilder();
 		for (Prong p : campaign) {
 			if (p.cost > ThreatColonyManager.strikeFund() + 0.5f) continue;
 			if (IncursionManager.isActiveStrikeTarget(p.target)) continue;
-			if (im.launchStrike(p.staging, p.source, p.target) == null) continue;
-			if (!ThreatIncConfig.hiveFogOfWar()) ThreatIncData.markDiscovered(p.source.getId());
-			sent++;
+			float wait = arriveIn - arrival(p.ly);
+			if (wait >= 1f) {
+				ThreatColonyManager.addStrikeFund(-p.cost);
+				schedule().add(p.target.getId() + "|" + p.staging.getId() + "|" + p.source.getId() + "|"
+						+ (day + wait) + "|" + p.cost);
+				held++;
+			} else {
+				if (im.launchStrike(p.staging, p.source, p.target) == null) continue;
+				if (!ThreatIncConfig.hiveFogOfWar()) ThreatIncData.markDiscovered(p.source.getId());
+				sent++;
+			}
 			sentFP += p.cost;
 			if (at.length() > 0) at.append(", ");
 			at.append(p.target.getName()).append(" (").append(p.target.getFactionId()).append(", ").append((int) p.ly)
-					.append(" ly, ").append((int) p.cost).append(" FP)");
+					.append(" ly, ").append((int) p.cost).append(" FP").append(wait >= 1f ? ", in " + (int) wait + " d" : "")
+					.append(")");
 		}
 		setStartDay(day);
-		ThreatIncConfig.log("Offensive launched: " + sent + " strike(s) of " + campaign.size() + " planned, " + (int) sentFP
-				+ " FP (" + where + (day >= deadline && fund < cost ? ", at the deadline" : "") + "); fund left "
+		ThreatIncConfig.log("Offensive launched: " + sent + " strike(s) now and " + held + " to follow, of " + campaign.size()
+				+ " planned, " + (int) sentFP + " FP, arriving together in ~" + (int) arriveIn + " days (" + where
+				+ (day >= deadline && fund < cost ? ", at the deadline" : "") + "); fund left "
 				+ (int) ThreatColonyManager.strikeFund() + " FP; at " + at);
+	}
+
+	/** Days from launch to the target: the muster and the crossing at the board's estimated speed. */
+	protected static float arrival(float ly) {
+		return ThreatReach.STRIKE_PREP_DAYS + ThreatReach.days(ly);
+	}
+
+	// ------------------------------------------------------------------
+	// the prongs held back to arrive with the farthest
+	// ------------------------------------------------------------------
+
+	protected static final String KEY_SCHEDULE = "threatinc_offensiveSchedule";
+
+	/** "targetId|stagingId|sourceSystemId|launchDay|cost" per prong waiting its day. */
+	@SuppressWarnings("unchecked")
+	protected static List<String> schedule() {
+		Object v = Global.getSector().getPersistentData().get(KEY_SCHEDULE);
+		if (v instanceof List) return (List<String>) v;
+		List<String> list = new ArrayList<String>();
+		Global.getSector().getPersistentData().put(KEY_SCHEDULE, list);
+		return list;
+	}
+
+	/** Whether a prong at the world waits its day (no second strike is planned at it). */
+	public static boolean scheduled(MarketAPI market) {
+		if (market == null) return false;
+		for (String e : schedule()) {
+			if (e.startsWith(market.getId() + "|")) return true;
+		}
+		return false;
+	}
+
+	/** Daily (IncursionManager.advance): every prong whose day has come sails, its bill back in the fund for launchStrike to draw. */
+	public static void poll() {
+		if (IncursionManager.instance == null || schedule().isEmpty()) return;
+		float day = ThreatPosture.today();
+		for (String e : new ArrayList<String>(schedule())) {
+			String[] f = e.split("\\|");
+			if (f.length < 5) {
+				schedule().remove(e);
+				continue;
+			}
+			float launchDay, cost;
+			try {
+				launchDay = Float.parseFloat(f[3]);
+				cost = Float.parseFloat(f[4]);
+			} catch (NumberFormatException x) {
+				schedule().remove(e);
+				continue;
+			}
+			if (day < launchDay) continue;
+			schedule().remove(e);
+			ThreatColonyManager.addStrikeFund(cost);
+			MarketAPI target = Global.getSector().getEconomy().getMarket(f[0]);
+			MarketAPI staging = Global.getSector().getEconomy().getMarket(f[1]);
+			StarSystemAPI source = Global.getSector().getStarSystem(f[2]);
+			String name = target != null ? target.getName() : f[0];
+			if (target == null || staging == null || source == null || target.getStarSystem() == null
+					|| !IncursionManager.isStrikeableWorld(target) || IncursionManager.isActiveStrikeTarget(target)
+					|| !ThreatIncData.colonyMarkets().containsKey(source.getId())) {
+				ThreatIncConfig.log("Offensive: the prong at " + name + " is off - target or staging gone; " + (int) cost
+						+ " FP back in the fund");
+				continue;
+			}
+			if (IncursionManager.instance.launchStrike(staging, source, target) == null) {
+				ThreatIncConfig.log("Offensive: the prong at " + name + " cannot sail today; " + (int) cost
+						+ " FP back in the fund");
+				continue;
+			}
+			if (!ThreatIncConfig.hiveFogOfWar()) ThreatIncData.markDiscovered(source.getId());
+			ThreatIncConfig.log("Offensive: the prong at " + name + " sails on its day");
+		}
 	}
 
 	/** The hive system nearest the target that can stage a strike, or null. */

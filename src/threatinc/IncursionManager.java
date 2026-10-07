@@ -273,6 +273,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatOutposts.poll();
 		ThreatFrontlines.poll(random);
 		detectStrikes();
+		ThreatOffensive.poll(); // the offensive's held prongs sail on their day (ThreatOffensive)
 		sweepOrphanedExpeditions();
 		upgradeInFlightStrikes();
 		dedupDecivIntel();
