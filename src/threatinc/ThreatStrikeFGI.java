@@ -46,6 +46,57 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 */
 	protected boolean undetected = false;
 
+	/**
+	 * What the strike was sized for (the defence expected at its target, IncursionManager.sendStrike) and
+	 * the most that opposed it in its target system while it was there, sampled daily (advanceImpl):
+	 * reported to the swarm's intel when it ends (ThreatSwarmIntel.noteMet), so the next strike at the
+	 * faction is sized for what its worlds answer with, not the day's patrols alone.
+	 */
+	protected float expectedFP = 0f, metFP = 0f, metSampleDay = -1f;
+	protected String expectedFactionId;
+	protected boolean metReported = false;
+
+	public void setExpected(float fp, String factionId) {
+		expectedFP = fp;
+		expectedFactionId = factionId;
+	}
+
+	/** Once a day while in the target system: the hostile strength there now, the strike's own fleets aside. */
+	protected void sampleMet() {
+		if (expectedFP <= 0f || getParams() == null || getParams().raidParams.where == null) return;
+		float day = ThreatPosture.today();
+		if (metSampleDay >= 0f && day - metSampleDay < 1f) return;
+		boolean there = false;
+		for (CampaignFleetAPI fleet : getFleets()) {
+			if (fleet != null && fleet.getContainingLocation() == getParams().raidParams.where) {
+				there = true;
+				break;
+			}
+		}
+		if (!there) return;
+		metSampleDay = day;
+		MarketAPI primary = getParams().raidParams.allowedTargets.isEmpty() ? null : getParams().raidParams.allowedTargets.get(0);
+		if (primary == null) return;
+		metFP = Math.max(metFP, IncursionManager.liveTargetDefence(primary, null));
+	}
+
+	/** An off-screen fight read the defence: counts as a sample (the fleets never stand in the system). */
+	public void noteMet(float defence) {
+		if (expectedFP <= 0f) return;
+		if (metSampleDay < 0f) metSampleDay = ThreatPosture.today();
+		metFP = Math.max(metFP, defence);
+	}
+
+	/** The strike is over: what it met goes to the swarm's intel, once. */
+	protected void reportMet() {
+		if (metReported || expectedFP <= 0f) return;
+		metReported = true;
+		MarketAPI primary = getParams() != null && !getParams().raidParams.allowedTargets.isEmpty()
+				? getParams().raidParams.allowedTargets.get(0) : null;
+		if (primary == null || metSampleDay < 0f) return;
+		ThreatSwarmIntel.noteMet(expectedFactionId != null ? expectedFactionId : primary.getFactionId(), expectedFP, metFP);
+	}
+
 	public boolean isDetected() {
 		return !undetected;
 	}
@@ -216,6 +267,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 				def = ThreatAbstractBattle.defenderStrength(strike.getFaction(), getParams().where);
 				defenders = ThreatAbstractBattle.defenders(strike.getFaction(), getParams().where);
 				before = strike.fightingFP();
+				strike.noteMet(def);
 			}
 			super.autoresolve();
 			if (strike != null) {
@@ -900,6 +952,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	@Override
 	protected void advanceImpl(float amount) {
 		super.advanceImpl(amount);
+		sampleMet();
 		ThreatPurgeFGI.resolveOnArrival(this);
 		for (CampaignFleetAPI fleet : getFleets()) {
 			if (fleet == null) continue;
@@ -1812,6 +1865,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	@Override
 	protected void notifyEnding() {
 		super.notifyEnding();
+		reportMet();
 		if (ledgerHome == null || ledgerClosed) return;
 		ledgerClosed = true;
 		if (stillborn) {

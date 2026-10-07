@@ -791,6 +791,60 @@ public final class ThreatSwarmIntel {
 		return new ArrayList<Place>(placeMap().values());
 	}
 
+	// ------------------------------------------------------------------
+	// what a faction can answer a strike with, as the swarm has seen it (the user, 2026-10-07:
+	// "the threat wouldn't know what that is unless it knew all worlds" - it knows what it has seen)
+	// ------------------------------------------------------------------
+
+	/**
+	 * The faction's navy the swarm has seen anywhere but the system: every place of the faction's
+	 * holds the defence, the guards and the staged force seen there (ThreatOffensive sizes a prong
+	 * for the day's defence plus the share of this that could answer).
+	 */
+	public static float knownNavyFP(String factionId, String exceptSystemId) {
+		if (!enabled() || factionId == null) return 0f;
+		float fp = 0f;
+		for (Place p : placeMap().values()) {
+			if (!factionId.equals(p.factionId)) continue;
+			if (exceptSystemId != null && exceptSystemId.equals(p.systemId)) continue;
+			fp += Math.max(0f, p.defenceFP) + Math.max(0f, p.guardsFP) + Math.max(0f, p.stagedFP);
+		}
+		return fp;
+	}
+
+	/** Faction id -> {expected FP summed, met FP summed}, decayed by MET_KEEP a strike: what its strikes met against what they were sized for. */
+	protected static final String KEY_MET = "threatinc_swarmMet";
+	protected static final float MET_KEEP = 0.7f;
+
+	@SuppressWarnings("unchecked")
+	protected static Map<String, float[]> metMap() {
+		Object v = Global.getSector().getPersistentData().get(KEY_MET);
+		if (v instanceof Map) return (Map<String, float[]>) v;
+		Map<String, float[]> m = new HashMap<String, float[]>();
+		Global.getSector().getPersistentData().put(KEY_MET, m);
+		return m;
+	}
+
+	/** A strike at the faction has ended: it was sized for {@code expected} and met {@code met} at most (ThreatStrikeFGI). */
+	public static void noteMet(String factionId, float expected, float met) {
+		if (!enabled() || factionId == null || expected <= 0f) return;
+		float[] m = metMap().get(factionId);
+		if (m == null) m = new float[] { 0f, 0f };
+		m[0] = m[0] * MET_KEEP + expected;
+		m[1] = m[1] * MET_KEEP + Math.max(0f, met);
+		metMap().put(factionId, m);
+		ThreatIncConfig.log("Swarm intel: a strike at " + factionId + " sized for " + (int) expected + " met " + (int) met
+				+ "; its answer is now " + String.format("%.2f", responseRatio(factionId)) + "x what is seen");
+	}
+
+	/** What the faction's worlds met the swarm's strikes with, over what they were sized for; 1 until a strike has ended there, never below 1. */
+	public static float responseRatio(String factionId) {
+		if (!enabled() || factionId == null) return 1f;
+		float[] m = metMap().get(factionId);
+		if (m == null || m[0] <= 0f) return 1f;
+		return Math.max(1f, m[1] / m[0]);
+	}
+
 	/** Days since the place was seen. */
 	public static float age(Place p) {
 		return p != null ? Math.max(0f, today() - p.day) : Float.MAX_VALUE;

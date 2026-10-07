@@ -40,7 +40,7 @@ public class ThreatOffensive {
 		MarketAPI target, staging;
 		StarSystemAPI source;
 		/** The fund's bill, the strike's fleet points, its passage fuel (round trip) and days away. */
-		float cost, fp, fuel, days, ly, score, def;
+		float cost, fp, fuel, days, ly, score, def, expected;
 	}
 
 	protected static float startDay() {
@@ -108,14 +108,16 @@ public class ThreatOffensive {
 			p.def = def;
 			bySystem.put(target.getStarSystem().getId(), p);
 		}
+		// what each faction can answer with, as seen: its navy seen elsewhere is shared among the
+		// prongs at it (the user, 2026-10-07: the swarm knows what it has seen, not the total)
+		Map<String, Integer> atFaction = new HashMap<String, Integer>();
+		for (Prong p : bySystem.values()) {
+			Integer n = atFaction.get(p.target.getFactionId());
+			atFaction.put(p.target.getFactionId(), n == null ? 1 : n + 1);
+		}
 		List<Prong> prongs = new ArrayList<Prong>();
 		for (Prong p : bySystem.values()) {
-			IncursionManager.StagedPlan plan = im.stagedPlan(p.staging, p.source, p.target, memo, null, null, Float.MAX_VALUE);
-			if (plan == null || plan.bankFP <= 0f) continue; // the fuel or the supplies away do not pay it
-			p.cost = plan.bankFP;
-			p.fp = plan.fp;
-			p.fuel = ThreatFuel.passage(plan.fp, p.ly, true);
-			p.days = ThreatReach.strikeDays(p.ly);
+			if (!price(im, p, memo, atFaction.get(p.target.getFactionId()))) continue;
 			float value = IncursionManager.strikeValue(p.target)
 					* ThreatStance.strikeTargetMult(p.target, p.source, 1f / margin);
 			// losing: the spoiling blow - a base staging against a hive, a forward base - and the near first
@@ -156,6 +158,30 @@ public class ThreatOffensive {
 			away += p.fp;
 			longest = Math.max(longest, p.days);
 		}
+		// fewer prongs at a faction than were priced: each meets a bigger share of its navy - re-price
+		// the set, and drop from its tail while the means no longer pay it
+		Map<String, Integer> inCampaign = new HashMap<String, Integer>();
+		for (Prong p : campaign) {
+			Integer n = inCampaign.get(p.target.getFactionId());
+			inCampaign.put(p.target.getFactionId(), n == null ? 1 : n + 1);
+		}
+		for (Prong p : new ArrayList<Prong>(campaign)) {
+			if (!price(im, p, memo, inCampaign.get(p.target.getFactionId()))) campaign.remove(p);
+		}
+		while (!campaign.isEmpty()) {
+			cost = 0f;
+			fuel = 0f;
+			away = 0f;
+			longest = 0f;
+			for (Prong p : campaign) {
+				cost += p.cost;
+				fuel += p.fuel;
+				away += p.fp;
+				longest = Math.max(longest, p.days);
+			}
+			if (cost <= budget && fuel <= fuelBudget && away <= ThreatReach.sustainableFP(longest)) break;
+			campaign.remove(campaign.size() - 1);
+		}
 		String where = losing ? "losing, within " + (int) nearLY + " ly" : "all known";
 		if (campaign.isEmpty()) {
 			ThreatIncConfig.logQuiet("offensive", "Offensive: nothing the fund pays by the deadline - " + prongs.size()
@@ -193,17 +219,17 @@ public class ThreatOffensive {
 				ThreatColonyManager.addStrikeFund(-p.cost);
 				ThreatFuel.setStock(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, ThreatFuel.stock() - p.fuel);
 				schedule().add(p.target.getId() + "|" + p.staging.getId() + "|" + p.source.getId() + "|"
-						+ (day + wait) + "|" + p.cost + "|" + p.fuel);
+						+ (day + wait) + "|" + p.cost + "|" + p.fuel + "|" + p.expected);
 				held++;
 			} else {
-				if (im.launchStrike(p.staging, p.source, p.target) == null) continue;
+				if (im.launchStrike(p.staging, p.source, p.target, p.expected) == null) continue;
 				if (!ThreatIncConfig.hiveFogOfWar()) ThreatIncData.markDiscovered(p.source.getId());
 				sent++;
 			}
 			sentFP += p.cost;
 			if (at.length() > 0) at.append(", ");
 			at.append(p.target.getName()).append(" (").append(p.target.getFactionId()).append(", ").append((int) p.ly)
-					.append(" ly, ").append((int) p.cost).append(" FP").append(wait >= 1f ? ", in " + (int) wait + " d" : "")
+					.append(" ly, ").append((int) p.cost).append(" FP for ").append((int) p.expected).append(" expected").append(wait >= 1f ? ", in " + (int) wait + " d" : "")
 					.append(")");
 		}
 		setStartDay(day);
@@ -211,6 +237,27 @@ public class ThreatOffensive {
 				+ " planned, " + (int) sentFP + " FP, arriving together in ~" + (int) arriveIn + " days (" + where
 				+ (day >= deadline && fund < cost ? ", at the deadline" : "") + "); fund left "
 				+ (int) ThreatColonyManager.strikeFund() + " FP; at " + at);
+	}
+
+	/**
+	 * Prices the prong for the answer it expects: the day's defence seen there, plus the faction's
+	 * navy seen elsewhere (ThreatSwarmIntel.knownNavyFP) shared among the nAtFaction prongs at that
+	 * faction, times what the faction's worlds have met earlier strikes with over what they were
+	 * sized for (responseRatio); stagedPlan against an unlimited bank. False when nothing pays it.
+	 */
+	protected static boolean price(IncursionManager im, Prong p, Map<String, float[]> memo, Integer nAtFaction) {
+		String f = p.target.getFactionId();
+		int n = nAtFaction != null ? Math.max(1, nAtFaction) : 1;
+		float navy = ThreatSwarmIntel.knownNavyFP(f, p.target.getStarSystem().getId());
+		p.expected = (p.def + navy / n) * ThreatSwarmIntel.responseRatio(f);
+		IncursionManager.StagedPlan plan = im.stagedPlan(p.staging, p.source, p.target, memo, null, null, Float.MAX_VALUE,
+				p.expected);
+		if (plan == null || plan.bankFP <= 0f) return false;
+		p.cost = plan.bankFP;
+		p.fp = plan.fp;
+		p.fuel = ThreatFuel.passage(plan.fp, p.ly, true);
+		p.days = ThreatReach.strikeDays(p.ly);
+		return true;
 	}
 
 	/** Days from launch to the target: the muster and the crossing at the board's estimated speed. */
@@ -253,11 +300,12 @@ public class ThreatOffensive {
 				schedule().remove(e);
 				continue;
 			}
-			float launchDay, cost, fuel;
+			float launchDay, cost, fuel, expected;
 			try {
 				launchDay = Float.parseFloat(f[3]);
 				cost = Float.parseFloat(f[4]);
 				fuel = f.length > 5 ? Float.parseFloat(f[5]) : 0f;
+				expected = f.length > 6 ? Float.parseFloat(f[6]) : Float.NaN;
 			} catch (NumberFormatException x) {
 				schedule().remove(e);
 				continue;
@@ -277,7 +325,7 @@ public class ThreatOffensive {
 						+ " FP back in the fund");
 				continue;
 			}
-			if (IncursionManager.instance.launchStrike(staging, source, target) == null) {
+			if (IncursionManager.instance.launchStrike(staging, source, target, expected) == null) {
 				ThreatIncConfig.log("Offensive: the prong at " + name + " cannot sail today; " + (int) cost
 						+ " FP back in the fund");
 				continue;
