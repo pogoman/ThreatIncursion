@@ -300,6 +300,14 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
   demand 208, so 6 units a month reach the stock. Fuel went the other way: 27 plants, 138 units,
   ~200k a month banked, 4.9M in stock. (The 208 is Spaceport demand, size-2 a hive - not the
   stations' or defences', which demand none.)
+- **The navy above the patrols pays supplies (2026-10-07, the user; `payNavySupplies`).** A hive's
+  garrison FP above its patrol figure (`ThreatPosture.minimumFP`) - its launch stock and spare, the
+  hive's counterpart of a faction's built hulls - pays the swarm's maintenance per FP x
+  `standingUpkeepMult` a month from the hive stock, for the days `paySupplies` charged; the unpaid is
+  demand and owed (`KEY_NAVY_OWED`), and once the owed reaches the smallest swarm's month that swarm
+  is lost, never below the patrols. Month line: `Upkeep month: … navy upkeep X of Y supplies, lost K
+  swarm(s) …`. "Might as well charge them supplies if threat has surplus anyway" - the swarm sat on
+  0.4-1.4M supplies on the first sector (hw40-41), so it binds there not at all.
 - **The garrison pays no supplies (2026-10-06, the user, after hw36-37).** One evening charged it
   (`payGarrisonSupplies`: garrison FP x the swarm's maintenance per FP from the hive stock, the
   smallest swarm lost once its month was owed) and then gated its growth on the hive's supplies
@@ -310,7 +318,7 @@ no faction could fuel a hunt of that size. Now both sides pay the same rate.
   sets the patrol table a human Military Base sets, and a hive market's shortages cut its fleet size
   and quality as a human world's do - and vanilla keeps it. The mod's stocks pay the mod's actions:
   fleets away (above), structures, waves, strikes; the navy a faction's yards build beyond its table
-  (`ThreatHulls.maintain`, `docs/hull-pool.md` 2). A held strike now books its supplies shortfall as
+  (`ThreatHulls.maintain`, `docs/hull-pool.md` 2); the hive's navy above its patrols the same (`payNavySupplies`, above). A held strike now books its supplies shortfall as
   demand (`ThreatFuel.held`), as its fuel always did - kept from that evening.
 
 

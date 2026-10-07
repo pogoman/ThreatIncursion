@@ -4185,7 +4185,9 @@ public class ThreatColonyManager {
 				Float outSupplies = ledgerSupplies.get(marketId);
 				float away = awayFleetSupplies(market) + (outSupplies != null ? outSupplies : 0f);
 				fleetsSupplies += away;
-				paySupplies(market, away);
+				float days = paySupplies(market, away);
+				// the navy above the patrols pays its supplies, as a faction's built hulls do
+				payNavySupplies(market, fleets, days);
 			}
 
 			// two hard on/off gates on fabrication. The Fabrication Core is the
@@ -4891,6 +4893,63 @@ public class ThreatColonyManager {
 		return days;
 	}
 
+	/** Persistent: market id -> supplies its navy above the patrols owes (payNavySupplies). */
+	public static final String KEY_NAVY_OWED = "threatinc_hiveNavyOwed";
+
+	/** The colony's garrison FP above its patrols (ThreatPosture.minimumFP): its launch stock and spare, the hive's built navy. */
+	public static float navyFP(MarketAPI market, List<CampaignFleetAPI> fleets) {
+		return Math.max(0f, garrisonFP(fleets) - ThreatPosture.minimumFP(market));
+	}
+
+	/**
+	 * The navy above the patrols pays its supplies (the user, 2026-10-07: "might
+	 * as well charge them supplies if threat has surplus anyway") - the hive's
+	 * counterpart of a faction's built hulls at home (ThreatHulls.maintain):
+	 * navyFP at the swarm's maintenance per FP x standingUpkeepMult, for the
+	 * days paySupplies charged, from the hive stock. The unpaid is demand for
+	 * the planner and owed; once the owed reaches the smallest swarm's month
+	 * that swarm is lost, never below the patrols. The patrols themselves are
+	 * vanilla's to keep (one evening charged them, hw36-37).
+	 */
+	protected static void payNavySupplies(MarketAPI market, List<CampaignFleetAPI> fleets, float days) {
+		float rate = ThreatReach.suppliesPerFP() * ThreatIncConfig.standingUpkeepMult();
+		float navy = navyFP(market, fleets);
+		if (days <= 0f || rate <= 0f || navy <= 0f) return;
+		String id = market.getId();
+		float want = navy * rate * days / 30f;
+		float paid = Math.min(want, ThreatFuel.stock(Commodities.SUPPLIES));
+		ThreatFuel.pay(Commodities.SUPPLIES, paid);
+		UpkeepLog log = upkeepLog(id);
+		log.navyWanted += want;
+		log.navyPaid += paid;
+		float unpaid = want - paid;
+		Map<String, Object> owedMap = ThreatIncData.map(KEY_NAVY_OWED);
+		if (unpaid <= 0f) {
+			owedMap.remove(id);
+			return;
+		}
+		ThreatFuel.noteDemand(Commodities.SUPPLIES, unpaid);
+		if (!ThreatFuel.planned()) ThreatFuel.noteShort(Commodities.SUPPLIES);
+		Object had = owedMap.get(id);
+		float owed = (had instanceof Float ? (Float) had : 0f) + unpaid;
+		int budget = fleets.size();
+		for (int i = 0; i < budget; i++) {
+			CampaignFleetAPI victim = smallestOnStation(fleets);
+			if (victim == null) break;
+			float fp = victim.getFleetPoints();
+			if (fp <= 0f || owed < fp * rate || fp > navyFP(market, fleets)) break;
+			owed -= fp * rate;
+			fleets.remove(victim);
+			victim.despawn();
+			log.starved++;
+			log.starvedFP += fp;
+			ThreatIncConfig.log("Upkeep: " + market.getName() + " lost a " + (int) fp + " FP swarm for " + (int) (fp * rate)
+					+ " supplies of navy upkeep unpaid (" + (int) owed + " still owed, " + fleets.size() + " on station)");
+		}
+		if (owed > 0f) owedMap.put(id, owed);
+		else owedMap.remove(id);
+	}
+
 	/** The colony's fleets away owe a month of supplies: its raiders turn home, its strikes back. */
 	protected static void starveAway(MarketAPI market, float owed) {
 		String id = market.getId();
@@ -5011,6 +5070,9 @@ public class ThreatColonyManager {
 		float charged;
 		int recycled;
 		float recycledFP;
+		int starved;
+		float starvedFP;
+		float navyWanted, navyPaid;
 		float lastLogged = -1f;
 	}
 
@@ -5035,18 +5097,26 @@ public class ThreatColonyManager {
 			UpkeepLog log = entry.getValue();
 			boolean moved = log.lastLogged < 0f ? log.charged > 0f
 					: Math.abs(log.charged - log.lastLogged) >= 0.1f * Math.max(1f, log.lastLogged);
-			if (log.recycled > 0 || moved) {
+			if (log.recycled > 0 || log.starved > 0 || moved) {
 				MarketAPI market = ThreatIncData.resolveColonyMarket(entry.getKey());
 				ThreatIncConfig.log("Upkeep month: " + (market != null ? market.getName() : entry.getKey())
 						+ " paid " + (int) log.charged + " FP"
 						+ (log.recycled > 0 ? ", recycled " + log.recycled + " swarm(s) of " + (int) log.recycledFP
 								+ " FP" : "")
+						+ (log.navyWanted > 0f ? ", navy upkeep " + (int) log.navyPaid + " of " + (int) log.navyWanted
+								+ " supplies" : "")
+						+ (log.starved > 0 ? ", lost " + log.starved + " swarm(s) of " + (int) log.starvedFP
+								+ " FP to unpaid navy upkeep" : "")
 						+ " (" + (int) fpBank(entry.getKey()) + " FP banked)");
 				log.lastLogged = log.charged;
 			}
 			log.charged = 0f;
 			log.recycled = 0;
 			log.recycledFP = 0f;
+			log.starved = 0;
+			log.starvedFP = 0f;
+			log.navyWanted = 0f;
+			log.navyPaid = 0f;
 		}
 	}
 
