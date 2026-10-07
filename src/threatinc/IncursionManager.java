@@ -4981,6 +4981,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		pricedFP = fp > 0f ? fp : Float.MAX_VALUE;
 	}
 
+	/**
+	 * The garrison fleets a hive system set aside for the held prong launching now (its schedule entry's
+	 * earmark, ThreatOffensive.poll): stagedSpares offers them whatever the system's reserve reads today.
+	 * The earmark kept every other strike, send and recycle off them, but ownAvailableForLaunch reads a
+	 * colony that gave the earlier prongs its swarms as "regrowing" and offers nothing (hw54c: a 3-prong
+	 * campaign of 25k FP of spare swarms, the third prong on its day "0 FP of spare swarms", re-planned
+	 * 8.1k FP from the fund and refused). Empty otherwise.
+	 */
+	protected static java.util.Map<String, Integer> launchingEarmark = java.util.Collections.emptyMap();
+
+	/** Sets the launching held prong's earmark (hive system id -> fleets); null clears it. */
+	public static void setLaunchingEarmark(java.util.Map<String, Integer> earmark) {
+		launchingEarmark = earmark != null ? earmark : java.util.Collections.<String, Integer>emptyMap();
+	}
+
 	protected java.util.List<StagedSpare> stagedSpares(final StarSystemAPI source) {
 		java.util.List<StagedSpare> out = new ArrayList<StagedSpare>();
 		if (!ThreatIncConfig.strikeStagedGarrisons() || source == null) return out;
@@ -4988,7 +5003,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			MarketAPI c = ThreatColonyManager.pickStrikeStaging(systemId, true);
 			StarSystemAPI sys = getSystem(systemId);
 			if (c == null || sys == null) continue;
-			int avail = ThreatColonyManager.garrisonAvailableForLaunch(c) - ThreatOffensive.earmarked(systemId);
+			int others = ThreatOffensive.earmarked(systemId);
+			int avail = ThreatColonyManager.garrisonAvailableForLaunch(c) - others;
+			// the launching held prong's own earmark is there for it whatever the reserve reads (launchingEarmark)
+			Integer own = launchingEarmark.get(systemId);
+			if (own != null && own > avail) {
+				int live = 0;
+				for (MarketAPI m : ThreatColonyManager.launchPool(c)) live += ThreatColonyManager.countLiveGarrison(m.getId());
+				avail = Math.min(own, live - others);
+			}
 			if (avail <= 0) continue;
 			StagedSpare s = new StagedSpare();
 			s.colony = c;

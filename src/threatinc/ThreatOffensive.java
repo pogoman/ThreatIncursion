@@ -510,6 +510,23 @@ public class ThreatOffensive {
 		return sb.toString();
 	}
 
+	/** A schedule entry's earmark field ("systemId:fleets;...") as a hive system id -> fleets map. */
+	public static Map<String, Integer> earmarkMap(String field) {
+		Map<String, Integer> out = new HashMap<String, Integer>();
+		if (field == null || field.isEmpty()) return out;
+		for (String part : field.split(";")) {
+			int c = part.lastIndexOf(':');
+			if (c <= 0) continue;
+			try {
+				int n = Integer.parseInt(part.substring(c + 1));
+				if (n > 0) out.put(part.substring(0, c), n);
+			} catch (NumberFormatException x) {
+				// a malformed earmark sets nothing aside
+			}
+		}
+		return out;
+	}
+
 	/** Adds (sign 1) or takes back (-1) the plan's garrison fleets in a hive system id -> fleets map. */
 	protected static void addEarmark(Map<String, Integer> to, IncursionManager.StagedPlan plan, int sign) {
 		if (plan == null) return;
@@ -624,14 +641,18 @@ public class ThreatOffensive {
 			// supplies gate does not run again (hw52: gated whole, each held prong was charged alone the flow
 			// the campaign had made negative, 8 of 9 refused; hw53: gated on the burn beyond the prepaid trip,
 			// a plan grown past its priced size on bigger first fleets was refused)
+			// ...and the fleets it earmarked are its to muster, whatever its systems' reserves read today (hw54c: the
+			// systems that gave the earlier prongs their swarms read "regrowing" and offered the third prong none)
 			ThreatReach.setPrepaid(trip);
 			IncursionManager.setPricedFP(priced);
+			IncursionManager.setLaunchingEarmark(earmarkMap(f.length > 7 ? f[7] : ""));
 			boolean sailed;
 			try {
 				sailed = IncursionManager.instance.launchStrike(staging, source, target, expected) != null;
 			} finally {
 				ThreatReach.setPrepaid(0f);
 				IncursionManager.setPricedFP(Float.MAX_VALUE);
+				IncursionManager.setLaunchingEarmark(null);
 			}
 			if (!sailed) {
 				ThreatIncConfig.log("Offensive: the prong at " + name + " cannot sail today; " + (int) cost
