@@ -4429,6 +4429,17 @@ public class ThreatColonyManager {
 		Global.getSector().getPersistentData().put(KEY_STRIKE_FUND, Math.max(0f, strikeFund() + fp));
 	}
 
+	/** Fleet points a month the strike fund gains at today's fabrication: strikeFundShare of every live colony's rate (ThreatOffensive's saving horizon). */
+	public static float strikeFundPerMonth() {
+		float share = Math.max(0f, Math.min(1f, ThreatIncConfig.strikeFundShare()));
+		if (share <= 0f) return 0f;
+		float output = hiveShipOutput(), draw = hiveNexusDraw(), perDay = 0f;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			perDay += Math.max(0f, fabricationRatePerDay(m, output, draw));
+		}
+		return perDay * 30f * share;
+	}
+
 	/** Moves the bill from the strike fund to the staging colony's bank, which the launch then draws it from; false when the fund is short. */
 	public static boolean spendStrikeFund(MarketAPI staging, float bill) {
 		if (staging == null || bill > strikeFund() + 0.5f) return false;

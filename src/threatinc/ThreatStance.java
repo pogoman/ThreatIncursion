@@ -137,6 +137,18 @@ public class ThreatStance {
 		return NAMES[stance()];
 	}
 
+	/**
+	 * Whether the swarm is losing the war as the last pass read it (ThreatOffensive narrows its
+	 * targets to the nearby): consolidating, the exchange lost (SIGNIFICANT_LOSS of what it holds,
+	 * more lost than sunk) or hives fewer than HIVE_WINDOW_DAYS ago.
+	 */
+	public static boolean losing() {
+		if (!enabled()) return false;
+		float[] s = map(KEY_STATE).get(SECTOR);
+		if (s == null || s.length < 5) return stance() == CONSOLIDATE;
+		return (int) s[0] == CONSOLIDATE || s[3] > 0f || s[4] < 0f;
+	}
+
 	// ------------------------------------------------------------------
 	// what the rest of the hive reads
 	// ------------------------------------------------------------------
@@ -428,7 +440,7 @@ public class ThreatStance {
 			if (next != was) since = day;
 			ThreatIncConfig.log("Stance: " + NAMES[was] + "->" + NAMES[next] + " - " + summary);
 		}
-		map(KEY_STATE).put(SECTOR, new float[] { next, since, pressure });
+		map(KEY_STATE).put(SECTOR, new float[] { next, since, pressure, losing ? 1f : 0f, hiveDelta });
 
 		// pressing: each staging colony builds the strike its target needs
 		if (next == PRESS) {

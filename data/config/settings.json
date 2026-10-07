@@ -130,6 +130,17 @@
 	"threatinc_strikeStagedMinFP": 8000,
 	# ...and the war's first strike waits until the fund holds OpenFP (trial hw27).
 	"threatinc_strikeStagedOpenFP": 0,
+	# THE OFFENSIVE (the user, 2026-10-07): the hive saves its strike fund and strikes
+	# every known target system at once - one prong a system, sized to the strongest
+	# defence seen there - the campaign being the most valuable set the fund pays by
+	# its deadline (HorizonMonths from the last launch); at the deadline the fund pays
+	# what it can. Losing (consolidating, the exchange lost, hives falling) it campaigns
+	# only within NearLY of a hive, spoiling blows first, on the LosingMonths horizon.
+	# false: the closest payable target, one strike a month.
+	"threatinc_swarmOffensive": true,
+	"threatinc_offensiveHorizonMonths": 12,
+	"threatinc_offensiveLosingMonths": 3,
+	"threatinc_offensiveNearLY": 10,
 	# NO LEAD FROM A STRIKE (2026-10-05, the user): a strike mobilises the factions
 	# it sweeps and tells nothing of its origin; hives are found only by parties
 	# entering their system. true = the struck faction's scouts sail to the origin
