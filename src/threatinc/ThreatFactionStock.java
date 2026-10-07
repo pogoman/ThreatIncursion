@@ -214,10 +214,16 @@ public class ThreatFactionStock {
 		return ThreatHulls.freeFP(f) <= 0f && ThreatHulls.standingFP(f) > 0f;
 	}
 
-	/** Whether the faction has hulls to spare: no debt and free hulls standing. */
+	/**
+	 * Whether the faction has hulls to spare: free hulls standing (ThreatHulls.freeFP, which is already net
+	 * of the losses not yet rebuilt). Until hw60 it also asked for no debt at all, and a faction at war
+	 * always carries some: hw60c's Tri-Tachyon sat on 3,240-3,431 free FP with 171-640 lost while the
+	 * Independents waited at 0 free with 3,564 to rebuild, and no hull convoy sailed in any of the three
+	 * games (hw58a: 9, from a Hegemony that happened to owe nothing). 2026-10-07.
+	 */
 	public static boolean hullsSurplus(String f) {
 		if (f == null || !ThreatHulls.enabled()) return false;
-		return ThreatHulls.debt(f) <= 0f && ThreatHulls.freeFP(f) > 0f;
+		return ThreatHulls.freeFP(f) > 0f;
 	}
 
 	// ------------------------------------------------------------------

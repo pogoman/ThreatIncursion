@@ -251,7 +251,9 @@ general case, driven by relationships between factions (`FactionAPI.getRelations
   waited on 850; "vanilla sends convoys all the time with ship hulls"; `ThreatCoalition.aidHulls`,
   and the per-colony loop above for a posted hull request). A faction short of hulls
   (`ThreatFactionStock.hullsShort`) with losses not yet rebuilt is sent `ships` units by every
-  faction not hostile to it whose pool reads a surplus (`hullsSurplus`: no debt, free hulls),
+  faction not hostile to it whose pool reads a surplus (`hullsSurplus`: free hulls, which are net of
+  its own unrebuilt losses - until hw60 it also asked for no debt at all, which no faction at war has,
+  and no hull convoy sailed in hw60's three games while Tri-Tachyon held 3,400 free),
   out of the helper's **built** navy only - vanilla's patrol table is never given away - above
   `hullAidKeepFraction` (0.5) of its free built hulls (`ThreatHulls.spareUnits`, at the helper's
   hull port; `ThreatConvoys.spare(donor, SHIPS)`), to the needy faction's hull port, until the
