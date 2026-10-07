@@ -256,7 +256,10 @@ public class ThreatOffensive {
 			if (cost + p.cost > budget || fuel + p.fuel > fuelBudget) continue;
 			float need = p.supplies();
 			float keeps = suppliesStock + suppliesFlow * Math.max(1f, Math.max(longest, p.days)) / 30f;
-			if (supplies + need > keeps) {
+			// a prong burning nothing new (spare swarms, their home charge moving with them) is kept whatever
+			// the flow, as canSustain keeps it (hw54b: 36k FP in the fund, 7.6k of spare swarms, the spare
+			// -2.7k a month - "nothing the fund pays by the deadline" for 1,850 days)
+			if (need > 0f && supplies + need > keeps) {
 				// the first prong the supplies leave out is the planner's to answer (one a pass)
 				if (suppliesShort <= 0f) suppliesShort = supplies + need - keeps;
 				continue;
@@ -315,7 +318,7 @@ public class ThreatOffensive {
 				spare += p.plan != null ? p.plan.spareFP : 0f;
 			}
 			if (cost <= budget && fuel <= fuelBudget
-					&& supplies <= suppliesStock + suppliesFlow * Math.max(1f, longest) / 30f) break;
+					&& (supplies <= 0f || supplies <= suppliesStock + suppliesFlow * Math.max(1f, longest) / 30f)) break;
 			campaign.remove(campaign.size() - 1);
 		}
 		if (suppliesShort > 0f) ThreatFuel.noteDemand(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES, suppliesShort);
