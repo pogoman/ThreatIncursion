@@ -231,9 +231,12 @@ so the next turn pays it - see "The shortage's answer is paid first" below. In o
 
 **The shortage's answer is paid first** (`ThreatFuel.reserved` / `free` / `reserve`, 2026-10-07 after
 hw60): a forge the planner waits to build (`affordStructure`, while supplies are not in surplus) or to
-convert a plant into has its price reserved, and the fleets' upkeep (`paySupplies`, `payNavySupplies`),
-the colonies' sustenance and growth (`ThreatColonyUpkeep`), a founding (`canFound`) and the trips
-(`ThreatReach.freeStock`) draw only on the stock above it. Capped at a month's production; released when
+convert a plant into has its price reserved, and the colonies' sustenance and growth
+(`ThreatColonyUpkeep`), a founding (`canFound`) and new trips (`ThreatReach.freeStock`) draw only on the
+stock above it. Commitments already made - the standing navy's upkeep (`payNavySupplies`) and the fleets
+away (`paySupplies`) - pay from the whole stock: drawn on the free stock in hw61b, 30 swarms (2,672 FP)
+were lost to unpaid upkeep for a forge's 5k, which is the one loss the reserve must never cause (hw60:
+none). Capped at a month's production; released when
 the build is bought, the world lost or the wait planned away (`buyWaitingStructures`). hw60c made 197k
 supplies a month and spent 207k with the stock at 0-7k: 72 "waiting build" turns, 176 seedings held on
 supplies and 20 of 29 campaign saving lines "not yet kept", while 2.5M fuel and 294k FP sat idle - a
