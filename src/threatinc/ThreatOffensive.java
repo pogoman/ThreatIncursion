@@ -267,18 +267,35 @@ public class ThreatOffensive {
 			longest = Math.max(longest, p.days);
 		}
 		// fewer prongs at a faction than were priced: each meets a bigger share of its navy - re-price
-		// the set, the spare shared out again in its order, and drop from its tail while the means no longer pay it
+		// the set, and drop from its tail while the means no longer pay it
 		Map<String, Integer> inCampaign = new HashMap<String, Integer>();
 		for (Prong p : campaign) {
 			Integer n = inCampaign.get(p.target.getFactionId());
 			inCampaign.put(p.target.getFactionId(), n == null ? 1 : n + 1);
 		}
-		shared = new Spares(im);
-		for (Prong p : new ArrayList<Prong>(campaign)) {
-			if (!price(im, p, memo, inCampaign.get(p.target.getFactionId()), shared)) campaign.remove(p);
-			else shared.take(p);
-		}
 		while (!campaign.isEmpty()) {
+			// the spare is shared out in the order the prongs will sail, the farthest first: each muster takes
+			// the first fleets of a system's walk on its day (hw48: shared in rank order, a held prong met a bigger
+			// fleet on its day than it was priced for, and its set-aside fuel did not pay the passage)
+			List<Prong> bySail = new ArrayList<Prong>(campaign);
+			java.util.Collections.sort(bySail, new java.util.Comparator<Prong>() {
+				public int compare(Prong a, Prong b) {
+					return Float.compare(b.ly, a.ly);
+				}
+			});
+			shared = new Spares(im);
+			Prong unpriced = null;
+			for (Prong p : bySail) {
+				if (!price(im, p, memo, inCampaign.get(p.target.getFactionId()), shared)) {
+					unpriced = p;
+					break;
+				}
+				shared.take(p);
+			}
+			if (unpriced != null) {
+				campaign.remove(unpriced);
+				continue;
+			}
 			cost = 0f;
 			fuel = 0f;
 			away = 0f;
@@ -374,6 +391,13 @@ public class ThreatOffensive {
 			}
 		} finally {
 			PENDING.clear();
+		}
+		if (sent + held == 0) {
+			// nothing sailed (each prong's own launch says why): the campaign stands, saved for, until its deadline
+			if (day >= deadline) setStartDay(day);
+			ThreatIncConfig.log("Offensive: none of " + campaign.size() + " planned prong(s) could sail today (" + where
+					+ "); fund " + (int) ThreatColonyManager.strikeFund() + " FP; first " + names(campaign, 4));
+			return;
 		}
 		setStartDay(day);
 		ThreatIncConfig.log("Offensive launched: " + sent + " strike(s) now and " + held + " to follow, of " + campaign.size()

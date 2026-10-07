@@ -4911,6 +4911,14 @@ public class ThreatColonyManager {
 
 	/** Persistent: market id -> supplies its navy above the patrols owes (payNavySupplies). */
 	public static final String KEY_NAVY_OWED = "threatinc_hiveNavyOwed";
+	/** Persistent: the share of the hive's navy charge paid over the last month (flushUpkeepMonth). */
+	public static final String KEY_NAVY_PAID_SHARE = "threatinc_hiveNavyPaidShare";
+
+	/** The share of the navy charge the hive paid last month, 1 before any was due: what a garrison swarm sent away frees (ThreatReach.awayFP). */
+	public static float navyPaidShare() {
+		Object v = Global.getSector().getPersistentData().get(KEY_NAVY_PAID_SHARE);
+		return v instanceof Float ? Math.max(0f, Math.min(1f, (Float) v)) : 1f;
+	}
 
 	/** The colony's garrison FP above its patrols (ThreatPosture.minimumFP): its launch stock and spare, the hive's built navy. */
 	public static float navyFP(MarketAPI market, List<CampaignFleetAPI> fleets) {
@@ -5109,6 +5117,12 @@ public class ThreatColonyManager {
 	 */
 	public static void flushUpkeepMonth() {
 		ThreatPosture.logMonth();
+		float navyWanted = 0f, navyPaid = 0f;
+		for (UpkeepLog log : UPKEEP_LOG.values()) {
+			navyWanted += log.navyWanted;
+			navyPaid += log.navyPaid;
+		}
+		if (navyWanted > 0f) Global.getSector().getPersistentData().put(KEY_NAVY_PAID_SHARE, Math.min(1f, navyPaid / navyWanted));
 		for (Map.Entry<String, UpkeepLog> entry : UPKEEP_LOG.entrySet()) {
 			UpkeepLog log = entry.getValue();
 			boolean moved = log.lastLogged < 0f ? log.charged > 0f

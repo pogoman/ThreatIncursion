@@ -350,6 +350,9 @@ stall nudges and the pause for a user.
   at normal speed meanwhile.
 - It never saves a game, kills each game at its day, copies the dumps to `tools\warsim\validation\<tag>`,
   deletes the clone and restores the user's settings. Status in `%TEMP%\threatinc-tests\sbs-status.txt`.
+  Never `tail -f`/`-F` it (or hold it open): Windows locks the file, every status line of the batch fails
+  with an IOException, and Git Bash's `tail` outlives a stopped Monitor (hw48, 2026-10-07). Read it with
+  `cat` when needed, or watch the game logs `ti-<tag>.txt` instead.
 - **On a machine that has not run it** (2026-10-05): the pristine save is in the repo
   (`tools\test-harness\saves\save_AmaruDugas_2921423183749615243`, to copy into `Starsector\saves\`), and
   `fastforward\backup-settings.ps1` is run once before the first batch - it writes the settings backup and

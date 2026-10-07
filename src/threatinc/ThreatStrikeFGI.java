@@ -74,6 +74,12 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 				break;
 			}
 		}
+		// far from the player the strike flies as an abstract route (vanilla spawns fleets only near the player):
+		// its place is the route's (hw48: off-screen strikes landed through the abstract siege, never stood in the
+		// system as fleets, and not one of 28 ever read what it met)
+		if (!there && !isSpawnedFleets() && getRoute() != null && getRoute().getCurrent() != null) {
+			there = getRoute().getCurrent().getCurrentContainingLocation() == getParams().raidParams.where;
+		}
 		if (!there) return;
 		metSampleDay = day;
 		MarketAPI primary = expectedMarketId != null ? Global.getSector().getEconomy().getMarket(expectedMarketId) : null;
