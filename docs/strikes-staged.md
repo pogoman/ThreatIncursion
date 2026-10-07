@@ -126,7 +126,14 @@ navy charge. On since 2026-10-07 (hw48).
   (`IncursionManager.setLaunchingEarmark`, read by `stagedSpares`): the earmark kept every other
   taker off those fleets, but `ownAvailableForLaunch` reads a colony that gave the earlier prongs its
   swarms as "regrowing" and offers nothing - hw54c, a 3-prong campaign of 25k FP of spare swarms, the
-  third prong on its day "0 FP of spare swarms", re-planned 8.1k FP from the fund and refused.
+  third prong on its day "0 FP of spare swarms", re-planned 8.1k FP from the fund and refused. The count
+  alone was not enough (hw56: 29 of 42 held prongs still found 0): the walk behind it,
+  `ThreatColonyManager.musterPool`, gated each colony of the system on `ownAvailableForLaunch` too and
+  fell back on the staging colony's own garrison, and a system whose staging gates (forge, fuel, nexus)
+  had closed since the pass was skipped. Since hw57 the launching prong's earmark musters live fleets
+  from every colony of the system (`IncursionManager.launchingEarmarkCovers`, read by `musterPool` for
+  the peek and the consume alike), its staging pick is ungated (`pickStrikeStaging(id, false)`), and
+  each earmarked system logs "Earmark at X: N fleet(s) set aside, M found (...)".
 - **Supplies**: the navy charge the garrisons above the patrols pay at home is in the feed's spare
   (`ThreatColonyUpkeep.navyChargePerMonth`, since hw50 - before, the spare left it out and was overstated
   by the whole charge, hw48's "credited in full, the strikes away went unpaid" and hw49's -1,562 a month

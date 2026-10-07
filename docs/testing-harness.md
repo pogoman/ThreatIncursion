@@ -376,3 +376,21 @@ humans out of hulls with no hull convoy, no war by day 1500 (the rules and thres
 the top of the script, a first cut for the user to tune). A third argument lists signals to ignore
 (`ref,hoard`) to read on past known ones. On a fail: stop the batch task, `taskkill
 //F //IM java.exe`, fix, rebuild, relaunch. Never one long `sleep` before the first read.
+
+## A checkpoint save from before the war (the user, 2026-10-07)
+
+"Why do we have to wait 15 mins every time, why not just have a save from right before the threat
+attack? Most of the issues we are tracking happen after then anyway." The war opens at war day
+1466-1953 on this sector (the fund past the opening floor and a target found), 40-55 minutes into a
+run. `sbs.ps1 -Tags cka -Checkpoint ck1 -Base save_X` runs ONE game from the base, presses F5 every
+`-SaveEvery` (60) war days into its own clone - the clone is self-contained (`clone.ps1` rewrites
+`saveDirName`), so F5 writes there and never into the base - and stops at the first "Offensive
+launched" / "Strike launched" line. The last save from before that line (a save renames the one
+before it to `.bak`; when the last F5 landed after the launch the `.bak` pair is used) becomes
+`<Starsector>\saves\save_Xck1` through `clone.ps1`. Batches then start from it:
+`sbs.ps1 -Tags hw57a,hw57b,hw57c -Bases "hw57a=save_Xck1;hw57b=save_Xck1;hw57c=save_Xck1" -Days 2000`.
+A checkpoint freezes the pre-war sector (economy, hull pool, the hives founded) at the jar it was made
+with, so remake it (`ck2`, ...) after a change to anything before the war; the games from it differ
+only by the campaign's randomness from there. The "never save on a cloned save" rule stands for every
+other run (`sbs.ps1` otherwise never saves): it was written when clones were not self-contained and
+F5 wrote back into the original's folder (above, 2026-09-05).
