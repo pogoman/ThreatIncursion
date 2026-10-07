@@ -368,6 +368,11 @@ minutes of starting?" - hw52 ran 25 minutes past an exception visible at minute 
 and in the same turn start `tools/test-harness/fastforward/watch.sh <hwNN> [maxMinutes]` in the
 background (Git Bash): it polls every 3 minutes, prints one progress line a game (war day, launches,
 held prongs sailed / refused, exceptions bar vanilla's loading noise, hull convoys sailed / landed)
-and exits on the first fail signal - a new exception (with its first threatinc frames) or a held
-prong refused - so the background task notifies at once. On a fail: stop the batch task, `taskkill
+and exits on the first fail signal so the background task notifies at once: a new exception (with its
+first threatinc frames), a held prong refused, and - the user, 2026-10-07: "watcher should notify if
+the game balance has a problem too, like obvious one" - the swarm wiped or under half its peak, swarms
+lost to the navy charge, the fund hoarded 500 days, forward bases lost at twice the founding rate, the
+humans out of hulls with no hull convoy, no war by day 1500 (the rules and thresholds are listed at
+the top of the script, a first cut for the user to tune). A third argument lists signals to ignore
+(`ref,hoard`) to read on past known ones. On a fail: stop the batch task, `taskkill
 //F //IM java.exe`, fix, rebuild, relaunch. Never one long `sleep` before the first read.
