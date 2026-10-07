@@ -509,7 +509,9 @@ public class ThreatStance {
 		float chest = ThreatColonyManager.strikeFund();
 		float chestHorizon = ThreatColonyManager.strikeFundPerMonth() * Math.max(1f, ThreatIncConfig.offensiveHorizonMonths());
 		boolean hadChest = st != null && st.length >= 11 && st[10] > 0f;
-		boolean chestFull = chestHorizon > 0f && bestAny != null
+		// a known world is enough (not a weak one: pressed everywhere at home, weakTargets reads none,
+		// and that is when the fund should pay the relief and near strikes most)
+		boolean chestFull = chestHorizon > 0f && !known.isEmpty()
 				&& chest >= chestHorizon * (hadChest ? CHEST_LEAVE : 1f);
 		boolean wantPress = !losing && (best != null || chestFull) && pressedShare < consolidateEnter / 2f;
 		int next = wantConsolidate ? CONSOLIDATE : wantPress ? PRESS : EXPAND;
