@@ -2588,6 +2588,27 @@ public class ThreatColonyManager {
 		return musterPool(market, count, false, fpOut, null);
 	}
 
+	/**
+	 * ONE colony's live garrison fleets as a muster takes them, largest first, up to count, with no
+	 * availability gate (IncursionManager.stagedSpares weighs every fleet of the hive itself).
+	 */
+	public static List<MusterFleet> peekColony(MarketAPI market, int count) {
+		List<MusterFleet> out = new ArrayList<MusterFleet>();
+		musterFrom(market, count, 0, false, new ArrayList<Integer>(), null, out);
+		return out;
+	}
+
+	/**
+	 * Musters count of ONE colony's largest live garrison fleets whatever its availability reads (a staged
+	 * plan's entry, IncursionManager.launchStrike: the plan weighed them, peekColony): the expedition size
+	 * of every swarm taken, their fleet points into fpOut[0].
+	 */
+	public static List<Integer> consumeFromColony(MarketAPI market, int count, float[] fpOut) {
+		List<Integer> out = new ArrayList<Integer>();
+		musterFrom(market, count, 0, true, out, fpOut, null);
+		return out;
+	}
+
 	/** One garrison fleet as a muster takes it: the expedition size of every swarm it embodies, and its fleet points. */
 	public static class MusterFleet {
 		public final List<Integer> sizes;
