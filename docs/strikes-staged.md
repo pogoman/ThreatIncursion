@@ -121,7 +121,12 @@ navy charge. On since 2026-10-07 (hw48).
   (`redistributeGarrisons`' donor loops) and recycles none for upkeep (`recycleForUpkeep`) until it
   sails (hw50c: eight sends drained the staging system in the days after a launch, and all eight held
   prongs re-planned bigger from the fund and were refused on supplies). At launch the held prongs are scheduled first,
-  then each prong sailing now launches with the spare the others leave it (`PENDING`).
+  then each prong sailing now launches with the spare the others leave it (`PENDING`). On its day the
+  prong's own earmark is offered to it whatever its systems' reserves read
+  (`IncursionManager.setLaunchingEarmark`, read by `stagedSpares`): the earmark kept every other
+  taker off those fleets, but `ownAvailableForLaunch` reads a colony that gave the earlier prongs its
+  swarms as "regrowing" and offers nothing - hw54c, a 3-prong campaign of 25k FP of spare swarms, the
+  third prong on its day "0 FP of spare swarms", re-planned 8.1k FP from the fund and refused.
 - **Supplies**: the navy charge the garrisons above the patrols pay at home is in the feed's spare
   (`ThreatColonyUpkeep.navyChargePerMonth`, since hw50 - before, the spare left it out and was overstated
   by the whole charge, hw48's "credited in full, the strikes away went unpaid" and hw49's -1,562 a month
