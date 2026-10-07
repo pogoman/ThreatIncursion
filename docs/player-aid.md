@@ -259,8 +259,12 @@ general case, driven by relationships between factions (`FactionAPI.getRelations
   hull port; `ThreatConvoys.spare(donor, SHIPS)`), to the needy faction's hull port, until the
   debt is covered net of what is at sea (`inboundShips`), one sailing a faction a month. A hull
   load's hold is read in units weighed by their worth (`capacityFor(SHIPS)` =
-  `convoyCargoCapacity` / `fabFPPerShipUnit`, 60 units), so under the shared minimum-load gate
-  (`convoyMinLoadFraction` 0.5) a helper sails hulls only with 30 units (3,000 FP) to spare. The
+  `convoyCargoCapacity` / `fabFPPerShipUnit`, 60 units) for sizing the fleet; the shared
+  minimum-load gate (`convoyMinLoadFraction` 0.5) does not apply to hulls since hw63 - a ship is a
+  load (`pickAllyDonor`): under it a helper needed 30 units (3,000 FP) to spare and none ever had
+  them (hw62b: Tri-Tachyon's 25 units sat, no hull convoy in nine games since hw60). While nobody
+  sends, `aidHulls` logs monthly `Ally aid: no hulls for F (N units short at port) - helper gate,
+  ...` with each helper's gate (hostile, none free, no port in reach with a unit). The
   convoy is a real fleet: `ThreatHulls.give` debits the donor's built pool the day it sails
   (`Convoy.ships`, the ships commodity in its hold, sized and escorted like supplies), and on
   landing `ThreatHulls.receive` pays the recipient's debt first, the rest joins its built navy -

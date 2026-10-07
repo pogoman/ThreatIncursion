@@ -42,7 +42,31 @@ hw62 (8ad48286, bac74c67, 22e7185a):
 3. **No hull convoy ever sailed** (hw60 all, hw61a/b): the donor test asked for no unrebuilt losses at
    all. Free hulls are net of the debt; that alone is the test now.
 
-## 2b. hw62 - the three fixes (running from 00:42; filled in below when read)
+## 2b. hw62 - the three fixes (d7dd9679), read at 01:55
+
+(Result figures below, "hw62 read".) Mid-run (01:11-01:25) it already showed the two shapes built for
+hw63:
+
+1. **The fund hoards for a real reason now: the supplies spare is zero or negative by design.** The
+   new empty-campaign line names it: "the best prong, Zeta Toyol I Forward Base (553 FP), is out on the
+   supplies away: 78 for 56 FP over 57 days, -2282 kept (0 free, -1091/mo spare)". The fund climbed
+   38k -> 141k FP in all three games and never fielded a prong of its own, while hw62a's hives fell
+   76 -> 47 to Tri-Tachyon's fronts. Where the month goes (hw62a, 89k made): fleets away 22.5k, navy
+   charge 22.9k, sustenance 31k, and the feed's spare keeps sustenance/0.7 - an **expansion tithe**
+   of ~13k - plus 5k a seeding (110-173 a game). Spread eats every month's supplies; the war chest sits.
+   -> **The chest** (`ThreatStance.chestFull`, my shape, to confirm): a strike fund holding a horizon's
+   saving (`strikeFundPerMonth` x `offensiveHorizonMonths`) with a known target is full, until spent
+   below half. Full, whatever the stance: the feed's spare is the production less what the colonies
+   actually took (the tithe feeds the fleets), nothing is founded the supplies surplus does not pay,
+   and a full chest is a reason to PRESS when not losing. Spread resumes when the chest is spent.
+   The alternative shapes, not built: forage (prongs bring a taken world's stock home - a new mechanic,
+   your call), a founding kit that carries a forge (your lever), a smaller sustenance share (a knob).
+2. **Still no hull convoy** after the donor fix: the second gate was `pickAllyDonor`'s minimum load,
+   read off the cargo hold as 30 units (3,000 FP) - hw62b's Tri-Tachyon had 25 units to spare and
+   sat. Hulls sail by the unit now (a ship is a load), and `aidHulls` logs the gate each helper
+   stopped at while nobody sends.
+
+Navy losses to unpaid upkeep: 0 in all three (fix 1 of hw62 holds). Focus changes 12 a game.
 
 ## 3. For the user
 
