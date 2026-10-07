@@ -165,6 +165,8 @@ public class ThreatOffensive {
 			return;
 		}
 		if ((fund < cost || fuelStock < fuel) && day < deadline) {
+			// the fuel it waits on is demand on the stock: the planner builds the plants (ThreatFuel.heldShort)
+			if (fuelStock < fuel && ThreatIncConfig.strikeWaitBooksFuel()) ThreatFuel.heldShort("the offensive", fuel);
 			ThreatIncConfig.log("Offensive: saving for " + campaign.size() + " of " + prongs.size() + " target(s) " + where
 					+ ", " + (int) cost + " FP and " + (int) fuel + " fuel; fund " + (int) fund + " FP (+" + (int) perMonth
 					+ "/mo), fuel " + (int) fuelStock + " (+" + (int) ThreatFuel.perMonth() + "/mo), launch in "

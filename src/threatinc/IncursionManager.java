@@ -5067,13 +5067,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			plan.bankFP += est;
 			plan.built++;
 		}
-		if (why == null && !ThreatFuel.canPay(ThreatFuel.passage(plan.fp, ly, true))) {
+		// pricing a prong (bankLimit set) the fuel and the supplies away are the campaign's sum to pay (ThreatOffensive)
+		boolean pricing = !Float.isNaN(bankLimit);
+		if (why == null && !pricing && !ThreatFuel.canPay(ThreatFuel.passage(plan.fp, ly, true))) {
 			why = "the fuel stock does not pay the passage of " + (int) plan.fp + " FP over " + (int) ly + " ly";
 			if (defOut != null && ThreatIncConfig.strikeWaitBooksFuel()) {
 				ThreatFuel.heldShort("strike from " + staging.getName(), ThreatFuel.passage(plan.fp, ly, true));
 			}
 		}
-		if (why == null && !ThreatReach.canSustain(plan.fp, daysAway)) {
+		if (why == null && !pricing && !ThreatReach.canSustain(plan.fp, daysAway)) {
 			why = "the spare supplies do not keep " + (int) plan.fp + " FP away " + (int) daysAway + " days";
 		}
 		if (why == null) return plan;
