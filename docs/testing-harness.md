@@ -360,3 +360,14 @@ stall nudges and the pause for a user.
   `handover-2026-10-05-testing.md` 2.
 - `launch.ps1` leaves a console at `pause` for every game it has started (42 had piled up by 2026-10-04);
   `sbs.ps1` starts the java line alone and leaves none.
+
+## Watch a batch from its first minutes (the user, 2026-10-07)
+
+"Why do you let these runs go for so long when they probably reach evident fail conditions within 5
+minutes of starting?" - hw52 ran 25 minutes past an exception visible at minute 19. Launch the batch
+and in the same turn start `tools/test-harness/fastforward/watch.sh <hwNN> [maxMinutes]` in the
+background (Git Bash): it polls every 3 minutes, prints one progress line a game (war day, launches,
+held prongs sailed / refused, exceptions bar vanilla's loading noise, hull convoys sailed / landed)
+and exits on the first fail signal - a new exception (with its first threatinc frames) or a held
+prong refused - so the background task notifies at once. On a fail: stop the batch task, `taskkill
+//F //IM java.exe`, fix, rebuild, relaunch. Never one long `sleep` before the first read.
