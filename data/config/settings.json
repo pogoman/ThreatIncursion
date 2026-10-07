@@ -121,6 +121,10 @@
 	# and the campaign's prongs share it (the user, 2026-10-07: "spend it").
 	"threatinc_strikeStagedGarrisons": true,
 	"threatinc_strikeStagedGatherLY": 0,
+	# The gather order of a staged strike's garrison swarms (the user, 2026-10-07): every colony's
+	# fleets above its posture want before any colony's fleets below it, and within that by score -
+	# this share of the colony's distance from the nearest known human world, the rest its fleet count.
+	"threatinc_spareGatherDistanceShare": 0.55,
 	# The strike fund: this share of every hive colony's fabrication is set aside
 	# hive-wide and alone pays staged strikes; 0 = no fund, the pooled banks pay.
 	# The war's OPENING strike - nobody mobilised yet - sails with at least MinFP, so

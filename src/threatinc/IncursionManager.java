@@ -1123,7 +1123,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			java.util.List<Integer> swarmSizes = new ArrayList<Integer>();
 			int taken = 0;
 			for (int i = 0; i < plan.from.size(); i++) {
-				for (int sz : ThreatColonyManager.consumeGarrison(plan.from.get(i), plan.counts.get(i), paid)) {
+				// each entry is one colony's fleets, largest first, as stagedSpares weighed them: no availability gate again
+				for (int sz : ThreatColonyManager.consumeFromColony(plan.from.get(i), plan.counts.get(i), paid)) {
 					swarmSizes.add(strikeFleetSize(sz));
 					taken++;
 				}
@@ -1132,7 +1133,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (swarmSizes.isEmpty()) return null;
 			ThreatStrikeFGI sent = sendStrike(params, colony, source, target, swarmSizes, paid[0],
 					ThreatFuel.ly(source, target.getStarSystem()),
-					" [staged: " + taken + " swarm(s) of " + plan.from.size() + " system(s), " + plan.built
+					" [staged: " + taken + " swarm(s) from " + plan.from.size() + " walk(s), " + plan.built
 							+ " built; defence " + (Float.isNaN(expectedDef) ? "seen " : "expected ") + (int) stagedDef[0]
 							+ (ThreatIncConfig.strikeFundShare() > 0f
 									? ", strike fund left " + (int) ThreatColonyManager.strikeFund()
@@ -4952,11 +4953,23 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		int built;
 	}
 
-	/** One hive system's spare for a staged strike: its staging colony and the garrison fleets it could muster (ThreatColonyManager.peekMuster). */
+	/**
+	 * One colony's garrison fleets offered to a staged strike, one tier of them (stagedSpares): the fleets in
+	 * the order a muster takes them (ThreatColonyManager.peekColony, largest first), the tier (1 above the
+	 * colony's want, 2 below it), its distance from the source and its score in the gather order.
+	 */
 	protected static class StagedSpare {
 		MarketAPI colony;
 		java.util.List<ThreatColonyManager.MusterFleet> walk;
 		float ly;
+		int tier = 1;
+		/**
+		 * Light-years from the nearest known human world (safety), and the colony's surplus - its fleets above
+		 * its want for a tier-1 entry, its live fleets for a tier-2 one: the score's two parts.
+		 */
+		float dist;
+		int size;
+		float score;
 	}
 
 	/**
@@ -5008,45 +5021,114 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return colony != null && colony.getStarSystem() != null && launchingEarmark.containsKey(colony.getStarSystem().getId());
 	}
 
+	/**
+	 * The garrison fleets a staged strike may take, every colony of the hive weighed (the user, 2026-10-07:
+	 * "no hard never take, just weighted ... prefer far back and with most swarms first, further better than
+	 * bigger by a little, but prefer not to strip a world clean"). Two tiers: every colony's fleets above
+	 * its posture want (tier 1; above its reserve with the posture off) before any colony's fleets below
+	 * it (tier 2, down to its last fleet). Within a tier, the colonies by score: spareGatherDistanceShare
+	 * of the colony's distance from the nearest known human world (the safest first - the humans strike
+	 * what is near them) and the rest its surplus (the user: "then from those highest above the posture
+	 * threshold" - its fleets above its want in tier 1, its live fleets in tier 2), each against the
+	 * hive's largest of that tier. Before (hw51-58) the systems
+	 * nearest the STAGING gave first, each to its reserve and nothing while regrowing: three frontline
+	 * systems staged every strike and were milked to 1-2 fleets while a rear world sat on 11 (hw58a).
+	 * Less the fleets the offensive's held prongs have earmarked (ThreatOffensive.earmarked), taken off
+	 * the least preferred end. One entry a colony a tier; stagedPlan takes them in order and
+	 * launchStrike musters each entry from its colony (ThreatColonyManager.consumeFromColony).
+	 */
 	protected java.util.List<StagedSpare> stagedSpares(final StarSystemAPI source) {
 		java.util.List<StagedSpare> out = new ArrayList<StagedSpare>();
 		if (!ThreatIncConfig.strikeStagedGarrisons() || source == null) return out;
+		java.util.List<StarSystemAPI> enemy = new ArrayList<StarSystemAPI>();
+		for (MarketAPI m : stagedCandidates(null)) {
+			if (m.getStarSystem() != null && !enemy.contains(m.getStarSystem())) enemy.add(m.getStarSystem());
+		}
+		float maxDist = 0f;
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
-			MarketAPI c = ThreatColonyManager.pickStrikeStaging(systemId, true);
 			StarSystemAPI sys = getSystem(systemId);
-			// the launching held prong's own earmark is there for it whatever the reserve reads (launchingEarmark):
-			// the fleets, not the system's forge, are what its campaign priced, so a system whose staging
-			// gates have closed since still musters them
-			Integer own = launchingEarmark.get(systemId);
-			if (c == null && own != null) c = ThreatColonyManager.pickStrikeStaging(systemId, false);
-			if (c == null || sys == null) continue;
+			if (sys == null) continue;
+			float dist = Float.MAX_VALUE;
+			for (StarSystemAPI e : enemy) dist = Math.min(dist, Misc.getDistanceLY(sys.getLocation(), e.getLocation()));
+			if (dist == Float.MAX_VALUE) dist = 0f;
+			float ly = Misc.getDistanceLY(source.getLocation(), sys.getLocation());
+			java.util.List<StagedSpare> mine = new ArrayList<StagedSpare>();
+			for (MarketAPI m : ThreatIncData.getLiveColonyMarkets(systemId)) {
+				int live = ThreatColonyManager.countLiveGarrison(m.getId());
+				if (live <= 0) continue;
+				java.util.List<ThreatColonyManager.MusterFleet> walk = ThreatColonyManager.peekColony(m, live);
+				if (walk.isEmpty()) continue;
+				// tier 1: the largest fleets whose leaving keeps the colony at its want
+				int k1;
+				if (ThreatPosture.enabled()) {
+					float room = ThreatColonyManager.ownedFleetFP(m, ThreatIncData.garrisonsFor(m.getId())) - ThreatPosture.wantFP(m);
+					k1 = 0;
+					for (ThreatColonyManager.MusterFleet mf : walk) {
+						if (room - mf.fp < 0f) break;
+						room -= mf.fp;
+						k1++;
+					}
+				} else {
+					k1 = Math.max(0, live - ThreatColonyManager.garrisonReserve(m));
+				}
+				k1 = Math.min(k1, walk.size());
+				if (k1 > 0) mine.add(spare(m, walk.subList(0, k1), ly, 1, dist, k1));
+				if (k1 < walk.size()) mine.add(spare(m, walk.subList(k1, walk.size()), ly, 2, dist, live));
+			}
+			// the held prongs' earmarked fleets come off the least preferred end: tier 2 first, the last colony first
 			int others = ThreatOffensive.earmarked(systemId);
-			int avail = ThreatColonyManager.garrisonAvailableForLaunch(c) - others;
-			int live = -1;
-			if (own != null && own > avail) {
-				live = 0;
-				for (MarketAPI m : ThreatColonyManager.launchPool(c)) live += ThreatColonyManager.countLiveGarrison(m.getId());
-				avail = Math.min(own, live - others);
+			for (int tier = 2; tier >= 1 && others > 0; tier--) {
+				for (int i = mine.size() - 1; i >= 0 && others > 0; i--) {
+					StagedSpare s = mine.get(i);
+					if (s.tier != tier) continue;
+					int cut = Math.min(others, s.walk.size());
+					s.walk = s.walk.subList(0, s.walk.size() - cut);
+					others -= cut;
+					if (s.walk.isEmpty()) mine.remove(i);
+				}
 			}
-			StagedSpare s = new StagedSpare();
-			s.colony = c;
-			s.walk = avail > 0 ? ThreatColonyManager.peekMuster(c, avail) : new ArrayList<ThreatColonyManager.MusterFleet>();
-			s.ly = Misc.getDistanceLY(source.getLocation(), sys.getLocation());
+			Integer own = launchingEarmark.get(systemId);
 			if (own != null) {
+				int n = 0;
 				float fp = 0f;
-				for (ThreatColonyManager.MusterFleet mf : s.walk) fp += mf.fp;
-				ThreatIncConfig.log("Earmark at " + c.getName() + ": " + own + " fleet(s) set aside, " + s.walk.size() + " found ("
-						+ (int) fp + " FP; " + ThreatColonyManager.garrisonAvailableForLaunch(c) + " available, " + others
-						+ " earmarked by others" + (live >= 0 ? ", " + live + " live in the system" : "") + ")");
+				for (StagedSpare s : mine) {
+					for (ThreatColonyManager.MusterFleet mf : s.walk) {
+						n++;
+						fp += mf.fp;
+					}
+				}
+				ThreatIncConfig.log("Earmark at " + sys.getName() + ": " + own + " fleet(s) set aside, " + n + " offered (" + (int) fp
+						+ " FP; " + ThreatOffensive.earmarked(systemId) + " earmarked by others)");
 			}
-			if (!s.walk.isEmpty()) out.add(s);
+			maxDist = Math.max(maxDist, dist);
+			out.addAll(mine);
+		}
+		float share = Math.max(0f, Math.min(1f, ThreatIncConfig.spareGatherDistanceShare()));
+		int[] maxSize = { 0, 0, 0 };
+		for (StagedSpare s : out) maxSize[s.tier] = Math.max(maxSize[s.tier], s.size);
+		for (StagedSpare s : out) {
+			s.score = share * (maxDist > 0f ? s.dist / maxDist : 1f)
+					+ (1f - share) * (maxSize[s.tier] > 0 ? (float) s.size / maxSize[s.tier] : 1f);
 		}
 		java.util.Collections.sort(out, new java.util.Comparator<StagedSpare>() {
 			public int compare(StagedSpare x, StagedSpare y) {
-				return Float.compare(x.ly, y.ly);
+				if (x.tier != y.tier) return x.tier - y.tier;
+				return Float.compare(y.score, x.score);
 			}
 		});
 		return out;
+	}
+
+	protected static StagedSpare spare(MarketAPI colony, java.util.List<ThreatColonyManager.MusterFleet> walk, float ly, int tier,
+			float dist, int size) {
+		StagedSpare s = new StagedSpare();
+		s.colony = colony;
+		s.walk = walk;
+		s.ly = ly;
+		s.tier = tier;
+		s.dist = dist;
+		s.size = size;
+		return s;
 	}
 
 	/**
@@ -5108,7 +5190,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// hive's navy (the user, 2026-10-07: "spend it"); one strike a pass takes all the means pay - the mass
 		boolean toNeed = ThreatIncConfig.swarmOffensive();
 		for (StagedSpare s : spares) {
-			if (full || (gather > 0f && s.ly > gather)) break;
+			if (full) break;
+			if (gather > 0f && s.ly > gather) continue;
 			int count = 0;
 			for (ThreatColonyManager.MusterFleet mf : s.walk) {
 				if (toNeed && plan.sizes.size() >= 2 && plan.fp >= minFP

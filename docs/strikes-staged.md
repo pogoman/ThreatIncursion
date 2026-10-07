@@ -104,11 +104,24 @@ the real strike for the same figure (log: `defence expected N`).
 "Spend it": the navy above the patrols goes on the offensive rather than sit at home paying the
 navy charge. On since 2026-10-07 (hw48).
 
-- **Up to the need**: with the offensive on, `stagedPlan` takes the spare Defense Swarms
-  (`stagedSpares`: every hive system's `garrisonAvailableForLaunch` above the reserve, nearest
-  the staging system first) only until the strike reaches its need (two swarms, the opening
+- **Up to the need**: with the offensive on, `stagedPlan` takes the hive's Defense Swarms
+  (`stagedSpares`, below) only until the strike reaches its need (two swarms, the opening
   floor, `strikeStagedMargin` x the expected answer), then builds the rest from the fund. Off
   (one strike a pass), the old rule: every spare the means pay, "the mass".
+- **Where the swarms come from** (`IncursionManager.stagedSpares`, the user 2026-10-07: "priority pull
+  from safest, then from those highest above posture threshold ... no hard never take, just weighted ...
+  prefer not to strip a world clean"): every colony of the hive offers its fleets in two tiers - the
+  fleets above its posture want (tier 1; above its reserve with the posture off) before any colony's
+  fleets below it (tier 2, down to its last fleet) - and within a tier the colonies go by score,
+  `threatinc_spareGatherDistanceShare` (0.55) of the colony's distance from the nearest known human
+  world (the safest first: the humans strike what is near them) and the rest its surplus (fleets above
+  its want in tier 1, live fleets in tier 2), each against the hive's largest of that tier. One entry a
+  colony a tier; `launchStrike` musters each entry from its colony, largest fleets first, with no
+  availability gate again (`ThreatColonyManager.consumeFromColony`). The offensive's held prongs'
+  earmarks come off the least preferred end. Until hw58 the systems nearest the STAGING gave first,
+  each to its reserve and nothing while regrowing: three frontline systems staged every strike and were
+  milked to 1-2 fleets - Strathcona gave 46 fleets in 22 musters - while a rear world sat on 11 (hw58a).
+  `threatinc_strikeStagedGatherLY` (0, off) skips entries farther than that from the staging.
 - **Shared in a pass** (`ThreatOffensive.Spares`): prongs are ranked each against the whole
   spare (a prong's size is the same whoever pays it; its price is its fleet points plus the
   supplies its trip burns beyond the spare's home charge), then chosen in rank order, each re-priced on

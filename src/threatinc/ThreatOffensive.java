@@ -68,29 +68,39 @@ public class ThreatOffensive {
 	protected static class Spares {
 		final IncursionManager im;
 		final Map<String, List<IncursionManager.StagedSpare>> bySource = new HashMap<String, List<IncursionManager.StagedSpare>>();
-		/** Hive system id -> garrison fleets of its spare already given to a prong. */
+		/** Colony id -> garrison fleets of its walk already given to a prong (its entries in the gather order, in order). */
 		final Map<String, Integer> taken = new HashMap<String, Integer>();
 
 		Spares(IncursionManager im) {
 			this.im = im;
 		}
 
-		/** What is left for a prong staged in this system, nearest first. */
+		/** What is left for a prong staged in this system, in the gather order (IncursionManager.stagedSpares). */
 		List<IncursionManager.StagedSpare> left(StarSystemAPI source) {
 			List<IncursionManager.StagedSpare> all = bySource.get(source.getId());
 			if (all == null) {
 				all = im.stagedSpares(source);
 				bySource.put(source.getId(), all);
 			}
+			// a colony has an entry a tier: the fleets given so far skip its first entry, then its next
+			Map<String, Integer> skip = new HashMap<String, Integer>(taken);
 			List<IncursionManager.StagedSpare> out = new ArrayList<IncursionManager.StagedSpare>();
 			for (IncursionManager.StagedSpare s : all) {
-				Integer t = taken.get(s.colony.getStarSystem().getId());
-				int skip = t != null ? t : 0;
-				if (skip >= s.walk.size()) continue;
+				Integer t = skip.get(s.colony.getId());
+				int k = t != null ? t : 0;
+				if (k >= s.walk.size()) {
+					skip.put(s.colony.getId(), k - s.walk.size());
+					continue;
+				}
+				skip.put(s.colony.getId(), 0);
 				IncursionManager.StagedSpare c = new IncursionManager.StagedSpare();
 				c.colony = s.colony;
 				c.ly = s.ly;
-				c.walk = s.walk.subList(skip, s.walk.size());
+				c.tier = s.tier;
+				c.dist = s.dist;
+				c.size = s.size;
+				c.score = s.score;
+				c.walk = s.walk.subList(k, s.walk.size());
 				out.add(c);
 			}
 			return out;
@@ -99,7 +109,7 @@ public class ThreatOffensive {
 		void take(Prong p) {
 			if (p.plan == null) return;
 			for (int i = 0; i < p.plan.from.size(); i++) {
-				String id = p.plan.from.get(i).getStarSystem().getId();
+				String id = p.plan.from.get(i).getId();
 				Integer t = taken.get(id);
 				taken.put(id, (t != null ? t : 0) + p.plan.counts.get(i));
 			}

@@ -172,6 +172,8 @@ public class ThreatIncConfig {
 	public static boolean strikeStagedGarrisons() { return b("threatinc_strikeStagedGarrisons", false); }
 	/** Light-years from the staging system within which a staged strike gathers spare swarms; 0 = the whole hive. */
 	public static float strikeStagedGatherLY() { return fd("threatinc_strikeStagedGatherLY", 0f); }
+	/** The distance part of a colony's score in the staged gather order (IncursionManager.stagedSpares); the rest is its fleet count. */
+	public static float spareGatherDistanceShare() { return fd("threatinc_spareGatherDistanceShare", 0.55f); }
 	/** Share of every hive colony's fabrication set aside in the hive's strike fund, which alone pays staged strikes (ThreatColonyManager.strikeFund); 0 = no fund, the pooled banks pay. */
 	public static float strikeFundShare() { return fd("threatinc_strikeFundShare", 0f); }
 	/** The least fleet points the war's OPENING strike (no faction mobilised yet) sails with; every later strike is sized to its target (the user, 2026-10-06). */
