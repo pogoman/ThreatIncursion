@@ -128,10 +128,15 @@ navy charge. On since 2026-10-07 (hw48).
   lower by itself. A trip with no new burn is always sustainable. Fleets away are paid before the navy
   charge (`maintainColonyGarrisons`). Nothing sailed: "none of N planned prong(s) could sail today", the
   campaign kept to its deadline.
-- **Held prongs reserve their supplies**: the schedule entry's 9th field is the supplies a month the prong
-  will burn; `ThreatReach.spare` keeps the sum back (`ThreatOffensive.heldSuppliesPerMonth`) so a relief,
-  a send or the next campaign cannot spend it. Its own share comes back the day it sails. During a launch
-  only the entries from before it count (every prong of the launch was priced against the whole spare).
+- **Held prongs prepay their supplies** (hw52): the schedule entry's 10th field is the supplies its trip
+  burns (the 9th, a month's, is for the Reach log), taken out of the supplies stock at launch and put
+  back the day it sails, as its passage fuel is (`ThreatOffensive.heldSupplies`). hw49-51 held it as a
+  flow instead (`ThreatReach.spare` kept the sum back): `canSustain` lets a trip short of flow draw on
+  the stock, so in hw51 the sends refilling the staging systems (21 after one launch) and the first prong
+  spent the stock the campaign was priced on, and 8 of 9 held prongs were refused on their days -
+  "the spare supplies do not keep 651 FP away 138 days" with the spare at -1,086 a month. During a
+  launch only the entries from before it count (every prong of the launch was priced against the whole
+  stock).
 
 ## 4. Losing, by degree (`ThreatStance.losingPressure`, the user, 2026-10-07)
 

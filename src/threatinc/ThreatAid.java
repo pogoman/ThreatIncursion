@@ -267,7 +267,13 @@ public class ThreatAid {
 		}
 		q.commodityId = ThreatAidRequests.worstShortage(target);
 		if (q.commodityId == null) {
-			q.reason = ThreatNotice.Reason.of("%s is not short of marines, armaments, fuel or supplies",
+			q.reason = ThreatNotice.Reason.of("%s is not short of marines, armaments, fuel, supplies or ship hulls",
+					ThreatNotice.market(target));
+			return q;
+		}
+		// ship hulls are a request the player meets in person (ThreatincAidCMD); a base's convoy carries goods
+		if (Commodities.SHIPS.equals(q.commodityId)) {
+			q.reason = ThreatNotice.Reason.of("%s asks for ship hulls - hand them over in person",
 					ThreatNotice.market(target));
 			return q;
 		}
@@ -334,9 +340,10 @@ public class ThreatAid {
 		return q;
 	}
 
+	/** The commodity's index in a load (ThreatReserves.AID_COMMODITIES order, ship hulls 5th); -1 for none. */
 	public static int index(String commodityId) {
-		for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
-			if (ThreatReserves.COMMODITIES[i].equals(commodityId)) return i;
+		for (int i = 0; i < ThreatReserves.AID_COMMODITIES.length; i++) {
+			if (ThreatReserves.AID_COMMODITIES[i].equals(commodityId)) return i;
 		}
 		return -1;
 	}
@@ -479,16 +486,16 @@ public class ThreatAid {
 	 * answer a contract.
 	 */
 	public static void onDelivered(MarketAPI base, String recipientFactionId, int marines,
-			int armaments, int fuel, int supplies, boolean viaFleet, TextPanelAPI text) {
+			int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text) {
 		if (base == null || recipientFactionId == null) return;
 		if (Factions.PLAYER.equals(recipientFactionId)) return;
-		int[] qty = {marines, armaments, fuel, supplies};
+		int[] qty = {marines, armaments, fuel, supplies, ships};
 		float value = 0f;
 		boolean credited = false;
-		for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
+		for (int i = 0; i < ThreatReserves.AID_COMMODITIES.length; i++) {
 			if (qty[i] <= 0) continue;
-			value += valueAt(base, ThreatReserves.COMMODITIES[i], qty[i]);
-			if (ThreatAidMissionIntel.creditDelivery(base, ThreatReserves.COMMODITIES[i], qty[i])) {
+			value += valueAt(base, ThreatReserves.AID_COMMODITIES[i], qty[i]);
+			if (ThreatAidMissionIntel.creditDelivery(base, ThreatReserves.AID_COMMODITIES[i], qty[i])) {
 				credited = true;
 			}
 		}
@@ -499,14 +506,14 @@ public class ThreatAid {
 		if (viaFleet) {
 			FactionAPI faction = Global.getSector().getFaction(recipientFactionId);
 			ThreatNotice.titled("Aid Landed").icon(Global.getSector().getPlayerFaction())
-					.line("%s at %s", ThreatFactionView.cargoText(marines, armaments, fuel, supplies),
+					.line("%s at %s", ThreatFactionView.cargoText(marines, armaments, fuel, supplies, ships),
 							ThreatNotice.market(base))
 					.line("For the %s", faction != null ? ThreatNotice.faction(faction) : recipientFactionId)
 					.send();
 		}
 		ThreatIncConfig.log("Aid delivered at " + base.getName() + " (" + recipientFactionId + "): "
 				+ marines + " marines, " + armaments + " armaments, " + fuel + " fuel, " + supplies
-				+ " supplies - value " + (int) value + ", rep +" + points
+				+ " supplies, " + ships + " ship hulls - value " + (int) value + ", rep +" + points
 				+ (credited ? " (contract)" : ""));
 	}
 

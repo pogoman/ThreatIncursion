@@ -125,16 +125,21 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 			return;
 		}
 		remove(cargo, commodityId, qty);
-		ThreatReserves.deposit(market.getId(), commodityId, qty);
+		boolean hulls = Commodities.SHIPS.equals(commodityId);
+		// ship hulls (2026-10-07) join the faction's hull pool, rebuilding its losses first; goods land in the depot
+		if (hulls) ThreatHulls.receive(market.getFactionId(), qty, "the player at " + market.getName());
+		else ThreatReserves.deposit(market.getId(), commodityId, qty);
 		int marines = Commodities.MARINES.equals(commodityId) ? qty : 0;
 		int armaments = Commodities.HAND_WEAPONS.equals(commodityId) ? qty : 0;
 		int fuel = Commodities.FUEL.equals(commodityId) ? qty : 0;
 		int supplies = Commodities.SUPPLIES.equals(commodityId) ? qty : 0;
+		int ships = hulls ? qty : 0;
 		text.addPara("Lost: " + Misc.getWithDGS(qty) + " " + ThreatReserves.label(commodityId));
 		text.highlightInLastPara(Misc.getNegativeHighlightColor(), Misc.getWithDGS(qty));
-		ThreatAid.onDelivered(market, market.getFactionId(), marines, armaments, fuel, supplies,
+		ThreatAid.onDelivered(market, market.getFactionId(), marines, armaments, fuel, supplies, ships,
 				false, text);
-		text.addPara("The station commander's people take delivery; the war depot logs it.");
+		text.addPara(hulls ? "The station commander's people take delivery; the yards log the hulls."
+				: "The station commander's people take delivery; the war depot logs it.");
 		menu(dialog, market);
 	}
 }

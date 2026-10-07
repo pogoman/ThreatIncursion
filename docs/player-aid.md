@@ -166,6 +166,18 @@ request accepts it.
   running total and completes when it reaches N within the term. Reward: the goods'
   value at the receiving market's price, its shortage premium included (no multiplier
   since 2026-09-27) - plus section 3's reputation doubled.
+- **Aid X with N ship hulls** (the user, 2026-10-07: requests ask for "whatever is short ...
+  not just supplies or fuel"). The same request for the fifth aid good: `ships` units of the
+  faction's hull pool (`ThreatReserves.AID_COMMODITIES`; never in a depot, so not in
+  `COMMODITIES`). `ThreatReserves.status(market, SHIPS)` is `ThreatHulls.hullStatus`: stock
+  and cap are the faction's free and standing hulls in units of `fabFPPerShipUnit` (100 FP);
+  the deficit stands only at the faction's **hull port** (`ThreatHulls.hullPort`: its
+  shipyard making the most ship units, else the world with the most standing hulls) and only
+  while the faction is short of hulls (`ThreatFactionStock.hullsShort`) with losses not yet
+  rebuilt - the units of that debt (`shortUnits`), exhausted at once since a hull shortage
+  is already a trailing judgment. No depot is needed. Delivered in person only: the player's
+  base convoys carry goods, and `ThreatAid.quoteResupply` says so when a colony's worst
+  shortage is hulls.
 - **Swarm bounty on the X system** (2026-09-24, untested; `ThreatSwarmBountyIntel`). Not a
   contract but vanilla's system bounty pointed at a hive: posted by a mobilised base whose
   siege the Defense Swarms over the target hive system outweigh (docs/strategy-reserves-sieges.md,
@@ -192,7 +204,9 @@ the comm directory (rules.csv options, vanilla-only; the conversation needs its 
 rows because `$local` is the person there and `$menuState` is out of scope), listing what the
 contract still needs and what the player's fleet holds. What is handed over leaves the
 player's cargo, lands exactly as a convoy does (reserve deposit and trade modifier), and
-earns section 3's reputation. The player's own holds are the gate - buying 20,000 fuel
+earns section 3's reputation. Ship hulls handed over join the faction's hull pool instead
+(`ThreatHulls.receive`: its losses rebuilt first, the rest its navy), valued at the market's
+price for `ships` like any other good. The player's own holds are the gate - buying 20,000 fuel
 and hauling it is legitimate; the tankers are the cost.
 
 **Defending in person.** The player's fleet in the target system counts as the asset; no
@@ -232,6 +246,24 @@ general case, driven by relationships between factions (`FactionAPI.getRelations
   factions not hostile to each other trade, whatever their standing, with no chance roll:
   it is trade, not charity. Logged `Ally aid: <helper> for <needy>: ... (for its
   heavyindustry | supplies runs dry)`.
+- **Hulls move like any good** (the user, 2026-10-07, after hw50 - the humans were out of
+  hulls, not provisions: Tri-Tachyon sat on 8,262 free FP while the Persean League's sieges
+  waited on 850; "vanilla sends convoys all the time with ship hulls"; `ThreatCoalition.aidHulls`,
+  and the per-colony loop above for a posted hull request). A faction short of hulls
+  (`ThreatFactionStock.hullsShort`) with losses not yet rebuilt is sent `ships` units by every
+  faction not hostile to it whose pool reads a surplus (`hullsSurplus`: no debt, free hulls),
+  out of the helper's **built** navy only - vanilla's patrol table is never given away - above
+  `hullAidKeepFraction` (0.5) of its free built hulls (`ThreatHulls.spareUnits`, at the helper's
+  hull port; `ThreatConvoys.spare(donor, SHIPS)`), to the needy faction's hull port, until the
+  debt is covered net of what is at sea (`inboundShips`), one sailing a faction a month. A hull
+  load's hold is read in units weighed by their worth (`capacityFor(SHIPS)` =
+  `convoyCargoCapacity` / `fabFPPerShipUnit`, 60 units), so under the shared minimum-load gate
+  (`convoyMinLoadFraction` 0.5) a helper sails hulls only with 30 units (3,000 FP) to spare. The
+  convoy is a real fleet: `ThreatHulls.give` debits the donor's built pool the day it sails
+  (`Convoy.ships`, the ships commodity in its hold, sized and escorted like supplies), and on
+  landing `ThreatHulls.receive` pays the recipient's debt first, the rest joins its built navy -
+  a convoy caught at sea is hulls lost to both. Logged `Hulls: <faction> lands N units of
+  hulls (N FP) from <donor> (<helper>): N FP of losses rebuilt, ...`.
 
 ## 6. What goes, what stays
 

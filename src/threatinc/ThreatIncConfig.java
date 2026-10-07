@@ -886,6 +886,8 @@ public class ThreatIncConfig {
 	public static boolean hullPool()          { return b("threatinc_hullPool", true); }
 	/** Multiplies every market's standing hulls (1 = vanilla's patrol figure). */
 	public static float hullPoolMult()        { return f("threatinc_hullPoolMult"); }
+	/** The share of its built navy's free hulls a faction keeps when an ally is short of hulls (ThreatHulls.spareUnits). */
+	public static float hullAidKeepFraction() { return f("threatinc_hullAidKeepFraction"); }
 	/** Whether the player can send aid from their colonies and the capacity ledger applies. */
 	public static boolean aidEnabled()        { return b("threatinc_aidEnabled", true); }
 	/** Fleet points a player colony can have at sea at 100% fleet size. */

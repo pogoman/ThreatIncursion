@@ -1287,7 +1287,7 @@ public class ThreatFactionView {
 			f.kind = c.aid ? "Aid convoy" : "Convoy";
 			f.color = h;
 			f.name = c.fromName() + " -> " + c.toName();
-			f.task = cargoText(c.marines, c.armaments, c.fuel, c.supplies);
+			f.task = cargoText(c.marines, c.armaments, c.fuel, c.supplies, c.ships);
 			if (c.isFrontRun()) {
 				f.kind = c.pickup ? "Evacuation" : "Supply run";
 				f.task = (c.pickup ? "lifting the front off " : "to the front on ") + c.toName()
@@ -1383,7 +1383,7 @@ public class ThreatFactionView {
 				f.kind = "Your convoy";
 				f.color = h;
 				f.name = c.fromName() + " -> " + c.toName();
-				f.task = cargoText(c.marines, c.armaments, c.fuel, c.supplies);
+				f.task = cargoText(c.marines, c.armaments, c.fuel, c.supplies, c.ships);
 				int hunters = ThreatRaiders.huntersOf(c.fleet);
 				f.status = c.fleet == null || !c.fleet.isAlive() ? "lost"
 						: hunters > 0 ? "HUNTED" : "in transit";
@@ -1453,11 +1453,17 @@ public class ThreatFactionView {
 	}
 
 	protected static String cargoText(float marines, float armaments, float fuel, float supplies) {
+		return cargoText(marines, armaments, fuel, supplies, 0f);
+	}
+
+	/** "N marines, N arms, N fuel, N supplies, N ship hulls" - the parts that are there, or "empty". */
+	protected static String cargoText(float marines, float armaments, float fuel, float supplies, float ships) {
 		List<String> parts = new ArrayList<String>();
 		if (marines > 0f) parts.add((int) marines + " marines");
 		if (armaments > 0f) parts.add((int) armaments + " arms");
 		if (fuel > 0f) parts.add((int) fuel + " fuel");
 		if (supplies > 0f) parts.add((int) supplies + " supplies");
+		if (ships > 0f) parts.add((int) ships + " ship hulls");
 		return parts.isEmpty() ? "empty" : ThreatWarBoard.join(parts);
 	}
 

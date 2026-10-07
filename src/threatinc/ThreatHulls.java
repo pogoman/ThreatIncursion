@@ -180,6 +180,118 @@ public class ThreatHulls {
 	}
 
 	// ------------------------------------------------------------------
+	// hulls as a good (the user, 2026-10-07: "vanilla sends convoys all the time
+	// with ship hulls"): units of the ships commodity, fabFPPerShipUnit FP each,
+	// carried by the allied aid convoy and handed over by the player at the
+	// faction's hull port, into this pool as its own yards' output would be
+	// ------------------------------------------------------------------
+
+	/** Fleet points one unit of the ships commodity is worth to a pool: fabFPPerShipUnit. */
+	public static float unitFP() {
+		return Math.max(1f, ThreatIncConfig.fabFPPerShipUnit());
+	}
+
+	/**
+	 * The faction's hull port - where hulls are asked for and land: its shipyard market making the most
+	 * ship units, else the market with the most standing hulls; null with none.
+	 */
+	public static MarketAPI hullPort(String factionId) {
+		if (factionId == null || !enabled()) return null;
+		MarketAPI best = null;
+		float most = 0f;
+		for (MarketAPI m : marketsOf(factionId)) {
+			if (m.getStarSystem() == null || m.getPrimaryEntity() == null) continue;
+			float u = shipUnits(m);
+			if (u > most) {
+				most = u;
+				best = m;
+			}
+		}
+		if (best != null) return best;
+		for (MarketAPI m : marketsOf(factionId)) {
+			if (m.getStarSystem() == null || m.getPrimaryEntity() == null) continue;
+			float s = standingFP(m);
+			if (s > most) {
+				most = s;
+				best = m;
+			}
+		}
+		return best;
+	}
+
+	/** Units of hulls the faction is short: its losses not yet rebuilt while short of hulls (ThreatFactionStock.hullsShort); 0 otherwise. */
+	public static int shortUnits(String factionId) {
+		if (factionId == null || !enabled() || !ThreatFactionStock.hullsShort(factionId)) return 0;
+		float debt = debt(factionId);
+		return debt > 0f ? (int) Math.ceil(debt / unitFP()) : 0;
+	}
+
+	/**
+	 * Units of hulls the market can spare to an ally: at the faction's hull port, with hulls to spare
+	 * (ThreatFactionStock.hullsSurplus), the built navy's free hulls above hullAidKeepFraction of them -
+	 * vanilla's patrols (the standing table) are never given away. 0 elsewhere.
+	 */
+	public static int spareUnits(MarketAPI market) {
+		if (market == null || !enabled()) return 0;
+		String f = market.getFactionId();
+		if (!ThreatFactionStock.hullsSurplus(f) || market != hullPort(f)) return 0;
+		float keep = Math.max(0f, Math.min(1f, ThreatIncConfig.hullAidKeepFraction()));
+		float fp = Math.min(freeFP(f), built(f)) * (1f - keep);
+		return (int) Math.floor(fp / unitFP());
+	}
+
+	/** Takes units of hulls out of the faction's built navy for a convoy; the units actually taken (whole). */
+	public static int give(String factionId, int units) {
+		if (factionId == null || units <= 0 || !enabled()) return 0;
+		int can = (int) Math.floor(built(factionId) / unitFP());
+		int taken = Math.min(units, can);
+		if (taken <= 0) return 0;
+		builtMap().put(factionId, built(factionId) - taken * unitFP());
+		return taken;
+	}
+
+	/** Units of hulls landed for the faction: they rebuild its losses first, the rest joins its built navy. */
+	public static void receive(String factionId, int units, String from) {
+		if (factionId == null || units <= 0 || !enabled() || Factions.THREAT.equals(factionId)) return;
+		float fp = units * unitFP();
+		float d = debt(factionId);
+		float toDebt = Math.min(d, fp);
+		if (toDebt > 0f) {
+			if (d - toDebt > 0f) debts().put(factionId, d - toDebt);
+			else debts().remove(factionId);
+		}
+		float toBuilt = fp - toDebt;
+		if (toBuilt > 0f) builtMap().put(factionId, built(factionId) + toBuilt);
+		ThreatIncConfig.log("Hulls: " + ThreatWarState.displayName(factionId) + " lands " + units + " units of hulls ("
+				+ (int) fp + " FP) from " + from + ": " + (int) toDebt + " FP of losses rebuilt, " + (int) toBuilt
+				+ " FP to its navy; " + (int) debt(factionId) + " FP still to rebuild");
+	}
+
+	/**
+	 * The ships commodity's status at a market, as ThreatReserves.status reports a reserve good: stock,
+	 * cap and output in units of the faction's pool; the deficit (what a request asks for) only at the
+	 * hull port, and standing at once - a hull shortage is already a trailing judgment.
+	 */
+	public static ThreatReserves.CommodityStatus hullStatus(MarketAPI market) {
+		if (market == null || !enabled()) return null;
+		String f = market.getFactionId();
+		ThreatReserves.CommodityStatus s = new ThreatReserves.CommodityStatus();
+		s.commodityId = Commodities.SHIPS;
+		s.econUnit = 1f;
+		s.stock = freeFP(f) / unitFP();
+		s.available = (int) s.stock;
+		s.cap = standingFP(f) / unitFP();
+		s.demand = (int) Math.ceil(s.cap);
+		s.per30 = productionFP(f) / unitFP();
+		if (market == hullPort(f)) {
+			s.deficit = shortUnits(f);
+			s.localDeficit = s.deficit;
+			s.exhausted = s.deficit > 0;
+		}
+		return s;
+	}
+
+	// ------------------------------------------------------------------
 	// the debt: hulls lost, not yet rebuilt
 	// ------------------------------------------------------------------
 

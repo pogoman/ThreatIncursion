@@ -11,6 +11,7 @@ import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
+import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.command.WarSimScript;
 import com.fs.starfarer.api.impl.campaign.intel.group.FGAction;
 import com.fs.starfarer.api.impl.campaign.intel.group.GenericRaidFGI;
@@ -67,10 +68,10 @@ public class ThreatAidRequests {
 						ThreatAidMissionIntel.KIND_DEFEND, null) == null) {
 					if (ThreatAidMissionIntel.postDefend(market) != null) posted++;
 				}
-				// goods need a depot to land in; a guard fleet does not
-				if (!ThreatReserves.hasDepot(market)) continue;
-				for (String c : ThreatReserves.COMMODITIES) {
+				for (String c : ThreatReserves.AID_COMMODITIES) {
 					if (posted >= cap) return;
+					// goods need a depot to land in; a guard fleet does not, nor do ship hulls (the faction's pool)
+					if (!Commodities.SHIPS.equals(c) && !ThreatReserves.hasDepot(market)) continue;
 					if (!shortageStanding(market, c)) continue;
 					if (ThreatAidMissionIntel.find(market.getId(),
 							ThreatAidMissionIntel.KIND_AID, c) != null) continue;
@@ -89,7 +90,7 @@ public class ThreatAidRequests {
 		List<String> live = new ArrayList<String>();
 		for (String factionId : ThreatWarState.warFactionIds()) {
 			for (MarketAPI market : ThreatReserves.marketsOf(factionId)) {
-				for (String c : ThreatReserves.COMMODITIES) {
+				for (String c : ThreatReserves.AID_COMMODITIES) {
 					ThreatReserves.CommodityStatus s = ThreatReserves.status(market, c);
 					String k = key(market, c);
 					if (s != null && s.localDeficit > 0) {
@@ -147,7 +148,7 @@ public class ThreatAidRequests {
 		}
 		String best = null;
 		int bestNeed = 0;
-		for (String c : ThreatReserves.COMMODITIES) {
+		for (String c : ThreatReserves.AID_COMMODITIES) {
 			int need = needItems(market, c);
 			if (need > bestNeed) {
 				bestNeed = need;

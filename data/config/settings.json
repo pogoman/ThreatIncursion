@@ -1112,6 +1112,12 @@
 	# player has the aidBaseFP allowance below.
 	"threatinc_hullPool": true,
 	"threatinc_hullPoolMult": 1,
+	# Hulls move like any good (2026-10-07): the allied aid convoy carries units of the
+	# ships commodity (fabFPPerShipUnit FP each) from a faction with hulls to spare to one
+	# short of them, out of the donor's BUILT navy only (vanilla's patrols stay), keeping
+	# this share of its free built hulls; they land at the hull port (the biggest shipyard)
+	# and rebuild losses first. The player hands over ship hulls there like any request.
+	"threatinc_hullAidKeepFraction": 0.5,
 
 	# Player aid (docs/player-aid.md): what you send from your own colonies to
 	# other factions, from the war board. Capacity is the colony's vanilla

@@ -239,14 +239,17 @@ public class ThreatCoalition {
 						break;
 					}
 				}
-				if (!ThreatReserves.hasDepot(market)) continue; // nowhere to land it
 				// (2026-09-29: one convoy per helped colony, one helper per need and a
 				// hull-load clip were caps - every willing helper now sends what it can
 				// spare until the shortage is covered, net of what is already at sea)
 				float[] atSea = ThreatConvoys.inbound(market.getId());
-				for (String c : ThreatReserves.COMMODITIES) {
+				for (String c : ThreatReserves.AID_COMMODITIES) {
+					// ship hulls (2026-10-07) land in the faction's pool, the other goods in a depot
+					boolean hulls = Commodities.SHIPS.equals(c);
+					if (!hulls && !ThreatReserves.hasDepot(market)) continue; // nowhere to land it
 					if (!ThreatAidRequests.shortageStanding(market, c)) continue;
-					float need = ThreatAidRequests.requestItems(market, c) - atSea[ThreatAid.index(c)];
+					float inbound = hulls ? ThreatConvoys.inboundShips(market.getId()) : atSea[ThreatAid.index(c)];
+					float need = ThreatAidRequests.requestItems(market, c) - inbound;
 					if (need < 1f) continue;
 					for (String helperId : ids) {
 						if (need < 1f) break;
@@ -259,7 +262,7 @@ public class ThreatCoalition {
 						if (donor == null) continue;
 						float amount = Math.min(need, ThreatConvoys.spare(donor, c));
 						if (amount < 1f) continue;
-						float[] load = new float[ThreatReserves.COMMODITIES.length];
+						float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
 						load[ThreatAid.index(c)] = amount;
 						ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, market, helper, load,
 								random, needyId, false);
@@ -313,7 +316,7 @@ public class ThreatCoalition {
 					if (donor == null) continue;
 					float amount = Math.min(need, ThreatConvoys.spare(donor, c));
 					if (amount < unit) continue;
-					float[] load = new float[ThreatReserves.COMMODITIES.length];
+					float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
 					load[ThreatAid.index(c)] = amount;
 					ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, to, helper, load, random, needyId, false);
 					if (convoy == null) continue;
@@ -327,7 +330,48 @@ public class ThreatCoalition {
 				}
 				if (sailed) ThreatFactionStock.aided(needyId, c);
 			}
+			aidHulls(needyId, needy, ids, random);
 		}
+	}
+
+	/**
+	 * Hulls move like any good (the user, 2026-10-07, after hw50: Tri-Tachyon sat on 8,262 free FP
+	 * while the Persean League's sieges waited on 850): a faction short of hulls
+	 * (ThreatFactionStock.hullsShort) with losses not yet rebuilt is sent units of the ships
+	 * commodity by every faction not hostile to it whose plan reads a hull surplus, out of the
+	 * helper's BUILT navy at its hull port (ThreatHulls.spareUnits), to the needy faction's hull
+	 * port, until its losses are covered net of what is at sea; one sailing a month a faction.
+	 */
+	protected static void aidHulls(String needyId, FactionAPI needy, List<String> ids, Random random) {
+		String c = Commodities.SHIPS;
+		if (!ThreatFactionStock.mayAid(needyId, c)) return;
+		MarketAPI to = ThreatHulls.hullPort(needyId);
+		if (to == null) return;
+		float need = ThreatHulls.shortUnits(needyId) - ThreatConvoys.inboundShips(to.getId());
+		if (need < 1f) return;
+		boolean sailed = false;
+		for (String helperId : ids) {
+			if (need < 1f) break;
+			if (helperId.equals(needyId) || ThreatWarState.excluded(helperId)) continue;
+			FactionAPI helper = Global.getSector().getFaction(helperId);
+			if (helper == null || helper.isPlayerFaction()) continue;
+			if (helper.isHostileTo(needy) || needy.isHostileTo(helper)) continue;
+			if (!ThreatFactionStock.hullsSurplus(helperId)) continue;
+			MarketAPI donor = ThreatConvoys.pickAllyDonor(helper, to, c);
+			if (donor == null) continue;
+			float amount = Math.min(need, ThreatConvoys.spare(donor, c));
+			if (amount < 1f) continue;
+			float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
+			load[ThreatAid.index(c)] = (float) Math.floor(amount);
+			ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, to, helper, load, random, needyId, false);
+			if (convoy == null) continue;
+			report(helper, needy, "Allied Convoy Sails", "sends %s %s from %s to %s (%s)",
+					Misc.getWithDGS((int) convoy.ships), ThreatReserves.label(c), ThreatNotice.market(donor),
+					ThreatNotice.market(to), "hulls lost to rebuild");
+			need -= convoy.ships;
+			sailed = true;
+		}
+		if (sailed) ThreatFactionStock.aided(needyId, c);
 	}
 
 	/** An ally's convoy landed at another faction's colony. */
@@ -336,7 +380,7 @@ public class ThreatCoalition {
 		if (helper == null) return;
 		ThreatColonyManager.announce(ThreatNotice.titled("Allied Convoy Landed").icon(helper)
 				.line("%s convoy lands at %s", ThreatNotice.faction(helper), ThreatNotice.market(base))
-				.line("Delivered: %s", ThreatFactionView.cargoText(c.marines, c.armaments, c.fuel, c.supplies)));
+				.line("Delivered: %s", ThreatFactionView.cargoText(c.marines, c.armaments, c.fuel, c.supplies, c.ships)));
 	}
 
 	/**
