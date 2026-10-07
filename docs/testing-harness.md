@@ -394,3 +394,7 @@ with, so remake it (`ck2`, ...) after a change to anything before the war; the g
 only by the campaign's randomness from there. The "never save on a cloned save" rule stands for every
 other run (`sbs.ps1` otherwise never saves): it was written when clones were not self-contained and
 F5 wrote back into the original's folder (above, 2026-09-05).
+The first checkpoint, `ck1` on the Aphelion sector (2026-10-07 19:42): the war opened at war day 1545,
+the last save before it at 1490. The one game alone fast-forwarded at 216 days a minute - a batch of
+three runs at ~36 a game (hw56: 2,720 days in 75 minutes), so one game at a time moves twice the days
+an hour that three side by side do; the checkpoint itself took 8 minutes of fast-forward.
