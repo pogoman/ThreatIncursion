@@ -342,7 +342,18 @@ public class ThreatOffensive {
 			}
 			if (cost <= budget && fuel <= fuelBudget
 					&& (supplies <= 0f || supplies <= suppliesStock + suppliesFlow * Math.max(1f, longest) / 30f)) break;
-			campaign.remove(campaign.size() - 1);
+			// a prong no budget pays on its own goes first, the least valuable of those (hw58c: a 19k FP defence
+			// prong beyond the fuel budget at the head of the set had the tail dropped one by one until nothing
+			// was left - "nothing the fund pays" for months with 44-47k FP in the fund); else the tail
+			int drop = campaign.size() - 1;
+			for (int i = campaign.size() - 1; i >= 0; i--) {
+				Prong p = campaign.get(i);
+				if (p.cost > budget || p.fuel > fuelBudget) {
+					drop = i;
+					break;
+				}
+			}
+			campaign.remove(drop);
 		}
 		if (suppliesShort > 0f) ThreatFuel.noteDemand(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES, suppliesShort);
 		String where = (losing ? "losing " + ThreatStance.losingSummary() + (nearLY > 0f ? ", within " + (int) nearLY + " ly"
