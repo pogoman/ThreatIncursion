@@ -2734,19 +2734,19 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :86
 - `ThreatNoticeClickDialog.getContext()` :90
 
-## ThreatOffensive (362 lines)
+## ThreatOffensive (386 lines)
 - `ThreatOffensive.startDay()` :46
 - `ThreatOffensive.setStartDay(float day)` :51
 - `ThreatOffensive.pass(IncursionManager im)` :56 - The monthly pass:
-- `ThreatOffensive.compare(Prong a, Prong b)` :129
-- `ThreatOffensive.price(IncursionManager im, Prong p, Map<String, float[]> memo, Integer nAtFaction)` :248 - Prices the prong for the answer it expects:
-- `ThreatOffensive.arrival(float ly)` :264 - Days from launch to the target:
+- `ThreatOffensive.compare(Prong a, Prong b)` :142
+- `ThreatOffensive.price(IncursionManager im, Prong p, Map<String, float[]> memo, Integer nAtFaction)` :272 - Prices the prong for the answer it expects:
+- `ThreatOffensive.arrival(float ly)` :288 - Days from launch to the target:
 ### the prongs held back to arrive with the farthest
-- `ThreatOffensive.schedule()` :276 - "targetId|stagingId|sourceSystemId|launchDay|cost" per prong waiting its day.
-- `ThreatOffensive.scheduled(MarketAPI market)` :285 - Whether a prong at the world waits its day (no second strike is planned at it).
-- `ThreatOffensive.poll()` :294 - Daily (IncursionManager.advance):
-- `ThreatOffensive.nearest(MarketAPI target, Map<String, StarSystemAPI> sources)` :339 - The hive system nearest the target that can stage a strike, or null.
-- `ThreatOffensive.names(List<Prong> prongs, int max)` :353
+- `ThreatOffensive.schedule()` :300 - "targetId|stagingId|sourceSystemId|launchDay|cost" per prong waiting its day.
+- `ThreatOffensive.scheduled(MarketAPI market)` :309 - Whether a prong at the world waits its day (no second strike is planned at it).
+- `ThreatOffensive.poll()` :318 - Daily (IncursionManager.advance):
+- `ThreatOffensive.nearest(MarketAPI target, Map<String, StarSystemAPI> sources)` :363 - The hive system nearest the target that can stage a strike, or null.
+- `ThreatOffensive.names(List<Prong> prongs, int max)` :377
 
 ## ThreatOmens (236 lines)
 - `ThreatOmens.reset()` :97 - RESET War:
