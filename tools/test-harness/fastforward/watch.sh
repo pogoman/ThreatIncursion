@@ -14,7 +14,9 @@
 #   broke    the swarm cannot sail: supplies stock under 5% of a month's output in the last three censuses with the
 #            fund at 20k+ (hw53-54: the stock peaks 45-75k at 4-7 hives and falls to ~0 as 17-24 are founded)
 #   humans   the humans collapsing: forward bases lost twice those founded, 10+ founded (hw51a 93 of 48)
-#   hulls    the humans out of hulls: 50+ STARVE lines (expeditions the pools cannot pay) and no hull convoy
+#   starve   the humans cannot pay their plays: 50+ STARVE lines (expeditions the pools cannot pay)
+#   hulls    a faction out of hulls with no hull convoy: a Hulls ledger line with 1000+ FP lost and 0 free (Luddic Path,
+#            hostile to every donor, excepted) while another faction has hulls built and free
 #   nowar    no war by day 2000: no strike launched (hw50-53 opened between 1466 and 1953)
 # The thresholds are a first cut (2026-10-07), the user's to tune.
 TAG=$1; MAX=${2:-130}; IGN=",${3:-},"; T="$(cygpath -u "$LOCALAPPDATA")/Temp/threatinc-tests"
@@ -57,7 +59,10 @@ while :; do
     lowsup=$(grep -o '^Census: .*supplies [0-9]* (+[0-9]*' $F | tail -3 | sed 's/.*supplies ([0-9]*) (+([0-9]*)/ /' | awk '$2>0 && $1*20<$2{n++} END{print n+0}')
     [ "$lowsup" -ge 3 ] && [ "$fund" -ge 20000 ] && flag $g broke "supplies stock under 5% of a month's output three censuses running, fund $fund FP: $(grep '^Census' $F | tail -1 | grep -o 'supplies [0-9]* ([^)]*)')"
     [ "$fbf" -ge 10 ] && [ "$fbl" -ge $((fbf * 2)) ] && flag $g humans "forward bases founded $fbf, lost $fbl"
-    [ "$starve" -ge 50 ] && [ "$hull" -eq 0 ] && flag $g hulls "$starve STARVE lines, no hull convoy: $(grep -m1 'STARVE:' $F | cut -c1-160)"
+    [ "$starve" -ge 50 ] && flag $g starve "$starve STARVE lines: $(grep 'STARVE:' $F | sed 's/#[0-9]*//; s/([0-9]* FP needed)//' | sort | uniq -c | sort -rn | head -2 | tr '\n' ';' | cut -c1-200)"
+    short=$(grep '^Hulls: ' $F | grep -Ev 'Your faction|Luddic Path' | grep -Ec '[0-9]{4,} lost, 0 free')
+    rich=$(grep '^Hulls: ' $F | grep -v 'Your faction' | grep -Ec '\([1-9][0-9]* built\): .* [1-9][0-9]* free')
+    [ "$short" -gt 0 ] && [ "$rich" -gt 0 ] && [ "$hull" -eq 0 ] && flag $g hulls "a faction out of hulls, another with hulls free, no hull convoy: $(grep '^Hulls: ' $F | grep -Ev 'Your faction|Luddic Path' | grep -Em1 '[0-9]{4,} lost, 0 free' | cut -c1-160)"
     [ "$war" -gt 2000 ] && [ "$strikes" -eq 0 ] && flag $g nowar "no strike launched by war day $war"
   done
   [ $fail = 1 ] && { echo "FAIL SIGNAL - stop the batch, or read on with the signal in the ignore list"; exit 1; }
