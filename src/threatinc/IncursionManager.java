@@ -1018,6 +1018,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	protected ThreatStrikeFGI launchStrike(MarketAPI colony, StarSystemAPI source, MarketAPI target) {
+		return launchStrike(colony, source, target, Float.NaN);
+	}
+
+	/** @param expectedDef the defence the strike is sized for in place of the fog's figure (ThreatOffensive), or NaN */
+	protected ThreatStrikeFGI launchStrike(MarketAPI colony, StarSystemAPI source, MarketAPI target, float expectedDef) {
 		GenericRaidParams params = new GenericRaidParams(new Random(random.nextLong()), true);
 
 		params.factionId = Factions.THREAT;
@@ -1107,7 +1112,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// built for the purpose from the whole hive's bank, sized to the
 			// target; the garrisons stay home (the user, 2026-10-05)
 			float[] stagedDef = { 0f };
-			StagedPlan plan = stagedPlan(colony, source, target, new java.util.HashMap<String, float[]>(), stagedDef, null);
+			StagedPlan plan = stagedPlan(colony, source, target, new java.util.HashMap<String, float[]>(), stagedDef, null,
+					Float.NaN, expectedDef);
 			if (plan == null) return null;
 			if (ThreatIncConfig.strikeFundShare() > 0f) {
 				if (!ThreatColonyManager.spendStrikeFund(colony, plan.bankFP)) return null;
@@ -1124,12 +1130,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 			for (int i = 0; i < plan.built; i++) swarmSizes.add(plan.sizes.get(plan.sizes.size() - 1 - i));
 			if (swarmSizes.isEmpty()) return null;
-			return sendStrike(params, colony, source, target, swarmSizes, paid[0],
+			ThreatStrikeFGI sent = sendStrike(params, colony, source, target, swarmSizes, paid[0],
 					ThreatFuel.ly(source, target.getStarSystem()),
 					" [staged: " + taken + " swarm(s) of " + plan.from.size() + " system(s), " + plan.built
-							+ " built; defence seen " + (int) stagedDef[0] + (ThreatIncConfig.strikeFundShare() > 0f
+							+ " built; defence " + (Float.isNaN(expectedDef) ? "seen " : "expected ") + (int) stagedDef[0]
+							+ (ThreatIncConfig.strikeFundShare() > 0f
 									? ", strike fund left " + (int) ThreatColonyManager.strikeFund()
 									: ", hive bank before " + (int) ThreatColonyManager.hivePoolableFP(colony)) + " FP]");
+			// what it was sized for, against what it meets (ThreatStrikeFGI.reportMet)
+			if (sent != null) sent.setExpected(stagedDef[0], target.getFactionId());
+			return sent;
 		}
 		int sendable = ThreatColonyManager.garrisonAvailableForLaunch(colony);
 		// (2026-09-29: closed economy - the fleets are re-embodied at their
@@ -4987,18 +4997,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 */
 	protected StagedPlan stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target,
 			java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares) {
-		return stagedPlan(staging, source, target, memo, defOut, spares, Float.NaN);
+		return stagedPlan(staging, source, target, memo, defOut, spares, Float.NaN, Float.NaN);
 	}
 
 	/**
 	 * stagedPlan against a bank of bankLimit fleet points instead of what the fund (or the banks) holds
 	 * now: Float.MAX_VALUE prices a strike the offensive is saving for (ThreatOffensive.plan); NaN reads
-	 * the real bank.
+	 * the real bank. defGiven: the defence to size for in place of what the fog has seen at the target
+	 * (the offensive's expected answer, ThreatOffensive); NaN reads the fog.
 	 */
 	protected StagedPlan stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target,
-			java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares, float bankLimit) {
+			java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares, float bankLimit, float defGiven) {
 		if (staging == null || source == null || target == null || target.getStarSystem() == null) return null;
-		float def = targetDefence(target, memo);
+		float def = !Float.isNaN(defGiven) ? defGiven : targetDefence(target, memo);
 		if (def >= Float.MAX_VALUE) return null;
 		if (defOut != null) defOut[0] = def;
 		float need = def * ThreatIncConfig.strikeStagedMargin();

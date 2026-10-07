@@ -72,4 +72,18 @@ sails (`poll`, daily from `IncursionManager.advance`; `threatinc_offensiveSchedu
 target or staging is gone, or that the fund cannot pay on its day, is dropped with its bill refunded. A
 world with a held prong is no candidate (`scheduled`).
 
+**Sized for the answer, not the day's patrols** (the user, 2026-10-07: "what determines what a world
+answers with? ... the threat wouldn't know what that is unless it knew all worlds"). A strike meets
+the system's fleets on the day (`liveTargetDefence`, what a scout records - a core world's patrols are
+74-290) and then the faction's response from its free hulls, thousands of FP the swarm cannot see. So a
+prong is priced for `expected` = (the defence seen + the faction's **navy seen elsewhere**
+(`ThreatSwarmIntel.knownNavyFP`: every place of the faction's, defence + guards + staged, bar the target's
+system) shared among the campaign's prongs at that faction) x the faction's **answer ratio**
+(`responseRatio`: what its worlds met the swarm's earlier strikes with over what they were sized for,
+`ThreatStrikeFGI` samples the hostile strength daily while in the system and at the off-screen fight,
+`noteMet` on ending; decayed 0.7 a strike, never below 1). Splitting a faction's navy among the prongs is
+the multi-prong's payoff. The campaign is priced once at the candidates' counts and again at its own
+(`price`), dropping from the tail while the means no longer pay it; `launchStrike(..., expectedDef)` sizes
+the real strike for the same figure (log: `defence expected N`).
+
 What it does not do yet: touch the 70% of fabrication that becomes garrisons.
