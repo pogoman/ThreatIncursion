@@ -96,6 +96,40 @@ public class ThreatFuel {
 		data().put(stockKey(commodityId), Math.max(0f, amount));
 	}
 
+	/** Market id -> the supplies reserved for the forge the planner waits to build there (reserve). */
+	public static final String KEY_RESERVED = "threatinc_hiveSuppliesReserved";
+
+	protected static Map<String, Float> reservedMap() {
+		return ThreatIncData.map(KEY_RESERVED);
+	}
+
+	/**
+	 * THE SHORTAGE'S ANSWER IS PAID FIRST (2026-10-07, after hw60): a supplies producer the planner waits to
+	 * build or convert to has its price reserved, and the fleets' upkeep, the colonies' sustenance and a
+	 * founding draw only on the stock above it (free). hw60c made 197k supplies a month and spent 207k with
+	 * the stock at 0-7k, 2.5M fuel banked and 294k FP idle: 72 "waiting build" turns and two forge
+	 * conversions in 77 months, because everything else drew first and a forge's 5k was never there. The
+	 * humans' yards-first rule (ThreatFactionStock), the same for the hive. Capped at a month's production.
+	 */
+	public static float reserved(String commodityId) {
+		if (!Commodities.SUPPLIES.equals(commodityId) || !planned()) return 0f;
+		float sum = 0f;
+		for (Float v : reservedMap().values()) if (v != null) sum += v;
+		return Math.min(sum, Math.max(0f, perMonth(commodityId)));
+	}
+
+	/** The stock above what is reserved for the planner's answer (reserved): what everything else may draw. */
+	public static float free(String commodityId) {
+		return Math.max(0f, stock(commodityId) - reserved(commodityId));
+	}
+
+	/** Reserves {@code supplies} for the producer the market waits to build; 0 or less releases it. */
+	public static void reserve(String marketId, float supplies) {
+		if (marketId == null) return;
+		if (supplies > 0f) reservedMap().put(marketId, supplies);
+		else reservedMap().remove(marketId);
+	}
+
 	/** Fuel the hive banks a month. */
 	public static float perMonth() {
 		return perMonth(Commodities.FUEL);
@@ -242,7 +276,9 @@ public class ThreatFuel {
 	public static boolean canFound(float passageFuel) {
 		float[] cost = foundingCost();
 		UNMET.clear();
-		boolean supplies = canPay(Commodities.SUPPLIES, cost[0]);
+		// above the planner's reserve (reserved): a founding never takes the forge's price
+		boolean supplies = cost[0] <= 0f || free(Commodities.SUPPLIES) >= cost[0];
+		if (!supplies) UNMET.put(Commodities.SUPPLIES, cost[0]);
 		boolean fuel = canPay(Commodities.FUEL, cost[1] + passageFuel);
 		return supplies && fuel;
 	}

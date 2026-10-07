@@ -93,8 +93,11 @@ prong is priced for `expected` = (the defence seen + the faction's **navy seen e
 system) shared among the campaign's prongs at that faction) x the faction's **answer ratio**
 (`responseRatio`: what its worlds met the swarm's earlier strikes with over what they were sized for,
 `ThreatStrikeFGI` samples the hostile strength daily while in the system - an off-screen strike by its
-route's place - and at the off-screen fight (`noteMet`), reported on ending; decayed 0.7 a strike, never
-below 1). Until hw50 no strike on the second sector ever reported: "not sampled yet" was a day of -1 and
+route's place - and at the off-screen fight (`noteMet`), reported on ending; decayed 0.7 a strike).
+Unfloored since hw60 (2026-10-07): floored at 1 the swarm never learned that the humans answer with
+less - hw60 met 0.41-0.61 of sized over 240 strikes, every prong twice its need and twice its supplies
+away - so the ratio now runs both ways and `price` takes the larger of the defence seen on the day and
+the priced answer: never under what stands there, never again double it on a memory. Until hw50 no strike on the second sector ever reported: "not sampled yet" was a day of -1 and
 that sector's clock reads day -642,000, so every strike of hw42-49 "ended with no read" and the ratio
 stayed 1 (a flag, `metRead`, since). Splitting a faction's navy among the prongs is
 the multi-prong's payoff. The campaign is priced once at the candidates' counts and again at its own
@@ -113,7 +116,9 @@ navy charge. On since 2026-10-07 (hw48).
 - **Where the swarms come from** (`IncursionManager.stagedSpares`, the user 2026-10-07: "priority pull
   from safest, then from those highest above posture threshold ... no hard never take, just weighted ...
   prefer not to strip a world clean"): every colony of the hive offers its fleets in two tiers - the
-  fleets above its posture want (tier 1; above its reserve with the posture off) before any colony's
+  fleets above its posture want (tier 1; above its reserve with the posture off; what stands on station
+  alone since hw60 - `ownedFleetFP` counts reinforcements still in flight, and hw60b's Chlorr with 430 FP
+  inbound offered its whole station and was stripped to zero, then eradicated) before any colony's
   fleets below it (tier 2, down to its last fleet) - and within a tier the colonies go by score,
   `threatinc_spareGatherDistanceShare` (0.55) of the colony's distance from the nearest known human
   world (the safest first: the humans strike what is near them) and the rest its surplus (fleets above

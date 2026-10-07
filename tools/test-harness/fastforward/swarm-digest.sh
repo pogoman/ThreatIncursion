@@ -25,8 +25,10 @@ for tag in "$@"; do
       if (match($0,/fund [0-9]+ FP \(/)) fund=substr($0,RSTART+5,RLENGTH-9)+0;
       if (match($0,/[0-9]+ fuel and/)) need=substr($0,RSTART,RLENGTH-9)+0;
       if (match($0,/, fuel [0-9]+ \(/)) stock=substr($0,RSTART+7,RLENGTH-9)+0;
-      n++; if (need>stock) bf++; if (cost>fund) bc++;
-    } END{printf "-- saving lines %d: fuel short on %d, fund short on %d\n", n, bf, bc}'
+      n++; if (need>stock) bf++; if (cost>fund) bc++; if (index($0,"not yet kept")) bs++;
+    } END{printf "-- saving lines %d: fuel short on %d, fund short on %d, supplies do not keep the fleets away on %d\n", n, bf, bc, bs}'
+  grep 'Census: threat' "$f" | tail -1 | grep -o 'fuel [0-9]* (+[0-9]*/mo, spent [0-9]*); supplies [0-9]* (+[0-9]*/mo, spent [0-9]*)' | sed 's/^/-- stock: /'
+  echo "-- conversions $(grep -c '^Converted Fuel Production' "$f"), forge builds $(grep -c 'Hive planner: heavyindustry' "$f"), waiting-build turns $(grep -c 'Hive planner: waiting build' "$f"), seedings held $(grep -c 'Hive stock: a Seeding Swarm' "$f")"
   echo "-- focus:"; grep 'Offensive: focus' "$f" | cut -c1-160 | sed 's/^/   /' | head -8
   echo "-- exposure changes $(grep -c 'Posture: .* exposure' "$f"), systems at 1.00 now: $(grep 'Posture: .* exposure' "$f" | grep -c '> 1.00')"
   echo "-- sieges on hives (BESIEGED entries) $(grep -c 'Posture: .*->BESIEGED' "$f"); patrols: $(grep -c 'Patrol Swarm from' "$f") swarm, $(grep -c '^Patrol of ' "$f") human"

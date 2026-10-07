@@ -479,14 +479,14 @@ public class ThreatOffensive {
 	 * Prices the prong for the answer it expects: the day's defence seen there, plus the faction's
 	 * navy seen elsewhere (ThreatSwarmIntel.knownNavyFP) shared among the nAtFaction prongs at that
 	 * faction, times what the faction's worlds have met earlier strikes with over what they were
-	 * sized for (responseRatio); stagedPlan against an unlimited bank and the spare the pass leaves
-	 * it (Spares). False when nothing pays it.
+	 * sized for (responseRatio, learned both ways since hw60) - never under the defence seen on the day;
+	 * stagedPlan against an unlimited bank and the spare the pass leaves it (Spares). False when nothing pays it.
 	 */
 	protected static boolean price(IncursionManager im, Prong p, Map<String, float[]> memo, Integer nAtFaction, Spares spares) {
 		String f = p.target.getFactionId();
 		int n = nAtFaction != null ? Math.max(1, nAtFaction) : 1;
 		float navy = ThreatSwarmIntel.knownNavyFP(f, p.target.getStarSystem().getId());
-		p.expected = (p.def + navy / n) * ThreatSwarmIntel.responseRatio(f);
+		p.expected = Math.max(p.def, (p.def + navy / n) * ThreatSwarmIntel.responseRatio(f));
 		IncursionManager.StagedPlan plan = im.stagedPlan(p.staging, p.source, p.target, memo, null, spares.left(p.source),
 				Float.MAX_VALUE, p.expected);
 		// a prong of spare swarms alone can cost the fund nothing

@@ -5063,7 +5063,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				// tier 1: the largest fleets whose leaving keeps the colony at its want
 				int k1;
 				if (ThreatPosture.enabled()) {
-					float room = ThreatColonyManager.ownedFleetFP(m, ThreatIncData.garrisonsFor(m.getId())) - ThreatPosture.wantFP(m);
+					// what stands on station alone: ownedFleetFP counts reinforcements still in flight and raiders
+					// out, so a colony with 430 FP inbound offered its whole station as "above its want" and was
+					// stripped to zero (hw60b Chlorr, eradicated weeks later; 24 of b's 41 falls followed a strip)
+					float station = 0f;
+					for (ThreatColonyManager.MusterFleet mf : walk) station += mf.fp;
+					float room = station - ThreatPosture.wantFP(m);
 					k1 = 0;
 					for (ThreatColonyManager.MusterFleet mf : walk) {
 						if (room - mf.fp < 0f) break;

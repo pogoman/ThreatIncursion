@@ -837,12 +837,17 @@ public final class ThreatSwarmIntel {
 				+ "; its answer is now " + String.format("%.2f", responseRatio(factionId)) + "x what is seen");
 	}
 
-	/** What the faction's worlds met the swarm's strikes with, over what they were sized for; 1 until a strike has ended there, never below 1. */
+	/**
+	 * What the faction's worlds met the swarm's strikes with, over what they were sized for; 1 until a strike
+	 * has ended there. Learned both ways since hw60 (2026-10-07): floored at 1 the swarm never learned that
+	 * the humans answer with less - hw60 met 0.41-0.61 of sized over 240 strikes, every prong twice its need
+	 * and twice its supplies away. ThreatOffensive.price never sizes under the defence seen on the day.
+	 */
 	public static float responseRatio(String factionId) {
 		if (!enabled() || factionId == null) return 1f;
 		float[] m = metMap().get(factionId);
 		if (m == null || m[0] <= 0f) return 1f;
-		return Math.max(1f, m[1] / m[0]);
+		return Math.max(0f, m[1] / m[0]);
 	}
 
 	/** What the faction's worlds met the swarm's last strikes with over what they were sized for, unfloored (ThreatOffensive's broken focus); 1 until a strike has ended there. */

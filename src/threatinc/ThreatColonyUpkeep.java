@@ -279,7 +279,7 @@ public class ThreatColonyUpkeep {
 		ThreatReach.clearCommitted();
 		if (needs.isEmpty()) return;
 
-		float stock = ThreatFuel.stock(Commodities.SUPPLIES);
+		float stock = ThreatFuel.free(Commodities.SUPPLIES); // above the planner's reserve (ThreatFuel.reserved)
 		float made = ThreatFuel.perMonth(Commodities.SUPPLIES) * days / 30f;
 		float fleets = Math.max(0f, fleetsPerMonth) * days / 30f;
 		float net = Math.max(0f, made - fleets);
@@ -324,7 +324,7 @@ public class ThreatColonyUpkeep {
 			stock -= extra;
 			grown += extra;
 		}
-		float draw = Math.min(sustained + grown, ThreatFuel.stock(Commodities.SUPPLIES));
+		float draw = Math.min(sustained + grown, ThreatFuel.free(Commodities.SUPPLIES));
 		if (draw > 0f) ThreatFuel.pay(Commodities.SUPPLIES, draw);
 		for (Need n : needs) {
 			float share = n.want > 0f ? n.paid / n.want : 1f;

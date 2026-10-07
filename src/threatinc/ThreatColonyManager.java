@@ -1325,12 +1325,12 @@ public class ThreatColonyManager {
 		// one surplus fuel plant a month, hive-wide, turned into what the hive
 		// lacks (2026-10-01) - before the sweep, so the slot it frees is filled
 		// by the conversion's own build and no other step sees it empty
-		MarketAPI converted = convertSurplus();
+		List<MarketAPI> converted = convertSurplus();
 		// and one military structure a month gives its slot back to production
 		// when the hive needs a producer and has no free slot (retireMilitary)
-		MarketAPI retired = converted == null ? retireMilitary() : null;
+		MarketAPI retired = converted.isEmpty() ? retireMilitary() : null;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
-			if (market == converted || market == retired) continue;
+			if (converted.contains(market) || market == retired) continue;
 			// a world that can now feed the batteries it lacks (or the heavy
 			// batteries it has outgrown) arms on this tick, not on its next
 			// growth step a season away - structures need no slot
@@ -1384,7 +1384,7 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * CONVERSION: once a month hive-wide (ThreatFuel.mayConvert), a fuel plant
+	 * CONVERSION: a SHORT_DAYS apart hive-wide (ThreatFuel.mayConvert), every fuel plant
 	 * the stock can spare (ThreatFuel.surplusProducer: production without it
 	 * still covers the trailing demand, and the stock covers that demand over a
 	 * plant's build time) is torn down on a world with no free slot, and the
@@ -1400,11 +1400,15 @@ public class ThreatColonyManager {
 	 * 538k fuel, its plants making 82k a month against ~30k spent. Returns the
 	 * world converted, or null.
 	 */
-	public static MarketAPI convertSurplus() {
-		if (!ThreatIncConfig.hiveConvertSurplus() || !ThreatFuel.planned() || !ThreatFuel.mayConvert()) return null;
+	public static List<MarketAPI> convertSurplus() {
+		List<MarketAPI> done = new ArrayList<MarketAPI>();
+		if (!ThreatIncConfig.hiveConvertSurplus() || !ThreatFuel.planned() || !ThreatFuel.mayConvert()) return done;
 		String fuel = Commodities.FUEL;
 		int plants = linkIndex(Industries.FUELPROD);
-		if (plants < 0 || countLink(plants) <= 1 || !ThreatFuel.surplus(fuel)) return null;
+		if (plants < 0 || countLink(plants) <= 1 || !ThreatFuel.surplus(fuel)) {
+			ThreatFuel.reserve(RESERVE_CONVERSION, 0f);
+			return done;
+		}
 		// the hive's biggest plant stays
 		MarketAPI biggest = null;
 		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
@@ -1413,6 +1417,7 @@ public class ThreatColonyManager {
 		}
 		final Map<MarketAPI, String> builds = new java.util.HashMap<MarketAPI, String>();
 		List<MarketAPI> picks = new ArrayList<MarketAPI>();
+		float unpaidForge = 0f;
 		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (m == biggest) continue;
 			Industry plant = m.getIndustry(Industries.FUELPROD);
@@ -1422,11 +1427,17 @@ public class ThreatColonyManager {
 			if (ThreatGroundFronts.hasFront(m) || ThreatRazing.saturated(m)) continue;
 			if (!ThreatFuel.surplusProducer(m, fuel)) continue;
 			String build = conversionFor(m);
-			if (build == null || !conversionPayable(m, build)) continue;
+			if (build == null) continue;
+			if (!conversionPayable(m, build)) {
+				// a forge the stock cannot pay is the shortage's answer: its price is set aside (ThreatFuel.reserved)
+				if (Industries.HEAVYINDUSTRY.equals(build) && unpaidForge <= 0f) unpaidForge = ThreatBuildCost.supplies(build);
+				continue;
+			}
 			builds.put(m, build);
 			picks.add(m);
 		}
-		if (picks.isEmpty()) return null;
+		ThreatFuel.reserve(RESERVE_CONVERSION, picks.isEmpty() ? unpaidForge : 0f);
+		if (picks.isEmpty()) return done;
 		// the slot worth most first: a forge, then a chain link, then the
 		// military tier; the bigger world (more output, more swarms), then the
 		// plant that makes least
@@ -1439,35 +1450,49 @@ public class ThreatColonyManager {
 				return Float.compare(ThreatFuel.outputOf(a, Commodities.FUEL), ThreatFuel.outputOf(b, Commodities.FUEL));
 			}
 		});
-		MarketAPI m = picks.get(0);
-		String build = builds.get(m);
 		float stock = ThreatFuel.stock(fuel);
 		float demand = ThreatFuel.demandPerMonth(fuel);
 		float made = ThreatFuel.perMonth(fuel);
-		float output = ThreatFuel.outputOf(m, fuel);
-		// paid before anything comes down
-		String price;
-		if (SwarmBastion.BASTION.equals(build)) {
-			float fp = ThreatBuildCost.fleetPoints(build);
-			if (!payMilitary(m, build)) return null;
-			m.removeIndustry(Industries.FUELPROD, null, false);
-			addMilitary(m);
-			price = Misc.getWithDGS((int) fp) + " FP";
-		} else {
-			float supplies = ThreatBuildCost.supplies(build);
-			// bought first (addIndustry asks no slot): a refusal tears nothing down
-			if (!buyStructure(m, build, m.getId())) return null;
-			m.removeIndustry(Industries.FUELPROD, null, false);
-			price = Misc.getWithDGS((int) supplies) + " supplies";
+		// AS MANY AS THE SURPLUS SPARES (2026-10-07, after hw60: one a month gave five conversions in 77 months
+		// with 2.5M fuel banked at 70-130 months of demand while supplies bound every seeding and campaign):
+		// each plant in turn while the production left still covers the trailing demand, the stock's cover
+		// standing for all of them (surplusProducer's test with the plants already gone taken off)
+		float madeLeft = made;
+		for (MarketAPI m : picks) {
+			String build = builds.get(m);
+			float output = ThreatFuel.outputOf(m, fuel);
+			if (madeLeft - output < demand) break;
+			if (!conversionPayable(m, build)) continue;
+			// paid before anything comes down
+			String price;
+			if (SwarmBastion.BASTION.equals(build)) {
+				float fp = ThreatBuildCost.fleetPoints(build);
+				if (!payMilitary(m, build)) continue;
+				m.removeIndustry(Industries.FUELPROD, null, false);
+				addMilitary(m);
+				price = Misc.getWithDGS((int) fp) + " FP";
+			} else {
+				float supplies = ThreatBuildCost.supplies(build);
+				// bought first (addIndustry asks no slot): a refusal tears nothing down
+				if (!buyStructure(m, build, m.getId())) continue;
+				m.removeIndustry(Industries.FUELPROD, null, false);
+				price = Misc.getWithDGS((int) supplies) + " supplies";
+			}
+			madeLeft -= output;
+			done.add(m);
+			ThreatIncConfig.log("Converted Fuel Production on " + m.getName() + " to " + structureName(build) + ": fuel "
+					+ (int) stock + " covers " + (demand > 0f ? String.format("%.1f", stock / demand) : "all")
+					+ " months of demand (" + (int) demand + "/mo trailing, " + (int) made + "/mo made, " + (int) output
+					+ "/mo from this plant, " + (int) madeLeft + "/mo left); " + price);
 		}
+		if (done.isEmpty()) return done;
 		markEconomyDirty();
 		ThreatFuel.converted();
-		ThreatIncConfig.log("Converted Fuel Production on " + m.getName() + " to " + structureName(build) + ": fuel "
-				+ (int) stock + " covers " + (demand > 0f ? String.format("%.1f", stock / demand) : "all")
-				+ " months of demand (" + (int) demand + "/mo trailing, " + (int) made + "/mo made, " + (int) output
-				+ "/mo from this plant); " + price);
-		return m;
+		return done;
 	}
+
+	/** The reservation key of a forge conversion the stock cannot pay yet (convertSurplus, ThreatFuel.reserve). */
+	protected static final String RESERVE_CONVERSION = "threatinc_conversion";
 
 	/** What a fuel plant's slot on this world becomes (convertSurplus), or null for nothing worth tearing it down for. */
 	protected static String conversionFor(MarketAPI m) {
@@ -2942,6 +2967,11 @@ public class ThreatColonyManager {
 			if (ThreatFuel.stock(Commodities.SUPPLIES) >= cost) return true;
 			buildWaiting().put(market.getId(), true);
 			ThreatIncData.map(KEY_BUILD_WAITING_SUPPLIES).put(market.getId(), cost);
+			// the shortage's answer is paid first (ThreatFuel.reserved): a forge the stock cannot pay while
+			// supplies are not in surplus has its price set aside from the fleets' and colonies' draws
+			if (industryId.equals(ThreatFuel.producerId(Commodities.SUPPLIES)) && !ThreatFuel.surplus(Commodities.SUPPLIES)) {
+				ThreatFuel.reserve(market.getId(), cost);
+			}
 			// passage off: the old rule, an unpaid build is a month's shortage
 			if (!ThreatFuel.planned()) ThreatFuel.noteShort(Commodities.SUPPLIES);
 			return false;
@@ -2988,11 +3018,16 @@ public class ThreatColonyManager {
 	 * turn finds nothing it cannot pay for.
 	 */
 	public static void buyWaitingStructures() {
+		// a reservation outlives its wait only until here (ThreatFuel.reserve): a world bought, lost or planned away
+		for (String id : new ArrayList<String>(ThreatFuel.reservedMap().keySet())) {
+			if (!RESERVE_CONVERSION.equals(id) && !buildWaiting().containsKey(id)) ThreatFuel.reserve(id, 0f);
+		}
 		if (buildWaiting().isEmpty()) return;
 		for (String id : new ArrayList<String>(buildWaiting().keySet())) {
 			MarketAPI market = ThreatIncData.resolveColonyMarket(id);
 			if (market == null) {
 				buildWaiting().remove(id);
+				ThreatFuel.reserve(id, 0f);
 				continue;
 			}
 			if (ThreatBuildCost.enabled()) {
@@ -3004,6 +3039,7 @@ public class ThreatColonyManager {
 			int had = market.getIndustries().size();
 			planHiveEconomy(market);
 			if (market.getIndustries().size() != had) {
+				ThreatFuel.reserve(id, 0f);
 				ThreatIncConfig.log("Hive planner: waiting build bought at " + market.getName() + " ("
 						+ (int) fpBank(id) + " FP banked, " + (int) ThreatFuel.stock(Commodities.SUPPLIES)
 						+ " supplies in stock)");
@@ -4912,7 +4948,7 @@ public class ThreatColonyManager {
 		float days = Global.getSector().getClock().getElapsedDaysSince((Long) last);
 		if (days <= 0f || perMonth <= 0f) return days;
 		float want = perMonth * days / 30f;
-		float paid = Math.min(want, ThreatFuel.stock(Commodities.SUPPLIES));
+		float paid = Math.min(want, ThreatFuel.free(Commodities.SUPPLIES));
 		ThreatFuel.pay(Commodities.SUPPLIES, paid);
 		float unpaid = want - paid;
 		Map<String, Object> owedMap = ThreatIncData.map(KEY_SUPPLIES_OWED);
@@ -4957,7 +4993,7 @@ public class ThreatColonyManager {
 		if (days <= 0f || rate <= 0f || navy <= 0f) return;
 		String id = market.getId();
 		float want = navy * rate * days / 30f;
-		float paid = Math.min(want, ThreatFuel.stock(Commodities.SUPPLIES));
+		float paid = Math.min(want, ThreatFuel.free(Commodities.SUPPLIES));
 		ThreatFuel.pay(Commodities.SUPPLIES, paid);
 		UpkeepLog log = upkeepLog(id);
 		log.navyWanted += want;

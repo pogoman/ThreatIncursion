@@ -341,7 +341,7 @@ public class ThreatReach {
 
 	/** Supplies in stock above what one founding takes (ThreatFuel.foundingCost): what trips may draw on. */
 	public static float freeStock() {
-		return Math.max(0f, ThreatFuel.stock(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES)
+		return Math.max(0f, ThreatFuel.free(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES)
 				- ThreatFuel.foundingCost()[0]);
 	}
 
