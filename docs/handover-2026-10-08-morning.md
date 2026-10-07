@@ -48,8 +48,12 @@ hw62 (8ad48286, bac74c67, 22e7185a):
 
 - Founding pace: pre-war banking under exposure 0 is what flipped the sector. If 38-41 hives at the
   opening is too many, the lever is the pre-war want (one swarm a colony), not the war.
-- Colony sustenance takes 87k of the swarm's 197k supplies a month at 99 hives (`feedShareConsolidate`
-  0.5) - the next shape if supplies still bind after hw61.
+- Where the swarm's supplies go (hw61b, last three months, ~210k a month spent of 205k made): the
+  fleets away on strikes ~80k (34k FP launched a month, each away ~3 months), colony sustenance 54k,
+  navy upkeep 25k, planner builds ~25k (19 in three months), seedings 17k (10 at 5k each), growth
+  1-27k. The offensive runs at the supplies limit by design (navies bound by supplies); fuel sits at
+  1.0-1.4M with 540k-1.4M banked. Nothing here is a bug; the levers are the forge/fuel mix a founding
+  kit starts with and the sustenance share - the user's.
 - Human yards at 0 FP/mo by the end of hw60b/c: the swarm razes the worlds that build hulls. No hull
   convoy sailed in any hw60 game (hw58a: 9) - a bug, fixed for hw62: `hullsSurplus` asked the donor for
   no unrebuilt losses at all, which no faction at war has (Tri-Tachyon held 3,400 free with 640 lost
