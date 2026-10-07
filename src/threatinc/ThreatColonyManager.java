@@ -4948,7 +4948,9 @@ public class ThreatColonyManager {
 		float days = Global.getSector().getClock().getElapsedDaysSince((Long) last);
 		if (days <= 0f || perMonth <= 0f) return days;
 		float want = perMonth * days / 30f;
-		float paid = Math.min(want, ThreatFuel.free(Commodities.SUPPLIES));
+		// a commitment pays from the whole stock, the planner's reserve included (hw61b: drawn on free, 30 swarms
+		// were lost to unpaid upkeep for a forge's 5k; the reserve bites sustenance, growth, foundings and new trips)
+		float paid = Math.min(want, ThreatFuel.stock(Commodities.SUPPLIES));
 		ThreatFuel.pay(Commodities.SUPPLIES, paid);
 		float unpaid = want - paid;
 		Map<String, Object> owedMap = ThreatIncData.map(KEY_SUPPLIES_OWED);
@@ -4993,7 +4995,7 @@ public class ThreatColonyManager {
 		if (days <= 0f || rate <= 0f || navy <= 0f) return;
 		String id = market.getId();
 		float want = navy * rate * days / 30f;
-		float paid = Math.min(want, ThreatFuel.free(Commodities.SUPPLIES));
+		float paid = Math.min(want, ThreatFuel.stock(Commodities.SUPPLIES)); // a commitment: the whole stock (paySupplies)
 		ThreatFuel.pay(Commodities.SUPPLIES, paid);
 		UpkeepLog log = upkeepLog(id);
 		log.navyWanted += want;
