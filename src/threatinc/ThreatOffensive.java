@@ -135,7 +135,9 @@ public class ThreatOffensive {
 					* ThreatStance.strikeTargetMult(p.target, p.source, 1f / margin);
 			// losing: the spoiling blow - a base staging against a hive, a forward base - and the near first
 			if (losing && (ThreatFrontlines.isOutpost(p.target) || ThreatStance.stagingAgainstHive(p.target))) value *= 10f;
-			p.score = value / Math.max(1f, p.cost) / (losing ? Math.max(1f, p.ly) : 1f);
+			// the price is the fund's bill and the supplies the trip burns, in fleet points (the swarm's bottleneck)
+			float price = p.cost + ThreatReach.suppliesPerMonth(p.fp) * Math.max(1f, p.days) / 30f / Math.max(0.01f, ThreatReach.suppliesPerFP());
+			p.score = value / Math.max(1f, price) / (losing ? Math.max(1f, p.ly) : 1f);
 			prongs.add(p);
 		}
 		java.util.Collections.sort(prongs, new java.util.Comparator<Prong>() {
@@ -160,15 +162,22 @@ public class ThreatOffensive {
 		// the fuel and the supplies away are summed over the prongs too (hw42a: priced one at a time, the
 		// first prong's passage took the whole stock and the held one could not sail on its day)
 		float fuelStock = ThreatFuel.stock(), fuelBudget = fuelStock + Math.max(0f, ThreatFuel.perMonth()) * monthsLeft;
-		// ...and the supplies the prongs burn away (hw45a: a hive banking none could never sail, and never saved)
+		// ...and the supplies the prongs burn away: the free stock and the spare flow over the trip, as canSustain
+		// allows - not the flow to the deadline (hw46: the hive banks none of its spare, so a campaign waiting on
+		// it waited forever); what the set wants beyond that is booked as demand for the planner
 		float suppliesStock = ThreatReach.freeStock(), suppliesFlow = Math.max(0f, Math.min(1e9f, ThreatReach.spare()));
-		float supplies = 0f;
+		float supplies = 0f, suppliesShort = 0f;
 		List<Prong> campaign = new ArrayList<Prong>();
 		float cost = 0f, fuel = 0f, away = 0f, longest = 0f;
 		for (Prong p : prongs) {
 			if (cost + p.cost > budget || fuel + p.fuel > fuelBudget) continue;
 			float need = ThreatReach.suppliesPerMonth(p.fp) * Math.max(1f, p.days) / 30f;
-			if (supplies + need > suppliesStock + suppliesFlow * (monthsLeft + Math.max(longest, p.days) / 30f)) continue;
+			float keeps = suppliesStock + suppliesFlow * Math.max(1f, Math.max(longest, p.days)) / 30f;
+			if (supplies + need > keeps) {
+				// the first prong the supplies leave out is the planner's to answer (one a pass)
+				if (suppliesShort <= 0f) suppliesShort = supplies + need - keeps;
+				continue;
+			}
 			campaign.add(p);
 			cost += p.cost;
 			fuel += p.fuel;
@@ -200,9 +209,10 @@ public class ThreatOffensive {
 				supplies += ThreatReach.suppliesPerMonth(p.fp) * Math.max(1f, p.days) / 30f;
 			}
 			if (cost <= budget && fuel <= fuelBudget
-					&& supplies <= suppliesStock + suppliesFlow * (monthsLeft + longest / 30f)) break;
+					&& supplies <= suppliesStock + suppliesFlow * Math.max(1f, longest) / 30f) break;
 			campaign.remove(campaign.size() - 1);
 		}
+		if (suppliesShort > 0f) ThreatFuel.noteDemand(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES, suppliesShort);
 		String where = losing ? (nearLY > 0f ? "losing, within " + (int) nearLY + " ly" : "losing, nothing near - all known") : "all known";
 		if (campaign.isEmpty()) {
 			ThreatIncConfig.logQuiet("offensive", "Offensive: nothing the fund pays by the deadline - " + prongs.size()
