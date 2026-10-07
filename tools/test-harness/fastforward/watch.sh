@@ -17,7 +17,7 @@
 #   starve   the humans cannot pay their plays: 50+ STARVE lines (expeditions the pools cannot pay)
 #   hulls    a faction out of hulls with no hull convoy: a Hulls ledger line with 1000+ FP lost and 0 free (Luddic Path,
 #            hostile to every donor, excepted) while another faction has hulls built and free
-#   nowar    no war by day 2000: no strike launched (hw50-53 opened between 1466 and 1953)
+#   nowar    no war by day 2600: no strike launched (hw50-53 opened between 1466 and 1953; ck2 opens at 2231)
 # The thresholds are a first cut (2026-10-07), the user's to tune.
 TAG=$1; MAX=${2:-130}; IGN=",${3:-},"; T="$(cygpath -u "$LOCALAPPDATA")/Temp/threatinc-tests"
 declare -A seen; start=$(date +%s)
@@ -63,7 +63,7 @@ while :; do
     short=$(grep '^Hulls: ' $F | grep -Ev 'Your faction|Luddic Path' | grep -Ec '[0-9]{4,} lost, 0 free')
     rich=$(grep '^Hulls: ' $F | grep -v 'Your faction' | grep -Ec '\([1-9][0-9]* built\): .* [1-9][0-9]* free')
     [ "$short" -gt 0 ] && [ "$rich" -gt 0 ] && [ "$hull" -eq 0 ] && flag $g hulls "a faction out of hulls, another with hulls free, no hull convoy: $(grep '^Hulls: ' $F | grep -Ev 'Your faction|Luddic Path' | grep -Em1 '[0-9]{4,} lost, 0 free' | cut -c1-160)"
-    [ "$war" -gt 2000 ] && [ "$strikes" -eq 0 ] && flag $g nowar "no strike launched by war day $war"
+    [ "$war" -gt 2600 ] && [ "$strikes" -eq 0 ] && flag $g nowar "no strike launched by war day $war"
   done
   [ $fail = 1 ] && { echo "FAIL SIGNAL - stop the batch, or read on with the signal in the ignore list"; exit 1; }
   [ $(( ($(date +%s)-start)/60 )) -ge $MAX ] && exit 0
