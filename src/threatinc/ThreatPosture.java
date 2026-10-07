@@ -67,7 +67,10 @@ public class ThreatPosture {
 	// as unread, so the first pass after a load starts its pressure afresh -
 	// every earlier one had frozen (today(), below)
 	protected static final int S_PRESSURE = 0, S_WANT = 1, S_SURPLUS_SINCE = 2, S_DAY = 3, S_MODE = 4,
-			S_NEED = 5, S_ATTACKED = 6, S_LEN = 7;
+			S_NEED = 5, S_ATTACKED = 6, S_SEEN = 7, S_EXPOSURE = 8, S_LEN = 9;
+
+	/** S_SEEN for a system hostiles were never seen in (the calendar's days are negative, facts.md "Why is 0 a bad never"). */
+	protected static final float NEVER = -1e30f;
 
 	/** Days over which pressure and losses fall by a factor of e; also how long a transfer rests (redistributeByPressure). */
 	public static final float DECAY_DAYS = 30f;
@@ -285,6 +288,49 @@ public class ThreatPosture {
 	public static float thinnableFP(MarketAPI market, float heldFP) {
 		if (!enabled() || market == null) return 0f;
 		return heldFP - minimumFP(market);
+	}
+
+	/**
+	 * Light-years from the hive system to the nearest human world the swarm has seen
+	 * (ThreatSwarmIntel.places, a forward base among them), or Float.MAX_VALUE for none.
+	 */
+	protected static float nearestKnownHumanLY(StarSystemAPI system) {
+		float best = Float.MAX_VALUE;
+		if (system == null || !ThreatSwarmIntel.enabled()) return best;
+		Set<String> seen = new HashSet<String>();
+		for (ThreatSwarmIntel.Place p : ThreatSwarmIntel.places()) {
+			if (p == null || p.systemId == null || !seen.add(p.systemId)) continue;
+			StarSystemAPI s = Global.getSector().getStarSystem(p.systemId);
+			if (s == null) continue;
+			best = Math.min(best, Misc.getDistanceLY(system.getLocation(), s.getLocation()));
+		}
+		return best;
+	}
+
+	/**
+	 * DEFENCE IN DEPTH (the user, 2026-10-07): how much of its base a quiet system wants,
+	 * 0-1 (postureExposure). 1 while hostiles were seen in it within postureExposureSeenDays
+	 * of lastSeenDay, or the nearest human world the swarm knows lies within
+	 * postureExposureNearLY; falling to 0 at postureExposureFarLY and beyond, or with no
+	 * human world known at all. The want keeps one swarm a colony whatever this reads.
+	 * 1 with the knob off or without the swarm's fog (nothing to read distances from).
+	 */
+	protected static float exposure(float lastSeenDay, float day, float nearestLY) {
+		if (!ThreatIncConfig.postureExposure() || !ThreatSwarmIntel.enabled()) return 1f;
+		if (lastSeenDay > NEVER && day - lastSeenDay <= Math.max(0f, ThreatIncConfig.postureExposureSeenDays())) return 1f;
+		if (nearestLY >= Float.MAX_VALUE) return 0f;
+		float near = Math.max(0f, ThreatIncConfig.postureExposureNearLY());
+		float far = Math.max(near + 0.01f, ThreatIncConfig.postureExposureFarLY());
+		if (nearestLY <= near) return 1f;
+		if (nearestLY >= far) return 0f;
+		return 1f - (nearestLY - near) / (far - near);
+	}
+
+	/** The system's exposure as of its last reading (exposure), 1 unread. */
+	public static float exposure(StarSystemAPI system) {
+		if (!enabled() || system == null) return 1f;
+		float[] s = state().get(system.getId());
+		return s != null && s.length > S_EXPOSURE ? s[S_EXPOSURE] : 1f;
 	}
 
 	/** Fleet points of the colony's size table (swarmCostEstimate of every row): how the need is split. */
@@ -592,13 +638,29 @@ public class ThreatPosture {
 			// each colony its base or its share of the need: where the attack has come
 			// down, the worlds it is over (overWorlds), else split by the tables
 			float[] over = sieges != null ? overWorlds(colonies, sieges, pressure) : null;
+			boolean attacked = r.attacks > 0f || r.hostiles > 0f || lostLately(systemId, day);
+			// DEFENCE IN DEPTH (the user, 2026-10-07): a quiet system far from every human world the swarm
+			// knows, with no hostile seen in it lately, keeps one swarm a colony - its garrison and its
+			// forges' output go to the hives the humans have found (the transfers' donors give above want,
+			// a strike's gather takes the rest) instead of standing where nobody comes
+			float lastSeen = hadPrev && prev.length > S_SEEN ? prev[S_SEEN] : NEVER;
+			if (attacked) lastSeen = day;
+			float nearestLY = nearestKnownHumanLY(system);
+			float exposure = exposure(lastSeen, day, nearestLY);
+			float wasExposure = hadPrev && prev.length > S_EXPOSURE ? prev[S_EXPOSURE] : 1f;
+			if (Math.abs(exposure - wasExposure) >= 0.25f) {
+				ThreatIncConfig.log("Posture: " + system.getName() + " exposure " + String.format("%.2f", wasExposure) + " -> "
+						+ String.format("%.2f", exposure) + " (" + (attacked ? "hostiles seen today"
+						: lastSeen > NEVER ? "hostiles seen " + (int) (day - lastSeen) + " d ago" : "no hostile seen")
+						+ ", nearest known human world " + (nearestLY < Float.MAX_VALUE ? (int) nearestLY + " ly" : "none") + ")");
+			}
 			float[] wants = new float[colonies.size()];
 			float[] needs = new float[colonies.size()];
 			float want = 0f;
 			for (int i = 0; i < colonies.size(); i++) {
 				float share = over != null ? over[i] : floor > 0f ? floors[i] / floor : 1f / colonies.size();
 				needs[i] = need * share;
-				wants[i] = Math.max(bases[i], needs[i]);
+				wants[i] = Math.max(Math.max(rowsFP(colonies.get(i), 0, 1), bases[i] * exposure), needs[i]);
 				want += wants[i];
 			}
 
@@ -612,7 +674,6 @@ public class ThreatPosture {
 			else if (ratio >= THREATENED_ENTER || (was >= THREATENED && ratio >= THREATENED_LEAVE)) mode = THREATENED;
 			else if (ratio >= WATCHFUL_ENTER || (was >= WATCHFUL && ratio >= WATCHFUL_LEAVE)) mode = WATCHFUL;
 			else mode = QUIET;
-			boolean attacked = r.attacks > 0f || r.hostiles > 0f || lostLately(systemId, day);
 			// under attack and short of its need: the strikes that are convenient come home
 			// (recallStrikes); massing, a world short of its own need calls too (massWithin)
 			if (calls != null && attacked && (mass ? need > 0f : need > held)) {
@@ -653,10 +714,11 @@ public class ThreatPosture {
 						// staged, attacks and forward are the swarm's reports, by trust (ThreatSwarmIntel)
 						+ (ThreatSwarmIntel.enabled() ? ", as seen" : "")
 						+ ") want " + (int) want + " (base " + (int) base
+						+ (exposure < 1f ? " x " + String.format("%.2f", exposure) + " exposure" : "")
 						+ ", need " + (int) need + ") held " + (int) held
 						+ " (+" + (int) inbound + " inbound) bank " + (int) bank);
 			}
-			state().put(systemId, new float[] { pressure, want, since, day, mode, need, attacked ? 1f : 0f });
+			state().put(systemId, new float[] { pressure, want, since, day, mode, need, attacked ? 1f : 0f, lastSeen, exposure });
 			pass.addSystem(systemId, held, pressure, mode, attacked);
 
 			sumHeld += held;

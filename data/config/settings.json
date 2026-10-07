@@ -104,6 +104,16 @@
 	# the nearest first; their fleets join its garrisons. A strike mid-siege,
 	# close to its target or on its way home flies on. 0 = off
 	"threatinc_postureRecallLY": 10,
+	# DEFENCE IN DEPTH (the user, 2026-10-07): a quiet hive system's base want is scaled
+	# by its exposure - 1 within ExposureNearLY of a human world the swarm has seen, or
+	# while hostiles were seen in it within ExposureSeenDays; down to one swarm a colony
+	# at ExposureFarLY and beyond, or with no human world known at all. The garrison of
+	# the rear and its forges' output go to the hives the humans have found.
+	# false: every quiet system wants its base.
+	"threatinc_postureExposure": true,
+	"threatinc_postureExposureNearLY": 10,
+	"threatinc_postureExposureFarLY": 30,
+	"threatinc_postureExposureSeenDays": 180,
 	# ONLY WHAT IS SHORT (2026-10-05, the user): a recalled strike sends home the
 	# fleets that cover the system's shortfall and sails on with the rest; false =
 	# it comes home whole (hw15: 90-94% of strikes recalled, 3,353 FP for 218 short)
@@ -147,6 +157,13 @@
 	"threatinc_offensiveHorizonMonths": 12,
 	"threatinc_offensiveLosingMonths": 3,
 	"threatinc_offensiveNearLY": 10,
+	# DEFEAT IN DETAIL (the user, 2026-10-07): the campaign masses on one faction - every
+	# known system of the focus - until its worlds answer the strikes with under
+	# BrokenAnswer of what they were sized for, or nothing known of it is left to strike;
+	# then the faction the means cover most completely. Spoiling blows while losing stay,
+	# whoever's. false: every known target at once.
+	"threatinc_offensiveFocus": true,
+	"threatinc_offensiveBrokenAnswer": 0.5,
 	# THE LOSING PRESSURE (the user, 2026-10-07: "a series of worlds falling not just
 	# a one off"): a trend over WindowDays, the larger of two - hives fallen below the
 	# window's peak (none for one; full at HiveShare of the peak), and the exchange lost

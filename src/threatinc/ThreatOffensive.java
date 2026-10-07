@@ -1,6 +1,7 @@
 package threatinc;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -205,34 +206,6 @@ public class ThreatOffensive {
 			p.def = def;
 			bySystem.put(target.getStarSystem().getId(), p);
 		}
-		// what each faction can answer with, as seen: its navy seen elsewhere is shared among the
-		// prongs at it (the user, 2026-10-07: the swarm knows what it has seen, not the total)
-		Map<String, Integer> atFaction = new HashMap<String, Integer>();
-		for (Prong p : bySystem.values()) {
-			Integer n = atFaction.get(p.target.getFactionId());
-			atFaction.put(p.target.getFactionId(), n == null ? 1 : n + 1);
-		}
-		// ranked each against the whole spare: its size is the same whoever pays it, and the spare is shared out below
-		Spares whole = new Spares(im);
-		List<Prong> prongs = new ArrayList<Prong>();
-		for (Prong p : bySystem.values()) {
-			if (!price(im, p, memo, atFaction.get(p.target.getFactionId()), whole)) continue;
-			float value = IncursionManager.strikeValue(p.target)
-					* ThreatStance.strikeTargetMult(p.target, p.source, 1f / margin);
-			// losing: the spoiling blow - a base staging against a hive, a forward base - and the near first, by degree
-			if (losing && (ThreatFrontlines.isOutpost(p.target) || ThreatStance.stagingAgainstHive(p.target))) value *= 1f + 9f * pressure;
-			// the price is the strike's fleet points, from the spare or the fund, and the supplies the trip burns
-			// beyond the spare's home charge, in fleet points (the swarm's bottleneck)
-			float price = p.fp + p.supplies() / Math.max(0.01f, ThreatReach.suppliesPerFP());
-			p.score = value / Math.max(1f, price) / (losing ? (float) Math.pow(Math.max(1f, p.ly), pressure) : 1f);
-			prongs.add(p);
-		}
-		java.util.Collections.sort(prongs, new java.util.Comparator<Prong>() {
-			public int compare(Prong a, Prong b) {
-				int c = Float.compare(b.score, a.score);
-				return c != 0 ? c : Float.compare(a.ly, b.ly);
-			}
-		});
 
 		// the means by the deadline, and the campaign they pay
 		float fund = ThreatColonyManager.strikeFund();
@@ -251,6 +224,46 @@ public class ThreatOffensive {
 		// the fuel and the supplies away are summed over the prongs too (hw42a: priced one at a time, the
 		// first prong's passage took the whole stock and the held one could not sail on its day)
 		float fuelStock = ThreatFuel.stock(), fuelBudget = fuelStock + Math.max(0f, ThreatFuel.perMonth()) * monthsLeft;
+
+		// DEFEAT IN DETAIL (the user, 2026-10-07): the campaign masses on one faction - every known system
+		// of the focus - until its worlds answer with under offensiveBrokenAnswer of what the strikes were
+		// sized for, or nothing known of it is left to strike; then the next. A campaign spread over four
+		// factions split no navy (hw58: 300-5,700 FP prongs against factions fielding 20k); all its prongs
+		// at one share that one's. Spoiling blows while losing stay, whoever's.
+		String focus = null;
+		if (ThreatIncConfig.offensiveFocus() && !bySystem.isEmpty()) {
+			focus = chooseFocus(im, bySystem.values(), memo, budget, fuelBudget, margin, losing, pressure);
+			if (focus != null) {
+				for (Prong p : new ArrayList<Prong>(bySystem.values())) {
+					if (focus.equals(p.target.getFactionId()) || (losing && spoiler(p))) continue;
+					bySystem.remove(p.target.getStarSystem().getId());
+				}
+			}
+		}
+		// what each faction can answer with, as seen: its navy seen elsewhere is shared among the
+		// prongs at it (the user, 2026-10-07: the swarm knows what it has seen, not the total)
+		Map<String, Integer> atFaction = new HashMap<String, Integer>();
+		for (Prong p : bySystem.values()) {
+			Integer n = atFaction.get(p.target.getFactionId());
+			atFaction.put(p.target.getFactionId(), n == null ? 1 : n + 1);
+		}
+		// ranked each against the whole spare: its size is the same whoever pays it, and the spare is shared out below
+		Spares whole = new Spares(im);
+		List<Prong> prongs = new ArrayList<Prong>();
+		for (Prong p : bySystem.values()) {
+			if (!price(im, p, memo, atFaction.get(p.target.getFactionId()), whole)) continue;
+			// losing: the near first, by degree (the spoiling blow's weight is in value)
+			p.score = value(p, losing, pressure, margin) / Math.max(1f, price(p))
+					/ (losing ? (float) Math.pow(Math.max(1f, p.ly), pressure) : 1f);
+			prongs.add(p);
+		}
+		java.util.Collections.sort(prongs, new java.util.Comparator<Prong>() {
+			public int compare(Prong a, Prong b) {
+				int c = Float.compare(b.score, a.score);
+				return c != 0 ? c : Float.compare(a.ly, b.ly);
+			}
+		});
+
 		// ...and the supplies the prongs burn away: the free stock and the spare flow over the trip, as canSustain
 		// allows - not the flow to the deadline (hw46: the hive banks none of its spare, so a campaign waiting on
 		// it waited forever); what the set wants beyond that is booked as demand for the planner
@@ -332,8 +345,8 @@ public class ThreatOffensive {
 			campaign.remove(campaign.size() - 1);
 		}
 		if (suppliesShort > 0f) ThreatFuel.noteDemand(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES, suppliesShort);
-		String where = losing ? "losing " + ThreatStance.losingSummary() + (nearLY > 0f ? ", within " + (int) nearLY + " ly"
-				: ", all known") + ", horizon " + (int) horizon + " mo" : "all known";
+		String where = (losing ? "losing " + ThreatStance.losingSummary() + (nearLY > 0f ? ", within " + (int) nearLY + " ly"
+				: ", all known") + ", horizon " + (int) horizon + " mo" : "all known") + (focus != null ? ", focus " + focus : "");
 		if (campaign.isEmpty()) {
 			ThreatIncConfig.logQuiet("offensive", "Offensive: nothing the fund pays by the deadline - " + prongs.size()
 					+ " target(s) " + where + ", fund " + (int) fund + " FP (+" + (int) perMonth + "/mo), "
@@ -473,6 +486,121 @@ public class ThreatOffensive {
 		p.fuel = ThreatFuel.passage(plan.fp, p.ly, true);
 		p.days = ThreatReach.strikeDays(p.ly);
 		return true;
+	}
+
+	/** What the prong is worth to the campaign: strikeValue x the stance's weight; losing, a spoiling blow x (1 + 9p). */
+	protected static float value(Prong p, boolean losing, float pressure, float margin) {
+		float value = IncursionManager.strikeValue(p.target) * ThreatStance.strikeTargetMult(p.target, p.source, 1f / margin);
+		// losing: the spoiling blow - a base staging against a hive, a forward base
+		if (losing && spoiler(p)) value *= 1f + 9f * pressure;
+		return value;
+	}
+
+	/** A forward base, or a base staging against a hive: the blow that spoils an attack. */
+	protected static boolean spoiler(Prong p) {
+		return ThreatFrontlines.isOutpost(p.target) || ThreatStance.stagingAgainstHive(p.target);
+	}
+
+	/**
+	 * The prong's price: the strike's fleet points, from the spare or the fund, and the supplies the
+	 * trip burns beyond the spare's home charge, in fleet points (the swarm's bottleneck).
+	 */
+	protected static float price(Prong p) {
+		return p.fp + p.supplies() / Math.max(0.01f, ThreatReach.suppliesPerFP());
+	}
+
+	// ------------------------------------------------------------------
+	// DEFEAT IN DETAIL - the faction the campaigns mass on (the user, 2026-10-07)
+	// ------------------------------------------------------------------
+
+	protected static final String KEY_FOCUS = "threatinc_offensiveFocus";
+
+	/** The faction the campaigns mass on (offensiveFocus), or null for none yet. */
+	public static String focus() {
+		if (Global.getSector() == null) return null;
+		Object v = Global.getSector().getPersistentData().get(KEY_FOCUS);
+		return v instanceof String ? (String) v : null;
+	}
+
+	/**
+	 * The faction this pass's campaign masses on: the one it has, while its worlds still answer
+	 * (ThreatSwarmIntel.answerShare at least offensiveBrokenAnswer) and something known of it is
+	 * left to strike; else the faction the means cover most completely with the most value - each
+	 * faction's prongs priced at its own count (one navy shared among all of them, the multi-prong's
+	 * payoff), taken best score first while the budget and the fuel pay, scored covered value x the
+	 * share of its value covered. Null when nothing pays a prong anywhere. Logged on a change.
+	 */
+	protected static String chooseFocus(IncursionManager im, Collection<Prong> all, Map<String, float[]> memo, float budget,
+			float fuelBudget, float margin, boolean losing, float pressure) {
+		Map<String, List<Prong>> byFaction = new HashMap<String, List<Prong>>();
+		for (Prong p : all) {
+			List<Prong> list = byFaction.get(p.target.getFactionId());
+			if (list == null) byFaction.put(p.target.getFactionId(), list = new ArrayList<Prong>());
+			list.add(p);
+		}
+		String had = focus(), why = null;
+		if (had != null) {
+			List<Prong> at = byFaction.get(had);
+			float answer = ThreatSwarmIntel.answerShare(had);
+			if (at == null || at.isEmpty()) why = "nothing known of it left to strike";
+			else if (answer < ThreatIncConfig.offensiveBrokenAnswer()) why = "broken - its worlds answered the last strikes with "
+					+ String.format("%.2f", answer) + "x what they were sized for";
+			else return had;
+		}
+		String best = null;
+		float bestScore = -1f, bestCovered = 0f, bestTotal = 0f;
+		int bestN = 0, bestOf = 0;
+		for (Map.Entry<String, List<Prong>> e : byFaction.entrySet()) {
+			List<Prong> list = e.getValue();
+			Spares spares = new Spares(im);
+			List<Prong> scored = new ArrayList<Prong>();
+			for (Prong p : list) {
+				if (!price(im, p, memo, list.size(), spares)) continue;
+				p.score = value(p, losing, pressure, margin) / Math.max(1f, price(p));
+				scored.add(p);
+			}
+			if (scored.isEmpty()) continue;
+			java.util.Collections.sort(scored, new java.util.Comparator<Prong>() {
+				public int compare(Prong a, Prong b) {
+					return Float.compare(b.score, a.score);
+				}
+			});
+			float total = 0f, covered = 0f, cost = 0f, fuel = 0f;
+			int n = 0;
+			for (Prong p : scored) {
+				float v = value(p, losing, pressure, margin);
+				total += v;
+				if (cost + p.cost > budget || fuel + p.fuel > fuelBudget) continue;
+				cost += p.cost;
+				fuel += p.fuel;
+				covered += v;
+				n++;
+			}
+			if (covered <= 0f || total <= 0f) continue;
+			float score = covered * (covered / total);
+			if (score > bestScore) {
+				bestScore = score;
+				best = e.getKey();
+				bestCovered = covered;
+				bestTotal = total;
+				bestN = n;
+				bestOf = scored.size();
+			}
+		}
+		if (best == null) {
+			if (had != null) {
+				Global.getSector().getPersistentData().remove(KEY_FOCUS);
+				ThreatIncConfig.log("Offensive: focus off " + had + " (" + why + "); nothing the means pay anywhere");
+			}
+			return null;
+		}
+		if (!best.equals(had)) {
+			Global.getSector().getPersistentData().put(KEY_FOCUS, best);
+			ThreatIncConfig.log("Offensive: focus on " + best + " - the means cover " + bestN + " of " + bestOf
+					+ " known system(s) (value " + (int) bestCovered + " of " + (int) bestTotal + ")"
+					+ (had != null ? "; " + had + " " + why : ""));
+		}
+		return best;
 	}
 
 	// ------------------------------------------------------------------

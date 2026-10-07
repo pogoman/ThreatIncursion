@@ -1,4 +1,4 @@
-| [strikes-staged.md](strikes-staged.md) | BUILT 2026-10-07: how the swarm attacks - a staged strike (sized to the defence seen, paid from the strike fund, the opening floor) and THE OFFENSIVE (`ThreatOffensive`): the hive saves and strikes every known target system at once, the campaign what the fund pays by its deadline; losing, only the targets near its hives. |
+| [strikes-staged.md](strikes-staged.md) | BUILT 2026-10-07: how the swarm attacks - a staged strike (sized to the defence seen, paid from the strike fund, the opening floor) and THE OFFENSIVE with its one-faction focus (defeat in detail, s5) (`ThreatOffensive`): the hive saves and strikes every known target system at once, the campaign what the fund pays by its deadline; losing, only the targets near its hives. |
 | [hull-pool.md](hull-pool.md) | BUILT 2026-10-06: one hull economy for the player, the NPC factions and the hive from vanilla's own patrol counts, patrol FP, quality and fleet size; fleets hold their FP against the faction's pool until home, losses are rebuilt only from Heavy Industry ships output; where it binds, what it shows, the scale. |
 # Knowledge base
 

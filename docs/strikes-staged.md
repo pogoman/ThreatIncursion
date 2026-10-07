@@ -203,3 +203,36 @@ p = the larger of two trends over `losingWindowDays` (365), `StanceRules.losingP
 Read each posture pass (`evaluate`, stored in `threatinc_stance` [5-9]); a change of 0.1 logs
 `Stance: losing pressure a -> b (n of a k-hive peak fallen, exchange -x of y made in 365d)`.
 The stance's own PRESS gate keeps the 60-day exchange; nothing reads a yes/no "losing" any more.
+
+## 5. Defeat in detail (`ThreatOffensive.chooseFocus`, the user, 2026-10-07)
+
+"You always suggest a knob to turn, but you never come up with strategic ideas" - then "yes lets build
+two suggested to start" (this and the posture's exposure, `hive-garrison-and-upkeep.md`). hw58-59's
+campaigns were 300-5,700 FP spread over four factions each fielding 20k: a prong at each shared no
+navy with any other, so the multi-prong's payoff (section 2, "Sized for the answer") was never
+collected, and nothing was razed.
+
+With `offensiveFocus` (true) the pass keeps a **focus faction** (`threatinc_offensiveFocus`, a faction
+id) and the campaign is every prong at it - its known systems share its one navy, so each prong is
+priced at `def + navy / n` with n the whole set. Other factions' prongs are dropped, except spoiling
+blows while losing (a forward base, a base staging against a hive: `spoiler`); relief strikes and
+retaliation are outside the campaign as before.
+
+- **Kept** while the faction's worlds still answer - `ThreatSwarmIntel.answerShare` (what its worlds met
+  the last strikes with over what they were sized for, the `noteMet` ledger unfloored, decayed 0.7 a
+  strike) at least `offensiveBrokenAnswer` (0.5) - and at least one prong at it is priced.
+- **Broken** below that share ("its worlds answered the last strikes with 0.31x what they were sized
+  for"): its navy is spent, the swarm moves on. **Exhausted** when nothing known of it is left to
+  strike (its known worlds razed, taken, under a strike or scheduled).
+- **Chosen** (first, or after a break) as the faction the means cover most completely with the most
+  value: each faction's prongs priced at its own count against the whole spare, taken best value per
+  price first while the budget (fund + income to the deadline) and the fuel pay; score = covered value x
+  (covered / total value). A big faction half covered beats a one-base faction fully covered unless
+  the base is worth more. Null when nothing pays a prong anywhere (the stored focus is cleared).
+- Logs `Offensive: focus on hegemony - the means cover 4 of 7 known system(s) (value 61 of 98); persean
+  broken - ...` on a change; the saving and launched lines end `, focus <faction>`.
+
+What it does not do yet: scouts do not look for the focus faction's unknown systems first, and a
+focus with the fund already paying its whole set launches at it every month until exhausted (section
+2's "richer than its targets" rule), which is the intent. The share and the choice rule are my
+defaults.

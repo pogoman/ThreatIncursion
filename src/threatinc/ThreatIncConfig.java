@@ -123,6 +123,11 @@ public class ThreatIncConfig {
 	public static float postureDays()         { return f("threatinc_postureDays"); }
 	/** The share of what a base staging for a hive system could pay that counts as pressure on it (0: only forces seen). */
 	public static float postureStagedShare()  { return f("threatinc_postureStagedShare"); }
+	/** DEFENCE IN DEPTH (the user, 2026-10-07): a quiet hive system's base want is scaled by its exposure (ThreatPosture.exposure) - 1 within postureExposureNearLY of a human world the swarm has seen or while hostiles were seen in it within postureExposureSeenDays, down to one swarm a colony at postureExposureFarLY and beyond, or with no human world known. Off: every quiet system wants its base. */
+	public static boolean postureExposure()   { return b("threatinc_postureExposure", true); }
+	public static float postureExposureNearLY() { return fd("threatinc_postureExposureNearLY", 10f); }
+	public static float postureExposureFarLY()  { return fd("threatinc_postureExposureFarLY", 30f); }
+	public static float postureExposureSeenDays() { return fd("threatinc_postureExposureSeenDays", 180f); }
 	/** Whether a system the whole hive could not hold above its bases is written off (its need 0). */
 	public static boolean postureTriage()     { return b("threatinc_postureTriage", false); }
 	/** Whether a system's need stands at the worlds a force is over, and colonies the war asks nothing of give down to their reserve for one under attack. */
@@ -188,6 +193,10 @@ public class ThreatIncConfig {
 	public static float offensiveLosingMonths() { return fd("threatinc_offensiveLosingMonths", 3f); }
 	/** At full losing pressure only targets within this many light-years of a hive system that can stage a strike are campaigned against; between, the reach shrinks from every known target by degree; 0 = no limit. */
 	public static float offensiveNearLY() { return fd("threatinc_offensiveNearLY", 10f); }
+	/** DEFEAT IN DETAIL (the user, 2026-10-07): a campaign masses on one faction - every known system of the focus - until its worlds answer the strikes with under offensiveBrokenAnswer of what they were sized for, or nothing known of it is left to strike; then the next (ThreatOffensive.chooseFocus). Off: every known target at once. */
+	public static boolean offensiveFocus() { return b("threatinc_offensiveFocus", true); }
+	/** The focus is broken when the faction's worlds met the swarm's last strikes with under this share of what they were sized for (ThreatSwarmIntel.answerShare). */
+	public static float offensiveBrokenAnswer() { return fd("threatinc_offensiveBrokenAnswer", 0.5f); }
 	/** Days over which the losing pressure reads the swarm's hives and exchange (ThreatStance.losingPressure; the user, 2026-10-07: losing is a trend, not a one-off). */
 	public static float losingWindowDays() { return fd("threatinc_losingWindowDays", 365f); }
 	/** The share of the window's peak hive count whose fall is full losing pressure; one fallen hive is none (the cost of war). */

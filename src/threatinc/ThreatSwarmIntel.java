@@ -845,6 +845,14 @@ public final class ThreatSwarmIntel {
 		return Math.max(1f, m[1] / m[0]);
 	}
 
+	/** What the faction's worlds met the swarm's last strikes with over what they were sized for, unfloored (ThreatOffensive's broken focus); 1 until a strike has ended there. */
+	public static float answerShare(String factionId) {
+		if (!enabled() || factionId == null) return 1f;
+		float[] m = metMap().get(factionId);
+		if (m == null || m[0] <= 0f) return 1f;
+		return Math.max(0f, m[1] / m[0]);
+	}
+
 	/** Days since the place was seen. */
 	public static float age(Place p) {
 		return p != null ? Math.max(0f, today() - p.day) : Float.MAX_VALUE;
