@@ -1138,7 +1138,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 									? ", strike fund left " + (int) ThreatColonyManager.strikeFund()
 									: ", hive bank before " + (int) ThreatColonyManager.hivePoolableFP(colony)) + " FP]");
 			// what it was sized for, against what it meets (ThreatStrikeFGI.reportMet)
-			if (sent != null) sent.setExpected(stagedDef[0], target.getFactionId());
+			if (sent != null) sent.setExpected(stagedDef[0], target);
 			return sent;
 		}
 		int sendable = ThreatColonyManager.garrisonAvailableForLaunch(colony);
