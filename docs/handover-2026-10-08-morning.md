@@ -27,7 +27,22 @@ What hw60 showed and what changed for hw61 (ca0aec6f) - premises, no knobs:
 3. **Bug: a colony with reinforcements inbound was stripped to zero** (hw60b Chlorr, 430 FP in flight to
    its system; 24 of b's 41 falls followed a strip). `stagedSpares` tier 1 now measures the station alone.
 
-## 2. hw61 - (running from 23:46; filled in below when read)
+## 2. hw61 - the four changes above (ca0aec6f), read at 00:40
+
+Hives 87 / 89 / 80 of peaks 87 / 91 / 85; falls after a strip 9 / 0 / 2 of 55 / 17 / 51 (hw60b: 24 of
+41) - the station-only room holds. The ratio learns (0.43-0.90x), strikes met 0.54-0.74 of sized. Forges
+18 / 52 / 21 built, supplies still spent as made (b: 215k of 205k, 807 in stock). Three things fixed for
+hw62 (8ad48286, bac74c67, 22e7185a):
+
+1. **The reserve starved the navy**: b lost 275 swarms (28k FP) to unpaid upkeep because the navy's
+   charge drew on the free stock. Commitments (navy upkeep, fleets away) pay from the whole stock now.
+2. **The fund hoarded again** (219-293k FP, "nothing the fund pays" 36-55 times): the focus was held on
+   fund and fuel alone while every prong at it was too big to feed. The focus now needs a prong the means
+   pay with supplies included; the empty-campaign line names the best prong and what kept it out.
+3. **No hull convoy ever sailed** (hw60 all, hw61a/b): the donor test asked for no unrebuilt losses at
+   all. Free hulls are net of the debt; that alone is the test now.
+
+## 2b. hw62 - the three fixes (running from 00:42; filled in below when read)
 
 ## 3. For the user
 
