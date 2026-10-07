@@ -978,7 +978,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	protected void tryStrikes() {
 		if (getPhase() < 2) return;
 		if (ThreatIncConfig.strikeStaged()) {
-			tryStagedStrike();
+			// the offensive (the user, 2026-10-07): the hive saves and strikes every
+			// known target at once; off, the closest payable target, one a pass
+			if (ThreatIncConfig.swarmOffensive()) ThreatOffensive.pass(this);
+			else tryStagedStrike();
 			return;
 		}
 		// (2026-09-29: closed economy - no concurrency cap: a strike is paid
@@ -4983,6 +4986,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 */
 	protected StagedPlan stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target,
 			java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares) {
+		return stagedPlan(staging, source, target, memo, defOut, spares, Float.NaN);
+	}
+
+	/**
+	 * stagedPlan against a bank of bankLimit fleet points instead of what the fund (or the banks) holds
+	 * now: Float.MAX_VALUE prices a strike the offensive is saving for (ThreatOffensive.plan); NaN reads
+	 * the real bank.
+	 */
+	protected StagedPlan stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target,
+			java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares, float bankLimit) {
 		if (staging == null || source == null || target == null || target.getStarSystem() == null) return null;
 		float def = targetDefence(target, memo);
 		if (def >= Float.MAX_VALUE) return null;
@@ -4995,10 +5008,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// 8,169 FP on each 120-defence forward base). Every later strike is sized to its target alone.
 		boolean funded = ThreatIncConfig.strikeFundShare() > 0f;
 		float minFP = funded && ThreatWarState.warFactionIds().isEmpty() ? ThreatIncConfig.strikeStagedMinFP() : 0f;
-		float bank = funded ? ThreatColonyManager.strikeFund() : ThreatColonyManager.hivePoolableFP(staging);
+		float bank = !Float.isNaN(bankLimit) ? bankLimit
+				: funded ? ThreatColonyManager.strikeFund() : ThreatColonyManager.hivePoolableFP(staging);
 		// the war's first strike waits until the fund holds strikeStagedOpenFP (a trial of 2026-10-06, hw27:
 		// does the swarm win on the size of its strikes or on the growth before the war opens?)
-		if (funded && ThreatWarState.warFactionIds().isEmpty() && bank < ThreatIncConfig.strikeStagedOpenFP()) {
+		if (funded && Float.isNaN(bankLimit) && ThreatWarState.warFactionIds().isEmpty()
+				&& bank < ThreatIncConfig.strikeStagedOpenFP()) {
 			if (defOut != null) ThreatIncConfig.logQuiet("strikeopen", "Staged strike waits to open the war: the strike fund holds "
 					+ (int) bank + " of " + (int) ThreatIncConfig.strikeStagedOpenFP() + " FP");
 			return null;
@@ -5069,12 +5084,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * The staged strike's target from this staging world: the closest world
-	 * the swarm knows that the hive can pay a strike for (stagedSizes), a
-	 * front of its own short of troops first (strikeReliefFirst). Forward
-	 * bases are worlds like any other here.
+	 * Every world a staged strike could sail at today: strikeable, open to war at this phase, not
+	 * under a strike already, known to the swarm with a defence seen (strikeSeen). Forward bases are
+	 * worlds like any other here.
+	 * @param onlyFactionId restrict to this faction's worlds (retaliation), or null
 	 */
-	protected MarketAPI pickStagedTarget(MarketAPI staging, final StarSystemAPI source, String onlyFactionId) {
+	protected List<MarketAPI> stagedCandidates(String onlyFactionId) {
 		int phase = getPhase();
 		boolean coreAllowed = phase >= 3;
 		boolean playerAllowed = ThreatIncData.daysSincePlayerStruck() >= ThreatIncConfig.playerGraceDays();
@@ -5089,6 +5104,17 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (!ThreatSwarmScouts.swarmKnows(market) || !strikeSeen(market)) continue;
 			near.add(market);
 		}
+		return near;
+	}
+
+	/**
+	 * The staged strike's target from this staging world: the closest world
+	 * the swarm knows that the hive can pay a strike for (stagedSizes), a
+	 * front of its own short of troops first (strikeReliefFirst). Forward
+	 * bases are worlds like any other here.
+	 */
+	protected MarketAPI pickStagedTarget(MarketAPI staging, final StarSystemAPI source, String onlyFactionId) {
+		List<MarketAPI> near = stagedCandidates(onlyFactionId);
 		final boolean reliefFirst = ThreatIncConfig.strikeReliefFirst();
 		java.util.Collections.sort(near, new java.util.Comparator<MarketAPI>() {
 			public int compare(MarketAPI a, MarketAPI b) {

@@ -178,6 +178,14 @@ public class ThreatIncConfig {
 	public static float strikeStagedMinFP() { return fd("threatinc_strikeStagedMinFP", 0f); }
 	/** With a strike fund, the war's first strike (no faction at war yet) waits until the fund holds this many fleet points; 0 = no wait. */
 	public static float strikeStagedOpenFP() { return fd("threatinc_strikeStagedOpenFP", 0f); }
+	/** The offensive (ThreatOffensive; the user, 2026-10-07): the hive saves its strike fund and strikes every known target system at once, the campaign sized to what the fund pays by its deadline. Off: the closest payable target, one a pass. */
+	public static boolean swarmOffensive() { return b("threatinc_swarmOffensive", true); }
+	/** Months a campaign may save before the fund pays what it can and a new one starts. */
+	public static float offensiveHorizonMonths() { return fd("threatinc_offensiveHorizonMonths", 12f); }
+	/** The same horizon while the swarm is losing (ThreatStance.losing). */
+	public static float offensiveLosingMonths() { return fd("threatinc_offensiveLosingMonths", 3f); }
+	/** Losing, only targets within this many light-years of a hive system that can stage a strike are campaigned against; 0 = no limit. */
+	public static float offensiveNearLY() { return fd("threatinc_offensiveNearLY", 10f); }
 	public static boolean postureRecallPartial() { return b("threatinc_postureRecallPartial", true); }
 	/** Whether a system under attack masses its spare swarms, then its neighbours', at its worlds short of their need, and a launch leaves the need home (ThreatPosture.massWithin, strikeCapFP). */
 	public static boolean postureMass() { return b("threatinc_postureMass", false); }
