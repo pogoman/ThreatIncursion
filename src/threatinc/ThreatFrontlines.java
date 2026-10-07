@@ -1842,7 +1842,7 @@ public class ThreatFrontlines {
 		if (spare != null && !spare.isBuilding() && !spare.isUpgrading() && spare.getSpecialItem() == null
 				&& spare.getAICoreId() == null && ThreatFactionStock.surplusProducer(market, spareStock)) {
 			retired = spare.getId();
-		} else if (market.hasIndustry(Industries.PATROLHQ) && ThreatFactionStock.hullsSurplus(fid)) {
+		} else if (market.hasIndustry(Industries.PATROLHQ) && ThreatFactionStock.hullsSurplus(fid) && ThreatHulls.debt(fid) <= 0f) {
 			Industry hq = market.getIndustry(Industries.PATROLHQ);
 			if (hq != null && !hq.isBuilding() && !hq.isUpgrading()) retired = hq.getId();
 		}
