@@ -39,7 +39,8 @@ public class ThreatOffensive {
 	protected static class Prong {
 		MarketAPI target, staging;
 		StarSystemAPI source;
-		float cost, ly, score, def;
+		/** The fund's bill, the strike's fleet points, its passage fuel (round trip) and days away. */
+		float cost, fp, fuel, days, ly, score, def;
 	}
 
 	protected static float startDay() {
@@ -112,6 +113,9 @@ public class ThreatOffensive {
 			IncursionManager.StagedPlan plan = im.stagedPlan(p.staging, p.source, p.target, memo, null, null, Float.MAX_VALUE);
 			if (plan == null || plan.bankFP <= 0f) continue; // the fuel or the supplies away do not pay it
 			p.cost = plan.bankFP;
+			p.fp = plan.fp;
+			p.fuel = ThreatFuel.passage(plan.fp, p.ly, true);
+			p.days = ThreatReach.strikeDays(p.ly);
 			float value = IncursionManager.strikeValue(p.target)
 					* ThreatStance.strikeTargetMult(p.target, p.source, 1f / margin);
 			// losing: the spoiling blow - a base staging against a hive, a forward base - and the near first
@@ -138,12 +142,19 @@ public class ThreatOffensive {
 		float deadline = start + horizon * 30f;
 		float monthsLeft = Math.max(0f, (deadline - day) / 30f);
 		float budget = fund + perMonth * monthsLeft;
+		// the fuel and the supplies away are summed over the prongs too (hw42a: priced one at a time, the
+		// first prong's passage took the whole stock and the held one could not sail on its day)
+		float fuelStock = ThreatFuel.stock(), fuelBudget = fuelStock + Math.max(0f, ThreatFuel.perMonth()) * monthsLeft;
 		List<Prong> campaign = new ArrayList<Prong>();
-		float cost = 0f;
+		float cost = 0f, fuel = 0f, away = 0f, longest = 0f;
 		for (Prong p : prongs) {
-			if (cost + p.cost > budget) continue;
+			if (cost + p.cost > budget || fuel + p.fuel > fuelBudget) continue;
+			if (away + p.fp > ThreatReach.sustainableFP(Math.max(longest, p.days))) continue;
 			campaign.add(p);
 			cost += p.cost;
+			fuel += p.fuel;
+			away += p.fp;
+			longest = Math.max(longest, p.days);
 		}
 		String where = losing ? "losing, within " + (int) nearLY + " ly" : "all known";
 		if (campaign.isEmpty()) {
@@ -153,11 +164,13 @@ public class ThreatOffensive {
 			if (day >= deadline) setStartDay(day);
 			return;
 		}
-		if (fund < cost && day < deadline) {
+		if ((fund < cost || fuelStock < fuel) && day < deadline) {
 			ThreatIncConfig.log("Offensive: saving for " + campaign.size() + " of " + prongs.size() + " target(s) " + where
-					+ ", " + (int) cost + " FP; fund " + (int) fund + " FP (+" + (int) perMonth + "/mo), launch in "
-					+ (int) Math.ceil(Math.max(0f, cost - fund) / Math.max(1f, perMonth)) + " month(s), deadline in "
-					+ (int) monthsLeft + "; first " + names(campaign, 4));
+					+ ", " + (int) cost + " FP and " + (int) fuel + " fuel; fund " + (int) fund + " FP (+" + (int) perMonth
+					+ "/mo), fuel " + (int) fuelStock + " (+" + (int) ThreatFuel.perMonth() + "/mo), launch in "
+					+ (int) Math.ceil(Math.max(Math.max(0f, cost - fund) / Math.max(1f, perMonth),
+							Math.max(0f, fuel - fuelStock) / Math.max(1f, ThreatFuel.perMonth())))
+					+ " month(s), deadline in " + (int) monthsLeft + "; first " + names(campaign, 4));
 			return;
 		}
 
@@ -170,13 +183,15 @@ public class ThreatOffensive {
 		float sentFP = 0f;
 		StringBuilder at = new StringBuilder();
 		for (Prong p : campaign) {
-			if (p.cost > ThreatColonyManager.strikeFund() + 0.5f) continue;
+			if (p.cost > ThreatColonyManager.strikeFund() + 0.5f || p.fuel > ThreatFuel.stock() + 0.5f) continue;
 			if (IncursionManager.isActiveStrikeTarget(p.target)) continue;
 			float wait = arriveIn - arrival(p.ly);
 			if (wait >= 1f) {
+				// its bill and its passage fuel are set aside until its day (neither spent nor demanded yet)
 				ThreatColonyManager.addStrikeFund(-p.cost);
+				ThreatFuel.setStock(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, ThreatFuel.stock() - p.fuel);
 				schedule().add(p.target.getId() + "|" + p.staging.getId() + "|" + p.source.getId() + "|"
-						+ (day + wait) + "|" + p.cost);
+						+ (day + wait) + "|" + p.cost + "|" + p.fuel);
 				held++;
 			} else {
 				if (im.launchStrike(p.staging, p.source, p.target) == null) continue;
@@ -236,10 +251,11 @@ public class ThreatOffensive {
 				schedule().remove(e);
 				continue;
 			}
-			float launchDay, cost;
+			float launchDay, cost, fuel;
 			try {
 				launchDay = Float.parseFloat(f[3]);
 				cost = Float.parseFloat(f[4]);
+				fuel = f.length > 5 ? Float.parseFloat(f[5]) : 0f;
 			} catch (NumberFormatException x) {
 				schedule().remove(e);
 				continue;
@@ -247,6 +263,7 @@ public class ThreatOffensive {
 			if (day < launchDay) continue;
 			schedule().remove(e);
 			ThreatColonyManager.addStrikeFund(cost);
+			if (fuel > 0f) ThreatFuel.setStock(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, ThreatFuel.stock() + fuel);
 			MarketAPI target = Global.getSector().getEconomy().getMarket(f[0]);
 			MarketAPI staging = Global.getSector().getEconomy().getMarket(f[1]);
 			StarSystemAPI source = Global.getSector().getStarSystem(f[2]);

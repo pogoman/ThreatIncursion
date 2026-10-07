@@ -2733,18 +2733,18 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :86
 - `ThreatNoticeClickDialog.getContext()` :90
 
-## ThreatOffensive (295 lines)
-- `ThreatOffensive.startDay()` :45
-- `ThreatOffensive.setStartDay(float day)` :50
-- `ThreatOffensive.pass(IncursionManager im)` :55 - The monthly pass:
-- `ThreatOffensive.compare(Prong a, Prong b)` :123
-- `ThreatOffensive.arrival(float ly)` :200 - Days from launch to the target:
+## ThreatOffensive (312 lines)
+- `ThreatOffensive.startDay()` :46
+- `ThreatOffensive.setStartDay(float day)` :51
+- `ThreatOffensive.pass(IncursionManager im)` :56 - The monthly pass:
+- `ThreatOffensive.compare(Prong a, Prong b)` :127
+- `ThreatOffensive.arrival(float ly)` :215 - Days from launch to the target:
 ### the prongs held back to arrive with the farthest
-- `ThreatOffensive.schedule()` :212 - "targetId|stagingId|sourceSystemId|launchDay|cost" per prong waiting its day.
-- `ThreatOffensive.scheduled(MarketAPI market)` :221 - Whether a prong at the world waits its day (no second strike is planned at it).
-- `ThreatOffensive.poll()` :230 - Daily (IncursionManager.advance):
-- `ThreatOffensive.nearest(MarketAPI target, Map<String, StarSystemAPI> sources)` :272 - The hive system nearest the target that can stage a strike, or null.
-- `ThreatOffensive.names(List<Prong> prongs, int max)` :286
+- `ThreatOffensive.schedule()` :227 - "targetId|stagingId|sourceSystemId|launchDay|cost" per prong waiting its day.
+- `ThreatOffensive.scheduled(MarketAPI market)` :236 - Whether a prong at the world waits its day (no second strike is planned at it).
+- `ThreatOffensive.poll()` :245 - Daily (IncursionManager.advance):
+- `ThreatOffensive.nearest(MarketAPI target, Map<String, StarSystemAPI> sources)` :289 - The hive system nearest the target that can stage a strike, or null.
+- `ThreatOffensive.names(List<Prong> prongs, int max)` :303
 
 ## ThreatOmens (236 lines)
 - `ThreatOmens.reset()` :97 - RESET War:
