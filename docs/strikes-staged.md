@@ -58,7 +58,11 @@ Every monthly pass (`ThreatOffensive.pass`, from `IncursionManager.tryStrikes`):
    same pass (`Offensive launched: N strike(s) ... at ...`), each paid from the fund as
    `launchStrike` does. At the deadline the fund pays what it can and a new campaign starts.
    A set the fund already pays launches at once, so a swarm richer than its known targets
-   strikes them all every month.
+   strikes them all every month. A prong that burns no new supplies (spare swarms, whose home
+   charge moves with them) is priced in whatever the flow, as `canSustain` keeps it - until hw54 the
+   pricing's two supplies checks had no such floor, so with the spare negative (hw54b: -2.7k a month,
+   sustenance and the navy charge over the output) a campaign of 7.6k FP of spare swarms needing 0
+   supplies read "nothing the fund pays by the deadline" for 1,850 days while the fund held 36k.
 
 The deadline counts from the campaign's start, not the pass: a plan sized by "fund + 12
 months of income" every month would grow as the fund did and never launch. That is what hw42-49 did

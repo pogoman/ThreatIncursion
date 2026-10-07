@@ -2755,28 +2755,28 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :86
 - `ThreatNoticeClickDialog.getContext()` :90
 
-## ThreatOffensive (667 lines)
+## ThreatOffensive (670 lines)
 - `ThreatOffensive.startDay()` :110 - The campaign's start (the last launch), or NaN for none - never -1:
 - `ThreatOffensive.setStartDay(float day)` :115
 - `ThreatOffensive.pass(IncursionManager im)` :120 - The monthly pass:
 - `ThreatOffensive.compare(Prong a, Prong b)` :221
-- `ThreatOffensive.compare(Prong a, Prong b)` :286
-- `ThreatOffensive.compare(Prong a, Prong b)` :354
-- `ThreatOffensive.price(IncursionManager im, Prong p, Map<String, float[]> memo, Integer nAtFaction, Spares spares)` :437 - Prices the prong for the answer it expects:
+- `ThreatOffensive.compare(Prong a, Prong b)` :289
+- `ThreatOffensive.compare(Prong a, Prong b)` :357
+- `ThreatOffensive.price(IncursionManager im, Prong p, Map<String, float[]> memo, Integer nAtFaction, Spares spares)` :440 - Prices the prong for the answer it expects:
 ### the garrison swarms a prong will take, set aside until it sails
-- `ThreatOffensive.heldSuppliesPerMonth()` :472 - Supplies a month the held prongs will burn once they sail (the schedule's 9th field) - for the Reach log.
-- `ThreatOffensive.heldSupplies()` :477 - Supplies the held prongs' trips hold out of the stock until their days (the schedule's 10th field).
-- `ThreatOffensive.heldField(int index)` :481
-- `ThreatOffensive.earmark(IncursionManager.StagedPlan plan)` :499 - "systemId:fleets;..." - the garrison fleets the plan takes from each hive system.
-- `ThreatOffensive.addEarmark(Map<String, Integer> to, IncursionManager.StagedPlan plan, int sign)` :511 - Adds (sign 1) or takes back (-1) the plan's garrison fleets in a hive system id -> fleets map.
-- `ThreatOffensive.earmarked(String systemId)` :528 - Garrison fleets of a hive system's spare that the held prongs will take on their day (and, during a launch, the prongs yet to sail):
-- `ThreatOffensive.arrival(float ly)` :549 - Days from launch to the target:
+- `ThreatOffensive.heldSuppliesPerMonth()` :475 - Supplies a month the held prongs will burn once they sail (the schedule's 9th field) - for the Reach log.
+- `ThreatOffensive.heldSupplies()` :480 - Supplies the held prongs' trips hold out of the stock until their days (the schedule's 10th field).
+- `ThreatOffensive.heldField(int index)` :484
+- `ThreatOffensive.earmark(IncursionManager.StagedPlan plan)` :502 - "systemId:fleets;..." - the garrison fleets the plan takes from each hive system.
+- `ThreatOffensive.addEarmark(Map<String, Integer> to, IncursionManager.StagedPlan plan, int sign)` :514 - Adds (sign 1) or takes back (-1) the plan's garrison fleets in a hive system id -> fleets map.
+- `ThreatOffensive.earmarked(String systemId)` :531 - Garrison fleets of a hive system's spare that the held prongs will take on their day (and, during a launch, the prongs yet to sail):
+- `ThreatOffensive.arrival(float ly)` :552 - Days from launch to the target:
 ### the prongs held back to arrive with the farthest
-- `ThreatOffensive.schedule()` :561 - "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth|tripSupplies|pricedFP" per prong waiting its day (earmark:
-- `ThreatOffensive.scheduled(MarketAPI market)` :570 - Whether a prong at the world waits its day (no second strike is planned at it).
-- `ThreatOffensive.poll()` :579 - Daily (IncursionManager.advance):
-- `ThreatOffensive.nearest(MarketAPI target, Map<String, StarSystemAPI> sources)` :644 - The hive system nearest the target that can stage a strike, or null.
-- `ThreatOffensive.names(List<Prong> prongs, int max)` :658
+- `ThreatOffensive.schedule()` :564 - "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth|tripSupplies|pricedFP" per prong waiting its day (earmark:
+- `ThreatOffensive.scheduled(MarketAPI market)` :573 - Whether a prong at the world waits its day (no second strike is planned at it).
+- `ThreatOffensive.poll()` :582 - Daily (IncursionManager.advance):
+- `ThreatOffensive.nearest(MarketAPI target, Map<String, StarSystemAPI> sources)` :647 - The hive system nearest the target that can stage a strike, or null.
+- `ThreatOffensive.names(List<Prong> prongs, int max)` :661
 
 ## ThreatOmens (236 lines)
 - `ThreatOmens.reset()` :97 - RESET War:
