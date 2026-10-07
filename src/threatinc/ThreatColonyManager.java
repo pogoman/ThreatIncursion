@@ -4433,11 +4433,16 @@ public class ThreatColonyManager {
 	public static float strikeFundPerMonth() {
 		float share = Math.max(0f, Math.min(1f, ThreatIncConfig.strikeFundShare()));
 		if (share <= 0f) return 0f;
+		return hiveFabricationPerMonth() * share;
+	}
+
+	/** Fleet points a month every live colony fabricates at today's rate: what the forges replace (ThreatStance.losingPressure). */
+	public static float hiveFabricationPerMonth() {
 		float output = hiveShipOutput(), draw = hiveNexusDraw(), perDay = 0f;
 		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
 			perDay += Math.max(0f, fabricationRatePerDay(m, output, draw));
 		}
-		return perDay * 30f * share;
+		return perDay * 30f;
 	}
 
 	/** Moves the bill from the strike fund to the staging colony's bank, which the launch then draws it from; false when the fund is short. */

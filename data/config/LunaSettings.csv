@@ -182,8 +182,8 @@ threatinc_npcSiegeOrbitSystem,NPC Siege Weighs the System,Boolean,false,"The orb
 threatinc_strikeReliefFirst,Threat Relieves Its Fronts First,Boolean,true,"A Threat strike goes to a front of its own that is losing ground, when one is in reach, before it opens a new one.",,
 threatinc_swarmOffensive,Swarm Offensive,Boolean,true,"The hive saves its strike fund and strikes every known target system at once, the campaign sized to what the fund pays by its deadline; losing, only the targets near its hives. Off: the closest payable target, one strike a month.",,
 threatinc_offensiveHorizonMonths,Offensive Horizon (Months),Double,12,"Months a campaign may save before the fund pays what it can and a new campaign starts.",1,60
-threatinc_offensiveLosingMonths,Offensive Horizon Losing (Months),Double,3,"The same horizon while the swarm is losing.",1,60
-threatinc_offensiveNearLY,Offensive Near Range (LY),Double,10,"Losing, the swarm campaigns only against targets within this many light-years of a hive system that can stage a strike; 0 = no limit.",0,100
+threatinc_offensiveLosingMonths,Offensive Horizon Losing (Months),Double,3,"The horizon at full losing pressure; between, it shortens by degree.",1,60
+threatinc_offensiveNearLY,Offensive Near Range (LY),Double,10,"At full losing pressure the swarm campaigns only against targets within this many light-years of a hive system that can stage a strike; between, its reach shrinks by degree; 0 = no limit.",0,100
 threatinc_abstractResolveOnArrival,Off-Screen Sieges Resolve on Arrival,Boolean,true,"An expedition resolved off-screen fights a day after it reaches its target, instead of when vanilla's payload window ends.",,
 threatinc_strikeDefenceGate,Threat Weighs the Defence,Boolean,true,"The swarm passes over a world whose system defence outweighs the strike it can muster.",,
 threatinc_npcSiegeOrbitPerWorld,NPC Siege Weighs One World,Boolean,true,"The orbit margin is measured against the strongest single world's Defense Swarms: a siege takes the system's worlds one at a time. Off: every world's swarms at once.",,

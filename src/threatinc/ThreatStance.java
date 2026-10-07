@@ -50,8 +50,10 @@ public class ThreatStance {
 	public static final String KEY_STATE = "threatinc_stance";
 	/** "sector" -> float[]{Threat FP lost, enemy FP sunk, day}; decays over TREND_DAYS. */
 	public static final String KEY_TREND = "threatinc_stanceTrend";
-	/** "sector" -> float[]{day, live colonies, day, live colonies, ...} over HIVE_WINDOW_DAYS. */
+	/** "sector" -> float[]{day, live colonies, ...}: the count's change points over the losing window (and HIVE_WINDOW_DAYS). */
 	public static final String KEY_HIVES = "threatinc_stanceHives";
+	/** "sector" -> float[]{month, Threat FP lost, enemy FP sunk, month, ...}: the exchange month by month over the losing window. */
+	public static final String KEY_TREND_YEAR = "threatinc_stanceTrendYear";
 	protected static final String SECTOR = "sector";
 
 	/** Days over which the exchange ledger falls by a factor of e. */
@@ -137,16 +139,32 @@ public class ThreatStance {
 		return NAMES[stance()];
 	}
 
-	/**
-	 * Whether the swarm is losing the war as the last pass read it (ThreatOffensive narrows its
-	 * targets to the nearby): consolidating, the exchange lost (SIGNIFICANT_LOSS of what it holds,
-	 * more lost than sunk) or hives fewer than HIVE_WINDOW_DAYS ago.
-	 */
+	/** Whether the swarm is more than half losing the war (losingPressure 0.5 or more). */
 	public static boolean losing() {
-		if (!enabled()) return false;
+		return losingPressure() >= 0.5f;
+	}
+
+	/**
+	 * How far the swarm is losing the war, 0-1, as the last pass read it (ThreatOffensive shrinks its
+	 * reach and horizon by it): a trend over losingWindowDays, never one blow - hives fallen below the
+	 * window's peak (none for one; full at losingHiveShare of the peak), or the exchange lost beyond
+	 * what it sank against what the forges made (full at losingExchangeShare); the larger of the two
+	 * (StanceRules.losingPressure). A war's verdict: 0 before any faction is at war. The user,
+	 * 2026-10-07: "a series of worlds falling not just a one off".
+	 */
+	public static float losingPressure() {
+		if (!enabled() || ThreatWarState.warFactionIds().isEmpty()) return 0f;
 		float[] s = map(KEY_STATE).get(SECTOR);
-		if (s == null || s.length < 5) return stance() == CONSOLIDATE;
-		return (int) s[0] == CONSOLIDATE || s[3] > 0f || s[4] < 0f;
+		return s != null && s.length >= 6 ? Math.max(0f, Math.min(1f, s[5])) : 0f;
+	}
+
+	/** The losing pressure's reading for the logs: "0.40 (2 of a 9-hive peak fallen, exchange -3000 of 40000 made in 365d)". */
+	public static String losingSummary() {
+		float[] s = map(KEY_STATE).get(SECTOR);
+		if (s == null || s.length < 10) return String.format("%.2f", losingPressure());
+		return String.format("%.2f", s[5]) + " (" + (int) s[6] + " of a " + (int) s[7] + "-hive peak fallen, exchange "
+				+ (s[8] > 0f ? "-" : "+") + (int) Math.abs(s[8]) + " of " + (int) s[9] + " made in "
+				+ (int) ThreatIncConfig.losingWindowDays() + "d)";
 	}
 
 	// ------------------------------------------------------------------
@@ -240,6 +258,48 @@ public class ThreatStance {
 		float day = ThreatPosture.today();
 		float[] t = trend(day);
 		map(KEY_TREND).put(SECTOR, new float[] { t[0] + lost, t[1] + killed, day });
+		// ...and month by month over the losing window (losingPressure)
+		float month = (float) Math.floor(day / 30f);
+		float[] old = map(KEY_TREND_YEAR).get(SECTOR);
+		List<Float> keep = new ArrayList<Float>();
+		boolean booked = false;
+		if (old != null) {
+			for (int i = 0; i + 2 < old.length; i += 3) {
+				if (old[i] > month || (month - old[i]) * 30f >= ThreatIncConfig.losingWindowDays()) continue;
+				boolean now = old[i] == month;
+				keep.add(old[i]);
+				keep.add(old[i + 1] + (now ? lost : 0f));
+				keep.add(old[i + 2] + (now ? killed : 0f));
+				booked |= now;
+			}
+		}
+		if (!booked) {
+			keep.add(month);
+			keep.add(lost);
+			keep.add(killed);
+		}
+		map(KEY_TREND_YEAR).put(SECTOR, toArray(keep));
+	}
+
+	/** {Threat FP lost, enemy FP sunk} over the losing window to this day, month by month. */
+	protected static float[] yearTrend(float day) {
+		float month = (float) Math.floor(day / 30f);
+		float[] t = map(KEY_TREND_YEAR).get(SECTOR);
+		float lost = 0f, killed = 0f;
+		if (t != null) {
+			for (int i = 0; i + 2 < t.length; i += 3) {
+				if (t[i] > month || (month - t[i]) * 30f >= ThreatIncConfig.losingWindowDays()) continue;
+				lost += t[i + 1];
+				killed += t[i + 2];
+			}
+		}
+		return new float[] { lost, killed };
+	}
+
+	protected static float[] toArray(List<Float> list) {
+		float[] out = new float[list.size()];
+		for (int i = 0; i < out.length; i++) out[i] = list.get(i);
+		return out;
 	}
 
 	/** {lost, killed} decayed to this day; nothing for a ledger stamped after it. */
@@ -250,24 +310,55 @@ public class ThreatStance {
 		return new float[] { t[0] * k, t[1] * k };
 	}
 
-	/** Records the live colony count and returns the change over HIVE_WINDOW_DAYS. */
+	/**
+	 * Records the live colony count and returns the change over HIVE_WINDOW_DAYS. The history is
+	 * the count's change points over the longer of that and losingWindowDays, with the last point
+	 * before the window kept as the count it opened on (hivePeak reads it).
+	 */
 	protected static int hiveTrend(float day, int now) {
+		float window = Math.max(HIVE_WINDOW_DAYS, ThreatIncConfig.losingWindowDays());
 		float[] old = map(KEY_HIVES).get(SECTOR);
-		List<Float> keep = new ArrayList<Float>();
+		List<float[]> pts = new ArrayList<float[]>();
 		if (old != null) {
 			for (int i = 0; i + 1 < old.length; i += 2) {
-				if (old[i] > day || day - old[i] > HIVE_WINDOW_DAYS) continue;
-				keep.add(old[i]);
-				keep.add(old[i + 1]);
+				if (old[i] > day) continue;
+				// a pass that found the count unchanged adds nothing: the run began at its first point
+				if (!pts.isEmpty() && Math.round(pts.get(pts.size() - 1)[1]) == Math.round(old[i + 1])) continue;
+				pts.add(new float[] { old[i], old[i + 1] });
 			}
 		}
-		int first = keep.isEmpty() ? now : Math.round(keep.get(1));
-		keep.add(day);
-		keep.add((float) now);
-		float[] out = new float[keep.size()];
-		for (int i = 0; i < out.length; i++) out[i] = keep.get(i);
-		map(KEY_HIVES).put(SECTOR, out);
-		return now - first;
+		while (pts.size() >= 2 && day - pts.get(1)[0] >= window) pts.remove(0);
+		if (pts.isEmpty() || Math.round(pts.get(pts.size() - 1)[1]) != now) pts.add(new float[] { day, now });
+		List<Float> keep = new ArrayList<Float>();
+		for (float[] pt : pts) {
+			keep.add(pt[0]);
+			keep.add(pt[1]);
+		}
+		map(KEY_HIVES).put(SECTOR, toArray(keep));
+		// the count HIVE_WINDOW_DAYS ago: the last change at or before then, else the first known
+		int then = Math.round(pts.get(0)[1]);
+		for (float[] pt : pts) {
+			if (pt[0] > day - HIVE_WINDOW_DAYS) break;
+			then = Math.round(pt[1]);
+		}
+		return now - then;
+	}
+
+	/** The most live colonies the hive held over the losing window (hiveTrend's history). */
+	protected static int hivePeak(float day) {
+		float[] h = map(KEY_HIVES).get(SECTOR);
+		float window = ThreatIncConfig.losingWindowDays();
+		int peak = 0;
+		if (h == null) return peak;
+		for (int i = 0; i + 1 < h.length; i += 2) {
+			if (h[i] > day) continue;
+			// a change before the window counts only as the count the window opened on: the last such
+			boolean before = day - h[i] >= window;
+			boolean opened = before && (i + 2 >= h.length || day - h[i + 2] < window);
+			if (before && !opened) continue;
+			peak = Math.max(peak, Math.round(h[i + 1]));
+		}
+		return peak;
 	}
 
 	// ------------------------------------------------------------------
@@ -440,7 +531,19 @@ public class ThreatStance {
 			if (next != was) since = day;
 			ThreatIncConfig.log("Stance: " + NAMES[was] + "->" + NAMES[next] + " - " + summary);
 		}
-		map(KEY_STATE).put(SECTOR, new float[] { next, since, pressure, losing ? 1f : 0f, hiveDelta });
+		// how far the swarm is losing the war: a trend over the losing window, never one blow (losingPressure)
+		float[] year = yearTrend(day);
+		int peak = Math.max(hivesNow, hivePeak(day));
+		float made = ThreatColonyManager.hiveFabricationPerMonth() * ThreatIncConfig.losingWindowDays() / 30f;
+		float losingPressure = threatinc.rules.StanceRules.losingPressure(peak - hivesNow, peak, year[0], year[1], made,
+				ThreatIncConfig.losingHiveShare(), ThreatIncConfig.losingExchangeShare());
+		float hadPressure = st != null && st.length >= 6 ? st[5] : 0f;
+		map(KEY_STATE).put(SECTOR, new float[] { next, since, pressure, losing ? 1f : 0f, hiveDelta,
+				losingPressure, peak - hivesNow, peak, year[0] - year[1], made });
+		if (Math.abs(losingPressure - hadPressure) >= 0.1f || (losingPressure > 0f) != (hadPressure > 0f)) {
+			ThreatIncConfig.log("Stance: losing pressure " + String.format("%.2f", hadPressure) + " -> " + losingSummary()
+					+ (ThreatWarState.warFactionIds().isEmpty() ? " - no war yet, read as 0" : ""));
+		}
 
 		// pressing: each staging colony builds the strike its target needs
 		if (next == PRESS) {
