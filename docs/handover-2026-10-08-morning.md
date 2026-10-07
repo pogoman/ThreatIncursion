@@ -66,7 +66,18 @@ hw63:
    sat. Hulls sail by the unit now (a ship is a load), and `aidHulls` logs the gate each helper
    stopped at while nobody sends.
 
-Navy losses to unpaid upkeep: 0 in all three (fix 1 of hw62 holds). Focus changes 12 a game.
+**hw62 read (01:52):** hives 48 / 66 / 75 of peaks 76 / 81 / 80 (b ran slow, to war day 3811);
+eradicated 75 / 35 / 32, after a strip 6 / 3 / 4; navy losses to unpaid upkeep 0 / 0 / 0 (fix 1 holds);
+hull convoys 1 / 1 / 2 (fix 3: the first since hw58a); the fund 172k / 168k / 230k FP at the end,
+climbing every month; "nothing the means pay" 65 / 38 / 60. Human yards 0-1,300 FP/mo at the end.
+`game-runs-2.md` 43.
+
+## 2c. hw63 - the chest and hull units (54db5cdc, jar 01:52; running from 01:53)
+
+What to look for in `swarm-digest.sh hw63a hw63b hw63c`: the `-- fund:` trajectory should turn down
+after the first `chest: full`; `chest: full N, spent M` should alternate; seedings held should rise
+while the chest is full and campaigns should launch on the fund; `hull convoys` above 1-2, and the
+`no-hulls` line names the gate when none sail.
 
 ## 3. For the user
 
