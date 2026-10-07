@@ -10,10 +10,12 @@
 #   wipe     the swarm wiped: 0 hives after war day 400
 #   collapse the swarm collapsing: hives under half its peak of 8 or more (hw47 0 / 10 / 0, hw49 b 0)
 #   starved  swarms lost to the navy charge ("of navy upkeep unpaid"; hw49 8.8k-15.8k FP)
-#   hoard    the fund hoarded: no launch for 500 war days while saving with 20k+ FP (hw41-49 30-43k unspent)
+#   hoard    the fund hoarded: 20k+ FP and no launch for 500 war days, or none ever by day 1500 (hw41-49 30-43k unspent)
+#   broke    the swarm cannot sail: supplies stock under 5% of a month's output in the last three censuses with the
+#            fund at 20k+ (hw53-54: the stock peaks 45-75k at 4-7 hives and falls to ~0 as 17-24 are founded)
 #   humans   the humans collapsing: forward bases lost twice those founded, 10+ founded (hw51a 93 of 48)
 #   hulls    the humans out of hulls: 50+ STARVE lines (expeditions the pools cannot pay) and no hull convoy
-#   nowar    no war by day 1500: no strike launched
+#   nowar    no war by day 2000: no strike launched (hw50-53 opened between 1466 and 1953)
 # The thresholds are a first cut (2026-10-07), the user's to tune.
 TAG=$1; MAX=${2:-130}; IGN=",${3:-},"; T="$(cygpath -u "$LOCALAPPDATA")/Temp/threatinc-tests"
 declare -A seen; start=$(date +%s)
@@ -44,14 +46,19 @@ while :; do
     [ "$war" -gt 400 ] && [ "$hives" -eq 0 ] && [ "$peak" -gt 0 ] && flag $g wipe "0 hives at war day $war (peak $peak)"
     [ "$war" -gt 600 ] && [ "$peak" -ge 8 ] && [ $((hives * 2)) -lt "$peak" ] && flag $g collapse "$hives hives of a $peak peak at war day $war"
     [ "$starved" -gt 0 ] && flag $g starved "$(grep -m1 'of navy upkeep unpaid' $F | cut -c1-200)"
+    fund=$(grep '^Offensive: ' $F | grep -o 'fund [0-9]* FP' | tail -1 | grep -o '[0-9]*'); fund=${fund:-0}
     if [ "$la" -gt 0 ]; then
       lastla=$(awk '/^Clock: day/{w=$5} /^Offensive launched/{l=w} END{print l+0}' $F)
-      fund=$(grep 'Offensive: saving' $F | tail -1 | grep -o 'fund [0-9]* FP' | grep -o '[0-9]*')
-      [ $((war - lastla)) -gt 500 ] && [ "${fund:-0}" -ge 20000 ] && flag $g hoard "no launch since war day $lastla, saving with $fund FP"
+      [ $((war - lastla)) -gt 500 ] && [ "$fund" -ge 20000 ] && flag $g hoard "no launch since war day $lastla, saving with $fund FP"
+    elif [ "$war" -gt 1500 ] && [ "$fund" -ge 20000 ]; then
+      flag $g hoard "no launch ever by war day $war, fund $fund FP: $(grep '^Offensive: ' $F | tail -1 | cut -c1-160)"
     fi
+    # the last three censuses' supplies stock against a month's output
+    lowsup=$(grep -o '^Census: .*supplies [0-9]* (+[0-9]*' $F | tail -3 | sed 's/.*supplies ([0-9]*) (+([0-9]*)/ /' | awk '$2>0 && $1*20<$2{n++} END{print n+0}')
+    [ "$lowsup" -ge 3 ] && [ "$fund" -ge 20000 ] && flag $g broke "supplies stock under 5% of a month's output three censuses running, fund $fund FP: $(grep '^Census' $F | tail -1 | grep -o 'supplies [0-9]* ([^)]*)')"
     [ "$fbf" -ge 10 ] && [ "$fbl" -ge $((fbf * 2)) ] && flag $g humans "forward bases founded $fbf, lost $fbl"
     [ "$starve" -ge 50 ] && [ "$hull" -eq 0 ] && flag $g hulls "$starve STARVE lines, no hull convoy: $(grep -m1 'STARVE:' $F | cut -c1-160)"
-    [ "$war" -gt 1500 ] && [ "$strikes" -eq 0 ] && flag $g nowar "no strike launched by war day $war"
+    [ "$war" -gt 2000 ] && [ "$strikes" -eq 0 ] && flag $g nowar "no strike launched by war day $war"
   done
   [ $fail = 1 ] && { echo "FAIL SIGNAL - stop the batch, or read on with the signal in the ignore list"; exit 1; }
   [ $(( ($(date +%s)-start)/60 )) -ge $MAX ] && exit 0
