@@ -133,7 +133,13 @@ navy charge. On since 2026-10-07 (hw48).
   had closed since the pass was skipped. Since hw57 the launching prong's earmark musters live fleets
   from every colony of the system (`IncursionManager.launchingEarmarkCovers`, read by `musterPool` for
   the peek and the consume alike), its staging pick is ungated (`pickStrikeStaging(id, false)`), and
-  each earmarked system logs "Earmark at X: N fleet(s) set aside, M found (...)".
+  each earmarked system logs "Earmark at X: N fleet(s) set aside, M found (...)". That line showed the
+  last layer (hw57a: "13 found", "0 FP of spare swarms"): `stagedPlan` gates each spare fleet on
+  `canSustain` as it adds it, a prong of spare swarms alone prepays 0 supplies, and the gate was skipped
+  only for a prepaid amount above 0 - the first fleet's re-embodied estimate, a few FP over its own, was
+  a "new burn" against a negative flow. Since hw58 the prepaid MARK skips it whatever the amount
+  (`ThreatReach.setPrepaid` / `clearPrepaid`), and the pass's prongs sailing now launch under the same
+  mark and the priced-size cap as the held ones: the campaign's supplies check stands for its prongs.
 - **Supplies**: the navy charge the garrisons above the patrols pay at home is in the feed's spare
   (`ThreatColonyUpkeep.navyChargePerMonth`, since hw50 - before, the spare left it out and was overstated
   by the whole charge, hw48's "credited in full, the strikes away went unpaid" and hw49's -1,562 a month

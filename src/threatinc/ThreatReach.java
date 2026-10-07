@@ -290,8 +290,10 @@ public class ThreatReach {
 		// plan is capped at the size priced (IncursionManager.pricedFP): nothing to gate again (hw52: gated
 		// whole, each prong was charged the flow the campaign as a set had made negative, 8 of 9 refused;
 		// hw53: gated on the burn beyond the prepaid trip, a plan grown past its priced size was refused
-		// against a stock at the founding kit)
-		if (prepaid > 0f) return true;
+		// against a stock at the founding kit; hw56-57: a prong of spare swarms alone prepays 0, and the
+		// first fleet's re-embodied estimate a few FP over its own was gated and refused - "13 found, 0 FP of
+		// spare swarms" - so the mark, not the amount, is what skips the gate)
+		if (prepaidSet) return true;
 		float flow = spare();
 		if (need <= flow) return true;
 		return threatinc.rules.StrikeRules.canSustain(need, flow, days, freeStock());
@@ -312,10 +314,23 @@ public class ThreatReach {
 
 	/** Supplies in the stock already set aside for the trip being launched (ThreatOffensive.poll); 0 otherwise. */
 	protected static float prepaid = 0f;
+	/** Whether the trip being launched was priced and paid with its campaign (ThreatOffensive), whatever the amount. */
+	protected static boolean prepaidSet = false;
 
-	/** Marks the trip about to launch as prepaid by {@code supplies} out of the stock (canSustain); 0 clears it. */
+	/**
+	 * Marks the trip about to launch as priced and paid with its campaign, {@code supplies} of it out of the
+	 * stock (canSustain skips its gate, 0 included: a prong of spare swarms alone prepays nothing). Cleared by
+	 * clearPrepaid.
+	 */
 	public static void setPrepaid(float supplies) {
 		prepaid = Math.max(0f, supplies);
+		prepaidSet = true;
+	}
+
+	/** The launch is over: the next strike is gated again. */
+	public static void clearPrepaid() {
+		prepaid = 0f;
+		prepaidSet = false;
 	}
 
 	/** The most fleet points canSustain lets away for {@code days}: the flow and the stock spread over the trip. */
