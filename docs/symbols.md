@@ -587,7 +587,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatBuildCost.setting(String key, float fallback)` :118
 - `ThreatBuildCost.logOnce(String industryId, float cost)` :128
 
-## ThreatCoalition (404 lines)
+## ThreatCoalition (413 lines)
 - `ThreatCoalition.daysLeft()` :49
 - `ThreatCoalition.all()` :56
 - `ThreatCoalition.callFor(String systemId)` :65
@@ -601,8 +601,8 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatCoalition.allyAid(Random random)` :207 - Each mobilised colony with a need, each other mobilised NPC faction:
 - `ThreatCoalition.aidStockPlans(List<String> ids, Random random)` :293 - Trade through the war (user, 2026-10-06):
 - `ThreatCoalition.aidHulls(String needyId, FactionAPI needy, List<String> ids, Random random)` :345 - Hulls move like any good (the user, 2026-10-07, after hw50:
-- `ThreatCoalition.onAllyDelivered(ThreatConvoys.Convoy c, MarketAPI base)` :378 - An ally's convoy landed at another faction's colony.
-- `ThreatCoalition.report(FactionAPI helper, FactionAPI needy, String title, String what, Object... args)` :390 - Debug narration of an ally's aid:
+- `ThreatCoalition.onAllyDelivered(ThreatConvoys.Convoy c, MarketAPI base)` :387 - An ally's convoy landed at another faction's colony.
+- `ThreatCoalition.report(FactionAPI helper, FactionAPI needy, String title, String what, Object... args)` :399 - Debug narration of an ally's aid:
 
 ## ThreatColonyManager (6638 lines)
 ### founding
@@ -931,7 +931,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatColonyScreenDialog.backFromEngagement(EngagementResultAPI battleResult)` :59
 - `ThreatColonyScreenDialog.getContext()` :63
 
-## ThreatColonyUpkeep (440 lines)
+## ThreatColonyUpkeep (448 lines)
 - `ThreatColonyUpkeep.enabled()` :63 - The share of its imports a disrupted port lets through.
 - `ThreatColonyUpkeep.perMonth(int size)` :72 - Supplies a month a colony of this size costs:
 - `ThreatColonyUpkeep.breakEven()` :78 - The share of its upkeep that holds a colony at its size.
@@ -942,23 +942,23 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatColonyUpkeep.localSupplies(MarketAPI market)` :127 - Supplies a month the world's own forge makes, as ThreatFuel banks them.
 - `ThreatColonyUpkeep.reachesStock(MarketAPI market, String commodityId, float units)` :139 - What of a hive world's monthly output, in the commodity's units, reaches the hive's stock:
 - `ThreatColonyUpkeep.feedShare()` :153 - The share of the month's production, after fleets away, the hive lets its colonies' upkeep take (by stance).
-- `ThreatColonyUpkeep.spareSupplies()` :169 - Supplies a month the production leaves once the fleets away are paid and every colony's sustenance fits under sustainShare, as the last feed read it:
-- `ThreatColonyUpkeep.fleetsPerMonth()` :176 - Supplies a month the fleets away burned at the last feed.
-- `ThreatColonyUpkeep.navyPerMonth()` :182 - Supplies a month the navy above the patrols pays at home, as the last feed read it (navyChargePerMonth).
-- `ThreatColonyUpkeep.navyChargePerMonth()` :188 - Supplies a month every colony's garrison above its patrols costs now (ThreatColonyManager.payNavySupplies's rate x navyFP).
-- `ThreatColonyUpkeep.sustainShare()` :200 - The share of the production, after fleets away, sustenance may take whatever the stance:
-- `ThreatColonyUpkeep.feed(float fleetsPerMonth)` :221 - Pays every hive world's upkeep for the days since the last feed - once a poll, after the fleets away are paid (maintainGarrisons), whose supplies a month fleetsPerMonth come off the production the gro
-- `ThreatColonyUpkeep.forgeStepPays(MarketAPI m, float t)` :348 - Whether the forge world's next size adds more output than sustenance:
-- `ThreatColonyUpkeep.compare(Need a, Need b)` :357
-- `ThreatColonyUpkeep.growthOrder(final int stance)` :365 - Growth order:
-- `ThreatColonyUpkeep.compare(Need a, Need b)` :367
-- `ThreatColonyUpkeep.humanMarkets()` :384 - Every market in the economy that is not the Threat's:
-- `ThreatColonyUpkeep.frontLY(MarketAPI m, List<MarketAPI> humans)` :395 - Light-years from the world to the nearest human market.
-- `ThreatColonyUpkeep.add(String key, float v)` :403
-- `ThreatColonyUpkeep.take(String key)` :408
-- `ThreatColonyUpkeep.logMonth()` :415 - The month's upkeep line for the census log, and the month's tallies reset.
+- `ThreatColonyUpkeep.spareSupplies()` :170 - Supplies a month the production leaves once the fleets away are paid and every colony's sustenance fits under sustainShare, as the last feed read it:
+- `ThreatColonyUpkeep.fleetsPerMonth()` :177 - Supplies a month the fleets away burned at the last feed.
+- `ThreatColonyUpkeep.navyPerMonth()` :183 - Supplies a month the navy above the patrols pays at home, as the last feed read it (navyChargePerMonth).
+- `ThreatColonyUpkeep.navyChargePerMonth()` :189 - Supplies a month every colony's garrison above its patrols costs now (ThreatColonyManager.payNavySupplies's rate x navyFP).
+- `ThreatColonyUpkeep.sustainShare()` :201 - The share of the production, after fleets away, sustenance may take whatever the stance:
+- `ThreatColonyUpkeep.feed(float fleetsPerMonth)` :222 - Pays every hive world's upkeep for the days since the last feed - once a poll, after the fleets away are paid (maintainGarrisons), whose supplies a month fleetsPerMonth come off the production the gro
+- `ThreatColonyUpkeep.forgeStepPays(MarketAPI m, float t)` :356 - Whether the forge world's next size adds more output than sustenance:
+- `ThreatColonyUpkeep.compare(Need a, Need b)` :365
+- `ThreatColonyUpkeep.growthOrder(final int stance)` :373 - Growth order:
+- `ThreatColonyUpkeep.compare(Need a, Need b)` :375
+- `ThreatColonyUpkeep.humanMarkets()` :392 - Every market in the economy that is not the Threat's:
+- `ThreatColonyUpkeep.frontLY(MarketAPI m, List<MarketAPI> humans)` :403 - Light-years from the world to the nearest human market.
+- `ThreatColonyUpkeep.add(String key, float v)` :411
+- `ThreatColonyUpkeep.take(String key)` :416
+- `ThreatColonyUpkeep.logMonth()` :423 - The month's upkeep line for the census log, and the month's tallies reset.
 
-## ThreatConvoys (2769 lines)
+## ThreatConvoys (2771 lines)
 - `ThreatConvoys.isFrontRun()` :89 - On the first fleet of a sailing split across several (a load past vanilla's maxShipsInAIFleet):
 - `ThreatConvoys.fromName()` :94 - The sender:
 - `ThreatConvoys.toName()` :99 - The destination:
@@ -1089,11 +1089,11 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :2598
 - `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :2665 - Whether the convoy's destination still belongs to whom it was sent to.
 - `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :2678 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
-- `ThreatConvoys.stripLandedMods()` :2699 - Strips the landing trade modifiers older builds left on markets (rule 5).
-- `ThreatConvoys.lost(Convoy c)` :2711
-- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :2732 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
-- `ThreatConvoys.homeBase(Convoy c)` :2743 - Where a convoy settles:
-- `ThreatConvoys.returnHome(Convoy c)` :2757 - Recalled, timed out, or its destination is gone:
+- `ThreatConvoys.stripLandedMods()` :2701 - Strips the landing trade modifiers older builds left on markets (rule 5).
+- `ThreatConvoys.lost(Convoy c)` :2713
+- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :2734 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
+- `ThreatConvoys.homeBase(Convoy c)` :2745 - Where a convoy settles:
+- `ThreatConvoys.returnHome(Convoy c)` :2759 - Recalled, timed out, or its destination is gone:
 
 ## ThreatDebugWar (428 lines)
 - `ThreatDebugWar.poll(IncursionManager manager, Random random)` :58 - From IncursionManager.advance, once the incursion has started.
@@ -1534,7 +1534,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFrontlines.compare(CampaignFleetAPI a, CampaignFleetAPI b)` :2560
 - `ThreatFrontlines.callGuard(Outpost o, MarketAPI market, float have, boolean atDetection)` :2602 - Calls a guard against the seen strikes bound for the link, outside the upkeep budget:
 
-## ThreatFuel (773 lines)
+## ThreatFuel (777 lines)
 - `ThreatFuel.enabled()` :62
 - `ThreatFuel.paysOrdnance()` :72 - Whether the swarm's bombardment burns the fuel stock (2026-10-01, threatPaysOrdnance):
 - `ThreatFuel.stockKey(String commodityId)` :76
@@ -1557,46 +1557,46 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFuel.deposit(String commodityId, float amount, float daysAgo)` :252 - Puts amount back in the stock (a withdrawing wave's cargo):
 - `ThreatFuel.foundingCost()` :265 - What founding a colony costs in stock:
 - `ThreatFuel.canFound(float passageFuel)` :276 - Whether both stocks hold a founding and the wave's fuel on top of it.
-- `ThreatFuel.noteShort(String commodityId)` :303 - Notes that the colonies' sustenance went unpaid (ThreatColonyUpkeep.feed):
-- `ThreatFuel.shortOf(String commodityId)` :308 - Whether the colonies' sustenance went unpaid within SHORT_DAYS (noteShort).
-- `ThreatFuel.mayAnswer(String commodityId)` :319 - Whether the hive planner may answer the commodity with another plant or forge:
-- `ThreatFuel.mayInvest(String commodityId)` :326 - Whether a SHORT_DAYS has passed since the planner last built a producer of the commodity for its stock (answered):
-- `ThreatFuel.answered(String commodityId)` :332 - Notes that the planner built a plant for the shortage (mayAnswer).
+- `ThreatFuel.noteShort(String commodityId)` :307 - Notes that the colonies' sustenance went unpaid (ThreatColonyUpkeep.feed):
+- `ThreatFuel.shortOf(String commodityId)` :312 - Whether the colonies' sustenance went unpaid within SHORT_DAYS (noteShort).
+- `ThreatFuel.mayAnswer(String commodityId)` :323 - Whether the hive planner may answer the commodity with another plant or forge:
+- `ThreatFuel.mayInvest(String commodityId)` :330 - Whether a SHORT_DAYS has passed since the planner last built a producer of the commodity for its stock (answered):
+- `ThreatFuel.answered(String commodityId)` :336 - Notes that the planner built a plant for the shortage (mayAnswer).
 ### trailing demand: what the planner builds and retires producers by
-- `ThreatFuel.producerId(String commodityId)` :342 - The industry that makes the commodity's stock:
-- `ThreatFuel.producerOn(MarketAPI market, String commodityId)` :347 - The world's producer of the commodity, built or building;
-- `ThreatFuel.buildDays(String commodityId)` :359 - Days a new producer of the commodity takes to stand:
-- `ThreatFuel.num(String key)` :363
-- `ThreatFuel.ageDemand(String commodityId)` :383 - Brings the commodity's trailing sums up to now:
-- `ThreatFuel.noteDemand(String commodityId, float amount)` :409 - Demand on the stock:
-- `ThreatFuel.demandPerMonth(String commodityId)` :416 - The trailing demand on the stock a month:
-- `ThreatFuel.observed(String commodityId, float days)` :432 - Whether the stock's demand has been watched at least this many days.
-- `ThreatFuel.outputOf(MarketAPI market, String commodityId)` :439 - What the world puts in the stock of the commodity a month:
-- `ThreatFuel.largestOutput(String commodityId)` :447 - The most any one hive world puts in the stock a month.
-- `ThreatFuel.comingPerMonth(String commodityId)` :459 - What the producers under construction will put in the stock a month once they stand:
-- `ThreatFuel.planned()` :472 - Whether a stock-paying economy runs the rules below:
-- `ThreatFuel.runsDry(String commodityId)` :484 - Whether the hive runs dry of the commodity before a new producer could stand:
-- `ThreatFuel.runsDryWithout(String commodityId, float lost)` :489 - runsDry with lost a month of production gone.
-- `ThreatFuel.wanted(String commodityId)` :497 - What the planner answers with a producer:
-- `ThreatFuel.surplus(String commodityId)` :510 - Whether the stock is in surplus:
-- `ThreatFuel.surplusProducer(MarketAPI market, String commodityId)` :526 - Whether the world's producer can go:
-- `ThreatFuel.wantsSpare(String commodityId)` :538 - Whether a spare producer of the commodity is worth its slot:
-- `ThreatFuel.mayConvert()` :545 - Whether the planner may retire a surplus producer now:
-- `ThreatFuel.converted()` :551 - Notes that the planner retired a producer (mayConvert).
-- `ThreatFuel.loadFounding(com.fs.starfarer.api.campaign.CampaignFleetAPI fleet)` :556 - Loads a Seeding Swarm with its founding:
-- `ThreatFuel.unloadFounding(com.fs.starfarer.api.campaign.CampaignFleetAPI fleet, boolean returned)` :572 - A wave's founding cargo:
-- `ThreatFuel.forget()` :599 - On load:
-- `ThreatFuel.held(String what)` :613 - Notes a send the stock could not pay, for the month's census line, and books its unmet bill as demand on the stock (noteDemand):
-- `ThreatFuel.heldShort(String what, float bill)` :645 - A send held for a fuel bill the stock falls short of, booking the shortfall alone (IncursionManager.pickStrikeTarget's waiting muster):
-- `ThreatFuel.heldBuild(String what, float supplies)` :660 - A build the planner needs and the supplies stock cannot pay - a chain link's first copy, a shortage's answer (ThreatColonyManager.tryBuildLink):
-- `ThreatFuel.bookHold(String what)` :665 - Whether the send's hold is booked now:
-- `ThreatFuel.unmet(float fuel, String what)` :681 - A bill the stock could not pay as it fell due - the swarm's bombardment ordnance (ThreatGroundFronts.payOrdnance, ThreatStrikeFGI.saturationPass):
-- `ThreatFuel.unmet(String commodityId, float amount, String what)` :686 - unmet, of either stock.
-- `ThreatFuel.groundedOrdnance(CampaignFleetAPI fleet, float perDay)` :700 - A swarm fleet that would bombard with the fuel stock empty stands down (ThreatGroundFronts.ordnanceAvailable, orbitDoneFor):
-- `ThreatFuel.add(String key, float v)` :708
-- `ThreatFuel.monthSummary()` :714 - The census's stock clause, and the month's tallies reset.
-- `ThreatFuel.planLine(String commodityId)` :742 - The planner's reading of the stock, for the log:
-- `ThreatFuel.sourcesLine(String commodityId)` :756 - Where the month's stock of the commodity comes from, in units, for the log.
+- `ThreatFuel.producerId(String commodityId)` :346 - The industry that makes the commodity's stock:
+- `ThreatFuel.producerOn(MarketAPI market, String commodityId)` :351 - The world's producer of the commodity, built or building;
+- `ThreatFuel.buildDays(String commodityId)` :363 - Days a new producer of the commodity takes to stand:
+- `ThreatFuel.num(String key)` :367
+- `ThreatFuel.ageDemand(String commodityId)` :387 - Brings the commodity's trailing sums up to now:
+- `ThreatFuel.noteDemand(String commodityId, float amount)` :413 - Demand on the stock:
+- `ThreatFuel.demandPerMonth(String commodityId)` :420 - The trailing demand on the stock a month:
+- `ThreatFuel.observed(String commodityId, float days)` :436 - Whether the stock's demand has been watched at least this many days.
+- `ThreatFuel.outputOf(MarketAPI market, String commodityId)` :443 - What the world puts in the stock of the commodity a month:
+- `ThreatFuel.largestOutput(String commodityId)` :451 - The most any one hive world puts in the stock a month.
+- `ThreatFuel.comingPerMonth(String commodityId)` :463 - What the producers under construction will put in the stock a month once they stand:
+- `ThreatFuel.planned()` :476 - Whether a stock-paying economy runs the rules below:
+- `ThreatFuel.runsDry(String commodityId)` :488 - Whether the hive runs dry of the commodity before a new producer could stand:
+- `ThreatFuel.runsDryWithout(String commodityId, float lost)` :493 - runsDry with lost a month of production gone.
+- `ThreatFuel.wanted(String commodityId)` :501 - What the planner answers with a producer:
+- `ThreatFuel.surplus(String commodityId)` :514 - Whether the stock is in surplus:
+- `ThreatFuel.surplusProducer(MarketAPI market, String commodityId)` :530 - Whether the world's producer can go:
+- `ThreatFuel.wantsSpare(String commodityId)` :542 - Whether a spare producer of the commodity is worth its slot:
+- `ThreatFuel.mayConvert()` :549 - Whether the planner may retire a surplus producer now:
+- `ThreatFuel.converted()` :555 - Notes that the planner retired a producer (mayConvert).
+- `ThreatFuel.loadFounding(com.fs.starfarer.api.campaign.CampaignFleetAPI fleet)` :560 - Loads a Seeding Swarm with its founding:
+- `ThreatFuel.unloadFounding(com.fs.starfarer.api.campaign.CampaignFleetAPI fleet, boolean returned)` :576 - A wave's founding cargo:
+- `ThreatFuel.forget()` :603 - On load:
+- `ThreatFuel.held(String what)` :617 - Notes a send the stock could not pay, for the month's census line, and books its unmet bill as demand on the stock (noteDemand):
+- `ThreatFuel.heldShort(String what, float bill)` :649 - A send held for a fuel bill the stock falls short of, booking the shortfall alone (IncursionManager.pickStrikeTarget's waiting muster):
+- `ThreatFuel.heldBuild(String what, float supplies)` :664 - A build the planner needs and the supplies stock cannot pay - a chain link's first copy, a shortage's answer (ThreatColonyManager.tryBuildLink):
+- `ThreatFuel.bookHold(String what)` :669 - Whether the send's hold is booked now:
+- `ThreatFuel.unmet(float fuel, String what)` :685 - A bill the stock could not pay as it fell due - the swarm's bombardment ordnance (ThreatGroundFronts.payOrdnance, ThreatStrikeFGI.saturationPass):
+- `ThreatFuel.unmet(String commodityId, float amount, String what)` :690 - unmet, of either stock.
+- `ThreatFuel.groundedOrdnance(CampaignFleetAPI fleet, float perDay)` :704 - A swarm fleet that would bombard with the fuel stock empty stands down (ThreatGroundFronts.ordnanceAvailable, orbitDoneFor):
+- `ThreatFuel.add(String key, float v)` :712
+- `ThreatFuel.monthSummary()` :718 - The census's stock clause, and the month's tallies reset.
+- `ThreatFuel.planLine(String commodityId)` :746 - The planner's reading of the stock, for the log:
+- `ThreatFuel.sourcesLine(String commodityId)` :760 - Where the month's stock of the commodity comes from, in units, for the log.
 
 ## ThreatGroundDefenses (79 lines)
 - `ThreatGroundDefenses.apply()` :32
@@ -3644,38 +3644,39 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSoftening.advanceSingle(ThreatFleetOrders.Order o)` :1681 - A hunt with no force:
 - `ThreatSoftening.isHive(MarketAPI market)` :1730
 
-## ThreatStance (676 lines)
-- `ThreatStance.addForce(String factionId, String systemId, float fp)` :79 - System id -> the factions staging against it, attacking it or guarding forward bases facing it.
-- `ThreatStance.addSystem(String systemId, float held, float pressure, int mode, boolean attacked)` :92
-- `ThreatStance.enabled()` :115
-- `ThreatStance.forget()` :120 - Called on load:
-- `ThreatStance.stance()` :132 - The sector's stance;
-- `ThreatStance.stanceName()` :138
-- `ThreatStance.losingPressure()` :150 - How far the swarm is losing the war, 0-1, as the last pass read it (ThreatOffensive shrinks its reach and horizon by it):
-- `ThreatStance.losingSummary()` :157 - The losing pressure's reading for the logs:
+## ThreatStance (711 lines)
+- `ThreatStance.addForce(String factionId, String systemId, float fp)` :85 - System id -> the factions staging against it, attacking it or guarding forward bases facing it.
+- `ThreatStance.addSystem(String systemId, float held, float pressure, int mode, boolean attacked)` :98
+- `ThreatStance.enabled()` :121
+- `ThreatStance.forget()` :126 - Called on load:
+- `ThreatStance.stance()` :138 - The sector's stance;
+- `ThreatStance.stanceName()` :144
+- `ThreatStance.chestFull()` :154 - Whether the chest is full, as the last pass read it:
+- `ThreatStance.losingPressure()` :168 - How far the swarm is losing the war, 0-1, as the last pass read it (ThreatOffensive shrinks its reach and horizon by it):
+- `ThreatStance.losingSummary()` :175 - The losing pressure's reading for the logs:
 ### what the rest of the hive reads
-- `ThreatStance.expansionShare()` :176 - The share of the posture's appetite trySpread commits:
-- `ThreatStance.extraWantFP(MarketAPI market)` :186 - The strike a pressing staging colony builds past its want;
-- `ThreatStance.feedsPressed()` :193 - Consolidating, a quiet colony feeds a THREATENED system too, not only one under attack.
-- `ThreatStance.strikeTargetMult(MarketAPI market, StarSystemAPI source, float odds)` :206 - The strike pick's weight for this world from this hive system, given the odds the strike gate reads (defence over strike times siegeBreakOffRatio).
-- `ThreatStance.stagingAgainstHive(MarketAPI market)` :232 - Whether the base stages against a hive:
-- `ThreatStance.spreadMult(StarSystemAPI system)` :239 - Expanding, a spread candidate far from the strongest rival's worlds weighs more;
+- `ThreatStance.expansionShare()` :194 - The share of the posture's appetite trySpread commits:
+- `ThreatStance.extraWantFP(MarketAPI market)` :204 - The strike a pressing staging colony builds past its want;
+- `ThreatStance.feedsPressed()` :211 - Consolidating, a quiet colony feeds a THREATENED system too, not only one under attack.
+- `ThreatStance.strikeTargetMult(MarketAPI market, StarSystemAPI source, float odds)` :224 - The strike pick's weight for this world from this hive system, given the odds the strike gate reads (defence over strike times siegeBreakOffRatio).
+- `ThreatStance.stagingAgainstHive(MarketAPI market)` :250 - Whether the base stages against a hive:
+- `ThreatStance.spreadMult(StarSystemAPI system)` :257 - Expanding, a spread candidate far from the strongest rival's worlds weighs more;
 ### the attrition ledger (ThreatPosture.noteBattle)
-- `ThreatStance.noteTrend(float lost, float killed)` :251 - Books a battle's Threat FP lost and enemy FP sunk.
-- `ThreatStance.yearTrend(float day)` :280 - {Threat FP lost, enemy FP sunk} over the losing window to this day, month by month.
-- `ThreatStance.toArray(List<Float> list)` :294
-- `ThreatStance.trend(float day)` :301 - {lost, killed} decayed to this day;
-- `ThreatStance.hiveTrend(float day, int now)` :313 - Records the live colony count and returns the change over HIVE_WINDOW_DAYS.
-- `ThreatStance.hivePeak(float day)` :343 - The most live colonies the hive held over the losing window (hiveTrend's history).
+- `ThreatStance.noteTrend(float lost, float killed)` :269 - Books a battle's Threat FP lost and enemy FP sunk.
+- `ThreatStance.yearTrend(float day)` :298 - {Threat FP lost, enemy FP sunk} over the losing window to this day, month by month.
+- `ThreatStance.toArray(List<Float> list)` :312
+- `ThreatStance.trend(float day)` :319 - {lost, killed} decayed to this day;
+- `ThreatStance.hiveTrend(float day, int now)` :331 - Records the live colony count and returns the change over HIVE_WINDOW_DAYS.
+- `ThreatStance.hivePeak(float day)` :361 - The most live colonies the hive held over the losing window (hiveTrend's history).
 ### the pass
-- `ThreatStance.evaluate(Pass p, float day, float sumHeld)` :370 - Reads the stance from a posture pass:
-- `ThreatStance.compare(String a, String b)` :503
-- `ThreatStance.facing(Map<String, Set<String>> facing, String factionId)` :563
-- `ThreatStance.weakTargets(String systemId, List<MarketAPI> known, Map<String, float[]> defMemo, Map<String, Float> ratios, float pressNeed)` :581 - The best weak world a hive system could strike:
-- `ThreatStance.strength(int points)` :644
-- `ThreatStance.heaviestRow(MarketAPI market)` :649 - The staging colony's costliest size-table row:
-- `ThreatStance.expeditionSize(int[] row)` :663 - The expedition size a swarm of this row re-embodies as (ThreatColonyManager.expeditionSizeFor's tiers).
-- `ThreatStance.monthLine()` :672 - The monthly line's figure:
+- `ThreatStance.evaluate(Pass p, float day, float sumHeld)` :388 - Reads the stance from a posture pass:
+- `ThreatStance.compare(String a, String b)` :531
+- `ThreatStance.facing(Map<String, Set<String>> facing, String factionId)` :598
+- `ThreatStance.weakTargets(String systemId, List<MarketAPI> known, Map<String, float[]> defMemo, Map<String, Float> ratios, float pressNeed)` :616 - The best weak world a hive system could strike:
+- `ThreatStance.strength(int points)` :679
+- `ThreatStance.heaviestRow(MarketAPI market)` :684 - The staging colony's costliest size-table row:
+- `ThreatStance.expeditionSize(int[] row)` :698 - The expedition size a swarm of this row re-embodies as (ThreatColonyManager.expeditionSizeFor's tiers).
+- `ThreatStance.monthLine()` :707 - The monthly line's figure:
 
 ## ThreatStrikeFGI (1986 lines)
 - `ThreatStrikeFGI.ThreatStrikeFGI(GenericRaidParams params)` :35 - A raid fleet-group whose fleets are authentic Threat swarms (built via the vanilla threat fleet factory) instead of doctrine-generated faction fleets.
