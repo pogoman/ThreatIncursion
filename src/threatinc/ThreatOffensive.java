@@ -85,8 +85,21 @@ public class ThreatOffensive {
 		}
 
 		// the prongs: one a target system, sized for the strongest defence seen in it
-		boolean losing = ThreatStance.losing();
+		// losing is a war's verdict (hw45b: an exchange lost before any war read as losing, and with nothing
+		// within reach the war never opened); losing with nothing near, the swarm takes what it knows
+		boolean losing = ThreatStance.losing() && !ThreatWarState.warFactionIds().isEmpty();
 		float nearLY = Math.max(0f, ThreatIncConfig.offensiveNearLY());
+		if (losing && nearLY > 0f) {
+			boolean anyNear = false;
+			for (MarketAPI target : candidates) {
+				String near = target.getStarSystem() != null ? nearest(target, sources) : null;
+				if (near != null && Misc.getDistanceLY(sources.get(near).getLocation(), target.getStarSystem().getLocation()) <= nearLY) {
+					anyNear = true;
+					break;
+				}
+			}
+			if (!anyNear) nearLY = 0f;
+		}
 		Map<String, float[]> memo = new HashMap<String, float[]>();
 		Map<String, Prong> bySystem = new HashMap<String, Prong>();
 		float margin = Math.max(1f, ThreatIncConfig.strikeStagedMargin());
@@ -147,14 +160,19 @@ public class ThreatOffensive {
 		// the fuel and the supplies away are summed over the prongs too (hw42a: priced one at a time, the
 		// first prong's passage took the whole stock and the held one could not sail on its day)
 		float fuelStock = ThreatFuel.stock(), fuelBudget = fuelStock + Math.max(0f, ThreatFuel.perMonth()) * monthsLeft;
+		// ...and the supplies the prongs burn away (hw45a: a hive banking none could never sail, and never saved)
+		float suppliesStock = ThreatReach.freeStock(), suppliesFlow = Math.max(0f, Math.min(1e9f, ThreatReach.spare()));
+		float supplies = 0f;
 		List<Prong> campaign = new ArrayList<Prong>();
 		float cost = 0f, fuel = 0f, away = 0f, longest = 0f;
 		for (Prong p : prongs) {
 			if (cost + p.cost > budget || fuel + p.fuel > fuelBudget) continue;
-			if (away + p.fp > ThreatReach.sustainableFP(Math.max(longest, p.days))) continue;
+			float need = ThreatReach.suppliesPerMonth(p.fp) * Math.max(1f, p.days) / 30f;
+			if (supplies + need > suppliesStock + suppliesFlow * (monthsLeft + Math.max(longest, p.days) / 30f)) continue;
 			campaign.add(p);
 			cost += p.cost;
 			fuel += p.fuel;
+			supplies += need;
 			away += p.fp;
 			longest = Math.max(longest, p.days);
 		}
@@ -173,16 +191,19 @@ public class ThreatOffensive {
 			fuel = 0f;
 			away = 0f;
 			longest = 0f;
+			supplies = 0f;
 			for (Prong p : campaign) {
 				cost += p.cost;
 				fuel += p.fuel;
 				away += p.fp;
 				longest = Math.max(longest, p.days);
+				supplies += ThreatReach.suppliesPerMonth(p.fp) * Math.max(1f, p.days) / 30f;
 			}
-			if (cost <= budget && fuel <= fuelBudget && away <= ThreatReach.sustainableFP(longest)) break;
+			if (cost <= budget && fuel <= fuelBudget
+					&& supplies <= suppliesStock + suppliesFlow * (monthsLeft + longest / 30f)) break;
 			campaign.remove(campaign.size() - 1);
 		}
-		String where = losing ? "losing, within " + (int) nearLY + " ly" : "all known";
+		String where = losing ? (nearLY > 0f ? "losing, within " + (int) nearLY + " ly" : "losing, nothing near - all known") : "all known";
 		if (campaign.isEmpty()) {
 			ThreatIncConfig.logQuiet("offensive", "Offensive: nothing the fund pays by the deadline - " + prongs.size()
 					+ " target(s) " + where + ", fund " + (int) fund + " FP (+" + (int) perMonth + "/mo), "
@@ -190,11 +211,14 @@ public class ThreatOffensive {
 			if (day >= deadline) setStartDay(day);
 			return;
 		}
-		if ((fund < cost || fuelStock < fuel) && day < deadline) {
+		boolean sustained = away <= ThreatReach.sustainableFP(longest);
+		if ((fund < cost || fuelStock < fuel || !sustained) && day < deadline) {
+			// the supplies it waits on are demand on the stock too
+			if (!sustained && supplies > suppliesStock) ThreatFuel.noteDemand(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES, supplies - suppliesStock);
 			// the fuel it waits on is demand on the stock: the planner builds the plants (ThreatFuel.heldShort)
 			if (fuelStock < fuel && ThreatIncConfig.strikeWaitBooksFuel()) ThreatFuel.heldShort("the offensive", fuel);
 			ThreatIncConfig.log("Offensive: saving for " + campaign.size() + " of " + prongs.size() + " target(s) " + where
-					+ ", " + (int) cost + " FP and " + (int) fuel + " fuel; fund " + (int) fund + " FP (+" + (int) perMonth
+					+ ", " + (int) cost + " FP and " + (int) fuel + " fuel and " + (int) supplies + " supplies (" + (!sustained ? "not yet kept, " : "") + (int) suppliesStock + " free, +" + (int) suppliesFlow + "/mo spare); fund " + (int) fund + " FP (+" + (int) perMonth
 					+ "/mo), fuel " + (int) fuelStock + " (+" + (int) ThreatFuel.perMonth() + "/mo), launch in "
 					+ (int) Math.ceil(Math.max(Math.max(0f, cost - fund) / Math.max(1f, perMonth),
 							Math.max(0f, fuel - fuelStock) / Math.max(1f, ThreatFuel.perMonth())))
