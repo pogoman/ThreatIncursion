@@ -398,3 +398,8 @@ The first checkpoint, `ck1` on the Aphelion sector (2026-10-07 19:42): the war o
 the last save before it at 1490. The one game alone fast-forwarded at 216 days a minute - a batch of
 three runs at ~36 a game (hw56: 2,720 days in 75 minutes), so one game at a time moves twice the days
 an hour that three side by side do; the checkpoint itself took 8 minutes of fast-forward.
+**One game at a time** (the user, 2026-10-07, on the speed figures above: "do only one sequential run
+then"): batches run as a Bash loop over single `sbs.ps1` calls from the checkpoint, e.g.
+`for g in a b c; do powershell ... sbs.ps1 -Tags hw57$g -Bases "hw57$g=save_Xck1" -Days 2300 -MaxMinutes 45; done`,
+each game ~11 minutes of fast-forward plus a 3-minute load. `watch.sh` ends only after two quiet polls
+without a game, so the gap between games does not stop it.
