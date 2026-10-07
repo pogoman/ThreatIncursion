@@ -23,7 +23,7 @@ Built today, all committed, pushed with this file:
   (`setExpected(fp, target)`) and logs `Swarm intel: a strike sized for N ended with no read of what it met`
   when it skips. Unverified - the first thing to read in the next batch's log is whether
   `Swarm intel: a strike at <faction> sized for X met Y; its answer is now Rx` appears.
-- hw47 (fb9d4a86, second sector): **humans 3-0** by eradication. The mechanism worked; the economy bound it:
+- hw47 (daa6bdd7, second sector): **humans 3-0** by eradication. The mechanism worked; the economy bound it:
   the hives banked 0 supplies the whole run, so after the 8-10k opening (lost each time at Chicomoztoc) every
   campaign was 1-3 prongs of 1-7k. The swarm paid the same supplies to keep a 20-30k FP navy at home.
 
@@ -114,10 +114,10 @@ holds through one lost opening.
 
 ## 5. Commits today, newest first (all on `main`)
 
-`f4a32f40` hw42-47 recorded, met-report fix; `fb9d4a86` supplies as canSustain allows; `7a9b2d4f` supplies
-budget, losing needs a war; `812bfc27` sized for the expected answer; `6b0dcc0c` pricing past the live gates;
-`e4a41194` fuel summed; `ddd79019`/`c465ee92` arriving together; `78a72e0d` the offensive; `1c944535` the hive's
-navy above its patrols pays supplies; `21489df9`...`3eba0953` the cut-back and hw38-41.
+`4430374c` hw42-47 recorded, met-report fix; `daa6bdd7` supplies as canSustain allows; `445bb134` supplies
+budget, losing needs a war; `9a64880a` sized for the expected answer; `f25156ae` pricing past the live gates;
+`13ed59c8` fuel summed; `8f5a2f01`/`03baaaf3` arriving together; `7792a9c8` the offensive; `f1125311` the hive's
+navy above its patrols pays supplies; `386db992`...`5eeb5ff2` the cut-back and hw38-41.
 
 ## 6. The user's standing rules (memory does not travel)
 
