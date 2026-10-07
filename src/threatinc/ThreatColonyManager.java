@@ -5048,6 +5048,8 @@ public class ThreatColonyManager {
 	protected static void recycleForUpkeep(MarketAPI market, List<CampaignFleetAPI> fleets, float income,
 			float upkeep) {
 		if (bankedFP(market) >= 0f || income >= upkeep) return;
+		// the fleets a held prong of the offensive will muster are its, not the bank's to scrap (earmarked)
+		if (market.getStarSystem() != null && ThreatOffensive.earmarked(market.getStarSystem().getId()) > 0) return;
 		float rate = upkeepPerDay(1f);
 		float share = ThreatReturns.hullShare();
 		int budget = fleets.size();
@@ -5625,6 +5627,9 @@ public class ThreatColonyManager {
 				for (MarketAPI curr : colonies) {
 					if (curr == receiver || curr.getPrimaryEntity() == null) continue;
 					if (!canRebuildGarrison(curr)) continue;
+					// a system whose spare the offensive's held prongs will muster on their day keeps it (hw50c: eight
+					// sends drained a staging system between a launch and its prongs' days, and every one was refused)
+					if (curr.getStarSystem() != null && ThreatOffensive.earmarked(curr.getStarSystem().getId()) > 0) continue;
 					if (countLiveGarrison(curr.getId()) < 2) continue;
 					if (ThreatPosture.recentlyReceived(curr)) continue;
 					// what is on station, not what is flying in
@@ -5795,6 +5800,9 @@ public class ThreatColonyManager {
 		for (MarketAPI curr : colonies) {
 			if (curr == receiver || curr.getPrimaryEntity() == null) continue;
 			if (!canRebuildGarrison(curr)) continue;
+			// a system whose spare the offensive's held prongs will muster on their day keeps it (hw50c: eight
+			// sends drained a staging system between a launch and its prongs' days, and every one was refused)
+			if (curr.getStarSystem() != null && ThreatOffensive.earmarked(curr.getStarSystem().getId()) > 0) continue;
 			if (countLiveGarrison(curr.getId()) < 2) continue;
 			if (!hasSwarmOfTier(curr, needTier)) continue;
 			int dDesired = nominalGarrison(curr);
