@@ -62,6 +62,7 @@ while :; do
   done
   [ $fail = 1 ] && { echo "FAIL SIGNAL - stop the batch, or read on with the signal in the ignore list"; exit 1; }
   [ $(( ($(date +%s)-start)/60 )) -ge $MAX ] && exit 0
-  tasklist 2>/dev/null | grep -qi java.exe || { echo "batch ended"; exit 0; }
+  # sequential runs (the user, 2026-10-07: one game at a time) relaunch between games: two quiet polls end the watch
+  if tasklist 2>/dev/null | grep -qi java.exe; then nojava=0; else nojava=$((nojava + 1)); [ "$nojava" -ge 2 ] && { echo "batch ended"; exit 0; }; fi
   sleep 180
 done
