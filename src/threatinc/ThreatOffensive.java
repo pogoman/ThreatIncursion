@@ -398,7 +398,18 @@ public class ThreatOffensive {
 						held++;
 					} else {
 						addEarmark(PENDING, p.plan, -1);
-						if (im.launchStrike(p.staging, p.source, p.target, p.expected) == null) continue;
+						// the campaign's supplies gate (above) stands for its prongs' own: launchStrike's per-fleet
+						// canSustain is skipped and the plan capped at the size priced, as for a held prong (poll)
+						ThreatReach.setPrepaid(p.supplies());
+						IncursionManager.setPricedFP(p.fp);
+						boolean sailed;
+						try {
+							sailed = im.launchStrike(p.staging, p.source, p.target, p.expected) != null;
+						} finally {
+							ThreatReach.clearPrepaid();
+							IncursionManager.setPricedFP(Float.MAX_VALUE);
+						}
+						if (!sailed) continue;
 						if (!ThreatIncConfig.hiveFogOfWar()) ThreatIncData.markDiscovered(p.source.getId());
 						sent++;
 					}
@@ -650,7 +661,7 @@ public class ThreatOffensive {
 			try {
 				sailed = IncursionManager.instance.launchStrike(staging, source, target, expected) != null;
 			} finally {
-				ThreatReach.setPrepaid(0f);
+				ThreatReach.clearPrepaid();
 				IncursionManager.setPricedFP(Float.MAX_VALUE);
 				IncursionManager.setLaunchingEarmark(null);
 			}
