@@ -2170,7 +2170,8 @@ public class ThreatConvoys {
 		for (int i = 0; i < remaining.length; i++) {
 			sailed[i] += got[i];
 			// what the escort burnt of the load is gone, not left for the next fleet
-			float burnt = h.burnt != null && i >= 2 ? h.burnt[i - 2] : 0f;
+			// (burnt is fuel and supplies only; a 5-long load's ship hulls burn nothing)
+			float burnt = h.burnt != null && i >= 2 && i - 2 < h.burnt.length ? h.burnt[i - 2] : 0f;
 			remaining[i] = Math.max(0f, remaining[i] - got[i] - burnt);
 			// loads are whole units: an ask of 40.6 is met by 40
 			if (got[i] < (float) Math.floor(h.ask[i])) whole = false;
