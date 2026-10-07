@@ -61,7 +61,12 @@ Every monthly pass (`ThreatOffensive.pass`, from `IncursionManager.tryStrikes`):
    strikes them all every month.
 
 The deadline counts from the campaign's start, not the pass: a plan sized by "fund + 12
-months of income" every month would grow as the fund did and never launch. The opening
+months of income" every month would grow as the fund did and never launch. That is what hw42-49 did
+anyway: "no start yet" was -1 against a calendar of day -642,000, so the start was reset every pass,
+every saving line read "deadline in 12", and the deadline's launch never ran (NaN since hw50). The
+pricing's spare flow is signed, as `canSustain` reads it (floored at 0, it passed sets the launch gate
+refused); the per-faction prong counts are rebuilt each time the tail is dropped; the prongs sail in the
+order the spare was shared, the farthest first. The opening
 floor stays per strike, so an opening campaign is one or more 8,000 FP prongs; with a
 12-month horizon the war opens later than before (the fund saves for more than one) - the
 first thing to read in the runs.
@@ -82,8 +87,10 @@ prong is priced for `expected` = (the defence seen + the faction's **navy seen e
 system) shared among the campaign's prongs at that faction) x the faction's **answer ratio**
 (`responseRatio`: what its worlds met the swarm's earlier strikes with over what they were sized for,
 `ThreatStrikeFGI` samples the hostile strength daily while in the system - an off-screen strike by its
-route's place, since hw49; before, the 28 of hw48 never read anything - and at the off-screen fight,
-`noteMet` on ending; decayed 0.7 a strike, never below 1). Splitting a faction's navy among the prongs is
+route's place - and at the off-screen fight (`noteMet`), reported on ending; decayed 0.7 a strike, never
+below 1). Until hw50 no strike on the second sector ever reported: "not sampled yet" was a day of -1 and
+that sector's clock reads day -642,000, so every strike of hw42-49 "ended with no read" and the ratio
+stayed 1 (a flag, `metRead`, since). Splitting a faction's navy among the prongs is
 the multi-prong's payoff. The campaign is priced once at the candidates' counts and again at its own
 (`price`), dropping from the tail while the means no longer pay it; `launchStrike(..., expectedDef)` sizes
 the real strike for the same figure (log: `defence expected N`).
@@ -108,13 +115,20 @@ navy charge. On since 2026-10-07 (hw48).
   `system:fleets;...`): `stagedSpares` leaves them out for every other strike until the day,
   when the prong re-plans with what is there. At launch the held prongs are scheduled first,
   then each prong sailing now launches with the spare the others leave it (`PENDING`).
-- **Supplies**: a garrison swarm that leaves stops paying the navy charge, so a strike's
-  supplies away count only what it burns beyond its swarms' home charge (`ThreatReach.awayFP`,
-  `standingUpkeepMult` capped at 1, times the share of the navy charge paid last month,
-  `ThreatColonyManager.navyPaidShare` - an unpaid charge frees nothing): in the campaign's sum,
-  `canSustain` at launch and `ThreatReach.commit`. A trip with no new burn is always sustainable. Fleets
-  away are paid before the navy charge (`maintainColonyGarrisons`). Nothing sailed: "none of N planned
-  prong(s) could sail today", the campaign kept to its deadline.
+- **Supplies**: the navy charge the garrisons above the patrols pay at home is in the feed's spare
+  (`ThreatColonyUpkeep.navyChargePerMonth`, since hw50 - before, the spare left it out and was overstated
+  by the whole charge, hw48's "credited in full, the strikes away went unpaid" and hw49's -1,562 a month
+  the month after a launch; two corrections layered on the symptom, `navyPaidShare` and a shed add-back,
+  are gone). So a garrison swarm that leaves moves its burn: a strike's supplies away count only what it
+  burns beyond its swarms' home charge (`ThreatReach.awayFP`, `standingUpkeepMult` capped at 1) in the
+  campaign's sum, `canSustain` at launch and `ThreatReach.commit`, and the next feed reads the charge
+  lower by itself. A trip with no new burn is always sustainable. Fleets away are paid before the navy
+  charge (`maintainColonyGarrisons`). Nothing sailed: "none of N planned prong(s) could sail today", the
+  campaign kept to its deadline.
+- **Held prongs reserve their supplies**: the schedule entry's 9th field is the supplies a month the prong
+  will burn; `ThreatReach.spare` keeps the sum back (`ThreatOffensive.heldSuppliesPerMonth`) so a relief,
+  a send or the next campaign cannot spend it. Its own share comes back the day it sails. During a launch
+  only the entries from before it count (every prong of the launch was priced against the whole spare).
 
 ## 4. Losing, by degree (`ThreatStance.losingPressure`, the user, 2026-10-07)
 
@@ -135,4 +149,4 @@ p = the larger of two trends over `losingWindowDays` (365), `StanceRules.losingP
 
 Read each posture pass (`evaluate`, stored in `threatinc_stance` [5-9]); a change of 0.1 logs
 `Stance: losing pressure a -> b (n of a k-hive peak fallen, exchange -x of y made in 365d)`.
-`losing()` is now p >= 0.5. The stance's own PRESS gate keeps the 60-day exchange.
+The stance's own PRESS gate keeps the 60-day exchange; nothing reads a yes/no "losing" any more.

@@ -178,6 +178,24 @@ public class ThreatColonyUpkeep {
 		return v instanceof Float ? (Float) v : 0f;
 	}
 
+	/** Supplies a month the navy above the patrols pays at home, as the last feed read it (navyChargePerMonth). */
+	public static float navyPerMonth() {
+		Object v = data().get("navy");
+		return v instanceof Float ? (Float) v : 0f;
+	}
+
+	/** Supplies a month every colony's garrison above its patrols costs now (ThreatColonyManager.payNavySupplies's rate x navyFP). */
+	public static float navyChargePerMonth() {
+		if (!ThreatIncConfig.threatSuppliesUpkeep()) return 0f;
+		float rate = ThreatReach.suppliesPerFP() * ThreatIncConfig.standingUpkeepMult();
+		if (rate <= 0f) return 0f;
+		float fp = 0f;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			fp += ThreatColonyManager.navyFP(m, ThreatIncData.garrisonsFor(m.getId()));
+		}
+		return fp * rate;
+	}
+
 	/** The share of the production, after fleets away, sustenance may take whatever the stance: the largest stance share. */
 	public static float sustainShare() {
 		float share = Math.max(ThreatIncConfig.feedShareExpand(),
@@ -249,8 +267,14 @@ public class ThreatColonyUpkeep {
 		for (Need n : needs) sustainMonth += n.sustain;
 		sustainMonth *= 30f / days;
 		float sustainCap = sustainShare();
+		// ...and the navy charge the garrisons above the patrols pay at home (ThreatColonyManager.payNavySupplies):
+		// a claim on the same stock, so a swarm that leaves on a strike moves its burn rather than adds one
+		// (ThreatReach.awayFP). hw48-49: left out, the spare was overstated by the whole charge and three
+		// corrections were layered on the symptom
+		float navyMonth = navyChargePerMonth();
 		data().put("fleets", Math.max(0f, fleetsPerMonth));
-		data().put("spare", ThreatFuel.perMonth(Commodities.SUPPLIES) - Math.max(0f, fleetsPerMonth)
+		data().put("navy", navyMonth);
+		data().put("spare", ThreatFuel.perMonth(Commodities.SUPPLIES) - Math.max(0f, fleetsPerMonth) - navyMonth
 				- (sustainCap > 0f ? sustainMonth / sustainCap : sustainMonth));
 		ThreatReach.clearCommitted();
 		if (needs.isEmpty()) return;

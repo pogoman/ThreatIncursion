@@ -255,10 +255,14 @@ public class ThreatReach {
 		committed = 0f;
 	}
 
-	/** Supplies a month the hive can still send away: the colonies' spare, less what was launched since it was read. */
+	/**
+	 * Supplies a month the hive can still send away: the colonies' spare, less what was launched
+	 * since it was read and what the offensive's held prongs will burn when they sail
+	 * (ThreatOffensive.heldSuppliesPerMonth - their campaign was priced with it).
+	 */
 	public static float spare() {
 		if (!ThreatColonyUpkeep.enabled()) return Float.MAX_VALUE;
-		return ThreatColonyUpkeep.spareSupplies() - committed;
+		return ThreatColonyUpkeep.spareSupplies() - committed - ThreatOffensive.heldSuppliesPerMonth();
 	}
 
 	/** Whether the hive can keep a fleet of {@code fp} away without starving a colony, on the month's flow alone. Always, billed reach off. */
@@ -307,14 +311,19 @@ public class ThreatReach {
 	 * The fleet points a strike of {@code fp} adds to the supplies the hive pays: the garrison
 	 * swarms in it ({@code garrisonFP}, the navy above the patrols) stop paying the navy charge
 	 * as they leave (ThreatColonyManager.payNavySupplies, standingUpkeepMult), so only the rest
-	 * is a new burn (the user, 2026-10-07: the navy is spent on the offensive, not kept at home) -
-	 * as far as that charge was paid (navyPaidShare, last month's): a charge that went unpaid
-	 * frees nothing (hw48: credited in full, the strikes away went unpaid instead).
+	 * is a new burn (the user, 2026-10-07: the navy is spent on the offensive, not kept at home).
 	 */
 	public static float awayFP(float fp, float garrisonFP) {
-		float credit = ThreatIncConfig.threatSuppliesUpkeep()
-				? Math.max(0f, Math.min(1f, ThreatIncConfig.standingUpkeepMult())) * ThreatColonyManager.navyPaidShare() : 0f;
-		return Math.max(0f, fp - Math.max(0f, garrisonFP) * credit);
+		return Math.max(0f, fp - Math.max(0f, garrisonFP) * garrisonCredit());
+	}
+
+	/**
+	 * The share of a garrison swarm's burn away its home navy charge no longer takes (awayFP): the
+	 * charge is in the feed's spare (ThreatColonyUpkeep.navyChargePerMonth), so a swarm leaving moves
+	 * its burn, and the next feed reads the charge lower by itself.
+	 */
+	protected static float garrisonCredit() {
+		return ThreatIncConfig.threatSuppliesUpkeep() ? Math.max(0f, Math.min(1f, ThreatIncConfig.standingUpkeepMult())) : 0f;
 	}
 
 	/** Whether the hive can pay a trip: its passage from the fuel stock, its supplies away from the spare. */
@@ -409,7 +418,9 @@ public class ThreatReach {
 		StringBuilder sb = new StringBuilder("Reach: spare ");
 		float spare = ThreatColonyUpkeep.enabled() ? ThreatColonyUpkeep.spareSupplies() : 0f;
 		sb.append((int) spare).append(" supplies/mo (fleets away ").append((int) ThreatColonyUpkeep.fleetsPerMonth())
-				.append("/mo, ").append(String.format("%.2f", suppliesPerFP())).append(" a FP)");
+				.append("/mo, navy charge ").append((int) (ThreatColonyUpkeep.enabled() ? ThreatColonyUpkeep.navyPerMonth() : 0f))
+				.append(", held prongs ").append((int) ThreatOffensive.heldSuppliesPerMonth())
+				.append(", ").append(String.format("%.2f", suppliesPerFP())).append(" a FP)");
 		for (String k : KINDS) {
 			int n = (int) num(d.get(k + ".n"));
 			sb.append("; ").append(k).append("s ").append(n);

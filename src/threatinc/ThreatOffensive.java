@@ -106,9 +106,10 @@ public class ThreatOffensive {
 		}
 	}
 
+	/** The campaign's start (the last launch), or NaN for none - never -1: the calendar's days are negative (facts.md, "Why is 0 a bad never"). */
 	protected static float startDay() {
 		Object v = Global.getSector().getPersistentData().get(KEY);
-		return v instanceof float[] && ((float[]) v).length > 0 ? ((float[]) v)[0] : -1f;
+		return v instanceof float[] && ((float[]) v).length > 0 ? ((float[]) v)[0] : Float.NaN;
 	}
 
 	protected static void setStartDay(float day) {
@@ -229,7 +230,8 @@ public class ThreatOffensive {
 		float fullHorizon = ThreatIncConfig.offensiveHorizonMonths();
 		float horizon = Math.max(1f, fullHorizon - (fullHorizon - ThreatIncConfig.offensiveLosingMonths()) * pressure);
 		float start = startDay();
-		if (start < 0f || start > day) {
+		// (hw42-49: "-1 for none" against day -642,000 reset the start every pass, so the deadline never came)
+		if (Float.isNaN(start) || start > day) {
 			start = day;
 			setStartDay(day);
 		}
@@ -242,7 +244,8 @@ public class ThreatOffensive {
 		// ...and the supplies the prongs burn away: the free stock and the spare flow over the trip, as canSustain
 		// allows - not the flow to the deadline (hw46: the hive banks none of its spare, so a campaign waiting on
 		// it waited forever); what the set wants beyond that is booked as demand for the planner
-		float suppliesStock = ThreatReach.freeStock(), suppliesFlow = Math.max(0f, Math.min(1e9f, ThreatReach.spare()));
+		// (the flow signed, as canSustain reads it: floored at 0 the pricing passed a set the launch gate refused)
+		float suppliesStock = ThreatReach.freeStock(), suppliesFlow = Math.min(1e9f, ThreatReach.spare());
 		float supplies = 0f, suppliesShort = 0f;
 		List<Prong> campaign = new ArrayList<Prong>();
 		float cost = 0f, fuel = 0f, away = 0f, longest = 0f, spare = 0f;
@@ -268,12 +271,13 @@ public class ThreatOffensive {
 		}
 		// fewer prongs at a faction than were priced: each meets a bigger share of its navy - re-price
 		// the set, and drop from its tail while the means no longer pay it
-		Map<String, Integer> inCampaign = new HashMap<String, Integer>();
-		for (Prong p : campaign) {
-			Integer n = inCampaign.get(p.target.getFactionId());
-			inCampaign.put(p.target.getFactionId(), n == null ? 1 : n + 1);
-		}
 		while (!campaign.isEmpty()) {
+			// the counts of the set as it stands now: a prong dropped from the tail leaves the rest a bigger share
+			Map<String, Integer> inCampaign = new HashMap<String, Integer>();
+			for (Prong p : campaign) {
+				Integer n = inCampaign.get(p.target.getFactionId());
+				inCampaign.put(p.target.getFactionId(), n == null ? 1 : n + 1);
+			}
 			// the spare is shared out in the order the prongs will sail, the farthest first: each muster takes
 			// the first fleets of a system's walk on its day (hw48: shared in rank order, a held prong met a bigger
 			// fleet on its day than it was priced for, and its set-aside fuel did not pay the passage)
@@ -344,9 +348,16 @@ public class ThreatOffensive {
 		// bill leaves the fund now and comes back the day it sails (poll)
 		float arriveIn = 0f;
 		for (Prong p : campaign) arriveIn = Math.max(arriveIn, arrival(p.ly));
+		// in sail order, the farthest first - the order the spare was shared in (each launch musters the head of a walk)
+		List<Prong> bySail = new ArrayList<Prong>(campaign);
+		java.util.Collections.sort(bySail, new java.util.Comparator<Prong>() {
+			public int compare(Prong a, Prong b) {
+				return Float.compare(b.ly, a.ly);
+			}
+		});
 		List<Prong> go = new ArrayList<Prong>();
 		float fundLeft = ThreatColonyManager.strikeFund(), fuelLeft = ThreatFuel.stock();
-		for (Prong p : campaign) {
+		for (Prong p : bySail) {
 			if (p.cost > fundLeft + 0.5f || p.fuel > fuelLeft + 0.5f) continue;
 			if (IncursionManager.isActiveStrikeTarget(p.target)) continue;
 			fundLeft -= p.cost;
@@ -360,6 +371,7 @@ public class ThreatOffensive {
 			// the held prongs first: their bills, fuel and garrison swarms set aside until their day (earmarked);
 			// then each prong that sails now, with the spare the others leave it
 			PENDING.clear();
+			heldBefore = schedule().size();
 			for (Prong p : go) {
 				if (arriveIn - arrival(p.ly) < 1f) addEarmark(PENDING, p.plan, 1);
 			}
@@ -372,7 +384,8 @@ public class ThreatOffensive {
 						ThreatColonyManager.addStrikeFund(-p.cost);
 						ThreatFuel.setStock(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, ThreatFuel.stock() - p.fuel);
 						schedule().add(p.target.getId() + "|" + p.staging.getId() + "|" + p.source.getId() + "|"
-								+ (day + wait) + "|" + p.cost + "|" + p.fuel + "|" + p.expected + "|" + earmark(p.plan));
+								+ (day + wait) + "|" + p.cost + "|" + p.fuel + "|" + p.expected + "|" + earmark(p.plan) + "|"
+								+ ThreatReach.suppliesPerMonth(p.awayFP()));
 						held++;
 					} else {
 						addEarmark(PENDING, p.plan, -1);
@@ -391,6 +404,7 @@ public class ThreatOffensive {
 			}
 		} finally {
 			PENDING.clear();
+			heldBefore = -1;
 		}
 		if (sent + held == 0) {
 			// nothing sailed (each prong's own launch says why): the campaign stands, saved for, until its deadline
@@ -437,6 +451,33 @@ public class ThreatOffensive {
 
 	/** During a launch: the garrison fleets the prongs yet to sail today were given (hive system id -> fleets). */
 	protected static final Map<String, Integer> PENDING = new HashMap<String, Integer>();
+
+	/** During a launch: the schedule's entries from before it (heldSuppliesPerMonth); -1 otherwise. */
+	protected static int heldBefore = -1;
+
+	/**
+	 * Supplies a month the held prongs will burn once they sail (the schedule's 9th field):
+	 * ThreatReach.spare keeps it back so no other trip - a relief, a send, the next campaign - spends
+	 * what their campaign was priced with. A prong's own share comes back the day it sails (poll takes
+	 * its entry first). During a launch only the prongs held before it count: every prong of the launch
+	 * was priced against the whole spare (pass).
+	 */
+	public static float heldSuppliesPerMonth() {
+		if (Global.getSector() == null) return 0f;
+		List<String> list = schedule();
+		int n = heldBefore >= 0 ? Math.min(heldBefore, list.size()) : list.size();
+		float sum = 0f;
+		for (int i = 0; i < n; i++) {
+			String[] f = list.get(i).split("\\|");
+			if (f.length < 9) continue;
+			try {
+				sum += Float.parseFloat(f[8]);
+			} catch (NumberFormatException x) {
+				// a malformed entry reserves nothing
+			}
+		}
+		return sum;
+	}
 
 	/** "systemId:fleets;..." - the garrison fleets the plan takes from each hive system. */
 	protected static String earmark(IncursionManager.StagedPlan plan) {
@@ -499,7 +540,7 @@ public class ThreatOffensive {
 
 	protected static final String KEY_SCHEDULE = "threatinc_offensiveSchedule";
 
-	/** "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark" per prong waiting its day (earmark: earmarked). */
+	/** "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth" per prong waiting its day (earmark: earmarked; supplies: heldSuppliesPerMonth). */
 	@SuppressWarnings("unchecked")
 	protected static List<String> schedule() {
 		Object v = Global.getSector().getPersistentData().get(KEY_SCHEDULE);

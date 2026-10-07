@@ -139,11 +139,6 @@ public class ThreatStance {
 		return NAMES[stance()];
 	}
 
-	/** Whether the swarm is more than half losing the war (losingPressure 0.5 or more). */
-	public static boolean losing() {
-		return losingPressure() >= 0.5f;
-	}
-
 	/**
 	 * How far the swarm is losing the war, 0-1, as the last pass read it (ThreatOffensive shrinks its
 	 * reach and horizon by it): a trend over losingWindowDays, never one blow - hives fallen below the
