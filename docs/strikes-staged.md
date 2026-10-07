@@ -70,7 +70,9 @@ anyway: "no start yet" was -1 against a calendar of day -642,000, so the start w
 every saving line read "deadline in 12", and the deadline's launch never ran (NaN since hw50). The
 pricing's spare flow is signed, as `canSustain` reads it (floored at 0, it passed sets the launch gate
 refused); the per-faction prong counts are rebuilt each time the tail is dropped; the prongs sail in the
-order the spare was shared, the farthest first. The opening
+order the spare was shared, the farthest first. Dropping while the means no longer pay takes first a prong no
+budget pays on its own (hw58c: a 19k FP prong beyond the fuel budget sat at the head while the tail went one
+by one, "nothing the fund pays" for months with 44-47k in the fund - fixed 2026-10-07 for hw61), else the tail. The opening
 floor stays per strike, so an opening campaign is one or more 8,000 FP prongs; with a
 12-month horizon the war opens later than before (the fund saves for more than one) - the
 first thing to read in the runs.
