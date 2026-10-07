@@ -17,10 +17,18 @@
 #
 # Status lines in %TEMP%\threatinc-tests\sbs-status.txt, the logs ti-<tag>.txt and exc-<tag>.txt beside it,
 # the dumps in tools\warsim\validation\<tag>; sbs-go.done at the end. The user's settings are restored.
-# Never saves a game. Run with no game open; it kills any that is.
+# Saves a game only in checkpoint mode (the user, 2026-10-07: "why wait 15 minutes every time - a save from
+# right before the threat attack"):
+#   sbs.ps1 -Tags ck -Checkpoint ck1 -Base save_X        one game, F5 every -SaveEvery war days into ITS OWN
+#                                                        clone (self-contained, so F5 writes there and nowhere
+#                                                        else), stopped at the first "Offensive launched" /
+#                                                        "Strike launched"; the last save from BEFORE that
+#                                                        line becomes <Starsector>\saves\save_Xck1 (clone.ps1)
+#   sbs.ps1 -Tags hw57a,hw57b,hw57c -Bases "hw57a=save_Xck1;hw57b=save_Xck1;hw57c=save_Xck1" -Days 2400
+# Otherwise never saves a game. Run with no game open; it kills any that is.
 param([Parameter(Mandatory = $true)][string[]]$Tags, [int]$Days = 3750, [int]$TrialSeconds = 0,
   [string]$Knobs = "", [int]$IdleSeconds = 60, [int]$MaxMinutes = 240, [switch]$KeepSettings,
-  [string]$Base = "", [string]$Bases = "")
+  [string]$Base = "", [string]$Bases = "", [string]$Checkpoint = "", [int]$SaveEvery = 60)
 $star = 'C:\Program Files (x86)\Fractal Softworks\Starsector'
 $core = "$star\starsector-core"; $saves = "$star\saves"; $root = "$saves\_sbs"
 $mod = "$star\mods\ThreatIncursion"; $h = "$mod\tools\test-harness"; $ff = "$h\fastforward"
@@ -185,7 +193,8 @@ foreach ($tag in $Tags) {
   }
   [SBS]::SetWindowPos($hwnd, [IntPtr](-2), 0, 0, 0, 0, 0x13) | Out-Null
   Say ("$tag loaded, pid $procId, clock " + $(if ($running) { "running" } else { "NOT RUNNING" }))
-  $g += [pscustomobject]@{ Tag = $tag; ProcId = $procId; Hwnd = $hwnd; Inst = $inst; Done = $false; Last = -1; LastAt = (Get-Date); Nudged = 0 }
+  $g += [pscustomobject]@{ Tag = $tag; ProcId = $procId; Hwnd = $hwnd; Inst = $inst; Done = $false; Last = -1; LastAt = (Get-Date); Nudged = 0
+    Base = $b; LastSaveWar = -1; LaunchWar = -1 }
 }
 
 if ($g.Count -gt 0) {
@@ -225,6 +234,28 @@ if ($g.Count -gt 0) {
           if ($x.Nudged -eq 2) { Post $x.Hwnd 0x20 0x39 } else { Post $x.Hwnd 0x0D 0x1C; Start-Sleep 1; Post $x.Hwnd 0x1B 0x01 }
           Say "$($x.Tag) clock stands at day ${run}: nudge $($x.Nudged)"
         }
+        if ($Checkpoint -and $c) {
+          $war = $c.War
+          if ((Hits "$d\ti-$($x.Tag).txt" '^(Offensive|Strike) launched') -gt 0) {
+            # the war has opened: the save from before this line is the checkpoint (harvested below)
+            $x.LaunchWar = $war; $x.Done = $true
+            Stop-Process -Id $x.ProcId -Force -ErrorAction SilentlyContinue
+            Say "$($x.Tag) WAR OPENED at war day $war; last save at war day $($x.LastSaveWar)"
+          } elseif ($war - $x.LastSaveWar -ge $SaveEvery) {
+            # F5 with Shift let go; the save has landed when the clone's descriptor is rewritten
+            [SBS]::keybd_event(0xA0, 0x2A, 2, [UIntPtr]::Zero); $held = $false
+            $ffSeconds += ((Get-Date) - $tick).TotalSeconds
+            Start-Sleep -Milliseconds 400
+            $desc = "$($x.Inst)\saves\$($x.Base)sbs$($x.Tag)\descriptor.xml"
+            $before = (Get-Item $desc -ErrorAction SilentlyContinue).LastWriteTime
+            Post $x.Hwnd 0x74 0x3F
+            $saveDeadline = (Get-Date).AddSeconds(90)
+            do { Start-Sleep 2; $after = (Get-Item $desc -ErrorAction SilentlyContinue).LastWriteTime } while ($after -eq $before -and (Get-Date) -lt $saveDeadline)
+            if ($after -ne $before) { $x.LastSaveWar = $war; Say "$($x.Tag) quicksaved at war day $war" }
+            else { Say "$($x.Tag) QUICKSAVE NOT SEEN at war day $war (descriptor unchanged)" }
+            $x.LastAt = Get-Date
+          }
+        }
         if ($TrialSeconds -le 0 -and $run -ge $Days) {
           $x.Done = $true
           Stop-Process -Id $x.ProcId -Force -ErrorAction SilentlyContinue
@@ -259,8 +290,27 @@ foreach ($x in $g) {
     powershell -NoProfile -ExecutionPolicy Bypass -File "$ff\guard-digest.ps1" -Tag $x.Tag | Out-File -Encoding utf8 "$d\digest-$($x.Tag).txt"
   }
   Say "$($x.Tag) dumps: $($dump.Count)"
+  if ($Checkpoint -and $x.LastSaveWar -ge 0) {
+    # the checkpoint: the clone's last save from before the war opened. A save renames the one before it to
+    # .bak first, so when the last F5 landed after the launch line the .bak pair is the one from before it
+    $cl = "$($x.Inst)\saves\$($x.Base)sbs$($x.Tag)"
+    $useBak = $x.LaunchWar -ge 0 -and $x.LastSaveWar -ge $x.LaunchWar
+    if ($useBak -and (Test-Path "$cl\campaign.xml.bak") -and (Test-Path "$cl\descriptor.xml.bak")) {
+      Move-Item "$cl\campaign.xml.bak" "$cl\campaign.xml" -Force
+      Move-Item "$cl\descriptor.xml.bak" "$cl\descriptor.xml" -Force
+      Say "$($x.Tag) checkpoint from the save before the last (the last was after the launch)"
+    }
+    $tmp = "$saves\$($x.Base)sbs$($x.Tag)"
+    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item "$saves\$($x.Base)$Checkpoint" -Recurse -Force -ErrorAction SilentlyContinue
+    Move-Item $cl $tmp
+    powershell -NoProfile -ExecutionPolicy Bypass -File "$ff\clone.ps1" -Base $x.Base -From "sbs$($x.Tag)" -To $Checkpoint | Out-Null
+    Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+    if (Test-Path "$saves\$($x.Base)$Checkpoint\campaign.xml") { Say "$($x.Tag) CHECKPOINT $($x.Base)$Checkpoint (last save war day $($x.LastSaveWar), war opened $($x.LaunchWar))" }
+    else { Say "$($x.Tag) CHECKPOINT FAILED" }
+  }
   # the clone is not kept (21 MB a game); the log and the dumps are
-  Remove-Item "$($x.Inst)\saves\${base}sbs$($x.Tag)" -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item "$($x.Inst)\saves\$($x.Base)sbs$($x.Tag)" -Recurse -Force -ErrorAction SilentlyContinue
 }
 Restore
 Say "done"

@@ -2648,8 +2648,11 @@ public class ThreatColonyManager {
 		if (market == null || count <= 0) return mustered;
 		int taken = 0;
 		int ownTaken = 0;
+		// a held prong's earmarked fleets are its from every colony of the system, whatever each one's own
+		// availability reads today (IncursionManager.launchingEarmarkCovers)
+		boolean earmarked = IncursionManager.launchingEarmarkCovers(market);
 		for (MarketAPI curr : launchPool(market)) {
-			int share = Math.min(count - taken, ownAvailableForLaunch(curr));
+			int share = Math.min(count - taken, earmarked ? countLiveGarrison(curr.getId()) : ownAvailableForLaunch(curr));
 			if (share > 0) {
 				int got = musterFrom(curr, share, 0, despawn, mustered, fpOut, fleetsOut);
 				taken += got;

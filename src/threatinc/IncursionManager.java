@@ -4996,27 +4996,49 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		launchingEarmark = earmark != null ? earmark : java.util.Collections.<String, Integer>emptyMap();
 	}
 
+	/**
+	 * Whether the held prong launching now earmarked garrison fleets of this colony's system: its muster
+	 * takes them from every colony of the system whatever each one's own availability reads today
+	 * (ThreatColonyManager.musterPool). hw56: avail was forced to the earmark (above) but the walk
+	 * behind it still gated each colony on ownAvailableForLaunch - every colony that had given the
+	 * pass's strikes a swarm read "regrowing" and the walk fell back on the staging colony's own
+	 * garrison alone; 12 of 12 held prongs in hw56a and 10 in hw56c found "0 FP of spare swarms".
+	 */
+	public static boolean launchingEarmarkCovers(MarketAPI colony) {
+		return colony != null && colony.getStarSystem() != null && launchingEarmark.containsKey(colony.getStarSystem().getId());
+	}
+
 	protected java.util.List<StagedSpare> stagedSpares(final StarSystemAPI source) {
 		java.util.List<StagedSpare> out = new ArrayList<StagedSpare>();
 		if (!ThreatIncConfig.strikeStagedGarrisons() || source == null) return out;
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
 			MarketAPI c = ThreatColonyManager.pickStrikeStaging(systemId, true);
 			StarSystemAPI sys = getSystem(systemId);
+			// the launching held prong's own earmark is there for it whatever the reserve reads (launchingEarmark):
+			// the fleets, not the system's forge, are what its campaign priced, so a system whose staging
+			// gates have closed since still musters them
+			Integer own = launchingEarmark.get(systemId);
+			if (c == null && own != null) c = ThreatColonyManager.pickStrikeStaging(systemId, false);
 			if (c == null || sys == null) continue;
 			int others = ThreatOffensive.earmarked(systemId);
 			int avail = ThreatColonyManager.garrisonAvailableForLaunch(c) - others;
-			// the launching held prong's own earmark is there for it whatever the reserve reads (launchingEarmark)
-			Integer own = launchingEarmark.get(systemId);
+			int live = -1;
 			if (own != null && own > avail) {
-				int live = 0;
+				live = 0;
 				for (MarketAPI m : ThreatColonyManager.launchPool(c)) live += ThreatColonyManager.countLiveGarrison(m.getId());
 				avail = Math.min(own, live - others);
 			}
-			if (avail <= 0) continue;
 			StagedSpare s = new StagedSpare();
 			s.colony = c;
-			s.walk = ThreatColonyManager.peekMuster(c, avail);
+			s.walk = avail > 0 ? ThreatColonyManager.peekMuster(c, avail) : new ArrayList<ThreatColonyManager.MusterFleet>();
 			s.ly = Misc.getDistanceLY(source.getLocation(), sys.getLocation());
+			if (own != null) {
+				float fp = 0f;
+				for (ThreatColonyManager.MusterFleet mf : s.walk) fp += mf.fp;
+				ThreatIncConfig.log("Earmark at " + c.getName() + ": " + own + " fleet(s) set aside, " + s.walk.size() + " found ("
+						+ (int) fp + " FP; " + ThreatColonyManager.garrisonAvailableForLaunch(c) + " available, " + others
+						+ " earmarked by others" + (live >= 0 ? ", " + live + " live in the system" : "") + ")");
+			}
 			if (!s.walk.isEmpty()) out.add(s);
 		}
 		java.util.Collections.sort(out, new java.util.Comparator<StagedSpare>() {
