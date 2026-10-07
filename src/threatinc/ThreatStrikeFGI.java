@@ -53,6 +53,9 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * faction is sized for what its worlds answer with, not the day's patrols alone.
 	 */
 	protected float expectedFP = 0f, metFP = 0f, metSampleDay = -1f;
+	// a flag, not a -1 day: the clock's day can be negative (the second sector's reads -642,000), and every strike of
+	// hw42-49 reported "no read" for it
+	protected boolean metRead = false;
 	protected String expectedFactionId, expectedMarketId;
 	protected boolean metReported = false;
 
@@ -66,7 +69,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	protected void sampleMet() {
 		if (expectedFP <= 0f || getParams() == null || getParams().raidParams.where == null) return;
 		float day = ThreatPosture.today();
-		if (metSampleDay >= 0f && day - metSampleDay < 1f) return;
+		if (metRead && day - metSampleDay < 1f) return;
 		boolean there = false;
 		for (CampaignFleetAPI fleet : getFleets()) {
 			if (fleet != null && fleet.getContainingLocation() == getParams().raidParams.where) {
@@ -75,13 +78,13 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			}
 		}
 		// far from the player the strike flies as an abstract route (vanilla spawns fleets only near the player):
-		// its place is the route's (hw48: off-screen strikes landed through the abstract siege, never stood in the
-		// system as fleets, and not one of 28 ever read what it met)
+		// its place is the route's
 		if (!there && !isSpawnedFleets() && getRoute() != null && getRoute().getCurrent() != null) {
 			there = getRoute().getCurrent().getCurrentContainingLocation() == getParams().raidParams.where;
 		}
 		if (!there) return;
 		metSampleDay = day;
+		metRead = true;
 		MarketAPI primary = expectedMarketId != null ? Global.getSector().getEconomy().getMarket(expectedMarketId) : null;
 		if (primary == null || primary.getStarSystem() == null) return;
 		metFP = Math.max(metFP, IncursionManager.liveTargetDefence(primary, null));
@@ -90,7 +93,10 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	/** An off-screen fight read the defence: counts as a sample (the fleets never stand in the system). */
 	public void noteMet(float defence) {
 		if (expectedFP <= 0f) return;
-		if (metSampleDay < 0f) metSampleDay = ThreatPosture.today();
+		if (!metRead) {
+			metRead = true;
+			metSampleDay = ThreatPosture.today();
+		}
 		metFP = Math.max(metFP, defence);
 	}
 
@@ -98,7 +104,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	protected void reportMet() {
 		if (metReported || expectedFP <= 0f) return;
 		metReported = true;
-		if (expectedFactionId == null || metSampleDay < 0f) {
+		if (expectedFactionId == null || !metRead) {
 			ThreatIncConfig.log("Swarm intel: a strike sized for " + (int) expectedFP + " ended with no read of what it met"
 					+ (expectedFactionId == null ? " (no faction)" : ""));
 			return;
