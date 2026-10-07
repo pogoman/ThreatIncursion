@@ -53,12 +53,13 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * faction is sized for what its worlds answer with, not the day's patrols alone.
 	 */
 	protected float expectedFP = 0f, metFP = 0f, metSampleDay = -1f;
-	protected String expectedFactionId;
+	protected String expectedFactionId, expectedMarketId;
 	protected boolean metReported = false;
 
-	public void setExpected(float fp, String factionId) {
+	public void setExpected(float fp, MarketAPI target) {
 		expectedFP = fp;
-		expectedFactionId = factionId;
+		expectedFactionId = target != null ? target.getFactionId() : null;
+		expectedMarketId = target != null ? target.getId() : null;
 	}
 
 	/** Once a day while in the target system: the hostile strength there now, the strike's own fleets aside. */
@@ -75,8 +76,8 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		}
 		if (!there) return;
 		metSampleDay = day;
-		MarketAPI primary = getParams().raidParams.allowedTargets.isEmpty() ? null : getParams().raidParams.allowedTargets.get(0);
-		if (primary == null) return;
+		MarketAPI primary = expectedMarketId != null ? Global.getSector().getEconomy().getMarket(expectedMarketId) : null;
+		if (primary == null || primary.getStarSystem() == null) return;
 		metFP = Math.max(metFP, IncursionManager.liveTargetDefence(primary, null));
 	}
 
@@ -91,10 +92,12 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	protected void reportMet() {
 		if (metReported || expectedFP <= 0f) return;
 		metReported = true;
-		MarketAPI primary = getParams() != null && !getParams().raidParams.allowedTargets.isEmpty()
-				? getParams().raidParams.allowedTargets.get(0) : null;
-		if (primary == null || metSampleDay < 0f) return;
-		ThreatSwarmIntel.noteMet(expectedFactionId != null ? expectedFactionId : primary.getFactionId(), expectedFP, metFP);
+		if (expectedFactionId == null || metSampleDay < 0f) {
+			ThreatIncConfig.log("Swarm intel: a strike sized for " + (int) expectedFP + " ended with no read of what it met"
+					+ (expectedFactionId == null ? " (no faction)" : ""));
+			return;
+		}
+		ThreatSwarmIntel.noteMet(expectedFactionId, expectedFP, metFP);
 	}
 
 	public boolean isDetected() {
