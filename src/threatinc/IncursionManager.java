@@ -4967,6 +4967,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * garrisons, as a faction's is its stock). Less the fleets the offensive's
 	 * held prongs have earmarked (ThreatOffensive.earmarked).
 	 */
+	/**
+	 * The size a held prong was priced at, while it launches on its day (ThreatOffensive.poll): stagedPlan
+	 * takes spare swarms and builds no further than it. Its campaign paid for that size and its trip's
+	 * supplies (ThreatReach.setPrepaid); bigger first fleets in the walk on the day are not a bigger strike
+	 * (hw53b: Gilead priced 1,136 FP planned 1,468 on its day and was refused on the burn beyond its
+	 * prepaid trip). Float.MAX_VALUE: no cap.
+	 */
+	protected static float pricedFP = Float.MAX_VALUE;
+
+	/** Caps the plan of the strike about to launch at the size its campaign priced (pricedFP); MAX_VALUE clears it. */
+	public static void setPricedFP(float fp) {
+		pricedFP = fp > 0f ? fp : Float.MAX_VALUE;
+	}
+
 	protected java.util.List<StagedSpare> stagedSpares(final StarSystemAPI source) {
 		java.util.List<StagedSpare> out = new ArrayList<StagedSpare>();
 		if (!ThreatIncConfig.strikeStagedGarrisons() || source == null) return out;
@@ -5053,7 +5067,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			int count = 0;
 			for (ThreatColonyManager.MusterFleet mf : s.walk) {
 				if (toNeed && plan.sizes.size() >= 2 && plan.fp >= minFP
-						&& FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) >= need) {
+						&& (FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) >= need
+								|| plan.fp >= pricedFP)) {
 					full = true;
 					break;
 				}
@@ -5079,7 +5094,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 		}
 		while (plan.sizes.size() < 2 || plan.fp < minFP
-				|| FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) < need) {
+				|| (FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) < need
+						&& plan.fp < pricedFP)) {
 			java.util.List<Integer> one = new ArrayList<Integer>();
 			one.add(size);
 			float est = ThreatStrikeFGI.estimateFP(one);
@@ -5101,7 +5117,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 		}
 		if (why == null && !pricing && !ThreatReach.canSustain(ThreatReach.awayFP(plan.fp, plan.spareFP), daysAway)) {
-			why = "the spare supplies do not keep " + (int) plan.fp + " FP away " + (int) daysAway + " days";
+			why = "the spare supplies do not keep " + (int) plan.fp + " FP away " + (int) daysAway + " days ("
+					+ ThreatReach.sustainNote(plan.fp, plan.spareFP, daysAway) + ")";
 		}
 		if (why == null) return plan;
 		// only the closest candidate speaks and books fuel (defOut set)
