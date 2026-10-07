@@ -63,6 +63,8 @@ public class ThreatConvoys {
 		public float armaments;
 		public float fuel;
 		public float supplies;
+		/** Units of ship hulls aboard (ThreatHulls.unitFP each), for the recipient faction's pool. */
+		public float ships;
 		public long departedTimestamp;
 		/** Set for a FRONT RUN: the hive world whose friendly front this convoy supplies or picks up. */
 		public String frontMarketId;
@@ -136,6 +138,27 @@ public class ThreatConvoys {
 	/** Cargo value for escort sizing: marines weigh most, provisions least. */
 	public static float cargoValue(float marines, float armaments, float fuel, float supplies) {
 		return marines * 1f + armaments * 0.5f + fuel * 0.1f + supplies * 0.1f;
+	}
+
+	/** cargoValue of a load in AID_COMMODITIES order (a 4-long load carries no hulls). */
+	public static float cargoValue(float[] load) {
+		return cargoValue(load[0], load[1], load[2], load[3]) + hullsIn(load) * 1f;
+	}
+
+	/** The ship hulls of a load: its 5th entry (AID_COMMODITIES), 0 for a reserve-goods load. */
+	public static float hullsIn(float[] load) {
+		return load != null && load.length > 4 ? Math.max(0f, load[4]) : 0f;
+	}
+
+	/** Units of ship hulls at sea to the market (Convoy.ships), net of what the fleets have lost. */
+	public static float inboundShips(String marketId) {
+		float out = 0f;
+		for (Convoy c : all()) {
+			if (!marketId.equals(c.toMarketId)) continue;
+			CargoAPI cargo = c.fleet != null && c.fleet.isAlive() ? c.fleet.getCargo() : null;
+			out += cargo != null ? cargo.getCommodityQuantity(Commodities.SHIPS) : c.ships;
+		}
+		return out;
 	}
 
 	/** What a sailing carries, in ThreatReserves.COMMODITIES order: every fleet of a split one (Convoy.sailing), else the convoy's own load. */
@@ -1043,6 +1066,11 @@ public class ThreatConvoys {
 	 */
 	public static float capacityFor(String commodityId) {
 		if (Commodities.MARINES.equals(commodityId)) return ThreatIncConfig.convoyMarineCapacity();
+		// a unit of ship hulls is fabFPPerShipUnit FP of navy: a load of them is small in units, so the
+		// minimum-load gate reads the hold in units weighed by their worth
+		if (Commodities.SHIPS.equals(commodityId)) {
+			return Math.max(1f, ThreatIncConfig.convoyCargoCapacity() / ThreatHulls.unitFP());
+		}
 		return ThreatIncConfig.convoyCargoCapacity();
 	}
 
@@ -1956,6 +1984,8 @@ public class ThreatConvoys {
 
 	/** Stock a colony can spare: what it holds above its keep fraction of its own months basis (ThreatReserves.monthsBasis), plus a staging base's own siege needs. */
 	public static float spare(MarketAPI donor, String commodityId) {
+		// ship hulls: the faction's built navy at its hull port (ThreatHulls.spareUnits), no reserve
+		if (Commodities.SHIPS.equals(commodityId)) return ThreatHulls.spareUnits(donor);
 		// a colony under a ground front gives nothing, as it gives no siege
 		// (IncursionManager.siegeDonors): its depot arms the defence and
 		// provisions its relief. Nachiketa shipped 2,287 fuel to its staging
@@ -2090,7 +2120,7 @@ public class ThreatConvoys {
 			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor.market), load);
 		}
 		if (donor.starSystem() == null || donor.entity() == null || base.entity() == null) return null;
-		if (load[0] <= 0f && load[1] + load[2] + load[3] <= 0f) return null;
+		if (load[0] <= 0f && load[1] + load[2] + load[3] + hullsIn(load) <= 0f) return null;
 
 		// (2026-09-29: closed economy) an NPC convoy's escort is what the donor
 		// pays for beside the cargo; the player's is the ledger's, as before
@@ -2120,7 +2150,8 @@ public class ThreatConvoys {
 			lead.sailing = sailed;
 			ThreatIncConfig.log("Convoy split: " + faction.getId() + " " + donor.name() + " -> " + base.name()
 					+ " in " + fleets + " fleets (" + (int) sailed[0] + " marines, " + (int) sailed[1]
-					+ " armaments, " + (int) sailed[2] + " fuel, " + (int) sailed[3] + " supplies)");
+					+ " armaments, " + (int) sailed[2] + " fuel, " + (int) sailed[3] + " supplies"
+					+ (hullsIn(sailed) > 0f ? ", " + (int) hullsIn(sailed) + " ship hulls" : "") + ")");
 		}
 		return lead;
 	}
@@ -2133,7 +2164,7 @@ public class ThreatConvoys {
 	 * sailing, and the rest waits for the next pass.
 	 */
 	protected static boolean sailed(Hulls h, Convoy c, float[] remaining, float[] sailed) {
-		float[] got = {c.marines, c.armaments, c.fuel, c.supplies};
+		float[] got = {c.marines, c.armaments, c.fuel, c.supplies, c.ships};
 		boolean whole = true;
 		boolean left = false;
 		for (int i = 0; i < remaining.length; i++) {
@@ -2190,7 +2221,14 @@ public class ThreatConvoys {
 		c.armaments = loadCommodity(cargo, donor.id(), Commodities.HAND_WEAPONS, load[1]);
 		c.fuel = loadCommodity(cargo, donor.id(), Commodities.FUEL, load[2]);
 		c.supplies = loadCommodity(cargo, donor.id(), Commodities.SUPPLIES, load[3]);
-		if (c.marines <= 0f && c.armaments <= 0f && c.fuel <= 0f && c.supplies <= 0f) {
+		// ship hulls come out of the donor faction's built navy (ThreatHulls.give), as units in the hold
+		int hulls = (int) Math.min(hullsIn(load), cargo.getSpaceLeft());
+		if (hulls > 0) {
+			int taken = ThreatHulls.give(faction.getId(), hulls);
+			if (taken > 0) cargo.addCommodity(Commodities.SHIPS, taken);
+			c.ships = taken;
+		}
+		if (c.marines <= 0f && c.armaments <= 0f && c.fuel <= 0f && c.supplies <= 0f && c.ships <= 0f) {
 			refundEscort(fleet, donor);
 			Misc.fadeAndExpire(fleet);
 			return null;
@@ -2351,7 +2389,7 @@ public class ThreatConvoys {
 			}
 			escort = paidEscort(from, escort, ly, reserve[2], reserve[3]);
 		}
-		float cargoUnits = ask[1] + ask[2] + ask[3];
+		float cargoUnits = ask[1] + ask[2] + ask[3] + hullsIn(ask);
 		float freighterPts = Math.max(10f, cargoUnits / 60f);
 		float tankerPts = ask[2] > 0f ? Math.max(5f, ask[2] / 100f) : 0f;
 		float transportPts = ask[0] > 0f || frontRun ? Math.max(10f, ask[0] / 40f) : 0f;
@@ -2365,7 +2403,7 @@ public class ThreatConvoys {
 		params.ignoreMarketFleetSizeMult = true;
 		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
 		if (fleet == null || fleet.isEmpty()) return null;
-		if (grow) fitHulls(fleet, faction, ask[0], ask[1] + ask[3], ask[2], random);
+		if (grow) fitHulls(fleet, faction, ask[0], ask[1] + ask[3] + hullsIn(ask), ask[2], random);
 		Hulls h = new Hulls();
 		h.fleet = fleet;
 		h.ask = ask;
@@ -2375,7 +2413,7 @@ public class ThreatConvoys {
 
 	/** The escort points a load's cargo value calls for, over the convoyEscortFP every convoy sails with. */
 	protected static float escortForValue(float[] ask) {
-		return cargoValue(ask[0], ask[1], ask[2], ask[3]) / 1000f * ThreatIncConfig.convoyEscortPerThousand();
+		return cargoValue(ask) / 1000f * ThreatIncConfig.convoyEscortPerThousand();
 	}
 
 	/**
@@ -2393,7 +2431,7 @@ public class ThreatConvoys {
 		CargoAPI cargo = fleet.getCargo();
 		float share = Float.MAX_VALUE;
 		if (ask[0] >= 1f) share = Math.min(share, cargo.getFreeCrewSpace() / ask[0]);
-		float hold = ask[1] + ask[3];
+		float hold = ask[1] + ask[3] + hullsIn(ask);
 		if (hold >= 1f) share = Math.min(share, cargo.getSpaceLeft() / hold);
 		if (ask[2] >= 1f) share = Math.min(share, cargo.getFreeFuelSpace() / ask[2]);
 		return Math.max(0f, share);
@@ -2564,14 +2602,20 @@ public class ThreatConvoys {
 		int armaments = (int) cargo.getCommodityQuantity(Commodities.HAND_WEAPONS);
 		int fuel = (int) cargo.getCommodityQuantity(Commodities.FUEL);
 		int supplies = (int) cargo.getCommodityQuantity(Commodities.SUPPLIES);
+		int ships = (int) cargo.getCommodityQuantity(Commodities.SHIPS);
 		if (marines > 0) cargo.removeMarines(marines);
 		if (armaments > 0) cargo.removeCommodity(Commodities.HAND_WEAPONS, armaments);
 		if (fuel > 0) cargo.removeCommodity(Commodities.FUEL, fuel);
 		if (supplies > 0) cargo.removeCommodity(Commodities.SUPPLIES, supplies);
+		if (ships > 0) cargo.removeCommodity(Commodities.SHIPS, ships);
 		ThreatReserves.deposit(base.id(), Commodities.MARINES, marines);
 		ThreatReserves.deposit(base.id(), Commodities.HAND_WEAPONS, armaments);
 		ThreatReserves.deposit(base.id(), Commodities.FUEL, fuel);
 		ThreatReserves.deposit(base.id(), Commodities.SUPPLIES, supplies);
+		// ship hulls go to the colony's faction's pool, not its depot (ThreatHulls)
+		if (ships > 0 && base.market != null) {
+			ThreatHulls.receive(base.market.getFactionId(), ships, c.fromName() + " (" + c.factionId + ")");
+		}
 		// rule 5 (docs/economy-coherence.md): war stock lands in the depot only.
 		// It used to land as a trade modifier too, and vanilla's market screens
 		// sold the military's shipment as cheap excess (2026-09-27).
@@ -2582,7 +2626,7 @@ public class ThreatConvoys {
 		if (c.recipientFactionId != null && sender != null && base.market != null) {
 			if (sender.isPlayerFaction()) {
 				ThreatAid.onDelivered(base.market, c.recipientFactionId, marines, armaments, fuel,
-						supplies, true, null);
+						supplies, ships, true, null);
 			} else {
 				ThreatCoalition.onAllyDelivered(c, base.market);
 			}

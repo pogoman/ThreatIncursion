@@ -380,12 +380,18 @@ public class ThreatOffensive {
 					float wait = arriveIn - arrival(p.ly);
 					if ((wait >= 1f) != (round == 0)) continue;
 					if (wait >= 1f) {
-						// its bill and its passage fuel are set aside until its day (neither spent nor demanded yet)
+						// its bill, its passage fuel and its trip's supplies are set aside until its day (neither spent
+						// nor demanded yet; hw51: held only as a flow, the supplies were drawn from the stock by the
+						// sends and the first prong in the days before, and 8 of 9 held prongs were refused)
+						float burnMonth = ThreatReach.suppliesPerMonth(p.awayFP());
+						float trip = Math.max(0f, burnMonth * Math.max(1f, p.days) / 30f);
 						ThreatColonyManager.addStrikeFund(-p.cost);
 						ThreatFuel.setStock(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, ThreatFuel.stock() - p.fuel);
+						ThreatFuel.setStock(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES,
+								ThreatFuel.stock(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES) - trip);
 						schedule().add(p.target.getId() + "|" + p.staging.getId() + "|" + p.source.getId() + "|"
 								+ (day + wait) + "|" + p.cost + "|" + p.fuel + "|" + p.expected + "|" + earmark(p.plan) + "|"
-								+ ThreatReach.suppliesPerMonth(p.awayFP()));
+								+ burnMonth + "|" + trip);
 						held++;
 					} else {
 						addEarmark(PENDING, p.plan, -1);
@@ -456,22 +462,32 @@ public class ThreatOffensive {
 	protected static int heldBefore = -1;
 
 	/**
-	 * Supplies a month the held prongs will burn once they sail (the schedule's 9th field):
-	 * ThreatReach.spare keeps it back so no other trip - a relief, a send, the next campaign - spends
-	 * what their campaign was priced with. A prong's own share comes back the day it sails (poll takes
-	 * its entry first). During a launch only the prongs held before it count: every prong of the launch
-	 * was priced against the whole spare (pass).
+	 * Supplies a month the held prongs will burn once they sail (the schedule's 9th field) - for the
+	 * Reach log. Their trips' supplies are not a flow held back from ThreatReach.spare (hw49-51) but
+	 * stock taken out at launch and put back on the day (the 10th field, heldSupplies), as their fuel
+	 * is: a flow hold let every other trip draw the same stock (canSustain), and in hw51 the sends and
+	 * the first prong had spent it by the held prongs' days. During a launch only the prongs held
+	 * before it count.
 	 */
 	public static float heldSuppliesPerMonth() {
+		return heldField(8);
+	}
+
+	/** Supplies the held prongs' trips hold out of the stock until their days (the schedule's 10th field). */
+	public static float heldSupplies() {
+		return heldField(9);
+	}
+
+	protected static float heldField(int index) {
 		if (Global.getSector() == null) return 0f;
 		List<String> list = schedule();
 		int n = heldBefore >= 0 ? Math.min(heldBefore, list.size()) : list.size();
 		float sum = 0f;
 		for (int i = 0; i < n; i++) {
 			String[] f = list.get(i).split("\\|");
-			if (f.length < 9) continue;
+			if (f.length <= index) continue;
 			try {
-				sum += Float.parseFloat(f[8]);
+				sum += Float.parseFloat(f[index]);
 			} catch (NumberFormatException x) {
 				// a malformed entry reserves nothing
 			}
@@ -540,7 +556,7 @@ public class ThreatOffensive {
 
 	protected static final String KEY_SCHEDULE = "threatinc_offensiveSchedule";
 
-	/** "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth" per prong waiting its day (earmark: earmarked; supplies: heldSuppliesPerMonth). */
+	/** "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth|tripSupplies" per prong waiting its day (earmark: earmarked; supplies: heldSuppliesPerMonth, heldSupplies). */
 	@SuppressWarnings("unchecked")
 	protected static List<String> schedule() {
 		Object v = Global.getSector().getPersistentData().get(KEY_SCHEDULE);
@@ -569,20 +585,26 @@ public class ThreatOffensive {
 				schedule().remove(e);
 				continue;
 			}
-			float launchDay, cost, fuel, expected;
+			float launchDay, cost, fuel, expected, trip;
 			try {
 				launchDay = Float.parseFloat(f[3]);
 				cost = Float.parseFloat(f[4]);
 				fuel = f.length > 5 ? Float.parseFloat(f[5]) : 0f;
 				expected = f.length > 6 ? Float.parseFloat(f[6]) : Float.NaN;
+				trip = f.length > 9 ? Float.parseFloat(f[9]) : 0f;
 			} catch (NumberFormatException x) {
 				schedule().remove(e);
 				continue;
 			}
 			if (day < launchDay) continue;
 			schedule().remove(e);
+			// its bill, fuel and trip supplies back for launchStrike to draw (or to stay, the prong off)
 			ThreatColonyManager.addStrikeFund(cost);
 			if (fuel > 0f) ThreatFuel.setStock(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, ThreatFuel.stock() + fuel);
+			if (trip > 0f) {
+				ThreatFuel.setStock(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES,
+						ThreatFuel.stock(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES) + trip);
+			}
 			MarketAPI target = Global.getSector().getEconomy().getMarket(f[0]);
 			MarketAPI staging = Global.getSector().getEconomy().getMarket(f[1]);
 			StarSystemAPI source = Global.getSector().getStarSystem(f[2]);

@@ -60,6 +60,14 @@ public class ThreatReserves {
 	public static final String[] COMMODITIES = {Commodities.MARINES, Commodities.HAND_WEAPONS,
 			Commodities.FUEL, Commodities.SUPPLIES};
 
+	/**
+	 * What an aid request may ask for and an aid convoy carry: the reserve goods and ship hulls
+	 * (Commodities.SHIPS, 2026-10-07 - units of the faction's hull pool, ThreatHulls.hullStatus; never in a
+	 * reserve, so not in COMMODITIES).
+	 */
+	public static final String[] AID_COMMODITIES = {Commodities.MARINES, Commodities.HAND_WEAPONS,
+			Commodities.FUEL, Commodities.SUPPLIES, Commodities.SHIPS};
+
 	/** The War footing market condition (rule 2) - the colony screen's face of the war. */
 	public static final String WAR_FOOTING_CONDITION = "threatinc_war_footing";
 	/** The hidden structure that carries the War footing's vanilla demand ({@link WarFootingDemand}). */
@@ -1097,6 +1105,8 @@ public class ThreatReserves {
 
 	public static CommodityStatus status(MarketAPI market, String c) {
 		if (market == null) return null;
+		// ship hulls are the faction's pool, not a reserve good (ThreatHulls)
+		if (Commodities.SHIPS.equals(c)) return ThreatHulls.hullStatus(market);
 		CommodityOnMarketAPI com = market.getCommodityData(c);
 		if (com == null) return null;
 		CommodityStatus s = new CommodityStatus();
@@ -1410,6 +1420,7 @@ public class ThreatReserves {
 		if (Commodities.HAND_WEAPONS.equals(commodityId)) return "heavy armaments";
 		if (Commodities.FUEL.equals(commodityId)) return "fuel";
 		if (Commodities.SUPPLIES.equals(commodityId)) return "supplies";
+		if (Commodities.SHIPS.equals(commodityId)) return "ship hulls";
 		return commodityId;
 	}
 }

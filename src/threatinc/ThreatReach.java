@@ -257,12 +257,13 @@ public class ThreatReach {
 
 	/**
 	 * Supplies a month the hive can still send away: the colonies' spare, less what was launched
-	 * since it was read and what the offensive's held prongs will burn when they sail
-	 * (ThreatOffensive.heldSuppliesPerMonth - their campaign was priced with it).
+	 * since it was read. The offensive's held prongs hold their trips' supplies out of the stock
+	 * (ThreatOffensive.heldSupplies), not out of this flow (hw49-51: a flow hold let every other trip
+	 * draw the stock their campaign was priced on).
 	 */
 	public static float spare() {
 		if (!ThreatColonyUpkeep.enabled()) return Float.MAX_VALUE;
-		return ThreatColonyUpkeep.spareSupplies() - committed - ThreatOffensive.heldSuppliesPerMonth();
+		return ThreatColonyUpkeep.spareSupplies() - committed;
 	}
 
 	/** Whether the hive can keep a fleet of {@code fp} away without starving a colony, on the month's flow alone. Always, billed reach off. */
@@ -419,7 +420,8 @@ public class ThreatReach {
 		float spare = ThreatColonyUpkeep.enabled() ? ThreatColonyUpkeep.spareSupplies() : 0f;
 		sb.append((int) spare).append(" supplies/mo (fleets away ").append((int) ThreatColonyUpkeep.fleetsPerMonth())
 				.append("/mo, navy charge ").append((int) (ThreatColonyUpkeep.enabled() ? ThreatColonyUpkeep.navyPerMonth() : 0f))
-				.append(", held prongs ").append((int) ThreatOffensive.heldSuppliesPerMonth())
+				.append(", held prongs ").append((int) ThreatOffensive.heldSuppliesPerMonth()).append("/mo, ")
+				.append((int) ThreatOffensive.heldSupplies()).append(" in stock")
 				.append(", ").append(String.format("%.2f", suppliesPerFP())).append(" a FP)");
 		for (String k : KINDS) {
 			int n = (int) num(d.get(k + ".n"));

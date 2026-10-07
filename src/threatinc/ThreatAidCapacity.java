@@ -461,7 +461,7 @@ public class ThreatAidCapacity {
 	 */
 	public static float convoyPoints(float[] load) {
 		float marines = load[0];
-		float cargoUnits = load[1] + load[2] + load[3];
+		float cargoUnits = load[1] + load[2] + load[3] + ThreatConvoys.hullsIn(load);
 		if (marines <= 0f && cargoUnits <= 0f) return 0f;
 		float escort = ThreatIncConfig.convoyEscortFP()
 				+ ThreatConvoys.cargoValue(marines, load[1], load[2], load[3]) / 1000f
