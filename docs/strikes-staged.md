@@ -113,7 +113,10 @@ navy charge. On since 2026-10-07 (hw48).
   met bigger fleets on its days than it was priced for). `price` accepts a prong the spare pays alone.
 - **Held prongs earmark** their fleets (`earmarked`, the schedule entry's 8th field,
   `system:fleets;...`): `stagedSpares` leaves them out for every other strike until the day,
-  when the prong re-plans with what is there. At launch the held prongs are scheduled first,
+  when the prong re-plans with what is there; a system with an earmark donates no garrison
+  (`redistributeGarrisons`' donor loops) and recycles none for upkeep (`recycleForUpkeep`) until it
+  sails (hw50c: eight sends drained the staging system in the days after a launch, and all eight held
+  prongs re-planned bigger from the fund and were refused on supplies). At launch the held prongs are scheduled first,
   then each prong sailing now launches with the spare the others leave it (`PENDING`).
 - **Supplies**: the navy charge the garrisons above the patrols pay at home is in the feed's spare
   (`ThreatColonyUpkeep.navyChargePerMonth`, since hw50 - before, the spare left it out and was overstated
