@@ -230,9 +230,14 @@ public class ThreatOffensive {
 		// sized for, or nothing known of it is left to strike; then the next. A campaign spread over four
 		// factions split no navy (hw58: 300-5,700 FP prongs against factions fielding 20k); all its prongs
 		// at one share that one's. Spoiling blows while losing stay, whoever's.
+		// ...and the supplies the prongs burn away: the free stock and the spare flow over the trip, as canSustain
+		// allows - not the flow to the deadline (hw46: the hive banks none of its spare, so a campaign waiting on
+		// it waited forever); what the set wants beyond that is booked as demand for the planner
+		// (the flow signed, as canSustain reads it: floored at 0 the pricing passed a set the launch gate refused)
+		float suppliesStock = ThreatReach.freeStock(), suppliesFlow = Math.min(1e9f, ThreatReach.spare());
 		String focus = null;
 		if (ThreatIncConfig.offensiveFocus() && !bySystem.isEmpty()) {
-			focus = chooseFocus(im, bySystem.values(), memo, budget, fuelBudget, margin, losing, pressure);
+			focus = chooseFocus(im, bySystem.values(), memo, budget, fuelBudget, suppliesStock, suppliesFlow, margin, losing, pressure);
 			if (focus != null) {
 				for (Prong p : new ArrayList<Prong>(bySystem.values())) {
 					if (focus.equals(p.target.getFactionId()) || (losing && spoiler(p))) continue;
@@ -264,19 +269,23 @@ public class ThreatOffensive {
 			}
 		});
 
-		// ...and the supplies the prongs burn away: the free stock and the spare flow over the trip, as canSustain
-		// allows - not the flow to the deadline (hw46: the hive banks none of its spare, so a campaign waiting on
-		// it waited forever); what the set wants beyond that is booked as demand for the planner
-		// (the flow signed, as canSustain reads it: floored at 0 the pricing passed a set the launch gate refused)
-		float suppliesStock = ThreatReach.freeStock(), suppliesFlow = Math.min(1e9f, ThreatReach.spare());
 		float supplies = 0f, suppliesShort = 0f;
+		Prong firstOut = null;
+		String firstWhy = null;
 		List<Prong> campaign = new ArrayList<Prong>();
 		float cost = 0f, fuel = 0f, away = 0f, longest = 0f, spare = 0f;
 		// the spare goes to the best prongs first: each is re-priced on what the ones before it left
 		Spares shared = new Spares(im);
 		for (Prong p : prongs) {
 			if (!price(im, p, memo, atFaction.get(p.target.getFactionId()), shared)) continue;
-			if (cost + p.cost > budget || fuel + p.fuel > fuelBudget) continue;
+			if (cost + p.cost > budget || fuel + p.fuel > fuelBudget) {
+				if (firstOut == null) {
+					firstOut = p;
+					firstWhy = cost + p.cost > budget ? "the fund: " + (int) p.cost + " FP of " + (int) budget + " by the deadline"
+							: "the fuel: " + (int) p.fuel + " of " + (int) fuelBudget;
+				}
+				continue;
+			}
 			float need = p.supplies();
 			float keeps = suppliesStock + suppliesFlow * Math.max(1f, Math.max(longest, p.days)) / 30f;
 			// a prong burning nothing new (spare swarms, their home charge moving with them) is kept whatever
@@ -285,6 +294,11 @@ public class ThreatOffensive {
 			if (need > 0f && supplies + need > keeps) {
 				// the first prong the supplies leave out is the planner's to answer (one a pass)
 				if (suppliesShort <= 0f) suppliesShort = supplies + need - keeps;
+				if (firstOut == null) {
+					firstOut = p;
+					firstWhy = "the supplies away: " + (int) need + " for " + (int) p.awayFP() + " FP over " + (int) p.days
+							+ " days, " + (int) keeps + " kept (" + (int) suppliesStock + " free, " + (int) suppliesFlow + "/mo spare)";
+				}
 				continue;
 			}
 			campaign.add(p);
@@ -359,9 +373,12 @@ public class ThreatOffensive {
 		String where = (losing ? "losing " + ThreatStance.losingSummary() + (nearLY > 0f ? ", within " + (int) nearLY + " ly"
 				: ", all known") + ", horizon " + (int) horizon + " mo" : "all known") + (focus != null ? ", focus " + focus : "");
 		if (campaign.isEmpty()) {
-			ThreatIncConfig.logQuiet("offensive", "Offensive: nothing the fund pays by the deadline - " + prongs.size()
+			// what kept the best prong out, so a hoard reads as what it is (hw61a: "nothing the fund pays" nine
+			// months running with 114-118k FP in the fund - the supplies away kept every prong at the focus out)
+			ThreatIncConfig.logQuiet("offensive", "Offensive: nothing the means pay by the deadline - " + prongs.size()
 					+ " target(s) " + where + ", fund " + (int) fund + " FP (+" + (int) perMonth + "/mo), "
-					+ (int) monthsLeft + " month(s) left");
+					+ (int) monthsLeft + " month(s) left" + (firstOut != null ? "; the best prong, "
+					+ firstOut.target.getName() + " (" + (int) firstOut.fp + " FP), is out on " + firstWhy : ""));
 			if (day >= deadline) setStartDay(day);
 			return;
 		}
@@ -542,7 +559,7 @@ public class ThreatOffensive {
 	 * share of its value covered. Null when nothing pays a prong anywhere. Logged on a change.
 	 */
 	protected static String chooseFocus(IncursionManager im, Collection<Prong> all, Map<String, float[]> memo, float budget,
-			float fuelBudget, float margin, boolean losing, float pressure) {
+			float fuelBudget, float suppliesStock, float suppliesFlow, float margin, boolean losing, float pressure) {
 		Map<String, List<Prong>> byFaction = new HashMap<String, List<Prong>>();
 		for (Prong p : all) {
 			List<Prong> list = byFaction.get(p.target.getFactionId());
@@ -556,10 +573,9 @@ public class ThreatOffensive {
 			if (at == null || at.isEmpty()) why = "nothing known of it left to strike";
 			else if (answer < ThreatIncConfig.offensiveBrokenAnswer()) why = "broken - its worlds answered the last strikes with "
 					+ String.format("%.2f", answer) + "x what they were sized for";
-			else return had;
 		}
 		String best = null;
-		float bestScore = -1f, bestCovered = 0f, bestTotal = 0f;
+		float bestScore = -1f, bestCovered = 0f, bestTotal = 0f, hadCovered = 0f;
 		int bestN = 0, bestOf = 0;
 		for (Map.Entry<String, List<Prong>> e : byFaction.entrySet()) {
 			List<Prong> list = e.getValue();
@@ -576,17 +592,26 @@ public class ThreatOffensive {
 					return Float.compare(b.score, a.score);
 				}
 			});
-			float total = 0f, covered = 0f, cost = 0f, fuel = 0f;
+			// the means are the fund, the fuel AND the supplies away, as the campaign loop (pass) gates them:
+			// on fund and fuel alone the focus held hegemony for nine months of "nothing the fund pays" with
+			// 114-118k FP in the fund (hw61a) - every prong at it too big to feed, none at anyone else allowed
+			float total = 0f, covered = 0f, cost = 0f, fuel = 0f, supplies = 0f, longest = 0f;
 			int n = 0;
 			for (Prong p : scored) {
 				float v = value(p, losing, pressure, margin);
 				total += v;
 				if (cost + p.cost > budget || fuel + p.fuel > fuelBudget) continue;
+				float need = p.supplies();
+				float keeps = suppliesStock + suppliesFlow * Math.max(1f, Math.max(longest, p.days)) / 30f;
+				if (need > 0f && supplies + need > keeps) continue;
 				cost += p.cost;
 				fuel += p.fuel;
+				supplies += need;
+				longest = Math.max(longest, p.days);
 				covered += v;
 				n++;
 			}
+			if (e.getKey().equals(had)) hadCovered = covered;
 			if (covered <= 0f || total <= 0f) continue;
 			float score = covered * (covered / total);
 			if (score > bestScore) {
@@ -597,6 +622,11 @@ public class ThreatOffensive {
 				bestN = n;
 				bestOf = scored.size();
 			}
+		}
+		// the focus is kept while it is not broken, something of it is left and the means still pay a prong there
+		if (had != null && why == null) {
+			if (hadCovered > 0f) return had;
+			why = "nothing of it the means pay now";
 		}
 		if (best == null) {
 			if (had != null) {

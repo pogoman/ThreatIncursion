@@ -237,7 +237,12 @@ retaliation are outside the campaign as before.
 
 - **Kept** while the faction's worlds still answer - `ThreatSwarmIntel.answerShare` (what its worlds met
   the last strikes with over what they were sized for, the `noteMet` ledger unfloored, decayed 0.7 a
-  strike) at least `offensiveBrokenAnswer` (0.5) - and at least one prong at it is priced.
+  strike) at least `offensiveBrokenAnswer` (0.5) - and the means still pay a prong there: the fund, the
+  fuel AND the supplies away, as the campaign loop gates them. On fund and fuel alone (hw61a) hegemony
+  was kept through nine months of "nothing the fund pays" with 114-118k FP in the fund - every prong at
+  it too big to feed, and no prong at anyone else allowed. The empty-campaign line now names the best
+  prong and what kept it out ("nothing the means pay ... the best prong, X (N FP), is out on the
+  supplies away: ...").
 - **Broken** below that share ("its worlds answered the last strikes with 0.31x what they were sized
   for"): its navy is spent, the swarm moves on. **Exhausted** when nothing known of it is left to
   strike (its known worlds razed, taken, under a strike or scheduled).
