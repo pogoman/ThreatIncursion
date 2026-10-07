@@ -1,24 +1,59 @@
 #!/bin/bash
-# watch.sh <hwNN> [maxMinutes] [noref] - polls a running batch every 3 minutes and exits EARLY on the first
-# fail signal: a non-loading exception, or a held prong refused ("cannot sail today"). Prints only new
-# signals plus a one-line progress mark, so a background run of it notifies as soon as a batch is dead.
-TAG=$1; MAX=${2:-130}; NOREF=${3:-}; T="$(cygpath -u "$LOCALAPPDATA")/Temp/threatinc-tests"
+# watch.sh <hwNN> [maxMinutes] [ignore,list] - polls a running batch every 3 minutes and exits EARLY
+# on the first fail signal, so a background run of it notifies as soon as a batch has told what it will
+# (the user, 2026-10-07: runs reach evident fail conditions within minutes; hw52 ran 25 minutes past
+# an exception visible at minute 19). Prints only new signals plus a one-line progress mark a game.
+#
+# Signals (the third argument lists the ones to ignore, e.g. "ref,hoard" to read on past known ones):
+#   exc      a non-loading exception (vanilla's ShipHullSpreadsheetLoader noise filtered)
+#   ref      a held prong refused on its day ("cannot sail today")
+#   wipe     the swarm wiped: 0 hives after war day 400
+#   collapse the swarm collapsing: hives under half its peak of 8 or more (hw47 0 / 10 / 0, hw49 b 0)
+#   starved  swarms lost to the navy charge ("of navy upkeep unpaid"; hw49 8.8k-15.8k FP)
+#   hoard    the fund hoarded: no launch for 500 war days while saving with 20k+ FP (hw41-49 30-43k unspent)
+#   humans   the humans collapsing: forward bases lost twice those founded, 10+ founded (hw51a 93 of 48)
+#   hulls    the humans out of hulls: 50+ STARVE lines (expeditions the pools cannot pay) and no hull convoy
+#   nowar    no war by day 1500: no strike launched
+# The thresholds are a first cut (2026-10-07), the user's to tune.
+TAG=$1; MAX=${2:-130}; IGN=",${3:-},"; T="$(cygpath -u "$LOCALAPPDATA")/Temp/threatinc-tests"
 declare -A seen; start=$(date +%s)
+ign() { case "$IGN" in *",$1,"*) return 0;; esac; return 1; }
+flag() { # flag <game> <signal> <text...>: print once a game, mark the pass failed
+  local g=$1 s=$2; shift 2
+  ign "$s" && return
+  [ -n "${seen[$s$g]}" ] && return
+  seen[$s$g]=1; fail=1; echo "  SIGNAL $s: $*"
+}
 while :; do
   fail=0
   for g in a b c; do
     F=$T/ti-$TAG$g.txt; E=$T/exc-$TAG$g.txt
     [ -f "$F" ] || continue
-    war=$(grep -o 'war [0-9]*' $F | tail -1)
+    war=$(grep -o 'war [0-9]*' $F | tail -1 | cut -d' ' -f2); war=${war:-0}
     ex=$(grep -v "ShipHullSpreadsheetLoader" $E 2>/dev/null | grep -c "Exception\|Error")
     ref=$(grep -c 'cannot sail today' $F); la=$(grep -c '^Offensive launched' $F); hs=$(grep -c 'sails on its day' $F)
     hull=$(grep -c 'ship hulls from' $F); land=$(grep -c '^Hulls: .* lands' $F)
-    k="$g:$ex:$ref"
-    echo "$(date +%T) $TAG$g $war | launches $la held-sailed $hs refused $ref | exc $ex | hull convoys $hull landed $land"
-    if [ "$ex" -gt 0 ] && [ -z "${seen[e$g]}" ]; then seen[e$g]=1; fail=1; echo "  FIRST EXCEPTION:"; grep -v "ShipHullSpreadsheetLoader" $E | grep -m1 -A6 "Exception\|Error" | grep "Exception\|Error\|threatinc" | head -4 | cut -c1-200; fi
-    if [ -z "$NOREF" ] && [ "$ref" -gt 0 ] && [ -z "${seen[r$g]}" ]; then seen[r$g]=1; fail=1; echo "  FIRST REFUSAL:"; grep -m1 -B1 'cannot sail today' $F | cut -c1-200; fi
+    hives=$(grep -o '^Census: threat hives [0-9]*' $F | tail -1 | grep -o '[0-9]*$'); hives=${hives:-0}
+    peak=$(grep -o '^Census: threat hives [0-9]*' $F | grep -o '[0-9]*$' | sort -n | tail -1); peak=${peak:-0}
+    starved=$(grep -c 'of navy upkeep unpaid' $F)
+    fbf=$(grep -c 'Forward Base.*founded\|founded.*Forward Base' $F); fbl=$(grep -ci 'forward base.*\(lost\|destroyed\|falls\)' $F)
+    starve=$(grep -c 'STARVE:' $F); strikes=$(grep -c '^Strike launched' $F)
+    echo "$(date +%T) $TAG$g war $war | hives $hives (peak $peak) | launches $la held-sailed $hs refused $ref | exc $ex | fb $fbf/$fbl lost | STARVE $starve | hull convoys $hull landed $land"
+    [ "$ex" -gt 0 ] && flag $g exc "$(grep -v "ShipHullSpreadsheetLoader" $E | grep -m1 -A6 "Exception\|Error" | grep "Exception\|Error\|threatinc" | head -3 | cut -c1-180 | tr '\n' ' ')"
+    [ "$ref" -gt 0 ] && flag $g ref "$(grep -m1 -B1 'cannot sail today' $F | head -1 | cut -c1-220)"
+    [ "$war" -gt 400 ] && [ "$hives" -eq 0 ] && [ "$peak" -gt 0 ] && flag $g wipe "0 hives at war day $war (peak $peak)"
+    [ "$war" -gt 600 ] && [ "$peak" -ge 8 ] && [ $((hives * 2)) -lt "$peak" ] && flag $g collapse "$hives hives of a $peak peak at war day $war"
+    [ "$starved" -gt 0 ] && flag $g starved "$(grep -m1 'of navy upkeep unpaid' $F | cut -c1-200)"
+    if [ "$la" -gt 0 ]; then
+      lastla=$(awk '/^Clock: day/{w=$5} /^Offensive launched/{l=w} END{print l+0}' $F)
+      fund=$(grep 'Offensive: saving' $F | tail -1 | grep -o 'fund [0-9]* FP' | grep -o '[0-9]*')
+      [ $((war - lastla)) -gt 500 ] && [ "${fund:-0}" -ge 20000 ] && flag $g hoard "no launch since war day $lastla, saving with $fund FP"
+    fi
+    [ "$fbf" -ge 10 ] && [ "$fbl" -ge $((fbf * 2)) ] && flag $g humans "forward bases founded $fbf, lost $fbl"
+    [ "$starve" -ge 50 ] && [ "$hull" -eq 0 ] && flag $g hulls "$starve STARVE lines, no hull convoy: $(grep -m1 'STARVE:' $F | cut -c1-160)"
+    [ "$war" -gt 1500 ] && [ "$strikes" -eq 0 ] && flag $g nowar "no strike launched by war day $war"
   done
-  [ $fail = 1 ] && { echo "FAIL SIGNAL - stop the batch or read on"; exit 1; }
+  [ $fail = 1 ] && { echo "FAIL SIGNAL - stop the batch, or read on with the signal in the ignore list"; exit 1; }
   [ $(( ($(date +%s)-start)/60 )) -ge $MAX ] && exit 0
   tasklist 2>/dev/null | grep -qi java.exe || { echo "batch ended"; exit 0; }
   sleep 180
