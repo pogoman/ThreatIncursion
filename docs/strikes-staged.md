@@ -65,4 +65,11 @@ floor stays per strike, so an opening campaign is one or more 8,000 FP prongs; w
 12-month horizon the war opens later than before (the fund saves for more than one) - the
 first thing to read in the runs.
 
-25 ly apart); touch the 70% of fabrication that becomes garrisons.
+**Arriving together** (the user, 2026-10-07): at launch the farthest prong sails and every other is
+held for the difference in its arrival (`ThreatOffensive.arrival`: the muster `ThreatReach.STRIKE_PREP_DAYS`
+plus the crossing at the board's estimated speed), its bill taken out of the fund and put back the day it
+sails (`poll`, daily from `IncursionManager.advance`; `threatinc_offensiveSchedule`). A held prong whose
+target or staging is gone, or that the fund cannot pay on its day, is dropped with its bill refunded. A
+world with a held prong is no candidate (`scheduled`).
+
+What it does not do yet: touch the 70% of fabrication that becomes garrisons.
