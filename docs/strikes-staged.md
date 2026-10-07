@@ -45,12 +45,13 @@ Every monthly pass (`ThreatOffensive.pass`, from `IncursionManager.tryStrikes`):
    system that can stage, priced by `stagedPlan` against an unlimited bank (the fuel and the
    supplies away still gate it). Score = `strikeValue` x the stance's `strikeTargetMult` /
    cost (value per fleet point).
-3. **Losing** (`ThreatStance.losing`: consolidating, the exchange lost, or fewer hives than 90
-   days ago): only targets within `offensiveNearLY` (10) of a staging hive system; a forward
-   base or a base staging against a hive weighs ten times; the near first.
+3. **Losing, by degree** (`ThreatStance.losingPressure` p, 0-1, section 4): the reach shrinks
+   from the farthest known target toward `offensiveNearLY` (10 ly at p = 1); a forward base or a
+   base staging against a hive weighs 1 + 9p; the score is divided by ly^p. Nothing within the
+   reach: all known.
 4. **Means**: the fund now + `strikeFundPerMonth` (the share of today's fabrication) x the
    months to the campaign's **deadline** = its start (the last launch, `threatinc_offensive`)
-   + `offensiveHorizonMonths` (12; `offensiveLosingMonths` 3 when losing).
+   + the horizon, `offensiveHorizonMonths` (12) shortened toward `offensiveLosingMonths` (3) by p.
 5. **The campaign** is every prong, best score first, whose bills the means pay by the
    deadline. Nothing sails until the fund holds the whole bill - the log reads `Offensive:
    saving for N of M target(s) ... launch in K month(s)` - then every prong launches in the
@@ -86,4 +87,47 @@ the multi-prong's payoff. The campaign is priced once at the candidates' counts 
 (`price`), dropping from the tail while the means no longer pay it; `launchStrike(..., expectedDef)` sizes
 the real strike for the same figure (log: `defence expected N`).
 
-What it does not do yet: touch the 70% of fabrication that becomes garrisons.
+## 3. The spare garrison in the prongs (`strikeStagedGarrisons`, the user, 2026-10-07)
+
+"Spend it": the navy above the patrols goes on the offensive rather than sit at home paying the
+navy charge. On since 2026-10-07 (hw48).
+
+- **Up to the need**: with the offensive on, `stagedPlan` takes the spare Defense Swarms
+  (`stagedSpares`: every hive system's `garrisonAvailableForLaunch` above the reserve, nearest
+  the staging system first) only until the strike reaches its need (two swarms, the opening
+  floor, `strikeStagedMargin` x the expected answer), then builds the rest from the fund. Off
+  (one strike a pass), the old rule: every spare the means pay, "the mass".
+- **Shared in a pass** (`ThreatOffensive.Spares`): prongs are ranked each against the whole
+  spare (a prong's size is the same whoever pays it; its price is its fleet points plus the
+  supplies its trip burns beyond the spare's home charge), then re-priced in rank order on what
+  the earlier prongs left - a prong takes the first fleets of each system's muster walk, as
+  `consumeGarrison` will. `price` accepts a prong the spare pays alone (no fund bill).
+- **Held prongs earmark** their fleets (`earmarked`, the schedule entry's 8th field,
+  `system:fleets;...`): `stagedSpares` leaves them out for every other strike until the day,
+  when the prong re-plans with what is there. At launch the held prongs are scheduled first,
+  then each prong sailing now launches with the spare the others leave it (`PENDING`).
+- **Supplies**: a garrison swarm that leaves stops paying the navy charge, so a strike's
+  supplies away count only what it burns beyond its swarms' home charge (`ThreatReach.awayFP`,
+  `standingUpkeepMult` capped at 1): in the campaign's sum, `canSustain` at launch and
+  `ThreatReach.commit`. Fleets away are paid before the navy charge (`maintainColonyGarrisons`).
+
+## 4. Losing, by degree (`ThreatStance.losingPressure`, the user, 2026-10-07)
+
+"How would you evaluate if the swarm is actually losing? likely more a series of worlds falling
+not just a one off". Before: consolidating, or the 60-day exchange lost (5% of held, more lost
+than sunk), or fewer hives than 90 days ago - hw47 flipped on its first lost opening.
+
+p = the larger of two trends over `losingWindowDays` (365), `StanceRules.losingPressure`:
+
+- **Hives**: fallen = the window's peak live colonies - now (`hivePeak`, from `hiveTrend`'s
+  change points). One fallen is the cost of war (0); from two, fallen / (`losingHiveShare` 0.5
+  x peak). A hive re-founded lowers it again.
+- **Exchange against means**: Threat FP lost beyond enemy FP sunk over the window (monthly
+  buckets, `threatinc_stanceTrendYear`), over what the forges made in it
+  (`hiveFabricationPerMonth` x window, at today's rate) x `losingExchangeShare` (1.0). Nothing
+  while it sinks as much as it loses.
+- **A war's verdict**: 0 while no faction is at war. Consolidating no longer counts.
+
+Read each posture pass (`evaluate`, stored in `threatinc_stance` [5-9]); a change of 0.1 logs
+`Stance: losing pressure a -> b (n of a k-hive peak fallen, exchange -x of y made in 365d)`.
+`losing()` is now p >= 0.5. The stance's own PRESS gate keeps the 60-day exchange.

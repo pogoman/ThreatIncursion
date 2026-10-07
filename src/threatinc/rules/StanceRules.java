@@ -36,6 +36,22 @@ public final class StanceRules {
 		return Math.max(0f, Math.min(1f, share));
 	}
 
+	/**
+	 * How far the swarm is losing the war, 0-1 (ThreatStance.losingPressure; the user, 2026-10-07: "a series of
+	 * worlds falling not just a one off"): the larger of two trends over the losing window. Hives: {@code fallen}
+	 * below the window's {@code peak}, nothing for one (the cost of war), full at {@code hiveShare} of the peak.
+	 * The exchange: what it lost beyond what it sank, against what its forges {@code made} over the window,
+	 * full at {@code exchangeShare} of it; nothing while it sinks as much as it loses.
+	 */
+	public static float losingPressure(int fallen, int peak, float lost, float killed, float made,
+			float hiveShare, float exchangeShare) {
+		float hives = 0f;
+		if (fallen >= 2 && peak > 0) hives = fallen / Math.max(1f, peak * Math.max(0.01f, hiveShare));
+		float exchange = 0f;
+		if (lost > killed) exchange = (lost - killed) / Math.max(1f, made * Math.max(0.01f, exchangeShare));
+		return Math.max(0f, Math.min(1f, Math.max(hives, exchange)));
+	}
+
 	/** The spread weight's lean away from the strongest rival, {@code ly} to its nearest world (ThreatStance.spreadMult). */
 	public static float spreadMult(float ly) {
 		return (float) Math.sqrt(1f + ly);

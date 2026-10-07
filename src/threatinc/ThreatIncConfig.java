@@ -182,10 +182,16 @@ public class ThreatIncConfig {
 	public static boolean swarmOffensive() { return b("threatinc_swarmOffensive", true); }
 	/** Months a campaign may save before the fund pays what it can and a new one starts. */
 	public static float offensiveHorizonMonths() { return fd("threatinc_offensiveHorizonMonths", 12f); }
-	/** The same horizon while the swarm is losing (ThreatStance.losing). */
+	/** The horizon at full losing pressure (ThreatStance.losingPressure); between, it shrinks from offensiveHorizonMonths by degree. */
 	public static float offensiveLosingMonths() { return fd("threatinc_offensiveLosingMonths", 3f); }
-	/** Losing, only targets within this many light-years of a hive system that can stage a strike are campaigned against; 0 = no limit. */
+	/** At full losing pressure only targets within this many light-years of a hive system that can stage a strike are campaigned against; between, the reach shrinks from every known target by degree; 0 = no limit. */
 	public static float offensiveNearLY() { return fd("threatinc_offensiveNearLY", 10f); }
+	/** Days over which the losing pressure reads the swarm's hives and exchange (ThreatStance.losingPressure; the user, 2026-10-07: losing is a trend, not a one-off). */
+	public static float losingWindowDays() { return fd("threatinc_losingWindowDays", 365f); }
+	/** The share of the window's peak hive count whose fall is full losing pressure; one fallen hive is none (the cost of war). */
+	public static float losingHiveShare() { return fd("threatinc_losingHiveShare", 0.5f); }
+	/** The exchange lost beyond what was sunk over the window, as a share of what the forges made over it, that is full losing pressure. */
+	public static float losingExchangeShare() { return fd("threatinc_losingExchangeShare", 1f); }
 	public static boolean postureRecallPartial() { return b("threatinc_postureRecallPartial", true); }
 	/** Whether a system under attack masses its spare swarms, then its neighbours', at its worlds short of their need, and a launch leaves the need home (ThreatPosture.massWithin, strikeCapFP). */
 	public static boolean postureMass() { return b("threatinc_postureMass", false); }

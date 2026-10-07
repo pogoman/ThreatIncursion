@@ -1241,7 +1241,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (drawn > 0f) ThreatColonyManager.chargeFP(colony, drawn);
 		ThreatFuel.pay(Math.min(ThreatFuel.stock(),
 				ThreatFuel.passage(ThreatStrikeFGI.estimateFP(swarmSizes), ly, true)));
-		ThreatReach.commit(ThreatStrikeFGI.estimateFP(swarmSizes));
+		ThreatReach.commit(ThreatReach.awayFP(ThreatStrikeFGI.estimateFP(swarmSizes), paid));
 		ThreatReach.note("strike", ly);
 
 		ThreatStrikeFGI strike = new ThreatStrikeFGI(params);
@@ -4947,6 +4947,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		java.util.List<Integer> counts = new ArrayList<Integer>();
 		/** Estimated fleet points of the whole strike, and of what the banks pay of it (built swarms, and re-embodiment above what the garrison swarms weigh). */
 		float fp, bankFP;
+		/** Fleet points of the garrison swarms it takes, as they stand (ThreatReach.awayFP). */
+		float spareFP;
 		int built;
 	}
 
@@ -4962,7 +4964,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * (strikeStagedGarrisons; 2026-10-05, after hw20: the banks hold a few
 	 * hundred FP at any time - the production goes into the garrisons - so a
 	 * strike paid from them alone stays two swarms; the hive's mass is its
-	 * garrisons, as a faction's is its stock).
+	 * garrisons, as a faction's is its stock). Less the fleets the offensive's
+	 * held prongs have earmarked (ThreatOffensive.earmarked).
 	 */
 	protected java.util.List<StagedSpare> stagedSpares(final StarSystemAPI source) {
 		java.util.List<StagedSpare> out = new ArrayList<StagedSpare>();
@@ -4971,7 +4974,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			MarketAPI c = ThreatColonyManager.pickStrikeStaging(systemId, true);
 			StarSystemAPI sys = getSystem(systemId);
 			if (c == null || sys == null) continue;
-			int avail = ThreatColonyManager.garrisonAvailableForLaunch(c);
+			int avail = ThreatColonyManager.garrisonAvailableForLaunch(c) - ThreatOffensive.earmarked(systemId);
 			if (avail <= 0) continue;
 			StagedSpare s = new StagedSpare();
 			s.colony = c;
@@ -4993,7 +4996,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * strikeStagedGatherLY of the staging system that the fuel, the supplies
 	 * and the banks (for the re-embodiment's excess) pay for - the mass, not a
 	 * match of the defence - and swarms built from the banks only to reach
-	 * the margin over the defence seen, or two swarms.
+	 * the margin over the defence seen, or two swarms. With the offensive
+	 * (swarmOffensive) the spare is taken only up to that margin, so the
+	 * campaign's prongs share the hive's navy and the fund builds the rest.
 	 */
 	protected StagedPlan stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target,
 			java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares) {
@@ -5038,16 +5043,26 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (spares == null) spares = stagedSpares(source);
 		float gather = ThreatIncConfig.strikeStagedGatherLY();
 		boolean full = false;
+		// pricing a prong (bankLimit set) the fuel and the supplies away are the campaign's sum to pay (ThreatOffensive)
+		boolean pricing = !Float.isNaN(bankLimit);
+		// the offensive's prongs take the spare only up to the strike's need, so one campaign's prongs share the
+		// hive's navy (the user, 2026-10-07: "spend it"); one strike a pass takes all the means pay - the mass
+		boolean toNeed = ThreatIncConfig.swarmOffensive();
 		for (StagedSpare s : spares) {
 			if (full || (gather > 0f && s.ly > gather)) break;
 			int count = 0;
 			for (ThreatColonyManager.MusterFleet mf : s.walk) {
+				if (toNeed && plan.sizes.size() >= 2 && plan.fp >= minFP
+						&& FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) >= need) {
+					full = true;
+					break;
+				}
 				java.util.List<Integer> sizes = new ArrayList<Integer>();
 				for (int sz : mf.sizes) sizes.add(strikeFleetSize(sz));
 				float est = ThreatStrikeFGI.estimateFP(sizes);
 				float excess = Math.max(0f, est - mf.fp);
-				if (plan.bankFP + excess > bank || !ThreatFuel.canPay(ThreatFuel.passage(plan.fp + est, ly, true))
-						|| !ThreatReach.canSustain(plan.fp + est, daysAway)) {
+				if (plan.bankFP + excess > bank || (!pricing && (!ThreatFuel.canPay(ThreatFuel.passage(plan.fp + est, ly, true))
+						|| !ThreatReach.canSustain(ThreatReach.awayFP(plan.fp + est, plan.spareFP + mf.fp), daysAway)))) {
 					full = true;
 					break;
 				}
@@ -5055,6 +5070,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				for (int sz : sizes) points += sz;
 				plan.fp += est;
 				plan.bankFP += excess;
+				plan.spareFP += mf.fp;
 				count++;
 			}
 			if (count > 0) {
@@ -5078,15 +5094,13 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			plan.bankFP += est;
 			plan.built++;
 		}
-		// pricing a prong (bankLimit set) the fuel and the supplies away are the campaign's sum to pay (ThreatOffensive)
-		boolean pricing = !Float.isNaN(bankLimit);
 		if (why == null && !pricing && !ThreatFuel.canPay(ThreatFuel.passage(plan.fp, ly, true))) {
 			why = "the fuel stock does not pay the passage of " + (int) plan.fp + " FP over " + (int) ly + " ly";
 			if (defOut != null && ThreatIncConfig.strikeWaitBooksFuel()) {
 				ThreatFuel.heldShort("strike from " + staging.getName(), ThreatFuel.passage(plan.fp, ly, true));
 			}
 		}
-		if (why == null && !pricing && !ThreatReach.canSustain(plan.fp, daysAway)) {
+		if (why == null && !pricing && !ThreatReach.canSustain(ThreatReach.awayFP(plan.fp, plan.spareFP), daysAway)) {
 			why = "the spare supplies do not keep " + (int) plan.fp + " FP away " + (int) daysAway + " days";
 		}
 		if (why == null) return plan;

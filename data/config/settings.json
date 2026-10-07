@@ -117,8 +117,9 @@
 	"threatinc_strikeStagedMargin": 1.5,
 	# ...and takes the spare Defense Swarms of the hive's systems first (those
 	# within GatherLY of the staging system; 0 = all), the banks building only
-	# what is missing. A trial of 2026-10-05 (hw21), not the user's decision.
-	"threatinc_strikeStagedGarrisons": false,
+	# what is missing. With the offensive a prong takes the spare up to its need
+	# and the campaign's prongs share it (the user, 2026-10-07: "spend it").
+	"threatinc_strikeStagedGarrisons": true,
 	"threatinc_strikeStagedGatherLY": 0,
 	# The strike fund: this share of every hive colony's fabrication is set aside
 	# hive-wide and alone pays staged strikes; 0 = no fund, the pooled banks pay.
@@ -134,13 +135,22 @@
 	# every known target system at once - one prong a system, sized to the strongest
 	# defence seen there - the campaign being the most valuable set the fund pays by
 	# its deadline (HorizonMonths from the last launch); at the deadline the fund pays
-	# what it can. Losing (consolidating, the exchange lost, hives falling) it campaigns
-	# only within NearLY of a hive, spoiling blows first, on the LosingMonths horizon.
+	# what it can. Losing, by degree (the losing pressure, 0-1, below), its reach
+	# shrinks from every known target toward NearLY of a hive, spoiling blows weigh
+	# more, and the horizon shortens toward LosingMonths, each reached at full pressure.
 	# false: the closest payable target, one strike a month.
 	"threatinc_swarmOffensive": true,
 	"threatinc_offensiveHorizonMonths": 12,
 	"threatinc_offensiveLosingMonths": 3,
 	"threatinc_offensiveNearLY": 10,
+	# THE LOSING PRESSURE (the user, 2026-10-07: "a series of worlds falling not just
+	# a one off"): a trend over WindowDays, the larger of two - hives fallen below the
+	# window's peak (none for one; full at HiveShare of the peak), and the exchange lost
+	# beyond what was sunk against what the forges made (full at ExchangeShare of it).
+	# 0 before any war.
+	"threatinc_losingWindowDays": 365,
+	"threatinc_losingHiveShare": 0.5,
+	"threatinc_losingExchangeShare": 1.0,
 	# NO LEAD FROM A STRIKE (2026-10-05, the user): a strike mobilises the factions
 	# it sweeps and tells nothing of its origin; hives are found only by parties
 	# entering their system. true = the struck faction's scouts sail to the origin
