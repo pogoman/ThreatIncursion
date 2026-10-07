@@ -136,10 +136,17 @@ navy charge. On since 2026-10-07 (hw48).
   spent the stock the campaign was priced on, and 8 of 9 held prongs were refused on their days -
   "the spare supplies do not keep 651 FP away 138 days" with the spare at -1,086 a month. During a
   launch only the entries from before it count (every prong of the launch was priced against the whole
-  stock). On its day the prong's launch gate charges only what its plan burns beyond the prepaid trip
-  (`ThreatReach.setPrepaid`, read by `canSustain`): hw52 returned the supplies to the stock and gated
-  the whole trip again, so each held prong alone was charged the flow the campaign as a set had made
-  negative (-283 a month x five months against a stock under the founding kit), 8 of 9 refused.
+  stock). On its day the prong is not gated on supplies again (`ThreatReach.setPrepaid`, read by
+  `canSustain`) and its plan is capped at the size it was priced at (`IncursionManager.setPricedFP`,
+  the entry's 11th field; `stagedPlan` takes spare swarms and builds no further) - the campaign paid for
+  that size and that trip. hw52 returned the supplies to the stock and gated the whole trip again, so
+  each held prong alone was charged the flow the campaign as a set had made negative (-283 a month x
+  five months against a stock under the founding kit), 8 of 9 refused; hw53 gated only the burn beyond
+  the prepaid trip, and a plan grown past its priced size on the bigger first fleets of the day's walk
+  (Gilead priced 1,136 FP, planned 1,468; Athulf 565 to 995) was refused against a stock at the kit.
+  The earmark is a count of fleets a system (`earmarked`), so which fleets a held prong finds on its
+  day is the walk's order, not the pricing's; the cap makes the difference a smaller take, never a
+  refusal.
 
 ## 4. Losing, by degree (`ThreatStance.losingPressure`, the user, 2026-10-07)
 

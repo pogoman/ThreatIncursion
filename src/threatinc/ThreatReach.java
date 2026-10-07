@@ -286,20 +286,28 @@ public class ThreatReach {
 		// a trip that burns nothing new (garrison swarms whose home charge it takes over, awayFP) is always kept,
 		// whatever the flow (hw48: a negative spare refused at launch what the campaign's pricing had passed)
 		if (need <= 0f) return true;
-		float stock = freeStock();
-		if (prepaid > 0f) {
-			// a held prong's trip was priced and paid with its campaign (ThreatOffensive.heldSupplies): only
-			// what the day's plan burns beyond it is gated (hw52: gated whole, each prong was charged the
-			// flow the campaign as a set had made negative, and 8 of 9 were refused)
-			float months = Math.max(1f, days) / 30f;
-			float bill = need * months - prepaid;
-			if (bill <= 0f) return true;
-			need = bill / months;
-			stock = Math.max(0f, stock - prepaid);
-		}
+		// a held prong's trip was priced and paid with its campaign (ThreatOffensive.heldSupplies) and its
+		// plan is capped at the size priced (IncursionManager.pricedFP): nothing to gate again (hw52: gated
+		// whole, each prong was charged the flow the campaign as a set had made negative, 8 of 9 refused;
+		// hw53: gated on the burn beyond the prepaid trip, a plan grown past its priced size was refused
+		// against a stock at the founding kit)
+		if (prepaid > 0f) return true;
 		float flow = spare();
 		if (need <= flow) return true;
-		return threatinc.rules.StrikeRules.canSustain(need, flow, days, stock);
+		return threatinc.rules.StrikeRules.canSustain(need, flow, days, freeStock());
+	}
+
+	/**
+	 * The figures behind a canSustain refusal, for the log (hw53: a held prong refused on its day could
+	 * not be read - was it the plan grown, the spare swarms missing, the flow or the stock?): the trip's
+	 * new burn after the spare swarms' credit, the prepaid part, the flow and the free stock.
+	 */
+	public static String sustainNote(float fp, float spareFP, float days) {
+		float away = awayFP(fp, spareFP);
+		float months = Math.max(1f, days) / 30f;
+		return (int) spareFP + " FP of spare swarms, new burn " + (int) suppliesPerMonth(away) + "/mo = "
+				+ (int) (suppliesPerMonth(away) * months) + " for the trip, prepaid " + (int) prepaid + ", flow "
+				+ (int) spare() + "/mo, free stock " + (int) freeStock();
 	}
 
 	/** Supplies in the stock already set aside for the trip being launched (ThreatOffensive.poll); 0 otherwise. */

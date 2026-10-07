@@ -391,7 +391,7 @@ public class ThreatOffensive {
 								ThreatFuel.stock(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES) - trip);
 						schedule().add(p.target.getId() + "|" + p.staging.getId() + "|" + p.source.getId() + "|"
 								+ (day + wait) + "|" + p.cost + "|" + p.fuel + "|" + p.expected + "|" + earmark(p.plan) + "|"
-								+ burnMonth + "|" + trip);
+								+ burnMonth + "|" + trip + "|" + p.fp);
 						held++;
 					} else {
 						addEarmark(PENDING, p.plan, -1);
@@ -556,7 +556,7 @@ public class ThreatOffensive {
 
 	protected static final String KEY_SCHEDULE = "threatinc_offensiveSchedule";
 
-	/** "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth|tripSupplies" per prong waiting its day (earmark: earmarked; supplies: heldSuppliesPerMonth, heldSupplies). */
+	/** "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth|tripSupplies|pricedFP" per prong waiting its day (earmark: earmarked; supplies: heldSuppliesPerMonth, heldSupplies; pricedFP: IncursionManager.pricedFP on its day). */
 	@SuppressWarnings("unchecked")
 	protected static List<String> schedule() {
 		Object v = Global.getSector().getPersistentData().get(KEY_SCHEDULE);
@@ -585,13 +585,14 @@ public class ThreatOffensive {
 				schedule().remove(e);
 				continue;
 			}
-			float launchDay, cost, fuel, expected, trip;
+			float launchDay, cost, fuel, expected, trip, priced;
 			try {
 				launchDay = Float.parseFloat(f[3]);
 				cost = Float.parseFloat(f[4]);
 				fuel = f.length > 5 ? Float.parseFloat(f[5]) : 0f;
 				expected = f.length > 6 ? Float.parseFloat(f[6]) : Float.NaN;
 				trip = f.length > 9 ? Float.parseFloat(f[9]) : 0f;
+				priced = f.length > 10 ? Float.parseFloat(f[10]) : Float.MAX_VALUE;
 			} catch (NumberFormatException x) {
 				schedule().remove(e);
 				continue;
@@ -616,14 +617,18 @@ public class ThreatOffensive {
 						+ " FP back in the fund");
 				continue;
 			}
-			// its trip is prepaid: the launch gate charges only what the day's plan burns beyond it (hw52: each
-			// held prong was gated alone against a flow the whole campaign had made negative, 8 of 9 refused)
+			// its trip is prepaid and its plan capped at the size priced: the campaign paid for both, so the
+			// supplies gate does not run again (hw52: gated whole, each held prong was charged alone the flow
+			// the campaign had made negative, 8 of 9 refused; hw53: gated on the burn beyond the prepaid trip,
+			// a plan grown past its priced size on bigger first fleets was refused)
 			ThreatReach.setPrepaid(trip);
+			IncursionManager.setPricedFP(priced);
 			boolean sailed;
 			try {
 				sailed = IncursionManager.instance.launchStrike(staging, source, target, expected) != null;
 			} finally {
 				ThreatReach.setPrepaid(0f);
+				IncursionManager.setPricedFP(Float.MAX_VALUE);
 			}
 			if (!sailed) {
 				ThreatIncConfig.log("Offensive: the prong at " + name + " cannot sail today; " + (int) cost
