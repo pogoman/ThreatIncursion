@@ -183,6 +183,16 @@ navy charge. On since 2026-10-07 (hw48).
   day is the walk's order, not the pricing's; the cap makes the difference a smaller take, never a
   refusal.
 
+**The front is never stripped** (the user, 2026-10-07, after hw59: "frontline worlds should never be stripped,
+whether humans know about them or not ... the point of the frontline is to be strong"). hw59a: one 10,460 FP
+strike at Sentinel Forward Base (13 ly, a spoiling blow under the losing rule) took 52 fleets from all 15
+colonies, besieged systems among them, and nine of them were eradicated in the months after - 18 of hw59a's 21
+falls and 16 of hw59c's 19 followed a strip to zero (hw58a: 2 of 31). Since then tier 2 holds only REAR
+colonies: a colony of a system with any exposure (`ThreatPosture.frontline` - within `postureExposureFarLY`
+of a human world the swarm has seen, or hostiles seen in it lately) offers only what it holds above its
+want. The weighting stays for the rear. Before a human world is known there is no front, so the opening
+strike may still take everything.
+
 ## 4. Losing, by degree (`ThreatStance.losingPressure`, the user, 2026-10-07)
 
 "How would you evaluate if the swarm is actually losing? likely more a series of worlds falling

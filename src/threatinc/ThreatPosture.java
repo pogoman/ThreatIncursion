@@ -295,16 +295,39 @@ public class ThreatPosture {
 	 * (ThreatSwarmIntel.places, a forward base among them), or Float.MAX_VALUE for none.
 	 */
 	protected static float nearestKnownHumanLY(StarSystemAPI system) {
-		float best = Float.MAX_VALUE;
-		if (system == null || !ThreatSwarmIntel.enabled()) return best;
+		StarSystemAPI s = nearestKnownHumanSystem(system);
+		return s != null ? Misc.getDistanceLY(system.getLocation(), s.getLocation()) : Float.MAX_VALUE;
+	}
+
+	/** The system of the nearest human world the swarm has seen (ThreatSwarmIntel.places), or null for none. */
+	public static StarSystemAPI nearestKnownHumanSystem(StarSystemAPI system) {
+		StarSystemAPI best = null;
+		float bestLY = Float.MAX_VALUE;
+		if (system == null || !ThreatSwarmIntel.enabled()) return null;
 		Set<String> seen = new HashSet<String>();
 		for (ThreatSwarmIntel.Place p : ThreatSwarmIntel.places()) {
 			if (p == null || p.systemId == null || !seen.add(p.systemId)) continue;
 			StarSystemAPI s = Global.getSector().getStarSystem(p.systemId);
-			if (s == null) continue;
-			best = Math.min(best, Misc.getDistanceLY(system.getLocation(), s.getLocation()));
+			if (s == null || s == system) continue;
+			float ly = Misc.getDistanceLY(system.getLocation(), s.getLocation());
+			if (ly < bestLY) {
+				bestLY = ly;
+				best = s;
+			}
 		}
 		return best;
+	}
+
+	/**
+	 * THE FRONT (the user, 2026-10-07: "frontline worlds should never be stripped, whether humans know
+	 * about them or not ... the point of the frontline is to be strong"): a hive system with any
+	 * exposure - within postureExposureFarLY of a human world the swarm has seen, or hostiles seen in
+	 * it lately - as of its last reading. No strike takes a front colony below its want
+	 * (IncursionManager.stagedSpares) and its patrols fly the corridor toward the humans
+	 * (ThreatSwarmPatrols.planRoute). Before a human world is known there is no front. Unread: front.
+	 */
+	public static boolean frontline(StarSystemAPI system) {
+		return enabled() && system != null && exposure(system) > 0f;
 	}
 
 	/**

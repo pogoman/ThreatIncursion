@@ -292,12 +292,26 @@ public class ThreatSwarmPatrols {
 			if (when != null && Global.getSector().getClock().getElapsedDaysSince(when) < memory) continue;
 			candidates.add(system);
 		}
-		Collections.sort(candidates, new Comparator<StarSystemAPI>() {
-			public int compare(StarSystemAPI a, StarSystemAPI b) {
-				return Float.compare(Misc.getDistanceLY(a.getLocation(), home.getLocation()),
-						Misc.getDistanceLY(b.getLocation(), home.getLocation()));
-			}
-		});
+		// THE CORRIDOR (the user, 2026-10-07: "the threat patrols should traverse the space between the front
+		// and human colonies once they are found to prevent scouts getting through"): a front system's
+		// patrols fly the systems nearest the line from home to the nearest human world the swarm knows -
+		// where the humans' scouting parties and patrols come from - instead of the ring around home
+		final StarSystemAPI toward = ThreatPosture.frontline(home) ? ThreatPosture.nearestKnownHumanSystem(home) : null;
+		if (toward != null) {
+			Collections.sort(candidates, new Comparator<StarSystemAPI>() {
+				public int compare(StarSystemAPI a, StarSystemAPI b) {
+					return Float.compare(corridorLY(a.getLocation(), home.getLocation(), toward.getLocation()),
+							corridorLY(b.getLocation(), home.getLocation(), toward.getLocation()));
+				}
+			});
+		} else {
+			Collections.sort(candidates, new Comparator<StarSystemAPI>() {
+				public int compare(StarSystemAPI a, StarSystemAPI b) {
+					return Float.compare(Misc.getDistanceLY(a.getLocation(), home.getLocation()),
+							Misc.getDistanceLY(b.getLocation(), home.getLocation()));
+				}
+			});
+		}
 		if (candidates.size() > stops) candidates = new ArrayList<StarSystemAPI>(candidates.subList(0, stops));
 		// the nearest few, flown as a chain from home
 		Vector2f at = home.getLocation();
@@ -316,6 +330,15 @@ public class ThreatSwarmPatrols {
 			at = next.getLocation();
 		}
 		return route;
+	}
+
+	/** Light-years from the point to the nearest point of the segment a-b (hyperspace units in, as Misc.getDistanceLY reads them). */
+	protected static float corridorLY(Vector2f p, Vector2f a, Vector2f b) {
+		float abx = b.x - a.x, aby = b.y - a.y;
+		float len2 = abx * abx + aby * aby;
+		float t = len2 > 0f ? ((p.x - a.x) * abx + (p.y - a.y) * aby) / len2 : 0f;
+		t = Math.max(0f, Math.min(1f, t));
+		return Misc.getDistanceLY(p, new Vector2f(a.x + t * abx, a.y + t * aby));
 	}
 
 	/** Fabricates a Patrol Swarm of about {@code size} FP at the colony and sends it round the route; null when the hive cannot pay or build it. */
