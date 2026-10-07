@@ -81,7 +81,8 @@ prong is priced for `expected` = (the defence seen + the faction's **navy seen e
 (`ThreatSwarmIntel.knownNavyFP`: every place of the faction's, defence + guards + staged, bar the target's
 system) shared among the campaign's prongs at that faction) x the faction's **answer ratio**
 (`responseRatio`: what its worlds met the swarm's earlier strikes with over what they were sized for,
-`ThreatStrikeFGI` samples the hostile strength daily while in the system and at the off-screen fight,
+`ThreatStrikeFGI` samples the hostile strength daily while in the system - an off-screen strike by its
+route's place, since hw49; before, the 28 of hw48 never read anything - and at the off-screen fight,
 `noteMet` on ending; decayed 0.7 a strike, never below 1). Splitting a faction's navy among the prongs is
 the multi-prong's payoff. The campaign is priced once at the candidates' counts and again at its own
 (`price`), dropping from the tail while the means no longer pay it; `launchStrike(..., expectedDef)` sizes
@@ -99,17 +100,21 @@ navy charge. On since 2026-10-07 (hw48).
   (one strike a pass), the old rule: every spare the means pay, "the mass".
 - **Shared in a pass** (`ThreatOffensive.Spares`): prongs are ranked each against the whole
   spare (a prong's size is the same whoever pays it; its price is its fleet points plus the
-  supplies its trip burns beyond the spare's home charge), then re-priced in rank order on what
-  the earlier prongs left - a prong takes the first fleets of each system's muster walk, as
-  `consumeGarrison` will. `price` accepts a prong the spare pays alone (no fund bill).
+  supplies its trip burns beyond the spare's home charge), then chosen in rank order, each re-priced on
+  what the earlier prongs left. The chosen set is priced once more in **sail order**, the farthest first
+  (hw48: each muster takes the first fleets of a system's walk on its day, so a set shared in rank order
+  met bigger fleets on its days than it was priced for). `price` accepts a prong the spare pays alone.
 - **Held prongs earmark** their fleets (`earmarked`, the schedule entry's 8th field,
   `system:fleets;...`): `stagedSpares` leaves them out for every other strike until the day,
   when the prong re-plans with what is there. At launch the held prongs are scheduled first,
   then each prong sailing now launches with the spare the others leave it (`PENDING`).
 - **Supplies**: a garrison swarm that leaves stops paying the navy charge, so a strike's
   supplies away count only what it burns beyond its swarms' home charge (`ThreatReach.awayFP`,
-  `standingUpkeepMult` capped at 1): in the campaign's sum, `canSustain` at launch and
-  `ThreatReach.commit`. Fleets away are paid before the navy charge (`maintainColonyGarrisons`).
+  `standingUpkeepMult` capped at 1, times the share of the navy charge paid last month,
+  `ThreatColonyManager.navyPaidShare` - an unpaid charge frees nothing): in the campaign's sum,
+  `canSustain` at launch and `ThreatReach.commit`. A trip with no new burn is always sustainable. Fleets
+  away are paid before the navy charge (`maintainColonyGarrisons`). Nothing sailed: "none of N planned
+  prong(s) could sail today", the campaign kept to its deadline.
 
 ## 4. Losing, by degree (`ThreatStance.losingPressure`, the user, 2026-10-07)
 

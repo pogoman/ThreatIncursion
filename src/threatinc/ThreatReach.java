@@ -278,6 +278,9 @@ public class ThreatReach {
 	public static boolean canSustain(float fp, float days) {
 		if (!enabled() || !ThreatColonyUpkeep.enabled()) return true;
 		float need = suppliesPerMonth(fp);
+		// a trip that burns nothing new (garrison swarms whose home charge it takes over, awayFP) is always kept,
+		// whatever the flow (hw48: a negative spare refused at launch what the campaign's pricing had passed)
+		if (need <= 0f) return true;
 		float flow = spare();
 		if (need <= flow) return true;
 		return threatinc.rules.StrikeRules.canSustain(need, flow, days, freeStock());
@@ -304,11 +307,13 @@ public class ThreatReach {
 	 * The fleet points a strike of {@code fp} adds to the supplies the hive pays: the garrison
 	 * swarms in it ({@code garrisonFP}, the navy above the patrols) stop paying the navy charge
 	 * as they leave (ThreatColonyManager.payNavySupplies, standingUpkeepMult), so only the rest
-	 * is a new burn (the user, 2026-10-07: the navy is spent on the offensive, not kept at home).
+	 * is a new burn (the user, 2026-10-07: the navy is spent on the offensive, not kept at home) -
+	 * as far as that charge was paid (navyPaidShare, last month's): a charge that went unpaid
+	 * frees nothing (hw48: credited in full, the strikes away went unpaid instead).
 	 */
 	public static float awayFP(float fp, float garrisonFP) {
 		float credit = ThreatIncConfig.threatSuppliesUpkeep()
-				? Math.max(0f, Math.min(1f, ThreatIncConfig.standingUpkeepMult())) : 0f;
+				? Math.max(0f, Math.min(1f, ThreatIncConfig.standingUpkeepMult())) * ThreatColonyManager.navyPaidShare() : 0f;
 		return Math.max(0f, fp - Math.max(0f, garrisonFP) * credit);
 	}
 
