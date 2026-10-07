@@ -146,6 +146,23 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   off by default (below).
 - **The defence since 2026-10-04** - the swarm's restraints removed, strikes come home, the defence
   massed (`postureMass`, off), the system defending as one (`systemDefence`): `swarm-defence.md`.
+- **Exposure - DEFENCE IN DEPTH** (the user, 2026-10-07, "yes lets build two suggested to start", after
+  hw58-59 held 6.5-10k of 15-19k wanted while rear worlds sat on 11-14 fleets nobody came for). A quiet
+  system's base is scaled by its exposure (`ThreatPosture.exposure`, `postureExposure`): want = max(one
+  swarm, base x exposure, its share of need). Exposure is 1 while hostiles were seen in the system (the
+  pass's `attacked`: attacks, hostiles present or ships lost; `S_SEEN` keeps the day) within
+  `postureExposureSeenDays` (180), or the nearest human world the swarm has seen (`ThreatSwarmIntel.places`,
+  forward bases included; `nearestKnownHumanLY`) lies within `postureExposureNearLY` (10); it falls
+  linearly to 0 at `postureExposureFarLY` (30) and beyond, and is 0 with no human world known at all - so
+  before the first scout report every hive holds one swarm a colony and banks the rest (more foundings,
+  a bigger fund). Need is untouched: a pressed system has seen its attacker and reads 1. The rear's
+  garrison then counts as surplus and flows to the exposed systems through the pressure pass (a donor
+  gives above its want), a strike's gather takes it (tier 1 now), and nothing is rebuilt there. The swarm
+  reads only what it has seen; with the fog off exposure is 1 everywhere. State fields `S_SEEN` (7) and
+  `S_EXPOSURE` (8), `S_LEN` 9 - a 7-field reading loads as unread, once. Logs `Posture: <system> exposure
+  0.00 -> 1.00 (hostiles seen 3 d ago | no hostile seen, nearest known human world 12 ly | none)` on a
+  change of 0.25, and `x 0.40 exposure` after the base in the mode-change line. `exposure(system)` reads
+  the last pass's figure.
 - **Settings:** `postureEnabled` (true), `postureMargin` (1.25), `postureBand` (0.25), `postureDays` (5),
   `postureStagedShare` (0), `postureTriage` (false), `postureNeedAtAttack` (true),
   `posturePressedForgesHome` (false), `postureRecallLY` (10), `postureMass` (false), `systemDefence` (true),
