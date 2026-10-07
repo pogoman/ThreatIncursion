@@ -65,5 +65,4 @@ floor stays per strike, so an opening campaign is one or more 8,000 FP prongs; w
 12-month horizon the war opens later than before (the fund saves for more than one) - the
 first thing to read in the runs.
 
-What it does not do yet: time the prongs to arrive together (they launch the same day, 4 ly and
 25 ly apart); touch the 70% of fabrication that becomes garrisons.
