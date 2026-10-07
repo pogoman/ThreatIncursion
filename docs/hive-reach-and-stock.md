@@ -217,13 +217,28 @@ months (4):
   the stock is in surplus: S >= D x T contradicts the spare rule whenever P' >= p_max.
 
 **2. Surplus fuel plants are converted** (`ThreatColonyManager.convertSurplus`, `hiveConvertSurplus`,
-on). Once a month hive-wide (`mayConvert`, the answer's pace), before the planner's sweep, one fuel
-plant that is a surplus producer is torn down and its slot built into what the hive lacks
-(`conversionFor`). In order:
+on). A SHORT_DAYS apart hive-wide (`mayConvert`, the answer's pace), before the planner's sweep, every
+fuel plant that is a surplus producer is torn down and its slot built into what the hive lacks
+(`conversionFor`) - as many in the turn as the surplus spares, each while the production left still
+covers the trailing demand (2026-10-07, after hw60: one a month gave five conversions in 77 months with
+2.5M fuel banked at 70-130 months of demand while supplies bound every seeding and campaign). A forge
+conversion the stock cannot pay reserves its price (`ThreatFuel.reserve`, the `RESERVE_CONVERSION` key)
+so the next turn pays it - see "The shortage's answer is paid first" below. In order:
 - a forge, while supplies are not in surplus and the world (size 3+) has none;
 - else a missing chain link: Mining on deposits no hive world digs, or a first refinery, or a
   refinery bigger than the hive's largest once that no longer covers the largest metals consumer;
 - else a Swarm Bastion (rule 3).
+
+**The shortage's answer is paid first** (`ThreatFuel.reserved` / `free` / `reserve`, 2026-10-07 after
+hw60): a forge the planner waits to build (`affordStructure`, while supplies are not in surplus) or to
+convert a plant into has its price reserved, and the fleets' upkeep (`paySupplies`, `payNavySupplies`),
+the colonies' sustenance and growth (`ThreatColonyUpkeep`), a founding (`canFound`) and the trips
+(`ThreatReach.freeStock`) draw only on the stock above it. Capped at a month's production; released when
+the build is bought, the world lost or the wait planned away (`buyWaitingStructures`). hw60c made 197k
+supplies a month and spent 207k with the stock at 0-7k: 72 "waiting build" turns, 176 seedings held on
+supplies and 20 of 29 campaign saving lines "not yet kept", while 2.5M fuel and 294k FP sat idle - a
+forge's 5k was never in the stock because everything else drew first. The humans' yards-first rule
+(`ThreatFactionStock`), the same for the hive.
 
 Candidates:
 - Only slot-full worlds: a world with a free slot builds there without tearing anything down.
