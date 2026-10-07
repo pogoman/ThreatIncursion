@@ -350,15 +350,22 @@ public class ThreatCoalition {
 		float need = ThreatHulls.shortUnits(needyId) - ThreatConvoys.inboundShips(to.getId());
 		if (need < 1f) return;
 		boolean sailed = false;
+		// why no helper sent any, for the log: the gate each stopped at (hw60-62: no hull convoy in nine games)
+		StringBuilder why = new StringBuilder();
 		for (String helperId : ids) {
 			if (need < 1f) break;
 			if (helperId.equals(needyId) || ThreatWarState.excluded(helperId)) continue;
 			FactionAPI helper = Global.getSector().getFaction(helperId);
 			if (helper == null || helper.isPlayerFaction()) continue;
-			if (helper.isHostileTo(needy) || needy.isHostileTo(helper)) continue;
-			if (!ThreatFactionStock.hullsSurplus(helperId)) continue;
-			MarketAPI donor = ThreatConvoys.pickAllyDonor(helper, to, c);
-			if (donor == null) continue;
+			String gate = null;
+			MarketAPI donor = null;
+			if (helper.isHostileTo(needy) || needy.isHostileTo(helper)) gate = "hostile";
+			else if (!ThreatFactionStock.hullsSurplus(helperId)) gate = "none free";
+			else if ((donor = ThreatConvoys.pickAllyDonor(helper, to, c)) == null) gate = "no port in reach with a unit";
+			if (gate != null) {
+				why.append(why.length() > 0 ? ", " : "").append(helperId).append(" ").append(gate);
+				continue;
+			}
 			float amount = Math.min(need, ThreatConvoys.spare(donor, c));
 			if (amount < 1f) continue;
 			float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
@@ -372,6 +379,8 @@ public class ThreatCoalition {
 			sailed = true;
 		}
 		if (sailed) ThreatFactionStock.aided(needyId, c);
+		else ThreatIncConfig.logQuiet("hullaid:" + needyId, "Ally aid: no hulls for " + needyId + " (" + (int) need
+				+ " units short at " + to.getName() + ") - " + (why.length() > 0 ? why : "no helper"));
 	}
 
 	/** An ally's convoy landed at another faction's colony. */

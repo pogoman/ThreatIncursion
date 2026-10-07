@@ -18,9 +18,13 @@ So the hive has no radius now. A fleet goes where its trip can be paid, and wher
   month, 0.78 a FP for the swarm's hulls, measured off the garrisons each day
   (`ThreatReach.suppliesPerFP`) - over the days away at the board's 0.5 ly a day.
 - **The gate.** The stock must pay the passage, and the fleet's supplies must fit in the spare
-  (`ThreatColonyUpkeep.spareSupplies`): the production, less the fleets away, less every colony's
-  sustenance at its 0.9 cap. A trip never starves a colony; it can starve growth, since fleets away
-  are paid first. Launches between feeds commit their share (`ThreatReach.commit`). Its whole bill
+  (`ThreatColonyUpkeep.spareSupplies`): the production, less the fleets away, less the navy charge,
+  less every colony's sustenance at its share (`sustainShare` 0.7, so an expansion tithe of
+  1/0.7 x sustenance is kept for growth, builds and seedings) - or, the chest full
+  (`ThreatStance.chestFull`, 2026-10-08: the strike fund holds a horizon's saving it could not
+  field), less what the colonies actually took, the tithe feeding the fleets (hw62 banked 38k ->
+  141k FP against a spare of zero). A trip never starves a colony; it can starve growth, since
+  fleets away are paid first. Launches between feeds commit their share (`ThreatReach.commit`). Its whole bill
   counts, not the month's rate (2026-10-01, `canSustain(fp, days)`): the supplies a month over its
   days away must fit in the spare over those days plus the stock above one founding kit
   (`freeStock`) - on the rate alone ng1b's dying hive held a raider with 36k supplies banked and

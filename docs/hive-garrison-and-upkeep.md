@@ -199,8 +199,19 @@ the whole sector, evaluated at the end of every posture pass (`ThreatPosture.pol
     count down over the window while a system is under attack). Held until the pressed share falls below
     0.8 x `stanceConsolidateShare` (the floor still applies). Checked first.
   - PRESS: not losing, pressed share < half of `stanceConsolidateShare`, and a weak target of a rival
-    outweighed >= `stancePressRatio` exists. Held while that ratio stays >= 0.8 x `stancePressRatio`.
+    outweighed >= `stancePressRatio` exists - or the chest is full. Held while that ratio stays >= 0.8 x `stancePressRatio`.
   - Else EXPAND.
+  - **The chest (2026-10-08, after hw62; built for hw63, to confirm):** the strike fund holds a
+    horizon's saving (`ThreatColonyManager.strikeFundPerMonth` x `offensiveHorizonMonths`) and a known
+    target exists. hw62 banked 38k -> 141k FP in every game and fielded none of it: the colonies'
+    spare for new trips kept sustenance at its share (an expansion tithe of 1/`sustainShare`), and
+    seedings took 5k each, so spread took every month's supplies while hw62a's hives fell 76 -> 47.
+    Full (`ThreatStance.chestFull`, held until the fund is spent below `CHEST_LEAVE` 0.5 of the
+    horizon), whatever the stance: the feed's spare is the production less the fleets away, the navy
+    charge and what the colonies actually took (`ThreatColonyUpkeep.feed`), and nothing is founded
+    the supplies surplus does not pay (`ThreatFuel.canFound`). State: `threatinc_stance`[10]. Log:
+    `Stance: the chest is full|spent - N of M FP a horizon; the fleets are fed before|after expansion`;
+    every stance line carries `chest N of M FP a horizon (full)`.
   - A stance holds `stanceDwellDays` before it changes; entering CONSOLIDATE never waits.
 - **Strength per rival:** the hive's held FP in the hive systems facing that rival (systems it stages
   against, attacks or guards forward bases facing, plus systems within fuel reach of a known world of

@@ -163,7 +163,8 @@ public class ThreatColonyUpkeep {
 	/**
 	 * Supplies a month the production leaves once the fleets away are paid and
 	 * every colony's sustenance fits under sustainShare, as the last feed read
-	 * it: what a new trip may burn without starving a colony (ThreatReach).
+	 * it: what a new trip may burn without starving a colony (ThreatReach). The chest full, the
+	 * production less what the colonies took; else less their share, the rest kept for expansion.
 	 * Unlimited with size upkeep off.
 	 */
 	public static float spareSupplies() {
@@ -323,6 +324,13 @@ public class ThreatColonyUpkeep {
 			budget -= extra;
 			stock -= extra;
 			grown += extra;
+		}
+		// the chest full (ThreatStance.chestFull), the tithe above sustenance feeds the fleets: the spare is the
+		// production less what the colonies actually took, not less their share (hw62: the fund banked 38k -> 141k FP
+		// in every game while the spare sat at zero under the expansion tithe; 2026-10-08)
+		if (ThreatStance.chestFull()) {
+			float took = Math.max(sustainMonth, (sustained + grown) * 30f / days);
+			data().put("spare", ThreatFuel.perMonth(Commodities.SUPPLIES) - Math.max(0f, fleetsPerMonth) - navyMonth - took);
 		}
 		float draw = Math.min(sustained + grown, ThreatFuel.free(Commodities.SUPPLIES));
 		if (draw > 0f) ThreatFuel.pay(Commodities.SUPPLIES, draw);

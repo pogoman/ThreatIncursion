@@ -276,8 +276,12 @@ public class ThreatFuel {
 	public static boolean canFound(float passageFuel) {
 		float[] cost = foundingCost();
 		UNMET.clear();
-		// above the planner's reserve (reserved): a founding never takes the forge's price
-		boolean supplies = cost[0] <= 0f || free(Commodities.SUPPLIES) >= cost[0];
+		// above the planner's reserve (reserved): a founding never takes the forge's price; and while the
+		// chest is full (ThreatStance.chestFull: a strike fund a horizon's saving could not field), nothing
+		// is founded the supplies surplus does not pay - the kits' supplies feed the fleets (hw62: 110-173
+		// seedings a game while the fund banked 38k -> 141k FP unspent)
+		boolean supplies = cost[0] <= 0f || (free(Commodities.SUPPLIES) >= cost[0]
+				&& (!ThreatStance.chestFull() || surplus(Commodities.SUPPLIES)));
 		if (!supplies) UNMET.put(Commodities.SUPPLIES, cost[0]);
 		boolean fuel = canPay(Commodities.FUEL, cost[1] + passageFuel);
 		return supplies && fuel;

@@ -26,7 +26,11 @@ import com.fs.starfarer.api.util.Misc;
  * <li>PRESS - it is stronger than a rival in reach, it knows a world of that
  * rival it could take cheaply, and it is not pressed at home. The staging
  * colony facing that world builds the strike it needs and the strike goes
- * for the weak worlds first; expansion gets the smaller share.</li>
+ * for the weak worlds first; expansion gets the smaller share. Or (2026-10-08)
+ * its chest is full: the strike fund holds a horizon's saving it could not
+ * field; then the colonies' expansion tithe feeds the fleets
+ * (ThreatColonyUpkeep.feed's spare) and nothing is founded the surplus does
+ * not pay (ThreatFuel.canFound), until the chest is spent below CHEST_LEAVE.</li>
  * <li>EXPAND - quiet and not clearly stronger, or outmatched but given
  * breathing room, or losing the exchange: it diversifies, seeding systems
  * away from its strongest rival. Strikes as they come.</li>
@@ -62,6 +66,8 @@ public class ThreatStance {
 	protected static final float HIVE_WINDOW_DAYS = 90f;
 	/** PRESS and CONSOLIDATE hold while their figure stays above this share of what entered them. */
 	protected static final float LEAVE = 0.8f;
+	/** A full chest (the strike fund at a horizon's saving) presses until it is spent below this share of the horizon. */
+	protected static final float CHEST_LEAVE = 0.5f;
 	/** Losses below this share of the hive's held fleets are too few to call the exchange lost. */
 	protected static final float SIGNIFICANT_LOSS = 0.05f;
 	/** Pressing, the target the stance picked outweighs any other in the strike's pick by this. */
@@ -137,6 +143,18 @@ public class ThreatStance {
 
 	public static String stanceName() {
 		return NAMES[stance()];
+	}
+
+	/**
+	 * Whether the chest is full, as the last pass read it: the strike fund holds a horizon's saving it
+	 * could not field (evaluate). Then the colonies' expansion tithe feeds the fleets
+	 * (ThreatColonyUpkeep.feed's spare) and nothing is founded the supplies surplus does not pay
+	 * (ThreatFuel.canFound), whatever the stance - losing too, the fund is spent near home.
+	 */
+	public static boolean chestFull() {
+		if (!enabled()) return false;
+		float[] s = map(KEY_STATE).get(SECTOR);
+		return s != null && s.length >= 11 && s[10] > 0f;
 	}
 
 	/**
@@ -483,7 +501,17 @@ public class ThreatStance {
 		boolean wantConsolidate = !breathing
 				&& (threatinc.rules.StanceRules.pressedEnough(pressed, n, consolidateNeed,
 						ThreatIncConfig.stanceConsolidateMinPressed()) || (hiveDelta < 0 && attacked > 0));
-		boolean wantPress = !losing && best != null && pressedShare < consolidateEnter / 2f;
+		// the chest (2026-10-08, after hw62): a strike fund holding a horizon's saving it could not field
+		// is a reason to press on any known world - hw62 banked 38k -> 141k FP in every game while the
+		// supplies spare sat at zero, the colonies' expansion tithe and seedings taking every month's
+		// supplies first. Pressing, that tithe feeds the fleets (ThreatColonyUpkeep.feed) and nothing is
+		// founded the surplus does not pay (ThreatFuel.canFound); the chest is left below CHEST_LEAVE
+		float chest = ThreatColonyManager.strikeFund();
+		float chestHorizon = ThreatColonyManager.strikeFundPerMonth() * Math.max(1f, ThreatIncConfig.offensiveHorizonMonths());
+		boolean hadChest = st != null && st.length >= 11 && st[10] > 0f;
+		boolean chestFull = chestHorizon > 0f && bestAny != null
+				&& chest >= chestHorizon * (hadChest ? CHEST_LEAVE : 1f);
+		boolean wantPress = !losing && (best != null || chestFull) && pressedShare < consolidateEnter / 2f;
 		int next = wantConsolidate ? CONSOLIDATE : wantPress ? PRESS : EXPAND;
 		// a stance holds its dwell, but defence never waits
 		if (next != was && next != CONSOLIDATE && hadState
@@ -510,6 +538,8 @@ public class ThreatStance {
 			why.append(" ").append(f).append(" ").append(r >= Float.MAX_VALUE ? "inf" : String.format("%.2f", r))
 					.append(" (").append((int) (theirs != null ? theirs : 0f)).append(")");
 		}
+		why.append("; chest ").append((int) chest).append(" of ").append((int) chestHorizon).append(" FP a horizon")
+				.append(chestFull ? " (full)" : "");
 		Target shown = best != null ? best : bestAny;
 		if (shown != null) {
 			why.append("; best weak target ").append(shown.market.getName()).append(" (")
@@ -534,7 +564,12 @@ public class ThreatStance {
 				ThreatIncConfig.losingHiveShare(), ThreatIncConfig.losingExchangeShare());
 		float hadPressure = st != null && st.length >= 6 ? st[5] : 0f;
 		map(KEY_STATE).put(SECTOR, new float[] { next, since, pressure, losing ? 1f : 0f, hiveDelta,
-				losingPressure, peak - hivesNow, peak, year[0] - year[1], made });
+				losingPressure, peak - hivesNow, peak, year[0] - year[1], made, chestFull ? 1f : 0f });
+		if (chestFull != hadChest) {
+			ThreatIncConfig.log("Stance: the chest is " + (chestFull ? "full" : "spent") + " - " + (int) chest + " of "
+					+ (int) chestHorizon + " FP a horizon; the fleets are fed " + (chestFull ? "before" : "after")
+					+ " expansion");
+		}
 		if (Math.abs(losingPressure - hadPressure) >= 0.1f || (losingPressure > 0f) != (hadPressure > 0f)) {
 			ThreatIncConfig.log("Stance: losing pressure " + String.format("%.2f", hadPressure) + " -> " + losingSummary()
 					+ (ThreatWarState.warFactionIds().isEmpty() ? " - no war yet, read as 0" : ""));

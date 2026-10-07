@@ -2690,7 +2690,9 @@ public class ThreatConvoys {
 				best = donor;
 			}
 		}
-		if (best != null && bestSpare < capacityFor(commodityId)
+		// hulls sail by the unit: a ship is a load (hw62b: Tri-Tachyon's 25 spare units never sailed
+		// against a 30-unit minimum read off the cargo hold; no hull convoy in nine games since hw60)
+		if (best != null && !Commodities.SHIPS.equals(commodityId) && bestSpare < capacityFor(commodityId)
 				* ThreatIncConfig.convoyMinLoadFraction()) return null;
 		return best;
 	}
