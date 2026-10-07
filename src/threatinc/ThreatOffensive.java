@@ -616,7 +616,16 @@ public class ThreatOffensive {
 						+ " FP back in the fund");
 				continue;
 			}
-			if (IncursionManager.instance.launchStrike(staging, source, target, expected) == null) {
+			// its trip is prepaid: the launch gate charges only what the day's plan burns beyond it (hw52: each
+			// held prong was gated alone against a flow the whole campaign had made negative, 8 of 9 refused)
+			ThreatReach.setPrepaid(trip);
+			boolean sailed;
+			try {
+				sailed = IncursionManager.instance.launchStrike(staging, source, target, expected) != null;
+			} finally {
+				ThreatReach.setPrepaid(0f);
+			}
+			if (!sailed) {
 				ThreatIncConfig.log("Offensive: the prong at " + name + " cannot sail today; " + (int) cost
 						+ " FP back in the fund");
 				continue;

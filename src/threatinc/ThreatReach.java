@@ -286,9 +286,28 @@ public class ThreatReach {
 		// a trip that burns nothing new (garrison swarms whose home charge it takes over, awayFP) is always kept,
 		// whatever the flow (hw48: a negative spare refused at launch what the campaign's pricing had passed)
 		if (need <= 0f) return true;
+		float stock = freeStock();
+		if (prepaid > 0f) {
+			// a held prong's trip was priced and paid with its campaign (ThreatOffensive.heldSupplies): only
+			// what the day's plan burns beyond it is gated (hw52: gated whole, each prong was charged the
+			// flow the campaign as a set had made negative, and 8 of 9 were refused)
+			float months = Math.max(1f, days) / 30f;
+			float bill = need * months - prepaid;
+			if (bill <= 0f) return true;
+			need = bill / months;
+			stock = Math.max(0f, stock - prepaid);
+		}
 		float flow = spare();
 		if (need <= flow) return true;
-		return threatinc.rules.StrikeRules.canSustain(need, flow, days, freeStock());
+		return threatinc.rules.StrikeRules.canSustain(need, flow, days, stock);
+	}
+
+	/** Supplies in the stock already set aside for the trip being launched (ThreatOffensive.poll); 0 otherwise. */
+	protected static float prepaid = 0f;
+
+	/** Marks the trip about to launch as prepaid by {@code supplies} out of the stock (canSustain); 0 clears it. */
+	public static void setPrepaid(float supplies) {
+		prepaid = Math.max(0f, supplies);
 	}
 
 	/** The most fleet points canSustain lets away for {@code days}: the flow and the stock spread over the trip. */
