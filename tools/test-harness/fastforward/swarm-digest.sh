@@ -14,7 +14,7 @@ for tag in "$@"; do
        /^Colony eradicated: /{c=substr($0,20); n++; if(c in strip && strip[c]<NR) s++}
        END{printf "-- eradicated %d, of which stripped to 0 earlier %d\n", n, s}' "$f"
   echo "-- musters to zero: $(grep -c 'mustered from .* (0 remain' "$f") of $(grep -c 'mustered from' "$f")"
-  echo "-- campaigns launched $(grep -c 'Offensive launched' "$f"), held sailed $(grep -c 'sails on its day' "$f"), refused $(grep -c 'cannot sail today' "$f"), nothing-pays $(grep -c 'nothing the fund pays' "$f")"
+  echo "-- campaigns launched $(grep -c 'Offensive launched' "$f"), held sailed $(grep -c 'sails on its day' "$f"), refused $(grep -c 'cannot sail today' "$f"), nothing-pays $(grep -c 'nothing the (fund|means) pay' -E "$f")"
   grep -o 'Strike launched from [A-Za-z -]* at [A-Za-z -]* ([a-z_]*, [0-9]* ly, ~[0-9]* days away; [0-9]* swarm(s) mustered in [0-9]* fleet(s), [0-9]* FP' "$f" \
     | awk '{fp=$(NF-1); n++; s+=fp; if(fp>=5000)b++} END{printf "-- strikes %d, mean %d FP, 5k+: %d\n", n, (n?s/n:0), b}'
   grep 'Swarm intel: a strike at' "$f" | awk '{for(i=1;i<=NF;i++){if($i=="for")e+=$(i+1); if($i=="met")m+=$(i+1)}; n++} END{printf "-- strikes reported %d: sized %d, met %d (%.2f)\n", n, e, m, (e>0?m/e:0)}'
