@@ -261,5 +261,17 @@ geography.
 The user picked (a) at 12:35 ("do recc fix for swarm first, i want a test on the new seed and the
 previous old one to go simultaneously"): built as `ThreatOffensive.cheapestProngCost` read in
 `ThreatStance.evaluate` (a6818b7b, jar 12:42), ck3 remade as ck4 on it, and the test is hw71 (two games
-from ck2) + hw72 (two from ck4) in one batch - four games at once, not six, because each game holds a
-2 GB heap on a 16 GB machine.
+from ck2) + hw72 (two from ck4) in one batch. Four games at once did not fit: 70 MB free, the clocks at 50 war days in 7 minutes;
+hw71b was killed at 13:27 and the batch ran as three (hw71a on ck2, hw72a/b on ck5). Three games is the
+ceiling on this machine.
+
+## 7. hw71 + hw72 - the chest fix on both sectors at once, read at 14:05: the swarm wins all three, the humans nearly gone
+
+hw71a (ck2): hives 39 -> 83, humans 50 -> 10 colonies, every yard 0. hw72a / b (ck5, the new
+sector remade on the fix, opening at 32 hives): hives 174 / 130, humans 5 / 3, eradicated 0 / 2,
+fund banked 346k / 348k FP (`game-runs-2.md` 43). The fix removed hw70's human win; the swarm now
+overruns both sectors in six years. **The pendulum is the user's call** - the player is meant to
+be needed, not to inherit a dead sector. Also open: the fund hoards 300k+ FP while the chest
+cycles full / spent (the hw62 shape at scale - the campaigns spend slower than the fund grows).
+Harness: three games at once is the ceiling (four left 70 MB free); never `tail -f`
+`sbs-status.txt` (it locks the file and the status lines are lost).
