@@ -219,6 +219,14 @@ public class ThreatPosture {
 	 * colony also wants the strike its stance's target calls for.
 	 */
 	public static float wantFP(MarketAPI market) {
+		// while the navy fits the spare (ThreatColonyManager.fitActive, 2026-10-08) a colony nobody attacks
+		// wants the fit's floor, whatever reads it: hw79a's pressure pass, reading the posture's want with
+		// every colony held at the floor, found every colony short, no donor, and fabricated the receiver a
+		// swarm from a fabricator's bank that the fit recycled (4,330 fabricated, 1,060 recycled at the same hive)
+		if (market != null && market.getStarSystem() != null && !underAttack(market.getStarSystem())
+				&& ThreatColonyManager.fitActive()) {
+			return ThreatColonyManager.fitFloor(market);
+		}
 		float[] c = market != null ? COLONY.get(market.getId()) : null;
 		return (c != null ? c[0] : baseFP(market)) + ThreatStance.extraWantFP(market);
 	}

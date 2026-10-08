@@ -4472,16 +4472,21 @@ public class ThreatColonyManager {
 	 * builder read the spare above the want next poll and grew what the fit had recycled, a build and
 	 * a recycle a poll at the same hive (hw79a: 255 recycled / 260 built in a month).
 	 */
-	protected static boolean fitActive() {
+	public static boolean fitActive() {
 		if (!ThreatIncConfig.navyFitsSpare() || !ThreatColonyUpkeep.enabled()) return false;
 		if (fitWant() > 0f) return true;
 		Object ts = Global.getSector().getPersistentData().get(KEY_FIT_TIMESTAMP);
 		return ts instanceof Long && Global.getSector().getClock().getElapsedDaysSince((Long) ts) < FIT_HOLD_DAYS;
 	}
 
-	/** The garrison the navy's fit leaves a colony, and the nexus builds to while the fit binds: the patrols (ThreatPosture.minimumFP) or the pressure's need (needFP), whichever is more. */
-	protected static float fitFloor(MarketAPI market) {
-		return Math.max(ThreatPosture.minimumFP(market), ThreatPosture.needFP(market));
+	/**
+	 * The garrison the navy's fit leaves a colony, and the colony's whole want while the fit is active
+	 * (ThreatPosture.wantFP, so the nexus, the pressure pass and the launch gates all read it): the
+	 * patrols (ThreatPosture.minimumFP) or the pressure's need (needFP), whichever is more, plus the
+	 * strike a pressing stance stages there (ThreatStance.extraWantFP - a strike staged is the navy used).
+	 */
+	public static float fitFloor(MarketAPI market) {
+		return Math.max(ThreatPosture.minimumFP(market), ThreatPosture.needFP(market)) + ThreatStance.extraWantFP(market);
 	}
 
 	/** The colony poll's cadence (IncursionManager's 0.4-0.6 day interval). */

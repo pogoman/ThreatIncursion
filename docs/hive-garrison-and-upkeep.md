@@ -523,7 +523,16 @@ posture), the home navy above the patrols 13k, spare 1.5k, 145 seedings held on 
   same hive, 255 / 260 in a month) because the feed records the spare before the fit recycles and
   the next poll read it above the want; so the builder's gate is `fitActive`: a send held this
   month, or the fit recycled within `FIT_HOLD_DAYS` (30; the timestamp `KEY_FIT_TIMESTAMP`). First
-  full run hw79 (ck2) + hw80 (ck5), relaunched 18:55.
+  full run hw79 (ck2) + hw80 (ck5): the nexus churn gone (same hive-month built-then-recycled 66,
+  hw77a 4,019), the old sector 92 hives against 23 human worlds.
+- **The fit's floor is the colony's want** (2026-10-08, after hw79a). With every colony held at the
+  floor, every colony was short of the posture's want, so the pressure pass found no donor and had
+  a fabricator build the receiver a swarm from its bank, which the fit recycled (4,330 fabricated,
+  hw77a 2,161; 1,060 recycled at the same hive). So while the fit is active `ThreatPosture.wantFP`
+  returns `fitFloor` for a colony nobody attacks - the nexus, the pressure pass (receivers, donors,
+  `releasableFP`, `fabricatorFor`) and the launch gates all read one want - and `fitFloor` keeps
+  the strike a pressing stance stages there (`extraWantFP`: a strike staged is the navy used). A
+  colony under attack keeps the posture's want. First run hw81 (ck2) + hw82 (ck5).
 - **What the sends held on ck5 were** (hw78, read 2026-10-08): not the fit's. The new sector's
   swarm spends its whole income each month - at the end 130k a month: feed 50k, away 35k, navy
   13k, structures 3-20k, foundings 10-30k (5-6 hives a month) - and the stock sits at 5-12k; the
