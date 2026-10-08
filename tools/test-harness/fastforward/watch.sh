@@ -10,7 +10,7 @@
 #   wipe     the swarm wiped: 0 hives after war day 400
 #   collapse the swarm collapsing: hives under half its peak of 8 or more (hw47 0 / 10 / 0, hw49 b 0)
 #   starved  swarms lost to the navy charge ("of navy upkeep unpaid"; hw49 8.8k-15.8k FP)
-#   hoard    the fund hoarded: 20k+ FP and no launch for 500 war days, or none ever by day 1500 (hw41-49 30-43k unspent)
+#   hoard    the fund hoarded: 20k+ FP and no launch for 500 war days, or none ever by day 2600 (hw41-49 30-43k unspent; ck2 opens the war at 2231, so 1500 fired on every batch from it at load)
 #   broke    the swarm cannot sail: supplies stock under 5% of a month's output in the last three censuses with the
 #            fund at 20k+ (hw53-54: the stock peaks 45-75k at 4-7 hives and falls to ~0 as 17-24 are founded)
 #   humans   the humans collapsing: forward bases lost twice those founded, 10+ founded (hw51a 93 of 48)
@@ -52,7 +52,7 @@ while :; do
     if [ "$la" -gt 0 ]; then
       lastla=$(awk '/^Clock: day/{w=$5} /^Offensive launched/{l=w} END{print l+0}' $F)
       [ $((war - lastla)) -gt 500 ] && [ "$fund" -ge 20000 ] && flag $g hoard "no launch since war day $lastla, saving with $fund FP"
-    elif [ "$war" -gt 1500 ] && [ "$fund" -ge 20000 ]; then
+    elif [ "$war" -gt 2600 ] && [ "$fund" -ge 20000 ]; then
       flag $g hoard "no launch ever by war day $war, fund $fund FP: $(grep '^Offensive: ' $F | tail -1 | cut -c1-160)"
     fi
     # the last three censuses' supplies stock against a month's output
