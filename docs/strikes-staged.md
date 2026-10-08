@@ -261,28 +261,4 @@ defaults.
 
 ## 6. The counter-stroke (`IncursionManager.counterStrike`, 2026-10-08)
 
-A human landing on a hive world draws a strike at the landing faction at once, from
-`ThreatGroundFronts.landOrReinforce` (a new front, not a reinforcement; the player's expeditions too).
-Before it the swarm's only answers were the system's own rally - and only when it could win
-(`ThreatPosture.rally`, `systemDefenceOnlyIfEnough`) - and `retaliate`, one strike after the hive
-had fallen; a hive falls a median 60-140 days after the landing, and in hw66a / hw67c expeditions
-eradicated 42 / 30 hives while the fund paid campaigns elsewhere. The target: the base the swarm has
-seen staging against the hive's system (`ThreatSwarmIntel.Place.stagesFor`, nearest to the hive
-first) when the hive system nearest it can pay a strike there, else `retaliate`'s rule - the nearest
-hive that can muster against the nearest known world of the faction (`pickStrikeTarget`). It is a
-strike like any other: sized to its target by `stagedPlan`, paid from the fund (nothing launches the
-fund cannot pay; `Counter-strike: nothing the fund pays ...` once a hive), outside the campaign, so a
-held prong may find the fund short on its day and be dropped with its bill refunded. The design is
-defeat in detail turned on the besieger: the exchange the swarm can afford is a strike sized to a
-base, not to the flotilla overhead, and the besieging faction either relieves its own world
-(`ThreatPlays.pausable` holds its plays while relief is owed) or loses it. Logs
-`Counter-strike: <staging> -> <target> (<faction>, its staging base | the nearest world of theirs,
-answering the landing on <hive>)`; notice "Swarm Counter-strikes". Knob `counterStrikeEnabled` - **off by default since 2026-10-08** (hw68: a trade, not a relief; the user: "perhaps we remove the counter attack stuff"; kept behind the knob through hw69, to delete if a solvent swarm gives it no case either)
-(default on). My shape, to confirm against hw66/67: read `grep -c '^Counter-strike: ' ti-hw68a.txt`
-against `grep -c 'Notice: Expedition Landed'`, and the hives eradicated.
-
-**hw68 (2026-10-08), the measurement:** counter-strikes sailed 13 / 2 / 15 against 31 / 3 / 24 landings,
-20 refused on supplies with the free stock at 0; 26 of the 30 hives died anyway (the strike's passage is
-the landing-to-fall window); 15 forward bases destroyed and 7 core worlds invaded in exchange; hives
-eradicated 26 / 3 / 23 against hw67's 11 / 7 / 30. A trade, not a relief; left on, the user's to keep or
-drop. `game-runs-2.md` 43.
+**Built 2026-10-08, measured in hw68, deleted 2026-10-08 (the user: "lets delete counter strike").** A human landing on a hive drew an immediate strike at the landing faction (its base seen staging against the hive's system, else the nearest payable world of theirs). hw68: 30 sailed of 50 landings, 20 refused on supplies, 26 of the 30 hives died anyway (the strike's passage is the landing-to-fall window), 15 forward bases destroyed and 7 core worlds invaded in exchange - a trade, not a relief. What the swarm needed was sustenance first (`hive-garrison-and-upkeep.md` "Feeding order", hw69); `retaliate` still answers a hive's fall. `game-runs-2.md` 43.
