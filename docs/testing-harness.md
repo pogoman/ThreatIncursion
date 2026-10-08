@@ -412,3 +412,4 @@ once" - `sbs.ps1 -Tags hw59a,hw59b,hw59c -Bases "hw59a=save_Xck1;hw59b=save_Xck1
 **ck2 (2026-10-07, 22:14):** made on the exposure build (b21a12d0): with no human world known every hive holds
 one swarm a colony and banks the rest, so the war opened at war day 2231 (ck1: 1545; last save 2179) with
 40k FP left in the fund after an 8k opener. Batches from `save_AphelionDysnomia_4103534775338436064ck2`.
+**ck3 (2026-10-08, 11:10):** the other sector - `save_AmaruDugas_2921423183749615243ck3` from the hw4 pristine save (the harness default), made on the sustenance-first build (5cc098df) in 13 minutes; its war opens at about war day 2160 with the opener from Beta Laphirial at Jangala (Hegemony, 31 ly, 3,042 FP + 5,145 from the bank). Batches hw70+ alternate the two sectors (the user, 2026-10-08: "run another test with a new seed so they come from different part of map").
