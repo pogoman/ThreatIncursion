@@ -5878,17 +5878,23 @@ public class ThreatColonyManager {
 					float force = ThreatPosture.forceOver(receiver);
 					float stands = force > 0f ? ThreatPosture.standsFor(receiver) : 0f;
 					if (force > 0f && stands < force) {
-						float gather = stands;
+						float gather = 0f;
 						for (MarketAPI curr : colonies) {
 							if (curr == receiver) continue;
 							gather += pressureSpare(curr, receiver, held, inbound, attacked, atAttack);
 							gather += fabricableFor(curr, receiver, held);
 						}
-						if (gather < force) {
+						// what the pass would send this poll is at most the receiver's accept (its deficit, the band
+						// and a swarm), whatever the sector's banks hold: hw87a gated on the banks alone refused 49
+						// times and fabricated 4,489 swarms for attacked hives, hw83a's 4,501 - a want of 1,000
+						// under a 4,450 FP siege was fed 400 FP a poll from banks that "could" have stood 60k
+						float could = stands + Math.min(accept, gather);
+						if (could < force) {
 							outweighed.add(receiver.getId());
 							ThreatIncConfig.logQuiet("navy-enough:" + receiver.getId(), "Posture: no transfer to "
-									+ receiver.getName() + " - " + (int) force + " FP over it, " + (int) gather
-									+ " FP could stand");
+									+ receiver.getName() + " - " + (int) force + " FP over it, " + (int) could
+									+ " FP could stand (" + (int) stands + " standing, " + (int) accept
+									+ " FP more wanted, " + (int) gather + " FP to gather)");
 							continue;
 						}
 					}
