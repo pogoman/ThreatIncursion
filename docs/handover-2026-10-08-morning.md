@@ -275,3 +275,17 @@ be needed, not to inherit a dead sector. Also open: the fund hoards 300k+ FP whi
 cycles full / spent (the hw62 shape at scale - the campaigns spend slower than the fund grows).
 Harness: three games at once is the ceiling (four left 70 MB free); never `tail -f`
 `sbs-status.txt` (it locks the file and the status lines are lost).
+
+## 8. hw73 + hw74 - yards at home on both sectors, read at 15:00: the old sector holds, the new one still falls
+
+Built as `ThreatFrontlines.homeYards` (f404c36a, knob `homeYards`, `hull-pool.md` 3): a faction
+short of hulls builds a Heavy Industry at its largest core world with a free slot. hw73a (ck2):
+hives 38 -> 50 -> 34, humans 50 -> 28 (hw71a: 10), yards 5-7k FP a month all war (hw71a: 0),
+14 hives eradicated, Hegemony keeps all 10 worlds with 15.8k FP of hulls. hw74a / b (ck5): hives
+91 / 84 (hw72: 174 / 130), humans 5 / 4 (hw72: 5 / 3) - 24 / 13 home yards built, output peaked
+6.4k / 3.8k a month by m36 and died with the worlds; the opener's victim (Hegemony 9 -> 1) falls by
+m48-m60 as before. The yards work where the core survives to use them; on the new sector the
+swarm takes the yard worlds. Open for the user: whether a contested old sector is the shape wanted
+(`humans-must-not-win-unattended`); the next single human change (coalition relief, or Starve sized
+to the pools); the swarm's navy outgrowing its income on the old sector (109k FP on 78k a month,
+stock 0 for the last year) and the 300k+ FP hoard on the new. `game-runs-2.md` 43.
