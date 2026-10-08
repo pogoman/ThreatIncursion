@@ -33,6 +33,7 @@ for tag in "$@"; do
   echo "-- fund: $(grep -o 'fund [0-9]* FP' "$f" | awk 'NR%8==1' | grep -o '[0-9]*' | tr '\n' ' ')"
   echo "-- chest: full $(grep -c 'Stance: the chest is full' "$f"), spent $(grep -c 'Stance: the chest is spent' "$f"); stance passes PRESS $(grep -c 'stance PRESS' "$f"), EXPAND $(grep -c 'stance EXPAND' "$f"), CONSOLIDATE $(grep -c 'stance CONSOLIDATE' "$f")"
   echo "-- hull convoys $(grep -c 'hulls lost to rebuild' "$f"); no-hulls lines $(grep -c 'Ally aid: no hulls' "$f"): $(grep 'Ally aid: no hulls' "$f" | tail -1 | cut -c1-200)"
+  echo "-- humans: bases founded $(grep -c 'Frontline: .* founded' "$f"), lost to strikes $(grep -c 'destroyed by a Threat strike' "$f"), founding held for hulls $(grep -c 'founds no link' "$f"), cannot pay $(grep -c 'cannot pay for a link' "$f"); yards at end $(grep -o 'to rebuild at [0-9]*/mo' "$f" | tail -5 | grep -o '[0-9]*/mo' | tr '\n' ' ')"
   echo "-- exposure changes $(grep -c 'Posture: .* exposure' "$f"), systems at 1.00 now: $(grep 'Posture: .* exposure' "$f" | grep -c '> 1.00')"
   echo "-- sieges on hives (BESIEGED entries) $(grep -c 'Posture: .*->BESIEGED' "$f"); patrols: $(grep -c 'Patrol Swarm from' "$f") swarm, $(grep -c '^Patrol of ' "$f") human"
   echo "-- exceptions: $(grep -c 'Exception' "$D/exc-$tag.txt" 2>/dev/null)"
