@@ -231,6 +231,7 @@ public class ThreatFrontlines {
 			MarketAPI market = marketOf(o);
 			if (market != null) update(o, market, days);
 		}
+		homeYards();
 
 		Object lastPlan = data.get(KEY_LAST_PLAN);
 		float sincePlan = lastPlan instanceof Long
@@ -1890,6 +1891,57 @@ public class ThreatFrontlines {
 		ThreatFactionStock.hold(market, producer, cost - funds);
 		ThreatIncConfig.logQuiet("fl_hold_" + market.getId(), "Frontline: " + market.getName() + " holds "
 				+ (int) (cost - funds) + " supplies for " + producer + " (" + want + " short)");
+	}
+
+	/**
+	 * YARDS AT HOME (the user, 2026-10-08, "trial your recommended human fix"): a faction short of
+	 * hulls (ThreatFactionStock.shortest == hulls) builds the shortage's answer at its largest core
+	 * world with a free slot and no yard, not only at a size-3+ link (buildStep). The yards the swarm
+	 * razes or takes in the core were never replaced (hw63-hw72: yards at 0-500 FP a month at every
+	 * end, hulls unrebuilt in the thousands), and the one faction with its yards running was the one
+	 * that held (hw70a). A link's rules: the producer's inputs importable (canSupplyProducer), paid
+	 * from the world's reserves and what reaches it (payBuild) or held for (ThreatFactionStock.hold),
+	 * one answer a faction a SHORT_DAYS (mayAnswer), never while a project runs there. Daily from
+	 * poll; knob homeYards.
+	 */
+	protected static void homeYards() {
+		if (!ThreatIncConfig.homeYards() || !ThreatHulls.enabled()) return;
+		for (String fid : ThreatWarState.warFactionIds()) {
+			if (!ThreatFactionStock.mayAnswer(fid, ThreatFactionStock.HULLS)) continue;
+			if (!ThreatFactionStock.HULLS.equals(ThreatFactionStock.shortest(fid))) continue;
+			MarketAPI best = null;
+			for (MarketAPI m : ThreatReserves.marketsOf(fid)) {
+				if (m == null || isOutpost(m) || m.isPlayerOwned() || m.getSize() < 3) continue;
+				if (!wantsProducer(m, Industries.HEAVYINDUSTRY)) continue;
+				if (Misc.getNumIndustries(m) >= Misc.getMaxIndustries(m)) continue;
+				if (projectRunning(m) || !canSupplyProducer(m, m.getSize(), Industries.HEAVYINDUSTRY)) continue;
+				if (best == null || m.getSize() > best.getSize()
+						|| (m.getSize() == best.getSize() && buildFunds(m) > buildFunds(best))) best = m;
+			}
+			if (best == null) continue;
+			ThreatFactionStock.release(best);
+			if (startNew(best, Industries.HEAVYINDUSTRY)) {
+				ThreatFactionStock.answered(fid, ThreatFactionStock.HULLS);
+				ThreatIncConfig.log("Home yard: " + best.getName() + " builds a Heavy Industry for " + fid
+						+ " (hulls short) - " + ThreatFactionStock.describe(fid));
+			} else {
+				float cost = ThreatBuildCost.supplies(Industries.HEAVYINDUSTRY), funds = buildFunds(best);
+				if (cost > funds) {
+					ThreatFactionStock.hold(best, Industries.HEAVYINDUSTRY, cost - funds);
+					ThreatIncConfig.logQuiet("hy_hold_" + best.getId(), "Home yard: " + best.getName() + " holds "
+							+ (int) (cost - funds) + " supplies for a Heavy Industry (" + fid + " hulls short)");
+				}
+			}
+		}
+	}
+
+	/** Whether a structure is building or upgrading at the market (Population's growth bar is not a project). */
+	protected static boolean projectRunning(MarketAPI market) {
+		for (Industry ind : market.getIndustries()) {
+			if (Industries.POPULATION.equals(ind.getId())) continue;
+			if (ind.isBuilding() || ind.isUpgrading()) return true;
+		}
+		return false;
 	}
 
 	protected static void buildStep(MarketAPI market) {

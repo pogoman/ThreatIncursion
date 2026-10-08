@@ -580,6 +580,8 @@ public class ThreatIncConfig {
 	/** A frontline link is founded only with a garrison to hold it, which stays as long as the link stands. */
 	public static boolean frontlineGarrisonEnabled() { return b("threatinc_frontlineGarrisonEnabled", true); }
 	public static boolean frontlineHeavyIndustry()   { return b("threatinc_frontlineHeavyIndustry", true); }
+	/** Yards at home (2026-10-08): a faction short of hulls builds a Heavy Industry at its largest core world with a free slot, not only at a link (ThreatFrontlines.homeYards). */
+	public static boolean homeYards()                { return b("threatinc_homeYards", true); }
 	public static boolean frontlineFuelProduction()  { return b("threatinc_frontlineFuelProduction", true); }
 	/** Smallest garrison a link gets, in fleet points, whatever the strikes in reach. */
 	public static float frontlineGarrisonFP() { return f("threatinc_frontlineGarrisonFP"); }
