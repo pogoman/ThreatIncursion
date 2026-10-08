@@ -100,12 +100,36 @@ to 140k under a chest full once and never spent - there the supplies spare binds
 99.7k, spent 98.5k a month), which is the design. Humans: bases founded 136 / 61 / 109, lost to
 strikes 64 / 47 / 70; yards 0-1,700 FP/mo at the end. `game-runs-2.md` 43.
 
-## 2f. hw65 - bases bound by hulls (a46ad657, jar 04:17; running from 04:17, ends ~05:20)
+## 2f. hw65 - bases bound by hulls (a46ad657, jar 04:17), read at 05:10
 
-Section 2e's shape 1. Read it with `swarm-digest.sh hw65a hw65b hw65c`: the humans line should show
-`founding held for hulls` above 0 and bases founded well below hw64's 61-136, with fewer lost to
-strikes; what the held supplies and fuel then buy (yards at links, convoys) is the question for 2e's
-shape 2. If the batch is still running when you read this, `sbs-status.txt` says `done` when it is.
+Section 2e's shape 1, confirmed: bases founded 3 / 29 / 84 (hw64: 136 / 61 / 109), lost to strikes
+3 / 18 / 40 (64 / 47 / 70), foundings held for hulls 84 / 150 / 167. The swarm: hive peaks 80 / 56
+/ 49, eradicated 0 / 8 / 4, campaigns 56 / 35 / 35, no exceptions; a is won outright (nothing known
+left to strike, the fund climbs to 322k with 630k supplies banked). Yet every faction still ends at
+0 free hulls with yards at 0-700 FP/mo, so the held supplies and fuel bought nothing - and the log
+shows where the hulls go: **relief fed in piecemeal.** `sendRelief` sails whatever the base can pay
+each ground-front poll, 4-10 FP once the pool is at 0 free, at armies of 1-6k FP: 1,881 / 2,888 /
+3,356 sends, 34k / 61k / 60k FP a game, 696 / 1,482 / 1,691 relief fleets destroyed (698 sends from
+Ailmar to Eldfell alone over 670 days). hw65a's Hegemony went from 4,440 FP and 1,400 FP/mo of
+yards to 0 and 0 in ~15 months while the 5,800 FP opening strike's front took Chicomoztoc's strata
+over 220 days and 63 relief orders of its own were lost one by one. `game-runs-2.md` 43.
+
+## 2g. hw66 - relief only if enough (jar 05:11; running from 05:12, ends ~06:15)
+
+The humans' mirror of your rally rule for the swarm (2026-10-05, "if the fleets that can be
+gathered aren't strong enough to defend then they shouldn't bother"), under the same
+`systemDefenceOnlyIfEnough` switch - my shape, to confirm: `ThreatFleetOrders.reliefEnough` sails a
+relief only when what the base can field (its stock above the floor, capped at the faction's free
+hulls) plus the guards already bound there outweighs the army over the world; held, it logs once
+(`Relief held: F can field N FP from B against M over W (G bound) - not enough, holds`) and keeps
+its hulls and provisions, and `reliefOwed` counts only a relief that would sail, so a siege does not
+wait on hulls the faction will not send. What sails still holds the orbit as before. Read it with
+`swarm-digest.sh hw66a hw66b hw66c` and
+`grep -c 'Order lost (fleet destroyed): [a-z_]* relieving' ti-hw66a.txt` (hw65: 696-1,691) against
+`grep -c 'Relief held' ti-hw66a.txt`; the plans' `hulls N free` and `yards N FP/mo` lines are the
+question - whether the kept hulls reach the yards' rebuild and the forward bases, or sit. Not
+built, for you: a coalition relief of a besieged capital (no ally relieved Chicomoztoc; the
+council's joint play is offence only), and 2e's shape 2 (yards at home).
 
 ## 2e. The humans' collapse (hw63 read, 03:20) - bases bound by hulls, built for hw65
 

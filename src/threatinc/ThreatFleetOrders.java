@@ -559,6 +559,30 @@ public class ThreatFleetOrders {
 		return Math.max(0f, reliefGoal(market) - guardPointsFor(market.getId()));
 	}
 
+	/** Points a relief must outweigh over the colony: the swarm's over it, or one guard of guardFleetFP with none. */
+	public static float reliefNeed(MarketAPI market) {
+		float threat = ThreatGroundFronts.pointsNear(market, Factions.THREAT, true);
+		return threat > 0f ? threat : ThreatIncConfig.guardFleetFP();
+	}
+
+	/**
+	 * Whether a relief from the base would be enough: what the base can field
+	 * (sortieFirstPayableFP - its stock and the faction's free hulls) with the
+	 * guards already bound there outweighs the army over the colony. The
+	 * humans' mirror of the swarm's rally rule (systemDefenceOnlyIfEnough; the
+	 * user, 2026-10-05: "if the fleets that can be gathered aren't strong enough
+	 * to defend then they shouldn't bother"), under the same switch. hw65
+	 * (2026-10-08): once the yards were gone each poll sent whatever the base
+	 * could pay - 4-10 FP - at armies of 1-6k, 1,800-3,400 sends and 34-61k FP
+	 * a game fed in piecemeal and destroyed, every hull the yards made.
+	 */
+	public static boolean reliefEnough(FactionAPI faction, MarketAPI market, MarketAPI base) {
+		if (!ThreatIncConfig.systemDefenceOnlyIfEnough()) return true;
+		if (faction == null || market == null || base == null) return false;
+		float can = sortieFirstPayableFP(base, market.getLocationInHyperspace());
+		return can + guardPointsFor(market.getId()) >= reliefNeed(market);
+	}
+
 	/**
 	 * Whether one of the faction's own invaded worlds is still owed relief a
 	 * base of the faction can provision, at any distance. A siege waits for it:
@@ -568,7 +592,10 @@ public class ThreatFleetOrders {
 		if (faction == null || faction.isPlayerFaction()) return false;
 		for (MarketAPI market : ThreatReserves.marketsOf(faction.getId())) {
 			if (market.getPrimaryEntity() == null || reliefShort(market) <= 0f) continue;
-			if (pickReliefBase(faction, market) != null) return true;
+			// a relief that would be held as not enough (reliefEnough) is not owed: a siege
+			// does not wait on hulls the faction will not send
+			MarketAPI base = pickReliefBase(faction, market);
+			if (base != null && reliefEnough(faction, market, base)) return true;
 		}
 		return false;
 	}
@@ -669,6 +696,15 @@ public class ThreatFleetOrders {
 	 */
 	public static float sendRelief(FactionAPI faction, MarketAPI target, MarketAPI base, float owed) {
 		if (faction == null || target == null || base == null || owed <= 0f) return 0f;
+		// (2026-10-08, hw65) only if enough: the base keeps its hulls and provisions
+		// rather than feed them in piecemeal (reliefEnough)
+		if (!reliefEnough(faction, target, base)) {
+			ThreatIncConfig.logQuiet("relief-held:" + faction.getId() + ":" + target.getId(), "Relief held: "
+					+ faction.getId() + " can field " + (int) sortieFirstPayableFP(base, target.getLocationInHyperspace())
+					+ " FP from " + base.getName() + " against " + (int) reliefNeed(target) + " over " + target.getName()
+					+ " (" + (int) guardPointsFor(target.getId()) + " bound) - not enough, holds");
+			return 0f;
+		}
 		List<CampaignFleetAPI> built = new ArrayList<CampaignFleetAPI>();
 		float sent = 0f;
 		// ends: every fleet adds at least a point toward a finite owed and draws

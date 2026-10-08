@@ -238,6 +238,18 @@ on the ground-front poll (it was monthly):
   already gave no siege. With no swarm overhead,
   one guard of `guardFleetFP` still goes, as before. The old flat 100-point guard
   (258 FP built) sat 2,600 units off Coatl against 2,812 FP for 76 days.
+- **Only if enough (2026-10-08, hw65 - the humans' mirror of the swarm's rally rule, under the same
+  `systemDefenceOnlyIfEnough` switch).** `sendRelief` sails nothing unless what the base can field
+  (`sortieFirstPayableFP`: its stock above the floor, capped at the faction's free hulls) plus the
+  guards already bound there outweighs the army over the world (`reliefNeed`: the swarm's points, or
+  one `guardFleetFP` guard with none) - `reliefEnough`. Held, it logs once per faction and world
+  (`Relief held: F can field N FP from B against M over W (G bound) - not enough, holds`) and keeps its
+  hulls and provisions; `reliefOwed` counts only a relief that would sail, so a siege does not wait on
+  hulls the faction will not send. hw65: once the yards were gone, each ground-front poll built
+  whatever the base could pay - 4-10 FP - and sailed it at armies of 1-6k FP: 1,800-3,400 sends a
+  game (698 from Ailmar to Eldfell alone, 345 destroyed there), 34-61k FP a game fed in and lost,
+  every hull the yards made. The `reliefStays` orbit rule is unchanged: what sails still holds the
+  orbit until the invaders are gone.
 - **Any distance (2026-10-03, the user: "Why wouldn't a far away base be allowed to send relief?").** `pickReliefBase`
   takes the nearest base whose depot can provision one relief fleet at its distance; `canProvisionRelief` prices the
   voyage by the light-year, and the time is the voyage's. It used to skip any base beyond its expedition range
