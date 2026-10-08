@@ -1271,6 +1271,9 @@
 	# a link of size 3+ with a free industry slot builds a Heavy Industry once it
 	# can import the metals and rare metals: supplies, heavy armaments and ships
 	"threatinc_frontlineHeavyIndustry": true,
+	# yards at home (2026-10-08): a faction short of hulls builds a Heavy Industry at its largest
+	# core world with a free slot (ThreatFrontlines.homeYards), not only at a link
+	"threatinc_homeYards": true,
 	"threatinc_frontlineFuelProduction": true,
 	# the swarm's want for a link: max(size,3)^2 x this x (1 + links its loss cuts)
 	"threatinc_frontlineStrikeWeight": 3,

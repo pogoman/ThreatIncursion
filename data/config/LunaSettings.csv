@@ -358,6 +358,7 @@ threatinc_frontlineStarveDays,Starvation (Days),Double,90,"Days of such shortage
 threatinc_frontlineAbandonDays,Abandon (Days),Double,60,"Days a link sits with no purpose before it is dismantled.",0,365
 threatinc_frontlineRelayAccess,Forward Relay Access,Double,0.2,"Accessibility a link connected to a colony through its chain gets.",0,1
 threatinc_frontlineHeavyIndustry,Link Heavy Industry,Boolean,true,"A link of size 3 or more builds a Heavy Industry once it can import the metals and rare metals.",,
+threatinc_homeYards,Yards at home,Boolean,true,"A faction short of hulls builds a Heavy Industry at its largest core world with a free slot, not only at a forward base.",,
 threatinc_frontlineFuelProduction,Link Fuel Production,Boolean,true,"A link of size 3 or more builds Fuel Production once it can import the volatiles and heavy machinery - before its Heavy Industry while the faction's fuel is short of what its sieges stage for.",,
 threatinc_frontlineStrikeWeight,Swarm Target Weight,Double,3,"How much the swarm wants a link: its size squared (at least 9) times this, times one plus the links its loss would cut.",0,20
 threatinc_frontlineReliefEnabled,Called Guards,Boolean,true,"Whether a strike seen coming at a link calls a guard to it. Rear links have no standing garrison.",,

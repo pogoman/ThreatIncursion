@@ -82,6 +82,14 @@ spent every supply it made holding a garrison it could not use and the humans wo
 
 ## 3. Where it binds
 
+- **Yards at home (the user, 2026-10-08, trialled from hw73):** a faction short of hulls
+  (`ThreatFactionStock.shortest` = hulls) builds a Heavy Industry at its largest core world with a
+  free slot and no yard (`ThreatFrontlines.homeYards`, daily from `poll`), not only at a size-3+
+  forward base (`buildStep`). Same rules as a link's answer: inputs importable, paid from the
+  world's reserves and what reaches it or held for, one answer a faction a month, never over a
+  running project. Why: the core yards the swarm razed or took were never replaced - yards at
+  0-500 FP a month at every hw63-hw72 end, hulls unrebuilt in the thousands - and hw70a, the one
+  game the humans won, was the one whose yards kept running. Knob `homeYards`.
 - NPC hunts and plays: `ThreatSoftening.payableFP` capped at the faction's free hulls, the sum
   over bases (`huntForce`'s `builds`, `playPayableFP`) capped once - the bases share one pool;
   the build loop takes each fleet built off its budget.
