@@ -374,6 +374,17 @@ against 300-675 FP strikes, and every founding's 1,500 supplies and 800 fuel wen
 with it. A faction now founds a link only if one of its bases can spare a
 garrison big enough to hold it, and pay its voyage and upkeep.
 
+**Bases bound by hulls (2026-10-08, after hw63; built for hw65, to confirm).** The rule above
+read the voyage in fuel and supplies, and a rear link (not at the front, `frontOf`) needed no
+guard at all; since the hull pool (2026-10-06) the guard that sails is capped at the faction's
+free hulls (`payableFP` -> `ThreatHulls.cap`), so with the pool at 0 the front link's guard
+sailed empty and the rear link stood alone. hw63b/c founded 111 / 145 links and lost 126 / 132,
+70 of b's to strikes of ~650 FP, every faction at `hulls 0 free` with 24-226 months of fuel. Now
+`planFor` founds a link, front or rear, only while `ThreatHulls.freeFP` covers the site's
+`guardNeed` - a base no hull can guard or relieve is a world handed to the swarm's score - and
+logs `Frontline: F founds no link at S - N FP of hulls free, its guard needs M` (quietly, per
+faction). The mirror of the hive's "no swarm its supplies cannot keep".
+
 **Sized to the strikes, kept for life (2026-09-26, after run 5).** Run 5 guarded
 links until their station was a star fortress with a flat 400 FP. The strikes that
 reached a link weighed ~1,350 in vanilla's raid strength against ~670 for the
