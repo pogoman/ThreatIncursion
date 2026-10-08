@@ -94,6 +94,19 @@ pressed at home); hw64 needs only a known world, so a hive pressed everywhere sp
 the relief and near strikes. Otherwise hw63's jar: a confirmation batch of the same shape against
 hw63's spread (a 88 / b 64 / c 44 - the variance is large).
 
+**hw64 read (04:16):** confirms hw63. Hive peaks 74 / 91 / 40; eradicated 3 / 3 / 11; campaigns
+23 / 49 / 23; navy losses 0; hull convoys 83 / 47 / 52; the fund cycles in a and b, and in c climbs
+to 140k under a chest full once and never spent - there the supplies spare binds outright (made
+99.7k, spent 98.5k a month), which is the design. Humans: bases founded 136 / 61 / 109, lost to
+strikes 64 / 47 / 70; yards 0-1,700 FP/mo at the end. `game-runs-2.md` 43.
+
+## 2f. hw65 - bases bound by hulls (a46ad657, jar 04:17; running from 04:17, ends ~05:20)
+
+Section 2e's shape 1. Read it with `swarm-digest.sh hw65a hw65b hw65c`: the humans line should show
+`founding held for hulls` above 0 and bases founded well below hw64's 61-136, with fewer lost to
+strikes; what the held supplies and fuel then buy (yards at links, convoys) is the question for 2e's
+shape 2. If the batch is still running when you read this, `sbs-status.txt` says `done` when it is.
+
 ## 2e. The humans' collapse (hw63 read, 03:20) - bases bound by hulls, built for hw65
 
 With the chest the swarm wins all three hw63 games, and the humans' side shows one binder: hulls.
