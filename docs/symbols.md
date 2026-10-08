@@ -341,6 +341,11 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAbstractBattle.defendingFactions(FactionAPI attacker, StarSystemAPI where)` :266 - The factions vanilla counts in the defence:
 - `ThreatAbstractBattle.removeShare(CampaignFleetAPI fleet, float share, Random random)` :285 - Strikes ships from the fleet until share of its fleet points are gone, civilian hulls a quarter as likely as warships (vanilla's FleetFactoryV3.applyDamageToFleet weights);
 
+## ThreatAcademyFleetGuard (59 lines)
+- `ThreatAcademyFleetGuard.getId()` :30 - The academy fleet creator, sending nothing when no market can send.
+- `ThreatAcademyFleetGuard.createRouteParams(MiscFleetRouteManager manager, java.util.Random random)` :36
+- `ThreatAcademyFleetGuard.install()` :47 - Replaces vanilla's academy creator with Academy in the route manager's static list.
+
 ## ThreatAid (647 lines)
 - `ThreatAid.ok()` :63 - Why not, one fact per line (a notice's bullets, a tooltip's lines);
 ### who may receive
@@ -2509,11 +2514,11 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncData.isPhase3Announced()` :510
 - `ThreatIncData.setPhase3Announced()` :515
 
-## ThreatIncModPlugin (193 lines)
+## ThreatIncModPlugin (196 lines)
 - `ThreatIncModPlugin.configureXStream(XStream x)` :38 - Keeps the Planetary Shield swap out of the save file.
 - `ThreatIncModPlugin.onApplicationLoad()` :51
 - `ThreatIncModPlugin.onGameLoad(boolean newGame)` :57
-- `ThreatIncModPlugin.migrateExistingShields()` :169 - Rebuilds any Planetary Shield still on the vanilla plugin class so it uses ThreatPlanetaryShield, carrying over AI core, improvement, special item and disruption state.
+- `ThreatIncModPlugin.migrateExistingShields()` :172 - Rebuilds any Planetary Shield still on the vanilla plugin class so it uses ThreatPlanetaryShield, carrying over AI core, improvement, special item and disruption state.
 
 ## ThreatIncursionIntel (391 lines)
 - `ThreatIncursionIntel.getSelectedSystemId()` :32 - The system whose drill-down the war board shows;
