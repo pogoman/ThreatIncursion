@@ -94,6 +94,27 @@ pressed at home); hw64 needs only a known world, so a hive pressed everywhere sp
 the relief and near strikes. Otherwise hw63's jar: a confirmation batch of the same shape against
 hw63's spread (a 88 / b 64 / c 44 - the variance is large).
 
+## 2e. The humans' collapse (hw63 read, 03:20) - bases bound by hulls, built for hw65
+
+With the chest the swarm wins all three hw63 games, and the humans' side shows one binder: hulls.
+Every faction's plan at the end reads `hulls 0 free of 1,300-1,900, 1,000-1,800 to rebuild at
+0-300/mo` beside fuel for 24-226 months and supplies that hold. Yet they founded 111 / 145 forward
+bases (b / c) and lost 126 / 132, 70 of b's to Threat strikes of ~650 FP: a link's founding is
+gated on fuel and supplies, a rear link needs no guard, and the front link's guard sails capped at
+the free hulls - zero. Each base is a kit of 1,500 supplies and 800 fuel handed to the swarm's
+"worlds destroyed" score. Two shapes, the first built (my call, to confirm):
+
+1. **Bases bound by hulls** (`ThreatFrontlines.planFor`, hw65): a faction founds a link only while
+   its free hulls cover the site's guard need - the mirror of "no swarm its supplies cannot keep".
+   The surplus then waits for the yards (the "holds N supplies for heavyindustry" rule) instead of
+   buying paper bases. Log: `Frontline: F founds no link at S - N FP of hulls free, its guard
+   needs M`.
+2. **Yards at home, not at the front** (unbuilt, your call): the humans' hull answer is a Heavy
+   Industry at a size-3+ forward base (`buildStep`), never at a core world, so the yards the swarm
+   razes in the core (0-500 FP/mo at every hw63 end) are never replaced. The shape would let the
+   faction's planner build the shortage's answer at its largest core world with a free slot, and
+   the council's HOLD focus guard a disrupted yard's orbit before any expedition.
+
 ## 3. For the user
 
 - Founding pace: pre-war banking under exposure 0 is what flipped the sector. If 38-41 hives at the

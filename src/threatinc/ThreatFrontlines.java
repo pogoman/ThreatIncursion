@@ -2180,6 +2180,19 @@ public class ThreatFrontlines {
 			PlanetAPI site = pickSite(faction, anchor, hive, hop, reach);
 			if (site != null && unguardable.contains(site.getId())) continue;
 			if (site != null) {
+				// bases bound by hulls (2026-10-08, after hw63: 111 / 145 links founded, 126 / 132 lost, 70 to
+				// strikes of ~650 FP, with every faction at 0 free hulls - the voyage gate below reads fuel
+				// and supplies, which they held for 24-226 months, and a rear link needs no guard at all):
+				// a link is founded only while the faction's free hulls would hold it against the strike
+				// in reach, as a hive grows no swarm its supplies cannot keep. A base no hull can guard
+				// or relieve is a world handed to the swarm's score
+				float guardFP = guardNeed(site, null, fid) / STRENGTH_PER_FP;
+				if (ThreatHulls.enabled() && ThreatHulls.freeFP(fid) < guardFP) {
+					ThreatIncConfig.logQuiet("fl_nohulls_" + fid, "Frontline: " + fid + " founds no link at "
+							+ site.getName() + " - " + (int) ThreatHulls.freeFP(fid) + " FP of hulls free, its guard needs "
+							+ (int) guardFP);
+					return;
+				}
 				MarketAPI payer = payer(faction, site);
 				if (payer == null) {
 					ThreatIncConfig.log("Frontline: " + fid + " cannot pay for a link at "
