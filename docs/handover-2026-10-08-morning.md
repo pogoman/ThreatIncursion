@@ -123,7 +123,11 @@ FP/mo (hw65: 0 and 0-700 everywhere). Hives eradicated 42 / 9 / 27 of peaks 35 /
 swarm ends at 32k FP with 0 supplies, c's at 65k; b is hw65 again (every faction's hulls lost,
 yards 0, 67 hives), the opening strike's luck. The next binder shows in a and c: forward bases
 "cannot pay" 155 / 153 with hulls plentiful - the pools, not the hulls. `game-runs-2.md` 43.
-hw67 (same jar, from 05:53, ends ~06:55) is the confirmation; read it the same way.
+**hw67 (same jar, read at 06:36) confirms it in all three:** relief fleets destroyed 60 / 53 / 26,
+held 632 / 583 / 483; every faction keeps yards - free hulls 5.8k / 1.7k / 1.3k FP at the end,
+yards 2,400 / 2,400 / 2,100 FP/mo. Hives eradicated 11 / 7 / 30 of peaks 37 / 58 / 38; the swarm
+still holds a and b (97k / 185k FP of fleets) and is beaten down in c. Forward bases founded
+81 / 112 / 102, lost 46 / 71 / 70, "cannot pay" 123 / 41 / 91. The night's last batch.
 
 ## 2g-design. What the relief gate is
 
@@ -164,6 +168,26 @@ the free hulls - zero. Each base is a kit of 1,500 supplies and 800 fuel handed 
 
 ## 3. For the user
 
+**The night in one line:** five premise changes, each confirmed by its batch and the next - the
+chest (hw63/64: the swarm fields its fund), hulls by the unit (convoys sail), bases bound by hulls
+(hw65: no paper bases), relief only if enough (hw66/67: the humans keep a navy and yards) - took the
+sector from a swarm walkover (hw60-65: 0-11 hives eradicated a game, every human yard at 0) to a
+contested war (hw66/67: 7-42 eradicated, yards 2,100-3,900 FP/mo at the end, the swarm still
+holding two games in three). Nothing was tuned; no exception in any batch since hw63. Last commit
+34ee8e1f + hw67's record; nothing pushed. Where it binds now, and the levers (yours):
+
+- **The pools bind the humans' founding** (hw66/67: "cannot pay" 41-155 links a game with hulls
+  free): a faction with a navy and yards cannot pay a kit's 1,500 supplies and 800 fuel. Shapes:
+  the surplus faction's convoy to the short one already exists (`humans-trade-through-war`); a
+  faction could found from a stocked ally's base; or founding could wait on the pool as it now
+  waits on hulls (built: the gate is `payer`, `canPayVoyage`).
+- **Coalition relief of a besieged capital** (unbuilt): no ally relieved Chicomoztoc in hw65a while
+  a 5,800 FP front sat on it 220 days; the council's joint play is offence only. A joint relief
+  play sized by the swarm's points over the world, from every willing ally's base, is the shape.
+- **Yards at home** (2e's shape 2, unbuilt): the humans' hull answer is only a Heavy Industry at a
+  size-3+ link, never a core world.
+- **Where the swarm still wins** (hw67a/b, hw66b): the opening strike's target - a yard world
+  taken early starves that faction for the war. Not a bug; the founding-pace lever below.
 - Founding pace: pre-war banking under exposure 0 is what flipped the sector. If 38-41 hives at the
   opening is too many, the lever is the pre-war want (one swarm a colony), not the war.
 - Where the swarm's supplies go (hw61b, last three months, ~210k a month spent of 205k made): the
