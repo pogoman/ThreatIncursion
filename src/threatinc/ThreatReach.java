@@ -339,10 +339,13 @@ public class ThreatReach {
 		return threatinc.rules.StrikeRules.sustainableFP(spare(), days, freeStock(), suppliesPerFP());
 	}
 
-	/** Supplies in stock above what one founding takes (ThreatFuel.foundingCost): what trips may draw on. */
+	/**
+	 * Supplies in stock above what one founding takes (ThreatFuel.foundingCost) and the colonies' sustenance
+	 * due (ThreatColonyUpkeep.sustenanceDue): what trips may draw on.
+	 */
 	public static float freeStock() {
 		return Math.max(0f, ThreatFuel.free(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES)
-				- ThreatFuel.foundingCost()[0]);
+				- ThreatFuel.foundingCost()[0] - ThreatColonyUpkeep.sustenanceDue());
 	}
 
 	/** A fleet of {@code fp} has left: its supplies a month come off the spare until the next feed counts it. */

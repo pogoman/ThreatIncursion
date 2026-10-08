@@ -197,6 +197,35 @@ public class ThreatColonyUpkeep {
 		return fp * rate;
 	}
 
+	/**
+	 * The colonies' sustenance due at the next feed - every world's break-even share of its upkeep for the days
+	 * since the last feed, under sustainShare of the production over the same days - which the fleets away and
+	 * the navy at home may not draw (ThreatColonyManager.paySupplies / payNavySupplies, ThreatReach.freeStock):
+	 * the forge is the income, the navy the expense (the user, 2026-10-08, after hw68a: sustenance paid last,
+	 * the colonies starved first at a 10% overshoot, sizes 179 -> 93 and income 72k -> 25k a month in eight
+	 * months while the fleets already out kept drawing; the navy shrank only after the forges were gone).
+	 * 0 with sustenanceFirst off.
+	 */
+	public static float sustenanceDue() {
+		if (!enabled() || !ThreatIncConfig.sustenanceFirst()) return 0f;
+		Object last = data().get("at");
+		if (!(last instanceof Long)) return 0f;
+		float days = Global.getSector().getClock().getElapsedDaysSince((Long) last);
+		if (days <= 0f) return 0f;
+		float t = breakEven();
+		float due = 0f;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			float perMonth = perMonth(m.getSize());
+			if (perMonth <= 0f) continue; // a seed or a forge world growing toward its first output: free
+			float want = perMonth * days / 30f;
+			float own = Math.min(want, localSupplies(m) * days / 30f);
+			float cap = own + (want - own) * (1f - importCut(m));
+			due += Math.min(t * want, cap);
+		}
+		float made = ThreatFuel.perMonth(Commodities.SUPPLIES) * days / 30f;
+		return Math.max(0f, Math.min(due, Math.min(sustainShare() * made, ThreatFuel.stock(Commodities.SUPPLIES))));
+	}
+
 	/** The share of the production, after fleets away, sustenance may take whatever the stance: the largest stance share. */
 	public static float sustainShare() {
 		float share = Math.max(ThreatIncConfig.feedShareExpand(),
@@ -280,14 +309,20 @@ public class ThreatColonyUpkeep {
 		ThreatReach.clearCommitted();
 		if (needs.isEmpty()) return;
 
-		float stock = ThreatFuel.free(Commodities.SUPPLIES); // above the planner's reserve (ThreatFuel.reserved)
+		// sustenance first (sustenanceDue): the colonies' break-even is a claim on the whole stock and on the whole
+		// production - the fleets away and the planner's forge reserve come after it, not before; growth still
+		// draws only what is free above the reserve, out of the production the fleets away leave
+		boolean first = ThreatIncConfig.sustenanceFirst();
+		float whole = ThreatFuel.stock(Commodities.SUPPLIES);
+		float free = ThreatFuel.free(Commodities.SUPPLIES); // above the planner's reserve (ThreatFuel.reserved)
+		float stock = first ? whole : free;
 		float made = ThreatFuel.perMonth(Commodities.SUPPLIES) * days / 30f;
 		float fleets = Math.max(0f, fleetsPerMonth) * days / 30f;
 		float net = Math.max(0f, made - fleets);
 		// 1. sustenance, out of the days' production up to sustainShare: forges
 		// first, then the front
 		Collections.sort(needs, SUSTAIN_ORDER);
-		float pool = Math.min(stock, sustainShare() * net);
+		float pool = Math.min(stock, sustainShare() * (first ? made : net));
 		// billed reach lets a trip draw on the stock (ThreatReach.canSustain(fp,
 		// days)), which takes its burn out of net: the stock above one founding
 		// kit makes the colonies' sustenance whole again, or a stock-paid trip
@@ -309,7 +344,8 @@ public class ThreatColonyUpkeep {
 			sustained += pay;
 			if (pay < n.sustain) short_ += n.sustain - pay;
 		}
-		// 2. growth, out of the stance's share, to colonies whose next size it still holds
+		// 2. growth, out of the stance's share, to colonies whose next size it still holds - from the free stock
+		if (first) stock = Math.max(0f, Math.min(stock, free - sustained));
 		float budget = Math.max(0f, feedShare() * net - sustained);
 		Collections.sort(needs, growthOrder(ThreatStance.stance()));
 		float grown = 0f;
@@ -332,7 +368,7 @@ public class ThreatColonyUpkeep {
 			float took = Math.max(sustainMonth, (sustained + grown) * 30f / days);
 			data().put("spare", ThreatFuel.perMonth(Commodities.SUPPLIES) - Math.max(0f, fleetsPerMonth) - navyMonth - took);
 		}
-		float draw = Math.min(sustained + grown, ThreatFuel.free(Commodities.SUPPLIES));
+		float draw = Math.min(sustained + grown, first ? ThreatFuel.stock(Commodities.SUPPLIES) : ThreatFuel.free(Commodities.SUPPLIES));
 		if (draw > 0f) ThreatFuel.pay(Commodities.SUPPLIES, draw);
 		for (Need n : needs) {
 			float share = n.want > 0f ? n.paid / n.want : 1f;

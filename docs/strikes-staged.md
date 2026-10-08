@@ -277,7 +277,7 @@ defeat in detail turned on the besieger: the exchange the swarm can afford is a 
 base, not to the flotilla overhead, and the besieging faction either relieves its own world
 (`ThreatPlays.pausable` holds its plays while relief is owed) or loses it. Logs
 `Counter-strike: <staging> -> <target> (<faction>, its staging base | the nearest world of theirs,
-answering the landing on <hive>)`; notice "Swarm Counter-strikes". Knob `counterStrikeEnabled`
+answering the landing on <hive>)`; notice "Swarm Counter-strikes". Knob `counterStrikeEnabled` - **off by default since 2026-10-08** (hw68: a trade, not a relief; the user: "perhaps we remove the counter attack stuff"; kept behind the knob through hw69, to delete if a solvent swarm gives it no case either)
 (default on). My shape, to confirm against hw66/67: read `grep -c '^Counter-strike: ' ti-hw68a.txt`
 against `grep -c 'Notice: Expedition Landed'`, and the hives eradicated.
 

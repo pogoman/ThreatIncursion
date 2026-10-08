@@ -414,7 +414,15 @@ forward base, commodity-bound the way vanilla's economy is.
   away are paid):
   1. Sustenance: the break-even share of every colony, forge worlds first, then the worlds nearest
      the humans - up to the largest stance share of the production (`sustainShare`, 0.7), never
-     more. The hive always keeps a tithe for forges, waves and fleets: h35a let sustenance take
+     more. **Since 2026-10-08 (`sustenanceFirst`, on) the break-even is paid FIRST, before the fleets away
+     and the navy at home, out of the whole stock (the planner's forge reserve included) and of the whole
+     production, not what the fleets leave: `sustenanceDue` is what `ThreatColonyManager.paySupplies`,
+     `payNavySupplies` and `ThreatReach.freeStock` may not draw. hw68a, with sustenance last: a campaign
+     launched on a +6k margin prepaid from the 23k stock, the stock hit 0, sustenance was paid 33 of 22.5k,
+     sizes 179 -> 93 and income 72k -> 25k a month in eight months while the fleets already out kept drawing
+     first; the navy shrank (96k -> 45k FP) only after the forges were gone. The forge is the income, the
+     navy the expense: a navy the supplies cannot keep loses swarms smallest-first (`payNavySupplies`),
+     never forges. Growth still draws only the free stock, out of the production the fleets away leave.** The hive always keeps a tithe for forges, waves and fleets: h35a let sustenance take
      everything, and the base save's hive shrank until it did (26k of 29k a month) with nothing
      left to buy the forges that would have fed it again. The leeway is the half level below its
      size a colony's progress runs before the size goes (below), not the stock: a raided forge
