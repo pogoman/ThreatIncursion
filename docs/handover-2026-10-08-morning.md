@@ -202,3 +202,18 @@ holding two games in three). Nothing was tuned; no exception in any batch since 
   while the Independents waited at 0 free, 3,564 to rebuild). Free hulls are already net of the debt.
 
 Standing rules are in `CLAUDE.md`; nothing was pushed.
+
+## 4. hw68 - the counter-stroke (eb1dae56), read at 09:50, against the user's criterion
+
+The user (09:xx): "Remember the player isnt involved in these runs. if the humans win the mod isnt
+working correctly." By that rule hw66a, hw67c and now hw68a / hw68c are failures. The counter-stroke
+(`strikes-staged.md` 6) was my pick to answer them; hw68 measured it: a trade (15 forward bases, 7
+core-world landings) that saved no hive (26 of 30 died) and was refused on supplies 20 of 50 times.
+Hives eradicated 26 / 3 / 23 against hw67's 11 / 7 / 30 - within the variance, no better.
+
+**Where the losing games are lost** (hw68a in detail, `game-runs-2.md` 43): the swarm's supplies run
+out - 42 hives spending 88-102k a month against 65k made, 46k of it on fleets away - the navy dies of
+unpaid upkeep (95k FP of fleets at m35, 44k a year later, 580 upkeep-loss lines), and the undefended
+hives are eradicated one by one. In the walkover games (hw66b, hw67b, hw68b) the opening strikes took
+yard worlds early and the humans' navy never recovered. The variance is the opening's luck; the
+mechanism in the losing games is supplies, as every batch since hw60 has said.

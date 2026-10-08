@@ -280,3 +280,9 @@ base, not to the flotilla overhead, and the besieging faction either relieves it
 answering the landing on <hive>)`; notice "Swarm Counter-strikes". Knob `counterStrikeEnabled`
 (default on). My shape, to confirm against hw66/67: read `grep -c '^Counter-strike: ' ti-hw68a.txt`
 against `grep -c 'Notice: Expedition Landed'`, and the hives eradicated.
+
+**hw68 (2026-10-08), the measurement:** counter-strikes sailed 13 / 2 / 15 against 31 / 3 / 24 landings,
+20 refused on supplies with the free stock at 0; 26 of the 30 hives died anyway (the strike's passage is
+the landing-to-fall window); 15 forward bases destroyed and 7 core worlds invaded in exchange; hives
+eradicated 26 / 3 / 23 against hw67's 11 / 7 / 30. A trade, not a relief; left on, the user's to keep or
+drop. `game-runs-2.md` 43.
