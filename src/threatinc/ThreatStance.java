@@ -511,7 +511,8 @@ public class ThreatStance {
 		boolean hadChest = st != null && st.length >= 11 && st[10] > 0f;
 		// a known world is enough (not a weak one: pressed everywhere at home, weakTargets reads none,
 		// and that is when the fund should pay the relief and near strikes most)
-		// ...and full only if it could field the cheapest known prong (ThreatOffensive.cheapestProngCost): a fund
+		// ...and full only if it could field the cheapest known prong the fuel in stock can sail
+		// (ThreatOffensive.cheapestProngCost): a fund
 		// that fields nothing is poor, not full, and the expansion that grows its income goes on (the user's pick,
 		// 2026-10-08, after hw70: a 4-hive fund read full at 1,834 of 1,800 FP a horizon with the cheapest prong at
 		// 8,244, fed the fleets before expansion for 1,400 days, and the swarm opened the war at 13 hives, ck2's at 37)

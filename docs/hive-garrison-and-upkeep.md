@@ -204,7 +204,7 @@ the whole sector, evaluated at the end of every posture pass (`ThreatPosture.pol
   - **The chest (2026-10-08, after hw62; built for hw63, to confirm):** the strike fund holds a
     horizon's saving (`ThreatColonyManager.strikeFundPerMonth` x `offensiveHorizonMonths`) and a known
     target exists. **And, since hw70 (the user's pick, 2026-10-08), the fund could field the cheapest
-    priced prong (`ThreatOffensive.cheapestProngCost`): a 4-hive fund saving 150 FP a month read full at
+    priced prong the fuel in stock can sail (`ThreatOffensive.cheapestProngCost`): a 4-hive fund saving 150 FP a month read full at
     1,834 of 1,800 with the cheapest prong at 8,244 FP, fed the fleets before expansion for 1,400 pre-war
     days, and ck3's swarm opened the war at 13 hives where ck2's (checkpointed before the rule) opened at 37.** hw62 banked 38k -> 141k FP in every game and fielded none of it: the colonies'
     spare for new trips kept sustenance at its share (an expansion tithe of 1/`sustainShare`), and

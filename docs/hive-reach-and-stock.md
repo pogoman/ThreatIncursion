@@ -22,7 +22,7 @@ So the hive has no radius now. A fleet goes where its trip can be paid, and wher
   less every colony's sustenance at its share (`sustainShare` 0.7, so an expansion tithe of
   1/0.7 x sustenance is kept for growth, builds and seedings) - or, the chest full
   (`ThreatStance.chestFull`, 2026-10-08: the strike fund holds a horizon's saving and could field
-  the cheapest known prong, `ThreatOffensive.cheapestProngCost`, yet has not - a fund that fields
+  the cheapest known prong the fuel in stock can sail, `ThreatOffensive.cheapestProngCost`, yet has not - a fund that fields
   nothing is poor, not full: the user's pick after hw70), less what the colonies actually took, the tithe feeding the fleets (hw62 banked 38k ->
   141k FP against a spare of zero). A trip never starves a colony; it can starve growth, since
   fleets away are paid first. Launches between feeds commit their share (`ThreatReach.commit`). Its whole bill
