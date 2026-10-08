@@ -532,7 +532,15 @@ posture), the home navy above the patrols 13k, spare 1.5k, 145 seedings held on 
   returns `fitFloor` for a colony nobody attacks - the nexus, the pressure pass (receivers, donors,
   `releasableFP`, `fabricatorFor`) and the launch gates all read one want - and `fitFloor` keeps
   the strike a pressing stance stages there (`extraWantFP`: a strike staged is the navy used). A
-  colony under attack keeps the posture's want. First run hw81 (ck2) + hw82 (ck5).
+  colony under attack keeps the posture's want. First run hw81 (ck2) + hw82 (ck5): recycling a
+  third of hw79a's, the nexus at the ordinary rate, but the pressure pass still fabricated for a
+  receiver nobody attacks whose want moved with the pressure (Gream: nine swarms fabricated and
+  sent a month, recycled the poll they arrived, sent again).
+- **Nothing fabricated for a quiet hive while the fit is active; the fit never cuts a hive just
+  reinforced** (2026-10-08, after hw81a). `redistributeByPressure` fabricates for a receiver only
+  when its system is attacked (donations of existing surplus still flow), log `Posture: nothing
+  fabricated for ...`; `fitNavyToSpare` skips a colony `ThreatPosture.recentlyReceived` (the
+  donors' own DECAY_DAYS rule). First run hw83 (ck2) + hw84 (ck5).
 - **What the sends held on ck5 were** (hw78, read 2026-10-08): not the fit's. The new sector's
   swarm spends its whole income each month - at the end 130k a month: feed 50k, away 35k, navy
   13k, structures 3-20k, foundings 10-30k (5-6 hives a month) - and the stock sits at 5-12k; the

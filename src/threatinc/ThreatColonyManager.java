@@ -4256,6 +4256,9 @@ public class ThreatColonyManager {
 				StarSystemAPI system = m.getStarSystem();
 				if (system == null || ThreatPosture.underAttack(system)) continue;
 				if (ThreatOffensive.earmarked(system.getId()) > 0) continue;
+				// a colony the pressure pass just reinforced is not where the fit cuts (the donors' own rule,
+				// DECAY_DAYS; hw81a: swarms recycled the poll they arrived)
+				if (ThreatPosture.recentlyReceived(m)) continue;
 				List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(m.getId());
 				float above = garrisonFP(fleets) - fitFloor(m);
 				if (above <= 0f || above <= pickAbove) continue;
@@ -5912,6 +5915,14 @@ public class ThreatColonyManager {
 					}
 				}
 				if (donor == null) {
+					// (2026-10-08, the navy fits the spare) while the fit is active nothing is fabricated for a
+					// receiver nobody attacks: hw81a fabricated and sent Gream nine swarms a month against a
+					// want that moved with the pressure, the fit recycled them on arrival, the pass sent again
+					if (!attacked && fitActive()) {
+						ThreatIncConfig.logQuiet("navy-fab:" + receiver.getId(), "Posture: nothing fabricated for "
+								+ receiver.getName() + " - the navy fits the spare and nobody attacks it");
+						continue;
+					}
 					// no fleet to spare anywhere in reach: a colony whose bank lies
 					// idle past its own want builds a swarm for the receiver instead
 					donor = fabricatorFor(colonies, receiver, held);
