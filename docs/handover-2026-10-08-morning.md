@@ -352,3 +352,13 @@ the pass's enough gate (`ThreatPosture.forceOver` / `standsFor`, `pressureSpare`
 nothing to an attacked receiver unless what stands, what donors could spare and what banks could build
 together outweigh the force (hw87 / hw88). The user (23:00): run until morning, fix buggy behaviour,
 no new strategy layer, until the swarm wins both sectors consistently. `game-runs-2.md` 43.
+
+## 14. hw85 + hw86 - the academy guard (hw83's build again), read at 00:05: old sector contested, new sector the swarm's, no fatal
+
+f23c009d. hw85a (ck2): hives 38 -> 61 (hw83a 53), humans 50 -> 31 (25); pressure fabricated 5,441,
+18 hives eradicated; the churn check's m45 flag (38 pairs) was fabricated-for swarms recycled once
+the attack passed. hw86a / b (ck5): hives 133 / 156, humans 7 / 3, no exception at the end (the guard
+holds, or the pick never came up null). The old sector reads 53-92 hives across four samples of the
+same strategy: contested, not won. hw87 / hw88 (811737ff, jar 00:04) run the pass's enough gate; the
+watcher's check is `check-enough.sh` (fabricated-for 250+ in three months, or fleets-away cost above
+the supplies made). `game-runs-2.md` 43.
