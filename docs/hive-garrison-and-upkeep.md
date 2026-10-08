@@ -513,3 +513,18 @@ posture), the home navy above the patrols 13k, spare 1.5k, 145 seedings held on 
 - Not a cap: the navy grows again as the flow does (the hw36 growth gate was already the flow's).
   Knob `navyFitsSpare`. First run hw77 (ck2) + hw78 (ck5). Log lines `Navy: <hive> recycled ...`
   and `Posture: no transfer to ...`.
+- **The builder respects the fit** (2026-10-08, after hw77a; the user: "the two wrinkles need to be
+  addressed, not another strategy layer"). While the fit binds (`fitBinding`: the spare short of
+  `fitWant`) the nexus builds a colony only up to `fitFloor` (the same floor the fit recycles to),
+  never to the posture's want. hw77a's nexus had refabricated what the fit recycled, month for
+  month (149 recycled / 156 built, 158 / 136; 4,602 recycled and 7,888 built a game, hw75a built
+  3,328), so the navy was churned through the bank rather than kept at the floor. First run hw79
+  (ck2) + hw80 (ck5).
+- **What the sends held on ck5 were** (hw78, read 2026-10-08): not the fit's. The new sector's
+  swarm spends its whole income each month - at the end 130k a month: feed 50k, away 35k, navy
+  13k, structures 3-20k, foundings 10-30k (5-6 hives a month) - and the stock sits at 5-12k; the
+  50 sends held a month are the queue beyond that income, and the fit idled from m36 (0 recycles)
+  because the spare (production less feed, away and navy, which the census's `spare` is - it
+  excludes structures and foundings) stayed above one founding. One order question is the user's:
+  structures are paid from the raw stock (`affordStructure`) before a founding, which needs the
+  stock above the planner's reserve (`ThreatFuel.free`).

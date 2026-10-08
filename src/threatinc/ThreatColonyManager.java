@@ -4233,13 +4233,14 @@ public class ThreatColonyManager {
 	 * kept as FP, not fed as fleets. hw73a / hw75a (ck2): the swarm sat a year
 	 * at a stock of 0 with 29-31 sends held, 145 seedings held, the home navy
 	 * 13k of 69-78k a month and the fund 54-75k FP, while the humans ground it
-	 * from 50 hives to 34. Knob navyFitsSpare.
+	 * from 50 hives to 34. Knob navyFitsSpare. While the fit binds (fitBinding)
+	 * the nexus builds to the same floor (maintainGarrisons), never the
+	 * posture's want, or it refabricates what the fit recycled (hw77a).
 	 */
 	protected static void fitNavyToSpare() {
-		if (!ThreatIncConfig.navyFitsSpare() || !ThreatColonyUpkeep.enabled()) return;
+		if (!fitBinding()) return;
 		float spare = ThreatReach.spare();
-		float want = ThreatFuel.heldThisMonth() > 0 ? ThreatFuel.foundingCost()[0] : 0f;
-		if (spare >= want) return;
+		float want = fitWant();
 		float rate = ThreatReach.suppliesPerFP() * ThreatIncConfig.standingUpkeepMult();
 		if (rate <= 0f) return;
 		float gap = want - spare;
@@ -4256,8 +4257,7 @@ public class ThreatColonyManager {
 				if (system == null || ThreatPosture.underAttack(system)) continue;
 				if (ThreatOffensive.earmarked(system.getId()) > 0) continue;
 				List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(m.getId());
-				float floor = Math.max(ThreatPosture.minimumFP(m), ThreatPosture.needFP(m));
-				float above = garrisonFP(fleets) - floor;
+				float above = garrisonFP(fleets) - fitFloor(m);
 				if (above <= 0f || above <= pickAbove) continue;
 				CampaignFleetAPI victim = smallestOnStation(fleets);
 				if (victim == null || victim.getFleetPoints() > above) continue;
@@ -4361,8 +4361,12 @@ public class ThreatColonyManager {
 			// it, never below one swarm
 			boolean posture = ThreatPosture.enabled();
 			if (posture) {
+				// while the navy fits the spare (fitNavyToSpare, 2026-10-08) the want is that fit's floor,
+				// not the posture's: hw77a rebuilt from the bank what the fit had just recycled, month for
+				// month (149 recycled / 156 fabricated, 158 / 136), 4,600 swarms churned through the bank
 				belowFloor = fleets.size() + away < 1
-						|| ThreatPosture.wantsGrowth(market, ownedFleetFP(market, fleets));
+						|| (fitBinding() ? ownedFleetFP(market, fleets) < fitFloor(market)
+								: ThreatPosture.wantsGrowth(market, ownedFleetFP(market, fleets)));
 				desired = ThreatPosture.baseCount(market);
 			}
 
@@ -4439,6 +4443,21 @@ public class ThreatColonyManager {
 					+ (int) bankedFP(market) + " FP banked)");
 		}
 		return fleetsSupplies;
+	}
+
+	/** The spare a month the navy's fit wants (fitNavyToSpare): one founding's supplies while any send was held this month, else 0. */
+	protected static float fitWant() {
+		return ThreatFuel.heldThisMonth() > 0 ? ThreatFuel.foundingCost()[0] : 0f;
+	}
+
+	/** Whether the navy's fit binds now: the knob on, upkeep on, and the spare a month short of fitWant. */
+	protected static boolean fitBinding() {
+		return ThreatIncConfig.navyFitsSpare() && ThreatColonyUpkeep.enabled() && ThreatReach.spare() < fitWant();
+	}
+
+	/** The garrison the navy's fit leaves a colony, and the nexus builds to while the fit binds: the patrols (ThreatPosture.minimumFP) or the pressure's need (needFP), whichever is more. */
+	protected static float fitFloor(MarketAPI market) {
+		return Math.max(ThreatPosture.minimumFP(market), ThreatPosture.needFP(market));
 	}
 
 	/** The colony poll's cadence (IncursionManager's 0.4-0.6 day interval). */
