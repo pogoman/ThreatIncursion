@@ -233,3 +233,27 @@ cut to a quarter of their worlds is more than the war the player is meant to tur
 shapes from hw66 are unbuilt (coalition relief, yards at home) - never a swarm knob, and never
 undoing sustenance first. The counter-stroke code (`IncursionManager.counterStrike`, ~100 lines
 behind `counterStrikeEnabled`) can be deleted now that a solvent swarm needs no case for it.
+
+## 6. hw70 - the new sector (ck3, AmaruDugas), read at 11:50: the humans win one, hold two
+
+The user asked for a run "with a new seed so they come from different part of map" before the
+human-strategy review. ck3 (the hw4 sector, war opens 2133, opener Jangala): hives 3 / 20 / 16 at
+the end from 13-14 at the opening, eradicated 30 / 20 / 20, humans 34 / 28 / ~30 of 44-46 colonies
+kept, a human win in hw70a (`game-runs-2.md` 43 hw70). The swarm opened at a third of ck2's size
+(13 hives, size 61, 30k supplies a month against 37, 134, 42k) and its navy outran its income all
+war (170-502 swarms shed to unpaid upkeep, seedings held 76-98).
+
+**The cause is the chest rule in the pre-war** (`facts.md` "Why did the ck3 swarm open the war at
+13 hives"): ck3's pre-war ran under it, ck2's checkpoint predates it. At 4 hives the fund's
+12-month horizon is 1,800 FP, so the chest read full on day 707 with the cheapest prong at 8,244 FP
+and nothing fieldable; the fleets were fed before expansion until day 2131, their upkeep put the
+supplies in deficit, and `canFound` held every Seeding Swarm from day 1856 with 188k-402k fuel
+in stock. ck2 reached 29 hives by war 2085; ck3 12.
+
+**Next is the user's:** the shape of "full". (a) full = fieldable - the fund could pay the cheapest
+known prong and still holds a horizon's saving; a fund that can field nothing is poor, and the
+expansion that grows its income goes on (recommended; the same lock would bite a losing swarm
+mid-war). (b) No chest before the first war. (c) Delete the chest rule (hw62's hoarding may
+return). After the pick: build, remake ck3 (a pre-war change), run hw71 from it. The human-side
+points of the hw69 review hold on the new sector (the record lists them); only the blind time is
+geography.
