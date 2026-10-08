@@ -610,7 +610,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatCoalition.jointEnough(FactionAPI owner, MarketAPI market, MarketAPI ownerBase)` :484 - Whether the owner and its partners together can field a relief that outweighs the army over the world.
 - `ThreatCoalition.jointRelief(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float owed)` :509 - COALITION RELIEF (the user, 2026-10-08, the second human change after yards at home):
 
-## ThreatColonyManager (6818 lines)
+## ThreatColonyManager (6829 lines)
 ### founding
 - `ThreatColonyManager.foundColony(PlanetAPI planet, int initialSize)` :104 - Converts a planet's dormant condition-only market into a live Threat fabrication colony.
 - `ThreatColonyManager.foundColony(PlanetAPI planet, int initialSize, String payerId)` :117 - foundColony, its structures bought from payerId's bank at foundingFPPerStructure each (null:
@@ -814,125 +814,125 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatColonyManager.weakestWeakHolder(MarketAPI market)` :4167 - The weakest unambiguous weak holder on station - below even the colony's least demanding slot's tier, or under strength - that is not currently in a battle.
 - `ThreatColonyManager.maintainGarrisons(Random random)` :4197 - Prunes dead garrison fleets, banks the nexus's production (the fabrication ledger, accrueFabrication) and fabricates a swarm whenever the bank pays for it, one per colony per poll:
 - `ThreatColonyManager.fitNavyToSpare()` :4240 - THE NAVY FITS THE SPARE (the user, 2026-10-08, after hw73a:
-- `ThreatColonyManager.maintainColonyGarrisons(Random random, float hiveOutput, float hiveDraw, Map<String, Float> ledgerFP, boolean suppliesUpkeep, Map<String, Float> ledgerSupplies, float hold)` :4284 - maintainGarrisons' loop over the colonies;
-- `ThreatColonyManager.fitWant()` :4453 - The spare a month the navy's fit wants (fitNavyToSpare):
-- `ThreatColonyManager.fitBinding()` :4458 - Whether the navy's fit binds now:
-- `ThreatColonyManager.fitActive()` :4475 - Whether the nexus builds only to the fit's floor (maintainGarrisons):
-- `ThreatColonyManager.fitFloor(MarketAPI market)` :4488 - The garrison the navy's fit leaves a colony, and the colony's whole want while the fit is active (ThreatPosture.wantFP, so the nexus, the pressure pass and the launch gates all read it):
+- `ThreatColonyManager.maintainColonyGarrisons(Random random, float hiveOutput, float hiveDraw, Map<String, Float> ledgerFP, boolean suppliesUpkeep, Map<String, Float> ledgerSupplies, float hold)` :4287 - maintainGarrisons' loop over the colonies;
+- `ThreatColonyManager.fitWant()` :4456 - The spare a month the navy's fit wants (fitNavyToSpare):
+- `ThreatColonyManager.fitBinding()` :4461 - Whether the navy's fit binds now:
+- `ThreatColonyManager.fitActive()` :4478 - Whether the nexus builds only to the fit's floor (maintainGarrisons):
+- `ThreatColonyManager.fitFloor(MarketAPI market)` :4491 - The garrison the navy's fit leaves a colony, and the colony's whole want while the fit is active (ThreatPosture.wantFP, so the nexus, the pressure pass and the launch gates all read it):
 ### the fabrication ledger: every Threat fleet is paid for
-- `ThreatColonyManager.bankedFP(MarketAPI market)` :4530
-- `ThreatColonyManager.chargeFP(MarketAPI market, float fp)` :4537 - Takes fleet points out of the colony's bank (a fleet it fabricated).
-- `ThreatColonyManager.creditFP(MarketAPI market, float fp)` :4543 - Puts fleet points back in the colony's bank (hulls recycled).
-- `ThreatColonyManager.poolSystemBanks(MarketAPI source, float bill)` :4556 - Whether the source's bank, topped up from its system's other colonies, pays the bill;
-- `ThreatColonyManager.poolSystemBanks(MarketAPI source, float bill, String what)` :4561 - poolSystemBanks for a bill of this kind, named in the log ("Founding bill at ...", "Swarm Bastion bill at ...").
-- `ThreatColonyManager.strikeFund()` :4600 - THE STRIKE FUND (a trial of 2026-10-05, after hw20:
-- `ThreatColonyManager.addStrikeFund(float fp)` :4605
-- `ThreatColonyManager.strikeFundPerMonth()` :4610 - Fleet points a month the strike fund gains at today's fabrication:
-- `ThreatColonyManager.hiveFabricationPerMonth()` :4617 - Fleet points a month every live colony fabricates at today's rate:
-- `ThreatColonyManager.spendStrikeFund(MarketAPI staging, float bill)` :4626 - Moves the bill from the strike fund to the staging colony's bank, which the launch then draws it from;
-- `ThreatColonyManager.hiveGivers(MarketAPI source)` :4634 - Every live colony of the hive that gives to a staged strike's bill:
-- `ThreatColonyManager.hivePoolableFP(MarketAPI source)` :4647 - What the whole hive could put toward a staged strike at the source:
-- `ThreatColonyManager.poolHiveBanks(MarketAPI source, float bill, String what)` :4659 - poolSystemBanks across the whole hive, for a staged strike (the user, 2026-10-05:
-- `ThreatColonyManager.compare(MarketAPI a, MarketAPI b)` :4668
-- `ThreatColonyManager.poolableFP(MarketAPI source)` :4688 - What poolSystemBanks could put toward a bill at the source:
-- `ThreatColonyManager.canAffordFP(MarketAPI market, float fp)` :4701 - Whether the colony's bank pays for a fleet of this many points.
-- `ThreatColonyManager.fpBank(String marketId)` :4706 - The bank by market id (the hooks' API:
-- `ThreatColonyManager.drawFP(String marketId, float fp)` :4713 - Takes fleet points out of a colony's bank by market id.
-- `ThreatColonyManager.creditFP(String marketId, float fp)` :4719 - Puts fleet points back in a colony's bank by market id (survivors home, hulls recycled).
+- `ThreatColonyManager.bankedFP(MarketAPI market)` :4533
+- `ThreatColonyManager.chargeFP(MarketAPI market, float fp)` :4540 - Takes fleet points out of the colony's bank (a fleet it fabricated).
+- `ThreatColonyManager.creditFP(MarketAPI market, float fp)` :4546 - Puts fleet points back in the colony's bank (hulls recycled).
+- `ThreatColonyManager.poolSystemBanks(MarketAPI source, float bill)` :4559 - Whether the source's bank, topped up from its system's other colonies, pays the bill;
+- `ThreatColonyManager.poolSystemBanks(MarketAPI source, float bill, String what)` :4564 - poolSystemBanks for a bill of this kind, named in the log ("Founding bill at ...", "Swarm Bastion bill at ...").
+- `ThreatColonyManager.strikeFund()` :4603 - THE STRIKE FUND (a trial of 2026-10-05, after hw20:
+- `ThreatColonyManager.addStrikeFund(float fp)` :4608
+- `ThreatColonyManager.strikeFundPerMonth()` :4613 - Fleet points a month the strike fund gains at today's fabrication:
+- `ThreatColonyManager.hiveFabricationPerMonth()` :4620 - Fleet points a month every live colony fabricates at today's rate:
+- `ThreatColonyManager.spendStrikeFund(MarketAPI staging, float bill)` :4629 - Moves the bill from the strike fund to the staging colony's bank, which the launch then draws it from;
+- `ThreatColonyManager.hiveGivers(MarketAPI source)` :4637 - Every live colony of the hive that gives to a staged strike's bill:
+- `ThreatColonyManager.hivePoolableFP(MarketAPI source)` :4650 - What the whole hive could put toward a staged strike at the source:
+- `ThreatColonyManager.poolHiveBanks(MarketAPI source, float bill, String what)` :4662 - poolSystemBanks across the whole hive, for a staged strike (the user, 2026-10-05:
+- `ThreatColonyManager.compare(MarketAPI a, MarketAPI b)` :4671
+- `ThreatColonyManager.poolableFP(MarketAPI source)` :4691 - What poolSystemBanks could put toward a bill at the source:
+- `ThreatColonyManager.canAffordFP(MarketAPI market, float fp)` :4704 - Whether the colony's bank pays for a fleet of this many points.
+- `ThreatColonyManager.fpBank(String marketId)` :4709 - The bank by market id (the hooks' API:
+- `ThreatColonyManager.drawFP(String marketId, float fp)` :4716 - Takes fleet points out of a colony's bank by market id.
+- `ThreatColonyManager.creditFP(String marketId, float fp)` :4722 - Puts fleet points back in a colony's bank by market id (survivors home, hulls recycled).
 ### homecoming: a fleet the bank paid for pays back what comes home
-- `ThreatColonyManager.bindToLedger(CampaignFleetAPI fleet, String homeMarketId)` :4744 - Binds the fleet to the colony's bank:
-- `ThreatColonyManager.unbindLedger(CampaignFleetAPI fleet)` :4754 - The fleet's strength is now accounted elsewhere (a garrison, another ledger):
-- `ThreatColonyManager.ledgerBound(CampaignFleetAPI fleet)` :4760 - Whether the fleet still owes its bank a homecoming credit.
-- `ThreatColonyManager.settleLedger(CampaignFleetAPI fleet, boolean destroyed)` :4770 - Credits what survives of a bound fleet to its bank and unbinds it;
-- `ThreatColonyManager.creditHome(String marketId, float fp, SectorEntityToken near)` :4790 - Credits fleet points to the colony's bank, or - the colony gone - to the live colony nearest the fleet (any live colony without one).
-- `ThreatColonyManager.nearestLiveColony(SectorEntityToken near)` :4803 - The live colony nearest the entity (any live colony without one);
-- `ThreatColonyManager.bindStrayToNearest(CampaignFleetAPI fleet)` :4825 - A garrison swarm with no colony left to hold (its colony dead, or a raider come back to none) leaves as a fleet bound for the nearest live colony's bank:
-- `ThreatColonyManager.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :4839 - On a ledger-bound fleet:
-- `ThreatColonyManager.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :4845
-- `ThreatColonyManager.fpPerShipUnit30d()` :4857 - Fleet points a forge ship-unit makes a month - the income knob (threatinc_fabFPPerShipUnit, default 100).
-- `ThreatColonyManager.forgeOutput(MarketAPI market)` :4879 - Hull units a forge colony makes:
-- `ThreatColonyManager.hiveShipOutput()` :4888 - Hull units every forge of the hive makes together.
-- `ThreatColonyManager.nexusDraw(MarketAPI market)` :4900 - Hull units this colony's nexus draws:
-- `ThreatColonyManager.hiveNexusDraw()` :4909 - Hull units every nexus of the hive draws together.
-- `ThreatColonyManager.fabricationRatePerDay(MarketAPI market)` :4924 - Fleet points a day this colony's nexus banks.
-- `ThreatColonyManager.fabricationRatePerDay(MarketAPI market, float hiveOutput, float hiveDraw)` :4929 - fabricationRatePerDay with the hive totals already summed (once a poll).
-- `ThreatColonyManager.accrueFabrication(MarketAPI market, float ratePerDay, float upkeepPerDay)` :4939 - Banks the production since the colony was last banked, less the upkeep of its fleets over the same days (upkeepPerDay);
+- `ThreatColonyManager.bindToLedger(CampaignFleetAPI fleet, String homeMarketId)` :4747 - Binds the fleet to the colony's bank:
+- `ThreatColonyManager.unbindLedger(CampaignFleetAPI fleet)` :4757 - The fleet's strength is now accounted elsewhere (a garrison, another ledger):
+- `ThreatColonyManager.ledgerBound(CampaignFleetAPI fleet)` :4763 - Whether the fleet still owes its bank a homecoming credit.
+- `ThreatColonyManager.settleLedger(CampaignFleetAPI fleet, boolean destroyed)` :4773 - Credits what survives of a bound fleet to its bank and unbinds it;
+- `ThreatColonyManager.creditHome(String marketId, float fp, SectorEntityToken near)` :4793 - Credits fleet points to the colony's bank, or - the colony gone - to the live colony nearest the fleet (any live colony without one).
+- `ThreatColonyManager.nearestLiveColony(SectorEntityToken near)` :4806 - The live colony nearest the entity (any live colony without one);
+- `ThreatColonyManager.bindStrayToNearest(CampaignFleetAPI fleet)` :4828 - A garrison swarm with no colony left to hold (its colony dead, or a raider come back to none) leaves as a fleet bound for the nearest live colony's bank:
+- `ThreatColonyManager.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :4842 - On a ledger-bound fleet:
+- `ThreatColonyManager.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :4848
+- `ThreatColonyManager.fpPerShipUnit30d()` :4860 - Fleet points a forge ship-unit makes a month - the income knob (threatinc_fabFPPerShipUnit, default 100).
+- `ThreatColonyManager.forgeOutput(MarketAPI market)` :4882 - Hull units a forge colony makes:
+- `ThreatColonyManager.hiveShipOutput()` :4891 - Hull units every forge of the hive makes together.
+- `ThreatColonyManager.nexusDraw(MarketAPI market)` :4903 - Hull units this colony's nexus draws:
+- `ThreatColonyManager.hiveNexusDraw()` :4912 - Hull units every nexus of the hive draws together.
+- `ThreatColonyManager.fabricationRatePerDay(MarketAPI market)` :4927 - Fleet points a day this colony's nexus banks.
+- `ThreatColonyManager.fabricationRatePerDay(MarketAPI market, float hiveOutput, float hiveDraw)` :4932 - fabricationRatePerDay with the hive totals already summed (once a poll).
+- `ThreatColonyManager.accrueFabrication(MarketAPI market, float ratePerDay, float upkeepPerDay)` :4942 - Banks the production since the colony was last banked, less the upkeep of its fleets over the same days (upkeepPerDay);
 ### upkeep: a standing fleet costs its bank while it exists
-- `ThreatColonyManager.upkeepPerDay(float fleetFP)` :4976 - Upkeep a day on this many fleet points (threatinc_garrisonUpkeepPerMonth per 30 days).
-- `ThreatColonyManager.garrisonFP(List<CampaignFleetAPI> fleets)` :4981 - Fleet points of the garrison on station (its list alone).
-- `ThreatColonyManager.awayFleetSupplies(MarketAPI market)` :5001 - Supplies a month of the colony's fleets away but not on the ledger:
-- `ThreatColonyManager.awayFleetsLine()` :5023 - The census's snapshot of the hive's fleets away by kind - every live fleet on a ledger that is not a garrison (ledgerFleetSupplies' set), the abstract strikes, the raiders and the reinforcements in tr
-- `ThreatColonyManager.tally(Map<String, float[]> by, String kind, float fp, float perMonth)` :5062
-- `ThreatColonyManager.paySupplies(MarketAPI market, float perMonth, float hold)` :5111 - Pays the supplies of the colony's fleets away (perMonth) for the days since its last payment from the hive's stock.
-- `ThreatColonyManager.navyFP(MarketAPI market, List<CampaignFleetAPI> fleets)` :5149 - The colony's garrison FP above its patrols (ThreatPosture.minimumFP):
-- `ThreatColonyManager.payNavySupplies(MarketAPI market, List<CampaignFleetAPI> fleets, float days, float hold)` :5163 - The navy above the patrols pays its supplies (the user, 2026-10-07:
-- `ThreatColonyManager.starveAway(MarketAPI market, float owed)` :5204 - The colony's fleets away owe a month of supplies:
-- `ThreatColonyManager.ownedFleetFP(MarketAPI market, List<CampaignFleetAPI> fleets)` :5237 - Fleet points of the fleets the colony keeps near home:
-- `ThreatColonyManager.recycleForUpkeep(MarketAPI market, List<CampaignFleetAPI> fleets, float income, float upkeep)` :5282 - The bank has gone below 0 and the colony's income does not cover its upkeep:
-- `ThreatColonyManager.smallestOnStation(List<CampaignFleetAPI> fleets)` :5311 - The garrison's smallest live fleet out of battle;
-- `ThreatColonyManager.upkeepLog(String marketId)` :5333
-- `ThreatColonyManager.flushUpkeepMonth()` :5346 - Every 30 days:
-- `ThreatColonyManager.hiveLedgerSummary()` :5380 - The hive's fleet economy in one line for the census:
-- `ThreatColonyManager.endowSave(float hiveOutput, float hiveDraw)` :5406 - The first poll of a save from before the ledger:
-- `ThreatColonyManager.endowSeed(MarketAPI market)` :5446 - A colony founded by a Seeding Swarm out of the Abyss (the war's opening, source null) lands with FAB_ENDOWMENT_DAYS of a full nexus's income at its size - what the swarm brought with it, not productio
-- `ThreatColonyManager.clearFabrication(String marketId)` :5453 - The colony's ledger is gone with it.
-- `ThreatColonyManager.swarmCostEstimate(int[] spec)` :5464 - What a swarm of this spec ({fabricators, escort tier}) costs:
-- `ThreatColonyManager.swarmCostEstimate(String job, int[] spec)` :5473 - swarmCostEstimate for a fleet of this job (ThreatFleetComposer.JOB_*):
-- `ThreatColonyManager.costKey(String job, int[] spec)` :5488 - The fabCosts key:
-- `ThreatColonyManager.learnSwarmCost(int[] spec, float fp)` :5494 - Folds a fabricated garrison swarm's real cost into its spec's mean (a quarter weight).
-- `ThreatColonyManager.learnSwarmCost(String job, int[] spec, float fp)` :5499 - Folds a fleet of this job's real cost into its job and spec's mean (a quarter weight).
-- `ThreatColonyManager.fabricateGarrisonSwarm(MarketAPI market, int[] spec, Random random)` :5512 - Fabricates one Defense Swarm of the given garrison-table slot ({numFabricators, escort-strength ordinal}) and parks it in orbit over the colony;
-- `ThreatColonyManager.buildGarrisonSwarm(MarketAPI market, int[] spec, Random random)` :5519 - fabricateGarrisonSwarm's fleet, built and tagged but not yet in space (placeGarrisonSwarm, or growGarrisonFleet).
-- `ThreatColonyManager.placeGarrisonSwarm(MarketAPI market, CampaignFleetAPI fleet, Random random)` :5538 - Parks a built swarm in orbit over its colony (buildGarrisonSwarm checked the planet and system).
-- `ThreatColonyManager.maxShipsPerFleet()` :5548 - The engine's ship limit for an AI fleet (settings maxShipsInAIFleet, vanilla's 30).
-- `ThreatColonyManager.swarmFabs(CampaignFleetAPI swarm)` :5553 - The fabricator count a swarm was fabricated with (0 for untagged legacy swarms).
-- `ThreatColonyManager.garrisonHostFor(List<CampaignFleetAPI> fleets, SectorEntityToken planet, int[] spec, CampaignFleetAPI swarm)` :5565 - The standing garrison fleet a freshly built swarm of this spec joins:
-- `ThreatColonyManager.growGarrisonFleet(CampaignFleetAPI host, CampaignFleetAPI swarm)` :5590 - Moves a built, unplaced swarm's ships into a standing garrison fleet of its spec (garrisonHostFor):
-- `ThreatColonyManager.mergeInto(CampaignFleetAPI host, CampaignFleetAPI from)` :5603 - Moves every ship of a built fleet that never took to space into host (the garrison's growth, a strike's packed fleets).
-- `ThreatColonyManager.fillGarrisonNow(MarketAPI market, Random random)` :5618 - Debug (ThreatDebugWar):
+- `ThreatColonyManager.upkeepPerDay(float fleetFP)` :4979 - Upkeep a day on this many fleet points (threatinc_garrisonUpkeepPerMonth per 30 days).
+- `ThreatColonyManager.garrisonFP(List<CampaignFleetAPI> fleets)` :4984 - Fleet points of the garrison on station (its list alone).
+- `ThreatColonyManager.awayFleetSupplies(MarketAPI market)` :5004 - Supplies a month of the colony's fleets away but not on the ledger:
+- `ThreatColonyManager.awayFleetsLine()` :5026 - The census's snapshot of the hive's fleets away by kind - every live fleet on a ledger that is not a garrison (ledgerFleetSupplies' set), the abstract strikes, the raiders and the reinforcements in tr
+- `ThreatColonyManager.tally(Map<String, float[]> by, String kind, float fp, float perMonth)` :5065
+- `ThreatColonyManager.paySupplies(MarketAPI market, float perMonth, float hold)` :5114 - Pays the supplies of the colony's fleets away (perMonth) for the days since its last payment from the hive's stock.
+- `ThreatColonyManager.navyFP(MarketAPI market, List<CampaignFleetAPI> fleets)` :5152 - The colony's garrison FP above its patrols (ThreatPosture.minimumFP):
+- `ThreatColonyManager.payNavySupplies(MarketAPI market, List<CampaignFleetAPI> fleets, float days, float hold)` :5166 - The navy above the patrols pays its supplies (the user, 2026-10-07:
+- `ThreatColonyManager.starveAway(MarketAPI market, float owed)` :5207 - The colony's fleets away owe a month of supplies:
+- `ThreatColonyManager.ownedFleetFP(MarketAPI market, List<CampaignFleetAPI> fleets)` :5240 - Fleet points of the fleets the colony keeps near home:
+- `ThreatColonyManager.recycleForUpkeep(MarketAPI market, List<CampaignFleetAPI> fleets, float income, float upkeep)` :5285 - The bank has gone below 0 and the colony's income does not cover its upkeep:
+- `ThreatColonyManager.smallestOnStation(List<CampaignFleetAPI> fleets)` :5314 - The garrison's smallest live fleet out of battle;
+- `ThreatColonyManager.upkeepLog(String marketId)` :5336
+- `ThreatColonyManager.flushUpkeepMonth()` :5349 - Every 30 days:
+- `ThreatColonyManager.hiveLedgerSummary()` :5383 - The hive's fleet economy in one line for the census:
+- `ThreatColonyManager.endowSave(float hiveOutput, float hiveDraw)` :5409 - The first poll of a save from before the ledger:
+- `ThreatColonyManager.endowSeed(MarketAPI market)` :5449 - A colony founded by a Seeding Swarm out of the Abyss (the war's opening, source null) lands with FAB_ENDOWMENT_DAYS of a full nexus's income at its size - what the swarm brought with it, not productio
+- `ThreatColonyManager.clearFabrication(String marketId)` :5456 - The colony's ledger is gone with it.
+- `ThreatColonyManager.swarmCostEstimate(int[] spec)` :5467 - What a swarm of this spec ({fabricators, escort tier}) costs:
+- `ThreatColonyManager.swarmCostEstimate(String job, int[] spec)` :5476 - swarmCostEstimate for a fleet of this job (ThreatFleetComposer.JOB_*):
+- `ThreatColonyManager.costKey(String job, int[] spec)` :5491 - The fabCosts key:
+- `ThreatColonyManager.learnSwarmCost(int[] spec, float fp)` :5497 - Folds a fabricated garrison swarm's real cost into its spec's mean (a quarter weight).
+- `ThreatColonyManager.learnSwarmCost(String job, int[] spec, float fp)` :5502 - Folds a fleet of this job's real cost into its job and spec's mean (a quarter weight).
+- `ThreatColonyManager.fabricateGarrisonSwarm(MarketAPI market, int[] spec, Random random)` :5515 - Fabricates one Defense Swarm of the given garrison-table slot ({numFabricators, escort-strength ordinal}) and parks it in orbit over the colony;
+- `ThreatColonyManager.buildGarrisonSwarm(MarketAPI market, int[] spec, Random random)` :5522 - fabricateGarrisonSwarm's fleet, built and tagged but not yet in space (placeGarrisonSwarm, or growGarrisonFleet).
+- `ThreatColonyManager.placeGarrisonSwarm(MarketAPI market, CampaignFleetAPI fleet, Random random)` :5541 - Parks a built swarm in orbit over its colony (buildGarrisonSwarm checked the planet and system).
+- `ThreatColonyManager.maxShipsPerFleet()` :5551 - The engine's ship limit for an AI fleet (settings maxShipsInAIFleet, vanilla's 30).
+- `ThreatColonyManager.swarmFabs(CampaignFleetAPI swarm)` :5556 - The fabricator count a swarm was fabricated with (0 for untagged legacy swarms).
+- `ThreatColonyManager.garrisonHostFor(List<CampaignFleetAPI> fleets, SectorEntityToken planet, int[] spec, CampaignFleetAPI swarm)` :5568 - The standing garrison fleet a freshly built swarm of this spec joins:
+- `ThreatColonyManager.growGarrisonFleet(CampaignFleetAPI host, CampaignFleetAPI swarm)` :5593 - Moves a built, unplaced swarm's ships into a standing garrison fleet of its spec (garrisonHostFor):
+- `ThreatColonyManager.mergeInto(CampaignFleetAPI host, CampaignFleetAPI from)` :5606 - Moves every ship of a built fleet that never took to space into host (the garrison's growth, a strike's packed fleets).
+- `ThreatColonyManager.fillGarrisonNow(MarketAPI market, Random random)` :5621 - Debug (ThreatDebugWar):
 ### garrison redistribution: colonies reinforce each other
-- `ThreatColonyManager.canRebuildGarrison(MarketAPI market)` :5642 - Whether a colony can regrow swarms it sends away:
-- `ThreatColonyManager.inboundReinforcements(String marketId)` :5649 - Reinforcement swarms currently in transit toward this colony.
-- `ThreatColonyManager.effectiveGarrison(MarketAPI market)` :5665 - A colony's garrison for balancing purposes:
-- `ThreatColonyManager.swarmsAway(String marketId)` :5679 - Defense Swarms out of orbit that are coming back to this colony:
-- `ThreatColonyManager.canReinforce(MarketAPI source, MarketAPI target)` :5693 - Whether a swarm from source can reach target.
-- `ThreatColonyManager.redistributeGarrisons()` :5738 - The swarm redistributes its Defense Swarms so no colony is left bare while a sibling sits at full strength.
-- `ThreatColonyManager.redistributeNominal(List<MarketAPI> colonies)` :5750 - redistributeGarrisons' pass toward the nominal size tables.
-- `ThreatColonyManager.compare(MarketAPI a, MarketAPI b)` :5780
-- `ThreatColonyManager.redistributeByPressure(List<MarketAPI> colonies)` :5818 - The pressure pass (ThreatPosture):
-- `ThreatColonyManager.compare(MarketAPI a, MarketAPI b)` :5844
-- `ThreatColonyManager.fabricatorFor(List<MarketAPI> colonies, MarketAPI receiver, Map<String, Float> held)` :5952 - A colony that can build a swarm for a receiver no garrison can spare one for:
-- `ThreatColonyManager.cheapestRow(MarketAPI market)` :5986 - The receiver's cheapest garrison row (its table's lowest tier), or null.
-- `ThreatColonyManager.fabricateFor(MarketAPI fabricator, MarketAPI receiver)` :5996 - Builds the receiver's cheapest swarm at the fabricator, paid from its bank, into its garrison to be sent on.
-- `ThreatColonyManager.pressureFleet(MarketAPI donor, float max, float deficit)` :6016 - The donor's fleet for the pressure pass:
-- `ThreatColonyManager.pickDonor(List<MarketAPI> colonies, MarketAPI receiver, int needTier)` :6035 - The donor for a receiver:
-- `ThreatColonyManager.dispatchReinforcement(MarketAPI source, MarketAPI target, int minTier)` :6093 - Sends one Defense Swarm from source to reinforce target.
-- `ThreatColonyManager.smallestOfTier(MarketAPI market, int minTier)` :6098 - The colony's smallest live garrison fleet of at least this tier;
-- `ThreatColonyManager.sendReinforcement(MarketAPI source, MarketAPI target, CampaignFleetAPI pick)` :6109 - dispatchReinforcement with the fleet chosen:
-- `ThreatColonyManager.sendToGarrison(CampaignFleetAPI fleet, MarketAPI target)` :6156 - A fleet from outside the garrisons - a recalled strike's (ThreatStrikeFGI.recallTo) - flies to the colony and joins its garrison on arrival, as a reinforcement does (checkReinforcementArrivals), with 
-- `ThreatColonyManager.checkReinforcementArrivals()` :6182 - Polls in-transit reinforcements:
-- `ThreatColonyManager.digInAtConquest(CampaignFleetAPI fleet)` :6237 - A strike's landing fleet over the world it just took (ThreatSwarmDefend, the front gone):
-- `ThreatColonyManager.enforceGarrisonLeash()` :6283 - Per-frame leash enforcement (called from IncursionManager.advance):
-- `ThreatColonyManager.countLiveGarrison(String marketId)` :6334
-- `ThreatColonyManager.countLiveGarrisonInSystem(String systemId)` :6342
+- `ThreatColonyManager.canRebuildGarrison(MarketAPI market)` :5645 - Whether a colony can regrow swarms it sends away:
+- `ThreatColonyManager.inboundReinforcements(String marketId)` :5652 - Reinforcement swarms currently in transit toward this colony.
+- `ThreatColonyManager.effectiveGarrison(MarketAPI market)` :5668 - A colony's garrison for balancing purposes:
+- `ThreatColonyManager.swarmsAway(String marketId)` :5682 - Defense Swarms out of orbit that are coming back to this colony:
+- `ThreatColonyManager.canReinforce(MarketAPI source, MarketAPI target)` :5696 - Whether a swarm from source can reach target.
+- `ThreatColonyManager.redistributeGarrisons()` :5741 - The swarm redistributes its Defense Swarms so no colony is left bare while a sibling sits at full strength.
+- `ThreatColonyManager.redistributeNominal(List<MarketAPI> colonies)` :5753 - redistributeGarrisons' pass toward the nominal size tables.
+- `ThreatColonyManager.compare(MarketAPI a, MarketAPI b)` :5783
+- `ThreatColonyManager.redistributeByPressure(List<MarketAPI> colonies)` :5821 - The pressure pass (ThreatPosture):
+- `ThreatColonyManager.compare(MarketAPI a, MarketAPI b)` :5847
+- `ThreatColonyManager.fabricatorFor(List<MarketAPI> colonies, MarketAPI receiver, Map<String, Float> held)` :5963 - A colony that can build a swarm for a receiver no garrison can spare one for:
+- `ThreatColonyManager.cheapestRow(MarketAPI market)` :5997 - The receiver's cheapest garrison row (its table's lowest tier), or null.
+- `ThreatColonyManager.fabricateFor(MarketAPI fabricator, MarketAPI receiver)` :6007 - Builds the receiver's cheapest swarm at the fabricator, paid from its bank, into its garrison to be sent on.
+- `ThreatColonyManager.pressureFleet(MarketAPI donor, float max, float deficit)` :6027 - The donor's fleet for the pressure pass:
+- `ThreatColonyManager.pickDonor(List<MarketAPI> colonies, MarketAPI receiver, int needTier)` :6046 - The donor for a receiver:
+- `ThreatColonyManager.dispatchReinforcement(MarketAPI source, MarketAPI target, int minTier)` :6104 - Sends one Defense Swarm from source to reinforce target.
+- `ThreatColonyManager.smallestOfTier(MarketAPI market, int minTier)` :6109 - The colony's smallest live garrison fleet of at least this tier;
+- `ThreatColonyManager.sendReinforcement(MarketAPI source, MarketAPI target, CampaignFleetAPI pick)` :6120 - dispatchReinforcement with the fleet chosen:
+- `ThreatColonyManager.sendToGarrison(CampaignFleetAPI fleet, MarketAPI target)` :6167 - A fleet from outside the garrisons - a recalled strike's (ThreatStrikeFGI.recallTo) - flies to the colony and joins its garrison on arrival, as a reinforcement does (checkReinforcementArrivals), with 
+- `ThreatColonyManager.checkReinforcementArrivals()` :6193 - Polls in-transit reinforcements:
+- `ThreatColonyManager.digInAtConquest(CampaignFleetAPI fleet)` :6248 - A strike's landing fleet over the world it just took (ThreatSwarmDefend, the front gone):
+- `ThreatColonyManager.enforceGarrisonLeash()` :6294 - Per-frame leash enforcement (called from IncursionManager.advance):
+- `ThreatColonyManager.countLiveGarrison(String marketId)` :6345
+- `ThreatColonyManager.countLiveGarrisonInSystem(String systemId)` :6353
 ### colony death
-- `ThreatColonyManager.pollColonies()` :6360 - Detects colonies that no longer exist (bombarded to decivilization, or otherwise removed) and clears them.
-- `ThreatColonyManager.cleanColonyMods(MarketAPI market)` :6429 - Strips everything this mod applied to a market, so the husk left behind (the planet's condition-only market) is indistinguishable from a never- colonized world - critically the econ group, or a later 
-- `ThreatColonyManager.findMarketAnywhere(String marketId, StarSystemAPI system)` :6474 - Finds a colony's market even after vanilla removed it from the economy (post-deciv the object survives, attached to its planet).
+- `ThreatColonyManager.pollColonies()` :6371 - Detects colonies that no longer exist (bombarded to decivilization, or otherwise removed) and clears them.
+- `ThreatColonyManager.cleanColonyMods(MarketAPI market)` :6440 - Strips everything this mod applied to a market, so the husk left behind (the planet's condition-only market) is indistinguishable from a never- colonized world - critically the econ group, or a later 
+- `ThreatColonyManager.findMarketAnywhere(String marketId, StarSystemAPI system)` :6485 - Finds a colony's market even after vanilla removed it from the economy (post-deciv the object survives, attached to its planet).
 ### full reset (debug)
-- `ThreatColonyManager.resetIncursion()` :6496 - Tears the entire incursion out of the save:
+- `ThreatColonyManager.resetIncursion()` :6507 - Tears the entire incursion out of the save:
 ### legacy save migration
-- `ThreatColonyManager.migrateLegacyData(Random random)` :6602 - One-time conversions for saves made under older data layouts.
-- `ThreatColonyManager.migrateToContinuousDecline()` :6618 - v4 -> v5:
-- `ThreatColonyManager.migrateToSiegeRework()` :6636 - v3 -> v4 (siege rework):
-- `ThreatColonyManager.migrateHivesToColonies(Random random)` :6651 - v1 -> v2:
-- `ThreatColonyManager.migrateToMultiColony()` :6698 - v2 -> v3:
-- `ThreatColonyManager.moveKey(String mapKey, String fromKey, String toKey)` :6739
+- `ThreatColonyManager.migrateLegacyData(Random random)` :6613 - One-time conversions for saves made under older data layouts.
+- `ThreatColonyManager.migrateToContinuousDecline()` :6629 - v4 -> v5:
+- `ThreatColonyManager.migrateToSiegeRework()` :6647 - v3 -> v4 (siege rework):
+- `ThreatColonyManager.migrateHivesToColonies(Random random)` :6662 - v1 -> v2:
+- `ThreatColonyManager.migrateToMultiColony()` :6709 - v2 -> v3:
+- `ThreatColonyManager.moveKey(String mapKey, String fromKey, String toKey)` :6750
 ### helpers
-- `ThreatColonyManager.getSystem(String systemId)` :6749
-- `ThreatColonyManager.makeDetectable(CampaignFleetAPI fleet)` :6764 - Removes the heavy Threat sensor-stealth penalty from one of our fleets.
-- `ThreatColonyManager.announce(ThreatNotice notice)` :6778 - Debug-only narration:
-- `ThreatColonyManager.purgeSystemDebug(String systemId)` :6790 - Debug tool:
+- `ThreatColonyManager.getSystem(String systemId)` :6760
+- `ThreatColonyManager.makeDetectable(CampaignFleetAPI fleet)` :6775 - Removes the heavy Threat sensor-stealth penalty from one of our fleets.
+- `ThreatColonyManager.announce(ThreatNotice notice)` :6789 - Debug-only narration:
+- `ThreatColonyManager.purgeSystemDebug(String systemId)` :6801 - Debug tool:
 
 ## ThreatColonyScreenDialog (71 lines)
 - `ThreatColonyScreenDialog.ThreatColonyScreenDialog(SectorEntityToken entity)` :30
