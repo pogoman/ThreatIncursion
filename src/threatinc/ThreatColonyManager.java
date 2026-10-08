@@ -4203,16 +4203,19 @@ public class ThreatColonyManager {
 		Map<String, Float> ledgerFP = ledgerFleetFP();
 		boolean suppliesUpkeep = ThreatIncConfig.threatSuppliesUpkeep();
 		Map<String, Float> ledgerSupplies = suppliesUpkeep ? ledgerFleetSupplies() : null;
+		// the colonies' sustenance is held back from the fleets and the navy (sustenanceDue): the forge is the
+		// income, the navy the expense (2026-10-08)
+		float hold = suppliesUpkeep ? ThreatColonyUpkeep.sustenanceDue() : 0f;
 		float fleetsSupplies = maintainColonyGarrisons(random, hiveOutput, hiveDraw, ledgerFP, suppliesUpkeep,
-				ledgerSupplies);
-		// the colonies' size upkeep, once the fleets away are paid: their supplies
-		// a month come off the production the colonies' growth share is taken from
+				ledgerSupplies, hold);
+		// the colonies' size upkeep: its break-even first out of the whole stock, growth out of the production the
+		// fleets away leave (their supplies a month come off the share it is taken from)
 		ThreatColonyUpkeep.feed(fleetsSupplies);
 	}
 
 	/** maintainGarrisons' loop over the colonies; returns the supplies a month of their fleets away. */
 	protected static float maintainColonyGarrisons(Random random, float hiveOutput, float hiveDraw,
-			Map<String, Float> ledgerFP, boolean suppliesUpkeep, Map<String, Float> ledgerSupplies) {
+			Map<String, Float> ledgerFP, boolean suppliesUpkeep, Map<String, Float> ledgerSupplies, float hold) {
 		float fleetsSupplies = 0f;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			SectorEntityToken planet = market.getPrimaryEntity();
@@ -4245,9 +4248,9 @@ public class ThreatColonyManager {
 				Float outSupplies = ledgerSupplies.get(marketId);
 				float away = awayFleetSupplies(market) + (outSupplies != null ? outSupplies : 0f);
 				fleetsSupplies += away;
-				float days = paySupplies(market, away);
+				float days = paySupplies(market, away, hold);
 				// the navy above the patrols pays its supplies, as a faction's built hulls do
-				payNavySupplies(market, fleets, days);
+				payNavySupplies(market, fleets, days, hold);
 			}
 
 			// two hard on/off gates on fabrication. The Fabrication Core is the
@@ -4938,7 +4941,7 @@ public class ThreatColonyManager {
 	 * A month paid in full clears the debt. Returns the days charged (0 on the
 	 * first call).
 	 */
-	protected static float paySupplies(MarketAPI market, float perMonth) {
+	protected static float paySupplies(MarketAPI market, float perMonth, float hold) {
 		String id = market.getId();
 		Map<String, Object> at = ThreatIncData.map(KEY_SUPPLIES_AT);
 		Object last = at.get(id);
@@ -4950,7 +4953,8 @@ public class ThreatColonyManager {
 		float want = perMonth * days / 30f;
 		// a commitment pays from the whole stock, the planner's reserve included (hw61b: drawn on free, 30 swarms
 		// were lost to unpaid upkeep for a forge's 5k; the reserve bites sustenance, growth, foundings and new trips)
-		float paid = Math.min(want, ThreatFuel.stock(Commodities.SUPPLIES));
+		// - less the colonies' sustenance due (hold, ThreatColonyUpkeep.sustenanceDue), which is paid before it
+		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold));
 		ThreatFuel.pay(Commodities.SUPPLIES, paid);
 		float unpaid = want - paid;
 		Map<String, Object> owedMap = ThreatIncData.map(KEY_SUPPLIES_OWED);
@@ -4989,13 +4993,14 @@ public class ThreatColonyManager {
 	 * that swarm is lost, never below the patrols. The patrols themselves are
 	 * vanilla's to keep (one evening charged them, hw36-37).
 	 */
-	protected static void payNavySupplies(MarketAPI market, List<CampaignFleetAPI> fleets, float days) {
+	protected static void payNavySupplies(MarketAPI market, List<CampaignFleetAPI> fleets, float days, float hold) {
 		float rate = ThreatReach.suppliesPerFP() * ThreatIncConfig.standingUpkeepMult();
 		float navy = navyFP(market, fleets);
 		if (days <= 0f || rate <= 0f || navy <= 0f) return;
 		String id = market.getId();
 		float want = navy * rate * days / 30f;
-		float paid = Math.min(want, ThreatFuel.stock(Commodities.SUPPLIES)); // a commitment: the whole stock (paySupplies)
+		// a commitment: the whole stock less the colonies' sustenance due (paySupplies)
+		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold));
 		ThreatFuel.pay(Commodities.SUPPLIES, paid);
 		UpkeepLog log = upkeepLog(id);
 		log.navyWanted += want;
