@@ -318,6 +318,7 @@ threatinc_softenRetreatStrength,Hunting Force Retreat,Double,0.4,"A hunting forc
 threatinc_missionRepMult,Contract Standing Multiplier,Double,2.0,"Standing for a delivery is multiplied by this when it answers an open request.",1,5
 threatinc_allyAidEnabled,Allies Help Each Other,Boolean,true,"Whether mobilised factions guard and resupply each other's colonies by standing - and yours.",,
 threatinc_allyAidChance,Ally Aid Chance,Double,0.5,"Chance per 30-day tick per need that a fully willing (Cooperative) ally sends aid; Friendly 0.75x, Welcoming 0.5x, Favourable 0.25x, less nothing.",0,1
+threatinc_coalitionRelief,Coalition relief,Boolean,true,"A faction and its partners relieve an invaded world together when none of them could outweigh the Threat army alone.",,
 alarmHeader,Alarm Header,Header,Escalation - Grudge and Alarm,"The swarm answers who hurts it. Every faction earns grudge for strata taken, hives eradicated and raids or tactical passes landed; the sum is the hive's alarm. Both are shown on the war board and fade monthly. Grudge points the swarm's strikes at that faction's worlds, and a ground victory draws an immediate retaliation strike at the winner. No hidden scaling: the numbers are on the board.",,
 threatinc_alarmEnabled,Escalation Enabled,Boolean,true,"Master switch for grudge, alarm and retaliation.",,
 threatinc_alarmPerStratum,Grudge per Stratum,Double,2,"Grudge points a faction earns for each stratum its ground front takes.",0,20

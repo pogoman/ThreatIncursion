@@ -595,7 +595,7 @@ public class ThreatFleetOrders {
 			// a relief that would be held as not enough (reliefEnough) is not owed: a siege
 			// does not wait on hulls the faction will not send
 			MarketAPI base = pickReliefBase(faction, market);
-			if (base != null && reliefEnough(faction, market, base)) return true;
+			if (base != null && (reliefEnough(faction, market, base) || ThreatCoalition.jointEnough(faction, market, base))) return true;
 		}
 		return false;
 	}
@@ -633,7 +633,9 @@ public class ThreatFleetOrders {
 							+ (int) owed + ")");
 					continue;
 				}
-				float sent = sendRelief(faction, market, base, owed);
+				// (2026-10-08, coalition relief) the owner alone short of the army: the owner and its partners together
+				float sent = reliefEnough(faction, market, base) ? sendRelief(faction, market, base, owed)
+						: ThreatCoalition.jointRelief(faction, market, base, owed);
 				if (sent > 0f) {
 					ThreatIncConfig.log("Relief: " + factionId + " sends " + (int) sent + " FP from "
 							+ base.getName() + " to invaded " + market.getName() + " (owed "
@@ -695,10 +697,15 @@ public class ThreatFleetOrders {
 	 * guards beside the lead. Returns the points sent.
 	 */
 	public static float sendRelief(FactionAPI faction, MarketAPI target, MarketAPI base, float owed) {
+		return sendRelief(faction, target, base, owed, false);
+	}
+
+	/** As above; {@code coalitionEnough} skips the enough gate: the sender is one of a joint relief that is enough together (ThreatCoalition.jointRelief). */
+	public static float sendRelief(FactionAPI faction, MarketAPI target, MarketAPI base, float owed, boolean coalitionEnough) {
 		if (faction == null || target == null || base == null || owed <= 0f) return 0f;
 		// (2026-10-08, hw65) only if enough: the base keeps its hulls and provisions
 		// rather than feed them in piecemeal (reliefEnough)
-		if (!reliefEnough(faction, target, base)) {
+		if (!coalitionEnough && !reliefEnough(faction, target, base)) {
 			ThreatIncConfig.logQuiet("relief-held:" + faction.getId() + ":" + target.getId(), "Relief held: "
 					+ faction.getId() + " can field " + (int) sortieFirstPayableFP(base, target.getLocationInHyperspace())
 					+ " FP from " + base.getName() + " against " + (int) reliefNeed(target) + " over " + target.getName()

@@ -410,4 +410,104 @@ public class ThreatCoalition {
 		ThreatColonyManager.announce(n);
 		ThreatIncConfig.log("Ally aid: " + helper.getId() + " for " + needy.getId() + ": " + n.plain());
 	}
+
+	// ------------------------------------------------------------------
+	// coalition relief: the owner and its partners relieve a world together
+	// ------------------------------------------------------------------
+
+	/** One faction's share of a joint relief: the base it sails from and what that base can field. */
+	protected static class Sender {
+		FactionAPI faction; MarketAPI base; float can; float dist;
+		Sender(FactionAPI faction, MarketAPI base, float can, float dist) {
+			this.faction = faction; this.base = base; this.can = can; this.dist = dist;
+		}
+	}
+
+	/**
+	 * Who would sail a joint relief of the world and what each can field: the
+	 * owner from its base, then every partner willing toward it (standing at
+	 * least Favourable, not hostile) from the nearest base of its own that
+	 * can provision a relief fleet (pickReliefBase), nearest first. {@code total[0]}
+	 * is their points plus the guards already bound there.
+	 */
+	protected static List<Sender> jointSenders(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float[] total) {
+		List<Sender> out = new ArrayList<Sender>();
+		org.lwjgl.util.vector.Vector2f loc = market.getLocationInHyperspace();
+		total[0] = ThreatFleetOrders.guardPointsFor(market.getId());
+		if (ownerBase != null) {
+			float can = ThreatFleetOrders.sortieFirstPayableFP(ownerBase, loc);
+			if (can >= 1f) { out.add(new Sender(owner, ownerBase, can, -1f)); total[0] += can; }
+		}
+		List<Sender> partners = new ArrayList<Sender>();
+		for (String pid : partners(owner.getId())) {
+			FactionAPI p = Global.getSector().getFaction(pid);
+			if (p == null || p.isPlayerFaction() || willingness(p, owner.getId()) <= 0f) continue;
+			MarketAPI base = ThreatFleetOrders.pickReliefBase(p, market);
+			if (base == null) continue;
+			float can = ThreatFleetOrders.sortieFirstPayableFP(base, loc);
+			if (can < 1f) continue;
+			float d = base.getStarSystem() == null ? 0f : Misc.getDistanceLY(base.getStarSystem().getLocation(), loc);
+			partners.add(new Sender(p, base, can, d));
+			total[0] += can;
+		}
+		java.util.Collections.sort(partners, new java.util.Comparator<Sender>() {
+			public int compare(Sender a, Sender b) { return Float.compare(a.dist, b.dist); }
+		});
+		out.addAll(partners);
+		return out;
+	}
+
+	/** Whether the owner and its partners together can field a relief that outweighs the army over the world. */
+	public static boolean jointEnough(FactionAPI owner, MarketAPI market, MarketAPI ownerBase) {
+		if (!ThreatIncConfig.coalitionRelief() || owner == null || market == null) return false;
+		float[] total = new float[1];
+		List<Sender> senders = jointSenders(owner, market, ownerBase, total);
+		return !senders.isEmpty() && total[0] >= ThreatFleetOrders.reliefNeed(market);
+	}
+
+	/**
+	 * COALITION RELIEF (the user, 2026-10-08, the second human change after
+	 * yards at home): a Threat army the owner's best base cannot outweigh
+	 * alone (ThreatFleetOrders.reliefEnough) is answered by the owner and its
+	 * partners together when what they can field between them, with the
+	 * guards already bound there, outweighs the army (reliefNeed). Each sends
+	 * what its base can pay, the owner first then the partners nearest first,
+	 * until the owed points are covered; every fleet holds the orbit as any
+	 * relief. No chance roll: a joint answer is a decision, not allyAid's
+	 * 30-day lottery. hw65-hw74: no ally relieved a besieged capital
+	 * (Chicomoztoc 220 days under a 5,800 FP front in hw65a) because an
+	 * ally's relief, like the owner's, had to be enough from one base alone,
+	 * and relief was held two to three times per send. Called from
+	 * ThreatFleetOrders.planRelief when the owner alone is not enough; knob
+	 * coalitionRelief. Returns the points sent.
+	 */
+	public static float jointRelief(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float owed) {
+		if (!ThreatIncConfig.coalitionRelief() || owner == null || market == null || owed <= 0f) return 0f;
+		float[] total = new float[1];
+		List<Sender> senders = jointSenders(owner, market, ownerBase, total);
+		float need = ThreatFleetOrders.reliefNeed(market);
+		if (senders.isEmpty() || total[0] < need) {
+			ThreatIncConfig.logQuiet("relief-joint-held:" + market.getId(), "Coalition relief held: " + owner.getId()
+					+ " and " + Math.max(0, senders.size() - 1) + " partner(s) can field " + (int) total[0]
+					+ " FP against " + (int) need + " over " + market.getName() + " - not enough, holds");
+			return 0f;
+		}
+		float sent = 0f;
+		StringBuilder who = new StringBuilder();
+		for (Sender s : senders) {
+			if (sent >= owed) break;
+			float got = ThreatFleetOrders.sendRelief(s.faction, market, s.base, owed - sent, true);
+			if (got <= 0f) continue;
+			sent += got;
+			if (who.length() > 0) who.append(", ");
+			who.append(s.faction.getId()).append(' ').append((int) got).append(" FP from ").append(s.base.getName());
+			if (s.faction != owner) report(s.faction, owner, "Allied Relief Sails", "sends %s FP to relieve %s",
+					Misc.getWithDGS((int) got), ThreatNotice.market(market));
+		}
+		if (sent > 0f) {
+			ThreatIncConfig.log("Coalition relief: " + (int) sent + " FP to invaded " + market.getName() + " (" + owner.getId()
+					+ "; owed " + (int) owed + ", army " + (int) need + ", fieldable " + (int) total[0] + "): " + who);
+		}
+		return sent;
+	}
 }

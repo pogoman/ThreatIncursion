@@ -940,6 +940,8 @@ public class ThreatIncConfig {
 	public static boolean allyAidEnabled()    { return b("threatinc_allyAidEnabled", true); }
 	/** Chance per tick per need that a fully willing ally sends aid; scaled down by standing. */
 	public static float allyAidChance()       { return f("threatinc_allyAidChance"); }
+	/** Whether a faction and its partners relieve an invaded world together when none is enough alone (ThreatCoalition.jointRelief). */
+	public static boolean coalitionRelief()   { return b("threatinc_coalitionRelief", true); }
 
 	// ---- escalation: grudge and alarm (docs/design-theory.md 8.1) ----
 
