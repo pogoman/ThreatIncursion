@@ -217,3 +217,19 @@ unpaid upkeep (95k FP of fleets at m35, 44k a year later, 580 upkeep-loss lines)
 hives are eradicated one by one. In the walkover games (hw66b, hw67b, hw68b) the opening strikes took
 yard worlds early and the humans' navy never recovered. The variance is the opening's luck; the
 mechanism in the losing games is supplies, as every batch since hw60 has said.
+
+## 5. hw69 - sustenance first (64afc3a9), read at 10:35: the swarm wins all three
+
+The user chose "feed the forges first" (`facts` Decisions, `hive-garrison-and-upkeep.md` "Feeding
+order"), reading it as an investment - a smaller navy until the new forges produce - and asked for
+the counter-stroke to go (knob off, code kept through this batch). hw69: hives 67 / 50 / 58,
+eradicated 1 / 9 / 11, worlds taken 41 / 26 / 32, supplies income 102k / 110k / 92k a month; the
+humans down to 7 / 23 / 22 colonies with the yards at 0 / 300 / 1,600. hw69b is the proof: its stock
+sat at 197-854 for five months at the point hw68a collapsed, sustenance stayed paid, 14 swarms
+were lost to unpaid upkeep, no size was starved, and the hive grew through it (`game-runs-2.md` 43).
+
+**Next is the user's:** the pendulum has swung. If three swarm wins in six years with the humans
+cut to a quarter of their worlds is more than the war the player is meant to turn, the human-side
+shapes from hw66 are unbuilt (coalition relief, yards at home) - never a swarm knob, and never
+undoing sustenance first. The counter-stroke code (`IncursionManager.counterStrike`, ~100 lines
+behind `counterStrikeEnabled`) can be deleted now that a solvent swarm needs no case for it.
