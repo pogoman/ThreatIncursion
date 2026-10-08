@@ -141,3 +141,14 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   sent 91 swarms of 40-90 FP in three months - Epiphany's bank fabricating one a dispatch, 1,668 FP down
   to 74 - each hunted as it arrived; 4,501 swarms / 470k FP fabricated for attacked hives in a game, 40
   hives eradicated with swarms still arriving.
+
+  The garrison fights as one (2026-10-09, hw89a; `ThreatGarrisonMuster`, per frame after the leash): a
+  garrison swarm in a battle within 1,500 units of its world pulls the hive's other swarms on station,
+  and the reinforcements bound for the world inside its system, into the battle (`BattleAPI.join`), once
+  per battle; a battle the player is in is left to the engine's join range. Why: swarms orbit 400-700
+  units out on an aggressive orbit, up to 1,400 apart - outside the engine's 500-unit join range - and
+  one that chases a hunter is caught alone coming back under the 700-unit leash. hw89a's 487 hunt
+  battles met a single swarm in 89% of them (171 FP against 478 on average, 839 FP of garrison reported
+  standing by), 303 of them 600+ units from the world; 191 hunts completed, 36 stood down hurt. The
+  human hunt is sized against the whole garrison it reads (`ThreatSoftening`); now it meets it. Log:
+  `Garrison musters at <world>: N swarm(s), M FP join the fight D units out`.
