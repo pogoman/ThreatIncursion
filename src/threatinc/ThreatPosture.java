@@ -998,6 +998,28 @@ public class ThreatPosture {
 	}
 
 	/**
+	 * The force over the hive world today: the heavier of the hostile fleets
+	 * near it and the unspawned sieges fighting it (siegesAt); 0 for none.
+	 */
+	public static float forceOver(MarketAPI world) {
+		if (world == null || world.getPrimaryEntity() == null) return 0f;
+		float force = ThreatGroundFronts.hostilePointsNear(Factions.THREAT, world);
+		Float all = siegesAt().get(world.getId());
+		if (all != null && all > force) force = all;
+		return force;
+	}
+
+	/** What stands for the hive world: the swarms at it and those bound for it inside its system. */
+	public static float standsFor(MarketAPI world) {
+		if (world == null || world.getPrimaryEntity() == null) return 0f;
+		float have = ThreatGroundFronts.friendlyPointsNear(Factions.THREAT, world);
+		for (CampaignFleetAPI f : boundFor(world)) {
+			if (!ThreatGroundFronts.nearWorld(f, world)) have += f.getFleetPoints();
+		}
+		return have;
+	}
+
+	/**
 	 * The fleets a siege over the hive world fights today
 	 * (ThreatPurgeFGI.dailyDay): those at the world, {@code near}, and the
 	 * swarms bound for it inside its system (rally, a transfer, a strike

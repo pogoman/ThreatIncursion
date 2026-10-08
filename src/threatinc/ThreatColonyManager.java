@@ -5830,6 +5830,8 @@ public class ThreatColonyManager {
 		}
 		float band = Math.max(0f, ThreatIncConfig.postureBand());
 		boolean atAttack = ThreatIncConfig.postureNeedAtAttack();
+		// receivers the force over which nothing this pass could gather would outweigh: read once a pass
+		final java.util.Set<String> outweighed = new java.util.HashSet<String>();
 		for (int n = 0; n <= fleetsTotal; n++) {
 			List<MarketAPI> receivers = new ArrayList<MarketAPI>();
 			final Map<String, Float> shortfall = new java.util.HashMap<String, Float>();
@@ -5865,32 +5867,40 @@ public class ThreatColonyManager {
 							+ receiver.getName() + " - the flow is short (spare " + (int) ThreatReach.spare() + " a month)");
 					continue;
 				}
+				// (2026-10-08) what cannot outweigh the force over an attacked world is not fed into it a
+				// swarm at a time - the rally's rule (systemDefenceOnlyIfEnough), which the ordinary transfers
+				// and the fabrication for a receiver had sat outside: hw83a's Nomios, under a 4,450 FP siege
+				// with 800 FP standing, was sent 91 swarms of 40-90 FP in three months, Epiphany's bank
+				// fabricating one a dispatch from 1,668 FP down to 74, each hunted down as it arrived;
+				// 4,501 swarms, 470k FP, fabricated for attacked hives in a game, forty of them eradicated
+				if (outweighed.contains(receiver.getId())) continue;
+				if (ThreatIncConfig.systemDefenceOnlyIfEnough() && ThreatPosture.underAttack(receiver.getStarSystem())) {
+					float force = ThreatPosture.forceOver(receiver);
+					float stands = force > 0f ? ThreatPosture.standsFor(receiver) : 0f;
+					if (force > 0f && stands < force) {
+						float gather = stands;
+						for (MarketAPI curr : colonies) {
+							if (curr == receiver) continue;
+							gather += pressureSpare(curr, receiver, held, inbound, attacked, atAttack);
+							gather += fabricableFor(curr, receiver, held);
+						}
+						if (gather < force) {
+							outweighed.add(receiver.getId());
+							ThreatIncConfig.logQuiet("navy-enough:" + receiver.getId(), "Posture: no transfer to "
+									+ receiver.getName() + " - " + (int) force + " FP over it, " + (int) gather
+									+ " FP could stand");
+							continue;
+						}
+					}
+				}
 				MarketAPI donor = null;
 				CampaignFleetAPI pick = null;
 				boolean donorSame = false;
 				float donorSpare = 0f, donorDist = Float.MAX_VALUE;
 				for (MarketAPI curr : colonies) {
-					if (curr == receiver || curr.getPrimaryEntity() == null) continue;
-					if (!canRebuildGarrison(curr)) continue;
-					// a system whose spare the offensive's held prongs will muster on their day keeps it (hw50c: eight
-					// sends drained a staging system between a launch and its prongs' days, and every one was refused)
-					if (curr.getStarSystem() != null && ThreatOffensive.earmarked(curr.getStarSystem().getId()) > 0) continue;
-					if (countLiveGarrison(curr.getId()) < 2) continue;
-					if (ThreatPosture.recentlyReceived(curr)) continue;
-					// what is on station, not what is flying in
-					float onStation = held.get(curr.getId()) - inbound.get(curr.getId());
-					// a colony the war asks nothing of thins to its reserve for one under
-					// attack, its launch stock included and whether or not it holds its own
-					// want (2026-10-04, postureNeedAtAttack; it gave only from a quiet system
-					// and only while at its want: hw6, the stock was a founding's or a
-					// strike's, never the defence's, and a colony short of it gave nothing)
-					boolean thin = attacked && (atAttack ? ThreatPosture.needFP(curr) <= 0f
-							: !ThreatPosture.pressed(curr.getStarSystem()));
-					if (!(thin && atAttack) && onStation < ThreatPosture.wantFP(curr)) continue;
-					float spare = ThreatPosture.releasableFP(curr, onStation);
-					if (thin) spare = Math.max(spare, ThreatPosture.thinnableFP(curr, onStation));
+					if (curr == receiver) continue;
+					float spare = pressureSpare(curr, receiver, held, inbound, attacked, atAttack);
 					if (spare <= 0f) continue;
-					if (!canReinforce(curr, receiver)) continue;
 					CampaignFleetAPI fleet = pressureFleet(curr, Math.min(spare, accept), deficit);
 					if (fleet == null) continue;
 					boolean same = curr.getStarSystem() == receiver.getStarSystem();
@@ -5950,6 +5960,53 @@ public class ThreatColonyManager {
 			}
 			if (!dispatched) return;
 		}
+	}
+
+	/**
+	 * What the colony can give the receiver in the pressure pass, from what is
+	 * on station: 0 unless it can rebuild, is not earmarked by the offensive,
+	 * holds two fleets, was not sent a transfer within DECAY_DAYS, and can
+	 * reach the receiver. Its releasable surplus - or, for a receiver under
+	 * attack, what a colony the war asks nothing of may thin to its reserve
+	 * (postureNeedAtAttack: hw6, the stock was a founding's or a strike's,
+	 * never the defence's, and a colony short of its want gave nothing).
+	 */
+	protected static float pressureSpare(MarketAPI curr, MarketAPI receiver, Map<String, Float> held,
+			Map<String, Float> inbound, boolean attacked, boolean atAttack) {
+		if (curr == receiver || curr.getPrimaryEntity() == null) return 0f;
+		if (!canRebuildGarrison(curr)) return 0f;
+		// a system whose spare the offensive's held prongs will muster on their day keeps it (hw50c: eight
+		// sends drained a staging system between a launch and its prongs' days, and every one was refused)
+		if (curr.getStarSystem() != null && ThreatOffensive.earmarked(curr.getStarSystem().getId()) > 0) return 0f;
+		if (countLiveGarrison(curr.getId()) < 2) return 0f;
+		if (ThreatPosture.recentlyReceived(curr)) return 0f;
+		// what is on station, not what is flying in
+		float onStation = held.get(curr.getId()) - inbound.get(curr.getId());
+		boolean thin = attacked && (atAttack ? ThreatPosture.needFP(curr) <= 0f
+				: !ThreatPosture.pressed(curr.getStarSystem()));
+		if (!(thin && atAttack) && onStation < ThreatPosture.wantFP(curr)) return 0f;
+		float spare = ThreatPosture.releasableFP(curr, onStation);
+		if (thin) spare = Math.max(spare, ThreatPosture.thinnableFP(curr, onStation));
+		if (spare <= 0f) return 0f;
+		if (!canReinforce(curr, receiver)) return 0f;
+		return spare;
+	}
+
+	/**
+	 * Fleet points the colony's bank could build for the receiver as
+	 * fabricatorFor would have it: its idle bank past its own want, 0 unless it
+	 * holds its want, can rebuild and reach the receiver.
+	 */
+	protected static float fabricableFor(MarketAPI curr, MarketAPI receiver, Map<String, Float> held) {
+		if (curr == receiver || curr.getPrimaryEntity() == null || curr.getStarSystem() == null) return 0f;
+		if (!canRebuildGarrison(curr)) return 0f;
+		float want = ThreatPosture.wantFP(curr);
+		Float h = held.get(curr.getId());
+		if (h == null || h < want) return 0f;
+		float idle = bankedFP(curr) - want;
+		if (idle <= 0f) return 0f;
+		if (!canReinforce(curr, receiver)) return 0f;
+		return idle;
 	}
 
 	/**
