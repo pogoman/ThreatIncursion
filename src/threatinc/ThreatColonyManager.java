@@ -876,7 +876,7 @@ public class ThreatColonyManager {
 		if (size >= 6 && heavy != null && !heavy.isBuilding()) {
 			if (!affordStructure(market, payerId, Industries.ORBITALWORKS)) return;
 			if (payerId != null && ThreatBuildCost.enabled() && heavy.getSpec().getUpgrade() != null) {
-				ThreatFuel.pay(Commodities.SUPPLIES, ThreatBuildCost.supplies(Industries.ORBITALWORKS));
+				ThreatFuel.pay(Commodities.SUPPLIES, ThreatBuildCost.supplies(Industries.ORBITALWORKS), "build");
 				heavy.startUpgrading();
 			} else {
 				market.removeIndustry(Industries.HEAVYINDUSTRY, null, true);
@@ -2992,7 +2992,7 @@ public class ThreatColonyManager {
 		if (!affordStructure(market, payerId, industryId)) return false;
 		boolean supplies = payerId != null && ThreatBuildCost.enabled();
 		if (supplies) {
-			ThreatFuel.pay(Commodities.SUPPLIES, ThreatBuildCost.supplies(industryId));
+			ThreatFuel.pay(Commodities.SUPPLIES, ThreatBuildCost.supplies(industryId), "build");
 		} else if (payerId != null) {
 			drawFP(payerId, foundingFP(1));
 		}
@@ -4899,6 +4899,59 @@ public class ThreatColonyManager {
 		return s;
 	}
 
+	/**
+	 * The census's snapshot of the hive's fleets away by kind - every live
+	 * fleet on a ledger that is not a garrison (ledgerFleetSupplies' set), the
+	 * abstract strikes, the raiders and the reinforcements in transit - as
+	 * "Away fleets: kind n, F FP, S/mo; ..." (2026-10-08: what the supplies
+	 * away went on could not be read from the log).
+	 */
+	public static String awayFleetsLine() {
+		Map<String, float[]> by = new java.util.TreeMap<String, float[]>();
+		java.util.Set<String> seen = new java.util.HashSet<String>();
+		for (com.fs.starfarer.api.campaign.LocationAPI loc : Global.getSector().getAllLocations()) {
+			for (CampaignFleetAPI curr : loc.getFleets()) {
+				if (!curr.isAlive()) continue;
+				com.fs.starfarer.api.campaign.rules.MemoryAPI mem = curr.getMemoryWithoutUpdate();
+				if (mem.getString(LEDGER_HOME_KEY) == null || mem.contains(GARRISON_FLAG)) continue;
+				seen.add(curr.getId());
+				tally(by, curr.getName(), curr.getFleetPoints(), ThreatFrontlines.maintenancePerMonth(curr));
+			}
+		}
+		for (Object o : IncursionManager.getStrikeList()) {
+			if (!(o instanceof ThreatStrikeFGI)) continue;
+			float fp = ((ThreatStrikeFGI) o).abstractFP();
+			if (fp > 0f) tally(by, "strike (abstract)", fp, ThreatReach.suppliesPerMonth(fp));
+		}
+		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			for (ThreatRaiders.Raider r : ThreatRaiders.raidersFrom(market.getId())) {
+				if (r.fleet == null || !r.fleet.isAlive() || !seen.add(r.fleet.getId())) continue;
+				tally(by, "raider", r.fleet.getFleetPoints(), ThreatFrontlines.maintenancePerMonth(r.fleet));
+			}
+		}
+		for (CampaignFleetAPI curr : ThreatIncData.reinforcementFleets().values()) {
+			if (curr == null || !curr.isAlive() || !seen.add(curr.getId())) continue;
+			tally(by, "reinforcement", curr.getFleetPoints(), ThreatFrontlines.maintenancePerMonth(curr));
+		}
+		StringBuilder s = new StringBuilder("Away fleets:");
+		float fp = 0f, sup = 0f;
+		for (Map.Entry<String, float[]> e : by.entrySet()) {
+			float[] v = e.getValue();
+			fp += v[1]; sup += v[2];
+			s.append(' ').append(e.getKey()).append(' ').append((int) v[0]).append(", ").append((int) v[1])
+					.append(" FP, ").append((int) v[2]).append("/mo;");
+		}
+		s.append(" total ").append((int) fp).append(" FP, ").append((int) sup).append("/mo");
+		return s.toString();
+	}
+
+	private static void tally(Map<String, float[]> by, String kind, float fp, float perMonth) {
+		if (kind == null) kind = "?";
+		float[] v = by.get(kind);
+		if (v == null) by.put(kind, v = new float[3]);
+		v[0]++; v[1] += fp; v[2] += perMonth;
+	}
+
 	/** Market id -> supplies a month of the fleets bound to its ledger (ledgerFleetFP's set). */
 	protected static Map<String, Float> ledgerFleetSupplies() {
 		Map<String, Float> out = new java.util.HashMap<String, Float>();
@@ -4955,7 +5008,7 @@ public class ThreatColonyManager {
 		// were lost to unpaid upkeep for a forge's 5k; the reserve bites sustenance, growth, foundings and new trips)
 		// - less the colonies' sustenance due (hold, ThreatColonyUpkeep.sustenanceDue), which is paid before it
 		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold));
-		ThreatFuel.pay(Commodities.SUPPLIES, paid);
+		ThreatFuel.pay(Commodities.SUPPLIES, paid, "away");
 		float unpaid = want - paid;
 		Map<String, Object> owedMap = ThreatIncData.map(KEY_SUPPLIES_OWED);
 		if (unpaid <= 0f) {
@@ -5001,7 +5054,7 @@ public class ThreatColonyManager {
 		float want = navy * rate * days / 30f;
 		// a commitment: the whole stock less the colonies' sustenance due (paySupplies)
 		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold));
-		ThreatFuel.pay(Commodities.SUPPLIES, paid);
+		ThreatFuel.pay(Commodities.SUPPLIES, paid, "navy");
 		UpkeepLog log = upkeepLog(id);
 		log.navyWanted += want;
 		log.navyPaid += paid;
