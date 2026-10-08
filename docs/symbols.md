@@ -3644,7 +3644,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSoftening.advanceSingle(ThreatFleetOrders.Order o)` :1681 - A hunt with no force:
 - `ThreatSoftening.isHive(MarketAPI market)` :1730
 
-## ThreatStance (711 lines)
+## ThreatStance (713 lines)
 - `ThreatStance.addForce(String factionId, String systemId, float fp)` :85 - System id -> the factions staging against it, attacking it or guarding forward bases facing it.
 - `ThreatStance.addSystem(String systemId, float held, float pressure, int mode, boolean attacked)` :98
 - `ThreatStance.enabled()` :121
@@ -3670,13 +3670,13 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatStance.hivePeak(float day)` :361 - The most live colonies the hive held over the losing window (hiveTrend's history).
 ### the pass
 - `ThreatStance.evaluate(Pass p, float day, float sumHeld)` :388 - Reads the stance from a posture pass:
-- `ThreatStance.compare(String a, String b)` :531
-- `ThreatStance.facing(Map<String, Set<String>> facing, String factionId)` :598
-- `ThreatStance.weakTargets(String systemId, List<MarketAPI> known, Map<String, float[]> defMemo, Map<String, Float> ratios, float pressNeed)` :616 - The best weak world a hive system could strike:
-- `ThreatStance.strength(int points)` :679
-- `ThreatStance.heaviestRow(MarketAPI market)` :684 - The staging colony's costliest size-table row:
-- `ThreatStance.expeditionSize(int[] row)` :698 - The expedition size a swarm of this row re-embodies as (ThreatColonyManager.expeditionSizeFor's tiers).
-- `ThreatStance.monthLine()` :707 - The monthly line's figure:
+- `ThreatStance.compare(String a, String b)` :533
+- `ThreatStance.facing(Map<String, Set<String>> facing, String factionId)` :600
+- `ThreatStance.weakTargets(String systemId, List<MarketAPI> known, Map<String, float[]> defMemo, Map<String, Float> ratios, float pressNeed)` :618 - The best weak world a hive system could strike:
+- `ThreatStance.strength(int points)` :681
+- `ThreatStance.heaviestRow(MarketAPI market)` :686 - The staging colony's costliest size-table row:
+- `ThreatStance.expeditionSize(int[] row)` :700 - The expedition size a swarm of this row re-embodies as (ThreatColonyManager.expeditionSizeFor's tiers).
+- `ThreatStance.monthLine()` :709 - The monthly line's figure:
 
 ## ThreatStrikeFGI (1986 lines)
 - `ThreatStrikeFGI.ThreatStrikeFGI(GenericRaidParams params)` :35 - A raid fleet-group whose fleets are authentic Threat swarms (built via the vanilla threat fleet factory) instead of doctrine-generated faction fleets.

@@ -74,10 +74,25 @@ climbing every month; "nothing the means pay" 65 / 38 / 60. Human yards 0-1,300 
 
 ## 2c. hw63 - the chest and hull units (54db5cdc, jar 01:52; running from 01:53)
 
-What to look for in `swarm-digest.sh hw63a hw63b hw63c`: the `-- fund:` trajectory should turn down
-after the first `chest: full`; `chest: full N, spent M` should alternate; seedings held should rise
-while the chest is full and campaigns should launch on the fund; `hull convoys` above 1-2, and the
-`no-hulls` line names the gate when none sail.
+**hw63 read (03:16)** - the chest does what it was built for, and the sector swings hard to the
+swarm. Hives 88 / 64 / 44 of peaks 88 / 64 / 45 (hw62: 48 / 66 / 75); eradicated 0 / 4 / 8 (hw62:
+75 / 35 / 32); campaigns 48 / 22 / 17 (hw62: 15 / 11 / 16); the fund cycles between the horizon
+and half of it (chest full/spent 9/8, 4/4, 2/2) instead of banking 170-230k; "nothing the means
+pay" 12 / 30 / 8 (hw62: 65 / 38 / 60); hull convoys 13 / 71 / 80 (hw62: 1 / 1 / 2). Costs of the
+shape: seedings held 476 / 177 / 120 while the chest is full (b and c founded 64 / 45 hives against
+hw62's 81 / 80), and c lost 450 FP of small swarms to unpaid upkeep with the stock at zero (hw61b:
+28k). Humans: forward bases 49 / 111 / 145 founded, 45 / 126 / 132 lost; yards 0-500 FP/mo at the
+end; 313-432 plays unpaid. a is won outright by war day ~4300: nothing known left to strike, 700k
+supplies and 237k FP banked. `game-runs-2.md` 43. (The first hw63 launch was discarded: it loaded
+while hw62's cleanup restored your settings and ran 918 days unlogged - `facts.md`, "Never launch a
+batch while the last one is still finishing".)
+
+## 2d. hw64 - the chest on any known world (e4ed546b, jar 03:17; running from 03:17)
+
+hw63's chest still needed a weak target (`weakTargets`, which reads none while every hive system is
+pressed at home); hw64 needs only a known world, so a hive pressed everywhere spends its fund on
+the relief and near strikes. Otherwise hw63's jar: a confirmation batch of the same shape against
+hw63's spread (a 88 / b 64 / c 44 - the variance is large).
 
 ## 3. For the user
 
