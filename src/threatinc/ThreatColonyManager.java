@@ -4270,6 +4270,7 @@ public class ThreatColonyManager {
 			victim.despawn();
 			creditFP(pick, fp * share);
 			gap -= fp * rate;
+			Global.getSector().getPersistentData().put(KEY_FIT_TIMESTAMP, Global.getSector().getClock().getTimestamp());
 			UpkeepLog log = upkeepLog(pick.getId());
 			log.recycled++;
 			log.recycledFP += fp;
@@ -4364,8 +4365,11 @@ public class ThreatColonyManager {
 				// while the navy fits the spare (fitNavyToSpare, 2026-10-08) the want is that fit's floor,
 				// not the posture's: hw77a rebuilt from the bank what the fit had just recycled, month for
 				// month (149 recycled / 156 fabricated, 158 / 136), 4,600 swarms churned through the bank
+				// (hw79a: gated on the fit binding NOW it still churned a build and a recycle a poll - the feed
+				// records the spare before the fit recycles, so the next poll read it above the want - hence
+				// fitActive: the floor holds for a month after the fit last recycled)
 				belowFloor = fleets.size() + away < 1
-						|| (fitBinding() ? ownedFleetFP(market, fleets) < fitFloor(market)
+						|| (fitActive() ? ownedFleetFP(market, fleets) < fitFloor(market)
 								: ThreatPosture.wantsGrowth(market, ownedFleetFP(market, fleets)));
 				desired = ThreatPosture.baseCount(market);
 			}
@@ -4453,6 +4457,26 @@ public class ThreatColonyManager {
 	/** Whether the navy's fit binds now: the knob on, upkeep on, and the spare a month short of fitWant. */
 	protected static boolean fitBinding() {
 		return ThreatIncConfig.navyFitsSpare() && ThreatColonyUpkeep.enabled() && ThreatReach.spare() < fitWant();
+	}
+
+	/** Game-clock timestamp of the fit's last recycle (fitNavyToSpare). */
+	public static final String KEY_FIT_TIMESTAMP = "threatinc_fitTimestamp";
+
+	/** Days the nexus builds only to the fit's floor after the fit last recycled (fitActive). */
+	public static final float FIT_HOLD_DAYS = 30f;
+
+	/**
+	 * Whether the nexus builds only to the fit's floor (maintainGarrisons): the knob and upkeep on, and
+	 * a send held this month or the fit recycled within FIT_HOLD_DAYS. Hysteresis, not the binding
+	 * itself: the feed records the spare before the fit recycles, so gated on fitBinding alone the
+	 * builder read the spare above the want next poll and grew what the fit had recycled, a build and
+	 * a recycle a poll at the same hive (hw79a: 255 recycled / 260 built in a month).
+	 */
+	protected static boolean fitActive() {
+		if (!ThreatIncConfig.navyFitsSpare() || !ThreatColonyUpkeep.enabled()) return false;
+		if (fitWant() > 0f) return true;
+		Object ts = Global.getSector().getPersistentData().get(KEY_FIT_TIMESTAMP);
+		return ts instanceof Long && Global.getSector().getClock().getElapsedDaysSince((Long) ts) < FIT_HOLD_DAYS;
 	}
 
 	/** The garrison the navy's fit leaves a colony, and the nexus builds to while the fit binds: the patrols (ThreatPosture.minimumFP) or the pressure's need (needFP), whichever is more. */

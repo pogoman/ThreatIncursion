@@ -518,8 +518,12 @@ posture), the home navy above the patrols 13k, spare 1.5k, 145 seedings held on 
   `fitWant`) the nexus builds a colony only up to `fitFloor` (the same floor the fit recycles to),
   never to the posture's want. hw77a's nexus had refabricated what the fit recycled, month for
   month (149 recycled / 156 built, 158 / 136; 4,602 recycled and 7,888 built a game, hw75a built
-  3,328), so the navy was churned through the bank rather than kept at the floor. First run hw79
-  (ck2) + hw80 (ck5).
+  3,328), so the navy was churned through the bank rather than kept at the floor. Gated on the fit
+  binding now it still churned (hw79a, stopped at 20 minutes: a build and a recycle a poll at the
+  same hive, 255 / 260 in a month) because the feed records the spare before the fit recycles and
+  the next poll read it above the want; so the builder's gate is `fitActive`: a send held this
+  month, or the fit recycled within `FIT_HOLD_DAYS` (30; the timestamp `KEY_FIT_TIMESTAMP`). First
+  full run hw79 (ck2) + hw80 (ck5), relaunched 18:55.
 - **What the sends held on ck5 were** (hw78, read 2026-10-08): not the fit's. The new sector's
   swarm spends its whole income each month - at the end 130k a month: feed 50k, away 35k, navy
   13k, structures 3-20k, foundings 10-30k (5-6 hives a month) - and the stock sits at 5-12k; the
