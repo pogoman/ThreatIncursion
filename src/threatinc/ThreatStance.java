@@ -511,8 +511,14 @@ public class ThreatStance {
 		boolean hadChest = st != null && st.length >= 11 && st[10] > 0f;
 		// a known world is enough (not a weak one: pressed everywhere at home, weakTargets reads none,
 		// and that is when the fund should pay the relief and near strikes most)
+		// ...and full only if it could field the cheapest known prong (ThreatOffensive.cheapestProngCost): a fund
+		// that fields nothing is poor, not full, and the expansion that grows its income goes on (the user's pick,
+		// 2026-10-08, after hw70: a 4-hive fund read full at 1,834 of 1,800 FP a horizon with the cheapest prong at
+		// 8,244, fed the fleets before expansion for 1,400 days, and the swarm opened the war at 13 hives, ck2's at 37)
+		float cheapest = ThreatOffensive.cheapestProngCost();
 		boolean chestFull = chestHorizon > 0f && !known.isEmpty()
-				&& chest >= chestHorizon * (hadChest ? CHEST_LEAVE : 1f);
+				&& chest >= chestHorizon * (hadChest ? CHEST_LEAVE : 1f)
+				&& cheapest > 0f && chest >= cheapest;
 		boolean wantPress = !losing && (best != null || chestFull) && pressedShare < consolidateEnter / 2f;
 		int next = wantConsolidate ? CONSOLIDATE : wantPress ? PRESS : EXPAND;
 		// a stance holds its dwell, but defence never waits
@@ -541,6 +547,7 @@ public class ThreatStance {
 					.append(" (").append((int) (theirs != null ? theirs : 0f)).append(")");
 		}
 		why.append("; chest ").append((int) chest).append(" of ").append((int) chestHorizon).append(" FP a horizon")
+				.append(", cheapest prong ").append((int) cheapest).append(" FP")
 				.append(chestFull ? " (full)" : "");
 		Target shown = best != null ? best : bestAny;
 		if (shown != null) {
@@ -569,7 +576,7 @@ public class ThreatStance {
 				losingPressure, peak - hivesNow, peak, year[0] - year[1], made, chestFull ? 1f : 0f });
 		if (chestFull != hadChest) {
 			ThreatIncConfig.log("Stance: the chest is " + (chestFull ? "full" : "spent") + " - " + (int) chest + " of "
-					+ (int) chestHorizon + " FP a horizon; the fleets are fed " + (chestFull ? "before" : "after")
+					+ (int) chestHorizon + " FP a horizon, cheapest prong " + (int) cheapest + " FP; the fleets are fed " + (chestFull ? "before" : "after")
 					+ " expansion");
 		}
 		if (Math.abs(losingPressure - hadPressure) >= 0.1f || (losingPressure > 0f) != (hadPressure > 0f)) {

@@ -39,6 +39,7 @@ import com.fs.starfarer.api.util.Misc;
 public class ThreatOffensive {
 
 	protected static final String KEY = "threatinc_offensive";
+	protected static final String KEY_CHEAPEST = "threatinc_offensiveCheapest";
 
 	/** One strike of the campaign: the target, who stages it and what it costs the fund. */
 	protected static class Prong {
@@ -127,9 +128,24 @@ public class ThreatOffensive {
 		Global.getSector().getPersistentData().put(KEY, new float[] { day });
 	}
 
+	/**
+	 * The fund's bill of the cheapest prong the last pass priced, or 0 for none known: what a full chest must
+	 * be able to field (ThreatStance.evaluate - hw70, 2026-10-08: a 4-hive fund read full at 1,800 FP with the
+	 * cheapest prong at 8,244, and the chest's feeding held the spread until the war).
+	 */
+	public static float cheapestProngCost() {
+		Object v = Global.getSector().getPersistentData().get(KEY_CHEAPEST);
+		return v instanceof Float ? (Float) v : 0f;
+	}
+
+	protected static void setCheapestProngCost(float cost) {
+		Global.getSector().getPersistentData().put(KEY_CHEAPEST, cost);
+	}
+
 	/** The monthly pass: relief strikes at once, then the campaign - saved for, or launched whole. */
 	public static void pass(IncursionManager im) {
 		float day = ThreatPosture.today();
+		setCheapestProngCost(0f);
 		Map<String, MarketAPI> stagings = new HashMap<String, MarketAPI>();
 		Map<String, StarSystemAPI> sources = new HashMap<String, StarSystemAPI>();
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
@@ -269,6 +285,10 @@ public class ThreatOffensive {
 			}
 		});
 
+		// the cheapest bill among the priced prongs: what the chest must field to read full (ThreatStance.evaluate)
+		float cheapest = 0f;
+		for (Prong p : prongs) if (p.cost > 0f && (cheapest <= 0f || p.cost < cheapest)) cheapest = p.cost;
+		setCheapestProngCost(cheapest);
 		float supplies = 0f, suppliesShort = 0f;
 		Prong firstOut = null;
 		String firstWhy = null;
