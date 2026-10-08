@@ -1211,6 +1211,8 @@
 	# need; the player can be helped, never made to help
 	"threatinc_allyAidEnabled": true,
 	"threatinc_allyAidChance": 0.5,
+	# a faction and its partners relieve an invaded world together when none is enough alone (2026-10-08)
+	"threatinc_coalitionRelief": true,
 
 	# Escalation (docs/design-theory.md 8.1): the swarm answers who hurts it.
 	# Every faction earns GRUDGE for strata taken, hives eradicated and raids

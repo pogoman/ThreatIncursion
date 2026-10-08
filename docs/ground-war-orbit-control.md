@@ -281,7 +281,8 @@ on the ground-front poll (it was monthly):
   ships what it can spare until the shortage is covered, net of what is at sea - it was one
   convoy per helped colony, one helper per need, clipped to a hull load). Before this, allied
   guards and Defend contracts stopped once the strike landed. The Defend contract itself
-  still covers strikes in flight only.
+  still covers strikes in flight only.
+- **Coalition relief (the user, 2026-10-08, trialled from hw75).** A Threat army the owner's best base cannot outweigh alone (`reliefEnough`) is answered by the owner and its coalition partners together (`ThreatCoalition.jointRelief`, from `planRelief`) when what they can field between them, with the guards already bound there, outweighs the army: each sends what its nearest provisioning base can pay, the owner first then the partners nearest first, until the owed points are covered, and every fleet holds the orbit as any relief. Partners are `ThreatCoalition.partners` willing toward the owner (standing at least Favourable), with no chance roll - a joint answer is a decision, not `allyAid`'s monthly lottery; `reliefOwed` counts a joint relief that would sail (`jointEnough`), so a siege waits for it. Why: hw65-hw74 no ally relieved a besieged capital (Chicomoztoc 220 days under a 5,800 FP front in hw65a) because an ally's relief, like the owner's, had to be enough from one base alone, and relief was held two to three times per send. Knob `coalitionRelief`.
 - **Holds until the army is gone (2026-10-03, the user: "relief should stay until invaders defeated").** With
   `threatinc_reliefStays` on, relief has no term: `sendRelief` queues the voyage and an orbit with no end, the
   order is leashed like a Defend (`enforceLeash`, "Relief"), and `ThreatGroundFronts.tickRelief` keeps it on its
