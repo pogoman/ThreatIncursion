@@ -230,6 +230,18 @@ public class ThreatFuel {
 
 	/** Draws {@code amount} from the stock, booked as demand on it (noteDemand); false (nothing drawn) if the stock is short. */
 	public static boolean pay(String commodityId, float amount) {
+		return pay(commodityId, amount, "other");
+	}
+
+	/** The purposes the census breaks the month's supplies spend into (pay's tag): feed, away, navy, build, found, other. */
+	public static final String[] PURPOSES = { "feed", "away", "navy", "build", "found", "other" };
+
+	/**
+	 * As above, tallied under {@code purpose} for the census (monthSummary):
+	 * what the hive's supplies go on a month was unreadable from the log
+	 * (hw73a, 2026-10-08: 78k made, 27k sustenance, 6k navy, the rest unknown).
+	 */
+	public static boolean pay(String commodityId, float amount, String purpose) {
 		if (amount <= 0f) return true;
 		float have = stock(commodityId);
 		if (have < amount) {
@@ -238,6 +250,7 @@ public class ThreatFuel {
 		}
 		setStock(commodityId, have - amount);
 		add(spentKey(commodityId), amount);
+		add(spentKey(commodityId) + ":" + purpose, amount);
 		noteDemand(commodityId, amount);
 		return true;
 	}
@@ -561,7 +574,7 @@ public class ThreatFuel {
 		float[] cost = foundingCost();
 		float supplies = Math.min(cost[0], stock(Commodities.SUPPLIES));
 		float fuel = Math.min(cost[1], stock(Commodities.FUEL));
-		pay(Commodities.SUPPLIES, supplies);
+		pay(Commodities.SUPPLIES, supplies, "found");
 		pay(Commodities.FUEL, fuel);
 		fleet.getMemoryWithoutUpdate().set(MEM_FOUND_SUPPLIES, supplies);
 		fleet.getMemoryWithoutUpdate().set(MEM_FOUND_FUEL, fuel);
@@ -724,6 +737,17 @@ public class ThreatFuel {
 			s.append("; ").append(c).append(" ").append((int) stock(c)).append(" (+").append((int) perMonth(c))
 					.append("/mo, spent ").append((int) (spent instanceof Float ? (Float) spent : 0f)).append(")");
 			data().put(spentKey(c), 0f);
+			if (Commodities.SUPPLIES.equals(c)) {
+				StringBuilder by = new StringBuilder();
+				for (String p : PURPOSES) {
+					Object v = data().get(spentKey(c) + ":" + p);
+					float f = v instanceof Float ? (Float) v : 0f;
+					data().put(spentKey(c) + ":" + p, 0f);
+					if (f < 1f) continue;
+					by.append(by.length() > 0 ? ", " : "").append(p).append(' ').append((int) f);
+				}
+				if (by.length() > 0) s.append(" [").append(by).append(']');
+			}
 		}
 		s.append(", sends held ").append((int) (held instanceof Float ? (Float) held : 0f));
 		data().put(HELD, 0f);

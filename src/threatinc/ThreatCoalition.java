@@ -194,6 +194,29 @@ public class ThreatCoalition {
 		return out;
 	}
 
+	/**
+	 * The coalition against the Threat a faction belongs to: every other war
+	 * faction not hostile to it either way, whatever their standing - the
+	 * trade rule (the user, 2026-10-06: any two war factions not hostile trade)
+	 * applied to relief. partners() asks for willingness (Favourable or better),
+	 * which vanilla's NPC factions rarely are to each other: hw75/hw76's first
+	 * run found 0 partners in 154 held joint reliefs.
+	 */
+	public static List<String> coalition(String factionId) {
+		List<String> out = new ArrayList<String>();
+		if (factionId == null || com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER.equals(factionId)) return out;
+		FactionAPI self = Global.getSector().getFaction(factionId);
+		if (self == null) return out;
+		for (String other : ThreatWarState.warFactionIds()) {
+			if (other.equals(factionId) || com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER.equals(other)) continue;
+			if (ThreatWarState.excluded(other)) continue;
+			FactionAPI them = Global.getSector().getFaction(other);
+			if (them == null || self.isHostileTo(them) || them.isHostileTo(self)) continue;
+			out.add(other);
+		}
+		return out;
+	}
+
 	/** Whether a guard task force is already bound for or over the colony. */
 	protected static boolean guardBoundFor(MarketAPI market) {
 		return ThreatFleetOrders.guardBoundFor(market.getId());
@@ -439,9 +462,9 @@ public class ThreatCoalition {
 			if (can >= 1f) { out.add(new Sender(owner, ownerBase, can, -1f)); total[0] += can; }
 		}
 		List<Sender> partners = new ArrayList<Sender>();
-		for (String pid : partners(owner.getId())) {
+		for (String pid : coalition(owner.getId())) {
 			FactionAPI p = Global.getSector().getFaction(pid);
-			if (p == null || p.isPlayerFaction() || willingness(p, owner.getId()) <= 0f) continue;
+			if (p == null || p.isPlayerFaction()) continue;
 			MarketAPI base = ThreatFleetOrders.pickReliefBase(p, market);
 			if (base == null) continue;
 			float can = ThreatFleetOrders.sortieFirstPayableFP(base, loc);
@@ -473,7 +496,9 @@ public class ThreatCoalition {
 	 * guards already bound there, outweighs the army (reliefNeed). Each sends
 	 * what its base can pay, the owner first then the partners nearest first,
 	 * until the owed points are covered; every fleet holds the orbit as any
-	 * relief. No chance roll: a joint answer is a decision, not allyAid's
+	 * relief. Partners are the coalition (every war faction not hostile to the
+	 * owner, whatever the standing - the trade rule), no chance roll: a joint
+	 * answer is a decision, not allyAid's
 	 * 30-day lottery. hw65-hw74: no ally relieved a besieged capital
 	 * (Chicomoztoc 220 days under a 5,800 FP front in hw65a) because an
 	 * ally's relief, like the owner's, had to be enough from one base alone,

@@ -369,7 +369,7 @@ public class ThreatColonyUpkeep {
 			data().put("spare", ThreatFuel.perMonth(Commodities.SUPPLIES) - Math.max(0f, fleetsPerMonth) - navyMonth - took);
 		}
 		float draw = Math.min(sustained + grown, first ? ThreatFuel.stock(Commodities.SUPPLIES) : ThreatFuel.free(Commodities.SUPPLIES));
-		if (draw > 0f) ThreatFuel.pay(Commodities.SUPPLIES, draw);
+		if (draw > 0f) ThreatFuel.pay(Commodities.SUPPLIES, draw, "feed");
 		for (Need n : needs) {
 			float share = n.want > 0f ? n.paid / n.want : 1f;
 			// a seed has nothing to starve on: unfed it holds, fed it grows
@@ -479,6 +479,7 @@ public class ThreatColonyUpkeep {
 				+ (int) take("sustained") + " sustenance + " + (int) take("grown") + " growth, short "
 				+ (int) take("short") + "; stance " + ThreatStance.stanceName() + " share " + feedShare()
 				+ "; growing " + growing + ", holding " + holding + ", shrinking " + shrinking + ", free " + free
-				+ "; blockaded " + blockaded + ", ports down " + portsDown);
+				+ "; blockaded " + blockaded + ", ports down " + portsDown + "; fleets away " + (int) fleetsPerMonth()
+				+ "/mo, navy " + (int) navyPerMonth() + "/mo, spare " + (int) spareSupplies() + "/mo");
 	}
 }
