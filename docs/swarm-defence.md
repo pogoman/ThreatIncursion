@@ -129,10 +129,14 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   The pressure pass is under the same rule (2026-10-08, hw83a): `ThreatColonyManager.redistributeByPressure`
   sends a receiver under attack (`ThreatPosture.underAttack`) nothing - no transfer, no swarm fabricated
   for it - unless what stands for it (`ThreatPosture.standsFor`: the swarms at the world and those bound
-  for it in its system) plus what every donor could spare this pass (`pressureSpare`) and every idle bank
-  could build (`fabricableFor`) would outweigh the force over it (`ThreatPosture.forceOver`: the heavier
-  of the hostile fleets near it and the unspawned sieges fighting it). Read once a pass per receiver. Log:
-  `Posture: no transfer to <world> - N FP over it, M FP could stand`. hw83a: the ordinary transfers and
+  for it in its system) plus what the pass would send it this poll - its accept (deficit, band and a swarm),
+  or less if every donor's spare (`pressureSpare`) and every idle bank (`fabricableFor`) hold less - would
+  outweigh the force over it (`ThreatPosture.forceOver`: the heavier of the hostile fleets near it and the
+  unspawned sieges fighting it). Read once a pass per receiver. Log: `Posture: no transfer to <world> - N
+  FP over it, M FP could stand (S standing, A FP more wanted, G FP to gather)`. hw87a, gated on the sector's
+  banks alone (what "could" be gathered, 60k FP), refused 49 times and fabricated 4,489 swarms for attacked
+  hives, hw83a's 4,501: a want of 1,000 under a 4,450 FP siege is fed 400 FP a poll, so what the pass
+  would send is what counts (hw89 / hw90). hw83a: the ordinary transfers and
   the fabrication had sat outside the rule, so Nomios, under a 4,450 FP siege with 800 FP standing, was
   sent 91 swarms of 40-90 FP in three months - Epiphany's bank fabricating one a dispatch, 1,668 FP down
   to 74 - each hunted as it arrived; 4,501 swarms / 470k FP fabricated for attacked hives in a game, 40

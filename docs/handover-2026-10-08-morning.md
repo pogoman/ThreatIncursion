@@ -362,3 +362,11 @@ holds, or the pick never came up null). The old sector reads 53-92 hives across 
 same strategy: contested, not won. hw87 / hw88 (811737ff, jar 00:04) run the pass's enough gate; the
 watcher's check is `check-enough.sh` (fabricated-for 250+ in three months, or fleets-away cost above
 the supplies made). `game-runs-2.md` 43.
+
+## 15. hw87 + hw88 - the pass under the enough rule, read at 00:50: the gate on the banks barely bit; regated on what the pass would send
+
+811737ff. hw87a (ck2): hives 38 -> 76, humans 50 -> 19 - the best old-sector sample - but pressure
+fabricated 4,489 (hw83a 4,501), 25 hives eradicated, 703 hunt battles: the gate summed every idle bank
+in the sector as what could stand (60k), so it refused 49 times. hw88a / b (ck5): hives 150 / 168,
+humans 7 / 6. hw89 / hw90 (jar 00:50): could = stands + min(accept, gather) - a receiver wanting 1,000
+under a 4,450 FP siege is sent nothing. Watcher: `check-enough.sh`. `game-runs-2.md` 43.
