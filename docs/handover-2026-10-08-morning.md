@@ -114,7 +114,18 @@ Ailmar to Eldfell alone over 670 days). hw65a's Hegemony went from 4,440 FP and 
 yards to 0 and 0 in ~15 months while the 5,800 FP opening strike's front took Chicomoztoc's strata
 over 220 days and 63 relief orders of its own were lost one by one. `game-runs-2.md` 43.
 
-## 2g. hw66 - relief only if enough (jar 05:11; running from 05:12, ends ~06:15)
+## 2g. hw66 - relief only if enough (edd067f4, jar 05:11), read at 05:52
+
+**Confirmed, and the first contested sector of the night.** Relief sends 127 / 266 / 390 (hw65:
+1,881-3,356), relief fleets destroyed 5 / 62 / 95 (696-1,691), held 496 / 702 / 600. The humans
+keep a navy where it works: free hulls at the end 19.6k / 9 / 16.1k FP, yards 3,900 / 0 / 2,700
+FP/mo (hw65: 0 and 0-700 everywhere). Hives eradicated 42 / 9 / 27 of peaks 35 / 67 / 40 - a's
+swarm ends at 32k FP with 0 supplies, c's at 65k; b is hw65 again (every faction's hulls lost,
+yards 0, 67 hives), the opening strike's luck. The next binder shows in a and c: forward bases
+"cannot pay" 155 / 153 with hulls plentiful - the pools, not the hulls. `game-runs-2.md` 43.
+hw67 (same jar, from 05:53, ends ~06:55) is the confirmation; read it the same way.
+
+## 2g-design. What the relief gate is
 
 The humans' mirror of your rally rule for the swarm (2026-10-05, "if the fleets that can be
 gathered aren't strong enough to defend then they shouldn't bother"), under the same
@@ -123,13 +134,12 @@ relief only when what the base can field (its stock above the floor, capped at t
 hulls) plus the guards already bound there outweighs the army over the world; held, it logs once
 (`Relief held: F can field N FP from B against M over W (G bound) - not enough, holds`) and keeps
 its hulls and provisions, and `reliefOwed` counts only a relief that would sail, so a siege does not
-wait on hulls the faction will not send. What sails still holds the orbit as before. Read it with
-`swarm-digest.sh hw66a hw66b hw66c` and
-`grep -c 'Order lost (fleet destroyed): [a-z_]* relieving' ti-hw66a.txt` (hw65: 696-1,691) against
-`grep -c 'Relief held' ti-hw66a.txt`; the plans' `hulls N free` and `yards N FP/mo` lines are the
-question - whether the kept hulls reach the yards' rebuild and the forward bases, or sit. Not
-built, for you: a coalition relief of a besieged capital (no ally relieved Chicomoztoc; the
-council's joint play is offence only), and 2e's shape 2 (yards at home).
+wait on hulls the faction will not send. What sails still holds the orbit as before. Read a batch
+with `swarm-digest.sh hw67a hw67b hw67c` and
+`grep -c 'Order lost (fleet destroyed): [a-z_]* relieving' ti-hw67a.txt` (hw65: 696-1,691, hw66:
+5-95) against `grep -c 'Relief held' ti-hw67a.txt`. Not built, for you: a coalition relief of a
+besieged capital (no ally relieved Chicomoztoc; the council's joint play is offence only), and
+2e's shape 2 (yards at home).
 
 ## 2e. The humans' collapse (hw63 read, 03:20) - bases bound by hulls, built for hw65
 
