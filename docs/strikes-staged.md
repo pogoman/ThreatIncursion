@@ -258,3 +258,25 @@ What it does not do yet: scouts do not look for the focus faction's unknown syst
 focus with the fund already paying its whole set launches at it every month until exhausted (section
 2's "richer than its targets" rule), which is the intent. The share and the choice rule are my
 defaults.
+
+## 6. The counter-stroke (`IncursionManager.counterStrike`, 2026-10-08)
+
+A human landing on a hive world draws a strike at the landing faction at once, from
+`ThreatGroundFronts.landOrReinforce` (a new front, not a reinforcement; the player's expeditions too).
+Before it the swarm's only answers were the system's own rally - and only when it could win
+(`ThreatPosture.rally`, `systemDefenceOnlyIfEnough`) - and `retaliate`, one strike after the hive
+had fallen; a hive falls a median 60-140 days after the landing, and in hw66a / hw67c expeditions
+eradicated 42 / 30 hives while the fund paid campaigns elsewhere. The target: the base the swarm has
+seen staging against the hive's system (`ThreatSwarmIntel.Place.stagesFor`, nearest to the hive
+first) when the hive system nearest it can pay a strike there, else `retaliate`'s rule - the nearest
+hive that can muster against the nearest known world of the faction (`pickStrikeTarget`). It is a
+strike like any other: sized to its target by `stagedPlan`, paid from the fund (nothing launches the
+fund cannot pay; `Counter-strike: nothing the fund pays ...` once a hive), outside the campaign, so a
+held prong may find the fund short on its day and be dropped with its bill refunded. The design is
+defeat in detail turned on the besieger: the exchange the swarm can afford is a strike sized to a
+base, not to the flotilla overhead, and the besieging faction either relieves its own world
+(`ThreatPlays.pausable` holds its plays while relief is owed) or loses it. Logs
+`Counter-strike: <staging> -> <target> (<faction>, its staging base | the nearest world of theirs,
+answering the landing on <hive>)`; notice "Swarm Counter-strikes". Knob `counterStrikeEnabled`
+(default on). My shape, to confirm against hw66/67: read `grep -c '^Counter-strike: ' ti-hw68a.txt`
+against `grep -c 'Notice: Expedition Landed'`, and the hives eradicated.
