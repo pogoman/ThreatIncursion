@@ -314,3 +314,16 @@ seedings held 462 / 327, fund 196k / 332k, spare 15-30k yet 50 sends a month hel
 user: an old sector contested at 55 hives against 36 worlds (`humans-must-not-win-unattended`);
 the ck5 puzzle of sends held on a positive spare (the 17-40k build spend is the suspect for
 draining the stock first); the churn (a recycled swarm rebuilt the next poll). `game-runs-2.md` 43.
+
+## 11. hw79 + hw80 - the builder respects the fit, read at 19:40: nexus churn gone, the old sector falls to the swarm, the pressure pass is the next loop
+
+`ThreatColonyManager.fitActive` / `fitFloor` (febabf9f, 606a1e31 - the first gate, on the fit
+binding now, still churned a build and a recycle a poll; the floor now holds a month after the
+last recycle). hw79a (ck2): hives 38 -> 92 (hw77a 55), humans 50 -> 23 (36); recycled 2,284
+(4,602), nexus built 1,021 (5,727), same hive-month pairs 66 (4,019). The pressure pass took over:
+4,330 swarms fabricated for receivers (2,161), 1,060 recycled at the same hive - with every colony
+at the fit's floor every colony is short of the posture's want, so `redistributeByPressure` finds
+no donor and fabricates. hw80a / b (ck5): hives 177 / 87, humans 4 / 4. Next: the pressure pass
+wants the fit's floor for a receiver nobody attacks while the fit is active (hw81 / hw82); the
+watcher's check pairs the pressure fabrication too. The user (18:30): fix the mechanism's
+wrinkles, no new strategy layer. `game-runs-2.md` 43.
