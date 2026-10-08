@@ -879,8 +879,6 @@ public class ThreatGroundFronts {
 						ThreatNotice.faction(owner), ThreatNotice.market(market));
 			}
 			n.line("%s troops on the surface.", Misc.getWithDGS(troops)).send();
-			// the swarm answers the landing now, not the fall (the counter-stroke, 2026-10-08)
-			if (Factions.THREAT.equals(market.getFactionId())) IncursionManager.counterStrike(ownerFactionId, market);
 		}
 		return front;
 	}
