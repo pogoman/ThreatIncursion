@@ -955,6 +955,8 @@ public class ThreatIncConfig {
 	public static float alarmTargetMult()     { return f("threatinc_alarmTargetMult"); }
 	/** Whether a ground victory draws an immediate strike at the winner. */
 	public static boolean retaliationEnabled() { return b("threatinc_retaliationEnabled", true); }
+	/** Whether a human landing on a hive draws an immediate strike at the landing faction (IncursionManager.counterStrike). */
+	public static boolean counterStrikeEnabled() { return b("threatinc_counterStrikeEnabled", true); }
 
 	// ---- coalition (docs/design-theory.md 8.7) ----
 

@@ -326,6 +326,7 @@ threatinc_alarmPerRaid,Grudge per Raid,Double,0.5,"Grudge points for a successfu
 threatinc_alarmDecayPer30,Grudge Decay per Month,Double,0.2,"Fraction of every grudge that fades per 30 days.",0,1
 threatinc_alarmTargetMult,Grudge Targeting Weight,Double,0.2,"Strike-target weight bonus per point of a faction's grudge: at 0.2, grudge 10 makes that faction's worlds three times as likely to be struck.",0,2
 threatinc_retaliationEnabled,Retaliation Strikes,Boolean,true,"A ground victory draws an immediate strike at the winning faction from the nearest hive that can muster one - a strike it could have launched anyway, aimed now.",,
+threatinc_counterStrikeEnabled,Counter-strikes,Boolean,true,"A landing on a hive world draws an immediate strike at the landing faction - at the base seen staging against the hive, else the nearest world of theirs - while its front still fights, not after the hive has fallen.",,
 coalitionHeader,Coalition Header,Header,Coalition,"A mobilised faction's siege calls its allies: every other mobilised faction with a base in reach may answer with a task force holding the hive's jump-point so the siege lands under cover. Your Rally button on a hive row does the same for every ally that takes your orders, plus a siege from the best-supplied of them.",,
 threatinc_coalitionEnabled,Coalition Calls Enabled,Boolean,true,"Whether sieges post calls that allied mobilised factions answer.",,
 threatinc_coalitionCallDays,Coalition Call (Days),Double,60,"Days a call stays open for allies to answer.",10,180
