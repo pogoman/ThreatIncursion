@@ -90,6 +90,9 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 
 		// hive worlds post no vanilla missions (survey, analyze, procurement)
 		ThreatMissionFilter.install();
+		// and vanilla's academy fleets send nothing, rather than fatal, once the
+		// swarm has taken every market that could send one
+		ThreatAcademyFleetGuard.install();
 
 		// (2026-09-29: closed economy) the garrison respawn clock is gone - the
 		// FP bank paces the swarm - so its per-colony timestamps are dropped. A

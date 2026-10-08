@@ -327,3 +327,28 @@ no donor and fabricates. hw80a / b (ck5): hives 177 / 87, humans 4 / 4. Next: th
 wants the fit's floor for a receiver nobody attacks while the fit is active (hw81 / hw82); the
 watcher's check pairs the pressure fabrication too. The user (18:30): fix the mechanism's
 wrinkles, no new strategy layer. `game-runs-2.md` 43.
+
+## 12. hw81 + hw82 - the fit's floor is the colony's want, read at 20:20: recycling down by two thirds, a third loop at the receiver
+
+`ThreatPosture.wantFP` returns `ThreatColonyManager.fitFloor` for a colony nobody attacks while
+the fit is active (f65b0bd2). hw81a (ck2): hives 38 -> 70 (hw79a 92), humans 50 -> 22 (23);
+recycled 1,241 (2,284), nexus built 1,199 (1,021) - but the pressure pass fabricated 5,200 (4,330)
+and 395 were recycled at the hive they were for: Gream, unattacked, had its want move with the
+pressure, so swarms were fabricated elsewhere, sent, recycled on arrival, sent again. hw82a / b
+(ck5): hives 185 / 180, humans 2 / 3, pairs 125 / 44. Fix (33ad93bc, jar 20:20, hw83 / hw84):
+`redistributeByPressure` fabricates for a receiver only when its system is attacked, and the fit
+skips a colony `ThreatPosture.recentlyReceived`. `game-runs-2.md` 43.
+
+## 13. hw83 + hw84 - nothing fabricated for a quiet hive, read at 23:10: loop three closed; the old sector contested by sieges fed a swarm at a time; a vanilla fatal at the swarm's victory
+
+33ad93bc. hw83a (ck2): hives 37 -> 58 -> 39 -> 53 (hw81a 70), humans 50 -> 25; recycled 897, pairs
+252 (3 a month: the churn is done). The pressure pass fabricated 4,501 swarms / 470k FP for hives under
+attack, mean 105 FP, and 40 hives were eradicated by human fronts with swarms arriving one at a time
+to be hunted (Nomios: 4,450 FP siege, 800 standing, 91 swarms sent in three months, Epiphany's bank
+1,668 -> 74). The ordinary transfers and the fabrication were outside the rally's enough rule. hw84b
+(ck5): hives 167, humans 2, then a fatal from vanilla's `MiscAcademyFleetCreator` (no market left to
+send from) - `ThreatAcademyFleetGuard` guards it (hw85 / hw86). hw84a never loaded (harness). Next:
+the pass's enough gate (`ThreatPosture.forceOver` / `standsFor`, `pressureSpare`, `fabricableFor`) -
+nothing to an attacked receiver unless what stands, what donors could spare and what banks could build
+together outweigh the force (hw87 / hw88). The user (23:00): run until morning, fix buggy behaviour,
+no new strategy layer, until the swarm wins both sectors consistently. `game-runs-2.md` 43.
