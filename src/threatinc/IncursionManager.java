@@ -111,6 +111,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// kiting run (see GARRISON_LEASH_RADIUS)
 		if (ThreatIncConfig.enabled()) {
 			ThreatColonyManager.enforceGarrisonLeash();
+			// and a garrison swarm's fight near its world pulls the rest of the garrison in
+			ThreatGarrisonMuster.advance();
 			// Support / Defend fleets and the swarm's stations keep to their orbit the same way
 			ThreatFleetOrders.enforceLeash();
 			ThreatSwarmDefend.enforceLeash();
