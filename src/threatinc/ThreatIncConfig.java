@@ -961,6 +961,8 @@ public class ThreatIncConfig {
 	public static boolean retaliationEnabled() { return b("threatinc_retaliationEnabled", true); }
 	/** The colonies' break-even sustenance is paid before the fleets away and the navy at home (ThreatColonyUpkeep.sustenanceDue, 2026-10-08). */
 	public static boolean sustenanceFirst() { return b("threatinc_sustenanceFirst", true); }
+	/** The hive keeps no standing navy its supplies flow cannot carry with the sends it wants (ThreatColonyManager.fitNavyToSpare, 2026-10-08). */
+	public static boolean navyFitsSpare() { return b("threatinc_navyFitsSpare", true); }
 
 	// ---- coalition (docs/design-theory.md 8.7) ----
 
