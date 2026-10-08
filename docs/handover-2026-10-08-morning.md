@@ -302,3 +302,15 @@ reinforcements in transit 16k (179 fleets shuffling between hives), home navy 13
 145 seedings held. The user's rule (facts Decisions, 2026-10-08): the swarm keeps no navy it cannot
 supply and use; the fund hoard is ignored for now. Next: the shape for that rule (section 10 when
 built), and the old sector's human trend is the user's question in the other direction.
+
+## 10. hw77 + hw78 - the navy fits the spare, read at 17:30: the swarm stronger on both sectors, the old one contested again
+
+`ThreatColonyManager.fitNavyToSpare` + the transit gate (15f82c6d, knob `navyFitsSpare`). hw77a
+(ck2): hives 38 -> 62 -> 55 (hw75a 35), humans 50 -> 36 (hw75a 38), 4,602 swarms recycled for 882k
+FP while 2,161 were fabricated - the rule churns through the bank rather than shrinking the navy
+for good - fleets 83.6k FP (hw73a 109k), seedings held 77 (145), sends held 0 at the end, fund
+13.8k. hw78a / b (ck5): hives 191 / 177 (162 / 132), humans 9 / 4, recycled 3,927 / 2,984 swarms,
+seedings held 462 / 327, fund 196k / 332k, spare 15-30k yet 50 sends a month held. Open for the
+user: an old sector contested at 55 hives against 36 worlds (`humans-must-not-win-unattended`);
+the ck5 puzzle of sends held on a positive spare (the 17-40k build spend is the suspect for
+draining the stock first); the churn (a recycled swarm rebuilt the next poll). `game-runs-2.md` 43.
