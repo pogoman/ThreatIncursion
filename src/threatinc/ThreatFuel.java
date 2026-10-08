@@ -727,6 +727,12 @@ public class ThreatFuel {
 		data().put(key, (o instanceof Float ? (Float) o : 0f) + v);
 	}
 
+	/** Sends held on the stock since the last census (held). */
+	public static float heldThisMonth() {
+		Object v = data().get(HELD);
+		return v instanceof Float ? (Float) v : 0f;
+	}
+
 	/** The census's stock clause, and the month's tallies reset. */
 	public static String monthSummary() {
 		if (!enabled()) return "";

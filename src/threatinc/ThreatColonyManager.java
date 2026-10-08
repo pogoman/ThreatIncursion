@@ -4211,6 +4211,72 @@ public class ThreatColonyManager {
 		// the colonies' size upkeep: its break-even first out of the whole stock, growth out of the production the
 		// fleets away leave (their supplies a month come off the share it is taken from)
 		ThreatColonyUpkeep.feed(fleetsSupplies);
+		if (suppliesUpkeep) fitNavyToSpare();
+	}
+
+	/**
+	 * THE NAVY FITS THE SPARE (the user, 2026-10-08, after hw73a: "it shouldnt
+	 * maintain more than it can supply and use"): the hive keeps no standing
+	 * navy its supplies flow cannot carry with the sends it wants. Each poll,
+	 * after the feed, the spare a month (ThreatReach.spare: production less the
+	 * colonies' upkeep, the fleets away and the navy at home) must cover what a
+	 * send held this month on supplies needs - one founding's supplies
+	 * (ThreatFuel.foundingCost) while any send was held, else 0. Short of it,
+	 * standing swarms are recycled into the bank at ThreatReturns.hullShare,
+	 * the smallest on station first, from the colony with the most garrison
+	 * above its floor (the patrols, ThreatPosture.minimumFP, or the pressure's
+	 * need, needFP, whichever is more), never a colony under attack nor one the
+	 * offensive's held prongs will muster on (earmarked), until the saved
+	 * charge (rate x FP a month, payNavySupplies' rate) fills the gap or
+	 * nothing is above a floor. Banked FP pays no upkeep and the nexus rebuilds
+	 * from it when the flow grows (maintainGarrisons' build), so the hulls are
+	 * kept as FP, not fed as fleets. hw73a / hw75a (ck2): the swarm sat a year
+	 * at a stock of 0 with 29-31 sends held, 145 seedings held, the home navy
+	 * 13k of 69-78k a month and the fund 54-75k FP, while the humans ground it
+	 * from 50 hives to 34. Knob navyFitsSpare.
+	 */
+	protected static void fitNavyToSpare() {
+		if (!ThreatIncConfig.navyFitsSpare() || !ThreatColonyUpkeep.enabled()) return;
+		float spare = ThreatReach.spare();
+		float want = ThreatFuel.heldThisMonth() > 0 ? ThreatFuel.foundingCost()[0] : 0f;
+		if (spare >= want) return;
+		float rate = ThreatReach.suppliesPerFP() * ThreatIncConfig.standingUpkeepMult();
+		if (rate <= 0f) return;
+		float gap = want - spare;
+		float share = ThreatReturns.hullShare();
+		int budget = 0;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) budget += countLiveGarrison(m.getId());
+		for (int i = 0; i < budget && gap > 0f; i++) {
+			// the colony with the most above its floor gives
+			MarketAPI pick = null;
+			float pickAbove = 0f;
+			List<CampaignFleetAPI> pickFleets = null;
+			for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+				StarSystemAPI system = m.getStarSystem();
+				if (system == null || ThreatPosture.underAttack(system)) continue;
+				if (ThreatOffensive.earmarked(system.getId()) > 0) continue;
+				List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(m.getId());
+				float floor = Math.max(ThreatPosture.minimumFP(m), ThreatPosture.needFP(m));
+				float above = garrisonFP(fleets) - floor;
+				if (above <= 0f || above <= pickAbove) continue;
+				CampaignFleetAPI victim = smallestOnStation(fleets);
+				if (victim == null || victim.getFleetPoints() > above) continue;
+				pick = m; pickAbove = above; pickFleets = fleets;
+			}
+			if (pick == null) break;
+			CampaignFleetAPI victim = smallestOnStation(pickFleets);
+			float fp = victim.getFleetPoints();
+			pickFleets.remove(victim);
+			victim.despawn();
+			creditFP(pick, fp * share);
+			gap -= fp * rate;
+			UpkeepLog log = upkeepLog(pick.getId());
+			log.recycled++;
+			log.recycledFP += fp;
+			ThreatIncConfig.log("Navy: " + pick.getName() + " recycled a " + (int) fp + " FP swarm into the bank ("
+					+ (int) (fp * share) + " FP back; spare " + (int) spare + " of " + (int) want + " a month wanted, "
+					+ (int) ThreatFuel.heldThisMonth() + " send(s) held, " + (int) Math.max(0f, gap) + " still to save)");
+		}
 	}
 
 	/** maintainGarrisons' loop over the colonies; returns the supplies a month of their fleets away. */
@@ -5740,6 +5806,14 @@ public class ThreatColonyManager {
 				// consolidating (ThreatStance), a merely THREATENED system is fed too
 				boolean attacked = ThreatPosture.underAttack(receiver.getStarSystem())
 						|| (ThreatStance.feedsPressed() && ThreatPosture.pressed(receiver.getStarSystem()));
+				// (2026-10-08, the navy fits the spare) a transfer in transit pays the away rate: none the flow
+				// cannot carry to a receiver nobody attacks (hw75a: 179 fleets, 25k FP, 16k supplies a month in
+				// transit between hives with the stock at 0 and 145 seedings held)
+				if (!attacked && ThreatIncConfig.navyFitsSpare() && ThreatReach.enabled() && ThreatReach.spare() < 0f) {
+					ThreatIncConfig.logQuiet("navy-transit:" + receiver.getId(), "Posture: no transfer to "
+							+ receiver.getName() + " - the flow is short (spare " + (int) ThreatReach.spare() + " a month)");
+					continue;
+				}
 				MarketAPI donor = null;
 				CampaignFleetAPI pick = null;
 				boolean donorSame = false;

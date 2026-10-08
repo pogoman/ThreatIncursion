@@ -1230,6 +1230,10 @@
 	"threatinc_alarmTargetMult": 0.2,
 	"threatinc_retaliationEnabled": true,
 	"threatinc_sustenanceFirst": true,
+	# the hive keeps no standing navy its supplies flow cannot carry with the sends it wants: swarms above the
+	# floor are recycled into the bank until the spare covers a held send, and no transfer sails on a short
+	# flow to a world nobody attacks (2026-10-08)
+	"threatinc_navyFitsSpare": true,
 	# coalition (docs/design-theory.md 8.7): a mobilised faction's siege posts
 	# a call; each tick every other mobilised faction with a base in reach
 	# rolls to answer with an Intercept task force at the hive's jump-point.

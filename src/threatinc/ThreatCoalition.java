@@ -513,7 +513,7 @@ public class ThreatCoalition {
 		float need = ThreatFleetOrders.reliefNeed(market);
 		if (senders.isEmpty() || total[0] < need) {
 			ThreatIncConfig.logQuiet("relief-joint-held:" + market.getId(), "Coalition relief held: " + owner.getId()
-					+ " and " + Math.max(0, senders.size() - 1) + " partner(s) can field " + (int) total[0]
+					+ " and " + Math.max(0, senders.size() - 1) + " of " + coalition(owner.getId()).size() + " partner(s) with a base can field " + (int) total[0]
 					+ " FP against " + (int) need + " over " + market.getName() + " - not enough, holds");
 			return 0f;
 		}

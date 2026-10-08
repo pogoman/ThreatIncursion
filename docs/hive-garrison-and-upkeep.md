@@ -489,3 +489,27 @@ forward base, commodity-bound the way vanilla's economy is.
   `feedShareConsolidate` (0.5 / 0.7 / 0.5; consolidating was 0.9 until the simulator's round 20,
   `war-sim-rounds.md` 16 - the largest of the three is `sustainShare`).
 
+### The navy fits the spare (2026-10-08, the user's rule; `ThreatColonyManager.fitNavyToSpare`)
+
+The user, after hw73a (fleets 109k FP on 78k supplies a month, the stock at 0 for a year, 29-31
+sends held): "if it cant strike cause it cant afford to cause its maintaining too many fleets then
+yeah it shouldnt maintain more than it can supply and use". The census's breakdown (hw75a, the
+same build with the purposes tallied) read the 69k a month as feed 24k, campaigns in the field
+8-27k, reinforcements in transit 16k (179 fleets, 25k FP, forever shuffling between hives under
+posture), the home navy above the patrols 13k, spare 1.5k, 145 seedings held on an empty stock.
+
+- **The rule.** Each poll, after the feed, the spare a month (`ThreatReach.spare`: production less
+  the colonies' upkeep, the fleets away and the navy at home) must cover what a send held this
+  month needs: one founding's supplies (`ThreatFuel.foundingCost`) while any send was held
+  (`ThreatFuel.heldThisMonth`), else 0. Short of it, standing swarms are recycled into the bank at
+  `ThreatReturns.hullShare`, the smallest on station first, from the colony with the most garrison
+  above its floor - the patrols (`ThreatPosture.minimumFP`) or the pressure's need (`needFP`),
+  whichever is more - never a colony under attack nor one the offensive's held prongs will muster on
+  (`ThreatOffensive.earmarked`), until the saved charge fills the gap. Banked FP pays no upkeep and
+  the nexus rebuilds from it when the flow grows, so the hulls are kept as FP, not fed as fleets.
+- **Transit.** A transfer in transit pays the away rate (`awayFleetSupplies`): `redistributeByPressure`
+  sends none the flow cannot carry (spare below 0) to a receiver nobody attacks. A receiver under
+  attack is fed whatever the flow.
+- Not a cap: the navy grows again as the flow does (the hw36 growth gate was already the flow's).
+  Knob `navyFitsSpare`. First run hw77 (ck2) + hw78 (ck5). Log lines `Navy: <hive> recycled ...`
+  and `Posture: no transfer to ...`.
