@@ -129,8 +129,8 @@ public class ThreatOffensive {
 	}
 
 	/**
-	 * The fund's bill of the cheapest prong the last pass priced, or 0 for none known: what a full chest must
-	 * be able to field (ThreatStance.evaluate - hw70, 2026-10-08: a 4-hive fund read full at 1,800 FP with the
+	 * The fund's bill of the cheapest prong the last pass priced whose passage the fuel in stock pays, or 0 for
+	 * none: what a full chest must be able to field (ThreatStance.evaluate - hw70, 2026-10-08: a 4-hive fund read full at 1,800 FP with the
 	 * cheapest prong at 8,244, and the chest's feeding held the spread until the war).
 	 */
 	public static float cheapestProngCost() {
@@ -285,9 +285,11 @@ public class ThreatOffensive {
 			}
 		});
 
-		// the cheapest bill among the priced prongs: what the chest must field to read full (ThreatStance.evaluate)
+		// the cheapest bill among the priced prongs the fuel in stock could send: what the chest must cover to read
+		// full (ThreatStance.evaluate) - a prong the fuel cannot sail is out on the fuel, not on the fund (ck4: the
+		// fund read full at 8,700 against a 7,968 FP prong with the fuel at 0, the plants not yet built)
 		float cheapest = 0f;
-		for (Prong p : prongs) if (p.cost > 0f && (cheapest <= 0f || p.cost < cheapest)) cheapest = p.cost;
+		for (Prong p : prongs) if (p.cost > 0f && p.fuel <= fuelStock && (cheapest <= 0f || p.cost < cheapest)) cheapest = p.cost;
 		setCheapestProngCost(cheapest);
 		float supplies = 0f, suppliesShort = 0f;
 		Prong firstOut = null;

@@ -257,3 +257,9 @@ mid-war). (b) No chest before the first war. (c) Delete the chest rule (hw62's h
 return). After the pick: build, remake ck3 (a pre-war change), run hw71 from it. The human-side
 points of the hw69 review hold on the new sector (the record lists them); only the blind time is
 geography.
+
+The user picked (a) at 12:35 ("do recc fix for swarm first, i want a test on the new seed and the
+previous old one to go simultaneously"): built as `ThreatOffensive.cheapestProngCost` read in
+`ThreatStance.evaluate` (a6818b7b, jar 12:42), ck3 remade as ck4 on it, and the test is hw71 (two games
+from ck2) + hw72 (two from ck4) in one batch - four games at once, not six, because each game holds a
+2 GB heap on a 16 GB machine.
