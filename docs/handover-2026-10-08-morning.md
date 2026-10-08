@@ -370,3 +370,15 @@ fabricated 4,489 (hw83a 4,501), 25 hives eradicated, 703 hunt battles: the gate 
 in the sector as what could stand (60k), so it refused 49 times. hw88a / b (ck5): hives 150 / 168,
 humans 7 / 6. hw89 / hw90 (jar 00:50): could = stands + min(accept, gather) - a receiver wanting 1,000
 under a 4,450 FP siege is sent nothing. Watcher: `check-enough.sh`. `game-runs-2.md` 43.
+
+## 16. hw89 + hw90 - the gate on what the pass would send, read at 01:35: the feed down a third; hunts meet one swarm at a time
+
+a8677deb. hw89a (ck2): hives 38 -> 64 (trough 46 at m43), humans 50 -> 18; pressure fabricated 3,142
+(hw87a 4,489), refused 117 with the figures, 25 eradicated, 786 hunt battles. Read from the hunt battles:
+89% met a single swarm (171 FP vs 478, 839 FP of garrison standing by), 303 of 487 fought 600+ units
+from the world - garrison swarms orbit 400-700 units out, up to 1,400 apart, outside the engine's
+500-unit join range, and a chaser is caught alone coming back under the 700-unit leash. hw90a / b (ck5):
+hives 162 / 184, humans 4 / 4. hw91 / hw92 (693f8025, jar 01:35): `ThreatGarrisonMuster` - a garrison
+swarm's battle within 1,500 units of its world pulls the hive's other swarms on station and the
+reinforcements bound for it in (BattleAPI.join); watcher `check-muster.sh` (single-swarm share above
+60% flags). `swarm-defence.md` "The garrison fights as one", facts. `game-runs-2.md` 43.
