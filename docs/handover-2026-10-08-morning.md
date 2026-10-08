@@ -289,3 +289,16 @@ swarm takes the yard worlds. Open for the user: whether a contested old sector i
 (`humans-must-not-win-unattended`); the next single human change (coalition relief, or Starve sized
 to the pools); the swarm's navy outgrowing its income on the old sector (109k FP on 78k a month,
 stock 0 for the last year) and the 300k+ FP hoard on the new. `game-runs-2.md` 43.
+
+## 9. hw75 + hw76 - coalition relief, read at 16:35: the old sector trends human, the new one still falls; the supplies breakdown
+
+`ThreatCoalition.jointRelief` (79e34157; partners = every non-hostile war faction, 17e3d89b, after
+a first run on the Favourable gate found none). hw75a (ck2): humans 50 -> 38 (hw73a 28), hives
+52 -> 27 by m60 then 35, yards 8-11k a month, 103 joint reliefs sent; hw76a / b (ck5): hives 162 /
+132, humans 3 / 6, 90 / 87 joint reliefs sent but 235 / 211 held - the coalition fields 0.26-0.29
+of the army. The census now breaks the swarm's supplies by purpose and lists the fleets away by
+kind (`game-runs-2.md` 43): on the old sector 69k a month = feed 24k, strikes 8-27k,
+reinforcements in transit 16k (179 fleets shuffling between hives), home navy 13k, spare 1.5k,
+145 seedings held. The user's rule (facts Decisions, 2026-10-08): the swarm keeps no navy it cannot
+supply and use; the fund hoard is ignored for now. Next: the shape for that rule (section 10 when
+built), and the old sector's human trend is the user's question in the other direction.
