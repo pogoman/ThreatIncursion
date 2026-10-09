@@ -74,6 +74,8 @@ public class ThreatColonyManager {
 	protected static final String REINFORCE_KICKS_KEY = "$threatinc_reinforceKicks";
 	/** Where a reinforcement stood when it was sent (the overdue read's "moved"). */
 	protected static final String REINFORCE_AT_KEY = "$threatinc_reinforceAt";
+	/** The hive a reinforcement was sent from (the overdue read's "from"). */
+	protected static final String REINFORCE_FROM_KEY = "$threatinc_reinforceFrom";
 	/** Fleet points a garrison swarm had the moment it was fabricated (under-strength baseline). */
 	public static final String SWARM_SPAWN_FP = "$threatinc_swarmSpawnFP";
 	/** How many swarms of its spec a garrison fleet embodies (absent: one); see growGarrisonFleet. */
@@ -6270,6 +6272,7 @@ public class ThreatColonyManager {
 		mem.set(REINFORCE_TARGET_KEY, target.getId());
 		mem.set(REINFORCE_DAY_KEY, ThreatPosture.today());
 		mem.set(REINFORCE_AT_KEY, new Vector2f(pick.getLocation()));
+		mem.set(REINFORCE_FROM_KEY, source.getId());
 		mem.unset(REINFORCE_KICK_KEY);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
@@ -6419,9 +6422,12 @@ public class ThreatColonyManager {
 		String remedy;
 		if (battle) {
 			remedy = "left to its battle";
-		} else if (kicks >= 3 && planet.getContainingLocation() != null) {
-			// carried: its passage was paid at the send, and nobody watches a swarm
-			// that has stood a year in the wrong place
+		} else if (kicks >= 2 && planet.getContainingLocation() != null) {
+			// carried at the second read (hw119/hw120): the in-place remedies -
+			// a fresh order, a fresh AI, a zeroed velocity, a one-unit nudge, a
+			// cleared avoid list, a 500-unit hop - freed at most half (hw105-
+			// hw118); its passage was paid at the send, and the swarm is
+			// wanted at its target, not where it was built
 			com.fs.starfarer.api.campaign.LocationAPI from = fleet.getContainingLocation();
 			com.fs.starfarer.api.campaign.LocationAPI to = planet.getContainingLocation();
 			if (from != to) {
@@ -6432,30 +6438,8 @@ public class ThreatColonyManager {
 			fleet.setLocation(at.x, at.y);
 			fleet.setVelocity(0f, 0f);
 			remedy = "carried to 1,500 units from " + planet.getName() + " (kick " + kicks + ")";
-		} else if (kicks == 2) {
-			// hw117/hw118: a short hop along its own heading - if that frees a
-			// frozen swarm, the spot holds it, not the fleet's state (hw115a: a
-			// zeroed velocity and a one-unit nudge in place freed two of three)
-			Vector2f dest = fleet.getMoveDestination();
-			Vector2f dir = dest != null ? new Vector2f(dest.x - fleet.getLocation().x, dest.y - fleet.getLocation().y)
-					: new Vector2f(planet.getLocation().x - fleet.getLocation().x, planet.getLocation().y - fleet.getLocation().y);
-			if (dir.length() < 1f) dir.set(1f, 0f);
-			dir.normalise();
-			fleet.setLocation(fleet.getLocation().x + dir.x * 500f, fleet.getLocation().y + dir.y * 500f);
-			fleet.setVelocity(0f, 0f);
-			remedy = "hopped 500 units along its heading, ordered on again (kick 2)";
 		} else {
-			// hw117/hw118: the nav module's avoid list cleared - a fleet steering
-			// around something it will not pass shows a heading and a velocity
-			// and no displacement
-			com.fs.starfarer.api.campaign.ai.CampaignFleetAIAPI ai = fleet.getAI();
-			if (ai instanceof com.fs.starfarer.api.campaign.ai.ModularFleetAIAPI
-					&& ((com.fs.starfarer.api.campaign.ai.ModularFleetAIAPI) ai).getNavModule() != null) {
-				((com.fs.starfarer.api.campaign.ai.ModularFleetAIAPI) ai).getNavModule().clearAvoidList();
-				remedy = "avoid list cleared, ordered on again (kick " + kicks + ")";
-			} else {
-				remedy = "ordered on again (kick " + kicks + ")";
-			}
+			remedy = "ordered on again (kick " + kicks + ")";
 		}
 		ThreatIncConfig.log("Reinforcement overdue: " + (int) fleet.getFleetPoints() + " FP -> " + target.getName()
 				+ ", " + (int) (day - sent) + " d out, id " + fleet.getId() + ", " + where + ", battle " + battle
@@ -6500,6 +6484,8 @@ public class ThreatColonyManager {
 		org.lwjgl.util.vector.Vector2f dest = fleet.getMoveDestination();
 		b.append(", heading ").append(dest == null ? "nowhere"
 				: (int) Misc.getDistance(fleet.getLocation(), dest) + " units to " + (int) dest.x + "/" + (int) dest.y);
+		b.append(", velocity ").append((int) fleet.getVelocity().x).append("/").append((int) fleet.getVelocity().y)
+				.append(", facing ").append((int) fleet.getFacing());
 		b.append(", speed ").append((int) fleet.getVelocity().length()).append(", burn ").append((int) fleet.getCurrBurnLevel());
 		com.fs.starfarer.api.campaign.ai.CampaignFleetAIAPI ai = fleet.getAI();
 		if (ai instanceof com.fs.starfarer.api.campaign.ai.ModularFleetAIAPI) {
@@ -6535,6 +6521,15 @@ public class ThreatColonyManager {
 		b.append(", impact ").append(fm.contains("$asteroidImpactTimeout")).append("/").append(fm.contains("$recentImpact"));
 		b.append(", listeners ").append(fleet.getEventListeners().size());
 		Object sentAt = fleet.getMemoryWithoutUpdate().get(REINFORCE_AT_KEY);
+		Object fromId = fleet.getMemoryWithoutUpdate().get(REINFORCE_FROM_KEY);
+		MarketAPI fromMarket = fromId instanceof String ? Global.getSector().getEconomy().getMarket((String) fromId) : null;
+		if (fromMarket != null && fromMarket.getPrimaryEntity() != null) {
+			SectorEntityToken fp = fromMarket.getPrimaryEntity();
+			b.append(", from ").append(fromMarket.getName()).append(fp.getContainingLocation() == loc
+					? " " + (int) Misc.getDistance(fleet, fp) + " units off (radius " + (int) fp.getRadius() + ")" : " (another location)");
+		} else {
+			b.append(", from unknown");
+		}
 		b.append(", moved ").append(sentAt instanceof Vector2f
 				? (int) Misc.getDistance(fleet.getLocation(), (Vector2f) sentAt) + " units since the send" : "unknown");
 		b.append(", alive ").append(fleet.isAlive()).append(", current ").append(fleet.isInCurrentLocation())
