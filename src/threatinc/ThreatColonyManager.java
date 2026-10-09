@@ -2538,8 +2538,22 @@ public class ThreatColonyManager {
 		} else if (live < desiredGarrisonCount(market)) {
 			return 0;
 		}
-		int n = Math.max(0, live - garrisonReserve(market));
-		float spare = ThreatPosture.launchSpareFP(market);
+		// posture: what the colony holds above its reserve's FP (ThreatPosture.minimumFP - the want the
+		// builder fills, in the builder's unit), never its last fleet. The gate used to subtract
+		// garrisonReserve, a swarm count from the size table, from the FLEET count: the hull pool's want
+		// (vanilla's patrol FP, 2026-10-06) is held in a few merged fleets, so every quiet colony stood
+		// above its want and under its reserve and no forge could spread before the war (hw133/hw134,
+		// 2026-10-09; the checkpoints' pre-war spread was the pressure pass padding the fleet count)
+		int n;
+		float spare;
+		if (ThreatPosture.enabled()) {
+			n = Math.max(0, live - 1);
+			float held = ownedFleetFP(market, ThreatIncData.garrisonsFor(market.getId()));
+			spare = Math.min(held - ThreatPosture.minimumFP(market), ThreatPosture.launchSpareFP(market));
+		} else {
+			n = Math.max(0, live - garrisonReserve(market));
+			spare = ThreatPosture.launchSpareFP(market);
+		}
 		if (n <= 0 || spare == Float.MAX_VALUE) return n;
 		List<Float> fps = new ArrayList<Float>();
 		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(market.getId())) {
@@ -2878,6 +2892,7 @@ public class ThreatColonyManager {
 					+ ", reserve " + garrisonReserve(market)
 					+ ", held " + (int) held + " of want " + (int) ThreatPosture.wantFP(market)
 					+ (ThreatPosture.regrowing(market, held) ? ", regrowing" : "")
+					+ ", reserve FP " + (int) ThreatPosture.minimumFP(market)
 					+ ", pressure spare " + (spare == Float.MAX_VALUE ? "none" : String.valueOf((int) spare)) + ")";
 		}
 		if (requireStable ? !isStableForExpansion(market) : !canProjectFleets(market)) return "unstable";
