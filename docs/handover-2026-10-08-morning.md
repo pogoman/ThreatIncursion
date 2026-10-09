@@ -433,3 +433,13 @@ of 92k made). hw100a / b (ck5): hives 167 / 216, humans 1 / 3, 54 / 55 ground vi
 hw100b's Nortia (150 against 263, braced 41 times under an idle fleet): a front that holds the hold line
 but not the counter line was neither bombarded for (`defendBombards` asked hold-or-overrun) nor fed while
 orbit still paid - 4084b5d1 makes the guns go first; hw101 / hw102 (jar 05:27) run it. `game-runs-2.md` 43.
+
+## 22. hw101 + hw102 - counterGap complete, read at 06:20: the old sector swings (71 hives at m40, 36 at the end), the new sector contested in one game
+
+4084b5d1. hw101a (ck2): hives 38 -> 71 (m40) -> 36, humans 50 -> 22, 50 eradicated / 33 colonies lost;
+the fall is human eradications with the swarm's fund at 189k FP and 139k supplies in stock at the end
+(the rally refuses what cannot win: `no rally to Suddene, 1,218 FP could stand against 2,527`). hw102a / b
+(ck5): hives 214 / 76, humans 3 / 22 - hw102b is the new sector's first contested game (106 First
+Strike fleets on Defend, 22k FP, 17.4k supplies a month; counter-attacks battered 107). hw103 / hw104
+(06:16): the same build, a second sample. Old sector across the night: 66 / 47 / 40 / 42 / 80 / 36 hives
+against 21 / 29 / 32 / 43 / 29 / 22 worlds. `game-runs-2.md` 43.
