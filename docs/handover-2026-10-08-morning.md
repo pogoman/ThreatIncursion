@@ -454,3 +454,16 @@ Zipacna's 724 FP swarm stood in Beta Cormoran 728 days. e66c0a5a (jar 07:11, hw1
 reinforcement out 90+ days is logged where it stands (location, distance, order, battle, AI, burn) and
 ordered on again; the dump carries days in flight; `check-overdue.sh`. The cause is read from hw105's
 first `Reinforcement overdue` lines. `swarm-defence.md` "Overdue reinforcements are ordered on", facts.
+
+## 24. hw105 + hw106 - overdue reinforcements ordered on, read at 07:58: old sector 92 hives / 15 colonies; a fresh order does not move a stuck swarm
+
+e66c0a5a (jar 07:11). hw105a (ck2): hives 38 -> 92, humans 50 -> 15 (+6 forward bases), 25 eradicated /
+34 conquests, 137 reinforcements (21.6k FP) in flight at the end (hw103a 281 / 80k), 82 of them 90+
+days out; 104 swarms were ordered on three times and more without arriving. They move at burn 9 (real
+speed) with the order active and no battle: three swarms for Blue stood 990 days inside Blue's own
+system, their distance to Blue a 540-day sinusoid between 3k and 22k units - the planet's orbit seen
+from a fleet circling one spot. 88% of sends arrive. hw106a / b (ck5): hives 244 / 192, humans 5 / 8.
+hw107 / hw108 run 095cce7a (jar 07:55): the full whereabouts read (heading, speed, fleeing, tactical
+target, terrain, nearest hostile) and the remedy ladder (order afresh, fresh fleet AI, carried to 1,500
+units - the carry is a stopgap for the user to keep or drop); `check-whereabouts.sh`. The cause is
+read from hw107's first lines. `swarm-defence.md` "Overdue reinforcements", facts.
