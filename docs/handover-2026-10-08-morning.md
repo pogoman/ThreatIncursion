@@ -579,3 +579,17 @@ asks to go slow every frame; `CampaignFleet.doGoSlow` brakes at full acceleratio
 just under go-slow speed, so nothing brakes), on every mod fleet both sides. hw128a / b (ck5) + hw129a (ck2),
 jar 15:48. The carry stays until the guard is confirmed - removing it is the user's call.
 `swarm-defence.md` "The engine, decompiled".
+
+## 35. hw128 - hw131 - read at 16:55: the belt guard fixed, and the swarm takes both sectors
+
+hw128 / hw129 (jar 15:48): the first guard scaled `getVelocity()` (the entity's copy) and changed nothing.
+hw130 / hw131 (645a1122, jar 16:07): the guard writes the movement module's velocity - no swarm froze, no carry.
+
+| Old sector (ck2) | Hives at the end | Human colonies (+forward bases) | Hives eradicated |
+|---|---|---|---|
+| hw111a-119a (no relief, 6-18% of reinforcements frozen) | 89 / 49 / 44 / 151 / 65 | 21 / 33 / 32 / 6 / 30 | 35 / 43 / 44 / 10 / 48 |
+| hw121a/b/c, hw123a, hw125a (relief, still frozen) | 102 / 97 / 152 / 78 / 111 | 13 / 23 (+22) / 8 (+2) / 13 / 24 (+6) | 18 / 24 / 26 / 27 / 36 |
+| hw131a (relief + belt guard) | 251 | 2 | 3 |
+
+New sector: 219 / 344 hives, humans 0 / 1. Open for the user: remove the carry (dormant now; recommended), and
+whether the swarm winning every sector this decisively is the target or an overshoot.

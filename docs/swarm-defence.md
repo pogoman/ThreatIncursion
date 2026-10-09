@@ -318,4 +318,4 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   neither brake branch runs, and the fleet crosses at speed. At 1 s frames the condition never holds.
   It must read and write the MODULE's velocity (`getVelocityFromMovementModule()` / `setVelocity(x, y)`):
   hw128/hw129's first cut scaled `getVelocity()`, the entity's copy, tripped 2,000 times a fleet and froze
-  as many swarms as before. hw130/hw131: the fixed guard - by war day ~3,200 overdue reads 1 / 1 / 0 against 67-111 in hw124-hw127 at the same day, no carry, reinforcements arrived 645 / 578 / 897.
+  as many swarms as before. hw130/hw131: the fixed guard - by war day ~3,200 overdue reads 1 / 1 / 0 against 67-111 in hw124-hw127 at the same day, no carry, reinforcements arrived 645 / 578 / 897. Full runs: overdue 1 / 3 / 0, and the swarm takes both sectors (hw131a old sector 251 hives / 2 colonies, 3 hives eradicated; hw130a / b 219 / 344 hives).
