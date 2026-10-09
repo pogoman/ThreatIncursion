@@ -63,6 +63,9 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
   (`desiredGarrisonCount`) with posture off, `ThreatPosture.baseCount` (reserve + launch stock) with
   it on. The war board's garrison "x/y" and fabrication trend read it, so a quiet colony shows full
   at its lean target (docs/war-board.md).
+- **The fleet count locks the quiet hive's spread (hw133, 2026-10-09, new seed from day 0):** no forge can launch a wave before the war: `ownAvailableForLaunch` lets a colony send only the fleets it holds above `garrisonReserve`, a count of swarms from the size table (half `desiredGarrisonCount`, 1-6), and counts FLEETS (`countLiveGarrison`), while under posture the builder stops once held FP reaches the want (`wantsGrowth`) - one or two fleets (the founding's ~700 FP seed fleet, grown fleets embodying several swarms). hw133a on the eve of the opening strike: Unhcegila 5 fleets against a reserve of 6, holding 2,018 FP of a 1,678 want; every colony above its FP want and under its fleet reserve, from day ~640 to the strike (`Spread target: none - candidates 176, no forge 176`). The strike's war unlocks it (claims within days of it). ck5's pre-war spread (from day 1,553, on the 2026-10-08 13:15 build) had pressure transfers between its hives (14 reinforcements arrived before the first claim) that gave colonies extra fleets.
+  `IncursionManager.pickSpreadTarget` logs `Spread target: none - ...` with each forge's first failing gate
+  (`ThreatColonyManager.forgeSourceBlock`).
 - **Modes** from ratio = (P / `npcSiegeOrbitMargin`) / held, with hysteresis (one threshold each flipped
   a system every few days as transfers moved its held FP across it). WATCHFUL is entered at 0.25 and left
   below 0.15; THREATENED is entered at 1.0 (the hive outmatched at the siege's own margin) and left
