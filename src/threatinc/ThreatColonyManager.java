@@ -6445,6 +6445,29 @@ public class ThreatColonyManager {
 			b.append(", ai ").append(ai == null ? "none" : ai.getClass().getSimpleName());
 		}
 		b.append(", transition ").append(fleet.isInHyperspaceTransition());
+		// the movement itself (2026-10-09, hw107: swarms stood frozen at full speed, others crawled at burn 2)
+		b.append(", listed ").append(loc != null && loc.getFleets().contains(fleet));
+		b.append(", orbit ").append(fleet.getOrbit() != null).append(", expired ").append(fleet.isExpired());
+		b.append(", travel ").append((int) fleet.getTravelSpeed()).append(" (burn min ")
+				.append((int) fleet.getFleetData().getMinBurnLevel()).append(" / ")
+				.append((int) fleet.getFleetData().getBurnLevel());
+		com.fs.starfarer.api.combat.StatBonus mod = fleet.getStats().getFleetwideMaxBurnMod();
+		StringBuilder mods = new StringBuilder();
+		for (java.util.Map.Entry<String, com.fs.starfarer.api.combat.MutableStat.StatMod> e : mod.getFlatBonuses().entrySet())
+			mods.append(mods.length() == 0 ? "" : " ").append(e.getKey()).append(" flat ").append(e.getValue().value);
+		for (java.util.Map.Entry<String, com.fs.starfarer.api.combat.MutableStat.StatMod> e : mod.getMultBonuses().entrySet())
+			mods.append(mods.length() == 0 ? "" : " ").append(e.getKey()).append(" x").append(e.getValue().value);
+		for (java.util.Map.Entry<String, com.fs.starfarer.api.combat.MutableStat.StatMod> e : mod.getPercentBonuses().entrySet())
+			mods.append(mods.length() == 0 ? "" : " ").append(e.getKey()).append(" ").append(e.getValue().value).append("%");
+		b.append(mods.length() == 0 ? "" : ", mods " + mods).append(")");
+		StringBuilder ab = new StringBuilder();
+		for (com.fs.starfarer.api.characters.AbilityPlugin ap : fleet.getAbilities().values())
+			if (ap != null && ap.isActive()) ab.append(ab.length() == 0 ? "" : "+").append(ap.getId());
+		b.append(", abilities ").append(ab.length() == 0 ? "none" : ab.toString());
+		b.append(", slow ").append(Misc.isSlowMoving(fleet));
+		com.fs.starfarer.api.campaign.rules.MemoryAPI fm = fleet.getMemoryWithoutUpdate();
+		b.append(", impact ").append(fm.contains("$asteroidImpactTimeout")).append("/").append(fm.contains("$recentImpact"));
+		b.append(", listeners ").append(fleet.getEventListeners().size());
 		if (loc != null) {
 			StringBuilder terrain = new StringBuilder();
 			for (com.fs.starfarer.api.campaign.CampaignTerrainAPI t : loc.getTerrainCopy()) {
