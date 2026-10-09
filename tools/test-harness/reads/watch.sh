@@ -59,7 +59,7 @@ while :; do
       flag $g hoard "no launch ever by war day $war, fund $fund FP: $(grep '^Offensive: ' $F | tail -1 | cut -c1-160)"
     fi
     # the last three censuses' supplies stock against a month's output
-    lowsup=$(grep -o '^Census: .*supplies [0-9]* (+[0-9]*' $F | tail -3 | sed 's/.*supplies ([0-9]*) (+([0-9]*)/ /' | awk '$2>0 && $1*20<$2{n++} END{print n+0}')
+    lowsup=$(grep -o '^Census: .*supplies [0-9]* (+[0-9]*' $F | tail -3 | sed -E 's/.*supplies ([0-9]+) \(\+([0-9]+)$/\1 \2/' | awk '$2>0 && $1*20<$2{n++} END{print n+0}')
     [ "$lowsup" -ge 3 ] && [ "$fund" -ge 20000 ] && flag $g broke "supplies stock under 5% of a month's output three censuses running, fund $fund FP: $(grep '^Census' $F | tail -1 | grep -o 'supplies [0-9]* ([^)]*)')"
     [ "$fbf" -ge 10 ] && [ "$fbl" -ge $((fbf * 2)) ] && flag $g humans "forward bases founded $fbf, lost $fbl"
     [ "$starve" -ge 50 ] && [ "$hull" -eq 0 ] && flag $g hulls "$starve STARVE lines, no hull convoy: $(grep -m1 'STARVE:' $F | cut -c1-160)"

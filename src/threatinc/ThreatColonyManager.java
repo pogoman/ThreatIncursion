@@ -6212,6 +6212,45 @@ public class ThreatColonyManager {
 
 	protected static final Map<String, FramePulse> PULSES = new java.util.HashMap<String, FramePulse>();
 
+	/**
+	 * The overdue read's engine check (the 2026-10-09 decompile: the location
+	 * moves every entity in its CampaignEntity list by its velocity each tick,
+	 * so a listed fleet frozen at full burn is either missing from that list
+	 * or not in an advanced location): whether the fleet is in the list the
+	 * engine iterates (the core interface com.fs.starfarer.campaign.CampaignEntity,
+	 * found by name up the fleet's class tree) and in getFleets(), how many
+	 * times each, whether its location is a star system or hyperspace the
+	 * sector holds, and the expiry of $ai_moveDest - the fleet AI renews it
+	 * every tick and memory counts down only while the fleet is advanced, so
+	 * the same figure at two reads is a fleet not advanced between them.
+	 */
+	protected static void engineLists(CampaignFleetAPI fleet, StringBuilder b) {
+		com.fs.starfarer.api.campaign.LocationAPI loc = fleet.getContainingLocation();
+		if (loc == null) {
+			b.append(", engine no location");
+			return;
+		}
+		Class<?> entity = null;
+		for (Class<?> c = fleet.getClass(); c != null && entity == null; c = c.getSuperclass()) {
+			for (Class<?> i : c.getInterfaces()) {
+				if ("com.fs.starfarer.campaign.CampaignEntity".equals(i.getName())) { entity = i; break; }
+			}
+		}
+		if (entity == null) {
+			b.append(", engine list unknown");
+		} else {
+			List<?> ents = loc.getEntities(entity);
+			b.append(", engine list x").append(java.util.Collections.frequency(ents, fleet));
+		}
+		b.append(", fleets x").append(java.util.Collections.frequency(loc.getFleets(), fleet));
+		boolean held = loc == Global.getSector().getHyperspace()
+				|| Global.getSector().getStarSystems().contains(loc);
+		b.append(", location held ").append(held);
+		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+		b.append(", moveDest ").append(mem.contains("$ai_moveDest")
+				? String.format("%.4f", mem.getExpire("$ai_moveDest")) : "none");
+	}
+
 	/** Attaches the frame pulse to a reinforcement swarm once. */
 	protected static void pulse(CampaignFleetAPI fleet) {
 		if (fleet == null || PULSES.containsKey(fleet.getId())) return;
@@ -6274,6 +6313,7 @@ public class ThreatColonyManager {
 		mem.set(REINFORCE_AT_KEY, new Vector2f(pick.getLocation()));
 		mem.set(REINFORCE_FROM_KEY, source.getId());
 		mem.unset(REINFORCE_KICK_KEY);
+		mem.unset(REINFORCE_KICKS_KEY);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(pick);
@@ -6314,6 +6354,7 @@ public class ThreatColonyManager {
 		mem.set(REINFORCE_DAY_KEY, ThreatPosture.today());
 		mem.set(REINFORCE_AT_KEY, new Vector2f(fleet.getLocation()));
 		mem.unset(REINFORCE_KICK_KEY);
+		mem.unset(REINFORCE_KICKS_KEY);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(fleet);
@@ -6389,8 +6430,8 @@ public class ThreatColonyManager {
 	 * A reinforcement out longer than reinforcementOverdueDays (90) is logged
 	 * where it stands (whereabouts) and set on its way again, once a span:
 	 * the first time its travel order afresh (blinders on, the 365-day
-	 * GO_TO_LOCATION and the orbit fallback), the second with a fresh fleet AI
-	 * under it, the third and after carried to 1,500 units from its target
+	 * GO_TO_LOCATION and the orbit fallback), the second and after (since
+	 * hw119; the count restarts at every send) carried to 1,500 units from its target
 	 * (2026-10-09, hw101a: 361 swarms, 56k FP, sat 120+ days in flight, most
 	 * inside Thule and Beta Cormoran, while their targets fell - a 724 FP swarm
 	 * for Zipacna stood in Beta Cormoran from its send on war day 2690 to
@@ -6534,13 +6575,16 @@ public class ThreatColonyManager {
 		FramePulse p = PULSES.get(fleet.getId());
 		if (p == null) {
 			b.append(", pulse none");
-		} else if (p.day < 0f) {
+		} else if (p.frames == 0) {
+			// today() is negative on the sector clock, so the frame count tells "never ran"
+			// (until 2026-10-09 it read p.day < 0 and every read said never)
 			b.append(", pulse never ran");
 		} else {
 			b.append(", pulse ").append(p.frames).append(" frames, last ")
 					.append(String.format("%.1f", ThreatPosture.today() - p.day)).append(" d ago at ")
 					.append((int) p.x).append("/").append((int) p.y);
 		}
+		engineLists(fleet, b);
 		if (loc != null) {
 			StringBuilder terrain = new StringBuilder();
 			for (com.fs.starfarer.api.campaign.CampaignTerrainAPI t : loc.getTerrainCopy()) {
