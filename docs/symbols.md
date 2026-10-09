@@ -1284,24 +1284,24 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionView.recall(String factionId, String key)` :2253
 - `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :2329 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
 
-## ThreatFleetComposer (338 lines)
+## ThreatFleetComposer (342 lines)
 ### entry points
 - `ThreatFleetComposer.beltGuard(CampaignFleetAPI fleet)` :83 - Vanilla's go-slow trap (found 2026-10-09, hw126/hw127).
 - `ThreatFleetComposer.BeltGuard(CampaignFleetAPI fleet)` :97 - Frames on which the guard met an overshooting brake (read by the overdue line).
 - `ThreatFleetComposer.isDone()` :98
 - `ThreatFleetComposer.runWhilePaused()` :99
 - `ThreatFleetComposer.advance(float amount)` :100
-- `ThreatFleetComposer.create(String job, int fabricators, FabricatorEscortStrength escorts, Random random)` :115 - A vanilla-sized Threat fleet, composed as an archetype picked for the job.
-- `ThreatFleetComposer.createScouts(float fp, Random random)` :135 - A scouting party of about the given fleet points, from the "scout" job.
-- `ThreatFleetComposer.archetypeOf(CampaignFleetAPI fleet)` :159 - The archetype a fleet was built as, or null for a fleet not built here.
-- `ThreatFleetComposer.pickArchetype(String job, Random random)` :166 - Weighted pick from the job's archetype pool;
-- `ThreatFleetComposer.recompose(CampaignFleetAPI fleet, String archetypeId, Random random)` :182 - Strips the hulls the archetype's mix names and spends their fleet points again on its mix.
+- `ThreatFleetComposer.create(String job, int fabricators, FabricatorEscortStrength escorts, Random random)` :119 - A vanilla-sized Threat fleet, composed as an archetype picked for the job.
+- `ThreatFleetComposer.createScouts(float fp, Random random)` :139 - A scouting party of about the given fleet points, from the "scout" job.
+- `ThreatFleetComposer.archetypeOf(CampaignFleetAPI fleet)` :163 - The archetype a fleet was built as, or null for a fleet not built here.
+- `ThreatFleetComposer.pickArchetype(String job, Random random)` :170 - Weighted pick from the job's archetype pool;
+- `ThreatFleetComposer.recompose(CampaignFleetAPI fleet, String archetypeId, Random random)` :186 - Strips the hulls the archetype's mix names and spends their fleet points again on its mix.
 ### composition
-- `ThreatFleetComposer.fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random)` :209 - Adds ships until the budget is spent.
-- `ThreatFleetComposer.pickVariant(String hull, Archetype a, Random random)` :243
-- `ThreatFleetComposer.finish(CampaignFleetAPI fleet)` :253 - What createThreatFleet does after adding ships.
+- `ThreatFleetComposer.fill(CampaignFleetAPI fleet, Archetype a, float budget, Random random)` :213 - Adds ships until the budget is spent.
+- `ThreatFleetComposer.pickVariant(String hull, Archetype a, Random random)` :247
+- `ThreatFleetComposer.finish(CampaignFleetAPI fleet)` :257 - What createThreatFleet does after adding ships.
 ### loading
-- `ThreatFleetComposer.load()` :266
+- `ThreatFleetComposer.load()` :270
 
 ## ThreatFleetOrders (2466 lines)
 - `ThreatFleetOrders.fightOrbit(CampaignFleetAPI fleet, boolean fighting)` :120 - Stamped each poll by ThreatGroundFronts#tickSupport and ThreatSwarmDefend#tick.
