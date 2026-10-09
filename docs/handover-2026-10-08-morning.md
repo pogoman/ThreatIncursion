@@ -443,3 +443,14 @@ the fall is human eradications with the swarm's fund at 189k FP and 139k supplie
 Strike fleets on Defend, 22k FP, 17.4k supplies a month; counter-attacks battered 107). hw103 / hw104
 (06:16): the same build, a second sample. Old sector across the night: 66 / 47 / 40 / 42 / 80 / 36 hives
 against 21 / 29 / 32 / 43 / 29 / 22 worlds. `game-runs-2.md` 43.
+
+## 23. hw103 + hw104 - second sample, read at 07:15: old sector 77 hives / 27 colonies; the reinforcement leak found
+
+4084b5d1 again. hw103a (ck2): hives 38 -> 86 (m60) -> 77, humans 50 -> 27 (+24 forward bases), 53
+eradicated / 22 conquests, fund 281k, 281 reinforcements (80k FP) in flight at the end. hw104a / b
+(ck5): hives 169 / 154, humans 3 / 5. Found while it ran (hw101a's dumps): 92-177 reinforcement swarms
+(18-34k FP) sit 120+ days inside one system every run - Thule, Beta Cormoran - while their targets fall;
+Zipacna's 724 FP swarm stood in Beta Cormoran 728 days. e66c0a5a (jar 07:11, hw105 / hw106): a
+reinforcement out 90+ days is logged where it stands (location, distance, order, battle, AI, burn) and
+ordered on again; the dump carries days in flight; `check-overdue.sh`. The cause is read from hw105's
+first `Reinforcement overdue` lines. `swarm-defence.md` "Overdue reinforcements are ordered on", facts.
