@@ -631,3 +631,25 @@ last fleet; one measure, the builder's (patch ready in the scratchpad, `patch-la
 build the launch stock as separate fleets (keeps three units). C - the bank pays the wave while the garrison
 stays home (the surplus never spreads; against the closed economy). The war opening at 4 hives is a separate
 question until the spread is unlocked.
+
+## 37. hw135 - hw137 - read at 22:45: launch by fleet points built in three cuts; the new seed is contested
+
+The user (20:30): "go" on option A. First cut (10cc32b0): the quiet colony's spare in FP, fleets fitted
+largest first, never the last - hw135 stayed locked (every colony ONE founding fleet at 5x its reserve FP).
+Second cut (6210e81c): `launchOrder` (the fitted list, read by the count and the muster alike) and
+`splitLaunchSwarm` / `ThreatFleetComposer.splitOff` (a swarm's worth carved off the largest fleet when nothing
+fits) - hw136 split, and the navy fit recycled each piece the poll after, bound by sends held on FUEL. Third
+cut (6ae245db, jar 21:18): the fit wants only supplies-held sends (`ThreatFuel.heldOnSuppliesThisMonth`), its
+floor holds a forge colony's `stockFP`, and the stock's fleets (`launchStockFleets`) are never its victim.
+
+| OceanPena from day 0 | Hives at the opening | Peak | End (day ~4,700) | Human colonies (of 43-45) + forward bases | Hives eradicated / conquests |
+|---|---|---|---|---|---|
+| hw132a / b / c (before the fix) | 4 / 11 / 4 | 17 / 26 / 16 | 0 / 3 / 0 | 43 / 45 (+17) / 45 | 28 / 47 / 36 - 6 / 4 / 5 |
+| hw137a | 17 | 63 | 49 | 35 (+43) | 68 / 12 |
+| hw137b | 16 | 62 | 62 | 32 | 98 / 18 |
+| hw137c | 17 | 35 | 2 | 32 | 85 / 16 |
+
+hw137: first claims day 760 / 760 / 791 (never before the war on this seed before), one fit recycle a game.
+Open for the user: c's collapse (85 hives eradicated against 16 conquests) is the war, not the lock. c's fall (35 hives at day 3,400 to 17 at 3,830): the humans' saturation sieges (`saturationSlice` on Mag Mell, Tamael, Zumu, 100+ slices in the window) against a swarm with ~2k fuel in stock the whole window (+16-31k a month, 20-41k spent - every strike held, `Offensive: nothing the means pay by the deadline` x18, fleets 27k -> 11k FP); a ended with 1.0M fuel, b 150k. A fuel-bound swarm on this seed in one game of three - the
+checkpoint sectors fall to the swarm decisively, this seed is contested. The next read is the regional one
+(`regread.pl hw137a hw137b hw137c`) and the human side's effort per game.
