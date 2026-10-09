@@ -159,6 +159,45 @@ public class ThreatFleetComposer {
 		return fleet;
 	}
 
+	/**
+	 * Carves a fleet of about targetFP off {@code from}: its smallest ships first, until the piece
+	 * reaches the target, never past capFP and never the last ship. The piece carries every flag a
+	 * Threat fleet gets (createThreatFleet) and the belt guard; the caller names, tags and places
+	 * it. Null when nothing moved (one ship, or none under the cap).
+	 */
+	public static CampaignFleetAPI splitOff(CampaignFleetAPI from, float targetFP, float capFP, Random random) {
+		if (from == null || targetFP <= 0f) return null;
+		if (random == null) random = new Random();
+		java.util.List<FleetMemberAPI> members = from.getFleetData().getMembersListCopy();
+		if (members.size() < 2) return null;
+		java.util.Collections.sort(members, new java.util.Comparator<FleetMemberAPI>() {
+			public int compare(FleetMemberAPI a, FleetMemberAPI b) {
+				return Float.compare(a.getFleetPointCost(), b.getFleetPointCost());
+			}
+		});
+		CampaignFleetAPI piece = DisposableThreatFleetManager.createThreatFleet(
+				new ThreatFleetCreationParams(), random);
+		if (piece == null) return null;
+		float moved = 0f;
+		for (FleetMemberAPI m : members) {
+			if (moved >= targetFP || from.getFleetData().getNumMembers() <= 1) break;
+			float fp = m.getFleetPointCost();
+			// sorted smallest first: a ship over the cap means every later one is too
+			if (moved + fp > capFP) break;
+			from.getFleetData().removeFleetMember(m);
+			piece.getFleetData().addFleetMember(m);
+			moved += fp;
+		}
+		if (moved <= 0f) return null;
+		from.getFleetData().ensureHasFlagship();
+		piece.getFleetData().ensureHasFlagship();
+		finish(from);
+		finish(piece);
+		beltGuard(piece);
+		piece.setName(from.getName());
+		return piece;
+	}
+
 	/** The archetype a fleet was built as, or null for a fleet not built here. */
 	public static String archetypeOf(CampaignFleetAPI fleet) {
 		if (fleet == null) return null;

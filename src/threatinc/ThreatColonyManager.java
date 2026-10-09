@@ -2538,22 +2538,13 @@ public class ThreatColonyManager {
 		} else if (live < desiredGarrisonCount(market)) {
 			return 0;
 		}
-		// posture: what the colony holds above its reserve's FP (ThreatPosture.minimumFP - the want the
-		// builder fills, in the builder's unit), never its last fleet. The gate used to subtract
-		// garrisonReserve, a swarm count from the size table, from the FLEET count: the hull pool's want
-		// (vanilla's patrol FP, 2026-10-06) is held in a few merged fleets, so every quiet colony stood
-		// above its want and under its reserve and no forge could spread before the war (hw133/hw134,
-		// 2026-10-09; the checkpoints' pre-war spread was the pressure pass padding the fleet count)
-		int n;
-		float spare;
-		if (ThreatPosture.enabled()) {
-			n = Math.max(0, live - 1);
-			float held = ownedFleetFP(market, ThreatIncData.garrisonsFor(market.getId()));
-			spare = Math.min(held - ThreatPosture.minimumFP(market), ThreatPosture.launchSpareFP(market));
-		} else {
-			n = Math.max(0, live - garrisonReserve(market));
-			spare = ThreatPosture.launchSpareFP(market);
-		}
+		// posture: the fleets a launch may take (launchOrder - what the colony holds above its
+		// reserve's FP, in the builder's unit; the fleet count minus garrisonReserve, a swarm
+		// count from the size table, gated it before and no quiet colony ever had a swarm to
+		// spare under the hull pool's FP want, hw133/hw134 2026-10-09)
+		if (ThreatPosture.enabled()) return launchOrder(market, false).size();
+		int n = Math.max(0, live - garrisonReserve(market));
+		float spare = ThreatPosture.launchSpareFP(market);
 		if (n <= 0 || spare == Float.MAX_VALUE) return n;
 		List<Float> fps = new ArrayList<Float>();
 		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(market.getId())) {
@@ -2567,6 +2558,83 @@ public class ThreatColonyManager {
 			fit++;
 		}
 		return fit;
+	}
+
+	/**
+	 * The garrison fleets a launch may take from the colony, in the muster's order: every live
+	 * fleet, largest first, with {@code all} (an earmarked prong, or posture off); under posture
+	 * each fleet fitted into the spare - what the colony holds above its reserve's FP
+	 * (ThreatPosture.minimumFP) and, pressed, above the pressure's need (launchSpareFP) - one too
+	 * big for it skipped, never the last fleet. ownAvailableForLaunch counts it, musterFrom
+	 * walks it, so the two agree (hw135: the count fitted largest first and broke at the first
+	 * fleet too big - the founding seed at 5x the reserve - while the muster would have taken it).
+	 */
+	protected static List<CampaignFleetAPI> launchOrder(MarketAPI market, boolean all) {
+		List<CampaignFleetAPI> alive = new ArrayList<CampaignFleetAPI>();
+		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(market.getId())) {
+			if (curr != null && curr.isAlive()) alive.add(curr);
+		}
+		java.util.Collections.sort(alive, new java.util.Comparator<CampaignFleetAPI>() {
+			public int compare(CampaignFleetAPI a, CampaignFleetAPI b) {
+				return Float.compare(b.getFleetPoints(), a.getFleetPoints());
+			}
+		});
+		if (all || !ThreatPosture.enabled()) return alive;
+		float held = ownedFleetFP(market, ThreatIncData.garrisonsFor(market.getId()));
+		float spare = Math.min(held - ThreatPosture.minimumFP(market), ThreatPosture.launchSpareFP(market));
+		List<CampaignFleetAPI> out = new ArrayList<CampaignFleetAPI>();
+		for (CampaignFleetAPI curr : alive) {
+			if (out.size() >= alive.size() - 1) break;
+			float fp = curr.getFleetPoints();
+			if (fp > spare) continue;
+			spare -= fp;
+			out.add(curr);
+		}
+		return out;
+	}
+
+	/**
+	 * A forge colony that holds a swarm's worth above its reserve's FP but no fleet a launch can
+	 * take (launchOrder empty: its fleets too big for the spare, or one fleet - the founding seed
+	 * holds ~5x the reserve) carves one off its largest fleet in orbit
+	 * (ThreatFleetComposer.splitOff): the size table's first launch-stock row, within the spare.
+	 * The piece is a garrison swarm of the host's spec; the host's spawn strength drops by it so
+	 * neither reads under strength. Once a poll, from maintainGarrisons (hw136, 2026-10-09).
+	 */
+	protected static void splitLaunchSwarm(MarketAPI market, List<CampaignFleetAPI> fleets, Random random) {
+		if (market == null || market.getStarSystem() == null || market.getPrimaryEntity() == null) return;
+		if (getForge(market) == null || ThreatPosture.underAttack(market.getStarSystem())) return;
+		float held = ownedFleetFP(market, fleets);
+		if (ThreatPosture.regrowing(market, held)) return;
+		float spare = Math.min(held - ThreatPosture.minimumFP(market), ThreatPosture.launchSpareFP(market));
+		int[][] table = desiredGarrison(market.getSize());
+		float target = swarmCostEstimate(table[Math.min(garrisonReserve(market), table.length - 1)]);
+		if (target <= 0f || spare < target) return;
+		CampaignFleetAPI host = null;
+		for (CampaignFleetAPI curr : fleets) {
+			if (curr == null || !curr.isAlive() || curr.getBattle() != null) continue;
+			if (curr.getContainingLocation() != market.getStarSystem()) continue;
+			if (curr.getFleetData().getNumMembers() < 2 || curr.getFleetPoints() <= target) continue;
+			if (host == null || curr.getFleetPoints() > host.getFleetPoints()) host = curr;
+		}
+		if (host == null) return;
+		CampaignFleetAPI piece = ThreatFleetComposer.splitOff(host, target, spare, random);
+		if (piece == null) return;
+		float fp = piece.getFleetPoints();
+		com.fs.starfarer.api.campaign.rules.MemoryAPI hm = host.getMemoryWithoutUpdate();
+		com.fs.starfarer.api.campaign.rules.MemoryAPI pm = piece.getMemoryWithoutUpdate();
+		pm.set(GARRISON_FLAG, market.getId());
+		pm.set(SWARM_TIER_KEY, swarmTier(host));
+		pm.set(SWARM_FABS_KEY, swarmFabs(host));
+		pm.set(SWARM_SPAWN_FP, fp);
+		if (hm.contains(SWARM_SPAWN_FP)) hm.set(SWARM_SPAWN_FP, Math.max(0f, hm.getFloat(SWARM_SPAWN_FP) - fp));
+		if (swarmCount(host) > 1) hm.set(SWARM_COUNT_KEY, swarmCount(host) - 1);
+		makeDetectable(piece);
+		placeGarrisonSwarm(market, piece, random);
+		fleets.add(piece);
+		ThreatIncConfig.log("Launch swarm split at " + market.getName() + ": " + (int) fp + " FP off a "
+				+ (int) (host.getFleetPoints() + fp) + " FP fleet (spare " + (int) spare + ", target " + (int) target
+				+ ", " + fleets.size() + " fleets)");
 	}
 
 	/**
@@ -2643,7 +2711,7 @@ public class ThreatColonyManager {
 	 */
 	public static List<MusterFleet> peekColony(MarketAPI market, int count) {
 		List<MusterFleet> out = new ArrayList<MusterFleet>();
-		musterFrom(market, count, 0, false, new ArrayList<Integer>(), null, out);
+		musterFrom(market, count, 0, false, new ArrayList<Integer>(), null, out, true);
 		return out;
 	}
 
@@ -2654,7 +2722,7 @@ public class ThreatColonyManager {
 	 */
 	public static List<Integer> consumeFromColony(MarketAPI market, int count, float[] fpOut) {
 		List<Integer> out = new ArrayList<Integer>();
-		musterFrom(market, count, 0, true, out, fpOut, null);
+		musterFrom(market, count, 0, true, out, fpOut, null, true);
 		return out;
 	}
 
@@ -2724,14 +2792,14 @@ public class ThreatColonyManager {
 		for (MarketAPI curr : launchPool(market)) {
 			int share = Math.min(count - taken, earmarked ? countLiveGarrison(curr.getId()) : ownAvailableForLaunch(curr));
 			if (share > 0) {
-				int got = musterFrom(curr, share, 0, despawn, mustered, fpOut, fleetsOut);
+				int got = musterFrom(curr, share, 0, despawn, mustered, fpOut, fleetsOut, earmarked);
 				taken += got;
 				if (curr == market) ownTaken = got;
 			}
 			if (taken >= count) return mustered;
 		}
 		// a peek has not removed what it counted from the staging colony: skip those
-		musterFrom(market, count - taken, despawn ? 0 : ownTaken, despawn, mustered, fpOut, fleetsOut);
+		musterFrom(market, count - taken, despawn ? 0 : ownTaken, despawn, mustered, fpOut, fleetsOut, earmarked);
 		return mustered;
 	}
 
@@ -2742,18 +2810,12 @@ public class ThreatColonyManager {
 	 * Returns the fleets taken.
 	 */
 	protected static int musterFrom(MarketAPI market, int n, int skip, boolean despawn, List<Integer> out,
-			float[] fpOut, List<MusterFleet> fleetsOut) {
+			float[] fpOut, List<MusterFleet> fleetsOut, boolean all) {
 		if (n <= 0) return 0;
 		List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(market.getId());
-		List<CampaignFleetAPI> alive = new ArrayList<CampaignFleetAPI>();
-		for (CampaignFleetAPI curr : fleets) {
-			if (curr != null && curr.isAlive()) alive.add(curr);
-		}
-		java.util.Collections.sort(alive, new java.util.Comparator<CampaignFleetAPI>() {
-			public int compare(CampaignFleetAPI a, CampaignFleetAPI b) {
-				return Float.compare(b.getFleetPoints(), a.getFleetPoints());
-			}
-		});
+		// the fleets a launch may take, largest first (launchOrder: all of them for an earmarked
+		// prong, else those that fit the spare - the same list ownAvailableForLaunch counted)
+		List<CampaignFleetAPI> alive = launchOrder(market, all);
 		int taken = 0;
 		int swarms = 0;
 		for (int i = skip; i < alive.size(); i++) {
@@ -2892,11 +2954,20 @@ public class ThreatColonyManager {
 					+ ", reserve " + garrisonReserve(market)
 					+ ", held " + (int) held + " of want " + (int) ThreatPosture.wantFP(market)
 					+ (ThreatPosture.regrowing(market, held) ? ", regrowing" : "")
-					+ ", reserve FP " + (int) ThreatPosture.minimumFP(market)
+					+ ", reserve FP " + (int) ThreatPosture.minimumFP(market) + ", fleets " + fleetFPs(market)
 					+ ", pressure spare " + (spare == Float.MAX_VALUE ? "none" : String.valueOf((int) spare)) + ")";
 		}
 		if (requireStable ? !isStableForExpansion(market) : !canProjectFleets(market)) return "unstable";
 		return null;
+	}
+
+	/** The colony's live garrison fleets' FP, largest first, for a log line. */
+	protected static String fleetFPs(MarketAPI market) {
+		StringBuilder b = new StringBuilder("[");
+		for (CampaignFleetAPI curr : launchOrder(market, true)) {
+			b.append(b.length() > 1 ? " " : "").append((int) curr.getFleetPoints());
+		}
+		return b.append("]").toString();
 	}
 
 	/**
@@ -4443,7 +4514,10 @@ public class ThreatColonyManager {
 			if (!belowFloor && !ThreatBuildCost.enabled() && buildWaiting().containsKey(marketId)) continue;
 			// nothing past the want: the bank keeps the rest for waves, strikes
 			// and foundings
-			if (posture && !belowFloor) continue;
+			if (posture && !belowFloor) {
+				if (ownAvailableForLaunch(market) == 0) splitLaunchSwarm(market, fleets, random);
+				continue;
+			}
 			// (2026-10-06: the garrison is vanilla's patrols - the Nexus's table,
 			// shrinking with the market's shortages as a human world's does - and
 			// pays no supplies; one evening charged it and gated its growth on the
