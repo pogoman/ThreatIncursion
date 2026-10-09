@@ -539,3 +539,16 @@ hives. Carried 177 / 154 / 80. Every frozen pair (106) holds its velocity vector
 101: a dead stop at full burn. The user (afternoon): regional relief (`ThreatPosture.regionalPool`, built for
 hw121), counterGap kept, the carry kept and the cause hunted, beltSafe removed, structures stay before
 foundings, no StarLord heal. `game-runs-2.md` 43, `facts.md` Decisions.
+
+## 31. hw121 - regional relief, three old-sector games, read at 13:40: the swarm's floor 97 hives
+
+2c241317 (jar 12:46). All three from ck2. No exception.
+
+| Old sector (ck2) | Hives at the end | Human colonies (+forward bases) | Hives eradicated |
+|---|---|---|---|
+| hw111a / 113a / 115a / 117a / 119a (no regional relief) | 89 / 49 / 44 / 151 / 65 | 21 / 33 / 32 / 6 / 30 | 35 / 43 / 44 / 10 / 48 |
+| hw121a / b / c (regional relief) | 102 / 97 / 152 | 13 / 23 (+22) / 8 (+2) | 18 / 24 / 26 |
+
+Regional sends 480 / 751 / 369 (100-145k FP, mean 11-13 ly); 18-21 of the 55-67 worlds relieved fell after.
+`game-runs-2.md` 43, `swarm-defence.md` "Regional relief". hw122 / hw123 (jar 13:19): the engine-list
+read on the frozen swarms, the kick count reset at every send.
