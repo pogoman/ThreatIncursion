@@ -32,6 +32,14 @@ each one lives:
    `fabricateNeed` returns 0 the moment the front is over the line, so the fleet stops
    cutting itself up the same poll the ground is safe and goes back to ordinary Defend -
    which, with the defences fully worn, means holding the orbit and paying nothing.
+   **To the counter-attack line, not the hold line (2026-10-09, hw93a).** The line is now the heavier of
+   the hold line and what repels the world's counter-attack out of cover (`counterGap`: `counterAttackStrength`
+   with the margin, at the front's entrenchment and experience), swarm fronts only. Fed to the hold line
+   alone - 17% of the defender - a front on a world whose counter-attack outweighs it never pushes: it is
+   battered every cadence (odds under 2, so never overrun), fed +240 troops back to the line, braced again.
+   Eldfell's front stood 77 months at 473-737 against 759-957 with 82 First Strike fleets over it paying
+   11k supplies a month; 45 counter-attacks, 21 feeds, strata 1-3 taken and lost four times. The bite is
+   still what the front is short, measured against the blow that actually lands.
 2. **It never gives up.** A Defend order and a swarm station both stand down when the
    batteries grind them below `defendMinStrength` (0.33) of their arrival strength. A
    fabricating fleet is **exempt** (`defendCommitted`, checked in both
