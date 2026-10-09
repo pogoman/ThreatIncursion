@@ -201,3 +201,13 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   inside the target's system in no terrain) are the next read: the movement fields (listed, orbit,
   travel speed with the fleet's burn and every fleetwide max-burn modifier, active abilities, go-slow,
   the impact keys) are in the same read since 7a4764ab.
+  REFUTED (hw111/hw112, 09:30): with the key set on every swarm (`impact true`), 137 frozen pairs still
+  stood at the same unit of position a span apart, all at full speed in a belt or ring, heading unchanged -
+  neither the fleet nor its AI is being advanced; a fresh AI does not help, the carry does. The belt is where
+  the swarm was built and never left, not what holds it; `AsteroidImpact` is not the cause (beltSafe stays,
+  harmless). The crawlers are `slow true`: vanilla's sneak burn (`Misc.getGoSlowBurnLevel`, min burn x the
+  sneak multiplier, 9 -> 2) with the travel speed intact; the mod never calls `goSlowOneFrame`, and 69 of
+  261 had no hostile in range. hw113/hw114 run the frame pulse (`ThreatColonyManager.FramePulse`, attached
+  at the send and at every overdue read): the read then says `pulse N frames, last D d ago at x/y`, with
+  `alive`, `current` (the player's location), `station`, `aimode` - a stopped pulse is a fleet the engine no
+  longer advances.

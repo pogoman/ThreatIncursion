@@ -483,3 +483,18 @@ movement read alone) were aborted at month 1 for hw111 / hw112 with the fix (jar
 333 crawling swarms at burn 2 (speed 44), most in hyperspace with human fleets 1-20k units off - the
 movement fields (burn modifiers, active abilities, go-slow, orbit, listed) are in that jar.
 `swarm-defence.md` "Overdue reinforcements", facts.
+
+## 26. hw111 + hw112 - the belt diagnosis refuted at 09:30; new sector humans wiped out twice; old sector 89 hives / 21 colonies
+
+8f6d8988 (jar 08:43, beltSafe + the movement read). hw111a (ck2): hives 38 -> 89, humans 50 -> 21 (+9
+forward bases), 35 eradicated / 27 conquests - the night's second-best old-sector end state (hw105a 92 /
+15). hw112a / b (ck5): hives 154 / 203, humans 0 / 0 - no colony and no forward base left. The
+reinforcement gap 3.8% (hw107a 3.9%): the belt key changed nothing. The read: 137 frozen pairs, all at
+full speed with the belt key set, in a belt or ring, heading unchanged across 90 days - neither the fleet
+nor its AI is being advanced; a fresh AI does not help, the carry does. So `AsteroidImpact` is NOT the
+cause (the belt is where the swarm was built and never left). The crawlers (261 reads, speed 44) are
+`slow true`: vanilla's sneak burn (min burn 9 x the sneak multiplier = 2), travel speed intact, 192 near
+a human fleet in hyperspace, 69 with none in range; the mod never calls `goSlowOneFrame`. hw113 / hw114
+(jar 09:28) run the frame pulse (`ThreatColonyManager.FramePulse`): a script on each reinforcement swarm
+recording the last frame the engine advanced it, read back with `alive` / `current` / `station` / `aimode`.
+`game-runs-2.md` 43, `swarm-defence.md` "Overdue reinforcements".
