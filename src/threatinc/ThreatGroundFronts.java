@@ -4040,7 +4040,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (!Factions.THREAT.equals(factionId) || market == null) return false;
 		GroundFront front = getFront(market.getId());
 		if (front == null || !factionId.equals(ownerOf(front))) return false;
-		if (frontCanHold(front, market)) return false;
+		// past the hold line, to where it repels the counter-attack (counterGap, 2026-10-09)
+		if (frontCanHold(front, market) && counterGap(front, market) <= 0f) return false;
 		return orbitDoneFor(market, fleet, factionId);
 	}
 
@@ -4089,7 +4090,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 */
 	public static float fabricateNeed(GroundFront front, MarketAPI market) {
 		if (front == null || market == null) return 0f;
-		float gap = holdGap(front, market);
+		float gap = Math.max(holdGap(front, market), counterGap(front, market));
 		if (gap > 0f) return gap;
 		return isDry(front) ? Math.max(0f, ThreatIncConfig.frontMinMarines()) : 0f;
 	}
@@ -4170,7 +4171,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			ThreatIncConfig.log(label + " over " + market.getName() + ": " + fleet.getName() + " at "
 					+ (int) fleet.getFleetPoints() + " FP fabricates - bombardment has done what it can and "
 					+ "the front is " + (int) Math.ceil(fabricateNeed(front, market))
-					+ " troops short of holding with margin; " + String.format("%.1f", wanted) + " FP of hulls wanted, "
+					+ " troops short of holding and repelling the counter-attack with margin; " + String.format("%.1f", wanted) + " FP of hulls wanted, "
 					+ String.format("%.2f", price) + " FP/day the batteries charge"
 					+ (canGive ? "" : " (nothing left to break up)"));
 		}
@@ -4244,6 +4245,23 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (front == null || market == null) return 0f;
 		float want = holdRequirement(market) * Math.max(1f, ThreatIncConfig.fabricateHoldMargin());
 		float mult = Math.max(0.01f, entrenchMult(front));
+		return Math.max(0f, want - front.marines * mult) / mult;
+	}
+
+	/**
+	 * The troops that would let a swarm front repel the world's counter-attack
+	 * out of cover, with fabricateHoldMargin of daylight - the line the Defend
+	 * fleets feed it to past the hold line (2026-10-09, hw93a). Fed to the hold
+	 * line alone (frontHoldFraction of the defender), a front on a world whose
+	 * counter-attack outweighs it is battered every cadence, re-fed to the line
+	 * and braced again, and never pushes: Eldfell's front stood 77 months at
+	 * 473-737 against 759-957, fed +240 troops a month, with 82 First Strike
+	 * fleets over it paying 11k supplies a month. 0 for any front but the swarm's.
+	 */
+	public static float counterGap(GroundFront front, MarketAPI market) {
+		if (front == null || market == null || !isThreatOwned(front)) return 0f;
+		float want = counterAttackStrength(market) * Math.max(1f, ThreatIncConfig.fabricateHoldMargin());
+		float mult = Math.max(0.01f, entrenchMult(front) * ThreatMarineXP.frontEffectMult(front));
 		return Math.max(0f, want - front.marines * mult) / mult;
 	}
 
