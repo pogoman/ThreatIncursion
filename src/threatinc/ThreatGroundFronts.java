@@ -4480,7 +4480,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// not enough on its own. A front that is still assaulting has decided
 		// it does not need either.
 		if (STANCE_PUSH.equals(front.stance)) return false;
-		if (frontCanHold(front, market) && !counterAttackOverruns(front, market)) return false;
+		// a swarm front short of the counter-attack line is fed by the guns first (counterGap, 2026-10-09:
+		// hw100b's Nortia held at 150 against counter-attacks of 263, odds under 2, and its Defend fleet
+		// stood idle as "the front holds" - no bombardment, and nothing broken up while orbit still paid)
+		if (frontCanHold(front, market) && !counterAttackOverruns(front, market)
+				&& counterGap(front, market) <= 0f) return false;
 		return !orbitDoneFor(market, fleet, factionId);
 	}
 
@@ -4536,7 +4540,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (fightsForOrbit(factionId, market)) return "fighting for the orbit";
 		GroundFront front = market != null ? getFront(market.getId()) : null;
 		if (front == null || factionId == null || !factionId.equals(ownerOf(front))) return "no front of its own";
-		if (frontCanHold(front, market)) return "the front holds";
+		if (frontCanHold(front, market) && counterGap(front, market) <= 0f) return "the front holds";
 		if (!ThreatIncConfig.fabricateDefendEnabled() || !Factions.THREAT.equals(factionId)) {
 			return "bombardment has done what it can";
 		}
