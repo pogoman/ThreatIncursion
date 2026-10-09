@@ -72,6 +72,8 @@ public class ThreatColonyManager {
 	protected static final String REINFORCE_KICK_KEY = "$threatinc_reinforceKick";
 	/** How many times an overdue reinforcement has been set on its way. */
 	protected static final String REINFORCE_KICKS_KEY = "$threatinc_reinforceKicks";
+	/** Where a reinforcement stood when it was sent (the overdue read's "moved"). */
+	protected static final String REINFORCE_AT_KEY = "$threatinc_reinforceAt";
 	/** Fleet points a garrison swarm had the moment it was fabricated (under-strength baseline). */
 	public static final String SWARM_SPAWN_FP = "$threatinc_swarmSpawnFP";
 	/** How many swarms of its spec a garrison fleet embodies (absent: one); see growGarrisonFleet. */
@@ -6267,6 +6269,7 @@ public class ThreatColonyManager {
 		mem.unset(GARRISON_FLAG);
 		mem.set(REINFORCE_TARGET_KEY, target.getId());
 		mem.set(REINFORCE_DAY_KEY, ThreatPosture.today());
+		mem.set(REINFORCE_AT_KEY, new Vector2f(pick.getLocation()));
 		mem.unset(REINFORCE_KICK_KEY);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
@@ -6307,6 +6310,7 @@ public class ThreatColonyManager {
 		mem.unset(Misc.FLEET_RETURNING_TO_DESPAWN);
 		mem.set(REINFORCE_TARGET_KEY, target.getId());
 		mem.set(REINFORCE_DAY_KEY, ThreatPosture.today());
+		mem.set(REINFORCE_AT_KEY, new Vector2f(fleet.getLocation()));
 		mem.unset(REINFORCE_KICK_KEY);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
@@ -6426,10 +6430,13 @@ public class ThreatColonyManager {
 			fleet.setVelocity(0f, 0f);
 			remedy = "carried to 1,500 units from " + planet.getName() + " (kick " + kicks + ")";
 		} else if (kicks == 2) {
-			fleet.setAI(Global.getFactory().createFleetAI(fleet));
-			remedy = "fresh AI, ordered on again (kick 2)";
+			// the carry split (hw115/hw116): the carry's two calls tried one at a
+			// time, to learn which of them frees a frozen swarm
+			fleet.setLocation(fleet.getLocation().x + 1f, fleet.getLocation().y);
+			remedy = "nudged one unit, ordered on again (kick 2)";
 		} else {
-			remedy = "ordered on again (kick " + kicks + ")";
+			fleet.setVelocity(0f, 0f);
+			remedy = "velocity zeroed, ordered on again (kick " + kicks + ")";
 		}
 		ThreatIncConfig.log("Reinforcement overdue: " + (int) fleet.getFleetPoints() + " FP -> " + target.getName()
 				+ ", " + (int) (day - sent) + " d out, " + where + ", battle " + battle
@@ -6508,6 +6515,9 @@ public class ThreatColonyManager {
 		com.fs.starfarer.api.campaign.rules.MemoryAPI fm = fleet.getMemoryWithoutUpdate();
 		b.append(", impact ").append(fm.contains("$asteroidImpactTimeout")).append("/").append(fm.contains("$recentImpact"));
 		b.append(", listeners ").append(fleet.getEventListeners().size());
+		Object sentAt = fleet.getMemoryWithoutUpdate().get(REINFORCE_AT_KEY);
+		b.append(", moved ").append(sentAt instanceof Vector2f
+				? (int) Misc.getDistance(fleet.getLocation(), (Vector2f) sentAt) + " units since the send" : "unknown");
 		b.append(", alive ").append(fleet.isAlive()).append(", current ").append(fleet.isInCurrentLocation())
 				.append(", station ").append(fleet.isStationMode()).append(", aimode ").append(fleet.isAIMode());
 		FramePulse p = PULSES.get(fleet.getId());
