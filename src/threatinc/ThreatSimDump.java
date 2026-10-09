@@ -346,7 +346,12 @@ public class ThreatSimDump {
 				if (f == null || !f.isAlive()) continue;
 				String target = f.getMemoryWithoutUpdate().getString("$threatinc_reinforceTarget");
 				String to = systemOf(target);
-				out.put(fleet(Factions.THREAT, "REINFORCEMENT", f.getFleetPoints(), systemOf(f), to, target, etaDays(f, to)));
+				JSONObject j = fleet(Factions.THREAT, "REINFORCEMENT", f.getFleetPoints(), systemOf(f), to, target, etaDays(f, to));
+				com.fs.starfarer.api.campaign.rules.MemoryAPI mem = f.getMemoryWithoutUpdate();
+				j.put("days", mem.contains(ThreatColonyManager.REINFORCE_DAY_KEY)
+						? finite(ThreatPosture.today() - mem.getFloat(ThreatColonyManager.REINFORCE_DAY_KEY)) : -1f);
+				j.put("battle", f.getBattle() != null);
+				out.put(j);
 			} catch (Throwable t) { skipped("reinforcement", t); }
 		}
 		for (ThreatRaiders.Raider r : ThreatRaiders.all()) {

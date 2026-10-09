@@ -66,6 +66,10 @@ public class ThreatColonyManager {
 	public static final String WAVE_FLAG = "$threatinc_colonyFleet";
 	/** Market id of the colony an in-transit reinforcement swarm is flying to join. */
 	public static final String REINFORCE_TARGET_KEY = "$threatinc_reinforceTarget";
+	/** The day (ThreatPosture.today) an in-transit reinforcement left; overdue reads it. */
+	public static final String REINFORCE_DAY_KEY = "$threatinc_reinforceDay";
+	/** The day an overdue reinforcement was last ordered on again. */
+	protected static final String REINFORCE_KICK_KEY = "$threatinc_reinforceKick";
 	/** Fleet points a garrison swarm had the moment it was fabricated (under-strength baseline). */
 	public static final String SWARM_SPAWN_FP = "$threatinc_swarmSpawnFP";
 	/** How many swarms of its spec a garrison fleet embodies (absent: one); see growGarrisonFleet. */
@@ -6225,6 +6229,8 @@ public class ThreatColonyManager {
 		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = pick.getMemoryWithoutUpdate();
 		mem.unset(GARRISON_FLAG);
 		mem.set(REINFORCE_TARGET_KEY, target.getId());
+		mem.set(REINFORCE_DAY_KEY, ThreatPosture.today());
+		mem.unset(REINFORCE_KICK_KEY);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(pick);
@@ -6261,6 +6267,8 @@ public class ThreatColonyManager {
 		unbindLedger(fleet);
 		mem.unset(Misc.FLEET_RETURNING_TO_DESPAWN);
 		mem.set(REINFORCE_TARGET_KEY, target.getId());
+		mem.set(REINFORCE_DAY_KEY, ThreatPosture.today());
+		mem.unset(REINFORCE_KICK_KEY);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(fleet);
@@ -6306,7 +6314,10 @@ public class ThreatColonyManager {
 			SectorEntityToken planet = target.getPrimaryEntity();
 			boolean arrived = fleet.getContainingLocation() == planet.getContainingLocation()
 					&& Misc.getDistance(fleet, planet) <= GARRISON_LEASH_RADIUS;
-			if (!arrived) continue;
+			if (!arrived) {
+				overdue(fleet, target, planet, mem);
+				continue;
+			}
 
 			if (fleet.getBattle() != null) continue;
 
@@ -6324,6 +6335,61 @@ public class ThreatColonyManager {
 			ThreatIncConfig.log("Reinforcement arrived at " + target.getName() + " ("
 					+ countLiveGarrison(targetId) + "/" + nominalGarrison(target) + ")");
 		}
+	}
+
+	/**
+	 * A reinforcement out longer than reinforcementOverdueDays (90) is logged
+	 * where it stands - location, distance, order, battle, AI, burn - and
+	 * given its travel order afresh, once a span (2026-10-09, hw101a: 361
+	 * swarms, 56k FP, sat 120+ days in flight, most inside Thule and Beta
+	 * Cormoran, while their targets fell - a 724 FP swarm for Zipacna stood in
+	 * Beta Cormoran from its send on war day 2690 to Zipacna's fall at 3418,
+	 * and the rally found 196 FP to stand against the 520 FP siege). One in a
+	 * battle is read and left to finish it.
+	 */
+	protected static void overdue(CampaignFleetAPI fleet, MarketAPI target, SectorEntityToken planet,
+			com.fs.starfarer.api.campaign.rules.MemoryAPI mem) {
+		float span = ThreatIncConfig.reinforcementOverdueDays();
+		if (span <= 0f) return;
+		float day = ThreatPosture.today();
+		if (!mem.contains(REINFORCE_DAY_KEY)) {
+			mem.set(REINFORCE_DAY_KEY, day);
+			return;
+		}
+		float sent = mem.getFloat(REINFORCE_DAY_KEY);
+		float since = mem.contains(REINFORCE_KICK_KEY) ? mem.getFloat(REINFORCE_KICK_KEY) : sent;
+		if (day - since < span) return;
+		mem.set(REINFORCE_KICK_KEY, day);
+		String where;
+		if (fleet.getContainingLocation() == planet.getContainingLocation()) {
+			where = (int) Misc.getDistance(fleet, planet) + " units from " + planet.getName();
+		} else if (fleet.getContainingLocation() instanceof StarSystemAPI) {
+			float jump = Float.MAX_VALUE;
+			for (SectorEntityToken jp : fleet.getContainingLocation().getJumpPoints()) {
+				jump = Math.min(jump, Misc.getDistance(fleet, jp));
+			}
+			where = "in " + fleet.getContainingLocation().getName() + ", "
+					+ (jump < Float.MAX_VALUE ? (int) jump + " units from a jump point" : "no jump point");
+		} else {
+			where = "in hyperspace, " + (int) Misc.getDistanceLY(fleet.getLocationInHyperspace(),
+					planet.getLocationInHyperspace()) + " ly out";
+		}
+		com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI a = fleet.getCurrentAssignment();
+		String order = a == null ? "no order" : a.getAssignment()
+				+ (a.getTarget() != null ? " -> " + a.getTarget().getName() : "")
+				+ (a.getActionText() != null ? " '" + a.getActionText() + "'" : "");
+		boolean battle = fleet.getBattle() != null;
+		ThreatIncConfig.log("Reinforcement overdue: " + (int) fleet.getFleetPoints() + " FP -> " + target.getName()
+				+ ", " + (int) (day - sent) + " d out, " + where + ", " + order + ", battle " + battle + ", ai "
+				+ (fleet.getAI() != null) + ", burn " + (int) fleet.getCurrBurnLevel() + ", transition "
+				+ fleet.isInHyperspaceTransition() + ", ships " + fleet.getFleetData().getNumMembers()
+				+ (battle ? " - left to its battle" : " - ordered on again"));
+		if (battle) return;
+		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
+		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
+		fleet.clearAssignments();
+		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, planet, 365f, "reinforcing the hive");
+		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
 	}
 
 	/**
