@@ -142,6 +142,15 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   to 74 - each hunted as it arrived; 4,501 swarms / 470k FP fabricated for attacked hives in a game, 40
   hives eradicated with swarms still arriving.
 
+  The swarm fabricated for a receiver is sized to its deficit (2026-10-09, hw93a): `rowFor` takes the
+  dearest garrison row of any size's table (`desiredGarrison`, up to {2, HIGH} / {1, MAXIMUM}) whose
+  estimated cost (`swarmCostEstimate`) the receiver's deficit, the fabricator's bank past its own want
+  and the fuel to the receiver pay for, and the receiver's cheapest row only when nothing more fits.
+  hw93a had built the cheapest row - a captured world's size-1 table, a LOW swarm of 52-97 FP - one a
+  dispatch: Culann, wanting 4,582 FP under a human siege, was fabricated 57 of them in one poll, 151
+  reinforcements were in flight at a time (20k FP, 15.5k supplies a month) and the old sector's swarm
+  ran its stock to 0 with 128k FP in the fund.
+
   The garrison fights as one (2026-10-09, hw89a; `ThreatGarrisonMuster`, per frame after the leash): a
   garrison swarm in a battle within 1,500 units of its world pulls the hive's other swarms on station,
   and the reinforcements bound for the world inside its system, into the battle (`BattleAPI.join`), once
