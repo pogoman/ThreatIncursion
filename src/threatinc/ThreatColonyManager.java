@@ -6182,6 +6182,41 @@ public class ThreatColonyManager {
 	}
 
 	/**
+	 * The frame pulse (hw113/hw114 read): a script on a reinforcement swarm that
+	 * notes the day and place of the last frame the engine advanced the fleet,
+	 * so the overdue read can tell a fleet the engine no longer advances (frozen
+	 * at the same unit of position for 90 days with its velocity at full burn,
+	 * hw111a: 137 such reads, every one in an asteroid belt or ring, the belt
+	 * key set) from one it advances but which does not move. Not saved across
+	 * a game load - a test-run instrument.
+	 */
+	public static class FramePulse implements com.fs.starfarer.api.EveryFrameScript {
+		public CampaignFleetAPI fleet;
+		public float day = -1f;
+		public float x, y;
+		public int frames;
+		public FramePulse(CampaignFleetAPI fleet) { this.fleet = fleet; }
+		public boolean isDone() { return fleet == null || !fleet.isAlive(); }
+		public boolean runWhilePaused() { return false; }
+		public void advance(float amount) {
+			frames++;
+			day = ThreatPosture.today();
+			x = fleet.getLocation().x;
+			y = fleet.getLocation().y;
+		}
+	}
+
+	protected static final Map<String, FramePulse> PULSES = new java.util.HashMap<String, FramePulse>();
+
+	/** Attaches the frame pulse to a reinforcement swarm once. */
+	protected static void pulse(CampaignFleetAPI fleet) {
+		if (fleet == null || PULSES.containsKey(fleet.getId())) return;
+		FramePulse p = new FramePulse(fleet);
+		PULSES.put(fleet.getId(), p);
+		fleet.addScript(p);
+	}
+
+	/**
 	 * Sends one Defense Swarm from source to reinforce target. It is the SAME
 	 * fleet: it leaves the source garrison and flies to the target planet
 	 * (vanilla fleet AI handles any hyperspace transit, exactly as colonization
@@ -6237,6 +6272,7 @@ public class ThreatColonyManager {
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(pick);
 		ThreatFleetComposer.beltSafe(pick);
+		pulse(pick);
 
 		pick.clearAssignments();
 		// no hive's name on the fleet: under the fog it may be one nobody has found
@@ -6399,6 +6435,7 @@ public class ThreatColonyManager {
 				+ ", " + (int) (day - sent) + " d out, " + where + ", battle " + battle
 				+ ", ships " + fleet.getFleetData().getNumMembers() + " - " + remedy);
 		if (battle) return;
+		pulse(fleet);
 		ThreatFleetComposer.beltSafe(fleet);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
@@ -6471,6 +6508,18 @@ public class ThreatColonyManager {
 		com.fs.starfarer.api.campaign.rules.MemoryAPI fm = fleet.getMemoryWithoutUpdate();
 		b.append(", impact ").append(fm.contains("$asteroidImpactTimeout")).append("/").append(fm.contains("$recentImpact"));
 		b.append(", listeners ").append(fleet.getEventListeners().size());
+		b.append(", alive ").append(fleet.isAlive()).append(", current ").append(fleet.isInCurrentLocation())
+				.append(", station ").append(fleet.isStationMode()).append(", aimode ").append(fleet.isAIMode());
+		FramePulse p = PULSES.get(fleet.getId());
+		if (p == null) {
+			b.append(", pulse none");
+		} else if (p.day < 0f) {
+			b.append(", pulse never ran");
+		} else {
+			b.append(", pulse ").append(p.frames).append(" frames, last ")
+					.append(String.format("%.1f", ThreatPosture.today() - p.day)).append(" d ago at ")
+					.append((int) p.x).append("/").append((int) p.y);
+		}
 		if (loc != null) {
 			StringBuilder terrain = new StringBuilder();
 			for (com.fs.starfarer.api.campaign.CampaignTerrainAPI t : loc.getTerrainCopy()) {
