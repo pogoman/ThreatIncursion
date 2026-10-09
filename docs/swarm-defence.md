@@ -138,6 +138,11 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   by `pickFor`. Knob `regionalRelief` (true). Log: `Posture: <donor> rallied N FP to <world> from L ly
   (regional relief; ...)`, and `no rally` lines end `, K regional` when a regional pool was counted.
   The humans' coalition relief mirrored (`ThreatCoalition.jointRelief`).
+  Read (hw121a/b/c, 13:40, three old-sector games): hives at the end 102 / 97 / 152 against the five
+  games before it on that sector (89 / 49 / 44 / 151 / 65), humans 13 / 23 / 8 (21 / 33 / 32 / 6 / 30),
+  eradicated 18 / 24 / 26 (35 / 43 / 44 / 10 / 48). 369-751 regional sends a game, 100-145k FP, mean
+  11-13 ly; a third of the worlds relieved fell anyway. The floor rose from 44 hives to 97: the old sector
+  is no longer a coin-flip on the opening. Long voyages add overdue swarms (carried 175 / 183 / 435).
 
   The pressure pass is under the same rule (2026-10-08, hw83a): `ThreatColonyManager.redistributeByPressure`
   sends a receiver under attack (`ThreatPosture.underAttack`) nothing - no transfer, no swarm fabricated
