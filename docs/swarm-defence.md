@@ -223,3 +223,9 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   .clearAvoidList()` - a fleet steering round something it will not pass shows a heading and a velocity and
   no displacement), kick 2 hops 500 units along the heading (the spot or the fleet?), kick 3 carries; the
   overdue and arrival lines carry `id <fleet id>` and the days out, so a swarm's reads and its arrival link.
+  Read (hw117/hw118, 11:50): 46 of 650 overdue swarms never moved from their send spot; a cleared avoid
+  list left 12 still and 19 creeping (3 free), the 500-unit hop 7 creeping (4 free); the carry frees all and
+  carried swarms arrive within days. So nothing done to the fleet in place frees it; only placing it near
+  its target does. hw119/hw120: the carry at the SECOND read (kick 2; the swarm loses 180 days, not 270),
+  and the read adds `velocity x/y`, `facing` and `from <hive> N units off (radius R)` - the source hive's
+  planet, to tell whether a frozen swarm sits on its hive.

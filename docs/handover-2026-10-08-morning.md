@@ -520,3 +520,13 @@ at full burn. A span after `velocity zeroed`: 11 free, 6 creeping, 4 still; afte
 14 creeping. The carry (1,500 units from the target) always frees. hw117 / hw118 (jar 10:35): kick 1 clears
 the nav module's avoid list, kick 2 hops 500 units along the heading, kick 3 carries; fleet ids on the
 overdue and arrival lines. `game-runs-2.md` 43, `swarm-defence.md` "Overdue reinforcements".
+
+## 29. hw117 + hw118 - read at 11:50: old sector 151 hives / 6 colonies on the rules that gave 44 / 32; no in-place remedy frees a frozen swarm
+
+cdc351a7 (jar 10:35). hw117a (ck2): hives 38 -> 151, humans 50 -> 6, 10 eradicated / 42 conquests. hw118a
+/ b (ck5): hives 191 / 103, humans 3 / 3. Four old-sector samples on one build: 89 / 21, 49 / 33, 44 / 32,
+151 / 6 - the outcome is the opening's, not the build's. The read by fleet id: 46 of 650 overdue swarms
+never moved from their send spot; a cleared avoid list left 12 still and 19 creeping (3 free), a 500-unit
+hop 7 creeping (4 free); the carry frees all, and carried swarms arrive within days. hw119 / hw120 (jar
+11:19): the carry at the second read; the read adds the velocity vector, the facing and the distance to
+the source hive. `game-runs-2.md` 43, `swarm-defence.md` "Overdue reinforcements".
