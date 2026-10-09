@@ -392,3 +392,15 @@ home when the system cannot match it (the user's rule). hw92a / b (ck5): hives 1
 hw93 / hw94: the same build, a second sample. Across the night's old-sector samples on one strategy
 (hw83a-hw91a): hives 53 / 61 / 76 / 64 / 66, humans 25 / 31 / 19 / 18 / 21 - contested, the swarm ahead,
 never decisive; the new sector is the swarm's every time (115-185 hives, 2-7 worlds). `game-runs-2.md` 43.
+
+## 18. hw93 + hw94 - the muster build's second sample, read at 03:10: the old sector trades worlds again; the pass fabricates by the receiver's cheapest row
+
+693f8025 again. hw93a (ck2): hives 38 -> 47, humans 50 -> 29, 33 eradicated / 29 colonies lost; supplies 0
+in stock with 128k FP in the fund, away 49k of 80k made (151 reinforcements in flight, 20k FP, 15.5k a
+month; 82 First Strike fleets on Defend over the swarm's sieges, 11k). Read from the flight: Culann,
+wanting 4,582 FP under a human siege, was fabricated 57 swarms of 52-97 FP in one poll - `fabricateFor`
+built the receiver's cheapest garrison row (a size-1 table's LOW swarm) one a dispatch; 3,498 such swarms
+in the game, 1,665 under 100 FP. hw94a / b (ck5): hives 190 / 148, humans 0 / 4. hw95 / hw96: the same
+build, a third sample (launched 03:09). Fix for hw97 / hw98: `ThreatColonyManager.rowFor` - the swarm
+fabricated for a receiver is the dearest garrison row of any size's table that its deficit, the
+fabricator's idle bank and the fuel pay for. `game-runs-2.md` 43.

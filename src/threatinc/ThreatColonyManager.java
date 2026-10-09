@@ -5943,7 +5943,7 @@ public class ThreatColonyManager {
 					// idle past its own want builds a swarm for the receiver instead
 					donor = fabricatorFor(colonies, receiver, held);
 					if (donor == null) continue;
-					pick = fabricateFor(donor, receiver);
+					pick = fabricateFor(donor, receiver, deficit);
 					if (pick == null) continue;
 					held.put(donor.getId(), held.get(donor.getId()) + pick.getFleetPoints());
 				}
@@ -6066,9 +6066,36 @@ public class ThreatColonyManager {
 		return best;
 	}
 
-	/** Builds the receiver's cheapest swarm at the fabricator, paid from its bank, into its garrison to be sent on. */
-	protected static CampaignFleetAPI fabricateFor(MarketAPI fabricator, MarketAPI receiver) {
-		int[] spec = cheapestRow(receiver);
+	/**
+	 * The swarm fabricateFor builds: the dearest garrison row of any size's
+	 * table whose estimated cost the budget pays - the receiver's deficit, the
+	 * fabricator's bank past its own want, and the fuel to the receiver - else
+	 * the receiver's cheapest row. (2026-10-09, hw93a: Culann, wanting 4,582 FP
+	 * under a human siege, was fabricated 57 swarms of 52-97 FP - its size-1
+	 * table's cheapest row - one a dispatch, and 151 reinforcements were in
+	 * flight at a time, 20k FP paying 15k supplies a month.)
+	 */
+	protected static int[] rowFor(MarketAPI fabricator, MarketAPI receiver, float deficit) {
+		int[] best = cheapestRow(receiver);
+		if (best == null) return null;
+		float budget = Math.min(deficit, bankedFP(fabricator) - ThreatPosture.wantFP(fabricator));
+		float ly = ThreatFuel.ly(fabricator.getStarSystem(), receiver.getStarSystem());
+		float bestCost = swarmCostEstimate(best);
+		for (int size = 2; size <= 8; size++) {
+			for (int[] row : desiredGarrison(size)) {
+				float cost = swarmCostEstimate(row);
+				if (cost <= bestCost || cost > budget) continue;
+				if (!ThreatFuel.canPay(ThreatFuel.passage(cost, ly, false))) continue;
+				best = row;
+				bestCost = cost;
+			}
+		}
+		return best;
+	}
+
+	/** Builds the swarm rowFor sizes to the receiver's deficit at the fabricator, paid from its bank, into its garrison to be sent on. */
+	protected static CampaignFleetAPI fabricateFor(MarketAPI fabricator, MarketAPI receiver, float deficit) {
+		int[] spec = rowFor(fabricator, receiver, deficit);
 		if (spec == null) return null;
 		Random random = new Random();
 		CampaignFleetAPI fleet = buildGarrisonSwarm(fabricator, spec, random);
