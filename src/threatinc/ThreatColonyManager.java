@@ -70,6 +70,8 @@ public class ThreatColonyManager {
 	public static final String REINFORCE_DAY_KEY = "$threatinc_reinforceDay";
 	/** The day an overdue reinforcement was last ordered on again. */
 	protected static final String REINFORCE_KICK_KEY = "$threatinc_reinforceKick";
+	/** How many times an overdue reinforcement has been set on its way. */
+	protected static final String REINFORCE_KICKS_KEY = "$threatinc_reinforceKicks";
 	/** Fleet points a garrison swarm had the moment it was fabricated (under-strength baseline). */
 	public static final String SWARM_SPAWN_FP = "$threatinc_swarmSpawnFP";
 	/** How many swarms of its spec a garrison fleet embodies (absent: one); see growGarrisonFleet. */
@@ -6339,13 +6341,18 @@ public class ThreatColonyManager {
 
 	/**
 	 * A reinforcement out longer than reinforcementOverdueDays (90) is logged
-	 * where it stands - location, distance, order, battle, AI, burn - and
-	 * given its travel order afresh, once a span (2026-10-09, hw101a: 361
-	 * swarms, 56k FP, sat 120+ days in flight, most inside Thule and Beta
-	 * Cormoran, while their targets fell - a 724 FP swarm for Zipacna stood in
-	 * Beta Cormoran from its send on war day 2690 to Zipacna's fall at 3418,
-	 * and the rally found 196 FP to stand against the 520 FP siege). One in a
-	 * battle is read and left to finish it.
+	 * where it stands (whereabouts) and set on its way again, once a span:
+	 * the first time its travel order afresh (blinders on, the 365-day
+	 * GO_TO_LOCATION and the orbit fallback), the second with a fresh fleet AI
+	 * under it, the third and after carried to 1,500 units from its target
+	 * (2026-10-09, hw101a: 361 swarms, 56k FP, sat 120+ days in flight, most
+	 * inside Thule and Beta Cormoran, while their targets fell - a 724 FP swarm
+	 * for Zipacna stood in Beta Cormoran from its send on war day 2690 to
+	 * Zipacna's fall at 3418, and the rally found 196 FP to stand against the
+	 * 520 FP siege; hw105a: swarms inside their target's own system drifted
+	 * away from it at burn 9 with the order active and no battle, 8,777 to
+	 * 16,342 units from Blue in 90 days). One in a battle is read and left to
+	 * finish it.
 	 */
 	protected static void overdue(CampaignFleetAPI fleet, MarketAPI target, SectorEntityToken planet,
 			com.fs.starfarer.api.campaign.rules.MemoryAPI mem) {
@@ -6360,36 +6367,106 @@ public class ThreatColonyManager {
 		float since = mem.contains(REINFORCE_KICK_KEY) ? mem.getFloat(REINFORCE_KICK_KEY) : sent;
 		if (day - since < span) return;
 		mem.set(REINFORCE_KICK_KEY, day);
-		String where;
-		if (fleet.getContainingLocation() == planet.getContainingLocation()) {
-			where = (int) Misc.getDistance(fleet, planet) + " units from " + planet.getName();
-		} else if (fleet.getContainingLocation() instanceof StarSystemAPI) {
-			float jump = Float.MAX_VALUE;
-			for (SectorEntityToken jp : fleet.getContainingLocation().getJumpPoints()) {
-				jump = Math.min(jump, Misc.getDistance(fleet, jp));
-			}
-			where = "in " + fleet.getContainingLocation().getName() + ", "
-					+ (jump < Float.MAX_VALUE ? (int) jump + " units from a jump point" : "no jump point");
-		} else {
-			where = "in hyperspace, " + (int) Misc.getDistanceLY(fleet.getLocationInHyperspace(),
-					planet.getLocationInHyperspace()) + " ly out";
-		}
-		com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI a = fleet.getCurrentAssignment();
-		String order = a == null ? "no order" : a.getAssignment()
-				+ (a.getTarget() != null ? " -> " + a.getTarget().getName() : "")
-				+ (a.getActionText() != null ? " '" + a.getActionText() + "'" : "");
+		int kicks = (mem.contains(REINFORCE_KICKS_KEY) ? mem.getInt(REINFORCE_KICKS_KEY) : 0) + 1;
+		mem.set(REINFORCE_KICKS_KEY, kicks);
 		boolean battle = fleet.getBattle() != null;
+		String where = whereabouts(fleet, planet);
+		String remedy;
+		if (battle) {
+			remedy = "left to its battle";
+		} else if (kicks >= 3 && planet.getContainingLocation() != null) {
+			// carried: its passage was paid at the send, and nobody watches a swarm
+			// that has stood a year in the wrong place
+			com.fs.starfarer.api.campaign.LocationAPI from = fleet.getContainingLocation();
+			com.fs.starfarer.api.campaign.LocationAPI to = planet.getContainingLocation();
+			if (from != to) {
+				if (from != null) from.removeEntity(fleet);
+				to.addEntity(fleet);
+			}
+			org.lwjgl.util.vector.Vector2f at = Misc.getPointAtRadius(planet.getLocation(), 1500f);
+			fleet.setLocation(at.x, at.y);
+			fleet.setVelocity(0f, 0f);
+			remedy = "carried to 1,500 units from " + planet.getName() + " (kick " + kicks + ")";
+		} else if (kicks == 2) {
+			fleet.setAI(Global.getFactory().createFleetAI(fleet));
+			remedy = "fresh AI, ordered on again (kick 2)";
+		} else {
+			remedy = "ordered on again (kick " + kicks + ")";
+		}
 		ThreatIncConfig.log("Reinforcement overdue: " + (int) fleet.getFleetPoints() + " FP -> " + target.getName()
-				+ ", " + (int) (day - sent) + " d out, " + where + ", " + order + ", battle " + battle + ", ai "
-				+ (fleet.getAI() != null) + ", burn " + (int) fleet.getCurrBurnLevel() + ", transition "
-				+ fleet.isInHyperspaceTransition() + ", ships " + fleet.getFleetData().getNumMembers()
-				+ (battle ? " - left to its battle" : " - ordered on again"));
+				+ ", " + (int) (day - sent) + " d out, " + where + ", battle " + battle
+				+ ", ships " + fleet.getFleetData().getNumMembers() + " - " + remedy);
 		if (battle) return;
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		fleet.clearAssignments();
 		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, planet, 365f, "reinforcing the hive");
 		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
+	}
+
+	/**
+	 * Where a fleet stands and what it is doing, for the overdue read: its
+	 * distance from the planet (same location), from the nearest jump point
+	 * (another system) or in light-years (hyperspace); its position from the
+	 * centre; its order, heading and speed; whether its AI is fleeing and what
+	 * it targets; the terrain it is in; the nearest hostile armed fleet.
+	 */
+	protected static String whereabouts(CampaignFleetAPI fleet, SectorEntityToken planet) {
+		StringBuilder b = new StringBuilder();
+		com.fs.starfarer.api.campaign.LocationAPI loc = fleet.getContainingLocation();
+		if (loc == planet.getContainingLocation()) {
+			b.append((int) Misc.getDistance(fleet, planet)).append(" units from ").append(planet.getName());
+		} else if (loc instanceof StarSystemAPI) {
+			float jump = Float.MAX_VALUE;
+			for (SectorEntityToken jp : loc.getJumpPoints()) jump = Math.min(jump, Misc.getDistance(fleet, jp));
+			b.append("in ").append(loc.getName()).append(", ")
+					.append(jump < Float.MAX_VALUE ? (int) jump + " units from a jump point" : "no jump point");
+		} else {
+			b.append("in hyperspace, ").append((int) Misc.getDistanceLY(fleet.getLocationInHyperspace(),
+					planet.getLocationInHyperspace())).append(" ly out");
+		}
+		b.append(", at ").append((int) fleet.getLocation().x).append("/").append((int) fleet.getLocation().y)
+				.append(" (").append((int) fleet.getLocation().length()).append(" from the centre)");
+		com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI a = fleet.getCurrentAssignment();
+		b.append(", ").append(a == null ? "no order" : a.getAssignment()
+				+ (a.getTarget() != null ? " -> " + a.getTarget().getName() : "")
+				+ (a.getActionText() != null ? " '" + a.getActionText() + "'" : ""));
+		org.lwjgl.util.vector.Vector2f dest = fleet.getMoveDestination();
+		b.append(", heading ").append(dest == null ? "nowhere"
+				: (int) Misc.getDistance(fleet.getLocation(), dest) + " units to " + (int) dest.x + "/" + (int) dest.y);
+		b.append(", speed ").append((int) fleet.getVelocity().length()).append(", burn ").append((int) fleet.getCurrBurnLevel());
+		com.fs.starfarer.api.campaign.ai.CampaignFleetAIAPI ai = fleet.getAI();
+		if (ai instanceof com.fs.starfarer.api.campaign.ai.ModularFleetAIAPI) {
+			com.fs.starfarer.api.campaign.ai.TacticalModulePlugin t =
+					((com.fs.starfarer.api.campaign.ai.ModularFleetAIAPI) ai).getTacticalModule();
+			b.append(", fleeing ").append(t != null && t.isFleeing());
+			b.append(", tactical target ").append(t != null && t.getTarget() != null ? t.getTarget().getName() : "none");
+		} else {
+			b.append(", ai ").append(ai == null ? "none" : ai.getClass().getSimpleName());
+		}
+		b.append(", transition ").append(fleet.isInHyperspaceTransition());
+		if (loc != null) {
+			StringBuilder terrain = new StringBuilder();
+			for (com.fs.starfarer.api.campaign.CampaignTerrainAPI t : loc.getTerrainCopy()) {
+				if (t.getPlugin() == null || !t.getPlugin().containsEntity(fleet)) continue;
+				terrain.append(terrain.length() == 0 ? "" : "+").append(t.getPlugin().getTerrainName());
+			}
+			b.append(", terrain ").append(terrain.length() == 0 ? "none" : terrain.toString());
+			CampaignFleetAPI foe = null;
+			float best = Float.MAX_VALUE;
+			for (CampaignFleetAPI f : loc.getFleets()) {
+				if (f == null || f == fleet || !f.isAlive() || f.getFaction() == null || f.getFleetPoints() <= 0f) continue;
+				if (!f.getFaction().isHostileTo(fleet.getFaction())) continue;
+				float d = Misc.getDistance(fleet, f);
+				if (d < best) {
+					best = d;
+					foe = f;
+				}
+			}
+			b.append(", nearest hostile ").append(foe == null ? "none"
+					: (int) foe.getFleetPoints() + " FP " + foe.getFaction().getId() + " at " + (int) best + " units");
+		}
+		return b.toString();
 	}
 
 	/**
