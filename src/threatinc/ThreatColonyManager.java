@@ -6474,10 +6474,12 @@ public class ThreatColonyManager {
 
 	/**
 	 * A reinforcement out longer than reinforcementOverdueDays (90) is logged
-	 * where it stands (whereabouts) and set on its way again, once a span:
-	 * the first time its travel order afresh (blinders on, the 365-day
-	 * GO_TO_LOCATION and the orbit fallback), the second and after (since
-	 * hw119; the count restarts at every send) carried to 1,500 units from its target
+	 * where it stands (whereabouts) and given its travel order afresh, once a
+	 * span (blinders on, the 365-day GO_TO_LOCATION and the orbit fallback).
+	 * From hw119 to hw131 the second read carried it to 1,500 units from its
+	 * target; removed (the user, 2026-10-09) once the belt guard
+	 * (ThreatFleetComposer.beltGuard) fixed the freeze behind it - overdue
+	 * reads 1 / 3 / 0 a game, no carry. The read stays as the alarm
 	 * (2026-10-09, hw101a: 361 swarms, 56k FP, sat 120+ days in flight, most
 	 * inside Thule and Beta Cormoran, while their targets fell - a 724 FP swarm
 	 * for Zipacna stood in Beta Cormoran from its send on war day 2690 to
@@ -6507,22 +6509,6 @@ public class ThreatColonyManager {
 		String remedy;
 		if (battle) {
 			remedy = "left to its battle";
-		} else if (kicks >= 2 && planet.getContainingLocation() != null) {
-			// carried at the second read (hw119/hw120): the in-place remedies -
-			// a fresh order, a fresh AI, a zeroed velocity, a one-unit nudge, a
-			// cleared avoid list, a 500-unit hop - freed at most half (hw105-
-			// hw118); its passage was paid at the send, and the swarm is
-			// wanted at its target, not where it was built
-			com.fs.starfarer.api.campaign.LocationAPI from = fleet.getContainingLocation();
-			com.fs.starfarer.api.campaign.LocationAPI to = planet.getContainingLocation();
-			if (from != to) {
-				if (from != null) from.removeEntity(fleet);
-				to.addEntity(fleet);
-			}
-			org.lwjgl.util.vector.Vector2f at = Misc.getPointAtRadius(planet.getLocation(), 1500f);
-			fleet.setLocation(at.x, at.y);
-			fleet.setVelocity(0f, 0f);
-			remedy = "carried to 1,500 units from " + planet.getName() + " (kick " + kicks + ")";
 		} else {
 			remedy = "ordered on again (kick " + kicks + ")";
 		}

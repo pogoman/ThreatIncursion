@@ -254,6 +254,8 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   integrates the fleet's position. Neither a reversed facing (31 / 13 / 8 of the frozen, 8 / 14 / 6 of the
   free) nor a small source body (radius under 60 behind 27 / 13 / 6, 150+ behind 15 / 6 / 4) marks them.
   The carry stays (the user, 2026-10-09); the next step is the decompile of `CampaignFleet.advance`.
+  **Removed (the user, 2026-10-09 17:00)** once the belt guard fixed the cause (below): the overdue read
+  only re-orders and logs now.
 
   **The engine, decompiled (2026-10-09, CFR 0.152 over `starfarer_obf.jar`; sources in that session's
   scratchpad `dec\`).** What moves a campaign fleet, by symbol:
