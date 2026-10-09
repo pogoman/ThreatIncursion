@@ -63,23 +63,6 @@ public class ThreatFleetComposer {
 	// entry points
 	// ------------------------------------------------------------------
 
-	/**
-	 * Vanilla's asteroid belts and fields knock a fleet off course (a brief
-	 * reversed velocity, AsteroidBeltTerrainPlugin.applyEffect ->
-	 * AsteroidImpact) unless it is slow-moving, as often as its impact timeout
-	 * expires - and a big fleet at full burn inside one never gets out: 2026-10-09,
-	 * hw107/hw108, 1,240 of 1,497 full-speed overdue reads stood in a belt or
-	 * ring, 214 swarms at the same unit of position 90 days apart with the order
-	 * active, in every run 6-18% of reinforcements never arriving. The plugin
-	 * skips a fleet whose memory holds its timeout key, so every fleet the mod
-	 * builds or orders, both sides, carries it for good: the belt is terrain to
-	 * cross, not a trap. Vanilla's own patrols are left to vanilla.
-	 */
-	public static void beltSafe(CampaignFleetAPI fleet) {
-		if (fleet == null) return;
-		fleet.getMemoryWithoutUpdate().set("$asteroidImpactTimeout", true, 1000000f);
-	}
-
 	/** A vanilla-sized Threat fleet, composed as an archetype picked for the job. */
 	public static CampaignFleetAPI create(String job, int fabricators,
 			FabricatorEscortStrength escorts, Random random) {
@@ -87,7 +70,6 @@ public class ThreatFleetComposer {
 		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
 				fabricators, 0, 0, escorts, random);
 		if (fleet == null) return null;
-		beltSafe(fleet);
 		String archetype = pickArchetype(job, random);
 		if (archetype != null) recompose(fleet, archetype, random);
 		return fleet;
@@ -105,7 +87,6 @@ public class ThreatFleetComposer {
 		if (random == null) random = new Random();
 		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
 				new ThreatFleetCreationParams(), random);
-		beltSafe(fleet);
 		String archetype = pickArchetype(JOB_SCOUT, random);
 		// the scout archetype is the default only while archetypes are on: loaded
 		// once, the table outlived the knob being turned off mid-session

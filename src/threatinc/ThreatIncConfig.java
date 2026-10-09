@@ -212,6 +212,8 @@ public class ThreatIncConfig {
 	public static float systemDefenceMargin() { return f("threatinc_systemDefenceMargin"); }
 	/** Whether a system rallies to a world only when the swarms there, those bound for it and its spare together outweigh the force over it; short of that none is sent (ThreatPosture.rally). */
 	public static boolean systemDefenceOnlyIfEnough() { return b("threatinc_systemDefenceOnlyIfEnough", true); }
+	/** Whether a world its own system cannot defend draws the spare swarms of the hives in fuel reach, nearest first, sent only if all of it together outweighs the force (ThreatPosture.regionalPool). */
+	public static boolean regionalRelief() { return b("threatinc_regionalRelief", true); }
 	/** Days a reinforcement may be in flight before it is logged where it stands and ordered on again (ThreatColonyManager.overdue); 0 = never. */
 	public static float reinforcementOverdueDays() { return f("threatinc_reinforcementOverdueDays"); }
 	/** Whether the humans read a seen strike as bound for its system, not for its worlds: guards, help and mobilisation key off the system (ThreatFrontlines.boundFor). */

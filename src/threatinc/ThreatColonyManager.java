@@ -6277,7 +6277,6 @@ public class ThreatColonyManager {
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(pick);
-		ThreatFleetComposer.beltSafe(pick);
 		pulse(pick);
 
 		pick.clearAssignments();
@@ -6318,7 +6317,6 @@ public class ThreatColonyManager {
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(fleet);
-		ThreatFleetComposer.beltSafe(fleet);
 
 		fleet.clearAssignments();
 		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, planet, 365f,
@@ -6446,7 +6444,6 @@ public class ThreatColonyManager {
 				+ ", ships " + fleet.getFleetData().getNumMembers() + " - " + remedy);
 		if (battle) return;
 		pulse(fleet);
-		ThreatFleetComposer.beltSafe(fleet);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		fleet.clearAssignments();
@@ -6661,7 +6658,6 @@ public class ThreatColonyManager {
 				mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags
 						.MEMORY_KEY_MAKE_AGGRESSIVE);
 
-				ThreatFleetComposer.beltSafe(fleet);
 				// already on the way home: don't spam assignments every frame
 				com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI curr =
 						fleet.getCurrentAssignment();

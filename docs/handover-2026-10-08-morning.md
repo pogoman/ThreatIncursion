@@ -530,3 +530,12 @@ never moved from their send spot; a cleared avoid list left 12 still and 19 cree
 hop 7 creeping (4 free); the carry frees all, and carried swarms arrive within days. hw119 / hw120 (jar
 11:19): the carry at the second read; the read adds the velocity vector, the facing and the distance to
 the source hive. `game-runs-2.md` 43, `swarm-defence.md` "Overdue reinforcements".
+
+## 30. hw119 + hw120 - read at 12:50: old sector 65 / 30, frozen swarms a dead stop; the user's answers
+
+a1ef95c4 (jar 11:19). hw119a (ck2): hives 38 -> 65, humans 50 -> 30 (+10 forward bases), 48 eradicated / 17
+conquests. hw120a / b (ck5): hives 203 / 160, humans 2 / 2. Old sector on one build: 89 / 49 / 44 / 151 / 65
+hives. Carried 177 / 154 / 80. Every frozen pair (106) holds its velocity vector to the unit and its facing in
+101: a dead stop at full burn. The user (afternoon): regional relief (`ThreatPosture.regionalPool`, built for
+hw121), counterGap kept, the carry kept and the cause hunted, beltSafe removed, structures stay before
+foundings, no StarLord heal. `game-runs-2.md` 43, `facts.md` Decisions.
