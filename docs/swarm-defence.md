@@ -293,3 +293,12 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   reads `none` on every swarm, frozen or free (not the AI's key - no use). hw124/hw125: the pulse logs the
   frame times it is given (`live` calls with a positive time, their sum and largest) and the `step` between
   the last two live calls.
+  Read (hw124/hw125, 15:20): frozen swarms are given normal frames (451 live calls and 902 s a 90-day
+  span, largest 2.000 s; moving swarms 490-580 calls, 990-1,030 s), but their `step` is 6.00-6.03 s of
+  their velocity (8 of 8; 58a8c: pulse -11700/6363, velocity 44/174, step 1,080, read -11432/7409) - the
+  read's offset again. A frozen swarm flips between two points 6 s of travel apart on alternate calls, and
+  reads the same at each read; its facing sometimes turns 180 degrees between reads. Hypothesis: it is
+  listed in two locations, each location's loop sets the containing location to itself before advancing
+  it, and the AI steers for a different destination on each. hw126/hw127: the read counts every location
+  that lists the fleet (`listed in N (...)`), and the pulse keeps its last six live calls' containing
+  location and position (`ring [...]`).

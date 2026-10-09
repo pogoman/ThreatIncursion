@@ -32,3 +32,23 @@ check() {
     END { for my $k (qw(frozen moving)) { next unless $n{$k}; printf "    pulse '"$TAG$g"' %s pairs %d: live calls a span %.0f, seconds given a span %.0f, step %.0f units, max frame %.3f s\n", $k, $n{$k}, $L{$k}/$n{$k}, $S{$k}/$n{$k}, $T{$k}/$n{$k}, $M{$k} } }' "$F"
   return 0
 }
+# hw126+: how many locations list each overdue fleet (`listed in N (...)`), frozen vs moving pairs, and the
+# pulse ring's distinct containing locations. Flags `listed2` on the first fleet listed in two or more
+# locations (the hypothesis for the two-point flip) - a finding, not a fault: read it, then ignore it.
+eval "$(declare -f check | sed '1s/^check ()/check_frames ()/')"
+check() {
+  local g=$1 F=$2
+  check_frames "$g" "$F"
+  local out
+  out=$(perl -ne 'next unless index($_,"Reinforcement overdue:")==0; my ($id)=/ id (\w+),/; my ($x,$y)=/ at (-?\d+)\/(-?\d+) \(/;
+    my ($ls)=/listed in (\d+)/; next unless $id && defined $ls; $n++; $two++ if $ls>=2; $zero++ if $ls==0;
+    my ($ring)=/ring \[([^\]]*)\]/; my %d; if (defined $ring) { $d{(split / -?\d+\//,$_)[0]}=1 for split /; /,$ring; $rl++ if keys(%d)>1; }
+    if (my $p=$l{$id}) { my $k=(abs($x-$p->[0])<1 && abs($y-$p->[1])<1)?"frozen":"moving"; $pn{$k}++; $p2{$k}++ if $ls>=2; $rr{$k}++ if keys(%d)>1; }
+    $l{$id}=[$x,$y];
+    END { printf "%d %d %d %d %d %d %d %d %d %d\n", $n, $two, $zero, $rl, $pn{frozen}//0, $p2{frozen}//0, $rr{frozen}//0, $pn{moving}//0, $p2{moving}//0, $rr{moving}//0 }' "$F")
+  set -- $out
+  echo "    listed $TAG$g: reads $1 - in 2+ locations $2, in none $3, ring with 2+ locations $4; frozen pairs $5 (2+ listed $6, ring 2+ $7), moving $8 (2+ listed $9, ring 2+ ${10})"
+  [ "${2:-0}" -gt 0 ] && flag $g listed2 "$(grep -m1 'listed in [2-9]' "$F" | grep -o 'id [0-9a-f]*\|listed in [0-9]* ([^)]*)\|ring \[[^]]*\]' | tr '\n' ' ' | cut -c1-300)"
+  [ "${4:-0}" -gt 0 ] && flag $g listed2 "ring spans two locations: $(perl -ne 'next unless /(id \w+).*(ring \[([^\]]*)\])/; my ($i,$r,$in)=($1,$2,$3); my %d; $d{(split / -?\d+\//,$_)[0]}=1 for split /; /,$in; if (keys(%d)>1) { print "$i $r"; exit }' "$F" | cut -c1-300)"
+  return 0
+}

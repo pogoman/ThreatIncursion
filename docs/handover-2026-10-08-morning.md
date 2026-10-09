@@ -560,3 +560,11 @@ hives, humans 2 / 1. Old sector with regional relief: 102 / 97 / 152 / 78 hives.
 swarm is in the engine's list and its pulse runs (450 frames a span); it stands at one fixed point inside its own
 advance, read 6.0 s of its velocity further on - the movement module's stored location never integrates.
 hw124 / hw125 (jar 14:32): the pulse logs the frame times it is given. `swarm-defence.md` "The engine, decompiled".
+
+## 33. hw124 + hw125 - read at 15:20: old sector 111 / 24 with relief; a frozen swarm flips between two points
+
+063ff6f7 (jar 14:32). hw125a (ck2): hives 38 -> 111, humans 24 + 6 forward bases, 36 eradicated. hw124a / b
+(ck5): 230 / 181 hives, humans 2 / 2. Old sector with regional relief: 102 / 97 / 152 / 78 / 111 hives. The
+frame read: frozen swarms get normal 2 s frames, but their last two live calls are 6.0 s of velocity apart -
+they flip between two points every call. Next: count the locations that list the fleet, keep the last six
+calls' location and position. `swarm-defence.md` "The engine, decompiled".
