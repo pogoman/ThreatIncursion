@@ -1,0 +1,339 @@
+<title>Overnight Batches hw60–hw114</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Saira+Semi+Condensed:wght@500;700&display=swap">
+<style>
+/* Layout: a war-room ledger. One summary table of all 24 games, then one game at a time in depth. */
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #14171c; --ink-2: #4a5160; --ink-3: #7a8191;
+  --rule: #dfe2e8; --rule-2: #eceef2; --hover: #eef2f8;
+  --threat: #eb6834; --human: #2a78d6; --loss: #d03b3b; --good: #2a78d6;
+  --chip: #e8ecf3;
+  --f-display: "Saira Semi Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121418; --panel: #1a1d22; --ink: #eef0f4; --ink-2: #b4bac6; --ink-3: #868d9b;
+  --rule: #2c3038; --rule-2: #23272e; --hover: #232a35;
+  --threat: #d95926; --human: #3987e5; --loss: #e66767; --good: #3987e5; --chip: #262b34; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121418; --panel: #1a1d22; --ink: #eef0f4; --ink-2: #b4bac6; --ink-3: #868d9b;
+  --rule: #2c3038; --rule-2: #23272e; --hover: #232a35;
+  --threat: #d95926; --human: #3987e5; --loss: #e66767; --good: #3987e5; --chip: #262b34; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-body); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 64px; display: grid; gap: 36px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: .01em; }
+h1 { font-size: 2.1rem; line-height: 1.1; }
+h2 { font-size: 1.45rem; }
+h3 { font-size: 1.05rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+p { margin: 0; max-width: 72ch; }
+.eyebrow { font: 500 .75rem var(--f-mono); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
+header { display: grid; gap: 10px; }
+.lede { color: var(--ink-2); }
+section { display: grid; gap: 14px; min-width: 0; }
+.num, td.n, th.n { font-variant-numeric: tabular-nums; text-align: right; }
+.scroll { overflow-x: auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: .82rem; }
+th, td { padding: 6px 9px; border-bottom: 1px solid var(--rule-2); white-space: nowrap; vertical-align: middle; }
+th { font: 500 .7rem var(--f-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); text-align: left; background: var(--panel); position: sticky; top: 0; }
+td { font-family: var(--f-mono); font-size: .8rem; }
+td.l { font-family: var(--f-body); }
+tr.batch td { background: var(--rule-2); font: 600 .78rem var(--f-body); color: var(--ink-2); white-space: normal; }
+tr.batch td b { font-family: var(--f-mono); color: var(--ink); margin-right: 8px; }
+tbody tr.run { cursor: pointer; }
+tbody tr.run:hover, tbody tr.run.sel { background: var(--hover); }
+tbody tr.run.sel td:first-child { box-shadow: inset 3px 0 0 var(--human); }
+tr.total td { font-weight: 600; border-top: 1px solid var(--rule); }
+.t { color: var(--threat); } .h { color: var(--human); } .bad { color: var(--loss); } .mute { color: var(--ink-3); }
+.key { display: flex; flex-wrap: wrap; gap: 14px; font-size: .78rem; color: var(--ink-2); }
+.key span::before { content: ""; display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; background: currentColor; }
+.key .t, .key .h { color: var(--ink-2); }
+.key .t::before { background: var(--threat); } .key .h::before { background: var(--human); }
+.picker { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.picker .grp { display: flex; gap: 4px; align-items: center; }
+.picker .grp em { font: 500 .72rem var(--f-mono); color: var(--ink-3); font-style: normal; margin-right: 2px; }
+.picker button { font: 500 .78rem var(--f-mono); border: 1px solid var(--rule); background: var(--panel); color: var(--ink-2); border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+.picker button:hover { border-color: var(--ink-3); }
+.picker button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+button:focus-visible, tr:focus-visible { outline: 2px solid var(--human); outline-offset: 2px; }
+.runhead { display: grid; gap: 6px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.stat { background: var(--panel); padding: 10px 12px; display: grid; gap: 2px; }
+.stat b { font: 600 1.35rem var(--f-display); font-variant-numeric: tabular-nums; }
+.stat span { font-size: .72rem; color: var(--ink-3); }
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 14px; }
+.chart { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 12px 6px; display: grid; gap: 6px; min-width: 0; position: relative; }
+.chart h4 { margin: 0; font: 600 .86rem var(--f-body); }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { font: 10px var(--f-mono); fill: var(--ink-3); }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font: .74rem/1.4 var(--f-mono); padding: 6px 8px; border-radius: 4px; white-space: nowrap; z-index: 2; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 14px; align-items: start; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; }
+.timeline { display: grid; gap: 0; max-height: 420px; overflow-y: auto; font-size: .8rem; }
+.timeline div { display: grid; grid-template-columns: 3.4em 1fr auto; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--rule-2); }
+.timeline .m { font-family: var(--f-mono); color: var(--ink-3); }
+.fac { font: 500 .7rem var(--f-mono); background: var(--chip); color: var(--ink-2); padding: 1px 6px; border-radius: 3px; }
+.yearbars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; }
+.yearbars div { display: grid; gap: 3px; justify-items: center; font: .72rem var(--f-mono); color: var(--ink-3); }
+.yearbars i { display: block; width: 100%; max-width: 34px; background: var(--human); border-radius: 3px 3px 0 0; min-height: 1px; }
+.yearbars b { color: var(--ink); font-weight: 500; }
+details { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; }
+details summary { padding: 10px 14px; cursor: pointer; font-weight: 600; }
+details .scroll { border: 0; border-top: 1px solid var(--rule); border-radius: 0; max-height: 560px; }
+.note { font-size: .78rem; color: var(--ink-3); max-width: 90ch; }
+.wrap, section, .panel, .chart, header, .runhead { grid-template-columns: minmax(0, 1fr); }
+.key .bad { color: var(--ink-2); } .key .bad::before { background: var(--loss); }
+@media (max-width: 520px) { h1 { font-size: 1.6rem; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">The Abyssal War · 7–9 Oct 2026 · 42 games from checkpoints ck2, ck3 and ck5</div>
+  <h1>Overnight batches hw60–hw114</h1>
+  <p class="lede">Fifty-five batches (hw68–hw114 ran the day after, hw83–hw114 through the night and into the morning). hw60–hw69, hw71, hw73, hw75, hw77, hw79, hw81, hw83, hw85, hw87, hw89, hw91, hw93, hw95, hw97, hw99, hw101, hw103, hw105, hw107, hw109, hw111 and hw113 started from the pre-war save ck2 (the war opens on day 2,231); hw70 from ck3, a different sector (the war opens on day 2,133); hw72, hw74, hw76, hw78, hw80, hw82, hw84, hw86, hw88, hw90, hw92, hw94, hw96, hw98, hw100, hw102, hw104, hw106, hw108, hw112 and hw114 from ck5, that sector remade on the chest fix (the war opens on day 2,425). hw71 and hw72 ran in one batch, both sectors at once, as did hw73/hw74, hw75/hw76, hw77/hw78, hw79/hw80, hw81/hw82, hw83/hw84 (hw84a never loaded), hw85/hw86, hw87/hw88, hw89/hw90, hw91/hw92, hw93/hw94, hw95/hw96, hw97/hw98, hw99/hw100, hw101/hw102, hw103/hw104, hw105/hw106, hw107/hw108, hw111/hw112 and hw113/hw114 (hw109/hw110 were aborted at month one). Each runs about 75 months and each batch tested one change. Months below count from the war's opening.</p>
+</header>
+
+<section>
+  <h2>All games</h2>
+  <div class="key"><span class="t">Threat</span><span class="h">Humans (all factions)</span><span class="bad">Losses</span></div>
+  <div class="scroll"><table id="overview"></table></div>
+  <p class="note">Worlds taken: human or pirate colonies lost to a Threat ground assault. Human worlds: the 50 non-pirate colonies at the start. Yards and free hulls are summed over the human factions at the last month. Click a row to open it below.</p>
+</section>
+
+<section id="detail">
+  <h2>One game in depth</h2>
+  <div class="picker" id="picker"></div>
+  <div class="runhead"><div class="eyebrow" id="runEyebrow"></div><h3 id="runTitle" style="text-transform:none;letter-spacing:0;color:var(--ink);font-size:1.25rem"></h3></div>
+  <div class="stats" id="stats"></div>
+  <div class="charts" id="charts"></div>
+  <div class="two">
+    <div class="panel"><h3>Worlds taken by the Threat</h3><div class="timeline" id="timeline"></div></div>
+    <div class="panel"><h3>Hives eradicated by war year</h3><div class="yearbars" id="yearbars"></div>
+      <h3 style="margin-top:8px">Threat shortages</h3><div class="scroll" style="border:0"><table id="tshort"></table></div></div>
+  </div>
+  <div class="panel" style="padding:0"><div style="padding:12px 14px 0"><h3>Human factions</h3></div><div class="scroll" style="border:0"><table id="factions"></table></div></div>
+  <div class="panel" style="padding:0"><div style="padding:12px 14px 0"><h3>Shipyard output by faction, FP a month</h3></div><div class="scroll" style="border:0"><table id="yards"></table></div></div>
+  <div class="panel" style="padding:0"><div style="padding:12px 14px 0"><h3>Human shortages</h3></div><div class="scroll" style="border:0"><table id="hshort"></table></div>
+    <p class="note" style="padding:0 14px 12px">Cannot pay: a forward base not founded because no base holds the 1,500 supplies and 800 fuel. No hulls: not founded because free hulls do not cover its guard. Yards idle: months the yards stood because supplies could not keep the hulls. Relief held: a relief not sent because it could not win. STARVE: council turns to a starve strategy.</p></div>
+  <details><summary>Month by month</summary><div class="scroll"><table id="monthly"></table></div></details>
+</section>
+</div>
+
+<script>
+/*DATA*/
+const FAC = ["hegemony","persean","independent","tritachyon","luddic_church","luddic_path","sindrian_diktat"];
+const FN = {hegemony:"Hegemony",persean:"Persean League",independent:"Independent",tritachyon:"Tri-Tachyon",luddic_church:"Luddic Church",luddic_path:"Luddic Path",sindrian_diktat:"Sindrian Diktat",pirates:"Pirates"};
+const START = {hegemony:12,persean:12,independent:12,tritachyon:5,luddic_church:4,luddic_path:2,sindrian_diktat:3,pirates:9};
+const BATCH = {
+  hw60:"Defence in depth and defeat in detail: exposure-scaled garrisons, one-faction campaigns, the front never stripped, corridor patrols",
+  hw61:"Forges paid first, fuel plants converted as the surplus spares, strike sizing learns both ways, station-only strip rule",
+  hw62:"Reserve exempts standing commitments, campaign focus needs a prong supplies can pay, hull-aid donor test fixed",
+  hw63:"The chest: a full strike fund feeds the fleets before expansion; hull convoys sail by the unit",
+  hw64:"The chest on any known world, not only a weak one",
+  hw65:"Humans found forward bases only while free hulls cover the guard",
+  hw66:"Humans send relief only if it can win",
+  hw67:"Same build as hw66, a confirmation batch",
+  hw68:"The counter-stroke: a human landing on a hive draws a Threat strike at the landing faction at once",
+  hw69:"Sustenance first: hive worlds' break-even paid before fleets away and the home navy; counter-stroke off",
+  hw70:"New sector (ck3, AmaruDugas): same build as hw69 with the counter-stroke deleted; the pre-war ran under the chest rule and the swarm opened at 13 hives, not 37",
+  hw71:"Old sector (ck2) on the chest fix: a full chest must be fieldable - the fund covers the cheapest prong the fuel in stock can sail",
+  hw72:"New sector remade on the chest fix (ck5): the swarm opens at 32 hives, not 13",
+  hw73:"Old sector (ck2) with yards at home: a faction short of hulls builds a Heavy Industry at its largest core world, not only at a forward base",
+  hw74:"New sector (ck5) with yards at home, same build as hw73",
+  hw75:"Old sector (ck2) with coalition relief on top of yards at home: the owner and every non-hostile war faction relieve an invaded world together when none is enough alone",
+  hw76:"New sector (ck5) with coalition relief, same build as hw75",
+  hw77:"Old sector (ck2): the navy fits the spare - swarms above the floor recycled into the bank until the spare covers a held send, no transfer on a short flow to a world nobody attacks",
+  hw78:"New sector (ck5) with the navy fitting the spare, same build as hw77",
+  hw79:"Old sector (ck2): the builder respects the fit - the nexus builds only to the fit's floor for a month after the fit last recycled (hw77a had refabricated what the fit recycled)",
+  hw80:"New sector (ck5), same build as hw79",
+  hw81:"Old sector (ck2): the fit's floor is the colony's want - the pressure pass, the nexus and the launch gates read one want while the fit is active",
+  hw82:"New sector (ck5), same build as hw81",
+  hw83:"Old sector (ck2): nothing fabricated for a quiet hive while the fit is active, and the fit skips a hive just reinforced",
+  hw84:"New sector (ck5), same build as hw83; its game fataled at war day 4704 on vanilla's academy fleet creator once two human worlds were left",
+  hw85:"Old sector (ck2): hw83's build plus a guard for vanilla's academy fleet creator (the fatal that ended hw84b)",
+  hw86:"New sector (ck5), same build as hw85",
+  hw87:"Old sector (ck2): the pressure pass under the rally's enough rule, gated on what the whole sector could gather - it barely bit",
+  hw88:"New sector (ck5), same build as hw87",
+  hw89:"Old sector (ck2): the gate on what the pass would actually send this poll - the feed to attacked hives down a third; hunts found to meet one swarm at a time",
+  hw90:"New sector (ck5), same build as hw89",
+  hw91:"Old sector (ck2): the garrison fights as one - ThreatGarrisonMuster joins the hive's other swarms and the reinforcements bound for it to a garrison swarm's battle near its world",
+  hw92:"New sector (ck5), same build as hw91",
+  hw93:"Old sector (ck2): the muster build again, a second sample",
+  hw94:"New sector (ck5), same build as hw93",
+  hw95:"Old sector (ck2): the muster build, a third sample",
+  hw96:"New sector (ck5), same build as hw95",
+  hw97:"Old sector (ck2): rowFor - the swarm fabricated for a receiver is sized to its deficit (the cheapest row was sent one per dispatch)",
+  hw98:"New sector (ck5), same build as hw97",
+  hw99:"Old sector (ck2): counterGap - a swarm front is fed to the counter-attack line, not the hold line",
+  hw100:"New sector (ck5), same build as hw99",
+  hw101:"Old sector (ck2): counterGap complete - the Defend fleet bombards first on a front short of the counter line",
+  hw102:"New sector (ck5), same build as hw101",
+  hw103:"Old sector (ck2): the complete build, a second sample",
+  hw104:"New sector (ck5), same build as hw103",
+  hw105:"Old sector (ck2): a reinforcement out 90+ days is logged where it stands and ordered on again",
+  hw106:"New sector (ck5), same build as hw105",
+  hw107:"Old sector (ck2): the whereabouts read and the remedy ladder (re-order, fresh AI, carried to 1,500 units) - the asteroid-belt cause found",
+  hw108:"New sector (ck5), same build as hw107",
+  hw111:"Old sector (ck2): every mod fleet immune to asteroid-belt impacts (beltSafe) and the movement read - refuted: the belt is where frozen swarms were built",
+  hw112:"New sector (ck5), same build as hw111",
+  hw113:"Old sector (ck2): the frame pulse on every reinforcement swarm - entity scripts run only in the player's location, so it said nothing",
+  hw114:"New sector (ck5), same build as hw113"
+};
+const fmt = v => v == null ? "–" : Math.round(v).toLocaleString("en-GB");
+const k = v => v == null ? "–" : (Math.abs(v) >= 10000 ? Math.round(v/1000) + "k" : (Math.abs(v) >= 1000 ? (v/1000).toFixed(1) + "k" : String(Math.round(v))));
+const last = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return a[i]; return null; };
+const lastIdx = a => { for (let i = a.length - 1; i >= 0; i--) if (a[i] != null) return i; return -1; };
+const sum = a => a.reduce((s, x) => s + (x || 0), 0);
+const mean = a => { const v = a.filter(x => x != null); return v.length ? sum(v) / v.length : null; };
+function sumF(r, key) { return Array.from({length: r.n}, (_, i) => { let s = null; for (const f of FAC) { const v = r.f[f][key][i]; if (v != null) s = (s || 0) + v; } return s; }); }
+function humanWorlds(r) { return Array.from({length: r.n}, (_, i) => FAC.reduce((s, f) => s + r.col[f][i], 0)); }
+function facTotal(r, f, key) { return sum(r.f[f]["m_" + key]); }
+function allFac(r, key) { return FAC.reduce((s, f) => s + facTotal(r, f, key), 0); }
+function endAt(a) { return last(a); }
+
+// derived per run
+for (const r of RUNS) {
+  r.batch = r.tag.slice(0, 4);
+  r.yards = sumF(r, "yards"); r.hulls = sumF(r, "hulls"); r.free = sumF(r, "free");
+  r.hw = humanWorlds(r);
+  const h = r.t.hives; let pk = 0; h.forEach((v, i) => { if (v != null && v > (h[pk] ?? -1)) pk = i; });
+  r.peak = h[pk]; r.peakM = pk; r.h0 = h.find(v => v != null); r.hEnd = last(h);
+}
+
+// ---------- overview
+function spark(vals, color, w = 90, hgt = 22, max) {
+  const v = vals.map(x => x ?? null); const mx = max ?? Math.max(...v.filter(x => x != null), 1);
+  let d = "", pen = false;
+  v.forEach((y, i) => { if (y == null) { pen = false; return; } const X = (i / Math.max(v.length - 1, 1)) * w, Y = hgt - 2 - (y / mx) * (hgt - 4); d += (pen ? "L" : "M") + X.toFixed(1) + "," + Y.toFixed(1); pen = true; });
+  return `<svg width="${w}" height="${hgt}" viewBox="0 0 ${w} ${hgt}" aria-hidden="true"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+}
+function overview() {
+  const maxH = Math.max(...RUNS.map(r => r.peak));
+  let html = `<thead><tr><th>Game</th><th class="n">Months</th><th>Threat hives</th><th class="n">Start</th><th class="n">Peak (m)</th><th class="n">End</th><th class="n">Hives eradicated</th><th class="n">Worlds taken</th><th class="n">Human worlds left</th><th class="n">Threat fleets end</th><th class="n">Threat FP/mo end</th><th class="n">Human yards FP/mo end</th><th class="n">Human free hulls end</th><th class="n">Bases founded / lost</th><th class="n">Relief fleets lost</th></tr></thead><tbody>`;
+  let cur = "";
+  for (const r of RUNS) {
+    if (r.batch !== cur) { cur = r.batch; html += `<tr class="batch"><td colspan="15"><b>${cur}</b>${BATCH[cur]}</td></tr>`; }
+    const lostTot = r.lost.length;
+    html += `<tr class="run" tabindex="0" data-tag="${r.tag}"><td>${r.tag}</td><td class="n">${r.n}</td><td>${spark(r.t.hives, "var(--threat)", 90, 22, maxH)}</td><td class="n">${r.h0}</td><td class="n">${r.peak} <span class="mute">(${r.peakM})</span></td><td class="n t">${r.hEnd}</td><td class="n h">${r.killed.length}</td><td class="n bad">${lostTot}</td><td class="n">${last(r.hw)} / 50</td><td class="n">${k(last(r.t.fleets))}</td><td class="n">${fmt(last(r.t.income))}</td><td class="n">${fmt(last(r.yards))}</td><td class="n">${fmt(last(r.free))}</td><td class="n">${allFac(r, "baseFounded")} / <span class="bad">${allFac(r, "baseLost")}</span></td><td class="n">${allFac(r, "reliefLost")}</td></tr>`;
+  }
+  html += "</tbody>";
+  const t = document.getElementById("overview"); t.innerHTML = html;
+  t.querySelectorAll("tr.run").forEach(tr => { const go = () => { select(tr.dataset.tag); document.getElementById("detail").scrollIntoView({behavior: "smooth", block: "start"}); }; tr.onclick = go; tr.onkeydown = e => { if (e.key === "Enter") go(); }; });
+}
+
+// ---------- charts
+function lineChart(title, months, series, unit) {
+  const W = 560, H = 210, L = 46, R = 10, T = 10, B = 24;
+  const all = series.flatMap(s => s.v.filter(x => x != null));
+  let mx = Math.max(...all, 1); const step = niceStep(mx / 4); mx = Math.ceil(mx / step) * step;
+  const X = i => L + (i / Math.max(months - 1, 1)) * (W - L - R), Y = v => T + (1 - v / mx) * (H - T - B);
+  let g = "";
+  for (let v = 0; v <= mx + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--rule-2)"/><text x="${L - 6}" y="${Y(v) + 3}" text-anchor="end">${k(v)}</text>`;
+  for (let m = 0; m < months; m += 12) g += `<text x="${X(m)}" y="${H - 6}" text-anchor="middle">m${m}</text>`;
+  let paths = "";
+  for (const s of series) {
+    let d = "", pen = false; s.v.forEach((y, i) => { if (y == null) { pen = false; return; } d += (pen ? "L" : "M") + X(i).toFixed(1) + "," + Y(y).toFixed(1); pen = true; });
+    paths += `<path d="${d}" fill="none" stroke="${s.c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const li = lastIdx(s.v); if (li >= 0) paths += `<circle cx="${X(li)}" cy="${Y(s.v[li])}" r="3.5" fill="${s.c}" stroke="var(--panel)" stroke-width="2"/>`;
+  }
+  const div = document.createElement("div"); div.className = "chart";
+  div.innerHTML = `<h4>${title}</h4><div class="key">${series.map(s => `<span class="${s.cls}">${s.n}</span>`).join("")}</div>
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title}">${g}${paths}<line class="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--ink-3)" stroke-dasharray="3 3" visibility="hidden"/><rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/></svg><div class="tip" hidden></div>`;
+  const svg = div.querySelector("svg"), tip = div.querySelector(".tip"), xh = svg.querySelector(".xh");
+  svg.querySelector("rect").addEventListener("pointermove", e => {
+    const b = svg.getBoundingClientRect(); const sx = (e.clientX - b.left) * W / b.width;
+    const i = Math.max(0, Math.min(months - 1, Math.round((sx - L) / (W - L - R) * (months - 1))));
+    xh.setAttribute("x1", X(i)); xh.setAttribute("x2", X(i)); xh.setAttribute("visibility", "visible");
+    tip.innerHTML = `month ${i}<br>` + series.map(s => `${s.n}: ${fmt(s.v[i])}${unit ? " " + unit : ""}`).join("<br>");
+    tip.hidden = false; const db = div.getBoundingClientRect(); let lx = e.clientX - db.left + 12; if (lx > db.width - 170) lx = e.clientX - db.left - 170; tip.style.left = lx + "px"; tip.style.top = (e.clientY - db.top - 10) + "px";
+  });
+  svg.querySelector("rect").addEventListener("pointerleave", () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
+  return div;
+}
+function niceStep(x) { const p = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1e-9)))); const f = x / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; }
+
+// ---------- detail
+function picker() {
+  const p = document.getElementById("picker"); let html = ""; const groups = {};
+  RUNS.forEach(r => (groups[r.batch] ||= []).push(r.tag));
+  for (const b in groups) html += `<div class="grp"><em>${b}</em>${groups[b].map(t => `<button type="button" id="pick-${t}" data-tag="${t}" aria-pressed="false">${t.slice(4)}</button>`).join("")}</div>`;
+  p.innerHTML = html; p.querySelectorAll("button").forEach(b => b.onclick = () => select(b.dataset.tag));
+}
+function select(tag) {
+  const r = RUNS.find(x => x.tag === tag); if (!r) return;
+  try { localStorage.setItem("ow-run", tag); } catch (e) {}
+  document.querySelectorAll("#picker button").forEach(b => b.setAttribute("aria-pressed", b.dataset.tag === tag));
+  document.querySelectorAll("#overview tr.run").forEach(tr => tr.classList.toggle("sel", tr.dataset.tag === tag));
+  document.getElementById("runEyebrow").textContent = `${r.tag} · war day ${fmt(r.endDay)} · ${r.n} months`;
+  document.getElementById("runTitle").textContent = BATCH[r.batch];
+  const stat = (v, l, c = "") => `<div class="stat"><b class="${c}">${v}</b><span>${l}</span></div>`;
+  document.getElementById("stats").innerHTML =
+    stat(`${r.h0} → ${r.peak} → ${r.hEnd}`, `Threat hives: start, peak (m${r.peakM}), end`, "t") +
+    stat(r.killed.length, "Hives eradicated", "h") +
+    stat(r.lost.length, "Worlds taken by the Threat", "bad") +
+    stat(`${last(r.hw)} / 50`, "Human worlds left") +
+    stat(`${fmt(r.t.income.find(v => v != null))} → ${fmt(last(r.t.income))}`, "Threat FP made a month") +
+    stat(`${fmt(r.yards.find(v => v != null))} → ${fmt(last(r.yards))}`, "Human yards FP a month") +
+    stat(`${allFac(r, "baseFounded")} / ${allFac(r, "baseLost")}`, "Forward bases founded / lost") +
+    stat(`${sum(r.nm.campaign)} / ${sum(r.nm.strike)}`, "Threat campaigns / strikes");
+  const c = document.getElementById("charts"); c.innerHTML = "";
+  const TH = {n: "Threat", c: "var(--threat)", cls: "t"}, HU = {n: "Humans", c: "var(--human)", cls: "h"};
+  c.append(lineChart("Worlds held", r.n, [{...TH, n: "Threat hives", v: r.t.hives}, {...HU, n: "Human worlds", v: r.hw}]));
+  c.append(lineChart("Fleet points built a month", r.n, [{...TH, n: "Threat fabrication", v: r.t.income}, {...HU, n: "Human yards", v: r.yards}], "FP"));
+  c.append(lineChart("Fleets and hulls held", r.n, [{...TH, n: "Threat fleets", v: r.t.fleets}, {...HU, n: "Human hulls", v: r.hulls}], "FP"));
+  c.append(lineChart("Threat supplies a month", r.n, [{...TH, n: "Made", v: r.t.supMade}, {n: "Spent", c: "var(--ink-3)", cls: "mute", v: r.t.supSpent}]));
+  // timeline
+  document.getElementById("timeline").innerHTML = r.lost.length ? r.lost.map(([m, w, f]) => `<div><span class="m">m${m}</span><span>${w}</span><span class="fac">${FN[f] || f}</span></div>`).join("") : `<p class="mute">None.</p>`;
+  // year bars
+  const yrs = Array(7).fill(0); r.killed.forEach(([m]) => yrs[Math.min(6, Math.floor(m / 12))]++);
+  const ym = Math.max(...yrs, 1);
+  document.getElementById("yearbars").innerHTML = yrs.map((v, i) => `<div><b>${v}</b><i style="height:${Math.round(v / ym * 80)}px"></i>y${i + 1}</div>`).join("");
+  // threat shortages
+  const under = r.t.sup.filter(v => v != null && v < 5000).length, months = r.t.sup.filter(v => v != null).length;
+  const tsRows = [
+    ["Supplies made / spent, mean a month", `${k(mean(r.t.supMade))} / ${k(mean(r.t.supSpent))}`],
+    ["Months with supplies stock under 5k", `${under} of ${months}`],
+    ["Seeding swarms held for stock", sum(r.nm.seedHeld)],
+    ["Colony-months navy upkeep unpaid", sum(r.nm.navyShort)],
+    ["Fuel stock at the end", k(last(r.t.fuel))],
+    ["Fund banked at the end, FP", k(last(r.t.banked))],
+    ["Threat landings / beachheads overrun", `${sum(r.nm.landing)} / ${sum(r.nm.overrun)}`],
+    ["Human expeditions landed on hives", sum(r.nm.expedition)],
+    ["Hull convoys between human allies", sum(r.nm.hullConvoy)]];
+  document.getElementById("tshort").innerHTML = "<tbody>" + tsRows.map(([a, b]) => `<tr><td class="l">${a}</td><td class="n">${b}</td></tr>`).join("") + "</tbody>";
+  // factions
+  const facs = FAC.filter(f => r.f[f].hulls.some(v => v != null) || r.col[f][r.n - 1] !== START[f]);
+  let fh = `<thead><tr><th>Faction</th><th class="n">Worlds start → end</th><th class="n">Lost to Threat</th><th class="n">Hulls end</th><th class="n">Free</th><th class="n">Built</th><th class="n">Unrebuilt losses</th><th class="n">Yards mean</th><th class="n">Yards end</th><th class="n">Supplies end</th><th class="n">Fuel end</th><th>Stance at end</th></tr></thead><tbody>`;
+  for (const f of facs) { const F = r.f[f]; fh += `<tr><td class="l">${FN[f]}</td><td class="n">${START[f]} → ${r.col[f][r.n - 1]}</td><td class="n bad">${START[f] - r.col[f][r.n - 1] || ""}</td><td class="n">${fmt(last(F.hulls))}</td><td class="n">${fmt(last(F.free))}</td><td class="n">${fmt(last(F.built))}</td><td class="n">${fmt(last(F.lost))}</td><td class="n">${fmt(mean(F.yards))}</td><td class="n">${fmt(last(F.yards))}</td><td class="n">${k(last(F.sup))}</td><td class="n">${k(last(F.fuel))}</td><td class="l mute">${last(F.stance) || "–"}</td></tr>`; }
+  const pl = START.pirates - r.col.pirates[r.n - 1];
+  fh += `<tr><td class="l">Pirates</td><td class="n">9 → ${r.col.pirates[r.n - 1]}</td><td class="n bad">${pl || ""}</td><td colspan="9" class="mute l">not tracked</td></tr>`;
+  fh += `<tr class="total"><td class="l">Total</td><td class="n">59 → ${last(r.hw) + r.col.pirates[r.n - 1]}</td><td class="n bad">${r.lost.length}</td><td class="n">${fmt(last(r.hulls))}</td><td class="n">${fmt(last(r.free))}</td><td></td><td></td><td class="n">${fmt(mean(r.yards))}</td><td class="n">${fmt(last(r.yards))}</td><td colspan="3"></td></tr></tbody>`;
+  document.getElementById("factions").innerHTML = fh;
+  // yards checkpoints
+  const cps = [0, 6, 12, 18, 24, 36, 48, 60, r.n - 1].filter((m, i, a) => m < r.n && a.indexOf(m) === i);
+  const at = (a, m) => { for (let i = m; i >= 0; i--) if (a[i] != null) return a[i]; return null; };
+  let yh = `<thead><tr><th>Faction</th>${cps.map(m => `<th class="n">m${m}</th>`).join("")}</tr></thead><tbody>`;
+  for (const f of facs) yh += `<tr><td class="l">${FN[f]}</td>${cps.map(m => `<td class="n">${fmt(at(r.f[f].yards, m))}</td>`).join("")}</tr>`;
+  yh += `<tr><td class="l t">Threat fabrication</td>${cps.map(m => `<td class="n t">${fmt(at(r.t.income, m))}</td>`).join("")}</tr>`;
+  yh += `<tr class="total"><td class="l">Humans total</td>${cps.map(m => `<td class="n">${fmt(at(r.yards, m))}</td>`).join("")}</tr></tbody>`;
+  document.getElementById("yards").innerHTML = yh;
+  // human shortages
+  const keys = [["baseFounded","Bases founded"],["baseLost","Bases lost to strikes"],["cannotPay","Cannot pay a base"],["noHulls","No hulls for a base"],["yardsIdle","Yards idle"],["reliefSent","Reliefs sent"],["reliefFP","Relief FP sent"],["reliefHeld","Relief held"],["reliefLost","Relief fleets lost"],["starve","STARVE turns"]];
+  let sh = `<thead><tr><th>Faction</th>${keys.map(([, l]) => `<th class="n">${l}</th>`).join("")}</tr></thead><tbody>`;
+  for (const f of facs) sh += `<tr><td class="l">${FN[f]}</td>${keys.map(([kk]) => `<td class="n${kk === "baseLost" || kk === "reliefLost" ? " bad" : ""}">${fmt(facTotal(r, f, kk))}</td>`).join("")}</tr>`;
+  sh += `<tr class="total"><td class="l">Total</td>${keys.map(([kk]) => `<td class="n">${fmt(allFac(r, kk))}</td>`).join("")}</tr></tbody>`;
+  document.getElementById("hshort").innerHTML = sh;
+  // monthly
+  let mh = `<thead><tr><th class="n">m</th><th class="n">Hives</th><th class="n">Threat fleets</th><th class="n">Threat FP/mo</th><th class="n">Supplies made</th><th class="n">Spent</th><th class="n">Stock</th><th class="n">Fuel</th><th class="n">Human worlds</th><th class="n">Human hulls</th><th class="n">Free</th><th class="n">Yards FP/mo</th><th class="n">Strikes (FP)</th><th>Worlds taken</th><th>Hives eradicated</th></tr></thead><tbody>`;
+  for (let m = 0; m < r.n; m++) {
+    const lw = r.lost.filter(x => x[0] === m).map(x => x[1]).join(", "), kh = r.killed.filter(x => x[0] === m).map(x => x[1]).join(", ");
+    mh += `<tr><td class="n">${m}</td><td class="n t">${fmt(r.t.hives[m])}</td><td class="n">${k(r.t.fleets[m])}</td><td class="n">${fmt(r.t.income[m])}</td><td class="n">${k(r.t.supMade[m])}</td><td class="n">${k(r.t.supSpent[m])}</td><td class="n">${k(r.t.sup[m])}</td><td class="n">${k(r.t.fuel[m])}</td><td class="n h">${r.hw[m]}</td><td class="n">${fmt(r.hulls[m])}</td><td class="n">${fmt(r.free[m])}</td><td class="n">${fmt(r.yards[m])}</td><td class="n">${r.nm.strike[m] ? r.nm.strike[m] + " (" + k(r.nm.strikeFP[m]) + ")" : ""}</td><td class="l bad">${lw}</td><td class="l h">${kh}</td></tr>`;
+  }
+  document.getElementById("monthly").innerHTML = mh + "</tbody>";
+}
+
+overview(); picker();
+let first = "hw67a"; try { const s = localStorage.getItem("ow-run"); if (s && RUNS.some(r => r.tag === s)) first = s; } catch (e) {}
+select(first);
+</script>
