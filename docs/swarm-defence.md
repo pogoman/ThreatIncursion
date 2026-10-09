@@ -172,6 +172,18 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   the hives they were sent to fell meanwhile: hw101a's Zipacna was sent a 724 FP swarm from Beta
   Cormoran I on war day 2690, which stood in Beta Cormoran until Zipacna fell on day 3418 to a 520-625
   FP siege the rally could answer with 196 FP (its system read 3,065 FP held, +2,730 inbound). The
-  dump's REINFORCEMENT records carry `days` in flight and `battle`. Log: `Reinforcement overdue: N FP ->
-  <world>, D d out, <where>, <order>, battle ..., ai ..., burn ... - ordered on again`. The cause is
-  read from the first logs (hw105/hw106).
+  dump's REINFORCEMENT records carry `days` in flight and `battle`. hw105a (the first read, 07:25):
+  a fresh order does not move them - 48 swarms were ordered on three times and more; they move at
+  burn 9 (`getCurrBurnLevel` is the real speed) with the order active and no battle, yet never close
+  on the target: three swarms for Blue stood inside Blue's own system for 990 days, their distance to
+  Blue a clean 540-day sinusoid between 3k and 22k units - the planet's orbit seen from a fleet that
+  circles one spot. Most do arrive (hw105a 1,916 of 2,231 sends; hw106a 978 of 1,011).
+  The remedy ladder (095cce7a, hw107/hw108; `overdue`, `whereabouts`): the read names everything -
+  position from the centre, order, heading (the move destination), speed and burn, whether the AI
+  is fleeing and what it targets, hyperspace transition, terrain, the nearest hostile - and
+  escalates once a span: the first span the travel order afresh, the second a fresh fleet AI
+  (`FactoryAPI.createFleetAI`), the third and after the swarm carried to 1,500 units from its target
+  (`LocationAPI.removeEntity`/`addEntity`, `setLocation`), a stopgap flagged to the user until the
+  cause is read. Log: `Reinforcement overdue: N FP -> <world>, D d out, <whereabouts>, battle b,
+  ships n - ordered on again (kick 1) | fresh AI, ordered on again (kick 2) | carried to 1,500 units
+  from <world> (kick N) | left to its battle`.
