@@ -382,3 +382,13 @@ hives 162 / 184, humans 4 / 4. hw91 / hw92 (693f8025, jar 01:35): `ThreatGarriso
 swarm's battle within 1,500 units of its world pulls the hive's other swarms on station and the
 reinforcements bound for it in (BattleAPI.join); watcher `check-muster.sh` (single-swarm share above
 60% flags). `swarm-defence.md` "The garrison fights as one", facts. `game-runs-2.md` 43.
+
+## 17. hw91 + hw92 - the garrison fights as one, read at 02:25: hunts meet the garrison; the old sector trades worlds
+
+693f8025. hw91a (ck2): hives 38 -> 66, humans 50 -> 21; hunt battles against a single swarm 27%
+(hw89a 89%), 559 musters, hunts completed 155 / stood down 144 (257 / 67); but 39 hives eradicated
+against 36 human colonies lost - a siege that outweighs a garrison takes the hive and the rally stays
+home when the system cannot match it (the user's rule). hw92a / b (ck5): hives 175 / 115, humans 7 / 3.
+hw93 / hw94: the same build, a second sample. Across the night's old-sector samples on one strategy
+(hw83a-hw91a): hives 53 / 61 / 76 / 64 / 66, humans 25 / 31 / 19 / 18 / 21 - contested, the swarm ahead,
+never decisive; the new sector is the swarm's every time (115-185 hives, 2-7 worlds). `game-runs-2.md` 43.
