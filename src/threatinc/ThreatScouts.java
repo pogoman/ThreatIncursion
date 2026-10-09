@@ -675,6 +675,7 @@ public class ThreatScouts {
 		params.ignoreMarketFleetSizeMult = true;
 		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
 		if (fleet == null || fleet.isEmpty()) return null;
+		ThreatFleetComposer.beltSafe(fleet);
 
 		homeSystem.addEntity(fleet);
 		fleet.setLocation(home.getPrimaryEntity().getLocation().x, home.getPrimaryEntity().getLocation().y);

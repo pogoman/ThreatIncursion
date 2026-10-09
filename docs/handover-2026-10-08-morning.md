@@ -467,3 +467,19 @@ hw107 / hw108 run 095cce7a (jar 07:55): the full whereabouts read (heading, spee
 target, terrain, nearest hostile) and the remedy ladder (order afresh, fresh fleet AI, carried to 1,500
 units - the carry is a stopgap for the user to keep or drop); `check-whereabouts.sh`. The cause is
 read from hw107's first lines. `swarm-defence.md` "Overdue reinforcements", facts.
+
+## 25. hw107 + hw108 - the cause read at 08:40: asteroid belts pin a big swarm at full burn; old sector 65 hives / 36 colonies
+
+095cce7a (jar 07:55). hw107a (ck2): hives 38 -> 65, humans 50 -> 36 (+8 forward bases), 44 eradicated / 13
+conquests - the swing against hw105a's 92 / 15 on the same rules. hw108a / b (ck5): hives 170 / 162,
+humans 1 / 4. The read: of 766 consecutive reads of one swarm, 214 at the same unit of position 90 days
+apart at full speed; 1,240 of 1,497 full-speed reads inside an asteroid belt or ring. Vanilla's
+`AsteroidBeltTerrainPlugin` knocks a fleet that is not slow-moving off course every time its impact
+timeout runs out (`AsteroidImpact`), heavier for a big fleet - a 16-25 ship swarm at burn 9 never gets
+out of its own hive's belt. It skips a fleet whose memory holds `$asteroidImpactTimeout`: every fleet
+the mod builds or orders, both sides, now carries it for good (`ThreatFleetComposer.beltSafe`, at the
+creation sites, sendReinforcement / sendToGarrison / overdue, the leash return). hw109 / hw110 (the
+movement read alone) were aborted at month 1 for hw111 / hw112 with the fix (jar 08:43). Still to read:
+333 crawling swarms at burn 2 (speed 44), most in hyperspace with human fleets 1-20k units off - the
+movement fields (burn modifiers, active abilities, go-slow, orbit, listed) are in that jar.
+`swarm-defence.md` "Overdue reinforcements", facts.
