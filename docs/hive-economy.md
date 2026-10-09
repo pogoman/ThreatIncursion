@@ -411,10 +411,10 @@ guards pay supplies to stand.
 | --- | --- |
 | Posture - the garrison the war calls for (2026-09-29, built, untested) | [hive-garrison-and-upkeep.md](hive-garrison-and-upkeep.md) |
 | Stance - what the surplus is for (2026-09-29, built, untested) | [hive-garrison-and-upkeep.md](hive-garrison-and-upkeep.md) |
-| Fuel - the hive pays passage (2026-09-30, `ThreatFuel`) | [hive-garrison-and-upkeep.md](hive-garrison-and-upkeep.md) |
-| Parity - wartime fuel, plants for shortages, supplies upkeep (2026-09-30) | [hive-garrison-and-upkeep.md](hive-garrison-and-upkeep.md) |
-| Structures cost supplies (2026-09-30, user's call; `ThreatBuildCost`) | [hive-garrison-and-upkeep.md](hive-garrison-and-upkeep.md) |
-| Size upkeep - growth is paid for (2026-09-30, user's call; `ThreatColonyUpkeep`) | [hive-garrison-and-upkeep.md](hive-garrison-and-upkeep.md) |
+| Fuel - the hive pays passage (2026-09-30, `ThreatFuel`) | [hive-stocks-and-upkeep.md](hive-stocks-and-upkeep.md) |
+| Parity - wartime fuel, plants for shortages, supplies upkeep (2026-09-30) | [hive-stocks-and-upkeep.md](hive-stocks-and-upkeep.md) |
+| Structures cost supplies (2026-09-30, user's call; `ThreatBuildCost`) | [hive-stocks-and-upkeep.md](hive-stocks-and-upkeep.md) |
+| Size upkeep - growth is paid for (2026-09-30, user's call; `ThreatColonyUpkeep`) | [hive-stocks-and-upkeep.md](hive-stocks-and-upkeep.md) |
 | Reach is the bill (2026-09-30, user's call; `ThreatReach`) | [hive-reach-and-stock.md](hive-reach-and-stock.md) |
 | Idle stock: retire, convert, garrison (2026-10-01, user's call; built, untested) | [hive-reach-and-stock.md](hive-reach-and-stock.md) |
 | Levers, verified | [hive-reach-and-stock.md](hive-reach-and-stock.md) |
