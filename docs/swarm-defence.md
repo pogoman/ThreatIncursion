@@ -302,3 +302,17 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   it, and the AI steers for a different destination on each. hw126/hw127: the read counts every location
   that lists the fleet (`listed in N (...)`), and the pulse keeps its last six live calls' containing
   location and position (`ring [...]`).
+  Read (hw126/hw127, 15:50; 67 frozen pairs): every one `listed in 1` - no second location - and every
+  ring A-B-A-B, B = A - 6 s x velocity, every one in an asteroid belt or field. **The cause**: TacticalModule
+  sets `slowDown` in terrain flagged DANGEROUS_UNLESS_GO_SLOW and calls `goSlowOneFrame(false)` every frame
+  (unless `$doNotGetSidetracked` and the terrain is also NOT_SUPER_DANGEROUS_UNLESS_GO_SLOW, as belts are);
+  `CampaignFleet.doGoSlow` (before the movement step) sets the move destination 10,000 units behind the fleet
+  when it is faster than go-slow speed by more than a tenth of its acceleration; `SmoothMovementModule.advance`
+  then brakes at full acceleration for the whole frame (its push is capped at `acceleration`, divided by no
+  frame length). Acceleration = travel speed x the acceleration mult (180 for a swarm), the frame 2.0 s on a
+  background location on fast-forward: Δv 360 against 180, so +180 becomes -180, and the next frame's brake
+  turns it back. Step 3 x v x f = 1,080. `resetAfterGoingSlowIfNeeded` (which clears the hard speed limit the
+  gentle branch sets) is skipped on fast-forward iterations. **The guard** (`ThreatFleetComposer.beltGuard`,
+  hw128/hw129): a per-fleet script, which runs after the AI and before `doGoSlow`; when the go-slow request
+  is set and `acceleration x frame > speed + go-slow speed`, it sets the speed to 0.95 x go-slow speed so
+  neither brake branch runs, and the fleet crosses at speed. At 1 s frames the condition never holds.

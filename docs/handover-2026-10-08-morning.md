@@ -568,3 +568,14 @@ hw124 / hw125 (jar 14:32): the pulse logs the frame times it is given. `swarm-de
 frame read: frozen swarms get normal 2 s frames, but their last two live calls are 6.0 s of velocity apart -
 they flip between two points every call. Next: count the locations that list the fleet, keep the last six
 calls' location and position. `swarm-defence.md` "The engine, decompiled".
+
+## 34. hw126 + hw127 - read at 15:50: the freeze's cause - vanilla's go-slow brake overshoots in asteroid belts
+
+018d6519 (jar 15:21), stopped at war day ~3,500. 67 of 67 frozen swarms: listed in one location, shaking
+between two points (A-B-A-B, 6 s of velocity apart), all in asteroid belts or fields. In such terrain the AI
+asks to go slow every frame; `CampaignFleet.doGoSlow` brakes at full acceleration for the whole frame, and on a
+2 s background frame that reverses the fleet at full speed, and back. The fix: `ThreatFleetComposer.beltGuard`
+(a per-fleet script, after the AI and before the brake: on a frame long enough to overshoot it sets the speed
+just under go-slow speed, so nothing brakes), on every mod fleet both sides. hw128a / b (ck5) + hw129a (ck2),
+jar 15:48. The carry stays until the guard is confirmed - removing it is the user's call.
+`swarm-defence.md` "The engine, decompiled".

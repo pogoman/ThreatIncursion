@@ -63,6 +63,54 @@ public class ThreatFleetComposer {
 	// entry points
 	// ------------------------------------------------------------------
 
+	/**
+	 * Vanilla's go-slow trap (found 2026-10-09, hw126/hw127). In an asteroid
+	 * belt or field (DANGEROUS_UNLESS_GO_SLOW) the fleet AI asks a fleet to go
+	 * slow every frame (TacticalModule.slowDown), and CampaignFleet.doGoSlow
+	 * brakes it by steering for a point 10,000 units behind it: a whole frame at
+	 * full acceleration. A background system is advanced 60 iterations at once
+	 * (2 s a frame on fast-forward) and a swarm accelerates by about its top
+	 * speed a second, so the brake reverses the fleet at full speed instead of
+	 * stopping it, and the next frame reverses it back - it shakes between two
+	 * points 6 s of travel apart for good (12 of 12 frozen swarms, every one in
+	 * a belt; 6-18% of reinforcements a run). Every fleet the mod builds or
+	 * orders, both sides, carries this guard: on a frame long enough for the
+	 * brake to overshoot it sets the speed just under the go-slow speed first,
+	 * so there is nothing to brake and the fleet crosses at speed. At normal
+	 * speed (1 s frames) the brake cannot overshoot and vanilla is untouched;
+	 * vanilla's own fleets are left to vanilla.
+	 */
+	public static void beltGuard(CampaignFleetAPI fleet) {
+		if (fleet == null || fleet.hasScriptOfClass(BeltGuard.class)) return;
+		fleet.addScript(new BeltGuard(fleet));
+	}
+
+	/**
+	 * The per-frame half of {@link #beltGuard}. A fleet's scripts run after its
+	 * AI (which sets the go-slow request) and before doGoSlow and the movement
+	 * module, so this is the one place the request can be met in time.
+	 */
+	public static class BeltGuard implements com.fs.starfarer.api.EveryFrameScript {
+		protected CampaignFleetAPI fleet;
+		/** Frames on which the guard met an overshooting brake (read by the overdue line). */
+		public int trips;
+		public BeltGuard(CampaignFleetAPI fleet) { this.fleet = fleet; }
+		public boolean isDone() { return fleet == null || !fleet.isAlive(); }
+		public boolean runWhilePaused() { return false; }
+		public void advance(float amount) {
+			if (amount <= 0f || fleet == null || !fleet.getGoSlowOneFrame()) return;
+			org.lwjgl.util.vector.Vector2f v = fleet.getVelocity();
+			float speed = v.length();
+			float slow = fleet.getGoSlowStop() ? 0f
+					: com.fs.starfarer.api.util.Misc.getSpeedForBurnLevel(
+							com.fs.starfarer.api.util.Misc.getGoSlowBurnLevel(fleet));
+			// the brake lands past the go-slow speed in reverse: the trap
+			if (fleet.getAcceleration() * amount <= speed + slow) return;
+			if (speed > 0.001f) v.scale(slow * 0.95f / speed);
+			trips++;
+		}
+	}
+
 	/** A vanilla-sized Threat fleet, composed as an archetype picked for the job. */
 	public static CampaignFleetAPI create(String job, int fabricators,
 			FabricatorEscortStrength escorts, Random random) {
@@ -70,6 +118,7 @@ public class ThreatFleetComposer {
 		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
 				fabricators, 0, 0, escorts, random);
 		if (fleet == null) return null;
+		beltGuard(fleet);
 		String archetype = pickArchetype(job, random);
 		if (archetype != null) recompose(fleet, archetype, random);
 		return fleet;
@@ -87,6 +136,7 @@ public class ThreatFleetComposer {
 		if (random == null) random = new Random();
 		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
 				new ThreatFleetCreationParams(), random);
+		beltGuard(fleet);
 		String archetype = pickArchetype(JOB_SCOUT, random);
 		// the scout archetype is the default only while archetypes are on: loaded
 		// once, the table outlived the knob being turned off mid-session

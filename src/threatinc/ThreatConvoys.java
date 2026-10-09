@@ -2404,6 +2404,7 @@ public class ThreatConvoys {
 		params.ignoreMarketFleetSizeMult = true;
 		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
 		if (fleet == null || fleet.isEmpty()) return null;
+		ThreatFleetComposer.beltGuard(fleet);
 		if (grow) fitHulls(fleet, faction, ask[0], ask[1] + ask[3] + hullsIn(ask), ask[2], random);
 		Hulls h = new Hulls();
 		h.fleet = fleet;
