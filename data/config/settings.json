@@ -228,6 +228,10 @@
 	# for it and the system's spare must together outweigh the force, or none
 	# is sent. false = whatever is spare is sent
 	"threatinc_systemDefenceOnlyIfEnough": true,
+	# Days a reinforcement swarm may be in flight before the hive logs where it
+	# stands and orders it on again (hw101a: swarms sat a year in their source
+	# system while their targets fell). 0 = never
+	"threatinc_reinforcementOverdueDays": 90,
 	# Stance: each posture pass the hive decides what its surplus is for.
 	# PRESS - it holds stancePressRatio times a rival's force in reach, knows a
 	# world of that rival whose defence is at most stanceWeakOdds of what it

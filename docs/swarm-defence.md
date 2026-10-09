@@ -161,3 +161,17 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   standing by), 303 of them 600+ units from the world; 191 hunts completed, 36 stood down hurt. The
   human hunt is sized against the whole garrison it reads (`ThreatSoftening`); now it meets it. Log:
   `Garrison musters at <world>: N swarm(s), M FP join the fight D units out`.
+
+  Overdue reinforcements are ordered on (2026-10-09, hw101a; `ThreatColonyManager.overdue`, from the
+  arrivals poll): a reinforcement out longer than `reinforcementOverdueDays` (90) is logged where it
+  stands - its location, its distance from the target or the nearest jump point, its current order,
+  whether it is in a battle, has an AI, its burn - and given its travel order afresh (blinders on, the
+  365-day GO_TO_LOCATION and the orbit fallback), once a span; one in a battle is left to finish it.
+  Why: in every run read, 92-177 reinforcement swarms (18-34k FP) sat 120+ days inside one system -
+  most in the big fabricators' systems (Thule, Beta Cormoran; the new sector's Alpha Laphirial) - and
+  the hives they were sent to fell meanwhile: hw101a's Zipacna was sent a 724 FP swarm from Beta
+  Cormoran I on war day 2690, which stood in Beta Cormoran until Zipacna fell on day 3418 to a 520-625
+  FP siege the rally could answer with 196 FP (its system read 3,065 FP held, +2,730 inbound). The
+  dump's REINFORCEMENT records carry `days` in flight and `battle`. Log: `Reinforcement overdue: N FP ->
+  <world>, D d out, <where>, <order>, battle ..., ai ..., burn ... - ordered on again`. The cause is
+  read from the first logs (hw105/hw106).
