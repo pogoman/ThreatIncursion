@@ -6199,14 +6199,24 @@ public class ThreatColonyManager {
 		public float day = -1f;
 		public float x, y;
 		public int frames;
+		/** Calls with a positive frame time, their sum and largest (s), the distance between the last two such calls. */
+		public int live;
+		public float sum, max, step;
 		public FramePulse(CampaignFleetAPI fleet) { this.fleet = fleet; }
 		public boolean isDone() { return fleet == null || !fleet.isAlive(); }
 		public boolean runWhilePaused() { return false; }
 		public void advance(float amount) {
 			frames++;
 			day = ThreatPosture.today();
-			x = fleet.getLocation().x;
-			y = fleet.getLocation().y;
+			float nx = fleet.getLocation().x, ny = fleet.getLocation().y;
+			if (amount > 0f) {
+				if (live > 0) step = (float) Math.hypot(nx - x, ny - y);
+				live++;
+				sum += amount;
+				max = Math.max(max, amount);
+			}
+			x = nx;
+			y = ny;
 		}
 	}
 
@@ -6582,7 +6592,9 @@ public class ThreatColonyManager {
 		} else {
 			b.append(", pulse ").append(p.frames).append(" frames, last ")
 					.append(String.format("%.1f", ThreatPosture.today() - p.day)).append(" d ago at ")
-					.append((int) p.x).append("/").append((int) p.y);
+					.append((int) p.x).append("/").append((int) p.y)
+					.append(" (live ").append(p.live).append(", ").append(String.format("%.1f", p.sum)).append(" s, max ")
+					.append(String.format("%.3f", p.max)).append(" s, step ").append((int) p.step).append(")");
 		}
 		engineLists(fleet, b);
 		if (loc != null) {

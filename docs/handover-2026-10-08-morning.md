@@ -552,3 +552,11 @@ foundings, no StarLord heal. `game-runs-2.md` 43, `facts.md` Decisions.
 Regional sends 480 / 751 / 369 (100-145k FP, mean 11-13 ly); 18-21 of the 55-67 worlds relieved fell after.
 `game-runs-2.md` 43, `swarm-defence.md` "Regional relief". hw122 / hw123 (jar 13:19): the engine-list
 read on the frozen swarms, the kick count reset at every send.
+
+## 32. hw122 + hw123 - read at 14:35: old sector 78 / 13 with relief; frozen swarms are advanced, their movement module pinned
+
+18fbfde9 (jar 13:19). hw123a (ck2): hives 38 -> 78, humans 13, 27 eradicated. hw122a / b (ck5): 224 / 174
+hives, humans 2 / 1. Old sector with regional relief: 102 / 97 / 152 / 78 hives. The engine read: every frozen
+swarm is in the engine's list and its pulse runs (450 frames a span); it stands at one fixed point inside its own
+advance, read 6.0 s of its velocity further on - the movement module's stored location never integrates.
+hw124 / hw125 (jar 14:32): the pulse logs the frame times it is given. `swarm-defence.md` "The engine, decompiled".

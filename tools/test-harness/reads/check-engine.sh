@@ -20,3 +20,15 @@ check() {
   [ "$4" -gt 0 ] && flag $g engine "the engine-list read cannot find the CampaignEntity interface ($4 reads)"
   return 0
 }
+# hw124+: the pulse's frame times - frozen vs moving pairs: mean live calls, mean seconds given, mean step between live calls.
+eval "$(declare -f check | sed '1s/^check ()/check_engine ()/')"
+check() {
+  local g=$1 F=$2
+  check_engine "$g" "$F"
+  perl -ne 'next unless index($_,"Reinforcement overdue:")==0; my ($id)=/ id (\w+),/; my ($x,$y)=/ at (-?\d+)\/(-?\d+) \(/;
+    my ($lv,$sm,$mx,$st)=/\(live (\d+), ([0-9.]+) s, max ([0-9.]+) s, step (\d+)\)/; next unless $id && defined $x && defined $lv;
+    if (my $p=$l{$id}) { my $mv=sqrt(($x-$p->[0])**2+($y-$p->[1])**2); my $k=$mv<1?"frozen":"moving"; $n{$k}++; $L{$k}+=$lv-$p->[2]; $S{$k}+=$sm-$p->[3]; $T{$k}+=$st; $M{$k}=$mx if $mx>($M{$k}//0); }
+    $l{$id}=[$x,$y,$lv,$sm];
+    END { for my $k (qw(frozen moving)) { next unless $n{$k}; printf "    pulse '"$TAG$g"' %s pairs %d: live calls a span %.0f, seconds given a span %.0f, step %.0f units, max frame %.3f s\n", $k, $n{$k}, $L{$k}/$n{$k}, $S{$k}/$n{$k}, $T{$k}/$n{$k}, $M{$k} } }' "$F"
+  return 0
+}

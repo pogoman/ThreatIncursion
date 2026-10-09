@@ -283,3 +283,13 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   interface's name), `fleets xN`, `location held` (a star system or hyperspace the sector holds) and
   `moveDest` (the expiry of `$ai_moveDest`, renewed every AI tick and counted down only while the fleet is
   advanced - the same figure at two reads = not advanced between them), with the pulse fixed.
+  Read (hw122/hw123, 14:35; 146 frozen pairs): every one `engine list x1`, `location held true`, its pulse
+  running (~450 frames a 90-day span) - the engine DOES advance it. Inside its own advance it stands at one
+  fixed point (the pulse's position, identical at both reads), and the read finds it 6.0 s of its velocity
+  further on (4d962: pulse -7260/6822, velocity -138/-144, read -8092/5957; 5333b and 5a2d4 the same to
+  0.02 s). So `SmoothMovementModule.loc` (copied to the fleet's location each advance, line `getLocation().set`)
+  never integrates, and the location loop's one tick of velocity is undone before the next real tick. The
+  module returns early only on a frame time `f * f == 0 || f <= 0` or an acceleration <= 0; `$ai_moveDest`
+  reads `none` on every swarm, frozen or free (not the AI's key - no use). hw124/hw125: the pulse logs the
+  frame times it is given (`live` calls with a positive time, their sum and largest) and the `step` between
+  the last two live calls.
