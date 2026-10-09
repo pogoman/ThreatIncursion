@@ -404,3 +404,14 @@ in the game, 1,665 under 100 FP. hw94a / b (ck5): hives 190 / 148, humans 0 / 4.
 build, a third sample (launched 03:09). Fix for hw97 / hw98: `ThreatColonyManager.rowFor` - the swarm
 fabricated for a receiver is the dearest garrison row of any size's table that its deficit, the
 fabricator's idle bank and the fuel pay for. `game-runs-2.md` 43.
+
+## 19. hw95 + hw96 - the muster build's third sample, read at 04:00: the old sector slides (40 hives / 32 worlds)
+
+693f8025 a third time. hw95a (ck2): hives 38 -> 40, humans 50 -> 32, 62 eradicated / 20 colonies lost;
+pressure fabricated 4,350 (55% under 100 FP), 181 reinforcements in flight at the end (26k FP, 19.5k a
+month, sends at a mean of 26 ly); Mairaath's front counter-attacked 55 times. hw96a / b (ck5): hives
+143 / 116, humans 0 / 6. The old sector on one build: 66 / 47 / 40 hives against 21 / 29 / 32 worlds.
+hw97 / hw98 (jar 03:55): `rowFor`, the swarm fabricated for a receiver sized to its deficit (watched by
+`check-rowfor.sh`: share under 100 FP, reinforcements in flight). hw99 / hw100 next: `counterGap`, the
+front fed to the counter-attack line (7fb70a50, `check-feed.sh`: braces and counter-attacks per swarm
+front). `game-runs-2.md` 43.
