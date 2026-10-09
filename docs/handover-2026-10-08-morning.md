@@ -415,3 +415,12 @@ hw97 / hw98 (jar 03:55): `rowFor`, the swarm fabricated for a receiver sized to 
 `check-rowfor.sh`: share under 100 FP, reinforcements in flight). hw99 / hw100 next: `counterGap`, the
 front fed to the counter-attack line (7fb70a50, `check-feed.sh`: braces and counter-attacks per swarm
 front). `game-runs-2.md` 43.
+
+## 20. hw97 + hw98 - the swarm sized to the deficit (rowFor), read at 04:50: fewer, bigger swarms; the old sector's weakest swarm result (one sample)
+
+711cec96. hw97a (ck2): hives 38 -> 42, humans 50 -> 43 (hw95a 32), 41 eradicated / 9 colonies lost; fabricated
+2,792 at a mean of 195 FP (hw95a 4,350 at 110), 111 in flight (181); but 9 ground victories against 20-39
+in the earlier samples and the fund 25-39k through the run (the bigger rows spend the idle banks deeper:
+544k FP built for receivers against 402k). hw98a / b (ck5): hives 145 / 168, humans 6 / 1. Not read as the
+fix's doing on one sample (ck2 ranges 21-43 worlds on one build); hw99 / hw100 (jar 04:42) run `counterGap`
+on top of it, and a sample with `counterGap` alone separates the two if hw99a is as weak. `game-runs-2.md` 43.
