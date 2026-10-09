@@ -187,3 +187,17 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   cause is read. Log: `Reinforcement overdue: N FP -> <world>, D d out, <whereabouts>, battle b,
   ships n - ordered on again (kick 1) | fresh AI, ordered on again (kick 2) | carried to 1,500 units
   from <world> (kick N) | left to its battle`.
+  The cause (hw107/hw108, 08:40): vanilla's asteroid belts. Of 766 consecutive reads of one swarm, 214
+  found it at the same unit of position 90 days apart at full speed, and 1,240 of 1,497 full-speed reads
+  stood in an asteroid belt or ring - the source hive's own, mostly. `AsteroidBeltTerrainPlugin.applyEffect`
+  knocks any fleet that is not slow-moving off course (`AsteroidImpact`: a reversed velocity for 0.2 s)
+  each time its impact timeout runs out, heavier for a big fleet (`Misc.getFleetRadiusTerrainEffectMult`);
+  a 16-25 ship swarm at burn 9 never gets out. The plugin skips a fleet whose memory holds
+  `$asteroidImpactTimeout`, so `ThreatFleetComposer.beltSafe` sets it for a million days on every fleet the
+  mod builds (`ThreatFleetComposer.create` / `createScouts`, the human Task Forces, convoys, front and
+  scouting fleets) and every swarm it orders out (`sendReinforcement`, `sendToGarrison`, `overdue`, the
+  leash return) - both sides, so neither gains; vanilla's own patrols are vanilla's. First run hw111/hw112.
+  The 333 crawling reads (speed 44, burn 2.2 - 223 in hyperspace with human fleets 1-20k units off, 85
+  inside the target's system in no terrain) are the next read: the movement fields (listed, orbit,
+  travel speed with the fleet's burn and every fleetwide max-burn modifier, active abilities, go-slow,
+  the impact keys) are in the same read since 7a4764ab.

@@ -6236,6 +6236,7 @@ public class ThreatColonyManager {
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(pick);
+		ThreatFleetComposer.beltSafe(pick);
 
 		pick.clearAssignments();
 		// no hive's name on the fleet: under the fog it may be one nobody has found
@@ -6274,6 +6275,7 @@ public class ThreatColonyManager {
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(fleet);
+		ThreatFleetComposer.beltSafe(fleet);
 
 		fleet.clearAssignments();
 		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, planet, 365f,
@@ -6397,6 +6399,7 @@ public class ThreatColonyManager {
 				+ ", " + (int) (day - sent) + " d out, " + where + ", battle " + battle
 				+ ", ships " + fleet.getFleetData().getNumMembers() + " - " + remedy);
 		if (battle) return;
+		ThreatFleetComposer.beltSafe(fleet);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		fleet.clearAssignments();
@@ -6585,6 +6588,7 @@ public class ThreatColonyManager {
 				mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags
 						.MEMORY_KEY_MAKE_AGGRESSIVE);
 
+				ThreatFleetComposer.beltSafe(fleet);
 				// already on the way home: don't spam assignments every frame
 				com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI curr =
 						fleet.getCurrentAssignment();
