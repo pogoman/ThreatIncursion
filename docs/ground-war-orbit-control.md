@@ -40,6 +40,9 @@ each one lives:
    Eldfell's front stood 77 months at 473-737 against 759-957 with 82 First Strike fleets over it paying
    11k supplies a month; 45 counter-attacks, 21 feeds, strata 1-3 taken and lost four times. The bite is
    still what the front is short, measured against the blow that actually lands.
+   The Defend fleet's guns go first (`defendBombards`): a front holding the hold line but short of the
+   counter line is bombarded for while orbit still pays, and fed hulls once orbit is done - hw100b's
+   Nortia (150 against 263, odds under 2) had sat under an idle fleet reading "the front holds".
 2. **It never gives up.** A Defend order and a swarm station both stand down when the
    batteries grind them below `defendMinStrength` (0.33) of their arrival strength. A
    fabricating fleet is **exempt** (`defendCommitted`, checked in both
