@@ -316,3 +316,6 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   hw128/hw129): a per-fleet script, which runs after the AI and before `doGoSlow`; when the go-slow request
   is set and `acceleration x frame > speed + go-slow speed`, it sets the speed to 0.95 x go-slow speed so
   neither brake branch runs, and the fleet crosses at speed. At 1 s frames the condition never holds.
+  It must read and write the MODULE's velocity (`getVelocityFromMovementModule()` / `setVelocity(x, y)`):
+  hw128/hw129's first cut scaled `getVelocity()`, the entity's copy, tripped 2,000 times a fleet and froze
+  as many swarms as before. hw130/hw131: the fixed guard.

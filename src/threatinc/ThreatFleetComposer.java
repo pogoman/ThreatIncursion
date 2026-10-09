@@ -99,14 +99,18 @@ public class ThreatFleetComposer {
 		public boolean runWhilePaused() { return false; }
 		public void advance(float amount) {
 			if (amount <= 0f || fleet == null || !fleet.getGoSlowOneFrame()) return;
-			org.lwjgl.util.vector.Vector2f v = fleet.getVelocity();
+			// the movement module's velocity, which the brake reads - getVelocity() is the
+			// entity's copy, overwritten from the module after the movement step (hw128:
+			// scaling that copy tripped 2,000 times a fleet and changed nothing)
+			org.lwjgl.util.vector.Vector2f v = fleet.getVelocityFromMovementModule();
 			float speed = v.length();
 			float slow = fleet.getGoSlowStop() ? 0f
 					: com.fs.starfarer.api.util.Misc.getSpeedForBurnLevel(
 							com.fs.starfarer.api.util.Misc.getGoSlowBurnLevel(fleet));
 			// the brake lands past the go-slow speed in reverse: the trap
 			if (fleet.getAcceleration() * amount <= speed + slow) return;
-			if (speed > 0.001f) v.scale(slow * 0.95f / speed);
+			float k = speed > 0.001f ? slow * 0.95f / speed : 0f;
+			fleet.setVelocity(v.x * k, v.y * k);
 			trips++;
 		}
 	}
