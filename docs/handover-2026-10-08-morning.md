@@ -610,3 +610,24 @@ The user (17:00): remove the carry (done, 17ae3681), and "a brand new test with 
 In a and c the swarm claimed nothing before the war: its 4 forges were spread-capable every month and the
 picker found no target, then the opening strike went at day ~1,365 with 4 hives. Why the picker finds
 nothing is logged from hw133 (`Spread target: none`, jar 17:51; two games from day 0 to day 1,900).
+
+hw133 (OceanPena, day 0, the picker's log) and hw134 (ck5's own sector, day 0, current build), read 18:30:
+every pre-war claim refused for "no forge with a swarm to spare". The launch gate (`ownAvailableForLaunch`)
+subtracts `garrisonReserve` - a SWARM count from the size table, 1-6 - from the FLEET count, while the builder
+fills an FP want (`minimumFP` = vanilla's patrol FP under the hull pool, 2026-10-06, + 2 rows of launch stock)
+that a few merged fleets satisfy: every quiet colony above its want and under its reserve (Alpha Laphirial I:
+2,803 FP of 363, 5 fleets of 6). The checkpoints spread before their wars only because the pressure pass,
+reading the posture's want, fabricated swarms for "short" quiet colonies and padded the count (13 in ck5's
+pre-war, 2 in hw133a's) - the fit-floor change (f65b0bd2) ended that churn.
+
+| From day 0, current build | First claim (day) | Hives at ~day 2,050 | The checkpoint on its 10-08 build |
+|---|---|---|---|
+| AmaruDugas (ck5's sector), hw134a / b | 1,856 / 1,614 | 11 / 13 (no strike yet) | ck5: first claim 1,553, 32 hives at the opening (day 2,425) |
+| OceanPena, hw132a / b / c | after the opening strike (day 1,365 / 1,703 / 1,368) | 4 / 11 / 4 at the opening | - |
+
+Options put to the user (18:15), recommendation A: **A** - the quiet colony launches what it holds above its
+reserve's FP (`held - minimumFP`), fleets fitted largest first as the pressed path already does, never its
+last fleet; one measure, the builder's (patch ready in the scratchpad, `patch-launch-fp.pl`, unapplied). B -
+build the launch stock as separate fleets (keeps three units). C - the bank pays the wave while the garrison
+stays home (the surplus never spreads; against the closed economy). The war opening at 4 hives is a separate
+question until the spread is unlocked.
