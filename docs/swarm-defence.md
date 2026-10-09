@@ -224,9 +224,11 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   at the send and at every overdue read): the read then says `pulse N frames, last D d ago at x/y`, with
   `alive`, `current` (the player's location), `station`, `aimode` - a stopped pulse is a fleet the engine no
   longer advances.
-  The pulse told nothing (hw113/hw114, 10:15): an entity's scripts run only in the player's location
-  (`pulse never ran`, `current false` on all 1,296 reads) - which also means vanilla's `AsteroidImpact` only
-  ever knocks fleets the player can see. The crawlers arrive (39 of 39 read twice had moved 10,000+ units).
+  The pulse told nothing (hw113/hw114, 10:15) - CORRECTED 2026-10-09: the read tested `p.day < 0` and
+  `ThreatPosture.today()` is negative on the sector clock, so every read said `pulse never ran`; an entity's
+  scripts run in any location (`BaseCampaignEntity.advance` ends with `runScripts`). The 10:15 reading
+  ("scripts, and `AsteroidImpact`, run only in the player's location") was wrong. Fixed for hw122: "never" is
+  `frames == 0`. The crawlers arrive (39 of 39 read twice had moved 10,000+ units).
   hw115/hw116 run the carry split: kick 1 `setVelocity(0, 0)` in place, kick 2 `setLocation` one unit over,
   kick 3 the carry; the read adds `moved N units since the send` (`REINFORCE_AT_KEY`, stored at the send).
   Read (hw115/hw116, 11:00): 68 of 774 overdue swarms had `moved 0 units since the send` - they never left
@@ -247,3 +249,32 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   integrates the fleet's position. Neither a reversed facing (31 / 13 / 8 of the frozen, 8 / 14 / 6 of the
   free) nor a small source body (radius under 60 behind 27 / 13 / 6, 150+ behind 15 / 6 / 4) marks them.
   The carry stays (the user, 2026-10-09); the next step is the decompile of `CampaignFleet.advance`.
+
+  **The engine, decompiled (2026-10-09, CFR 0.152 over `starfarer_obf.jar`; sources in that session's
+  scratchpad `dec\`).** What moves a campaign fleet, by symbol:
+  - `CampaignEngine.advance`: the current location every iteration; every other star system and hyperspace
+    once in 60 iterations with 60 x the frame time (in fast-advance every location every iteration) - a
+    per-location throttle that never reaches zero. `CampaignState` runs the engine round(speed-up) times a frame.
+  - `BaseLocation.advance`: over a copy of `objects.getList(CampaignEntity.class)` - expired entities removed,
+    then `e.advance(f)`, the orbit advanced, and `location += velocity x f` for EVERY entity, unconditionally.
+    `getFleets()` is the same `ObjectRepository` (each object filed under all its classes and interfaces);
+    `isAlive()` is membership of the repository's HashSet.
+  - `CampaignFleet.advance`: the AI only if `ai != null`, not fading, not `isDoNotAdvanceAI()`; movement only
+    with a `moveDestination` (never cleared once set): `SmoothMovementModule.advance`, then location and
+    velocity copied from the module - the only place facing changes. `ModularFleetAI.advance` returns early
+    only in a battle. `CampaignFleet.setVelocity` writes the module's vector, not `getVelocity()`'s, so on a
+    fleet not advanced `setVelocity(0, 0)` changes nothing a read sees.
+  - Nothing there stops a listed, unexpired fleet at full burn: no sleep flag, no per-fleet throttle, no
+    spatial grid, no separate advance list, no try/catch swallowing an exception in the three loops.
+  What the logs then say (hw115-hw120): position, velocity, facing and the move destination stopped
+  together (headings read 10,000 less 6 s of travel - the nav module's click point, one tick past), so no
+  AI tick since: `CampaignFleet.advance` is not being called. After every send, kick or nudge a frozen
+  fleet moves whole ticks (359-360, 719-720, 1,079-1,080 units at speed 180) and freezes again; the carry
+  frees because 2-3 ticks cover the 800 units from its drop point to `GARRISON_LEASH_RADIUS` (700), not
+  because it repairs anything. The only core state that fits a frozen listed fleet is one missing from the
+  CampaignEntity list while still in the CampaignFleetAPI list - but an order or `setLocation` does not touch
+  list membership, so "a few ticks then frozen" stays unexplained. hw122's read adds the check
+  (`ThreatColonyManager.engineLists`): `engine list xN` (the fleet in the list the engine iterates, by the
+  interface's name), `fleets xN`, `location held` (a star system or hyperspace the sector holds) and
+  `moveDest` (the expiry of `$ai_moveDest`, renewed every AI tick and counted down only while the fleet is
+  advanced - the same figure at two reads = not advanced between them), with the pulse fixed.
