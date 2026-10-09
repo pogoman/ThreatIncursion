@@ -872,7 +872,6 @@ public class ThreatFleetOrders {
 		params.ignoreMarketFleetSizeMult = true;
 		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
 		if (fleet == null || fleet.isEmpty()) return null;
-		ThreatFleetComposer.beltSafe(fleet);
 		system.addEntity(fleet);
 		fleet.setLocation(entity.getLocation().x, entity.getLocation().y);
 		fleet.setName("Task Force");

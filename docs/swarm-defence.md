@@ -126,6 +126,19 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   (`systemDefenceOnlyIfEnough`, on) - the swarm's mirror of a siege's call-off. Log: `Posture: no rally to
   <world> (N FP could stand against M)`.
 
+  Regional relief (2026-10-09, the user, after the old sector swung 44-151 hives on one build; built for
+  hw121): when the system's own pool cannot outweigh the force, `rally` adds the swarms already bound for
+  the world from other systems (`boundFromAfar`) and the spare of the hives in other systems
+  (`regionalPool`): nearest system first, each passage paid from the fuel stock (`ThreatFuel.passage`,
+  as `sendReinforcement` charges it), each colony within its own need (`spareFleets(c, true)`), a front
+  colony never below its want (`frontline`, `wantFP`), a system with a force over, a siege at or an
+  army on any of its worlds giving none. The pool stops at the system's want (attack x
+  `systemDefenceMargin`). The only-if-enough rule reads the whole of it: nothing sails unless the
+  world's own system and the region together outweigh the force. Sent after the system's own swarms,
+  by `pickFor`. Knob `regionalRelief` (true). Log: `Posture: <donor> rallied N FP to <world> from L ly
+  (regional relief; ...)`, and `no rally` lines end `, K regional` when a regional pool was counted.
+  The humans' coalition relief mirrored (`ThreatCoalition.jointRelief`).
+
   The pressure pass is under the same rule (2026-10-08, hw83a): `ThreatColonyManager.redistributeByPressure`
   sends a receiver under attack (`ThreatPosture.underAttack`) nothing - no transfer, no swarm fabricated
   for it - unless what stands for it (`ThreatPosture.standsFor`: the swarms at the world and those bound
@@ -204,8 +217,8 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   REFUTED (hw111/hw112, 09:30): with the key set on every swarm (`impact true`), 137 frozen pairs still
   stood at the same unit of position a span apart, all at full speed in a belt or ring, heading unchanged -
   neither the fleet nor its AI is being advanced; a fresh AI does not help, the carry does. The belt is where
-  the swarm was built and never left, not what holds it; `AsteroidImpact` is not the cause (beltSafe stays,
-  harmless). The crawlers are `slow true`: vanilla's sneak burn (`Misc.getGoSlowBurnLevel`, min burn x the
+  the swarm was built and never left, not what holds it; `AsteroidImpact` is not the cause (beltSafe was removed on
+  2026-10-09 afternoon by the user's word; it ran hw111-hw120). The crawlers are `slow true`: vanilla's sneak burn (`Misc.getGoSlowBurnLevel`, min burn x the
   sneak multiplier, 9 -> 2) with the travel speed intact; the mod never calls `goSlowOneFrame`, and 69 of
   261 had no hostile in range. hw113/hw114 run the frame pulse (`ThreatColonyManager.FramePulse`, attached
   at the send and at every overdue read): the read then says `pulse N frames, last D d ago at x/y`, with
@@ -229,3 +242,8 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   its target does. hw119/hw120: the carry at the SECOND read (kick 2; the swarm loses 180 days, not 270),
   and the read adds `velocity x/y`, `facing` and `from <hive> N units off (radius R)` - the source hive's
   planet, to tell whether a frozen swarm sits on its hive.
+  Read (hw119/hw120, 12:50): every frozen pair (52 / 34 / 20) holds its velocity vector to the unit - full
+  burn, aimed at the target - and its facing in 101 of 106: a dead stop, not an oscillation; nothing
+  integrates the fleet's position. Neither a reversed facing (31 / 13 / 8 of the frozen, 8 / 14 / 6 of the
+  free) nor a small source body (radius under 60 behind 27 / 13 / 6, 150+ behind 15 / 6 / 4) marks them.
+  The carry stays (the user, 2026-10-09); the next step is the decompile of `CampaignFleet.advance`.

@@ -974,15 +974,22 @@ public class ThreatPosture {
 					|| ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c) > 0f) continue;
 			for (CampaignFleetAPI f : ThreatColonyManager.spareFleets(c, false)) pool.put(f, c);
 		}
+		float gather = have;
+		for (CampaignFleetAPI f : pool.keySet()) gather += f.getFleetPoints();
+		// short on its own, the hives in fuel reach pool with the system (regionalPool)
+		float regionalWant = margin > 0f ? want : attackFP;
+		float afar = 0f;
+		Map<CampaignFleetAPI, MarketAPI> regional = new java.util.LinkedHashMap<CampaignFleetAPI, MarketAPI>();
+		if (gather < attackFP && ThreatIncConfig.regionalRelief()) {
+			afar = boundFromAfar(world);
+			gather += afar;
+			if (gather < regionalWant) gather += regionalPool(world, regionalWant - gather, regional);
+		}
 		// what cannot outweigh the force is not sent to die under it: the swarms stay where they stand
-		if (ThreatIncConfig.systemDefenceOnlyIfEnough()) {
-			float gather = have;
-			for (CampaignFleetAPI f : pool.keySet()) gather += f.getFleetPoints();
-			if (gather < attackFP) {
-				if (!pool.isEmpty()) ThreatIncConfig.log("Posture: no rally to " + world.getName() + " (" + (int) gather
-						+ " FP could stand against " + (int) attackFP + ")");
-				return;
-			}
+		if (ThreatIncConfig.systemDefenceOnlyIfEnough() && gather < attackFP) {
+			if (!pool.isEmpty() || !regional.isEmpty()) ThreatIncConfig.log("Posture: no rally to " + world.getName() + " (" + (int) gather
+					+ " FP could stand against " + (int) attackFP + (regional.isEmpty() ? "" : ", " + regional.size() + " regional") + ")");
+			return;
 		}
 		while (!pool.isEmpty() && have < want) {
 			CampaignFleetAPI pick = pickFor(pool.keySet(), want - have);
@@ -995,6 +1002,92 @@ public class ThreatPosture {
 					+ " (" + (int) have + " FP stood against " + (int) attackFP + ")");
 			have += fp;
 		}
+		have += afar;
+		while (!regional.isEmpty() && have < regionalWant) {
+			CampaignFleetAPI pick = pickFor(regional.keySet(), regionalWant - have);
+			MarketAPI donor = regional.remove(pick);
+			float fp = pick.getFleetPoints();
+			if (!ThreatColonyManager.sendReinforcement(donor, world, pick)) continue;
+			noteTransfer(world, pick);
+			noteSent(fp);
+			ThreatIncConfig.log("Posture: " + donor.getName() + " rallied " + (int) fp + " FP to " + world.getName()
+					+ " from " + (int) ThreatFuel.ly(donor.getStarSystem(), world.getStarSystem()) + " ly (regional relief; "
+					+ (int) have + " FP stood against " + (int) attackFP + ")");
+			have += fp;
+		}
+	}
+
+	/**
+	 * REGIONAL RELIEF (the user, 2026-10-09, after the old sector swung 44-151
+	 * hives on one build: hives fell in systems of 2-4 sisters while every
+	 * other system stayed home): the spare swarms of the hives in other systems
+	 * whose passage the fuel stock pays, nearest system first, until they cover
+	 * {@code shortFP}; into {@code out}, swarm -> its colony. A system with a
+	 * force over or an army on any of its worlds gives none, a colony gives only
+	 * what it holds above its own need (ThreatColonyManager.spareFleets), and a
+	 * front colony never below its want. Returns the points pooled. The humans'
+	 * coalition relief mirrored (ThreatCoalition.jointRelief); knob
+	 * regionalRelief.
+	 */
+	protected static float regionalPool(MarketAPI world, float shortFP, Map<CampaignFleetAPI, MarketAPI> out) {
+		StarSystemAPI home = world.getStarSystem();
+		if (home == null || shortFP <= 0f) return 0f;
+		Map<String, Float> sieged = siegesAt();
+		Map<StarSystemAPI, List<MarketAPI>> bySystem = new HashMap<StarSystemAPI, List<MarketAPI>>();
+		Set<StarSystemAPI> fighting = new HashSet<StarSystemAPI>();
+		for (MarketAPI c : ThreatIncData.getAllLiveColonyMarkets()) {
+			StarSystemAPI s = c.getStarSystem();
+			if (s == null || s == home || c.getPrimaryEntity() == null || fighting.contains(s)) continue;
+			if (sieged.containsKey(c.getId()) || ThreatGroundFronts.hasFront(c)
+					|| ThreatGroundFronts.hostilePointsNear(Factions.THREAT, c) > 0f) {
+				fighting.add(s);
+				bySystem.remove(s);
+				continue;
+			}
+			List<MarketAPI> list = bySystem.get(s);
+			if (list == null) bySystem.put(s, list = new ArrayList<MarketAPI>());
+			list.add(c);
+		}
+		final Map<StarSystemAPI, Float> ly = new HashMap<StarSystemAPI, Float>();
+		for (StarSystemAPI s : bySystem.keySet()) ly.put(s, ThreatFuel.ly(s, home));
+		List<StarSystemAPI> order = new ArrayList<StarSystemAPI>(bySystem.keySet());
+		java.util.Collections.sort(order, new java.util.Comparator<StarSystemAPI>() {
+			public int compare(StarSystemAPI a, StarSystemAPI b) { return Float.compare(ly.get(a), ly.get(b)); }
+		});
+		float got = 0f, fuel = 0f;
+		for (StarSystemAPI s : order) {
+			boolean front = frontline(s);
+			for (MarketAPI c : bySystem.get(s)) {
+				float room = front ? ThreatColonyManager.ownedFleetFP(c, ThreatIncData.garrisonsFor(c.getId())) - wantFP(c)
+						: Float.MAX_VALUE;
+				for (CampaignFleetAPI f : ThreatColonyManager.spareFleets(c, true)) {
+					float fp = f.getFleetPoints();
+					if (fp > room) continue;
+					float passage = ThreatFuel.passage(fp, ly.get(s), false);
+					if (!ThreatFuel.canPay(fuel + passage)) continue;
+					fuel += passage;
+					room -= fp;
+					out.put(f, c);
+					got += fp;
+					if (got >= shortFP) return got;
+				}
+			}
+		}
+		return got;
+	}
+
+	/** The swarms bound for the world's garrison still outside its system (a regional relief on its way). */
+	protected static float boundFromAfar(MarketAPI world) {
+		float fp = 0f;
+		if (world == null || world.getPrimaryEntity() == null) return fp;
+		for (CampaignFleetAPI f : ThreatIncData.reinforcementFleets().values()) {
+			if (f == null || !f.isAlive() || f.isExpired()) continue;
+			if (f.getContainingLocation() == world.getPrimaryEntity().getContainingLocation()) continue;
+			if (world.getId().equals(f.getMemoryWithoutUpdate().getString(ThreatColonyManager.REINFORCE_TARGET_KEY))) {
+				fp += f.getFleetPoints();
+			}
+		}
+		return fp;
 	}
 
 	/**
