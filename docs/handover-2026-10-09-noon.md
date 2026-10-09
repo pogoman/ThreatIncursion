@@ -48,7 +48,11 @@ hw99a's hot economy; the four unbuilt human-side shapes of hw60 (defence-in-dept
 
 - **hw119a (ck2) + hw120a / b (ck5)** launched 11:46 from jar 11:19 (= commit a1ef95c4's src): the
   carry at the SECOND overdue read, and the overdue read adds `velocity x/y`, `facing`, and
-  `from <hive> N units off (radius R)` (the source hive's planet). Batch ends about 12:35.
+  `from <hive> N units off (radius R)` (the source hive's planet). **Ended 12:30, no exception,
+  NOT yet recorded or committed (dumps on disk under `tools/warsim/validation/hw119a`, `hw120a`, `hw120b`;
+  logs in `/tmp/threatinc-tests/ti-hw119a.txt` etc.).** End figures: hw119a hives 38 -> 65, humans 50 -> 30
+  (+10 forward bases), 48 eradicated / 17 conquests, 177 swarms carried; hw120a / b hives 203 / 160, humans
+  2 / 2, eradicated 1 / 3. Old sector on one build now 89 / 49 / 44 / 151 / 65 hives.
   Logs `/tmp/threatinc-tests/ti-hw119a.txt` etc. (Git Bash `/tmp`); status
   `/tmp/threatinc-tests/sbs-status.txt`; done marker `sbs-go.done`; dumps under
   `tools/warsim/validation/<tag>/`.
