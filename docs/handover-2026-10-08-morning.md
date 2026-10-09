@@ -498,3 +498,14 @@ a human fleet in hyperspace, 69 with none in range; the mod never calls `goSlowO
 (jar 09:28) run the frame pulse (`ThreatColonyManager.FramePulse`): a script on each reinforcement swarm
 recording the last frame the engine advanced it, read back with `alive` / `current` / `station` / `aimode`.
 `game-runs-2.md` 43, `swarm-defence.md` "Overdue reinforcements".
+
+## 27. hw113 + hw114 - the frame pulse read at 10:15: nothing (entity scripts run only in the player's location); old sector 49 hives / 33 colonies
+
+e461aa25 (jar 09:28). hw113a (ck2): hives 38 -> 49, humans 50 -> 33 (+12 forward bases), 43 eradicated
+/ 16 conquests - the swing back (hw105a 92 / 15, hw111a 89 / 21). hw114a / b (ck5): hives 164 / 146,
+humans 5 / 1. The pulse never ran on any of 1,296 overdue swarms (`current false` on every one): an
+entity's scripts run only in the player's location, so the probe says nothing about the engine advancing
+a frozen swarm. Settled: the crawlers arrive (39 of 39 slow-true swarms read twice had moved 10,000+ units
+between reads). hw115 / hw116 (jar 10:13) run the carry split - kick 1 zeroes the velocity in place, kick
+2 nudges the position one unit, kick 3 carries - with `moved N units since the send` in the read.
+`game-runs-2.md` 43, `swarm-defence.md` "Overdue reinforcements".

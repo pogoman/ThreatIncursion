@@ -211,3 +211,8 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   at the send and at every overdue read): the read then says `pulse N frames, last D d ago at x/y`, with
   `alive`, `current` (the player's location), `station`, `aimode` - a stopped pulse is a fleet the engine no
   longer advances.
+  The pulse told nothing (hw113/hw114, 10:15): an entity's scripts run only in the player's location
+  (`pulse never ran`, `current false` on all 1,296 reads) - which also means vanilla's `AsteroidImpact` only
+  ever knocks fleets the player can see. The crawlers arrive (39 of 39 read twice had moved 10,000+ units).
+  hw115/hw116 run the carry split: kick 1 `setVelocity(0, 0)` in place, kick 2 `setLocation` one unit over,
+  kick 3 the carry; the read adds `moved N units since the send` (`REINFORCE_AT_KEY`, stored at the send).
