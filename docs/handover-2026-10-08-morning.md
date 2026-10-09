@@ -220,7 +220,7 @@ mechanism in the losing games is supplies, as every batch since hw60 has said.
 
 ## 5. hw69 - sustenance first (64afc3a9), read at 10:35: the swarm wins all three
 
-The user chose "feed the forges first" (`facts` Decisions, `hive-garrison-and-upkeep.md` "Feeding
+The user chose "feed the forges first" (`facts` Decisions, `hive-stocks-and-upkeep.md` "Feeding
 order"), reading it as an investment - a smaller navy until the new forges produce - and asked for
 the counter-stroke to go (knob off, code kept through this batch). hw69: hives 67 / 50 / 58,
 eradicated 1 / 9 / 11, worlds taken 41 / 26 / 32, supplies income 102k / 110k / 92k a month; the

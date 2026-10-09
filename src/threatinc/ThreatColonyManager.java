@@ -4406,7 +4406,7 @@ public class ThreatColonyManager {
 			// (2026-10-06: the garrison is vanilla's patrols - the Nexus's table,
 			// shrinking with the market's shortages as a human world's does - and
 			// pays no supplies; one evening charged it and gated its growth on the
-			// hive's supplies surplus, hw36-37, docs/hive-garrison-and-upkeep.md)
+			// hive's supplies surplus, hw36-37, docs/hive-stocks-and-upkeep.md)
 			// (2026-09-29: closed economy - the bank is the only bound. The nexus
 			// used to spend it at one swarm per garrisonRespawnDays, which the
 			// alarm quickened: a second, arbitrary cap on top of production. Now

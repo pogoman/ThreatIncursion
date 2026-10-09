@@ -49,7 +49,7 @@ for the offensive:
   simplest honest rule is to take the spares only for prongs that sail today and let held prongs build from the
   fund, or to re-plan a held prong on its day (it already re-runs `launchStrike`, which re-plans).
 - The spare is what `ThreatColonyManager.garrisonAvailableForLaunch` leaves above the reserve - the patrol
-  table (`ThreatPosture.minimumFP`) stays home; that is the parity rule (`hive-garrison-and-upkeep.md`).
+  table (`ThreatPosture.minimumFP`) stays home; that is the parity rule (`hive-stocks-and-upkeep.md`).
 - Expect the navy charge's bill (`payNavySupplies`) to fall as the spare leaves, which is the point.
 
 **(2) "Losing" must be nuanced - not one lost opening, not hives falling as a one-off.** The user's words: "it

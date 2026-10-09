@@ -3,7 +3,7 @@
 Split from `hive-garrison-and-upkeep.md` (2026-10-09). The swarm keeps no navy it cannot supply and use (the user,
 2026-10-08): the sections below are the fit (`ThreatColonyManager.fitNavyToSpare`), the builder and the pressure pass
 under it, and what the overnight batches hw77-hw86 read. The posture, stance, fuel, parity, structures and size
-upkeep stay in `hive-garrison-and-upkeep.md`; the rally's enough rule, which the pass is under since hw87, in
+upkeep stay in `hive-garrison-and-upkeep.md` and `hive-stocks-and-upkeep.md`; the rally's enough rule, which the pass is under since hw87, in
 `swarm-defence.md` "Only when it is enough".
 
 ## The navy fits the spare (2026-10-08, the user's rule; `ThreatColonyManager.fitNavyToSpare`)
