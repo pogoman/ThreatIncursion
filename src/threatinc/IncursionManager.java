@@ -4535,24 +4535,38 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		WeightedRandomPicker<StarSystemAPI> picker = new WeightedRandomPicker<StarSystemAPI>(random);
 		StarSystemAPI best = null;
 		float bestW = 0f;
+		// why nothing was picked, for the log: the systems each gate turned away
+		int valid = 0, noForge = 0, unpaid = 0, unplaced = 0, unneeded = 0, weightless = 0;
+		float cheapestUnpaid = Float.MAX_VALUE;
 		for (StarSystemAPI system : Global.getSector().getStarSystems()) {
 			if (!isValidSpreadCandidate(system)) continue;
+			valid++;
 
 			// reachable = some stable forge colony can send a wave: the fuel
 			// to send it this far (the old radius, pickForgeSource), or billed,
 			// a forge the stocks pay the wave from
 			MarketAPI source = ThreatColonyManager.pickForgeSource(system, true);
-			if (source == null) continue;
+			if (source == null) {
+				noForge++;
+				continue;
+			}
 			// billed: a claim whose founding and way out the fuel stock cannot pay
 			// now would hold its forge's claim for months while nearer ones wait
-			if (billed && !ThreatFuel.canPay(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL,
-					ThreatColonyManager.foundingFuel(source, system))) {
-				continue;
+			if (billed) {
+				float fuel = ThreatColonyManager.foundingFuel(source, system);
+				if (!ThreatFuel.canPay(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, fuel)) {
+					unpaid++;
+					cheapestUnpaid = Math.min(cheapestUnpaid, fuel);
+					continue;
+				}
 			}
 
 			float dInfested = distanceToNearestInfested(system);
 			float dInhabited = distanceToNearestInhabited(system);
-			if (dInfested < 0 || dInhabited < 0) continue;
+			if (dInfested < 0 || dInhabited < 0) {
+				unplaced++;
+				continue;
+			}
 
 			// the swarm ADVANCES: it hunts the sector's biomass and technology,
 			// it doesn't colonize wilderness for its own sake. Strong pull
@@ -4563,7 +4577,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// shortfalls weigh far heavier - a rare-starved hive lunges at
 			// rare-ore worlds
 			float need = ThreatColonyManager.systemNeedScore(system, needs);
-			if (strainedHive && need <= 0f) continue;
+			if (strainedHive && need <= 0f) {
+				unneeded++;
+				continue;
+			}
 			float w;
 			if (billed) {
 				// billed reach (ThreatReach): both pulls in the bill's terms - per
@@ -4585,6 +4602,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// expanding to diversify, the swarm leans away from its strongest
 			// rival (ThreatStance)
 			w *= ThreatStance.spreadMult(system);
+			if (w <= 0f) weightless++;
 			// billed, the best claim, not a draw: with no radius every system in
 			// the sector is a candidate, and the far ones' small weights summed
 			// to a lottery ticket - h37a sent 2 of 17 claims 27-28 ly out on it
@@ -4597,7 +4615,22 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				picker.add(system, w);
 			}
 		}
-		return billed ? best : picker.pick();
+		StarSystemAPI picked = billed ? best : picker.pick();
+		if (picked == null) {
+			StringBuilder forges = new StringBuilder();
+			for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+				String why = ThreatColonyManager.forgeSourceBlock(market, true);
+				forges.append(forges.length() > 0 ? "; " : "").append(market.getName()).append(": ")
+						.append(why != null ? why : "can send");
+			}
+			ThreatIncConfig.log("Spread target: none - candidates " + valid + ", no forge " + noForge
+					+ ", fuel unpaid " + unpaid
+					+ (unpaid > 0 ? " (cheapest " + (int) cheapestUnpaid + ", stock "
+							+ (int) ThreatFuel.stock(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL) + ")" : "")
+					+ ", no distance " + unplaced + ", strained " + unneeded + ", weight 0 " + weightless
+					+ "; forges: " + forges);
+		}
+		return picked;
 	}
 
 	/**

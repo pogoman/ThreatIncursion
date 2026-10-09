@@ -593,3 +593,20 @@ hw130 / hw131 (645a1122, jar 16:07): the guard writes the movement module's velo
 
 New sector: 219 / 344 hives, humans 0 / 1. Open for the user: remove the carry (dormant now; recommended), and
 whether the swarm winning every sector this decisively is the target or an overshoot.
+
+## 36. hw132 - read at 17:49: on a new seed from day 0 the swarm loses every game
+
+The user (17:00): remove the carry (done, 17ae3681), and "a brand new test with new seed from game start".
+`save_OceanPena_1024894203100914406` (generated 17:13, `testing-harness.md`), three games from day 0.
+
+| New seed (OceanPena, day 0) | War opened (day) | Hives at the opening | Peak | End | Human colonies (+forward bases) | Hives eradicated |
+|---|---|---|---|---|---|---|
+| hw132a | 1,365 | 4 | 17 | 0 (wiped, war day 3,041) | 43 | 28 |
+| hw132b | 1,703 | 11 | 26 | 3 | 45 (+17) | 47 |
+| hw132c | 1,368 | 4 | 16 | 0 | 45 | 36 |
+| ck5 (new sector checkpoint, hw130a / b) | - | 32 | - | 219 / 344 | 0 / 1 | 0 / 0 |
+| ck2 (old sector checkpoint, hw131a) | - | 38 | - | 251 | 2 | 3 |
+
+In a and c the swarm claimed nothing before the war: its 4 forges were spread-capable every month and the
+picker found no target, then the opening strike went at day ~1,365 with 4 hives. Why the picker finds
+nothing is logged from hw133 (`Spread target: none`, jar 17:51; two games from day 0 to day 1,900).

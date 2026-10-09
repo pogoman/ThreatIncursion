@@ -2859,6 +2859,32 @@ public class ThreatColonyManager {
 	}
 
 	/**
+	 * Why a colony can send no wave now - pickForgeSource's gates in its order, with
+	 * the figures of the one that failed - or null when it could: the spread log.
+	 */
+	public static String forgeSourceBlock(MarketAPI market, boolean requireStable) {
+		if (market.getSize() < ThreatIncConfig.spreadMinSize()) return "size " + market.getSize();
+		if (!hasReadyForge(market)) return "no ready forge";
+		if (!hasOperationalNexus(market)) return "nexus down";
+		StarSystemAPI system = market.getStarSystem();
+		if (system == null) return "no system";
+		if (ThreatPosture.enabled() && ThreatIncConfig.posturePressedForgesHome() && ThreatPosture.pressed(system)) {
+			return "pressed";
+		}
+		if (garrisonAvailableForLaunch(market) < 1) {
+			float held = ownedFleetFP(market, ThreatIncData.garrisonsFor(market.getId()));
+			float spare = ThreatPosture.launchSpareFP(market);
+			return "no swarm to spare (garrison " + countLiveGarrison(market.getId())
+					+ ", reserve " + garrisonReserve(market)
+					+ ", held " + (int) held + " of want " + (int) ThreatPosture.wantFP(market)
+					+ (ThreatPosture.regrowing(market, held) ? ", regrowing" : "")
+					+ ", pressure spare " + (spare == Float.MAX_VALUE ? "none" : String.valueOf((int) spare)) + ")";
+		}
+		if (requireStable ? !isStableForExpansion(market) : !canProjectFleets(market)) return "unstable";
+		return null;
+	}
+
+	/**
 	 * Ship-hull availability in the hive economy as seen from this market. Ships
 	 * are a group-scoped commodity, so this reflects the whole hive's forge
 	 * output - zero until a Heavy Industry/Orbital Works colony is actually
