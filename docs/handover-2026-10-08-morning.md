@@ -509,3 +509,14 @@ a frozen swarm. Settled: the crawlers arrive (39 of 39 slow-true swarms read twi
 between reads). hw115 / hw116 (jar 10:13) run the carry split - kick 1 zeroes the velocity in place, kick
 2 nudges the position one unit, kick 3 carries - with `moved N units since the send` in the read.
 `game-runs-2.md` 43, `swarm-defence.md` "Overdue reinforcements".
+
+## 28. hw115 + hw116 - the carry split read at 11:00: frozen swarms never left their send spot; resets in place free half; old sector 44 hives / 32 colonies
+
+c44ddd2d (jar 10:13). hw115a (ck2): hives 38 -> 44, humans 50 -> 32 (+25 forward bases), 44 eradicated /
+15 conquests - the third human-leaning old-sector sample in a row (hw111a 89 / 21, hw113a 49 / 33, hw115a
+44 / 32). hw116a / b (ck5): hives 202 / 144, humans 4 / 4. The read: 68 of 774 overdue swarms (8.8%) had
+`moved 0 units since the send` - never left the spot they were sent from, all in a belt or ring, velocity
+at full burn. A span after `velocity zeroed`: 11 free, 6 creeping, 4 still; after a one-unit nudge: 2 free,
+14 creeping. The carry (1,500 units from the target) always frees. hw117 / hw118 (jar 10:35): kick 1 clears
+the nav module's avoid list, kick 2 hops 500 units along the heading, kick 3 carries; fleet ids on the
+overdue and arrival lines. `game-runs-2.md` 43, `swarm-defence.md` "Overdue reinforcements".

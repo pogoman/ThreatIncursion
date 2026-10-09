@@ -6376,8 +6376,11 @@ public class ThreatColonyManager {
 			fleet.clearAssignments();
 			fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
 			ThreatIncData.garrisonsFor(targetId).add(fleet);
+			com.fs.starfarer.api.campaign.rules.MemoryAPI am = fleet.getMemoryWithoutUpdate();
 			ThreatIncConfig.log("Reinforcement arrived at " + target.getName() + " ("
-					+ countLiveGarrison(targetId) + "/" + nominalGarrison(target) + ")");
+					+ countLiveGarrison(targetId) + "/" + nominalGarrison(target) + "), id " + fleet.getId() + ", "
+					+ (am.contains(REINFORCE_DAY_KEY) ? (int) (ThreatPosture.today() - am.getFloat(REINFORCE_DAY_KEY)) : -1) + " d out, "
+					+ (int) fleet.getFleetPoints() + " FP");
 		}
 	}
 
@@ -6430,16 +6433,32 @@ public class ThreatColonyManager {
 			fleet.setVelocity(0f, 0f);
 			remedy = "carried to 1,500 units from " + planet.getName() + " (kick " + kicks + ")";
 		} else if (kicks == 2) {
-			// the carry split (hw115/hw116): the carry's two calls tried one at a
-			// time, to learn which of them frees a frozen swarm
-			fleet.setLocation(fleet.getLocation().x + 1f, fleet.getLocation().y);
-			remedy = "nudged one unit, ordered on again (kick 2)";
-		} else {
+			// hw117/hw118: a short hop along its own heading - if that frees a
+			// frozen swarm, the spot holds it, not the fleet's state (hw115a: a
+			// zeroed velocity and a one-unit nudge in place freed two of three)
+			Vector2f dest = fleet.getMoveDestination();
+			Vector2f dir = dest != null ? new Vector2f(dest.x - fleet.getLocation().x, dest.y - fleet.getLocation().y)
+					: new Vector2f(planet.getLocation().x - fleet.getLocation().x, planet.getLocation().y - fleet.getLocation().y);
+			if (dir.length() < 1f) dir.set(1f, 0f);
+			dir.normalise();
+			fleet.setLocation(fleet.getLocation().x + dir.x * 500f, fleet.getLocation().y + dir.y * 500f);
 			fleet.setVelocity(0f, 0f);
-			remedy = "velocity zeroed, ordered on again (kick " + kicks + ")";
+			remedy = "hopped 500 units along its heading, ordered on again (kick 2)";
+		} else {
+			// hw117/hw118: the nav module's avoid list cleared - a fleet steering
+			// around something it will not pass shows a heading and a velocity
+			// and no displacement
+			com.fs.starfarer.api.campaign.ai.CampaignFleetAIAPI ai = fleet.getAI();
+			if (ai instanceof com.fs.starfarer.api.campaign.ai.ModularFleetAIAPI
+					&& ((com.fs.starfarer.api.campaign.ai.ModularFleetAIAPI) ai).getNavModule() != null) {
+				((com.fs.starfarer.api.campaign.ai.ModularFleetAIAPI) ai).getNavModule().clearAvoidList();
+				remedy = "avoid list cleared, ordered on again (kick " + kicks + ")";
+			} else {
+				remedy = "ordered on again (kick " + kicks + ")";
+			}
 		}
 		ThreatIncConfig.log("Reinforcement overdue: " + (int) fleet.getFleetPoints() + " FP -> " + target.getName()
-				+ ", " + (int) (day - sent) + " d out, " + where + ", battle " + battle
+				+ ", " + (int) (day - sent) + " d out, id " + fleet.getId() + ", " + where + ", battle " + battle
 				+ ", ships " + fleet.getFleetData().getNumMembers() + " - " + remedy);
 		if (battle) return;
 		pulse(fleet);

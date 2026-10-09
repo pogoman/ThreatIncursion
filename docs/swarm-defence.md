@@ -216,3 +216,10 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   ever knocks fleets the player can see. The crawlers arrive (39 of 39 read twice had moved 10,000+ units).
   hw115/hw116 run the carry split: kick 1 `setVelocity(0, 0)` in place, kick 2 `setLocation` one unit over,
   kick 3 the carry; the read adds `moved N units since the send` (`REINFORCE_AT_KEY`, stored at the send).
+  Read (hw115/hw116, 11:00): 68 of 774 overdue swarms had `moved 0 units since the send` - they never left
+  the spot they were sent from (all in a belt or ring, the hive's). A span after `velocity zeroed`: 11 free,
+  6 creeping (under 2,000 units a span), 4 still; after the one-unit nudge: 2 free, 14 creeping; the carry
+  always frees. hw117/hw118: kick 1 clears the nav module's avoid list (`ModularFleetAIAPI.getNavModule()
+  .clearAvoidList()` - a fleet steering round something it will not pass shows a heading and a velocity and
+  no displacement), kick 2 hops 500 units along the heading (the spot or the fleet?), kick 3 carries; the
+  overdue and arrival lines carry `id <fleet id>` and the days out, so a swarm's reads and its arrival link.
