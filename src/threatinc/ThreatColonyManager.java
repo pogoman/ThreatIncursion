@@ -4384,12 +4384,17 @@ public class ThreatColonyManager {
 				List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(m.getId());
 				float above = garrisonFP(fleets) - fitFloor(m);
 				if (above <= 0f || above <= pickAbove) continue;
-				CampaignFleetAPI victim = smallestOnStation(fleets);
+				// never the launch stock's fleets (launchStockFleets)
+				List<CampaignFleetAPI> loose = new ArrayList<CampaignFleetAPI>(fleets);
+				loose.removeAll(launchStockFleets(m));
+				CampaignFleetAPI victim = smallestOnStation(loose);
 				if (victim == null || victim.getFleetPoints() > above) continue;
 				pick = m; pickAbove = above; pickFleets = fleets;
 			}
 			if (pick == null) break;
-			CampaignFleetAPI victim = smallestOnStation(pickFleets);
+			List<CampaignFleetAPI> spareFleets = new ArrayList<CampaignFleetAPI>(pickFleets);
+			spareFleets.removeAll(launchStockFleets(pick));
+			CampaignFleetAPI victim = smallestOnStation(spareFleets);
 			float fp = victim.getFleetPoints();
 			pickFleets.remove(victim);
 			victim.despawn();
@@ -4579,7 +4584,9 @@ public class ThreatColonyManager {
 
 	/** The spare a month the navy's fit wants (fitNavyToSpare): one founding's supplies while any send was held this month, else 0. */
 	protected static float fitWant() {
-		return ThreatFuel.heldThisMonth() > 0 ? ThreatFuel.foundingCost()[0] : 0f;
+		// a send held on fuel alone asks nothing of the navy (hw136: 49 sends held on an empty fuel stock
+		// had the fit recycle the launch swarms the colonies had just carved for their waves)
+		return ThreatFuel.heldOnSuppliesThisMonth() > 0 ? ThreatFuel.foundingCost()[0] : 0f;
 	}
 
 	/** Whether the navy's fit binds now: the knob on, upkeep on, and the spare a month short of fitWant. */
@@ -4614,7 +4621,27 @@ public class ThreatColonyManager {
 	 * strike a pressing stance stages there (ThreatStance.extraWantFP - a strike staged is the navy used).
 	 */
 	public static float fitFloor(MarketAPI market) {
-		return Math.max(ThreatPosture.minimumFP(market), ThreatPosture.needFP(market)) + ThreatStance.extraWantFP(market);
+		// a forge colony's launch stock is navy about to be used - its next wave (hw136: the fit recycled
+		// the swarm splitLaunchSwarm had carved, the smallest on station, the poll after)
+		return Math.max(ThreatPosture.minimumFP(market), ThreatPosture.needFP(market)) + ThreatStance.extraWantFP(market)
+				+ ThreatPosture.stockFP(market);
+	}
+
+	/**
+	 * The fleets that are a colony's launch stock in substance: launchOrder's, largest first, until
+	 * their fleet points reach ThreatPosture.stockFP. Never the navy fit's victim (fitNavyToSpare).
+	 */
+	protected static List<CampaignFleetAPI> launchStockFleets(MarketAPI market) {
+		List<CampaignFleetAPI> out = new ArrayList<CampaignFleetAPI>();
+		float stock = ThreatPosture.stockFP(market);
+		if (stock <= 0f) return out;
+		float fp = 0f;
+		for (CampaignFleetAPI curr : launchOrder(market, false)) {
+			if (fp >= stock) break;
+			out.add(curr);
+			fp += curr.getFleetPoints();
+		}
+		return out;
 	}
 
 	/** The colony poll's cadence (IncursionManager's 0.4-0.6 day interval). */

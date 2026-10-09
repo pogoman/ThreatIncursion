@@ -46,6 +46,8 @@ public class ThreatFuel {
 	public static final String KEY = "threatinc_hiveFuel";
 	private static final String AT = "at";
 	private static final String HELD = "heldMonth";
+	/** Of them, the sends held on supplies (the navy fit's want, ThreatColonyManager.fitWant). */
+	private static final String HELD_SUPPLIES = "heldSuppliesMonth";
 	/** The two stocks: fuel keeps the keys it was saved under before supplies joined it. */
 	private static final String[] STOCKED = { Commodities.FUEL, Commodities.SUPPLIES };
 
@@ -632,6 +634,7 @@ public class ThreatFuel {
 		boolean wave = what.startsWith("a Seeding Swarm");
 		Float fuel = UNMET.remove(Commodities.FUEL);
 		Float supplies = UNMET.remove(Commodities.SUPPLIES);
+		if (supplies != null) add(HELD_SUPPLIES, 1f);
 		if (bookHold(what)) {
 			if (fuel != null) noteDemand(Commodities.FUEL, fuel);
 			if (wave && supplies != null) noteDemand(Commodities.SUPPLIES, supplies);
@@ -733,6 +736,12 @@ public class ThreatFuel {
 		return v instanceof Float ? (Float) v : 0f;
 	}
 
+	/** Of them, those the supplies stock held (held): a send held on fuel alone asks nothing of the navy. */
+	public static float heldOnSuppliesThisMonth() {
+		Object v = data().get(HELD_SUPPLIES);
+		return v instanceof Float ? (Float) v : 0f;
+	}
+
 	/** The census's stock clause, and the month's tallies reset. */
 	public static String monthSummary() {
 		if (!enabled()) return "";
@@ -757,6 +766,7 @@ public class ThreatFuel {
 		}
 		s.append(", sends held ").append((int) (held instanceof Float ? (Float) held : 0f));
 		data().put(HELD, 0f);
+		data().put(HELD_SUPPLIES, 0f);
 		for (String c : STOCKED) ThreatIncConfig.log(sourcesLine(c));
 		for (String c : STOCKED) ThreatIncConfig.log(planLine(c));
 		// holds booked longer ago than a SHORT_DAYS are forgotten (bookHold)
