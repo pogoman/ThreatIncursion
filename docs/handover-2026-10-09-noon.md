@@ -88,6 +88,9 @@ in their location, `transition false`, `alive true`, `station false`, `aimode tr
 creep (under 2,000 units a span). The source hive's planet is often 20,000+ units away, so the swarm was
 already standing there when picked from the garrison list. Frozen swarms sit mostly 3,000+ units from any
 jump point, and a third freeze inside the target's own system - not a jump-arrival artefact.
+hw119 first reads (12:04): the source hives of frozen swarms read as tiny bodies - `from Alpha Laphirial VI
+23879 units off (radius 49)`, `Beta Cormoran I ... (radius 49)`, `Knossos ... (radius 45)` - worth a check whether
+every hive planet is that small (a station or asteroid-sized body) or only the ones whose swarms freeze.
 
 Tried, in place, each a batch, none frees more than half (by fleet id a span later): a fresh travel order
 (hw105), a fresh fleet AI (hw107), beltSafe (hw111), a zeroed velocity (hw115: 11 free / 6 creeping /
