@@ -424,3 +424,12 @@ in the earlier samples and the fund 25-39k through the run (the bigger rows spen
 544k FP built for receivers against 402k). hw98a / b (ck5): hives 145 / 168, humans 6 / 1. Not read as the
 fix's doing on one sample (ck2 ranges 21-43 worlds on one build); hw99 / hw100 (jar 04:42) run `counterGap`
 on top of it, and a sample with `counterGap` alone separates the two if hw99a is as weak. `game-runs-2.md` 43.
+
+## 21. hw99 + hw100 - the front fed to the counter line (counterGap), read at 05:35: the old sector's best swarm result, the feed still idling on a holding front
+
+7fb70a50. hw99a (ck2): hives 38 -> 80 (hw97a 42), humans 50 -> 29 (43), 23 eradicated / 26 colonies lost,
+26 ground victories (9), 229 hull break-ups (68); the economy hot at the end (spare -20k, fuel spent 212k
+of 92k made). hw100a / b (ck5): hives 167 / 216, humans 1 / 3, 54 / 55 ground victories. Read from
+hw100b's Nortia (150 against 263, braced 41 times under an idle fleet): a front that holds the hold line
+but not the counter line was neither bombarded for (`defendBombards` asked hold-or-overrun) nor fed while
+orbit still paid - 4084b5d1 makes the guns go first; hw101 / hw102 (jar 05:27) run it. `game-runs-2.md` 43.
