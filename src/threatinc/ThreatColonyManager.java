@@ -6202,6 +6202,10 @@ public class ThreatColonyManager {
 		/** Calls with a positive frame time, their sum and largest (s), the distance between the last two such calls. */
 		public int live;
 		public float sum, max, step;
+		/** The last RING live calls: the containing location's name and the position (hw126: a fleet flipping between two points). */
+		public static final int RING = 6;
+		public String[] ringLoc = new String[RING];
+		public int[] ringX = new int[RING], ringY = new int[RING];
 		public FramePulse(CampaignFleetAPI fleet) { this.fleet = fleet; }
 		public boolean isDone() { return fleet == null || !fleet.isAlive(); }
 		public boolean runWhilePaused() { return false; }
@@ -6211,12 +6215,28 @@ public class ThreatColonyManager {
 			float nx = fleet.getLocation().x, ny = fleet.getLocation().y;
 			if (amount > 0f) {
 				if (live > 0) step = (float) Math.hypot(nx - x, ny - y);
+				int i = live % RING;
+				ringLoc[i] = fleet.getContainingLocation() == null ? "null" : fleet.getContainingLocation().getName();
+				ringX[i] = (int) nx;
+				ringY[i] = (int) ny;
 				live++;
 				sum += amount;
 				max = Math.max(max, amount);
 			}
 			x = nx;
 			y = ny;
+		}
+
+		/** The ring oldest first, "location x/y; ...". */
+		public String ring() {
+			StringBuilder b = new StringBuilder();
+			int n = Math.min(live, RING);
+			for (int k = 0; k < n; k++) {
+				int i = (live - n + k) % RING;
+				if (b.length() > 0) b.append("; ");
+				b.append(ringLoc[i]).append(' ').append(ringX[i]).append('/').append(ringY[i]);
+			}
+			return b.toString();
 		}
 	}
 
@@ -6256,6 +6276,20 @@ public class ThreatColonyManager {
 		boolean held = loc == Global.getSector().getHyperspace()
 				|| Global.getSector().getStarSystems().contains(loc);
 		b.append(", location held ").append(held);
+		// every location that lists the fleet (hw126): the location loop sets an entity's containing
+		// location to itself before advancing it, so a fleet listed in two is advanced twice a tick
+		int listed = 0;
+		StringBuilder where = new StringBuilder();
+		List<com.fs.starfarer.api.campaign.LocationAPI> all = new ArrayList<com.fs.starfarer.api.campaign.LocationAPI>(
+				Global.getSector().getStarSystems());
+		all.add(Global.getSector().getHyperspace());
+		for (com.fs.starfarer.api.campaign.LocationAPI l : all) {
+			if (l == null || !l.getFleets().contains(fleet)) continue;
+			listed++;
+			if (where.length() > 0) where.append(" + ");
+			where.append(l.getName());
+		}
+		b.append(", listed in ").append(listed).append(" (").append(where).append(")");
 		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
 		b.append(", moveDest ").append(mem.contains("$ai_moveDest")
 				? String.format("%.4f", mem.getExpire("$ai_moveDest")) : "none");
@@ -6594,7 +6628,8 @@ public class ThreatColonyManager {
 					.append(String.format("%.1f", ThreatPosture.today() - p.day)).append(" d ago at ")
 					.append((int) p.x).append("/").append((int) p.y)
 					.append(" (live ").append(p.live).append(", ").append(String.format("%.1f", p.sum)).append(" s, max ")
-					.append(String.format("%.3f", p.max)).append(" s, step ").append((int) p.step).append(")");
+					.append(String.format("%.3f", p.max)).append(" s, step ").append((int) p.step).append(")")
+					.append(", ring [").append(p.ring()).append("]");
 		}
 		engineLists(fleet, b);
 		if (loc != null) {
