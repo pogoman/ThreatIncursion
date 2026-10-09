@@ -1501,6 +1501,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			fleetParams.ignoreMarketFleetSizeMult = true;
 			CampaignFleetAPI fleet = FleetFactoryV3.createFleet(fleetParams);
 			if (fleet == null || fleet.isEmpty()) break;
+			ThreatFleetComposer.beltGuard(fleet);
 
 			baseSystem.addEntity(fleet);
 			fleet.setLocation(baseEntity.getLocation().x, baseEntity.getLocation().y);

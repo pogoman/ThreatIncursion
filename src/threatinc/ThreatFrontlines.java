@@ -1649,6 +1649,7 @@ public class ThreatFrontlines {
 		params.ignoreMarketFleetSizeMult = true;
 		CampaignFleetAPI fleet = FleetFactoryV3.createFleet(params);
 		if (fleet == null || fleet.isEmpty() || fleet.getFleetPoints() < 1) return null;
+		ThreatFleetComposer.beltGuard(fleet);
 		return fleet;
 	}
 
