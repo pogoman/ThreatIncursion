@@ -136,8 +136,9 @@ By the loop, all three held -> back to random-seed general testing (a new day-0 
 ## 8. hw146 read (19:45, next session)
 
 No game lost: **53 / 45 / 66 hives**, humans 24 / 31 / 20 colonies at war day 3,800 (`game-runs-2.md` hw146).
-The hold never fired (losing peaked 0.03), so hw146 does not test it - it tests the opening bar plus the
-fixed pay-first order, and they hold on this seed. b's navy halved d2,811-d3,800 (99k -> 47k) while it banked
+The hold fired in a (9 passes from d3,316, losing 0.35) and b (11 from d2,921, 0.37, 64k FP to the hives),
+not in c, and both games recovered after it - the fixed hold works on this seed (check-hold.sh read the first
+cut's log text and showed 0 passes; fixed). b's navy halved d2,811-d3,800 (99k -> 47k) while it banked
 71k supplies - a read for the next lost game, not a fault. Batches from ck1 take ~32 minutes, not 18 (the war
 runs 68 days a minute; corrected in `facts.md` and `testing-harness.md`). By the loop (section 3) all won ->
 the opening-bar sweep: hw147 from ck1 with `threatinc_strikeStagedOpenFP` 80000 (the fund holds 37.6k at ck1,
