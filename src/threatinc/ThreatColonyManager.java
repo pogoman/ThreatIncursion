@@ -352,7 +352,7 @@ public class ThreatColonyManager {
 	 * (needBonus) counts on top.
 	 */
 	public static PlanetAPI pickColonyPlanet(StarSystemAPI system) {
-		Map<String, MineableNeed> needs = mineableNeeds(!anyNominalColony());
+		Map<String, MineableNeed> needs = mineableNeeds();
 		PlanetAPI best = null;
 		float bestScore = -Float.MAX_VALUE;
 		for (PlanetAPI planet : system.getPlanets()) {
@@ -371,15 +371,15 @@ public class ThreatColonyManager {
 	 * A further planet worth claiming in an already-colonized system: it must
 	 * actually have resource deposits (the swarm doesn't waste waves on barren
 	 * rock it already effectively controls) and no wave already inbound.
-	 * Planets whose deposits would add to the hive's supply score far higher
-	 * (needBonus) - a rare-ore-starved hive grabs a rare world richer than
-	 * its best source first.
+	 * Planets whose deposits would add to the hive's full-grown supply score
+	 * far higher (needBonus) - a hive whose best rare-ore world would make less
+	 * than its refineries want grabs a richer one first.
 	 */
 	public static PlanetAPI pickExpansionPlanet(StarSystemAPI system) {
 		// a strained hive claims only planets that relieve its shortfalls -
 		// no generic land-grabs while every colony is starving
 		boolean strainedHive = !anyNominalColony();
-		Map<String, MineableNeed> needs = mineableNeeds(strainedHive);
+		Map<String, MineableNeed> needs = mineableNeeds();
 		PlanetAPI best = null;
 		float bestScore = 0f; // strictly positive: deposits required
 		for (PlanetAPI planet : system.getPlanets()) {
@@ -407,76 +407,54 @@ public class ThreatColonyManager {
 			Commodities.ORE, Commodities.RARE_ORE, Commodities.VOLATILES };
 
 	/**
-	 * One mineable input across the hive, for the deposit pull. A colony draws a commodity from its
-	 * single best source - its own output or the best exporter it reaches (vanilla's broadcast) - so
-	 * a new source adds nothing unless it makes more than a colony draws (the user, 2026-10-10:
-	 * "doesn't change anything anyway unless it's more than the current best"). Short today, each
-	 * colony draws what it gets now. Nothing short, it draws what it would get if the largest
-	 * source's exports were cut - its own output or the second-largest source's - so a lone large
-	 * source pulls a second as large, and two equal ones pull nothing.
+	 * One mineable input across the hive at full growth, for the deposit pull. The economy plans
+	 * on potential (the user, 2026-10-10: "prioritising based on potential ... assuming all
+	 * colonies are size 8 it ideally wants a perfect balance"); blockades, sieges and capped ports
+	 * are the war planner's. A colony draws a commodity from its single best source (vanilla's
+	 * broadcast; at size 8 no hive output reaches shipping's cap), so an input is balanced once the
+	 * hive's best full-grown source makes what a full-grown consumer wants, and only a bigger
+	 * source than that best adds anything.
 	 */
 	public static final class MineableNeed {
 		public final String commodityId;
-		/** Units short today, summed over the colonies. */
-		public int shortfall;
-		/** Units short if the largest source's exports were cut. */
-		public int backupGap;
-		/** Worlds making it, and the two largest outputs. */
-		public int sources, top, next;
-		/** Each consuming colony's {demand, gets today, gets with the largest source cut}. */
-		protected final List<int[]> draws = new ArrayList<int[]>();
+		/** The largest output any live hive would make at full growth (hiveOutput). */
+		public int best;
+		/** What a full-grown consumer wants (fullGrownDemand). */
+		public final int wanted;
+		/** Live hives that could mine it, and that consume it today. */
+		public int sources, consumers;
+		/** Units short today across the colonies - the census line's comparison, not the pull. */
+		public int shortToday;
 
 		MineableNeed(String commodityId) {
 			this.commodityId = commodityId;
+			this.wanted = fullGrownDemand(commodityId);
 		}
 
-		public boolean shortToday() {
-			return shortfall > 0;
-		}
-
-		/** Units a new source making `output` would add: each colony's demand up to `output`, above what it draws. */
+		/**
+		 * Units a new full-grown source making `output` would add: every consumer's draw rises from
+		 * the best to min(wanted, output). With no consumer yet it counts one - the planner builds
+		 * every chain link once.
+		 */
 		public int relief(int output) {
-			int units = 0;
-			for (int[] d : draws) {
-				units += Math.max(0, Math.min(d[0], output) - (shortToday() ? d[1] : d[2]));
-			}
-			return units;
+			return Math.max(1, consumers) * Math.max(0, Math.min(wanted, output) - best);
 		}
 	}
 
-	/**
-	 * Each mineable input's MineableNeed across the live hives. shortOnly (a strained hive) keeps
-	 * only the inputs short today: no claims for a backup while every colony starves.
-	 */
-	public static Map<String, MineableNeed> mineableNeeds(boolean shortOnly) {
+	/** Each mineable input's MineableNeed across the live hives. */
+	public static Map<String, MineableNeed> mineableNeeds() {
 		Map<String, MineableNeed> needs = new LinkedHashMap<String, MineableNeed>();
 		List<MarketAPI> hives = ThreatIncData.getAllLiveColonyMarkets();
 		for (String commodityId : MINEABLE_INPUTS) {
 			MineableNeed need = new MineableNeed(commodityId);
-			MarketAPI largest = null;
 			for (MarketAPI market : hives) {
+				int made = hiveOutput(market, commodityId);
+				if (made > 0) need.sources++;
+				need.best = Math.max(need.best, made);
+				if (deficitOf(market, commodityId) > 0) need.shortToday += deficitOf(market, commodityId);
 				CommodityOnMarketAPI com = market.getCommodityData(commodityId);
-				int made = com != null ? com.getMaxSupply() : 0;
-				if (made <= 0) continue;
-				need.sources++;
-				if (made > need.top) {
-					need.next = need.top;
-					need.top = made;
-					largest = market;
-				} else if (made > need.next) {
-					need.next = made;
-				}
+				if (com != null && com.getMaxDemand() > 0) need.consumers++;
 			}
-			for (MarketAPI market : hives) {
-				CommodityOnMarketAPI com = market.getCommodityData(commodityId);
-				if (com == null || com.getMaxDemand() <= 0) continue;
-				int demand = com.getMaxDemand(), gets = com.getAvailable(), own = com.getMaxSupply();
-				int cut = Math.min(gets, market == largest ? own : Math.max(own, need.next));
-				need.shortfall += Math.max(0, demand - gets);
-				need.backupGap += Math.max(0, demand - cut);
-				need.draws.add(new int[] { demand, gets, cut });
-			}
-			if (shortOnly && !need.shortToday()) continue;
 			needs.put(commodityId, need);
 		}
 		return needs;
@@ -487,53 +465,79 @@ public class ThreatColonyManager {
 		return Commodities.ORE.equals(commodityId) ? 0 : -2;
 	}
 
-	/** What a deposit would mine once its hive is full grown (hiveMaxSize), richness included. */
-	public static int fullGrownOutput(String commodityId, int richness) {
-		return Math.max(0, hiveMaxSize() + miningOffset(commodityId) + richness);
+	/** What a full-grown consumer wants of an input: Refining ore at size + 2 and rare ore at size, Fuel Production volatiles at size. */
+	public static int fullGrownDemand(String commodityId) {
+		return hiveMaxSize() + (Commodities.ORE.equals(commodityId) ? 2 : 0);
 	}
 
-	/** Score a unit of relief adds: a deposit's base score in depositScore, so a unit fixed weighs like one more deposit. */
+	/** What a market's deposit of an input would mine at the given size, richness included (0: no deposit). */
+	protected static int depositOutput(MarketAPI market, String commodityId, int size) {
+		int out = 0;
+		for (MarketConditionAPI cond : market.getConditions()) {
+			if (!commodityId.equals(ResourceDepositsCondition.COMMODITY.get(cond.getId()))) continue;
+			Integer mod = ResourceDepositsCondition.MODIFIER.get(cond.getId());
+			out = Math.max(out, size + miningOffset(commodityId) + (mod != null ? mod : 0));
+		}
+		return out;
+	}
+
+	/**
+	 * What a live hive would make of an input full grown (hiveMaxSize, or its size if larger): its
+	 * deposit, or today's output grown with it where a relic or item lifts it above the deposit
+	 * (Unhcegila's Plasma Dynamo). A disrupted or blockaded mine counts at its potential.
+	 */
+	protected static int hiveOutput(MarketAPI market, String commodityId) {
+		int full = Math.max(hiveMaxSize(), market.getSize());
+		int out = depositOutput(market, commodityId, full);
+		CommodityOnMarketAPI com = market.getCommodityData(commodityId);
+		if (com != null && com.getMaxSupply() > 0) {
+			out = Math.max(out, com.getMaxSupply() + full - market.getSize());
+		}
+		return out;
+	}
+
+	/** Score a unit of relief adds: a deposit's base score in depositScore, so a unit gained weighs like one more deposit. */
 	protected static final float RELIEF_SCORE = 30f;
 
 	/**
-	 * What this planet's deposits would add to the hive's supply once full grown, scored:
-	 * RELIEF_SCORE a unit of MineableNeed.relief. A deposit that would make no more than the
-	 * colonies already draw adds nothing.
+	 * What this planet's deposits would add to the hive's full-grown supply, scored: RELIEF_SCORE a
+	 * unit of MineableNeed.relief. A deposit no richer than the hive's best source adds nothing.
 	 */
 	public static float needBonus(PlanetAPI planet, Map<String, MineableNeed> needs) {
-		if (planet.getMarket() == null || needs.isEmpty()) return 0f;
+		if (planet.getMarket() == null) return 0f;
 		float bonus = 0f;
-		for (MarketConditionAPI cond : planet.getMarket().getConditions()) {
-			String commodity = ResourceDepositsCondition.COMMODITY.get(cond.getId());
-			if (commodity == null) continue;
-			MineableNeed need = needs.get(commodity);
-			if (need == null) continue;
-			Integer mod = ResourceDepositsCondition.MODIFIER.get(cond.getId());
-			bonus += need.relief(fullGrownOutput(commodity, mod != null ? mod : 0)) * RELIEF_SCORE;
+		for (MineableNeed need : needs.values()) {
+			bonus += need.relief(depositOutput(planet.getMarket(), need.commodityId, hiveMaxSize())) * RELIEF_SCORE;
 		}
 		return bonus;
 	}
 
-	/** The census log's line: each mineable input short today, short with its largest source cut, and its sources. */
-	public static String mineableNeedsLine() {
-		StringBuilder sb = new StringBuilder("Mineable needs:");
-		for (MineableNeed need : mineableNeeds(false).values()) {
-			sb.append(' ').append(need.commodityId).append(" short ").append(need.shortfall)
-					.append(", top cut ").append(need.backupGap).append(", sources ").append(need.sources)
-					.append(" (top ").append(need.top).append(", next ").append(need.next).append(");");
-		}
-		return sb.toString();
-	}
-
-	/** Total need-relief a system's colonizable planets offer the hive. */
+	/**
+	 * What a system's colonizable planets would add to the hive's supply: per input, its best
+	 * planet's relief, scored - two deposits of one input add no more than the larger.
+	 */
 	public static float systemNeedScore(StarSystemAPI system, Map<String, MineableNeed> needs) {
-		if (needs.isEmpty()) return 0f;
 		float score = 0f;
-		for (PlanetAPI planet : system.getPlanets()) {
-			if (!isColonizable(planet)) continue;
-			score += needBonus(planet, needs);
+		for (MineableNeed need : needs.values()) {
+			int units = 0;
+			for (PlanetAPI planet : system.getPlanets()) {
+				if (!isColonizable(planet)) continue;
+				units = Math.max(units, need.relief(depositOutput(planet.getMarket(), need.commodityId, hiveMaxSize())));
+			}
+			score += units * RELIEF_SCORE;
 		}
 		return score;
+	}
+
+	/** The census log's line: each mineable input's best full-grown source against what a full-grown consumer wants, and today's shortfall. */
+	public static String mineableNeedsLine() {
+		StringBuilder sb = new StringBuilder("Mineable needs:");
+		for (MineableNeed need : mineableNeeds().values()) {
+			sb.append(' ').append(need.commodityId).append(" best ").append(need.best).append(" of ").append(need.wanted)
+					.append(", sources ").append(need.sources).append(", consumers ").append(need.consumers)
+					.append(", short today ").append(need.shortToday).append(';');
+		}
+		return sb.toString();
 	}
 
 	protected static boolean isColonizable(PlanetAPI planet) {
