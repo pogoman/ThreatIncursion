@@ -2017,7 +2017,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncCampaignPlugin.pickInteractionDialogPlugin(SectorEntityToken target)` :31
 - `ThreatIncCampaignPlugin.pickInteractionDialogPlugin(Object param, SectorEntityToken target)` :41 - A notice's click asks through this overload, with a null param (ThreatNoticeClickDialog).
 
-## ThreatIncConfig (1100 lines)
+## ThreatIncConfig (1102 lines)
 - `ThreatIncConfig.lunaAvailable()` :15
 - `ThreatIncConfig.luna(String key)` :29 - Whether LunaLib holds this knob:
 - `ThreatIncConfig.i(String key)` :44
@@ -2367,139 +2367,140 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncConfig.siegeOutpostKeepMonths()` :803 - Months of its garrison's supply upkeep a forward base keeps back when a sibling's siege pools its stock.
 - `ThreatIncConfig.npcSiegeOrbitSystem()` :805 - The orbit gate also weighs every Defense Swarm reported in the target system (off:
 - `ThreatIncConfig.strikeReliefFirst()` :807 - A Threat strike relieves a front of its own that is losing ground, in reach, before it opens a new one.
-- `ThreatIncConfig.abstractResolveOnArrival()` :809 - An unspawned expedition resolves a day after reaching its target, not at the end of vanilla's payload segment.
-- `ThreatIncConfig.strikeDefenceGate()` :811 - The swarm passes over a world whose system's defence outweighs the strike it can muster.
-- `ThreatIncConfig.npcSiegeOrbitPerWorld()` :813 - The orbit gate weighs the strongest single world's swarms, not the whole system's.
-- `ThreatIncConfig.swarmBountiesEnabled()` :815 - Whether an outweighed NPC siege posts a bounty on the hive system's swarms.
-- `ThreatIncConfig.swarmBountyPerFrigate()` :817 - Credits a swarm bounty pays per frigate destroyed (destroyer x2, cruiser x3, capital x5, vanilla's).
-- `ThreatIncConfig.swarmBountyDays()` :819 - Days a swarm bounty runs.
-- `ThreatIncConfig.softenEnabled()` :821 - Whether mobilised NPC bases with no siege of their own send hunting forces against bountied hives (ThreatSoftening).
-- `ThreatIncConfig.softenFleetFP()` :823 - Most combat FP in one fleet of a hunting force.
-- `ThreatIncConfig.softenDays()` :825 - Days a hunt order - an NPC hunting force, a coalition answer, or the player's Hunt - stays on the hunt.
-- `ThreatIncConfig.softenIntervalDays()` :827 - Days a base waits between hunting forces.
-- `ThreatIncConfig.softenRetreatStrength()` :829 - A hunting force below this share of its strength at launch (or its last move-on) goes home whole.
-- `ThreatIncConfig.softenPool()` :831 - Whether a hunting force draws fleets from every base of the faction in reach, not just the nearest.
-- `ThreatIncConfig.softenMusterDays()` :833 - Days a hunting force waits at its muster point for stragglers.
-- `ThreatIncConfig.softenMusterStragglerMult()` :835 - Muster spells a force short at the muster waits for stragglers that would carry it.
-- `ThreatIncConfig.softenMerge()` :837 - Whether a hunting force's fleets fold into its lead once gathered, to sail and fight as one fleet.
-- `ThreatIncConfig.softenMergeMaxShips()` :839 - Most ships a hunting force's lead grows to by merging;
-- `ThreatIncConfig.swarmScouting()` :841 - The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts).
-- `ThreatIncConfig.swarmScoutFleetPoints()` :843 - Fleet points of a Scouting Swarm.
-- `ThreatIncConfig.convoyMinLoadFraction()` :845 - Shortfall (in convoy loads) below which no convoy sails.
-- `ThreatIncConfig.frontRunsEnabled()` :847 - Whether mobilised factions run supply and withdrawal convoys to their ground fronts.
-- `ThreatIncConfig.frontResupplyDays()` :849 - Days of armaments a supply run tops a front up to.
-- `ThreatIncConfig.frontRunWaitDays()` :851 - Days a front run waits at the hive system's jump-point for the orbit to clear before turning home.
-- `ThreatIncConfig.donorKeepFraction()` :853 - Fraction of its own cap a donor colony keeps back.
-- `ThreatIncConfig.stagingTargetMult()` :855 - Staging target as a multiple of one expedition's draw.
-- `ThreatIncConfig.stagingHorizonMonths()` :857 - Months of the faction's banking, on top of its stock in reach, a siege's fuel and supplies must fit in for a base to stage for it rather than for a hunt.
-- `ThreatIncConfig.convoyTimeoutDays()` :859 - Days after which a convoy that has not arrived is written off.
-- `ThreatIncConfig.ordersEnabled()` :861 - Whether the war board's fleet orders (guard, stage, intercept, siege, recall) are offered.
-- `ThreatIncConfig.guardFleetFP()` :863 - Least combat fleet points of an NPC guard or intercept task force (it sails sized to the need), and the free points a player colony needs to be picked first as a source;
-- `ThreatIncConfig.reliefFleetFP()` :865 - Combat points of each fleet a relief force is built from (merged into one before it sails).
-- `ThreatIncConfig.guardDays()` :867 - Days a guard task force holds a colony's orbit.
-- `ThreatIncConfig.guardOwnDays()` :869 - Days a task force guarding one of the player's own colonies stays;
-- `ThreatIncConfig.supportEnabled()` :871 - Whether Support sorties (holding a besieged world's orbit and suppressing it) are offered and flown.
-- `ThreatIncConfig.supportDays()` :873 - Days a Support task force holds a besieged world's orbit.
-- `ThreatIncConfig.defendEnabled()` :875 - Whether Defend sorties (holding a world's orbit, bombarding only while the faction's front there cannot hold) are offered and flown.
-- `ThreatIncConfig.defendDays()` :877 - Days a Defend task force holds a world's orbit.
-- `ThreatIncConfig.landingDefendEnabled()` :879 - Whether an expedition fleet that has landed or reinforced a front stays over it on Defend (and one with nothing left to land joins it).
-- `ThreatIncConfig.strikeGuardWhole()` :881 - Whether an unspawned strike leaves its share of its fleets over each landing, all of them over the last (off:
-- `ThreatIncConfig.defendMinStrength()` :883 - A landing's Defend stands down once the batteries have ground the fleet below this fraction of its strength.
-- `ThreatIncConfig.fabricateEnabled()` :885 - Whether a Defend fleet with nothing left to bombard breaks up its own hulls into troops for its front (docs/ground-war.md "Fabricating troops from the fleet").
-- `ThreatIncConfig.fabricateDefendEnabled()` :891 - Whether a swarm Defend fleet over its own failing front breaks up hulls into troops (fabricateEnabled must be on too).
-- `ThreatIncConfig.fabricateTroopsPerFP()` :893 - Troops landed per fleet point of hulls broken up.
-- `ThreatIncConfig.fabricateHoldMargin()` :895 - How far past the hold line fabrication aims, so the front does not oscillate on the boundary.
-- `ThreatIncConfig.fabricateSupplyDays()` :897 - Days of armaments a batch of fabricated troops brings down with it.
-- `ThreatIncConfig.orbitFleetsHunt()` :898
-- `ThreatIncConfig.orbitContestFraction()` :900 - Defenders at a world hold its orbit against a faction while their points are at least this fraction of that faction's warships there;
-- `ThreatIncConfig.returnRefundMult()` :902 - Fraction of the fuel and supplies drawn at launch refunded when a fleet returns home at full strength.
-- `ThreatIncConfig.returnHullShare()` :904 - Share of an NPC fleet's supplies draw that paid for its hulls:
-- `ThreatIncConfig.hullPool()` :909 - One hull economy from vanilla's figures, every side (ThreatHulls;
-- `ThreatIncConfig.hullPoolMult()` :911 - Multiplies every market's standing hulls (1 = vanilla's patrol figure).
-- `ThreatIncConfig.hullAidKeepFraction()` :913 - The share of its built navy's free hulls a faction keeps when an ally is short of hulls (ThreatHulls.spareUnits).
-- `ThreatIncConfig.aidEnabled()` :915 - Whether the player can send aid from their colonies and the capacity ledger applies.
-- `ThreatIncConfig.aidBaseFP()` :917 - Fleet points a player colony can have at sea at 100% fleet size.
-- `ThreatIncConfig.aidRebuildDays()` :919 - Days before a lost fleet's points return to its colony.
-- `ThreatIncConfig.aidGuardMinFP()` :921 - Smallest task force a player colony will send.
-- `ThreatIncConfig.aidMinRelation()` :923 - Relationship (-1..1) below which a faction refuses the player's aid;
-- `ThreatIncConfig.aidRepPerCredits()` :925 - Credits of delivered goods, at the receiving market's price, per point of standing.
-- `ThreatIncConfig.aidRepMaxPerDelivery()` :927 - Most standing points one delivery earns.
-- `ThreatIncConfig.aidRepGuardArrived()` :929 - Standing points for a guard arriving on station.
-- `ThreatIncConfig.aidRepGuardCompleted()` :931 - Standing points for a guard serving its full term.
-- `ThreatIncConfig.aidRepFrontTotal()` :933 - Standing points split among every faction in a hive's strike reach for a task force at its door.
-- `ThreatIncConfig.aidRequestsEnabled()` :935 - Whether mobilised factions post requests for help on the mission board.
-- `ThreatIncConfig.aidRequestMaxPosted()` :937 - Requests posted at once, unaccepted.
-- `ThreatIncConfig.missionDefendDays()` :939 - Days a defence contract runs.
-- `ThreatIncConfig.missionDefendCredits()` :941 - Credits per colony size a defence contract pays.
-- `ThreatIncConfig.defendRequestRatio()` :943 - A defence is requested when the strike's strength exceeds the defenders' times this.
-- `ThreatIncConfig.missionAidShortageDays()` :945 - Days a vanilla deficit must stand before a colony asks for the commodity.
-- `ThreatIncConfig.missionRepMult()` :948 - Delivery standing is multiplied by this when it answers a contract.
-- `ThreatIncConfig.allyAidEnabled()` :950 - Whether allied mobilised factions guard and resupply each other's colonies.
-- `ThreatIncConfig.allyAidChance()` :952 - Chance per tick per need that a fully willing ally sends aid;
-- `ThreatIncConfig.coalitionRelief()` :954 - Whether a faction and its partners relieve an invaded world together when none is enough alone (ThreatCoalition.jointRelief).
-- `ThreatIncConfig.alarmEnabled()` :959 - Master switch for grudge, alarm and retaliation.
-- `ThreatIncConfig.alarmPerStratum()` :961 - Grudge points a faction earns per stratum its front takes.
-- `ThreatIncConfig.alarmPerEradication()` :963 - Grudge points per hive eradicated.
-- `ThreatIncConfig.alarmPerRaid()` :965 - Grudge points per successful raid or tactical pass on a hive world.
-- `ThreatIncConfig.alarmDecayPer30()` :967 - Fraction of every grudge that fades per 30 days.
-- `ThreatIncConfig.alarmTargetMult()` :969 - Strike-target weight bonus per point of a faction's grudge (0.2 = grudge 10 is x3).
-- `ThreatIncConfig.retaliationEnabled()` :971 - Whether a ground victory draws an immediate strike at the winner.
-- `ThreatIncConfig.sustenanceFirst()` :973 - The colonies' break-even sustenance is paid before the fleets away and the navy at home (ThreatColonyUpkeep.sustenanceDue, 2026-10-08).
-- `ThreatIncConfig.navyFitsSpare()` :975 - The hive keeps no standing navy its supplies flow cannot carry with the sends it wants (ThreatColonyManager.fitNavyToSpare, 2026-10-08).
-- `ThreatIncConfig.coalitionEnabled()` :980 - Whether a mobilised faction's siege calls other mobilised factions to intercept at the door.
-- `ThreatIncConfig.coalitionCallDays()` :982 - Days a coalition call stays open.
-- `ThreatIncConfig.coalitionSupportChance()` :984 - Chance per tick that an eligible ally answers a call with an Intercept task force.
-- `ThreatIncConfig.outpostsEnabled()` :989 - Whether outposts can be built on purged worlds.
-- `ThreatIncConfig.outpostTier()` :991 - Station tier:
-- `ThreatIncConfig.outpostCredits()` :993 - Credits the player pays for an outpost.
-- `ThreatIncConfig.outpostSupplies()` :995 - Supplies an NPC faction's base pays for an outpost.
-- `ThreatIncConfig.outpostFuel()` :997 - Fuel an NPC faction's base pays for an outpost.
-- `ThreatIncConfig.outpostChance()` :999 - Chance per tick a mobilised NPC faction fortifies an open purged world in reach.
-- `ThreatIncConfig.frontlinesEnabled()` :1003
-- `ThreatIncConfig.frontlinePlanDays()` :1004
-- `ThreatIncConfig.frontlineLinkLY()` :1005
-- `ThreatIncConfig.frontlineReachLY()` :1006
-- `ThreatIncConfig.frontlineKeepLY()` :1007
-- `ThreatIncConfig.frontlineGrowDays()` :1008
-- `ThreatIncConfig.frontlineStarveDays()` :1009
-- `ThreatIncConfig.frontlineAbandonDays()` :1010
-- `ThreatIncConfig.frontlineRearGraceDays()` :1011
-- `ThreatIncConfig.pathTithes()` :1012
-- `ThreatIncConfig.pathTitheSuppliesPerSize()` :1013
-- `ThreatIncConfig.pathTitheFuelPerSize()` :1014
-- `ThreatIncConfig.pathTitheMarinesPerSize()` :1015
-- `ThreatIncConfig.pathTitheSleeperFraction()` :1016
-- `ThreatIncConfig.pathMilitiaMult()` :1017
-- `ThreatIncConfig.pathZealotMarines()` :1018
-- `ThreatIncConfig.frontlineRelayAccess()` :1019
-- `ThreatIncConfig.frontlineStrikeWeight()` :1020
-- `ThreatIncConfig.frontlineReliefEnabled()` :1021
-- `ThreatIncConfig.strikeDetection()` :1022
-- `ThreatIncConfig.strikeDetectLY()` :1023
-- `ThreatIncConfig.permaHostile()` :1028 - Pin the Threat faction to vengeful with every other faction (perma-hostile to all).
-- `ThreatIncConfig.bombardNoAtrocity()` :1030 - Waive the vanilla saturation-bombardment atrocity reputation penalty when the bombed colony is a Threat colony.
-- `ThreatIncConfig.debugMode()` :1034
-- `ThreatIncConfig.debugLogging()` :1035
-- `ThreatIncConfig.debugForceStart()` :1036
-- `ThreatIncConfig.debugFastClock()` :1037
-- `ThreatIncConfig.debugGrantSensorMods()` :1038
-- `ThreatIncConfig.debugPlayerIgnored()` :1039
-- `ThreatIncConfig.debugSimDump()` :1040
-- `ThreatIncConfig.debugReset()` :1041
-- `ThreatIncConfig.debugInstantWar()` :1044
-- `ThreatIncConfig.debugInstantWarSystemsMin()` :1045
-- `ThreatIncConfig.debugInstantWarSystemsMax()` :1046
-- `ThreatIncConfig.debugInstantWarCoreMin()` :1047
-- `ThreatIncConfig.debugInstantWarCoreMax()` :1048
-- `ThreatIncConfig.debugInstantWarLinkLY()` :1049
-- `ThreatIncConfig.debugInstantWarCoreLY()` :1050
-- `ThreatIncConfig.debugInstantWarHomeSize()` :1051
-- `ThreatIncConfig.debugHiveFloorSize()` :1052
-- `ThreatIncConfig.debugInstantWarColonySize()` :1053
-- `ThreatIncConfig.log(String msg)` :1055
-- `ThreatIncConfig.logQuiet(String key, String msg)` :1069 - A line a poll repeats:
-- `ThreatIncConfig.logOnChange(String key, String state, String msg)` :1087 - A line a poll repeats, logged only when state changes - a verdict, not the figures behind it - and no more than once in ten days:
-- `ThreatIncConfig.forgetQuiet()` :1097 - Called on load:
+- `ThreatIncConfig.defenceFirst()` :809 - DEFENCE FIRST (the user, 2026-10-10, C1):
+- `ThreatIncConfig.abstractResolveOnArrival()` :811 - An unspawned expedition resolves a day after reaching its target, not at the end of vanilla's payload segment.
+- `ThreatIncConfig.strikeDefenceGate()` :813 - The swarm passes over a world whose system's defence outweighs the strike it can muster.
+- `ThreatIncConfig.npcSiegeOrbitPerWorld()` :815 - The orbit gate weighs the strongest single world's swarms, not the whole system's.
+- `ThreatIncConfig.swarmBountiesEnabled()` :817 - Whether an outweighed NPC siege posts a bounty on the hive system's swarms.
+- `ThreatIncConfig.swarmBountyPerFrigate()` :819 - Credits a swarm bounty pays per frigate destroyed (destroyer x2, cruiser x3, capital x5, vanilla's).
+- `ThreatIncConfig.swarmBountyDays()` :821 - Days a swarm bounty runs.
+- `ThreatIncConfig.softenEnabled()` :823 - Whether mobilised NPC bases with no siege of their own send hunting forces against bountied hives (ThreatSoftening).
+- `ThreatIncConfig.softenFleetFP()` :825 - Most combat FP in one fleet of a hunting force.
+- `ThreatIncConfig.softenDays()` :827 - Days a hunt order - an NPC hunting force, a coalition answer, or the player's Hunt - stays on the hunt.
+- `ThreatIncConfig.softenIntervalDays()` :829 - Days a base waits between hunting forces.
+- `ThreatIncConfig.softenRetreatStrength()` :831 - A hunting force below this share of its strength at launch (or its last move-on) goes home whole.
+- `ThreatIncConfig.softenPool()` :833 - Whether a hunting force draws fleets from every base of the faction in reach, not just the nearest.
+- `ThreatIncConfig.softenMusterDays()` :835 - Days a hunting force waits at its muster point for stragglers.
+- `ThreatIncConfig.softenMusterStragglerMult()` :837 - Muster spells a force short at the muster waits for stragglers that would carry it.
+- `ThreatIncConfig.softenMerge()` :839 - Whether a hunting force's fleets fold into its lead once gathered, to sail and fight as one fleet.
+- `ThreatIncConfig.softenMergeMaxShips()` :841 - Most ships a hunting force's lead grows to by merging;
+- `ThreatIncConfig.swarmScouting()` :843 - The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts).
+- `ThreatIncConfig.swarmScoutFleetPoints()` :845 - Fleet points of a Scouting Swarm.
+- `ThreatIncConfig.convoyMinLoadFraction()` :847 - Shortfall (in convoy loads) below which no convoy sails.
+- `ThreatIncConfig.frontRunsEnabled()` :849 - Whether mobilised factions run supply and withdrawal convoys to their ground fronts.
+- `ThreatIncConfig.frontResupplyDays()` :851 - Days of armaments a supply run tops a front up to.
+- `ThreatIncConfig.frontRunWaitDays()` :853 - Days a front run waits at the hive system's jump-point for the orbit to clear before turning home.
+- `ThreatIncConfig.donorKeepFraction()` :855 - Fraction of its own cap a donor colony keeps back.
+- `ThreatIncConfig.stagingTargetMult()` :857 - Staging target as a multiple of one expedition's draw.
+- `ThreatIncConfig.stagingHorizonMonths()` :859 - Months of the faction's banking, on top of its stock in reach, a siege's fuel and supplies must fit in for a base to stage for it rather than for a hunt.
+- `ThreatIncConfig.convoyTimeoutDays()` :861 - Days after which a convoy that has not arrived is written off.
+- `ThreatIncConfig.ordersEnabled()` :863 - Whether the war board's fleet orders (guard, stage, intercept, siege, recall) are offered.
+- `ThreatIncConfig.guardFleetFP()` :865 - Least combat fleet points of an NPC guard or intercept task force (it sails sized to the need), and the free points a player colony needs to be picked first as a source;
+- `ThreatIncConfig.reliefFleetFP()` :867 - Combat points of each fleet a relief force is built from (merged into one before it sails).
+- `ThreatIncConfig.guardDays()` :869 - Days a guard task force holds a colony's orbit.
+- `ThreatIncConfig.guardOwnDays()` :871 - Days a task force guarding one of the player's own colonies stays;
+- `ThreatIncConfig.supportEnabled()` :873 - Whether Support sorties (holding a besieged world's orbit and suppressing it) are offered and flown.
+- `ThreatIncConfig.supportDays()` :875 - Days a Support task force holds a besieged world's orbit.
+- `ThreatIncConfig.defendEnabled()` :877 - Whether Defend sorties (holding a world's orbit, bombarding only while the faction's front there cannot hold) are offered and flown.
+- `ThreatIncConfig.defendDays()` :879 - Days a Defend task force holds a world's orbit.
+- `ThreatIncConfig.landingDefendEnabled()` :881 - Whether an expedition fleet that has landed or reinforced a front stays over it on Defend (and one with nothing left to land joins it).
+- `ThreatIncConfig.strikeGuardWhole()` :883 - Whether an unspawned strike leaves its share of its fleets over each landing, all of them over the last (off:
+- `ThreatIncConfig.defendMinStrength()` :885 - A landing's Defend stands down once the batteries have ground the fleet below this fraction of its strength.
+- `ThreatIncConfig.fabricateEnabled()` :887 - Whether a Defend fleet with nothing left to bombard breaks up its own hulls into troops for its front (docs/ground-war.md "Fabricating troops from the fleet").
+- `ThreatIncConfig.fabricateDefendEnabled()` :893 - Whether a swarm Defend fleet over its own failing front breaks up hulls into troops (fabricateEnabled must be on too).
+- `ThreatIncConfig.fabricateTroopsPerFP()` :895 - Troops landed per fleet point of hulls broken up.
+- `ThreatIncConfig.fabricateHoldMargin()` :897 - How far past the hold line fabrication aims, so the front does not oscillate on the boundary.
+- `ThreatIncConfig.fabricateSupplyDays()` :899 - Days of armaments a batch of fabricated troops brings down with it.
+- `ThreatIncConfig.orbitFleetsHunt()` :900
+- `ThreatIncConfig.orbitContestFraction()` :902 - Defenders at a world hold its orbit against a faction while their points are at least this fraction of that faction's warships there;
+- `ThreatIncConfig.returnRefundMult()` :904 - Fraction of the fuel and supplies drawn at launch refunded when a fleet returns home at full strength.
+- `ThreatIncConfig.returnHullShare()` :906 - Share of an NPC fleet's supplies draw that paid for its hulls:
+- `ThreatIncConfig.hullPool()` :911 - One hull economy from vanilla's figures, every side (ThreatHulls;
+- `ThreatIncConfig.hullPoolMult()` :913 - Multiplies every market's standing hulls (1 = vanilla's patrol figure).
+- `ThreatIncConfig.hullAidKeepFraction()` :915 - The share of its built navy's free hulls a faction keeps when an ally is short of hulls (ThreatHulls.spareUnits).
+- `ThreatIncConfig.aidEnabled()` :917 - Whether the player can send aid from their colonies and the capacity ledger applies.
+- `ThreatIncConfig.aidBaseFP()` :919 - Fleet points a player colony can have at sea at 100% fleet size.
+- `ThreatIncConfig.aidRebuildDays()` :921 - Days before a lost fleet's points return to its colony.
+- `ThreatIncConfig.aidGuardMinFP()` :923 - Smallest task force a player colony will send.
+- `ThreatIncConfig.aidMinRelation()` :925 - Relationship (-1..1) below which a faction refuses the player's aid;
+- `ThreatIncConfig.aidRepPerCredits()` :927 - Credits of delivered goods, at the receiving market's price, per point of standing.
+- `ThreatIncConfig.aidRepMaxPerDelivery()` :929 - Most standing points one delivery earns.
+- `ThreatIncConfig.aidRepGuardArrived()` :931 - Standing points for a guard arriving on station.
+- `ThreatIncConfig.aidRepGuardCompleted()` :933 - Standing points for a guard serving its full term.
+- `ThreatIncConfig.aidRepFrontTotal()` :935 - Standing points split among every faction in a hive's strike reach for a task force at its door.
+- `ThreatIncConfig.aidRequestsEnabled()` :937 - Whether mobilised factions post requests for help on the mission board.
+- `ThreatIncConfig.aidRequestMaxPosted()` :939 - Requests posted at once, unaccepted.
+- `ThreatIncConfig.missionDefendDays()` :941 - Days a defence contract runs.
+- `ThreatIncConfig.missionDefendCredits()` :943 - Credits per colony size a defence contract pays.
+- `ThreatIncConfig.defendRequestRatio()` :945 - A defence is requested when the strike's strength exceeds the defenders' times this.
+- `ThreatIncConfig.missionAidShortageDays()` :947 - Days a vanilla deficit must stand before a colony asks for the commodity.
+- `ThreatIncConfig.missionRepMult()` :950 - Delivery standing is multiplied by this when it answers a contract.
+- `ThreatIncConfig.allyAidEnabled()` :952 - Whether allied mobilised factions guard and resupply each other's colonies.
+- `ThreatIncConfig.allyAidChance()` :954 - Chance per tick per need that a fully willing ally sends aid;
+- `ThreatIncConfig.coalitionRelief()` :956 - Whether a faction and its partners relieve an invaded world together when none is enough alone (ThreatCoalition.jointRelief).
+- `ThreatIncConfig.alarmEnabled()` :961 - Master switch for grudge, alarm and retaliation.
+- `ThreatIncConfig.alarmPerStratum()` :963 - Grudge points a faction earns per stratum its front takes.
+- `ThreatIncConfig.alarmPerEradication()` :965 - Grudge points per hive eradicated.
+- `ThreatIncConfig.alarmPerRaid()` :967 - Grudge points per successful raid or tactical pass on a hive world.
+- `ThreatIncConfig.alarmDecayPer30()` :969 - Fraction of every grudge that fades per 30 days.
+- `ThreatIncConfig.alarmTargetMult()` :971 - Strike-target weight bonus per point of a faction's grudge (0.2 = grudge 10 is x3).
+- `ThreatIncConfig.retaliationEnabled()` :973 - Whether a ground victory draws an immediate strike at the winner.
+- `ThreatIncConfig.sustenanceFirst()` :975 - The colonies' break-even sustenance is paid before the fleets away and the navy at home (ThreatColonyUpkeep.sustenanceDue, 2026-10-08).
+- `ThreatIncConfig.navyFitsSpare()` :977 - The hive keeps no standing navy its supplies flow cannot carry with the sends it wants (ThreatColonyManager.fitNavyToSpare, 2026-10-08).
+- `ThreatIncConfig.coalitionEnabled()` :982 - Whether a mobilised faction's siege calls other mobilised factions to intercept at the door.
+- `ThreatIncConfig.coalitionCallDays()` :984 - Days a coalition call stays open.
+- `ThreatIncConfig.coalitionSupportChance()` :986 - Chance per tick that an eligible ally answers a call with an Intercept task force.
+- `ThreatIncConfig.outpostsEnabled()` :991 - Whether outposts can be built on purged worlds.
+- `ThreatIncConfig.outpostTier()` :993 - Station tier:
+- `ThreatIncConfig.outpostCredits()` :995 - Credits the player pays for an outpost.
+- `ThreatIncConfig.outpostSupplies()` :997 - Supplies an NPC faction's base pays for an outpost.
+- `ThreatIncConfig.outpostFuel()` :999 - Fuel an NPC faction's base pays for an outpost.
+- `ThreatIncConfig.outpostChance()` :1001 - Chance per tick a mobilised NPC faction fortifies an open purged world in reach.
+- `ThreatIncConfig.frontlinesEnabled()` :1005
+- `ThreatIncConfig.frontlinePlanDays()` :1006
+- `ThreatIncConfig.frontlineLinkLY()` :1007
+- `ThreatIncConfig.frontlineReachLY()` :1008
+- `ThreatIncConfig.frontlineKeepLY()` :1009
+- `ThreatIncConfig.frontlineGrowDays()` :1010
+- `ThreatIncConfig.frontlineStarveDays()` :1011
+- `ThreatIncConfig.frontlineAbandonDays()` :1012
+- `ThreatIncConfig.frontlineRearGraceDays()` :1013
+- `ThreatIncConfig.pathTithes()` :1014
+- `ThreatIncConfig.pathTitheSuppliesPerSize()` :1015
+- `ThreatIncConfig.pathTitheFuelPerSize()` :1016
+- `ThreatIncConfig.pathTitheMarinesPerSize()` :1017
+- `ThreatIncConfig.pathTitheSleeperFraction()` :1018
+- `ThreatIncConfig.pathMilitiaMult()` :1019
+- `ThreatIncConfig.pathZealotMarines()` :1020
+- `ThreatIncConfig.frontlineRelayAccess()` :1021
+- `ThreatIncConfig.frontlineStrikeWeight()` :1022
+- `ThreatIncConfig.frontlineReliefEnabled()` :1023
+- `ThreatIncConfig.strikeDetection()` :1024
+- `ThreatIncConfig.strikeDetectLY()` :1025
+- `ThreatIncConfig.permaHostile()` :1030 - Pin the Threat faction to vengeful with every other faction (perma-hostile to all).
+- `ThreatIncConfig.bombardNoAtrocity()` :1032 - Waive the vanilla saturation-bombardment atrocity reputation penalty when the bombed colony is a Threat colony.
+- `ThreatIncConfig.debugMode()` :1036
+- `ThreatIncConfig.debugLogging()` :1037
+- `ThreatIncConfig.debugForceStart()` :1038
+- `ThreatIncConfig.debugFastClock()` :1039
+- `ThreatIncConfig.debugGrantSensorMods()` :1040
+- `ThreatIncConfig.debugPlayerIgnored()` :1041
+- `ThreatIncConfig.debugSimDump()` :1042
+- `ThreatIncConfig.debugReset()` :1043
+- `ThreatIncConfig.debugInstantWar()` :1046
+- `ThreatIncConfig.debugInstantWarSystemsMin()` :1047
+- `ThreatIncConfig.debugInstantWarSystemsMax()` :1048
+- `ThreatIncConfig.debugInstantWarCoreMin()` :1049
+- `ThreatIncConfig.debugInstantWarCoreMax()` :1050
+- `ThreatIncConfig.debugInstantWarLinkLY()` :1051
+- `ThreatIncConfig.debugInstantWarCoreLY()` :1052
+- `ThreatIncConfig.debugInstantWarHomeSize()` :1053
+- `ThreatIncConfig.debugHiveFloorSize()` :1054
+- `ThreatIncConfig.debugInstantWarColonySize()` :1055
+- `ThreatIncConfig.log(String msg)` :1057
+- `ThreatIncConfig.logQuiet(String key, String msg)` :1071 - A line a poll repeats:
+- `ThreatIncConfig.logOnChange(String key, String state, String msg)` :1089 - A line a poll repeats, logged only when state changes - a verdict, not the figures behind it - and no more than once in ten days:
+- `ThreatIncConfig.forgetQuiet()` :1099 - Called on load:
 
 ## ThreatIncData (518 lines)
 - `ThreatIncData.list(String key)` :74
@@ -2840,37 +2841,39 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :86
 - `ThreatNoticeClickDialog.getContext()` :90
 
-## ThreatOffensive (903 lines)
+## ThreatOffensive (955 lines)
 - `ThreatOffensive.startDay()` :122 - The campaign's start (the last launch), or NaN for none - never -1:
 - `ThreatOffensive.setStartDay(float day)` :127
 - `ThreatOffensive.cheapestProngCost()` :136 - The fund's bill of the cheapest prong the last pass priced whose passage the fuel in stock pays, or 0 for none:
 - `ThreatOffensive.setCheapestProngCost(float cost)` :141
 - `ThreatOffensive.pass(IncursionManager im)` :146 - The monthly pass:
-- `ThreatOffensive.compare(Prong a, Prong b)` :282
-- `ThreatOffensive.compare(Prong a, Prong b)` :348
-- `ThreatOffensive.compare(Prong a, Prong b)` :430
-- `ThreatOffensive.price(IncursionManager im, Prong p, Map<String, float[]> memo, Integer nAtFaction, Spares spares)` :524 - Prices the prong for the answer it expects:
-- `ThreatOffensive.value(Prong p, boolean losing, float pressure, float margin)` :542 - What the prong is worth to the campaign:
-- `ThreatOffensive.spoiler(Prong p)` :550 - A forward base, or a base staging against a hive:
-- `ThreatOffensive.price(Prong p)` :558 - The prong's price:
+- `ThreatOffensive.compare(Prong a, Prong b)` :293
+- `ThreatOffensive.compare(Prong a, Prong b)` :359
+- `ThreatOffensive.compare(Prong a, Prong b)` :441
+- `ThreatOffensive.price(IncursionManager im, Prong p, Map<String, float[]> memo, Integer nAtFaction, Spares spares)` :535 - Prices the prong for the answer it expects:
+- `ThreatOffensive.value(Prong p, boolean losing, float pressure, float margin)` :553 - What the prong is worth to the campaign:
+- `ThreatOffensive.spoiler(Prong p)` :561 - A forward base, or a base staging against a hive:
+- `ThreatOffensive.price(Prong p)` :569 - The prong's price:
 ### DEFEAT IN DETAIL - the faction the campaigns mass on (the user, 2026-10-07)
-- `ThreatOffensive.focus()` :569 - The faction the campaigns mass on (offensiveFocus), or null for none yet.
-- `ThreatOffensive.chooseFocus(IncursionManager im, Collection<Prong> all, Map<String, float[]> memo, float budget, float fuelBudget, float suppliesStock, float suppliesFlow, float margin, boolean losing, float pressure)` :583 - The faction this pass's campaign masses on:
-- `ThreatOffensive.compare(Prong a, Prong b)` :613
+- `ThreatOffensive.focus()` :580 - The faction the campaigns mass on (offensiveFocus), or null for none yet.
+- `ThreatOffensive.chooseFocus(IncursionManager im, Collection<Prong> all, Map<String, float[]> memo, float budget, float fuelBudget, float suppliesStock, float suppliesFlow, float margin, boolean losing, float pressure)` :594 - The faction this pass's campaign masses on:
+- `ThreatOffensive.compare(Prong a, Prong b)` :624
 ### the garrison swarms a prong will take, set aside until it sails
-- `ThreatOffensive.heldSuppliesPerMonth()` :687 - Supplies a month the held prongs will burn once they sail (the schedule's 9th field) - for the Reach log.
-- `ThreatOffensive.heldSupplies()` :692 - Supplies the held prongs' trips hold out of the stock until their days (the schedule's 10th field).
-- `ThreatOffensive.heldField(int index)` :696
-- `ThreatOffensive.earmark(IncursionManager.StagedPlan plan)` :714 - "systemId:fleets;..." - the garrison fleets the plan takes from each hive system.
-- `ThreatOffensive.addEarmark(Map<String, Integer> to, IncursionManager.StagedPlan plan, int sign)` :743 - Adds (sign 1) or takes back (-1) the plan's garrison fleets in a hive system id -> fleets map.
-- `ThreatOffensive.earmarked(String systemId)` :760 - Garrison fleets of a hive system's spare that the held prongs will take on their day (and, during a launch, the prongs yet to sail):
-- `ThreatOffensive.arrival(float ly)` :781 - Days from launch to the target:
+- `ThreatOffensive.heldSuppliesPerMonth()` :698 - Supplies a month the held prongs will burn once they sail (the schedule's 9th field) - for the Reach log.
+- `ThreatOffensive.heldSupplies()` :703 - Supplies the held prongs' trips hold out of the stock until their days (the schedule's 10th field).
+- `ThreatOffensive.heldField(int index)` :707
+- `ThreatOffensive.earmark(IncursionManager.StagedPlan plan)` :725 - "systemId:fleets;..." - the garrison fleets the plan takes from each hive system.
+- `ThreatOffensive.addEarmark(Map<String, Integer> to, IncursionManager.StagedPlan plan, int sign)` :754 - Adds (sign 1) or takes back (-1) the plan's garrison fleets in a hive system id -> fleets map.
+- `ThreatOffensive.earmarked(String systemId)` :771 - Garrison fleets of a hive system's spare that the held prongs will take on their day (and, during a launch, the prongs yet to sail):
+- `ThreatOffensive.arrival(float ly)` :792 - Days from launch to the target:
 ### the prongs held back to arrive with the farthest
-- `ThreatOffensive.schedule()` :793 - "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth|tripSupplies|pricedFP" per prong waiting its day (earmark:
-- `ThreatOffensive.scheduled(MarketAPI market)` :802 - Whether a prong at the world waits its day (no second strike is planned at it).
-- `ThreatOffensive.poll()` :811 - Daily (IncursionManager.advance):
-- `ThreatOffensive.nearest(MarketAPI target, Map<String, StarSystemAPI> sources)` :880 - The hive system nearest the target that can stage a strike, or null.
-- `ThreatOffensive.names(List<Prong> prongs, int max)` :894
+- `ThreatOffensive.schedule()` :804 - "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth|tripSupplies|pricedFP" per prong waiting its day (earmark:
+- `ThreatOffensive.scheduled(MarketAPI market)` :813 - Whether a prong at the world waits its day (no second strike is planned at it).
+- `ThreatOffensive.payDefence()` :828 - DEFENCE FIRST (the user, 2026-10-10, C1, after hw141b):
+- `ThreatOffensive.compare(MarketAPI a, MarketAPI b)` :841
+- `ThreatOffensive.poll()` :855 - Daily (IncursionManager.advance):
+- `ThreatOffensive.nearest(MarketAPI target, Map<String, StarSystemAPI> sources)` :932 - The hive system nearest the target that can stage a strike, or null.
+- `ThreatOffensive.names(List<Prong> prongs, int max)` :946
 
 ## ThreatOmens (236 lines)
 - `ThreatOmens.reset()` :97 - RESET War:
@@ -3048,7 +3051,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPlays.ly(MarketAPI base, StarSystemAPI s)` :1757
 - `ThreatPlays.threat(MarketAPI m)` :1763 - Whether the market is the swarm's (for callers outside the council).
 
-## ThreatPosture (1916 lines)
+## ThreatPosture (1959 lines)
 - `ThreatPosture.enabled()` :137 - Battle -> ids of the Threat ships already booked:
 - `ThreatPosture.forget()` :142 - Called on load:
 - `ThreatPosture.today()` :171 - The campaign clock in days, for the saved day stamps:
@@ -3063,75 +3066,78 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPosture.wantFP(MarketAPI market)` :238 - The garrison the colony wants:
 - `ThreatPosture.plainWantFP(MarketAPI market)` :249 - wantFP before the consolidation reads it.
 - `ThreatPosture.needFP(MarketAPI market)` :263 - The colony's share of what the pressure alone needs held;
-- `ThreatPosture.keystone(MarketAPI market)` :277 - Whether the hive is a keystone of the consolidation (consolidate):
-- `ThreatPosture.conceded(MarketAPI market)` :282 - Whether the hive is conceded by the consolidation (consolidate):
-- `ThreatPosture.consolidate(float day)` :302 - CONSOLIDATION (the user, 2026-10-10, option A after hw138b;
-- `ThreatPosture.compare(MarketAPI a, MarketAPI b)` :360
-- `ThreatPosture.regrowing(MarketAPI market, float heldFP)` :399 - Whether a launch finds the colony still regrowing:
-- `ThreatPosture.wantsGrowth(MarketAPI market, float heldFP)` :405 - maintainGarrisons:
-- `ThreatPosture.launchSpareFP(MarketAPI market)` :416 - Fleet points of garrison a launch may take from the colony:
-- `ThreatPosture.releasableFP(MarketAPI market, float heldFP)` :424 - What the colony holds above want by postureBand and one swarm:
-- `ThreatPosture.claimCap(int freeForges)` :436 - The pending claims trySpread may hold with this many free forges:
-- `ThreatPosture.appetite()` :441
-- `ThreatPosture.thinnableFP(MarketAPI market, float heldFP)` :449 - What a colony of a quiet system gives one under attack (underAttack) may leave it with:
-- `ThreatPosture.nearestKnownHumanLY(StarSystemAPI system)` :458 - Light-years from the hive system to the nearest human world the swarm has seen (ThreatSwarmIntel.places, a forward base among them), or Float.MAX_VALUE for none.
-- `ThreatPosture.nearestKnownHumanSystem(StarSystemAPI system)` :464 - The system of the nearest human world the swarm has seen (ThreatSwarmIntel.places), or null for none.
-- `ThreatPosture.frontline(StarSystemAPI system)` :490 - THE FRONT (the user, 2026-10-07:
-- `ThreatPosture.exposure(float lastSeenDay, float day, float nearestLY)` :502 - DEFENCE IN DEPTH (the user, 2026-10-07):
-- `ThreatPosture.exposure(StarSystemAPI system)` :514 - The system's exposure as of its last reading (exposure), 1 unread.
-- `ThreatPosture.floorFP(MarketAPI market)` :521 - Fleet points of the colony's size table (swarmCostEstimate of every row):
-- `ThreatPosture.baseCount(MarketAPI market)` :531 - The swarms baseFP stands for:
-- `ThreatPosture.baseFP(MarketAPI market)` :537 - What a colony wants with nothing pressing it:
-- `ThreatPosture.minimumFP(MarketAPI market)` :546 - The garrison no launch takes (ThreatColonyManager.garrisonReserve swarms) at the table's cheapest rows - musters send the largest, so the reserve that stays home is the smallest.
-- `ThreatPosture.stockFP(MarketAPI market)` :560 - A colony that can launch (a forge, and the size for a wave or a strike) keeps LAUNCH_STOCK swarms above its reserve, the table's next rows:
-- `ThreatPosture.rowsFP(MarketAPI market, int from, int n)` :568 - The cost of n rows of the colony's size table from the cheapest, the from-th on (in turn past the table, as maintainGarrisons builds).
-- `ThreatPosture.oneSwarmFP(MarketAPI market)` :580 - The heaviest swarm of the colony's size table:
-- `ThreatPosture.noteSent(float fp)` :589
-- `ThreatPosture.noteConsumed(int swarms)` :594
+- `ThreatPosture.defenceShortFP()` :285 - DEFENCE FIRST (the user, 2026-10-10, "C1", after hw141b):
+- `ThreatPosture.defenceShortFP(MarketAPI c)` :292 - The colony's share of the defence's shortfall (defenceShortFP):
+- `ThreatPosture.defenceShortSummary()` :302 - "N FP short at K hive(s):
+- `ThreatPosture.keystone(MarketAPI market)` :320 - Whether the hive is a keystone of the consolidation (consolidate):
+- `ThreatPosture.conceded(MarketAPI market)` :325 - Whether the hive is conceded by the consolidation (consolidate):
+- `ThreatPosture.consolidate(float day)` :345 - CONSOLIDATION (the user, 2026-10-10, option A after hw138b;
+- `ThreatPosture.compare(MarketAPI a, MarketAPI b)` :403
+- `ThreatPosture.regrowing(MarketAPI market, float heldFP)` :442 - Whether a launch finds the colony still regrowing:
+- `ThreatPosture.wantsGrowth(MarketAPI market, float heldFP)` :448 - maintainGarrisons:
+- `ThreatPosture.launchSpareFP(MarketAPI market)` :459 - Fleet points of garrison a launch may take from the colony:
+- `ThreatPosture.releasableFP(MarketAPI market, float heldFP)` :467 - What the colony holds above want by postureBand and one swarm:
+- `ThreatPosture.claimCap(int freeForges)` :479 - The pending claims trySpread may hold with this many free forges:
+- `ThreatPosture.appetite()` :484
+- `ThreatPosture.thinnableFP(MarketAPI market, float heldFP)` :492 - What a colony of a quiet system gives one under attack (underAttack) may leave it with:
+- `ThreatPosture.nearestKnownHumanLY(StarSystemAPI system)` :501 - Light-years from the hive system to the nearest human world the swarm has seen (ThreatSwarmIntel.places, a forward base among them), or Float.MAX_VALUE for none.
+- `ThreatPosture.nearestKnownHumanSystem(StarSystemAPI system)` :507 - The system of the nearest human world the swarm has seen (ThreatSwarmIntel.places), or null for none.
+- `ThreatPosture.frontline(StarSystemAPI system)` :533 - THE FRONT (the user, 2026-10-07:
+- `ThreatPosture.exposure(float lastSeenDay, float day, float nearestLY)` :545 - DEFENCE IN DEPTH (the user, 2026-10-07):
+- `ThreatPosture.exposure(StarSystemAPI system)` :557 - The system's exposure as of its last reading (exposure), 1 unread.
+- `ThreatPosture.floorFP(MarketAPI market)` :564 - Fleet points of the colony's size table (swarmCostEstimate of every row):
+- `ThreatPosture.baseCount(MarketAPI market)` :574 - The swarms baseFP stands for:
+- `ThreatPosture.baseFP(MarketAPI market)` :580 - What a colony wants with nothing pressing it:
+- `ThreatPosture.minimumFP(MarketAPI market)` :589 - The garrison no launch takes (ThreatColonyManager.garrisonReserve swarms) at the table's cheapest rows - musters send the largest, so the reserve that stays home is the smallest.
+- `ThreatPosture.stockFP(MarketAPI market)` :603 - A colony that can launch (a forge, and the size for a wave or a strike) keeps LAUNCH_STOCK swarms above its reserve, the table's next rows:
+- `ThreatPosture.rowsFP(MarketAPI market, int from, int n)` :611 - The cost of n rows of the colony's size table from the cheapest, the from-th on (in turn past the table, as maintainGarrisons builds).
+- `ThreatPosture.oneSwarmFP(MarketAPI market)` :623 - The heaviest swarm of the colony's size table:
+- `ThreatPosture.noteSent(float fp)` :632
+- `ThreatPosture.noteConsumed(int swarms)` :637
 ### losses (ThreatSwarmBountyIntel.Kills)
-- `ThreatPosture.noteBattle(BattleAPI battle)` :608 - Books a battle the swarm fought, each ship once:
-- `ThreatPosture.hasThreat(List<CampaignFleetAPI> side)` :662
-- `ThreatPosture.addLoss(String systemId, float fp)` :669
-- `ThreatPosture.lossFP(String systemId, float day)` :675 - The system's loss ledger decayed to this day;
-- `ThreatPosture.lostLately(String systemId, float day)` :682 - Whether the system lost ships in the last DECAY_DAYS.
-- `ThreatPosture.decay(float days)` :687
+- `ThreatPosture.noteBattle(BattleAPI battle)` :651 - Books a battle the swarm fought, each ship once:
+- `ThreatPosture.hasThreat(List<CampaignFleetAPI> side)` :705
+- `ThreatPosture.addLoss(String systemId, float fp)` :712
+- `ThreatPosture.lossFP(String systemId, float day)` :718 - The system's loss ledger decayed to this day;
+- `ThreatPosture.lostLately(String systemId, float day)` :725 - Whether the system lost ships in the last DECAY_DAYS.
+- `ThreatPosture.decay(float days)` :730
 ### the pass
-- `ThreatPosture.poll()` :717 - Every postureDays (IncursionManager.advance, before maintainGarrisons):
-- `ThreatPosture.massWithin(Call call)` :986 - Massing the defence, a system under attack sends the spare swarms of its own colonies (ThreatColonyManager.spareFleets, what a launch would muster) to its worlds short of their need by more than a swa
-- `ThreatPosture.massFromNeighbours(List<Call> calls, List<String> systemIds)` :1018 - A system still short once its own spare is massed and the strikes in reach have turned (massWithin, recallStrikes) draws the spare swarms of the hive systems within postureRecallLY that are not callin
-- `ThreatPosture.compare(StarSystemAPI a, StarSystemAPI b)` :1032
-- `ThreatPosture.shortest(Call call)` :1068 - The call's world shortest of its need;
-- `ThreatPosture.pickFor(java.util.Collection<CampaignFleetAPI> fleets, float gap)` :1080 - The lightest fleet that covers the gap, else the heaviest.
-- `ThreatPosture.rally(MarketAPI world, float attackFP)` :1108 - THE SYSTEM DEFENDS AS ONE (2026-10-05, the user:
-- `ThreatPosture.regionalPool(MarketAPI world, float shortFP, Map<CampaignFleetAPI, MarketAPI> out)` :1192 - REGIONAL RELIEF (the user, 2026-10-09, after the old sector swung 44-151 hives on one build:
-- `ThreatPosture.compare(StarSystemAPI a, StarSystemAPI b)` :1215
-- `ThreatPosture.boundFromAfar(MarketAPI world)` :1240 - The swarms bound for the world's garrison still outside its system (a regional relief on its way).
-- `ThreatPosture.forceOver(MarketAPI world)` :1257 - The force over the hive world today:
-- `ThreatPosture.standsFor(MarketAPI world)` :1266 - What stands for the hive world:
-- `ThreatPosture.defenders(MarketAPI world, List<CampaignFleetAPI> near, boolean seenComing)` :1283 - The fleets a siege over the hive world fights today (ThreatPurgeFGI.dailyDay):
-- `ThreatPosture.boundFor(MarketAPI world)` :1293 - The swarms on their way to the world's garrison and already in its system (ThreatColonyManager.sendReinforcement, sendToGarrison).
-- `ThreatPosture.strikeCapFP(StarSystemAPI source, MarketAPI target, String[] why)` :1336 - Fleet points a strike staged in this system may muster while the defence is massed (postureMass):
-- `ThreatPosture.recallStrikes(List<Call> calls)` :1373 - STRIKES COME HOME (2026-10-04, the user:
-- `ThreatPosture.compare(Call a, Call b)` :1379
-- `ThreatPosture.inboundFP(String marketId)` :1422 - Fleet points of reinforcements flying to this colony.
-- `ThreatPosture.countsAbstract(ThreatPurgeFGI purge)` :1516 - Whether a booked siege counts by its abstract flotilla (abstractNow):
-- `ThreatPosture.alarm()` :1555 - A siege has come down on a hive world:
-- `ThreatPosture.sighted()` :1560 - A siege first seen bound for a hive system (ThreatSwarmIntel.note):
-- `ThreatPosture.overWorlds(List<MarketAPI> colonies, Map<String, Float> sieges, float pressure)` :1580 - Each colony's share of its system's need once the attack has come down (2026-10-04, postureNeedAtAttack):
-- `ThreatPosture.add(Map<String, Float> out, String systemId, CampaignFleetAPI f, Set<CampaignFleetAPI> counted, String factionId, ThreatStance.Pass pass)` :1609 - Counts one attacking fleet toward its system, and toward its faction's force in reach (ThreatStance);
-- `ThreatPosture.read(StarSystemAPI system, List<MarketAPI> colonies, Map<String, Float> attacks, Set<CampaignFleetAPI> counted, Map<String, StarSystemAPI> stagingMemo, List<ThreatFrontlines.Outpost> outposts, float day, ThreatStance.Pass pass)` :1620 - One system's pressure, component by component.
+- `ThreatPosture.poll()` :760 - Every postureDays (IncursionManager.advance, before maintainGarrisons):
+- `ThreatPosture.massWithin(Call call)` :1029 - Massing the defence, a system under attack sends the spare swarms of its own colonies (ThreatColonyManager.spareFleets, what a launch would muster) to its worlds short of their need by more than a swa
+- `ThreatPosture.massFromNeighbours(List<Call> calls, List<String> systemIds)` :1061 - A system still short once its own spare is massed and the strikes in reach have turned (massWithin, recallStrikes) draws the spare swarms of the hive systems within postureRecallLY that are not callin
+- `ThreatPosture.compare(StarSystemAPI a, StarSystemAPI b)` :1075
+- `ThreatPosture.shortest(Call call)` :1111 - The call's world shortest of its need;
+- `ThreatPosture.pickFor(java.util.Collection<CampaignFleetAPI> fleets, float gap)` :1123 - The lightest fleet that covers the gap, else the heaviest.
+- `ThreatPosture.rally(MarketAPI world, float attackFP)` :1151 - THE SYSTEM DEFENDS AS ONE (2026-10-05, the user:
+- `ThreatPosture.regionalPool(MarketAPI world, float shortFP, Map<CampaignFleetAPI, MarketAPI> out)` :1235 - REGIONAL RELIEF (the user, 2026-10-09, after the old sector swung 44-151 hives on one build:
+- `ThreatPosture.compare(StarSystemAPI a, StarSystemAPI b)` :1258
+- `ThreatPosture.boundFromAfar(MarketAPI world)` :1283 - The swarms bound for the world's garrison still outside its system (a regional relief on its way).
+- `ThreatPosture.forceOver(MarketAPI world)` :1300 - The force over the hive world today:
+- `ThreatPosture.standsFor(MarketAPI world)` :1309 - What stands for the hive world:
+- `ThreatPosture.defenders(MarketAPI world, List<CampaignFleetAPI> near, boolean seenComing)` :1326 - The fleets a siege over the hive world fights today (ThreatPurgeFGI.dailyDay):
+- `ThreatPosture.boundFor(MarketAPI world)` :1336 - The swarms on their way to the world's garrison and already in its system (ThreatColonyManager.sendReinforcement, sendToGarrison).
+- `ThreatPosture.strikeCapFP(StarSystemAPI source, MarketAPI target, String[] why)` :1379 - Fleet points a strike staged in this system may muster while the defence is massed (postureMass):
+- `ThreatPosture.recallStrikes(List<Call> calls)` :1416 - STRIKES COME HOME (2026-10-04, the user:
+- `ThreatPosture.compare(Call a, Call b)` :1422
+- `ThreatPosture.inboundFP(String marketId)` :1465 - Fleet points of reinforcements flying to this colony.
+- `ThreatPosture.countsAbstract(ThreatPurgeFGI purge)` :1559 - Whether a booked siege counts by its abstract flotilla (abstractNow):
+- `ThreatPosture.alarm()` :1598 - A siege has come down on a hive world:
+- `ThreatPosture.sighted()` :1603 - A siege first seen bound for a hive system (ThreatSwarmIntel.note):
+- `ThreatPosture.overWorlds(List<MarketAPI> colonies, Map<String, Float> sieges, float pressure)` :1623 - Each colony's share of its system's need once the attack has come down (2026-10-04, postureNeedAtAttack):
+- `ThreatPosture.add(Map<String, Float> out, String systemId, CampaignFleetAPI f, Set<CampaignFleetAPI> counted, String factionId, ThreatStance.Pass pass)` :1652 - Counts one attacking fleet toward its system, and toward its faction's force in reach (ThreatStance);
+- `ThreatPosture.read(StarSystemAPI system, List<MarketAPI> colonies, Map<String, Float> attacks, Set<CampaignFleetAPI> counted, Map<String, StarSystemAPI> stagingMemo, List<ThreatFrontlines.Outpost> outposts, float day, ThreatStance.Pass pass)` :1663 - One system's pressure, component by component.
 ### recycling: the last road for surplus
-- `ThreatPosture.breakEvenDays()` :1735 - Days a surplus fleet must stand idle before recycling it is cheaper than keeping it:
-- `ThreatPosture.recycleSurplus(List<String> systemIds, float day)` :1748 - Recycles what each colony holds above want by the band and one swarm:
-- `ThreatPosture.stagedBy(MarketAPI base, String hiveSystemId)` :1823 - The staged threat one base puts on the hive system as the swarm sees it there - B's per-base figure (read) on the base's own stock alone, its donors' depots elsewhere and unseen:
-- `ThreatPosture.stagedCapacity(MarketAPI base, StarSystemAPI system)` :1835 - What a base staging against system could pay a force there:
-- `ThreatPosture.stagedCapacity(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors)` :1842 - stagedCapacity with the donors pooled into it (null:
-- `ThreatPosture.siegeCapacityFP(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors)` :1858 - Fleet points a base staging a siege against system could send:
+- `ThreatPosture.breakEvenDays()` :1778 - Days a surplus fleet must stand idle before recycling it is cheaper than keeping it:
+- `ThreatPosture.recycleSurplus(List<String> systemIds, float day)` :1791 - Recycles what each colony holds above want by the band and one swarm:
+- `ThreatPosture.stagedBy(MarketAPI base, String hiveSystemId)` :1866 - The staged threat one base puts on the hive system as the swarm sees it there - B's per-base figure (read) on the base's own stock alone, its donors' depots elsewhere and unseen:
+- `ThreatPosture.stagedCapacity(MarketAPI base, StarSystemAPI system)` :1878 - What a base staging against system could pay a force there:
+- `ThreatPosture.stagedCapacity(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors)` :1885 - stagedCapacity with the donors pooled into it (null:
+- `ThreatPosture.siegeCapacityFP(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors)` :1901 - Fleet points a base staging a siege against system could send:
 ### the monthly line (ThreatColonyManager.flushUpkeepMonth, from the census)
-- `ThreatPosture.logMonth()` :1879
-- `ThreatPosture.topBanks(int n)` :1898 - The n largest colony banks, "name fp" each, for the monthly line.
-- `ThreatPosture.compare(MarketAPI a, MarketAPI b)` :1901
-- `ThreatPosture.k(float fp)` :1913
+- `ThreatPosture.logMonth()` :1922
+- `ThreatPosture.topBanks(int n)` :1941 - The n largest colony banks, "name fp" each, for the monthly line.
+- `ThreatPosture.compare(MarketAPI a, MarketAPI b)` :1944
+- `ThreatPosture.k(float fp)` :1956
 
 ## ThreatPurgeFGI (2731 lines)
 - `ThreatPurgeFGI.ThreatPurgeFGI(GenericRaidParams params, boolean playerCommissioned)` :115
