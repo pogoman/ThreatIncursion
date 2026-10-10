@@ -83,53 +83,58 @@ Consequences the mod builds on:
   wanted it at size and put a permanent fuel shortage on every card in exchange for an
   accessibility bonus the hive could not use.
 
-## Where a colony lands - deposits, and what they would add (2026-10-10)
+## Where a colony lands - deposits, and what they would add at full growth (2026-10-10)
 
 A planet's score is `depositScore` plus `needBonus`:
 
 - **`depositScore`** is 30 + 10 x richness per deposit, summed.
 - **`needBonus`** is 30 (`RELIEF_SCORE`) for each unit the planet's deposits would add to the
-  hive's supply once grown.
+  hive's supply at full growth.
 
 The sum ranks planets for a claimed system's first colony (`pickColonyPlanet`) and for filling a
-held system (`pickExpansionPlanet`). Summed over a system's planets, `needBonus` also weights the
-claim itself (`systemNeedScore` in `IncursionManager.pickSpreadTarget`).
+held system (`pickExpansionPlanet`). For the claim itself (`systemNeedScore` in
+`IncursionManager.pickSpreadTarget`), each input counts its best planet in the system, not a sum.
 
-**Why it changed.** Before, the bonus was today's shortage times richness, for any matching
-deposit. Ore and rare ore share planets and add up, while volatiles mostly stand alone, so hw137c
-settled ore worlds first. It mined ore 98 units against volatiles 17, 8 of them on one world
-(Unhcegila). That world fed every fuel plant until the humans cut its port (`facts.md`, "What
-locked hw137c's swarm on fuel"). The shortage term could not help: the broadcast showed no gap
-until the siege. A ×2 volatiles weight was built and replaced the same day.
+**The rule (the user, 2026-10-10).** The economy plans on potential: every hive at size 8, aiming
+for a balance. Blockades, sieges, capped ports and disruption are the war planner's concern.
+`ThreatColonyManager.mineableNeeds` reads, per input:
 
-**The rule now (the user, 2026-10-10).** A colony draws from its single best source (above), so a
-new deposit only helps if it makes more than colonies draw now. `ThreatColonyManager.mineableNeeds`
-keeps, per input, each consuming colony's demand and what it draws:
+- **best** (`hiveOutput`): the largest output any live hive would make at size 8. That is its
+  deposit, or today's output grown to size 8 where a relic lifts it (Unhcegila's Plasma Dynamo).
+- **wanted** (`fullGrownDemand`): what a size-8 consumer wants. Refining wants ore 10 and rare ore
+  8; Fuel Production wants volatiles 8.
+- **relief** (`MineableNeed.relief`): what a new source would add, consumers x (min(wanted, output)
+  - best), counting at least one consumer.
 
-- **Input short today:** what each colony gets now.
-- **Nothing short:** what each colony would get if the largest source's exports were cut, which is
-  its own output or the second-largest source's.
+A colony draws from its single best source (above), and at size 8 no hive output reaches
+shipping's cap. So an input is balanced once one source makes what a consumer wants. After that,
+no further deposit of it adds anything.
 
-`MineableNeed.relief(output)` sums each colony's demand, up to the new output, above what it draws.
-The output is `fullGrownOutput`: hive size 8 plus richness, minus 2 for rare ore and volatiles.
+**What it reads** (`tools/test-harness/reads/potential.pl`, best / wanted):
 
-Effects:
-
-- A trace deposit below the best source adds nothing.
-- A lone large source pulls a second one as large.
-- Two equal sources pull nothing, so the next claim goes to the input with one source.
-- A strained hive (no nominal colony) counts only inputs short today.
-
-Read on the hw137 end saves (`relief.pl`):
-
-| Save | Input | Situation | Relief by full-grown output |
+| Save | Ore | Rare ore | Volatiles |
 |---|---|---|---|
-| b | volatiles | nothing short; top 8, next 5; top cut 10 | output 6 adds 5, output 7+ adds 10 |
-| b | ore, rare ore | top equals next | 0 |
-| c | volatiles | short 61; Unhcegila's port capped at 3 | output 5 adds 38, output 7+ adds 61 |
+| Aphelion ck2, pre-war | 11 / 10 | 9 / 8 | 9 / 8 |
+| AmaruDugas ck5, pre-war | 13 / 10 | 12 / 8 | 9 / 8 |
+| hw137a, b, c at the end | 11 / 10 | 10-11 / 8 | 9 / 8, Unhcegila alone |
 
-`Mineable needs:` on the census log prints each input's shortfall today, the shortfall with the top
-source cut ("top cut"), and the sources. The home chain still ranks by `depositScore` alone
+So the pull acts only in the opening. Once each input has one rich source, claims go by deposits
+and reach. A strained hive (no nominal colony) claims only planets with relief, so once balanced
+it claims nothing.
+
+**hw137c's fuel lock is a military failure under this rule.** Unhcegila would make 9 against the 8
+wanted, so the economy was balanced; the humans' blockade cut it. Protecting or replacing a world
+that alone balances an input is the war planner's job.
+
+**Superseded the same day:**
+
+1. Today's shortage times richness, for any matching deposit. It saw no gap until the siege, so
+   hw137c mined ore 98 units against volatiles 17.
+2. Volatiles deposits counted twice.
+3. Relief against today's availability, or against availability with the top source cut.
+
+`Mineable needs:` on the census log prints each input's best and wanted, its sources, its
+consumers, and today's shortfall. The home chain still ranks by `depositScore` alone
 (`pickChainPlanets`).
 
 ## Vanilla industry numbers (javap on the API jar, 0.98a-RC8)
