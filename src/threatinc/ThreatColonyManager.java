@@ -5558,6 +5558,9 @@ public class ThreatColonyManager {
 		if (bankedFP(market) >= 0f || income >= upkeep) return;
 		// the fleets a held prong of the offensive will muster are its, not the bank's to scrap (earmarked)
 		if (market.getStarSystem() != null && ThreatOffensive.earmarked(market.getStarSystem().getId()) > 0) return;
+		// a keystone's stand is the war's, fed from other hives (ThreatPosture.consolidate): not its own bank's to
+		// scrap (hw140c: the last keystone's bank recycled six swarms, 3.4k FP, of the stand the others had sent)
+		if (ThreatPosture.keystone(market)) return;
 		float rate = upkeepPerDay(1f);
 		float share = ThreatReturns.hullShare();
 		int budget = fleets.size();

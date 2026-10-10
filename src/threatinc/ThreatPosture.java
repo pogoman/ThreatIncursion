@@ -285,14 +285,19 @@ public class ThreatPosture {
 
 	/**
 	 * CONSOLIDATION (the user, 2026-10-10, option A after hw138b; KEYSTONE above). Each pass, losing
-	 * (ThreatStance.losingPressure) at consolidateLosing or above: the stand is the largest force seen over
-	 * a hive world within consolidateWindowDays (rally's FORCE_SEEN, today's forceOver included); as many
-	 * keystones as the hive's whole garrison holds stands, the hives scored by the share of an input's
-	 * cover they carry (ThreatColonyManager.mineableNeeds - the world whose loss costs the economy most),
-	 * then size, a hive already outweighed never; the rest conceded. Twenty-eight stands of 127 FP that
-	 * the only-if-enough gate could not let fight become a few of 1,500 that it can; the worlds conceded
-	 * are the price of the navy kept. Ends when the losing pressure falls below the knob or every hive
-	 * can stand. Logged on every change of the keystone set.
+	 * (ThreatStance.losingPressure) at consolidateLosing or above: the stand is the force that comes - the
+	 * consolidateStandPercentile of the forces seen over hive worlds within consolidateWindowDays (rally's
+	 * FORCE_SEEN, today's forceOver included) at the rally's margin (systemDefenceMargin); as many keystones
+	 * as the hive's whole garrison holds stands, the hives scored by the share of an input's cover they
+	 * carry (ThreatColonyManager.mineableNeeds - the world whose loss costs the economy most), then size, a
+	 * hive already outweighed never; the rest conceded. A keystone stays while it lives and is not
+	 * outweighed (hw140c: the set flapped 36 times between near-tied hives and the swarms chased it - no
+	 * keystone ever reached its stand); the set is trimmed or filled only as the count moves. Twenty-eight
+	 * stands of 127 FP that the only-if-enough gate could not let fight become stands it can; the worlds
+	 * conceded are the price of the navy kept. hw140c sized the stand to the largest force ever seen (one
+	 * 4,425 FP flotilla, once) and conceded 23 hives of 24 to sieges of 331-475 FP a 700 FP garrison would
+	 * have stood. Ends when the losing pressure falls below the knob or every hive can stand. Logged on
+	 * every change of the keystone set.
 	 */
 	protected static void consolidate(float day) {
 		float threshold = ThreatIncConfig.consolidateLosing();
@@ -302,12 +307,23 @@ public class ThreatPosture {
 		}
 		float losing = ThreatStance.losingPressure();
 		List<MarketAPI> hives = ThreatIncData.getAllLiveColonyMarkets();
-		float stand = 0f, total = 0f;
-		for (float[] v : FORCE_SEEN.values()) stand = Math.max(stand, v[1]);
+		// the forces that come: every force seen over a hive world in the window, today's included
+		List<Float> forces = new ArrayList<Float>();
+		for (float[] v : FORCE_SEEN.values()) if (v[1] > 0f) forces.add(v[1]);
+		float total = 0f;
 		for (MarketAPI c : hives) {
 			if (c.getPrimaryEntity() == null) continue;
-			stand = Math.max(stand, forceOver(c));
+			float force = forceOver(c);
+			if (force > 0f && !FORCE_SEEN.containsKey(c.getId())) forces.add(force);
 			total += ThreatColonyManager.ownedFleetFP(c, ThreatIncData.garrisonsFor(c.getId()));
+		}
+		java.util.Collections.sort(forces);
+		float percentile = Math.max(0f, Math.min(1f, ThreatIncConfig.consolidateStandPercentile()));
+		float margin = ThreatIncConfig.systemDefenceMargin();
+		float stand = 0f;
+		if (!forces.isEmpty()) {
+			int at = Math.max(0, Math.min(forces.size() - 1, (int) Math.ceil(percentile * forces.size()) - 1));
+			stand = forces.get(at) * (margin > 0f ? margin : 1f);
 		}
 		int k = stand > 0f ? Math.max(1, (int) (total / stand)) : hives.size();
 		if (threshold <= 0f || losing < threshold || stand <= 0f || k >= hives.size()) {
@@ -343,10 +359,18 @@ public class ThreatPosture {
 		java.util.Collections.sort(ranked, new java.util.Comparator<MarketAPI>() {
 			public int compare(MarketAPI a, MarketAPI b) { return Float.compare(score.get(b.getId()), score.get(a.getId())); }
 		});
+		// sticky: the keystones that still stand are kept, the set trimmed (lowest score first) or filled
+		// (highest first) only as the count moves - never swapped between near-tied hives
+		List<MarketAPI> kept = new ArrayList<MarketAPI>();
+		for (MarketAPI c : ranked) if (KEYSTONE.containsKey(c.getId())) kept.add(c);
+		while (kept.size() > Math.min(k, ranked.size())) kept.remove(kept.size() - 1);
+		for (MarketAPI c : ranked) {
+			if (kept.size() >= Math.min(k, ranked.size())) break;
+			if (!kept.contains(c)) kept.add(c);
+		}
 		Map<String, Float> next = new HashMap<String, Float>();
 		StringBuilder names = new StringBuilder();
-		for (int i = 0; i < Math.min(k, ranked.size()); i++) {
-			MarketAPI c = ranked.get(i);
+		for (MarketAPI c : kept) {
 			next.put(c.getId(), stand);
 			if (names.length() > 0) names.append(", ");
 			names.append(c.getName()).append(" (").append(why.get(c.getId())).append(')');
@@ -360,7 +384,8 @@ public class ThreatPosture {
 		}
 		if (changed) {
 			ThreatIncConfig.log("Posture: consolidating - losing " + ThreatStance.losingSummary() + "; stand " + (int) stand
-					+ " FP (the largest force over a hive in " + (int) window + " d), " + KEYSTONE.size() + " keystone(s) of "
+					+ " FP (the " + (int) (percentile * 100f) + "th-percentile force of " + forces.size() + " seen over hives in "
+					+ (int) window + " d, x" + String.format("%.2f", margin > 0f ? margin : 1f) + "), " + KEYSTONE.size() + " keystone(s) of "
 					+ hives.size() + " hives holding " + (int) total + " FP: " + names + "; " + CONCEDED.size() + " conceded");
 		}
 	}
@@ -1090,7 +1115,11 @@ public class ThreatPosture {
 		Map<String, Float> sieged = siegesAt();
 		Float all = sieged.get(world.getId());
 		if (all != null && all > attackFP) attackFP = all;
-		FORCE_SEEN.put(world.getId(), new float[] { today(), attackFP });
+		// the largest force seen over the world within the window (consolidate's stand), not the latest reading
+		float[] seen = FORCE_SEEN.get(world.getId());
+		if (seen == null || attackFP >= seen[1] || today() - seen[0] > ThreatIncConfig.consolidateWindowDays()) {
+			FORCE_SEEN.put(world.getId(), new float[] { today(), attackFP });
+		}
 		float margin = ThreatIncConfig.systemDefenceMargin();
 		float want = margin > 0f ? attackFP * margin : Float.MAX_VALUE;
 		float have = ThreatGroundFronts.friendlyPointsNear(Factions.THREAT, world);

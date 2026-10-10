@@ -218,6 +218,8 @@ public class ThreatIncConfig {
 	public static float consolidateLosing() { return fd("threatinc_consolidateLosing", 0.5f); }
 	/** Days over which the largest force seen over a hive world sizes a keystone's stand (ThreatPosture.consolidate). */
 	public static float consolidateWindowDays() { return fd("threatinc_consolidateWindowDays", 120f); }
+	/** The percentile (0-1) of the forces seen over hive worlds in the window that sizes a keystone's stand (ThreatPosture.consolidate); 1 = the largest. */
+	public static float consolidateStandPercentile() { return fd("threatinc_consolidateStandPercentile", 0.75f); }
 	/** Days a reinforcement may be in flight before it is logged where it stands and ordered on again (ThreatColonyManager.overdue); 0 = never. */
 	public static float reinforcementOverdueDays() { return f("threatinc_reinforcementOverdueDays"); }
 	/** Whether the humans read a seen strike as bound for its system, not for its worlds: guards, help and mobilisation key off the system (ThreatFrontlines.boundFor). */
