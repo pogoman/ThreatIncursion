@@ -4518,14 +4518,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	protected StarSystemAPI pickSpreadTarget() {
-		// what the hive is short of right now - systems whose deposits would
-		// relieve those shortfalls get priority (their surplus feeds the whole
-		// network via in-group trade)
-		Map<String, Integer> needs = ThreatColonyManager.groupMineableDeficits();
 		// a hive with no nominal colony doesn't stretch itself thinner: every
 		// new world is another mouth on the same starved chain, so a strained
 		// hive claims ONLY systems whose deposits would fix its economy
 		boolean strainedHive = !ThreatColonyManager.anyNominalColony();
+		// what new deposits would add to the hive's supply - more than its best
+		// source when short, a second source when one carries the input - gets
+		// priority (their output feeds the whole network via in-group trade)
+		Map<String, ThreatColonyManager.MineableNeed> needs = ThreatColonyManager.mineableNeeds(strainedHive);
 
 		// billed reach (ThreatReach): a claim may be anywhere a forge can send a
 		// wave; what the hive could not defend is weighed, not walled off
