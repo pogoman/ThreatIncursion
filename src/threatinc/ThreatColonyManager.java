@@ -457,12 +457,25 @@ public class ThreatColonyManager {
 		return ThreatMapFog.conditionOnly(planet.getMarket());
 	}
 
+	/**
+	 * A volatiles deposit counts this many times in depositScore (the user, 2026-10-10: "if rare
+	 * ore outscores volatiles just give volatiles same score"). Ore and rare ore share planets and
+	 * add up, volatiles mostly stand alone: hw137c settled ore and rare-ore worlds first (Alpha
+	 * Pantheon II 110 against its abundant volatiles worlds' 40) while every fuel plant ran on one
+	 * volatiles world. Counted twice, a volatiles world scores what an ore and rare-ore world of
+	 * the same richness does.
+	 */
+	protected static final float VOLATILES_DEPOSIT_WEIGHT = 2f;
+
+	/** A planet's pull as a colony site: 30 + 10 x richness a deposit, volatiles counted VOLATILES_DEPOSIT_WEIGHT times. */
 	protected static float depositScore(PlanetAPI planet) {
 		float score = 0f;
 		for (MarketConditionAPI cond : planet.getMarket().getConditions()) {
-			if (!ResourceDepositsCondition.COMMODITY.containsKey(cond.getId())) continue;
+			String commodity = ResourceDepositsCondition.COMMODITY.get(cond.getId());
+			if (commodity == null) continue;
 			Integer mod = ResourceDepositsCondition.MODIFIER.get(cond.getId());
-			score += 30f + (mod != null ? mod * 10f : 0f);
+			float s = 30f + (mod != null ? mod * 10f : 0f);
+			score += Commodities.VOLATILES.equals(commodity) ? s * VOLATILES_DEPOSIT_WEIGHT : s;
 		}
 		return score;
 	}
