@@ -663,6 +663,8 @@ public class ThreatIncConfig {
 	public static float sizeUpkeepRatio()          { return f("threatinc_sizeUpkeepRatio"); }
 	public static float upkeepBreakEven()          { return f("threatinc_upkeepBreakEven"); }
 	public static float starveDaysPerSize()        { return f("threatinc_starveDaysPerSize"); }
+	/** A FOUNDING BUDGET (S6, 2026-10-10): while a seeding is held on supplies, growth draws only the stock above one founding kit. */
+	public static boolean foundingBudget()         { return b("threatinc_foundingBudget", true); }
 	public static float feedShareExpand()          { return f("threatinc_feedShareExpand"); }
 	public static float feedSharePress()           { return f("threatinc_feedSharePress"); }
 	public static float feedShareConsolidate()     { return f("threatinc_feedShareConsolidate"); }

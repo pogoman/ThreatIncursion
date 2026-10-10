@@ -349,15 +349,29 @@ public class ThreatColonyUpkeep {
 		float budget = Math.max(0f, feedShare() * net - sustained);
 		Collections.sort(needs, growthOrder(ThreatStance.stance()));
 		float grown = 0f;
+		// A FOUNDING BUDGET BEFORE GROWTH (the user, 2026-10-10 21:45, "S6 sounds fine", after hw149c: 43 seedings
+		// held 1,200 days on a stock of 0-2,600 while the feed grew the colonies 41-43k a month and the navy sat
+		// at 125k FP - "a frozen navy i would consider a bug"): while a seeding is held on supplies, growth draws
+		// only the stock above one founding kit (ThreatFuel.foundingCost), so the flow banks the kit within a
+		// month or two and the wave sails. Sustenance (above) is untouched; the navy's fit already asks the
+		// spare for the same kit a month (ThreatColonyManager.fitWant) - this makes the stock keep it.
+		float kit = ThreatIncConfig.foundingBudget() && ThreatFuel.heldOnSuppliesThisMonth() > 0f
+				? ThreatFuel.foundingCost()[0] : 0f;
+		float growStock = Math.max(0f, stock - kit);
+		if (kit > 0f) {
+			ThreatIncConfig.logQuiet("foundingbudget", "Feed: a seeding is held - growth leaves " + (int) Math.min(stock, kit)
+					+ " of " + (int) kit + " supplies for the founding kit, " + (int) growStock + " to grow on");
+		}
 		for (Need n : needs) {
-			if (budget <= 0f || stock <= 0f) break;
+			if (budget <= 0f || growStock <= 0f) break;
 			if (!n.grows) continue;
 			float next = t * (perMonth(n.size + 1) - perMonth(n.size)) * days / 30f;
 			if (budget < next) continue;
-			float extra = Math.min(n.cap - n.paid, Math.min(budget, stock));
+			float extra = Math.min(n.cap - n.paid, Math.min(budget, growStock));
 			if (extra <= 0f) continue;
 			n.paid += extra;
 			budget -= extra;
+			growStock -= extra;
 			stock -= extra;
 			grown += extra;
 		}

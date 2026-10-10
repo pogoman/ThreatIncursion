@@ -244,3 +244,16 @@ forward base, commodity-bound the way vanilla's economy is.
 
 The fit, the builder respecting it, the fit floor as the colony's want, the pressure pass under the fit and the rally's
 enough rule: `swarm-navy-fit.md` (split out 2026-10-09 at 48 KB).
+
+### A founding budget before growth (S6, 2026-10-10; `threatinc_foundingBudget`)
+
+The user, 21:45, after hw149c ("while not lost a frozen navy i would consider a bug ... S6 sounds fine"):
+hw149c held 43 seeding waves for 1,200 war days on a supplies stock of 0-2,600 while `feed` grew the colonies
+41-43k a month (130 size-ups), the fleets away took 38k and the navy charge 17k of a 98k income, and the navy
+sat at 125k FP; hw149b, with a 84-167k stock, founded 43 hives in 600 days and turned its game round. The
+founding gate (`ThreatFuel.canFound`) wants one kit (`foundingCost`, the forward base's supplies plus the
+founding structures) free in stock, and growth took the free stock every poll before it could bank. Now, while
+a seeding is held on supplies (`ThreatFuel.heldOnSuppliesThisMonth`), growth draws only the stock above one
+kit (`ThreatColonyUpkeep.feed`, the growth loop); sustenance is untouched, and the navy's fit
+(`ThreatColonyManager.fitWant`) already asks the spare for the same kit a month. Logged once a month as
+`Feed: a seeding is held - growth leaves ...`. First trial hw151 from hw148 b/c's snapshots against hw149.

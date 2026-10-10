@@ -242,3 +242,14 @@ supplies stock (the held FP's upkeep).
 
 By the loop (all held -> random-seed general testing), the next batch is a new day-0 seed, unless the user
 takes S6 to c's snapshot `save_ZhiFarah_3202965389391319559hw148cd3620` first (the cleaner test: c founded 0).
+
+### 9d. The user's call (21:45) and S6 built (21:55)
+
+"While not lost a frozen navy i would consider a bug which means fix and reuse that seed to test. S6 sounds
+fine." The read of c: 43 seeding waves held for 1,200 days on a stock of 0-2,600 supplies (the gate wants one
+founding kit free), because growth took the free stock every poll (feed 41-43k of a 98k income; 130 size-ups)
+before a kit could bank; b's stock reached 167k and founded 43. Built: `ThreatColonyUpkeep.feed`'s growth loop
+draws only the stock above one kit while a seeding is held on supplies (`threatinc_foundingBudget` true;
+`hive-stocks-and-upkeep.md` "A founding budget before growth"). Trial hw151 from the hw148 b and c snapshots
+(`...hw148bd3563`, `...hw148cd3620`, `-Days 1200`) against hw149 (71 / 33): read c's foundings (0 in hw149),
+its stock and the `Feed: a seeding is held` lines, its hives at ~4,800, and whether b still turns round.
