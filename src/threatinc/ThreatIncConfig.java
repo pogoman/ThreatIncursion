@@ -214,6 +214,10 @@ public class ThreatIncConfig {
 	public static boolean systemDefenceOnlyIfEnough() { return b("threatinc_systemDefenceOnlyIfEnough", true); }
 	/** Whether a world its own system cannot defend draws the spare swarms of the hives in fuel reach, nearest first, sent only if all of it together outweighs the force (ThreatPosture.regionalPool). */
 	public static boolean regionalRelief() { return b("threatinc_regionalRelief", true); }
+	/** Losing pressure (ThreatStance.losingPressure) at which the swarm consolidates its garrisons on keystone hives and concedes the rest (ThreatPosture.consolidate); 0 = never. */
+	public static float consolidateLosing() { return fd("threatinc_consolidateLosing", 0.5f); }
+	/** Days over which the largest force seen over a hive world sizes a keystone's stand (ThreatPosture.consolidate). */
+	public static float consolidateWindowDays() { return fd("threatinc_consolidateWindowDays", 120f); }
 	/** Days a reinforcement may be in flight before it is logged where it stands and ordered on again (ThreatColonyManager.overdue); 0 = never. */
 	public static float reinforcementOverdueDays() { return f("threatinc_reinforcementOverdueDays"); }
 	/** Whether the humans read a seen strike as bound for its system, not for its worlds: guards, help and mobilisation key off the system (ThreatFrontlines.boundFor). */

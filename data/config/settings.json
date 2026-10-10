@@ -235,6 +235,15 @@
 	# sent only if all of it together outweighs the force over the world.
 	# false = a system defends with its own swarms alone
 	"threatinc_regionalRelief": true,
+	# CONSOLIDATION (2026-10-10, the user, after hw138b: 30 hives ground to 6
+	# by six factions' daily sieges at 5:1 over 127 FP garrisons, every rally
+	# refused as not enough): losing at this pressure or above
+	# (ThreatStance.losingPressure, 0-1), the swarm masses its garrisons on as
+	# many keystone hives as can each stand the largest force seen over a hive
+	# world lately, and the other hives keep only their patrols. 0 = never
+	"threatinc_consolidateLosing": 0.5,
+	# Days over which that largest force is remembered
+	"threatinc_consolidateWindowDays": 120,
 	# Days a reinforcement swarm may be in flight before the hive logs where it
 	# stands and orders it on again (hw101a: swarms sat a year in their source
 	# system while their targets fell). 0 = never

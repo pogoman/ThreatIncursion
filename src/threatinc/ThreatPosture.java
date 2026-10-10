@@ -102,6 +102,20 @@ public class ThreatPosture {
 
 	/** Market id -> {want, need}: its base or its share of the need by its floor; rebuilt each pass. Not saved. */
 	protected static final Map<String, float[]> COLONY = new HashMap<String, float[]>();
+	/**
+	 * CONSOLIDATION (the user, 2026-10-10, after hw138b: 30 hives ground to 6 by six factions' daily
+	 * sieges at 5:1 over garrisons of 127 FP, every regional rally refused as not enough, 260k fuel in
+	 * stock): losing at consolidateLosing or above, the swarm's garrisons mass on keystone hives - as
+	 * many as can each stand the largest force seen over a hive world within consolidateWindowDays -
+	 * and the other hives keep their patrols (minimumFP). Keystone market id -> the stand it wants;
+	 * the pressure pass moves the swarms (its donors give above want, the keystones want their stand,
+	 * needFP holds it from rallies, launches and the navy's fit). Not saved: rebuilt each pass.
+	 */
+	protected static final Map<String, Float> KEYSTONE = new HashMap<String, Float>();
+	/** Market ids of the hives conceded while consolidating: they want their patrols alone. Not saved. */
+	protected static final Set<String> CONCEDED = new HashSet<String>();
+	/** World id -> {day, force FP} the largest force rally saw over it lately (consolidate's stand). Not saved. */
+	protected static final Map<String, float[]> FORCE_SEEN = new HashMap<String, float[]>();
 	/** The last pass's calls, each less what its recalls sent (recallStrikes): a launch reads them (strikeCapFP). Not saved. */
 	protected static final List<Call> CALLS = new ArrayList<Call>();
 	protected static long lastPoll = Long.MIN_VALUE;
@@ -132,6 +146,9 @@ public class ThreatPosture {
 		LOSSES_SEEN.clear();
 		lastPoll = Long.MIN_VALUE;
 		appetite = -1f;
+		KEYSTONE.clear();
+		CONCEDED.clear();
+		FORCE_SEEN.clear();
 		sentFleets = consumedSwarms = recycledFleets = 0;
 		sentFP = recycledFP = 0f;
 	}
@@ -219,6 +236,17 @@ public class ThreatPosture {
 	 * colony also wants the strike its stance's target calls for.
 	 */
 	public static float wantFP(MarketAPI market) {
+		// consolidating (consolidate): a keystone wants its stand, a conceded hive its patrols alone
+		if (market != null && !KEYSTONE.isEmpty()) {
+			Float stand = KEYSTONE.get(market.getId());
+			if (stand != null) return Math.max(stand, plainWantFP(market));
+			if (CONCEDED.contains(market.getId())) return minimumFP(market);
+		}
+		return plainWantFP(market);
+	}
+
+	/** wantFP before the consolidation reads it. */
+	protected static float plainWantFP(MarketAPI market) {
 		// while the navy fits the spare (ThreatColonyManager.fitActive, 2026-10-08) a colony nobody attacks
 		// wants the fit's floor, whatever reads it: hw79a's pressure pass, reading the posture's want with
 		// every colony held at the floor, found every colony short, no donor, and fabricated the receiver a
@@ -234,7 +262,107 @@ public class ThreatPosture {
 	/** The colony's share of what the pressure alone needs held; 0 unread. */
 	public static float needFP(MarketAPI market) {
 		float[] c = market != null ? COLONY.get(market.getId()) : null;
-		return c != null ? c[1] : 0f;
+		float need = c != null ? c[1] : 0f;
+		// consolidating (consolidate): a keystone's stand is its need - held from rallies, launches and
+		// the navy's fit (launchSpareFP, fitFloor); a conceded hive needs nothing, so it gives to the reserve
+		if (market != null && !KEYSTONE.isEmpty()) {
+			Float stand = KEYSTONE.get(market.getId());
+			if (stand != null) return Math.max(stand, need);
+			if (CONCEDED.contains(market.getId())) return 0f;
+		}
+		return need;
+	}
+
+	/** Whether the hive is a keystone of the consolidation (consolidate): the pressure pass feeds it past the flow gate. */
+	public static boolean keystone(MarketAPI market) {
+		return market != null && KEYSTONE.containsKey(market.getId());
+	}
+
+	/** Whether the hive is conceded by the consolidation (consolidate): the navy's fit leaves its swarms for the keystones. */
+	public static boolean conceded(MarketAPI market) {
+		return market != null && CONCEDED.contains(market.getId());
+	}
+
+	/**
+	 * CONSOLIDATION (the user, 2026-10-10, option A after hw138b; KEYSTONE above). Each pass, losing
+	 * (ThreatStance.losingPressure) at consolidateLosing or above: the stand is the largest force seen over
+	 * a hive world within consolidateWindowDays (rally's FORCE_SEEN, today's forceOver included); as many
+	 * keystones as the hive's whole garrison holds stands, the hives scored by the share of an input's
+	 * cover they carry (ThreatColonyManager.mineableNeeds - the world whose loss costs the economy most),
+	 * then size, a hive already outweighed never; the rest conceded. Twenty-eight stands of 127 FP that
+	 * the only-if-enough gate could not let fight become a few of 1,500 that it can; the worlds conceded
+	 * are the price of the navy kept. Ends when the losing pressure falls below the knob or every hive
+	 * can stand. Logged on every change of the keystone set.
+	 */
+	protected static void consolidate(float day) {
+		float threshold = ThreatIncConfig.consolidateLosing();
+		float window = Math.max(0f, ThreatIncConfig.consolidateWindowDays());
+		for (String id : new ArrayList<String>(FORCE_SEEN.keySet())) {
+			if (day - FORCE_SEEN.get(id)[0] > window) FORCE_SEEN.remove(id);
+		}
+		float losing = ThreatStance.losingPressure();
+		List<MarketAPI> hives = ThreatIncData.getAllLiveColonyMarkets();
+		float stand = 0f, total = 0f;
+		for (float[] v : FORCE_SEEN.values()) stand = Math.max(stand, v[1]);
+		for (MarketAPI c : hives) {
+			if (c.getPrimaryEntity() == null) continue;
+			stand = Math.max(stand, forceOver(c));
+			total += ThreatColonyManager.ownedFleetFP(c, ThreatIncData.garrisonsFor(c.getId()));
+		}
+		int k = stand > 0f ? Math.max(1, (int) (total / stand)) : hives.size();
+		if (threshold <= 0f || losing < threshold || stand <= 0f || k >= hives.size()) {
+			if (!KEYSTONE.isEmpty()) {
+				ThreatIncConfig.log("Posture: consolidation ends - losing " + ThreatStance.losingSummary()
+						+ (stand > 0f && k >= hives.size() ? ", every hive can stand " + (int) stand + " FP" : ""));
+				KEYSTONE.clear();
+				CONCEDED.clear();
+			}
+			return;
+		}
+		// the hive's share of each input's full-strength cover: the keystone is the world the economy would miss most
+		Map<String, ThreatColonyManager.MineableNeed> needs = ThreatColonyManager.mineableNeeds();
+		final Map<String, Float> score = new HashMap<String, Float>();
+		final Map<String, String> why = new HashMap<String, String>();
+		List<MarketAPI> ranked = new ArrayList<MarketAPI>();
+		for (MarketAPI c : hives) {
+			if (c.getPrimaryEntity() == null) continue;
+			float force = forceOver(c);
+			if (force > 0f && standsFor(c) < force) continue;
+			float best = 0f;
+			String input = "";
+			for (ThreatColonyManager.MineableNeed need : needs.values()) {
+				if (need.cover <= 0f) continue;
+				float share = Math.min(need.wanted, ThreatColonyManager.hiveOutput(c, need.commodityId)) / (float) need.wanted / need.cover;
+				if (share > best) { best = share; input = need.commodityId; }
+			}
+			score.put(c.getId(), best + c.getSize() * 0.001f);
+			why.put(c.getId(), input.isEmpty() ? "size " + c.getSize() : input + " " + String.format("%.2f", best));
+			ranked.add(c);
+		}
+		if (ranked.isEmpty()) return;
+		java.util.Collections.sort(ranked, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) { return Float.compare(score.get(b.getId()), score.get(a.getId())); }
+		});
+		Map<String, Float> next = new HashMap<String, Float>();
+		StringBuilder names = new StringBuilder();
+		for (int i = 0; i < Math.min(k, ranked.size()); i++) {
+			MarketAPI c = ranked.get(i);
+			next.put(c.getId(), stand);
+			if (names.length() > 0) names.append(", ");
+			names.append(c.getName()).append(" (").append(why.get(c.getId())).append(')');
+		}
+		boolean changed = !next.keySet().equals(KEYSTONE.keySet());
+		KEYSTONE.clear();
+		KEYSTONE.putAll(next);
+		CONCEDED.clear();
+		for (MarketAPI c : hives) {
+			if (!KEYSTONE.containsKey(c.getId())) CONCEDED.add(c.getId());
+		}
+		if (changed) {
+			ThreatIncConfig.log("Posture: consolidating - losing " + ThreatStance.losingSummary() + "; stand " + (int) stand
+					+ " FP (the largest force over a hive in " + (int) window + " d), " + KEYSTONE.size() + " keystone(s) of "
+					+ hives.size() + " hives holding " + (int) total + " FP: " + names + "; " + CONCEDED.size() + " conceded");
+		}
 	}
 
 	/**
@@ -793,6 +921,8 @@ public class ThreatPosture {
 
 		// where the surplus goes (PRESS, EXPAND, CONSOLIDATE)
 		ThreatStance.evaluate(pass, day, sumHeld);
+		// losing, the garrisons mass on keystones (consolidate) before the surplus and the rallies read the wants
+		consolidate(day);
 		recycleSurplus(systemIds, day);
 		if (calls != null) {
 			// the system's own spare first, then the strikes that can turn, then its neighbours' spare
@@ -960,6 +1090,7 @@ public class ThreatPosture {
 		Map<String, Float> sieged = siegesAt();
 		Float all = sieged.get(world.getId());
 		if (all != null && all > attackFP) attackFP = all;
+		FORCE_SEEN.put(world.getId(), new float[] { today(), attackFP });
 		float margin = ThreatIncConfig.systemDefenceMargin();
 		float want = margin > 0f ? attackFP * margin : Float.MAX_VALUE;
 		float have = ThreatGroundFronts.friendlyPointsNear(Factions.THREAT, world);

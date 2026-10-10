@@ -144,6 +144,25 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   11-13 ly; a third of the worlds relieved fell anyway. The floor rose from 44 hives to 97: the old sector
   is no longer a coin-flip on the opening. Long voyages add overdue swarms (carried 175 / 183 / 435).
 
+  Consolidation (2026-10-10, the user, option A after hw138b: 30 hives ground to 6 with 260-290k fuel in
+  stock - garrisons of 127 FP mean, six factions' 511 daily-siege fights at 5:1, every regional rally in
+  the collapse window refused as not enough, 0 rallies against 62 siege fights, the offensive held on an
+  empty fund; `ThreatPosture.consolidate`, each posture pass after the stance): losing at
+  `consolidateLosing` (0.5; `ThreatStance.losingPressure`, a 365-day trend - hw138b read 0.69 at war day
+  2,617 with 27k FP still held, hw138a / c never above 0.15) the swarm masses its garrisons on keystones.
+  The stand is the largest force `rally` saw over a hive world within `consolidateWindowDays` (120;
+  `FORCE_SEEN`, today's `forceOver` included); the keystones are as many hives as the whole garrison holds
+  stands (held / stand, at least one), ranked by the share of an input's full-strength cover each carries
+  (`ThreatColonyManager.mineableNeeds` - the world the economy would miss most), then size, a hive already
+  outweighed never. A keystone wants and needs its stand (`wantFP`, `needFP` - so `launchSpareFP`, the
+  regional pool's `spareFleets(c, true)` and the fit's `fitFloor` hold it); a conceded hive wants its
+  patrols (`minimumFP`) and needs nothing, so the pressure pass moves its swarms to the keystones (a
+  keystone receiver passes the flow gate, `redistributeByPressure`; the fit never recycles a conceded
+  hive's swarms, `fitNavyToSpare`). Ends when the pressure falls below the knob or every hive can stand.
+  Log: `Posture: consolidating - losing ...; stand N FP (...), K keystone(s) of H hives holding T FP:
+  <name> (<input> <share>), ...; C conceded` on each change of the set, `Posture: consolidation ends -
+  ...`. Read: `tools/test-harness/reads/check-consolidate.sh` (bleed, noconsolidate). First run hw139.
+
   The pressure pass is under the same rule (2026-10-08, hw83a): `ThreatColonyManager.redistributeByPressure`
   sends a receiver under attack (`ThreatPosture.underAttack`) nothing - no transfer, no swarm fabricated
   for it - unless what stands for it (`ThreatPosture.standsFor`: the swarms at the world and those bound
