@@ -133,13 +133,11 @@ By the loop, all three held -> back to random-seed general testing (a new day-0 
   failing-run-is-the-checkpoint, checkpoint-before-war, consolidate-on-keystones, decided-by-day-2000,
   defence-first-c1; `handover-2026-10-10.md` now points here.
 
-## 8. hw146 read (19:45, next session)
+## 8. Opus session, 19:50
 
-No game lost: **53 / 45 / 66 hives**, humans 24 / 31 / 20 colonies at war day 3,800 (`game-runs-2.md` hw146).
-The hold fired in a (9 passes from d3,316, losing 0.35) and b (11 from d2,921, 0.37, 64k FP to the hives),
-not in c, and both games recovered after it - the fixed hold works on this seed (check-hold.sh read the first
-cut's log text and showed 0 passes; fixed). b's navy halved d2,811-d3,800 (99k -> 47k) while it banked
-71k supplies - a read for the next lost game, not a fault. Batches from ck1 take ~32 minutes, not 18 (the war
-runs 68 days a minute; corrected in `facts.md` and `testing-harness.md`). By the loop (section 3) all won ->
-the opening-bar sweep: hw147 from ck1 with `threatinc_strikeStagedOpenFP` 80000 (the fund holds 37.6k at ck1,
-so ck1 stays valid - nothing before it reaches either bar).
+The hw146 read is the paragraph at the top of section 5 (the Fable session's, 19:45); b's navy per hive halved
+(2.1k -> 1.07k) while the hold paid `needFP` - the Fable question stands. Added: batches from ck1 take ~32
+minutes, not 18 (the war runs 68 days a minute; corrected in `facts.md` and `testing-harness.md`); check-hold.sh
+greped the first cut's log text and showed 0 hold passes in the watcher (fixed). hw147 launched 19:44 by the
+section-5 loop (all held -> opening-bar sweep): ck1 with `threatinc_strikeStagedOpenFP` 80000 (the fund holds
+37.6k at ck1, so ck1 stays valid for either bar).
