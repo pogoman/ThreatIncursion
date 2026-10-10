@@ -160,6 +160,10 @@
 	"threatinc_swarmOffensive": true,
 	"threatinc_offensiveHorizonMonths": 12,
 	"threatinc_offensiveLosingMonths": 3,
+	# Losing holds the navy: from this losing pressure the offensive prices only
+	# a month's fund of strikes and the rest of the fund pays the hives under
+	# siege. 0 = never
+	"threatinc_offensiveHoldLosing": 0.3,
 	"threatinc_offensiveNearLY": 10,
 	# DEFEAT IN DETAIL (the user, 2026-10-07): the campaign masses on one faction - every
 	# known system of the focus - until its worlds answer the strikes with under

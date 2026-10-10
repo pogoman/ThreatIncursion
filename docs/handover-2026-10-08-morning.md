@@ -930,8 +930,12 @@ seed where hw141 / hw142 went 58 / 0 / 69 and 0 / 0 / 0.
 decide it: b took 366k FP of sieges and held, a took 304k and collapsed. a's collapse was late (36 hives / 73k
 at d2,727 -> 14 / 5k at d3,650) under Hegemony's 108k FP campaign (d2,700-3,700) with the Independents' 86k; in
 b and c Hegemony sent little. Through that window the offensive launched 28 strikes / 83k FP, the navy fell
-73k -> 25k and the fuel stock 514k -> 93k, while `ThreatStance.losingPressure` read 0.05 from 37 hives down to
-28 and reached 0.62 only at d3,186 - the trend lag of hw140c, now one game in three. b also slid 43 -> 34 by the
+73k -> 25k and the fuel stock 514k -> 93k, while `ThreatStance.losingPressure` rose 0.31 -> 0.62 over d3,088-3,167 and the offensive,
+by the 2026-10-07 rule (losing = spend the fund sooner, nearer, on spoiling blows: `offensiveLosingMonths`,
+`nearLY`, `value` x (1 + 9p)), launched 21 strikes / 39k FP (19k re-banked) from d3,000 while the navy per
+hive fell from 2.0k to 1.0k against Hegemony's 1,625 FP median siege. b held at 1.5-1.65k per hive against
+the Independents' 1,625 (slid 43 -> 34); c at 2.2-3.8k grew. The per-hive garrison against the strongest
+attacker's median siege is the line that decides a hive fight (rally only if enough). b also slid 43 -> 34 by the
 end with four factions in PRESS.
 
 **Fixed the same hour (in the post-batch build).** `ThreatOffensive.pass` priced prongs with `bankLimit` set,
@@ -941,13 +945,14 @@ its bill out of the fund so the bar read 14-24k while the fund held 22-32k. The 
 same test waives the bar when anyone attacks first (the user: "if the player mobilizes and attacks first then
 they would switch from passive early"); the user withdrew the encirclement idea ("would spread them thin").
 
-**The question left (the user's call): what stops the offensive spending a navy that is falling?** The trend
-reads hives lost against gained over 365 days; a navy halving in 300 days while the hive count holds reads as
-not losing. Options, with a recommendation:
-- **D1 (recommended): the offensive reads the navy, not only the map.** Losing pressure takes the larger of the
-  hive trend and the navy trend (held FP now against its 180-day peak); at 0.3+ the campaign prices nothing
-  the fund cannot replace in a month. Shape, not knob: the swarm stops feeding strikes into a war it is
-  bleeding in, and keeps striking when the navy holds (b, c).
+**The question left (the user's call): what the offensive does while losing.** Today losing SPENDS: the fund
+horizon shortens toward `offensiveLosingMonths`, strikes go nearer and spoiling blows weigh x (1 + 9p) - the
+user's 2026-10-07 rule. In a that spent the garrisons that were holding the line. Options, with a
+recommendation (D1 bends the 2026-10-07 rule - the user's to confirm):
+- **D1 (recommended): losing holds the navy.** From a losing pressure of 0.3 the campaign prices only what
+  the fund replaces in a month (`strikeFundPerMonth`) and the rest of the fund pays the pressed hives'
+  garrisons (the C1 payment without the freeze); below 0.3 the offensive is unchanged. The navy stays where
+  the posture's pressure pass puts it - at the hives under siege - and the per-hive line holds.
 - **D2: strikes only from surplus.** A prong is priced only from fund above the defence's shortfall (the C1
   read without the freeze: the fund still pays prongs when nothing is short). hw142 showed the freeze loses;
   this is the half that did not fire there.
