@@ -714,3 +714,38 @@ fuel plants should draw from several volatiles worlds, not one. Compare with hw1
   - B: insure it.
 
   The balance rule now gives the insurance in peacetime, so A is the open one.
+
+## 39. 2026-10-10 noon - hw138 (the redundancy rule's first run): the rule acts, and b collapses by defeat in detail
+
+The batch ran at 1920x1080 (`sbs.ps1 -Resolution`, the driver listed no 1600x900 that morning - `facts.md`
+"How is a batch launched"). Interim reads in `game-runs-2.md` 43 (hw138a / b / c); the end read follows.
+
+**The economy rule works as asked.** Of the first 20 worlds founded, volatiles deposits on 6 / 6 / 5 against
+hw137's 3 / 3 / 3 on the same seed (sector: volatiles on 177 of 709 deposit worlds, ore on 587, rare ore 317 -
+`tools/test-harness/reads/founded-deposits.pl <base campaign.xml> <ti-log>...`); at 35-40 hives, volatiles on
+14 / 10 / 9 of 40 / 35 / 36. The census `Mineable balance:` line's `behind` for volatiles stays 0.6-0.7 by
+construction (ore is on four worlds in five), so the check's `lopsided` flag was dropped; read sources against
+claims instead. No exception, no refused prong.
+
+**b collapsed (30 hives -> 6 by war day 2,936) with 260-290k fuel in stock** - a different lock from hw137c's.
+The chain (`game-runs-2.md` 43): supplies-bound at its peak (stock ~0, spent over income, garrison transfers
+refused "the flow is short"), garrisons of 127 FP mean, six human factions grinding them in 511 daily-siege
+fights at 5:1, the only-if-enough gate refusing every regional rally in the collapse window (0 rallies against
+62 siege fights: "1,311 FP could stand against 1,677"), the offensive held on an empty fund. Defeat in detail,
+the swarm's side. All three games bank fuel (75k / 290k / 576k) and run supplies near zero: the binding means
+in this build is supplies.
+
+**Options for the user (strategy before knobs; deciding is yours):**
+
+- **A (recommended): a losing region consolidates.** When no rally can outweigh the force over a hive and the
+  region is losing (the losing pressure the stance already reads), the region's garrisons fall back on its
+  keystone (the hive whose loss would cost an input its cover - the morning's keystone option A, now with a
+  reason to exist) and the rest are conceded. Turns 28 stands of 127 FP into a few of 1,500+ that the gate
+  would let fight; concedes worlds to keep the navy, which is what the humans did to the swarm in reverse.
+- **B: the losing stance diverts the fund to relief before strikes.** Would not have saved b: the fund was
+  1.6k FP and the offensive already held; it only matters where a losing swarm still strikes.
+- **C: rally when the alternative is certain loss** - drop the only-if-enough gate for a hive's own region.
+  Against the 2026-10-05 rule; listed, not recommended.
+- **Supplies as the bind:** the hive's supplies come from the ore chain; the pull toward volatiles is by
+  design, but the planner's consumer counts could weigh the input that is short in stock. No change proposed
+  until a and c end.
