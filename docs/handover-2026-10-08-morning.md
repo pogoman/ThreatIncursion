@@ -653,3 +653,13 @@ hw137: first claims day 760 / 760 / 791 (never before the war on this seed befor
 Open for the user: c's collapse (85 hives eradicated against 16 conquests) is the war, not the lock. c's fall (35 hives at day 3,400 to 17 at 3,830): the humans' saturation sieges (`saturationSlice` on Mag Mell, Tamael, Zumu, 100+ slices in the window) against a swarm with ~2k fuel in stock the whole window (+16-31k a month, 20-41k spent - every strike held, `Offensive: nothing the means pay by the deadline` x18, fleets 27k -> 11k FP); a ended with 1.0M fuel, b 150k. A fuel-bound swarm on this seed in one game of three: c claimed 43 systems to a's 89 and b's 102 and built 22 fuel plants to 25 / 51 - fewer claims, fewer volatiles, less fuel, fewer claims; where the divergence starts (the founding's fuel gate, `fuel unpaid` refusals) is the next read - the
 checkpoint sectors fall to the swarm decisively, this seed is contested. The next read is the regional one
 (`regread.pl`, 22:46): regional sends 850 / 600 / 250 (293k / 147k / 73k FP, mean 13.5 / 16.7 / 11.6 ly); worlds relieved 77 / 88 / 39, of them eradicated after 51 / 54 / 38; hives eradicated never relieved 6 / 16 / 30 of 57 / 70 / 68 - in c the relief was a third of a's and nearly every relieved world fell anyway (forward bases at the end 43 / 24 / 32).
+
+**c's fuel lock, read 2026-10-10 (`facts.md` "What locked hw137c's swarm on fuel").** Not the claims loop: to war day 2,756
+the three games match (claims 35 / 42 / 36, c 4 plants and 241k fuel). Every fuel plant off a volatiles deposit imports
+from Unhcegila, the one size-7 volatiles world (8 units; the next best 3-6), in all three games. c's humans held it from
+d3,049 (163 daily-siege slices, 9 port cuts, blockades); its exports fell to 3 units and every plant off a deposit made 1
+fuel, not 4-5. The planner's 17 new plants (d3,127-3,400) each added ~1 (`comingPerMonth` counts size-2, blind to the
+input), the 311k stock was gone by d3,309, and from then strikes (69 held), raids, patrols and seedings waited on fuel.
+a's plants ran at 4-5 with Unhcegila open (sieged only from d3,694, on 1.0M fuel). Unverified: whether regional relief
+to Unhcegila (6 rallies d3,040-3,800) was itself held by fuel. Open for the user: which shape answers it (`fuelseries.pl`,
+`savecom.pl`, `blockfrac.pl` in `tools/test-harness/reads`).
