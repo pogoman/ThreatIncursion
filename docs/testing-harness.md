@@ -420,3 +420,21 @@ one swarm a colony and banks the rest, so the war opened at war day 2231 (ck1: 1
 monitor) locked the file on Windows, every `Say` in `sbs.ps1` failed with "used by another process",
 and the batch's REACHED / dump lines were lost - the games and dumps were fine (`sbs-go.done` and the
 82 dumps a game say so). Poll it with `tail -n` from a loop, never `tail -f`.
+
+## A failing run becomes the checkpoint (the user, 2026-10-10)
+
+"We should always switch to specific checkpoint when we have a failing run so we can try different
+strategies until threat win. Then if they win we go back to random seed general testing." The loop:
+
+1. Batches run with `-Snapshots 300`: every game quicksaves into its own clone every 300 war days and the
+   save is copied to `<Starsector>\saves\save_X<tag>d<war>` (21 MB each; delete a batch's snapshots once
+   its reads are recorded and no game of it is the test bed).
+2. A game the swarm loses is the test bed. The per-150-day table (`game-runs-2.md`, navy / hives / strikes /
+   sieges) says when it turned; the next trials run `-Bases "hw147a=save_Xhw146bd2700;hw147b=...;..."` from
+   the snapshot before the turn, three games on the strategy under test, `-Days` to reach war day 3,800.
+3. When the Threat wins that situation, testing returns to day-0 random seeds (`-Base`, or the seed's pre-war
+   checkpoint `save_Xck1` for speed - remade after any pre-war change).
+
+The pre-war checkpoint (above) is for speed on a seed; the snapshot is the lost war itself. On the OceanPena
+seed (2026-10-10) the games are identical to day 1,500, open the war at 2,000-2,100 and the losing ones read by
+3,800, so a snapshot batch from ck1 is `-Days 1800 -Snapshots 300`, about 18 minutes.

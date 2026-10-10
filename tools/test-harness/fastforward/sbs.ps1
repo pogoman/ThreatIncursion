@@ -25,10 +25,16 @@
 #                                                        "Strike launched"; the last save from BEFORE that
 #                                                        line becomes <Starsector>\saves\save_Xck1 (clone.ps1)
 #   sbs.ps1 -Tags hw57a,hw57b,hw57c -Bases "hw57a=save_Xck1;hw57b=save_Xck1;hw57c=save_Xck1" -Days 2400
+# A failing run becomes the checkpoint (the user, 2026-10-10 19:00: "switch to specific checkpoint when we have
+# a failing run so we can try different strategies until threat win"): with -Snapshots N every game quicksaves
+# into its own clone every N war days and the save is copied to <Starsector>\saves\save_X<tag>d<war> (21 MB
+# each), so a game the swarm lost can be resumed with -Bases from the save before its collapse:
+#   sbs.ps1 -Tags hw146a,hw146b,hw146c -Bases "..." -Days 1800 -Snapshots 300
+#   sbs.ps1 -Tags hw147a,hw147b,hw147c -Bases "hw147a=save_Xhw146bd2700;..." -Days 1100
 # Otherwise never saves a game. Run with no game open; it kills any that is.
 param([Parameter(Mandatory = $true)][string[]]$Tags, [int]$Days = 3750, [int]$TrialSeconds = 0,
   [string]$Knobs = "", [int]$IdleSeconds = 60, [int]$MaxMinutes = 240, [switch]$KeepSettings,
-  [string]$Base = "", [string]$Bases = "", [string]$Checkpoint = "", [int]$SaveEvery = 60, [string]$Resolution = "1600x900")
+  [string]$Base = "", [string]$Bases = "", [string]$Checkpoint = "", [int]$SaveEvery = 60, [int]$Snapshots = 0, [string]$Resolution = "1600x900")
 $star = 'C:\Program Files (x86)\Fractal Softworks\Starsector'
 $core = "$star\starsector-core"; $saves = "$star\saves"; $root = "$saves\_sbs"
 $mod = "$star\mods\ThreatIncursion"; $h = "$mod\tools\test-harness"; $ff = "$h\fastforward"
@@ -236,14 +242,15 @@ if ($g.Count -gt 0) {
           if ($x.Nudged -eq 2) { Post $x.Hwnd 0x20 0x39 } else { Post $x.Hwnd 0x0D 0x1C; Start-Sleep 1; Post $x.Hwnd 0x1B 0x01 }
           Say "$($x.Tag) clock stands at day ${run}: nudge $($x.Nudged)"
         }
-        if ($Checkpoint -and $c) {
+        if (($Checkpoint -or $Snapshots -gt 0) -and $c) {
           $war = $c.War
-          if ((Hits "$d\ti-$($x.Tag).txt" '^(Offensive|Strike) launched') -gt 0) {
+          $every = if ($Checkpoint) { $SaveEvery } else { $Snapshots }
+          if ($Checkpoint -and (Hits "$d\ti-$($x.Tag).txt" '^(Offensive|Strike) launched') -gt 0) {
             # the war has opened: the save from before this line is the checkpoint (harvested below)
             $x.LaunchWar = $war; $x.Done = $true
             Stop-Process -Id $x.ProcId -Force -ErrorAction SilentlyContinue
             Say "$($x.Tag) WAR OPENED at war day $war; last save at war day $($x.LastSaveWar)"
-          } elseif ($war - $x.LastSaveWar -ge $SaveEvery) {
+          } elseif ($war - $x.LastSaveWar -ge $every) {
             # F5 with Shift let go; the save has landed when the clone's descriptor is rewritten
             [SBS]::keybd_event(0xA0, 0x2A, 2, [UIntPtr]::Zero); $held = $false
             $ffSeconds += ((Get-Date) - $tick).TotalSeconds
@@ -253,7 +260,20 @@ if ($g.Count -gt 0) {
             Post $x.Hwnd 0x74 0x3F
             $saveDeadline = (Get-Date).AddSeconds(90)
             do { Start-Sleep 2; $after = (Get-Item $desc -ErrorAction SilentlyContinue).LastWriteTime } while ($after -eq $before -and (Get-Date) -lt $saveDeadline)
-            if ($after -ne $before) { $x.LastSaveWar = $war; Say "$($x.Tag) quicksaved at war day $war" }
+            if ($after -ne $before) {
+              $x.LastSaveWar = $war; Say "$($x.Tag) quicksaved at war day $war"
+              if (-not $Checkpoint -and $Snapshots -gt 0) {
+                # the snapshot: the clone's save copied to <saves>\<Base><tag>d<war>, resumable with -Bases
+                $snap = "$($x.Tag)d$war"
+                $tmp = "$saves\$($x.Base)sbs$($x.Tag)"
+                Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-Item "$saves\$($x.Base)$snap" -Recurse -Force -ErrorAction SilentlyContinue
+                Copy-Item "$($x.Inst)\saves\$($x.Base)sbs$($x.Tag)" $tmp -Recurse -Force
+                powershell -NoProfile -ExecutionPolicy Bypass -File "$ff\clone.ps1" -Base $x.Base -From "sbs$($x.Tag)" -To $snap | Out-Null
+                Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+                if (Test-Path "$saves\$($x.Base)$snap\campaign.xml") { Say "$($x.Tag) SNAPSHOT $($x.Base)$snap" } else { Say "$($x.Tag) SNAPSHOT FAILED at war day $war" }
+              }
+            }
             else { Say "$($x.Tag) QUICKSAVE NOT SEEN at war day $war (descriptor unchanged)" }
             $x.LastAt = Get-Date
           }
