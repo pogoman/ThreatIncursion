@@ -348,15 +348,17 @@ public class ThreatColonyManager {
 	 * hazard, weather, or farmland - only what can be fed into the
 	 * fabricators. Score is purely the planet's resource deposits (count and
 	 * richness); a gas giant dripping with volatiles is as good a home as any
-	 * terran world.
+	 * terran world. What its deposits would add to the hive's supply
+	 * (needBonus) counts on top.
 	 */
 	public static PlanetAPI pickColonyPlanet(StarSystemAPI system) {
+		Map<String, MineableNeed> needs = mineableNeeds(!anyNominalColony());
 		PlanetAPI best = null;
 		float bestScore = -Float.MAX_VALUE;
 		for (PlanetAPI planet : system.getPlanets()) {
 			if (!isColonizable(planet)) continue;
 
-			float score = depositScore(planet);
+			float score = depositScore(planet) + needBonus(planet, needs);
 			if (score > bestScore) {
 				bestScore = score;
 				best = planet;
@@ -369,14 +371,15 @@ public class ThreatColonyManager {
 	 * A further planet worth claiming in an already-colonized system: it must
 	 * actually have resource deposits (the swarm doesn't waste waves on barren
 	 * rock it already effectively controls) and no wave already inbound.
-	 * Planets bearing what the hive is actually SHORT of score far higher -
-	 * a rare-ore-starved hive grabs the rare world first.
+	 * Planets whose deposits would add to the hive's supply score far higher
+	 * (needBonus) - a rare-ore-starved hive grabs a rare world richer than
+	 * its best source first.
 	 */
 	public static PlanetAPI pickExpansionPlanet(StarSystemAPI system) {
-		Map<String, Integer> needs = groupMineableDeficits();
 		// a strained hive claims only planets that relieve its shortfalls -
 		// no generic land-grabs while every colony is starving
 		boolean strainedHive = !anyNominalColony();
+		Map<String, MineableNeed> needs = mineableNeeds(strainedHive);
 		PlanetAPI best = null;
 		float bestScore = 0f; // strictly positive: deposits required
 		for (PlanetAPI planet : system.getPlanets()) {
@@ -404,44 +407,126 @@ public class ThreatColonyManager {
 			Commodities.ORE, Commodities.RARE_ORE, Commodities.VOLATILES };
 
 	/**
-	 * The hive's sector-wide shortfall of each mineable input, in econ units
-	 * (vanilla availability vs demand, summed across all colonies). Any
-	 * surplus a new deposit colony mines flows to the starved colonies through
-	 * the shared econ group - accessibility-mediated, pure vanilla trade - so
-	 * these deficits are exactly what new colonization can actually fix.
+	 * One mineable input across the hive, for the deposit pull. A colony draws a commodity from its
+	 * single best source - its own output or the best exporter it reaches (vanilla's broadcast) - so
+	 * a new source adds nothing unless it makes more than a colony draws (the user, 2026-10-10:
+	 * "doesn't change anything anyway unless it's more than the current best"). Short today, each
+	 * colony draws what it gets now. Nothing short, it draws what it would get if the largest
+	 * source's exports were cut - its own output or the second-largest source's - so a lone large
+	 * source pulls a second as large, and two equal ones pull nothing.
 	 */
-	public static Map<String, Integer> groupMineableDeficits() {
-		Map<String, Integer> needs = new LinkedHashMap<String, Integer>();
-		for (String commodityId : MINEABLE_INPUTS) {
-			int total = 0;
-			for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
-				total += deficitOf(market, commodityId);
+	public static final class MineableNeed {
+		public final String commodityId;
+		/** Units short today, summed over the colonies. */
+		public int shortfall;
+		/** Units short if the largest source's exports were cut. */
+		public int backupGap;
+		/** Worlds making it, and the two largest outputs. */
+		public int sources, top, next;
+		/** Each consuming colony's {demand, gets today, gets with the largest source cut}. */
+		protected final List<int[]> draws = new ArrayList<int[]>();
+
+		MineableNeed(String commodityId) {
+			this.commodityId = commodityId;
+		}
+
+		public boolean shortToday() {
+			return shortfall > 0;
+		}
+
+		/** Units a new source making `output` would add: each colony's demand up to `output`, above what it draws. */
+		public int relief(int output) {
+			int units = 0;
+			for (int[] d : draws) {
+				units += Math.max(0, Math.min(d[0], output) - (shortToday() ? d[1] : d[2]));
 			}
-			if (total > 0) needs.put(commodityId, total);
+			return units;
+		}
+	}
+
+	/**
+	 * Each mineable input's MineableNeed across the live hives. shortOnly (a strained hive) keeps
+	 * only the inputs short today: no claims for a backup while every colony starves.
+	 */
+	public static Map<String, MineableNeed> mineableNeeds(boolean shortOnly) {
+		Map<String, MineableNeed> needs = new LinkedHashMap<String, MineableNeed>();
+		List<MarketAPI> hives = ThreatIncData.getAllLiveColonyMarkets();
+		for (String commodityId : MINEABLE_INPUTS) {
+			MineableNeed need = new MineableNeed(commodityId);
+			MarketAPI largest = null;
+			for (MarketAPI market : hives) {
+				CommodityOnMarketAPI com = market.getCommodityData(commodityId);
+				int made = com != null ? com.getMaxSupply() : 0;
+				if (made <= 0) continue;
+				need.sources++;
+				if (made > need.top) {
+					need.next = need.top;
+					need.top = made;
+					largest = market;
+				} else if (made > need.next) {
+					need.next = made;
+				}
+			}
+			for (MarketAPI market : hives) {
+				CommodityOnMarketAPI com = market.getCommodityData(commodityId);
+				if (com == null || com.getMaxDemand() <= 0) continue;
+				int demand = com.getMaxDemand(), gets = com.getAvailable(), own = com.getMaxSupply();
+				int cut = Math.min(gets, market == largest ? own : Math.max(own, need.next));
+				need.shortfall += Math.max(0, demand - gets);
+				need.backupGap += Math.max(0, demand - cut);
+				need.draws.add(new int[] { demand, gets, cut });
+			}
+			if (shortOnly && !need.shortToday()) continue;
+			needs.put(commodityId, need);
 		}
 		return needs;
 	}
 
+	/** Mining's output against the colony's size: ore at size, rare ore and volatiles 2 less (read in the hw137 saves). */
+	protected static int miningOffset(String commodityId) {
+		return Commodities.ORE.equals(commodityId) ? 0 : -2;
+	}
+
+	/** What a deposit would mine once its hive is full grown (hiveMaxSize), richness included. */
+	public static int fullGrownOutput(String commodityId, int richness) {
+		return Math.max(0, hiveMaxSize() + miningOffset(commodityId) + richness);
+	}
+
+	/** Score a unit of relief adds: a deposit's base score in depositScore, so a unit fixed weighs like one more deposit. */
+	protected static final float RELIEF_SCORE = 30f;
+
 	/**
-	 * How much this planet's deposits would relieve the hive's current
-	 * shortfalls: deficit units times deposit richness, per matching deposit.
+	 * What this planet's deposits would add to the hive's supply once full grown, scored:
+	 * RELIEF_SCORE a unit of MineableNeed.relief. A deposit that would make no more than the
+	 * colonies already draw adds nothing.
 	 */
-	public static float needBonus(PlanetAPI planet, Map<String, Integer> needs) {
+	public static float needBonus(PlanetAPI planet, Map<String, MineableNeed> needs) {
 		if (planet.getMarket() == null || needs.isEmpty()) return 0f;
 		float bonus = 0f;
 		for (MarketConditionAPI cond : planet.getMarket().getConditions()) {
 			String commodity = ResourceDepositsCondition.COMMODITY.get(cond.getId());
 			if (commodity == null) continue;
-			Integer need = needs.get(commodity);
+			MineableNeed need = needs.get(commodity);
 			if (need == null) continue;
 			Integer mod = ResourceDepositsCondition.MODIFIER.get(cond.getId());
-			bonus += need * (3f + (mod != null ? mod : 0)) * 10f;
+			bonus += need.relief(fullGrownOutput(commodity, mod != null ? mod : 0)) * RELIEF_SCORE;
 		}
 		return bonus;
 	}
 
+	/** The census log's line: each mineable input short today, short with its largest source cut, and its sources. */
+	public static String mineableNeedsLine() {
+		StringBuilder sb = new StringBuilder("Mineable needs:");
+		for (MineableNeed need : mineableNeeds(false).values()) {
+			sb.append(' ').append(need.commodityId).append(" short ").append(need.shortfall)
+					.append(", top cut ").append(need.backupGap).append(", sources ").append(need.sources)
+					.append(" (top ").append(need.top).append(", next ").append(need.next).append(");");
+		}
+		return sb.toString();
+	}
+
 	/** Total need-relief a system's colonizable planets offer the hive. */
-	public static float systemNeedScore(StarSystemAPI system, Map<String, Integer> needs) {
+	public static float systemNeedScore(StarSystemAPI system, Map<String, MineableNeed> needs) {
 		if (needs.isEmpty()) return 0f;
 		float score = 0f;
 		for (PlanetAPI planet : system.getPlanets()) {
@@ -457,25 +542,13 @@ public class ThreatColonyManager {
 		return ThreatMapFog.conditionOnly(planet.getMarket());
 	}
 
-	/**
-	 * A volatiles deposit counts this many times in depositScore (the user, 2026-10-10: "if rare
-	 * ore outscores volatiles just give volatiles same score"). Ore and rare ore share planets and
-	 * add up, volatiles mostly stand alone: hw137c settled ore and rare-ore worlds first (Alpha
-	 * Pantheon II 110 against its abundant volatiles worlds' 40) while every fuel plant ran on one
-	 * volatiles world. Counted twice, a volatiles world scores what an ore and rare-ore world of
-	 * the same richness does.
-	 */
-	protected static final float VOLATILES_DEPOSIT_WEIGHT = 2f;
-
-	/** A planet's pull as a colony site: 30 + 10 x richness a deposit, volatiles counted VOLATILES_DEPOSIT_WEIGHT times. */
+	/** A planet's pull as a colony site: 30 + 10 x richness a deposit. */
 	protected static float depositScore(PlanetAPI planet) {
 		float score = 0f;
 		for (MarketConditionAPI cond : planet.getMarket().getConditions()) {
-			String commodity = ResourceDepositsCondition.COMMODITY.get(cond.getId());
-			if (commodity == null) continue;
+			if (!ResourceDepositsCondition.COMMODITY.containsKey(cond.getId())) continue;
 			Integer mod = ResourceDepositsCondition.MODIFIER.get(cond.getId());
-			float s = 30f + (mod != null ? mod * 10f : 0f);
-			score += Commodities.VOLATILES.equals(commodity) ? s * VOLATILES_DEPOSIT_WEIGHT : s;
+			score += 30f + (mod != null ? mod * 10f : 0f);
 		}
 		return score;
 	}

@@ -83,22 +83,54 @@ Consequences the mod builds on:
   wanted it at size and put a permanent fuel shortage on every card in exchange for an
   accessibility bonus the hive could not use.
 
-## Where a colony lands - deposits, volatiles counted twice (2026-10-10)
+## Where a colony lands - deposits, and what they would add (2026-10-10)
 
-`ThreatColonyManager.depositScore` ranks planets for a claimed system's first colony
-(`pickColonyPlanet`) and for filling a held one (`pickExpansionPlanet`, plus the planet's share of
-the current shortage, `needBonus`): 30 + 10 x richness a deposit, summed. Ore and rare ore share
-planets and add up; volatiles mostly stand alone. So hw137c settled ore worlds first (Alpha
-Pantheon II, ore rich + rare ore ultrarich, 110 against 40 for its abundant volatiles world) and
-mined ore 98 units against volatiles 17, 8 of them on one world (Unhcegila, with a Plasma Dynamo)
-that fed every fuel plant until the humans cut its port (`facts.md`, "What locked hw137c's swarm
-on fuel"). The shortage term could not help: `groupMineableDeficits` reads today's gap, and the
-broadcast showed none until the siege. Since 2026-10-10 (the user) a volatiles deposit counts
-`VOLATILES_DEPOSIT_WEIGHT` (2) times, so a volatiles world scores what an ore and rare-ore world of
-the same richness does: plentiful alone 100, ore rich + rare ore rich 100, ore + rare ore
-ultrarich 120. The home chain reads the same score (`pickChainPlanets` puts forges on the leanest
-worlds, so a volatiles world is spent as a forge site later). Unbuilt, offered: weigh deposits by
-the gap the hive would have if its largest source of each input were cut.
+A planet's score is `depositScore` plus `needBonus`:
+
+- **`depositScore`** is 30 + 10 x richness per deposit, summed.
+- **`needBonus`** is 30 (`RELIEF_SCORE`) for each unit the planet's deposits would add to the
+  hive's supply once grown.
+
+The sum ranks planets for a claimed system's first colony (`pickColonyPlanet`) and for filling a
+held system (`pickExpansionPlanet`). Summed over a system's planets, `needBonus` also weights the
+claim itself (`systemNeedScore` in `IncursionManager.pickSpreadTarget`).
+
+**Why it changed.** Before, the bonus was today's shortage times richness, for any matching
+deposit. Ore and rare ore share planets and add up, while volatiles mostly stand alone, so hw137c
+settled ore worlds first. It mined ore 98 units against volatiles 17, 8 of them on one world
+(Unhcegila). That world fed every fuel plant until the humans cut its port (`facts.md`, "What
+locked hw137c's swarm on fuel"). The shortage term could not help: the broadcast showed no gap
+until the siege. A ×2 volatiles weight was built and replaced the same day.
+
+**The rule now (the user, 2026-10-10).** A colony draws from its single best source (above), so a
+new deposit only helps if it makes more than colonies draw now. `ThreatColonyManager.mineableNeeds`
+keeps, per input, each consuming colony's demand and what it draws:
+
+- **Input short today:** what each colony gets now.
+- **Nothing short:** what each colony would get if the largest source's exports were cut, which is
+  its own output or the second-largest source's.
+
+`MineableNeed.relief(output)` sums each colony's demand, up to the new output, above what it draws.
+The output is `fullGrownOutput`: hive size 8 plus richness, minus 2 for rare ore and volatiles.
+
+Effects:
+
+- A trace deposit below the best source adds nothing.
+- A lone large source pulls a second one as large.
+- Two equal sources pull nothing, so the next claim goes to the input with one source.
+- A strained hive (no nominal colony) counts only inputs short today.
+
+Read on the hw137 end saves (`relief.pl`):
+
+| Save | Input | Situation | Relief by full-grown output |
+|---|---|---|---|
+| b | volatiles | nothing short; top 8, next 5; top cut 10 | output 6 adds 5, output 7+ adds 10 |
+| b | ore, rare ore | top equals next | 0 |
+| c | volatiles | short 61; Unhcegila's port capped at 3 | output 5 adds 38, output 7+ adds 61 |
+
+`Mineable needs:` on the census log prints each input's shortfall today, the shortfall with the top
+source cut ("top cut"), and the sources. The home chain still ranks by `depositScore` alone
+(`pickChainPlanets`).
 
 ## Vanilla industry numbers (javap on the API jar, 0.98a-RC8)
 

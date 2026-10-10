@@ -299,6 +299,7 @@ public class ThreatFrontlines {
 		ThreatIncConfig.log("Census: threat hives " + hives + " (size " + hiveSizes + "), found "
 				+ known + ", " + ThreatColonyManager.hiveLedgerSummary() + ThreatFuel.monthSummary());
 		ThreatColonyUpkeep.logMonth();
+		ThreatIncConfig.log(ThreatColonyManager.mineableNeedsLine());
 		ThreatIncConfig.log(ThreatColonyManager.awayFleetsLine());
 		ThreatReach.logMonth();
 		// the month's upkeep and posture lines ride the census's own 30-day beat
