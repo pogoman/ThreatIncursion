@@ -717,6 +717,8 @@ fuel plants should draw from several volatiles worlds, not one. Compare with hw1
 
 ## 39. 2026-10-10 noon - hw138 (the redundancy rule's first run): the rule acts, and b collapses by defeat in detail
 
+**End read (12:35):** hw138 ended 85 / 0 / 168 hives against hw137's 49 / 62 / 2 on the same seed - the rule cost the winning games nothing; b fell as read above. hw139 (consolidation built, 7cf9397a) launched 12:36 at 1920x1080.
+
 The batch ran at 1920x1080 (`sbs.ps1 -Resolution`, the driver listed no 1600x900 that morning - `facts.md`
 "How is a batch launched"). Interim reads in `game-runs-2.md` 43 (hw138a / b / c); the end read follows.
 
