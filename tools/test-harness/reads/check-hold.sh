@@ -7,9 +7,9 @@
 check() {
   local g=$1 F=$2
   local holds paid strikes nph peak losing hl
-  holds=$(grep -c 'holds the navy - the campaign prices' "$F")
+  holds=$(grep -c 'holds the navy' "$F")
   paid=$(grep '^Offensive: the defence first - [0-9]* FP from the fund' "$F" | grep -o 'first - [0-9]*' | awk '{s+=$3} END{print s+0}')
-  hl=$(grep -n 'holds the navy - the campaign prices' "$F" | head -1 | cut -d: -f1)
+  hl=$(grep -n 'holds the navy' "$F" | head -1 | cut -d: -f1)
   if [ -n "$hl" ]; then strikes=$(awk -v f="$hl" 'NR>f && /^Strike launched/' "$F" | wc -l); else strikes="(no hold yet)"; fi
   nph=$(grep '^Census: threat hives' "$F" | tail -1 | awk '{match($0,/hives ([0-9]+)/,h); match($0,/fleets ([0-9]+) FP/,f); if (h[1]>0) print int(f[1]/h[1]); else print 0}')
   peak=$(grep '^Census: threat hives' "$F" | awk '{match($0,/hives ([0-9]+)/,h); match($0,/fleets ([0-9]+) FP/,f); if (h[1]>0) {v=int(f[1]/h[1]); if (v>m) m=v}} END{print m+0}')
