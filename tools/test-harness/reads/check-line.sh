@@ -7,7 +7,7 @@
 check() {
   local g=$1 F=$2
   local line landings erad off paid supplies
-  line=$(grep '^Posture: the line at' "$F" | tail -1 | grep -o '- [0-9]* FP a colony ([^)]*)' | cut -c3-)
+  line=$(grep '^Posture: the line at' "$F" | tail -1 | grep -o -e '- [0-9]* FP a colony ([^)]*)' | cut -c3-)
   landings=$(grep -c '^Siege pass (landing)' "$F")
   erad=$(grep -c '^Notice: Hive Eradicated' "$F")
   off=$(grep -c -i 'calls off\|called off\|turns home' "$F")

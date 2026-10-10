@@ -212,3 +212,33 @@ hw149 held the jar; built after it. Trial hw150: b and c from `save_ZhiFarah_320
 Read: hives at ~4,700 against hw149's, landings and eradications in the last 300 days, `Posture: the line` figures
 (does the line sit at 1-2k FP, or does one 4k siege lift it sector-wide), the fund's hold payments, and the
 supplies stock (the held FP's upkeep).
+
+### 9c. hw149 and hw150 (21:38): the line refuted; what decides this seed is the supplies surplus
+
+- **hw149** (hw148 b and c run on from their d3,563 / d3,620 snapshots on the old build): **b 71 hives, c 33**
+  at ~4,800. b fell to 36 at d4,334 then founded 43 hives on a 84-146k supplies stock (banked 198k FP); c sat
+  at 33-35 for 600 days with supplies 0-15k on a 125k navy and founded nothing. Neither game lost.
+- **hw150** (the same saves with the line): **b 35, c 31.** The line read 2.5-3k FP a colony (the strongest
+  faction's median), the frontier wants rose ~3k each, supplies spend went to 93-105k a month against 84-86k
+  income and the stock was 0 within four months in both games; the forges could not keep what the fund paid
+  (b 13k, c 146k FP) - c's defender was below the siege in 266 of 275 siege fights - landings fell only a
+  little (17 / 20 against 27 / 22), and b's spread died (founded 3 against 43). `threatinc_postureLine` is
+  false; the code stays (`hive-garrison-and-upkeep.md` "The line").
+- **The read:** on this seed the frontier churn (landings = eradications, ~20 per 1,200 days) is the war's
+  shape whatever the garrisons; the swarm wins it by out-founding (b) and loses it by having no supplies
+  surplus to found with (c). FP is never the bind - navies 114-148k, banks 40-198k; supplies are.
+
+**Options for the user (strategy before knobs; none built):**
+
+- **S6 (recommended) - a founding budget before the navy's fit.** The fit sizes the navy to the supplies
+  income less sustenance (`navy-fits-supply-and-use`), so a 125k navy at 90k/mo income leaves c nothing to
+  found with while 18-20k FP of innate patrols sit in the quiet core. Reserve a share of the supplies income
+  (or a stock, e.g. two foundings' worth) for the spread before the fit keeps a navy; the spread is the
+  swarm's score (`run-scoring`), and hw149b shows it is also its recovery.
+- **S2 - no indefensible colonies while pressed:** found within reach of a core's garrison; grow the
+  frontier's size (innate patrols scale with size) rather than its count. Cheaper in supplies, concedes spread.
+- **S7 - the siege bases:** c's 20 landings came from 4-5 forward bases; the offensive's prongs already price
+  them. Read whether c's strikes reached the bases the sieges sailed from (the strike ledger) before building.
+
+By the loop (all held -> random-seed general testing), the next batch is a new day-0 seed, unless the user
+takes S6 to c's snapshot `save_ZhiFarah_3202965389391319559hw148cd3620` first (the cleaner test: c founded 0).

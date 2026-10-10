@@ -186,7 +186,7 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
 
 Design rule and reasoning: docs/design-theory.md "Two design rules".
 
-**The line (S1, 2026-10-10, after hw148b/c; `threatinc_postureLine` true, `threatinc_postureLineDays` 365).**
+**The line (S1, 2026-10-10, after hw148b/c; `threatinc_postureLine` - OFF since hw150, `threatinc_postureLineDays` 365).**
 An exposed colony needs at least the siege the swarm has seen come: `ThreatSwarmIntel.siegeLineFP` is, for each
 faction, the median FP of the sieges first seen bound for a hive system within the year (`recordSiege` from
 `note`, the last 40 per faction kept in the intel store's `sieges` section), and of those the strongest faction's;
@@ -199,6 +199,7 @@ landing on garrisons of 76-1,200 FP - vanilla's patrols for the size - with the 
 of 78 fights, while the fund held 66-96k FP and 33k FP of garrison sat in three quiet systems at pressure 0.
 A siege turns home only at `siegeBreakOffRatio` x its FP in orbit, so the hives were lost on the ground, not in
 orbit (the exchange ran 1.5:1 the swarm's way). Logged once per pass and system as `Posture: the line at ...`.
+**Refuted by hw150 (21:38), the A/B on hw149's saves:** b 35 hives against 71, c 31 against 33 at war day ~4,800. The line raised the frontier wants by ~3k FP a colony (the strongest faction's median read 2.5-3k FP) and the swarm's supplies spend rose to 93-105k a month against 84-86k income: the stock was 0 within four months in both games, the forges could not keep the swarms the fund paid for (b 13k, c 146k FP paid; the defender still below the siege in 266 of 275 of c's siege fights), landings fell only a little (b 17 against 27, c 20 against 22) and the spread stopped (b founded 3 against 43 - hw149b's recovery was its supplies surplus spent on foundings). The constraint is supplies, not fleet points; the knob stays off, the code stays.
 
 
 ### Stance - what the surplus is for (2026-09-29, built, untested)
