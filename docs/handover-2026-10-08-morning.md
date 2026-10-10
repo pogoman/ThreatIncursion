@@ -663,3 +663,54 @@ input), the 311k stock was gone by d3,309, and from then strikes (69 held), raid
 a's plants ran at 4-5 with Unhcegila open (sieged only from d3,694, on 1.0M fuel). Unverified: whether regional relief
 to Unhcegila (6 rallies d3,040-3,800) was itself held by fuel. Open for the user: which shape answers it (`fuelseries.pl`,
 `savecom.pl`, `blockfrac.pl` in `tools/test-harness/reads`).
+
+## 38. 2026-10-10 morning - the swarm's economy plans for redundancy (built, no run yet)
+
+The user's answer to c's fuel lock, over five turns, each superseding the last:
+
+1. "If rare ore outscores volatiles just give volatiles same score" - x2 volatiles (fe5549dc).
+2. "Logic that runs when there's no shortage that picks based on resource planet number sources", and "shortages
+   are the best export source not being good enough" - relief against today's availability or with the top source cut
+   (8ae68f03).
+3. "Prioritising based on potential. Assuming all colonies are size 8 it ideally wants a perfect balance. Economy planner
+   shouldn't consider military troubles like blockades, that's for the war planner" - best single source against a
+   size-8 consumer (9894078c). Every save read balanced, so it would never have acted.
+4. **Standing:** "There needs to be a balance across all resource types ... if one particular world goes down they have
+   backup worlds ... it doesn't really matter what's going on with wars unless they hit all of the volatiles points at
+   once ... it's just redundancy we're going for" (0c463b6b). The user's "Match ratios" pick in that turn's question was
+   a mis-tap (water on the screen) - not a decision.
+5. **Standing:** "Something that increases overall supply is worth a lot if we've never found a planet that rich"
+   (8eb8fc59, jar 10:49).
+
+The rule (`ThreatColonyManager.mineableNeeds`, `hive-economy.md` "Where a colony lands", `facts.md` Decisions):
+
+- **cover:** each input's full-strength worlds' worth at size 8.
+- **behind:** how far the input trails the best-covered one.
+- **needBonus:** 30 x (min(draw, output) x behind + rise over the best size-8 source x consumers).
+
+It weights the claim (`systemNeedScore`, which drives `SpreadRules.billedWeight`), the first colony, and the order a held
+system fills. War state never enters.
+
+Read on the saves (`tools/test-harness/reads/balance.pl <campaign.xml>`):
+
+- Ore leads everywhere (20-40 worlds).
+- Volatiles trail most (4.5-11 worlds; a full volatiles world scores ~180). hw137c had 4.5 worlds of volatiles for 18
+  fuel plants.
+- Rare ore is next (~110).
+- Every save's best source already meets its consumers' want, so the rise term acts only before a rich enough world is
+  found.
+
+**Next: the test.** Three games from day 0 on `save_OceanPena_1024894203100914406`, as hw137 (section 36). Read the census
+log's monthly `Mineable balance:` line, then `balance.pl` on the end saves: volatiles cover should close on ore's and the
+fuel plants should draw from several volatiles worlds, not one. Compare with hw137 (49 / 62 / 2 hives at the end).
+
+**Open for the user:**
+
+- `RELIEF_SCORE` (30) sets balance against richness. In a held system, a plentiful volatiles world (237) beats an
+  ore-rich + rare-ore-ultrarich world (225), but an abundant one (204) does not. Raise it if the balance should win
+  outright.
+- The war planner's keystone options from the same morning, both unbuilt:
+  - A: defend a world that alone covers an input.
+  - B: insure it.
+
+  The balance rule now gives the insurance in peacetime, so A is the open one.
