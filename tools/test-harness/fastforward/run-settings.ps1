@@ -1,14 +1,14 @@
 # The long-run settings on this laptop (restore.ps1 puts the user's back): 1600x900 windowed, vanilla
 # autosave off, Shift at 48x, debugLogging / debugSimDump / Fleets Ignore You on, Continue at -Save.
 # Run with the game closed.
-param([Parameter(Mandatory = $true)][string]$Save)
+param([Parameter(Mandatory = $true)][string]$Save, [string]$Resolution = '1600x900')
 $key = 'HKCU:\Software\JavaSoft\Prefs\com\fs\starfarer'
 $saves = 'C:\Program Files (x86)\Fractal Softworks\Starsector\saves'
 if (-not (Test-Path "$saves\$Save\campaign.xml")) { "no save $Save"; exit 1 }
 # Java prefs spell a capital as /X
 $esc = [regex]::Replace($Save, '[A-Z]', { param($m) '/' + $m.Value })
 Set-ItemProperty $key -Name continue -Value "..\saves\$esc"
-Set-ItemProperty $key -Name resolution -Value '1600x900'
+Set-ItemProperty $key -Name resolution -Value $Resolution
 Set-ItemProperty $key -Name fullscreen -Value 'false'
 # a machine whose gameplay settings were never changed has no such value, and an empty one stops the launcher
 $g = (Get-ItemProperty $key).'gameplay/Settings'
