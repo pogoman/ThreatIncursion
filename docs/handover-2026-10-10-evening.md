@@ -197,3 +197,18 @@ where nothing attacks.** b, war day 3,500-3,860:
 
 hw149 (b and c run on from their last snapshots to ~4,700) says whether the slide ends a game; if it does,
 S1 is the strategy to build and run from `save_ZhiFarah_3202965389391319559hw148bd3563`.
+
+### 9b. S1 built (21:10), by the user's loop
+
+The user's 19:00 rule ("switch to specific checkpoint when we have a failing run so we can try different
+strategies until threat win") covers this trial; the user can turn it off with `threatinc_postureLine` false.
+Built as `ThreatSwarmIntel.recordSiege` / `siegeLineFP` / `siegeLineSummary` (the sieges first seen, by faction,
+in the intel store's `sieges` section; the strongest faction's median of the year) and the line in
+`ThreatPosture.poll`'s pass (needs raised to line x `siegeBreakOffRatio` x `postureMargin` x exposure, the want
+following; one `Posture: the line at ...` log per pass and system). Knobs `threatinc_postureLine` true,
+`threatinc_postureLineDays` 365 (`hive-garrison-and-upkeep.md` "The line"). Compile-checked in a temp dir while
+hw149 held the jar; built after it. Trial hw150: b and c from `save_ZhiFarah_3202965389391319559hw148bd3563` and
+`...hw148cd3620` (`-Days 1200 -Snapshots 300`), against hw149's run of the same saves on the old build.
+Read: hives at ~4,700 against hw149's, landings and eradications in the last 300 days, `Posture: the line` figures
+(does the line sit at 1-2k FP, or does one 4k siege lift it sector-wide), the fund's hold payments, and the
+supplies stock (the held FP's upkeep).

@@ -259,7 +259,7 @@ public class ThreatPosture {
 		return (c != null ? c[0] : baseFP(market)) + ThreatStance.extraWantFP(market);
 	}
 
-	/** The colony's share of what the pressure alone needs held; 0 unread. */
+	/** The colony's share of what the pressure needs held, at least the line while exposed (postureLine); 0 unread. */
 	public static float needFP(MarketAPI market) {
 		float[] c = market != null ? COLONY.get(market.getId()) : null;
 		float need = c != null ? c[1] : 0f;
@@ -884,11 +884,32 @@ public class ThreatPosture {
 			float[] wants = new float[colonies.size()];
 			float[] needs = new float[colonies.size()];
 			float want = 0f;
+			// THE LINE (the user, 2026-10-10, S1 after hw148b/c): an exposed colony needs at least the siege the
+			// swarm has seen come (ThreatSwarmIntel.siegeLineFP, the strongest faction's median of the year) x the
+			// break-off ratio x the margin - the garrison that turns a siege home before it lands - scaled by the
+			// system's exposure, so the quiet core wants nothing more. A need, so the losing hold and defence
+			// first pay it from the fund (defenceShortFP), a strike called home covers it, and the want follows.
+			float line = 0f;
+			if (ThreatIncConfig.postureLine() && exposure > 0f) {
+				line = exposure * ThreatSwarmIntel.siegeLineFP(ThreatIncConfig.postureLineDays())
+						* Math.max(0f, IncursionManager.breakOffRatio()) * postureMargin;
+			}
+			float lineRaised = 0f;
 			for (int i = 0; i < colonies.size(); i++) {
 				float share = over != null ? over[i] : floor > 0f ? floors[i] / floor : 1f / colonies.size();
 				needs[i] = need * share;
-				wants[i] = Math.max(Math.max(rowsFP(colonies.get(i), 0, 1), bases[i] * exposure), needs[i]);
+				float plain = Math.max(Math.max(rowsFP(colonies.get(i), 0, 1), bases[i] * exposure), needs[i]);
+				if (line > needs[i]) {
+					needs[i] = line;
+					if (line > plain) lineRaised += line - plain;
+				}
+				wants[i] = Math.max(plain, needs[i]);
 				want += wants[i];
+			}
+			if (lineRaised > 0f) {
+				ThreatIncConfig.logQuiet("postureline:" + system.getId(), "Posture: the line at " + system.getName() + " - "
+						+ (int) line + " FP a colony (" + ThreatSwarmIntel.siegeLineSummary(ThreatIncConfig.postureLineDays())
+						+ ", x " + String.format("%.2f", exposure) + " exposure), wants raised " + (int) lineRaised + " FP");
 			}
 
 			// each mode entered at its higher figure and left only below its

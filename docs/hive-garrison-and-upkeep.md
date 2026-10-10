@@ -186,6 +186,21 @@ holds the garrison that war calls for, no more. `postureEnabled` false gives the
 
 Design rule and reasoning: docs/design-theory.md "Two design rules".
 
+**The line (S1, 2026-10-10, after hw148b/c; `threatinc_postureLine` true, `threatinc_postureLineDays` 365).**
+An exposed colony needs at least the siege the swarm has seen come: `ThreatSwarmIntel.siegeLineFP` is, for each
+faction, the median FP of the sieges first seen bound for a hive system within the year (`recordSiege` from
+`note`, the last 40 per faction kept in the intel store's `sieges` section), and of those the strongest faction's;
+the pass (`ThreatPosture.poll`, where wants and needs are set) raises every colony's need to that x
+`siegeBreakOffRatio` x `postureMargin` x the system's exposure. A need, not a base: the losing hold and defence
+first pay it from the strike fund (`defenceShortFP`), a strike called home covers it, the forge builds to it
+(`maintainGarrisons`), and the want follows. The quiet core (exposure 0) wants nothing more; the reserve rule
+is untouched. Why: hw148b lost 19 frontier hives in 300 war days to sieges of 0.9-1.9k FP (median by faction)
+landing on garrisons of 76-1,200 FP - vanilla's patrols for the size - with the defender below the siege in 77
+of 78 fights, while the fund held 66-96k FP and 33k FP of garrison sat in three quiet systems at pressure 0.
+A siege turns home only at `siegeBreakOffRatio` x its FP in orbit, so the hives were lost on the ground, not in
+orbit (the exchange ran 1.5:1 the swarm's way). Logged once per pass and system as `Posture: the line at ...`.
+
+
 ### Stance - what the surplus is for (2026-09-29, built, untested)
 
 Posture decides what each system holds; `ThreatStance` decides what the rest is for. One stance for
