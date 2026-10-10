@@ -96,13 +96,17 @@ Keep the main context lean - this codebase is large and discovery fills the wind
   file. After a compaction, re-read those instead of re-spawning the research.
 - Keep topic docs under about 40 KB so an agent reads the doc rather than the source. Split a
   doc by topic when it grows past that, and update `README.md` and `facts.md` pointers.
-- Complex work - designing an intricate feature, deciding the fix, writing the code - runs
-  on the **current session's model**: build it in this session, or, for parallel
-  workstreams, delegate with an explicit `model` equal to this session's own model. Never
-  pick a model above the session's. Simple work - discovery, legwork, reviews - goes to
-  lower tiers (`Explore` -> sonnet, lookups -> sonnet/haiku). The global
-  `pin-subagent-model` hook downgrades subagents spawned without a model, so an unspecified
-  build agent may land on a cheaper tier - pass the model explicitly for build work.
+- **Models (the user's standing rule, 2026-10-10 19:15).** The main session runs on Opus. Bug fixes,
+  harness work, reads and records stay in the main session. **Strategic evaluation is delegated to
+  Fable**: when a run shows the swarm losing and the question is WHY and what strategic change would
+  turn it, spawn a `general-purpose` agent with `model: "fable"` to evaluate and return an explanation
+  and the options (with a recommendation), which the main thread puts to the user - the deciding stays
+  with the user (`strategy-before-knobs`). Brief it like a peer: the run's figures (the per-150-day
+  navy / hives / strikes / sieges table, the ends, the siege-by-faction read), the `facts.md` lines and
+  doc sections already in hand, the files to check, and "confirm or correct this" over "find out how X
+  works". Simple work - discovery, legwork, reviews - goes to lower tiers (`Explore` -> sonnet, lookups
+  -> sonnet/haiku). The global `pin-subagent-model` hook downgrades subagents spawned without a model -
+  always pass `model` explicitly.
 - A feature named only by concept ("the recall path", "how sieges land") is a grep of
   `docs/symbols.md` and `docs/facts.md`, then a read of the methods found - not an agent.
 - Never read a class of thousands of lines whole; read the methods the index names.
