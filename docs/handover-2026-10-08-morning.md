@@ -958,3 +958,28 @@ recommendation (D1 bends the 2026-10-07 rule - the user's to confirm):
   this is the half that did not fire there.
 - **D3: the human side.** Hegemony's 108k campaign is one faction's; a's sieges were 199 against b's 258 and
   it still fell, so the asymmetry is the swarm's response, not the humans' volume. Nothing to change here.
+
+## 45. 2026-10-10 18:45 - hw144 (losing hold, first cut): 81 / 9 / 68 hives - the hold stops the strikes and cannot fill the line; a is the biggest swarm of any run
+
+**Read.** 81 / 9 / 68 hives on 216k / 11k / 79k FP, humans 12 / 28 / 33 colonies; opened d2,036-2,129 (the pass
+gate moved the opening later than hw143's, so these are not hw143's wars from ~d1,900). Found by all 8 factions
+in all three. a, lightly pressed (138k FP of sieges), reached 81 hives / 216k and the humans 12 colonies. b took
+498k FP of sieges (Hegemony 233k, median 1,200) and fell 45 -> 9; c took 525k and held 68.
+
+**The hold, first cut.** Fired 43 times in b from d3,420 and the strikes stopped (0-4 per 200 days by the end,
+all under 3k FP); but "the campaign prices a month's fund" every monthly pass IS the fund's income, so the fund
+never rose above it and 24.7k FP reached the hives in 1,300 days (the fund read 545-753 FP at the passes). b's
+siege fights d3,300-3,750 ran 1:1 (336 fights, 66k Threat FP lost, 62k human) on a 10k FP/mo forge income,
+and half the fights found no Threat fleet over the world. Fixed for hw145 (e276bee5): `payDefence(0f)` first,
+the campaign prices at most a month's fund of what is left.
+
+**What decides a game now.** Not the finders (8 of 8 everywhere) and not the siege volume (b 498k lost, c 525k
+held): the navy per hive against the strongest attacker's median siege - a 2.7k, c 1.2-2.7k, b 0.8k against
+1,200. The fund (3k/mo) cannot fill a 33k garrison shortfall (b's posture at d3,500: held 39k, want 73k); the
+forges' bank building is the garrison source, and where the pressure pass puts the swarms when the sieges land
+is the next read (half of b's fights had no defender fleet present).
+
+**The user's thoughts (17:50), not built:** the opening delay is the strategy knob (sweep 40k against 80k on
+this seed next); a swarm that spreads AWAY from humans and takes every empty system "would become unstoppable"
+- "not saying do it yet" - my read: dominant in the ML sense, one sign flip in `SpreadRules.billedWeight`, but
+it removes the player's game unless they are given a thread to find it (section 44 of the chat, 2026-10-10).
