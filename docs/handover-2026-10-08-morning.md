@@ -896,3 +896,25 @@ already over the hives with three times the swarm's navy. The questions left are
   answer by 190-420 days; hw141a struck once and was found by one faction. A quieter opening (one faction,
   the focus, until the answer is seen) is the swarm-side shape nearest the data; it would not stop a faction
   that finds the hives on its own.
+
+## 43. 2026-10-10 16:30 - hw142 lost 3 of 3 with defence first on: the fixes come off, the war opens later (the user)
+
+hw142 at 16:26: **a 10 hives of a 36 peak (losing 0.89), b 0 of 25, c 1 of 29.** hw141 on the same seed read
+58 / 0 / 69. Defence first paid 98k / 20k / 73k FP of fund into the pressed hives and blocked 38 / 16 / 37
+offensive passes. The mechanism of harm, hw142a: the fund credits the bank of the hive under siege, the forge
+builds it into a swarm there (270 fabrications, 37k FP, at the paid hives after the first payment), and the siege
+eats it on the day - defeat in detail by the swarm's own hand, the thing the only-if-enough gate exists to
+prevent; meanwhile the offensive struck 13 times after war day 2,000 (hw141a: 31) and the coalition grew unstruck
+to 107 sieges / 118k FP in days 2,500-3,000 and 84 / 75k in 3,000-3,500 against a navy that had reached 48k.
+The consolidation fired in a / c too and conceded hives. Both off by knob (`threatinc_defenceFirst` false,
+`threatinc_consolidateLosing` 0); the code stays for a later read.
+
+**The user's call: raise the opening bar.** `threatinc_strikeStagedOpenFP` 40000 (was 0; the opening fired when
+the fund held `strikeStagedMinFP` 8,000, at war day 1,306-1,673 with a 7-14k navy and 14-21 hives, the fund then
+12-22k). At 0.3 of fabrication the fund gains ~1k a month at day 1,300 and ~2.5k at 2,000, so 40k is reached
+around day 1,850-2,000 - when the unpressed games hold 35-45k of navy and 23-30 hives, hw141a's profile (opened
+at 1,673, found by one faction at 1,841, 73k by 2,500, won). Risks to read: a bigger first salvo wakes more
+factions (the salvo is bounded by the targets known, not the fund); a faction that finds the hives on its own
+before the opening (hw142b: three within five days of each other) is not delayed. `check-opening.sh` reads the
+opening day, fund, hives and navy at the first strike, the factions that have seen hives, and flags `earlyopen`
+/ `found`. hw143 is the trial.
