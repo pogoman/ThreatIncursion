@@ -437,4 +437,4 @@ strategies until threat win. Then if they win we go back to random seed general 
 
 The pre-war checkpoint (above) is for speed on a seed; the snapshot is the lost war itself. On the OceanPena
 seed (2026-10-10) the games are identical to day 1,500, open the war at 2,000-2,100 and the losing ones read by
-3,800, so a snapshot batch from ck1 is `-Days 1800 -Snapshots 300`, about 18 minutes.
+3,800, so a snapshot batch from ck1 is `-Days 1917 -Snapshots 300`, about 32 minutes: the war runs ~68 game days a minute with three games side by side (hw146, 19:10-19:42), not the ~100 of a whole run, which the cheap pre-war years lift.
