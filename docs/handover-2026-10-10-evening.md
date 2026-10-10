@@ -153,3 +153,47 @@ whether it falls by 4,700, and in that log where the swarms are when the sieges 
 If it falls, the strategy to test from that snapshot is what the hold pays: the fight line (the strongest
 attacker's median siege x the rally margin per pressed hive) instead of `needFP`. a is the healthy shape to
 compare against (navy per hive rising to 2.6k, 37-42 hives steady).
+
+### 9a. Why b and c slide (read 21:05, from b's last 300 war days and both games' last dumps)
+
+**The frontier hives die on the ground under sieges the garrison cannot turn away; the navy and the fund sit
+where nothing attacks.** b, war day 3,500-3,860:
+
+- 78 daily-siege fights, 17 landings, 19 hives eradicated by ground fronts (Hegemony 4, Independent 3, Church 4,
+  League 5), every one a size-2 to size-5 frontier hive. The fights themselves go the swarm's way on exchange
+  (attackers lost 25.9k FP, the Threat 17.4k) - the hives are not lost in orbit, they are lost when the siege
+  lands and the front destroys the fabrication core.
+- A siege lands because it is bigger than what is over the world: in 77 of 78 fights the defender was below the
+  siege (sieges 875-1,925 FP median by faction, defenders present 350-1,190 FP mean), and an NPC siege turns home
+  only when hostile swarms over a target reach `siegeBreakOffRatio` 1.0 x its own FP (`facts.md` "Why does an
+  NPC siege turn home").
+- A frontier hive wants vanilla's standing patrols for its size (`ThreatPosture.minimumFP` -> `ThreatHulls.standingFP`:
+  a size-2 world wants 76 FP, a size-5 about 1,200) and the need rises only when a force is read (`needFP` =
+  pressure / 1.5 x 1.25), after which help comes one fleet at a time, behind the landing (`facts.md` "Do a
+  system's garrisons converge"). So the hold's "0 FP short" is true of the posture's need and false of the war.
+- Where the navy is (b's dump at d3,834, 68.2k FP in garrisons of a 100k navy): 33.6k in three QUIET systems at
+  pressure 0 - the home core Haojing 18.0k (five size-7/8 hives at their want), Gamma Mance 8.7k, Moloch 6.9k;
+  the eight BESIEGED / WATCHFUL / THREATENED frontier systems hold 0.07-4.2k each (Yma 266 FP against pressure
+  2,475; Delta New Marmara 66 against 850; Aether 717 against 1,022). c's dump the same shape: Haojing 19.6k
+  idle, Arcadia's size-2 hive 1.7k under pressure 4,245.
+- The fund idled at 66-96k FP (b) / 92-96k (c) through every hold pass. The money to hold the line exists;
+  the rule that would spend it does not.
+
+**The strategic options (the user decides; strategy before knobs):**
+
+- **S1 (recommended) - the break-off line as the frontier's want.** An exposed hive (`ThreatPosture.exposure` 1:
+  a known human world within 10 ly, or hostiles seen within 180 days) wants at least the largest siege the swarm
+  has seen sail in the last year x `siegeBreakOffRatio` x `postureMargin` - the garrison that turns a siege home
+  before it lands (b: ~2k FP at each of ~15 frontier hives, 30k; the fund held 66-96k). The hold pays it from
+  the fund while losing; the forges' bank otherwise. The sieges call off instead of grinding, the frontier stops
+  churning, and the core's idle reserve is untouched (the 2026-10-07 "front never stripped" rule stands). Risk:
+  upkeep on 30k more held FP; the humans answer with bigger sieges (then the line rises with what is seen).
+- **S2 - no indefensible colonies.** While pressed, found only where a hive system's garrison can reach the
+  new world before a siege lands (within one jump of a core). Cheaper, but it concedes the user's spread goal
+  and the hives already founded.
+- **S3 - the idle core reinforces the frontier.** Send the quiet core's garrison above its reserve count to the
+  besieged frontier. Not recommended: Haojing holds 18.0k of an 18.9k want, there is no surplus to send, and
+  the user's 2026-10-07 rule keeps a world's reserve home.
+
+hw149 (b and c run on from their last snapshots to ~4,700) says whether the slide ends a game; if it does,
+S1 is the strategy to build and run from `save_ZhiFarah_3202965389391319559hw148bd3563`.
