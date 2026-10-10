@@ -128,6 +128,9 @@ public class ThreatIncConfig {
 	public static float postureExposureNearLY() { return fd("threatinc_postureExposureNearLY", 10f); }
 	public static float postureExposureFarLY()  { return fd("threatinc_postureExposureFarLY", 30f); }
 	public static float postureExposureSeenDays() { return fd("threatinc_postureExposureSeenDays", 180f); }
+	/** THE LINE (S1, 2026-10-10): an exposed colony needs at least the strongest faction's median siege seen in postureLineDays x break-off x margin. */
+	public static boolean postureLine()       { return b("threatinc_postureLine", true); }
+	public static float postureLineDays()     { return fd("threatinc_postureLineDays", 365f); }
 	/** Whether a system the whole hive could not hold above its bases is written off (its need 0). */
 	public static boolean postureTriage()     { return b("threatinc_postureTriage", false); }
 	/** Whether a system's need stands at the worlds a force is over, and colonies the war asks nothing of give down to their reserve for one under attack. */

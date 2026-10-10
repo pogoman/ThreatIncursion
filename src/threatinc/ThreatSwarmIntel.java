@@ -1,6 +1,8 @@
 package threatinc;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -64,6 +66,9 @@ public final class ThreatSwarmIntel {
 	public static final String KEY_LAST_CENSUS = "threatinc_swarmIntelLastCensus";
 	protected static final String CONTACTS = "contacts";
 	protected static final String PLACES = "places";
+	/** THE LINE (the user, 2026-10-10, S1 after hw148b/c): every siege first seen, by faction, as "day:fp;..." (the last SIEGES_KEPT). */
+	protected static final String SIEGES = "sieges";
+	protected static final int SIEGES_KEPT = 40;
 	/** Store flag: this save's charted systems are seeded (seedCharted); cleared while the fog is off. */
 	protected static final String SEEDED = "seeded";
 	/** System id -> day: systems seeded with scouting off (seedUnscouted), once each; cleared while the fog is off. */
@@ -138,6 +143,71 @@ public final class ThreatSwarmIntel {
 
 	protected static Map<String, Contact> contactMap() {
 		return ThreatSwarmIntel.<Contact>section(CONTACTS);
+	}
+
+	/** A siege first seen (note) joins its faction's record for siegeLineFP. */
+	protected static void recordSiege(String factionId, float fp, float day) {
+		if (factionId == null || fp <= 0f) return;
+		Map<String, String> sieges = ThreatSwarmIntel.<String>section(SIEGES);
+		String prev = sieges.get(factionId);
+		List<String> parts = new ArrayList<String>();
+		if (prev != null && prev.length() > 0) parts.addAll(Arrays.asList(prev.split(";")));
+		parts.add((int) day + ":" + (int) fp);
+		while (parts.size() > SIEGES_KEPT) parts.remove(0);
+		StringBuilder sb = new StringBuilder();
+		for (String p : parts) { if (sb.length() > 0) sb.append(';'); sb.append(p); }
+		sieges.put(factionId, sb.toString());
+	}
+
+	/** The sieges a faction's record holds first seen within days, sorted. */
+	protected static List<Float> siegesSeen(String record, float days) {
+		List<Float> fps = new ArrayList<Float>();
+		if (record == null) return fps;
+		float now = today();
+		for (String p : record.split(";")) {
+			int i = p.indexOf(':');
+			if (i <= 0) continue;
+			try {
+				float d = Float.parseFloat(p.substring(0, i));
+				float fp = Float.parseFloat(p.substring(i + 1));
+				if (now - d <= days && fp > 0f) fps.add(fp);
+			} catch (NumberFormatException ex) { /* a torn record */ }
+		}
+		Collections.sort(fps);
+		return fps;
+	}
+
+	/**
+	 * THE LINE (the user, 2026-10-10, S1 after hw148b/c): the fleet points a siege brings, read from what the
+	 * swarm has seen - for each faction the median of the sieges first seen within {@code days}, and of those
+	 * the strongest faction's. 0 before any siege is seen. ThreatPosture's pass makes it the least an exposed
+	 * hive needs (x the break-off ratio and margin), so a siege turns home instead of landing: hw148b lost 19
+	 * frontier hives in 300 days to sieges of 0.9-1.9k FP over garrisons of 76-1,200 (vanilla's patrols for
+	 * the size), 77 of 78 fights with the defender below the siege, while the fund held 66-96k FP.
+	 */
+	public static float siegeLineFP(float days) {
+		if (!enabled()) return 0f;
+		float best = 0f;
+		for (Map.Entry<String, String> e : ThreatSwarmIntel.<String>section(SIEGES).entrySet()) {
+			List<Float> fps = siegesSeen(e.getValue(), days);
+			if (fps.isEmpty()) continue;
+			float median = fps.get(fps.size() / 2);
+			if (median > best) best = median;
+		}
+		return best;
+	}
+
+	/** The line's reading for the logs: "faction median N of K seen" of the strongest faction. */
+	public static String siegeLineSummary(float days) {
+		String out = "no siege seen";
+		float best = 0f;
+		for (Map.Entry<String, String> e : ThreatSwarmIntel.<String>section(SIEGES).entrySet()) {
+			List<Float> fps = siegesSeen(e.getValue(), days);
+			if (fps.isEmpty()) continue;
+			float median = fps.get(fps.size() / 2);
+			if (median > best) { best = median; out = e.getKey() + " median " + (int) median + " of " + fps.size() + " seen"; }
+		}
+		return out;
 	}
 
 	protected static Map<String, Place> placeMap() {
@@ -449,7 +519,10 @@ public final class ThreatSwarmIntel {
 			contacts.put(key, c);
 			ThreatIncConfig.log("Swarm intel: sees " + factionId + " " + kind + " of " + (int) fp + " FP bound for "
 					+ systemName(systemId) + " by " + source);
-			if ("siege".equals(kind)) ThreatPosture.sighted();
+			if ("siege".equals(kind)) {
+				ThreatPosture.sighted();
+				recordSiege(factionId, fp, day);
+			}
 		}
 		c.factionId = factionId;
 		c.systemId = systemId;
