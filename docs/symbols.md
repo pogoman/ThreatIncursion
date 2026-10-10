@@ -426,7 +426,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAidCapacity.figures(MarketAPI market)` :562 - The board's whole-number figures for a colony, rounded ONCE so that every line adds up:
 - `ThreatAidCapacity.describe(MarketAPI market)` :579 - The colony's fleet points for its row tooltip, one line per fact, the sum written out:
 
-## ThreatAidMissionIntel (641 lines)
+## ThreatAidMissionIntel (647 lines)
 - `ThreatAidMissionIntel.ThreatAidMissionIntel(int kind, MarketAPI market, String commodityId, int needed)` :81
 ### posting and lookup
 - `ThreatAidMissionIntel.postDefend(MarketAPI market)` :102
@@ -454,31 +454,31 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAidMissionIntel.completionDaysRemaining()` :262
 ### lifecycle
 - `ThreatAidMissionIntel.advanceImpl(float amount)` :272
-- `ThreatAidMissionIntel.advanceMission(float amount)` :322
-- `ThreatAidMissionIntel.flag(MarketAPI market)` :326
-- `ThreatAidMissionIntel.watchStrikes(MarketAPI market)` :336 - Strikes in the colony's system are noted, and whether a player asset was there with them.
-- `ThreatAidMissionIntel.accept()` :362
-- `ThreatAidMissionIntel.complete(String how)` :368
-- `ThreatAidMissionIntel.fail(String how)` :384
-- `ThreatAidMissionIntel.endUnpaid(String reason)` :395 - Nothing was owed:
-- `ThreatAidMissionIntel.cancelWithReason(String reason)` :406
-- `ThreatAidMissionIntel.missionAccepted()` :414
-- `ThreatAidMissionIntel.endMission()` :424
-- `ThreatAidMissionIntel.createAbandonedResult(boolean withPenalty)` :434
-- `ThreatAidMissionIntel.createTimeRanOutFailedResult()` :447
-- `ThreatAidMissionIntel.shouldRemoveIntel()` :452
+- `ThreatAidMissionIntel.advanceMission(float amount)` :328
+- `ThreatAidMissionIntel.flag(MarketAPI market)` :332
+- `ThreatAidMissionIntel.watchStrikes(MarketAPI market)` :342 - Strikes in the colony's system are noted, and whether a player asset was there with them.
+- `ThreatAidMissionIntel.accept()` :368
+- `ThreatAidMissionIntel.complete(String how)` :374
+- `ThreatAidMissionIntel.fail(String how)` :390
+- `ThreatAidMissionIntel.endUnpaid(String reason)` :401 - Nothing was owed:
+- `ThreatAidMissionIntel.cancelWithReason(String reason)` :412
+- `ThreatAidMissionIntel.missionAccepted()` :420
+- `ThreatAidMissionIntel.endMission()` :430
+- `ThreatAidMissionIntel.createAbandonedResult(boolean withPenalty)` :440
+- `ThreatAidMissionIntel.createTimeRanOutFailedResult()` :453
+- `ThreatAidMissionIntel.shouldRemoveIntel()` :458
 ### presentation
-- `ThreatAidMissionIntel.commodityLabel()` :466
-- `ThreatAidMissionIntel.getName()` :471
-- `ThreatAidMissionIntel.getMissionTypeNoun()` :481
-- `ThreatAidMissionIntel.getFactionForUIColors()` :486
-- `ThreatAidMissionIntel.getIcon()` :491
-- `ThreatAidMissionIntel.getIntelTags(SectorMapAPI map)` :498
-- `ThreatAidMissionIntel.getMapLocation(SectorMapAPI map)` :506
-- `ThreatAidMissionIntel.getSmallDescriptionTitle()` :512
-- `ThreatAidMissionIntel.createIntelInfo(TooltipMakerAPI info, ListInfoMode mode)` :517
-- `ThreatAidMissionIntel.addBulletPoints(TooltipMakerAPI info, ListInfoMode mode)` :524
-- `ThreatAidMissionIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :568
+- `ThreatAidMissionIntel.commodityLabel()` :472
+- `ThreatAidMissionIntel.getName()` :477
+- `ThreatAidMissionIntel.getMissionTypeNoun()` :487
+- `ThreatAidMissionIntel.getFactionForUIColors()` :492
+- `ThreatAidMissionIntel.getIcon()` :497
+- `ThreatAidMissionIntel.getIntelTags(SectorMapAPI map)` :504
+- `ThreatAidMissionIntel.getMapLocation(SectorMapAPI map)` :512
+- `ThreatAidMissionIntel.getSmallDescriptionTitle()` :518
+- `ThreatAidMissionIntel.createIntelInfo(TooltipMakerAPI info, ListInfoMode mode)` :523
+- `ThreatAidMissionIntel.addBulletPoints(TooltipMakerAPI info, ListInfoMode mode)` :530
+- `ThreatAidMissionIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :574
 
 ## ThreatAidRequests (231 lines)
 - `ThreatAidRequests.key(MarketAPI market, String commodityId)` :50
