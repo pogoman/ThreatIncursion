@@ -4,6 +4,13 @@ START HERE. The earlier handover (`handover-2026-10-08-morning.md`, sections 38-
 full; this file is the state at the session's end and what to do next. Everything below is committed and
 pushed (last commit 3e930526 plus the facts line for ck1, see section 7).
 
+## 0. Standing rule from 19:15 (in `CLAUDE.md`, "Models")
+
+The main session runs on Opus. When a run shows the swarm losing and the question is why and what
+strategic change would turn it, spawn a `general-purpose` agent with `model: "fable"` to evaluate and
+return the explanation and the options; the main thread puts them to the user. Bug fixes, harness work,
+reads and records stay in the main session.
+
 ## 1. Ask the user first
 
 - hw146 (section 5) is the first run of the fixed losing hold from the new checkpoint. Read it; if a game
