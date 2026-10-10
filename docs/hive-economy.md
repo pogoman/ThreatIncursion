@@ -83,11 +83,28 @@ Consequences the mod builds on:
   wanted it at size and put a permanent fuel shortage on every card in exchange for an
   accessibility bonus the hive could not use.
 
+## Where a colony lands - deposits, volatiles counted twice (2026-10-10)
+
+`ThreatColonyManager.depositScore` ranks planets for a claimed system's first colony
+(`pickColonyPlanet`) and for filling a held one (`pickExpansionPlanet`, plus the planet's share of
+the current shortage, `needBonus`): 30 + 10 x richness a deposit, summed. Ore and rare ore share
+planets and add up; volatiles mostly stand alone. So hw137c settled ore worlds first (Alpha
+Pantheon II, ore rich + rare ore ultrarich, 110 against 40 for its abundant volatiles world) and
+mined ore 98 units against volatiles 17, 8 of them on one world (Unhcegila, with a Plasma Dynamo)
+that fed every fuel plant until the humans cut its port (`facts.md`, "What locked hw137c's swarm
+on fuel"). The shortage term could not help: `groupMineableDeficits` reads today's gap, and the
+broadcast showed none until the siege. Since 2026-10-10 (the user) a volatiles deposit counts
+`VOLATILES_DEPOSIT_WEIGHT` (2) times, so a volatiles world scores what an ore and rare-ore world of
+the same richness does: plentiful alone 100, ore rich + rare ore rich 100, ore + rare ore
+ultrarich 120. The home chain reads the same score (`pickChainPlanets` puts forges on the leanest
+worlds, so a volatiles world is spent as a forge site later). Unbuilt, offered: weigh deposits by
+the gap the hive would have if its largest source of each input were cut.
+
 ## Vanilla industry numbers (javap on the API jar, 0.98a-RC8)
 
 | Industry | Demands | Supplies |
 | --- | --- | --- |
-| Mining | machinery size-3, drugs size | each deposit at size + modifier (sparse/trace -1, moderate/diffuse 0, abundant +1, rich/plentiful +2, ultrarich +3) |
+| Mining | machinery size-3, drugs size | each deposit at size + modifier (sparse/trace -1, moderate/diffuse 0, abundant +1, rich/plentiful +2, ultrarich +3); rare ore and volatiles 2 less (hw137 saves: Merlin size 7 makes ore 7 on moderate, rare ore 4 on sparse; Michon size 6 volatiles 5 on abundant) |
 | Refining | ore size+2, rare ore size, machinery size-2 | metals **size**, rare metals size-2 |
 | Heavy Industry / Orbital Works | metals size, rare metals size-2 | ships, machinery, supplies, weapons size-2 |
 | Fuel Production | volatiles size, machinery size-2 | fuel size-2 |
@@ -95,8 +112,8 @@ Consequences the mod builds on:
 | Swarm Nexus (mod) | ships size, machinery size-2 | - |
 | Fabrication Core (mod) | - | machinery scaled with size |
 
-So at equal sizes the growth chain balances (metals at size feeds a forge at size; a
-moderate mine at size feeds rare ore/volatiles at size; ore at size+2 needs a rich deposit)
+So at equal sizes the growth chain balances (metals at size feeds a forge at size; rare ore and
+volatiles at size need a rich/plentiful mine of that size; ore at size+2 needs a rich deposit)
 and so does fuel now that hive ports are Spaceports (fuel wanted at size-2, made at size-2).
 Hulls stay short by design: the Nexus wants N at size N against N-2 from the best forge, and
 that gap is what scales the garrison through the ship-deficit multiplier. Every vanilla
