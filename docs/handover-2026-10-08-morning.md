@@ -796,3 +796,60 @@ swarm's (`recycleForUpkeep` skips keystones while the shared stock has supplies)
 
 Reads: `grep 'Posture: consolidating' ti-hw140c.txt` (the set per pass); `' sent N FP to '` lines carry
 `(held of wanted)`; `'no transfer to'` the refusals; `'Upkeep: .* recycled a'` the bank's scrapping.
+
+## 41. 2026-10-10 15:10 - hw141b: fixed consolidation, same wipe; the war is decided by day 2,000, before the trend reads it
+
+hw141 (sticky keystones, the stand the 75th-percentile force at the margin, the keystone's bank never scraps it)
+on the same seed: **b wiped at war day 3,590** (peak 25 hives); a / c at 36 / 43 hives and not losing at 15:06. b
+consolidated from war day 2,056 (losing 0.53, 22 hives, 6.3k FP held; stand 3,145 FP, the 75th percentile of 17
+forces x1.25 - 2 keystones of 22, 20 conceded). The keystone was sticky (Gamma Vassago I in 23 sets of 28) and
+reached 3,843 of its 4,401 stand - then the stand swung (446 to 4,812 FP between passes as the 120-day sample
+turned over), the count moved, the set was trimmed and refilled, and the keystone sent 1,012 FP away before a
+4,721 FP Luddic Church siege found it with 103-809 FP. A smoothing defect remains (the stand should move by a
+band, not with every sample), but it is not the finding.
+
+**The finding - every game on this seed is the same to war day 1,500 and decided by 2,000** (ten games, the
+`Census: threat` line at each Clock):
+
+| game | d1500 | d2000 | d2500 | d3000 | end | human sieges by d2000 | factions that knew 10+ hives by d2000 |
+|---|---|---|---|---|---|---|---|
+| hw141a | 21 hives 11k | 23 / 37k | 32 / 73k | 38 / 56k | - | 0 | 0 |
+| hw140a | 22 / 16k | 28 / 34k | 31 / 66k | 36 / 96k | 22 hives | 6 | 4 |
+| hw139a | 19 / 11k | 30 / 41k | 31 / 66k | 38 / 76k | 98 | 7 | 1 |
+| hw141c | 21 / 20k | 27 / 34k | 32 / 57k | 36 / 50k | - | 5 | 2 |
+| hw139c | 19 / 20k | 29 / 34k | 34 / 45k | 42 / 83k | 106 | 22 | 2 |
+| hw140b | 19 / 19k | 25 / 35k | 25 / 27k | 40 / 38k | 74 | 18 | 4 |
+| hw139b | 23 / 16k | 24 / 29k | 29 / 23k | 36 / 27k | 58 | 25 | 5 |
+| hw138b | 20 / 20k | 26 / 34k | 26 / 11k | 6 / 4k | 0 | 24 | 4 |
+| hw140c | 21 / 14k | 22 / 23k | 20 / 16k | 26 / 9k | 1 | 41 | 4 |
+| hw141b | 23 / 24k | 23 / 14k | 9 / 5k | 3 / 0k | 0 | 33 | 5 |
+
+The opening strike fires at war day 1,306-1,673 in every game (the 8k floor; 14-21 hives, 7-14k navy) and the
+humans first see a hive 170-220 days later in every game. What differs is **how many factions then know the
+hives and press**: the losers had four or five factions knowing 12-21 hives and 24-41 sieges sailed by day
+2,000 against a navy of 14-24k; the winners one or two factions and 0-7 sieges, and their navy tripled to 57-73k
+by day 2,500 unpressed. A swarm of 15k cannot hold 20 hives against 30-40 sieges of 500-1,000 FP from four
+factions, by any posture - consolidation included.
+
+**While the campaign grinds the hives, the offensive keeps spending the navy:** between the first human siege
+and the consolidation (or the end), hw140c launched 50 strikes, 85k FP, and lost 21 hives; hw138b 49 strikes,
+74k FP, 43 hives; hw141b 13 strikes, 17k FP, 3 hives (then consolidated). The losing pressure - a 365-day
+exchange trend - read 0.05-0.36 through it (hw140c at day 2,000-2,600), because the strikes' own kills keep
+the exchange even while the hives fall; hw141b's read 0.30 at day 2,000 with 33 sieges in. Both "losing, near
+bases only" (`ThreatOffensive`) and the consolidation key off that trend, so both arrive 400-1,500 days after
+the campaign that decides the game.
+
+**Options (the swarm's side; strategy before knobs):**
+- **C1 (recommended): the defence is paid before the offensive, under pressure now, not the trend.** While any
+  hive is under (or has sieges sailing at it worth) more than its garrison can stand, the strike fund and the
+  launch stock feed that defence first - no strike launches from a region whose hives cannot stand what is
+  coming. Pressure = the sieges present and in flight against hives (`ThreatPosture.rally`'s `FORCE_SEEN`,
+  `siegesAt`), read daily. hw140c would have kept 85k FP of strikes at home against 41 sieges.
+- **C2: consolidation keyed to the same pressure** - consolidate when the sieges present outweigh the garrisons
+  at N hives, not when the exchange trend passes 0.5. Fixes the lag, not the spend; cheap to add to C1.
+- **C3: a later opening** - the opening strike waits until the navy can stand the answer it draws (the largest
+  siege force the council fields, times the factions in reach). Speculative: the answer's size is the humans'
+  stance, not the strike's.
+- **The human side is also a question:** four factions converging on one swarm at day 1,700 is the one-faction
+  campaign rule (2026-10-07) running in four factions at once; whether that coalition is intended is the
+  user's. Not touched.
