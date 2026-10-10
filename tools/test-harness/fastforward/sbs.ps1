@@ -28,7 +28,7 @@
 # Otherwise never saves a game. Run with no game open; it kills any that is.
 param([Parameter(Mandatory = $true)][string[]]$Tags, [int]$Days = 3750, [int]$TrialSeconds = 0,
   [string]$Knobs = "", [int]$IdleSeconds = 60, [int]$MaxMinutes = 240, [switch]$KeepSettings,
-  [string]$Base = "", [string]$Bases = "", [string]$Checkpoint = "", [int]$SaveEvery = 60)
+  [string]$Base = "", [string]$Bases = "", [string]$Checkpoint = "", [int]$SaveEvery = 60, [string]$Resolution = "1600x900")
 $star = 'C:\Program Files (x86)\Fractal Softworks\Starsector'
 $core = "$star\starsector-core"; $saves = "$star\saves"; $root = "$saves\_sbs"
 $mod = "$star\mods\ThreatIncursion"; $h = "$mod\tools\test-harness"; $ff = "$h\fastforward"
@@ -102,7 +102,7 @@ if (Get-Process LogonUI -ErrorAction SilentlyContinue) { Say "LOCKED - nothing r
 KillGames
 # the run settings into the shared store (resolution, autosave off, Shift at 48x, the debug switches); every
 # game's own copy of saves\common is taken after, so restore.ps1 at the end leaves the user's as it was
-powershell -NoProfile -ExecutionPolicy Bypass -File "$ff\run-settings.ps1" -Save $base | Out-Null
+powershell -NoProfile -ExecutionPolicy Bypass -File "$ff\run-settings.ps1" -Save $base -Resolution $Resolution | Out-Null
 # not $knobs: PowerShell names ignore case, and that is the -Knobs string itself
 $knobOf = @{}
 foreach ($part in ($Knobs -split '\|' | Where-Object { $_ })) { $t, $kv = $part -split ':', 2; $knobOf[$t] = $kv }
@@ -166,15 +166,17 @@ foreach ($tag in $Tags) {
       UI -Action click -Hwnd $hwnd -X ([int]([int]$Matches[1] * 298 / 597)) -Y ([int]([int]$Matches[2] * 254 / 373)) | Out-Null
       Start-Sleep 4
     }
-  } while ($r -notlike "*client 1600x900*" -and (Get-Date) -lt $deadline)
-  if ($r -notlike "*client 1600x900*") { Say "$tag NO GAME WINDOW ($r)"; Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue; continue }
+  } while ($r -notlike "*client $Resolution*" -and (Get-Date) -lt $deadline)
+  if ($r -notlike "*client $Resolution*") { Say "$tag NO GAME WINDOW ($r)"; Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue; continue }
   Place $hwnd $x $y
   if (-not (Test-Path $log)) { Say "$tag NO LOG at $log (the logs path was not taken)"; Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue; continue }
   $deadline = (Get-Date).AddSeconds(300)
   do { Start-Sleep 3 } while ((Hits $log "Reading save data from") -lt 1 -and (Get-Date) -lt $deadline)
   Start-Sleep 8
   $loaded = $false
-  foreach ($xy in @(@(1290, 256), @(1290, 256), @(1190, 282))) {
+  # Continue on the main menu: the 1600x900 set, or 1920x1080's (1350,372 on the laptop panel, 1392,372 docked - testing-harness.md)
+  $continues = if ($Resolution -eq "1920x1080") { @(@(1350, 372), @(1392, 372), @(1350, 372)) } else { @(@(1290, 256), @(1290, 256), @(1190, 282)) }
+  foreach ($xy in $continues) {
     $hwnd = [SBS]::Find($procId, "Starsector")
     UI -Action click -Hwnd $hwnd -X $xy[0] -Y $xy[1] | Out-Null
     $deadline = (Get-Date).AddSeconds(60)
