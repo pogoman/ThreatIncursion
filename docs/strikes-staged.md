@@ -229,9 +229,10 @@ Read each posture pass (`evaluate`, stored in `threatinc_stance` [5-9]); a chang
 The stance's own PRESS gate keeps the 60-day exchange; nothing reads a yes/no "losing" any more.
 
 **Losing holds the navy (the user, 2026-10-10, "D1", after hw143a).** From `offensiveHoldLosing` (0.3) the
-campaign prices only a month's fund (`strikeFundPerMonth`) and the fund above it pays the garrisons of the
-hives short of their need (`payDefence(keep)`, the C1 payment without the freeze); below it the offensive is
-unchanged. Bends the 2026-10-07 rule above: losing still strikes nearer and sooner, but with a month's means.
+fund pays the garrisons of the hives short of their need first (`payDefence`, the C1 payment without the
+freeze) and the campaign prices at most a month's fund (`strikeFundPerMonth`) of what is left; below it the
+offensive is unchanged. (hw144b, the first cut: the campaign priced a month's fund every month, which is the
+fund's whole income, and 8.3k FP of 13 passes reached the hives - fixed before hw145.) Bends the 2026-10-07 rule above: losing still strikes nearer and sooner, but with a month's means.
 hw143a stood at 2.0k FP a hive against Hegemony's 1,625 median siege at d3,000, then drew 39k FP of garrison
 spare into 21 strikes (13 of 15 never landed) and fell to 1.0k a hive; b held at 1.5-1.65k, c grew at 2.2k+.
 First run hw144.
