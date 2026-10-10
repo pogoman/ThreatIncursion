@@ -156,6 +156,17 @@ public class ThreatOffensive {
 			sources.put(systemId, source);
 		}
 		if (stagings.isEmpty()) return;
+		// DEFENCE FIRST (the user, 2026-10-10, C1): a hive short of what today's pressure needs held prices no
+		// prong - the fund stands for the defence (payDefence) until every hive can stand what is over it
+		if (ThreatIncConfig.defenceFirst()) {
+			float shortFP = ThreatPosture.defenceShortFP();
+			if (shortFP > 0f) {
+				ThreatIncConfig.log("Offensive: the defence first - " + ThreatPosture.defenceShortSummary() + "; the fund ("
+						+ (int) ThreatColonyManager.strikeFund() + " FP, +" + (int) ThreatColonyManager.strikeFundPerMonth()
+						+ "/mo) pays it, no prong priced");
+				return;
+			}
+		}
 		List<MarketAPI> candidates = im.stagedCandidates(null);
 		for (MarketAPI m : new ArrayList<MarketAPI>(candidates)) {
 			if (scheduled(m)) candidates.remove(m);
@@ -807,9 +818,44 @@ public class ThreatOffensive {
 		return false;
 	}
 
+	/**
+	 * DEFENCE FIRST (the user, 2026-10-10, C1, after hw141b): daily, the strike fund pays each hive's share of
+	 * the defence's shortfall (ThreatPosture.defenceShortFP: the pressure's need less held, inbound and banked)
+	 * into its bank, the most short first, and the forge builds it (maintainGarrisons builds while held is
+	 * under want, and want is never under need). The campaign's means go to the hives the humans are over
+	 * before any prong - hw140c sent 85k FP of strikes out while 41 sieges took 21 hives.
+	 */
+	protected static void payDefence() {
+		float fund = ThreatColonyManager.strikeFund();
+		if (fund <= 0f) return;
+		final Map<String, Float> shortBy = new HashMap<String, Float>();
+		List<MarketAPI> hives = new ArrayList<MarketAPI>();
+		for (MarketAPI c : ThreatIncData.getAllLiveColonyMarkets()) {
+			float s = ThreatPosture.defenceShortFP(c);
+			if (s <= 0f) continue;
+			shortBy.put(c.getId(), s);
+			hives.add(c);
+		}
+		if (hives.isEmpty()) return;
+		java.util.Collections.sort(hives, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) { return Float.compare(shortBy.get(b.getId()), shortBy.get(a.getId())); }
+		});
+		for (MarketAPI c : hives) {
+			if (fund <= 0f) break;
+			float pay = Math.min(fund, shortBy.get(c.getId()));
+			if (pay <= 0f || !ThreatColonyManager.spendStrikeFund(c, pay)) continue;
+			fund -= pay;
+			ThreatIncConfig.log("Offensive: the defence first - " + (int) pay + " FP from the fund to " + c.getName()
+					+ " (short " + (int) shortBy.get(c.getId()).floatValue() + " of need " + (int) ThreatPosture.needFP(c) + "; "
+					+ (int) fund + " FP left in the fund)");
+		}
+	}
+
 	/** Daily (IncursionManager.advance): every prong whose day has come sails, its bill back in the fund for launchStrike to draw. */
 	public static void poll() {
-		if (IncursionManager.instance == null || schedule().isEmpty()) return;
+		if (IncursionManager.instance == null) return;
+		if (ThreatIncConfig.defenceFirst()) payDefence();
+		if (schedule().isEmpty()) return;
 		float day = ThreatPosture.today();
 		for (String e : new ArrayList<String>(schedule())) {
 			String[] f = e.split("\\|");
@@ -847,6 +893,12 @@ public class ThreatOffensive {
 					|| !ThreatIncData.colonyMarkets().containsKey(source.getId())) {
 				ThreatIncConfig.log("Offensive: the prong at " + name + " is off - target or staging gone; " + (int) cost
 						+ " FP back in the fund");
+				continue;
+			}
+			// DEFENCE FIRST (C1): a prong does not sail while any hive is short of what the pressure needs held
+			if (ThreatIncConfig.defenceFirst() && ThreatPosture.defenceShortFP() > 0f) {
+				ThreatIncConfig.log("Offensive: the prong at " + name + " cannot sail today - the defence first ("
+						+ ThreatPosture.defenceShortSummary() + "); " + (int) cost + " FP back in the fund");
 				continue;
 			}
 			// its trip is prepaid and its plan capped at the size priced: the campaign paid for both, so the

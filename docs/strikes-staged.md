@@ -262,3 +262,28 @@ defaults.
 ## 6. The counter-stroke (`IncursionManager.counterStrike`, 2026-10-08)
 
 **Built 2026-10-08, measured in hw68, deleted 2026-10-08 (the user: "lets delete counter strike").** A human landing on a hive drew an immediate strike at the landing faction (its base seen staging against the hive's system, else the nearest payable world of theirs). hw68: 30 sailed of 50 landings, 20 refused on supplies, 26 of the 30 hives died anyway (the strike's passage is the landing-to-fall window), 15 forward bases destroyed and 7 core worlds invaded in exchange - a trade, not a relief. What the swarm needed was sustenance first (`hive-stocks-and-upkeep.md` "Feeding order", hw69); `retaliate` still answers a hive's fall. `game-runs-2.md` 43.
+
+## 7. The defence first (`ThreatOffensive.payDefence`, the user, 2026-10-10, "C1")
+
+**Why** (handover-2026-10-08-morning.md 41): ten games on the OceanPena day-0 seed were identical to war day
+1,500 (19-23 hives, 11-24k FP, the opening strike at 1,306-1,673, the humans' first sighting 170-220 days
+later) and decided by 2,000 by how many factions found and pressed the swarm - the losers 24-41 sieges from 4-5
+factions against a 14-24k navy, the winners 0-7 and a navy tripled to 57-73k by 2,500. Through the campaign the
+offensive launched 13-50 strikes (17-85k FP; hw140c lost 21 hives meanwhile) because "losing" is the 365-day
+exchange trend (section 4), which the strikes' own kills keep near even while the hives fall: it read 0.05-0.36.
+The consolidation (`swarm-defence.md`) fired on the same trend and the games wiped anyway.
+
+**The rule:** pressure is read now, by the posture - `ThreatPosture.defenceShortFP`, every live colony's
+`needFP` (its share of what the sieges over its system need held, `ThreatPosture.poll`) less what it holds, has
+inbound and has banked. While that is above 0:
+- `ThreatOffensive.poll` (daily) pays it from the strike fund first, the most short colony first, into its bank
+  (`payDefence`, `spendStrikeFund`); `maintainGarrisons` builds the bank into swarms (want is never under need).
+  Log `Offensive: the defence first - N FP from the fund to X (short S of need D; F FP left in the fund)`.
+- `ThreatOffensive.pass` (monthly) prices no prong: `Offensive: the defence first - N FP short at K hive(s): ...;
+  the fund (F FP, +P/mo) pays it, no prong priced`.
+- a scheduled prong does not sail: `Offensive: the prong at T cannot sail today - the defence first (...); C FP
+  back in the fund` (the prong is off; the next pass re-plans).
+Knob `threatinc_defenceFirst` (true). Read: `tools/test-harness/reads/check-defence-first.sh` (leak,
+starvedfund). First run hw142. Not keyed to the trend, so the lag the consolidation showed (400-1,500 days
+after the campaign that decided the game) does not apply; a hive the whole swarm could never hold keeps the
+fund at home until it falls - the posture's triage (`postureTriage`, off since 2026-10-04) is the knob for that.

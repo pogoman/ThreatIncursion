@@ -273,6 +273,49 @@ public class ThreatPosture {
 		return need;
 	}
 
+	/**
+	 * DEFENCE FIRST (the user, 2026-10-10, "C1", after hw141b): the fleet points the pressure needs held that
+	 * no hive holds, has inbound or has banked - summed over every live colony (needFP less held, inbound and
+	 * bank). Read daily by the offensive (ThreatOffensive.payDefence, pass, poll): while it is above 0 the
+	 * strike fund pays it and no prong is priced or sails. The posture's own reading of today's pressure, never
+	 * ThreatStance's 365-day trend: ten games on the OceanPena seed were decided by war day 2,000 by the sieges
+	 * of 4-5 factions against a 14-24k navy while the offensive launched 13-50 strikes (17-85k FP) through the
+	 * campaign and the trend read 0.05-0.36.
+	 */
+	public static float defenceShortFP() {
+		float out = 0f;
+		for (MarketAPI c : ThreatIncData.getAllLiveColonyMarkets()) out += defenceShortFP(c);
+		return out;
+	}
+
+	/** The colony's share of the defence's shortfall (defenceShortFP): its need less what it holds, has inbound and has banked. */
+	public static float defenceShortFP(MarketAPI c) {
+		if (c == null || c.getPrimaryEntity() == null) return 0f;
+		float need = needFP(c);
+		if (need <= 0f) return 0f;
+		float have = ThreatColonyManager.ownedFleetFP(c, ThreatIncData.garrisonsFor(c.getId())) + inboundFP(c.getId())
+				+ Math.max(0f, ThreatColonyManager.bankedFP(c));
+		return Math.max(0f, need - have);
+	}
+
+	/** "N FP short at K hive(s): A (short of need), ..." for the offensive's logs (defenceShortFP). */
+	public static String defenceShortSummary() {
+		float total = 0f;
+		int k = 0;
+		StringBuilder names = new StringBuilder();
+		for (MarketAPI c : ThreatIncData.getAllLiveColonyMarkets()) {
+			float s = defenceShortFP(c);
+			if (s <= 0f) continue;
+			total += s;
+			k++;
+			if (k <= 4) {
+				if (names.length() > 0) names.append(", ");
+				names.append(c.getName()).append(" (").append((int) s).append(" of ").append((int) needFP(c)).append(')');
+			}
+		}
+		return (int) total + " FP short at " + k + " hive(s)" + (k > 0 ? ": " + names + (k > 4 ? ", ..." : "") : "");
+	}
+
 	/** Whether the hive is a keystone of the consolidation (consolidate): the pressure pass feeds it past the flow gate. */
 	public static boolean keystone(MarketAPI market) {
 		return market != null && KEYSTONE.containsKey(market.getId());
