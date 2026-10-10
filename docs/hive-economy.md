@@ -109,11 +109,19 @@ three things per input:
   summed and divided by that draw.
 - **behind:** (best cover - this cover) / best cover. It is 0 for the leading input and 1 for an
   input nothing mines.
-- **relief(output):** min(draw, output) x behind. A full world of the most lagging input pulls
-  hardest; the leader pulls nothing.
+- **best** and **topWant:** the largest size-8 output of a live hive, and what the largest consumer
+  would draw at size 8 (at least the draw above).
+- **relief(output):** min(draw, output) x behind, plus (min(topWant, output) - best) x consumers.
+  A full world of the most lagging input pulls hardest, and the leader pulls nothing for
+  balance. A deposit richer than the best source counts its rise once per consumer (the user:
+  "something that increases overall supply is worth a lot if we've never found a planet that
+  rich"). Every consumer draws the best source, and nothing above topWant is drawn.
 
 **What it reads** (`tools/test-harness/reads/balance.pl`; "pull" is what one full-strength world
-of the input scores):
+of the input scores for balance). In every save each input's best source already meets topWant
+(ore 11-13 of 10, rare ore 9-12 of 8, volatiles 9 of 8-9), so the rise term acts only before a
+rich enough world is found; then each unit above the best scores 30 x consumers (540 for
+hw137c's 18 fuel plants):
 
 | Save | Ore | Rare ore | Volatiles |
 |---|---|---|---|

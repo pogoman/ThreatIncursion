@@ -407,14 +407,18 @@ public class ThreatColonyManager {
 			Commodities.ORE, Commodities.RARE_ORE, Commodities.VOLATILES };
 
 	/**
-	 * One mineable input across the hive, for the deposit pull. What the economy wants is
-	 * redundancy (the user, 2026-10-10: "there needs to be a balance across all resource types ...
-	 * if one particular world goes down they have backup worlds ... it's just redundancy we're
-	 * going for"), planned on potential - every hive at size 8 - with blockades and sieges left to
-	 * the war planner. An input's cover is how many full-strength worlds' worth the hive mines:
-	 * each live hive's size-8 output (hiveOutput), capped at what a size-8 consumer draws
-	 * (fullGrownDemand), summed and divided by that want. Inputs behind the best-covered one pull,
-	 * the further behind the harder; the leader pulls nothing.
+	 * One mineable input across the hive, for the deposit pull, planned on potential - every hive
+	 * at size 8 - with blockades and sieges left to the war planner. Two things make a deposit
+	 * worth settling:
+	 * - Redundancy (the user, 2026-10-10: "there needs to be a balance across all resource types
+	 *   ... if one particular world goes down they have backup worlds"). An input's cover is how
+	 *   many full-strength worlds' worth the hive mines: each live hive's size-8 output
+	 *   (hiveOutput), capped at what a size-8 consumer draws (fullGrownDemand), summed and divided
+	 *   by that draw. Inputs behind the best-covered one pull, the further behind the harder.
+	 * - A richer best source (the user: "something that increases overall supply is worth a lot
+	 *   if we've never found a planet that rich"). Every consumer draws the hive's single best
+	 *   source (vanilla's broadcast), so each unit a deposit would add above it counts once per
+	 *   consumer, up to what the largest consumer wants - above that vanilla draws nothing more.
 	 */
 	public static final class MineableNeed {
 		public final String commodityId;
@@ -424,19 +428,29 @@ public class ThreatColonyManager {
 		public float cover;
 		/** How far behind the best-covered input: 0 the leader, 1 none mined. */
 		public float behind;
-		/** Live hives that could mine it. */
-		public int sources;
+		/** The largest size-8 output of a live hive (hiveOutput). */
+		public int best;
+		/** What the largest consumer would draw full grown: at least wanted. */
+		public int topWant;
+		/** Live hives that could mine it, and that consume it. */
+		public int sources, consumers;
 		/** Units short today across the colonies - the census line's comparison, not the pull. */
 		public int shortToday;
 
 		MineableNeed(String commodityId) {
 			this.commodityId = commodityId;
 			this.wanted = fullGrownDemand(commodityId);
+			this.topWant = wanted;
 		}
 
-		/** Units a new size-8 source making `output` adds to the balance: its output up to the want, times how far behind the input is. */
+		/**
+		 * Units a new size-8 source making `output` brings: its output up to the draw times how far
+		 * behind the input is, plus its rise over the best source (up to topWant) for every
+		 * consumer - one at least, as the planner builds every chain link once.
+		 */
 		public float relief(int output) {
-			return Math.min(wanted, output) * behind;
+			int rise = Math.max(0, Math.min(topWant, output) - best);
+			return Math.min(wanted, output) * behind + rise * Math.max(1, consumers);
 		}
 	}
 
@@ -452,6 +466,13 @@ public class ThreatColonyManager {
 				if (made > 0) {
 					need.sources++;
 					need.cover += Math.min(need.wanted, made) / (float) need.wanted;
+					need.best = Math.max(need.best, made);
+				}
+				CommodityOnMarketAPI com = market.getCommodityData(commodityId);
+				if (com != null && com.getMaxDemand() > 0) {
+					need.consumers++;
+					need.topWant = Math.max(need.topWant,
+							com.getMaxDemand() + Math.max(0, hiveMaxSize() - market.getSize()));
 				}
 				need.shortToday += deficitOf(market, commodityId);
 			}
@@ -504,8 +525,9 @@ public class ThreatColonyManager {
 	protected static final float RELIEF_SCORE = 30f;
 
 	/**
-	 * What this planet's deposits would add to the balance, scored: RELIEF_SCORE a unit of
-	 * MineableNeed.relief. A deposit of the best-covered input adds nothing.
+	 * What this planet's deposits would add to the balance and the best sources, scored:
+	 * RELIEF_SCORE a unit of MineableNeed.relief. A deposit of the best-covered input adds
+	 * nothing unless it is richer than the hive's best source.
 	 */
 	public static float needBonus(PlanetAPI planet, Map<String, MineableNeed> needs) {
 		if (planet.getMarket() == null) return 0f;
@@ -533,13 +555,14 @@ public class ThreatColonyManager {
 		return score;
 	}
 
-	/** The census log's line: each mineable input's cover in full-strength worlds, how far behind the leader, its sources and today's shortfall. */
+	/** The census log's line: each mineable input's cover in full-strength worlds, how far behind the leader, its best source against the largest consumer's want, and today's shortfall. */
 	public static String mineableNeedsLine() {
 		StringBuilder sb = new StringBuilder("Mineable balance:");
 		for (MineableNeed need : mineableNeeds().values()) {
 			sb.append(' ').append(need.commodityId).append(' ').append(String.format("%.1f", need.cover))
 					.append(" worlds (behind ").append(String.format("%.2f", need.behind)).append(", sources ")
-					.append(need.sources).append(", short today ").append(need.shortToday).append(");");
+					.append(need.sources).append(", best ").append(need.best).append(" of ").append(need.topWant)
+					.append(" for ").append(need.consumers).append(", short today ").append(need.shortToday).append(");");
 		}
 		return sb.toString();
 	}
