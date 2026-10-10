@@ -4498,6 +4498,8 @@ public class ThreatColonyManager {
 				// a colony the pressure pass just reinforced is not where the fit cuts (the donors' own rule,
 				// DECAY_DAYS; hw81a: swarms recycled the poll they arrived)
 				if (ThreatPosture.recentlyReceived(m)) continue;
+				// a hive the consolidation conceded (ThreatPosture.consolidate) keeps its swarms for the keystones
+				if (ThreatPosture.conceded(m)) continue;
 				List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(m.getId());
 				float above = garrisonFP(fleets) - fitFloor(m);
 				if (above <= 0f || above <= pickAbove) continue;
@@ -6131,7 +6133,9 @@ public class ThreatColonyManager {
 				// (2026-10-08, the navy fits the spare) a transfer in transit pays the away rate: none the flow
 				// cannot carry to a receiver nobody attacks (hw75a: 179 fleets, 25k FP, 16k supplies a month in
 				// transit between hives with the stock at 0 and 145 seedings held)
-				if (!attacked && ThreatIncConfig.navyFitsSpare() && ThreatReach.enabled() && ThreatReach.spare() < 0f) {
+				// a keystone of the consolidation (ThreatPosture.consolidate) is fed whatever the flow: the war's demand
+				if (!attacked && ThreatIncConfig.navyFitsSpare() && ThreatReach.enabled() && ThreatReach.spare() < 0f
+						&& !ThreatPosture.keystone(receiver)) {
 					ThreatIncConfig.logQuiet("navy-transit:" + receiver.getId(), "Posture: no transfer to "
 							+ receiver.getName() + " - the flow is short (spare " + (int) ThreatReach.spare() + " a month)");
 					continue;
