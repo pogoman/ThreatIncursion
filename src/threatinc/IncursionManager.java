@@ -4522,9 +4522,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// new world is another mouth on the same starved chain, so a strained
 		// hive claims ONLY systems whose deposits would fix its economy
 		boolean strainedHive = !ThreatColonyManager.anyNominalColony();
-		// what new deposits would add to the hive's full-grown supply - a source
-		// richer than its best, up to what a full-grown consumer wants - gets
-		// priority (their output feeds the whole network via in-group trade)
+		// deposits of the inputs the hive has fewest full-strength worlds of get
+		// priority: a balance across inputs, so no one world's loss starves a
+		// chain (their output feeds the whole network via in-group trade)
 		Map<String, ThreatColonyManager.MineableNeed> needs = ThreatColonyManager.mineableNeeds();
 
 		// billed reach (ThreatReach): a claim may be anywhere a forge can send a

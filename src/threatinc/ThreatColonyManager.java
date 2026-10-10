@@ -348,7 +348,7 @@ public class ThreatColonyManager {
 	 * hazard, weather, or farmland - only what can be fed into the
 	 * fabricators. Score is purely the planet's resource deposits (count and
 	 * richness); a gas giant dripping with volatiles is as good a home as any
-	 * terran world. What its deposits would add to the hive's supply
+	 * terran world. What its deposits would add to the balance across inputs
 	 * (needBonus) counts on top.
 	 */
 	public static PlanetAPI pickColonyPlanet(StarSystemAPI system) {
@@ -371,9 +371,9 @@ public class ThreatColonyManager {
 	 * A further planet worth claiming in an already-colonized system: it must
 	 * actually have resource deposits (the swarm doesn't waste waves on barren
 	 * rock it already effectively controls) and no wave already inbound.
-	 * Planets whose deposits would add to the hive's full-grown supply score
-	 * far higher (needBonus) - a hive whose best rare-ore world would make less
-	 * than its refineries want grabs a richer one first.
+	 * Planets bearing the inputs the hive has fewest full-strength worlds of
+	 * score far higher (needBonus) - a hive mining ore on twenty worlds and
+	 * volatiles on five grabs the volatiles world first.
 	 */
 	public static PlanetAPI pickExpansionPlanet(StarSystemAPI system) {
 		// a strained hive claims only planets that relieve its shortfalls -
@@ -407,22 +407,25 @@ public class ThreatColonyManager {
 			Commodities.ORE, Commodities.RARE_ORE, Commodities.VOLATILES };
 
 	/**
-	 * One mineable input across the hive at full growth, for the deposit pull. The economy plans
-	 * on potential (the user, 2026-10-10: "prioritising based on potential ... assuming all
-	 * colonies are size 8 it ideally wants a perfect balance"); blockades, sieges and capped ports
-	 * are the war planner's. A colony draws a commodity from its single best source (vanilla's
-	 * broadcast; at size 8 no hive output reaches shipping's cap), so an input is balanced once the
-	 * hive's best full-grown source makes what a full-grown consumer wants, and only a bigger
-	 * source than that best adds anything.
+	 * One mineable input across the hive, for the deposit pull. What the economy wants is
+	 * redundancy (the user, 2026-10-10: "there needs to be a balance across all resource types ...
+	 * if one particular world goes down they have backup worlds ... it's just redundancy we're
+	 * going for"), planned on potential - every hive at size 8 - with blockades and sieges left to
+	 * the war planner. An input's cover is how many full-strength worlds' worth the hive mines:
+	 * each live hive's size-8 output (hiveOutput), capped at what a size-8 consumer draws
+	 * (fullGrownDemand), summed and divided by that want. Inputs behind the best-covered one pull,
+	 * the further behind the harder; the leader pulls nothing.
 	 */
 	public static final class MineableNeed {
 		public final String commodityId;
-		/** The largest output any live hive would make at full growth (hiveOutput). */
-		public int best;
-		/** What a full-grown consumer wants (fullGrownDemand). */
+		/** What a size-8 consumer draws (fullGrownDemand): a world making this counts as one. */
 		public final int wanted;
-		/** Live hives that could mine it, and that consume it today. */
-		public int sources, consumers;
+		/** Full-strength worlds' worth the live hives would mine at size 8. */
+		public float cover;
+		/** How far behind the best-covered input: 0 the leader, 1 none mined. */
+		public float behind;
+		/** Live hives that could mine it. */
+		public int sources;
 		/** Units short today across the colonies - the census line's comparison, not the pull. */
 		public int shortToday;
 
@@ -431,13 +434,9 @@ public class ThreatColonyManager {
 			this.wanted = fullGrownDemand(commodityId);
 		}
 
-		/**
-		 * Units a new full-grown source making `output` would add: every consumer's draw rises from
-		 * the best to min(wanted, output). With no consumer yet it counts one - the planner builds
-		 * every chain link once.
-		 */
-		public int relief(int output) {
-			return Math.max(1, consumers) * Math.max(0, Math.min(wanted, output) - best);
+		/** Units a new size-8 source making `output` adds to the balance: its output up to the want, times how far behind the input is. */
+		public float relief(int output) {
+			return Math.min(wanted, output) * behind;
 		}
 	}
 
@@ -445,17 +444,22 @@ public class ThreatColonyManager {
 	public static Map<String, MineableNeed> mineableNeeds() {
 		Map<String, MineableNeed> needs = new LinkedHashMap<String, MineableNeed>();
 		List<MarketAPI> hives = ThreatIncData.getAllLiveColonyMarkets();
+		float lead = 0f;
 		for (String commodityId : MINEABLE_INPUTS) {
 			MineableNeed need = new MineableNeed(commodityId);
 			for (MarketAPI market : hives) {
 				int made = hiveOutput(market, commodityId);
-				if (made > 0) need.sources++;
-				need.best = Math.max(need.best, made);
-				if (deficitOf(market, commodityId) > 0) need.shortToday += deficitOf(market, commodityId);
-				CommodityOnMarketAPI com = market.getCommodityData(commodityId);
-				if (com != null && com.getMaxDemand() > 0) need.consumers++;
+				if (made > 0) {
+					need.sources++;
+					need.cover += Math.min(need.wanted, made) / (float) need.wanted;
+				}
+				need.shortToday += deficitOf(market, commodityId);
 			}
+			lead = Math.max(lead, need.cover);
 			needs.put(commodityId, need);
+		}
+		for (MineableNeed need : needs.values()) {
+			need.behind = lead > 0f ? (lead - need.cover) / lead : 1f;
 		}
 		return needs;
 	}
@@ -500,8 +504,8 @@ public class ThreatColonyManager {
 	protected static final float RELIEF_SCORE = 30f;
 
 	/**
-	 * What this planet's deposits would add to the hive's full-grown supply, scored: RELIEF_SCORE a
-	 * unit of MineableNeed.relief. A deposit no richer than the hive's best source adds nothing.
+	 * What this planet's deposits would add to the balance, scored: RELIEF_SCORE a unit of
+	 * MineableNeed.relief. A deposit of the best-covered input adds nothing.
 	 */
 	public static float needBonus(PlanetAPI planet, Map<String, MineableNeed> needs) {
 		if (planet.getMarket() == null) return 0f;
@@ -513,13 +517,13 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * What a system's colonizable planets would add to the hive's supply: per input, its best
-	 * planet's relief, scored - two deposits of one input add no more than the larger.
+	 * What a system's colonizable planets would add to the balance: per input, its best planet's
+	 * relief, scored - the claim is one colony, the rest follow as the system fills.
 	 */
 	public static float systemNeedScore(StarSystemAPI system, Map<String, MineableNeed> needs) {
 		float score = 0f;
 		for (MineableNeed need : needs.values()) {
-			int units = 0;
+			float units = 0f;
 			for (PlanetAPI planet : system.getPlanets()) {
 				if (!isColonizable(planet)) continue;
 				units = Math.max(units, need.relief(depositOutput(planet.getMarket(), need.commodityId, hiveMaxSize())));
@@ -529,13 +533,13 @@ public class ThreatColonyManager {
 		return score;
 	}
 
-	/** The census log's line: each mineable input's best full-grown source against what a full-grown consumer wants, and today's shortfall. */
+	/** The census log's line: each mineable input's cover in full-strength worlds, how far behind the leader, its sources and today's shortfall. */
 	public static String mineableNeedsLine() {
-		StringBuilder sb = new StringBuilder("Mineable needs:");
+		StringBuilder sb = new StringBuilder("Mineable balance:");
 		for (MineableNeed need : mineableNeeds().values()) {
-			sb.append(' ').append(need.commodityId).append(" best ").append(need.best).append(" of ").append(need.wanted)
-					.append(", sources ").append(need.sources).append(", consumers ").append(need.consumers)
-					.append(", short today ").append(need.shortToday).append(';');
+			sb.append(' ').append(need.commodityId).append(' ').append(String.format("%.1f", need.cover))
+					.append(" worlds (behind ").append(String.format("%.2f", need.behind)).append(", sources ")
+					.append(need.sources).append(", short today ").append(need.shortToday).append(");");
 		}
 		return sb.toString();
 	}
