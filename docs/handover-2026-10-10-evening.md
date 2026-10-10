@@ -91,6 +91,19 @@ file (the resumable saves). Record in `game-runs-2.md` (hw146 line) and a handov
 Then, by the loop: a lost game -> next batch from its snapshot before the turn, with the strategy to test;
 all won -> the opening-bar sweep (80k) from ck1, then back to day-0 random seeds.
 
+**Read at 19:45: hw146 = 53 / 45 / 66 hives at war day 3,800** (113k / 47k / 97k FP, humans 24 / 31 / 20
+colonies) - no game lost by 3,800, the first such batch on this seed. The hold fired 9 / 11 / 0 times and paid
+6k / 64k / 0 FP to the hives (the fix works: hw144b's cut paid 25k in 43 passes). **b is sliding:** navy per
+hive 2.1k at d3,116 -> 1.07k at d3,730 under 386 sieges, losing 0.32-0.37; at the last hold pass the fund held
+45k with the hives reading "0 FP short" while the campaign priced 3k - the hold pays `ThreatPosture.needFP`
+(the pressure's need), and the fights are lost at garrisons the need calls sufficient. By the user's loop b is
+not "lost" (held at 3,800), but a run of b to 4,700 from its d3,741 snapshot, or the next strategy trial from
+`save_OceanPena_1024894203100914406ck1hw146bd3122` (before the slide), would settle it. **This is the first
+question for a Fable subagent (section 0): why does b's navy fall with 45k idle in the fund, and what should
+the hold pay - need, or the fight line (the strongest attacker's median siege x the margin, per hive)?**
+By the loop, all three held -> back to random-seed general testing (a new day-0 seed, `testing-harness.md`
+"Fast-forward runs and a new game") - the user's call, since the session is being switched to Opus.
+
 ## 6. Open strategy questions (the user decides; strategy before knobs)
 
 - **Where the navy is when sieges land.** Half of hw144b's fights had no defender fleet. Read
