@@ -144,7 +144,11 @@
 	"threatinc_strikeFundShare": 0.3,
 	"threatinc_strikeStagedMinFP": 8000,
 	# ...and the war's first strike waits until the fund holds OpenFP (trial hw27).
-	"threatinc_strikeStagedOpenFP": 0,
+	# (the user, 2026-10-10 16:30, after hw138-hw142 on the OceanPena seed: the war is
+	# decided by how many factions find and press a 15-25k navy ~200-400 days after
+	# the opening salvo at day ~1,300; opened later the swarm meets the answer with
+	# the navy the unpressed games reach, 35-70k - trial hw143)
+	"threatinc_strikeStagedOpenFP": 40000,
 	# THE OFFENSIVE (the user, 2026-10-07): the hive saves its strike fund and strikes
 	# every known target system at once - one prong a system, sized to the strongest
 	# defence seen there - the campaign being the most valuable set the fund pays by
@@ -241,7 +245,9 @@
 	# (ThreatStance.losingPressure, 0-1), the swarm masses its garrisons on as
 	# many keystone hives as can each stand the force that comes (below), and
 	# the other hives keep only their patrols. 0 = never
-	"threatinc_consolidateLosing": 0.5,
+	# OFF (the user, 2026-10-10 16:30): fired in hw140a/c, hw141b and changed no outcome;
+	# concedes hives on a trend that lags the campaign by 400-1,500 days - 0 = never
+	"threatinc_consolidateLosing": 0,
 	# Days over which the forces seen over hive worlds are remembered
 	"threatinc_consolidateWindowDays": 120,
 	# The stand: this percentile of those forces (1 = the largest ever seen)
@@ -802,7 +808,10 @@
 	# the defence first: while any hive is short of what today's pressure
 	# needs held, the strike fund pays that defence and no strike is priced
 	# or sails
-	"threatinc_defenceFirst": true,
+	# OFF (the user, 2026-10-10 16:30): hw142 lost 3 of 3 with it - the fund (73-98k FP a
+	# game) built swarms at the hives under siege, one at a time into the siege, and the
+	# offensive froze 37-38 passes while the coalition grew
+	"threatinc_defenceFirst": false,
 	# an expedition resolved off-screen (no fleets spawned) fights a day after
 	# it reaches the target, not when vanilla's ~120-day payload segment ends
 	"threatinc_abstractResolveOnArrival": true,
