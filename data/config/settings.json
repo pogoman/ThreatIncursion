@@ -239,11 +239,14 @@
 	# by six factions' daily sieges at 5:1 over 127 FP garrisons, every rally
 	# refused as not enough): losing at this pressure or above
 	# (ThreatStance.losingPressure, 0-1), the swarm masses its garrisons on as
-	# many keystone hives as can each stand the largest force seen over a hive
-	# world lately, and the other hives keep only their patrols. 0 = never
+	# many keystone hives as can each stand the force that comes (below), and
+	# the other hives keep only their patrols. 0 = never
 	"threatinc_consolidateLosing": 0.5,
-	# Days over which that largest force is remembered
+	# Days over which the forces seen over hive worlds are remembered
 	"threatinc_consolidateWindowDays": 120,
+	# The stand: this percentile of those forces (1 = the largest ever seen)
+	# at the defence margin
+	"threatinc_consolidateStandPercentile": 0.75,
 	# Days a reinforcement swarm may be in flight before the hive logs where it
 	# stands and orders it on again (hw101a: swarms sat a year in their source
 	# system while their targets fell). 0 = never

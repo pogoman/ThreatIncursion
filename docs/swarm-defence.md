@@ -150,8 +150,15 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   empty fund; `ThreatPosture.consolidate`, each posture pass after the stance): losing at
   `consolidateLosing` (0.5; `ThreatStance.losingPressure`, a 365-day trend - hw138b read 0.69 at war day
   2,617 with 27k FP still held, hw138a / c never above 0.15) the swarm masses its garrisons on keystones.
-  The stand is the largest force `rally` saw over a hive world within `consolidateWindowDays` (120;
-  `FORCE_SEEN`, today's `forceOver` included); the keystones are as many hives as the whole garrison holds
+  The stand is the force that comes: the `consolidateStandPercentile` (0.75) of the forces `rally` saw over hive
+  worlds within `consolidateWindowDays` (120; `FORCE_SEEN` keeps each world's largest in the window, today's
+  `forceOver` included) at the defence margin (`systemDefenceMargin` 1.25). hw140c (2026-10-10 14:30) sized it to
+  the largest force ever seen, one 4,425 FP flotilla, and conceded 23 hives of 24 to serial sieges of 331-475 FP
+  that a 700 FP garrison would have stood - 6 hives by war day 3,931 (handover 40; the user's choice of A1 / A2 /
+  A3 pending, A2 built as the default). A keystone is sticky - kept while it lives and is not outweighed, the set
+  trimmed or filled only as the count moves (hw140c: 36 changes of set, no keystone ever reached its stand) - and
+  its own bank never scraps the stand (`recycleForUpkeep` skips keystones; hw140c: 3.4k FP recycled). The
+  keystones are as many hives as the whole garrison holds
   stands (held / stand, at least one), ranked by the share of an input's full-strength cover each carries
   (`ThreatColonyManager.mineableNeeds` - the world the economy would miss most), then size, a hive already
   outweighed never. A keystone wants and needs its stand (`wantFP`, `needFP` - so `launchSpareFP`, the
