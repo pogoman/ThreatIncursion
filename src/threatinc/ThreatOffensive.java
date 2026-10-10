@@ -265,10 +265,14 @@ public class ThreatOffensive {
 		float holdAt = ThreatIncConfig.offensiveHoldLosing();
 		boolean holding = holdAt > 0f && pressure >= holdAt;
 		if (holding) {
-			budget = Math.min(budget, perMonth);
-			ThreatIncConfig.log("Offensive: losing " + ThreatStance.losingSummary() + " holds the navy - the campaign prices "
-					+ (int) budget + " FP (a month's fund) of " + (int) fund + "; the rest pays the pressed hives");
-			payDefence(perMonth);
+			// the hives first, the campaign what is left in the fund today (hw144b: priced "a month's fund" every
+			// month, the campaign took the fund's whole income and 8.3k FP of 13 passes reached the hives)
+			payDefence(0f);
+			float left = Math.max(0f, ThreatColonyManager.strikeFund());
+			budget = Math.min(budget, Math.min(left, perMonth));
+			ThreatIncConfig.log("Offensive: losing " + ThreatStance.losingSummary() + " holds the navy - the pressed hives paid ("
+					+ ThreatPosture.defenceShortSummary() + " still short), the campaign prices " + (int) budget + " FP of the "
+					+ (int) left + " left");
 		}
 		// the fuel and the supplies away are summed over the prongs too (hw42a: priced one at a time, the
 		// first prong's passage took the whole stock and the held one could not sail on its day)
