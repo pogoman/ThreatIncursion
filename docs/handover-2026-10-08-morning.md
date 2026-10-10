@@ -853,3 +853,46 @@ the campaign that decides the game.
 - **The human side is also a question:** four factions converging on one swarm at day 1,700 is the one-faction
   campaign rule (2026-10-07) running in four factions at once; whether that coalition is intended is the
   user's. Not touched.
+
+## 42. 2026-10-10 16:15 - hw142b (C1 built): the rule fires and is immaterial; the losing branch is a five-faction answer of ~90k FP against a 26k navy
+
+hw142 (defence first, f3b1fb01) on the same seed, read at war day ~2,200: a 22 hives / 35k at d2000 (24 human
+sieges by then), c 23 / 46k (18 sieges), **b collapsed 24 hives / 17k at d2000 -> 13 / 2.8k at d2250 -> 1 hive by
+d2,300** - the fastest fall yet. C1 did what it says: 9 passes blocked ("the defence first - 12-16k FP short at
+4-16 hives"), the fund paid the pressed hives 1,076 times. It is immaterial: the fund flows 1.2k FP a month
+(3-4 FP a day once drained) against shortfalls of 12-16k, and the strikes it would have held had all sailed
+before any siege was over a hive (22 strikes, 28k FP, at war day 1,306-1,770; the first siege landed at 1,790).
+
+**What killed b (war day 2,000-2,250):** 206 siege fights over 19 hives, the attacker's median 1,641 FP (75th
+2,217, max 4,813 - hw140c's sieges were 331-475), 26.9k Threat FP engaged in them and 26.3k more in 51 hunt
+battles; 53 rallies of 14.9k FP sent, 342 refused. The humans sailed 87 sieges of 89k FP between day 1,500 and
+2,250 from five factions (tritachyon 25 / 28k, independent 23 / 24k, persean 21 / 19k, hegemony 14 / 18k,
+luddic church 3). The swarm's whole navy peaked at 26k. No posture, fund or strike rule holds 20 hives with 26k
+against 89k arriving as 87 sieges of 1.6k.
+
+**What decides which branch a game takes** (sightings per faction, `Intel: X sees ... by eyes`; finds are not
+passed between factions - every faction finds the hives with its own ships): in the losers four or five
+factions see hives by day 1,500-1,800 (hw142b: independent, tritachyon and persean within five days of each
+other at 1,493-1,498, ~190 days after the opening salvo); in hw141a one faction by 1,841 and the rest only at
+2,249+. The factions the opening salvo strikes and the factions that find the hives overlap but do not match
+(hw142b struck independent 6, persean 12, luddic path 4; tritachyon, unstruck, found them too), and the count
+of factions seeing is not decisive alone (hw139a: three saw, seven sieges, 98 hives at the end). What is
+decisive is how much those factions then commit: 24-51 sieges by day 2,000 in the losers, 0-7 in the winners.
+
+**Where this leaves the swarm's side:** three builds (consolidation, its fixes, defence first) acted correctly
+on the losing trend / the pressure and changed nothing, because by the time either reads, five factions are
+already over the hives with three times the swarm's navy. The questions left are not posture:
+- **F1 - the navy's size.** At 20-24 hives the swarm fabricates 3.7-5k FP a month and fields 17-26k; the human
+  factions together rebuild 5-11k a month from yards and field 30-50k standing (`navy X:` lines at the end of
+  every run) - and the five that commit spend 89k on sieges in 750 days. The winners only win because they are
+  left alone to d2,500 and reach 57-73k. The hull economy (2026-10-06: one pool from vanilla patrol counts, the
+  swarm's share by its forges) is the user's design; whether a 20-hive swarm should field a fifth of the
+  humans' navy is the user's call.
+- **F2 - how many factions commit.** Each faction's council presses on its own verdict ("ahead / even" on the
+  weight it sees); five pressing one swarm at once is five one-faction campaigns (2026-10-07) with one target.
+  A coalition cap, a shared verdict, or a cost to joining a war another faction is already fighting are
+  shapes; all on the human side; none built.
+- **F3 - the opening.** The salvo of 16-22 strikes at war day 1,300-1,800 hits 3-4 factions and precedes the
+  answer by 190-420 days; hw141a struck once and was found by one faction. A quieter opening (one faction,
+  the focus, until the answer is seen) is the swarm-side shape nearest the data; it would not stop a faction
+  that finds the hives on its own.
