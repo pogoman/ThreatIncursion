@@ -257,6 +257,19 @@ public class ThreatOffensive {
 		float deadline = start + horizon * 30f;
 		float monthsLeft = Math.max(0f, (deadline - day) / 30f);
 		float budget = fund + perMonth * monthsLeft;
+		// LOSING HOLDS THE NAVY (the user, 2026-10-10, D1 after hw143a; bends the 2026-10-07 "losing spends"):
+		// from offensiveHoldLosing the campaign prices only what the fund replaces in a month, and the fund above
+		// that pays the pressed hives' garrisons (payDefence). hw143a: at the line (2.0k FP a hive against
+		// Hegemony's 1,625 median siege) the offensive drew 39k FP of garrison spare into 21 strikes from
+		// d3,000, 13 of 15 never landed, the navy per hive fell to 1.0k and every siege won
+		float holdAt = ThreatIncConfig.offensiveHoldLosing();
+		boolean holding = holdAt > 0f && pressure >= holdAt;
+		if (holding) {
+			budget = Math.min(budget, perMonth);
+			ThreatIncConfig.log("Offensive: losing " + ThreatStance.losingSummary() + " holds the navy - the campaign prices "
+					+ (int) budget + " FP (a month's fund) of " + (int) fund + "; the rest pays the pressed hives");
+			payDefence(perMonth);
+		}
 		// the fuel and the supplies away are summed over the prongs too (hw42a: priced one at a time, the
 		// first prong's passage took the whole stock and the held one could not sail on its day)
 		float fuelStock = ThreatFuel.stock(), fuelBudget = fuelStock + Math.max(0f, ThreatFuel.perMonth()) * monthsLeft;
@@ -832,10 +845,11 @@ public class ThreatOffensive {
 	 * the defence's shortfall (ThreatPosture.defenceShortFP: the pressure's need less held, inbound and banked)
 	 * into its bank, the most short first, and the forge builds it (maintainGarrisons builds while held is
 	 * under want, and want is never under need). The campaign's means go to the hives the humans are over
-	 * before any prong - hw140c sent 85k FP of strikes out while 41 sieges took 21 hives.
+	 * before any prong - hw140c sent 85k FP of strikes out while 41 sieges took 21 hives. {@code keep} FP of the
+	 * fund stay for the campaign (the losing hold, pass: a month's fund).
 	 */
-	protected static void payDefence() {
-		float fund = ThreatColonyManager.strikeFund();
+	protected static void payDefence(float keep) {
+		float fund = ThreatColonyManager.strikeFund() - Math.max(0f, keep);
 		if (fund <= 0f) return;
 		final Map<String, Float> shortBy = new HashMap<String, Float>();
 		List<MarketAPI> hives = new ArrayList<MarketAPI>();
@@ -863,7 +877,7 @@ public class ThreatOffensive {
 	/** Daily (IncursionManager.advance): every prong whose day has come sails, its bill back in the fund for launchStrike to draw. */
 	public static void poll() {
 		if (IncursionManager.instance == null) return;
-		if (ThreatIncConfig.defenceFirst()) payDefence();
+		if (ThreatIncConfig.defenceFirst()) payDefence(0f);
 		if (schedule().isEmpty()) return;
 		float day = ThreatPosture.today();
 		for (String e : new ArrayList<String>(schedule())) {

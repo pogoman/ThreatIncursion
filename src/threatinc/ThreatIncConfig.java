@@ -191,6 +191,8 @@ public class ThreatIncConfig {
 	public static float offensiveHorizonMonths() { return fd("threatinc_offensiveHorizonMonths", 12f); }
 	/** The horizon at full losing pressure (ThreatStance.losingPressure); between, it shrinks from offensiveHorizonMonths by degree. */
 	public static float offensiveLosingMonths() { return fd("threatinc_offensiveLosingMonths", 3f); }
+	/** LOSING HOLDS THE NAVY (the user, 2026-10-10, D1): from this losing pressure the campaign prices only a month's fund and the rest pays the pressed hives (ThreatOffensive.pass); 0 = never. */
+	public static float offensiveHoldLosing() { return fd("threatinc_offensiveHoldLosing", 0.3f); }
 	/** At full losing pressure only targets within this many light-years of a hive system that can stage a strike are campaigned against; between, the reach shrinks from every known target by degree; 0 = no limit. */
 	public static float offensiveNearLY() { return fd("threatinc_offensiveNearLY", 10f); }
 	/** DEFEAT IN DETAIL (the user, 2026-10-07): a campaign masses on one faction - every known system of the focus - until its worlds answer the strikes with under offensiveBrokenAnswer of what they were sized for, or nothing known of it is left to strike; then the next (ThreatOffensive.chooseFocus). Off: every known target at once. */
