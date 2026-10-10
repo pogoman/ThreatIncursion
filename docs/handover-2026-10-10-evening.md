@@ -4,12 +4,11 @@ START HERE. The earlier handover (`handover-2026-10-08-morning.md`, sections 38-
 full; this file is the state at the session's end and what to do next. Everything below is committed and
 pushed (last commit 3e930526 plus the facts line for ck1, see section 7).
 
-## 0. Standing rule from 19:15 (in `CLAUDE.md`, "Models")
+## 0. Standing rule (20:00, in `CLAUDE.md` "Models"): Fable for all
 
-The main session runs on Opus. When a run shows the swarm losing and the question is why and what
-strategic change would turn it, spawn a `general-purpose` agent with `model: "fable"` to evaluate and
-return the explanation and the options; the main thread puts them to the user. Bug fixes, harness work,
-reads and records stay in the main session.
+The 19:15 rule (Opus main session, Fable subagents for strategy) is withdrawn: the Opus session misread
+hw146's log on its first read ("the hold never fired") and only caught it when this session's read landed.
+This repo runs on Fable, main session and all reasoning; lower tiers do legwork only, checked here.
 
 ## 1. Ask the user first
 
