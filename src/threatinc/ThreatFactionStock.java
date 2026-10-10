@@ -365,17 +365,17 @@ public class ThreatFactionStock {
 		return Math.max(0f, need);
 	}
 
-	/** Where the convoy lands: the market holding for a producer, else the faction's depot with the least of the commodity. */
+	/** Where the convoy lands: the market holding for a producer, else the faction's colony with the least of the commodity (a Waystation was asked for until 2026-10-10). */
 	public static MarketAPI aidTarget(String f, String c) {
 		if (f == null || c == null) return null;
 		if (Commodities.SUPPLIES.equals(c)) {
 			MarketAPI m = heldMarket(f);
-			if (m != null && ThreatReserves.hasDepot(m)) return m;
+			if (m != null && m.getStarSystem() != null && m.getPrimaryEntity() != null) return m;
 		}
 		MarketAPI best = null;
 		float least = Float.MAX_VALUE;
 		for (MarketAPI m : ThreatReserves.marketsOf(f)) {
-			if (m.getStarSystem() == null || m.getPrimaryEntity() == null || !ThreatReserves.hasDepot(m)) continue;
+			if (m.getStarSystem() == null || m.getPrimaryEntity() == null) continue;
 			float s = ThreatReserves.stock(m.getId(), c);
 			if (s < least) {
 				least = s;

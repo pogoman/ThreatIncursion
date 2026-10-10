@@ -696,7 +696,6 @@ public class ThreatFactionView {
 							+ "; while here, its points are this colony's.");
 					disableWith(main, stage, stageOk, blocked != null ? blocked
 							: !ThreatIncConfig.convoyEnabled() ? "Convoys are disabled in the mod settings."
-							: !r.depot ? "No Waystation at " + r.market.getName() + " to land it."
 							: "No colony of yours can spare a load for " + r.market.getName()
 									+ " at this convoy load.",
 							"A convoy from " + (donor != null ? donor.getName() : "the nearest colony")
@@ -723,7 +722,8 @@ public class ThreatFactionView {
 							s.ok() ? "A convoy of " + Misc.getWithDGS(s.quantity) + " "
 									+ ThreatReserves.label(s.commodityId) + " from "
 									+ s.source.getName() + ", of the " + Misc.getWithDGS(s.need)
-									+ " this world is short. Paid from that colony's reserve; "
+									+ " this world is short. " + (Commodities.SHIPS.equals(s.commodityId)
+											? "Out of your built navy; " : "Paid from that colony's reserve; ")
 									+ "earns standing on arrival."
 									: null);
 				}
@@ -1128,7 +1128,7 @@ public class ThreatFactionView {
 				+ (r.military ? militaryLabel(m) : "no military structure")
 				+ (r.depot ? ", Waystation." : ", no Waystation."), 0f);
 		if (!r.depot) {
-			tooltip.addPara("No Waystation: nothing sails from here or lands here.",
+			tooltip.addPara("No Waystation: nothing sails from here.",
 					Misc.getNegativeHighlightColor(), 3f);
 		}
 		// rule 7 (docs/economy-coherence.md): vanilla's units beside the item
@@ -1746,6 +1746,16 @@ public class ThreatFactionView {
 			} else {
 				boolean request = ThreatAidMissionIntel.find(target.getId(),
 						ThreatAidMissionIntel.KIND_AID, q.commodityId) != null;
+				if (Commodities.SHIPS.equals(q.commodityId)) {
+					prompt.addPara("Send %s ship hulls (%s fleet points) from " + q.source.getName()
+							+ " to " + target.getName() + ", for " + who + "? It is short of about %s. "
+							+ "The hulls leave your built navy, and the convoy can be intercepted on "
+							+ "the way. Standing follows their value"
+							+ (request ? ", doubled under the open request" : "") + ".", 0f, h,
+							Misc.getWithDGS(q.quantity), Misc.getWithDGS(Math.round(q.quantity * ThreatHulls.unitFP())),
+							Misc.getWithDGS(q.need));
+					return;
+				}
 				prompt.addPara("Send %s " + ThreatReserves.label(q.commodityId) + " from "
 						+ q.source.getName() + " to " + target.getName() + ", for " + who + "? It is "
 						+ "short of about %s. The goods leave " + q.source.getName() + "'s reserve, "

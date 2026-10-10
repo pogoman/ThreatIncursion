@@ -267,9 +267,9 @@ public class ThreatCoalition {
 				// spare until the shortage is covered, net of what is already at sea)
 				float[] atSea = ThreatConvoys.inbound(market.getId());
 				for (String c : ThreatReserves.AID_COMMODITIES) {
-					// ship hulls (2026-10-07) land in the faction's pool, the other goods in a depot
+					// ship hulls (2026-10-07) land in the faction's pool, the other goods in the
+					// colony's reserve (a depot was asked for until 2026-10-10: a convoy lands anywhere)
 					boolean hulls = Commodities.SHIPS.equals(c);
-					if (!hulls && !ThreatReserves.hasDepot(market)) continue; // nowhere to land it
 					if (!ThreatAidRequests.shortageStanding(market, c)) continue;
 					float inbound = hulls ? ThreatConvoys.inboundShips(market.getId()) : atSea[ThreatAid.index(c)];
 					float need = ThreatAidRequests.requestItems(market, c) - inbound;

@@ -45,7 +45,7 @@ public class WarFootingCondition extends BaseMarketConditionPlugin {
 			addCommodityLine(tooltip, market, c, 3f);
 		}
 		if (!ThreatReserves.hasDepot(market)) {
-			tooltip.addPara("No Waystation: nothing sails from here or lands here.",
+			tooltip.addPara("No Waystation: nothing sails from here.",
 					Misc.getNegativeHighlightColor(), opad);
 		}
 		// how a sale banks is docs/economy-coherence.md rule 4, not the tooltip's

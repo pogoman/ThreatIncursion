@@ -271,12 +271,8 @@ public class ThreatAid {
 					ThreatNotice.market(target));
 			return q;
 		}
-		// ship hulls are a request the player meets in person (ThreatincAidCMD); a base's convoy carries goods
-		if (Commodities.SHIPS.equals(q.commodityId)) {
-			q.reason = ThreatNotice.Reason.of("%s asks for ship hulls - hand them over in person",
-					ThreatNotice.market(target));
-			return q;
-		}
+		// ship hulls sail out of the player's built navy from their hull port, as an ally's do
+		if (Commodities.SHIPS.equals(q.commodityId)) return quoteHulls(target, q, tier);
 		ThreatAidMissionIntel request = ThreatAidMissionIntel.find(target.getId(),
 				ThreatAidMissionIntel.KIND_AID, q.commodityId);
 		q.need = request != null && request.remaining() > 0 ? request.remaining()
@@ -346,6 +342,45 @@ public class ThreatAid {
 			if (ThreatReserves.AID_COMMODITIES[i].equals(commodityId)) return i;
 		}
 		return -1;
+	}
+
+	/**
+	 * A hull convoy: units of the player's built navy (ThreatHulls.sendableUnits) from their hull
+	 * port to the colony, the need the open request's remainder or the faction's unrebuilt losses,
+	 * the tier read as for goods. Until 2026-10-10 hulls were "handed over in person": the ships
+	 * commodity is vanilla's meta good, never in a hold, so no hull contract could be met (the user,
+	 * Nova Maxios).
+	 */
+	protected static Quote quoteHulls(MarketAPI target, Quote q, int tier) {
+		String me = Global.getSector().getPlayerFaction().getId();
+		ThreatAidMissionIntel request = ThreatAidMissionIntel.find(target.getId(),
+				ThreatAidMissionIntel.KIND_AID, q.commodityId);
+		q.need = request != null && request.remaining() > 0 ? request.remaining()
+				: ThreatAidRequests.needItems(target, q.commodityId);
+		if (q.need <= 0) {
+			q.reason = ThreatNotice.Reason.of("%s is not short of ship hulls", ThreatNotice.market(target));
+			return q;
+		}
+		MarketAPI port = ThreatHulls.hullPort(me);
+		int units = ThreatHulls.sendableUnits(me);
+		if (port == null || port.getStarSystem() == null || units < 1) {
+			q.reason = ThreatNotice.Reason.of("Your yards have no built hulls spare for %s",
+					ThreatNotice.market(target));
+			q.reason.line("%s FP built, %s FP free; a unit is %s FP", (int) ThreatHulls.built(me),
+					(int) ThreatHulls.freeFP(me), (int) ThreatHulls.unitFP());
+			return q;
+		}
+		float ask = tier >= 2 ? Float.MAX_VALUE
+				: tier == 1 ? q.need * ThreatIncConfig.convoyExtraLoadFactor() : q.need;
+		int qty = Math.max(1, (int) Math.floor(Math.min(units, ask)));
+		float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
+		load[index(q.commodityId)] = qty;
+		q.source = port;
+		q.load = load;
+		q.quantity = qty;
+		q.points = 0f;
+		q.distLY = Misc.getDistanceLY(port.getStarSystem().getLocation(), target.getLocationInHyperspace());
+		return q;
 	}
 
 	// ------------------------------------------------------------------
@@ -456,6 +491,10 @@ public class ThreatAid {
 	/** One unit's price to the receiving market, times the quantity. */
 	public static float valueAt(MarketAPI market, String commodityId, float quantity) {
 		if (market == null || commodityId == null || quantity <= 0f) return 0f;
+		// a unit of ship hulls is unitFP fleet points of warships, priced at the hull table
+		if (Commodities.SHIPS.equals(commodityId)) {
+			return quantity * ThreatHulls.unitFP() * ThreatHulls.creditsPerFP();
+		}
 		float perUnit = 0f;
 		try {
 			perUnit = market.getDemandPrice(commodityId, 1.0, true);

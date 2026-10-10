@@ -175,9 +175,17 @@ request accepts it.
   shipyard making the most ship units, else the world with the most standing hulls) and only
   while the faction is short of hulls (`ThreatFactionStock.hullsShort`) with losses not yet
   rebuilt - the units of that debt (`shortUnits`), exhausted at once since a hull shortage
-  is already a trailing judgment. No depot is needed. Delivered in person only: the player's
-  base convoys carry goods, and `ThreatAid.quoteResupply` says so when a colony's worst
-  shortage is hulls.
+  is already a trailing judgment. No depot is needed. Delivered by convoy only (2026-10-10):
+  the `ships` commodity is vanilla's `meta` good, never in a hold, so the port's hand-over
+  can never see any and `ThreatincAidCMD` says so. The war board's Aid button quotes a hull
+  convoy (`ThreatAid.quoteHulls`): units of the player's built navy (`ThreatHulls.sendableUnits`,
+  min of free and built, whole units) from the player's own hull port, the tier read as for
+  goods, sailed by `ThreatConvoys.dispatch` (`ThreatHulls.give` debits the navy the day it
+  sails, `receive` lands it). Priced as warships: `ThreatAid.valueAt` puts a unit at `unitFP`
+  x `ThreatHulls.creditsPerFP` (knob `threatinc_hullCreditsPerFP`, 0 = the game's hull table,
+  base value over fleet points pooled, vanilla about 9,600), so a 4-unit contract pays about
+  3.8M credits, not the ships commodity's 1,000 (the user, 2026-10-10: "400 FP of aid for
+  1,000").
 - **Swarm bounty on the X system** (2026-09-24, untested; `ThreatSwarmBountyIntel`). Not a
   contract but vanilla's system bounty pointed at a hive: posted by a mobilised base whose
   siege the Defense Swarms over the target hive system outweigh (docs/strategy-reserves-sieges.md,
@@ -204,9 +212,10 @@ the comm directory (rules.csv options, vanilla-only; the conversation needs its 
 rows because `$local` is the person there and `$menuState` is out of scope), listing what the
 contract still needs and what the player's fleet holds. What is handed over leaves the
 player's cargo, lands exactly as a convoy does (reserve deposit and trade modifier), and
-earns section 3's reputation. Ship hulls handed over join the faction's hull pool instead
-(`ThreatHulls.receive`: its losses rebuilt first, the rest its navy), valued at the market's
-price for `ships` like any other good. The player's own holds are the gate - buying 20,000 fuel
+earns section 3's reputation. Ship hulls are never handed over (vanilla's
+`ships` is a `meta` good, never in a hold): the port says they sail from the hull port, and the
+board's hull convoy lands them in the faction's pool (`ThreatHulls.receive`: its losses rebuilt
+first, the rest its navy), valued as warships (`ThreatHulls.creditsPerFP`). The player's own holds are the gate - buying 20,000 fuel
 and hauling it is legitimate; the tankers are the cost.
 
 **Defending in person.** The player's fleet in the target system counts as the asset; no

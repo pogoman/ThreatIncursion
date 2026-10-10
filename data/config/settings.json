@@ -769,7 +769,8 @@
 	"threatinc_reserveBaselinePerSize": 5,
 	# a player colony's reserve IS its resource stockpile (vanilla fills it; the
 	# mod adds the militia). A base needs a military structure AND a functional
-	# Waystation (a hive world its Swarm Nexus) to stage, sail, send or receive;
+	# Waystation (a hive world its Swarm Nexus) to stage, sail or send; a convoy
+	# lands anywhere (2026-10-10: a colony without a Waystation could receive nothing);
 	# an NPC faction's mobilisation builds one at each military world with a
 	# spaceport, the player builds their own
 	"threatinc_baseRequiresWaystation": true,
@@ -1179,8 +1180,14 @@
 	# ships commodity (fabFPPerShipUnit FP each) from a faction with hulls to spare to one
 	# short of them, out of the donor's BUILT navy only (vanilla's patrols stay), keeping
 	# this share of its free built hulls; they land at the hull port (the biggest shipyard)
-	# and rebuild losses first. The player hands over ship hulls there like any request.
+	# and rebuild losses first. The player sends ship hulls from their own hull port
+	# (Aid on the war board), out of their built navy.
 	"threatinc_hullAidKeepFraction": 0.5,
+	# Credits one fleet point of ship hulls is worth - the reward of a hull contract
+	# and the standing a hull delivery earns. 0 reads the game's hull table: every
+	# boardable hull's base value over its fleet points (vanilla about 9,600), so a
+	# unit of ship hulls (fabFPPerShipUnit, 100 FP) is priced as the warships it is.
+	"threatinc_hullCreditsPerFP": 0,
 
 	# Player aid (docs/player-aid.md): what you send from your own colonies to
 	# other factions, from the war board. Capacity is the colony's vanilla

@@ -10,6 +10,8 @@ import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
+import com.fs.starfarer.api.combat.ShipHullSpecAPI;
+import com.fs.starfarer.api.combat.ShipHullSpecAPI.ShipTypeHints;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
@@ -238,6 +240,36 @@ public class ThreatHulls {
 		float keep = Math.max(0f, Math.min(1f, ThreatIncConfig.hullAidKeepFraction()));
 		float fp = Math.min(freeFP(f), built(f)) * (1f - keep);
 		return (int) Math.floor(fp / unitFP());
+	}
+
+	/** Units of built hulls the faction can send away now: its built navy's free hulls, whole units (the player's aid convoy asks for all of them). */
+	public static int sendableUnits(String factionId) {
+		if (factionId == null || !enabled()) return 0;
+		return (int) Math.floor(Math.min(freeFP(factionId), built(factionId)) / unitFP());
+	}
+
+	private static float creditsPerFP = -1f;
+
+	/**
+	 * Credits one fleet point of hulls is worth: threatinc_hullCreditsPerFP, or at 0 the game's own hull
+	 * table - every boardable, non-station hull's base value over its fleet points, pooled (vanilla: about
+	 * 9,600). Prices a unit of ship hulls (unitFP) for the player's aid (ThreatAid.valueAt): the ships
+	 * commodity's 100-credit base price valued 400 FP of hulls at 1,000 credits (the user, 2026-10-10).
+	 */
+	public static float creditsPerFP() {
+		float knob = ThreatIncConfig.hullCreditsPerFP();
+		if (knob > 0f) return knob;
+		if (creditsPerFP > 0f) return creditsPerFP;
+		float value = 0f, fp = 0f;
+		for (ShipHullSpecAPI spec : Global.getSettings().getAllShipHullSpecs()) {
+			if (spec == null || spec.getFleetPoints() <= 0 || spec.getBaseValue() <= 0f || spec.isDHull()) continue;
+			if (spec.getHints().contains(ShipTypeHints.UNBOARDABLE) || spec.getHints().contains(ShipTypeHints.STATION)
+					|| spec.getHints().contains(ShipTypeHints.HIDE_IN_CODEX)) continue;
+			value += spec.getBaseValue();
+			fp += spec.getFleetPoints();
+		}
+		creditsPerFP = fp > 0f ? value / fp : 5000f;
+		return creditsPerFP;
 	}
 
 	/** Takes units of hulls out of the faction's built navy for a convoy; the units actually taken (whole). */

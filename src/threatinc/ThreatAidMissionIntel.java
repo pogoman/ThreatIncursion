@@ -17,6 +17,7 @@ import com.fs.starfarer.api.impl.campaign.CoreReputationPlugin.MissionCompletion
 import com.fs.starfarer.api.impl.campaign.CoreReputationPlugin.RepActionEnvelope;
 import com.fs.starfarer.api.impl.campaign.CoreReputationPlugin.RepActions;
 import com.fs.starfarer.api.impl.campaign.CoreReputationPlugin.RepRewards;
+import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.MemFlags;
 import com.fs.starfarer.api.impl.campaign.intel.BaseMissionIntel;
@@ -585,6 +586,14 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 					+ "through the war board. A strike that raids or bombards the colony fails "
 					+ "it on the spot; a strike the colony beats without you ends it unpaid.",
 					opad, h, "" + (int) ThreatIncConfig.missionDefendDays());
+		} else if (Commodities.SHIPS.equals(commodityId)) {
+			info.addPara(Misc.ucFirst(faction.getDisplayNameWithArticle()) + " asks for %s ship hulls "
+					+ "(%s fleet points) at " + marketName() + ", in the " + sysName + ": its yards "
+					+ "cannot rebuild its losses.", opad, fc, Misc.getWithDGS(needed),
+					Misc.getWithDGS(Math.round(needed * ThreatHulls.unitFP())));
+			info.addPara("Send them from your hull port through the war board (Aid on the colony's "
+					+ "row): a convoy out of your built navy. Partial deliveries count; the contract "
+					+ "completes when the total is reached.", opad);
 		} else {
 			info.addPara(Misc.ucFirst(faction.getDisplayNameWithArticle()) + " asks for %s "
 					+ commodityLabel() + " at " + marketName() + ", in the " + sysName + ": the "

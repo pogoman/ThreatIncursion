@@ -85,6 +85,14 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 			if (m.getKind() != ThreatAidMissionIntel.KIND_AID || m.remaining() <= 0) continue;
 			any = true;
 			String c = m.getCommodityId();
+			// ship hulls are never in a hold (vanilla's meta commodity): they sail from the player's hull port
+			if (Commodities.SHIPS.equals(c)) {
+				text.addPara("The " + faction + " asks for " + Misc.getWithDGS(m.remaining()) + " more "
+						+ ThreatReserves.label(c) + " here" + (m.isAccepted() ? " under your contract"
+						: "") + ". Ship hulls sail from your hull port by convoy: Aid on the war board.");
+				text.highlightInLastPara(Misc.getHighlightColor(), Misc.getWithDGS(m.remaining()));
+				continue;
+			}
 			int have = (int) carried(cargo, c);
 			int hand = Math.min(have, m.remaining());
 			text.addPara("The " + faction + " asks for " + Misc.getWithDGS(m.remaining()) + " more "

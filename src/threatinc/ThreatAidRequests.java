@@ -70,8 +70,7 @@ public class ThreatAidRequests {
 				}
 				for (String c : ThreatReserves.AID_COMMODITIES) {
 					if (posted >= cap) return;
-					// goods need a depot to land in; a guard fleet does not, nor do ship hulls (the faction's pool)
-					if (!Commodities.SHIPS.equals(c) && !ThreatReserves.hasDepot(market)) continue;
+					// (2026-10-10: a colony without a Waystation asked for nothing - a convoy lands anywhere)
 					if (!shortageStanding(market, c)) continue;
 					if (ThreatAidMissionIntel.find(market.getId(),
 							ThreatAidMissionIntel.KIND_AID, c) != null) continue;

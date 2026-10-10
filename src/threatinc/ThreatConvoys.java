@@ -1960,7 +1960,7 @@ public class ThreatConvoys {
 	public static MarketAPI stageDonor(ThreatBases.Base target, FactionAPI faction, int tier) {
 		if (target == null || faction == null || !ThreatIncConfig.convoyEnabled()) return null;
 		if (target.starSystem() == null) return null;
-		if (!ThreatReserves.hasDepot(target)) return null; // nowhere to land it
+		// (2026-10-10: a target without a Waystation could receive nothing; a convoy lands anywhere)
 		MarketAPI best = null;
 		float bestValue = 0f;
 		boolean bestIsStaging = true;
