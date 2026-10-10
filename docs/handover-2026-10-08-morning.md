@@ -751,3 +751,48 @@ in this build is supplies.
 - **Supplies as the bind:** the hive's supplies come from the ore chain; the pull toward volatiles is by
   design, but the planner's consumer counts could weigh the input that is short in stock. No change proposed
   until a and c end.
+
+## 40. 2026-10-10 14:10 - hw140c: the consolidation fires and the game still falls (read mid-run)
+
+hw139 (the consolidation build's first run) was the swarm's three of three (98 / 58 / 106 hives) with the
+losing pressure never above 0.34, so the feature slept; hw140 on the same seed produced the loser. **hw140c:**
+consolidation began at war day 2,965 (losing 0.66, 2 of a 26-hive peak fallen; the stand 4,425 FP, the largest
+force seen over a hive in 120 days, against 7,805 FP held: **1 keystone of 24 hives, 23 conceded**). By war day
+3,931: **6 hives, 763 FP** - the fleets 7.8k -> 0.8k, 12 more hives eradicated. Consolidation did not save it.
+What the log shows (`tools/test-harness/reads/check-consolidate.sh`, and the greps below):
+
+- **The keystone set flapped 36 times** in ~1,000 days (Zeta Xanthe Che III <-> Gad <-> Unhcegila <-> Loutron
+  ...): the ranking by input-cover share is near-tied (volatiles 0.10-0.13) and the stand / k change every pass.
+  The pressure pass chased it - 239 transfers, 23k FP, spread over eight receivers (Neiron 3.7k, Loutron 3.1k,
+  Zeta Xanthe 2.8k, Zeta Ang 1.7k ...). No keystone ever reached its stand: Zeta Xanthe 1,858 of 4,933 wanted,
+  Unhcegila 2,215 of 3,582. A defect of the build: no hysteresis.
+- **The keystone was besieged before it was full** and the transfer gate (rightly, the rally's rule) refused
+  157 transfers into the siege: the garrison present died piecemeal (285 -> 66 -> 14 FP under a 331-475 FP
+  daily siege). A defect of the build: a hive under attack, or about to be, is the wrong keystone unless it
+  already stands.
+- **The colony bank scrapped the keystone's stand:** `recycleForUpkeep` (bank below 0, income under upkeep)
+  recycled six swarms at Neiron, the last keystone, 3.4k FP recycled after consolidation began. A defect: a
+  keystone's stand is fed from other hives but paid from its own bank.
+- **The humans' sieges are serial and small:** six distinct hives put under siege in the 120 days after
+  consolidation, the fights 331-475 FP (163 siege fights after, all of them daily sieges). The 4,425 FP
+  "largest force" was one flotilla once; sizing the stand to it put every egg in one basket and conceded 23
+  hives to sieges a 700 FP garrison would have stood - the concession fed the losing trend (forge output and
+  supplies fall with the hives) so the pressure never came down (0.93 at the last read).
+
+**Fixes to build regardless (defects of my build, no decision needed):** sticky keystones (a keystone stays
+while it lives and is not outweighed; vacancies filled, k adjusted only when the held FP or the stand moves by
+a band); a hive under attack is not chosen unless `standsFor` already outweighs; a keystone's upkeep is the
+swarm's (`recycleForUpkeep` skips keystones while the shared stock has supplies).
+
+**The decision - what a stand is sized to:**
+- **A2 (recommended): size the stand to the forces that come, not the largest ever seen** - the 75th
+  percentile of the siege forces seen over hives in the window (or the second-largest), times the rally's
+  margin. hw140c: ~700 FP -> 11 keystones of 24 instead of 1; the rare 4.4k flotilla takes one keystone when
+  it comes, the other ten stand against everything else. Concedes 13 hives, not 23.
+- **A1: keep the largest force as the stand** and only fix the defects. Hands the war to the one big flotilla:
+  one keystone of 24 is a navy that cannot be anywhere, and the economy falls with the 23 conceded.
+- **A3: no concession - size k to the forces that come but never below half the hives**, so a losing swarm
+  always keeps its economy; stands thinner. Listed, not recommended: it is the hw138b spread by another name.
+
+Reads: `grep 'Posture: consolidating' ti-hw140c.txt` (the set per pass); `' sent N FP to '` lines carry
+`(held of wanted)`; `'no transfer to'` the refusals; `'Upkeep: .* recycled a'` the bank's scrapping.
