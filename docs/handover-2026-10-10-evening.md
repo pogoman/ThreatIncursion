@@ -140,3 +140,16 @@ minutes, not 18 (the war runs 68 days a minute; corrected in `facts.md` and `tes
 greped the first cut's log text and showed 0 hold passes in the watcher (fixed). hw147 launched 19:44 by the
 section-5 loop (all held -> opening-bar sweep): ck1 with `threatinc_strikeStagedOpenFP` 80000 (the fund holds
 37.6k at ck1, so ck1 stays valid for either bar).
+
+## 9. hw148 - the third seed, 20:53
+
+hw147 (Opus's 80k sweep) died unread; the bar is back at 40000 (a68a032f). The user, 20:08: "random seed test yep
+proceed" - a new day-0 seed `save_ZhiFarah_3202965389391319559` (recipe and click positions in `testing-harness.md`,
+"Third seed"), batch hw148 from day 0 to 3,800 with snapshots. **41 / 42 / 43 hives, humans 20 / 25 / 29, no game
+lost** - but b and c are falling at the end (55 -> 42, 54 -> 43) with 100k navies and the fund idle at 66-96k FP
+while every hold pass reads "0 FP short": the same shape as hw146b, now on a second seed. The next read by the
+loop: run b on from `save_ZhiFarah_3202965389391319559hw148bd3563` (`-Bases`, `-Days 1200`, ~15 min) to see
+whether it falls by 4,700, and in that log where the swarms are when the sieges land (section 6, first bullet).
+If it falls, the strategy to test from that snapshot is what the hold pays: the fight line (the strongest
+attacker's median siege x the rally margin per pressed hive) instead of `needFP`. a is the healthy shape to
+compare against (navy per hive rising to 2.6k, 37-42 hives steady).
