@@ -15,7 +15,14 @@ stay home and nothing is recalled.
   candidate), at least two swarms, every swarm built from the bank at the staging colony's
   size + 3. The war's OPENING strike - no faction mobilised - sails with at least
   `strikeStagedMinFP` (8,000) so the hive is strong before the first attack wakes the humans
-  (the user, 2026-10-06); every later strike is sized to its target.
+  (the user, 2026-10-06); every later strike is sized to its target. It also waits until the fund
+  holds `strikeStagedOpenFP` (40,000 since 2026-10-10, the user: "raise the minimum strike fp bar so
+  it doesn't attack until it has more worlds"; hw143b opened at war day 1,947 with 18 hives and a
+  38k navy, found by one faction). The bar holds only while `IncursionManager.openingWaits`: nobody
+  mobilised and `ThreatAlarm.alarm` 0 - attacked first means open now (the user, 2026-10-10), a raid,
+  a front or the player's own fights waive it. `ThreatOffensive.pass` prices no prong while the bar
+  holds: a prong priced with `bankLimit` skips the bar, was refused on its day monthly, and its held
+  bill read the bar 8k high (hw143b).
 - **Paid** from the strike fund (`ThreatColonyManager.strikeFund`): `strikeFundShare` (0.3)
   of every colony's fabrication never reaches its bank. `spendStrikeFund` moves the bill to the
   staging colony, `launchStrike` draws it. With no fund the pooled banks pay.

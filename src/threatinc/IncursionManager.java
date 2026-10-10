@@ -5215,9 +5215,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float bank = !Float.isNaN(bankLimit) ? bankLimit
 				: funded ? ThreatColonyManager.strikeFund() : ThreatColonyManager.hivePoolableFP(staging);
 		// the war's first strike waits until the fund holds strikeStagedOpenFP (a trial of 2026-10-06, hw27:
-		// does the swarm win on the size of its strikes or on the growth before the war opens?)
-		if (funded && Float.isNaN(bankLimit) && ThreatWarState.warFactionIds().isEmpty()
-				&& bank < ThreatIncConfig.strikeStagedOpenFP()) {
+		// does the swarm win on the size of its strikes or on the growth before the war opens?). Attacked
+		// first means open now (the user, 2026-10-10): once anyone has mobilised or struck at the hive
+		// (ThreatAlarm.alarm - the player's own raids and fights included) the bar no longer holds
+		if (funded && Float.isNaN(bankLimit) && openingWaits() && bank < ThreatIncConfig.strikeStagedOpenFP()) {
 			if (defOut != null) ThreatIncConfig.logQuiet("strikeopen", "Staged strike waits to open the war: the strike fund holds "
 					+ (int) bank + " of " + (int) ThreatIncConfig.strikeStagedOpenFP() + " FP");
 			return null;
@@ -5435,6 +5436,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (ThreatWarState.isAtWar(factionId) || ThreatAlarm.grudge(factionId) > 0f) return true;
 		FactionAPI faction = Global.getSector().getFaction(factionId);
 		return faction == null || faction.isNeutralFaction() || ThreatWarState.excluded(factionId);
+	}
+
+	/**
+	 * Whether the war's opening still waits on the fund bar (strikeStagedOpenFP): nobody has mobilised and
+	 * nobody has struck at the hive (ThreatAlarm.alarm - every faction's grudge, the player's included).
+	 * Attacked first means open now (the user, 2026-10-10): the swarm takes as long as it needs to open the
+	 * war on its own terms, but a faction or player that attacks first is answered with what the fund holds.
+	 */
+	public static boolean openingWaits() {
+		return ThreatWarState.warFactionIds().isEmpty() && ThreatAlarm.alarm() <= 0f;
 	}
 
 	/** The strike gate's filters short of reach and weight: a world a strike may be aimed at now. */

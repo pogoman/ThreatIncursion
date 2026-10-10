@@ -918,3 +918,38 @@ factions (the salvo is bounded by the targets known, not the fund); a faction th
 before the opening (hw142b: three within five days of each other) is not delayed. `check-opening.sh` reads the
 opening day, fund, hives and navy at the first strike, the factions that have seen hives, and flags `earlyopen`
 / `found`. hw143 is the trial.
+
+## 44. 2026-10-10 17:25 - hw143 (opening bar 40k): 0 / 34 / 36 hives - the bar works, the late collapse is the offensive spending the navy
+
+**Read.** Opened at war day 1,947-2,036 (was 1,306-1,673) with 18-23 hives and a 32-38k navy (was 7-14k); no
+faction had seen a hive before any opening - the bar delays the war without being found first. Ends 0 / 34 /
+36 hives (a wiped at d4,105; b 39k FP, c 116k), humans 31 / 24 / 26 colonies. Two of three the swarm's on the
+seed where hw141 / hw142 went 58 / 0 / 69 and 0 / 0 / 0.
+
+**The day-2,000 rule is gone.** All three were found by 6-8 factions by the end and the siege volume did not
+decide it: b took 366k FP of sieges and held, a took 304k and collapsed. a's collapse was late (36 hives / 73k
+at d2,727 -> 14 / 5k at d3,650) under Hegemony's 108k FP campaign (d2,700-3,700) with the Independents' 86k; in
+b and c Hegemony sent little. Through that window the offensive launched 28 strikes / 83k FP, the navy fell
+73k -> 25k and the fuel stock 514k -> 93k, while `ThreatStance.losingPressure` read 0.05 from 37 hives down to
+28 and reached 0.62 only at d3,186 - the trend lag of hw140c, now one game in three. b also slid 43 -> 34 by the
+end with four factions in PRESS.
+
+**Fixed the same hour (in the post-batch build).** `ThreatOffensive.pass` priced prongs with `bankLimit` set,
+which skips the opening bar in `stagedPlan`: hw143b held an 8k prong at Gilead refused on its day every month,
+its bill out of the fund so the bar read 14-24k while the fund held 22-32k. The pass now prices nothing while
+`IncursionManager.openingWaits` (nobody mobilised, `ThreatAlarm.alarm` 0) and the fund is under the bar. The
+same test waives the bar when anyone attacks first (the user: "if the player mobilizes and attacks first then
+they would switch from passive early"); the user withdrew the encirclement idea ("would spread them thin").
+
+**The question left (the user's call): what stops the offensive spending a navy that is falling?** The trend
+reads hives lost against gained over 365 days; a navy halving in 300 days while the hive count holds reads as
+not losing. Options, with a recommendation:
+- **D1 (recommended): the offensive reads the navy, not only the map.** Losing pressure takes the larger of the
+  hive trend and the navy trend (held FP now against its 180-day peak); at 0.3+ the campaign prices nothing
+  the fund cannot replace in a month. Shape, not knob: the swarm stops feeding strikes into a war it is
+  bleeding in, and keeps striking when the navy holds (b, c).
+- **D2: strikes only from surplus.** A prong is priced only from fund above the defence's shortfall (the C1
+  read without the freeze: the fund still pays prongs when nothing is short). hw142 showed the freeze loses;
+  this is the half that did not fire there.
+- **D3: the human side.** Hegemony's 108k campaign is one faction's; a's sieges were 199 against b's 258 and
+  it still fell, so the asymmetry is the swarm's response, not the humans' volume. Nothing to change here.
