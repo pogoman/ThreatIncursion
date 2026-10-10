@@ -96,17 +96,15 @@ Keep the main context lean - this codebase is large and discovery fills the wind
   file. After a compaction, re-read those instead of re-spawning the research.
 - Keep topic docs under about 40 KB so an agent reads the doc rather than the source. Split a
   doc by topic when it grows past that, and update `README.md` and `facts.md` pointers.
-- **Models (the user's standing rule, 2026-10-10 19:15).** The main session runs on Opus. Bug fixes,
-  harness work, reads and records stay in the main session. **Strategic evaluation is delegated to
-  Fable**: when a run shows the swarm losing and the question is WHY and what strategic change would
-  turn it, spawn a `general-purpose` agent with `model: "fable"` to evaluate and return an explanation
-  and the options (with a recommendation), which the main thread puts to the user - the deciding stays
-  with the user (`strategy-before-knobs`). Brief it like a peer: the run's figures (the per-150-day
-  navy / hives / strikes / sieges table, the ends, the siege-by-faction read), the `facts.md` lines and
-  doc sections already in hand, the files to check, and "confirm or correct this" over "find out how X
-  works". Simple work - discovery, legwork, reviews - goes to lower tiers (`Explore` -> sonnet, lookups
-  -> sonnet/haiku). The global `pin-subagent-model` hook downgrades subagents spawned without a model -
-  always pass `model` explicitly.
+- **Models (the user's standing rule, 2026-10-10 20:00, replacing the 19:15 one).** This repo runs on
+  **Fable, main session and all reasoning**. An Opus main session was tried for one evening (19:15-20:00)
+  and misread a batch log on its first read ("the hold never fired" - it grepped the first cut's log
+  text) and built the wrong deduction on it; the user: "we stick with fable for all, i dont have time to
+  waste with opus fucking up". Never delegate a diagnosis, a strategic choice or a build to a lower
+  tier; never recommend switching the main session down. Simple legwork only - discovery, bulk log
+  reads, screenshots, reviews - goes to lower tiers (`Explore` -> sonnet, lookups -> sonnet/haiku), and
+  its findings are checked here before they are recorded. The global `pin-subagent-model` hook
+  downgrades subagents spawned without a model - always pass `model` explicitly.
 - A feature named only by concept ("the recall path", "how sieges land") is a grep of
   `docs/symbols.md` and `docs/facts.md`, then a read of the methods found - not an agent.
 - Never read a class of thousands of lines whole; read the methods the index names.
