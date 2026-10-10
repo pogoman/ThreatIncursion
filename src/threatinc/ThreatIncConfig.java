@@ -805,6 +805,8 @@ public class ThreatIncConfig {
 	public static boolean npcSiegeOrbitSystem() { return b("threatinc_npcSiegeOrbitSystem", false); }
 	/** A Threat strike relieves a front of its own that is losing ground, in reach, before it opens a new one. */
 	public static boolean strikeReliefFirst() { return b("threatinc_strikeReliefFirst", true); }
+	/** DEFENCE FIRST (the user, 2026-10-10, C1): while any hive is short of what today's pressure needs held, the strike fund pays that defence and no prong is priced or sails (ThreatOffensive.payDefence). */
+	public static boolean defenceFirst() { return b("threatinc_defenceFirst", true); }
 	/** An unspawned expedition resolves a day after reaching its target, not at the end of vanilla's payload segment. */
 	public static boolean abstractResolveOnArrival() { return b("threatinc_abstractResolveOnArrival", true); }
 	/** The swarm passes over a world whose system's defence outweighs the strike it can muster. */

@@ -799,6 +799,10 @@
 	# a Threat strike relieves a front of its own losing ground (in reach)
 	# before it opens a new one
 	"threatinc_strikeReliefFirst": true,
+	# the defence first: while any hive is short of what today's pressure
+	# needs held, the strike fund pays that defence and no strike is priced
+	# or sails
+	"threatinc_defenceFirst": true,
 	# an expedition resolved off-screen (no fleets spawned) fights a day after
 	# it reaches the target, not when vanilla's ~120-day payload segment ends
 	"threatinc_abstractResolveOnArrival": true,
