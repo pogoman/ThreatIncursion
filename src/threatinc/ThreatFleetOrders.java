@@ -942,6 +942,9 @@ public class ThreatFleetOrders {
 				if (fuelBack > 0f) ThreatReserves.deposit(base.getId(), Commodities.FUEL, fuelBack);
 				if (suppliesBack + holdBack > 0f) ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, suppliesBack + holdBack);
 				fuel -= fuelBack; supplies -= suppliesBack; hold -= holdBack;
+				// the want shrinks with the hulls, or the staged check below holds every trimmed fleet (hw158:
+				// 728 trimmed, 728 held "short" of the untrimmed deposit)
+				wants[0] *= after / Math.max(1f, before); wants[1] *= after / Math.max(1f, before);
 				ThreatIncConfig.log("Order trimmed at " + base.getName() + ": " + (int) before + " -> " + (int) after
 						+ " FP for a hold of " + (int) need + " (the hulls wanted " + (int) holdWant + ", the base paid " + (int) (hold + holdBack) + ")");
 				holdWant = need;

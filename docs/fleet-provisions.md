@@ -67,11 +67,15 @@ maintenance, which covers the median trip with the voyage on top.
    question for the user. Knob `threatinc_stagedLaunch` (true).
    - **Trim to the paid hold (hw157 first read, 2026-10-11 14:40).** The gate and the planner price the
      hold per point at the faction's measured supplies per fleet point (`ThreatReach.sortieHold`); the
-     launch wants the built hulls' own maintenance, which came 3-75% higher - every held order in hw157
-     was short on the hold alone, fuel and deposit paid. So: with fuel and deposit covered,
+     launch wants the built hulls' own maintenance. hw158's draw log showed why they differ: vanilla's
+     fleet factory builds 109-114% of the fleet points asked (the rate itself matched, 1.12 built vs 1.10
+     measured), so the hold is priced for the points asked and wanted for the points built. With fuel
+     and deposit covered,
      `buildTaskForce` leaves the smallest warships home until the hold the base paid feeds the rest, down
      to `TRIM_FLOOR` (75% of the built points; below it the order is held), refunds their deposit share
-     and the hold the rest do not need, and logs `Order trimmed at <base>: B -> A FP for a hold of H`.
+     and the hold the rest do not need, shrinks the fuel and deposit want with the hulls (hw158: without
+     that every trimmed fleet was held against the untrimmed want), and logs `Order trimmed at <base>:
+     B -> A FP for a hold of H`.
      The measured rate is now the faction's task forces' (fleets carrying a hold) when any are out, not
      every homed fleet's (convoys, garrisons). The draw log carries both figures (`N FP of M asked,
      x supplies/FP/mo vs y measured`) to tell overshoot from rate error.
