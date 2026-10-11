@@ -322,7 +322,7 @@ public class ThreatFactionView {
 			// Actions must hold two floating buttons (Defend + Aid = 114 px with
 			// gaps): at .08 the Aid button used to overlap the Strikes column
 			float[] frac = {.15f, .05f, .08f, .07f, .09f, .07f, .07f, .07f, .07f, .10f, .06f, .12f};
-			String[] names = {"Colony", "Size", "Military", "Def", "FP", "Marines", "Arms", "Fuel",
+			String[] names = {"Colony", "Size", "Military", "Def", "Fleet", "Marines", "Arms", "Fuel",
 					"Supplies", "Convoys", "Strikes", "Staging"};
 			List<Object> columns = new ArrayList<Object>();
 			for (int i = 0; i < names.length; i++) {
@@ -335,7 +335,8 @@ public class ThreatFactionView {
 					+ "worlds with a Waystation.");
 			main.addTableHeaderTooltip(3, "Ground defense - what a hive landing must beat.");
 			main.addTableHeaderTooltip(4, ThreatHulls.enabled()
-					? "Standing hulls: the fleet points of the patrols the colony keeps; the Total row is the faction's free / standing hulls."
+					? "Warships in fleet points: the patrols the colony keeps, and at the hull port the navy the yards have built. "
+					+ "Any colony sails from the whole fleet; Total is free / all."
 					: "Fleet points free to sail from here now (task forces on "
 					+ "station here included) / the colony's own fleet capacity.");
 			if (own) {
@@ -1062,18 +1063,35 @@ public class ThreatFactionView {
 			ThreatWarBoard.cell(cells, Alignment.MID, Misc.getGrayColor(), "-");
 			return;
 		}
-		int[] f = ThreatAidCapacity.figures(m);
 		if (ThreatHulls.enabled()) {
-			// the hull pool: the colony's standing hulls; the faction's free pool is the total row's
-			ThreatWarBoard.cell(cells, Alignment.MID, text, Misc.getWithDGS(f[0]));
+			// the hull pool: the colony's share of the faction's fleet - its patrols, and at the
+			// hull port the navy the yards built (the user, 2026-10-11: with the built navy only in
+			// the Total row, 153 at Haven under a 1,392 total "looks like a bug or something")
+			ThreatWarBoard.cell(cells, Alignment.MID, text, Misc.getWithDGS(Math.round(fleetShare(m))));
 			return;
 		}
+		int[] f = ThreatAidCapacity.figures(m);
 		ThreatWarBoard.cell(cells, Alignment.MID, fleetColor(f[4], text),
 				Misc.getWithDGS(f[4]) + "/" + Misc.getWithDGS(f[0]));
 	}
 
+	/**
+	 * The colony's share of its faction's fleet under the hull pool, in fleet points: its standing
+	 * patrols (ThreatHulls.standingFP), plus the faction's built navy (ThreatHulls.built) at its hull
+	 * port - where hulls are asked for, land and sail from (ThreatHulls.hullPort). The rows sum to
+	 * the Total row's standing hulls.
+	 */
+	protected static float fleetShare(MarketAPI m) {
+		if (m == null) return 0f;
+		float fp = ThreatHulls.standingFP(m);
+		if (m == ThreatHulls.hullPort(m.getFactionId())) fp += ThreatHulls.built(m.getFactionId());
+		return fp;
+	}
+
 	protected static boolean onLedger(MarketAPI m) {
-		return m != null && ThreatAidCapacity.applies(m) && ThreatAidCapacity.capacityFP(m) > 0f;
+		if (m == null || !ThreatAidCapacity.applies(m)) return false;
+		if (ThreatHulls.enabled()) return fleetShare(m) > 0f;
+		return ThreatAidCapacity.capacityFP(m) > 0f;
 	}
 
 	protected static Color fleetColor(float free, Color text) {

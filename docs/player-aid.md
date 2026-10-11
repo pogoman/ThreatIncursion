@@ -188,9 +188,12 @@ request accepts it.
   priced it at 1,000 (the user, 2026-10-10: "400 FP of aid for 1,000"); the game's hull table,
   about 9,600 an FP, at 3.67M for a day ("thats too much"). An open contract follows the price
   both ways (`ThreatAidMissionIntel.advanceImpl`). The convoy draws on the player's **built navy**
-  (`ThreatHulls.built`, the yards' wartime output over vanilla's patrols), which no colony row
-  shows - the table's FP cell is a colony's standing patrols, the Total row the faction's pool -
-  so 400 FP can sail from a faction whose one Patrol HQ keeps 153; the Aid prompt quotes it.
+  (`ThreatHulls.built`, the yards' wartime output over vanilla's patrols), so 400 FP can sail from
+  a faction whose one Patrol HQ keeps 153. Until 2026-10-11 no colony row showed it - the FP cell
+  was a colony's standing patrols, the Total row the faction's pool, and the user read 153 under a
+  1,392 total as "a bug or something": the column is now Fleet, the built navy sits on the hull
+  port's row (`ThreatFactionView.fleetShare`, the row tooltip says so), the rows sum to the Total,
+  and the Aid prompt quotes the built navy.
 - **Swarm bounty on the X system** (2026-09-24, untested; `ThreatSwarmBountyIntel`). Not a
   contract but vanilla's system bounty pointed at a hive: posted by a mobilised base whose
   siege the Defense Swarms over the target hive system outweigh (docs/strategy-reserves-sieges.md,

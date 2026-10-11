@@ -593,6 +593,10 @@ public class ThreatAidCapacity {
 				lines.add(f[1] + " FP sent from here is out.");
 			}
 			String fid = market.getFactionId();
+			if (market == ThreatHulls.hullPort(fid) && ThreatHulls.built(fid) > 0f) {
+				lines.add("Hull port: the " + Math.round(ThreatHulls.built(fid))
+						+ " FP navy the yards built is kept here and sails from here.");
+			}
 			lines.add(ThreatWarState.displayName(fid) + " pool: " + Math.round(ThreatHulls.freeFP(fid)) + " of "
 					+ Math.round(ThreatHulls.standingFP(fid)) + " FP free; " + Math.round(ThreatHulls.committedFP(fid))
 					+ " out, " + Math.round(ThreatHulls.debt(fid)) + " lost.");
