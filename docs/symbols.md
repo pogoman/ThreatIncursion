@@ -1007,7 +1007,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatColonyUpkeep.take(String key)` :466
 - `ThreatColonyUpkeep.logMonth()` :473 - The month's upkeep line for the census log, and the month's tallies reset.
 
-## ThreatConvoys (2974 lines)
+## ThreatConvoys (2997 lines)
 - `ThreatConvoys.isFrontRun()` :97 - A founding convoy's hive:
 - `ThreatConvoys.isFounding()` :101
 - `ThreatConvoys.fromName()` :106 - The sender:
@@ -1140,17 +1140,17 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatConvoys.withPassage(float[] kit, float ly)` :2596 - A founding's cost with its convoy's passage beside it ({supplies, fuel}):
 - `ThreatConvoys.destinationSystem(Convoy c)` :2603 - The star system a convoy is bound for - its base's, or a founding convoy's site's;
 - `ThreatConvoys.dispatchFounding(MarketAPI payer, PlanetAPI site, StarSystemAPI hive, FactionAPI faction, float[] cost, Random random)` :2622 - A FOUNDING CONVOY:
-- `ThreatConvoys.pollFounding(Convoy c)` :2699 - A founding convoy at sea:
+- `ThreatConvoys.pollFounding(Convoy c)` :2722 - A founding convoy at sea:
 ### resolution (fast poll)
-- `ThreatConvoys.poll()` :2757 - Distance from the destination entity at which a convoy counts as arrived (ThreatReturns.arrived).
-- `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :2801
-- `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :2868 - Whether the convoy's destination still belongs to whom it was sent to.
-- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :2881 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
-- `ThreatConvoys.stripLandedMods()` :2904 - Strips the landing trade modifiers older builds left on markets (rule 5).
-- `ThreatConvoys.lost(Convoy c)` :2916
-- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :2937 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
-- `ThreatConvoys.homeBase(Convoy c)` :2948 - Where a convoy settles:
-- `ThreatConvoys.returnHome(Convoy c)` :2962 - Recalled, timed out, or its destination is gone:
+- `ThreatConvoys.poll()` :2780 - Distance from the destination entity at which a convoy counts as arrived (ThreatReturns.arrived).
+- `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :2824
+- `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :2891 - Whether the convoy's destination still belongs to whom it was sent to.
+- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :2904 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
+- `ThreatConvoys.stripLandedMods()` :2927 - Strips the landing trade modifiers older builds left on markets (rule 5).
+- `ThreatConvoys.lost(Convoy c)` :2939
+- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :2960 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
+- `ThreatConvoys.homeBase(Convoy c)` :2971 - Where a convoy settles:
+- `ThreatConvoys.returnHome(Convoy c)` :2985 - Recalled, timed out, or its destination is gone:
 
 ## ThreatDebugWar (428 lines)
 - `ThreatDebugWar.poll(IncursionManager manager, Random random)` :58 - From IncursionManager.advance, once the incursion has started.

@@ -2648,6 +2648,27 @@ public class ThreatConvoys {
 					+ " (" + (int) ly + " ly)");
 			return null;
 		}
+		// vanilla burns a fleet's hyperspace fuel from its hold (hw156's first run: 60-140 of the kit's 800
+		// fuel gone on 7-11 ly, 14 of 28 kits arrived "short"): the passage billed (ThreatReturns.MEM_FUEL,
+		// payEscort) sails ABOARD on top of the kit, topped up from the payer to vanilla's own estimate of
+		// the trip; what the voyage leaves of it comes home with the hulls as cargo (ThreatReturns)
+		float passageFuel = fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL);
+		float trip = fleet.getLogistics().getFuelCostPerLightYear() * ly * 1.25f;
+		float topUp = 0f;
+		if (passageFuel < trip) topUp = ThreatBases.draw(donor, Commodities.FUEL, trip - passageFuel);
+		if (passageFuel + topUp < trip - 0.5f) {
+			if (topUp > 0f) ThreatBases.deposit(donor, Commodities.FUEL, topUp);
+			if (h.burnt != null) {
+				ThreatReserves.deposit(donor.id(), Commodities.FUEL, h.burnt[0]);
+				ThreatReserves.deposit(donor.id(), Commodities.SUPPLIES, h.burnt[1]);
+			}
+			refundEscort(fleet, donor);
+			Misc.fadeAndExpire(fleet);
+			ThreatIncConfig.logQuiet("fl_tripfuel_" + faction.getId() + site.getId(), "Frontline: " + faction.getId()
+					+ " cannot fuel the trip to " + site.getName() + " from " + payer.getName() + " (" + (int) trip
+					+ " fuel for " + (int) ly + " ly, " + (int) (passageFuel + topUp) + " in hand)");
+			return null;
+		}
 		fleet.setName("Founding Convoy");
 		fleet.setNoFactionInName(false);
 		fleet.getMemoryWithoutUpdate().set(CONVOY_FLAG, true);
@@ -2664,9 +2685,11 @@ public class ThreatConvoys {
 		c.departedTimestamp = Global.getSector().getClock().getTimestamp();
 		c.fuel = loadCommodity(cargo, donor.id(), Commodities.FUEL, cost[1]);
 		c.supplies = loadCommodity(cargo, donor.id(), Commodities.SUPPLIES, cost[0]);
+		cargo.addCommodity(Commodities.FUEL, passageFuel + topUp);   // the passage, beside the kit
 		if (c.fuel < cost[1] - 1f || c.supplies < cost[0] - 1f) {
 			// the stock went under it (canFund read it a tick ago): the kit goes back, nothing sails
 			if (c.fuel > 0f) ThreatReserves.deposit(donor.id(), Commodities.FUEL, c.fuel);
+			if (topUp > 0f) ThreatBases.deposit(donor, Commodities.FUEL, topUp);
 			if (c.supplies > 0f) ThreatReserves.deposit(donor.id(), Commodities.SUPPLIES, c.supplies);
 			refundEscort(fleet, donor);
 			Misc.fadeAndExpire(fleet);
@@ -2682,7 +2705,7 @@ public class ThreatConvoys {
 		all().add(c);
 		ThreatIncConfig.log("Founding convoy dispatched: " + faction.getId() + " " + donor.name() + " -> "
 				+ site.getName() + " in " + site.getStarSystem().getName() + " (" + (int) c.supplies + " supplies, "
-				+ (int) c.fuel + " fuel; escort " + (int) escort + " FP, " + fleet.getFleetData().getNumMembers()
+				+ (int) c.fuel + " fuel + " + (int) (passageFuel + topUp) + " for the trip; escort " + (int) escort + " FP, " + fleet.getFleetData().getNumMembers()
 				+ " ships, " + (int) ly + " ly)");
 		// the hive may come for it - with the swarm's fog on, once it sees it (ThreatRaiders.sweep)
 		if (!ThreatIncConfig.swarmFogOfWar()) ThreatRaiders.consider(c, random);
