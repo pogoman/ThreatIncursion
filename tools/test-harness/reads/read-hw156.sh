@@ -24,7 +24,7 @@ for g in a b c; do
   bstrikes=$(grep -o '^Strike launched from [A-Za-z'"'"' -]* at [A-Za-z'"'"' -]*Forward Base' "$F" | wc -l)
   echo "   bases: founded $founded, destroyed by strike $destroyed, dismantled (all causes) $dismantled; base strikes $bstrikes"
   echo "   ground: landings $(grep -c '^Siege pass (landing)' "$F"), eradicated $(grep -c '^Notice: Hive Eradicated' "$F"); offensive launches $(grep -c '^Offensive launched' "$F"), $(grep '^Offensive launched' "$F" | tail -1 | grep -o 'fund left [0-9]* FP')"
-  echo "   provisions: order draws $(grep -c '^Order draw at' "$F"), upkeep lines $(grep -c '^Fleet upkeep:' "$F") (owed>0: $(grep '^Fleet upkeep:' "$F" | grep -vc ' 0 owed')), restocked $(grep -c '^Restocked at' "$F"), stood down supplies low $(grep -c 'stood down (supplies low' "$F"), sieges short $(grep -c 'Siege Short of Supplies' "$F"), out of supplies $(grep -c 'Siege Out of Supplies' "$F")"
+  echo "   provisions: order draws $(grep -c '^Order draw at' "$F"), upkeep lines $(grep -c '^Fleet upkeep:' "$F") (owed>0: $(grep "^Fleet upkeep:" "$F" | grep -c " owed")), restocked $(grep -c '^Restocked at' "$F"), stood down supplies low $(grep -c 'stood down (supplies low' "$F"), sieges short $(grep -c 'Siege Short of Supplies' "$F"), out of supplies $(grep -c 'Siege Out of Supplies' "$F")"
   echo "   exceptions: $(grep -c . $T/exc-$hw$g.txt 2>/dev/null) lines ($(grep -vc 'ShipHullSpreadsheetLoader' $T/exc-$hw$g.txt 2>/dev/null) real)"
 done
 tail -2 $T/sbs-status.txt

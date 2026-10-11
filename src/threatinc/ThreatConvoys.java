@@ -2692,8 +2692,8 @@ public class ThreatConvoys {
 	/**
 	 * A founding convoy at sea: turns for home with the kit when its site is taken (a colony, an
 	 * outpost, a link of any faction), and on arrival founds the base (ThreatFrontlines.foundLanded) if
-	 * the whole kit is still aboard - a fight at sea that took part of it sends it home short, nothing
-	 * founded (no paper bases). What the founding leaves aboard lands in the new base's depot, and the
+	 * the kit's supplies are still aboard - a fight at sea that took part of it sends it home short, nothing
+	 * founded (no paper bases); the fuel the engine burnt sailing is the passage, not a loss. What the founding leaves aboard lands in the new base's depot, and the
 	 * fleet settles at home as a supply convoy does (ThreatReturns).
 	 */
 	protected static void pollFounding(Convoy c) {
@@ -2712,7 +2712,11 @@ public class ThreatConvoys {
 		float[] cost = ThreatOutposts.linkCost(faction);
 		float supplies = cargo.getCommodityQuantity(Commodities.SUPPLIES);
 		float fuel = cargo.getCommodityQuantity(Commodities.FUEL);
-		if (supplies < cost[0] - 1f || fuel < cost[1] - 1f) {
+		// the kit is short only if the supplies are: vanilla's engine burns the convoy's own fuel as it
+		// sails (55-128 of 800 on 3-9 ly, gs1 2026-10-11), the passage dispatchFounding already paid, and a
+		// fight takes supplies before fuel (trimToHulls) - so fuel alone short is that burn, and the
+		// founding takes what fuel is aboard (kit + passage paid once, not the passage twice)
+		if (supplies < cost[0] - 1f || fuel <= 0f) {
 			ThreatIncConfig.log("Founding convoy arrived short at " + planet.getName() + ": " + c.factionId + " "
 					+ (int) supplies + " of " + (int) cost[0] + " supplies, " + (int) fuel + " of " + (int) cost[1]
 					+ " fuel aboard - turned for home, nothing founded");
