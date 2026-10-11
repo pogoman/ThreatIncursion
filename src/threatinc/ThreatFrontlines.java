@@ -2130,6 +2130,28 @@ public class ThreatFrontlines {
 		return 1;
 	}
 
+	/** The station tier a link of the size grows into: a battlestation from size 3, a star fortress from 4 (startUpgrading at those sizes), an orbital station below. */
+	protected static int tierForSize(int size) {
+		return size >= 4 ? 3 : size >= 3 ? 2 : 1;
+	}
+
+	/**
+	 * The strongest station of the tier the faction flies at any of its markets, in vanilla strength units - what
+	 * the class fields, not a sighting (IncursionManager.sizedDefence); any faction's when it flies none; 0 when none exists.
+	 */
+	protected static float tierStrength(FactionAPI faction, int tier) {
+		float own = 0f, any = 0f;
+		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (m.getStarSystem() == null || m.getPrimaryEntity() == null) continue;
+			Industry station = stationOf(m);
+			if (station == null || stationTier(station) != tier) continue;
+			float str = WarSimScript.getStationStrength(m.getFaction(), m.getStarSystem(), m.getPrimaryEntity());
+			any = Math.max(any, str);
+			if (faction != null && faction.getId().equals(m.getFactionId())) own = Math.max(own, str);
+		}
+		return own > 0f ? own : any;
+	}
+
 	/** The faction's orbital station line: high tech for Tri-Tachyon, low for the rough ones. */
 	protected static String orbitalStationFor(FactionAPI faction) {
 		String id = faction.getId();

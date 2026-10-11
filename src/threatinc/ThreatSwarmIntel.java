@@ -107,6 +107,10 @@ public final class ThreatSwarmIntel {
 		public float reachLY;
 		/** The defence a strike there meets, in vanilla strength units (IncursionManager.liveTargetDefence). */
 		public float defenceFP;
+		/** The world's size when seen (a forward base's growth, IncursionManager.sizedDefence); 0 in a place from before 2026-10-11. */
+		public int size;
+		/** A forward base's station as seen, in vanilla strength units (the part of defenceFP its next tier replaces); 0 for any other world. */
+		public float stationFP;
 		/** {@link ThreatPosture#today()} its figures were last logged (record); 0 for never. */
 		public float loggedDay;
 	}
@@ -612,6 +616,8 @@ public final class ThreatSwarmIntel {
 		s.guardsFP = guardsOf(m);
 		s.reachLY = spreadBase(m) ? IncursionManager.seenSiegeBaseReachLY(m) : 0f;
 		s.defenceFP = IncursionManager.liveTargetDefence(m, memo);
+		s.size = m.getSize();
+		s.stationFP = ThreatFrontlines.isOutpost(m) ? IncursionManager.stationStrength(m) : 0f;
 		return s;
 	}
 
@@ -642,6 +648,8 @@ public final class ThreatSwarmIntel {
 		p.guardsFP = guards;
 		p.reachLY = reach;
 		p.defenceFP = defence;
+		p.size = s.size;
+		p.stationFP = s.stationFP;
 		if (log && (first || was != null)) {
 			p.loggedDay = day;
 			MarketAPI m = Global.getSector().getEconomy().getMarket(s.marketId);

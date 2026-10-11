@@ -3,8 +3,10 @@ package threatinc;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
@@ -47,6 +49,8 @@ public class ThreatOffensive {
 		StarSystemAPI source;
 		/** The fund's bill, the strike's fleet points, its passage fuel (round trip) and days away. */
 		float cost, fp, fuel, days, ly, score, def, expected;
+		/** An approach: a forward base within offensiveApproachLY of its staging hive stands in its system - priced first, whatever the focus. */
+		boolean approach;
 		/** The plan it was priced at: the garrison swarms it takes from which hive systems (spareFP of them). */
 		IncursionManager.StagedPlan plan;
 
@@ -235,7 +239,7 @@ public class ThreatOffensive {
 			if (near == null) continue;
 			float ly = Misc.getDistanceLY(sources.get(near).getLocation(), target.getStarSystem().getLocation());
 			if (nearLY > 0f && ly > nearLY) continue;
-			float def = IncursionManager.targetDefence(target, memo);
+			float def = IncursionManager.sizedDefence(target, memo);
 			if (def >= Float.MAX_VALUE) continue;
 			Prong have = bySystem.get(target.getStarSystem().getId());
 			if (have != null && have.def >= def) continue;
@@ -247,6 +251,22 @@ public class ThreatOffensive {
 			p.def = def;
 			bySystem.put(target.getStarSystem().getId(), p);
 		}
+		// APPROACHES FIRST (the user, 2026-10-11, after hw154a: 61 forward bases within 6-17 ly of its hives sailed 532
+		// siege passes and 35 of 56 landings took the hive, while the one-faction focus left five factions' bases
+		// alone and 14 strikes at bases killed 4): a forward base within offensiveApproachLY of its nearest staging
+		// hive makes its system an approach - priced first, nearest first, whatever the focus and whatever its size
+		float approachLY = ThreatIncConfig.offensiveApproachLY();
+		Set<String> approaches = new HashSet<String>();
+		if (approachLY > 0f) {
+			for (MarketAPI target : candidates) {
+				if (target.getStarSystem() == null || !ThreatFrontlines.isOutpost(target)) continue;
+				String near = nearest(target, sources);
+				if (near != null && Misc.getDistanceLY(sources.get(near).getLocation(), target.getStarSystem().getLocation()) <= approachLY) {
+					approaches.add(target.getStarSystem().getId());
+				}
+			}
+		}
+		for (Prong p : bySystem.values()) p.approach = approaches.contains(p.target.getStarSystem().getId());
 
 		// the means by the deadline, and the campaign they pay
 		float fund = ThreatColonyManager.strikeFund();
@@ -298,7 +318,7 @@ public class ThreatOffensive {
 			focus = chooseFocus(im, bySystem.values(), memo, budget, fuelBudget, suppliesStock, suppliesFlow, margin, losing, pressure);
 			if (focus != null) {
 				for (Prong p : new ArrayList<Prong>(bySystem.values())) {
-					if (focus.equals(p.target.getFactionId()) || (losing && spoiler(p))) continue;
+					if (focus.equals(p.target.getFactionId()) || (losing && spoiler(p)) || p.approach) continue;
 					bySystem.remove(p.target.getStarSystem().getId());
 				}
 			}
@@ -322,10 +342,24 @@ public class ThreatOffensive {
 		}
 		java.util.Collections.sort(prongs, new java.util.Comparator<Prong>() {
 			public int compare(Prong a, Prong b) {
+				// the approaches first, nearest first; then by score
+				if (a.approach != b.approach) return a.approach ? -1 : 1;
+				if (a.approach) return Float.compare(a.ly, b.ly);
 				int c = Float.compare(b.score, a.score);
 				return c != 0 ? c : Float.compare(a.ly, b.ly);
 			}
 		});
+		StringBuilder approachLine = null;
+		for (Prong p : prongs) {
+			if (!p.approach) continue;
+			if (approachLine == null) approachLine = new StringBuilder();
+			else approachLine.append(", ");
+			approachLine.append(p.target.getName()).append(" (").append((int) p.ly).append(" ly, ").append((int) p.fp).append(" FP)");
+		}
+		if (approachLine != null) {
+			ThreatIncConfig.log("Offensive: approaches first - " + approaches.size() + " forward base system(s) within " + (int) approachLY
+					+ " ly priced ahead of the campaign: " + approachLine);
+		}
 
 		// the cheapest bill among the priced prongs the fuel in stock could send AND the supplies away could keep
 		// (the test the campaign puts to its first prong, below): what the chest must cover to read full

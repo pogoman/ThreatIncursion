@@ -167,6 +167,12 @@
 	# siege. 0 = never
 	"threatinc_offensiveHoldLosing": 0.3,
 	"threatinc_offensiveNearLY": 10,
+	# APPROACHES FIRST (the user, 2026-10-11, after hw154a): forward bases within this of
+	# their nearest staging hive are priced first, whatever the focus. 0 = none
+	"threatinc_offensiveApproachLY": 10,
+	# a strike at a forward base under size 4 is sized for the base one size up - the
+	# station it grows into (a battlestation from 3, a star fortress from 4)
+	"threatinc_strikeBaseGrowth": true,
 	# DEFEAT IN DETAIL (the user, 2026-10-07): the campaign masses on one faction - every
 	# known system of the focus - until its worlds answer the strikes with under
 	# BrokenAnswer of what they were sized for, or nothing known of it is left to strike;

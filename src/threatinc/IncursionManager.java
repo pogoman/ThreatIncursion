@@ -5233,7 +5233,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	protected StagedPlan stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target,
 			java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares, float bankLimit, float defGiven) {
 		if (staging == null || source == null || target == null || target.getStarSystem() == null) return null;
-		float def = !Float.isNaN(defGiven) ? defGiven : targetDefence(target, memo);
+		float def = !Float.isNaN(defGiven) ? defGiven : sizedDefence(target, memo);
 		if (def >= Float.MAX_VALUE) return null;
 		if (defOut != null) defOut[0] = def;
 		float need = def * ThreatIncConfig.strikeStagedMargin();
@@ -5408,6 +5408,37 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	protected static float breakOffRatio() {
 		float ratio = ThreatIncConfig.siegeBreakOffRatio();
 		return ratio > 0f ? ratio : 1f;
+	}
+
+	/**
+	 * The defence a strike is SIZED for: targetDefence, and at a forward base under size 4 the base one size up
+	 * (strikeBaseGrowth, the user, 2026-10-11, after hw154a sized 14 base strikes to "defence seen 120-370" and
+	 * killed 4 of 61 bases): sizes 1-2 cost a link nothing and it grows a size every frontlineGrowDays (60) -
+	 * about a strike's passage - and the steps that matter are the station's, a battlestation from size 3 and a
+	 * star fortress from 4 (docs/frontlines.md). The station it grows into is weighed as the strongest of that
+	 * tier its faction flies anywhere (ThreatFrontlines.tierStrength - what the class fields, not a sighting), in
+	 * place of the one the swarm saw there (ThreatSwarmIntel.Place.stationFP); from size 4 as seen.
+	 */
+	public static float sizedDefence(MarketAPI target, java.util.Map<String, float[]> memo) {
+		float def = targetDefence(target, memo);
+		if (def >= Float.MAX_VALUE || target == null || !ThreatIncConfig.strikeBaseGrowth() || !ThreatFrontlines.isOutpost(target)) return def;
+		ThreatSwarmIntel.Place seen = ThreatSwarmIntel.enabled() ? ThreatSwarmIntel.place(target.getId()) : null;
+		int size = seen != null && seen.size > 0 ? seen.size : target.getSize();
+		if (size >= 4) return def;
+		float stationNow = seen != null && seen.size > 0 ? seen.stationFP : stationStrength(target);
+		float grown = ThreatFrontlines.tierStrength(target.getFaction(), ThreatFrontlines.tierForSize(size + 1));
+		if (grown <= stationNow) return def;
+		float sized = def - stationNow + grown;
+		ThreatIncConfig.logQuiet("basegrowth" + target.getId(), "Strike sizing: " + target.getName() + " (size " + size + ") sized as size "
+				+ (size + 1) + " - defence seen " + (int) def + ", its next station " + (int) grown + " for the " + (int) stationNow
+				+ " seen: " + (int) sized);
+		return sized;
+	}
+
+	/** The world's station in vanilla strength units (WarSimScript), 0 with none. */
+	public static float stationStrength(MarketAPI market) {
+		if (market == null || market.getStarSystem() == null || market.getPrimaryEntity() == null) return 0f;
+		return WarSimScript.getStationStrength(market.getFaction(), market.getStarSystem(), market.getPrimaryEntity());
 	}
 
 	/**

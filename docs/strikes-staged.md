@@ -313,3 +313,35 @@ Knob `threatinc_defenceFirst` (true). Read: `tools/test-harness/reads/check-defe
 starvedfund). First run hw142. Not keyed to the trend, so the lag the consolidation showed (400-1,500 days
 after the campaign that decided the game) does not apply; a hive the whole swarm could never hold keeps the
 fund at home until it falls - the posture's triage (`postureTriage`, off since 2026-10-04) is the knob for that.
+
+## 8. Approaches first, and the base one size up (the user, 2026-10-11)
+
+After hw154a (`game-runs-2.md` hw154, the Fable review): 61 forward bases within 6-17 ly of the hives sailed 532
+siege passes; 35 of 56 landings took the hive while the fleet exchange stayed positive and the fund sat at 48-62k.
+The offensive had struck bases 14 times of 49 and killed 4: the one-faction focus (section 5) left five factions'
+bases alone, the spoiler weight (`value`, x(1+9p)) counts only while losing, and each base strike was sized to
+the fog's last sighting ("defence seen 120-370") and met a base reinforced on detection (`ThreatFrontlines.onCallNeed`,
++0 to +28 days after launch; the strike arrives at +35-78). The user: "I would expect the swarm to already attack
+all the closest bases to its world ... proximity bases should be highest priority regardless of size ... the force
+sent should be measured as the FB size + 1 unless it is at size 4 or more."
+
+- **Approaches** (`threatinc_offensiveApproachLY`, 10; `ThreatOffensive.pass`): a forward base within the range of
+  its nearest staging hive makes its system an approach. Approach prongs survive the focus cut (as spoilers do while
+  losing), sort ahead of every other prong (nearest first; the rest by score as before) and so take the campaign's
+  means first. Logged `Offensive: approaches first - N forward base system(s) within 10 ly priced ahead of the
+  campaign: Lilik Forward Base (9 ly, 1240 FP), ...`. The prong's target stays the system's strongest defence
+  (one prong a system); the strike sweeps the system.
+- **The base one size up** (`threatinc_strikeBaseGrowth`, true; `IncursionManager.sizedDefence`, used by the pass
+  and by `stagedPlan` on the day): a forward base under size 4 is sized for the base one size up. A link grows a
+  size every `frontlineGrowDays` (60) while fed - sizes 1-2 cost it nothing - about a strike's passage, and the
+  steps that matter are the station's: a battlestation from size 3, a star fortress from 4 (`frontlines.md`).
+  The defence seen loses the station the swarm saw (`ThreatSwarmIntel.Place.stationFP`, recorded since this build;
+  a place from before it reads the live station) and gains the strongest station of the next tier the base's
+  faction flies anywhere (`ThreatFrontlines.tierStrength` - what the class fields, not a sighting of that base;
+  any faction's when it flies none). Size 4 and up as seen. Logged `Strike sizing: X (size 2) sized as size 3 -
+  defence seen 120, its next station 900 for the 300 seen: 720`, once a month a base.
+
+What it does not do: the on-call guard. A detected strike still draws `strikesWeight x frontlineGarrisonMargin`
+(1.25) of guards to the base if the faction has the hulls, so a bigger strike meets a bigger guard; what bounds the
+guard is the faction's free hulls, not the strike. The trial (hw155, from hw154a's d2538 snapshot) reads base
+strikes sized / met / bases destroyed against hw154a's 14 / 4 of 61.
