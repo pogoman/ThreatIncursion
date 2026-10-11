@@ -2196,11 +2196,11 @@ public class ThreatFrontlines {
 			// pressing a share of its passes
 			if (!ThreatFactionStance.foundsLinks(faction, random)) continue;
 			// no cap: founding is paid from the reserves, and that is the limit
-			planFor(faction, hiveSystems);
+			planFor(faction, hiveSystems, random);
 		}
 	}
 
-	protected static void planFor(FactionAPI faction, List<StarSystemAPI> hiveSystems) {
+	protected static void planFor(FactionAPI faction, List<StarSystemAPI> hiveSystems, Random random) {
 		String fid = faction.getId();
 		Set<String> conn = connected(fid, null);
 		List<MarketAPI> anchors = new ArrayList<MarketAPI>();   // colonies and connected links
@@ -2228,6 +2228,8 @@ public class ThreatFrontlines {
 					break;
 				}
 			}
+			// a founding convoy at sea toward it counts: one kit a hive at a time (2026-10-11)
+			if (!reached && ThreatConvoys.foundingBoundFor(fid, hive.getId())) reached = true;
 			if (reached) continue;
 			for (MarketAPI a : anchors) {
 				Object[] pair = new Object[] { hive, a };
@@ -2275,6 +2277,20 @@ public class ThreatFrontlines {
 					ThreatIncConfig.log("Frontline: " + fid + " cannot pay for a link at "
 							+ site.getName() + " - no base holds the stock");
 					return;
+				}
+				if (ThreatIncConfig.foundingConvoy()) {
+					// FOUNDING CONVOYS (the user, 2026-10-11, "make humans need physical convoys to found a FB
+					// like the threat has a seeding swarm"): the kit sails from the payer in a real convoy and
+					// the base stands up when it lands (ThreatConvoys.dispatchFounding, foundLanded). The guard
+					// is weighed first as before, and nothing is drawn for a site none can guard
+					if (ThreatIncConfig.frontlineGarrisonEnabled() && garrisonBase(faction, site) == null) {
+						ThreatIncConfig.logQuiet("fl_cannotguard_" + fid, "Frontline: " + fid
+								+ " cannot garrison a link at " + site.getName() + " - " + noGarrisonWhy);
+						unguardable.add(site.getId());
+						continue;
+					}
+					ThreatConvoys.dispatchFounding(payer, site, hive, faction, ThreatOutposts.linkCost(faction), random);
+					return;   // sailed, or logged why not (no hulls, or the passage would eat the kit)
 				}
 				// the founding is paid before the garrison is weighed: its voyage
 				// check reads the pool the founding draws from - the structures it
@@ -2329,6 +2345,7 @@ public class ThreatFrontlines {
 			if (!siteSystemOk(faction, sys)) continue;
 			for (PlanetAPI planet : sys.getPlanets()) {
 				if (!ThreatOutposts.eligible(planet) || hostsLink(planet)) continue;
+				if (ThreatConvoys.foundingBoundTo(planet.getId())) continue;   // a kit is already at sea to it
 				best = planet;
 				bestLeft = left;
 				break;
@@ -2409,6 +2426,23 @@ public class ThreatFrontlines {
 			if (isOutpost(m)) return true;
 		}
 		return false;
+	}
+
+	/**
+	 * A founding convoy's kit has landed (ThreatConvoys.pollFounding): founds the link and sends its
+	 * garrison from the base that can pay the voyage, as the on-the-spot founding did; with none now (the
+	 * war moved while it sailed) the link stands unguarded and the log says so.
+	 */
+	public static MarketAPI foundLanded(FactionAPI faction, PlanetAPI site, StarSystemAPI hive, String payerName) {
+		if (faction == null || site == null) return null;
+		MarketAPI link = found(faction, site, hive);
+		ThreatIncConfig.log("Frontline: the kit for " + link.getName() + " landed from " + payerName);
+		if (ThreatIncConfig.frontlineGarrisonEnabled()) {
+			MarketAPI guardBase = garrisonBase(faction, site);
+			if (guardBase != null) sendGarrison(find(link), link, guardBase);
+			else ThreatIncConfig.log("Frontline: " + link.getName() + " stands unguarded - " + noGarrisonWhy);
+		}
+		return link;
 	}
 
 	/** Founds a size-1 link on a station over the planet. */

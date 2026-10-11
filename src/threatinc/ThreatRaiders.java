@@ -144,12 +144,13 @@ public class ThreatRaiders {
 		// either end may be an outpost (a front run's or a return's, or a hand
 		// order to the player's)
 		ThreatBases.Base from = ThreatBases.of(convoy.fromMarketId);
-		ThreatBases.Base to = ThreatBases.of(convoy.toMarketId);
-		if (from == null || to == null || from.starSystem() == null || to.starSystem() == null) {
+		// a base's system, or a founding convoy's site's (2026-10-11)
+		StarSystemAPI toSystem = ThreatConvoys.destinationSystem(convoy);
+		if (from == null || toSystem == null || from.starSystem() == null) {
 			return;
 		}
 		Vector2f a = from.starSystem().getLocation();
-		Vector2f b = to.starSystem().getLocation();
+		Vector2f b = toSystem.getLocation();
 		Vector2f mid = new Vector2f((a.x + b.x) / 2f, (a.y + b.y) / 2f);
 		// billed reach (ThreatReach): a hive that reaches the route's middle
 		// before the convoy does - half the route, at the one speed the board

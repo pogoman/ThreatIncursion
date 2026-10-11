@@ -390,9 +390,10 @@ public class ThreatSimDump {
 		for (ThreatConvoys.Convoy c : ThreatConvoys.all()) {
 			try {
 				if (c.fleet == null || !c.fleet.isAlive()) continue;
-				String to = systemOf(c.toMarketId);
-				JSONObject j = fleet(c.factionId, "CONVOY", c.fleet.getFleetPoints(), systemOf(c.fromMarketId), to,
-						c.toMarketId, etaDays(c.fleet, to));
+				StarSystemAPI dest = ThreatConvoys.destinationSystem(c);
+				String to = dest != null ? dest.getId() : "";
+				JSONObject j = fleet(c.factionId, c.isFounding() ? "FOUNDING" : "CONVOY", c.fleet.getFleetPoints(), systemOf(c.fromMarketId), to,
+						c.isFounding() ? c.siteId : c.toMarketId, etaDays(c.fleet, to));
 				j.put("marines", finite(c.marines));
 				j.put("armaments", finite(c.armaments));
 				j.put("fuel", finite(c.fuel));

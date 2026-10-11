@@ -15,6 +15,7 @@ import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.FleetAssignment;
 import com.fs.starfarer.api.campaign.SectorEntityToken;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
+import com.fs.starfarer.api.campaign.PlanetAPI;
 import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.fleets.FleetFactoryV3;
@@ -85,9 +86,20 @@ public class ThreatConvoys {
 		 * Transient - the planner reads it the tick it sails; null otherwise.
 		 */
 		public transient float[] sailing;
+		/**
+		 * A FOUNDING CONVOY (2026-10-11): the planet it founds a forward base over on arrival, carrying
+		 * the base's kit (dispatchFounding, pollFounding). Null for every other convoy.
+		 */
+		public String siteId;
+		/** A founding convoy's hive: the found Threat system the base is built toward. */
+		public String hiveSystemId;
 
 		public boolean isFrontRun() {
 			return frontMarketId != null;
+		}
+
+		public boolean isFounding() {
+			return siteId != null;
 		}
 
 		/** The sender: a colony, or - for a front run out of one - an outpost. */
@@ -97,6 +109,10 @@ public class ThreatConvoys {
 
 		/** The destination: a colony, a hive world (front run), or an outpost. */
 		public String toName() {
+			if (siteId != null) {
+				SectorEntityToken site = Global.getSector().getEntityById(siteId);
+				return (site != null ? site.getName() : siteId) + " (founding)";
+			}
 			MarketAPI m = Global.getSector().getEconomy().getMarket(toMarketId);
 			if (m != null) return m.getName();
 			// a hive world a siege destroyed has left the economy; its planet has not
@@ -2550,6 +2566,177 @@ public class ThreatConvoys {
 	}
 
 	// ------------------------------------------------------------------
+	// founding convoys (the user, 2026-10-11: "make humans need physical convoys to found a FB like
+	// the threat has a seeding swarm")
+	// ------------------------------------------------------------------
+
+	/** Whether a founding convoy of the faction is at sea toward this hive system (ThreatFrontlines.planFor counts it as reaching the hive). */
+	public static boolean foundingBoundFor(String factionId, String hiveSystemId) {
+		if (hiveSystemId == null || factionId == null) return false;
+		for (Convoy c : all()) {
+			if (c.isFounding() && hiveSystemId.equals(c.hiveSystemId) && factionId.equals(c.factionId)) return true;
+		}
+		return false;
+	}
+
+	/** Whether any founding convoy is at sea to this planet (ThreatFrontlines.pickSite passes it over). */
+	public static boolean foundingBoundTo(String siteId) {
+		if (siteId == null) return false;
+		for (Convoy c : all()) {
+			if (c.isFounding() && siteId.equals(c.siteId)) return true;
+		}
+		return false;
+	}
+
+	/** The star system a convoy is bound for - its base's, or a founding convoy's site's; null when gone. */
+	public static StarSystemAPI destinationSystem(Convoy c) {
+		if (c == null) return null;
+		if (c.isFounding()) {
+			SectorEntityToken site = Global.getSector().getEntityById(c.siteId);
+			return site != null ? site.getStarSystem() : null;
+		}
+		ThreatBases.Base to = ThreatBases.of(c.toMarketId);
+		return to != null ? to.starSystem() : null;
+	}
+
+	/**
+	 * A FOUNDING CONVOY: a forward base's kit (ThreatOutposts.linkCost - 1,500 supplies + 800 fuel and
+	 * the supplies of the structures it opens with) sails from the paying base to the site in a real
+	 * convoy, built and escorted as a supply convoy is (buildHulls, payEscort), and the base is founded
+	 * when it arrives with the whole kit aboard (pollFounding); lost at sea, the kit is lost, as a
+	 * Seeding Swarm's is. The passage is paid from the stock beside the kit: a payer that cannot pay it
+	 * without eating into the kit sends nothing (a base founded short of its kit would be a paper
+	 * base), and nothing is drawn. Null when nothing sailed.
+	 */
+	public static Convoy dispatchFounding(MarketAPI payer, PlanetAPI site, StarSystemAPI hive, FactionAPI faction,
+			float[] cost, Random random) {
+		ThreatBases.Base donor = ThreatBases.of(payer);
+		if (donor == null || site == null || faction == null || cost == null) return null;
+		StarSystemAPI system = donor.starSystem();
+		SectorEntityToken from = donor.entity();
+		if (system == null || from == null || site.getStarSystem() == null) return null;
+		float[] load = { 0f, 0f, cost[1], cost[0] };
+		float ly = Misc.getDistanceLY(donor.hyperLoc(), site.getLocationInHyperspace());
+		Hulls h = buildHulls(donor, faction, load, load, ly, true, false, true, random);
+		if (h == null) return null;
+		CampaignFleetAPI fleet = h.fleet;
+		float escort = builtEscort(h);
+		system.addEntity(fleet);
+		fleet.setLocation(from.getLocation().x, from.getLocation().y);
+		burn(h, payEscort(fleet, donor, escort, ly, h.ask));
+		if (h.ask[2] < cost[1] || h.ask[3] < cost[0]) {
+			// the passage would come out of the kit: put back what it burnt and stay home
+			if (h.burnt != null) {
+				ThreatReserves.deposit(donor.id(), Commodities.FUEL, h.burnt[0]);
+				ThreatReserves.deposit(donor.id(), Commodities.SUPPLIES, h.burnt[1]);
+			}
+			refundEscort(fleet, donor);
+			Misc.fadeAndExpire(fleet);
+			ThreatIncConfig.logQuiet("fl_passage_" + faction.getId(), "Frontline: " + faction.getId()
+					+ " cannot pay the passage to " + site.getName() + " beside the kit at " + payer.getName()
+					+ " (" + (int) ly + " ly)");
+			return null;
+		}
+		fleet.setName("Founding Convoy");
+		fleet.setNoFactionInName(false);
+		fleet.getMemoryWithoutUpdate().set(CONVOY_FLAG, true);
+		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_TRADE_FLEET, true);
+		fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_LOW_REP_IMPACT, true);
+
+		CargoAPI cargo = fleet.getCargo();
+		Convoy c = new Convoy();
+		c.fleet = fleet;
+		c.factionId = faction.getId();
+		c.fromMarketId = donor.id();
+		c.siteId = site.getId();
+		c.hiveSystemId = hive != null ? hive.getId() : null;
+		c.departedTimestamp = Global.getSector().getClock().getTimestamp();
+		c.fuel = loadCommodity(cargo, donor.id(), Commodities.FUEL, cost[1]);
+		c.supplies = loadCommodity(cargo, donor.id(), Commodities.SUPPLIES, cost[0]);
+		if (c.fuel < cost[1] - 1f || c.supplies < cost[0] - 1f) {
+			// the stock went under it (canFund read it a tick ago): the kit goes back, nothing sails
+			if (c.fuel > 0f) ThreatReserves.deposit(donor.id(), Commodities.FUEL, c.fuel);
+			if (c.supplies > 0f) ThreatReserves.deposit(donor.id(), Commodities.SUPPLIES, c.supplies);
+			refundEscort(fleet, donor);
+			Misc.fadeAndExpire(fleet);
+			ThreatIncConfig.log("Frontline: " + faction.getId() + " loaded " + (int) c.supplies + " of " + (int) cost[0]
+					+ " supplies for a base at " + site.getName() + " from " + payer.getName() + " - unloaded, nothing sails");
+			return null;
+		}
+
+		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, site, 1000f,
+				"founding a forward base at " + site.getName());
+		fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, from, 1000f,
+				"returning to " + donor.name());
+		all().add(c);
+		ThreatIncConfig.log("Founding convoy dispatched: " + faction.getId() + " " + donor.name() + " -> "
+				+ site.getName() + " in " + site.getStarSystem().getName() + " (" + (int) c.supplies + " supplies, "
+				+ (int) c.fuel + " fuel; escort " + (int) escort + " FP, " + fleet.getFleetData().getNumMembers()
+				+ " ships, " + (int) ly + " ly)");
+		// the hive may come for it - with the swarm's fog on, once it sees it (ThreatRaiders.sweep)
+		if (!ThreatIncConfig.swarmFogOfWar()) ThreatRaiders.consider(c, random);
+		return c;
+	}
+
+	/**
+	 * A founding convoy at sea: turns for home with the kit when its site is taken (a colony, an
+	 * outpost, a link of any faction), and on arrival founds the base (ThreatFrontlines.foundLanded) if
+	 * the whole kit is still aboard - a fight at sea that took part of it sends it home short, nothing
+	 * founded (no paper bases). What the founding leaves aboard lands in the new base's depot, and the
+	 * fleet settles at home as a supply convoy does (ThreatReturns).
+	 */
+	protected static void pollFounding(Convoy c) {
+		CampaignFleetAPI fleet = c.fleet;
+		SectorEntityToken site = Global.getSector().getEntityById(c.siteId);
+		PlanetAPI planet = site instanceof PlanetAPI ? (PlanetAPI) site : null;
+		FactionAPI faction = Global.getSector().getFaction(c.factionId);
+		if (planet == null || faction == null || !ThreatOutposts.eligible(planet) || ThreatFrontlines.hostsLink(planet)) {
+			ThreatIncConfig.log("Founding convoy turned back: " + c.factionId + " " + c.fromName() + " -> "
+					+ c.toName() + ", the site is taken");
+			returnHome(c);
+			return;
+		}
+		if (!ThreatReturns.onLeg(fleet, planet, "founding a forward base at " + planet.getName())) return;
+		CargoAPI cargo = fleet.getCargo();
+		float[] cost = ThreatOutposts.linkCost(faction);
+		float supplies = cargo.getCommodityQuantity(Commodities.SUPPLIES);
+		float fuel = cargo.getCommodityQuantity(Commodities.FUEL);
+		if (supplies < cost[0] - 1f || fuel < cost[1] - 1f) {
+			ThreatIncConfig.log("Founding convoy arrived short at " + planet.getName() + ": " + c.factionId + " "
+					+ (int) supplies + " of " + (int) cost[0] + " supplies, " + (int) fuel + " of " + (int) cost[1]
+					+ " fuel aboard - turned for home, nothing founded");
+			returnHome(c);
+			return;
+		}
+		cargo.removeCommodity(Commodities.SUPPLIES, Math.min(supplies, cost[0]));
+		cargo.removeCommodity(Commodities.FUEL, Math.min(fuel, cost[1]));
+		all().remove(c);
+		StarSystemAPI hive = null;
+		if (c.hiveSystemId != null) {
+			for (StarSystemAPI s : Global.getSector().getStarSystems()) {
+				if (c.hiveSystemId.equals(s.getId())) {
+					hive = s;
+					break;
+				}
+			}
+		}
+		MarketAPI link = ThreatFrontlines.foundLanded(faction, planet, hive, c.fromName());
+		if (link != null) {
+			float leftS = cargo.getCommodityQuantity(Commodities.SUPPLIES);
+			float leftF = cargo.getCommodityQuantity(Commodities.FUEL);
+			if (leftS > 0f) cargo.removeCommodity(Commodities.SUPPLIES, leftS);
+			if (leftF > 0f) cargo.removeCommodity(Commodities.FUEL, leftF);
+			ThreatReserves.deposit(link.getId(), Commodities.SUPPLIES, leftS);
+			ThreatReserves.deposit(link.getId(), Commodities.FUEL, leftF);
+		}
+		ThreatBases.Base home = homeBase(c);
+		if (home == null || !ThreatReturns.sendHome(fleet, c.factionId, home.id())) {
+			fleet.clearAssignments();
+			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION_AND_DESPAWN, planet, 1000f, "standing down");
+		}
+	}
+
+	// ------------------------------------------------------------------
 	// resolution (fast poll)
 	// ------------------------------------------------------------------
 
@@ -2578,6 +2765,10 @@ public class ThreatConvoys {
 			trimToHulls(c);
 			if (c.isFrontRun()) {
 				pollFrontRun(c);
+				continue;
+			}
+			if (c.isFounding()) {
+				pollFounding(c);
 				continue;
 			}
 			ThreatBases.Base base = ThreatBases.of(c.toMarketId);
@@ -2718,12 +2909,12 @@ public class ThreatConvoys {
 		if (faction != null && faction.isPlayerFaction()) {
 			n.line("Your supply convoy from %s to %s", c.fromName(), c.toName());
 		} else {
-			n.line("%s supply convoy from %s to %s",
+			n.line("%s " + (c.isFounding() ? "founding" : "supply") + " convoy from %s to %s",
 					faction != null ? ThreatNotice.faction(faction) : ThreatNotice.gray(c.factionId),
 					c.fromName(), c.toName());
 		}
-		ThreatColonyManager.announce(n.line("Lost with its cargo"));
-		ThreatIncConfig.log("Convoy lost: " + c.factionId + " " + c.fromName() + " -> " + c.toName());
+		ThreatColonyManager.announce(n.line(c.isFounding() ? "Lost with the base's kit" : "Lost with its cargo"));
+		ThreatIncConfig.log((c.isFounding() ? "Founding convoy lost: " : "Convoy lost: ") + c.factionId + " " + c.fromName() + " -> " + c.toName());
 	}
 
 	/**

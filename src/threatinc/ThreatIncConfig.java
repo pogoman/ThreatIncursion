@@ -202,6 +202,8 @@ public class ThreatIncConfig {
 	public static float offensiveApproachLY() { return fd("threatinc_offensiveApproachLY", 10f); }
 	/** A strike at a forward base under size 4 is sized for the base one size up - the station it grows into (the user, 2026-10-11). */
 	public static boolean strikeBaseGrowth() { return b("threatinc_strikeBaseGrowth", true); }
+	/** A forward base's kit sails to the site in a real convoy and the base is founded when it lands (ThreatConvoys.dispatchFounding, 2026-10-11); off, it is paid and stands up on the spot. */
+	public static boolean foundingConvoy() { return b("threatinc_foundingConvoy", true); }
 	/** DEFEAT IN DETAIL (the user, 2026-10-07): a campaign masses on one faction - every known system of the focus - until its worlds answer the strikes with under offensiveBrokenAnswer of what they were sized for, or nothing known of it is left to strike; then the next (ThreatOffensive.chooseFocus). Off: every known target at once. */
 	public static boolean offensiveFocus() { return b("threatinc_offensiveFocus", true); }
 	/** The focus is broken when the faction's worlds met the swarm's last strikes with under this share of what they were sized for (ThreatSwarmIntel.answerShare). */

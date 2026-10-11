@@ -81,6 +81,25 @@ standing are kept up, paid, guarded and pruned with it off. One link per pass:
   if no garrison can be had. Upkeep: size upkeep (`ThreatColonyUpkeep`, the
   hive's table, from size 3) and its garrison's supplies (`payUpkeep`); the
   structures themselves cost nothing to keep (user, 2026-10-01: not now).
+- **Founding convoy (the user, 2026-10-11: "make humans need physical convoys to found a FB like the
+  threat has a seeding swarm"; knob `foundingConvoy`, default on).** The kit no longer stands up on
+  the spot: `ThreatConvoys.dispatchFounding` builds a real convoy at the payer (`buildHulls`, escorted
+  and its passage paid as a supply convoy's - from the stock beside the kit; a payer that could only
+  pay the passage out of the kit sends nothing), loads the whole kit and sails it to the site.
+  `pollFounding` turns it home with the kit if the site is taken meanwhile (another faction's link,
+  a hive, a colony), and on arrival founds the link (`ThreatFrontlines.foundLanded`) only with the
+  whole kit aboard - a fight at sea that took part of it sends it home short, nothing founded. Lost at
+  sea, the kit is lost (notice "Convoy Lost ... the base's kit"). The garrison is weighed before the
+  convoy sails (an unguardable site is passed over, as before) and sent when the kit lands; with no
+  base able to pay the voyage by then the link stands unguarded and the log says so. One kit a hive at
+  a time: a founding convoy at sea toward a hive counts as reaching it (`foundingBoundFor`), and a
+  planet with a kit at sea to it is passed over by every faction (`foundingBoundTo`). The swarm sees
+  and raids it as any convoy (`ThreatRaiders`, `destinationSystem`). Log: `Founding convoy dispatched:
+  <faction> <payer> -> <site> in <system> (S supplies, F fuel; escort E FP, N ships, L ly)`, `Frontline:
+  the kit for X landed from <payer>`, `Founding convoy lost / turned back / arrived short`,
+  `Frontline: <faction> cannot pay the passage to X beside the kit at <payer>`. Why: hw155 read
+  (2026-10-11) - 58-67 bases founded a game by instant pooled payment, ~6 per base the swarm killed;
+  the Seeding Swarm sails and can be met, the human founding could not be.
 - **Stance:** a consolidating faction founds no link, a pressing one on
   `stanceSecondaryShare` of its passes (`ThreatFactionStance.foundsLinks`).
 - **Target:** the nearest found live hive that none of the faction's bases or

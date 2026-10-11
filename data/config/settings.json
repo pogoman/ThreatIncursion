@@ -173,6 +173,10 @@
 	# a strike at a forward base under size 4 is sized for the base one size up - the
 	# station it grows into (a battlestation from 3, a star fortress from 4)
 	"threatinc_strikeBaseGrowth": true,
+	# FOUNDING CONVOYS (the user, 2026-10-11): a forward base's kit sails from the paying base
+	# to the site in a real convoy and the base is founded when it lands with the whole kit;
+	# lost at sea, the kit is lost. false: paid and stood up on the spot, as before
+	"threatinc_foundingConvoy": true,
 	# DEFEAT IN DETAIL (the user, 2026-10-07): the campaign masses on one faction - every
 	# known system of the focus - until its worlds answer the strikes with under
 	# BrokenAnswer of what they were sized for, or nothing known of it is left to strike;
