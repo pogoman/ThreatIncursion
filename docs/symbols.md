@@ -2850,39 +2850,39 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :86
 - `ThreatNoticeClickDialog.getContext()` :90
 
-## ThreatOffensive (982 lines)
+## ThreatOffensive (993 lines)
 - `ThreatOffensive.startDay()` :122 - The campaign's start (the last launch), or NaN for none - never -1:
 - `ThreatOffensive.setStartDay(float day)` :127
-- `ThreatOffensive.cheapestProngCost()` :136 - The fund's bill of the cheapest prong the last pass priced whose passage the fuel in stock pays, or 0 for none:
-- `ThreatOffensive.setCheapestProngCost(float cost)` :141
-- `ThreatOffensive.pass(IncursionManager im)` :146 - The monthly pass:
-- `ThreatOffensive.compare(Prong a, Prong b)` :319
-- `ThreatOffensive.compare(Prong a, Prong b)` :385
-- `ThreatOffensive.compare(Prong a, Prong b)` :467
-- `ThreatOffensive.price(IncursionManager im, Prong p, Map<String, float[]> memo, Integer nAtFaction, Spares spares)` :561 - Prices the prong for the answer it expects:
-- `ThreatOffensive.value(Prong p, boolean losing, float pressure, float margin)` :579 - What the prong is worth to the campaign:
-- `ThreatOffensive.spoiler(Prong p)` :587 - A forward base, or a base staging against a hive:
-- `ThreatOffensive.price(Prong p)` :595 - The prong's price:
+- `ThreatOffensive.cheapestProngCost()` :137 - The fund's bill of the cheapest prong the last pass priced whose passage the fuel in stock pays and whose supplies away the free stock and the spare keep (2026-10-11, hw151c), or 0 for none:
+- `ThreatOffensive.setCheapestProngCost(float cost)` :142
+- `ThreatOffensive.pass(IncursionManager im)` :147 - The monthly pass:
+- `ThreatOffensive.compare(Prong a, Prong b)` :320
+- `ThreatOffensive.compare(Prong a, Prong b)` :396
+- `ThreatOffensive.compare(Prong a, Prong b)` :478
+- `ThreatOffensive.price(IncursionManager im, Prong p, Map<String, float[]> memo, Integer nAtFaction, Spares spares)` :572 - Prices the prong for the answer it expects:
+- `ThreatOffensive.value(Prong p, boolean losing, float pressure, float margin)` :590 - What the prong is worth to the campaign:
+- `ThreatOffensive.spoiler(Prong p)` :598 - A forward base, or a base staging against a hive:
+- `ThreatOffensive.price(Prong p)` :606 - The prong's price:
 ### DEFEAT IN DETAIL - the faction the campaigns mass on (the user, 2026-10-07)
-- `ThreatOffensive.focus()` :606 - The faction the campaigns mass on (offensiveFocus), or null for none yet.
-- `ThreatOffensive.chooseFocus(IncursionManager im, Collection<Prong> all, Map<String, float[]> memo, float budget, float fuelBudget, float suppliesStock, float suppliesFlow, float margin, boolean losing, float pressure)` :620 - The faction this pass's campaign masses on:
-- `ThreatOffensive.compare(Prong a, Prong b)` :650
+- `ThreatOffensive.focus()` :617 - The faction the campaigns mass on (offensiveFocus), or null for none yet.
+- `ThreatOffensive.chooseFocus(IncursionManager im, Collection<Prong> all, Map<String, float[]> memo, float budget, float fuelBudget, float suppliesStock, float suppliesFlow, float margin, boolean losing, float pressure)` :631 - The faction this pass's campaign masses on:
+- `ThreatOffensive.compare(Prong a, Prong b)` :661
 ### the garrison swarms a prong will take, set aside until it sails
-- `ThreatOffensive.heldSuppliesPerMonth()` :724 - Supplies a month the held prongs will burn once they sail (the schedule's 9th field) - for the Reach log.
-- `ThreatOffensive.heldSupplies()` :729 - Supplies the held prongs' trips hold out of the stock until their days (the schedule's 10th field).
-- `ThreatOffensive.heldField(int index)` :733
-- `ThreatOffensive.earmark(IncursionManager.StagedPlan plan)` :751 - "systemId:fleets;..." - the garrison fleets the plan takes from each hive system.
-- `ThreatOffensive.addEarmark(Map<String, Integer> to, IncursionManager.StagedPlan plan, int sign)` :780 - Adds (sign 1) or takes back (-1) the plan's garrison fleets in a hive system id -> fleets map.
-- `ThreatOffensive.earmarked(String systemId)` :797 - Garrison fleets of a hive system's spare that the held prongs will take on their day (and, during a launch, the prongs yet to sail):
-- `ThreatOffensive.arrival(float ly)` :818 - Days from launch to the target:
+- `ThreatOffensive.heldSuppliesPerMonth()` :735 - Supplies a month the held prongs will burn once they sail (the schedule's 9th field) - for the Reach log.
+- `ThreatOffensive.heldSupplies()` :740 - Supplies the held prongs' trips hold out of the stock until their days (the schedule's 10th field).
+- `ThreatOffensive.heldField(int index)` :744
+- `ThreatOffensive.earmark(IncursionManager.StagedPlan plan)` :762 - "systemId:fleets;..." - the garrison fleets the plan takes from each hive system.
+- `ThreatOffensive.addEarmark(Map<String, Integer> to, IncursionManager.StagedPlan plan, int sign)` :791 - Adds (sign 1) or takes back (-1) the plan's garrison fleets in a hive system id -> fleets map.
+- `ThreatOffensive.earmarked(String systemId)` :808 - Garrison fleets of a hive system's spare that the held prongs will take on their day (and, during a launch, the prongs yet to sail):
+- `ThreatOffensive.arrival(float ly)` :829 - Days from launch to the target:
 ### the prongs held back to arrive with the farthest
-- `ThreatOffensive.schedule()` :830 - "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth|tripSupplies|pricedFP" per prong waiting its day (earmark:
-- `ThreatOffensive.scheduled(MarketAPI market)` :839 - Whether a prong at the world waits its day (no second strike is planned at it).
-- `ThreatOffensive.payDefence(float keep)` :855 - DEFENCE FIRST (the user, 2026-10-10, C1, after hw141b):
-- `ThreatOffensive.compare(MarketAPI a, MarketAPI b)` :868
-- `ThreatOffensive.poll()` :882 - Daily (IncursionManager.advance):
-- `ThreatOffensive.nearest(MarketAPI target, Map<String, StarSystemAPI> sources)` :959 - The hive system nearest the target that can stage a strike, or null.
-- `ThreatOffensive.names(List<Prong> prongs, int max)` :973
+- `ThreatOffensive.schedule()` :841 - "targetId|stagingId|sourceSystemId|launchDay|cost|fuel|expected|earmark|suppliesPerMonth|tripSupplies|pricedFP" per prong waiting its day (earmark:
+- `ThreatOffensive.scheduled(MarketAPI market)` :850 - Whether a prong at the world waits its day (no second strike is planned at it).
+- `ThreatOffensive.payDefence(float keep)` :866 - DEFENCE FIRST (the user, 2026-10-10, C1, after hw141b):
+- `ThreatOffensive.compare(MarketAPI a, MarketAPI b)` :879
+- `ThreatOffensive.poll()` :893 - Daily (IncursionManager.advance):
+- `ThreatOffensive.nearest(MarketAPI target, Map<String, StarSystemAPI> sources)` :970 - The hive system nearest the target that can stage a strike, or null.
+- `ThreatOffensive.names(List<Prong> prongs, int max)` :984
 
 ## ThreatOmens (236 lines)
 - `ThreatOmens.reset()` :97 - RESET War:
@@ -3741,7 +3741,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSoftening.advanceSingle(ThreatFleetOrders.Order o)` :1681 - A hunt with no force:
 - `ThreatSoftening.isHive(MarketAPI market)` :1730
 
-## ThreatStance (721 lines)
+## ThreatStance (722 lines)
 - `ThreatStance.addForce(String factionId, String systemId, float fp)` :85 - System id -> the factions staging against it, attacking it or guarding forward bases facing it.
 - `ThreatStance.addSystem(String systemId, float held, float pressure, int mode, boolean attacked)` :98
 - `ThreatStance.enabled()` :121
@@ -3767,13 +3767,13 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatStance.hivePeak(float day)` :361 - The most live colonies the hive held over the losing window (hiveTrend's history).
 ### the pass
 - `ThreatStance.evaluate(Pass p, float day, float sumHeld)` :388 - Reads the stance from a posture pass:
-- `ThreatStance.compare(String a, String b)` :540
-- `ThreatStance.facing(Map<String, Set<String>> facing, String factionId)` :608
-- `ThreatStance.weakTargets(String systemId, List<MarketAPI> known, Map<String, float[]> defMemo, Map<String, Float> ratios, float pressNeed)` :626 - The best weak world a hive system could strike:
-- `ThreatStance.strength(int points)` :689
-- `ThreatStance.heaviestRow(MarketAPI market)` :694 - The staging colony's costliest size-table row:
-- `ThreatStance.expeditionSize(int[] row)` :708 - The expedition size a swarm of this row re-embodies as (ThreatColonyManager.expeditionSizeFor's tiers).
-- `ThreatStance.monthLine()` :717 - The monthly line's figure:
+- `ThreatStance.compare(String a, String b)` :541
+- `ThreatStance.facing(Map<String, Set<String>> facing, String factionId)` :609
+- `ThreatStance.weakTargets(String systemId, List<MarketAPI> known, Map<String, float[]> defMemo, Map<String, Float> ratios, float pressNeed)` :627 - The best weak world a hive system could strike:
+- `ThreatStance.strength(int points)` :690
+- `ThreatStance.heaviestRow(MarketAPI market)` :695 - The staging colony's costliest size-table row:
+- `ThreatStance.expeditionSize(int[] row)` :709 - The expedition size a swarm of this row re-embodies as (ThreatColonyManager.expeditionSizeFor's tiers).
+- `ThreatStance.monthLine()` :718 - The monthly line's figure:
 
 ## ThreatStrikeFGI (1986 lines)
 - `ThreatStrikeFGI.ThreatStrikeFGI(GenericRaidParams params)` :35 - A raid fleet-group whose fleets are authentic Threat swarms (built via the vanilla threat fleet factory) instead of doctrine-generated faction fleets.

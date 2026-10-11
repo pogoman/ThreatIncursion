@@ -129,8 +129,9 @@ public class ThreatOffensive {
 	}
 
 	/**
-	 * The fund's bill of the cheapest prong the last pass priced whose passage the fuel in stock pays, or 0 for
-	 * none: what a full chest must be able to field (ThreatStance.evaluate - hw70, 2026-10-08: a 4-hive fund read full at 1,800 FP with the
+	 * The fund's bill of the cheapest prong the last pass priced whose passage the fuel in stock pays and whose
+	 * supplies away the free stock and the spare keep (2026-10-11, hw151c), or 0 for none: what a full chest must be
+	 * able to field (ThreatStance.evaluate - hw70, 2026-10-08: a 4-hive fund read full at 1,800 FP with the
 	 * cheapest prong at 8,244, and the chest's feeding held the spread until the war).
 	 */
 	public static float cheapestProngCost() {
@@ -322,11 +323,21 @@ public class ThreatOffensive {
 			}
 		});
 
-		// the cheapest bill among the priced prongs the fuel in stock could send: what the chest must cover to read
-		// full (ThreatStance.evaluate) - a prong the fuel cannot sail is out on the fuel, not on the fund (ck4: the
-		// fund read full at 8,700 against a 7,968 FP prong with the fuel at 0, the plants not yet built)
+		// the cheapest bill among the priced prongs the fuel in stock could send AND the supplies away could keep
+		// (the test the campaign puts to its first prong, below): what the chest must cover to read full
+		// (ThreatStance.evaluate) - a prong the fuel cannot sail is out on the fuel, not on the fund (ck4: the
+		// fund read full at 8,700 against a 7,968 FP prong with the fuel at 0, the plants not yet built), and one
+		// the supplies away cannot keep is out on the supplies (hw151c, 2026-10-11: the fund read full at 89-137k FP
+		// for 1,200 days while every prong was "out on the supplies away" - 39 passes paid nothing - so the chest fed
+		// the fleets before expansion and gated every founding on a supplies surplus a stock of 0-16k never had;
+		// a fund that fields nothing is poor, not full - the user's rule after hw70)
 		float cheapest = 0f;
-		for (Prong p : prongs) if (p.cost > 0f && p.fuel <= fuelStock && (cheapest <= 0f || p.cost < cheapest)) cheapest = p.cost;
+		for (Prong p : prongs) {
+			if (p.cost <= 0f || p.fuel > fuelStock) continue;
+			float need = p.supplies();
+			if (need > 0f && need > suppliesStock + suppliesFlow * Math.max(1f, p.days) / 30f) continue;
+			if (cheapest <= 0f || p.cost < cheapest) cheapest = p.cost;
+		}
 		setCheapestProngCost(cheapest);
 		float supplies = 0f, suppliesShort = 0f;
 		Prong firstOut = null;
