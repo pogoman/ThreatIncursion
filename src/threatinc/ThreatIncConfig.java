@@ -671,6 +671,10 @@ public class ThreatIncConfig {
 	/** Supplies an expedition draws per fleet point. */
 	public static float expeditionSuppliesPerPoint() { return f("threatinc_expeditionSuppliesPerPoint"); }
 	public static boolean fleetUpkeep()            { return b("threatinc_fleetUpkeep", true); }
+	/** Days of its ships' maintenance a task force, hunt or raid carries at launch beside the voyage (docs/fleet-provisions.md). */
+	public static float sortieStayDays()           { return f("threatinc_sortieStayDays"); }
+	/** Whether a fleet low on supplies restocks from a base of its faction in its system before turning home. */
+	public static boolean fleetResupply()          { return b("threatinc_fleetResupply", true); }
 	/** Troop-transport share of a cargo-carrying expedition fleet (vanilla composition multiplier). */
 	public static float expeditionTransportMult() { return f("threatinc_expeditionTransportMult"); }
 	/** Whether mobilised factions run supply convoys between their colonies. */

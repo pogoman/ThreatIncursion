@@ -689,6 +689,12 @@ public class ThreatScouts {
 		float fuel = ThreatReserves.drawSpendable(home, Commodities.FUEL, cost[0]);
 		float supplies = ThreatReserves.drawSpendable(home, Commodities.SUPPLIES, cost[1]);
 		ThreatReturns.provision(fleet, home.getId(), fuel, supplies);
+		// the hold (docs/fleet-provisions.md): its ships' maintenance for the route out and home
+		if (ThreatIncConfig.fleetUpkeep()) {
+			float holdWant = ThreatFrontlines.maintenancePerMonth(fleet)
+					* ThreatReach.daysAway(routeLY(home, route), true, 0f) / 30f;
+			ThreatReturns.setHold(fleet, ThreatReserves.drawSpendable(home, Commodities.SUPPLIES, holdWant));
+		}
 		fleet.addEventListener(new ScoutReturn());
 
 		Scout s = new Scout();

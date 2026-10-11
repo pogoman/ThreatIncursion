@@ -137,6 +137,40 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	}
 
 	/**
+	 * The HOLD (docs/fleet-provisions.md): the ships' supplies for the whole
+	 * trip, drawn at launch beside the deposit and burned by ThreatUpkeep at
+	 * the expedition's fighting strength, spawned or not; restocked at a base
+	 * of its faction in the target system; what is left comes home with the
+	 * hulls (refundOnReturn). 0 on sieges from before 2026-10-11.
+	 */
+	protected float hold = 0f;
+	protected float holdFull = 0f;
+
+	public void setHold(float supplies) {
+		hold = Math.max(0f, supplies);
+		holdFull = hold;
+	}
+
+	public float hold() {
+		return hold;
+	}
+
+	public float holdFull() {
+		return holdFull;
+	}
+
+	/** Takes up to {@code amount} from the hold; returns what was taken. */
+	public float burnHold(float amount) {
+		float taken = Math.max(0f, Math.min(hold, amount));
+		hold -= taken;
+		return taken;
+	}
+
+	public void stockHold(float amount) {
+		if (amount > 0f) hold += amount;
+	}
+
+	/**
 	 * ORDNANCE (docs/suppression-balance.md v2, 2026-09-28: fuel is ordnance):
 	 * fuel drawn at launch for the bombardment itself, apart from the passage
 	 * (IncursionManager.expeditionFuel). Every siege slice burns
@@ -353,6 +387,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		// survived: the hull share of its supplies in full, ThreatReturns.suppliesBack)
 		boolean player = getFaction() != null && getFaction().isPlayerFaction();
 		float supplies = ThreatReturns.suppliesBack(suppliesDrawn, keep, player);
+		// the hold rides the ships: what is left comes home with the hulls that survived
+		supplies += hold * keep;
+		hold = 0f;
+		holdFull = 0f;
 		if (base != null) {
 			ThreatReserves.deposit(base.getId(), Commodities.MARINES, marines);
 			ThreatReserves.deposit(base.getId(), Commodities.HAND_WEAPONS, armaments);
@@ -777,25 +815,42 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * as a fleet whose ships go unsupplied cannot hold an orbit.
 	 */
 	public void outOfSupplies(float owed) {
-		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
-		com.fs.starfarer.api.campaign.StarSystemAPI system = null;
+		turnsHomeForSupplies("Siege Out of Supplies", "Its fleets owe %s supplies", owed,
+				" supplies of upkeep owed, turns home");
+	}
+
+	/**
+	 * Its hold is below what the leg home burns and no base in the system
+	 * can restock it (ThreatUpkeep, docs/fleet-provisions.md): the siege turns
+	 * home on what it has left.
+	 */
+	public void shortOfSupplies(float aboard) {
+		turnsHomeForSupplies("Siege Short of Supplies", "Its fleets have %s supplies left", aboard,
+				" supplies aboard, turns home");
+	}
+
+	/** The target system the expedition sails against, or null. */
+	public com.fs.starfarer.api.campaign.StarSystemAPI targetSystem() {
 		if (getParams() != null && getParams().raidParams != null) {
 			for (MarketAPI target : getParams().raidParams.allowedTargets) {
-				if (target != null && target.getStarSystem() != null) {
-					system = target.getStarSystem();
-					break;
-				}
+				if (target != null && target.getStarSystem() != null) return target.getStarSystem();
 			}
 		}
+		return null;
+	}
+
+	protected void turnsHomeForSupplies(String title, String figureLine, float figure, String logTail) {
+		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
+		com.fs.starfarer.api.campaign.StarSystemAPI system = targetSystem();
 		setFailedButNotDefeated(true);
 		abort();
-		ThreatNotice.titled("Siege Out of Supplies").icon(faction)
+		ThreatNotice.titled(title).icon(faction)
 				.line("%s siege of the %s turns home", ThreatNotice.faction(faction),
 						system != null ? system.getNameWithLowercaseTypeShort() : "hive")
-				.line("Its fleets owe %s supplies", ThreatNotice.hl(Misc.getWithDGS((int) owed)))
+				.line(figureLine, ThreatNotice.hl(Misc.getWithDGS((int) figure)))
 				.send();
-		ThreatIncConfig.log("Siege out of supplies (" + faction.getId() + ", "
-				+ (system != null ? system.getName() : "?") + "): " + (int) owed + " supplies of upkeep owed, turns home");
+		ThreatIncConfig.log(title + " (" + faction.getId() + ", "
+				+ (system != null ? system.getName() : "?") + "): " + (int) figure + logTail);
 	}
 
 	/** What is aboard: a daily siege still abstract books its toll as route damage, not off the cargo, so the survivors' share. */

@@ -204,7 +204,7 @@ recall. `retarget` leaves fleets already on their tracked leg home alone.
 **The hull share (2026-09-29, closed economy).** For an NPC fleet, `ThreatReturns.suppliesBack`
 splits the supplies drawn at launch: `returnHullShare` (0.8) of it paid for the hulls and
 comes back in full at the surviving strength (what comes home intact is not destroyed); only
-the rest is the voyage, refunded at `returnRefundMult`. Losses are the real cost of a sortie.
+the rest is the voyage, refunded at `returnRefundMult`. Losses are the real cost of a sortie. Since 2026-10-11 the voyage is the HOLD a fleet carries and burns (`docs/fleet-provisions.md`): what is left of it comes home x surviving strength, and the player's deposit follows the NPC rule.
 The player's fleets keep the old rule for supplies, all of it at `returnRefundMult`.
 **Fleet upkeep (2026-09-30, `ThreatUpkeep`, `fleetUpkeep` default on).** Every NPC fleet the layer
 provisioned (`ThreatReturns.MEM_HOME`: hunts, sieges, sorties, convoys) burns its ships' vanilla

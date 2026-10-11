@@ -366,7 +366,9 @@ public class ThreatSoftening {
 	protected static float payableFP(MarketAPI base, StarSystemAPI system, List<MarketAPI> donors) {
 		float dist = Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation());
 		float fuelPerPoint = dist * ThreatIncConfig.expeditionFuelPerPointLY();
-		float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
+		// the deposit and the hold a hunting fleet carries (docs/fleet-provisions.md)
+		float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint()
+				+ ThreatReach.sortieHoldPerPoint(base.getFactionId(), dist);
 		// a price of 0 leaves its stock unread, as before the lift: the pools are read only where they bind
 		float fuel = fuelPerPoint > 0f ? huntSpendable(base, system, Commodities.FUEL)
 				+ donorsSpendable(donors, base, Commodities.FUEL) : 0f;

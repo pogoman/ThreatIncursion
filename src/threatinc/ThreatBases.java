@@ -94,6 +94,25 @@ public class ThreatBases {
 		return of(ThreatOutposts.byStockId(id));
 	}
 
+	/**
+	 * The faction's bases in a star system - what a fleet there can restock
+	 * from (docs/fleet-provisions.md): every colony of the faction in it with
+	 * a depot (ThreatReserves.hasDepot: a Waystation - a forward base has one
+	 * from founding) and its outpost there, if any. Empty in hyperspace.
+	 */
+	public static java.util.List<Base> inSystem(String factionId, StarSystemAPI system) {
+		java.util.List<Base> result = new java.util.ArrayList<Base>();
+		if (factionId == null || system == null) return result;
+		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
+			if (!factionId.equals(m.getFactionId()) || m.getStarSystem() != system) continue;
+			if (!ThreatReserves.hasDepot(m)) continue;
+			result.add(new Base(m, null));
+		}
+		Base outpost = of(ThreatOutposts.outpostIn(factionId, system));
+		if (outpost != null) result.add(outpost);
+		return result;
+	}
+
 	/** Whether this reserve key belongs to an outpost rather than a colony. */
 	public static boolean isOutpostId(String id) {
 		Base b = of(id);

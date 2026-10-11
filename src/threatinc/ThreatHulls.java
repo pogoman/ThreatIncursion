@@ -480,10 +480,13 @@ public class ThreatHulls {
 		float days = at instanceof Long ? Global.getSector().getClock().getElapsedDaysSince((Long) at) : 0f;
 		Global.getSector().getPersistentData().put(KEY_UPKEEP_AT, now);
 		if (days <= 0f) return;
+		// the player's built navy pays too (2026-10-11, docs/fleet-provisions.md):
+		// from the colony stockpiles, hulls lost when they go unpaid, as every navy
+		List<String> ids = new ArrayList<String>(ThreatWarState.warFactionIds());
 		FactionAPI player = Global.getSector().getPlayerFaction();
-		for (String factionId : new ArrayList<String>(ThreatWarState.warFactionIds())) {
+		if (player != null && !ids.contains(player.getId()) && built(player.getId()) > 0f) ids.add(player.getId());
+		for (String factionId : ids) {
 			if (Factions.THREAT.equals(factionId)) continue;
-			if (player != null && factionId.equals(player.getId())) continue;
 			maintain(factionId, days);
 		}
 	}
@@ -528,6 +531,15 @@ public class ThreatHulls {
 		ThreatIncConfig.logQuiet("hull_starve_" + factionId, "Hulls: " + ThreatWarState.displayName(factionId)
 				+ " cannot keep up " + (int) fp + " FP (" + (int) unpaid + " supplies unpaid): " + (int) built(factionId)
 				+ " built, " + (int) debt(factionId) + " lost, " + (int) freeFP(factionId) + " free");
+		FactionAPI player = Global.getSector().getPlayerFaction();
+		if (player != null && factionId.equals(player.getId()) && fp >= 1f) {
+			ThreatNotice.titled("Navy Unpaid").bad().icon(player)
+					.line("%s fleet points struck off the navy", ThreatNotice.hl(Misc.getWithDGS(Math.round(fp))))
+					.line("%s supplies unpaid; %s fleet points built remain",
+							ThreatNotice.hl(Misc.getWithDGS(Math.round(unpaid))),
+							ThreatNotice.hl(Misc.getWithDGS(Math.round(built(factionId)))))
+					.send();
+		}
 		return fp;
 	}
 

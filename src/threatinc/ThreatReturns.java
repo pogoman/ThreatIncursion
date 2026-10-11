@@ -52,6 +52,61 @@ public class ThreatReturns {
 	public static final String MEM_SUPPLIES = "$threatinc_drawSupplies";
 	public static final String MEM_FP0 = "$threatinc_fpAtLaunch";
 	/**
+	 * The HOLD (docs/fleet-provisions.md): supplies the fleet carries for its
+	 * voyage and stay, burned by ThreatUpkeep as it goes and restocked from a
+	 * base in its system; and what it sailed with, the figure a restock fills
+	 * back up to. What is left comes home with the surviving hulls (settle).
+	 */
+	public static final String MEM_HOLD = "$threatinc_hold";
+	public static final String MEM_HOLD_FULL = "$threatinc_holdFull";
+
+	/** Loads the fleet's hold: {@code supplies} aboard, and that much as its full load. */
+	public static void setHold(CampaignFleetAPI fleet, float supplies) {
+		if (fleet == null) return;
+		fleet.getMemoryWithoutUpdate().set(MEM_HOLD, Math.max(0f, supplies));
+		fleet.getMemoryWithoutUpdate().set(MEM_HOLD_FULL, Math.max(0f, supplies));
+	}
+
+	/** Supplies aboard for the voyage. */
+	public static float hold(CampaignFleetAPI fleet) {
+		return fleet == null ? 0f : Math.max(0f, fleet.getMemoryWithoutUpdate().getFloat(MEM_HOLD));
+	}
+
+	/**
+	 * What the hold was loaded to at launch - a restock fills it back to this.
+	 * A fleet never loaded (a save from before the hold, a fleet restationed
+	 * at home after settling) fills to sortieStayDays of its own maintenance.
+	 */
+	public static float holdFull(CampaignFleetAPI fleet) {
+		if (fleet == null) return 0f;
+		float full = fleet.getMemoryWithoutUpdate().getFloat(MEM_HOLD_FULL);
+		if (full > 0f) return full;
+		return ThreatFrontlines.maintenancePerMonth(fleet) * ThreatIncConfig.sortieStayDays() / 30f;
+	}
+
+	/** Takes up to {@code amount} from the hold; returns what was taken. */
+	public static float burnHold(CampaignFleetAPI fleet, float amount) {
+		if (fleet == null || amount <= 0f) return 0f;
+		float have = hold(fleet);
+		float taken = Math.min(have, amount);
+		fleet.getMemoryWithoutUpdate().set(MEM_HOLD, have - taken);
+		return taken;
+	}
+
+	/** Adds {@code amount} to the hold (a restock). */
+	public static void stockHold(CampaignFleetAPI fleet, float amount) {
+		if (fleet == null || amount <= 0f) return;
+		fleet.getMemoryWithoutUpdate().set(MEM_HOLD, hold(fleet) + amount);
+	}
+
+	/** Days the hold keeps the fleet's ships, at their maintenance; a large figure for a fleet that burns nothing. */
+	public static float holdDays(CampaignFleetAPI fleet) {
+		if (fleet == null) return 0f;
+		float perMonth = ThreatFrontlines.maintenancePerMonth(fleet);
+		if (perMonth <= 0f) return Float.MAX_VALUE;
+		return hold(fleet) / perMonth * 30f;
+	}
+	/**
 	 * Fleet memory: the strength a fleet already out was given a new order at
 	 * ({@link #rebaseline}), for that order's stand-down rule. Kept apart from
 	 * MEM_FP0, which stays what {@link #settle} scales the refund by: a fleet
@@ -92,14 +147,18 @@ public class ThreatReturns {
 
 	/**
 	 * Supplies refunded of {@code drawn} at surviving strength {@code health}:
-	 * the hull share at 1.0, the voyage share at returnRefundMult. The
-	 * player's fleets keep the old rule, all of it at returnRefundMult.
+	 * the hull share at 1.0, the voyage share at returnRefundMult. With fleet
+	 * upkeep on the voyage is the hold's business (docs/fleet-provisions.md),
+	 * so the whole deposit comes back with the hulls - the player's fleets
+	 * included since 2026-10-11 (they kept the old rule, all of it at
+	 * returnRefundMult, while they alone paid no voyage); {@code player} is
+	 * kept for the callers.
 	 */
 	public static float suppliesBack(float drawn, float health, boolean player) {
 		if (drawn <= 0f) return 0f;
 		float h = Math.max(0f, Math.min(1f, health));
 		float mult = ThreatIncConfig.returnRefundMult();
-		if (player) return drawn * mult * h;
+		if (player && !ThreatUpkeep.enabled()) return drawn * mult * h;
 		// paying its ships' upkeep while out (ThreatUpkeep), its voyage is paid
 		// for: the whole draw comes back with the hulls
 		float hull = ThreatUpkeep.enabled() ? 1f : hullShare();
@@ -422,6 +481,12 @@ public class ThreatReturns {
 		// an NPC fleet's hulls come home at what survived (suppliesBack)
 		float drawSupplies = suppliesBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_SUPPLIES), health(fleet),
 				playerFleet(fleet));
+		// the hold rides the ships: what is left of it comes home with the hulls
+		// that survived, the lost hulls' share went down with them (docs/fleet-provisions.md)
+		drawSupplies += hold(fleet) * Math.max(0f, Math.min(1f, health(fleet)));
+		// emptied, not forgotten: a fleet kept on station here restocks from this
+		// base to holdFull's default from now on (ThreatUpkeep.restockFleet)
+		setHold(fleet, 0f);
 
 		ThreatBases.deposit(home, Commodities.MARINES, marines);
 		// veterans lifted off a front season the garrison they land in, and are

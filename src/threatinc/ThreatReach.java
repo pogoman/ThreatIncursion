@@ -193,6 +193,22 @@ public class ThreatReach {
 	}
 
 	/**
+	 * The HOLD a sortie of {@code fp} carries to a world {@code ly} out
+	 * (docs/fleet-provisions.md): its ships' supplies for the voyage there and
+	 * back and sortieStayDays there, at the faction's measured rate. 0 with
+	 * fleet upkeep off - then the deposit alone sails, as before.
+	 */
+	public static float sortieHold(String factionId, float fp, float ly) {
+		if (!ThreatIncConfig.fleetUpkeep()) return 0f;
+		return tripSupplies(factionId, fp, daysAway(ly, true, ThreatIncConfig.sortieStayDays()));
+	}
+
+	/** {@link #sortieHold} per difficulty point: what the payable gates add to the deposit. */
+	public static float sortieHoldPerPoint(String factionId, float ly) {
+		return sortieHold(factionId, threatinc.rules.ReachRules.FP_PER_POINT, ly);
+	}
+
+	/**
 	 * How far a faction's base can send its smallest siege flotilla
 	 * (SMALLEST_FLOTILLA_POINTS) on what it and the donors pooling into it
 	 * hold: the passage's fuel (IncursionManager.expeditionPassage's

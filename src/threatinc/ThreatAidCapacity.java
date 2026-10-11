@@ -602,6 +602,11 @@ public class ThreatAidCapacity {
 					+ " out, " + Math.round(ThreatHulls.debt(fid)) + " lost.");
 			lines.add("Shipyards add " + Math.round(ThreatHulls.productionFP(fid)) + " fleet points a month, losses first; "
 					+ Math.round(ThreatHulls.built(fid)) + " fleet points built so far.");
+			if (ThreatIncConfig.standingUpkeepMult() > 0f && ThreatHulls.builtAtHome(fid) > 0f) {
+				lines.add("Navy upkeep: " + Math.round(ThreatHulls.standingUpkeepPerMonth(fid))
+						+ " supplies a month for the " + Math.round(ThreatHulls.builtAtHome(fid))
+						+ " fleet points at home.");
+			}
 			return lines;
 		}
 		if (f[0] <= 0) {

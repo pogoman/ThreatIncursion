@@ -838,6 +838,11 @@
 	"threatinc_expeditionFuelPerPointLY": 10,
 	"threatinc_expeditionSuppliesPerPoint": 30,
 	"threatinc_fleetUpkeep": true,
+	# carried provisions (docs/fleet-provisions.md): beside the deposit a fleet sails with its
+	# ships' maintenance for the voyage and this many days there, burns it as it goes, restocks
+	# from a base of its faction in its system when low, and turns home when nothing can restock it
+	"threatinc_sortieStayDays": 90,
+	"threatinc_fleetResupply": true,
 	# the Threat pays passage too, in fuel its own fuel plants bank (ThreatFuel):
 	# a fleet sent across hyperspace draws the rate above, one way for a fleet that
 	# stays (a Seeding Swarm, a reinforcement), both ways for a strike or a raid
@@ -1159,7 +1164,7 @@
 	# an NPC fleet's supplies paid for its hulls as well as its voyage: this
 	# share comes back in full x surviving strength, so only losses and the
 	# voyage cost anything (closed economy, 2026-09-29); the rest follows
-	# returnRefundMult. Your own fleets keep the rule above.
+	# returnRefundMult. Your own fleets too since 2026-10-11 (they pay the voyage from their hold).
 	"threatinc_returnHullShare": 0.8,
 
 	# The hull pool (docs/hull-pool.md; the user, 2026-10-06): one hull economy

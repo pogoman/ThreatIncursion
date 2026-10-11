@@ -676,7 +676,8 @@ public class ThreatFleetOrders {
 		float dist = base.getStarSystem() == null ? 0f
 				: Misc.getDistanceLY(base.getStarSystem().getLocation(), target.getLocationInHyperspace());
 		return new float[] {points * dist * ThreatIncConfig.expeditionFuelPerPointLY(),
-				points * ThreatIncConfig.expeditionSuppliesPerPoint()};
+				points * (ThreatIncConfig.expeditionSuppliesPerPoint()
+						+ ThreatReach.sortieHoldPerPoint(base.getFactionId(), dist))};
 	}
 
 	/** Whether the base's depot can provision one more relief fleet: expeditionMinProvisionsFraction of its wants, a siege's own rule. */
@@ -889,31 +890,55 @@ public class ThreatFleetOrders {
 			return fleet;
 		}
 
-		float[] wants = sortieWants(base, fp, destinationHyper);
-		float fuel, supplies;
+		float ly = sortieLY(base, destinationHyper);
+		float[] wants = threatinc.rules.ReachRules.voyageCost(fp, ly, ThreatIncConfig.expeditionFuelPerPointLY(),
+				ThreatIncConfig.expeditionSuppliesPerPoint());
+		// the HOLD (docs/fleet-provisions.md): the ships actually built, their
+		// maintenance for the voyage there and back and sortieStayDays there
+		float holdWant = ThreatIncConfig.fleetUpkeep() ? ThreatFrontlines.maintenancePerMonth(fleet)
+				* ThreatReach.daysAway(ly, true, ThreatIncConfig.sortieStayDays()) / 30f : 0f;
+		float fuel, supplies, hold;
 		if (hunted != null) {
 			fuel = ThreatSoftening.drawHunt(base, hunted, Commodities.FUEL, wants[0]);
 			supplies = ThreatSoftening.drawHunt(base, hunted, Commodities.SUPPLIES, wants[1]);
+			hold = ThreatSoftening.drawHunt(base, hunted, Commodities.SUPPLIES, holdWant);
 		} else if (spareOnly) {
 			fuel = ThreatReserves.drawSpendable(base, Commodities.FUEL, wants[0]);
 			supplies = ThreatReserves.drawSpendable(base, Commodities.SUPPLIES, wants[1]);
+			hold = ThreatReserves.drawSpendable(base, Commodities.SUPPLIES, holdWant);
 		} else {
 			fuel = ThreatReserves.drawAbove(base, Commodities.FUEL, wants[0]);
 			supplies = ThreatReserves.drawAbove(base, Commodities.SUPPLIES, wants[1]);
+			hold = ThreatReserves.drawAbove(base, Commodities.SUPPLIES, holdWant);
 		}
-		ThreatIncConfig.log("Order draw at " + base.getName() + ": " + (int) fuel + " fuel, "
-				+ (int) supplies + " supplies");
 		// remembered on the fleet so the return leg can refund what survives
 		ThreatReturns.provision(fleet, base.getId(), fuel, supplies);
+		ThreatReturns.setHold(fleet, hold);
+		ThreatIncConfig.log("Order draw at " + base.getName() + ": " + (int) fuel + " fuel, "
+				+ (int) supplies + " supplies, hold " + (int) hold + " of " + (int) holdWant + " supplies ("
+				+ (int) ThreatReturns.holdDays(fleet) + " days)");
 		return fleet;
 	}
 
-	/** {fuel, supplies} a task force of {@code fp} combat points from the base to {@code destinationHyper} is provisioned with. */
+	/**
+	 * {fuel, supplies} a task force of {@code fp} combat points from the base to
+	 * {@code destinationHyper} is provisioned with: the voyage's fuel, the hull
+	 * deposit, and the HOLD - its ships' supplies for the voyage and sortieStayDays
+	 * there (ThreatReach.sortieHold, docs/fleet-provisions.md).
+	 */
 	protected static float[] sortieWants(MarketAPI base, float fp, Vector2f destinationHyper) {
 		float dist = base.getStarSystem() == null || destinationHyper == null ? 0f
 				: Misc.getDistanceLY(base.getStarSystem().getLocation(), destinationHyper);
-		return threatinc.rules.ReachRules.voyageCost(fp, dist, ThreatIncConfig.expeditionFuelPerPointLY(),
+		float[] wants = threatinc.rules.ReachRules.voyageCost(fp, dist, ThreatIncConfig.expeditionFuelPerPointLY(),
 				ThreatIncConfig.expeditionSuppliesPerPoint());
+		wants[1] += ThreatReach.sortieHold(base.getFactionId(), fp, dist);
+		return wants;
+	}
+
+	/** Light-years from the base to a destination; 0 with either unknown. */
+	protected static float sortieLY(MarketAPI base, Vector2f destinationHyper) {
+		return base == null || base.getStarSystem() == null || destinationHyper == null ? 0f
+				: Misc.getDistanceLY(base.getStarSystem().getLocation(), destinationHyper);
 	}
 
 	/** Combat points the base's spendable stock (ThreatReserves.spendable) can provision a sortie to {@code destinationHyper} for. */

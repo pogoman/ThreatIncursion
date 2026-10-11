@@ -1339,7 +1339,10 @@ public class ThreatFactionView {
 			f.status = o.fleet != null && o.fleet.isAlive()
 					? (o.arrived ? "on station" : "en route") : "lost";
 			f.strength = fleetStrength(o.fleet);
-			f.eta = o.indefinite() ? "-" : (int) Math.ceil(o.daysLeft()) + " d left";
+			// a fleet with no term shows what its hold keeps it out for (docs/fleet-provisions.md)
+			float holdDays = o.fleet != null && ThreatIncConfig.fleetUpkeep() ? ThreatReturns.holdDays(o.fleet) : Float.MAX_VALUE;
+			f.eta = !o.indefinite() ? (int) Math.ceil(o.daysLeft()) + " d left"
+					: holdDays < Float.MAX_VALUE ? (int) Math.floor(holdDays) + " d supplies" : "-";
 			f.rowId = o.fleet;
 			f.recallKey = "order:" + i;
 			rows.add(f);

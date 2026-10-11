@@ -1456,7 +1456,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		boolean pays = ThreatWarState.isAtWar(faction);
 		float dist = Misc.getDistanceLY(baseSystem.getLocation(), hiveSystem.getLocation());
 		float fuelPerPoint = dist * ThreatIncConfig.expeditionFuelPerPointLY();
-		float suppliesPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
+		// the deposit and, beside it, the hold each fleet carries (docs/fleet-provisions.md)
+		float depositPerPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
+		float suppliesPerPoint = depositPerPoint + ThreatReach.sortieHoldPerPoint(faction.getId(), dist);
 		float fuelDrawn = 0f;
 		float suppliesDrawn = 0f;
 
@@ -1530,8 +1532,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 						com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, difficulty * fuelPerPoint);
 				float supplies = ThreatReserves.drawAbove(base,
 						com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES, difficulty * suppliesPerPoint);
-				// each fleet remembers what it cost, for the refund when it comes home
-				ThreatReturns.provision(fleet, base.getId(), fuel, supplies);
+				// each fleet remembers what it cost, for the refund when it comes home:
+				// the deposit first, the rest of the draw is its hold
+				float deposit = Math.min(supplies, difficulty * depositPerPoint);
+				ThreatReturns.provision(fleet, base.getId(), fuel, deposit);
+				ThreatReturns.setHold(fleet, supplies - deposit);
 				// vanilla prunes a fleet to maxShipsInAIFleet: pay only for what was built
 				float share = Math.min(1f, ThreatSoftening.combatFP(fleet) / Math.max(1f, fp));
 				if (share < ThreatSoftening.BUILT_SHORT) {
@@ -3313,13 +3318,19 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// aside for; what is left is the bombardment's ordnance
 			float passage = Math.min(drawn[2], fuelParts[0]);
 			float razing = Math.min(drawn[2] - passage, fuelParts[2]);
-			purge.setProvisions(passage, drawn[3]);
+			// the supplies drawn: the hulls' deposit first, the rest the hold the
+			// expedition carries for its trip (docs/fleet-provisions.md)
+			float perPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
+			int launchPoints = 0;
+			for (Integer size : params.fleetSizes) launchPoints += size;
+			float deposit = Math.min(drawn[3], launchPoints * perPoint);
+			purge.setProvisions(passage, deposit);
+			purge.setHold(drawn[3] - deposit);
 			purge.setOrdnance(drawn[2] - passage - razing, razing);
 			// an NPC siege's supplies paid for its hulls at the estimate: settled
 			// against what vanilla builds when the fleets spawn (ThreatPurgeFGI.settleLedger)
-			float perPoint = ThreatIncConfig.expeditionSuppliesPerPoint();
-			if (!faction.isPlayerFaction() && perPoint > 0f && drawn[3] > 0f) {
-				purge.setLedger(base.getId(), drawn[3] / perPoint * FP_PER_RESPONSE_DIFFICULTY);
+			if (!faction.isPlayerFaction() && perPoint > 0f && deposit > 0f) {
+				purge.setLedger(base.getId(), deposit / perPoint * FP_PER_RESPONSE_DIFFICULTY);
 			}
 		}
 		purge.setRazeWorlds(raze);
@@ -3381,7 +3392,24 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		for (Integer size : fleetSizes) points += size;
 		float[] fuel = expeditionFuel(base, system, targets, fleetSizes, raze, shortLanding);
 		float supplies = points * ThreatIncConfig.expeditionSuppliesPerPoint();
+		// and the HOLD (docs/fleet-provisions.md): the ships' supplies for the whole
+		// trip - what the gate prices (siegeSuppliesPerPoint) is now drawn and carried
+		supplies += expeditionHold(base, base != null ? base.getFaction() : null, system, targets, raze, points);
 		return new float[] {marines, armaments, fuel[0] + fuel[1] + fuel[2], supplies};
+	}
+
+	/**
+	 * The hold a siege of {@code points} from the base carries against the
+	 * system: its ships' supplies over siegeTripDays at its stay there
+	 * (siegeStayDays), the trip part of siegeSuppliesPerPoint. 0 with fleet
+	 * upkeep off or for a faction not billed its reach.
+	 */
+	public static float expeditionHold(MarketAPI base, FactionAPI faction, StarSystemAPI system,
+			java.util.List<MarketAPI> targets, java.util.Set<String> raze, int points) {
+		if (!ThreatIncConfig.fleetUpkeep() || !ThreatReach.factionsBilled() || faction == null || points <= 0) return 0f;
+		float fp = points * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+		float stay = siegeStayDays(landTargets(targets, raze), razeTargets(targets, raze), fp, faction.getId());
+		return ThreatReach.tripSupplies(faction.getId(), fp, siegeTripDays(base, system, stay));
 	}
 
 	/**

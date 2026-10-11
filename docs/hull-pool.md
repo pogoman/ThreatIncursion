@@ -69,7 +69,7 @@ fleets out measured, 0.94 by default) x `standingUpkeepMult` (1) a month. Each m
 share from its reserve above its floor and holds (`ThreatReserves.drawAbove`), then any market of the
 faction above its floor. A hull-month nobody paid is a built hull lost (`starve`: unpaid / rate FP, never
 a debt), and the unpaid is booked as demand for the faction's planner. The month line reads `Hulls: …
-standing upkeep paid X of Y supplies, Z FP starved`. Not the player's faction (its fleets keep the old
+standing upkeep paid X of Y supplies, Z FP starved`. Since 2026-10-11 the player's built navy pays too, with a "Navy Unpaid" notice (`docs/fleet-provisions.md`); before that: not the player's faction (its fleets kept the old
 rule too).
 
 **Supplies-bound growth** (the user, 2026-10-06): the yards bank no built hull the faction's supplies

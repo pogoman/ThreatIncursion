@@ -301,10 +301,10 @@ reaches nothing. Memoised a day per base. The player's worlds keep the fuel radi
   at least a slice's days. The first
   draft billed `siegeOrbitDays` (120), the most it may stay - ~299 supplies a point in h40a,
   where the hive bills its strikes no stay at all (review).
-- **Not reserved.** The trip is paid as it goes (`ThreatUpkeep`), not drawn at launch, so two
-  sieges admitted in one pass can count the same stock, and upkeep draws only what others
-  can spare (`payFromOthers`) where the gate counts the donors' stock above their floors. An
-  over-committed siege runs short and turns home (`outOfSupplies`). Open.
+- **Carried (2026-10-11, was "not reserved").** The trip supplies ARE drawn at launch as the
+  expedition's hold (`IncursionManager.expeditionHold`, `ThreatPurgeFGI.hold`), burned per pass at its
+  fighting strength, restocked from the faction's bases in the target system, and a hold below the
+  leg home with nothing to restock from turns it home (`shortOfSupplies`). `docs/fleet-provisions.md`.
 - **An expedition that never spawns pays too.** `ThreatUpkeep.chargeAbstract`: an
   off-screen siege has no fleet for the upkeep pass to bill, so its sieges sailed for free;
   now its allotment's supplies a month come from its base (then the markets reaching it),
