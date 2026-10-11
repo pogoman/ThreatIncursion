@@ -39,7 +39,9 @@ $star = 'C:\Program Files (x86)\Fractal Softworks\Starsector'
 $core = "$star\starsector-core"; $saves = "$star\saves"; $root = "$saves\_sbs"
 $mod = "$star\mods\ThreatIncursion"; $h = "$mod\tools\test-harness"; $ff = "$h\fastforward"
 $d = if ($env:THREATINC_TEST_OUT) { $env:THREATINC_TEST_OUT } else { Join-Path $env:TEMP "threatinc-tests" }
-$base = if ($Base) { $Base } else { "save_AmaruDugas_2921423183749615243" }
+# -Base "tag=save_X;tag2=save_Y": a pristine new game per tag, each given the new-game prep (2026-10-11, random-seed batches)
+$newOf = @{}; foreach ($kv in ($Base -split ";" | Where-Object { $_ -match "=" })) { $k, $v = $kv.Split("="); $newOf[$k] = $v }
+$base = if ($newOf.Count) { @($newOf.Values)[0] } elseif ($Base) { $Base } else { "save_AmaruDugas_2921423183749615243" }
 # -Bases "tag=save_X;tag2=save_Y": an in-progress save per tag (2026-10-06, old-save compatibility); cloned as it is, no new-game prep
 $baseOf = @{}; foreach ($kv in ($Bases -split ";" | Where-Object { $_ })) { $k, $v = $kv.Split("="); $baseOf[$k] = $v }
 $key = 'HKCU:\Software\JavaSoft\Prefs\com\fs\starfarer'
@@ -121,7 +123,7 @@ $slots = @(@(0, 0), @($rx, 0), @(0, $ry), @($rx, $ry))
 $g = @()
 $i = 0
 foreach ($tag in $Tags) {
-  $b = if ($baseOf[$tag]) { $baseOf[$tag] } else { $base }
+  $b = if ($baseOf[$tag]) { $baseOf[$tag] } elseif ($newOf[$tag]) { $newOf[$tag] } else { $base }
   $inst = "$root\$tag"; $log = "$inst\logs\starsector.log"; $name = "${b}sbs$tag"
   Remove-Item $inst -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item "$saves\$name" -Recurse -Force -ErrorAction SilentlyContinue
@@ -129,7 +131,7 @@ foreach ($tag in $Tags) {
   New-Item -ItemType Directory -Force "$inst\saves", "$inst\logs" | Out-Null
   if (-not (Test-Path "$inst\logs")) { Say "$tag NO FOLDER at $inst"; continue }
   if ($baseOf[$tag]) { powershell -NoProfile -ExecutionPolicy Bypass -File "$ff\clone.ps1" -Base $b -To "sbs$tag" | Out-Null }
-  else { powershell -NoProfile -ExecutionPolicy Bypass -File "$ff\newgame-prep.ps1" -Base $base -To "sbs$tag" | Out-Null }
+  else { powershell -NoProfile -ExecutionPolicy Bypass -File "$ff\newgame-prep.ps1" -Base $b -To "sbs$tag" | Out-Null }
   if (-not (Test-Path "$saves\$name\campaign.xml")) { Say "$tag CLONE FAILED"; continue }
   Move-Item "$saves\$name" "$inst\saves\$name"
   Copy-Item "$saves\common" "$inst\saves\common" -Recurse
