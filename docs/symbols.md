@@ -1974,7 +1974,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundWarCondition.days(float d)` :142
 - `ThreatGroundWarCondition.fmt(float f)` :147
 
-## ThreatHulls (592 lines)
+## ThreatHulls (595 lines)
 - `ThreatHulls.enabled()` :59 - Mean combat points of vanilla's patrol weights (MilitaryBase.getPatrolCombatFP:
 ### vanilla's patrol table, for the hive's own structures
 - `ThreatHulls.patrolTable(int size, int tier)` :74 - The patrols vanilla's MilitaryBase.apply sets for a market of this size under a Patrol HQ (tier 0), a Military Base (1) or a High Command (2), as {light, medium, heavy}.
@@ -2013,13 +2013,13 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatHulls.standingUpkeepPerMonth(String factionId)` :462 - Supplies a month the faction's built hulls at home cost, at #standingRate.
 - `ThreatHulls.maintain()` :476 - Daily:
 - `ThreatHulls.maintain(String factionId, float days)` :494
-- `ThreatHulls.starve(String factionId, float fp, float unpaid)` :527 - Built hulls the faction could not keep up, struck off its navy (never a debt:
+- `ThreatHulls.starve(String factionId, float fp, float unpaid)` :530 - Built hulls the faction could not keep up, struck off its navy (never a debt:
 ### what the pool can pay
-- `ThreatHulls.committedFP(String factionId)` :551 - Fleet points the faction's fleets out hold against the pool (the ledger's live entries).
-- `ThreatHulls.freeFP(String factionId)` :562 - Hulls the faction can send now:
-- `ThreatHulls.cap(MarketAPI base, float payable)` :568 - Caps a reserve's payable fleet points at the faction's free hulls;
-- `ThreatHulls.describe(String factionId)` :574 - One line for a faction:
-- `ThreatHulls.logMonth()` :581 - The month line for the log:
+- `ThreatHulls.committedFP(String factionId)` :554 - Fleet points the faction's fleets out hold against the pool (the ledger's live entries).
+- `ThreatHulls.freeFP(String factionId)` :565 - Hulls the faction can send now:
+- `ThreatHulls.cap(MarketAPI base, float payable)` :571 - Caps a reserve's payable fleet points at the faction's free hulls;
+- `ThreatHulls.describe(String factionId)` :577 - One line for a faction:
+- `ThreatHulls.logMonth()` :584 - The month line for the log:
 
 ## ThreatIncCampaignPlugin (48 lines)
 - `ThreatIncCampaignPlugin.getId()` :21

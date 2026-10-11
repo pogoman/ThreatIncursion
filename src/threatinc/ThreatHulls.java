@@ -496,6 +496,9 @@ public class ThreatHulls {
 		float home = builtAtHome(factionId);
 		if (home <= 0f || rate <= 0f) return;
 		float want = home * rate * days / 30f;
+		// hulls at home eat from the navy's stores at home - any colony's stock
+		// above its floor (the user, 2026-10-11: fine for a garrisoned navy; a fleet
+		// away carries its own hold, ThreatUpkeep)
 		List<MarketAPI> markets = marketsOf(factionId);
 		float standing = 0f;
 		for (MarketAPI m : markets) standing += standingFP(m);
