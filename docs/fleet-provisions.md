@@ -65,6 +65,20 @@ maintenance, which covers the median trip with the voyage on top.
    (105 of 207 "supplies low" stand-downs had 0 aboard). A player task force still always sails.
    Sieges keep their pooled remote payment (`IncursionManager.siegeDonors` / `siegePooled`) - open
    question for the user. Knob `threatinc_stagedLaunch` (true).
+   - **Trim to the paid hold (hw157 first read, 2026-10-11 14:40).** The gate and the planner price the
+     hold per point at the faction's measured supplies per fleet point (`ThreatReach.sortieHold`); the
+     launch wants the built hulls' own maintenance, which came 3-75% higher - every held order in hw157
+     was short on the hold alone, fuel and deposit paid. So: with fuel and deposit covered,
+     `buildTaskForce` leaves the smallest warships home until the hold the base paid feeds the rest, down
+     to `TRIM_FLOOR` (75% of the built points; below it the order is held), refunds their deposit share
+     and the hold the rest do not need, and logs `Order trimmed at <base>: B -> A FP for a hold of H`.
+     The measured rate is now the faction's task forces' (fleets carrying a hold) when any are out, not
+     every homed fleet's (convoys, garrisons). The draw log carries both figures (`N FP of M asked,
+     x supplies/FP/mo vs y measured`) to tell overshoot from rate error.
+   - **A merged fleet keeps every hold.** `ThreatFleetOrders.absorb` merged fuel, supplies and the FP
+     marks but not `MEM_HOLD` / `MEM_HOLD_FULL`: a relief force of several fleets lost the absorbed
+     fleets' holds with them and stood down "supplies low, 0 aboard" over the world it relieved (hw157c,
+     ten times). Fixed the same hour.
 
 Knobs: `threatinc_sortieStayDays` 90, `threatinc_fleetResupply` true, `threatinc_stagedLaunch` true; `fleetUpkeep` off restores
 the flat deposit with no hold. Sections to keep in step: `strategy-hunting-reach.md` "Not reserved"

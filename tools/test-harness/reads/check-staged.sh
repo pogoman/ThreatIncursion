@@ -10,12 +10,12 @@
 # not fill them), `nolaunch0` is informational only.
 check() {
   local g=$1 F=$2
-  local draws zero held stood stood0 restock sailed landed lost founded destroyed hives fund frontline
+  local draws zero held trimmed stood stood0 restock sailed landed lost founded destroyed hives fund frontline
   draws=$(grep -c '^Order draw at' "$F")
   zero=$(grep '^Order draw at' "$F" | grep -c 'hold 0 of [1-9]')
-  held=$(grep -c '^Order held at' "$F")
+  held=$(grep -c "^Order held at" "$F"); trimmed=$(grep -c "^Order trimmed at" "$F")
   stood=$(grep -c 'stood down (supplies low' "$F")
-  stood0=$(grep 'stood down (supplies low' "$F" | grep -c '0 aboard')
+  stood0=$(grep 'stood down (supplies low' "$F" | grep -c ', 0 aboard')
   restock=$(grep -c '^Restocked at' "$F")
   sailed=$(grep -c '^Founding convoy dispatched' "$F")
   landed=$(grep -c '^Frontline: the kit for .* landed' "$F")
@@ -25,7 +25,7 @@ check() {
   hives=$(grep '^Census: threat hives' "$F" | tail -1 | grep -o 'hives [0-9]*' | head -1)
   fund=$(grep '^Offensive launched' "$F" | tail -1 | grep -o 'fund left [0-9]* FP')
   frontline=$(grep -c '^Frontline:' "$F")
-  echo "    staged $TAG$g: order draws $draws (hold 0: $zero), held $held; stood down supplies low $stood (0 aboard $stood0), restocked $restock; founding sailed $sailed, landed $landed, lost $lost; bases founded $founded, destroyed $destroyed; ${hives:-hives ?}; ${fund:-no launch}"
+  echo "    staged $TAG$g: order draws $draws (hold 0: $zero), held $held, trimmed $trimmed; stood down supplies low $stood (0 aboard $stood0), restocked $restock; founding sailed $sailed, landed $landed, lost $lost; bases founded $founded, destroyed $destroyed; ${hives:-hives ?}; ${fund:-no launch}"
   grep '^Order held at' "$F" | tail -1 | cut -c1-200 | sed 's/^/      /'
   [ "$zero" -ge 1 ] && flag $g zerohold "$zero order draws launched with an empty hold"
   [ "$frontline" -ge 50 ] && [ "$held" -ge 30 ] && [ "$draws" -eq 0 ] && flag $g allheld "$held orders held, none drew - bases never staged"

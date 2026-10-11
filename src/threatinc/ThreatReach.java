@@ -172,16 +172,25 @@ public class ThreatReach {
 		factionDay();
 		Float memo = factionPerFP.get(factionId);
 		if (memo != null) return memo;
-		float supplies = 0f, fp = 0f;
+		// the rate of the faction's task forces (the fleets carrying a hold) when any are out - what the hold
+		// is priced for; every homed fleet (convoys, garrisons) otherwise. hw157: priced on all of them the
+		// hold came 3-75% under the warships' own maintenance and every short order was short on it alone
+		float supplies = 0f, fp = 0f, holdSupplies = 0f, holdFP = 0f;
 		for (com.fs.starfarer.api.campaign.LocationAPI loc : Global.getSector().getAllLocations()) {
 			for (CampaignFleetAPI f : loc.getFleets()) {
 				if (f == null || !f.isAlive() || f.isStationMode() || f.isPlayerFleet()) continue;
 				if (f.getFaction() == null || !factionId.equals(f.getFaction().getId())) continue;
 				if (ThreatReturns.homeOf(f) == null) continue;
-				supplies += ThreatFrontlines.maintenancePerMonth(f);
-				fp += f.getFleetPoints();
+				float m = ThreatFrontlines.maintenancePerMonth(f), p = f.getFleetPoints();
+				supplies += m;
+				fp += p;
+				if (f.getMemoryWithoutUpdate().contains(ThreatReturns.MEM_HOLD)) {
+					holdSupplies += m;
+					holdFP += p;
+				}
 			}
 		}
+		if (holdFP > 0f && holdSupplies > 0f) { supplies = holdSupplies; fp = holdFP; }
 		float out = fp > 0f && supplies > 0f ? supplies / fp : DEFAULT_FACTION_SUPPLIES_PER_FP;
 		factionPerFP.put(factionId, out);
 		return out;

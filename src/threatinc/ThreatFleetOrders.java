@@ -789,7 +789,10 @@ public class ThreatFleetOrders {
 			to.getFleetData().addFleetMember(m);
 		}
 		com.fs.starfarer.api.campaign.rules.MemoryAPI a = to.getMemoryWithoutUpdate(), b = from.getMemoryWithoutUpdate();
+		// the holds too (2026-10-11, hw157: a merged relief force lost the absorbed fleets' holds with their
+		// fleet and stood down "supplies low, 0 aboard" over the world it relieved)
 		for (String k : new String[] { ThreatReturns.MEM_FUEL, ThreatReturns.MEM_SUPPLIES, ThreatReturns.MEM_FP0,
+				ThreatReturns.MEM_HOLD, ThreatReturns.MEM_HOLD_FULL,
 				ThreatReturns.MEM_FP_ORDER }) {
 			if (!a.contains(k) && !b.contains(k)) continue;
 			a.set(k, (a.contains(k) ? a.getFloat(k) : 0f) + (b.contains(k) ? b.getFloat(k) : 0f));
@@ -911,6 +914,39 @@ public class ThreatFleetOrders {
 			supplies = ThreatReserves.drawAbove(base, Commodities.SUPPLIES, wants[1]);
 			hold = ThreatReserves.drawAbove(base, Commodities.SUPPLIES, holdWant);
 		}
+		// the gate priced the hold per point at the faction's measured rate (ThreatReach.sortieHold); the
+		// built hulls want their own maintenance, 3-75% more in hw157 - fuel and deposit paid, the fleet
+		// leaves its smallest warships home until the hold the base paid feeds the rest (TRIM_FLOOR)
+		if (ThreatIncConfig.stagedLaunch() && !faction.isPlayerFaction() && hold < holdWant - 0.5f
+				&& fuel >= wants[0] - 0.5f && supplies >= wants[1] - 0.5f) {
+			float days = ThreatReach.daysAway(ly, true, ThreatIncConfig.sortieStayDays());
+			float before = fleet.getFleetPoints(), floor = before * TRIM_FLOOR;
+			java.util.List<com.fs.starfarer.api.fleet.FleetMemberAPI> members = fleet.getFleetData().getMembersListCopy();
+			java.util.Collections.sort(members, new java.util.Comparator<com.fs.starfarer.api.fleet.FleetMemberAPI>() {
+				public int compare(com.fs.starfarer.api.fleet.FleetMemberAPI a, com.fs.starfarer.api.fleet.FleetMemberAPI b) {
+					return Float.compare(a.getFleetPointCost(), b.getFleetPointCost());
+				}
+			});
+			float need = holdWant;
+			for (com.fs.starfarer.api.fleet.FleetMemberAPI m : members) {
+				if (need <= hold + 0.5f) break;
+				if (m.isCivilian() || fleet.getFleetData().getNumMembers() <= 1) continue;
+				if (fleet.getFleetPoints() - m.getFleetPointCost() < floor) break;
+				fleet.getFleetData().removeFleetMember(m);
+				need = ThreatFrontlines.maintenancePerMonth(fleet) * days / 30f;
+			}
+			if (need <= hold + 0.5f && need < holdWant) {
+				float after = fleet.getFleetPoints(), frac = before > 0f ? 1f - after / before : 0f;
+				// the deposit of the hulls staying home, and the hold the rest do not need, go back
+				float fuelBack = fuel * frac, suppliesBack = supplies * frac, holdBack = Math.max(0f, hold - need);
+				if (fuelBack > 0f) ThreatReserves.deposit(base.getId(), Commodities.FUEL, fuelBack);
+				if (suppliesBack + holdBack > 0f) ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, suppliesBack + holdBack);
+				fuel -= fuelBack; supplies -= suppliesBack; hold -= holdBack;
+				ThreatIncConfig.log("Order trimmed at " + base.getName() + ": " + (int) before + " -> " + (int) after
+						+ " FP for a hold of " + (int) need + " (the hulls wanted " + (int) holdWant + ", the base paid " + (int) (hold + holdBack) + ")");
+				holdWant = need;
+			}
+		}
 		// STAGED LAUNCHES (the user, 2026-10-11, after hw156 / gs1: forward bases launched hunting fleets
 		// with an empty hold - "hold 0 of 1545" - that stood down at once, 105 of 207 stand-downs in gs1a):
 		// an NPC fleet sails with its full provisions from this base or stays home; what it drew goes back.
@@ -920,7 +956,7 @@ public class ThreatFleetOrders {
 			if (fuel > 0f) ThreatReserves.deposit(base.getId(), Commodities.FUEL, fuel);
 			if (supplies + hold > 0f) ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, supplies + hold);
 			Misc.fadeAndExpire(fleet);
-			ThreatIncConfig.logQuiet("order_unstaged_" + base.getId(), "Order held at " + base.getName() + ": "
+			ThreatIncConfig.log("Order held at " + base.getName() + ": "
 					+ (int) fuel + " of " + (int) wants[0] + " fuel, " + (int) supplies + " of " + (int) wants[1]
 					+ " supplies, hold " + (int) hold + " of " + (int) holdWant + " - stays home until the base is staged");
 			return null;
@@ -930,7 +966,9 @@ public class ThreatFleetOrders {
 		ThreatReturns.setHold(fleet, hold);
 		ThreatIncConfig.log("Order draw at " + base.getName() + ": " + (int) fuel + " fuel, "
 				+ (int) supplies + " supplies, hold " + (int) hold + " of " + (int) holdWant + " supplies ("
-				+ (int) ThreatReturns.holdDays(fleet) + " days)");
+				+ (int) ThreatReturns.holdDays(fleet) + " days; " + (int) fleet.getFleetPoints() + " FP of " + (int) fp + " asked, "
+				+ String.format("%.2f", ThreatFrontlines.maintenancePerMonth(fleet) / Math.max(1f, fleet.getFleetPoints()))
+				+ " supplies/FP/mo vs " + String.format("%.2f", ThreatReach.suppliesPerFP(faction.getId())) + " measured)");
 		return fleet;
 	}
 
@@ -948,6 +986,13 @@ public class ThreatFleetOrders {
 		wants[1] += ThreatReach.sortieHold(base.getFactionId(), fp, dist);
 		return wants;
 	}
+
+	/**
+	 * The least of a task force's built fleet points that may sail when the hold the base paid feeds fewer
+	 * hulls than were built (buildTaskForce, 2026-10-11): below it the order is held, not trimmed. The gate
+	 * sized the force to win; a quarter off is the measured rate's error, not a different force.
+	 */
+	public static final float TRIM_FLOOR = 0.75f;
 
 	/** Light-years from the base to a destination; 0 with either unknown. */
 	protected static float sortieLY(MarketAPI base, Vector2f destinationHyper) {
