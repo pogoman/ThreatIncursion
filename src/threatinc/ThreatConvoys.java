@@ -2653,7 +2653,7 @@ public class ThreatConvoys {
 		// payEscort) sails ABOARD on top of the kit, topped up from the payer to vanilla's own estimate of
 		// the trip; what the voyage leaves of it comes home with the hulls as cargo (ThreatReturns)
 		float passageFuel = fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL);
-		float trip = fleet.getLogistics().getFuelCostPerLightYear() * ly * 1.25f;
+		float trip = fleet.getLogistics().getFuelCostPerLightYear() * ly * 1.5f;   // 1.25 left 4 of 46 kits 10-70 fuel short (hw156)
 		float topUp = 0f;
 		if (passageFuel < trip) topUp = ThreatBases.draw(donor, Commodities.FUEL, trip - passageFuel);
 		if (passageFuel + topUp < trip - 0.5f) {
