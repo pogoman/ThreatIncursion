@@ -114,7 +114,9 @@ spent every supply it made holding a garrison it could not use and the humans wo
 - Board Fleet column (`ThreatFactionView.fleetShare`; "FP" until 2026-10-11, the user: "no
   abbreviations here"): a colony's standing hulls, plus the faction's built navy on its hull port's
   row (where hulls are kept, land and sail from), so the rows sum to the Total row's standing; the
-  Total row the faction's free / standing,
+  Total row the faction's free / standing. For the player (`ThreatHulls.patrolsSail` false, the user
+  2026-10-11: patrols never sail, task forces draw on the built navy only) the column is the built
+  navy on the hull port's row alone and the Total free / built,
   coloured by free (white enough for a guard, yellow a minimum, red less). Row tooltip: standing
   hulls with the patrol counts, fleet size and quality; the faction's pool; the yards' rebuild
   rate.

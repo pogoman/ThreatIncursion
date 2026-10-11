@@ -582,24 +582,27 @@ public class ThreatAidCapacity {
 		int[] f = figures(market);
 		if (ThreatHulls.enabled()) {
 			// the hull pool: the colony's standing hulls and the faction's pool, one fact a line
-			if (f[0] <= 0) {
-				lines.add("No standing hulls: a Patrol HQ, Military Base or High Command is needed.");
-			} else {
-				lines.add("Standing hulls " + f[0] + " fleet points: " + ThreatHulls.patrols(market, Stats.PATROL_NUM_LIGHT_MOD)
-						+ " light, " + ThreatHulls.patrols(market, Stats.PATROL_NUM_MEDIUM_MOD) + " medium, "
-						+ ThreatHulls.patrols(market, Stats.PATROL_NUM_HEAVY_MOD) + " heavy patrols; fleet size "
-						+ Math.round(ThreatColonyManager.fleetSizeMult(market) * 100f) + "%, quality "
-						+ Math.round(Misc.getShipQuality(market) * 100f) + "%.");
-				lines.add(f[1] + " fleet points sent from here is out.");
-			}
 			String fid = market.getFactionId();
+			boolean sail = ThreatHulls.patrolsSail(fid);
+			if (f[0] <= 0) {
+				lines.add(sail ? "No standing hulls: a Patrol HQ, Military Base or High Command is needed."
+						: "No patrols: a Patrol HQ, Military Base or High Command is needed.");
+			} else {
+				lines.add((sail ? "Standing hulls " : "Patrols ") + f[0] + " fleet points: "
+						+ ThreatHulls.patrols(market, Stats.PATROL_NUM_LIGHT_MOD)
+						+ " light, " + ThreatHulls.patrols(market, Stats.PATROL_NUM_MEDIUM_MOD) + " medium, "
+						+ ThreatHulls.patrols(market, Stats.PATROL_NUM_HEAVY_MOD) + " heavy; fleet size "
+						+ Math.round(ThreatColonyManager.fleetSizeMult(market) * 100f) + "%, quality "
+						+ Math.round(Misc.getShipQuality(market) * 100f) + "%" + (sail ? "." : "; they stay home."));
+				if (sail) lines.add(f[1] + " fleet points sent from here is out.");
+			}
 			if (market == ThreatHulls.hullPort(fid) && ThreatHulls.built(fid) > 0f) {
 				lines.add("Hull port: the " + Math.round(ThreatHulls.built(fid))
 						+ " fleet points navy the yards built is kept here and sails from here.");
 			}
-			lines.add(ThreatWarState.displayName(fid) + " pool: " + Math.round(ThreatHulls.freeFP(fid)) + " of "
-					+ Math.round(ThreatHulls.standingFP(fid)) + " fleet points free; " + Math.round(ThreatHulls.committedFP(fid))
-					+ " out, " + Math.round(ThreatHulls.debt(fid)) + " lost.");
+			lines.add(ThreatWarState.displayName(fid) + (sail ? " pool: " : " navy: ") + Math.round(ThreatHulls.freeFP(fid)) + " of "
+					+ Math.round(sail ? ThreatHulls.standingFP(fid) : ThreatHulls.built(fid)) + " fleet points free; "
+					+ Math.round(ThreatHulls.committedFP(fid)) + " out, " + Math.round(ThreatHulls.debt(fid)) + " lost.");
 			lines.add("Shipyards add " + Math.round(ThreatHulls.productionFP(fid)) + " fleet points a month, losses first; "
 					+ Math.round(ThreatHulls.built(fid)) + " fleet points built so far.");
 			return lines;

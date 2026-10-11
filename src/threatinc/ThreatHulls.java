@@ -546,10 +546,25 @@ public class ThreatHulls {
 		return sum;
 	}
 
-	/** Hulls the faction can send now: standing, less out, less lost and unbuilt. Never below 0. */
+	/**
+	 * Whether the faction's vanilla patrols count toward what it can send. Not the player's (the
+	 * user, 2026-10-11: "if i sent literally every FP to war or in aid i would have zero patrols left
+	 * in my system right?" - the ledger said yes while the Patrol HQ flew them regardless; chosen:
+	 * task forces draw only on the built navy, patrols stay vanilla's). NPC factions' do, as the
+	 * war runs were calibrated, until the user says otherwise.
+	 */
+	public static boolean patrolsSail(String factionId) {
+		return factionId == null || !factionId.equals(Global.getSector().getPlayerFaction().getId());
+	}
+
+	/**
+	 * Hulls the faction can send now: standing, less out, less lost and unbuilt - or, where the
+	 * patrols stay home (patrolsSail), the built navy less out and lost. Never below 0.
+	 */
 	public static float freeFP(String factionId) {
 		if (factionId == null) return 0f;
-		return Math.max(0f, standingFP(factionId) - committedFP(factionId) - debt(factionId));
+		float have = patrolsSail(factionId) ? standingFP(factionId) : built(factionId);
+		return Math.max(0f, have - committedFP(factionId) - debt(factionId));
 	}
 
 	/** Caps a reserve's payable fleet points at the faction's free hulls; payable unchanged with the pool off. */
