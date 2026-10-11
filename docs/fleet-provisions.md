@@ -50,6 +50,22 @@ maintenance, which covers the median trip with the voyage on top.
    built hulls at home cost their maintenance a month from the colony stockpiles; a hull-month unpaid
    is a built hull lost, with a notice ("Navy Unpaid").
 
-Knobs: `threatinc_sortieStayDays` 90, `threatinc_fleetResupply` true; `fleetUpkeep` off restores
+7. **Staged launches (the user, 2026-10-11, after hw156 / gs1: "they should never run out unless
+   unforeseen circumstances ... raids should never launch with zero supplies for FB, FB needs to be
+   supplied/staged with supplies and fuel first").** An NPC task force, hunt or raid sails only with
+   its FULL provisions - the voyage's fuel and deposit and the whole hold - drawn from the base it
+   launches at; short of any, `ThreatFleetOrders.buildTaskForce` puts the draw back, expires the
+   hulls and logs `Order held at <base>: f of F fuel, s of S supplies, hold h of H - stays home`
+   (once per base). No other market pays toward it remotely: `ThreatSoftening.huntDonors` is empty,
+   so `payableFP` sizes the force on the base's own stock and `payFromDonors` has nothing to top.
+   Convoys stage the base first (`ThreatConvoys.planLogistics` -> `stagingTargets`: siege stock, or a
+   hunting force's when `stagesForHunt`). The failure this answers: gs1a drew 105 of 838 orders with
+   `hold 0 of N` from forward bases whose stock was empty - the force was sized on the faction's
+   pooled reach (`payableFP` + `huntDonors`), drawn from the base alone, and stood down at once
+   (105 of 207 "supplies low" stand-downs had 0 aboard). A player task force still always sails.
+   Sieges keep their pooled remote payment (`IncursionManager.siegeDonors` / `siegePooled`) - open
+   question for the user. Knob `threatinc_stagedLaunch` (true).
+
+Knobs: `threatinc_sortieStayDays` 90, `threatinc_fleetResupply` true, `threatinc_stagedLaunch` true; `fleetUpkeep` off restores
 the flat deposit with no hold. Sections to keep in step: `strategy-hunting-reach.md` "Not reserved"
 (now carried), `hull-pool.md` standing upkeep, `strategy-board-returns.md` refunds.

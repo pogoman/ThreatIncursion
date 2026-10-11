@@ -392,6 +392,9 @@ public class ThreatSoftening {
 	 */
 	protected static List<MarketAPI> huntDonors(FactionAPI faction, MarketAPI primary) {
 		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		// STAGED LAUNCHES (the user, 2026-10-11): no market pays toward another base's fleets remotely - the
+		// force is sized on the base's own stock, and convoys stage the base (ThreatConvoys.stagingTargets)
+		if (ThreatIncConfig.stagedLaunch()) return out;
 		if (!ThreatIncConfig.softenPool() || primary.getStarSystem() == null) return out;
 		for (MarketAPI m : IncursionManager.marketsReaching(faction, primary)) {
 			if (m == primary || IncursionManager.isBase(m)) continue;

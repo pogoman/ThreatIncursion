@@ -703,6 +703,8 @@ public class ThreatIncConfig {
 	public static float raiderChance()        { return f("threatinc_raiderChance"); }
 	/** Days a raider hunts before turning home. */
 	public static float raiderDays()          { return f("threatinc_raiderDays"); }
+	/** Hives detach swarms at a convoy until the pack's fleet points reach the convoy's times this (ThreatRaiders.consider; 1.5 until 2026-10-11, when no founding convoy of 24 freighters and a 30 FP escort died in 135). */
+	public static float raiderMargin()        { return fd("threatinc_raiderMargin", 3f); }
 	/** Strikes hide their origin; the sector acts only on hives someone has found (ThreatScouts). Off: the old omniscient rule. */
 	public static boolean hiveFogOfWar()      { return b("threatinc_hiveFogOfWar", true); }
 	/** Foreboding messages until anyone finds a hive (ThreatOmens). */
@@ -848,6 +850,8 @@ public class ThreatIncConfig {
 	public static float softenRetreatStrength() { return f("threatinc_softenRetreatStrength"); }
 	/** Whether a hunting force draws fleets from every base of the faction in reach, not just the nearest. */
 	public static boolean softenPool()        { return b("threatinc_softenPool", true); }
+	/** STAGED LAUNCHES (the user, 2026-10-11): an NPC task force, hunt or raid sails only with its full provisions - fuel, deposit and hold - from the base it launches at (ThreatFleetOrders.buildTaskForce), and the faction's other markets no longer pay toward it remotely (ThreatSoftening.huntDonors): the base is staged by convoys first. */
+	public static boolean stagedLaunch()      { return b("threatinc_stagedLaunch", true); }
 	/** Days a hunting force waits at its muster point for stragglers. */
 	public static float softenMusterDays()    { return f("threatinc_softenMusterDays"); }
 	/** Muster spells a force short at the muster waits for stragglers that would carry it. */

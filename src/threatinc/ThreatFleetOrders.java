@@ -911,6 +911,20 @@ public class ThreatFleetOrders {
 			supplies = ThreatReserves.drawAbove(base, Commodities.SUPPLIES, wants[1]);
 			hold = ThreatReserves.drawAbove(base, Commodities.SUPPLIES, holdWant);
 		}
+		// STAGED LAUNCHES (the user, 2026-10-11, after hw156 / gs1: forward bases launched hunting fleets
+		// with an empty hold - "hold 0 of 1545" - that stood down at once, 105 of 207 stand-downs in gs1a):
+		// an NPC fleet sails with its full provisions from this base or stays home; what it drew goes back.
+		// A player task force always sails with what the stockpile had (docs/fleet-provisions.md rule 1)
+		if (ThreatIncConfig.stagedLaunch() && !faction.isPlayerFaction()
+				&& (fuel < wants[0] - 0.5f || supplies < wants[1] - 0.5f || hold < holdWant - 0.5f)) {
+			if (fuel > 0f) ThreatReserves.deposit(base.getId(), Commodities.FUEL, fuel);
+			if (supplies + hold > 0f) ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, supplies + hold);
+			Misc.fadeAndExpire(fleet);
+			ThreatIncConfig.logQuiet("order_unstaged_" + base.getId(), "Order held at " + base.getName() + ": "
+					+ (int) fuel + " of " + (int) wants[0] + " fuel, " + (int) supplies + " of " + (int) wants[1]
+					+ " supplies, hold " + (int) hold + " of " + (int) holdWant + " - stays home until the base is staged");
+			return null;
+		}
 		// remembered on the fleet so the return leg can refund what survives
 		ThreatReturns.provision(fleet, base.getId(), fuel, supplies);
 		ThreatReturns.setHold(fleet, hold);

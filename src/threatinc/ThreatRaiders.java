@@ -103,7 +103,8 @@ public class ThreatRaiders {
 	 * The margin raiders hunt a convoy with: hives detach swarms until the
 	 * pack's fleet points reach the convoy's times this. The margin the NPC
 	 * sieges weigh an orbit with (npcSiegeOrbitMargin's default); a code
-	 * constant until it has a knob of its own.
+	 * constant until 2026-10-11, when it became the knob raiderMargin (default 3: at 1.5 no founding convoy
+	 * of 24 freighters and a 30 FP escort died in 135, hw156).
 	 */
 	public static final float RAIDER_MARGIN = 1.5f;
 
@@ -179,7 +180,7 @@ public class ThreatRaiders {
 						Misc.getDistanceLY(y.getStarSystem().getLocation(), m));
 			}
 		});
-		float need = convoyFP * RAIDER_MARGIN;
+		float need = convoyFP * ThreatIncConfig.raiderMargin();
 		for (MarketAPI hive : near) {
 			if (packFP(convoy.fleet) >= need) return;
 			if (random.nextFloat() >= ThreatIncConfig.raiderChance()) continue;

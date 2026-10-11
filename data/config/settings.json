@@ -946,6 +946,8 @@
 	"threatinc_raiderRangeLY": 12,
 	"threatinc_raiderChance": 0.5,
 	"threatinc_raiderDays": 45,
+	# the pack hunts until its fleet points reach the convoy's times this (1.5 until 2026-10-11)
+	"threatinc_raiderMargin": 3,
 	# finding the hive (ThreatScouts): a strike does not reveal its origin.
 	# The struck faction sends scouts to sweep uninhabited systems within
 	# scoutLeadRadiusLY of it; a mobilised faction also sweeps within
@@ -1259,6 +1261,10 @@
 	# softenRetreatStrength; one that never goes in is refunded in full
 	"threatinc_softenEnabled": true,
 	"threatinc_softenPool": true,
+	# STAGED LAUNCHES (the user, 2026-10-11): an NPC task force, hunt or raid sails only with its
+	# full provisions from the base it launches at, and no other market pays toward it remotely -
+	# convoys stage the base first. false: the base pays what it can, the faction's markets the rest
+	"threatinc_stagedLaunch": true,
 	"threatinc_softenMusterDays": 15,
 	# a force short at the muster whose stragglers would carry it waits for
 	# them up to this many muster spells
