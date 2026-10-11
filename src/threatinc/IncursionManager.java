@@ -4040,7 +4040,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			float points = ThreatAidCapacity.expeditionPoints(siegeSizes(base, faction, system));
 			float free = ThreatAidCapacity.freeFP(base);
 			if (points > free) {
-				return ThreatNotice.Reason.of("%s has %s FP free", ThreatNotice.market(base),
+				return ThreatNotice.Reason.of("%s has %s fleet points free", ThreatNotice.market(base),
 						(int) Math.max(0f, free))
 						.line("The smallest expedition needs %s", (int) Math.ceil(points));
 			}
@@ -4164,7 +4164,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			float points = ThreatAidCapacity.expeditionPoints(sizes);
 			float free = ThreatAidCapacity.freeFP(base);
 			if (points > free) {
-				return ThreatNotice.Reason.of("%s has %s FP free", ThreatNotice.market(base),
+				return ThreatNotice.Reason.of("%s has %s fleet points free", ThreatNotice.market(base),
 						(int) Math.max(0f, free))
 						.line("The smallest expedition needs %s", (int) Math.ceil(points));
 			}

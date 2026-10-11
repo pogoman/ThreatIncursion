@@ -1682,7 +1682,7 @@ public class ThreatFleetOrders {
 				&& hostile >= friendly * Math.max(0f, ThreatIncConfig.orbitContestFraction())) {
 			if (o.contestedSince == 0L) o.contestedSince = now;
 			if (Global.getSector().getClock().getElapsedDaysSince(o.contestedSince) >= RAID_CONTEST_GRACE_DAYS) {
-				return "orbit contested, " + (int) hostile + " FP of swarms against " + (int) friendly;
+				return "orbit contested, " + (int) hostile + " fleet points of swarms against " + (int) friendly;
 			}
 			return null;
 		}
@@ -1697,7 +1697,7 @@ public class ThreatFleetOrders {
 			return "a day buys less than a day down";
 		}
 		float lossLine = threatinc.rules.BattleRules.raidLossLine(o.arrivalFP, ThreatIncConfig.raidLossFraction());
-		if (fp < lossLine) return "lost " + (int) (o.arrivalFP - fp) + " of " + (int) o.arrivalFP + " FP";
+		if (fp < lossLine) return "lost " + (int) (o.arrivalFP - fp) + " of " + (int) o.arrivalFP + " fleet points";
 		return null;
 	}
 

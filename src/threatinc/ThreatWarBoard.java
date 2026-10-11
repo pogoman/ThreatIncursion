@@ -1845,7 +1845,7 @@ public class ThreatWarBoard {
 		Color pos = ThreatNotice.goodColor();
 		Color gray = Misc.getGrayColor();
 
-		String[] labels = {"Known systems", "Hive worlds", "Mass", "Swarm FP",
+		String[] labels = {"Known systems", "Hive worlds", "Mass", "Swarm fleet",
 				"Expeditions out", "Sieges in", "Missions", "Hives burned"};
 		String[] values = {"" + entries.size(), "" + worlds, "" + mass,
 				anySeen ? Misc.getWithDGS(Math.round(swarmFP)) : "Unknown",
@@ -1950,7 +1950,7 @@ public class ThreatWarBoard {
 		// share of the supplies upkeep paid, and reach the world struck first
 		final boolean sized = ThreatColonyUpkeep.enabled();
 		final boolean billed = ThreatReach.enabled();
-		String[] names = {"#", "System", "Threat", "Worlds", "Mass", sized ? "Fed" : "Vitality", "Swarm FP",
+		String[] names = {"#", "System", "Threat", "Worlds", "Mass", sized ? "Fed" : "Vitality", "Swarm fleet",
 				"Reach", "Strikes", "Activity", "Supply", "Core"};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < COLS; i++) {
@@ -2520,7 +2520,7 @@ public class ThreatWarBoard {
 		// seen, reach or front
 		List<String> hlA = new ArrayList<String>();
 		List<Color> hlcA = new ArrayList<Color>();
-		StringBuilder a = new StringBuilder(sized ? "Fed %s    Swarm FP %s" : "Vitality %s    Swarm FP %s");
+		StringBuilder a = new StringBuilder(sized ? "Fed %s    Swarm fleet %s" : "Vitality %s    Swarm fleet %s");
 		if (sized) {
 			// below size 3 a world has no upkeep to be paid
 			boolean owes = ThreatColonyUpkeep.perMonth(market.getSize()) > 0f;

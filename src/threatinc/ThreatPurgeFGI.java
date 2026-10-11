@@ -757,7 +757,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		abort();
 		ThreatNotice.titled("Siege Called Off").icon(faction)
 				.line("%s siege of %s turns home.", ThreatNotice.faction(faction), ThreatNotice.market(at))
-				.line("Defense Swarms %s FP against its %s FP.", ThreatNotice.hl(Misc.getWithDGS((int) worst)),
+				.line("Defense Swarms %s fleet points against its %s fleet points.", ThreatNotice.hl(Misc.getWithDGS((int) worst)),
 						ThreatNotice.hl(Misc.getWithDGS((int) ours)))
 				.send();
 		ThreatIncConfig.log("Siege called off over " + at.getName() + " (" + faction.getId() + "): "

@@ -585,43 +585,43 @@ public class ThreatAidCapacity {
 			if (f[0] <= 0) {
 				lines.add("No standing hulls: a Patrol HQ, Military Base or High Command is needed.");
 			} else {
-				lines.add("Standing hulls " + f[0] + " FP: " + ThreatHulls.patrols(market, Stats.PATROL_NUM_LIGHT_MOD)
+				lines.add("Standing hulls " + f[0] + " fleet points: " + ThreatHulls.patrols(market, Stats.PATROL_NUM_LIGHT_MOD)
 						+ " light, " + ThreatHulls.patrols(market, Stats.PATROL_NUM_MEDIUM_MOD) + " medium, "
 						+ ThreatHulls.patrols(market, Stats.PATROL_NUM_HEAVY_MOD) + " heavy patrols; fleet size "
 						+ Math.round(ThreatColonyManager.fleetSizeMult(market) * 100f) + "%, quality "
 						+ Math.round(Misc.getShipQuality(market) * 100f) + "%.");
-				lines.add(f[1] + " FP sent from here is out.");
+				lines.add(f[1] + " fleet points sent from here is out.");
 			}
 			String fid = market.getFactionId();
 			if (market == ThreatHulls.hullPort(fid) && ThreatHulls.built(fid) > 0f) {
 				lines.add("Hull port: the " + Math.round(ThreatHulls.built(fid))
-						+ " FP navy the yards built is kept here and sails from here.");
+						+ " fleet points navy the yards built is kept here and sails from here.");
 			}
 			lines.add(ThreatWarState.displayName(fid) + " pool: " + Math.round(ThreatHulls.freeFP(fid)) + " of "
-					+ Math.round(ThreatHulls.standingFP(fid)) + " FP free; " + Math.round(ThreatHulls.committedFP(fid))
+					+ Math.round(ThreatHulls.standingFP(fid)) + " fleet points free; " + Math.round(ThreatHulls.committedFP(fid))
 					+ " out, " + Math.round(ThreatHulls.debt(fid)) + " lost.");
-			lines.add("Shipyards add " + Math.round(ThreatHulls.productionFP(fid)) + " FP a month, losses first; "
-					+ Math.round(ThreatHulls.built(fid)) + " FP built so far.");
+			lines.add("Shipyards add " + Math.round(ThreatHulls.productionFP(fid)) + " fleet points a month, losses first; "
+					+ Math.round(ThreatHulls.built(fid)) + " fleet points built so far.");
 			return lines;
 		}
 		if (f[0] <= 0) {
 			lines.add("No fleet capacity: a Patrol HQ, Military Base or High Command is needed.");
 			return lines;
 		}
-		lines.add("Fleet capacity " + f[0] + " FP (fleet size "
+		lines.add("Fleet capacity " + f[0] + " fleet points (fleet size "
 				+ Math.round(ThreatColonyManager.fleetSizeMult(market) * 100f) + "%): "
 				+ f[1] + " in task forces, " + f[2] + " at home.");
 		List<String> parts = new ArrayList<String>();
 		for (ThreatFleetOrders.Order o : ThreatFleetOrders.stagedAt(market)) {
 			List<String> senders = sendersOf(o.fleet);
 			if (senders.isEmpty()) continue;
-			parts.add(Math.round(liveFP(o.fleet)) + " FP from " + ThreatWarBoard.join(senders));
+			parts.add(Math.round(liveFP(o.fleet)) + " fleet points from " + ThreatWarBoard.join(senders));
 		}
 		if (parts.isEmpty()) {
-			lines.add("Free to sail: " + f[4] + " FP.");
+			lines.add("Free to sail: " + f[4] + " fleet points.");
 		} else {
 			lines.add("On station here: " + ThreatWarBoard.join(parts) + ".");
-			lines.add("Free to sail: " + f[2] + " at home + " + f[3] + " on station = " + f[4] + " FP.");
+			lines.add("Free to sail: " + f[2] + " at home + " + f[3] + " on station = " + f[4] + " fleet points.");
 		}
 		return lines;
 	}

@@ -523,19 +523,19 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 			if (reliefMarketId != null) {
 				MarketAPI relieved = Global.getSector().getEconomy().getMarket(reliefMarketId);
 				if (relieved != null) {
-					info.addPara("Threat over %s: %s FP", 0f, tc, h, relieved.getName(), Misc.getWithDGS(
+					info.addPara("Threat over %s: %s fleet points", 0f, tc, h, relieved.getName(), Misc.getWithDGS(
 							(int) ThreatGroundFronts.pointsNear(relieved, Factions.THREAT, true)));
 				}
 			} else {
 				// the poster's report and its date, then what its siege can take
 				ThreatIntel.Report seen = report();
 				if (seen != null) {
-					info.addPara("Strongest swarms %s FP as last seen %s", 0f, tc, h,
+					info.addPara("Strongest swarms %s fleet points as last seen %s", 0f, tc, h,
 							Misc.getWithDGS((int) orbitFP()), ThreatIntel.when(seen));
 				} else {
 					info.addPara("Strongest swarms %s", 0f, tc, h, "unknown");
 				}
-				info.addPara("Siege takes %s FP", 0f, tc, h, Misc.getWithDGS(siegeFP));
+				info.addPara("Siege takes %s fleet points", 0f, tc, h, Misc.getWithDGS(siegeFP));
 			}
 			addDays(info, "remaining", Math.max(0f, duration - elapsedDays), tc);
 		}

@@ -1275,7 +1275,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionView.colonyTooltip(TooltipMakerAPI tooltip, ColonyRow r)` :1141
 - `ThreatFactionView.fleetRows(String factionId)` :1184
 - `ThreatFactionView.razesEvery(ThreatPurgeFGI p)` :1422 - Whether the expedition razes every world it was sent against - the Bombard order's, or an NPC's razing expedition - and lands on none.
-- `ThreatFactionView.fleetStrength(CampaignFleetAPI fleet)` :1433 - " - FP" for the Marines - Fleet column - the marines a fleet carries over its fleet points.
+- `ThreatFactionView.fleetStrength(CampaignFleetAPI fleet)` :1433 - " - " for the Marines - Fleet column - the marines a fleet carries over its fleet points.
 - `ThreatFactionView.abstractFP(ThreatPurgeFGI p)` :1440 - The FP an unspawned expedition fields, estimated from its planned fleet sizes:
 - `ThreatFactionView.siegeMarineGoal(int tier, MarketAPI base, List<MarketAPI> targets)` :1451 - The marines a siege tier's landing draws from the base's reserve:
 - `ThreatFactionView.trimZero(float f)` :1469 - "2" for 2.0, "1.5" for 1.5 - a factor without a trailing zero.

@@ -185,7 +185,7 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				seenFP += worldFP;
 				if (over == null) everySeen = false;
 
-				line.append(". Hive Status %s, Swarm FP %s");
+				line.append(". Hive Status %s, Swarm fleet %s");
 				if (ThreatColonyUpkeep.enabled()) {
 					// size upkeep (2026-09-30): graded by the share of its
 					// upkeep paid - starving below break-even, else growing or

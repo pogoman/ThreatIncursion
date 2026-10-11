@@ -652,7 +652,7 @@ public class ThreatFactionView {
 				float[] load = donor != null ? ThreatConvoys.stageLoad(donor, b, convoyTier) : null;
 				disableWith(main, guard, mayOrder && q.ok(),
 						blocked != null ? blocked : ThreatNotice.text(q.reason),
-						"A task force of about " + (q.ok() ? (int) q.points : 0) + " FP from "
+						"A task force of about " + (q.ok() ? (int) q.points : 0) + " fleet points from "
 						+ (q.ok() ? q.source.getName() : "the nearest colony") + " holds this "
 						+ "orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled") + ".");
 				disableWith(main, stage, mayOrder && donor != null, blocked != null ? blocked
@@ -691,7 +691,7 @@ public class ThreatFactionView {
 					// a guard over an own colony is staging: it stays, and its
 					// points are the colony's to send out (docs/strategy-layer.md)
 					disableWith(main, guard, guardOk, blocked != null ? blocked : ThreatNotice.text(q.reason),
-							"A task force of about " + (q.ok() ? (int) q.points : 0) + " FP from "
+							"A task force of about " + (q.ok() ? (int) q.points : 0) + " fleet points from "
 							+ (q.ok() ? q.source.getName() : "the nearest colony") + " holds this "
 							+ "orbit " + (ownDays > 0 ? "for " + ownDays + " days" : "until recalled")
 							+ "; while here, its points are this colony's.");
@@ -714,7 +714,7 @@ public class ThreatFactionView {
 					ThreatAid.Quote s = ThreatAid.quoteResupply(r.market, convoyTier);
 					disableWith(main, defend, mayAid && d.ok(),
 							ThreatNotice.text(aidBlocked != null ? aidBlocked : d.reason),
-							"A task force of about " + (d.ok() ? (int) d.points : 0) + " FP from "
+							"A task force of about " + (d.ok() ? (int) d.points : 0) + " fleet points from "
 							+ (d.ok() ? d.source.getName() : "your nearest colony") + " holds "
 							+ "this orbit for " + guardDays + " days. Paid from that colony's "
 							+ "reserve; earns standing on arrival.");
@@ -774,7 +774,7 @@ public class ThreatFactionView {
 							!ThreatAidCapacity.enabled() ? "Player aid is disabled in the mod settings."
 							: unready != null ? ThreatNotice.text(unready)
 							: ThreatNotice.text(q.reason),
-							"A task force of about " + (q.ok() ? (int) q.points : 0) + " FP from "
+							"A task force of about " + (q.ok() ? (int) q.points : 0) + " fleet points from "
 							+ (q.ok() ? q.source.getName() : "your nearest colony") + " hunts "
 							+ "this hive's Defense Swarms for " + (int) ThreatIncConfig.softenDays()
 							+ " days.");
@@ -814,7 +814,7 @@ public class ThreatFactionView {
 				hunt.getPosition().belowRight(hiveTable, -up).setXAlignOffset(right);
 				ThreatAid.Quote iq = ThreatAid.quoteStrike(e.system);
 				disableWith(main, hunt, mayOrder && iq.ok(), blocked != null ? blocked : ThreatNotice.text(iq.reason),
-						"A task force of about " + (iq.ok() ? (int) iq.points : 0) + " FP from "
+						"A task force of about " + (iq.ok() ? (int) iq.points : 0) + " fleet points from "
 						+ (iq.ok() ? iq.source.getName() : "the nearest colony") + " hunts this "
 						+ "hive's Defense Swarms for " + (int) ThreatIncConfig.softenDays()
 						+ " days, weakest garrison first.");
@@ -1195,7 +1195,7 @@ public class ThreatFactionView {
 				f.name = ThreatPlays.boardTarget(pl);
 				f.task = ThreatPlays.phaseText(pl);
 				f.status = pl.held ? "held" : "under way";
-				f.strength = pl.plannedFP > 0f ? (int) pl.plannedFP + " FP" : "-";
+				f.strength = pl.plannedFP > 0f ? (int) pl.plannedFP + " fleet points" : "-";
 				int days = ThreatPlays.daysToNext(pl);
 				if (days >= 0) f.eta = days + " d";
 				rows.add(f);
@@ -1271,7 +1271,7 @@ public class ThreatFactionView {
 				f.status = op.status;
 				f.eta = op.eta;
 				f.strength = p.carriesCargo()
-						? Misc.getWithDGS((int) p.getMarinesAllotted()) + " - ~" + abstractFP(p) + " FP"
+						? Misc.getWithDGS((int) p.getMarinesAllotted()) + " - ~" + abstractFP(p)
 						: "abstract";
 				f.rowId = p;
 				f.recallKey = "purge:" + i;
@@ -1429,11 +1429,11 @@ public class ThreatFactionView {
 		return true;
 	}
 
-	/** "<marines> - <fp> FP" for the Marines - Fleet column - the marines a fleet carries over its fleet points. */
+	/** "<marines> - <fp>" for the Marines - Fleet column - the marines a fleet carries over its fleet points. */
 	protected static String fleetStrength(CampaignFleetAPI fleet) {
 		if (fleet == null) return "-";
 		return Misc.getWithDGS((int) fleet.getCargo().getMarines())
-				+ " - " + (int) fleet.getFleetPoints() + " FP";
+				+ " - " + (int) fleet.getFleetPoints();
 	}
 
 	/** The FP an unspawned expedition fields, estimated from its planned fleet sizes: a daily siege's less the damage booked, as its marines. */
@@ -1666,7 +1666,7 @@ public class ThreatFactionView {
 				List<Integer> sizes = IncursionManager.siegeSizes(base, faction, system, goal);
 				if (faction.isPlayerFaction() && ThreatAidCapacity.enabled()) {
 					prompt.addPara("Order a purge expedition from " + base.getName() + " against the "
-							+ system.getNameWithLowercaseType() + "? %s fleets holding %s of its %s FP "
+							+ system.getNameWithLowercaseType() + "? %s fleets holding %s of its %s fleet points "
 							+ "free; commits %s marines of %s in its reserve.",
 							0f, h, "" + sizes.size(),
 							Misc.getWithDGS((int) ThreatAidCapacity.expeditionPoints(sizes)),
@@ -1767,7 +1767,7 @@ public class ThreatFactionView {
 				if (Commodities.SHIPS.equals(q.commodityId)) {
 					prompt.addPara("Send %s ship hulls (%s fleet points) from " + q.source.getName()
 							+ " to " + target.getName() + ", for " + who + "? It is short of about %s. "
-							+ "The hulls leave your built navy (%s FP, %s units), and the convoy can be "
+							+ "The hulls leave your built navy (%s fleet points, %s units), and the convoy can be "
 							+ "intercepted on the way. Standing follows their value"
 							+ (request ? ", doubled under the open request" : "") + ".", 0f, h,
 							Misc.getWithDGS(q.quantity), Misc.getWithDGS(Math.round(q.quantity * ThreatHulls.unitFP())),
@@ -1904,11 +1904,11 @@ public class ThreatFactionView {
 		prompt.addPara("Order a bombing expedition from " + base.getName() + " against the "
 				+ system.getNameWithLowercaseType() + "?", 0f);
 		if (faction.isPlayerFaction() && ThreatAidCapacity.enabled()) {
-			prompt.addPara("%s fleets holding %s of its %s FP free.", 10f, h, "" + sizes.size(),
+			prompt.addPara("%s fleets holding %s of its %s fleet points free.", 10f, h, "" + sizes.size(),
 					Misc.getWithDGS((int) points),
 					Misc.getWithDGS((int) Math.max(0f, ThreatAidCapacity.freeFP(base))));
 		} else {
-			prompt.addPara("%s fleets, %s FP.", 10f, h, "" + sizes.size(), Misc.getWithDGS((int) points));
+			prompt.addPara("%s fleets, %s fleet points.", 10f, h, "" + sizes.size(), Misc.getWithDGS((int) points));
 		}
 		prompt.addPara("Carries %s of the %s fuel the saturation takes.", 3f, h,
 				Misc.getWithDGS(Math.round(fuel[3])), Misc.getWithDGS(Math.round(fuel[4])));
@@ -1923,11 +1923,11 @@ public class ThreatFactionView {
 			} else if (r[5] < 1f) {
 				prompt.addPara(name + ": no fuel left for it.", 3f);
 			} else if (!ThreatRazing.razes(targets.get(i))) {
-				prompt.addPara(name + ": %s days in orbit, %s FP bombing, about %s FP lost, down %s days.", 3f, h,
+				prompt.addPara(name + ": %s days in orbit, %s fleet points bombing, about %s fleet points lost, down %s days.", 3f, h,
 						"" + (int) r[0], Misc.getWithDGS((int) r[7]), "" + Math.round(r[2]), "" + (int) r[6]);
 			} else {
 				boolean razed = r[3] >= 1f;
-				LabelAPI line = prompt.addPara(name + ": %s days in orbit, about %s FP lost, %s.", 3f, h,
+				LabelAPI line = prompt.addPara(name + ": %s days in orbit, about %s fleet points lost, %s.", 3f, h,
 						"" + (int) r[0], "" + Math.round(r[2]), razed ? "razed" : "not razed");
 				line.setHighlightColors(h, h, razed ? h : neg);
 			}

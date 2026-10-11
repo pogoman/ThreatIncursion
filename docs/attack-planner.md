@@ -574,7 +574,7 @@ one raid.
   (`systemFP`); the links it holds read their own system, which they see.
 
 **The player's view** (the player's reports, Cooperative factions' included).
-- The board's Swarm FP column, total, strip and card show `ThreatIntel.figure`: `3,400 (41 d)`,
+- The board's Swarm fleet column ("Swarm FP" until 2026-10-11), total, strip and card show `ThreatIntel.figure`: `3,400 (41 d)`,
   with the age left off when seen today, and "Unknown" for a system never seen.
   `ThreatWarBoard.seenOver` is null for a world the report predates.
 - The garrison and target counts and the production arrow are gone. `InfestedSystemIntel` shows

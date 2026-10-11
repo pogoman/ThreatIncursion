@@ -197,7 +197,7 @@ public class ThreatAid {
 		}
 		ThreatNotice.Reason reason = ThreatNotice.Reason.of("No colony of yours can field it");
 		for (MarketAPI m : bases) {
-			reason.line("%s has %s FP free", ThreatNotice.market(m),
+			reason.line("%s has %s fleet points free", ThreatNotice.market(m),
 					(int) Math.max(0f, ThreatAidCapacity.freeFP(m)));
 		}
 		return reason;
@@ -242,7 +242,7 @@ public class ThreatAid {
 	protected static Quote quoteTaskForce(Quote q, Vector2f hyperLoc, String what, MarketAPI self) {
 		q.source = pickTaskForceSource(hyperLoc, self);
 		if (q.source == null) {
-			q.reason = noSourceReason(hyperLoc).line("A task force needs at least %s FP",
+			q.reason = noSourceReason(hyperLoc).line("A task force needs at least %s fleet points",
 					(int) (ThreatIncConfig.aidGuardMinFP() * ThreatAidCapacity.TASK_FORCE_HULL_MULT));
 			return q;
 		}
@@ -321,7 +321,7 @@ public class ThreatAid {
 				q.reason = ThreatNotice.Reason.of("No colony of yours in reach can spare and carry %s for %s",
 						ThreatReserves.label(q.commodityId), ThreatNotice.market(target));
 				for (MarketAPI m : inReach) {
-					q.reason.line("%s has %s spare and %s FP free", ThreatNotice.market(m),
+					q.reason.line("%s has %s spare and %s fleet points free", ThreatNotice.market(m),
 							(int) ThreatReserves.available(m, q.commodityId),
 							(int) Math.max(0f, ThreatAidCapacity.ownFreeFP(m)));
 				}
@@ -366,7 +366,7 @@ public class ThreatAid {
 		if (port == null || port.getStarSystem() == null || units < 1) {
 			q.reason = ThreatNotice.Reason.of("Your yards have no built hulls spare for %s",
 					ThreatNotice.market(target));
-			q.reason.line("%s FP built, %s FP free; a unit is %s FP", (int) ThreatHulls.built(me),
+			q.reason.line("%s fleet points built, %s fleet points free; a unit is %s fleet points", (int) ThreatHulls.built(me),
 					(int) ThreatHulls.freeFP(me), (int) ThreatHulls.unitFP());
 			return q;
 		}
@@ -412,7 +412,7 @@ public class ThreatAid {
 		}
 		o.recipientFactionId = target.getFactionId();
 		ThreatNotice.titled("Task Force Sails").icon(Global.getSector().getPlayerFaction())
-				.line("From %s, %s FP", ThreatNotice.market(q.source), (int) q.points)
+				.line("From %s, %s fleet points", ThreatNotice.market(q.source), (int) q.points)
 				.line("Defending %s for %s", ThreatNotice.market(target),
 						ThreatNotice.faction(target.getFaction()))
 				.send();
@@ -448,7 +448,7 @@ public class ThreatAid {
 			o.recipientFactionId = recipientFactionId;
 		}
 		ThreatNotice.titled("Task Force Sails").icon(Global.getSector().getPlayerFaction())
-				.line("From %s, %s FP", ThreatNotice.market(q.source), (int) q.points)
+				.line("From %s, %s fleet points", ThreatNotice.market(q.source), (int) q.points)
 				.line("Hunting the Defense Swarms in the %s", hive.getNameWithLowercaseType())
 				.send();
 		return true;
