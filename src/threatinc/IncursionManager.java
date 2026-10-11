@@ -1059,6 +1059,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// swept across the system it split its troops into even shares and
 		// the front it was sent for got 300 of them
 		boolean relief = ThreatIncConfig.strikeReliefFirst() && ThreatGroundFronts.wantsExpedition(target);
+		// a strike at the player before the war opens takes the player's worlds alone (the user, 2026-10-11:
+		// it wakes no navy) - an NPC world sharing the system would mobilise its faction and open the war
+		boolean playerOnly = target.isPlayerOwned() && openingWaits();
 		for (MarketAPI other : relief ? java.util.Collections.<MarketAPI>emptyList()
 				: Global.getSector().getEconomy().getMarkets(target.getStarSystem())) {
 			if (other == target || other.getPrimaryEntity() == null || ThreatMapFog.hidden(other)) continue;
@@ -1066,6 +1069,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (other.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.COLONY_FLAG)) continue;
 			if (!coreAllowed && other.getSize() >= 6) continue;
 			if (other.isPlayerOwned() && !playerAllowed) continue;
+			if (playerOnly && !other.isPlayerOwned()) continue;
 			// nor a war the hive is not ready to open (warOpen): a swept world's
 			// faction mobilises as the primary's does (onStrikeDetected)
 			if (!warOpen(other, sweepPhase)) continue;
@@ -5211,14 +5215,17 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// wakes the humans (the user, 2026-10-06: the floor was never meant for every strike; sl2 spent
 		// 8,169 FP on each 120-defence forward base). Every later strike is sized to its target alone.
 		boolean funded = ThreatIncConfig.strikeFundShare() > 0f;
-		float minFP = funded && ThreatWarState.warFactionIds().isEmpty() ? ThreatIncConfig.strikeStagedMinFP() : 0f;
+		// the player's worlds are outside the opening (the user, 2026-10-11): no floor, no bar - a strike at
+		// one is sized to its defence and sails the pass the fund pays it, whoever has mobilised
+		boolean playerTarget = target.isPlayerOwned();
+		float minFP = funded && !playerTarget && !ThreatWarState.npcAtWar() ? ThreatIncConfig.strikeStagedMinFP() : 0f;
 		float bank = !Float.isNaN(bankLimit) ? bankLimit
 				: funded ? ThreatColonyManager.strikeFund() : ThreatColonyManager.hivePoolableFP(staging);
 		// the war's first strike waits until the fund holds strikeStagedOpenFP (a trial of 2026-10-06, hw27:
 		// does the swarm win on the size of its strikes or on the growth before the war opens?). Attacked
-		// first means open now (the user, 2026-10-10): once anyone has mobilised or struck at the hive
-		// (ThreatAlarm.alarm - the player's own raids and fights included) the bar no longer holds
-		if (funded && Float.isNaN(bankLimit) && openingWaits() && bank < ThreatIncConfig.strikeStagedOpenFP()) {
+		// first means open now (the user, 2026-10-10): once an NPC faction has mobilised or struck at the hive
+		// (ThreatAlarm.npcAlarm) the bar no longer holds
+		if (funded && !playerTarget && Float.isNaN(bankLimit) && openingWaits() && bank < ThreatIncConfig.strikeStagedOpenFP()) {
 			if (defOut != null) ThreatIncConfig.logQuiet("strikeopen", "Staged strike waits to open the war: the strike fund holds "
 					+ (int) bank + " of " + (int) ThreatIncConfig.strikeStagedOpenFP() + " FP");
 			return null;
@@ -5426,12 +5433,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * it already, one that has hurt it (a grudge, ThreatAlarm), or one that
 	 * never mobilises (pirates, ownerless stations). ng1b's new hive struck the
 	 * Hegemony at month 26 with six worlds; the Hegemony mobilised at 29 and
-	 * razed it over the next eight years. The player's worlds likewise: the
-	 * player's own mobilisation, or a grudge, opens them.
+	 * razed it over the next eight years. The player's worlds are open at every
+	 * phase (the user, 2026-10-11: a fledgling adversary whose mobilisation wakes
+	 * no navy - struck as soon as seen and payable, outside the opening).
 	 */
 	public static boolean warOpen(MarketAPI market, int phase) {
 		if (phase >= 3 || market == null || !ThreatWarState.enabled()) return true;
-		String factionId = market.isPlayerOwned() ? Factions.PLAYER : market.getFactionId();
+		if (market.isPlayerOwned()) return true;
+		String factionId = market.getFactionId();
 		// the cheap reads first: this runs per market per pick
 		if (ThreatWarState.isAtWar(factionId) || ThreatAlarm.grudge(factionId) > 0f) return true;
 		FactionAPI faction = Global.getSector().getFaction(factionId);
@@ -5439,13 +5448,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/**
-	 * Whether the war's opening still waits on the fund bar (strikeStagedOpenFP): nobody has mobilised and
-	 * nobody has struck at the hive (ThreatAlarm.alarm - every faction's grudge, the player's included).
-	 * Attacked first means open now (the user, 2026-10-10): the swarm takes as long as it needs to open the
-	 * war on its own terms, but a faction or player that attacks first is answered with what the fund holds.
+	 * Whether the war's opening still waits on the fund bar (strikeStagedOpenFP): no NPC faction has
+	 * mobilised and none has struck at the hive (ThreatAlarm.npcAlarm). Attacked first means open now
+	 * (the user, 2026-10-10): the swarm takes as long as it needs to open the war on its own terms, but a
+	 * faction that attacks first is answered with what the fund holds. The player is outside the opening
+	 * (the user, 2026-10-11): neither the player's mobilisation nor the player's grudge opens the war on
+	 * the core - the player's worlds are struck on their own, sized to their defence (stagedPlan).
 	 */
 	public static boolean openingWaits() {
-		return ThreatWarState.warFactionIds().isEmpty() && ThreatAlarm.alarm() <= 0f;
+		return !ThreatWarState.npcAtWar() && ThreatAlarm.npcAlarm() <= 0f;
 	}
 
 	/** The strike gate's filters short of reach and weight: a world a strike may be aimed at now. */

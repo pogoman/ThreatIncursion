@@ -56,6 +56,11 @@ public class ThreatAlarm {
 		return total;
 	}
 
+	/** The alarm without the player's grudge: what opens the war on the core (IncursionManager.openingWaits). */
+	public static float npcAlarm() {
+		return Math.max(0f, alarm() - grudge(Factions.PLAYER));
+	}
+
 	public static void add(String factionId, float points, String reason) {
 		if (!enabled() || factionId == null || points <= 0f) return;
 		// the swarm holds no grudge against itself: a Threat front taking strata

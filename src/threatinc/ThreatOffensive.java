@@ -171,16 +171,19 @@ public class ThreatOffensive {
 		}
 		// the war's opening waits on the fund bar (IncursionManager.stagedPlan, strikeStagedOpenFP): no prong is
 		// priced before it is met - a prong priced earlier was refused on its day every month and its bill, held
-		// out of the fund, read the bar 8k higher than it was (hw143b: 14-24k of 40k with an 8k prong held)
-		if (ThreatIncConfig.strikeFundShare() > 0f && IncursionManager.openingWaits()
-				&& ThreatColonyManager.strikeFund() < ThreatIncConfig.strikeStagedOpenFP()) {
+		// out of the fund, read the bar 8k higher than it was (hw143b: 14-24k of 40k with an 8k prong held).
+		// The player's worlds are outside the opening (the user, 2026-10-11): while the bar holds, the campaign
+		// is the player's worlds alone - sized to their defence, launched the pass the fund pays them
+		boolean opening = ThreatIncConfig.strikeFundShare() > 0f && IncursionManager.openingWaits()
+				&& ThreatColonyManager.strikeFund() < ThreatIncConfig.strikeStagedOpenFP();
+		List<MarketAPI> candidates = im.stagedCandidates(null);
+		for (MarketAPI m : new ArrayList<MarketAPI>(candidates)) {
+			if (scheduled(m) || (opening && !m.isPlayerOwned())) candidates.remove(m);
+		}
+		if (opening && candidates.isEmpty()) {
 			ThreatIncConfig.logQuiet("offensiveopen", "Offensive: no prong priced before the war opens - the strike fund holds "
 					+ (int) ThreatColonyManager.strikeFund() + " of " + (int) ThreatIncConfig.strikeStagedOpenFP() + " FP");
 			return;
-		}
-		List<MarketAPI> candidates = im.stagedCandidates(null);
-		for (MarketAPI m : new ArrayList<MarketAPI>(candidates)) {
-			if (scheduled(m)) candidates.remove(m);
 		}
 		if (candidates.isEmpty()) return;
 

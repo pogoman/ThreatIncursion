@@ -70,6 +70,18 @@ public class ThreatWarState {
 		return wars().get(factionId);
 	}
 
+	/**
+	 * Whether any NPC faction has mobilised: the war the swarm opens on its own terms
+	 * (IncursionManager.openingWaits). The player's own mobilisation is not the war - the
+	 * swarm strikes the player's worlds outside the opening (the user, 2026-10-11).
+	 */
+	public static boolean npcAtWar() {
+		for (String id : warFactionIds()) {
+			if (!Factions.PLAYER.equals(id)) return true;
+		}
+		return false;
+	}
+
 	/** Ids of every mobilised faction, in mobilisation order. */
 	public static List<String> warFactionIds() {
 		if (!enabled()) return new ArrayList<String>();

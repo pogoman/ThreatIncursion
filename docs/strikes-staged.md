@@ -18,11 +18,20 @@ stay home and nothing is recalled.
   (the user, 2026-10-06); every later strike is sized to its target. It also waits until the fund
   holds `strikeStagedOpenFP` (40,000 since 2026-10-10, the user: "raise the minimum strike fp bar so
   it doesn't attack until it has more worlds"; hw143b opened at war day 1,947 with 18 hives and a
-  38k navy, found by one faction). The bar holds only while `IncursionManager.openingWaits`: nobody
-  mobilised and `ThreatAlarm.alarm` 0 - attacked first means open now (the user, 2026-10-10), a raid,
-  a front or the player's own fights waive it. `ThreatOffensive.pass` prices no prong while the bar
-  holds: a prong priced with `bankLimit` skips the bar, was refused on its day monthly, and its held
+  38k navy, found by one faction). The bar holds only while `IncursionManager.openingWaits`: no NPC
+  faction mobilised and `ThreatAlarm.npcAlarm` 0 - attacked first means open now (the user,
+  2026-10-10) - in practice never: an NPC faction scouts and sieges only once mobilised, and mobilises
+  only when struck (`mobiliseAtPhase` 0), so the waiver fires only with `mobiliseAtPhase` set or a
+  Nexerelin invasion of a hive. `ThreatOffensive.pass` prices no NPC prong while the
+  bar holds: a prong priced with `bankLimit` skips the bar, was refused on its day monthly, and its held
   bill read the bar 8k high (hw143b).
+  **The player is outside the opening** (the user, 2026-10-11: "the threat should respect its opening
+  threshold for the core worlds, but not for the player ... a fledgling adversary" whose mobilisation
+  wakes no navy): neither floor nor bar applies to a player world - open at every phase (`warOpen`),
+  struck the pass the fund pays a strike sized to its defence, once seen; while the bar holds the
+  campaign is the player's worlds alone, and such a strike sweeps no NPC world sharing the system.
+  The player's own mobilisation and grudge (`ThreatWarState.npcAtWar`, `ThreatAlarm.npcAlarm`) do not
+  open the war on the core. `playerGraceDays` (120) between strikes at the player stays.
 - **Paid** from the strike fund (`ThreatColonyManager.strikeFund`): `strikeFundShare` (0.3)
   of every colony's fabrication never reaches its bank. `spendStrikeFund` moves the bill to the
   staging colony, `launchStrike` draws it. With no fund the pooled banks pay.
