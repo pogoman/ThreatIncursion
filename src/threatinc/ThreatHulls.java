@@ -10,8 +10,7 @@ import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.econ.CommodityOnMarketAPI;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
-import com.fs.starfarer.api.combat.ShipHullSpecAPI;
-import com.fs.starfarer.api.combat.ShipHullSpecAPI.ShipTypeHints;
+import com.fs.starfarer.api.campaign.econ.CommoditySpecAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
@@ -248,28 +247,21 @@ public class ThreatHulls {
 		return (int) Math.floor(Math.min(freeFP(factionId), built(factionId)) / unitFP());
 	}
 
-	private static float creditsPerFP = -1f;
-
 	/**
-	 * Credits one fleet point of hulls is worth: threatinc_hullCreditsPerFP, or at 0 the game's own hull
-	 * table - every boardable, non-station hull's base value over its fleet points, pooled (vanilla: about
-	 * 9,600). Prices a unit of ship hulls (unitFP) for the player's aid (ThreatAid.valueAt): the ships
-	 * commodity's 100-credit base price valued 400 FP of hulls at 1,000 credits (the user, 2026-10-10).
+	 * Credits one fleet point of hulls is worth to the player's aid contracts and standing:
+	 * threatinc_hullCreditsPerFP, or 0 - a unit of hulls is then priced as vanilla prices the ships
+	 * good, itemsPerUnit items at the receiving market (ThreatAid.valueAt). The hull table (every
+	 * boardable hull's value over its fleet points, about 9,600 an FP) priced 400 FP at 3.67M
+	 * credits for a day; vanilla's good priced them at 1,000 (the user, 2026-10-10 and 2026-10-11).
 	 */
 	public static float creditsPerFP() {
-		float knob = ThreatIncConfig.hullCreditsPerFP();
-		if (knob > 0f) return knob;
-		if (creditsPerFP > 0f) return creditsPerFP;
-		float value = 0f, fp = 0f;
-		for (ShipHullSpecAPI spec : Global.getSettings().getAllShipHullSpecs()) {
-			if (spec == null || spec.getFleetPoints() <= 0 || spec.getBaseValue() <= 0f || spec.isDHull()) continue;
-			if (spec.getHints().contains(ShipTypeHints.UNBOARDABLE) || spec.getHints().contains(ShipTypeHints.STATION)
-					|| spec.getHints().contains(ShipTypeHints.HIDE_IN_CODEX)) continue;
-			value += spec.getBaseValue();
-			fp += spec.getFleetPoints();
-		}
-		creditsPerFP = fp > 0f ? value / fp : 5000f;
-		return creditsPerFP;
+		return Math.max(0f, ThreatIncConfig.hullCreditsPerFP());
+	}
+
+	/** Items of the ships good one unit of hulls is, for pricing: vanilla's econ unit of the good (200). */
+	public static float itemsPerUnit() {
+		CommoditySpecAPI spec = Global.getSettings().getCommoditySpec(Commodities.SHIPS);
+		return spec != null && spec.getEconUnit() > 0f ? spec.getEconUnit() : 200f;
 	}
 
 	/** Takes units of hulls out of the faction's built navy for a convoy; the units actually taken (whole). */

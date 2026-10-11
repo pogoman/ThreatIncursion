@@ -488,12 +488,18 @@ public class ThreatAid {
 	// arrivals: reputation and contracts
 	// ------------------------------------------------------------------
 
-	/** One unit's price to the receiving market, times the quantity. */
+	/**
+	 * One unit's price to the receiving market, times the quantity. A unit of ship hulls is
+	 * vanilla's econ unit of the ships good (200 items) at the market's price, as any other good
+	 * - or unitFP x hullCreditsPerFP with the knob set. Priced as warships for a day (2026-10-10):
+	 * 3.67M credits for Nova Maxios's 4 units - "too much" (the user, 2026-10-11).
+	 */
 	public static float valueAt(MarketAPI market, String commodityId, float quantity) {
 		if (market == null || commodityId == null || quantity <= 0f) return 0f;
-		// a unit of ship hulls is unitFP fleet points of warships, priced at the hull table
 		if (Commodities.SHIPS.equals(commodityId)) {
-			return quantity * ThreatHulls.unitFP() * ThreatHulls.creditsPerFP();
+			float perFP = ThreatHulls.creditsPerFP();
+			if (perFP > 0f) return quantity * ThreatHulls.unitFP() * perFP;
+			quantity *= ThreatHulls.itemsPerUnit();
 		}
 		float perUnit = 0f;
 		try {

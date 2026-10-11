@@ -1185,9 +1185,10 @@
 	# (Aid on the war board), out of their built navy.
 	"threatinc_hullAidKeepFraction": 0.5,
 	# Credits one fleet point of ship hulls is worth - the reward of a hull contract
-	# and the standing a hull delivery earns. 0 reads the game's hull table: every
-	# boardable hull's base value over its fleet points (vanilla about 9,600), so a
-	# unit of ship hulls (fabFPPerShipUnit, 100 FP) is priced as the warships it is.
+	# and the standing a hull delivery earns. 0 prices a unit of hulls (fabFPPerShipUnit,
+	# 100 FP) as vanilla prices the ships good: 200 items at the receiving market's
+	# price, about 20,000 credits a unit. The game's hull table (about 9,600 an FP,
+	# 3.67M credits for a 4-unit contract) was too much (2026-10-11).
 	"threatinc_hullCreditsPerFP": 0,
 
 	# Player aid (docs/player-aid.md): what you send from your own colonies to

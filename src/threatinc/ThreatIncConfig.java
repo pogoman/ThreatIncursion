@@ -920,7 +920,7 @@ public class ThreatIncConfig {
 	public static float hullPoolMult()        { return f("threatinc_hullPoolMult"); }
 	/** The share of its built navy's free hulls a faction keeps when an ally is short of hulls (ThreatHulls.spareUnits). */
 	public static float hullAidKeepFraction() { return f("threatinc_hullAidKeepFraction"); }
-	/** Credits a fleet point of ship hulls is worth to the player's aid contracts and standing; 0 = the game's hull table (ThreatHulls.creditsPerFP). */
+	/** Credits a fleet point of ship hulls is worth to the player's aid contracts and standing; 0 = priced as the ships good, 200 items a unit (ThreatAid.valueAt). */
 	public static float hullCreditsPerFP()   { return f("threatinc_hullCreditsPerFP"); }
 	/** Whether the player can send aid from their colonies and the capacity ledger applies. */
 	public static boolean aidEnabled()        { return b("threatinc_aidEnabled", true); }

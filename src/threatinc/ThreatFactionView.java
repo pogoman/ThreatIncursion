@@ -1749,11 +1749,13 @@ public class ThreatFactionView {
 				if (Commodities.SHIPS.equals(q.commodityId)) {
 					prompt.addPara("Send %s ship hulls (%s fleet points) from " + q.source.getName()
 							+ " to " + target.getName() + ", for " + who + "? It is short of about %s. "
-							+ "The hulls leave your built navy, and the convoy can be intercepted on "
-							+ "the way. Standing follows their value"
+							+ "The hulls leave your built navy (%s FP, %s units), and the convoy can be "
+							+ "intercepted on the way. Standing follows their value"
 							+ (request ? ", doubled under the open request" : "") + ".", 0f, h,
 							Misc.getWithDGS(q.quantity), Misc.getWithDGS(Math.round(q.quantity * ThreatHulls.unitFP())),
-							Misc.getWithDGS(q.need));
+							Misc.getWithDGS(q.need),
+							Misc.getWithDGS(Math.round(ThreatHulls.built(Global.getSector().getPlayerFaction().getId()))),
+							Misc.getWithDGS(ThreatHulls.sendableUnits(Global.getSector().getPlayerFaction().getId())));
 					return;
 				}
 				prompt.addPara("Send %s " + ThreatReserves.label(q.commodityId) + " from "

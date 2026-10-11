@@ -347,7 +347,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAcademyFleetGuard.createRouteParams(MiscFleetRouteManager manager, java.util.Random random)` :36
 - `ThreatAcademyFleetGuard.install()` :47 - Replaces vanilla's academy creator with Academy in the route manager's static list.
 
-## ThreatAid (686 lines)
+## ThreatAid (692 lines)
 - `ThreatAid.ok()` :63 - Why not, one fact per line (a notice's bullets, a tooltip's lines);
 ### who may receive
 - `ThreatAid.canAid(FactionAPI faction)` :73 - Why the player cannot aid this faction, or null if they can.
@@ -375,20 +375,20 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAid.dispatchStrike(StarSystemAPI hive, String recipientFactionId)` :431 - As above, sent from recipientFactionId's view:
 - `ThreatAid.dispatchResupply(MarketAPI target, int tier, Random random)` :457
 ### arrivals: reputation and contracts
-- `ThreatAid.valueAt(MarketAPI market, String commodityId, float quantity)` :492 - One unit's price to the receiving market, times the quantity.
-- `ThreatAid.rep(String factionId, float points, TextPanelAPI text)` :511 - Standing with the faction:
-- `ThreatAid.onDelivered(MarketAPI base, String recipientFactionId, int marines, int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text)` :527 - Goods landed at another faction's colony, by convoy or by hand.
-- `ThreatAid.onGuardArrived(ThreatFleetOrders.Order o)` :559
-- `ThreatAid.onGuardCompleted(ThreatFleetOrders.Order o)` :568
-- `ThreatAid.target(ThreatFleetOrders.Order o)` :577 - The order's target for a line:
-- `ThreatAid.onStrikeArrived(ThreatFleetOrders.Order o)` :583 - A task force at a hive's door:
-- `ThreatAid.factionsInStrikeReach(StarSystemAPI hive)` :615 - Non-Threat, non-player factions with a colony within any of the hive system's colonies' strike reach - billed reach (ThreatReach), no farther than the world the hive would strike first.
+- `ThreatAid.valueAt(MarketAPI market, String commodityId, float quantity)` :497 - One unit's price to the receiving market, times the quantity.
+- `ThreatAid.rep(String factionId, float points, TextPanelAPI text)` :517 - Standing with the faction:
+- `ThreatAid.onDelivered(MarketAPI base, String recipientFactionId, int marines, int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text)` :533 - Goods landed at another faction's colony, by convoy or by hand.
+- `ThreatAid.onGuardArrived(ThreatFleetOrders.Order o)` :565
+- `ThreatAid.onGuardCompleted(ThreatFleetOrders.Order o)` :574
+- `ThreatAid.target(ThreatFleetOrders.Order o)` :583 - The order's target for a line:
+- `ThreatAid.onStrikeArrived(ThreatFleetOrders.Order o)` :589 - A task force at a hive's door:
+- `ThreatAid.factionsInStrikeReach(StarSystemAPI hive)` :621 - Non-Threat, non-player factions with a colony within any of the hive system's colonies' strike reach - billed reach (ThreatReach), no farther than the world the hive would strike first.
 ### presence, for the defence contract
-- `ThreatAid.playerAssetIn(MarketAPI market)` :643 - The player's fleet, or a player guard on station, in the colony's system.
+- `ThreatAid.playerAssetIn(MarketAPI market)` :649 - The player's fleet, or a player guard on station, in the colony's system.
 ### the board's lists
-- `ThreatAid.aidOrdersFor(String recipientFactionId)` :663 - Player aid task forces bound for this faction's colonies (or, with null, the front).
-- `ThreatAid.aidConvoysFor(String recipientFactionId)` :673
-- `ThreatAid.keep(Commodities c)` :684 - Unused-import guard.
+- `ThreatAid.aidOrdersFor(String recipientFactionId)` :669 - Player aid task forces bound for this faction's colonies (or, with null, the front).
+- `ThreatAid.aidConvoysFor(String recipientFactionId)` :679
+- `ThreatAid.keep(Commodities c)` :690 - Unused-import guard.
 
 ## ThreatAidCapacity (624 lines)
 - `ThreatAidCapacity.all()` :78
@@ -426,7 +426,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAidCapacity.figures(MarketAPI market)` :562 - The board's whole-number figures for a colony, rounded ONCE so that every line adds up:
 - `ThreatAidCapacity.describe(MarketAPI market)` :579 - The colony's fleet points for its row tooltip, one line per fact, the sum written out:
 
-## ThreatAidMissionIntel (647 lines)
+## ThreatAidMissionIntel (646 lines)
 - `ThreatAidMissionIntel.ThreatAidMissionIntel(int kind, MarketAPI market, String commodityId, int needed)` :81
 ### posting and lookup
 - `ThreatAidMissionIntel.postDefend(MarketAPI market)` :102
@@ -454,31 +454,31 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatAidMissionIntel.completionDaysRemaining()` :262
 ### lifecycle
 - `ThreatAidMissionIntel.advanceImpl(float amount)` :272
-- `ThreatAidMissionIntel.advanceMission(float amount)` :328
-- `ThreatAidMissionIntel.flag(MarketAPI market)` :332
-- `ThreatAidMissionIntel.watchStrikes(MarketAPI market)` :342 - Strikes in the colony's system are noted, and whether a player asset was there with them.
-- `ThreatAidMissionIntel.accept()` :368
-- `ThreatAidMissionIntel.complete(String how)` :374
-- `ThreatAidMissionIntel.fail(String how)` :390
-- `ThreatAidMissionIntel.endUnpaid(String reason)` :401 - Nothing was owed:
-- `ThreatAidMissionIntel.cancelWithReason(String reason)` :412
-- `ThreatAidMissionIntel.missionAccepted()` :420
-- `ThreatAidMissionIntel.endMission()` :430
-- `ThreatAidMissionIntel.createAbandonedResult(boolean withPenalty)` :440
-- `ThreatAidMissionIntel.createTimeRanOutFailedResult()` :453
-- `ThreatAidMissionIntel.shouldRemoveIntel()` :458
+- `ThreatAidMissionIntel.advanceMission(float amount)` :327
+- `ThreatAidMissionIntel.flag(MarketAPI market)` :331
+- `ThreatAidMissionIntel.watchStrikes(MarketAPI market)` :341 - Strikes in the colony's system are noted, and whether a player asset was there with them.
+- `ThreatAidMissionIntel.accept()` :367
+- `ThreatAidMissionIntel.complete(String how)` :373
+- `ThreatAidMissionIntel.fail(String how)` :389
+- `ThreatAidMissionIntel.endUnpaid(String reason)` :400 - Nothing was owed:
+- `ThreatAidMissionIntel.cancelWithReason(String reason)` :411
+- `ThreatAidMissionIntel.missionAccepted()` :419
+- `ThreatAidMissionIntel.endMission()` :429
+- `ThreatAidMissionIntel.createAbandonedResult(boolean withPenalty)` :439
+- `ThreatAidMissionIntel.createTimeRanOutFailedResult()` :452
+- `ThreatAidMissionIntel.shouldRemoveIntel()` :457
 ### presentation
-- `ThreatAidMissionIntel.commodityLabel()` :472
-- `ThreatAidMissionIntel.getName()` :477
-- `ThreatAidMissionIntel.getMissionTypeNoun()` :487
-- `ThreatAidMissionIntel.getFactionForUIColors()` :492
-- `ThreatAidMissionIntel.getIcon()` :497
-- `ThreatAidMissionIntel.getIntelTags(SectorMapAPI map)` :504
-- `ThreatAidMissionIntel.getMapLocation(SectorMapAPI map)` :512
-- `ThreatAidMissionIntel.getSmallDescriptionTitle()` :518
-- `ThreatAidMissionIntel.createIntelInfo(TooltipMakerAPI info, ListInfoMode mode)` :523
-- `ThreatAidMissionIntel.addBulletPoints(TooltipMakerAPI info, ListInfoMode mode)` :530
-- `ThreatAidMissionIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :574
+- `ThreatAidMissionIntel.commodityLabel()` :471
+- `ThreatAidMissionIntel.getName()` :476
+- `ThreatAidMissionIntel.getMissionTypeNoun()` :486
+- `ThreatAidMissionIntel.getFactionForUIColors()` :491
+- `ThreatAidMissionIntel.getIcon()` :496
+- `ThreatAidMissionIntel.getIntelTags(SectorMapAPI map)` :503
+- `ThreatAidMissionIntel.getMapLocation(SectorMapAPI map)` :511
+- `ThreatAidMissionIntel.getSmallDescriptionTitle()` :517
+- `ThreatAidMissionIntel.createIntelInfo(TooltipMakerAPI info, ListInfoMode mode)` :522
+- `ThreatAidMissionIntel.addBulletPoints(TooltipMakerAPI info, ListInfoMode mode)` :529
+- `ThreatAidMissionIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :573
 
 ## ThreatAidRequests (231 lines)
 - `ThreatAidRequests.key(MarketAPI market, String commodityId)` :50
@@ -1227,7 +1227,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionStock.aided(String f, String c)` :395 - Notes that allies sailed the faction a convoy of the stock.
 - `ThreatFactionStock.describe(String f)` :400 - One line of the faction's plan for the log:
 
-## ThreatFactionView (2341 lines)
+## ThreatFactionView (2343 lines)
 ### selector row (both views)
 - `ThreatFactionView.selectorIds()` :109 - The factions the selector offers:
 - `ThreatFactionView.reserveSelectorRow(TooltipMakerAPI main)` :132 - Reserves the selector row's space in the flow, right after the strip.
@@ -1286,16 +1286,16 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionView.isOrderButton(String id)` :1526 - Whether this button id is one of the faction view's order buttons.
 - `ThreatFactionView.parse(String id)` :1542 - Splits "prefix" + "factionId:target" into [prefix, factionId, target].
 - `ThreatFactionView.addOrderPrompt(TooltipMakerAPI prompt, String id, ThreatIncursionIntel intel)` :1560 - The confirm-dialog text for an order button.
-- `ThreatFactionView.addBombardPrompt(TooltipMakerAPI prompt, MarketAPI base, FactionAPI faction, StarSystemAPI system)` :1875 - The Bombard order's confirm:
-- `ThreatFactionView.executeOrder(String id, ThreatIncursionIntel intel)` :1918 - Executes an order button.
-- `ThreatFactionView.purgedInReach(FactionAPI faction)` :2143 - Purged worlds within expedition reach of one of the faction's military worlds.
-- `ThreatFactionView.group(String key)` :2154 - The group of a "purgefleet:i:fleetId" / "tffleet:i:fleetId" key, or null.
-- `ThreatFactionView.groupFleet(String key)` :2171 - The fleet of a group key, while it still lives with its group.
-- `ThreatFactionView.groupTargetSystem(String key)` :2186 - The hive system a group key's fleet is sent against.
-- `ThreatFactionView.returnOriginSystem(ThreatReturns.Return r)` :2213 - The hive system a returning fleet came from, IF it still holds a live colony worth turning back for - else null.
-- `ThreatFactionView.detachToHunt(FactionAPI faction, String key)` :2222 - One fleet leaves its expedition or task force and hunts the hive's Defense Swarms (ThreatFleetOrders.adoptHunt).
-- `ThreatFactionView.recall(String factionId, String key)` :2263
-- `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :2339 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
+- `ThreatFactionView.addBombardPrompt(TooltipMakerAPI prompt, MarketAPI base, FactionAPI faction, StarSystemAPI system)` :1877 - The Bombard order's confirm:
+- `ThreatFactionView.executeOrder(String id, ThreatIncursionIntel intel)` :1920 - Executes an order button.
+- `ThreatFactionView.purgedInReach(FactionAPI faction)` :2145 - Purged worlds within expedition reach of one of the faction's military worlds.
+- `ThreatFactionView.group(String key)` :2156 - The group of a "purgefleet:i:fleetId" / "tffleet:i:fleetId" key, or null.
+- `ThreatFactionView.groupFleet(String key)` :2173 - The fleet of a group key, while it still lives with its group.
+- `ThreatFactionView.groupTargetSystem(String key)` :2188 - The hive system a group key's fleet is sent against.
+- `ThreatFactionView.returnOriginSystem(ThreatReturns.Return r)` :2215 - The hive system a returning fleet came from, IF it still holds a live colony worth turning back for - else null.
+- `ThreatFactionView.detachToHunt(FactionAPI faction, String key)` :2224 - One fleet leaves its expedition or task force and hunts the hive's Defense Swarms (ThreatFleetOrders.adoptHunt).
+- `ThreatFactionView.recall(String factionId, String key)` :2265
+- `ThreatFactionView.keep(CampaignFleetAPI f, UIComponentAPI c)` :2341 - Unused-import guard for CampaignFleetAPI/UIComponentAPI in older compilers.
 
 ## ThreatFleetComposer (381 lines)
 ### entry points
@@ -1969,51 +1969,52 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundWarCondition.days(float d)` :142
 - `ThreatGroundWarCondition.fmt(float f)` :147
 
-## ThreatHulls (588 lines)
-- `ThreatHulls.enabled()` :60 - Mean combat points of vanilla's patrol weights (MilitaryBase.getPatrolCombatFP:
+## ThreatHulls (580 lines)
+- `ThreatHulls.enabled()` :59 - Mean combat points of vanilla's patrol weights (MilitaryBase.getPatrolCombatFP:
 ### vanilla's patrol table, for the hive's own structures
-- `ThreatHulls.patrolTable(int size, int tier)` :75 - The patrols vanilla's MilitaryBase.apply sets for a market of this size under a Patrol HQ (tier 0), a Military Base (1) or a High Command (2), as {light, medium, heavy}.
-- `ThreatHulls.applyPatrols(MarketAPI market, String modId, int[] counts)` :94 - Sets the market's patrol counts to the table's, under the given modifier id.
-- `ThreatHulls.unapplyPatrols(MarketAPI market, String modId)` :101
+- `ThreatHulls.patrolTable(int size, int tier)` :74 - The patrols vanilla's MilitaryBase.apply sets for a market of this size under a Patrol HQ (tier 0), a Military Base (1) or a High Command (2), as {light, medium, heavy}.
+- `ThreatHulls.applyPatrols(MarketAPI market, String modId, int[] counts)` :93 - Sets the market's patrol counts to the table's, under the given modifier id.
+- `ThreatHulls.unapplyPatrols(MarketAPI market, String modId)` :100
 ### standing hulls
-- `ThreatHulls.patrols(MarketAPI market, String stat)` :113 - Vanilla's patrol count of one weight over the market.
-- `ThreatHulls.patrolFP(MarketAPI market)` :122 - The combat points of the patrols vanilla would keep over the market, unadjusted:
-- `ThreatHulls.standingFP(MarketAPI market)` :134 - The market's standing hulls:
-- `ThreatHulls.marketsOf(String factionId)` :142 - The faction's markets that count:
-- `ThreatHulls.standingFP(String factionId)` :152 - The faction's standing hulls:
+- `ThreatHulls.patrols(MarketAPI market, String stat)` :112 - Vanilla's patrol count of one weight over the market.
+- `ThreatHulls.patrolFP(MarketAPI market)` :121 - The combat points of the patrols vanilla would keep over the market, unadjusted:
+- `ThreatHulls.standingFP(MarketAPI market)` :133 - The market's standing hulls:
+- `ThreatHulls.marketsOf(String factionId)` :141 - The faction's markets that count:
+- `ThreatHulls.standingFP(String factionId)` :151 - The faction's standing hulls:
 ### production: what rebuilds a loss
-- `ThreatHulls.shipUnits(MarketAPI market)` :167 - Hull units the market's shipyard makes a month:
-- `ThreatHulls.productionFP(String factionId)` :178 - Fleet points of hulls the faction's shipyards make a month:
+- `ThreatHulls.shipUnits(MarketAPI market)` :166 - Hull units the market's shipyard makes a month:
+- `ThreatHulls.productionFP(String factionId)` :177 - Fleet points of hulls the faction's shipyards make a month:
 ### hulls as a good (the user, 2026-10-07: "vanilla sends convoys all the time
-- `ThreatHulls.unitFP()` :192 - Fleet points one unit of the ships commodity is worth to a pool:
-- `ThreatHulls.hullPort(String factionId)` :200 - The faction's hull port - where hulls are asked for and land:
-- `ThreatHulls.shortUnits(String factionId)` :225 - Units of hulls the faction is short:
-- `ThreatHulls.spareUnits(MarketAPI market)` :236 - Units of hulls the market can spare to an ally:
-- `ThreatHulls.sendableUnits(String factionId)` :246 - Units of built hulls the faction can send away now:
-- `ThreatHulls.creditsPerFP()` :259 - Credits one fleet point of hulls is worth:
-- `ThreatHulls.give(String factionId, int units)` :276 - Takes units of hulls out of the faction's built navy for a convoy;
-- `ThreatHulls.receive(String factionId, int units, String from)` :286 - Units of hulls landed for the faction:
-- `ThreatHulls.hullStatus(MarketAPI market)` :307 - The ships commodity's status at a market, as ThreatReserves.status reports a reserve good:
+- `ThreatHulls.unitFP()` :191 - Fleet points one unit of the ships commodity is worth to a pool:
+- `ThreatHulls.hullPort(String factionId)` :199 - The faction's hull port - where hulls are asked for and land:
+- `ThreatHulls.shortUnits(String factionId)` :224 - Units of hulls the faction is short:
+- `ThreatHulls.spareUnits(MarketAPI market)` :235 - Units of hulls the market can spare to an ally:
+- `ThreatHulls.sendableUnits(String factionId)` :245 - Units of built hulls the faction can send away now:
+- `ThreatHulls.creditsPerFP()` :257 - Credits one fleet point of hulls is worth to the player's aid contracts and standing:
+- `ThreatHulls.itemsPerUnit()` :262 - Items of the ships good one unit of hulls is, for pricing:
+- `ThreatHulls.give(String factionId, int units)` :268 - Takes units of hulls out of the faction's built navy for a convoy;
+- `ThreatHulls.receive(String factionId, int units, String from)` :278 - Units of hulls landed for the faction:
+- `ThreatHulls.hullStatus(MarketAPI market)` :299 - The ships commodity's status at a market, as ThreatReserves.status reports a reserve good:
 ### the debt: hulls lost, not yet rebuilt
-- `ThreatHulls.debt(String factionId)` :341 - Fleet points of hulls the faction has lost and not yet rebuilt.
-- `ThreatHulls.lose(String factionId, float fp, String label)` :347 - Books hulls lost:
+- `ThreatHulls.debt(String factionId)` :333 - Fleet points of hulls the faction has lost and not yet rebuilt.
+- `ThreatHulls.lose(String factionId, float fp, String label)` :339 - Books hulls lost:
 ### the navy: hulls the yards built beyond the losses (the user, 2026-10-06:
-- `ThreatHulls.built(String factionId)` :373 - Fleet points of hulls the faction's yards have built beyond its losses:
-- `ThreatHulls.rebuild()` :386 - Daily:
-- `ThreatHulls.suppliesKeepFP(String factionId)` :436 - Fleet points of hulls the faction's supplies surplus - what its reserves bank a month less their trailing demand, the standing upkeep already paid among it - would keep up at #standingRate.
+- `ThreatHulls.built(String factionId)` :365 - Fleet points of hulls the faction's yards have built beyond its losses:
+- `ThreatHulls.rebuild()` :378 - Daily:
+- `ThreatHulls.suppliesKeepFP(String factionId)` :428 - Fleet points of hulls the faction's supplies surplus - what its reserves bank a month less their trailing demand, the standing upkeep already paid among it - would keep up at #standingRate.
 ### standing upkeep: the navy the yards built beyond vanilla's table pays its
-- `ThreatHulls.standingRate(String factionId)` :460 - Supplies a month one of the faction's built hulls at home costs:
-- `ThreatHulls.builtAtHome(String factionId)` :465 - The faction's built hulls at home:
-- `ThreatHulls.standingUpkeepPerMonth(String factionId)` :470 - Supplies a month the faction's built hulls at home cost, at #standingRate.
-- `ThreatHulls.maintain()` :484 - Daily:
-- `ThreatHulls.maintain(String factionId, float days)` :499
-- `ThreatHulls.starve(String factionId, float fp, float unpaid)` :532 - Built hulls the faction could not keep up, struck off its navy (never a debt:
+- `ThreatHulls.standingRate(String factionId)` :452 - Supplies a month one of the faction's built hulls at home costs:
+- `ThreatHulls.builtAtHome(String factionId)` :457 - The faction's built hulls at home:
+- `ThreatHulls.standingUpkeepPerMonth(String factionId)` :462 - Supplies a month the faction's built hulls at home cost, at #standingRate.
+- `ThreatHulls.maintain()` :476 - Daily:
+- `ThreatHulls.maintain(String factionId, float days)` :491
+- `ThreatHulls.starve(String factionId, float fp, float unpaid)` :524 - Built hulls the faction could not keep up, struck off its navy (never a debt:
 ### what the pool can pay
-- `ThreatHulls.committedFP(String factionId)` :547 - Fleet points the faction's fleets out hold against the pool (the ledger's live entries).
-- `ThreatHulls.freeFP(String factionId)` :558 - Hulls the faction can send now:
-- `ThreatHulls.cap(MarketAPI base, float payable)` :564 - Caps a reserve's payable fleet points at the faction's free hulls;
-- `ThreatHulls.describe(String factionId)` :570 - One line for a faction:
-- `ThreatHulls.logMonth()` :577 - The month line for the log:
+- `ThreatHulls.committedFP(String factionId)` :539 - Fleet points the faction's fleets out hold against the pool (the ledger's live entries).
+- `ThreatHulls.freeFP(String factionId)` :550 - Hulls the faction can send now:
+- `ThreatHulls.cap(MarketAPI base, float payable)` :556 - Caps a reserve's payable fleet points at the faction's free hulls;
+- `ThreatHulls.describe(String factionId)` :562 - One line for a faction:
+- `ThreatHulls.logMonth()` :569 - The month line for the log:
 
 ## ThreatIncCampaignPlugin (48 lines)
 - `ThreatIncCampaignPlugin.getId()` :21

@@ -271,11 +271,10 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 	@Override
 	public void advanceImpl(float amount) {
 		MarketAPI market = getMarket();
-		// a hull contract posted before 2026-10-10 priced its units at the ships commodity (1,000 credits for 400 FP):
-		// repriced as warships (ThreatAid.valueAt) while open, never down
+		// a hull contract follows the current hull price while open (ThreatAid.valueAt): posted at 1,000
+		// credits for 400 FP before 2026-10-10, at 3.67M as warships for a day after, as the good since
 		if (kind == KIND_AID && market != null && Commodities.SHIPS.equals(commodityId) && !isEnded() && !isEnding()) {
-			int value = Math.max(1000, Math.round(ThreatAid.valueAt(market, commodityId, needed) / 1000f) * 1000);
-			if (value > reward) reward = value;
+			reward = Math.max(1000, Math.round(ThreatAid.valueAt(market, commodityId, needed) / 1000f) * 1000);
 		}
 		if (isPosted()) {
 			if (market == null || !factionId.equals(market.getFactionId())) {
