@@ -1007,7 +1007,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatColonyUpkeep.take(String key)` :466
 - `ThreatColonyUpkeep.logMonth()` :473 - The month's upkeep line for the census log, and the month's tallies reset.
 
-## ThreatConvoys (2963 lines)
+## ThreatConvoys (2974 lines)
 - `ThreatConvoys.isFrontRun()` :97 - A founding convoy's hive:
 - `ThreatConvoys.isFounding()` :101
 - `ThreatConvoys.fromName()` :106 - The sender:
@@ -1137,19 +1137,20 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 ### founding convoys (the user, 2026-10-11: "make humans need physical convoys to found a FB like
 - `ThreatConvoys.foundingBoundFor(String factionId, String hiveSystemId)` :2574 - Whether a founding convoy of the faction is at sea toward this hive system (ThreatFrontlines.planFor counts it as reaching the hive).
 - `ThreatConvoys.foundingBoundTo(String siteId)` :2583 - Whether any founding convoy is at sea to this planet (ThreatFrontlines.pickSite passes it over).
-- `ThreatConvoys.destinationSystem(Convoy c)` :2592 - The star system a convoy is bound for - its base's, or a founding convoy's site's;
-- `ThreatConvoys.dispatchFounding(MarketAPI payer, PlanetAPI site, StarSystemAPI hive, FactionAPI faction, float[] cost, Random random)` :2611 - A FOUNDING CONVOY:
-- `ThreatConvoys.pollFounding(Convoy c)` :2688 - A founding convoy at sea:
+- `ThreatConvoys.withPassage(float[] kit, float ly)` :2596 - A founding's cost with its convoy's passage beside it ({supplies, fuel}):
+- `ThreatConvoys.destinationSystem(Convoy c)` :2603 - The star system a convoy is bound for - its base's, or a founding convoy's site's;
+- `ThreatConvoys.dispatchFounding(MarketAPI payer, PlanetAPI site, StarSystemAPI hive, FactionAPI faction, float[] cost, Random random)` :2622 - A FOUNDING CONVOY:
+- `ThreatConvoys.pollFounding(Convoy c)` :2699 - A founding convoy at sea:
 ### resolution (fast poll)
-- `ThreatConvoys.poll()` :2746 - Distance from the destination entity at which a convoy counts as arrived (ThreatReturns.arrived).
-- `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :2790
-- `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :2857 - Whether the convoy's destination still belongs to whom it was sent to.
-- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :2870 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
-- `ThreatConvoys.stripLandedMods()` :2893 - Strips the landing trade modifiers older builds left on markets (rule 5).
-- `ThreatConvoys.lost(Convoy c)` :2905
-- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :2926 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
-- `ThreatConvoys.homeBase(Convoy c)` :2937 - Where a convoy settles:
-- `ThreatConvoys.returnHome(Convoy c)` :2951 - Recalled, timed out, or its destination is gone:
+- `ThreatConvoys.poll()` :2757 - Distance from the destination entity at which a convoy counts as arrived (ThreatReturns.arrived).
+- `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :2801
+- `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :2868 - Whether the convoy's destination still belongs to whom it was sent to.
+- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :2881 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
+- `ThreatConvoys.stripLandedMods()` :2904 - Strips the landing trade modifiers older builds left on markets (rule 5).
+- `ThreatConvoys.lost(Convoy c)` :2916
+- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :2937 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
+- `ThreatConvoys.homeBase(Convoy c)` :2948 - Where a convoy settles:
+- `ThreatConvoys.returnHome(Convoy c)` :2962 - Recalled, timed out, or its destination is gone:
 
 ## ThreatDebugWar (428 lines)
 - `ThreatDebugWar.poll(IncursionManager manager, Random random)` :58 - From IncursionManager.advance, once the incursion has started.
@@ -1474,7 +1475,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFortificationRaids.performRaid(CargoAPI loot, Random random, float lootMult, TextPanelAPI text)` :174
 - `ThreatFortificationRaids.OrganRaid(MarketAPI market, Industry target)` :197 - A hive's Fabrication Core:
 
-## ThreatFrontlines (2779 lines)
+## ThreatFrontlines (2789 lines)
 - `ThreatFrontlines.StationListener(String marketId)` :140
 - `ThreatFrontlines.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :144
 - `ThreatFrontlines.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :155
@@ -1586,26 +1587,26 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFrontlines.plan(Random random)` :2177 - Each mobilised NPC faction under its cap founds at most one link per pass:
 - `ThreatFrontlines.planFor(FactionAPI faction, List<StarSystemAPI> hiveSystems, Random random)` :2203
 - `ThreatFrontlines.compare(Object[] x, Object[] y)` :2242
-- `ThreatFrontlines.pickSite(FactionAPI faction, MarketAPI anchor, StarSystemAPI hive, float hop, float reach)` :2332 - The open world within hop of the anchor that ends up nearest the hive - accepted if it gets at least 1 LY closer than the anchor, or lies within reach of the hive outright.
-- `ThreatFrontlines.payer(FactionAPI faction, PlanetAPI site)` :2363 - The faction's base nearest the site that can fund the founding (linkCost, #canFund:
-- `ThreatFrontlines.hiveNear(SectorEntityToken planet)` :2379 - The nearest found live hive's system within frontlineKeepLY of this world, or null.
-- `ThreatFrontlines.hostsLink(SectorEntityToken planet)` :2395 - Whether any faction's link already orbits this planet:
-- `ThreatFrontlines.siteSystemOk(FactionAPI faction, StarSystemAPI sys)` :2408 - No hive and no hostile market in the system, and no link of this faction or another (linkTaken).
-- `ThreatFrontlines.linkTaken(StarSystemAPI sys)` :2423 - Whether a system already holds a link, of any faction:
-- `ThreatFrontlines.foundLanded(FactionAPI faction, PlanetAPI site, StarSystemAPI hive, String payerName)` :2436 - A founding convoy's kit has landed (ThreatConvoys.pollFounding):
-- `ThreatFrontlines.found(FactionAPI faction, PlanetAPI planet, StarSystemAPI hive)` :2449 - Founds a size-1 link on a station over the planet.
+- `ThreatFrontlines.pickSite(FactionAPI faction, MarketAPI anchor, StarSystemAPI hive, float hop, float reach)` :2340 - The open world within hop of the anchor that ends up nearest the hive - accepted if it gets at least 1 LY closer than the anchor, or lies within reach of the hive outright.
+- `ThreatFrontlines.payer(FactionAPI faction, PlanetAPI site)` :2371 - The faction's base nearest the site that can fund the founding (linkCost, #canFund:
+- `ThreatFrontlines.hiveNear(SectorEntityToken planet)` :2389 - The nearest found live hive's system within frontlineKeepLY of this world, or null.
+- `ThreatFrontlines.hostsLink(SectorEntityToken planet)` :2405 - Whether any faction's link already orbits this planet:
+- `ThreatFrontlines.siteSystemOk(FactionAPI faction, StarSystemAPI sys)` :2418 - No hive and no hostile market in the system, and no link of this faction or another (linkTaken).
+- `ThreatFrontlines.linkTaken(StarSystemAPI sys)` :2433 - Whether a system already holds a link, of any faction:
+- `ThreatFrontlines.foundLanded(FactionAPI faction, PlanetAPI site, StarSystemAPI hive, String payerName)` :2446 - A founding convoy's kit has landed (ThreatConvoys.pollFounding):
+- `ThreatFrontlines.found(FactionAPI faction, PlanetAPI planet, StarSystemAPI hive)` :2459 - Founds a size-1 link on a station over the planet.
 ### strike warning and the called guard
-- `ThreatFrontlines.detectedBy(CampaignFleetAPI fleet)` :2516 - Who sees this Threat fleet, or null:
-- `ThreatFrontlines.detectedAt(LocationAPI loc, Vector2f hyperLoc)` :2526 - The same pickets for a place rather than a fleet - a strike far from the player flies as an abstract route with no fleets spawned.
-- `ThreatFrontlines.watches(MarketAPI m)` :2546
-- `ThreatFrontlines.sendRelief(ThreatStrikeFGI strike, Random random)` :2560 - A seen strike against a link calls its guard (user's call 2026-09-27):
-- `ThreatFrontlines.relieve(Outpost o, MarketAPI target)` :2571
-- `ThreatFrontlines.strikeEta(MarketAPI market)` :2592 - Days until the first seen strike bound for the market strikes (0 if striking now), or -1 with none.
-- `ThreatFrontlines.turnBack(Outpost o, MarketAPI market)` :2613 - Turns the guard sent home from behind the front back to the link, while it still sails:
-- `ThreatFrontlines.takeOver(Outpost o, MarketAPI market, List<CampaignFleetAPI> fleets, MarketAPI home)` :2632 - Puts fleets already out on the link's guard:
-- `ThreatFrontlines.borrowRear(Outpost o, MarketAPI market, float need, float eta)` :2659 - Guards the faction has out behind the front with no seen strike on their own link - on station through its rear grace, or sailing home from one - answer a strike on this link before the navy is asked 
-- `ThreatFrontlines.compare(CampaignFleetAPI a, CampaignFleetAPI b)` :2684
-- `ThreatFrontlines.callGuard(Outpost o, MarketAPI market, float have, boolean atDetection)` :2726 - Calls a guard against the seen strikes bound for the link, outside the upkeep budget:
+- `ThreatFrontlines.detectedBy(CampaignFleetAPI fleet)` :2526 - Who sees this Threat fleet, or null:
+- `ThreatFrontlines.detectedAt(LocationAPI loc, Vector2f hyperLoc)` :2536 - The same pickets for a place rather than a fleet - a strike far from the player flies as an abstract route with no fleets spawned.
+- `ThreatFrontlines.watches(MarketAPI m)` :2556
+- `ThreatFrontlines.sendRelief(ThreatStrikeFGI strike, Random random)` :2570 - A seen strike against a link calls its guard (user's call 2026-09-27):
+- `ThreatFrontlines.relieve(Outpost o, MarketAPI target)` :2581
+- `ThreatFrontlines.strikeEta(MarketAPI market)` :2602 - Days until the first seen strike bound for the market strikes (0 if striking now), or -1 with none.
+- `ThreatFrontlines.turnBack(Outpost o, MarketAPI market)` :2623 - Turns the guard sent home from behind the front back to the link, while it still sails:
+- `ThreatFrontlines.takeOver(Outpost o, MarketAPI market, List<CampaignFleetAPI> fleets, MarketAPI home)` :2642 - Puts fleets already out on the link's guard:
+- `ThreatFrontlines.borrowRear(Outpost o, MarketAPI market, float need, float eta)` :2669 - Guards the faction has out behind the front with no seen strike on their own link - on station through its rear grace, or sailing home from one - answer a strike on this link before the navy is asked 
+- `ThreatFrontlines.compare(CampaignFleetAPI a, CampaignFleetAPI b)` :2694
+- `ThreatFrontlines.callGuard(Outpost o, MarketAPI market, float have, boolean atDetection)` :2736 - Calls a guard against the seen strikes bound for the link, outside the upkeep budget:
 
 ## ThreatFuel (817 lines)
 - `ThreatFuel.enabled()` :64

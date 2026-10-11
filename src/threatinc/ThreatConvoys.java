@@ -2588,6 +2588,17 @@ public class ThreatConvoys {
 		return false;
 	}
 
+	/**
+	 * A founding's cost with its convoy's passage beside it ({supplies, fuel}): the base escort's voyage
+	 * of {@code ly} (baseEscort x escortRate), what payEscort takes from the stock beside the kit - so the
+	 * payer is chosen and the kit pooled with the passage in hand (ThreatFrontlines.payer, planFor).
+	 */
+	public static float[] withPassage(float[] kit, float ly) {
+		float[] rate = escortRate(ly);
+		float base = baseEscort();
+		return new float[] { kit[0] + base * rate[1], kit[1] + base * rate[0] };
+	}
+
 	/** The star system a convoy is bound for - its base's, or a founding convoy's site's; null when gone. */
 	public static StarSystemAPI destinationSystem(Convoy c) {
 		if (c == null) return null;
@@ -2632,7 +2643,7 @@ public class ThreatConvoys {
 			}
 			refundEscort(fleet, donor);
 			Misc.fadeAndExpire(fleet);
-			ThreatIncConfig.logQuiet("fl_passage_" + faction.getId(), "Frontline: " + faction.getId()
+			ThreatIncConfig.logQuiet("fl_passage_" + faction.getId() + site.getId(), "Frontline: " + faction.getId()
 					+ " cannot pay the passage to " + site.getName() + " beside the kit at " + payer.getName()
 					+ " (" + (int) ly + " ly)");
 			return null;

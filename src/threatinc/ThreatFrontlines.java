@@ -2289,8 +2289,16 @@ public class ThreatFrontlines {
 						unguardable.add(site.getId());
 						continue;
 					}
-					ThreatConvoys.dispatchFounding(payer, site, hive, faction, ThreatOutposts.linkCost(faction), random);
-					return;   // sailed, or logged why not (no hulls, or the passage would eat the kit)
+					// the kit and its passage are pooled INTO the payer first (canFund counts the markets reaching
+					// it, the convoy loads from the payer alone): drawn as the on-the-spot founding drew, then put
+					// in the payer's stock for the convoy to load and the escort to bill
+					float[] kit = ThreatOutposts.linkCost(faction);
+					float[] pooled = drawFounding(payer, ThreatConvoys.withPassage(kit,
+							Misc.getDistanceLY(payer.getLocationInHyperspace(), site.getLocationInHyperspace())));
+					ThreatReserves.deposit(payer.getId(), Commodities.SUPPLIES, pooled[0]);
+					ThreatReserves.deposit(payer.getId(), Commodities.FUEL, pooled[1]);
+					ThreatConvoys.dispatchFounding(payer, site, hive, faction, kit, random);
+					return;   // sailed, or logged why not (no hulls, or the passage would eat the kit); the stock stays at the payer
 				}
 				// the founding is paid before the garrison is weighed: its voyage
 				// check reads the pool the founding draws from - the structures it
@@ -2361,13 +2369,15 @@ public class ThreatFrontlines {
 	 * past every expedition range still gets built.
 	 */
 	protected static MarketAPI payer(FactionAPI faction, PlanetAPI site) {
-		float[] cost = ThreatOutposts.linkCost(faction);
+		float[] kit = ThreatOutposts.linkCost(faction);
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
 		for (MarketAPI m : ThreatReserves.marketsOf(faction.getId())) {
 			if (m.getStarSystem() == null || !IncursionManager.isBase(m)) continue;
 			float d = Misc.getDistanceLY(m.getLocationInHyperspace(), site.getLocationInHyperspace());
 			if (d >= bestDist) continue;
+			// a founding convoy's passage is paid beside the kit (ThreatConvoys.withPassage, 2026-10-11)
+			float[] cost = ThreatIncConfig.foundingConvoy() ? ThreatConvoys.withPassage(kit, d) : kit;
 			if (!canFund(m, cost)) continue;
 			bestDist = d;
 			best = m;
