@@ -6,7 +6,7 @@
 # on the supplies, and `nofound` when 20+ kit lines have run with 0 foundings.
 check() {
   local g=$1 F=$2
-  local founded held stock hives landings erad chest outsup kitlines full
+  local founded held stock hives landings erad chest outsup kitlines full flips
   founded=$(grep -c -i '^Colony founded\|^Notice: Hive Founded\|founds a hive' "$F")
   held=$(grep '^Census: threat hives' "$F" | tail -1 | grep -o 'sends held [0-9]*' | head -1)
   stock=$(grep '^Census: threat hives' "$F" | tail -1 | grep -o 'supplies [0-9]*' | head -1)
@@ -16,10 +16,12 @@ check() {
   outsup=$(grep -c 'out on the supplies' "$F")
   kitlines=$(grep -c '^Feed: a seeding is held' "$F")
   chest=$(grep '^Stance: the chest is' "$F" | tail -1 | cut -c1-110)
+  flips=$(grep -c '^Stance: the chest is' "$F")
   full=$(grep '^Stance: ' "$F" | grep -o 'chest [0-9]* of [0-9]* FP a horizon, cheapest prong [0-9]* FP[^;]*' | tail -1)
-  echo "    chest $TAG$g: founded $founded, ${held:-sends held ?}, $stock; $hives; landings $landings, eradicated $erad; out-on-supplies $outsup, kit lines $kitlines"
+  echo "    chest $TAG$g: founded $founded, ${held:-sends held ?}, $stock; $hives; landings $landings, eradicated $erad; out-on-supplies , kit lines , chest flips "
   echo "      last: ${full:-no stance line}; ${chest:-no chest transition}"
   case "$full" in *"(full)"*) [ "$outsup" -gt 0 ] && flag $g chestfull "chest reads full with $outsup passes out on the supplies";; esac
   [ "$kitlines" -ge 20 ] && [ "$founded" -eq 0 ] && flag $g nofound "$kitlines kit lines, 0 founded"
+  [ "$flips" -ge 4 ] && flag $g flap "the chest flipped $flips times"
   return 0
 }

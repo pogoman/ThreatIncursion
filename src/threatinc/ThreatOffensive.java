@@ -130,7 +130,8 @@ public class ThreatOffensive {
 
 	/**
 	 * The fund's bill of the cheapest prong the last pass priced whose passage the fuel in stock pays and whose
-	 * supplies away the free stock and the spare keep (2026-10-11, hw151c), or 0 for none: what a full chest must be
+	 * supplies away the free stock and the spare keep (2026-10-11, hw151c), costing at least a month's saving of the
+	 * fund (hw152c: 15-31 FP prongs flipped the chest), or 0 for none: what a full chest must be
 	 * able to field (ThreatStance.evaluate - hw70, 2026-10-08: a 4-hive fund read full at 1,800 FP with the
 	 * cheapest prong at 8,244, and the chest's feeding held the spread until the war).
 	 */
@@ -330,10 +331,12 @@ public class ThreatOffensive {
 		// the supplies away cannot keep is out on the supplies (hw151c, 2026-10-11: the fund read full at 89-137k FP
 		// for 1,200 days while every prong was "out on the supplies away" - 39 passes paid nothing - so the chest fed
 		// the fleets before expansion and gated every founding on a supplies surplus a stock of 0-16k never had;
-		// a fund that fields nothing is poor, not full - the user's rule after hw70)
+		// a fund that fields nothing is poor, not full - the user's rule after hw70). And worth fielding: a prong
+		// under a month's saving is not what the fund saves for (hw152c, 2026-10-11: prongs of 15 and 31 FP read a
+		// 90k fund full twice and re-gated the foundings for the month)
 		float cheapest = 0f;
 		for (Prong p : prongs) {
-			if (p.cost <= 0f || p.fuel > fuelStock) continue;
+			if (p.cost <= 0f || p.cost < perMonth || p.fuel > fuelStock) continue;
 			float need = p.supplies();
 			if (need > 0f && need > suppliesStock + suppliesFlow * Math.max(1f, p.days) / 30f) continue;
 			if (cheapest <= 0f || p.cost < cheapest) cheapest = p.cost;
