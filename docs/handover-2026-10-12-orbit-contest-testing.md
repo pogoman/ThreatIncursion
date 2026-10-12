@@ -5,8 +5,8 @@ build does to the NPC war. Read the repo's `CLAUDE.md` first, then `ground-war-d
 is hardware") and `ground-war-orbit-control.md` ("The swarm holds the orbit"). How to run the harness, the
 mods, the pristine save and the user's standing rules are unchanged from `handover-2026-10-05-testing.md`
 sections 2-8; what the 2026-10-11 provisions build added to the logs is in
-`handover-2026-10-11-provisions-testing.md`. `git pull` brings the jar (`jars/ThreatInc.jar`, built **18:21**,
-committed with this file - the 15:49 jar plus the evening's proportional bombardment below); do not rebuild
+`handover-2026-10-11-provisions-testing.md`. `git pull` brings the jar (`jars/ThreatInc.jar`, built **19:20**,
+committed with this file - the 15:49 jar plus the evening's proportional bombardment and bombard hold below); do not rebuild
 unless the source changes.
 
 ## 1. What is being tested (all untested in a batch)
@@ -19,6 +19,7 @@ Found by the user in their own game this afternoon, besieging Delta Mengryla I w
 | **One fleet no longer stops the swarm bombarding an enemy front on its hive.** | `swarmOrbitContested` read any armed hostile fleet within 1,500 units, at any weight, so the user's lone fleet dancing inside the radius against a thousand points of swarm kept `tickSwarmBombard` off while the hive's last stratum fell. Now the hostiles within range must weigh `orbitContestFraction` (0.5, the existing knob) of `swarmOrbitStrength` - the colony theatre's own rule (`orbitHeldAgainst`) mirrored. With no swarm there any armed fleet still contests. The unspawned flotilla's `coverFP` keeps its old test. | `ThreatGroundFronts.swarmOrbitContested`; `facts.md` "One fleet inside the radius" |
 | Tooltip wording | `Ground defenses (shortage, suppressed, 98% effect)` - one bracket, no commodity named. | `ThreatGroundDefenses.apply` |
 | **The swarm's bombardment is proportional to its weight, and pays fuel (evening, jar 18:21).** | The grind was `swarmFrontBombardPer30Days` (0.6) of the front per 30 days x `fp / (fp + defenseStrength)`: capped at 2% a day however many swarms stood overhead, free, with no visual and no log line - 1,015 FP over Delta Mengryla I read 1% a day against a 1,378-marine push and the hive fell ("1% for how much fuel? ... Shouldnt be proportional to the FP overhead?"). Now marines a day = `threatinc_swarmBombardMarinesPerFPDay` (0.05) x FP over the orbit / the front's cover (`coverMult`, dug in up to 1.5x; pushing exposed) x veterancy (1,015 FP: 51 a day), and the swarm pays `threatinc_swarmBombardFuelPerFPDay` (2.86, the human saturation rate) x FP a day from its fuel stock (`ThreatFuel`, census purpose "bombard"; 1,015 FP: ~2,900 a day); a day the stock cannot pay is skipped. 0 on the first knob falls back to the old rule. Vanilla's burst on the planet once a day. **Expect this to shift the war:** a human landing under a swarm that holds the orbit by weight now dies in weeks, and a long swarm siege of its own skies drains the fuel stock. | `ThreatGroundFronts.swarmBombardPer30Days`, `tickSwarmBombard`; `facts.md` "The swarm bombards in proportion to its weight"; `ground-war-orbit-control.md` "The swarm holds the orbit" |
+| **A swarm fleet carries its ordnance (later that evening, jar 19:20).** | The proportional rule paid from the sector-wide stock wherever the fleet stood: 61k fuel over 18 days for a hive whose port was offline and imports cut, and the user's front died ("the swarm pays nothing for fuel and they could keep bombarding"; chose "Carry a bombard hold", "10 days"). Now each swarm fleet carries `threatinc_swarmBombardHoldDays` (10) x 2.86 x FP of fuel, loaded from the stock at first use (its launch load) and refilled only within hold range of a hive whose port stands undisrupted with imports not fully cut (`portArms`). The tick bombards with armed fleets only; a dry garrison or reinforcement over a hive that cannot arm it flies to the nearest hive that can and back (`sendToRearm`, `rearmAndReturn`, passage paid both ways); a dry strike or Defend stands down home. Knob 0 = the 18:21 behaviour. | `ThreatGroundFronts.reloadBombardHold`, `tickSwarmBombard`, `swarmArmedFP`; `ThreatColonyManager.sendToRearm`; `facts.md` "A swarm fleet carries its bombard ordnance" |
 | The blockade holds against unfought swarms (player-only). | While the player's fleet is within hold range of a hive, swarms that arrived under it and have not fought weigh nothing in `ThreatBlockade.hiveCut`. Off-screen orbits weigh as before - nothing for the batch. | `ThreatBlockade.foughtPointsNear` |
 
 The same jar carries the other 2026-10-12 session work, committed together (player-facing unless noted):
@@ -53,13 +54,18 @@ Player-less batch, three games on the usual bases (hw156's: OceanPena, ZhiFarah,
   2:1 should be ground down. A jump in this count is the change working; zero in all three games means the
   gate still never opens (check `Orbit cover over <hive> lost` and the Defend lines `Defend over <hive>:
   <fleet> at N FP holds the orbit - the front holds`, which are the human side holding it).
-- `Swarm bombards the <owner> front at <hive>: N FP over the orbit, M marines a day, front K marines, held D d,
-  fuel F a day` - once per whole day of swarm bombardment (new, jar 18:21). The rate check: M should be
-  0.05 x N on a pushing front, 0.05 x N / 1.5 on one fully dug in. Sum F over a game against the swarm's
-  fuel census (`ThreatFuel` month summary, purpose "bombard") - if the stock runs dry the line turns into
-  `Swarm bombardment over <hive> held: no fuel for N FP (F a day)` and the front is not bombarded that day;
-  count those too. A swarm that spends its whole fuel stock bombarding one front is a finding (the fuel
-  knob is the lever, 2.86 is the human rate copied, not measured).
+- `Swarm bombards the <owner> front at <hive>: N FP armed of M over the orbit, X marines a day, front K marines,
+  held D d, fuel F a day, A aboard` - once per whole day of swarm bombardment (jar 19:20 wording). The rate
+  check: X should be 0.05 x N on a pushing front, 0.05 x N / 1.5 on one fully dug in. Fuel now comes out of
+  the fleets' holds: `Swarm sails armed: <fleet> (N FP) loads F fuel of ordnance` is the stock paying a
+  first load (census purpose "bombard hold"), `Swarm rearms at <hive>: ...` a refill at an arming port. A
+  day with nothing aboard reads `Swarm bombardment over <hive> held: no ordnance aboard (M FP over the
+  orbit, port arms|cannot arm)`. `Swarm rearms: <fleet> (N FP) leaves <hive> for <hive> (L ly, F fuel) -
+  port at <hive> cannot arm it` and `Swarm rearmed at <hive>: <fleet> (N FP) carries F fuel of ordnance,
+  returns to <hive>` are the rearming trip; `Swarm dry at <hive>: ... has no hive with a working port to
+  rearm at` is a swarm with nowhere to go. Findings: a hive left ungarrisoned because its whole garrison
+  went to rearm at once; a rearming swarm that never comes back; "bombard hold" draining the stock faster
+  than "bombard" did (it should be slower - loads are capped at 10 days each).
 - `Reinforcement engages at <hive>: N FP against H hostile FP over the world - fighting for the orbit, not
   seated` - the arrival change. Arrivals should fight and be seated later (`Reinforcement arrived at`), not
   pile up unseated for months; if a hive's garrison never grows while a siege sits over it, that is the
@@ -70,7 +76,8 @@ Player-less batch, three games on the usual bases (hw156's: OceanPena, ZhiFarah,
 Expected direction: sieges against hives cost more and human landings under a swarm that holds the orbit by
 weight are ground down in weeks (51 marines a day per 1,000 FP), so hives at m126 should be the same or
 higher and human worlds lost the same or higher; if the swarm's fuel stock collapses instead, the bombard
-fuel is the suspect. The user's rules: the Threat
+hold loads are the suspect. With the holds (19:20) a swarm over a blockaded hive runs dry in 10 days and
+goes to rearm, so a human landing under a blockade should survive longer than under the 18:21 jar. The user's rules: the Threat
 ahead in a player-less run is fine (`threat-may-win-npc-war`); the humans winning an unattended run is the
 mod not working (`facts.md` "The humans must not win an unattended run"); no tuning toward parity. If
 sieges stop landing altogether, the suspect is the weighed deficit making the gate's defence figure read

@@ -658,6 +658,12 @@
 	# fuel a day of that bombardment draws from the swarm's stock per fleet point (2.86 is the human saturation
 	# rate, satFuelPerFPDay); a day the stock cannot pay is skipped and logged; 0 free
 	"threatinc_swarmBombardFuelPerFPDay": 2.86,
+	# a swarm fleet carries its ordnance (user, 2026-10-12, after the central stock paid 61k fuel over 18 days
+	# for a hive whose port was offline: "the swarm pays nothing for fuel and they could keep bombarding"):
+	# this many days of swarmBombardFuelPerFPDay, drawn from the stock at first use (the launch load) and
+	# refilled only at a hive whose port stands undisrupted with its imports not fully cut; dry over a hive
+	# that cannot arm it, a garrison swarm flies to the nearest hive that can and comes back
+	"threatinc_swarmBombardHoldDays": 10,
 	# a relief force holding the orbit over its own invaded world bombards the Threat army on the same formula while
 	# the defenders are losing (the army pushes, or holds and the next counter-attack would not overrun it), paying
 	# fuel from what it carries above its passage home and then its supply line (2026-10-03, the user); 0 off

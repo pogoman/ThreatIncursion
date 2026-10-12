@@ -489,6 +489,8 @@ public class ThreatIncConfig {
 	public static float swarmBombardMarinesPerFPDay() { return f("threatinc_swarmBombardMarinesPerFPDay"); }
 	/** Fuel a day of swarm bombardment draws from the swarm's stock per fleet point over the planet (ThreatGroundFronts.tickSwarmBombard); 0 free. */
 	public static float swarmBombardFuelPerFPDay() { return f("threatinc_swarmBombardFuelPerFPDay"); }
+	/** Days of ordnance a swarm fleet carries (ThreatGroundFronts.bombardHoldFull), refilled only at a hive whose port arms it (portArms); 0 no hold, the stock pays every day. */
+	public static float swarmBombardHoldDays() { return f("threatinc_swarmBombardHoldDays"); }
 	/** Threat troops a relief force over its invaded world bombards per 30 days while the defenders are losing (ThreatGroundFronts.tickReliefBombard); 0 off. */
 	public static float reliefBombardPer30Days() { return f("threatinc_reliefBombardPer30Days"); }
 	/** Whether a relief force holds its world's orbit until the Threat army there is gone (ThreatFleetOrders.sendRelief); off, guardDays and home. */

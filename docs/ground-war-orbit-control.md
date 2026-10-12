@@ -186,7 +186,25 @@ Shouldnt be proportional to the FP overhead?"): until then the grind was
 `swarmFrontBombardPer30Days` (0.60) of the front per 30 days x `fp / (fp + defenseStrength)` - capped
 at 2% a day however many swarms stood overhead, free, invisible and unlogged - and 1,015 FP over
 Delta Mengryla I read about 1% a day against a 1,378-marine push on a starved size-3 hive, which
-fell. `swarmBombardMarinesPerFPDay` 0 falls back to that fraction rule. It needs
+fell. `swarmBombardMarinesPerFPDay` 0 falls back to that fraction rule.
+
+**The ordnance is carried, not piped** (user, 2026-10-12 evening, after that rule paid 61k fuel over 18
+days for a hive whose port was offline and imports cut: "the swarm pays nothing for fuel and they
+could keep bombarding"). A swarm fleet's hold is `swarmBombardHoldDays` (10) x `swarmBombardFuelPerFPDay`
+x its FP (`bombardHoldFull`, fleet memory `MEM_BOMBARD_HOLD`), drawn from the stock at first use
+wherever it stands - the load it would have sailed with - and from then on refilled only within hold
+range of a hive whose port can hand it over: standing, not disrupted, imports not fully cut
+(`portArms`, `reloadBombardHold`; "Swarm sails armed" / "Swarm rearms at X" in the log). The tick
+bombards with the armed fleets only and each pays from its own hold; the daily line reads "N FP armed
+of M over the orbit ... F aboard", and a day with nothing aboard is "held: no ordnance aboard". A dry
+garrison or reinforcement over a hive whose port cannot arm it leaves for the nearest hive that can
+(`ThreatColonyManager.sendToRearm`: off the garrison list, passage both ways paid from the stock,
+`REARM_RETURN_KEY`), reloads on arrival and flies back (`rearmAndReturn`, from the reinforcement
+arrivals poll); nowhere to go or no fuel for the trip, it stays dry and is judged again a day later.
+A dry strike or Defend over a human world stands down home as before (`ordnanceAvailable`,
+`orbitDoneFor`). So a blockade that shuts a hive's port starves the swarm's guns over it, as it
+starves the hive's. The board's rate (`swarmBombardPer30Days`, `swarmArmedFP`) counts fleets with
+ordnance or a way to get it. `swarmBombardHoldDays` 0 restores the stock paying every day. It needs
 `swarmOrbitMinFleetFP` (50) at the planet to count as holding the orbit at all - a bombardment
 is a fleet operation, not a lone frigate - and hostile fleets on station weighing `orbitContestFraction`
 (0.5) of the swarm's there stop it
