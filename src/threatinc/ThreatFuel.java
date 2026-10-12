@@ -48,6 +48,7 @@ public class ThreatFuel {
 	private static final String HELD = "heldMonth";
 	/** Of them, the sends held on supplies (the navy fit's want, ThreatColonyManager.fitWant). */
 	private static final String HELD_SUPPLIES = "heldSuppliesMonth";
+	private static final String HELD_FUEL = "heldFuelMonth";
 	/** The two stocks: fuel keeps the keys it was saved under before supplies joined it. */
 	private static final String[] STOCKED = { Commodities.FUEL, Commodities.SUPPLIES };
 
@@ -237,6 +238,8 @@ public class ThreatFuel {
 
 	/** The purposes the census breaks the month's supplies spend into (pay's tag): feed, away, navy, build, found, other. */
 	public static final String[] PURPOSES = { "feed", "away", "navy", "build", "found", "other" };
+	/** PURPOSES plus the fuel-only tags the census brackets: the bombardment's draws (ThreatGroundFronts.tickSwarmBombard, reloadBombardHold). */
+	public static final String[] ALL_PURPOSES = { "feed", "away", "navy", "build", "found", "other", "bombard", "bombard hold" };
 
 	/**
 	 * As above, tallied under {@code purpose} for the census (monthSummary):
@@ -635,6 +638,7 @@ public class ThreatFuel {
 		Float fuel = UNMET.remove(Commodities.FUEL);
 		Float supplies = UNMET.remove(Commodities.SUPPLIES);
 		if (supplies != null) add(HELD_SUPPLIES, 1f);
+		if (fuel != null) add(HELD_FUEL, 1f);
 		if (bookHold(what)) {
 			if (fuel != null) noteDemand(Commodities.FUEL, fuel);
 			if (wave && supplies != null) noteDemand(Commodities.SUPPLIES, supplies);
@@ -742,6 +746,12 @@ public class ThreatFuel {
 		return v instanceof Float ? (Float) v : 0f;
 	}
 
+	/** Of the month's holds, those the fuel stock held (held): the ordnance loads leave a founding's fuel while one is (ThreatGroundFronts.bombardReserve). */
+	public static float heldOnFuelThisMonth() {
+		Object v = data().get(HELD_FUEL);
+		return v instanceof Float ? (Float) v : 0f;
+	}
+
 	/** The census's stock clause, and the month's tallies reset. */
 	public static String monthSummary() {
 		if (!enabled()) return "";
@@ -752,9 +762,10 @@ public class ThreatFuel {
 			s.append("; ").append(c).append(" ").append((int) stock(c)).append(" (+").append((int) perMonth(c))
 					.append("/mo, spent ").append((int) (spent instanceof Float ? (Float) spent : 0f)).append(")");
 			data().put(spentKey(c), 0f);
-			if (Commodities.SUPPLIES.equals(c)) {
+			{
+				// both stocks by purpose (hw161, 2026-10-12: the fuel the bombardment drew was invisible here)
 				StringBuilder by = new StringBuilder();
-				for (String p : PURPOSES) {
+				for (String p : ALL_PURPOSES) {
 					Object v = data().get(spentKey(c) + ":" + p);
 					float f = v instanceof Float ? (Float) v : 0f;
 					data().put(spentKey(c) + ":" + p, 0f);
@@ -767,6 +778,7 @@ public class ThreatFuel {
 		s.append(", sends held ").append((int) (held instanceof Float ? (Float) held : 0f));
 		data().put(HELD, 0f);
 		data().put(HELD_SUPPLIES, 0f);
+		data().put(HELD_FUEL, 0f);
 		for (String c : STOCKED) ThreatIncConfig.log(sourcesLine(c));
 		for (String c : STOCKED) ThreatIncConfig.log(planLine(c));
 		// holds booked longer ago than a SHORT_DAYS are forgotten (bookHold)

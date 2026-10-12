@@ -6727,11 +6727,16 @@ public class ThreatColonyManager {
 			// units, and their weight lifted the blockade before a shot was fired):
 			// within the orbit hold range of a world with hostiles over it the blinders
 			// come off and the swarm fights for the orbit; nothing is seated while an
-			// enemy holds station
+			// enemy holds station. ONLY WHERE THE PLAYER HOLDS STATION (hw161, 2026-10-12):
+			// against NPC sieges the unseated swarms were fed into the daily siege fight
+			// piecemeal - 1,287-2,420 outweighed engagements a game at a median 6-16% of
+			// the hostile weight, the garrison deficit reopening as each died, daily-siege
+			// losses 4x (226k vs 58k FP on ZhiFarah, hives 41 vs 119) - so an NPC-siege
+			// arrival is seated as before and defends with the garrison
 			boolean inSystem = fleet.getContainingLocation() == planet.getContainingLocation();
 			float hostile = inSystem && Misc.getDistance(fleet, planet) <= ThreatFleetOrders.ORBIT_HOLD_RANGE
 					? ThreatGroundFronts.hostilePointsNear(Factions.THREAT, target) : 0f;
-			if (hostile > 0f) {
+			if (hostile > 0f && ThreatBlockade.playerHoldsStation(target)) {
 				engageOnArrival(fleet, target, planet, mem, hostile);
 				continue;
 			}

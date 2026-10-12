@@ -2105,7 +2105,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float loss = per30 / 30f * elapsedDays;
 		float fuel = fuelPer * armedFP * elapsedDays;
 		if (loss <= 0f && !holds) return;
-		if (loss <= 0f || (!holds && fuel > 0f && !ThreatFuel.canPay(fuel))) {
+		if (loss <= 0f || (!holds && fuel > 0f && (!ThreatFuel.canPay(fuel) || ThreatFuel.stock() - fuel < bombardReserve()))) {
 			float dry = market.getMemoryWithoutUpdate().getFloat(SWARM_DRY_KEY) + elapsedDays;
 			if (dry >= 1f) {
 				dry = 0f;
@@ -3858,15 +3858,29 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		MarketAPI at = first ? null : armingHiveNear(fleet);
 		if (!first && at == null) return have;
 		float want = full - have;
-		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock()));
+		float reserve = bombardReserve();
+		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock() - reserve));
 		mem.set(MEM_BOMBARD_LOADED, true);
 		if (paid <= 0f) return have;
 		ThreatFuel.pay(Commodities.FUEL, paid, "bombard hold");
 		mem.set(MEM_BOMBARD_HOLD, have + paid);
 		ThreatIncConfig.log("Swarm " + (first ? "sails armed" : "rearms at " + at.getName()) + ": " + fleet.getName()
 				+ " (" + (int) fleet.getFleetPoints() + " FP) loads " + (int) paid + " fuel of ordnance"
-				+ (paid < want ? ", stock short " + (int) (want - paid) : "") + (why != null ? " - " + why : ""));
+				+ (paid < want ? ", stock short " + (int) (want - paid) + (reserve > 0f ? " (founding reserve " + (int) reserve + ")" : "") : "")
+				+ (why != null ? " - " + why : ""));
 		return have + paid;
+	}
+
+	/**
+	 * A FOUNDING BUDGET FOR THE ORDNANCE (hw161, 2026-10-12: on ZhiFarah the
+	 * bombardment drew 1.12M fuel, the stock sat under 1k from war day 3,300,
+	 * 70 hives founded against 135 without it): while a seeding is held on fuel
+	 * this month, a load or a stock-paid day leaves one founding's fuel in the
+	 * stock - the S6 rule growth keeps for the kit's supplies
+	 * (ThreatColonyUpkeep), applied to the fuel the ordnance competes for.
+	 */
+	public static float bombardReserve() {
+		return ThreatIncConfig.foundingBudget() && ThreatFuel.heldOnFuelThisMonth() > 0f ? ThreatFuel.foundingCost()[1] : 0f;
 	}
 
 	/** Draws fuel from the fleet's hold; what it could pay. */

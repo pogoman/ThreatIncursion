@@ -194,7 +194,12 @@ could keep bombarding"). A swarm fleet's hold is `swarmBombardHoldDays` (10) x `
 x its FP (`bombardHoldFull`, fleet memory `MEM_BOMBARD_HOLD`), drawn from the stock at first use
 wherever it stands - the load it would have sailed with - and from then on refilled only within hold
 range of a hive whose port can hand it over: standing, not disrupted, imports not fully cut
-(`portArms`, `reloadBombardHold`; "Swarm sails armed" / "Swarm rearms at X" in the log). The tick
+(`portArms`, `reloadBombardHold`; "Swarm sails armed" / "Swarm rearms at X" in the log). **The ordnance
+has a founding budget** (hw161, 2026-10-12: on ZhiFarah the bombardment drew 1.12M fuel, the stock sat
+under 1k from war day 3,300 and 70 hives were founded against 135 without it): while a seeding is held
+on fuel this month (`ThreatFuel.heldOnFuelThisMonth`) a load, and a stock-paid day with the holds off,
+leaves one founding's fuel in the stock (`bombardReserve`, the S6 rule growth keeps for the kit's
+supplies; off with `threatinc_foundingBudget`); a load cut short says "(founding reserve N)". The tick
 bombards with the armed fleets only and each pays from its own hold; the daily line reads "N FP armed
 of M over the orbit ... F aboard", and a day with nothing aboard is "held: no ordnance aboard". A dry
 garrison or reinforcement over a hive whose port cannot arm it leaves for the nearest hive that can
@@ -323,7 +328,7 @@ on the ground-front poll (it was monthly):
   ships what it can spare until the shortage is covered, net of what is at sea - it was one
   convoy per helped colony, one helper per need, clipped to a hull load). Before this, allied
   guards and Defend contracts stopped once the strike landed. The Defend contract itself
-  still covers strikes in flight only.
+  still covers strikes in flight only.
 - **Coalition relief (the user, 2026-10-08, trialled from hw75).** A Threat army the owner's best base cannot outweigh alone (`reliefEnough`) is answered by the owner and its coalition partners together (`ThreatCoalition.jointRelief`, from `planRelief`) when what they can field between them, with the guards already bound there, outweighs the army: each sends what its nearest provisioning base can pay, the owner first then the partners nearest first, until the owed points are covered, and every fleet holds the orbit as any relief. Partners are the coalition - every war faction not hostile to the owner, whatever the standing (`ThreatCoalition.coalition`, the trade rule of 2026-10-06; the first hw75/hw76 run gated partners on Favourable standing and found none in 154 held joint reliefs) - with no chance roll - a joint answer is a decision, not `allyAid`'s monthly lottery; `reliefOwed` counts a joint relief that would sail (`jointEnough`), so a siege waits for it. Why: hw65-hw74 no ally relieved a besieged capital (Chicomoztoc 220 days under a 5,800 FP front in hw65a) because an ally's relief, like the owner's, had to be enough from one base alone, and relief was held two to three times per send. Knob `coalitionRelief`.
 - **Holds until the army is gone (2026-10-03, the user: "relief should stay until invaders defeated").** With
   `threatinc_reliefStays` on, relief has no term: `sendRelief` queues the voyage and an orbit with no end, the

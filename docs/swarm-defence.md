@@ -208,7 +208,11 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
 
   Fight on arrival (2026-10-12, the user, holding orbit over Delta Mengryla I; `engageOnArrival`, from the
   arrivals poll): a reinforcement within `ORBIT_HOLD_RANGE` (1,500 units) of its target with hostiles over it
-  (`ThreatGroundFronts.hostilePointsNear`) has its blinders taken off, is set aggressive on an aggressive
+  (`ThreatGroundFronts.hostilePointsNear`) **and the player's fleet holding station there**
+  (`ThreatBlockade.playerHoldsStation`; hw161, 2026-10-12: against NPC sieges the rule fed unseated swarms
+  into the daily siege fight piecemeal, 1,287-2,420 outweighed engagements a game at a median 6-16% of the
+  hostile weight, daily-siege losses 4x, ZhiFarah 41 hives against 119 - an NPC-siege arrival is seated as
+  before) has its blinders taken off, is set aggressive on an aggressive
   orbit of the world, and is marked engaged (`$threatinc_reinforceEngaged`) and unfought
   (`$threatinc_unfought`, `ThreatColonyManager.UNFOUGHT_KEY`); it stays on the in-transit list - nothing is
   seated as garrison while an enemy holds station - and the marks clear on the first poll that reads no
