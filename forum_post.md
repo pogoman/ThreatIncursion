@@ -14,9 +14,9 @@ Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher
 [size=14pt][b]Core concept[/b][/size]
 At game start a new system in the outer reaches of the sector will be seeded with several Threat colonies. Once these colonies develop they will spread to neighbouring systems in the search for resources to fund new colonies, which is what they need to expand the hive. As they get within a certain distance of the core worlds, they will start sending out first-strike parties and attempt to siege any planet within range. Human factions will mobilise when attacked and enter a war economy, leading to counter attacks and strikes of their own.
 
-[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/ThreatBoard.png[/img]
+[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/threat-board.png[/img]
 [i]The Threat: every system you have found, in priority order - vitality, swarms, reach, strikes out, and what each one makes.[/i][/center]
-[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/LeagueBoard.png[/img]
+[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/faction-board.png[/img]
 [i]Any mobilised faction, read the same way: the Persean League's reserves, its two fronts on Gamma Brador, and the aid you can send.[/i][/center]
 
 [size=14pt][b]Starting scenarios[/b][/size]
@@ -29,7 +29,7 @@ I have balanced core world strength such that the Threat no longer steam roll th
 
 Once you have your own colonies you can mobilise to enter the war yourself. You will have a set amount of resources available depending on your colony industries, size and military structures. You will have complete control over your fleets and supplies and where to direct your war engine.
 
-[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/PlayerBoard.png[/img]
+[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/player-board.png[/img]
 [i]Your own war: colony reserves and convoys, your own front pushing on the hive world Gamma Hero I, and the fleets supplying and defending it.[/i][/center]
 
 [size=14pt][b]Bombardment and raid changes[/b][/size]
@@ -38,7 +38,7 @@ Sat bombardments have been modified to be extremely fuel inefficient. Tac bombar
 There are a lot of mechanics at play here but all are explained in various tooltips. Any uncertainties just ask and i will clarify.
 
 [size=14pt][b]Sieges[/b][/size]
-[img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/SiegeMechanics.png[/img]
+[img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/ground-front.png[/img]
 
 It is important to note while you can override marine actions they will function autonomously and react to various events like counter attacks and bombardments themselves. I'm listing the various interactions below but dont stress and think you have to manage them all. Ultimately if you want a siege to properly succeed make sure your control the space above the planet and it should be enough for the marines to get the job done. If they need resupply it will be automatically sent from the nearest colony assuming it has spare resources and FP. Otherwise you can always resupply them yourself. Keep in mind the Threat will send defensive swarms from neighbouring systems to take back control and if left alone will start bombing your marines from orbit.
 
