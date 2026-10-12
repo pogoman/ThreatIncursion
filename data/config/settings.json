@@ -650,6 +650,14 @@
 	# annihilating it on a timer (the scour, removed 2026-09-08): this
 	# fraction of the front per 30 days, scaled by its weight over the planet
 	"threatinc_swarmFrontBombardPer30Days": 0.60,
+	# the swarm's bombardment in proportion to the fleet points over the planet (user, 2026-10-12: "shouldn't
+	# be proportional to the FP overhead?" - the fraction rule above capped it at 2% of the front a day whatever
+	# the weight): marines killed a day per fleet point, divided by the front's cover (dug in up to 1.5x) and
+	# scaled by its veterancy; 0 falls back to the fraction rule
+	"threatinc_swarmBombardMarinesPerFPDay": 0.05,
+	# fuel a day of that bombardment draws from the swarm's stock per fleet point (2.86 is the human saturation
+	# rate, satFuelPerFPDay); a day the stock cannot pay is skipped and logged; 0 free
+	"threatinc_swarmBombardFuelPerFPDay": 2.86,
 	# a relief force holding the orbit over its own invaded world bombards the Threat army on the same formula while
 	# the defenders are losing (the army pushes, or holds and the next counter-attack would not overrun it), paying
 	# fuel from what it carries above its passage home and then its supply line (2026-10-03, the user); 0 off

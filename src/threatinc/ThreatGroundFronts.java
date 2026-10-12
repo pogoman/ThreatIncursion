@@ -2062,6 +2062,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * orbit stops the bleeding, and arriving late costs troops instead of
 	 * everything.
 	 */
+	/** Market memory: days of swarm bombardment banked toward the next burst and log line (tickSwarmBombard). */
+	protected static final String SWARM_VISUAL_KEY = "$threatinc_swarmBombardVisual";
+	/** Market memory: days of swarm bombardment the stock could not fuel, banked toward the next log line. */
+	protected static final String SWARM_DRY_KEY = "$threatinc_swarmBombardDry";
+
 	protected static void tickSwarmBombard(GroundFront front, MarketAPI market, float elapsedDays) {
 		if (isThreatOwned(front) || !isHiveTarget(market)) return;
 		if (elapsedDays <= 0f) return;
@@ -2072,7 +2077,39 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		front.swarmOrbitDays += elapsedDays;
 		float loss = swarmBombardPer30Days(front, market) / 30f * elapsedDays;
 		if (loss <= 0f) return;
+		// the ordnance: fuel per fleet point per day from the swarm's stock, as a
+		// human saturation day burns it (user, 2026-10-12, "1% for how much fuel?");
+		// a day the stock cannot pay is skipped and said once a day
+		float fuelPer = ThreatIncConfig.swarmBombardMarinesPerFPDay() > 0f
+				? Math.max(0f, ThreatIncConfig.swarmBombardFuelPerFPDay()) : 0f;
+		float fuel = fuelPer * swarmOrbitStrength(market) * elapsedDays;
+		if (fuel > 0f && !ThreatFuel.canPay(fuel)) {
+			float dry = market.getMemoryWithoutUpdate().getFloat(SWARM_DRY_KEY) + elapsedDays;
+			if (dry >= 1f) {
+				dry = 0f;
+				ThreatFuel.held("the swarm's bombardment over " + market.getName());
+				ThreatIncConfig.log("Swarm bombardment over " + market.getName() + " held: no fuel for "
+						+ (int) swarmOrbitStrength(market) + " FP (" + Math.round(fuel / Math.max(0.01f, elapsedDays)) + " a day)");
+			}
+			market.getMemoryWithoutUpdate().set(SWARM_DRY_KEY, dry, 10f);
+			return;
+		}
+		if (fuel > 0f) ThreatFuel.pay(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, fuel, "bombard");
 		ThreatMarineXP.frontLose(front, loss);
+		// seen and read (user, 2026-10-12, "there's no bombardment animation at all i
+		// would have noticed"): vanilla's burst on the planet and one log line per
+		// whole day of bombardment, as the siege slice does (finishSlice)
+		float banked = market.getMemoryWithoutUpdate().getFloat(SWARM_VISUAL_KEY) + elapsedDays;
+		if (banked >= 1f) {
+			banked = 0f;
+			if (market.getPrimaryEntity() != null) MarketCMD.addBombardVisual(market.getPrimaryEntity());
+			ThreatIncConfig.log("Swarm bombards the " + ownerOf(front) + " front at " + market.getName() + ": "
+					+ (int) swarmOrbitStrength(market) + " FP over the orbit, "
+					+ Math.round(swarmBombardPer30Days(front, market) / 30f) + " marines a day, front "
+					+ (int) front.marines + " marines, held " + (int) front.swarmOrbitDays + " d, fuel "
+					+ Math.round(fuelPer * swarmOrbitStrength(market)) + " a day");
+		}
+		market.getMemoryWithoutUpdate().set(SWARM_VISUAL_KEY, banked, 10f);
 		if (front.marines < ThreatIncConfig.frontMinMarines()) {
 			ThreatNotice n = ThreatNotice.titled("Front Destroyed"); // the swarm's doing: its crest and colour
 			if (front.isPlayerOwned()) {
@@ -2101,9 +2138,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (front == null || market == null) return 0f;
 		if (isThreatOwned(front) || !isHiveTarget(market)) return 0f;
 		if (!swarmHoldsOrbit(market)) return 0f;
+		float fp = swarmOrbitStrength(market);
+		float perFP = ThreatIncConfig.swarmBombardMarinesPerFPDay();
+		if (perFP > 0f) {
+			// in proportion to the weight over the planet (user, 2026-10-12): the
+			// fraction rule below capped the grind at per30 of the front however
+			// many swarms stood overhead - 1,015 FP over Delta Mengryla I read 1% a
+			// day against a 1,378-marine push and the hive fell. Cover halves it
+			// at full entrenchment; a pushing front is exposed (coverMult)
+			return perFP * fp * 30f / Math.max(1f, coverMult(front)) * ThreatMarineXP.frontLossMult(front);
+		}
 		float per30 = ThreatIncConfig.swarmFrontBombardPer30Days();
 		if (per30 <= 0f) return 0f;
-		float fp = swarmOrbitStrength(market);
 		float ratio = fp / Math.max(1f, fp + defenseStrength(front));
 		return front.marines * per30 * ratio * ThreatMarineXP.frontLossMult(front);
 	}

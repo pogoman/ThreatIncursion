@@ -173,9 +173,20 @@ Knobs: `threatFrontNeedsArms` (false), `threatPushLossMult` (2.0).
 ### The swarm holds the orbit
 
 A swarm that has taken the space over its own besieged hive **bombards the enemy front**:
-`tickSwarmBombard` kills `swarmFrontBombardPer30Days` (0.60) of it per 30 days, scaled by the
-swarm's weight over the planet against what the front can put in the way
-(`fp / (fp + defenseStrength)`) and by the front's own veterancy. It needs
+`tickSwarmBombard` kills `swarmBombardMarinesPerFPDay` (0.05) marines a day per fleet point the
+swarm holds the orbit with, divided by the front's cover (`coverMult`: dug in up to 1.5x, a pushing
+front exposed) and scaled by the front's own veterancy - 1,015 FP overhead is 51 marines a day on
+a pushing front - and pays `swarmBombardFuelPerFPDay` (2.86, the human saturation rate) fuel per
+fleet point a day from the swarm's stock (`ThreatFuel`, census purpose "bombard"); a day the stock
+cannot pay is skipped and logged once ("Swarm bombardment over X held: no fuel"). Seen: vanilla's
+bombard burst on the planet and a log line once per whole day ("Swarm bombards the <owner> front
+at X: N FP over the orbit, M marines a day, front K marines, held D d, fuel F a day"); the board's
+row tooltip quotes the marines a day. Why (the user, 2026-10-12, "1% for how much fuel? ...
+Shouldnt be proportional to the FP overhead?"): until then the grind was
+`swarmFrontBombardPer30Days` (0.60) of the front per 30 days x `fp / (fp + defenseStrength)` - capped
+at 2% a day however many swarms stood overhead, free, invisible and unlogged - and 1,015 FP over
+Delta Mengryla I read about 1% a day against a 1,378-marine push on a starved size-3 hive, which
+fell. `swarmBombardMarinesPerFPDay` 0 falls back to that fraction rule. It needs
 `swarmOrbitMinFleetFP` (50) at the planet to count as holding the orbit at all - a bombardment
 is a fleet operation, not a lone frigate - and hostile fleets on station weighing `orbitContestFraction`
 (0.5) of the swarm's there stop it

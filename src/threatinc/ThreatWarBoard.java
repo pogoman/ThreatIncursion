@@ -1449,8 +1449,9 @@ public class ThreatWarBoard {
 		float bombard = ThreatGroundFronts.swarmBombardPer30Days(f, m);
 		if (bombard > 0f) {
 			tooltip.addPara("The swarm has held the orbit unopposed for %s days and is bombarding "
-					+ "the front. A fleet over the planet stops it.",
-					4f, text, neg, "" + (int) ThreatGroundFronts.swarmOrbitDaysHeld(f, m));
+					+ "the front, %s marines a day. A fleet over the planet stops it.",
+					4f, text, neg, "" + (int) ThreatGroundFronts.swarmOrbitDaysHeld(f, m),
+					Misc.getWithDGS(Math.round(bombard / 30f)));
 		} else if (ThreatGroundFronts.swarmBombardContested(f, m)) {
 			tooltip.addPara("Your fleet contests the orbit: the swarm cannot bombard the front.",
 					pos, 4f);
