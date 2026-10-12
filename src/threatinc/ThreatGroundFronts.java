@@ -3861,6 +3861,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float reserve = bombardReserve();
 		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock() - reserve));
 		mem.set(MEM_BOMBARD_LOADED, true);
+		if (first) HoldRefund.arm(fleet);
 		if (paid <= 0f) return have;
 		ThreatFuel.pay(Commodities.FUEL, paid, "bombard hold");
 		mem.set(MEM_BOMBARD_HOLD, have + paid);
@@ -3881,6 +3882,43 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 */
 	public static float bombardReserve() {
 		return ThreatIncConfig.foundingBudget() && ThreatFuel.heldOnFuelThisMonth() > 0f ? ThreatFuel.foundingCost()[1] : 0f;
+	}
+
+	/**
+	 * THE HOLD COMES HOME (hw162, 2026-10-12: on Aphelion 35 strike flotillas
+	 * loaded 517k fuel of ordnance for human-world sieges that used to pay by
+	 * the day, and fired none of it - a strike that bombs three days and sails
+	 * home, or dissolves into its hive, left the other seven days' fuel nowhere).
+	 * A fleet despawned any way but destroyed in battle puts what it carries
+	 * back in the stock (ThreatFuel.deposit, the withdrawing wave's rule);
+	 * destroyed, the cargo went down with it. Armed once, at the first load.
+	 */
+	public static class HoldRefund implements com.fs.starfarer.api.campaign.listeners.FleetEventListener {
+		static void arm(CampaignFleetAPI fleet) {
+			for (Object l : fleet.getEventListeners()) {
+				if (l instanceof HoldRefund) return;
+			}
+			fleet.addEventListener(new HoldRefund());
+		}
+
+		public void reportFleetDespawnedToListener(CampaignFleetAPI fleet,
+				com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param) {
+			if (fleet == null) return;
+			float have = bombardHold(fleet);
+			if (have <= 0f) return;
+			fleet.getMemoryWithoutUpdate().set(MEM_BOMBARD_HOLD, 0f);
+			if (reason == com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason.DESTROYED_BY_BATTLE) {
+				ThreatIncConfig.log("Swarm lost with its ordnance: " + fleet.getName() + ", " + (int) have + " fuel aboard");
+				return;
+			}
+			ThreatFuel.deposit(Commodities.FUEL, have, 0f);
+			ThreatIncConfig.log("Swarm home with its ordnance: " + fleet.getName() + " returns " + (int) have
+					+ " fuel to the stock");
+		}
+
+		public void reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner,
+				com.fs.starfarer.api.campaign.BattleAPI battle) {
+		}
 	}
 
 	/** Draws fuel from the fleet's hold; what it could pay. */

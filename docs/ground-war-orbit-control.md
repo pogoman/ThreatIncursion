@@ -199,7 +199,7 @@ has a founding budget** (hw161, 2026-10-12: on ZhiFarah the bombardment drew 1.1
 under 1k from war day 3,300 and 70 hives were founded against 135 without it): while a seeding is held
 on fuel this month (`ThreatFuel.heldOnFuelThisMonth`) a load, and a stock-paid day with the holds off,
 leaves one founding's fuel in the stock (`bombardReserve`, the S6 rule growth keeps for the kit's
-supplies; off with `threatinc_foundingBudget`); a load cut short says "(founding reserve N)". The tick
+supplies; off with `threatinc_foundingBudget`); a load cut short says "(founding reserve N)". **The hold comes home** (hw162: 35 strike flotillas on Aphelion loaded 517k fuel for human-world sieges and fired none of it): a fleet despawned any way but destroyed in battle puts its hold back in the stock (`HoldRefund`, armed at the first load; `ThreatFuel.deposit`, the withdrawing wave's rule; "Swarm home with its ordnance" / "Swarm lost with its ordnance" in the log). The tick
 bombards with the armed fleets only and each pays from its own hold; the daily line reads "N FP armed
 of M over the orbit ... F aboard", and a day with nothing aboard is "held: no ordnance aboard". A dry
 garrison or reinforcement over a hive whose port cannot arm it leaves for the nearest hive that can
