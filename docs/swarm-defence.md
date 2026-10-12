@@ -206,6 +206,22 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   human hunt is sized against the whole garrison it reads (`ThreatSoftening`); now it meets it. Log:
   `Garrison musters at <world>: N swarm(s), M FP join the fight D units out`.
 
+  Fight on arrival (2026-10-12, the user, holding orbit over Delta Mengryla I; `engageOnArrival`, from the
+  arrivals poll): a reinforcement within `ORBIT_HOLD_RANGE` (1,500 units) of its target with hostiles over it
+  (`ThreatGroundFronts.hostilePointsNear`) has its blinders taken off, is set aggressive on an aggressive
+  orbit of the world, and is marked engaged (`$threatinc_reinforceEngaged`) and unfought
+  (`$threatinc_unfought`, `ThreatColonyManager.UNFOUGHT_KEY`); it stays on the in-transit list - nothing is
+  seated as garrison while an enemy holds station - and the marks clear on the first poll that reads no
+  hostiles over the world (then the 700-unit seat or the overdue ladder as before). The unfought mark is
+  the blockade's (`ThreatBlockade.foughtPointsNear`, ground-war-defenders.md "Blockade"): while the
+  player's fleet holds station an unfought swarm weighs nothing against it; `FoughtMark`, a fleet
+  listener, clears the mark on the swarm's first battle. Why: three swarms (395 / 340 / 332 FP, regional
+  relief from Golter at 15 ly) sailed blinkered through the player's fleet, were seated, and their weight
+  alone turned the blockade from "cut 50% (739 over 735)" to "0% (635 over 1,049)" - the batteries'
+  imports and the ground figure with it - before any of them had fought; the garrison mustered a tick
+  later. Log: `Reinforcement engages at <world>: N FP against M hostile FP over the world - fighting for
+  the orbit, not seated`. Untested.
+
   Overdue reinforcements are ordered on (2026-10-09, hw101a; `ThreatColonyManager.overdue`, from the
   arrivals poll): a reinforcement out longer than `reinforcementOverdueDays` (90) is logged where it
   stands - its location, its distance from the target or the nearest jump point, its current order,

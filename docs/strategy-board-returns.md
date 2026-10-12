@@ -9,7 +9,7 @@ A row of buttons under the totals strip: "The Threat" plus one per mobilised fac
 holds the choice; the hive view is unchanged. A faction view replaces the ledger and
 cards with three stock tables, faction-coloured:
 
-1. **Colonies - staging bases first**: name, size, military structure, ground defense,
+1. **Colony Reserves** ("Colonies - staging bases first" until 2026-10-11, the user: "rename to Colony Reserves"; staging bases still sort first): name, size, military structure, ground defense,
    fleet points free / capacity, the four reserves, where its convoys go, Threat strikes
    in flight against it. The **FP** cell (`fleetCell`) reads **free / capacity**
    (`ThreatAidCapacity.figures`, rounded once so the tooltip's lines add up): what can

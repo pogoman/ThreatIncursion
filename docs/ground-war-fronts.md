@@ -185,7 +185,7 @@ which reuse the tick's arithmetic, so the table quotes what will happen:
 | Attackers | `effectiveStrength`, `entrenchMult` | troops x entrenchment (0.75 on landing -> 1.0 over 30 days of holding) x 0.5 when dry |
 | Defenders | `defenderStrength` | the world's current figure; holding needs 17% of it, grinding 10% |
 | Defenses | `defensesTrend` / `defensesLabel` | **worn** (holding front, disruption clocks fed faster than they run), **held** (grinding front keeps the defense structures down), **recovering** (foothold keeps nothing down), **intact** |
-| State, Held, Stance | the front's fields | holding / grinding / foothold; strata or districts held/size; push / regrouping / dug in |
+| State, Strata / Held, Stance | the front's fields | holding / grinding / foothold; on a hive the strata it still stands on (size less strata held - a `held/size` read as a reset when starvation took a size off, user 2026-10-11), on a colony districts held/size; push / regrouping / dug in |
 | Attrition | `attritionPer30Days` | 8% of troops per 30 days holding, 30% pushing (x the Lanchester skew), x3 when dry |
 | Attack | `daysToCounterAttack`, `counterAttackRepelled` | days to the next counter-attack; green if the front's `defenseStrength` (x its cover, up to 1.5, when not pushing) beats the world's current figure |
 | Arms | `supplyDaysLeft` | days of heavy armaments at the current burn (x2 while pushing) |

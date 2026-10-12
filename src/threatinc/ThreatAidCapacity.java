@@ -8,7 +8,6 @@ import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Factions;
-import com.fs.starfarer.api.impl.campaign.ids.Stats;
 import com.fs.starfarer.api.impl.campaign.intel.group.FleetGroupIntel;
 import com.fs.starfarer.api.util.Misc;
 
@@ -104,13 +103,14 @@ public class ThreatAidCapacity {
 
 	/**
 	 * Fleet points the colony can have at sea at once; 0 without a military
-	 * structure. With the hull pool its standing hulls by vanilla's patrol
-	 * figures (ThreatHulls.standingFP, any faction); else the player's
-	 * aidBaseFP allowance at the colony's fleet size.
+	 * structure. With the hull pool its share of the faction's hulls - its
+	 * standing patrols by vanilla's figures, plus the built navy at the hull
+	 * port (ThreatHulls.shareFP, any faction); else the player's aidBaseFP
+	 * allowance at the colony's fleet size.
 	 */
 	public static float capacityFP(MarketAPI market) {
 		if (market == null) return 0f;
-		if (ThreatHulls.enabled()) return applies(market) ? ThreatHulls.standingFP(market) : 0f;
+		if (ThreatHulls.enabled()) return applies(market) ? ThreatHulls.shareFP(market) : 0f;
 		if (!market.isPlayerOwned()) return 0f;
 		if (!IncursionManager.isBase(market)) return 0f;
 		return ThreatIncConfig.aidBaseFP() * ThreatColonyManager.fleetSizeMult(market);
@@ -126,14 +126,28 @@ public class ThreatAidCapacity {
 	}
 
 	/**
-	 * The colony's own points not at sea. Under the aid rule its capacity less
-	 * what it has out; under the hull pool the whole faction's free hulls
-	 * (ThreatHulls.freeFP) - ships fly themselves to the base that stages them.
+	 * The colony's own points not at sea: its capacity less what it has out.
+	 * Under the hull pool its share of the faction's hulls (capacityFP) less
+	 * what sailed from it, and never more than the faction has free in all
+	 * (lost hulls are the faction's debt, ThreatHulls.freeFP). From 2026-10-06
+	 * to 2026-10-11 it was the whole faction's free pool at every colony -
+	 * "ships fly themselves to the base that stages them" - which made a
+	 * staging base pointless (the user: "whats the point of staging bases
+	 * again given it just pools from all bases?"); hulls reach another colony
+	 * by a Fleet order to it, and sail from there as staged task forces.
 	 */
 	public static float ownFreeFP(MarketAPI market) {
 		if (market == null) return 0f;
 		if (!enabled()) return Float.MAX_VALUE / 4f;
-		if (ThreatHulls.enabled()) return applies(market) ? ThreatHulls.freeFP(market.getFactionId()) : 0f;
+		if (ThreatHulls.enabled()) {
+			if (!applies(market)) return 0f;
+			float own = capacityFP(market) - committedFP(market.getId());
+			// the player's colony: its own hulls less its own out, nothing else's (the user,
+			// 2026-10-12; its losses come off its share, ThreatHulls.lostAt). An NPC colony is
+			// still capped at its faction's free - lost hulls are the faction's debt there
+			if (market.isPlayerOwned()) return Math.max(0f, own);
+			return Math.max(0f, Math.min(own, ThreatHulls.freeFP(market.getFactionId())));
+		}
 		return capacityFP(market) - committedFP(market.getId());
 	}
 
@@ -186,22 +200,6 @@ public class ThreatAidCapacity {
 			if (c.fleet == fleet) result.add(c);
 		}
 		return result;
-	}
-
-	/** Names of the colonies charged for this fleet, each once, largest charge first. */
-	public static List<String> sendersOf(CampaignFleetAPI fleet) {
-		List<Commitment> held = heldAllBy(fleet);
-		java.util.Collections.sort(held, new java.util.Comparator<Commitment>() {
-			public int compare(Commitment a, Commitment b) {
-				return Float.compare(b.fp, a.fp);
-			}
-		});
-		List<String> names = new ArrayList<String>();
-		for (Commitment c : held) {
-			String n = name(c.marketId);
-			if (!names.contains(n)) names.add(n);
-		}
-		return names;
 	}
 
 	/** What a fleet was worth when its group made it real, else what it is worth now. */
@@ -261,10 +259,53 @@ public class ThreatAidCapacity {
 		return commit(market, fp, fleet, null, label, false);
 	}
 
-	/** A combat sortie: the colony's own free points first, then the task forces staged there fold in. */
-	public static Commitment commitSortie(MarketAPI market, float fp, CampaignFleetAPI fleet,
-			String label) {
-		return commit(market, fp, fleet, null, label, true);
+	/**
+	 * {fuel, supplies} the task forces staged at the host bring to a sortie of {@code points}
+	 * whole-fleet points from it ({@link ThreatReturns#carried} of the forces {@link #stagedToFold}
+	 * picks for what the colony's own free points do not cover): the sortie draws that much less.
+	 */
+	public static float[] foldedProvisions(MarketAPI host, float points) {
+		float[] sum = new float[] {0f, 0f};
+		if (host == null || !enabled()) return sum;
+		float need = points - Math.max(0f, ownFreeFP(host));
+		if (need <= 0f) return sum;
+		for (ThreatFleetOrders.Order o : stagedToFold(host, need, null)) {
+			float[] c = ThreatReturns.carried(o.fleet);
+			sum[0] += c[0];
+			sum[1] += c[1];
+		}
+		return sum;
+	}
+
+	/**
+	 * The task forces staged at the host a sortie short {@code need} points would fold, in order
+	 * ({@link #foldStaged}'s pick: the smallest that covers what is left, else the largest), the
+	 * fleet {@code into} excluded. Nothing is changed.
+	 */
+	public static List<ThreatFleetOrders.Order> stagedToFold(MarketAPI host, float need, CampaignFleetAPI into) {
+		List<ThreatFleetOrders.Order> picks = new ArrayList<ThreatFleetOrders.Order>();
+		List<ThreatFleetOrders.Order> staged = ThreatFleetOrders.stagedAt(host);
+		while (need > 0f) {
+			ThreatFleetOrders.Order pick = null;
+			for (ThreatFleetOrders.Order o : staged) {
+				if (o.fleet == into || picks.contains(o)) continue;
+				if (heldBy(o.fleet) == null) continue;
+				float live = liveFP(o.fleet);
+				if (live <= 0f) continue;
+				if (pick == null) {
+					pick = o;
+					continue;
+				}
+				float pickLive = liveFP(pick.fleet);
+				boolean covers = live >= need;
+				boolean pickCovers = pickLive >= need;
+				if (covers ? (!pickCovers || live < pickLive) : (!pickCovers && live > pickLive)) pick = o;
+			}
+			if (pick == null) break;
+			picks.add(pick);
+			need -= liveFP(pick.fleet);
+		}
+		return picks;
 	}
 
 	/** A purge expedition: as a sortie, held until the group ends. */
@@ -300,34 +341,14 @@ public class ThreatAidCapacity {
 	 * leaves the sector ({@link ThreatFleetOrders#fold}) and its ledger entry
 	 * rides the sortie, still charged to the colony that sent it and marked
 	 * to go back on station here when the sortie is home. Returns the points
-	 * folded.
+	 * folded. Only a purge expedition
+	 * (commitGroup) folds this way now: a player sortie re-tasks the staged fleet itself
+	 * (ThreatFleetOrders.retask, 2026-10-11 - the fleets vanished and respawned out of the planet).
 	 */
 	protected static float foldStaged(MarketAPI host, float need, CampaignFleetAPI into,
 			Object group, String label) {
 		float folded = 0f;
-		while (need > 0f) {
-			ThreatFleetOrders.Order pick = null;
-			Commitment pickC = null;
-			for (ThreatFleetOrders.Order o : ThreatFleetOrders.stagedAt(host)) {
-				if (o.fleet == into) continue;
-				Commitment c = heldBy(o.fleet);
-				if (c == null) continue;
-				float live = liveFP(o.fleet);
-				if (live <= 0f) continue;
-				if (pick == null) {
-					pick = o;
-					pickC = c;
-					continue;
-				}
-				float pickLive = liveFP(pick.fleet);
-				boolean covers = live >= need;
-				boolean pickCovers = pickLive >= need;
-				if (covers ? (!pickCovers || live < pickLive) : (!pickCovers && live > pickLive)) {
-					pick = o;
-					pickC = c;
-				}
-			}
-			if (pick == null) break;
+		for (ThreatFleetOrders.Order pick : stagedToFold(host, need, into)) {
 			float live = liveFP(pick.fleet);
 			// every entry the fleet holds rides along (a restationed fleet can
 			// carry several senders'), its live points shared by their charges
@@ -365,23 +386,40 @@ public class ThreatAidCapacity {
 		if (fleet == null) return false;
 		List<Commitment> mine = heldAllBy(fleet);
 		if (mine.isEmpty()) return false;
-		boolean staged = false;
-		for (Commitment c : mine) {
-			if (home != null && c.hostMarketId != null && c.hostMarketId.equals(home.getId())) {
-				staged = true;
-			}
-		}
-		if (staged && ThreatFleetOrders.restation(fleet, mine, home)) return true;
+		// a fleet home is home (the user, 2026-10-12): from 2026-09-06 to 2026-10-12 a fleet carrying
+		// ships staged at the host was kept on station there as a guard (restation), its hulls still
+		// out and every sender's charge intact - "i returned fleet to haven and the hull FP split
+		// between haven and ark". Staging is an explicit Fleet order now, nothing else.
 		// the hull pool: what did not come home is a debt the yards rebuild
 		// (ThreatHulls.lose) - the fleet's strength now over its strength at launch
 		float health = ThreatHulls.enabled() ? Math.max(0f, Math.min(1f, ThreatReturns.health(fleet))) : 1f;
 		for (Commitment c : mine) {
 			all().remove(c);
 			if (health < 1f) lostPart(c, c.fp * (1f - health));
+			// the ships are where they landed: another colony's charge home here is this colony's now
+			ThreatHulls.moveHome(c.marketId, home, c.fp * health);
 			ThreatIncConfig.log("Capacity: " + (int) (c.fp * health) + " FP back from " + c.label
 					+ (health < 1f ? " (" + (int) (c.fp * (1f - health)) + " lost)" : ""));
 		}
+		if (home != null && home.isPlayerOwned()) logHulls("after " + fleet.getName() + " settled at " + home.getName());
 		return false;
+	}
+
+	/** Logs every player colony's Hulls cell and what makes it (the user, 2026-10-12: "the hull FP split between haven and ark"). */
+	public static void logHulls(String when) {
+		if (!ThreatIncConfig.debugLogging() || !ThreatHulls.enabled()) return;
+		String pf = Global.getSector().getPlayerFaction().getId();
+		StringBuilder sb = new StringBuilder("Hulls " + when + ": faction free " + (int) ThreatHulls.freeFP(pf)
+				+ " (standing " + (int) ThreatHulls.standingFP(pf) + ", built " + (int) ThreatHulls.built(pf) + ")");
+		for (MarketAPI m : ThreatHulls.marketsOf(pf)) {
+			sb.append("; ").append(m.getName()).append(" cell ").append((int) ownFreeFP(m))
+					.append(" = share ").append((int) ThreatHulls.shareFP(m))
+					.append(" (standing ").append((int) ThreatHulls.standingFP(m))
+					.append(m == ThreatHulls.hullPort(pf) ? ", hull port" : "")
+					.append(", moved ").append((int) ThreatHulls.moved(m))
+					.append(") - committed ").append((int) committedFP(m.getId()));
+		}
+		ThreatIncConfig.log(sb.toString());
 	}
 
 	/** Books the part of an entry that did not come home against its faction's hull debt. */
@@ -389,6 +427,7 @@ public class ThreatAidCapacity {
 		if (!ThreatHulls.enabled() || c == null || fp <= 0f) return;
 		MarketAPI m = c.marketId != null ? Global.getSector().getEconomy().getMarket(c.marketId) : null;
 		if (m != null) ThreatHulls.lose(m.getFactionId(), fp, c.label);
+		ThreatHulls.lostAt(m, fp); // the player's colony's own share drops (no faction-wide cap on its cell)
 	}
 
 	/**
@@ -408,8 +447,13 @@ public class ThreatAidCapacity {
 					all().remove(c);
 					float health = c.group instanceof ThreatPurgeFGI
 							? ((ThreatPurgeFGI) c.group).survivingFraction() : 1f;
-					if (c.hostMarketId != null && ThreatFleetOrders.restation(c, health)) continue;
 					if (health < 1f) lostPart(c, c.fp * (1f - health));
+					// home at the base it sailed from: another colony's hulls that came back with it
+					// are the base's now (the user, 2026-10-12; until then each sender was refunded,
+					// and a staged force was rebuilt over the host as a fresh guard - restation)
+					MarketAPI home = c.hostMarketId != null ? Global.getSector().getEconomy().getMarket(c.hostMarketId)
+							: c.group instanceof ThreatPurgeFGI ? ((ThreatPurgeFGI) c.group).sourceBase() : null;
+					ThreatHulls.moveHome(c.marketId, home, c.fp * health);
 					ThreatIncConfig.log("Capacity: " + (int) c.fp + " FP back from " + c.label
 							+ " (expedition over)");
 				}
@@ -557,7 +601,7 @@ public class ThreatAidCapacity {
 	 * here, free}. At home = capacity - in task forces (never below 0); on
 	 * station = the live points of the task forces staged here, each
 	 * rounded; free = at home + on station. The FP cell shows free /
-	 * capacity and {@link #describe} the same numbers.
+	 * capacity.
 	 */
 	public static int[] figures(MarketAPI market) {
 		int cap = Math.round(capacityFP(market));
@@ -570,64 +614,4 @@ public class ThreatAidCapacity {
 		return new int[] {cap, out, home, staged, home + staged};
 	}
 
-	/**
-	 * The colony's fleet points for its row tooltip, one line per fact, the
-	 * sum written out: "Fleet capacity 239 FP (fleet size 239%): 226 in task
-	 * forces, 13 at home." / "On station here: 226 FP from Sun Wukong, 169 FP
-	 * from Earth." / "Free to sail: 13 at home + 395 on station = 408 FP."
-	 */
-	public static List<String> describe(MarketAPI market) {
-		List<String> lines = new ArrayList<String>();
-		if (market == null) return lines;
-		int[] f = figures(market);
-		if (ThreatHulls.enabled()) {
-			// the hull pool: the colony's standing hulls and the faction's pool, one fact a line
-			if (f[0] <= 0) {
-				lines.add("No standing hulls: a Patrol HQ, Military Base or High Command is needed.");
-			} else {
-				lines.add("Standing hulls " + f[0] + " fleet points: " + ThreatHulls.patrols(market, Stats.PATROL_NUM_LIGHT_MOD)
-						+ " light, " + ThreatHulls.patrols(market, Stats.PATROL_NUM_MEDIUM_MOD) + " medium, "
-						+ ThreatHulls.patrols(market, Stats.PATROL_NUM_HEAVY_MOD) + " heavy patrols; fleet size "
-						+ Math.round(ThreatColonyManager.fleetSizeMult(market) * 100f) + "%, quality "
-						+ Math.round(Misc.getShipQuality(market) * 100f) + "%.");
-				lines.add(f[1] + " fleet points sent from here is out.");
-			}
-			String fid = market.getFactionId();
-			if (market == ThreatHulls.hullPort(fid) && ThreatHulls.built(fid) > 0f) {
-				lines.add("Hull port: the " + Math.round(ThreatHulls.built(fid))
-						+ " fleet points navy the yards built is kept here and sails from here.");
-			}
-			lines.add(ThreatWarState.displayName(fid) + " pool: " + Math.round(ThreatHulls.freeFP(fid)) + " of "
-					+ Math.round(ThreatHulls.standingFP(fid)) + " fleet points free; " + Math.round(ThreatHulls.committedFP(fid))
-					+ " out, " + Math.round(ThreatHulls.debt(fid)) + " lost.");
-			lines.add("Shipyards add " + Math.round(ThreatHulls.productionFP(fid)) + " fleet points a month, losses first; "
-					+ Math.round(ThreatHulls.built(fid)) + " fleet points built so far.");
-			if (ThreatIncConfig.standingUpkeepMult() > 0f && ThreatHulls.builtAtHome(fid) > 0f) {
-				lines.add("Navy upkeep: " + Math.round(ThreatHulls.standingUpkeepPerMonth(fid))
-						+ " supplies a month for the " + Math.round(ThreatHulls.builtAtHome(fid))
-						+ " fleet points at home.");
-			}
-			return lines;
-		}
-		if (f[0] <= 0) {
-			lines.add("No fleet capacity: a Patrol HQ, Military Base or High Command is needed.");
-			return lines;
-		}
-		lines.add("Fleet capacity " + f[0] + " fleet points (fleet size "
-				+ Math.round(ThreatColonyManager.fleetSizeMult(market) * 100f) + "%): "
-				+ f[1] + " in task forces, " + f[2] + " at home.");
-		List<String> parts = new ArrayList<String>();
-		for (ThreatFleetOrders.Order o : ThreatFleetOrders.stagedAt(market)) {
-			List<String> senders = sendersOf(o.fleet);
-			if (senders.isEmpty()) continue;
-			parts.add(Math.round(liveFP(o.fleet)) + " fleet points from " + ThreatWarBoard.join(senders));
-		}
-		if (parts.isEmpty()) {
-			lines.add("Free to sail: " + f[4] + " fleet points.");
-		} else {
-			lines.add("On station here: " + ThreatWarBoard.join(parts) + ".");
-			lines.add("Free to sail: " + f[2] + " at home + " + f[3] + " on station = " + f[4] + " fleet points.");
-		}
-		return lines;
-	}
 }

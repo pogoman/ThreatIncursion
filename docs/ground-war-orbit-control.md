@@ -177,8 +177,10 @@ A swarm that has taken the space over its own besieged hive **bombards the enemy
 swarm's weight over the planet against what the front can put in the way
 (`fp / (fp + defenseStrength)`) and by the front's own veterancy. It needs
 `swarmOrbitMinFleetFP` (50) at the planet to count as holding the orbit at all - a bombardment
-is a fleet operation, not a lone frigate - and an armed hostile fleet on station stops it
-outright (`swarmOrbitContested`).
+is a fleet operation, not a lone frigate - and hostile fleets on station weighing `orbitContestFraction`
+(0.5) of the swarm's there stop it
+(`swarmOrbitContested`; until 2026-10-12 any armed hostile fleet did, so one fleet dancing inside the
+radius stopped a swarm that held the system - the user: "my presence shouldn't necessarily stop them").
 
 **Orbit cover for autoresolved landings (2026-09-26, overnight after run 7).** Far from the
 player, vanilla resolves an NPC siege without spawning any fleet, so after an abstract

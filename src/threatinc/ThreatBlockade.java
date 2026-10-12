@@ -67,9 +67,12 @@ public class ThreatBlockade extends BaseMarketConditionPlugin {
 			if (!has) market.addCondition(HIVE_ID);
 		}
 		if (had != cut) {
+			float all = ThreatGroundFronts.friendlyPointsNear(Factions.THREAT, market);
+			float weighed = playerHoldsStation(market) ? foughtPointsNear(market) : all;
 			ThreatIncConfig.log("Blockade of " + market.getName() + ": imports cut " + Math.round(cut * 100f)
 					+ "% (human " + (int) ThreatGroundFronts.hostilePointsNear(Factions.THREAT, market)
-					+ " FP over the swarm's " + (int) ThreatGroundFronts.friendlyPointsNear(Factions.THREAT, market) + ")");
+					+ " FP over the swarm's " + (int) all
+					+ (weighed < all ? ", " + (int) weighed + " of it fought" : "") + ")");
 		}
 	}
 
@@ -82,10 +85,39 @@ public class ThreatBlockade extends BaseMarketConditionPlugin {
 	public static float hiveCut(MarketAPI market) {
 		float human = ThreatGroundFronts.hostilePointsNear(Factions.THREAT, market);
 		if (human <= 0f) return 0f;
-		float swarm = ThreatGroundFronts.friendlyPointsNear(Factions.THREAT, market);
+		// while the player holds station, swarms that arrived under it and have not
+		// fought yet weigh nothing (foughtPointsNear); off-screen orbits weigh as before
+		float swarm = playerHoldsStation(market) ? foughtPointsNear(market)
+				: ThreatGroundFronts.friendlyPointsNear(Factions.THREAT, market);
 		if (human < swarm * 0.75f) return 0f;
 		if (human < swarm * 1.25f) return 0.5f;
 		return 1f;
+	}
+
+	/** Whether the player's own fleet is over the hive world (within ORBIT_HOLD_RANGE). */
+	public static boolean playerHoldsStation(MarketAPI market) {
+		CampaignFleetAPI pf = Global.getSector().getPlayerFleet();
+		return pf != null && pf.isAlive() && ThreatGroundFronts.nearWorld(pf, market);
+	}
+
+	/**
+	 * The swarm's points over the world less the swarms that arrived while an
+	 * enemy held station and have not fought yet (ThreatColonyManager.UNFOUGHT_KEY,
+	 * cleared by their first battle). User, 2026-10-12: three reinforcements sailed
+	 * blinkered into the player's orbit over Delta Mengryla I and their weight alone
+	 * lifted the blockade - the batteries' machinery and metals with it - before a
+	 * shot was fired. Read only while the player holds station (hiveCut).
+	 */
+	protected static float foughtPointsNear(MarketAPI market) {
+		SectorEntityToken world = market.getPrimaryEntity();
+		if (world == null || world.getContainingLocation() == null) return 0f;
+		float fp = 0f;
+		for (CampaignFleetAPI fleet : world.getContainingLocation().getFleets()) {
+			if (!ThreatGroundFronts.countsNear(fleet, market, Factions.THREAT, true)) continue;
+			if (fleet.getMemoryWithoutUpdate().getBoolean(ThreatColonyManager.UNFOUGHT_KEY)) continue;
+			fp += fleet.getFleetPoints();
+		}
+		return fp;
 	}
 
 	/** The share of a forward base's imports the Threat's blockade over it cuts: 0, half or all. */

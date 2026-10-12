@@ -97,9 +97,31 @@ spent every supply it made holding a garrison it could not use and the humans wo
   / `FP_PER_RESPONSE_DIFFICULTY`. The hulls are held when the fleets spawn (`ThreatReturns.
   provision`), not at dispatch: two sieges dispatched the same day can both read the pool free.
 - NPC sorties and guards: `ThreatFleetOrders.payableFP`, `ThreatFrontlines.payableFP`.
-- The player's orders: `ThreatAidCapacity.capacityFP` = standing hulls, `ownFreeFP` = the
-  faction's free pool (ships fly themselves to the base that stages them), staged task forces
-  fold in as before. `aidBaseFP` and `aidRebuildDays` only apply with the pool off.
+- The player's orders: `ThreatAidCapacity.capacityFP` = the colony's SHARE of the faction's
+  hulls (`ThreatHulls.shareFP`: its patrols, plus the built navy at the hull port, plus hulls that came home to it - below), `ownFreeFP`
+  = that share less what sailed from it (never above the faction's free), and a sortie from a
+  colony sails its own free plus the task forces staged over it (`freeFP`), which fold in as
+  before. From 2026-10-06 to 2026-10-11 `ownFreeFP` was the whole faction's free pool at every
+  colony ("ships fly themselves to the base that stages them"), the builder's call; the user
+  (2026-10-11, a Hunt quoting the whole navy from Haven): "so whats the point of staging bases
+  again given it just pools from all bases? ... all this was working in older versions" - so
+  hulls reach another colony only by a Fleet order to it (`ThreatAid.pickTaskForceSource`
+  takes the nearest OTHER colony first for a guard over an own colony; the colony's own hulls
+  stage over itself only when none other can). NPC navies still draw on their faction's pool
+  (`ThreatHulls.cap`). `aidBaseFP` and `aidRebuildDays` only apply with the pool off.
+  A player force built from staged guards (`ThreatFleetOrders.buildPlayerForce`) sends the
+  guards themselves, one a fleet (`ThreatFleetOrders.retask`, 2026-10-11 19:40): the colony's own
+  free hulls build fleets first; past them each task force on station is re-tasked in place - its
+  guard ends, what it carries settles at the base, own hulls top it up when it is short of the
+  ask, it is provisioned for the trip and sails on the order. Its ledger entries stay charged to
+  their senders until it is home, when the hulls are the base's (below; until 2026-10-12 it went
+  back on station at the base as a guard, `restation`).
+  Until then the fold expired each guard and the yards built its points again (the user: the
+  fleets "disappear then respawn coming out of the planet"), and a fleet could fold two guards
+  (a Med hunt of 1,451 built five fleets and folded nine). A Siege or Bombard takes
+  them the same way (`ThreatPurgeFGI.takeStaged`: the guards wait in orbit, alive, and are handed over
+  at the spawn; off the map only with an expedition the player cannot see), sized at the Force tier (`IncursionManager.playerExpeditionSizes`: the need, half
+  the free points, all of them).
 - Commit: `ThreatReturns.provision` commits every NPC fleet at its fleet points (the player's
   are committed by the order that built them). **Convoys draw no hulls** (`ThreatReturns.MEM_NO_HULLS`;
   vanilla's trade fleets are no patrols) and scouting parties and patrols launch only with the hulls free
@@ -108,16 +130,60 @@ spent every supply it made holding a garrison it could not use and the humans wo
   disbands that never settled (home gone, timed out). Loss: `ThreatAidCapacity.poll` (a dead
   fleet is a debt at once, no clock) and `release` (the part that did not come back, by
   `ThreatReturns.health`).
+- A fleet home is home - hulls belong where they land, and nothing is re-stationed on return
+  (the user, 2026-10-12, "Dissolve into Haven's Hulls", after a fleet returned to Haven read 219
+  at Haven and 93 at Arkoman twice over). Until then (2026-09-06 to 2026-10-12) a fleet carrying
+  ships staged at the host was KEPT on station there as a guard when it came home (`restation`,
+  two overloads, now deleted), every sender's charge intact and Recall taking it to the sender
+  charged most - so the hulls never reached the column and a release refunded each sender. Now:
+  - a player fleet home at a player colony moves every other colony's charge to it
+    (`ThreatHulls.moveHome`, persistent `threatinc_hullMoved`, added to `shareFP`): the home's
+    share rises by what came back, the sender's falls, the faction's standing is unchanged;
+  - **the player's Hulls cell has no faction-wide cap** (12:39 jar, after the first logged recall:
+    the 302 came back to Haven, 0 -> 218, and Arkoman rose 9 -> 93 only because the faction's
+    free total of 9 had been capping every cell - Arkoman's own 93 was there all along). A player
+    colony's cell is its share less its own out (`ownFreeFP`, `isPlayerOwned` branch); its losses
+    come off its share (`ThreatHulls.lostAt`, from `ThreatAidCapacity.lostPart`) and the yards'
+    rebuilds and allies' hull landings put them back at the hull port (`rebuiltAt`, from `rebuild`
+    and `receive`), so the cells still sum to the faction's free. NPC colonies keep the cap (no
+    NPC balance change before 0.8). A colony over-committed from before the own-share rule (Haven:
+    605 out of 521) clips at 0 until its fleets are home. `rehome` had returned on `o.aid` - the
+    board's Guard IS an aid order - so the 09:38 jar's version never ran; 12:33 jar fixed it.
+    `ThreatAidCapacity.logHulls` logs every colony's cell and its parts before a recall and after
+    a settle - read starsector.log before theorising;
+    called from `ThreatAidCapacity.release` (tracked returns) and from the expedition-over path of
+    `ThreatAidCapacity.poll` (home = the entry's host, else the expedition's `sourceBase`);
+    `ThreatPurgeFGI.releaseStagedLive` (an expedition that never sailed) dissolves its forces into
+    the base the same way;
+  - a guard of the player's on station over a player colony is charged to that colony from
+    arrival (`ThreatFleetOrders.rehome`: entries re-pointed, Recall takes it home there), run every
+    poll so a guard staged before the rule counts too;
+  - player colonies only; NPC fleets come home to their sender. A share pushed below 0 (the sender
+    later losing patrols, or the hull port moving) reads 0; `ownFreeFP`'s cap at the faction's
+    free keeps the rows from paying out hulls that do not exist. Staging is only ever an explicit
+    Fleet order to a colony.
 
 ## 4. What it shows
 
-- Board Fleet column (`ThreatFactionView.fleetShare`; "FP" until 2026-10-11, the user: "no
-  abbreviations here"): a colony's standing hulls, plus the faction's built navy on its hull port's
-  row (where hulls are kept, land and sail from), so the rows sum to the Total row's standing; the
-  Total row the faction's free / standing,
-  coloured by free (white enough for a guard, yellow a minimum, red less). Row tooltip: standing
-  hulls with the patrol counts, fleet size and quality; the faction's pool; the yards' rebuild
-  rate.
+- Board **Hulls** column (the user, 2026-10-11 17:10: "rename to Hulls. and no x / y. the column
+  is just Hulls available. if all have been spent then just dashes"; "Fleet" and "FP" before, and
+  free / standing for a quarter of an hour; 18:05: "they are there so why arent hulls consumed it
+  should say zero"): the colony's own hulls not yet sent out (`ThreatAidCapacity.ownFreeFP`:
+  its own share less what sailed from it), a grey dash with none left; a task force on station
+  over it is hulls already out, listed in the fleets table, and still sails with the colony's
+  Hunt, Siege or Fleet orders (`freeFP` = own plus staged is what those quote); the Total row
+  the rows summed - 0 with the fleet out, on station or not. Cells are
+  coloured by free (white enough for a guard, yellow a minimum, red less). Row tooltip: one "Hulls" line
+  beside the resource lines - standing fleet points and what the yards add a month
+  (`ThreatFactionView.hullLine`); the pool / on-station / free block that sat below it was
+  cut 2026-10-11 (its figures disagreed with the cell; the user: "yellow garbage").
+- Fleet / Hunt / Defend buttons and their prompts (2026-10-11): "a task force of about 302 of the
+  2,365 fleet points free from Haven" - one order is ONE fleet, and vanilla builds at most
+  `maxShipsInAIFleet` ships of it, so the ask (`ThreatAid.taskForceFP`) stops at the per-fleet cap
+  `ThreatSoftening.fleetCapFor` (learned from a pruned build, player and NPC alike; probed by a dry
+  build, `ThreatFleetOrders.dryTaskForce`, before the first) and the quote (`taskForcePoints`) at
+  `builtCapPoints`, the whole-fleet points that build sailed with. Each press stages another fleet;
+  the free figure is the source colony's own (or, for a sortie, own plus staged).
 - Log: `Hulls: <faction> hulls S FP (B built): O out, L lost, F free; yards P FP/mo` monthly with the sim
   dump; `Hulls: <faction> lost N FP with <fleet>; D FP to rebuild at P FP/mo` per loss.
 - Dump: per faction `hulls`, `hullsBuilt`, `hullsOut`, `hullsLost`, `hullsFree`, `hullYards`.

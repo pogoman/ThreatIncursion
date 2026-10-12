@@ -75,13 +75,17 @@ public class ThreatReturns {
 	/**
 	 * What the hold was loaded to at launch - a restock fills it back to this.
 	 * A fleet never loaded (a save from before the hold, a fleet restationed
-	 * at home after settling) fills to sortieStayDays of its own maintenance.
+	 * at home after settling) fills to the stay its distance from home says
+	 * (ThreatReach.sortieStay: sortieHomeStayDays in its home's system, sortieStayDays beyond).
 	 */
 	public static float holdFull(CampaignFleetAPI fleet) {
 		if (fleet == null) return 0f;
 		float full = fleet.getMemoryWithoutUpdate().getFloat(MEM_HOLD_FULL);
 		if (full > 0f) return full;
-		return ThreatFrontlines.maintenancePerMonth(fleet) * ThreatIncConfig.sortieStayDays() / 30f;
+		ThreatBases.Base home = ThreatBases.of(homeOf(fleet));
+		float ly = home != null && home.hyperLoc() != null
+				? Misc.getDistanceLY(fleet.getLocationInHyperspace(), home.hyperLoc()) : 0f;
+		return ThreatFrontlines.maintenancePerMonth(fleet) * ThreatReach.sortieStay(ly) / 30f;
 	}
 
 	/** Takes up to {@code amount} from the hold; returns what was taken. */
@@ -191,6 +195,22 @@ public class ThreatReturns {
 		if (!flownHome) return drawn * RETURN_LEG_SHARE;
 		float h = Math.max(0f, Math.min(1f, health));
 		return drawn * RETURN_LEG_SHARE * (1f - h);
+	}
+
+	/**
+	 * {fuel, supplies} a fleet settled where it stands hands its host ({@link #settle} with the
+	 * leg home never flown): the leg home of its fuel draw, its deposit and the hold its surviving
+	 * hulls carry. What a task force on station brings to the sortie it folds into - the base's
+	 * reserve gets it at the fold, and the sortie's draw finds it there (the user, 2026-10-11:
+	 * "if i send it out of system, i pay the difference of required vs what is currently carried").
+	 */
+	public static float[] carried(CampaignFleetAPI fleet) {
+		if (fleet == null || !fleet.isAlive()) return new float[] {0f, 0f};
+		float h = health(fleet);
+		float fuel = fuelBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_FUEL), h, false);
+		float supplies = suppliesBack(fleet.getMemoryWithoutUpdate().getFloat(MEM_SUPPLIES), h, playerFleet(fleet))
+				+ hold(fleet) * Math.max(0f, Math.min(1f, h));
+		return new float[] {fuel, supplies};
 	}
 
 	/** Whether the fleet is the player's, for the refund rule ({@link #suppliesBack}). */

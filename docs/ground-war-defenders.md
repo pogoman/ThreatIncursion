@@ -28,7 +28,7 @@ a colony is besieged - on one skeleton, and splits what vanilla lumps together:
   Defenses x2, Heavy Batteries x3, Patrol HQ / Military Base / High Command x1.1 / 1.2 /
   1.3) scaled by its **condition** - 1 intact, falling in a straight line to 0 at
   `fortificationDisruptDays` (180) on its disruption clock - instead of vanilla's on/off,
-  and x vanilla's own input-deficit factor, so a starving battery gives less either way.
+  and x vanilla's input-deficit factor weighed by `defenseDeficitWeight` (0.5: a full deficit halves the bonus, a partial one takes its share; both theatres, `ThreatSiegeMalus.weighDeficit`), so a starving battery gives less either way but a blockade alone can never switch the guns off (2026-10-12).
   From orbit alone the condition falls all the way to 0 like everything else; a holding
   front on the world just wears it down faster (2026-09-28: the orbital floor is gone).
 
@@ -336,6 +336,16 @@ A world paid under half its upkeep starves a size every 90 days at nothing: bloc
 the worlds that import, raid the forge of the ones that don't. A forward base
 blockaded by the Threat is fed the same way (`ThreatFrontlines.feedSize`, the Threat
 blockade's share cut off what its faction sends).
+
+**Unfought swarms lift nothing while you hold station** (2026-10-12, the user). While the
+player's fleet is within `ORBIT_HOLD_RANGE` of the hive world (`ThreatBlockade.playerHoldsStation`)
+the swarm's side of the test counts only swarms without the unfought mark
+(`foughtPointsNear`; `ThreatColonyManager.UNFOUGHT_KEY`, set on a reinforcement that reaches the
+orbit under hostiles - swarm-defence.md "Fight on arrival" - and cleared by its first battle,
+`FoughtMark`). Off-screen orbits keep the plain weighing. Why: three reinforcements sailed
+blinkered into the player's orbit and their weight alone turned the cut from half to nothing,
+the batteries' machinery and metals back with it, before a shot was fired. The log line adds
+`, K of it fought` when the weighed figure is less than the swarm's whole.
 
 ### When the colony falls
 

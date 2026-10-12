@@ -76,6 +76,10 @@ public class ThreatColonyManager {
 	protected static final String REINFORCE_AT_KEY = "$threatinc_reinforceAt";
 	/** The hive a reinforcement was sent from (the overdue read's "from"). */
 	protected static final String REINFORCE_FROM_KEY = "$threatinc_reinforceFrom";
+	/** A reinforcement that met hostiles over its target: blinders off, fighting for the orbit, not seated (engageOnArrival). */
+	protected static final String REINFORCE_ENGAGED_KEY = "$threatinc_reinforceEngaged";
+	/** A swarm that reached its hive while an enemy held station and has not fought yet: its weight lifts no blockade while the player holds station (ThreatBlockade.foughtPointsNear). */
+	public static final String UNFOUGHT_KEY = "$threatinc_unfought";
 	/** Fleet points a garrison swarm had the moment it was fabricated (under-strength baseline). */
 	public static final String SWARM_SPAWN_FP = "$threatinc_swarmSpawnFP";
 	/** How many swarms of its spec a garrison fleet embodies (absent: one); see growGarrisonFleet. */
@@ -6624,6 +6628,8 @@ public class ThreatColonyManager {
 		mem.set(REINFORCE_FROM_KEY, source.getId());
 		mem.unset(REINFORCE_KICK_KEY);
 		mem.unset(REINFORCE_KICKS_KEY);
+		mem.unset(REINFORCE_ENGAGED_KEY);
+		mem.unset(UNFOUGHT_KEY);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(pick);
@@ -6666,6 +6672,8 @@ public class ThreatColonyManager {
 		mem.set(REINFORCE_AT_KEY, new Vector2f(fleet.getLocation()));
 		mem.unset(REINFORCE_KICK_KEY);
 		mem.unset(REINFORCE_KICKS_KEY);
+		mem.unset(REINFORCE_ENGAGED_KEY);
+		mem.unset(UNFOUGHT_KEY);
 		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
 		makeDetectable(fleet);
@@ -6710,8 +6718,25 @@ public class ThreatColonyManager {
 				continue;
 			}
 			SectorEntityToken planet = target.getPrimaryEntity();
-			boolean arrived = fleet.getContainingLocation() == planet.getContainingLocation()
-					&& Misc.getDistance(fleet, planet) <= GARRISON_LEASH_RADIUS;
+			// FIGHT ON ARRIVAL (user, 2026-10-12: three swarms sailed blinkered through
+			// the player's fleet over Delta Mengryla I, were seated as garrison at 700
+			// units, and their weight lifted the blockade before a shot was fired):
+			// within the orbit hold range of a world with hostiles over it the blinders
+			// come off and the swarm fights for the orbit; nothing is seated while an
+			// enemy holds station
+			boolean inSystem = fleet.getContainingLocation() == planet.getContainingLocation();
+			float hostile = inSystem && Misc.getDistance(fleet, planet) <= ThreatFleetOrders.ORBIT_HOLD_RANGE
+					? ThreatGroundFronts.hostilePointsNear(Factions.THREAT, target) : 0f;
+			if (hostile > 0f) {
+				engageOnArrival(fleet, target, planet, mem, hostile);
+				continue;
+			}
+			if (mem.getBoolean(REINFORCE_ENGAGED_KEY)) {
+				// the orbit is clear: the engagement is over, whatever is left is seated below or sails on
+				mem.unset(REINFORCE_ENGAGED_KEY);
+				mem.unset(UNFOUGHT_KEY);
+			}
+			boolean arrived = inSystem && Misc.getDistance(fleet, planet) <= GARRISON_LEASH_RADIUS;
 			if (!arrived) {
 				overdue(fleet, target, planet, mem);
 				continue;
@@ -6735,6 +6760,45 @@ public class ThreatColonyManager {
 					+ countLiveGarrison(targetId) + "/" + nominalGarrison(target) + "), id " + fleet.getId() + ", "
 					+ (am.contains(REINFORCE_DAY_KEY) ? (int) (ThreatPosture.today() - am.getFloat(REINFORCE_DAY_KEY)) : -1) + " d out, "
 					+ (int) fleet.getFleetPoints() + " FP");
+		}
+	}
+
+	/**
+	 * A reinforcement within the orbit hold range of its target with hostiles
+	 * over it (user, 2026-10-12): blinders off, aggressive, on an aggressive orbit
+	 * of the world, marked engaged and unfought. It stays on the in-transit list
+	 * - never seated while an enemy holds station - and the unfought mark keeps
+	 * its weight out of the hive's blockade while the player holds station
+	 * (ThreatBlockade.foughtPointsNear) until its first battle (FoughtMark).
+	 * Once a fleet: a second poll with the mark set changes nothing.
+	 */
+	protected static void engageOnArrival(CampaignFleetAPI fleet, MarketAPI target, SectorEntityToken planet,
+			com.fs.starfarer.api.campaign.rules.MemoryAPI mem, float hostile) {
+		if (mem.getBoolean(REINFORCE_ENGAGED_KEY)) return;
+		mem.set(REINFORCE_ENGAGED_KEY, true);
+		mem.set(UNFOUGHT_KEY, true);
+		mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS);
+		mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE, true);
+		boolean listening = false;
+		for (Object l : fleet.getEventListeners()) {
+			if (l instanceof FoughtMark) { listening = true; break; }
+		}
+		if (!listening) fleet.addEventListener(new FoughtMark());
+		fleet.clearAssignments();
+		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f, "defending the hive");
+		ThreatIncConfig.log("Reinforcement engages at " + target.getName() + ": " + (int) fleet.getFleetPoints()
+				+ " FP against " + (int) hostile + " hostile FP over the world - fighting for the orbit, not seated");
+	}
+
+	/** On a swarm engaged on arrival: its first battle clears the unfought mark, and the blockade weighs it from then on. */
+	public static class FoughtMark implements com.fs.starfarer.api.campaign.listeners.FleetEventListener {
+		public void reportFleetDespawnedToListener(CampaignFleetAPI fleet,
+				com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param) {
+		}
+
+		public void reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner,
+				com.fs.starfarer.api.campaign.BattleAPI battle) {
+			if (fleet != null) fleet.getMemoryWithoutUpdate().unset(UNFOUGHT_KEY);
 		}
 	}
 

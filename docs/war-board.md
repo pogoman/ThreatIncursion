@@ -44,7 +44,7 @@ is the layout it implements.
    quotes what the tick does: Force (owner in its colour, "You"), World, [System],
    Attackers (effective strength), Defenders (the world's figure), Defenses (worn green / held yellow /
    recovering red / intact - which way the defenders are heading, `defensesTrend`), State
-   (holding / grinding / foothold), Held `held/size` (strata on a hive, districts on a colony), Stance (push / regrouping / dug in),
+   (holding / grinding / foothold), Strata `N` on a hive (the strata it still stands on; a table with a colony's front is headed Held and a colony's cell reads `held/size` districts - `heldCell`), Stance (push / regrouping / dug in),
    Attrition ("N / day" - troops a day at the current stance and supply, `attritionPer30Days` over
    `perDay`; every player-facing loss figure in the mod is a rate a day), Counter
    (days to the next counter-attack, green when the front would repel it now,
@@ -106,8 +106,14 @@ everything else and anchored to siblings (the table panel, the cards); see platf
 **Load ladders** (2026-09-07, `ThreatFactionView.addTierSelector`, docs/player-aid.md): a table
 whose buttons move a quantity carries a **Min / Med / Max** selector in a row reserved under its
 section heading (`addSpacer(SELECTOR_ROW_H)` before `beginTable2`; the buttons float in last,
-`aboveLeft` the table). Three: **Siege force** over the hives table, **Supply run** over the
-ground fronts, **Convoy load** over the colonies. The tier is a view toggle like the faction
+`aboveLeft` the table). Three: **Force** over the hives table (Hunt, Support, Defend and aid
+Hunt sail as one fleet, half the hulls free or all of them, built as several fleets of one
+fleet's size, `ThreatFleetOrders.buildPlayerForce`; a siege reads it as marines; "Siege force"
+until 2026-10-11), **Supply run** over the ground fronts, **Amount** over the colonies (its
+Supplies and Aid buttons carry Min/Med/Max loads, its Fleet and Defend buttons sail one fleet /
+half / all the same way; "Convoy load" and sized by the hives table's Force until 2026-10-11
+evening, when a Fleet order quoted one fleet and sailed six). A ladder reaches only the
+buttons in its own table; Min is exactly one fleet. The tier is a view toggle like the faction
 selector - no Confirm, the current tier's button drawn disabled - stored on the intel and read
 by every order button in the table below, so a row's tooltip and its Confirm quote the tier's
 own numbers. The fronts ladder only appears where a front of the player's carries orders
@@ -234,8 +240,12 @@ points like a Siege, and carries the passage then the saturation's fuel - what e
 commander's stop burns - from the base's own reserve, less if that is all there is. A hive has no
 bar (2026-10-01, docs/ground-war-sieges.md "Saturation presses a hive"): the order presses each hive and
 never ends one. The confirm: "Order a bombing expedition from B against the S?", the fleets and
-their FP, "Carries X of the Y fuel the saturation takes.", the fuel drawn of the reserve, and per
-hive "Name: N days in orbit, S FP bombing, about F FP lost, down D days." The launch notice is "Bombing
+their FP, "Takes N fuel from B's M: X for the bombing, Y for the passage." (one line since
+2026-10-11; "Carries X of the Y ... Draws ..." before, the user: "nobody knows wtf carry vs draw
+means"), and per hive "Name: N days in orbit, S FP bombing, about F FP lost, down D days." Since
+2026-10-11 the order is refused unless the base's fuel pays the passage and every world's saturation
+and the flotilla carries it (`bombardBlockFacts`: "B has M fuel / The bombing takes X, the passage
+Y") - the user: a 90k-fuel saturation from an 18k reserve "shouldnt be able to send it at all". The launch notice is "Bombing
 Expedition" ("To saturate ... from orbit"); the fleets table reads "bombarding the ...". Gated by
 `bombardBlockReason`; refused with a "Bombing Refused" notice. To fit the third button the hives
 table went from System .30 / Actions .21 to .26 / .25. The Siege prompt also quotes the fuel its

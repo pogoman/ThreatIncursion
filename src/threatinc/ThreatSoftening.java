@@ -545,9 +545,40 @@ public class ThreatSoftening {
 		return cap != null ? cap : Float.MAX_VALUE;
 	}
 
+	/** Faction id -> whole-fleet points of the fleet vanilla last built for it pruned to its ship cap: what one order of any size sails with. */
+	protected static final Map<String, Float> BUILT_CAP = new java.util.HashMap<String, Float>();
+	/** Faction id -> the biggest combat ask a probe saw built whole (nothing to learn at it); the probe repeats only well above it. */
+	protected static final Map<String, Float> PROBED_WHOLE = new java.util.HashMap<String, Float>();
+
+	/** Whole-fleet points one fleet of the faction's tops out at ({@link #learnFleetCap}), or MAX_VALUE until a pruned build taught it. */
+	public static float builtCapPoints(String factionId) {
+		Float cap = BUILT_CAP.get(factionId);
+		return cap != null ? cap : Float.MAX_VALUE;
+	}
+
+	/**
+	 * The combat points one fleet of the faction may be asked for ({@link #fleetCap}), learned by a dry
+	 * build when nothing has taught it yet: an order is one fleet, and vanilla builds at most
+	 * maxShipsInAIFleet ships of it whatever is asked (the player's Fleet button, 2026-10-11: the whole
+	 * free pool of 2,364 quoted and asked, 302 built, and the pool read 2,364 again).
+	 */
+	public static float fleetCapFor(MarketAPI base, String factionId, float askCombat) {
+		float cap = fleetCap(factionId);
+		if (cap < Float.MAX_VALUE || base == null || factionId == null || askCombat < 1f) return cap;
+		Float whole = PROBED_WHOLE.get(factionId);
+		if (whole != null && askCombat <= whole * 1.25f) return cap;
+		CampaignFleetAPI fleet = ThreatFleetOrders.dryTaskForce(base, factionId, askCombat);
+		if (fleet == null) return cap;
+		learnFleetCap(factionId, fleet, askCombat);
+		if (fleetCap(factionId) >= Float.MAX_VALUE) PROBED_WHOLE.put(factionId, askCombat);
+		return fleetCap(factionId);
+	}
+
 	/** Called on load: the caps are relearned in the loaded game, not carried over from another. */
 	public static void forgetFleetCaps() {
 		FLEET_CAP.clear();
+		BUILT_CAP.clear();
+		PROBED_WHOLE.clear();
 	}
 
 	/** Whether vanilla pruned the fleet to its ship cap - the only short build that teaches a smaller fleet size. */
@@ -564,7 +595,10 @@ public class ThreatSoftening {
 	 */
 	protected static void learnFleetCap(String factionId, CampaignFleetAPI fleet, float asked) {
 		float got = combatFP(fleet);
-		if (got < asked * BUILT_SHORT && pruned(fleet)) FLEET_CAP.put(factionId, Math.max(100f, got * 1.1f));
+		if (got < asked * BUILT_SHORT && pruned(fleet)) {
+			FLEET_CAP.put(factionId, Math.max(100f, got * 1.1f));
+			BUILT_CAP.put(factionId, Math.max(1f, fleet.getFleetPoints()));
+		}
 	}
 
 	/**
@@ -1706,13 +1740,46 @@ public class ThreatSoftening {
 		StarSystemAPI system = systemId != null ? Global.getSector().getStarSystem(systemId) : null;
 		if (system != null && o.fleet.getContainingLocation() == system) ThreatIntel.look(observer, system);
 		if (unseen(observer, systemId)) return;
+		boolean inSystem = system != null && o.fleet.getContainingLocation() == system;
+		if (player && o.chasingId != null) {
+			// chasing a loose swarm: on with it while it lives in the system; when it is
+			// gone, back to the orbit it left if the swarms are back there, else judge again
+			CampaignFleetAPI chased = inSystem ? looseSwarm(system, o.chasingId) : null;
+			if (chased != null) return;
+			o.chasingId = null;
+			if (hive != null && isHive(hive) && garrisonFP(observer, hive) > 0f) {
+				ThreatFleetOrders.retargetHunt(o, hive);
+				return;
+			}
+		}
 		if (hive != null && isHive(hive) && garrisonFP(observer, hive) > 0f) return;
 		MarketAPI next = systemId != null ? weakest(observer, systemId) : null;
 		if (next == null) {
 			if (player) {
-				ThreatNotice.titled("Swarms Hunted Down").good().icon(Global.getSector().getPlayerFaction())
-						.line("%s has hunted down the Defense Swarms", o.fleet.getName())
-						.line("Heading home").send();
+				// every orbit clear: the swarms scattered by the fight, or in transit between
+				// worlds, still count - the player's hunt clears the whole system or serves its
+				// term (user 2026-10-11: a hunt went home with swarms left in the system)
+				if (inSystem) {
+					CampaignFleetAPI loose = nearestLoose(o.fleet, system);
+					if (loose != null) {
+						if (!loose.getId().equals(o.chasingId)) {
+							ThreatIncConfig.log("Hunting fleet chases a loose swarm in the " + system.getName()
+									+ ": " + (int) loose.getFleetPoints() + " FP");
+						}
+						ThreatFleetOrders.chaseLoose(o, loose);
+						return;
+					}
+				} else {
+					ThreatIntel.Report r = ThreatIntel.report(observer, systemId);
+					if (r != null && r.looseFP > 0f) return;
+				}
+				if (speaks(o, "done")) {
+					ThreatNotice.titled("Swarms Hunted Down").good().icon(Global.getSector().getPlayerFaction())
+							.line("No Defense Swarms left in the %s",
+									system != null ? system.getNameWithLowercaseTypeShort() : o.targetName)
+							.line("Heading home").send();
+				}
+				forgetGroup(o);
 			}
 			ThreatFleetOrders.standDown(o, "the swarms are gone");
 			IncursionManager.huntThinned(systemId);
@@ -1723,13 +1790,78 @@ public class ThreatSoftening {
 			ThreatFleetOrders.standDown(o, "outmatched by " + next.getName() + ", " + reported(observer, next));
 			return;
 		}
-		if (player) {
+		if (player && speaks(o, "on:" + next.getId())) {
 			ThreatNotice.titled("Hunt Moves On").icon(Global.getSector().getPlayerFaction())
-					.line("%s moves on to the swarms over %s", o.fleet.getName(), ThreatNotice.market(next))
+					.line("The hunt moves on to the swarms over %s", ThreatNotice.market(next))
 					.send();
 		}
 		ThreatFleetOrders.retargetHunt(o, next);
 		ThreatIncConfig.log("Hunting fleet moves on to " + next.getName());
+	}
+
+	/** A player hunt's notices, said once per Hunt press: group id + event -> said. */
+	protected static final String KEY_HUNT_SAID = "threatinc_huntSaid";
+
+	/**
+	 * Whether this order speaks for its group now: the first fleet of a Hunt press
+	 * to reach a conclusion says it, its siblings reaching it days later are silent.
+	 * A hunt with no group (an older save's) always speaks.
+	 */
+	protected static boolean speaks(ThreatFleetOrders.Order o, String key) {
+		if (o.groupId == null) return true;
+		Map<String, Boolean> said = ThreatIncData.map(KEY_HUNT_SAID);
+		String k = o.groupId + ":" + key;
+		if (Boolean.TRUE.equals(said.get(k))) return false;
+		said.put(k, Boolean.TRUE);
+		return true;
+	}
+
+	/** Drops a group's said-keys once its last fleet stands down. */
+	protected static void forgetGroup(ThreatFleetOrders.Order o) {
+		if (o.groupId == null) return;
+		for (ThreatFleetOrders.Order other : ThreatFleetOrders.all()) {
+			if (other != o && o.groupId.equals(other.groupId)) return;
+		}
+		Map<String, Boolean> said = ThreatIncData.map(KEY_HUNT_SAID);
+		for (Iterator<String> it = said.keySet().iterator(); it.hasNext();) {
+			if (it.next().startsWith(o.groupId + ":")) it.remove();
+		}
+	}
+
+	/** Whether the swarm fleet is in the system and off every hive world's orbit (ThreatIntel.picture's loose). */
+	protected static boolean isLoose(CampaignFleetAPI f, StarSystemAPI system, List<MarketAPI> hives) {
+		if (!ThreatIntel.swarmFleet(f) || f.getContainingLocation() != system) return false;
+		for (MarketAPI hive : hives) {
+			if (hive.getPrimaryEntity() != null && ThreatGroundFronts.nearWorld(f, hive)) return false;
+		}
+		return true;
+	}
+
+	/** The loose swarm fleet of that id in the system, or null when it is dead, gone or back on an orbit. */
+	protected static CampaignFleetAPI looseSwarm(StarSystemAPI system, String fleetId) {
+		if (system == null || fleetId == null) return null;
+		List<MarketAPI> hives = ThreatIncData.getLiveColonyMarkets(system.getId());
+		for (CampaignFleetAPI f : system.getFleets()) {
+			if (fleetId.equals(f.getId())) return isLoose(f, system, hives) ? f : null;
+		}
+		return null;
+	}
+
+	/** The loose swarm fleet nearest the hunter in its system, or null when the system has none. */
+	protected static CampaignFleetAPI nearestLoose(CampaignFleetAPI hunter, StarSystemAPI system) {
+		if (hunter == null || system == null) return null;
+		List<MarketAPI> hives = ThreatIncData.getLiveColonyMarkets(system.getId());
+		CampaignFleetAPI best = null;
+		float bestDist = Float.MAX_VALUE;
+		for (CampaignFleetAPI f : system.getFleets()) {
+			if (!isLoose(f, system, hives)) continue;
+			float d = Misc.getDistance(hunter.getLocation(), f.getLocation());
+			if (d < bestDist) {
+				bestDist = d;
+				best = f;
+			}
+		}
+		return best;
 	}
 
 	protected static boolean isHive(MarketAPI market) {

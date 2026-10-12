@@ -1,8 +1,11 @@
 package threatinc;
 
+import com.fs.starfarer.api.Global;
+import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.listeners.ListenerUtil;
 import com.fs.starfarer.api.campaign.rules.MemoryAPI;
+import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.population.CoreImmigrationPluginImpl;
 import com.fs.starfarer.api.util.Misc;
 
@@ -171,7 +174,9 @@ public final class ThreatRazing {
 				ThreatGroundFronts.colonyRazed(market, razerFactionId);
 				return out;
 			}
+			int before = market.getSize();
 			reduceSize(market);
+			levelRazed(market, razerFactionId, before);
 		}
 		// nothing left it may take (a story-critical floor): nothing to carry
 		if (razeable(market) <= 0) bar = 0f;
@@ -195,6 +200,26 @@ public final class ThreatRazing {
 		boolean has = market.hasCondition(ThreatRazedCondition.ID);
 		if (wants && !has) market.addCondition(ThreatRazedCondition.ID);
 		if (!wants && has) market.removeCondition(ThreatRazedCondition.ID);
+	}
+
+	/**
+	 * A level razed off a colony is a loss for good, not siege progress, so it
+	 * is announced as the whole colony's razing is (user, 2026-10-11); the
+	 * player's own razing is not.
+	 */
+	protected static void levelRazed(MarketAPI market, String razerFactionId, int before) {
+		String razer = razerFactionId != null ? razerFactionId : Factions.PLAYER;
+		if (Factions.PLAYER.equals(razer) || market.getSize() >= before) return;
+		ThreatNotice n;
+		if (Factions.THREAT.equals(razer)) {
+			n = ThreatNotice.titled("Level Razed").bad()
+					.line("The Threat has razed a level of %s from orbit.", ThreatNotice.market(market));
+		} else {
+			FactionAPI f = Global.getSector().getFaction(razer);
+			n = ThreatNotice.titled("Level Razed").icon(f)
+					.line("%s has razed a level of %s from orbit.", ThreatNotice.faction(f), ThreatNotice.market(market));
+		}
+		n.line("Size %s to %s.", "" + before, "" + market.getSize()).send();
 	}
 
 	/** A level razed: a size off, by vanilla's own steps - below size 3 too, which vanilla's reduceMarketSize refuses. */

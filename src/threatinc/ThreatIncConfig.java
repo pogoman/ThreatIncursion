@@ -345,6 +345,8 @@ public class ThreatIncConfig {
 
 	/** Disruption days at which a colony's defence structure contributes nothing (its bonus scales down linearly to it). */
 	public static float fortificationDisruptDays() { return f("threatinc_fortificationDisruptDays"); }
+	/** How much of a defence structure's bonus a full input deficit takes - 1 is vanilla's rule (a starved battery gives nothing), 0 ignores the deficit; a partial deficit takes its share of this. Both theatres (ThreatSiegeMalus.weighDeficit). */
+	public static float defenseDeficitWeight() { return f("threatinc_defenseDeficitWeight"); }
 	/** Marines lost raiding a hive's Fabrication Core grow as (tokens on it) ^ this: 0 is vanilla (depth free), 1 costs the same as shallow raids, above 1 one deep raid costs more. */
 	public static float coreRaidDepthLoss() { return f("threatinc_coreRaidDepthLoss"); }
 	/** A Fabrication Core's weight in the raid depth toll, Ground Defenses intact = 1 (the Nexus is weighted by its defence bonus). */
@@ -679,6 +681,10 @@ public class ThreatIncConfig {
 	public static boolean fleetUpkeep()            { return b("threatinc_fleetUpkeep", true); }
 	/** Days of its ships' maintenance a task force, hunt or raid carries at launch beside the voyage (docs/fleet-provisions.md). */
 	public static float sortieStayDays()           { return f("threatinc_sortieStayDays"); }
+	/** Days at the target the player's siege carries its ships' maintenance for beyond the voyage (the user, 2026-10-12: a siege is a long affair; player only, NPC sieges restock at their forward bases). */
+	public static float siegeHoldDays()            { return f("threatinc_siegeHoldDays"); }
+	/** Days of upkeep a task force carries to a world in its base's own system, where it restocks from the base (the user, 2026-10-11: "why does it take so many supplies to fly from one planet to another in the same system"). */
+	public static float sortieHomeStayDays()       { return f("threatinc_sortieHomeStayDays"); }
 	/** Whether a fleet low on supplies restocks from a base of its faction in its system before turning home. */
 	public static boolean fleetResupply()          { return b("threatinc_fleetResupply", true); }
 	/** Troop-transport share of a cargo-carrying expedition fleet (vanilla composition multiplier). */

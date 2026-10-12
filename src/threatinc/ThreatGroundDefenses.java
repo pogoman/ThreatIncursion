@@ -40,12 +40,11 @@ public class ThreatGroundDefenses extends GroundDefenses {
 
 		modifyStabilityWithBaseMod();
 
-		float mult = getDeficitMult(Commodities.HEAVY_MACHINERY, Commodities.METALS);
-		String extra = "";
-		if (mult != 1f) {
-			String com = getMaxDeficit(Commodities.HEAVY_MACHINERY, Commodities.METALS).one;
-			extra = " (" + getDeficitText(com).toLowerCase() + ")";
-		}
+		// weighed (defenseDeficitWeight): a blockade's zero shipping once zeroed the
+		// guns outright, before any bombardment (2026-10-12)
+		float mult = ThreatSiegeMalus.weighDeficit(getDeficitMult(Commodities.HEAVY_MACHINERY, Commodities.METALS));
+		// one bracket of single words (user, 2026-10-12: "just show shortage not what is short")
+		String extra = mult != 1f ? "shortage" : "";
 		float bonus = hb ? ThreatIncConfig.heavyBatteriesBonus()
 				: ThreatIncConfig.groundDefensesBonus();
 
@@ -56,8 +55,9 @@ public class ThreatGroundDefenses extends GroundDefenses {
 		// guns too
 		float resilience = ThreatColonyManager.disruptedDefenseResilience(this);
 		if (isDisrupted()) {
-			extra += " (suppressed, " + Math.round(resilience * 100f) + "% effect)";
+			extra += (extra.isEmpty() ? "" : ", ") + "suppressed, " + Math.round(resilience * 100f) + "% effect";
 		}
+		if (!extra.isEmpty()) extra = " (" + extra + ")";
 
 		// the groundDefenseMult config knob is applied by SwarmNexus (every
 		// colony has one) - applying it here too would square it

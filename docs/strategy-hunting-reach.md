@@ -186,6 +186,23 @@ they can be stronger than a siege; a siegeable world in reach always comes first
   single-fleet rules (weakest garrison first - `huntTarget` - and home below
   `softenRetreatStrength`; the NPC forces aim at the strongest since 2026-09-26), with a
   message when one moves on, finishes or breaks off.
+  - The player's hunt CLEARS THE WHOLE SYSTEM (2026-10-11, the user's call after a hunt went
+    home with swarms still in the system). The report files a swarm fleet off every orbit
+    (beyond `ORBIT_HOLD_RANGE` of any hive world) as loose, and `weakest` ignores loose FP,
+    so once the fight's survivors fled the orbit the fleets read "gone" and sailed. Now, in
+    the system with every orbit clear, a player hunt intercepts the nearest loose swarm
+    (`nearestLoose` -> `ThreatFleetOrders.chaseLoose`, `Order.chasingId`, for what is left of
+    the term) and keeps on it while it lives loose in the system; when it dies, leaves or
+    goes back on an orbit the hunt re-judges (back to its orbit if the swarms are there,
+    else the next loose one, else done). En route, a report with loose FP keeps it flying.
+    Home only when the system reads nothing, the term ends, or it is badly hurt. NPC hunts
+    keep the orbit-only rule: theirs is the siege's orbit gate.
+  - ONE PRESS SPEAKS ONCE: the Med/Max force is several fleets with one order each, and
+    each fleet used to send its own "Swarms Hunted Down" (five at once). The fleets of one
+    press share `Order.groupId`; `ThreatSoftening.speaks` lets the first to reach a
+    conclusion send "Swarms Hunted Down" or "Hunt Moves On" and keeps the siblings silent
+    (keys in `threatinc_huntSaid`, dropped by `forgetGroup` when the group's last fleet
+    stands down). "Hunt Broken Off" stays per fleet - it is that fleet that is hurt.
 - The player's hunting fleets COLLECT SWARM BOUNTIES on their own
   (`ThreatSwarmBountyIntel.HunterPay`, a FleetEventListener added at dispatch and adopt,
   saved with the fleet): a battle one fights pays the bounty for the Threat ships lost,

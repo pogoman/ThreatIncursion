@@ -11,60 +11,90 @@ Extract into your Starsector [tt]mods/[/tt] folder and enable it in the launcher
 
 [hr]
 
-[size=14pt][b]Core concept[/b][/size]
-At game start a new system in the outer reaches of the sector will be seeded with several Threat colonies. Once these colonies develop they will spread to neighbouring systems in the search for resources to fund new colonies, which is what they need to expand the hive. Once the hive can pay for it, it strikes the nearest human world it has charted, and a faction struck mobilises: a war economy, patrols, forward bases pushed toward the hives it finds, sieges and hunts. Neither side knows anything a ship of its own has not seen and carried home - no radar, no instant knowledge - so the war is as much about finding the enemy as fighting it. Both sides pay for every fleet from what their worlds produce; nothing is capped.
+[center][size=12pt]The Threat leaves the abyss, colonises the fringe and comes for the core worlds. Run a war, not a fleet.[/size]
+Strategy layer  |  Living hive economy  |  Fog of war  |  Ground war  |  Standalone  |  LunaLib optional  |  Nexerelin compatible  |  Safe mid-save[/center]
 
-[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/ThreatBoard.png[/img]
-[i]The Threat: every system you have found, in priority order - vitality, swarms, reach, strikes out, and what each one makes.[/i][/center]
-[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/LeagueBoard.png[/img]
-[i]Any mobilised faction, read the same way: the Persean League's reserves, its two fronts on Gamma Brador, and the aid you can send.[/i][/center]
+[size=14pt][b]Concept[/b][/size]
+[list]
+[li]At game start the Threat seeds a hidden fringe system with several hive worlds[/li]
+[li]It grows, consolidates and spreads system to system, building forges, swarms and a war fund[/li]
+[li]Nobody knows it is there. The core sees only omens: ships missing, beacons going quiet[/li]
+[li]It strikes the core worlds only once it has built the strength to win. Until then it builds[/li]
+[li]Your colonies are the exception. Once its scouts chart one, it can strike you early, sized to the defence it saw[/li]
+[li]A faction mobilises only when one of its worlds is hit. Then its war engine starts: war economy, patrols, scouting parties[/li]
+[li]Mobilised factions find hives, found forward bases toward and stage coalition sieges, bombing campaigns and hunts[/li]
+[li]Every strike, siege and convoy is a real fleet you can meet, intercept or fight beside[/li]
+[li]Hives die only on the ground. Worlds that fall to the swarm become hives[/li]
+[li]The core holds for years, but will likely lose without you. Mobilise your colonies and join the war. [/li]
+[li]Eradicate the swarm and every faction stands down[/li]
+[/list]
 
-[size=14pt][b]Starting scenarios[/b][/size]
-
-I have balanced core world strength such that the Threat no longer steam roll through the core worlds once they get in range. This means there is a lot of breathing room for the player to get setup. Note the core worlds will be able to hold their own for a time but ive balanced so they will eventually lose without player help. If this is not your jam and you want to have a chill start you can change when the Threat spawn, to be after the Abyssal questline finishes, or when your first colony reaches size 6. 
-
-[b]Note: [/b] If you are midway through a playthrough you can temporarily enable the Instant War setting, load your save, wait for the system to populate then save and exit and disable instant war. You can also change how many systems are instantly colonised and their general size and strength.
-
-[size=14pt][b]Player mobilisation[/b][/size]
-
-Once you have your own colonies you can mobilise to enter the war yourself. You will have a set amount of resources available depending on your colony industries, size and military structures. You will have complete control over your fleets and supplies and where to direct your war engine.
+[size=14pt][b]Grand Strategy Layer[/b][/size]
+[list]
+[li]Mobilise your colonies and run the whole war from one board.[/li]
+[li]Every colony banks a war reserve via war footing which increases demand across your industries and generates fleet points, marines, heavy armaments, fuel and supplies for you to direct as required.[/li]
+[li]Spend it on fleet orders: guard, stage, hunt, support, defend, siege, recall[/li]
+[li]Stage fleets at a colony and sortie from there. Launch sieges sized to their target[/li]
+[li]Land a front, then resupply and reinforce it yourself or let the nearest colony do it[/li]
+[li]Send aid to allied factions: defence, supplies, reinforcements, strikes. Earn standing on arrival[/li]
+[li]Build outposts over any uncolonised world as forward bases and storage[/li]
+[li]All fleets require upfront supplies and fuel and will turn back if they run out.[/li]
+[li]See any mobilised faction's reserves, fronts and fleets on the same board[/li]
+[/list]
 
 [center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/PlayerBoard.png[/img]
 [i]Your own war: colony reserves and convoys, your own front pushing on the hive world Gamma Hero I, and the fleets supplying and defending it.[/i][/center]
 
-[size=14pt][b]Bombardment and raid changes[/b][/size]
-Sat bombardments have been modified to be extremely fuel inefficient. Tac bombardments are much more efficient but only disrupt military structures a few days at a time, and if ground defenses or heavy batteries exist they will eliminate some of your ships in orbit proportional to current ground strength vs your fleet strength. In vanilla military structures all give a multiplicative increase to ground strength. In this mod this multiplier is reduced proportional to disruption days. By far the most efficient way to disrupt military structures is with marines, but costs will be high at the beginning.
-
-There are a lot of mechanics at play here but all are explained in various tooltips. Any uncertainties just ask and i will clarify.
-
-[size=14pt][b]Sieges[/b][/size]
-[img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/SiegeMechanics.png[/img]
-
-It is important to note while you can override marine actions they will function autonomously and react to various events like counter attacks and bombardments themselves. I'm listing the various interactions below but dont stress and think you have to manage them all. Ultimately if you want a siege to properly succeed make sure your control the space above the planet and it should be enough for the marines to get the job done. If they need resupply it will be automatically sent from the nearest colony assuming it has spare resources and FP. Otherwise you can always resupply them yourself. Keep in mind the Threat will send defensive swarms from neighbouring systems to take back control and if left alone will start bombing your marines from orbit.
-
-The Threat will support their own sieges by reinforcing the front with their own ships which can be broken apart to form ground units which are sent down from orbit. This will reduce their overall FP in orbit proportional to the amount of reinforcements sent.
-
+[size=14pt][b]The Threat[/b][/size]
 [list]
-[li]Whichever faction controls the orbit affects the ground battle below, in the form of direct fire support.[/li]
-[li]A contested orbit blocks bombardment, landings, supply convoys and withdrawals, so it is always the first fight.[/li]
-[li]As the siege progresses military structures on the planet are disrupted proportional to the strength of the attackers, and their bonuses reduce proportional to disruption duration.[/li]
-[li]Fortifications shoot back. A fleet parked in orbit bleeds hulls to the batteries, faster the better defended the world.[/li]
-[li]Orbit alone can only take a world so far - there is a floor it cannot grind past. Getting past it needs boots on the ground.[/li]
-[li]Troops land either once the defences are suppressed as far as orbit can take them, or immediately if the force is already large enough to hold the ground. Ships or marines - your choice which you spend.[/li]
-[li]A front can dig in or push. Digging in builds entrenchment over time and keeps casualties low. Pushing takes ground a layer at a time - strata on a hive, districts on a colony - but at heavy losses and no cover.[/li]
-[li]Fronts burn armaments. A dry front bleeds badly and fights at half strength. The Threat is the exception: its fronts need no supply, but pay double casualties whenever they assault.[/li]
-[li]The defender counter-attacks periodically, faster the more it outnumbers the front. Losing one costs troops and hands a layer back; a front holding no ground can be wiped outright.[/li]
-[li]Marines gain veterancy through the campaign, fighting harder and dying less, and carry that experience back to your fleet when they withdraw.[/li]
-[li]Take a hive and it is destroyed, you get a free outpost on the ruin stocked with whatever your troops had left, and the Threat holds a grudge over it.[/li]
-[li]Lose a colony to the Threat and it decivilises, with a new hive seeded on the wreckage.[/li]
-[li]Fleets can be sent to Support a front, which bombards regardless, or Defend it, which only fires when the front actually needs it and never while your own troops are assaulting.[/li]
-[li]Tactical bombardment counts as a short siege run. With your own troops on the ground you can call it in danger close - it costs you marines, but reaches organs orbit cannot otherwise touch.[/li]
-[li]Everything moves by real convoy. Supply runs, reinforcements and relief are fleets that can be intercepted and looted.[/li]
+[li]Everything the threat does is paid for by what its worlds fabricate. One shared store for the whole hive, and never enough for everything[/li]
+[li]Each world must be fed to hold its size, and bigger worlds eat far more. Fed in full it grows, half fed it holds, starved it withers a stratum at a time[/li]
+[li]Feeding its worlds comes first, its swarms second, growth last. Every Defense Swarm, strike and Seeding Swarm is fabricated from the same store, and every journey between stars costs it[/li]
+[li]A share of all fabrication is set aside for war. Strikes are built from it, sized to the defence the hive has seen, launched when it can pay[/li]
+[li]Spreading costs too. A Seeding Swarm carries everything a new world needs and sails only when the hive can spare it. The seed starts small and grows on what it is fed[/li]
+[li]The hive shifts stance with the war. Spreading: seed new worlds, build toward the first blow at the core. Pressing: it outweighs an enemy and knows a weak world, so it hits. Consolidating: pressed at home, it pulls in and holds what it has[/li]
+[li]At war it picks one enemy at a time and strikes every world of theirs it knows and can afford. Losing, it strikes only what lies near its own worlds[/li]
+[li]Starve it: raid its industry, cut its ports, blockade its worlds. A world that cannot feed itself withers, and a withered producer stops feeding the rest[/li]
+[li]Kill it: bombardment only disrupts. A hive dies when marines take its Fabrication Core on the ground. Nothing else kills it[/li]
 [/list]
 
-[hr]
+[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/ThreatBoard.png[/img]
+[i]The Threat: every system you have found, in priority order - vitality, swarms, reach, strikes out, and what each one makes.[/i][/center]
 
-For Starsector 0.98a-RC8. LunaLib optional, Nexerelin compatible. Safe to add mid-save; removing it mid-war breaks the save. Every number is configurable via LunaLib (Shift+F2) or [tt]data/config/settings.json[/tt].
+[size=14pt][b]Fog of War[/b][/size]
+[list]
+[li]No radar on either side. A hive is found when a ship sees it and gets home[/li]
+[li]Patrols on both sides. One that cannot outrun a siege dies with its warning[/li]
+[li]Omens before first contact: ships missing, beacons silent, the fringe going dark[/li]
+[li]The map veils what you have not found[/li]
+[li]The swarm only strikes worlds its scouts have charted[/li]
+[/list]
+
+[center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/LeagueBoard.png[/img]
+[i]Any mobilised faction, read the same way: the Persean League's reserves, its two fronts on Gamma Brador, and the aid you can send.[/i][/center]
+
+[size=14pt][b]Sieges and Ground War[/b][/size]
+[list]
+[li]Eradication is a ground victory, not a timer[/li]
+[li]Fight for the orbit first. Fortifications shoot back[/li]
+[li]Land marines, dig in or push, take the hive stratum by stratum, kill the Core[/li]
+[li]Raid fortifications with marines. Call danger-close bombardment with troops below[/li]
+[li]Marines gain veterancy and carry it back to your fleet[/li]
+[li]Take a hive and it dies. You get a free outpost on the ruin[/li]
+[/list]
+
+[img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/SiegeMechanics.png[/img]
+
+[size=14pt][b]Start Your Way[/b][/size]
+[list]
+[li]Default: a hive seeded on the fringe at game start, striking once it can pay[/li]
+[li]Chill: wake it after the Abyssal questline, or when your colony reaches size 6[/li]
+[li]Instant War: a mature sector-wide war on a fresh save in one toggle[/li]
+[/list]
+
+Every number is configurable via LunaLib (Shift+F2) or [tt]data/config/settings.json[/tt]. Saves from 0.6 and 0.7 carry on. Removing the mod mid-war breaks the save.
+
+[hr]
 
 [size=14pt][b]Changelog[/b][/size]
 

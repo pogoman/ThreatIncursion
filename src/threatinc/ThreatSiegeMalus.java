@@ -94,6 +94,12 @@ public class ThreatSiegeMalus extends BaseIndustry implements MarketImmigrationM
 		return deficitMult(ind, commodities);
 	}
 
+	/** Vanilla's raw deficit factor, weighed: a full deficit takes defenseDeficitWeight of the bonus, a partial one its share (2026-10-12, after a blockade's zero shipping zeroed every besieged hive's guns). */
+	public static float weighDeficit(float raw) {
+		float weight = Math.max(0f, Math.min(1f, ThreatIncConfig.defenseDeficitWeight()));
+		return 1f - (1f - Math.max(0f, Math.min(1f, raw))) * weight;
+	}
+
 	/** The same factor on any structure's own inputs (a hive's batteries run on machinery and metals). */
 	public static float deficitMult(Industry ind, String... commodities) {
 		if (ind == null) return 1f;
@@ -111,7 +117,7 @@ public class ThreatSiegeMalus extends BaseIndustry implements MarketImmigrationM
 		}
 		if (deficit < 0f) deficit = 0f;
 		if (demand < 1f) return 1f;
-		return Math.max(0f, Math.min(1f, (demand - deficit) / demand));
+		return weighDeficit((demand - deficit) / demand);
 	}
 
 	/** 1 intact .. 0 fully suppressed, from the structure's disruption clock. */

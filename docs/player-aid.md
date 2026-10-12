@@ -166,7 +166,9 @@ request accepts it.
   running total and completes when it reaches N within the term. Reward: the goods'
   value at the receiving market's price, its shortage premium included (no multiplier
   since 2026-09-27) - plus section 3's reputation doubled.
-- **Aid X with N ship hulls** (the user, 2026-10-07: requests ask for "whatever is short ...
+- **Aid X with N ship hulls** (every figure the player reads is fleet points - `ThreatHulls.shown`,
+  2026-10-11: "400FP is 400 hulls" - while the ledger, cargo and price below stay in units of
+  `fabFPPerShipUnit`; the user, 2026-10-07: requests ask for "whatever is short ...
   not just supplies or fuel"). The same request for the fifth aid good: `ships` units of the
   faction's hull pool (`ThreatReserves.AID_COMMODITIES`; never in a depot, so not in
   `COMMODITIES`). `ThreatReserves.status(market, SHIPS)` is `ThreatHulls.hullStatus`: stock
@@ -383,7 +385,11 @@ Where the build departs from the text above, on purpose:
 - **The siege force ladder (added 2026-09-07, untested).** A hive-in-reach row carries
   three siege buttons, not one - **Siege** lands the marines the assault needs (the old
   behaviour), **Extra** lands `threatinc_siegeExtraMarinesFactor` x that (default 2), and
-  **All** lands every marine in the base's reserve above its floor. All three share the
+  **All** lands every marine in the base's reserve above its floor. Since
+  2026-10-11 20:00 it is the Force ladder and sizes the fleets too - Min the need, Med at least
+  half the base's free points, Max all of them (`IncursionManager.playerExpeditionSizes`) - and
+  the task forces on station at the base sail in it as they are (`ThreatPurgeFGI.takeStaged`;
+  until then they were expired and their points built again). All three share the
   Siege gate (`siegeBlockReason`), so they grey out together. The extra marines matter
   because a landed front's strength is linear in its troops (`ThreatGroundFronts.effectiveStrength`)
   - a heavier landing holds against counter-attacks and takes strata faster, to the
@@ -398,8 +404,13 @@ Where the build departs from the text above, on purpose:
   quantity carries the same Min/Med/Max selector in a reserved row under its heading,
   and every order button in the table below reads that one choice - so the row's tooltip
   and the Confirm quote what will actually sail. Three of them (`ThreatFactionView.addTierSelector`):
-  **Siege force** over the hives table (above), **Supply run** over the ground-fronts
-  table, **Convoy load** over the colonies table. The tier is view state on the intel
+  **Force** over the hives table ("Siege force" until 2026-10-11, when the user had it size
+  every task force too: one fleet / half the hulls free / all, `ThreatAid.forceFP`,
+  `ThreatFleetOrders.buildPlayerForce`; sieges read it as before), **Supply run** over the
+  ground-fronts table, **Amount** over the colonies table ("Convoy load" until 2026-10-11 evening;
+  it now sizes the colony Fleet and Defend buttons too - one fleet / half the hulls free / all -
+  because the Force ladder is out of sight from the colonies table and a Fleet order at an unseen
+  Max quoted one fleet and sailed six). The tier is view state on the intel
   (`siegeTier` / `supplyTier` / `convoyTier`), set by a button with no Confirm, exactly
   like the faction selector; the current tier's button is the disabled one.
   - **Supply run** (the front's Supply button, `ThreatConvoys.supplyAsk`): Min asks for
@@ -407,8 +418,9 @@ Where the build departs from the text above, on purpose:
     Med asks `threatinc_convoyExtraLoadFactor` x that (default 2); Max asks for a full
     hull load (2026-09-29: everything available above the floor), wanted or not - so Max is also the only tier that sails to a front that
     wants nothing (`supplyBlockReason` skips its "wants nothing" gate at Max).
-  - **Convoy load** (the colony Supplies button, `ThreatConvoys.stageLoad`, and the Aid
-    button, `ThreatAid.quoteResupply`): Min carries what the target is short of its
+  - **Amount** (the colony Supplies button, `ThreatConvoys.stageLoad`, and the Aid
+    button, `ThreatAid.quoteResupply`; the Fleet and Defend buttons read the same tier as a
+    force size, `ThreatAid.forceFP`): Min carries what the target is short of its
     staging target (or of its reserve cap, where it stages for nothing); Med carries the
     factor x that; Max carries everything the source can spare above its floor (a hull load until
     2026-09-29). **Max is

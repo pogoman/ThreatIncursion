@@ -209,7 +209,12 @@ public class ThreatReach {
 	 */
 	public static float sortieHold(String factionId, float fp, float ly) {
 		if (!ThreatIncConfig.fleetUpkeep()) return 0f;
-		return tripSupplies(factionId, fp, daysAway(ly, true, ThreatIncConfig.sortieStayDays()));
+		return tripSupplies(factionId, fp, daysAway(ly, true, sortieStay(ly)));
+	}
+
+	/** Days a task force stays out at a world {@code ly} from its base: sortieHomeStayDays in the base's own system (it restocks from the base when low), sortieStayDays beyond. */
+	public static float sortieStay(float ly) {
+		return ly < 0.01f ? ThreatIncConfig.sortieHomeStayDays() : ThreatIncConfig.sortieStayDays();
 	}
 
 	/** {@link #sortieHold} per difficulty point: what the payable gates add to the deposit. */

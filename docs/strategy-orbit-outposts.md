@@ -21,7 +21,7 @@ marines the base can commit. Guard / Intercept / Escort already refused below
 `aidGuardMinFP`.
 
 **A guard over your own colony is staging** (`ThreatFleetOrders.stagedAt`,
-`ThreatAidCapacity.stagedFP` / `freeFP` / `commitSortie` / `foldStaged`,
+`ThreatAidCapacity.stagedFP` / `freeFP` / `stagedToFold`, `ThreatFleetOrders.retask`,
 `ThreatFleetOrders.fold` / `restation`):
 
 - The task force stays `guardOwnDays` (default 0 = until recalled; the fleets table shows
@@ -31,19 +31,28 @@ marines the base can commit. Guard / Intercept / Escort already refused below
   points of the ships it has - the fleets table's Strength; a fleet that lost ships on the
   way counts what it has, not what its sender was charged): `freeFP(host)` = own free
   points + staged live points, and that is the FP cell and what sorties from the host are
-  sized by. `describe` (the row tooltip) is one line per fact with the sum written out:
-  capacity, in task forces, at home; on station here, per fleet with its sender; free =
-  at home + on station. A colony guarding itself shows its own fleet on both lines (in
-  task forces AND on station here): the ships are real and in orbit, so they can fold
-  into the next sortie like anyone's.
-- A combat sortie from the host - Siege, Intercept, Escort, a Guard elsewhere, aid
-  Defend / Strike - uses the host's own free points first, then folds staged task forces
-  in until it is covered: the smallest one that covers what is left, else the largest,
-  whole fleets (the last may overshoot). A folded fleet's order ends, what it carries and
-  drew is settled at the host (`ThreatReturns.settle`), it fades out, and its ledger entry
-  rides the sortie (`Commitment.fleet` / `group` re-pointed, `hostMarketId` set,
-  `foldedFP` = its live points at that moment; the sender's charge `fp` stays what sailed
-  from it).
+  sized by. The row tooltip once spelled this sum out (`describe`, cut 2026-10-11 - its lines
+  disagreed with the cell); the FP cell and the Fleet button's tooltip are what quote it now. A
+  colony guarding itself counts its own fleet as staged: the ships are real and in orbit, so
+  they can fold into the next sortie like anyone's.
+- A combat sortie from the host - Intercept, Escort, a Guard elsewhere, a Hunt, aid
+  Defend / Strike - builds fleets from the host's own free points first; past them the task
+  forces on station sail themselves, one a fleet (`ThreatFleetOrders.retask`, 2026-10-11:
+  the pick is the smallest that covers the fleet's ask, else the largest, `stagedToFold`).
+  The re-tasked fleet's guard order ends, what it carries and drew is settled at the host
+  (`ThreatReturns.settle`, so its own draw is the difference), own hulls are built and join it
+  when it is short of the ask by a task force or more, and its ledger entries ride it
+  (`hostMarketId` set, `foldedFP` = its live points at that moment; the sender's charge `fp`
+  stays what sailed from it). A base that cannot provision it leaves it on station as it was.
+  A Siege or Bombard takes them too (`ThreatPurgeFGI.takeStaged`, sized at the Force tier by
+  `IncursionManager.playerExpeditionSizes`): the guards stay in orbit, alive, until the expedition
+  spawns (at once while the player is in spawn range) and are handed to it where they float, the
+  built fleets beside them, no incremental spawn; an expedition that leaves unseen takes their
+  ships off the map with it and puts them back together, the same hulls, at a later spawn
+  (`departStaged`); one that ends before it sails hands them back as guards
+  (`releaseStagedLive`); its entries ride the group. Until 2026-10-11 the
+  fold expired the staged fleet and the yards built its points again. An NPC's expedition still
+  folds nothing: it has no staged guards.
 - An expedition's ledger entries - the base's own points and every folded task force - are
   split among its fleets by spawned strength the moment they are all real
   (`ThreatAidCapacity.splitGroup`, from `ThreatPurgeFGI.noteSpawnFP`); from then on each

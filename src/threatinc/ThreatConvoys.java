@@ -1934,27 +1934,57 @@ public class ThreatConvoys {
 	public static float[] stageLoad(MarketAPI donor, ThreatBases.Base target, int tier) {
 		float[] load = new float[ThreatReserves.COMMODITIES.length];
 		if (donor == null || target == null) return load;
-		float[] targets = target.market != null ? stagingTargets(target.market)
-				: new float[] {0f, 0f, 0f, 0f};
+		float[] wants = stageWants(target, tier);
 		for (int i = 0; i < load.length; i++) {
-			String c = ThreatReserves.COMMODITIES[i];
-			float want;
-			if (tier >= 2) {
-				want = Float.MAX_VALUE; // everything above the floor
-			} else if (target.isOutpost()) {
-				want = capacityFor(c) * (tier == 1 ? ThreatIncConfig.convoyExtraLoadFactor() : 1f);
-			} else {
-				float toward = targets[i] > 0f ? targets[i] : ThreatReserves.cap(target.market, c);
-				float shortBy = Math.max(0f, toward - ThreatReserves.stock(target.id(), c));
-				if (tier == 1) shortBy *= ThreatIncConfig.convoyExtraLoadFactor();
-				want = shortBy;
-			}
-			load[i] = Math.min(want, ThreatReserves.available(donor, c));
+			load[i] = Math.min(wants[i], ThreatReserves.available(donor, ThreatReserves.COMMODITIES[i]));
 		}
 		if (donor.isPlayerOwned() && !ThreatHulls.enabled()) { // freighters draw no hulls from the pool
 			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor), load);
 		}
 		return load;
+	}
+
+	/**
+	 * The ask of a hand-ordered convoy to this target at a load tier, before any
+	 * donor's cap (the tier rules of {@link #stageLoad}), COMMODITIES order.
+	 */
+	public static float[] stageWants(ThreatBases.Base target, int tier) {
+		float[] wants = new float[ThreatReserves.COMMODITIES.length];
+		if (target == null) return wants;
+		float[] targets = target.market != null ? stagingTargets(target.market)
+				: new float[] {0f, 0f, 0f, 0f};
+		for (int i = 0; i < wants.length; i++) {
+			String c = ThreatReserves.COMMODITIES[i];
+			if (tier >= 2) {
+				wants[i] = Float.MAX_VALUE; // everything above the floor
+			} else if (target.isOutpost()) {
+				wants[i] = capacityFor(c) * (tier == 1 ? ThreatIncConfig.convoyExtraLoadFactor() : 1f);
+			} else {
+				float toward = targets[i] > 0f ? targets[i] : ThreatReserves.cap(target.market, c);
+				float shortBy = Math.max(0f, toward - ThreatReserves.stock(target.id(), c));
+				if (tier == 1) shortBy *= ThreatIncConfig.convoyExtraLoadFactor();
+				wants[i] = shortBy;
+			}
+		}
+		return wants;
+	}
+
+	/**
+	 * Why no Supplies convoy can sail to this target at a load tier - the
+	 * button's disabled tooltip and the Confirm: convoys off, the target short of
+	 * nothing at this tier (a staging base above its target; the reason read "no
+	 * colony can spare a load" at Haven, 2026-10-11), or no colony that can spare
+	 * a load. {@code whose} is "yours" or the faction's name.
+	 */
+	public static String stageOffReason(ThreatBases.Base target, int tier, String whose) {
+		String name = target != null ? target.name() : "the world";
+		if (!ThreatIncConfig.convoyEnabled()) return "Convoys are disabled in the mod settings.";
+		if (target != null && tier < 2) {
+			boolean nothing = true;
+			for (float w : stageWants(target, tier)) if (w > 0f) nothing = false;
+			if (nothing) return name + " is short of nothing at this amount; set Amount to Max to send a full load.";
+		}
+		return "No colony of " + whose + " can spare a load for " + name + " at this amount.";
 	}
 
 	/**

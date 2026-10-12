@@ -467,7 +467,7 @@ public class ThreatWarBoard {
 			op.who = who + " front on " + market.getName();
 			op.detail = who + " ground front on " + market.getName() + " - "
 					+ Misc.getWithDGS(Math.round(f.marines)) + " troops, " + state + ", "
-					+ f.strataHeld + " of " + market.getSize() + " " + layersOf(market) + ", "
+					+ heldLabel(f, market) + ", "
 					+ ThreatGroundFronts.stanceLabel(f) + ".";
 			e.inbound.add(op);
 		}
@@ -1041,9 +1041,24 @@ public class ThreatWarBoard {
 		return "~" + (int) Math.ceil(first + (left - 1) * perStratum) + " d";
 	}
 
-	/** "strata" on a hive, "districts" on a colony. */
-	protected static String layersOf(MarketAPI market) {
-		return "stratum".equals(ThreatGroundFronts.layerName(market)) ? "strata" : "districts";
+	/**
+	 * The Held / Strata cell: the strata a hive still stands on (held/size read as
+	 * a reset when starvation took a size off the hive - user, 2026-10-11), the
+	 * districts held of a colony's size.
+	 */
+	protected static String heldCell(ThreatGroundFronts.GroundFront f, MarketAPI m) {
+		if (ThreatGroundFronts.Theatre.of(m) == ThreatGroundFronts.HIVE) {
+			return "" + Math.max(0, m.getSize() - f.strataHeld);
+		}
+		return f.strataHeld + "/" + m.getSize();
+	}
+
+	/** heldCell in words: "3 strata standing" or "1 of 4 districts". */
+	protected static String heldLabel(ThreatGroundFronts.GroundFront f, MarketAPI m) {
+		if (ThreatGroundFronts.Theatre.of(m) == ThreatGroundFronts.HIVE) {
+			return Math.max(0, m.getSize() - f.strataHeld) + " strata standing";
+		}
+		return f.strataHeld + " of " + m.getSize() + " districts";
 	}
 
 	/**
@@ -1091,7 +1106,13 @@ public class ThreatWarBoard {
 		names.add("Defenders"); fracs.add(.07f);
 		names.add("Defenses"); fracs.add(.075f);
 		names.add("State"); fracs.add(.07f);
-		names.add("Held"); fracs.add(.05f);
+		// a hive's column counts the strata it still stands on; a colony's keeps the
+		// districts held of its size (heldCell)
+		boolean allHives = true;
+		for (FrontRow r : rows) {
+			if (ThreatGroundFronts.Theatre.of(r.market) != ThreatGroundFronts.HIVE) allHives = false;
+		}
+		names.add(allHives ? "Strata" : "Held"); fracs.add(.05f);
 		names.add("Stance"); fracs.add(.075f);
 		names.add("Attrition"); fracs.add(.085f);
 		names.add("Counter"); fracs.add(.065f);
@@ -1120,8 +1141,8 @@ public class ThreatWarBoard {
 				+ "by a holding front, held by a grinding one, recovering from a foothold.");
 		main.addTableHeaderTooltip(strengthCol + 3, "Holding suppresses the colony's structures, "
 				+ "grinding wears its defenses, a foothold only survives.");
-		main.addTableHeaderTooltip(strengthCol + 4, "Strata or districts the front holds, of the "
-				+ "world's size.");
+		main.addTableHeaderTooltip(strengthCol + 4, allHives ? "Strata the hive still stands on; it falls at 0."
+				: "Districts the front holds, of the colony's size; on a hive, the strata it still stands on.");
 		main.addTableHeaderTooltip(strengthCol + 5, "Push takes ground and bleeds; dug in loses "
 				+ "less and defends from cover; regrouping awaits orders after a stratum.");
 		main.addTableHeaderTooltip(strengthCol + 6, "Troops lost a day at the current stance "
@@ -1170,7 +1191,7 @@ public class ThreatWarBoard {
 			boolean grinding = ThreatGroundFronts.STATE_GRINDING.equals(f.state);
 			cell(cells, Alignment.MID, holding ? pos : grinding ? h : neg,
 					holding ? "holding" : grinding ? "grinding" : "foothold"); i++;
-			cell(cells, Alignment.MID, h, f.strataHeld + "/" + m.getSize()); i++;
+			cell(cells, Alignment.MID, h, heldCell(f, m)); i++;
 			cell(cells, Alignment.MID, text, ThreatGroundFronts.stanceLabel(f)); i++;
 			float losses = ThreatGroundFronts.attritionPer30Days(f, m);
 			cell(cells, Alignment.MID, ThreatGroundFronts.isDry(f) ? neg : text,
@@ -1435,6 +1456,16 @@ public class ThreatWarBoard {
 					pos, 4f);
 		}
 
+		if (ThreatGroundFronts.Theatre.of(m) == ThreatGroundFronts.HIVE) {
+			int standing = Math.max(0, m.getSize() - f.strataHeld);
+			int starved = f.sizeAtLanding > 0 ? Math.max(0, f.sizeAtLanding - m.getSize()) : 0;
+			if (starved > 0) {
+				tooltip.addPara("Stands on %s of %s strata, %s starved away since the landing.", 4f, text, h,
+						"" + standing, "" + m.getSize(), "" + starved);
+			} else {
+				tooltip.addPara("Stands on %s of %s strata.", 4f, text, h, "" + standing, "" + m.getSize());
+			}
+		}
 		int next = f.strataHeld + 1;
 		String layer = ThreatGroundFronts.layerName(m);
 		float pace = ThreatGroundFronts.pushDaysEstimate(f, m);
@@ -1557,7 +1588,7 @@ public class ThreatWarBoard {
 					"A convoy runs up to " + Misc.getWithDGS((int) asked[0]) + " marines and "
 					+ Misc.getWithDGS((int) asked[1]) + " heavy armaments from your nearest "
 					+ "base to this front.");
-			String escortWhy = ThreatFleetOrders.supportBlockReason(player, r.market);
+			String escortWhy = ThreatFleetOrders.supportBlockReason(player, r.market, intel.getSiegeTier());
 			ThreatFleetOrders.Reassignable nearSupport = escortWhy == null
 					? ThreatFleetOrders.nearestReassignable(player, r.market) : null;
 			float supportFP = nearSupport != null ? nearSupport.fleet.getFleetPoints()
@@ -1567,7 +1598,7 @@ public class ThreatWarBoard {
 							: "A task force is raised from your nearest base.") + "\n"
 					+ ThreatFleetOrders.supportEffect(r.market, supportFP,
 							nearSupport != null ? nearSupport.fleet : null));
-			String defendWhy = ThreatFleetOrders.defendBlockReason(player, r.market);
+			String defendWhy = ThreatFleetOrders.defendBlockReason(player, r.market, intel.getSiegeTier());
 			ThreatFleetOrders.Reassignable nearDefend = defendWhy == null
 					? ThreatFleetOrders.nearestReassignable(player, r.market, ThreatFleetOrders.KIND_DEFEND)
 					: null;
@@ -2550,7 +2581,8 @@ public class ThreatWarBoard {
 					: "dug in";
 			String label = Misc.getWithDGS(Math.round(front.marines)) + " "
 					+ (front.armaments <= 0f ? "no supply" : stance)
-					+ " " + front.strataHeld + "/" + market.getSize();
+					+ " " + heldCell(front, market)
+					+ (ThreatGroundFronts.Theatre.of(market) == ThreatGroundFronts.HIVE ? " strata" : "");
 			hlA.add(label);
 			hlcA.add(front.armaments <= 0f ? neg
 					: ThreatGroundFronts.STATE_HOLDING.equals(front.state) ? pos

@@ -2983,6 +2983,90 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			StarSystemAPI system, java.util.List<MarketAPI> targets,
 			java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random,
 			float marineGoal, java.util.Set<String> razeGiven, String playId) {
+		return launchSiegeExpedition(base, faction, system, targets, fleetSizes, playerCommissioned, random,
+				marineGoal, razeGiven, playId, null);
+	}
+
+	/** The vanilla-scale fleet size a task force of {@code liveFP} fleet points stands for in an expedition's fleet sizes (FP_PER_RESPONSE_DIFFICULTY a point). */
+	public static int stagedSize(float liveFP) {
+		return Math.max(1, Math.round(liveFP / FP_PER_RESPONSE_DIFFICULTY));
+	}
+
+	/**
+	 * The player's siege or bombing at the board's Force tier (the user, 2026-10-11: a Max siege
+	 * from Haven quoted 3 fleets of 550 with 1,503 free, "where did it get 550FP of 3 fleets?
+	 * force is set to max" - and "it should also use the actual staged fleets guarding haven not
+	 * some imaginary number"). {@code needSizes} is what the system needs (siegeFleetSizes); the
+	 * expedition's points are that need (Min), half the base's free points at least (Med) or all
+	 * of them (Max), never more than are free. The colony's own free hulls are used first; past
+	 * them the task forces on station there sail with it, whole (ThreatAidCapacity.stagedToFold:
+	 * the smallest that covers what is left, else the largest), each standing in the sizes as
+	 * {@link #stagedSize} of its live points, FIRST in the list; the yards build the rest from the
+	 * own hulls - the need's fleets fitted to them, grown by whole fleets above Min. The forces
+	 * picked go to {@code stagedOut} for the launch ({@link ThreatPurgeFGI#takeStaged}). An NPC's,
+	 * or with nothing staged at Min, the need fitted to the free points as before.
+	 */
+	public static java.util.List<Integer> playerExpeditionSizes(MarketAPI base, FactionAPI faction,
+			java.util.List<Integer> needSizes, int tier, java.util.List<ThreatFleetOrders.Order> stagedOut) {
+		if (base == null || faction == null || needSizes == null) return needSizes;
+		if (!faction.isPlayerFaction() || !ThreatAidCapacity.enabled()) return needSizes;
+		java.util.List<Integer> need = ThreatAidCapacity.fitExpedition(base, faction, needSizes, false);
+		float needPts = ThreatAidCapacity.expeditionPoints(need);
+		float free = Math.max(0f, ThreatAidCapacity.freeFP(base));
+		float own = Math.max(0f, ThreatAidCapacity.ownFreeFP(base));
+		float target = tier >= 2 ? free : tier == 1 ? Math.max(needPts, free / 2f) : needPts;
+		target = Math.min(target, free);
+		java.util.List<ThreatFleetOrders.Order> staged = ThreatAidCapacity.stagedToFold(base, target - own, null);
+		if (staged.isEmpty() && tier <= 0) return need;
+		java.util.List<Integer> sizes = new ArrayList<Integer>();
+		float stagedPts = 0f;
+		for (ThreatFleetOrders.Order o : staged) {
+			float live = ThreatAidCapacity.liveFP(o.fleet);
+			stagedPts += live;
+			sizes.add(stagedSize(live));
+		}
+		if (stagedOut != null) stagedOut.addAll(staged);
+		float buildPts = Math.min(own, Math.max(0f, target - stagedPts));
+		int minDiff = ThreatIncConfig.responseMinDifficulty();
+		java.util.List<Integer> built = new ArrayList<Integer>(need);
+		// the need's fleets fitted to the own hulls, as fitExpedition fits them: whole fleets off the
+		// end, then each shrunk, then none at all - the staged forces are real fleets already
+		while (built.size() > 1 && ThreatAidCapacity.expeditionPoints(built) > buildPts + 0.5f) {
+			built.remove(built.size() - 1);
+		}
+		boolean changed = true;
+		while (changed && ThreatAidCapacity.expeditionPoints(built) > buildPts + 0.5f) {
+			changed = false;
+			for (int i = built.size() - 1; i >= 0; i--) {
+				if (built.get(i) > minDiff) {
+					built.set(i, built.get(i) - 1);
+					changed = true;
+					if (ThreatAidCapacity.expeditionPoints(built) <= buildPts + 0.5f) break;
+				}
+			}
+		}
+		if (ThreatAidCapacity.expeditionPoints(built) > buildPts + 0.5f) built.clear();
+		if (tier > 0) {
+			float max = VANILLA_MAX_DIFFICULTY * FP_PER_RESPONSE_DIFFICULTY;
+			while (ThreatAidCapacity.expeditionPoints(built) + max <= buildPts + 0.5f) built.add(VANILLA_MAX_DIFFICULTY);
+			int rest = (int) ((buildPts - ThreatAidCapacity.expeditionPoints(built)) / FP_PER_RESPONSE_DIFFICULTY);
+			if (rest >= minDiff) built.add(rest);
+		}
+		sizes.addAll(built);
+		if (sizes.isEmpty()) return need;
+		return sizes;
+	}
+
+	/**
+	 * As above; {@code staged} are the player's task forces on station at the base that sail with
+	 * the expedition as they are ({@link #playerExpeditionSizes}, {@link ThreatPurgeFGI#takeStaged});
+	 * null folds them the old way (expired, their points built again).
+	 */
+	public static ThreatPurgeFGI launchSiegeExpedition(MarketAPI base, FactionAPI faction,
+			StarSystemAPI system, java.util.List<MarketAPI> targets,
+			java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random,
+			float marineGoal, java.util.Set<String> razeGiven, String playId,
+			java.util.List<ThreatFleetOrders.Order> staged) {
 		GenericRaidParams params = new GenericRaidParams(
 				new Random(random.nextLong()), !playerCommissioned);
 		params.factionId = faction.getId();
@@ -3146,8 +3230,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 			// SEND WHAT YOU CAN (docs/design-theory.md 8.6): short of the force
 			// the tier asked for, the flotilla shrinks to the landing it can
-			// lift rather than never sailing - never below two fleets
-			if (haveMarines < lift) {
+			// lift rather than never sailing - never below two fleets. NPC only: the player
+			// sized the force on the board and every staged task force sails whatever the
+			// sizes say (takeStaged), so a trim here priced the hold on 2 fleets for 11 that
+			// sailed (2026-10-12: 5,820 supplies for 2,863 FP, the landing's defend fleets
+			// stood down at once); what the Siege button quoted is what sails
+			if (haveMarines < lift && !faction.isPlayerFaction()) {
 				int before = params.fleetSizes.size();
 				while (params.fleetSizes.size() > 2
 						&& siegeRaidStrEstimate(params.fleetSizes) > haveMarines) {
@@ -3340,7 +3428,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// the draw changed what every other siege can pay for
 		TARGETS_MEMO.clear();
 		RAZE_MEMO.clear();
-		if (faction.isPlayerFaction()) {
+		if (faction.isPlayerFaction() && staged != null) {
+			// the task forces on station sail as they are (takeStaged, their entries riding the group);
+			// the own hulls' share is committed with no fold - what the yards build is the rest
+			String label = (land.isEmpty() && !raze.isEmpty() ? "razing" : "purge") + " expedition against the "
+					+ system.getNameWithLowercaseType();
+			float points = ThreatAidCapacity.expeditionPoints(params.fleetSizes);
+			float taken = purge.takeStaged(base, staged, label);
+			if (points - taken > 0.5f) ThreatAidCapacity.commit(base, points - taken, null, purge, label, false);
+		} else if (faction.isPlayerFaction()) {
 			ThreatAidCapacity.commitGroup(base, ThreatAidCapacity.expeditionPoints(params.fleetSizes),
 					purge, (land.isEmpty() && !raze.isEmpty() ? "razing" : "purge") + " expedition against the "
 							+ system.getNameWithLowercaseType());
@@ -3409,6 +3505,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (!ThreatIncConfig.fleetUpkeep() || !ThreatReach.factionsBilled() || faction == null || points <= 0) return 0f;
 		float fp = points * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
 		float stay = siegeStayDays(landTargets(targets, raze), razeTargets(targets, raze), fp, faction.getId());
+		// the player's siege is provisioned for the months the ground campaign takes, not the
+		// bombardment's days (the user, 2026-10-12: "a siege is a long affair, the ships that come
+		// with should be prepared for months of siege"); NPC sieges keep the bombardment stay and
+		// restock at their forward bases in the target system (the user: player only)
+		if (faction.isPlayerFaction()) stay = Math.max(stay, ThreatIncConfig.siegeHoldDays());
 		return ThreatReach.tripSupplies(faction.getId(), fp, siegeTripDays(base, system, stay));
 	}
 
@@ -4051,11 +4152,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * orbit and provisions gates live in the launch alone.
 	 */
 	public static String siegeBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
-		return ThreatNotice.text(siegeBlockFacts(base, faction, system));
+		return siegeBlockReason(base, faction, system, 0);
+	}
+
+	/** As above at the board's Force tier, whose flotilla the fuel and supplies gate prices (playerExpeditionSizes). */
+	public static String siegeBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier) {
+		return ThreatNotice.text(siegeBlockFacts(base, faction, system, tier));
 	}
 
 	/** {@link #siegeBlockReason} one fact per line, the names and figures highlighted: the refusal notice's. */
 	public static ThreatNotice.Reason siegeBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
+		return siegeBlockFacts(base, faction, system, 0);
+	}
+
+	/** As above at the board's Force tier: the provisions gate prices the tier's flotilla (the user, 2026-10-11 20:10: a Max siege quoting 9,626 supplies of Haven's 7,423 was clickable). */
+	public static ThreatNotice.Reason siegeBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier) {
 		if (base == null) {
 			return ThreatNotice.Reason.of(faction != null && faction.isPlayerFaction()
 					? "No military colony of yours has a Waystation" : "No base in reach");
@@ -4083,6 +4194,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					Misc.getWithDGS((int) have))
 					.line("The landing needs at least %s of the %s it wants",
 							Misc.getWithDGS((int) Math.ceil(min)), Misc.getWithDGS((int) wants[0]));
+		}
+		// the player's expedition sails fuelled and supplied or not at all (the user, 2026-10-11: "needs
+		// to say exactly how many supplies fuel etc is required, and of course if not enough then button
+		// is greyed out"); an NPC siege keeps its own provisions gate (expeditionMinProvisionsFraction)
+		if (faction.isPlayerFaction()) {
+			float[] takes = expeditionWants(base, system, collectSiegeTargets(system),
+					playerExpeditionSizes(base, faction, siegeSizes(base, faction, system), tier, null));
+			float fuelHave = ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
+			float suppliesHave = ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
+			if (fuelHave < takes[2] - 0.5f || suppliesHave < takes[3] - 0.5f) {
+				return ThreatNotice.Reason.of("%s has %s fuel and %s supplies", ThreatNotice.market(base),
+						Misc.getWithDGS((int) fuelHave), Misc.getWithDGS((int) suppliesHave))
+						.line("The expedition takes %s fuel and %s supplies", Misc.getWithDGS((int) Math.ceil(takes[2])),
+								Misc.getWithDGS((int) Math.ceil(takes[3])));
+			}
 		}
 		return null;
 	}
@@ -4166,11 +4292,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * it sails with what there is.
 	 */
 	public static String bombardBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
-		return ThreatNotice.text(bombardBlockFacts(base, faction, system));
+		return bombardBlockReason(base, faction, system, 0);
+	}
+
+	/** As above at the board's Force tier, whose flotilla the fuel and supplies gates price (playerExpeditionSizes). */
+	public static String bombardBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier) {
+		return ThreatNotice.text(bombardBlockFacts(base, faction, system, tier));
 	}
 
 	/** {@link #bombardBlockReason} one fact per line, the names and figures highlighted: the refusal notice's. */
 	public static ThreatNotice.Reason bombardBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
+		return bombardBlockFacts(base, faction, system, 0);
+	}
+
+	/** As above at the board's Force tier: the fuel and supplies gates price the tier's flotilla. */
+	public static ThreatNotice.Reason bombardBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier) {
 		if (base == null) {
 			return ThreatNotice.Reason.of(faction != null && faction.isPlayerFaction()
 					? "No military colony of yours has a Waystation" : "No base in reach");
@@ -4197,12 +4333,27 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 						.line("The smallest expedition needs %s", (int) Math.ceil(points));
 			}
 		}
-		float passage = expeditionPassage(base, system, sizes);
-		float have = ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
-		if (have - passage < 1f) {
-			return ThreatNotice.Reason.of("%s can commit %s fuel", ThreatNotice.market(base),
-					Misc.getWithDGS((int) have))
-					.line("The passage takes %s", Misc.getWithDGS((int) Math.ceil(passage)));
+		// the whole job or nothing (the user, 2026-10-11: "given saturation requires 90k fuel the
+		// player shouldnt be able to send it at all"): the base's fuel pays the passage and every
+		// world's saturation, and the flotilla carries it
+		// the tier's flotilla from here: the gates price what sails
+		sizes = playerExpeditionSizes(base, faction, sizes, tier, null);
+		float[] fuel = expeditionFuelCarried(base, system, targets, sizes, idsOf(targets));
+		float passage = fuel[0], carried = fuel[3], takes = fuel[4], have = fuel[6];
+		float need = expeditionPassage(base, system, sizes) + takes;
+		if (have < need - 0.5f || carried < takes - 0.5f) {
+			return ThreatNotice.Reason.of("%s has %s fuel", ThreatNotice.market(base), Misc.getWithDGS((int) have))
+					.line("The bombing takes %s, the passage %s", Misc.getWithDGS((int) Math.ceil(takes)),
+							Misc.getWithDGS((int) Math.ceil(need - takes)));
+		}
+		// and its supplies, the same way (the user, 2026-10-11: every order says what it takes and is greyed out short)
+		if (faction.isPlayerFaction()) {
+			float[] wants = expeditionWants(base, system, targets, sizes, idsOf(targets));
+			float suppliesHave = ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
+			if (suppliesHave < wants[3] - 0.5f) {
+				return ThreatNotice.Reason.of("%s has %s supplies", ThreatNotice.market(base), Misc.getWithDGS((int) suppliesHave))
+						.line("The bombing takes %s", Misc.getWithDGS((int) Math.ceil(wants[3])));
+			}
 		}
 		return null;
 	}

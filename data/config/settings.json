@@ -420,6 +420,13 @@
 	# defenseWearDays on a hive) - instead of vanilla's on/off. On a colony
 	# the rule applies to worlds besieged (or landed on), not to every raid.
 	"threatinc_fortificationDisruptDays": 180,
+	# A starved defence structure (its inputs short: a hive's machinery and
+	# metals, a colony's supplies, marines and arms) loses this share of its
+	# bonus at a full deficit, a partial deficit its share of it. Vanilla takes
+	# all of it (1), which let any siege that outweighed a hive's orbit
+	# switch its guns off by blockade before a shot (2026-10-12). 0 = inputs
+	# never matter to the guns.
+	"threatinc_defenseDeficitWeight": 0.5,
 	# raiding a hive's Fabrication Core (the one raid on a war structure left,
 	# 2026-09-28): marines lost grow by (tokens ^ depthLoss - 1) x the
 	# defence's share of the fight x the Core's weight (Ground Defenses = 1)
@@ -852,6 +859,8 @@
 	# ships' maintenance for the voyage and this many days there, burns it as it goes, restocks
 	# from a base of its faction in its system when low, and turns home when nothing can restock it
 	"threatinc_sortieStayDays": 90,
+	"threatinc_siegeHoldDays": 120,
+	"threatinc_sortieHomeStayDays": 30,
 	"threatinc_fleetResupply": true,
 	# the Threat pays passage too, in fuel its own fuel plants bank (ThreatFuel):
 	# a fleet sent across hyperspace draws the rate above, one way for a fleet that
@@ -1485,7 +1494,7 @@
 
 	# Debug
 	"threatinc_debugMode": false,
-	"threatinc_debugLogging": false,
+	"threatinc_debugLogging": true,
 	"threatinc_debugForceStart": false,
 	"threatinc_debugFastClock": false,
 	"threatinc_debugGrantSensorMods": false,

@@ -148,7 +148,7 @@ a reader of the swarm or a scout order.
   player's fleet counts for the player); hostile = other faction and `isHostileTo(owner)`.
   Station-mode fleets are not excluded. Only real fleets count - an abstract besieger has none.
 - The swarm's mirror: `swarmOrbitStrength` (Threat only, hard-coded 1500, no trader filter),
-  `swarmPresent`, `swarmOrbitContested` (any armed fleet hostile to the Threat within 1500 su, plus an
+  `swarmPresent`, `swarmOrbitContested` (armed fleets hostile to the Threat within 1500 su at `orbitContestFraction` of the swarm's, since 2026-10-12, plus an
   unspawned flotilla's `front.coverFP`), `spaceHolder`.
 
 ## 8. Vanilla `RouteManager`

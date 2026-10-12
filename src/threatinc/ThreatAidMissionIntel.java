@@ -478,8 +478,8 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 			return "Defend " + marketName() + " for the " + getFaction().getDisplayName()
 					+ getPostfixForState();
 		}
-		return "Deliver " + Misc.getWithDGS(needed) + " " + commodityLabel() + " to " + marketName()
-				+ getPostfixForState();
+		return "Deliver " + Misc.getWithDGS(ThreatHulls.shown(commodityId, needed)) + " " + commodityLabel()
+				+ " to " + marketName() + getPostfixForState();
 	}
 
 	@Override
@@ -553,8 +553,9 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 			}
 			info.addPara("%s reward", initPad, tc, h, Misc.getDGSCredits(reward));
 			if (kind == KIND_AID) {
-				info.addPara("%s of %s delivered", 0f, tc, h, Misc.getWithDGS(delivered),
-						Misc.getWithDGS(needed));
+				info.addPara("%s of %s delivered", 0f, tc, h,
+						Misc.getWithDGS(ThreatHulls.shown(commodityId, delivered)),
+						Misc.getWithDGS(ThreatHulls.shown(commodityId, needed)));
 			} else if (isAccepted()) {
 				info.addPara("%s strikes stopped", 0f, tc, h, "" + stopped);
 			}
@@ -592,10 +593,10 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 					+ "it on the spot; a strike the colony beats without you ends it unpaid.",
 					opad, h, "" + (int) ThreatIncConfig.missionDefendDays());
 		} else if (Commodities.SHIPS.equals(commodityId)) {
-			info.addPara(Misc.ucFirst(faction.getDisplayNameWithArticle()) + " asks for %s ship hulls "
-					+ "(%s fleet points) at " + marketName() + ", in the " + sysName + ": its yards "
-					+ "cannot rebuild its losses.", opad, fc, Misc.getWithDGS(needed),
-					Misc.getWithDGS(Math.round(needed * ThreatHulls.unitFP())));
+			info.addPara(Misc.ucFirst(faction.getDisplayNameWithArticle()) + " asks for %s ship hulls, "
+					+ "in fleet points, at " + marketName() + ", in the " + sysName + ": its yards "
+					+ "cannot rebuild its losses.", opad, fc,
+					Misc.getWithDGS(ThreatHulls.shown(commodityId, needed)));
 			info.addPara("Send them from your hull port through the war board (Aid on the colony's "
 					+ "row): a convoy out of your built navy. Partial deliveries count; the contract "
 					+ "completes when the total is reached.", opad);

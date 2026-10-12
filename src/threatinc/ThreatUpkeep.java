@@ -229,6 +229,17 @@ public class ThreatUpkeep {
 	 * Then home when low: a fleet under orders whose hold is below the leg
 	 * home, with nothing to restock from, stands down.
 	 */
+	/**
+	 * A fleet leaving a siege group is billed on its own from now, not from its last pass before
+	 * it joined: a staged task force taken into a siege kept the clock of its last pass on station,
+	 * and its first pass after detaching billed the whole siege again (2026-10-12: 972 aboard,
+	 * 661 billed in one pass, stood down "supplies low" - the group's hold had paid those days).
+	 */
+	public static void restartClock(CampaignFleetAPI f) {
+		if (f == null) return;
+		f.getMemoryWithoutUpdate().set(MEM_AT, Global.getSector().getClock().getTimestamp());
+	}
+
 	protected static void charge(CampaignFleetAPI f, long now, Map<String, float[]> tally) {
 		if (f == null || !f.isAlive() || f.isDespawning() || f.isPlayerFleet()) return;
 		String home = ThreatReturns.homeOf(f);
@@ -302,7 +313,7 @@ public class ThreatUpkeep {
 	}
 
 	/** Fills a fleet's hold back to its launch load from its faction's bases in its system; returns what it got. */
-	protected static float restockFleet(CampaignFleetAPI f, String factionId) {
+	public static float restockFleet(CampaignFleetAPI f, String factionId) {
 		if (!ThreatIncConfig.fleetResupply() || f == null) return 0f;
 		float want = ThreatReturns.holdFull(f) - ThreatReturns.hold(f);
 		if (want <= 0f) return 0f;

@@ -230,6 +230,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	@Override
 	public void finish(boolean isAbort) {
 		if (!isAbort && isAborted()) return;
+		// forces still in orbit over the base are its guards again
+		releaseStagedLive();
 		super.finish(isAbort);
 	}
 
@@ -462,6 +464,26 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (fleet == null || !getFleets().contains(fleet)) return false;
 		float spawnFP = fleet.getMemoryWithoutUpdate().getFloat(KEY_SPAWN_FP);
 		if (spawnFP <= 0f) spawnFP = fleet.getFleetPoints();
+		// its share of the expedition's hold goes with it (docs/fleet-provisions.md): out of the
+		// group it is billed on its own hold by ThreatUpkeep.charge, and a hive system has no base
+		// to restock from (the user, 2026-10-12: two task forces left to defend a landing stood
+		// down "0 supplies aboard, 0 days" - the hold priced for the stay had stayed on the group).
+		// PLAYER ONLY for 0.8 (the user, 2026-10-12): an NPC fleet left over a landing has no hold
+		// of its own and is billed from its home depot by ThreatUpkeep.charge's pre-hold fallback -
+		// the remote supply flow banned on 2026-10-11, kept so NPC sieges keep their cover until
+		// the front resolves. TO REVISIT AFTER 0.8: give NPC defend fleets a hold share and a stay
+		// sized for the campaign (siegeHoldDays) - see memory npc-defend-fleets-after-0-8
+		// its own upkeep clock starts now - the group's hold paid for its days in the group
+		ThreatUpkeep.restartClock(fleet);
+		float live = liveFP();
+		if (hold > 0f && live > 0f && fleet.isAlive() && getFaction() != null && getFaction().isPlayerFaction()) {
+			float share = burnHold(hold * Math.max(0f, fleet.getFleetPoints()) / live);
+			if (share > 0f) {
+				ThreatReturns.setHold(fleet, ThreatReturns.hold(fleet) + share);
+				ThreatIncConfig.log("Expedition: " + fleet.getName() + " leaves with " + (int) share
+						+ " supplies of the hold (" + (int) hold + " left on the " + ourFactionId() + " expedition)");
+			}
+		}
 		getFleets().remove(fleet);
 		if (trackedHome != null) trackedHome.remove(fleet);
 		if (!endIfEmpty && getFleets().isEmpty()) {
@@ -883,6 +905,242 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	/** A daily siege's fleets spawned mid-siege: their spawned FP is the survivors', re-based once they are real (noteSpawnFP). False on an older save. */
 	protected boolean rebaseSpawnFP;
 
+	// ------------------------------------------------------------------
+	// the task forces on station that sail with the expedition (2026-10-11)
+	// ------------------------------------------------------------------
+	//
+	// The user: "it should also use the actual staged fleets guarding haven not some imaginary
+	// number" and, after a first cut that stashed their ships at the click and let vanilla respawn
+	// them, "if you need to remake the fleets at least send them back to the planet or something
+	// dont just fucking delete them". A player's siege or bombing from a staging colony takes the
+	// guards on station there as they are. They STAY in orbit, alive, until the expedition spawns
+	// (vanilla spawns it at once while the player is within its spawn range, which is the case
+	// at the board over Haven): then the same fleets are handed to it where they float, the built
+	// fleets appearing beside them (no incremental spawn, which would blink every fleet off the
+	// map and back). Only an expedition the player cannot see takes them off the map, and only
+	// when it leaves the base (departStaged -> stashLive): their ships are kept and put back
+	// together, the same hulls, officers and condition, should the player come within range of
+	// it later. Until the first cut the staged guards were expired at the launch and vanilla
+	// built their points again as new fleets.
+
+	/** The task forces taken that are still on the map, in orbit over the base, waiting for the spawn or the departure. */
+	protected List<CampaignFleetAPI> stagedLive = new ArrayList<CampaignFleetAPI>();
+	/** The vanilla-scale size each live force stands for in params.fleetSizes (IncursionManager.stagedSize). */
+	protected List<Integer> stagedLiveSizes = new ArrayList<Integer>();
+	/** Each live force's ledger entries, for a guard again should the expedition end before it sails. */
+	protected Map<CampaignFleetAPI, List<ThreatAidCapacity.Commitment>> stagedEntries =
+			new LinkedHashMap<CampaignFleetAPI, List<ThreatAidCapacity.Commitment>>();
+	/** The base the forces were taken at. */
+	protected String stagedBaseId;
+	/** Ships of each task force taken off the map (an expedition that left unseen), one list a fleet, in the order of {@link #stagedSizes}. */
+	protected List<List<com.fs.starfarer.api.fleet.FleetMemberAPI>> stagedShips =
+			new ArrayList<List<com.fs.starfarer.api.fleet.FleetMemberAPI>>();
+	/** The vanilla-scale size each stashed force stands for in params.fleetSizes. */
+	protected List<Integer> stagedSizes = new ArrayList<Integer>();
+	/** Each stashed force's name. */
+	protected List<String> stagedNames = new ArrayList<String>();
+
+	/**
+	 * Takes the task forces staged at the base into this expedition: each guard order ends and
+	 * what the fleet carries settles at the base (ThreatFleetOrders.fold keeping the fleet), its
+	 * ledger entries ride the group as a fold's would (charged to their senders, back on station
+	 * at the base when home), and the fleet stays where it is, restocked from the base, until the
+	 * spawn takes it ({@link #spawnBuiltAndStaged}) or the expedition leaves unseen
+	 * ({@link #departStaged}). Returns the live fleet points taken. Only forces whose size is in
+	 * params.fleetSizes count (IncursionManager.playerExpeditionSizes put them there first).
+	 */
+	public float takeStaged(MarketAPI base, List<ThreatFleetOrders.Order> staged, String label) {
+		float taken = 0f;
+		if (base == null || staged == null) return taken;
+		if (stagedLive == null) stagedLive = new ArrayList<CampaignFleetAPI>();
+		if (stagedLiveSizes == null) stagedLiveSizes = new ArrayList<Integer>();
+		if (stagedEntries == null) stagedEntries = new LinkedHashMap<CampaignFleetAPI, List<ThreatAidCapacity.Commitment>>();
+		for (ThreatFleetOrders.Order o : staged) {
+			CampaignFleetAPI fleet = o != null ? o.fleet : null;
+			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+			List<ThreatAidCapacity.Commitment> held = ThreatAidCapacity.heldAllBy(fleet);
+			if (held.isEmpty()) continue;
+			float live = ThreatAidCapacity.liveFP(fleet), charged = 0f;
+			for (ThreatAidCapacity.Commitment c : held) charged += c.fp;
+			for (ThreatAidCapacity.Commitment c : held) {
+				// detached while it settles: release() would put it straight back on station
+				c.fleet = null;
+				c.group = this;
+				c.hostMarketId = base.getId();
+				c.foldedFP = charged > 0f ? live * c.fp / charged : live / held.size();
+				c.lostTimestamp = 0L;
+				c.label = label;
+			}
+			ThreatFleetOrders.fold(o, base, true);
+			if (!fleet.isAlive()) continue;
+			// its hold again, from the base: the settle emptied it, and it may wait here for days
+			ThreatUpkeep.restockFleet(fleet, fleet.getFaction().getId());
+			stagedLive.add(fleet);
+			stagedLiveSizes.add(IncursionManager.stagedSize(live));
+			stagedEntries.put(fleet, new ArrayList<ThreatAidCapacity.Commitment>(held));
+			stagedBaseId = base.getId();
+			ThreatIncConfig.log("Expedition: " + fleet.getName() + " on station over " + base.getName() + " ("
+					+ (int) live + " FP, " + fleet.getFleetData().getNumMembers() + " ships) sails with the " + label);
+			taken += live;
+		}
+		return taken;
+	}
+
+	/**
+	 * An expedition the player cannot see sails: the forces still in orbit over the base go with
+	 * it off the map ({@link #stashLive}) the moment the route leaves the base - vanilla spawns
+	 * nothing out of the player's sight, and a fleet left behind would be a guard that never went.
+	 */
+	protected void departStaged() {
+		if (stagedLive == null || stagedLive.isEmpty() || isSpawnedFleets()) return;
+		RouteData route = getRoute();
+		RouteSegment cur = route != null ? route.getCurrent() : null;
+		boolean leaving = cur != null && cur.isTravel();
+		if (!leaving && route != null && params != null && route.getElapsed() > params.prepDays + 0.5f) leaving = true;
+		if (leaving) stashLive();
+	}
+
+	/** The staged forces still on the map leave it from where they are, over the base: their ships are kept for the spawn. */
+	protected void stashLive() {
+		if (stagedLive == null) return;
+		if (stagedShips == null) stagedShips = new ArrayList<List<com.fs.starfarer.api.fleet.FleetMemberAPI>>();
+		if (stagedSizes == null) stagedSizes = new ArrayList<Integer>();
+		if (stagedNames == null) stagedNames = new ArrayList<String>();
+		for (int i = 0; i < stagedLive.size(); i++) {
+			CampaignFleetAPI fleet = stagedLive.get(i);
+			if (fleet == null || !fleet.isAlive()) continue;
+			List<com.fs.starfarer.api.fleet.FleetMemberAPI> ships = fleet.getFleetData().getMembersListCopy();
+			for (com.fs.starfarer.api.fleet.FleetMemberAPI m : ships) fleet.getFleetData().removeFleetMember(m);
+			stagedShips.add(ships);
+			stagedSizes.add(i < stagedLiveSizes.size() ? stagedLiveSizes.get(i) : 1);
+			stagedNames.add(fleet.getName());
+			ThreatIncConfig.log("Expedition: " + fleet.getName() + " (" + ships.size() + " ships) departs unseen with the "
+					+ (params != null ? params.noun : "expedition"));
+			fleet.despawn();
+		}
+		stagedLive.clear();
+		stagedLiveSizes.clear();
+		if (stagedEntries != null) stagedEntries.clear();
+	}
+
+	/**
+	 * The expedition ends before it ever sailed with the forces still in orbit: they dock, their
+	 * hulls the base's (ThreatHulls.moveHome; the user, 2026-10-12: a fleet home is home - until then
+	 * they were put back on station as guards, restation). Stage them again with a Fleet order.
+	 */
+	protected void releaseStagedLive() {
+		if (stagedLive == null || stagedLive.isEmpty()) return;
+		MarketAPI base = stagedBaseId != null ? Global.getSector().getEconomy().getMarket(stagedBaseId) : null;
+		for (CampaignFleetAPI fleet : new ArrayList<CampaignFleetAPI>(stagedLive)) {
+			List<ThreatAidCapacity.Commitment> mine = stagedEntries != null ? stagedEntries.get(fleet) : null;
+			if (fleet == null || !fleet.isAlive()) continue;
+			if (mine == null) mine = new ArrayList<ThreatAidCapacity.Commitment>();
+			for (ThreatAidCapacity.Commitment c : mine) {
+				ThreatAidCapacity.all().remove(c);
+				ThreatHulls.moveHome(c.marketId, base, c.fp);
+				ThreatIncConfig.log("Capacity: " + (int) c.fp + " FP back from " + c.label + " (never sailed)");
+			}
+			Misc.fadeAndExpire(fleet);
+		}
+		stagedLive.clear();
+		stagedLiveSizes.clear();
+		if (stagedEntries != null) stagedEntries.clear();
+	}
+
+	/**
+	 * Vanilla's spawn for the fleets the yards build (their sizes alone), then the task forces
+	 * taken at the launch: the ones still in orbit handed over where they float (and then no
+	 * incremental spawn, which would take every fleet off the map and bring them back one a
+	 * quarter day), the ones that left unseen put back together from their stashed ships, lost
+	 * to the route's damage at the same odds as a built fleet. Each is loaded with the landing
+	 * as a built fleet is.
+	 */
+	protected void spawnBuiltAndStaged() {
+		boolean anyLive = false;
+		if (stagedLive != null) {
+			for (CampaignFleetAPI f : stagedLive) if (f != null && f.isAlive()) anyLive = true;
+		}
+		if (anyLive) doIncrementalSpawn = false;
+		List<Integer> removed = new ArrayList<Integer>();
+		if (params != null) {
+			if (stagedSizes != null) {
+				for (Integer size : stagedSizes) if (params.fleetSizes.remove(size)) removed.add(size);
+			}
+			if (stagedLiveSizes != null) {
+				for (Integer size : stagedLiveSizes) if (params.fleetSizes.remove(size)) removed.add(size);
+			}
+		}
+		List<CampaignFleetAPI> beforeBuilt = new ArrayList<CampaignFleetAPI>(getFleets());
+		float paidPoints = 0f;
+		if (params != null) {
+			for (Integer size : params.fleetSizes) if (size != null) paidPoints += size * ThreatGroundFronts.ABSTRACT_FP_PER_POINT;
+		}
+		try {
+			super.spawnFleets();
+		} finally {
+			if (params != null) params.fleetSizes.addAll(removed);
+		}
+		pruneBuiltToPaid(beforeBuilt, paidPoints);
+		if (stagedLive != null && !stagedLive.isEmpty()) {
+			for (int i = 0; i < stagedLive.size(); i++) {
+				CampaignFleetAPI fleet = stagedLive.get(i);
+				int size = i < stagedLiveSizes.size() ? stagedLiveSizes.get(i) : 1;
+				if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+				fleet.clearAssignments();
+				fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE, true);
+				fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_WAR_FLEET, true);
+				fleet.getMemoryWithoutUpdate().set(MemFlags.FLEET_NO_MILITARY_RESPONSE, true);
+				configureFleet(size, fleet);
+				getFleets().add(fleet);
+			}
+			stagedLive.clear();
+			stagedLiveSizes.clear();
+			if (stagedEntries != null) stagedEntries.clear();
+		}
+		if (stagedShips == null || stagedShips.isEmpty()) return;
+		float damage = routeDamage();
+		for (int i = 0; i < stagedShips.size(); i++) {
+			List<com.fs.starfarer.api.fleet.FleetMemberAPI> ships = stagedShips.get(i);
+			String name = i < stagedNames.size() ? stagedNames.get(i) : "Task Force";
+			int size = i < stagedSizes.size() ? stagedSizes.get(i) : 1;
+			if (damage > 0f && getRandom().nextFloat() < damage) {
+				ThreatIncConfig.log("Expedition: " + name + " lost on the way (route damage "
+						+ (int) (damage * 100f) + "%)");
+				continue;
+			}
+			if (ships == null || ships.isEmpty() || getRoute() == null || getRoute().getCurrent() == null) continue;
+			CampaignFleetAPI fleet = Global.getFactory().createEmptyFleet(params.factionId,
+					com.fs.starfarer.api.impl.campaign.ids.FleetTypes.TASK_FORCE, true);
+			fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_FLEET_TYPE, com.fs.starfarer.api.impl.campaign.ids.FleetTypes.TASK_FORCE);
+			if (params.source != null) fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_SOURCE_MARKET, params.source.getId());
+			fleet.setTransponderOn(true);
+			com.fs.starfarer.api.fleet.FleetMemberAPI flag = null;
+			for (com.fs.starfarer.api.fleet.FleetMemberAPI m : ships) {
+				m.setFlagship(false);
+				fleet.getFleetData().addFleetMember(m);
+				if (!m.isCivilian() && (flag == null || m.getFleetPointCost() > flag.getFleetPointCost())) flag = m;
+			}
+			if (flag == null) flag = ships.get(0);
+			fleet.getFleetData().setFlagship(flag);
+			if (flag.getCaptain() != null && !flag.getCaptain().isDefault()) fleet.setCommander(flag.getCaptain());
+			fleet.setName(name);
+			fleet.setNoFactionInName(false);
+			fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE, true);
+			fleet.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_WAR_FLEET, true);
+			fleet.getMemoryWithoutUpdate().set(MemFlags.FLEET_NO_MILITARY_RESPONSE, true);
+			fleet.getFleetData().sort();
+			fleet.getFleetData().setSyncNeeded();
+			fleet.getFleetData().syncIfNeeded();
+			fleet.forceSync();
+			configureFleet(size, fleet);
+			setLocationAndCoordinates(fleet, getRoute().getCurrent());
+			getFleets().add(fleet);
+		}
+		stagedShips.clear();
+		stagedSizes.clear();
+		stagedNames.clear();
+	}
+
 	/**
 	 * Spawn pass: reload the allotment onto the fresh fleets, then hand back
 	 * to the base whatever would not fit - the reserve was drawn for it, and
@@ -904,7 +1162,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			}
 		}
 		List<CampaignFleetAPI> before = new ArrayList<CampaignFleetAPI>(getFleets());
-		super.spawnFleets();
+		spawnBuiltAndStaged();
 		everSpawned = true;
 		// vanilla fills the group's list; it moves them to its incremental
 		// spawn only once this returns
@@ -1023,6 +1281,37 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			if (fleet != null) fp += fleet.getFleetPoints();
 		}
 		return fp;
+	}
+
+	/**
+	 * The player's built fleets come out at no more than the fleet points their hulls paid for
+	 * (ABSTRACT_FP_PER_POINT a size, what the capacity ledger committed and the hold was priced
+	 * on), cut by {@link #pruneOne}. Vanilla builds each size from the faction's doctrine and
+	 * hull list (HubMissionWithTriggers.CreateFleetAction: a fraction of
+	 * getApproximateMaxFPPerFleet times the doctrine's ship-count mult) - NPC ledgers settled
+	 * 1.13-1.34x the points paid (hw logs, 2026-10-08) and the player's doctrine can run past 2x,
+	 * at which the hold, burned at the fleets' real points, is gone on arrival (the user,
+	 * 2026-10-12: a siege "arrived at the system then turned back due to 0 supplies ... seems
+	 * like it only calculated enough for the journey there"). An NPC siege settles the excess
+	 * against its reserve instead ({@link #settleLedger}); the player's draw never exceeds the
+	 * quote, so the excess is not fielded. The task forces staged at the base are not built
+	 * fleets and are never cut.
+	 */
+	protected void pruneBuiltToPaid(List<CampaignFleetAPI> before, float paidPoints) {
+		if (getFaction() == null || !getFaction().isPlayerFaction() || !ThreatAidCapacity.enabled()) return;
+		if (paidPoints <= 0f) return;
+		List<CampaignFleetAPI> built = new ArrayList<CampaignFleetAPI>(getFleets());
+		built.removeAll(before);
+		if (built.isEmpty()) return;
+		float cap = paidPoints * Math.max(0f, 1f - routeDamage());
+		float spawned = pointsOf(built);
+		float fielded = spawned;
+		while (fielded > cap + 0.01f) {
+			if (!pruneOne(built, fielded - cap)) break;
+			fielded = pointsOf(built);
+		}
+		ThreatIncConfig.log("Expedition spawn (" + ourFactionId() + "): " + (int) spawned + " FP built against "
+				+ (int) cap + " FP paid for" + (fielded < spawned ? ", pruned " + (int) (spawned - fielded) + " FP" : ""));
 	}
 
 	/**
@@ -1186,6 +1475,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	@Override
 	protected void advanceImpl(float amount) {
 		super.advanceImpl(amount);
+		departStaged();
 		// first: a siege it takes is never then resolved on arrival as well
 		advanceDaily();
 		resolveOnArrival(this);

@@ -52,6 +52,8 @@ public class ThreatHulls {
 	public static final String KEY_REBUILT = "threatinc_hullRebuiltAt";
 	/** Persistent: factionId -> fleet points of hulls its yards built beyond its losses - the war navy. */
 	public static final String KEY_BUILT = "threatinc_hullBuilt";
+	/** Persistent: marketId -> fleet points of hulls that came home to it from another of the player's colonies (+) or left it so (-). */
+	public static final String KEY_MOVED = "threatinc_hullMoved";
 
 	/** Mean combat points of vanilla's patrol weights (MilitaryBase.getPatrolCombatFP: 15-25, 30-45, 50-75). */
 	public static final float LIGHT_FP = 20f, MEDIUM_FP = 37.5f, HEAVY_FP = 62.5f;
@@ -147,6 +149,56 @@ public class ThreatHulls {
 		return result;
 	}
 
+	/**
+	 * The colony's share of its faction's hulls: its standing patrols ({@link #standingFP}), plus
+	 * the navy the yards built ({@link #built}) at the hull port ({@link #hullPort}), where hulls
+	 * land and sail from. The shares sum to the faction's standing. Under the user's rule of
+	 * 2026-10-11 ("so whats the point of staging bases again given it just pools from all bases?")
+	 * a colony sails only this plus the task forces staged over it (ThreatAidCapacity.freeFP).
+	 */
+	public static float shareFP(MarketAPI market) {
+		if (market == null) return 0f;
+		float fp = standingFP(market);
+		if (market == hullPort(market.getFactionId())) fp += built(market.getFactionId());
+		return Math.max(0f, fp + moved(market));
+	}
+
+	@SuppressWarnings("unchecked")
+	protected static Map<String, Float> movedMap() {
+		Object val = Global.getSector().getPersistentData().get(KEY_MOVED);
+		if (!(val instanceof Map)) {
+			val = new HashMap<String, Float>();
+			Global.getSector().getPersistentData().put(KEY_MOVED, val);
+		}
+		return (Map<String, Float>) val;
+	}
+
+	/** Fleet points of hulls that came home to the colony from another of the player's colonies, less those that went home elsewhere from it. */
+	public static float moved(MarketAPI market) {
+		Float f = market != null ? movedMap().get(market.getId()) : null;
+		return f != null ? f : 0f;
+	}
+
+	/**
+	 * Ships home at the player's colony {@code home} that another of the player's colonies sent
+	 * are home's hulls from now on - its share up, the sender's down (the user, 2026-10-12: a
+	 * fleet recalled to Haven came back half to Arkoman's Hulls cell, because a restationed
+	 * fleet carries every sender's charge and the ledger gave each sender its points back).
+	 * The faction's standing is unchanged. Returns whether anything moved.
+	 */
+	public static boolean moveHome(String fromMarketId, MarketAPI home, float fp) {
+		if (!enabled() || home == null || fromMarketId == null || fp <= 0f) return false;
+		if (fromMarketId.equals(home.getId()) || !home.isPlayerOwned()) return false;
+		MarketAPI from = Global.getSector().getEconomy().getMarket(fromMarketId);
+		if (from == null || !from.isPlayerOwned()) return false;
+		Map<String, Float> moved = movedMap();
+		moved.put(from.getId(), moved(from) - fp);
+		moved.put(home.getId(), moved(home) + fp);
+		ThreatIncConfig.log("Hulls: " + (int) fp + " FP of " + from.getName() + "'s came home to "
+				+ home.getName() + " and stay there");
+		return true;
+	}
+
 	/** The faction's standing hulls: its markets' summed, plus what its yards built (built). */
 	public static float standingFP(String factionId) {
 		float sum = built(factionId);
@@ -190,6 +242,17 @@ public class ThreatHulls {
 	/** Fleet points one unit of the ships commodity is worth to a pool: fabFPPerShipUnit. */
 	public static float unitFP() {
 		return Math.max(1f, ThreatIncConfig.fabFPPerShipUnit());
+	}
+
+	/**
+	 * A quantity of an aid good as the player reads it: ship hulls in fleet points (a unit of the
+	 * ships good is unitFP of them - the user, 2026-10-11: a contract for "4 ship hulls (400 fleet
+	 * points)" sends 400 hulls, "400FP is 400 hulls"), every other good as it is. Pricing and the
+	 * ledger keep units ({@link ThreatAid#valueAt}: 400 fleet points stay the 80,000-credit contract).
+	 */
+	public static int shown(String commodityId, float quantity) {
+		if (Commodities.SHIPS.equals(commodityId)) return Math.round(quantity * unitFP());
+		return Math.round(quantity);
 	}
 
 	/**
@@ -283,6 +346,7 @@ public class ThreatHulls {
 		if (toDebt > 0f) {
 			if (d - toDebt > 0f) debts().put(factionId, d - toDebt);
 			else debts().remove(factionId);
+			rebuiltAt(factionId, toDebt);
 		}
 		float toBuilt = fp - toDebt;
 		if (toBuilt > 0f) builtMap().put(factionId, built(factionId) + toBuilt);
@@ -333,6 +397,28 @@ public class ThreatHulls {
 	public static float debt(String factionId) {
 		Float d = factionId != null ? debts().get(factionId) : null;
 		return d != null ? Math.max(0f, d) : 0f;
+	}
+
+	/**
+	 * The player's colony {@code from} lost {@code fp} of its hulls: its share drops by that much
+	 * (moved), so its Hulls cell is its own hulls less its own out with no faction-wide cap (the
+	 * user, 2026-10-12: Arkoman's cell rose 9 -> 93 when a Haven fleet landed at Haven, because the
+	 * faction's free total had capped every cell - "the hull FP split between haven and ark"). The
+	 * yards' rebuild lands at the hull port ({@link #rebuiltAt}), so the shares still sum to the
+	 * faction's standing less its debt. NPC colonies keep the cap (no NPC balance change before 0.8).
+	 */
+	public static void lostAt(MarketAPI from, float fp) {
+		if (!enabled() || from == null || fp <= 0f || !from.isPlayerOwned()) return;
+		movedMap().put(from.getId(), moved(from) - fp);
+	}
+
+	/** Losses the player's yards rebuilt (or allies landed) are hulls at the hull port from now on. */
+	protected static void rebuiltAt(String factionId, float fp) {
+		if (!enabled() || fp <= 0f || factionId == null) return;
+		if (!factionId.equals(Global.getSector().getPlayerFaction().getId())) return;
+		MarketAPI port = hullPort(factionId);
+		if (port == null) return;
+		movedMap().put(port.getId(), moved(port) + fp);
 	}
 
 	/** Books hulls lost: a fleet destroyed, or the part of one that did not come home. */
@@ -398,9 +484,11 @@ public class ThreatHulls {
 				float left = d - made;
 				if (left > 0f) {
 					debts.put(factionId, left);
+					rebuiltAt(factionId, made);
 					continue;
 				}
 				debts.remove(factionId);
+				rebuiltAt(factionId, d);
 				made = -left;
 				ThreatIncConfig.log("Hulls: " + ThreatWarState.displayName(factionId) + " rebuilt its losses");
 			}

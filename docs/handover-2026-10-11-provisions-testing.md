@@ -54,7 +54,7 @@ priced) - the fix would be in `IncursionManager.expeditionWants`, not a smaller 
   the hold's remainder x surviving strength back on arrival (`Return settled at`).
 - A guard over the player's own colony restocks there each pass (log `Restocked at <colony>`), so it costs
   the stockpile its maintenance - that is intended.
-- Hull port row tooltip: "Navy upkeep: N supplies a month for the M fleet points at home." Hulls: log
+- (Hull port row tooltip line cut 2026-10-11.) Hulls: log
   `Hulls: <faction> ... standing upkeep paid X of Y supplies` includes the player; an unpaid month strikes
   hulls with the notice "Navy Unpaid" (red title).
 - Old save in flight: fleets launched before the build keep the old home billing until they return (no

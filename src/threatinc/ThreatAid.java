@@ -51,6 +51,14 @@ public class ThreatAid {
 		public float fp;
 		/** Ledger points the fleet holds. */
 		public float points;
+		/** Whole-fleet points the source has free to send - the pool {@link #points} is drawn from. */
+		public float free;
+		/** Fleets the force sails as (one, or several at the Med / Max tiers). */
+		public int fleets = 1;
+		/** {fuel, supplies} the force draws from its source (ThreatFleetOrders.forceProvisions), less what the staged forces folding in bring. */
+		public float[] provisions;
+		/** {fuel, supplies} the task forces folding into the force bring with them (ThreatAidCapacity.foldedProvisions). */
+		public float[] carried;
 		public String commodityId;
 		/** Convoy load in ThreatReserves.COMMODITIES order. */
 		public float[] load;
@@ -110,14 +118,18 @@ public class ThreatAid {
 	 * Player colonies with a military structure and a Waystation, nearest
 	 * the spot first. No range (2026-09-05, the user's call): a far colony
 	 * may send, and pays in fuel drawn by the distance and in the time the
-	 * fleet takes to get there and back.
+	 * fleet takes to get there and back. Under the hull pool a colony with
+	 * hulls to send and a Waystation counts too, military structure or not:
+	 * the hull port keeps the built navy, and a navy of 2,111 points sat at
+	 * Arkoman unable to sail while the Fleet button read "no colony of yours
+	 * can field it" (2026-10-11).
 	 */
 	public static List<MarketAPI> sources(final Vector2f hyperLoc) {
 		List<MarketAPI> result = new ArrayList<MarketAPI>();
 		if (hyperLoc == null) return result;
 		for (MarketAPI m : Misc.getPlayerMarkets(false)) {
 			if (m.getStarSystem() == null || m.getPrimaryEntity() == null) continue;
-			if (!IncursionManager.isBase(m)) continue;
+			if (!IncursionManager.isBase(m) && !hullsToSend(m)) continue;
 			result.add(m);
 		}
 		Collections.sort(result, new Comparator<MarketAPI>() {
@@ -144,9 +156,84 @@ public class ThreatAid {
 	public static float taskForceFP(MarketAPI base, boolean ownOnly) {
 		if (base == null) return 0f;
 		if (!ThreatAidCapacity.enabled()) return ThreatIncConfig.guardFleetFP();
-		float free = (ownOnly ? ThreatAidCapacity.ownFreeFP(base) : ThreatAidCapacity.freeFP(base))
-				/ ThreatAidCapacity.TASK_FORCE_HULL_MULT;
-		return Math.max(0f, free);
+		float free = Math.max(0f, (ownOnly ? ThreatAidCapacity.ownFreeFP(base) : ThreatAidCapacity.freeFP(base))
+				/ ThreatAidCapacity.TASK_FORCE_HULL_MULT);
+		// one order is one fleet, and vanilla builds at most maxShipsInAIFleet ships of it: the ask stops
+		// at the size its yards were seen to build (2026-10-11: the whole free pool asked, 302 built)
+		return Math.min(free, ThreatSoftening.fleetCapFor(base, base.getFactionId(), free));
+	}
+
+	/**
+	 * Combat points the player's force at the board's tier asks for in all (the colony table's
+	 * Amount for Fleet and Defend, the hives table's Force for Hunt and Support; the user,
+	 * 2026-10-11: "min med max should apply to all"): one fleet (0, {@link #taskForceFP}), half
+	 * the hulls free (1), every hull free (2). Built as several fleets of one fleet's size each
+	 * (ThreatFleetOrders.buildPlayerForce).
+	 */
+	public static float forceFP(MarketAPI base, boolean ownOnly, int tier) {
+		float one = taskForceFP(base, ownOnly);
+		if (tier <= 0 || base == null || !ThreatAidCapacity.enabled()) return one;
+		float all = freePoints(base, ownOnly) / ThreatAidCapacity.TASK_FORCE_HULL_MULT;
+		return tier == 1 ? Math.max(one, all / 2f) : Math.max(one, all);
+	}
+
+	/** {@link #forceFP} in whole-fleet points: the figure the board quotes for the force. */
+	public static float forcePoints(MarketAPI base, boolean ownOnly, int tier) {
+		float one = taskForcePoints(base, ownOnly);
+		if (tier <= 0 || base == null || !ThreatAidCapacity.enabled()) return one;
+		float all = freePoints(base, ownOnly);
+		return tier == 1 ? Math.max(one, all / 2f) : Math.max(one, all);
+	}
+
+	/** Fleets a force of {@code points} sails as: one of a fleet's size each (ThreatSoftening.builtCapPoints), at least one. */
+	public static int forceFleets(MarketAPI base, float points) {
+		if (base == null || points <= 0f) return 1;
+		float cap = ThreatSoftening.builtCapPoints(base.getFactionId());
+		if (cap >= Float.MAX_VALUE || cap <= 0f) return 1;
+		return Math.max(1, (int) Math.ceil(points / cap - 0.05f));
+	}
+
+	/** Whole-fleet points the base has free to send - the pool a task force is drawn from ({@code ownOnly}: a guard over itself). */
+	public static float freePoints(MarketAPI base, boolean ownOnly) {
+		if (base == null) return 0f;
+		if (!ThreatAidCapacity.enabled()) return ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP());
+		return Math.max(0f, ownOnly ? ThreatAidCapacity.ownFreeFP(base) : ThreatAidCapacity.freeFP(base));
+	}
+
+	/** "about 302 of the 2,365 fleet points free", or "about 302 fleet points" when the order takes all that is free. */
+	public static String forceText(float points, float free) {
+		return forceText(points, free, 1);
+	}
+
+	/** As above, "in N fleets" appended for a force of several. */
+	public static String forceText(float points, float free, int fleets) {
+		String p = Misc.getWithDGS((int) points);
+		String tail = fleets > 1 ? " in " + fleets + " fleets" : "";
+		if (free > points + 1f) return "about " + p + " of the " + Misc.getWithDGS((int) free) + " fleet points free" + tail;
+		return "about " + p + " fleet points" + tail;
+	}
+
+	/** {@link #forceText} as a prompt's format and highlights: {format, highlight...}. */
+	public static String[] forcePrompt(float points, float free) {
+		return forcePrompt(points, free, 1);
+	}
+
+	/** As above, "in N fleets" appended (highlighted) for a force of several. */
+	public static String[] forcePrompt(float points, float free, int fleets) {
+		java.util.List<String> out = new ArrayList<String>();
+		if (free > points + 1f) {
+			out.add("about %s of the %s fleet points free");
+			out.add(Misc.getWithDGS((int) points));
+			out.add(Misc.getWithDGS((int) free));
+		} else {
+			out.add("about %s fleet points");
+			out.add(Misc.getWithDGS((int) points));
+		}
+		if (fleets > 1) {
+			out.set(0, out.get(0) + " in %s fleets");
+			out.add("" + fleets);
+		}
+		return out.toArray(new String[out.size()]);
 	}
 
 	/**
@@ -156,7 +243,9 @@ public class ThreatAid {
 	 * was the combat points, 2026-09-05 evening).
 	 */
 	public static float taskForcePoints(MarketAPI base, boolean ownOnly) {
-		return ThreatAidCapacity.taskForcePoints(taskForceFP(base, ownOnly));
+		float points = ThreatAidCapacity.taskForcePoints(taskForceFP(base, ownOnly));
+		// never more than one fleet of the faction's was seen to sail with (ThreatSoftening.builtCapPoints)
+		return base != null ? Math.min(points, ThreatSoftening.builtCapPoints(base.getFactionId())) : points;
 	}
 
 	/**
@@ -176,28 +265,77 @@ public class ThreatAid {
 	public static MarketAPI pickTaskForceSource(Vector2f hyperLoc, MarketAPI self) {
 		MarketAPI best = null;
 		float bestFP = 0f;
-		for (MarketAPI m : sources(hyperLoc)) {
-			float fp = taskForceFP(m, m == self);
-			if (fp >= ThreatIncConfig.guardFleetFP()) return m;
+		// a guard over an own colony is staging: it brings hulls from the nearest OTHER colony
+		// that can field a full guard (the user, 2026-10-11: hulls reach a base by a Fleet order
+		// to it); the colony's own hulls stage over itself only when no other colony can.
+		// Staging bases first (IncursionManager.isBase), nearest first, then the colonies that
+		// only hold hulls (the hull port): a hunt sails from the base the task forces were
+		// staged at, not from the port beside it (the user, 2026-10-11 evening: "staging base
+		// still not being used", a Max hunt quoting 1,045 from Arkoman beside Haven's 605 staged)
+		List<MarketAPI> candidates = sources(hyperLoc);
+		for (int pass = 0; pass < 2; pass++) {
+			for (MarketAPI m : candidates) {
+				if (m == self) continue;
+				if (IncursionManager.isBase(m) != (pass == 0)) continue;
+				float fp = taskForceFP(m, false);
+				if (fp >= ThreatIncConfig.guardFleetFP()) return m;
+				if (fp > bestFP) {
+					bestFP = fp;
+					best = m;
+				}
+			}
+		}
+		if (self != null) {
+			float fp = taskForceFP(self, true);
+			if (fp >= ThreatIncConfig.guardFleetFP()) return self;
 			if (fp > bestFP) {
 				bestFP = fp;
-				best = m;
+				best = self;
 			}
 		}
 		if (best != null && bestFP >= ThreatIncConfig.aidGuardMinFP()) return best;
 		return null;
 	}
 
+	/** Under the hull pool: the colony holds hulls (its own share, or task forces staged over it) and a Waystation to sail them from. */
+	protected static boolean hullsToSend(MarketAPI m) {
+		return ThreatHulls.enabled() && m != null && ThreatReserves.hasDepot(m)
+				&& (ThreatAidCapacity.capacityFP(m) > 0f || ThreatAidCapacity.freeFP(m) > 0f);
+	}
+
 	/** Why no colony can send a task force: none qualifies, or each one's free points. */
 	protected static ThreatNotice.Reason noSourceReason(Vector2f hyperLoc) {
+		return noSourceReason(hyperLoc, null);
+	}
+
+	/**
+	 * As above for a guard over the player's own colony {@code self}: the task forces already on
+	 * station there are not "free" to be sent to it (the user, 2026-10-11 evening, at "No colony
+	 * of yours can field it / Haven has 605 fleet points free": "so i cant use the 605 hulls at
+	 * haven ever"), so its line says they are here already; the other colonies' lines as before.
+	 */
+	protected static ThreatNotice.Reason noSourceReason(Vector2f hyperLoc, MarketAPI self) {
 		List<MarketAPI> bases = sources(hyperLoc);
 		if (bases.isEmpty()) {
-			return ThreatNotice.Reason.of("None of your colonies has both a military structure "
+			return ThreatNotice.Reason.of(ThreatHulls.enabled()
+					? "No colony of yours has both hulls and a Waystation"
+					: "None of your colonies has both a military structure "
 					+ "(Patrol HQ, Military Base or High Command) and a Waystation");
 		}
-		ThreatNotice.Reason reason = ThreatNotice.Reason.of("No colony of yours can field it");
+		ThreatNotice.Reason reason = self != null
+				? ThreatNotice.Reason.of("No colony of yours can send a task force to %s", ThreatNotice.market(self))
+				: ThreatNotice.Reason.of("No colony of yours can field it");
 		for (MarketAPI m : bases) {
-			reason.line("%s has %s fleet points free", ThreatNotice.market(m),
+			if (m == self) {
+				float staged = ThreatAidCapacity.stagedFP(m);
+				float own = Math.max(0f, ThreatAidCapacity.ownFreeFP(m));
+				if (staged > 0.5f) reason.line("%s fleet points are on station over %s already",
+						(int) staged, ThreatNotice.market(m));
+				if (own > 0.5f) reason.line("%s has %s of its own fleet points free",
+						ThreatNotice.market(m), (int) own);
+				continue;
+			}
+			reason.line("%s can sail %s fleet points", ThreatNotice.market(m),
 					(int) Math.max(0f, ThreatAidCapacity.freeFP(m)));
 		}
 		return reason;
@@ -208,21 +346,36 @@ public class ThreatAid {
 	// ------------------------------------------------------------------
 
 	public static Quote quoteDefend(MarketAPI target) {
-		return quoteDefend(ThreatBases.of(target));
+		return quoteDefend(ThreatBases.of(target), 0);
+	}
+
+	/** As above at the board's Force tier. */
+	public static Quote quoteDefend(MarketAPI target, int tier) {
+		return quoteDefend(ThreatBases.of(target), tier);
 	}
 
 	/** As above for either kind of base: a colony, or the player's outpost. */
 	public static Quote quoteDefend(ThreatBases.Base target) {
+		return quoteDefend(target, 0);
+	}
+
+	/** As above at the board's Force tier. */
+	public static Quote quoteDefend(ThreatBases.Base target, int tier) {
 		Quote q = new Quote();
 		if (target == null || target.starSystem() == null) {
 			q.reason = ThreatNotice.Reason.of("No target");
 			return q;
 		}
 		return quoteTaskForce(q, target.hyperLoc(), target.name(),
-				target.market != null && target.market.isPlayerOwned() ? target.market : null);
+				target.market != null && target.market.isPlayerOwned() ? target.market : null, tier);
 	}
 
 	public static Quote quoteStrike(StarSystemAPI hive) {
+		return quoteStrike(hive, 0);
+	}
+
+	/** As above at the board's Force tier. */
+	public static Quote quoteStrike(StarSystemAPI hive, int tier) {
 		Quote q = new Quote();
 		if (hive == null) {
 			q.reason = ThreatNotice.Reason.of("No target");
@@ -236,19 +389,28 @@ public class ThreatAid {
 					hive.getNameWithLowercaseTypeShort());
 			return q;
 		}
-		return quoteTaskForce(q, hive.getLocation(), "the " + hive.getNameWithLowercaseType(), null);
+		return quoteTaskForce(q, hive.getLocation(), "the " + hive.getNameWithLowercaseType(), null, tier);
 	}
 
-	protected static Quote quoteTaskForce(Quote q, Vector2f hyperLoc, String what, MarketAPI self) {
+	protected static Quote quoteTaskForce(Quote q, Vector2f hyperLoc, String what, MarketAPI self, int tier) {
 		q.source = pickTaskForceSource(hyperLoc, self);
 		if (q.source == null) {
-			q.reason = noSourceReason(hyperLoc).line("A task force needs at least %s fleet points",
+			q.reason = noSourceReason(hyperLoc, self).line("A task force needs at least %s fleet points",
 					(int) (ThreatIncConfig.aidGuardMinFP() * ThreatAidCapacity.TASK_FORCE_HULL_MULT));
 			return q;
 		}
-		q.fp = taskForceFP(q.source, q.source == self);
-		q.points = ThreatAidCapacity.taskForcePoints(q.fp);
+		boolean own = q.source == self;
+		q.fp = forceFP(q.source, own, tier);
+		q.points = forcePoints(q.source, own, tier);
+		q.free = freePoints(q.source, own);
+		q.fleets = forceFleets(q.source, q.points);
 		q.distLY = Misc.getDistanceLY(q.source.getStarSystem().getLocation(), hyperLoc);
+		// the provisions the force draws, and the gate on them: a force its source cannot fuel and
+		// supply is not offered (the user, 2026-10-11)
+		q.carried = own ? new float[] {0f, 0f} : ThreatAidCapacity.foldedProvisions(q.source, q.points);
+		q.provisions = ThreatFleetOrders.forceProvisions(q.source, q.fp, hyperLoc, q.carried);
+		ThreatNotice.Reason unpaid = ThreatFleetOrders.provisionsShort(q.source, q.fp, hyperLoc, q.carried);
+		if (unpaid != null) q.reason = unpaid;
 		return q;
 	}
 
@@ -366,8 +528,8 @@ public class ThreatAid {
 		if (port == null || port.getStarSystem() == null || units < 1) {
 			q.reason = ThreatNotice.Reason.of("Your yards have no built hulls spare for %s",
 					ThreatNotice.market(target));
-			q.reason.line("%s fleet points built, %s fleet points free; a unit is %s fleet points", (int) ThreatHulls.built(me),
-					(int) ThreatHulls.freeFP(me), (int) ThreatHulls.unitFP());
+			q.reason.line("%s fleet points built, %s free", (int) ThreatHulls.built(me),
+					(int) ThreatHulls.freeFP(me));
 			return q;
 		}
 		float ask = tier >= 2 ? Float.MAX_VALUE
@@ -390,6 +552,11 @@ public class ThreatAid {
 	// ------------------------------------------------------------------
 
 	public static boolean dispatchDefend(MarketAPI target) {
+		return dispatchDefend(target, 0);
+	}
+
+	/** As above at the board's Force tier. */
+	public static boolean dispatchDefend(MarketAPI target, int tier) {
 		if (target == null) return false;
 		ThreatNotice.Reason blocked = canAid(target.getFaction());
 		if (blocked != null) {
@@ -397,14 +564,14 @@ public class ThreatAid {
 					.lines(blocked).send();
 			return false;
 		}
-		Quote q = quoteDefend(target);
+		Quote q = quoteDefend(target, tier);
 		if (!q.ok()) {
 			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.lines(q.reason).send();
 			return false;
 		}
 		ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchGuard(
-				Global.getSector().getPlayerFaction(), target, q.source, true);
+				Global.getSector().getPlayerFaction(), ThreatBases.of(target), q.source, true, tier);
 		if (o == null) {
 			ThreatNotice.titled("Defence Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.line("No task force could be raised at %s", ThreatNotice.market(q.source)).send();
@@ -429,16 +596,21 @@ public class ThreatAid {
 	 * player mobilised had no row in any view for its 60 days (rc1 review).
 	 */
 	public static boolean dispatchStrike(StarSystemAPI hive, String recipientFactionId) {
+		return dispatchStrike(hive, recipientFactionId, 0);
+	}
+
+	/** As above at the board's Force tier. */
+	public static boolean dispatchStrike(StarSystemAPI hive, String recipientFactionId, int tier) {
 		if (hive == null) return false;
 		if (playerNotMobilised() != null) return false;
-		Quote q = quoteStrike(hive);
+		Quote q = quoteStrike(hive, tier);
 		if (!q.ok()) {
 			ThreatNotice.titled("Hunt Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.lines(q.reason).send();
 			return false;
 		}
 		ThreatFleetOrders.Order o = ThreatFleetOrders.dispatchHunt(
-				Global.getSector().getPlayerFaction(), hive, q.source, true);
+				Global.getSector().getPlayerFaction(), hive, q.source, true, tier);
 		if (o == null) {
 			ThreatNotice.titled("Hunt Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.line("No task force could be raised at %s", ThreatNotice.market(q.source)).send();
@@ -476,7 +648,8 @@ public class ThreatAid {
 			return false;
 		}
 		ThreatNotice.titled("Convoy Sails").icon(Global.getSector().getPlayerFaction())
-				.line("From %s, %s %s", ThreatNotice.market(q.source), Misc.getWithDGS(q.quantity),
+				.line("From %s, %s %s", ThreatNotice.market(q.source),
+						Misc.getWithDGS(ThreatHulls.shown(q.commodityId, q.quantity)),
 						ThreatReserves.label(q.commodityId))
 				.line("Bound for %s of the %s", ThreatNotice.market(target),
 						ThreatNotice.faction(target.getFaction()))

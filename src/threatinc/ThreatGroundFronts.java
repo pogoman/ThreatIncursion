@@ -112,6 +112,8 @@ public class ThreatGroundFronts {
 		public String stance = STANCE_ENTRENCH;
 		/** Strata taken, of the colony's size; the Core falls with the last. */
 		public int strataHeld;
+		/** The world's size when the front landed (0 on fronts saved before 2026-10-11): what a hive has starved away since reads against it. */
+		public int sizeAtLanding;
 		/** Days of push progress toward the next stratum (at ratio-scaled pace). */
 		public float pushProgress;
 		/** Checkpoint countdown while consolidating; at 0 the front pushes on. */
@@ -582,6 +584,7 @@ public class ThreatGroundFronts {
 		front.marines = marines;
 		front.armaments = armaments;
 		front.marinesLanded = marines;
+		front.sizeAtLanding = market.getSize();
 		// the troops that land are the troops that were in the hold: the
 		// player's landing inherits the fleet's own marine rank, so a veteran
 		// company fights like one the moment it is on the ground (2026-09-08)
@@ -2260,8 +2263,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/**
 	 * Swarm space superiority over a hive world: the swarm is present in force
-	 * ({@link #swarmPresent}) and NO armed fleet hostile to the Threat is within
-	 * range to contest it. The mirror of the colony theatre's orbitHeldAgainst.
+	 * ({@link #swarmPresent}) and the armed fleets hostile to the Threat within
+	 * range weigh under orbitContestFraction of it. The mirror of the colony theatre's orbitHeldAgainst.
 	 */
 	public static boolean swarmHoldsOrbit(MarketAPI market) {
 		return swarmPresent(market) && !swarmOrbitContested(market);
@@ -2299,10 +2302,13 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
-	 * An armed fleet hostile to the Threat is within the swarm orbit radius of the hive
-	 * world - the swarm's orbital dominance is being contested. This is what
-	 * STOPS the swarm bombarding an enemy front ({@link #tickSwarmBombard}),
-	 * and it is the whole counterplay: keep something armed over the planet.
+	 * Armed fleets hostile to the Threat within the swarm orbit radius of the hive
+	 * world weigh at least orbitContestFraction of the swarm's there - the swarm's
+	 * orbital dominance is being contested. This is what STOPS the swarm bombarding
+	 * an enemy front ({@link #tickSwarmBombard}), and it is the whole counterplay:
+	 * keep enough armed over the planet. Until 2026-10-12 any armed hostile fleet
+	 * contested it (the user, the last fleet in a system the swarm held, dancing
+	 * inside the radius: "my presence shouldn't necessarily stop them").
 	 *
 	 * <p>Note the opposite sense of {@link #orbitContested(String)}, which asks
 	 * whether the hive's own Defense Swarms hold the orbit against a besieger;
@@ -2313,12 +2319,16 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		SectorEntityToken world = market.getPrimaryEntity();
 		if (world == null || world.getContainingLocation() == null) return false;
 		float range = 1500f;
+		float hostile = 0f;
 		for (CampaignFleetAPI fleet : world.getContainingLocation().getFleets()) {
 			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
 			if (fleet.getFleetPoints() <= 0f || fleet.getFaction() == null) continue;
 			if (Misc.getDistance(fleet.getLocation(), world.getLocation()) > range) continue;
-			if (fleet.getFaction().isHostileTo(Factions.THREAT)) return true;
+			if (fleet.getFaction().isHostileTo(Factions.THREAT)) hostile += fleet.getFleetPoints();
 		}
+		// the colony theatre's rule mirrored (orbitHeldAgainst): with no swarm there any
+		// armed fleet contests it, otherwise the hostiles must weigh the fraction
+		if (hostile > 0f && hostile >= swarmOrbitStrength(market) * Math.max(0f, ThreatIncConfig.orbitContestFraction())) return true;
 		// an unspawned expedition's flotilla over its own front (coverFP): runs 6
 		// and 7 lost every autoresolved landing on Gamma Golgotha II to an orbit
 		// nobody held, because an abstract siege leaves no fleet to put on DEFEND
@@ -2356,8 +2366,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
-	 * The swarm is over the planet in force but an armed hostile fleet is
-	 * contesting the orbit, so its bombardment is stopped. The counterplay,
+	 * The swarm is over the planet in force but hostile fleets of orbitContestFraction
+	 * of its weight are contesting the orbit, so its bombardment is stopped. The counterplay,
 	 * seen from the board.
 	 */
 	public static boolean swarmBombardContested(GroundFront front, MarketAPI market) {
