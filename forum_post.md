@@ -17,7 +17,7 @@ At game start a new system in the outer reaches of the sector will be seeded wit
 [center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/threat-board.png[/img]
 [i]The Threat: every system you have found, in priority order - vitality, swarms, reach, strikes out, and what each one makes.[/i][/center]
 [center][img width=900]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/faction-board.png[/img]
-[i]Any mobilised faction, read the same way: the Persean League's reserves, its two fronts on Gamma Brador, and the aid you can send.[/i][/center]
+[i]Any mobilised faction, read the same way: the Sindrian Diktat's reserves, the Threat's front on Sindria, and the aid you can send.[/i][/center]
 
 [size=14pt][b]Starting scenarios[/b][/size]
 
@@ -35,10 +35,14 @@ Once you have your own colonies you can mobilise to enter the war yourself. You 
 [size=14pt][b]Bombardment and raid changes[/b][/size]
 Sat bombardments have been modified to be extremely fuel inefficient. Tac bombardments are much more efficient but only disrupt military structures a few days at a time, and if ground defenses or heavy batteries exist they will eliminate some of your ships in orbit proportional to current ground strength vs your fleet strength. In vanilla military structures all give a multiplicative increase to ground strength. In this mod this multiplier is reduced proportional to disruption days. By far the most efficient way to disrupt military structures is with marines, but costs will be high at the beginning.
 
+[center][img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/hive-vitality.png[/img]
+[i]A hive under siege: supplies cut off, its Fabrication Core and port disrupted, growth starving.[/i][/center]
+
 There are a lot of mechanics at play here but all are explained in various tooltips. Any uncertainties just ask and i will clarify.
 
 [size=14pt][b]Sieges[/b][/size]
-[img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/ground-front.png[/img]
+[center][img]https://raw.githubusercontent.com/pogoman/ThreatIncursion/main/forum/ground-front.png[/img]
+[i]Your front on Delta Mengryla I: strength, defenders, strata held - and the swarm bombarding it from an orbit nobody contests.[/i][/center]
 
 It is important to note while you can override marine actions they will function autonomously and react to various events like counter attacks and bombardments themselves. I'm listing the various interactions below but dont stress and think you have to manage them all. Ultimately if you want a siege to properly succeed make sure your control the space above the planet and it should be enough for the marines to get the job done. If they need resupply it will be automatically sent from the nearest colony assuming it has spare resources and FP. Otherwise you can always resupply them yourself. Keep in mind the Threat will send defensive swarms from neighbouring systems to take back control and if left alone will start bombing your marines from orbit.
 
