@@ -3970,6 +3970,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				+ " marines, " + (int) defenseStrength(front) + " defence); hive troops " + (int) hiveTroops(market)
 				+ ", counter-attack " + (int) counterAttackStrength(market) + "; fuel stock " + (int) ThreatFuel.stock()
 				+ " under the reserve " + (int) bombardReserve());
+		// told (the user, 2026-10-13: "should say how much fp converted into x troops"): the swarm's doing,
+		// under its crest and colour, one fact a line
+		ThreatNotice.titled("Swarm Breaks Up").bad()
+				.line("%s broke up %s FP of its ships into %s troops on %s.", ThreatNotice.hl(fleet.getName()),
+						ThreatNotice.hl((int) removed), ThreatNotice.hl(troops), ThreatNotice.market(market))
+				.line("Against the %s front of %s marines.", ThreatNotice.faction(ownerFaction(front)),
+						ThreatNotice.hl((int) front.marines))
+				.line("Hive troops %s, counter-attack strength %s.", ThreatNotice.hl((int) hiveTroops(market)),
+						ThreatNotice.hl((int) counterAttackStrength(market)))
+				.line("Fuel stock %s under the reserve of %s.", ThreatNotice.hl((int) ThreatFuel.stock()),
+						ThreatNotice.hl((int) bombardReserve()))
+				.send();
 		return new float[] { removed, troops };
 	}
 

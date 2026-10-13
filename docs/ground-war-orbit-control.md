@@ -231,7 +231,9 @@ arm flies to a port that can hand the ordnance over (`sendToRearm`); a fleet the
 keeps its hulls, so a fuel-rich navy never breaks up and a fuel-poor one does. Log: "Swarm breaks up
 over X: <fleet> (N FP) lands T troops against the <owner> front (...); hive troops H, counter-attack C;
 fuel stock S under the reserve R", and the daily held line carries "stock S / reserve R; N FP broke up
-for the ground (T troops)". Built 2026-10-13 07:35, first trial hw172 from hw171a / hw171b / hw167b's
+for the ground (T troops)". Told as a notice under the Threat's crest (the user, 2026-10-13: "should say
+how much fp converted into x troops"): "Swarm Breaks Up" - the fleet, FP and troops on the hive; the
+front it faces and its marines; the hive's troops and counter-attack strength; the stock and reserve. Built 2026-10-13 07:35, first trial hw172 from hw171a / hw171b / hw167b's
 w2,850 snapshots. So a blockade that shuts a hive's port starves the swarm's guns over it, as it
 starves the hive's. The board's rate (`swarmBombardPer30Days`, `swarmArmedFP`) counts fleets with
 ordnance or a way to get it. `swarmBombardHoldDays` 0 restores the stock paying every day. It needs
