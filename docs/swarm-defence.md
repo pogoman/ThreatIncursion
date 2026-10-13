@@ -217,8 +217,9 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   (`$threatinc_unfought`, `ThreatColonyManager.UNFOUGHT_KEY`); it stays on the in-transit list - nothing is
   seated as garrison while an enemy holds station - and the marks clear on the first poll that reads no
   hostiles over the world (then the 700-unit seat or the overdue ladder as before). An engaged swarm is
-  leashed like a garrison (`enforceReinforcementLeash`, per frame, 2026-10-13): beyond `ORBIT_HOLD_RANGE` of
-  the world and in no live battle it is walked back blinkered and its marks cleared, so the poll re-engages
+  leashed like a garrison (`enforceReinforcementLeash`, per frame, 2026-10-13): beyond twice `ORBIT_HOLD_RANGE`
+  (`REINFORCEMENT_LEASH_MULT`; at the hold range itself the orbiters over a besieged hive rode at
+  1,500-1,505 units and were recalled and blinkered daily - hw186c, `game-runs-2.md` s53) and in no live battle it is walked back blinkered and its marks cleared, so the poll re-engages
   it on return - before this, vanilla's pursuit AI overrode the aggressive orbit and the three swarms the
   player met over Delta Mengryla I stood 13-15,000 units out for weeks, counted inbound (log
   `Reinforcement strayed from <world>: ... - recalled`). The unfought mark is

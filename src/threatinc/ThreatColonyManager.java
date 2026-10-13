@@ -7228,7 +7228,16 @@ public class ThreatColonyManager {
 	 * the military options counting them inbound for up to the 90 overdue
 	 * days. A blinkered traveller already bound for the planet is left alone;
 	 * the engaged and unfought marks clear so the poll re-engages it on return.
+	 * The leash sits at REINFORCEMENT_LEASH_MULT x ORBIT_HOLD_RANGE, not the hold
+	 * range itself: a fleet on its aggressive orbit over a besieged hive rides
+	 * at 1,500-1,505 units and was recalled and blinkered every day of the siege
+	 * (hw186c, 2026-10-13: 45 of 83 recalls at Asharu and Jangala, three to six
+	 * fleets a spell), fighting nothing; the strays this catches stood 13-15,000
+	 * units out.
 	 */
+	/** The reinforcement leash's radius in hold ranges: recalled beyond it, left to orbit within (the orbit rides at the hold range). */
+	public static final float REINFORCEMENT_LEASH_MULT = 2f;
+
 	public static void enforceReinforcementLeash() {
 		for (CampaignFleetAPI fleet : new ArrayList<CampaignFleetAPI>(ThreatIncData.reinforcementFleets().values())) {
 			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
@@ -7239,7 +7248,7 @@ public class ThreatColonyManager {
 			SectorEntityToken planet = target.getPrimaryEntity();
 			if (fleet.getContainingLocation() != planet.getContainingLocation()) continue;
 			float dist = Misc.getDistance(fleet, planet);
-			if (dist <= ThreatFleetOrders.ORBIT_HOLD_RANGE) continue;
+			if (dist <= ThreatFleetOrders.ORBIT_HOLD_RANGE * REINFORCEMENT_LEASH_MULT) continue;
 			if (fleet.getBattle() != null && !fleet.getBattle().isDone()) continue;
 			com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI curr = fleet.getCurrentAssignment();
 			if (curr != null && curr.getTarget() == planet

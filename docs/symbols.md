@@ -645,7 +645,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatCoalition.jointEnough(FactionAPI owner, MarketAPI market, MarketAPI ownerBase)` :484 - Whether the owner and its partners together can field a relief that outweighs the army over the world.
 - `ThreatCoalition.jointRelief(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float owed)` :509 - COALITION RELIEF (the user, 2026-10-08, the second human change after yards at home):
 
-## ThreatColonyManager (7745 lines)
+## ThreatColonyManager (7754 lines)
 ### founding
 - `ThreatColonyManager.foundColony(PlanetAPI planet, int initialSize)` :122 - Converts a planet's dormant condition-only market into a live Threat fabrication colony.
 - `ThreatColonyManager.foundColony(PlanetAPI planet, int initialSize, String payerId)` :135 - foundColony, its structures bought from payerId's bank at foundingFPPerStructure each (null:
@@ -977,27 +977,27 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatColonyManager.whereabouts(CampaignFleetAPI fleet, SectorEntityToken planet)` :6993 - Where a fleet stands and what it is doing, for the overdue read:
 - `ThreatColonyManager.digInAtConquest(CampaignFleetAPI fleet)` :7121 - A strike's landing fleet over the world it just took (ThreatSwarmDefend, the front gone):
 - `ThreatColonyManager.enforceGarrisonLeash()` :7167 - Per-frame leash enforcement (called from IncursionManager.advance):
-- `ThreatColonyManager.enforceReinforcementLeash()` :7232 - Per frame beside the garrison leash (IncursionManager.advance):
-- `ThreatColonyManager.countLiveGarrison(String marketId)` :7261
-- `ThreatColonyManager.countLiveGarrisonInSystem(String systemId)` :7269
+- `ThreatColonyManager.enforceReinforcementLeash()` :7241 - The reinforcement leash's radius in hold ranges:
+- `ThreatColonyManager.countLiveGarrison(String marketId)` :7270
+- `ThreatColonyManager.countLiveGarrisonInSystem(String systemId)` :7278
 ### colony death
-- `ThreatColonyManager.pollColonies()` :7287 - Detects colonies that no longer exist (bombarded to decivilization, or otherwise removed) and clears them.
-- `ThreatColonyManager.cleanColonyMods(MarketAPI market)` :7356 - Strips everything this mod applied to a market, so the husk left behind (the planet's condition-only market) is indistinguishable from a never- colonized world - critically the econ group, or a later 
-- `ThreatColonyManager.findMarketAnywhere(String marketId, StarSystemAPI system)` :7401 - Finds a colony's market even after vanilla removed it from the economy (post-deciv the object survives, attached to its planet).
+- `ThreatColonyManager.pollColonies()` :7296 - Detects colonies that no longer exist (bombarded to decivilization, or otherwise removed) and clears them.
+- `ThreatColonyManager.cleanColonyMods(MarketAPI market)` :7365 - Strips everything this mod applied to a market, so the husk left behind (the planet's condition-only market) is indistinguishable from a never- colonized world - critically the econ group, or a later 
+- `ThreatColonyManager.findMarketAnywhere(String marketId, StarSystemAPI system)` :7410 - Finds a colony's market even after vanilla removed it from the economy (post-deciv the object survives, attached to its planet).
 ### full reset (debug)
-- `ThreatColonyManager.resetIncursion()` :7423 - Tears the entire incursion out of the save:
+- `ThreatColonyManager.resetIncursion()` :7432 - Tears the entire incursion out of the save:
 ### legacy save migration
-- `ThreatColonyManager.migrateLegacyData(Random random)` :7529 - One-time conversions for saves made under older data layouts.
-- `ThreatColonyManager.migrateToContinuousDecline()` :7545 - v4 -> v5:
-- `ThreatColonyManager.migrateToSiegeRework()` :7563 - v3 -> v4 (siege rework):
-- `ThreatColonyManager.migrateHivesToColonies(Random random)` :7578 - v1 -> v2:
-- `ThreatColonyManager.migrateToMultiColony()` :7625 - v2 -> v3:
-- `ThreatColonyManager.moveKey(String mapKey, String fromKey, String toKey)` :7666
+- `ThreatColonyManager.migrateLegacyData(Random random)` :7538 - One-time conversions for saves made under older data layouts.
+- `ThreatColonyManager.migrateToContinuousDecline()` :7554 - v4 -> v5:
+- `ThreatColonyManager.migrateToSiegeRework()` :7572 - v3 -> v4 (siege rework):
+- `ThreatColonyManager.migrateHivesToColonies(Random random)` :7587 - v1 -> v2:
+- `ThreatColonyManager.migrateToMultiColony()` :7634 - v2 -> v3:
+- `ThreatColonyManager.moveKey(String mapKey, String fromKey, String toKey)` :7675
 ### helpers
-- `ThreatColonyManager.getSystem(String systemId)` :7676
-- `ThreatColonyManager.makeDetectable(CampaignFleetAPI fleet)` :7691 - Removes the heavy Threat sensor-stealth penalty from one of our fleets.
-- `ThreatColonyManager.announce(ThreatNotice notice)` :7705 - Debug-only narration:
-- `ThreatColonyManager.purgeSystemDebug(String systemId)` :7717 - Debug tool:
+- `ThreatColonyManager.getSystem(String systemId)` :7685
+- `ThreatColonyManager.makeDetectable(CampaignFleetAPI fleet)` :7700 - Removes the heavy Threat sensor-stealth penalty from one of our fleets.
+- `ThreatColonyManager.announce(ThreatNotice notice)` :7714 - Debug-only narration:
+- `ThreatColonyManager.purgeSystemDebug(String systemId)` :7726 - Debug tool:
 
 ## ThreatColonyScreenDialog (71 lines)
 - `ThreatColonyScreenDialog.ThreatColonyScreenDialog(SectorEntityToken entity)` :30
