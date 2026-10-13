@@ -685,6 +685,10 @@ public class ThreatIncConfig {
 	public static boolean foundingBudget()         { return b("threatinc_foundingBudget", true); }
 	/** K2 (2026-10-13, hw177c): the navy's upkeep and the fleets away leave the kit, and the navy a prong's trip, in the supplies stock (ThreatFuel.keptAhead). */
 	public static boolean keepAheadOfFleets()      { return b("threatinc_keepAheadOfFleets", true); }
+	/** After hw180 (2026-10-13): navy upkeep the stock keeps ahead recycles the smallest swarms, and a hive with navy upkeep unpaid in the last month builds no navy (ThreatColonyManager.navyUnpaidRecently). */
+	public static boolean unpaidNavyHoldsBuilder() { return b("threatinc_unpaidNavyHoldsBuilder", true); }
+	/** K4 (2026-10-13): a founding's chest-full surplus test reads the supplies demand less the held seedings' own kit bookings (ThreatFuel.canFound). */
+	public static boolean foundingSurplusOwnBookings() { return b("threatinc_foundingSurplusOwnBookings", true); }
 	public static float feedShareExpand()          { return f("threatinc_feedShareExpand"); }
 	public static float feedSharePress()           { return f("threatinc_feedSharePress"); }
 	public static float feedShareConsolidate()     { return f("threatinc_feedShareConsolidate"); }
