@@ -111,6 +111,8 @@ public class ThreatIncConfig {
 	public static float garrisonUpkeepPerMonth() { return f("threatinc_garrisonUpkeepPerMonth"); }
 	/** Military options menu: how far (su) from a hive's world a defending swarm fleet can be engaged from its orbit; any swarm fleet inside also counts as a defender. */
 	public static float defendRadius()      { return f("threatinc_defendRadius"); }
+	/** Units from a hive's world within which a swarm fleet bound for it counts as a defender inbound (military options); farther out it is not in the fight. 0 = any distance. */
+	public static float defendInboundRange() { return f("threatinc_defendInboundRange"); }
 	/** Whether colonies redistribute Defense Swarms to reinforce worn-down siblings. */
 	public static boolean reinforceEnabled()  { return b("threatinc_reinforceEnabled", true); }
 	/** Whether each hive system holds the garrison the war around it calls for and lets the rest go (ThreatPosture); off builds past the floor whenever the bank pays. */

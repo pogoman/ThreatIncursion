@@ -227,8 +227,11 @@ public class ThreatincMarketCMD extends MarketCMD {
 		int near = 0;
 		int inbound = 0;
 		int busy = 0;
+		int far = 0;
 		float fp = 0f;
 		float nearest = Float.MAX_VALUE;
+		float farthest = Float.MAX_VALUE; // the nearest of the fleets too far out to count
+		float range = ThreatIncConfig.defendInboundRange();
 		StringBuilder why = new StringBuilder();
 		for (CampaignFleetAPI fleet : threatDefenders()) {
 			float dist = Misc.getDistance(fleet, entity);
@@ -240,6 +243,13 @@ public class ThreatincMarketCMD extends MarketCMD {
 				near++;
 				fp += fleet.getFleetPoints();
 				state = "near";
+			} else if (range > 0f && dist > range) {
+				// not in the fight: beyond the inbound range it neither closes the
+				// menu nor can be engaged (2026-10-13: engaged reinforcements drawn
+				// 13-15,000 units off locked raids and bombardment for weeks)
+				far++;
+				farthest = Math.min(farthest, dist);
+				state = "far";
 			} else {
 				inbound++;
 				nearest = Math.min(nearest, dist);
@@ -249,7 +259,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 					.append(" FP ").append((int) dist).append(" su ").append(state).append("]");
 		}
 		ThreatIncConfig.log("Military options at " + market.getName() + ": near " + near
-				+ ", inbound " + inbound + ", busy " + busy + why);
+				+ ", inbound " + inbound + ", busy " + busy + ", far " + far + why);
 		if (withText) {
 			if (near > 0) {
 				text.addPara("The swarm holds the orbit: %s, %s fleet points.",
@@ -262,6 +272,9 @@ public class ThreatincMarketCMD extends MarketCMD {
 						Misc.getWithDGS((int) nearest));
 			} else if (busy > 0) {
 				text.addPara("The defending swarms are in battle.");
+			} else if (far > 0) {
+				text.addPara("The swarm's nearest fleet is %s units out: not in the fight.",
+						Misc.getHighlightColor(), Misc.getWithDGS((int) farthest));
 			}
 		}
 		if (DebugFlags.MARKET_HOSTILITIES_DEBUG) {

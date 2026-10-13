@@ -57,10 +57,14 @@
 	"threatinc_colonizationEscort": 2,
 	# military options menu: how far (su) from a hive's world a defending swarm
 	# fleet can be engaged from its orbit (the colony's garrison, reinforcements
-	# bound for it and its Defend Swarms count wherever they are in the system,
+	# bound for it and its Defend Swarms count within defendInboundRange,
 	# closing raids and bombardment until engaged; any other swarm fleet counts
 	# while inside this radius; garrisons orbit 400-700 su out)
 	"threatinc_defendRadius": 1000,
+	# how far out (su) a swarm fleet bound for the world still counts as a
+	# defender inbound; farther out it is not in the fight and the menu ignores
+	# it (0 = any distance, the rule before 2026-10-13)
+	"threatinc_defendInboundRange": 3000,
 	# Colonies cover each other. Every poll the swarm sends Defense Swarms from
 	# the best-covered colonies that can reach worn-down siblings - same system
 	# first, then any system within the donor's fuel range - until garrisons
