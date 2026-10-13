@@ -683,6 +683,8 @@ public class ThreatIncConfig {
 	public static float starveDaysPerSize()        { return f("threatinc_starveDaysPerSize"); }
 	/** A FOUNDING BUDGET (S6, 2026-10-10): while a seeding is held on supplies, growth draws only the stock above one founding kit. */
 	public static boolean foundingBudget()         { return b("threatinc_foundingBudget", true); }
+	/** K2 (2026-10-13, hw177c): the navy's upkeep and the fleets away leave the kit, and the navy a prong's trip, in the supplies stock (ThreatFuel.keptAhead). */
+	public static boolean keepAheadOfFleets()      { return b("threatinc_keepAheadOfFleets", true); }
 	public static float feedShareExpand()          { return f("threatinc_feedShareExpand"); }
 	public static float feedSharePress()           { return f("threatinc_feedSharePress"); }
 	public static float feedShareConsolidate()     { return f("threatinc_feedShareConsolidate"); }

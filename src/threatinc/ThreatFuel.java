@@ -126,6 +126,27 @@ public class ThreatFuel {
 		return Math.max(0f, stock(commodityId) - reserved(commodityId));
 	}
 
+	/**
+	 * K2, THE KIT AND A PRONG'S TRIP KEPT AHEAD OF THE FLEETS (the user, 2026-10-13, after hw177c: 47-49 hives
+	 * for 900 days, 49 seedings held on 347k fuel, the offensive "out on the supplies away (0 free)" with the fund
+	 * at 55-72k - the month's 101k of supplies went feed 40k, navy 32.6k, away 24.5k, found 0): supplies the
+	 * navy's upkeep and the fleets away leave in the stock, above the sustenance due their caller already holds.
+	 * While a seeding is held on supplies, both leave the planner's reserve and one founding kit, so free() can
+	 * pay the kit (canFound); the navy also leaves the stock the cheapest prong is short of its trip
+	 * (ThreatOffensive.tripShort), so freeStock() can keep it. What the commitments then cannot pay is unpaid
+	 * as before: the navy loses its smallest swarms, the fleets away turn home. Capped at a month's production;
+	 * 0 with threatinc_keepAheadOfFleets off.
+	 */
+	public static float keptAhead(boolean navy) {
+		if (!ThreatIncConfig.keepAheadOfFleets() || !planned()) return 0f;
+		boolean kit = heldOnSuppliesThisMonth() > 0f;
+		float trip = navy ? ThreatOffensive.tripShort() : 0f;
+		if (!kit && trip <= 0f) return 0f;
+		// the prong's trip is read by freeStock above the reserve and a kit, whether a seeding is held or not
+		float kept = reserved(Commodities.SUPPLIES) + foundingCost()[0] + trip;
+		return Math.min(kept, Math.max(0f, perMonth(Commodities.SUPPLIES)));
+	}
+
 	/** Reserves {@code supplies} for the producer the market waits to build; 0 or less releases it. */
 	public static void reserve(String marketId, float supplies) {
 		if (marketId == null) return;

@@ -5402,8 +5402,9 @@ public class ThreatColonyManager {
 		float want = perMonth * days / 30f;
 		// a commitment pays from the whole stock, the planner's reserve included (hw61b: drawn on free, 30 swarms
 		// were lost to unpaid upkeep for a forge's 5k; the reserve bites sustenance, growth, foundings and new trips)
-		// - less the colonies' sustenance due (hold, ThreatColonyUpkeep.sustenanceDue), which is paid before it
-		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold));
+		// - less the colonies' sustenance due (hold, ThreatColonyUpkeep.sustenanceDue), which is paid before it,
+		// and while a seeding is held the reserve and its kit (ThreatFuel.keptAhead, K2 2026-10-13)
+		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold - ThreatFuel.keptAhead(false)));
 		ThreatFuel.pay(Commodities.SUPPLIES, paid, "away");
 		float unpaid = want - paid;
 		Map<String, Object> owedMap = ThreatIncData.map(KEY_SUPPLIES_OWED);
@@ -5448,8 +5449,17 @@ public class ThreatColonyManager {
 		if (days <= 0f || rate <= 0f || navy <= 0f) return;
 		String id = market.getId();
 		float want = navy * rate * days / 30f;
-		// a commitment: the whole stock less the colonies' sustenance due (paySupplies)
-		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold));
+		// a commitment: the whole stock less the colonies' sustenance due (paySupplies), and the kit and the
+		// cheapest prong's trip the navy leaves (ThreatFuel.keptAhead, K2 2026-10-13)
+		float kept = ThreatFuel.keptAhead(true);
+		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold - kept));
+		if (kept > 0f && paid < want) {
+			ThreatIncConfig.logQuiet("keptahead", "Upkeep: the navy leaves " + (int) kept + " supplies in the stock for "
+					+ (ThreatFuel.heldOnSuppliesThisMonth() > 0f ? "a founding kit" : "") + (ThreatFuel.heldOnSuppliesThisMonth() > 0f
+					&& ThreatOffensive.tripShort() > 0f ? " and " : "") + (ThreatOffensive.tripShort() > 0f ? "a prong's trip ("
+					+ (int) ThreatOffensive.tripShort() + ")" : "") + " - " + (int) (want - paid) + " of its upkeep unpaid at "
+					+ market.getName());
+		}
 		ThreatFuel.pay(Commodities.SUPPLIES, paid, "navy");
 		UpkeepLog log = upkeepLog(id);
 		log.navyWanted += want;
