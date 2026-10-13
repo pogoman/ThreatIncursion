@@ -216,7 +216,12 @@ hive picket that sees a siege coming is in `threat-fog.md` 4.
   orbit of the world, and is marked engaged (`$threatinc_reinforceEngaged`) and unfought
   (`$threatinc_unfought`, `ThreatColonyManager.UNFOUGHT_KEY`); it stays on the in-transit list - nothing is
   seated as garrison while an enemy holds station - and the marks clear on the first poll that reads no
-  hostiles over the world (then the 700-unit seat or the overdue ladder as before). The unfought mark is
+  hostiles over the world (then the 700-unit seat or the overdue ladder as before). An engaged swarm is
+  leashed like a garrison (`enforceReinforcementLeash`, per frame, 2026-10-13): beyond `ORBIT_HOLD_RANGE` of
+  the world and in no live battle it is walked back blinkered and its marks cleared, so the poll re-engages
+  it on return - before this, vanilla's pursuit AI overrode the aggressive orbit and the three swarms the
+  player met over Delta Mengryla I stood 13-15,000 units out for weeks, counted inbound (log
+  `Reinforcement strayed from <world>: ... - recalled`). The unfought mark is
   the blockade's (`ThreatBlockade.foughtPointsNear`, ground-war-defenders.md "Blockade"): while the
   player's fleet holds station an unfought swarm weighs nothing against it; `FoughtMark`, a fleet
   listener, clears the mark on the swarm's first battle. Why: three swarms (395 / 340 / 332 FP, regional

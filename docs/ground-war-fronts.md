@@ -303,7 +303,9 @@ marines the figure counts.
   garrison a few hundred su out (2026-09-07, Alpha Novy Tayvay I). Rule (`gateOnDefenders`):
   a free defender in reach - Engage open, raid, bombardment and ground landing closed
   (`temp.canRaid`); free defenders but none in reach - all three closed and Engage closed
-  ("still N units out"); every defender busy in a battle - raid open, bombardment closed
+  ("still N units out"), but only within `defendInboundRange` (3,000 su; 2026-10-13, after three
+  engaged reinforcements drawn 13-15,000 su off locked the menu for weeks) - farther out a fleet is
+  not in the fight, counts for nothing and the text says so; every defender busy in a battle - raid open, bombardment closed
   (vanilla's distraction rule); none - vanilla's result stands, raid cooldown included.
   `getInteractionTargetForFIDPI` is overridden to the same list (nearest free fleet in reach,
   else nearest busy one), so vanilla's draw and its Engage click agree; `engage()` keeps its

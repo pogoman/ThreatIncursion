@@ -182,9 +182,24 @@ records what the build decided where the spec left it open. v1 at the bottom is 
   1): "Your forces will be able to organize another bombardment within a day or so." Tactical
   and saturation share the lock. The AI hovering slice already runs once a day; it must follow
   the same x condition rule.
-- **Return fire = 0.008 x the defence the guns add, per day**, where "the guns add" =
+- **Return fire = `bombardReturnFirePerGunDefence` (0.0008 since run 4; was 0.008) x the defence the guns add, per day**, where "the guns add" =
   D x (1 - 1/guns multiplier) (`batteryShare`; order-independent, cannot double-count since
   Heavy Batteries replace Ground Defenses). No Ground Defenses / Heavy Batteries = no loss.
+  Ground Defenses is a gun (x1), kept so on 2026-10-13 (the user, shown the 0.3 a day a size-3 hive
+  with worn, starved Ground Defenses at stability 5 fires). FP a day at stability 10, intact, as
+  built (a colony: base 50 / 100 / 200 / 300 / 400 / 500 at size 3-8; a hive: 400 x size):
+
+  | Size | Colony GD | Colony HB | Colony HB + High Command | Hive GD | Hive HB | Hive HB + Command |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | 3 | 0.04 | 0.08 | 0.10 | 0.96 | 1.92 | 2.50 |
+  | 4 | 0.08 | 0.16 | 0.21 | 1.28 | 2.56 | 3.33 |
+  | 5 | 0.16 | 0.32 | 0.42 | 1.60 | 3.20 | 4.16 |
+  | 6 | 0.24 | 0.48 | 0.62 | 1.92 | 3.84 | 4.99 |
+  | 7 | 0.32 | 0.64 | 0.83 | 2.24 | 4.48 | 5.82 |
+  | 8 | 0.40 | 0.80 | 1.04 | 2.56 | 5.12 | 6.66 |
+
+  Wear and stability both scale it: a size-8 HB + Command hive (D 12,480) fires 6.66 intact, 3.33 at
+  50% condition, 0.67 at 10%, 0 worn out; at stability 5 it fires 4.16, at 0 1.66.
   Replaces `siegeBatteryAttritionPerDay`'s 0.02 x F x D x share/(F+D). Calibrated so a 600 FP
   fleet over size-6 Heavy Batteries loses what it does today.
 - **Fuel = 0.04 per FP per bombardment day**, from the fleet's cargo (AI: its provisions). No
@@ -261,9 +276,10 @@ colony's.
 - **The dead stay dead**: no repair on the bar. The colony's own growth continues between
   visits, but **growth pauses while it is being saturated** (as it already does under a ground
   front, `updateColonyVitality`).
-- **Unrest raised to 10**, never stacked (vanilla `bombardSaturationStability` 10 stacked).
-  Stability does not change the fuel (it is priced on people); it lowers D, so after the first
-  day the guns cost about a quarter of the ships.
+- **Unrest raised to 10 x (1 - fortification condition)**, as tactical, never stacked (vanilla
+  `bombardSaturationStability` 10 stacked). Was a flat 10 until 2026-10-13: one bomb that wore a
+  hive 1% pinned it at stability 0 (defences x0.25) for the 30 months of decay. Stability does
+  not change the fuel (it is priced on people); it lowers D as the fortifications fall.
 - Reputation: vanilla's saturation impact and atrocity handling stay (`bombardNoAtrocity`,
   `waiveAtrocity` on Threat colonies as today).
 - **Fallout landing block removed** (`falloutDays` 40, `ThreatGroundFronts.setFallout`), and
@@ -386,6 +402,8 @@ the raid alone keeps the transponder-off option.
 | `bombardCooldownDays` | 1 | new; shared tactical/saturation lock |
 | `bombardFuelPerFPDay` | 0.04 | new; tactical fuel |
 | `bombardReturnFirePerGunDefence` | 0.0008 | replaces `siegeBatteryAttritionPerDay`; was 0.008 until run 4 |
+| `hiveBombardReturnFirePerGunDefence` | 0.0024 | the hive theatre's constant (2026-10-13, x3) |
+| `hiveBombardFPWorth` | 10 | the hive theatre's worth (2026-10-13; 30 would stop every commander with marines bombarding a size-8 hive at x3) |
 | `bombardFPWorth` | 30 | new (run 4); defence a day must take off per fleet point lost (NPCs; the swarm uses `fabricateTroopsPerFP x mult / frontHoldFraction`) |
 | `bombardUnrestMax` | 10 | new; tactical unrest = this x (1 - condition) |
 | `satFuelPerFPDay` | 2.86 | new; saturation delivery - a colony's bar, a hive's day of wear |
@@ -534,7 +552,13 @@ The AI half, and what reviewing it changed (same day):
   three times what the old attrition took from a 1,000 FP fleet, six times from a 500 FP one.
   With the commander's stop the AI copes (it lands big, saturating only beyond its marines), but
   large Heavy-Battery hives may be beyond most NPC sieges. A separate hive rate is the knob to add
-  if a test run agrees.
+  if a test run agrees. RESOLVED 2026-10-13: `hiveBombardReturnFirePerGunDefence` 0.0024 with
+  `hiveBombardFPWorth` 10 (see the return-fire table above and `facts.md` "DECISION 2026-10-13").
+  Stop-aware figures at a size-8 HB + Command hive (D 12,480): a commander with marines bombards from
+  6,000 FP up (14 defence per FP) as at 0.0008 / 30, and loses 275 over 51 days (91 before); a
+  short-handed 3,000 FP commander softens 70 days for 436 (141); a player fleet of 1,000 / 3,000 /
+  6,000 sitting 30 days loses 510 / 359 / 259, nothing dies. At 0.008 no commander with marines
+  bombards at all (6 per FP at 10,000 FP) and 1,000 FP dies on day 17 - rejected.
 - **Old saves.** Expeditions already out drew no ordnance: they bombard unpaid and raze nothing.
 
 ## Proposed model v1 - SUPERSEDED by the final spec above (brainstorm 2026-09-28, history only)

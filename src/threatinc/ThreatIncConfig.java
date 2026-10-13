@@ -111,6 +111,8 @@ public class ThreatIncConfig {
 	public static float garrisonUpkeepPerMonth() { return f("threatinc_garrisonUpkeepPerMonth"); }
 	/** Military options menu: how far (su) from a hive's world a defending swarm fleet can be engaged from its orbit; any swarm fleet inside also counts as a defender. */
 	public static float defendRadius()      { return f("threatinc_defendRadius"); }
+	/** Units from a hive's world within which a swarm fleet bound for it counts as a defender inbound (military options); farther out it is not in the fight. 0 = any distance. */
+	public static float defendInboundRange() { return f("threatinc_defendInboundRange"); }
 	/** Whether colonies redistribute Defense Swarms to reinforce worn-down siblings. */
 	public static boolean reinforceEnabled()  { return b("threatinc_reinforceEnabled", true); }
 	/** Whether each hive system holds the garrison the war around it calls for and lets the rest go (ThreatPosture); off builds past the floor whenever the bank pays. */
@@ -363,7 +365,11 @@ public class ThreatIncConfig {
 	public static float bombardReturnFirePerGunDefence() { return f("threatinc_bombardReturnFirePerGunDefence"); }
 	/** Defence points a day of bombardment must take off per fleet point the guns take: a hull's price in marines. */
 	public static float bombardFPWorth() { return f("threatinc_bombardFPWorth"); }
-	/** Unrest a saturation bombardment raises a world to; a tactical one raises it to this x (1 - condition). */
+	/** The hive theatre's bombardReturnFirePerGunDefence (2026-10-13: 0.0024, three times a colony's). */
+	public static float hiveBombardReturnFirePerGunDefence() { return f("threatinc_hiveBombardReturnFirePerGunDefence"); }
+	/** The hive theatre's bombardFPWorth (2026-10-13: 10, so the commanders who bombard a big hive at 0.0008 / 30 still do at 0.0024). */
+	public static float hiveBombardFPWorth() { return f("threatinc_hiveBombardFPWorth"); }
+	/** Unrest a bombardment raises a world to: this x (1 - fortification condition), tactical and saturation alike. */
 	public static float bombardUnrestMax() { return f("threatinc_bombardUnrestMax"); }
 	/** Fuel a day of saturation pours onto a world per fleet point. */
 	public static float satFuelPerFPDay() { return f("threatinc_satFuelPerFPDay"); }

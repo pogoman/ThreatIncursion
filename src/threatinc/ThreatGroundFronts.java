@@ -2889,9 +2889,22 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return threatinc.rules.BattleRules.gunDefence(defence, Theatre.of(market).batteryShare(market));
 	}
 
-	/** Fleet points the guns take per day from whatever bombards the world - set by the guns, not the fleet. */
+	/** The guns' constant on this world: the hive theatre's (hiveBombardReturnFirePerGunDefence) or the colony's (bombardReturnFirePerGunDefence). */
+	public static float returnFireConstant(MarketAPI market) {
+		boolean hive = market != null && Theatre.of(market) == HIVE;
+		return Math.max(0f, hive ? ThreatIncConfig.hiveBombardReturnFirePerGunDefence()
+				: ThreatIncConfig.bombardReturnFirePerGunDefence());
+	}
+
+	/** A faction commander's worth on this world: the hive theatre's (hiveBombardFPWorth) or the colony's (bombardFPWorth). */
+	public static float bombardWorth(MarketAPI market) {
+		boolean hive = market != null && Theatre.of(market) == HIVE;
+		return Math.max(0f, hive ? ThreatIncConfig.hiveBombardFPWorth() : ThreatIncConfig.bombardFPWorth());
+	}
+
+	/** Fleet points the guns take per day from whatever bombards the world - set by the guns, not the fleet (the theatre's constant, returnFireConstant). */
 	public static float returnFirePerDay(MarketAPI market, float defence) {
-		return threatinc.rules.BattleRules.returnFirePerDay(ThreatIncConfig.bombardReturnFirePerGunDefence(),
+		return threatinc.rules.BattleRules.returnFirePerDay(returnFireConstant(market),
 				gunDefence(market, defence));
 	}
 
@@ -2958,7 +2971,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * line stop it (bombardPlan).
 	 */
 	public static boolean orbitSpent(MarketAPI market, float fp, float troops, boolean beachhead) {
-		return orbitSpent(market, fp, troops, beachhead, ThreatIncConfig.bombardFPWorth());
+		return orbitSpent(market, fp, troops, beachhead, bombardWorth(market));
 	}
 
 	/** As above, a day needing {@code worth} defence off the world per fleet point lost ({@link #swarmWorth}). */
@@ -3069,7 +3082,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 */
 	public static float[] bombardPlan(MarketAPI market, float fp, float budget, float troops,
 			boolean beachhead) {
-		return bombardPlan(market, fp, budget, troops, beachhead, ThreatIncConfig.bombardFPWorth());
+		return bombardPlan(market, fp, budget, troops, beachhead, bombardWorth(market));
 	}
 
 	/** As above, a day needing {@code worth} defence off per fleet point lost. */
@@ -3118,7 +3131,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float rate = theatre.suppressDaysPerDay();
 		float perPoint = Math.max(0f, ThreatIncConfig.siegeFPWeight());
 		worth = Math.max(0f, worth);
-		float firePer = Math.max(0f, ThreatIncConfig.bombardReturnFirePerGunDefence());
+		float firePer = returnFireConstant(market);
 		float floor = start * Math.max(0f, Math.min(1f, floorFraction));
 		float fleet = start;
 		float d = d0;
@@ -3211,7 +3224,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float wear = theatre.wearDays();
 		float rate = theatre.suppressDaysPerDay();
 		float perPoint = Math.max(0f, ThreatIncConfig.siegeFPWeight());
-		float firePer = Math.max(0f, ThreatIncConfig.bombardReturnFirePerGunDefence());
+		float firePer = returnFireConstant(market);
 		float pourPer = Math.max(0f, ThreatIncConfig.satFuelPerFPDay());
 		float budget = ThreatIncConfig.siegeOrbitDays();
 		float floor = Math.max(0f, floorFP);
@@ -3510,7 +3523,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		mem.set(DECIV_HELD_KEY, true, theatre.wearDays());
 	}
 
-	/** The unrest a tactical bombardment raises the world to: bombardUnrestMax x what it has suppressed. */
+	/** The unrest a bombardment of either kind raises the world to: bombardUnrestMax x what it has suppressed. */
 	public static int tacticalUnrest(MarketAPI market) {
 		return Math.round(Math.max(0f, ThreatIncConfig.bombardUnrestMax())
 				* (1f - fortificationCondition(market)));
@@ -3667,7 +3680,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * {@code days} of saturation bombardment by {@code fp} with up to
 	 * {@code fuel} to pour (docs/suppression-balance.md v2 section 4): the
 	 * tactical rule on every building, the guns' answer, the world's unrest
-	 * raised to bombardUnrestMax, its growth paused, and the fuel poured into
+	 * raised to what it has suppressed (as tactical), its growth paused, and the fuel poured into
 	 * the razing bar ({@link ThreatRazing}) less what the shield turns aside.
 	 * Returns {fleet points the guns take, fuel spent, levels razed, 1 when the
 	 * colony is gone}. Once it is gone nothing else on it is touched. A hive
@@ -3703,7 +3716,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		ThreatRazing.markSaturated(market, days);
 		float madeUp = elapsed ? madeUpDays(market, days) : 0f;
 		boolean touched = bombardStructures(market, saturationTargets(market), rate, days, madeUp);
-		raiseUnrest(market, Math.round(Math.max(0f, ThreatIncConfig.bombardUnrestMax())), reason);
+		raiseUnrest(market, tacticalUnrest(market), reason); // what it broke, as tactical (user, 2026-10-13)
 		int[] razed = ThreatRazing.pour(market, pour * through, razerFactionId);
 		out[2] = razed[0];
 		out[3] = razed[1];
@@ -3765,7 +3778,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 					* Math.max(0f, ThreatIncConfig.shieldSoakMult()) / theatre.wearDays());
 		}
 		float unrestMax = Math.max(0f, ThreatIncConfig.bombardUnrestMax());
-		int unrest = saturation ? Math.round(unrestMax) : Math.round(unrestMax * (1f - day.conditionAfter));
+		int unrest = Math.round(unrestMax * (1f - day.conditionAfter)); // both kinds, since 2026-10-13
 		day.unrest = unrest > RecentUnrest.getPenalty(market) ? unrest : 0;
 		return day;
 	}
@@ -4434,7 +4447,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	public static float fabricateCost(float fp, MarketAPI market, float days) {
 		if (market == null || fp <= 0f || days <= 0f) return 0f;
 		float defence = Math.max(0f, MarketCMD.getDefenderStr(market, true));
-		return Math.max(0f, ThreatIncConfig.bombardReturnFirePerGunDefence()) * days
+		return returnFireConstant(market) * days
 				* defence * Theatre.of(market).intactBatteryShare(market);
 	}
 
@@ -4464,7 +4477,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * the landing's with fabricateDefendEnabled off).
 	 */
 	public static float defendWorth(String factionId, MarketAPI market) {
-		if (!Factions.THREAT.equals(factionId)) return Math.max(0f, ThreatIncConfig.bombardFPWorth());
+		if (!Factions.THREAT.equals(factionId)) return bombardWorth(market);
 		GroundFront front = market != null ? getFront(market.getId()) : null;
 		if (front == null || !factionId.equals(ownerOf(front)) || frontCanHold(front, market)
 				|| !ThreatIncConfig.fabricateDefendEnabled()) return swarmWorth();

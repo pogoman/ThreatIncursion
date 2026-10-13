@@ -7216,6 +7216,48 @@ public class ThreatColonyManager {
 		}
 	}
 
+	/**
+	 * Per frame beside the garrison leash (IncursionManager.advance): a
+	 * reinforcement inside its target's system, beyond ORBIT_HOLD_RANGE of the
+	 * world and in no live battle, is walked back blinkered on a
+	 * GO_TO_LOCATION, the aggressive orbit queued behind it. The engaged
+	 * arrival (engageOnArrival) is the case: aggressive with its blinders off,
+	 * vanilla's pursuit AI overrode its orbit order and took it across the
+	 * system after whatever it fought - 2026-10-13, Delta Mengryla I: three
+	 * swarms of 184 / 368 / 293 FP stood 13-15,000 units out and drifting,
+	 * the military options counting them inbound for up to the 90 overdue
+	 * days. A blinkered traveller already bound for the planet is left alone;
+	 * the engaged and unfought marks clear so the poll re-engages it on return.
+	 */
+	public static void enforceReinforcementLeash() {
+		for (CampaignFleetAPI fleet : new ArrayList<CampaignFleetAPI>(ThreatIncData.reinforcementFleets().values())) {
+			if (fleet == null || !fleet.isAlive() || fleet.isExpired()) continue;
+			com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+			String targetId = mem.getString(REINFORCE_TARGET_KEY);
+			MarketAPI target = targetId != null ? ThreatIncData.resolveColonyMarket(targetId) : null;
+			if (target == null || target.getPrimaryEntity() == null) continue;
+			SectorEntityToken planet = target.getPrimaryEntity();
+			if (fleet.getContainingLocation() != planet.getContainingLocation()) continue;
+			float dist = Misc.getDistance(fleet, planet);
+			if (dist <= ThreatFleetOrders.ORBIT_HOLD_RANGE) continue;
+			if (fleet.getBattle() != null && !fleet.getBattle().isDone()) continue;
+			com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI curr = fleet.getCurrentAssignment();
+			if (curr != null && curr.getTarget() == planet
+					&& curr.getAssignment() == FleetAssignment.GO_TO_LOCATION) continue;
+			mem.unset(REINFORCE_ENGAGED_KEY);
+			mem.unset(UNFOUGHT_KEY);
+			mem.set(com.fs.starfarer.api.impl.campaign.ids.MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
+			mem.unset(com.fs.starfarer.api.impl.campaign.ids.MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
+			ThreatFleetComposer.beltGuard(fleet);
+			ThreatIncConfig.log("Reinforcement strayed from " + target.getName() + ": " + fleet.getName() + " ("
+					+ (int) fleet.getFleetPoints() + " FP) " + (int) dist + " units out (was: "
+					+ ThreatFleetOrders.describe(curr) + ") - recalled");
+			fleet.clearAssignments();
+			fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, planet, 30f, "reinforcing the hive");
+			fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
+		}
+	}
+
 	public static int countLiveGarrison(String marketId) {
 		int count = 0;
 		for (CampaignFleetAPI curr : ThreatIncData.garrisonsFor(marketId)) {
