@@ -4650,6 +4650,8 @@ public class ThreatColonyManager {
 				if (ownAvailableForLaunch(market) == 0) splitLaunchSwarm(market, fleets, random);
 				continue;
 			}
+			// no navy built above the patrols while its upkeep went unpaid in the last month (navyUnpaidRecently)
+			if (navyUnpaidRecently(market) && garrisonFP(fleets) >= ThreatPosture.minimumFP(market)) continue;
 			// (2026-10-06: the garrison is vanilla's patrols - the Nexus's table,
 			// shrinking with the market's shortages as a human world's does - and
 			// pays no supplies; one evening charged it and gated its growth on the
@@ -5402,8 +5404,9 @@ public class ThreatColonyManager {
 		float want = perMonth * days / 30f;
 		// a commitment pays from the whole stock, the planner's reserve included (hw61b: drawn on free, 30 swarms
 		// were lost to unpaid upkeep for a forge's 5k; the reserve bites sustenance, growth, foundings and new trips)
-		// - less the colonies' sustenance due (hold, ThreatColonyUpkeep.sustenanceDue), which is paid before it
-		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold));
+		// - less the colonies' sustenance due (hold, ThreatColonyUpkeep.sustenanceDue), which is paid before it,
+		// and while a seeding is held the reserve and its kit (ThreatFuel.keptAhead, K2 2026-10-13)
+		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold - ThreatFuel.keptAhead(false)));
 		ThreatFuel.pay(Commodities.SUPPLIES, paid, "away");
 		float unpaid = want - paid;
 		Map<String, Object> owedMap = ThreatIncData.map(KEY_SUPPLIES_OWED);
@@ -5426,6 +5429,19 @@ public class ThreatColonyManager {
 
 	/** Persistent: market id -> supplies its navy above the patrols owes (payNavySupplies). */
 	public static final String KEY_NAVY_OWED = "threatinc_hiveNavyOwed";
+	/** Persistent: market id -> timestamp its navy's upkeep last went unpaid (payNavySupplies, navyUnpaidRecently). */
+	public static final String KEY_NAVY_UNPAID_DAY = "threatinc_hiveNavyUnpaidDay";
+
+	/**
+	 * Whether the colony's navy upkeep went unpaid in the last month: its garrison builder builds no navy above the
+	 * patrols (maintainColonyGarrisons; Fable's review of hw180, 2026-10-13 - the builder rebuilt what the unpaid
+	 * upkeep starved, 718 swarms fabricated for 514 lost, the hw79a churn).
+	 */
+	public static boolean navyUnpaidRecently(MarketAPI market) {
+		if (!ThreatIncConfig.unpaidNavyHoldsBuilder()) return false;
+		Object ts = ThreatIncData.map(KEY_NAVY_UNPAID_DAY).get(market.getId());
+		return ts instanceof Long && Global.getSector().getClock().getElapsedDaysSince((Long) ts) < 30f;
+	}
 
 	/** The colony's garrison FP above its patrols (ThreatPosture.minimumFP): its launch stock and spare, the hive's built navy. */
 	public static float navyFP(MarketAPI market, List<CampaignFleetAPI> fleets) {
@@ -5448,8 +5464,17 @@ public class ThreatColonyManager {
 		if (days <= 0f || rate <= 0f || navy <= 0f) return;
 		String id = market.getId();
 		float want = navy * rate * days / 30f;
-		// a commitment: the whole stock less the colonies' sustenance due (paySupplies)
-		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold));
+		// a commitment: the whole stock less the colonies' sustenance due (paySupplies), and the kit and the
+		// cheapest prong's trip the navy leaves (ThreatFuel.keptAhead, K2 2026-10-13)
+		float kept = ThreatFuel.keptAhead(true);
+		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock(Commodities.SUPPLIES) - hold - kept));
+		if (kept > 0f && paid < want) {
+			// one line for the whole navy (hw180: the hive's name in it changed the wording each call, 17-25k lines a game)
+			ThreatIncConfig.logQuiet("keptahead", "Upkeep: the navy leaves " + (int) kept + " supplies in the stock for "
+					+ (ThreatFuel.heldOnSuppliesThisMonth() > 0f ? "a founding kit" : "") + (ThreatFuel.heldOnSuppliesThisMonth() > 0f
+					&& ThreatOffensive.tripShort() > 0f ? " and " : "") + (ThreatOffensive.tripShort() > 0f ? "a prong's trip ("
+					+ (int) ThreatOffensive.tripShort() + ")" : "") + " - the hives it leaves unpaid recycle their smallest swarms");
+		}
 		ThreatFuel.pay(Commodities.SUPPLIES, paid, "navy");
 		UpkeepLog log = upkeepLog(id);
 		log.navyWanted += want;
@@ -5462,8 +5487,13 @@ public class ThreatColonyManager {
 		}
 		ThreatFuel.noteDemand(Commodities.SUPPLIES, unpaid);
 		if (!ThreatFuel.planned()) ThreatFuel.noteShort(Commodities.SUPPLIES);
+		ThreatIncData.map(KEY_NAVY_UNPAID_DAY).put(id, Global.getSector().getClock().getTimestamp());
 		Object had = owedMap.get(id);
 		float owed = (had instanceof Float ? (Float) had : 0f) + unpaid;
+		// upkeep the stock keeps ahead for the kit or a prong's trip is not supplies the hive lacks: the swarm is recycled
+		// into the bank, not lost (hw180a lost 514 swarms, 61.6k FP, to it)
+		boolean recycle = kept > 0f && ThreatIncConfig.unpaidNavyHoldsBuilder();
+		float share = ThreatReturns.hullShare();
 		int budget = fleets.size();
 		for (int i = 0; i < budget; i++) {
 			CampaignFleetAPI victim = smallestOnStation(fleets);
@@ -5473,6 +5503,15 @@ public class ThreatColonyManager {
 			owed -= fp * rate;
 			fleets.remove(victim);
 			victim.despawn();
+			if (recycle) {
+				creditFP(market, fp * share);
+				log.recycled++;
+				log.recycledFP += fp;
+				ThreatIncConfig.log("Upkeep: " + market.getName() + " recycled a " + (int) fp + " FP swarm into the bank ("
+						+ (int) (fp * share) + " FP back) for " + (int) (fp * rate) + " supplies of navy upkeep the stock keeps ahead ("
+						+ (int) owed + " still owed, " + fleets.size() + " on station)");
+				continue;
+			}
 			log.starved++;
 			log.starvedFP += fp;
 			ThreatIncConfig.log("Upkeep: " + market.getName() + " lost a " + (int) fp + " FP swarm for " + (int) (fp * rate)

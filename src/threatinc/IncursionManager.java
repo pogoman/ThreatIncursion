@@ -5405,8 +5405,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// the war's first strike waits until the fund holds strikeStagedOpenFP (a trial of 2026-10-06, hw27:
 		// does the swarm win on the size of its strikes or on the growth before the war opens?). Attacked
 		// first means open now (the user, 2026-10-10): once an NPC faction has mobilised or struck at the hive
-		// (ThreatAlarm.npcAlarm) the bar no longer holds
-		if (funded && !playerTarget && Float.isNaN(bankLimit) && openingWaits() && bank < ThreatIncConfig.strikeStagedOpenFP()) {
+		// (ThreatAlarm.npcAlarm) the bar no longer holds. A prong of a priced campaign (pricedFP set, ThreatOffensive
+		// pass and poll) met the bar when the campaign was priced: the fund it reads now is net of its siblings'
+		// held bills (hw175b: 6 prongs priced on a ~50k fund, the bar then read 9k / 17k / 26k / 34k and refused four)
+		if (funded && !playerTarget && Float.isNaN(bankLimit) && pricedFP >= Float.MAX_VALUE && openingWaits()
+				&& bank < ThreatIncConfig.strikeStagedOpenFP()) {
 			if (defOut != null) ThreatIncConfig.logQuiet("strikeopen", "Staged strike waits to open the war: the strike fund holds "
 					+ (int) bank + " of " + (int) ThreatIncConfig.strikeStagedOpenFP() + " FP");
 			return null;
@@ -5473,10 +5476,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			plan.bankFP += est;
 			plan.built++;
 		}
-		if (why == null && !pricing && !ThreatFuel.canPay(ThreatFuel.passage(plan.fp, ly, true))) {
-			why = "the fuel stock does not pay the passage of " + (int) plan.fp + " FP over " + (int) ly + " ly";
+		// a prong of a priced campaign is gated at the size priced: that passage came back to the stock on its day
+		// (ThreatOffensive.poll), the day's overshoot past it is the launch's to pay from what the stock holds
+		// (hw177b: priced 8,019, planned 8,484 on its day, refused short by 118 fuel)
+		float gateFP = Math.min(plan.fp, pricedFP);
+		if (why == null && !pricing && !ThreatFuel.canPay(ThreatFuel.passage(gateFP, ly, true))) {
+			why = "the fuel stock does not pay the passage of " + (int) gateFP + " FP over " + (int) ly + " ly";
 			if (defOut != null && ThreatIncConfig.strikeWaitBooksFuel()) {
-				ThreatFuel.heldShort("strike from " + staging.getName(), ThreatFuel.passage(plan.fp, ly, true));
+				ThreatFuel.heldShort("strike from " + staging.getName(), ThreatFuel.passage(gateFP, ly, true));
 			}
 		}
 		if (why == null && !pricing && !ThreatReach.canSustain(ThreatReach.awayFP(plan.fp, plan.spareFP), daysAway)) {

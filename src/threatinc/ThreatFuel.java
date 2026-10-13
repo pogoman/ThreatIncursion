@@ -126,6 +126,27 @@ public class ThreatFuel {
 		return Math.max(0f, stock(commodityId) - reserved(commodityId));
 	}
 
+	/**
+	 * K2, THE KIT AND A PRONG'S TRIP KEPT AHEAD OF THE FLEETS (the user, 2026-10-13, after hw177c: 47-49 hives
+	 * for 900 days, 49 seedings held on 347k fuel, the offensive "out on the supplies away (0 free)" with the fund
+	 * at 55-72k - the month's 101k of supplies went feed 40k, navy 32.6k, away 24.5k, found 0): supplies the
+	 * navy's upkeep and the fleets away leave in the stock, above the sustenance due their caller already holds.
+	 * While a seeding is held on supplies, both leave the planner's reserve and one founding kit, so free() can
+	 * pay the kit (canFound); the navy also leaves the stock the cheapest prong is short of its trip
+	 * (ThreatOffensive.tripShort), so freeStock() can keep it. What the commitments then cannot pay is unpaid
+	 * as before: the navy loses its smallest swarms, the fleets away turn home. Capped at a month's production;
+	 * 0 with threatinc_keepAheadOfFleets off.
+	 */
+	public static float keptAhead(boolean navy) {
+		if (!ThreatIncConfig.keepAheadOfFleets() || !planned()) return 0f;
+		boolean kit = heldOnSuppliesThisMonth() > 0f;
+		float trip = navy ? ThreatOffensive.tripShort() : 0f;
+		if (!kit && trip <= 0f) return 0f;
+		// the prong's trip is read by freeStock above the reserve and a kit, whether a seeding is held or not
+		float kept = reserved(Commodities.SUPPLIES) + foundingCost()[0] + trip;
+		return Math.min(kept, Math.max(0f, perMonth(Commodities.SUPPLIES)));
+	}
+
 	/** Reserves {@code supplies} for the producer the market waits to build; 0 or less releases it. */
 	public static void reserve(String marketId, float supplies) {
 		if (marketId == null) return;
@@ -299,7 +320,7 @@ public class ThreatFuel {
 		// is founded the supplies surplus does not pay - the kits' supplies feed the fleets (hw62: 110-173
 		// seedings a game while the fund banked 38k -> 141k FP unspent)
 		boolean supplies = cost[0] <= 0f || (free(Commodities.SUPPLIES) >= cost[0]
-				&& (!ThreatStance.chestFull() || surplus(Commodities.SUPPLIES)));
+				&& (!ThreatStance.chestFull() || surplus(Commodities.SUPPLIES, ThreatIncConfig.foundingSurplusOwnBookings())));
 		if (!supplies) UNMET.put(Commodities.SUPPLIES, cost[0]);
 		boolean fuel = canPay(Commodities.FUEL, cost[1] + passageFuel);
 		return supplies && fuel;
@@ -421,6 +442,7 @@ public class ThreatFuel {
 		float tau = buildDays(commodityId);
 		float k = (float) Math.exp(-days / tau);
 		d.put("demand_" + commodityId, num("demand_" + commodityId) * k);
+		d.put("heldFound_" + commodityId, num("heldFound_" + commodityId) * k);
 		d.put("demandDays_" + commodityId, num("demandDays_" + commodityId) * k + tau * (1f - k));
 	}
 
@@ -436,7 +458,17 @@ public class ThreatFuel {
 
 	/** The trailing demand on the stock a month: spent, and held for lack of it, over the last buildDays. */
 	public static float demandPerMonth(String commodityId) {
+		return demandPerMonth(commodityId, false);
+	}
+
+	/**
+	 * demandPerMonth, less the held Seeding Swarms' own founding bookings when {@code lessFoundings} (held,
+	 * the founding's surplus test: K4, 2026-10-13 - hw177c's held seedings booked 182k a month against 101k
+	 * made, so the surplus a founding waits on never came).
+	 */
+	public static float demandPerMonth(String commodityId, boolean lessFoundings) {
 		float a = num("demand_" + commodityId), b = num("demandDays_" + commodityId);
+		if (lessFoundings) a = Math.max(0f, a - num("heldFound_" + commodityId));
 		Object at = data().get("demandAt_" + commodityId);
 		if (at instanceof Long) {
 			float days = Global.getSector().getClock().getElapsedDaysSince((Long) at);
@@ -530,8 +562,13 @@ public class ThreatFuel {
 	 * (surplusProducer).
 	 */
 	public static boolean surplus(String commodityId) {
+		return surplus(commodityId, false);
+	}
+
+	/** surplus, read against the demand less the held foundings' own bookings when {@code lessFoundings} (canFound, K4). */
+	public static boolean surplus(String commodityId, boolean lessFoundings) {
 		if (!planned() || !observed(commodityId, buildDays(commodityId))) return false;
-		float demand = demandPerMonth(commodityId);
+		float demand = demandPerMonth(commodityId, lessFoundings);
 		return perMonth(commodityId) >= demand && stock(commodityId) >= demand * buildDays(commodityId) / 30f;
 	}
 
@@ -641,7 +678,11 @@ public class ThreatFuel {
 		if (fuel != null) add(HELD_FUEL, 1f);
 		if (bookHold(what)) {
 			if (fuel != null) noteDemand(Commodities.FUEL, fuel);
-			if (wave && supplies != null) noteDemand(Commodities.SUPPLIES, supplies);
+			if (wave && supplies != null) {
+				noteDemand(Commodities.SUPPLIES, supplies);
+				// tallied apart too, for the founding's own surplus test (demandPerMonth's lessFoundings, K4)
+				data().put("heldFound_" + Commodities.SUPPLIES, num("heldFound_" + Commodities.SUPPLIES) + supplies);
+			}
 			// a strike books the shortfall alone, as heldShort books its fuel
 			// (2026-10-06, hw36a: its supplies were never booked, so the planner
 			// never saw the strike the garrison's upkeep starved)

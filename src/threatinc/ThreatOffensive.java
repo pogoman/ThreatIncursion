@@ -148,10 +148,28 @@ public class ThreatOffensive {
 		Global.getSector().getPersistentData().put(KEY_CHEAPEST, cost);
 	}
 
+	protected static final String KEY_TRIP_SHORT = "threatinc_offensiveTripShort";
+
+	/**
+	 * The supplies in stock the cheapest prong the fund and the fuel could send lacks for its trip beyond what the
+	 * flow pays over it, when no prong passes the supplies away (the last pass); 0 when one does or none is priced.
+	 * The navy's upkeep leaves it in the stock (ThreatFuel.keptAhead, K2 2026-10-13: hw177c's offensive read "out on
+	 * the supplies away (0 free)" for 11 passes with the fund at 55-72k).
+	 */
+	public static float tripShort() {
+		Object v = Global.getSector().getPersistentData().get(KEY_TRIP_SHORT);
+		return v instanceof Float ? (Float) v : 0f;
+	}
+
+	protected static void setTripShort(float supplies) {
+		Global.getSector().getPersistentData().put(KEY_TRIP_SHORT, Math.max(0f, supplies));
+	}
+
 	/** The monthly pass: relief strikes at once, then the campaign - saved for, or launched whole. */
 	public static void pass(IncursionManager im) {
 		float day = ThreatPosture.today();
 		setCheapestProngCost(0f);
+		setTripShort(0f);
 		Map<String, MarketAPI> stagings = new HashMap<String, MarketAPI>();
 		Map<String, StarSystemAPI> sources = new HashMap<String, StarSystemAPI>();
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
@@ -371,14 +389,23 @@ public class ThreatOffensive {
 		// a fund that fields nothing is poor, not full - the user's rule after hw70). And worth fielding: a prong
 		// under a month's saving is not what the fund saves for (hw152c, 2026-10-11: prongs of 15 and 31 FP read a
 		// 90k fund full twice and re-gated the foundings for the month)
-		float cheapest = 0f;
+		float cheapest = 0f, shortCost = 0f, shortStock = 0f;
 		for (Prong p : prongs) {
 			if (p.cost <= 0f || p.cost < perMonth || p.fuel > fuelStock) continue;
 			float need = p.supplies();
-			if (need > 0f && need > suppliesStock + suppliesFlow * Math.max(1f, p.days) / 30f) continue;
+			float flowPays = suppliesFlow * Math.max(1f, p.days) / 30f;
+			if (need > 0f && need > suppliesStock + flowPays) {
+				// out on the supplies alone: the stock the cheapest such lacks is what the navy leaves (K2, tripShort)
+				if (shortCost <= 0f || p.cost < shortCost) {
+					shortCost = p.cost;
+					shortStock = Math.max(0f, need - Math.max(0f, flowPays));
+				}
+				continue;
+			}
 			if (cheapest <= 0f || p.cost < cheapest) cheapest = p.cost;
 		}
 		setCheapestProngCost(cheapest);
+		setTripShort(cheapest > 0f ? 0f : shortStock);
 		float supplies = 0f, suppliesShort = 0f;
 		Prong firstOut = null;
 		String firstWhy = null;

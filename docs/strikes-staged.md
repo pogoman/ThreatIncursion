@@ -24,7 +24,9 @@ stay home and nothing is recalled.
   only when struck (`mobiliseAtPhase` 0), so the waiver fires only with `mobiliseAtPhase` set or a
   Nexerelin invasion of a hive. `ThreatOffensive.pass` prices no NPC prong while the
   bar holds: a prong priced with `bankLimit` skips the bar, was refused on its day monthly, and its held
-  bill read the bar 8k high (hw143b).
+  bill read the bar 8k high (hw143b). Once priced, the campaign's prongs skip the bar (`pricedFP` set
+  while each launches, in the pass and in `ThreatOffensive.poll`): the fund they would read is net of
+  their siblings' held bills (hw175b: six prongs priced on ~50k, the bar refused four, 2026-10-13).
   **The player is outside the opening** (the user, 2026-10-11: "the threat should respect its opening
   threshold for the core worlds, but not for the player ... a fledgling adversary" whose mobilisation
   wakes no navy): neither floor nor bar applies to a player world - open at every phase (`warOpen`),

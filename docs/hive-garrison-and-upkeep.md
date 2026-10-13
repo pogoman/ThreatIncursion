@@ -234,6 +234,30 @@ the whole sector, evaluated at the end of every posture pass (`ThreatPosture.pol
     the supplies surplus does not pay (`ThreatFuel.canFound`). State: `threatinc_stance`[10]. Log:
     `Stance: the chest is full|spent - N of M FP a horizon; the fleets are fed before|after expansion`;
     every stance line carries `chest N of M FP a horizon (full)`.
+  - **K2, the kit and a prong's trip kept ahead of the fleets (the user, 2026-10-13, after hw177c; built,
+    untested):** the navy's upkeep (`ThreatColonyManager.payNavySupplies`) and the fleets away
+    (`paySupplies`) are commitments that draw the whole stock past the planner's reserve (hw61b). In hw177c
+    they drew it all - 101k made, feed 40k / navy 32.6k / away 24.5k / found 0 - so the chest read spent
+    most of the stall with no free supplies: neither a kit (`ThreatFuel.canFound` asks `free` >= the kit)
+    nor a prong's trip (`ThreatReach.freeStock`) was ever there, 49 seedings held, the fund idle at 55-72k.
+    Now both leave `ThreatFuel.keptAhead` in the stock above the sustenance due: while a seeding is held on
+    supplies this month, the planner's reserve plus one founding kit; the navy also, when no priced prong
+    passes the supplies away, the stock the cheapest of them lacks beyond the flow over its trip
+    (`ThreatOffensive.tripShort`, recorded by the pass). Capped at a month's production. What they then cannot
+    pay is unpaid - the fleets away turn home, and the navy RECYCLES its smallest swarms into the bank (hullShare
+    back; `Upkeep: X recycled a N FP swarm into the bank ... navy upkeep the stock keeps ahead`) where hw180 lost
+    them (514 / 341 / 537 swarms, 39-75k FP). A hive whose navy upkeep went unpaid in the last month builds no navy
+    above its patrols (`ThreatColonyManager.navyUnpaidRecently`, read in `maintainColonyGarrisons`; Fable's review
+    of hw180: the builder rebuilt what the unpaid upkeep starved, 718 swarms fabricated for 514 lost, the hw79a
+    churn); knob `threatinc_unpaidNavyHoldsBuilder` (true) for both. The navy fit's want stays one kit a month (the
+    user). Knob `threatinc_keepAheadOfFleets` (true). Log, once a month: `Upkeep: the navy leaves N supplies in the
+    stock for a founding kit and a prong's trip (T) - the hives it leaves unpaid recycle their smallest swarms`.
+  - **K4, the held foundings' own bookings out of the founding's surplus test (2026-10-13, built with the
+    above):** a held Seeding Swarm books its kit as supplies demand (`ThreatFuel.held`), so held seedings read
+    as demand the surplus never meets (hw177c 182k a month vs 101k made) and `canFound`'s chest-full arm
+    (`surplus(SUPPLIES)`) locked itself. The bookings are also tallied apart (`heldFound_supplies`, decayed with
+    the demand), and `canFound` reads `surplus(SUPPLIES, true)` = the demand less that tally. The planner
+    (`runsDry`, `surplusProducer`) still reads the whole demand. Knob `threatinc_foundingSurplusOwnBookings` (true).
   - A stance holds `stanceDwellDays` before it changes; entering CONSOLIDATE never waits.
 - **Strength per rival:** the hive's held FP in the hive systems facing that rival (systems it stages
   against, attacks or guards forward bases facing, plus systems within fuel reach of a known world of
