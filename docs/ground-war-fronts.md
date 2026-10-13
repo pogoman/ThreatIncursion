@@ -307,6 +307,17 @@ marines the figure counts.
   engaged reinforcements drawn 13-15,000 su off locked the menu for weeks) - farther out a fleet is
   not in the fight, counts for nothing and the text says so; every defender busy in a battle - raid open, bombardment closed
   (vanilla's distraction rule); none - vanilla's result stands, raid cooldown included.
+  Whether raid and bombardment CLOSE is then the navy's own question asked the navy's own
+  way - `ThreatGroundFronts.orbitContestedFor(player)`, the call `ThreatPurgeFGI.SiegeRaidAction.orbitHeld`
+  makes: armed swarm fleets within `ORBIT_HOLD_RANGE` 1,500 su weigh at least
+  `orbitContestFraction` 0.5 of the player faction's warships there, the player's own fleet and
+  the navy's fleets alike. Held: raid and bombardment closed. Not held: vanilla's own verdict
+  stands, raid cooldown included, defenders busy or not, and the text adds "Your side holds
+  the orbit: N fleet points against the swarm's M". The user's rule (2026-10-13): if the AI
+  navy can bombard, the player can. (Delta Mengryla I again that evening: two Defense Swarm
+  scraps of 7 and 12 FP, kept 1,200-3,000 su off by six navy fleets and never arriving, locked
+  raid and bombardment while those fleets bombarded from the board). The log line now ends
+  `- swarm X FP vs ours Y at the orbit: held/not held`.
   `getInteractionTargetForFIDPI` is overridden to the same list (nearest free fleet in reach,
   else nearest busy one), so vanilla's draw and its Engage click agree; `engage()` keeps its
   backstop. Vanilla's defender text is suppressed for hives and replaced by one line (fleets

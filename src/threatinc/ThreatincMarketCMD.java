@@ -213,9 +213,15 @@ public class ThreatincMarketCMD extends MarketCMD {
 	 * fleet-AI reading of them. A free defender in reach: Engage open, raid
 	 * and bombardment closed (and with them the ground landing, which reads
 	 * temp.canRaid). Defenders alive but none in reach yet: everything closed
-	 * until they arrive. Every defender busy in a battle: vanilla's rule - a
-	 * raid rides the distraction, a bombardment waits. None: Engage closed,
-	 * raid and bombardment on vanilla's own verdict, raid cooldown included.
+	 * until they arrive. But whether they CLOSE raid and bombardment is the
+	 * navy's own question, asked the navy's own way (2026-10-13 evening, the
+	 * user: "if my AI navy can bombard, I should be able to as well"):
+	 * ThreatGroundFronts.orbitContestedFor(player) - armed swarm fleets within
+	 * ORBIT_HOLD_RANGE weigh orbitContestFraction of the player faction's
+	 * warships there, the player's own fleet and the navy alike. Held: raid and
+	 * bombardment closed. Not held: vanilla's own verdict stands, raid cooldown
+	 * included, busy or not (two scraps of 7 and 12 FP kept off by six
+	 * bombarding navy fleets had locked the menu at Delta Mengryla I).
 	 * Logs every fleet weighed, so a wrong menu explains itself.
 	 *
 	 * <p>MUST BE CALLED LAST, after every addOption/removeOption on the panel:
@@ -258,8 +264,14 @@ public class ThreatincMarketCMD extends MarketCMD {
 			why.append(" [").append(fleet.getName()).append(" ").append((int) fleet.getFleetPoints())
 					.append(" FP ").append((int) dist).append(" su ").append(state).append("]");
 		}
+		// the navy's gate, verbatim (ThreatPurgeFGI.SiegeRaidAction.orbitHeld)
+		float friendlyFP = ThreatGroundFronts.friendlyPointsNear(Factions.PLAYER, market);
+		float swarmFP = ThreatGroundFronts.hostilePointsNear(Factions.PLAYER, market);
+		boolean held = ThreatGroundFronts.orbitContestedFor(Factions.PLAYER, market);
 		ThreatIncConfig.log("Military options at " + market.getName() + ": near " + near
-				+ ", inbound " + inbound + ", busy " + busy + ", far " + far + why);
+				+ ", inbound " + inbound + ", busy " + busy + ", far " + far + why
+				+ " - swarm " + (int) swarmFP + " FP vs ours " + (int) friendlyFP
+				+ " at the orbit: " + (held ? "held" : "not held"));
 		if (withText) {
 			if (near > 0) {
 				text.addPara("The swarm holds the orbit: %s, %s fleet points.",
@@ -276,6 +288,11 @@ public class ThreatincMarketCMD extends MarketCMD {
 				text.addPara("The swarm's nearest fleet is %s units out: not in the fight.",
 						Misc.getHighlightColor(), Misc.getWithDGS((int) farthest));
 			}
+			if (!held && (near > 0 || inbound > 0 || busy > 0)) {
+				text.addPara("Your side holds the orbit: %s fleet points against the swarm's %s.",
+						Misc.getHighlightColor(), Misc.getWithDGS((int) friendlyFP),
+						Misc.getWithDGS((int) swarmFP));
+			}
 		}
 		if (DebugFlags.MARKET_HOSTILITIES_DEBUG) {
 			options.setEnabled(RAID, true);
@@ -283,11 +300,9 @@ public class ThreatincMarketCMD extends MarketCMD {
 			options.setEnabled(ENGAGE, true);
 			return;
 		}
-		boolean defended = near > 0 || inbound > 0;
+		boolean defended = held;
 		if (defended) {
 			temp.canRaid = false;
-			temp.canBombard = false;
-		} else if (busy > 0) {
 			temp.canBombard = false;
 		}
 		options.setEnabled(RAID, temp.canRaid);
@@ -306,7 +321,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		options.setEnabled(ENGAGE, target != null);
 		if (target != null) {
 			options.setTooltip(ENGAGE, "Engage the swarm fleets holding the orbit.");
-		} else if (inbound > 0) {
+		} else if (inbound > 0 && held) {
 			options.setTooltip(ENGAGE, "The defenders are still "
 					+ Misc.getWithDGS((int) nearest) + " units out.");
 		} else {
