@@ -182,9 +182,24 @@ records what the build decided where the spec left it open. v1 at the bottom is 
   1): "Your forces will be able to organize another bombardment within a day or so." Tactical
   and saturation share the lock. The AI hovering slice already runs once a day; it must follow
   the same x condition rule.
-- **Return fire = 0.008 x the defence the guns add, per day**, where "the guns add" =
+- **Return fire = `bombardReturnFirePerGunDefence` (0.0008 since run 4; was 0.008) x the defence the guns add, per day**, where "the guns add" =
   D x (1 - 1/guns multiplier) (`batteryShare`; order-independent, cannot double-count since
   Heavy Batteries replace Ground Defenses). No Ground Defenses / Heavy Batteries = no loss.
+  Ground Defenses is a gun (x1), kept so on 2026-10-13 (the user, shown the 0.3 a day a size-3 hive
+  with worn, starved Ground Defenses at stability 5 fires). FP a day at stability 10, intact, as
+  built (a colony: base 50 / 100 / 200 / 300 / 400 / 500 at size 3-8; a hive: 400 x size):
+
+  | Size | Colony GD | Colony HB | Colony HB + High Command | Hive GD | Hive HB | Hive HB + Command |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | 3 | 0.04 | 0.08 | 0.10 | 0.96 | 1.92 | 2.50 |
+  | 4 | 0.08 | 0.16 | 0.21 | 1.28 | 2.56 | 3.33 |
+  | 5 | 0.16 | 0.32 | 0.42 | 1.60 | 3.20 | 4.16 |
+  | 6 | 0.24 | 0.48 | 0.62 | 1.92 | 3.84 | 4.99 |
+  | 7 | 0.32 | 0.64 | 0.83 | 2.24 | 4.48 | 5.82 |
+  | 8 | 0.40 | 0.80 | 1.04 | 2.56 | 5.12 | 6.66 |
+
+  Wear and stability both scale it: a size-8 HB + Command hive (D 12,480) fires 6.66 intact, 3.33 at
+  50% condition, 0.67 at 10%, 0 worn out; at stability 5 it fires 4.16, at 0 1.66.
   Replaces `siegeBatteryAttritionPerDay`'s 0.02 x F x D x share/(F+D). Calibrated so a 600 FP
   fleet over size-6 Heavy Batteries loses what it does today.
 - **Fuel = 0.04 per FP per bombardment day**, from the fleet's cargo (AI: its provisions). No
