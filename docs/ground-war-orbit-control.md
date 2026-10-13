@@ -207,7 +207,32 @@ garrison or reinforcement over a hive whose port cannot arm it leaves for the ne
 `REARM_RETURN_KEY`), reloads on arrival and flies back (`rearmAndReturn`, from the reinforcement
 arrivals poll); nowhere to go or no fuel for the trip, it stays dry and is judged again a day later.
 A dry strike or Defend over a human world stands down home as before (`ordnanceAvailable`,
-`orbitDoneFor`). So a blockade that shuts a hive's port starves the swarm's guns over it, as it
+`orbitDoneFor`).
+
+**Guns while the fuel is good, soldiers while it is not** (the user, 2026-10-13, after hw165-hw171: in
+five of 21 random games the holds drained the stock to 0 at +120k a month, founding stopped and the
+humans' landings eradicated the hives - "only take fuel for bombard in the first place if reserves are
+good. Otherwise they can go with no fuel and just reinforce the front right by breaking up ships.
+Conversely a navy that is small but with lots of fuel doesn't break up ships but bombards a lot
+instead"). The stock arms a hold only from what lies above its reserve: `swarmBombardReserveMonths` (1)
+of the hive's monthly fuel income (`ThreatFuel.perMonth`, summed once a day) on top of the founding
+kit (`bombardReserve`; a load cut short says "(reserve N)"). A swarm fleet over its own besieged hive
+that the stock would not arm **breaks up its ships for the ground** instead (`breakUpForHive`, knob
+`threatinc_hiveBreakUpEnabled`, under the fabricate master): what the hive is short to beat the front -
+the front's defence x (1 + `fabricateHoldMargin`) less the hive's counter-attack strength
+(`hiveTroopNeed`) - at `fabricateTroopsPerFP` troops a point, smallest hulls first, the flagship and the
+last hull spared, no battery toll (the ground is its own), into the hive's troops (market memory
+`$threatinc_hiveTroops`, `hiveTroops`). They stand with the garrison proper in the hive's defender and
+counter-attack strength (`Theatre.HIVE`; orbit still fights the fixed defences alone), bleed as a
+colony's marines do (`defenderLossPer30Days` of the engaged frontage at the front's pressure,
+`bleedHiveTroops`) and pay `defenderCounterAttackLossFraction` of the engaged for every counter-attack
+(`hiveTroopsCounterAttackLoss`); what survives the front stays the hive's. Only a fleet the stock WOULD
+arm flies to a port that can hand the ordnance over (`sendToRearm`); a fleet the stock arms bombards and
+keeps its hulls, so a fuel-rich navy never breaks up and a fuel-poor one does. Log: "Swarm breaks up
+over X: <fleet> (N FP) lands T troops against the <owner> front (...); hive troops H, counter-attack C;
+fuel stock S under the reserve R", and the daily held line carries "stock S / reserve R; N FP broke up
+for the ground (T troops)". Built 2026-10-13 07:35, first trial hw172 from hw171a / hw171b / hw167b's
+w2,850 snapshots. So a blockade that shuts a hive's port starves the swarm's guns over it, as it
 starves the hive's. The board's rate (`swarmBombardPer30Days`, `swarmArmedFP`) counts fleets with
 ordnance or a way to get it. `swarmBombardHoldDays` 0 restores the stock paying every day. It needs
 `swarmOrbitMinFleetFP` (50) at the planet to count as holding the orbit at all - a bombardment

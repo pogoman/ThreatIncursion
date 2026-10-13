@@ -491,6 +491,10 @@ public class ThreatIncConfig {
 	public static float swarmBombardFuelPerFPDay() { return f("threatinc_swarmBombardFuelPerFPDay"); }
 	/** Days of ordnance a swarm fleet carries (ThreatGroundFronts.bombardHoldFull), refilled only at a hive whose port arms it (portArms); 0 no hold, the stock pays every day. */
 	public static float swarmBombardHoldDays() { return f("threatinc_swarmBombardHoldDays"); }
+	/** Months of the hive's fuel income the stock keeps before it arms a bombard hold (ThreatGroundFronts.bombardReserve, on top of the founding kit): under it a dry swarm over its besieged hive breaks up for the ground instead; 0 arms from any stock. */
+	public static float swarmBombardReserveMonths() { return f("threatinc_swarmBombardReserveMonths"); }
+	/** Whether a swarm fleet over its own besieged hive that the stock would not arm breaks up its ships into the hive's ground troops (ThreatGroundFronts.breakUpForHive). */
+	public static boolean hiveBreakUpEnabled() { return fabricateEnabled() && b("threatinc_hiveBreakUpEnabled", true); }
 	/** Threat troops a relief force over its invaded world bombards per 30 days while the defenders are losing (ThreatGroundFronts.tickReliefBombard); 0 off. */
 	public static float reliefBombardPer30Days() { return f("threatinc_reliefBombardPer30Days"); }
 	/** Whether a relief force holds its world's orbit until the Threat army there is gone (ThreatFleetOrders.sendRelief); off, guardDays and home. */

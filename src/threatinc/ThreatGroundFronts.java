@@ -323,8 +323,11 @@ public class ThreatGroundFronts {
 	public static final Theatre HIVE = new Theatre() {
 		public float defenderStrength(MarketAPI market) {
 			// hive worlds have no marine logistics, so forBombard changes
-			// nothing for them and the flag stays true for continuity
-			return MarketCMD.getDefenderStr(market, true);
+			// nothing for them and the flag stays true for continuity; the
+			// troops its swarms broke up over it stand with the garrison
+			// (hiveTroops, 2026-10-13) - orbit still fights the fixed defences
+			// alone (siegeSlice reads vanilla's figure)
+			return MarketCMD.getDefenderStr(market, true) + hiveTroops(market);
 		}
 		public float counterAttackStrength(MarketAPI market) {
 			// no marines to hold back: the hive throws its whole body at the
@@ -1646,6 +1649,7 @@ public class ThreatGroundFronts {
 		// reinforcing past the threshold, which is exactly the move this is
 		// meant to charge for. A foothold clinging on still kills a few.
 		bleedDefenders(market, front, elapsedDays);
+		bleedHiveTroops(market, front, elapsedDays); // a hive's landed troops too (2026-10-13)
 		if (front.marines < ThreatIncConfig.frontMinMarines()) {
 			if (threatFront) {
 				ThreatNotice.titled("Threat Landing Destroyed").good()
@@ -2085,15 +2089,26 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// that can (ThreatColonyManager.sendToRearm). With the holds off the stock
 		// pays, and a day it cannot is skipped and said once a day.
 		float armedFP;
+		float brokeFP = 0f;
+		int landed = 0;
 		List<CampaignFleetAPI> armed = new ArrayList<CampaignFleetAPI>();
 		if (holds) {
 			armedFP = 0f;
+			// the stock arms a hold only above its reserve (bombardReserve); a fleet it
+			// would not arm is the hive's ground reinforcement instead (breakUpForHive -
+			// the user, 2026-10-13), and only a fleet the stock WOULD arm flies to a port
+			// that can hand it over (sendToRearm)
+			boolean stockArms = ThreatFuel.stock() > bombardReserve();
 			for (CampaignFleetAPI f : swarmFleetsNear(market)) {
 				if (reloadBombardHold(f, "over " + market.getName()) > 0f) {
 					armed.add(f);
 					armedFP += f.getFleetPoints();
-				} else {
+				} else if (stockArms && nearestArmingHive(market) != null) {
 					ThreatColonyManager.sendToRearm(f, market);
+				} else {
+					float[] broke = breakUpForHive(front, market, f);
+					brokeFP += broke[0];
+					landed += (int) broke[1];
 				}
 			}
 		} else {
@@ -2112,7 +2127,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				if (!holds) ThreatFuel.held("the swarm's bombardment over " + market.getName());
 				ThreatIncConfig.log("Swarm bombardment over " + market.getName() + " held: " + (holds
 						? "no ordnance aboard (" + (int) swarmOrbitStrength(market) + " FP over the orbit, port "
-								+ (portArms(market) ? "arms" : "cannot arm") + ")"
+								+ (portArms(market) ? "arms" : "cannot arm") + ", stock " + (int) ThreatFuel.stock()
+								+ " / reserve " + (int) bombardReserve() + ")"
+								+ (brokeFP > 0f ? "; " + (int) brokeFP + " FP broke up for the ground (" + landed + " troops)" : "")
 						: "no fuel for " + (int) armedFP + " FP (" + Math.round(fuel / Math.max(0.01f, elapsedDays)) + " a day)"));
 			}
 			market.getMemoryWithoutUpdate().set(SWARM_DRY_KEY, dry, 10f);
@@ -2571,6 +2588,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// could throw its garrison at a beachhead every cadence forever.
 		float defLost = ThreatReserves.spendDefendingMarines(market,
 				counterAttackDefenderLoss(front, market));
+		// a hive's landed troops pay the attempt the same way (2026-10-13)
+		defLost += hiveTroopsCounterAttackLoss(market, front);
 		ThreatReserves.addMarineXp(market, colonyGain);
 		front.xp = ThreatMarineXP.addXp(front.xp, frontGain, front.marines);
 
@@ -3867,7 +3886,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		mem.set(MEM_BOMBARD_HOLD, have + paid);
 		ThreatIncConfig.log("Swarm " + (first ? "sails armed" : "rearms at " + at.getName()) + ": " + fleet.getName()
 				+ " (" + (int) fleet.getFleetPoints() + " FP) loads " + (int) paid + " fuel of ordnance"
-				+ (paid < want ? ", stock short " + (int) (want - paid) + (reserve > 0f ? " (founding reserve " + (int) reserve + ")" : "") : "")
+				+ (paid < want ? ", stock short " + (int) (want - paid) + (reserve > 0f ? " (reserve " + (int) reserve + ")" : "") : "")
 				+ (why != null ? " - " + why : ""));
 		return have + paid;
 	}
@@ -3881,7 +3900,103 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * (ThreatColonyUpkeep), applied to the fuel the ordnance competes for.
 	 */
 	public static float bombardReserve() {
-		return ThreatIncConfig.foundingBudget() && ThreatFuel.heldOnFuelThisMonth() > 0f ? ThreatFuel.foundingCost()[1] : 0f;
+		float kit = ThreatIncConfig.foundingBudget() && ThreatFuel.heldOnFuelThisMonth() > 0f ? ThreatFuel.foundingCost()[1] : 0f;
+		// AND A WORKING RESERVE (the user, 2026-10-13, after hw165-hw171: in five of 21 games the holds
+		// drained the stock to 0 at +120k a month and the founding stopped - "only take fuel for bombard
+		// in the first place if reserves are good"): swarmBombardReserveMonths of the hive's fuel income
+		// stay in the stock; a hold loads only from what lies above. The income is summed once a day.
+		float months = Math.max(0f, ThreatIncConfig.swarmBombardReserveMonths());
+		if (months <= 0f) return kit;
+		float day = ThreatPosture.today();
+		if (reserveIncomeDay != day) {
+			reserveIncomeDay = day;
+			reserveIncome = Math.max(0f, ThreatFuel.perMonth());
+		}
+		return kit + months * reserveIncome;
+	}
+
+	private static float reserveIncomeDay = -1f, reserveIncome = 0f;
+
+	/** Market memory: troops the swarm has landed on its own hive from ships broken up over it (hiveTroops). */
+	public static final String HIVE_TROOPS_KEY = "$threatinc_hiveTroops";
+
+	/** The bioforms a hive fields on the ground from ships broken up over it (breakUpForHive): they hold and counter-attack with the garrison proper (Theatre.HIVE) and bleed like a colony's marines (bleedHiveTroops). */
+	public static float hiveTroops(MarketAPI market) {
+		return market == null ? 0f : Math.max(0f, market.getMemoryWithoutUpdate().getFloat(HIVE_TROOPS_KEY));
+	}
+
+	protected static void setHiveTroops(MarketAPI market, float troops) {
+		if (market == null) return;
+		if (troops > 0.5f) market.getMemoryWithoutUpdate().set(HIVE_TROOPS_KEY, troops);
+		else market.getMemoryWithoutUpdate().unset(HIVE_TROOPS_KEY);
+	}
+
+	/** The troops that would let the hive's counter-attack beat the enemy front, with fabricateHoldMargin of daylight; 0 when it already does. */
+	public static float hiveTroopNeed(GroundFront front, MarketAPI market) {
+		if (front == null || market == null || !isHiveTarget(market) || isThreatOwned(front)) return 0f;
+		float want = defenseStrength(front) * (1f + Math.max(0f, ThreatIncConfig.fabricateHoldMargin()));
+		return Math.max(0f, want - counterAttackStrength(market));
+	}
+
+	/**
+	 * SHIPS INTO SOLDIERS OVER A HIVE (the user, 2026-10-13, after hw165-hw171, where five of 21 games fell
+	 * to the bombardment draining the fuel stock to 0: "only take fuel for bombard in the first place if
+	 * reserves are good. Otherwise they can go with no fuel and just reinforce the front right by breaking
+	 * up ships. Conversely a navy that is small but with lots of fuel doesn't break up ships but bombards a
+	 * lot instead"). A swarm fleet over its own hive with an enemy front on it and no ordnance aboard - the
+	 * stock under its reserve would not arm it (bombardReserve) - breaks up what the hive is short to beat
+	 * the front (hiveTroopNeed) at fabricateTroopsPerFP, smallest hulls first, the flagship and the last
+	 * hull spared (applyFleetLosses on the fabrication bank), into the hive's ground troops (hiveTroops).
+	 * No battery toll: the ground is its own. A fleet the stock arms bombards and keeps its hulls. Returns
+	 * {fleet points broken up, troops landed}.
+	 */
+	protected static float[] breakUpForHive(GroundFront front, MarketAPI market, CampaignFleetAPI fleet) {
+		float[] none = new float[] { 0f, 0f };
+		if (!ThreatIncConfig.hiveBreakUpEnabled() || fleet == null || !fleet.isAlive() || fleet.isExpired()) return none;
+		if (fleet.getBattle() != null || fleet.getFleetData().getNumMembers() <= 1) return none;
+		float need = hiveTroopNeed(front, market);
+		if (need <= 0f) return none;
+		float perFP = Math.max(0.01f, ThreatIncConfig.fabricateTroopsPerFP());
+		float fpBefore = fleet.getFleetPoints();
+		float removed = applyFleetLosses(fleet, need / perFP, null, FABRICATE_BANK_KEY);
+		if (removed <= 0f) return none;
+		int troops = (int) (removed * perFP);
+		if (troops <= 0) return none;
+		fleet.getMemoryWithoutUpdate().set(FABRICATE_FLAG_KEY, true);
+		setHiveTroops(market, hiveTroops(market) + troops);
+		fabricationVisual(market, Factions.THREAT, troops);
+		ThreatIncConfig.log("Swarm breaks up over " + market.getName() + ": " + fleet.getName() + " (" + (int) fpBefore
+				+ " FP) lands " + troops + " troops against the " + ownerOf(front) + " front (" + (int) front.marines
+				+ " marines, " + (int) defenseStrength(front) + " defence); hive troops " + (int) hiveTroops(market)
+				+ ", counter-attack " + (int) counterAttackStrength(market) + "; fuel stock " + (int) ThreatFuel.stock()
+				+ " under the reserve " + (int) bombardReserve());
+		return new float[] { removed, troops };
+	}
+
+	/**
+	 * The hive's landed troops bleed as a colony's marines do: defenderLossPer30Days of the engaged
+	 * frontage at the front's pressure (bleedDefenders' rule, which leaves hives out because their
+	 * strength is structural - these troops are not). Returns the troops lost.
+	 */
+	protected static float bleedHiveTroops(MarketAPI market, GroundFront front, float elapsedDays) {
+		if (market == null || front == null || elapsedDays <= 0f || !isHiveTarget(market)) return 0f;
+		float troops = hiveTroops(market);
+		if (troops <= 0f) return 0f;
+		float need = holdRequirement(market);
+		float pressure = need <= 0f ? 1f : Math.min(1f, effectiveStrength(front) / need);
+		if (pressure <= 0f) return 0f;
+		float loss = Math.min(troops, engaged(troops, front) * ThreatIncConfig.defenderLossPer30Days() * pressure / 30f * elapsedDays);
+		setHiveTroops(market, troops - loss);
+		return loss;
+	}
+
+	/** A hive counter-attack costs its landed troops defenderCounterAttackLossFraction of the engaged, win or lose, as a colony's marines pay (counterAttackDefenderLoss). Returns the troops lost. */
+	protected static float hiveTroopsCounterAttackLoss(MarketAPI market, GroundFront front) {
+		float troops = hiveTroops(market);
+		if (troops <= 0f || front == null) return 0f;
+		float loss = Math.min(troops, engaged(troops, front) * ThreatIncConfig.defenderCounterAttackLossFraction());
+		setHiveTroops(market, troops - loss);
+		return loss;
 	}
 
 	/**

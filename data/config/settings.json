@@ -664,6 +664,14 @@
 	# refilled only at a hive whose port stands undisrupted with its imports not fully cut; dry over a hive
 	# that cannot arm it, a garrison swarm flies to the nearest hive that can and comes back
 	"threatinc_swarmBombardHoldDays": 10,
+	# the stock arms a hold only above its reserve: this many months of the hive's fuel income, on top of the
+	# founding kit (the user, 2026-10-13, after hw165-hw171: five of 21 games fell to the bombardment draining the
+	# stock to 0 - "only take fuel for bombard in the first place if reserves are good"); 0 arms from any stock
+	"threatinc_swarmBombardReserveMonths": 1,
+	# under the reserve a dry swarm over its own besieged hive breaks up its ships into the hive's ground troops
+	# (fabricateTroopsPerFP a point, smallest first, flagship and last hull spared) instead of bombarding - "they
+	# can go with no fuel and just reinforce the front right by breaking up ships"; a fuel-rich navy never does
+	"threatinc_hiveBreakUpEnabled": true,
 	# a relief force holding the orbit over its own invaded world bombards the Threat army on the same formula while
 	# the defenders are losing (the army pushes, or holds and the next counter-attack would not overrun it), paying
 	# fuel from what it carries above its passage home and then its supply line (2026-10-03, the user); 0 off
