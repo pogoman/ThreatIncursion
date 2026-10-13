@@ -463,6 +463,13 @@
 	# hull costs ~5,600 credits at vanilla's median, ~6,000 armed and crewed,
 	# a marine 200, and a defence point is a marine the landing no longer needs
 	"threatinc_bombardFPWorth": 30,
+	# the two above on the HIVE theatre (2026-10-13, the user, from the return-fire
+	# tables in docs/suppression-balance.md): a fortified hive is a fleet-killer to
+	# linger under - three times a colony's constant - and the worth is lowered so
+	# the same commanders bombard a big hive as before (6,000 FP and up at a
+	# size-8 Heavy Batteries hive; 3,000 and under land at full defence)
+	"threatinc_hiveBombardReturnFirePerGunDefence": 0.0024,
+	"threatinc_hiveBombardFPWorth": 10,
 	# unrest a bombardment raises the world to, never stacked: this x
 	# (1 - fortification condition), tactical and saturation alike
 	"threatinc_bombardUnrestMax": 10,

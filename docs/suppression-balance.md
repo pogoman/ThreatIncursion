@@ -402,6 +402,8 @@ the raid alone keeps the transponder-off option.
 | `bombardCooldownDays` | 1 | new; shared tactical/saturation lock |
 | `bombardFuelPerFPDay` | 0.04 | new; tactical fuel |
 | `bombardReturnFirePerGunDefence` | 0.0008 | replaces `siegeBatteryAttritionPerDay`; was 0.008 until run 4 |
+| `hiveBombardReturnFirePerGunDefence` | 0.0024 | the hive theatre's constant (2026-10-13, x3) |
+| `hiveBombardFPWorth` | 10 | the hive theatre's worth (2026-10-13; 30 would stop every commander with marines bombarding a size-8 hive at x3) |
 | `bombardFPWorth` | 30 | new (run 4); defence a day must take off per fleet point lost (NPCs; the swarm uses `fabricateTroopsPerFP x mult / frontHoldFraction`) |
 | `bombardUnrestMax` | 10 | new; tactical unrest = this x (1 - condition) |
 | `satFuelPerFPDay` | 2.86 | new; saturation delivery - a colony's bar, a hive's day of wear |
@@ -550,7 +552,13 @@ The AI half, and what reviewing it changed (same day):
   three times what the old attrition took from a 1,000 FP fleet, six times from a 500 FP one.
   With the commander's stop the AI copes (it lands big, saturating only beyond its marines), but
   large Heavy-Battery hives may be beyond most NPC sieges. A separate hive rate is the knob to add
-  if a test run agrees.
+  if a test run agrees. RESOLVED 2026-10-13: `hiveBombardReturnFirePerGunDefence` 0.0024 with
+  `hiveBombardFPWorth` 10 (see the return-fire table above and `facts.md` "DECISION 2026-10-13").
+  Stop-aware figures at a size-8 HB + Command hive (D 12,480): a commander with marines bombards from
+  6,000 FP up (14 defence per FP) as at 0.0008 / 30, and loses 275 over 51 days (91 before); a
+  short-handed 3,000 FP commander softens 70 days for 436 (141); a player fleet of 1,000 / 3,000 /
+  6,000 sitting 30 days loses 510 / 359 / 259, nothing dies. At 0.008 no commander with marines
+  bombards at all (6 per FP at 10,000 FP) and 1,000 FP dies on day 17 - rejected.
 - **Old saves.** Expeditions already out drew no ordnance: they bombard unpaid and raze nothing.
 
 ## Proposed model v1 - SUPERSEDED by the final spec above (brainstorm 2026-09-28, history only)

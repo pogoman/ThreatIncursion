@@ -365,6 +365,10 @@ public class ThreatIncConfig {
 	public static float bombardReturnFirePerGunDefence() { return f("threatinc_bombardReturnFirePerGunDefence"); }
 	/** Defence points a day of bombardment must take off per fleet point the guns take: a hull's price in marines. */
 	public static float bombardFPWorth() { return f("threatinc_bombardFPWorth"); }
+	/** The hive theatre's bombardReturnFirePerGunDefence (2026-10-13: 0.0024, three times a colony's). */
+	public static float hiveBombardReturnFirePerGunDefence() { return f("threatinc_hiveBombardReturnFirePerGunDefence"); }
+	/** The hive theatre's bombardFPWorth (2026-10-13: 10, so the commanders who bombard a big hive at 0.0008 / 30 still do at 0.0024). */
+	public static float hiveBombardFPWorth() { return f("threatinc_hiveBombardFPWorth"); }
 	/** Unrest a bombardment raises a world to: this x (1 - fortification condition), tactical and saturation alike. */
 	public static float bombardUnrestMax() { return f("threatinc_bombardUnrestMax"); }
 	/** Fuel a day of saturation pours onto a world per fleet point. */

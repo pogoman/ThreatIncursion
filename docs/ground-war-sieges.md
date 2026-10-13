@@ -94,7 +94,7 @@ kept as history where they say otherwise.
   days, integrated a day at a time) of bombardment: each fortification's clock gains the
   theatre's rate x F / (F + D) x its condition, the shield soaks its own share on the same
   rule, and the world's unrest is raised to `bombardUnrestMax` x (1 - condition), never
-  stacked. The guns answer with `bombardReturnFirePerGunDefence` (0.0008) x the defence they
+  stacked. The guns answer with `bombardReturnFirePerGunDefence` (0.0008; a hive 0.0024, `hiveBombardReturnFirePerGunDefence`, 2026-10-13) x the defence they
   add, a day - whatever the fleet's size. Fuel is `bombardFuelPerFPDay` (0.04) per fleet
   point a day. The 15-days-for-3 player bomb is gone.
 - **The player** (`ThreatincMarketCMD`): the menu quotes each kind's fuel a day, a shared
@@ -210,7 +210,7 @@ suppresses and what answers:
 | Condition carrier | the organs themselves (`ThreatColonyManager.disruptedDefenseResilience`, a straight line to 0 - the old `disruptedDefenseFraction` step is gone) | `ThreatSiegeMalus` |
 | Suppression a day (the run-down made up) | `hiveSiegeSuppressDaysPerDay` (30) x F / (F + D) x condition | `siegeSuppressDaysPerDay` (12) x F / (F + D) x condition |
 | Batteries' share | the two defence structures' multipliers on the hive's machinery/metals deficit | the two batteries' multipliers on vanilla's deficit |
-| Return fire | `bombardReturnFirePerGunDefence` (0.0008) x D x share a day, smallest ship first, flagship spared | the same |
+| Return fire | `bombardReturnFirePerGunDefence` (0.0008; a hive 0.0024) x D x share a day, smallest ship first, flagship spared | the same |
 
 A disruption clock runs down a day per day (vanilla's expiry), which the first build of the
 duel missed: a live fleet's slice now makes up the days the clock lost since its last slice
