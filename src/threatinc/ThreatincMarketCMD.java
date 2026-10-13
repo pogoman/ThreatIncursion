@@ -213,7 +213,12 @@ public class ThreatincMarketCMD extends MarketCMD {
 	 * fleet-AI reading of them. A free defender in reach: Engage open, raid
 	 * and bombardment closed (and with them the ground landing, which reads
 	 * temp.canRaid). Defenders alive but none in reach yet: everything closed
-	 * until they arrive. Every defender busy in a battle: vanilla's rule - a
+	 * until they arrive. Either way the defenders near and inbound must weigh
+	 * orbitContestFraction of the player faction's warships within
+	 * ORBIT_HOLD_RANGE (the siege's own orbitHeld rule, 2026-10-13: two scraps
+	 * of 7 and 12 FP kept off by six navy fleets locked the menu at Delta
+	 * Mengryla I while those fleets bombarded) - outweighed, they hold nothing
+	 * and the menu opens as if they were gone. Every defender busy in a battle: vanilla's rule - a
 	 * raid rides the distraction, a bombardment waits. None: Engage closed,
 	 * raid and bombardment on vanilla's own verdict, raid cooldown included.
 	 * Logs every fleet weighed, so a wrong menu explains itself.
@@ -232,6 +237,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		float nearest = Float.MAX_VALUE;
 		float farthest = Float.MAX_VALUE; // the nearest of the fleets too far out to count
 		float range = ThreatIncConfig.defendInboundRange();
+		float holdingFP = 0f; // near + inbound: what contests the orbit
 		StringBuilder why = new StringBuilder();
 		for (CampaignFleetAPI fleet : threatDefenders()) {
 			float dist = Misc.getDistance(fleet, entity);
@@ -242,6 +248,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 			} else if (inReach(fleet)) {
 				near++;
 				fp += fleet.getFleetPoints();
+				holdingFP += fleet.getFleetPoints();
 				state = "near";
 			} else if (range > 0f && dist > range) {
 				// not in the fight: beyond the inbound range it neither closes the
@@ -253,13 +260,19 @@ public class ThreatincMarketCMD extends MarketCMD {
 			} else {
 				inbound++;
 				nearest = Math.min(nearest, dist);
+				holdingFP += fleet.getFleetPoints();
 				state = "inbound";
 			}
 			why.append(" [").append(fleet.getName()).append(" ").append((int) fleet.getFleetPoints())
 					.append(" FP ").append((int) dist).append(" su ").append(state).append("]");
 		}
+		float friendlyFP = ThreatGroundFronts.friendlyPointsNear(Factions.PLAYER, market);
+		boolean held = threatinc.rules.BattleRules.orbitContested(holdingFP, friendlyFP,
+				ThreatIncConfig.orbitContestFraction());
 		ThreatIncConfig.log("Military options at " + market.getName() + ": near " + near
-				+ ", inbound " + inbound + ", busy " + busy + ", far " + far + why);
+				+ ", inbound " + inbound + ", busy " + busy + ", far " + far + why
+				+ " - swarm " + (int) holdingFP + " FP vs ours " + (int) friendlyFP
+				+ " at the orbit: " + (held ? "held" : "not held"));
 		if (withText) {
 			if (near > 0) {
 				text.addPara("The swarm holds the orbit: %s, %s fleet points.",
@@ -276,6 +289,11 @@ public class ThreatincMarketCMD extends MarketCMD {
 				text.addPara("The swarm's nearest fleet is %s units out: not in the fight.",
 						Misc.getHighlightColor(), Misc.getWithDGS((int) farthest));
 			}
+			if (holdingFP > 0f && !held) {
+				text.addPara("Your side holds the orbit: %s fleet points against the swarm's %s.",
+						Misc.getHighlightColor(), Misc.getWithDGS((int) friendlyFP),
+						Misc.getWithDGS((int) holdingFP));
+			}
 		}
 		if (DebugFlags.MARKET_HOSTILITIES_DEBUG) {
 			options.setEnabled(RAID, true);
@@ -283,7 +301,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 			options.setEnabled(ENGAGE, true);
 			return;
 		}
-		boolean defended = near > 0 || inbound > 0;
+		boolean defended = (near > 0 || inbound > 0) && held;
 		if (defended) {
 			temp.canRaid = false;
 			temp.canBombard = false;
@@ -306,7 +324,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		options.setEnabled(ENGAGE, target != null);
 		if (target != null) {
 			options.setTooltip(ENGAGE, "Engage the swarm fleets holding the orbit.");
-		} else if (inbound > 0) {
+		} else if (inbound > 0 && held) {
 			options.setTooltip(ENGAGE, "The defenders are still "
 					+ Misc.getWithDGS((int) nearest) + " units out.");
 		} else {

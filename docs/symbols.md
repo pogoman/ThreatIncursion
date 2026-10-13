@@ -4411,7 +4411,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatincAidCMD.menu(InteractionDialogAPI dialog, MarketAPI market)` :77
 - `ThreatincAidCMD.deliver(InteractionDialogAPI dialog, MarketAPI market, String commodityId)` :117
 
-## ThreatincMarketCMD (1127 lines)
+## ThreatincMarketCMD (1145 lines)
 - `ThreatincMarketCMD.execute(String ruleId, com.fs.starfarer.api.campaign.InteractionDialogAPI dialog, List<com.fs.starfarer.api.util.Misc.Token> params, Map<String, com.fs.starfarer.api.campaign.rules.MemoryAPI> memoryMap)` :90 - Custom command dispatch.
 - `ThreatincMarketCMD.isThreatTarget()` :112
 - `ThreatincMarketCMD.waiveAtrocity()` :117
@@ -4419,30 +4419,30 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatincMarketCMD.inLiveBattle(CampaignFleetAPI fleet)` :169 - A battle the fleet is still fighting (a finished one can linger on the fleet).
 - `ThreatincMarketCMD.inReach(CampaignFleetAPI fleet)` :174 - Close enough to the world to be engaged from its orbit.
 - `ThreatincMarketCMD.getInteractionTargetForFIDPI()` :186 - Vanilla's defender pick, taken from threatDefenders for Threat targets:
-- `ThreatincMarketCMD.gateOnDefenders(boolean withText)` :226 - Writes the final state of Engage, raid and bombardment from the swarm fleets defending the world (threatDefenders), not from vanilla's fleet-AI reading of them.
-- `ThreatincMarketCMD.showDefenses(boolean withText)` :337 - The military options of a Threat colony:
-- `ThreatincMarketCMD.engage()` :369 - Backstop on vanilla's engage:
-- `ThreatincMarketCMD.groundOps()` :383 - The ground-operations menu:
-- `ThreatincMarketCMD.groundDeploy()` :518
-- `ThreatincMarketCMD.groundPush()` :563
-- `ThreatincMarketCMD.groundEntrench()` :576
-- `ThreatincMarketCMD.groundResupply()` :587
-- `ThreatincMarketCMD.groundWithdraw()` :611
-- `ThreatincMarketCMD.tacticalFuel()` :637 - Fuel a day of tactical bombardment by the player's fleet costs:
-- `ThreatincMarketCMD.bombardBonus()` :643 - Vanilla's specialised fleet bombardment capability:
-- `ThreatincMarketCMD.saturationPour()` :648 - Fuel a day of saturation pours:
-- `ThreatincMarketCMD.saturationFuel(float pour)` :654 - What that day costs from the tanks:
-- `ThreatincMarketCMD.pct(float fraction)` :663
-- `ThreatincMarketCMD.bombardReady()` :668 - Whether the player's fleet may organize a bombardment now (the once-a-day lock).
-- `ThreatincMarketCMD.bombardMenu()` :681 - The bombardment menu (docs/suppression-balance.md v2):
-- `ThreatincMarketCMD.bombardTactical()` :747 - A day of tactical bombardment, before it is flown:
-- `ThreatincMarketCMD.gateConfirm(boolean fuelEnough)` :796 - The confirm's state, set after its shape:
-- `ThreatincMarketCMD.bombardSaturation()` :815 - A day of saturation bombardment, before it is flown (docs/suppression-balance.md v2 section 4):
-- `ThreatincMarketCMD.razingLines(float barFuel, Color h, Color bad)` :898 - What the day's fuel does to the razing bar, one line a fact:
-- `ThreatincMarketCMD.bombardConfirm()` :923
-- `ThreatincMarketCMD.bombardDay(boolean saturation)` :959 - One day of the player's bombardment (docs/suppression-balance.md v2):
-- `ThreatincMarketCMD.countAtrocity()` :1076 - Vanilla's atrocity bookkeeping, once a campaign rather than once a day:
-- `ThreatincMarketCMD.applyDangerClose(float rate)` :1099 - Danger close (docs/ground-war.md):
+- `ThreatincMarketCMD.gateOnDefenders(boolean withText)` :231 - Writes the final state of Engage, raid and bombardment from the swarm fleets defending the world (threatDefenders), not from vanilla's fleet-AI reading of them.
+- `ThreatincMarketCMD.showDefenses(boolean withText)` :355 - The military options of a Threat colony:
+- `ThreatincMarketCMD.engage()` :387 - Backstop on vanilla's engage:
+- `ThreatincMarketCMD.groundOps()` :401 - The ground-operations menu:
+- `ThreatincMarketCMD.groundDeploy()` :536
+- `ThreatincMarketCMD.groundPush()` :581
+- `ThreatincMarketCMD.groundEntrench()` :594
+- `ThreatincMarketCMD.groundResupply()` :605
+- `ThreatincMarketCMD.groundWithdraw()` :629
+- `ThreatincMarketCMD.tacticalFuel()` :655 - Fuel a day of tactical bombardment by the player's fleet costs:
+- `ThreatincMarketCMD.bombardBonus()` :661 - Vanilla's specialised fleet bombardment capability:
+- `ThreatincMarketCMD.saturationPour()` :666 - Fuel a day of saturation pours:
+- `ThreatincMarketCMD.saturationFuel(float pour)` :672 - What that day costs from the tanks:
+- `ThreatincMarketCMD.pct(float fraction)` :681
+- `ThreatincMarketCMD.bombardReady()` :686 - Whether the player's fleet may organize a bombardment now (the once-a-day lock).
+- `ThreatincMarketCMD.bombardMenu()` :699 - The bombardment menu (docs/suppression-balance.md v2):
+- `ThreatincMarketCMD.bombardTactical()` :765 - A day of tactical bombardment, before it is flown:
+- `ThreatincMarketCMD.gateConfirm(boolean fuelEnough)` :814 - The confirm's state, set after its shape:
+- `ThreatincMarketCMD.bombardSaturation()` :833 - A day of saturation bombardment, before it is flown (docs/suppression-balance.md v2 section 4):
+- `ThreatincMarketCMD.razingLines(float barFuel, Color h, Color bad)` :916 - What the day's fuel does to the razing bar, one line a fact:
+- `ThreatincMarketCMD.bombardConfirm()` :941
+- `ThreatincMarketCMD.bombardDay(boolean saturation)` :977 - One day of the player's bombardment (docs/suppression-balance.md v2):
+- `ThreatincMarketCMD.countAtrocity()` :1094 - Vanilla's atrocity bookkeeping, once a campaign rather than once a day:
+- `ThreatincMarketCMD.applyDangerClose(float rate)` :1117 - Danger close (docs/ground-war.md):
 
 ## ThreatincNexCMD (57 lines)
 - `ThreatincNexCMD.execute(String ruleId, InteractionDialogAPI dialog, List<Misc.Token> params, Map<String, MemoryAPI> memoryMap)` :34
