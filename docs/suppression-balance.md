@@ -261,9 +261,10 @@ colony's.
 - **The dead stay dead**: no repair on the bar. The colony's own growth continues between
   visits, but **growth pauses while it is being saturated** (as it already does under a ground
   front, `updateColonyVitality`).
-- **Unrest raised to 10**, never stacked (vanilla `bombardSaturationStability` 10 stacked).
-  Stability does not change the fuel (it is priced on people); it lowers D, so after the first
-  day the guns cost about a quarter of the ships.
+- **Unrest raised to 10 x (1 - fortification condition)**, as tactical, never stacked (vanilla
+  `bombardSaturationStability` 10 stacked). Was a flat 10 until 2026-10-13: one bomb that wore a
+  hive 1% pinned it at stability 0 (defences x0.25) for the 30 months of decay. Stability does
+  not change the fuel (it is priced on people); it lowers D as the fortifications fall.
 - Reputation: vanilla's saturation impact and atrocity handling stay (`bombardNoAtrocity`,
   `waiveAtrocity` on Threat colonies as today).
 - **Fallout landing block removed** (`falloutDays` 40, `ThreatGroundFronts.setFallout`), and

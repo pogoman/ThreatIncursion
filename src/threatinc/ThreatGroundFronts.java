@@ -3510,7 +3510,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		mem.set(DECIV_HELD_KEY, true, theatre.wearDays());
 	}
 
-	/** The unrest a tactical bombardment raises the world to: bombardUnrestMax x what it has suppressed. */
+	/** The unrest a bombardment of either kind raises the world to: bombardUnrestMax x what it has suppressed. */
 	public static int tacticalUnrest(MarketAPI market) {
 		return Math.round(Math.max(0f, ThreatIncConfig.bombardUnrestMax())
 				* (1f - fortificationCondition(market)));
@@ -3667,7 +3667,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * {@code days} of saturation bombardment by {@code fp} with up to
 	 * {@code fuel} to pour (docs/suppression-balance.md v2 section 4): the
 	 * tactical rule on every building, the guns' answer, the world's unrest
-	 * raised to bombardUnrestMax, its growth paused, and the fuel poured into
+	 * raised to what it has suppressed (as tactical), its growth paused, and the fuel poured into
 	 * the razing bar ({@link ThreatRazing}) less what the shield turns aside.
 	 * Returns {fleet points the guns take, fuel spent, levels razed, 1 when the
 	 * colony is gone}. Once it is gone nothing else on it is touched. A hive
@@ -3703,7 +3703,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		ThreatRazing.markSaturated(market, days);
 		float madeUp = elapsed ? madeUpDays(market, days) : 0f;
 		boolean touched = bombardStructures(market, saturationTargets(market), rate, days, madeUp);
-		raiseUnrest(market, Math.round(Math.max(0f, ThreatIncConfig.bombardUnrestMax())), reason);
+		raiseUnrest(market, tacticalUnrest(market), reason); // what it broke, as tactical (user, 2026-10-13)
 		int[] razed = ThreatRazing.pour(market, pour * through, razerFactionId);
 		out[2] = razed[0];
 		out[3] = razed[1];
@@ -3765,7 +3765,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 					* Math.max(0f, ThreatIncConfig.shieldSoakMult()) / theatre.wearDays());
 		}
 		float unrestMax = Math.max(0f, ThreatIncConfig.bombardUnrestMax());
-		int unrest = saturation ? Math.round(unrestMax) : Math.round(unrestMax * (1f - day.conditionAfter));
+		int unrest = Math.round(unrestMax * (1f - day.conditionAfter)); // both kinds, since 2026-10-13
 		day.unrest = unrest > RecentUnrest.getPenalty(market) ? unrest : 0;
 		return day;
 	}

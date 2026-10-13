@@ -103,7 +103,7 @@ kept as history where they say otherwise.
   with the damage banked toward it (`lossLines`). Vanilla's reputation, hostility timeouts,
   military response, pollution and listeners run every day.
 - **Saturation** (`saturationSlice`, `ThreatRazing`): the tactical day on every building,
-  unrest raised to 10, growth paused (`$threatinc_saturated`), and `satFuelPerFPDay` (2.86) x F
+  unrest raised to 10 x (1 - fortification condition) as tactical (2026-10-13), growth paused (`$threatinc_saturated`), and `satFuelPerFPDay` (2.86) x F
   of fuel a day. Over a human colony the fuel is poured into the razing bar through the shield:
   fuel per level at size s = `satFuelSize4` x 10^(s/2) / 144.8; a level paid is a size off
   (below 3 too); the last ends the colony by vanilla's teardown, a front on it with it

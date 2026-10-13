@@ -363,7 +363,7 @@ public class ThreatIncConfig {
 	public static float bombardReturnFirePerGunDefence() { return f("threatinc_bombardReturnFirePerGunDefence"); }
 	/** Defence points a day of bombardment must take off per fleet point the guns take: a hull's price in marines. */
 	public static float bombardFPWorth() { return f("threatinc_bombardFPWorth"); }
-	/** Unrest a saturation bombardment raises a world to; a tactical one raises it to this x (1 - condition). */
+	/** Unrest a bombardment raises a world to: this x (1 - fortification condition), tactical and saturation alike. */
 	public static float bombardUnrestMax() { return f("threatinc_bombardUnrestMax"); }
 	/** Fuel a day of saturation pours onto a world per fleet point. */
 	public static float satFuelPerFPDay() { return f("threatinc_satFuelPerFPDay"); }

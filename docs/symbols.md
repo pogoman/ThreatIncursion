@@ -1970,7 +1970,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundFronts.isBattery(MarketAPI market, Industry ind)` :3467 - Whether a fortification is one of the guns - Ground Defenses or Heavy Batteries, either theatre's - whose share sets the return fire.
 - `ThreatGroundFronts.gunsWouldBreak(MarketAPI market, float groupFP, float spawnedFP, float abortFraction)` :3482 - Whether a day of the guns' answer here would take a group now at groupFP below abortFraction of the spawnedFP it set out with - the day an expedition would turn for home.
 - `ThreatGroundFronts.raiseUnrest(MarketAPI market, int target, String reason)` :3496 - Raises the world's unrest to target, never stacking on what is there already:
-- `ThreatGroundFronts.tacticalUnrest(MarketAPI market)` :3514 - The unrest a tactical bombardment raises the world to:
+- `ThreatGroundFronts.tacticalUnrest(MarketAPI market)` :3514 - The unrest a bombardment of either kind raises the world to:
 - `ThreatGroundFronts.markBesieged(MarketAPI market)` :3520 - A world the siege rule describes counts as besieged for as long as its clock can run.
 - `ThreatGroundFronts.bombardStructures(MarketAPI market, List<Industry> targets, float rate, float days, float madeUp)` :3536 - The structures' side of days of bombardment:
 - `ThreatGroundFronts.finishSlice(MarketAPI market, boolean touched, float days)` :3570 - After a slice:
@@ -2264,7 +2264,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncConfig.bombardFuelPerFPDay()` :361 - Fuel a day of tactical bombardment burns per fleet point (an AI fleet's from its provisions).
 - `ThreatIncConfig.bombardReturnFirePerGunDefence()` :363 - Fleet points a bombarding fleet loses per day per point of defence the batteries add.
 - `ThreatIncConfig.bombardFPWorth()` :365 - Defence points a day of bombardment must take off per fleet point the guns take:
-- `ThreatIncConfig.bombardUnrestMax()` :367 - Unrest a saturation bombardment raises a world to;
+- `ThreatIncConfig.bombardUnrestMax()` :367 - Unrest a bombardment raises a world to:
 - `ThreatIncConfig.satFuelPerFPDay()` :369 - Fuel a day of saturation pours onto a world per fleet point.
 - `ThreatIncConfig.satFuelSize4()` :371 - Fuel to raze a size-4 colony to nothing;
 - `ThreatIncConfig.npcRazeEnabled()` :373 - Whether NPC factions raze a hive from orbit where that is cheaper than landing (IncursionManager.razeWorlds).
