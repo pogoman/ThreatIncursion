@@ -5474,10 +5474,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			plan.bankFP += est;
 			plan.built++;
 		}
-		if (why == null && !pricing && !ThreatFuel.canPay(ThreatFuel.passage(plan.fp, ly, true))) {
-			why = "the fuel stock does not pay the passage of " + (int) plan.fp + " FP over " + (int) ly + " ly";
+		// a prong of a priced campaign is gated at the size priced: that passage came back to the stock on its day
+		// (ThreatOffensive.poll), the day's overshoot past it is the launch's to pay from what the stock holds
+		// (hw177b: priced 8,019, planned 8,484 on its day, refused short by 118 fuel)
+		float gateFP = Math.min(plan.fp, pricedFP);
+		if (why == null && !pricing && !ThreatFuel.canPay(ThreatFuel.passage(gateFP, ly, true))) {
+			why = "the fuel stock does not pay the passage of " + (int) gateFP + " FP over " + (int) ly + " ly";
 			if (defOut != null && ThreatIncConfig.strikeWaitBooksFuel()) {
-				ThreatFuel.heldShort("strike from " + staging.getName(), ThreatFuel.passage(plan.fp, ly, true));
+				ThreatFuel.heldShort("strike from " + staging.getName(), ThreatFuel.passage(gateFP, ly, true));
 			}
 		}
 		if (why == null && !pricing && !ThreatReach.canSustain(ThreatReach.awayFP(plan.fp, plan.spareFP), daysAway)) {
