@@ -18,6 +18,7 @@ shows without a description - when you work out what one does, add its one-sente
 the next grep finds it.
 
 Quick facts:
+- **Pull before testing (the user's standing rule, 2026-10-13).** Two machines commit to `main`. Before any test session, batch or release build: `git fetch origin main`, merge `origin/main`, rebuild, check the jar timestamp, note the HEAD hash in the batch log. On 2026-10-13 four pushed commits (hive guns x3, leashed reinforcements) were missed and 33 games ran on a stale jar.
 - Build: `compile.ps1` (JDK on PATH) writes `jars/ThreatInc.jar`. The game locks the
   jar while running - close it (or kill `java.exe`) before building. Run it out of process
   (`powershell -NoProfile -ExecutionPolicy Bypass -File compile.ps1`) and check the jar's
