@@ -148,7 +148,7 @@ public class ThreatSoftening {
 		Collections.shuffle(bounties, random);
 		for (ThreatSwarmBountyIntel bounty : bounties) {
 			StarSystemAPI system = bounty.getSystemId() != null
-					? Global.getSector().getStarSystem(bounty.getSystemId()) : null;
+					? ThreatScoutRoute.systemById(bounty.getSystemId()) : null;
 			if (system == null) continue;
 			for (String factionId : ThreatWarState.warFactionIds()) {
 				FactionAPI faction = Global.getSector().getFaction(factionId);
@@ -815,7 +815,7 @@ public class ThreatSoftening {
 	/** The token a new force's fleets sail to: the primary base's planet, or a point in hyperspace. */
 	protected static SectorEntityToken musterOf(Force force) {
 		if (force.musterInSystem) {
-			StarSystemAPI system = Global.getSector().getStarSystem(force.systemId);
+			StarSystemAPI system = ThreatScoutRoute.systemById(force.systemId);
 			SectorEntityToken at = system != null ? system.getEntityById(force.musterEntityId) : null;
 			if (at != null) return at;
 		}
@@ -1030,7 +1030,7 @@ public class ThreatSoftening {
 	/** Warship FP of the force's fleets at its muster. */
 	public static float musteredFP(String forceId) {
 		Force f = forceId != null ? forces().get(forceId) : null;
-		StarSystemAPI system = f != null && f.systemId != null ? Global.getSector().getStarSystem(f.systemId) : null;
+		StarSystemAPI system = f != null && f.systemId != null ? ThreatScoutRoute.systemById(f.systemId) : null;
 		if (system == null) return 0f;
 		float fp = 0f;
 		for (ThreatFleetOrders.Order o : ordersOf(forceId)) {
@@ -1077,7 +1077,7 @@ public class ThreatSoftening {
 	public static float passageDays(String forceId) {
 		Force f = forceId != null ? forces().get(forceId) : null;
 		if (f == null || f.musterInSystem || f.systemId == null) return 0f;
-		StarSystemAPI s = Global.getSector().getStarSystem(f.systemId);
+		StarSystemAPI s = ThreatScoutRoute.systemById(f.systemId);
 		if (s == null) return 0f;
 		return ThreatReach.days(Misc.getDistanceLY(new Vector2f(f.musterX, f.musterY), s.getLocation()));
 	}
@@ -1230,7 +1230,7 @@ public class ThreatSoftening {
 	}
 
 	protected static void advanceForce(Force f, List<ThreatFleetOrders.Order> orders) {
-		StarSystemAPI system = f.systemId != null ? Global.getSector().getStarSystem(f.systemId) : null;
+		StarSystemAPI system = f.systemId != null ? ThreatScoutRoute.systemById(f.systemId) : null;
 		if (system == null) {
 			standDownAll(f, orders, "the system is gone");
 			return;
@@ -1591,7 +1591,7 @@ public class ThreatSoftening {
 	 */
 	protected static MarketAPI divert(Force f, List<ThreatFleetOrders.Order> orders, float fp, MarketAPI failed) {
 		FactionAPI faction = Global.getSector().getFaction(f.factionId);
-		StarSystemAPI at = f.systemId != null ? Global.getSector().getStarSystem(f.systemId) : null;
+		StarSystemAPI at = f.systemId != null ? ThreatScoutRoute.systemById(f.systemId) : null;
 		if (faction == null || at == null || fp <= 0f) return null;
 		String observer = f.factionId;
 		float margin = margin();
@@ -1737,7 +1737,7 @@ public class ThreatSoftening {
 		// fresh first; with no picture of a system that still has hives, it flies
 		// on until they do - unseen is not gone
 		String observer = o.factionId;
-		StarSystemAPI system = systemId != null ? Global.getSector().getStarSystem(systemId) : null;
+		StarSystemAPI system = systemId != null ? ThreatScoutRoute.systemById(systemId) : null;
 		if (system != null && o.fleet.getContainingLocation() == system) ThreatIntel.look(observer, system);
 		if (unseen(observer, systemId)) return;
 		boolean inSystem = system != null && o.fleet.getContainingLocation() == system;

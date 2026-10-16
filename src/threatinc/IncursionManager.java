@@ -263,7 +263,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			siegePassPending = false;
 			java.util.List<String> names = new ArrayList<String>();
 			for (String id : THINNED.keySet()) {
-				StarSystemAPI thinned = Global.getSector().getStarSystem(id);
+				StarSystemAPI thinned = ThreatScoutRoute.systemById(id);
 				if (thinned != null && recentlyThinned(id)) names.add(thinned.getName());
 			}
 			ThreatIncConfig.log("Siege pass after a hunt thinned " + names);

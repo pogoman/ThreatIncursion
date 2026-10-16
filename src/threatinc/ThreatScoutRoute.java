@@ -66,9 +66,22 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 		public float lastFP;
 	}
 
-	/** A star system by id, null for a null id: the direct lookup, this runs per party per poll. */
+	/**
+	 * A star system by its getId(), null for a null id or a system gone.
+	 * Vanilla's getStarSystem matches a system's optional unique id when one is
+	 * set and its base name only otherwise, while getId() is always the base
+	 * name: a system a mod gave a unique id came back null (2026-10-16, a
+	 * player's Scouting Swarm NPE at sendTo). The direct lookup first, a scan on
+	 * a miss.
+	 */
 	public static StarSystemAPI systemById(String systemId) {
-		return systemId == null ? null : Global.getSector().getStarSystem(systemId);
+		if (systemId == null) return null;
+		StarSystemAPI direct = Global.getSector().getStarSystem(systemId);
+		if (direct != null && systemId.equals(direct.getId())) return direct;
+		for (StarSystemAPI s : Global.getSector().getStarSystems()) {
+			if (systemId.equals(s.getId())) return s;
+		}
+		return direct;
 	}
 
 	// ------------------------------------------------------------------
@@ -211,6 +224,11 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 	}
 
 	public void sendTo(S s, StarSystemAPI system) {
+		// a stop no lookup finds is skipped, not flown to
+		if (system == null) {
+			nextLeg(s);
+			return;
+		}
 		s.enteredTimestamp = 0L;
 		s.legSince = Global.getSector().getClock().getTimestamp();
 		s.fleet.clearAssignments();

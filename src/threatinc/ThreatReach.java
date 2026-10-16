@@ -513,7 +513,7 @@ public class ThreatReach {
 		List<StarSystemAPI> systems = new ArrayList<StarSystemAPI>();
 		for (String id : ThreatIncData.colonyMarkets().keySet()) {
 			if (ThreatIncData.getLiveColonyMarkets(id).isEmpty()) continue;
-			StarSystemAPI s = Global.getSector().getStarSystem(id);
+			StarSystemAPI s = ThreatScoutRoute.systemById(id);
 			if (s != null) systems.add(s);
 		}
 		float span = 0f;

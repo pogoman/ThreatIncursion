@@ -1698,7 +1698,7 @@ public class ThreatPlays {
 	}
 
 	protected static StarSystemAPI system(String id) {
-		return id != null ? Global.getSector().getStarSystem(id) : null;
+		return id != null ? ThreatScoutRoute.systemById(id) : null;
 	}
 
 	protected static String systemName(String id) {

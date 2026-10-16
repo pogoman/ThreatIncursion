@@ -511,7 +511,7 @@ public class ThreatPosture {
 		Set<String> seen = new HashSet<String>();
 		for (ThreatSwarmIntel.Place p : ThreatSwarmIntel.places()) {
 			if (p == null || p.systemId == null || !seen.add(p.systemId)) continue;
-			StarSystemAPI s = Global.getSector().getStarSystem(p.systemId);
+			StarSystemAPI s = ThreatScoutRoute.systemById(p.systemId);
 			if (s == null || s == system) continue;
 			float ly = Misc.getDistanceLY(system.getLocation(), s.getLocation());
 			if (ly < bestLY) {
@@ -814,7 +814,7 @@ public class ThreatPosture {
 		}
 
 		for (String systemId : systemIds) {
-			StarSystemAPI system = Global.getSector().getStarSystem(systemId);
+			StarSystemAPI system = ThreatScoutRoute.systemById(systemId);
 			if (system == null) continue;
 			List<MarketAPI> colonies = ThreatIncData.getLiveColonyMarkets(systemId);
 			Reading r = read(system, colonies, attacks, counted, stagingMemo, outposts, day, pass);
@@ -1088,7 +1088,7 @@ public class ThreatPosture {
 			if (call.shortFP <= call.swarm) continue;
 			List<StarSystemAPI> near = new ArrayList<StarSystemAPI>();
 			for (String id : systemIds) {
-				StarSystemAPI s = Global.getSector().getStarSystem(id);
+				StarSystemAPI s = ThreatScoutRoute.systemById(id);
 				if (s == null || calling.contains(s)) continue;
 				if (Misc.getDistanceLY(s.getLocation(), call.system.getLocation()) <= range) near.add(s);
 			}
@@ -1867,7 +1867,7 @@ public class ThreatPosture {
 		for (Map.Entry<String, String> e : ThreatIncData.stages().entrySet()) {
 			if (!ThreatIncData.STAGE_SEEDED.equals(e.getValue())) continue;
 			if (ThreatIncData.bootstrapSeeds().contains(e.getKey())) continue;
-			StarSystemAPI target = Global.getSector().getStarSystem(e.getKey());
+			StarSystemAPI target = ThreatScoutRoute.systemById(e.getKey());
 			if (target == null) continue;
 			MarketAPI source = ThreatColonyManager.pickForgeSource(target, true);
 			if (source == null || ThreatColonyManager.poolableFP(source) >= founding) continue;

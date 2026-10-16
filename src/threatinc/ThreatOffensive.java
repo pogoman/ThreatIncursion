@@ -991,7 +991,7 @@ public class ThreatOffensive {
 			}
 			MarketAPI target = Global.getSector().getEconomy().getMarket(f[0]);
 			MarketAPI staging = Global.getSector().getEconomy().getMarket(f[1]);
-			StarSystemAPI source = Global.getSector().getStarSystem(f[2]);
+			StarSystemAPI source = ThreatScoutRoute.systemById(f[2]);
 			String name = target != null ? target.getName() : f[0];
 			if (target == null || staging == null || source == null || target.getStarSystem() == null
 					|| !IncursionManager.isStrikeableWorld(target) || IncursionManager.isActiveStrikeTarget(target)

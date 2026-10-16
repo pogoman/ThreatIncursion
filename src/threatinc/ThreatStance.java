@@ -425,7 +425,7 @@ public class ThreatStance {
 		Map<String, Float> reach = new HashMap<String, Float>();
 		Map<String, StarSystemAPI> hives = new HashMap<String, StarSystemAPI>();
 		for (String systemId : p.systems.keySet()) {
-			StarSystemAPI system = Global.getSector().getStarSystem(systemId);
+			StarSystemAPI system = ThreatScoutRoute.systemById(systemId);
 			if (system == null) continue;
 			float r = 0f;
 			if (!billed) {
@@ -627,7 +627,7 @@ public class ThreatStance {
 	protected static Target[] weakTargets(String systemId, List<MarketAPI> known, Map<String, float[]> defMemo,
 			Map<String, Float> ratios, float pressNeed) {
 		Target[] out = new Target[2];
-		StarSystemAPI system = Global.getSector().getStarSystem(systemId);
+		StarSystemAPI system = ThreatScoutRoute.systemById(systemId);
 		MarketAPI staging = ThreatColonyManager.pickStrikeStaging(systemId, false);
 		if (system == null || staging == null) return out;
 		int[] row = heaviestRow(staging);

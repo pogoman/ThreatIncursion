@@ -456,7 +456,7 @@ public class ThreatConvoys {
 		// the swarm's pressure read among them - staging telegraphs, decoy or not
 		PlayStaging play = playStagingOf(base);
 		if (play != null) {
-			StarSystemAPI named = Global.getSector().getStarSystem(play.systemId);
+			StarSystemAPI named = ThreatScoutRoute.systemById(play.systemId);
 			if (named != null) return named;
 		}
 		boolean player = base.isPlayerOwned();
@@ -468,7 +468,7 @@ public class ThreatConvoys {
 			if (ThreatIncData.getLiveColonyMarkets(systemId).isEmpty()) continue;
 			if (player && !debug && !ThreatIncData.discoveredSystems().contains(systemId)) continue;
 			if (!player && !ThreatScouts.sectorKnows(systemId)) continue;
-			StarSystemAPI system = Global.getSector().getStarSystem(systemId);
+			StarSystemAPI system = ThreatScoutRoute.systemById(systemId);
 			if (system == null) continue;
 			float d = Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation());
 			if (d > range || d >= bestDist) continue;

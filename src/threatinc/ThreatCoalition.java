@@ -100,7 +100,7 @@ public class ThreatCoalition {
 				all().remove(c);
 				continue;
 			}
-			StarSystemAPI system = Global.getSector().getStarSystem(c.systemId);
+			StarSystemAPI system = ThreatScoutRoute.systemById(c.systemId);
 			if (system == null || ThreatIncData.getLiveColonyMarkets(c.systemId).isEmpty()) {
 				all().remove(c);
 				continue;

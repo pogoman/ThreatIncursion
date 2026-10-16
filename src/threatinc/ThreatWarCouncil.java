@@ -356,10 +356,10 @@ public class ThreatWarCouncil {
 		}
 		// each cluster's nearest neighbour (a feint's decoy, section 4.2)
 		for (Cluster a : p.clusters) {
-			StarSystemAPI sa = Global.getSector().getStarSystem(a.systemId);
+			StarSystemAPI sa = ThreatScoutRoute.systemById(a.systemId);
 			for (Cluster b : p.clusters) {
 				if (a == b) continue;
-				StarSystemAPI sb = Global.getSector().getStarSystem(b.systemId);
+				StarSystemAPI sb = ThreatScoutRoute.systemById(b.systemId);
 				if (sa == null || sb == null) continue;
 				float d = Misc.getDistanceLY(sa.getLocation(), sb.getLocation());
 				if (d < a.neighbourLY) {

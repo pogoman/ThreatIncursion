@@ -404,7 +404,7 @@ public class ThreatSwarmBountyIntel extends BaseIntelPlugin {
 
 	/** The hive system, or null when it is gone. */
 	protected StarSystemAPI system() {
-		return systemId != null ? Global.getSector().getStarSystem(systemId) : null;
+		return systemId != null ? ThreatScoutRoute.systemById(systemId) : null;
 	}
 
 	protected String systemName() {

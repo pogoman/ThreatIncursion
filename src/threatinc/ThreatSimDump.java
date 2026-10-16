@@ -108,7 +108,7 @@ public class ThreatSimDump {
 		o.put("suppliesPerMonth", ThreatFuel.perMonth(Commodities.SUPPLIES));
 		JSONArray posture = new JSONArray();
 		for (Map.Entry<String, float[]> e : ThreatPosture.state().entrySet()) {
-			StarSystemAPI sys = Global.getSector().getStarSystem(e.getKey());
+			StarSystemAPI sys = ThreatScoutRoute.systemById(e.getKey());
 			float[] s = e.getValue();
 			JSONObject p = new JSONObject();
 			p.put("system", e.getKey());
