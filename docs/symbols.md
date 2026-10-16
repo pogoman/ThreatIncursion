@@ -4193,7 +4193,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSwarmPatrols.meet(String key, String factionId, String systemId, float fp, String kind, LocationAPI where, Vector2f hyper, ThreatPurgeFGI siege)` :390 - A human attack force the hive's own eyes do not see is at where (hyper in hyperspace) today (ThreatSwarmIntel.sweepContacts):
 - `ThreatSwarmPatrols.forceBurn(ThreatPurgeFGI siege)` :433 - The burn a human expedition flying as a route makes:
 
-## ThreatSwarmScouts (404 lines)
+## ThreatSwarmScouts (406 lines)
 - `ThreatSwarmScouts.all()` :57
 - `ThreatSwarmScouts.enabled()` :71
 - `ThreatSwarmScouts.swarmKnows(MarketAPI market)` :76 - Whether the swarm may strike this world:
@@ -4218,8 +4218,8 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatSwarmScouts.pickStaging(String systemId)` :249 - pickStrikeStaging's economy gates without the garrison one:
 - `ThreatSwarmScouts.planRoute(MarketAPI colony, float rangeLY)` :267 - A route (ThreatScoutRoute.nearestFirst) through the unknown systems holding a strikeable world within the colony's fuel reach, none already on another scout's route.
 - `ThreatSwarmScouts.planRoute(MarketAPI colony, float rangeLY, boolean rescout)` :276 - As above;
-- `ThreatSwarmScouts.launch(MarketAPI colony, List<String> route, Random random)` :309 - Fabricates a Scouting Swarm at the colony and sends it down the route;
-- `ThreatSwarmScouts.routeLY(MarketAPI colony, List<String> route)` :391 - Light-years from the colony down the route and home again.
+- `ThreatSwarmScouts.launch(MarketAPI colony, List<String> route, Random random)` :311 - Fabricates a Scouting Swarm at the colony and sends it down the route;
+- `ThreatSwarmScouts.routeLY(MarketAPI colony, List<String> route)` :393 - Light-years from the colony down the route and home again.
 
 ## ThreatUpkeep (326 lines)
 - `ThreatUpkeep.enabled()` :53 - Days between passes;

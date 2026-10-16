@@ -282,6 +282,8 @@ public class ThreatSwarmScouts {
 			if (!IncursionManager.isStrikeableWorld(market)) continue;
 			StarSystemAPI system = market.getStarSystem();
 			if (system.getCenter() == null || candidates.contains(system)) continue;
+			// abyssal pockets: a GO_TO never arrives, and every "Deep Space" shares one getId()
+			if (ThreatScouts.unreachable(system)) continue;
 			if (taken.contains(system.getId())) continue;
 			if (rescout) {
 				if (!known().containsKey(system.getId())
