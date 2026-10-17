@@ -1431,6 +1431,19 @@ public class ThreatWarBoard {
 			tooltip.addPara("Its marines hold at full weight but attack at %s.", 4f, text, h,
 					"x" + String.format("%.2f", ThreatIncConfig.marineCounterAttackMult()));
 		}
+		// why the clock runs as it does: unrest and shortages pace a colony's
+		// counter-attacks before anything else (2026-10-17: two sieges in one
+		// system read 44 d and 86 d with nothing on the board saying why)
+		if (!ThreatGroundFronts.isHiveTarget(m)) {
+			float stability = m.getStabilityValue();
+			boolean low = stability < 5f;
+			String staff = ThreatGroundFronts.hasMilitaryCommand(m) ? ", military command x"
+					+ String.format("%.1f", ThreatIncConfig.colonyCounterAttackMilitaryMult()) : "";
+			tooltip.addPara("Musters every %s days at stability %s" + staff + ".", 4f, text,
+					low ? (f.isPlayerOwned() ? pos : neg) : h,
+					"" + (int) Math.ceil(ThreatGroundFronts.counterAttackInterval(f, m)),
+					String.format("%.0f", stability));
+		}
 		// why the cadence is what it is: troops to spare buy tempo (2026-09-08)
 		float tempo = ThreatGroundFronts.counterAttackTempo(f, m);
 		if (Math.abs(tempo - 1f) > 0.05f) {
