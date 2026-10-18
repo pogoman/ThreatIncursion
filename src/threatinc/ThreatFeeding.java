@@ -146,7 +146,10 @@ public class ThreatFeeding {
 			float docked = dock(m);
 			if (docked <= 0f) continue;
 			float monthly = monthly(m);
-			boolean full = monthly <= 0f || docked >= load * monthly;
+			// a world its own forge now covers (hw199b: a 170 FP swarm sailed 4 ly with 22 supplies for a bill of 0):
+			// the dock waits for the day it imports again
+			if (monthly <= 0f) continue;
+			boolean full = docked >= load * monthly;
 			boolean low = larder(m) < reserve * monthly && docked >= 0.5f * monthly;
 			if (!full && !low) continue;
 			if (swarmBound(m.getId())) continue;
