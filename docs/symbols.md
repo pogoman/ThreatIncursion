@@ -2152,12 +2152,13 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundWarCondition.days(float d)` :147
 - `ThreatGroundWarCondition.fmt(float f)` :152
 
-## ThreatHiveCover (90 lines)
-- `ThreatHiveCover.enabled()` :29 - Hive cover (2026-10-18, the user, after the audit "are the humans cheating"):
-- `ThreatHiveCover.poll(float days)` :34 - The fast poll (IncursionManager, beside ThreatReserves.poll):
-- `ThreatHiveCover.stockFor(String commodityId)` :52 - The stock a commodity's cover is paid from:
-- `ThreatHiveCover.priceRatio(CommodityOnMarketAPI com, String stockId)` :57 - Units of the paying stock one unit of the commodity costs:
-- `ThreatHiveCover.cover(MarketAPI market, CommodityOnMarketAPI com, int deficit, float coverDays, float fraction)` :66
+## ThreatHiveCover (107 lines)
+- `ThreatHiveCover.covered(String commodityId)` :39
+- `ThreatHiveCover.enabled()` :46
+- `ThreatHiveCover.poll(float days)` :51 - The fast poll (IncursionManager, beside ThreatReserves.poll):
+- `ThreatHiveCover.stockFor(String commodityId)` :69 - The stock a commodity's cover is paid from:
+- `ThreatHiveCover.priceRatio(CommodityOnMarketAPI com, String stockId)` :74 - Units of the paying stock one unit of the commodity costs:
+- `ThreatHiveCover.cover(MarketAPI market, CommodityOnMarketAPI com, int deficit, float coverDays, float fraction)` :83
 
 ## ThreatHulls (683 lines)
 - `ThreatHulls.enabled()` :61 - Mean combat points of vanilla's patrol weights (MilitaryBase.getPatrolCombatFP:

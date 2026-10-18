@@ -26,6 +26,23 @@ import com.fs.starfarer.api.impl.campaign.ids.Commodities;
  */
 public class ThreatHiveCover {
 
+	/**
+	 * What the cover pays for: the war stocks and the guns' inputs only. Never a
+	 * hive world's vanilla population demand - hw200 (2026-10-18 18:11): the first
+	 * cut covered every deficit and spent 636k / 563k / 583k supplies on
+	 * recreational drugs in a round, the stock fell from 80k to 5k and the hives
+	 * stalled at 27 / 51 / 43. The humans' cover is as narrow (ThreatReserves.COMMODITIES).
+	 */
+	protected static final String[] COVERED = { Commodities.FUEL, Commodities.SUPPLIES, Commodities.HEAVY_MACHINERY,
+			Commodities.HAND_WEAPONS };
+
+	protected static boolean covered(String commodityId) {
+		for (String c : COVERED) {
+			if (c.equals(commodityId)) return true;
+		}
+		return false;
+	}
+
 	public static boolean enabled() {
 		return ThreatIncConfig.hiveCover() && ThreatFuel.enabled();
 	}
@@ -39,7 +56,7 @@ public class ThreatHiveCover {
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (market == null || !market.isInEconomy()) continue;
 			for (CommodityOnMarketAPI com : market.getCommoditiesCopy()) {
-				if (com == null || com.getMaxDemand() <= 0) continue;
+				if (com == null || com.getMaxDemand() <= 0 || !covered(com.getId())) continue;
 				if (ThreatReserves.coverQuantity(com) > 0f) continue;
 				int deficit = ThreatReserves.deficitUnits(com);
 				if (deficit <= 0) continue;
