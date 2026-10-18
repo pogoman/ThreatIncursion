@@ -28,6 +28,8 @@ for g in $games; do
   row "front reinforced (resupply landing)"   "$(c 'Siege pass (reinforce)')" "$(c '^Front reinforced at')" ""
   row "feeding swarm -> landed (hive upkeep)"  "$(c '^Feeding swarm .* -> ')" "$(c '^Feeding swarm landed')" "tangible feeding 2026-10-18; lost $(c '^Feeding swarm lost'), held $(c '^Feeding: no hive can spare')"
   row "feeding convoy -> absorbed (base upkeep)" "$(c '^Feeding convoy [a-z_]* ')" "$(c '^Feeding convoy absorbed')" "held $(c '^Feeding: no market of')"
+  row "hive cover issues"                      "$(c '^Hive cover: .* issues')" "-" "hive cover 2026-10-18; cannot cover $(c 'cannot cover one')"
+  row "core colonies starved down (size upkeep)" "$(c '^Core upkeep: .* starved down')" "-" "core size upkeep 2026-10-18"
   row "relief leash recalls (at hold range)"  "$(c '^Relief over .*strayed')" "$(grep '^Relief over .*strayed [0-9]* units' "$F" | grep -o 'strayed [0-9]* units' | awk '$2<3000' | wc -l)" "recalled at < 2x hold range: the hw186c leash defect"
   row "swarm defend leash recalls"            "$(c '^Swarm defend .*strayed')" "$(grep '^Swarm defend .*strayed [0-9]* units' "$F" | grep -o 'strayed [0-9]* units' | awk '$2<3000' | wc -l)" "same"
   row "reinforcement sent -> arrived"         "$(c '^Posture: .* sent [0-9]* FP to')" "$(c '^Reinforcement arrived')" ""

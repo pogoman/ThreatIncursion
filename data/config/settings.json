@@ -972,6 +972,16 @@
 	"threatinc_feedConvoys": true,
 	"threatinc_feedConvoyLoadMonths": 3,
 	"threatinc_feedConvoyReserveMonths": 1,
+	# Hive cover (2026-10-18): the hive stock covers a hive world's vanilla shortages (whole
+	# units, a trade modifier for reserveShortageCoverDays, at most reserveShortageCoverFraction
+	# of the stock) as a human depot covers its colony's; fuel from the fuel stock, the rest from
+	# supplies at vanilla's base-price ratio.
+	"threatinc_hiveCover": true,
+	# Size upkeep on the humans' core colonies (2026-10-18): the hive's table (sizeUpkeepAt3 x
+	# ratio^(size-3) a month) billed to every mobilised faction's colony from its own depot,
+	# a size lost per starveDays unpaid; the player's colonies only under the second knob.
+	"threatinc_coreSizeUpkeep": true,
+	"threatinc_coreSizeUpkeepPlayer": false,
 	"threatinc_feedShareExpand": 0.5,
 	"threatinc_feedSharePress": 0.7,
 	# consolidating 0.9 -> 0.5 (2026-10-02, the war simulator's round 20): the largest of the three

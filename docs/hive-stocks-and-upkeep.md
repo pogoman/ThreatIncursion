@@ -287,3 +287,32 @@ a seeding is held on supplies (`ThreatFuel.heldOnSuppliesThisMonth`), growth dra
 kit (`ThreatColonyUpkeep.feed`, the growth loop); sustenance is untouched, and the navy's fit
 (`ThreatColonyManager.fitWant`) already asks the spare for the same kit a month. Logged once a month as
 `Feed: a seeding is held - growth leaves ...`. First trial hw151 from hw148 b/c's snapshots against hw149.
+
+## Hive cover and core size upkeep (2026-10-18)
+
+The user's audit question ("are the humans cheating?") found two structural edges, both
+vanilla's, and the user chose to close both (17:30):
+
+- **Hive cover** (`ThreatHiveCover`, knob `threatinc_hiveCover`). The humans' depots cover a
+  mobilised colony's vanilla shortage (`ThreatReserves.coverShortage`: whole units as a trade
+  modifier for `reserveShortageCoverDays`, at most `reserveShortageCoverFraction` of the stock),
+  so a blockaded human world keeps its industries' output and its guns' multiplier; a hive
+  world had nothing, and its Ground Defenses went dead for want of heavy machinery (facts,
+  2026-10-12). hw198a: 344k supplies, 840k fuel, 19k marines, 9.6k heavy armaments issued as
+  cover on the human side, 0 on the hive's. Now the hive's one stock does the same for every
+  live hive world each fast poll: fuel from the fuel stock, everything else from supplies at
+  vanilla's base-price ratio (heavy machinery 150 : supplies 100). The pool is the hive's
+  depot - a per-world ledger was proposed and withdrawn (the user: "sounds like an even bigger
+  nerf to the threat"). Census purpose `cover`; log `Hive cover: <world> issues ...`.
+- **Core size upkeep** (`ThreatCoreUpkeep`, knobs `threatinc_coreSizeUpkeep`,
+  `threatinc_coreSizeUpkeepPlayer` false). The hive's table (`perMonth`) has been billed to the
+  links since 2026-09-30 (`ThreatFrontlines.feedSize`) and never to the core: hw198a end, 144
+  human size-points at 0 against the hive's 256 paying 30k a month, the humans' depots at ~510k
+  idle supplies. Now every colony of a mobilised faction that is no forward base pays it from
+  its own depot exactly as a base does (`ThreatFeeding.payBase`: feeding credit first, then
+  stock above the floor and staging bank; `ThreatFeeding.shipBases` sends a feeding convoy to a
+  short core colony as to a base). The share paid moves a starve counter as a link's: at
+  break-even or above it recovers; below, a size is lost per `starveDays` paid nothing, half a
+  level below the line, never below size 1. Growth is left to vanilla's immigration - this
+  bills the keeping only. Log `Core upkeep: <world> (<faction>) starved down to size N`; a
+  quiet line per short colony while it slides.

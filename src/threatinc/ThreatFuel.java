@@ -258,9 +258,9 @@ public class ThreatFuel {
 	}
 
 	/** The purposes the census breaks the month's supplies spend into (pay's tag): feed, away, navy, build, found, other. */
-	public static final String[] PURPOSES = { "feed", "away", "navy", "build", "found", "other" };
+	public static final String[] PURPOSES = { "feed", "away", "navy", "build", "found", "cover", "other" };
 	/** PURPOSES plus the fuel-only tags the census brackets: the bombardment's draws (ThreatGroundFronts.tickSwarmBombard, reloadBombardHold). */
-	public static final String[] ALL_PURPOSES = { "feed", "away", "navy", "build", "found", "other", "bombard", "bombard hold" };
+	public static final String[] ALL_PURPOSES = { "feed", "away", "navy", "build", "found", "cover", "other", "bombard", "bombard hold" };
 
 	/**
 	 * As above, tallied under {@code purpose} for the census (monthSummary):

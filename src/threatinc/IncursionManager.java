@@ -237,6 +237,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// per-colony reserve accrual, convoy arrivals and losses
 		ThreatWarState.poll();
 		ThreatReserves.poll(interval.getIntervalDuration());
+		// size upkeep on the core colonies and the hive's cover of its worlds' shortages (2026-10-18)
+		ThreatCoreUpkeep.poll(interval.getIntervalDuration());
+		ThreatHiveCover.poll(interval.getIntervalDuration());
 		ThreatConvoys.poll();
 		ThreatRaiders.poll();
 		ThreatScouts.poll(random);

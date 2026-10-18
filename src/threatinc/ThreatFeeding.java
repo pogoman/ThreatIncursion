@@ -236,7 +236,7 @@ public class ThreatFeeding {
 
 	/** The base's feeding credit the logistics planner leaves in its depot (ThreatConvoys.spare). */
 	public static float credit(MarketAPI market) {
-		return enabled() && ThreatFrontlines.isOutpost(market) ? larder(market) : 0f;
+		return enabled() && (ThreatFrontlines.isOutpost(market) || ThreatCoreUpkeep.pays(market)) ? larder(market) : 0f;
 	}
 
 	/**
@@ -252,7 +252,7 @@ public class ThreatFeeding {
 		float load = Math.max(0.5f, ThreatIncConfig.feedConvoyLoadMonths());
 		float reserve = Math.max(0f, ThreatIncConfig.feedConvoyReserveMonths());
 		for (MarketAPI base : new ArrayList<MarketAPI>(markets)) {
-			if (!ThreatFrontlines.isOutpost(base)) continue;
+			if (!ThreatFrontlines.isOutpost(base) && !ThreatCoreUpkeep.pays(base)) continue;
 			float monthly = ThreatColonyUpkeep.perMonth(base.getSize());
 			if (monthly <= 0f) continue;
 			float have = larder(base) + ThreatConvoys.inbound(base.getId())[3];

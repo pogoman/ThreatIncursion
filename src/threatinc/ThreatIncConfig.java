@@ -711,6 +711,12 @@ public class ThreatIncConfig {
 	public static float feedConvoyLoadMonths()     { return f("threatinc_feedConvoyLoadMonths"); }
 	/** A feeding sailing is called when the larder (and what is at sea to it) holds under this many months of the bill. */
 	public static float feedConvoyReserveMonths()  { return f("threatinc_feedConvoyReserveMonths"); }
+	/** Hive cover (2026-10-18): the hive stock covers a hive world's vanilla shortages as a human depot covers its colony's (ThreatHiveCover). */
+	public static boolean hiveCover()              { return b("threatinc_hiveCover", true); }
+	/** Size upkeep on the humans' core colonies (2026-10-18): the hive's table billed to every mobilised faction's colony, not the forward bases alone (ThreatCoreUpkeep). */
+	public static boolean coreSizeUpkeep()         { return b("threatinc_coreSizeUpkeep", true); }
+	/** Whether the player's own colonies pay it too. */
+	public static boolean coreSizeUpkeepPlayer()   { return b("threatinc_coreSizeUpkeepPlayer", false); }
 	/** K2 (2026-10-13, hw177c): the navy's upkeep and the fleets away leave the kit, and the navy a prong's trip, in the supplies stock (ThreatFuel.keptAhead). */
 	public static boolean keepAheadOfFleets()      { return b("threatinc_keepAheadOfFleets", true); }
 	/** After hw180 (2026-10-13): navy upkeep the stock keeps ahead recycles the smallest swarms, and a hive with navy upkeep unpaid in the last month builds no navy (ThreatColonyManager.navyUnpaidRecently). */
