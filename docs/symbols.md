@@ -1648,7 +1648,6 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFrontlines.payableFP(MarketAPI base, float ly)` :1173 - The most fleet points whose voyage of ly the base and the markets reaching it can pay (pooled, voyageCost):
 - `ThreatFrontlines.sendGarrison(Outpost o, MarketAPI market, MarketAPI base)` :1183 - Guards a link just raised, if it stands at the front or a strike is on its way.
 - `ThreatFrontlines.sendGarrison(Outpost o, MarketAPI market, MarketAPI base, float str)` :1203 - Sends fleets from the base bringing str of vanilla's raid strength to the link:
-- `ThreatFrontlines.garrisonNow(MarketAPI link, MarketAPI base)` :1269 - Garrisons a link just raised from this base (ThreatOutposts.planNPC).
 - `ThreatFrontlines.homeOf(Outpost o)` :1275 - The garrison's home base while the link's faction still holds it, else null.
 - `ThreatFrontlines.recallGarrison(Outpost o, String why)` :1287 - Sends the garrison home (the link is gone, or it went unpaid) on the tracked leg (2026-09-29:
 - `ThreatFrontlines.sendGuardHome(Outpost o, CampaignFleetAPI f)` :1298 - One guard home on the tracked leg, to its base or the faction's nearest;

@@ -5,10 +5,10 @@ D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 W="/c/Program Files (x86)/Fractal Softworks/Starsector/mods/ThreatIncursion/tools/test-harness/reads/watch.sh"
 T="$(cygpath -u "$LOCALAPPDATA")/Temp/threatinc-tests"
 IGN="hoard,starved,broke,hulls,humans,nowar,convoywait"  # nowar: the snapshots resume at war day ~2000 with a fresh log, so it trips at the first poll
-for n in 205; do
+for n in 206 207; do
   tag=hw$n
   # wait for the round's first game to start writing (up to 15 min), then watch it to its end
-  for i in $(seq 1 90); do [ -f "$T/ti-${tag}a.txt" ] && break; [ -f "$D/siege15.done" ] && exit 0; sleep 10; done
+  for i in $(seq 1 90); do [ -f "$T/ti-${tag}a.txt" ] && break; [ -f "$D/siege16.done" ] && exit 0; sleep 10; done
   [ -f "$T/ti-${tag}a.txt" ] || { echo "$tag never started"; exit 1; }
   echo "=== $tag $(date +%T)"
   bash "$W" $tag 50 "$IGN" "$D/check-siege.sh" | tee "$D/watch-$tag.out"

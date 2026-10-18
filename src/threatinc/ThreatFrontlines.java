@@ -1265,12 +1265,6 @@ public class ThreatFrontlines {
 		return true;
 	}
 
-	/** Garrisons a link just raised from this base (ThreatOutposts.planNPC). */
-	public static void garrisonNow(MarketAPI link, MarketAPI base) {
-		Outpost o = find(link);
-		if (o != null && base != null) sendGarrison(o, link, base);
-	}
-
 	/** The garrison's home base while the link's faction still holds it, else null. */
 	protected static MarketAPI homeOf(Outpost o) {
 		MarketAPI home = o.guardBaseId != null ? Global.getSector().getEconomy().getMarket(o.guardBaseId) : null;
