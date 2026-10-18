@@ -970,3 +970,5 @@ The user's two instructions of the handover (`strikes-staged.md` 3-4), built as 
 **19:08 hw202a CLONE FAILED at launch:** the set B list in run-siege-9..12 named the OceanPena pre-opening snapshot `hw183ad1998`; the save is `...hw183ad1988` (the hw186 / hw190 / hw192 / hw196 rounds used the right name). b and c ran from 18:51 unaffected; a relaunched alone 19:09 (sbs.ps1 -Tags hw202a), ends ~19:50. Scripts fixed.
 
 **19:09-19:12 hw202 KILLED by my own relaunch of a.** `sbs.ps1` kills every Starsector process on start (`KillGames`), so the solo hw202a launch ended b at d3,144 (90 hives) and c at d3,451 (151 hives) - partial logs in scratchpad/overnight. Rerun as hw203 (set B, same jar 18:13:03) from 19:12, ends ~19:55. facts line added.
+
+**19:12-19:15 hw203 killed too:** the solo hw202a harness was still waiting on its load when hw203 started; hw203's KillGames ended it, and its exit path killed hw203a in turn. Everything stopped, no harness left, hw204 (set B, same jar) launched clean at 19:15, ends ~20:00. Rule: one sbs.ps1 at a time - check for a running one before any launch.
