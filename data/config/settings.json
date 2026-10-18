@@ -503,7 +503,8 @@
 	# an NPC siege expedition off-screen runs its siege a day at a time - the
 	# fight with the swarms over the world, the bombardment, the landing - and
 	# goes home when outmatched, instead of resolving it all in one frame a day
-	# after arrival. Swarm strikes keep the one-frame path
+	# after arrival. A swarm strike under the ground doctrine runs its siege
+	# the same way (it never goes home); its bombardment doctrines keep one go
 	"threatinc_abstractSiegeDaily": true,
 	# a world whose Threat front is dry weighs this much more as the next
 	# strike's target: the front signals, the next expedition answers
@@ -606,14 +607,24 @@
 
 	# marines: garrison, casualties and veterancy (2026-09-08).
 	# A colony defends with its resource stockpile's marines - never with
-	# personal Storage, which is the player's own. Holding a line and going
-	# over the top are different jobs, so marines enter a counter-attack at a
-	# fraction of what they defend with.
-	"threatinc_marineCounterAttackMult": 0.25,
+	# personal Storage, which is the player's own. Marines enter a
+	# counter-attack at this weight of what they defend with: 1 since
+	# 2026-10-17 (user: "the marines have to take districts back or bleed
+	# the enemy dry"); 0.25 before, holding a sledgehammer stockpile back.
+	"threatinc_marineCounterAttackMult": 1.0,
 	# mustering an offensive is also a question of having troops to spare:
 	# the cadence scales with how badly the world outnumbers what is on its
-	# soil, clamped both ways by this. 1 disables the term (stability only).
+	# soil, clamped both ways by this. 1 disables the term.
 	"threatinc_counterAttackRatioClamp": 3.0,
+	# a garrison that would beat the army past the overrun odds (2:1 after
+	# the strength exponent) musters in this many days whatever the cadence
+	# says (user, 2026-10-17). Stability no longer paces counter-attacks.
+	"threatinc_frontOverrunMusterDays": 10,
+	# a defending colony's stance (2026-10-17): Push counter-attacks on the
+	# cadence, Dig in holds fire and earns frontEntrenchDefenseBonus on its
+	# defence over frontEntrenchDays; a district lost keeps this fraction of
+	# that cover (0 = lost, the user's word).
+	"threatinc_defenderEntrenchKeptFraction": 0.0,
 	# marines shipped into a besieged colony are crates of rifles until they
 	# are called up, armed and posted: the whole stockpile works up over this
 	# many days, so a regiment landed today buys a garrison over weeks
@@ -623,6 +634,10 @@
 	# full strength presses them
 	"threatinc_defenderCounterAttackLossFraction": 0.15,
 	"threatinc_defenderLossPer30Days": 0.20,
+	# and heavy armaments: the engaged armed marines burn the front rate
+	# (frontArmamentsPerMarinePer30Days) from the colony's stockpile while an
+	# army stands on it; with none in stock they fight at frontDryEffectivenessMult
+	"threatinc_defenderArmsEnabled": true,
 	# veterancy, on vanilla's own ramp: level = xp / headcount, Regular below
 	# 0.25, Experienced below 0.5, Veteran below 0.75, Elite above. Vanilla's
 	# own fully-elite marines are +100% effect and half losses.
@@ -980,6 +995,9 @@
 	"threatinc_frontRunsEnabled": true,
 	"threatinc_frontResupplyDays": 60,
 	"threatinc_frontRunWaitDays": 30,
+	# a convoy to a colony the Threat blockades holds off at the system's
+	# jump-point until the blockade lifts, up to this many days, then turns home
+	"threatinc_convoyBlockadeWaitDays": 30,
 	# the hive hunts convoys: a hive colony that reaches a route's midpoint
 	# before the convoy does (billedReach; off, within raiderRangeLY of it) with
 	# Defense Swarms above its reserve detaches swarms to intercept the convoy

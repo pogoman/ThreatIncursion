@@ -174,6 +174,16 @@ public class ThreatGroundFronts {
 		 * abandonment.
 		 */
 		public float bracedPushProgress;
+		/**
+		 * The colony defenders' stance against this army (COLONY theatre only;
+		 * user, 2026-10-17: "the same actions should be available regardless of
+		 * if you attack or defend"): {@link #STANCE_PUSH} counter-attacks on the
+		 * cadence, {@link #STANCE_ENTRENCH} holds fire and digs in. Null on
+		 * older saves, which reads as push - what every colony did before.
+		 */
+		public String defence;
+		/** Days the defenders have held fire and dug in: their cover ({@link #defenderCoverMult}), lost with a district. */
+		public float defenderEntrenchDays;
 
 		public boolean isPlayerOwned() {
 			return factionId == null || Factions.PLAYER.equals(factionId);
@@ -434,14 +444,17 @@ public class ThreatGroundFronts {
 	 * A human colony under the swarm's assault. It has no organ to hang the
 	 * strata loss on, so it carries {@link ThreatSiegeMalus} and the
 	 * {@link ThreatGroundWarCondition} tooltip while the front stands
-	 * ({@link #syncSiegeState}); its counter-attacks pace on stability and a
-	 * military command; its orbit is held by its station and any armed fleet
+	 * ({@link #syncSiegeState}); its counter-attacks pace on a military command
+	 * and the force ratio, never stability (user, 2026-10-17), and stop while
+	 * its defenders are dug in; its orbit is held by its station and any armed fleet
 	 * that would fight the invader; its fall is decivilisation in the swarm's
 	 * name.
 	 */
 	public static final Theatre COLONY = new Theatre() {
 		public float defenderStrength(MarketAPI market) {
-			return colonyGarrison(market) + colonyMarineDefense(market, 1f);
+			// dug-in defenders fight from cover they have earned (2026-10-17)
+			return (colonyGarrison(market) + colonyMarineDefense(market, 1f))
+					* defenderCoverMult(getFront(market.getId()));
 		}
 		public float counterAttackStrength(MarketAPI market) {
 			// the garrison mounts the counter-attack; the stockpile's marines
@@ -450,16 +463,22 @@ public class ThreatGroundFronts {
 					+ colonyMarineDefense(market, ThreatIncConfig.marineCounterAttackMult());
 		}
 		public float counterAttackInterval(GroundFront front, MarketAPI market) {
-			// unrest, shortages and the shock of an invasion are what stop a
-			// garrison organising; a staff to run the operation speeds it up
-			float interval = ThreatIncConfig.frontCounterAttackDays()
-					/ Math.max(0.25f, market.getStabilityValue() / 10f);
+			// a staff to run the operation speeds it up. Stability does not
+			// pace it any more (user, 2026-10-17: "i dont think stability
+			// should affect ground battles at all"; it was / (stability / 10))
+			float interval = ThreatIncConfig.frontCounterAttackDays();
 			if (hasMilitaryCommand(market)) {
 				interval /= Math.max(0.1f, ThreatIncConfig.colonyCounterAttackMilitaryMult());
 			}
 			// and troops to spare: mustering an offensive is a question of how
 			// badly the world outnumbers what is on its soil (user, 2026-09-08)
-			return interval / counterAttackTempo(front, market);
+			interval /= counterAttackTempo(front, market);
+			// a garrison that would overrun the army does not wait on the
+			// cadence (user, 2026-10-17: 983 defenders over 143 troops read 30 d)
+			if (counterAttackOverwhelms(front, market)) {
+				interval = Math.min(interval, Math.max(1f, ThreatIncConfig.frontOverrunMusterDays()));
+			}
+			return interval;
 		}
 		public List<Industry> keyStructures(MarketAPI market) {
 			return colonyKeyStructures(market);
@@ -690,6 +709,7 @@ public class ThreatGroundFronts {
 		if (!ThreatIncConfig.frontBraceEnabled()) return false;
 		if (front.finalPush) return false; // spent either way; nothing to save it for
 		if (front.strataHeld > 0) return false;
+		if (defendersHoldFire(front, market)) return false; // no blow is coming (2026-10-17)
 		// The test is "would an assault get me killed", not "is a blow due
 		// soon" (user, 2026-09-08). Cover takes frontEntrenchDays to dig, so a
 		// window measured in days was always the wrong shape: a front 22 days
@@ -1036,7 +1056,51 @@ public class ThreatGroundFronts {
 		if (mult <= 0f) return 0f;
 		float armed = ThreatReserves.armedMarines(market);
 		if (armed <= 0f) return 0f;
+		// marines with no heavy armaments to fight with fight as a dry front does (2026-10-17)
+		if (defendersDry(market)) mult *= ThreatIncConfig.frontDryEffectivenessMult();
 		return armed * mult * ThreatMarineXP.effectMult(ThreatMarineXP.colonyLevel(market)) * weight;
+	}
+
+	/**
+	 * Whether a colony's armed marines are fighting an army on its surface with no heavy
+	 * armaments in its stockpile (knob {@code defenderArmsEnabled}; user, 2026-10-17: "i dont
+	 * like how marines defending human worlds dont consume armaments"). A hive's troops never
+	 * are: the swarm fights on bodies, not armaments ({@link #needsArms}).
+	 */
+	public static boolean defendersDry(MarketAPI market) {
+		if (market == null || !ThreatIncConfig.defenderArmsEnabled() || isHiveTarget(market)) return false;
+		if (!hasFront(market)) return false;
+		return ThreatReserves.stock(market.getId(), Commodities.HAND_WEAPONS) <= 0f;
+	}
+
+	/**
+	 * Heavy armaments a colony's defenders burn per day against a front: the front rate
+	 * ({@link #dailyUpkeep}) on every armed marine - the whole garrison is called up and in
+	 * the field, as the whole of a landed army burns whatever it faces (the bleed's frontage
+	 * rule, {@link #engaged}, is about who can be killed, not who is eating ammunition;
+	 * 2026-10-17 evening, after Arkoman's 750 marines read 1.1 a day). 0 on a hive, or with
+	 * the knob off.
+	 */
+	public static float defenderDailyUpkeep(MarketAPI market, GroundFront front) {
+		if (market == null || front == null || !ThreatIncConfig.defenderArmsEnabled() || isHiveTarget(market)) return 0f;
+		float armed = ThreatReserves.armedMarines(market);
+		if (armed <= 0f) return 0f;
+		return dailyUpkeep(armed);
+	}
+
+	/** Days the colony's heavy armaments last its defenders at the current burn (999+ = ample, or none burnt). */
+	public static float defenderArmsDaysLeft(MarketAPI market, GroundFront front) {
+		float upkeep = defenderDailyUpkeep(market, front);
+		if (upkeep <= 0f) return 999f;
+		return ThreatReserves.stock(market.getId(), Commodities.HAND_WEAPONS) / upkeep;
+	}
+
+	/** One tick of the defenders' burn, out of the colony's stockpile (a player colony's resource stockpile). */
+	protected static void burnDefenderArms(MarketAPI market, GroundFront front, float elapsedDays) {
+		if (elapsedDays <= 0f) return;
+		float burn = defenderDailyUpkeep(market, front) * elapsedDays;
+		if (burn <= 0f) return;
+		ThreatReserves.draw(market.getId(), Commodities.HAND_WEAPONS, burn);
 	}
 
 	/**
@@ -1220,6 +1284,126 @@ public class ThreatGroundFronts {
 		return 1f + (ThreatIncConfig.frontEntrenchDefenseBonus() - 1f) * entrenchFraction(front);
 	}
 
+	// ------------------------------------------------------------------
+	// the defenders' stance (2026-10-17, docs/ground-war-defenders.md "The
+	// defenders choose too"): a colony with an army on it either PUSHES -
+	// counter-attacks on the cadence, each win retaking a district - or DIGS
+	// IN: holds fire, earns frontEntrenchDefenseBonus on its defence over
+	// frontEntrenchDays, and loses that cover with a district. The player
+	// orders their own colonies from the board; NPC colonies push when a
+	// counter-attack would win and dig in when it would bounce. A hive has
+	// no stance: it counter-attacks with everything, as before.
+	// ------------------------------------------------------------------
+
+	/** The defenders' stance: STANCE_PUSH unless ordered to dig in (null on older saves is push). */
+	public static String defenderStance(GroundFront front) {
+		return front != null && STANCE_ENTRENCH.equals(front.defence) ? STANCE_ENTRENCH : STANCE_PUSH;
+	}
+
+	/** Whether the colony's defenders are dug in and holding fire: no counter-attack is coming while this is true. */
+	public static boolean defendersHoldFire(GroundFront front, MarketAPI market) {
+		return front != null && market != null && !isHiveTarget(market)
+				&& STANCE_ENTRENCH.equals(front.defence);
+	}
+
+	/** How dug in the defenders are: 0 fresh, 1 at frontEntrenchDays of holding fire. */
+	public static float defenderEntrenchFraction(GroundFront front) {
+		if (front == null) return 0f;
+		float days = Math.max(1f, ThreatIncConfig.frontEntrenchDays());
+		return Math.max(0f, Math.min(1f, front.defenderEntrenchDays / days));
+	}
+
+	/** The cover multiplier on the colony's defence figure: 1 while its defenders counter-attack (exposed), up to frontEntrenchDefenseBonus dug in. */
+	public static float defenderCoverMult(GroundFront front) {
+		if (front == null || !STANCE_ENTRENCH.equals(front.defence)) return 1f;
+		return 1f + (ThreatIncConfig.frontEntrenchDefenseBonus() - 1f) * defenderEntrenchFraction(front);
+	}
+
+	/** "push" / "dug in" - the marines' stance against a Threat landing, as the board names it (push = counter-attacks on the cadence). */
+	public static String defenderStanceLabel(GroundFront front) {
+		return STANCE_ENTRENCH.equals(defenderStance(front)) ? "dug in" : "push";
+	}
+
+	/**
+	 * The stance of the marines on this world, whichever side landed (the
+	 * board's Marines / Swarm framing, 2026-10-17): a marine landing's own
+	 * stance, or the garrison's against a Threat landing.
+	 */
+	public static String marineStanceLabel(GroundFront front, MarketAPI market) {
+		if (front == null) return "-";
+		return isThreatOwned(front) ? defenderStanceLabel(front) : stanceLabel(front);
+	}
+
+	/** The swarm's stance on this world: a Threat landing's own; a hive has none ("-"), it counter-attacks with everything. */
+	public static String swarmStanceLabel(GroundFront front, MarketAPI market) {
+		if (front == null) return "-";
+		return isThreatOwned(front) ? stanceLabel(front) : "-";
+	}
+
+	/** Marines lost per 30 days on this world: a marine landing's attrition, or the garrison's bleed against a Threat landing. */
+	public static float marineLossPer30Days(GroundFront front, MarketAPI market) {
+		if (front == null || market == null) return 0f;
+		return isThreatOwned(front) ? defenderLossPer30Days(market, front) : attritionPer30Days(front, market);
+	}
+
+	/** Swarm troops lost per 30 days on this world: a Threat landing's attrition; a hive's defence is structures and does not bleed (0). */
+	public static float swarmLossPer30Days(GroundFront front, MarketAPI market) {
+		if (front == null || market == null) return 0f;
+		return isThreatOwned(front) ? attritionPer30Days(front, market) : 0f;
+	}
+
+	/** The defenders go over to counter-attacks; the first musters a full interval from now. */
+	public static void orderDefenderPush(GroundFront front) {
+		if (front == null || !STANCE_ENTRENCH.equals(front.defence)) return;
+		front.defence = STANCE_PUSH;
+		front.lastCounterAttack = Global.getSector().getClock().getTimestamp();
+	}
+
+	/** The defenders hold fire and dig in; the cover starts accruing this tick. */
+	public static void orderDefenderEntrench(GroundFront front) {
+		if (front == null || STANCE_ENTRENCH.equals(front.defence)) return;
+		front.defence = STANCE_ENTRENCH;
+	}
+
+	/** Why the defenders cannot be ordered to push, or null. */
+	public static String defenderPushBlockReason(GroundFront front, MarketAPI market) {
+		if (front == null || market == null) return "There is no army there any more.";
+		if (isHiveTarget(market)) return "A hive counter-attacks with everything it has.";
+		if (!STANCE_ENTRENCH.equals(front.defence)) return "The marines are already pushing.";
+		return null;
+	}
+
+	/** Why the defenders cannot be ordered to dig in, or null. */
+	public static String defenderEntrenchBlockReason(GroundFront front, MarketAPI market) {
+		if (front == null || market == null) return "There is no army there any more.";
+		if (isHiveTarget(market)) return "A hive counter-attacks with everything it has.";
+		if (STANCE_ENTRENCH.equals(front.defence)) return "The marines are already dug in.";
+		return null;
+	}
+
+	/**
+	 * NPC colonies' defender stance AI, one tick: go over the top when a
+	 * counter-attack would win, hold fire and dig in when it would bounce
+	 * (humans play to win, 2026-10-04: a garrison does not throw itself at a
+	 * beachhead it cannot beat). The player's colonies keep their orders.
+	 */
+	protected static void tickDefenderStance(GroundFront front, MarketAPI market, float elapsedDays) {
+		if (front == null || market == null || isHiveTarget(market)) return;
+		if (!market.isPlayerOwned()) {
+			boolean wins = counterAttackStrength(market) > defenseStrength(front);
+			boolean dugIn = STANCE_ENTRENCH.equals(front.defence);
+			if (wins && dugIn) {
+				orderDefenderPush(front);
+				ThreatIncConfig.log("Marines of " + market.getName() + " push: counter-attacks on the cadence");
+			} else if (!wins && !dugIn) {
+				orderDefenderEntrench(front);
+				ThreatIncConfig.log("Marines of " + market.getName() + " dig in");
+			}
+		}
+		// cover is dug while holding fire; going over the top leaves it as it is
+		if (STANCE_ENTRENCH.equals(front.defence)) front.defenderEntrenchDays += elapsedDays;
+	}
+
 	/**
 	 * Marines the front loses per 30 days at the given stance and its current
 	 * supply - the tick's own rate, so the table's Losses column and the
@@ -1293,6 +1477,12 @@ public class ThreatGroundFronts {
 	/** Whether a counter-attack landing now would overrun the front outright: no strata held, beaten better than 2:1. */
 	public static boolean counterAttackOverruns(GroundFront front, MarketAPI market) {
 		if (front == null || market == null || front.strataHeld > 0) return false;
+		return counterAttackOverwhelms(front, market);
+	}
+
+	/** Whether a counter-attack landing now beats the front past the overrun odds (ratioPow above 2), strata held or not - the superiority that musters in frontOverrunMusterDays. */
+	public static boolean counterAttackOverwhelms(GroundFront front, MarketAPI market) {
+		if (front == null || market == null) return false;
 		float attack = counterAttackStrength(market);
 		float defense = defenseStrength(front);
 		return attack > defense && ratioPow(attack / Math.max(1f, defense)) > 2f;
@@ -1649,6 +1839,8 @@ public class ThreatGroundFronts {
 		// reinforcing past the threshold, which is exactly the move this is
 		// meant to charge for. A foothold clinging on still kills a few.
 		bleedDefenders(market, front, elapsedDays);
+		burnDefenderArms(market, front, elapsedDays); // and burn armaments as a front does (2026-10-17)
+		tickDefenderStance(front, market, elapsedDays); // and choose: counter-attack or dig in (2026-10-17)
 		bleedHiveTroops(market, front, elapsedDays); // a hive's landed troops too (2026-10-13)
 		if (front.marines < ThreatIncConfig.frontMinMarines()) {
 			if (threatFront) {
@@ -1796,8 +1988,8 @@ public class ThreatGroundFronts {
 		}
 
 		// the colony counter-attacks on a cadence paced by its supplies (hive)
-		// or its stability and military command (human): a starved or unstable
-		// world cannot mount them - which is what strangling an economy buys
+		// or its military command and the force ratio (human) - unless its
+		// defenders are dug in and holding fire (2026-10-17)
 		hiveCounterAttack(front, market);
 		if (getFront(front.marketId) == null) return; // front overrun
 
@@ -1888,6 +2080,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	front.strataHeld++;
 	// the assault leaves the cover behind (2026-09-06)
 	front.entrenchDays *= Math.max(0f, Math.min(1f, ThreatIncConfig.frontEntrenchKeptFraction()));
+	// and takes the defenders' with it (user, 2026-10-17: "lost if they lose a strata")
+	front.defenderEntrenchDays *= Math.max(0f, Math.min(1f, ThreatIncConfig.defenderEntrenchKeptFraction()));
 	int total = market.getSize();
 		ThreatAlarm.add(ownerOf(front), ThreatIncConfig.alarmPerStratum(),
 				"stratum taken at " + market.getName());
@@ -2562,6 +2756,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	protected static void hiveCounterAttack(GroundFront front, MarketAPI market) {
+		// dug-in defenders hold fire (2026-10-17): no blow is coming until
+		// they are ordered, or decide, to go over the top
+		if (defendersHoldFire(front, market)) return;
 		boolean threatFront = isThreatOwned(front);
 		Theatre theatre = Theatre.of(market);
 		float interval = theatre.counterAttackInterval(front, market);
@@ -5107,6 +5304,22 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float arming = Math.max(0f, ThreatReserves.stock(market.getId(), Commodities.MARINES)
 				- ThreatReserves.armedMarines(market));
 		return Math.max(0f, armed - arming);
+	}
+
+	/**
+	 * Heavy armaments an own colony under a Threat army wants banked beside its marines
+	 * (2026-10-17): frontResupplyDays of the burn its defenders will have once the marines
+	 * {@link #reliefNeed} asks for stand with them - engaged no further than the army's own
+	 * headcount - less what it holds. 0 with no Threat front, on a hive, or with the burn off.
+	 */
+	public static float defenderArmsNeed(MarketAPI market) {
+		if (market == null || isHiveTarget(market) || !ThreatIncConfig.defenderArmsEnabled()) return 0f;
+		GroundFront front = getFront(market.getId());
+		if (!isThreatOwned(front)) return 0f;
+		float standing = ThreatReserves.stock(market.getId(), Commodities.MARINES) + reliefNeed(market);
+		float burn = dailyUpkeep(standing);
+		float want = burn * ThreatIncConfig.frontResupplyDays();
+		return Math.max(0f, want - ThreatReserves.stock(market.getId(), Commodities.HAND_WEAPONS));
 	}
 
 	/** Days until a dry Threat front's final push, or -1 when it is not waiting. */

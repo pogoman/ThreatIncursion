@@ -180,25 +180,40 @@ faction is party to (its own landings, and Threat landings on its worlds). Every
 from the readout helpers at the foot of `ThreatGroundFronts` ("readouts for the board"),
 which reuse the tick's arithmetic, so the table quotes what will happen:
 
+**One table per tab, read from that tab's side (user, 2026-10-18: "if you are on the threat tab you see
+all the fronts from the context of the threat. if you are on sindria tab u see all fronts from sindria
+perspective etc").** The Threat tab lists every front above the hive list (the swarm is party to all of
+them; until 2026-10-18 only the selected system's showed, under its heading). A faction's tab lists the
+fronts it is party to - its own landings and the swarm's landings on its worlds, `frontRowsFor` - above
+its Colony Reserves. There is no crest column: the tab says whose side the row reads from, and the World
+column is in its owner's colour. Every cell is that side's; the enemy's strength is the right-hand half
+of Force and the rest of its arithmetic is the row tooltip, which keeps both sides' lines in the words
+*marines* and *the swarm* (the user, the same night: no attacker / defender lingo anywhere). `addFronts`
+takes the viewing faction; `weLanded` per row is "the viewing side landed here" and flips every
+colour - a worn defence, a repelled counter-attack, a Falls estimate are the landing's good news.
+
 | Column | Helper | What it is |
 | --- | --- | --- |
-| Attackers | `effectiveStrength`, `entrenchMult` | troops x entrenchment (0.75 on landing -> 1.0 over 30 days of holding) x 0.5 when dry |
-| Defenders | `defenderStrength` | the world's current figure; holding needs 17% of it, grinding 10% |
-| Defenses | `defensesTrend` / `defensesLabel` | **worn** (holding front, disruption clocks fed faster than they run), **held** (grinding front keeps the defense structures down), **recovering** (foothold keeps nothing down), **intact** |
-| State, Strata / Held, Stance | the front's fields | holding / grinding / foothold; on a hive the strata it still stands on (size less strata held - a `held/size` read as a reset when starvation took a size off, user 2026-10-11), on a colony districts held/size; push / regrouping / dug in |
-| Attrition | `attritionPer30Days` | 8% of troops per 30 days holding, 30% pushing (x the Lanchester skew), x3 when dry |
-| Attack | `daysToCounterAttack`, `counterAttackRepelled` | days to the next counter-attack; green if the front's `defenseStrength` (x its cover, up to 1.5, when not pushing) beats the world's current figure |
-| Arms | `supplyDaysLeft` | days of heavy armaments at the current burn (x2 while pushing) |
-| Falls | `pushDaysEstimate` | "~N d" until the last stratum or district falls while the front can push (what is left of the current layer plus whole ones after it) |
+| Force | `effectiveStrength`, `defenderStrength` | this side's strength, an arrow, the enemy's: `983 <- 144` on this side's world under a landing, `1,450 -> 2,080` where this side has landed. A landing's figure is troops x entrenchment (0.75 on landing -> 1.0 over 30 days of holding) x 0.5 when dry; a colony's is garrison + armed marines x cover (x 0.5 with no heavy armaments in stock); a hive's its defence figure. A landing holds at 17% of the world's figure, grinds at 10% |
+| Defenses | `defensesTrend` / `defensesLabel` | the world's: **worn** (holding landing, disruption clocks fed faster than they run), **held** (grinding landing keeps the defense structures down), **recovering** (foothold keeps nothing down), **intact** |
+| State | the landing's | holding / grinding / foothold |
+| Held | `heldCell` | from this side: districts or strata this side's landing has taken (on a hive, the strata still standing - a `held/size` read as a reset when starvation took a size off, user 2026-10-11); on this side's own colony, the districts still its own of its size |
+| Stance | `marineStanceLabel` / `swarmStanceLabel` | this side's: a landing's own push / regrouping / dug in; a garrison's push (= counter-attacks on the cadence, `defenderStanceLabel`) or dug in; a hive has none ("-") |
+| Losses | `marineLossPer30Days` / `swarmLossPer30Days` | this side's, per day: a landing's `attritionPer30Days` (8% of troops per 30 days holding, 30% pushing x the Lanchester skew, x3 when dry), a garrison's `defenderLossPer30Days`; a hive bleeds nothing |
+| Counter | `daysToCounterAttack`, `counterAttackRepelled` | days to the next counter-attack - the garrison's against a Threat landing, the hive's against a marine landing; "held" while a garrison is dug in; coloured for this side (a repelled one is the landing's gain) |
+| Arms | `supplyDaysLeft` / `defenderArmsDaysLeft` | this side's days of heavy armaments at the current burn: a marine landing's own (x2 while pushing), a colony stockpile's; "dry" when out; "-" on the Threat tab, the swarm fights on none |
+| Falls | `pushDaysEstimate` | "~N d" until the last stratum or district falls while the landing can push (what is left of the current layer plus whole ones after it); the landing's prize, the world's loss |
+| Space | `spaceHolder` | whose warships hold the orbit |
 
 The row tooltip gives the arithmetic one line per fact, including which structures are
 disrupted and for how many more days, the next counter-attack's figures and outcome
 (`counterAttackLoss`, `counterAttackOverruns`: repelled / costs N troops and a layer /
 overrun), a dry Threat front's wait for its expedition or its final push, the push in
 progress or what one would cost (`pushCasualtyEstimate`), and what the front wants
-brought (`ThreatConvoys.frontWants`). The word is *troops* everywhere a front is
-described - the swarm has no marines; *marines* survives only on convoy rows, which carry
-the commodity (user, 2026-09-06).
+brought (`ThreatConvoys.frontWants`). Every line names its side - "Swarm 144: 133 troops x ...",
+"Marines 983: holding needs 167 ...", "Marines losing 0.74 a day", "Swarm pushing district 1 of 5",
+"Next marine counter-attack in 5 days: 983 against the landing's 169" - and the swarm's bodies are
+*troops*, never marines (user, 2026-09-06; the side names 2026-10-18).
 
 **Orders from the board** (the player's own fronts, while mobilised): **Push** / **Dig in**
 (`ThreatFactionView.BUTTON_PUSH` / `BUTTON_ENTRENCH` -> `orderPush` / `orderEntrench`,
@@ -207,6 +222,27 @@ dialog - and `entrenchBlockReason`; either also answers a checkpoint), Escort, P
 Supply (refused when the front wants nothing, `ThreatConvoys.supplyBlockReason` - unless
 the **Supply run** ladder over the table is set to Max, which asks for everything the base can
 spare above its floor (a hull load until 2026-09-29) whether the front wants it or not; `ThreatConvoys.supplyAsk`, docs/player-aid.md "load ladders").
+
+**Reinforce** (2026-10-17, the user: "once youve cleared space of your own colony that is
+under attack. there is no way to send marines to defend ... like you can when you are
+sieging. theres also no way to aid allied worlds under attack"). A Threat army's row on a
+human world gets a button row too (`ThreatWarBoard.playerCanReinforce`: the player's own
+colony while their faction may order, an ally's while `ThreatAid.canAid` allows) with one
+button, **Reinforce** (`ThreatFactionView.BUTTON_REINFORCE`, keyed by the world's owner). It
+sails a plain convoy of marines and heavy armaments into the colony's stockpile - not a
+front run: there is no friendly front to land on, the marines join the garrison through the
+arming ramp (`ThreatReserves.armedMarines`, `marineArmingDays`) and the armaments feed the
+defenders' burn (ground-war-defenders.md "Defenders burn armaments"). The load is the
+defence's want (`ThreatConvoys.reinforceWants`: `ThreatGroundFronts.reliefNeed` marines and
+`defenderArmsNeed` armaments, net of what is already at sea) at the **Supply run** ladder -
+Min the want, never under one reference load (`convoyMarineCapacity` marines and their `frontResupplyDays` of armaments - a defence that already outnumbers the army is not refused; the player decides what is enough), Med x`convoyExtraLoadFactor`, Max everything the donor can spare - from the
+colony of the player's that can spare the most of it (`reinforceDonor`, non-staging colonies
+first; `ThreatAid.quoteReinforce` over every player colony for an ally, fitted to the
+source's own free hulls). Own colony: `reinforceTo` -> `dispatch`; ally: `dispatchReinforce`
+-> `dispatch` with the recipient, standing on landing as any aid. The button's tooltip quotes
+the load and the source; disabled it says why (`reinforceOffReason`, the quote's reason).
+The convoy holds off at the jump-point while the Threat blockades the world
+(`ThreatConvoys.holdsOff`) - clear the orbit first, as the user's report had it.
 
 **What "dig in" and "push" mean.** Stance is the front's *order*, state is what its strength
 *earns*. Dug in (`STANCE_ENTRENCH`): attrition at the holding rate, armaments at base burn,
@@ -272,8 +308,10 @@ Nexus bonus scaled by disruption; a colony's from vanilla's ground-defense stat 
 banked reserve marines - so the defenders "reinforce" exactly as their disrupted structures
 recover, and lose exactly what a holding front keeps suppressed and what each stratum strips.
 The Defenses column is that trend. The one enemy *action* is the counter-attack (every
-`frontCounterAttackDays` / the fed-and-held pace on a hive, / stability on a colony, faster with a military
-command), which retakes a stratum or batters the beachhead. Defense Swarms in orbit never
+`frontCounterAttackDays` / the fed-and-held pace on a hive, / the force ratio on a colony, faster with a
+military command, in `frontOverrunMusterDays` when it would overrun - and not at all while a colony's
+defenders are dug in, `ground-war-defenders.md` "The defenders choose too"), which retakes a stratum or
+batters the beachhead. Defense Swarms in orbit never
 fight on the ground; they contest the orbit, which is what blocks runs and landings. On a
 human world the swarm besieges, real reinforcement does exist: relief guards and marine
 convoys (`ThreatFleetOrders.planRelief`, `ThreatConvoys.planRelief`) add to the reserve

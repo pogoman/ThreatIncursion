@@ -626,6 +626,103 @@ public class ThreatAid {
 		return true;
 	}
 
+	/**
+	 * REINFORCE an ally's colony under a Threat army (user, 2026-10-17: "theres also no way
+	 * to aid allied worlds under attack like reinforce with more marines"): a convoy of marines
+	 * and heavy armaments into its stockpile, sized by ThreatConvoys.reinforceWants at the
+	 * board's Supply run tier, from the player colony that can spare and carry the most of
+	 * it. Lands as any aid (standing on arrival), and holds off while the Threat blockades
+	 * the world (ThreatConvoys.holdsOff).
+	 */
+	public static Quote quoteReinforce(MarketAPI target, int tier) {
+		Quote q = new Quote();
+		if (target == null || target.getStarSystem() == null) {
+			q.reason = ThreatNotice.Reason.of("No target");
+			return q;
+		}
+		if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(target.getId()))) {
+			q.reason = ThreatNotice.Reason.of("No Threat army on %s", ThreatNotice.market(target));
+			return q;
+		}
+		float[] wants = ThreatConvoys.reinforceWants(target, tier);
+		q.commodityId = Commodities.MARINES;
+		q.need = (int) Math.min(Integer.MAX_VALUE, wants[0]);
+		Vector2f loc = target.getLocationInHyperspace();
+		MarketAPI best = null;
+		float[] bestLoad = null;
+		float bestValue = 0f;
+		// any colony of the player's with the stock: a convoy needs no military structure or
+		// Waystation to sail (as the board's own-colony convoys, ThreatConvoys.stageDonor)
+		List<MarketAPI> donors = new ArrayList<MarketAPI>();
+		for (MarketAPI m : Misc.getPlayerMarkets(false)) {
+			if (m.getStarSystem() != null && m.getPrimaryEntity() != null) donors.add(m);
+		}
+		for (MarketAPI m : donors) {
+			float[] load = new float[ThreatReserves.COMMODITIES.length];
+			load[0] = Math.min(wants[0], ThreatReserves.available(m, Commodities.MARINES));
+			load[1] = Math.min(wants[1], ThreatReserves.available(m, Commodities.HAND_WEAPONS));
+			// a convoy sails on the colony's own hulls: staged warships do not fold into it
+			float[] fitted = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(m), load);
+			float value = ThreatConvoys.cargoValue(fitted[0], fitted[1], 0f, 0f);
+			if (value <= bestValue) continue;
+			best = m;
+			bestLoad = fitted;
+			bestValue = value;
+		}
+		if (best == null) {
+			if (donors.isEmpty()) {
+				q.reason = ThreatNotice.Reason.of("You have no colony to send from");
+			} else {
+				q.reason = ThreatNotice.Reason.of("No colony of yours can spare and carry marines or heavy armaments for %s",
+						ThreatNotice.market(target));
+				for (MarketAPI m : donors) {
+					q.reason.line("%s has %s marines and %s heavy armaments spare, %s fleet points free",
+							ThreatNotice.market(m), (int) ThreatReserves.available(m, Commodities.MARINES),
+							(int) ThreatReserves.available(m, Commodities.HAND_WEAPONS),
+							(int) Math.max(0f, ThreatAidCapacity.ownFreeFP(m)));
+				}
+			}
+			return q;
+		}
+		q.source = best;
+		q.load = bestLoad;
+		q.quantity = (int) bestLoad[0];
+		q.points = ThreatAidCapacity.convoyPoints(bestLoad);
+		q.distLY = Misc.getDistanceLY(best.getStarSystem().getLocation(), loc);
+		return q;
+	}
+
+	/** The board's Reinforce aid order: the convoy sails, or a refusal notice says why not. */
+	public static boolean dispatchReinforce(MarketAPI target, int tier, Random random) {
+		if (target == null) return false;
+		ThreatNotice.Reason blocked = canAid(target.getFaction());
+		if (blocked != null) {
+			ThreatNotice.titled("Reinforcement Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.lines(blocked).send();
+			return false;
+		}
+		Quote q = quoteReinforce(target, tier);
+		if (!q.ok()) {
+			ThreatNotice.titled("Reinforcement Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.lines(q.reason).send();
+			return false;
+		}
+		ThreatConvoys.Convoy c = ThreatConvoys.dispatch(q.source, target,
+				Global.getSector().getPlayerFaction(), q.load, random, target.getFactionId(), true);
+		if (c == null) {
+			ThreatNotice.titled("Reinforcement Refused").bad().icon(Global.getSector().getPlayerFaction())
+					.line("No convoy could be raised at %s", ThreatNotice.market(q.source)).send();
+			return false;
+		}
+		ThreatNotice.titled("Reinforcements Sail").icon(Global.getSector().getPlayerFaction())
+				.line("From %s, %s marines and %s heavy armaments", ThreatNotice.market(q.source),
+						Misc.getWithDGS((int) q.load[0]), Misc.getWithDGS((int) q.load[1]))
+				.line("Bound for %s of the %s", ThreatNotice.market(target),
+						ThreatNotice.faction(target.getFaction()))
+				.send();
+		return true;
+	}
+
 	public static boolean dispatchResupply(MarketAPI target, int tier, Random random) {
 		if (target == null) return false;
 		ThreatNotice.Reason blocked = canAid(target.getFaction());

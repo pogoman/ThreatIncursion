@@ -393,7 +393,7 @@ public class ThreatIncConfig {
 	public static float siegeFPWeight()       { return f("threatinc_siegeFPWeight"); }
 	/** Days a strike expedition holds orbit over a system before giving its siege up. */
 	public static float siegeOrbitDays()      { return f("threatinc_siegeOrbitDays"); }
-	/** An NPC siege expedition off-screen runs its siege a day at a time (ThreatPurgeFGI's daily siege), not in one frame on arrival. */
+	/** An NPC siege expedition, and a swarm strike under the ground doctrine, off-screen runs its siege a day at a time (ThreatPurgeFGI and ThreatStrikeFGI advanceDaily), not in one frame on arrival. */
 	public static boolean abstractSiegeDaily() { return b("threatinc_abstractSiegeDaily", true); }
 	/** Strike-target weight multiplier for a world whose Threat front is dry and signalling for the next expedition. */
 	public static float strikeReinforceWeight() { return f("threatinc_strikeReinforceWeight"); }
@@ -469,12 +469,18 @@ public class ThreatIncConfig {
 	public static float marineCounterAttackMult() { return f("threatinc_marineCounterAttackMult"); }
 	/** Most the force ratio may speed up (or slow) a colony's counter-attack cadence; 1 disables the tempo term. */
 	public static float counterAttackRatioClamp() { return f("threatinc_counterAttackRatioClamp"); }
+	/** Days a colony's counter-attack takes to muster when it would beat the army past the overrun odds ({@link ThreatGroundFronts#counterAttackOverwhelms}): the cadence cannot sit above this with that superiority (user, 2026-10-17: 983 defenders over 143 troops read 30 days). */
+	public static float frontOverrunMusterDays() { return f("threatinc_frontOverrunMusterDays"); }
+	/** Fraction of a colony's defender entrenchment ({@link ThreatGroundFronts#defenderCoverMult}) kept when the army takes a district; 0 = lost (user, 2026-10-17). */
+	public static float defenderEntrenchKeptFraction() { return f("threatinc_defenderEntrenchKeptFraction"); }
 	/** Days a colony takes to call up, arm and post its whole marine stockpile; marines shipped in mid-siege ramp in over this. */
 	public static float marineArmingDays()    { return f("threatinc_marineArmingDays"); }
 	/** Fraction of a colony's armed marines lost each time it counter-attacks, win or lose. */
 	public static float defenderCounterAttackLossFraction() { return f("threatinc_defenderCounterAttackLossFraction"); }
 	/** Fraction of a colony's armed marines lost per 30 days while a front presses it at full strength. */
 	public static float defenderLossPer30Days() { return f("threatinc_defenderLossPer30Days"); }
+	/** Whether a colony's armed marines burn heavy armaments from its stockpile while an army stands on it (frontArmamentsPerMarinePer30Days per engaged marine), fighting at frontDryEffectivenessMult with none in stock (user, 2026-10-17). */
+	public static boolean defenderArmsEnabled() { return b("threatinc_defenderArmsEnabled", true); }
 	/** Strength bonus of a fully elite pool (vanilla's own figure is 1.0, ie +100%). */
 	public static float marineVeterancyEffectMax() { return f("threatinc_marineVeterancyEffectMax"); }
 	/** Casualty reduction of a fully elite pool (vanilla's own figure is 0.5, ie half losses). */
@@ -900,6 +906,8 @@ public class ThreatIncConfig {
 	public static float frontResupplyDays()   { return f("threatinc_frontResupplyDays"); }
 	/** Days a front run waits at the hive system's jump-point for the orbit to clear before turning home. */
 	public static float frontRunWaitDays()    { return f("threatinc_frontRunWaitDays"); }
+	/** Days a convoy waits off a colony the Threat blockades (ThreatBlockade.penalty) before turning home with its cargo (user, 2026-10-17). */
+	public static float convoyBlockadeWaitDays() { return f("threatinc_convoyBlockadeWaitDays"); }
 	/** Fraction of its own cap a donor colony keeps back. */
 	public static float donorKeepFraction()   { return f("threatinc_donorKeepFraction"); }
 	/** Staging target as a multiple of one expedition's draw. */

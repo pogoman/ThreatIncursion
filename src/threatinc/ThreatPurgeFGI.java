@@ -699,6 +699,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	public static void resolveOnArrival(com.fs.starfarer.api.impl.campaign.intel.group.FleetGroupIntel intel) {
 		if (intel == null || !ThreatIncConfig.abstractResolveOnArrival()) return;
 		if (intel instanceof ThreatPurgeFGI && ((ThreatPurgeFGI) intel).dailySiege) return;
+		if (intel instanceof ThreatStrikeFGI && ((ThreatStrikeFGI) intel).dailySiege) return;
 		if (intel.isSpawnedFleets() || intel.isEnding() || intel.isEnded() || intel.isAborted()) return;
 		com.fs.starfarer.api.impl.campaign.fleets.RouteManager.RouteData route = intel.getRoute();
 		if (route == null) return;

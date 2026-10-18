@@ -79,9 +79,11 @@ Note this cannot be repaired retroactively - once a delivery has been seeded in 
 is no record of what the colony held before it. Shipping the marines out and back in re-ramps them.
 
 **2. Holding a line and going over the top are different jobs.** `defenderStrength` and
-`counterAttackStrength` are now separate questions on the `Theatre`. Marines enter the first
-whole and the second at `marineCounterAttackMult` (0.25); the garrison proper enters both whole.
-A hive still counter-attacks with everything, having no marines to hold back.
+`counterAttackStrength` are separate questions on the `Theatre`. Marines enter the first
+whole and the second at `marineCounterAttackMult` - **1.0 since 2026-10-17** (the user: "the
+marines have to take districts back or bleed the enemy dry"; 0.25 from 2026-09-08 to then, holding
+a sledgehammer stockpile back from overrunning every beachhead); the garrison proper enters both
+whole. A hive still counter-attacks with everything, having no marines to hold back.
 
 **3. The defenders bleed.** `defenderLossPer30Days` (0.20) of the engaged armed marines per 30 days,
 scaled by the front's pressure (`effectiveStrength / holdRequirement`, capped at 1), plus
@@ -103,6 +105,12 @@ so its figures follow.
 **3b. Troops to spare buy tempo.** The cadence used to read stability and nothing else:
 
     interval = frontCounterAttackDays (40) / (stability / 10),  then / 1.5 with a military command
+
+(The stability divisor itself went on 2026-10-17 - the user: "i dont think stability should affect
+ground battles at all" - so today it is 40 / 1.5 with a military command / the tempo below, and no
+more than `frontOverrunMusterDays` (10) when the counter-attack would beat the army past the overrun
+odds, `counterAttackOverwhelms`: a garrison that massively outnumbers a landing does not wait a month.
+983 defenders over 143 troops had read 30 days at stability 5.)
 
 so a colony with 5,000 marines went over the top exactly as often as one with 50, and
 reinforcing a besieged world bought strength but never initiative. `counterAttackTempo` now
@@ -129,6 +137,80 @@ ratio for the term to read.
 The consequence to keep in mind: the defence figure now **moves every tick**, where it used to be
 a wall. `frontStateHysteresis` (0.1) exists because of that - a front sitting on a threshold would
 otherwise cross it back and forth and announce every flip.
+
+### Defenders burn armaments (2026-10-17, built, untested)
+
+The user: "i dont like how marines defending human worlds dont consume armaments. this needs
+changing". A colony's armed marines now fight on the same supply rule as a landed front.
+Each front tick every armed marine - the whole garrison is called up and in the field, where the
+bleed's `engaged` frontage only caps who can be killed - burns `dailyUpkeep(armed)` x days of heavy
+armaments out of the colony's stockpile (`ThreatGroundFronts.burnDefenderArms`,
+`defenderDailyUpkeep`; a player colony's resource stockpile, an NPC's ledger). A colony with
+none in stock has dry defenders: `defendersDry` multiplies `colonyMarineDefense` by
+`frontDryEffectivenessMult` (0.5), so both the line it holds and its counter-attacks are
+halved until armaments land. The garrison proper (vanilla's ground-defense stat) is not
+touched: it is the structures, not the marines. Hives are never dry - the swarm fights on
+bodies (`needsArms`). Knob `defenderArmsEnabled` (default on).
+
+What asks for them: `defenderArmsNeed` = `frontResupplyDays` (60) of the burn the defenders
+will have once `reliefNeed`'s marines stand with them, less the stock. NPC relief convoys
+(`ThreatConvoys.planRelief`) carry it beside the marines, a load of `RELIEF_MIN_ARMS` (100)
+or more sailing even with no marines to spare; the player's Reinforce order
+(ground-war-fronts.md "Orders from the board") asks for the same figure. The front tooltip
+shows `Defenders' heavy armaments N, burning M a day - D days` or `Defenders out of heavy
+armaments: fighting at x0.5`.
+
+### The defenders choose too (2026-10-17, built, untested)
+
+The user, after watching a 983-defender world sit on a 143-troop landing: "the player should have a
+similar set of options as when they are attack. for example just because the enemy is pushing doesnt
+mean you cant push right back, or switch to dig in yada yada. i think the same actions should be
+available regardless of if you attack or defend. and if defends push they take strata/districts
+back. or they can hold indefinitely and grind down the enemy with dig in (they should also get
+entrenchment bonus but its lost if they lose a strata if that makes sense. basically we can make
+defending dynamic and interesting with strategy as well".
+
+A colony with an army on it has a stance of its own, carried on the front (`GroundFront.defence`,
+null on older saves = push, what every colony did before):
+
+- **Push** - the garrison counter-attacks on the cadence (`Theatre.COLONY.counterAttackInterval`:
+  40 days / 1.5 with a military command / the force-ratio tempo, floored at `frontOverrunMusterDays`
+  10 when it would overrun; no stability term). A win retakes a district (`hiveCounterAttack`,
+  `strataHeld--`) or batters a beachhead that holds none; every attempt costs
+  `defenderCounterAttackLossFraction` of the engaged marines, win or lose. The defence figure has no
+  cover: going over the top is exposed, as the attacker's push is.
+- **Dig in** - the garrison holds fire: no counter-attack is mounted (`defendersHoldFire`, read by
+  `hiveCounterAttack`, `shouldBrace` and every board readout), and it earns cover:
+  `defenderEntrenchDays` accrues while dug in, and `COLONY.defenderStrength` is multiplied by
+  `defenderCoverMult` = 1 + (`frontEntrenchDefenseBonus` 1.5 - 1) x min(1, days /
+  `frontEntrenchDays` 30). That figure is what the attacker pushes against, so a dug-in world is
+  slower and costlier to push (`pushDaysEstimate`, `pushLossFactor`), harder to hold
+  (`holdRequirement`) and bleeds its defenders less (the pressure term). When the army takes a
+  district the cover is kept at `defenderEntrenchKeptFraction` (0 - the user's "lost if they lose a
+  strata"); switching to Push keeps the days but applies no cover until the garrison digs in again.
+  Ordering Push from Dig in starts the muster clock afresh (`orderDefenderPush` sets
+  `lastCounterAttack` to now): the first counter-attack comes a full interval later.
+
+**Who orders.** The player's own colonies from the fronts table: the army's row carries both
+**Push** and **Dig in**, the marines' current one greyed, beside **Reinforce**. Both are shown because
+a lone toggle reading "Dig in" under a swarm landing already "dug in" looked like the wrong side's
+(user, 2026-10-17 night) - which is also what led to the per-tab fronts table the next day, where the
+Stance column is the tab's own side's
+(`ThreatWarBoard.addFrontButtons`, `ThreatFactionView.BUTTON_DEFEND_PUSH` / `BUTTON_DEFEND_ENTRENCH`,
+own colony only). NPC colonies run `tickDefenderStance` each tick: push when
+`counterAttackStrength > defenseStrength(front)` (the counter-attack would win), dig in when it would
+bounce - a garrison does not throw itself at a beachhead it cannot beat (humans play to win,
+2026-10-04). That is a behaviour change for NPC worlds: before, an outmatched colony counter-attacked
+on the cadence anyway, fed the front experience and lost marines each time. Hives have no stance and
+counter-attack with everything, as before.
+
+**Readouts** (`ground-war-fronts.md` "Reading a front": each tab reads its fronts from its own side).
+On the colony owner's tab the row's Force reads "garrison <- landing", Stance is the garrison's (push /
+dug in), Losses and Arms are its own, Held the districts still its own; the Counter column reads "held"
+while the garrison is dug in. The row tooltip, which keeps both sides, says "Marines dug in: defence xN
+after D days, no counter-attacks; the cover is lost with a district" or "Marines push: counter-attacks
+on the cadence, no cover", and the muster line names the overrun pace when it applies. The colony's
+ground-war condition tooltip says the same in a line.
 
 ### Veterancy
 
@@ -295,10 +377,12 @@ defender has:
 - **The Defend contract.** A Defend mission on the colony fails only when the swarm
   actually puts troops on the ground (`landOrReinforce`) or a saturation pass hits; a
   soften pass, or a landing turned back from a held orbit, is the contract working.
-- **Counter-attacks.** Paced by `frontCounterAttackDays / max(0.25, stability / 10)`
-  instead of hive vitality, divided again by `colonyCounterAttackMilitaryMult (1.5)` when
-  the colony has a Patrol HQ, Military Base, High Command or Lion's Guard. Keep a colony
-  stable and staffed and it counterstrikes often; let it riot and it will not.
+- **Counter-attacks.** Paced by `frontCounterAttackDays` (40) instead of hive vitality,
+  divided by `colonyCounterAttackMilitaryMult (1.5)` when the colony has a Patrol HQ, Military
+  Base, High Command or Lion's Guard, and by the force-ratio tempo; floored at
+  `frontOverrunMusterDays` when it would overrun the army, and held entirely while the
+  defenders are dug in ("The defenders choose too"). Stability has not paced them since
+  2026-10-17.
 - **Batteries.** While the expedition's fleets circle the world its Ground Defenses and
   Heavy Batteries are killing ships (the duel above); a colony whose fortification is
   intact makes the siege long and expensive, and relief that arrives during it finds a
@@ -346,6 +430,19 @@ orbit under hostiles - swarm-defence.md "Fight on arrival" - and cleared by its 
 blinkered into the player's orbit and their weight alone turned the cut from half to nothing,
 the batteries' machinery and metals back with it, before a shot was fired. The log line adds
 `, K of it fought` when the weighed figure is less than the swarm's whole.
+
+**Convoys wait off a blockade** (2026-10-17, the user: "if the colony is blockaded the
+resupply convoys should not be able to enter and should circle and wait until giving up
+after x period"). Every plain convoy - the player's Supplies and Reinforce, an NPC's relief
+and staging traffic, an ally's aid - that is inside the system of a colony whose
+`ThreatBlockade.penalty` reads above 0 (half or full, the Blockaded condition's own
+weighing, live) holds a passive orbit at the system's jump-point
+(`ThreatFleetOrders.interceptPoint`) instead of running in (`ThreatConvoys.holdsOff`, from
+`poll`). It runs in the moment the blockade lifts (`ThreatReturns.onLeg` re-sets the leg),
+and after `convoyBlockadeWaitDays` (30) still blockaded it turns for home with its cargo
+(`returnHome`). Front runs keep their own door (`pollFrontRun`, Defense Swarms over a hive);
+an outpost has no market to blockade. Log: `Convoy holding off X: blockaded by the Threat`,
+`Convoy runs in to X: blockade lifted after N days`, `Convoy gave up at X`.
 
 ### When the colony falls
 

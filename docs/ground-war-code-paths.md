@@ -179,7 +179,8 @@ restores the run-down on each slice, so the net matches the watched path.
 Built 2026-10-01 (the user's decisions: an off-screen siege runs a day at a time, and an
 outmatched siege goes home - it never diverts). Siege expeditions (`ThreatPurgeFGI`): an NPC's,
 and one the player commissioned or sent, which never calls off (as live, `breaksOff`). Strikes
-(`ThreatStrikeFGI`) and razing-only purges keep the one-frame path. Knob `abstractSiegeDaily` (on). Symbols are `ThreatPurgeFGI`'s unless another class is named.
+(`ThreatStrikeFGI`) under the ground doctrine run the same way since 2026-10-17 (below); razing-only
+purges and the strike's bombardment doctrines keep the one-frame path. Knob `abstractSiegeDaily` (on). Symbols are `ThreatPurgeFGI`'s unless another class is named.
 
 **Taking it.** `advanceDaily` runs first in `advanceImpl`, before `resolveOnArrival`. When the
 route's current segment is the `SiegeRaidAction`, the expedition is unspawned and not
@@ -260,9 +261,24 @@ Vanilla stamps `totalFPSpawned` from those survivors, so `noteSpawnFP` divides i
 (`baselineFP`, `poolsHome`) stay fractions of the flotilla as it sailed. Cargo with no berth after
 the prune goes home: it already paid its share of the damage (review 2026-10-01).
 
-**ThreatStrikeFGI diverges.** The swarm's strike keeps the one-frame path: `resolveOnArrival` ->
-`AnnihilationAction.autoresolve` -> `ThreatGroundFronts.abstractSiege`, now a loop over
-`abstractSiegeStep` with the old results unchanged. A razing-only purge keeps vanilla's window.
+**ThreatStrikeFGI runs its own copy** (2026-10-17, after Haven took a 600 FP strike's 54 days of
+bombardment in one frame: -9 unrest and 164-day disruptions at once, then the landing). `advanceDaily`
+runs in `advanceImpl` before `resolveOnArrival`, takes an unspawned ground-doctrine strike with
+`takeDaily` (same window, same catch-up), and `dailyDay` is the purge's less what the swarm has no
+use for: no call-off (the swarm fights to vanilla's abort line), no hunts, no rally. Each day over
+world W: a forward base or hive target takes its passes at once (`stationAssault`, vanilla's);
+nothing aboard ends W with its passes; `hostileFleetsNear` is weighed and fought for a day
+(`foughtDay`, `dayShare` as route damage, the troops aboard scaled down with the hulls), a contested
+orbit counts a day without a slice; a standing front takes its passes (reinforce); else "days",
+"guns" or one `abstractSiegeStep` (1 d, elapsed, ordnance paid from `ThreatFuel.stock` that day,
+the batteries' toll as route damage and off the troops). `endWorld` marks W in `siegeResolved`
+first so `abstractOrbitDone` reads it done, then `performRaid(null, W)` x `raidsPerColony` lands
+through `doCustomRaidAction` as before (beachhead, guard fleets). `abstractSiege` returns at once
+in a daily strike; `AnnihilationAction.autoresolve` hands to `dailyAutoresolve` (window closed) so
+vanilla's damage loop and the one-shot fight never run on it. `dailyStrength` = planned sizes less
+`fabricatedFP`, less route damage. Spawned mid-siege, the live stages run it out on the clocks it
+wrote (no stage pruning, unlike the purge). Grep: "Daily strike". A razing-only purge keeps
+vanilla's window.
 
 **To verify in a test** (a siege the player is far from):
 1. "Daily siege takes over" once per siege, its window worlds x 130 d.

@@ -43,7 +43,7 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 
 		int size = market.getSize();
 		int held = Math.max(0, Math.min(size, front.strataHeld));
-		tooltip.addPara("Districts held by the invaders: %s of %s.", opad, held > 0 ? neg : h,
+		tooltip.addPara("Districts held by the swarm: %s of %s.", opad, held > 0 ? neg : h,
 				"" + held, "" + size);
 		if (held > 0) {
 			tooltip.addPara("Stability %s, accessibility %s while they hold them.", 3f, neg,
@@ -79,13 +79,13 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		float attacker = ThreatGroundFronts.effectiveStrength(front);
 		float defender = ThreatGroundFronts.defenderStrength(market);
 		float holdNeed = ThreatGroundFronts.holdRequirement(market);
-		tooltip.addPara("Invaders %s effective against the colony's %s; holding needs %s.", 3f, h,
+		tooltip.addPara("Swarm %s against the marines' %s; it holds at %s.", 3f, h,
 				Misc.getWithDGS(Math.round(attacker)), Misc.getWithDGS(Math.round(defender)),
 				Misc.getWithDGS(Math.round(holdNeed)));
 		if (attacker >= holdNeed) {
-			tooltip.addPara("The invaders are %s.", 3f, neg, "holding and pressing on");
+			tooltip.addPara("The swarm is %s.", 3f, neg, "holding and pressing on");
 		} else {
-			tooltip.addPara("The invaders are %s.", 3f, pos, "contained");
+			tooltip.addPara("The swarm is %s.", 3f, pos, "contained");
 		}
 
 		// What that defence figure is actually made of (2026-09-08). Vanilla's
@@ -110,30 +110,35 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		}
 		float bleed = ThreatGroundFronts.defenderLossPer30Days(market, front);
 		if (bleed > 0f) {
-			tooltip.addPara("The defence is losing %s marines a day at this pressure.", 3f,
+			tooltip.addPara("Marines losing %s a day at this pressure.", 3f,
 					neg, ThreatGroundFronts.perDay(bleed));
 		}
 
-		float days = ThreatGroundFronts.daysToCounterAttack(front, market);
-		tooltip.addPara("Next garrison counter-attack: %s.", 3f, pos,
-				days <= 0f ? "imminent" : days(days));
+		if (ThreatGroundFronts.defendersHoldFire(front, market)) {
+			tooltip.addPara("Marines dug in: defence x%s, no counter-attacks.", 3f, pos,
+					String.format("%.2f", ThreatGroundFronts.defenderCoverMult(front)));
+		} else {
+			float days = ThreatGroundFronts.daysToCounterAttack(front, market);
+			tooltip.addPara("Marines push: next counter-attack %s.", 3f, pos,
+					days <= 0f ? "imminent" : days(days));
+		}
 
 		if (!ThreatGroundFronts.needsArms(front)) {
 			// the swarm does not fight on armaments (2026-09-08); what tells the
 			// player how this ends now is what pressing costs them
-			tooltip.addPara("Invaders' losses: %s troops a day at their current stance.", 3f, h,
+			tooltip.addPara("Swarm losing %s troops a day at its current stance.", 3f, h,
 					ThreatGroundFronts.perDay(ThreatGroundFronts.attritionPer30Days(front, market)));
 			return;
 		}
 		float supply = ThreatGroundFronts.supplyDaysLeft(front);
 		if (front.armaments > 0f) {
-			tooltip.addPara("Invaders' heavy armaments: %s.", 3f, h, days(Math.min(supply, 999f)));
+			tooltip.addPara("The landing's heavy armaments: %s.", 3f, h, days(Math.min(supply, 999f)));
 		} else if (front.finalPush) {
-			tooltip.addPara("Invaders' heavy armaments: %s - this is their final push.", 3f, neg,
+			tooltip.addPara("The landing's heavy armaments: %s - this is its final push.", 3f, neg,
 					"exhausted");
 		} else {
 			float finalIn = ThreatGroundFronts.daysToFinalPush(front);
-			tooltip.addPara("Invaders' heavy armaments: %s - dug in for the next expedition, "
+			tooltip.addPara("The landing's heavy armaments: %s - dug in for the next expedition, "
 					+ "final push in %s if none comes.", 3f, pos, "exhausted",
 					days(Math.max(0f, finalIn)));
 		}

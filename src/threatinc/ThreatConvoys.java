@@ -53,6 +53,8 @@ public class ThreatConvoys {
 	/** The smallest load worth a front run or a relief convoy; below it the sailing waits. */
 	public static final float FRONT_RUN_MIN_MARINES = 50f;
 	public static final float FRONT_RUN_MIN_ARMAMENTS = 20f;
+	/** The smallest load of heavy armaments worth a relief convoy to a besieged colony's defenders (2026-10-17). */
+	public static final float RELIEF_MIN_ARMS = 100f;
 
 	/** One convoy in flight. The cargo is also physically aboard the fleet. */
 	public static class Convoy {
@@ -1215,15 +1217,21 @@ public class ThreatConvoys {
 			if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(besieged.getId()))) {
 				continue;
 			}
-			float need = ThreatGroundFronts.reliefNeed(besieged) - inbound(besieged.getId())[0];
-			if (need < FRONT_RUN_MIN_MARINES) continue;
+			float[] atSea = inbound(besieged.getId());
+			float need = ThreatGroundFronts.reliefNeed(besieged) - atSea[0];
+			// and the armaments its defenders burn (2026-10-17), beside the marines
+			float armsNeed = ThreatGroundFronts.defenderArmsNeed(besieged) - atSea[1];
+			if (need < FRONT_RUN_MIN_MARINES && armsNeed < RELIEF_MIN_ARMS) continue;
 			final Map<MarketAPI, Float> spares = new HashMap<MarketAPI, Float>();
 			for (MarketAPI d : markets) {
 				if (d == besieged || d.getStarSystem() == null || d.getPrimaryEntity() == null) continue;
 				if (Misc.getDistanceLY(d.getStarSystem().getLocation(),
 						besieged.getStarSystem().getLocation()) > stockReachLY(d)) continue;
 				float s = spare(d, Commodities.MARINES);
-				if (s >= FRONT_RUN_MIN_MARINES) spares.put(d, s);
+				float arms = spare(d, Commodities.HAND_WEAPONS);
+				if (s >= FRONT_RUN_MIN_MARINES || (armsNeed >= RELIEF_MIN_ARMS && arms >= RELIEF_MIN_ARMS)) {
+					spares.put(d, s);
+				}
 			}
 			List<MarketAPI> donors = new ArrayList<MarketAPI>(spares.keySet());
 			java.util.Collections.sort(donors, new java.util.Comparator<MarketAPI>() {
@@ -1233,30 +1241,38 @@ public class ThreatConvoys {
 			});
 			int sailed = 0;
 			float carried = 0f;
+			float carriedArms = 0f;
 			MarketAPI first = null;
 			for (MarketAPI donor : donors) {
-				if (need < FRONT_RUN_MIN_MARINES) break;
+				if (need < FRONT_RUN_MIN_MARINES && armsNeed < RELIEF_MIN_ARMS) break;
 				float[] load = new float[ThreatReserves.COMMODITIES.length];
-				load[0] = Math.min(need, spares.get(donor));
+				if (need >= FRONT_RUN_MIN_MARINES) load[0] = Math.min(need, spares.get(donor));
+				if (armsNeed >= RELIEF_MIN_ARMS) load[1] = Math.min(armsNeed, spare(donor, Commodities.HAND_WEAPONS));
+				if (load[0] <= 0f && load[1] <= 0f) continue;
 				Convoy c = dispatch(donor, besieged, faction, load, random);
 				if (c == null) continue;
 				// every fleet of the sailing, when the load was split across several
-				float lifted = carried(c)[0];
+				float[] aboard = carried(c);
+				float lifted = aboard[0];
 				need -= lifted;
+				armsNeed -= aboard[1];
 				carried += lifted;
 				sailed++;
 				if (first == null) first = donor;
-				ThreatIncConfig.log("Relief convoy: " + faction.getId() + " " + (int) lifted + " marines "
-						+ donor.getName() + " -> " + besieged.getName());
+				carriedArms += aboard[1];
+				ThreatIncConfig.log("Relief convoy: " + faction.getId() + " " + (int) lifted + " marines, "
+						+ (int) aboard[1] + " armaments " + donor.getName() + " -> " + besieged.getName());
 			}
 			// only the player's own: another faction's relief is progress, not news
 			if (sailed > 0 && faction.isPlayerFaction()) {
 				ThreatNotice n = ThreatNotice.titled(sailed > 1 ? "Relief Convoys Sail" : "Relief Convoy Sails")
 						.icon(faction);
 				if (sailed > 1) {
-					n.line("Your %s convoys carry %s marines", "" + sailed, Misc.getWithDGS((int) carried));
+					n.line("Your %s convoys carry %s marines and %s heavy armaments", "" + sailed,
+							Misc.getWithDGS((int) carried), Misc.getWithDGS((int) carriedArms));
 				} else {
-					n.line("Your convoy carries %s marines from %s", Misc.getWithDGS((int) carried),
+					n.line("Your convoy carries %s marines and %s heavy armaments from %s",
+							Misc.getWithDGS((int) carried), Misc.getWithDGS((int) carriedArms),
 							ThreatNotice.market(first));
 				}
 				n.line("To the defence of %s", ThreatNotice.market(besieged)).send();
@@ -2026,6 +2042,113 @@ public class ThreatConvoys {
 			bestIsStaging = staging;
 		}
 		return best;
+	}
+
+	// ------------------------------------------------------------------
+	// REINFORCE (user, 2026-10-17): the board's order for a colony under a
+	// Threat army - the player's own, or an ally's through ThreatAid - once
+	// the orbit is cleared. "once youve cleared space of your own colony
+	// that is under attack. there is no way to send marines to defend ...
+	// like you can when you are sieging". A plain convoy of marines and
+	// heavy armaments into the colony's stockpile, where the marines are
+	// called up over marineArmingDays (ThreatReserves.armedMarines) and the
+	// armaments feed the defenders' burn (ThreatGroundFronts.burnDefenderArms).
+	// Sized by the fronts table's Supply run ladder; held off by the blockade
+	// door (holdsOff) while the Threat holds the orbit.
+	// ------------------------------------------------------------------
+
+	/**
+	 * What a Reinforce convoy to this besieged colony asks for at a load tier, COMMODITIES
+	 * order (marines and heavy armaments only - a reinforcement carries troops and their
+	 * arms): what the defence wants ({@link ThreatGroundFronts#reliefNeed},
+	 * {@link ThreatGroundFronts#defenderArmsNeed}) net of what is at sea to it, never less
+	 * than one reference load - convoyMarineCapacity marines and frontResupplyDays of their
+	 * armaments - so the order is never refused for a defence that already outnumbers the
+	 * army (Arkoman, 2026-10-17: 983 defenders against 143 troops read "wants nothing" and the
+	 * button greyed out; the player decides what is enough) (Min); that times
+	 * convoyExtraLoadFactor (Med); or everything the donor can spare (Max). All zero with no
+	 * Threat front on the world.
+	 */
+	public static float[] reinforceWants(MarketAPI besieged, int tier) {
+		float[] wants = new float[ThreatReserves.COMMODITIES.length];
+		if (besieged == null) return wants;
+		if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(besieged.getId()))) return wants;
+		if (tier >= 2) {
+			wants[0] = Float.MAX_VALUE;
+			wants[1] = Float.MAX_VALUE;
+			return wants;
+		}
+		float[] atSea = inbound(besieged.getId());
+		float marinesRef = capacityFor(Commodities.MARINES);
+		wants[0] = Math.max(marinesRef, ThreatGroundFronts.reliefNeed(besieged) - atSea[0]);
+		wants[1] = Math.max(ThreatGroundFronts.landingSupply(marinesRef, ThreatIncConfig.frontResupplyDays()),
+				ThreatGroundFronts.defenderArmsNeed(besieged) - atSea[1]);
+		if (tier == 1) {
+			wants[0] *= ThreatIncConfig.convoyExtraLoadFactor();
+			wants[1] *= ThreatIncConfig.convoyExtraLoadFactor();
+		}
+		return wants;
+	}
+
+	/** What a Reinforce convoy from this donor carries at a load tier: the wants, capped by the donor's stock above its floor (and, for a player donor under the ledger, its own free hulls). */
+	public static float[] reinforceLoad(MarketAPI donor, MarketAPI besieged, int tier) {
+		float[] load = new float[ThreatReserves.COMMODITIES.length];
+		if (donor == null || besieged == null) return load;
+		float[] wants = reinforceWants(besieged, tier);
+		for (int i = 0; i < 2; i++) {
+			load[i] = Math.min(wants[i], ThreatReserves.available(donor, ThreatReserves.COMMODITIES[i]));
+		}
+		if (donor.isPlayerOwned() && !ThreatHulls.enabled()) {
+			load = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(donor), load);
+		}
+		return load;
+	}
+
+	/**
+	 * The same-faction colony a Reinforce order would load at: the one whose
+	 * {@link #reinforceLoad} is worth the most (marines first, as cargoValue weighs), a colony
+	 * that is not itself a staging base before one that is; null when nothing can be spared.
+	 * No range for the player's hand orders (as {@link #stageDonor}).
+	 */
+	public static MarketAPI reinforceDonor(MarketAPI besieged, FactionAPI faction, int tier) {
+		if (besieged == null || faction == null || !ThreatIncConfig.convoyEnabled()) return null;
+		if (besieged.getStarSystem() == null) return null;
+		MarketAPI best = null;
+		float bestValue = 0f;
+		boolean bestIsStaging = true;
+		for (MarketAPI donor : ThreatReserves.marketsOf(faction.getId())) {
+			if (donor == besieged || donor.getStarSystem() == null) continue;
+			if (Misc.getDistanceLY(donor.getStarSystem().getLocation(),
+					besieged.getStarSystem().getLocation()) > stockReachLY(donor)) continue;
+			float[] load = reinforceLoad(donor, besieged, tier);
+			float value = cargoValue(load[0], load[1], 0f, 0f);
+			if (value <= 0f) continue;
+			boolean staging = stagingHive(donor) != null;
+			if (best != null && staging && !bestIsStaging) continue;
+			if (best != null && staging == bestIsStaging && value <= bestValue) continue;
+			best = donor;
+			bestValue = value;
+			bestIsStaging = staging;
+		}
+		return best;
+	}
+
+	/** The board's Reinforce order to the player's own colony: the convoy, or null when none can sail. */
+	public static Convoy reinforceTo(MarketAPI besieged, FactionAPI faction, int tier, Random random) {
+		MarketAPI donor = reinforceDonor(besieged, faction, tier);
+		if (donor == null) return null;
+		return dispatch(ThreatBases.of(donor), ThreatBases.of(besieged), faction,
+				reinforceLoad(donor, besieged, tier), random, null, false);
+	}
+
+	/** Why no Reinforce convoy can sail to this colony at a load tier - the button's disabled tooltip and the Confirm. {@code whose} is "yours" or the faction's name. */
+	public static String reinforceOffReason(MarketAPI besieged, int tier, String whose) {
+		String name = besieged != null ? besieged.getName() : "the world";
+		if (!ThreatIncConfig.convoyEnabled()) return "Convoys are disabled in the mod settings.";
+		if (besieged != null && !ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(besieged.getId()))) {
+			return "No Threat army on " + name + ".";
+		}
+		return "No colony of " + whose + " can spare marines or heavy armaments for " + name + ".";
 	}
 
 	/** Stock a colony can spare: what it holds above its keep fraction of its own months basis (ThreatReserves.monthsBasis), plus a staging base's own siege needs. */
@@ -2847,12 +2970,65 @@ public class ThreatConvoys {
 				continue;
 			}
 			SectorEntityToken to = base.entity();
+			// a blockaded colony is a closed door: the convoy holds off at the
+			// jump-point until the blockade lifts, or gives up (user, 2026-10-17)
+			if (holdsOff(c, base)) continue;
 			// vanilla ends the leg at the entity's edge and the queue falls
 			// through to the despawning return: the convoy is kept on it
 			if (ThreatReturns.onLeg(fleet, to, "carrying war materiel to " + base.name())) {
 				arrived(c, base);
 			}
 		}
+	}
+
+	/**
+	 * THE BLOCKADE DOOR (user, 2026-10-17: "if the colony is blockaded the resupply convoys
+	 * should not be able to enter and should circle and wait until giving up after x period").
+	 * A convoy inside the system of a colony the Threat blockades
+	 * ({@link ThreatBlockade#penalty} above 0 - the same live weighing as the Blockaded
+	 * condition, half or full) holds a passive orbit at the system's jump-point
+	 * (ThreatFleetOrders.interceptPoint) instead of running in, for up to
+	 * {@code convoyBlockadeWaitDays}; then it turns for home with its cargo
+	 * ({@link #returnHome}). The moment the blockade lifts the leg resumes (onLeg re-sets
+	 * it, the target having changed). Every plain convoy goes through here - the player's,
+	 * an NPC's relief, an ally's aid; front runs have their own door ({@link #pollFrontRun}),
+	 * and an outpost has no market to blockade. Returns true while the convoy is held, or
+	 * was sent home.
+	 */
+	protected static boolean holdsOff(Convoy c, ThreatBases.Base base) {
+		CampaignFleetAPI fleet = c.fleet;
+		if (base.market == null || base.entity() == null) return false;
+		if (fleet.getContainingLocation() != base.entity().getContainingLocation()) return false; // en route
+		if (ThreatBlockade.penalty(base.market) <= 0f) {
+			if (c.waitSinceTimestamp != 0L) {
+				ThreatIncConfig.log("Convoy runs in to " + base.name() + ": blockade lifted after "
+						+ (int) Global.getSector().getClock().getElapsedDaysSince(c.waitSinceTimestamp) + " days");
+				c.waitSinceTimestamp = 0L;
+			}
+			return false;
+		}
+		long now = Global.getSector().getClock().getTimestamp();
+		if (c.waitSinceTimestamp == 0L) {
+			c.waitSinceTimestamp = now;
+			ThreatIncConfig.log("Convoy holding off " + base.name() + ": blockaded by the Threat ("
+					+ c.factionId + " " + c.fromName() + " -> " + c.toName() + ")");
+		} else if (Global.getSector().getClock().getElapsedDaysSince(c.waitSinceTimestamp)
+				> ThreatIncConfig.convoyBlockadeWaitDays()) {
+			ThreatIncConfig.log("Convoy gave up at " + base.name() + ": still blockaded after "
+					+ (int) ThreatIncConfig.convoyBlockadeWaitDays() + " days");
+			returnHome(c);
+			return true;
+		}
+		SectorEntityToken door = base.starSystem() != null
+				? ThreatFleetOrders.interceptPoint(base.starSystem()) : null;
+		if (door == null) door = base.entity();
+		com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI a = fleet.getCurrentAssignment();
+		if (a == null || a.getTarget() != door || a.getAssignment() != FleetAssignment.ORBIT_PASSIVE) {
+			fleet.clearAssignments();
+			fleet.addAssignment(FleetAssignment.ORBIT_PASSIVE, door, 1000f,
+					"waiting off " + base.name() + ": blockaded");
+		}
+		return true;
 	}
 
 	protected static void arrived(Convoy c, ThreatBases.Base base) {

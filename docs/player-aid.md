@@ -38,7 +38,7 @@ today. Nothing new is invented on arrival; the new part is who pays and who gets
 | **Defend** | A guard fleet, `aidGuardDays` (90) at the target colony | Orbits aggressive, then sails home | `ThreatFleetOrders.dispatchGuard` with the player as payer |
 | **Strike / intercept** | A task force to a hive system's jump-point or a siege flotilla with marines | As Intercept / Siege today | `dispatchIntercept`, `launchSiegeExpedition` |
 | **Resupply** | Fuel, supplies, heavy armaments | Deposited in the colony's reserve AND applied as a trade modifier for `convoyLandingDays`, exactly as a convoy landing | `ThreatConvoys` landing code, `ThreatReserves.deposit` |
-| **Reinforce** | Marines | As above; a struck colony's militia | same |
+| **Reinforce** | Marines and heavy armaments to a colony under a Threat army (fronts table, 2026-10-17) | Into the colony's stockpile; marines arm over `marineArmingDays`; waits off a blockade | `ThreatAid.quoteReinforce` / `dispatchReinforce` -> `ThreatConvoys.dispatch` |
 
 **Where the fleet comes from - decided 2026-09-05: the player's own colonies only.**
 Every aid sent from the war board is launched from one of the player's colonies and is

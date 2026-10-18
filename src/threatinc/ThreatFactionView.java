@@ -81,6 +81,12 @@ public class ThreatFactionView {
 	public static final String BUTTON_AID_SUPPLY = "threatinc_board_aidsupply:";
 	/** Player aid: a task force from a player colony holds a hive system's door (payload: factionId:systemId). */
 	public static final String BUTTON_AID_STRIKE = "threatinc_board_aidstrike:";
+	/** A convoy of marines and heavy armaments to a colony under a Threat army - the player's own, or an ally's as aid (payload: ownerFactionId:marketId; 2026-10-17). */
+	public static final String BUTTON_REINFORCE = "threatinc_board_reinforce:";
+	/** The marines of the player's own colony push: counter-attacks on the cadence (payload player:marketId; 2026-10-17). */
+	public static final String BUTTON_DEFEND_PUSH = "threatinc_board_defend_push:";
+	/** The marines of the player's own colony hold fire and dig in. */
+	public static final String BUTTON_DEFEND_ENTRENCH = "threatinc_board_defend_entrench:";
 	/** Build an outpost over a purged world (payload: factionId:planetId). */
 	public static final String BUTTON_OUTPOST = "threatinc_board_outpost:";
 	/** The player mobilises their own faction (payload: factionId). */
@@ -307,6 +313,11 @@ public class ThreatFactionView {
 			}, standDown, TooltipLocation.BELOW);
 		}
 
+		// ---- ground fronts: this faction's landings, and the swarm's on its worlds,
+		// from its own side, above its world list (user, 2026-10-18) ----
+		ThreatWarBoard.Fronts fronts = ThreatWarBoard.addFronts(intel, main, width, opad,
+				ThreatWarBoard.frontRowsFor(factionId), faction, true);
+
 		// ---- colonies ----
 		List<ColonyRow> rows = colonyRows(markets);
 		UIPanelAPI colonyTable = null;
@@ -479,10 +490,6 @@ public class ThreatFactionView {
 			key.setHighlightColors(text, h, neg);
 			main.addSpacer(opad);
 		}
-
-		// ---- ground fronts: this faction's landings, and the swarm's on its worlds ----
-		ThreatWarBoard.Fronts fronts = ThreatWarBoard.addFronts(intel, main, width, opad,
-				ThreatWarBoard.frontRowsFor(factionId), faction, true);
 
 		// ---- fleets ----
 		List<FleetRow> fleets = fleetRows(factionId);
@@ -1623,7 +1630,8 @@ public class ThreatFactionView {
 				|| id.startsWith(BUTTON_OUTPOST)
 				|| id.startsWith(BUTTON_AID_DEFEND) || id.startsWith(BUTTON_AID_SUPPLY)
 				|| id.startsWith(BUTTON_AID_STRIKE) || id.startsWith(BUTTON_MOBILISE)
-				|| id.startsWith(BUTTON_STAND_DOWN);
+				|| id.startsWith(BUTTON_STAND_DOWN) || id.startsWith(BUTTON_REINFORCE)
+				|| id.startsWith(BUTTON_DEFEND_PUSH) || id.startsWith(BUTTON_DEFEND_ENTRENCH);
 	}
 
 	/** Splits "prefix" + "factionId:target" into [prefix, factionId, target]. */
@@ -1633,7 +1641,8 @@ public class ThreatFactionView {
 				BUTTON_DETACH,
 				BUTTON_SUPPLY, BUTTON_PULLOUT, BUTTON_SUPPORT, BUTTON_DEFEND, BUTTON_PUSH, BUTTON_ENTRENCH,
 				BUTTON_OUTPOST, BUTTON_AID_DEFEND, BUTTON_AID_SUPPLY,
-				BUTTON_AID_STRIKE, BUTTON_MOBILISE, BUTTON_STAND_DOWN};
+				BUTTON_AID_STRIKE, BUTTON_MOBILISE, BUTTON_STAND_DOWN, BUTTON_REINFORCE,
+				BUTTON_DEFEND_PUSH, BUTTON_DEFEND_ENTRENCH};
 		for (String p : prefixes) {
 			if (!id.startsWith(p)) continue;
 			String rest = id.substring(p.length());
@@ -1840,6 +1849,37 @@ public class ThreatFactionView {
 						highlights(f));
 				addProvisionsLine(prompt, q.source, q.fp, target.getLocationInHyperspace(), false);
 			}
+		} else if (BUTTON_REINFORCE.equals(parts[0])) {
+			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
+			if (target == null) {
+				prompt.addPara("There is no colony there any more.", 0f);
+			} else if (target.isPlayerOwned()) {
+				FactionAPI player = Global.getSector().getPlayerFaction();
+				MarketAPI donor = ThreatConvoys.reinforceDonor(target, player, supplyTier);
+				if (donor == null) {
+					prompt.addPara(ThreatConvoys.reinforceOffReason(target, supplyTier, "yours"), 0f);
+				} else {
+					float[] load = ThreatConvoys.reinforceLoad(donor, target, supplyTier);
+					prompt.addPara("Order a convoy from " + donor.getName() + " to " + target.getName()
+							+ " with %s marines and %s heavy armaments? They land in its stockpile; "
+							+ "the convoy waits at the jump-point while the Threat blockades the world, "
+							+ "and can be intercepted on the way.", 0f, h,
+							Misc.getWithDGS((int) load[0]), Misc.getWithDGS((int) load[1]));
+				}
+			} else {
+				ThreatAid.Quote q = ThreatAid.quoteReinforce(target, supplyTier);
+				if (!q.ok()) {
+					prompt.addPara(q.reason != null ? q.reason.toString() : "The situation has changed.", 0f);
+				} else {
+					prompt.addPara("Send %s marines and %s heavy armaments from " + q.source.getName()
+							+ " to " + target.getName() + ", for " + who + "? They land in its stockpile. "
+							+ "The goods leave " + q.source.getName() + "'s reserve, the hulls are held "
+							+ "against its capacity until home, the convoy waits at the jump-point while "
+							+ "the Threat blockades the world, and can be intercepted on the way. Standing "
+							+ "follows the goods' value at " + target.getName() + "'s prices.", 0f, h,
+							Misc.getWithDGS((int) q.load[0]), Misc.getWithDGS((int) q.load[1]));
+				}
+			}
 		} else if (BUTTON_AID_SUPPLY.equals(parts[0])) {
 			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
 			ThreatAid.Quote q = ThreatAid.quoteResupply(target, convoyTier);
@@ -1910,6 +1950,33 @@ public class ThreatFactionView {
 				prompt.addPara(ThreatFleetOrders.orbitEffect(hive, points, kind, null), 10f);
 				addProvisionsLine(prompt, base, ThreatAid.forceFP(base, false, siegeTier),
 						hive != null ? hive.getLocationInHyperspace() : null, false);
+			}
+		} else if (BUTTON_DEFEND_PUSH.equals(parts[0]) || BUTTON_DEFEND_ENTRENCH.equals(parts[0])) {
+			// the defenders' stance on the player's own world (2026-10-17)
+			MarketAPI world = ThreatGroundFronts.resolveMarket(parts[2]);
+			ThreatGroundFronts.GroundFront front = world != null
+					? ThreatGroundFronts.getFront(world.getId()) : null;
+			boolean push = BUTTON_DEFEND_PUSH.equals(parts[0]);
+			String why = push ? ThreatGroundFronts.defenderPushBlockReason(front, world)
+					: ThreatGroundFronts.defenderEntrenchBlockReason(front, world);
+			if (why != null) {
+				prompt.addPara(why, 0f);
+			} else if (push) {
+				float atk = ThreatGroundFronts.counterAttackStrength(world);
+				float def = ThreatGroundFronts.defenseStrength(front);
+				prompt.addPara("Order the marines of " + world.getName() + " to push? "
+						+ "A counter-attack every %s days or so, %s against the landing's %s"
+						+ (atk <= def ? " - repelled" : "") + "; each costs about %s marines. "
+						+ "No cover.", 0f, h,
+						"" + (int) Math.ceil(ThreatGroundFronts.counterAttackInterval(front, world)),
+						Misc.getWithDGS(Math.round(atk)), Misc.getWithDGS(Math.round(def)),
+						Misc.getWithDGS(Math.round(ThreatGroundFronts.counterAttackDefenderLoss(front, world))));
+			} else {
+				prompt.addPara("Order the marines of " + world.getName() + " to dig in? "
+						+ "No counter-attacks; the defence rises to x%s over %s days, and the cover "
+						+ "is lost with a " + ThreatGroundFronts.layerName(world) + ".", 0f, h,
+						String.format("%.1f", ThreatIncConfig.frontEntrenchDefenseBonus()),
+						"" + (int) ThreatIncConfig.frontEntrenchDays());
 			}
 		} else if (BUTTON_PUSH.equals(parts[0]) || BUTTON_ENTRENCH.equals(parts[0])) {
 			MarketAPI world = ThreatGroundFronts.resolveMarket(parts[2]);
@@ -2061,6 +2128,30 @@ public class ThreatFactionView {
 		if (BUTTON_AID_STRIKE.equals(parts[0])) {
 			return ThreatAid.dispatchStrike(ThreatWarBoard.getSystem(parts[2]), parts[1], siegeTier) ? "aid-strike" : null;
 		}
+		if (BUTTON_REINFORCE.equals(parts[0])) {
+			MarketAPI target = Global.getSector().getEconomy().getMarket(parts[2]);
+			if (target == null) return null;
+			// an ally's colony: aid, no order authority needed
+			if (!target.isPlayerOwned()) {
+				return ThreatAid.dispatchReinforce(target, supplyTier, random) ? "aid-reinforce" : null;
+			}
+			FactionAPI player = Global.getSector().getPlayerFaction();
+			if (!ThreatFleetOrders.canPlayerOrder(player)) return null;
+			ThreatConvoys.Convoy c = ThreatConvoys.reinforceTo(target, player, supplyTier, random);
+			if (c == null) {
+				ThreatNotice.titled("Reinforcement Refused").bad().icon(player)
+						.line("For %s", ThreatNotice.market(target))
+						.line(ThreatConvoys.reinforceOffReason(target, supplyTier, "yours")).send();
+				return null;
+			}
+			ThreatNotice.titled("Reinforcements Sail").icon(player)
+					.line("From %s, %s marines and %s heavy armaments", ThreatNotice.market(
+							Global.getSector().getEconomy().getMarket(c.fromMarketId)),
+							Misc.getWithDGS((int) ThreatConvoys.carried(c)[0]),
+							Misc.getWithDGS((int) ThreatConvoys.carried(c)[1]))
+					.line("To the defence of %s", ThreatNotice.market(target)).send();
+			return "reinforce";
+		}
 		if (BUTTON_RECALL.equals(parts[0])
 				&& (parts[2].startsWith("aidorder:") || parts[2].startsWith("aidconvoy:"))) {
 			return recall(parts[1], parts[2]) ? "recall" : null;
@@ -2191,6 +2282,36 @@ public class ThreatFactionView {
 				return null;
 			}
 			return "outpost";
+		}
+		if (BUTTON_DEFEND_PUSH.equals(parts[0]) || BUTTON_DEFEND_ENTRENCH.equals(parts[0])) {
+			// the defenders of the player's own colony only: NPC colonies run
+			// their stance AI (ThreatGroundFronts.tickDefenderStance)
+			if (!faction.isPlayerFaction()) return null;
+			MarketAPI world = ThreatGroundFronts.resolveMarket(parts[2]);
+			ThreatGroundFronts.GroundFront front = world != null
+					? ThreatGroundFronts.getFront(world.getId()) : null;
+			if (world == null || front == null || !world.isPlayerOwned()) return null;
+			boolean push = BUTTON_DEFEND_PUSH.equals(parts[0]);
+			String why = push ? ThreatGroundFronts.defenderPushBlockReason(front, world)
+					: ThreatGroundFronts.defenderEntrenchBlockReason(front, world);
+			if (why != null) {
+				ThreatNotice.titled(push ? "Cannot Push" : "Cannot Dig In").bad().icon(faction)
+						.line(why).send();
+				return null;
+			}
+			if (push) {
+				ThreatGroundFronts.orderDefenderPush(front);
+				ThreatNotice.titled("Push Ordered").icon(faction)
+						.line("Marines on %s push: a counter-attack every %s days", ThreatNotice.market(world),
+								(int) Math.ceil(ThreatGroundFronts.counterAttackInterval(front, world)))
+						.send();
+				return "defend-push";
+			}
+			ThreatGroundFronts.orderDefenderEntrench(front);
+			ThreatNotice.titled("Dig In Ordered").icon(faction)
+					.line("Marines on %s dig in", ThreatNotice.market(world))
+					.send();
+			return "defend-entrench";
 		}
 		if (BUTTON_PUSH.equals(parts[0]) || BUTTON_ENTRENCH.equals(parts[0])) {
 			// the player's own front only: NPC fronts run their stance AI
