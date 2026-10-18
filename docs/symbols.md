@@ -1193,6 +1193,18 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatConvoys.homeBase(Convoy c)` :3194 - Where a convoy settles:
 - `ThreatConvoys.returnHome(Convoy c)` :3208 - Recalled, timed out, or its destination is gone:
 
+## ThreatCoreBuild (181 lines)
+- `ThreatCoreBuild.enabled()` :49
+- `ThreatCoreBuild.mayStart(String fid)` :58 - Whether the faction may start another project now:
+- `ThreatCoreBuild.started(String fid)` :64
+- `ThreatCoreBuild.sites(String fid)` :69 - A core colony this pass builds at:
+- `ThreatCoreBuild.compare(MarketAPI a, MarketAPI b)` :77
+- `ThreatCoreBuild.poll()` :86 - The daily pass:
+- `ThreatCoreBuild.answerShortage(String fid, List<MarketAPI> sites)` :109 - The shortage's answer at home:
+- `ThreatCoreBuild.militaryStep(MarketAPI m)` :137 - The one military step the colony lacks, by size;
+- `ThreatCoreBuild.start(MarketAPI m, String id)` :164
+- `ThreatCoreBuild.upgrade(MarketAPI m, Industry ind)` :172
+
 ## ThreatCoreUpkeep (106 lines)
 - `ThreatCoreUpkeep.enabled()` :35 - The share of its size upkeep the colony paid at the last poll.
 - `ThreatCoreUpkeep.pays(MarketAPI market)` :40 - Whether the colony is billed:
@@ -1572,7 +1584,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFortificationRaids.performRaid(CargoAPI loot, Random random, float lootMult, TextPanelAPI text)` :174
 - `ThreatFortificationRaids.OrganRaid(MarketAPI market, Industry target)` :197 - A hive's Fabrication Core:
 
-## ThreatFrontlines (2795 lines)
+## ThreatFrontlines (2681 lines)
 - `ThreatFrontlines.StationListener(String marketId)` :140
 - `ThreatFrontlines.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :144
 - `ThreatFrontlines.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :155
@@ -1662,48 +1674,46 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFrontlines.canSupplyProducer(MarketAPI market, int s, String producer)` :1799 - Whether vanilla's inputs for the producer can be had here:
 - `ThreatFrontlines.wantsProducer(MarketAPI market, String producer)` :1807 - Whether the knob for the producer is on and the link has none of it (an Orbital Works counts as a Heavy Industry).
 - `ThreatFrontlines.buildProducer(MarketAPI market, int s, String producer)` :1825 - Starts the producer in a free industry slot if its inputs can be had (canSupplyProducer) and its supplies are paid (startNew).
-- `ThreatFrontlines.convertFor(MarketAPI market, int s, String want, String producer)` :1845 - With no slot free, the link tears a producer of a stock its faction has in surplus down for the producer of the one it runs dry of (ThreatFactionStock, the hive's convertSurplus for a faction):
-- `ThreatFrontlines.build(MarketAPI market)` :1887 - One project at a time, in order:
-- `ThreatFrontlines.homeYards()` :1916 - YARDS AT HOME (the user, 2026-10-08, "trial your recommended human fix"):
-- `ThreatFrontlines.projectRunning(MarketAPI market)` :1948 - Whether a structure is building or upgrading at the market (Population's growth bar is not a project).
-- `ThreatFrontlines.buildStep(MarketAPI market)` :1956
-- `ThreatFrontlines.canSupplyMilitary(MarketAPI market, int qty)` :2024
-- `ThreatFrontlines.canSupply(MarketAPI market, String commodity, int qty)` :2036 - Whether this market gets qty of the commodity:
-- `ThreatFrontlines.startNew(MarketAPI market, String id)` :2060 - Starts the structure if its supplies are paid (payBuild);
-- `ThreatFrontlines.upgrade(MarketAPI market, Industry ind)` :2069
-- `ThreatFrontlines.buildFunds(MarketAPI market)` :2083 - What the link can put toward a structure (2026-09-30, ThreatBuildCost):
-- `ThreatFrontlines.canPayBuild(MarketAPI market, String id)` :2093 - Whether the structure's supplies can be paid (buildFunds);
-- `ThreatFrontlines.payBuild(MarketAPI market, String id)` :2102 - Pays the structure's supplies, the link first, then the others nearest first;
-- `ThreatFrontlines.stationUp(MarketAPI market)` :2120 - Whether the base's station stands:
-- `ThreatFrontlines.stationOf(MarketAPI market)` :2125
-- `ThreatFrontlines.stationTier(Industry station)` :2133 - 1 orbital station, 2 battlestation, 3 star fortress.
-- `ThreatFrontlines.tierForSize(int size)` :2140 - The station tier a link of the size grows into:
-- `ThreatFrontlines.tierStrength(FactionAPI faction, int tier)` :2148 - The strongest station of the tier the faction flies at any of its markets, in vanilla strength units - what the class fields, not a sighting (IncursionManager.sizedDefence);
-- `ThreatFrontlines.orbitalStationFor(FactionAPI faction)` :2162 - The faction's orbital station line:
+- `ThreatFrontlines.build(MarketAPI market)` :1851 - The link's one project at a time (buildStep):
+- `ThreatFrontlines.projectRunning(MarketAPI market)` :1856 - Whether a structure is building or upgrading at the market (Population's growth bar is not a project).
+- `ThreatFrontlines.buildStep(MarketAPI market)` :1864
+- `ThreatFrontlines.canSupplyMilitary(MarketAPI market, int qty)` :1913
+- `ThreatFrontlines.canSupply(MarketAPI market, String commodity, int qty)` :1925 - Whether this market gets qty of the commodity:
+- `ThreatFrontlines.startNew(MarketAPI market, String id)` :1949 - Starts the structure if its supplies are paid (payBuild);
+- `ThreatFrontlines.upgrade(MarketAPI market, Industry ind)` :1958
+- `ThreatFrontlines.buildFunds(MarketAPI market)` :1972 - What the link can put toward a structure (2026-09-30, ThreatBuildCost):
+- `ThreatFrontlines.canPayBuild(MarketAPI market, String id)` :1982 - Whether the structure's supplies can be paid (buildFunds);
+- `ThreatFrontlines.payBuild(MarketAPI market, String id)` :1991 - Pays the structure's supplies, the link first, then the others nearest first;
+- `ThreatFrontlines.stationUp(MarketAPI market)` :2009 - Whether the base's station stands:
+- `ThreatFrontlines.stationOf(MarketAPI market)` :2014
+- `ThreatFrontlines.stationTier(Industry station)` :2022 - 1 orbital station, 2 battlestation, 3 star fortress.
+- `ThreatFrontlines.tierForSize(int size)` :2029 - The station tier a link of the size grows into:
+- `ThreatFrontlines.tierStrength(FactionAPI faction, int tier)` :2037 - The strongest station of the tier the faction flies at any of its markets, in vanilla strength units - what the class fields, not a sighting (IncursionManager.sizedDefence);
+- `ThreatFrontlines.orbitalStationFor(FactionAPI faction)` :2051 - The faction's orbital station line:
 ### planning: where the chain goes next
-- `ThreatFrontlines.plan(Random random)` :2183 - Each mobilised NPC faction under its cap founds at most one link per pass:
-- `ThreatFrontlines.planFor(FactionAPI faction, List<StarSystemAPI> hiveSystems, Random random)` :2209
-- `ThreatFrontlines.compare(Object[] x, Object[] y)` :2248
-- `ThreatFrontlines.pickSite(FactionAPI faction, MarketAPI anchor, StarSystemAPI hive, float hop, float reach)` :2346 - The open world within hop of the anchor that ends up nearest the hive - accepted if it gets at least 1 LY closer than the anchor, or lies within reach of the hive outright.
-- `ThreatFrontlines.payer(FactionAPI faction, PlanetAPI site)` :2377 - The faction's base nearest the site that can fund the founding (linkCost, #canFund:
-- `ThreatFrontlines.hiveNear(SectorEntityToken planet)` :2395 - The nearest found live hive's system within frontlineKeepLY of this world, or null.
-- `ThreatFrontlines.hostsLink(SectorEntityToken planet)` :2411 - Whether any faction's link already orbits this planet:
-- `ThreatFrontlines.siteSystemOk(FactionAPI faction, StarSystemAPI sys)` :2424 - No hive and no hostile market in the system, and no link of this faction or another (linkTaken).
-- `ThreatFrontlines.linkTaken(StarSystemAPI sys)` :2439 - Whether a system already holds a link, of any faction:
-- `ThreatFrontlines.foundLanded(FactionAPI faction, PlanetAPI site, StarSystemAPI hive, String payerName)` :2452 - A founding convoy's kit has landed (ThreatConvoys.pollFounding):
-- `ThreatFrontlines.found(FactionAPI faction, PlanetAPI planet, StarSystemAPI hive)` :2465 - Founds a size-1 link on a station over the planet.
+- `ThreatFrontlines.plan(Random random)` :2072 - Each mobilised NPC faction under its cap founds at most one link per pass:
+- `ThreatFrontlines.planFor(FactionAPI faction, List<StarSystemAPI> hiveSystems, Random random)` :2098
+- `ThreatFrontlines.compare(Object[] x, Object[] y)` :2134
+- `ThreatFrontlines.pickSite(FactionAPI faction, MarketAPI anchor, StarSystemAPI hive, float hop, float reach)` :2232 - The open world within hop of the anchor that ends up nearest the hive - accepted if it gets at least 1 LY closer than the anchor, or lies within reach of the hive outright.
+- `ThreatFrontlines.payer(FactionAPI faction, PlanetAPI site)` :2263 - The faction's base nearest the site that can fund the founding (linkCost, #canFund:
+- `ThreatFrontlines.hiveNear(SectorEntityToken planet)` :2281 - The nearest found live hive's system within frontlineKeepLY of this world, or null.
+- `ThreatFrontlines.hostsLink(SectorEntityToken planet)` :2297 - Whether any faction's link already orbits this planet:
+- `ThreatFrontlines.siteSystemOk(FactionAPI faction, StarSystemAPI sys)` :2310 - No hive and no hostile market in the system, and no link of this faction or another (linkTaken).
+- `ThreatFrontlines.linkTaken(StarSystemAPI sys)` :2325 - Whether a system already holds a link, of any faction:
+- `ThreatFrontlines.foundLanded(FactionAPI faction, PlanetAPI site, StarSystemAPI hive, String payerName)` :2338 - A founding convoy's kit has landed (ThreatConvoys.pollFounding):
+- `ThreatFrontlines.found(FactionAPI faction, PlanetAPI planet, StarSystemAPI hive)` :2351 - Founds a size-1 link on a station over the planet.
 ### strike warning and the called guard
-- `ThreatFrontlines.detectedBy(CampaignFleetAPI fleet)` :2532 - Who sees this Threat fleet, or null:
-- `ThreatFrontlines.detectedAt(LocationAPI loc, Vector2f hyperLoc)` :2542 - The same pickets for a place rather than a fleet - a strike far from the player flies as an abstract route with no fleets spawned.
-- `ThreatFrontlines.watches(MarketAPI m)` :2562
-- `ThreatFrontlines.sendRelief(ThreatStrikeFGI strike, Random random)` :2576 - A seen strike against a link calls its guard (user's call 2026-09-27):
-- `ThreatFrontlines.relieve(Outpost o, MarketAPI target)` :2587
-- `ThreatFrontlines.strikeEta(MarketAPI market)` :2608 - Days until the first seen strike bound for the market strikes (0 if striking now), or -1 with none.
-- `ThreatFrontlines.turnBack(Outpost o, MarketAPI market)` :2629 - Turns the guard sent home from behind the front back to the link, while it still sails:
-- `ThreatFrontlines.takeOver(Outpost o, MarketAPI market, List<CampaignFleetAPI> fleets, MarketAPI home)` :2648 - Puts fleets already out on the link's guard:
-- `ThreatFrontlines.borrowRear(Outpost o, MarketAPI market, float need, float eta)` :2675 - Guards the faction has out behind the front with no seen strike on their own link - on station through its rear grace, or sailing home from one - answer a strike on this link before the navy is asked 
-- `ThreatFrontlines.compare(CampaignFleetAPI a, CampaignFleetAPI b)` :2700
-- `ThreatFrontlines.callGuard(Outpost o, MarketAPI market, float have, boolean atDetection)` :2742 - Calls a guard against the seen strikes bound for the link, outside the upkeep budget:
+- `ThreatFrontlines.detectedBy(CampaignFleetAPI fleet)` :2418 - Who sees this Threat fleet, or null:
+- `ThreatFrontlines.detectedAt(LocationAPI loc, Vector2f hyperLoc)` :2428 - The same pickets for a place rather than a fleet - a strike far from the player flies as an abstract route with no fleets spawned.
+- `ThreatFrontlines.watches(MarketAPI m)` :2448
+- `ThreatFrontlines.sendRelief(ThreatStrikeFGI strike, Random random)` :2462 - A seen strike against a link calls its guard (user's call 2026-09-27):
+- `ThreatFrontlines.relieve(Outpost o, MarketAPI target)` :2473
+- `ThreatFrontlines.strikeEta(MarketAPI market)` :2494 - Days until the first seen strike bound for the market strikes (0 if striking now), or -1 with none.
+- `ThreatFrontlines.turnBack(Outpost o, MarketAPI market)` :2515 - Turns the guard sent home from behind the front back to the link, while it still sails:
+- `ThreatFrontlines.takeOver(Outpost o, MarketAPI market, List<CampaignFleetAPI> fleets, MarketAPI home)` :2534 - Puts fleets already out on the link's guard:
+- `ThreatFrontlines.borrowRear(Outpost o, MarketAPI market, float need, float eta)` :2561 - Guards the faction has out behind the front with no seen strike on their own link - on station through its rear grace, or sailing home from one - answer a strike on this link before the navy is asked 
+- `ThreatFrontlines.compare(CampaignFleetAPI a, CampaignFleetAPI b)` :2586
+- `ThreatFrontlines.callGuard(Outpost o, MarketAPI market, float have, boolean atDetection)` :2628 - Calls a guard against the seen strikes bound for the link, outside the upkeep budget:
 
 ## ThreatFuel (870 lines)
 - `ThreatFuel.enabled()` :65
@@ -2466,7 +2476,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncConfig.strikeWaitBooksFuel()` :634 - A strike muster every world in reach of which waits on fuel books what the stock is short of the cheapest passage as demand (IncursionManager.pickStrikeTarget, ThreatFuel.heldShort).
 - `ThreatIncConfig.frontlineGarrisonEnabled()` :636 - A frontline link is founded only with a garrison to hold it, which stays as long as the link stands.
 - `ThreatIncConfig.frontlineHeavyIndustry()` :637
-- `ThreatIncConfig.homeYards()` :639 - Yards at home (2026-10-08):
+- `ThreatIncConfig.coreBuild()` :639 - The core builds up (2026-10-18, replaces yards at home):
 - `ThreatIncConfig.frontlineFuelProduction()` :640
 - `ThreatIncConfig.frontlineGarrisonFP()` :642 - Smallest garrison a link gets, in fleet points, whatever the strikes in reach.
 - `ThreatIncConfig.frontlineGarrisonMargin()` :644 - Garrison plus station must weigh this times the strongest Threat strike in reach (vanilla's raid strength).

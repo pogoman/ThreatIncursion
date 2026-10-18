@@ -1434,13 +1434,16 @@
 	"threatinc_frontlineStarveDays": 90,
 	"threatinc_frontlineAbandonDays": 60,
 	"threatinc_frontlineRelayAccess": 0.2,
-	# a link of size 3+ with a free industry slot builds a Heavy Industry once it
-	# can import the metals and rare metals: supplies, heavy armaments and ships
+	# Whether a mobilised faction answers a hulls / supplies shortage with a Heavy Industry, and a fuel
+	# shortage with Fuel Production - at a CORE colony (ThreatCoreBuild, 2026-10-18; links build no
+	# producer since that date, and the yards-at-home knob of 2026-10-08 is folded into coreBuild)
 	"threatinc_frontlineHeavyIndustry": true,
-	# yards at home (2026-10-08): a faction short of hulls builds a Heavy Industry at its largest
-	# core world with a free slot (ThreatFrontlines.homeYards), not only at a link
-	"threatinc_homeYards": true,
 	"threatinc_frontlineFuelProduction": true,
+	# The core builds up (2026-10-18): once mobilised, a faction adds and upgrades military structures
+	# at its existing colonies (Patrol HQ > Military Base > High Command, Ground Defenses > Heavy
+	# Batteries, station tiers) and rebuilds lost producers, one start a faction a month, each at
+	# vanilla build time and cost in supplies from the colony's depot. Growth stays vanilla's.
+	"threatinc_coreBuild": true,
 	# the swarm's want for a link: max(size,3)^2 x this x (1 + links its loss cuts)
 	"threatinc_frontlineStrikeWeight": 3,
 	# a seen strike on a link calls its guard: rear links have no standing garrison

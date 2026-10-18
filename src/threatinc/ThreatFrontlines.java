@@ -231,7 +231,7 @@ public class ThreatFrontlines {
 			MarketAPI market = marketOf(o);
 			if (market != null) update(o, market, days);
 		}
-		homeYards();
+		ThreatCoreBuild.poll();
 
 		Object lastPlan = data.get(KEY_LAST_PLAN);
 		float sincePlan = lastPlan instanceof Long
@@ -1842,106 +1842,14 @@ public class ThreatFrontlines {
 	 * Never a producer still building, nor one carrying an item or a core.
 	 * True when it converted.
 	 */
-	protected static boolean convertFor(MarketAPI market, int s, String want, String producer) {
-		String fid = market.getFactionId();
-		if (!ThreatFactionStock.mayConvert(fid) || !wantsProducer(market, producer)) return false;
-		if (!canSupplyProducer(market, s, producer) || !canPayBuild(market, producer)) return false;
-		String spareStock = Industries.FUELPROD.equals(producer) ? Commodities.SUPPLIES : Commodities.FUEL;
-		Industry spare = ThreatFactionStock.producerOn(market, spareStock);
-		String retired = null;
-		if (spare != null && !spare.isBuilding() && !spare.isUpgrading() && spare.getSpecialItem() == null
-				&& spare.getAICoreId() == null && ThreatFactionStock.surplusProducer(market, spareStock)) {
-			retired = spare.getId();
-		} else if (market.hasIndustry(Industries.PATROLHQ) && ThreatFactionStock.hullsSurplus(fid) && ThreatHulls.debt(fid) <= 0f) {
-			Industry hq = market.getIndustry(Industries.PATROLHQ);
-			if (hq != null && !hq.isBuilding() && !hq.isUpgrading()) retired = hq.getId();
-		}
-		if (retired == null) return false;
-		market.removeIndustry(retired, null, false);
-		if (!startNew(market, producer)) return false;
-		ThreatFactionStock.converted(fid);
-		ThreatFactionStock.answered(fid, want);
-		ThreatIncConfig.log("Frontline: " + market.getName() + " turns its " + retired + " into a " + producer
-				+ " (" + want + " short) - " + fid + ": " + ThreatFactionStock.describe(fid));
-		return true;
-	}
-
 	/**
-	 * One project at a time, in order: Patrol HQ, battlestation, the producer
-	 * of what the faction is shortest of (ThreatFactionStock.shortest: hulls,
-	 * then the drier of fuel and supplies) in a free slot or by conversion
-	 * (convertFor), then Heavy Industry and Fuel Production in a free slot,
-	 * Military Base and star fortress (4) - each only if every commodity it
-	 * demands can be had here (canSupply). Demands are vanilla's
-	 * (industries.csv / the industry classes), s being the market size. The
-	 * hive's planner for a faction (user's decision 2026-10-06): hw31's links
-	 * built fuel first on 350k-1.1M fuel while every expedition waited on hulls.
-	 *
-	 * <p>The shortage's answer first (user, 2026-10-06): the pass reads the
-	 * whole stock (the hold released), and if the shortage's producer is wanted
-	 * here and cannot be paid, the market holds the price still wanted above
-	 * its floor until the next pass (ThreatFactionStock.hold) - upkeep and
-	 * hunts no longer draw what the yard is saving for, and an ally's convoy
-	 * lands where it is held (ThreatCoalition.aidStockPlans).
+	 * The link's one project at a time (buildStep): a Patrol HQ at size 3 (Military Base at 4) and
+	 * the station a tier up (2 at size 3, 3 at 4), each paid in supplies and waiting on what it cannot
+	 * import. Nothing else since 2026-10-18 (the user): a base is a staging depot, a station and a
+	 * military base - the producers it used to build, and the holds for them, are the core's (ThreatCoreBuild).
 	 */
 	protected static void build(MarketAPI market) {
-		ThreatFactionStock.release(market);
 		buildStep(market);
-		int s = market.getSize();
-		String fid = market.getFactionId();
-		String want = s >= 3 ? ThreatFactionStock.shortest(fid) : null;
-		if (want == null) return;
-		String producer = ThreatFactionStock.producerId(want);
-		if (!wantsProducer(market, producer) || !canSupplyProducer(market, s, producer)) return;
-		if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) return;
-		float cost = ThreatBuildCost.supplies(producer);
-		float funds = buildFunds(market);
-		if (cost <= 0f || funds >= cost) return;
-		ThreatFactionStock.hold(market, producer, cost - funds);
-		ThreatIncConfig.logQuiet("fl_hold_" + market.getId(), "Frontline: " + market.getName() + " holds "
-				+ (int) (cost - funds) + " supplies for " + producer + " (" + want + " short)");
-	}
-
-	/**
-	 * YARDS AT HOME (the user, 2026-10-08, "trial your recommended human fix"): a faction short of
-	 * hulls (ThreatFactionStock.shortest == hulls) builds the shortage's answer at its largest core
-	 * world with a free slot and no yard, not only at a size-3+ link (buildStep). The yards the swarm
-	 * razes or takes in the core were never replaced (hw63-hw72: yards at 0-500 FP a month at every
-	 * end, hulls unrebuilt in the thousands), and the one faction with its yards running was the one
-	 * that held (hw70a). A link's rules: the producer's inputs importable (canSupplyProducer), paid
-	 * from the world's reserves and what reaches it (payBuild) or held for (ThreatFactionStock.hold),
-	 * one answer a faction a SHORT_DAYS (mayAnswer), never while a project runs there. Daily from
-	 * poll; knob homeYards.
-	 */
-	protected static void homeYards() {
-		if (!ThreatIncConfig.homeYards() || !ThreatHulls.enabled()) return;
-		for (String fid : ThreatWarState.warFactionIds()) {
-			if (!ThreatFactionStock.mayAnswer(fid, ThreatFactionStock.HULLS)) continue;
-			if (!ThreatFactionStock.HULLS.equals(ThreatFactionStock.shortest(fid))) continue;
-			MarketAPI best = null;
-			for (MarketAPI m : ThreatReserves.marketsOf(fid)) {
-				if (m == null || isOutpost(m) || m.isPlayerOwned() || m.getSize() < 3) continue;
-				if (!wantsProducer(m, Industries.HEAVYINDUSTRY)) continue;
-				if (Misc.getNumIndustries(m) >= Misc.getMaxIndustries(m)) continue;
-				if (projectRunning(m) || !canSupplyProducer(m, m.getSize(), Industries.HEAVYINDUSTRY)) continue;
-				if (best == null || m.getSize() > best.getSize()
-						|| (m.getSize() == best.getSize() && buildFunds(m) > buildFunds(best))) best = m;
-			}
-			if (best == null) continue;
-			ThreatFactionStock.release(best);
-			if (startNew(best, Industries.HEAVYINDUSTRY)) {
-				ThreatFactionStock.answered(fid, ThreatFactionStock.HULLS);
-				ThreatIncConfig.log("Home yard: " + best.getName() + " builds a Heavy Industry for " + fid
-						+ " (hulls short) - " + ThreatFactionStock.describe(fid));
-			} else {
-				float cost = ThreatBuildCost.supplies(Industries.HEAVYINDUSTRY), funds = buildFunds(best);
-				if (cost > funds) {
-					ThreatFactionStock.hold(best, Industries.HEAVYINDUSTRY, cost - funds);
-					ThreatIncConfig.logQuiet("hy_hold_" + best.getId(), "Home yard: " + best.getName() + " holds "
-							+ (int) (cost - funds) + " supplies for a Heavy Industry (" + fid + " hulls short)");
-				}
-			}
-		}
 	}
 
 	/** Whether a structure is building or upgrading at the market (Population's growth bar is not a project). */
@@ -1985,28 +1893,9 @@ public class ThreatFrontlines {
 				return;
 			}
 		}
-		// the shortage's answer: in a free slot, else by conversion
-		String want = s >= 3 ? ThreatFactionStock.shortest(fid) : null;
-		if (want != null && ThreatFactionStock.mayAnswer(fid, want)) {
-			String producer = ThreatFactionStock.producerId(want);
-			if (wantsProducer(market, producer)) {
-				if (Misc.getNumIndustries(market) < Misc.getMaxIndustries(market)) {
-					if (buildProducer(market, s, producer)) {
-						ThreatFactionStock.answered(fid, want);
-						ThreatIncConfig.log("Frontline: " + market.getName() + " answers " + want + " - " + fid + ": "
-								+ ThreatFactionStock.describe(fid));
-						return;
-					}
-				} else if (convertFor(market, s, want, producer)) {
-					return;
-				}
-			}
-		}
-		// a war industry in a free slot (user's call 2026-09-27): run 17's
-		// links took in 242k supplies and sent 8.5k back, and their upkeep
-		// stalled Hegemony's sieges for 16 months. Yards first: the hull pool
-		if (s >= 3 && buildProducer(market, s, Industries.HEAVYINDUSTRY)) return;
-		if (s >= 3 && buildProducer(market, s, Industries.FUELPROD)) return;
+		// STAGING ONLY (the user, 2026-10-18): a base builds no producer - no Heavy Industry, fuel plant or
+		// conversion ("they spam them and then we start building all this shit to fix that"); the shortage's
+		// answer is built at the core (ThreatCoreBuild). A base is a depot, a station and a military base.
 		if (s >= 4 && market.hasIndustry(Industries.PATROLHQ)) {
 			if (canSupplyMilitary(market, s + 1)) {
 				upgrade(market, market.getIndustry(Industries.PATROLHQ));
@@ -2210,12 +2099,10 @@ public class ThreatFrontlines {
 		String fid = faction.getId();
 		Set<String> conn = connected(fid, null);
 		List<MarketAPI> anchors = new ArrayList<MarketAPI>();   // colonies and connected links
-		List<MarketAPI> reaching = new ArrayList<MarketAPI>();  // bases and every link
 		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
 			if (!fid.equals(m.getFactionId()) || ThreatMapFog.hidden(m) || m.getPrimaryEntity() == null) continue;
 			boolean link = isOutpost(m);
 			if (!link || conn.contains(m.getId())) anchors.add(m);
-			if (link || IncursionManager.isBase(m)) reaching.add(m);
 		}
 		if (anchors.isEmpty()) return;
 
@@ -2227,13 +2114,12 @@ public class ThreatFrontlines {
 		final Map<Object[], Float> dist = new HashMap<Object[], Float>();
 		List<Object[]> pairs = new ArrayList<Object[]>();
 		for (StarSystemAPI hive : hiveSystems) {
-			boolean reached = false;
-			for (MarketAPI r : reaching) {
-				if (ly(r, hive) <= reach) {
-					reached = true;
-					break;
-				}
-			}
+			// FOUNDED AS NEEDED (the user, 2026-10-18): a base toward a hive system only when THIS faction
+			// holds a report of it (ThreatIntel, not the sector's knowledge) and none of its bases can launch
+			// at it - the planner's own test (ThreatFleetOrders.pickBase: a base within expedition range).
+			// Before: toward every hive system anyone knew that no base or link lay within frontlineReachLY.
+			if (!ThreatIntel.known(fid, hive.getId())) continue;
+			boolean reached = ThreatFleetOrders.pickBase(faction, hive.getLocation()) != null;
 			// a founding convoy at sea toward it counts: one kit a hive at a time (2026-10-11)
 			if (!reached && ThreatConvoys.foundingBoundFor(fid, hive.getId())) reached = true;
 			if (reached) continue;

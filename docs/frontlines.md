@@ -643,3 +643,28 @@ Load risks to watch:
 - **Links are never resettled into colonies** after the war (the Nexerelin
   idea).
 - **The Threat has no reaction to a strike being detected,** such as rerouting.
+
+## 8. Staging only, founded as needed, the core builds (2026-10-18)
+
+The user, after the "are the humans cheating" audit: forward bases were the answer to factions
+that could not grow navies, then "they spam them and then we start building all this shit to
+fix that". Three changes, all built the same evening (trial hw200):
+
+- **A base is a staging depot, a station and a military base.** `buildStep` builds a Patrol HQ at
+  size 3 (Military Base at 4) and the station a tier up (2 at 3, 3 at 4), nothing else: the
+  producers (Heavy Industry, Fuel Production, the shortage's answer, conversions,
+  `ThreatFactionStock.hold`) are gone from links. Size upkeep and the garrison are unchanged.
+- **Founded as needed.** `planFor` founds toward a hive system only when THIS faction holds a
+  report of it (`ThreatIntel.known`) and none of its bases can launch at it
+  (`ThreatFleetOrders.pickBase` null - the planner's own reach test, a base within expedition
+  range). Before: toward every hive system anyone knew with no base or link within
+  `frontlineReachLY`. The chain, hop and site rules are unchanged.
+- **The core builds up** (`ThreatCoreBuild`, knob `threatinc_coreBuild`; replaces `homeYards`).
+  Daily, one start a faction a month (`ThreatFactionStock.SHORT_DAYS`) at its core colonies of
+  size 3+ with nothing building: the shortage's answer first (the producer of the shortest stock
+  at the largest colony with a free slot that can import its inputs, paid or held), else the
+  military step the largest colony lacks - Patrol HQ, Ground Defenses, Patrol HQ to Military
+  Base (size 4), station to Battlestation (4), Ground Defenses to Heavy Batteries (5), station to
+  Star Fortress (6), Military Base to High Command (6). Every start is vanilla's cost in supplies
+  (`ThreatBuildCost`, `payBuild`) over vanilla's build time. Growth is vanilla's. The ceiling is
+  vanilla's: a fixed set of colonies, finite slots, the depot the only purse. Log `Core build:`.
