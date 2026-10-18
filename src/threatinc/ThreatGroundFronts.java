@@ -124,6 +124,8 @@ public class ThreatGroundFronts {
 		public String announcedState;
 		/** Unused since the progress notices went (2026-09-27); kept so saves load. */
 		public boolean announcedDry;
+		/** The colony's defenders are fighting with no heavy armaments in stock - logged once a transition (burnDefenderArms, 2026-10-18). */
+		public boolean defendersDry;
 		/** Peak marine strength (landing plus reinforcements) - what supply runs reinforce toward. */
 		public float marinesLanded;
 		/** The front has asked to be pulled out (NPC stance AI, or the board's Pull out order). */
@@ -619,6 +621,14 @@ public class ThreatGroundFronts {
 		ThreatIncConfig.log("Front deployed at " + market.getName() + " (" + factionId
 				+ "): " + marines + " marines, " + (int) armaments + " armaments"
 				+ (STANCE_PUSH.equals(front.stance) ? ", pushing" : ", dug in"));
+		// what the colony's defenders fight with (defenderArmsEnabled; the burn's effect is logged by burnDefenderArms)
+		if (isThreatOwned(front) && !isHiveTarget(market) && ThreatIncConfig.defenderArmsEnabled()) {
+			float arms = ThreatReserves.stock(market.getId(), Commodities.HAND_WEAPONS);
+			float burn = defenderDailyUpkeep(market, front);
+			ThreatIncConfig.log("Defenders of " + market.getName() + ": " + (int) ThreatReserves.armedMarines(market)
+					+ " armed marines, " + (int) arms + " armaments, burn " + (int) Math.ceil(burn) + " a day ("
+					+ (burn > 0f ? (int) (arms / burn) + " days" : "no burn") + ")");
+		}
 		return front;
 	}
 
@@ -1101,6 +1111,19 @@ public class ThreatGroundFronts {
 		float burn = defenderDailyUpkeep(market, front) * elapsedDays;
 		if (burn <= 0f) return;
 		ThreatReserves.draw(market.getId(), Commodities.HAND_WEAPONS, burn);
+		// the effect, logged once a transition: dry (fighting at frontDryEffectivenessMult), and rearmed
+		float left = ThreatReserves.stock(market.getId(), Commodities.HAND_WEAPONS);
+		float perDay = burn / elapsedDays;
+		if (left <= 0f && !front.defendersDry) {
+			front.defendersDry = true;
+			ThreatIncConfig.log("Defenders of " + market.getName() + " dry: " + (int) ThreatReserves.armedMarines(market)
+					+ " armed marines fight at x" + ThreatIncConfig.frontDryEffectivenessMult()
+					+ " until armaments arrive (burn " + (int) Math.ceil(perDay) + " a day)");
+		} else if (left > 0f && front.defendersDry) {
+			front.defendersDry = false;
+			ThreatIncConfig.log("Defenders of " + market.getName() + " rearmed: " + (int) left + " armaments, "
+					+ (int) (left / Math.max(0.01f, perDay)) + " days at the burn");
+		}
 	}
 
 	/**

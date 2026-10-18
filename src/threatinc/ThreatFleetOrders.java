@@ -85,6 +85,14 @@ public class ThreatFleetOrders {
 
 	/** How close a warship has to be to a planet to count as holding its orbit. */
 	public static final float ORBIT_HOLD_RANGE = 1500f;
+	/**
+	 * The leash sits at LEASH_MULT x ORBIT_HOLD_RANGE, not the hold range itself: an
+	 * ORBIT_AGGRESSIVE fleet rides at 1,500-1,700 units of its planet, and a leash at
+	 * 1,500 recalled and re-tasked it every poll (hw191: 1,005 Relief and 391 Swarm-defend
+	 * recalls in three games at a median 1,670 units; the reinforcement leash had the same
+	 * defect, ThreatColonyManager.REINFORCEMENT_LEASH_MULT, hw186c). 2026-10-18.
+	 */
+	public static final float LEASH_MULT = 2f;
 
 	/** The orbit assignment's length for an order with no term (on station until recalled). */
 	public static final float NO_TERM_DAYS = 100000f;
@@ -2198,6 +2206,13 @@ public class ThreatFleetOrders {
 		return Misc.getDistance(fleet, planet) <= ORBIT_HOLD_RANGE;
 	}
 
+	/** Within LEASH_MULT x ORBIT_HOLD_RANGE of the planet, in its system: the leash leaves it alone. */
+	public static boolean withinLeash(CampaignFleetAPI fleet, SectorEntityToken planet) {
+		if (fleet == null || !fleet.isAlive() || fleet.isExpired()) return false;
+		if (fleet.getContainingLocation() != planet.getContainingLocation()) return false;
+		return Misc.getDistance(fleet, planet) <= ORBIT_HOLD_RANGE * LEASH_MULT;
+	}
+
 	/** Why this faction cannot send Support over the world now, or null if it can. */
 	public static String supportBlockReason(FactionAPI faction, MarketAPI hive) {
 		return orbitBlockReason(faction, hive, KIND_SUPPORT);
@@ -2640,6 +2655,8 @@ public class ThreatFleetOrders {
 			}
 			return;
 		}
+		// riding its aggressive orbit out to the leash: on station, not strayed (LEASH_MULT)
+		if (withinLeash(fleet, planet)) return;
 		if (fleet.getBattle() != null) return;
 		mem.set(MemFlags.FLEET_IGNORES_OTHER_FLEETS, true);
 		mem.unset(MemFlags.MEMORY_KEY_MAKE_AGGRESSIVE);
