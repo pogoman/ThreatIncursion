@@ -101,7 +101,15 @@ player's Land option quotes the toll in its tooltip and the landing reports it (
 Fire"). Logged as "Drop at X (faction): lost L of N marines to the guns (gun defence G,
 defences C%)"; the ledger row "drops under the guns" sums it. Why: the humans landed on hives
 without bombarding (hw194 / hw195 a: 12-23 hives eradicated) because only orbit priced the
-guns; the ground did not.
+guns; the ground did not. **The swarm's worth counts the toll too** (2026-10-18, after hw197 -
+0 / 20 / 78 bombardment days against 34 / 32 / 55 landings, a third to a half of its drops on
+intact guns): `ThreatGroundFronts.swarmWorth(market)` wants `fabricateTroopsPerFP x mult /
+(frontHoldFraction + dropLossConstant x batteryShare x mult)` defence points per fleet point lost,
+instead of `/ frontHoldFraction` alone, so a day that wears the guns is worth the marines it
+spares on the drop as well as on the hold line; the share is the guns' as worn, so the swarm
+lands once they are quiet. The strike's three gates (`ThreatStrikeFGI.performRaid`,
+`abstractOrbitDone`, the landing pass) read it; `defendWorth` over a standing front keeps the
+hold line (nothing drops there).
 
 ### Bombardment v2 - the day of sorties (2026-09-28, built, untested)
 

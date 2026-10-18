@@ -551,7 +551,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		boolean dry = ThreatFuel.paysOrdnance()
 				&& ThreatGroundFronts.bombardDaysFor(ThreatFuel.stock(), fp) < 0.5f;
 		if (ThreatGroundFronts.readyToLand(market, troops, Factions.THREAT, dry
-				|| ThreatGroundFronts.orbitSpent(market, orbit, 0f, false, ThreatGroundFronts.swarmWorth()))) return false;
+				|| ThreatGroundFronts.orbitSpent(market, orbit, 0f, false, ThreatGroundFronts.swarmWorth(market)))) return false;
 		float days = ThreatGroundFronts.siegeSliceDays(fleet);
 		float want = ThreatGroundFronts.bombardFuelPerDay(fp) * days;
 		float paid = ThreatGroundFronts.payOrdnance(fleet, Factions.THREAT, want);
@@ -1067,7 +1067,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 */
 	protected boolean abstractOrbitDone(MarketAPI market) {
 		if (market != null && siegeResolved.contains(market.getId())) return true;
-		return ThreatGroundFronts.orbitSpent(market, abstractStrength(), 0f, false, ThreatGroundFronts.swarmWorth());
+		return ThreatGroundFronts.orbitSpent(market, abstractStrength(), 0f, false, ThreatGroundFronts.swarmWorth(market));
 	}
 
 	// ---- the bombardment doctrine (strikeSaturationEnabled) ----
@@ -1314,7 +1314,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		if (front == null && !ThreatGroundFronts.readyToLand(market, troops, Factions.THREAT, fleet != null
 				? ThreatGroundFronts.orbitSpent(market,
 						ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fleet.getFleetPoints()),
-						0f, false, ThreatGroundFronts.swarmWorth())
+						0f, false, ThreatGroundFronts.swarmWorth(market))
 				: abstractOrbitDone(market))) {
 			ThreatIncConfig.log("Strike landing at " + market.getName()
 					+ " waits: bombardment still has work to do");

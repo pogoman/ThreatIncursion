@@ -3325,7 +3325,27 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * the shortHanded waiver never applies to it.
 	 */
 	public static float swarmWorth() {
-		return hullWorth(ThreatIncConfig.frontLandingMult());
+		return swarmWorth(null);
+	}
+
+	/**
+	 * As above over the world about to be landed on (2026-10-18, the user: the
+	 * swarm "softens when it saves marines"): a defence point bombarded off
+	 * spares hold / mult troops on the hold line AND, since the drop under the
+	 * guns, dropLossConstant x the batteries' share of it on the drop - so the
+	 * hulls a day costs are worth fewer defence points, and the swarm softens
+	 * guns it landed under before (hw197: 0 / 20 / 78 bombardment days against
+	 * 34 / 32 / 55 landings, a third to a half of its drops on intact guns).
+	 * The share is the guns' as worn, so the term shrinks as the bombardment
+	 * does its work and the swarm lands once the guns are quiet. Null market:
+	 * the hold line alone (defendWorth over a standing front, where nothing drops).
+	 */
+	public static float swarmWorth(MarketAPI market) {
+		if (!ThreatIncConfig.fabricateEnabled()) return Math.max(0f, ThreatIncConfig.bombardFPWorth());
+		float mult = Math.max(0f, ThreatIncConfig.frontLandingMult());
+		float hold = Math.max(0.01f, ThreatIncConfig.frontHoldFraction());
+		float toll = market != null ? dropLossConstant(market) * Math.max(0f, Theatre.of(market).batteryShare(market)) : 0f;
+		return Math.max(0f, ThreatIncConfig.fabricateTroopsPerFP()) * mult / (hold + toll * mult);
 	}
 
 	/** Orbit has nothing more to give a fleet of fp carrying this much fuel: spent, or the fuel will not buy half a day. */
