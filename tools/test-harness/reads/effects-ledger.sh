@@ -20,6 +20,7 @@ for g in $games; do
   row "counter-attack -> repelled"            "$(c '^Counter-attack at')" "$(c '^Counter-attack repelled')" "0 repelled is the NPC stance AI digging in when it would lose"
   row "counter-attack -> overran"             "$(c '^Counter-attack at')" "$(c 'overran the beachhead')" ""
   row "NPC defenders dig in / push"           "$(c '^Marines of .* dig in')" "$(c '^Marines of .* push')" "tickDefenderStance; no line = the AI never ran"
+  row "front braces -> resumes its assault"   "$(c '^Front at .* braces for')" "$(c '^Front at .* resumes its assault')" "flapping worlds (>5 braces): $(grep -h '^Front at .* braces for' "$F" | sed -E 's/^Front at (.*) braces.*/\1/' | sort | uniq -c | awk '$1>5' | wc -l) - hw194: brace and NPC dig-in chased each other daily"
   row "convoy dispatched -> arrived"          "$(c '^Convoy dispatched')" "$(c '^Convoy arrived')" ""
   row "convoy held at blockade -> ran in"     "$(c '^Convoy holding off')" "$(c '^Convoy runs in to')" "gave up: $(c '^Convoy gave up at')"
   row "relief dispatched -> bombard days"     "$(c '^Relief convoy:')" "$(c 'bombard the Threat army')" ""
@@ -29,5 +30,5 @@ for g in $games; do
   row "reinforcement sent -> arrived"         "$(c '^Posture: .* sent [0-9]* FP to')" "$(c '^Reinforcement arrived')" ""
   row "founding convoy -> base founded"       "$(c '^Founding convoy')" "$(c '^Frontline: .* founded')" ""
   row "garrison musters"                      "$(c '^Garrison musters')" "-" "no effect line logged"
-  row "defender arms burned"                  "-" "-" "NO LOG LINE (burnDefenderArms) - unobservable"
+  row "defenders dry -> rearmed"              "$(c '^Defenders of .* dry:')" "$(c '^Defenders of .* rearmed:')" "burnDefenderArms (logged since the 13:03 jar); landings logged: $(c '^Defenders of .*: [0-9]* armed marines')"
 done

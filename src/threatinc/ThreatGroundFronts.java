@@ -722,7 +722,16 @@ public class ThreatGroundFronts {
 		// "if a counter-attack is incoming attackers dig in and entrench, right?") - it braces
 		// too now when the blow would beat it (frontBraceWhenBeaten, counterAttackDanger)
 		if (front.strataHeld > 0 && !ThreatIncConfig.frontBraceWhenBeaten()) return false;
-		if (defendersHoldFire(front, market)) return false; // no blow is coming (2026-10-17)
+		// The player's own hold-fire order is a fact; an NPC colony's dig-in is
+		// not - it holds fire BECAUSE the front is in cover and goes over the
+		// top the day the front climbs out (tickDefenderStance reads the
+		// front's actual cover), so reading it here made the two sides chase
+		// each other a day at a time: brace -> defenders dig in -> "no blow
+		// coming" -> resume -> defenders push -> brace (hw194: 26 braces at
+		// Ragnar Complex, 93 in the game, 0 d of progress each). Stance-
+		// neutral like the rest of this test: counterAttackDanger already asks
+		// what NPC defenders would do to a PUSHING front.
+		if (market.isPlayerOwned() && defendersHoldFire(front, market)) return false; // no blow is coming (2026-10-17)
 		// The test is "would an assault get me killed", not "is a blow due
 		// soon" (user, 2026-09-08). Cover takes frontEntrenchDays to dig, so a
 		// window measured in days was always the wrong shape: a front 22 days
