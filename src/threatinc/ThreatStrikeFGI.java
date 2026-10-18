@@ -820,9 +820,14 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			return true;
 		}
 		boolean front = ThreatGroundFronts.getFront(w.getId()) != null;
-		// nothing aboard to land: no siege of it (siegePass's rule), the passes stand down
+		// nothing to land: no siege of it (siegePass's rule), the passes stand down.
+		// The landing is the world's share of the pool or the troops aboard, whichever
+		// is more (abstractSiege's figure) - an unspawned swarm carries 0 aboard and
+		// breaks its hulls into troops at the landing, so troopsAboard alone read 0 for
+		// every strike and the gate landed the whole strike on arrival, unbombarded
+		// (hw189, 2026-10-18: 35 of 57 landings in c on day 1, 5 bombarded days)
 		if (ThreatIncConfig.strikeGroundFrontsEnabled() && !front
-				&& troopsAboard < ThreatIncConfig.frontMinMarines()) {
+				&& Math.max(worldShare(), troopsAboard) < ThreatIncConfig.frontMinMarines()) {
 			endWorld(action, w, "nothing to land", true);
 			return true;
 		}
