@@ -1423,11 +1423,11 @@ public class ThreatFrontlines {
 			o.unguardedDays = 0f; // held, or nothing in reach it must be guarded against
 			return true;
 		}
+		// (2026-10-18 20:55, the user, option 1: a base is never torn down for want of a guard. hw206a founded
+		// 55 bases on 32 sites because 27 were dismantled here after their guard was refused or recalled, and
+		// the broken chain bought the same hop again - Satanazes four times by three factions. A base now falls
+		// in battle or when it leads nowhere (hasPurpose); the count stays for the monthly retry's log)
 		o.unguardedDays += days;
-		if (o.unguardedDays >= ThreatIncConfig.frontlineAbandonDays()) {
-			dismantle(o, market, "no garrison to hold it");
-			return false;
-		}
 		if (Global.getSector().getClock().getElapsedDaysSince(o.guardSent) >= 30f) {
 			o.guardSent = now; // one try a month, sent or not
 			MarketAPI base = garrisonBase(market.getFaction(), market.getPrimaryEntity(), need / STRENGTH_PER_FP,
@@ -2177,8 +2177,10 @@ public class ThreatFrontlines {
 					// FOUNDING CONVOYS (the user, 2026-10-11, "make humans need physical convoys to found a FB
 					// like the threat has a seeding swarm"): the kit sails from the payer in a real convoy and
 					// the base stands up when it lands (ThreatConvoys.dispatchFounding, foundLanded). The guard
-					// is weighed first as before, and nothing is drawn for a site none can guard
-					if (ThreatIncConfig.frontlineGarrisonEnabled() && garrisonBase(faction, site) == null) {
+					// sails with the kit (2026-10-18 20:55: the convoy's escort is sized to it and stays as the
+					// garrison, adoptGarrison), so only the garrison budget is weighed here - the voyage is the
+					// convoy's, paid by the payer or not sailed
+					if (ThreatIncConfig.frontlineGarrisonEnabled() && !guardBudgetOk(faction, site, guardFP)) {
 						ThreatIncConfig.logQuiet("fl_cannotguard_" + fid, "Frontline: " + fid
 								+ " cannot garrison a link at " + site.getName() + " - " + noGarrisonWhy);
 						unguardable.add(site.getId());
@@ -2338,16 +2340,82 @@ public class ThreatFrontlines {
 	 * garrison from the base that can pay the voyage, as the on-the-spot founding did; with none now (the
 	 * war moved while it sailed) the link stands unguarded and the log says so.
 	 */
-	public static MarketAPI foundLanded(FactionAPI faction, PlanetAPI site, StarSystemAPI hive, String payerName) {
+	public static MarketAPI foundLanded(FactionAPI faction, PlanetAPI site, StarSystemAPI hive, String payerName,
+			CampaignFleetAPI convoy, String donorMarketId) {
 		if (faction == null || site == null) return null;
 		MarketAPI link = found(faction, site, hive);
-		ThreatIncConfig.log("Frontline: the kit for " + link.getName() + " landed from " + payerName);
-		if (ThreatIncConfig.frontlineGarrisonEnabled()) {
-			MarketAPI guardBase = garrisonBase(faction, site);
-			if (guardBase != null) sendGarrison(find(link), link, guardBase);
-			else ThreatIncConfig.log("Frontline: " + link.getName() + " stands unguarded - " + noGarrisonWhy);
+		Outpost o = find(link);
+		frontDay = -1; // the new link moved the front
+		float need = ThreatIncConfig.frontlineGarrisonEnabled() ? needNow(link) : 0f;
+		if (convoy != null && o != null && need >= 30f * STRENGTH_PER_FP) {
+			adoptGarrison(o, link, convoy, donorMarketId, need);
+		} else {
+			ThreatIncConfig.log("Frontline: the kit for " + link.getName() + " landed from " + payerName
+					+ (need >= 30f * STRENGTH_PER_FP ? "; no escort to stand guard" : "; rear, the convoy goes home"));
 		}
 		return link;
+	}
+
+	/**
+	 * THE GUARD SAILS WITH THE KIT (2026-10-18 20:55, the user, option 1): the founding convoy becomes the new
+	 * link's garrison where it landed - flagged and ordered as a spawnForce guard (DEFEND_LOCATION for as long
+	 * as it stands), its home the donor it sailed from (recallGarrison sends it back there and re-banks its
+	 * hulls through ThreatReturns), its warship points committed against the donor's hull ledger from here (a
+	 * convoy's freighters hold none, ThreatReturns.MEM_NO_HULLS). Before, the kit landed and a guard was asked
+	 * of the nearest colony base, which hw206a refused 82 times "cannot pay the voyage".
+	 */
+	protected static void adoptGarrison(Outpost o, MarketAPI link, CampaignFleetAPI convoy, String donorMarketId,
+			float need) {
+		long now = Global.getSector().getClock().getTimestamp();
+		convoy.clearAssignments();
+		convoy.setName("Garrison");
+		convoy.setNoFactionInName(false);
+		convoy.getMemoryWithoutUpdate().unset(MemFlags.MEMORY_KEY_TRADE_FLEET);
+		convoy.getMemoryWithoutUpdate().unset(ThreatConvoys.CONVOY_FLAG);
+		convoy.getMemoryWithoutUpdate().set(MemFlags.MEMORY_KEY_WAR_FLEET, true);
+		convoy.getMemoryWithoutUpdate().set(MemFlags.FLEET_NO_MILITARY_RESPONSE, true);
+		convoy.getMemoryWithoutUpdate().set(GUARD_JOINED_KEY, now);
+		convoy.addAssignment(FleetAssignment.DEFEND_LOCATION, link.getPrimaryEntity(), 100000f,
+				"garrisoning " + link.getName());
+		MarketAPI donor = donorMarketId != null ? Global.getSector().getEconomy().getMarket(donorMarketId) : null;
+		float fp = ThreatSoftening.combatFP(convoy);
+		if (donor != null && ThreatHulls.enabled() && ThreatAidCapacity.applies(donor) && fp > 0f
+				&& convoy.getMemoryWithoutUpdate().getBoolean(ThreatReturns.MEM_NO_HULLS)) {
+			convoy.getMemoryWithoutUpdate().unset(ThreatReturns.MEM_NO_HULLS);
+			ThreatAidCapacity.commit(donor, fp, convoy, convoy.getNameWithFaction());
+		}
+		o.guards = new ArrayList<CampaignFleetAPI>();
+		o.guards.add(convoy);
+		o.guardBaseId = donor != null ? donor.getId() : null;
+		o.guardPaid = now;
+		o.guardSent = now;
+		o.unguardedDays = 0f;
+		ThreatIncConfig.log("Frontline: the kit for " + link.getName() + " landed from "
+				+ (donor != null ? donor.getName() : "its donor") + "; its escort stands as the garrison: " + (int) fp
+				+ " FP, strength " + (int) strengthOf(o.guards) + " of " + (int) need);
+	}
+
+	/** The guard a base at this site needs today, in fleet points; 0 under the smallest guard (30 FP). */
+	public static float guardFP(SectorEntityToken site, String factionId) {
+		float fp = guardNeed(site, null, factionId) / STRENGTH_PER_FP;
+		return fp < 30f ? 0f : fp;
+	}
+
+	/**
+	 * Whether the faction's garrison budget has room for a guard of {@code needFP} at a new front link -
+	 * garrisonBase's budget test alone: the voyage is the founding convoy's (dispatchFounding pays it or
+	 * sails nothing). noGarrisonWhy says why not.
+	 */
+	protected static boolean guardBudgetOk(FactionAPI faction, SectorEntityToken site, float needFP) {
+		Set<String> front = frontOf(faction.getId(), site);
+		if (!front.contains("extra") || needFP <= 0f) return true;
+		float upkeep = garrisonUpkeep(faction.getId(), front) + needFP * UPKEEP_PER_FP;
+		float budget = upkeepBudget(faction.getId());
+		if (upkeep > budget) {
+			noGarrisonWhy = "upkeep would be " + (int) upkeep + " of " + (int) budget + " supplies a month";
+			return false;
+		}
+		return true;
 	}
 
 	/** Founds a size-1 link on a station over the planet. */

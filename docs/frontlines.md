@@ -525,8 +525,9 @@ The rules from before:
   fortress under construction paused the unguarded clock; both are gone.)
 - **Lost** (beaten in battle, recalled unpaid, or a link raised without one - a
   converted outpost, a ground-victory prize): a new one is sent when a base can
-  pay for it (2026-09-29: no navy share), at most every 30 days. A link unguarded for `frontlineAbandonDays`
-  is given up ("no garrison to hold it").
+  pay for it (2026-09-29: no navy share), at most every 30 days. Until 2026-10-18 a link unguarded for
+  `frontlineAbandonDays` was given up ("no garrison to hold it"); now it stands (section 8, the guard sails
+  with the kit).
 - The census line reports guarded links, their garrison FP, and star fortresses.
 
 **Held worlds (2026-09-26).** NPC factions no longer build the old
@@ -662,6 +663,18 @@ fix that". Three changes, all built the same evening (trial hw200):
   `ThreatFleetOrders.pickBase` (expedition range) instead and founded 0-1 bases a game (hw201 /
   hw204 - the 36 bases of those rounds were `planNPC`'s, see "Purged worlds found nothing").
   Before 17:50: toward every hive system anyone knew, 12 LY hops.
+- **The guard sails with the kit; nothing dismantled for want of one (the user, 20:55, option 1 after
+  hw206a founded 55 bases on 32 sites - 27 dismantled "no garrison to hold it" and re-founded).**
+  `ThreatConvoys.dispatchFounding` sizes the founding convoy's escort to `ThreatFrontlines.guardFP`
+  (guardNeed in FP, 0 under 30; a `buildHulls` minimum-escort overload) and sails nothing when the paid
+  escort is under 95 percent of it ("cannot pay the guard's passage"). On landing `foundLanded` calls
+  `adoptGarrison` at a front site (`needNow` 30 FP up): the convoy is re-flagged a war fleet, ordered
+  DEFEND_LOCATION over the link for as long as it stands, registered as its garrison with the donor as home
+  (recall re-banks its hulls through ThreatReturns) and its warship points committed to the donor's hull
+  ledger (MEM_NO_HULLS cleared); a rear kit's convoy goes home as before. The poll no longer dismantles
+  an unguarded front link (unguardedDays still drives the monthly retry); `planFor`'s prefilter is the
+  garrison budget alone (`guardBudgetOk`). Unbuilt options: one chain per hive sector-wide with shared
+  staging; a dismantled site closed for a year.
 - **The core builds up** (`ThreatCoreBuild`, knob `threatinc_coreBuild`; replaces `homeYards`).
   Daily, one start a faction a month (`ThreatFactionStock.SHORT_DAYS`) at its core colonies of
   size 3+ with nothing building: the shortage's answer first (the producer of the shortest stock

@@ -2554,7 +2554,13 @@ public class ThreatConvoys {
 	 */
 	protected static Hulls buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve,
 			float ly, boolean paysEscort, boolean frontRun, boolean grow, Random random) {
-		float escort = ThreatIncConfig.convoyEscortFP() + escortForValue(ask);
+		return buildHulls(from, faction, ask, reserve, ly, paysEscort, frontRun, grow, 0f, random);
+	}
+
+	/** As above, with an escort of at least {@code minEscort} points asked for (a founding convoy's guard, dispatchFounding). */
+	protected static Hulls buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve,
+			float ly, boolean paysEscort, boolean frontRun, boolean grow, float minEscort, Random random) {
+		float escort = Math.max(minEscort, ThreatIncConfig.convoyEscortFP() + escortForValue(ask));
 		if (paysEscort) {
 			// a supply fleet goes wherever its fuel takes it and no further (the
 			// radius abolished, 2026-10-01): a voyage unpaid stays home, and the
@@ -2787,10 +2793,21 @@ public class ThreatConvoys {
 		if (system == null || from == null || site.getStarSystem() == null) return null;
 		float[] load = { 0f, 0f, cost[1], cost[0] };
 		float ly = Misc.getDistanceLY(donor.hyperLoc(), site.getLocationInHyperspace());
-		Hulls h = buildHulls(donor, faction, load, load, ly, true, false, true, random);
+		// THE GUARD SAILS WITH THE KIT (2026-10-18 20:55, the user, option 1): a front site's escort is sized to
+		// its guard (ThreatFrontlines.guardFP) and stays as the garrison when the kit lands (foundLanded,
+		// adoptGarrison); a payer that cannot pay that escort sends nothing - no base lands unguarded
+		float guardFP = ThreatIncConfig.frontlineGarrisonEnabled() ? ThreatFrontlines.guardFP(site, faction.getId()) : 0f;
+		Hulls h = buildHulls(donor, faction, load, load, ly, true, false, true, guardFP, random);
 		if (h == null) return null;
 		CampaignFleetAPI fleet = h.fleet;
 		float escort = builtEscort(h);
+		if (guardFP > 0f && escort < guardFP * 0.95f) {
+			// built and not placed: nothing paid or drawn yet (buildHulls)
+			ThreatIncConfig.logQuiet("fl_guardpassage_" + faction.getId() + site.getId(), "Frontline: " + faction.getId()
+					+ " cannot pay the guard's passage to " + site.getName() + " from " + payer.getName() + " ("
+					+ (int) escort + " of " + (int) guardFP + " FP of escort paid)");
+			return null;
+		}
 		system.addEntity(fleet);
 		fleet.setLocation(from.getLocation().x, from.getLocation().y);
 		burn(h, payEscort(fleet, donor, escort, ly, h.ask));
@@ -2917,7 +2934,7 @@ public class ThreatConvoys {
 				}
 			}
 		}
-		MarketAPI link = ThreatFrontlines.foundLanded(faction, planet, hive, c.fromName());
+		MarketAPI link = ThreatFrontlines.foundLanded(faction, planet, hive, c.fromName(), fleet, c.fromMarketId);
 		if (link != null) {
 			float leftS = cargo.getCommodityQuantity(Commodities.SUPPLIES);
 			float leftF = cargo.getCommodityQuantity(Commodities.FUEL);
@@ -2926,6 +2943,7 @@ public class ThreatConvoys {
 			ThreatReserves.deposit(link.getId(), Commodities.SUPPLIES, leftS);
 			ThreatReserves.deposit(link.getId(), Commodities.FUEL, leftF);
 		}
+		if (ThreatFrontlines.isGuard(fleet)) return;   // the escort stands as the garrison (adoptGarrison)
 		ThreatBases.Base home = homeBase(c);
 		if (home == null || !ThreatReturns.sendHome(fleet, c.factionId, home.id())) {
 			fleet.clearAssignments();
