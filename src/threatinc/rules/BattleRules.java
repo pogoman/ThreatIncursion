@@ -94,8 +94,21 @@ public final class BattleRules {
 	 * (siegeBeachheadMargin over the 2:1 line at frontLandingMult). 0 sizes for the raids only.
 	 */
 	public static float beachheadNeeded(float defenderStr, float margin, float exponent, float landingMult) {
+		return beachheadNeeded(defenderStr, margin, exponent, landingMult, false);
+	}
+
+	/**
+	 * As above with the line chosen: {@code repel} (threatinc_beachheadRepels, 2026-10-18) sizes the
+	 * landing to HOLD the first counter-attack at 1:1 x margin; false to outlive it at the overrun odds.
+	 */
+	public static float beachheadNeeded(float defenderStr, float margin, float exponent, float landingMult, boolean repel) {
 		if (margin <= 0f || defenderStr <= 0f) return 0f;
-		return defenderStr / (Math.max(0.05f, landingMult) * overrunOdds(exponent)) * margin;
+		return defenderStr / (Math.max(0.05f, landingMult) * beachheadOdds(exponent, repel)) * margin;
+	}
+
+	/** The odds the beachhead line is drawn at: 1 (repel the counter-attack) or the overrun odds. */
+	public static float beachheadOdds(float exponent, boolean repel) {
+		return repel ? 1f : overrunOdds(exponent);
 	}
 
 	/**

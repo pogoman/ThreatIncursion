@@ -1569,7 +1569,7 @@ public class ThreatWarBoard {
 					"" + (int) Math.ceil(Math.max(0f, remaining)),
 					Misc.getWithDGS(ThreatGroundFronts.pushCasualtyEstimate(f, m)));
 			if (remaining >= 0f && remaining <= attackIn
-					&& ThreatGroundFronts.overrunIfPushing(f, m)) {
+					&& ThreatGroundFronts.counterAttackDanger(f, m)) {
 				tooltip.addPara("Pressing on: the " + layer + " falls before the counter-attack.",
 						f.isPlayerOwned() ? pos : neg, 4f);
 			}

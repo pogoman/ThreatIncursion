@@ -159,7 +159,8 @@ taken. Callers:
   base's faction is in war mode): marines wanted = `siegeRaidStrNeeded(targets)` x
   headroom (raid strength ~= marines, as vanilla's own player raids) - since 2026-09-25 at
   least the BEACHHEAD (`beachheadNeeded`): enough that the landing, at `frontLandingMult`,
-  meets the hive's first counter-attack under the 2:1 odds that overrun a fresh front, times
+  HOLDS the hive's first counter-attack at 1:1 (`beachheadRepels`, 2026-10-18 - before that,
+  merely outlived it at the 2:1 odds that overrun a fresh front), times
   `siegeBeachheadMargin` (1.25; 0 = raids only). Sized for the raids alone (a quarter of the
   defences), 18 of 19 Persean landings were overrun in Run 6. Both needs read the target's
   defences as the tactical pass leaves them: every fortification (the Nexus and the

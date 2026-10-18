@@ -264,6 +264,8 @@ public class ThreatIncConfig {
 	public static float siegeRaidStrPerPoint() { return f("threatinc_siegeRaidStrPerPoint"); }
 	/** A siege lands this much over the 2:1 odds at which the hive overruns a fresh beachhead; 0 sizes for the raids only. */
 	public static float siegeBeachheadMargin() { return f("threatinc_siegeBeachheadMargin"); }
+	/** The beachhead line is the REPEL line (2026-10-18, the user: "size to repel"): the landing holds the first counter-attack at 1:1 x the margin, not merely outlives it at the 2:1 overrun odds. */
+	public static boolean beachheadRepels() { return b("threatinc_beachheadRepels", true); }
 	/** An NPC siege carries its landing's marines times this, for those lost with the hulls on the way in. */
 	public static float siegeMarineHeadroom() { return f("threatinc_siegeMarineHeadroom"); }
 	/** An NPC first landing short of the beachhead is not made, even once orbit is done. */
@@ -438,6 +440,8 @@ public class ThreatIncConfig {
 	public static boolean frontAutoPush()     { return b("threatinc_frontAutoPush", true); }
 	/** Whether a front holding no ground breaks off its assault and digs in when an assault would get it overrun. */
 	public static boolean frontBraceEnabled() { return b("threatinc_frontBraceEnabled", true); }
+	/** A front braces whenever the coming counter-attack would BEAT it exposed, ground held or not (2026-10-18, the user); off, only a beachhead holding nothing that would be overrun braces (2026-09-08). */
+	public static boolean frontBraceWhenBeaten() { return b("threatinc_frontBraceWhenBeaten", true); }
 	/** Effective strength (marines x entrenchment) as a fraction of the defense figure needed to HOLD (suppress every key structure). */
 	public static float frontHoldFraction()   { return f("threatinc_frontHoldFraction"); }
 	/** Fraction of the defense figure needed to GRIND (harass only the defense structures, at the reduced rate below). */

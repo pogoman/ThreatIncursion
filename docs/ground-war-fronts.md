@@ -295,6 +295,18 @@ finish beats taking cover whenever the layer can fall in time, and the tick orde
 the push resolves before `hiveCounterAttack`. And a `finalPush` never braces: it is spent either
 way.
 
+**Since 2026-10-18 the first limit is gone** (`frontBraceWhenBeaten`, the user: "if a counter-attack
+is incoming attackers dig in and entrench, right?"): the brace test is `beatenIfPushing` - would
+the blow beat the front caught at cover 1, ground held or not - through `counterAttackDanger`
+(`overrunIfPushing` remains as the knob-off rule). The 2026-09-08 "press on and take the setback"
+had been written against counter-attacks at `marineCounterAttackMult` 0.25; at 1.0 (0fcb269e)
+every counter-attack won and took a stratum (hw191: 0 repelled in 370), so a front that pressed
+on was bled a layer each cadence. The other two limits stand: the assault that lands first still
+goes in, and a `finalPush` never braces. The landing is sized to the same line: `beachheadNeeded`
+draws it at 1:1 x `siegeBeachheadMargin` (REPEL the first counter-attack - `beachheadRepels`,
+`BattleRules.beachheadOdds`), not at the 2:1 overrun odds; about twice the marines a landing
+carried before (0.83 -> 1.67 of the defence), both sides.
+
 Two traps this walked into, both worth remembering. The NPC stance AI runs ~180 lines LATER in
 the same `tickFront`, saw the entrench the brace had just ordered, and pushed the front straight
 back out of cover - so the brace was dead for every NPC and Threat front until it learned

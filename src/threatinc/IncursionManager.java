@@ -2659,9 +2659,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	public static float beachheadNeeded(float defenderStr) {
 		float margin = ThreatIncConfig.siegeBeachheadMargin();
 		if (margin <= 0f || defenderStr <= 0f) return 0f;
-		float e = Math.max(0.1f, ThreatIncConfig.groundStrengthExponent());
-		float odds = (float) Math.pow(2f, 1f / e);
-		return defenderStr / (Math.max(0.05f, ThreatIncConfig.frontLandingMult()) * odds) * margin;
+		// the repel line since 2026-10-18 (beachheadRepels): the landing holds the counter-attack, not merely outlives it
+		return threatinc.rules.BattleRules.beachheadNeeded(defenderStr, margin, ThreatIncConfig.groundStrengthExponent(),
+				ThreatIncConfig.frontLandingMult(), ThreatIncConfig.beachheadRepels());
 	}
 
 	/**

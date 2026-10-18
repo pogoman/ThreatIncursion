@@ -571,6 +571,9 @@
 	# it digs in first and resumes once cover (or the odds) make one survivable.
 	# Its own fleet will not bombard over troops in the open either.
 	"threatinc_frontBraceEnabled": true,
+	# ...and braces whenever the coming counter-attack would beat it caught pushing, ground held
+	# or not (2026-10-18, the user); false = only a beachhead holding nothing that would be overrun
+	"threatinc_frontBraceWhenBeaten": true,
 	# effective strength (marines x entrenchment) as a fraction of the defense
 	# figure: at or above hold = suppress everything; between grind and hold =
 	# harass only the defense structures; below grind = a mere foothold. 0.17
@@ -1485,6 +1488,10 @@
 	# counter-attack: this much over the 2:1 odds that overrun a fresh landing
 	# (0 sizes the landing for the raids alone)
 	"threatinc_siegeBeachheadMargin": 1.25,
+	# ...and the line that margin is over: true = the landing REPELS the first counter-attack
+	# (holds it at 1:1 - 2026-10-18, after marineCounterAttackMult 1.0 made every counter-attack
+	# win, hw191: 0 repelled in 370); false = it merely outlives it at the 2:1 overrun odds
+	"threatinc_beachheadRepels": true,
 	# ...times this, for the marines that go down with the hulls the orbit
 	# costs (a 60-90 day siege loses 25-35% of its ships, cargo with them)
 	"threatinc_siegeMarineHeadroom": 2.0,

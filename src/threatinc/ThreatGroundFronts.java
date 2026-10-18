@@ -718,7 +718,10 @@ public class ThreatGroundFronts {
 		if (front == null || market == null) return false;
 		if (!ThreatIncConfig.frontBraceEnabled()) return false;
 		if (front.finalPush) return false; // spent either way; nothing to save it for
-		if (front.strataHeld > 0) return false;
+		// holding ground, a front pressed on and took the setback until 2026-10-18 (the user:
+		// "if a counter-attack is incoming attackers dig in and entrench, right?") - it braces
+		// too now when the blow would beat it (frontBraceWhenBeaten, counterAttackDanger)
+		if (front.strataHeld > 0 && !ThreatIncConfig.frontBraceWhenBeaten()) return false;
 		if (defendersHoldFire(front, market)) return false; // no blow is coming (2026-10-17)
 		// The test is "would an assault get me killed", not "is a blow due
 		// soon" (user, 2026-09-08). Cover takes frontEntrenchDays to dig, so a
@@ -730,7 +733,7 @@ public class ThreatGroundFronts {
 		// flip back the moment it moved, and the front would oscillate.
 		// Entrenchment only accrues while dug in and never decays, so this
 		// projection improves monotonically and settles.
-		if (!overrunIfPushing(front, market)) return false;
+		if (!counterAttackDanger(front, market)) return false;
 		float due = daysToCounterAttack(front, market);
 		// Unless the assault lands first (user, 2026-09-08). Taking the layer
 		// pays twice: it strips the defenders of that layer's share, and it
@@ -757,6 +760,27 @@ public class ThreatGroundFronts {
 		float exposed = effectiveStrength(front); // x1 cover: pushing
 		if (attack <= exposed) return false;
 		return ratioPow(attack / Math.max(1f, exposed)) > 2f;
+	}
+
+	/**
+	 * Whether the next counter-attack would BEAT this front caught pushing (cover
+	 * 1): the attack over the exposed strength - a stratum lost, or a beachhead
+	 * overrun. The brace test since 2026-10-18 (frontBraceWhenBeaten, the user):
+	 * a front that would merely be beaten, not overrun, pressed on and took the
+	 * setback (2026-09-08), which at marineCounterAttackMult 1.0 was every
+	 * counter-attack there was (hw191: 0 repelled in 370, a stratum lost each).
+	 * Stance-neutral like {@link #overrunIfPushing}, so a braced front resumes
+	 * when its entrenchment ramp (effectiveStrength) or the garrison's bleed
+	 * has moved the odds, not because it took cover.
+	 */
+	public static boolean beatenIfPushing(GroundFront front, MarketAPI market) {
+		if (front == null || market == null) return false;
+		return counterAttackStrength(market) > effectiveStrength(front); // x1 cover: pushing
+	}
+
+	/** The brace test in force: beaten ({@code frontBraceWhenBeaten}) or only overrun while holding nothing. */
+	public static boolean counterAttackDanger(GroundFront front, MarketAPI market) {
+		return ThreatIncConfig.frontBraceWhenBeaten() ? beatenIfPushing(front, market) : overrunIfPushing(front, market);
 	}
 
 	/**
@@ -3250,8 +3274,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float need = Math.max(0f, defenderStrength(market) + moved) * ThreatIncConfig.frontHoldFraction() / mult;
 		float margin = ThreatIncConfig.siegeBeachheadMargin();
 		if (beachhead && margin > 0f) {
-			float e = Math.max(0.1f, ThreatIncConfig.groundStrengthExponent());
-			float odds = (float) Math.pow(2f, 1f / e);
+			float odds = threatinc.rules.BattleRules.beachheadOdds(ThreatIncConfig.groundStrengthExponent(), ThreatIncConfig.beachheadRepels());
 			need = Math.max(need, Math.max(0f, counterAttackStrength(market) + moved) * margin / (mult * odds));
 		}
 		return need;
@@ -4953,8 +4976,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	public static int beachheadTroops(MarketAPI market) {
 		float margin = ThreatIncConfig.siegeBeachheadMargin();
 		if (market == null || margin <= 0f) return 0;
-		float e = Math.max(0.1f, ThreatIncConfig.groundStrengthExponent());
-		float odds = (float) Math.pow(2f, 1f / e);
+		float odds = threatinc.rules.BattleRules.beachheadOdds(ThreatIncConfig.groundStrengthExponent(), ThreatIncConfig.beachheadRepels());
 		return (int) Math.ceil(counterAttackStrength(market) * margin
 				/ Math.max(0.01f, ThreatIncConfig.frontLandingMult() * odds));
 	}
@@ -4962,8 +4984,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	public static boolean beachheadSurvives(MarketAPI market, float troops) {
 		float margin = ThreatIncConfig.siegeBeachheadMargin();
 		if (market == null || margin <= 0f) return true;
-		float e = Math.max(0.1f, ThreatIncConfig.groundStrengthExponent());
-		float odds = (float) Math.pow(2f, 1f / e);
+		float odds = threatinc.rules.BattleRules.beachheadOdds(ThreatIncConfig.groundStrengthExponent(), ThreatIncConfig.beachheadRepels());
 		return troops * ThreatIncConfig.frontLandingMult() * odds >= counterAttackStrength(market) * margin;
 	}
 
