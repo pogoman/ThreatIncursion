@@ -714,7 +714,7 @@ public class ThreatIncConfig {
 	/** Hive cover (2026-10-18): the hive stock covers a hive world's vanilla shortages as a human depot covers its colony's (ThreatHiveCover). */
 	public static boolean hiveCover()              { return b("threatinc_hiveCover", true); }
 	/** Size upkeep on the humans' core colonies (2026-10-18): the hive's table billed to every mobilised faction's colony, not the forward bases alone (ThreatCoreUpkeep). */
-	public static boolean coreSizeUpkeep()         { return b("threatinc_coreSizeUpkeep", true); }
+	public static boolean coreSizeUpkeep()         { return b("threatinc_coreSizeUpkeep", false); }
 	/** Whether the player's own colonies pay it too. */
 	public static boolean coreSizeUpkeepPlayer()   { return b("threatinc_coreSizeUpkeepPlayer", false); }
 	/** K2 (2026-10-13, hw177c): the navy's upkeep and the fleets away leave the kit, and the navy a prong's trip, in the supplies stock (ThreatFuel.keptAhead). */
