@@ -442,8 +442,6 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatCoalition.tick(random);
 		// mobilised factions ask the sector for help (docs/player-aid.md)
 		ThreatAidRequests.tick(random);
-		// mobilised factions fortify purged worlds
-		ThreatOutposts.planNPC(random);
 		manageMissions();
 		checkPhaseAnnouncements();
 		mobiliseAtPhase();

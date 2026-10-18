@@ -1078,8 +1078,6 @@ public class ThreatIncConfig {
 	public static float outpostSupplies()     { return f("threatinc_outpostSupplies"); }
 	/** Fuel an NPC faction's base pays for an outpost. */
 	public static float outpostFuel()         { return f("threatinc_outpostFuel"); }
-	/** Chance per tick a mobilised NPC faction fortifies an open purged world in reach. */
-	public static float outpostChance()       { return f("threatinc_outpostChance"); }
 
 	// ---- frontline outposts and strike warning (docs/frontlines.md) ----
 

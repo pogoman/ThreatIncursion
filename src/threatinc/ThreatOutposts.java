@@ -647,52 +647,8 @@ public class ThreatOutposts {
 		return true;
 	}
 
-	/**
-	 * Slow tick: each mobilised NPC faction rolls outpostChance to hold one
-	 * open purged world within reach of a base that can pay, with a forward
-	 * base - only one a found live hive lies within frontlineKeepLY of, or it
-	 * would be abandoned as soon as it stood - under a link's site rules
-	 * (ThreatFrontlines.siteSystemOk). One per tick.
-	 * The outposts knob and the frontlines knob both gate it.
-	 */
-	public static void planNPC(Random random) {
-		if (!ThreatWarState.enabled() || !ThreatIncConfig.outpostsEnabled()
-				|| !ThreatIncConfig.frontlinesEnabled()) return;
-		List<PlanetAPI> open = openPurgedWorlds();
-		if (open.isEmpty()) return;
-		// (2026-09-29: closed economy - no link cap: a founding is paid from the reserves, and that is the limit)
-		for (String factionId : ThreatWarState.warFactionIds()) {
-			FactionAPI faction = Global.getSector().getFaction(factionId);
-			if (faction == null || faction.isPlayerFaction()) continue;
-			if (random.nextFloat() >= ThreatIncConfig.outpostChance()) continue;
-			if (!ThreatFactionStance.foundsLinks(faction, random)) continue;
-			for (PlanetAPI planet : open) {
-				if (holds(planet) || ThreatFrontlines.hiveNear(planet) == null) continue;
-				// no hive or hostile market in the system, one faction's links per system
-				if (!ThreatFrontlines.siteSystemOk(faction, planet.getStarSystem())) continue;
-				MarketAPI base = payingBase(faction, planet);
-				if (base == null) continue;
-				// the founding is paid before the garrison is weighed: its voyage
-				// check reads the pool the founding draws from
-				float[] cost = linkCost(faction);
-				float[] paid = ThreatFrontlines.drawFounding(base, cost);
-				// no paper bases: only where a base can spare it a garrison
-				MarketAPI guardBase = ThreatIncConfig.frontlineGarrisonEnabled()
-						? ThreatFrontlines.garrisonBase(faction, planet) : null;
-				if (ThreatIncConfig.frontlineGarrisonEnabled() && guardBase == null) {
-					ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, paid[0]);
-					ThreatReserves.deposit(base.getId(), Commodities.FUEL, paid[1]);
-					continue;
-				}
-				MarketAPI link = raiseForwardBase(faction, planet, "paid from " + base.getName());
-				if (link != null) {
-					if (guardBase != null) ThreatFrontlines.garrisonNow(link, guardBase);
-					break;
-				}
-				// (2026-09-29: closed economy) nothing raised: the founding goes back
-				ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, paid[0]);
-				ThreatReserves.deposit(base.getId(), Commodities.FUEL, paid[1]);
-			}
-		}
-	}
+	// (2026-10-18, the user: "remove the auto forward base/outpost founding after destroying world" - planNPC,
+	// which raised a forward base over an open purged world each slow tick, is gone: hw201/hw204 showed it
+	// founded 33 of 36 bases on the spot, without the founding convoy or the planner's gates. The purged list
+	// stays the board's shortlist for the player's Outpost button; NPC bases come from ThreatFrontlines.planFor.)
 }

@@ -212,8 +212,8 @@ its own colonies' station line, else Hegemony/Luddics low-tech, Tri-Tachyon high
 others midline) tied to a `station_built_from_industry` entity orbiting the planet. While
 its fleet lives, `checkWaveArrivals` refuses to found a colony there (the wave stays and
 fights). Player pays `outpostCredits` (150,000); an NPC base pays `outpostSupplies` /
-`outpostFuel` above its floor, and mobilised NPC factions fortify one open purged world in
-reach per tick with `outpostChance` (0.3). Faction view: a "Purged worlds in reach" table
+`outpostFuel` above its floor; NPC factions raise none since 2026-10-18 (the purged-world
+founding `planNPC` was removed, docs/frontlines.md). Faction view: a "Purged worlds in reach" table
 with an **Outpost** button. A dead station is a lost outpost (fast poll). Until 2026-09-06
 outposts also sat in the fleets table with a Recall that scuttled them - see "Storage and
 orders" below for what replaced that.
@@ -280,7 +280,7 @@ colony, no standing outpost), from the planet's own dialog: "Build an outpost" a
 between the survey options while one of the player's military colonies is within
 expedition reach (`ThreatincOutpostCMD`, rules.csv `threatincOutpost*`), with a brief and
 a Confirm disabled when the credits are short. The board's table stays the purged-world
-shortlist, and NPC factions still fortify purged worlds only. The dialog does not require
+shortlist, and NPC factions raise no outposts (2026-10-18). The dialog does not require
 the player's faction to be mobilised (the board's button does, like every board button):
 credits, not the reserve, pay for it.
 

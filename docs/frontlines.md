@@ -527,7 +527,6 @@ The rules from before:
   converted outpost, a ground-victory prize): a new one is sent when a base can
   pay for it (2026-09-29: no navy share), at most every 30 days. A link unguarded for `frontlineAbandonDays`
   is given up ("no garrison to hold it").
-- Purged-world forward bases (`ThreatOutposts.planNPC`) need a garrison too.
 - The census line reports guarded links, their garrison FP, and star fortresses.
 
 **Held worlds (2026-09-26).** NPC factions no longer build the old
@@ -540,15 +539,13 @@ it founds a forward base instead (`ThreatOutposts.raiseForwardBase`):
   survivors bank into the nearest colony base's reserve, veterancy kept - never
   a link, which takes its stock with it when it falls (run 16 banked 3 of 4
   victories' survivors into links).
-- **Purged worlds** (`planNPC`, `outpostChance` per slow tick): paid at the
-  **(2026-10-18 hw201/hw204: this path founded 33 of the rounds' 36 bases - on the spot, from any base in
-  reach, without the founding convoy of 2026-10-11 or the planner's hulls and reach gates; the user to decide
-  whether it sails through `ThreatConvoys.dispatchFounding` like the planner's foundings.)**
-  outpost cost from a base in reach, and only where a found live hive lies
-  within `frontlineKeepLY`, or the base would stand idle and be abandoned. The
-  site rules are a link's (`siteSystemOk`: no hive or hostile market in the
-  system, one faction's links per system), and
-  both Outposts Enabled and Frontline Outposts Enabled gate it.
+- **Purged worlds found nothing** (2026-10-18, the user: "remove the auto forward base/outpost
+  founding after destroying world"). Until then `ThreatOutposts.planNPC` raised a forward base over an
+  open purged world each slow tick, paid on the spot from any base in reach - hw201/hw204 showed it
+  founded 33 of the rounds' 36 bases, bypassing the founding convoy of 2026-10-11 and the planner's
+  hulls and reach gates while `planFor` founded 0-1 a game. Deleted with its `outpostChance` knob; the
+  purged list stays the board's shortlist for the player's Outpost button, and an NPC faction's
+  bases come only from `planFor`'s founding convoys.
 - **Old NPC outposts in a save** convert where they stand on the next poll,
   stock carried into the new market's reserve.
 
@@ -657,11 +654,14 @@ fix that". Three changes, all built the same evening (trial hw200):
   size 3 (Military Base at 4) and the station a tier up (2 at 3, 3 at 4), nothing else: the
   producers (Heavy Industry, Fuel Production, the shortage's answer, conversions,
   `ThreatFactionStock.hold`) are gone from links. Size upkeep and the garrison are unchanged.
-- **Founded as needed.** `planFor` founds toward a hive system only when THIS faction holds a
-  report of it (`ThreatIntel.known`) and none of its bases can launch at it
-  (`ThreatFleetOrders.pickBase` null - the planner's own reach test, a base within expedition
-  range). Before: toward every hive system anyone knew with no base or link within
-  `frontlineReachLY`. The chain, hop and site rules are unchanged.
+- **The chain, 10 LY hops (the user, 20:10).** `planFor` founds toward a hive system only when THIS
+  faction holds a report of it (`ThreatIntel.known`) and no colony or connected link of its lies
+  within `frontlineReachLY` (10) of it; the site is within `frontlineLinkLY` (10, was 12) of the
+  nearest anchor and gets closer. A link cut off from the chain (over a hop from every colony and
+  connected link, `connected`) is no anchor, so a broken chain is re-founded. The 17:50 cut read
+  `ThreatFleetOrders.pickBase` (expedition range) instead and founded 0-1 bases a game (hw201 /
+  hw204 - the 36 bases of those rounds were `planNPC`'s, see "Purged worlds found nothing").
+  Before 17:50: toward every hive system anyone knew, 12 LY hops.
 - **The core builds up** (`ThreatCoreBuild`, knob `threatinc_coreBuild`; replaces `homeYards`).
   Daily, one start a faction a month (`ThreatFactionStock.SHORT_DAYS`) at its core colonies of
   size 3+ with nothing building: the shortage's answer first (the producer of the shortest stock

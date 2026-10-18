@@ -2114,12 +2114,21 @@ public class ThreatFrontlines {
 		final Map<Object[], Float> dist = new HashMap<Object[], Float>();
 		List<Object[]> pairs = new ArrayList<Object[]>();
 		for (StarSystemAPI hive : hiveSystems) {
-			// FOUNDED AS NEEDED (the user, 2026-10-18): a base toward a hive system only when THIS faction
-			// holds a report of it (ThreatIntel, not the sector's knowledge) and none of its bases can launch
-			// at it - the planner's own test (ThreatFleetOrders.pickBase: a base within expedition range).
-			// Before: toward every hive system anyone knew that no base or link lay within frontlineReachLY.
+			// THE CHAIN (the user, 2026-10-18 20:10, after hw201/hw204 founded 0-1 bases a game under the
+			// 17:50 "founded as needed" gate, which read ThreatFleetOrders.pickBase - expedition range): a
+			// base toward a hive system only when THIS faction holds a report of it (ThreatIntel, not the
+			// sector's knowledge) and no colony or CONNECTED link of its lies within frontlineReachLY (10) of
+			// it - hops of frontlineLinkLY (10) from the nearest anchor, and a link cut off from the chain
+			// (over a hop from every colony and connected link, connected()) is no anchor, so the faction
+			// founds again to close the gap. The staging-only build and the core build stay.
 			if (!ThreatIntel.known(fid, hive.getId())) continue;
-			boolean reached = ThreatFleetOrders.pickBase(faction, hive.getLocation()) != null;
+			boolean reached = false;
+			for (MarketAPI a : anchors) {
+				if (ly(a, hive) <= reach) {
+					reached = true;
+					break;
+				}
+			}
 			// a founding convoy at sea toward it counts: one kit a hive at a time (2026-10-11)
 			if (!reached && ThreatConvoys.foundingBoundFor(fid, hive.getId())) reached = true;
 			if (reached) continue;
