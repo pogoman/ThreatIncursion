@@ -2402,6 +2402,28 @@ public class ThreatFrontlines {
 	}
 
 	/**
+	 * Pays a guard's voyage of {@code fp} points over {@code ly} the way sendGarrison pays one: from the base's
+	 * spendable stock, then the markets reaching it (pooled, payFromOthers). Returns {fuel, supplies} drawn, or
+	 * null with nothing drawn when the pool is short (the want noted, noteVoyageWant). For the guard that sails
+	 * with a founding kit (ThreatConvoys.dispatchFounding, 2026-10-18 22:10): hw208 paid 30 of 200 FP every time
+	 * while the guard part was priced against the payer's own stock beside the kit.
+	 */
+	protected static float[] payGuardVoyage(MarketAPI base, float fp, float ly) {
+		if (base == null || fp <= 0f) return new float[] { 0f, 0f };
+		float[] cost = voyageCost(fp, ly);
+		if (pooled(base, Commodities.FUEL) < cost[0] || pooled(base, Commodities.SUPPLIES) < cost[1]) {
+			noteVoyageWant(base, cost);
+			return null;
+		}
+		float fuel = ThreatReserves.drawSpendable(base, Commodities.FUEL, cost[0]);
+		if (fuel < cost[0]) fuel += payFromOthers(base, null, Commodities.FUEL, cost[0] - fuel);
+		float supplies = ThreatReserves.drawSpendable(base, Commodities.SUPPLIES, cost[1]);
+		if (supplies < cost[1]) supplies += payFromOthers(base, null, Commodities.SUPPLIES, cost[1] - supplies);
+		clearVoyageWant(base);
+		return new float[] { fuel, supplies };
+	}
+
+	/**
 	 * Whether the faction's garrison budget has room for a guard of {@code needFP} at a new front link -
 	 * garrisonBase's budget test alone: the voyage is the founding convoy's (dispatchFounding pays it or
 	 * sails nothing). noGarrisonWhy says why not.

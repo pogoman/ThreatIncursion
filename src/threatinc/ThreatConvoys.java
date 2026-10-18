@@ -2564,12 +2564,14 @@ public class ThreatConvoys {
 		if (paysEscort) {
 			// a supply fleet goes wherever its fuel takes it and no further (the
 			// radius abolished, 2026-10-01): a voyage unpaid stays home, and the
-			// escort shrinks to what is paid, to none
+			// escort shrinks to what is paid, to none - but never under the minimum asked
+			// for: that part's voyage is the caller's to pay (a founding kit's guard,
+			// dispatchFounding pays it from the garrison pool or sails nothing)
 			if (!paysVoyage(from, ly, reserve[2])) {
 				logHeld(from, ly);
 				return null;
 			}
-			escort = paidEscort(from, escort, ly, reserve[2], reserve[3]);
+			escort = Math.max(minEscort, paidEscort(from, escort, ly, reserve[2], reserve[3]));
 		}
 		float cargoUnits = ask[1] + ask[2] + ask[3] + hullsIn(ask);
 		float freighterPts = Math.max(10f, cargoUnits / 60f);
@@ -2808,9 +2810,33 @@ public class ThreatConvoys {
 					+ (int) escort + " of " + (int) guardFP + " FP of escort paid)");
 			return null;
 		}
+		// the guard part of the escort is a garrison sailing with the kit: priced and paid as sendGarrison
+		// pays a guard's voyage, from the payer and the markets reaching it (ThreatFrontlines.payGuardVoyage) -
+		// hw208 (22:05): paid against the payer's own stock beside the kit it was 30 of 200 FP every time and
+		// 72 of 82 foundings were refused. The convoy's own escort (the rest) pays as before
+		float guardPart = Math.min(guardFP, escort);
 		system.addEntity(fleet);
 		fleet.setLocation(from.getLocation().x, from.getLocation().y);
-		burn(h, payEscort(fleet, donor, escort, ly, h.ask));
+		burn(h, payEscort(fleet, donor, escort - guardPart, ly, h.ask));
+		if (guardPart > 0f) {
+			float[] gv = ThreatFrontlines.payGuardVoyage(payer, guardPart, ly);
+			if (gv == null) {
+				if (h.burnt != null) {
+					ThreatReserves.deposit(donor.id(), Commodities.FUEL, h.burnt[0]);
+					ThreatReserves.deposit(donor.id(), Commodities.SUPPLIES, h.burnt[1]);
+				}
+				refundEscort(fleet, donor);
+				Misc.fadeAndExpire(fleet);
+				float[] gc = ThreatFrontlines.voyageCost(guardPart, ly);
+				ThreatIncConfig.logQuiet("fl_guardpool_" + faction.getId() + site.getId(), "Frontline: " + faction.getId()
+						+ " cannot pay the guard's passage to " + site.getName() + " from " + payer.getName() + " and its pool ("
+						+ (int) guardPart + " FP: " + (int) gc[0] + " fuel, " + (int) gc[1] + " supplies)");
+				return null;
+			}
+			com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
+			ThreatReturns.provision(fleet, donor.id(), mem.getFloat(ThreatReturns.MEM_FUEL) + gv[0],
+					mem.getFloat(ThreatReturns.MEM_SUPPLIES) + gv[1]);
+		}
 		if (h.ask[2] < cost[1] || h.ask[3] < cost[0]) {
 			// the passage would come out of the kit: put back what it burnt and stay home
 			if (h.burnt != null) {
