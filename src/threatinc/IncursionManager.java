@@ -2619,7 +2619,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	/** {@link #siegeRaidStrNeeded} after {@code fp} fleet points have bombarded each world as far as orbit goes (0: not at all). */
 	protected static float raidStrNeededAt(java.util.List<MarketAPI> targets, float fp) {
-		float def = 0f;
+		float def = 0f, gun = 0f;
+		MarketAPI hardest = null;
 		for (MarketAPI target : targets) {
 			if (target == null) continue;
 			// a young colony reads vanilla's shallow base until its Swarm Nexus goes
@@ -2629,13 +2630,22 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// longer strips the Nexus bonus whole
 			float d = Math.max(com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.getDefenderStr(target),
 					nexusAnchoredDefense(target));
-			def = Math.max(def, d * ThreatGroundFronts.bombardPlan(target, fp)[1]);
+			float wear = ThreatGroundFronts.bombardPlan(target, fp)[1];
+			if (d * wear > def) {
+				def = d * wear;
+				hardest = target;
+				// its guns worn with the rest: what the drop will face there (dropLoss, 2026-10-18)
+				gun = ThreatGroundFronts.gunDefence(target, d) * wear;
+			}
 		}
 		float threshold = com.fs.starfarer.api.impl.campaign.rulecmd.salvage.MarketCMD.DISRUPTION_THRESHOLD;
 		float raid = def * threshold / Math.max(0.01f, 1f - threshold) * SIEGE_RAID_HEADROOM;
 		// the marines are cargo: the hulls the orbit costs take theirs down with them (hw4s, Epsilon Laphirial II:
 		// 1150 -> 498 FP over 87 days, 758 drawn, 329 landed against 780), so carry for the losses on the way in
-		return Math.max(raid, beachheadNeeded(def)) * Math.max(1f, ThreatIncConfig.siegeMarineHeadroom());
+		float need = Math.max(raid, beachheadNeeded(def));
+		// and the guns take theirs on the way down (2026-10-18): carry the drop's toll too
+		need = ThreatGroundFronts.landingFor(hardest, need, gun);
+		return need * Math.max(1f, ThreatIncConfig.siegeMarineHeadroom());
 	}
 
 	/** A hive's defender strength once its Swarm Nexus stands (SwarmNexus: the size anchor over the strata left, times the Nexus bonus and a standing Swarm Bastion's or Command's), batteries aside. */

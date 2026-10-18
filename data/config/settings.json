@@ -470,6 +470,13 @@
 	# size-8 Heavy Batteries hive; 3,000 and under land at full defence)
 	"threatinc_hiveBombardReturnFirePerGunDefence": 0.0024,
 	"threatinc_hiveBombardFPWorth": 10,
+	# THE DROP UNDER THE GUNS (2026-10-18, the user: "marines lost to heavy batteries like FP
+	# is lost to bombardment"): a landing loses this x the defence the batteries still add
+	# (worn guns take less - the reason to bombard first), never more than the fraction;
+	# every landing gate and planner sizes for the survivors, the player's prompt quotes it
+	"threatinc_dropLossPerGunDefence": 0.3,
+	"threatinc_hiveDropLossPerGunDefence": 0.3,
+	"threatinc_dropLossMaxFraction": 0.6,
 	# unrest a bombardment raises the world to, never stacked: this x
 	# (1 - fortification condition), tactical and saturation alike
 	"threatinc_bombardUnrestMax": 10,

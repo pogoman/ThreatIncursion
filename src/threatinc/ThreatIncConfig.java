@@ -369,6 +369,12 @@ public class ThreatIncConfig {
 	public static float bombardFPWorth() { return f("threatinc_bombardFPWorth"); }
 	/** The hive theatre's bombardReturnFirePerGunDefence (2026-10-13: 0.0024, three times a colony's). */
 	public static float hiveBombardReturnFirePerGunDefence() { return f("threatinc_hiveBombardReturnFirePerGunDefence"); }
+	/** Marines a landing loses on the drop per point of defence a colony's batteries still add (2026-10-18, the user: the guns tax the drop as they tax the bombardment). */
+	public static float dropLossPerGunDefence() { return f("threatinc_dropLossPerGunDefence"); }
+	/** The same on the hive theatre. */
+	public static float hiveDropLossPerGunDefence() { return f("threatinc_hiveDropLossPerGunDefence"); }
+	/** The most of a landing the drop can take, as a fraction of it. */
+	public static float dropLossMaxFraction() { return f("threatinc_dropLossMaxFraction"); }
 	/** The hive theatre's bombardFPWorth (2026-10-13: 10, so the commanders who bombard a big hive at 0.0008 / 30 still do at 0.0024). */
 	public static float hiveBombardFPWorth() { return f("threatinc_hiveBombardFPWorth"); }
 	/** Unrest a bombardment raises a world to: this x (1 - fortification condition), tactical and saturation alike. */

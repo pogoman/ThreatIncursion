@@ -921,8 +921,10 @@ public class ThreatGroundFronts {
 		if (market == null || ownerFactionId == null) return null;
 		boolean threat = Factions.THREAT.equals(ownerFactionId);
 		GroundFront standing = getFront(market.getId());
+		if (standing != null && !ownerOf(standing).equals(ownerFactionId)) return null;
+		// the guns take their toll on the way down (dropLoss, 2026-10-18): what lands is what is left
+		troops = dropped(market, troops, ownerFactionId);
 		if (standing != null) {
-			if (!ownerOf(standing).equals(ownerFactionId)) return null;
 			resupply(standing, troops, armaments);
 			if (threat) ThreatAidMissionIntel.strikeLanded(market);
 			ThreatIncConfig.log("Front reinforced at " + market.getName() + " (" + ownerFactionId
@@ -3161,6 +3163,73 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				gunDefence(market, defence));
 	}
 
+	// ------------------------------------------------------------------
+	// THE DROP UNDER THE GUNS (2026-10-18, the user: "marines lost to heavy
+	// batteries, like FP is lost to bombardment"). The batteries that answer
+	// a bombardment fire on the drop ships too: a landing loses
+	// dropLossPerGunDefence x the defence they still add (gunDefence - worn
+	// guns take less, which is what bombarding first buys), never more than
+	// dropLossMaxFraction of it. Both theatres, both sides; the player's
+	// prompt quotes it, every landing gate and planner sizes for the
+	// survivors (readyToLand, beachheadSurvives, beachheadTroops,
+	// troopsToLand, IncursionManager.raidStrNeededAt). Fabricated troops pay
+	// the guns through intactBatteryShare already and do not drop.
+	// ------------------------------------------------------------------
+
+	/** The drop's constant on this world: the hive theatre's (hiveDropLossPerGunDefence) or the colony's (dropLossPerGunDefence). */
+	public static float dropLossConstant(MarketAPI market) {
+		boolean hive = market != null && Theatre.of(market) == HIVE;
+		return Math.max(0f, hive ? ThreatIncConfig.hiveDropLossPerGunDefence() : ThreatIncConfig.dropLossPerGunDefence());
+	}
+
+	/** Marines the guns take from a landing of troops on this world now, its batteries as worn as they are. */
+	public static float dropLoss(MarketAPI market, float troops) {
+		if (market == null || troops <= 0f) return 0f;
+		return threatinc.rules.BattleRules.dropLoss(dropLossConstant(market),
+				gunDefence(market, defenderStrength(market)), troops, ThreatIncConfig.dropLossMaxFraction());
+	}
+
+	/** The troops that reach the ground out of a landing of troops here now. */
+	public static float afterDrop(MarketAPI market, float troops) {
+		return Math.max(0f, troops - dropLoss(market, troops));
+	}
+
+	/** The landing that puts need troops on the ground through this world's drop toll now. */
+	public static float landingFor(MarketAPI market, float need) {
+		if (market == null) return Math.max(0f, need);
+		return landingFor(market, need, gunDefence(market, defenderStrength(market)));
+	}
+
+	/** As above at a gun defence already in hand - a planner's, worn as its bombardment will wear it. */
+	public static float landingFor(MarketAPI market, float need, float gunDefence) {
+		if (market == null || need <= 0f) return Math.max(0f, need);
+		return threatinc.rules.BattleRules.landingForSurvivors(need,
+				dropLossConstant(market) * Math.max(0f, gunDefence), ThreatIncConfig.dropLossMaxFraction());
+	}
+
+	/**
+	 * The drop itself: takes the guns' toll off a landing or a reinforcement of
+	 * troops and returns the survivors, logging it ("Drop at ...") and telling
+	 * the player when the landing is theirs. Called once per landing by
+	 * landOrReinforce and the player's ground menu - never inside deploy /
+	 * resupply, which the fabrication path shares.
+	 */
+	public static int dropped(MarketAPI market, int troops, String factionId) {
+		if (market == null || troops <= 0) return Math.max(0, troops);
+		int lost = Math.min(troops, Math.round(dropLoss(market, troops)));
+		if (lost <= 0) return troops;
+		ThreatIncConfig.log("Drop at " + market.getName() + " (" + factionId + "): lost " + lost + " of " + troops
+				+ " marines to the guns (gun defence " + (int) gunDefence(market, defenderStrength(market))
+				+ ", defences " + Math.round(fortificationCondition(market) * 100f) + "%)");
+		if (factionId == null || Factions.PLAYER.equals(factionId)) {
+			ThreatNotice.titled("Landing Under Fire").bad()
+					.line("%s marines lost to the batteries of %s on the drop.", Misc.getWithDGS(lost),
+							ThreatNotice.market(market))
+					.send();
+		}
+		return troops - lost;
+	}
+
 	/** Fuel a day of tactical bombardment burns for a fleet of fp. */
 	public static float bombardFuelPerDay(float fp) {
 		return threatinc.rules.BattleRules.bombardFuelPerDay(fp, ThreatIncConfig.bombardFuelPerFPDay());
@@ -3286,7 +3355,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			float odds = threatinc.rules.BattleRules.beachheadOdds(ThreatIncConfig.groundStrengthExponent(), ThreatIncConfig.beachheadRepels());
 			need = Math.max(need, Math.max(0f, counterAttackStrength(market) + moved) * margin / (mult * odds));
 		}
-		return need;
+		return landingFor(market, need); // plus the guns' toll on the way down (2026-10-18)
 	}
 
 	/** Vanilla's stability factor on the ground defence: 0.25 at 0, 1 at 10. */
@@ -4954,7 +5023,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	public static boolean readyToLand(MarketAPI market, float troops, boolean orbitDone) {
 		if (market == null) return false;
 		if (orbitDone) return true;
-		return troops * ThreatIncConfig.frontLandingMult() >= holdRequirement(market);
+		// the guns take theirs on the way down first (dropLoss, 2026-10-18)
+		return afterDrop(market, troops) * ThreatIncConfig.frontLandingMult() >= holdRequirement(market);
 	}
 
 	/**
@@ -4986,15 +5056,15 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float margin = ThreatIncConfig.siegeBeachheadMargin();
 		if (market == null || margin <= 0f) return 0;
 		float odds = threatinc.rules.BattleRules.beachheadOdds(ThreatIncConfig.groundStrengthExponent(), ThreatIncConfig.beachheadRepels());
-		return (int) Math.ceil(counterAttackStrength(market) * margin
-				/ Math.max(0.01f, ThreatIncConfig.frontLandingMult() * odds));
+		return (int) Math.ceil(landingFor(market, counterAttackStrength(market) * margin
+				/ Math.max(0.01f, ThreatIncConfig.frontLandingMult() * odds)));
 	}
 
 	public static boolean beachheadSurvives(MarketAPI market, float troops) {
 		float margin = ThreatIncConfig.siegeBeachheadMargin();
 		if (market == null || margin <= 0f) return true;
 		float odds = threatinc.rules.BattleRules.beachheadOdds(ThreatIncConfig.groundStrengthExponent(), ThreatIncConfig.beachheadRepels());
-		return troops * ThreatIncConfig.frontLandingMult() * odds >= counterAttackStrength(market) * margin;
+		return afterDrop(market, troops) * ThreatIncConfig.frontLandingMult() * odds >= counterAttackStrength(market) * margin;
 	}
 
 	/**

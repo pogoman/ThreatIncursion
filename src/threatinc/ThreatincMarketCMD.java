@@ -437,6 +437,10 @@ public class ThreatincMarketCMD extends MarketCMD {
 				options.setTooltip(GROUND_DEPLOY, "Too few marines aboard to hold any "
 						+ "ground (need at least "
 						+ (int) ThreatIncConfig.frontMinMarines() + ").");
+			} else {
+				int toll = Math.round(ThreatGroundFronts.dropLoss(market, marines));
+				if (toll > 0) options.setTooltip(GROUND_DEPLOY, "The batteries will take about "
+						+ Misc.getWithDGS(toll) + " of the " + Misc.getWithDGS(marines) + " marines on the drop.");
 			}
 		} else if (!front.isPlayerOwned()) {
 			String owner = "An expeditionary force";
@@ -546,6 +550,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		float landingLevel = ThreatMarineXP.fleetLevel();
 		playerFleet.getCargo().removeMarines(marines);
 		playerFleet.getCargo().removeCommodity(Commodities.HAND_WEAPONS, arms);
+		marines = ThreatGroundFronts.dropped(market, marines, Factions.PLAYER); // the guns' toll (2026-10-18)
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.deploy(market,
 				Factions.PLAYER, marines, arms, landingLevel);
 		// a landing is an act of war (docs/suppression-balance.md v2 section 7):
@@ -612,6 +617,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 		playerFleet.getCargo().removeMarines(marines);
 		playerFleet.getCargo().removeCommodity(Commodities.HAND_WEAPONS, arms);
 		boolean wasPushing = ThreatGroundFronts.STANCE_PUSH.equals(front.stance);
+		marines = ThreatGroundFronts.dropped(market, marines, Factions.PLAYER); // the guns' toll (2026-10-18)
 		ThreatGroundFronts.resupply(front, marines, arms, arrivingLevel);
 		text.addPara("%s marines and %s heavy armaments go down to the front.",
 				Misc.getHighlightColor(), Misc.getWithDGS(marines),

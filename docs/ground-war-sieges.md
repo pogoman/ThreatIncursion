@@ -84,6 +84,25 @@ fixed at **launch** from what the expedition is, the mirror of the purge's
   which restores it exactly. **The swarm still does not extract**: it has nowhere to
   withdraw to and no reserve to bank into, and `evacuate` deposits nothing.
 
+### The drop under the guns (2026-10-18, the user)
+
+The batteries that answer a bombardment fire on the drop ships too. A landing loses
+`dropLossPerGunDefence` (0.3; a hive `hiveDropLossPerGunDefence`, 0.3) x the defence the
+batteries still add - `ThreatGroundFronts.gunDefence`, the return fire's own figure, so worn
+guns take less and bombarding first is what spares the marines - never more than
+`dropLossMaxFraction` (0.6) of the landing (`BattleRules.dropLoss`). Both theatres, both
+sides, once per landing or reinforcement (`ThreatGroundFronts.dropped`, from `landOrReinforce`
+and the player's ground menu; fabricated troops pay the guns through `intactBatteryShare`
+already and do not drop). Every gate sizes for the survivors: `readyToLand`,
+`beachheadSurvives`, `beachheadTroops`, `troopsToLand` (`afterDrop`, `landingFor`), and the
+planner's `IncursionManager.raidStrNeededAt` carries the toll at the gun defence its
+bombardment leaves (`BattleRules.landingForSurvivors`: need + toll until the cap binds). The
+player's Land option quotes the toll in its tooltip and the landing reports it ("Landing Under
+Fire"). Logged as "Drop at X (faction): lost L of N marines to the guns (gun defence G,
+defences C%)"; the ledger row "drops under the guns" sums it. Why: the humans landed on hives
+without bombarding (hw194 / hw195 a: 12-23 hives eradicated) because only orbit priced the
+guns; the ground did not.
+
 ### Bombardment v2 - the day of sorties (2026-09-28, built, untested)
 
 The spec, its principles and its tables are `docs/suppression-balance.md` ("Bombardment and

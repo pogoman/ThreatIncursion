@@ -15,6 +15,7 @@ for g in $games; do
   row "base assault -> base destroyed"        "$(c 'Station assault on')" "$(c 'station destroyed by a Threat strike')" ""
   row "daily siege -> landed"                 "$(c 'Daily strike at .*fight days')" "$(c 'Daily strike at .*landed')" "all daily summaries vs landed (ready/dry)"
   row "landing -> Threat ground victory"      "$(c 'Notice: Threat Landing')" "$(c '^Threat ground victory')" ""
+  row "drops under the guns -> marines lost"  "$(c '^Drop at')" "$(grep -h '^Drop at' "$F" | grep -o 'lost [0-9]*' | awk '{s+=$2} END{print s+0}')" "landings the batteries fired on vs marines they took (dropLoss, 2026-10-18); of $(grep -h '^Drop at' "$F" | grep -o 'of [0-9]* marines' | awk '{s+=$2} END{print s+0}') dropped"
   row "human siege -> landed"                 "$(c '^Daily siege of ')" "$(c 'landed (dry)\|landed (ready)')" "purge daily summaries vs landings"
   row "human landing -> core destroyed"       "$(c 'landed (dry)\|landed (ready)')" "$(c '^Colony eradicated:')" ""
   row "counter-attack -> repelled"            "$(c '^Counter-attack at')" "$(c '^Counter-attack repelled')" "0 repelled is the NPC stance AI digging in when it would lose"

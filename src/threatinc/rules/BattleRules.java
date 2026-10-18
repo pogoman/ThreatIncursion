@@ -120,6 +120,29 @@ public final class BattleRules {
 		return Math.max(raid, beachhead);
 	}
 
+	/**
+	 * ThreatGroundFronts.dropLoss (2026-10-18, the user: "marines lost to heavy batteries, like FP is lost to
+	 * bombardment"): marines the guns take from a landing on the way down - set by the guns like the return
+	 * fire (perGunDefence x the defence the batteries still add), never more than maxFraction of the landing.
+	 */
+	public static float dropLoss(float perGunDefence, float gunDefence, float troops, float maxFraction) {
+		if (troops <= 0f) return 0f;
+		float cap = Math.max(0f, Math.min(1f, maxFraction)) * troops;
+		return Math.min(cap, Math.max(0f, perGunDefence) * Math.max(0f, gunDefence));
+	}
+
+	/**
+	 * The landing that puts {@code need} troops on the ground through an uncapped drop toll of {@code loss}
+	 * (dropLoss before its cap): need + loss while the cap does not bind, else need / (1 - maxFraction).
+	 */
+	public static float landingForSurvivors(float need, float loss, float maxFraction) {
+		if (need <= 0f) return 0f;
+		if (loss <= 0f) return need;
+		float c = Math.max(0f, Math.min(0.95f, maxFraction));
+		if (loss <= c * (need + loss)) return need + loss;
+		return need / (1f - c);
+	}
+
 	/** ThreatFleetOrders.raidOver: the fleet points below which a raid has lost its share (raidLossFraction) and goes home. */
 	public static float raidLossLine(float arrivalFP, float lossFraction) {
 		return arrivalFP * (1f - Math.max(0f, Math.min(1f, lossFraction)));
