@@ -265,6 +265,15 @@ falls, everything beyond it loses the bonus on the next day's update.
     in other units and read the disruption vanilla had just written as "station
     down"; runs 3 and 4 logged every assault that way);
   - a live strike pass finds the station already down (not flying).
+  - a daily strike (the ground doctrine, `ThreatStrikeFGI.dailyDay`, 2026-10-18): the
+    base's station fleet and its guards are weighed and fought a day at a time like
+    any defender (`hostileFleetsNear` counts the station; `ThreatAbstractBattle`
+    never damages it, so it holds while it alone contests the orbit), and once the
+    orbit is the strike's the world ends "outpost" and `stationAssault` runs.
+    `stationAssault` is guarded by its own `stationsAssaulted` set, never
+    `siegeResolved` - `endWorld` marks that first, and from 0fcb269e to ebdca078 the
+    guard tripped on it, so no daily strike ever destroyed a base (hw191a: 37 of 57
+    strikes spent on bases, 36 standing at the end).
   The 2026-09-26 long test lost 9 links to Threat ground assaults before this.
 - **Captured by someone else** (Nexerelin): the record is dropped and the
   condition removed; the market is theirs.
