@@ -541,6 +541,9 @@ it founds a forward base instead (`ThreatOutposts.raiseForwardBase`):
   a link, which takes its stock with it when it falls (run 16 banked 3 of 4
   victories' survivors into links).
 - **Purged worlds** (`planNPC`, `outpostChance` per slow tick): paid at the
+  **(2026-10-18 hw201/hw204: this path founded 33 of the rounds' 36 bases - on the spot, from any base in
+  reach, without the founding convoy of 2026-10-11 or the planner's hulls and reach gates; the user to decide
+  whether it sails through `ThreatConvoys.dispatchFounding` like the planner's foundings.)**
   outpost cost from a base in reach, and only where a found live hive lies
   within `frontlineKeepLY`, or the base would stand idle and be abandoned. The
   site rules are a link's (`siteSystemOk`: no hive or hostile market in the
