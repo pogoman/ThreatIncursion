@@ -292,6 +292,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// garrison first (so they count as on-station), then worn-down colonies
 		// draw fresh help from siblings - same system, then fuel range
 		ThreatColonyManager.checkReinforcementArrivals();
+		ThreatFeeding.shipHive(); // docked upkeep sails as feeding swarms (ThreatFeeding, 2026-10-18)
 		ThreatColonyManager.redistributeGarrisons();
 		processPendingDecivChecks();
 		syncSystemMarkers();

@@ -964,6 +964,14 @@
 	"threatinc_upkeepBreakEven": 0.5,
 	"threatinc_starveDaysPerSize": 90,
 	"threatinc_foundingBudget": true,
+	# TANGIBLE FEEDING (the user, 2026-10-18): a world's size upkeep is eaten from a larder only a sailing
+	# fills - a hive world's allotment docks and sails as a feeding swarm seated in the world's garrison on
+	# arrival, a forward base is fed by a feeding convoy settled where it lands (ThreatFeeding); false = the
+	# hive stock and the faction's markets pay on the spot as before. A sailing carries loadMonths of the
+	# imported bill and is called when the larder holds under reserveMonths of it
+	"threatinc_feedConvoys": true,
+	"threatinc_feedConvoyLoadMonths": 3,
+	"threatinc_feedConvoyReserveMonths": 1,
 	"threatinc_feedShareExpand": 0.5,
 	"threatinc_feedSharePress": 0.7,
 	# consolidating 0.9 -> 0.5 (2026-10-02, the war simulator's round 20): the largest of the three

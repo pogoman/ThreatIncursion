@@ -194,6 +194,36 @@ forward base, commodity-bound the way vanilla's economy is.
   port halves it (`importCut`). A blockaded forge world keeps what its own upkeep takes and the rest
   of its output cannot leave (`reachesStock`, in `ThreatFuel.perMonth`). So a blockade starves the
   worlds that import; a forge world declines once its forge is raided too.
+- **Tangible feeding (2026-10-18, the user: "make the supply thing tangible so they send convoys both
+  sides to maintain worlds and forward bases; the convoys don't need to return home, they can just be
+  absorbed when they reach their target").** `ThreatFeeding`, knob `threatinc_feedConvoys`. A world eats
+  from a LARDER (`$threatinc_feedLarder`) that only a sailing fills. The feed above still decides and debits
+  every world's allotment from the stock, but a hive world eats only its own forge's output on the spot;
+  the rest of its allotment DOCKS (`$threatinc_feedDock`) and sails as a FEEDING SWARM - the smallest
+  Defense Swarm of the nearest hive with one to spare, sent as a reinforcement
+  (`ThreatColonyManager.sendReinforcement`: the hive's fuel pays the passage, it flies blinkered and
+  fights where the player holds the orbit) carrying the dock (`$threatinc_feedCargo`). Seated in the
+  world's garrison on arrival it is absorbed and the cargo lands in the larder (`ThreatFeeding.landed`);
+  killed or disbanded, the upkeep is lost. A sailing goes when the dock holds `feedConvoyLoadMonths` (3)
+  of the world's imported bill, or the larder is under `feedConvoyReserveMonths` (1) and the dock half a
+  month; one swarm bound to a world at a time; no hive able to spare a swarm (or no fuel), and the dock
+  waits (`Feeding: no hive can spare`). Each larder opens once with reserve + 1 months of the imported
+  bill (`$threatinc_feedSeeded`), so no world starves while the first swarm is out. The share paid, and
+  so growth and starvation (`growthRate`), is what the world ATE: a stock that allots in full feeds nothing
+  the swarms do not deliver. Worlds whose own forge covers their bill never dock or sail. The blockade's
+  import cut (above) still applies to the allotment. Garrison upkeep (the navy charge) is unchanged.
+  Forward bases mirror it: `ThreatFrontlines.feedSize` draws the depot alone - its feeding credit first,
+  below the floor (`ThreatFeeding.payBase`), then the free stock - and no longer draws its home base or the
+  faction's markets on the spot; `ThreatFeeding.shipBases` (from `ThreatConvoys.planLogistics`, after
+  relief and before the depots) sends a FEEDING CONVOY of `feedConvoyLoadMonths` of the base's bill when
+  its credit plus the supplies at sea to it are under `feedConvoyReserveMonths` of it, from its home base
+  when that reaches and spares a quarter month, else the planner's donor (`pickDonor`); escort and passage
+  paid as any convoy's, raiders may take it, a blockade holds it off (`holdsOff`). Landed
+  (`Convoy.feeding`, `ThreatFeeding.absorbed`), its cargo is the base's credit (kept from the planner's
+  donors, `spare`, and from the garrison's upkeep, `payUpkeep`), its hulls are settled where it stands
+  (`ThreatReturns.settle`, the leg home never flown) and it expires. Log: `Feeding swarm A -> B: N
+  supplies aboard F FP`, `Feeding swarm landed at B`, `Feeding swarm lost`, `Feeding convoy f A -> B`,
+  `Feeding convoy absorbed at B`, `Feeding: no hive/market can spare`.
 - **Founding.** The forge no longer retools after a launch (`retoolForge` is skipped): a wave's
   price is its cargo and its swarm. The cargo carries the colony's four structures too
   (`ThreatBuildCost.foundingKit`: the Spaceport 500 and the Swarm Nexus priced as the Patrol HQ it

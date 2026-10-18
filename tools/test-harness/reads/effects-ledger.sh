@@ -26,6 +26,8 @@ for g in $games; do
   row "convoy held at blockade -> ran in"     "$(c '^Convoy holding off')" "$(c '^Convoy runs in to')" "gave up: $(c '^Convoy gave up at')"
   row "relief dispatched -> bombard days"     "$(c '^Relief convoy:')" "$(c 'bombard the Threat army')" ""
   row "front reinforced (resupply landing)"   "$(c 'Siege pass (reinforce)')" "$(c '^Front reinforced at')" ""
+  row "feeding swarm -> landed (hive upkeep)"  "$(c '^Feeding swarm .* -> ')" "$(c '^Feeding swarm landed')" "tangible feeding 2026-10-18; lost $(c '^Feeding swarm lost'), held $(c '^Feeding: no hive can spare')"
+  row "feeding convoy -> absorbed (base upkeep)" "$(c '^Feeding convoy [a-z_]* ')" "$(c '^Feeding convoy absorbed')" "held $(c '^Feeding: no market of')"
   row "relief leash recalls (at hold range)"  "$(c '^Relief over .*strayed')" "$(grep '^Relief over .*strayed [0-9]* units' "$F" | grep -o 'strayed [0-9]* units' | awk '$2<3000' | wc -l)" "recalled at < 2x hold range: the hw186c leash defect"
   row "swarm defend leash recalls"            "$(c '^Swarm defend .*strayed')" "$(grep '^Swarm defend .*strayed [0-9]* units' "$F" | grep -o 'strayed [0-9]* units' | awk '$2<3000' | wc -l)" "same"
   row "reinforcement sent -> arrived"         "$(c '^Posture: .* sent [0-9]* FP to')" "$(c '^Reinforcement arrived')" ""

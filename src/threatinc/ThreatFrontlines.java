@@ -502,11 +502,16 @@ public class ThreatFrontlines {
 			float want = perMonth * days / 30f;
 			float free = ThreatReserves.available(market, Commodities.SUPPLIES)
 					- ThreatReserves.stagingBank(market, Commodities.SUPPLIES);
-			float own = ThreatReserves.drawAbove(market, Commodities.SUPPLIES, Math.min(want, Math.max(0f, free)));
+			// TANGIBLE FEEDING (the user, 2026-10-18): the depot alone pays - its feeding credit first - and a
+			// feeding convoy refills it (ThreatFeeding.shipBases); the instant draw on home and the faction's
+			// markets below is the old rule
+			boolean tangible = ThreatFeeding.enabled();
+			float own = tangible ? ThreatFeeding.payBase(market, want, free)
+					: ThreatReserves.drawAbove(market, Commodities.SUPPLIES, Math.min(want, Math.max(0f, free)));
 			float sent = 0f;
 			float sustain = ThreatColonyUpkeep.breakEven() * want;
 			float through = 1f - ThreatBlockade.cutOf(market);
-			if (own < sustain && through > 0f) {
+			if (!tangible && own < sustain && through > 0f) {
 				float ask = (sustain - own) * through;
 				MarketAPI home = homeOf(o);
 				boolean homeReaches = home != null && Misc.getDistanceLY(home.getLocationInHyperspace(),
@@ -1509,7 +1514,8 @@ public class ThreatFrontlines {
 	 */
 	protected static float payUpkeep(Outpost o, MarketAPI market, float want) {
 		float free = ThreatReserves.available(market, Commodities.SUPPLIES)
-				- ThreatReserves.stagingBank(market, Commodities.SUPPLIES);
+				- ThreatReserves.stagingBank(market, Commodities.SUPPLIES)
+				- ThreatFeeding.credit(market); // the feeding convoys' cargo is the link's size upkeep, not its garrison's
 		float link = ThreatReserves.drawAbove(market, Commodities.SUPPLIES, Math.min(want, Math.max(0f, free)));
 		MarketAPI home = homeOf(o);
 		// the home base pays only when its stock reaches the link, like any other market

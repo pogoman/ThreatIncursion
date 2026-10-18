@@ -259,3 +259,17 @@ carries it home into the base reserve. Board: **Supply**, **Pull out** and **Esc
 on the faction view's hive rows (own front only) and on the war board's Fronts table
 rows; the hive card carries no second copy.
 
+
+## Feeding convoys (2026-10-18)
+
+A forward base's size upkeep arrives by a FEEDING CONVOY (`ThreatFeeding.shipBases`, from
+`planLogistics` after relief and before the depots; `Convoy.feeding`): `feedConvoyLoadMonths` (3) of
+the base's monthly bill (`ThreatColonyUpkeep.perMonth`) whenever its feeding credit in the depot plus
+the supplies at sea to it hold under `feedConvoyReserveMonths` (1) of it, from its home base when that
+reaches and can spare a quarter month, else the planner's donor (`pickDonor`). It sails, pays and holds
+off a blockade like any convoy; landed, its cargo is the base's feeding credit (`$threatinc_feedLarder`,
+which `spare` keeps from other donors and `ThreatFrontlines.payUpkeep` from the garrison), its hulls
+settle where it stands (`ThreatReturns.settle`, flownHome false) and it expires - absorbed, no leg
+home (the user). The hive's mirror is the feeding swarm (docs/hive-stocks-and-upkeep.md "Tangible
+feeding"). Knob `threatinc_feedConvoys`; off, `feedSize` draws home and the faction's markets on the
+spot as before.

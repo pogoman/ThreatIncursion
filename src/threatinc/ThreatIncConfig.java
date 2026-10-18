@@ -705,6 +705,12 @@ public class ThreatIncConfig {
 	public static float starveDaysPerSize()        { return f("threatinc_starveDaysPerSize"); }
 	/** A FOUNDING BUDGET (S6, 2026-10-10): while a seeding is held on supplies, growth draws only the stock above one founding kit. */
 	public static boolean foundingBudget()         { return b("threatinc_foundingBudget", true); }
+	/** TANGIBLE FEEDING (the user, 2026-10-18): size upkeep arrives by a feeding swarm / convoy, absorbed on arrival (ThreatFeeding). */
+	public static boolean feedConvoys()            { return b("threatinc_feedConvoys", true); }
+	/** Months of a world's imported bill one feeding sailing carries. */
+	public static float feedConvoyLoadMonths()     { return f("threatinc_feedConvoyLoadMonths"); }
+	/** A feeding sailing is called when the larder (and what is at sea to it) holds under this many months of the bill. */
+	public static float feedConvoyReserveMonths()  { return f("threatinc_feedConvoyReserveMonths"); }
 	/** K2 (2026-10-13, hw177c): the navy's upkeep and the fleets away leave the kit, and the navy a prong's trip, in the supplies stock (ThreatFuel.keptAhead). */
 	public static boolean keepAheadOfFleets()      { return b("threatinc_keepAheadOfFleets", true); }
 	/** After hw180 (2026-10-13): navy upkeep the stock keeps ahead recycles the smallest swarms, and a hive with navy upkeep unpaid in the last month builds no navy (ThreatColonyManager.navyUnpaidRecently). */

@@ -81,6 +81,8 @@ public class ThreatConvoys {
 		public String recipientFactionId;
 		/** A player aid convoy: paid in credits, on the capacity ledger, earning standing on landing. */
 		public boolean aid;
+		/** A FEEDING CONVOY (2026-10-18): a forward base's size upkeep; landed, its cargo is the base's feeding credit and it is settled where it stands (ThreatFeeding). */
+		public boolean feeding;
 		/**
 		 * On the first fleet of a sailing split across several (a load past
 		 * vanilla's maxShipsInAIFleet): what all of them carry, in
@@ -1166,6 +1168,8 @@ public class ThreatConvoys {
 			// purged system's stock home - all before any depot
 			planRelief(faction, random);
 			planOutpostReturns(faction, random);
+			// then the forward bases' size upkeep (ThreatFeeding, 2026-10-18): sustenance before any depot
+			ThreatFeeding.shipBases(faction, markets, random);
 			for (Object[] w : wants) {
 				MarketAPI base = (MarketAPI) w[0];
 				float[] targets = (float[]) w[1];
@@ -2170,6 +2174,8 @@ public class ThreatConvoys {
 		// and what a garrison's voyage from it waits on (stagingTargets), which
 		// is outside the bank so the voyage can spend it
 		if (!donor.isPlayerOwned()) keep = Math.max(keep, stagingTarget(donor, commodityId));
+		// a forward base's feeding credit is its size upkeep, never a donor's spare (ThreatFeeding, 2026-10-18)
+		if (Commodities.SUPPLIES.equals(commodityId)) keep += ThreatFeeding.credit(donor);
 		return Math.max(0f, ThreatReserves.stock(donor.getId(), commodityId) - keep);
 	}
 
@@ -3069,6 +3075,13 @@ public class ThreatConvoys {
 			}
 		}
 
+		if (c.feeding) {
+			// absorbed where it lands (the user, 2026-10-18): no leg home
+			ThreatIncConfig.log("Convoy arrived: " + c.factionId + " at " + base.name() + " (" + marines + " marines, "
+					+ armaments + " armaments, " + fuel + " fuel, " + supplies + " supplies) - feeding");
+			ThreatFeeding.absorbed(c, base, supplies);
+			return;
+		}
 		MarketAPI donor = Global.getSector().getEconomy().getMarket(c.fromMarketId);
 		ThreatBases.Base npcHome = sender != null && !sender.isPlayerFaction() ? ThreatBases.of(c.fromMarketId) : null;
 		if (sender != null && sender.isPlayerFaction() && donor != null

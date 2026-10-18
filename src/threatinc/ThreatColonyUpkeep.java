@@ -384,8 +384,19 @@ public class ThreatColonyUpkeep {
 		}
 		float draw = Math.min(sustained + grown, first ? ThreatFuel.stock(Commodities.SUPPLIES) : ThreatFuel.free(Commodities.SUPPLIES));
 		if (draw > 0f) ThreatFuel.pay(Commodities.SUPPLIES, draw, "feed");
+		// TANGIBLE FEEDING (the user, 2026-10-18, ThreatFeeding): the stock is debited as above, but a world
+		// eats only its own forge's output on the spot - the rest of its allotment docks at the hive, sails as
+		// a feeding swarm and is eaten from the world's larder when it lands; the share paid is what it ate
+		boolean tangible = ThreatFeeding.enabled();
 		for (Need n : needs) {
-			float share = n.want > 0f ? n.paid / n.want : 1f;
+			float paid = n.paid;
+			if (tangible) {
+				float ownOutput = n.seed ? 0f : Math.min(n.want, localSupplies(n.market) * days / 30f);
+				float local = Math.min(paid, ownOutput);
+				float importedMonthly = Math.max(0f, n.want - ownOutput) * 30f / Math.max(0.01f, days);
+				paid = local + ThreatFeeding.payHive(n.market, paid - local, importedMonthly);
+			}
+			float share = n.want > 0f ? paid / n.want : 1f;
 			// a seed has nothing to starve on: unfed it holds, fed it grows
 			if (n.seed) share = t + (1f - t) * share;
 			n.market.getMemoryWithoutUpdate().set(MEM_FED, share);

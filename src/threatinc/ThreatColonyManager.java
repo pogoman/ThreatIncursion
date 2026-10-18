@@ -6755,6 +6755,7 @@ public class ThreatColonyManager {
 				// despawn: a despawned fleet reports 0 FP)
 				float fp = fleet.getFleetPoints();
 				String to = creditHome(null, fp, fleet);
+				ThreatFeeding.lost(fleet, "its world gone");
 				fleet.despawn();
 				ThreatIncConfig.log("Reinforcement disbanded, its colony gone: " + (int) fp + " FP "
 						+ (to != null ? "re-banked at " + to : "lost, no hive left"));
@@ -6804,6 +6805,7 @@ public class ThreatColonyManager {
 			fleet.clearAssignments();
 			fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
 			ThreatIncData.garrisonsFor(targetId).add(fleet);
+			ThreatFeeding.landed(fleet, target); // a feeding swarm: its cargo lands in the larder (2026-10-18)
 			com.fs.starfarer.api.campaign.rules.MemoryAPI am = fleet.getMemoryWithoutUpdate();
 			ThreatIncConfig.log("Reinforcement arrived at " + target.getName() + " ("
 					+ countLiveGarrison(targetId) + "/" + nominalGarrison(target) + "), id " + fleet.getId() + ", "
