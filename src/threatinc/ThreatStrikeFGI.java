@@ -504,6 +504,8 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	protected Set<String> siegeAnnounced = new HashSet<String>();
 	/** Worlds whose siege has been run abstractly (no live fleets). */
 	protected Set<String> siegeResolved = new HashSet<String>();
+	/** Forward bases whose station the strike has assaulted (stationAssault's guard - never siegeResolved, which endWorld marks first on the daily path). */
+	protected Set<String> stationsAssaulted = new HashSet<String>();
 
 	/**
 	 * A live fleet over a human colony: a slice of the orbital siege in place
@@ -809,12 +811,13 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 			dailyDone(action, seg);
 			return false;
 		}
-		// a forward base is the station, and its pass the assault (stationAssault);
+		// a forward base is the station, and its pass the assault (stationAssault) -
+		// once the orbit is won below: its station and guards fight the strike first
+		// (until 2026-10-18 the branch sat here, before the fight, and the assault's
+		// own guard then read endWorld's siegeResolved mark and returned - the daily
+		// strike never destroyed a base, hw191a 37 of 57 strikes spent on bases);
 		// a hive target takes vanilla's passes as before - neither is besieged
-		if (ThreatFrontlines.isOutpost(w)) {
-			endWorld(action, w, "outpost", true);
-			return true;
-		}
+		boolean outpost = ThreatFrontlines.isOutpost(w);
 		if (ThreatGroundFronts.isHiveTarget(w)) {
 			endWorld(action, w, "hive", true);
 			return true;
@@ -826,7 +829,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 		// breaks its hulls into troops at the landing, so troopsAboard alone read 0 for
 		// every strike and the gate landed the whole strike on arrival, unbombarded
 		// (hw189, 2026-10-18: 35 of 57 landings in c on day 1, 5 bombarded days)
-		if (ThreatIncConfig.strikeGroundFrontsEnabled() && !front
+		if (ThreatIncConfig.strikeGroundFrontsEnabled() && !front && !outpost
 				&& Math.max(worldShare(), troopsAboard) < ThreatIncConfig.frontMinMarines()) {
 			endWorld(action, w, "nothing to land", true);
 			return true;
@@ -868,6 +871,11 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 						+ ": the orbit is contested, " + (int) left + " FP against " + (int) now);
 				return true;
 			}
+		}
+		// the orbit is the strike's: the station is the base, its pass the assault
+		if (outpost) {
+			endWorld(action, w, "outpost", true);
+			return true;
 		}
 		if (front) {
 			endWorld(action, w, "front", true);
@@ -1235,7 +1243,9 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * station here as already down). Logged in vanilla's strength units.
 	 */
 	protected void stationAssault(MarketAPI market) {
-		if (market == null || !siegeResolved.add(market.getId())) return;
+		if (market == null) return;
+		if (stationsAssaulted == null) stationsAssaulted = new HashSet<String>();
+		if (!stationsAssaulted.add(market.getId())) return;
 		if (market.getStarSystem() != null && market.getFaction() != null) {
 			float str = com.fs.starfarer.api.impl.campaign.command.WarSimScript.getFactionStrength(
 					getFaction(), market.getStarSystem());

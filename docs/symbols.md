@@ -3977,7 +3977,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatStance.expeditionSize(int[] row)` :709 - The expedition size a swarm of this row re-embodies as (ThreatColonyManager.expeditionSizeFor's tiers).
 - `ThreatStance.monthLine()` :718 - The monthly line's figure:
 
-## ThreatStrikeFGI (2364 lines)
+## ThreatStrikeFGI (2374 lines)
 - `ThreatStrikeFGI.ThreatStrikeFGI(GenericRaidParams params)` :35 - A raid fleet-group whose fleets are authentic Threat swarms (built via the vanilla threat fleet factory) instead of doctrine-generated faction fleets.
 - `ThreatStrikeFGI.setExpected(float fp, MarketAPI target)` :62
 - `ThreatStrikeFGI.sampleMet()` :69 - Once a day while in the target system:
@@ -4006,89 +4006,89 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatStrikeFGI.availableLanding(MarketAPI market, CampaignFleetAPI fleet)` :473 - What this pass can put ashore here:
 - `ThreatStrikeFGI.worldNeed(MarketAPI market)` :487 - What the world's front needs of the pool now:
 - `ThreatStrikeFGI.commitLanding(MarketAPI market, int troops)` :495
-- `ThreatStrikeFGI.siegePass(CampaignFleetAPI fleet, MarketAPI market)` :516 - A live fleet over a human colony:
-- `ThreatStrikeFGI.abstractSiege(MarketAPI market)` :586 - An expedition that never spawned (vanilla autoresolve) runs its whole siege of a world in one go (ThreatGroundFronts#abstractSiege), its abstract strength standing in for the fleets.
-- `ThreatStrikeFGI.abstractStrength()` :615 - The expedition's strength in fleet points:
-- `ThreatStrikeFGI.advanceDaily()` :664 - Runs the siege days the payload segment owes (ThreatPurgeFGI.advanceDaily, the strike's copy).
-- `ThreatStrikeFGI.takeDaily(AnnihilationAction action, RouteManager.RouteSegment seg)` :693 - Takes the payload for the daily siege, counting from the whole day the segment is at - a strike in flight when an older save loads never catches up the days already past - and widens the segment once 
-- `ThreatStrikeFGI.dailyFull()` :705 - The strike's abstract strength as it sailed, less the hulls broken into troops, before route damage:
-- `ThreatStrikeFGI.dailyStrength()` :716 - That strength less route damage:
-- `ThreatStrikeFGI.routeDamage()` :721 - Route-mode damage fraction (0 = untouched):
-- `ThreatStrikeFGI.addRouteLoss(float share)` :733 - Books a loss of share of the flotilla as route damage, as vanilla's autoresolve does:
-- `ThreatStrikeFGI.dailyWorlds(AnnihilationAction action)` :742 - The worlds the daily siege takes in turn:
-- `ThreatStrikeFGI.dailyWorld(AnnihilationAction action)` :760 - The world the daily siege is over:
-- `ThreatStrikeFGI.dailyDay(AnnihilationAction action, RouteManager.RouteSegment seg)` :794 - One siege day over the world the daily siege is at:
-- `ThreatStrikeFGI.endWorld(AnnihilationAction action, MarketAPI w, String why, boolean passes)` :928 - Ends the daily siege of a world.
-- `ThreatStrikeFGI.dailyDone(AnnihilationAction action, RouteManager.RouteSegment seg)` :949 - Every world done with:
-- `ThreatStrikeFGI.dailyAutoresolve(AnnihilationAction action)` :964 - Vanilla's autoresolve, for a strike the daily siege has taken - from any of its entries:
-- `ThreatStrikeFGI.dailySummary(String name, int days, String outcome)` :978 - The one line a world's daily siege ends with.
-- `ThreatStrikeFGI.resetWorld()` :983
-- `ThreatStrikeFGI.dailyKey(MarketAPI w)` :990
-- `ThreatStrikeFGI.whereName(AnnihilationAction action)` :994
-- `ThreatStrikeFGI.beachheadLanding(MarketAPI market, CampaignFleetAPI fleet, int troops)` :1010 - A strike's first landing on a world, sized to outlast the world's first counter-attack (2026-09-29, overnight run N1:
-- `ThreatStrikeFGI.fleetFlagshipFP(CampaignFleetAPI fleet)` :1045
-- `ThreatStrikeFGI.abstractOrbitDone(MarketAPI market)` :1060 - Whether orbit is done for an unspawned strike:
-- `ThreatStrikeFGI.saturationPass(CampaignFleetAPI fleet, MarketAPI market)` :1087 - One pass of the saturation doctrine (docs/suppression-balance.md v2 sections 4 and 8):
-- `ThreatStrikeFGI.razedAsFarAsItGoes(MarketAPI market)` :1167 - A world saturation can raze no further (story-critical, at its floor):
-- `ThreatStrikeFGI.harassPass(CampaignFleetAPI fleet, MarketAPI market)` :1181 - One pass of a frontier strike's tactical harassment:
-- `ThreatStrikeFGI.markBombarded(MarketAPI market)` :1209 - The swarm's mark on a world it bombarded (the deciv claim reads it), and any defence contract for it failed.
-- `ThreatStrikeFGI.stationPass(MarketAPI market)` :1221 - A live pass over a forward base.
-- `ThreatStrikeFGI.stationAssault(MarketAPI market)` :1237 - An expedition that never spawned against a forward base:
-- `ThreatStrikeFGI.doCustomRaidAction(CampaignFleetAPI fleet, MarketAPI market, float raidStr)` :1286 - ONE PASS OF THE THREAT'S SIEGE.
-- `ThreatStrikeFGI.advanceImpl(float amount)` :1345 - Vanilla's incremental spawn never stamps KEY_SPAWN_FP on a fleet (ThreatPurgeFGI.noteSpawnFP), so a detached fleet would have nothing to take off the group's spawned-strength baseline;
-- `ThreatStrikeFGI.detach(CampaignFleetAPI fleet)` :1365 - Takes one fleet out of the expedition (ThreatPurgeFGI.detach, the swarm's copy):
+- `ThreatStrikeFGI.siegePass(CampaignFleetAPI fleet, MarketAPI market)` :518 - A live fleet over a human colony:
+- `ThreatStrikeFGI.abstractSiege(MarketAPI market)` :588 - An expedition that never spawned (vanilla autoresolve) runs its whole siege of a world in one go (ThreatGroundFronts#abstractSiege), its abstract strength standing in for the fleets.
+- `ThreatStrikeFGI.abstractStrength()` :617 - The expedition's strength in fleet points:
+- `ThreatStrikeFGI.advanceDaily()` :666 - Runs the siege days the payload segment owes (ThreatPurgeFGI.advanceDaily, the strike's copy).
+- `ThreatStrikeFGI.takeDaily(AnnihilationAction action, RouteManager.RouteSegment seg)` :695 - Takes the payload for the daily siege, counting from the whole day the segment is at - a strike in flight when an older save loads never catches up the days already past - and widens the segment once 
+- `ThreatStrikeFGI.dailyFull()` :707 - The strike's abstract strength as it sailed, less the hulls broken into troops, before route damage:
+- `ThreatStrikeFGI.dailyStrength()` :718 - That strength less route damage:
+- `ThreatStrikeFGI.routeDamage()` :723 - Route-mode damage fraction (0 = untouched):
+- `ThreatStrikeFGI.addRouteLoss(float share)` :735 - Books a loss of share of the flotilla as route damage, as vanilla's autoresolve does:
+- `ThreatStrikeFGI.dailyWorlds(AnnihilationAction action)` :744 - The worlds the daily siege takes in turn:
+- `ThreatStrikeFGI.dailyWorld(AnnihilationAction action)` :762 - The world the daily siege is over:
+- `ThreatStrikeFGI.dailyDay(AnnihilationAction action, RouteManager.RouteSegment seg)` :796 - One siege day over the world the daily siege is at:
+- `ThreatStrikeFGI.endWorld(AnnihilationAction action, MarketAPI w, String why, boolean passes)` :936 - Ends the daily siege of a world.
+- `ThreatStrikeFGI.dailyDone(AnnihilationAction action, RouteManager.RouteSegment seg)` :957 - Every world done with:
+- `ThreatStrikeFGI.dailyAutoresolve(AnnihilationAction action)` :972 - Vanilla's autoresolve, for a strike the daily siege has taken - from any of its entries:
+- `ThreatStrikeFGI.dailySummary(String name, int days, String outcome)` :986 - The one line a world's daily siege ends with.
+- `ThreatStrikeFGI.resetWorld()` :991
+- `ThreatStrikeFGI.dailyKey(MarketAPI w)` :998
+- `ThreatStrikeFGI.whereName(AnnihilationAction action)` :1002
+- `ThreatStrikeFGI.beachheadLanding(MarketAPI market, CampaignFleetAPI fleet, int troops)` :1018 - A strike's first landing on a world, sized to outlast the world's first counter-attack (2026-09-29, overnight run N1:
+- `ThreatStrikeFGI.fleetFlagshipFP(CampaignFleetAPI fleet)` :1053
+- `ThreatStrikeFGI.abstractOrbitDone(MarketAPI market)` :1068 - Whether orbit is done for an unspawned strike:
+- `ThreatStrikeFGI.saturationPass(CampaignFleetAPI fleet, MarketAPI market)` :1095 - One pass of the saturation doctrine (docs/suppression-balance.md v2 sections 4 and 8):
+- `ThreatStrikeFGI.razedAsFarAsItGoes(MarketAPI market)` :1175 - A world saturation can raze no further (story-critical, at its floor):
+- `ThreatStrikeFGI.harassPass(CampaignFleetAPI fleet, MarketAPI market)` :1189 - One pass of a frontier strike's tactical harassment:
+- `ThreatStrikeFGI.markBombarded(MarketAPI market)` :1217 - The swarm's mark on a world it bombarded (the deciv claim reads it), and any defence contract for it failed.
+- `ThreatStrikeFGI.stationPass(MarketAPI market)` :1229 - A live pass over a forward base.
+- `ThreatStrikeFGI.stationAssault(MarketAPI market)` :1245 - An expedition that never spawned against a forward base:
+- `ThreatStrikeFGI.doCustomRaidAction(CampaignFleetAPI fleet, MarketAPI market, float raidStr)` :1296 - ONE PASS OF THE THREAT'S SIEGE.
+- `ThreatStrikeFGI.advanceImpl(float amount)` :1355 - Vanilla's incremental spawn never stamps KEY_SPAWN_FP on a fleet (ThreatPurgeFGI.noteSpawnFP), so a detached fleet would have nothing to take off the group's spawned-strength baseline;
+- `ThreatStrikeFGI.detach(CampaignFleetAPI fleet)` :1375 - Takes one fleet out of the expedition (ThreatPurgeFGI.detach, the swarm's copy):
 ### recalled to defend (ThreatPosture.recallStrikes)
-- `ThreatStrikeFGI.recallable()` :1386 - Whether the strike can still be turned for home:
-- `ThreatStrikeFGI.hyperLocation()` :1396 - Where the strike is now, in hyperspace:
-- `ThreatStrikeFGI.firstTarget()` :1414 - The first world it is bound for, or null.
-- `ThreatStrikeFGI.recallTo(Map<MarketAPI, Float> shortBy, float needFP)` :1440 - RECALLED TO DEFEND (2026-10-04, the user):
-- `ThreatStrikeFGI.compare(CampaignFleetAPI a, CampaignFleetAPI b)` :1454
-- `ThreatStrikeFGI.shortest(Map<MarketAPI, Float> shortBy)` :1494 - The world of shortBy furthest below its need, or null.
-- `ThreatStrikeFGI.recallUnspawned(Map<MarketAPI, Float> shortBy, float needFP, org.lwjgl.util.vector.Vector2f at)` :1514 - A strike that never spawned gives up only what is short (recallTo):
-- `ThreatStrikeFGI.stayOnDefend(CampaignFleetAPI fleet, MarketAPI market)` :1557 - THE LANDING FLEET STAYS (2026-09-07, the purge's rule):
-- `ThreatStrikeFGI.abstractSpent()` :1579 - Whether an unspawned strike has left every fleet it had over its landings (guardUnspawned):
-- `ThreatStrikeFGI.guardUnspawned(MarketAPI market)` :1602 - Every faction guards its landing on screen or off (the user, 2026-10-02):
-- `ThreatStrikeFGI.guardShare(MarketAPI market)` :1620 - Fleets an unspawned strike leaves over this landing:
-- `ThreatStrikeFGI.buildFirst(float[] out)` :1641 - Builds the first entry of an unspawned strike - the pack spawnFleets would have built for it - and takes it out of the strike, the bank settling its points against its share of what the strike holds (
-- `ThreatStrikeFGI.guardOne(MarketAPI market)` :1711 - One fleet of an unspawned strike - its first entry - built over the world and put on Defend (guardUnspawned);
-- `ThreatStrikeFGI.joinDefend(CampaignFleetAPI fleet, MarketAPI market)` :1739 - A fleet with nothing left to land joins the defence of a front the swarm did land - this world's, else the nearest of the sweep's - rather than duelling batteries over a world it can never take.
-- `ThreatStrikeFGI.ownFrontWorld(MarketAPI market, CampaignFleetAPI fleet)` :1748 - This world if a Threat front stands on it, else the sweep's Threat-front world nearest the fleet, else null.
-- `ThreatStrikeFGI.addSiegeStatus(TooltipMakerAPI info)` :1775 - The siege as it stands, for the intel:
-- `ThreatStrikeFGI.phase(MarketAPI market)` :1798 - What the strike is doing to this world right now.
-- `ThreatStrikeFGI.passesDone(MarketAPI market)` :1818 - Whether every pass the world had is spent.
-- `ThreatStrikeFGI.survivingStrength(CampaignFleetAPI fleet)` :1828 - What fraction of the expedition is still flying:
-- `ThreatStrikeFGI.getIntelTags(com.fs.starfarer.api.ui.SectorMapAPI map)` :1854 - File the strike with the rest of the incursion intel, not just under the generic Military tab where nobody thinks to look for it.
-- `ThreatStrikeFGI.addStatusSection(com.fs.starfarer.api.ui.TooltipMakerAPI info, float width, float height, float opad)` :1867 - Tell the player the counterplay exists - the hive equivalent of vanilla's "disrupting the military facilities ...
+- `ThreatStrikeFGI.recallable()` :1396 - Whether the strike can still be turned for home:
+- `ThreatStrikeFGI.hyperLocation()` :1406 - Where the strike is now, in hyperspace:
+- `ThreatStrikeFGI.firstTarget()` :1424 - The first world it is bound for, or null.
+- `ThreatStrikeFGI.recallTo(Map<MarketAPI, Float> shortBy, float needFP)` :1450 - RECALLED TO DEFEND (2026-10-04, the user):
+- `ThreatStrikeFGI.compare(CampaignFleetAPI a, CampaignFleetAPI b)` :1464
+- `ThreatStrikeFGI.shortest(Map<MarketAPI, Float> shortBy)` :1504 - The world of shortBy furthest below its need, or null.
+- `ThreatStrikeFGI.recallUnspawned(Map<MarketAPI, Float> shortBy, float needFP, org.lwjgl.util.vector.Vector2f at)` :1524 - A strike that never spawned gives up only what is short (recallTo):
+- `ThreatStrikeFGI.stayOnDefend(CampaignFleetAPI fleet, MarketAPI market)` :1567 - THE LANDING FLEET STAYS (2026-09-07, the purge's rule):
+- `ThreatStrikeFGI.abstractSpent()` :1589 - Whether an unspawned strike has left every fleet it had over its landings (guardUnspawned):
+- `ThreatStrikeFGI.guardUnspawned(MarketAPI market)` :1612 - Every faction guards its landing on screen or off (the user, 2026-10-02):
+- `ThreatStrikeFGI.guardShare(MarketAPI market)` :1630 - Fleets an unspawned strike leaves over this landing:
+- `ThreatStrikeFGI.buildFirst(float[] out)` :1651 - Builds the first entry of an unspawned strike - the pack spawnFleets would have built for it - and takes it out of the strike, the bank settling its points against its share of what the strike holds (
+- `ThreatStrikeFGI.guardOne(MarketAPI market)` :1721 - One fleet of an unspawned strike - its first entry - built over the world and put on Defend (guardUnspawned);
+- `ThreatStrikeFGI.joinDefend(CampaignFleetAPI fleet, MarketAPI market)` :1749 - A fleet with nothing left to land joins the defence of a front the swarm did land - this world's, else the nearest of the sweep's - rather than duelling batteries over a world it can never take.
+- `ThreatStrikeFGI.ownFrontWorld(MarketAPI market, CampaignFleetAPI fleet)` :1758 - This world if a Threat front stands on it, else the sweep's Threat-front world nearest the fleet, else null.
+- `ThreatStrikeFGI.addSiegeStatus(TooltipMakerAPI info)` :1785 - The siege as it stands, for the intel:
+- `ThreatStrikeFGI.phase(MarketAPI market)` :1808 - What the strike is doing to this world right now.
+- `ThreatStrikeFGI.passesDone(MarketAPI market)` :1828 - Whether every pass the world had is spent.
+- `ThreatStrikeFGI.survivingStrength(CampaignFleetAPI fleet)` :1838 - What fraction of the expedition is still flying:
+- `ThreatStrikeFGI.getIntelTags(com.fs.starfarer.api.ui.SectorMapAPI map)` :1864 - File the strike with the rest of the incursion intel, not just under the generic Military tab where nobody thinks to look for it.
+- `ThreatStrikeFGI.addStatusSection(com.fs.starfarer.api.ui.TooltipMakerAPI info, float width, float height, float opad)` :1877 - Tell the player the counterplay exists - the hive equivalent of vanilla's "disrupting the military facilities ...
 ### the fog (ThreatScouts): a strike does not say where it came from
-- `ThreatStrikeFGI.originKnown()` :1903 - Whether the player may be told where this strike came from.
-- `ThreatStrikeFGI.getMapLocation(com.fs.starfarer.api.ui.SectorMapAPI map)` :1911
-- `ThreatStrikeFGI.getArrowData(com.fs.starfarer.api.ui.SectorMapAPI map)` :1918
-- `ThreatStrikeFGI.addETABulletPoints(String destName, java.awt.Color destHL, boolean withDepartedText, float eta, ETAType type, TooltipMakerAPI info, java.awt.Color tc, float initPad)` :1925
-- `ThreatStrikeFGI.addHiddenOriginStatus(TooltipMakerAPI info, float width, float height, float opad)` :1935 - Vanilla's status section with the staging world left out.
+- `ThreatStrikeFGI.originKnown()` :1913 - Whether the player may be told where this strike came from.
+- `ThreatStrikeFGI.getMapLocation(com.fs.starfarer.api.ui.SectorMapAPI map)` :1921
+- `ThreatStrikeFGI.getArrowData(com.fs.starfarer.api.ui.SectorMapAPI map)` :1928
+- `ThreatStrikeFGI.addETABulletPoints(String destName, java.awt.Color destHL, boolean withDepartedText, float eta, ETAType type, TooltipMakerAPI info, java.awt.Color tc, float initPad)` :1935
+- `ThreatStrikeFGI.addHiddenOriginStatus(TooltipMakerAPI info, float width, float height, float opad)` :1945 - Vanilla's status section with the staging world left out.
 ### the fabrication ledger (2026-09-29: closed economy)
-- `ThreatStrikeFGI.setLedger(String homeMarketId, float paid)` :1990 - Books the strike on its source colony's bank:
-- `ThreatStrikeFGI.getLedgerPaid()` :1995
-- `ThreatStrikeFGI.abstractFP()` :2000 - Fleet points the strike holds while it flies unspawned - an abstract route, or still mustering - and 0 once spawned or over.
-- `ThreatStrikeFGI.specFor(int size, float damage)` :2006 - {fabricators, escort tier} of the fleet createFleet builds for an expedition size, at the damage it spawns with.
-- `ThreatStrikeFGI.estimateFP(List<Integer> sizes)` :2032 - What swarms of these expedition sizes (one size a swarm - never a packed fleet's total) are expected to come out at:
+- `ThreatStrikeFGI.setLedger(String homeMarketId, float paid)` :2000 - Books the strike on its source colony's bank:
+- `ThreatStrikeFGI.getLedgerPaid()` :2005
+- `ThreatStrikeFGI.abstractFP()` :2010 - Fleet points the strike holds while it flies unspawned - an abstract route, or still mustering - and 0 once spawned or over.
+- `ThreatStrikeFGI.specFor(int size, float damage)` :2016 - {fabricators, escort tier} of the fleet createFleet builds for an expedition size, at the damage it spawns with.
+- `ThreatStrikeFGI.estimateFP(List<Integer> sizes)` :2042 - What swarms of these expedition sizes (one size a swarm - never a packed fleet's total) are expected to come out at:
 ### packing: fewer, fuller fleets (2026-09-29 review)
-- `ThreatStrikeFGI.setPacks(List<List<Integer>> packs)` :2065 - Swarms a packed fleet had no room for in this spawn, fleets of their own placed after the rest;
-- `ThreatStrikeFGI.shipsEstimate(int[] spec)` :2076 - The most ships a swarm of this spec rolls:
-- `ThreatStrikeFGI.pack(List<Integer> sizes)` :2087 - A strike's swarms (an expedition size each) packed into as few fleets as maxShipsInAIFleet allows:
-- `ThreatStrikeFGI.packSize(List<Integer> pack)` :2114 - A pack's params.fleetSizes entry:
-- `ThreatStrikeFGI.takePack(int size)` :2123 - Takes the next unbuilt pack whose entry is this size;
+- `ThreatStrikeFGI.setPacks(List<List<Integer>> packs)` :2075 - Swarms a packed fleet had no room for in this spawn, fleets of their own placed after the rest;
+- `ThreatStrikeFGI.shipsEstimate(int[] spec)` :2086 - The most ships a swarm of this spec rolls:
+- `ThreatStrikeFGI.pack(List<Integer> sizes)` :2097 - A strike's swarms (an expedition size each) packed into as few fleets as maxShipsInAIFleet allows:
+- `ThreatStrikeFGI.packSize(List<Integer> pack)` :2124 - A pack's params.fleetSizes entry:
+- `ThreatStrikeFGI.takePack(int size)` :2133 - Takes the next unbuilt pack whose entry is this size;
 ### stillborn (IncursionManager.abortStrikesFrom)
-- `ThreatStrikeFGI.markStillborn()` :2145 - The forge building the strike was broken before it departed:
-- `ThreatStrikeFGI.isStillborn()` :2153
-- `ThreatStrikeFGI.fightingFP()` :2163 - What the strike fights with now:
-- `ThreatStrikeFGI.ledgerShare()` :2181
-- `ThreatStrikeFGI.ledgerNear()` :2201 - The source's primary entity, to find the nearest live colony when the source is gone.
-- `ThreatStrikeFGI.spawnFleets()` :2213 - Vanilla spawns the whole group at once, near the player:
-- `ThreatStrikeFGI.notifyEnding()` :2259 - The strike is over.
-- `ThreatStrikeFGI.createFleet(int size, float damage)` :2291 - One params.fleetSizes entry:
-- `ThreatStrikeFGI.stowOverflow(CampaignFleetAPI swarm, int max)` :2312 - A swarm a packed fleet had no room for:
-- `ThreatStrikeFGI.createSwarm(int size, float damage)` :2325 - One swarm of an expedition size, at the damage the strike spawns with;
-- `ThreatStrikeFGI.finishFleet(CampaignFleetAPI fleet)` :2336 - A built strike fleet, whole:
+- `ThreatStrikeFGI.markStillborn()` :2155 - The forge building the strike was broken before it departed:
+- `ThreatStrikeFGI.isStillborn()` :2163
+- `ThreatStrikeFGI.fightingFP()` :2173 - What the strike fights with now:
+- `ThreatStrikeFGI.ledgerShare()` :2191
+- `ThreatStrikeFGI.ledgerNear()` :2211 - The source's primary entity, to find the nearest live colony when the source is gone.
+- `ThreatStrikeFGI.spawnFleets()` :2223 - Vanilla spawns the whole group at once, near the player:
+- `ThreatStrikeFGI.notifyEnding()` :2269 - The strike is over.
+- `ThreatStrikeFGI.createFleet(int size, float damage)` :2301 - One params.fleetSizes entry:
+- `ThreatStrikeFGI.stowOverflow(CampaignFleetAPI swarm, int max)` :2322 - A swarm a packed fleet had no room for:
+- `ThreatStrikeFGI.createSwarm(int size, float damage)` :2335 - One swarm of an expedition size, at the damage the strike spawns with;
+- `ThreatStrikeFGI.finishFleet(CampaignFleetAPI fleet)` :2346 - A built strike fleet, whole:
 
 ## ThreatSwarmBountyIntel (567 lines)
 - `ThreatSwarmBountyIntel.ThreatSwarmBountyIntel(MarketAPI base, StarSystemAPI system, int siegeFP)` :72 - A relief bounty:
