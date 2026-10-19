@@ -296,5 +296,13 @@ convoy no teleporting of resources."
   donors (`guestDonors`, from `guestFactionsAt`), their convoys flagged aid and bound for the host
   (`recipientFactionId`), `Staging: tritachyon sails X -> Y (hegemony's base): allied staging`. The stock landed is
   the depot's: whichever faction launches there draws it. The guest's own hull pool pays its siege.
-- **One staging hammer a faction.** The invade pass stages a hammer where nothing pays today
-  (`war-council-invasions.md` s2); its 30 + 30 days against a convoy fill is the figure to watch (hw223 / hw224).
+- **A few staging hammers a faction, one a base** (`threatinc_invadeStagingMax` 2, S1 2026-10-19 15:30). The invade pass
+  stages a hammer where nothing pays today (`war-council-invasions.md` s2).
+- **Staging is the base's commitment (S1).** hw227a: 0 of 424 staged hammers ever filled - marines landed in dribs
+  (mean 256), the hammer failed at 60 d, its staging cleared, `ownKeep` dropped and the planner shipped the base's
+  marines to another base's default staging the same week (Ailmar -> Ilm 2,255, -> Vannin 2,844; 42 of 46 marine
+  convoys of 500+ were base-to-base). Now a hammer that ends without sailing leaves the base its staging as a
+  commitment (`PlayStaging.committed`, key `base#commit`, latest wins, a live play takes it over) until a siege sails
+  from the base (`clearCommitment`, at the expedition draw) or `stagingCommitDays` 180 pass with no hammer re-staged.
+  And the hammer waits on: at a 30-d window's end it fails only if the refused figure has not risen a tenth of its
+  need (`ThreatPlays.stockRising`, `councilWaitWhileRising`).

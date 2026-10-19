@@ -1470,6 +1470,19 @@
 	# pass, finding no base that holds a landing's stock today, stages ONE hammer a faction at the easiest such
 	# hive (ThreatPlays.startHammer: PREPARE, the staging planner fills the base, the strike sails once paid)
 	"threatinc_invadeStaging": true,
+	# S1 (2026-10-19, the user: "s1" after hw227 - 0 of 424 staged hammers ever filled, marines shipped base to base):
+	# the invade pass keeps at most this many hammers staging at once a faction, one a base, so the donors feed two
+	# bases rather than 44 (hw227a)
+	"threatinc_invadeStagingMax": 2,
+	# a play's staging is the BASE's commitment: it outlives the play (failed, neutral, its worlds taken) so the base
+	# keeps the landing's stock (ThreatConvoys.ownKeep) and ships none of it to another base's staging, until a siege
+	# sails from the base (IncursionManager's expedition draw) or this many days pass with no hammer re-staging there
+	"threatinc_stagingCommitment": true,
+	"threatinc_stagingCommitDays": 180,
+	# a hammer waiting on stock (councilStrikeWaitDays a window) fails at the window's end only if the refused figure
+	# (marines, armaments or points) has not risen by a tenth of its need since the window opened and the refusing gate
+	# is the same; while the convoys fill the base it waits on. hw227a: 1,374 of 1,520 marines failed at 60 d
+	"threatinc_councilWaitWhileRising": true,
 	# the swarm's want for a link: max(size,3)^2 x this x (1 + links its loss cuts)
 	"threatinc_frontlineStrikeWeight": 3,
 	# a seen strike on a link calls its guard: rear links have no standing garrison

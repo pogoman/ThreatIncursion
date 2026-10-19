@@ -102,6 +102,9 @@ public class ThreatPlays {
 		public float sizeBy = NEVER;
 		/** Days the strike has waited for stock to pay a siege (0 on an older save: not yet waited). */
 		public float payWaited;
+		/** S1 (2026-10-19): the gate that refused when the wait window opened and what it had then (null: no window open) - the strike fails only if the figure has not risen. */
+		public String refusedGate;
+		public float refusedHave;
 		/** The day a feint's squadron reached the decoy, when the watch's baseline is read. */
 		public float feintArrived = NEVER;
 		/** The Nexus world bombers strike as the siege arrives (a feint's), until they sail. */
@@ -167,6 +170,26 @@ public class ThreatPlays {
 	/** A hammer or a feint not yet withdrawing: its sieges and escort are its system's (the invasion line starts no second one there). */
 	protected static boolean striking(Play pl) {
 		return (HAMMER.equals(pl.type) || FEINT.equals(pl.type)) && !WITHDRAW.equals(pl.phase);
+	}
+
+	/** The share of the refused need the figure must have risen by over a wait window for the hammer to wait on (S1). */
+	protected static final float WAIT_RISE = 0.1f;
+
+	/** Whether the stock a waiting hammer was refused on has risen since its window opened: the gate changed (one passed), or the figure rose by WAIT_RISE of the need (S1, 2026-10-19). */
+	protected static boolean stockRising(Play pl) {
+		if (pl.refusedGate == null || IncursionManager.lastRefusalGate == null || IncursionManager.lastRefusalGate.isEmpty()) return false;
+		if (!pl.refusedGate.equals(IncursionManager.lastRefusalGate)) return true;
+		return IncursionManager.lastRefusalHave >= pl.refusedHave + WAIT_RISE * Math.max(1f, IncursionManager.lastRefusalNeed);
+	}
+
+	/** The hammers of the faction staging or waiting on stock (PREPARE / MUSTER, no siege sailed), for invadeStagingMax (S1). */
+	protected static int stagingHammers(String fid) {
+		int n = 0;
+		for (Play pl : plays().values()) {
+			if (!fid.equals(pl.factionId) || !HAMMER.equals(pl.type) || pl.sieged) continue;
+			if (PREPARE.equals(pl.phase) || MUSTER.equals(pl.phase)) n++;
+		}
+		return n;
 	}
 
 	/** Whether a hammer of the faction is still staging or waiting on stock AT THE BASE (PREPARE / MUSTER, no siege sailed): the invade pass stages one a base at a time (per faction until hw225, 2026-10-19 14:50: sieges sailed 76 vs 263). */
@@ -374,7 +397,12 @@ public class ThreatPlays {
 		int staged = 0;
 		if (!noBase.isEmpty() && ThreatIncConfig.invadeStaging()) {
 			java.util.Set<String> stagedAt = new java.util.HashSet<String>();
+			// S1 (2026-10-19): a few staging hammers a faction at once (invadeStagingMax), one a base - hw227a staged at 44
+			// bases and the donors fed none of them
+			int staging = stagingHammers(fid);
+			int max = Math.max(1, ThreatIncConfig.invadeStagingMax());
 			for (MarketAPI w : hives) {
+				if (staging + staged >= max) break;
 				StarSystemAPI s = w.getStarSystem();
 				ThreatWarCouncil.Cluster k = s != null ? p.cluster(s.getId()) : null;
 				if (k == null || !noBase.contains(k.systemId) || started.contains(k.systemId)) continue;
@@ -1104,6 +1132,20 @@ public class ThreatPlays {
 			if (early) return;
 			// the staging stays: the convoys bring the base what its sieges draw
 			float wait = Math.max(0f, ThreatIncConfig.councilStrikeWaitDays());
+			if (pl.refusedGate == null) {
+				pl.refusedGate = IncursionManager.lastRefusalGate;
+				pl.refusedHave = IncursionManager.lastRefusalHave;
+			}
+			if (pl.payWaited >= wait && ThreatIncConfig.councilWaitWhileRising() && stockRising(pl)) {
+				// S1: the convoys are filling the base - another window (hw227a: 1,374 of 1,520 marines failed at 60 d)
+				phase(pl, MUSTER, why + "; stock rising (" + IncursionManager.lastRefusal + ", was " + pl.refusedGate + " "
+						+ (int) pl.refusedHave + " at the window's start), waits another " + (int) wait + " d", today);
+				pl.refusedGate = IncursionManager.lastRefusalGate;
+				pl.refusedHave = IncursionManager.lastRefusalHave;
+				pl.payWaited = 1f;
+				pl.phaseDue = today + 1f;
+				return;
+			}
 			if (pl.payWaited >= wait) {
 				standDownForces(pl, "no siege paid");
 				end(pl, FAILURE, why + "; no siege the pools pay in " + (int) pl.payWaited + " d (" + (int) faced
@@ -1555,7 +1597,8 @@ public class ThreatPlays {
 		pl.outcome = outcome;
 		pl.why = why;
 		plays().remove(pl.id);
-		ThreatConvoys.clearPlayStaging(pl.id);
+		// a hammer that never sailed its siege leaves the base its commitment (S1)
+		ThreatConvoys.clearPlayStaging(pl.id, HAMMER.equals(pl.type) && !pl.sieged);
 		// a muster that never went in goes home, provisions back in full
 		for (String f : forcesOf(pl)) {
 			if (ThreatSoftening.forceAlive(f) && !ThreatSoftening.engaged(f)) ThreatSoftening.standDownForce(f, "its play is over");

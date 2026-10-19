@@ -2259,11 +2259,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 
 	/** Why the last siegeCanPay said no (for the plays' wait and failure lines, 2026-10-19): the gate and its figures; "" after a yes. */
 	protected static String lastRefusal = "";
+	/** The gate that refused ("marines", "hand_weapons", "fuel", "points"), what it had and what it needed - for ThreatPlays.strike's wait-while-rising (S1, 2026-10-19). */
+	protected static String lastRefusalGate = "";
+	protected static float lastRefusalHave = 0f, lastRefusalNeed = 0f;
 
 	/** As above, razing the worlds in {@code razeGiven} rather than those the faction's navy would pick (null: razeWorlds) - a war council play's siege (ThreatPlays). */
 	protected static boolean siegeCanPay(MarketAPI base, FactionAPI faction, StarSystemAPI system,
 			java.util.List<MarketAPI> targets, java.util.List<Integer> sizes, java.util.Set<String> razeGiven) {
-		lastRefusal = "";
+		lastRefusal = lastRefusalGate = "";
+		lastRefusalHave = lastRefusalNeed = 0f;
 		if (sizes.isEmpty() || !ThreatWarState.isAtWar(faction)) return true;
 		java.util.Set<String> raze = razeGiven != null ? razeGiven : razeWorlds(base, faction, system, targets);
 		float[] wants = expeditionWants(base, system, targets, sizes, raze);
@@ -2279,6 +2283,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (i == 0 && !faction.isPlayerFaction()) have += donorsPooled(base, zealotDonors(faction, base, system), c);
 			if (have < wants[i] * minMarinesFraction(faction)) {
 				lastRefusal = c + " " + (int) have + " of " + (int) (wants[i] * minMarinesFraction(faction)) + " at " + base.getName();
+				lastRefusalGate = c;
+				lastRefusalHave = have;
+				lastRefusalNeed = wants[i] * minMarinesFraction(faction);
 				return false;
 			}
 		}
@@ -2294,6 +2301,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL) - fuel[2];
 		if (haveFuel < 0f) {
 			lastRefusal = "razing fuel " + (int) fuel[2] + " over the " + (int) (haveFuel + fuel[2]) + " at " + base.getName();
+			lastRefusalGate = "fuel";
+			lastRefusalHave = haveFuel + fuel[2];
+			lastRefusalNeed = fuel[2];
 			return false;
 		}
 		float fuelPerPoint = points > 0 ? (fuel[0] + fuel[1]) / points : 0f;
@@ -2329,6 +2339,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			payable = Math.min(payable, hullPayable);
 		}
 		if (payable < minProvisions) {
+			lastRefusalGate = "points";
+			lastRefusalHave = payable;
+			lastRefusalNeed = minProvisions;
 			lastRefusal = "pays " + (int) payable + " of " + (int) minProvisions + " points at " + base.getName() + " (fuel "
 					+ (int) haveFuel + " for " + (int) fuelPerPoint + " a point, supplies "
 					+ (int) Math.max(0f, siegePooled(base, provisionPool, com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES)
@@ -3451,6 +3464,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, wants[2], "fuel");
 			drawn[3] = siegeDraw(base, provisionPool,
 					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES, wants[3], "supplies");
+			// the siege sailed: the base's staging commitment (S1) is met
+			ThreatConvoys.clearCommitment(base);
 			ThreatIncConfig.log("Expedition draw at " + base.getName() + ": "
 					+ (int) drawn[0] + "/" + (int) lift + " marines, "
 					+ (int) drawn[1] + "/" + (int) wants[1] + " armaments, "

@@ -27,6 +27,12 @@ on) and `game-runs-2.md` s54; this is the shape of it.
   "reached"; its stock the depot's, the guest's markets convoy to it (`ThreatConvoys.guestDonors`), a base stages
   several plays. hw221 scratched at d84 (the marine step fired 33 times); trial hw223 (B) / hw224 (A) from 13:43.
   Still pooled instantly (open for the user): link upkeep, founding kits, ordnance, hive-world feeding.
+- **S1 - STAGING IS THE BASE'S COMMITMENT** (15:30, the user: "s1"; built 15:37, `patch-s1.pl`): hw225 / hw227 showed
+  convoys only killed the human sieges (0 of 424 staged hammers filled; marines shipped base to base after each
+  failure). A hammer's staging outlives the play (`PlayStaging.committed`, cleared by a siege sailing or 180 d), the
+  wait window renews while the refused stock rises (`ThreatPlays.stockRising`), two staging hammers a faction, one a
+  base (`invadeStagingMax`). Trial hw229 (B) / hw230 (A) from 15:37. The swarm took both hw227 games (88 / 176 hives,
+  colonies 22 / 13) by the dead siege machine; expect OceanPena back toward hw219's contested 95 / 52.
 
 ## 2. The day's reads (hives / human colonies; b games lost their window in hw217-hw220)
 

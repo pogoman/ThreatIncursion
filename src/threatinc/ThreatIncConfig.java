@@ -642,6 +642,13 @@ public class ThreatIncConfig {
 	public static boolean marineStep()               { return b("threatinc_marineStep", true); }
 	public static boolean alliedStaging()            { return b("threatinc_alliedStaging", true); }
 	public static boolean invadeStaging()            { return b("threatinc_invadeStaging", true); }
+	/** S1 (the user, 2026-10-19 15:30): the invade pass keeps at most this many hammers staging at once a faction (one a base). */
+	public static int invadeStagingMax()             { return i("threatinc_invadeStagingMax"); }
+	/** S1: a play's staging outlives the play as the base's commitment (ThreatConvoys.PlayStaging.committed) until a siege sails from the base or stagingCommitDays pass. */
+	public static boolean stagingCommitment()        { return b("threatinc_stagingCommitment", true); }
+	public static float stagingCommitDays()          { return f("threatinc_stagingCommitDays"); }
+	/** S1: a hammer waiting on stock fails at the end of a wait window only if the refused figure has not risen (ThreatPlays.strike). */
+	public static boolean councilWaitWhileRising()   { return b("threatinc_councilWaitWhileRising", true); }
 	public static boolean frontlineFuelProduction()  { return b("threatinc_frontlineFuelProduction", true); }
 	/** Smallest garrison a link gets, in fleet points, whatever the strikes in reach. */
 	public static float frontlineGarrisonFP() { return f("threatinc_frontlineGarrisonFP"); }

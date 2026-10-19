@@ -631,6 +631,15 @@ public class ThreatConvoys {
 		// a play's staging: what its own expedition draws, priced when the play
 		// named the base - no siege of the swarm's size, no hunt verdict
 		List<PlayStaging> plays = playStagingsOf(base);
+		// a commitment no hammer re-staged within stagingCommitDays lapses (S1): the marines are the faction's again
+		for (java.util.Iterator<PlayStaging> it = plays.iterator(); it.hasNext();) {
+			PlayStaging s = it.next();
+			if (s.committed && ThreatPosture.today() - s.commitDay > Math.max(1f, ThreatIncConfig.stagingCommitDays())) {
+				playStaging().remove(base.getId() + "#commit");
+				it.remove();
+				ThreatIncConfig.log("Staging: " + base.getName() + "'s commitment lapsed after " + (int) ThreatIncConfig.stagingCommitDays() + " d with no hammer staged there");
+			}
+		}
 		boolean anyPlay = false;
 		for (PlayStaging play : plays) anyPlay |= play.wants != null;
 		if (anyPlay) {
@@ -842,6 +851,10 @@ public class ThreatConvoys {
 		public String factionId;
 		/** The base staged (null in saves before 2026-10-19: the map key). */
 		public String baseId;
+		/** S1 (2026-10-19): the play ended but the base keeps staging for its landing (key base#commit) - cleared when a siege sails from the base or stagingCommitDays pass. */
+		public boolean committed;
+		/** The day the commitment was made (committed). */
+		public float commitDay;
 	}
 
 	/** Base market id -> its play's staging. Saved. */
@@ -901,6 +914,8 @@ public class ThreatConvoys {
 		s.wants = wants != null ? wants.clone() : null;
 		s.factionId = factionId;
 		s.baseId = base.getId();
+		// a live play takes the base's commitment over (S1): one landing's want, not two
+		playStaging().remove(base.getId() + "#commit");
 		playStaging().put(base.getId() + "#" + playId, s);
 		if (factionId != null && !factionId.equals(base.getFactionId())) {
 			ThreatIncConfig.log("Staging: " + base.getName() + " (" + base.getFactionId() + ") hosts " + factionId + "'s play "
@@ -911,15 +926,46 @@ public class ThreatConvoys {
 
 	/** The play's bases stage as the faction's sieges would again. */
 	public static void clearPlayStaging(String playId) {
+		clearPlayStaging(playId, false);
+	}
+
+	/**
+	 * As above; with {@code commit} (a play that ended without its siege sailing) and stagingCommitment on, the base
+	 * keeps the staging as ITS commitment (S1, the user 2026-10-19: hw227a shipped Ailmar's 2,255 marines to Ilm the week
+	 * its hammer failed): keyed base#commit, the latest replacing an older one, until {@link #clearCommitment} or
+	 * stagingCommitDays pass ({@link #siegeStock}).
+	 */
+	public static void clearPlayStaging(String playId, boolean commit) {
 		if (playId == null) return;
 		boolean any = false;
+		java.util.List<PlayStaging> commits = new ArrayList<PlayStaging>();
 		for (java.util.Iterator<PlayStaging> it = playStaging().values().iterator(); it.hasNext();) {
-			if (playId.equals(it.next().playId)) {
-				it.remove();
-				any = true;
-			}
+			PlayStaging s = it.next();
+			if (!playId.equals(s.playId)) continue;
+			it.remove();
+			any = true;
+			if (commit && ThreatIncConfig.stagingCommitment() && s.wants != null && s.baseId != null) commits.add(s);
+		}
+		for (PlayStaging s : commits) {
+			s.playId = null;
+			s.committed = true;
+			s.commitDay = ThreatPosture.today();
+			playStaging().put(s.baseId + "#commit", s);
+			MarketAPI b = Global.getSector().getEconomy().getMarket(s.baseId);
+			ThreatIncConfig.log("Staging: " + (b != null ? b.getName() : s.baseId) + " keeps its commitment to the landing ("
+					+ (int) s.wants[0] + " marines, " + (int) s.wants[1] + " armaments, " + (int) s.wants[2] + " fuel, " + (int) s.wants[3]
+					+ " supplies" + (s.factionId != null ? ", " + s.factionId : "") + ") after play " + playId);
 		}
 		if (any) forgetStagingTargets();
+	}
+
+	/** The base's commitment is met or void (a siege sailed from it, S1): it stages as its faction's sieges would again. */
+	public static void clearCommitment(MarketAPI base) {
+		if (base == null) return;
+		if (playStaging().remove(base.getId() + "#commit") != null) {
+			ThreatIncConfig.log("Staging: " + base.getName() + " met its commitment - a siege sailed");
+			forgetStagingTargets();
+		}
 	}
 
 	// ------------------------------------------------------------------
