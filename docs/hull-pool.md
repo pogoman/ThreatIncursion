@@ -197,3 +197,13 @@ Jangala ~700; Hegemony ~6,000 standing against the 5-10k a siege it sent before.
 rebuilds ~600 FP a month, the hive's 13 forges 4,500. The humans shrink to about a quarter, the
 swarm to about 0.6x; Heavy Industry is the war's engine on both sides. Knobs: `hullPool`,
 `hullPoolMult`, `fabFPPerShipUnit` - never free hulls.
+
+## 6. Yards first (2026-10-19)
+
+The user, 2026-10-19 00:20, after the hw209/hw210 read (every postponed human siege hull-bound - `launchSiegeExpedition` pays the fewest points of fuel, supplies and free hulls at 25 FP a point - while the factions banked 200-250k fuel and 60-70k supplies; Heavy Industry built only as a shortage's answer, 10-18 producers a game against 80-120 military builds): "heavy industry should be the primary objective let's make the wartime economy focus 100% on hull production first where possible". Knob `threatinc_yardsFirst`.
+
+- **Build order** (`ThreatCoreBuild.yardStep`, before `answerShortage` and `militaryStep`, every daily pass - not one a month): a Heavy Industry at the largest core colony without one (an Orbital Works counts) that has a free industry slot and can import metals and transplutonics (`canSupplyProducer`); else a Heavy Industry standing idle is upgraded to Orbital Works. Paid by `payBuild` (the colony's depot above its floor, then the faction's markets in reach) or its price held at the colony (`ThreatFactionStock.hold`). A yard started or held is the faction's whole pass: nothing else is built while one waits.
+- **Spending order** (`ThreatFactionStock.yardWant`: the held yard prices summed): a founding kit's payer must cover it on top of the kit (`ThreatFrontlines.canFund`; `payer` logs "founds nothing while its yards wait" once), and a siege's pooled supplies are read net of it (`launchSiegeExpedition`). Defence - garrison voyages, relief, hull upkeep - is untouched: the colonies that hold the yards are hull production too.
+- **Where possible** means a free slot and importable inputs; nothing is demolished for a yard and no colony grows for one.
+- **Read it by**: `Core build: X (f) builds heavyindustry (yards first) - <describe>`, `... upgrades heavyindustry to orbitalworks (yards first)`, `Core build: X holds N supplies for a heavyindustry|orbitalworks (f yards first)`, `Frontline: f founds nothing while its yards wait (N supplies held for them)`; the monthly `Hulls: F hulls N FP ... yards N FP/mo` line is the outcome.
+- First trial hw211 (set B) / hw212 (set A) against hw209 / hw210.

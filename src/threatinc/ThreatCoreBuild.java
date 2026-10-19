@@ -22,11 +22,20 @@ import com.fs.starfarer.api.util.Misc;
  * short) with the general case, and takes over what the links used to build
  * (ThreatFrontlines.buildStep before this date: producers and conversions).
  *
- * Daily (ThreatFrontlines.poll), one start per faction per
- * ThreatFactionStock.SHORT_DAYS, at its core colonies (no forward base, not the
+ * Daily (ThreatFrontlines.poll), at its core colonies (no forward base, not the
  * player's, size 3 up) with no project running:
  * <ol>
- * <li>the shortage's answer first - the producer of the stock the faction is
+ * <li>YARDS FIRST (the user, 2026-10-19: "heavy industry should be the primary
+ * objective ... focus 100% on hull production first where possible", after
+ * hw209/hw210 read every postponed human siege hull-bound with months of
+ * materials banked): a Heavy Industry at the largest colony without one that
+ * has a free slot and can import its inputs, then Heavy Industry to Orbital
+ * Works - every pass, not one a month, started or its price held at the colony
+ * (yardStep). While a yard is held the faction builds nothing else, and
+ * ThreatFactionStock.yardWant keeps that price from founding kits and siege
+ * provisions too. Knob threatinc_yardsFirst.</li>
+ * <li>then, one start per faction per ThreatFactionStock.SHORT_DAYS: the
+ * shortage's answer - the producer of the stock the faction is
  * shortest of (ThreatFactionStock.shortest: hulls, fuel or supplies) at the
  * largest colony with a free slot whose inputs can be imported
  * (canSupplyProducer) - so lost yards and fuel plants are rebuilt at home;</li>
@@ -87,10 +96,12 @@ public class ThreatCoreBuild {
 		if (!enabled()) return;
 		for (String fid : ThreatWarState.warFactionIds()) {
 			if (ThreatWarState.excluded(fid)) continue;
-			if (!mayStart(fid)) continue;
 			List<MarketAPI> sites = sites(fid);
 			if (sites.isEmpty()) continue;
 			ThreatFactionStock.watch(fid);
+			// yards first, every pass: a yard started or held is the faction's whole pass
+			if (yardStep(fid, sites)) continue;
+			if (!mayStart(fid)) continue;
 			if (answerShortage(fid, sites)) continue;
 			for (MarketAPI m : sites) {
 				if (militaryStep(m)) {
@@ -99,6 +110,60 @@ public class ThreatCoreBuild {
 				}
 			}
 		}
+	}
+
+	/**
+	 * YARDS FIRST (the user, 2026-10-19): the faction's hull production before anything else. A Heavy
+	 * Industry at the largest core colony without one (Orbital Works counts) that has a free industry
+	 * slot and can import metals and transplutonics (ThreatFrontlines.canSupplyProducer), else a Heavy
+	 * Industry standing idle upgraded to Orbital Works - paid now (payBuild: the colony's depot above
+	 * its floor, then the faction's markets in reach) or its price held at the colony
+	 * (ThreatFactionStock.hold, so upkeep and hunts leave it and yardWant keeps it from kits and
+	 * sieges). True when a yard started or is held - the faction starts nothing else this pass; false
+	 * when every colony that can site a yard has one and none can be upgraded.
+	 */
+	protected static boolean yardStep(String fid, List<MarketAPI> sites) {
+		if (!ThreatIncConfig.yardsFirst() || !ThreatIncConfig.frontlineHeavyIndustry()) return false;
+		String yard = Industries.HEAVYINDUSTRY;
+		for (MarketAPI m : sites) {
+			if (!ThreatFrontlines.wantsProducer(m, yard)) continue;
+			if (Misc.getNumIndustries(m) >= Misc.getMaxIndustries(m)) continue;
+			if (!ThreatFrontlines.canSupplyProducer(m, m.getSize(), yard)) continue;
+			ThreatFactionStock.release(m);
+			if (ThreatFrontlines.startNew(m, yard)) {
+				started(fid);
+				ThreatIncConfig.log("Core build: " + m.getName() + " (" + fid + ") builds " + yard + " (yards first) - "
+						+ ThreatFactionStock.describe(fid));
+				return true;
+			}
+			return holdYard(m, fid, yard);
+		}
+		for (MarketAPI m : sites) {
+			Industry hi = m.getIndustry(yard);
+			if (hi == null || hi.isBuilding() || hi.isUpgrading() || hi.getSpec().getUpgrade() == null) continue;
+			String works = hi.getSpec().getUpgrade();
+			ThreatFactionStock.release(m);
+			if (ThreatFrontlines.payBuild(m, works)) {
+				hi.startUpgrading();
+				started(fid);
+				ThreatIncConfig.log("Core build: " + m.getName() + " (" + fid + ") upgrades " + yard + " to " + works
+						+ " (yards first) - " + ThreatFactionStock.describe(fid));
+				return true;
+			}
+			return holdYard(m, fid, works);
+		}
+		return false;
+	}
+
+	/** Holds the yard's price at the colony (ThreatFactionStock.hold) and logs it once; true (the faction waits on its yards). */
+	protected static boolean holdYard(MarketAPI m, String fid, String id) {
+		float cost = ThreatBuildCost.supplies(id), funds = ThreatFrontlines.buildFunds(m);
+		if (cost > funds) {
+			ThreatFactionStock.hold(m, id, cost - funds);
+			ThreatIncConfig.logQuiet("cb_hold_" + m.getId(), "Core build: " + m.getName() + " holds "
+					+ (int) (cost - funds) + " supplies for a " + id + " (" + fid + " yards first)");
+		}
+		return true;
 	}
 
 	/**

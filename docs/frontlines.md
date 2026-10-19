@@ -675,7 +675,7 @@ fix that". Three changes, all built the same evening (trial hw200):
   an unguarded front link (unguardedDays still drives the monthly retry); `planFor`'s prefilter is the
   garrison budget alone (`guardBudgetOk`). Unbuilt options: one chain per hive sector-wide with shared
   staging; a dismantled site closed for a year.
-- **The core builds up** (`ThreatCoreBuild`, knob `threatinc_coreBuild`; replaces `homeYards`).
+- **The core builds up** (`ThreatCoreBuild`, knob `threatinc_coreBuild`; replaces `homeYards`). **Yards first** (2026-10-19, knob `threatinc_yardsFirst`, `hull-pool.md` 6): before any shortage answer or military step a Heavy Industry at every core colony that can site one, then Orbital Works, every pass; while a yard waits on its price the faction founds no base, provisions no siege and builds nothing else.
   Daily, one start a faction a month (`ThreatFactionStock.SHORT_DAYS`) at its core colonies of
   size 3+ with nothing building: the shortage's answer first (the producer of the shortest stock
   at the largest colony with a free slot that can import its inputs, paid or held), else the

@@ -326,6 +326,26 @@ public class ThreatFactionStock {
 		return v instanceof String ? (String) v : null;
 	}
 
+	/** Whether the structure is a shipyard: Heavy Industry or Orbital Works. */
+	public static boolean isYard(String industryId) {
+		return Industries.HEAVYINDUSTRY.equals(industryId) || Industries.ORBITALWORKS.equals(industryId);
+	}
+
+	/**
+	 * YARDS FIRST (the user, 2026-10-19): supplies the faction's markets hold for a Heavy Industry or Orbital
+	 * Works they cannot pay yet (hold), summed - reserved ahead of founding kits (ThreatFrontlines.canFund),
+	 * siege provisions (IncursionManager.launchSiegeExpedition) and every other core build
+	 * (ThreatCoreBuild.poll). 0 with threatinc_yardsFirst off.
+	 */
+	public static float yardWant(String f) {
+		if (f == null || !ThreatIncConfig.yardsFirst()) return 0f;
+		float sum = 0f;
+		for (MarketAPI m : ThreatReserves.marketsOf(f)) {
+			if (isYard(heldIndustry(m))) sum += held(m);
+		}
+		return sum;
+	}
+
 	/** The faction's market holding supplies for a producer, the one holding the most; null without one. */
 	public static MarketAPI heldMarket(String f) {
 		MarketAPI best = null;

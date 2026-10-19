@@ -637,6 +637,8 @@ public class ThreatIncConfig {
 	public static boolean frontlineHeavyIndustry()   { return b("threatinc_frontlineHeavyIndustry", true); }
 	/** The core builds up (2026-10-18, replaces yards at home): mobilised factions answer shortages and add military structures at their core colonies, one start a faction a month, at vanilla cost in supplies (ThreatCoreBuild). */
 	public static boolean coreBuild()                { return b("threatinc_coreBuild", true); }
+	/** YARDS FIRST (the user, 2026-10-19): the wartime economy builds hull production before anything else - a Heavy Industry at every core colony that can site one, then Orbital Works, unpaced, and while one is held for its price no kit sails, no siege is provisioned and nothing else is built (ThreatCoreBuild.yardStep, ThreatFactionStock.yardWant). */
+	public static boolean yardsFirst()               { return b("threatinc_yardsFirst", true); }
 	public static boolean frontlineFuelProduction()  { return b("threatinc_frontlineFuelProduction", true); }
 	/** Smallest garrison a link gets, in fleet points, whatever the strikes in reach. */
 	public static float frontlineGarrisonFP() { return f("threatinc_frontlineGarrisonFP"); }

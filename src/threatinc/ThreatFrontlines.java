@@ -1569,9 +1569,14 @@ public class ThreatFrontlines {
 	 */
 	public static boolean canFund(MarketAPI base, float[] cost) {
 		String[] ids = { Commodities.SUPPLIES, Commodities.FUEL };
+		// YARDS FIRST (the user, 2026-10-19): the supplies the faction holds for a yard it cannot pay yet are
+		// no kit's (ThreatFactionStock.yardWant) - hull production before staging bases
+		float yards = ThreatFactionStock.yardWant(base.getFactionId());
 		for (int i = 0; i < 2; i++) {
+			float reserve = i == 0 ? yards : 0f;
 			float have = ThreatReserves.available(base, ids[i]);
-			if (have < cost[i] && have + othersSpendable(base, base, ids[i]) < cost[i]) return false;
+			if (have >= cost[i] + reserve) continue;
+			if (have + othersSpendable(base, base, ids[i]) - reserve < cost[i]) return false;
 		}
 		return true;
 	}
@@ -2278,6 +2283,13 @@ public class ThreatFrontlines {
 			if (!canFund(m, cost)) continue;
 			bestDist = d;
 			best = m;
+		}
+		if (best == null) {
+			float yards = ThreatFactionStock.yardWant(faction.getId());
+			if (yards > 0f) {
+				ThreatIncConfig.logQuiet("fl_yardsfirst_" + faction.getId(), "Frontline: " + faction.getId()
+						+ " founds nothing while its yards wait (" + (int) yards + " supplies held for them)");
+			}
 		}
 		return best;
 	}

@@ -3285,8 +3285,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 								ThreatAidCapacity.expeditionPoints(params.fleetSizes), faction.getId()));
 				float haveFuel = Math.max(0f, siegePooled(base, provisionPool,
 						com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL) - fuel[2]);
-				float haveSupplies = siegePooled(base, provisionPool,
-						com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES);
+				// YARDS FIRST (the user, 2026-10-19): the supplies held for a yard the faction cannot pay yet
+				// provision no siege (ThreatFactionStock.yardWant) - hw209a's 720 postponements were all
+				// hull-bound anyway; the yards are what lifts that bound
+				float haveSupplies = Math.max(0f, siegePooled(base, provisionPool,
+						com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES)
+						- ThreatFactionStock.yardWant(faction.getId()));
 				String pooledNote = provisionPool.isEmpty() ? "" : " across " + (provisionPool.size() + 1) + " markets";
 				// the fleet points the depot can pay for
 				float payable = Float.MAX_VALUE;
