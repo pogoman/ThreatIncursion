@@ -109,3 +109,4 @@ Removed: `threatinc_councilMajorPlayFP`. Legacy only (an older save's muster wit
 - `Play X STARVE: saturation expedition of F FP sails from BASE to raze N of M worlds`
 - `Play X STARVE: no saturation expedition the pools pay, even of one world (F FP needed)`
 - `invades WORLD, the easiest hive its pools pay a landing on; from BASE` (a line hammer's start)
+- `Council F invade pass: K clusters in reach (A with its own strike, B without a report), H of T hives open, started N, no paying base in M: {reason=count}` (one a pass, 2026-10-19; the reasons are `payingBase.lastWhy`: its front finishes first / marines / no siege size / cannot pay / no base of its own)
