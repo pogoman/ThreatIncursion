@@ -446,16 +446,43 @@ public class ThreatFactionStock {
 
 	/**
 	 * MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50: "equally short on hulls as marines, both in
-	 * balance"). How far the faction's marines cover the landing it last wanted: 1 - short / need from the
-	 * standing note, 1 with no note (marines do not bind).
+	 * balance"). How far the faction's marines cover the landing it last wanted: the marines it holds above its
+	 * floors everywhere (factionMarines) over the landing's whole want, 1 with no note (marines do not bind).
+	 * The reserve, not the base's shortfall (hw235, 2026-10-19): with the siege pools off a base's shortfall is
+	 * the convoys' job, and read as the faction's it had the levy raise 20-90k marines a faction that already
+	 * stood at home.
 	 */
 	public static float marineCoverage(String f) {
 		float short_ = marineShort(f);
 		if (short_ <= 0f) return 1f;
+		float need = marineNeed(f);
+		if (need <= 0f) return 0f;
+		return Math.max(0f, Math.min(1f, factionMarines(f) / need));
+	}
+
+	/** The landing's whole marine want beside the standing shortfall (noteMarineShort), 0 with no note standing. */
+	public static float marineNeed(String f) {
+		if (f == null || marineShort(f) <= 0f) return 0f;
 		Object n = data().get(key(f, Commodities.MARINES, "need"));
-		float need = n instanceof Float ? (Float) n : 0f;
-		if (need <= short_) return 0f;
-		return Math.max(0f, Math.min(1f, 1f - short_ / need));
+		return n instanceof Float ? Math.max(0f, (Float) n) : 0f;
+	}
+
+	/** Marines the faction holds above its floors at every market it flies (ThreatReserves.available): what its convoys may carry to a base. */
+	public static float factionMarines(String f) {
+		if (f == null) return 0f;
+		float have = 0f;
+		for (MarketAPI m : ThreatReserves.marketsOf(f)) {
+			if (m == null || !m.isInEconomy()) continue;
+			have += Math.max(0f, ThreatReserves.available(m, Commodities.MARINES));
+		}
+		return have;
+	}
+
+	/** Marines a levy must raise for the landing last wanted: the want net of the marines the faction already holds; 0 when the reserve covers it (the base is short, the convoys' job). */
+	public static float marineLevyWant(String f) {
+		float need = marineNeed(f);
+		if (need <= 0f) return 0f;
+		return Math.max(0f, need - factionMarines(f));
 	}
 
 	/**

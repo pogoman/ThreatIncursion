@@ -283,7 +283,15 @@ public class ThreatCoreBuild {
 		if (!ThreatIncConfig.marineLevy()) return false;
 		if (levies().containsKey(fid + "|readyAt")) return false;
 		if (!ThreatFactionStock.hullsOutcoverMarines(fid)) return false;
-		float want = ThreatFactionStock.marineShort(fid);
+		// the want net of the marines the faction already holds (hw235: read as the base's shortfall the levy
+		// raised 20-90k marines a faction that stood at home, and every core world became a fortress)
+		float want = ThreatFactionStock.marineLevyWant(fid);
+		if (want < 1f) {
+			ThreatIncConfig.logQuiet("levyhome:" + fid, "Marine levy: " + fid + " holds " + (int) ThreatFactionStock.factionMarines(fid)
+					+ " marines against its landing's want of " + (int) ThreatFactionStock.marineNeed(fid)
+					+ " - the base is short, not the faction; the convoys' job, no levy");
+			return false;
+		}
 		float each = Math.max(0.01f, ThreatIncConfig.marineLevySuppliesEach());
 		float raised = 0f, paid = 0f;
 		StringBuilder where = new StringBuilder();
@@ -308,7 +316,8 @@ public class ThreatCoreBuild {
 		levies().put(fid + "|marines", raised);
 		started(fid);
 		ThreatIncConfig.log("Marine levy: " + fid + " raises " + (int) raised + " of " + (int) want + " marines for " + (int) paid
-				+ " supplies at " + where + " (ready in " + (int) ThreatIncConfig.marineLevyDays() + " d; hulls cover "
+				+ " supplies at " + where + " (holds " + (int) ThreatFactionStock.factionMarines(fid) + " of the landing's "
+				+ (int) ThreatFactionStock.marineNeed(fid) + "; ready in " + (int) ThreatIncConfig.marineLevyDays() + " d; hulls cover "
 				+ String.format("%.2f", ThreatFactionStock.hullCoverage(fid)) + ", marines "
 				+ String.format("%.2f", ThreatFactionStock.marineCoverage(fid)) + ") - " + ThreatFactionStock.describe(fid));
 		return true;

@@ -712,7 +712,7 @@ fix that". Three changes, all built the same evening (trial hw200):
   cover ... marines ...`, once a change) - yards first bends to the balance. (3) Option 3 beside it:
   `reserveTroopSurplusMult` 0.5 -> 1.0 (settings, the CSV default and the LunaLib store
   `saves/common/LunaSettings/threatinc.json.data`, backup `.pre-levy`). Trial hw235 / hw236 (day 0) and the
-  next snapshot round.
+  next snapshot round. The levy's want is the landing's need NET OF THE FACTION'S RESERVE (`ThreatFactionStock.marineLevyWant`, 2026-10-19 19:45): with the siege pools off a base's shortfall is the convoys' job, and sized on it the levy raised 20-90k marines a faction that already stood at home (hw235), every core world a fortress no swarm strike could land on; coverage reads the same reserve (`factionMarines` / need).
 - **An ally's base is reached** (ALLIED STAGING, 2026-10-19 13:55; knob `threatinc_alliedStaging`). `planFor` counts a
   base that may host the faction's sieges (`ThreatCoalition.stagingHost`: another mobilised NPC faction's, Welcoming
   or better, not the player's) within `frontlineReachLY` of a hive as reaching it, like an own colony or connected
