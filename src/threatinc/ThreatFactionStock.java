@@ -405,6 +405,27 @@ public class ThreatFactionStock {
 		return best;
 	}
 
+	/**
+	 * A siege the faction could not launch for want of hulls (IncursionManager.launchSiegeExpedition): the
+	 * fleet points short, for its allies to lend from their free pools (ThreatCoalition.aidHulls). The latest
+	 * note stands SHORT_DAYS. The user, 2026-10-19.
+	 */
+	public static void noteHullShort(String f, float fp) {
+		if (f == null || fp <= 0f) return;
+		data().put(key(f, Commodities.SHIPS, "want"), fp);
+		data().put(key(f, Commodities.SHIPS, "wantAt"), Global.getSector().getClock().getTimestamp());
+	}
+
+	/** Fleet points of hulls the faction's sieges wait on (noteHullShort); 0 once the note is older than SHORT_DAYS. */
+	public static float hullShortFP(String f) {
+		if (f == null) return 0f;
+		Object fp = data().get(key(f, Commodities.SHIPS, "want"));
+		Object at = data().get(key(f, Commodities.SHIPS, "wantAt"));
+		if (!(fp instanceof Float) || !(at instanceof Long)) return 0f;
+		if (Global.getSector().getClock().getElapsedDaysSince((Long) at) > SHORT_DAYS) return 0f;
+		return (Float) fp;
+	}
+
 	/** Whether allies may sail the faction another convoy of the stock: the last has had SHORT_DAYS to land. */
 	public static boolean mayAid(String f, String c) {
 		Object at = data().get(key(f, c, "aided"));

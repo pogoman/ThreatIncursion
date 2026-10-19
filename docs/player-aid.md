@@ -290,6 +290,16 @@ general case, driven by relationships between factions (`FactionAPI.getRelations
   a convoy caught at sea is hulls lost to both. Logged `Hulls: <faction> lands N units of
   hulls (N FP) from <donor> (<helper>): N FP of losses rebuilt, ...`.
 
+**Every willing ally answers (2026-10-19).** The user: "factions should send supply convoys to help
+with shortages like the player does with supply missions." The stock pass of `allyAid` no longer rolls
+`allyAidChance` per helper: every ally with willingness above 0 sends what it can spare, in reach of its
+fuel, until the colony's shortage is covered net of what is at sea (the roll stays on the guard and relief
+task forces, which cost fleets). `ThreatConvoys.pickAllyDonor(helper, needy, commodity, need)` lets a spare
+that covers the whole need sail under the `convoyMinLoadFraction` floor - hw211b posted 25 help requests
+and let 13 expire with 18 allied convoys in 1,800 days. An ally's landing does not credit the player's
+accepted request (that would pay the player for an NPC's convoy); a posted request is withdrawn
+"neutralized" once the shortage clears. Hull lending to a hull-bound siege: `hull-pool.md` 7.
+
 ## 6. What goes, what stays
 
 | Today | After |

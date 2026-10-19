@@ -280,8 +280,11 @@ public class ThreatCoalition {
 						FactionAPI helper = Global.getSector().getFaction(helperId);
 						if (helper == null || helper.isPlayerFaction()) continue;
 						float w = willingness(helper, needyId);
-						if (w <= 0f || random.nextFloat() >= w * chance) continue;
-						MarketAPI donor = ThreatConvoys.pickAllyDonor(helper, market, c);
+						// every willing ally answers a standing shortage, as the player answers the colony's help
+						// request (the user, 2026-10-19: "factions should send supply convoys to help with shortages
+						// like the player does with supply missions"); the chance roll stays on the task forces above
+						if (w <= 0f) continue;
+						MarketAPI donor = ThreatConvoys.pickAllyDonor(helper, market, c, need);
 						if (donor == null) continue;
 						float amount = Math.min(need, ThreatConvoys.spare(donor, c));
 						if (amount < 1f) continue;
@@ -335,7 +338,7 @@ public class ThreatCoalition {
 					if (helper == null || helper.isPlayerFaction()) continue;
 					if (helper.isHostileTo(needy) || needy.isHostileTo(helper)) continue;
 					if (!ThreatFactionStock.surplus(helperId, c)) continue;
-					MarketAPI donor = ThreatConvoys.pickAllyDonor(helper, to, c);
+					MarketAPI donor = ThreatConvoys.pickAllyDonor(helper, to, c, need);
 					if (donor == null) continue;
 					float amount = Math.min(need, ThreatConvoys.spare(donor, c));
 					if (amount < unit) continue;
@@ -370,7 +373,13 @@ public class ThreatCoalition {
 		if (!ThreatFactionStock.mayAid(needyId, c)) return;
 		MarketAPI to = ThreatHulls.hullPort(needyId);
 		if (to == null) return;
-		float need = ThreatHulls.shortUnits(needyId) - ThreatConvoys.inboundShips(to.getId());
+		// its losses to rebuild, or the hulls its last postponed siege was short of (ThreatFactionStock.hullShortFP),
+		// whichever is more: the rich lend the pool to a sieging ally (the user, 2026-10-19 - six yards-first games
+		// ran 106-408 hull-bound postponements a game beside 24-100k FP of free allied hulls)
+		float lend = (float) Math.ceil(ThreatFactionStock.hullShortFP(needyId) / ThreatHulls.unitFP());
+		float lost = ThreatHulls.shortUnits(needyId);
+		String reason = lend > lost ? "a siege short of hulls" : "hulls lost to rebuild";
+		float need = Math.max(lost, lend) - ThreatConvoys.inboundShips(to.getId());
 		if (need < 1f) return;
 		boolean sailed = false;
 		// why no helper sent any, for the log: the gate each stopped at (hw60-62: no hull convoy in nine games)
@@ -397,7 +406,7 @@ public class ThreatCoalition {
 			if (convoy == null) continue;
 			report(helper, needy, "Allied Convoy Sails", "sends %s %s from %s to %s (%s)",
 					Misc.getWithDGS((int) convoy.ships), ThreatReserves.label(c), ThreatNotice.market(donor),
-					ThreatNotice.market(to), "hulls lost to rebuild");
+					ThreatNotice.market(to), reason);
 			need -= convoy.ships;
 			sailed = true;
 		}

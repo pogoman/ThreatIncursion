@@ -3312,6 +3312,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				}
 				float minProvisions = Math.max(mustPay,
 						points * ThreatIncConfig.expeditionMinProvisionsFraction());
+				// hulls bind the launch: the faction's allies may lend the shortfall from their free pools
+				// (ThreatFactionStock.noteHullShort -> ThreatCoalition.aidHulls; the user, 2026-10-19)
+				if (ThreatHulls.enabled() && points > 0 && payable < minProvisions) {
+					float hullPayable = ThreatHulls.freeFP(base.getFactionId()) / FP_PER_RESPONSE_DIFFICULTY;
+					if (hullPayable < minProvisions) {
+						ThreatFactionStock.noteHullShort(base.getFactionId(),
+								(minProvisions - hullPayable) * FP_PER_RESPONSE_DIFFICULTY);
+					}
+				}
 				if (points > 0 && payable < minProvisions) {
 					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 							+ (int) haveFuel + "/" + (int) (points * fuelPerPoint) + " fuel"

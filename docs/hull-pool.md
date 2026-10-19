@@ -207,3 +207,24 @@ The user, 2026-10-19 00:20, after the hw209/hw210 read (every postponed human si
 - **Where possible** means a free slot and importable inputs; nothing is demolished for a yard and no colony grows for one.
 - **Read it by**: `Core build: X (f) builds heavyindustry (yards first) - <describe>`, `... upgrades heavyindustry to orbitalworks (yards first)`, `Core build: X holds N supplies for a heavyindustry|orbitalworks (f yards first)`, `Frontline: f founds nothing while its yards wait (N supplies held for them)`; the monthly `Hulls: F hulls N FP ... yards N FP/mo` line is the outcome.
 - First trial hw211 (set B) / hw212 (set A) against hw209 / hw210.
+
+## 7. Hull lending to a siege short of hulls (2026-10-19)
+
+The six yards-first games (hw207-hw212) ran 106-408 hull-bound postponements a game while allied
+pools held 24-100k FP, 60-90% of it free: the hull aid convoy (section 3, `ThreatCoalition.aidHulls`)
+sailed only against LOSSES not yet rebuilt (`ThreatHulls.shortUnits`), so a faction with a small but
+intact navy and a siege it could not man got nothing. The user, 2026-10-19: factions help each other's
+shortages as the player does.
+
+- `IncursionManager.launchSiegeExpedition`: when the launch is postponed and the faction's free hulls
+  alone fall short of the fleets it must pay for, it notes the shortfall in FP -
+  `ThreatFactionStock.noteHullShort(faction, (minProvisions - freeFP / 25) x 25)`. The note stands
+  `SHORT_DAYS` (30); a newer postponement replaces it (`hullShortFP`).
+- `ThreatCoalition.aidHulls`: the need is the larger of the losses to rebuild and the noted
+  shortfall in units (`hullShortFP / unitFP`), net of hulls at sea; every ally not hostile with a
+  surplus lends from its free BUILT navy at its hull port (`ThreatHulls.spareUnits`, keeps
+  `hullAidKeepFraction`), one sailing a month a faction. Log: `Ally aid: <helper> for <needy>: Allied
+  Convoy Sails | X sends N ship hulls from A to B (a siege short of hulls)`; the landing is section 3's
+  `Hulls: F lands N units ...` and the siege launches at the next pass if the rest is paid.
+- What it does not do: lend vanilla's standing table (never given away), or move hulls to a base -
+  the pool is faction-wide, so the hull port is where they land.

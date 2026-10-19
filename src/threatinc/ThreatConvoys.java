@@ -3169,6 +3169,15 @@ public class ThreatConvoys {
 	 * reach of sieges their fuel could reach); the player's at any range.
 	 */
 	public static MarketAPI pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId) {
+		return pickAllyDonor(helper, needy, commodityId, Float.MAX_VALUE);
+	}
+
+	/**
+	 * As above for a known need: a spare that covers the whole need is worth a sailing whatever the
+	 * minimum-load fraction says - an ally answers a colony's shortage as the player answers its help
+	 * request, with what it asked for (the user, 2026-10-19; hw211b let 13 of 25 requests expire).
+	 */
+	public static MarketAPI pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId, float need) {
 		if (helper == null || needy == null || needy.getStarSystem() == null) return null;
 		MarketAPI best = null;
 		float bestSpare = 0f;
@@ -3185,8 +3194,8 @@ public class ThreatConvoys {
 		}
 		// hulls sail by the unit: a ship is a load (hw62b: Tri-Tachyon's 25 spare units never sailed
 		// against a 30-unit minimum read off the cargo hold; no hull convoy in nine games since hw60)
-		if (best != null && !Commodities.SHIPS.equals(commodityId) && bestSpare < capacityFor(commodityId)
-				* ThreatIncConfig.convoyMinLoadFraction()) return null;
+		if (best != null && !Commodities.SHIPS.equals(commodityId) && bestSpare < Math.min(need, capacityFor(commodityId)
+				* ThreatIncConfig.convoyMinLoadFraction())) return null;
 		return best;
 	}
 
