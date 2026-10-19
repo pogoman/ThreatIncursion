@@ -1203,7 +1203,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatConvoys.homeBase(Convoy c)` :3406 - Where a convoy settles:
 - `ThreatConvoys.returnHome(Convoy c)` :3420 - Recalled, timed out, or its destination is gone:
 
-## ThreatCoreBuild (409 lines)
+## ThreatCoreBuild (418 lines)
 - `ThreatCoreBuild.enabled()` :59
 - `ThreatCoreBuild.mayStart(String fid)` :68 - Whether the faction may start another project now:
 - `ThreatCoreBuild.started(String fid)` :74
@@ -1215,12 +1215,12 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatCoreBuild.answerShortage(String fid, List<MarketAPI> sites)` :190 - The shortage's answer at home:
 - `ThreatCoreBuild.marineStep(String fid, List<MarketAPI> sites)` :228 - THE MARINE STEP (the user, 2026-10-19:
 - `ThreatCoreBuild.marineLevy(String fid, List<MarketAPI> sites)` :282 - MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50:
-- `ThreatCoreBuild.deliverLevy(String fid)` :318 - A levy that has trained marineLevyDays stands at the colonies that paid it (ThreatReserves.deposit).
-- `ThreatCoreBuild.hasHighCommand(String fid)` :343 - Whether the faction has (or is raising) its one High Command.
-- `ThreatCoreBuild.holdStep(MarketAPI m, String fid, String id, float short_)` :354 - Holds the marine step's price at the colony (ThreatFactionStock.hold) and logs it once;
-- `ThreatCoreBuild.militaryStep(MarketAPI m)` :365 - The one military step the colony lacks, by size;
-- `ThreatCoreBuild.start(MarketAPI m, String id)` :392
-- `ThreatCoreBuild.upgrade(MarketAPI m, Industry ind)` :400
+- `ThreatCoreBuild.deliverLevy(String fid)` :327 - A levy that has trained marineLevyDays stands at the colonies that paid it (ThreatReserves.deposit).
+- `ThreatCoreBuild.hasHighCommand(String fid)` :352 - Whether the faction has (or is raising) its one High Command.
+- `ThreatCoreBuild.holdStep(MarketAPI m, String fid, String id, float short_)` :363 - Holds the marine step's price at the colony (ThreatFactionStock.hold) and logs it once;
+- `ThreatCoreBuild.militaryStep(MarketAPI m)` :374 - The one military step the colony lacks, by size;
+- `ThreatCoreBuild.start(MarketAPI m, String id)` :401
+- `ThreatCoreBuild.upgrade(MarketAPI m, Industry ind)` :409
 
 ## ThreatCoreUpkeep (106 lines)
 - `ThreatCoreUpkeep.enabled()` :35 - The share of its size upkeep the colony paid at the last poll.
@@ -1273,7 +1273,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionStance.forceFP(FactionAPI faction)` :291 - The FP the faction could field:
 - `ThreatFactionStance.weakestTarget(FactionAPI faction)` :320 - {system id, name, score} of the hive system a base of the faction in reach - the cheapest that can - takes and pays for now (IncursionManager.siegeAffordable) with the most worth for the least odds pe
 
-## ThreatFactionStock (517 lines)
+## ThreatFactionStock (544 lines)
 - `ThreatFactionStock.key(String factionId, String commodityId, String field)` :39
 - `ThreatFactionStock.num(String key)` :43
 - `ThreatFactionStock.producerId(String commodityId)` :49 - The industry a forward base builds for the stock:
@@ -1319,13 +1319,16 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionStock.hullShortFP(String f)` :420 - Fleet points of hulls the faction's sieges wait on (noteHullShort);
 - `ThreatFactionStock.noteMarineShort(String f, float marines)` :434 - A landing the faction's invade pass could not man (ThreatPlays.payingBase):
 - `ThreatFactionStock.noteMarineShort(String f, float marines, float need)` :439 - noteMarineShort with the landing's whole want beside the shortfall (marineCoverage).
-- `ThreatFactionStock.marineCoverage(String f)` :452 - MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50:
-- `ThreatFactionStock.hullCoverage(String f)` :465 - How far the faction's free hulls cover the siege they last fell short of:
-- `ThreatFactionStock.hullsOutcoverMarines(String f)` :473 - Whether hulls out-cover marines:
-- `ThreatFactionStock.marineShort(String f)` :479 - Marines the faction's landings wait on (noteMarineShort);
-- `ThreatFactionStock.mayAid(String f, String c)` :489 - Whether allies may sail the faction another convoy of the stock:
-- `ThreatFactionStock.aided(String f, String c)` :495 - Notes that allies sailed the faction a convoy of the stock.
-- `ThreatFactionStock.describe(String f)` :500 - One line of the faction's plan for the log:
+- `ThreatFactionStock.marineCoverage(String f)` :455 - MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50:
+- `ThreatFactionStock.marineNeed(String f)` :464 - The landing's whole marine want beside the standing shortfall (noteMarineShort), 0 with no note standing.
+- `ThreatFactionStock.factionMarines(String f)` :471 - Marines the faction holds above its floors at every market it flies (ThreatReserves.available):
+- `ThreatFactionStock.marineLevyWant(String f)` :482 - Marines a levy must raise for the landing last wanted:
+- `ThreatFactionStock.hullCoverage(String f)` :492 - How far the faction's free hulls cover the siege they last fell short of:
+- `ThreatFactionStock.hullsOutcoverMarines(String f)` :500 - Whether hulls out-cover marines:
+- `ThreatFactionStock.marineShort(String f)` :506 - Marines the faction's landings wait on (noteMarineShort);
+- `ThreatFactionStock.mayAid(String f, String c)` :516 - Whether allies may sail the faction another convoy of the stock:
+- `ThreatFactionStock.aided(String f, String c)` :522 - Notes that allies sailed the faction a convoy of the stock.
+- `ThreatFactionStock.describe(String f)` :527 - One line of the faction's plan for the log:
 
 ## ThreatFactionView (2590 lines)
 ### selector row (both views)
