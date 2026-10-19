@@ -31,7 +31,7 @@ on) and `game-runs-2.md` s54; this is the shape of it.
   convoys only killed the human sieges (0 of 424 staged hammers filled; marines shipped base to base after each
   failure). A hammer's staging outlives the play (`PlayStaging.committed`, cleared by a siege sailing or 180 d), the
   wait window renews while the refused stock rises (`ThreatPlays.stockRising`), two staging hammers a faction, one a
-  base (`invadeStagingMax`). Trial hw229 (B) / hw230 (A) from 15:37. The swarm took both hw227 games (88 / 176 hives,
+  base (`invadeStagingMax`). Trial hw229 (B) / hw230 (A) from 15:37 DIED with the Claude session at 15:55 (hw229a w2,688, c w2,811); partial read in game-runs-2 s54 (churn halved, hammers still never fill - refused for marines); relaunched as hw231 (B) / hw232 (A) from 16:14, same jar. The swarm took both hw227 games (88 / 176 hives,
   colonies 22 / 13) by the dead siege machine; expect OceanPena back toward hw219's contested 95 / 52.
 
 ## 2. The day's reads (hives / human colonies; b games lost their window in hw217-hw220)
@@ -76,3 +76,4 @@ behind it if the buildings do not close the gap. Caveat the user has: the humans
   `tools/test-harness/reads/effects-ledger.sh hwNNN`. One `sbs.ps1` at a time; a round is ~32 min; the early
   check at +22 min reads the pass lines and `marine step` lines.
 - Pull before testing: `git fetch origin main` was clean at 13:17 (ahead 69, behind 0).
+- **Launch batches detached (2026-10-19 16:14).** A driver started from the session's shell (Bash `run_in_background`) dies with the session - hw229 did. Register the driver and watcher as one-shot scheduled tasks and run them: `schtasks /create /tn ThreatIncSiegeNN /tr '"<path>aunch-siege-NN.cmd"' /sc once /st 23:58 /f` then `schtasks /run /tn ThreatIncSiegeNN` (the .cmd redirects the driver's output to `run-siege-NN.out`; `launch-watch-NN.cmd` runs the watcher through Git's bash.exe). The task runs on the interactive desktop, so the window automation works. Poll `watch-siege-NN.out` / `sbs-status.txt`; nothing wakes the session.
