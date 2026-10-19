@@ -647,7 +647,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatCoalition.jointEnough(FactionAPI owner, MarketAPI market, MarketAPI ownerBase)` :495 - Whether the owner and its partners together can field a relief that outweighs the army over the world.
 - `ThreatCoalition.jointRelief(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float owed)` :520 - COALITION RELIEF (the user, 2026-10-08, the second human change after yards at home):
 
-## ThreatColonyManager (7756 lines)
+## ThreatColonyManager (7762 lines)
 ### founding
 - `ThreatColonyManager.foundColony(PlanetAPI planet, int initialSize)` :122 - Converts a planet's dormant condition-only market into a live Threat fabrication colony.
 - `ThreatColonyManager.foundColony(PlanetAPI planet, int initialSize, String payerId)` :135 - foundColony, its structures bought from payerId's bank at foundingFPPerStructure each (null:
@@ -969,37 +969,37 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatColonyManager.smallestOfTier(MarketAPI market, int minTier)` :6640 - The colony's smallest live garrison fleet of at least this tier;
 - `ThreatColonyManager.sendReinforcement(MarketAPI source, MarketAPI target, CampaignFleetAPI pick)` :6651 - dispatchReinforcement with the fleet chosen:
 - `ThreatColonyManager.sendToGarrison(CampaignFleetAPI fleet, MarketAPI target)` :6707 - A fleet from outside the garrisons - a recalled strike's (ThreatStrikeFGI.recallTo) - flies to the colony and joins its garrison on arrival, as a reinforcement does (checkReinforcementArrivals), with 
-- `ThreatColonyManager.checkReinforcementArrivals()` :6740 - Polls in-transit reinforcements:
-- `ThreatColonyManager.sendToRearm(CampaignFleetAPI fleet, MarketAPI from)` :6829 - A swarm fleet with no ordnance over a hive whose port cannot arm it (ThreatGroundFronts.portArms:
-- `ThreatColonyManager.rearmAndReturn(CampaignFleetAPI fleet, MarketAPI at, com.fs.starfarer.api.campaign.rules.MemoryAPI mem)` :6877 - A rearming swarm at the hive it was sent to:
-- `ThreatColonyManager.engageOnArrival(CampaignFleetAPI fleet, MarketAPI target, SectorEntityToken planet, com.fs.starfarer.api.campaign.rules.MemoryAPI mem, float hostile)` :6905 - A reinforcement within the orbit hold range of its target with hostiles over it (user, 2026-10-12):
-- `ThreatColonyManager.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :6925 - On a swarm engaged on arrival:
-- `ThreatColonyManager.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :6929
-- `ThreatColonyManager.overdue(CampaignFleetAPI fleet, MarketAPI target, SectorEntityToken planet, com.fs.starfarer.api.campaign.rules.MemoryAPI mem)` :6952 - A reinforcement out longer than reinforcementOverdueDays (90) is logged where it stands (whereabouts) and given its travel order afresh, once a span (blinders on, the 365-day GO_TO_LOCATION and the or
-- `ThreatColonyManager.whereabouts(CampaignFleetAPI fleet, SectorEntityToken planet)` :6995 - Where a fleet stands and what it is doing, for the overdue read:
-- `ThreatColonyManager.digInAtConquest(CampaignFleetAPI fleet)` :7123 - A strike's landing fleet over the world it just took (ThreatSwarmDefend, the front gone):
-- `ThreatColonyManager.enforceGarrisonLeash()` :7169 - Per-frame leash enforcement (called from IncursionManager.advance):
-- `ThreatColonyManager.enforceReinforcementLeash()` :7243 - The reinforcement leash's radius in hold ranges:
-- `ThreatColonyManager.countLiveGarrison(String marketId)` :7272
-- `ThreatColonyManager.countLiveGarrisonInSystem(String systemId)` :7280
+- `ThreatColonyManager.checkReinforcementArrivals()` :6743 - Polls in-transit reinforcements:
+- `ThreatColonyManager.sendToRearm(CampaignFleetAPI fleet, MarketAPI from)` :6832 - A swarm fleet with no ordnance over a hive whose port cannot arm it (ThreatGroundFronts.portArms:
+- `ThreatColonyManager.rearmAndReturn(CampaignFleetAPI fleet, MarketAPI at, com.fs.starfarer.api.campaign.rules.MemoryAPI mem)` :6883 - A rearming swarm at the hive it was sent to:
+- `ThreatColonyManager.engageOnArrival(CampaignFleetAPI fleet, MarketAPI target, SectorEntityToken planet, com.fs.starfarer.api.campaign.rules.MemoryAPI mem, float hostile)` :6911 - A reinforcement within the orbit hold range of its target with hostiles over it (user, 2026-10-12):
+- `ThreatColonyManager.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :6931 - On a swarm engaged on arrival:
+- `ThreatColonyManager.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :6935
+- `ThreatColonyManager.overdue(CampaignFleetAPI fleet, MarketAPI target, SectorEntityToken planet, com.fs.starfarer.api.campaign.rules.MemoryAPI mem)` :6958 - A reinforcement out longer than reinforcementOverdueDays (90) is logged where it stands (whereabouts) and given its travel order afresh, once a span (blinders on, the 365-day GO_TO_LOCATION and the or
+- `ThreatColonyManager.whereabouts(CampaignFleetAPI fleet, SectorEntityToken planet)` :7001 - Where a fleet stands and what it is doing, for the overdue read:
+- `ThreatColonyManager.digInAtConquest(CampaignFleetAPI fleet)` :7129 - A strike's landing fleet over the world it just took (ThreatSwarmDefend, the front gone):
+- `ThreatColonyManager.enforceGarrisonLeash()` :7175 - Per-frame leash enforcement (called from IncursionManager.advance):
+- `ThreatColonyManager.enforceReinforcementLeash()` :7249 - The reinforcement leash's radius in hold ranges:
+- `ThreatColonyManager.countLiveGarrison(String marketId)` :7278
+- `ThreatColonyManager.countLiveGarrisonInSystem(String systemId)` :7286
 ### colony death
-- `ThreatColonyManager.pollColonies()` :7298 - Detects colonies that no longer exist (bombarded to decivilization, or otherwise removed) and clears them.
-- `ThreatColonyManager.cleanColonyMods(MarketAPI market)` :7367 - Strips everything this mod applied to a market, so the husk left behind (the planet's condition-only market) is indistinguishable from a never- colonized world - critically the econ group, or a later 
-- `ThreatColonyManager.findMarketAnywhere(String marketId, StarSystemAPI system)` :7412 - Finds a colony's market even after vanilla removed it from the economy (post-deciv the object survives, attached to its planet).
+- `ThreatColonyManager.pollColonies()` :7304 - Detects colonies that no longer exist (bombarded to decivilization, or otherwise removed) and clears them.
+- `ThreatColonyManager.cleanColonyMods(MarketAPI market)` :7373 - Strips everything this mod applied to a market, so the husk left behind (the planet's condition-only market) is indistinguishable from a never- colonized world - critically the econ group, or a later 
+- `ThreatColonyManager.findMarketAnywhere(String marketId, StarSystemAPI system)` :7418 - Finds a colony's market even after vanilla removed it from the economy (post-deciv the object survives, attached to its planet).
 ### full reset (debug)
-- `ThreatColonyManager.resetIncursion()` :7434 - Tears the entire incursion out of the save:
+- `ThreatColonyManager.resetIncursion()` :7440 - Tears the entire incursion out of the save:
 ### legacy save migration
-- `ThreatColonyManager.migrateLegacyData(Random random)` :7540 - One-time conversions for saves made under older data layouts.
-- `ThreatColonyManager.migrateToContinuousDecline()` :7556 - v4 -> v5:
-- `ThreatColonyManager.migrateToSiegeRework()` :7574 - v3 -> v4 (siege rework):
-- `ThreatColonyManager.migrateHivesToColonies(Random random)` :7589 - v1 -> v2:
-- `ThreatColonyManager.migrateToMultiColony()` :7636 - v2 -> v3:
-- `ThreatColonyManager.moveKey(String mapKey, String fromKey, String toKey)` :7677
+- `ThreatColonyManager.migrateLegacyData(Random random)` :7546 - One-time conversions for saves made under older data layouts.
+- `ThreatColonyManager.migrateToContinuousDecline()` :7562 - v4 -> v5:
+- `ThreatColonyManager.migrateToSiegeRework()` :7580 - v3 -> v4 (siege rework):
+- `ThreatColonyManager.migrateHivesToColonies(Random random)` :7595 - v1 -> v2:
+- `ThreatColonyManager.migrateToMultiColony()` :7642 - v2 -> v3:
+- `ThreatColonyManager.moveKey(String mapKey, String fromKey, String toKey)` :7683
 ### helpers
-- `ThreatColonyManager.getSystem(String systemId)` :7687
-- `ThreatColonyManager.makeDetectable(CampaignFleetAPI fleet)` :7702 - Removes the heavy Threat sensor-stealth penalty from one of our fleets.
-- `ThreatColonyManager.announce(ThreatNotice notice)` :7716 - Debug-only narration:
-- `ThreatColonyManager.purgeSystemDebug(String systemId)` :7728 - Debug tool:
+- `ThreatColonyManager.getSystem(String systemId)` :7693
+- `ThreatColonyManager.makeDetectable(CampaignFleetAPI fleet)` :7708 - Removes the heavy Threat sensor-stealth penalty from one of our fleets.
+- `ThreatColonyManager.announce(ThreatNotice notice)` :7722 - Debug-only narration:
+- `ThreatColonyManager.purgeSystemDebug(String systemId)` :7734 - Debug tool:
 
 ## ThreatColonyScreenDialog (71 lines)
 - `ThreatColonyScreenDialog.ThreatColonyScreenDialog(SectorEntityToken entity)` :30
@@ -3210,7 +3210,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPlanetaryShield.addPostDemandSection(TooltipMakerAPI tooltip, boolean hasDemand, IndustryTooltipMode mode)` :112 - What is true now:
 - `ThreatPlanetaryShield.addAlphaCoreDescription(TooltipMakerAPI tooltip, AICoreDescriptionMode mode)` :147
 
-## ThreatPlays (1767 lines)
+## ThreatPlays (1805 lines)
 - `ThreatPlays.of(String fid)` :138 - The faction's running plays.
 - `ThreatPlays.major(String fid)` :147 - The faction's first major play (a hammer, a bombing campaign, a feint, or its share of a partner's hammer), or null.
 - `ThreatPlays.isMajor(Play pl)` :155
@@ -3221,90 +3221,90 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 ### planning: which play the strategy runs next (section 3's table)
 - `ThreatPlays.plan(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, float today, Random random)` :190
 - `ThreatPlays.invade(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, float today, Random random)` :292 - The invasion line (user, 2026-10-04:
-- `ThreatPlays.payingBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s, MarketAPI w)` :344 - The cluster's nearest base whose pools man, arm and provision a landing siege of the world now (IncursionManager.siegeCanPay), or null.
-- `ThreatPlays.newPlay(ThreatWarCouncil.Council c, String type, ThreatWarCouncil.Cluster k, float today)` :359
+- `ThreatPlays.payingBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s, MarketAPI w)` :370 - Why payingBase refused its last base (for the pass's summary line).
+- `ThreatPlays.newPlay(ThreatWarCouncil.Council c, String type, ThreatWarCouncil.Cluster k, float today)` :397
 ### starting each play
-- `ThreatPlays.startRecon(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :377
-- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :409
-- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why, String fromId)` :415 - A hammer;
-- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why, String fromId, MarketAPI from)` :425 - As above from from (null:
-- `ThreatPlays.startStarve(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :467
-- `ThreatPlays.bombable(String fid, String observer, MarketAPI w)` :494 - Whether a squadron may bomb the world:
-- `ThreatPlays.richestBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s)` :504 - The cluster's base whose pools field the largest siege (ThreatPosture.siegeCapacityFP):
-- `ThreatPlays.cheapestSquadron(Play pl, FactionAPI faction)` :519 - The fuel of the cheapest squadron the campaign could send to a bombable Nexus now;
-- `ThreatPlays.feintPlan(FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster b)` :541 - A feint against B (section 4.2):
-- `ThreatPlays.startFeint(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster b, ThreatWarCouncil.Cluster a, MarketAPI base, float today, Random random, String why)` :571
-- `ThreatPlays.opportunity(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, float today, Random random)` :616 - Bombers of opportunity (section 4.6), inside Starve and Roll back (and Hold, on the hives that threaten us):
-- `ThreatPlays.oppLeft(ThreatWarCouncil.Council c, float today)` :674 - What is left of the month's opportunity fuel (bombers of opportunity and probing raids), the month rolled over first.
-- `ThreatPlays.reconDue(ThreatWarCouncil.Council c, String systemId, float today)` :686 - Whether a recon on the system may start:
+- `ThreatPlays.startRecon(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :415
+- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :447
+- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why, String fromId)` :453 - A hammer;
+- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why, String fromId, MarketAPI from)` :463 - As above from from (null:
+- `ThreatPlays.startStarve(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :505
+- `ThreatPlays.bombable(String fid, String observer, MarketAPI w)` :532 - Whether a squadron may bomb the world:
+- `ThreatPlays.richestBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s)` :542 - The cluster's base whose pools field the largest siege (ThreatPosture.siegeCapacityFP):
+- `ThreatPlays.cheapestSquadron(Play pl, FactionAPI faction)` :557 - The fuel of the cheapest squadron the campaign could send to a bombable Nexus now;
+- `ThreatPlays.feintPlan(FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster b)` :579 - A feint against B (section 4.2):
+- `ThreatPlays.startFeint(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster b, ThreatWarCouncil.Cluster a, MarketAPI base, float today, Random random, String why)` :609
+- `ThreatPlays.opportunity(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, float today, Random random)` :654 - Bombers of opportunity (section 4.6), inside Starve and Roll back (and Hold, on the hives that threaten us):
+- `ThreatPlays.oppLeft(ThreatWarCouncil.Council c, float today)` :712 - What is left of the month's opportunity fuel (bombers of opportunity and probing raids), the month rolled over first.
+- `ThreatPlays.reconDue(ThreatWarCouncil.Council c, String systemId, float today)` :724 - Whether a recon on the system may start:
 ### the daily advance
-- `ThreatPlays.advance(float today, Random random)` :695
-- `ThreatPlays.advanceOne(Play pl, float today, Random random)` :714
-- `ThreatPlays.pausable(Play pl)` :751 - Whether relief owed holds the play:
-- `ThreatPlays.sample(Play pl, FactionAPI faction, float today)` :771 - The day's damage done at the target:
-- `ThreatPlays.advanceRecon(Play pl, FactionAPI faction, float today)` :790
-- `ThreatPlays.advanceStrike(Play pl, FactionAPI faction, float today, Random random)` :801 - A hammer's and a feint's phases.
-- `ThreatPlays.escort(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> targets, float siegeFP, float today, Random random)` :828 - The play's escort (user, 2026-10-04):
-- `ThreatPlays.inviteJoint(Play pl, FactionAPI faction, StarSystemAPI s, List<MarketAPI> targets, float want, float today, Random random)` :854 - Partners join the hammer with their own forces, held at their own bearings (section 7), until want FP of its escort is made up.
-- `ThreatPlays.forcesOf(Play pl)` :896 - The forces of the play and of the partners in it.
-- `ThreatPlays.anyForceAlive(Play pl)` :904
-- `ThreatPlays.musterCheck(Play pl, FactionAPI faction, float today, Random random)` :916 - A play in muster waits for a report to size its sieges by, or for stock to pay one:
-- `ThreatPlays.watchCheck(Play pl, FactionAPI faction, float today, Random random)` :940
-- `ThreatPlays.strike(Play pl, FactionAPI faction, float today, Random random, String why)` :979 - The strike (sections 4.1 and 4.2;
-- `ThreatPlays.strike(Play pl, FactionAPI faction, float today, Random random, String why, boolean early)` :984 - As above;
-- `ThreatPlays.besiege(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> worlds, Random random)` :1080 - The play's sieges (user, 2026-10-04):
-- `ThreatPlays.baseFor(Play pl)` :1104 - The play's base, or - that one lost - the first of the faction's still in reach of its system (the picture's), which it moves to;
-- `ThreatPlays.sendBombers(Play pl, FactionAPI faction, float today)` :1119 - A feint's bombers on B's Nexus sail on their day, in the strike or after the release.
-- `ThreatPlays.siegeNear(Play pl)` :1140 - The play's siege is due at its worlds within the hunts' passage from their muster (ThreatSoftening.passageDays) and RELEASE_LEAD_DAYS, or is there already, by its live ETA:
-- `ThreatPlays.strikeCheck(Play pl, FactionAPI faction, float today, Random random)` :1151
-- `ThreatPlays.exploitCheck(Play pl, FactionAPI faction, float today, Random random)` :1167
-- `ThreatPlays.advanceStarve(Play pl, FactionAPI faction, float today, Random random)` :1219
-- `ThreatPlays.compare(MarketAPI a, MarketAPI b)` :1254
-- `ThreatPlays.saturate(Play pl, FactionAPI faction, Random random)` :1336 - The bombing campaign's saturation expedition, once, when the pools pay (section 4.3):
-- `ThreatPlays.compare(MarketAPI a, MarketAPI b)` :1348
+- `ThreatPlays.advance(float today, Random random)` :733
+- `ThreatPlays.advanceOne(Play pl, float today, Random random)` :752
+- `ThreatPlays.pausable(Play pl)` :789 - Whether relief owed holds the play:
+- `ThreatPlays.sample(Play pl, FactionAPI faction, float today)` :809 - The day's damage done at the target:
+- `ThreatPlays.advanceRecon(Play pl, FactionAPI faction, float today)` :828
+- `ThreatPlays.advanceStrike(Play pl, FactionAPI faction, float today, Random random)` :839 - A hammer's and a feint's phases.
+- `ThreatPlays.escort(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> targets, float siegeFP, float today, Random random)` :866 - The play's escort (user, 2026-10-04):
+- `ThreatPlays.inviteJoint(Play pl, FactionAPI faction, StarSystemAPI s, List<MarketAPI> targets, float want, float today, Random random)` :892 - Partners join the hammer with their own forces, held at their own bearings (section 7), until want FP of its escort is made up.
+- `ThreatPlays.forcesOf(Play pl)` :934 - The forces of the play and of the partners in it.
+- `ThreatPlays.anyForceAlive(Play pl)` :942
+- `ThreatPlays.musterCheck(Play pl, FactionAPI faction, float today, Random random)` :954 - A play in muster waits for a report to size its sieges by, or for stock to pay one:
+- `ThreatPlays.watchCheck(Play pl, FactionAPI faction, float today, Random random)` :978
+- `ThreatPlays.strike(Play pl, FactionAPI faction, float today, Random random, String why)` :1017 - The strike (sections 4.1 and 4.2;
+- `ThreatPlays.strike(Play pl, FactionAPI faction, float today, Random random, String why, boolean early)` :1022 - As above;
+- `ThreatPlays.besiege(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> worlds, Random random)` :1118 - The play's sieges (user, 2026-10-04):
+- `ThreatPlays.baseFor(Play pl)` :1142 - The play's base, or - that one lost - the first of the faction's still in reach of its system (the picture's), which it moves to;
+- `ThreatPlays.sendBombers(Play pl, FactionAPI faction, float today)` :1157 - A feint's bombers on B's Nexus sail on their day, in the strike or after the release.
+- `ThreatPlays.siegeNear(Play pl)` :1178 - The play's siege is due at its worlds within the hunts' passage from their muster (ThreatSoftening.passageDays) and RELEASE_LEAD_DAYS, or is there already, by its live ETA:
+- `ThreatPlays.strikeCheck(Play pl, FactionAPI faction, float today, Random random)` :1189
+- `ThreatPlays.exploitCheck(Play pl, FactionAPI faction, float today, Random random)` :1205
+- `ThreatPlays.advanceStarve(Play pl, FactionAPI faction, float today, Random random)` :1257
+- `ThreatPlays.compare(MarketAPI a, MarketAPI b)` :1292
+- `ThreatPlays.saturate(Play pl, FactionAPI faction, Random random)` :1374 - The bombing campaign's saturation expedition, once, when the pools pay (section 4.3):
+- `ThreatPlays.compare(MarketAPI a, MarketAPI b)` :1386
 ### raids (ThreatFleetOrders.endRaid and the destroyed path)
-- `ThreatPlays.raidEnded(ThreatFleetOrders.Order o, String why)` :1380 - A raid order ended:
-- `ThreatPlays.feintArrived(Play pl)` :1400 - Whether the feint's squadron is over its world.
-- `ThreatPlays.raidAlive(String raidId)` :1407
-- `ThreatPlays.squadron(Play pl, FactionAPI faction, MarketAPI world, float fp, float days)` :1416 - A squadron (dispatchRaid) of fp at the world for days, from the base that reaches it;
-- `ThreatPlays.squadronBase(FactionAPI faction, MarketAPI world, float fp)` :1434 - The nearest base of the faction that reaches the world and pays a squadron of fp whole (a raid pays from one base, with no donors);
-- `ThreatPlays.squadronFP(MarketAPI world)` :1450 - A squadron's fleet points at the world:
-- `ThreatPlays.fuelCost(MarketAPI base, MarketAPI world, float fp, float stay)` :1456
+- `ThreatPlays.raidEnded(ThreatFleetOrders.Order o, String why)` :1418 - A raid order ended:
+- `ThreatPlays.feintArrived(Play pl)` :1438 - Whether the feint's squadron is over its world.
+- `ThreatPlays.raidAlive(String raidId)` :1445
+- `ThreatPlays.squadron(Play pl, FactionAPI faction, MarketAPI world, float fp, float days)` :1454 - A squadron (dispatchRaid) of fp at the world for days, from the base that reaches it;
+- `ThreatPlays.squadronBase(FactionAPI faction, MarketAPI world, float fp)` :1472 - The nearest base of the faction that reaches the world and pays a squadron of fp whole (a raid pays from one base, with no donors);
+- `ThreatPlays.squadronFP(MarketAPI world)` :1488 - A squadron's fleet points at the world:
+- `ThreatPlays.fuelCost(MarketAPI base, MarketAPI world, float fp, float stay)` :1494
 ### ending
-- `ThreatPlays.finish(Play pl, float today, String why)` :1466 - The verdict by the damage done:
-- `ThreatPlays.end(Play pl, String outcome, String why, float today)` :1476
-- `ThreatPlays.damage(Play pl)` :1512
-- `ThreatPlays.standDownForces(Play pl, String why)` :1524
-- `ThreatPlays.phase(Play pl, String next, String why, float today)` :1528
+- `ThreatPlays.finish(Play pl, float today, String why)` :1504 - The verdict by the damage done:
+- `ThreatPlays.end(Play pl, String outcome, String why, float today)` :1514
+- `ThreatPlays.damage(Play pl)` :1550
+- `ThreatPlays.standDownForces(Play pl, String why)` :1562
+- `ThreatPlays.phase(Play pl, String next, String why, float today)` :1566
 ### helpers
-- `ThreatPlays.stage(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> targets, StarSystemAPI stageAt)` :1546 - The play's staging (section 16):
-- `ThreatPlays.share(String fid, float share)` :1564 - A share of the means, by the faction's personality (shareMult):
-- `ThreatPlays.liveTargets(FactionAPI faction, List<String> ids)` :1569 - The worlds of the ids still the swarm's, not besieged by anyone and not held by another army, in order.
-- `ThreatPlays.own(Play pl)` :1574 - The plays whose sieges are not in this one's way:
-- `ThreatPlays.liveTargets(FactionAPI faction, List<String> ids, List<String> ownPlays)` :1583 - Hives no other siege has booked (the plays named aside) and no other faction's front stands on.
-- `ThreatPlays.nexusesDown(ThreatWarCouncil.Cluster k)` :1595 - Whether the cluster has a Nexus and none of them is operational (a planet fact).
-- `ThreatPlays.anyHive(List<String> ids)` :1607 - The worlds that are still the swarm's, whoever else besieges them.
-- `ThreatPlays.baseOf(ThreatWarCouncil.Cluster k, String fid)` :1615 - The cluster's first base that is still the faction's and in the economy (the picture is up to a month old).
-- `ThreatPlays.firstHive(Play pl)` :1622
-- `ThreatPlays.ids(List<MarketAPI> worlds)` :1630
-- `ThreatPlays.purgeOf(String playId)` :1637 - The play's own siege expedition, or null.
-- `ThreatPlays.purgesOf(String playId)` :1648 - Every siege expedition of the play:
-- `ThreatPlays.siegeLive(String playId)` :1658 - Whether one of the play's sieges is still out.
-- `ThreatPlays.siegeInbound(String playId)` :1666 - Whether one of the play's sieges is still mustering or on its way out.
-- `ThreatPlays.landings(String playId)` :1678 - The landings of all the play's sieges.
-- `ThreatPlays.live(ThreatPurgeFGI purge)` :1684
-- `ThreatPlays.landings(ThreatPurgeFGI purge)` :1688
-- `ThreatPlays.market(String id)` :1697
-- `ThreatPlays.system(String id)` :1701
-- `ThreatPlays.systemName(String id)` :1705
-- `ThreatPlays.targetName(Play pl)` :1710
-- `ThreatPlays.boardName(String id)` :1715 - The board's name for a system:
-- `ThreatPlays.boardTarget(Play pl)` :1720
-- `ThreatPlays.typeName(String type)` :1725 - The board's name for a play type.
-- `ThreatPlays.phaseText(Play pl)` :1736 - The board's one line on where a play stands.
-- `ThreatPlays.daysToNext(Play pl)` :1753 - Days to the play's next check, or -1.
-- `ThreatPlays.ly(MarketAPI base, StarSystemAPI s)` :1758
-- `ThreatPlays.threat(MarketAPI m)` :1764 - Whether the market is the swarm's (for callers outside the council).
+- `ThreatPlays.stage(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> targets, StarSystemAPI stageAt)` :1584 - The play's staging (section 16):
+- `ThreatPlays.share(String fid, float share)` :1602 - A share of the means, by the faction's personality (shareMult):
+- `ThreatPlays.liveTargets(FactionAPI faction, List<String> ids)` :1607 - The worlds of the ids still the swarm's, not besieged by anyone and not held by another army, in order.
+- `ThreatPlays.own(Play pl)` :1612 - The plays whose sieges are not in this one's way:
+- `ThreatPlays.liveTargets(FactionAPI faction, List<String> ids, List<String> ownPlays)` :1621 - Hives no other siege has booked (the plays named aside) and no other faction's front stands on.
+- `ThreatPlays.nexusesDown(ThreatWarCouncil.Cluster k)` :1633 - Whether the cluster has a Nexus and none of them is operational (a planet fact).
+- `ThreatPlays.anyHive(List<String> ids)` :1645 - The worlds that are still the swarm's, whoever else besieges them.
+- `ThreatPlays.baseOf(ThreatWarCouncil.Cluster k, String fid)` :1653 - The cluster's first base that is still the faction's and in the economy (the picture is up to a month old).
+- `ThreatPlays.firstHive(Play pl)` :1660
+- `ThreatPlays.ids(List<MarketAPI> worlds)` :1668
+- `ThreatPlays.purgeOf(String playId)` :1675 - The play's own siege expedition, or null.
+- `ThreatPlays.purgesOf(String playId)` :1686 - Every siege expedition of the play:
+- `ThreatPlays.siegeLive(String playId)` :1696 - Whether one of the play's sieges is still out.
+- `ThreatPlays.siegeInbound(String playId)` :1704 - Whether one of the play's sieges is still mustering or on its way out.
+- `ThreatPlays.landings(String playId)` :1716 - The landings of all the play's sieges.
+- `ThreatPlays.live(ThreatPurgeFGI purge)` :1722
+- `ThreatPlays.landings(ThreatPurgeFGI purge)` :1726
+- `ThreatPlays.market(String id)` :1735
+- `ThreatPlays.system(String id)` :1739
+- `ThreatPlays.systemName(String id)` :1743
+- `ThreatPlays.targetName(Play pl)` :1748
+- `ThreatPlays.boardName(String id)` :1753 - The board's name for a system:
+- `ThreatPlays.boardTarget(Play pl)` :1758
+- `ThreatPlays.typeName(String type)` :1763 - The board's name for a play type.
+- `ThreatPlays.phaseText(Play pl)` :1774 - The board's one line on where a play stands.
+- `ThreatPlays.daysToNext(Play pl)` :1791 - Days to the play's next check, or -1.
+- `ThreatPlays.ly(MarketAPI base, StarSystemAPI s)` :1796
+- `ThreatPlays.threat(MarketAPI m)` :1802 - Whether the market is the swarm's (for callers outside the council).
 
 ## ThreatPosture (1980 lines)
 - `ThreatPosture.enabled()` :137 - Battle -> ids of the Threat ships already booked:
@@ -3529,7 +3529,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPurgeFGI.notifyEnding()` :3045
 - `ThreatPurgeFGI.postSiegeReport()` :3053 - Posts the after-action sitrep once, however the expedition ended.
 
-## ThreatRaiders (367 lines)
+## ThreatRaiders (372 lines)
 - `ThreatRaiders.homeName()` :60
 - `ThreatRaiders.all()` :67
 - `ThreatRaiders.isRaider(CampaignFleetAPI fleet)` :76
@@ -3545,7 +3545,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatRaiders.detach(MarketAPI hive, ThreatConvoys.Convoy convoy)` :237 - Takes the largest live hunter-pack swarm off station - the largest swarm of any kind if the garrison has none - and sends it after the convoy.
 ### the tick
 - `ThreatRaiders.poll()` :306
-- `ThreatRaiders.sendHome(Raider r, SectorEntityToken planet)` :358 - Blinders on, aggression off, plain travel home - the leash's own recall recipe.
+- `ThreatRaiders.sendHome(Raider r, SectorEntityToken planet)` :363 - Blinders on, aggression off, plain travel home - the leash's own recall recipe.
 
 ## ThreatRazedCondition (45 lines)
 - `ThreatRazedCondition.hasCustomTooltip()` :22
