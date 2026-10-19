@@ -122,7 +122,19 @@ $rx = [Math]::Max(0, [Math]::Min(1720, $sw - 1620)); $ry = [Math]::Max(0, [Math]
 $slots = @(@(0, 0), @($rx, 0), @(0, $ry), @($rx, $ry))
 $g = @()
 $i = 0
-foreach ($tag in $Tags) {
+# a tag whose launch fails (no process, the launcher's Play never taken, Continue missed) goes to the back of the
+# queue once (2026-10-19: the second slot lost its window three rounds running); the body resets its clone, logs
+# and tailer, so the rerun starts clean
+$queue = New-Object System.Collections.Generic.List[string]; foreach ($t in $Tags) { $queue.Add($t) }
+$retried = @{}
+function Requeue($t) {
+  if ($retried[$t]) { return }
+  $retried[$t] = $true
+  "stop" | Set-Content "$d\tail-$t.stop"; Start-Sleep 10
+  $queue.Add($t); Say "$t relaunched after the others"
+}
+while ($queue.Count -gt 0) {
+  $tag = $queue[0]; $queue.RemoveAt(0)
   $b = if ($baseOf[$tag]) { $baseOf[$tag] } elseif ($newOf[$tag]) { $newOf[$tag] } else { $base }
   $inst = "$root\$tag"; $log = "$inst\logs\starsector.log"; $name = "${b}sbs$tag"
   Remove-Item $inst -Recurse -Force -ErrorAction SilentlyContinue
@@ -161,7 +173,7 @@ foreach ($tag in $Tags) {
   # its java process: the one whose command line names this game's saves folder
   $procId = 0; $deadline = (Get-Date).AddSeconds(60)
   do { Start-Sleep 1; $p = Games | Where-Object { $_.CommandLine -like "*_sbs/$tag/saves*" } | Select-Object -First 1; if ($p) { $procId = [uint32]$p.ProcessId } } while (-not $procId -and (Get-Date) -lt $deadline)
-  if (-not $procId) { Say "$tag NO PROCESS"; continue }
+  if (-not $procId) { Say "$tag NO PROCESS"; Requeue $tag; continue }
   # the launcher: Play sits at the same share of it whatever the display scaling; retried while it is the window up
   $deadline = (Get-Date).AddSeconds(180); $hwnd = [IntPtr]::Zero; $placed = $false; $r = ""
   do {
@@ -175,7 +187,7 @@ foreach ($tag in $Tags) {
       Start-Sleep 4
     }
   } while ($r -notlike "*client $Resolution*" -and (Get-Date) -lt $deadline)
-  if ($r -notlike "*client $Resolution*") { Say "$tag NO GAME WINDOW ($r)"; Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue; continue }
+  if ($r -notlike "*client $Resolution*") { Say "$tag NO GAME WINDOW ($r)"; Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue; Requeue $tag; continue }
   Place $hwnd $x $y
   if (-not (Test-Path $log)) { Say "$tag NO LOG at $log (the logs path was not taken)"; Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue; continue }
   $deadline = (Get-Date).AddSeconds(300)
@@ -191,7 +203,7 @@ foreach ($tag in $Tags) {
     do { Start-Sleep 3 } while ((Hits $log "Loading stage 39 - last") -lt 1 -and (Get-Date) -lt $deadline)
     if ((Hits $log "Loading stage 39 - last") -ge 1) { $loaded = $true; break }
   }
-  if (-not $loaded) { Say "$tag NOT LOADED (Continue missed, or the save was not found)"; Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue; continue }
+  if (-not $loaded) { Say "$tag NOT LOADED (Continue missed, or the save was not found)"; Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue; Requeue $tag; continue }
   Start-Sleep 6
   # paused after the load: a posted Space starts the clock (a second one if the first stopped it)
   $running = $false

@@ -363,6 +363,11 @@ stall nudges and the pause for a user.
   `handover-2026-10-05-testing.md` 2.
 - `launch.ps1` leaves a console at `pause` for every game it has started (42 had piled up by 2026-10-04);
   `sbs.ps1` starts the java line alone and leaves none.
+- **A launch that fails is tried once more after the others (2026-10-19).** `NO PROCESS`, `NO GAME WINDOW`
+  (the launcher up, Play never taken within 180 s) and `NOT LOADED` put the tag at the back of the queue
+  (`Requeue`; the status says "relaunched after the others"); the per-tag body resets its clone, logs and
+  tailer, so the rerun is clean, and it takes the next window slot. The second slot lost its window in
+  hw217 / hw218 / hw219 running (the first and third launched every time), a game a round until this.
 
 ## Watch a batch from its first minutes (the user, 2026-10-07)
 
