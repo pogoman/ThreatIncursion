@@ -2292,8 +2292,11 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			payable = Math.min(payable, haveFuel / fuelPerPoint);
 		}
 		if (suppliesPerPoint > 0f) {
-			payable = Math.min(payable, siegePooled(base, provisionPool,
-					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES) / suppliesPerPoint);
+			// net of the yard hold, as the launch reads it (YARDS FIRST; hw215's remaining refusals were all this)
+			float haveSupplies = Math.max(0f, siegePooled(base, provisionPool,
+					com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES)
+					- ThreatFactionStock.yardWant(faction.getId()));
+			payable = Math.min(payable, haveSupplies / suppliesPerPoint);
 		}
 		int mustPay = 0;
 		if (ThreatIncConfig.npcSiegeFullStrength()) {

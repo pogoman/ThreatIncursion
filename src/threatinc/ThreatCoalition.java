@@ -393,6 +393,8 @@ public class ThreatCoalition {
 			MarketAPI donor = null;
 			if (helper.isHostileTo(needy) || needy.isHostileTo(helper)) gate = "hostile";
 			else if (!ThreatFactionStock.hullsSurplus(helperId)) gate = "none free";
+			// a faction whose own siege waits on hulls lends none (hw215a: the Independents and the Church lent each other 27 convoys)
+			else if (ThreatFactionStock.hullShortFP(helperId) > 0f) gate = "short itself";
 			else if ((donor = ThreatConvoys.pickAllyDonor(helper, to, c)) == null) gate = "no port in reach with a unit";
 			if (gate != null) {
 				why.append(why.length() > 0 ? ", " : "").append(helperId).append(" ").append(gate);
