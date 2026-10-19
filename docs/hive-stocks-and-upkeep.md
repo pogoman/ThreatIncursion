@@ -206,8 +206,14 @@ forward base, commodity-bound the way vanilla's economy is.
   world's garrison on arrival it is absorbed and the cargo lands in the larder (`ThreatFeeding.landed`);
   killed or disbanded, the upkeep is lost. A sailing goes when the dock holds `feedConvoyLoadMonths` (3)
   of the world's imported bill, or the larder is under `feedConvoyReserveMonths` (1) and the dock half a
-  month; one swarm bound to a world at a time; no hive able to spare a swarm (or no fuel), and the dock
-  waits (`Feeding: no hive can spare`). Each larder opens once with reserve + 1 months of the imported
+  month; one swarm bound to a world at a time. The carrier is the smallest Defense Swarm of the nearest hive
+  that can spare one (`ThreatFeeding.pickHiveDonor`); none spare - the usual case, since the navy fit builds a
+  quiet hive to its floor and banks the rest, so a seed hive never holds a fleet above it (hw233 / hw234,
+  2026-10-19: 4 of 6 day-0 games starved at the seeds) - and the nearest hive whose bank pays its cheapest
+  garrison row and the passage fabricates it (`pickHiveFabricator`, `fabricateCarrier`, as `fabricateFor`
+  builds a reinforcement; log `Feeding: X fabricated a N FP carrier for Y`). Neither, or no fuel, and the dock
+  waits (`Feeding: no hive can spare or fabricate ...: <each candidate's held / floor / want / fleets / spare /
+  bank / row>`, `donorBlocks`). Each larder opens once with reserve + 1 months of the imported
   bill (`$threatinc_feedSeeded`), so no world starves while the first swarm is out. The share paid, and
   so growth and starvation (`growthRate`), is what the world ATE: a stock that allots in full feeds nothing
   the swarms do not deliver. Worlds whose own forge covers their bill never dock or sail. The blockade's

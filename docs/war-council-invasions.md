@@ -48,7 +48,7 @@ Called from `plan` each day, it runs every `councilInvadeDays` (7) on the factio
 
 A landing `payingBase` cannot man notes the marines it lacked (`ThreatFactionStock.noteMarineShort`): the
 core build raises the faction's military ladder before another yard while the note stands (THE MARINE STEP,
-`ThreatCoreBuild.marineStep`, 2026-10-19 - hw219a: 1,095 of the Hegemony's 1,360 refused systems were
+`ThreatCoreBuild.marineLevy` (marines follow the war footing, 2026-10-19 18:50: while the free hulls out-cover the marines the core colonies levy the shortfall from supplies at 2 a marine, 30 d to stand, and the yard step pauses - frontlines.md s8) and `ThreatCoreBuild.marineStep`, 2026-10-19 - hw219a: 1,095 of the Hegemony's 1,360 refused systems were
 marines, with 35k FP free; `frontlines.md` s8).
 
 An ally's base counts (ALLIED STAGING, 2026-10-19 13:55, the user: "the allied sharing fix sounds better"): a base of

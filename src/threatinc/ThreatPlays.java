@@ -447,7 +447,7 @@ public class ThreatPlays {
 			if (pooled < need) {
 				lastWhy = "marines";
 				// the core build raises the military ladder while this stands (the marine step, 2026-10-19)
-				ThreatFactionStock.noteMarineShort(faction.getId(), need - pooled);
+				ThreatFactionStock.noteMarineShort(faction.getId(), need - pooled, need);
 				continue;
 			}
 			List<Integer> sizes = IncursionManager.siegeSizesFor(m, faction, one, 0f, NO_RAZE);

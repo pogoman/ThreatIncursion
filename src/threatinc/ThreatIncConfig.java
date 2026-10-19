@@ -640,6 +640,12 @@ public class ThreatIncConfig {
 	/** YARDS FIRST (the user, 2026-10-19): the wartime economy builds hull production before anything else - a Heavy Industry at every core colony that can site one, then Orbital Works, unpaced, and while one is held for its price no kit sails, no siege is provisioned and nothing else is built (ThreatCoreBuild.yardStep, ThreatFactionStock.yardWant). */
 	public static boolean yardsFirst()               { return b("threatinc_yardsFirst", true); }
 	public static boolean marineStep()               { return b("threatinc_marineStep", true); }
+	/** MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50): a marine-bound faction whose hulls out-cover its marines raises the shortfall from its supplies. */
+	public static boolean marineLevy()               { return b("threatinc_marineLevy", true); }
+	/** Supplies one levied marine costs (vanilla: marines 200 credits, supplies 100). */
+	public static float marineLevySuppliesEach()     { return f("threatinc_marineLevySuppliesEach"); }
+	/** Days a levy trains before its marines stand at the colonies that paid. */
+	public static float marineLevyDays()             { return f("threatinc_marineLevyDays"); }
 	public static boolean alliedStaging()            { return b("threatinc_alliedStaging", true); }
 	public static boolean invadeStaging()            { return b("threatinc_invadeStaging", true); }
 	/** S1 (the user, 2026-10-19 15:30): the invade pass keeps at most this many hammers staging at once a faction (one a base). */

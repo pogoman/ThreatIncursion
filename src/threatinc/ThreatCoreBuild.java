@@ -9,6 +9,7 @@ import java.util.Map;
 import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
+import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.util.Misc;
 
@@ -99,6 +100,10 @@ public class ThreatCoreBuild {
 			List<MarketAPI> sites = sites(fid);
 			if (sites.isEmpty()) continue;
 			ThreatFactionStock.watch(fid);
+			deliverLevy(fid);
+			// marines follow the war footing (the user, 2026-10-19 18:50): hulls out-covering marines, the pass levies
+			// the shortfall from supplies; a levy raised is the faction's whole pass
+			if (marineLevy(fid, sites)) continue;
 			// the marine step (the user, 2026-10-19): a faction whose landings wait on marines raises its military
 			// ladder before another yard; a step started or held is the faction's whole pass
 			if (marineStep(fid, sites)) continue;
@@ -127,6 +132,14 @@ public class ThreatCoreBuild {
 	 */
 	protected static boolean yardStep(String fid, List<MarketAPI> sites) {
 		if (!ThreatIncConfig.yardsFirst() || !ThreatIncConfig.frontlineHeavyIndustry()) return false;
+		// the balance (the user, 2026-10-19 18:50): no further yard while the hulls already out-cover the marines
+		if (ThreatIncConfig.marineLevy() && ThreatFactionStock.hullsOutcoverMarines(fid)) {
+			ThreatIncConfig.logQuiet("yardpause:" + fid, "Core build: " + fid + " yards paused - hulls cover "
+					+ String.format("%.2f", ThreatFactionStock.hullCoverage(fid)) + " of their siege, marines "
+					+ String.format("%.2f", ThreatFactionStock.marineCoverage(fid)) + " of their landing ("
+					+ (int) ThreatFactionStock.marineShort(fid) + " short)");
+			return false;
+		}
 		String yard = Industries.HEAVYINDUSTRY;
 		for (MarketAPI m : sites) {
 			if (!ThreatFrontlines.wantsProducer(m, yard)) continue;
@@ -248,6 +261,82 @@ public class ThreatCoreBuild {
 			}
 		}
 		return false;
+	}
+
+	protected static final String KEY_LEVY = "threatinc_marineLevy";
+
+	protected static Map<String, Object> levies() {
+		return ThreatIncData.map(KEY_LEVY);
+	}
+
+	/**
+	 * MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50: "do option 1 and 3" - "equally short on hulls as
+	 * marines, both in balance"). While the faction's landings wait on marines and its free hulls cover their
+	 * siege better than its marines cover the landing (ThreatFactionStock.hullsOutcoverMarines), the pass levies
+	 * the shortfall: the core colonies pay marineLevySuppliesEach supplies a marine from their spendable supplies
+	 * (the largest first), the marines train marineLevyDays and then stand at the colonies that paid
+	 * (deliverLevy), for the convoys to carry on. One levy a faction at a time. True when a levy was raised -
+	 * the faction's whole pass. hw231a: the Hegemony's ladder took its marine income 360 -> 836 a month while a
+	 * landing's want rose 2,666 -> 3,309, and 16.8k of 19.8k FP of hulls sat free.
+	 */
+	protected static boolean marineLevy(String fid, List<MarketAPI> sites) {
+		if (!ThreatIncConfig.marineLevy()) return false;
+		if (levies().containsKey(fid + "|readyAt")) return false;
+		if (!ThreatFactionStock.hullsOutcoverMarines(fid)) return false;
+		float want = ThreatFactionStock.marineShort(fid);
+		float each = Math.max(0.01f, ThreatIncConfig.marineLevySuppliesEach());
+		float raised = 0f, paid = 0f;
+		StringBuilder where = new StringBuilder();
+		for (MarketAPI m : sites) {
+			float left = want - raised;
+			if (left < 1f) break;
+			float got = ThreatReserves.drawSpendable(m, Commodities.SUPPLIES, left * each);
+			if (got < each) continue;
+			float marines = (float) Math.floor(got / each);
+			levies().put(fid + "|m:" + m.getId(), marines);
+			raised += marines;
+			paid += got;
+			if (where.length() > 0) where.append(", ");
+			where.append(m.getName()).append(' ').append((int) marines);
+		}
+		if (raised < 1f) {
+			ThreatIncConfig.logQuiet("levywait:" + fid, "Marine levy: " + fid + " cannot pay a levy of " + (int) want
+					+ " marines (" + (int) (want * each) + " supplies) from its core colonies' spendable supplies");
+			return false;
+		}
+		levies().put(fid + "|readyAt", Global.getSector().getClock().getTimestamp());
+		levies().put(fid + "|marines", raised);
+		started(fid);
+		ThreatIncConfig.log("Marine levy: " + fid + " raises " + (int) raised + " of " + (int) want + " marines for " + (int) paid
+				+ " supplies at " + where + " (ready in " + (int) ThreatIncConfig.marineLevyDays() + " d; hulls cover "
+				+ String.format("%.2f", ThreatFactionStock.hullCoverage(fid)) + ", marines "
+				+ String.format("%.2f", ThreatFactionStock.marineCoverage(fid)) + ") - " + ThreatFactionStock.describe(fid));
+		return true;
+	}
+
+	/** A levy that has trained marineLevyDays stands at the colonies that paid it (ThreatReserves.deposit). */
+	protected static void deliverLevy(String fid) {
+		Object at = levies().get(fid + "|readyAt");
+		if (!(at instanceof Long)) return;
+		if (Global.getSector().getClock().getElapsedDaysSince((Long) at) < ThreatIncConfig.marineLevyDays()) return;
+		List<String> keys = new ArrayList<String>(levies().keySet());
+		float landed = 0f;
+		StringBuilder where = new StringBuilder();
+		for (String k : keys) {
+			if (!k.startsWith(fid + "|m:")) continue;
+			Object n = levies().remove(k);
+			String marketId = k.substring((fid + "|m:").length());
+			MarketAPI m = Global.getSector().getEconomy().getMarket(marketId);
+			if (!(n instanceof Float) || m == null || !fid.equals(m.getFactionId())) continue;
+			float marines = (Float) n;
+			ThreatReserves.deposit(marketId, Commodities.MARINES, marines);
+			landed += marines;
+			if (where.length() > 0) where.append(", ");
+			where.append(m.getName()).append(' ').append((int) marines);
+		}
+		levies().remove(fid + "|readyAt");
+		levies().remove(fid + "|marines");
+		if (landed > 0f) ThreatIncConfig.log("Marine levy landed: " + fid + " " + (int) landed + " marines stand at " + where);
 	}
 
 	/** Whether the faction has (or is raising) its one High Command. */

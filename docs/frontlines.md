@@ -694,6 +694,25 @@ fix that". Three changes, all built the same evening (trial hw200):
   High Command more (a Patrol HQ none); the reserve banks that surplus at `reserveTroopSurplusMult` (0.5)
   plus the militia. hw219a: the Hegemony sat on 35k of 39k FP free with 1,095 of 1,360 refused systems
   "marines" - a landing wants 1,100-2,700, a market raises 40-77 a month. Trial hw221 / hw222.
+- **Marines follow the war footing** (2026-10-19 18:50, the user: "do option 1 and 3" - "ideally they are equally short
+  on hulls as marines ... both in balance"; knobs `threatinc_marineLevy`, `marineLevySuppliesEach` 2,
+  `marineLevyDays` 30). hw231a: the ladder took the Hegemony's marine income 360 -> 836 a month while a landing's
+  want rose 2,666 -> 3,309 (it tracks the hive garrison), and 16.8k of 19.8k FP of hulls sat free on 17k supplies
+  a month of standing upkeep - vanilla caps the ladder (one Military Base a colony, one High Command) while every
+  colony can take a yard. `payingBase` now notes the landing's whole want beside the shortfall
+  (`noteMarineShort(f, short, need)`); `ThreatFactionStock.marineCoverage` is 1 - short / need (1 with no note),
+  `hullCoverage` is free / (free + the hull note's shortfall) (1 with no note), `hullsOutcoverMarines` when the
+  latter exceeds the former. While it does: (1) `ThreatCoreBuild.marineLevy` (before the marine step) draws
+  `marineLevySuppliesEach` supplies a marine of the shortfall from the core colonies' spendable supplies, largest
+  first (vanilla price parity: marines 200 credits, supplies 100); the marines train `marineLevyDays` and then
+  stand at the colonies that paid (`deliverLevy`, `ThreatReserves.deposit`) for the convoys to carry on; one levy
+  a faction at a time, a levy is the faction's whole pass. Log `Marine levy: f raises N of W marines for S
+  supplies at X n, Y n (ready in 30 d; hulls cover 0.91, marines 0.40)`, `Marine levy landed: f N marines
+  stand at ...`, quiet `Marine levy: f cannot pay`. (2) `yardStep` pauses (`Core build: f yards paused - hulls
+  cover ... marines ...`, once a change) - yards first bends to the balance. (3) Option 3 beside it:
+  `reserveTroopSurplusMult` 0.5 -> 1.0 (settings, the CSV default and the LunaLib store
+  `saves/common/LunaSettings/threatinc.json.data`, backup `.pre-levy`). Trial hw235 / hw236 (day 0) and the
+  next snapshot round.
 - **An ally's base is reached** (ALLIED STAGING, 2026-10-19 13:55; knob `threatinc_alliedStaging`). `planFor` counts a
   base that may host the faction's sieges (`ThreatCoalition.stagingHost`: another mobilised NPC faction's, Welcoming
   or better, not the player's) within `frontlineReachLY` of a hive as reaching it, like an own colony or connected

@@ -432,9 +432,47 @@ public class ThreatFactionStock {
 	 * SHORT_DAYS. The user, 2026-10-19: "build those buildings when short instead of more orbital works".
 	 */
 	public static void noteMarineShort(String f, float marines) {
+		noteMarineShort(f, marines, 0f);
+	}
+
+	/** noteMarineShort with the landing's whole want beside the shortfall (marineCoverage). */
+	public static void noteMarineShort(String f, float marines, float need) {
 		if (f == null || marines <= 0f) return;
-		data().put(key(f, Commodities.MARINES, "want"), Math.max(marines, marineShort(f)));
+		float before = marineShort(f);
+		data().put(key(f, Commodities.MARINES, "want"), Math.max(marines, before));
+		if (marines >= before && need > 0f) data().put(key(f, Commodities.MARINES, "need"), need);
 		data().put(key(f, Commodities.MARINES, "wantAt"), Global.getSector().getClock().getTimestamp());
+	}
+
+	/**
+	 * MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50: "equally short on hulls as marines, both in
+	 * balance"). How far the faction's marines cover the landing it last wanted: 1 - short / need from the
+	 * standing note, 1 with no note (marines do not bind).
+	 */
+	public static float marineCoverage(String f) {
+		float short_ = marineShort(f);
+		if (short_ <= 0f) return 1f;
+		Object n = data().get(key(f, Commodities.MARINES, "need"));
+		float need = n instanceof Float ? (Float) n : 0f;
+		if (need <= short_) return 0f;
+		return Math.max(0f, Math.min(1f, 1f - short_ / need));
+	}
+
+	/**
+	 * How far the faction's free hulls cover the siege they last fell short of: free / (free + short) from the
+	 * hull note (noteHullShort), 1 with no note standing (hulls do not bind).
+	 */
+	public static float hullCoverage(String f) {
+		float short_ = hullShortFP(f);
+		if (short_ <= 0f) return 1f;
+		float free = Math.max(0f, ThreatHulls.freeFP(f));
+		return free / (free + short_);
+	}
+
+	/** Whether hulls out-cover marines: a marine shortfall stands and the hulls cover their siege better than the marines their landing. */
+	public static boolean hullsOutcoverMarines(String f) {
+		if (f == null || marineShort(f) <= 0f) return false;
+		return hullCoverage(f) > marineCoverage(f);
 	}
 
 	/** Marines the faction's landings wait on (noteMarineShort); 0 once the note is older than SHORT_DAYS. */

@@ -154,13 +154,21 @@ public class ThreatFeeding {
 			if (!full && !low) continue;
 			if (swarmBound(m.getId())) continue;
 			MarketAPI donor = pickHiveDonor(m, colonies);
-			if (donor == null) {
-				ThreatIncConfig.logQuiet("feedwait:" + m.getId(), "Feeding: no hive can spare a swarm to carry "
-						+ (int) docked + " supplies to " + m.getName() + " (larder " + (int) larder(m) + ")");
-				continue;
+			CampaignFleetAPI pick = donor != null ? ThreatColonyManager.smallestOfTier(donor, 0) : null;
+			if (pick == null) {
+				// FEEDING IS A WANT (2026-10-19, hw233b/c, hw234b/c: 4 of 6 day-0 games starved at the seeds - a quiet hive
+				// is built to its floor and banks the rest, so it never holds a fleet above the floor to spare; the forge
+				// seed fed its siblings only when a launch-stock swarm happened to fit). No spare fleet: the nearest hive
+				// whose bank pays its cheapest row fabricates the carrier, as a reinforcement is fabricated
+				// (ThreatColonyManager.fabricateFor) and a Scouting Swarm is.
+				donor = pickHiveFabricator(m, colonies);
+				pick = donor != null ? fabricateCarrier(donor, m) : null;
+				if (pick == null) {
+					ThreatIncConfig.logQuiet("feedwait:" + m.getId(), "Feeding: no hive can spare or fabricate a swarm to carry "
+							+ (int) docked + " supplies to " + m.getName() + " (larder " + (int) larder(m) + "): " + donorBlocks(m, colonies));
+					continue;
+				}
 			}
-			CampaignFleetAPI pick = ThreatColonyManager.smallestOfTier(donor, 0);
-			if (pick == null) continue;
 			if (!ThreatColonyManager.sendReinforcement(donor, m, pick)) continue;
 			pick.getMemoryWithoutUpdate().set(MEM_CARGO, docked);
 			m.getMemoryWithoutUpdate().unset(MEM_DOCK);
@@ -188,6 +196,80 @@ public class ThreatFeeding {
 			}
 		}
 		return best;
+	}
+
+	/**
+	 * The nearest hive that can reach the target and whose bank pays its own cheapest garrison row
+	 * (and the passage): its own system's worlds first. Null if none - the dock waits.
+	 */
+	protected static MarketAPI pickHiveFabricator(MarketAPI target, List<MarketAPI> colonies) {
+		if (target.getStarSystem() == null) return null;
+		MarketAPI best = null;
+		float bestD = Float.MAX_VALUE;
+		for (MarketAPI c : colonies) {
+			if (c == target || c.getStarSystem() == null || c.getPrimaryEntity() == null) continue;
+			if (!ThreatColonyManager.canReinforce(c, target)) continue;
+			int[] spec = ThreatColonyManager.cheapestRow(c);
+			if (spec == null) continue;
+			float cost = ThreatColonyManager.swarmCostEstimate(spec);
+			if (cost <= 0f || ThreatColonyManager.bankedFP(c) < cost) continue;
+			float ly = ThreatFuel.ly(c.getStarSystem(), target.getStarSystem());
+			if (!ThreatFuel.canPay(ThreatFuel.passage(cost, ly, false))) continue;
+			float d = c.getStarSystem() == target.getStarSystem() ? 0f
+					: Misc.getDistanceLY(c.getStarSystem().getLocation(), target.getStarSystem().getLocation());
+			if (d < bestD) {
+				bestD = d;
+				best = c;
+			}
+		}
+		return best;
+	}
+
+	/**
+	 * Fabricates the feeding carrier at the hive from its bank - its cheapest garrison row, the way
+	 * ThreatColonyManager.fabricateFor builds a reinforcement - parked in its garrison to be sent on.
+	 * Null when the bank no longer pays or the swarm cannot be built.
+	 */
+	protected static CampaignFleetAPI fabricateCarrier(MarketAPI hive, MarketAPI target) {
+		int[] spec = ThreatColonyManager.cheapestRow(hive);
+		if (spec == null) return null;
+		if (ThreatColonyManager.bankedFP(hive) < ThreatColonyManager.swarmCostEstimate(spec)) return null;
+		Random random = new Random();
+		CampaignFleetAPI fleet = ThreatColonyManager.buildGarrisonSwarm(hive, spec, random);
+		if (fleet == null) return null;
+		float cost = fleet.getFleetPoints();
+		ThreatColonyManager.chargeFP(hive, cost);
+		ThreatColonyManager.learnSwarmCost(spec, cost);
+		ThreatColonyManager.placeGarrisonSwarm(hive, fleet, random);
+		ThreatIncData.garrisonsFor(hive.getId()).add(fleet);
+		ThreatIncConfig.log("Feeding: " + hive.getName() + " fabricated a " + (int) cost + " FP carrier for " + target.getName()
+				+ " (" + (int) ThreatColonyManager.bankedFP(hive) + " FP banked)");
+		return fleet;
+	}
+
+	/** Why no hive could carry to the target: each candidate's launch figures, for the wait line. */
+	protected static String donorBlocks(MarketAPI target, List<MarketAPI> colonies) {
+		StringBuilder sb = new StringBuilder();
+		int shown = 0;
+		for (MarketAPI c : colonies) {
+			if (c == target || c.getStarSystem() == null) continue;
+			if (shown++ >= 6) {
+				sb.append(" ...");
+				break;
+			}
+			List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(c.getId());
+			float held = ThreatColonyManager.ownedFleetFP(c, fleets);
+			int[] spec = ThreatColonyManager.cheapestRow(c);
+			if (sb.length() > 0) sb.append("; ");
+			sb.append(c.getName()).append(" size ").append(c.getSize()).append(": held ").append((int) held)
+					.append(" floor ").append((int) ThreatPosture.minimumFP(c)).append(" want ").append((int) ThreatPosture.wantFP(c))
+					.append(" fleets ").append(ThreatColonyManager.countLiveGarrison(c.getId()))
+					.append(" spare ").append(ThreatColonyManager.ownAvailableForLaunch(c))
+					.append(" bank ").append((int) ThreatColonyManager.bankedFP(c))
+					.append(" row ").append(spec == null ? "-" : String.valueOf((int) ThreatColonyManager.swarmCostEstimate(spec)))
+					.append(ThreatColonyManager.canReinforce(c, target) ? "" : " unreachable");
+		}
+		return sb.length() == 0 ? "no other hive" : sb.toString();
 	}
 
 	/** A feeding swarm seated at its world (ThreatColonyManager.checkReinforcementArrivals): its cargo lands in the larder. */
