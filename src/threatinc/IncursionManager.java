@@ -2301,7 +2301,18 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			mustPay = Math.max(pointsForStrength(sizes, strGoal),
 					pointsForOrbit(sizes, siegeFleetGoal(faction, targets, raze)));
 		}
-		return payable >= Math.max(mustPay, points * ThreatIncConfig.expeditionMinProvisionsFraction());
+		float minProvisions = Math.max(mustPay, points * ThreatIncConfig.expeditionMinProvisionsFraction());
+		// and the hulls, as the launch reads them (N1, the user 2026-10-19): this test said yes to sieges the
+		// free pool could not man, the launch refused them and the council's invasion pass stopped at the
+		// refusal - hw211b Tri-Tachyon 104 plays 'could not be paid after all', hw211a Church 143
+		if (ThreatHulls.enabled()) {
+			float hullPayable = ThreatHulls.freeFP(base.getFactionId()) / FP_PER_RESPONSE_DIFFICULTY;
+			if (hullPayable < minProvisions) {
+				ThreatFactionStock.noteHullShort(base.getFactionId(), (minProvisions - hullPayable) * FP_PER_RESPONSE_DIFFICULTY);
+			}
+			payable = Math.min(payable, hullPayable);
+		}
+		return payable >= minProvisions;
 	}
 
 	/**

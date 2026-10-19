@@ -41,7 +41,10 @@ Called from `plan` each day, it runs every `councilInvadeDays` (7) on the factio
    to the world (`frontFinishesFirst`).
 5. **Start.** One hammer a system a pass, from that base, struck the same day (`startHammer` with
    a base: no staging, no decoy, no prepare). If the launch then refuses, the play ends NEUTRAL
-   and the pass stops.
+   and the pass goes on to the next system (N1, 2026-10-19: it stopped at the first refusal until
+   then, and `siegeCanPay` did not read the hull pool the launch reads - a hull-poor faction had
+   one play a week refused and invaded nothing; `siegeCanPay` now caps by `ThreatHulls.freeFP / 25`
+   and notes the shortfall for the allies' hull lending, `hull-pool.md` 7).
 
 What stops an invasion now: no report of the system, marines, fuel, supplies, armaments, or relief
 owed.

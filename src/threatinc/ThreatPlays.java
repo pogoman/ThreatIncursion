@@ -332,9 +332,10 @@ public class ThreatPlays {
 			Play pl = startHammer(c, faction, p, k, today, random, "invades " + w.getName()
 					+ ", the easiest hive its pools pay a landing on", null, base);
 			if (pl != null && !pl.sieged) {
-				// the launch refused what the read allowed: not held for stock, the next pass weighs it again
+				// the launch refused what the read allowed: not held for stock, the next pass weighs it again -
+				// and the pass goes on to the next system (N1, the user 2026-10-19: it used to stop here, so a
+				// faction with 30k FP free and one unpayable hive first in line invaded nothing all week)
 				end(pl, NEUTRAL, "its siege could not be paid after all", today);
-				return;
 			}
 		}
 	}

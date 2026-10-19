@@ -1102,9 +1102,7 @@
 	# hammer, starve then invade, feint and strike, recon, bombers - sized as
 	# shares of its means, never by the swarm's fleet points. It replaces the
 	# attack planner and sets the faction stance. false = the planner as built.
-	# OFF 2026-10-19 (the user, after six yards-first games: 24-100k FP of free human hulls sat while
-	# the council ran at most three plays a faction): the planner plans and launches the sieges.
-	"threatinc_warCouncil": false,
+	"threatinc_warCouncil": true,
 	"threatinc_councilAssessDays": 30,
 	"threatinc_councilReviewDays": 90,
 	# 0 = always the best-scored choice; 1 = drawn in proportion to the scores

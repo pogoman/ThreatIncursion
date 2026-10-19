@@ -1,6 +1,6 @@
 # War council - DESIGN (2026-10-01; decisions answered the same day, section 11; build in progress)
 
-**OFF since 2026-10-19** (`threatinc_warCouncil` false; the user, after six yards-first games left 24-100k FP of free human hulls idle under the council's three plays a faction): the attack planner (`attack-planner.md`) plans and launches the human sieges again. The code stays for the knob. Trial hw213 / hw214, `game-runs-2.md` s54.
+**Off for one morning, 2026-10-19** (`threatinc_warCouncil` false from 08:40 to 09:45; the attack planner's hundreds of prongs left the swarm ahead at hw213's early check, 64 / 68 / 110 hives against the council's 50 / 57 / 102): the user brought the council back and chose N1 - `war-council-invasions.md` 2 step 5, `game-runs-2.md` s54.
 
 A strategic layer for the human factions: each one (and each coalition) holds a strategy for
 months and runs multi-phase plays - a massed joint strike, a feint that draws the swarm while the
