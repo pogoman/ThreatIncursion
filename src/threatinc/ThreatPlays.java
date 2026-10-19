@@ -169,10 +169,10 @@ public class ThreatPlays {
 		return (HAMMER.equals(pl.type) || FEINT.equals(pl.type)) && !WITHDRAW.equals(pl.phase);
 	}
 
-	/** Whether a hammer of the faction is still staging or waiting on stock (PREPARE / MUSTER, no siege sailed): the invade pass stages one at a time. */
-	protected static boolean stagingHammer(String fid) {
+	/** Whether a hammer of the faction is still staging or waiting on stock AT THE BASE (PREPARE / MUSTER, no siege sailed): the invade pass stages one a base at a time (per faction until hw225, 2026-10-19 14:50: sieges sailed 76 vs 263). */
+	protected static boolean stagingHammerAt(String fid, String baseId) {
 		for (Play pl : plays().values()) {
-			if (!fid.equals(pl.factionId) || !HAMMER.equals(pl.type) || pl.sieged) continue;
+			if (!fid.equals(pl.factionId) || !HAMMER.equals(pl.type) || pl.sieged || baseId == null || !baseId.equals(pl.baseId)) continue;
 			if (PREPARE.equals(pl.phase) || MUSTER.equals(pl.phase)) return true;
 		}
 		return false;
@@ -372,18 +372,23 @@ public class ThreatPlays {
 		// hammer at a time a faction, at the easiest such hive, from its first base in reach (an ally's counts):
 		// PREPARE, the staging planner fills the base (ThreatConvoys.planLogistics), the strike sails once paid
 		int staged = 0;
-		if (!noBase.isEmpty() && ThreatIncConfig.invadeStaging() && !stagingHammer(fid)) {
+		if (!noBase.isEmpty() && ThreatIncConfig.invadeStaging()) {
+			java.util.Set<String> stagedAt = new java.util.HashSet<String>();
 			for (MarketAPI w : hives) {
 				StarSystemAPI s = w.getStarSystem();
 				ThreatWarCouncil.Cluster k = s != null ? p.cluster(s.getId()) : null;
-				if (k == null || !noBase.contains(k.systemId)) continue;
+				if (k == null || !noBase.contains(k.systemId) || started.contains(k.systemId)) continue;
 				String why = whyOf.get(k.systemId);
 				if (!"marines".equals(why) && !"cannot pay".equals(why)) continue;
+				// one staging hammer a base: the stock it waits for is the base's
+				MarketAPI b = baseOf(k, fid);
+				if (b == null || stagedAt.contains(b.getId()) || stagingHammerAt(fid, b.getId())) continue;
 				Play pl = startHammer(c, faction, p, k, today, random, "invades " + w.getName()
 						+ ", staged: no base in reach holds its landing's stock today (" + why + ")", null);
 				if (pl != null) {
 					staged++;
-					break;
+					stagedAt.add(b.getId());
+					started.add(k.systemId);
 				}
 			}
 		}
@@ -1102,12 +1107,12 @@ public class ThreatPlays {
 			if (pl.payWaited >= wait) {
 				standDownForces(pl, "no siege paid");
 				end(pl, FAILURE, why + "; no siege the pools pay in " + (int) pl.payWaited + " d (" + (int) faced
-						+ " FP reported over the strongest world)", today);
+						+ " FP reported over the strongest world; last refusal: " + IncursionManager.lastRefusal + ")", today);
 				return;
 			}
 			if (pl.payWaited <= 0f) {
 				phase(pl, MUSTER, why + "; no siege the pools pay yet (" + (int) faced
-						+ " FP reported over the strongest world), waits up to " + (int) wait + " d for stock", today);
+						+ " FP reported over the strongest world; refused: " + IncursionManager.lastRefusal + "), waits up to " + (int) wait + " d for stock", today);
 			}
 			pl.payWaited += 1f;
 			pl.phaseDue = today + 1f;
