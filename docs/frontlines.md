@@ -684,3 +684,13 @@ fix that". Three changes, all built the same evening (trial hw200):
   Star Fortress (6), Military Base to High Command (6). Every start is vanilla's cost in supplies
   (`ThreatBuildCost`, `payBuild`) over vanilla's build time. Growth is vanilla's. The ceiling is
   vanilla's: a fixed set of colonies, finite slots, the depot the only purse. Log `Core build:`.
+- **The marine step** (2026-10-19 13:00, the user: "build those buildings when short instead of more orbital
+  works"; knob `threatinc_marineStep`). The invade pass's `payingBase` notes the marines a landing lacked
+  (`ThreatFactionStock.noteMarineShort`, the window's largest, 30 days); while the note stands the core build's
+  pass runs `ThreatCoreBuild.marineStep` ahead of the yard step: at the largest core colony with a step left,
+  Patrol HQ upgraded to Military Base, Military Base to High Command (one a faction, `hasHighCommand`), a
+  Patrol HQ started where none of the three stands and a slot is free - paid now (`payBuild`) or its price
+  held at the colony (`holdStep`, as a yard's is). Vanilla's Military Base raises marines by colony size and
+  High Command more (a Patrol HQ none); the reserve banks that surplus at `reserveTroopSurplusMult` (0.5)
+  plus the militia. hw219a: the Hegemony sat on 35k of 39k FP free with 1,095 of 1,360 refused systems
+  "marines" - a landing wants 1,100-2,700, a market raises 40-77 a month. Trial hw221 / hw222.

@@ -1451,6 +1451,13 @@
 	# waits on its price (held at the colony) the faction founds no base, provisions no siege and starts no
 	# other build. hw209/hw210: every postponed human siege was hull-bound with months of materials banked
 	"threatinc_yardsFirst": true,
+	# THE MARINE STEP (2026-10-19, the user: "marines come from military base / high command ... build those
+	# buildings when short instead of more orbital works"): while a faction's invade pass notes landings it
+	# cannot man (ThreatPlays.payingBase -> ThreatFactionStock.noteMarineShort, 30 days), its core build raises
+	# the military ladder before another yard - Patrol HQ -> Military Base -> High Command (one a faction), a
+	# Patrol HQ where none stands - paid or its price held. hw219a: the Hegemony 35k FP free, 1,095 of 1,360
+	# refused systems short of marines (a landing wants 1,100-2,700; a market raises 40-77 a month)
+	"threatinc_marineStep": true,
 	# the swarm's want for a link: max(size,3)^2 x this x (1 + links its loss cuts)
 	"threatinc_frontlineStrikeWeight": 3,
 	# a seen strike on a link calls its guard: rear links have no standing garrison

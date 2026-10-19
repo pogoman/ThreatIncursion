@@ -99,6 +99,9 @@ public class ThreatCoreBuild {
 			List<MarketAPI> sites = sites(fid);
 			if (sites.isEmpty()) continue;
 			ThreatFactionStock.watch(fid);
+			// the marine step (the user, 2026-10-19): a faction whose landings wait on marines raises its military
+			// ladder before another yard; a step started or held is the faction's whole pass
+			if (marineStep(fid, sites)) continue;
 			// yards first, every pass: a yard started or held is the faction's whole pass
 			if (yardStep(fid, sites)) continue;
 			if (!mayStart(fid)) continue;
@@ -196,6 +199,77 @@ public class ThreatCoreBuild {
 			return false;
 		}
 		return false;
+	}
+
+	/**
+	 * THE MARINE STEP (the user, 2026-10-19: "marines come from military base / high command ... build those
+	 * buildings when short instead of more orbital works"). While the faction's invade pass notes landings it
+	 * cannot man (ThreatFactionStock.marineShort, from ThreatPlays.payingBase), the pass raises the ladder that
+	 * produces marines at the largest core colony with a step left: Patrol HQ upgraded to Military Base,
+	 * Military Base to High Command (one a faction, as vanilla has it), a Patrol HQ started where none of the
+	 * three stands and a slot is free. Paid now (ThreatFrontlines.payBuild) or its price held at the colony
+	 * (ThreatFactionStock.hold, as a yard's is), ahead of the yard step. True when a step started or is held.
+	 * hw219a / hw220c: the Hegemony sat on 35k / 15k FP free while 1,095 / 522 of its refused systems were
+	 * "marines" - a landing wants 1,100-2,700, its markets raise 40-77 a month each.
+	 */
+	protected static boolean marineStep(String fid, List<MarketAPI> sites) {
+		if (!ThreatIncConfig.marineStep()) return false;
+		float short_ = ThreatFactionStock.marineShort(fid);
+		if (short_ <= 0f) return false;
+		boolean highCommand = hasHighCommand(fid);
+		for (MarketAPI m : sites) {
+			Industry hq = m.getIndustry(Industries.PATROLHQ);
+			Industry mil = m.getIndustry(Industries.MILITARYBASE);
+			Industry high = m.getIndustry(Industries.HIGHCOMMAND);
+			if (high != null) continue;
+			Industry step = mil != null && !highCommand ? mil : hq;
+			if (step != null) {
+				if (step.isBuilding() || step.isUpgrading() || step.getSpec().getUpgrade() == null) continue;
+				String to = step.getSpec().getUpgrade();
+				ThreatFactionStock.release(m);
+				if (ThreatFrontlines.payBuild(m, to)) {
+					step.startUpgrading();
+					started(fid);
+					ThreatIncConfig.log("Core build: " + m.getName() + " (" + fid + ") upgrades " + step.getId() + " to " + to
+							+ " (marine step: " + (int) short_ + " marines short) - " + ThreatFactionStock.describe(fid));
+					return true;
+				}
+				return holdStep(m, fid, to, short_);
+			}
+			if (mil == null && Misc.getNumIndustries(m) < Misc.getMaxIndustries(m)) {
+				ThreatFactionStock.release(m);
+				if (ThreatFrontlines.startNew(m, Industries.PATROLHQ)) {
+					started(fid);
+					ThreatIncConfig.log("Core build: " + m.getName() + " (" + fid + ") builds " + Industries.PATROLHQ
+							+ " (marine step: " + (int) short_ + " marines short) - " + ThreatFactionStock.describe(fid));
+					return true;
+				}
+				return holdStep(m, fid, Industries.PATROLHQ, short_);
+			}
+		}
+		return false;
+	}
+
+	/** Whether the faction has (or is raising) its one High Command. */
+	protected static boolean hasHighCommand(String fid) {
+		for (MarketAPI m : ThreatReserves.marketsOf(fid)) {
+			if (m == null || !m.isInEconomy()) continue;
+			if (m.getIndustry(Industries.HIGHCOMMAND) != null) return true;
+			Industry mil = m.getIndustry(Industries.MILITARYBASE);
+			if (mil != null && mil.isUpgrading()) return true;
+		}
+		return false;
+	}
+
+	/** Holds the marine step's price at the colony (ThreatFactionStock.hold) and logs it once; true (the faction waits on it). */
+	protected static boolean holdStep(MarketAPI m, String fid, String id, float short_) {
+		float cost = ThreatBuildCost.supplies(id), funds = ThreatFrontlines.buildFunds(m);
+		if (cost > funds) {
+			ThreatFactionStock.hold(m, id, cost - funds);
+			ThreatIncConfig.logQuiet("cb_hold_" + m.getId(), "Core build: " + m.getName() + " holds "
+					+ (int) (cost - funds) + " supplies for a " + id + " (" + fid + " marine step, " + (int) short_ + " short)");
+		}
+		return true;
 	}
 
 	/** The one military step the colony lacks, by size; true when a build or upgrade started. */

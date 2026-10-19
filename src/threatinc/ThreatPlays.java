@@ -379,8 +379,11 @@ public class ThreatPlays {
 				continue;
 			}
 			// the marines first: the cheap read, and what most landings are short of
-			if (IncursionManager.siegeMarinesPooled(m, faction, s) < need) {
+			float pooled = IncursionManager.siegeMarinesPooled(m, faction, s);
+			if (pooled < need) {
 				lastWhy = "marines";
+				// the core build raises the military ladder while this stands (the marine step, 2026-10-19)
+				ThreatFactionStock.noteMarineShort(faction.getId(), need - pooled);
 				continue;
 			}
 			List<Integer> sizes = IncursionManager.siegeSizesFor(m, faction, one, 0f, NO_RAZE);

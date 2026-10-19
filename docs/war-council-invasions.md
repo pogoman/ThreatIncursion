@@ -46,6 +46,11 @@ Called from `plan` each day, it runs every `councilInvadeDays` (7) on the factio
    one play a week refused and invaded nothing; `siegeCanPay` now caps by `ThreatHulls.freeFP / 25`
    and notes the shortfall for the allies' hull lending, `hull-pool.md` 7).
 
+A landing `payingBase` cannot man notes the marines it lacked (`ThreatFactionStock.noteMarineShort`): the
+core build raises the faction's military ladder before another yard while the note stands (THE MARINE STEP,
+`ThreatCoreBuild.marineStep`, 2026-10-19 - hw219a: 1,095 of the Hegemony's 1,360 refused systems were
+marines, with 35k FP free; `frontlines.md` s8).
+
 What stops an invasion now: no report of the system, marines, fuel, supplies, armaments, or relief
 owed.
 

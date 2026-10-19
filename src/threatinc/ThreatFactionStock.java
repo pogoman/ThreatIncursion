@@ -426,6 +426,27 @@ public class ThreatFactionStock {
 		return (Float) fp;
 	}
 
+	/**
+	 * A landing the faction's invade pass could not man (ThreatPlays.payingBase): the marines short, for the core
+	 * build to answer with the military ladder (ThreatCoreBuild.marineStep). The largest note of the window stands
+	 * SHORT_DAYS. The user, 2026-10-19: "build those buildings when short instead of more orbital works".
+	 */
+	public static void noteMarineShort(String f, float marines) {
+		if (f == null || marines <= 0f) return;
+		data().put(key(f, Commodities.MARINES, "want"), Math.max(marines, marineShort(f)));
+		data().put(key(f, Commodities.MARINES, "wantAt"), Global.getSector().getClock().getTimestamp());
+	}
+
+	/** Marines the faction's landings wait on (noteMarineShort); 0 once the note is older than SHORT_DAYS. */
+	public static float marineShort(String f) {
+		if (f == null) return 0f;
+		Object n = data().get(key(f, Commodities.MARINES, "want"));
+		Object at = data().get(key(f, Commodities.MARINES, "wantAt"));
+		if (!(n instanceof Float) || !(at instanceof Long)) return 0f;
+		if (Global.getSector().getClock().getElapsedDaysSince((Long) at) > SHORT_DAYS) return 0f;
+		return (Float) n;
+	}
+
 	/** Whether allies may sail the faction another convoy of the stock: the last has had SHORT_DAYS to land. */
 	public static boolean mayAid(String f, String c) {
 		Object at = data().get(key(f, c, "aided"));
