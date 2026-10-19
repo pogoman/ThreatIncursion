@@ -1,0 +1,23 @@
+use strict; use warnings;
+my $root = 'C:/Program Files (x86)/Fractal Softworks/Starsector/mods/ThreatIncursion';
+my $mem = 'C:/Users/zuzam/.claude/projects/C--Program-Files--x86--Fractal-Softworks-Starsector-mods-ThreatIncursion/memory';
+sub append { my ($p, $add, $blank) = @_; open(my $h, '<:raw', $p) or die $p; local $/; my $t = <$h>; close $h;
+  my $crlf = $t =~ /\r\n/ ? 1 : 0; my $nl = $crlf ? "\r\n" : "\n"; (my $a = $add) =~ s/\n/$nl/g; $t =~ s/(\r?\n)*\z/$nl/;
+  $t .= ($blank ? $nl : '') . $a; open($h, '>:raw', $p) or die; print $h $t; close $h; print "ok $p\n"; }
+
+append("$root/docs/facts.md", <<'F');
+- **hw215 read (2026-10-19 10:24, COUNCIL BACK + N1 + allied convoys + hull lending, set B): hives 70 / 91 / 189 (hw211 93 / 67 / 136; hw209 111 / 93 / 142), colonies 33 / 38 / 12 (35 / 43 / 20), 0 exceptions. MIXED: a is the best OceanPena yet (107 play successes vs 54, 26 hives eradicated vs 11, cores destroyed by human landings 26 vs 11, the Hegemony 9-11k FP OUT at sea all game); b and c fell - the Hegemony's core 12 -> 5 and 12 -> 1 colonies (hw211 12 -> 12, 12 -> 8), swarm strikes 63 / 131 (41 / 125), Threat ground victories 18 / 41 (8 / 37), successes 20 / 14 (53 / 17), the Hegemony's navy in b lost to its own task forces 163 times and shrank 18.7k -> 4.6k FP with its colonies. Council sieges sailed 224 / 127 / 118 a game (N1 works: the pass no longer stops); the 12 / 1 / 43 refusals left were all the yard hold missing from `siegeCanPay` -> `patch-n1b.pl`; hull lending ran in circles in a (515 convoys, 1,870 units lent, 1,831 landed, 0 lost - Independents <-> Church 34 / 31) -> same patch (a faction with its own noted shortfall lends none). hw217 (B) / hw218 (A) on n1b launch after hw216 (`after-siege21.sh`). Open for the user: more human sieges did not convert into hives killed in b / c, and the swarm hit the core harder there - one game a snapshot, and the opening has swung 30 hives on one build before.** (game-runs-2.md s54)
+F
+
+append("$root/docs/game-runs-2.md", <<'R', 1);
+**hw215 read (2026-10-19 10:24): hives 70 / 91 / 189, colonies 33 / 38 / 12 - mixed.** Against hw211 (93 / 67 / 136, colonies 35 / 43 / 20): OceanPena (a) is the best result on that snapshot yet - play successes 107 (54), hives eradicated by human fronts 26 (11), human landings 84 -> 26 cores destroyed (52 -> 11), the Hegemony kept 9-11k FP at sea through the game and ended 17.6k FP with 8.7k free; ZhiFarah (b) 91 (67) and Aphelion (c) 189 (136) fell: the Hegemony's core went 12 -> 5 and 12 -> 1 colonies (hw211 12 -> 12 and 12 -> 8), swarm strikes launched 63 / 131 (41 / 125), Threat ground victories 18 / 41 (8 / 37), successes 20 / 14 (53 / 17), human landings -> cores destroyed 4 / 5 (13 / 3). The Hegemony's navy in b: 18.7k FP at month 24 -> 4.6k at the end, "lost N FP with Hegemony task force" 163 times (relief and guard task forces against the strikes on its core), "cannot keep up N FP (supplies unpaid)" 5, yards 2.6k -> 1.3k FP/mo as the colonies went. N1 itself works: council sieges sailed 224 / 127 / 118 a game (play lines `HAMMER: siege of N FP sails`), the invasion pass no longer stops at a refusal; the refusals left (12 / 1 / 43) were ALL supplies-short at the launch = `siegeCanPay` not netting off the yard hold (`ThreatFactionStock.yardWant`) that `launchSiegeExpedition` nets off since YARDS FIRST - `scratchpad/patch-n1b.pl` adds it. Hull lending ran in circles in a: 515 hull convoys, 1,870 units lent, 1,831 landed, 0 lost at sea, Independents -> Church 34 and Church -> Independents 31 - a faction "short" for a siege (`hullShortFP`) still read as a surplus lender (`hullsSurplus` = free > 0); the same patch gates a helper with its own noted shortfall ("short itself"). Help requests still expire: 20 / 28 / 16 of 55 / 49 / 50. hw216 (set A) running from 10:24; `after-siege21.sh` applies n1b, rebuilds and launches hw217 (B) / hw218 (A) when it ends (~11:05). Open: whether the humans sailing more sieges exposes the core (more swarm strikes in b / c) or b / c are the opening's swing (one game a snapshot).
+R
+
+append("$mem/council-off-aid-convoys.md", <<'M', 1);
+**hw215 read 10:24:** hives 70 / 91 / 189 vs hw211 93 / 67 / 136 - MIXED: a best yet (107 successes, 26 hives
+eradicated), b / c fell (Hegemony core 12 -> 5 / 12 -> 1, swarm strikes 63 / 131 vs 41 / 125). N1 works (224 /
+127 / 118 council sieges); refusals left = siegeCanPay missing the yard hold; hull lending circular (515 convoys
+in a) - both in patch-n1b.pl, applied by after-siege21.sh after hw216 -> hw217 (B) / hw218 (A). Open for the user:
+do more human sieges expose the core, or is b / c the opening's swing?
+M
+print "done\n";

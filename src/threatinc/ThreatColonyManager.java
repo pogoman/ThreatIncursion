@@ -6709,6 +6709,9 @@ public class ThreatColonyManager {
 		if (planet == null || fleet == null || !fleet.isAlive()) return false;
 		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
 		unbindLedger(fleet);
+		// one fleet, one book: a reinforcement sits in no garrison list, or the garrison leash
+		// drags it back against this order every frame (hw217c, 2026-10-19)
+		for (List<CampaignFleetAPI> list : ThreatIncData.garrisons().values()) list.remove(fleet);
 		mem.unset(Misc.FLEET_RETURNING_TO_DESPAWN);
 		mem.set(REINFORCE_TARGET_KEY, target.getId());
 		mem.set(REINFORCE_DAY_KEY, ThreatPosture.today());
@@ -6830,6 +6833,9 @@ public class ThreatColonyManager {
 		if (fleet == null || !fleet.isAlive() || from == null) return false;
 		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
 		if (mem.contains(REARM_RETURN_KEY)) return false;
+		// a raider out or returning keeps its garrison flag but is the raider poll's (hw217c, 2026-10-19: one sent
+		// to rearm was seated home by the poll too, and the two leashes fought over it 7,800 times)
+		if (ThreatRaiders.isRaider(fleet)) return false;
 		// only this hive's own: its garrison, or a reinforcement bound here (a strike or Defend passing through answers to orbitDoneFor)
 		String here = from.getId();
 		if (!here.equals(mem.getString(GARRISON_FLAG)) && !here.equals(mem.getString(REINFORCE_TARGET_KEY))) return false;

@@ -348,6 +348,11 @@ public class ThreatRaiders {
 				if (fleet.getBattle() != null) continue;
 				fleet.getMemoryWithoutUpdate().unset(RAIDER_FLAG);
 				all().remove(r);
+				if (ThreatIncData.reinforcementFleets().containsKey(fleet.getId())) {
+					// re-tasked meanwhile (sent to rearm, or as a reinforcement): that book keeps it
+					ThreatIncConfig.log("Raider home at " + home.getName() + ": re-tasked meanwhile, not seated");
+					continue;
+				}
 				ThreatIncData.garrisonsFor(home.getId()).add(fleet);
 				ThreatIncConfig.log("Raider home at " + home.getName());
 			}

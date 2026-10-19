@@ -206,6 +206,10 @@ garrison or reinforcement over a hive whose port cannot arm it leaves for the ne
 (`ThreatColonyManager.sendToRearm`: off the garrison list, passage both ways paid from the stock,
 `REARM_RETURN_KEY`), reloads on arrival and flies back (`rearmAndReturn`, from the reinforcement
 arrivals poll); nowhere to go or no fuel for the trip, it stays dry and is judged again a day later.
+A raider (`ThreatRaiders.isRaider`) is never sent: it keeps its garrison flag while out and its poll seats
+it home - hw217c (2026-10-19) sent one to rearm, the poll seated it too, and the two leashes fought over it
+7,800 times (`sendToGarrison` now strips the fleet from every garrison list, and the raider poll seats no
+fleet the reinforcement book holds).
 A dry strike or Defend over a human world stands down home as before (`ordnanceAvailable`,
 `orbitDoneFor`).
 

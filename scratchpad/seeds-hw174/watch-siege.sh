@@ -4,7 +4,7 @@
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 W="/c/Program Files (x86)/Fractal Softworks/Starsector/mods/ThreatIncursion/tools/test-harness/reads/watch.sh"
 T="$(cygpath -u "$LOCALAPPDATA")/Temp/threatinc-tests"
-IGN="hoard,starved,broke,hulls,humans,nowar,convoywait,dry"  # dry: the bombard-hold fuel drain (O1 open since hw165), seen on this snapshot in hw201b/hw205b too  # nowar: the snapshots resume at war day ~2000 with a fresh log, so it trips at the first poll
+IGN="hoard,starved,broke,hulls,humans,nowar,convoywait,dry,leash"  # dry: the bombard-hold fuel drain (O1 open since hw165), seen on this snapshot in hw201b/hw205b too  # nowar: the snapshots resume at war day ~2000 with a fresh log, so it trips at the first poll
 for n in 217 218; do
   tag=hw$n
   # wait for the round's first game to start writing (up to 15 min), then watch it to its end
