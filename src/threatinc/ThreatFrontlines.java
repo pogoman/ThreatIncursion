@@ -2104,6 +2104,15 @@ public class ThreatFrontlines {
 			if (!link || conn.contains(m.getId())) anchors.add(m);
 		}
 		if (anchors.isEmpty()) return;
+		// an ally's base that may host the faction's sieges reaches a hive as its own would (ALLIED STAGING, the user
+		// 2026-10-19: no chain of its own toward a hive an ally already stages against)
+		List<MarketAPI> hosts = new ArrayList<MarketAPI>();
+		if (ThreatIncConfig.alliedStaging()) {
+			for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
+				if (m.getPrimaryEntity() == null || ThreatMapFog.hidden(m) || !ThreatCoalition.stagingHost(m, fid)) continue;
+				hosts.add(m);
+			}
+		}
 
 		float reach = ThreatIncConfig.frontlineReachLY();
 		float hop = ThreatIncConfig.frontlineLinkLY();
@@ -2127,6 +2136,10 @@ public class ThreatFrontlines {
 					reached = true;
 					break;
 				}
+			}
+			for (MarketAPI h : hosts) {
+				if (reached) break;
+				if (ly(h, hive) <= reach) reached = true;
 			}
 			// a founding convoy at sea toward it counts: one kit a hive at a time (2026-10-11)
 			if (!reached && ThreatConvoys.foundingBoundFor(fid, hive.getId())) reached = true;

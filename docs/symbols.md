@@ -25,7 +25,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `HiveVitalityCondition.createTooltipAfterDescription(TooltipMakerAPI tooltip, boolean expanded)` :28
 - `HiveVitalityCondition.pct(float f)` :113
 
-## IncursionManager (6434 lines)
+## IncursionManager (6437 lines)
 - `IncursionManager.isDone()` :84 - Set once the bootstrap heal has run this session (transient:
 - `IncursionManager.runWhilePaused()` :88
 - `IncursionManager.advance(float amount)` :95 - The live manager (transient, re-created each load), for static callers such as retaliation.
@@ -75,196 +75,196 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `IncursionManager.marketsReaching(FactionAPI faction, final org.lwjgl.util.vector.Vector2f hyperLoc)` :1993 - Every market of the faction with a reserve whose stock reaches a hyperspace location (ThreatConvoys.stockReachLY), nearest it first:
 - `IncursionManager.compare(MarketAPI a, MarketAPI b)` :2002
 - `IncursionManager.zealotDonors(FactionAPI faction, MarketAPI base, StarSystemAPI system)` :2018 - The Path's markets whose marines join the faction's siege (user's call 2026-09-27):
-- `IncursionManager.siegePooled(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId)` :2046 - Stock the siege base and its donors hold above their floors (the donors' net of the haul to the base), for the launch's gates.
-- `IncursionManager.siegeMarinesPooled(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :2051 - The marines a siege from base against the system could put aboard now, as the launch reads them:
-- `IncursionManager.donorsPooled(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId)` :2061 - The donors' part of #siegePooled:
-- `IncursionManager.donorAvailable(MarketAPI m, MarketAPI base, String commodityId)` :2073 - What a donor gives a siege at base:
-- `IncursionManager.donorHolds(MarketAPI m, String commodityId)` :2084 - A donor's stock above the floor, less - for a forward base - siegeOutpostKeepMonths of its garrison's supply upkeep (ThreatFrontlines.payUpkeep), so the pool never recalls a garrison.
-- `IncursionManager.siegeDraw(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId, float amount, String label)` :2096 - Draws up to amount of a commodity for a siege:
-- `IncursionManager.siegeBasesFor(StarSystemAPI system)` :2126 - Every military world of a mobilised NPC faction in reach of the hive system, nearest first.
-- `IncursionManager.findSiegeBases(StarSystemAPI system)` :2142
-- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :2157
-- `IncursionManager.hasSiegeableHive(MarketAPI base)` :2180 - Whether this base has a hive to siege:
-- `IncursionManager.siegeAffordable(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets)` :2202 - Whether the flotilla this base would sail against these worlds takes their orbit and is paid for.
-- `IncursionManager.cheapestFirst(StarSystemAPI system, java.util.List<MarketAPI> bases)` :2218 - The bases in reach of a siege of the system in the order they are weighed (2026-09-29):
-- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :2235
-- `IncursionManager.siegeCanPay(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> sizes)` :2252 - Whether the base can man, arm and provision this flotilla by the launch's own gates (launchSiegeExpedition):
-- `IncursionManager.siegeCanPay(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> sizes, java.util.Set<String> razeGiven)` :2258 - As above, razing the worlds in razeGiven rather than those the faction's navy would pick (null:
-- `IncursionManager.siegeSuppliesPerPoint(MarketAPI base, FactionAPI faction, StarSystemAPI system, float stay)` :2329 - Supplies a difficulty point of siege flotilla must find in the pool:
-- `IncursionManager.siegeStayDays(java.util.List<MarketAPI> land, java.util.List<MarketAPI> razed, float fp, String factionId)` :2347 - Days a siege's flotilla of fp stays at its worlds:
-- `IncursionManager.siegeTripDays(MarketAPI base, StarSystemAPI system, float stay)` :2365 - Days a siege from base is away:
-- `IncursionManager.collectSiegeTargets(StarSystemAPI system)` :2376 - Every Threat colony in the system - the expedition purges the SYSTEM, not one world, worked through sequentially until the system is clean or the expedition is dead.
-- `IncursionManager.siegeTargets(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :2408 - The worlds an NPC siege from this base takes, easiest first - the low-hanging fruit (user's rule 2026-09-27):
-- `IncursionManager.heldByOtherArmy(FactionAPI faction, MarketAPI world)` :2463 - Whether another faction's front stands on the world - the landing gate's test (ThreatGroundFronts.landingBlocked):
-- `IncursionManager.frontFinishesFirst(MarketAPI base, FactionAPI faction, StarSystemAPI system, MarketAPI world)` :2475 - Whether the faction's own front takes the world's last stratum before a siege from base could even arrive (ThreatGroundFronts.daysToLastStratum against razeArrivalDays):
-- `IncursionManager.bookedWorlds()` :2489 - The worlds a live siege is taking, whoever's:
-- `IncursionManager.bookedWorlds(java.util.Collection<String> exceptPlays)` :2494 - The booked worlds, leaving out the sieges of the plays named (ThreatPlays:
-- `IncursionManager.easiestFirst(String observer, java.util.List<MarketAPI> hives)` :2515 - The hives sorted by the landing each needs alone, then the Defense Swarms the observer last saw over it:
-- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :2523
-- `IncursionManager.anyTargetGarrisoned(String observer, java.util.List<MarketAPI> targets)` :2533 - Whether the observer last saw Defense Swarms over any of the worlds (ThreatIntel).
-- `IncursionManager.siegeRaidStrNeeded(java.util.List<MarketAPI> targets)` :2588 - The ground strength a siege must put on the surface to disrupt anything.
-- `IncursionManager.siegeWearFP(java.util.List<MarketAPI> targets)` :2597 - The fleet points that bombard the worlds far enough for the landing #siegeRaidStrNeeded sizes, and carry it:
-- `IncursionManager.needAndWear(java.util.List<MarketAPI> targets)` :2602 - {landing need, fleet points that wear the worlds to it}, memoised per clock instant.
-- `IncursionManager.raidStrNeededAt(java.util.List<MarketAPI> targets, float fp)` :2637 - #siegeRaidStrNeeded after fp fleet points have bombarded each world as far as orbit goes (0:
-- `IncursionManager.nexusAnchoredDefense(MarketAPI target)` :2668 - A hive's defender strength once its Swarm Nexus stands (SwarmNexus:
-- `IncursionManager.beachheadNeeded(float defenderStr)` :2685 - The landing that survives the first counter-attack:
-- `IncursionManager.minMarinesFraction(FactionAPI faction)` :2706 - The share of the marines wanted a siege may launch with.
-- `IncursionManager.pointsForStrength(java.util.List<Integer> fleetSizes, float need)` :2714 - Difficulty points, taken in order, before the flotilla's estimate reaches the need (all of them if it never does).
-- `IncursionManager.pointsForOrbit(java.util.List<Integer> fleetSizes, float orbitNeed)` :2724 - Difficulty points, taken in order, before the flotilla's fleet points reach the orbit need (all of them if they never do;
-- `IncursionManager.siegeRaidStrEstimate(java.util.List<Integer> fleetSizes)` :2733
-- `IncursionManager.siegeOrbitFP(String observer, java.util.List<MarketAPI> targets)` :2745 - Fleet points of the Defense Swarms the observer last saw over the targets:
-- `IncursionManager.siegeOrbitFaced(String observer, java.util.List<MarketAPI> targets)` :2760 - The Defense Swarms a siege's flotilla fights at once:
-- `IncursionManager.siegeOrbitNeeded(FactionAPI faction, java.util.List<MarketAPI> targets)` :2778 - The fleet points an NPC flotilla must bring to take the targets' orbit (2026-09-24):
-- `IncursionManager.siegeOrbitWeighed(FactionAPI faction, java.util.List<MarketAPI> targets)` :2791 - The Defense Swarms an NPC siege weighs itself against:
-- `IncursionManager.systemSwarms(String observer, com.fs.starfarer.api.campaign.StarSystemAPI system)` :2807 - Fleet points of every Defense Swarm the observer last saw over the Threat's worlds in the system (each fleet once).
-- `IncursionManager.noteSwarmsMet(String factionId, com.fs.starfarer.api.campaign.StarSystemAPI system, float fp)` :2818 - A siege called off (ThreatPurgeFGI.callOff) saw the swarms that turned it back:
-- `IncursionManager.siegeFleetSizes(int difficulty, boolean anyGarrisoned, boolean heavyAssault, java.util.List<MarketAPI> targets, float marineGoal)` :2843 - The flotilla for a siege expedition, sized to the target.
-- `IncursionManager.siegeFleetSizes(int difficulty, boolean anyGarrisoned, boolean heavyAssault, java.util.List<MarketAPI> targets, float marineGoal, float orbitGoal)` :2849 - As above, and the flotilla also grows until its fleet points reach orbitGoal (siegeOrbitNeeded;
-- `IncursionManager.siegeFleetSizes(int difficulty, boolean anyGarrisoned, boolean heavyAssault, java.util.List<MarketAPI> targets, java.util.List<MarketAPI> landTargets, float marineGoal, float orbitGoal)` :2859 - As above, the landing sized for landTargets alone:
-- `IncursionManager.attainable(float goal)` :2917 - Whether a sizing goal is a real figure:
-- `IncursionManager.sectorPayableFP()` :2935 - The largest flotilla anyone could field:
-- `IncursionManager.launchSiegeExpedition(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random)` :2962 - Builds and launches one siege expedition - the single construction path for both NPC purges and player-commissioned operations.
-- `IncursionManager.launchSiegeExpedition(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random, float marineGoal)` :2978 - As #launchSiegeExpedition(MarketAPI, FactionAPI, StarSystemAPI, java.util.List, java.util.List, boolean, Random), but the landing draws up to marineGoal marines from the base's reserve rather than onl
-- `IncursionManager.launchSiegeExpedition(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random, float marineGoal, java.util.Set<String> razeGiven)` :2991 - As above, razing the worlds in razeGiven rather than those the faction's navy would pick (razeWorlds):
-- `IncursionManager.launchSiegeExpedition(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random, float marineGoal, java.util.Set<String> razeGiven, String playId)` :3010 - As above, for a play of the war council (playId non-null, ThreatPlays;
-- `IncursionManager.stagedSize(float liveFP)` :3019 - The vanilla-scale fleet size a task force of liveFP fleet points stands for in an expedition's fleet sizes (FP_PER_RESPONSE_DIFFICULTY a point).
-- `IncursionManager.playerExpeditionSizes(MarketAPI base, FactionAPI faction, java.util.List<Integer> needSizes, int tier, java.util.List<ThreatFleetOrders.Order> stagedOut)` :3037 - The player's siege or bombing at the board's Force tier (the user, 2026-10-11:
-- `IncursionManager.launchSiegeExpedition(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random, float marineGoal, java.util.Set<String> razeGiven, String playId, java.util.List<ThreatFleetOrders.Order> staged)` :3093 - As above;
-- `IncursionManager.expeditionWants(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes)` :3508 - What one siege expedition from this base against this system draws from the base's reserve, in ThreatReserves.COMMODITIES order:
-- `IncursionManager.expeditionWants(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, java.util.Set<String> raze)` :3515 - As above, razing raze (razeWorlds):
-- `IncursionManager.expeditionWants(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, java.util.Set<String> raze, float shortLanding)` :3521 - As above for a siege short of troops that lands shortLanding after a longer bombardment (landsAfterSoftening;
-- `IncursionManager.expeditionHold(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.Set<String> raze, int points)` :3544 - The hold a siege of points from the base carries against the system:
-- `IncursionManager.expeditionFuel(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, java.util.Set<String> raze)` :3573 - The fuel one siege expedition draws, {passage, ordnance, razing} (docs/suppression-balance.md v2:
-- `IncursionManager.expeditionFuel(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, java.util.Set<String> raze, float shortLanding)` :3579 - As above for a siege short of troops:
-- `IncursionManager.expeditionPassage(MarketAPI base, StarSystemAPI system, java.util.List<Integer> fleetSizes)` :3598 - Fuel a flotilla of these sizes draws for its passage:
-- `IncursionManager.razeArrivalDays(MarketAPI base, StarSystemAPI system)` :3607 - Days before a siege from base reaches the system:
-- `IncursionManager.siegeOrdnance(MarketAPI world, float fp)` :3614 - Fuel the tactical bombardment of one world burns for a flotilla of fp:
-- `IncursionManager.siegeOrdnance(MarketAPI world, float fp, float troops)` :3619 - As above for a landing of troops (0:
-- `IncursionManager.landsAfterSoftening(java.util.List<MarketAPI> land, float fp, float troops)` :3633 - SHORT OF TROOPS, SOFTEN FIRST (2026-09-28, run 4):
-- `IncursionManager.landTargets(java.util.List<MarketAPI> targets, java.util.Set<String> raze)` :3645 - The worlds of a siege it lands on:
+- `IncursionManager.siegePooled(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId)` :2049 - Stock the siege base and its donors hold above their floors (the donors' net of the haul to the base), for the launch's gates.
+- `IncursionManager.siegeMarinesPooled(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :2054 - The marines a siege from base against the system could put aboard now, as the launch reads them:
+- `IncursionManager.donorsPooled(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId)` :2064 - The donors' part of #siegePooled:
+- `IncursionManager.donorAvailable(MarketAPI m, MarketAPI base, String commodityId)` :2076 - What a donor gives a siege at base:
+- `IncursionManager.donorHolds(MarketAPI m, String commodityId)` :2087 - A donor's stock above the floor, less - for a forward base - siegeOutpostKeepMonths of its garrison's supply upkeep (ThreatFrontlines.payUpkeep), so the pool never recalls a garrison.
+- `IncursionManager.siegeDraw(MarketAPI base, java.util.List<MarketAPI> donors, String commodityId, float amount, String label)` :2099 - Draws up to amount of a commodity for a siege:
+- `IncursionManager.siegeBasesFor(StarSystemAPI system)` :2129 - Every military world of a mobilised NPC faction in reach of the hive system, nearest first.
+- `IncursionManager.findSiegeBases(StarSystemAPI system)` :2145
+- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :2160
+- `IncursionManager.hasSiegeableHive(MarketAPI base)` :2183 - Whether this base has a hive to siege:
+- `IncursionManager.siegeAffordable(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets)` :2205 - Whether the flotilla this base would sail against these worlds takes their orbit and is paid for.
+- `IncursionManager.cheapestFirst(StarSystemAPI system, java.util.List<MarketAPI> bases)` :2221 - The bases in reach of a siege of the system in the order they are weighed (2026-09-29):
+- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :2238
+- `IncursionManager.siegeCanPay(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> sizes)` :2255 - Whether the base can man, arm and provision this flotilla by the launch's own gates (launchSiegeExpedition):
+- `IncursionManager.siegeCanPay(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> sizes, java.util.Set<String> razeGiven)` :2261 - As above, razing the worlds in razeGiven rather than those the faction's navy would pick (null:
+- `IncursionManager.siegeSuppliesPerPoint(MarketAPI base, FactionAPI faction, StarSystemAPI system, float stay)` :2332 - Supplies a difficulty point of siege flotilla must find in the pool:
+- `IncursionManager.siegeStayDays(java.util.List<MarketAPI> land, java.util.List<MarketAPI> razed, float fp, String factionId)` :2350 - Days a siege's flotilla of fp stays at its worlds:
+- `IncursionManager.siegeTripDays(MarketAPI base, StarSystemAPI system, float stay)` :2368 - Days a siege from base is away:
+- `IncursionManager.collectSiegeTargets(StarSystemAPI system)` :2379 - Every Threat colony in the system - the expedition purges the SYSTEM, not one world, worked through sequentially until the system is clean or the expedition is dead.
+- `IncursionManager.siegeTargets(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :2411 - The worlds an NPC siege from this base takes, easiest first - the low-hanging fruit (user's rule 2026-09-27):
+- `IncursionManager.heldByOtherArmy(FactionAPI faction, MarketAPI world)` :2466 - Whether another faction's front stands on the world - the landing gate's test (ThreatGroundFronts.landingBlocked):
+- `IncursionManager.frontFinishesFirst(MarketAPI base, FactionAPI faction, StarSystemAPI system, MarketAPI world)` :2478 - Whether the faction's own front takes the world's last stratum before a siege from base could even arrive (ThreatGroundFronts.daysToLastStratum against razeArrivalDays):
+- `IncursionManager.bookedWorlds()` :2492 - The worlds a live siege is taking, whoever's:
+- `IncursionManager.bookedWorlds(java.util.Collection<String> exceptPlays)` :2497 - The booked worlds, leaving out the sieges of the plays named (ThreatPlays:
+- `IncursionManager.easiestFirst(String observer, java.util.List<MarketAPI> hives)` :2518 - The hives sorted by the landing each needs alone, then the Defense Swarms the observer last saw over it:
+- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :2526
+- `IncursionManager.anyTargetGarrisoned(String observer, java.util.List<MarketAPI> targets)` :2536 - Whether the observer last saw Defense Swarms over any of the worlds (ThreatIntel).
+- `IncursionManager.siegeRaidStrNeeded(java.util.List<MarketAPI> targets)` :2591 - The ground strength a siege must put on the surface to disrupt anything.
+- `IncursionManager.siegeWearFP(java.util.List<MarketAPI> targets)` :2600 - The fleet points that bombard the worlds far enough for the landing #siegeRaidStrNeeded sizes, and carry it:
+- `IncursionManager.needAndWear(java.util.List<MarketAPI> targets)` :2605 - {landing need, fleet points that wear the worlds to it}, memoised per clock instant.
+- `IncursionManager.raidStrNeededAt(java.util.List<MarketAPI> targets, float fp)` :2640 - #siegeRaidStrNeeded after fp fleet points have bombarded each world as far as orbit goes (0:
+- `IncursionManager.nexusAnchoredDefense(MarketAPI target)` :2671 - A hive's defender strength once its Swarm Nexus stands (SwarmNexus:
+- `IncursionManager.beachheadNeeded(float defenderStr)` :2688 - The landing that survives the first counter-attack:
+- `IncursionManager.minMarinesFraction(FactionAPI faction)` :2709 - The share of the marines wanted a siege may launch with.
+- `IncursionManager.pointsForStrength(java.util.List<Integer> fleetSizes, float need)` :2717 - Difficulty points, taken in order, before the flotilla's estimate reaches the need (all of them if it never does).
+- `IncursionManager.pointsForOrbit(java.util.List<Integer> fleetSizes, float orbitNeed)` :2727 - Difficulty points, taken in order, before the flotilla's fleet points reach the orbit need (all of them if they never do;
+- `IncursionManager.siegeRaidStrEstimate(java.util.List<Integer> fleetSizes)` :2736
+- `IncursionManager.siegeOrbitFP(String observer, java.util.List<MarketAPI> targets)` :2748 - Fleet points of the Defense Swarms the observer last saw over the targets:
+- `IncursionManager.siegeOrbitFaced(String observer, java.util.List<MarketAPI> targets)` :2763 - The Defense Swarms a siege's flotilla fights at once:
+- `IncursionManager.siegeOrbitNeeded(FactionAPI faction, java.util.List<MarketAPI> targets)` :2781 - The fleet points an NPC flotilla must bring to take the targets' orbit (2026-09-24):
+- `IncursionManager.siegeOrbitWeighed(FactionAPI faction, java.util.List<MarketAPI> targets)` :2794 - The Defense Swarms an NPC siege weighs itself against:
+- `IncursionManager.systemSwarms(String observer, com.fs.starfarer.api.campaign.StarSystemAPI system)` :2810 - Fleet points of every Defense Swarm the observer last saw over the Threat's worlds in the system (each fleet once).
+- `IncursionManager.noteSwarmsMet(String factionId, com.fs.starfarer.api.campaign.StarSystemAPI system, float fp)` :2821 - A siege called off (ThreatPurgeFGI.callOff) saw the swarms that turned it back:
+- `IncursionManager.siegeFleetSizes(int difficulty, boolean anyGarrisoned, boolean heavyAssault, java.util.List<MarketAPI> targets, float marineGoal)` :2846 - The flotilla for a siege expedition, sized to the target.
+- `IncursionManager.siegeFleetSizes(int difficulty, boolean anyGarrisoned, boolean heavyAssault, java.util.List<MarketAPI> targets, float marineGoal, float orbitGoal)` :2852 - As above, and the flotilla also grows until its fleet points reach orbitGoal (siegeOrbitNeeded;
+- `IncursionManager.siegeFleetSizes(int difficulty, boolean anyGarrisoned, boolean heavyAssault, java.util.List<MarketAPI> targets, java.util.List<MarketAPI> landTargets, float marineGoal, float orbitGoal)` :2862 - As above, the landing sized for landTargets alone:
+- `IncursionManager.attainable(float goal)` :2920 - Whether a sizing goal is a real figure:
+- `IncursionManager.sectorPayableFP()` :2938 - The largest flotilla anyone could field:
+- `IncursionManager.launchSiegeExpedition(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random)` :2965 - Builds and launches one siege expedition - the single construction path for both NPC purges and player-commissioned operations.
+- `IncursionManager.launchSiegeExpedition(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random, float marineGoal)` :2981 - As #launchSiegeExpedition(MarketAPI, FactionAPI, StarSystemAPI, java.util.List, java.util.List, boolean, Random), but the landing draws up to marineGoal marines from the base's reserve rather than onl
+- `IncursionManager.launchSiegeExpedition(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random, float marineGoal, java.util.Set<String> razeGiven)` :2994 - As above, razing the worlds in razeGiven rather than those the faction's navy would pick (razeWorlds):
+- `IncursionManager.launchSiegeExpedition(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random, float marineGoal, java.util.Set<String> razeGiven, String playId)` :3013 - As above, for a play of the war council (playId non-null, ThreatPlays;
+- `IncursionManager.stagedSize(float liveFP)` :3022 - The vanilla-scale fleet size a task force of liveFP fleet points stands for in an expedition's fleet sizes (FP_PER_RESPONSE_DIFFICULTY a point).
+- `IncursionManager.playerExpeditionSizes(MarketAPI base, FactionAPI faction, java.util.List<Integer> needSizes, int tier, java.util.List<ThreatFleetOrders.Order> stagedOut)` :3040 - The player's siege or bombing at the board's Force tier (the user, 2026-10-11:
+- `IncursionManager.launchSiegeExpedition(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random, float marineGoal, java.util.Set<String> razeGiven, String playId, java.util.List<ThreatFleetOrders.Order> staged)` :3096 - As above;
+- `IncursionManager.expeditionWants(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes)` :3511 - What one siege expedition from this base against this system draws from the base's reserve, in ThreatReserves.COMMODITIES order:
+- `IncursionManager.expeditionWants(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, java.util.Set<String> raze)` :3518 - As above, razing raze (razeWorlds):
+- `IncursionManager.expeditionWants(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, java.util.Set<String> raze, float shortLanding)` :3524 - As above for a siege short of troops that lands shortLanding after a longer bombardment (landsAfterSoftening;
+- `IncursionManager.expeditionHold(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.Set<String> raze, int points)` :3547 - The hold a siege of points from the base carries against the system:
+- `IncursionManager.expeditionFuel(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, java.util.Set<String> raze)` :3576 - The fuel one siege expedition draws, {passage, ordnance, razing} (docs/suppression-balance.md v2:
+- `IncursionManager.expeditionFuel(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> fleetSizes, java.util.Set<String> raze, float shortLanding)` :3582 - As above for a siege short of troops:
+- `IncursionManager.expeditionPassage(MarketAPI base, StarSystemAPI system, java.util.List<Integer> fleetSizes)` :3601 - Fuel a flotilla of these sizes draws for its passage:
+- `IncursionManager.razeArrivalDays(MarketAPI base, StarSystemAPI system)` :3610 - Days before a siege from base reaches the system:
+- `IncursionManager.siegeOrdnance(MarketAPI world, float fp)` :3617 - Fuel the tactical bombardment of one world burns for a flotilla of fp:
+- `IncursionManager.siegeOrdnance(MarketAPI world, float fp, float troops)` :3622 - As above for a landing of troops (0:
+- `IncursionManager.landsAfterSoftening(java.util.List<MarketAPI> land, float fp, float troops)` :3636 - SHORT OF TROOPS, SOFTEN FIRST (2026-09-28, run 4):
+- `IncursionManager.landTargets(java.util.List<MarketAPI> targets, java.util.Set<String> raze)` :3648 - The worlds of a siege it lands on:
 ### the raze task (docs/suppression-balance.md v2 section 8)
-- `IncursionManager.razeWorlds(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets)` :3688 - THE RAZE TASK (docs/suppression-balance.md v2 section 8):
-- `IncursionManager.siegeFuelTotal(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, int difficulty, boolean anyGarrisoned, boolean heavyAssault, java.util.Collection<String> raze)` :3894 - All the fuel a siege of these worlds razing raze draws:
-- `IncursionManager.razeTargets(java.util.List<MarketAPI> targets, java.util.Collection<String> raze)` :3905 - The worlds of a siege it razes, in the targets' order:
-- `IncursionManager.siegeFleetGoal(FactionAPI faction, java.util.List<MarketAPI> targets, java.util.Collection<String> raze)` :3926 - THE fleet points a siege of these worlds sails with at least:
-- `IncursionManager.siegeFleetGoal(FactionAPI faction, java.util.List<MarketAPI> targets, java.util.Collection<String> raze, boolean weighOrbit)` :3932 - As above;
-- `IncursionManager.razeFleetPoints(java.util.List<MarketAPI> worlds, String factionId)` :3962 - The least fleet points that raze these worlds in turn and outlast their guns (docs/suppression-balance.md v2 sections 4 and 8):
-- `IncursionManager.razesAll(java.util.List<MarketAPI> worlds, float fp, String factionId)` :4012 - Whether a flotilla of fp razes every one of these worlds in turn, each with its own razing fuel aboard, above the abort line throughout (razeRun).
-- `IncursionManager.razeRun(java.util.List<MarketAPI> worlds, float fp, float fuel, String factionId)` :4037 - The razing of these worlds in turn by one flotilla of fp fleet points, as its expedition flies it:
-- `IncursionManager.razingFuel(MarketAPI target, float fp, float arrivalDays, String factionId)` :4079 - The fuel a razing of this world takes with fp over it:
-- `IncursionManager.producing(MarketAPI market)` :4087 - Whether a hive world still makes something saturation would stop:
-- `IncursionManager.basePrice(String commodityId)` :4103 - A commodity's vanilla base price (credits a unit):
-- `IncursionManager.worldNames(java.util.List<MarketAPI> worlds)` :4109 - The worlds' names for a notice:
-- `IncursionManager.siegeWants(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4123 - What the board's Siege button would launch from this base against this system, by the same path ThreatFactionView.executeOrder takes:
-- `IncursionManager.siegeSizes(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4135 - The flotilla the board's Siege button would sail from this base against this system:
-- `IncursionManager.siegeSizes(MarketAPI base, FactionAPI faction, StarSystemAPI system, float marineGoal)` :4147 - As #siegeSizes(MarketAPI, FactionAPI, StarSystemAPI), sized to land at least marineGoal (0 = the need) before the free-points trim.
-- `IncursionManager.siegeSizesFor(MarketAPI base, FactionAPI faction, java.util.List<MarketAPI> targets, float marineGoal)` :4158 - As #siegeSizes(MarketAPI, FactionAPI, StarSystemAPI, float), against these worlds - its landing sized for the worlds it lands on, and its fleet points for the orbit and the guns of those it razes (raz
-- `IncursionManager.siegeSizesFor(MarketAPI base, FactionAPI faction, java.util.List<MarketAPI> targets, float marineGoal, java.util.Set<String> razeGiven)` :4172 - As above, razing the worlds in razeGiven rather than those the faction's navy would pick (razeWorlds;
-- `IncursionManager.siegeBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4195 - Why the board's Siege order would raise nothing now, or null if it would sail:
-- `IncursionManager.siegeBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :4200 - As above at the board's Force tier, whose flotilla the fuel and supplies gate prices (playerExpeditionSizes).
-- `IncursionManager.siegeBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4205 - #siegeBlockReason one fact per line, the names and figures highlighted:
-- `IncursionManager.siegeBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :4210 - As above at the board's Force tier:
+- `IncursionManager.razeWorlds(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets)` :3691 - THE RAZE TASK (docs/suppression-balance.md v2 section 8):
+- `IncursionManager.siegeFuelTotal(MarketAPI base, FactionAPI faction, StarSystemAPI system, java.util.List<MarketAPI> targets, int difficulty, boolean anyGarrisoned, boolean heavyAssault, java.util.Collection<String> raze)` :3897 - All the fuel a siege of these worlds razing raze draws:
+- `IncursionManager.razeTargets(java.util.List<MarketAPI> targets, java.util.Collection<String> raze)` :3908 - The worlds of a siege it razes, in the targets' order:
+- `IncursionManager.siegeFleetGoal(FactionAPI faction, java.util.List<MarketAPI> targets, java.util.Collection<String> raze)` :3929 - THE fleet points a siege of these worlds sails with at least:
+- `IncursionManager.siegeFleetGoal(FactionAPI faction, java.util.List<MarketAPI> targets, java.util.Collection<String> raze, boolean weighOrbit)` :3935 - As above;
+- `IncursionManager.razeFleetPoints(java.util.List<MarketAPI> worlds, String factionId)` :3965 - The least fleet points that raze these worlds in turn and outlast their guns (docs/suppression-balance.md v2 sections 4 and 8):
+- `IncursionManager.razesAll(java.util.List<MarketAPI> worlds, float fp, String factionId)` :4015 - Whether a flotilla of fp razes every one of these worlds in turn, each with its own razing fuel aboard, above the abort line throughout (razeRun).
+- `IncursionManager.razeRun(java.util.List<MarketAPI> worlds, float fp, float fuel, String factionId)` :4040 - The razing of these worlds in turn by one flotilla of fp fleet points, as its expedition flies it:
+- `IncursionManager.razingFuel(MarketAPI target, float fp, float arrivalDays, String factionId)` :4082 - The fuel a razing of this world takes with fp over it:
+- `IncursionManager.producing(MarketAPI market)` :4090 - Whether a hive world still makes something saturation would stop:
+- `IncursionManager.basePrice(String commodityId)` :4106 - A commodity's vanilla base price (credits a unit):
+- `IncursionManager.worldNames(java.util.List<MarketAPI> worlds)` :4112 - The worlds' names for a notice:
+- `IncursionManager.siegeWants(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4126 - What the board's Siege button would launch from this base against this system, by the same path ThreatFactionView.executeOrder takes:
+- `IncursionManager.siegeSizes(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4138 - The flotilla the board's Siege button would sail from this base against this system:
+- `IncursionManager.siegeSizes(MarketAPI base, FactionAPI faction, StarSystemAPI system, float marineGoal)` :4150 - As #siegeSizes(MarketAPI, FactionAPI, StarSystemAPI), sized to land at least marineGoal (0 = the need) before the free-points trim.
+- `IncursionManager.siegeSizesFor(MarketAPI base, FactionAPI faction, java.util.List<MarketAPI> targets, float marineGoal)` :4161 - As #siegeSizes(MarketAPI, FactionAPI, StarSystemAPI, float), against these worlds - its landing sized for the worlds it lands on, and its fleet points for the orbit and the guns of those it razes (raz
+- `IncursionManager.siegeSizesFor(MarketAPI base, FactionAPI faction, java.util.List<MarketAPI> targets, float marineGoal, java.util.Set<String> razeGiven)` :4175 - As above, razing the worlds in razeGiven rather than those the faction's navy would pick (razeWorlds;
+- `IncursionManager.siegeBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4198 - Why the board's Siege order would raise nothing now, or null if it would sail:
+- `IncursionManager.siegeBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :4203 - As above at the board's Force tier, whose flotilla the fuel and supplies gate prices (playerExpeditionSizes).
+- `IncursionManager.siegeBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4208 - #siegeBlockReason one fact per line, the names and figures highlighted:
+- `IncursionManager.siegeBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :4213 - As above at the board's Force tier:
 ### the player's Bombard order (docs/suppression-balance.md v2 section 9)
-- `IncursionManager.bombardTargets(StarSystemAPI system)` :4268 - The worlds the board's Bombard order saturates in this system:
-- `IncursionManager.idsOf(java.util.List<MarketAPI> worlds)` :4281 - The worlds' ids in order:
-- `IncursionManager.bombardFleetSizes(MarketAPI base, FactionAPI faction, java.util.List<MarketAPI> targets)` :4295 - The flotilla the board's Bombard order asks for against these worlds:
-- `IncursionManager.bombardSizes(MarketAPI base, FactionAPI faction, java.util.List<MarketAPI> targets)` :4305 - As #bombardFleetSizes, fitted to the base's free points without a log line:
-- `IncursionManager.expeditionFuelCarried(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> sizes, java.util.Set<String> raze)` :4318 - The fuel an expedition of these fleets would carry, drawn as the launch draws the player's - from the base's own reserve, the passage first, then the razing, then the ordnance:
-- `IncursionManager.bombardBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4335 - Why the board's Bombard order would raise nothing now, or null if it would sail:
-- `IncursionManager.bombardBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :4340 - As above at the board's Force tier, whose flotilla the fuel and supplies gates price (playerExpeditionSizes).
-- `IncursionManager.bombardBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4345 - #bombardBlockReason one fact per line, the names and figures highlighted:
-- `IncursionManager.bombardBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :4350 - As above at the board's Force tier:
+- `IncursionManager.bombardTargets(StarSystemAPI system)` :4271 - The worlds the board's Bombard order saturates in this system:
+- `IncursionManager.idsOf(java.util.List<MarketAPI> worlds)` :4284 - The worlds' ids in order:
+- `IncursionManager.bombardFleetSizes(MarketAPI base, FactionAPI faction, java.util.List<MarketAPI> targets)` :4298 - The flotilla the board's Bombard order asks for against these worlds:
+- `IncursionManager.bombardSizes(MarketAPI base, FactionAPI faction, java.util.List<MarketAPI> targets)` :4308 - As #bombardFleetSizes, fitted to the base's free points without a log line:
+- `IncursionManager.expeditionFuelCarried(MarketAPI base, StarSystemAPI system, java.util.List<MarketAPI> targets, java.util.List<Integer> sizes, java.util.Set<String> raze)` :4321 - The fuel an expedition of these fleets would carry, drawn as the launch draws the player's - from the base's own reserve, the passage first, then the razing, then the ordnance:
+- `IncursionManager.bombardBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4338 - Why the board's Bombard order would raise nothing now, or null if it would sail:
+- `IncursionManager.bombardBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :4343 - As above at the board's Force tier, whose flotilla the fuel and supplies gates price (playerExpeditionSizes).
+- `IncursionManager.bombardBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system)` :4348 - #bombardBlockReason one fact per line, the names and figures highlighted:
+- `IncursionManager.bombardBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system, int tier)` :4353 - As above at the board's Force tier:
 ### siege sizing (NPC sieges and the board's Siege order alike)
-- `IncursionManager.siegeDifficulty(MarketAPI base, FactionAPI faction, java.util.List<MarketAPI> targets, boolean anyGarrisoned)` :4414 - The quality of each fleet in a siege from this base.
-- `IncursionManager.siegeStrength(MarketAPI base, FactionAPI faction)` :4445 - The faction's strength at the base's system, read once per strategy tick.
-- `IncursionManager.siegeHeavyAssault(FactionAPI faction, java.util.List<MarketAPI> targets)` :4467 - Whether an NPC siege of these targets is a full assault - the expedition purges the SYSTEM, so a defended hive there too big to stomp preemptively (purgePreemptMaxSize) earns the extra escort whicheve
-- `IncursionManager.computeSiegeDifficulty(java.util.List<MarketAPI> targets, boolean anyGarrisoned)` :4484 - The player's siege is sized to the JOB, not to a navy:
+- `IncursionManager.siegeDifficulty(MarketAPI base, FactionAPI faction, java.util.List<MarketAPI> targets, boolean anyGarrisoned)` :4417 - The quality of each fleet in a siege from this base.
+- `IncursionManager.siegeStrength(MarketAPI base, FactionAPI faction)` :4448 - The faction's strength at the base's system, read once per strategy tick.
+- `IncursionManager.siegeHeavyAssault(FactionAPI faction, java.util.List<MarketAPI> targets)` :4470 - Whether an NPC siege of these targets is a full assault - the expedition purges the SYSTEM, so a defended hive there too big to stomp preemptively (purgePreemptMaxSize) earns the extra escort whicheve
+- `IncursionManager.computeSiegeDifficulty(java.util.List<MarketAPI> targets, boolean anyGarrisoned)` :4487 - The player's siege is sized to the JOB, not to a navy:
 ### deciv listener: the swarm claims what it kills
-- `IncursionManager.reportColonyAboutToBeDecivilized(MarketAPI market, boolean fullyDestroyed)` :4502
-- `IncursionManager.reportColonyDecivilized(MarketAPI market, boolean fullyDestroyed)` :4505
+- `IncursionManager.reportColonyAboutToBeDecivilized(MarketAPI market, boolean fullyDestroyed)` :4505
+- `IncursionManager.reportColonyDecivilized(MarketAPI market, boolean fullyDestroyed)` :4508
 ### hostile-act listener: exterminating the swarm is not a war crime
-- `IncursionManager.reportRaidForValuablesFinishedBeforeCargoShown(InteractionDialogAPI dialog, MarketAPI market, TempData actionData, CargoAPI cargo)` :4524
-- `IncursionManager.modifyMarineLossesStatPreRaid(MarketAPI market, java.util.List<com.fs.starfarer.api.impl.campaign.graid.GroundRaidObjectivePlugin> objectives, com.fs.starfarer.api.combat.MutableStat stat)` :4533 - Raiding a hive world costs marines beyond what its raw ground-defense number says:
-- `IncursionManager.reportRaidToDisruptFinished(InteractionDialogAPI dialog, MarketAPI market, TempData actionData, Industry industry)` :4543
-- `IncursionManager.reportTacticalBombardmentFinished(InteractionDialogAPI dialog, MarketAPI market, TempData actionData)` :4560
-- `IncursionManager.reportSaturationBombardmentFinished(InteractionDialogAPI dialog, MarketAPI market, TempData actionData)` :4585 - Undo the vanilla saturation-bombardment atrocity penalty when the colony bombed is a Threat colony.
+- `IncursionManager.reportRaidForValuablesFinishedBeforeCargoShown(InteractionDialogAPI dialog, MarketAPI market, TempData actionData, CargoAPI cargo)` :4527
+- `IncursionManager.modifyMarineLossesStatPreRaid(MarketAPI market, java.util.List<com.fs.starfarer.api.impl.campaign.graid.GroundRaidObjectivePlugin> objectives, com.fs.starfarer.api.combat.MutableStat stat)` :4536 - Raiding a hive world costs marines beyond what its raw ground-defense number says:
+- `IncursionManager.reportRaidToDisruptFinished(InteractionDialogAPI dialog, MarketAPI market, TempData actionData, Industry industry)` :4546
+- `IncursionManager.reportTacticalBombardmentFinished(InteractionDialogAPI dialog, MarketAPI market, TempData actionData)` :4563
+- `IncursionManager.reportSaturationBombardmentFinished(InteractionDialogAPI dialog, MarketAPI market, TempData actionData)` :4588 - Undo the vanilla saturation-bombardment atrocity penalty when the colony bombed is a Threat colony.
 ### faction relations
-- `IncursionManager.enforceThreatHostility()` :4630 - Pin the Threat faction to rock-bottom vengeful with every real faction, including the player.
-- `IncursionManager.updateAtrocityRepSnapshot()` :4648 - Refresh the pre-bombardment reputation snapshot.
-- `IncursionManager.processPendingDecivChecks()` :4661
+- `IncursionManager.enforceThreatHostility()` :4633 - Pin the Threat faction to rock-bottom vengeful with every real faction, including the player.
+- `IncursionManager.updateAtrocityRepSnapshot()` :4651 - Refresh the pre-bombardment reputation snapshot.
+- `IncursionManager.processPendingDecivChecks()` :4664
 ### target selection
-- `IncursionManager.pickFringeSeedTarget()` :4697
-- `IncursionManager.pickOGSystem()` :4715 - The swarm's home system:
-- `IncursionManager.pickSpreadTarget()` :4744
-- `IncursionManager.liveSiegeBaseReachLY(MarketAPI m)` :4896 - The reach siegeBases weighs a base at today:
-- `IncursionManager.seenSiegeBaseReachLY(MarketAPI m)` :4905 - liveSiegeBaseReachLY as the swarm sees it at the base:
-- `IncursionManager.holdShare(StarSystemAPI system, Map<MarketAPI, Float> bases)` :4920 - The share of a claim the hive could hold (billed reach, 2026-09-30):
-- `IncursionManager.isValidSpreadCandidate(StarSystemAPI system)` :4940
-- `IncursionManager.distanceToNearestInhabited(StarSystemAPI system)` :4951
-- `IncursionManager.unwarredLocations()` :4968 - Where the charted worlds of factions the hive is not at war with lie - those a strike would open a war on (warOpen at phase 0):
-- `IncursionManager.nearestLY(StarSystemAPI system, List<org.lwjgl.util.vector.Vector2f> at)` :4982 - Light-years from the system to the nearest of at, or -1 when it is empty.
-- `IncursionManager.distanceToNearestInfested(StarSystemAPI system)` :4991
-- `IncursionManager.strikeFleetSize(int size)` :5006 - A mustered swarm's expedition size as the strike fields it:
-- `IncursionManager.pickStrikeTarget(MarketAPI staging, StarSystemAPI source)` :5016
-- `IncursionManager.retaliate(String factionId, StarSystemAPI near)` :5027 - RETALIATION (docs/design-theory.md 8.1):
-- `IncursionManager.pickStrikeTarget(MarketAPI staging, StarSystemAPI source, String onlyFactionId)` :5080 - @param onlyFactionId restrict candidates to this faction's worlds (retaliation), or null
-- `IncursionManager.stagedSizes(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut)` :5198 - STAGED STRIKES (the user, 2026-10-05:
-- `IncursionManager.setPricedFP(float fp)` :5253 - Caps the plan of the strike about to launch at the size its campaign priced (pricedFP);
-- `IncursionManager.setLaunchingEarmark(java.util.Map<String, Integer> earmark)` :5268 - Sets the launching held prong's earmark (hive system id -> fleets);
-- `IncursionManager.launchingEarmarkCovers(MarketAPI colony)` :5280 - Whether the held prong launching now earmarked garrison fleets of this colony's system:
-- `IncursionManager.stagedSpares(final StarSystemAPI source)` :5302 - The garrison fleets a staged strike may take, every colony of the hive weighed (the user, 2026-10-07:
-- `IncursionManager.compare(StagedSpare x, StagedSpare y)` :5384
-- `IncursionManager.spare(MarketAPI colony, java.util.List<ThreatColonyManager.MusterFleet> walk, float ly, int tier, float dist, int size)` :5392
-- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares)` :5414 - stagedSizes with what it takes from where.
-- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares, float bankLimit, float defGiven)` :5425 - stagedPlan against a bank of bankLimit fleet points instead of what the fund (or the banks) holds now:
-- `IncursionManager.stagedCandidates(String onlyFactionId)` :5546 - Every world a staged strike could sail at today:
-- `IncursionManager.pickStagedTarget(MarketAPI staging, final StarSystemAPI source, String onlyFactionId)` :5570 - The staged strike's target from this staging world:
-- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :5574
-- `IncursionManager.strikeValue(MarketAPI market)` :5600 - What a world is worth striking:
-- `IncursionManager.breakOffRatio()` :5607 - siegeBreakOffRatio, 1 when unset:
-- `IncursionManager.sizedDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :5621 - The defence a strike is SIZED for:
-- `IncursionManager.stationStrength(MarketAPI market)` :5638 - The world's station in vanilla strength units (WarSimScript), 0 with none.
-- `IncursionManager.targetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :5650 - The defence a strike at the world meets, in vanilla strength units, as the swarm knows it.
-- `IncursionManager.liveTargetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :5663 - The defence a strike at the world meets today, in vanilla strength units:
-- `IncursionManager.strikeSeen(MarketAPI market)` :5682 - With the swarm's fog (ThreatSwarmIntel), whether it has seen the world:
-- `IncursionManager.warOpen(MarketAPI market, int phase)` :5698 - Whether a strike at the world starts no war the hive is not ready for (2026-10-01):
-- `IncursionManager.openingWaits()` :5716 - Whether the war's opening still waits on the fund bar (strikeStagedOpenFP):
-- `IncursionManager.strikeAllowed(MarketAPI market)` :5721 - The strike gate's filters short of reach and weight:
-- `IncursionManager.strikeOutweighed(MarketAPI target, float strikeStr, java.util.Map<String, float[]> memo)` :5743 - The strike gate (2026-09-29, overnight run N4):
-- `IncursionManager.isStrikeableWorld(MarketAPI market)` :5777 - A world the swarm could ever send a strike at:
-- `IncursionManager.isCoreWorld(MarketAPI market)` :5789 - Size 6+ is a core world:
-- `IncursionManager.coreWorldInReach(MarketAPI staging)` :5799 - Whether an armada-capable hive could actually reach a core world:
+- `IncursionManager.pickFringeSeedTarget()` :4700
+- `IncursionManager.pickOGSystem()` :4718 - The swarm's home system:
+- `IncursionManager.pickSpreadTarget()` :4747
+- `IncursionManager.liveSiegeBaseReachLY(MarketAPI m)` :4899 - The reach siegeBases weighs a base at today:
+- `IncursionManager.seenSiegeBaseReachLY(MarketAPI m)` :4908 - liveSiegeBaseReachLY as the swarm sees it at the base:
+- `IncursionManager.holdShare(StarSystemAPI system, Map<MarketAPI, Float> bases)` :4923 - The share of a claim the hive could hold (billed reach, 2026-09-30):
+- `IncursionManager.isValidSpreadCandidate(StarSystemAPI system)` :4943
+- `IncursionManager.distanceToNearestInhabited(StarSystemAPI system)` :4954
+- `IncursionManager.unwarredLocations()` :4971 - Where the charted worlds of factions the hive is not at war with lie - those a strike would open a war on (warOpen at phase 0):
+- `IncursionManager.nearestLY(StarSystemAPI system, List<org.lwjgl.util.vector.Vector2f> at)` :4985 - Light-years from the system to the nearest of at, or -1 when it is empty.
+- `IncursionManager.distanceToNearestInfested(StarSystemAPI system)` :4994
+- `IncursionManager.strikeFleetSize(int size)` :5009 - A mustered swarm's expedition size as the strike fields it:
+- `IncursionManager.pickStrikeTarget(MarketAPI staging, StarSystemAPI source)` :5019
+- `IncursionManager.retaliate(String factionId, StarSystemAPI near)` :5030 - RETALIATION (docs/design-theory.md 8.1):
+- `IncursionManager.pickStrikeTarget(MarketAPI staging, StarSystemAPI source, String onlyFactionId)` :5083 - @param onlyFactionId restrict candidates to this faction's worlds (retaliation), or null
+- `IncursionManager.stagedSizes(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut)` :5201 - STAGED STRIKES (the user, 2026-10-05:
+- `IncursionManager.setPricedFP(float fp)` :5256 - Caps the plan of the strike about to launch at the size its campaign priced (pricedFP);
+- `IncursionManager.setLaunchingEarmark(java.util.Map<String, Integer> earmark)` :5271 - Sets the launching held prong's earmark (hive system id -> fleets);
+- `IncursionManager.launchingEarmarkCovers(MarketAPI colony)` :5283 - Whether the held prong launching now earmarked garrison fleets of this colony's system:
+- `IncursionManager.stagedSpares(final StarSystemAPI source)` :5305 - The garrison fleets a staged strike may take, every colony of the hive weighed (the user, 2026-10-07:
+- `IncursionManager.compare(StagedSpare x, StagedSpare y)` :5387
+- `IncursionManager.spare(MarketAPI colony, java.util.List<ThreatColonyManager.MusterFleet> walk, float ly, int tier, float dist, int size)` :5395
+- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares)` :5417 - stagedSizes with what it takes from where.
+- `IncursionManager.stagedPlan(MarketAPI staging, StarSystemAPI source, MarketAPI target, java.util.Map<String, float[]> memo, float[] defOut, java.util.List<StagedSpare> spares, float bankLimit, float defGiven)` :5428 - stagedPlan against a bank of bankLimit fleet points instead of what the fund (or the banks) holds now:
+- `IncursionManager.stagedCandidates(String onlyFactionId)` :5549 - Every world a staged strike could sail at today:
+- `IncursionManager.pickStagedTarget(MarketAPI staging, final StarSystemAPI source, String onlyFactionId)` :5573 - The staged strike's target from this staging world:
+- `IncursionManager.compare(MarketAPI a, MarketAPI b)` :5577
+- `IncursionManager.strikeValue(MarketAPI market)` :5603 - What a world is worth striking:
+- `IncursionManager.breakOffRatio()` :5610 - siegeBreakOffRatio, 1 when unset:
+- `IncursionManager.sizedDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :5624 - The defence a strike is SIZED for:
+- `IncursionManager.stationStrength(MarketAPI market)` :5641 - The world's station in vanilla strength units (WarSimScript), 0 with none.
+- `IncursionManager.targetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :5653 - The defence a strike at the world meets, in vanilla strength units, as the swarm knows it.
+- `IncursionManager.liveTargetDefence(MarketAPI target, java.util.Map<String, float[]> memo)` :5666 - The defence a strike at the world meets today, in vanilla strength units:
+- `IncursionManager.strikeSeen(MarketAPI market)` :5685 - With the swarm's fog (ThreatSwarmIntel), whether it has seen the world:
+- `IncursionManager.warOpen(MarketAPI market, int phase)` :5701 - Whether a strike at the world starts no war the hive is not ready for (2026-10-01):
+- `IncursionManager.openingWaits()` :5719 - Whether the war's opening still waits on the fund bar (strikeStagedOpenFP):
+- `IncursionManager.strikeAllowed(MarketAPI market)` :5724 - The strike gate's filters short of reach and weight:
+- `IncursionManager.strikeOutweighed(MarketAPI target, float strikeStr, java.util.Map<String, float[]> memo)` :5746 - The strike gate (2026-09-29, overnight run N4):
+- `IncursionManager.isStrikeableWorld(MarketAPI market)` :5780 - A world the swarm could ever send a strike at:
+- `IncursionManager.isCoreWorld(MarketAPI market)` :5792 - Size 6+ is a core world:
+- `IncursionManager.coreWorldInReach(MarketAPI staging)` :5802 - Whether an armada-capable hive could actually reach a core world:
 ### phases, bookkeeping, helpers
-- `IncursionManager.getPhase()` :5823
-- `IncursionManager.mobiliseAtPhase()` :5865 - Every faction mobilises once the swarm reaches mobiliseAtPhase, struck or not;
-- `IncursionManager.checkPhaseAnnouncements()` :5887
-- `IncursionManager.getResponseList()` :5897
-- `IncursionManager.countActiveResponses()` :5906
-- `IncursionManager.findResponseBase(FactionAPI faction, StarSystemAPI hiveSystem)` :5921
-- `IncursionManager.expeditionRangeLY(MarketAPI base)` :5952 - How far a colony can send a task force or siege expedition:
-- `IncursionManager.hasMilitary(MarketAPI market)` :5963 - A military structure:
-- `IncursionManager.isBase(MarketAPI market)` :5982 - A BASE:
-- `IncursionManager.getStrikeList()` :5988
-- `IncursionManager.countActiveStrikes()` :5997
-- `IncursionManager.isActiveStrikeTarget(MarketAPI market)` :6006 - Whether an active strike is already aimed at this market.
-- `IncursionManager.isActiveStrikeSource(MarketAPI market)` :6025 - Whether this colony is the staging world of a strike currently in flight (launchStrike sets params.source to the staging market).
-- `IncursionManager.strikeSatPasses(int stagingSize)` :6047 - Bombardment passes an expedition may deliver PER WORLD.
-- `IncursionManager.expeditionPasses(int fleets)` :6061 - Passes a ground-doctrine siege or strike has per world:
-- `IncursionManager.preparingStrikeFleetCount(MarketAPI market)` :6070 - Fleets of a strike currently PREPARING at this colony - the mustered swarms re-embodying in orbit before departure;
-- `IncursionManager.hasPreparingStrikeFrom(MarketAPI market)` :6087 - Whether some strike staged from this colony is still in its recall window.
-- `IncursionManager.abortStrikesFrom(String marketId, String marketName, String cause)` :6121 - Recalls every in-flight strike staged from the given colony - the counterplay mirror of the launch.
-- `IncursionManager.siegeFactionsIn(String systemId)` :6150 - Factions with a siege expedition still running against a colony of the system.
-- `IncursionManager.siegeTargetsOf(String factionId, String systemId)` :6170 - The worlds the faction's running siege of the system is fighting (its purge's targets);
-- `IncursionManager.abortPurgesAgainst(String marketId, String marketName, String cause)` :6199 - Stands down every in-flight purge expedition whose ENTIRE target list is dead.
-- `IncursionManager.sweepOrphanedExpeditions()` :6240 - Catch-all for expeditions orphaned outside the event hooks:
-- `IncursionManager.upgradeInFlightStrikes()` :6290 - Clamps in-flight SATURATION strikes to the sweep doctrine's one pass per world.
-- `IncursionManager.dedupDecivIntel()` :6322 - Removes duplicate "X - Destroyed" / "X - Decivilized" intel entries:
-- `IncursionManager.firstTargetId(GenericRaidFGI purge)` :6350
-- `IncursionManager.getPurgeList()` :6358
-- `IncursionManager.countActivePurges()` :6367
-- `IncursionManager.countActiveFGIs(List<Object> list)` :6371
-- `IncursionManager.getSystem(String systemId)` :6394
-- `IncursionManager.syncSystemMarkers()` :6405 - Keeps one map-visible intel marker per infested system:
+- `IncursionManager.getPhase()` :5826
+- `IncursionManager.mobiliseAtPhase()` :5868 - Every faction mobilises once the swarm reaches mobiliseAtPhase, struck or not;
+- `IncursionManager.checkPhaseAnnouncements()` :5890
+- `IncursionManager.getResponseList()` :5900
+- `IncursionManager.countActiveResponses()` :5909
+- `IncursionManager.findResponseBase(FactionAPI faction, StarSystemAPI hiveSystem)` :5924
+- `IncursionManager.expeditionRangeLY(MarketAPI base)` :5955 - How far a colony can send a task force or siege expedition:
+- `IncursionManager.hasMilitary(MarketAPI market)` :5966 - A military structure:
+- `IncursionManager.isBase(MarketAPI market)` :5985 - A BASE:
+- `IncursionManager.getStrikeList()` :5991
+- `IncursionManager.countActiveStrikes()` :6000
+- `IncursionManager.isActiveStrikeTarget(MarketAPI market)` :6009 - Whether an active strike is already aimed at this market.
+- `IncursionManager.isActiveStrikeSource(MarketAPI market)` :6028 - Whether this colony is the staging world of a strike currently in flight (launchStrike sets params.source to the staging market).
+- `IncursionManager.strikeSatPasses(int stagingSize)` :6050 - Bombardment passes an expedition may deliver PER WORLD.
+- `IncursionManager.expeditionPasses(int fleets)` :6064 - Passes a ground-doctrine siege or strike has per world:
+- `IncursionManager.preparingStrikeFleetCount(MarketAPI market)` :6073 - Fleets of a strike currently PREPARING at this colony - the mustered swarms re-embodying in orbit before departure;
+- `IncursionManager.hasPreparingStrikeFrom(MarketAPI market)` :6090 - Whether some strike staged from this colony is still in its recall window.
+- `IncursionManager.abortStrikesFrom(String marketId, String marketName, String cause)` :6124 - Recalls every in-flight strike staged from the given colony - the counterplay mirror of the launch.
+- `IncursionManager.siegeFactionsIn(String systemId)` :6153 - Factions with a siege expedition still running against a colony of the system.
+- `IncursionManager.siegeTargetsOf(String factionId, String systemId)` :6173 - The worlds the faction's running siege of the system is fighting (its purge's targets);
+- `IncursionManager.abortPurgesAgainst(String marketId, String marketName, String cause)` :6202 - Stands down every in-flight purge expedition whose ENTIRE target list is dead.
+- `IncursionManager.sweepOrphanedExpeditions()` :6243 - Catch-all for expeditions orphaned outside the event hooks:
+- `IncursionManager.upgradeInFlightStrikes()` :6293 - Clamps in-flight SATURATION strikes to the sweep doctrine's one pass per world.
+- `IncursionManager.dedupDecivIntel()` :6325 - Removes duplicate "X - Destroyed" / "X - Decivilized" intel entries:
+- `IncursionManager.firstTargetId(GenericRaidFGI purge)` :6353
+- `IncursionManager.getPurgeList()` :6361
+- `IncursionManager.countActivePurges()` :6370
+- `IncursionManager.countActiveFGIs(List<Object> list)` :6374
+- `IncursionManager.getSystem(String systemId)` :6397
+- `IncursionManager.syncSystemMarkers()` :6408 - Keeps one map-visible intel marker per infested system:
 
 ## InfestedSystemIntel (375 lines)
 - `InfestedSystemIntel.InfestedSystemIntel(String systemId)` :28
@@ -624,7 +624,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatBuildCost.setting(String key, float fallback)` :118
 - `ThreatBuildCost.logOnce(String industryId, float cost)` :128
 
-## ThreatCoalition (549 lines)
+## ThreatCoalition (567 lines)
 - `ThreatCoalition.daysLeft()` :49
 - `ThreatCoalition.all()` :56
 - `ThreatCoalition.callFor(String systemId)` :65
@@ -632,20 +632,21 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatCoalition.tick(Random random)` :91 - Slow tick:
 - `ThreatCoalition.answerCalls(Random random)` :96
 ### allies helping each other (docs/player-aid.md section 5)
-- `ThreatCoalition.willingness(FactionAPI helper, String needyFactionId)` :163 - How far a faction will go for another, 0..1, by its standing with it.
-- `ThreatCoalition.partners(String factionId)` :181 - A faction's coalition partners:
-- `ThreatCoalition.coalition(String factionId)` :205 - The coalition against the Threat a faction belongs to:
-- `ThreatCoalition.guardBoundFor(MarketAPI market)` :221 - Whether a guard task force is already bound for or over the colony.
-- `ThreatCoalition.allyAid(Random random)` :230 - Each mobilised colony with a need, each other mobilised NPC faction:
-- `ThreatCoalition.aidStockPlans(List<String> ids, Random random)` :319 - Trade through the war (user, 2026-10-06):
-- `ThreatCoalition.aidHulls(String needyId, FactionAPI needy, List<String> ids, Random random)` :371 - Hulls move like any good (the user, 2026-10-07, after hw50:
-- `ThreatCoalition.onAllyDelivered(ThreatConvoys.Convoy c, MarketAPI base)` :421 - An ally's convoy landed at another faction's colony.
-- `ThreatCoalition.report(FactionAPI helper, FactionAPI needy, String title, String what, Object... args)` :433 - Debug narration of an ally's aid:
+- `ThreatCoalition.stagingHost(MarketAPI base, String guestFid)` :170 - ALLIED STAGING (the user, 2026-10-19:
+- `ThreatCoalition.willingness(FactionAPI helper, String needyFactionId)` :181 - How far a faction will go for another, 0..1, by its standing with it.
+- `ThreatCoalition.partners(String factionId)` :199 - A faction's coalition partners:
+- `ThreatCoalition.coalition(String factionId)` :223 - The coalition against the Threat a faction belongs to:
+- `ThreatCoalition.guardBoundFor(MarketAPI market)` :239 - Whether a guard task force is already bound for or over the colony.
+- `ThreatCoalition.allyAid(Random random)` :248 - Each mobilised colony with a need, each other mobilised NPC faction:
+- `ThreatCoalition.aidStockPlans(List<String> ids, Random random)` :337 - Trade through the war (user, 2026-10-06):
+- `ThreatCoalition.aidHulls(String needyId, FactionAPI needy, List<String> ids, Random random)` :389 - Hulls move like any good (the user, 2026-10-07, after hw50:
+- `ThreatCoalition.onAllyDelivered(ThreatConvoys.Convoy c, MarketAPI base)` :439 - An ally's convoy landed at another faction's colony.
+- `ThreatCoalition.report(FactionAPI helper, FactionAPI needy, String title, String what, Object... args)` :451 - Debug narration of an ally's aid:
 ### coalition relief: the owner and its partners relieve a world together
-- `ThreatCoalition.jointSenders(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float[] total)` :467 - Who would sail a joint relief of the world and what each can field:
-- `ThreatCoalition.compare(Sender a, Sender b)` :488
-- `ThreatCoalition.jointEnough(FactionAPI owner, MarketAPI market, MarketAPI ownerBase)` :495 - Whether the owner and its partners together can field a relief that outweighs the army over the world.
-- `ThreatCoalition.jointRelief(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float owed)` :520 - COALITION RELIEF (the user, 2026-10-08, the second human change after yards at home):
+- `ThreatCoalition.jointSenders(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float[] total)` :485 - Who would sail a joint relief of the world and what each can field:
+- `ThreatCoalition.compare(Sender a, Sender b)` :506
+- `ThreatCoalition.jointEnough(FactionAPI owner, MarketAPI market, MarketAPI ownerBase)` :513 - Whether the owner and its partners together can field a relief that outweighs the army over the world.
+- `ThreatCoalition.jointRelief(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float owed)` :538 - COALITION RELIEF (the user, 2026-10-08, the second human change after yards at home):
 
 ## ThreatColonyManager (7762 lines)
 ### founding
@@ -1039,7 +1040,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatColonyUpkeep.take(String key)` :477
 - `ThreatColonyUpkeep.logMonth()` :484 - The month's upkeep line for the census log, and the month's tallies reset.
 
-## ThreatConvoys (3273 lines)
+## ThreatConvoys (3386 lines)
 - `ThreatConvoys.isFrontRun()` :101 - A founding convoy's hive:
 - `ThreatConvoys.isFounding()` :105
 - `ThreatConvoys.fromName()` :110 - The sender:
@@ -1086,114 +1087,119 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatConvoys.ownWants(MarketAPI m)` :592 - A market's own targets, relays aside:
 - `ThreatConvoys.ageTargetsMemo()` :597 - Drops the day's memos when a day has passed since they were drawn.
 - `ThreatConvoys.siegeStock(MarketAPI base)` :624 - #stagingTargets for the base's own siege alone, relays aside:
-- `ThreatConvoys.committedBefore(MarketAPI base, float[] wants)` :691 - The funding the faction's cheaper siege stagers claim out of the same stock network as base, COMMODITIES order:
-- `ThreatConvoys.stagesForHunt(MarketAPI base)` :730 - Whether the base stages for a hunting force, its siege being past what the faction can pay for (#siegeStock):
-- `ThreatConvoys.siegeFundable(float[] wants, float[] have)` :753 - Whether a siege's fuel and supplies (wants, COMMODITIES order) fit in have (#fundingInReach).
-- `ThreatConvoys.siegeFundable(float[] wants, float[] have, float share)` :758 - As above, the siege needing at most share of each.
-- `ThreatConvoys.fundingInReach(MarketAPI base)` :773 - What the faction can bring to the base within stagingHorizonMonths, in COMMODITIES order:
-- `ThreatConvoys.stockNetwork(MarketAPI base)` :790 - The base and every market of its faction whose stock can reach it by convoy, directly (IncursionManager.marketsReaching) or passed on through others - the reach relays give it (#relayPlan).
-- `ThreatConvoys.stagingTarget(MarketAPI base, String commodityId)` :806 - One commodity of #stagingTargets.
-- `ThreatConvoys.forgetStagingTargets()` :818 - Drops the stagingTargets memos;
+- `ThreatConvoys.committedBefore(MarketAPI base, float[] wants)` :697 - The funding the faction's cheaper siege stagers claim out of the same stock network as base, COMMODITIES order:
+- `ThreatConvoys.stagesForHunt(MarketAPI base)` :736 - Whether the base stages for a hunting force, its siege being past what the faction can pay for (#siegeStock):
+- `ThreatConvoys.siegeFundable(float[] wants, float[] have)` :759 - Whether a siege's fuel and supplies (wants, COMMODITIES order) fit in have (#fundingInReach).
+- `ThreatConvoys.siegeFundable(float[] wants, float[] have, float share)` :764 - As above, the siege needing at most share of each.
+- `ThreatConvoys.fundingInReach(MarketAPI base)` :779 - What the faction can bring to the base within stagingHorizonMonths, in COMMODITIES order:
+- `ThreatConvoys.stockNetwork(MarketAPI base)` :796 - The base and every market of its faction whose stock can reach it by convoy, directly (IncursionManager.marketsReaching) or passed on through others - the reach relays give it (#relayPlan).
+- `ThreatConvoys.stagingTarget(MarketAPI base, String commodityId)` :812 - One commodity of #stagingTargets.
+- `ThreatConvoys.forgetStagingTargets()` :824 - Drops the stagingTargets memos;
 ### a war council play's staging (ThreatPlays, docs/war-council.md section 16)
-- `ThreatConvoys.playStagingOf(MarketAPI base)` :843 - The play staging the base, or null;
-- `ThreatConvoys.stageForPlay(MarketAPI base, String playId, StarSystemAPI system, float[] wants)` :850 - The play stages the base against the system for its expedition's wants (IncursionManager.expeditionWants).
-- `ThreatConvoys.clearPlayStaging(String playId)` :861 - The play's bases stage as the faction's sieges would again.
+- `ThreatConvoys.playStagingOf(MarketAPI base)` :853 - The play staging the base - the base's own faction's first, else a guest's (allied staging) - or null;
+- `ThreatConvoys.playStagingsOf(MarketAPI base)` :867 - Every play staging the base (a base stages several since 2026-10-19 - its own faction's hammers and its allies' guests, ALLIED STAGING);
+- `ThreatConvoys.guestFactionsAt(MarketAPI base)` :882 - The guests' factions staging at the base (allied staging):
+- `ThreatConvoys.stageForPlay(MarketAPI base, String playId, StarSystemAPI system, float[] wants)` :891 - As below, the base's own faction's play.
+- `ThreatConvoys.stageForPlay(MarketAPI base, String playId, String factionId, StarSystemAPI system, float[] wants)` :896 - The play of { factionId} stages the base against the system for its expedition's wants (IncursionManager.expeditionWants);
+- `ThreatConvoys.clearPlayStaging(String playId)` :913 - The play's bases stage as the faction's sieges would again.
 ### relays: stock carried on toward a staging base past its donors' reach
-- `ThreatConvoys.relayTargets(MarketAPI market)` :893 - What a market holds to pass on, in ThreatReserves.COMMODITIES order:
-- `ThreatConvoys.relayPlan(FactionAPI faction)` :923 - RELAYS (2026-09-29).
-- `ThreatConvoys.drawRelays(FactionAPI faction, RelayPlan plan)` :939
-- `ThreatConvoys.pickRelay(FactionAPI faction, MarketAPI needy, Map<MarketAPI, Integer> reached)` :1015 - The relay for a market its donors cannot keep stocked, or null:
-- `ThreatConvoys.ownSpare(RelayPlan plan, MarketAPI donor, int i)` :1044 - What a donor could send of commodity i by the plan so far:
-- `ThreatConvoys.ownKeep(MarketAPI m, int i)` :1053 - The stock a market keeps of commodity i for itself, relays aside:
-- `ThreatConvoys.relayHold(MarketAPI relay, MarketAPI to, String commodityId)` :1064 - What a relay holds for the market it passes stock on to:
-- `ThreatConvoys.capacityFor(String commodityId)` :1087 - A REFERENCE load (convoyMarineCapacity / convoyCargoCapacity):
-- `ThreatConvoys.shortfall(MarketAPI base, float[] targets)` :1098 - What a base is short of its targets, net of its stock and of what is already at sea to it (#inbound).
-- `ThreatConvoys.worthSailing(String commodityId, float shortBy, float target)` :1108 - Whether a shortfall is worth a sailing:
-- `ThreatConvoys.planLogistics(Random random)` :1125 - One planning pass:
-- `ThreatConvoys.compare(Integer a, Integer b)` :1152
-- `ThreatConvoys.compare(Object[] a, Object[] b)` :1159
-- `ThreatConvoys.planRelief(FactionAPI faction, Random random)` :1217 - RELIEF:
-- `ThreatConvoys.compare(MarketAPI a, MarketAPI b)` :1242
-- `ThreatConvoys.planOutpostReturns(FactionAPI faction, Random random)` :1297 - An outpost's stockpile is the forward base for front runs in its own system;
-- `ThreatConvoys.outpostHome(FactionAPI faction, ThreatOutposts.Outpost o)` :1317 - Where an outpost's stock ships home once its system holds no hive:
-- `ThreatConvoys.nearestColony(FactionAPI faction, Vector2f hyperLoc)` :1325 - The faction's nearest colony to a hyperspace location, military or not.
+- `ThreatConvoys.relayTargets(MarketAPI market)` :945 - What a market holds to pass on, in ThreatReserves.COMMODITIES order:
+- `ThreatConvoys.relayPlan(FactionAPI faction)` :975 - RELAYS (2026-09-29).
+- `ThreatConvoys.drawRelays(FactionAPI faction, RelayPlan plan)` :991
+- `ThreatConvoys.pickRelay(FactionAPI faction, MarketAPI needy, Map<MarketAPI, Integer> reached)` :1067 - The relay for a market its donors cannot keep stocked, or null:
+- `ThreatConvoys.ownSpare(RelayPlan plan, MarketAPI donor, int i)` :1096 - What a donor could send of commodity i by the plan so far:
+- `ThreatConvoys.ownKeep(MarketAPI m, int i)` :1105 - The stock a market keeps of commodity i for itself, relays aside:
+- `ThreatConvoys.relayHold(MarketAPI relay, MarketAPI to, String commodityId)` :1116 - What a relay holds for the market it passes stock on to:
+- `ThreatConvoys.capacityFor(String commodityId)` :1139 - A REFERENCE load (convoyMarineCapacity / convoyCargoCapacity):
+- `ThreatConvoys.shortfall(MarketAPI base, float[] targets)` :1150 - What a base is short of its targets, net of its stock and of what is already at sea to it (#inbound).
+- `ThreatConvoys.worthSailing(String commodityId, float shortBy, float target)` :1160 - Whether a shortfall is worth a sailing:
+- `ThreatConvoys.guestDonors(MarketAPI base, List<MarketAPI> have)` :1170 - ALLIED STAGING (the user, 2026-10-19):
+- `ThreatConvoys.zealotConvoyDonors(MarketAPI base, List<MarketAPI> have)` :1191 - CONVOYS ONLY (the user, 2026-10-19:
+- `ThreatConvoys.planLogistics(Random random)` :1218 - One planning pass:
+- `ThreatConvoys.compare(Integer a, Integer b)` :1245
+- `ThreatConvoys.compare(Object[] a, Object[] b)` :1252
+- `ThreatConvoys.planRelief(FactionAPI faction, Random random)` :1330 - RELIEF:
+- `ThreatConvoys.compare(MarketAPI a, MarketAPI b)` :1355
+- `ThreatConvoys.planOutpostReturns(FactionAPI faction, Random random)` :1410 - An outpost's stockpile is the forward base for front runs in its own system;
+- `ThreatConvoys.outpostHome(FactionAPI faction, ThreatOutposts.Outpost o)` :1430 - Where an outpost's stock ships home once its system holds no hive:
+- `ThreatConvoys.nearestColony(FactionAPI faction, Vector2f hyperLoc)` :1438 - The faction's nearest colony to a hyperspace location, military or not.
 ### front runs: supply and withdrawal (docs/design-theory.md 8.3)
-- `ThreatConvoys.convoyBoundForFront(String hiveMarketId)` :1344
-- `ThreatConvoys.pickupBoundFor(String hiveMarketId)` :1352 - Whether a withdrawal run is already on its way to this front.
-- `ThreatConvoys.inboundFront(String hiveMarketId)` :1360 - [marines, armaments] aboard the supply runs already at sea to this front (the hold, while the fleet lives).
-- `ThreatConvoys.frontWants(ThreatGroundFronts.GroundFront front, MarketAPI hive)` :1372 - What a friendly front wants brought:
-- `ThreatConvoys.pickFrontBase(FactionAPI faction, MarketAPI hive, boolean pickup, float[] wants)` :1404 - Where a front run sails from.
-- `ThreatConvoys.pickFrontBase(FactionAPI faction, MarketAPI hive, boolean pickup, float[] wants, java.util.Set<String> skip)` :1410 - As above, passing over the bases in skip (ids of those already drawn on this pass).
-- `ThreatConvoys.colonyBase(FactionAPI faction, Vector2f hyperLoc, MarketAPI link)` :1451 - The faction's nearest colony base by hyperspace distance, at any range and never a link;
-- `ThreatConvoys.frontScore(MarketAPI m, float[] wants)` :1468 - How much of a front run's wants a market covers, 0-2 (marines + armaments, each as a share).
-- `ThreatConvoys.planFrontRuns(FactionAPI faction, Random random)` :1487 - Every friendly front of a mobilised faction with no pickup already bound for it:
-- `ThreatConvoys.canRunTo(FactionAPI faction, MarketAPI hive)` :1566 - Why no run can sail to this world now, or null.
-- `ThreatConvoys.supportFor(FactionAPI faction, MarketAPI hive)` :1587 - Sends one Support sortie to clear a contested orbit, if none is out already (a Defend on its way there counts).
-- `ThreatConvoys.supplyAsk(ThreatGroundFronts.GroundFront front, MarketAPI hive, int tier)` :1613 - What the board's Supply order asks the base for at a load tier:
-- `ThreatConvoys.supplyFront(MarketAPI hive, FactionAPI faction, int tier, Random random)` :1641 - The board's Supply order:
-- `ThreatConvoys.supplyBlockReason(FactionAPI faction, MarketAPI hive, int tier)` :1657 - Why the board's Supply order at this load tier would send nothing now, or null if a run would sail.
-- `ThreatConvoys.pullOutBlockReason(FactionAPI faction, MarketAPI hive)` :1687 - Why the board's Pull out order would send nothing now, or null if a run would sail.
-- `ThreatConvoys.pullOutFront(MarketAPI hive, FactionAPI faction, Random random)` :1700 - The board's Pull out order:
-- `ThreatConvoys.dispatchFrontRun(ThreatBases.Base base, MarketAPI hive, ThreatGroundFronts.GroundFront front, FactionAPI faction, float[] load, boolean pickup, Random random)` :1726 - Builds the run at the base:
-- `ThreatConvoys.sailFrontRun(Hulls h, ThreatBases.Base base, MarketAPI hive, FactionAPI faction, boolean pickup, boolean paysEscort, float ly, SectorEntityToken door, Random random)` :1770 - One front run of the sailing:
-- `ThreatConvoys.pollFrontRun(Convoy c)` :1833 - A front run inside the hive system:
-- `ThreatConvoys.stageTo(MarketAPI target, FactionAPI faction, int tier, Random random)` :1922 - A player-ordered staging run (the board's Supplies button):
-- `ThreatConvoys.stageTo(ThreatBases.Base target, FactionAPI faction, int tier, Random random)` :1927 - As above to either kind of base - a colony, or the player's outpost (its station is the depot).
-- `ThreatConvoys.stageLoad(MarketAPI donor, MarketAPI target, int tier)` :1949 - What a hand-ordered convoy from this donor carries to this target at a load tier:
-- `ThreatConvoys.stageLoad(MarketAPI donor, ThreatBases.Base target, int tier)` :1954 - As above to either kind of base.
-- `ThreatConvoys.stageWants(ThreatBases.Base target, int tier)` :1971 - The ask of a hand-ordered convoy to this target at a load tier, before any donor's cap (the tier rules of #stageLoad), COMMODITIES order.
-- `ThreatConvoys.stageOffReason(ThreatBases.Base target, int tier, String whose)` :1999 - Why no Supplies convoy can sail to this target at a load tier - the button's disabled tooltip and the Confirm:
-- `ThreatConvoys.stageDonor(MarketAPI target, FactionAPI faction, int tier)` :2021 - The colony a Stage order to this target would load at:
-- `ThreatConvoys.stageDonor(ThreatBases.Base target, FactionAPI faction, int tier)` :2026 - As above to either kind of base.
+- `ThreatConvoys.convoyBoundForFront(String hiveMarketId)` :1457
+- `ThreatConvoys.pickupBoundFor(String hiveMarketId)` :1465 - Whether a withdrawal run is already on its way to this front.
+- `ThreatConvoys.inboundFront(String hiveMarketId)` :1473 - [marines, armaments] aboard the supply runs already at sea to this front (the hold, while the fleet lives).
+- `ThreatConvoys.frontWants(ThreatGroundFronts.GroundFront front, MarketAPI hive)` :1485 - What a friendly front wants brought:
+- `ThreatConvoys.pickFrontBase(FactionAPI faction, MarketAPI hive, boolean pickup, float[] wants)` :1517 - Where a front run sails from.
+- `ThreatConvoys.pickFrontBase(FactionAPI faction, MarketAPI hive, boolean pickup, float[] wants, java.util.Set<String> skip)` :1523 - As above, passing over the bases in skip (ids of those already drawn on this pass).
+- `ThreatConvoys.colonyBase(FactionAPI faction, Vector2f hyperLoc, MarketAPI link)` :1564 - The faction's nearest colony base by hyperspace distance, at any range and never a link;
+- `ThreatConvoys.frontScore(MarketAPI m, float[] wants)` :1581 - How much of a front run's wants a market covers, 0-2 (marines + armaments, each as a share).
+- `ThreatConvoys.planFrontRuns(FactionAPI faction, Random random)` :1600 - Every friendly front of a mobilised faction with no pickup already bound for it:
+- `ThreatConvoys.canRunTo(FactionAPI faction, MarketAPI hive)` :1679 - Why no run can sail to this world now, or null.
+- `ThreatConvoys.supportFor(FactionAPI faction, MarketAPI hive)` :1700 - Sends one Support sortie to clear a contested orbit, if none is out already (a Defend on its way there counts).
+- `ThreatConvoys.supplyAsk(ThreatGroundFronts.GroundFront front, MarketAPI hive, int tier)` :1726 - What the board's Supply order asks the base for at a load tier:
+- `ThreatConvoys.supplyFront(MarketAPI hive, FactionAPI faction, int tier, Random random)` :1754 - The board's Supply order:
+- `ThreatConvoys.supplyBlockReason(FactionAPI faction, MarketAPI hive, int tier)` :1770 - Why the board's Supply order at this load tier would send nothing now, or null if a run would sail.
+- `ThreatConvoys.pullOutBlockReason(FactionAPI faction, MarketAPI hive)` :1800 - Why the board's Pull out order would send nothing now, or null if a run would sail.
+- `ThreatConvoys.pullOutFront(MarketAPI hive, FactionAPI faction, Random random)` :1813 - The board's Pull out order:
+- `ThreatConvoys.dispatchFrontRun(ThreatBases.Base base, MarketAPI hive, ThreatGroundFronts.GroundFront front, FactionAPI faction, float[] load, boolean pickup, Random random)` :1839 - Builds the run at the base:
+- `ThreatConvoys.sailFrontRun(Hulls h, ThreatBases.Base base, MarketAPI hive, FactionAPI faction, boolean pickup, boolean paysEscort, float ly, SectorEntityToken door, Random random)` :1883 - One front run of the sailing:
+- `ThreatConvoys.pollFrontRun(Convoy c)` :1946 - A front run inside the hive system:
+- `ThreatConvoys.stageTo(MarketAPI target, FactionAPI faction, int tier, Random random)` :2035 - A player-ordered staging run (the board's Supplies button):
+- `ThreatConvoys.stageTo(ThreatBases.Base target, FactionAPI faction, int tier, Random random)` :2040 - As above to either kind of base - a colony, or the player's outpost (its station is the depot).
+- `ThreatConvoys.stageLoad(MarketAPI donor, MarketAPI target, int tier)` :2062 - What a hand-ordered convoy from this donor carries to this target at a load tier:
+- `ThreatConvoys.stageLoad(MarketAPI donor, ThreatBases.Base target, int tier)` :2067 - As above to either kind of base.
+- `ThreatConvoys.stageWants(ThreatBases.Base target, int tier)` :2084 - The ask of a hand-ordered convoy to this target at a load tier, before any donor's cap (the tier rules of #stageLoad), COMMODITIES order.
+- `ThreatConvoys.stageOffReason(ThreatBases.Base target, int tier, String whose)` :2112 - Why no Supplies convoy can sail to this target at a load tier - the button's disabled tooltip and the Confirm:
+- `ThreatConvoys.stageDonor(MarketAPI target, FactionAPI faction, int tier)` :2134 - The colony a Stage order to this target would load at:
+- `ThreatConvoys.stageDonor(ThreatBases.Base target, FactionAPI faction, int tier)` :2139 - As above to either kind of base.
 ### REINFORCE (user, 2026-10-17): the board's order for a colony under a
-- `ThreatConvoys.reinforceWants(MarketAPI besieged, int tier)` :2076 - What a Reinforce convoy to this besieged colony asks for at a load tier, COMMODITIES order (marines and heavy armaments only - a reinforcement carries troops and their arms):
-- `ThreatConvoys.reinforceLoad(MarketAPI donor, MarketAPI besieged, int tier)` :2098 - What a Reinforce convoy from this donor carries at a load tier:
-- `ThreatConvoys.reinforceDonor(MarketAPI besieged, FactionAPI faction, int tier)` :2117 - The same-faction colony a Reinforce order would load at:
-- `ThreatConvoys.reinforceTo(MarketAPI besieged, FactionAPI faction, int tier, Random random)` :2141 - The board's Reinforce order to the player's own colony:
-- `ThreatConvoys.reinforceOffReason(MarketAPI besieged, int tier, String whose)` :2149 - Why no Reinforce convoy can sail to this colony at a load tier - the button's disabled tooltip and the Confirm.
-- `ThreatConvoys.spare(MarketAPI donor, String commodityId)` :2159 - Stock a colony can spare:
-- `ThreatConvoys.sendable(MarketAPI donor, MarketAPI base, String commodityId)` :2199 - What a donor may send a base of one commodity:
-- `ThreatConvoys.minLoad(MarketAPI donor, String commodityId)` :2211 - The least worth a sailing from this donor (a floor, not a cap):
-- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId)` :2219 - The planner's donor:
-- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId, java.util.Set<MarketAPI> skip)` :2224 - As above, passing over the donors in skip (those already drawn on this pass).
-- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random)` :2251 - Builds the convoy fleet at the donor, loads the cargo aboard (clamped to what the hulls can actually carry), draws exactly that from the donor's reserve, and sends it to the base.
-- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2261 - As above, bound for another faction's colony:
-- `ThreatConvoys.dispatch(ThreatBases.Base donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2267
-- `ThreatConvoys.dispatch(ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2285 - The convoy itself, from either kind of base:
-- `ThreatConvoys.sailed(Hulls h, Convoy c, float[] remaining, float[] sailed)` :2341 - Books what one fleet of a sailing loaded:
-- `ThreatConvoys.sail(Hulls h, ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, boolean paysEscort, float ly, String recipientFactionId, boolean aid, Random random)` :2359 - One convoy of the sailing:
-- `ThreatConvoys.trimToHulls(Convoy c)` :2441 - After an off-screen fight vanilla removes hulls but not their cargo:
-- `ThreatConvoys.fitHulls(CampaignFleetAPI fleet, FactionAPI faction, float marines, float cargoUnits, float fuel, Random random)` :2484 - Adds the faction's own personnel, freighter and tanker hulls until the load fits (2026-09-24).
+- `ThreatConvoys.reinforceWants(MarketAPI besieged, int tier)` :2189 - What a Reinforce convoy to this besieged colony asks for at a load tier, COMMODITIES order (marines and heavy armaments only - a reinforcement carries troops and their arms):
+- `ThreatConvoys.reinforceLoad(MarketAPI donor, MarketAPI besieged, int tier)` :2211 - What a Reinforce convoy from this donor carries at a load tier:
+- `ThreatConvoys.reinforceDonor(MarketAPI besieged, FactionAPI faction, int tier)` :2230 - The same-faction colony a Reinforce order would load at:
+- `ThreatConvoys.reinforceTo(MarketAPI besieged, FactionAPI faction, int tier, Random random)` :2254 - The board's Reinforce order to the player's own colony:
+- `ThreatConvoys.reinforceOffReason(MarketAPI besieged, int tier, String whose)` :2262 - Why no Reinforce convoy can sail to this colony at a load tier - the button's disabled tooltip and the Confirm.
+- `ThreatConvoys.spare(MarketAPI donor, String commodityId)` :2272 - Stock a colony can spare:
+- `ThreatConvoys.sendable(MarketAPI donor, MarketAPI base, String commodityId)` :2312 - What a donor may send a base of one commodity:
+- `ThreatConvoys.minLoad(MarketAPI donor, String commodityId)` :2324 - The least worth a sailing from this donor (a floor, not a cap):
+- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId)` :2332 - The planner's donor:
+- `ThreatConvoys.pickDonor(List<MarketAPI> markets, MarketAPI base, String commodityId, java.util.Set<MarketAPI> skip)` :2337 - As above, passing over the donors in skip (those already drawn on this pass).
+- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random)` :2364 - Builds the convoy fleet at the donor, loads the cargo aboard (clamped to what the hulls can actually carry), draws exactly that from the donor's reserve, and sends it to the base.
+- `ThreatConvoys.dispatch(MarketAPI donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2374 - As above, bound for another faction's colony:
+- `ThreatConvoys.dispatch(ThreatBases.Base donor, MarketAPI base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2380
+- `ThreatConvoys.dispatch(ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, float[] load, Random random, String recipientFactionId, boolean aid)` :2398 - The convoy itself, from either kind of base:
+- `ThreatConvoys.sailed(Hulls h, Convoy c, float[] remaining, float[] sailed)` :2454 - Books what one fleet of a sailing loaded:
+- `ThreatConvoys.sail(Hulls h, ThreatBases.Base donor, ThreatBases.Base base, FactionAPI faction, boolean paysEscort, float ly, String recipientFactionId, boolean aid, Random random)` :2472 - One convoy of the sailing:
+- `ThreatConvoys.trimToHulls(Convoy c)` :2554 - After an off-screen fight vanilla removes hulls but not their cargo:
+- `ThreatConvoys.fitHulls(CampaignFleetAPI fleet, FactionAPI faction, float marines, float cargoUnits, float fuel, Random random)` :2597 - Adds the faction's own personnel, freighter and tanker hulls until the load fits (2026-09-24).
 ### splitting a load across fleets (2026-09-29: vanilla's ship limit)
-- `ThreatConvoys.fleetShipLimit()` :2518 - The most ships an AI fleet may have:
-- `ThreatConvoys.burn(Hulls h, float[] burnt)` :2534 - Takes what the escort burnt off the fleet's ask:
-- `ThreatConvoys.buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve, float ly, boolean paysEscort, boolean frontRun, boolean grow, Random random)` :2555 - Builds one convoy fleet at from for ask:
-- `ThreatConvoys.buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve, float ly, boolean paysEscort, boolean frontRun, boolean grow, float minEscort, Random random)` :2561 - As above, with an escort of at least minEscort points asked for (a founding convoy's guard, dispatchFounding).
-- `ThreatConvoys.escortForValue(float[] ask)` :2600 - The escort points a load's cargo value calls for, over the convoyEscortFP every convoy sails with.
-- `ThreatConvoys.builtEscort(Hulls h)` :2609 - The escort points the donor pays for:
-- `ThreatConvoys.holds(CampaignFleetAPI fleet, float[] ask)` :2615 - The smallest share of its ask the fleet's berths, hold or tanks take;
-- `ThreatConvoys.nextHulls(Split split, float[] remaining, ThreatBases.Base from, FactionAPI faction, float ly, boolean paysEscort, boolean frontRun, Random random)` :2661 - The next fleet of a sailing:
-- `ThreatConvoys.addHull(CampaignFleetAPI fleet, FactionAPI faction, float missing, float largeAt, float mediumAt, String large, String medium, String small, Random random)` :2705 - One hull of the size the shortfall calls for, falling back to smaller ones;
-- `ThreatConvoys.loadCommodity(CargoAPI cargo, String donorId, String commodityId, float wanted)` :2722
+- `ThreatConvoys.fleetShipLimit()` :2631 - The most ships an AI fleet may have:
+- `ThreatConvoys.burn(Hulls h, float[] burnt)` :2647 - Takes what the escort burnt off the fleet's ask:
+- `ThreatConvoys.buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve, float ly, boolean paysEscort, boolean frontRun, boolean grow, Random random)` :2668 - Builds one convoy fleet at from for ask:
+- `ThreatConvoys.buildHulls(ThreatBases.Base from, FactionAPI faction, float[] ask, float[] reserve, float ly, boolean paysEscort, boolean frontRun, boolean grow, float minEscort, Random random)` :2674 - As above, with an escort of at least minEscort points asked for (a founding convoy's guard, dispatchFounding).
+- `ThreatConvoys.escortForValue(float[] ask)` :2713 - The escort points a load's cargo value calls for, over the convoyEscortFP every convoy sails with.
+- `ThreatConvoys.builtEscort(Hulls h)` :2722 - The escort points the donor pays for:
+- `ThreatConvoys.holds(CampaignFleetAPI fleet, float[] ask)` :2728 - The smallest share of its ask the fleet's berths, hold or tanks take;
+- `ThreatConvoys.nextHulls(Split split, float[] remaining, ThreatBases.Base from, FactionAPI faction, float ly, boolean paysEscort, boolean frontRun, Random random)` :2774 - The next fleet of a sailing:
+- `ThreatConvoys.addHull(CampaignFleetAPI fleet, FactionAPI faction, float missing, float largeAt, float mediumAt, String large, String medium, String small, Random random)` :2818 - One hull of the size the shortfall calls for, falling back to smaller ones;
+- `ThreatConvoys.loadCommodity(CargoAPI cargo, String donorId, String commodityId, float wanted)` :2835
 ### founding convoys (the user, 2026-10-11: "make humans need physical convoys to found a FB like
-- `ThreatConvoys.foundingBoundFor(String factionId, String hiveSystemId)` :2741 - Whether a founding convoy of the faction is at sea toward this hive system (ThreatFrontlines.planFor counts it as reaching the hive).
-- `ThreatConvoys.foundingBoundTo(String siteId)` :2750 - Whether any founding convoy is at sea to this planet (ThreatFrontlines.pickSite passes it over).
-- `ThreatConvoys.withPassage(float[] kit, float ly)` :2763 - A founding's cost with its convoy's passage beside it ({supplies, fuel}):
-- `ThreatConvoys.destinationSystem(Convoy c)` :2770 - The star system a convoy is bound for - its base's, or a founding convoy's site's;
-- `ThreatConvoys.dispatchFounding(MarketAPI payer, PlanetAPI site, StarSystemAPI hive, FactionAPI faction, float[] cost, Random random)` :2789 - A FOUNDING CONVOY:
-- `ThreatConvoys.pollFounding(Convoy c)` :2924 - A founding convoy at sea:
+- `ThreatConvoys.foundingBoundFor(String factionId, String hiveSystemId)` :2854 - Whether a founding convoy of the faction is at sea toward this hive system (ThreatFrontlines.planFor counts it as reaching the hive).
+- `ThreatConvoys.foundingBoundTo(String siteId)` :2863 - Whether any founding convoy is at sea to this planet (ThreatFrontlines.pickSite passes it over).
+- `ThreatConvoys.withPassage(float[] kit, float ly)` :2876 - A founding's cost with its convoy's passage beside it ({supplies, fuel}):
+- `ThreatConvoys.destinationSystem(Convoy c)` :2883 - The star system a convoy is bound for - its base's, or a founding convoy's site's;
+- `ThreatConvoys.dispatchFounding(MarketAPI payer, PlanetAPI site, StarSystemAPI hive, FactionAPI faction, float[] cost, Random random)` :2902 - A FOUNDING CONVOY:
+- `ThreatConvoys.pollFounding(Convoy c)` :3037 - A founding convoy at sea:
 ### resolution (fast poll)
-- `ThreatConvoys.poll()` :2987 - Distance from the destination entity at which a convoy counts as arrived (ThreatReturns.arrived).
-- `ThreatConvoys.holdsOff(Convoy c, ThreatBases.Base base)` :3048 - THE BLOCKADE DOOR (user, 2026-10-17:
-- `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :3084
-- `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :3158 - Whether the convoy's destination still belongs to whom it was sent to.
-- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :3171 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
-- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId, float need)` :3180 - As above for a known need:
-- `ThreatConvoys.stripLandedMods()` :3203 - Strips the landing trade modifiers older builds left on markets (rule 5).
-- `ThreatConvoys.lost(Convoy c)` :3215
-- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :3236 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
-- `ThreatConvoys.homeBase(Convoy c)` :3247 - Where a convoy settles:
-- `ThreatConvoys.returnHome(Convoy c)` :3261 - Recalled, timed out, or its destination is gone:
+- `ThreatConvoys.poll()` :3100 - Distance from the destination entity at which a convoy counts as arrived (ThreatReturns.arrived).
+- `ThreatConvoys.holdsOff(Convoy c, ThreatBases.Base base)` :3161 - THE BLOCKADE DOOR (user, 2026-10-17:
+- `ThreatConvoys.arrived(Convoy c, ThreatBases.Base base)` :3197
+- `ThreatConvoys.boundFor(Convoy c, ThreatBases.Base base)` :3271 - Whether the convoy's destination still belongs to whom it was sent to.
+- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId)` :3284 - The helper's colony in reach of another faction's colony that can spare the most of a commodity, or null.
+- `ThreatConvoys.pickAllyDonor(FactionAPI helper, MarketAPI needy, String commodityId, float need)` :3293 - As above for a known need:
+- `ThreatConvoys.stripLandedMods()` :3316 - Strips the landing trade modifiers older builds left on markets (rule 5).
+- `ThreatConvoys.lost(Convoy c)` :3328
+- `ThreatConvoys.fallbackHome(CampaignFleetAPI fleet, String factionId)` :3349 - Where an NPC convoy whose donor is gone or changed hands goes home to settle:
+- `ThreatConvoys.homeBase(Convoy c)` :3360 - Where a convoy settles:
+- `ThreatConvoys.returnHome(Convoy c)` :3374 - Recalled, timed out, or its destination is gone:
 
 ## ThreatCoreBuild (320 lines)
 - `ThreatCoreBuild.enabled()` :58
@@ -1597,7 +1603,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFortificationRaids.performRaid(CargoAPI loot, Random random, float lootMult, TextPanelAPI text)` :174
 - `ThreatFortificationRaids.OrganRaid(MarketAPI market, Industry target)` :197 - A hive's Fabrication Core:
 
-## ThreatFrontlines (2786 lines)
+## ThreatFrontlines (2799 lines)
 - `ThreatFrontlines.StationListener(String marketId)` :140
 - `ThreatFrontlines.reportFleetDespawnedToListener(CampaignFleetAPI fleet, com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param)` :144
 - `ThreatFrontlines.reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner, com.fs.starfarer.api.campaign.BattleAPI battle)` :155
@@ -1705,31 +1711,31 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 ### planning: where the chain goes next
 - `ThreatFrontlines.plan(Random random)` :2071 - Each mobilised NPC faction under its cap founds at most one link per pass:
 - `ThreatFrontlines.planFor(FactionAPI faction, List<StarSystemAPI> hiveSystems, Random random)` :2097
-- `ThreatFrontlines.compare(Object[] x, Object[] y)` :2142
-- `ThreatFrontlines.pickSite(FactionAPI faction, MarketAPI anchor, StarSystemAPI hive, float hop, float reach)` :2242 - The open world within hop of the anchor that ends up nearest the hive - accepted if it gets at least 1 LY closer than the anchor, or lies within reach of the hive outright.
-- `ThreatFrontlines.payer(FactionAPI faction, PlanetAPI site)` :2273 - The faction's base nearest the site that can fund the founding (linkCost, #canFund:
-- `ThreatFrontlines.hiveNear(SectorEntityToken planet)` :2298 - The nearest found live hive's system within frontlineKeepLY of this world, or null.
-- `ThreatFrontlines.hostsLink(SectorEntityToken planet)` :2314 - Whether any faction's link already orbits this planet:
-- `ThreatFrontlines.siteSystemOk(FactionAPI faction, StarSystemAPI sys)` :2327 - No hive and no hostile market in the system, and no link of this faction or another (linkTaken).
-- `ThreatFrontlines.linkTaken(StarSystemAPI sys)` :2342 - Whether a system already holds a link, of any faction:
-- `ThreatFrontlines.foundLanded(FactionAPI faction, PlanetAPI site, StarSystemAPI hive, String payerName, CampaignFleetAPI convoy, String donorMarketId)` :2355 - A founding convoy's kit has landed (ThreatConvoys.pollFounding):
-- `ThreatFrontlines.adoptGarrison(Outpost o, MarketAPI link, CampaignFleetAPI convoy, String donorMarketId, float need)` :2379 - THE GUARD SAILS WITH THE KIT (2026-10-18 20:55, the user, option 1):
-- `ThreatFrontlines.guardFP(SectorEntityToken site, String factionId)` :2411 - The guard a base at this site needs today, in fleet points;
-- `ThreatFrontlines.payGuardVoyage(MarketAPI base, float fp, float ly)` :2423 - Pays a guard's voyage of fp points over ly the way sendGarrison pays one:
-- `ThreatFrontlines.guardBudgetOk(FactionAPI faction, SectorEntityToken site, float needFP)` :2443 - Whether the faction's garrison budget has room for a guard of needFP at a new front link - garrisonBase's budget test alone:
-- `ThreatFrontlines.found(FactionAPI faction, PlanetAPI planet, StarSystemAPI hive)` :2456 - Founds a size-1 link on a station over the planet.
+- `ThreatFrontlines.compare(Object[] x, Object[] y)` :2155
+- `ThreatFrontlines.pickSite(FactionAPI faction, MarketAPI anchor, StarSystemAPI hive, float hop, float reach)` :2255 - The open world within hop of the anchor that ends up nearest the hive - accepted if it gets at least 1 LY closer than the anchor, or lies within reach of the hive outright.
+- `ThreatFrontlines.payer(FactionAPI faction, PlanetAPI site)` :2286 - The faction's base nearest the site that can fund the founding (linkCost, #canFund:
+- `ThreatFrontlines.hiveNear(SectorEntityToken planet)` :2311 - The nearest found live hive's system within frontlineKeepLY of this world, or null.
+- `ThreatFrontlines.hostsLink(SectorEntityToken planet)` :2327 - Whether any faction's link already orbits this planet:
+- `ThreatFrontlines.siteSystemOk(FactionAPI faction, StarSystemAPI sys)` :2340 - No hive and no hostile market in the system, and no link of this faction or another (linkTaken).
+- `ThreatFrontlines.linkTaken(StarSystemAPI sys)` :2355 - Whether a system already holds a link, of any faction:
+- `ThreatFrontlines.foundLanded(FactionAPI faction, PlanetAPI site, StarSystemAPI hive, String payerName, CampaignFleetAPI convoy, String donorMarketId)` :2368 - A founding convoy's kit has landed (ThreatConvoys.pollFounding):
+- `ThreatFrontlines.adoptGarrison(Outpost o, MarketAPI link, CampaignFleetAPI convoy, String donorMarketId, float need)` :2392 - THE GUARD SAILS WITH THE KIT (2026-10-18 20:55, the user, option 1):
+- `ThreatFrontlines.guardFP(SectorEntityToken site, String factionId)` :2424 - The guard a base at this site needs today, in fleet points;
+- `ThreatFrontlines.payGuardVoyage(MarketAPI base, float fp, float ly)` :2436 - Pays a guard's voyage of fp points over ly the way sendGarrison pays one:
+- `ThreatFrontlines.guardBudgetOk(FactionAPI faction, SectorEntityToken site, float needFP)` :2456 - Whether the faction's garrison budget has room for a guard of needFP at a new front link - garrisonBase's budget test alone:
+- `ThreatFrontlines.found(FactionAPI faction, PlanetAPI planet, StarSystemAPI hive)` :2469 - Founds a size-1 link on a station over the planet.
 ### strike warning and the called guard
-- `ThreatFrontlines.detectedBy(CampaignFleetAPI fleet)` :2523 - Who sees this Threat fleet, or null:
-- `ThreatFrontlines.detectedAt(LocationAPI loc, Vector2f hyperLoc)` :2533 - The same pickets for a place rather than a fleet - a strike far from the player flies as an abstract route with no fleets spawned.
-- `ThreatFrontlines.watches(MarketAPI m)` :2553
-- `ThreatFrontlines.sendRelief(ThreatStrikeFGI strike, Random random)` :2567 - A seen strike against a link calls its guard (user's call 2026-09-27):
-- `ThreatFrontlines.relieve(Outpost o, MarketAPI target)` :2578
-- `ThreatFrontlines.strikeEta(MarketAPI market)` :2599 - Days until the first seen strike bound for the market strikes (0 if striking now), or -1 with none.
-- `ThreatFrontlines.turnBack(Outpost o, MarketAPI market)` :2620 - Turns the guard sent home from behind the front back to the link, while it still sails:
-- `ThreatFrontlines.takeOver(Outpost o, MarketAPI market, List<CampaignFleetAPI> fleets, MarketAPI home)` :2639 - Puts fleets already out on the link's guard:
-- `ThreatFrontlines.borrowRear(Outpost o, MarketAPI market, float need, float eta)` :2666 - Guards the faction has out behind the front with no seen strike on their own link - on station through its rear grace, or sailing home from one - answer a strike on this link before the navy is asked 
-- `ThreatFrontlines.compare(CampaignFleetAPI a, CampaignFleetAPI b)` :2691
-- `ThreatFrontlines.callGuard(Outpost o, MarketAPI market, float have, boolean atDetection)` :2733 - Calls a guard against the seen strikes bound for the link, outside the upkeep budget:
+- `ThreatFrontlines.detectedBy(CampaignFleetAPI fleet)` :2536 - Who sees this Threat fleet, or null:
+- `ThreatFrontlines.detectedAt(LocationAPI loc, Vector2f hyperLoc)` :2546 - The same pickets for a place rather than a fleet - a strike far from the player flies as an abstract route with no fleets spawned.
+- `ThreatFrontlines.watches(MarketAPI m)` :2566
+- `ThreatFrontlines.sendRelief(ThreatStrikeFGI strike, Random random)` :2580 - A seen strike against a link calls its guard (user's call 2026-09-27):
+- `ThreatFrontlines.relieve(Outpost o, MarketAPI target)` :2591
+- `ThreatFrontlines.strikeEta(MarketAPI market)` :2612 - Days until the first seen strike bound for the market strikes (0 if striking now), or -1 with none.
+- `ThreatFrontlines.turnBack(Outpost o, MarketAPI market)` :2633 - Turns the guard sent home from behind the front back to the link, while it still sails:
+- `ThreatFrontlines.takeOver(Outpost o, MarketAPI market, List<CampaignFleetAPI> fleets, MarketAPI home)` :2652 - Puts fleets already out on the link's guard:
+- `ThreatFrontlines.borrowRear(Outpost o, MarketAPI market, float need, float eta)` :2679 - Guards the faction has out behind the front with no seen strike on their own link - on station through its rear grace, or sailing home from one - answer a strike on this link before the navy is asked 
+- `ThreatFrontlines.compare(CampaignFleetAPI a, CampaignFleetAPI b)` :2704
+- `ThreatFrontlines.callGuard(Outpost o, MarketAPI market, float have, boolean atDetection)` :2746 - Calls a guard against the seen strikes bound for the link, outside the upkeep budget:
 
 ## ThreatFuel (870 lines)
 - `ThreatFuel.enabled()` :65
@@ -2235,7 +2241,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncCampaignPlugin.pickInteractionDialogPlugin(SectorEntityToken target)` :31
 - `ThreatIncCampaignPlugin.pickInteractionDialogPlugin(Object param, SectorEntityToken target)` :41 - A notice's click asks through this overload, with a null param (ThreatNoticeClickDialog).
 
-## ThreatIncConfig (1184 lines)
+## ThreatIncConfig (1186 lines)
 - `ThreatIncConfig.lunaAvailable()` :15
 - `ThreatIncConfig.luna(String key)` :29 - Whether LunaLib holds this knob:
 - `ThreatIncConfig.i(String key)` :44
@@ -2496,271 +2502,273 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncConfig.coreBuild()` :639 - The core builds up (2026-10-18, replaces yards at home):
 - `ThreatIncConfig.yardsFirst()` :641 - YARDS FIRST (the user, 2026-10-19):
 - `ThreatIncConfig.marineStep()` :642
-- `ThreatIncConfig.frontlineFuelProduction()` :643
-- `ThreatIncConfig.frontlineGarrisonFP()` :645 - Smallest garrison a link gets, in fleet points, whatever the strikes in reach.
-- `ThreatIncConfig.frontlineGarrisonMargin()` :647 - Garrison plus station must weigh this times the strongest Threat strike in reach (vanilla's raid strength).
-- `ThreatIncConfig.frontlineUpkeepStockMonths()` :648
-- `ThreatIncConfig.reserveBankFromProduction()` :650 - A faction banks at most what its own markets produce above their own demand, shared across its markets (ThreatReserves.productionShare).
-- `ThreatIncConfig.reserveBankImportsMult()` :652 - With banking by production:
-- `ThreatIncConfig.reserveWartimeFuel()` :653
-- `ThreatIncConfig.reserveWartimeSuppliesShare()` :655 - The share of a colony's peacetime supplies demand that banks on top of its surplus in wartime:
-- `ThreatIncConfig.warFootingDemandUnits()` :657 - Vanilla demand units the War footing condition adds at colony size 5 (scaled by size / 5, rounded up);
-- `ThreatIncConfig.reserveShortageCoverFraction()` :659 - Most of the stock at hand the depot spends per issue covering the colony's own shortage (rule 3).
-- `ThreatIncConfig.reserveShortageCoverDays()` :661 - Days one issue from the depot holds the colony's availability up;
-- `ThreatIncConfig.reserveCapMonths()` :663 - Months of its own production a colony's floor and donor keep are measured against - not a ceiling (2026-09-29).
-- `ThreatIncConfig.reserveInitialMonths()` :665 - Months of production each colony holds the moment its faction mobilises.
-- `ThreatIncConfig.reserveFloorFraction()` :667 - Fraction of an NPC colony's cap that expeditions and sorties never draw it below (the home garrison's stock).
-- `ThreatIncConfig.playerReserveFloorFraction()` :669 - The same floor for the player's own colonies;
-- `ThreatIncConfig.reserveBaselinePerSize()` :671 - Militia marines every colony accrues per size per 30 days, regardless of industry.
-- `ThreatIncConfig.baseRequiresWaystation()` :673 - A base needs a functional Waystation (a hive world its Swarm Nexus) to stage, sail, send or receive.
-- `ThreatIncConfig.mobilisationBuildsWaystation()` :675 - An NPC faction's mobilisation builds a Waystation at every military world with a spaceport.
-- `ThreatIncConfig.groundStrengthExponent()` :677 - Exponent on every ground-war strength ratio:
-- `ThreatIncConfig.expeditionMinMarinesFraction()` :679 - Fraction of the marines an expedition wants that its base must hold, or it waits.
-- `ThreatIncConfig.expeditionMinProvisionsFraction()` :681 - An NPC siege waits unless its base can pay this fraction of the fuel and supplies its flotilla burns.
-- `ThreatIncConfig.siegeExtraMarinesFactor()` :683 - Marines the player's "Extra" siege tier commits, as a multiple of the computed landing need (the "Siege" tier).
-- `ThreatIncConfig.expeditionFuelPerPointLY()` :685 - Fuel an expedition draws per fleet point per light-year.
-- `ThreatIncConfig.threatPaysPassage()` :686
-- `ThreatIncConfig.billedReach()` :688 - The hive's fleets go any distance whose trip it can pay (ThreatReach);
-- `ThreatIncConfig.humanBilledReach()` :690 - The factions' reach is their bill too:
-- `ThreatIncConfig.factionStanceEnabled()` :692 - Each mobilised faction keeps its own stance - PRESS, EXPAND, CONSOLIDATE - as the hive does (ThreatFactionStance).
-- `ThreatIncConfig.threatSuppliesUpkeep()` :693
-- `ThreatIncConfig.standingUpkeepMult()` :695 - Standing upkeep (the user, 2026-10-06):
-- `ThreatIncConfig.structuresCostSupplies()` :696
-- `ThreatIncConfig.structureSuppliesMult()` :697
-- `ThreatIncConfig.hiveConvertSurplus()` :699 - The hive planner turns a fuel plant its stock can spare into what it lacks, one a month (ThreatColonyManager.convertSurplus).
-- `ThreatIncConfig.hiveMilitaryTier()` :701 - Hive colonies buy a Swarm Bastion and Swarm Command with idle fleet points (SwarmBastion).
-- `ThreatIncConfig.threatPaysOrdnance()` :703 - The swarm's bombardment draws its fuel from the hive's stock, at the rate everyone pays (ThreatGroundFronts.payOrdnance).
-- `ThreatIncConfig.sizeUpkeep()` :704
-- `ThreatIncConfig.sizeUpkeepAt3()` :705
-- `ThreatIncConfig.sizeUpkeepRatio()` :706
-- `ThreatIncConfig.upkeepBreakEven()` :707
-- `ThreatIncConfig.starveDaysPerSize()` :708
-- `ThreatIncConfig.foundingBudget()` :710 - A FOUNDING BUDGET (S6, 2026-10-10):
-- `ThreatIncConfig.feedConvoys()` :712 - TANGIBLE FEEDING (the user, 2026-10-18):
-- `ThreatIncConfig.feedConvoyLoadMonths()` :714 - Months of a world's imported bill one feeding sailing carries.
-- `ThreatIncConfig.feedConvoyReserveMonths()` :716 - A feeding sailing is called when the larder (and what is at sea to it) holds under this many months of the bill.
-- `ThreatIncConfig.hiveCover()` :718 - Hive cover (2026-10-18):
-- `ThreatIncConfig.coreSizeUpkeep()` :720 - Size upkeep on the humans' core colonies (2026-10-18):
-- `ThreatIncConfig.coreSizeUpkeepPlayer()` :722 - Whether the player's own colonies pay it too.
-- `ThreatIncConfig.keepAheadOfFleets()` :724 - K2 (2026-10-13, hw177c):
-- `ThreatIncConfig.unpaidNavyHoldsBuilder()` :726 - After hw180 (2026-10-13):
-- `ThreatIncConfig.foundingSurplusOwnBookings()` :728 - K4 (2026-10-13):
-- `ThreatIncConfig.feedShareExpand()` :729
-- `ThreatIncConfig.feedSharePress()` :730
-- `ThreatIncConfig.feedShareConsolidate()` :731
-- `ThreatIncConfig.expeditionSuppliesPerPoint()` :733 - Supplies an expedition draws per fleet point.
-- `ThreatIncConfig.fleetUpkeep()` :734
-- `ThreatIncConfig.sortieStayDays()` :736 - Days of its ships' maintenance a task force, hunt or raid carries at launch beside the voyage (docs/fleet-provisions.md).
-- `ThreatIncConfig.siegeHoldDays()` :738 - Days at the target the player's siege carries its ships' maintenance for beyond the voyage (the user, 2026-10-12:
-- `ThreatIncConfig.sortieHomeStayDays()` :740 - Days of upkeep a task force carries to a world in its base's own system, where it restocks from the base (the user, 2026-10-11:
-- `ThreatIncConfig.fleetResupply()` :742 - Whether a fleet low on supplies restocks from a base of its faction in its system before turning home.
-- `ThreatIncConfig.expeditionTransportMult()` :744 - Troop-transport share of a cargo-carrying expedition fleet (vanilla composition multiplier).
-- `ThreatIncConfig.convoyEnabled()` :746 - Whether mobilised factions run supply convoys between their colonies.
-- `ThreatIncConfig.convoyMarineCapacity()` :748 - The reference marine load a worthwhile sailing is measured in, and a pooled haul billed per (ThreatConvoys.haulPerUnit) - not a cap (2026-09-29).
-- `ThreatIncConfig.convoyCargoCapacity()` :750 - The reference cargo load (armaments, fuel, supplies) a worthwhile sailing is measured in, and a pooled haul billed per - not a cap (2026-09-29).
-- `ThreatIncConfig.convoyExtraLoadFactor()` :752 - Load the board's "Med" tier asks for, as a multiple of what the front or colony is short of.
-- `ThreatIncConfig.convoyEscortFP()` :754 - Base combat fleet points escorting a convoy.
-- `ThreatIncConfig.convoyEscortPerThousand()` :756 - Extra escort fleet points per 1,000 of cargo value (marines 1, armaments 0.5, fuel/supplies 0.1).
-- `ThreatIncConfig.raiderEnabled()` :758 - Whether hive colonies detach Defense Swarms to hunt convoys passing near them.
-- `ThreatIncConfig.raiderRangeLY()` :760 - Light-years from a convoy route's midpoint within which a hive may send a raider.
-- `ThreatIncConfig.raiderChance()` :762 - Chance each eligible hive colony detaches a raider at a convoy (nearest rolls first, one raider per convoy).
-- `ThreatIncConfig.raiderDays()` :764 - Days a raider hunts before turning home.
-- `ThreatIncConfig.raiderMargin()` :766 - Hives detach swarms at a convoy until the pack's fleet points reach the convoy's times this (ThreatRaiders.consider;
-- `ThreatIncConfig.hiveFogOfWar()` :768 - Strikes hide their origin;
-- `ThreatIncConfig.omensEnabled()` :770 - Foreboding messages until anyone finds a hive (ThreatOmens).
-- `ThreatIncConfig.omenStaticLY()` :772 - Light-years from an unfound hive colony at which the player's fleet hears it.
-- `ThreatIncConfig.omenStaticDays()` :774 - Days between omens heard by the player's fleet.
-- `ThreatIncConfig.omenSectorDays()` :776 - Days between sector-wide omens (spread, swarm scouts, unseen strikes).
-- `ThreatIncConfig.scoutLeadRadiusLY()` :778 - Light-years around a strike's origin a struck faction's scouts sweep.
-- `ThreatIncConfig.scoutRangeLY()` :780 - Light-years around a military world a mobilised faction's routine sweep covers.
-- `ThreatIncConfig.scoutIntervalDays()` :782 - Days between a mobilised faction's routine sweeps (while it has no lead).
-- `ThreatIncConfig.scoutStayDays()` :784 - Days a scout sweeps an empty system before moving on.
-- `ThreatIncConfig.scoutLegMaxDays()` :786 - Days a scout may spend reaching one stop before it skips it.
-- `ThreatIncConfig.scoutMemoryDays()` :788 - Days a system swept clear is left alone by routine sweeps.
-- `ThreatIncConfig.scoutFleetPoints()` :790 - Combat fleet points of a scouting party.
-- `ThreatIncConfig.intelFogOfWar()` :792 - Fog of war on the swarm:
-- `ThreatIncConfig.intelHalfLifeDays()` :794 - Days in which a report's trust halves.
-- `ThreatIncConfig.swarmFogOfWar()` :796 - The swarm's own fog of war:
-- `ThreatIncConfig.swarmContactDays()` :798 - Days a sighted human attack still counts toward a hive system's pressure after it was last seen.
-- `ThreatIncConfig.swarmPicketLY()` :800 - Hyperspace range (LY) at which a live hive sees a human attack force in flight (ThreatSwarmIntel.sees);
-- `ThreatIncConfig.attackPlanner()` :802 - Mobilised factions plan sieges, raids and recon (ThreatAttackPlanner);
-- `ThreatIncConfig.warCouncil()` :804 - Mobilised factions hold a strategy and run plays (ThreatWarCouncil, docs/war-council.md);
-- `ThreatIncConfig.councilAssessDays()` :806 - Days between a council's assessments of what it knows.
-- `ThreatIncConfig.councilReviewDays()` :808 - Days a council holds its strategy before it reviews it (jittered).
-- `ThreatIncConfig.councilTemperature()` :810 - How random a council's choices are:
-- `ThreatIncConfig.councilSwitchMargin()` :812 - A challenger strategy must outscore the held one by this share.
-- `ThreatIncConfig.councilEvenRatio()` :814 - Our weight over the known swarm's at which a council reads the war as even.
-- `ThreatIncConfig.councilAheadRatio()` :816 - Our weight over the known swarm's at which a council reads itself ahead.
-- `ThreatIncConfig.councilBandHysteresis()` :818 - The band changes only once the ratio is past its edge by this share.
-- `ThreatIncConfig.councilThreatLY()` :820 - Light-years within which a known hive threatens a colony.
-- `ThreatIncConfig.councilJitter()` :822 - Phase and review timings vary by up to this share either way.
-- `ThreatIncConfig.councilLearning()` :824 - Factions learn which plays work (weights x1.25 on success, x0.8 on failure).
-- `ThreatIncConfig.councilHammerShare()` :826 - Share of the faction's means a hammer musters.
-- `ThreatIncConfig.councilMusterFloor()` :828 - A play's muster below this share of what it was sent with disbands instead of going in.
-- `ThreatIncConfig.councilStarveShare()` :831 - Share of the faction's fuel a bombing campaign may burn.
-- `ThreatIncConfig.councilFeintShare()` :833 - Share of the faction's means a feint sails with.
-- `ThreatIncConfig.councilOpportunityShare()` :835 - Share of the faction's fuel bombers of opportunity may burn a month.
-- `ThreatIncConfig.councilSquadronFP()` :837 - Fleet points of a doctrine bombing squadron.
-- `ThreatIncConfig.councilEscortMargin()` :839 - A play's escort:
-- `ThreatIncConfig.councilInvadeDays()` :841 - Days between a faction's invasion passes (ThreatPlays.invade).
-- `ThreatIncConfig.councilStrikeWaitDays()` :843 - Days a strike short of stock for any siege waits past its day before the play fails.
-- `ThreatIncConfig.councilPrepareDays()` :845 - Days a play stages and scouts before it musters.
-- `ThreatIncConfig.councilMusterDays()` :847 - Days a play's muster waits for its force before it goes with what it has.
-- `ThreatIncConfig.councilExploitDays()` :849 - Days after the strike a play judges the damage done.
-- `ThreatIncConfig.councilStarveCheckDays()` :851 - Days between a bombing campaign's checks.
-- `ThreatIncConfig.councilStarveAbortRaids()` :853 - Raids driven off in a row that end a bombing campaign.
-- `ThreatIncConfig.councilInvadeNexusDays()` :855 - Days a target's Nexus must be down before a bombing campaign hands over to an invasion.
-- `ThreatIncConfig.councilFeintWatchDays()` :857 - Days a feint has to draw the swarm before the strike goes anyway.
-- `ThreatIncConfig.councilFeintWindowDays()` :859 - Days after the feint draws in which the strike must land.
-- `ThreatIncConfig.councilStrikeMaxDays()` :861 - Most days' sail from a feint's striking base to its target.
-- `ThreatIncConfig.planIntervalDays()` :863 - Days between a faction's plans, besides re-plans on news.
-- `ThreatIncConfig.planConfidence()` :865 - The chance that at least one prong lands, reached by adding prongs.
-- `ThreatIncConfig.raidLossFraction()` :867 - A raid goes home once it has lost this share of the fleet points it arrived with.
-- `ThreatIncConfig.threatSeesBookedSieges()` :869 - The swarm counts a booked siege as an attack from dispatch, its fleets spawned or not (ThreatPosture.attacksBySystem).
-- `ThreatIncConfig.npcSiegeFullStrength()` :871 - NPC sieges sail only with the marines and fleets their target needs;
-- `ThreatIncConfig.npcSiegeOrbitGate()` :873 - NPC sieges sail only when their flotilla outweighs the target system's Defense Swarms;
-- `ThreatIncConfig.npcSiegeOrbitMargin()` :875 - Fleet points an NPC flotilla brings per point of Defense Swarm its faction last saw over the strongest world it takes.
-- `ThreatIncConfig.siegeBreakOffRatio()` :877 - An NPC siege not yet landed turns home when hostile fleets over a world it is taking reach this x its own (0:
-- `ThreatIncConfig.abstractDefendersFight()` :879 - An off-screen fight costs the defending fleets too:
-- `ThreatIncConfig.siegeOutpostKeepMonths()` :881 - Months of its garrison's supply upkeep a forward base keeps back when a sibling's siege pools its stock.
-- `ThreatIncConfig.npcSiegeOrbitSystem()` :883 - The orbit gate also weighs every Defense Swarm reported in the target system (off:
-- `ThreatIncConfig.strikeReliefFirst()` :885 - A Threat strike relieves a front of its own that is losing ground, in reach, before it opens a new one.
-- `ThreatIncConfig.defenceFirst()` :887 - DEFENCE FIRST (the user, 2026-10-10, C1):
-- `ThreatIncConfig.abstractResolveOnArrival()` :889 - An unspawned expedition resolves a day after reaching its target, not at the end of vanilla's payload segment.
-- `ThreatIncConfig.strikeDefenceGate()` :891 - The swarm passes over a world whose system's defence outweighs the strike it can muster.
-- `ThreatIncConfig.npcSiegeOrbitPerWorld()` :893 - The orbit gate weighs the strongest single world's swarms, not the whole system's.
-- `ThreatIncConfig.swarmBountiesEnabled()` :895 - Whether an outweighed NPC siege posts a bounty on the hive system's swarms.
-- `ThreatIncConfig.swarmBountyPerFrigate()` :897 - Credits a swarm bounty pays per frigate destroyed (destroyer x2, cruiser x3, capital x5, vanilla's).
-- `ThreatIncConfig.swarmBountyDays()` :899 - Days a swarm bounty runs.
-- `ThreatIncConfig.softenEnabled()` :901 - Whether mobilised NPC bases with no siege of their own send hunting forces against bountied hives (ThreatSoftening).
-- `ThreatIncConfig.softenFleetFP()` :903 - Most combat FP in one fleet of a hunting force.
-- `ThreatIncConfig.softenDays()` :905 - Days a hunt order - an NPC hunting force, a coalition answer, or the player's Hunt - stays on the hunt.
-- `ThreatIncConfig.softenIntervalDays()` :907 - Days a base waits between hunting forces.
-- `ThreatIncConfig.softenRetreatStrength()` :909 - A hunting force below this share of its strength at launch (or its last move-on) goes home whole.
-- `ThreatIncConfig.softenPool()` :911 - Whether a hunting force draws fleets from every base of the faction in reach, not just the nearest.
-- `ThreatIncConfig.stagedLaunch()` :913 - STAGED LAUNCHES (the user, 2026-10-11):
-- `ThreatIncConfig.softenMusterDays()` :915 - Days a hunting force waits at its muster point for stragglers.
-- `ThreatIncConfig.softenMusterStragglerMult()` :917 - Muster spells a force short at the muster waits for stragglers that would carry it.
-- `ThreatIncConfig.softenMerge()` :919 - Whether a hunting force's fleets fold into its lead once gathered, to sail and fight as one fleet.
-- `ThreatIncConfig.softenMergeMaxShips()` :921 - Most ships a hunting force's lead grows to by merging;
-- `ThreatIncConfig.swarmScouting()` :923 - The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts).
-- `ThreatIncConfig.swarmScoutFleetPoints()` :925 - Fleet points of a Scouting Swarm.
-- `ThreatIncConfig.convoyMinLoadFraction()` :927 - Shortfall (in convoy loads) below which no convoy sails.
-- `ThreatIncConfig.frontRunsEnabled()` :929 - Whether mobilised factions run supply and withdrawal convoys to their ground fronts.
-- `ThreatIncConfig.frontResupplyDays()` :931 - Days of armaments a supply run tops a front up to.
-- `ThreatIncConfig.frontRunWaitDays()` :933 - Days a front run waits at the hive system's jump-point for the orbit to clear before turning home.
-- `ThreatIncConfig.convoyBlockadeWaitDays()` :935 - Days a convoy waits off a colony the Threat blockades (ThreatBlockade.penalty) before turning home with its cargo (user, 2026-10-17).
-- `ThreatIncConfig.donorKeepFraction()` :937 - Fraction of its own cap a donor colony keeps back.
-- `ThreatIncConfig.stagingTargetMult()` :939 - Staging target as a multiple of one expedition's draw.
-- `ThreatIncConfig.stagingHorizonMonths()` :941 - Months of the faction's banking, on top of its stock in reach, a siege's fuel and supplies must fit in for a base to stage for it rather than for a hunt.
-- `ThreatIncConfig.convoyTimeoutDays()` :943 - Days after which a convoy that has not arrived is written off.
-- `ThreatIncConfig.ordersEnabled()` :945 - Whether the war board's fleet orders (guard, stage, intercept, siege, recall) are offered.
-- `ThreatIncConfig.guardFleetFP()` :947 - Least combat fleet points of an NPC guard or intercept task force (it sails sized to the need), and the free points a player colony needs to be picked first as a source;
-- `ThreatIncConfig.reliefFleetFP()` :949 - Combat points of each fleet a relief force is built from (merged into one before it sails).
-- `ThreatIncConfig.guardDays()` :951 - Days a guard task force holds a colony's orbit.
-- `ThreatIncConfig.guardOwnDays()` :953 - Days a task force guarding one of the player's own colonies stays;
-- `ThreatIncConfig.supportEnabled()` :955 - Whether Support sorties (holding a besieged world's orbit and suppressing it) are offered and flown.
-- `ThreatIncConfig.supportDays()` :957 - Days a Support task force holds a besieged world's orbit.
-- `ThreatIncConfig.defendEnabled()` :959 - Whether Defend sorties (holding a world's orbit, bombarding only while the faction's front there cannot hold) are offered and flown.
-- `ThreatIncConfig.defendDays()` :961 - Days a Defend task force holds a world's orbit.
-- `ThreatIncConfig.landingDefendEnabled()` :963 - Whether an expedition fleet that has landed or reinforced a front stays over it on Defend (and one with nothing left to land joins it).
-- `ThreatIncConfig.strikeGuardWhole()` :965 - Whether an unspawned strike leaves its share of its fleets over each landing, all of them over the last (off:
-- `ThreatIncConfig.defendMinStrength()` :967 - A landing's Defend stands down once the batteries have ground the fleet below this fraction of its strength.
-- `ThreatIncConfig.fabricateEnabled()` :969 - Whether a Defend fleet with nothing left to bombard breaks up its own hulls into troops for its front (docs/ground-war.md "Fabricating troops from the fleet").
-- `ThreatIncConfig.fabricateDefendEnabled()` :975 - Whether a swarm Defend fleet over its own failing front breaks up hulls into troops (fabricateEnabled must be on too).
-- `ThreatIncConfig.fabricateTroopsPerFP()` :977 - Troops landed per fleet point of hulls broken up.
-- `ThreatIncConfig.fabricateHoldMargin()` :979 - How far past the hold line fabrication aims, so the front does not oscillate on the boundary.
-- `ThreatIncConfig.fabricateSupplyDays()` :981 - Days of armaments a batch of fabricated troops brings down with it.
-- `ThreatIncConfig.orbitFleetsHunt()` :982
-- `ThreatIncConfig.orbitContestFraction()` :984 - Defenders at a world hold its orbit against a faction while their points are at least this fraction of that faction's warships there;
-- `ThreatIncConfig.returnRefundMult()` :986 - Fraction of the fuel and supplies drawn at launch refunded when a fleet returns home at full strength.
-- `ThreatIncConfig.returnHullShare()` :988 - Share of an NPC fleet's supplies draw that paid for its hulls:
-- `ThreatIncConfig.hullPool()` :993 - One hull economy from vanilla's figures, every side (ThreatHulls;
-- `ThreatIncConfig.hullPoolMult()` :995 - Multiplies every market's standing hulls (1 = vanilla's patrol figure).
-- `ThreatIncConfig.hullAidKeepFraction()` :997 - The share of its built navy's free hulls a faction keeps when an ally is short of hulls (ThreatHulls.spareUnits).
-- `ThreatIncConfig.hullCreditsPerFP()` :999 - Credits a fleet point of ship hulls is worth to the player's aid contracts and standing;
-- `ThreatIncConfig.aidEnabled()` :1001 - Whether the player can send aid from their colonies and the capacity ledger applies.
-- `ThreatIncConfig.aidBaseFP()` :1003 - Fleet points a player colony can have at sea at 100% fleet size.
-- `ThreatIncConfig.aidRebuildDays()` :1005 - Days before a lost fleet's points return to its colony.
-- `ThreatIncConfig.aidGuardMinFP()` :1007 - Smallest task force a player colony will send.
-- `ThreatIncConfig.aidMinRelation()` :1009 - Relationship (-1..1) below which a faction refuses the player's aid;
-- `ThreatIncConfig.aidRepPerCredits()` :1011 - Credits of delivered goods, at the receiving market's price, per point of standing.
-- `ThreatIncConfig.aidRepMaxPerDelivery()` :1013 - Most standing points one delivery earns.
-- `ThreatIncConfig.aidRepGuardArrived()` :1015 - Standing points for a guard arriving on station.
-- `ThreatIncConfig.aidRepGuardCompleted()` :1017 - Standing points for a guard serving its full term.
-- `ThreatIncConfig.aidRepFrontTotal()` :1019 - Standing points split among every faction in a hive's strike reach for a task force at its door.
-- `ThreatIncConfig.aidRequestsEnabled()` :1021 - Whether mobilised factions post requests for help on the mission board.
-- `ThreatIncConfig.aidRequestMaxPosted()` :1023 - Requests posted at once, unaccepted.
-- `ThreatIncConfig.missionDefendDays()` :1025 - Days a defence contract runs.
-- `ThreatIncConfig.missionDefendCredits()` :1027 - Credits per colony size a defence contract pays.
-- `ThreatIncConfig.defendRequestRatio()` :1029 - A defence is requested when the strike's strength exceeds the defenders' times this.
-- `ThreatIncConfig.missionAidShortageDays()` :1031 - Days a vanilla deficit must stand before a colony asks for the commodity.
-- `ThreatIncConfig.missionRepMult()` :1034 - Delivery standing is multiplied by this when it answers a contract.
-- `ThreatIncConfig.allyAidEnabled()` :1036 - Whether allied mobilised factions guard and resupply each other's colonies.
-- `ThreatIncConfig.allyAidChance()` :1038 - Chance per tick per need that a fully willing ally sends aid;
-- `ThreatIncConfig.coalitionRelief()` :1040 - Whether a faction and its partners relieve an invaded world together when none is enough alone (ThreatCoalition.jointRelief).
-- `ThreatIncConfig.alarmEnabled()` :1045 - Master switch for grudge, alarm and retaliation.
-- `ThreatIncConfig.alarmPerStratum()` :1047 - Grudge points a faction earns per stratum its front takes.
-- `ThreatIncConfig.alarmPerEradication()` :1049 - Grudge points per hive eradicated.
-- `ThreatIncConfig.alarmPerRaid()` :1051 - Grudge points per successful raid or tactical pass on a hive world.
-- `ThreatIncConfig.alarmDecayPer30()` :1053 - Fraction of every grudge that fades per 30 days.
-- `ThreatIncConfig.alarmTargetMult()` :1055 - Strike-target weight bonus per point of a faction's grudge (0.2 = grudge 10 is x3).
-- `ThreatIncConfig.retaliationEnabled()` :1057 - Whether a ground victory draws an immediate strike at the winner.
-- `ThreatIncConfig.sustenanceFirst()` :1059 - The colonies' break-even sustenance is paid before the fleets away and the navy at home (ThreatColonyUpkeep.sustenanceDue, 2026-10-08).
-- `ThreatIncConfig.navyFitsSpare()` :1061 - The hive keeps no standing navy its supplies flow cannot carry with the sends it wants (ThreatColonyManager.fitNavyToSpare, 2026-10-08).
-- `ThreatIncConfig.coalitionEnabled()` :1066 - Whether a mobilised faction's siege calls other mobilised factions to intercept at the door.
-- `ThreatIncConfig.coalitionCallDays()` :1068 - Days a coalition call stays open.
-- `ThreatIncConfig.coalitionSupportChance()` :1070 - Chance per tick that an eligible ally answers a call with an Intercept task force.
-- `ThreatIncConfig.outpostsEnabled()` :1075 - Whether outposts can be built on purged worlds.
-- `ThreatIncConfig.outpostTier()` :1077 - Station tier:
-- `ThreatIncConfig.outpostCredits()` :1079 - Credits the player pays for an outpost.
-- `ThreatIncConfig.outpostSupplies()` :1081 - Supplies an NPC faction's base pays for an outpost.
-- `ThreatIncConfig.outpostFuel()` :1083 - Fuel an NPC faction's base pays for an outpost.
-- `ThreatIncConfig.frontlinesEnabled()` :1087
-- `ThreatIncConfig.frontlinePlanDays()` :1088
-- `ThreatIncConfig.frontlineLinkLY()` :1089
-- `ThreatIncConfig.frontlineReachLY()` :1090
-- `ThreatIncConfig.frontlineKeepLY()` :1091
-- `ThreatIncConfig.frontlineGrowDays()` :1092
-- `ThreatIncConfig.frontlineStarveDays()` :1093
-- `ThreatIncConfig.frontlineAbandonDays()` :1094
-- `ThreatIncConfig.frontlineRearGraceDays()` :1095
-- `ThreatIncConfig.pathTithes()` :1096
-- `ThreatIncConfig.pathTitheSuppliesPerSize()` :1097
-- `ThreatIncConfig.pathTitheFuelPerSize()` :1098
-- `ThreatIncConfig.pathTitheMarinesPerSize()` :1099
-- `ThreatIncConfig.pathTitheSleeperFraction()` :1100
-- `ThreatIncConfig.pathMilitiaMult()` :1101
-- `ThreatIncConfig.pathZealotMarines()` :1102
-- `ThreatIncConfig.frontlineRelayAccess()` :1103
-- `ThreatIncConfig.frontlineStrikeWeight()` :1104
-- `ThreatIncConfig.frontlineReliefEnabled()` :1105
-- `ThreatIncConfig.strikeDetection()` :1106
-- `ThreatIncConfig.strikeDetectLY()` :1107
-- `ThreatIncConfig.permaHostile()` :1112 - Pin the Threat faction to vengeful with every other faction (perma-hostile to all).
-- `ThreatIncConfig.bombardNoAtrocity()` :1114 - Waive the vanilla saturation-bombardment atrocity reputation penalty when the bombed colony is a Threat colony.
-- `ThreatIncConfig.debugMode()` :1118
-- `ThreatIncConfig.debugLogging()` :1119
-- `ThreatIncConfig.debugForceStart()` :1120
-- `ThreatIncConfig.debugFastClock()` :1121
-- `ThreatIncConfig.debugGrantSensorMods()` :1122
-- `ThreatIncConfig.debugPlayerIgnored()` :1123
-- `ThreatIncConfig.debugSimDump()` :1124
-- `ThreatIncConfig.debugReset()` :1125
-- `ThreatIncConfig.debugInstantWar()` :1128
-- `ThreatIncConfig.debugInstantWarSystemsMin()` :1129
-- `ThreatIncConfig.debugInstantWarSystemsMax()` :1130
-- `ThreatIncConfig.debugInstantWarCoreMin()` :1131
-- `ThreatIncConfig.debugInstantWarCoreMax()` :1132
-- `ThreatIncConfig.debugInstantWarLinkLY()` :1133
-- `ThreatIncConfig.debugInstantWarCoreLY()` :1134
-- `ThreatIncConfig.debugInstantWarHomeSize()` :1135
-- `ThreatIncConfig.debugHiveFloorSize()` :1136
-- `ThreatIncConfig.debugInstantWarColonySize()` :1137
-- `ThreatIncConfig.log(String msg)` :1139
-- `ThreatIncConfig.logQuiet(String key, String msg)` :1153 - A line a poll repeats:
-- `ThreatIncConfig.logOnChange(String key, String state, String msg)` :1171 - A line a poll repeats, logged only when state changes - a verdict, not the figures behind it - and no more than once in ten days:
-- `ThreatIncConfig.forgetQuiet()` :1181 - Called on load:
+- `ThreatIncConfig.alliedStaging()` :643
+- `ThreatIncConfig.invadeStaging()` :644
+- `ThreatIncConfig.frontlineFuelProduction()` :645
+- `ThreatIncConfig.frontlineGarrisonFP()` :647 - Smallest garrison a link gets, in fleet points, whatever the strikes in reach.
+- `ThreatIncConfig.frontlineGarrisonMargin()` :649 - Garrison plus station must weigh this times the strongest Threat strike in reach (vanilla's raid strength).
+- `ThreatIncConfig.frontlineUpkeepStockMonths()` :650
+- `ThreatIncConfig.reserveBankFromProduction()` :652 - A faction banks at most what its own markets produce above their own demand, shared across its markets (ThreatReserves.productionShare).
+- `ThreatIncConfig.reserveBankImportsMult()` :654 - With banking by production:
+- `ThreatIncConfig.reserveWartimeFuel()` :655
+- `ThreatIncConfig.reserveWartimeSuppliesShare()` :657 - The share of a colony's peacetime supplies demand that banks on top of its surplus in wartime:
+- `ThreatIncConfig.warFootingDemandUnits()` :659 - Vanilla demand units the War footing condition adds at colony size 5 (scaled by size / 5, rounded up);
+- `ThreatIncConfig.reserveShortageCoverFraction()` :661 - Most of the stock at hand the depot spends per issue covering the colony's own shortage (rule 3).
+- `ThreatIncConfig.reserveShortageCoverDays()` :663 - Days one issue from the depot holds the colony's availability up;
+- `ThreatIncConfig.reserveCapMonths()` :665 - Months of its own production a colony's floor and donor keep are measured against - not a ceiling (2026-09-29).
+- `ThreatIncConfig.reserveInitialMonths()` :667 - Months of production each colony holds the moment its faction mobilises.
+- `ThreatIncConfig.reserveFloorFraction()` :669 - Fraction of an NPC colony's cap that expeditions and sorties never draw it below (the home garrison's stock).
+- `ThreatIncConfig.playerReserveFloorFraction()` :671 - The same floor for the player's own colonies;
+- `ThreatIncConfig.reserveBaselinePerSize()` :673 - Militia marines every colony accrues per size per 30 days, regardless of industry.
+- `ThreatIncConfig.baseRequiresWaystation()` :675 - A base needs a functional Waystation (a hive world its Swarm Nexus) to stage, sail, send or receive.
+- `ThreatIncConfig.mobilisationBuildsWaystation()` :677 - An NPC faction's mobilisation builds a Waystation at every military world with a spaceport.
+- `ThreatIncConfig.groundStrengthExponent()` :679 - Exponent on every ground-war strength ratio:
+- `ThreatIncConfig.expeditionMinMarinesFraction()` :681 - Fraction of the marines an expedition wants that its base must hold, or it waits.
+- `ThreatIncConfig.expeditionMinProvisionsFraction()` :683 - An NPC siege waits unless its base can pay this fraction of the fuel and supplies its flotilla burns.
+- `ThreatIncConfig.siegeExtraMarinesFactor()` :685 - Marines the player's "Extra" siege tier commits, as a multiple of the computed landing need (the "Siege" tier).
+- `ThreatIncConfig.expeditionFuelPerPointLY()` :687 - Fuel an expedition draws per fleet point per light-year.
+- `ThreatIncConfig.threatPaysPassage()` :688
+- `ThreatIncConfig.billedReach()` :690 - The hive's fleets go any distance whose trip it can pay (ThreatReach);
+- `ThreatIncConfig.humanBilledReach()` :692 - The factions' reach is their bill too:
+- `ThreatIncConfig.factionStanceEnabled()` :694 - Each mobilised faction keeps its own stance - PRESS, EXPAND, CONSOLIDATE - as the hive does (ThreatFactionStance).
+- `ThreatIncConfig.threatSuppliesUpkeep()` :695
+- `ThreatIncConfig.standingUpkeepMult()` :697 - Standing upkeep (the user, 2026-10-06):
+- `ThreatIncConfig.structuresCostSupplies()` :698
+- `ThreatIncConfig.structureSuppliesMult()` :699
+- `ThreatIncConfig.hiveConvertSurplus()` :701 - The hive planner turns a fuel plant its stock can spare into what it lacks, one a month (ThreatColonyManager.convertSurplus).
+- `ThreatIncConfig.hiveMilitaryTier()` :703 - Hive colonies buy a Swarm Bastion and Swarm Command with idle fleet points (SwarmBastion).
+- `ThreatIncConfig.threatPaysOrdnance()` :705 - The swarm's bombardment draws its fuel from the hive's stock, at the rate everyone pays (ThreatGroundFronts.payOrdnance).
+- `ThreatIncConfig.sizeUpkeep()` :706
+- `ThreatIncConfig.sizeUpkeepAt3()` :707
+- `ThreatIncConfig.sizeUpkeepRatio()` :708
+- `ThreatIncConfig.upkeepBreakEven()` :709
+- `ThreatIncConfig.starveDaysPerSize()` :710
+- `ThreatIncConfig.foundingBudget()` :712 - A FOUNDING BUDGET (S6, 2026-10-10):
+- `ThreatIncConfig.feedConvoys()` :714 - TANGIBLE FEEDING (the user, 2026-10-18):
+- `ThreatIncConfig.feedConvoyLoadMonths()` :716 - Months of a world's imported bill one feeding sailing carries.
+- `ThreatIncConfig.feedConvoyReserveMonths()` :718 - A feeding sailing is called when the larder (and what is at sea to it) holds under this many months of the bill.
+- `ThreatIncConfig.hiveCover()` :720 - Hive cover (2026-10-18):
+- `ThreatIncConfig.coreSizeUpkeep()` :722 - Size upkeep on the humans' core colonies (2026-10-18):
+- `ThreatIncConfig.coreSizeUpkeepPlayer()` :724 - Whether the player's own colonies pay it too.
+- `ThreatIncConfig.keepAheadOfFleets()` :726 - K2 (2026-10-13, hw177c):
+- `ThreatIncConfig.unpaidNavyHoldsBuilder()` :728 - After hw180 (2026-10-13):
+- `ThreatIncConfig.foundingSurplusOwnBookings()` :730 - K4 (2026-10-13):
+- `ThreatIncConfig.feedShareExpand()` :731
+- `ThreatIncConfig.feedSharePress()` :732
+- `ThreatIncConfig.feedShareConsolidate()` :733
+- `ThreatIncConfig.expeditionSuppliesPerPoint()` :735 - Supplies an expedition draws per fleet point.
+- `ThreatIncConfig.fleetUpkeep()` :736
+- `ThreatIncConfig.sortieStayDays()` :738 - Days of its ships' maintenance a task force, hunt or raid carries at launch beside the voyage (docs/fleet-provisions.md).
+- `ThreatIncConfig.siegeHoldDays()` :740 - Days at the target the player's siege carries its ships' maintenance for beyond the voyage (the user, 2026-10-12:
+- `ThreatIncConfig.sortieHomeStayDays()` :742 - Days of upkeep a task force carries to a world in its base's own system, where it restocks from the base (the user, 2026-10-11:
+- `ThreatIncConfig.fleetResupply()` :744 - Whether a fleet low on supplies restocks from a base of its faction in its system before turning home.
+- `ThreatIncConfig.expeditionTransportMult()` :746 - Troop-transport share of a cargo-carrying expedition fleet (vanilla composition multiplier).
+- `ThreatIncConfig.convoyEnabled()` :748 - Whether mobilised factions run supply convoys between their colonies.
+- `ThreatIncConfig.convoyMarineCapacity()` :750 - The reference marine load a worthwhile sailing is measured in, and a pooled haul billed per (ThreatConvoys.haulPerUnit) - not a cap (2026-09-29).
+- `ThreatIncConfig.convoyCargoCapacity()` :752 - The reference cargo load (armaments, fuel, supplies) a worthwhile sailing is measured in, and a pooled haul billed per - not a cap (2026-09-29).
+- `ThreatIncConfig.convoyExtraLoadFactor()` :754 - Load the board's "Med" tier asks for, as a multiple of what the front or colony is short of.
+- `ThreatIncConfig.convoyEscortFP()` :756 - Base combat fleet points escorting a convoy.
+- `ThreatIncConfig.convoyEscortPerThousand()` :758 - Extra escort fleet points per 1,000 of cargo value (marines 1, armaments 0.5, fuel/supplies 0.1).
+- `ThreatIncConfig.raiderEnabled()` :760 - Whether hive colonies detach Defense Swarms to hunt convoys passing near them.
+- `ThreatIncConfig.raiderRangeLY()` :762 - Light-years from a convoy route's midpoint within which a hive may send a raider.
+- `ThreatIncConfig.raiderChance()` :764 - Chance each eligible hive colony detaches a raider at a convoy (nearest rolls first, one raider per convoy).
+- `ThreatIncConfig.raiderDays()` :766 - Days a raider hunts before turning home.
+- `ThreatIncConfig.raiderMargin()` :768 - Hives detach swarms at a convoy until the pack's fleet points reach the convoy's times this (ThreatRaiders.consider;
+- `ThreatIncConfig.hiveFogOfWar()` :770 - Strikes hide their origin;
+- `ThreatIncConfig.omensEnabled()` :772 - Foreboding messages until anyone finds a hive (ThreatOmens).
+- `ThreatIncConfig.omenStaticLY()` :774 - Light-years from an unfound hive colony at which the player's fleet hears it.
+- `ThreatIncConfig.omenStaticDays()` :776 - Days between omens heard by the player's fleet.
+- `ThreatIncConfig.omenSectorDays()` :778 - Days between sector-wide omens (spread, swarm scouts, unseen strikes).
+- `ThreatIncConfig.scoutLeadRadiusLY()` :780 - Light-years around a strike's origin a struck faction's scouts sweep.
+- `ThreatIncConfig.scoutRangeLY()` :782 - Light-years around a military world a mobilised faction's routine sweep covers.
+- `ThreatIncConfig.scoutIntervalDays()` :784 - Days between a mobilised faction's routine sweeps (while it has no lead).
+- `ThreatIncConfig.scoutStayDays()` :786 - Days a scout sweeps an empty system before moving on.
+- `ThreatIncConfig.scoutLegMaxDays()` :788 - Days a scout may spend reaching one stop before it skips it.
+- `ThreatIncConfig.scoutMemoryDays()` :790 - Days a system swept clear is left alone by routine sweeps.
+- `ThreatIncConfig.scoutFleetPoints()` :792 - Combat fleet points of a scouting party.
+- `ThreatIncConfig.intelFogOfWar()` :794 - Fog of war on the swarm:
+- `ThreatIncConfig.intelHalfLifeDays()` :796 - Days in which a report's trust halves.
+- `ThreatIncConfig.swarmFogOfWar()` :798 - The swarm's own fog of war:
+- `ThreatIncConfig.swarmContactDays()` :800 - Days a sighted human attack still counts toward a hive system's pressure after it was last seen.
+- `ThreatIncConfig.swarmPicketLY()` :802 - Hyperspace range (LY) at which a live hive sees a human attack force in flight (ThreatSwarmIntel.sees);
+- `ThreatIncConfig.attackPlanner()` :804 - Mobilised factions plan sieges, raids and recon (ThreatAttackPlanner);
+- `ThreatIncConfig.warCouncil()` :806 - Mobilised factions hold a strategy and run plays (ThreatWarCouncil, docs/war-council.md);
+- `ThreatIncConfig.councilAssessDays()` :808 - Days between a council's assessments of what it knows.
+- `ThreatIncConfig.councilReviewDays()` :810 - Days a council holds its strategy before it reviews it (jittered).
+- `ThreatIncConfig.councilTemperature()` :812 - How random a council's choices are:
+- `ThreatIncConfig.councilSwitchMargin()` :814 - A challenger strategy must outscore the held one by this share.
+- `ThreatIncConfig.councilEvenRatio()` :816 - Our weight over the known swarm's at which a council reads the war as even.
+- `ThreatIncConfig.councilAheadRatio()` :818 - Our weight over the known swarm's at which a council reads itself ahead.
+- `ThreatIncConfig.councilBandHysteresis()` :820 - The band changes only once the ratio is past its edge by this share.
+- `ThreatIncConfig.councilThreatLY()` :822 - Light-years within which a known hive threatens a colony.
+- `ThreatIncConfig.councilJitter()` :824 - Phase and review timings vary by up to this share either way.
+- `ThreatIncConfig.councilLearning()` :826 - Factions learn which plays work (weights x1.25 on success, x0.8 on failure).
+- `ThreatIncConfig.councilHammerShare()` :828 - Share of the faction's means a hammer musters.
+- `ThreatIncConfig.councilMusterFloor()` :830 - A play's muster below this share of what it was sent with disbands instead of going in.
+- `ThreatIncConfig.councilStarveShare()` :833 - Share of the faction's fuel a bombing campaign may burn.
+- `ThreatIncConfig.councilFeintShare()` :835 - Share of the faction's means a feint sails with.
+- `ThreatIncConfig.councilOpportunityShare()` :837 - Share of the faction's fuel bombers of opportunity may burn a month.
+- `ThreatIncConfig.councilSquadronFP()` :839 - Fleet points of a doctrine bombing squadron.
+- `ThreatIncConfig.councilEscortMargin()` :841 - A play's escort:
+- `ThreatIncConfig.councilInvadeDays()` :843 - Days between a faction's invasion passes (ThreatPlays.invade).
+- `ThreatIncConfig.councilStrikeWaitDays()` :845 - Days a strike short of stock for any siege waits past its day before the play fails.
+- `ThreatIncConfig.councilPrepareDays()` :847 - Days a play stages and scouts before it musters.
+- `ThreatIncConfig.councilMusterDays()` :849 - Days a play's muster waits for its force before it goes with what it has.
+- `ThreatIncConfig.councilExploitDays()` :851 - Days after the strike a play judges the damage done.
+- `ThreatIncConfig.councilStarveCheckDays()` :853 - Days between a bombing campaign's checks.
+- `ThreatIncConfig.councilStarveAbortRaids()` :855 - Raids driven off in a row that end a bombing campaign.
+- `ThreatIncConfig.councilInvadeNexusDays()` :857 - Days a target's Nexus must be down before a bombing campaign hands over to an invasion.
+- `ThreatIncConfig.councilFeintWatchDays()` :859 - Days a feint has to draw the swarm before the strike goes anyway.
+- `ThreatIncConfig.councilFeintWindowDays()` :861 - Days after the feint draws in which the strike must land.
+- `ThreatIncConfig.councilStrikeMaxDays()` :863 - Most days' sail from a feint's striking base to its target.
+- `ThreatIncConfig.planIntervalDays()` :865 - Days between a faction's plans, besides re-plans on news.
+- `ThreatIncConfig.planConfidence()` :867 - The chance that at least one prong lands, reached by adding prongs.
+- `ThreatIncConfig.raidLossFraction()` :869 - A raid goes home once it has lost this share of the fleet points it arrived with.
+- `ThreatIncConfig.threatSeesBookedSieges()` :871 - The swarm counts a booked siege as an attack from dispatch, its fleets spawned or not (ThreatPosture.attacksBySystem).
+- `ThreatIncConfig.npcSiegeFullStrength()` :873 - NPC sieges sail only with the marines and fleets their target needs;
+- `ThreatIncConfig.npcSiegeOrbitGate()` :875 - NPC sieges sail only when their flotilla outweighs the target system's Defense Swarms;
+- `ThreatIncConfig.npcSiegeOrbitMargin()` :877 - Fleet points an NPC flotilla brings per point of Defense Swarm its faction last saw over the strongest world it takes.
+- `ThreatIncConfig.siegeBreakOffRatio()` :879 - An NPC siege not yet landed turns home when hostile fleets over a world it is taking reach this x its own (0:
+- `ThreatIncConfig.abstractDefendersFight()` :881 - An off-screen fight costs the defending fleets too:
+- `ThreatIncConfig.siegeOutpostKeepMonths()` :883 - Months of its garrison's supply upkeep a forward base keeps back when a sibling's siege pools its stock.
+- `ThreatIncConfig.npcSiegeOrbitSystem()` :885 - The orbit gate also weighs every Defense Swarm reported in the target system (off:
+- `ThreatIncConfig.strikeReliefFirst()` :887 - A Threat strike relieves a front of its own that is losing ground, in reach, before it opens a new one.
+- `ThreatIncConfig.defenceFirst()` :889 - DEFENCE FIRST (the user, 2026-10-10, C1):
+- `ThreatIncConfig.abstractResolveOnArrival()` :891 - An unspawned expedition resolves a day after reaching its target, not at the end of vanilla's payload segment.
+- `ThreatIncConfig.strikeDefenceGate()` :893 - The swarm passes over a world whose system's defence outweighs the strike it can muster.
+- `ThreatIncConfig.npcSiegeOrbitPerWorld()` :895 - The orbit gate weighs the strongest single world's swarms, not the whole system's.
+- `ThreatIncConfig.swarmBountiesEnabled()` :897 - Whether an outweighed NPC siege posts a bounty on the hive system's swarms.
+- `ThreatIncConfig.swarmBountyPerFrigate()` :899 - Credits a swarm bounty pays per frigate destroyed (destroyer x2, cruiser x3, capital x5, vanilla's).
+- `ThreatIncConfig.swarmBountyDays()` :901 - Days a swarm bounty runs.
+- `ThreatIncConfig.softenEnabled()` :903 - Whether mobilised NPC bases with no siege of their own send hunting forces against bountied hives (ThreatSoftening).
+- `ThreatIncConfig.softenFleetFP()` :905 - Most combat FP in one fleet of a hunting force.
+- `ThreatIncConfig.softenDays()` :907 - Days a hunt order - an NPC hunting force, a coalition answer, or the player's Hunt - stays on the hunt.
+- `ThreatIncConfig.softenIntervalDays()` :909 - Days a base waits between hunting forces.
+- `ThreatIncConfig.softenRetreatStrength()` :911 - A hunting force below this share of its strength at launch (or its last move-on) goes home whole.
+- `ThreatIncConfig.softenPool()` :913 - Whether a hunting force draws fleets from every base of the faction in reach, not just the nearest.
+- `ThreatIncConfig.stagedLaunch()` :915 - STAGED LAUNCHES (the user, 2026-10-11):
+- `ThreatIncConfig.softenMusterDays()` :917 - Days a hunting force waits at its muster point for stragglers.
+- `ThreatIncConfig.softenMusterStragglerMult()` :919 - Muster spells a force short at the muster waits for stragglers that would carry it.
+- `ThreatIncConfig.softenMerge()` :921 - Whether a hunting force's fleets fold into its lead once gathered, to sail and fight as one fleet.
+- `ThreatIncConfig.softenMergeMaxShips()` :923 - Most ships a hunting force's lead grows to by merging;
+- `ThreatIncConfig.swarmScouting()` :925 - The swarm strikes only systems its Scouting Swarms have charted (ThreatSwarmScouts).
+- `ThreatIncConfig.swarmScoutFleetPoints()` :927 - Fleet points of a Scouting Swarm.
+- `ThreatIncConfig.convoyMinLoadFraction()` :929 - Shortfall (in convoy loads) below which no convoy sails.
+- `ThreatIncConfig.frontRunsEnabled()` :931 - Whether mobilised factions run supply and withdrawal convoys to their ground fronts.
+- `ThreatIncConfig.frontResupplyDays()` :933 - Days of armaments a supply run tops a front up to.
+- `ThreatIncConfig.frontRunWaitDays()` :935 - Days a front run waits at the hive system's jump-point for the orbit to clear before turning home.
+- `ThreatIncConfig.convoyBlockadeWaitDays()` :937 - Days a convoy waits off a colony the Threat blockades (ThreatBlockade.penalty) before turning home with its cargo (user, 2026-10-17).
+- `ThreatIncConfig.donorKeepFraction()` :939 - Fraction of its own cap a donor colony keeps back.
+- `ThreatIncConfig.stagingTargetMult()` :941 - Staging target as a multiple of one expedition's draw.
+- `ThreatIncConfig.stagingHorizonMonths()` :943 - Months of the faction's banking, on top of its stock in reach, a siege's fuel and supplies must fit in for a base to stage for it rather than for a hunt.
+- `ThreatIncConfig.convoyTimeoutDays()` :945 - Days after which a convoy that has not arrived is written off.
+- `ThreatIncConfig.ordersEnabled()` :947 - Whether the war board's fleet orders (guard, stage, intercept, siege, recall) are offered.
+- `ThreatIncConfig.guardFleetFP()` :949 - Least combat fleet points of an NPC guard or intercept task force (it sails sized to the need), and the free points a player colony needs to be picked first as a source;
+- `ThreatIncConfig.reliefFleetFP()` :951 - Combat points of each fleet a relief force is built from (merged into one before it sails).
+- `ThreatIncConfig.guardDays()` :953 - Days a guard task force holds a colony's orbit.
+- `ThreatIncConfig.guardOwnDays()` :955 - Days a task force guarding one of the player's own colonies stays;
+- `ThreatIncConfig.supportEnabled()` :957 - Whether Support sorties (holding a besieged world's orbit and suppressing it) are offered and flown.
+- `ThreatIncConfig.supportDays()` :959 - Days a Support task force holds a besieged world's orbit.
+- `ThreatIncConfig.defendEnabled()` :961 - Whether Defend sorties (holding a world's orbit, bombarding only while the faction's front there cannot hold) are offered and flown.
+- `ThreatIncConfig.defendDays()` :963 - Days a Defend task force holds a world's orbit.
+- `ThreatIncConfig.landingDefendEnabled()` :965 - Whether an expedition fleet that has landed or reinforced a front stays over it on Defend (and one with nothing left to land joins it).
+- `ThreatIncConfig.strikeGuardWhole()` :967 - Whether an unspawned strike leaves its share of its fleets over each landing, all of them over the last (off:
+- `ThreatIncConfig.defendMinStrength()` :969 - A landing's Defend stands down once the batteries have ground the fleet below this fraction of its strength.
+- `ThreatIncConfig.fabricateEnabled()` :971 - Whether a Defend fleet with nothing left to bombard breaks up its own hulls into troops for its front (docs/ground-war.md "Fabricating troops from the fleet").
+- `ThreatIncConfig.fabricateDefendEnabled()` :977 - Whether a swarm Defend fleet over its own failing front breaks up hulls into troops (fabricateEnabled must be on too).
+- `ThreatIncConfig.fabricateTroopsPerFP()` :979 - Troops landed per fleet point of hulls broken up.
+- `ThreatIncConfig.fabricateHoldMargin()` :981 - How far past the hold line fabrication aims, so the front does not oscillate on the boundary.
+- `ThreatIncConfig.fabricateSupplyDays()` :983 - Days of armaments a batch of fabricated troops brings down with it.
+- `ThreatIncConfig.orbitFleetsHunt()` :984
+- `ThreatIncConfig.orbitContestFraction()` :986 - Defenders at a world hold its orbit against a faction while their points are at least this fraction of that faction's warships there;
+- `ThreatIncConfig.returnRefundMult()` :988 - Fraction of the fuel and supplies drawn at launch refunded when a fleet returns home at full strength.
+- `ThreatIncConfig.returnHullShare()` :990 - Share of an NPC fleet's supplies draw that paid for its hulls:
+- `ThreatIncConfig.hullPool()` :995 - One hull economy from vanilla's figures, every side (ThreatHulls;
+- `ThreatIncConfig.hullPoolMult()` :997 - Multiplies every market's standing hulls (1 = vanilla's patrol figure).
+- `ThreatIncConfig.hullAidKeepFraction()` :999 - The share of its built navy's free hulls a faction keeps when an ally is short of hulls (ThreatHulls.spareUnits).
+- `ThreatIncConfig.hullCreditsPerFP()` :1001 - Credits a fleet point of ship hulls is worth to the player's aid contracts and standing;
+- `ThreatIncConfig.aidEnabled()` :1003 - Whether the player can send aid from their colonies and the capacity ledger applies.
+- `ThreatIncConfig.aidBaseFP()` :1005 - Fleet points a player colony can have at sea at 100% fleet size.
+- `ThreatIncConfig.aidRebuildDays()` :1007 - Days before a lost fleet's points return to its colony.
+- `ThreatIncConfig.aidGuardMinFP()` :1009 - Smallest task force a player colony will send.
+- `ThreatIncConfig.aidMinRelation()` :1011 - Relationship (-1..1) below which a faction refuses the player's aid;
+- `ThreatIncConfig.aidRepPerCredits()` :1013 - Credits of delivered goods, at the receiving market's price, per point of standing.
+- `ThreatIncConfig.aidRepMaxPerDelivery()` :1015 - Most standing points one delivery earns.
+- `ThreatIncConfig.aidRepGuardArrived()` :1017 - Standing points for a guard arriving on station.
+- `ThreatIncConfig.aidRepGuardCompleted()` :1019 - Standing points for a guard serving its full term.
+- `ThreatIncConfig.aidRepFrontTotal()` :1021 - Standing points split among every faction in a hive's strike reach for a task force at its door.
+- `ThreatIncConfig.aidRequestsEnabled()` :1023 - Whether mobilised factions post requests for help on the mission board.
+- `ThreatIncConfig.aidRequestMaxPosted()` :1025 - Requests posted at once, unaccepted.
+- `ThreatIncConfig.missionDefendDays()` :1027 - Days a defence contract runs.
+- `ThreatIncConfig.missionDefendCredits()` :1029 - Credits per colony size a defence contract pays.
+- `ThreatIncConfig.defendRequestRatio()` :1031 - A defence is requested when the strike's strength exceeds the defenders' times this.
+- `ThreatIncConfig.missionAidShortageDays()` :1033 - Days a vanilla deficit must stand before a colony asks for the commodity.
+- `ThreatIncConfig.missionRepMult()` :1036 - Delivery standing is multiplied by this when it answers a contract.
+- `ThreatIncConfig.allyAidEnabled()` :1038 - Whether allied mobilised factions guard and resupply each other's colonies.
+- `ThreatIncConfig.allyAidChance()` :1040 - Chance per tick per need that a fully willing ally sends aid;
+- `ThreatIncConfig.coalitionRelief()` :1042 - Whether a faction and its partners relieve an invaded world together when none is enough alone (ThreatCoalition.jointRelief).
+- `ThreatIncConfig.alarmEnabled()` :1047 - Master switch for grudge, alarm and retaliation.
+- `ThreatIncConfig.alarmPerStratum()` :1049 - Grudge points a faction earns per stratum its front takes.
+- `ThreatIncConfig.alarmPerEradication()` :1051 - Grudge points per hive eradicated.
+- `ThreatIncConfig.alarmPerRaid()` :1053 - Grudge points per successful raid or tactical pass on a hive world.
+- `ThreatIncConfig.alarmDecayPer30()` :1055 - Fraction of every grudge that fades per 30 days.
+- `ThreatIncConfig.alarmTargetMult()` :1057 - Strike-target weight bonus per point of a faction's grudge (0.2 = grudge 10 is x3).
+- `ThreatIncConfig.retaliationEnabled()` :1059 - Whether a ground victory draws an immediate strike at the winner.
+- `ThreatIncConfig.sustenanceFirst()` :1061 - The colonies' break-even sustenance is paid before the fleets away and the navy at home (ThreatColonyUpkeep.sustenanceDue, 2026-10-08).
+- `ThreatIncConfig.navyFitsSpare()` :1063 - The hive keeps no standing navy its supplies flow cannot carry with the sends it wants (ThreatColonyManager.fitNavyToSpare, 2026-10-08).
+- `ThreatIncConfig.coalitionEnabled()` :1068 - Whether a mobilised faction's siege calls other mobilised factions to intercept at the door.
+- `ThreatIncConfig.coalitionCallDays()` :1070 - Days a coalition call stays open.
+- `ThreatIncConfig.coalitionSupportChance()` :1072 - Chance per tick that an eligible ally answers a call with an Intercept task force.
+- `ThreatIncConfig.outpostsEnabled()` :1077 - Whether outposts can be built on purged worlds.
+- `ThreatIncConfig.outpostTier()` :1079 - Station tier:
+- `ThreatIncConfig.outpostCredits()` :1081 - Credits the player pays for an outpost.
+- `ThreatIncConfig.outpostSupplies()` :1083 - Supplies an NPC faction's base pays for an outpost.
+- `ThreatIncConfig.outpostFuel()` :1085 - Fuel an NPC faction's base pays for an outpost.
+- `ThreatIncConfig.frontlinesEnabled()` :1089
+- `ThreatIncConfig.frontlinePlanDays()` :1090
+- `ThreatIncConfig.frontlineLinkLY()` :1091
+- `ThreatIncConfig.frontlineReachLY()` :1092
+- `ThreatIncConfig.frontlineKeepLY()` :1093
+- `ThreatIncConfig.frontlineGrowDays()` :1094
+- `ThreatIncConfig.frontlineStarveDays()` :1095
+- `ThreatIncConfig.frontlineAbandonDays()` :1096
+- `ThreatIncConfig.frontlineRearGraceDays()` :1097
+- `ThreatIncConfig.pathTithes()` :1098
+- `ThreatIncConfig.pathTitheSuppliesPerSize()` :1099
+- `ThreatIncConfig.pathTitheFuelPerSize()` :1100
+- `ThreatIncConfig.pathTitheMarinesPerSize()` :1101
+- `ThreatIncConfig.pathTitheSleeperFraction()` :1102
+- `ThreatIncConfig.pathMilitiaMult()` :1103
+- `ThreatIncConfig.pathZealotMarines()` :1104
+- `ThreatIncConfig.frontlineRelayAccess()` :1105
+- `ThreatIncConfig.frontlineStrikeWeight()` :1106
+- `ThreatIncConfig.frontlineReliefEnabled()` :1107
+- `ThreatIncConfig.strikeDetection()` :1108
+- `ThreatIncConfig.strikeDetectLY()` :1109
+- `ThreatIncConfig.permaHostile()` :1114 - Pin the Threat faction to vengeful with every other faction (perma-hostile to all).
+- `ThreatIncConfig.bombardNoAtrocity()` :1116 - Waive the vanilla saturation-bombardment atrocity reputation penalty when the bombed colony is a Threat colony.
+- `ThreatIncConfig.debugMode()` :1120
+- `ThreatIncConfig.debugLogging()` :1121
+- `ThreatIncConfig.debugForceStart()` :1122
+- `ThreatIncConfig.debugFastClock()` :1123
+- `ThreatIncConfig.debugGrantSensorMods()` :1124
+- `ThreatIncConfig.debugPlayerIgnored()` :1125
+- `ThreatIncConfig.debugSimDump()` :1126
+- `ThreatIncConfig.debugReset()` :1127
+- `ThreatIncConfig.debugInstantWar()` :1130
+- `ThreatIncConfig.debugInstantWarSystemsMin()` :1131
+- `ThreatIncConfig.debugInstantWarSystemsMax()` :1132
+- `ThreatIncConfig.debugInstantWarCoreMin()` :1133
+- `ThreatIncConfig.debugInstantWarCoreMax()` :1134
+- `ThreatIncConfig.debugInstantWarLinkLY()` :1135
+- `ThreatIncConfig.debugInstantWarCoreLY()` :1136
+- `ThreatIncConfig.debugInstantWarHomeSize()` :1137
+- `ThreatIncConfig.debugHiveFloorSize()` :1138
+- `ThreatIncConfig.debugInstantWarColonySize()` :1139
+- `ThreatIncConfig.log(String msg)` :1141
+- `ThreatIncConfig.logQuiet(String key, String msg)` :1155 - A line a poll repeats:
+- `ThreatIncConfig.logOnChange(String key, String state, String msg)` :1173 - A line a poll repeats, logged only when state changes - a verdict, not the figures behind it - and no more than once in ten days:
+- `ThreatIncConfig.forgetQuiet()` :1183 - Called on load:
 
 ## ThreatIncData (518 lines)
 - `ThreatIncData.list(String key)` :74
@@ -3216,101 +3224,104 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPlanetaryShield.addPostDemandSection(TooltipMakerAPI tooltip, boolean hasDemand, IndustryTooltipMode mode)` :112 - What is true now:
 - `ThreatPlanetaryShield.addAlphaCoreDescription(TooltipMakerAPI tooltip, AICoreDescriptionMode mode)` :147
 
-## ThreatPlays (1808 lines)
+## ThreatPlays (1855 lines)
 - `ThreatPlays.of(String fid)` :138 - The faction's running plays.
 - `ThreatPlays.major(String fid)` :147 - The faction's first major play (a hammer, a bombing campaign, a feint, or its share of a partner's hammer), or null.
 - `ThreatPlays.isMajor(Play pl)` :155
 - `ThreatPlays.majorAt(String fid, String systemId)` :160 - Whether one of the faction's major plays runs at the system:
 - `ThreatPlays.striking(Play pl)` :168 - A hammer or a feint not yet withdrawing:
-- `ThreatPlays.strikingAt(String fid, String systemId)` :172
-- `ThreatPlays.running(String fid, String type, String systemId)` :179
+- `ThreatPlays.stagingHammer(String fid)` :173 - Whether a hammer of the faction is still staging or waiting on stock (PREPARE / MUSTER, no siege sailed):
+- `ThreatPlays.strikingAt(String fid, String systemId)` :181
+- `ThreatPlays.running(String fid, String type, String systemId)` :188
 ### planning: which play the strategy runs next (section 3's table)
-- `ThreatPlays.plan(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, float today, Random random)` :190
-- `ThreatPlays.invade(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, float today, Random random)` :292 - The invasion line (user, 2026-10-04:
-- `ThreatPlays.payingBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s, MarketAPI w)` :370 - Why payingBase refused its last base (for the pass's summary line).
-- `ThreatPlays.newPlay(ThreatWarCouncil.Council c, String type, ThreatWarCouncil.Cluster k, float today)` :400
+- `ThreatPlays.plan(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, float today, Random random)` :199
+- `ThreatPlays.invade(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, float today, Random random)` :301 - The invasion line (user, 2026-10-04:
+- `ThreatPlays.payingBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s, MarketAPI w)` :401 - Why payingBase refused its last base (for the pass's summary line).
+- `ThreatPlays.newPlay(ThreatWarCouncil.Council c, String type, ThreatWarCouncil.Cluster k, float today)` :431
 ### starting each play
-- `ThreatPlays.startRecon(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :418
-- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :450
-- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why, String fromId)` :456 - A hammer;
-- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why, String fromId, MarketAPI from)` :466 - As above from from (null:
-- `ThreatPlays.startStarve(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :508
-- `ThreatPlays.bombable(String fid, String observer, MarketAPI w)` :535 - Whether a squadron may bomb the world:
-- `ThreatPlays.richestBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s)` :545 - The cluster's base whose pools field the largest siege (ThreatPosture.siegeCapacityFP):
-- `ThreatPlays.cheapestSquadron(Play pl, FactionAPI faction)` :560 - The fuel of the cheapest squadron the campaign could send to a bombable Nexus now;
-- `ThreatPlays.feintPlan(FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster b)` :582 - A feint against B (section 4.2):
-- `ThreatPlays.startFeint(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster b, ThreatWarCouncil.Cluster a, MarketAPI base, float today, Random random, String why)` :612
-- `ThreatPlays.opportunity(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, float today, Random random)` :657 - Bombers of opportunity (section 4.6), inside Starve and Roll back (and Hold, on the hives that threaten us):
-- `ThreatPlays.oppLeft(ThreatWarCouncil.Council c, float today)` :715 - What is left of the month's opportunity fuel (bombers of opportunity and probing raids), the month rolled over first.
-- `ThreatPlays.reconDue(ThreatWarCouncil.Council c, String systemId, float today)` :727 - Whether a recon on the system may start:
+- `ThreatPlays.startRecon(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :449
+- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :481
+- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why, String fromId)` :487 - A hammer;
+- `ThreatPlays.startHammer(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why, String fromId, MarketAPI from)` :497 - As above from from (null:
+- `ThreatPlays.startStarve(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster k, float today, Random random, String why)` :539
+- `ThreatPlays.bombable(String fid, String observer, MarketAPI w)` :566 - Whether a squadron may bomb the world:
+- `ThreatPlays.richestBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s)` :576 - The cluster's base whose pools field the largest siege (ThreatPosture.siegeCapacityFP):
+- `ThreatPlays.cheapestSquadron(Play pl, FactionAPI faction)` :591 - The fuel of the cheapest squadron the campaign could send to a bombable Nexus now;
+- `ThreatPlays.feintPlan(FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster b)` :613 - A feint against B (section 4.2):
+- `ThreatPlays.startFeint(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, ThreatWarCouncil.Cluster b, ThreatWarCouncil.Cluster a, MarketAPI base, float today, Random random, String why)` :643
+- `ThreatPlays.opportunity(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p, float today, Random random)` :688 - Bombers of opportunity (section 4.6), inside Starve and Roll back (and Hold, on the hives that threaten us):
+- `ThreatPlays.oppLeft(ThreatWarCouncil.Council c, float today)` :746 - What is left of the month's opportunity fuel (bombers of opportunity and probing raids), the month rolled over first.
+- `ThreatPlays.reconDue(ThreatWarCouncil.Council c, String systemId, float today)` :758 - Whether a recon on the system may start:
 ### the daily advance
-- `ThreatPlays.advance(float today, Random random)` :736
-- `ThreatPlays.advanceOne(Play pl, float today, Random random)` :755
-- `ThreatPlays.pausable(Play pl)` :792 - Whether relief owed holds the play:
-- `ThreatPlays.sample(Play pl, FactionAPI faction, float today)` :812 - The day's damage done at the target:
-- `ThreatPlays.advanceRecon(Play pl, FactionAPI faction, float today)` :831
-- `ThreatPlays.advanceStrike(Play pl, FactionAPI faction, float today, Random random)` :842 - A hammer's and a feint's phases.
-- `ThreatPlays.escort(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> targets, float siegeFP, float today, Random random)` :869 - The play's escort (user, 2026-10-04):
-- `ThreatPlays.inviteJoint(Play pl, FactionAPI faction, StarSystemAPI s, List<MarketAPI> targets, float want, float today, Random random)` :895 - Partners join the hammer with their own forces, held at their own bearings (section 7), until want FP of its escort is made up.
-- `ThreatPlays.forcesOf(Play pl)` :937 - The forces of the play and of the partners in it.
-- `ThreatPlays.anyForceAlive(Play pl)` :945
-- `ThreatPlays.musterCheck(Play pl, FactionAPI faction, float today, Random random)` :957 - A play in muster waits for a report to size its sieges by, or for stock to pay one:
-- `ThreatPlays.watchCheck(Play pl, FactionAPI faction, float today, Random random)` :981
-- `ThreatPlays.strike(Play pl, FactionAPI faction, float today, Random random, String why)` :1020 - The strike (sections 4.1 and 4.2;
-- `ThreatPlays.strike(Play pl, FactionAPI faction, float today, Random random, String why, boolean early)` :1025 - As above;
-- `ThreatPlays.besiege(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> worlds, Random random)` :1121 - The play's sieges (user, 2026-10-04):
-- `ThreatPlays.baseFor(Play pl)` :1145 - The play's base, or - that one lost - the first of the faction's still in reach of its system (the picture's), which it moves to;
-- `ThreatPlays.sendBombers(Play pl, FactionAPI faction, float today)` :1160 - A feint's bombers on B's Nexus sail on their day, in the strike or after the release.
-- `ThreatPlays.siegeNear(Play pl)` :1181 - The play's siege is due at its worlds within the hunts' passage from their muster (ThreatSoftening.passageDays) and RELEASE_LEAD_DAYS, or is there already, by its live ETA:
-- `ThreatPlays.strikeCheck(Play pl, FactionAPI faction, float today, Random random)` :1192
-- `ThreatPlays.exploitCheck(Play pl, FactionAPI faction, float today, Random random)` :1208
-- `ThreatPlays.advanceStarve(Play pl, FactionAPI faction, float today, Random random)` :1260
-- `ThreatPlays.compare(MarketAPI a, MarketAPI b)` :1295
-- `ThreatPlays.saturate(Play pl, FactionAPI faction, Random random)` :1377 - The bombing campaign's saturation expedition, once, when the pools pay (section 4.3):
-- `ThreatPlays.compare(MarketAPI a, MarketAPI b)` :1389
+- `ThreatPlays.advance(float today, Random random)` :767
+- `ThreatPlays.advanceOne(Play pl, float today, Random random)` :786
+- `ThreatPlays.pausable(Play pl)` :823 - Whether relief owed holds the play:
+- `ThreatPlays.sample(Play pl, FactionAPI faction, float today)` :843 - The day's damage done at the target:
+- `ThreatPlays.advanceRecon(Play pl, FactionAPI faction, float today)` :862
+- `ThreatPlays.advanceStrike(Play pl, FactionAPI faction, float today, Random random)` :873 - A hammer's and a feint's phases.
+- `ThreatPlays.escort(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> targets, float siegeFP, float today, Random random)` :900 - The play's escort (user, 2026-10-04):
+- `ThreatPlays.inviteJoint(Play pl, FactionAPI faction, StarSystemAPI s, List<MarketAPI> targets, float want, float today, Random random)` :926 - Partners join the hammer with their own forces, held at their own bearings (section 7), until want FP of its escort is made up.
+- `ThreatPlays.forcesOf(Play pl)` :968 - The forces of the play and of the partners in it.
+- `ThreatPlays.anyForceAlive(Play pl)` :976
+- `ThreatPlays.musterCheck(Play pl, FactionAPI faction, float today, Random random)` :988 - A play in muster waits for a report to size its sieges by, or for stock to pay one:
+- `ThreatPlays.watchCheck(Play pl, FactionAPI faction, float today, Random random)` :1012
+- `ThreatPlays.strike(Play pl, FactionAPI faction, float today, Random random, String why)` :1051 - The strike (sections 4.1 and 4.2;
+- `ThreatPlays.strike(Play pl, FactionAPI faction, float today, Random random, String why, boolean early)` :1056 - As above;
+- `ThreatPlays.besiege(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> worlds, Random random)` :1152 - The play's sieges (user, 2026-10-04):
+- `ThreatPlays.baseFor(Play pl)` :1176 - The play's base, or - that one lost - the first of the faction's still in reach of its system (the picture's), which it moves to;
+- `ThreatPlays.sendBombers(Play pl, FactionAPI faction, float today)` :1191 - A feint's bombers on B's Nexus sail on their day, in the strike or after the release.
+- `ThreatPlays.siegeNear(Play pl)` :1212 - The play's siege is due at its worlds within the hunts' passage from their muster (ThreatSoftening.passageDays) and RELEASE_LEAD_DAYS, or is there already, by its live ETA:
+- `ThreatPlays.strikeCheck(Play pl, FactionAPI faction, float today, Random random)` :1223
+- `ThreatPlays.exploitCheck(Play pl, FactionAPI faction, float today, Random random)` :1239
+- `ThreatPlays.advanceStarve(Play pl, FactionAPI faction, float today, Random random)` :1291
+- `ThreatPlays.compare(MarketAPI a, MarketAPI b)` :1326
+- `ThreatPlays.saturate(Play pl, FactionAPI faction, Random random)` :1408 - The bombing campaign's saturation expedition, once, when the pools pay (section 4.3):
+- `ThreatPlays.compare(MarketAPI a, MarketAPI b)` :1420
 ### raids (ThreatFleetOrders.endRaid and the destroyed path)
-- `ThreatPlays.raidEnded(ThreatFleetOrders.Order o, String why)` :1421 - A raid order ended:
-- `ThreatPlays.feintArrived(Play pl)` :1441 - Whether the feint's squadron is over its world.
-- `ThreatPlays.raidAlive(String raidId)` :1448
-- `ThreatPlays.squadron(Play pl, FactionAPI faction, MarketAPI world, float fp, float days)` :1457 - A squadron (dispatchRaid) of fp at the world for days, from the base that reaches it;
-- `ThreatPlays.squadronBase(FactionAPI faction, MarketAPI world, float fp)` :1475 - The nearest base of the faction that reaches the world and pays a squadron of fp whole (a raid pays from one base, with no donors);
-- `ThreatPlays.squadronFP(MarketAPI world)` :1491 - A squadron's fleet points at the world:
-- `ThreatPlays.fuelCost(MarketAPI base, MarketAPI world, float fp, float stay)` :1497
+- `ThreatPlays.raidEnded(ThreatFleetOrders.Order o, String why)` :1452 - A raid order ended:
+- `ThreatPlays.feintArrived(Play pl)` :1472 - Whether the feint's squadron is over its world.
+- `ThreatPlays.raidAlive(String raidId)` :1479
+- `ThreatPlays.squadron(Play pl, FactionAPI faction, MarketAPI world, float fp, float days)` :1488 - A squadron (dispatchRaid) of fp at the world for days, from the base that reaches it;
+- `ThreatPlays.squadronBase(FactionAPI faction, MarketAPI world, float fp)` :1506 - The nearest base of the faction that reaches the world and pays a squadron of fp whole (a raid pays from one base, with no donors);
+- `ThreatPlays.squadronFP(MarketAPI world)` :1522 - A squadron's fleet points at the world:
+- `ThreatPlays.fuelCost(MarketAPI base, MarketAPI world, float fp, float stay)` :1528
 ### ending
-- `ThreatPlays.finish(Play pl, float today, String why)` :1507 - The verdict by the damage done:
-- `ThreatPlays.end(Play pl, String outcome, String why, float today)` :1517
-- `ThreatPlays.damage(Play pl)` :1553
-- `ThreatPlays.standDownForces(Play pl, String why)` :1565
-- `ThreatPlays.phase(Play pl, String next, String why, float today)` :1569
+- `ThreatPlays.finish(Play pl, float today, String why)` :1538 - The verdict by the damage done:
+- `ThreatPlays.end(Play pl, String outcome, String why, float today)` :1548
+- `ThreatPlays.damage(Play pl)` :1584
+- `ThreatPlays.standDownForces(Play pl, String why)` :1596
+- `ThreatPlays.phase(Play pl, String next, String why, float today)` :1600
 ### helpers
-- `ThreatPlays.stage(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> targets, StarSystemAPI stageAt)` :1587 - The play's staging (section 16):
-- `ThreatPlays.share(String fid, float share)` :1605 - A share of the means, by the faction's personality (shareMult):
-- `ThreatPlays.liveTargets(FactionAPI faction, List<String> ids)` :1610 - The worlds of the ids still the swarm's, not besieged by anyone and not held by another army, in order.
-- `ThreatPlays.own(Play pl)` :1615 - The plays whose sieges are not in this one's way:
-- `ThreatPlays.liveTargets(FactionAPI faction, List<String> ids, List<String> ownPlays)` :1624 - Hives no other siege has booked (the plays named aside) and no other faction's front stands on.
-- `ThreatPlays.nexusesDown(ThreatWarCouncil.Cluster k)` :1636 - Whether the cluster has a Nexus and none of them is operational (a planet fact).
-- `ThreatPlays.anyHive(List<String> ids)` :1648 - The worlds that are still the swarm's, whoever else besieges them.
-- `ThreatPlays.baseOf(ThreatWarCouncil.Cluster k, String fid)` :1656 - The cluster's first base that is still the faction's and in the economy (the picture is up to a month old).
-- `ThreatPlays.firstHive(Play pl)` :1663
-- `ThreatPlays.ids(List<MarketAPI> worlds)` :1671
-- `ThreatPlays.purgeOf(String playId)` :1678 - The play's own siege expedition, or null.
-- `ThreatPlays.purgesOf(String playId)` :1689 - Every siege expedition of the play:
-- `ThreatPlays.siegeLive(String playId)` :1699 - Whether one of the play's sieges is still out.
-- `ThreatPlays.siegeInbound(String playId)` :1707 - Whether one of the play's sieges is still mustering or on its way out.
-- `ThreatPlays.landings(String playId)` :1719 - The landings of all the play's sieges.
-- `ThreatPlays.live(ThreatPurgeFGI purge)` :1725
-- `ThreatPlays.landings(ThreatPurgeFGI purge)` :1729
-- `ThreatPlays.market(String id)` :1738
-- `ThreatPlays.system(String id)` :1742
-- `ThreatPlays.systemName(String id)` :1746
-- `ThreatPlays.targetName(Play pl)` :1751
-- `ThreatPlays.boardName(String id)` :1756 - The board's name for a system:
-- `ThreatPlays.boardTarget(Play pl)` :1761
-- `ThreatPlays.typeName(String type)` :1766 - The board's name for a play type.
-- `ThreatPlays.phaseText(Play pl)` :1777 - The board's one line on where a play stands.
-- `ThreatPlays.daysToNext(Play pl)` :1794 - Days to the play's next check, or -1.
-- `ThreatPlays.ly(MarketAPI base, StarSystemAPI s)` :1799
-- `ThreatPlays.threat(MarketAPI m)` :1805 - Whether the market is the swarm's (for callers outside the council).
+- `ThreatPlays.stage(Play pl, FactionAPI faction, MarketAPI base, StarSystemAPI s, List<MarketAPI> targets, StarSystemAPI stageAt)` :1618 - The play's staging (section 16):
+- `ThreatPlays.share(String fid, float share)` :1636 - A share of the means, by the faction's personality (shareMult):
+- `ThreatPlays.liveTargets(FactionAPI faction, List<String> ids)` :1641 - The worlds of the ids still the swarm's, not besieged by anyone and not held by another army, in order.
+- `ThreatPlays.own(Play pl)` :1646 - The plays whose sieges are not in this one's way:
+- `ThreatPlays.liveTargets(FactionAPI faction, List<String> ids, List<String> ownPlays)` :1655 - Hives no other siege has booked (the plays named aside) and no other faction's front stands on.
+- `ThreatPlays.nexusesDown(ThreatWarCouncil.Cluster k)` :1667 - Whether the cluster has a Nexus and none of them is operational (a planet fact).
+- `ThreatPlays.anyHive(List<String> ids)` :1679 - The worlds that are still the swarm's, whoever else besieges them.
+- `ThreatPlays.baseOf(ThreatWarCouncil.Cluster k, String fid)` :1687 - The cluster's first base the faction may still strike from (its own or an ally's host, in the economy - the picture is up to a month old).
+- `ThreatPlays.usable(MarketAPI m, String fid)` :1698 - Whether the faction may strike from the base:
+- `ThreatPlays.baseName(MarketAPI base, String fid)` :1704 - The base's name, with its owner when it is an ally's (allied staging).
+- `ThreatPlays.firstHive(Play pl)` :1710
+- `ThreatPlays.ids(List<MarketAPI> worlds)` :1718
+- `ThreatPlays.purgeOf(String playId)` :1725 - The play's own siege expedition, or null.
+- `ThreatPlays.purgesOf(String playId)` :1736 - Every siege expedition of the play:
+- `ThreatPlays.siegeLive(String playId)` :1746 - Whether one of the play's sieges is still out.
+- `ThreatPlays.siegeInbound(String playId)` :1754 - Whether one of the play's sieges is still mustering or on its way out.
+- `ThreatPlays.landings(String playId)` :1766 - The landings of all the play's sieges.
+- `ThreatPlays.live(ThreatPurgeFGI purge)` :1772
+- `ThreatPlays.landings(ThreatPurgeFGI purge)` :1776
+- `ThreatPlays.market(String id)` :1785
+- `ThreatPlays.system(String id)` :1789
+- `ThreatPlays.systemName(String id)` :1793
+- `ThreatPlays.targetName(Play pl)` :1798
+- `ThreatPlays.boardName(String id)` :1803 - The board's name for a system:
+- `ThreatPlays.boardTarget(Play pl)` :1808
+- `ThreatPlays.typeName(String type)` :1813 - The board's name for a play type.
+- `ThreatPlays.phaseText(Play pl)` :1824 - The board's one line on where a play stands.
+- `ThreatPlays.daysToNext(Play pl)` :1841 - Days to the play's next check, or -1.
+- `ThreatPlays.ly(MarketAPI base, StarSystemAPI s)` :1846
+- `ThreatPlays.threat(MarketAPI m)` :1852 - Whether the market is the swarm's (for callers outside the council).
 
 ## ThreatPosture (1980 lines)
 - `ThreatPosture.enabled()` :137 - Battle -> ids of the Threat ships already booked:

@@ -1458,6 +1458,18 @@
 	# Patrol HQ where none stands - paid or its price held. hw219a: the Hegemony 35k FP free, 1,095 of 1,360
 	# refused systems short of marines (a landing wants 1,100-2,700; a market raises 40-77 a month)
 	"threatinc_marineStep": true,
+	# ALLIED STAGING (2026-10-19, the user: "the allied sharing fix sounds better" - one chain a hive would be 30
+	# chains): a base of an ally at Welcoming or better (ThreatCoalition.stagingHost) is a staging base for the
+	# faction's sieges - in the council's clusters, a paying base of the invade pass, "reached" for the chain
+	# (ThreatFrontlines.planFor). Its stock is the depot's (A: the host's convoys refill it); the guest's markets in
+	# reach join the host's staging planner as donors for it (ThreatConvoys.guestDonors). The guest's own hull pool
+	# pays the siege. hw220: bases stood 53-72 a game against 33-49 colonies, each faction chaining its own
+	"threatinc_alliedStaging": true,
+	# CONVOYS ONLY (2026-10-19, the user: "no teleporting please ... should be done via convoy"): with the siege
+	# pools off (siegePoolMarines / siegePoolProvisions false) a base holds what convoys brought it, so the invade
+	# pass, finding no base that holds a landing's stock today, stages ONE hammer a faction at the easiest such
+	# hive (ThreatPlays.startHammer: PREPARE, the staging planner fills the base, the strike sails once paid)
+	"threatinc_invadeStaging": true,
 	# the swarm's want for a link: max(size,3)^2 x this x (1 + links its loss cuts)
 	"threatinc_frontlineStrikeWeight": 3,
 	# a seen strike on a link calls its guard: rear links have no standing garrison
@@ -1543,10 +1555,13 @@
 	# an NPC siege short of marines (or armaments) at its base draws the rest
 	# from its faction's other markets in reach - colonies as well as bases,
 	# each above its floor - nearest the base first (2026-09-26: sibling bases'
-	# spare stock alone held a tenth of the faction's marines)
-	"threatinc_siegePoolMarines": true,
-	# ...and its fuel and supplies gate and draw pool the same markets
-	"threatinc_siegePoolProvisions": true,
+	# spare stock alone held a tenth of the faction's marines).
+	# OFF since 2026-10-19 (the user: "no teleporting please. the instant part ... should be done via convoy"):
+	# a siege draws its base's stock alone, which the staging convoys brought (ThreatConvoys.planLogistics); the
+	# Path's zealots sail as marine convoys to an allied base short of them instead of being pooled
+	"threatinc_siegePoolMarines": false,
+	# ...and its fuel and supplies gate and draw pool the same markets (off with the above)
+	"threatinc_siegePoolProvisions": false,
 	# (2026-09-29: no caps on sieges - every base in reach is weighed, the
 	# flotilla grows until it clears the need, and passes run one per fleet
 	# plus the softening and the landing; the depots' pooled provisions are

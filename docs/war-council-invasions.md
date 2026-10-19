@@ -51,6 +51,20 @@ core build raises the faction's military ladder before another yard while the no
 `ThreatCoreBuild.marineStep`, 2026-10-19 - hw219a: 1,095 of the Hegemony's 1,360 refused systems were
 marines, with 35k FP free; `frontlines.md` s8).
 
+An ally's base counts (ALLIED STAGING, 2026-10-19 13:55, the user: "the allied sharing fix sounds better"): a base of
+another mobilised NPC faction at Welcoming or better (`ThreatCoalition.stagingHost`) is in the cluster's `bases`, so
+`payingBase`, `baseOf`, `richestBase` and the feint's base pick take it (`ThreatPlays.usable`), and `baseFor` does not
+read a hosted base as lost. Its stock is the depot's (rule A: drawn by whoever launches there, refilled by the host's
+convoys and the guest's, `strategy-convoys.md`); the siege's hulls are the guest's (`IncursionManager.siegeCanPay`
+reads `ThreatHulls.freeFP(faction)`). Log lines name the host: `from Cruor (Sindrian Diktat's)`.
+
+CONVOYS ONLY (the same decision: "no teleporting please"): with `siegePoolMarines` / `siegePoolProvisions` off a base
+holds only what convoys brought it, so a pass that finds no base in reach holding a landing's stock today (`marines`,
+`cannot pay`) stages ONE hammer a faction at the easiest such hive - `startHammer` with no base given: PREPARE
+(`councilPrepareDays`), the play's staging sets the base's targets, the staging planner fills them, the strike sails
+once `siegeCanPay` says yes or fails after `councilStrikeWaitDays` more (s3). `ThreatPlays.stagingHammer` keeps it to
+one staging hammer a faction at a time; knob `threatinc_invadeStaging`. The pass line gains `, staged N`.
+
 What stops an invasion now: no report of the system, marines, fuel, supplies, armaments, or relief
 owed.
 

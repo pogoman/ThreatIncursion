@@ -640,6 +640,8 @@ public class ThreatIncConfig {
 	/** YARDS FIRST (the user, 2026-10-19): the wartime economy builds hull production before anything else - a Heavy Industry at every core colony that can site one, then Orbital Works, unpaced, and while one is held for its price no kit sails, no siege is provisioned and nothing else is built (ThreatCoreBuild.yardStep, ThreatFactionStock.yardWant). */
 	public static boolean yardsFirst()               { return b("threatinc_yardsFirst", true); }
 	public static boolean marineStep()               { return b("threatinc_marineStep", true); }
+	public static boolean alliedStaging()            { return b("threatinc_alliedStaging", true); }
+	public static boolean invadeStaging()            { return b("threatinc_invadeStaging", true); }
 	public static boolean frontlineFuelProduction()  { return b("threatinc_frontlineFuelProduction", true); }
 	/** Smallest garrison a link gets, in fleet points, whatever the strikes in reach. */
 	public static float frontlineGarrisonFP() { return f("threatinc_frontlineGarrisonFP"); }

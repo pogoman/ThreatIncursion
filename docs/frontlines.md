@@ -694,3 +694,8 @@ fix that". Three changes, all built the same evening (trial hw200):
   High Command more (a Patrol HQ none); the reserve banks that surplus at `reserveTroopSurplusMult` (0.5)
   plus the militia. hw219a: the Hegemony sat on 35k of 39k FP free with 1,095 of 1,360 refused systems
   "marines" - a landing wants 1,100-2,700, a market raises 40-77 a month. Trial hw221 / hw222.
+- **An ally's base is reached** (ALLIED STAGING, 2026-10-19 13:55; knob `threatinc_alliedStaging`). `planFor` counts a
+  base that may host the faction's sieges (`ThreatCoalition.stagingHost`: another mobilised NPC faction's, Welcoming
+  or better, not the player's) within `frontlineReachLY` of a hive as reaching it, like an own colony or connected
+  link - no chain of its own toward a hive an ally already stages against. The user's answer to 53-72 bases a game
+  against 33-49 colonies, each faction chaining its own ("one chain per hive? theres like 30 hives").

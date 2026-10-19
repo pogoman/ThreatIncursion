@@ -88,7 +88,7 @@ public class ThreatWarCouncil {
 		public float ly;
 		public float age;
 		public boolean stale, threatens;
-		/** The faction's bases in expedition range, nearest first. */
+		/** The faction's bases in expedition range, nearest first - and its allies' that may stage for it (ThreatCoalition.stagingHost, 2026-10-19). */
 		public List<MarketAPI> bases = new ArrayList<MarketAPI>();
 		public String neighbourId;
 		public float neighbourLY = Float.MAX_VALUE;
@@ -343,7 +343,7 @@ public class ThreatWarCouncil {
 			}
 			k.threatens = k.ly <= threatLY;
 			for (MarketAPI b : IncursionManager.siegeBasesFor(s)) {
-				if (fid.equals(b.getFactionId())) k.bases.add(b);
+				if (fid.equals(b.getFactionId()) || ThreatCoalition.stagingHost(b, fid)) k.bases.add(b);
 			}
 			p.clusters.add(k);
 			p.swarmWeight += k.weight;

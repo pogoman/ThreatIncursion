@@ -159,6 +159,24 @@ public class ThreatCoalition {
 	// allies helping each other (docs/player-aid.md section 5)
 	// ------------------------------------------------------------------
 
+	/**
+	 * ALLIED STAGING (the user, 2026-10-19: "one chain per hive? theres like 30 hives ... the allied sharing fix
+	 * sounds better"): whether this base may stage the guest faction's sieges - a base (IncursionManager.isBase)
+	 * of another mobilised NPC faction at Welcoming or better with the guest ({@link #willingness} 0.5) and not
+	 * hostile to it. The guest sieges from it as from its own: its stock is the depot's (the host's convoys refill
+	 * it), the guest's markets in reach send convoys to it too (ThreatConvoys.guestDonors), the guest's own hull
+	 * pool pays. Knob alliedStaging. Never the player's base.
+	 */
+	public static boolean stagingHost(MarketAPI base, String guestFid) {
+		if (!ThreatIncConfig.alliedStaging() || base == null || guestFid == null || base.getFaction() == null) return false;
+		FactionAPI host = base.getFaction();
+		if (host.isPlayerFaction() || guestFid.equals(host.getId())) return false;
+		if (com.fs.starfarer.api.impl.campaign.ids.Factions.THREAT.equals(host.getId())) return false;
+		if (!ThreatWarState.isAtWar(host.getId()) || host.isHostileTo(guestFid) || !base.isInEconomy()) return false;
+		if (!IncursionManager.isBase(base)) return false;
+		return willingness(host, guestFid) >= 0.5f;
+	}
+
 	/** How far a faction will go for another, 0..1, by its standing with it. */
 	public static float willingness(FactionAPI helper, String needyFactionId) {
 		if (helper == null || needyFactionId == null) return 0f;

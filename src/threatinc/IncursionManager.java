@@ -2018,6 +2018,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	protected static java.util.List<MarketAPI> zealotDonors(FactionAPI faction, MarketAPI base, StarSystemAPI system) {
 		java.util.List<MarketAPI> out = new ArrayList<MarketAPI>();
 		if (!ThreatIncConfig.pathZealotMarines() || faction == null || base == null || system == null) return out;
+		// CONVOYS ONLY (the user, 2026-10-19): with the marine pool off the zealots are not pooled either - the Path's
+		// markets sail marine convoys to an allied base short of them (ThreatConvoys.zealotConvoyDonors)
+		if (!ThreatIncConfig.siegePoolMarines()) return out;
 		if (Factions.LUDDIC_PATH.equals(faction.getId())) return out;
 		FactionAPI path = Global.getSector().getFaction(Factions.LUDDIC_PATH);
 		String key = "zealots:" + faction.getId() + ":" + system.getId();
@@ -2309,9 +2312,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// free pool could not man, the launch refused them and the council's invasion pass stopped at the
 		// refusal - hw211b Tri-Tachyon 104 plays 'could not be paid after all', hw211a Church 143
 		if (ThreatHulls.enabled()) {
-			float hullPayable = ThreatHulls.freeFP(base.getFactionId()) / FP_PER_RESPONSE_DIFFICULTY;
+			float hullPayable = ThreatHulls.freeFP(faction.getId()) / FP_PER_RESPONSE_DIFFICULTY;
 			if (hullPayable < minProvisions) {
-				ThreatFactionStock.noteHullShort(base.getFactionId(), (minProvisions - hullPayable) * FP_PER_RESPONSE_DIFFICULTY);
+				ThreatFactionStock.noteHullShort(faction.getId(), (minProvisions - hullPayable) * FP_PER_RESPONSE_DIFFICULTY);
 			}
 			payable = Math.min(payable, hullPayable);
 		}
@@ -3312,7 +3315,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				if (suppliesPerPoint > 0f) payable = Math.min(payable, haveSupplies / suppliesPerPoint);
 				// and the hulls: the faction's free pool, in points (ThreatHulls, 2026-10-06)
 				if (ThreatHulls.enabled()) {
-					payable = Math.min(payable, ThreatHulls.freeFP(base.getFactionId()) / FP_PER_RESPONSE_DIFFICULTY);
+					payable = Math.min(payable, ThreatHulls.freeFP(faction.getId()) / FP_PER_RESPONSE_DIFFICULTY);
 				}
 				// full strength (2026-09-24): the fleets that reach the target's
 				// ground strength, its orbit and a razing's guns are not for
@@ -3329,9 +3332,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				// hulls bind the launch: the faction's allies may lend the shortfall from their free pools
 				// (ThreatFactionStock.noteHullShort -> ThreatCoalition.aidHulls; the user, 2026-10-19)
 				if (ThreatHulls.enabled() && points > 0 && payable < minProvisions) {
-					float hullPayable = ThreatHulls.freeFP(base.getFactionId()) / FP_PER_RESPONSE_DIFFICULTY;
+					float hullPayable = ThreatHulls.freeFP(faction.getId()) / FP_PER_RESPONSE_DIFFICULTY;
 					if (hullPayable < minProvisions) {
-						ThreatFactionStock.noteHullShort(base.getFactionId(),
+						ThreatFactionStock.noteHullShort(faction.getId(),
 								(minProvisions - hullPayable) * FP_PER_RESPONSE_DIFFICULTY);
 					}
 				}

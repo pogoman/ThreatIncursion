@@ -1,0 +1,72 @@
+# Handover 2026-10-19 afternoon - council back, N1 / N1b, the leash loop, the marine step
+
+START HERE next session. Everything below is in `facts.md` (the day's entries from "DECISION 2026-10-19 00:20"
+on) and `game-runs-2.md` s54; this is the shape of it.
+
+## 1. Where the build stands (jar 13:20, commit 382541ec, all local - nothing pushed)
+
+- **Council back on** (`threatinc_warCouncil` true; off for one morning, hw213 scratched by the user at 09:30).
+- **N1 / N1b** (09:42 / 10:41): `IncursionManager.siegeCanPay` reads the hull pool and nets the yard hold off
+  supplies; `ThreatPlays.invade` goes on past a refused system. Refused plays 0 in all eight games since.
+- **Allied convoys + hull lending** (08:40): every willing ally answers a stock shortage; a faction with its own
+  noted hull shortfall lends none. Hull convoys still a quarter of all allied convoys (98-157 a game).
+- **Leash loop fixed** (11:12, 911f71f0): a raider kept its garrison flag, was sent to rearm as a reinforcement
+  AND seated home by the raider poll - 7,804 recalls a frame apart in hw217c. Strays 7-22 a game since.
+- **Invade-pass summary line** (04656c80): `Council <f> invade pass: K clusters in reach (...), H of T hives open,
+  started N, no paying base in M: {marines=.., cannot pay=.., ...}` - one a pass a faction.
+- **The marine step** (13:20, the user's version): `ThreatPlays.payingBase` notes the marines a landing lacked;
+  `ThreatCoreBuild.marineStep` raises Patrol HQ -> Military Base -> High Command before another yard while the
+  note stands. Knob `threatinc_marineStep`. UNTESTED: hw221 (B) / hw222 (A) running from 13:22.
+- **Harness**: `sbs.ps1` relaunches a tag whose launch failed once after the others (`Requeue`) - the second
+  slot lost its window in hw217-hw220, a game a round. First live for hw221.
+- **ALLIED STAGING A + CONVOYS ONLY** (13:55, the user: "yeah A is fine ... no teleporting please"; built 14:05,
+  jar 13:42, `patch-allied-staging.pl`): the siege pools are OFF (`siegePoolMarines` / `siegePoolProvisions`
+  false) - a siege draws its base's stock alone, brought by convoys; zealots sail as marine convoys; the invade
+  pass stages one hammer a faction where nothing pays today (`threatinc_invadeStaging`). An ally's base at
+  Welcoming+ (`ThreatCoalition.stagingHost`) is a staging base: in the clusters, every base pick, `planFor`'s
+  "reached"; its stock the depot's, the guest's markets convoy to it (`ThreatConvoys.guestDonors`), a base stages
+  several plays. hw221 scratched at d84 (the marine step fired 33 times); trial hw223 (B) / hw224 (A) from 13:43.
+  Still pooled instantly (open for the user): link upkeep, founding kits, ordnance, hive-world feeding.
+
+## 2. The day's reads (hives / human colonies; b games lost their window in hw217-hw220)
+
+| round | build | OceanPena | ZhiFarah | Aphelion | PoseidonDeimos | AresDaniels | AmaruDugas |
+|---|---|---|---|---|---|---|---|
+| hw211 / hw212 | yards first | 93 / 35 | 67 / 43 | 136 / 20 | 137 / 24 | 79 / 33 | 83 / 32 |
+| hw215 | council + N1 | 70 / 33 | 91 / 38 | 189 / 12 | - | - | - |
+| hw217 / hw218 | N1b | 86 / 46 | - | 131 / 33 | 112 / 37 | - | 83 / 40 |
+| hw219 / hw220 | leash fix | 95 / 52 | - | 195 / 11 | 113 / 51 | - | **41 / 70** |
+
+- The swarm takes Aphelion (131-195) and PoseidonDeimos (112-137) every time; OceanPena leans human and the
+  humans grow there each round (33 -> 46 -> 52 colonies); **AmaruDugas went human in hw220c (41 hives, 70
+  colonies) on a strategy-neutral build** after 83 / 83 / 91 - the opening's swing, and a human win unattended.
+- hw215's Hegemony-core collapses (12 -> 5 / 12 -> 1) were the opening too: hw217 held 11 / 9 under the same
+  93 strikes.
+
+## 3. The idle navy = marines (12:30)
+
+The Hegemony sits on 15-39k FP free with 13-44 council sieges a game because `payingBase` wants the whole
+landing's marines pooled (1,100-2,700) and its markets raise 40-77 a month each (`ThreatReserves.accrualPer30`:
+vanilla surplus x `reserveTroopSurplusMult` 0.5 + militia). 594 of 683 refused systems in hw219a's pass lines
+were marines. The marine step (s1) is the answer the user chose; `reserveTroopSurplusMult` 1.0 is the knob
+behind it if the buildings do not close the gap. Caveat the user has: the humans already lean in half the games.
+
+## 4. Open for the user
+
+1. **Allied staging + convoys only (built 14:05, s1): read hw223 / hw224** for `hosts ... (allied staging)`,
+   `sails X -> Y (<host>'s base)`, `staged N` on the pass lines, 0 `pooled for` lines, the base count (the point:
+   fewer chains), and whether staged hammers reach STRIKE or fail at 60 days waiting for a convoy fill
+   (`councilPrepareDays` 30 + `councilStrikeWaitDays` 30). Then the remaining instant pools (link upkeep,
+   founding, ordnance, hive feeding) are the user's call.
+2. **Humans must not win unattended:** OceanPena x3 lean human, AmaruDugas won once - before the marine step
+   lands. The swarm's answer is the next strategic question once hw221 / hw222 are read.
+3. Carried over from the 18th: O1 bombard budget, guard need growing in transit, hive drop constant 0.9, set B
+   round of the defenders build.
+
+## 5. How to resume
+
+- `scratchpad/seeds-hw174/`: `run-siege-N.ps1` (copy the last, change `$n`, `siegeNN.done`, the Log line),
+  `check-hwNNN.sh` (sed the tag), `watch-siege.sh` (`for n in`, `siegeNN.done`, `IGN`), `read-hw208.sh hwNNN`,
+  `tools/test-harness/reads/effects-ledger.sh hwNNN`. One `sbs.ps1` at a time; a round is ~32 min; the early
+  check at +22 min reads the pass lines and `marine step` lines.
+- Pull before testing: `git fetch origin main` was clean at 13:17 (ahead 69, behind 0).

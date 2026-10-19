@@ -169,6 +169,15 @@ public class ThreatPlays {
 		return (HAMMER.equals(pl.type) || FEINT.equals(pl.type)) && !WITHDRAW.equals(pl.phase);
 	}
 
+	/** Whether a hammer of the faction is still staging or waiting on stock (PREPARE / MUSTER, no siege sailed): the invade pass stages one at a time. */
+	protected static boolean stagingHammer(String fid) {
+		for (Play pl : plays().values()) {
+			if (!fid.equals(pl.factionId) || !HAMMER.equals(pl.type) || pl.sieged) continue;
+			if (PREPARE.equals(pl.phase) || MUSTER.equals(pl.phase)) return true;
+		}
+		return false;
+	}
+
 	protected static boolean strikingAt(String fid, String systemId) {
 		for (Play pl : plays().values()) {
 			if (fid.equals(pl.factionId) && striking(pl) && systemId != null && systemId.equals(pl.systemId)) return true;
@@ -333,6 +342,7 @@ public class ThreatPlays {
 		java.util.Set<String> started = new java.util.HashSet<String>();
 		java.util.Set<String> noBase = new java.util.HashSet<String>();
 		java.util.Map<String, Integer> noBaseWhy = new java.util.LinkedHashMap<String, Integer>();
+		java.util.Map<String, String> whyOf = new java.util.HashMap<String, String>();
 		for (MarketAPI w : hives) {
 			StarSystemAPI s = w.getStarSystem();
 			ThreatWarCouncil.Cluster k = s != null ? p.cluster(s.getId()) : null;
@@ -343,6 +353,7 @@ public class ThreatPlays {
 				if (noBase.add(k.systemId)) {
 					Integer n = noBaseWhy.get(lastWhy);
 					noBaseWhy.put(lastWhy, n == null ? 1 : n + 1);
+					whyOf.put(k.systemId, lastWhy);
 				}
 				continue;
 			}
@@ -356,23 +367,43 @@ public class ThreatPlays {
 				end(pl, NEUTRAL, "its siege could not be paid after all", today);
 			}
 		}
+		// CONVOYS ONLY (the user, 2026-10-19 13:55: "no teleporting please ... should be done via convoy"): a base
+		// holds what convoys brought it, so a landing no base in reach holds the stock for today is STAGED - one
+		// hammer at a time a faction, at the easiest such hive, from its first base in reach (an ally's counts):
+		// PREPARE, the staging planner fills the base (ThreatConvoys.planLogistics), the strike sails once paid
+		int staged = 0;
+		if (!noBase.isEmpty() && ThreatIncConfig.invadeStaging() && !stagingHammer(fid)) {
+			for (MarketAPI w : hives) {
+				StarSystemAPI s = w.getStarSystem();
+				ThreatWarCouncil.Cluster k = s != null ? p.cluster(s.getId()) : null;
+				if (k == null || !noBase.contains(k.systemId)) continue;
+				String why = whyOf.get(k.systemId);
+				if (!"marines".equals(why) && !"cannot pay".equals(why)) continue;
+				Play pl = startHammer(c, faction, p, k, today, random, "invades " + w.getName()
+						+ ", staged: no base in reach holds its landing's stock today (" + why + ")", null);
+				if (pl != null) {
+					staged++;
+					break;
+				}
+			}
+		}
 		// one line a pass (hw217a, 2026-10-19: the Hegemony sat on 39k FP free and nothing said why its passes started nothing)
 		ThreatIncConfig.log("Council " + fid + " invade pass: " + inReach + " clusters in reach (" + ownStrike
 				+ " with its own strike, " + noReport + " without a report), " + hives.size() + " of " + known
-				+ " hives open, started " + started.size()
+				+ " hives open, started " + started.size() + ", staged " + staged
 				+ (noBase.isEmpty() ? "" : ", no paying base in " + noBase.size() + ": " + noBaseWhy));
 	}
 
 	/** The cluster's nearest base whose pools man, arm and provision a landing siege of the world now (IncursionManager.siegeCanPay), or null. */
 	/** Why payingBase refused its last base (for the pass's summary line). */
-	protected static String lastWhy = "no base of its own";
+	protected static String lastWhy = "no base in reach";
 
 	protected static MarketAPI payingBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s, MarketAPI w) {
 		List<MarketAPI> one = java.util.Collections.singletonList(w);
 		float need = IncursionManager.siegeRaidStrNeeded(one) * IncursionManager.minMarinesFraction(faction);
-		lastWhy = "no base of its own";
+		lastWhy = "no base in reach";
 		for (MarketAPI m : k.bases) {
-			if (m == null || !faction.getId().equals(m.getFactionId()) || !m.isInEconomy()) continue;
+			if (!usable(m, faction.getId())) continue;
 			// its own front takes the world before a siege from here could arrive
 			if (IncursionManager.frontFinishesFirst(m, faction, s, w)) {
 				lastWhy = "its front finishes first";
@@ -479,7 +510,7 @@ public class ThreatPlays {
 		pl.targetIds = ids(IncursionManager.easiestFirst(ThreatIntel.observerOf(faction), targets));
 		pl.baseId = base.getId();
 		if (from != null) {
-			phase(pl, PREPARE, why + "; from " + base.getName(), today);
+			phase(pl, PREPARE, why + "; from " + baseName(base, faction.getId()), today);
 			strike(pl, faction, today, random, "its siege is paid today");
 			return plays().containsKey(pl.id) ? pl : null;
 		}
@@ -500,7 +531,7 @@ public class ThreatPlays {
 		boolean scout = ThreatIntel.age(observer, s.getId()) >= 0.5f * half
 				&& !ThreatScouts.reconInFlight(faction.getId(), s.getId()) && ThreatScouts.recon(faction.getId(), s) != null;
 		pl.phaseDue = today + Math.max(1f, ThreatIncConfig.councilPrepareDays()) * ThreatWarCouncil.jitter(random);
-		phase(pl, PREPARE, why + "; stages at " + base.getName() + (stageAt != s ? " against " + stageAt.getName()
+		phase(pl, PREPARE, why + "; stages at " + baseName(base, faction.getId()) + (stageAt != s ? " against " + stageAt.getName()
 				+ " (decoy)" : "") + (scout ? "; scout sent" : ""), today);
 		return pl;
 	}
@@ -546,7 +577,7 @@ public class ThreatPlays {
 		MarketAPI best = null;
 		float most = -1f;
 		for (MarketAPI m : k.bases) {
-			if (m == null || !faction.getId().equals(m.getFactionId()) || !m.isInEconomy()) continue;
+			if (!usable(m, faction.getId())) continue;
 			float cap = ThreatPosture.siegeCapacityFP(m, s, ThreatSoftening.huntDonors(faction, m));
 			if (cap > most) {
 				most = cap;
@@ -600,7 +631,7 @@ public class ThreatPlays {
 		MarketAPI base = null;
 		float bestLY = Float.MAX_VALUE;
 		for (MarketAPI m : b.bases) {
-			if (m == null || !faction.getId().equals(m.getFactionId()) || !m.isInEconomy()) continue;
+			if (!usable(m, faction.getId())) continue;
 			float d = ly(m, sb);
 			if (ThreatReach.days(d) > ThreatIncConfig.councilStrikeMaxDays() || d >= bestLY) continue;
 			bestLY = d;
@@ -1144,7 +1175,7 @@ public class ThreatPlays {
 	/** The play's base, or - that one lost - the first of the faction's still in reach of its system (the picture's), which it moves to; null when none is. */
 	protected static MarketAPI baseFor(Play pl) {
 		MarketAPI base = market(pl.baseId);
-		if (base != null && pl.factionId.equals(base.getFactionId())) return base;
+		if (usable(base, pl.factionId)) return base;
 		ThreatWarCouncil.Picture p = ThreatWarCouncil.picture(pl.factionId);
 		ThreatWarCouncil.Cluster k = p != null ? p.cluster(pl.systemId) : null;
 		MarketAPI next = k != null ? baseOf(k, pl.factionId) : null;
@@ -1598,7 +1629,7 @@ public class ThreatPlays {
 				for (int i = 0; i < wants.length && i < add.length; i++) wants[i] += add[i];
 			}
 		}
-		if (wants != null) ThreatConvoys.stageForPlay(base, pl.id, stageAt, wants);
+		if (wants != null) ThreatConvoys.stageForPlay(base, pl.id, pl.factionId, stageAt, wants);
 	}
 
 	/** A share of the means, by the faction's personality (shareMult): the most a play's escort takes, its decoys and squadrons, never its siege. */
@@ -1652,12 +1683,28 @@ public class ThreatPlays {
 		return false;
 	}
 
-	/** The cluster's first base that is still the faction's and in the economy (the picture is up to a month old). */
+	/** The cluster's first base the faction may still strike from (its own or an ally's host, in the economy - the picture is up to a month old). */
 	protected static MarketAPI baseOf(ThreatWarCouncil.Cluster k, String fid) {
 		for (MarketAPI m : k.bases) {
-			if (m != null && fid.equals(m.getFactionId()) && m.isInEconomy()) return m;
+			if (usable(m, fid)) return m;
 		}
 		return null;
+	}
+
+	/**
+	 * Whether the faction may strike from the base: its own, or an ally's that hosts it (ALLIED STAGING,
+	 * ThreatCoalition.stagingHost, the user 2026-10-19), and in the economy.
+	 */
+	protected static boolean usable(MarketAPI m, String fid) {
+		if (m == null || fid == null || !m.isInEconomy()) return false;
+		return fid.equals(m.getFactionId()) || ThreatCoalition.stagingHost(m, fid);
+	}
+
+	/** The base's name, with its owner when it is an ally's (allied staging). */
+	protected static String baseName(MarketAPI base, String fid) {
+		if (base == null) return "-";
+		if (fid == null || fid.equals(base.getFactionId()) || base.getFaction() == null) return base.getName();
+		return base.getName() + " (" + base.getFaction().getDisplayName() + "'s)";
 	}
 
 	protected static MarketAPI firstHive(Play pl) {

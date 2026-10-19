@@ -273,3 +273,28 @@ settle where it stands (`ThreatReturns.settle`, flownHome false) and it expires 
 home (the user). The hive's mirror is the feeding swarm (docs/hive-stocks-and-upkeep.md "Tangible
 feeding"). Knob `threatinc_feedConvoys`; off, `feedSize` draws home and the faction's markets on the
 spot as before.
+
+## Allied staging and convoys only (2026-10-19)
+
+The user, 13:55: "yeah A is fine ... also no teleporting please. the instant part you mentioned should be done via
+convoy no teleporting of resources."
+
+- **The siege pools are off** (`threatinc_siegePoolMarines` / `siegePoolProvisions` false; the code stays). A siege
+  draws its base's stock alone - what the staging convoys brought (`planLogistics`) - and its gates
+  (`IncursionManager.siegeCanPay`, `payingBase`) read the base alone. The per-unit haul fee (`netOfHaul`) is no
+  longer paid by sieges; it still prices link upkeep, founding kits and ordnance (open for the user).
+- **Zealots sail.** `IncursionManager.zealotDonors` is empty while the marine pool is off; instead the Path's
+  markets whose stock reaches an allied base (Welcoming or better, at war, the base another NPC faction's staging
+  base) join that base's planner pass as donors for marines alone (`zealotConvoyDonors`), after the faction's own
+  and its guests' donors - an Aid Convoy bound for the host, `Staging: luddic_path sails X -> Y (hegemony's base):
+  N zealots`.
+- **Allied staging (rule A).** A base of an ally that may host (`ThreatCoalition.stagingHost`) stages the guest's
+  plays too: `stageForPlay(base, playId, factionId, system, wants)` keys the entry base#play (`PlayStaging.factionId`,
+  `baseId`; entries from older saves, keyed by the base alone, still read), `playStagingsOf(base)` lists them,
+  `siegeStock` sums every play's wants x `stagingTargetMult`, `playStagingOf` (the hive the base names) prefers the
+  host's own play. The host's `planLogistics` fills the base; the guest's markets whose stock reaches it join as
+  donors (`guestDonors`, from `guestFactionsAt`), their convoys flagged aid and bound for the host
+  (`recipientFactionId`), `Staging: tritachyon sails X -> Y (hegemony's base): allied staging`. The stock landed is
+  the depot's: whichever faction launches there draws it. The guest's own hull pool pays its siege.
+- **One staging hammer a faction.** The invade pass stages a hammer where nothing pays today
+  (`war-council-invasions.md` s2); its 30 + 30 days against a convoy fill is the figure to watch (hw223 / hw224).

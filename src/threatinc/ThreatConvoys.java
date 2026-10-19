@@ -630,12 +630,18 @@ public class ThreatConvoys {
 		Map<String, String> verdicts = ThreatIncData.map(HUNT_VERDICTS);
 		// a play's staging: what its own expedition draws, priced when the play
 		// named the base - no siege of the swarm's size, no hunt verdict
-		PlayStaging play = playStagingOf(base);
-		if (play != null && play.wants != null) {
+		List<PlayStaging> plays = playStagingsOf(base);
+		boolean anyPlay = false;
+		for (PlayStaging play : plays) anyPlay |= play.wants != null;
+		if (anyPlay) {
+			// every play staging here, its own faction's and its guests' (allied staging), summed: each siege draws its own
 			verdicts.remove(base.getId());
 			wants = new float[ThreatReserves.COMMODITIES.length];
 			float mult = ThreatIncConfig.stagingTargetMult();
-			for (int i = 0; i < wants.length && i < play.wants.length; i++) wants[i] = play.wants[i] * mult;
+			for (PlayStaging play : plays) {
+				if (play.wants == null) continue;
+				for (int i = 0; i < wants.length && i < play.wants.length; i++) wants[i] += play.wants[i] * mult;
+			}
 			targetsMemo.put(base.getId(), wants.clone());
 			return wants;
 		}
@@ -832,6 +838,10 @@ public class ThreatConvoys {
 		public String playId;
 		public String systemId;
 		public float[] wants;
+		/** The play's faction (null in saves before 2026-10-19: the base's own). */
+		public String factionId;
+		/** The base staged (null in saves before 2026-10-19: the map key). */
+		public String baseId;
 	}
 
 	/** Base market id -> its play's staging. Saved. */
@@ -839,21 +849,63 @@ public class ThreatConvoys {
 		return ThreatIncData.map(KEY_PLAY_STAGING);
 	}
 
-	/** The play staging the base, or null; never while the war council is off. */
+	/** The play staging the base - the base's own faction's first, else a guest's (allied staging) - or null; never while the war council is off. */
 	protected static PlayStaging playStagingOf(MarketAPI base) {
-		if (base == null || !ThreatIncConfig.warCouncil()) return null;
-		Map<String, PlayStaging> all = playStaging();
-		return all.isEmpty() ? null : all.get(base.getId());
+		List<PlayStaging> all = playStagingsOf(base);
+		if (all.isEmpty()) return null;
+		for (PlayStaging s : all) {
+			if (s.factionId == null || s.factionId.equals(base.getFactionId())) return s;
+		}
+		return all.get(0);
 	}
 
-	/** The play stages the base against the system for its expedition's {@code wants} (IncursionManager.expeditionWants). */
+	/**
+	 * Every play staging the base (a base stages several since 2026-10-19 - its own faction's hammers and its
+	 * allies' guests, ALLIED STAGING); empty while the war council is off. The map is keyed base#play; an entry
+	 * from before is keyed by the base alone.
+	 */
+	protected static List<PlayStaging> playStagingsOf(MarketAPI base) {
+		List<PlayStaging> out = new ArrayList<PlayStaging>();
+		if (base == null || !ThreatIncConfig.warCouncil()) return out;
+		Map<String, PlayStaging> all = playStaging();
+		if (all.isEmpty()) return out;
+		for (Map.Entry<String, PlayStaging> e : all.entrySet()) {
+			PlayStaging s = e.getValue();
+			if (s == null) continue;
+			String at = s.baseId != null ? s.baseId : e.getKey();
+			if (base.getId().equals(at)) out.add(s);
+		}
+		return out;
+	}
+
+	/** The guests' factions staging at the base (allied staging): the play factions other than the base's own. */
+	protected static java.util.Set<String> guestFactionsAt(MarketAPI base) {
+		java.util.Set<String> out = new java.util.LinkedHashSet<String>();
+		for (PlayStaging s : playStagingsOf(base)) {
+			if (s.factionId != null && !s.factionId.equals(base.getFactionId())) out.add(s.factionId);
+		}
+		return out;
+	}
+
+	/** As below, the base's own faction's play. */
 	public static void stageForPlay(MarketAPI base, String playId, StarSystemAPI system, float[] wants) {
-		if (base == null || system == null) return;
+		stageForPlay(base, playId, base != null ? base.getFactionId() : null, system, wants);
+	}
+
+	/** The play of { factionId} stages the base against the system for its expedition's {@code wants} (IncursionManager.expeditionWants); keyed base#play, so a base stages several. */
+	public static void stageForPlay(MarketAPI base, String playId, String factionId, StarSystemAPI system, float[] wants) {
+		if (base == null || system == null || playId == null) return;
 		PlayStaging s = new PlayStaging();
 		s.playId = playId;
 		s.systemId = system.getId();
 		s.wants = wants != null ? wants.clone() : null;
-		playStaging().put(base.getId(), s);
+		s.factionId = factionId;
+		s.baseId = base.getId();
+		playStaging().put(base.getId() + "#" + playId, s);
+		if (factionId != null && !factionId.equals(base.getFactionId())) {
+			ThreatIncConfig.log("Staging: " + base.getName() + " (" + base.getFactionId() + ") hosts " + factionId + "'s play "
+					+ playId + " against " + system.getName() + " (allied staging)");
+		}
 		forgetStagingTargets();
 	}
 
@@ -1111,6 +1163,47 @@ public class ThreatConvoys {
 	}
 
 	/**
+	 * ALLIED STAGING (the user, 2026-10-19): the markets of every guest faction staging a play at the base
+	 * ({@link #guestFactionsAt}) whose stock reaches it (IncursionManager.marketsReaching), those in {@code have}
+	 * aside - they join the host's planner as donors for the base, their convoys flagged aid and bound for the host.
+	 */
+	protected static List<MarketAPI> guestDonors(MarketAPI base, List<MarketAPI> have) {
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		if (base == null || !ThreatIncConfig.alliedStaging()) return out;
+		for (String gid : guestFactionsAt(base)) {
+			FactionAPI guest = Global.getSector().getFaction(gid);
+			if (guest == null || guest.isPlayerFaction()) continue;
+			for (MarketAPI m : IncursionManager.marketsReaching(guest, base)) {
+				if (m == base || have.contains(m) || out.contains(m)) continue;
+				out.add(m);
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * CONVOYS ONLY (the user, 2026-10-19: "no teleporting"): the Path's markets whose marines reach the base
+	 * (IncursionManager.marketsReaching, outposts aside) - zealots for an ally's siege, sailed as marine convoys
+	 * instead of pooled at the launch (IncursionManager.zealotDonors, off with siegePoolMarines). Only while the
+	 * Path is at war, Welcoming or better with the base's faction (ThreatCoalition.willingness 0.5), and the base
+	 * is a staging base of another NPC faction. Empty with pathZealotMarines off or the marine pool on.
+	 */
+	protected static List<MarketAPI> zealotConvoyDonors(MarketAPI base, List<MarketAPI> have) {
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		if (base == null || base.getFaction() == null || !ThreatIncConfig.pathZealotMarines() || ThreatIncConfig.siegePoolMarines()) return out;
+		String path = com.fs.starfarer.api.impl.campaign.ids.Factions.LUDDIC_PATH;
+		if (base.isPlayerOwned() || path.equals(base.getFactionId()) || stagingHive(base) == null) return out;
+		FactionAPI pathFaction = Global.getSector().getFaction(path);
+		if (pathFaction == null || !ThreatWarState.isAtWar(pathFaction)) return out;
+		if (ThreatCoalition.willingness(pathFaction, base.getFactionId()) < 0.5f) return out;
+		for (MarketAPI m : IncursionManager.marketsReaching(pathFaction, base)) {
+			if (m == base || ThreatFrontlines.isOutpost(m) || have.contains(m) || out.contains(m)) continue;
+			out.add(m);
+		}
+		return out;
+	}
+
+	/**
 	 * One planning pass: for each mobilised faction, each staging base short
 	 * of its targets net of what is already at sea to it, neediest first (as
 	 * a fraction of the target); then, for as long as it is still short and a
@@ -1175,18 +1268,29 @@ public class ThreatConvoys {
 				float[] targets = (float[]) w[1];
 				@SuppressWarnings("unchecked")
 				List<Integer> order = (List<Integer>) w[2];
+				// the donors: the faction's markets; the markets of every guest staging a play here (ALLIED STAGING,
+				// 2026-10-19: the guest's own markets haul to its host's base); and, for marines alone, the Path's
+				// zealots (CONVOYS ONLY: no longer pooled at the launch, they sail)
+				List<MarketAPI> donors = new ArrayList<MarketAPI>(markets);
+				donors.addAll(guestDonors(base, donors));
+				List<MarketAPI> zealots = zealotConvoyDonors(base, donors);
 				// each donor sails once per pass, so the loop ends within the
-				// faction's market count however the draws fall
+				// donors' count however the draws fall
 				java.util.Set<MarketAPI> drawn = new java.util.HashSet<MarketAPI>();
-				while (drawn.size() < markets.size()) {
+				while (drawn.size() < donors.size() + zealots.size()) {
 					// net of everything at sea to it, the convoys just sailed
 					// and any relief or outpost return planned above included
 					float[] shortBy = shortfall(base, targets);
 					MarketAPI donor = null;
+					boolean marinesOnly = false;
 					for (Integer i : order) {
 						String c = ThreatReserves.COMMODITIES[i];
 						if (!worthSailing(c, shortBy[i], targets[i])) continue;
-						donor = pickDonor(markets, base, c, drawn);
+						donor = pickDonor(donors, base, c, drawn);
+						if (donor == null && Commodities.MARINES.equals(c) && !zealots.isEmpty()) {
+							donor = pickDonor(zealots, base, c, drawn);
+							marinesOnly = donor != null;
+						}
 						if (donor != null) break;
 					}
 					if (donor == null) break;
@@ -1194,9 +1298,18 @@ public class ThreatConvoys {
 					float[] load = new float[ThreatReserves.COMMODITIES.length];
 					for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
 						if (shortBy[i] <= 0f) continue;
+						if (marinesOnly && !Commodities.MARINES.equals(ThreatReserves.COMMODITIES[i])) continue;
 						load[i] = Math.min(shortBy[i], sendable(donor, base, ThreatReserves.COMMODITIES[i]));
 					}
-					dispatch(donor, base, faction, load, random);
+					FactionAPI sender = donor.getFaction() != null ? donor.getFaction() : faction;
+					boolean guest = !factionId.equals(sender.getId());
+					Convoy sent = guest ? dispatch(donor, base, sender, load, random, factionId, true)
+							: dispatch(donor, base, faction, load, random);
+					if (sent != null && guest) {
+						ThreatIncConfig.log("Staging: " + sender.getId() + " sails " + donor.getName() + " -> " + base.getName()
+								+ " (" + factionId + "'s base): " + (marinesOnly ? (int) load[ThreatAid.index(Commodities.MARINES)]
+								+ " zealots" : "allied staging"));
+					}
 				}
 			}
 		}
