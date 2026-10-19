@@ -310,10 +310,20 @@ public class ThreatPlays {
 		}
 		// the worlds whose last siege is not recent first, as the attack planner takes them (siegeTargets)
 		List<MarketAPI> ready = new ArrayList<MarketAPI>(), recent = new ArrayList<MarketAPI>();
+		int inReach = 0, ownStrike = 0, noReport = 0, known = 0;
 		for (ThreatWarCouncil.Cluster k : p.clusters) {
-			if (!k.inReach() || strikingAt(fid, k.systemId)) continue;
+			if (!k.inReach()) continue;
+			inReach++;
+			if (strikingAt(fid, k.systemId)) {
+				ownStrike++;
+				continue;
+			}
 			// a siege is sized by the faction's report of the system (strike)
-			if (ThreatIntel.report(observer, k.systemId) == null) continue;
+			if (ThreatIntel.report(observer, k.systemId) == null) {
+				noReport++;
+				continue;
+			}
+			known += k.hiveIds.size();
 			for (MarketAPI w : liveTargets(faction, k.hiveIds)) {
 				(IncursionManager.onPurgeCooldown(observer, w) ? recent : ready).add(w);
 			}
@@ -321,13 +331,21 @@ public class ThreatPlays {
 		List<MarketAPI> hives = IncursionManager.easiestFirst(observer, ready);
 		hives.addAll(IncursionManager.easiestFirst(observer, recent));
 		java.util.Set<String> started = new java.util.HashSet<String>();
+		java.util.Set<String> noBase = new java.util.HashSet<String>();
+		java.util.Map<String, Integer> noBaseWhy = new java.util.LinkedHashMap<String, Integer>();
 		for (MarketAPI w : hives) {
 			StarSystemAPI s = w.getStarSystem();
 			ThreatWarCouncil.Cluster k = s != null ? p.cluster(s.getId()) : null;
 			// one hammer a system: it takes the system's other worlds itself (besiege)
 			if (k == null || started.contains(k.systemId)) continue;
 			MarketAPI base = payingBase(k, faction, s, w);
-			if (base == null) continue;
+			if (base == null) {
+				if (noBase.add(k.systemId)) {
+					Integer n = noBaseWhy.get(lastWhy);
+					noBaseWhy.put(lastWhy, n == null ? 1 : n + 1);
+				}
+				continue;
+			}
 			started.add(k.systemId);
 			Play pl = startHammer(c, faction, p, k, today, random, "invades " + w.getName()
 					+ ", the easiest hive its pools pay a landing on", null, base);
@@ -338,20 +356,40 @@ public class ThreatPlays {
 				end(pl, NEUTRAL, "its siege could not be paid after all", today);
 			}
 		}
+		// one line a pass (hw217a, 2026-10-19: the Hegemony sat on 39k FP free and nothing said why its passes started nothing)
+		ThreatIncConfig.log("Council " + fid + " invade pass: " + inReach + " clusters in reach (" + ownStrike
+				+ " with its own strike, " + noReport + " without a report), " + hives.size() + " of " + known
+				+ " hives open, started " + started.size()
+				+ (noBase.isEmpty() ? "" : ", no paying base in " + noBase.size() + ": " + noBaseWhy));
 	}
 
 	/** The cluster's nearest base whose pools man, arm and provision a landing siege of the world now (IncursionManager.siegeCanPay), or null. */
+	/** Why payingBase refused its last base (for the pass's summary line). */
+	protected static String lastWhy = "no base of its own";
+
 	protected static MarketAPI payingBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s, MarketAPI w) {
 		List<MarketAPI> one = java.util.Collections.singletonList(w);
 		float need = IncursionManager.siegeRaidStrNeeded(one) * IncursionManager.minMarinesFraction(faction);
+		lastWhy = "no base of its own";
 		for (MarketAPI m : k.bases) {
 			if (m == null || !faction.getId().equals(m.getFactionId()) || !m.isInEconomy()) continue;
 			// its own front takes the world before a siege from here could arrive
-			if (IncursionManager.frontFinishesFirst(m, faction, s, w)) continue;
+			if (IncursionManager.frontFinishesFirst(m, faction, s, w)) {
+				lastWhy = "its front finishes first";
+				continue;
+			}
 			// the marines first: the cheap read, and what most landings are short of
-			if (IncursionManager.siegeMarinesPooled(m, faction, s) < need) continue;
+			if (IncursionManager.siegeMarinesPooled(m, faction, s) < need) {
+				lastWhy = "marines";
+				continue;
+			}
 			List<Integer> sizes = IncursionManager.siegeSizesFor(m, faction, one, 0f, NO_RAZE);
-			if (!sizes.isEmpty() && IncursionManager.siegeCanPay(m, faction, s, one, sizes, NO_RAZE)) return m;
+			if (sizes.isEmpty()) {
+				lastWhy = "no siege size";
+				continue;
+			}
+			if (IncursionManager.siegeCanPay(m, faction, s, one, sizes, NO_RAZE)) return m;
+			lastWhy = "cannot pay";
 		}
 		return null;
 	}
