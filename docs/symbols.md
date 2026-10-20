@@ -625,7 +625,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatBuildCost.setting(String key, float fallback)` :118
 - `ThreatBuildCost.logOnce(String industryId, float cost)` :128
 
-## ThreatCoalition (614 lines)
+## ThreatCoalition (632 lines)
 - `ThreatCoalition.daysLeft()` :50
 - `ThreatCoalition.all()` :57
 - `ThreatCoalition.callFor(String systemId)` :66
@@ -645,10 +645,11 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatCoalition.report(FactionAPI helper, FactionAPI needy, String title, String what, Object... args)` :452 - Debug narration of an ally's aid:
 ### coalition relief: the owner and its partners relieve a world together
 - `ThreatCoalition.jointSenders(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float[] total)` :486 - Who would sail a joint relief of the world and what each can field:
-- `ThreatCoalition.compare(Sender a, Sender b)` :508
-- `ThreatCoalition.compare(Sender a, Sender b)` :524
-- `ThreatCoalition.jointEnough(FactionAPI owner, MarketAPI market, MarketAPI ownerBase)` :531 - Whether the owner and its partners together can field a relief that outweighs the army over the world.
-- `ThreatCoalition.jointRelief(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float owed)` :556 - COALITION RELIEF (the user, 2026-10-08, the second human change after yards at home):
+- `ThreatCoalition.compare(Sender a, Sender b)` :512
+- `ThreatCoalition.compare(Sender a, Sender b)` :528
+- `ThreatCoalition.capHulls(java.util.Map<String, Float> left, String factionId, float can)` :539 - A sender's payable points, no more than what is left of its faction's free hulls after the senders before it in this joint relief (left, by faction;
+- `ThreatCoalition.jointEnough(FactionAPI owner, MarketAPI market, MarketAPI ownerBase)` :549 - Whether the owner and its partners together can field a relief that outweighs the army over the world.
+- `ThreatCoalition.jointRelief(FactionAPI owner, MarketAPI market, MarketAPI ownerBase, float owed)` :574 - COALITION RELIEF (the user, 2026-10-08, the second human change after yards at home):
 
 ## ThreatColonyManager (7762 lines)
 ### founding
@@ -1286,7 +1287,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionStance.forceFP(FactionAPI faction)` :300 - The FP the faction could field:
 - `ThreatFactionStance.weakestTarget(FactionAPI faction)` :329 - {system id, name, score} of the hive system a base of the faction in reach - the cheapest that can - takes and pays for now (IncursionManager.siegeAffordable) with the most worth for the least odds pe
 
-## ThreatFactionStock (579 lines)
+## ThreatFactionStock (581 lines)
 - `ThreatFactionStock.key(String factionId, String commodityId, String field)` :39
 - `ThreatFactionStock.num(String key)` :43
 - `ThreatFactionStock.producerId(String commodityId)` :49 - The industry a forward base builds for the stock:
@@ -1308,44 +1309,44 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFactionStock.surplusProducer(MarketAPI m, String c)` :194 - Whether the market's producer of the commodity can go:
 ### hulls: the hull pool read as a stock
 - `ThreatFactionStock.hullsShort(String f)` :212 - Whether the faction is short of hulls:
-- `ThreatFactionStock.hullsSurplus(String f)` :226 - Whether the faction has hulls to spare:
+- `ThreatFactionStock.hullsSurplus(String f)` :228 - Whether the faction has hulls to spare:
 ### what a faction wants built, and the pacing
-- `ThreatFactionStock.shortest(String f)` :240 - The stock the faction is shortest of - hulls first (they bound every expedition in hw31), then of fuel and supplies the one with fewer months of stock against its trailing demand - or null when nothin
-- `ThreatFactionStock.months(String f, String c)` :251 - Months the stock covers its trailing demand;
+- `ThreatFactionStock.shortest(String f)` :242 - The stock the faction is shortest of - hulls first (they bound every expedition in hw31), then of fuel and supplies the one with fewer months of stock against its trailing demand - or null when nothin
+- `ThreatFactionStock.months(String f, String c)` :253 - Months the stock covers its trailing demand;
 ### WAR WANTS (the user, 2026-10-20: "not enough supplies -> build the
-- `ThreatFactionStock.noteShort(String f, String c, float amount)` :268 - A want of the commodity the faction could not pay (fuel or supplies):
-- `ThreatFactionStock.shortWant(String f, String c)` :276 - The standing want of the commodity (noteShort);
-- `ThreatFactionStock.wantPerMonth(String f, String c)` :285 - The standing want read as demand a month:
-- `ThreatFactionStock.mayAnswer(String f, String c)` :290 - Whether the faction may answer the stock with another producer:
-- `ThreatFactionStock.answered(String f, String c)` :296 - Notes that a forward base started a producer for the stock.
-- `ThreatFactionStock.mayConvert(String f)` :301 - Whether the faction may tear a surplus producer down now:
-- `ThreatFactionStock.converted(String f)` :307 - Notes that a forward base tore a producer down.
+- `ThreatFactionStock.noteShort(String f, String c, float amount)` :270 - A want of the commodity the faction could not pay (fuel or supplies):
+- `ThreatFactionStock.shortWant(String f, String c)` :278 - The standing want of the commodity (noteShort);
+- `ThreatFactionStock.wantPerMonth(String f, String c)` :287 - The standing want read as demand a month:
+- `ThreatFactionStock.mayAnswer(String f, String c)` :292 - Whether the faction may answer the stock with another producer:
+- `ThreatFactionStock.answered(String f, String c)` :298 - Notes that a forward base started a producer for the stock.
+- `ThreatFactionStock.mayConvert(String f)` :303 - Whether the faction may tear a surplus producer down now:
+- `ThreatFactionStock.converted(String f)` :309 - Notes that a forward base tore a producer down.
 ### the shortage's answer held (user, 2026-10-06, hw33b): a producer a
-- `ThreatFactionStock.holdKey(MarketAPI market, String field)` :320 - Days a hold stands unrenewed:
-- `ThreatFactionStock.hold(MarketAPI market, String industryId, float wanted)` :331 - Holds supplies at the market for the producer it cannot pay for:
-- `ThreatFactionStock.release(MarketAPI market)` :340 - Lifts the market's hold (the builder's own pass, which reads the whole stock, and a build that paid).
-- `ThreatFactionStock.held(MarketAPI market)` :349 - Supplies the market holds for a producer it cannot yet pay;
-- `ThreatFactionStock.heldIndustry(MarketAPI market)` :358 - The producer the market holds for, or null.
-- `ThreatFactionStock.isYard(String industryId)` :365 - Whether the structure is a shipyard:
-- `ThreatFactionStock.yardWant(String f)` :375 - YARDS FIRST (the user, 2026-10-19):
-- `ThreatFactionStock.heldMarket(String f)` :385 - The faction's market holding supplies for a producer, the one holding the most;
+- `ThreatFactionStock.holdKey(MarketAPI market, String field)` :322 - Days a hold stands unrenewed:
+- `ThreatFactionStock.hold(MarketAPI market, String industryId, float wanted)` :333 - Holds supplies at the market for the producer it cannot pay for:
+- `ThreatFactionStock.release(MarketAPI market)` :342 - Lifts the market's hold (the builder's own pass, which reads the whole stock, and a build that paid).
+- `ThreatFactionStock.held(MarketAPI market)` :351 - Supplies the market holds for a producer it cannot yet pay;
+- `ThreatFactionStock.heldIndustry(MarketAPI market)` :360 - The producer the market holds for, or null.
+- `ThreatFactionStock.isYard(String industryId)` :367 - Whether the structure is a shipyard:
+- `ThreatFactionStock.yardWant(String f)` :377 - YARDS FIRST (the user, 2026-10-19):
+- `ThreatFactionStock.heldMarket(String f)` :387 - The faction's market holding supplies for a producer, the one holding the most;
 ### trade through the war (user, 2026-10-06): what an ally's convoy brings
-- `ThreatFactionStock.aidNeed(String f, String c)` :408 - What an ally's convoy should bring the faction of the commodity:
-- `ThreatFactionStock.aidTarget(String f, String c)` :424 - Where the convoy lands:
-- `ThreatFactionStock.noteHullShort(String f, float fp)` :448 - A siege the faction could not launch for want of hulls (IncursionManager.launchSiegeExpedition):
-- `ThreatFactionStock.hullShortFP(String f)` :455 - Fleet points of hulls the faction's sieges wait on (noteHullShort);
-- `ThreatFactionStock.noteMarineShort(String f, float marines)` :469 - A landing the faction's invade pass could not man (ThreatPlays.payingBase):
-- `ThreatFactionStock.noteMarineShort(String f, float marines, float need)` :474 - noteMarineShort with the landing's whole want beside the shortfall (marineCoverage).
-- `ThreatFactionStock.marineCoverage(String f)` :490 - MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50:
-- `ThreatFactionStock.marineNeed(String f)` :499 - The landing's whole marine want beside the standing shortfall (noteMarineShort), 0 with no note standing.
-- `ThreatFactionStock.factionMarines(String f)` :506 - Marines the faction holds above its floors at every market it flies (ThreatReserves.available):
-- `ThreatFactionStock.marineLevyWant(String f)` :517 - Marines a levy must raise for the landing last wanted:
-- `ThreatFactionStock.hullCoverage(String f)` :527 - How far the faction's free hulls cover the siege they last fell short of:
-- `ThreatFactionStock.hullsOutcoverMarines(String f)` :535 - Whether hulls out-cover marines:
-- `ThreatFactionStock.marineShort(String f)` :541 - Marines the faction's landings wait on (noteMarineShort);
-- `ThreatFactionStock.mayAid(String f, String c)` :551 - Whether allies may sail the faction another convoy of the stock:
-- `ThreatFactionStock.aided(String f, String c)` :557 - Notes that allies sailed the faction a convoy of the stock.
-- `ThreatFactionStock.describe(String f)` :562 - One line of the faction's plan for the log:
+- `ThreatFactionStock.aidNeed(String f, String c)` :410 - What an ally's convoy should bring the faction of the commodity:
+- `ThreatFactionStock.aidTarget(String f, String c)` :426 - Where the convoy lands:
+- `ThreatFactionStock.noteHullShort(String f, float fp)` :450 - A siege the faction could not launch for want of hulls (IncursionManager.launchSiegeExpedition):
+- `ThreatFactionStock.hullShortFP(String f)` :457 - Fleet points of hulls the faction's sieges wait on (noteHullShort);
+- `ThreatFactionStock.noteMarineShort(String f, float marines)` :471 - A landing the faction's invade pass could not man (ThreatPlays.payingBase):
+- `ThreatFactionStock.noteMarineShort(String f, float marines, float need)` :476 - noteMarineShort with the landing's whole want beside the shortfall (marineCoverage).
+- `ThreatFactionStock.marineCoverage(String f)` :492 - MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50:
+- `ThreatFactionStock.marineNeed(String f)` :501 - The landing's whole marine want beside the standing shortfall (noteMarineShort), 0 with no note standing.
+- `ThreatFactionStock.factionMarines(String f)` :508 - Marines the faction holds above its floors at every market it flies (ThreatReserves.available):
+- `ThreatFactionStock.marineLevyWant(String f)` :519 - Marines a levy must raise for the landing last wanted:
+- `ThreatFactionStock.hullCoverage(String f)` :529 - How far the faction's free hulls cover the siege they last fell short of:
+- `ThreatFactionStock.hullsOutcoverMarines(String f)` :537 - Whether hulls out-cover marines:
+- `ThreatFactionStock.marineShort(String f)` :543 - Marines the faction's landings wait on (noteMarineShort);
+- `ThreatFactionStock.mayAid(String f, String c)` :553 - Whether allies may sail the faction another convoy of the stock:
+- `ThreatFactionStock.aided(String f, String c)` :559 - Notes that allies sailed the faction a convoy of the stock.
+- `ThreatFactionStock.describe(String f)` :564 - One line of the faction's plan for the log:
 
 ## ThreatFactionView (2590 lines)
 ### selector row (both views)
@@ -1469,7 +1470,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 ### loading
 - `ThreatFleetComposer.load()` :309
 
-## ThreatFleetOrders (2967 lines)
+## ThreatFleetOrders (2972 lines)
 - `ThreatFleetOrders.fightOrbit(CampaignFleetAPI fleet, boolean fighting)` :128 - Stamped each poll by ThreatGroundFronts#tickSupport and ThreatSwarmDefend#tick.
 - `ThreatFleetOrders.fightingOrbit(CampaignFleetAPI fleet)` :137
 - `ThreatFleetOrders.onHunt(CampaignFleetAPI fleet)` :142 - Whether the fleet is flying a Hunt order now.
@@ -1506,122 +1507,122 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatFleetOrders.reliefPoints(List<CampaignFleetAPI> fleets)` :741 - Fleet points of built relief fleets (#buildRelief).
 - `ThreatFleetOrders.standDownUnsailed(List<CampaignFleetAPI> fleets, MarketAPI base)` :751 - Built relief fleets that do not sail (one body or none):
 - `ThreatFleetOrders.noteReliefShort(FactionAPI faction, MarketAPI base, MarketAPI target, float shortFP)` :768 - WAR WANTS (the user, 2026-10-20):
-- `ThreatFleetOrders.sailRelief(FactionAPI faction, MarketAPI target, MarketAPI base, List<CampaignFleetAPI> sailing)` :781 - Sails built relief fleets (#buildRelief) from the base to the invaded target:
-- `ThreatFleetOrders.absorb(CampaignFleetAPI to, CampaignFleetAPI from)` :814 - Folds from into to:
+- `ThreatFleetOrders.sailRelief(FactionAPI faction, MarketAPI target, MarketAPI base, List<CampaignFleetAPI> sailing)` :786 - Sails built relief fleets (#buildRelief) from the base to the invaded target:
+- `ThreatFleetOrders.absorb(CampaignFleetAPI to, CampaignFleetAPI from)` :819 - Folds from into to:
 ### building sorties
-- `ThreatFleetOrders.pickBase(FactionAPI faction, Vector2f hyperLoc)` :846 - The faction's nearest military world within expedition range of a hyperspace location, or null.
-- `ThreatFleetOrders.buildTaskForce(MarketAPI base, FactionAPI faction, float fp, Vector2f destinationHyper)` :869 - A task force at the base, provisioned from its reserve (fuel for the distance, supplies for the hulls).
-- `ThreatFleetOrders.buildTaskForce(MarketAPI base, FactionAPI faction, float fp, Vector2f destinationHyper, boolean provision)` :875 - As above;
-- `ThreatFleetOrders.buildTaskForce(MarketAPI base, FactionAPI faction, float fp, Vector2f destinationHyper, boolean provision, boolean spareOnly)` :885 - As above;
-- `ThreatFleetOrders.buildTaskForce(MarketAPI base, FactionAPI faction, float fp, Vector2f destinationHyper, boolean provision, boolean spareOnly, StarSystemAPI hunted)` :896 - As above;
-- `ThreatFleetOrders.provisionTaskForce(MarketAPI base, FactionAPI faction, float fp, Vector2f destinationHyper, CampaignFleetAPI fleet, boolean spareOnly, StarSystemAPI hunted, java.util.Set<com.fs.starfarer.api.fleet.FleetMemberAPI> keep)` :940 - Provisions a task force of fp combat points at the base for the trip to destinationHyper:
-- `ThreatFleetOrders.compare(com.fs.starfarer.api.fleet.FleetMemberAPI a, com.fs.starfarer.api.fleet.FleetMemberAPI b)` :975
-- `ThreatFleetOrders.retask(Order pick, MarketAPI base, FactionAPI faction, float ask, Vector2f destinationHyper, float[] ownLeft, String label)` :1045 - A task force on station over the base sails as it is on a sortie from it (the user, 2026-10-11:
-- `ThreatFleetOrders.dryTaskForce(MarketAPI base, String factionId, float fp)` :1133 - A task force built as #buildTaskForce builds one, never placed in a system or provisioned:
-- `ThreatFleetOrders.sortieWants(MarketAPI base, float fp, Vector2f destinationHyper)` :1148 - {fuel, supplies} a task force of fp combat points from the base to destinationHyper is provisioned with:
-- `ThreatFleetOrders.sortieLY(MarketAPI base, Vector2f destinationHyper)` :1165 - Light-years from the base to a destination;
-- `ThreatFleetOrders.sortiePayableFP(MarketAPI base, Vector2f destinationHyper)` :1171 - Combat points the base's spendable stock (ThreatReserves.spendable) can provision a sortie to destinationHyper for.
-- `ThreatFleetOrders.sortieFirstPayableFP(MarketAPI base, Vector2f destinationHyper)` :1179 - Combat points the stock a sortie's first fleet draws (ThreatReserves.available:
-- `ThreatFleetOrders.payableFP(MarketAPI base, Vector2f destinationHyper, boolean spareOnly)` :1184 - Combat points the base's spendable (spareOnly) or available stock provisions a sortie for;
-- `ThreatFleetOrders.sortieReachFP(MarketAPI base, Vector2f destinationHyper)` :1204 - Warship points an NPC sortie from the base can bring against a need:
-- `ThreatFleetOrders.sortieFP(FactionAPI faction, MarketAPI base)` :1212 - Combat points a player sortie from this base sails with:
-- `ThreatFleetOrders.forceProvisions(MarketAPI base, float combatFP, Vector2f destinationHyper)` :1227 - {fuel, supplies} a player force of combatFP draws from its base for a sortie to destinationHyper:
-- `ThreatFleetOrders.forceProvisions(MarketAPI base, float combatFP, Vector2f destinationHyper, float[] carried)` :1241 - As #forceProvisions less what the task forces folding into the force bring with them (carried, ThreatAidCapacity.foldedProvisions):
-- `ThreatFleetOrders.provisionsShort(MarketAPI base, float combatFP, Vector2f destinationHyper)` :1249 - Why the base cannot provision a player force of combatFP to destinationHyper (#forceProvisions), one fact per line, or null when it can.
-- `ThreatFleetOrders.provisionsShort(MarketAPI base, float combatFP, Vector2f destinationHyper, float[] carried)` :1254 - As above for a force the staged task forces bring carried fuel and supplies to.
-- `ThreatFleetOrders.carriedText(float[] carried)` :1272 - "14,219 supplies" / "1,200 fuel and 14,219 supplies" - what the fleets at a base already carry, zeros left out (the user, 2026-10-11:
-- `ThreatFleetOrders.buildPlayerForce(MarketAPI base, FactionAPI faction, boolean self, int tier, Vector2f destinationHyper, String label)` :1287 - The fleets of the player's force at the board's Force tier (ThreatAid.forceFP:
-- `ThreatFleetOrders.buildSortie(MarketAPI base, FactionAPI faction, float need, Vector2f destinationHyper, boolean whole, String what)` :1379 - The fleets of an NPC sortie sized to what it faces (2026-09-29):
-- `ThreatFleetOrders.guardNeed(MarketAPI market)` :1465 - Fleet points an NPC guard over the colony must bring:
-- `ThreatFleetOrders.builtPoints(CampaignFleetAPI fleet, float combat)` :1485 - The points a task force actually sailed with, for the ledger:
-- `ThreatFleetOrders.ownColony(FactionAPI faction, MarketAPI target)` :1492 - Whether the colony is the faction's own (a player guard over it is staging).
-- `ThreatFleetOrders.ownBase(FactionAPI faction, ThreatBases.Base target)` :1497 - Whether the base - colony or outpost - is the faction's own.
-- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, MarketAPI target)` :1506 - Orbit superiority over a colony from the sender's best base.
-- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, ThreatBases.Base target)` :1511 - As above over either kind of base:
-- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, ThreatBases.Base target, int tier)` :1516 - As above at the board's Force tier (the player's force:
-- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, MarketAPI target, MarketAPI base, boolean aid)` :1532 - Orbit superiority over a colony from a given base:
-- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base, boolean aid)` :1538 - As above over either kind of base.
-- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base, boolean aid, int tier)` :1544 - As above at the board's Force tier.
-- `ThreatFleetOrders.guardOrder(CampaignFleetAPI fleet, FactionAPI faction, ThreatBases.Base target, MarketAPI base, float days, boolean aid)` :1589 - Puts a built fleet on guard over the base's target:
-- `ThreatFleetOrders.interceptPoint(StarSystemAPI system)` :1604 - The jump-point of a hive system nearest its colonies, or any jump-point, or null.
-- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, StarSystemAPI hive)` :1632 - THE PLAYER'S HUNT (2026-09-24, replacing Intercept):
-- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, StarSystemAPI hive, int tier)` :1637 - As above at the board's Force tier.
-- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, StarSystemAPI hive, MarketAPI base, boolean aid)` :1646 - As above from a given base;
-- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, StarSystemAPI hive, MarketAPI base, boolean aid, int tier)` :1651 - As above at the board's Force tier (the player's force:
-- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, MarketAPI base, MarketAPI hive, float fp)` :1703 - One fleet of a hunting force (ThreatSoftening):
-- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, MarketAPI base, MarketAPI hive, float fp, String forceId, SectorEntityToken muster)` :1712 - As above;
-- `ThreatFleetOrders.huntOrder(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI base, MarketAPI hive, String forceId, SectorEntityToken muster)` :1726 - Puts a built fleet on a hunt of the hive's system (mustering first for a force);
-- `ThreatFleetOrders.engageHunt(CampaignFleetAPI fleet, MarketAPI base, MarketAPI hive, float days)` :1750 - A hunting fleet's orders once it goes in:
-- `ThreatFleetOrders.retargetHunt(Order o, MarketAPI hive)` :1762 - Moves a hunting fleet on to another colony of the same system, for what is left of its term.
-- `ThreatFleetOrders.chaseLoose(Order o, CampaignFleetAPI swarm)` :1782 - A player hunt with every orbit of the system clear goes after a loose swarm (ThreatSoftening.advanceSingle, 2026-10-11):
-- `ThreatFleetOrders.standDown(Order o, String why)` :1800 - Ends an order now:
+- `ThreatFleetOrders.pickBase(FactionAPI faction, Vector2f hyperLoc)` :851 - The faction's nearest military world within expedition range of a hyperspace location, or null.
+- `ThreatFleetOrders.buildTaskForce(MarketAPI base, FactionAPI faction, float fp, Vector2f destinationHyper)` :874 - A task force at the base, provisioned from its reserve (fuel for the distance, supplies for the hulls).
+- `ThreatFleetOrders.buildTaskForce(MarketAPI base, FactionAPI faction, float fp, Vector2f destinationHyper, boolean provision)` :880 - As above;
+- `ThreatFleetOrders.buildTaskForce(MarketAPI base, FactionAPI faction, float fp, Vector2f destinationHyper, boolean provision, boolean spareOnly)` :890 - As above;
+- `ThreatFleetOrders.buildTaskForce(MarketAPI base, FactionAPI faction, float fp, Vector2f destinationHyper, boolean provision, boolean spareOnly, StarSystemAPI hunted)` :901 - As above;
+- `ThreatFleetOrders.provisionTaskForce(MarketAPI base, FactionAPI faction, float fp, Vector2f destinationHyper, CampaignFleetAPI fleet, boolean spareOnly, StarSystemAPI hunted, java.util.Set<com.fs.starfarer.api.fleet.FleetMemberAPI> keep)` :945 - Provisions a task force of fp combat points at the base for the trip to destinationHyper:
+- `ThreatFleetOrders.compare(com.fs.starfarer.api.fleet.FleetMemberAPI a, com.fs.starfarer.api.fleet.FleetMemberAPI b)` :980
+- `ThreatFleetOrders.retask(Order pick, MarketAPI base, FactionAPI faction, float ask, Vector2f destinationHyper, float[] ownLeft, String label)` :1050 - A task force on station over the base sails as it is on a sortie from it (the user, 2026-10-11:
+- `ThreatFleetOrders.dryTaskForce(MarketAPI base, String factionId, float fp)` :1138 - A task force built as #buildTaskForce builds one, never placed in a system or provisioned:
+- `ThreatFleetOrders.sortieWants(MarketAPI base, float fp, Vector2f destinationHyper)` :1153 - {fuel, supplies} a task force of fp combat points from the base to destinationHyper is provisioned with:
+- `ThreatFleetOrders.sortieLY(MarketAPI base, Vector2f destinationHyper)` :1170 - Light-years from the base to a destination;
+- `ThreatFleetOrders.sortiePayableFP(MarketAPI base, Vector2f destinationHyper)` :1176 - Combat points the base's spendable stock (ThreatReserves.spendable) can provision a sortie to destinationHyper for.
+- `ThreatFleetOrders.sortieFirstPayableFP(MarketAPI base, Vector2f destinationHyper)` :1184 - Combat points the stock a sortie's first fleet draws (ThreatReserves.available:
+- `ThreatFleetOrders.payableFP(MarketAPI base, Vector2f destinationHyper, boolean spareOnly)` :1189 - Combat points the base's spendable (spareOnly) or available stock provisions a sortie for;
+- `ThreatFleetOrders.sortieReachFP(MarketAPI base, Vector2f destinationHyper)` :1209 - Warship points an NPC sortie from the base can bring against a need:
+- `ThreatFleetOrders.sortieFP(FactionAPI faction, MarketAPI base)` :1217 - Combat points a player sortie from this base sails with:
+- `ThreatFleetOrders.forceProvisions(MarketAPI base, float combatFP, Vector2f destinationHyper)` :1232 - {fuel, supplies} a player force of combatFP draws from its base for a sortie to destinationHyper:
+- `ThreatFleetOrders.forceProvisions(MarketAPI base, float combatFP, Vector2f destinationHyper, float[] carried)` :1246 - As #forceProvisions less what the task forces folding into the force bring with them (carried, ThreatAidCapacity.foldedProvisions):
+- `ThreatFleetOrders.provisionsShort(MarketAPI base, float combatFP, Vector2f destinationHyper)` :1254 - Why the base cannot provision a player force of combatFP to destinationHyper (#forceProvisions), one fact per line, or null when it can.
+- `ThreatFleetOrders.provisionsShort(MarketAPI base, float combatFP, Vector2f destinationHyper, float[] carried)` :1259 - As above for a force the staged task forces bring carried fuel and supplies to.
+- `ThreatFleetOrders.carriedText(float[] carried)` :1277 - "14,219 supplies" / "1,200 fuel and 14,219 supplies" - what the fleets at a base already carry, zeros left out (the user, 2026-10-11:
+- `ThreatFleetOrders.buildPlayerForce(MarketAPI base, FactionAPI faction, boolean self, int tier, Vector2f destinationHyper, String label)` :1292 - The fleets of the player's force at the board's Force tier (ThreatAid.forceFP:
+- `ThreatFleetOrders.buildSortie(MarketAPI base, FactionAPI faction, float need, Vector2f destinationHyper, boolean whole, String what)` :1384 - The fleets of an NPC sortie sized to what it faces (2026-09-29):
+- `ThreatFleetOrders.guardNeed(MarketAPI market)` :1470 - Fleet points an NPC guard over the colony must bring:
+- `ThreatFleetOrders.builtPoints(CampaignFleetAPI fleet, float combat)` :1490 - The points a task force actually sailed with, for the ledger:
+- `ThreatFleetOrders.ownColony(FactionAPI faction, MarketAPI target)` :1497 - Whether the colony is the faction's own (a player guard over it is staging).
+- `ThreatFleetOrders.ownBase(FactionAPI faction, ThreatBases.Base target)` :1502 - Whether the base - colony or outpost - is the faction's own.
+- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, MarketAPI target)` :1511 - Orbit superiority over a colony from the sender's best base.
+- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, ThreatBases.Base target)` :1516 - As above over either kind of base:
+- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, ThreatBases.Base target, int tier)` :1521 - As above at the board's Force tier (the player's force:
+- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, MarketAPI target, MarketAPI base, boolean aid)` :1537 - Orbit superiority over a colony from a given base:
+- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base, boolean aid)` :1543 - As above over either kind of base.
+- `ThreatFleetOrders.dispatchGuard(FactionAPI faction, ThreatBases.Base target, MarketAPI base, boolean aid, int tier)` :1549 - As above at the board's Force tier.
+- `ThreatFleetOrders.guardOrder(CampaignFleetAPI fleet, FactionAPI faction, ThreatBases.Base target, MarketAPI base, float days, boolean aid)` :1594 - Puts a built fleet on guard over the base's target:
+- `ThreatFleetOrders.interceptPoint(StarSystemAPI system)` :1609 - The jump-point of a hive system nearest its colonies, or any jump-point, or null.
+- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, StarSystemAPI hive)` :1637 - THE PLAYER'S HUNT (2026-09-24, replacing Intercept):
+- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, StarSystemAPI hive, int tier)` :1642 - As above at the board's Force tier.
+- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, StarSystemAPI hive, MarketAPI base, boolean aid)` :1651 - As above from a given base;
+- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, StarSystemAPI hive, MarketAPI base, boolean aid, int tier)` :1656 - As above at the board's Force tier (the player's force:
+- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, MarketAPI base, MarketAPI hive, float fp)` :1708 - One fleet of a hunting force (ThreatSoftening):
+- `ThreatFleetOrders.dispatchHunt(FactionAPI faction, MarketAPI base, MarketAPI hive, float fp, String forceId, SectorEntityToken muster)` :1717 - As above;
+- `ThreatFleetOrders.huntOrder(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI base, MarketAPI hive, String forceId, SectorEntityToken muster)` :1731 - Puts a built fleet on a hunt of the hive's system (mustering first for a force);
+- `ThreatFleetOrders.engageHunt(CampaignFleetAPI fleet, MarketAPI base, MarketAPI hive, float days)` :1755 - A hunting fleet's orders once it goes in:
+- `ThreatFleetOrders.retargetHunt(Order o, MarketAPI hive)` :1767 - Moves a hunting fleet on to another colony of the same system, for what is left of its term.
+- `ThreatFleetOrders.chaseLoose(Order o, CampaignFleetAPI swarm)` :1787 - A player hunt with every orbit of the system clear goes after a loose swarm (ThreatSoftening.advanceSingle, 2026-10-11):
+- `ThreatFleetOrders.standDown(Order o, String why)` :1805 - Ends an order now:
 ### support: holding the orbit over a besieged world, and besieging it
-- `ThreatFleetOrders.dispatchSupport(FactionAPI faction, MarketAPI hive)` :1823 - SUPPORT - a combat sortie that holds the orbit over a world this faction has a ground front on, clears it of whatever contests it so supply and evacuation runs can land, and suppresses its defences fr
-- `ThreatFleetOrders.dispatchSupport(FactionAPI faction, MarketAPI hive, MarketAPI base)` :1828 - A Support sortie over the world from a given base.
-- `ThreatFleetOrders.dispatchDefend(FactionAPI faction, MarketAPI hive)` :1841 - DEFEND (2026-09-07) - Support that keeps its ships:
-- `ThreatFleetOrders.dispatchDefend(FactionAPI faction, MarketAPI hive, MarketAPI base)` :1846 - A Defend sortie over the world from a given base.
-- `ThreatFleetOrders.dispatchOrbit(FactionAPI faction, MarketAPI hive, String kind)` :1851 - A Support or Defend sortie:
-- `ThreatFleetOrders.dispatchOrbit(FactionAPI faction, MarketAPI hive, String kind, int tier)` :1856 - As above at the board's Force tier (the player's force:
-- `ThreatFleetOrders.dispatchOrbit(FactionAPI faction, MarketAPI hive, MarketAPI base, String kind)` :1872 - A Support or Defend sortie over the world from a given base.
-- `ThreatFleetOrders.dispatchOrbit(FactionAPI faction, MarketAPI hive, MarketAPI base, String kind, int tier)` :1877 - As above at the board's Force tier.
-- `ThreatFleetOrders.orbitOrder(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI hive, MarketAPI base, String kind, float days)` :1919 - Puts a built fleet on a Support or Defend sortie over the world for days, then home;
-- `ThreatFleetOrders.orbitName(String kind)` :1929 - "Support" or "Defend".
-- `ThreatFleetOrders.orbitVerb(String kind)` :1934 - "support the siege of" or "defend the orbit of".
-- `ThreatFleetOrders.orbitTask(String kind, String worldName)` :1939 - The orbit assignment's text.
-- `ThreatFleetOrders.orbitEnabled(String kind)` :1944
-- `ThreatFleetOrders.orbitDays(String kind)` :1949
-- `ThreatFleetOrders.orbitEffect(MarketAPI world, float fp, String kind, CampaignFleetAPI fleet)` :1954 - The button and confirm text for a sortie of the kind (#supportEffect / #defendEffect).
-- `ThreatFleetOrders.bombardLines(StringBuilder sb, MarketAPI world, float fp, CampaignFleetAPI fleet, String when)` :1964 - A day of the sortie's bombardment in the world's current numbers, one fact a line:
-- `ThreatFleetOrders.supportEffect(MarketAPI world, float fp, CampaignFleetAPI fleet)` :1986 - What a Support sortie of fp points does over the world, for the button and the confirm (the user, 2026-09-06:
-- `ThreatFleetOrders.defendEffect(MarketAPI world, float fp, CampaignFleetAPI fleet)` :2002 - What a Defend sortie of fp points does over the world, for the button and the confirm.
-- `ThreatFleetOrders.hasSupport(String factionId, String hiveMarketId)` :2014 - Whether this faction already has a live Support sortie ordered over the world.
-- `ThreatFleetOrders.hasDefend(String factionId, String hiveMarketId)` :2019 - Whether this faction already has a live Defend sortie ordered over the world.
-- `ThreatFleetOrders.hasOrder(String kind, String factionId, String targetId)` :2024 - Whether this faction has a live order of the kind on the target;
-- `ThreatFleetOrders.hasRaid(String factionId, String hiveMarketId)` :2035 - Whether this faction has a live raid on the world, sailing or on station.
+- `ThreatFleetOrders.dispatchSupport(FactionAPI faction, MarketAPI hive)` :1828 - SUPPORT - a combat sortie that holds the orbit over a world this faction has a ground front on, clears it of whatever contests it so supply and evacuation runs can land, and suppresses its defences fr
+- `ThreatFleetOrders.dispatchSupport(FactionAPI faction, MarketAPI hive, MarketAPI base)` :1833 - A Support sortie over the world from a given base.
+- `ThreatFleetOrders.dispatchDefend(FactionAPI faction, MarketAPI hive)` :1846 - DEFEND (2026-09-07) - Support that keeps its ships:
+- `ThreatFleetOrders.dispatchDefend(FactionAPI faction, MarketAPI hive, MarketAPI base)` :1851 - A Defend sortie over the world from a given base.
+- `ThreatFleetOrders.dispatchOrbit(FactionAPI faction, MarketAPI hive, String kind)` :1856 - A Support or Defend sortie:
+- `ThreatFleetOrders.dispatchOrbit(FactionAPI faction, MarketAPI hive, String kind, int tier)` :1861 - As above at the board's Force tier (the player's force:
+- `ThreatFleetOrders.dispatchOrbit(FactionAPI faction, MarketAPI hive, MarketAPI base, String kind)` :1877 - A Support or Defend sortie over the world from a given base.
+- `ThreatFleetOrders.dispatchOrbit(FactionAPI faction, MarketAPI hive, MarketAPI base, String kind, int tier)` :1882 - As above at the board's Force tier.
+- `ThreatFleetOrders.orbitOrder(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI hive, MarketAPI base, String kind, float days)` :1924 - Puts a built fleet on a Support or Defend sortie over the world for days, then home;
+- `ThreatFleetOrders.orbitName(String kind)` :1934 - "Support" or "Defend".
+- `ThreatFleetOrders.orbitVerb(String kind)` :1939 - "support the siege of" or "defend the orbit of".
+- `ThreatFleetOrders.orbitTask(String kind, String worldName)` :1944 - The orbit assignment's text.
+- `ThreatFleetOrders.orbitEnabled(String kind)` :1949
+- `ThreatFleetOrders.orbitDays(String kind)` :1954
+- `ThreatFleetOrders.orbitEffect(MarketAPI world, float fp, String kind, CampaignFleetAPI fleet)` :1959 - The button and confirm text for a sortie of the kind (#supportEffect / #defendEffect).
+- `ThreatFleetOrders.bombardLines(StringBuilder sb, MarketAPI world, float fp, CampaignFleetAPI fleet, String when)` :1969 - A day of the sortie's bombardment in the world's current numbers, one fact a line:
+- `ThreatFleetOrders.supportEffect(MarketAPI world, float fp, CampaignFleetAPI fleet)` :1991 - What a Support sortie of fp points does over the world, for the button and the confirm (the user, 2026-09-06:
+- `ThreatFleetOrders.defendEffect(MarketAPI world, float fp, CampaignFleetAPI fleet)` :2007 - What a Defend sortie of fp points does over the world, for the button and the confirm.
+- `ThreatFleetOrders.hasSupport(String factionId, String hiveMarketId)` :2019 - Whether this faction already has a live Support sortie ordered over the world.
+- `ThreatFleetOrders.hasDefend(String factionId, String hiveMarketId)` :2024 - Whether this faction already has a live Defend sortie ordered over the world.
+- `ThreatFleetOrders.hasOrder(String kind, String factionId, String targetId)` :2029 - Whether this faction has a live order of the kind on the target;
+- `ThreatFleetOrders.hasRaid(String factionId, String hiveMarketId)` :2040 - Whether this faction has a live raid on the world, sailing or on station.
 ### raids (ThreatAttackPlanner, 2026-10-01; docs/attack-planner.md section 4)
-- `ThreatFleetOrders.setRaidFallback(Order lead, String fallbackId)` :2055 - The planner's fallback for every fleet of the raid the lead order belongs to.
-- `ThreatFleetOrders.gatherDays(Order o)` :2067 - Days this fleet of a raid waits at the world for the rest of it:
-- `ThreatFleetOrders.raidFP(Order o)` :2082 - Fleet points of the raid's fleets at its world:
-- `ThreatFleetOrders.dispatchRaid(FactionAPI faction, MarketAPI hive, MarketAPI base, float need, float days, String fallbackId)` :2099 - A RAID on the hive world from the base:
-- `ThreatFleetOrders.raidArrived(Order o)` :2121 - A raid reached its world:
-- `ThreatFleetOrders.raidOver(Order o)` :2136 - Why the raid is over now, or null:
-- `ThreatFleetOrders.divertRaid(Order o, String why)` :2180 - A raid turned back within its first days at the world - it met swarms it was not sized for - strikes its fallback instead, if the faction's report of that world says it can (twice the swarms, and a da
-- `ThreatFleetOrders.raidedByAnother(Order mine, String hiveMarketId)` :2228 - Whether another raid of the order's faction - not one of its own fleets - is on the world.
-- `ThreatFleetOrders.raidInSystem(String factionId, String systemId)` :2238 - Whether a raid of the faction is on its way to, or over, a world of the system.
-- `ThreatFleetOrders.endRaid(Order o, String why)` :2251 - The raid goes home on the tracked leg (refund on arrival), its days at the world in the log.
-- `ThreatFleetOrders.friendlyOrbit(String factionId, String hiveMarketId)` :2269 - Whether a friendly combat fleet actually holds the world's orbit:
-- `ThreatFleetOrders.nearPlanet(CampaignFleetAPI fleet, SectorEntityToken planet)` :2289
-- `ThreatFleetOrders.withinLeash(CampaignFleetAPI fleet, SectorEntityToken planet)` :2296 - Within LEASH_MULT x ORBIT_HOLD_RANGE of the planet, in its system:
-- `ThreatFleetOrders.supportBlockReason(FactionAPI faction, MarketAPI hive)` :2303 - Why this faction cannot send Support over the world now, or null if it can.
-- `ThreatFleetOrders.supportBlockReason(FactionAPI faction, MarketAPI hive, int tier)` :2308 - As above at the board's Force tier.
-- `ThreatFleetOrders.defendBlockReason(FactionAPI faction, MarketAPI hive)` :2313 - Why this faction cannot send Defend over the world now, or null if it can.
-- `ThreatFleetOrders.defendBlockReason(FactionAPI faction, MarketAPI hive, int tier)` :2318 - As above at the board's Force tier.
-- `ThreatFleetOrders.orbitBlockReason(FactionAPI faction, MarketAPI hive, String kind)` :2323 - Why this faction cannot send a Support or Defend sortie over the world now, or null if it can.
-- `ThreatFleetOrders.orbitBlockReason(FactionAPI faction, MarketAPI hive, String kind, int tier)` :2328 - As above at the board's Force tier.
-- `ThreatFleetOrders.orbitRefusal(FactionAPI faction, MarketAPI hive, String kind)` :2333 - As above, one fact per line for the refusal notice.
-- `ThreatFleetOrders.orbitRefusal(FactionAPI faction, MarketAPI hive, String kind, int tier)` :2338 - As above at the board's Force tier:
-- `ThreatFleetOrders.record(CampaignFleetAPI fleet, FactionAPI faction, String kind, MarketAPI base, String targetId, String targetName, float days)` :2355
-- `ThreatFleetOrders.record(CampaignFleetAPI fleet, FactionAPI faction, String kind, MarketAPI base, String targetId, String targetName, float days, boolean raid)` :2361 - As above;
-- `ThreatFleetOrders.adoptHunt(CampaignFleetAPI fleet, FactionAPI faction, StarSystemAPI hive, MarketAPI base)` :2387 - Puts an EXISTING fleet on the hunt in the hive system for softenDays (the board's per-fleet Hunt on an expedition, task force or fleet going home - Intercept until 2026-09-24):
+- `ThreatFleetOrders.setRaidFallback(Order lead, String fallbackId)` :2060 - The planner's fallback for every fleet of the raid the lead order belongs to.
+- `ThreatFleetOrders.gatherDays(Order o)` :2072 - Days this fleet of a raid waits at the world for the rest of it:
+- `ThreatFleetOrders.raidFP(Order o)` :2087 - Fleet points of the raid's fleets at its world:
+- `ThreatFleetOrders.dispatchRaid(FactionAPI faction, MarketAPI hive, MarketAPI base, float need, float days, String fallbackId)` :2104 - A RAID on the hive world from the base:
+- `ThreatFleetOrders.raidArrived(Order o)` :2126 - A raid reached its world:
+- `ThreatFleetOrders.raidOver(Order o)` :2141 - Why the raid is over now, or null:
+- `ThreatFleetOrders.divertRaid(Order o, String why)` :2185 - A raid turned back within its first days at the world - it met swarms it was not sized for - strikes its fallback instead, if the faction's report of that world says it can (twice the swarms, and a da
+- `ThreatFleetOrders.raidedByAnother(Order mine, String hiveMarketId)` :2233 - Whether another raid of the order's faction - not one of its own fleets - is on the world.
+- `ThreatFleetOrders.raidInSystem(String factionId, String systemId)` :2243 - Whether a raid of the faction is on its way to, or over, a world of the system.
+- `ThreatFleetOrders.endRaid(Order o, String why)` :2256 - The raid goes home on the tracked leg (refund on arrival), its days at the world in the log.
+- `ThreatFleetOrders.friendlyOrbit(String factionId, String hiveMarketId)` :2274 - Whether a friendly combat fleet actually holds the world's orbit:
+- `ThreatFleetOrders.nearPlanet(CampaignFleetAPI fleet, SectorEntityToken planet)` :2294
+- `ThreatFleetOrders.withinLeash(CampaignFleetAPI fleet, SectorEntityToken planet)` :2301 - Within LEASH_MULT x ORBIT_HOLD_RANGE of the planet, in its system:
+- `ThreatFleetOrders.supportBlockReason(FactionAPI faction, MarketAPI hive)` :2308 - Why this faction cannot send Support over the world now, or null if it can.
+- `ThreatFleetOrders.supportBlockReason(FactionAPI faction, MarketAPI hive, int tier)` :2313 - As above at the board's Force tier.
+- `ThreatFleetOrders.defendBlockReason(FactionAPI faction, MarketAPI hive)` :2318 - Why this faction cannot send Defend over the world now, or null if it can.
+- `ThreatFleetOrders.defendBlockReason(FactionAPI faction, MarketAPI hive, int tier)` :2323 - As above at the board's Force tier.
+- `ThreatFleetOrders.orbitBlockReason(FactionAPI faction, MarketAPI hive, String kind)` :2328 - Why this faction cannot send a Support or Defend sortie over the world now, or null if it can.
+- `ThreatFleetOrders.orbitBlockReason(FactionAPI faction, MarketAPI hive, String kind, int tier)` :2333 - As above at the board's Force tier.
+- `ThreatFleetOrders.orbitRefusal(FactionAPI faction, MarketAPI hive, String kind)` :2338 - As above, one fact per line for the refusal notice.
+- `ThreatFleetOrders.orbitRefusal(FactionAPI faction, MarketAPI hive, String kind, int tier)` :2343 - As above at the board's Force tier:
+- `ThreatFleetOrders.record(CampaignFleetAPI fleet, FactionAPI faction, String kind, MarketAPI base, String targetId, String targetName, float days)` :2360
+- `ThreatFleetOrders.record(CampaignFleetAPI fleet, FactionAPI faction, String kind, MarketAPI base, String targetId, String targetName, float days, boolean raid)` :2366 - As above;
+- `ThreatFleetOrders.adoptHunt(CampaignFleetAPI fleet, FactionAPI faction, StarSystemAPI hive, MarketAPI base)` :2392 - Puts an EXISTING fleet on the hunt in the hive system for softenDays (the board's per-fleet Hunt on an expedition, task force or fleet going home - Intercept until 2026-09-24):
 ### repurposing: an order given to a fleet already out
-- `ThreatFleetOrders.where()` :2437 - "in the system" or "N ly away", for the prompt.
-- `ThreatFleetOrders.nearestReassignable(FactionAPI faction, MarketAPI hive)` :2451 - The player's fleet nearest a hive world among those the layer has out:
-- `ThreatFleetOrders.nearestReassignable(FactionAPI faction, MarketAPI hive, String kind)` :2460 - As above, for an order of kind over the world:
-- `ThreatFleetOrders.consider(List<Reassignable> found, java.util.Set<CampaignFleetAPI> seen, CampaignFleetAPI fleet, String duty, MarketAPI hive)` :2513
-- `ThreatFleetOrders.takeOver(CampaignFleetAPI fleet)` :2536 - Frees a fleet from whatever the layer had it doing - its expedition or task force (detached, the group's baseline adjusted), its standing order, its tracked leg home - so a new order can take it.
-- `ThreatFleetOrders.adoptSupport(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI hive, String duty)` :2576 - Puts an EXISTING fleet over a besieged world for supportDays (2026-09-06):
-- `ThreatFleetOrders.adoptDefend(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI hive, String duty)` :2582 - As #adoptSupport, for Defend.
-- `ThreatFleetOrders.adoptOrbit(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI hive, String duty, String kind)` :2588 - An existing fleet takes a Support or Defend order over the world.
-- `ThreatFleetOrders.adoptLandingDefend(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI world, MarketAPI base)` :2635 - An expedition fleet that has just landed or reinforced a front stays over the world on DEFEND until the front is gone (2026-09-07, the user:
-- `ThreatFleetOrders.enforceLeash()` :2685 - THE LEASH (2026-09-07, per frame from IncursionManager.advance, the garrison swarms' own rule mirrored):
-- `ThreatFleetOrders.leash(CampaignFleetAPI fleet, MarketAPI world, float orbitDays, String orbitText, SectorEntityToken home, String label)` :2710 - One fleet's leash to the orbit of a world:
-- `ThreatFleetOrders.siegeLeash(CampaignFleetAPI fleet, List<MarketAPI> contested, MarketAPI anchor, boolean mayHunt, String label)` :2807 - SIEGE LEASH (2026-09-07):
-- `ThreatFleetOrders.anchorWorld(CampaignFleetAPI fleet, List<MarketAPI> worlds)` :2869 - The one world of an expedition's several its leash is measured against:
-- `ThreatFleetOrders.describe(com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI a)` :2894 - "ORBIT_AGGRESSIVE -> Gamma Hero II 'defending the orbit of Gamma Hero II'", or "no assignment".
-- `ThreatFleetOrders.stationReport(CampaignFleetAPI fleet, MarketAPI world, String label)` :2911 - Once a day, where a fleet that is NOT at its world is and what it is doing:
-- `ThreatFleetOrders.idleReport(CampaignFleetAPI fleet, MarketAPI world, String label, String why)` :2931 - Once a day, a Defend fleet at its world that is not bombarding, and why.
-- `ThreatFleetOrders.recall(Order o)` :2942 - Sends the fleet home (refund on arrival, see ThreatReturns) and forgets the order.
-- `ThreatFleetOrders.notice(FactionAPI faction, String title, String what, Object... args)` :2959 - A notice on an order, its first line "Your {what}" for the player or "{Faction} {what}" in the faction's colour otherwise, under the faction's crest.
+- `ThreatFleetOrders.where()` :2442 - "in the system" or "N ly away", for the prompt.
+- `ThreatFleetOrders.nearestReassignable(FactionAPI faction, MarketAPI hive)` :2456 - The player's fleet nearest a hive world among those the layer has out:
+- `ThreatFleetOrders.nearestReassignable(FactionAPI faction, MarketAPI hive, String kind)` :2465 - As above, for an order of kind over the world:
+- `ThreatFleetOrders.consider(List<Reassignable> found, java.util.Set<CampaignFleetAPI> seen, CampaignFleetAPI fleet, String duty, MarketAPI hive)` :2518
+- `ThreatFleetOrders.takeOver(CampaignFleetAPI fleet)` :2541 - Frees a fleet from whatever the layer had it doing - its expedition or task force (detached, the group's baseline adjusted), its standing order, its tracked leg home - so a new order can take it.
+- `ThreatFleetOrders.adoptSupport(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI hive, String duty)` :2581 - Puts an EXISTING fleet over a besieged world for supportDays (2026-09-06):
+- `ThreatFleetOrders.adoptDefend(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI hive, String duty)` :2587 - As #adoptSupport, for Defend.
+- `ThreatFleetOrders.adoptOrbit(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI hive, String duty, String kind)` :2593 - An existing fleet takes a Support or Defend order over the world.
+- `ThreatFleetOrders.adoptLandingDefend(CampaignFleetAPI fleet, FactionAPI faction, MarketAPI world, MarketAPI base)` :2640 - An expedition fleet that has just landed or reinforced a front stays over the world on DEFEND until the front is gone (2026-09-07, the user:
+- `ThreatFleetOrders.enforceLeash()` :2690 - THE LEASH (2026-09-07, per frame from IncursionManager.advance, the garrison swarms' own rule mirrored):
+- `ThreatFleetOrders.leash(CampaignFleetAPI fleet, MarketAPI world, float orbitDays, String orbitText, SectorEntityToken home, String label)` :2715 - One fleet's leash to the orbit of a world:
+- `ThreatFleetOrders.siegeLeash(CampaignFleetAPI fleet, List<MarketAPI> contested, MarketAPI anchor, boolean mayHunt, String label)` :2812 - SIEGE LEASH (2026-09-07):
+- `ThreatFleetOrders.anchorWorld(CampaignFleetAPI fleet, List<MarketAPI> worlds)` :2874 - The one world of an expedition's several its leash is measured against:
+- `ThreatFleetOrders.describe(com.fs.starfarer.api.campaign.ai.FleetAssignmentDataAPI a)` :2899 - "ORBIT_AGGRESSIVE -> Gamma Hero II 'defending the orbit of Gamma Hero II'", or "no assignment".
+- `ThreatFleetOrders.stationReport(CampaignFleetAPI fleet, MarketAPI world, String label)` :2916 - Once a day, where a fleet that is NOT at its world is and what it is doing:
+- `ThreatFleetOrders.idleReport(CampaignFleetAPI fleet, MarketAPI world, String label, String why)` :2936 - Once a day, a Defend fleet at its world that is not bombarding, and why.
+- `ThreatFleetOrders.recall(Order o)` :2947 - Sends the fleet home (refund on arrival, see ThreatReturns) and forgets the order.
+- `ThreatFleetOrders.notice(FactionAPI faction, String title, String what, Object... args)` :2964 - A notice on an order, its first line "Your {what}" for the player or "{Faction} {what}" in the faction's colour otherwise, under the faction's crest.
 
 ## ThreatFortificationRaids (201 lines)
 - `ThreatFortificationRaids.modifyRaidObjectives(MarketAPI market, SectorEntityToken entity, List<GroundRaidObjectivePlugin> objectives, RaidType type, int marineTokens, int priority)` :42 - The one raid on a war structure left (docs/suppression-balance.md v2 section 2, 2026-09-28):
