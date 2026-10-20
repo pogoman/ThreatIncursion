@@ -2088,6 +2088,8 @@ public class ThreatFrontlines {
 			if (faction == null) continue;
 			// its stance (ThreatFactionStance): consolidating founds nothing,
 			// pressing a share of its passes
+			// HOME FIRST (the user, 2026-10-20): no forward base until the core is complete (the stance says so too)
+			if (ThreatCoreBuild.homeFirstHolds(fid)) continue;
 			if (!ThreatFactionStance.foundsLinks(faction, random)) continue;
 			// no cap: founding is paid from the reserves, and that is the limit
 			planFor(faction, hiveSystems, random);

@@ -646,6 +646,10 @@ public class ThreatIncConfig {
 	public static float marineLevySuppliesEach()     { return f("threatinc_marineLevySuppliesEach"); }
 	/** Days a levy trains before its marines stand at the colonies that paid. */
 	public static float marineLevyDays()             { return f("threatinc_marineLevyDays"); }
+	/** HOME FIRST (2026-10-20): a mobilised faction holds CONSOLIDATE, founds nothing and plans no play until its core colonies' military ladders and yards are complete. */
+	public static boolean homeFirst()                { return b("threatinc_homeFirst", true); }
+	/** Days after which an unfinished HOME FIRST hold ends anyway (0 = never): a deadlock hatch, logged. */
+	public static float homeFirstMaxDays()           { return f("threatinc_homeFirstMaxDays"); }
 	public static boolean alliedStaging()            { return b("threatinc_alliedStaging", true); }
 	public static boolean invadeStaging()            { return b("threatinc_invadeStaging", true); }
 	/** S1 (the user, 2026-10-19 15:30): the invade pass keeps at most this many hammers staging at once a faction (one a base). */

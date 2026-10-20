@@ -225,6 +225,12 @@ public class ThreatPlays {
 		if (c.strategy == null || p == null) return;
 		// relief before offensives (user, 2026-09-27): no new play while it is owed
 		if (ThreatFleetOrders.reliefOwed(faction)) return;
+		// HOME FIRST (the user, 2026-10-20): no play - no invasion, no hammer, no decoy - until the core is complete
+		if (ThreatCoreBuild.homeFirstHolds(fid)) {
+			ThreatIncConfig.logQuiet("homefirst:" + fid, "Council " + fid + ": home first - no play until the core is complete ("
+					+ ThreatCoreBuild.homeFirstStatus(fid) + ")");
+			return;
+		}
 		opportunity(c, faction, p, today, random);
 		// the strategy picks where its own plays go, never whether the faction attacks (user, 2026-10-04)
 		invade(c, faction, p, today, random);

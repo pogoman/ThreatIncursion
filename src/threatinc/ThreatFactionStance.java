@@ -196,6 +196,12 @@ public class ThreatFactionStance {
 	 */
 	public static void set(String fid, int next, String pressedSystemId, String why) {
 		if (!enabled() || fid == null) return;
+		// HOME FIRST (2026-10-20): the war is at home until the core is complete, whatever the council runs
+		if (ThreatCoreBuild.homeFirstHolds(fid)) {
+			next = CONSOLIDATE;
+			pressedSystemId = null;
+			why = "home first - " + ThreatCoreBuild.homeFirstStatus(fid) + " (" + why + ")";
+		}
 		float day = today();
 		float[] st = map(KEY_STATE).get(fid);
 		boolean hadState = st != null && st.length >= 2 && st[1] <= day;
@@ -262,6 +268,9 @@ public class ThreatFactionStance {
 		boolean wantConsolidate = pressed && (losing || ratio < 1f);
 		boolean wantPress = !pressed && !losing && best != null && ratio >= pressNeed;
 		int next = wantConsolidate ? CONSOLIDATE : wantPress ? PRESS : EXPAND;
+		// HOME FIRST (2026-10-20): the war is at home until the core is complete
+		boolean homeFirst = ThreatCoreBuild.homeFirstHolds(fid);
+		if (homeFirst) next = CONSOLIDATE;
 		if (next != was && next != CONSOLIDATE && hadState
 				&& day - since < Math.max(0f, ThreatIncConfig.stanceDwellDays())) {
 			next = was;
@@ -277,7 +286,7 @@ public class ThreatFactionStance {
 					+ "; force " + (int) ours + " vs " + (int) theirs + " FP reported facing it ("
 					+ (ratio >= Float.MAX_VALUE ? "inf" : String.format("%.2f", ratio)) + ")"
 					+ (best != null ? "; weakest target " + best[1] + " (score " + String.format("%.2f", (Float) best[2]) + ")"
-							: "; no siege it can pay for"));
+							: "; no siege it can pay for")					+ (homeFirst ? "; HOME FIRST - " + ThreatCoreBuild.homeFirstStatus(fid) : ""));
 		}
 		map(KEY_STATE).put(fid, new float[] { next, since });
 	}

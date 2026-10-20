@@ -1469,6 +1469,13 @@
 	"threatinc_marineLevy": true,
 	"threatinc_marineLevySuppliesEach": 2,
 	"threatinc_marineLevyDays": 30,
+	# HOME FIRST (2026-10-20, the user: "the human response to first strike should be consolidate ... only start
+	# striking and founding forward bases once they exhausted internal investment options"): from its mobilisation a
+	# faction holds CONSOLIDATE - no forward bases, no council plays, defensive sieges only - until every core colony's
+	# military ladder is at its size's top and its yards are built; the core build runs every site a pass meanwhile,
+	# paced by the stockpiles alone. homeFirstMaxDays ends a hold the stock never pays off (0 = never) - a hatch.
+	"threatinc_homeFirst": true,
+	"threatinc_homeFirstMaxDays": 900,
 	# ALLIED STAGING (2026-10-19, the user: "the allied sharing fix sounds better" - one chain a hive would be 30
 	# chains): a base of an ally at Welcoming or better (ThreatCoalition.stagingHost) is a staging base for the
 	# faction's sieges - in the council's clusters, a paying base of the invade pass, "reached" for the chain

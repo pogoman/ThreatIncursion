@@ -10,6 +10,7 @@ import com.fs.starfarer.api.Global;
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
+import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.util.Misc;
 
@@ -55,6 +56,8 @@ import com.fs.starfarer.api.util.Misc;
 public class ThreatCoreBuild {
 
 	protected static final String KEY_LAST = "threatinc_coreBuildLast";
+	/** HOME FIRST: fid|since (first hold), fid|done (the core complete, or the hold lapsed) - timestamps. */
+	protected static final String KEY_HOME = "threatinc_coreBuildHome";
 
 	public static boolean enabled() {
 		return ThreatIncConfig.coreBuild() && ThreatBuildCost.enabled();
@@ -109,6 +112,18 @@ public class ThreatCoreBuild {
 			if (marineStep(fid, sites)) continue;
 			// yards first, every pass: a yard started or held is the faction's whole pass
 			if (yardStep(fid, sites)) continue;
+			// HOME FIRST (the user, 2026-10-20): while the hold stands the core build is the faction's whole
+			// war - every site a pass, no 30-day throttle, an unpaid step holds its price (holdMilitary)
+			if (homeFirstHolds(fid)) {
+				answerShortage(fid, sites);
+				for (MarketAPI m : sites) {
+					String[] next = militaryNext(m);
+					if (next == null) continue;
+					if (militaryStep(m)) started(fid);
+					else holdMilitary(m, fid, next[1]);
+				}
+				continue;
+			}
 			if (!mayStart(fid)) continue;
 			if (answerShortage(fid, sites)) continue;
 			for (MarketAPI m : sites) {
@@ -370,33 +385,166 @@ public class ThreatCoreBuild {
 		return true;
 	}
 
-	/** The one military step the colony lacks, by size; true when a build or upgrade started. */
-	protected static boolean militaryStep(MarketAPI m) {
+	/**
+	 * The one military step the colony lacks, by size, without starting it: {kind, id} where kind is "start"
+	 * (id the industry to build) or "upgrade" (id the industry standing, its spec's upgrade is the target), or
+	 * null when the ladder is complete for the colony's size. Ground defences need a slot like any industry
+	 * (2026-10-20: started without one they failed forever and would have held HOME FIRST on it).
+	 */
+	protected static String[] militaryNext(MarketAPI m) {
 		int s = m.getSize();
 		boolean slot = Misc.getNumIndustries(m) < Misc.getMaxIndustries(m);
 		Industry hq = m.getIndustry(Industries.PATROLHQ);
 		Industry mil = m.getIndustry(Industries.MILITARYBASE);
 		Industry high = m.getIndustry(Industries.HIGHCOMMAND);
 		if (hq == null && mil == null && high == null && slot) {
-			return start(m, Industries.PATROLHQ);
+			return new String[] { "start", Industries.PATROLHQ };
 		}
 		Industry ground = m.getIndustry(Industries.GROUNDDEFENSES);
 		Industry heavy = m.getIndustry(Industries.HEAVYBATTERIES);
-		if (ground == null && heavy == null) {
-			return start(m, Industries.GROUNDDEFENSES);
+		if (ground == null && heavy == null && slot) {
+			return new String[] { "start", Industries.GROUNDDEFENSES };
 		}
-		if (s >= 4 && hq != null) return upgrade(m, hq);
+		if (s >= 4 && upgradable(hq)) return new String[] { "upgrade", hq.getId() };
 		Industry station = ThreatFrontlines.stationOf(m);
 		if (station == null) {
-			return start(m, ThreatFrontlines.orbitalStationFor(m.getFaction()));
+			return new String[] { "start", ThreatFrontlines.orbitalStationFor(m.getFaction()) };
 		}
 		int tier = ThreatFrontlines.stationTier(station);
-		if (s >= 4 && tier == 1) return upgrade(m, station);
-		if (s >= 5 && ground != null) return upgrade(m, ground);
-		if (s >= 6 && tier == 2) return upgrade(m, station);
-		if (s >= 6 && mil != null) return upgrade(m, mil);
-		return false;
+		if (s >= 4 && tier == 1 && upgradable(station)) return new String[] { "upgrade", station.getId() };
+		if (s >= 5 && upgradable(ground)) return new String[] { "upgrade", ground.getId() };
+		if (s >= 6 && tier == 2 && upgradable(station)) return new String[] { "upgrade", station.getId() };
+		if (s >= 6 && upgradable(mil)) return new String[] { "upgrade", mil.getId() };
+		return null;
 	}
+
+	/** Whether the industry stands, has an upgrade and is not building or upgrading now. */
+	protected static boolean upgradable(Industry ind) {
+		return ind != null && ind.getSpec().getUpgrade() != null && !ind.isBuilding() && !ind.isUpgrading();
+	}
+
+	/** The one military step the colony lacks, by size (militaryNext); true when a build or upgrade started. */
+	protected static boolean militaryStep(MarketAPI m) {
+		String[] next = militaryNext(m);
+		if (next == null) return false;
+		if ("start".equals(next[0])) return start(m, next[1]);
+		return upgrade(m, m.getIndustry(next[1]));
+	}
+
+	/** The price the step could not pay, held at the colony (ThreatFactionStock.hold) so upkeep and hunts leave it; logged once a colony. */
+	protected static void holdMilitary(MarketAPI m, String fid, String standingId) {
+		Industry ind = m.getIndustry(standingId);
+		String target = ind != null && ind.getSpec().getUpgrade() != null ? ind.getSpec().getUpgrade() : standingId;
+		float cost = ThreatBuildCost.supplies(target), funds = ThreatFrontlines.buildFunds(m);
+		if (cost <= funds) return;
+		ThreatFactionStock.hold(m, target, cost - funds);
+		ThreatIncConfig.logQuiet("cb_hold_" + m.getId(), "Core build: " + m.getName() + " holds " + (int) (cost - funds)
+				+ " supplies for a " + target + " (" + fid + " home first)");
+	}
+
+	// ------------------------------------------------------------------
+	// HOME FIRST (the user, 2026-10-20)
+	// ------------------------------------------------------------------
+
+	protected static Map<String, Object> home() {
+		return ThreatIncData.map(KEY_HOME);
+	}
+
+	/**
+	 * HOME FIRST (the user, 2026-10-20: "the human response to first strike should be consolidate ... only
+	 * start striking and founding forward bases once they exhausted internal investment options"): whether the
+	 * mobilised faction still holds its war at home. True from its mobilisation until its core is complete
+	 * (coreComplete: every core colony's military ladder at its size's top, yards built, nothing building) -
+	 * then done for the war, never re-entered when a colony grows (it would stop the war mid-way). The
+	 * stance reads CONSOLIDATE while it holds (ThreatFactionStance), the founding pass and the council's
+	 * plan skip the faction, and the core build runs every site a pass. homeFirstMaxDays (0 = never) ends a
+	 * hold the stockpiles never pay off, logged - a deadlock hatch, not a pace.
+	 */
+	public static boolean homeFirstHolds(String fid) {
+		if (fid == null || !enabled() || !ThreatIncConfig.homeFirst()) return false;
+		if (Factions.PLAYER.equals(fid) || Factions.THREAT.equals(fid)) return false;
+		if (!ThreatWarState.warFactionIds().contains(fid) || ThreatWarState.excluded(fid)) return false;
+		Map<String, Object> h = home();
+		if (h.containsKey(fid + "|done")) return false;
+		long now = Global.getSector().getClock().getTimestamp();
+		Object since = h.get(fid + "|since");
+		if (!(since instanceof Long)) {
+			h.put(fid + "|since", now);
+			ThreatIncConfig.log("Home first: " + fid + " holds its war at home until its core is complete - " + homeFirstStatus(fid));
+			return true;
+		}
+		float days = Global.getSector().getClock().getElapsedDaysSince((Long) since);
+		if (coreComplete(fid)) {
+			h.put(fid + "|done", now);
+			ThreatIncConfig.log("Home first: " + fid + " core complete after " + (int) days + " d - founding and plays resume ("
+					+ homeFirstStatus(fid) + ")");
+			return false;
+		}
+		float max = ThreatIncConfig.homeFirstMaxDays();
+		if (max > 0f && days > max) {
+			h.put(fid + "|done", now);
+			ThreatIncConfig.log("Home first: " + fid + " hold lapsed after " + (int) days + " d with its core incomplete - "
+					+ homeFirstStatus(fid) + "; founding and plays resume");
+			return false;
+		}
+		return true;
+	}
+
+	/** A faction's core colonies for HOME FIRST: its own, in the economy, no forward base, not the player's, size 3 up - building or not. */
+	protected static List<MarketAPI> coreSites(String fid) {
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		for (MarketAPI m : ThreatReserves.marketsOf(fid)) {
+			if (m == null || !m.isInEconomy() || ThreatFrontlines.isOutpost(m) || m.isPlayerOwned()) continue;
+			if (m.getSize() < 3) continue;
+			out.add(m);
+		}
+		return out;
+	}
+
+	/** Whether every core colony's ladder is at its size's top (militaryNext null), its yard built where one can stand (yardNeeded), and nothing is building. */
+	protected static boolean coreComplete(String fid) {
+		for (MarketAPI m : coreSites(fid)) {
+			if (ThreatFrontlines.projectRunning(m)) return false;
+			if (militaryNext(m) != null) return false;
+			if (yardNeeded(fid, m)) return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Whether yardStep would still act at the colony: no yard where one can stand (a free slot, the inputs
+	 * importable), or a Heavy Industry standing that Orbital Works could replace. False while the yards are
+	 * paused for the marines (the balance), or with yards first off.
+	 */
+	protected static boolean yardNeeded(String fid, MarketAPI m) {
+		if (!ThreatIncConfig.yardsFirst() || !ThreatIncConfig.frontlineHeavyIndustry()) return false;
+		if (ThreatIncConfig.marineLevy() && ThreatFactionStock.hullsOutcoverMarines(fid)) return false;
+		String yard = Industries.HEAVYINDUSTRY;
+		Industry hi = m.getIndustry(yard);
+		if (hi == null) {
+			if (m.getIndustry(Industries.ORBITALWORKS) != null) return false;
+			return ThreatFrontlines.wantsProducer(m, yard) && Misc.getNumIndustries(m) < Misc.getMaxIndustries(m)
+					&& ThreatFrontlines.canSupplyProducer(m, m.getSize(), yard);
+		}
+		return hi.getSpec().getUpgrade() != null;
+	}
+
+	/** One phrase for the log: colonies complete of the core, building, steps and yards still wanted. */
+	public static String homeFirstStatus(String fid) {
+		List<MarketAPI> core = coreSites(fid);
+		int complete = 0, building = 0, steps = 0, yards = 0;
+		for (MarketAPI m : core) {
+			boolean b = ThreatFrontlines.projectRunning(m);
+			boolean st = militaryNext(m) != null, y = yardNeeded(fid, m);
+			if (b) building++;
+			if (st) steps++;
+			if (y) yards++;
+			if (!b && !st && !y) complete++;
+		}
+		return complete + " of " + core.size() + " core colonies complete, " + building + " building, " + steps
+				+ " military steps and " + yards + " yards wanted";
+	}
+
 
 	protected static boolean start(MarketAPI m, String id) {
 		if (ThreatFrontlines.startNew(m, id)) {
