@@ -588,6 +588,9 @@ public class ThreatCoalition {
 				@SuppressWarnings("unchecked") List<CampaignFleetAPI> fleets = (List<CampaignFleetAPI>) p[1];
 				ThreatFleetOrders.standDownUnsailed(fleets, ((Sender) p[0]).base);
 			}
+			// WAR WANTS (2026-10-20): the owed points nobody could provision are the owner's want
+			if (ownerBase != null) ThreatFleetOrders.noteReliefShort(owner, ownerBase, market, owed - sent);
+			else if (!senders.isEmpty()) ThreatFleetOrders.noteReliefShort(owner, senders.get(0).base, market, owed - sent);
 			ThreatIncConfig.log("Coalition relief held: built " + (int) sent + " FP of the " + (int) owed + " owed over "
 					+ market.getName() + " (" + owner.getId() + "; army " + (int) need + ", fieldable " + (int) total[0]
 					+ " on paper): " + paper + " - not enough, the hulls stay home");

@@ -174,16 +174,18 @@ public class ThreatFactionStock {
 	 */
 	public static boolean runsDry(String f, String c) {
 		if (HULLS.equals(c)) return hullsShort(f);
-		if (!observed(f, c, SHORT_DAYS)) return false;
+		if (!observed(f, c, SHORT_DAYS) && shortWant(f, c) <= 0f) return false;
 		float months = buildDays(c) / 30f;
 		float production = perMonth(f, c) + comingPerMonth(f, c);
-		return stock(f, c) < (demandPerMonth(f, c) - production) * months;
+		// a standing want is demand the stock must meet now, on top of the trailing draw (WAR WANTS)
+		return stock(f, c) < (demandPerMonth(f, c) + wantPerMonth(f, c) - production) * months;
 	}
 
 	/** Whether the stock is in surplus: production covers the trailing demand and the stock covers it over a build time. For hulls: hullsSurplus. */
 	public static boolean surplus(String f, String c) {
 		if (HULLS.equals(c)) return hullsSurplus(f);
 		if (!observed(f, c, buildDays(c))) return false;
+		if (shortWant(f, c) > 0f) return false; // a want the faction could not pay is no surplus (WAR WANTS)
 		float demand = demandPerMonth(f, c);
 		return perMonth(f, c) >= demand && stock(f, c) >= demand * buildDays(c) / 30f;
 	}
@@ -247,8 +249,41 @@ public class ThreatFactionStock {
 
 	/** Months the stock covers its trailing demand; large with no demand. */
 	public static float months(String f, String c) {
-		float demand = demandPerMonth(f, c);
+		float demand = demandPerMonth(f, c) + wantPerMonth(f, c);
 		return demand > 0f ? stock(f, c) / demand : Float.MAX_VALUE;
+	}
+
+	// ------------------------------------------------------------------
+	// WAR WANTS (the user, 2026-10-20: "not enough supplies -> build the
+	// producer ... not fucking rocket science"): what the war asked of the
+	// faction's fuel and supplies and could not pay - a relief or sortie the
+	// base could not provision, a siege its pools could not price - noted as
+	// the hulls' and marines' refusals already were (noteHullShort,
+	// noteMarineShort). Until hw244 the fuel and supplies shortage read only
+	// what WAS drawn (noteDemand): a relief provisioned at 1 FP registered 1 FP
+	// of demand, and the Persean League sat on 17,461 FP of free hulls with
+	// its bases dry and answerShortage never firing in 1,800 days.
+	// ------------------------------------------------------------------
+	/** A want of the commodity the faction could not pay (fuel or supplies): the largest of the window stands SHORT_DAYS. */
+	public static void noteShort(String f, String c, float amount) {
+		if (!ThreatIncConfig.warWants() || f == null || c == null || amount <= 0f) return;
+		if (!Commodities.FUEL.equals(c) && !Commodities.SUPPLIES.equals(c)) return;
+		float before = shortWant(f, c);
+		data().put(key(f, c, "want"), Math.max(amount, before));
+		data().put(key(f, c, "wantAt"), Global.getSector().getClock().getTimestamp());
+	}
+	/** The standing want of the commodity (noteShort); 0 once the note is older than SHORT_DAYS. */
+	public static float shortWant(String f, String c) {
+		if (f == null || c == null) return 0f;
+		Object w = data().get(key(f, c, "want"));
+		Object at = data().get(key(f, c, "wantAt"));
+		if (!(w instanceof Float) || !(at instanceof Long)) return 0f;
+		if (Global.getSector().getClock().getElapsedDaysSince((Long) at) > SHORT_DAYS) return 0f;
+		return Math.max(0f, (Float) w);
+	}
+	/** The standing want read as demand a month: the faction wants it paid within the window. */
+	public static float wantPerMonth(String f, String c) {
+		return shortWant(f, c) * 30f / SHORT_DAYS;
 	}
 
 	/** Whether the faction may answer the stock with another producer: the last one has had SHORT_DAYS to show. */

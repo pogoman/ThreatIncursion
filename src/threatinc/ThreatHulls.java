@@ -604,6 +604,7 @@ public class ThreatHulls {
 		// the unpaid is demand the faction's planner builds for (ThreatFactionStock.shortest)
 		if (unpaid > 0f) ThreatFactionStock.noteDemand(factionId, Commodities.SUPPLIES, unpaid);
 		float lost = unpaid > 0f ? starve(factionId, unpaid / rate, unpaid) : 0f;
+		scrapIdle(factionId, days);
 		float[] t = upkeepTally.get(factionId);
 		if (t == null) {
 			t = new float[3];
@@ -638,6 +639,35 @@ public class ThreatHulls {
 	// what the pool can pay
 	// ------------------------------------------------------------------
 
+	/** The share of a scrapped hull's supplies deposit that comes back (the swarm's recycleForUpkeep keeps 0.8 of a fleet's points). */
+	public static final float SCRAP_RECOVERY = 0.8f;
+	/**
+	 * WAR WANTS - THE RECYCLING (the user, 2026-10-20: "too many hulls? recycle and rebuild something else"; the
+	 * swarm's ThreatColonyManager.recycleForUpkeep): while a supplies want the faction could not pay stands
+	 * (ThreatFactionStock.shortWant), built hulls at home beyond what its supplies surplus keeps (suppliesKeepFP)
+	 * are scrapped over a month - struck off the built navy and their supplies deposit
+	 * (expeditionSuppliesPerPoint a difficulty point, SCRAP_RECOVERY of it) banked at the hull port. hw244a:
+	 * the Persean League kept 17,461 FP of hulls free and idle, their standing upkeep eating the supplies its
+	 * relief could not be provisioned with. Knob threatinc_scrapIdleHulls. Returns the points scrapped.
+	 */
+	protected static float scrapIdle(String factionId, float days) {
+		if (!ThreatIncConfig.scrapIdleHulls() || factionId == null || days <= 0f) return 0f;
+		if (ThreatFactionStock.shortWant(factionId, Commodities.SUPPLIES) <= 0f) return 0f;
+		float home = builtAtHome(factionId), keep = suppliesKeepFP(factionId);
+		if (keep >= home) return 0f;
+		float fp = Math.min(home - keep, (home - keep) * Math.min(1f, days / 30f));
+		fp = Math.min(fp, built(factionId));
+		if (fp < 1f) return 0f;
+		MarketAPI port = hullPort(factionId);
+		if (port == null) return 0f;
+		builtMap().put(factionId, built(factionId) - fp);
+		float supplies = fp / IncursionManager.FP_PER_RESPONSE_DIFFICULTY * ThreatIncConfig.expeditionSuppliesPerPoint() * SCRAP_RECOVERY;
+		ThreatReserves.deposit(port.getId(), Commodities.SUPPLIES, supplies);
+		ThreatIncConfig.log("Hulls: " + ThreatWarState.displayName(factionId) + " scraps " + (int) fp + " FP of idle hulls for "
+				+ (int) supplies + " supplies at " + port.getName() + " (" + (int) built(factionId) + " built, the supplies keep "
+				+ (int) keep + " FP; supplies wanted " + (int) ThreatFactionStock.shortWant(factionId, Commodities.SUPPLIES) + ")");
+		return fp;
+	}
 	/** Fleet points the faction's fleets out hold against the pool (the ledger's live entries). */
 	public static float committedFP(String factionId) {
 		float sum = 0f;

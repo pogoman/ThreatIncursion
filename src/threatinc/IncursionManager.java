@@ -2332,6 +2332,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					pointsForOrbit(sizes, siegeFleetGoal(faction, targets, raze)));
 		}
 		float minProvisions = Math.max(mustPay, points * ThreatIncConfig.expeditionMinProvisionsFraction());
+		// WAR WANTS (the user, 2026-10-20): what the siege asked of fuel and supplies and the pools could not pay
+		if (payable < minProvisions) {
+			if (fuelPerPoint > 0f) {
+				ThreatFactionStock.noteShort(faction.getId(), com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL,
+						minProvisions * fuelPerPoint - haveFuel);
+			}
+			if (suppliesPerPoint > 0f) {
+				float haveSupplies = Math.max(0f, siegePooled(base, provisionPool,
+						com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES)
+						- ThreatFactionStock.yardWant(faction.getId()));
+				ThreatFactionStock.noteShort(faction.getId(), com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES,
+						minProvisions * suppliesPerPoint - haveSupplies);
+			}
+		}
 		// and the hulls, as the launch reads them (N1, the user 2026-10-19): this test said yes to sieges the
 		// free pool could not man, the launch refused them and the council's invasion pass stopped at the
 		// refusal - hw211b Tri-Tachyon 104 plays 'could not be paid after all', hw211a Church 143

@@ -1321,10 +1321,13 @@ public class ThreatConvoys {
 					if (names.length() > 0) names.append(", ");
 					names.append(m.getName());
 				}
-				ThreatIncConfig.logQuiet("homeattack:" + factionId, "Home under attack: " + factionId + " stages nothing while "
-						+ names + " stand(s) under a Threat army - the relief draws its depots down to their floors");
-				continue;
+				ThreatIncConfig.logQuiet("homeattack:" + factionId, "Home under attack: " + factionId + " stages no troops while "
+						+ names + " stand(s) under a Threat army - the relief draws its depots down to their floors; fuel and"
+						+ " supplies still run to the bases the relief is built at");
 			}
+			// WAR WANTS (2026-10-20, after hw244: the humans hull-rich and supply-poor AT THE BASES while the staging
+			// loop stood skipped): under HOME UNDER ATTACK the depots still take fuel and supplies, never troops
+			final boolean provisionsOnly = homeAttacked;
 			for (Object[] w : wants) {
 				MarketAPI base = (MarketAPI) w[0];
 				float[] targets = (float[]) w[1];
@@ -1347,6 +1350,7 @@ public class ThreatConvoys {
 					boolean marinesOnly = false;
 					for (Integer i : order) {
 						String c = ThreatReserves.COMMODITIES[i];
+						if (provisionsOnly && (Commodities.MARINES.equals(c) || Commodities.HAND_WEAPONS.equals(c))) continue;
 						if (!worthSailing(c, shortBy[i], targets[i])) continue;
 						donor = pickDonor(donors, base, c, drawn);
 						if (donor == null && Commodities.MARINES.equals(c) && !zealots.isEmpty()) {
@@ -1360,6 +1364,8 @@ public class ThreatConvoys {
 					float[] load = new float[ThreatReserves.COMMODITIES.length];
 					for (int i = 0; i < ThreatReserves.COMMODITIES.length; i++) {
 						if (shortBy[i] <= 0f) continue;
+						if (provisionsOnly && (Commodities.MARINES.equals(ThreatReserves.COMMODITIES[i])
+								|| Commodities.HAND_WEAPONS.equals(ThreatReserves.COMMODITIES[i]))) continue;
 						if (marinesOnly && !Commodities.MARINES.equals(ThreatReserves.COMMODITIES[i])) continue;
 						load[i] = Math.min(shortBy[i], sendable(donor, base, ThreatReserves.COMMODITIES[i]));
 					}

@@ -1458,6 +1458,17 @@
 	# Patrol HQ where none stands - paid or its price held. hw219a: the Hegemony 35k FP free, 1,095 of 1,360
 	# refused systems short of marines (a landing wants 1,100-2,700; a market raises 40-77 a month)
 	"threatinc_marineStep": true,
+	# WAR WANTS (2026-10-20, the user: "not enough hulls? build hull producers. not enough marines -> ... not enough
+	# supplies -> .... too many hulls? recycle and rebuild something else" - the swarm's rule for the humans). Every
+	# fuel or supplies want the war refused (a sortie the base could not provision, a relief built short, a siege
+	# the pools could not price) is noted for 30 days and read as shortage, so the core build answers it with a
+	# producer; a surplus Fuel Production is converted to the short stock's producer when no slot is free (the
+	# swarm's convertSurplus); built hulls at home beyond what the supplies keep are scrapped into supplies while a
+	# supplies want stands (the swarm's recycleForUpkeep, 0.8 of the deposit). hw244a: the Persean League held
+	# 17,461 FP of hulls free with its bases dry and its shortage read only what was drawn - never short
+	"threatinc_warWants": true,
+	"threatinc_convertSurplusHuman": true,
+	"threatinc_scrapIdleHulls": true,
 	# MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50, "do option 1 and 3": "equally short on hulls as
 	# marines, both in balance"). hw231a: the Hegemony's ladder took its marine income 360 -> 836 a month while a
 	# landing's want rose 2,666 -> 3,309, and 16.8k of 19.8k FP of hulls sat free on 17k supplies a month of upkeep.

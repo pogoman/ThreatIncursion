@@ -680,6 +680,7 @@ public class ThreatFleetOrders {
 		// half of it, and the fleets that did sail bled in at 29-356 FP against 1,300-4,600 FP swarms.
 		if (!coalitionEnough && sent > 0f && sent + 0.5f < owed) {
 			standDownUnsailed(sailing, base);
+			noteReliefShort(faction, base, target, owed - sent);
 			ThreatIncConfig.log("Relief held at " + base.getName() + ": " + faction.getId() + " built " + (int) sent
 					+ " FP of the " + (int) owed + " owed over " + target.getName() + " - not enough, the hulls stay home");
 			return 0f;
@@ -755,6 +756,22 @@ public class ThreatFleetOrders {
 			ThreatReturns.settle(f, base, false);
 			if (!ThreatReturns.kept(f)) f.despawn();
 		}
+	}
+
+	/**
+	 * WAR WANTS (the user, 2026-10-20): the fuel and supplies a relief of {@code shortFP}
+	 * more points would have drawn at the base, less what the base holds above its floor -
+	 * noted as the faction's want (ThreatFactionStock.noteShort) so the core build answers
+	 * it with a producer, a conversion or scrapped hulls rather than reading the draw that
+	 * never happened.
+	 */
+	protected static void noteReliefShort(FactionAPI faction, MarketAPI base, MarketAPI target, float shortFP) {
+		if (faction == null || base == null || target == null || shortFP <= 0f) return;
+		float[] wants = sortieWants(base, shortFP, target.getLocationInHyperspace());
+		ThreatFactionStock.noteShort(faction.getId(), Commodities.FUEL,
+				wants[0] - ThreatReserves.available(base, Commodities.FUEL));
+		ThreatFactionStock.noteShort(faction.getId(), Commodities.SUPPLIES,
+				wants[1] - ThreatReserves.available(base, Commodities.SUPPLIES));
 	}
 
 	/**
@@ -992,6 +1009,9 @@ public class ThreatFleetOrders {
 				&& (fuel < wants[0] - 0.5f || supplies < wants[1] - 0.5f || hold < holdWant - 0.5f)) {
 			if (fuel > 0f) ThreatReserves.deposit(base.getId(), Commodities.FUEL, fuel);
 			if (supplies + hold > 0f) ThreatReserves.deposit(base.getId(), Commodities.SUPPLIES, supplies + hold);
+			// WAR WANTS (2026-10-20): what the order asked and the base could not pay
+			ThreatFactionStock.noteShort(faction.getId(), Commodities.FUEL, wants[0] - fuel);
+			ThreatFactionStock.noteShort(faction.getId(), Commodities.SUPPLIES, wants[1] + holdWant - supplies - hold);
 			ThreatIncConfig.log("Order held at " + base.getName() + ": "
 					+ (int) fuel + " of " + (int) wants[0] + " fuel, " + (int) supplies + " of " + (int) wants[1]
 					+ " supplies, hold " + (int) hold + " of " + (int) holdWant + " - stays home until the base is staged");

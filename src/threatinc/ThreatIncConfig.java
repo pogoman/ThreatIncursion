@@ -640,6 +640,12 @@ public class ThreatIncConfig {
 	/** YARDS FIRST (the user, 2026-10-19): the wartime economy builds hull production before anything else - a Heavy Industry at every core colony that can site one, then Orbital Works, unpaced, and while one is held for its price no kit sails, no siege is provisioned and nothing else is built (ThreatCoreBuild.yardStep, ThreatFactionStock.yardWant). */
 	public static boolean yardsFirst()               { return b("threatinc_yardsFirst", true); }
 	public static boolean marineStep()               { return b("threatinc_marineStep", true); }
+	/** WAR WANTS (2026-10-20): refused fuel and supplies wants are noted and read as shortage (ThreatFactionStock.noteShort). */
+	public static boolean warWants()                 { return b("threatinc_warWants", true); }
+	/** A human faction converts a surplus Fuel Production to the producer of its short stock (ThreatCoreBuild.convertStep). */
+	public static boolean convertSurplusHuman()      { return b("threatinc_convertSurplusHuman", true); }
+	/** Idle built hulls the supplies cannot keep are scrapped into supplies while a supplies want stands (ThreatHulls.scrapIdle). */
+	public static boolean scrapIdleHulls()           { return b("threatinc_scrapIdleHulls", true); }
 	/** MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50): a marine-bound faction whose hulls out-cover its marines raises the shortfall from its supplies. */
 	public static boolean marineLevy()               { return b("threatinc_marineLevy", true); }
 	/** Supplies one levied marine costs (vanilla: marines 200 credits, supplies 100). */

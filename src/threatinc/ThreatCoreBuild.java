@@ -115,7 +115,7 @@ public class ThreatCoreBuild {
 			// HOME FIRST (the user, 2026-10-20): while the hold stands the core build is the faction's whole
 			// war - every site a pass, no 30-day throttle, an unpaid step holds its price (holdMilitary)
 			if (homeFirstHolds(fid)) {
-				answerShortage(fid, sites);
+				if (!answerShortage(fid, sites)) convertStep(fid, sites);
 				for (MarketAPI m : sites) {
 					String[] next = militaryNext(m);
 					if (next == null) continue;
@@ -126,6 +126,7 @@ public class ThreatCoreBuild {
 			}
 			if (!mayStart(fid)) continue;
 			if (answerShortage(fid, sites)) continue;
+			if (convertStep(fid, sites)) continue;
 			for (MarketAPI m : sites) {
 				if (militaryStep(m)) {
 					started(fid);
@@ -225,6 +226,60 @@ public class ThreatCoreBuild {
 						+ (int) (cost - funds) + " supplies for a " + producer + " (" + fid + " " + want + " short)");
 			}
 			return false;
+		}
+		return false;
+	}
+
+	/**
+	 * WAR WANTS - THE CONVERSION (the user, 2026-10-20: "too many hulls? recycle and rebuild something else ...
+	 * dont the threat literally already do this"; the swarm's ThreatColonyManager.convertSurplus): when the
+	 * faction's shortest stock is supplies or hulls and no core colony has a slot for their producer, a Fuel
+	 * Production the fuel surplus can spare (ThreatFactionStock.surplusProducer: production without it still
+	 * covers the demand) on the largest colony that can import a yard's inputs is torn down and Heavy Industry
+	 * started in its place - paid, or its price held there. One conversion a faction a SHORT_DAYS
+	 * (mayConvert); never a plant with a special item or an AI core, never a yard (yards first). Until hw244 the
+	 * surplus half of the economy existed only for the swarm: ThreatFactionStock.surplusProducer / mayConvert
+	 * had no caller. Knob threatinc_convertSurplusHuman. True when a conversion started or is held.
+	 */
+	protected static boolean convertStep(String fid, List<MarketAPI> sites) {
+		if (!ThreatIncConfig.convertSurplusHuman() || !ThreatFactionStock.mayConvert(fid)) return false;
+		String want = ThreatFactionStock.shortest(fid);
+		if (want == null || Commodities.FUEL.equals(want)) return false;
+		String producer = ThreatFactionStock.producerId(want);
+		for (MarketAPI m : sites) {
+			// a free slot anywhere: answerShortage's job, nothing to tear down
+			if (ThreatFrontlines.wantsProducer(m, producer) && Misc.getNumIndustries(m) < Misc.getMaxIndustries(m)
+					&& ThreatFrontlines.canSupplyProducer(m, m.getSize(), producer)) return false;
+		}
+		for (MarketAPI m : sites) {
+			if (!ThreatFrontlines.wantsProducer(m, producer)) continue;
+			Industry plant = m.getIndustry(com.fs.starfarer.api.impl.campaign.ids.Industries.FUELPROD);
+			if (plant == null || plant.isBuilding() || plant.isUpgrading()) continue;
+			if (plant.getSpecialItem() != null || plant.getAICoreId() != null) continue;
+			if (ThreatGroundFronts.hasFront(m)) continue;
+			if (!ThreatFactionStock.surplusProducer(m, Commodities.FUEL)) continue;
+			if (!ThreatFrontlines.canSupplyProducer(m, m.getSize(), producer)) continue;
+			float cost = ThreatBuildCost.supplies(producer), funds = ThreatFrontlines.buildFunds(m);
+			if (cost > funds) {
+				ThreatFactionStock.hold(m, producer, cost - funds);
+				ThreatIncConfig.logQuiet("cb_convert_" + m.getId(), "Core build: " + m.getName() + " holds "
+						+ (int) (cost - funds) + " supplies to convert its Fuel Production to a " + producer + " (" + fid + " " + want + " short)");
+				return true;
+			}
+			ThreatFactionStock.release(m);
+			m.removeIndustry(com.fs.starfarer.api.impl.campaign.ids.Industries.FUELPROD, null, false);
+			if (ThreatFrontlines.startNew(m, producer)) {
+				ThreatFactionStock.answered(fid, want);
+				ThreatFactionStock.converted(fid);
+				started(fid);
+				ThreatIncConfig.log("Core build: " + m.getName() + " converts its Fuel Production to a " + producer + " - " + fid
+						+ " " + want + " short, fuel " + String.format("%.1f", ThreatFactionStock.months(fid, Commodities.FUEL))
+						+ " months banked: " + ThreatFactionStock.describe(fid));
+				return true;
+			}
+			// the plant is gone and the yard did not start (payBuild refused after buildFunds said yes): hold its price
+			ThreatFactionStock.hold(m, producer, cost);
+			return true;
 		}
 		return false;
 	}
