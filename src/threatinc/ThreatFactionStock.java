@@ -213,7 +213,9 @@ public class ThreatFactionStock {
 		if (f == null || !ThreatHulls.enabled()) return false;
 		float debt = ThreatHulls.debt(f);
 		if (debt > 0f && debt > ThreatHulls.productionFP(f) * buildDays(Commodities.SUPPLIES) / 30f) return true;
-		return ThreatHulls.freeFP(f) <= 0f && ThreatHulls.standingFP(f) > 0f;
+		if (ThreatHulls.freeFP(f) <= 0f && ThreatHulls.standingFP(f) > 0f) return true;
+		// WAR WANTS (2026-10-20): a hull want the war refused (a siege or relief, noteHullShort) above the free pool
+		return hullShortFP(f) > ThreatHulls.freeFP(f);
 	}
 
 	/**

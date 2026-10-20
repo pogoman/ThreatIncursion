@@ -768,6 +768,11 @@ public class ThreatFleetOrders {
 	protected static void noteReliefShort(FactionAPI faction, MarketAPI base, MarketAPI target, float shortFP) {
 		if (faction == null || base == null || target == null || shortFP <= 0f) return;
 		float[] wants = sortieWants(base, shortFP, target.getLocationInHyperspace());
+		// the hulls too (hw246: the Hegemony owed 8,112 over Chicomoztoc with 1,373 free): a want above the free
+		// pool is a hull shortage the yards answer (ThreatFactionStock.hullsShort reads hullShortFP)
+		if (ThreatHulls.enabled() && ThreatHulls.freeFP(faction.getId()) < shortFP) {
+			ThreatFactionStock.noteHullShort(faction.getId(), shortFP - ThreatHulls.freeFP(faction.getId()));
+		}
 		ThreatFactionStock.noteShort(faction.getId(), Commodities.FUEL,
 				wants[0] - ThreatReserves.available(base, Commodities.FUEL));
 		ThreatFactionStock.noteShort(faction.getId(), Commodities.SUPPLIES,

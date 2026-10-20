@@ -487,8 +487,12 @@ public class ThreatCoalition {
 		List<Sender> out = new ArrayList<Sender>();
 		org.lwjgl.util.vector.Vector2f loc = market.getLocationInHyperspace();
 		total[0] = ThreatFleetOrders.guardPointsFor(market.getId());
+		// hw246 (2026-10-20): a base's payable points are capped at its FACTION's free hulls (ThreatHulls.cap), so
+		// every base of one faction promised the same hulls - 'hegemony 1429 of 1373 FP from Chicomoztoc, 0 of 1373
+		// from Coatl, 0 of 1341 from Ancyra', fieldable 12,221 on 1,373 free. The pool is counted once a faction.
+		java.util.Map<String, Float> hullsLeft = new java.util.HashMap<String, Float>();
 		if (ownerBase != null) {
-			float can = ThreatFleetOrders.sortieFirstPayableFP(ownerBase, loc);
+			float can = capHulls(hullsLeft, owner.getId(), ThreatFleetOrders.sortieFirstPayableFP(ownerBase, loc));
 			if (can >= 1f) { out.add(new Sender(owner, ownerBase, can, -1f)); total[0] += can; }
 		}
 		// HOME UNDER ATTACK (the user, 2026-10-20: "the fleets are supposed to defend homeworlds first"): every
@@ -499,7 +503,7 @@ public class ThreatCoalition {
 			for (MarketAPI b : ThreatReserves.marketsOf(owner.getId())) {
 				if (b == ownerBase || b.getStarSystem() == null || !IncursionManager.isBase(b)) continue;
 				if (!ThreatFleetOrders.canProvisionRelief(b, market)) continue;
-				float can = ThreatFleetOrders.sortieFirstPayableFP(b, loc);
+				float can = capHulls(hullsLeft, owner.getId(), ThreatFleetOrders.sortieFirstPayableFP(b, loc));
 				if (can < 1f) continue;
 				more.add(new Sender(owner, b, can, Misc.getDistanceLY(b.getStarSystem().getLocation(), loc)));
 				total[0] += can;
@@ -514,7 +518,7 @@ public class ThreatCoalition {
 			if (p == null || p.isPlayerFaction()) continue;
 			MarketAPI base = ThreatFleetOrders.pickReliefBase(p, market);
 			if (base == null) continue;
-			float can = ThreatFleetOrders.sortieFirstPayableFP(base, loc);
+			float can = capHulls(hullsLeft, pid, ThreatFleetOrders.sortieFirstPayableFP(base, loc));
 			if (can < 1f) continue;
 			float d = base.getStarSystem() == null ? 0f : Misc.getDistanceLY(base.getStarSystem().getLocation(), loc);
 			partners.add(new Sender(p, base, can, d));
@@ -525,6 +529,20 @@ public class ThreatCoalition {
 		});
 		out.addAll(partners);
 		return out;
+	}
+
+	/**
+	 * A sender's payable points, no more than what is left of its faction's free hulls after the
+	 * senders before it in this joint relief ({@code left}, by faction; the whole pool when the hull
+	 * pool is off). What it takes is struck off for the next sender of the same faction.
+	 */
+	protected static float capHulls(java.util.Map<String, Float> left, String factionId, float can) {
+		if (!ThreatHulls.enabled() || factionId == null || can <= 0f) return Math.max(0f, can);
+		Float l = left.get(factionId);
+		float have = l != null ? l : ThreatHulls.freeFP(factionId);
+		float got = Math.max(0f, Math.min(can, have));
+		left.put(factionId, have - got);
+		return got;
 	}
 
 	/** Whether the owner and its partners together can field a relief that outweighs the army over the world. */
