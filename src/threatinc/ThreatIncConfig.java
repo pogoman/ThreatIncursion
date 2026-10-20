@@ -1069,6 +1069,10 @@ public class ThreatIncConfig {
 	public static float allyAidChance()       { return f("threatinc_allyAidChance"); }
 	/** Whether a faction and its partners relieve an invaded world together when none is enough alone (ThreatCoalition.jointRelief). */
 	public static boolean coalitionRelief()   { return b("threatinc_coalitionRelief", true); }
+	/** ONE BODY OR NONE (2026-10-20): a relief built short of the owed points stands down (ThreatFleetOrders.sendRelief, ThreatCoalition.jointRelief); off, it sails what was built. */
+	public static boolean reliefOneBody()     { return b("threatinc_reliefOneBody", true); }
+	/** Hull cap once a faction in joint relief (2026-10-20, ThreatCoalition.capHulls); off, every sender of a faction promises the faction's whole free pool. */
+	public static boolean coalitionHullCap()  { return b("threatinc_coalitionHullCap", true); }
 
 	// ---- escalation: grudge and alarm (docs/design-theory.md 8.1) ----
 

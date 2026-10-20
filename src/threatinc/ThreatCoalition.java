@@ -537,7 +537,7 @@ public class ThreatCoalition {
 	 * pool is off). What it takes is struck off for the next sender of the same faction.
 	 */
 	protected static float capHulls(java.util.Map<String, Float> left, String factionId, float can) {
-		if (!ThreatHulls.enabled() || factionId == null || can <= 0f) return Math.max(0f, can);
+		if (!ThreatHulls.enabled() || !ThreatIncConfig.coalitionHullCap() || factionId == null || can <= 0f) return Math.max(0f, can);
 		Float l = left.get(factionId);
 		float have = l != null ? l : ThreatHulls.freeFP(factionId);
 		float got = Math.max(0f, Math.min(can, have));
@@ -601,7 +601,7 @@ public class ThreatCoalition {
 			parts.add(new Object[] { s, fleets });
 			sent += got;
 		}
-		if (sent + 0.5f < owed) {
+		if (ThreatIncConfig.reliefOneBody() && sent + 0.5f < owed) {
 			for (Object[] p : parts) {
 				@SuppressWarnings("unchecked") List<CampaignFleetAPI> fleets = (List<CampaignFleetAPI>) p[1];
 				ThreatFleetOrders.standDownUnsailed(fleets, ((Sender) p[0]).base);

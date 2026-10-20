@@ -678,7 +678,7 @@ public class ThreatFleetOrders {
 		// of the build short of the owed points stays home - the gate above priced a paper figure. hw244a: the
 		// coalition's 'fieldable' promised 704k FP over the game and built 131k, 161 of 193 joint reliefs under
 		// half of it, and the fleets that did sail bled in at 29-356 FP against 1,300-4,600 FP swarms.
-		if (!coalitionEnough && sent > 0f && sent + 0.5f < owed) {
+		if (ThreatIncConfig.reliefOneBody() && !coalitionEnough && sent > 0f && sent + 0.5f < owed) {
 			standDownUnsailed(sailing, base);
 			noteReliefShort(faction, base, target, owed - sent);
 			ThreatIncConfig.log("Relief held at " + base.getName() + ": " + faction.getId() + " built " + (int) sent
