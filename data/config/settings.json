@@ -1425,7 +1425,7 @@
 	# a link starved frontlineStarveDays shrinks; one with no found hive within
 	# frontlineKeepLY for frontlineAbandonDays is dismantled. The enabled knob
 	# gates founding only: links already standing are kept up with it off
-	"threatinc_frontlinesEnabled": true,
+	"threatinc_frontlinesEnabled": false,  # OFF 2026-10-20 21:05 NO BASES trial hw258 (B) / hw259 (A) vs hw257 / hw256
 	"threatinc_frontlinePlanDays": 15,
 	"threatinc_frontlineLinkLY": 10,
 	"threatinc_frontlineReachLY": 10,
