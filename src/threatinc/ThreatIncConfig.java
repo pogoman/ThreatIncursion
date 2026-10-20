@@ -1073,6 +1073,10 @@ public class ThreatIncConfig {
 	public static boolean reliefOneBody()     { return b("threatinc_reliefOneBody", true); }
 	/** Hull cap once a faction in joint relief (2026-10-20, ThreatCoalition.capHulls); off, every sender of a faction promises the faction's whole free pool. */
 	public static boolean coalitionHullCap()  { return b("threatinc_coalitionHullCap", true); }
+	/** A: the partners relieve an invaded world its owner has no base to relieve from, HOME UNDER ATTACK or not (ThreatFleetOrders.planRelief). */
+	public static boolean reliefCoalitionNoBase() { return b("threatinc_reliefCoalitionNoBase", true); }
+	/** B: a willing ally's relief of an NPC world is the coalition's joint relief, not its one base's (ThreatCoalition.allyAid). */
+	public static boolean allyAidJointRelief()    { return b("threatinc_allyAidJointRelief", true); }
 
 	// ---- escalation: grudge and alarm (docs/design-theory.md 8.1) ----
 

@@ -266,6 +266,16 @@ public class ThreatCoalition {
 						if (helper == null || helper.isPlayerFaction()) continue;
 						float w = willingness(helper, needyId);
 						if (w <= 0f || random.nextFloat() >= w * chance) continue;
+						// ALLY RELIEF BY THE POOL (the user, 2026-10-20 22:30, option B): a willing ally's relief of an
+						// NPC world is the coalition's joint relief - built at every partner's base, sailed when together
+						// they outweigh the army (jointRelief) - not its one base against the whole swarm, which
+						// reliefEnough held every time once a siege had grown (hw260: 'not enough, holds' and
+						// 'cannot relieve' 40-100 a game). One attempt a poll, on the first willing ally's roll; the
+						// player's worlds keep the ally's own send below - the coalition has no player in it.
+						if (owed > 0f && ThreatIncConfig.allyAidJointRelief() && !needy.isPlayerFaction()) {
+							jointRelief(needy, market, null, owed);
+							break;
+						}
 						// relief from the nearest base that can provision it at any distance, as the
 						// owner's own (pickReliefBase, 2026-10-03); a guard against a strike keeps pickBase
 						MarketAPI base = owed > 0f ? ThreatFleetOrders.pickReliefBase(helper, market)

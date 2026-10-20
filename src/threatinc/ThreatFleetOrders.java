@@ -580,7 +580,10 @@ public class ThreatFleetOrders {
 				if (base == null) {
 					// HOME UNDER ATTACK (2026-10-20): no base of its own can provision a relief - its partners' can
 					// (ThreatCoalition.jointRelief with no owner base); hw242 refused 35-108 reliefs a game here
-					float joint = ThreatGroundFronts.homeUnderAttack(factionId)
+					// COALITION FOR THE BASE-LESS (the user, 2026-10-20 22:30, option A - Sindria under siege for a year and
+					// no one came: the Diktat's only base is the invaded world, drained): the partners are asked for every
+					// invaded world the owner cannot relieve itself, not only under HOME UNDER ATTACK (which is off)
+					float joint = ThreatGroundFronts.homeUnderAttack(factionId) || ThreatIncConfig.reliefCoalitionNoBase()
 							? ThreatCoalition.jointRelief(faction, market, null, owed) : 0f;
 					if (joint > 0f) {
 						ThreatIncConfig.log("Relief: " + factionId + " sends " + (int) joint + " FP of its partners' to invaded "

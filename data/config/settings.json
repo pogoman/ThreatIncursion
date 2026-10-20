@@ -1425,7 +1425,7 @@
 	# a link starved frontlineStarveDays shrinks; one with no found hive within
 	# frontlineKeepLY for frontlineAbandonDays is dismantled. The enabled knob
 	# gates founding only: links already standing are kept up with it off
-	"threatinc_frontlinesEnabled": false,  # OFF 2026-10-20 21:05 NO BASES trial hw258 (B) / hw259 (A) vs hw257 / hw256
+	"threatinc_frontlinesEnabled": true,  # ON again 22:45 after hw260 / hw261 (a modest shield: 115 vs 85 worlds lost over six games); LunaLib's store decides this one - NO BASES trial hw258 (B) / hw259 (A) vs hw257 / hw256
 	"threatinc_frontlinePlanDays": 15,
 	"threatinc_frontlineLinkLY": 10,
 	"threatinc_frontlineReachLY": 10,
@@ -1498,6 +1498,8 @@
 	# knobs added 19:30 for the bisect against the 10-19 build (hw254); off = sail what was built / promise the pool.
 	"threatinc_reliefOneBody": false,  # OFF 2026-10-20 19:45 bisect round 40 (hw256) vs hw255 / hw254
 	"threatinc_coalitionHullCap": true,
+	"threatinc_reliefCoalitionNoBase": true,  # A 2026-10-20 22:45 (Sindria): partners asked for every base-less invaded world
+	"threatinc_allyAidJointRelief": true,  # B 2026-10-20 22:45: an ally's relief is the joint relief, not one base vs the swarm
 	# A running siege turns home only if its lead fleet is under this fraction of the way from its base to the
 	# target system; further along it commits (the user 2026-10-20: "offence is still a form of defence and time
 	# wasted is a net loss" - hw248b recalled 17 of 19 sieges).
