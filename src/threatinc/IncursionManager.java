@@ -6234,7 +6234,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 							system != null ? system.getNameWithLowercaseTypeShort() : "hive")
 					.line("%s", why).send();
 			ThreatIncConfig.log("Home under attack: " + factionId + " recalls its siege of "
-					+ (system != null ? system.getName() : "a hive") + " - " + why);
+					+ (system != null ? system.getName() : "a hive") + " at " + (int) (progress * 100f) + "% of the way"
+					+ (purge.isSpawnedFleets() ? "" : " (unspawned)") + " - " + why);
 		}
 		return n;
 	}
