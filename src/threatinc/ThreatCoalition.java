@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Random;
 
 import com.fs.starfarer.api.Global;
+import com.fs.starfarer.api.campaign.CampaignFleetAPI;
 import com.fs.starfarer.api.campaign.FactionAPI;
 import com.fs.starfarer.api.campaign.RepLevel;
 import com.fs.starfarer.api.campaign.StarSystemAPI;
@@ -563,13 +564,39 @@ public class ThreatCoalition {
 					+ " FP against " + (int) need + " over " + market.getName() + " - not enough, holds");
 			return 0f;
 		}
+		// ONE BODY OR NONE (the user, 2026-10-20, the fleets as the marines): the joint relief is BUILT first, at
+		// every sender's base, and sails only when what was built covers the owed points; short, every fleet
+		// stands down where it was built and the hulls stay home. hw244a: 'fieldable' was a paper figure - 704k FP
+		// promised over the game, 131k built, 161 of 193 joint reliefs under half of it - and what sailed bled in
+		// at 29-356 FP against 1,300-4,600 FP swarms (Mairaath 50 fleets, Olinadu 32, Kazeron 19 and fell).
 		float sent = 0f;
-		StringBuilder who = new StringBuilder();
+		List<Object[]> parts = new ArrayList<Object[]>();
+		StringBuilder who = new StringBuilder(), paper = new StringBuilder();
 		for (Sender s : senders) {
 			if (sent >= owed) break;
-			float got = ThreatFleetOrders.sendRelief(s.faction, market, s.base, owed - sent, true);
+			List<CampaignFleetAPI> fleets = ThreatFleetOrders.buildRelief(s.faction, market, s.base, owed - sent);
+			float got = ThreatFleetOrders.reliefPoints(fleets);
+			if (paper.length() > 0) paper.append(", ");
+			paper.append(s.faction.getId()).append(' ').append((int) got).append(" of ").append((int) s.can)
+					.append(" FP from ").append(s.base.getName());
 			if (got <= 0f) continue;
+			parts.add(new Object[] { s, fleets });
 			sent += got;
+		}
+		if (sent + 0.5f < owed) {
+			for (Object[] p : parts) {
+				@SuppressWarnings("unchecked") List<CampaignFleetAPI> fleets = (List<CampaignFleetAPI>) p[1];
+				ThreatFleetOrders.standDownUnsailed(fleets, ((Sender) p[0]).base);
+			}
+			ThreatIncConfig.log("Coalition relief held: built " + (int) sent + " FP of the " + (int) owed + " owed over "
+					+ market.getName() + " (" + owner.getId() + "; army " + (int) need + ", fieldable " + (int) total[0]
+					+ " on paper): " + paper + " - not enough, the hulls stay home");
+			return 0f;
+		}
+		for (Object[] p : parts) {
+			Sender s = (Sender) p[0];
+			@SuppressWarnings("unchecked") List<CampaignFleetAPI> fleets = (List<CampaignFleetAPI>) p[1];
+			float got = ThreatFleetOrders.sailRelief(s.faction, market, s.base, fleets);
 			if (who.length() > 0) who.append(", ");
 			who.append(s.faction.getId()).append(' ').append((int) got).append(" FP from ").append(s.base.getName());
 			if (s.faction != owner) report(s.faction, owner, "Allied Relief Sails", "sends %s FP to relieve %s",

@@ -592,8 +592,9 @@ public class ThreatFleetOrders {
 							+ (int) owed + ")");
 					continue;
 				}				// (2026-10-08, coalition relief) the owner alone short of the army: the owner and its partners together
-				float sent = reliefEnough(faction, market, base) ? sendRelief(faction, market, base, owed)
-						: ThreatCoalition.jointRelief(faction, market, base, owed);
+				float sent = reliefEnough(faction, market, base) ? sendRelief(faction, market, base, owed) : 0f;
+				// the base's own build short of the owed points stood down (one body or none): the coalition's turn
+				if (sent <= 0f) sent = ThreatCoalition.jointRelief(faction, market, base, owed);
 				if (sent > 0f) {
 					ThreatIncConfig.log("Relief: " + factionId + " sends " + (int) sent + " FP from "
 							+ base.getName() + " to invaded " + market.getName() + " (owed "
@@ -671,6 +672,30 @@ public class ThreatFleetOrders {
 					+ " (" + (int) guardPointsFor(target.getId()) + " bound) - not enough, holds");
 			return 0f;
 		}
+		List<CampaignFleetAPI> sailing = buildRelief(faction, target, base, owed);
+		float sent = reliefPoints(sailing);
+		// ONE BODY OR NONE (the user, 2026-10-20, the fleets as the marines since 08:56): a relief that comes out
+		// of the build short of the owed points stays home - the gate above priced a paper figure. hw244a: the
+		// coalition's 'fieldable' promised 704k FP over the game and built 131k, 161 of 193 joint reliefs under
+		// half of it, and the fleets that did sail bled in at 29-356 FP against 1,300-4,600 FP swarms.
+		if (!coalitionEnough && sent > 0f && sent + 0.5f < owed) {
+			standDownUnsailed(sailing, base);
+			ThreatIncConfig.log("Relief held at " + base.getName() + ": " + faction.getId() + " built " + (int) sent
+					+ " FP of the " + (int) owed + " owed over " + target.getName() + " - not enough, the hulls stay home");
+			return 0f;
+		}
+		return sailRelief(faction, target, base, sailing);
+	}
+
+	/**
+	 * The sendRelief build: fleets at the base until {@code owed} points or the depot
+	 * cannot provision another, folded into as few as softenMergeMaxShips allows. Built
+	 * and provisioned, not yet ordered anywhere: {@link #sailRelief} or
+	 * {@link #standDownUnsailed} takes them.
+	 */
+	protected static List<CampaignFleetAPI> buildRelief(FactionAPI faction, MarketAPI target, MarketAPI base, float owed) {
+		List<CampaignFleetAPI> sailing = new ArrayList<CampaignFleetAPI>();
+		if (faction == null || target == null || base == null || owed <= 0f) return sailing;
 		List<CampaignFleetAPI> built = new ArrayList<CampaignFleetAPI>();
 		float sent = 0f;
 		// ends: every fleet adds at least a point toward a finite owed and draws
@@ -696,9 +721,8 @@ public class ThreatFleetOrders {
 			built.add(fleet);
 			sent += fleet.getFleetPoints();
 		}
-		if (built.isEmpty()) return 0f;
+		if (built.isEmpty()) return sailing;
 		CampaignFleetAPI lead = built.get(0);
-		List<CampaignFleetAPI> sailing = new ArrayList<CampaignFleetAPI>();
 		sailing.add(lead);
 		for (int i = 1; i < built.size(); i++) {
 			CampaignFleetAPI f = built.get(i);
@@ -709,6 +733,36 @@ public class ThreatFleetOrders {
 				sailing.add(f);
 			}
 		}
+		return sailing;
+	}
+
+	/** Fleet points of built relief fleets ({@link #buildRelief}). */
+	protected static float reliefPoints(List<CampaignFleetAPI> fleets) {
+		float sum = 0f;
+		if (fleets != null) for (CampaignFleetAPI f : fleets) if (f != null) sum += f.getFleetPoints();
+		return sum;
+	}
+
+	/**
+	 * Built relief fleets that do not sail (one body or none): the voyage's fuel and
+	 * supplies, the hold and the hulls go back to the base and the fleets are gone.
+	 */
+	protected static void standDownUnsailed(List<CampaignFleetAPI> fleets, MarketAPI base) {
+		if (fleets == null || base == null) return;
+		for (CampaignFleetAPI f : fleets) {
+			if (f == null) continue;
+			ThreatSoftening.refundShort(f, base, 1f);
+			ThreatReturns.settle(f, base, false);
+			if (!ThreatReturns.kept(f)) f.despawn();
+		}
+	}
+
+	/**
+	 * Sails built relief fleets ({@link #buildRelief}) from the base to the invaded
+	 * target: the orders and the ledger. Returns the points sent.
+	 */
+	protected static float sailRelief(FactionAPI faction, MarketAPI target, MarketAPI base, List<CampaignFleetAPI> sailing) {
+		if (faction == null || target == null || base == null || sailing == null || sailing.isEmpty()) return 0f;
 		// (2026-10-03, the user: relief holds the orbit until the invaders are
 		// defeated) with no term it stays until the poll stands it down
 		// (ThreatGroundFronts.reliefDone) and goes home on the tracked leg
@@ -731,7 +785,7 @@ public class ThreatFleetOrders {
 			o.relief = true;
 			if (!faction.getId().equals(target.getFactionId())) o.recipientFactionId = target.getFactionId();
 		}
-		return sent;
+		return reliefPoints(sailing);
 	}
 
 	/**
