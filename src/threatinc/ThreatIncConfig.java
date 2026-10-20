@@ -652,12 +652,14 @@ public class ThreatIncConfig {
 	public static float marineLevySuppliesEach()     { return f("threatinc_marineLevySuppliesEach"); }
 	/** Days a levy trains before its marines stand at the colonies that paid. */
 	public static float marineLevyDays()             { return f("threatinc_marineLevyDays"); }
-	/** HOME FIRST (2026-10-20): a mobilised faction holds CONSOLIDATE, founds nothing and plans no play until its core colonies' military ladders and yards are complete. */
-	public static boolean homeFirst()                { return b("threatinc_homeFirst", true); }
+	/** HOME FIRST (2026-10-20): a mobilised faction holds CONSOLIDATE, founds nothing and plans no play until its core colonies' military ladders and yards are complete. OFF since 13:10 (the user: the offence waits on worlds under attack, not on structures - HOME UNDER ATTACK is the gate). */
+	public static boolean homeFirst()                { return b("threatinc_homeFirst", false); }
 	/** Days after which an unfinished HOME FIRST hold ends anyway (0 = never): a deadlock hatch, logged. */
 	public static float homeFirstMaxDays()           { return f("threatinc_homeFirstMaxDays"); }
 	/** HOME UNDER ATTACK (2026-10-20): while an own world is under a Threat army the faction relieves it before any staging convoy, play or front run, every colony giving down to its floor (ThreatGroundFronts.homeUnderAttack). */
 	public static boolean homeUnderAttack()          { return b("threatinc_homeUnderAttack", true); }
+	/** A siege this far (0-1) along its voyage from base to target commits when home comes under attack; under it, it turns home (the user 2026-10-20: "offence is still a form of defence and time wasted is a net loss"). */
+	public static float recallSiegeMaxProgress()     { return f("threatinc_recallSiegeMaxProgress"); }
 	/** A marine relief sails only when the donors in reach can meet the world's whole need in one body this pass (hw66's rule for hulls; hw240c Jangala took 19 convoys of 100-500 marines and fell). */
 	public static boolean reliefOnlyIfEnough()       { return b("threatinc_reliefMarinesOnlyIfEnough", true); }
 	public static boolean alliedStaging()            { return b("threatinc_alliedStaging", true); }

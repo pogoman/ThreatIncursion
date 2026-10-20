@@ -6205,17 +6205,27 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * refundOnReturn / ThreatReturns) for the relief that breaks the orbit over the invaded world. Called each
 	 * relief pass while ThreatGroundFronts.homeUnderAttack holds; an expedition already ending is left alone.
 	 * hw242: the humans' sieges sailed on (444-1,285 a game) while their worlds fell under a swarm orbit the relief
-	 * fleets were too few to break.
+	 * fleets were too few to break. Only a siege that has just sailed turns home: one recallSiegeMaxProgress or
+	 * more of the way to its target commits (the user 2026-10-20: "offence is still a form of defence and time
+	 * wasted is a net loss" - hw248b recalled 17 of its 19 sieges), logged quietly once a siege.
 	 */
 	public static int recallSiegesOf(String factionId, String why) {
 		if (factionId == null) return 0;
 		int n = 0;
+		float commitAt = ThreatIncConfig.recallSiegeMaxProgress();
 		for (Object curr : getPurgeList()) {
 			if (!(curr instanceof ThreatPurgeFGI)) continue;
 			ThreatPurgeFGI purge = (ThreatPurgeFGI) curr;
 			if (purge.isEnded() || purge.isEnding() || purge.isAborted() || purge.getFaction() == null) continue;
 			if (!factionId.equals(purge.getFaction().getId())) continue;
 			com.fs.starfarer.api.campaign.StarSystemAPI system = purge.targetSystem();
+			float progress = siegeProgress(purge);
+			if (progress >= commitAt) {
+				ThreatIncConfig.logQuiet("siege-commits:" + factionId + ":" + (system != null ? system.getId() : "hive"),
+						"Home under attack: " + factionId + " commits its siege of "
+						+ (system != null ? system.getName() : "a hive") + " - " + (int) (progress * 100f) + "% of the way");
+				continue;
+			}
 			purge.setFailedButNotDefeated(true);
 			purge.abort();
 			n++;
@@ -6227,6 +6237,31 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					+ (system != null ? system.getName() : "a hive") + " - " + why);
 		}
 		return n;
+	}
+
+	/**
+	 * How far along its voyage a siege expedition is, 0 (nothing spawned, or still at its base) to 1 (a fleet in
+	 * the target system), by its lead fleet's hyperspace position between the base and the target system.
+	 */
+	static float siegeProgress(ThreatPurgeFGI purge) {
+		com.fs.starfarer.api.campaign.StarSystemAPI system = purge.targetSystem();
+		if (system == null || !purge.isSpawnedFleets() || purge.getFleets() == null) return 0f;
+		MarketAPI base = purge.sourceBase();
+		org.lwjgl.util.vector.Vector2f from = base != null ? base.getLocationInHyperspace() : null;
+		org.lwjgl.util.vector.Vector2f to = system.getLocation();
+		if (from == null || to == null) return 0f;
+		float whole = Misc.getDistance(from, to);
+		float best = 0f;
+		for (CampaignFleetAPI fleet : purge.getFleets()) {
+			if (fleet == null || !fleet.isAlive()) continue;
+			if (fleet.getContainingLocation() == system) return 1f;
+			if (whole <= 1f) return 1f;
+			org.lwjgl.util.vector.Vector2f at = fleet.getLocationInHyperspace();
+			if (at == null) continue;
+			float p = 1f - Misc.getDistance(at, to) / whole;
+			best = Math.max(best, Math.max(0f, Math.min(1f, p)));
+		}
+		return best;
 	}
 
 	/** Factions with a siege expedition still running against a colony of the system. */
