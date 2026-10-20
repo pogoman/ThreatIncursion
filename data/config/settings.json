@@ -1492,7 +1492,7 @@
 	# HOME UNDER ATTACK (2026-10-20): while an own world has a Threat army on it the faction's marine relief comes
 	# first - before staging convoys, plays and front runs - and every colony gives down to its floor, staging
 	# commitments included. reliefMarinesOnlyIfEnough: the relief sails only as one body that meets the whole need.
-	"threatinc_homeUnderAttack": true,
+	"threatinc_homeUnderAttack": false,  # OFF 2026-10-20 15:35 for the clean comparison hw252/hw253 vs striking hw237/hw238 (the user: "yes try that")
 	"threatinc_reliefMarinesOnlyIfEnough": true,
 	# A running siege turns home only if its lead fleet is under this fraction of the way from its base to the
 	# target system; further along it commits (the user 2026-10-20: "offence is still a form of defence and time
