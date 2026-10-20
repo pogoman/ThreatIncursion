@@ -1466,9 +1466,9 @@
 	# swarm's convertSurplus); built hulls at home beyond what the supplies keep are scrapped into supplies while a
 	# supplies want stands (the swarm's recycleForUpkeep, 0.8 of the deposit). hw244a: the Persean League held
 	# 17,461 FP of hulls free with its bases dry and its shortage read only what was drawn - never short
-	"threatinc_warWants": true,
-	"threatinc_convertSurplusHuman": true,
-	"threatinc_scrapIdleHulls": true,
+	"threatinc_warWants": false,  # OFF 2026-10-20 19:15 bisect round 39 (hw255) vs hw254
+	"threatinc_convertSurplusHuman": false,  # OFF 2026-10-20 19:15 bisect round 39 (hw255) vs hw254
+	"threatinc_scrapIdleHulls": false,  # OFF 2026-10-20 19:15 bisect round 39 (hw255) vs hw254
 	# MARINES FOLLOW THE WAR FOOTING (the user, 2026-10-19 18:50, "do option 1 and 3": "equally short on hulls as
 	# marines, both in balance"). hw231a: the Hegemony's ladder took its marine income 360 -> 836 a month while a
 	# landing's want rose 2,666 -> 3,309, and 16.8k of 19.8k FP of hulls sat free on 17k supplies a month of upkeep.
@@ -1493,7 +1493,7 @@
 	# first - before staging convoys, plays and front runs - and every colony gives down to its floor, staging
 	# commitments included. reliefMarinesOnlyIfEnough: the relief sails only as one body that meets the whole need.
 	"threatinc_homeUnderAttack": false,  # OFF 2026-10-20 15:35 for the clean comparison hw252/hw253 vs striking hw237/hw238 (the user: "yes try that")
-	"threatinc_reliefMarinesOnlyIfEnough": true,
+	"threatinc_reliefMarinesOnlyIfEnough": false,  # OFF 2026-10-20 19:15 bisect round 39 (hw255) vs hw254
 	# A running siege turns home only if its lead fleet is under this fraction of the way from its base to the
 	# target system; further along it commits (the user 2026-10-20: "offence is still a form of defence and time
 	# wasted is a net loss" - hw248b recalled 17 of 19 sieges).
