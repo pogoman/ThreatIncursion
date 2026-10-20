@@ -1401,7 +1401,15 @@ public class ThreatConvoys {
 			// and the armaments its defenders burn (2026-10-17), beside the marines
 			float armsNeed = ThreatGroundFronts.defenderArmsNeed(besieged) - atSea[1];
 			if (need < FRONT_RUN_MIN_MARINES && armsNeed < RELIEF_MIN_ARMS) continue;
-			final Map<MarketAPI, Float> spares = new HashMap<MarketAPI, Float>();
+			// HOME UNDER ATTACK (the user, 2026-10-20): while the swarm holds the orbit the marines wait at HOME - a
+			// convoy sent now only waits at the jump-point and turns back (hw242: Yama got 0 of 2,891); the fleets
+			// break the orbit first (ThreatFleetOrders.planRelief), then the convoys run in
+			if (ThreatIncConfig.homeUnderAttack() && ThreatBlockade.penalty(besieged) > 0f) {
+				ThreatIncConfig.logQuiet("reliefblockade:" + besieged.getId(), "Relief convoy waits at home: " + faction.getId()
+						+ " cannot run " + (int) need + " marines into " + besieged.getName()
+						+ " while the Threat holds its orbit - the fleets must clear it first");
+				continue;
+			}			final Map<MarketAPI, Float> spares = new HashMap<MarketAPI, Float>();
 			for (MarketAPI d : markets) {
 				if (d == besieged || d.getStarSystem() == null || d.getPrimaryEntity() == null) continue;
 				if (Misc.getDistanceLY(d.getStarSystem().getLocation(),
@@ -3268,8 +3276,18 @@ public class ThreatConvoys {
 			c.waitSinceTimestamp = now;
 			ThreatIncConfig.log("Convoy holding off " + base.name() + ": blockaded by the Threat ("
 					+ c.factionId + " " + c.fromName() + " -> " + c.toName() + ")");
-		} else if (Global.getSector().getClock().getElapsedDaysSince(c.waitSinceTimestamp)
+		} else if (ThreatIncConfig.homeUnderAttack() && ThreatGroundFronts.hasFront(base.market)
+				&& base.market.getFactionId() != null
+				&& !base.market.getFactionId().equals(c.recipientFactionId != null ? c.recipientFactionId : c.factionId)) {
+			// the world fell while the convoy waited: its marines go home, not to the swarm (2026-10-20)
+			ThreatIncConfig.log("Convoy turns home from " + base.name() + ": the world has fallen while it waited");
+			returnHome(c);
+			return true;
+		} else if (!(ThreatIncConfig.homeUnderAttack() && ThreatGroundFronts.hasFront(base.market))
+				&& Global.getSector().getClock().getElapsedDaysSince(c.waitSinceTimestamp)
 				> ThreatIncConfig.convoyBlockadeWaitDays()) {
+			// (a relief to an invaded own world never gives up - HOME UNDER ATTACK, 2026-10-20 - it waits for the
+			// fleets to clear the orbit; every other convoy turns home after convoyBlockadeWaitDays)
 			ThreatIncConfig.log("Convoy gave up at " + base.name() + ": still blockaded after "
 					+ (int) ThreatIncConfig.convoyBlockadeWaitDays() + " days");
 			returnHome(c);

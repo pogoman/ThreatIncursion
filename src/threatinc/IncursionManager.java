@@ -1688,6 +1688,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				// one of the faction's own invaded worlds is owed relief it can send
 				if (ThreatFleetOrders.reliefOwed(faction)) continue;
 				// consolidating, only a spoiling blow at a system facing it
+				// HOME UNDER ATTACK (the user, 2026-10-20): no siege sails while an own world is under a Threat army
+				if (ThreatGroundFronts.homeUnderAttack(faction.getId())) continue;
 				if (!ThreatFactionStance.siegeAllowed(faction, system)) continue;
 				// ONE sizing (siegeTargets + siegeSizesFor) for the launch, the hunting gate
 				// (hasSiegeableHive) and the convoy planner (ThreatConvoys.stagingTargets): a base
@@ -2192,6 +2194,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (siegeBaseFor(system) != base) continue;
 			// a siege its stance forbids (CONSOLIDATE, a system not facing it) bars
 			// no hunt: tryPurgeBombardments will not sail it (review, 2026-10-01)
+			// HOME UNDER ATTACK (the user, 2026-10-20): no siege sails while an own world is under a Threat army
+			if (ThreatGroundFronts.homeUnderAttack(faction.getId())) continue;
 			if (!ThreatFactionStance.siegeAllowed(faction, system)) continue;
 			// worlds its own running siege has booked are left out by siegeTargets
 			java.util.List<MarketAPI> targets = siegeTargets(base, faction, system);
@@ -6179,6 +6183,36 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			ThreatIncConfig.log("Strike recalled in preparation (" + cause + "): staged from "
 					+ marketName);
 		}
+	}
+
+	/**
+	 * HOME UNDER ATTACK (the user, 2026-10-20: "the fleets are supposed to defend homeworlds first"): every siege
+	 * expedition the faction has running turns home - its hulls return to the pool on arrival (ThreatPurgeFGI
+	 * refundOnReturn / ThreatReturns) for the relief that breaks the orbit over the invaded world. Called each
+	 * relief pass while ThreatGroundFronts.homeUnderAttack holds; an expedition already ending is left alone.
+	 * hw242: the humans' sieges sailed on (444-1,285 a game) while their worlds fell under a swarm orbit the relief
+	 * fleets were too few to break.
+	 */
+	public static int recallSiegesOf(String factionId, String why) {
+		if (factionId == null) return 0;
+		int n = 0;
+		for (Object curr : getPurgeList()) {
+			if (!(curr instanceof ThreatPurgeFGI)) continue;
+			ThreatPurgeFGI purge = (ThreatPurgeFGI) curr;
+			if (purge.isEnded() || purge.isEnding() || purge.isAborted() || purge.getFaction() == null) continue;
+			if (!factionId.equals(purge.getFaction().getId())) continue;
+			com.fs.starfarer.api.campaign.StarSystemAPI system = purge.targetSystem();
+			purge.setFailedButNotDefeated(true);
+			purge.abort();
+			n++;
+			ThreatNotice.titled("Siege Recalled").icon(purge.getFaction())
+					.line("%s siege of the %s turns home.", ThreatNotice.faction(purge.getFaction()),
+							system != null ? system.getNameWithLowercaseTypeShort() : "hive")
+					.line("%s", why).send();
+			ThreatIncConfig.log("Home under attack: " + factionId + " recalls its siege of "
+					+ (system != null ? system.getName() : "a hive") + " - " + why);
+		}
+		return n;
 	}
 
 	/** Factions with a siege expedition still running against a colony of the system. */

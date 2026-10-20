@@ -834,6 +834,13 @@ public class ThreatPlays {
 			end(pl, NEUTRAL, "its council is off", today);
 			return;
 		}
+		// HOME UNDER ATTACK (the user, 2026-10-20: "the fleets are supposed to defend homeworlds first"): a play
+		// under way stands down and its forces come home; one not yet under way is held (below)
+		if (ThreatGroundFronts.homeUnderAttack(pl.factionId) && !pausable(pl)) {
+			standDownForces(pl, "home under attack");
+			end(pl, NEUTRAL, "home under attack - its forces come home to defend the invaded worlds", today);
+			return;
+		}
 		// a start that failed half-way (an error before its first phase) never runs
 		if (pl.phase == null) {
 			end(pl, NEUTRAL, "it never started", today);

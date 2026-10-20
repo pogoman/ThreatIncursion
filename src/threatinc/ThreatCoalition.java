@@ -490,7 +490,24 @@ public class ThreatCoalition {
 			float can = ThreatFleetOrders.sortieFirstPayableFP(ownerBase, loc);
 			if (can >= 1f) { out.add(new Sender(owner, ownerBase, can, -1f)); total[0] += can; }
 		}
-		List<Sender> partners = new ArrayList<Sender>();
+		// HOME UNDER ATTACK (the user, 2026-10-20: "the fleets are supposed to defend homeworlds first"): every
+		// other base of the owner that can provision a relief sends too, nearest first - one base alone was the
+		// relief's whole measure (hw242: 'not enough, holds' 24-90 times a game while the faction's other bases sat)
+		if (ThreatGroundFronts.homeUnderAttack(owner.getId())) {
+			List<Sender> more = new ArrayList<Sender>();
+			for (MarketAPI b : ThreatReserves.marketsOf(owner.getId())) {
+				if (b == ownerBase || b.getStarSystem() == null || !IncursionManager.isBase(b)) continue;
+				if (!ThreatFleetOrders.canProvisionRelief(b, market)) continue;
+				float can = ThreatFleetOrders.sortieFirstPayableFP(b, loc);
+				if (can < 1f) continue;
+				more.add(new Sender(owner, b, can, Misc.getDistanceLY(b.getStarSystem().getLocation(), loc)));
+				total[0] += can;
+			}
+			java.util.Collections.sort(more, new java.util.Comparator<Sender>() {
+				public int compare(Sender a, Sender b) { return Float.compare(a.dist, b.dist); }
+			});
+			out.addAll(more);
+		}		List<Sender> partners = new ArrayList<Sender>();
 		for (String pid : coalition(owner.getId())) {
 			FactionAPI p = Global.getSector().getFaction(pid);
 			if (p == null || p.isPlayerFaction()) continue;

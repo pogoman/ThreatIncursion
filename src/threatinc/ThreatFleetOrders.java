@@ -562,6 +562,10 @@ public class ThreatFleetOrders {
 		for (String factionId : ThreatWarState.warFactionIds()) {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
 			if (faction == null || faction.isPlayerFaction()) continue;
+			// HOME UNDER ATTACK (the user, 2026-10-20): the sieges come home - the navy defends the home worlds first
+			if (ThreatGroundFronts.homeUnderAttack(factionId)) {
+				IncursionManager.recallSiegesOf(factionId, "The fleets come home to defend the invaded worlds");
+			}
 			for (MarketAPI market : ThreatReserves.marketsOf(factionId)) {
 				if (market.getPrimaryEntity() == null) continue;
 				if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(market.getId()))) {
@@ -574,12 +578,20 @@ public class ThreatFleetOrders {
 				if (owed <= 0f) continue;
 				MarketAPI base = pickReliefBase(faction, market);
 				if (base == null) {
+					// HOME UNDER ATTACK (2026-10-20): no base of its own can provision a relief - its partners' can
+					// (ThreatCoalition.jointRelief with no owner base); hw242 refused 35-108 reliefs a game here
+					float joint = ThreatGroundFronts.homeUnderAttack(factionId)
+							? ThreatCoalition.jointRelief(faction, market, null, owed) : 0f;
+					if (joint > 0f) {
+						ThreatIncConfig.log("Relief: " + factionId + " sends " + (int) joint + " FP of its partners' to invaded "
+								+ market.getName() + " (owed " + (int) owed + "; no base of its own can provision it)");
+						continue;
+					}
 					ThreatIncConfig.logQuiet("relief-none:" + market.getId(), "Relief: " + factionId
 							+ " cannot relieve invaded " + market.getName() + " - no base can provision it (owed "
 							+ (int) owed + ")");
 					continue;
-				}
-				// (2026-10-08, coalition relief) the owner alone short of the army: the owner and its partners together
+				}				// (2026-10-08, coalition relief) the owner alone short of the army: the owner and its partners together
 				float sent = reliefEnough(faction, market, base) ? sendRelief(faction, market, base, owed)
 						: ThreatCoalition.jointRelief(faction, market, base, owed);
 				if (sent > 0f) {
