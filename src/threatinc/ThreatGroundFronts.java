@@ -5450,6 +5450,32 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
+	 * HOME UNDER ATTACK (the user, 2026-10-20, after hw240c: "take care of your own back yard first before thinking
+	 * of leaving"): the faction's own worlds with a Threat army on the surface - the colonies whose relief outranks
+	 * every staging convoy, play and front run while one stands ({@link #homeUnderAttack}).
+	 */
+	public static List<MarketAPI> invadedWorlds(String factionId) {
+		List<MarketAPI> out = new ArrayList<MarketAPI>();
+		if (factionId == null) return out;
+		for (MarketAPI m : ThreatReserves.marketsOf(factionId)) {
+			if (m.getPrimaryEntity() == null || isHiveTarget(m)) continue;
+			if (isThreatOwned(getFront(m.getId()))) out.add(m);
+		}
+		return out;
+	}
+
+	/**
+	 * Whether the faction has an own world under a Threat army (knob homeUnderAttack): then ThreatConvoys relieves
+	 * it first and stages nothing, every colony gives down to its floor (ThreatConvoys.reliefSpare) and ThreatPlays
+	 * starts and stages no play. hw240c: the Hegemony held 9,326 marines at Ragnar Complex, committed to its own
+	 * landing plays, while Jangala and Yama fell with 200-370 each.
+	 */
+	public static boolean homeUnderAttack(String factionId) {
+		return ThreatIncConfig.homeUnderAttack() && !invadedWorlds(factionId).isEmpty();
+	}
+
+
+	/**
 	 * Heavy armaments an own colony under a Threat army wants banked beside its marines
 	 * (2026-10-17): frontResupplyDays of the burn its defenders will have once the marines
 	 * {@link #reliefNeed} asks for stand with them - engaged no further than the army's own

@@ -650,6 +650,10 @@ public class ThreatIncConfig {
 	public static boolean homeFirst()                { return b("threatinc_homeFirst", true); }
 	/** Days after which an unfinished HOME FIRST hold ends anyway (0 = never): a deadlock hatch, logged. */
 	public static float homeFirstMaxDays()           { return f("threatinc_homeFirstMaxDays"); }
+	/** HOME UNDER ATTACK (2026-10-20): while an own world is under a Threat army the faction relieves it before any staging convoy, play or front run, every colony giving down to its floor (ThreatGroundFronts.homeUnderAttack). */
+	public static boolean homeUnderAttack()          { return b("threatinc_homeUnderAttack", true); }
+	/** A marine relief sails only when the donors in reach can meet the world's whole need in one body this pass (hw66's rule for hulls; hw240c Jangala took 19 convoys of 100-500 marines and fell). */
+	public static boolean reliefOnlyIfEnough()       { return b("threatinc_reliefMarinesOnlyIfEnough", true); }
 	public static boolean alliedStaging()            { return b("threatinc_alliedStaging", true); }
 	public static boolean invadeStaging()            { return b("threatinc_invadeStaging", true); }
 	/** S1 (the user, 2026-10-19 15:30): the invade pass keeps at most this many hammers staging at once a faction (one a base). */

@@ -1299,16 +1299,32 @@ public class ThreatConvoys {
 					return Float.compare((Float) b[3], (Float) a[3]);
 				}
 			});
-			// fronts first: an army in the field outranks a depot for the
-			// donors' stock (seen in-game 2026-09-04 - staging traffic drew the
-			// donors dry and the front starved)
-			planFrontRuns(faction, random);
-			// then an own world under Threat invasion, then outposts shipping a
-			// purged system's stock home - all before any depot
-			planRelief(faction, random);
+			// HOME UNDER ATTACK (the user, 2026-10-20: "take care of your own back yard first before thinking of
+			// leaving"): an own world under a Threat army draws the donors first, before the fronts in the field,
+			// and no depot stages while one stands (below). Otherwise fronts first: an army in the field outranks
+			// a depot for the donors' stock (seen in-game 2026-09-04 - staging traffic drew the donors dry and the
+			// front starved), then the invaded worlds, then outposts shipping a purged system's stock home.
+			boolean homeAttacked = ThreatGroundFronts.homeUnderAttack(factionId);
+			if (homeAttacked) {
+				planRelief(faction, random);
+				planFrontRuns(faction, random);
+			} else {
+				planFrontRuns(faction, random);
+				planRelief(faction, random);
+			}
 			planOutpostReturns(faction, random);
 			// then the forward bases' size upkeep (ThreatFeeding, 2026-10-18): sustenance before any depot
 			ThreatFeeding.shipBases(faction, markets, random);
+			if (homeAttacked) {
+				StringBuilder names = new StringBuilder();
+				for (MarketAPI m : ThreatGroundFronts.invadedWorlds(factionId)) {
+					if (names.length() > 0) names.append(", ");
+					names.append(m.getName());
+				}
+				ThreatIncConfig.logQuiet("homeattack:" + factionId, "Home under attack: " + factionId + " stages nothing while "
+						+ names + " stand(s) under a Threat army - the relief draws its depots down to their floors");
+				continue;
+			}
 			for (Object[] w : wants) {
 				MarketAPI base = (MarketAPI) w[0];
 				float[] targets = (float[]) w[1];
@@ -1390,8 +1406,8 @@ public class ThreatConvoys {
 				if (d == besieged || d.getStarSystem() == null || d.getPrimaryEntity() == null) continue;
 				if (Misc.getDistanceLY(d.getStarSystem().getLocation(),
 						besieged.getStarSystem().getLocation()) > stockReachLY(d)) continue;
-				float s = spare(d, Commodities.MARINES);
-				float arms = spare(d, Commodities.HAND_WEAPONS);
+				float s = reliefSpare(d, Commodities.MARINES);
+				float arms = reliefSpare(d, Commodities.HAND_WEAPONS);
 				if (s >= FRONT_RUN_MIN_MARINES || (armsNeed >= RELIEF_MIN_ARMS && arms >= RELIEF_MIN_ARMS)) {
 					spares.put(d, s);
 				}
@@ -1402,6 +1418,20 @@ public class ThreatConvoys {
 					return Float.compare(spares.get(b), spares.get(a));
 				}
 			});
+			// one body or none (reliefMarinesOnlyIfEnough, 2026-10-20): the donors in reach must meet the marines'
+			// whole need this pass or the marines wait - fed in pieces of 100-500 they only bleed (hw240c: Jangala
+			// took 19 convoys and fell; Nachiketa took 3,008 on the landing day and held); the armaments still sail
+			if (need >= FRONT_RUN_MIN_MARINES && ThreatIncConfig.reliefOnlyIfEnough()) {
+				float pooled = 0f;
+				for (MarketAPI d : donors) pooled += Math.max(0f, spares.get(d));
+				if (pooled < need) {
+					ThreatIncConfig.logQuiet("reliefshort:" + besieged.getId(), "Relief convoy held: " + faction.getId() + " can pool "
+							+ (int) pooled + " of the " + (int) need + " marines " + besieged.getName() + " needs from " + donors.size()
+							+ " world(s) in reach - not one body, the marines wait");
+					need = 0f;
+				}
+			}
+			float wanted = need;
 			int sailed = 0;
 			float carried = 0f;
 			float carriedArms = 0f;
@@ -1410,7 +1440,7 @@ public class ThreatConvoys {
 				if (need < FRONT_RUN_MIN_MARINES && armsNeed < RELIEF_MIN_ARMS) break;
 				float[] load = new float[ThreatReserves.COMMODITIES.length];
 				if (need >= FRONT_RUN_MIN_MARINES) load[0] = Math.min(need, spares.get(donor));
-				if (armsNeed >= RELIEF_MIN_ARMS) load[1] = Math.min(armsNeed, spare(donor, Commodities.HAND_WEAPONS));
+				if (armsNeed >= RELIEF_MIN_ARMS) load[1] = Math.min(armsNeed, reliefSpare(donor, Commodities.HAND_WEAPONS));
 				if (load[0] <= 0f && load[1] <= 0f) continue;
 				Convoy c = dispatch(donor, besieged, faction, load, random);
 				if (c == null) continue;
@@ -1425,6 +1455,10 @@ public class ThreatConvoys {
 				carriedArms += aboard[1];
 				ThreatIncConfig.log("Relief convoy: " + faction.getId() + " " + (int) lifted + " marines, "
 						+ (int) aboard[1] + " armaments " + donor.getName() + " -> " + besieged.getName());
+			}
+			if (sailed > 0 && carried > 0f) {
+				ThreatIncConfig.log("Relief pooled: " + faction.getId() + " " + (int) carried + " marines, " + (int) carriedArms
+						+ " armaments in " + sailed + " convoy(s) to " + besieged.getName() + " (need was " + (int) wanted + ")");
 			}
 			// only the player's own: another faction's relief is progress, not news
 			if (sailed > 0 && faction.isPlayerFaction()) {
@@ -2312,6 +2346,19 @@ public class ThreatConvoys {
 			return "No Threat army on " + name + ".";
 		}
 		return "No colony of " + whose + " can spare marines or heavy armaments for " + name + ".";
+	}
+
+	/**
+	 * Stock a colony gives an invaded own world (HOME UNDER ATTACK, the user 2026-10-20): everything above its
+	 * floor. The donor keep and a staging base's commitment are a siege's, and no siege is staged while a home
+	 * world is under a Threat army - hw240c: Ragnar Complex kept 9,326 marines for the Hegemony's landing plays
+	 * while Jangala and Yama fell with 200-370. A world under a front gives nothing, as in {@link #spare}. With
+	 * the knob off, {@link #spare}.
+	 */
+	public static float reliefSpare(MarketAPI donor, String commodityId) {
+		if (!ThreatIncConfig.homeUnderAttack()) return spare(donor, commodityId);
+		if (donor == null || ThreatGroundFronts.hasFront(donor)) return 0f;
+		return Math.max(0f, ThreatReserves.stock(donor.getId(), commodityId) - ThreatReserves.floor(donor, commodityId));
 	}
 
 	/** Stock a colony can spare: what it holds above its keep fraction of its own months basis (ThreatReserves.monthsBasis), plus a staging base's own siege needs. */

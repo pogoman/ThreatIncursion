@@ -1476,6 +1476,11 @@
 	# paced by the stockpiles alone. homeFirstMaxDays ends a hold the stock never pays off (0 = never) - a hatch.
 	"threatinc_homeFirst": true,
 	"threatinc_homeFirstMaxDays": 900,
+	# HOME UNDER ATTACK (2026-10-20): while an own world has a Threat army on it the faction's marine relief comes
+	# first - before staging convoys, plays and front runs - and every colony gives down to its floor, staging
+	# commitments included. reliefMarinesOnlyIfEnough: the relief sails only as one body that meets the whole need.
+	"threatinc_homeUnderAttack": true,
+	"threatinc_reliefMarinesOnlyIfEnough": true,
 	# ALLIED STAGING (2026-10-19, the user: "the allied sharing fix sounds better" - one chain a hive would be 30
 	# chains): a base of an ally at Welcoming or better (ThreatCoalition.stagingHost) is a staging base for the
 	# faction's sieges - in the council's clusters, a paying base of the invade pass, "reached" for the chain

@@ -231,6 +231,12 @@ public class ThreatPlays {
 					+ ThreatCoreBuild.homeFirstStatus(fid) + ")");
 			return;
 		}
+		// HOME UNDER ATTACK (the user, 2026-10-20): no play while an own world is under a Threat army
+		if (ThreatGroundFronts.homeUnderAttack(fid)) {
+			ThreatIncConfig.logQuiet("homeattack:" + fid, "Council " + fid + ": home under attack - no play while "
+					+ ThreatGroundFronts.invadedWorlds(fid).size() + " own world(s) stand under a Threat army");
+			return;
+		}
 		opportunity(c, faction, p, today, random);
 		// the strategy picks where its own plays go, never whether the faction attacks (user, 2026-10-04)
 		invade(c, faction, p, today, random);
@@ -835,10 +841,12 @@ public class ThreatPlays {
 		}
 		sample(pl, faction, today);
 		// relief before offensives: the next phase waits, the play is paused, not cancelled
-		if (ThreatFleetOrders.reliefOwed(faction) && pausable(pl)) {
+		boolean homeAttacked = ThreatGroundFronts.homeUnderAttack(faction.getId());
+		if ((homeAttacked || ThreatFleetOrders.reliefOwed(faction)) && pausable(pl)) {
 			if (!pl.held) {
 				pl.held = true;
-				ThreatIncConfig.log("Play " + pl.id + " " + pl.type + ": held in " + pl.phase + " (relief owed)");
+				ThreatIncConfig.log("Play " + pl.id + " " + pl.type + ": held in " + pl.phase
+						+ (homeAttacked ? " (home under attack)" : " (relief owed)"));
 			}
 			if (pl.phaseDue != NEVER) pl.phaseDue += 1f;
 			return;
