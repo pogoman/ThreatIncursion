@@ -1496,7 +1496,7 @@
 	"threatinc_reliefMarinesOnlyIfEnough": false,
 	# ONE BODY OR NONE for relief fleets (2026-10-20 11:05) and the hull cap once a faction in joint relief (12:21):
 	# knobs added 19:30 for the bisect against the 10-19 build (hw254); off = sail what was built / promise the pool.
-	"threatinc_reliefOneBody": true,
+	"threatinc_reliefOneBody": false,  # OFF 2026-10-20 19:45 bisect round 40 (hw256) vs hw255 / hw254
 	"threatinc_coalitionHullCap": true,
 	# A running siege turns home only if its lead fleet is under this fraction of the way from its base to the
 	# target system; further along it commits (the user 2026-10-20: "offence is still a form of defence and time
