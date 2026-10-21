@@ -1499,7 +1499,7 @@
 	"threatinc_reliefOneBody": false,  # OFF 2026-10-20 19:45 bisect round 40 (hw256) vs hw255 / hw254
 	"threatinc_coalitionHullCap": true,
 	"threatinc_reliefCoalitionNoBase": true,  # A 2026-10-20 22:45 (Sindria): partners asked for every base-less invaded world
-	"threatinc_allyAidJointRelief": true,  # B 2026-10-20 22:45: an ally's relief is the joint relief, not one base vs the swarm; A alone (round 45) no better - both ON 2026-10-21 10:05
+	"threatinc_allyAidJointRelief": false,  # B 2026-10-20 22:45: an ally's relief is the joint relief, not one base vs the swarm; OFF 2026-10-21 12:20 - redundant (A and planRelief take every send first; 0 sends through it in hw266) and its break skips the ally's own send
 	# A running siege turns home only if its lead fleet is under this fraction of the way from its base to the
 	# target system; further along it commits (the user 2026-10-20: "offence is still a form of defence and time
 	# wasted is a net loss" - hw248b recalled 17 of 19 sieges).
