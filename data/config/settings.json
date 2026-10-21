@@ -1497,6 +1497,7 @@
 	# ONE BODY OR NONE for relief fleets (2026-10-20 11:05) and the hull cap once a faction in joint relief (12:21):
 	# knobs added 19:30 for the bisect against the 10-19 build (hw254); off = sail what was built / promise the pool.
 	"threatinc_reliefOneBody": false,  # OFF 2026-10-20 19:45 bisect round 40 (hw256) vs hw255 / hw254
+	"threatinc_siegeStockMonths": 3,  # A SIEGE IS PAID FROM THE STOCK 2026-10-21 (the user, Sindria): a faction with a world under a Threat army keeps hulls from its supplies stock over this many months, not only from its income; 0 = income only
 	"threatinc_coalitionHullCap": true,
 	"threatinc_reliefCoalitionNoBase": true,  # A 2026-10-20 22:45 (Sindria): partners asked for every base-less invaded world
 	"threatinc_allyAidJointRelief": false,  # B 2026-10-20 22:45: an ally's relief is the joint relief, not one base vs the swarm; OFF 2026-10-21 12:20 - redundant (A and planRelief take every send first; 0 sends through it in hw266) and its break skips the ally's own send

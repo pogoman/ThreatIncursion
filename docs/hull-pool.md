@@ -228,3 +228,7 @@ shortages as the player does.
   `Hulls: F lands N units ...` and the siege launches at the next pass if the rest is paid.
 - What it does not do: lend vanilla's standing table (never given away), or move hulls to a base -
   the pool is faction-wide, so the hull port is where they land.
+
+## A siege is paid from the stock (2026-10-21)
+
+Sindria fell in hw264c with 45,402 supplies and 116k fuel in the Diktat's depots and 0 hulls all siege: `ThreatHulls.suppliesKeepFP` bound the navy to supplies income less demand (9,450 against 9,699) and never read the stock. Now, while `ThreatGroundFronts.invadedWorlds(faction)` is non-empty, the stock keeps hulls too, spread over `threatinc_siegeStockMonths` (3; 0 = income only): spare += stock / months. The yards' output still bounds the growth, and hulls the stock stops paying are lost by `maintain` as before, so the hw36 starvation cannot return. Logged once per change: `Hulls: <faction> at siege: Nk supplies in stock keep M FP for H months beside the income's K FP`. Trial round 47 (hw268 / hw269).

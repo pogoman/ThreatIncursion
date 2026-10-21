@@ -1071,6 +1071,8 @@ public class ThreatIncConfig {
 	public static boolean coalitionRelief()   { return b("threatinc_coalitionRelief", true); }
 	/** ONE BODY OR NONE (2026-10-20): a relief built short of the owed points stands down (ThreatFleetOrders.sendRelief, ThreatCoalition.jointRelief); off, it sails what was built. */
 	public static boolean reliefOneBody()     { return b("threatinc_reliefOneBody", true); }
+	/** A SIEGE IS PAID FROM THE STOCK (2026-10-21): months over which a faction with an own world under a Threat army may keep hulls from its supplies stock as well as its income (ThreatHulls.suppliesKeepFP); 0 = income only. */
+	public static float siegeStockMonths()     { return f("threatinc_siegeStockMonths"); }
 	/** Hull cap once a faction in joint relief (2026-10-20, ThreatCoalition.capHulls); off, every sender of a faction promises the faction's whole free pool. */
 	public static boolean coalitionHullCap()  { return b("threatinc_coalitionHullCap", true); }
 	/** A: the partners relieve an invaded world its owner has no base to relieve from, HOME UNDER ATTACK or not (ThreatFleetOrders.planRelief). */

@@ -518,6 +518,22 @@ public class ThreatHulls {
 		if (rate <= 0f) return Float.MAX_VALUE;
 		float spare = ThreatFactionStock.perMonth(factionId, Commodities.SUPPLIES)
 				- ThreatFactionStock.demandPerMonth(factionId, Commodities.SUPPLIES);
+		// A SIEGE IS PAID FROM THE STOCK (the user, 2026-10-21, "option 1 then go", after Sindria fell in hw264c with
+		// 45,402 supplies and 116k fuel in the Diktat's depots and 0 hulls all siege - its income 9,450 a month against
+		// 9,699 demand kept nothing, and the rule never read the stock): with an own world under a Threat army the
+		// stock keeps hulls too, spread over siegeStockMonths - the chest buys the fight; hulls the stock no longer
+		// pays are lost by the standing-upkeep rule as ever, so the hw36 starvation cannot return.
+		float months = ThreatIncConfig.siegeStockMonths();
+		if (months > 0f && !ThreatGroundFronts.invadedWorlds(factionId).isEmpty()) {
+			float stock = ThreatFactionStock.stock(factionId, Commodities.SUPPLIES);
+			if (stock > 0f) {
+				float fromStock = stock / months;
+				ThreatIncConfig.logQuiet("hull_siege_" + factionId, "Hulls: " + ThreatWarState.displayName(factionId)
+						+ " at siege: " + (int) (stock / 1000f) + "k supplies in stock keep " + (int) (fromStock / rate / 100f) * 100
+						+ " FP for " + (int) months + " months beside the income's " + (int) (Math.max(0f, spare) / rate / 100f) * 100 + " FP");
+				spare += fromStock;
+			}
+		}
 		return Math.max(0f, spare) / rate;
 	}
 

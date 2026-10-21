@@ -2222,7 +2222,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatHiveCover.priceRatio(CommodityOnMarketAPI com, String stockId)` :74 - Units of the paying stock one unit of the commodity costs:
 - `ThreatHiveCover.cover(MarketAPI market, CommodityOnMarketAPI com, int deficit, float coverDays, float fraction)` :83
 
-## ThreatHulls (713 lines)
+## ThreatHulls (729 lines)
 - `ThreatHulls.enabled()` :61 - Mean combat points of vanilla's patrol weights (MilitaryBase.getPatrolCombatFP:
 ### vanilla's patrol table, for the hive's own structures
 - `ThreatHulls.patrolTable(int size, int tier)` :76 - The patrols vanilla's MilitaryBase.apply sets for a market of this size under a Patrol HQ (tier 0), a Military Base (1) or a High Command (2), as {light, medium, heavy}.
@@ -2262,19 +2262,19 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatHulls.rebuild()` :464 - Daily:
 - `ThreatHulls.suppliesKeepFP(String factionId)` :516 - Fleet points of hulls the faction's supplies surplus - what its reserves bank a month less their trailing demand, the standing upkeep already paid among it - would keep up at #standingRate.
 ### standing upkeep: the navy the yards built beyond vanilla's table pays its
-- `ThreatHulls.standingRate(String factionId)` :540 - Supplies a month one of the faction's built hulls at home costs:
-- `ThreatHulls.builtAtHome(String factionId)` :545 - The faction's built hulls at home:
-- `ThreatHulls.standingUpkeepPerMonth(String factionId)` :550 - Supplies a month the faction's built hulls at home cost, at #standingRate.
-- `ThreatHulls.maintain()` :564 - Daily:
-- `ThreatHulls.maintain(String factionId, float days)` :582
-- `ThreatHulls.starve(String factionId, float fp, float unpaid)` :619 - Built hulls the faction could not keep up, struck off its navy (never a debt:
+- `ThreatHulls.standingRate(String factionId)` :556 - Supplies a month one of the faction's built hulls at home costs:
+- `ThreatHulls.builtAtHome(String factionId)` :561 - The faction's built hulls at home:
+- `ThreatHulls.standingUpkeepPerMonth(String factionId)` :566 - Supplies a month the faction's built hulls at home cost, at #standingRate.
+- `ThreatHulls.maintain()` :580 - Daily:
+- `ThreatHulls.maintain(String factionId, float days)` :598
+- `ThreatHulls.starve(String factionId, float fp, float unpaid)` :635 - Built hulls the faction could not keep up, struck off its navy (never a debt:
 ### what the pool can pay
-- `ThreatHulls.scrapIdle(String factionId, float days)` :653 - WAR WANTS - THE RECYCLING (the user, 2026-10-20:
-- `ThreatHulls.committedFP(String factionId)` :672 - Fleet points the faction's fleets out hold against the pool (the ledger's live entries).
-- `ThreatHulls.freeFP(String factionId)` :683 - Hulls the faction can send now:
-- `ThreatHulls.cap(MarketAPI base, float payable)` :689 - Caps a reserve's payable fleet points at the faction's free hulls;
-- `ThreatHulls.describe(String factionId)` :695 - One line for a faction:
-- `ThreatHulls.logMonth()` :702 - The month line for the log:
+- `ThreatHulls.scrapIdle(String factionId, float days)` :669 - WAR WANTS - THE RECYCLING (the user, 2026-10-20:
+- `ThreatHulls.committedFP(String factionId)` :688 - Fleet points the faction's fleets out hold against the pool (the ledger's live entries).
+- `ThreatHulls.freeFP(String factionId)` :699 - Hulls the faction can send now:
+- `ThreatHulls.cap(MarketAPI base, float payable)` :705 - Caps a reserve's payable fleet points at the faction's free hulls;
+- `ThreatHulls.describe(String factionId)` :711 - One line for a faction:
+- `ThreatHulls.logMonth()` :718 - The month line for the log:
 
 ## ThreatIncCampaignPlugin (48 lines)
 - `ThreatIncCampaignPlugin.getId()` :21
@@ -2282,7 +2282,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncCampaignPlugin.pickInteractionDialogPlugin(SectorEntityToken target)` :31
 - `ThreatIncCampaignPlugin.pickInteractionDialogPlugin(Object param, SectorEntityToken target)` :41 - A notice's click asks through this overload, with a null param (ThreatNoticeClickDialog).
 
-## ThreatIncConfig (1223 lines)
+## ThreatIncConfig (1225 lines)
 - `ThreatIncConfig.lunaAvailable()` :15
 - `ThreatIncConfig.luna(String key)` :29 - Whether LunaLib holds this knob:
 - `ThreatIncConfig.i(String key)` :44
@@ -2764,71 +2764,72 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatIncConfig.allyAidChance()` :1069 - Chance per tick per need that a fully willing ally sends aid;
 - `ThreatIncConfig.coalitionRelief()` :1071 - Whether a faction and its partners relieve an invaded world together when none is enough alone (ThreatCoalition.jointRelief).
 - `ThreatIncConfig.reliefOneBody()` :1073 - ONE BODY OR NONE (2026-10-20):
-- `ThreatIncConfig.coalitionHullCap()` :1075 - Hull cap once a faction in joint relief (2026-10-20, ThreatCoalition.capHulls);
-- `ThreatIncConfig.reliefCoalitionNoBase()` :1077 - A:
-- `ThreatIncConfig.allyAidJointRelief()` :1079 - B:
-- `ThreatIncConfig.alarmEnabled()` :1084 - Master switch for grudge, alarm and retaliation.
-- `ThreatIncConfig.alarmPerStratum()` :1086 - Grudge points a faction earns per stratum its front takes.
-- `ThreatIncConfig.alarmPerEradication()` :1088 - Grudge points per hive eradicated.
-- `ThreatIncConfig.alarmPerRaid()` :1090 - Grudge points per successful raid or tactical pass on a hive world.
-- `ThreatIncConfig.alarmDecayPer30()` :1092 - Fraction of every grudge that fades per 30 days.
-- `ThreatIncConfig.alarmTargetMult()` :1094 - Strike-target weight bonus per point of a faction's grudge (0.2 = grudge 10 is x3).
-- `ThreatIncConfig.retaliationEnabled()` :1096 - Whether a ground victory draws an immediate strike at the winner.
-- `ThreatIncConfig.sustenanceFirst()` :1098 - The colonies' break-even sustenance is paid before the fleets away and the navy at home (ThreatColonyUpkeep.sustenanceDue, 2026-10-08).
-- `ThreatIncConfig.navyFitsSpare()` :1100 - The hive keeps no standing navy its supplies flow cannot carry with the sends it wants (ThreatColonyManager.fitNavyToSpare, 2026-10-08).
-- `ThreatIncConfig.coalitionEnabled()` :1105 - Whether a mobilised faction's siege calls other mobilised factions to intercept at the door.
-- `ThreatIncConfig.coalitionCallDays()` :1107 - Days a coalition call stays open.
-- `ThreatIncConfig.coalitionSupportChance()` :1109 - Chance per tick that an eligible ally answers a call with an Intercept task force.
-- `ThreatIncConfig.outpostsEnabled()` :1114 - Whether outposts can be built on purged worlds.
-- `ThreatIncConfig.outpostTier()` :1116 - Station tier:
-- `ThreatIncConfig.outpostCredits()` :1118 - Credits the player pays for an outpost.
-- `ThreatIncConfig.outpostSupplies()` :1120 - Supplies an NPC faction's base pays for an outpost.
-- `ThreatIncConfig.outpostFuel()` :1122 - Fuel an NPC faction's base pays for an outpost.
-- `ThreatIncConfig.frontlinesEnabled()` :1126
-- `ThreatIncConfig.frontlinePlanDays()` :1127
-- `ThreatIncConfig.frontlineLinkLY()` :1128
-- `ThreatIncConfig.frontlineReachLY()` :1129
-- `ThreatIncConfig.frontlineKeepLY()` :1130
-- `ThreatIncConfig.frontlineGrowDays()` :1131
-- `ThreatIncConfig.frontlineStarveDays()` :1132
-- `ThreatIncConfig.frontlineAbandonDays()` :1133
-- `ThreatIncConfig.frontlineRearGraceDays()` :1134
-- `ThreatIncConfig.pathTithes()` :1135
-- `ThreatIncConfig.pathTitheSuppliesPerSize()` :1136
-- `ThreatIncConfig.pathTitheFuelPerSize()` :1137
-- `ThreatIncConfig.pathTitheMarinesPerSize()` :1138
-- `ThreatIncConfig.pathTitheSleeperFraction()` :1139
-- `ThreatIncConfig.pathMilitiaMult()` :1140
-- `ThreatIncConfig.pathZealotMarines()` :1141
-- `ThreatIncConfig.frontlineRelayAccess()` :1142
-- `ThreatIncConfig.frontlineStrikeWeight()` :1143
-- `ThreatIncConfig.frontlineReliefEnabled()` :1144
-- `ThreatIncConfig.strikeDetection()` :1145
-- `ThreatIncConfig.strikeDetectLY()` :1146
-- `ThreatIncConfig.permaHostile()` :1151 - Pin the Threat faction to vengeful with every other faction (perma-hostile to all).
-- `ThreatIncConfig.bombardNoAtrocity()` :1153 - Waive the vanilla saturation-bombardment atrocity reputation penalty when the bombed colony is a Threat colony.
-- `ThreatIncConfig.debugMode()` :1157
-- `ThreatIncConfig.debugLogging()` :1158
-- `ThreatIncConfig.debugForceStart()` :1159
-- `ThreatIncConfig.debugFastClock()` :1160
-- `ThreatIncConfig.debugGrantSensorMods()` :1161
-- `ThreatIncConfig.debugPlayerIgnored()` :1162
-- `ThreatIncConfig.debugSimDump()` :1163
-- `ThreatIncConfig.debugReset()` :1164
-- `ThreatIncConfig.debugInstantWar()` :1167
-- `ThreatIncConfig.debugInstantWarSystemsMin()` :1168
-- `ThreatIncConfig.debugInstantWarSystemsMax()` :1169
-- `ThreatIncConfig.debugInstantWarCoreMin()` :1170
-- `ThreatIncConfig.debugInstantWarCoreMax()` :1171
-- `ThreatIncConfig.debugInstantWarLinkLY()` :1172
-- `ThreatIncConfig.debugInstantWarCoreLY()` :1173
-- `ThreatIncConfig.debugInstantWarHomeSize()` :1174
-- `ThreatIncConfig.debugHiveFloorSize()` :1175
-- `ThreatIncConfig.debugInstantWarColonySize()` :1176
-- `ThreatIncConfig.log(String msg)` :1178
-- `ThreatIncConfig.logQuiet(String key, String msg)` :1192 - A line a poll repeats:
-- `ThreatIncConfig.logOnChange(String key, String state, String msg)` :1210 - A line a poll repeats, logged only when state changes - a verdict, not the figures behind it - and no more than once in ten days:
-- `ThreatIncConfig.forgetQuiet()` :1220 - Called on load:
+- `ThreatIncConfig.siegeStockMonths()` :1075 - A SIEGE IS PAID FROM THE STOCK (2026-10-21):
+- `ThreatIncConfig.coalitionHullCap()` :1077 - Hull cap once a faction in joint relief (2026-10-20, ThreatCoalition.capHulls);
+- `ThreatIncConfig.reliefCoalitionNoBase()` :1079 - A:
+- `ThreatIncConfig.allyAidJointRelief()` :1081 - B:
+- `ThreatIncConfig.alarmEnabled()` :1086 - Master switch for grudge, alarm and retaliation.
+- `ThreatIncConfig.alarmPerStratum()` :1088 - Grudge points a faction earns per stratum its front takes.
+- `ThreatIncConfig.alarmPerEradication()` :1090 - Grudge points per hive eradicated.
+- `ThreatIncConfig.alarmPerRaid()` :1092 - Grudge points per successful raid or tactical pass on a hive world.
+- `ThreatIncConfig.alarmDecayPer30()` :1094 - Fraction of every grudge that fades per 30 days.
+- `ThreatIncConfig.alarmTargetMult()` :1096 - Strike-target weight bonus per point of a faction's grudge (0.2 = grudge 10 is x3).
+- `ThreatIncConfig.retaliationEnabled()` :1098 - Whether a ground victory draws an immediate strike at the winner.
+- `ThreatIncConfig.sustenanceFirst()` :1100 - The colonies' break-even sustenance is paid before the fleets away and the navy at home (ThreatColonyUpkeep.sustenanceDue, 2026-10-08).
+- `ThreatIncConfig.navyFitsSpare()` :1102 - The hive keeps no standing navy its supplies flow cannot carry with the sends it wants (ThreatColonyManager.fitNavyToSpare, 2026-10-08).
+- `ThreatIncConfig.coalitionEnabled()` :1107 - Whether a mobilised faction's siege calls other mobilised factions to intercept at the door.
+- `ThreatIncConfig.coalitionCallDays()` :1109 - Days a coalition call stays open.
+- `ThreatIncConfig.coalitionSupportChance()` :1111 - Chance per tick that an eligible ally answers a call with an Intercept task force.
+- `ThreatIncConfig.outpostsEnabled()` :1116 - Whether outposts can be built on purged worlds.
+- `ThreatIncConfig.outpostTier()` :1118 - Station tier:
+- `ThreatIncConfig.outpostCredits()` :1120 - Credits the player pays for an outpost.
+- `ThreatIncConfig.outpostSupplies()` :1122 - Supplies an NPC faction's base pays for an outpost.
+- `ThreatIncConfig.outpostFuel()` :1124 - Fuel an NPC faction's base pays for an outpost.
+- `ThreatIncConfig.frontlinesEnabled()` :1128
+- `ThreatIncConfig.frontlinePlanDays()` :1129
+- `ThreatIncConfig.frontlineLinkLY()` :1130
+- `ThreatIncConfig.frontlineReachLY()` :1131
+- `ThreatIncConfig.frontlineKeepLY()` :1132
+- `ThreatIncConfig.frontlineGrowDays()` :1133
+- `ThreatIncConfig.frontlineStarveDays()` :1134
+- `ThreatIncConfig.frontlineAbandonDays()` :1135
+- `ThreatIncConfig.frontlineRearGraceDays()` :1136
+- `ThreatIncConfig.pathTithes()` :1137
+- `ThreatIncConfig.pathTitheSuppliesPerSize()` :1138
+- `ThreatIncConfig.pathTitheFuelPerSize()` :1139
+- `ThreatIncConfig.pathTitheMarinesPerSize()` :1140
+- `ThreatIncConfig.pathTitheSleeperFraction()` :1141
+- `ThreatIncConfig.pathMilitiaMult()` :1142
+- `ThreatIncConfig.pathZealotMarines()` :1143
+- `ThreatIncConfig.frontlineRelayAccess()` :1144
+- `ThreatIncConfig.frontlineStrikeWeight()` :1145
+- `ThreatIncConfig.frontlineReliefEnabled()` :1146
+- `ThreatIncConfig.strikeDetection()` :1147
+- `ThreatIncConfig.strikeDetectLY()` :1148
+- `ThreatIncConfig.permaHostile()` :1153 - Pin the Threat faction to vengeful with every other faction (perma-hostile to all).
+- `ThreatIncConfig.bombardNoAtrocity()` :1155 - Waive the vanilla saturation-bombardment atrocity reputation penalty when the bombed colony is a Threat colony.
+- `ThreatIncConfig.debugMode()` :1159
+- `ThreatIncConfig.debugLogging()` :1160
+- `ThreatIncConfig.debugForceStart()` :1161
+- `ThreatIncConfig.debugFastClock()` :1162
+- `ThreatIncConfig.debugGrantSensorMods()` :1163
+- `ThreatIncConfig.debugPlayerIgnored()` :1164
+- `ThreatIncConfig.debugSimDump()` :1165
+- `ThreatIncConfig.debugReset()` :1166
+- `ThreatIncConfig.debugInstantWar()` :1169
+- `ThreatIncConfig.debugInstantWarSystemsMin()` :1170
+- `ThreatIncConfig.debugInstantWarSystemsMax()` :1171
+- `ThreatIncConfig.debugInstantWarCoreMin()` :1172
+- `ThreatIncConfig.debugInstantWarCoreMax()` :1173
+- `ThreatIncConfig.debugInstantWarLinkLY()` :1174
+- `ThreatIncConfig.debugInstantWarCoreLY()` :1175
+- `ThreatIncConfig.debugInstantWarHomeSize()` :1176
+- `ThreatIncConfig.debugHiveFloorSize()` :1177
+- `ThreatIncConfig.debugInstantWarColonySize()` :1178
+- `ThreatIncConfig.log(String msg)` :1180
+- `ThreatIncConfig.logQuiet(String key, String msg)` :1194 - A line a poll repeats:
+- `ThreatIncConfig.logOnChange(String key, String state, String msg)` :1212 - A line a poll repeats, logged only when state changes - a verdict, not the figures behind it - and no more than once in ten days:
+- `ThreatIncConfig.forgetQuiet()` :1222 - Called on load:
 
 ## ThreatIncData (518 lines)
 - `ThreatIncData.list(String key)` :74
