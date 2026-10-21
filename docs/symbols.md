@@ -2222,7 +2222,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatHiveCover.priceRatio(CommodityOnMarketAPI com, String stockId)` :74 - Units of the paying stock one unit of the commodity costs:
 - `ThreatHiveCover.cover(MarketAPI market, CommodityOnMarketAPI com, int deficit, float coverDays, float fraction)` :83
 
-## ThreatHulls (729 lines)
+## ThreatHulls (738 lines)
 - `ThreatHulls.enabled()` :61 - Mean combat points of vanilla's patrol weights (MilitaryBase.getPatrolCombatFP:
 ### vanilla's patrol table, for the hive's own structures
 - `ThreatHulls.patrolTable(int size, int tier)` :76 - The patrols vanilla's MilitaryBase.apply sets for a market of this size under a Patrol HQ (tier 0), a Military Base (1) or a High Command (2), as {light, medium, heavy}.
@@ -2262,19 +2262,19 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatHulls.rebuild()` :464 - Daily:
 - `ThreatHulls.suppliesKeepFP(String factionId)` :516 - Fleet points of hulls the faction's supplies surplus - what its reserves bank a month less their trailing demand, the standing upkeep already paid among it - would keep up at #standingRate.
 ### standing upkeep: the navy the yards built beyond vanilla's table pays its
-- `ThreatHulls.standingRate(String factionId)` :556 - Supplies a month one of the faction's built hulls at home costs:
-- `ThreatHulls.builtAtHome(String factionId)` :561 - The faction's built hulls at home:
-- `ThreatHulls.standingUpkeepPerMonth(String factionId)` :566 - Supplies a month the faction's built hulls at home cost, at #standingRate.
-- `ThreatHulls.maintain()` :580 - Daily:
-- `ThreatHulls.maintain(String factionId, float days)` :598
-- `ThreatHulls.starve(String factionId, float fp, float unpaid)` :635 - Built hulls the faction could not keep up, struck off its navy (never a debt:
+- `ThreatHulls.standingRate(String factionId)` :565 - Supplies a month one of the faction's built hulls at home costs:
+- `ThreatHulls.builtAtHome(String factionId)` :570 - The faction's built hulls at home:
+- `ThreatHulls.standingUpkeepPerMonth(String factionId)` :575 - Supplies a month the faction's built hulls at home cost, at #standingRate.
+- `ThreatHulls.maintain()` :589 - Daily:
+- `ThreatHulls.maintain(String factionId, float days)` :607
+- `ThreatHulls.starve(String factionId, float fp, float unpaid)` :644 - Built hulls the faction could not keep up, struck off its navy (never a debt:
 ### what the pool can pay
-- `ThreatHulls.scrapIdle(String factionId, float days)` :669 - WAR WANTS - THE RECYCLING (the user, 2026-10-20:
-- `ThreatHulls.committedFP(String factionId)` :688 - Fleet points the faction's fleets out hold against the pool (the ledger's live entries).
-- `ThreatHulls.freeFP(String factionId)` :699 - Hulls the faction can send now:
-- `ThreatHulls.cap(MarketAPI base, float payable)` :705 - Caps a reserve's payable fleet points at the faction's free hulls;
-- `ThreatHulls.describe(String factionId)` :711 - One line for a faction:
-- `ThreatHulls.logMonth()` :718 - The month line for the log:
+- `ThreatHulls.scrapIdle(String factionId, float days)` :678 - WAR WANTS - THE RECYCLING (the user, 2026-10-20:
+- `ThreatHulls.committedFP(String factionId)` :697 - Fleet points the faction's fleets out hold against the pool (the ledger's live entries).
+- `ThreatHulls.freeFP(String factionId)` :708 - Hulls the faction can send now:
+- `ThreatHulls.cap(MarketAPI base, float payable)` :714 - Caps a reserve's payable fleet points at the faction's free hulls;
+- `ThreatHulls.describe(String factionId)` :720 - One line for a faction:
+- `ThreatHulls.logMonth()` :727 - The month line for the log:
 
 ## ThreatIncCampaignPlugin (48 lines)
 - `ThreatIncCampaignPlugin.getId()` :21

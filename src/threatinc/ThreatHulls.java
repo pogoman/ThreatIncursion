@@ -524,14 +524,23 @@ public class ThreatHulls {
 		// stock keeps hulls too, spread over siegeStockMonths - the chest buys the fight; hulls the stock no longer
 		// pays are lost by the standing-upkeep rule as ever, so the hw36 starvation cannot return.
 		float months = ThreatIncConfig.siegeStockMonths();
-		if (months > 0f && !ThreatGroundFronts.invadedWorlds(factionId).isEmpty()) {
+		List<MarketAPI> invaded = months > 0f ? ThreatGroundFronts.invadedWorlds(factionId) : null;
+		if (invaded != null && !invaded.isEmpty()) {
+			// BOUND BY USE (the user, 2026-10-21 14:30, "go 1", after hw269a: the League kept 35,103 FP with 1,330 out and
+			// 33,773 free on a chest that paid 36k supplies a month for them until it could pay no convoy or siege - hulls
+			// were never the offence's bind, fuel is): the chest keeps only the hulls the invaded worlds' reliefs are
+			// still owed (reliefShort) beyond what already sits free - the fleets for the fight at hand, never a navy.
+			float owed = 0f;
+			for (MarketAPI m : invaded) owed += ThreatFleetOrders.reliefShort(m);
+			float need = Math.max(0f, owed - freeFP(factionId));
 			float stock = ThreatFactionStock.stock(factionId, Commodities.SUPPLIES);
-			if (stock > 0f) {
-				float fromStock = stock / months;
+			float fromStockFP = Math.min(stock / months / rate, need);
+			if (fromStockFP > 0f) {
 				ThreatIncConfig.logQuiet("hull_siege_" + factionId, "Hulls: " + ThreatWarState.displayName(factionId)
-						+ " at siege: " + (int) (stock / 1000f) + "k supplies in stock keep " + (int) (fromStock / rate / 100f) * 100
-						+ " FP for " + (int) months + " months beside the income's " + (int) (Math.max(0f, spare) / rate / 100f) * 100 + " FP");
-				spare += fromStock;
+						+ " at siege: " + (int) (stock / 1000f) + "k supplies in stock keep " + (int) (fromStockFP / 100f) * 100
+						+ " FP for " + (int) months + " months (reliefs owed " + (int) (owed / 100f) * 100 + " FP, free " + (int) (freeFP(factionId) / 100f) * 100
+						+ ") beside the income's " + (int) (Math.max(0f, spare) / rate / 100f) * 100 + " FP");
+				spare += fromStockFP * rate;
 			}
 		}
 		return Math.max(0f, spare) / rate;
