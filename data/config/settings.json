@@ -1180,9 +1180,11 @@
 	"threatinc_ordersEnabled": true,
 	"threatinc_guardFleetFP": 100,
 	# relief of an NPC's own invaded world is sized to the swarm over it times
-	# npcSiegeOrbitMargin, built from fleets of reliefFleetFP combat points
+	# reliefOrbitMargin (2026-10-22; was the siege's npcSiegeOrbitMargin 1.5, which held
+	# every relief for Sindria), built from fleets of reliefFleetFP combat points
 	# (as far as the base's depot provisions them) and merged into one
 	"threatinc_reliefFleetFP": 300,
+	"threatinc_reliefOrbitMargin": 1.0,
 	"threatinc_guardDays": 90,
 	# a guard over one of YOUR OWN colonies is staging (2026-09-05): it stays
 	# guardOwnDays (0 = until recalled), its points count in that colony's FP

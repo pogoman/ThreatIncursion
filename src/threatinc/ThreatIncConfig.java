@@ -978,6 +978,8 @@ public class ThreatIncConfig {
 	public static float guardFleetFP()        { return f("threatinc_guardFleetFP"); }
 	/** Combat points of each fleet a relief force is built from (merged into one before it sails). */
 	public static float reliefFleetFP()       { return f("threatinc_reliefFleetFP"); }
+	/** Fleet points a relief brings per fleet point of swarm over an invaded world (2026-10-22, the user, after the siege's 1.5 held every relief for Sindria): the goal, the enough gate, the one-body build and a guard over a swarm-held orbit all read it. */
+	public static float reliefOrbitMargin()   { return f("threatinc_reliefOrbitMargin"); }
 	/** Days a guard task force holds a colony's orbit. */
 	public static float guardDays()           { return f("threatinc_guardDays"); }
 	/** Days a task force guarding one of the player's own colonies stays; 0 = until recalled, staged there with its points the colony's to send out. */

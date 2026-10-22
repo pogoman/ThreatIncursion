@@ -300,7 +300,9 @@ A Threat army on an NPC faction's own world is answered by `ThreatFleetOrders.pl
 on the ground-front poll (it was monthly):
 
 - **Sized to break the hold.** The relief is the Threat's points over the world
-  (`pointsNear`, `ORBIT_HOLD_RANGE`) times `npcSiegeOrbitMargin` (1.5), less the guards
+  (`pointsNear`, `ORBIT_HOLD_RANGE`) times `reliefOrbitMargin` (1.0 since 2026-10-22; the siege's
+  `npcSiegeOrbitMargin` 1.5 until then - the enough gate, the one-body build and `guardNeed` over
+  a swarm-held orbit read the same margin), less the guards
   already bound there, built at the nearest base whose depot can provision one
   (`pickReliefBase`) from fleets of `reliefFleetFP` (300
   combat points) and merged into one "Relief Force" up to `softenMergeMaxShips`. There is no

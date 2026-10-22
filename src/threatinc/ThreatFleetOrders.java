@@ -489,13 +489,14 @@ public class ThreatFleetOrders {
 
 	/**
 	 * What lifting the Threat's hold over the colony takes: the swarm's points
-	 * over it times npcSiegeOrbitMargin, the siege's own orbit rule. With no
+	 * over it times reliefOrbitMargin (1.0 since 2026-10-22; the siege's own 1.5 until then, which held
+	 * every relief for Sindria while its last district fell). With no
 	 * swarm overhead, one guard of guardFleetFP to deny the next landing.
 	 */
 	public static float reliefGoal(MarketAPI market) {
 		float threat = ThreatGroundFronts.pointsNear(market, Factions.THREAT, true);
 		if (threat <= 0f) return ThreatIncConfig.guardFleetFP();
-		return threat * Math.max(1f, ThreatIncConfig.npcSiegeOrbitMargin());
+		return threat * Math.max(0.5f, ThreatIncConfig.reliefOrbitMargin());
 	}
 
 	/** Points the colony's relief is still short: 0 unless a Threat army stands on it. */
@@ -505,10 +506,10 @@ public class ThreatFleetOrders {
 		return Math.max(0f, reliefGoal(market) - guardPointsFor(market.getId()));
 	}
 
-	/** Points a relief must outweigh over the colony: the swarm's over it, or one guard of guardFleetFP with none. */
+	/** Points a relief must outweigh over the colony: the swarm's over it x reliefOrbitMargin (the goal's own margin, 2026-10-22), or one guard of guardFleetFP with none. */
 	public static float reliefNeed(MarketAPI market) {
 		float threat = ThreatGroundFronts.pointsNear(market, Factions.THREAT, true);
-		return threat > 0f ? threat : ThreatIncConfig.guardFleetFP();
+		return threat > 0f ? threat * Math.max(0.5f, ThreatIncConfig.reliefOrbitMargin()) : ThreatIncConfig.guardFleetFP();
 	}
 
 	/**
@@ -1466,14 +1467,14 @@ public class ThreatFleetOrders {
 
 	/**
 	 * Fleet points an NPC guard over the colony must bring: the Threat's points
-	 * over it x npcSiegeOrbitMargin (reliefGoal's rule), or the seen strikes
+	 * over it x reliefOrbitMargin (reliefGoal's rule), or the seen strikes
 	 * bound for it x frontlineGarrisonMargin, in task-force points
 	 * (ThreatFrontlines.STRENGTH_PER_FP) - whichever is more; 0 with neither.
 	 */
 	public static float guardNeed(MarketAPI market) {
 		if (market == null) return 0f;
 		float swarm = ThreatGroundFronts.pointsNear(market, Factions.THREAT, true)
-				* Math.max(1f, ThreatIncConfig.npcSiegeOrbitMargin());
+				* Math.max(0.5f, ThreatIncConfig.reliefOrbitMargin());
 		float strikes = ThreatFrontlines.strikesWeight(market) * ThreatIncConfig.frontlineGarrisonMargin()
 				/ ThreatFrontlines.STRENGTH_PER_FP;
 		return Math.max(0f, Math.max(swarm, strikes));

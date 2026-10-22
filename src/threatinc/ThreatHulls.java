@@ -257,7 +257,8 @@ public class ThreatHulls {
 
 	/**
 	 * The faction's hull port - where hulls are asked for and land: its shipyard market making the most
-	 * ship units, else the market with the most standing hulls; null with none.
+	 * ship units, else the market with the most standing hulls, else its largest market (one without a Threat army
+	 * on it first); null with no market.
 	 */
 	public static MarketAPI hullPort(String factionId) {
 		if (factionId == null || !enabled()) return null;
@@ -279,6 +280,21 @@ public class ThreatHulls {
 				most = s;
 				best = m;
 			}
+		}
+		if (best != null) return best;
+		// (2026-10-22, Sindria) no yard working and no patrol standing - the Diktat with Sindria's Orbital Works and
+		// High Command suppressed by the front, Cruor's and Volturn's yards still building - and hulls had nowhere to
+		// be asked for or to land: aidHulls and the hull contract both stop at a null port. The largest market
+		// serves, one without a Threat army on it first.
+		boolean bestInvaded = true;
+		int bestSize = 0;
+		for (MarketAPI m : marketsOf(factionId)) {
+			if (m.getStarSystem() == null || m.getPrimaryEntity() == null) continue;
+			boolean invaded = ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(m.getId()));
+			if (best != null && ((invaded && !bestInvaded) || (invaded == bestInvaded && m.getSize() <= bestSize))) continue;
+			best = m;
+			bestInvaded = invaded;
+			bestSize = m.getSize();
 		}
 		return best;
 	}
