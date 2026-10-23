@@ -1195,9 +1195,22 @@ public class ThreatWarBoard {
 				cell(cells, Alignment.LMID, text, m.getStarSystem() != null
 						? main.shortenString(m.getStarSystem().getNameWithNoType(), sw - 10f) : "-");
 			}
-			// Force: ours first, the arrow pointing the way the attack goes
-			cell(cells, Alignment.MID, text, Misc.getWithDGS(Math.round(ours))
-					+ (weLanded ? " -> " : " <- ") + Misc.getWithDGS(Math.round(theirs))); i++;
+			// Force: ours first, the arrow pointing the way the attack goes, each
+			// figure in its side's colour - the landing's owner, the world's owner
+			String landerId = ThreatGroundFronts.ownerOf(f);
+			FactionAPI lander = Global.getSector().getFaction(landerId);
+			Color landerColour = Factions.PLAYER.equals(landerId) ? Misc.getBasePlayerColor()
+					: lander != null ? lander.getBaseUIColor() : text;
+			Color worldColour = m.isPlayerOwned() ? Misc.getBasePlayerColor()
+					: worldOwner != null ? worldOwner.getBaseUIColor() : text;
+			String oursText = Misc.getWithDGS(Math.round(ours));
+			String theirsText = Misc.getWithDGS(Math.round(theirs));
+			LabelAPI force = main.createLabel(oursText + (weLanded ? " -> " : " <- ") + theirsText, text);
+			force.setHighlight(oursText, theirsText);
+			force.setHighlightColors(weLanded ? landerColour : worldColour, weLanded ? worldColour : landerColour);
+			cells.add(Alignment.MID);
+			cells.add(text);
+			cells.add(force); i++;
 			// the world's defences, coloured for this side: worn is the landing's gain
 			int trend = ThreatGroundFronts.defensesTrend(f, m);
 			String defenses = ThreatGroundFronts.defensesLabel(f, m);
