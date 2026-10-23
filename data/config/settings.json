@@ -1189,6 +1189,10 @@
 	# player's fleet) stand over an invaded world, its owner and its partners send what relief they can build,
 	# enough or not - the player judges the odds and withdraws to stop them
 	"threatinc_reliefFollowsPlayer": true,
+	# RELIEF GOES WHERE THE SWARM IS (2026-10-23, the user: a Hegemony relief sat over Volturn, no Threat fleet
+	# there, while Sindria burned): a relief on station over a quiet world moves to the owner's nearest invaded
+	# world where the swarm holds the orbit and it can outweigh it with the guards there, or the player is at the wall
+	"threatinc_reliefRetask": true,
 	"threatinc_guardDays": 90,
 	# a guard over one of YOUR OWN colonies is staging (2026-09-05): it stays
 	# guardOwnDays (0 = until recalled), its points count in that colony's FP

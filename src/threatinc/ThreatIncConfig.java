@@ -982,6 +982,8 @@ public class ThreatIncConfig {
 	public static float reliefOrbitMargin()   { return f("threatinc_reliefOrbitMargin"); }
 	/** THE PLAYER AT THE WALL (2026-10-23, the user, Sindria): while the player's own guard or Defend fleets (or the player's fleet) stand over an invaded world, its owner and partners send what relief they can build, enough or not (ThreatFleetOrders.playerAtTheWall). */
 	public static boolean reliefFollowsPlayer() { return b("threatinc_reliefFollowsPlayer", true); }
+	/** RELIEF GOES WHERE THE SWARM IS (2026-10-23, the user, the Hegemony relief idling over Volturn while Sindria burned): a relief on station over a world with no Threat fleet moves to the owner's nearest invaded world where the swarm holds the orbit and it can outweigh it with the guards there, or the player is at the wall (ThreatFleetOrders.retaskReliefs). */
+	public static boolean reliefRetask() { return b("threatinc_reliefRetask", true); }
 	/** Days a guard task force holds a colony's orbit. */
 	public static float guardDays()           { return f("threatinc_guardDays"); }
 	/** Days a task force guarding one of the player's own colonies stays; 0 = until recalled, staged there with its points the colony's to send out. */

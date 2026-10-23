@@ -363,6 +363,18 @@ on the ground-front poll (it was monthly):
   guards and Defend contracts stopped once the strike landed. The Defend contract itself
   still covers strikes in flight only.
 - **Coalition relief (the user, 2026-10-08, trialled from hw75).** A Threat army the owner's best base cannot outweigh alone (`reliefEnough`) is answered by the owner and its coalition partners together (`ThreatCoalition.jointRelief`, from `planRelief`) when what they can field between them, with the guards already bound there, outweighs the army: each sends what its nearest provisioning base can pay, the owner first then the partners nearest first, until the owed points are covered, and every fleet holds the orbit as any relief. Partners are the coalition - every war faction not hostile to the owner, whatever the standing (`ThreatCoalition.coalition`, the trade rule of 2026-10-06; the first hw75/hw76 run gated partners on Favourable standing and found none in 154 held joint reliefs) - with no chance roll - a joint answer is a decision, not `allyAid`'s monthly lottery; `reliefOwed` counts a joint relief that would sail (`jointEnough`), so a siege waits for it. Why: hw65-hw74 no ally relieved a besieged capital (Chicomoztoc 220 days under a 5,800 FP front in hw65a) because an ally's relief, like the owner's, had to be enough from one base alone, and relief was held two to three times per send. Knob `coalitionRelief`.
+- **Relief goes where the swarm is (the user, 2026-10-23: "theres a hegemony relief force sitting right over
+  volturn where there are no threat fleets, while sindria is being burned to the ground").** The Hegemony's 1,070 FP
+  relief over Volturn was bombarding the army there at 7 troops a day on two weeks of fuel, bound to Volturn until
+  its army was gone, while Sindria's 1,651 FP of swarm went unanswered. `ThreatFleetOrders.retaskReliefs` (first
+  thing in `planRelief`): a relief with no term on station over a world with no Threat fleet over it moves to the
+  owner's nearest other invaded world where the swarm holds the orbit and its points with the guards already bound
+  there outweigh the swarm (`reliefNeed`), or the player is at the wall; in-system free, across systems only with
+  the voyage's fuel above its passage home from there (`reliefCanReach`). The order is re-targeted (the guards
+  bound to the new world count it at once, so a coalition send there needs less), the log says "Relief moves", the
+  notice "Relief Moves". The quiet world is owed its `guardFleetFP` guard again on the same poll. Knob
+  `threatinc_reliefRetask` (true). Sindria: 1,070 + 549 of the player's = 1,619 against 1,651, so the League's
+  412 then closes the gap.
 - **The player at the wall (the user, 2026-10-23, Sindria: "i clicked the defend button and sent loads of my own
   fleets to help them ... if they send fleets with my fleets we can win").** While the player's own guard or Defend
   fleets, or the player's fleet, stand over an invaded world (`ThreatFleetOrders.playerAtTheWall`,

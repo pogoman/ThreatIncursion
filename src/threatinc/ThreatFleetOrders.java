@@ -590,6 +590,7 @@ public class ThreatFleetOrders {
 	 */
 	public static void planRelief() {
 		if (!ThreatWarState.enabled() || !ThreatIncConfig.ordersEnabled()) return;
+		retaskReliefs();
 		for (String factionId : ThreatWarState.warFactionIds()) {
 			FactionAPI faction = Global.getSector().getFaction(factionId);
 			if (faction == null || faction.isPlayerFaction()) continue;
@@ -636,6 +637,64 @@ public class ThreatFleetOrders {
 				}
 			}
 		}
+	}
+
+	/**
+	 * RELIEF GOES WHERE THE SWARM IS (the user, 2026-10-23: "theres a hegemony relief force sitting right over
+	 * volturn where there are no threat fleets, while sindria is being burned to the ground by the threat. wtf is
+	 * the heg relief force doing?" - bombarding Volturn's army at 7 troops a day on two weeks of fuel, bound to
+	 * the world it was sent to until the army there was gone). A relief with no term on station over a world
+	 * with no Threat fleet over it moves to the nearest other invaded world of the same owner where the swarm
+	 * holds the orbit and its points with the guards already bound there outweigh the swarm (reliefNeed), or
+	 * the player is at the wall (playerAtTheWall). In-system the move is free; across systems it must carry the
+	 * voyage's fuel above its passage home from the new world. The world it leaves is owed a guard again on the
+	 * same poll (planRelief). Knob reliefRetask.
+	 */
+	protected static void retaskReliefs() {
+		if (!ThreatIncConfig.reliefRetask()) return;
+		for (Order o : new ArrayList<Order>(all())) {
+			if (!o.relief || !o.indefinite() || !KIND_GUARD.equals(o.kind)) continue;
+			if (o.fleet == null || !o.fleet.isAlive() || o.fleet.isExpired()) continue;
+			MarketAPI here = o.targetId != null ? Global.getSector().getEconomy().getMarket(o.targetId) : null;
+			if (here == null || here.getPrimaryEntity() == null || !nearPlanet(o.fleet, here.getPrimaryEntity())) continue;
+			if (ThreatGroundFronts.pointsNear(here, Factions.THREAT, true) > 0f) continue;
+			String owner = o.recipientFactionId != null ? o.recipientFactionId : o.factionId;
+			float fp = o.fleet.getFleetPoints();
+			MarketAPI best = null;
+			float bestDist = Float.MAX_VALUE;
+			for (MarketAPI there : ThreatReserves.marketsOf(owner)) {
+				if (there == here || there.getPrimaryEntity() == null || there.getStarSystem() == null) continue;
+				if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(there.getId()))) continue;
+				if (ThreatGroundFronts.pointsNear(there, Factions.THREAT, true) <= 0f) continue;
+				if (fp + guardPointsFor(there.getId()) < reliefNeed(there) && !playerAtTheWall(there)) continue;
+				float d = Misc.getDistanceLY(here.getLocationInHyperspace(), there.getLocationInHyperspace());
+				if (d >= bestDist || !reliefCanReach(o.fleet, d, there)) continue;
+				best = there;
+				bestDist = d;
+			}
+			if (best == null) continue;
+			String from = here.getName();
+			o.fleet.clearAssignments();
+			o.fleet.addAssignment(FleetAssignment.GO_TO_LOCATION, best.getPrimaryEntity(), 1000f, "relieving " + best.getName());
+			o.fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, best.getPrimaryEntity(), NO_TERM_DAYS, "relieving " + best.getName());
+			o.targetId = best.getId();
+			o.targetName = best.getName();
+			o.arrived = false;
+			o.recipientFactionId = o.factionId.equals(best.getFactionId()) ? null : best.getFactionId();
+			ThreatIncConfig.log("Relief moves: " + o.factionId + "'s " + (int) fp + " FP leaves quiet " + from + " for invaded "
+					+ best.getName() + ", where the swarm holds the orbit (" + (int) ThreatGroundFronts.pointsNear(best, Factions.THREAT, true)
+					+ " FP against " + (int) guardPointsFor(best.getId()) + " bound" + (playerAtTheWall(best) ? ", the player at the wall" : "") + ")");
+			ThreatNotice.titled("Relief Moves").icon(o.fleet.getFaction())
+					.line("%s moves %s FP from %s to %s", ThreatNotice.faction(o.fleet.getFaction()), Misc.getWithDGS((int) fp),
+							ThreatNotice.market(here), ThreatNotice.market(best)).send();
+		}
+	}
+
+	/** Whether the relief carries the fuel for a voyage of ly light-years above its passage home from the new world; an in-system move is free. */
+	protected static boolean reliefCanReach(CampaignFleetAPI fleet, float ly, MarketAPI there) {
+		if (ly <= 0.01f) return true;
+		float voyage = fleet.getFleetPoints() / IncursionManager.FP_PER_RESPONSE_DIFFICULTY * ly * ThreatIncConfig.expeditionFuelPerPointLY();
+		return fleet.getCargo().getFuel() >= voyage + ThreatGroundFronts.reliefFuelHome(fleet, there);
 	}
 
 	/**
