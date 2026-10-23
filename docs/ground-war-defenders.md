@@ -377,12 +377,13 @@ defender has:
 - **The Defend contract.** A Defend mission on the colony fails only when the swarm
   actually puts troops on the ground (`landOrReinforce`) or a saturation pass hits; a
   soften pass, or a landing turned back from a held orbit, is the contract working.
-- **Counter-attacks.** Paced by `frontCounterAttackDays` (40) instead of hive vitality,
-  divided by `colonyCounterAttackMilitaryMult (1.5)` when the colony has a Patrol HQ, Military
-  Base, High Command or Lion's Guard, and by the force-ratio tempo; floored at
-  `frontOverrunMusterDays` when it would overrun the army, and held entirely while the
-  defenders are dug in ("The defenders choose too"). Stability has not paced them since
-  2026-10-17.
+- **The line** (2026-10-23, replacing the counter-attack cadence). The defenders push the
+  line with `defenderPressure` - the garrison plus armed marines at `marineCounterAttackMult`,
+  x `colonyCounterAttackMilitaryMult` (1.5) with a Patrol HQ, Military Base, High Command or
+  Lion's Guard - continuously, against the army's strength in its cover; the army pushes back
+  with its own against the defence figure. Dug in ("The defenders choose too") they push
+  nothing and hold from cover instead. A district comes back every `frontLineBaseDays` /
+  |rate|; a beachhead holding none is overrun. `ground-war-fronts.md` "The line".
 - **Batteries.** While the expedition's fleets circle the world its Ground Defenses and
   Heavy Batteries are killing ships (the duel above); a colony whose fortification is
   intact makes the siege long and expensive, and relief that arrives during it finds a

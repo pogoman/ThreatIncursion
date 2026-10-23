@@ -17,6 +17,51 @@ their own fronts (below) - and, since 2026-09-05, **for the swarm as well**: Thr
 strikes land Threat-owned fronts on inhabited worlds and can only kill a colony by
 taking its last stratum ("Threat ground assaults" below). The rule is symmetric.
 
+## The line (2026-10-23, built, untested)
+
+The user, Sindria falling with 255 marines against 212 troops: "do away with counter attack
+which is a bit random ... state column with values gaining losing and grinding". One line per
+front moves by the net of both sides' pressure, and the counter-attack cadence is gone
+(`docs/front-line-proposal.md` has the reasoning; this is what runs).
+
+- **The rate** (`ThreatGroundFronts.lineRate`, -1..1, positive toward the landing):
+  `gainA = landingPushes ? max(0, A - D x coverD) : 0`, `gainD = worldPushes ? max(0, D' - A x
+  coverA) : 0`, `rate = (gainA - gainD) / (A + D)`. A is `effectiveStrength`; D is the hive's
+  `defenderStrength`, or a colony's garrison plus armed marines at weight 1 (`colonyGarrison +
+  colonyMarineDefense`); D' is `defenderPressure` - `counterAttackStrength` x
+  `colonyCounterAttackMilitaryMult` 1.5 with a military command, or x `hiveCounterAttackPace`
+  for a hive (starve it and it cannot push). A pushing side has cover 1; a dug-in one its
+  entrenchment's (`coverIfDugIn`, `defenderCoverMult`). A hive always pushes; a colony's
+  marines push unless dug in (`defendersPush`).
+- **Movement** (`tickFront`): `pushProgress += rate x days`. At `+frontLineBaseDays` (6) the
+  landing takes a district (`takeStratum`), at `-frontLineBaseDays` it gives one back
+  (`loseStratum`: a held layer, or "Beachhead Overrun" and the front is gone). A Push or Dig
+  in order keeps negative progress and clears positive. Both sides earn XP per district change
+  on the strengths of the day (`ThreatMarineXP.frontEarn` / `colonyEarn`).
+- **States** (`lineState`, from the reader's side): overrunning past `frontOverrunRate` 0.5,
+  gaining past `frontGrindBand` 0.1, grinding inside the band with both pushing, stalled inside
+  it otherwise, losing and overrun the mirror. `front.state` (what the landing suppresses) is
+  derived from the rate by `lineSuppressionState`: HOLDING (key structures worn) while it
+  gains, GRINDING (defence structures held) inside the band, FOOTHOLD while it loses.
+- **Readouts**: the fronts table's State is the word from the tab's side, Line (the old
+  Counter column) the days to the next district either way (`daysToLineChange`), Falls on the
+  rate (`pushDaysRemaining` / `pushDaysEstimate` = base / rate); the row tooltip quotes the
+  rate, the next district and what the world pushes with; the defenders' Push button and prompt
+  quote `defenderPushQuote` (the rate as the marines would push it). `holdRequirement` is the
+  world's defence figure itself and `grindRequirement` its pressure over the best cover.
+- **The marines ask** (`reliefNeed(market, rate)`): the marines banked that bring the rate to
+  `-rate` from the swarm's side, found by halving on `lineRateOf` - 0 holds, `frontPushBackRate`
+  0.25 pushes the army back (the default every convoy, Reinforce and battle request uses),
+  `frontOverrunRate` overruns it. Sindria asks for the marines that out-push 212 troops, not the
+  10 that won one blow.
+- **Gone**: brace, `counterAttackInterval` / `daysToCounterAttack` / `counterAttackRepelled` /
+  `counterAttackLoss` / `counterAttackOverruns` / `counterAttackOverwhelms` / `counterAttackTempo`
+  / `hiveCounterAttack`, and knobs `frontHoldFraction`, `frontGrindFraction`,
+  `frontStateHysteresis`, `frontPushBaseDays`, `frontCounterAttackDays`,
+  `frontCounterAttackLossFraction`, `defenderCounterAttackLossFraction`, `counterAttackRatioClamp`,
+  `frontOverrunMusterDays`, `frontBraceEnabled`, `frontBraceWhenBeaten`. `beachheadTroops` /
+  `beachheadSurvives` still size an NPC landing on `counterAttackStrength x siegeBeachheadMargin`.
+
 ## The front (ThreatGroundFronts)
 
 Marines + heavy armaments landed on a hive world ("Ground operations" on the military

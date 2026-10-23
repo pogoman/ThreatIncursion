@@ -340,7 +340,7 @@ public class ThreatIncConfig {
 	public static float strikeFrontSupplyDays() { return f("threatinc_strikeFrontSupplyDays"); }
 	/** How much of a colony's banked reserve marines defend the ground against a front. */
 	public static float reserveDefenseMult()  { return f("threatinc_reserveDefenseMult"); }
-	/** Counter-attack cadence bonus for a colony with a military industry. */
+	/** A staff to run the operation (Patrol HQ, Military Base, High Command, Lion's Guard) pushes the line this much harder (ThreatGroundFronts.defenderPressure; the counter-attack cadence it paced went 2026-10-23). */
 	public static float colonyCounterAttackMilitaryMult() {
 		return f("threatinc_colonyCounterAttackMilitaryMult");
 	}
@@ -444,14 +444,6 @@ public class ThreatIncConfig {
 	public static boolean frontsEnabled()     { return b("threatinc_frontsEnabled", true); }
 	/** Troops that land push: a front at holding strength assaults as soon as it is on the ground. */
 	public static boolean frontAutoPush()     { return b("threatinc_frontAutoPush", true); }
-	/** Whether a front holding no ground breaks off its assault and digs in when an assault would get it overrun. */
-	public static boolean frontBraceEnabled() { return b("threatinc_frontBraceEnabled", true); }
-	/** A front braces whenever the coming counter-attack would BEAT it exposed, ground held or not (2026-10-18, the user); off, only a beachhead holding nothing that would be overrun braces (2026-09-08). */
-	public static boolean frontBraceWhenBeaten() { return b("threatinc_frontBraceWhenBeaten", true); }
-	/** Effective strength (marines x entrenchment) as a fraction of the defense figure needed to HOLD (suppress every key structure). */
-	public static float frontHoldFraction()   { return f("threatinc_frontHoldFraction"); }
-	/** Fraction of the defense figure needed to GRIND (harass only the defense structures, at the reduced rate below). */
-	public static float frontGrindFraction()  { return f("threatinc_frontGrindFraction"); }
 	/** Disruption days a front adds per day to what it holds, times troops / (troops + defence); the clock runs down 1/day. */
 	public static float frontWearRate()       { return f("threatinc_frontWearRate"); }
 	/** Fraction of the front's current marines lost per 30 days while supplied. */
@@ -470,23 +462,23 @@ public class ThreatIncConfig {
 	public static float frontEntrenchKeptFraction() { return f("threatinc_frontEntrenchKeptFraction"); }
 	/** Marines below which a front collapses outright. */
 	public static float frontMinMarines()     { return f("threatinc_frontMinMarines"); }
-	/** Band a front must fall below a threshold before it gives the state back up - stops flapping now the defence figure bleeds. */
-	public static float frontStateHysteresis() { return f("threatinc_frontStateHysteresis"); }
+	/** THE LINE (2026-10-23, the user): days of net rate 1 that move a district across the line either way (ThreatGroundFronts.lineRate). */
+	public static float frontLineBaseDays()   { return f("threatinc_frontLineBaseDays"); }
+	/** The line's rate inside which the front reads grinding (both pushing) or stalled, and the landing holds the defence structures rather than wearing everything. */
+	public static float frontGrindBand()      { return f("threatinc_frontGrindBand"); }
+	/** The line's rate past which a side reads overrunning (the other overrun). */
+	public static float frontOverrunRate()    { return f("threatinc_frontOverrunRate"); }
+	/** The rate toward the defenders a colony's marines ask is sized to (ThreatGroundFronts.reliefNeed): push the army back. */
+	public static float frontPushBackRate()   { return f("threatinc_frontPushBackRate"); }
 
 	// ---- marines: garrison, casualties and veterancy (docs/ground-war.md) ----
 
 	/** Weight the colony's stockpiled marines enter a COUNTER-ATTACK at; they defend at full weight either way. */
 	public static float marineCounterAttackMult() { return f("threatinc_marineCounterAttackMult"); }
-	/** Most the force ratio may speed up (or slow) a colony's counter-attack cadence; 1 disables the tempo term. */
-	public static float counterAttackRatioClamp() { return f("threatinc_counterAttackRatioClamp"); }
-	/** Days a colony's counter-attack takes to muster when it would beat the army past the overrun odds ({@link ThreatGroundFronts#counterAttackOverwhelms}): the cadence cannot sit above this with that superiority (user, 2026-10-17: 983 defenders over 143 troops read 30 days). */
-	public static float frontOverrunMusterDays() { return f("threatinc_frontOverrunMusterDays"); }
 	/** Fraction of a colony's defender entrenchment ({@link ThreatGroundFronts#defenderCoverMult}) kept when the army takes a district; 0 = lost (user, 2026-10-17). */
 	public static float defenderEntrenchKeptFraction() { return f("threatinc_defenderEntrenchKeptFraction"); }
 	/** Days a colony takes to call up, arm and post its whole marine stockpile; marines shipped in mid-siege ramp in over this. */
 	public static float marineArmingDays()    { return f("threatinc_marineArmingDays"); }
-	/** Fraction of a colony's armed marines lost each time it counter-attacks, win or lose. */
-	public static float defenderCounterAttackLossFraction() { return f("threatinc_defenderCounterAttackLossFraction"); }
 	/** Fraction of a colony's armed marines lost per 30 days while a front presses it at full strength. */
 	public static float defenderLossPer30Days() { return f("threatinc_defenderLossPer30Days"); }
 	/** Whether a colony's armed marines burn heavy armaments from its stockpile while an army stands on it (frontArmamentsPerMarinePer30Days per engaged marine), fighting at frontDryEffectivenessMult with none in stock (user, 2026-10-17). */
@@ -526,8 +518,6 @@ public class ThreatIncConfig {
 
 	// ---- stratum campaign: pushes, counter-attacks, eradication ----
 
-	/** Base days per stratum push at even strength (scaled by defense/strength, clamped 0.5x-3x). */
-	public static float frontPushBaseDays()   { return f("threatinc_frontPushBaseDays"); }
 	/** Fraction of the front's marines lost per 30 days while pushing (replaces the entrenched rate). */
 	public static float frontPushLossPer30Days() { return f("threatinc_frontPushLossPer30Days"); }
 	/** Armaments-upkeep multiplier while pushing. */
@@ -542,10 +532,6 @@ public class ThreatIncConfig {
 	public static float frontEntrenchDefenseBonus() { return f("threatinc_frontEntrenchDefenseBonus"); }
 	/** Days a front consolidates at each stratum checkpoint before pushing on by doctrine. */
 	public static float frontCheckpointDays() { return f("threatinc_frontCheckpointDays"); }
-	/** Base days between hive counter-attacks (divided by colony health - starved hives barely attack). */
-	public static float frontCounterAttackDays() { return f("threatinc_frontCounterAttackDays"); }
-	/** Fraction of the front's marines lost to a counter-attack it fails to repel. */
-	public static float frontCounterAttackLossFraction() { return f("threatinc_frontCounterAttackLossFraction"); }
 	/** Days of armaments supply an NPC expedition's landing force carries. */
 	public static float npcFrontSupplyDays()  { return f("threatinc_npcFrontSupplyDays"); }
 

@@ -78,15 +78,14 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 
 		float attacker = ThreatGroundFronts.effectiveStrength(front);
 		float defender = ThreatGroundFronts.defenderStrength(market);
-		float holdNeed = ThreatGroundFronts.holdRequirement(market);
-		tooltip.addPara("Swarm %s against the marines' %s; it holds at %s.", 3f, h,
-				Misc.getWithDGS(Math.round(attacker)), Misc.getWithDGS(Math.round(defender)),
-				Misc.getWithDGS(Math.round(holdNeed)));
-		if (attacker >= holdNeed) {
-			tooltip.addPara("The swarm is %s.", 3f, neg, "holding and pressing on");
-		} else {
-			tooltip.addPara("The swarm is %s.", 3f, pos, "contained");
-		}
+		float rate = ThreatGroundFronts.lineRate(front, market);
+		float change = ThreatGroundFronts.daysToLineChange(front, market);
+		tooltip.addPara("Swarm %s against the marines' %s.", 3f, h,
+				Misc.getWithDGS(Math.round(attacker)), Misc.getWithDGS(Math.round(defender)));
+		// THE LINE (2026-10-23): the word from the swarm's side and the next district
+		tooltip.addPara("The swarm is %s" + (change < 0f ? "" : "; next " + ThreatGroundFronts.layerName(market)
+				+ (rate > 0f ? " falls in " : " retaken in ") + days(change)) + ".", 3f,
+				rate > 0f ? neg : pos, ThreatGroundFronts.lineState(front, market, true));
 
 		// What that defence figure is actually made of (2026-09-08). Vanilla's
 		// own Ground defenses readout on this screen shows the garrison stat
@@ -115,12 +114,11 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		}
 
 		if (ThreatGroundFronts.defendersHoldFire(front, market)) {
-			tooltip.addPara("Marines dug in: defence x%s, no counter-attacks.", 3f, pos,
+			tooltip.addPara("Marines dug in: defence x%s, no push.", 3f, pos,
 					String.format("%.2f", ThreatGroundFronts.defenderCoverMult(front)));
 		} else {
-			float days = ThreatGroundFronts.daysToCounterAttack(front, market);
-			tooltip.addPara("Marines push: next counter-attack %s.", 3f, pos,
-					days <= 0f ? "imminent" : days(days));
+			tooltip.addPara("Marines push with %s.", 3f, pos,
+					Misc.getWithDGS(Math.round(ThreatGroundFronts.defenderPressure(front, market))));
 		}
 
 		if (!ThreatGroundFronts.needsArms(front)) {

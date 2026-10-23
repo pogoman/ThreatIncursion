@@ -1962,18 +1962,11 @@ public class ThreatFactionView {
 			if (why != null) {
 				prompt.addPara(why, 0f);
 			} else if (push) {
-				float atk = ThreatGroundFronts.counterAttackStrength(world);
-				float def = ThreatGroundFronts.defenseStrength(front);
 				prompt.addPara("Order the marines of " + world.getName() + " to push? "
-						+ "A counter-attack every %s days or so, %s against the landing's %s"
-						+ (atk <= def ? " - repelled" : "") + "; each costs about %s marines. "
-						+ "No cover.", 0f, h,
-						"" + (int) Math.ceil(ThreatGroundFronts.counterAttackInterval(front, world)),
-						Misc.getWithDGS(Math.round(atk)), Misc.getWithDGS(Math.round(def)),
-						Misc.getWithDGS(Math.round(ThreatGroundFronts.counterAttackDefenderLoss(front, world))));
+						+ ThreatGroundFronts.defenderPushQuote(front, world), 0f);
 			} else {
 				prompt.addPara("Order the marines of " + world.getName() + " to dig in? "
-						+ "No counter-attacks; the defence rises to x%s over %s days, and the cover "
+						+ "No push; the defence rises to x%s over %s days, and the cover "
 						+ "is lost with a " + ThreatGroundFronts.layerName(world) + ".", 0f, h,
 						String.format("%.1f", ThreatIncConfig.frontEntrenchDefenseBonus()),
 						"" + (int) ThreatIncConfig.frontEntrenchDays());
@@ -2302,8 +2295,8 @@ public class ThreatFactionView {
 			if (push) {
 				ThreatGroundFronts.orderDefenderPush(front);
 				ThreatNotice.titled("Push Ordered").icon(faction)
-						.line("Marines on %s push: a counter-attack every %s days", ThreatNotice.market(world),
-								(int) Math.ceil(ThreatGroundFronts.counterAttackInterval(front, world)))
+						.line("Marines on %s push: %s", ThreatNotice.market(world),
+								ThreatGroundFronts.lineState(ThreatGroundFronts.defenderPushRate(front, world), true, false))
 						.send();
 				return "defend-push";
 			}

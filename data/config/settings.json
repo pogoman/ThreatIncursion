@@ -573,21 +573,19 @@
 	# stratum as soon as it is on the ground (and when reinforced back to
 	# holding strength); off, the player's fronts push only when ordered
 	"threatinc_frontAutoPush": true,
-	# a front holding no ground is destroyed outright by a counter-attack, and
-	# assaulting costs it all its cover - so if an assault would get it killed
-	# it digs in first and resumes once cover (or the odds) make one survivable.
-	# Its own fleet will not bombard over troops in the open either.
-	"threatinc_frontBraceEnabled": true,
-	# ...and braces whenever the coming counter-attack would beat it caught pushing, ground held
-	# or not (2026-10-18, the user); false = only a beachhead holding nothing that would be overrun
-	"threatinc_frontBraceWhenBeaten": true,
-	# effective strength (marines x entrenchment) as a fraction of the defense
-	# figure: at or above hold = suppress everything; between grind and hold =
-	# harass only the defense structures; below grind = a mere foothold. 0.17
-	# keeps the landing sizes of the old 1.5x entrenchment bonus viable now
-	# that a dug-in front fights at 1.0 (2026-09-06).
-	"threatinc_frontHoldFraction": 0.17,
-	"threatinc_frontGrindFraction": 0.10,
+	# THE LINE (2026-10-23, the user: "do away with counter attack ... state column with values gaining
+	# losing and grinding"): one line per district moves by the net of both sides' pressure -
+	# each pushing side gains what its strength exceeds the other's cover by, read against the
+	# two strengths together (-1..1). This many days at rate 1 move a district either way
+	"threatinc_frontLineBaseDays": 6,
+	# inside this rate the front reads grinding (both pushing) or stalled and the landing holds
+	# the defence structures rather than wearing everything; past frontOverrunRate a side reads
+	# overrunning, the other overrun
+	"threatinc_frontGrindBand": 0.1,
+	"threatinc_frontOverrunRate": 0.5,
+	# the rate toward its defenders a colony's marines ask (relief convoys, Reinforce, battle
+	# requests) is sized to: push the army back, between hold (0) and overrun (frontOverrunRate)
+	"threatinc_frontPushBackRate": 0.25,
 	# a front wears the defences by its advantage: this x troops / (troops +
 	# defence) disruption days per day, whatever orbit left standing; the clock
 	# counts down 1/day naturally, so it breaks even at about 0.09 x defence
@@ -610,10 +608,6 @@
 	"threatinc_frontEntrenchMaxMult": 1.0,
 	"threatinc_frontEntrenchKeptFraction": 0.5,
 	"threatinc_frontMinMarines": 50,
-	# a front sitting on a threshold would flap between states now that the
-	# defence figure bleeds; it keeps a state until it falls this far below
-	# the line it crossed to reach it
-	"threatinc_frontStateHysteresis": 0.1,
 
 	# marines: garrison, casualties and veterancy (2026-09-08).
 	# A colony defends with its resource stockpile's marines - never with
@@ -622,14 +616,6 @@
 	# 2026-10-17 (user: "the marines have to take districts back or bleed
 	# the enemy dry"); 0.25 before, holding a sledgehammer stockpile back.
 	"threatinc_marineCounterAttackMult": 1.0,
-	# mustering an offensive is also a question of having troops to spare:
-	# the cadence scales with how badly the world outnumbers what is on its
-	# soil, clamped both ways by this. 1 disables the term.
-	"threatinc_counterAttackRatioClamp": 3.0,
-	# a garrison that would beat the army past the overrun odds (2:1 after
-	# the strength exponent) musters in this many days whatever the cadence
-	# says (user, 2026-10-17). Stability no longer paces counter-attacks.
-	"threatinc_frontOverrunMusterDays": 10,
 	# a defending colony's stance (2026-10-17): Push counter-attacks on the
 	# cadence, Dig in holds fire and earns frontEntrenchDefenseBonus on its
 	# defence over frontEntrenchDays; a district lost keeps this fraction of
@@ -639,10 +625,8 @@
 	# are called up, armed and posted: the whole stockpile works up over this
 	# many days, so a regiment landed today buys a garrison over weeks
 	"threatinc_marineArmingDays": 20,
-	# what the defenders pay: per counter-attack (win or lose - bouncing off a
-	# dug-in front is the expensive case), and per 30 days while a front at
-	# full strength presses them
-	"threatinc_defenderCounterAttackLossFraction": 0.15,
+	# what the defenders pay per 30 days while a front at full strength presses them (the
+	# per-counter-attack price went with the cadence, 2026-10-23)
 	"threatinc_defenderLossPer30Days": 0.20,
 	# and heavy armaments: the engaged armed marines burn the front rate
 	# (frontArmamentsPerMarinePer30Days) from the colony's stockpile while an
@@ -725,9 +709,7 @@
 	# Starvation and bombardment weaken; boots on the ground finish. After each
 	# stratum the front consolidates at a checkpoint, requests reinforcement,
 	# and - given no orders within the window - pushes on by doctrine.
-	# The hive counter-attacks on a cadence paced by its health: it can retake
-	# strata from a front too weak to hold them, and overrun a beaten beachhead.
-	"threatinc_frontPushBaseDays": 20,
+	# The hive pushes the line with its troops at the pace its supplies pay (hiveCounterAttackPace).
 	"threatinc_frontPushLossPer30Days": 0.30,
 	"threatinc_frontPushUpkeepMult": 2.0,
 	"threatinc_frontDryEffectivenessMult": 0.5,
@@ -749,8 +731,6 @@
 	"threatinc_threatPushLossMult": 2.0,
 	"threatinc_frontEntrenchDefenseBonus": 1.5,
 	"threatinc_frontCheckpointDays": 10,
-	"threatinc_frontCounterAttackDays": 40,
-	"threatinc_frontCounterAttackLossFraction": 0.10,
 	"threatinc_npcFrontSupplyDays": 120,
 
 	# The strategy layer (docs/strategy-layer.md). NPC factions stay vanilla

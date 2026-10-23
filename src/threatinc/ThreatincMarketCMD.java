@@ -459,11 +459,11 @@ public class ThreatincMarketCMD extends MarketCMD {
 			boolean pushing = ThreatGroundFronts.STANCE_PUSH.equals(front.stance);
 			String state;
 			if (ThreatGroundFronts.STATE_HOLDING.equals(front.state)) {
-				state = "HOLDING - the hive's organs are suppressed and a push is possible";
+				state = "GAINING GROUND - the hive's organs are suppressed";
 			} else if (ThreatGroundFronts.STATE_GRINDING.equals(front.state)) {
-				state = "GRINDING - harassing the outer defenses; too weak to push";
+				state = "GRINDING - the line stands; the outer defenses are harassed";
 			} else {
-				state = "a FOOTHOLD - dug in, but too weak to suppress anything";
+				state = "LOSING GROUND - too weak to suppress anything";
 			}
 			text.addPara("The front is " + state + ". It holds %s of %s strata; the "
 					+ "Fabrication Core lies at the center, and taking the last "
@@ -562,14 +562,7 @@ public class ThreatincMarketCMD extends MarketCMD {
 				new RepActionEnvelope(RepActions.CUSTOM, impact, null, text, true, true),
 				market.getFactionId());
 		// classify now, so the board reads the front's state before its first poll
-		float eff = ThreatGroundFronts.effectiveStrength(front);
-		if (eff >= ThreatGroundFronts.holdRequirement(market)) {
-			front.state = ThreatGroundFronts.STATE_HOLDING;
-		} else if (eff >= ThreatGroundFronts.grindRequirement(market)) {
-			front.state = ThreatGroundFronts.STATE_GRINDING;
-		} else {
-			front.state = ThreatGroundFronts.STATE_FOOTHOLD;
-		}
+		front.state = ThreatGroundFronts.lineSuppressionState(ThreatGroundFronts.lineRate(front, market));
 		boolean pushing = ThreatGroundFronts.STANCE_PUSH.equals(front.stance);
 		text.addPara("The landers go down through the auspex haze. %s marines and %s "
 				+ "heavy armaments are on the ground and "
