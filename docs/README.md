@@ -23,6 +23,7 @@ Everything here was verified in the running game unless marked otherwise.
 | [ground-war-fronts.md](ground-war-fronts.md) | The front engine (states, strata, NPC fronts), the board's front readouts, vanilla-tool integration (the `removeOption` trap). |
 | [ground-war-defenders.md](ground-war-defenders.md) | What a defended colony is made of: garrison, marines, veterancy, planetary shield, blockade, how it falls. |
 | [front-line-proposal.md](front-line-proposal.md) | PROPOSAL (2026-10-23, the user, nothing built): one continuous line moved by both sides' pressure replaces the counter-attack cadence; State from the reader's side (gaining / grinding / losing); the marines ask sized to turn the line. |
+| [war-effort-rework.md](war-effort-rework.md) | PLAN (2026-10-23, the user, nothing built): one ledger of purpose-sized needs replaces the mission intel (no credits, rep by purpose), Needs column, dock lists needs, Request aid for own colonies priced in rep, war comms text tables. |
 | [ground-war-sieges.md](ground-war-sieges.md) | Threat assault doctrine, landing sizing, the per-day bombardment engine, saturation over a hive, off-screen fights. |
 | [ground-war-orbit-control.md](ground-war-orbit-control.md) | Fabricating troops from hulls, the swarm off armaments, holding the orbit, relief, stations that come back. |
 | [ground-war-verify.md](ground-war-verify.md) | In-game verify lists for the features before bombardment v2. |
