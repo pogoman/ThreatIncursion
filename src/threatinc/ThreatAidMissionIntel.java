@@ -115,6 +115,15 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 		return m;
 	}
 
+	/** A posted (unaccepted) request grows to a larger need - the battle's ask over the peacetime gap (ThreatAidRequests.battleItems); the reward follows. */
+	public void raiseNeed(int need) {
+		if (!isPosted() || need <= needed) return;
+		MarketAPI market = getMarket();
+		if (market == null) return;
+		needed = need;
+		reward = Math.max(1000, Math.round(ThreatAid.valueAt(market, commodityId, needed) / 1000f) * 1000);
+	}
+
 	/** Posted or accepted, in the intel list or still in the comm queue. */
 	public static List<ThreatAidMissionIntel> getOpen() {
 		List<ThreatAidMissionIntel> result = new ArrayList<ThreatAidMissionIntel>();
@@ -285,7 +294,7 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 				cancelWithReason("neutralized");
 				return;
 			}
-			if (kind == KIND_AID && ThreatAidRequests.requestItems(market, commodityId) <= 0) {
+			if (kind == KIND_AID && ThreatAidRequests.missionItems(market, commodityId) <= 0) {
 				cancelWithReason("neutralized");
 				return;
 			}
@@ -600,6 +609,16 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 			info.addPara("Send them from your hull port through the war board (Aid on the colony's "
 					+ "row): a convoy out of your built navy. Partial deliveries count; the contract "
 					+ "completes when the total is reached.", opad);
+		} else if (ThreatAidRequests.underArmy(market) && (Commodities.MARINES.equals(commodityId) || Commodities.HAND_WEAPONS.equals(commodityId))) {
+			info.addPara(Misc.ucFirst(faction.getDisplayNameWithArticle()) + " asks for %s "
+					+ commodityLabel() + " at " + marketName() + ", in the " + sysName + ": a Threat army "
+					+ "stands on the world and " + (Commodities.MARINES.equals(commodityId)
+					? "its garrison needs them to counter-attack." : "its defenders burn them."), opad, fc,
+					Misc.getWithDGS(needed));
+			info.addPara("Deliver it any way you like: hand it over when you dock (Deliver aid "
+					+ "on the port menu, or the station commander over the comm directory), or "
+					+ "send a convoy from one of your colonies through the war board. Partial "
+					+ "deliveries count; the contract completes when the total is reached.", opad);
 		} else {
 			info.addPara(Misc.ucFirst(faction.getDisplayNameWithArticle()) + " asks for %s "
 					+ commodityLabel() + " at " + marketName() + ", in the " + sysName + ": the "

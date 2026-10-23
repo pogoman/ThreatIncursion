@@ -322,6 +322,7 @@ threatinc_aidRepGuardCompleted,Standing for a Guard Term Served,Double,2,"Points
 threatinc_aidRepFrontTotal,Standing for a Task Force at the Door,Double,5,"Points split among every faction with a colony in the hive's strike reach when your task force holds its jump-point.",0,20
 threatinc_aidRequestsEnabled,Requests for Help,Boolean,true,"Whether mobilised factions post defence and delivery contracts on the mission board.",,
 threatinc_aidRequestMaxPosted,Requests Posted at Once,Int,3,"How many requests stand unaccepted at once.",1,10
+threatinc_aidBattleRequests,Battle Requests,Boolean,true,"A colony with a Threat army on it asks for the marines its counter-attack needs and the armaments they burn, outside the posted cap; its fuel and supplies requests withdraw while the army stands. Hand them over at the dock or send a convoy from the war board.",,
 threatinc_missionDefendDays,Defence Contract (Days),Double,60,"Days a defence contract runs: it pays if no Threat action lands on the colony in that time and you (or a guard you sent) were there for each strike.",15,365
 threatinc_missionDefendCredits,Defence Pay per Colony Size,Double,20000,"Credits a defence contract pays per size of the colony.",0,500000
 threatinc_defendRequestRatio,Outmatched Ratio,Double,1.0,"A colony asks for defence when the incoming strike's strength exceeds its defenders' (faction strength in the system plus the station) times this.",0.1,5

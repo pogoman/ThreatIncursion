@@ -421,10 +421,16 @@ public class ThreatConvoys {
 	 * queue of sequential round trips).
 	 */
 	protected static float[] inbound(String marketId) {
+		return inbound(marketId, false);
+	}
+
+	/** As {@link #inbound(String)}; with {@code landing} only convoys not held off by a blockade (waitSinceTimestamp, the blockade door) - what will actually land. */
+	protected static float[] inbound(String marketId, boolean landing) {
 		float[] out = new float[ThreatReserves.COMMODITIES.length];
 		if (marketId == null) return out;
 		for (Convoy c : all()) {
 			if (c.isFrontRun() || !marketId.equals(c.toMarketId)) continue;
+			if (landing && c.waitSinceTimestamp != 0L) continue;
 			CargoAPI cargo = c.fleet != null && c.fleet.isAlive() ? c.fleet.getCargo() : null;
 			out[0] += cargo != null ? cargo.getMarines() : c.marines;
 			out[1] += cargo != null ? cargo.getCommodityQuantity(Commodities.HAND_WEAPONS) : c.armaments;
@@ -2289,7 +2295,7 @@ public class ThreatConvoys {
 			wants[1] = Float.MAX_VALUE;
 			return wants;
 		}
-		float[] atSea = inbound(besieged.getId());
+		float[] atSea = inbound(besieged.getId(), true); // what will land: a convoy held off by the blockade is not on its way
 		float marinesRef = capacityFor(Commodities.MARINES);
 		wants[0] = Math.max(marinesRef, ThreatGroundFronts.reliefNeed(besieged) - atSea[0]);
 		wants[1] = Math.max(ThreatGroundFronts.landingSupply(marinesRef, ThreatIncConfig.frontResupplyDays()),

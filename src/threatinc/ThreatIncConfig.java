@@ -1058,6 +1058,8 @@ public class ThreatIncConfig {
 	public static boolean aidRequestsEnabled(){ return b("threatinc_aidRequestsEnabled", true); }
 	/** Requests posted at once, unaccepted. */
 	public static int aidRequestMaxPosted()   { return i("threatinc_aidRequestMaxPosted"); }
+	/** BATTLE REQUESTS (2026-10-23, the user, Sindria): a colony under a Threat army posts marines and armaments contracts sized to its counter-attack, outside the posted cap, and its fuel and supplies requests withdraw while the army stands (ThreatAidRequests.battleItems / missionItems). */
+	public static boolean aidBattleRequests() { return b("threatinc_aidBattleRequests", true); }
 	/** Days a defence contract runs. */
 	public static float missionDefendDays()   { return f("threatinc_missionDefendDays"); }
 	/** Credits per colony size a defence contract pays. */

@@ -196,6 +196,18 @@ request accepts it.
   1,392 total as "a bug or something": the column is now Fleet, the built navy sits on the hull
   port's row (`ThreatFactionView.fleetShare`, the row tooltip says so), the rows sum to the Total,
   and the Aid prompt quotes the built navy.
+- **Battle requests (the user, 2026-10-23: "any colony that is under siege and losing should ask for help ... if
+  its front needs marines then that should be the mission. if marines need armaments then that. supplies and fuel
+  should be a not under attack mission ... currently i have no way to give sindria marines so it just falls while i
+  sit there watching with marines on my ship").** A colony with a Threat army on it (`ThreatAidRequests.underArmy`)
+  asks for the battle, not the depot: a marines contract for what its counter-attack still wants
+  (`ThreatGroundFronts.reliefNeed`, the Reinforce order's own measure) and an armaments contract for what those
+  defenders burn (`defenderArmsNeed`), each net of what will land (`battleItems`): nothing while the swarm holds the orbit, and never a convoy held off at the jump point by the blockade (`ThreatConvoys.inbound(id, landing)`; the user's test the same evening: Sindria asked for nothing while a 200-marine convoy waited out the blockade and the last district fell in 9 days). The Reinforce button reads the same (`reinforceWants`). They post first and outside
+  `aidRequestMaxPosted`, and a posted request already open for the good grows to the battle's figure
+  (`ThreatAidMissionIntel.raiseNeed`). Fuel and supplies are not-under-attack missions: `missionItems` reads 0 for
+  them while the army stands, so a posted one withdraws ("neutralized") and none posts; allies' convoys keep
+  reading `requestItems`. Delivery is the same hand-over at the dock or convoy from the board, and the swarm bounty
+  covers the orbit. The Reinforce button stays. Knob `threatinc_aidBattleRequests` (true).
 - **Swarm bounty on the X system** (2026-09-24, untested; `ThreatSwarmBountyIntel`). Not a
   contract but vanilla's system bounty pointed at a hive: posted by a mobilised base whose
   siege the Defense Swarms over the target hive system outweigh (docs/strategy-reserves-sieges.md,

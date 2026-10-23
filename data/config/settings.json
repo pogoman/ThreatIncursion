@@ -1336,6 +1336,10 @@
 	# fail if not completed in the term or the colony is lost.
 	"threatinc_aidRequestsEnabled": true,
 	"threatinc_aidRequestMaxPosted": 3,
+	# BATTLE REQUESTS (2026-10-23, the user, Sindria asking for fuel while its last district fell): a colony under a
+	# Threat army posts marines and armaments contracts sized to its counter-attack, outside the posted cap; its
+	# fuel and supplies requests are not-under-attack missions and withdraw while the army stands
+	"threatinc_aidBattleRequests": true,
 	"threatinc_missionDefendDays": 60,
 	"threatinc_missionDefendCredits": 20000,
 	"threatinc_defendRequestRatio": 1.0,
