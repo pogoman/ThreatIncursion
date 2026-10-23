@@ -40,7 +40,8 @@ import com.fs.starfarer.api.util.Misc;
  * <p>Reputation with the receiving faction is earned on arrival: by the
  * goods' value at the receiving market's price for a delivery, flat amounts
  * for a guard on station and a guard that serves its term, and a split among
- * every faction in a hive's strike reach for a task force at its door.
+ * every faction in a hive's strike reach for a task force at its door - each delivery weighted
+ * by the purpose it serves on the ledger of needs ({ ThreatNeeds}, 2026-10-23).
  */
 public class ThreatAid {
 
@@ -67,6 +68,8 @@ public class ThreatAid {
 		public float distLY;
 		/** Why not, one fact per line (a notice's bullets, a tooltip's lines); null when the quote is good. */
 		public ThreatNotice.Reason reason;
+		/** The need this aid serves (ThreatNeeds.HOLD and the rest); null for a Defend or Strike. */
+		public String purpose;
 
 		public boolean ok() {
 			return reason == null && source != null;
@@ -421,41 +424,61 @@ public class ThreatAid {
 	 * its free points can carry, from the closest colony that covers the ask
 	 * or the one that sends the most.
 	 */
-	public static Quote quoteResupply(MarketAPI target, int tier) {
+	public static Quote quoteAid(MarketAPI target, int tier) {
 		Quote q = new Quote();
 		if (target == null || target.getStarSystem() == null) {
 			q.reason = ThreatNotice.Reason.of("No target");
 			return q;
 		}
-		q.commodityId = ThreatAidRequests.worstShortage(target);
-		if (q.commodityId == null) {
+		List<ThreatNeeds.Need> needs = ThreatNeeds.of(target);
+		ThreatNeeds.Need need = ThreatNeeds.mostUrgent(needs, true);
+		if (need == null) {
 			q.reason = ThreatNotice.Reason.of("%s is not short of marines, armaments, fuel, supplies or ship hulls",
 					ThreatNotice.market(target));
 			return q;
 		}
-		// ship hulls sail out of the player's built navy from their hull port, as an ally's do
-		if (Commodities.SHIPS.equals(q.commodityId)) return quoteHulls(target, q, tier);
-		ThreatAidMissionIntel request = ThreatAidMissionIntel.find(target.getId(),
-				ThreatAidMissionIntel.KIND_AID, q.commodityId);
-		q.need = request != null && request.remaining() > 0 ? request.remaining()
-				: ThreatAidRequests.needItems(target, q.commodityId);
-		if (q.need <= 0) {
-			q.reason = ThreatNotice.Reason.of("%s is not short of %s", ThreatNotice.market(target),
-					ThreatReserves.label(q.commodityId));
+		if (need.suspended) {
+			q.reason = ThreatNotice.Reason.of("The swarm holds the orbit of %s: no convoy lands", ThreatNotice.market(target))
+					.line("Defend lifts it; your own fleet can hand over at the dock");
 			return q;
 		}
-		// the board's load tier: what the colony is short of (Min), that times
-		// convoyExtraLoadFactor (Med), or everything the source can spare and
-		// carry (Max). The need itself is what the board and the prompt quote.
-		float ask = tier >= 2 ? Float.MAX_VALUE
-				: tier == 1 ? q.need * ThreatIncConfig.convoyExtraLoadFactor() : q.need;
-		int idx = index(q.commodityId);
+		q.purpose = need.purpose;
+		q.commodityId = need.good;
+		q.need = Math.round(need.tier(tier));
+		if (q.need <= 0) {
+			q.reason = ThreatNotice.Reason.of("%s is not short of %s", ThreatNotice.market(target), need.goodLabel());
+			return q;
+		}
+		// ship hulls sail out of the player's built navy from their hull port, as an ally's do
+		if (Commodities.SHIPS.equals(need.good)) return quoteHulls(target, q, q.need);
+		if (Commodities.MARINES.equals(need.good)
+				&& (ThreatNeeds.HOLD.equals(need.purpose) || ThreatNeeds.PUSH_BACK.equals(need.purpose))) {
+			// the marines and the arms they burn (the arms need at the same tier, else a landing's supply)
+			ThreatNeeds.Need arms = ThreatNeeds.find(needs, ThreatNeeds.ARM, null);
+			float armsAsk = arms != null ? arms.tier(tier)
+					: ThreatGroundFronts.landingSupply(q.need, ThreatIncConfig.frontResupplyDays());
+			return quoteBattle(target, q.need, armsAsk, q);
+		}
+		if (Commodities.HAND_WEAPONS.equals(need.good) && ThreatNeeds.ARM.equals(need.purpose)) {
+			return quoteBattle(target, 0f, q.need, q);
+		}
+		return quoteGoods(target, need.good, q.need, q);
+	}
+
+	/**
+	 * A convoy of one good toward a colony: the ask, the source's stock above its floor and what
+	 * its free points can carry, from the closest colony that covers the ask or the one that
+	 * sends the most. The quote's need is what the board and the prompt quote.
+	 */
+	protected static Quote quoteGoods(MarketAPI target, String commodityId, float ask, Quote q) {
+		q.commodityId = commodityId;
+		int idx = index(commodityId);
 		Vector2f loc = target.getLocationInHyperspace();
 		MarketAPI best = null;
 		float[] bestLoad = null;
 		int bestQty = 0;
 		for (MarketAPI m : sources(loc)) {
-			float avail = ThreatReserves.available(m, q.commodityId);
+			float avail = ThreatReserves.available(m, commodityId);
 			if (avail < 1f) continue;
 			float[] load = new float[ThreatReserves.COMMODITIES.length];
 			load[idx] = Math.min(ask, avail);
@@ -481,10 +504,10 @@ public class ThreatAid {
 				q.reason = noSourceReason(loc);
 			} else {
 				q.reason = ThreatNotice.Reason.of("No colony of yours in reach can spare and carry %s for %s",
-						ThreatReserves.label(q.commodityId), ThreatNotice.market(target));
+						ThreatReserves.label(commodityId), ThreatNotice.market(target));
 				for (MarketAPI m : inReach) {
 					q.reason.line("%s has %s spare and %s fleet points free", ThreatNotice.market(m),
-							(int) ThreatReserves.available(m, q.commodityId),
+							(int) ThreatReserves.available(m, commodityId),
 							(int) Math.max(0f, ThreatAidCapacity.ownFreeFP(m)));
 				}
 			}
@@ -508,17 +531,12 @@ public class ThreatAid {
 
 	/**
 	 * A hull convoy: units of the player's built navy (ThreatHulls.sendableUnits) from their hull
-	 * port to the colony, the need the open request's remainder or the faction's unrebuilt losses,
-	 * the tier read as for goods. Until 2026-10-10 hulls were "handed over in person": the ships
+	 * port to the colony, the ask the navy need's tier (q.need set by the caller). Until 2026-10-10 hulls were "handed over in person": the ships
 	 * commodity is vanilla's meta good, never in a hold, so no hull contract could be met (the user,
 	 * Nova Maxios).
 	 */
-	protected static Quote quoteHulls(MarketAPI target, Quote q, int tier) {
+	protected static Quote quoteHulls(MarketAPI target, Quote q, float ask) {
 		String me = Global.getSector().getPlayerFaction().getId();
-		ThreatAidMissionIntel request = ThreatAidMissionIntel.find(target.getId(),
-				ThreatAidMissionIntel.KIND_AID, q.commodityId);
-		q.need = request != null && request.remaining() > 0 ? request.remaining()
-				: ThreatAidRequests.needItems(target, q.commodityId);
 		if (q.need <= 0) {
 			q.reason = ThreatNotice.Reason.of("%s is not short of ship hulls", ThreatNotice.market(target));
 			return q;
@@ -532,8 +550,6 @@ public class ThreatAid {
 					(int) ThreatHulls.freeFP(me));
 			return q;
 		}
-		float ask = tier >= 2 ? Float.MAX_VALUE
-				: tier == 1 ? q.need * ThreatIncConfig.convoyExtraLoadFactor() : q.need;
 		int qty = Math.max(1, (int) Math.floor(Math.min(units, ask)));
 		float[] load = new float[ThreatReserves.AID_COMMODITIES.length];
 		load[index(q.commodityId)] = qty;
@@ -647,6 +663,18 @@ public class ThreatAid {
 		float[] wants = ThreatConvoys.reinforceWants(target, tier);
 		q.commodityId = Commodities.MARINES;
 		q.need = (int) Math.min(Integer.MAX_VALUE, wants[0]);
+		q.purpose = ThreatNeeds.PUSH_BACK;
+		return quoteBattle(target, wants[0], wants[1], q);
+	}
+
+	/**
+	 * A convoy of marines and heavy armaments into a colony's stockpile against the Threat army on it,
+	 * from the player colony that can spare and carry the most of the ask (any colony: a convoy needs no
+	 * military structure or Waystation, as the board's own-colony convoys). The quote's quantity is the
+	 * marines, or the armaments when no marines are asked.
+	 */
+	protected static Quote quoteBattle(MarketAPI target, float marinesAsk, float armsAsk, Quote q) {
+		float[] wants = { marinesAsk, armsAsk };
 		Vector2f loc = target.getLocationInHyperspace();
 		MarketAPI best = null;
 		float[] bestLoad = null;
@@ -686,7 +714,7 @@ public class ThreatAid {
 		}
 		q.source = best;
 		q.load = bestLoad;
-		q.quantity = (int) bestLoad[0];
+		q.quantity = (int) (marinesAsk > 0f ? bestLoad[0] : bestLoad[1]);
 		q.points = ThreatAidCapacity.convoyPoints(bestLoad);
 		q.distLY = Misc.getDistanceLY(best.getStarSystem().getLocation(), loc);
 		return q;
@@ -723,33 +751,35 @@ public class ThreatAid {
 		return true;
 	}
 
-	public static boolean dispatchResupply(MarketAPI target, int tier, Random random) {
+	/** The board's Aid order (2026-10-23): a convoy toward the colony's most urgent need sails, or a refusal notice says why not. */
+	public static boolean dispatchAid(MarketAPI target, int tier, Random random) {
 		if (target == null) return false;
 		ThreatNotice.Reason blocked = canAid(target.getFaction());
 		if (blocked != null) {
-			ThreatNotice.titled("Supply Run Refused").bad().icon(Global.getSector().getPlayerFaction())
+			ThreatNotice.titled("Aid Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.lines(blocked).send();
 			return false;
 		}
-		Quote q = quoteResupply(target, tier);
+		Quote q = quoteAid(target, tier);
 		if (!q.ok()) {
-			ThreatNotice.titled("Supply Run Refused").bad().icon(Global.getSector().getPlayerFaction())
+			ThreatNotice.titled("Aid Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.lines(q.reason).send();
 			return false;
 		}
 		ThreatConvoys.Convoy c = ThreatConvoys.dispatch(q.source, target,
 				Global.getSector().getPlayerFaction(), q.load, random, target.getFactionId(), true);
 		if (c == null) {
-			ThreatNotice.titled("Supply Run Refused").bad().icon(Global.getSector().getPlayerFaction())
+			ThreatNotice.titled("Aid Refused").bad().icon(Global.getSector().getPlayerFaction())
 					.line("No convoy could be raised at %s", ThreatNotice.market(q.source)).send();
 			return false;
 		}
+		boolean hulls = Commodities.SHIPS.equals(q.commodityId);
 		ThreatNotice.titled("Convoy Sails").icon(Global.getSector().getPlayerFaction())
-				.line("From %s, %s %s", ThreatNotice.market(q.source),
-						Misc.getWithDGS(ThreatHulls.shown(q.commodityId, q.quantity)),
-						ThreatReserves.label(q.commodityId))
-				.line("Bound for %s of the %s", ThreatNotice.market(target),
-						ThreatNotice.faction(target.getFaction()))
+				.line("From %s, %s", ThreatNotice.market(q.source), ThreatFactionView.cargoText(
+						hulls ? 0f : q.load[0], hulls ? 0f : q.load[1], hulls ? 0f : q.load[2], hulls ? 0f : q.load[3],
+						hulls ? q.quantity : 0f))
+				.line("Bound for %s of the %s: %s", ThreatNotice.market(target),
+						ThreatNotice.faction(target.getFaction()), q.purpose)
 				.send();
 		return true;
 	}
@@ -795,28 +825,29 @@ public class ThreatAid {
 	}
 
 	/**
-	 * Goods landed at another faction's colony, by convoy or by hand. The
-	 * matching request takes them (accepting itself if only posted); standing
-	 * follows the goods' value at the receiving market, doubled when they
-	 * answer a contract.
+	 * Goods landed at another faction's colony, by convoy or by hand. Standing follows the goods'
+	 * value at the receiving market over aidRepPerCredits, each good weighted by the purpose it
+	 * serves (docs/war-effort-rework.md section 4: { weights} in AID_COMMODITIES order, read
+	 * by ThreatNeeds.purposeWeights BEFORE the goods landed - the served part at the purpose's
+	 * weight, the surplus at the surplus weight; null = all surplus), capped at
+	 * aidRepMaxPerDelivery. Until 2026-10-23 a delivery under an open contract was doubled instead.
 	 */
 	public static void onDelivered(MarketAPI base, String recipientFactionId, int marines,
-			int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text) {
+			int armaments, int fuel, int supplies, int ships, boolean viaFleet, TextPanelAPI text, float[] weights) {
 		if (base == null || recipientFactionId == null) return;
 		if (Factions.PLAYER.equals(recipientFactionId)) return;
 		int[] qty = {marines, armaments, fuel, supplies, ships};
 		float value = 0f;
-		boolean credited = false;
+		float weighted = 0f;
 		for (int i = 0; i < ThreatReserves.AID_COMMODITIES.length; i++) {
 			if (qty[i] <= 0) continue;
-			value += valueAt(base, ThreatReserves.AID_COMMODITIES[i], qty[i]);
-			if (ThreatAidMissionIntel.creditDelivery(base, ThreatReserves.AID_COMMODITIES[i], qty[i])) {
-				credited = true;
-			}
+			float v = valueAt(base, ThreatReserves.AID_COMMODITIES[i], qty[i]);
+			value += v;
+			float w = weights != null && i < weights.length ? weights[i] : ThreatIncConfig.aidRepWeightSurplus();
+			weighted += v * w;
 		}
 		float points = Math.min(ThreatIncConfig.aidRepMaxPerDelivery(),
-				value / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
-		if (credited) points *= ThreatIncConfig.missionRepMult();
+				weighted / Math.max(1f, ThreatIncConfig.aidRepPerCredits()));
 		rep(recipientFactionId, points, text);
 		if (viaFleet) {
 			FactionAPI faction = Global.getSector().getFaction(recipientFactionId);
@@ -828,8 +859,8 @@ public class ThreatAid {
 		}
 		ThreatIncConfig.log("Aid delivered at " + base.getName() + " (" + recipientFactionId + "): "
 				+ marines + " marines, " + armaments + " armaments, " + fuel + " fuel, " + supplies
-				+ " supplies, " + ships + " ship hulls - value " + (int) value + ", rep +" + points
-				+ (credited ? " (contract)" : ""));
+				+ " supplies, " + ships + " ship hulls - value " + (int) value + " weighted " + (int) weighted
+				+ ", rep +" + points);
 	}
 
 	public static void onGuardArrived(ThreatFleetOrders.Order o) {

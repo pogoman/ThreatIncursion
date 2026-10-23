@@ -1308,20 +1308,30 @@
 	"threatinc_aidRepGuardArrived": 3,
 	"threatinc_aidRepGuardCompleted": 2,
 	"threatinc_aidRepFrontTotal": 5,
-	# requests for help: mobilised NPC factions post ordinary missions - defend
-	# a colony a strike is coming for when its defenders are outmatched (the
-	# strike's strength over theirs times defendRequestRatio), or deliver a
-	# commodity the colony is short of for its peacetime needs and the depot
-	# cannot cover (exhausted, or uncovered for missionAidShortageDays). They expire unaccepted on missionPostingDays and
-	# fail if not completed in the term or the colony is lost.
+	# THE LEDGER OF NEEDS (2026-10-23, docs/war-effort-rework.md): what each colony is short of, by purpose
+	# (hold the line, push back, arm the defenders, lift the orbit, keep the depot, rebuild the navy,
+	# provision the expedition), on the war board's Needs column and at the dock; nothing is posted,
+	# accepted or paid. aidRequestsEnabled: the player may ask the sector for one of their own colony's
+	# needs; every faction at Favourable or better answers, and each sender's price is standing - the
+	# goods' value at the player's market / aidRepPerCredits (a guard: its points x aidRepGuardArrived
+	# / 100), times the tier (aidAskPrice Min / Med / Max), never below Favourable; one request a
+	# colony per aidRequestCooldownDays. aidComms: the voiced war comms when a need appears, escalates
+	# or is met, aidCommsMinDays apart for one world and purpose. aidExpeditionNoteDays: how long a
+	# postponed siege's provisions need stands. aidRepWeight: standing for giving by the purpose served
+	# (critical: hold the line, lift the orbit; urgent: push back, arm, provision; routine: the depot,
+	# the navy; surplus: beyond Max, or a good nobody needs)
 	"threatinc_aidRequestsEnabled": true,
-	"threatinc_aidRequestMaxPosted": 3,
-	# BATTLE REQUESTS (2026-10-23, the user, Sindria asking for fuel while its last district fell): a colony under a
-	# Threat army posts marines and armaments contracts sized to its counter-attack, outside the posted cap; its
-	# fuel and supplies requests are not-under-attack missions and withdraw while the army stands
-	"threatinc_aidBattleRequests": true,
-	"threatinc_missionDefendDays": 60,
-	"threatinc_missionDefendCredits": 20000,
+	"threatinc_aidRequestCooldownDays": 30,
+	"threatinc_aidAskPriceMin": 1.0,
+	"threatinc_aidAskPriceMed": 1.25,
+	"threatinc_aidAskPriceMax": 1.5,
+	"threatinc_aidCommsEnabled": true,
+	"threatinc_aidCommsMinDays": 15,
+	"threatinc_aidExpeditionNoteDays": 30,
+	"threatinc_aidRepWeightCritical": 2.0,
+	"threatinc_aidRepWeightUrgent": 1.5,
+	"threatinc_aidRepWeightRoutine": 1.0,
+	"threatinc_aidRepWeightSurplus": 0.5,
 	"threatinc_defendRequestRatio": 1.0,
 	"threatinc_missionAidShortageDays": 60,
 	# a swarm bounty (an outweighed NPC siege's call for help) pays this per
@@ -1359,7 +1369,6 @@
 	"threatinc_softenDays": 60,
 	"threatinc_softenIntervalDays": 30,
 	"threatinc_softenRetreatStrength": 0.4,
-	"threatinc_missionRepMult": 2.0,
 	# allies help each other by standing (Cooperative 1.0, Friendly 0.75,
 	# Welcoming 0.5, Favourable 0.25) times this chance per 30-day tick per
 	# need; the player can be helped, never made to help

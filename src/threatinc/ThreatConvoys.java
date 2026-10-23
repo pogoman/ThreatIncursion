@@ -3331,6 +3331,12 @@ public class ThreatConvoys {
 		if (fuel > 0) cargo.removeCommodity(Commodities.FUEL, fuel);
 		if (supplies > 0) cargo.removeCommodity(Commodities.SUPPLIES, supplies);
 		if (ships > 0) cargo.removeCommodity(Commodities.SHIPS, ships);
+		// a player aid convoy's standing weights are read before the goods land (ThreatNeeds.purposeWeights)
+		float[] weights = null;
+		if (c.recipientFactionId != null && base.market != null
+				&& Global.getSector().getPlayerFaction().getId().equals(c.factionId)) {
+			weights = ThreatNeeds.purposeWeights(base.market, new float[] { marines, armaments, fuel, supplies, ships });
+		}
 		ThreatReserves.deposit(base.id(), Commodities.MARINES, marines);
 		ThreatReserves.deposit(base.id(), Commodities.HAND_WEAPONS, armaments);
 		ThreatReserves.deposit(base.id(), Commodities.FUEL, fuel);
@@ -3349,7 +3355,7 @@ public class ThreatConvoys {
 		if (c.recipientFactionId != null && sender != null && base.market != null) {
 			if (sender.isPlayerFaction()) {
 				ThreatAid.onDelivered(base.market, c.recipientFactionId, marines, armaments, fuel,
-						supplies, ships, true, null);
+						supplies, ships, true, null, weights);
 			} else {
 				ThreatCoalition.onAllyDelivered(c, base.market);
 			}

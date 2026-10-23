@@ -440,8 +440,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		ThreatAlarm.decay();
 		// allies answer open coalition calls and help each other's colonies
 		ThreatCoalition.tick(random);
-		// mobilised factions ask the sector for help (docs/player-aid.md)
+		// the player's requests for aid are answered, then the war comms speak of the ledger's needs (docs/war-effort-rework.md)
 		ThreatAidRequests.tick(random);
+		ThreatNeeds.tick(random);
 		manageMissions();
 		checkPhaseAnnouncements();
 		mobiliseAtPhase();
@@ -3387,6 +3388,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 					}
 				}
 				if (points > 0 && payable < minProvisions) {
+					// the ledger of needs reads the shortfall (provision the expedition, ThreatNeeds)
+					ThreatNeeds.notePostponed(base, system, haveFuel, points * fuelPerPoint, haveSupplies,
+							points * suppliesPerPoint, minProvisions / points);
 					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 							+ (int) haveFuel + "/" + (int) (points * fuelPerPoint) + " fuel"
 							+ (fuel[2] > 0f ? " past " + (int) fuel[2] + " for razing" : "") + ", "
@@ -3544,6 +3548,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			ThreatIncData.lastPurgeTimes().put(target.getId(),
 					Global.getSector().getClock().getTimestamp());
 		}
+		ThreatNeeds.clearPostponed(base.getId());
 		return purge;
 	}
 

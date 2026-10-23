@@ -314,13 +314,20 @@ threatinc_aidRepMaxPerDelivery,Standing Cap per Delivery,Double,10,"Most points 
 threatinc_aidRepGuardArrived,Standing for a Guard on Station,Double,3,"Points when a task force you sent reaches the colony.",0,20
 threatinc_aidRepGuardCompleted,Standing for a Guard Term Served,Double,2,"Points when it serves its full term.",0,20
 threatinc_aidRepFrontTotal,Standing for a Task Force at the Door,Double,5,"Points split among every faction with a colony in the hive's strike reach when your task force holds its jump-point.",0,20
-threatinc_aidRequestsEnabled,Requests for Help,Boolean,true,"Whether mobilised factions post defence and delivery contracts on the mission board.",,
-threatinc_aidRequestMaxPosted,Requests Posted at Once,Int,3,"How many requests stand unaccepted at once.",1,10
-threatinc_aidBattleRequests,Battle Requests,Boolean,true,"A colony with a Threat army on it asks for the marines its counter-attack needs and the armaments they burn, outside the posted cap; its fuel and supplies requests withdraw while the army stands. Hand them over at the dock or send a convoy from the war board.",,
-threatinc_missionDefendDays,Defence Contract (Days),Double,60,"Days a defence contract runs: it pays if no Threat action lands on the colony in that time and you (or a guard you sent) were there for each strike.",15,365
-threatinc_missionDefendCredits,Defence Pay per Colony Size,Double,20000,"Credits a defence contract pays per size of the colony.",0,500000
+threatinc_aidRequestsEnabled,Request Aid,Boolean,true,"Whether you may ask the sector for one of your colonies' needs from the war board. Every faction at Favourable or better answers; each sender's price is standing, never below Favourable.",,
+threatinc_aidRequestCooldownDays,Request Aid: Cooldown (Days),Double,30,"Days between your requests for one colony.",0,365
+threatinc_aidAskPriceMin,Request Aid: Min Price,Double,1.0,"Standing a sender charges for a Min request, as a multiple of the rate you earn for giving (Standing per Credits Delivered; a guard: Standing for a Guard on Station per 100 fleet points).",0,5
+threatinc_aidAskPriceMed,Request Aid: Med Price,Double,1.25,"As above for a Med request.",0,5
+threatinc_aidAskPriceMax,Request Aid: Max Price,Double,1.5,"As above for a Max request.",0,5
+threatinc_aidCommsEnabled,War Comms,Boolean,true,"Voiced notices from the colonies when a need appears (hold the line, push back, arm the defenders, lift the orbit, keep the depot, rebuild the navy, provision the expedition), escalates or is met. The figures are on the war board's Needs column and at the dock.",,
+threatinc_aidCommsMinDays,War Comms: Days Between,Double,15,"Days between comms notices for one world and purpose.",0,120
+threatinc_aidExpeditionNoteDays,Expedition Need Stands (Days),Double,30,"Days a siege postponed for fuel or supplies keeps its need on the ledger after the last postponement.",1,365
+threatinc_aidRepWeightCritical,Standing Weight: Critical,Double,2.0,"Standing for a delivery is the goods' value / Standing per Credits Delivered, times this for a need to hold the line or lift the orbit.",0,5
+threatinc_aidRepWeightUrgent,Standing Weight: Urgent,Double,1.5,"As above for push back, arm the defenders, provision the expedition.",0,5
+threatinc_aidRepWeightRoutine,Standing Weight: Routine,Double,1.0,"As above for keep the depot, rebuild the navy.",0,5
+threatinc_aidRepWeightSurplus,Standing Weight: Surplus,Double,0.5,"As above for goods beyond the need's Max, or a good nobody needs.",0,5
 threatinc_defendRequestRatio,Outmatched Ratio,Double,1.0,"A colony asks for defence when the incoming strike's strength exceeds its defenders' (faction strength in the system plus the station) times this.",0.1,5
-threatinc_missionAidShortageDays,Shortage Before Asking (Days),Double,60,"Days a peacetime shortage the depot is not covering must stand before a colony asks for the commodity; an exhausted depot asks at once.",0,365
+threatinc_missionAidShortageDays,Shortage Before Asking (Days),Double,60,"Days a peacetime shortage the depot is not covering must stand before it is a need on the ledger (keep the depot); an exhausted depot asks at once.",0,365
 threatinc_swarmBountiesEnabled,Swarm Bounties,Boolean,true,"A faction whose siege the Defense Swarms outweigh posts a bounty on Threat ships in that hive system.",,
 threatinc_swarmBountyPerFrigate,Swarm Bounty per Frigate,Double,1500,"Credits a swarm bounty pays per frigate destroyed; destroyers 2x, cruisers 3x, capitals 5x, times your share of the battle.",0,20000
 threatinc_swarmBountyDays,Swarm Bounty Days,Double,60,"Days a swarm bounty runs. A faction still outweighed when it ends posts another.",1,365
@@ -335,7 +342,6 @@ threatinc_softenFleetFP,Hunting Fleet Size,Double,1500,"Most combat fleet points
 threatinc_softenDays,Hunt Duration (Days),Double,60,"Days a hunt stays on the hunt before going home - an NPC hunting force, a coalition answer, or your own Hunt order.",1,365
 threatinc_softenIntervalDays,Hunting Force Interval,Double,30,"Days a base waits between hunting forces.",0,365
 threatinc_softenRetreatStrength,Hunting Force Retreat,Double,0.4,"A hunting force below this share of its strength - at launch, or when it last moved on to a colony - goes home whole.",0,1
-threatinc_missionRepMult,Contract Standing Multiplier,Double,2.0,"Standing for a delivery is multiplied by this when it answers an open request.",1,5
 threatinc_allyAidEnabled,Allies Help Each Other,Boolean,true,"Whether mobilised factions guard and resupply each other's colonies by standing - and yours.",,
 threatinc_allyAidChance,Ally Aid Chance,Double,0.5,"Chance per 30-day tick per need that a fully willing (Cooperative) ally sends aid; Friendly 0.75x, Welcoming 0.5x, Favourable 0.25x, less nothing.",0,1
 threatinc_coalitionRelief,Coalition relief,Boolean,true,"A faction and its partners relieve an invaded world together when none of them could outweigh the Threat army alone.",,

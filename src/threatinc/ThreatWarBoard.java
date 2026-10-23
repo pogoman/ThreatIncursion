@@ -1413,6 +1413,13 @@ public class ThreatWarBoard {
 				tooltip.addPara("Marines losing %s a day at this pressure.", 4f,
 						text, neg, ThreatGroundFronts.perDay(bleed));
 			}
+			// the ledger's ask (2026-10-23, ThreatNeeds): marines to hold / push back / overrun
+			ThreatNeeds.Need ask = ThreatNeeds.marines(m);
+			if (ask != null) {
+				tooltip.addPara(ask.purpose + ": %s / %s / %s marines"
+						+ (ask.suspended ? " - blockaded, nothing lands" : "") + ".", 4f, text, ask.color(),
+						ask.shown(ask.min), ask.shown(ask.med), ask.shown(ask.max));
+			}
 			// and what they fight with (2026-10-17): the stockpile's heavy armaments
 			float defBurn = ThreatGroundFronts.defenderDailyUpkeep(m, f);
 			if (ThreatGroundFronts.defendersDry(m)) {
@@ -1630,30 +1637,29 @@ public class ThreatWarBoard {
 							+ (int) ThreatIncConfig.frontEntrenchDays() + " days, lost with a "
 							+ ThreatGroundFronts.layerName(r.market) + ".");
 				}
+				// an ally's world: the Aid order on the ledger (2026-10-23) - the Reinforce id, so the fronts table's supply tier is the one quoted and sailed
 				com.fs.starfarer.api.ui.ButtonAPI reinforce = intel.addGenericButton(main,
-						FRONT_REINFORCE_W, "Reinforce",
+						FRONT_REINFORCE_W, ownWorld ? "Reinforce" : "Aid",
 						ThreatFactionView.BUTTON_REINFORCE + r.market.getFactionId() + ":" + r.market.getId());
 				reinforce.getPosition().belowLeft(fronts.table, -up).setXAlignOffset(rx);
-				String from;
-				float[] load;
-				String why;
 				if (ownWorld) {
 					MarketAPI donor = ThreatConvoys.reinforceDonor(r.market, player, supplyTier);
-					load = donor != null ? ThreatConvoys.reinforceLoad(donor, r.market, supplyTier) : null;
-					from = donor != null ? donor.getName() : "your nearest colony";
-					why = donor != null ? null : ThreatConvoys.reinforceOffReason(r.market, supplyTier, "yours");
+					float[] load = donor != null ? ThreatConvoys.reinforceLoad(donor, r.market, supplyTier) : null;
+					String from = donor != null ? donor.getName() : "your nearest colony";
+					String why = donor != null ? null : ThreatConvoys.reinforceOffReason(r.market, supplyTier, "yours");
+					ThreatFactionView.disableWith(main, reinforce, why == null, why,
+							"A convoy brings " + (load != null ? Misc.getWithDGS((int) load[0]) + " marines and "
+									+ Misc.getWithDGS((int) load[1]) + " heavy armaments" : "marines and heavy armaments")
+							+ " from " + from + " to the stockpile of " + r.market.getName()
+							+ "; it waits at the jump-point while the Threat blockades the world.");
 				} else {
-					ThreatAid.Quote q = ThreatAid.quoteReinforce(r.market, supplyTier);
-					load = q.ok() ? q.load : null;
-					from = q.ok() ? q.source.getName() : "your nearest colony";
-					why = q.ok() ? null : ThreatNotice.text(q.reason);
+					ThreatAid.Quote q = ThreatAid.quoteAid(r.market, supplyTier);
+					ThreatFactionView.disableWith(main, reinforce, q.ok(), q.ok() ? null : ThreatNotice.text(q.reason),
+							q.ok() ? q.purpose + ": " + ThreatFactionView.aidCargo(q) + " from " + q.source.getName()
+									+ " to the stockpile of " + r.market.getName()
+									+ "; it waits at the jump-point while the Threat blockades the world. Earns standing on arrival."
+									: null);
 				}
-				ThreatFactionView.disableWith(main, reinforce, why == null, why,
-						"A convoy brings " + (load != null ? Misc.getWithDGS((int) load[0]) + " marines and "
-								+ Misc.getWithDGS((int) load[1]) + " heavy armaments" : "marines and heavy armaments")
-						+ " from " + from + " to the stockpile of " + r.market.getName()
-						+ "; it waits at the jump-point while the Threat blockades the world."
-						+ (ownWorld ? "" : " Earns standing on arrival."));
 				continue;
 			}
 			if (!playerCanOrder(r)) continue;

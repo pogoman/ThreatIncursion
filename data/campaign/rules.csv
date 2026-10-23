@@ -31,18 +31,30 @@ threatinc_groundEntrenchSel,DialogOptionSelected,$option == threatincGroundEntre
 threatinc_groundBackSel,DialogOptionSelected,$option == threatincGroundBack,ThreatincMarketCMD goBackToDefenses,,,"Back from ground operations to the military options menu"
 threatincAidOption,PopulateOptions,"$menuState == main
 $hasMarket
-$market.threatinc_aidRequest",,,30:threatincAidDeliver:Deliver aid for the war effort,"Player aid (docs/player-aid.md): while a request for goods stands here, the station commander takes a hand-over from the player's cargo"
+$market.threatinc_aidRequest",,,30:threatincAidDeliver:Deliver aid for the war effort,"Player aid (docs/war-effort-rework.md 5): at any mobilised colony the station commander lists its needs and takes a hand-over from the player's cargo"
 threatincAidOptionStation,PopulateOptions,"$isPerson
 $postId == stationCommander
 $market.threatinc_aidRequest",,,"30:threatincAidDeliver:""I've brought aid for the war effort.""","The same hand-over from the station commander's comm-directory conversation ($local is the person there, so the dock-menu rule cannot fire)"
 threatincAidOptionBase,PopulateOptions,"$isPerson
 $postId == baseCommander
 $market.threatinc_aidRequest",,,"30:threatincAidDeliver:""I've brought aid for the war effort.""","As above for a colony whose military post is a base commander (no orbital station)"
-threatincAidDeliverSel,DialogOptionSelected,$option == threatincAidDeliver,ThreatincAidCMD menu,,,"Lists what is asked for and what the player carries; one hand-over option per commodity"
-threatincAidHandMarinesSel,DialogOptionSelected,$option == threatincAidHand_marines,ThreatincAidCMD deliver marines,,,
-threatincAidHandArmsSel,DialogOptionSelected,$option == threatincAidHand_hand_weapons,ThreatincAidCMD deliver hand_weapons,,,
-threatincAidHandFuelSel,DialogOptionSelected,$option == threatincAidHand_fuel,ThreatincAidCMD deliver fuel,,,
-threatincAidHandSuppliesSel,DialogOptionSelected,$option == threatincAidHand_supplies,ThreatincAidCMD deliver supplies,,,
+threatincAidDeliverSel,DialogOptionSelected,$option == threatincAidDeliver,ThreatincAidCMD menu,,,"Lists every need of the colony (ThreatNeeds) and what the player carries; a hand-over option per tier the hold covers, and all you carry (tier 3)"
+threatincAidHandMarines0Sel,DialogOptionSelected,$option == threatincAidHand_marines_0,ThreatincAidCMD deliver marines 0,,,
+threatincAidHandMarines1Sel,DialogOptionSelected,$option == threatincAidHand_marines_1,ThreatincAidCMD deliver marines 1,,,
+threatincAidHandMarines2Sel,DialogOptionSelected,$option == threatincAidHand_marines_2,ThreatincAidCMD deliver marines 2,,,
+threatincAidHandMarines3Sel,DialogOptionSelected,$option == threatincAidHand_marines_3,ThreatincAidCMD deliver marines 3,,,
+threatincAidHandArms0Sel,DialogOptionSelected,$option == threatincAidHand_hand_weapons_0,ThreatincAidCMD deliver hand_weapons 0,,,
+threatincAidHandArms1Sel,DialogOptionSelected,$option == threatincAidHand_hand_weapons_1,ThreatincAidCMD deliver hand_weapons 1,,,
+threatincAidHandArms2Sel,DialogOptionSelected,$option == threatincAidHand_hand_weapons_2,ThreatincAidCMD deliver hand_weapons 2,,,
+threatincAidHandArms3Sel,DialogOptionSelected,$option == threatincAidHand_hand_weapons_3,ThreatincAidCMD deliver hand_weapons 3,,,
+threatincAidHandFuel0Sel,DialogOptionSelected,$option == threatincAidHand_fuel_0,ThreatincAidCMD deliver fuel 0,,,
+threatincAidHandFuel1Sel,DialogOptionSelected,$option == threatincAidHand_fuel_1,ThreatincAidCMD deliver fuel 1,,,
+threatincAidHandFuel2Sel,DialogOptionSelected,$option == threatincAidHand_fuel_2,ThreatincAidCMD deliver fuel 2,,,
+threatincAidHandFuel3Sel,DialogOptionSelected,$option == threatincAidHand_fuel_3,ThreatincAidCMD deliver fuel 3,,,
+threatincAidHandSupplies0Sel,DialogOptionSelected,$option == threatincAidHand_supplies_0,ThreatincAidCMD deliver supplies 0,,,
+threatincAidHandSupplies1Sel,DialogOptionSelected,$option == threatincAidHand_supplies_1,ThreatincAidCMD deliver supplies 1,,,
+threatincAidHandSupplies2Sel,DialogOptionSelected,$option == threatincAidHand_supplies_2,ThreatincAidCMD deliver supplies 2,,,
+threatincAidHandSupplies3Sel,DialogOptionSelected,$option == threatincAidHand_supplies_3,ThreatincAidCMD deliver supplies 3,,,
 threatincAidBackSel,DialogOptionSelected,$option == threatincAidBack,ThreatincAidCMD back,,,"Back to the market's main menu"
 threatincOutpostOption,PopulateOptions,"$market.isPlanetConditionMarketOnly
 ThreatincOutpostCMD canBuild",,,5:threatincOutpostBuild:Build an outpost,"Outposts (docs/strategy-layer.md): in orbit of any uncolonised world with a player military colony in reach, the player can raise their faction's station over it for outpostCredits"

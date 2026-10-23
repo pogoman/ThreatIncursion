@@ -85,14 +85,9 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 		this.commodityId = commodityId;
 		this.needed = needed;
 		this.postedTimestamp = Global.getSector().getClock().getTimestamp();
-		if (kind == KIND_DEFEND) {
-			reward = Math.round(ThreatIncConfig.missionDefendCredits() * market.getSize() / 1000f) * 1000;
-			setDuration(ThreatIncConfig.missionDefendDays());
-		} else {
-			float value = ThreatAid.valueAt(market, commodityId, needed);
-			reward = Math.max(1000, Math.round(value / 1000f) * 1000);
-			setDuration(ThreatIncConfig.missionDurationDays());
-		}
+		// never posted since 2026-10-23 (the ledger of needs, ThreatNeeds): kept so saves with open contracts load
+		reward = 0;
+		setDuration(1f);
 	}
 
 	// ------------------------------------------------------------------
@@ -279,57 +274,14 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 
 	@Override
 	public void advanceImpl(float amount) {
-		MarketAPI market = getMarket();
-		// a hull contract follows the current hull price while open (ThreatAid.valueAt): posted at 1,000
-		// credits for 400 FP before 2026-10-10, at 3.67M as warships for a day after, as the good since
-		if (kind == KIND_AID && market != null && Commodities.SHIPS.equals(commodityId) && !isEnded() && !isEnding()) {
-			reward = Math.max(1000, Math.round(ThreatAid.valueAt(market, commodityId, needed) / 1000f) * 1000);
-		}
+		// THE MISSION BOARD IS GONE (2026-10-23, docs/war-effort-rework.md): nothing posts these any more, and
+		// one still open from an older save ends withdrawn - no pay, no penalty - the colony's needs are on
+		// the war board's Needs column and at its dock instead
 		if (isPosted()) {
-			if (market == null || !factionId.equals(market.getFactionId())) {
-				cancelWithReason("neutralized");
-				return;
-			}
-			if (kind == KIND_DEFEND && ThreatAidRequests.strikesAgainst(market).isEmpty()) {
-				cancelWithReason("neutralized");
-				return;
-			}
-			if (kind == KIND_AID && ThreatAidRequests.missionItems(market, commodityId) <= 0) {
-				cancelWithReason("neutralized");
-				return;
-			}
-			if (postingDaysRemaining() <= 0f) {
-				cancelWithReason("expired");
-				return;
-			}
-			flag(market);
+			cancelWithReason("withdrawn");
 			return;
 		}
-		if (!isAccepted()) return;
-		float days = Global.getSector().getClock().convertToDays(amount);
-		setElapsedDays(getElapsedDays() + days);
-		if (market == null || !factionId.equals(market.getFactionId())) {
-			fail("lost");
-			return;
-		}
-		flag(market);
-		boolean termOver = getDuration() != null && getElapsedDays() >= getDuration();
-		if (kind == KIND_AID) {
-			if (delivered >= needed) {
-				complete("delivered");
-			} else if (termOver) {
-				fail("expired");
-			}
-			return;
-		}
-		watch.advance(days);
-		if (watch.intervalElapsed()) watchStrikes(market);
-		if (!isAccepted()) return;
-		// a strike still in the system decides the contract; the term waits for it
-		if (termOver && engaged.isEmpty()) {
-			if (stopped > 0) complete("held");
-			else endUnpaid("quiet");
-		}
+		if (isAccepted()) endUnpaid("withdrawn");
 	}
 
 	@Override
@@ -600,7 +552,7 @@ public class ThreatAidMissionIntel extends BaseMissionIntel {
 					+ "system when a strike arrives, or a guard sent from one of your colonies "
 					+ "through the war board. A strike that raids or bombards the colony fails "
 					+ "it on the spot; a strike the colony beats without you ends it unpaid.",
-					opad, h, "" + (int) ThreatIncConfig.missionDefendDays());
+					opad, h, "" + (int) getDuration().floatValue());
 		} else if (Commodities.SHIPS.equals(commodityId)) {
 			info.addPara(Misc.ucFirst(faction.getDisplayNameWithArticle()) + " asks for %s ship hulls, "
 					+ "in fleet points, at " + marketName() + ", in the " + sysName + ": its yards "

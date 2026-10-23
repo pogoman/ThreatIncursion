@@ -1040,23 +1040,29 @@ public class ThreatIncConfig {
 	public static float aidRepGuardCompleted(){ return f("threatinc_aidRepGuardCompleted"); }
 	/** Standing points split among every faction in a hive's strike reach for a task force at its door. */
 	public static float aidRepFrontTotal()    { return f("threatinc_aidRepFrontTotal"); }
-	/** Whether mobilised factions post requests for help on the mission board. */
+	/** REQUEST AID (2026-10-23, docs/war-effort-rework.md 3): whether the player may ask the sector for a colony's need (ThreatAidRequests). */
 	public static boolean aidRequestsEnabled(){ return b("threatinc_aidRequestsEnabled", true); }
-	/** Requests posted at once, unaccepted. */
-	public static int aidRequestMaxPosted()   { return i("threatinc_aidRequestMaxPosted"); }
-	/** BATTLE REQUESTS (2026-10-23, the user, Sindria): a colony under a Threat army posts marines and armaments contracts sized to its counter-attack, outside the posted cap, and its fuel and supplies requests withdraw while the army stands (ThreatAidRequests.battleItems / missionItems). */
-	public static boolean aidBattleRequests() { return b("threatinc_aidBattleRequests", true); }
-	/** Days a defence contract runs. */
-	public static float missionDefendDays()   { return f("threatinc_missionDefendDays"); }
-	/** Credits per colony size a defence contract pays. */
-	public static float missionDefendCredits(){ return f("threatinc_missionDefendCredits"); }
+	/** Days between the player's requests for one colony. */
+	public static float aidRequestCooldownDays() { return f("threatinc_aidRequestCooldownDays"); }
+	/** Price multipliers of asking at Min / Med / Max, on the giving rate (aidRepPerCredits, aidRepGuardArrived). */
+	public static float aidAskPriceMin()      { return f("threatinc_aidAskPriceMin"); }
+	public static float aidAskPriceMed()      { return f("threatinc_aidAskPriceMed"); }
+	public static float aidAskPriceMax()      { return f("threatinc_aidAskPriceMax"); }
+	/** WAR COMMS (ThreatComms): voiced notices when a need appears, escalates or is met. */
+	public static boolean aidCommsEnabled()   { return b("threatinc_aidCommsEnabled", true); }
+	/** Days between comms notices for one world and purpose. */
+	public static float aidCommsMinDays()     { return f("threatinc_aidCommsMinDays"); }
+	/** Days a postponed siege's provisions need stands on the ledger (ThreatNeeds.notePostponed). */
+	public static float aidExpeditionNoteDays() { return f("threatinc_aidExpeditionNoteDays"); }
+	/** Standing weights for giving, by purpose (ThreatNeeds.weight): hold the line / lift the orbit; push back / arm / provision; the depot / the navy; surplus or a good nobody needs. */
+	public static float aidRepWeightCritical(){ return f("threatinc_aidRepWeightCritical"); }
+	public static float aidRepWeightUrgent()  { return f("threatinc_aidRepWeightUrgent"); }
+	public static float aidRepWeightRoutine() { return f("threatinc_aidRepWeightRoutine"); }
+	public static float aidRepWeightSurplus() { return f("threatinc_aidRepWeightSurplus"); }
 	/** A defence is requested when the strike's strength exceeds the defenders' times this. */
 	public static float defendRequestRatio()  { return f("threatinc_defendRequestRatio"); }
-	/** Days a vanilla deficit must stand before a colony asks for the commodity. */
+	/** Days a vanilla deficit must stand before a colony's depot need goes on the ledger (ThreatAidRequests.shortageStanding). */
 	public static float missionAidShortageDays() { return f("threatinc_missionAidShortageDays"); }
-	/** An aid contract pays the goods' value at the receiving market times this. */
-	/** Delivery standing is multiplied by this when it answers a contract. */
-	public static float missionRepMult()      { return f("threatinc_missionRepMult"); }
 	/** Whether allied mobilised factions guard and resupply each other's colonies. */
 	public static boolean allyAidEnabled()    { return b("threatinc_allyAidEnabled", true); }
 	/** Chance per tick per need that a fully willing ally sends aid; scaled down by standing. */

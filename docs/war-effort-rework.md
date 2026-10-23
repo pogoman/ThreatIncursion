@@ -1,6 +1,13 @@
-# The war effort - needs, aid and comms (plan, 2026-10-23)
+# The war effort - needs, aid and comms (planned 2026-10-23, BUILT 2026-10-24)
 
-Plan only, nothing built. The user, the same evening as [front-line-proposal.md](front-line-proposal.md):
+**BUILT 2026-10-24, jar 00:10, untested in game** (`ThreatNeeds`, `ThreatComms`, `ThreatAidRequests`,
+`ThreatincAidCMD`, `ThreatAid.quoteAid` / `dispatchAid` / `onDelivered`, `ThreatCoalition.allyAid`,
+`ThreatFactionView` Needs column + Request button, `ThreatWarBoard` fronts Aid; the knobs of section 7).
+Departures from the plan, each a judgement call: allies send no unasked goods to the player's colonies
+(the player Requests; relief and guards are unchanged); a hold need whose Min is 0 (convoys at sea
+cover it) quotes the first tier with a figure; the NAVY need is served by `ThreatCoalition.aidHulls` as
+before; `{Battle}` in the navy comms reads "the front"; a DEPOT_MARINES table was added; met notices
+are one a world a tick; the fronts table's Aid button sails at its own (supply) tier. The user, the same evening as [front-line-proposal.md](front-line-proposal.md):
 
 > the mission system needs a rework. firstly they shouldn't pay out. the missions should change
 > to outcome based: sindria is requesting x marines to push back the front, but you should be
@@ -212,7 +219,7 @@ the notice discipline (CLAUDE.md "Notifications go through ThreatNotice"):
 | `missionRepMult` 2.0 | Purpose weights (section 4) |
 | Player cannot ask for aid | Request aid button, rep-priced (section 3) |
 
-## 8. Build order (after the line)
+## 8. Build order (after the line) - steps 1-3 BUILT 2026-10-24, step 4 owed
 
 1. `ThreatNeeds` ledger + Needs column + Aid button reading it (one evening). The old intel
    keeps running one build longer so saves with open contracts end them cleanly ("withdrawn").

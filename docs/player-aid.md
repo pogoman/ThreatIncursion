@@ -128,120 +128,27 @@ On arrival at an NPC colony, one `CustomRepImpact` with the receiving faction:
 Vanilla's own `RepLevel` thresholds do the rest - a player who saves Sindria twice will
 be Favourable and can dock there.
 
-## 4. Requests for help - the mission board
+## 4. Needs, not missions (2026-10-23; the mission board is gone)
 
-`ThreatMissionIntel` today scores hive infrastructure links and offers strikes. Two new
-objective kinds join it, scored on the same board and capped by the same
-`maxPostedMissions`. They are vanilla missions in every way (decided 2026-09-05):
-posted in the asking faction's name, accepted from the intel screen, expired unaccepted
-on `missionPostingDays` with no penalty, and once accepted **failed** if not completed
-within their term or if the target colony is destroyed - `RepActions.MISSION_FAILURE`
-with the asking faction, as `ThreatMissionIntel` already does for an abandoned strike.
-
-The player completes either kind in person or by sending a colony fleet from the board;
-both count toward the same contract, and sending board aid to a colony with an open
-request accepts it.
-
-- **Defend X for `missionDefendDays` (60).** Posted when a Threat strike is staged or in
-  flight against a colony and the faction is outmatched: the strike's strength estimate
-  exceeds the defenders' (`WarSimScript.getFactionStrength` at the system plus the
-  station) times `defendRequestRatio` (1.0). The contract is a window: it completes at
-  the end of the term if no Threat action landed on the colony (no raid, bombardment or
-  ground assault - the strike was stopped in space) and a player asset was in the system
-  when each strike arrived: the player's fleet, or a guard sent from a player colony. It
-  fails the moment an action lands, or the colony is destroyed. If no strike came at all
-  in the term, or the faction beat it with no player asset present, the contract ends
-  unpaid with no penalty - nothing was owed. A guard sent for a contract serves the
-  contract's term. Reward: credits `missionDefendCredits` scaled by colony size, plus
-  the reputation in section 3 doubled (`missionRepMult` 2.0) - asked-for help is worth
-  more.
-- **Aid X with N of C.** Posted when a colony is short of its PEACETIME demand for C
-  and the depot cannot cover it: exhausted (`CommodityStatus.exhausted` from
-  `ThreatReserves.status`), or the gap has stood with no cover in force for
-  `missionAidShortageDays` (60). A gap only in the War footing's share asks nobody -
-  the depot is the war's supply. N is the peacetime gap in items
-  (`ThreatAidRequests.requestItems`). A posted request withdraws itself once the gap
-  closes (2026-09-27); an accepted one runs its term. Delivered by
-  any mix of colony resupply landings and personal hand-overs; the contract keeps a
-  running total and completes when it reaches N within the term. Reward: the goods'
-  value at the receiving market's price, its shortage premium included (no multiplier
-  since 2026-09-27) - plus section 3's reputation doubled.
-- **Aid X with N ship hulls** (every figure the player reads is fleet points - `ThreatHulls.shown`,
-  2026-10-11: "400FP is 400 hulls" - while the ledger, cargo and price below stay in units of
-  `fabFPPerShipUnit`; the user, 2026-10-07: requests ask for "whatever is short ...
-  not just supplies or fuel"). The same request for the fifth aid good: `ships` units of the
-  faction's hull pool (`ThreatReserves.AID_COMMODITIES`; never in a depot, so not in
-  `COMMODITIES`). `ThreatReserves.status(market, SHIPS)` is `ThreatHulls.hullStatus`: stock
-  and cap are the faction's free and standing hulls in units of `fabFPPerShipUnit` (100 FP);
-  the deficit stands only at the faction's **hull port** (`ThreatHulls.hullPort`: its
-  shipyard making the most ship units, else the world with the most standing hulls) and only
-  while the faction is short of hulls (`ThreatFactionStock.hullsShort`) with losses not yet
-  rebuilt - the units of that debt (`shortUnits`), exhausted at once since a hull shortage
-  is already a trailing judgment. No depot is needed. Delivered by convoy only (2026-10-10):
-  the `ships` commodity is vanilla's `meta` good, never in a hold, so the port's hand-over
-  can never see any and `ThreatincAidCMD` says so. The war board's Aid button quotes a hull
-  convoy (`ThreatAid.quoteHulls`): units of the player's built navy (`ThreatHulls.sendableUnits`,
-  min of free and built, whole units) from the player's own hull port, the tier read as for
-  goods, sailed by `ThreatConvoys.dispatch` (`ThreatHulls.give` debits the navy the day it
-  sails, `receive` lands it). Priced as the ships good (the user, 2026-10-11): `ThreatAid.valueAt`
-  puts a unit at vanilla's econ unit of the good, 200 items (`ThreatHulls.itemsPerUnit`), at the
-  receiving market's price - about 20,000 credits a unit, 80,000 for a 4-unit contract - unless
-  `threatinc_hullCreditsPerFP` is set, then `unitFP` x that. The ships commodity's bare unit
-  priced it at 1,000 (the user, 2026-10-10: "400 FP of aid for 1,000"); the game's hull table,
-  about 9,600 an FP, at 3.67M for a day ("thats too much"). An open contract follows the price
-  both ways (`ThreatAidMissionIntel.advanceImpl`). The convoy draws on the player's **built navy**
-  (`ThreatHulls.built`, the yards' wartime output over vanilla's patrols), so 400 FP can sail from
-  a faction whose one Patrol HQ keeps 153. Until 2026-10-11 no colony row showed it - the FP cell
-  was a colony's standing patrols, the Total row the faction's pool, and the user read 153 under a
-  1,392 total as "a bug or something": the column is now Fleet, the built navy sits on the hull
-  port's row (`ThreatFactionView.fleetShare`, the row tooltip says so), the rows sum to the Total,
-  and the Aid prompt quotes the built navy.
-- **Battle requests (the user, 2026-10-23: "any colony that is under siege and losing should ask for help ... if
-  its front needs marines then that should be the mission. if marines need armaments then that. supplies and fuel
-  should be a not under attack mission ... currently i have no way to give sindria marines so it just falls while i
-  sit there watching with marines on my ship").** A colony with a Threat army on it (`ThreatAidRequests.underArmy`)
-  asks for the battle, not the depot: a marines contract for what its counter-attack still wants
-  (`ThreatGroundFronts.reliefNeed`, the Reinforce order's own measure) and an armaments contract for what those
-  defenders burn (`defenderArmsNeed`), each net of what will land (`battleItems`): nothing while the swarm holds the orbit, and never a convoy held off at the jump point by the blockade (`ThreatConvoys.inbound(id, landing)`; the user's test the same evening: Sindria asked for nothing while a 200-marine convoy waited out the blockade and the last district fell in 9 days). The Reinforce button reads the same (`reinforceWants`). They post first and outside
-  `aidRequestMaxPosted`, and a posted request already open for the good grows to the battle's figure
-  (`ThreatAidMissionIntel.raiseNeed`). Fuel and supplies are not-under-attack missions: `missionItems` reads 0 for
-  them while the army stands, so a posted one withdraws ("neutralized") and none posts; allies' convoys keep
-  reading `requestItems`. Delivery is the same hand-over at the dock or convoy from the board, and the swarm bounty
-  covers the orbit. The Reinforce button stays. Knob `threatinc_aidBattleRequests` (true).
-- **Swarm bounty on the X system** (2026-09-24, untested; `ThreatSwarmBountyIntel`). Not a
-  contract but vanilla's system bounty pointed at a hive: posted by a mobilised base whose
-  siege the Defense Swarms over the target hive system outweigh (docs/strategy-reserves-sieges.md,
-  "weighs the orbit"), one per hive system. No accepting, no failing. For
-  `swarmBountyDays` (60) it pays `swarmBountyPerFrigate` (1,500) per Threat ship the player
-  destroys in that system - destroyer x2, cruiser x3, capital x5 (vanilla's system-bounty scale), times the player's share
-  of the battle - plus vanilla's system-bounty standing (`RepActions.SYSTEM_BOUNTY_REWARD`)
-  per battle. The system's Defense Swarms count wherever they are caught (the fleet's
-  `$threatinc_garrison` names its colony), and each ship lost pays ONE bounty - its
-  garrison's home system's when one runs there, else the system it was caught in's
-  (`paidBy`; review fix 2026-09-24, before it two running bounties both paid for a swarm
-  of one system killed in the other). It ends early only if the hive system falls or
-  the base or its war goes; a base still outweighed afterwards posts the next one. The
-  intel names the FP the siege can take and what the swarms hold now; the gate reads the
-  live garrison, so every swarm destroyed opens the siege sooner. Replaced, the same day,
-  an accept/fail "thin the swarms" contract paid per FP asked - Pelephanar's asked 15.7M.
-  Help requests were never advanced until 2026-09-24 (missing from
-  `IncursionManager.advanceModIntel`): posted ones never withdrew, Defend windows never
-  closed, accepted terms never ran.
-
-**Handing over in person.** At the receiving colony the port offers "Deliver aid for the
-war effort" on the dock menu, and the station or base commander offers the same over
-the comm directory (rules.csv options, vanilla-only; the conversation needs its own
-rows because `$local` is the person there and `$menuState` is out of scope), listing what the
-contract still needs and what the player's fleet holds. What is handed over leaves the
-player's cargo, lands exactly as a convoy does (reserve deposit and trade modifier), and
-earns section 3's reputation. Ship hulls are never handed over (vanilla's
-`ships` is a `meta` good, never in a hold): the port says they sail from the hull port, and the
-board's hull convoy lands them in the faction's pool (`ThreatHulls.receive`: its losses rebuilt
-first, the rest its navy), valued as the ships good (`ThreatAid.valueAt`). The player's own holds are the gate - buying 20,000 fuel
-and hauling it is legitimate; the tankers are the cost.
-
-**Defending in person.** The player's fleet in the target system counts as the asset; no
-docking needed. Board-sent guards count the same way.
+The whole design, every notice text and the decisions are in
+[war-effort-rework.md](war-effort-rework.md). In one paragraph: a colony's **needs** are computed
+live by `ThreatNeeds.of(market)` - hold the line / push back (marines, from the line's rate), arm
+the defenders (armaments), lift the orbit (fleet points, while the swarm holds the orbit or a
+strike is in flight), keep the depot (fuel / supplies / marines / arms the depot cannot cover),
+rebuild the navy (hulls), provision the expedition (a postponed siege's fuel or supplies) - each
+with a Min / Med / Max net of what will land, an urgency (critical red, urgent yellow, routine
+white; grey while the swarm's orbit suspends it). Nothing is posted, accepted or paid. The war
+board's colony table shows the most urgent purpose in a **Needs** column (the row tooltip lists
+every need with its figures), the NPC **Aid** button serves the most urgent goods need
+(`ThreatAid.quoteAid`), the fronts table's **Aid** on an ally's world does the same at the supply
+tier, and the dock's "Deliver aid for the war effort" lists every need with a hand-over option a
+tier (and "all you carry"). Standing for giving is the goods' value at the receiving market over
+`aidRepPerCredits`, weighted by the purpose served (2.0 / 1.5 / 1.0 / 0.5 surplus), read before the
+goods land, capped a delivery. The player's own colonies **Request**: every faction at Favourable or
+better answers the most urgent need at the convoy tier, each sender's price standing at the giving
+rate x Min 1.0 / Med 1.25 / Max 1.5, never below Favourable, one request a colony per 30 days
+(`ThreatAidRequests`). War comms (`ThreatComms`) speak when a need appears, escalates or is met.
+`ThreatAidMissionIntel` is kept only so older saves load; an open contract ends "withdrawn".
 
 ## 5. Allies helping each other
 

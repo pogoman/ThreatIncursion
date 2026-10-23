@@ -244,7 +244,8 @@ public class ThreatCoalition {
 	/**
 	 * Each mobilised colony with a need, each other mobilised NPC faction: by
 	 * willingness and chance, one helper sends a guard or relief; every willing
-	 * helper ships what it can spare until a shortage is covered.
+	 * helper ships what it can spare until each need on the ledger (ThreatNeeds)
+	 * is covered. The player's colonies get the fleets, never unasked goods.
 	 */
 	public static void allyAid(Random random) {
 		if (!ThreatWarState.enabled() || !ThreatIncConfig.allyAidEnabled()) return;
@@ -291,17 +292,17 @@ public class ThreatCoalition {
 						break;
 					}
 				}
-				// (2026-09-29: one convoy per helped colony, one helper per need and a
-				// hull-load clip were caps - every willing helper now sends what it can
-				// spare until the shortage is covered, net of what is already at sea)
-				float[] atSea = ThreatConvoys.inbound(market.getId());
-				for (String c : ThreatReserves.AID_COMMODITIES) {
-					// ship hulls (2026-10-07) land in the faction's pool, the other goods in the
-					// colony's reserve (a depot was asked for until 2026-10-10: a convoy lands anywhere)
-					boolean hulls = Commodities.SHIPS.equals(c);
-					if (!ThreatAidRequests.shortageStanding(market, c)) continue;
-					float inbound = hulls ? ThreatConvoys.inboundShips(market.getId()) : atSea[ThreatAid.index(c)];
-					float need = ThreatAidRequests.requestItems(market, c) - inbound;
+				// ON THE LEDGER (2026-10-23, docs/war-effort-rework.md section 3): every willing ally answers
+				// the colony's needs (ThreatNeeds) - a line's at Med (push back), the rest at Min - net of
+				// what will land, until each is covered; a need the swarm's orbit suspends is asked of nobody,
+				// and hulls are aidHulls' (the navy need at the hull port). The player's colonies ask at a
+				// standing price instead (ThreatAidRequests): no goods sail to them unasked. (2026-09-29: one
+				// convoy per helped colony, one helper per need and a hull-load clip were caps.)
+				if (needy.isPlayerFaction()) continue;
+				for (ThreatNeeds.Need n : ThreatNeeds.of(market)) {
+					if (n.suspended || n.isFleets() || Commodities.SHIPS.equals(n.good)) continue;
+					String c = n.good;
+					float need = ThreatNeeds.HOLD.equals(n.purpose) || ThreatNeeds.PUSH_BACK.equals(n.purpose) ? n.med : n.min;
 					if (need < 1f) continue;
 					for (String helperId : ids) {
 						if (need < 1f) break;
@@ -309,9 +310,9 @@ public class ThreatCoalition {
 						FactionAPI helper = Global.getSector().getFaction(helperId);
 						if (helper == null || helper.isPlayerFaction()) continue;
 						float w = willingness(helper, needyId);
-						// every willing ally answers a standing shortage, as the player answers the colony's help
-						// request (the user, 2026-10-19: "factions should send supply convoys to help with shortages
-						// like the player does with supply missions"); the chance roll stays on the task forces above
+						// every willing ally answers a standing need, as the player answers it (the user, 2026-10-19:
+						// "factions should send supply convoys to help with shortages like the player does"); the
+						// chance roll stays on the task forces above
 						if (w <= 0f) continue;
 						MarketAPI donor = ThreatConvoys.pickAllyDonor(helper, market, c, need);
 						if (donor == null) continue;
@@ -322,9 +323,9 @@ public class ThreatCoalition {
 						ThreatConvoys.Convoy convoy = ThreatConvoys.dispatch(donor, market, helper, load,
 								random, needyId, false);
 						if (convoy == null) continue;
-						report(helper, needy, "Allied Convoy Sails", "sends %s %s from %s to %s",
+						report(helper, needy, "Allied Convoy Sails", "sends %s %s from %s to %s (%s)",
 								Misc.getWithDGS((int) amount), ThreatReserves.label(c),
-								ThreatNotice.market(donor), ThreatNotice.market(market));
+								ThreatNotice.market(donor), ThreatNotice.market(market), n.purpose);
 						need -= amount;
 					}
 				}
