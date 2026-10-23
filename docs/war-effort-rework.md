@@ -223,13 +223,13 @@ the notice discipline (CLAUDE.md "Notifications go through ThreatNotice"):
 4. Test on the Sindria save: Sindria and Volturn both show hold the line, the dock offers the
    three tiers, one request from Yuendumu is answered by the Hegemony at a visible rep cost.
 
-## 9. Decisions for the user
+## 9. Decisions - taken 2026-10-23 22:40
 
-1. Keep the swarm bounty (credits per Threat ship killed) alongside the rep-only needs, or
+1. **Keep the swarm bounty.** Keep the swarm bounty (credits per Threat ship killed) alongside the rep-only needs, or
    retire it too so nothing in the war pays credits?
-2. The rep floor: a sender never takes the player below Favourable (proposed), or no floor
+2. **Never below Favourable.** The rep floor: a sender never takes the player below Favourable (proposed), or no floor
    (the player can spend an alliance down to Neutral)?
-3. Tier prices for asking: Min 1.0 / Med 1.25 / Max 1.5 of the giving rate (proposed), or a
+3. **Min 1.0 / Med 1.25 / Max 1.5.** Tier prices for asking: Min 1.0 / Med 1.25 / Max 1.5 of the giving rate (proposed), or a
    flat 1.0?
-4. Comms shape: title + one voiced line + one fact line without the figure (proposed), or the
+4. **No figure.** Comms shape: title + one voiced line + one fact line without the figure (proposed), or the
    figure on the fact line too?

@@ -128,7 +128,7 @@ help request and the convoy all quote one number.
   docs; test on the Sindria save first (the user's: both worlds should now ask for marines and
   the state should read losing at Sindria, grinding at Volturn).
 
-## 6. Open decisions for the user
+## 6. Decisions - taken 2026-10-23 22:30: build it, both theatres; six states; the marines ask on the margin (superseded by war-effort-rework.md 1: hold / push back / overrun = rate 0 / -0.25 / -0.5); military command x1.5 pressure
 
 1. Adopt the line (section 2) in place of the counter-attack cadence, both theatres?
 2. State words from the reader's side as in section 3 (overrunning / gaining / grinding /
@@ -136,3 +136,63 @@ help request and the convoy all quote one number.
 3. The marines ask as "enough to gain ground at the margin" (section 4), the margin as a share of
    the combined strength (default 0.25)?
 4. Military command as a pressure bonus (x1.5) or no role?
+
+## 7. Engine spec (2026-10-23 22:50, from the code as it stands)
+
+The arithmetic the build follows, in `ThreatGroundFronts`; every figure a readout quotes comes
+from these so the board and the tick cannot drift apart.
+
+```
+A      = effectiveStrength(front)                       the landing (entrenchment ramp included)
+D      = defenderStrength(market)                       COLONY: (garrison + armed marines) x defenderCoverMult
+                                                        HIVE: vanilla defender str + landed hive troops
+holdA  = A x coverMult(front)                           1 while pushing, up to frontEntrenchDefenseBonus dug in
+holdD  = D
+pushA  = STANCE_PUSH.equals(front.stance)
+pushD  = COLONY: defenderStance == PUSH; HIVE: always, at hiveCounterAttackPace (fed share x strata left)
+D'     = counterAttackStrength(market)                  marines at marineCounterAttackMult, garrison whole
+         x (hasMilitaryCommand ? colonyCounterAttackMilitaryMult 1.5 : 1)   (COLONY)
+         x hiveCounterAttackPace                                              (HIVE)
+gainA  = pushA ? max(0, A  - holdD) : 0
+gainD  = pushD ? max(0, D' - holdA) : 0
+rate   = clamp((gainA - gainD) / max(1, A + D), -1, 1)   > 0 the landing gains ground
+```
+
+- `front.pushProgress` (days, kept for saves) moves by `rate x elapsedDays`. At `+frontLineBaseDays`
+  (new knob, 8; `frontPushBaseDays` retired) `takeStratum`; at `-frontLineBaseDays` with strata
+  held, the district goes back (`strataHeld--`, both covers spoilt by their kept fractions, progress
+  0); with none held the beachhead is **overrun** and the front destroyed (today's "Beachhead
+  Overrun" notice, same wording). `lastStratumProtected` still stops the last district.
+- `front.state` stays the suppression key, derived every tick from the rate: `rate > band` HOLDING
+  (key structures worn), `|rate| <= band` GRINDING (defence structures held), `rate < -band`
+  FOOTHOLD (nothing suppressed). `frontGrindBand` (new, 0.1) replaces `frontHoldFraction`,
+  `frontGrindFraction`, `frontStateHysteresis`.
+- `holdRequirement(market)` = `holdD` (a landing gains only when it outweighs the defence in cover):
+  what `autoPush`, the NPC stance AI, the consolidate checkpoint and the landing sizers read. Today's
+  landings are already sized to beat `counterAttackStrength x siegeBeachheadMargin`, near parity, so
+  the sizers move little; `frontHoldFraction` 0.17 was only ever the suppression line.
+- `lineState(front, market, fromLanding)` -> the six words on `r = fromLanding ? rate : -rate`:
+  `r > frontOverrunRate` (0.5) overrunning, `> band` gaining, `|r| <= band` grinding when both push
+  else stalled, `< -band` losing, `< -frontOverrunRate` overrun. `daysToLineChange` = days until
+  the next district changes hands at the rate (the Falls column), -1 at rate 0.
+- Casualties: unchanged per-day rates (`frontPushLossPer30Days` pushing, `frontMarineLossPer30Days`
+  holding, `pushLossFactor` / `pushLossMult` / veterancy; `bleedDefenders`, `bleedHiveTroops` at the
+  front's pressure `min(1, A / holdD)`). The one-off blows go: `hiveCounterAttack`,
+  `counterAttackDefenderLoss`, `hiveTroopsCounterAttackLoss`, `frontCounterAttackLossFraction`,
+  `defenderCounterAttackLossFraction`. XP: `ThreatMarineXP.xpGain` is granted per district change
+  on the strengths of the day, both sides, in place of per blow.
+- Gone: brace (`shouldBrace`, `overrunIfPushing`, `beatenIfPushing`, `counterAttackDanger`,
+  `bracedFromPush`, `bracedPushProgress`, knobs `frontBraceEnabled`, `frontBraceWhenBeaten`),
+  `counterAttackInterval` / `daysToCounterAttack` / `counterAttackTempo` /
+  `counterAttackRepelled` / `counterAttackLoss` / `counterAttackOverruns` /
+  `counterAttackOverwhelms`, `hiveCounterAttackPace` (folded into pushD), `lastCounterAttack`
+  (dead field), knobs `frontCounterAttackDays`, `counterAttackRatioClamp`,
+  `frontOverrunMusterDays`. `defendersLosing` = `rate > 0` (the relief bombards while the landing
+  gains). `defendersHoldFire` stays (the defenders' stance word).
+- Readers to move with it: `ThreatWarBoard` (fronts table State / Counter / Falls, the row
+  tooltip's five counter-attack lines, the Push / Dig in prompts at 1484-1610 and 1663-1675),
+  `ThreatFactionView` 1965-1973 and 2306, `ThreatGroundWarCondition` 81-121, `ThreatincMarketCMD`
+  404, 461-471, 566-587 (debug state set reads the rate), `ThreatPurgeFGI` 1939 (log line).
+- Order of work: engine first with the old readout methods left in place one build (they stay pure
+  and compile), then each reader, then the knobs and the docs (`ground-war-fronts.md` "The model",
+  `ground-war-defenders.md` "How the defender fights back", `facts.md`).
