@@ -560,7 +560,7 @@ public class ThreatCoalition {
 		if (!ThreatIncConfig.coalitionRelief() || owner == null || market == null) return false;
 		float[] total = new float[1];
 		List<Sender> senders = jointSenders(owner, market, ownerBase, total);
-		return !senders.isEmpty() && total[0] >= ThreatFleetOrders.reliefNeed(market);
+		return !senders.isEmpty() && (total[0] >= ThreatFleetOrders.reliefNeed(market) || ThreatFleetOrders.playerAtTheWall(market));
 	}
 
 	/**
@@ -586,7 +586,15 @@ public class ThreatCoalition {
 		float[] total = new float[1];
 		List<Sender> senders = jointSenders(owner, market, ownerBase, total);
 		float need = ThreatFleetOrders.reliefNeed(market);
-		if (senders.isEmpty() || total[0] < need) {
+		// THE PLAYER AT THE WALL (the user, 2026-10-23): the player's fleets over the world lift the enough gate and the
+		// one-body stand-down - the partners send what they can build and fight beside them
+		boolean follow = ThreatFleetOrders.playerAtTheWall(market);
+		if (!senders.isEmpty() && follow && total[0] < need) {
+			ThreatIncConfig.logQuiet("relief-follow:" + market.getId(), "Relief follows the player: "
+					+ (int) ThreatFleetOrders.playerPointsFor(market) + " FP of the player's over " + market.getName() + " - " + owner.getId()
+					+ " and " + Math.max(0, senders.size() - 1) + " partner(s) send what they can field (" + (int) total[0] + " FP against " + (int) need + ")");
+		}
+		if (senders.isEmpty() || (total[0] < need && !follow)) {
 			ThreatIncConfig.logQuiet("relief-joint-held:" + market.getId(), "Coalition relief held: " + owner.getId()
 					+ " and " + Math.max(0, senders.size() - 1) + " of " + coalition(owner.getId()).size() + " partner(s) with a base can field " + (int) total[0]
 					+ " FP against " + (int) need + " over " + market.getName() + " - not enough, holds");
@@ -611,7 +619,7 @@ public class ThreatCoalition {
 			parts.add(new Object[] { s, fleets });
 			sent += got;
 		}
-		if (ThreatIncConfig.reliefOneBody() && sent + 0.5f < owed) {
+		if (ThreatIncConfig.reliefOneBody() && !follow && sent + 0.5f < owed) {
 			for (Object[] p : parts) {
 				@SuppressWarnings("unchecked") List<CampaignFleetAPI> fleets = (List<CampaignFleetAPI>) p[1];
 				ThreatFleetOrders.standDownUnsailed(fleets, ((Sender) p[0]).base);
@@ -635,7 +643,7 @@ public class ThreatCoalition {
 		}
 		if (sent > 0f) {
 			ThreatIncConfig.log("Coalition relief: " + (int) sent + " FP to invaded " + market.getName() + " (" + owner.getId()
-					+ "; owed " + (int) owed + ", army " + (int) need + ", fieldable " + (int) total[0] + "): " + who);
+					+ "; owed " + (int) owed + ", army " + (int) need + ", fieldable " + (int) total[0] + (follow ? ", the player at the wall" : "") + "): " + who);
 		}
 		return sent;
 	}

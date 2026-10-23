@@ -487,6 +487,35 @@ public class ThreatFleetOrders {
 		return fp;
 	}
 
+	/** Fleet points of the player's own live guard and Defend fleets bound for or over the colony, plus the player's fleet when it is over the world. */
+	public static float playerPointsFor(MarketAPI market) {
+		float fp = 0f;
+		if (market == null || Global.getSector().getPlayerFaction() == null) return fp;
+		String pid = Global.getSector().getPlayerFaction().getId();
+		for (Order o : all()) {
+			if (!market.getId().equals(o.targetId) || !pid.equals(o.factionId)) continue;
+			if (!KIND_GUARD.equals(o.kind) && !KIND_DEFEND.equals(o.kind)) continue;
+			if (o.fleet != null && o.fleet.isAlive() && !o.fleet.isExpired()) fp += o.fleet.getFleetPoints();
+		}
+		CampaignFleetAPI own = Global.getSector().getPlayerFleet();
+		if (own != null && own.isAlive() && market.getPrimaryEntity() != null && nearPlanet(own, market.getPrimaryEntity())) fp += own.getFleetPoints();
+		return fp;
+	}
+
+	/**
+	 * THE PLAYER AT THE WALL (the user, 2026-10-23, Sindria: "i clicked the defend button and sent loads of my own
+	 * fleets to help them. Perhaps that should trigger them to realise if they send fleets with my fleets we can
+	 * win"): the player's own fleets over an invaded world are the commitment the enough gates wait for. While any
+	 * stand there, the owner and its partners send what relief they can build - reliefEnough,
+	 * ThreatCoalition.jointEnough / jointRelief and the one-body stand-down are off for that world. The player
+	 * judges the odds and withdraws to stop them. Knob reliefFollowsPlayer.
+	 */
+	public static boolean playerAtTheWall(MarketAPI market) {
+		if (market == null || !ThreatIncConfig.reliefFollowsPlayer()) return false;
+		if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(market.getId()))) return false;
+		return playerPointsFor(market) > 0f;
+	}
+
 	/**
 	 * What lifting the Threat's hold over the colony takes: the swarm's points
 	 * over it times reliefOrbitMargin (1.0 since 2026-10-22; the siege's own 1.5 until then, which held
@@ -526,6 +555,7 @@ public class ThreatFleetOrders {
 	public static boolean reliefEnough(FactionAPI faction, MarketAPI market, MarketAPI base) {
 		if (!ThreatIncConfig.systemDefenceOnlyIfEnough()) return true;
 		if (faction == null || market == null || base == null) return false;
+		if (playerAtTheWall(market)) return true; // the player's fleets over the world are the commitment
 		float can = sortieFirstPayableFP(base, market.getLocationInHyperspace());
 		return can + guardPointsFor(market.getId()) >= reliefNeed(market);
 	}
@@ -682,7 +712,7 @@ public class ThreatFleetOrders {
 		// of the build short of the owed points stays home - the gate above priced a paper figure. hw244a: the
 		// coalition's 'fieldable' promised 704k FP over the game and built 131k, 161 of 193 joint reliefs under
 		// half of it, and the fleets that did sail bled in at 29-356 FP against 1,300-4,600 FP swarms.
-		if (ThreatIncConfig.reliefOneBody() && !coalitionEnough && sent > 0f && sent + 0.5f < owed) {
+		if (ThreatIncConfig.reliefOneBody() && !coalitionEnough && sent > 0f && sent + 0.5f < owed && !playerAtTheWall(target)) {
 			standDownUnsailed(sailing, base);
 			noteReliefShort(faction, base, target, owed - sent);
 			ThreatIncConfig.log("Relief held at " + base.getName() + ": " + faction.getId() + " built " + (int) sent
