@@ -5357,7 +5357,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float a = effectiveStrength(front);
 		boolean landingPushes = STANCE_PUSH.equals(front.stance);
 		boolean worldPushes = target < 0f || defendersPush(front, market);
-		float coverA = landingPushes ? 1f : coverIfDugIn(front);
+		// sized against the swarm at FULL cover whatever it stands at now (the user, Sindria 2026-10-24:
+		// marines that met the ask when handed over were short by the time the swarm had dug in for
+		// 30 days and the ask had grown) - a met ask stays met; a pushing swarm is exposed, so the
+		// ask over-reads it until it digs in, which it does the moment the line turns
+		float coverA = Math.max(1f, ThreatIncConfig.frontEntrenchDefenseBonus());
 		float coverD = worldPushes ? 1f : defenderCoverIfDugIn(front);
 		float garrison = colonyGarrison(market);
 		float counter = Math.max(0f, ThreatIncConfig.marineCounterAttackMult());

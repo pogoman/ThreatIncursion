@@ -93,34 +93,12 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		else cargo.removeCommodity(commodityId, quantity);
 	}
 
-	/** The tier words of a purpose: what each of Min / Med / Max buys. */
-	protected static String[] tierWords(ThreatNeeds.Need n) {
-		if (ThreatNeeds.HOLD.equals(n.purpose)) return new String[] { "hold the line", "push back", "overrun" };
-		if (ThreatNeeds.PUSH_BACK.equals(n.purpose)) return new String[] { "push back", "overrun", "overrun with a reserve" };
-		if (ThreatNeeds.ARM.equals(n.purpose)) return new String[] { "30 days", "60 days", "fill the depot" };
-		if (ThreatNeeds.EXPEDITION.equals(n.purpose)) return new String[] { "to sail", "a margin", "the full voyage" };
-		return new String[] { "the gap", "a margin", "fill the depot" };
-	}
-
 	/** The need's line at the dock: the situation, the three figures, what the player carries. */
 	protected static String needLine(MarketAPI market, ThreatNeeds.Need n, int have) {
 		String world = market.getName();
 		String good = ThreatReserves.label(n.good);
 		String goodCap = Character.toUpperCase(good.charAt(0)) + good.substring(1);
-		String figures;
-		String[] words = tierWords(n);
-		if (ThreatNeeds.HOLD.equals(n.purpose) || ThreatNeeds.PUSH_BACK.equals(n.purpose)) {
-			// a tier already covered (marines just handed over, convoys at sea) reads covered, not "0 to"
-			float[] tiers = { n.min, n.med, n.max };
-			StringBuilder sb = new StringBuilder();
-			for (int t = 0; t < 3; t++) {
-				if (sb.length() > 0) sb.append(", ");
-				sb.append(Math.round(tiers[t]) <= 0 ? words[t] + " covered" : n.shown(tiers[t]) + " to " + words[t]);
-			}
-			figures = sb.toString();
-		} else {
-			figures = n.figures();
-		}
+		String figures = n.figures(); // "6,000 to cover the gap, 12,000 to fill the depot"
 		String lead;
 		if (ThreatNeeds.HOLD.equals(n.purpose)) {
 			lead = world + (n.overrun ? " is being overrun by " : " is losing the line to ")
@@ -216,7 +194,6 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 			text.addPara(needLine(market, n, have));
 			text.highlightInLastPara(Misc.getHighlightColor(), n.shown(n.min), n.shown(n.med), n.shown(n.max),
 					Misc.getWithDGS(have));
-			String[] words = tierWords(n);
 			float[] tiers = { n.min, n.med, n.max };
 			int offered = 0;
 			float last = -1f;
@@ -225,7 +202,7 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 				if (qty < 1 || qty > have || qty == last) continue;
 				last = qty;
 				options.addOption("Hand over " + Misc.getWithDGS(qty) + " " + ThreatReserves.label(n.good)
-						+ " (" + words[t] + ")", OPTION_HAND + n.good + "_" + t);
+						+ " (" + n.tierWord(t) + ")", OPTION_HAND + n.good + "_" + t);
 				enabled.add(OPTION_HAND + n.good + "_" + t);
 				offered++;
 			}

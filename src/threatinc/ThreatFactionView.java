@@ -761,7 +761,7 @@ public class ThreatFactionView {
 							+ (d.ok() ? d.source.getName() : "your nearest colony") + " holds "
 							+ "this orbit for " + guardDays + " days. Paid from that colony's "
 							+ "reserve; earns standing on arrival."
-							+ (orbitNeed != null ? " " + orbitNeed.purpose + ": " + orbitNeed.figures() + " fleet points"
+							+ (orbitNeed != null ? " " + orbitNeed.purpose + ": " + orbitNeed.figures()
 									+ (orbitNeed.bound > 0f ? ", " + Misc.getWithDGS(Math.round(orbitNeed.bound)) + " bound" : "")
 									+ "." : ""));
 					disableWith(main, aid, mayAid && s.ok(),

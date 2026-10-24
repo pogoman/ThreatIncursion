@@ -1894,7 +1894,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundDefenses.isAvailableToBuild()` :71
 - `ThreatGroundDefenses.showWhenUnavailable()` :76
 
-## ThreatGroundFronts (5566 lines)
+## ThreatGroundFronts (5570 lines)
 - `ThreatGroundFronts.isPlayerOwned()` :190 - Days the defenders have held fire and dug in:
 - `ThreatGroundFronts.getFront(String marketId)` :205
 - `ThreatGroundFronts.hasFront(MarketAPI market)` :210
@@ -2244,15 +2244,15 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGroundFronts.losingGround(GroundFront front, MarketAPI market)` :5321 - The world's push is moving the line back on the front (THE LINE, 2026-10-23):
 - `ThreatGroundFronts.reliefNeed(MarketAPI market)` :5333 - Marines an own colony under a Threat army still wants banked to push the line back at frontPushBackRate (#reliefNeed(MarketAPI, float)):
 - `ThreatGroundFronts.reliefNeed(MarketAPI market, float rate)` :5348 - Marines a colony under a Threat army still wants banked for the line to move toward its defenders at rate (THE LINE, 2026-10-23:
-- `ThreatGroundFronts.reliefRate(float a, float coverA, float coverD, float garrison, float perMarine, float counter, float staff, float armed, boolean landingPushes, boolean worldPushes)` :5389 - The line's rate with armed marines banked on the world (#reliefNeed(MarketAPI, float)).
-- `ThreatGroundFronts.invadedWorlds(String factionId)` :5401 - HOME UNDER ATTACK (the user, 2026-10-20, after hw240c:
-- `ThreatGroundFronts.homeUnderAttack(String factionId)` :5417 - Whether the faction has an own world under a Threat army (knob homeUnderAttack):
-- `ThreatGroundFronts.defenderArmsNeed(MarketAPI market)` :5428 - Heavy armaments an own colony under a Threat army wants banked beside its marines (2026-10-17):
-- `ThreatGroundFronts.daysToFinalPush(GroundFront front)` :5439 - Days until a dry Threat front's final push, or -1 when it is not waiting.
-- `ThreatGroundFronts.layerName(MarketAPI market)` :5447 - "stratum" on a hive, "district" on a colony.
-- `ThreatGroundFronts.announceCollapse(GroundFront front, MarketAPI market)` :5453 - A player's or faction's front is gone:
-- `ThreatGroundFronts.evacuate(GroundFront front, MarketAPI market)` :5474 - The colony died under the front.
-- `ThreatGroundFronts.evacuate(GroundFront front, ThreatOutposts.Outpost outpost, Vector2f hyperLoc)` :5478
+- `ThreatGroundFronts.reliefRate(float a, float coverA, float coverD, float garrison, float perMarine, float counter, float staff, float armed, boolean landingPushes, boolean worldPushes)` :5393 - The line's rate with armed marines banked on the world (#reliefNeed(MarketAPI, float)).
+- `ThreatGroundFronts.invadedWorlds(String factionId)` :5405 - HOME UNDER ATTACK (the user, 2026-10-20, after hw240c:
+- `ThreatGroundFronts.homeUnderAttack(String factionId)` :5421 - Whether the faction has an own world under a Threat army (knob homeUnderAttack):
+- `ThreatGroundFronts.defenderArmsNeed(MarketAPI market)` :5432 - Heavy armaments an own colony under a Threat army wants banked beside its marines (2026-10-17):
+- `ThreatGroundFronts.daysToFinalPush(GroundFront front)` :5443 - Days until a dry Threat front's final push, or -1 when it is not waiting.
+- `ThreatGroundFronts.layerName(MarketAPI market)` :5451 - "stratum" on a hive, "district" on a colony.
+- `ThreatGroundFronts.announceCollapse(GroundFront front, MarketAPI market)` :5457 - A player's or faction's front is gone:
+- `ThreatGroundFronts.evacuate(GroundFront front, MarketAPI market)` :5478 - The colony died under the front.
+- `ThreatGroundFronts.evacuate(GroundFront front, ThreatOutposts.Outpost outpost, Vector2f hyperLoc)` :5482
 
 ## ThreatGroundWarCondition (154 lines)
 - `ThreatGroundWarCondition.hasCustomTooltip()` :29
@@ -3163,39 +3163,40 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatMissionIntel.addAssessmentSection(TooltipMakerAPI info, MarketAPI market, FactionAPI faction)` :1258
 - `ThreatMissionIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :1325
 
-## ThreatNeeds (529 lines)
+## ThreatNeeds (556 lines)
 - `ThreatNeeds.tier(int t)` :88 - The ask at a board tier (0 Min, 1 Med, 2 Max):
 - `ThreatNeeds.isFleets()` :94
 - `ThreatNeeds.goodLabel()` :98
 - `ThreatNeeds.color()` :102
 - `ThreatNeeds.line()` :107 - "hold the line - marines - 320 / 410 / 560" (" - blockaded" when suspended;
-- `ThreatNeeds.figures()` :115 - "320 / 410 / 560" in the good's shown units.
-- `ThreatNeeds.shown(float v)` :119
-- `ThreatNeeds.color(int urgency, boolean suspended)` :126 - The colour of an urgency:
-- `ThreatNeeds.weight(String purpose)` :134 - Standing weight for giving toward a purpose (docs/war-effort-rework.md section 4);
+- `ThreatNeeds.tierWord(int t)` :119 - What a tier buys, as "N to " (0 Min, 1 Med, 2 Max):
+- `ThreatNeeds.figures()` :132 - "320 to hold the line, 410 to push back, 560 to overrun":
+- `ThreatNeeds.shown(float v)` :146
+- `ThreatNeeds.color(int urgency, boolean suspended)` :153 - The colour of an urgency:
+- `ThreatNeeds.weight(String purpose)` :161 - Standing weight for giving toward a purpose (docs/war-effort-rework.md section 4);
 ### the ledger
-- `ThreatNeeds.of(MarketAPI m)` :148 - Every need of the colony, most urgent first within its kind:
-- `ThreatNeeds.need(MarketAPI m, String purpose, String good, float min, float med, float max, int urgency, boolean suspended)` :258
-- `ThreatNeeds.mostUrgent(MarketAPI m)` :273 - The need the Aid button and the Needs cell serve:
-- `ThreatNeeds.mostUrgentGoods(MarketAPI m)` :278 - As above among the goods needs (a convoy's:
-- `ThreatNeeds.mostUrgent(List<Need> needs, boolean goodsOnly)` :282
-- `ThreatNeeds.fleets(MarketAPI m)` :300 - The colony's fleets need, or null.
-- `ThreatNeeds.find(MarketAPI m, String purpose)` :308 - The colony's need of this purpose (the first, for an expedition short of both), or null.
-- `ThreatNeeds.find(List<Need> needs, String purpose, String good)` :312
-- `ThreatNeeds.marines(MarketAPI m)` :322 - The colony's marines need (hold the line or push back), or null.
-- `ThreatNeeds.cellText(List<Need> needs)` :328 - The Needs cell:
-- `ThreatNeeds.cellColor(List<Need> needs)` :335
-- `ThreatNeeds.purposeWeights(MarketAPI m, float[] qty)` :347 - STANDING WEIGHTS for a delivery (section 4), in ThreatReserves.AID_COMMODITIES order, read BEFORE the goods land:
+- `ThreatNeeds.of(MarketAPI m)` :175 - Every need of the colony, most urgent first within its kind:
+- `ThreatNeeds.need(MarketAPI m, String purpose, String good, float min, float med, float max, int urgency, boolean suspended)` :285
+- `ThreatNeeds.mostUrgent(MarketAPI m)` :300 - The need the Aid button and the Needs cell serve:
+- `ThreatNeeds.mostUrgentGoods(MarketAPI m)` :305 - As above among the goods needs (a convoy's:
+- `ThreatNeeds.mostUrgent(List<Need> needs, boolean goodsOnly)` :309
+- `ThreatNeeds.fleets(MarketAPI m)` :327 - The colony's fleets need, or null.
+- `ThreatNeeds.find(MarketAPI m, String purpose)` :335 - The colony's need of this purpose (the first, for an expedition short of both), or null.
+- `ThreatNeeds.find(List<Need> needs, String purpose, String good)` :339
+- `ThreatNeeds.marines(MarketAPI m)` :349 - The colony's marines need (hold the line or push back), or null.
+- `ThreatNeeds.cellText(List<Need> needs)` :355 - The Needs cell:
+- `ThreatNeeds.cellColor(List<Need> needs)` :362
+- `ThreatNeeds.purposeWeights(MarketAPI m, float[] qty)` :374 - STANDING WEIGHTS for a delivery (section 4), in ThreatReserves.AID_COMMODITIES order, read BEFORE the goods land:
 ### postponed expeditions (IncursionManager.launchSiegeExpedition)
-- `ThreatNeeds.notePostponed(MarketAPI base, StarSystemAPI system, float haveFuel, float wantFuel, float haveSupplies, float wantSupplies, float minFraction)` :385 - A siege at the base against the system waits for provisions:
-- `ThreatNeeds.postponed(String baseId)` :398 - {fuelShort, fuelFull, suppliesShort, suppliesFull} of the base's waiting siege, or null.
-- `ThreatNeeds.postponedTarget(String baseId)` :417 - The name of the system the base's waiting siege sails against.
-- `ThreatNeeds.clearPostponed(String baseId)` :425 - The siege sailed or was dropped:
+- `ThreatNeeds.notePostponed(MarketAPI base, StarSystemAPI system, float haveFuel, float wantFuel, float haveSupplies, float wantSupplies, float minFraction)` :412 - A siege at the base against the system waits for provisions:
+- `ThreatNeeds.postponed(String baseId)` :425 - {fuelShort, fuelFull, suppliesShort, suppliesFull} of the base's waiting siege, or null.
+- `ThreatNeeds.postponedTarget(String baseId)` :444 - The name of the system the base's waiting siege sails against.
+- `ThreatNeeds.clearPostponed(String baseId)` :452 - The siege sailed or was dropped:
 ### the war comms (section 6)
-- `ThreatNeeds.key(String marketId, String purpose, String good)` :453
-- `ThreatNeeds.throttled(String key)` :457
-- `ThreatNeeds.spoke(String key, String stage)` :462
-- `ThreatNeeds.tick(Random random)` :474 - Slow tick:
+- `ThreatNeeds.key(String marketId, String purpose, String good)` :480
+- `ThreatNeeds.throttled(String key)` :484
+- `ThreatNeeds.spoke(String key, String stage)` :489
+- `ThreatNeeds.tick(Random random)` :501 - Slow tick:
 
 ## ThreatNexCompat (136 lines)
 - `ThreatNexCompat.nexEnabled()` :35
@@ -4706,15 +4707,14 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatWarState.hiveInReach(FactionAPI faction)` :288 - Whether any known live hive system lies within expedition range of one of the faction's military worlds.
 - `ThreatWarState.displayName(String factionId)` :308
 
-## ThreatincAidCMD (285 lines)
+## ThreatincAidCMD (262 lines)
 - `ThreatincAidCMD.execute(String ruleId, InteractionDialogAPI dialog, List<Misc.Token> params, Map<String, MemoryAPI> memoryMap)` :49
 - `ThreatincAidCMD.carried(CargoAPI cargo, String commodityId)` :82
 - `ThreatincAidCMD.remove(CargoAPI cargo, String commodityId, int quantity)` :89
-- `ThreatincAidCMD.tierWords(ThreatNeeds.Need n)` :97 - The tier words of a purpose:
-- `ThreatincAidCMD.needLine(MarketAPI market, ThreatNeeds.Need n, int have)` :106 - The need's line at the dock:
-- `ThreatincAidCMD.option(InteractionDialogAPI dialog, MarketAPI market, Map<String, MemoryAPI> memoryMap)` :151 - Gates the hand-over option:
-- `ThreatincAidCMD.menu(InteractionDialogAPI dialog, MarketAPI market)` :185
-- `ThreatincAidCMD.deliver(InteractionDialogAPI dialog, MarketAPI market, String commodityId, int tier)` :254
+- `ThreatincAidCMD.needLine(MarketAPI market, ThreatNeeds.Need n, int have)` :97 - The need's line at the dock:
+- `ThreatincAidCMD.option(InteractionDialogAPI dialog, MarketAPI market, Map<String, MemoryAPI> memoryMap)` :129 - Gates the hand-over option:
+- `ThreatincAidCMD.menu(InteractionDialogAPI dialog, MarketAPI market)` :163
+- `ThreatincAidCMD.deliver(InteractionDialogAPI dialog, MarketAPI market, String commodityId, int tier)` :231
 
 ## ThreatincMarketCMD (1141 lines)
 - `ThreatincMarketCMD.execute(String ruleId, com.fs.starfarer.api.campaign.InteractionDialogAPI dialog, List<com.fs.starfarer.api.util.Misc.Token> params, Map<String, com.fs.starfarer.api.campaign.rules.MemoryAPI> memoryMap)` :90 - Custom command dispatch.

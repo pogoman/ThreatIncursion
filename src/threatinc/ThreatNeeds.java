@@ -111,13 +111,40 @@ public class ThreatNeeds {
 			return s;
 		}
 
-		/** "320 / 410 / 560" in the good's shown units. */
+		/**
+		 * What a tier buys, as "N to <this>" (0 Min, 1 Med, 2 Max): the user, 2026-10-24
+		 * ("Sindria's depot is out of supplies. Supplies: 6,000 / 12,000 / 12,000 - what
+		 * the fuck does that even mean").
+		 */
+		public String tierWord(int t) {
+			String[] w;
+			if (HOLD.equals(purpose)) w = new String[] { "hold the line", "push back", "overrun" };
+			else if (PUSH_BACK.equals(purpose)) w = new String[] { "push back", "overrun", "overrun with a reserve" };
+			else if (ARM.equals(purpose)) w = new String[] { "arm them 30 days", "arm them 60 days", "fill the depot" };
+			else if (ORBIT.equals(purpose)) w = new String[] { "lift the orbit", "add a margin", "add a reserve" };
+			else if (NAVY.equals(purpose)) w = new String[] { "rebuild the navy", "add a margin", "add a reserve" };
+			else if (EXPEDITION.equals(purpose)) w = new String[] { "sail", "sail with a margin", "sail the full voyage" };
+			else w = new String[] { "cover the gap", "add a margin", "fill the depot" };
+			return w[Math.max(0, Math.min(2, t))];
+		}
+
+		/** "320 to hold the line, 410 to push back, 560 to overrun": a tier already met reads "enough to ...", equal tiers read once. */
 		public String figures() {
-			return shown(min) + " / " + shown(med) + " / " + shown(max);
+			float[] tiers = { min, med, max };
+			StringBuilder sb = new StringBuilder();
+			long last = -1;
+			for (int t = 0; t < 3; t++) {
+				long v = Math.round(tiers[t]);
+				if (v == last) continue;
+				last = v;
+				if (sb.length() > 0) sb.append(", ");
+				sb.append(v <= 0 ? "enough" : shown(tiers[t])).append(" to ").append(tierWord(t));
+			}
+			return sb.toString();
 		}
 
 		public String shown(float v) {
-			if (isFleets()) return Misc.getWithDGS(Math.round(v));
+			if (isFleets()) return Misc.getWithDGS(Math.round(v)) + " FP";
 			return Misc.getWithDGS(ThreatHulls.shown(good, Math.round(v)));
 		}
 	}
