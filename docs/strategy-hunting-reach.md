@@ -240,8 +240,10 @@ scouting parties, and a hive any faction finds is known to all, player included.
   stop than the party's start, `ThreatScoutRoute.nearestFirst`), until the origin is
   entered. A lead ignores sweeps older than itself. No task force sails until the origin
   is known; after that the normal purge tick takes it up.
-- A mobilised faction with no lead sweeps within scoutRangeLY of a random military world
-  every scoutIntervalDays. A system swept clear is skipped for scoutMemoryDays.
+- A mobilised faction with no lead keeps patrols out with no radius (`patrolsEnabled`, docs/information-by-ship.md
+  3); with patrols off it sweeps within scoutRangeLY of a random military world every scoutIntervalDays. A system
+  swept clear is skipped for scoutMemoryDays. A found hive system the faction has no report of is swept as if
+  unknown (`ThreatScouts.unreported`, 2026-10-24).
 - No limit on sorties out at once (2026-09-29: `scoutMaxPerFaction`, 2, and one launch per poll
   are gone; a faction sends a party per route until nothing is left to sweep around each of its
   military worlds); a scouting party is a PATROL_SMALL of

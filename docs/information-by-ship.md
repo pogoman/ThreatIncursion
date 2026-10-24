@@ -44,8 +44,13 @@ Both sides, once at war. The budget is fixed FP; its split into patrols follows 
 
 - Humans: `ThreatScouts.launchPatrols`, per mobilised faction. Budget `patrolFPPerBase` 40 a military world, base
   size `scoutFleetPoints` 20. Each patrol takes the nearest `patrolStops` 6 systems not swept within
-  `scoutMemoryDays` from its base (`planRoute`, no radius; a CONSOLIDATE faction within `scoutRangeLY`). Paid as
-  any scouting party.
+  `scoutMemoryDays` from its base (`planRoute`, no radius for any stance since 2026-10-24 - the user: "scouts
+  should have as much range as they have fuel"; a CONSOLIDATE faction kept within `scoutRangeLY` could never
+  find the hive that would have taken it off CONSOLIDATE: the Hegemony held 690 days on "picture 0 hives").
+  A found hive system the faction has no report of, its own or a partner's, stays a candidate and is not
+  skipped as a known stop (`ThreatScouts.unreported`, in `planRoute` and `knownStop`): the find is the sector's,
+  the picture each faction's own, and the council sees only the systems it has a picture of. Paid as any
+  scouting party: a party sails only if its home's fuel pays the route, so its range is its home's fuel.
 - Swarm: `ThreatSwarmPatrols.launchAll`, per hive system that can stage a swarm (`ThreatSwarmScouts.pickStaging`),
   from phase 2 with a faction mobilised. Budget `swarmPatrolFPPerSystem` 120, base size `swarmPatrolFP` 30. Route:
   the nearest `patrolStops` systems no hive and no human holds, not patrolled within `swarmPatrolMemoryDays` 45

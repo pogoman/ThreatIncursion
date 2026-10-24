@@ -93,7 +93,7 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 	/** The party in a log line: "Scout of hegemony", "Scouting Swarm". */
 	protected abstract String describe(S s);
 	/** Whether the side already knows the system, so a party skips the stop. */
-	protected abstract boolean knownStop(String systemId);
+	protected abstract boolean knownStop(S s, String systemId);
 	/** What the party does on entering a stop; true = the sortie is over, report home. */
 	protected abstract boolean onEnter(S s, StarSystemAPI system, long now);
 	/** The party has stayed its days at a stop with nothing to report. */
@@ -210,7 +210,7 @@ public abstract class ThreatScoutRoute<S extends ThreatScoutRoute.Party> {
 	protected void nextLeg(S s) {
 		s.leg++;
 		// a stop the side learned of meanwhile is skipped
-		while (s.leg < s.route.size() && knownStop(s.route.get(s.leg))) s.leg++;
+		while (s.leg < s.route.size() && knownStop(s, s.route.get(s.leg))) s.leg++;
 		if (s.leg >= s.route.size()) {
 			goHome(s);
 			return;

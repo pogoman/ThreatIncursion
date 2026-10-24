@@ -119,7 +119,7 @@ public class ThreatSwarmScouts {
 		protected String describe(Scout s) {
 			return "Scouting Swarm";
 		}
-		protected boolean knownStop(String systemId) {
+		protected boolean knownStop(Scout s, String systemId) {
 			// in the swarm's fog a charted stop whose reports went stale is a
 			// re-scout (planRoute), not skipped
 			if (ThreatSwarmIntel.enabled() && ThreatSwarmIntel.stale(systemId)) return false;

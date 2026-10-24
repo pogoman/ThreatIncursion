@@ -260,9 +260,11 @@ public class ThreatScouts {
 		protected String describe(Scout s) {
 			return "Scout of " + s.factionId;
 		}
-		protected boolean knownStop(String systemId) {
-			// a stop someone else found meanwhile
-			return ThreatIncData.discoveredSystems().contains(systemId);
+		protected boolean knownStop(Scout s, String systemId) {
+			// a stop someone else found meanwhile - unless it holds a hive this
+			// faction has no report of yet: the find is the sector's, the
+			// picture is each faction's own (2026-10-24, the Hegemony)
+			return ThreatIncData.discoveredSystems().contains(systemId) && !unreported(s.factionId, systemId);
 		}
 		protected boolean onEnter(Scout s, StarSystemAPI system, long now) {
 			if (!hasLiveHive(system.getId())) return s.recon; // a recon's one stop is done either way
@@ -479,8 +481,11 @@ public class ThreatScouts {
 	 * (ThreatScoutRoute.level). Each takes the nearest patrolStops systems not
 	 * swept within scoutMemoryDays from its base, with no radius: the ring
 	 * widens as the near systems are swept and comes round again as the
-	 * memory lapses. A faction that is consolidating keeps them within
-	 * scoutRangeLY.
+	 * memory lapses. No radius for any stance (2026-10-24, the user: "scouts
+	 * should have as much range as they have fuel" - a party pays its route
+	 * from its home's fuel, launch, and sails only if it can; a consolidating
+	 * faction kept within scoutRangeLY never found the hive that would have
+	 * taken it off CONSOLIDATE).
 	 */
 	protected static void launchPatrols(String factionId, Random random) {
 		ThreatScoutRoute.calm(levelKey(factionId));
@@ -495,9 +500,7 @@ public class ThreatScouts {
 		for (Scout s : all()) {
 			if (s.patrol && factionId.equals(s.factionId)) out++;
 		}
-		boolean close = ThreatFactionStance.enabled()
-				&& ThreatFactionStance.stance(factionId) == ThreatFactionStance.CONSOLIDATE;
-		float radius = close ? ThreatIncConfig.scoutRangeLY() : Float.MAX_VALUE;
+		float radius = Float.MAX_VALUE;
 		int stops = Math.max(1, ThreatIncConfig.patrolStops());
 		Collections.shuffle(bases, random);
 		boolean any = true;
@@ -584,9 +587,10 @@ public class ThreatScouts {
 
 	/**
 	 * A route (ThreatScoutRoute.nearestFirst) through the systems within radius
-	 * of the centre, from home: unknown, uninhabited, with a planet, not on another scout's route,
-	 * and not swept clear lately - since the lead began (leadSince), else
-	 * within scoutMemoryDays.
+	 * of the centre, from home: unknown (or found, with a hive this faction
+	 * has no report of: {@link #unreported}), uninhabited, with a planet, not
+	 * on another scout's route, and not swept clear lately - since the lead
+	 * began (leadSince), else within scoutMemoryDays.
 	 */
 	protected static List<String> planRoute(MarketAPI home, Vector2f centre, float radiusLY, long leadSince) {
 		List<String> taken = ROUTE.taken();
@@ -595,7 +599,8 @@ public class ThreatScouts {
 			String id = system.getId();
 			if (system.getCenter() == null || unreachable(system)) continue;
 			if (Misc.getDistanceLY(system.getLocation(), centre) > radiusLY) continue;
-			if (ThreatIncData.discoveredSystems().contains(id) || taken.contains(id)) continue;
+			if (taken.contains(id)) continue;
+			if (ThreatIncData.discoveredSystems().contains(id) && !unreported(home.getFactionId(), id)) continue;
 			if (sweptLately(id, leadSince)) continue;
 			if (!hasPlanet(system) || inhabited(system)) continue;
 			candidates.add(system);
@@ -621,6 +626,16 @@ public class ThreatScouts {
 			if (!planet.isStar()) return true;
 		}
 		return false;
+	}
+
+	/**
+	 * A found hive system this faction has no report of (its own or a
+	 * partner's, ThreatIntel.report), so its council cannot see it: a stop its
+	 * parties take as if unknown (2026-10-24, the user, after the Hegemony
+	 * held 690 days on "picture 0 hives" with Pelephanar found 29 ly out).
+	 */
+	protected static boolean unreported(String factionId, String systemId) {
+		return hasLiveHive(systemId) && !ThreatIntel.known(factionId, systemId);
 	}
 
 	/** Anyone but the swarm keeps a colony there - revealNeighbours covers those. */

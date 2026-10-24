@@ -1019,10 +1019,13 @@
 	"threatinc_raiderMargin": 3,
 	# finding the hive (ThreatScouts): a strike does not reveal its origin.
 	# The struck faction sends scouts to sweep uninhabited systems within
-	# scoutLeadRadiusLY of it; a mobilised faction also sweeps within
-	# scoutRangeLY of a military world every scoutIntervalDays. A hive any
-	# faction finds is known to all, player included, and NPC war efforts
-	# act only on known hives. hiveFogOfWar false = the old omniscient rule.
+	# scoutLeadRadiusLY of it; a mobilised faction keeps patrols out with no
+	# radius (patrolsEnabled; scoutRangeLY serves only the old sweep every
+	# scoutIntervalDays with patrols off). A hive any faction finds is known
+	# to all, player included, and NPC war efforts act only on known hives;
+	# a faction's council acts only on hives it has its own report of, so a
+	# found hive system it has no report of stays on its patrols' routes.
+	# hiveFogOfWar false = the old omniscient rule.
 	"threatinc_hiveFogOfWar": true,
 	# omens (ThreatOmens, docs/omens.md): until anyone finds a hive, the
 	# sector only hears it - static when the player's fleet is within

@@ -198,7 +198,7 @@ public class ThreatSwarmPatrols {
 		protected String describe(Patrol p) {
 			return "Patrol Swarm of " + p.systemId;
 		}
-		protected boolean knownStop(String systemId) {
+		protected boolean knownStop(Patrol p, String systemId) {
 			return false;
 		}
 		protected boolean onEnter(Patrol p, StarSystemAPI system, long now) {

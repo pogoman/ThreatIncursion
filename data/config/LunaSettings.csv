@@ -248,7 +248,7 @@ threatinc_omenStaticLY,Omen Static Range (LY),Double,6,"Light-years from an unfo
 threatinc_omenStaticDays,Omen Static Interval (Days),Double,20,"Days between omens your fleet hears.",1,180
 threatinc_omenSectorDays,Omen Rumour Interval (Days),Double,25,"Days between sector-wide omens.",1,180
 threatinc_scoutLeadRadiusLY,Scout Lead Radius (LY),Double,6,"Light-years around a strike's origin that the struck faction's scouts sweep.",1,20
-threatinc_scoutRangeLY,Scout Sweep Range (LY),Double,10,"Light-years around one of its military worlds that a mobilised faction's routine sweep covers.",2,40
+threatinc_scoutRangeLY,Scout Sweep Range (LY),Double,10,"Light-years around one of its military worlds that a mobilised faction's routine sweep covers, with patrols off. Patrols have no radius: a party goes as far as its home's fuel pays.",2,40
 threatinc_scoutIntervalDays,Scout Sweep Interval (Days),Double,60,"Days between a mobilised faction's routine sweeps while it has no strike to follow up.",10,365
 threatinc_scoutStayDays,Scout Stay (Days),Double,2,"Days a scout sweeps an empty system before moving on.",0,10
 threatinc_scoutLegMaxDays,Scout Leg Limit (Days),Double,60,"Days a scout may spend reaching one stop before it skips it.",10,365
