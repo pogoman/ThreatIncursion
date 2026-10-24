@@ -1064,18 +1064,18 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatColonyUpkeep.take(String key)` :477
 - `ThreatColonyUpkeep.logMonth()` :484 - The month's upkeep line for the census log, and the month's tallies reset.
 
-## ThreatComms (294 lines)
-- `ThreatComms.variant(MarketAPI m)` :146 - The variant for this world today:
-- `ThreatComms.fill(String s, FactionAPI faction, MarketAPI m, ThreatNeeds.Need n)` :153 - {World}, {Faction}, {Target}, {days} and the rest substituted.
-- `ThreatComms.notice(String[] table, FactionAPI faction, MarketAPI m, ThreatNeeds.Need n)` :164 - Title, the voiced line in the faction's colour, the fact line;
-- `ThreatComms.tableFor(ThreatNeeds.Need n)` :175 - The table for a need that appears or escalates.
-- `ThreatComms.appears(FactionAPI faction, MarketAPI m, ThreatNeeds.Need n)` :191 - 6.1:
-- `ThreatComms.met(FactionAPI faction, MarketAPI m, String purpose, List<ThreatNeeds.Need> now)` :201 - 6.2:
-- `ThreatComms.answers(FactionAPI helper, MarketAPI donor, MarketAPI world, int n, String good, float rep)` :236 - A faction's convoy sails for the player's colony:
-- `ThreatComms.sailsFor(FactionAPI helper, MarketAPI base, MarketAPI world, int fp, int days, float rep)` :253 - A faction's guard sails for the player's colony.
-- `ThreatComms.noAnswer(MarketAPI world, ThreatNotice.Reason reasons)` :269 - Nobody answered the player's request:
-- `ThreatComms.callAnswered(MarketAPI world, int total, String good, int senders)` :278 - The player's request is covered:
-- `ThreatComms.dockThanks(FactionAPI faction, MarketAPI world, int n, String good, boolean overMax)` :290 - The dock's thanks after a hand-over (the text panel, not a notice).
+## ThreatComms (327 lines)
+- `ThreatComms.variant(MarketAPI m)` :171 - The variant for this world today:
+- `ThreatComms.fill(String s, FactionAPI faction, MarketAPI m, ThreatNeeds.Need n)` :178 - {World}, {Faction}, {against} (" against {target}" or nothing), {days} and the rest substituted.
+- `ThreatComms.notice(String[] table, FactionAPI faction, MarketAPI m, ThreatNeeds.Need n)` :191 - Title, the voiced line in the faction's colour, the fact line;
+- `ThreatComms.tableFor(ThreatNeeds.Need n)` :202 - The table for a need that appears or escalates.
+- `ThreatComms.appears(FactionAPI faction, MarketAPI m, ThreatNeeds.Need n)` :218 - 6.1:
+- `ThreatComms.met(FactionAPI faction, MarketAPI m, String purpose, String good, List<ThreatNeeds.Need> now)` :229 - 6.2:
+- `ThreatComms.answers(FactionAPI helper, MarketAPI donor, MarketAPI world, int n, String good, float rep)` :269 - A faction's convoy sails for the player's colony:
+- `ThreatComms.sailsFor(FactionAPI helper, MarketAPI base, MarketAPI world, int fp, int days, float rep)` :286 - A faction's guard sails for the player's colony.
+- `ThreatComms.noAnswer(MarketAPI world, ThreatNotice.Reason reasons)` :302 - Nobody answered the player's request:
+- `ThreatComms.callAnswered(MarketAPI world, int total, String good, int senders)` :311 - The player's request is covered:
+- `ThreatComms.dockThanks(FactionAPI faction, MarketAPI world, int n, String good, boolean overMax)` :323 - The dock's thanks after a hand-over (the text panel, not a notice).
 
 ## ThreatConvoys (3515 lines)
 - `ThreatConvoys.isFrontRun()` :101 - A founding convoy's hive:
@@ -3163,7 +3163,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatMissionIntel.addAssessmentSection(TooltipMakerAPI info, MarketAPI market, FactionAPI faction)` :1258
 - `ThreatMissionIntel.createSmallDescription(TooltipMakerAPI info, float width, float height)` :1325
 
-## ThreatNeeds (556 lines)
+## ThreatNeeds (558 lines)
 - `ThreatNeeds.tier(int t)` :88 - The ask at a board tier (0 Min, 1 Med, 2 Max):
 - `ThreatNeeds.isFleets()` :94
 - `ThreatNeeds.goodLabel()` :98
@@ -3190,7 +3190,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 ### postponed expeditions (IncursionManager.launchSiegeExpedition)
 - `ThreatNeeds.notePostponed(MarketAPI base, StarSystemAPI system, float haveFuel, float wantFuel, float haveSupplies, float wantSupplies, float minFraction)` :412 - A siege at the base against the system waits for provisions:
 - `ThreatNeeds.postponed(String baseId)` :425 - {fuelShort, fuelFull, suppliesShort, suppliesFull} of the base's waiting siege, or null.
-- `ThreatNeeds.postponedTarget(String baseId)` :444 - The name of the system the base's waiting siege sails against.
+- `ThreatNeeds.postponedTarget(String baseId)` :444 - The name of the system the base's waiting siege sails against;
 - `ThreatNeeds.clearPostponed(String baseId)` :452 - The siege sailed or was dropped:
 ### the war comms (section 6)
 - `ThreatNeeds.key(String marketId, String purpose, String good)` :480

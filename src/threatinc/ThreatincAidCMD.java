@@ -108,7 +108,7 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		} else if (ThreatNeeds.ARM.equals(n.purpose)) {
 			lead = world + "'s defenders burn " + String.format("%.1f", n.troops) + " heavy armaments a day.";
 		} else if (ThreatNeeds.EXPEDITION.equals(n.purpose)) {
-			lead = "The " + n.target + " expedition waits at " + world + " for " + good + ".";
+			lead = "The expedition" + (n.target != null ? " against " + n.target : "") + " waits at " + world + " for " + good + ".";
 		} else {
 			lead = world + "'s depot is " + (n.exhausted ? "out of " : "short of ") + good + ".";
 		}
@@ -137,7 +137,12 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		else mem.unset(ThreatAidMissionIntel.MEM_REQUEST);
 		OptionPanelAPI panel = dialog.getOptionPanel();
 		boolean present = panel.hasOption(OPTION_MENU);
-		if (why == null && !present && !repopulating) {
+		// the swarm over the world (the board's Space column): every colony action is locked
+		// (the user, 2026-10-24: "when swarm holds the orbit ALL colony actions other than the
+		// basic view info should be disabled"); the menu is rebuilt first so the lock lands
+		// on every option whatever order the rules fired in (shape first, state last)
+		boolean locked = Factions.THREAT.equals(ThreatGroundFronts.spaceHolder(market));
+		if (!repopulating && ((why == null && !present) || locked)) {
 			// the flag was not set when the ordered row was read: build the menu again, once
 			repopulating = true;
 			try {
@@ -147,17 +152,36 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 				repopulating = false;
 			}
 			present = panel.hasOption(OPTION_MENU);
-			if (!present) {
+			if (why == null && !present) {
 				// the ordered row still did not fire: the option goes in where it can
 				panel.addOption("Deliver aid for the war effort", OPTION_MENU);
 				ThreatIncConfig.log("Dock aid option at " + market.getName()
 						+ ": the ordered rule did not fire with the flag set - added last");
 			}
 		}
+		if (locked && !repopulating) lockOptions(panel, market);
 		if (!repopulating) {
 			ThreatIncConfig.log("Dock aid option at " + market.getName() + ": " + (why == null
 					? "offered, " + ThreatNeeds.of(market).size() + " need(s)" : "none - " + why));
 		}
+	}
+
+	/** Vanilla's dock actions, locked while the swarm holds the orbit; Leave and the text stay. */
+	protected static final String[] DOCK_ACTIONS = { "marketCommDir", "marketVisitBar", "marketOpenCargo",
+			"marketOpenCoreUI", "marketOpenFleet", "marketOpenRefit", "marketConsiderHostile", OPTION_MENU };
+
+	/** Greys every dock action present with the one reason: the swarm holds the orbit. */
+	protected static void lockOptions(OptionPanelAPI panel, MarketAPI market) {
+		String why = "The swarm holds the orbit over " + market.getName()
+				+ ": nothing docks until it is lifted. Defend on the war board.";
+		int n = 0;
+		for (String id : DOCK_ACTIONS) {
+			if (!panel.hasOption(id)) continue;
+			panel.setEnabled(id, false);
+			panel.setTooltip(id, why);
+			n++;
+		}
+		ThreatIncConfig.log("Dock at " + market.getName() + " locked: the swarm holds the orbit (" + n + " actions)");
 	}
 
 	protected void menu(InteractionDialogAPI dialog, MarketAPI market) {

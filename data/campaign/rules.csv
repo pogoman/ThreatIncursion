@@ -31,8 +31,7 @@ threatinc_groundEntrenchSel,DialogOptionSelected,$option == threatincGroundEntre
 threatinc_groundBackSel,DialogOptionSelected,$option == threatincGroundBack,ThreatincMarketCMD goBackToDefenses,,,"Back from ground operations to the military options menu"
 threatincAidGate,PopulateOptions,"$menuState == main
 $hasMarket
-$faction.id != player
-$faction.id != threat",ThreatincAidCMD option,,,"Player aid (docs/war-effort-rework.md 5): sets $market.threatinc_aidRequest at any colony of a mobilised faction (clears it elsewhere), re-fires PopulateOptions once if the ordered row below has not added the option, and logs why"
+$faction.id != threat",ThreatincAidCMD option,,,"Player aid (docs/war-effort-rework.md 5): sets $market.threatinc_aidRequest at any NPC colony of a mobilised faction (clears it elsewhere), re-fires PopulateOptions once if the ordered row below has not added the option, and logs why; while the swarm holds the orbit (the board's Space column) it rebuilds the menu and greys every dock action but Leave (the user, 2026-10-24)"
 threatincAidOption,PopulateOptions,"$menuState == main
 $hasMarket
 $market.threatinc_aidRequest",,,30:threatincAidDeliver:Deliver aid for the war effort,"The hand-over option in its place, before Leave: the station commander lists the colony's needs and takes a hand-over from the player's cargo"
