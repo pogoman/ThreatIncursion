@@ -39,9 +39,11 @@ with a front, and removed otherwise (`ThreatGroundFronts.syncSiegeState`, swept 
 by `sweepSieges` so the condition tracks the clock). Raids and bombardments elsewhere in
 the sector stay vanilla. It restores a disrupted structure's multiplier scaled by its
 condition under its own key (vanilla stripped it whole - the colony's Defenses tooltip
-reads "Heavy Batteries (suppressed, 60% effect)"), applies the district loss
-`GROUND_DEFENSES_MOD modifyMult((size - held) / size)`, and - each district held - takes
-`districtStabilityPenalty` (1) stability and `districtAccessPenalty` (0.1) accessibility.
+reads "Heavy Batteries (suppressed, 60% effect)"; its stability bonus is vanilla's, on while it runs and off
+while disrupted - the user's rule 2026-10-24 evening, no mod stability rule at all), applies the district loss
+`GROUND_DEFENSES_MOD modifyMult((size - held) / size)`; that is the whole cost of a held district
+(the `districtStabilityPenalty` (1) stability and `districtAccessPenalty` (0.1) accessibility both went
+2026-10-24: the defence multiplier already charged for the lost districts, hives alike).
 The player's own tactical bombardment of a colony is a siege slice like any fleet's
 ("Sieges from orbit" below).
 
@@ -64,7 +66,7 @@ job: batteries hurt the fleet, Ground Defenses slow suppression, the fortress co
 the orbit, a military command speeds counter-attacks, reserve marines deepen the garrison.
 
 **Districts** are the human word for the layers a front takes (strata stay hive-only;
-`Theatre.layer`). Each district held, besides the garrison share and the stability and
+`Theatre.layer`). Each district held, besides the garrison share and the
 accessibility above, **seizes** held / size of the colony's other disruptable industries
 (`seizedIndustries`, by id so the same ones stay seized), pinned at `districtSeizeDays`
 (30) of disruption while held and recovering that fast once the district is retaken. A
@@ -75,7 +77,7 @@ half rate.
 | | Hive | Human colony |
 | --- | --- | --- |
 | Layers | strata, underground, one per size | districts, one per size |
-| Losing a layer | fabrication and per-stratum defence fall | garrison share, stability, accessibility fall; the district's industries are seized |
+| Losing a layer | fabrication and per-stratum defence fall | garrison share falls; the district's industries are seized |
 | Orbital bombardment | suppresses the war-strata to nothing, the size-anchored strata untouched, weapon growths fire back | suppresses fortification to nothing, garrison untouched, batteries fire back |
 | Counter-attacks | paced by the upkeep share fed and the strata still held | paced by stability and military command; strength is the garrison |
 | Victory | the Core dies: eradicated, the survivors come home | the last district falls: a hive is seeded on the spot |
@@ -101,8 +103,7 @@ docs/testing-harness.md; persistent-data XML injection of
    than not, and after 120 days with none it announces the final push.
 4. Entrenchment: a fresh landing reads "x 0.75 entrenchment (0 of 30 days)", reaches 1.00
    only while holding, and halves when a layer is taken or a counter-attack lands.
-5. Districts: each one held shows on the colony screen with stability -1 and accessibility
-   -10% per district, "Seized: ..." naming the industries, and those industries disrupted
+5. Districts: each one held shows on the colony screen with "Seized: ..." naming the industries, and those industries disrupted
    at 30 days; retaking the district frees them within 30 days.
 6. Victory: the last district falls and the world is a size-2 hive at once, with no deciv
    intel and no colonisation wave queued for it.

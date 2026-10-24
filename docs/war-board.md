@@ -43,7 +43,7 @@ is the layout it implements.
    Activity. Columns, every figure from `ThreatGroundFronts`' readout helpers so the table
    quotes what the tick does: Force (owner in its colour, "You"), World, [System],
    Attackers (effective strength), Defenders (the world's figure), Disruption (the besieged world's military
-   structures' disruption over the suppress cap, averaged, as a percentage - `disruptionFraction`), State
+   structures' disruption over the suppress cap, averaged, as a percentage - `disruptionFraction` over `militaryStructures`: never the port), State
    (holding / grinding / foothold), Strata `N` on a hive (the strata it still stands on; a table with a colony's front is headed Held and a colony's cell reads `held/size` districts - `heldCell`), Stance (push / regrouping / dug in),
    Attrition ("N / day" - troops a day at the current stance and supply, `attritionPer30Days` over
    `perDay`; every player-facing loss figure in the mod is a rate a day), Counter
@@ -96,7 +96,8 @@ is the layout it implements.
    screen: `ui.showDialog(planet, new ThreatColonyScreenDialog(planet))`, whose `init` calls
    `showCore(CoreUITabId.CARGO, planet, CoreUITradeMode.NONE, listener)` - exactly what
    vanilla's "View colony info" option does (`MakeOptionOpenCore ... CARGO` in rules.csv) - and
-   dismisses itself when the screen closes. The card's own commodity list, vitality bar, Info
+   dismisses itself when the screen closes; E inside it closes it back to the board rather than
+   nesting a second Intel screen (`ThreatColonyScreenDialog.Guard`, 2026-10-24). The card's own commodity list, vitality bar, Info
    button and long colony tooltip were removed the same day for that reason: vanilla's UI to
    maintain, not ours.
 
@@ -106,10 +107,31 @@ everything else and anchored to siblings (the table panel, the cards); see platf
 **Load ladders** (2026-09-07, `ThreatFactionView.addTierSelector`, docs/player-aid.md): a table
 whose buttons move a quantity carries a **Min / Med / Max** selector in a row reserved under its
 section heading (`addSpacer(SELECTOR_ROW_H)` before `beginTable2`; the buttons float in last,
-`aboveLeft` the table). Three: **Force** over the hives table (Hunt, Support, Defend and aid
-Hunt sail as one fleet, half the hulls free or all of them, built as several fleets of one
-fleet's size, `ThreatFleetOrders.buildPlayerForce`; a siege reads it as marines; "Siege force"
-until 2026-10-11), **Supply run** over the ground fronts, **Amount** over the colonies (its
+`aboveLeft` the table). Three: **Force** over the hives table - since 2026-10-24 each tier is an
+OUTCOME, never a share of the hulls (the user: "min med max for aggressive actions should be
+sized for outcomes"): **Siege** lands the marines to hold the landing / push the line back
+(`frontPushBackRate`) / overrun the hive (`frontOverrunRate`) - `IncursionManager.siegeTierMarines`,
+found by halving `ThreatGroundFronts.lineRateOf` against the worn defence
+(`raidStrNeededAt(targets, fp, rate)`), Med and Max refused with the figure when the base lacks the
+marines; **Bombard** puts every hive's least-worn structure down `bombardTierMinDays` 30 /
+`bombardTierMedDays` 90 days / as far as bombing goes (the commander's stop) -
+`IncursionManager.bombardGoalDays`, threaded as `downGoal` through `razePlan`, `squadronPlan`,
+`razeRun`, `razeFleetPoints`, `expeditionFuel` and the purge (`ThreatPurgeFGI.setDownGoal`,
+`razePass` stops at `saturationDone`), so the flotilla, fuel and stay are priced to the days
+ordered; **Hunt** beats the weakest Defense Swarm seen by `npcSiegeOrbitMargin` / matches every
+swarm point seen in the system / that by the margin (`ThreatAid.huntAskFP`); **Support / Defend**
+over a world matches the swarm over it (a hive's as the player's report shows it) / x
+`orbitTierMedMargin` 1.25 / x `orbitTierMaxMargin` 1.5 (`ThreatAid.orbitAskFP`; one fleet with no
+swarm there). A force asks the nearest colony whose free hulls field it all
+(`ThreatAid.pickTaskForceSource(loc, self, ask)`) and is refused with the figures when none can
+("Haven has 900 fleet points free / To hunt the swarms seen takes 2,400"); the prompt carries one
+line on what it was sized against (`Quote.sized`). Expedition hulls are the need
+(`playerExpeditionSizes` at Min); the task forces on station still fold in first. Before this
+(2026-10-11 to 2026-10-24) the tiers were one fleet / half the hulls free / all of them
+(`ThreatAid.forceFP`, still what the colonies table's Amount ladder sails). **Scout** on every
+hive-system row (own tab): the player's own recon party, `ThreatScouts.playerRecon` - one stop
+and home, its report the player's, from the nearest colony with the hulls, fuel and supplies for
+it (`playerScoutHome`), greyed with `scoutOffReason`. Then **Supply run** over the ground fronts, **Amount** over the colonies (its
 Supplies and Aid buttons carry Min/Med/Max loads, its Fleet and Defend buttons sail one fleet /
 half / all the same way; "Convoy load" and sized by the hives table's Force until 2026-10-11
 evening, when a Fleet order quoted one fleet and sailed six). A ladder reaches only the
@@ -349,11 +371,11 @@ only while the raid action itself is current; the cargo line shows from launch.
 - An NPC faction view shows its war council: a strategy line under the heading
   (`ThreatWarCouncil.strategyLine`), and one row per running play at the top of the fleets table
   (`ThreatFactionView.fleetRows`; kind, target, phase, planned FP, days to the next check).
-- A faction view's fronts table names worlds in systems the player has not discovered (any
 - The fleets table also lists the faction's scouting parties and patrols (`ThreatScouts.all`; kind Patrol / Scout /
   Recon, home world, the system it is sweeping with its leg of the route or "returning to", status out / en route /
   sighting aboard, days out; no Recall - a party is no order). Added 2026-10-24, the user: "how come i cant see
   scouts under fleets in flight".
+- A faction view's fronts table names worlds in systems the player has not discovered (any
   landing of that faction shows), the one place the board breaks the fog-of-war rule in
   [intel-ui-platform.md](intel-ui-platform.md) trap 8. Asked for that way; revisit if it reads
   as a leak. (The hive view's copy follows the selected system, which is always found.)

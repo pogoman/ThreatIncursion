@@ -440,8 +440,9 @@ public class ThreatSoftening {
 	 * bank still stays for the base's own siege (Culann, rc1 review).
 	 */
 	protected static float donorSpendable(MarketAPI m, String commodityId) {
-		if (m == null || ThreatReserves.committed(m, commodityId)) return 0f;
-		float keep = Math.max(ThreatReserves.floor(m, commodityId), ThreatReserves.stagingBank(m, commodityId));
+		if (m == null) return 0f;
+		float keep = Math.max(Math.max(ThreatReserves.floor(m, commodityId), ThreatReserves.stagingBank(m, commodityId)),
+				ThreatReserves.frontKeep(m, commodityId));
 		return Math.max(0f, ThreatReserves.stock(m.getId(), commodityId) - keep - outpostKeep(m, commodityId));
 	}
 
@@ -524,8 +525,7 @@ public class ThreatSoftening {
 		if (!ThreatConvoys.stagesForHunt(base) && !siegeWaitsOnHunt(base, system)) {
 			return donorSpendable(base, commodityId);
 		}
-		if (ThreatReserves.committed(base, commodityId)) return 0f;
-		// its bank too, down to the floor (2026-09-30: the donor keep went with it)
+		// its bank too, down to the floor (2026-09-30: the donor keep went with it); a front's keep is available's
 		return Math.max(0f, ThreatReserves.available(base, commodityId) - outpostKeep(base, commodityId));
 	}
 

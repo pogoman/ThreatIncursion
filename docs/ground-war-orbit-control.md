@@ -133,15 +133,16 @@ swarm front burns nothing, never announces dry, and takes none of:
 | Dry penalty | Knob | Now |
 | --- | --- | --- |
 | Half effectiveness | `frontDryEffectivenessMult` (0.5) | never applies |
-| Tripled attrition | `frontUnsuppliedLossMult` (3.0) | never applies |
+| Tripled attrition | `frontUnsuppliedLossMult` (3.0, retired 2026-10-24 with THE ATTRITION RULE) | never applied |
 | Dig in and wait for the next expedition | - | never fires |
 | The final push after 120 dry days | `frontDryFinalPushDays` | never fires |
 | Collapse when dry and below grind strength | `frontGrindFraction` | never fires |
 
 `threatFrontNeedsArms` true restores every row of that table unchanged.
 
-**What replaces the pressure.** `pushLossMult` - a Threat front takes
-`threatPushLossMult` (2.0) times the casualties **while it is pushing**. That is the whole
+**What replaced the pressure, until 2026-10-24.** `pushLossMult` - a Threat front took
+`threatPushLossMult` (2.0) times the casualties **while it was pushing** (retired with THE ATTRITION
+RULE, `attritionPerDay`: attacking costs the cover, and a weaker force bleeds more by the odds). That is the whole
 compensation, and it is deliberately on the assault and not on holding: the swarm can now
 break up its own hulls for replacements (`fabricateEnabled`) and can no longer be starved, so
 what it should pay for is *ground*, in bodies. A dug-in Threat front bleeds at the ordinary
@@ -228,7 +229,7 @@ the front's defence x (1 + `fabricateHoldMargin`) less the hive's counter-attack
 last hull spared, no battery toll (the ground is its own), into the hive's troops (market memory
 `$threatinc_hiveTroops`, `hiveTroops`). They stand with the garrison proper in the hive's defender and
 counter-attack strength (`Theatre.HIVE`; orbit still fights the fixed defences alone), bleed as a
-colony's marines do (`defenderLossPer30Days` of the engaged frontage at the front's pressure,
+colony's marines do (THE ATTRITION RULE on the landed troops, `worldLossPerDay` in
 `bleedHiveTroops`) and pay `defenderCounterAttackLossFraction` of the engaged for every counter-attack
 (`hiveTroopsCounterAttackLoss`); what survives the front stays the hive's. Only a fleet the stock WOULD
 arm flies to a port that can hand the ordnance over (`sendToRearm`); a fleet the stock arms bombards and
@@ -315,8 +316,9 @@ on the ground-front poll (it was monthly):
   sat 3 ly away stocked (Nachiketa, 2026-09-29, verified on a clone of the user's save:
   3,245 FP sailed on load, took the orbit, the garrison overran the beachhead). A colony
   under a ground front donates nothing to logistics convoys (`ThreatConvoys.spare`), as it
-  already gave no siege. With no swarm overhead,
-  one guard of `guardFleetFP` still goes, as before. The old flat 100-point guard
+  already gave no siege. With no swarm overhead nothing sails (`reliefGoal` 0, the user
+  2026-10-24: "it only needs to send them when the threat are occupying space"); until then
+  one guard of `guardFleetFP` went anyway, and the old flat 100-point guard
   (258 FP built) sat 2,600 units off Coatl against 2,812 FP for 76 days.
 - **Only if enough (2026-10-08, hw65 - the humans' mirror of the swarm's rally rule, under the same
   `systemDefenceOnlyIfEnough` switch).** `sendRelief` sails nothing unless what the base can field
@@ -375,6 +377,15 @@ on the ground-front poll (it was monthly):
   notice "Relief Moves". The quiet world is owed its `guardFleetFP` guard again on the same poll. Knob
   `threatinc_reliefRetask` (true). Sindria: 1,070 + 549 of the player's = 1,619 against 1,651, so the League's
   412 then closes the gap.
+- **Home when the system is quiet (the user, 2026-10-24: relief that had cleared a system of Threat fleets "seem to
+  stay there indefinitely").** `ThreatFleetOrders.reliefQuiet` (in `poll`, beside `reliefDone`): a relief with no term
+  on station whose world's system holds no live Threat fleet anywhere (`ThreatGroundFronts.threatInSystem`) starts a
+  count (`Order.quietSince`); after `threatinc_reliefQuietDays` (7) of it running the relief goes home on the tracked
+  leg, log "Relief home", notice "Relief Returns". A Threat fleet entering the system resets the count to 0, as does a
+  `retaskReliefs` move - the move runs first on every `planRelief`, so a relief that can help a neighbour in the system
+  moves rather than leaving. Knob 0 keeps the old hold until the army on the ground is gone. Trade-off accepted: the
+  relief no longer stays to bombard a dug-in army once the swarm's fleets are gone (`tickReliefBombard` needs the relief
+  on station); the ground war there is the defenders' and the convoys'.
 - **The player at the wall (the user, 2026-10-23, Sindria: "i clicked the defend button and sent loads of my own
   fleets to help them ... if they send fleets with my fleets we can win").** While the player's own guard or Defend
   fleets, or the player's fleet, stand over an invaded world (`ThreatFleetOrders.playerAtTheWall`,
@@ -401,7 +412,7 @@ on the ground-front poll (it was monthly):
   would not overrun it, which is what keeps a Defend fleet's guns cold, seen from the other side. Each fleet pays
   `bombardFuelPerDay` from what it carries above its passage home (`reliefFuelHome`) and then its supply line
   (`payOrdnance` with `keep`). A fleet that cannot pay a day does not fire, so it never burns the fuel it needs to
-  stay or go home. An army bombarded below `frontMinMarines` is destroyed ("Threat Landing Destroyed"). The board's
+  stay or go home. An army bombarded to nothing (`groundDown`: 0 troops, or under `frontCollapseTroops`, default 0) is destroyed ("Threat Landing Destroyed"). The board's
   Losses figure includes it (`attritionPer30Days`). The simulator has no relief bombardment; its relief rules are off.
 
 To verify: Coatl-like siege gets a Relief Force at about 1.5x the Threat FP within a

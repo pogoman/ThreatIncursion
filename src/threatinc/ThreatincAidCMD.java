@@ -93,6 +93,56 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		else cargo.removeCommodity(commodityId, quantity);
 	}
 
+	/**
+	 * Adds a dock line with its names in their colours (the user, 2026-10-24: "color code faction names in
+	 * the tooltip dialog"): the world and its faction in the owner's colour, "Threat" in the swarm's, the
+	 * figures highlighted. Whole words only, left to right, no overlaps - what LabelAPI.setHighlight needs.
+	 */
+	protected static void colour(TextPanelAPI text, String s, MarketAPI market, String... figures) {
+		com.fs.starfarer.api.ui.LabelAPI label = text.addPara(s);
+		if (label == null) return;
+		List<Object[]> marks = new ArrayList<Object[]>();
+		java.awt.Color owner = market != null && market.getFaction() != null ? market.getFaction().getBaseUIColor()
+				: Misc.getHighlightColor();
+		if (market != null) {
+			mark(marks, s, market.getName(), owner);
+			if (market.getFaction() != null) mark(marks, s, ThreatWarState.displayName(market.getFaction().getId()), owner);
+		}
+		mark(marks, s, "Threat", ThreatNotice.threatColor());
+		for (String f : figures) mark(marks, s, f, Misc.getHighlightColor());
+		if (marks.isEmpty()) return;
+		java.util.Collections.sort(marks, new java.util.Comparator<Object[]>() {
+			public int compare(Object[] a, Object[] b) { return ((Integer) a[0]).compareTo((Integer) b[0]); }
+		});
+		List<String> tokens = new ArrayList<String>();
+		List<java.awt.Color> colours = new ArrayList<java.awt.Color>();
+		int end = -1;
+		for (Object[] mk : marks) {
+			int at = (Integer) mk[0];
+			String token = (String) mk[1];
+			if (at < end) continue; // overlaps the one before (a figure inside a name)
+			tokens.add(token);
+			colours.add((java.awt.Color) mk[2]);
+			end = at + token.length();
+		}
+		label.setHighlight(tokens.toArray(new String[0]));
+		label.setHighlightColors(colours.toArray(new java.awt.Color[0]));
+	}
+
+	/** Every whole-word occurrence of the token in the line, as {index, token, colour}. */
+	private static void mark(List<Object[]> marks, String s, String token, java.awt.Color c) {
+		if (token == null || token.isEmpty()) return;
+		int from = 0;
+		while (from < s.length()) {
+			int i = s.indexOf(token, from);
+			if (i < 0) break;
+			from = i + token.length();
+			boolean startOk = i == 0 || !Character.isLetterOrDigit(s.charAt(i - 1));
+			boolean endOk = from >= s.length() || !(Character.isLetterOrDigit(s.charAt(from)) || s.charAt(from) == ',');
+			if (startOk && endOk) marks.add(new Object[] { i, token, c });
+		}
+	}
+
 	/** The need's line at the dock: the situation, the three figures, what the player carries. */
 	protected static String needLine(MarketAPI market, ThreatNeeds.Need n, int have) {
 		String world = market.getName();
@@ -199,24 +249,22 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		for (ThreatNeeds.Need n : needs) {
 			any = true;
 			if (n.isFleets()) {
-				text.addPara(market.getName() + (n.strike ? " is outweighed by a Threat strike in flight: "
+				colour(text, market.getName() + (n.strike ? " is outweighed by a Threat strike in flight: "
 						: "'s orbit is held by the swarm: ") + "it asks for warships, not freighters - "
-						+ Misc.getWithDGS(Math.round(n.min)) + " fleet points to lift it. Defend on the war board.");
-				text.highlightInLastPara(Misc.getHighlightColor(), Misc.getWithDGS(Math.round(n.min)));
+						+ Misc.getWithDGS(Math.round(n.min)) + " fleet points to lift it. Defend on the war board.",
+						market, Misc.getWithDGS(Math.round(n.min)));
 				continue;
 			}
 			// ship hulls are never in a hold (vanilla's meta commodity): they sail from the player's hull port
 			if (Commodities.SHIPS.equals(n.good)) {
-				text.addPara("The " + factionName + " is short of " + n.shown(n.min) + " ship hulls to rebuild its navy. "
-						+ "Ship hulls sail from your hull port by convoy: Aid on the war board.");
-				text.highlightInLastPara(Misc.getHighlightColor(), n.shown(n.min));
+				colour(text, "The " + factionName + " is short of " + n.shown(n.min) + " ship hulls to rebuild its navy. "
+						+ "Ship hulls sail from your hull port by convoy: Aid on the war board.", market, n.shown(n.min));
 				continue;
 			}
 			if (seen.contains(n.good)) continue; // one hand-over a good (an expedition short of both reads twice)
 			seen.add(n.good);
 			int have = (int) carried(cargo, n.good);
-			text.addPara(needLine(market, n, have));
-			text.highlightInLastPara(Misc.getHighlightColor(), n.shown(n.min), n.shown(n.med), n.shown(n.max),
+			colour(text, needLine(market, n, have), market, n.shown(n.min), n.shown(n.med), n.shown(n.max),
 					Misc.getWithDGS(have));
 			float[] tiers = { n.min, n.med, n.max };
 			int offered = 0;

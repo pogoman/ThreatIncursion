@@ -30,7 +30,7 @@ public class ThreatComms {
 	static final String[] OVERRUN = { "{World} Is Falling",
 			"This is {World}. We cannot hold. If anyone is coming, come now.",
 			"Last district. {Faction} command, we are being overrun.",
-			"{World} is going dark. Whoever hears this: it took them {days} days.",
+			"{World} is going dark. Whoever hears this: we have {days} days.",
 			"Needs: marines, hold the line - {days} days at this pace" };
 	static final String[] PUSH_BACK = { "{World} Holds",
 			"{World} holds, barely. Give us marines and we take the districts back.",
@@ -51,7 +51,7 @@ public class ThreatComms {
 			"Threat fleets inbound on {World}. Our patrols will not hold them. Any fleet in reach.",
 			"{World} tower to all captains: they are coming, and we are outweighed.",
 			"{Faction} command: {World} will be struck within days. We ask for ships.",
-			"Needs: fleets, lift the orbit" };
+			"Needs: fleets, meet the strike" };
 	static final String[] DEPOT_FUEL = { "{World} Depot Dry",
 			"{World}'s tanks are dry: our convoys are grounded.",
 			"No fuel at {World}. The patrols fly on fumes.",
@@ -70,7 +70,7 @@ public class ThreatComms {
 	static final String[] DEPOT_MARINES = { "{World} Short Of Marines",
 			"{World}'s barracks stand half empty. Marines wanted before the swarm finds it.",
 			"The garrison at {World} is under strength. Marines, by any hull.",
-			"{Faction} command: {World} cannot man its walls. We ask for marines.",
+			"{Faction} command: {World}'s garrison is a skeleton crew. We ask for marines.",
 			"Needs: marines, keep the depot" };
 	static final String[] NAVY = { "{Faction} Short Of Hulls",
 			"The yards at {World} cannot replace the losses at the front. The navy sails thin.",
@@ -78,12 +78,12 @@ public class ThreatComms {
 			"Every slip at {World} is full and it is not enough. We ask for hulls.",
 			"Needs: ship hulls, rebuild the navy" };
 	static final String[] EXPEDITION_FUEL = { "{Faction} Expedition Waits",
-			"The {Target} expedition is fuelled for half the voyage. Fuel to {World} and it sails.",
+			"The expedition{against} is fuelled for half the voyage. Fuel to {World} and it sails.",
 			"{Faction} command: the fleet is ready and the tanks are not. Fuel to {World}.",
 			"We have the ships and the marines. We lack the fuel to get them there.",
 			"Needs: fuel, provision the expedition" };
 	static final String[] EXPEDITION_SUPPLIES = { "{Faction} Expedition Waits",
-			"The {Target} expedition is stored for half the voyage. Supplies to {World} and it sails.",
+			"The expedition{against} is stored for half the voyage. Supplies to {World} and it sails.",
 			"{Faction} command: the fleet is ready and the stores are not. Supplies to {World}.",
 			"We have the ships and the marines. We lack the supplies to keep them there.",
 			"Needs: supplies, provision the expedition" };
@@ -110,16 +110,41 @@ public class ThreatComms {
 			"{World} tower: the swarm is gone from above. Land everything.",
 			"Sky clear over {World}. Now the ground.",
 			"The swarm no longer holds the orbit" };
-	static final String[] RESUPPLIED = { "{World} Resupplied",
+	static final String[] ARMED = { "{World} Rearmed",
+			"The armaments are down on {World}. The line has teeth again.",
+			"{World} quartermaster: racks full. Our marines shoot back now.",
+			"Heavy armaments on the ground at {World}. Our thanks.",
+			"The defenders are armed" };
+	static final String[] FUELLED = { "{World} Refuelled",
 			"{World} depot: tanks full. Convoys roll.",
-			"Supplies landed at {World}. The patrols fly.",
+			"Fuel landed at {World}. The patrols fly again.",
+			"{World} is fuelled. Our thanks.",
+			"The depot's fuel is restored" };
+	static final String[] STOCKED = { "{World} Resupplied",
+			"Supplies landed at {World}. The yards are working.",
+			"{World} depot: stores full. The ships fly.",
 			"{World} is stocked. Our thanks.",
-			"Need met" };
-	static final String[] SAILS = { "{Faction} Sails",
-			"The hulls are in. The {Target} expedition sails.",
+			"The depot's supplies are restored" };
+	static final String[] DEPOT_ARMED = { "{World} Rearmed",
+			"{World}'s racks are full. Let the swarm come.",
+			"The militia at {World} has its armaments.",
+			"{Faction} quartermaster: {World} is armed. Our thanks.",
+			"The depot's armaments are restored" };
+	static final String[] MANNED = { "{World} Garrisoned",
+			"{World}'s barracks are full. The garrison stands ready.",
+			"Marines landed at {World}. We are at strength.",
+			"{Faction} command: {World} is manned. Our thanks.",
+			"The garrison is at strength" };
+	static final String[] REBUILT = { "{Faction} Navy Rebuilt",
+			"The hulls are in at {World}. The navy sails full.",
 			"{Faction} admiralty: the fleet is whole again.",
-			"Fuelled and stored. {Target} will hear from us.",
-			"Need met" };
+			"Every slip at {World} has delivered. Our thanks.",
+			"The navy's losses are replaced" };
+	static final String[] SAILS = { "{Faction} Expedition Sails",
+			"Fuelled and stored. The expedition sails from {World}.",
+			"{Faction} command: the fleet is under way.",
+			"The expedition is provisioned. The swarm will hear from us.",
+			"The expedition sails" };
 
 	// ---- 6.3 the player's requests answered ----
 
@@ -133,8 +158,8 @@ public class ThreatComms {
 			"{Faction} to {World}: we are {days} days out." };
 	static final String[] CALL_ANSWERED = { "{World}'s Call Answered",
 			"{World}: the last convoy is in. Our thanks to every flag that answered.",
-			"{World}: the last convoy is in. Our thanks to every flag that answered.",
-			"{World}: the last convoy is in. Our thanks to every flag that answered." };
+			"{World}: every convoy is down. We owe the flags that came.",
+			"{World} has what it asked for. Tell the captains who answered: we will not forget." };
 	static final String[] DOCK_THANKS = {
 			"{World} takes the {good} with thanks. The {Faction} will remember this.",
 			"The quartermaster signs for {n} {good}. 'You may have just saved this city.'",
@@ -149,14 +174,16 @@ public class ThreatComms {
 		return new Random((m != null ? m.getId().hashCode() : 0) ^ (day * 7919)).nextInt(3);
 	}
 
-	/** {World}, {Faction}, {Target}, {days} and the rest substituted. */
+	/** {World}, {Faction}, {against} (" against {target}" or nothing), {days} and the rest substituted. */
 	protected static String fill(String s, FactionAPI faction, MarketAPI m, ThreatNeeds.Need n) {
 		if (s == null) return "";
 		String world = m != null ? m.getName() : "the colony";
 		String f = faction != null ? ThreatWarState.displayName(faction.getId()) : "command";
 		s = s.replace("{World}", world).replace("{Faction}", f);
-		s = s.replace("{Target}", n != null && n.target != null ? n.target : "the");
-		s = s.replace("{days}", n != null && n.days >= 0 ? "" + Math.max(1, n.days) : "a few");
+		s = s.replace("{against}", n != null && n.target != null ? " against " + n.target : "");
+		int days = n != null && n.days >= 0 ? Math.max(1, n.days) : -1;
+		s = s.replace("{days} days", days == 1 ? "1 day" : "{days} days");
+		s = s.replace("{days}", days >= 0 ? "" + days : "a few");
 		return s;
 	}
 
@@ -177,7 +204,7 @@ public class ThreatComms {
 		if (ThreatNeeds.PUSH_BACK.equals(n.purpose)) return PUSH_BACK;
 		if (ThreatNeeds.ARM.equals(n.purpose)) return ARM;
 		if (ThreatNeeds.ORBIT.equals(n.purpose)) return n.strike ? INBOUND : ORBIT;
-		if (ThreatNeeds.NAVY.equals(n.purpose)) return NAVY;
+		if (ThreatNeeds.NAVY.equals(n.purpose) || ThreatNeeds.FLEET.equals(n.purpose)) return NAVY;
 		if (ThreatNeeds.EXPEDITION.equals(n.purpose)) {
 			return Commodities.FUEL.equals(n.good) ? EXPEDITION_FUEL : EXPEDITION_SUPPLIES;
 		}
@@ -196,9 +223,10 @@ public class ThreatComms {
 	 * 6.2: a need of this purpose is gone. What is said depends on what stands now: a marines or
 	 * arms need gone with the army still there - the line holds (a push back need remains) or
 	 * pushes back (none); the army gone - the world is clear; the orbit gone - the sky is clear;
-	 * a depot need gone - resupplied; hulls or an expedition - sails. False when nothing is said.
+	 * arms gone with the army still there - rearmed; a depot need gone - that good restored; hulls -
+	 * the navy rebuilt; the expedition's last need - it sails. False when nothing is said.
 	 */
-	public static boolean met(FactionAPI faction, MarketAPI m, String purpose, List<ThreatNeeds.Need> now) {
+	public static boolean met(FactionAPI faction, MarketAPI m, String purpose, String good, List<ThreatNeeds.Need> now) {
 		if (m == null || faction == null) return false;
 		boolean army = ThreatAidRequests.underArmy(m);
 		if (ThreatNeeds.HOLD.equals(purpose) || ThreatNeeds.PUSH_BACK.equals(purpose) || ThreatNeeds.ARM.equals(purpose)) {
@@ -208,7 +236,7 @@ public class ThreatComms {
 			}
 			if (ThreatNeeds.find(now, ThreatNeeds.HOLD, null) != null) return false; // escalated: HOLD speaks
 			if (ThreatNeeds.ARM.equals(purpose)) {
-				notice(RESUPPLIED, faction, m, null).send();
+				notice(ARMED, faction, m, null).send();
 				return true;
 			}
 			boolean pushBack = ThreatNeeds.find(now, ThreatNeeds.PUSH_BACK, null) != null;
@@ -221,12 +249,17 @@ public class ThreatComms {
 			return true;
 		}
 		if (ThreatNeeds.DEPOT.equals(purpose)) {
-			notice(RESUPPLIED, faction, m, null).send();
+			String[] table = Commodities.FUEL.equals(good) ? FUELLED : Commodities.SUPPLIES.equals(good) ? STOCKED
+					: Commodities.MARINES.equals(good) ? MANNED : DEPOT_ARMED;
+			notice(table, faction, m, null).send();
 			return true;
 		}
-		ThreatNeeds.Need target = new ThreatNeeds.Need();
-		target.target = ThreatNeeds.postponedTarget(m.getId());
-		notice(SAILS, faction, m, target).send();
+		if (ThreatNeeds.NAVY.equals(purpose) || ThreatNeeds.FLEET.equals(purpose)) {
+			notice(REBUILT, faction, m, null).send();
+			return true;
+		}
+		if (ThreatNeeds.find(now, ThreatNeeds.EXPEDITION, null) != null) return false; // the other provision still short
+		notice(SAILS, faction, m, null).send();
 		return true;
 	}
 
@@ -277,7 +310,7 @@ public class ThreatComms {
 	/** The player's request is covered: "{total} {good} landed from {k} factions". */
 	public static void callAnswered(MarketAPI world, int total, String good, int senders) {
 		FactionAPI player = Global.getSector().getPlayerFaction();
-		ThreatNotice.Hl voice = new ThreatNotice.Hl("\"" + fill(CALL_ANSWERED[1], player, world, null) + "\"",
+		ThreatNotice.Hl voice = new ThreatNotice.Hl("\"" + fill(CALL_ANSWERED[1 + variant(world)], player, world, null) + "\"",
 				player.getBaseUIColor());
 		ThreatNotice.titled(fill(CALL_ANSWERED[0], player, world, null)).icon(player).line("%s", voice)
 				.line("%s %s from %s %s", Misc.getWithDGS(total),

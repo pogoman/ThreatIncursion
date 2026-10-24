@@ -209,6 +209,11 @@ public class ThreatFleetOrders {
 		 * and, with no term (reliefStays), holds the orbit until the army is gone.
 		 */
 		public boolean relief;
+		/**
+		 * When a relief on station last found its world's system clear of Threat fleets
+		 * (reliefQuiet); 0 while one is there, or until it arrives. Home after reliefQuietDays of it.
+		 */
+		public long quietSince;
 
 		/** No term: on station until recalled (a guard over one of the player's own colonies, guardOwnDays 0). */
 		public boolean indefinite() {
@@ -333,7 +338,11 @@ public class ThreatFleetOrders {
 			// the invaders are defeated)
 			boolean reliefDone = KIND_GUARD.equals(o.kind) && o.relief && o.indefinite()
 					&& ThreatGroundFronts.reliefDone(o.fleet, o.targetId);
-			if (o.daysLeft() <= 0f || stationGone || frontGone || supportLost || reliefDone) {
+			// ... or its system has held no Threat fleet for reliefQuietDays (2026-10-24, the user)
+			boolean reliefQuiet = KIND_GUARD.equals(o.kind) && o.relief && o.indefinite() && !reliefDone
+					&& reliefQuiet(o);
+			if (reliefQuiet) noteReliefQuiet(o);
+			if (o.daysLeft() <= 0f || stationGone || frontGone || supportLost || reliefDone || reliefQuiet) {
 				all().remove(o);
 				if (o.aid && o.arrived && KIND_GUARD.equals(o.kind)) ThreatAid.onGuardCompleted(o);
 				// a hunting force's follower still wears the force's blinkers; home unable to react otherwise
@@ -341,7 +350,7 @@ public class ThreatFleetOrders {
 				// time served: home on the tracked leg, refund on arrival
 				ThreatReturns.sendHome(o.fleet, o.factionId, o.baseMarketId);
 				ThreatIncConfig.log("Order " + (stationGone ? "void - station gone: "
-						: frontGone || supportLost || reliefDone ? "stood down: " : "complete: ")
+						: reliefQuiet ? "home - system quiet: " : frontGone || supportLost || reliefDone ? "stood down: " : "complete: ")
 						+ o.factionId + " " + o.task());
 			}
 		}
@@ -524,11 +533,15 @@ public class ThreatFleetOrders {
 	 */
 	public static float reliefGoal(MarketAPI market) {
 		float threat = ThreatGroundFronts.pointsNear(market, Factions.THREAT, true);
-		if (threat <= 0f) return ThreatIncConfig.guardFleetFP();
+		// no swarm over the world, no relief: the ground war is the marines' (the user, Sindria 2026-10-24:
+		// "sindria keeps sending relief fleets to its worlds under siege, despite the worlds having no threat
+		// over them. it only needs to send them when the threat are occupying space"; before, one guard of
+		// guardFleetFP went anyway)
+		if (threat <= 0f) return 0f;
 		return threat * Math.max(0.5f, ThreatIncConfig.reliefOrbitMargin());
 	}
 
-	/** Points the colony's relief is still short: 0 unless a Threat army stands on it. */
+	/** Points the colony's relief is still short: 0 unless a Threat army stands on it AND the swarm holds its orbit (reliefGoal). */
 	public static float reliefShort(MarketAPI market) {
 		if (market == null) return 0f;
 		if (!ThreatGroundFronts.isThreatOwned(ThreatGroundFronts.getFront(market.getId()))) return 0f;
@@ -680,6 +693,7 @@ public class ThreatFleetOrders {
 			o.targetId = best.getId();
 			o.targetName = best.getName();
 			o.arrived = false;
+			o.quietSince = 0L;
 			o.recipientFactionId = o.factionId.equals(best.getFactionId()) ? null : best.getFactionId();
 			ThreatIncConfig.log("Relief moves: " + o.factionId + "'s " + (int) fp + " FP leaves quiet " + from + " for invaded "
 					+ best.getName() + ", where the swarm holds the orbit (" + (int) ThreatGroundFronts.pointsNear(best, Factions.THREAT, true)
@@ -688,6 +702,44 @@ public class ThreatFleetOrders {
 					.line("%s moves %s FP from %s to %s", ThreatNotice.faction(o.fleet.getFaction()), Misc.getWithDGS((int) fp),
 							ThreatNotice.market(here), ThreatNotice.market(best)).send();
 		}
+	}
+
+	/**
+	 * HOME WHEN THE SYSTEM IS QUIET (the user, 2026-10-24: relief that had cleared a system of Threat
+	 * fleets "seem to stay there indefinitely"): a relief with no term on station whose world's system
+	 * has held no Threat fleet for reliefQuietDays running goes home (poll); a Threat fleet entering the
+	 * system restarts the count, and so does a move (retaskReliefs runs first on each planRelief, so a
+	 * relief that can help a neighbour moves before its count runs out). Knob 0 keeps the old hold,
+	 * until the army on the ground is gone (ThreatGroundFronts.reliefDone).
+	 */
+	protected static boolean reliefQuiet(Order o) {
+		float days = ThreatIncConfig.reliefQuietDays();
+		if (days <= 0f || o.fleet == null) return false;
+		MarketAPI here = o.targetId != null ? Global.getSector().getEconomy().getMarket(o.targetId) : null;
+		if (here == null || here.getPrimaryEntity() == null) return false;
+		if (!o.arrived || ThreatGroundFronts.threatInSystem(here)) {
+			o.quietSince = 0L;
+			return false;
+		}
+		long now = Global.getSector().getClock().getTimestamp();
+		if (o.quietSince == 0L) {
+			o.quietSince = now;
+			return false;
+		}
+		return Global.getSector().getClock().getElapsedDaysSince(o.quietSince) >= days;
+	}
+
+	/** The log line and notice for a relief going home on a quiet system (#reliefQuiet). */
+	protected static void noteReliefQuiet(Order o) {
+		MarketAPI here = o.targetId != null ? Global.getSector().getEconomy().getMarket(o.targetId) : null;
+		if (here == null || o.fleet == null) return;
+		int days = (int) ThreatIncConfig.reliefQuietDays();
+		String system = here.getStarSystem() != null ? here.getStarSystem().getNameWithLowercaseType() : here.getName();
+		ThreatIncConfig.log("Relief home: " + o.factionId + "'s " + (int) o.fleet.getFleetPoints() + " FP leaves " + here.getName()
+				+ " - no Threat fleet in " + system + " for " + days + " d");
+		ThreatNotice.titled("Relief Returns").icon(o.fleet.getFaction())
+				.line("%s's %s FP leaves %s, no Threat fleet in %s for %s days", ThreatNotice.faction(o.fleet.getFaction()),
+						Misc.getWithDGS((int) o.fleet.getFleetPoints()), ThreatNotice.market(here), system, String.valueOf(days)).send();
 	}
 
 	/** Whether the relief carries the fuel for a voyage of ly light-years above its passage home from the new world; an in-system move is free. */
@@ -1385,7 +1437,17 @@ public class ThreatFleetOrders {
 	protected static List<CampaignFleetAPI> buildPlayerForce(MarketAPI base, FactionAPI faction, boolean self,
 			int tier, Vector2f destinationHyper, String label) {
 		if (base == null || faction == null) return null;
-		float total = ThreatAid.forceFP(base, self, tier);
+		return buildPlayerForce(base, faction, self, ThreatAid.forceFP(base, self, tier), tier > 0, destinationHyper, label);
+	}
+
+	/**
+	 * As above for a force of {@code total} combat points - an outcome's size (ThreatAid.huntAskFP,
+	 * orbitAskFP; the user, 2026-10-24: tiers sized for outcomes) - built as fleets of one fleet's
+	 * size until it is met ({@code several}), or as exactly one fleet.
+	 */
+	protected static List<CampaignFleetAPI> buildPlayerForce(MarketAPI base, FactionAPI faction, boolean self,
+			float total, boolean several, Vector2f destinationHyper, String label) {
+		if (base == null || faction == null) return null;
 		if (total < ThreatIncConfig.aidGuardMinFP()) return null;
 		// the board's gate, again at the order: a force the base cannot provision does not sail. The
 		// task forces staged here that sail with it bring their own fuel, deposit and hold, back in the
@@ -1424,7 +1486,7 @@ public class ThreatFleetOrders {
 					}
 					built.add(fleet);
 					got += ThreatSoftening.combatFP(fleet);
-					if (tier <= 0) break;
+					if (!several) break;
 					continue;
 				}
 			}
@@ -1453,7 +1515,7 @@ public class ThreatFleetOrders {
 			if (!self) ownLeft[0] = Math.max(0f, ownLeft[0] - points);
 			built.add(fleet);
 			got += combat;
-			if (tier <= 0) break;
+			if (!several) break;
 		}
 		return built.isEmpty() ? null : built;
 	}
@@ -1734,9 +1796,18 @@ public class ThreatFleetOrders {
 	/** As above at the board's Force tier. */
 	public static Order dispatchHunt(FactionAPI faction, StarSystemAPI hive, int tier) {
 		if (faction == null || hive == null) return null;
-		MarketAPI base = faction.isPlayerFaction()
-				? ThreatAid.pickTaskForceSource(hive.getLocation())
-				: pickBase(faction, hive.getLocation());
+		MarketAPI base;
+		if (faction.isPlayerFaction()) {
+			// sized for the outcome (ThreatAid.huntAskFP), from the colony that can field it, or refused with the figures
+			ThreatAid.Quote q = ThreatAid.quoteStrike(hive, tier);
+			if (!q.ok()) {
+				ThreatNotice.titled("Hunt Refused").bad().icon(faction).lines(q.reason).send();
+				return null;
+			}
+			base = q.source;
+		} else {
+			base = pickBase(faction, hive.getLocation());
+		}
 		return dispatchHunt(faction, hive, base, false, tier);
 	}
 
@@ -1753,7 +1824,9 @@ public class ThreatFleetOrders {
 		Order o;
 		int count = 1;
 		if (faction.isPlayerFaction()) {
-			List<CampaignFleetAPI> fleets = buildPlayerForce(base, faction, false, tier, hive.getLocation(),
+			// the outcome's size (ThreatAid.huntAskFP: the weakest swarm by the margin, the swarms seen, those by the margin)
+			List<CampaignFleetAPI> fleets = buildPlayerForce(base, faction, false,
+					Math.max(ThreatAid.huntAskFP(hive, tier), ThreatIncConfig.aidGuardMinFP()), true, hive.getLocation(),
 					"hunt in the " + hive.getNameWithLowercaseTypeShort());
 			if (fleets == null) return null;
 			o = null;
@@ -1960,9 +2033,15 @@ public class ThreatFleetOrders {
 			Reassignable near = nearestReassignable(faction, hive, kind);
 			if (near != null) return adoptOrbit(near.fleet, faction, hive, near.duty, kind);
 		}
-		MarketAPI base = faction.isPlayerFaction()
-				? ThreatAid.pickTaskForceSource(hive.getLocationInHyperspace())
-				: pickBase(faction, hive.getLocationInHyperspace());
+		MarketAPI base;
+		if (faction.isPlayerFaction()) {
+			// sized for the outcome (ThreatAid.orbitAskFP), from the colony that can field it (the gate: orbitRefusal)
+			ThreatAid.Quote q = ThreatAid.quoteOrbit(hive, kind, tier);
+			if (!q.ok()) return null;
+			base = q.source;
+		} else {
+			base = pickBase(faction, hive.getLocationInHyperspace());
+		}
 		return dispatchOrbit(faction, hive, base, kind, tier);
 	}
 
@@ -1993,8 +2072,10 @@ public class ThreatFleetOrders {
 			}
 			return lead;
 		}
-		List<CampaignFleetAPI> fleets = buildPlayerForce(base, faction, false, tier, hive.getLocationInHyperspace(),
-				orbitName(kind).toLowerCase() + " over " + hive.getName());
+		// the outcome's size (ThreatAid.orbitAskFP: the swarm over the world, by the tier's margin)
+		List<CampaignFleetAPI> fleets = buildPlayerForce(base, faction, false,
+				Math.max(ThreatAid.orbitAskFP(hive, base, tier), ThreatIncConfig.aidGuardMinFP()), true,
+				hive.getLocationInHyperspace(), orbitName(kind).toLowerCase() + " over " + hive.getName());
 		if (fleets == null) return null;
 		Order o = null;
 		for (CampaignFleetAPI fleet : fleets) {
@@ -2443,7 +2524,7 @@ public class ThreatFleetOrders {
 		}
 		if (faction.isPlayerFaction()) {
 			if (nearestReassignable(faction, hive, kind) != null) return null;
-			ThreatAid.Quote q = ThreatAid.quoteDefend(hive, tier);
+			ThreatAid.Quote q = ThreatAid.quoteOrbit(hive, kind, tier);
 			return q.ok() ? null : q.reason;
 		}
 		return pickBase(faction, hive.getLocationInHyperspace()) == null

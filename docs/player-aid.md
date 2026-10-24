@@ -311,15 +311,20 @@ Where the build departs from the text above, on purpose:
   sailed 1,025 FP from a 239 FP colony; section 7, item 4 was "send what you can"). The
   way to a bigger siege is staging guards at the base: docs/strategy-layer.md "Staging
   fleets". Free points there include staged task forces.
-- **The siege force ladder (added 2026-09-07, untested).** A hive-in-reach row carries
-  three siege buttons, not one - **Siege** lands the marines the assault needs (the old
-  behaviour), **Extra** lands `threatinc_siegeExtraMarinesFactor` x that (default 2), and
-  **All** lands every marine in the base's reserve above its floor. Since
-  2026-10-11 20:00 it is the Force ladder and sizes the fleets too - Min the need, Med at least
-  half the base's free points, Max all of them (`IncursionManager.playerExpeditionSizes`) - and
-  the task forces on station at the base sail in it as they are (`ThreatPurgeFGI.takeStaged`;
-  until then they were expired and their points built again). All three share the
-  Siege gate (`siegeBlockReason`), so they grey out together. The extra marines matter
+- **The siege force ladder (added 2026-09-07; outcomes since 2026-10-24).** The Force
+  ladder's Siege tiers are what the landing achieves (the user, 2026-10-24: "sieges min is min for
+  landing and holding, med is amt for pushing, and max is amt for overruning"): Min the marines
+  that hold the landing (`IncursionManager.siegeRaidStrNeeded`), Med the marines whose line then
+  moves back at `frontPushBackRate`, Max at `frontOverrunRate` (`siegeTierMarines`, halving
+  `ThreatGroundFronts.lineRateOf` with the marines ashore at `frontLandingMult` against the worn
+  defence and its counter-attacks, `lineMarinesFor`; then the drop's toll and headroom as the
+  holding need carries). Med and Max are refused with the figure when the base's reserve is short
+  (`siegeBlockFacts`: "Haven can commit 1,900 marines / To push the line back takes 2,400"); the
+  Confirm names the outcome ("commits 2,400 marines of 3,100 in its reserve to push the line
+  back"). The flotilla is the need (`playerExpeditionSizes` at Min) grown to carry the landing,
+  and the task forces on station at the base sail in it as they are (`ThreatPurgeFGI.takeStaged`).
+  Until 2026-10-24 the tiers were the need / x `siegeExtraMarinesFactor` (knob retired) / every
+  marine above the floor, and Med / Max also sailed half / all the free hulls. The extra marines matter
   because a landed front's strength is linear in its troops (`ThreatGroundFronts.effectiveStrength`)
   - a heavier landing holds against counter-attacks and takes strata faster, to the
   `paceRatio` floor. The catch that shapes the whole feature: raising the marine allotment
@@ -335,7 +340,10 @@ Where the build departs from the text above, on purpose:
   and the Confirm quote what will actually sail. Three of them (`ThreatFactionView.addTierSelector`):
   **Force** over the hives table ("Siege force" until 2026-10-11, when the user had it size
   every task force too: one fleet / half the hulls free / all, `ThreatAid.forceFP`,
-  `ThreatFleetOrders.buildPlayerForce`; sieges read it as before), **Supply run** over the
+  `ThreatFleetOrders.buildPlayerForce`; since 2026-10-24 each tier is an outcome - a Hunt beats
+  the weakest swarm seen / matches the swarms seen / x the margin, `ThreatAid.huntAskFP`; a
+  Support or Defend matches the swarm over the world / x 1.25 / x 1.5, `orbitAskFP`; a Bombard
+  puts structures down 30 / 90 days / to the stop; see war-board.md ladders), **Supply run** over the
   ground-fronts table, **Amount** over the colonies table ("Convoy load" until 2026-10-11 evening;
   it now sizes the colony Fleet and Defend buttons too - one fleet / half the hulls free / all -
   because the Force ladder is out of sight from the colonies table and a Fleet order at an unseen

@@ -231,6 +231,18 @@ public class ThreatFrontlines {
 			MarketAPI market = marketOf(o);
 			if (market != null) update(o, market, days);
 		}
+		// off means none (the user, 2026-10-24: "thought we removed them completely"): with the
+		// knob off every standing link is given up too, its stock and garrison home
+		if (!ThreatIncConfig.frontlinesEnabled()) {
+			for (Outpost o : new ArrayList<Outpost>(all())) {
+				MarketAPI market = marketOf(o);
+				if (market == null) {
+					all().remove(o);
+					continue;
+				}
+				dismantle(o, market, "forward bases are off");
+			}
+		}
 		ThreatCoreBuild.poll();
 
 		Object lastPlan = data.get(KEY_LAST_PLAN);

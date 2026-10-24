@@ -150,6 +150,8 @@ rep change.
 
 ## 6. War comms - the text
 
+> The live text is `ThreatComms`; the tables below are the plan. Revised 2026-10-24 13:50 on the user's review: one met table per good/purpose, no "Need met", no medieval voice (`docs/facts.md`, that day's decision).
+
 The user: "war flavour messages rather than clinical sterile text". Rules, so they stay inside
 the notice discipline (CLAUDE.md "Notifications go through ThreatNotice"):
 

@@ -2377,19 +2377,46 @@ public class ThreatConvoys {
 	 */
 	public static float reliefSpare(MarketAPI donor, String commodityId) {
 		if (!ThreatIncConfig.homeUnderAttack()) return spare(donor, commodityId);
-		if (donor == null || ThreatGroundFronts.hasFront(donor)) return 0f;
+		if (donor == null) return 0f;
+		if (ThreatGroundFronts.hasFront(donor)) return frontWorldSpare(donor, commodityId);
 		return Math.max(0f, ThreatReserves.stock(donor.getId(), commodityId) - ThreatReserves.floor(donor, commodityId));
+	}
+
+	/**
+	 * What a colony with an army on its own surface can still spare: heavy armaments above
+	 * what its own defenders want banked ({@link ThreatGroundFronts#defenderArmsWant},
+	 * frontResupplyDays of their burn) and its floor, and marines above what its ground
+	 * victory wants deployed ({@link ThreatGroundFronts#deployWant}, the user 2026-10-24:
+	 * "Rest can still continue to be staged for expedition") - nothing else, its fuel and
+	 * supplies provision its relief. The user, Sindria 2026-10-24:
+	 * "sindrias front ran out of arms despite all its nearby colonies having plenty ...
+	 * volturn is adjacent with 1800 arms" - Volturn was the Diktat's one armaments maker,
+	 * under invasion itself, and a front world gave nothing at all.
+	 */
+	public static float frontWorldSpare(MarketAPI donor, String commodityId) {
+		if (donor == null) return 0f;
+		float keep;
+		if (Commodities.HAND_WEAPONS.equals(commodityId)) {
+			keep = ThreatGroundFronts.defenderArmsWant(donor);
+		} else if (Commodities.MARINES.equals(commodityId)) {
+			keep = ThreatGroundFronts.deployWant(donor);
+		} else {
+			return 0f;
+		}
+		keep = Math.max(keep, ThreatReserves.floor(donor, commodityId));
+		return Math.max(0f, ThreatReserves.stock(donor.getId(), commodityId) - keep);
 	}
 
 	/** Stock a colony can spare: what it holds above its keep fraction of its own months basis (ThreatReserves.monthsBasis), plus a staging base's own siege needs. */
 	public static float spare(MarketAPI donor, String commodityId) {
 		// ship hulls: the faction's built navy at its hull port (ThreatHulls.spareUnits), no reserve
 		if (Commodities.SHIPS.equals(commodityId)) return ThreatHulls.spareUnits(donor);
-		// a colony under a ground front gives nothing, as it gives no siege
+		// a colony under a ground front gives nothing but the heavy armaments above its own
+		// defenders' want (frontWorldSpare, 2026-10-24), as it gives no siege
 		// (IncursionManager.siegeDonors): its depot arms the defence and
 		// provisions its relief. Nachiketa shipped 2,287 fuel to its staging
 		// base with a swarm on it and relief then had nothing to sail on (2026-09-29)
-		if (ThreatGroundFronts.hasFront(donor)) return 0f;
+		if (ThreatGroundFronts.hasFront(donor)) return frontWorldSpare(donor, commodityId);
 		// a staging base keeps its own siege's needs, then gives like any donor.
 		// A player base has no staging bank (its stockpile is vanilla's), so its
 		// staging target is kept here: without it two player staging bases each
@@ -3343,7 +3370,16 @@ public class ThreatConvoys {
 		ThreatReserves.deposit(base.id(), Commodities.SUPPLIES, supplies);
 		// ship hulls go to the colony's faction's pool, not its depot (ThreatHulls)
 		if (ships > 0 && base.market != null) {
-			ThreatHulls.receive(base.market.getFactionId(), ships, c.fromName() + " (" + c.factionId + ")");
+			String owner = base.market.getFactionId();
+			float builtBefore = ThreatHulls.built(owner);
+			ThreatHulls.receive(owner, ships, c.fromName() + " (" + c.factionId + ")");
+			// the player's hulls landed at a colony that is not the hull port stay there (the user, 2026-10-24:
+			// a colony short of the hulls to field a task force asks for them, ThreatNeeds.FLEET)
+			MarketAPI port = ThreatHulls.hullPort(owner);
+			float landed = ThreatHulls.built(owner) - builtBefore;
+			if (landed > 0f && base.market.isPlayerOwned() && port != null && port != base.market) {
+				ThreatHulls.moveHome(port.getId(), base.market, landed);
+			}
 		}
 		// rule 5 (docs/economy-coherence.md): war stock lands in the depot only.
 		// It used to land as a trade modifier too, and vanilla's market screens

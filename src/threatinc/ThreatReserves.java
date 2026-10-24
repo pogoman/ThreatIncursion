@@ -391,20 +391,39 @@ public class ThreatReserves {
 	 */
 	public static float available(MarketAPI market, String commodityId) {
 		if (market == null) return 0f;
-		if (committed(market, commodityId)) return 0f;
-		return threatinc.rules.ReserveRules.available(stock(market.getId(), commodityId), floor(market, commodityId));
+		return threatinc.rules.ReserveRules.available(stock(market.getId(), commodityId),
+				Math.max(floor(market, commodityId), frontKeep(market, commodityId)));
 	}
 
 	/**
-	 * Stock that is fighting and cannot be shipped: a colony's banked marines
-	 * while an enemy army stands on its surface. They count as its defenders
-	 * (ThreatGroundFronts.defenderStrength), so no sortie or convoy may carry
-	 * them away mid-siege - sorties ask here through {@link #available},
-	 * logistics convoys through ThreatConvoys.spare.
+	 * Stock that is fighting and cannot be shipped: of a colony's banked marines
+	 * while a Threat army stands on its surface, the ones its ground victory
+	 * needs (ThreatGroundFronts.deployWant: the line moving the defenders' way
+	 * at frontPushBackRate, or holding where that is out of reach - then all of
+	 * them). They count as its defenders (ThreatGroundFronts.defenderStrength);
+	 * the rest may stage for a siege (the user, 2026-10-24: "They can stage an
+	 * expedition while under siege assuming they have enough marines to retake
+	 * the world ... Rest can still continue to be staged"; until then every
+	 * marine on a front world was held). Sorties ask through {@link #available},
+	 * logistics convoys through ThreatConvoys.frontWorldSpare.
 	 */
-	public static boolean committed(MarketAPI market, String commodityId) {
-		return market != null && Commodities.MARINES.equals(commodityId)
-				&& ThreatGroundFronts.hasFront(market);
+	public static float frontKeep(MarketAPI market, String commodityId) {
+		if (market == null || !Commodities.MARINES.equals(commodityId) || !ThreatGroundFronts.hasFront(market)) return 0f;
+		return Math.min(stock(market.getId(), commodityId), ThreatGroundFronts.deployWant(market));
+	}
+
+	/**
+	 * Marines of the reserve (stock not yet deployed, {@link #armedMarines}) a
+	 * base holds for the siege it stages (ThreatConvoys.stagingTarget), never
+	 * ones its own front keeps ({@link #frontKeep}) - the board's "staging for
+	 * X" (the user, 2026-10-24: "any being used for a siege are staging for x").
+	 */
+	public static float stagingMarines(MarketAPI market) {
+		if (market == null || ThreatConvoys.stagingHive(market) == null) return 0f;
+		float stocked = stock(market.getId(), Commodities.MARINES);
+		float reserve = Math.max(0f, stocked - armedMarines(market));
+		float free = Math.max(0f, stocked - frontKeep(market, Commodities.MARINES));
+		return Math.max(0f, Math.min(Math.min(reserve, free), ThreatConvoys.stagingTarget(market, Commodities.MARINES)));
 	}
 
 	// ------------------------------------------------------------------
@@ -696,8 +715,8 @@ public class ThreatReserves {
 	 */
 	public static float spendable(MarketAPI market, String commodityId) {
 		if (market == null) return 0f;
-		if (committed(market, commodityId)) return 0f;
-		return threatinc.rules.ReserveRules.spendable(stock(market.getId(), commodityId), floor(market, commodityId),
+		return threatinc.rules.ReserveRules.spendable(stock(market.getId(), commodityId),
+				Math.max(floor(market, commodityId), frontKeep(market, commodityId)),
 				monthsBasis(market, commodityId), ThreatIncConfig.donorKeepFraction(), stagingBank(market, commodityId));
 	}
 

@@ -44,8 +44,8 @@ marines the base can commit. Guard / Intercept / Escort already refused below
   when it is short of the ask by a task force or more, and its ledger entries ride it
   (`hostMarketId` set, `foldedFP` = its live points at that moment; the sender's charge `fp`
   stays what sailed from it). A base that cannot provision it leaves it on station as it was.
-  A Siege or Bombard takes them too (`ThreatPurgeFGI.takeStaged`, sized at the Force tier by
-  `IncursionManager.playerExpeditionSizes`): the guards stay in orbit, alive, until the expedition
+  A Siege or Bombard takes them too (`ThreatPurgeFGI.takeStaged`, sized to the need by
+  `IncursionManager.playerExpeditionSizes`; the Force tier is an outcome since 2026-10-24): the guards stay in orbit, alive, until the expedition
   spawns (at once while the player is in spawn range) and are handed to it where they float, the
   built fleets beside them, no incremental spawn; an expedition that leaves unseen takes their
   ships off the map with it and puts them back together, the same hulls, at a later spawn

@@ -413,6 +413,78 @@ public class ThreatScouts {
 		return s;
 	}
 
+	/**
+	 * THE PLAYER'S OWN LOOK (the user, 2026-10-24: "should also be able to send scout to any
+	 * system to get refreshed info on defence swarms"): a party from the nearest colony of
+	 * theirs with the hulls, fuel and supplies for it ({@link #playerScoutHome}), one stop and
+	 * home; its report is the player's (ThreatIntel, observer "player"). Its hulls are the
+	 * colony's own, committed here as a task force's are (ThreatReturns.provision leaves the
+	 * player's fleets to the order that built them) and released when it is home. Null with
+	 * the reason in {@link #scoutOffReason}.
+	 */
+	public static Scout playerRecon(StarSystemAPI system) {
+		if (scoutOffReason(system) != null) return null;
+		MarketAPI home = playerScoutHome(system);
+		if (home == null) return null;
+		List<String> route = new ArrayList<String>();
+		route.add(system.getId());
+		float fp = ThreatIncConfig.scoutFleetPoints();
+		Scout s = launch(Factions.PLAYER, home, route, system.getId(), fp, false);
+		if (s == null) return null;
+		s.recon = true;
+		if (ThreatAidCapacity.enabled() && s.fleet != null) {
+			ThreatAidCapacity.commit(home, Math.min(s.fleet.getFleetPoints(), ThreatAidCapacity.taskForcePoints(fp)),
+					s.fleet, "scouting the " + system.getNameWithLowercaseTypeShort());
+		}
+		ThreatIncConfig.log("Recon: the player sends a party from " + home.getName() + " to look at the "
+				+ system.getName() + " (report " + ThreatIntel.when(ThreatIntel.report(Factions.PLAYER, system)) + ")");
+		return s;
+	}
+
+	/** Why the player cannot send a scouting party to the system now (the board's Scout button), or null when they can. */
+	public static String scoutOffReason(StarSystemAPI system) {
+		if (!enabled()) return "Scouting is disabled in the mod settings.";
+		if (system == null) return "No target.";
+		ThreatNotice.Reason unready = ThreatAid.playerNotMobilised();
+		if (unready != null) return ThreatNotice.text(unready);
+		if (unreachable(system)) return "No fleet reaches the " + system.getNameWithLowercaseTypeShort() + ".";
+		if (reconInFlight(Factions.PLAYER, system.getId())) return "A scouting party is already on its way there.";
+		if (playerScoutHome(system) == null) {
+			return "No colony of yours can send a party of " + (int) ThreatIncConfig.scoutFleetPoints()
+					+ " fleet points: it takes the hulls free, and the fuel and supplies for the voyage.";
+		}
+		return null;
+	}
+
+	/** The player colony a scouting party to the system sails from: the nearest with the hulls free and the fuel and supplies for the voyage ({@link #playerScoutCost}); null with none. */
+	public static MarketAPI playerScoutHome(StarSystemAPI system) {
+		if (system == null) return null;
+		float fp = ThreatIncConfig.scoutFleetPoints();
+		MarketAPI best = null;
+		float bestDist = Float.MAX_VALUE;
+		for (MarketAPI market : ThreatReserves.marketsOf(Factions.PLAYER)) {
+			if (market.getStarSystem() == null || market.getPrimaryEntity() == null) continue;
+			float[] cost = playerScoutCost(market, system);
+			if (ThreatReserves.spendable(market, Commodities.FUEL) < cost[0]
+					|| ThreatReserves.spendable(market, Commodities.SUPPLIES) < cost[1]) continue;
+			if (ThreatAidCapacity.enabled() && ThreatAidCapacity.ownFreeFP(market) < ThreatAidCapacity.taskForcePoints(fp)) continue;
+			float d = Misc.getDistanceLY(market.getStarSystem().getLocation(), system.getLocation());
+			if (d < bestDist) {
+				best = market;
+				bestDist = d;
+			}
+		}
+		return best;
+	}
+
+	/** [fuel, supplies] a player party of scoutFleetPoints from the home to the system pays ({@link #voyageCost}). */
+	public static float[] playerScoutCost(MarketAPI home, StarSystemAPI system) {
+		if (home == null || system == null) return new float[] { 0f, 0f };
+		List<String> route = new ArrayList<String>();
+		route.add(system.getId());
+		return voyageCost(ThreatIncConfig.scoutFleetPoints(), routeLY(home, route));
+	}
+
 	/** Whether a recon party of the faction is on its way to the system. */
 	public static boolean reconInFlight(String factionId, String systemId) {
 		for (Scout s : all()) {
@@ -670,7 +742,8 @@ public class ThreatScouts {
 		// and the hulls: a party of warships draws on the faction's pool (ThreatHulls);
 		// without the hulls free it does not sail (hw30: scouts committed unchecked
 		// put Tri-Tachyon 2,300 FP out on a 200 FP pool)
-		if (ThreatHulls.enabled() && !Factions.THREAT.equals(factionId)
+		// (the player's hulls are a colony's own: playerScoutHome checked them)
+		if (ThreatHulls.enabled() && !Factions.THREAT.equals(factionId) && !Factions.PLAYER.equals(factionId)
 				&& ThreatHulls.freeFP(factionId) < fp) {
 			return null;
 		}

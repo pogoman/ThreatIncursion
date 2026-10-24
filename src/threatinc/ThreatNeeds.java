@@ -42,6 +42,8 @@ public class ThreatNeeds {
 	public static final String ORBIT = "lift the orbit";
 	public static final String DEPOT = "keep the depot";
 	public static final String NAVY = "rebuild the navy";
+	/** A player colony short of the hulls to field one task force (the user, 2026-10-24: Request "doesnt consider a lack of hulls to be a shortage"); the hulls land and stay there (ThreatConvoys, ThreatHulls.moveHome). */
+	public static final String FLEET = "field a task force";
 	public static final String EXPEDITION = "provision the expedition";
 	/** The good of a fleets need: warships over the world, in fleet points. */
 	public static final String FLEETS = "fleets";
@@ -123,6 +125,7 @@ public class ThreatNeeds {
 			else if (ARM.equals(purpose)) w = new String[] { "arm them 30 days", "arm them 60 days", "fill the depot" };
 			else if (ORBIT.equals(purpose)) w = new String[] { "lift the orbit", "add a margin", "add a reserve" };
 			else if (NAVY.equals(purpose)) w = new String[] { "rebuild the navy", "add a margin", "add a reserve" };
+			else if (FLEET.equals(purpose)) w = new String[] { "field a task force", "add a margin", "add a reserve" };
 			else if (EXPEDITION.equals(purpose)) w = new String[] { "sail", "sail with a margin", "sail the full voyage" };
 			else w = new String[] { "cover the gap", "add a margin", "fill the depot" };
 			return w[Math.max(0, Math.min(2, t))];
@@ -255,6 +258,21 @@ public class ThreatNeeds {
 			if (units >= 1f) {
 				out.add(need(m, NAVY, Commodities.SHIPS, (float) Math.ceil(units), (float) Math.ceil(units * 1.25f),
 						(float) Math.ceil(units * 1.5f), ROUTINE, false));
+			}
+		}
+		// a colony of the player's short of the hulls to field one task force (the user, 2026-10-24: Request
+		// "doesnt consider a lack of hulls to be a shortage"): the hull port asks for the navy, every other
+		// colony for its own hulls - what lands there stays (ThreatConvoys, ThreatHulls.moveHome)
+		if (ThreatHulls.enabled() && m.isPlayerOwned() && ThreatAidCapacity.enabled() && ThreatAidCapacity.applies(m)
+				&& m != ThreatHulls.hullPort(f)) {
+			float unitFP = Math.max(1f, ThreatHulls.unitFP());
+			float own = Math.max(0f, ThreatAidCapacity.ownFreeFP(m));
+			float lack = ThreatAidCapacity.taskForcePoints(ThreatIncConfig.guardFleetFP()) - own
+					- ThreatConvoys.inboundShips(id) * unitFP;
+			if (lack >= unitFP * 0.5f) {
+				float units = (float) Math.ceil(lack / unitFP);
+				out.add(need(m, FLEET, Commodities.SHIPS, units, (float) Math.ceil(units * 1.25f),
+						(float) Math.ceil(units * 1.5f), own <= 0f ? URGENT : ROUTINE, false));
 			}
 		}
 		float[] p = postponed(id);
@@ -440,12 +458,12 @@ public class ThreatNeeds {
 		}
 	}
 
-	/** The name of the system the base's waiting siege sails against. */
+	/** The name of the system the base's waiting siege sails against; null when none is known. */
 	public static String postponedTarget(String baseId) {
 		String s = postponedAll().get(baseId);
-		if (s == null) return "the";
+		if (s == null) return null;
 		StarSystemAPI system = ThreatScoutRoute.systemById(s.split("\\|")[0]);
-		return system != null ? system.getNameWithNoType() : "the";
+		return system != null ? system.getNameWithNoType() : null;
 	}
 
 	/** The siege sailed or was dropped: its note goes. */
@@ -538,9 +556,11 @@ public class ThreatNeeds {
 				// needs gone since the last tick
 				for (String k : new ArrayList<String>(stage.keySet())) {
 					if (!k.startsWith(m.getId() + ":") || live.contains(k) || "met".equals(stage.get(k))) continue;
-					String purpose = k.split(":")[1];
+					String[] parts = k.split(":");
+					String purpose = parts[1];
+					String good = parts.length > 2 ? parts[2] : null;
 					boolean spokenHere = metSpoken.contains(m.getId());
-					if (!spokenHere && ThreatComms.met(faction, m, purpose, needs)) metSpoken.add(m.getId());
+					if (!spokenHere && ThreatComms.met(faction, m, purpose, good, needs)) metSpoken.add(m.getId());
 					spoke(k, "met");
 				}
 			}

@@ -188,6 +188,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected java.util.Set<String> razeIds = new java.util.LinkedHashSet<String>();
 	/** Hive id -> the bombing squadron saturating it ({@link #squadron}): {fleet points sent in, fleet points left}. Null in a save from before squadrons. */
 	protected java.util.Map<String, float[]> squadrons;
+	/** Saturation days-down goal of the Bombard order's tier (IncursionManager.bombardGoalDays; 0: the commander's stop, and every save from before tiers). */
+	protected float downGoal = 0f;
+
+	public void setDownGoal(float days) {
+		downGoal = Math.max(0f, days);
+	}
 
 	public void setOrdnance(float tactical, float razing) {
 		ordnance = Math.max(0f, tactical);
@@ -211,6 +217,13 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected float friendsNear(MarketAPI world) {
 		if (playId == null || world == null || world.getStarSystem() == null) return 0f;
 		return ThreatSoftening.playFP(playId, world.getStarSystem());
+	}
+
+	/** Vanilla's colony-threat alarm only when a target is the player's (ThreatStrikeFGI.getCommMessageSound). */
+	@Override
+	public String getCommMessageSound() {
+		if (!isSendingUpdate() && !ThreatStrikeFGI.targetsPlayer(getParams())) return getSoundMajorPosting();
+		return super.getCommMessageSound();
 	}
 
 	/** Every world the expedition sailed for is one it razes. */
@@ -2272,8 +2285,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			ThreatIncConfig.log("Saturation of " + market.getName() + ": the guns turned its squadron back");
 			return true;
 		}
-		if (squad != null && ThreatGroundFronts.saturationSpent(market, squad[1])) {
-			ThreatIncConfig.log("Saturation of " + market.getName() + ": a day adds less than a day anywhere");
+		if (squad != null && ThreatGroundFronts.saturationDone(market, squad[1], downGoal)) {
+			ThreatIncConfig.log("Saturation of " + market.getName() + (downGoal > 0f
+					&& ThreatGroundFronts.leastDown(market) >= downGoal - 0.5f
+					? ": down the " + (int) downGoal + " days ordered" : ": a day adds less than a day anywhere"));
 			return true;
 		}
 		if (razeFuelLeft() < 1f) {
@@ -2318,7 +2333,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (squad != null) return squad;
 		float flotilla = Math.max(orbit, liveFP());
 		float fp = ThreatGroundFronts.squadronPlan(market, flotilla, razeFuelLeft(),
-				flotilla * ThreatGroundFronts.GROUP_ABORT_FRACTION, ourId)[5];
+				flotilla * ThreatGroundFronts.GROUP_ABORT_FRACTION, ourId, downGoal)[5];
 		squad = new float[] { fp, fp };
 		squadrons.put(market.getId(), squad);
 		ThreatIncConfig.log("Saturation of " + market.getName() + ": a squadron of " + (int) fp + " of "
@@ -2343,7 +2358,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		float start = abstractAllotment();
 		recordRazing(id, name, size, false);
 		float[] out = razeAbstract(market, start, groupAbortsMissionFPFraction, razeFuelLeft(), ourFactionId(),
-				razeReason());
+				razeReason(), downGoal);
 		if (paysOrdnance) razeFuel = Math.max(0f, out[1]);
 		abstractLeft = out[0];
 		if (start > 0f && out[0] < start) {
@@ -2392,20 +2407,27 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 */
 	public static float[] razeAbstract(MarketAPI market, float start, float abortFraction, float fuel,
 			String razerFactionId, String reason) {
+		return razeAbstract(market, start, abortFraction, fuel, razerFactionId, reason, 0f);
+	}
+
+	/** As above to a saturation days-down goal ({@code downGoal}, ThreatGroundFronts.saturationDone; 0: the commander's stop). */
+	public static float[] razeAbstract(MarketAPI market, float start, float abortFraction, float fuel,
+			String razerFactionId, String reason, float downGoal) {
 		float[] result = new float[] { start, fuel, 0f };
 		if (market == null || start <= 0f) return result;
 		String name = market.getName();
 		boolean bar = ThreatRazing.razes(market);
 		// over a hive only the squadron bombs; the rest holds the orbit
 		float squad = bar ? start
-				: ThreatGroundFronts.squadronPlan(market, start, fuel, start * abortFraction, razerFactionId)[5];
+				: ThreatGroundFronts.squadronPlan(market, start, fuel, start * abortFraction, razerFactionId,
+						downGoal)[5];
 		float fp = squad;
 		float elapsed = 0f;
 		float budget = ThreatIncConfig.siegeOrbitDays();
 		float perFP = Math.max(0f, ThreatIncConfig.satFuelPerFPDay());
 		while (fp > 0f && elapsed < budget && fp > squad * abortFraction) {
 			if (fuel < 1f) break;
-			if (bar ? ThreatRazing.razeable(market) <= 0 : ThreatGroundFronts.saturationSpent(market, fp)) break;
+			if (bar ? ThreatRazing.razeable(market) <= 0 : ThreatGroundFronts.saturationDone(market, fp, downGoal)) break;
 			float days = ThreatGroundFronts.SIEGE_FIRST_SLICE_DAYS;
 			if (bar && perFP > 0f) {
 				float pour = Math.min(ThreatRazing.fuelToDestroyThrough(market), fuel);

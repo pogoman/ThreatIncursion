@@ -63,7 +63,14 @@ answer it, and they only compose properly together.
 that ramps toward the stockpile over `marineArmingDays` (20), clamped down the instant stock
 leaves. A colony's standing marines are already armed - the ramp is seeded from the stock the
 first time the colony is seen, so nobody is caught with their rifles in crates - but a regiment
-shipped in mid-siege buys a garrison over weeks. The ramp runs on its own clock (`marineArmedAt`)
+shipped in mid-siege buys a garrison over weeks. The player's words for the two figures (the user,
+2026-10-24): the armed marines are **deployed**, the rest are **reserves, arming**, and any the
+base holds for the siege it stages are **staging for X** (`ThreatReserves.stagingMarines`); never
+"stock". While the army stands the colony keeps the marines its ground victory wants
+(`ThreatReserves.frontKeep` = `ThreatGroundFronts.deployWant`, the line moving its way at
+`frontPushBackRate`, or holding where that is out of reach) and may stage or sortie the rest
+("They can stage an expedition while under siege assuming they have enough marines to retake the
+world"). The ramp runs on its own clock (`marineArmedAt`)
 so the reserve poll and the front tick can both drive it without double-counting; the front tick
 drives it too because a colony can be invaded by someone it is not formally at war with, and the
 reserve poll only walks warring factions.
@@ -85,8 +92,12 @@ marines have to take districts back or bleed the enemy dry"; 0.25 from 2026-09-0
 a sledgehammer stockpile back from overrunning every beachhead); the garrison proper enters both
 whole. A hive still counter-attacks with everything, having no marines to hold back.
 
-**3. The defenders bleed.** `defenderLossPer30Days` (0.20) of the engaged armed marines per 30 days,
-scaled by the front's pressure (`effectiveStrength / holdRequirement`, capped at 1), plus
+**3. The defenders bleed.** THE ATTRITION RULE (the user, 2026-10-24, both sides alike -
+`ThreatGroundFronts.attritionPerDay`): armed marines / `attritionTroopsPer` (100) x (the army's force /
+the colony's force) x 1 / the colony's cover x the veteran loss factor, a day (`worldLossPerDay`). It
+replaced `defenderLossPer30Days` (0.20) of the engaged frontage scaled by a pressure capped at 1 - the
+user asked why the cap, then set the rule: "attrition should be based purely on cover, pressure and
+soldier experience", with the army-size term per 100 troops. Plus
 `defenderCounterAttackLossFraction` (0.15) of them every time the colony counter-attacks - **win or
 lose**. Bouncing off a dug-in front used to be free; it is now the expensive case. The bleed is
 deliberately *not* gated on the front's state: gating it on HOLDING or GRINDING would let a
@@ -99,8 +110,8 @@ Both scale with the *engaged* defenders, `ThreatGroundFronts.engaged(armed, fron
 beachhead bled a 5,000-marine world 1,000 a month and 15% of 5,000 per counter-attack; a 20-month test
 lost the Hegemony ~39k marines to fronts that lost ~2k, and five worlds fell once relief convoys had fed
 the grinder dry (2026-09-29, ti-h8h). A front with no marines counted (`front.marines` 0) engages the
-whole garrison. The war board quotes both through `defenderLossPer30Days` and `counterAttackDefenderLoss`,
-so its figures follow.
+whole garrison. The war board quotes both through `defenderLossPer30Days` (THE ATTRITION RULE since 2026-10-24,
+when the engaged cap went) and `counterAttackDefenderLoss`, so its figures follow.
 
 **3b. Troops to spare buy tempo.** The cadence used to read stability and nothing else:
 
@@ -144,7 +155,8 @@ The user: "i dont like how marines defending human worlds dont consume armaments
 changing". A colony's armed marines now fight on the same supply rule as a landed front.
 Each front tick every armed marine - the whole garrison is called up and in the field, where the
 bleed's `engaged` frontage only caps who can be killed - burns `dailyUpkeep(armed)` x days of heavy
-armaments out of the colony's stockpile (`ThreatGroundFronts.burnDefenderArms`,
+armaments, x `frontPushUpkeepMult` (2) while they push as a landing pays (the user, Sindria
+2026-10-24), out of the colony's stockpile (`ThreatGroundFronts.burnDefenderArms`,
 `defenderDailyUpkeep`; a player colony's resource stockpile, an NPC's ledger). A colony with
 none in stock has dry defenders: `defendersDry` multiplies `colonyMarineDefense` by
 `frontDryEffectivenessMult` (0.5), so both the line it holds and its counter-attacks are
@@ -152,13 +164,19 @@ halved until armaments land. The garrison proper (vanilla's ground-defense stat)
 touched: it is the structures, not the marines. Hives are never dry - the swarm fights on
 bodies (`needsArms`). Knob `defenderArmsEnabled` (default on).
 
+Who gives them: any colony in reach that can spare them (`ThreatConvoys.reliefSpare` / `spare`), and
+since 2026-10-24 a colony under an army itself spares its heavy armaments above its own
+defenders' want (`frontWorldSpare` over `defenderArmsWant`; the user, Sindria: Volturn, the
+Diktat's one armaments maker, sat invaded on 1,800 while Sindria ran dry) - its marines, fuel
+and supplies still stay home.
+
 What asks for them: `defenderArmsNeed` = `frontResupplyDays` (60) of the burn the defenders
 will have once `reliefNeed`'s marines stand with them, less the stock. NPC relief convoys
 (`ThreatConvoys.planRelief`) carry it beside the marines, a load of `RELIEF_MIN_ARMS` (100)
 or more sailing even with no marines to spare; the player's Reinforce order
 (ground-war-fronts.md "Orders from the board") asks for the same figure. The front tooltip
-shows `Defenders' heavy armaments N, burning M a day - D days` or `Defenders out of heavy
-armaments: fighting at x0.5`.
+shows `Sindria arms N d = stock / (armed marines x each per 30 days [x 2.0 attacking] = M/d)`
+or `Sindria arms 0: strength x 0.5 dry`; the colony condition tooltip has the same line.
 
 ### The defenders choose too (2026-10-17, built, untested)
 
@@ -178,7 +196,7 @@ null on older saves = push, what every colony did before):
   10 when it would overrun; no stability term). A win retakes a district (`hiveCounterAttack`,
   `strataHeld--`) or batters a beachhead that holds none; every attempt costs
   `defenderCounterAttackLossFraction` of the engaged marines, win or lose. The defence figure has no
-  cover: going over the top is exposed, as the attacker's push is.
+  cover: pushing spends it day by day, as the attacker's does (the user, 2026-10-24; before, going over the top was exposed outright).
 - **Dig in** - the garrison holds fire: no counter-attack is mounted (`defendersHoldFire`, read by
   `hiveCounterAttack`, `shouldBrace` and every board readout), and it earns cover:
   `defenderEntrenchDays` accrues while dug in, and `COLONY.defenderStrength` is multiplied by
@@ -186,8 +204,8 @@ null on older saves = push, what every colony did before):
   `frontEntrenchDays` 30). That figure is what the attacker pushes against, so a dug-in world is
   slower and costlier to push (`pushDaysEstimate`, `pushLossFactor`), harder to hold
   (`holdRequirement`) and bleeds its defenders less (the pressure term). When the army takes a
-  district the cover is kept at `defenderEntrenchKeptFraction` (0 - the user's "lost if they lose a
-  strata"); switching to Push keeps the days but applies no cover until the garrison digs in again.
+  district the cover is wiped (the user's "lost if they lose a strata", 2026-10-17, a hard rule
+  since 2026-10-24); switching to Push keeps the days but applies no cover until the garrison digs in again.
   Ordering Push from Dig in starts the muster clock afresh (`orderDefenderPush` sets
   `lastCounterAttack` to now): the first counter-attack comes a full interval later.
 
@@ -201,6 +219,29 @@ own colony only). NPC colonies run `tickDefenderStance` each tick: since 2026-10
 user: marines handed to Sindria "to push back" sat dug in for a week) push while pushing moves the
 line toward them past `frontGrindBand`, dig in for the cover while it does not - unless dug in the
 line would move against them while pushing holds it (the mirror of the swarm's `doctrinePushes`).
+**Entrenchment is never worn by the enemy** (the user, 2026-10-24, reversing a "push wears cover"
+rule that lived for an hour): a side's entrenchment days run from -`frontEntrenchDays` to
++`frontEntrenchDays`. They grow while dug in whatever the enemy does, are spent while pushing, and
+past zero the push is **over-extended** - spread thin to the same degree as digging in gives
+cover: the side's whole figure x 1 / (1 + (`frontEntrenchDefenseBonus` - 1) x over-extension), so
+after 30 days of pushing past zero it fights at 2/3 (`overExtension`, `overExtendMult`,
+`defenderOverExtension`, `defenderOverExtendMult`; the swarm's through `entrenchMult`, the colony's
+on `defenderStrength`, `counterAttackStrength` and the line's D). A district changing hands resets
+BOTH sides to 0, dug in or over-extended (`takeStratum`, `loseStratum`). The kept fractions
+(`frontEntrenchKeptFraction`, `defenderEntrenchKeptFraction`) and the reinforcement dilution are
+gone. The board reads "x 0.60 over-extended (12 of 30 days)" and "(over-extended x0.80, 12 of 30
+days)" in the push line. A long push therefore runs out of steam by itself: the doctrine sees the
+rate fall into the band and digs in to recover, which is the rhythm the user asked for.
+**Each side decides against the other's best reply** (the same afternoon; the log at Sindria showed
+the marines and the swarm swapping stances every few seconds, each answering the other's last move:
+marines dig in, the swarm pushes and gains, the marines push to hold, the swarm digs in since
+pushing moves nothing, the marines dig in since the line stands...). `lineRate` at a pair of
+stances is what each weighs; a rate inside `frontGrindBand` weighs as 0 (`standing`). The swarm takes the stance whose worst case over the
+defenders' two replies is best for it, the defenders the one whose worst case over the swarm's two
+is best for them, and a tie digs in (cover is free, a push bleeds). Against a fixed stance - a hive
+world, the player's colony, a player landing - the rate is read at that stance. The settled
+outcome at Sindria is marines pushing against a dug-in swarm with the line standing: dug in they
+would lose a district every ~40 days, and the tooltip says so ("Pushing holds the line").
 Before, the test was "would one counter-attack win" (`counterAttackStrength > defenseStrength`),
 which never said yes against a dug-in swarm the need was sized to push. That is a behaviour change for NPC worlds: before, an outmatched colony counter-attacked
 on the cadence anyway, fed the front experience and lost marines each time. Hives have no stance and
@@ -380,9 +421,10 @@ defender has:
   actually puts troops on the ground (`landOrReinforce`) or a saturation pass hits; a
   soften pass, or a landing turned back from a held orbit, is the contract working.
 - **The line** (2026-10-23, replacing the counter-attack cadence). The defenders push the
-  line with `defenderPressure` - the garrison plus armed marines at `marineCounterAttackMult`,
-  x `colonyCounterAttackMilitaryMult` (1.5) with a Patrol HQ, Military Base, High Command or
-  Lion's Guard - continuously, against the army's strength in its cover; the army pushes back
+  line with `defenderPressure` - the garrison plus armed marines at `marineCounterAttackMult`
+  (1.0), the force figure the board shows and nothing on top: the military command x1.5 went on
+  2026-10-24 (the user, Sindria: "no invisible multipliers", and the High Command was disrupted
+  anyway) - continuously, against the army's strength in its cover; the army pushes back
   with its own against the defence figure. Dug in ("The defenders choose too") they push
   nothing and hold from cover instead. A district comes back every `frontLineBaseDays` /
   |rate|; a beachhead holding none is overrun. `ground-war-fronts.md` "The line".

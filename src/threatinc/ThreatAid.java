@@ -70,6 +70,8 @@ public class ThreatAid {
 		public ThreatNotice.Reason reason;
 		/** The need this aid serves (ThreatNeeds.HOLD and the rest); null for a Defend or Strike. */
 		public String purpose;
+		/** What a force sized for an outcome is sized against, one line for its prompt ("Against N fleet points of Defense Swarms seen"); null for a hull-sized force. */
+		public String sized;
 
 		public boolean ok() {
 			return reason == null && source != null;
@@ -194,6 +196,78 @@ public class ThreatAid {
 		float cap = ThreatSoftening.builtCapPoints(base.getFactionId());
 		if (cap >= Float.MAX_VALUE || cap <= 0f) return 1;
 		return Math.max(1, (int) Math.ceil(points / cap - 0.05f));
+	}
+
+	/**
+	 * Combat fleet points the board's Hunt asks for at its Force tier against the hive system as
+	 * the player's reports show it (the user, 2026-10-24: "min med max for aggressive actions should
+	 * be sized for outcomes ... hunt med would be equal to known force"): Min beats the weakest
+	 * garrison seen by the siege's margin (ThreatSoftening.musterFloorFP, the rule a hunt moves on
+	 * by), Med matches every swarm point seen in the system (ThreatIntel.systemFP), Max that by
+	 * npcSiegeOrbitMargin; each at least the one below. 0 with no swarm seen there.
+	 */
+	public static float huntAskFP(StarSystemAPI hive, int tier) {
+		if (hive == null) return 0f;
+		String observer = ThreatIntel.observerOf(Global.getSector().getPlayerFaction());
+		MarketAPI target = ThreatSoftening.huntTarget(observer, hive.getId());
+		if (target == null) return 0f;
+		float min = ThreatSoftening.musterFloorFP(observer, target);
+		if (tier <= 0) return min;
+		float seen = ThreatIntel.systemFP(observer, hive.getId());
+		float med = Math.max(min, seen);
+		if (tier == 1) return med;
+		return Math.max(med, seen * ThreatSoftening.margin());
+	}
+
+	/** The swarm a Hunt at the tier is sized against, for its prompt: "Against the N fleet points of the weakest Defense Swarm seen" (Min) or "... of Defense Swarms seen in the system". */
+	public static String huntSized(StarSystemAPI hive, int tier) {
+		if (hive == null) return null;
+		String observer = ThreatIntel.observerOf(Global.getSector().getPlayerFaction());
+		MarketAPI target = ThreatSoftening.huntTarget(observer, hive.getId());
+		if (target == null) return null;
+		if (tier <= 0) {
+			return "Against the " + Misc.getWithDGS((int) ThreatIntel.worldFP(observer, target))
+					+ " fleet points of the weakest Defense Swarm seen, over " + target.getName() + ", by x"
+					+ ThreatFactionView.trimZero(ThreatSoftening.margin()) + ".";
+		}
+		return "Against the " + Misc.getWithDGS((int) ThreatIntel.systemFP(observer, hive.getId()))
+				+ " fleet points of Defense Swarms seen in the system" + (tier >= 2 ? ", by x"
+				+ ThreatFactionView.trimZero(ThreatSoftening.margin()) : "") + ".";
+	}
+
+	/**
+	 * Combat fleet points the board's Support or Defend over a world asks for at its Force tier
+	 * (the user, 2026-10-24: tiers sized for outcomes): the swarm over the world - a hive's as the
+	 * player's reports show it (ThreatIntel.worldFP), an own world's as it stands
+	 * (ThreatGroundFronts.pointsNear) - matched at Min, by orbitTierMedMargin at Med,
+	 * orbitTierMaxMargin at Max. One fleet ({@link #taskForceFP} from {@code source}) with no
+	 * swarm over it: there is nothing to outweigh.
+	 */
+	public static float orbitAskFP(MarketAPI world, MarketAPI source, int tier) {
+		float swarm = orbitSwarmFP(world);
+		if (swarm <= 0f) return taskForceFP(source, false);
+		float margin = tier >= 2 ? ThreatIncConfig.orbitTierMaxMargin()
+				: tier == 1 ? ThreatIncConfig.orbitTierMedMargin() : 1f;
+		return swarm * Math.max(1f, margin);
+	}
+
+	/** The swarm over the world a Support or Defend is sized against: a hive's as the player's reports show it, an own world's live. */
+	public static float orbitSwarmFP(MarketAPI world) {
+		if (world == null) return 0f;
+		if (ThreatGroundFronts.isHiveTarget(world)) {
+			return ThreatIntel.worldFP(ThreatIntel.observerOf(Global.getSector().getPlayerFaction()), world);
+		}
+		return ThreatGroundFronts.pointsNear(world, Factions.THREAT, true);
+	}
+
+	/** The swarm a Support or Defend at the tier is sized against, for its prompt; null with none over the world. */
+	public static String orbitSized(MarketAPI world, int tier) {
+		float swarm = orbitSwarmFP(world);
+		if (swarm <= 0f) return null;
+		float margin = tier >= 2 ? ThreatIncConfig.orbitTierMaxMargin()
+				: tier == 1 ? ThreatIncConfig.orbitTierMedMargin() : 1f;
+		return "Against the " + Misc.getWithDGS((int) swarm) + " fleet points of the swarm over " + world.getName()
+				+ (margin > 1f ? ", by x" + ThreatFactionView.trimZero(margin) : "") + ".";
 	}
 
 	/** Whole-fleet points the base has free to send - the pool a task force is drawn from ({@code ownOnly}: a guard over itself). */
@@ -392,7 +466,80 @@ public class ThreatAid {
 					hive.getNameWithLowercaseTypeShort());
 			return q;
 		}
-		return quoteTaskForce(q, hive.getLocation(), "the " + hive.getNameWithLowercaseType(), null, tier);
+		// sized for the outcome (huntAskFP), from the nearest colony that can field it
+		q = quoteTaskForce(q, hive.getLocation(), "the " + hive.getNameWithLowercaseType(), null,
+				huntAskFP(hive, tier), "hunt the swarms seen");
+		q.sized = huntSized(hive, tier);
+		return q;
+	}
+
+	/** The board's Support or Defend over a world at its Force tier: a task force sized to the swarm over it ({@link #orbitAskFP}) from the nearest colony that can field it. */
+	public static Quote quoteOrbit(MarketAPI world, String kind, int tier) {
+		Quote q = new Quote();
+		if (world == null) {
+			q.reason = ThreatNotice.Reason.of("No target");
+			return q;
+		}
+		MarketAPI source = pickTaskForceSource(world.getLocationInHyperspace(), null);
+		q = quoteTaskForce(q, world.getLocationInHyperspace(), world.getName(), null,
+				orbitAskFP(world, source, tier), ThreatFleetOrders.orbitVerb(kind) + " " + world.getName()
+				+ " against its swarm");
+		q.sized = orbitSized(world, tier);
+		return q;
+	}
+
+	/**
+	 * As {@link #quoteTaskForce(Quote, Vector2f, String, MarketAPI, int)} for a force of {@code askFP}
+	 * combat points (an outcome's size: huntAskFP, orbitAskFP), from the nearest colony whose free
+	 * hulls field it ({@link #pickTaskForceSource(Vector2f, MarketAPI, float)}); refused with the
+	 * figures when none can - the whole job or nothing, as a bombing's fuel is (the user,
+	 * 2026-10-11). At least the smallest task force (aidGuardMinFP).
+	 */
+	protected static Quote quoteTaskForce(Quote q, Vector2f hyperLoc, String what, MarketAPI self, float askFP,
+			String outcome) {
+		float ask = Math.max(askFP, ThreatIncConfig.aidGuardMinFP());
+		q.source = pickTaskForceSource(hyperLoc, self, ask);
+		if (q.source == null) {
+			q.reason = noSourceReason(hyperLoc, self).line("A task force needs at least %s fleet points",
+					(int) (ThreatIncConfig.aidGuardMinFP() * ThreatAidCapacity.TASK_FORCE_HULL_MULT));
+			return q;
+		}
+		boolean own = q.source == self;
+		float all = forceFP(q.source, own, 2);
+		if (ask > all + 0.5f) {
+			q.reason = ThreatNotice.Reason.of("%s has %s fleet points free", ThreatNotice.market(q.source),
+					Misc.getWithDGS((int) Math.max(0f, freePoints(q.source, own))))
+					.line("To " + outcome + " takes %s", Misc.getWithDGS((int) Math.ceil(ThreatAidCapacity.taskForcePoints(ask))));
+			return q;
+		}
+		q.fp = ask;
+		q.points = Math.min(freePoints(q.source, own), ThreatAidCapacity.taskForcePoints(ask));
+		q.free = freePoints(q.source, own);
+		q.fleets = forceFleets(q.source, q.points);
+		q.distLY = Misc.getDistanceLY(q.source.getStarSystem().getLocation(), hyperLoc);
+		q.carried = own ? new float[] {0f, 0f} : ThreatAidCapacity.foldedProvisions(q.source, q.points);
+		q.provisions = ThreatFleetOrders.forceProvisions(q.source, q.fp, hyperLoc, q.carried);
+		ThreatNotice.Reason unpaid = ThreatFleetOrders.provisionsShort(q.source, q.fp, hyperLoc, q.carried);
+		if (unpaid != null) q.reason = unpaid;
+		return q;
+	}
+
+	/**
+	 * The colony to send a force of {@code askFP} combat points from: the nearest whose hulls free
+	 * field it all (staging bases first, as {@link #pickTaskForceSource(Vector2f, MarketAPI)}
+	 * orders them), else that pick - whose free points the refusal then quotes.
+	 */
+	public static MarketAPI pickTaskForceSource(Vector2f hyperLoc, MarketAPI self, float askFP) {
+		List<MarketAPI> candidates = sources(hyperLoc);
+		for (int pass = 0; pass < 2; pass++) {
+			for (MarketAPI m : candidates) {
+				if (m == self) continue;
+				if (IncursionManager.isBase(m) != (pass == 0)) continue;
+				if (forceFP(m, false, 2) >= askFP) return m;
+			}
+		}
+		if (self != null && forceFP(self, true, 2) >= askFP) return self;
+		return pickTaskForceSource(hyperLoc, self);
 	}
 
 	protected static Quote quoteTaskForce(Quote q, Vector2f hyperLoc, String what, MarketAPI self, int tier) {

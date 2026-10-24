@@ -46,9 +46,6 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		tooltip.addPara("Districts held by the swarm: %s of %s.", opad, held > 0 ? neg : h,
 				"" + held, "" + size);
 		if (held > 0) {
-			tooltip.addPara("Stability %s, accessibility %s while they hold them.", 3f, neg,
-					"-" + fmt(ThreatIncConfig.districtStabilityPenalty() * held),
-					"-" + Math.round(ThreatIncConfig.districtAccessPenalty() * held * 100f) + "%");
 			List<Industry> seized = ThreatGroundFronts.seizedIndustries(market);
 			if (!seized.isEmpty()) {
 				StringBuilder names = new StringBuilder();
@@ -94,23 +91,47 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		float garrison = ThreatGroundFronts.colonyGarrison(market);
 		float armed = ThreatReserves.armedMarines(market);
 		if (armed > 0f) {
-			tooltip.addPara("Of that, %s garrison and %s armed marines, %s.", 3f, h,
+			tooltip.addPara("Of that, %s garrison and %s marines deployed, %s.", 3f, h,
 					Misc.getWithDGS(Math.round(garrison)), Misc.getWithDGS(Math.round(armed)),
 					ThreatMarineXP.colonyRank(market).toLowerCase());
 		} else {
-			tooltip.addPara("Of that, %s garrison and %s armed marines.", 3f, h,
+			tooltip.addPara("Of that, %s garrison and %s marines deployed.", 3f, h,
 					Misc.getWithDGS(Math.round(garrison)), "no");
 		}
+		// reserves (not yet deployed) and any staging for a siege (the user, 2026-10-24)
+		float stagingM = ThreatReserves.stagingMarines(market);
 		float arming = ThreatReserves.stock(market.getId(),
-				com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES) - armed;
+				com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES) - armed - stagingM;
 		if (arming > 1f) {
-			tooltip.addPara("%s more marines are still being armed.", 3f, h,
+			tooltip.addPara("%s marines in reserve, arming.", 3f, h,
 					Misc.getWithDGS(Math.round(arming)));
+		}
+		if (stagingM > 1f) {
+			com.fs.starfarer.api.campaign.StarSystemAPI forS = ThreatConvoys.stagingHive(market);
+			tooltip.addPara("%s marines staging for %s.", 3f, h,
+					Misc.getWithDGS(Math.round(stagingM)), forS != null ? forS.getName() : "a siege");
 		}
 		float bleed = ThreatGroundFronts.defenderLossPer30Days(market, front);
 		if (bleed > 0f) {
-			tooltip.addPara("Marines losing %s a day at this pressure.", 3f,
+			tooltip.addPara("Marines losing %s a day.", 3f,
 					neg, ThreatGroundFronts.perDay(bleed));
+		}
+		// what they fight with (the user, 2026-10-24: "armament consumption rate ... specifically for marines")
+		if (armed > 0f && ThreatIncConfig.defenderArmsEnabled() && !ThreatGroundFronts.isHiveTarget(market)) {
+			if (ThreatGroundFronts.defendersDry(market)) {
+				tooltip.addPara("Marines' armaments 0: defence x%s dry.", 3f, neg,
+						String.format("%.1f", ThreatIncConfig.frontDryEffectivenessMult()));
+			} else {
+				float defBurn = ThreatGroundFronts.defenderDailyUpkeep(market, front);
+				float defDays = ThreatGroundFronts.defenderArmsDaysLeft(market, front);
+				String push = ThreatGroundFronts.defendersPush(front, market)
+						? " x " + String.format("%.1f", ThreatIncConfig.frontPushUpkeepMult()) + " attacking" : "";
+				tooltip.addPara("Marines' armaments %s d = %s stock / (%s armed x %s each per 30 days" + push + " = %s/d).", 3f, h,
+						defDays >= 999f ? "999+" : "" + (int) defDays,
+						Misc.getWithDGS(Math.round(ThreatReserves.stock(market.getId(), com.fs.starfarer.api.impl.campaign.ids.Commodities.HAND_WEAPONS))),
+						Misc.getWithDGS(Math.round(armed)), String.format("%.2f", ThreatIncConfig.frontArmamentsPerMarinePer30Days()),
+						String.format("%.1f", defBurn));
+			}
 		}
 
 		if (ThreatGroundFronts.defendersHoldFire(front, market)) {

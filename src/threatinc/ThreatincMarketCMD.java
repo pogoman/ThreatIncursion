@@ -1125,14 +1125,13 @@ public class ThreatincMarketCMD extends MarketCMD {
 		List<Industry> deep = new ArrayList<Industry>();
 		Industry core = market.getIndustry(ThreatColonyManager.FABRICATION_CORE);
 		if (core != null) deep.add(core);
-		Industry port = ThreatColonyManager.getPort(market);
-		if (port != null) deep.add(port);
+		// never the port (the user, 2026-10-24: bombardment does not disrupt it)
 		ThreatGroundFronts.bombardStructures(market, deep, rate, 1f, 0f);
 
-		text.addPara("Your front marked targets: the Fabrication Core and the port took the day too.");
+		text.addPara("Your front marked targets: the Fabrication Core took the day too.");
 		text.addPara("The front lost %s marines to the barrage.", Misc.getNegativeHighlightColor(), "" + loss);
 
-		if (front.marines < ThreatIncConfig.frontMinMarines()) {
+		if (ThreatGroundFronts.groundDown(front)) {
 			ThreatGroundFronts.destroy(market.getId());
 			text.addPara("What was left of the front could not hold its positions "
 					+ "afterward - it has been overrun.", Misc.getNegativeHighlightColor());

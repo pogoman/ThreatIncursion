@@ -2,8 +2,9 @@ package threatinc;
 
 import java.util.Map;
 
+import com.fs.starfarer.api.EveryFrameScript;
 import com.fs.starfarer.api.Global;
-import com.fs.starfarer.api.campaign.CoreInteractionListener;
+import com.fs.starfarer.api.campaign.CampaignUIAPI;
 import com.fs.starfarer.api.campaign.CoreUITabId;
 import com.fs.starfarer.api.campaign.InteractionDialogAPI;
 import com.fs.starfarer.api.campaign.InteractionDialogPlugin;
@@ -17,8 +18,8 @@ import com.fs.starfarer.api.combat.EngagementResultAPI;
  * the intel manager, and a notice never is, so the notice's click is
  * INTERACTION_DIALOG on a loose token carrying the tab
  * ({@link ThreatIncCampaignPlugin} picks this dialog for it). Like
- * {@link ThreatColonyScreenDialog}, the dialog never shows: init hands over to
- * the core Intel screen with the board selected and dismisses on the way out.
+ * {@link ThreatColonyScreenDialog}, the dialog never shows: init dismisses it and
+ * a one-shot script opens the campaign's Intel screen on the board.
  */
 public class ThreatNoticeClickDialog implements InteractionDialogPlugin {
 
@@ -62,12 +63,37 @@ public class ThreatNoticeClickDialog implements InteractionDialogPlugin {
 		String tab = ThreatFactionView.selectorIds().contains(factionId)
 				? factionId : ThreatFactionView.VIEW_THREAT;
 		board.setSelectedFactionId(tab);
-		dialog.getVisualPanel().showCore(CoreUITabId.INTEL, Global.getSector().getPlayerFleet(), board,
-				new CoreInteractionListener() {
-			public void coreUIDismissed() {
-				d.dismiss();
-			}
-		});
+		// the campaign's own Intel screen, not one hosted in this dialog: inside a
+		// dialog, E opened a second Intel over the first instead of closing it, and
+		// each press stacked another (the user, 2026-10-24)
+		d.dismiss();
+		Global.getSector().addTransientScript(new OpenBoard(board));
+	}
+
+	/** Opens the Intel screen on the board once the dialog has gone. */
+	protected static class OpenBoard implements EveryFrameScript {
+		protected final ThreatIncursionIntel board;
+		protected boolean done = false;
+
+		OpenBoard(ThreatIncursionIntel board) {
+			this.board = board;
+		}
+
+		public void advance(float amount) {
+			if (done) return;
+			CampaignUIAPI ui = Global.getSector().getCampaignUI();
+			if (ui.isShowingDialog()) return;
+			done = true;
+			if (ui.getCurrentCoreTab() == null) ui.showCoreUITab(CoreUITabId.INTEL, board);
+		}
+
+		public boolean isDone() {
+			return done;
+		}
+
+		public boolean runWhilePaused() {
+			return true;
+		}
 	}
 
 	@Override

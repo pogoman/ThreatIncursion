@@ -144,6 +144,26 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	}
 
 	/**
+	 * Vanilla's colony-threat alarm only when a target is the player's (user,
+	 * 2026-10-24): playerTargeted stays true for vanilla's strength checks, and
+	 * GenericRaidFGI sounds the alarm on that flag alone.
+	 */
+	@Override
+	public String getCommMessageSound() {
+		if (!isSendingUpdate() && !targetsPlayer(getParams())) return getSoundMajorPosting();
+		return super.getCommMessageSound();
+	}
+
+	/** Whether any world the expedition sails for is the player's. */
+	public static boolean targetsPlayer(GenericRaidParams params) {
+		if (params == null || params.raidParams == null) return false;
+		for (MarketAPI target : params.raidParams.allowedTargets) {
+			if (target != null && (target.isPlayerOwned() || target.getFaction().isPlayerFaction())) return true;
+		}
+		return false;
+	}
+
+	/**
 	 * Vanilla's return leg reads "returning to <source world>" on the fleets:
 	 * under the fog of war that named a hive nobody had found (rc1 review).
 	 */

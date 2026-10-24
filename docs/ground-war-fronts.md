@@ -25,13 +25,15 @@ front moves by the net of both sides' pressure, and the counter-attack cadence i
 (`docs/front-line-proposal.md` has the reasoning; this is what runs).
 
 - **The rate** (`ThreatGroundFronts.lineRate`, -1..1, positive toward the landing):
-  `gainA = landingPushes ? max(0, A - D x coverD) : 0`, `gainD = worldPushes ? max(0, D' - A x
-  coverA) : 0`, `rate = (gainA - gainD) / (A + D)`. A is `effectiveStrength`; D is the hive's
+  `gainA = landingPushes ? max(0, A x coverA - D x coverD) : 0`, `gainD = worldPushes ? max(0, D' x
+  coverD - A x coverA) : 0`, `rate = (gainA - gainD) / (A + D)`. A is `effectiveStrength`; D is the hive's
   `defenderStrength`, or a colony's garrison plus armed marines at weight 1 (`colonyGarrison +
-  colonyMarineDefense`); D' is `defenderPressure` - `counterAttackStrength` x
-  `colonyCounterAttackMilitaryMult` 1.5 with a military command, or x `hiveCounterAttackPace`
-  for a hive (starve it and it cannot push). A pushing side has cover 1; a dug-in one its
-  entrenchment's (`coverIfDugIn`, `defenderCoverMult`). A hive always pushes; a colony's
+  colonyMarineDefense`); D' is `defenderPressure` - `counterAttackStrength` (the force
+  figure itself; the military command x1.5 went 2026-10-24), or x `hiveCounterAttackPace`
+  for a hive (starve it and it cannot push). Both sides fight at their entrenchment's cover
+  whatever they do (`coverIfDugIn`, `defenderCoverIfDugIn`; the user 2026-10-24 "Pushers keep
+  their cover" - until then a pushing side fought at cover 1 against the other's full cover, and
+  Volturn was asked 819 more marines to push back 603 troops; now about 260). A hive always pushes; a colony's
   marines push unless dug in (`defendersPush`).
 - **Movement** (`tickFront`): `pushProgress += rate x days`. At `+frontLineBaseDays` (6) the
   landing takes a district (`takeStratum`), at `-frontLineBaseDays` it gives one back
@@ -70,16 +72,18 @@ options menu; commits everything aboard). Ticks on the colony poll at flat rates
 - **Supply**: armaments burn per MARINE per 30 days (`frontArmamentsPerMarinePer30Days`,
   0.25 - x`frontPushUpkeepMult` while
   assaulting). The stockpile IS the countdown; a dry front fights at
-  `frontDryEffectivenessMult` (0.5) effectiveness AND attrits at
-  `frontUnsuppliedLossMult` (3x) - "not enough armaments" is exactly the
-  reinforce-before-pushing moment.
+  `frontDryEffectivenessMult` (0.5) effectiveness (the tripled attrition went with THE
+  ATTRITION RULE, 2026-10-24: a weaker force bleeds more by the odds) - "not enough armaments"
+  is exactly the reinforce-before-pushing moment.
 - **Effectiveness** = troops x entrenchment x supply factor, vs the world's CURRENT worn
   defense figure (`MarketCMD.getDefenderStr`). **Entrenchment is the attacker's cover, and
   it is earned** (user, 2026-09-06): a landing fights at `frontLandingMult` (0.75) and digs
   in to `frontEntrenchMaxMult` (1.0) over `frontEntrenchDays` (30) of holding - the ramp is
-  frozen while pushing - and taking a layer or being battered by a counter-attack keeps only
-  `frontEntrenchKeptFraction` (0.5) of it. Pushing costs cover, holding earns it. The
-  defenders have no entrenchment number: their ground-defense figure IS their entrenchment.
+  spent while pushing, and past zero the push is over-extended to the same degree (strength
+  / (1 + 0.5 x over-extension), full after 30 days of pushing past zero; `overExtension`) -
+  and a layer changing hands resets both sides to 0 (the user's rules 2026-10-24: never
+  worn, diluted or cut otherwise). The defenders' own cover is `defenderEntrenchDays`
+  (ground-war-defenders.md), the same rules.
 - **Suppression states**: HOLDING (>= `frontHoldFraction`, 0.17, of the defense figure -
   lowered from 0.25 when the 1.5x entrenchment bonus went, so the old landing sizes still
   hold) suppresses Core/Nexus/port/defense structures by feeding their disruption clocks
@@ -108,9 +112,9 @@ options menu; commits everything aboard). Ticks on the colony poll at flat rates
 
 - **Push** (automatic when troops land at HOLDING strength - `autoPush`, knob
   `frontAutoPush` - or ordered by the player; requires HOLDING strength): takes
-  `frontPushBaseDays` x (defense/strength ratio, clamped 0.5-3x) days, at
-  `frontPushLossPer30Days` (0.30) attrition - pushing is how you win and how you
-  bleed. A pushing front is exposed (no cover) and its entrenchment ramp is frozen.
+  `frontPushBaseDays` x (defense/strength ratio, clamped 0.5-3x) days; losses by THE
+  ATTRITION RULE (`attritionPerDay`, 2026-10-24) with no cover - pushing is how you win and
+  how you bleed. A pushing front spends its cover and its ramp day by day (the user, 2026-10-24: "pushing should reduce cover" - before, a push was exposed at cover 1 outright).
 - **Stratum taken**: strips one size-worth of the base defense (SwarmNexus) and one
   size-share of fabrication output (`computeFabricationMult`) - momentum is real,
   and each stratum weakens the colony. Growth halts entirely while a front is on
@@ -240,11 +244,11 @@ colour - a worn defence, a repelled counter-attack, a Falls estimate are the lan
 | Column | Helper | What it is |
 | --- | --- | --- |
 | Force | `effectiveStrength`, `defenderStrength` | this side's strength, an arrow, the enemy's: `983 <- 144` on this side's world under a landing, `1,450 -> 2,080` where this side has landed. A landing's figure is troops x entrenchment (0.75 on landing -> 1.0 over 30 days of holding) x 0.5 when dry; a colony's is garrison + armed marines x cover (x 0.5 with no heavy armaments in stock); a hive's its defence figure. A landing holds at 17% of the world's figure, grinds at 10% |
-| Disruption | `disruptionFraction` | the besieged world's military structures (the theatre's key + defence lists), each clock over the suppress cap (`suppressCap`: wearDays x 1.2), averaged, as a percentage - whichever tab reads it; coloured the landing's gain, the world's loss (the user, 2026-10-24) |
+| Disruption | `disruptionFraction` | the besieged world's military structures (`militaryStructures`: the theatre's key + defence lists less the port and a hive's Core and Nexus - the user, 2026-10-24), each clock over the suppress cap (`suppressCap`: wearDays x 1.2), averaged, as a percentage - whichever tab reads it; coloured the landing's gain, the world's loss (the user, 2026-10-24) |
 | State | the landing's | holding / grinding / foothold |
 | Held | `heldCell` | from this side: districts or strata this side's landing has taken (on a hive, the strata still standing - a `held/size` read as a reset when starvation took a size off, user 2026-10-11); on this side's own colony, the districts still its own of its size |
 | Stance | `marineStanceLabel` / `swarmStanceLabel` | this side's: a landing's own push / regrouping / dug in; a garrison's push (= counter-attacks on the cadence, `defenderStanceLabel`) or dug in; a hive has none ("-") |
-| Losses | `marineLossPer30Days` / `swarmLossPer30Days` | this side's, per day: a landing's `attritionPer30Days` (8% of troops per 30 days holding, 30% pushing x the Lanchester skew, x3 when dry), a garrison's `defenderLossPer30Days`; a hive bleeds nothing |
+| Losses | `marineLossPer30Days` / `swarmLossPer30Days` | this side's, per day, THE ATTRITION RULE (`attritionPerDay`, the user 2026-10-24): troops / `attritionTroopsPer` (100) x (enemy force / own force) x 1 / own cover x veteran - a landing's `landingLossPerDay` (+ orbit), a colony's marines' and a hive's landed troops' `worldLossPerDay`; a hive's structure bleeds nothing |
 | Counter | `daysToCounterAttack`, `counterAttackRepelled` | days to the next counter-attack - the garrison's against a Threat landing, the hive's against a marine landing; "held" while a garrison is dug in; coloured for this side (a repelled one is the landing's gain) |
 | Arms | `supplyDaysLeft` / `defenderArmsDaysLeft` | this side's days of heavy armaments at the current burn: a marine landing's own (x2 while pushing), a colony stockpile's; "dry" when out; "-" on the Threat tab, the swarm fights on none |
 | Objective | `daysToLineChange` | days until THIS side takes the next district or stratum at the line's rate; "-" while the line stands (inside `frontGrindBand`) or moves against it (the user, 2026-10-24) |
@@ -296,7 +300,7 @@ entrenchment growing, defends counter-attacks at its cover (up to
 x`frontEntrenchDefenseBonus`, 1.5, once dug in); takes no ground. Push (`STANCE_PUSH`):
 progress toward the next layer at `frontPushBaseDays` x the defense/strength ratio
 (clamped 0.5-3x) while HOLDING strength lasts (progress pauses below it), attrition at
-the push rate, burn x2, entrenchment frozen, exposed to counter-attacks (no cover).
+the push rate, burn x2, cover and entrenchment spent day by day (exposed outright until 2026-10-24).
 Regrouping (`STANCE_CONSOLIDATE`): the checkpoint after a layer, `frontCheckpointDays`;
 told nothing it pushes on if it still holds, digs in otherwise. The player's front pushes the
 moment its troops land if it can hold (`ThreatGroundFronts.autoPush`, from `deploy` and from

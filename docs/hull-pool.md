@@ -120,8 +120,8 @@ spent every supply it made holding a garrison it could not use and the humans wo
   fleets "disappear then respawn coming out of the planet"), and a fleet could fold two guards
   (a Med hunt of 1,451 built five fleets and folded nine). A Siege or Bombard takes
   them the same way (`ThreatPurgeFGI.takeStaged`: the guards wait in orbit, alive, and are handed over
-  at the spawn; off the map only with an expedition the player cannot see), sized at the Force tier (`IncursionManager.playerExpeditionSizes`: the need, half
-  the free points, all of them).
+  at the spawn; off the map only with an expedition the player cannot see), sized to the need (`IncursionManager.playerExpeditionSizes` at Min
+  since 2026-10-24 - the Force tier is an outcome, war-board.md ladders; until then the need, half the free points, all of them).
 - Commit: `ThreatReturns.provision` commits every NPC fleet at its fleet points (the player's
   are committed by the order that built them). **Convoys draw no hulls** (`ThreatReturns.MEM_NO_HULLS`;
   vanilla's trade fleets are no patrols) and scouting parties and patrols launch only with the hulls free

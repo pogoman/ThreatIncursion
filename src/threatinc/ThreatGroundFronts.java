@@ -3,6 +3,7 @@ package threatinc;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -345,8 +346,9 @@ public class ThreatGroundFronts {
 			return defenderStrength(market);
 		}
 		public List<Industry> keyStructures(MarketAPI market) {
-			// the named organs - Core, Nexus, the military tier, port and both
-			// defense structures
+			// the named organs - Core, Nexus, the military tier and both defense
+			// structures; never the port (the user, 2026-10-24: a siege does not
+			// disrupt the port, only a blockade touches accessibility)
 			List<Industry> list = new ArrayList<Industry>();
 			Industry core = market.getIndustry(ThreatColonyManager.FABRICATION_CORE);
 			if (core != null) list.add(core);
@@ -354,8 +356,6 @@ public class ThreatGroundFronts {
 			if (nexus != null) list.add(nexus);
 			Industry bastion = SwarmBastion.of(market);
 			if (bastion != null) list.add(bastion);
-			Industry port = ThreatColonyManager.getPort(market);
-			if (port != null) list.add(port);
 			list.addAll(defenseStructures(market));
 			return list;
 		}
@@ -444,15 +444,18 @@ public class ThreatGroundFronts {
 	 */
 	public static final Theatre COLONY = new Theatre() {
 		public float defenderStrength(MarketAPI market) {
-			// dug-in defenders fight from cover they have earned (2026-10-17)
+			// dug-in defenders fight from cover they have earned (2026-10-17);
+			// over-extended ones are spread thin (2026-10-24)
+			GroundFront front = getFront(market.getId());
 			return (colonyGarrison(market) + colonyMarineDefense(market, 1f))
-					* defenderCoverMult(getFront(market.getId()));
+					* defenderCoverMult(front) * defenderOverExtendMult(front);
 		}
 		public float counterAttackStrength(MarketAPI market) {
 			// the garrison mounts the counter-attack; the stockpile's marines
 			// mostly hold the line they are standing on
-			return colonyGarrison(market)
-					+ colonyMarineDefense(market, ThreatIncConfig.marineCounterAttackMult());
+			return (colonyGarrison(market)
+					+ colonyMarineDefense(market, ThreatIncConfig.marineCounterAttackMult()))
+					* defenderOverExtendMult(getFront(market.getId()));
 		}
 		public List<Industry> keyStructures(MarketAPI market) {
 			return colonyKeyStructures(market);
@@ -536,9 +539,12 @@ public class ThreatGroundFronts {
 		boolean colony = market.isInEconomy() && Theatre.of(market).carriesSiegeState();
 		boolean front = colony && getFront(market.getId()) != null;
 		// the siege state carries the fortification rule too (2026-09-06), so a
-		// colony bombarded but not yet landed on carries it as well
+		// colony bombarded but not yet landed on carries it as well - and keeps it
+		// for as long as any defence structure is disrupted, siege or no siege (the
+		// user, Sindria 2026-10-24: the front gone, the carrier went with it and
+		// vanilla stripped 112-day structures whole, 400 x 0.48 = 190)
 		boolean wantsIndustry = colony && (front
-				|| (besieged(market) && ThreatSiegeMalus.anyDisrupted(market))
+				|| ThreatSiegeMalus.anyDisrupted(market)
 				|| ThreatRazing.saturated(market));
 		boolean wantsCondition = front;
 		boolean hasIndustry = market.hasIndustry(ThreatSiegeMalus.ID);
@@ -629,11 +635,8 @@ public class ThreatGroundFronts {
 					* Math.max(0f, Math.min(ThreatMarineXP.MAX_LEVEL, arrivingLevel));
 			front.marines = before + arriving;
 			front.xp = ThreatMarineXP.addXp(front.xp, arrivingXp, front.marines);
-			// and it has not dug the cover the front it joined has dug, so the
-			// entrenchment dilutes in the same proportion (2026-09-08). Before
-			// this a reinforcement inherited sixty days of digging the instant
-			// it stepped off the ramp.
-			front.entrenchDays *= before / Math.max(1f, before + arriving);
+			// the entrenchment is the front's, not the men's: it is wiped only by a lost
+			// district (the user, 2026-10-24); before, a reinforcement diluted it (2026-09-08)
 		}
 		front.armaments += armaments;
 		front.marinesLanded = Math.max(front.marinesLanded, front.marines);
@@ -849,8 +852,8 @@ public class ThreatGroundFronts {
 	 * a supply rule.
 	 *
 	 * <p>So the swarm's fronts do not burn, run dry, or take any of the dry
-	 * penalties. What replaces that pressure is casualties on the assault
-	 * ({@link #pushLossMult}) - it is paid for pressing, not for waiting.
+	 * penalties. The assault casualty multiplier that replaced that pressure went
+	 * with THE ATTRITION RULE (2026-10-24): attacking costs the cover instead.
 	 * Knob {@code threatFrontNeedsArms} restores the old rule.
 	 */
 	public static boolean needsArms(GroundFront front) {
@@ -866,20 +869,6 @@ public class ThreatGroundFronts {
 	 */
 	public static boolean isDry(GroundFront front) {
 		return front != null && needsArms(front) && front.armaments <= 0f;
-	}
-
-	/**
-	 * The extra casualties the swarm takes while PUSHING (2026-09-08, the
-	 * user's other half of the same call: "given they can make more soldiers,
-	 * can we increase their losses when pushing to compensate"). It can turn
-	 * hulls into troops ({@link #fabricateTroops}) and it no longer starves, so
-	 * the price of both is paid on the assault - the swarm buys ground with
-	 * bodies, and that is now the honest cost. Only while pushing: a dug-in
-	 * Threat front bleeds at the ordinary rate, so the counterplay is to make
-	 * them come to you rather than to wait them out.
-	 */
-	public static float pushLossMult(GroundFront front) {
-		return isThreatOwned(front) ? Math.max(0f, ThreatIncConfig.threatPushLossMult()) : 1f;
 	}
 
 	/**
@@ -1001,14 +990,18 @@ public class ThreatGroundFronts {
 	 * ({@link #dailyUpkeep}) on every armed marine - the whole garrison is called up and in
 	 * the field, as the whole of a landed army burns whatever it faces (the bleed's frontage
 	 * rule, {@link #engaged}, is about who can be killed, not who is eating ammunition;
-	 * 2026-10-17 evening, after Arkoman's 750 marines read 1.1 a day). 0 on a hive, or with
+	 * 2026-10-17 evening, after Arkoman's 750 marines read 1.1 a day), x frontPushUpkeepMult
+	 * while they push, as a landing pays (the user, Sindria 2026-10-24: "marines are pushing
+	 * but their arms consumption is the same as when not pushing"). 0 on a hive, or with
 	 * the knob off.
 	 */
 	public static float defenderDailyUpkeep(MarketAPI market, GroundFront front) {
 		if (market == null || front == null || !ThreatIncConfig.defenderArmsEnabled() || isHiveTarget(market)) return 0f;
 		float armed = ThreatReserves.armedMarines(market);
 		if (armed <= 0f) return 0f;
-		return dailyUpkeep(armed);
+		float upkeep = dailyUpkeep(armed);
+		if (defendersPush(front, market)) upkeep *= ThreatIncConfig.frontPushUpkeepMult();
+		return upkeep;
 	}
 
 	/** Days the colony's heavy armaments last its defenders at the current burn (999+ = ample, or none burnt). */
@@ -1071,17 +1064,34 @@ public class ThreatGroundFronts {
 
 	/**
 	 * What the world pushes the line with: the counter-attack figure (the
-	 * garrison whole, the marines at marineCounterAttackMult), times
-	 * colonyCounterAttackMilitaryMult with a staff to run the operation, or a
-	 * hive's times the supplies it is paid (hiveCounterAttackPace: starve it
-	 * and it cannot push).
+	 * garrison whole, the marines at marineCounterAttackMult) - the force figure
+	 * the board shows, nothing invisible on top (the user, Sindria 2026-10-24:
+	 * "the force number should represent the final force value"; the military
+	 * command x1.5 went that afternoon) - or a hive's times the supplies it is
+	 * paid (hiveCounterAttackPace: starve it and it cannot push).
 	 */
 	public static float defenderPressure(GroundFront front, MarketAPI market) {
 		if (market == null) return 0f;
 		float p = counterAttackStrength(market);
 		if (isHiveTarget(market)) return p * hiveCounterAttackPace(market);
-		if (hasMilitaryCommand(market)) p *= Math.max(0.1f, ThreatIncConfig.colonyCounterAttackMilitaryMult());
 		return p;
+	}
+
+	/** A line rate as a doctrine weighs it: 0 inside frontGrindBand (the line stands), itself outside. */
+	protected static float standing(float rate) {
+		return lineMoves(rate) ? rate : 0f;
+	}
+
+	/**
+	 * The line as a colony's marines dug in would see it against the swarm's best
+	 * reply ({@link #doctrineDefendersPush}): positive and moving means dug in
+	 * they lose ground, which is why the doctrine has them push while the line stands.
+	 */
+	public static float defenderDigInRate(GroundFront front, MarketAPI market) {
+		if (front == null || market == null || isHiveTarget(market)) return 0f;
+		if (front.isPlayerOwned()) return standing(lineRate(front, market, STANCE_PUSH.equals(front.stance), false));
+		return Math.max(standing(lineRate(front, market, true, false)),
+				standing(lineRate(front, market, false, false)));
 	}
 
 	/** The front's cover as it would stand dug in, whatever its stance now - coverMult without the stance test. */
@@ -1098,16 +1108,18 @@ public class ThreatGroundFronts {
 
 	/**
 	 * The rate the line moves at, -1..1, positive toward the landing: each
-	 * side that pushes gains what its strength exceeds the other's cover by,
-	 * and the difference is read against the two strengths together.
+	 * side that pushes gains what its covered strength exceeds the other's
+	 * by, and the difference is read against the two strengths together.
 	 * <pre>
-	 * gainA = landingPushes ? max(0, A - D x coverD) : 0
-	 * gainD = worldPushes   ? max(0, D' - A x coverA) : 0
+	 * gainA = landingPushes ? max(0, A x coverA - D x coverD) : 0
+	 * gainD = worldPushes   ? max(0, D' x coverD - A x coverA) : 0
 	 * rate  = (gainA - gainD) / (A + D)
 	 * </pre>
-	 * A pushing side has cover 1; a dug-in one its entrenchment's. At the
-	 * stances given, not the current ones, so a prompt can quote what an order
-	 * would do.
+	 * Both sides fight at their entrenchment's cover whatever they do (the
+	 * user, Volturn 2026-10-24, "Pushers keep their cover": until then a
+	 * pushing side fought at cover 1 against the other's full cover, and 819
+	 * more marines were asked to push back 603 troops). At the stances given,
+	 * not the current ones, so a prompt can quote what an order would do.
 	 */
 	public static float lineRate(GroundFront front, MarketAPI market, boolean landingPushes, boolean worldPushes) {
 		if (front == null || market == null) return 0f;
@@ -1118,18 +1130,18 @@ public class ThreatGroundFronts {
 			d = defenderStrength(market);
 			coverD = 1f;
 		} else {
-			d = colonyGarrison(market) + colonyMarineDefense(market, 1f);
-			coverD = worldPushes ? 1f : defenderCoverIfDugIn(front);
+			d = (colonyGarrison(market) + colonyMarineDefense(market, 1f)) * defenderOverExtendMult(front);
+			coverD = defenderCoverIfDugIn(front); // cover is by days, whatever the stance (2026-10-24)
 		}
-		float coverA = landingPushes ? 1f : coverIfDugIn(front);
+		float coverA = coverIfDugIn(front); // cover is by days, whatever the stance (2026-10-24)
 		return lineRateOf(a, coverA, d, coverD, defenderPressure(front, market), landingPushes, worldPushes);
 	}
 
 	/** The line's arithmetic on bare figures ({@link #lineRate(GroundFront, MarketAPI, boolean, boolean)}): the landing a in coverA, the world d in coverD pushing with pressure. */
 	public static float lineRateOf(float a, float coverA, float d, float coverD, float pressure,
 			boolean landingPushes, boolean worldPushes) {
-		float gainA = landingPushes ? Math.max(0f, a - d * coverD) : 0f;
-		float gainD = worldPushes ? Math.max(0f, pressure - a * coverA) : 0f;
+		float gainA = landingPushes ? Math.max(0f, a * coverA - d * coverD) : 0f;
+		float gainD = worldPushes ? Math.max(0f, pressure * coverD - a * coverA) : 0f;
 		float rate = (gainA - gainD) / Math.max(1f, a + d);
 		return Math.max(-1f, Math.min(1f, rate));
 	}
@@ -1148,9 +1160,9 @@ public class ThreatGroundFronts {
 		float change = lineChangeDays(front, rate);
 		String where = change < 0f ? "the line stands" : "next " + layerName(market)
 				+ (rate < 0f ? " back" : " lost") + " in ~" + (int) Math.ceil(change) + " days";
-		return "Marines push with " + Misc.getWithDGS(Math.round(defenderPressure(front, market)))
-				+ " against the swarm's " + Misc.getWithDGS(Math.round(effectiveStrength(front))) + ": " + word
-				+ ", " + where + ". No cover.";
+		return "Marines push with " + Misc.getWithDGS(Math.round(defenderPressure(front, market) * defenderCoverIfDugIn(front)))
+				+ " against the swarm's " + Misc.getWithDGS(Math.round(effectiveStrength(front) * coverMult(front))) + ": " + word
+				+ ", " + where + ".";
 	}
 
 	public static final String LINE_OVERRUNNING = "overrunning";
@@ -1197,17 +1209,31 @@ public class ThreatGroundFronts {
 	 * the swarm kept pushing - "no point pushing when they are stalled"): push
 	 * only while pushing moves the line forward; otherwise dig in for the cover,
 	 * unless dug in the line would move against the landing while pushing holds
-	 * it. A dry swarm front's final push is spent whatever the line says.
+	 * it. Since the same afternoon each stance is weighed against the OTHER side's
+	 * best reply, not its stance of the moment (the log at Sindria: the marines
+	 * and the swarm swapped stances every few seconds, each answering the
+	 * other's last move); a rate inside frontGrindBand is a standing line, and
+	 * a tie digs in - the cover is free and a push bleeds. A
+	 * hive world and the player's colonies have a fixed stance, so the swarm reads
+	 * that one. A dry swarm front's final push is spent whatever the line says.
 	 */
 	public static boolean doctrinePushes(GroundFront front, MarketAPI market) {
 		if (front == null || market == null) return false;
 		if (front.finalPush) return true;
-		boolean worldPushes = defendersPush(front, market);
-		float rPush = lineRate(front, market, true, worldPushes);
-		if (rPush > 0f && lineMoves(rPush)) return true;
-		float rDig = lineRate(front, market, false, worldPushes);
-		if (rDig > 0f || !lineMoves(rDig)) return false; // dug in the line stands: the cover is free
-		return rPush > rDig; // dug in it would lose ground: push if that holds it better
+		float pushV;
+		float digV;
+		if (isHiveTarget(market) || market.isPlayerOwned()) {
+			boolean worldPushes = defendersPush(front, market);
+			pushV = standing(lineRate(front, market, true, worldPushes));
+			digV = standing(lineRate(front, market, false, worldPushes));
+		} else {
+			// the defenders answer with whichever stance moves the line least our way
+			pushV = Math.min(standing(lineRate(front, market, true, true)),
+					standing(lineRate(front, market, true, false)));
+			digV = Math.min(standing(lineRate(front, market, false, true)),
+					standing(lineRate(front, market, false, false)));
+		}
+		return pushV > digV;
 	}
 
 	/** Whether a line rate moves the line at all: outside frontGrindBand either way; inside it the line stands (stalled / grinding). */
@@ -1247,18 +1273,42 @@ public class ThreatGroundFronts {
 	}
 
 	/**
-	 * The world's military structures' disruption as a share of the most a siege
-	 * inflicts ({@link #suppressCap}), averaged over the theatre's key and defence
-	 * structures; 0 with none. The fronts table's Disruption column (the user,
-	 * 2026-10-24): always the world the siege is on, whichever tab reads it.
+	 * The world's military structures: the theatre's key and defence lists less
+	 * the port and, on a hive, the Fabrication Core and Swarm Nexus - a colony's
+	 * Ground Defenses, Heavy Batteries, Patrol HQ / Military Base / High Command
+	 * and Lion's Guard; a hive's Bastion and Ground Defenses. What the Disruption
+	 * figure averages (the user, 2026-10-24: "shouldn't factor in Megaport, only
+	 * military buildings").
 	 */
-	public static float disruptionFraction(MarketAPI market) {
-		if (market == null) return 0f;
+	public static List<Industry> militaryStructures(MarketAPI market) {
+		List<Industry> all = new ArrayList<Industry>();
+		if (market == null) return all;
 		Theatre theatre = Theatre.of(market);
-		List<Industry> all = new ArrayList<Industry>(theatre.keyStructures(market));
+		all.addAll(theatre.keyStructures(market));
 		for (Industry ind : theatre.defenseStructures(market)) {
 			if (!all.contains(ind)) all.add(ind);
 		}
+		Industry port = ThreatColonyManager.getPort(market);
+		for (Iterator<Industry> it = all.iterator(); it.hasNext();) {
+			Industry ind = it.next();
+			if (ind == null || ind == port
+					|| ThreatColonyManager.FABRICATION_CORE.equals(ind.getId())
+					|| ThreatColonyManager.SWARM_NEXUS.equals(ind.getId())) {
+				it.remove();
+			}
+		}
+		return all;
+	}
+
+	/**
+	 * The world's military structures' disruption as a share of the most a siege
+	 * inflicts ({@link #suppressCap}), averaged over {@link #militaryStructures};
+	 * 0 with none. The fronts table's Disruption column (the user, 2026-10-24):
+	 * always the world the siege is on, whichever tab reads it.
+	 */
+	public static float disruptionFraction(MarketAPI market) {
+		if (market == null) return 0f;
+		List<Industry> all = militaryStructures(market);
 		float cap = suppressCap(market);
 		if (cap <= 0f) return 0f;
 		float sum = 0f;
@@ -1269,6 +1319,87 @@ public class ThreatGroundFronts {
 			n++;
 		}
 		return n == 0 ? 0f : sum / n;
+	}
+
+	/**
+	 * The line's rate (positive toward the landing) with one side's count
+	 * changed: the landing at {@code troops}, or the world at {@code armed}
+	 * marines (a colony) or troops (a hive) - everything else as it stands,
+	 * at the stances given. The arithmetic {@link #troopsFor} halves on.
+	 */
+	public static float lineRateWith(GroundFront front, MarketAPI market, boolean forLanding, float count,
+			boolean landingPushes, boolean worldPushes) {
+		if (front == null || market == null) return 0f;
+		float a = effectiveStrength(front);
+		if (forLanding) a = front.marines > 0f ? a * count / front.marines : 0f;
+		float coverA = coverIfDugIn(front); // cover is by days, whatever the stance (2026-10-24)
+		float d;
+		float coverD;
+		float pressure;
+		if (isHiveTarget(market)) {
+			float troops = forLanding ? hiveTroops(market) : count;
+			d = MarketCMD.getDefenderStr(market, true) + troops;
+			coverD = 1f;
+			pressure = d * hiveCounterAttackPace(market);
+		} else {
+			float over = defenderOverExtendMult(front);
+			float garrison = colonyGarrison(market);
+			float armed = forLanding ? ThreatReserves.armedMarines(market) : count;
+			float perMarine = Math.max(0f, ThreatIncConfig.reserveDefenseMult())
+					* (defendersDry(market) ? Math.max(0f, ThreatIncConfig.frontDryEffectivenessMult()) : 1f)
+					* ThreatMarineXP.effectMult(ThreatMarineXP.colonyLevel(market));
+			d = (garrison + perMarine * armed) * over;
+			coverD = defenderCoverIfDugIn(front); // cover is by days, whatever the stance (2026-10-24)
+			pressure = (garrison + perMarine * Math.max(0f, ThreatIncConfig.marineCounterAttackMult()) * armed) * over;
+		}
+		return lineRateOf(a, coverA, d, coverD, pressure, landingPushes, worldPushes);
+	}
+
+	/**
+	 * The fewest troops (the landing) or armed marines / hive troops (the
+	 * world) that side needs for the line to reach {@code target} its way -
+	 * the landing a rate at least target, the world one at most target - at the
+	 * stances given, by halving on {@link #lineRateWith}; -1 when no number
+	 * reaches it. The row tooltip's "Needs x to hold / push / overrun" (the
+	 * user, 2026-10-24).
+	 */
+	public static float troopsFor(GroundFront front, MarketAPI market, boolean forLanding, float target,
+			boolean landingPushes, boolean worldPushes) {
+		if (front == null || market == null) return -1f;
+		if (forLanding && front.marines <= 0f) return -1f;
+		float hi = 1f;
+		while (hi < 10000000f && !reaches(front, market, forLanding, hi, target, landingPushes, worldPushes)) hi *= 2f;
+		if (!reaches(front, market, forLanding, hi, target, landingPushes, worldPushes)) return -1f;
+		float lo = 0f;
+		for (int i = 0; i < 40; i++) {
+			float mid = (lo + hi) / 2f;
+			if (reaches(front, market, forLanding, mid, target, landingPushes, worldPushes)) hi = mid;
+			else lo = mid;
+		}
+		return (float) Math.ceil(hi);
+	}
+
+	private static boolean reaches(GroundFront front, MarketAPI market, boolean forLanding, float count, float target,
+			boolean landingPushes, boolean worldPushes) {
+		float r = lineRateWith(front, market, forLanding, count, landingPushes, worldPushes);
+		return forLanding ? r >= target : r <= target;
+	}
+
+	/**
+	 * The one word for how dug in a side is, by its entrenchment days over
+	 * frontEntrenchDays: spread thin (over-extended by pushing), no cover,
+	 * poor, some, good or full cover (the user, 2026-10-24: "cover is a better
+	 * phrase to use overall rather than entrenched or over extended").
+	 */
+	public static String coverWord(float entrenchDays) {
+		float days = Math.max(1f, ThreatIncConfig.frontEntrenchDays());
+		float frac = entrenchDays / days;
+		if (frac <= -0.01f) return "spread thin";
+		if (frac < 0.01f) return "no cover";
+		if (frac < 0.34f) return "poor cover";
+		if (frac < 0.67f) return "some cover";
+		if (frac < 0.99f) return "good cover";
+		return "full cover";
 	}
 
 	/** Effective strength a landing needs to gain ground here, pushing against the world as it stands: its defence in cover. */
@@ -1319,26 +1450,11 @@ public class ThreatGroundFronts {
 		return ratio;
 	}
 
-	/** Attrition multiplier while pushing: 1 at exponent 1; the weaker side bleeds proportionally more above it. */
-	public static float pushLossFactor(float defender, float eff) {
-		float e = ThreatIncConfig.groundStrengthExponent();
-		if (e == 1f) return 1f;
-		float ratio = Math.max(1f, defender) / Math.max(1f, eff);
-		if (ratio < 0.5f) ratio = 0.5f;
-		if (ratio > 3f) ratio = 3f;
-		return (float) Math.pow(ratio, e - 1f);
-	}
-
 	/** Estimated marines a push on the next stratum costs at current strength. */
 	public static int pushCasualtyEstimate(GroundFront front, MarketAPI market) {
 		float days = pushDaysEstimate(front, market);
 		if (days <= 0f) return 0;
-		float defender = defenderStrength(market);
-		return Math.round(front.marines
-				* ThreatIncConfig.frontPushLossPer30Days() / 30f * days
-				* pushLossFactor(defender, effectiveStrength(front))
-				* pushLossMult(front)
-				* ThreatMarineXP.frontLossMult(front)); // as the tick applies it
+		return Math.round(landingLossPerDay(front, market, true) * days); // as the tick applies it
 	}
 
 
@@ -1399,11 +1515,27 @@ public class ThreatGroundFronts {
 				.getElapsedDaysSince(front.deployedTimestamp));
 	}
 
-	/** How dug in the front is: 0 fresh, 1 at frontEntrenchDays of holding. */
+	/** How dug in the front is: 0 fresh (or over-extended), 1 at frontEntrenchDays of holding. */
 	public static float entrenchFraction(GroundFront front) {
 		if (front == null) return 0f;
 		float days = Math.max(1f, ThreatIncConfig.frontEntrenchDays());
 		return Math.max(0f, Math.min(1f, front.entrenchDays / days));
+	}
+
+	/**
+	 * How over-extended the front is: 0 at any entrenchment, 1 after frontEntrenchDays
+	 * of pushing past zero (the user, 2026-10-24: "pushing for too long should have the
+	 * opposite effect - spread thin to the same degree the longer the push goes").
+	 */
+	public static float overExtension(GroundFront front) {
+		if (front == null) return 0f;
+		float days = Math.max(1f, ThreatIncConfig.frontEntrenchDays());
+		return Math.max(0f, Math.min(1f, -front.entrenchDays / days));
+	}
+
+	/** What over-extension costs: strength / (1 + (frontEntrenchDefenseBonus - 1) x over-extension) - the dug-in bonus in reverse. */
+	public static float overExtendMult(float overExtension) {
+		return 1f / (1f + (Math.max(1f, ThreatIncConfig.frontEntrenchDefenseBonus()) - 1f) * Math.max(0f, Math.min(1f, overExtension)));
 	}
 
 	/**
@@ -1415,12 +1547,13 @@ public class ThreatGroundFronts {
 	public static float entrenchMult(GroundFront front) {
 		if (front == null) return 1f;
 		float landing = ThreatIncConfig.frontLandingMult();
-		return landing + (ThreatIncConfig.frontEntrenchMaxMult() - landing) * entrenchFraction(front);
+		return (landing + (ThreatIncConfig.frontEntrenchMaxMult() - landing) * entrenchFraction(front))
+				* overExtendMult(overExtension(front)); // and spread thin past zero (2026-10-24)
 	}
 
-	/** The cover multiplier against a counter-attack: 1 while pushing (exposed), frontEntrenchDefenseBonus once dug in. */
+	/** The cover multiplier on the landing: 1 + (frontEntrenchDefenseBonus - 1) x the days dug in, whatever its stance - digging in earns it, pushing spends it (the user, 2026-10-24: "pushing should reduce cover"; before, a pushing side was exposed at 1 outright). */
 	public static float coverMult(GroundFront front) {
-		if (front == null || STANCE_PUSH.equals(front.stance)) return 1f;
+		if (front == null) return 1f;
 		return 1f + (ThreatIncConfig.frontEntrenchDefenseBonus() - 1f) * entrenchFraction(front);
 	}
 
@@ -1447,16 +1580,34 @@ public class ThreatGroundFronts {
 				&& STANCE_ENTRENCH.equals(front.defence);
 	}
 
-	/** How dug in the defenders are: 0 fresh, 1 at frontEntrenchDays of holding fire. */
+	/** How dug in the defenders are: 0 fresh (or over-extended), 1 at frontEntrenchDays of holding fire. */
 	public static float defenderEntrenchFraction(GroundFront front) {
 		if (front == null) return 0f;
 		float days = Math.max(1f, ThreatIncConfig.frontEntrenchDays());
 		return Math.max(0f, Math.min(1f, front.defenderEntrenchDays / days));
 	}
 
-	/** The cover multiplier on the colony's defence figure: 1 while its defenders counter-attack (exposed), up to frontEntrenchDefenseBonus dug in. */
+	/** How over-extended the defenders are: 0 at any cover, 1 after frontEntrenchDays of pushing past zero ({@link #overExtension} for the colony's marines). */
+	public static float defenderOverExtension(GroundFront front) {
+		if (front == null) return 0f;
+		float days = Math.max(1f, ThreatIncConfig.frontEntrenchDays());
+		return Math.max(0f, Math.min(1f, -front.defenderEntrenchDays / days));
+	}
+
+	/** The colony's whole ground figure x this while its marines are over-extended ({@link #overExtendMult}); 1 at any cover. */
+	public static float defenderOverExtendMult(GroundFront front) {
+		return overExtendMult(defenderOverExtension(front));
+	}
+
+	/** Entrenchment days bounded to -frontEntrenchDays..+frontEntrenchDays. */
+	protected static float clampEntrench(float days) {
+		float cap = Math.max(1f, ThreatIncConfig.frontEntrenchDays());
+		return Math.max(-cap, Math.min(cap, days));
+	}
+
+	/** The cover multiplier on the colony's defence figure: 1 + (frontEntrenchDefenseBonus - 1) x the days its defenders have dug in, whatever their stance - pushing spends it day by day (the user, 2026-10-24). */
 	public static float defenderCoverMult(GroundFront front) {
-		if (front == null || !STANCE_ENTRENCH.equals(front.defence)) return 1f;
+		if (front == null) return 1f;
 		return 1f + (ThreatIncConfig.frontEntrenchDefenseBonus() - 1f) * defenderEntrenchFraction(front);
 	}
 
@@ -1472,16 +1623,26 @@ public class ThreatGroundFronts {
 	 * one counter-attack would win): push while pushing moves the line toward them
 	 * (past frontGrindBand), otherwise dig in for the cover, unless dug in the line
 	 * would move against them while pushing holds it. The mirror of
-	 * {@link #doctrinePushes}; the player's colonies keep their orders.
+	 * {@link #doctrinePushes}, weighed the same way against the swarm's best reply
+	 * (a player landing's stance is the player's, so that one is read as it is);
+	 * the player's colonies keep their orders.
 	 */
 	public static boolean doctrineDefendersPush(GroundFront front, MarketAPI market) {
 		if (front == null || market == null || isHiveTarget(market)) return true;
-		boolean landingPushes = STANCE_PUSH.equals(front.stance);
-		float rPush = lineRate(front, market, landingPushes, true);
-		if (rPush < 0f && lineMoves(rPush)) return true;
-		float rDig = lineRate(front, market, landingPushes, false);
-		if (rDig < 0f || !lineMoves(rDig)) return false; // dug in the line stands: the cover is free
-		return rPush < rDig; // dug in they would lose ground: push if that holds it better
+		float pushV;
+		float digV;
+		if (front.isPlayerOwned()) {
+			boolean landingPushes = STANCE_PUSH.equals(front.stance);
+			pushV = standing(lineRate(front, market, landingPushes, true));
+			digV = standing(lineRate(front, market, landingPushes, false));
+		} else {
+			// the swarm answers with whichever stance moves the line most its way
+			pushV = Math.max(standing(lineRate(front, market, true, true)),
+					standing(lineRate(front, market, false, true)));
+			digV = Math.max(standing(lineRate(front, market, true, false)),
+					standing(lineRate(front, market, false, false)));
+		}
+		return pushV < digV;
 	}
 
 	/** "push" / "dug in" - the marines' stance against a Threat landing, as the board names it (push = they move the line, dug in = they hold it from cover). */
@@ -1565,30 +1726,72 @@ public class ThreatGroundFronts {
 				ThreatIncConfig.log("Marines of " + market.getName() + " dig in");
 			}
 		}
-		// cover is dug while holding fire; going over the top leaves it as it is
-		if (STANCE_ENTRENCH.equals(front.defence)) front.defenderEntrenchDays += elapsedDays;
+		// cover is dug while holding fire and spent going over the top - past zero the
+		// marines are over-extended, to the same degree (the user, 2026-10-24)
+		front.defenderEntrenchDays = clampEntrench(front.defenderEntrenchDays
+				+ (STANCE_ENTRENCH.equals(front.defence) ? elapsedDays : -elapsedDays));
 	}
 
 	/**
-	 * Marines the front loses per 30 days at the given stance and its current
-	 * supply - the tick's own rate, so the table's Losses column and the
-	 * Push / Dig in prompts quote what will actually happen.
+	 * THE ATTRITION RULE (the user, 2026-10-24, replacing the per-30-day rates
+	 * by stance, the dry / assault / outmatched multipliers, the defenders'
+	 * pressure cap and the engaged cap): a side loses, a day,
+	 * <pre>
+	 * troops / attritionTroopsPer x (enemy force / own force) x 1 / own cover x veteran
+	 * </pre>
+	 * Forces are the Force column's figures (cover in); cover is the one
+	 * factor the row shows (entrench x cover for a landing, cover x
+	 * over-extension for a world). 500 v 500 both at full cover: 500 / 100 x 1
+	 * x 1/1.5 = 3.3 a day each. 0 with no enemy force.
+	 */
+	public static float attritionPerDay(float troops, float enemyForce, float ownForce, float ownCover, float veteran) {
+		if (troops <= 0f || enemyForce <= 0f || ownForce <= 0f) return 0f;
+		float per = Math.max(1f, ThreatIncConfig.attritionTroopsPer());
+		return troops / per * (enemyForce / ownForce) / Math.max(0.01f, ownCover) * Math.max(0f, veteran);
+	}
+
+	/**
+	 * Whether a front has been ground down: no troops left, or fewer than frontCollapseTroops
+	 * (default 0 - a landing fights to the last troop; the user, Sindria 2026-10-24, after a
+	 * dug-in swarm of ~57 lost its cover with a district and the old 50 floor ended the war the
+	 * next day). frontMinMarines stays what it was elsewhere: the size under which a landing
+	 * is not attempted or a raid not crewed.
+	 */
+	public static boolean groundDown(GroundFront front) {
+		if (front == null) return true;
+		return front.marines <= 0f || front.marines < ThreatIncConfig.frontCollapseTroops();
+	}
+
+	/** The landing's ground losses a day at the given stance ({@link #attritionPerDay}); the tick's own figure. */
+	public static float landingLossPerDay(GroundFront front, MarketAPI market, boolean pushing) {
+		if (front == null || market == null) return 0f;
+		float coverA = coverIfDugIn(front); // cover is by days, whatever the stance (2026-10-24)
+		return attritionPerDay(front.marines, defenderStrength(market), effectiveStrength(front) * coverA,
+				entrenchMult(front) * coverA, ThreatMarineXP.frontLossMult(front));
+	}
+
+	/**
+	 * The world's losses a day on {@code troops} of its own (a colony's armed
+	 * marines, a hive's landed troops) against the front as it stands
+	 * ({@link #attritionPerDay}); the tick's own figure.
+	 */
+	public static float worldLossPerDay(MarketAPI market, GroundFront front, float troops) {
+		if (front == null || market == null) return 0f;
+		boolean hive = isHiveTarget(market);
+		float cover = hive ? 1f : defenderCoverMult(front) * defenderOverExtendMult(front);
+		float veteran = hive ? 1f : ThreatMarineXP.lossMult(ThreatMarineXP.colonyLevel(market));
+		return attritionPerDay(troops, effectiveStrength(front) * coverMult(front), defenderStrength(market), cover, veteran);
+	}
+
+	/**
+	 * Marines the front loses per 30 days at the given stance - the tick's own
+	 * rate ({@link #landingLossPerDay} x 30), so the table's Losses column and
+	 * the Push / Dig in prompts quote what will actually happen - plus what
+	 * orbit is doing to it (2026-09-08).
 	 */
 	public static float attritionPer30Days(GroundFront front, MarketAPI market, boolean pushing) {
 		if (front == null) return 0f;
-		float rate = pushing ? ThreatIncConfig.frontPushLossPer30Days()
-				: ThreatIncConfig.frontMarineLossPer30Days();
-		if (isDry(front)) rate *= ThreatIncConfig.frontUnsuppliedLossMult();
-		if (pushing) {
-			rate *= pushLossFactor(defenderStrength(market), effectiveStrength(front));
-			rate *= pushLossMult(front);
-		}
-		rate *= ThreatMarineXP.frontLossMult(front); // veterans take fewer casualties
-		// plus what orbit is doing to it (2026-09-08). The tick applies the
-		// bombardment separately from this rate, so a readout that stopped at
-		// the ground rate understated what a front under an unopposed swarm
-		// actually bleeds - and the Losses column is the at-a-glance number.
-		return front.marines * rate + swarmBombardPer30Days(front, market) + reliefBombardPer30Days(front, market);
+		return landingLossPerDay(front, market, pushing) * 30f + swarmBombardPer30Days(front, market) + reliefBombardPer30Days(front, market);
 	}
 
 	/**
@@ -1900,7 +2103,7 @@ public class ThreatGroundFronts {
 			if (market == null || ThreatMapFog.hidden(market) || ThreatMapFog.conditionOnly(market)) continue;
 			if (!Theatre.of(market).carriesSiegeState()) continue;
 			boolean has = market.hasIndustry(ThreatSiegeMalus.ID);
-			if (!has && !(besieged(market) && ThreatSiegeMalus.anyDisrupted(market))) continue;
+			if (!has && !ThreatSiegeMalus.anyDisrupted(market)) continue; // siege or no siege (2026-10-24)
 			if (syncSiegeState(market) || has) market.reapplyIndustries();
 		}
 	}
@@ -1940,21 +2143,8 @@ public class ThreatGroundFronts {
 		// no notice: a siege announces its landing and its end, nothing between (user, 2026-09-27)
 		}
 
-		// attrition: flat fraction per 30 days; pushing bleeds harder, and a
-		// dry front harder still
-		float lossRate = (pushing ? ThreatIncConfig.frontPushLossPer30Days()
-				: ThreatIncConfig.frontMarineLossPer30Days()) / 30f;
-		if (!supplied) lossRate *= ThreatIncConfig.frontUnsuppliedLossMult();
-		if (pushing) {
-			// exponent > 1: an outmatched assault bleeds more than a flat rate
-			lossRate *= pushLossFactor(defenderStrength(market),
-					effectiveStrength(front));
-			// the swarm pays on the assault for the two things it no longer
-			// pays for: starving, and being unable to replace its dead
-			lossRate *= pushLossMult(front);
-		}
-		lossRate *= ThreatMarineXP.frontLossMult(front); // veterans take fewer casualties
-		ThreatMarineXP.frontLose(front, front.marines * lossRate * elapsedDays);
+		// attrition: THE ATTRITION RULE (attritionPerDay) - the odds, the cover, the men
+		ThreatMarineXP.frontLose(front, landingLossPerDay(front, market, pushing) * elapsedDays);
 		// The defenders bleed too (2026-09-08). Before this the garrison was a
 		// fixed wall a front below the hold threshold could never reach by
 		// fighting; now a siege standing on the surface costs the colony its
@@ -1968,7 +2158,7 @@ public class ThreatGroundFronts {
 		burnDefenderArms(market, front, elapsedDays); // and burn armaments as a front does (2026-10-17)
 		tickDefenderStance(front, market, elapsedDays); // and choose: counter-attack or dig in (2026-10-17)
 		bleedHiveTroops(market, front, elapsedDays); // a hive's landed troops too (2026-10-13)
-		if (front.marines < ThreatIncConfig.frontMinMarines()) {
+		if (groundDown(front)) {
 			if (threatFront) {
 				ThreatNotice.titled("Threat Landing Destroyed").good()
 						.line("The Threat landing on %s has been ground down to nothing.",
@@ -1985,8 +2175,10 @@ public class ThreatGroundFronts {
 		}
 
 	front.daysAlive += elapsedDays;
-	// cover is dug while holding; an assault leaves it behind (2026-09-06)
-	if (!pushing) front.entrenchDays += elapsedDays;
+	// cover is dug while holding, and spent while pushing - past zero the push is
+	// over-extended, to the same degree (the user, 2026-10-24); both ways bounded by
+	// frontEntrenchDays
+	front.entrenchDays = clampEntrench(front.entrenchDays + (pushing ? -elapsedDays : elapsedDays));
 
 		// THE LINE (2026-10-23): the rate both sides move it at, and the
 		// suppression key read off it - the landing wears the world's structures
@@ -2153,10 +2345,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	if (!isHiveTarget(market)) ThreatMarineXP.colonyEarn(market, pressure, defenseStrength(front));
 	front.pushProgress = 0f;
 	front.strataHeld++;
-	// the assault leaves the cover behind (2026-09-06)
-	front.entrenchDays *= Math.max(0f, Math.min(1f, ThreatIncConfig.frontEntrenchKeptFraction()));
-	// and takes the defenders' with it (user, 2026-10-17: "lost if they lose a strata")
-	front.defenderEntrenchDays *= Math.max(0f, Math.min(1f, ThreatIncConfig.defenderEntrenchKeptFraction()));
+	// a district changing hands resets both sides to 0, dug in or over-extended (the
+	// user, 2026-10-24: "full wiped if the side loses a strata/district", then "same
+	// thing if a district is taken - dug in or overextension all reset to 0")
+	front.entrenchDays = 0f;
+	front.defenderEntrenchDays = 0f;
 	int total = market.getSize();
 		ThreatAlarm.add(ownerOf(front), ThreatIncConfig.alarmPerStratum(),
 				"stratum taken at " + market.getName());
@@ -2169,6 +2362,44 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		reapply(front.marketId); // strata strip base defense and fabrication
 		ThreatIncConfig.log("Front took stratum " + front.strataHeld + "/" + total
 				+ " at " + market.getName());
+		announceLayer(front, market, true);
+	}
+
+	/**
+	 * A layer has changed hands (the user, 2026-10-24: "a notification when threat or human
+	 * faction take a district/strata"): the swarm's deed under the Threat's crest and colour,
+	 * ours under the faction's; the second line is the count held.
+	 */
+	protected static void announceLayer(GroundFront front, MarketAPI market, boolean taken) {
+		boolean threatFront = isThreatOwned(front);
+		boolean hive = isHiveTarget(market);
+		String layer = layerName(market);
+		String Layer = Character.toUpperCase(layer.charAt(0)) + layer.substring(1);
+		String layers = hive ? "strata" : "districts";
+		String held = "" + front.strataHeld, total = "" + market.getSize();
+		ThreatNotice n = ThreatNotice.titled(Layer + (taken ? " Taken" : " Retaken"));
+		if (taken) {
+			if (threatFront) {
+				n.bad().line("The Threat landing on %s has taken a " + layer + ".", ThreatNotice.market(market));
+			} else if (front.isPlayerOwned()) {
+				n.good().icon(ownerFaction(front)).line("Your front on %s has taken a " + layer + ".", ThreatNotice.market(market));
+			} else {
+				n.good().icon(ownerFaction(front)).line("%s's front on %s has taken a " + layer + ".",
+						ThreatNotice.faction(ownerFaction(front)), ThreatNotice.market(market));
+			}
+		} else if (hive) {
+			n.bad().line("The hive's troops on %s have retaken a " + layer + ".", ThreatNotice.market(market));
+		} else {
+			n.good().icon(market.getFaction()).line("The garrison of %s has retaken a " + layer + ".", ThreatNotice.market(market));
+		}
+		if (threatFront) {
+			n.line("The swarm holds %s of %s " + layers + ".", held, total);
+		} else if (front.isPlayerOwned()) {
+			n.line("Your front holds %s of %s " + layers + ".", held, total);
+		} else {
+			n.line("%s's front holds %s of %s " + layers + ".", ThreatNotice.faction(ownerFaction(front)), held, total);
+		}
+		n.send();
 	}
 
 	/**
@@ -2185,15 +2416,16 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		ThreatMarineXP.frontEarn(front, defense, pressure);
 		if (theatre == COLONY) ThreatMarineXP.colonyEarn(market, pressure, defense);
 		front.pushProgress = 0f;
-		front.entrenchDays *= Math.max(0f, Math.min(1f, ThreatIncConfig.frontEntrenchKeptFraction()));
+		front.entrenchDays = 0f; // a district changing hands resets both sides (2026-10-24)
+		front.defenderEntrenchDays = 0f;
 		if (front.strataHeld > 0) {
 			front.strataHeld--;
-			front.defenderEntrenchDays *= Math.max(0f, Math.min(1f, ThreatIncConfig.defenderEntrenchKeptFraction()));
 			// a final push does not stop for a setback - it is spent either way
 			front.stance = front.finalPush ? STANCE_PUSH : STANCE_ENTRENCH;
 			reapply(front.marketId);
 			ThreatIncConfig.log("The line at " + market.getName() + ": the defenders retake a " + layerName(market)
 					+ " (" + (int) pressure + " against " + (int) defense + "), " + front.strataHeld + " held");
+			announceLayer(front, market, false);
 			return;
 		}
 		FactionAPI attacker = theatre == HIVE ? null : market.getFaction();
@@ -2464,7 +2696,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 					+ Math.round(fuelPer * armedFP) + " a day" + (holds ? ", " + (int) aboard + " aboard" : ""));
 		}
 		market.getMemoryWithoutUpdate().set(SWARM_VISUAL_KEY, banked, 10f);
-		if (front.marines < ThreatIncConfig.frontMinMarines()) {
+		if (groundDown(front)) {
 			ThreatNotice n = ThreatNotice.titled("Front Destroyed"); // the swarm's doing: its crest and colour
 			if (front.isPlayerOwned()) {
 				n.line("Your front on %s has been bombarded to nothing from orbit.",
@@ -2555,6 +2787,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** Whether any Threat fleet is over the world: a relief fights it before it bombards anything. */
 	protected static boolean threatOverWorld(MarketAPI market) {
 		return pointsNear(market, Factions.THREAT, true) > 0f;
+	}
+
+	/** Whether any live Threat fleet is anywhere in the world's system: a quiet system sends relief home (ThreatFleetOrders.reliefQuiet). */
+	protected static boolean threatInSystem(MarketAPI market) {
+		SectorEntityToken world = market != null ? market.getPrimaryEntity() : null;
+		if (world == null || world.getContainingLocation() == null) return false;
+		for (CampaignFleetAPI fleet : world.getContainingLocation().getFleets()) {
+			if (fleet == null || !fleet.isAlive() || fleet.isExpired() || fleet.getFaction() == null) continue;
+			if (fleet.getFleetPoints() <= 0f || !Factions.THREAT.equals(fleet.getFaction().getId())) continue;
+			return true;
+		}
+		return false;
 	}
 
 	/**
@@ -2648,7 +2892,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 					+ " FP bombard the Threat army - " + perDay(per30) + " troops a day for "
 					+ (int) (fuel / elapsedDays) + " fuel a day, " + (int) front.marines + " left");
 		}
-		if (front.marines < ThreatIncConfig.frontMinMarines()) {
+		if (groundDown(front)) {
 			ThreatNotice.titled("Threat Landing Destroyed").good()
 					.line("The Threat landing on %s has been bombarded to nothing from orbit.",
 							ThreatNotice.market(market))
@@ -2776,37 +3020,19 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
-	 * Marines the colony loses per 30 days to a siege standing on its surface,
-	 * at the front's current pressure. The rate is
-	 * {@code defenderLossPer30Days} at full pressure - a front strong enough to
-	 * hold - and scales down with what the front can actually bring to bear, so
-	 * a beachhead that is barely surviving kills nobody.
+	 * Marines the colony loses per 30 days to a siege standing on its surface:
+	 * {@link #worldLossPerDay} on its armed marines x 30 (THE ATTRITION RULE,
+	 * 2026-10-24; before it a pressure-capped rate on the engaged frontage).
 	 *
 	 * <p>Hives are not here: their strength is structural and erodes by losing
-	 * strata instead ({@link Theatre#HIVE}).
+	 * strata instead ({@link Theatre#HIVE}); their landed troops bleed by the
+	 * same rule in {@link #bleedHiveTroops}.
 	 */
 	public static float defenderLossPer30Days(MarketAPI market, GroundFront front) {
 		if (market == null || front == null || isHiveTarget(market)) return 0f;
 		float armed = ThreatReserves.armedMarines(market);
 		if (armed <= 0f) return 0f;
-		float need = holdRequirement(market);
-		float pressure = need <= 0f ? 1f : Math.min(1f, effectiveStrength(front) / need);
-		if (pressure <= 0f) return 0f;
-		float rate = ThreatIncConfig.defenderLossPer30Days() * pressure;
-		rate *= ThreatMarineXP.lossMult(ThreatMarineXP.colonyLevel(market));
-		return engaged(armed, front) * rate;
-	}
-
-	/**
-	 * The defenders a front actually fights: the garrison, but no more than the
-	 * beachhead's own headcount - the frontage is the smaller force. Losses on
-	 * the whole garrison let a 1,000-marine beachhead bleed a 5,000-marine world
-	 * 1,000 a month and 15% per counter-attack more; the Hegemony lost ~39k
-	 * marines to fronts that lost ~2k (2026-09-29, ti-h8h), and five worlds
-	 * fell once relief convoys had fed the grinder dry.
-	 */
-	protected static float engaged(float armed, GroundFront front) {
-		return front.marines > 0f ? Math.min(armed, front.marines) : armed;
+		return worldLossPerDay(market, front, armed) * 30f;
 	}
 
 
@@ -2830,8 +3056,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * What a holding front suppresses on a human colony, derived the way the
 	 * rest of the mod derives it: every industry vanilla itself tags
 	 * TAG_TACTICAL_BOMBARDMENT (Ground Defenses, Heavy Batteries, Patrol HQ,
-	 * Military Base, High Command, Lion's Guard), plus the port - the same set
-	 * an expedition softens from orbit, now ground down from the surface.
+	 * Military Base, High Command, Lion's Guard) - the same set an expedition
+	 * softens from orbit, now ground down from the surface. Never the port (the
+	 * user, 2026-10-24: "megaport is disrupted by sieging ... it should not be";
+	 * only a blockade touches a colony's accessibility).
 	 */
 	public static List<Industry> colonyKeyStructures(MarketAPI market) {
 		List<Industry> list = new ArrayList<Industry>();
@@ -2845,8 +3073,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			}
 			list.add(ind);
 		}
-		Industry port = ThreatColonyManager.getPort(market);
-		if (port != null && !list.contains(port)) list.add(port);
 		return list;
 	}
 
@@ -2865,7 +3091,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/** The most disruption a siege inflicts on a structure: the theatre's own clock, a fifth past worn-out. */
-	protected static float suppressCap(MarketAPI market) {
+	public static float suppressCap(MarketAPI market) {
 		return (market != null ? Theatre.of(market).wearDays()
 				: Math.max(1f, ThreatIncConfig.defenseWearDays())) * 1.2f;
 	}
@@ -3446,6 +3672,17 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/** As above, stopping before the fleet falls below {@code floorFP}: the abort line of an expedition that set out bigger than the fleet it has now. */
 	public static float[] razePlan(MarketAPI market, float fp, float fuel, float floorFP) {
+		return razePlan(market, fp, fuel, floorFP, 0f);
+	}
+
+	/**
+	 * As above over a hive, finished once the least-worn structure saturation
+	 * falls on is down {@code downGoal} days (0: the commander's stop) - the
+	 * Bombard order's tier (the user, 2026-10-24: "min med max for aggressive
+	 * actions should be sized for outcomes ... min is like 30 day disruption,
+	 * med is 90", Max the stop). A goal already met is finished on day 0.
+	 */
+	public static float[] razePlan(MarketAPI market, float fp, float fuel, float floorFP, float downGoal) {
 		float start = Math.max(0f, fp);
 		if (market == null) return new float[] { 0f, 0f, start, 0f, 0f };
 		boolean bar = ThreatRazing.razes(market);
@@ -3490,9 +3727,14 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		float spent = 0f;
 		float reached = 0f;
 		boolean stopped = false;
+		boolean goalMet = false;
 		float d = d0;
 		int day = 0;
 		while (day < budget && (!bar || reached < need - 0.5f) && left >= 1f) {
+			if (!bar && downGoal > 0f && wear * (1f - top) >= downGoal - 0.5f) {
+				goalMet = true;
+				break;
+			}
 			float fire = firePer * d * gunShare(cond, bonus, gun);
 			if (fleet - fire < floor) break;
 			float through = shield ? 1f - absorbMax * s : 1f;
@@ -3520,8 +3762,27 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			d = fig.defence(cond, unrestMax, true);
 		}
 		// a hive's stop on the first day is a fleet too light to wear anything, not a saturation done
-		boolean finished = bar ? reached >= need - 0.5f : stopped && day > 0;
+		boolean finished = bar ? reached >= need - 0.5f : goalMet || (stopped && day > 0);
 		return new float[] { day, spent, fleet, finished ? 1f : 0f, wear * (1f - top) };
+	}
+
+	/** Days the least-worn structure saturation falls on is down for now ({@link #razePlan}'s figure, wear x (1 - condition)); 0 with nothing to fall on. */
+	public static float leastDown(MarketAPI market) {
+		if (market == null) return 0f;
+		Theatre theatre = Theatre.of(market);
+		float top = 0f;
+		boolean any = false;
+		for (Industry ind : saturationTargets(market)) {
+			top = Math.max(top, theatre.condition(market, ind));
+			any = true;
+		}
+		return any ? theatre.wearDays() * (1f - top) : 0f;
+	}
+
+	/** Whether saturation by fp is done over a hive at a days-down goal (0: {@link #saturationSpent}, the commander's stop): the least-worn structure is down {@code downGoal} days, or the stop. */
+	public static boolean saturationDone(MarketAPI market, float fp, float downGoal) {
+		if (market != null && downGoal > 0f && leastDown(market) >= downGoal - 0.5f) return true;
+		return saturationSpent(market, fp);
 	}
 
 	/** Each rung of a squadron ladder is this many times the one below it ({@link #squadronLadder}). */
@@ -3553,11 +3814,17 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * squadron's fleet points.
 	 */
 	public static float[] squadronPlan(MarketAPI market, float fp, float fuel, float floorFP, String factionId) {
+		return squadronPlan(market, fp, fuel, floorFP, factionId, 0f);
+	}
+
+	/** As above at a days-down goal ({@link #razePlan}'s {@code downGoal}; 0: the commander's stop): the ladder's rungs reach the goal, and the cheapest day of disruption is priced to it. */
+	public static float[] squadronPlan(MarketAPI market, float fp, float fuel, float floorFP, String factionId,
+			float downGoal) {
 		float flotilla = Math.max(0f, fp);
 		if (market == null || flotilla <= 0f || ThreatRazing.razes(market)) {
-			return withSquadron(razePlan(market, flotilla, fuel, floorFP), flotilla);
+			return withSquadron(razePlan(market, flotilla, fuel, floorFP, downGoal), flotilla);
 		}
-		List<float[]> ladder = squadronLadder(market, flotilla);
+		List<float[]> ladder = squadronLadder(market, flotilla, downGoal);
 		float fuelPrice = IncursionManager.basePrice(Commodities.FUEL);
 		float suppliesPrice = IncursionManager.basePrice(Commodities.SUPPLIES);
 		float[] best = null;
@@ -3580,10 +3847,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			float squadron = Math.min(flotilla, best[0]);
 			return new float[] { best[1], best[2], flotilla - (squadron - best[3]), 1f, best[5], squadron };
 		}
-		if (least == null) return withSquadron(razePlan(market, flotilla, fuel, floorFP), flotilla);
+		if (least == null) return withSquadron(razePlan(market, flotilla, fuel, floorFP, downGoal), flotilla);
 		float squadron = Math.min(flotilla, least[0]);
 		float[] plan = razePlan(market, squadron, fuel,
-				Math.max(squadron * GROUP_ABORT_FRACTION, floorFP - (flotilla - squadron)));
+				Math.max(squadron * GROUP_ABORT_FRACTION, floorFP - (flotilla - squadron)), downGoal);
 		return new float[] { plan[0], plan[1], flotilla - (squadron - plan[2]), plan[3], plan[4], squadron };
 	}
 
@@ -3591,7 +3858,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return new float[] { plan[0], plan[1], plan[2], plan[3], plan[4], squadron };
 	}
 
-	/** Hive market id -> its squadron ladder for the clock instant in squadronStamp; not saved. */
+	/** Hive market id and days-down goal -> its squadron ladder for the clock instant in squadronStamp; not saved. */
 	private static final Map<String, List<float[]>> SQUADRON_LADDERS = new LinkedHashMap<String, List<float[]>>();
 	private static long squadronStamp = Long.MIN_VALUE;
 
@@ -3604,30 +3871,31 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * squadron reaches the stop. Memoised per clock instant, so a sizing's
 	 * search climbs it once.
 	 */
-	private static List<float[]> squadronLadder(MarketAPI market, float upTo) {
+	private static List<float[]> squadronLadder(MarketAPI market, float upTo, float downGoal) {
 		long now = Global.getSector().getClock().getTimestamp();
 		if (now != squadronStamp) {
 			SQUADRON_LADDERS.clear();
 			squadronStamp = now;
 		}
-		List<float[]> ladder = SQUADRON_LADDERS.get(market.getId());
+		String key = market.getId() + "@" + (int) downGoal;
+		List<float[]> ladder = SQUADRON_LADDERS.get(key);
 		if (ladder == null) {
 			ladder = new ArrayList<float[]>();
-			SQUADRON_LADDERS.put(market.getId(), ladder);
-			float least = leastSquadron(market);
-			if (least > 0f) ladder.add(squadronRung(market, least));
+			SQUADRON_LADDERS.put(key, ladder);
+			float least = leastSquadron(market, downGoal);
+			if (least > 0f) ladder.add(squadronRung(market, least, downGoal));
 		}
 		// the guard only stops a runaway climb: 64 rungs is 10^11 times the least
 		for (int i = 0; !ladder.isEmpty() && i < 64; i++) {
 			float top = ladder.get(ladder.size() - 1)[0];
 			if (top >= upTo) break;
-			ladder.add(squadronRung(market, top * SQUADRON_STEP));
+			ladder.add(squadronRung(market, top * SQUADRON_STEP, downGoal));
 		}
 		return ladder;
 	}
 
-	private static float[] squadronRung(MarketAPI market, float fp) {
-		float[] plan = razePlan(market, fp, Float.MAX_VALUE);
+	private static float[] squadronRung(MarketAPI market, float fp, float downGoal) {
+		float[] plan = razePlan(market, fp, Float.MAX_VALUE, Math.max(0f, fp) * GROUP_ABORT_FRACTION, downGoal);
 		return new float[] { fp, plan[0], plan[1], plan[2], plan[3], plan[4] };
 	}
 
@@ -3638,20 +3906,20 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * the guns sink it first. Bisected from a squadron as heavy as the
 	 * defence, doubled until one gets there; 0 when none does.
 	 */
-	private static float leastSquadron(MarketAPI market) {
+	private static float leastSquadron(MarketAPI market, float downGoal) {
 		float hi = Math.max(1f, MarketCMD.getDefenderStr(market, true)
 				/ Math.max(0.01f, ThreatIncConfig.siegeFPWeight()));
 		float lo = 0f;
-		boolean reaches = reachesStop(market, hi);
+		boolean reaches = reachesStop(market, hi, downGoal);
 		for (int i = 0; !reaches && i < 24; i++) {
 			lo = hi;
 			hi *= 2f;
-			reaches = reachesStop(market, hi);
+			reaches = reachesStop(market, hi, downGoal);
 		}
 		if (!reaches) return 0f;
 		for (int i = 0; i < 40 && hi - lo > Math.max(1f, hi * 0.01f); i++) {
 			float mid = (lo + hi) / 2f;
-			if (reachesStop(market, mid)) {
+			if (reachesStop(market, mid, downGoal)) {
 				hi = mid;
 			} else {
 				lo = mid;
@@ -3660,8 +3928,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return hi;
 	}
 
-	private static boolean reachesStop(MarketAPI market, float fp) {
-		return razePlan(market, fp, Float.MAX_VALUE)[3] >= 1f;
+	/** Whether fp alone reaches the stop, or the days-down goal (0: the stop), above its own abort line within siegeOrbitDays. */
+	private static boolean reachesStop(MarketAPI market, float fp, float downGoal) {
+		return razePlan(market, fp, Float.MAX_VALUE, Math.max(0f, fp) * GROUP_ABORT_FRACTION, downGoal)[3] >= 1f;
 	}
 
 	/**
@@ -4255,18 +4524,15 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
-	 * The hive's landed troops bleed as a colony's marines do: defenderLossPer30Days of the engaged
-	 * frontage at the front's pressure (bleedDefenders' rule, which leaves hives out because their
-	 * strength is structural - these troops are not). Returns the troops lost.
+	 * The hive's landed troops bleed as a colony's marines do: {@link #worldLossPerDay} on them
+	 * (bleedDefenders' rule, which leaves hives out because their strength is structural - these
+	 * troops are not). Returns the troops lost.
 	 */
 	protected static float bleedHiveTroops(MarketAPI market, GroundFront front, float elapsedDays) {
 		if (market == null || front == null || elapsedDays <= 0f || !isHiveTarget(market)) return 0f;
 		float troops = hiveTroops(market);
 		if (troops <= 0f) return 0f;
-		float need = holdRequirement(market);
-		float pressure = need <= 0f ? 1f : Math.min(1f, effectiveStrength(front) / need);
-		if (pressure <= 0f) return 0f;
-		float loss = Math.min(troops, engaged(troops, front) * ThreatIncConfig.defenderLossPer30Days() * pressure / 30f * elapsedDays);
+		float loss = Math.min(troops, worldLossPerDay(market, front, troops) * elapsedDays);
 		setHiveTroops(market, troops - loss);
 		return loss;
 	}
@@ -5346,6 +5612,25 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * last district fell in 9 days).
 	 */
 	public static float reliefNeed(MarketAPI market, float rate) {
+		if (market == null) return 0f;
+		float want = deployWant(market, rate);
+		return want <= 0f ? 0f : Math.max(0f, want - ThreatReserves.stock(market.getId(), Commodities.MARINES));
+	}
+
+	/**
+	 * Marines a colony under a Threat army wants deployed in all for the line to move its way at
+	 * frontPushBackRate ({@link #deployWant(MarketAPI, float)}) - the ground victory's price. What the
+	 * colony keeps of its marines while the army stands (ThreatReserves.frontKeep); the rest may stage
+	 * for a siege (the user, 2026-10-24: "They can stage an expedition while under siege assuming they
+	 * have enough marines to retake the world. Otherwise they should probably deploy enough marines first
+	 * to ensure ground victory. Rest can still continue to be staged"). 0 with no Threat front.
+	 */
+	public static float deployWant(MarketAPI market) {
+		return deployWant(market, Math.max(0f, ThreatIncConfig.frontPushBackRate()));
+	}
+
+	/** The marines {@link #reliefNeed(MarketAPI, float)} sizes its ask to, in all: stock on the world and the ask together. */
+	public static float deployWant(MarketAPI market, float rate) {
 		if (market == null || isHiveTarget(market)) return 0f;
 		GroundFront front = getFront(market.getId());
 		if (!isThreatOwned(front)) return 0f;
@@ -5362,11 +5647,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// 30 days and the ask had grown) - a met ask stays met; a pushing swarm is exposed, so the
 		// ask over-reads it until it digs in, which it does the moment the line turns
 		float coverA = Math.max(1f, ThreatIncConfig.frontEntrenchDefenseBonus());
-		float coverD = worldPushes ? 1f : defenderCoverIfDugIn(front);
+		float coverD = defenderCoverIfDugIn(front); // cover is by days, whatever the stance (2026-10-24)
 		float garrison = colonyGarrison(market);
 		float counter = Math.max(0f, ThreatIncConfig.marineCounterAttackMult());
-		float staff = hasMilitaryCommand(market)
-				? Math.max(0.1f, ThreatIncConfig.colonyCounterAttackMilitaryMult()) : 1f;
+		float staff = 1f; // the push is the force figure (2026-10-24)
 		float hi = 1f;
 		while (hi < 10000000f && reliefRate(a, coverA, coverD, garrison, perMarine, counter, staff, hi,
 				landingPushes, worldPushes) > target) hi *= 2f;
@@ -5386,7 +5670,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				hi = mid;
 			}
 		}
-		return Math.max(0f, hi - ThreatReserves.stock(market.getId(), Commodities.MARINES));
+		return hi;
 	}
 
 	/** The line's rate with {@code armed} marines banked on the world ({@link #reliefNeed(MarketAPI, float)}). */
@@ -5430,13 +5714,18 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * headcount - less what it holds. 0 with no Threat front, on a hive, or with the burn off.
 	 */
 	public static float defenderArmsNeed(MarketAPI market) {
+		return Math.max(0f, defenderArmsWant(market) - ThreatReserves.stock(market.getId(), Commodities.HAND_WEAPONS));
+	}
+
+	/** The heavy armaments an own colony under a Threat army wants banked: frontResupplyDays of its defenders' burn once relief stands with them (the figure {@link #defenderArmsNeed} nets against stock); 0 with no Threat front, on a hive, or with the burn off. */
+	public static float defenderArmsWant(MarketAPI market) {
 		if (market == null || isHiveTarget(market) || !ThreatIncConfig.defenderArmsEnabled()) return 0f;
 		GroundFront front = getFront(market.getId());
 		if (!isThreatOwned(front)) return 0f;
 		float standing = ThreatReserves.stock(market.getId(), Commodities.MARINES) + reliefNeed(market);
 		float burn = dailyUpkeep(standing);
-		float want = burn * ThreatIncConfig.frontResupplyDays();
-		return Math.max(0f, want - ThreatReserves.stock(market.getId(), Commodities.HAND_WEAPONS));
+		if (defendersPush(front, market)) burn *= ThreatIncConfig.frontPushUpkeepMult(); // the bank holds while they push (2026-10-24)
+		return burn * ThreatIncConfig.frontResupplyDays();
 	}
 
 	/** Days until a dry Threat front's final push, or -1 when it is not waiting. */

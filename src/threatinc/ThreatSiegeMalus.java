@@ -31,15 +31,15 @@ import com.fs.starfarer.api.util.Pair;
  *
  * <p><b>Districts.</b> Districts held strip (size - held) / size of the whole
  * figure (the human-world counterpart of the stripping {@link SwarmNexus}
- * does for a hive's strata), and each district held costs the colony
- * stability and accessibility.
+ * does for a hive's strata). That is the whole cost: the stability (2026-10-24, "applied
+ * twice") and accessibility (2026-10-24, the user, hives alike) penalties per district went.
  *
  * <p><b>Saturation.</b> A colony under saturation does not grow
  * ({@link ThreatRazing#saturated}): its immigration is held at nothing while
  * the bombs fall.
  *
- * <p>Installed while a front stands, any defence structure is disrupted or
- * saturation falls, removed otherwise ({@link ThreatGroundFronts#syncSiegeState}). Modelled on
+ * <p>Installed while a front stands, any defence structure is disrupted (siege or
+ * no siege, 2026-10-24) or saturation falls, removed otherwise ({@link ThreatGroundFronts#syncSiegeState}). Modelled on
  * {@link WarFootingDemand}: never shown, never buildable, never disrupted,
  * never raided, no upkeep.
  */
@@ -209,51 +209,36 @@ public class ThreatSiegeMalus extends BaseIndustry implements MarketImmigrationM
 		int held = Math.max(0, Math.min(size - 1, ThreatGroundFronts.strataHeld(market.getId())));
 
 		// districts: the garrison's share, and the colony's order
+		// no stability or accessibility penalty per district (the user, Sindria 2026-10-24: the
+		// defence multiplier already charges for the lost districts and stability multiplied the
+		// defence again; accessibility went the same evening, hives alike) - the old flats are
+		// unmodified so a save carrying them clears
+		market.getStability().unmodifyFlat(getModId());
+		market.getAccessibilityMod().unmodifyFlat(getModId());
 		if (held <= 0) {
 			defense.unmodifyMult(getModId());
-			market.getStability().unmodifyFlat(getModId());
-			market.getAccessibilityMod().unmodifyFlat(getModId());
 		} else {
 			defense.modifyMult(getModId(), (float) (size - held) / (float) size,
 					"Districts lost to the ground front");
-			float stability = ThreatIncConfig.districtStabilityPenalty() * held;
-			if (stability > 0f) {
-				market.getStability().modifyFlat(getModId(), -stability,
-						"Districts held by the invaders");
-			} else {
-				market.getStability().unmodifyFlat(getModId());
-			}
-			float access = ThreatIncConfig.districtAccessPenalty() * held;
-			if (access > 0f) {
-				market.getAccessibilityMod().modifyFlat(getModId(), -access,
-						"Districts held by the invaders");
-			} else {
-				market.getAccessibilityMod().unmodifyFlat(getModId());
-			}
 		}
 
 		// fortification: a suppressed structure keeps its bonus in proportion
 		// to its condition (vanilla stripped it whole) and to its inputs, as
-		// vanilla scales it when it runs
-		// vanilla's disruption also strips the structure's stability whole, and
-		// stability multiplies the ground defence (0.25 at 0, 1 at 10): kept in
-		// proportion to its condition too, or the first day's touch cost the
-		// garrison a quarter of its strength at 97% condition (Jangala, 2026-09-28)
+		// vanilla scales it when it runs. Its STABILITY bonus is vanilla's alone:
+		// on while it runs, off while it is disrupted (the user, 2026-10-24
+		// evening: "lets not play with the stability modifiers for disrupted
+		// ground defences or high command etc. they can just be on or off
+		// depending on disrupted or not as vanilla"); the flat of the earlier
+		// rules is unmodified so a save carrying it clears
 		for (String id : FORTIFICATION_IDS) {
 			String key = getModId() + "_" + id;
 			Industry ind = market.getIndustry(id);
+			market.getStability().unmodifyFlat(key);
 			if (ind == null || !ind.isDisrupted() || (ind.isBuilding() && !ind.isUpgrading())) {
 				defense.unmodifyMult(key);
-				market.getStability().unmodifyFlat(key);
 				continue;
 			}
 			float wear = condition(ind);
-			float stability = stabilityOf(id) * wear;
-			if (stability > 0f) {
-				market.getStability().modifyFlat(key, stability, ind.getCurrentName() + " (suppressed)");
-			} else {
-				market.getStability().unmodifyFlat(key);
-			}
 			float cond = wear * deficitMult(ind);
 			if (cond <= 0f) {
 				defense.unmodifyMult(key);
@@ -264,7 +249,7 @@ public class ThreatSiegeMalus extends BaseIndustry implements MarketImmigrationM
 		}
 	}
 
-	/** The base stability vanilla gives each while it runs (GroundDefenses / MilitaryBase getBaseStabilityMod). */
+	/** The base stability vanilla gives each while it runs (GroundDefenses / MilitaryBase getBaseStabilityMod); not applied since 2026-10-24 (vanilla's on/off rules), kept for the record. */
 	public static float stabilityOf(String industryId) {
 		if (Industries.GROUNDDEFENSES.equals(industryId)) return 1f;
 		if (Industries.HEAVYBATTERIES.equals(industryId)) return 1f;

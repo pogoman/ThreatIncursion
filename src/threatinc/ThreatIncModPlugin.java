@@ -148,6 +148,10 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		ThreatMapFog fog = new ThreatMapFog();
 		Global.getSector().addTransientScript(fog);
 		Global.getSector().getListenerManager().addListener(fog, true);
+		// E inside a colony screen opened from the board closes back to the board
+		ThreatColonyScreenDialog.Guard colonyGuard = new ThreatColonyScreenDialog.Guard();
+		Global.getSector().addTransientScript(colonyGuard);
+		Global.getSector().getListenerManager().addListener(colonyGuard, true);
 		// the player's outpost stations open their own dialog (storage, decommission)
 		Global.getSector().registerPlugin(new ThreatIncCampaignPlugin());
 

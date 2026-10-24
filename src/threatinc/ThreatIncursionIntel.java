@@ -214,6 +214,28 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 			createSmallDescription(main, width, height);
 		}
 		panel.addUIElement(main).inTL(0f, 0f);
+		boardMaker = main;
+		if (keepScroll != null && main.getExternalScroller() != null) {
+			main.getExternalScroller().setYOffset(keepScroll);
+		}
+		keepScroll = null;
+	}
+
+	/** The board's last scroll maker, for {@link #rerenderInPlace}. */
+	protected transient TooltipMakerAPI boardMaker;
+	/** The scroll offset the next render restores, or null for the top. */
+	protected transient Float keepScroll;
+
+	/**
+	 * Re-renders the board where the player is reading it: a view toggle or an
+	 * order rebuilt the panel at the top (the user, 2026-10-24: "when i click
+	 * min med or max the page jumps to the top").
+	 */
+	protected void rerenderInPlace(com.fs.starfarer.api.ui.IntelUIAPI ui) {
+		if (boardMaker != null && boardMaker.getExternalScroller() != null) {
+			keepScroll = boardMaker.getExternalScroller().getYOffset();
+		}
+		ui.updateUIForItem(this);
 	}
 
 	/**
@@ -303,23 +325,23 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		// re-render, no Confirm (doesButtonHaveConfirmDialog leaves it to the default)
 		if (id.startsWith(ThreatFactionView.BUTTON_SIEGE_TIER)) {
 			siegeTier = tierOf(id, ThreatFactionView.BUTTON_SIEGE_TIER);
-			ui.updateUIForItem(this);
+			rerenderInPlace(ui);
 			return;
 		}
 		if (id.startsWith(ThreatFactionView.BUTTON_SUPPLY_TIER)) {
 			supplyTier = tierOf(id, ThreatFactionView.BUTTON_SUPPLY_TIER);
-			ui.updateUIForItem(this);
+			rerenderInPlace(ui);
 			return;
 		}
 		if (id.startsWith(ThreatFactionView.BUTTON_CONVOY_TIER)) {
 			convoyTier = tierOf(id, ThreatFactionView.BUTTON_CONVOY_TIER);
-			ui.updateUIForItem(this);
+			rerenderInPlace(ui);
 			return;
 		}
 		if (ThreatFactionView.isOrderButton(id)) {
 			String result = ThreatFactionView.executeOrder(id, this);
 			ThreatIncConfig.log("Board order " + id + " -> " + result);
-			ui.updateUIForItem(this);
+			rerenderInPlace(ui);
 			return;
 		}
 		if (id.startsWith(ThreatWarBoard.BUTTON_COLONY)) {

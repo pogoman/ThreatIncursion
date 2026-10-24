@@ -340,10 +340,10 @@ public class ThreatIncConfig {
 	public static float strikeFrontSupplyDays() { return f("threatinc_strikeFrontSupplyDays"); }
 	/** How much of a colony's banked reserve marines defend the ground against a front. */
 	public static float reserveDefenseMult()  { return f("threatinc_reserveDefenseMult"); }
-	/** A staff to run the operation (Patrol HQ, Military Base, High Command, Lion's Guard) pushes the line this much harder (ThreatGroundFronts.defenderPressure; the counter-attack cadence it paced went 2026-10-23). */
-	public static float colonyCounterAttackMilitaryMult() {
-		return f("threatinc_colonyCounterAttackMilitaryMult");
-	}
+	/** Troops of ground strength that count as one fleet point in a faction's Strength score (ThreatFactionView.strengthOf; the user, 2026-10-24). */
+	public static float scoreTroopsPerPoint() { return f("threatinc_scoreTroopsPerPoint"); }
+	/** Light-years a siege is priced over when a faction's Strength score reads what its fuel pays (ThreatFactionView.strengthOf). */
+	public static float scoreSiegeRangeLY()   { return f("threatinc_scoreSiegeRangeLY"); }
 
 	// ---- sieges from orbit (docs/ground-war.md "Sieges from orbit") ----
 
@@ -407,10 +407,6 @@ public class ThreatIncConfig {
 	public static float strikeReinforceWeight() { return f("threatinc_strikeReinforceWeight"); }
 	/** Days a dry Threat front holds for the next expedition before its final push. */
 	public static float frontDryFinalPushDays() { return f("threatinc_frontDryFinalPushDays"); }
-	/** Stability lost per district an invader holds. */
-	public static float districtStabilityPenalty() { return f("threatinc_districtStabilityPenalty"); }
-	/** Accessibility lost per district an invader holds. */
-	public static float districtAccessPenalty() { return f("threatinc_districtAccessPenalty"); }
 	/** Accessibility a colony loses while Threat warships hold its orbit; half while the fight is even. */
 	public static float blockadeAccessPenalty() { return f("threatinc_blockadeAccessPenalty"); }
 	/** Disruption days a seized civilian industry is pinned at while the invader holds its district. */
@@ -446,10 +442,8 @@ public class ThreatIncConfig {
 	public static boolean frontAutoPush()     { return b("threatinc_frontAutoPush", true); }
 	/** Disruption days a front adds per day to what it holds, times troops / (troops + defence); the clock runs down 1/day. */
 	public static float frontWearRate()       { return f("threatinc_frontWearRate"); }
-	/** Fraction of the front's current marines lost per 30 days while supplied. */
-	public static float frontMarineLossPer30Days() { return f("threatinc_frontMarineLossPer30Days"); }
-	/** Attrition multiplier once the heavy armaments run out. */
-	public static float frontUnsuppliedLossMult() { return f("threatinc_frontUnsuppliedLossMult"); }
+	/** THE ATTRITION RULE's one knob (ThreatGroundFronts.attritionPerDay): a side loses its troops / this x (enemy force / own force) x 1 / own cover x veteran a day. */
+	public static float attritionTroopsPer() { return f("threatinc_attritionTroopsPer"); }
 	/** Heavy armaments consumed per marine per 30 days - the front's upkeep. */
 	public static float frontArmamentsPerMarinePer30Days() { return f("threatinc_frontArmamentsPerMarinePer30Days"); }
 	/** Days of entrenchment to reach the full effectiveness multiplier. */
@@ -458,10 +452,10 @@ public class ThreatIncConfig {
 	public static float frontEntrenchMaxMult() { return f("threatinc_frontEntrenchMaxMult"); }
 	/** Effectiveness multiplier of a fresh landing, before any entrenchment. */
 	public static float frontLandingMult()    { return f("threatinc_frontLandingMult"); }
-	/** Fraction of its entrenchment a front keeps when it takes a stratum or is battered by a counter-attack. */
-	public static float frontEntrenchKeptFraction() { return f("threatinc_frontEntrenchKeptFraction"); }
-	/** Marines below which a front collapses outright. */
+	/** Troops under which a landing is not attempted, a raid not crewed, a drop not worth making. */
 	public static float frontMinMarines()     { return f("threatinc_frontMinMarines"); }
+	/** Troops below which a standing front is ground down and removed; 0 = it fights to the last troop (the user, 2026-10-24). */
+	public static float frontCollapseTroops() { return f("threatinc_frontCollapseTroops"); }
 	/** THE LINE (2026-10-23, the user): days of net rate 1 that move a district across the line either way (ThreatGroundFronts.lineRate). */
 	public static float frontLineBaseDays()   { return f("threatinc_frontLineBaseDays"); }
 	/** The line's rate inside which the front reads grinding (both pushing) or stalled, and the landing holds the defence structures rather than wearing everything. */
@@ -475,12 +469,8 @@ public class ThreatIncConfig {
 
 	/** Weight the colony's stockpiled marines enter a COUNTER-ATTACK at; they defend at full weight either way. */
 	public static float marineCounterAttackMult() { return f("threatinc_marineCounterAttackMult"); }
-	/** Fraction of a colony's defender entrenchment ({@link ThreatGroundFronts#defenderCoverMult}) kept when the army takes a district; 0 = lost (user, 2026-10-17). */
-	public static float defenderEntrenchKeptFraction() { return f("threatinc_defenderEntrenchKeptFraction"); }
 	/** Days a colony takes to call up, arm and post its whole marine stockpile; marines shipped in mid-siege ramp in over this. */
 	public static float marineArmingDays()    { return f("threatinc_marineArmingDays"); }
-	/** Fraction of a colony's armed marines lost per 30 days while a front presses it at full strength. */
-	public static float defenderLossPer30Days() { return f("threatinc_defenderLossPer30Days"); }
 	/** Whether a colony's armed marines burn heavy armaments from its stockpile while an army stands on it (frontArmamentsPerMarinePer30Days per engaged marine), fighting at frontDryEffectivenessMult with none in stock (user, 2026-10-17). */
 	public static boolean defenderArmsEnabled() { return b("threatinc_defenderArmsEnabled", true); }
 	/** Strength bonus of a fully elite pool (vanilla's own figure is 1.0, ie +100%). */
@@ -518,16 +508,12 @@ public class ThreatIncConfig {
 
 	// ---- stratum campaign: pushes, counter-attacks, eradication ----
 
-	/** Fraction of the front's marines lost per 30 days while pushing (replaces the entrenched rate). */
-	public static float frontPushLossPer30Days() { return f("threatinc_frontPushLossPer30Days"); }
 	/** Armaments-upkeep multiplier while pushing. */
 	public static float frontPushUpkeepMult() { return f("threatinc_frontPushUpkeepMult"); }
 	/** Effectiveness multiplier of a dry (no armaments) front. */
 	public static float frontDryEffectivenessMult() { return f("threatinc_frontDryEffectivenessMult"); }
 	/** Whether the SWARM's own ground fronts burn heavy armaments and take the dry penalties. False (2026-09-08): nothing can resupply them, so they do not fight on armaments at all. */
 	public static boolean threatFrontNeedsArms() { return b("threatinc_threatFrontNeedsArms", false); }
-	/** Casualty multiplier on a Threat front while it is PUSHING - what it pays instead of starving, now that it can fabricate replacements. */
-	public static float threatPushLossMult()  { return f("threatinc_threatPushLossMult"); }
 	/** Defense multiplier of an entrenched (non-pushing) front against counter-attacks. */
 	public static float frontEntrenchDefenseBonus() { return f("threatinc_frontEntrenchDefenseBonus"); }
 	/** Days a front consolidates at each stratum checkpoint before pushing on by doctrine. */
@@ -696,8 +682,14 @@ public class ThreatIncConfig {
 	public static float expeditionMinMarinesFraction() { return f("threatinc_expeditionMinMarinesFraction"); }
 	/** An NPC siege waits unless its base can pay this fraction of the fuel and supplies its flotilla burns. */
 	public static float expeditionMinProvisionsFraction() { return f("threatinc_expeditionMinProvisionsFraction"); }
-	/** Marines the player's "Extra" siege tier commits, as a multiple of the computed landing need (the "Siege" tier). */
-	public static float siegeExtraMarinesFactor() { return f("threatinc_siegeExtraMarinesFactor"); }
+	/** Days the board's Bombard puts a hive's structures down at Min (the saturation goal, IncursionManager.bombardGoalDays). */
+	public static float bombardTierMinDays() { return f("threatinc_bombardTierMinDays"); }
+	/** Days the board's Bombard puts a hive's structures down at Med; Max is the commander's stop. */
+	public static float bombardTierMedDays() { return f("threatinc_bombardTierMedDays"); }
+	/** The board's Support or Defend at Med brings this multiple of the swarm over the world (ThreatAid.orbitAskFP); Min matches it. */
+	public static float orbitTierMedMargin() { return f("threatinc_orbitTierMedMargin"); }
+	/** The board's Support or Defend at Max brings this multiple of the swarm over the world. */
+	public static float orbitTierMaxMargin() { return f("threatinc_orbitTierMaxMargin"); }
 	/** Fuel an expedition draws per fleet point per light-year. */
 	public static float expeditionFuelPerPointLY() { return f("threatinc_expeditionFuelPerPointLY"); }
 	public static boolean threatPaysPassage()      { return b("threatinc_threatPaysPassage", true); }
@@ -970,6 +962,8 @@ public class ThreatIncConfig {
 	public static boolean reliefFollowsPlayer() { return b("threatinc_reliefFollowsPlayer", true); }
 	/** RELIEF GOES WHERE THE SWARM IS (2026-10-23, the user, the Hegemony relief idling over Volturn while Sindria burned): a relief on station over a world with no Threat fleet moves to the owner's nearest invaded world where the swarm holds the orbit and it can outweigh it with the guards there, or the player is at the wall (ThreatFleetOrders.retaskReliefs). */
 	public static boolean reliefRetask() { return b("threatinc_reliefRetask", true); }
+	/** HOME WHEN THE SYSTEM IS QUIET (2026-10-24, the user): days a relief's system must hold no Threat fleet before the relief goes home; 0 holds it until the army on the ground is gone (ThreatFleetOrders.reliefQuiet). */
+	public static float reliefQuietDays() { return f("threatinc_reliefQuietDays"); }
 	/** Days a guard task force holds a colony's orbit. */
 	public static float guardDays()           { return f("threatinc_guardDays"); }
 	/** Days a task force guarding one of the player's own colonies stays; 0 = until recalled, staged there with its points the colony's to send out. */

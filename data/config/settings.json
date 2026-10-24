@@ -411,8 +411,11 @@
 	"threatinc_strikeFrontSupplyDays": 90,
 	# banked reserve marines that defend the ground when a colony is invaded
 	"threatinc_reserveDefenseMult": 1.0,
-	# counter-attack cadence bonus for a colony with a military industry
-	"threatinc_colonyCounterAttackMilitaryMult": 1.5,
+	# a faction's Strength score on its board (the user, 2026-10-24): navy FP +
+	# ground strength / this many troops a point + the FP of sieges its depots
+	# pay (expeditionSuppliesPerPoint, expeditionFuelPerPointLY over this range)
+	"threatinc_scoreTroopsPerPoint": 20,
+	"threatinc_scoreSiegeRangeLY": 10,
 
 	# Sieges from orbit (docs/ground-war.md "Sieges from orbit", 2026-09-06),
 	# the same duel over a hive and over a human colony. Defenders = garrison
@@ -519,11 +522,10 @@
 	# days a dry Threat front digs in for that expedition before spending
 	# itself in a final push (the swarm does not extract)
 	"threatinc_frontDryFinalPushDays": 120,
-	# each district a front holds costs the colony stability and accessibility
-	# and seizes its share of the colony's industries, pinned at
-	# districtSeizeDays of disruption while held
-	"threatinc_districtStabilityPenalty": 1.0,
-	"threatinc_districtAccessPenalty": 0.1,
+	# each district a front holds seizes its share of the colony's industries, pinned
+	# at districtSeizeDays of disruption while held; its stability and accessibility
+	# penalties went 2026-10-24 (the defence multiplier already charges for the lost
+	# districts, and hives pay the same way)
 	# Threat warships holding a colony's orbit blockade it, as vanilla's League
 	# blockade does: this much accessibility at 1.25x the defenders' points,
 	# half from 0.75x (vanilla 0.6)
@@ -591,24 +593,33 @@
 	# progress - an overwhelming push wears them fast); held, stalled or pushed back, the clocks
 	# run down a day a day as vanilla's do; capped at wearDays x 1.2
 	"threatinc_frontWearRate": 12,
-	# marines lost per 30 days (fraction of current), times the multiplier once
-	# the heavy armaments run dry; below min marines the front is overrun
-	"threatinc_frontMarineLossPer30Days": 0.08,
-	"threatinc_frontUnsuppliedLossMult": 3.0,
+	# THE ATTRITION RULE (the user, 2026-10-24): a side loses, a day, its troops /
+	# attritionTroopsPer x (the enemy's force / its own force) x 1 / its own cover
+	# x its veteran factor - both sides alike, forces as the board shows them. No
+	# rate by stance, no dry / assault / outmatched multiplier, no pressure cap,
+	# no engaged cap: the odds, the cover and the men. Below min marines the
+	# front is overrun.
+	"threatinc_attritionTroopsPer": 100,
 	# heavy armaments burned per marine per 30 days. The army eats the armaments,
 	# not the world it fights on: at 0.25 a landing carries 1 armament per marine
 	# for its npcFrontSupplyDays (120), and burns them faster the bigger it is.
 	"threatinc_frontArmamentsPerMarinePer30Days": 0.25,
-	# entrenchment (2026-09-06): a landing fights at frontLandingMult and digs
-	# in to frontEntrenchMaxMult over frontEntrenchDays; the ramp is frozen
-	# while pushing, and taking a stratum or being battered by a counter-attack
-	# keeps only frontEntrenchKeptFraction of it - pushing costs cover, holding
-	# earns it. The defenders' entrenchment is their ground-defence figure.
+	# entrenchment (2026-09-06, the rule fixed 2026-10-24): a landing fights at
+	# frontLandingMult and digs in to frontEntrenchMaxMult over frontEntrenchDays;
+	# it grows while dug in whatever the enemy does, is spent while pushing and past
+	# zero the push is OVER-EXTENDED to the same degree (strength / (1 + (bonus - 1)
+	# x over-extension), full after frontEntrenchDays of pushing), and a district
+	# changing hands resets both sides to 0 - never worn, diluted or cut otherwise
+	# (the user's rules, 2026-10-24). The same for a colony's marines.
 	"threatinc_frontEntrenchDays": 30,
 	"threatinc_frontLandingMult": 0.75,
 	"threatinc_frontEntrenchMaxMult": 1.0,
-	"threatinc_frontEntrenchKeptFraction": 0.5,
 	"threatinc_frontMinMarines": 50,
+	# a standing front is removed below this many troops; 0 = it fights to the last
+	# troop (the user, Sindria 2026-10-24: the old 50 floor ended a war the day after a
+	# district reset a 57-troop swarm's cover). frontMinMarines above is the size under
+	# which a landing is not attempted or a raid not crewed, unchanged.
+	"threatinc_frontCollapseTroops": 0,
 
 	# marines: garrison, casualties and veterancy (2026-09-08).
 	# A colony defends with its resource stockpile's marines - never with
@@ -617,18 +628,10 @@
 	# 2026-10-17 (user: "the marines have to take districts back or bleed
 	# the enemy dry"); 0.25 before, holding a sledgehammer stockpile back.
 	"threatinc_marineCounterAttackMult": 1.0,
-	# a defending colony's stance (2026-10-17): Push counter-attacks on the
-	# cadence, Dig in holds fire and earns frontEntrenchDefenseBonus on its
-	# defence over frontEntrenchDays; a district lost keeps this fraction of
-	# that cover (0 = lost, the user's word).
-	"threatinc_defenderEntrenchKeptFraction": 0.0,
 	# marines shipped into a besieged colony are crates of rifles until they
 	# are called up, armed and posted: the whole stockpile works up over this
 	# many days, so a regiment landed today buys a garrison over weeks
 	"threatinc_marineArmingDays": 20,
-	# what the defenders pay per 30 days while a front at full strength presses them (the
-	# per-counter-attack price went with the cadence, 2026-10-23)
-	"threatinc_defenderLossPer30Days": 0.20,
 	# and heavy armaments: the engaged armed marines burn the front rate
 	# (frontArmamentsPerMarinePer30Days) from the colony's stockpile while an
 	# army stands on it; with none in stock they fight at frontDryEffectivenessMult
@@ -711,7 +714,7 @@
 	# stratum the front consolidates at a checkpoint, requests reinforcement,
 	# and - given no orders within the window - pushes on by doctrine.
 	# The hive pushes the line with its troops at the pace its supplies pay (hiveCounterAttackPace).
-	"threatinc_frontPushLossPer30Days": 0.30,
+	# frontPushUpkeepMult: a landing's armaments burn while pushing, and a colony's marines' while they push (2026-10-24).
 	"threatinc_frontPushUpkeepMult": 2.0,
 	"threatinc_frontDryEffectivenessMult": 0.5,
 	# THE SWARM DOES NOT FIGHT ON ARMAMENTS (2026-09-08). A faction's front is
@@ -721,15 +724,11 @@
 	# reach it - so charging it for a supply line it can never use was a
 	# countdown wearing the costume of a supply rule. With threatFrontNeedsArms
 	# false its fronts burn nothing, never run dry, and take none of the dry
-	# penalties: no half strength, no tripled attrition, no final-push clock, no
-	# collapse. What replaces that pressure is threatPushLossMult - casualties
-	# while PUSHING, since a swarm that can break up its own hulls for troops
-	# (fabricateEnabled) should pay for ground in bodies. Only while pushing: a
-	# dug-in Threat front bleeds at the ordinary rate, so the counterplay is to
-	# make them come to you rather than to wait them out. True restores the old
-	# rule exactly, final push and all.
+	# penalties: no half strength, no final-push clock, no collapse. The assault
+	# casualty multiplier that replaced that pressure (threatPushLossMult, 2.0)
+	# went with THE ATTRITION RULE on 2026-10-24: attacking costs the cover now.
+	# True restores the old rule exactly, final push and all.
 	"threatinc_threatFrontNeedsArms": false,
-	"threatinc_threatPushLossMult": 2.0,
 	"threatinc_frontEntrenchDefenseBonus": 1.5,
 	"threatinc_frontCheckpointDays": 10,
 	"threatinc_npcFrontSupplyDays": 120,
@@ -887,9 +886,15 @@
 	# an NPC siege waits unless its base can pay this fraction of the fuel and
 	# supplies its flotilla burns; short of the rest, the flotilla shrinks
 	"threatinc_expeditionMinProvisionsFraction": 0.5,
-	# the player's "Extra" siege tier commits this multiple of the landing need
-	# (the "Siege" tier); "All" commits the whole reserve above its floor
-	"threatinc_siegeExtraMarinesFactor": 2.0,
+	# the board's Force tiers are outcomes (2026-10-24): Bombard puts a hive's structures
+	# down this many days at Min and Med (Max: as far as bombing goes); Support and Defend
+	# bring the swarm over the world x1 at Min, x these at Med and Max. Siege lands marines
+	# to hold / push back (frontPushBackRate) / overrun (frontOverrunRate); Hunt beats the
+	# weakest swarm seen / matches the swarms seen / x npcSiegeOrbitMargin
+	"threatinc_bombardTierMinDays": 30,
+	"threatinc_bombardTierMedDays": 90,
+	"threatinc_orbitTierMedMargin": 1.25,
+	"threatinc_orbitTierMaxMargin": 1.5,
 	# provisions drawn per fleet point: fuel per light-year, supplies flat
 	"threatinc_expeditionFuelPerPointLY": 10,
 	"threatinc_expeditionSuppliesPerPoint": 30,
@@ -1177,6 +1182,9 @@
 	# there, while Sindria burned): a relief on station over a quiet world moves to the owner's nearest invaded
 	# world where the swarm holds the orbit and it can outweigh it with the guards there, or the player is at the wall
 	"threatinc_reliefRetask": true,
+	# home when the system is quiet (2026-10-24, the user): a relief whose system has held no Threat fleet
+	# for this many days goes home; 0 holds it until the army on the ground is gone
+	"threatinc_reliefQuietDays": 7,
 	"threatinc_guardDays": 90,
 	# a guard over one of YOUR OWN colonies is staging (2026-09-05): it stays
 	# guardOwnDays (0 = until recalled), its points count in that colony's FP
@@ -1430,9 +1438,9 @@
 	# builder only adds what vanilla's import numbers say the link can supply.
 	# A link connected to a colony through the chain gets frontlineRelayAccess;
 	# a link starved frontlineStarveDays shrinks; one with no found hive within
-	# frontlineKeepLY for frontlineAbandonDays is dismantled. The enabled knob
-	# gates founding only: links already standing are kept up with it off
-	"threatinc_frontlinesEnabled": true,  # ON again 22:45 after hw260 / hw261 (a modest shield: 115 vs 85 worlds lost over six games); LunaLib's store decides this one - NO BASES trial hw258 (B) / hw259 (A) vs hw257 / hw256
+	# frontlineKeepLY for frontlineAbandonDays is dismantled. Off: no base is
+	# founded and every standing link is dismantled, its stock and garrison home
+	"threatinc_frontlinesEnabled": false,  # OFF by default (the user, 2026-10-24; Luna migration 17 flips a store still at true); was ON after hw260 / hw261 (a modest shield: 115 vs 85 worlds lost over six games) - NO BASES trial hw258 (B) / hw259 (A) vs hw257 / hw256
 	"threatinc_frontlinePlanDays": 15,
 	"threatinc_frontlineLinkLY": 10,
 	"threatinc_frontlineReachLY": 10,
