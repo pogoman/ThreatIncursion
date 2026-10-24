@@ -58,7 +58,7 @@ public final class ThreatRazing {
 		return (float) (Math.max(0f, ThreatIncConfig.satFuelSize4()) * Math.pow(10, level / 2.0) / SIZE4_WEIGHT);
 	}
 
-	/** Whether saturation here razes: every colony but a hive's world, which has no bar - it loses no size to saturation and never dies of it. */
+	/** Whether saturation here razes by the bar: every colony but a hive's world, which has none - saturation takes its strata instead (ThreatStrata, 2026-10-24; ThreatGroundFronts.saturationSlice). */
 	public static boolean razes(MarketAPI market) {
 		return market != null && ThreatGroundFronts.Theatre.of(market) != ThreatGroundFronts.HIVE;
 	}
@@ -236,9 +236,10 @@ public final class ThreatRazing {
 		market.setSize(old - 1);
 		market.getPopulation().setWeight(CoreImmigrationPluginImpl.getWeightForMarketSizeStatic(old - 1));
 		market.getPopulation().normalize();
-		// a hive's growth toward the next size starts again from nothing
+		// a hive's strata follow its size (ThreatStrata.syncSize steps the size from them; any other caller keeps them in step)
 		if (ThreatGroundFronts.Theatre.of(market) == ThreatGroundFronts.HIVE) {
 			ThreatIncData.setGrowthProgressDays(market.getId(), 0f);
+			ThreatStrata.sizeChanged(market, old);
 		}
 		market.reapplyConditions();
 		market.reapplyIndustries();

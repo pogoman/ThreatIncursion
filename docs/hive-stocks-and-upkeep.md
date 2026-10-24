@@ -186,6 +186,15 @@ forward base, commodity-bound the way vanilla's economy is.
      size's sustenance. Forges whose next size adds more output than sustenance first; then
      pressing feeds the front, consolidating the biggest worlds, expanding the smallest. A stance
      change never starves anyone - sustenance keeps its 0.9 - it only moves what growth gets.
+  - **THE STRATA (2026-10-24, the user: "Strata grows over time if colony is fed and the colony
+    increases size when it reaches the next 400 increment. It also decays when unfed.")** Growth is
+    no longer a clock but the hive's strata (`ThreatStrata`, market memory): `hiveDefensePerSize` 400
+    a size, the figure its ground defence is. Fed above break-even they thicken a size's worth per
+    `colonyGrowthBaseDays` x size at full pace; starving they thin a size's worth per `starveDaysPerSize`;
+    saturation takes chunks (suppression-balance.md principle 5). The size is the strata over 400,
+    rounded down (`syncSize`), so a hive grows at 800, 1,200, ... and shrinks when the figure falls
+    under its own; at 0 it is gone (`collapse`). A hive at its cap banks a size's worth. The old
+    progress clock stays only for the vitality path with size upkeep off.
   - A size-2 world grows into size 3, where upkeep starts, only as it is fed for it (priced at
     size 3's upkeep); a size-1 seed and a forge world below size 3 grow free. h35a let size 2
     grow free: 76 worlds grew into size 3 unpaid and starved back.

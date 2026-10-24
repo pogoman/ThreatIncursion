@@ -4137,80 +4137,29 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * Growth under size upkeep (ThreatColonyUpkeep, 2026-09-30): the colony's
-	 * progress moves at the pace the share of its upkeep paid gives - up toward
-	 * its next size at the old pace (colonyGrowthBaseDays x size) paid in full,
-	 * held at the break-even share, a level starved through per
-	 * starveDaysPerSize paid nothing. Progress is continuous across a size
-	 * lost, so a short siege costs progress and a long one sizes, and what was
-	 * lost regrows at the growth pace; the size goes SHRINK_MARGIN of a level
-	 * below it, and a world at its cap banks a full level while fed. A front on
-	 * the surface or saturation holds its growth, never its hunger; the
-	 * Fabrication Core no longer gates it.
+	 * Growth under size upkeep (ThreatColonyUpkeep, 2026-09-30; THE STRATA since
+	 * 2026-10-24, ThreatStrata): the hive's strata move at the pace the share of
+	 * its upkeep paid gives - a size's worth (hiveDefensePerSize) gained per
+	 * colonyGrowthBaseDays x size paid in full, held at the break-even share, a
+	 * size's worth starved off per starveDaysPerSize paid nothing - and the size
+	 * steps with the figure (ThreatStrata.syncSize: up at each size's worth
+	 * reached, down when it falls under the size's own, gone at 0). A world at
+	 * its cap banks a size's worth while fed. A front on the surface or
+	 * saturation holds its growth, never its hunger; the Fabrication Core no
+	 * longer gates it.
 	 */
 	protected static void advanceFedGrowth(MarketAPI market, float elapsedDays) {
-		String id = market.getId();
-		int size = market.getSize();
 		float rate = ThreatColonyUpkeep.growthRate(ThreatColonyUpkeep.fedShare(market));
-		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size * IncursionManager.timeScale();
-		float progress = ThreatIncData.growthProgressDays(id);
+		if (rate == 0f) return;
+		float per = ThreatStrata.perSize();
 		if (rate > 0f) {
 			if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) return;
-			int cap = maxColonySize(market);
-			progress += elapsedDays * rate;
-			if (size >= cap) {
-				// nothing left to grow into: the fed world banks its top level
-				ThreatIncData.setGrowthProgressDays(id, Math.min(daysPerLevel, progress));
-				return;
-			}
-			if (progress >= daysPerLevel) {
-				growColony(market, cap);
-				return;
-			}
-			ThreatIncData.setGrowthProgressDays(id, progress);
+			float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize() * IncursionManager.timeScale();
+			ThreatStrata.add(market, per * rate * elapsedDays / Math.max(1f, daysPerLevel), "Grew", null);
 			return;
 		}
-		if (rate == 0f) return;
-		progress += elapsedDays * rate * daysPerLevel / (ThreatColonyUpkeep.starveDays() * IncursionManager.timeScale());
-		float floor = -ThreatColonyUpkeep.SHRINK_MARGIN * daysPerLevel;
-		if (progress >= floor) {
-			ThreatIncData.setGrowthProgressDays(id, Math.max(floor, progress));
-			return;
-		}
-		float below = progress / daysPerLevel;
-		if (size <= 1) {
-			starveOut(market);
-			return;
-		}
-		shrinkColony(market);
-		float lower = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize() * IncursionManager.timeScale();
-		ThreatIncData.setGrowthProgressDays(id, Math.max(0f, (1f + below) * lower));
-	}
-
-	/** A size off a hive its upkeep starves (ThreatRazing.reduceSize's steps). */
-	protected static void shrinkColony(MarketAPI market) {
-		ThreatRazing.reduceSize(market, "Starved a level of");
-		announce(ThreatNotice.titled("Hive Starving").good()
-				.line("%s has shrunk to size %s", ThreatNotice.market(market), market.getSize()));
-	}
-
-	/**
-	 * A size-1 hive starved past its floor dies (the user, 2026-10-24: "hive should shrink to zero
-	 * and be destroyed if it reaches 0"): a front standing on it takes the victory
-	 * (ThreatGroundFronts.groundVictory), else the strata go cold on their own ({@link #eradicate}).
-	 */
-	protected static void starveOut(MarketAPI market) {
-		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
-		if (front != null) {
-			ThreatIncConfig.log("Starved out under a front: " + market.getName());
-			ThreatGroundFronts.groundVictory(front, market);
-			return;
-		}
-		ThreatIncConfig.log("Starved out: " + market.getName());
-		announce(ThreatNotice.titled("Hive Starved").good()
-				.line("%s has starved", ThreatNotice.market(market))
-				.line("The strata are cold."));
-		eradicate(market);
+		float starveDays = Math.max(1f, ThreatColonyUpkeep.starveDays() * IncursionManager.timeScale());
+		ThreatStrata.add(market, per * rate * elapsedDays / starveDays, "Starved a level of", null);
 	}
 
 	/** Whether the colony grows now: by the share of its upkeep paid under size upkeep, else by vitality. */
@@ -4235,9 +4184,10 @@ public class ThreatColonyManager {
 		if (market == null || !ThreatColonyUpkeep.enabled()) return Float.MAX_VALUE;
 		float rate = growthPace(market);
 		if (rate >= 0f) return Float.MAX_VALUE;
-		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize() * IncursionManager.timeScale();
-		float perDay = -rate * daysPerLevel / (ThreatColonyUpkeep.starveDays() * IncursionManager.timeScale());
-		float left = ThreatIncData.growthProgressDays(market.getId()) + ThreatColonyUpkeep.SHRINK_MARGIN * daysPerLevel;
+		float per = ThreatStrata.perSize();
+		float perDay = -rate * per / Math.max(1f, ThreatColonyUpkeep.starveDays() * IncursionManager.timeScale());
+		// the strata above the size's own; a size-1 hive has only what it stands on (ThreatStrata.collapse at 0)
+		float left = ThreatStrata.of(market) - (market.getSize() <= 1 ? 0f : per * market.getSize());
 		return Math.max(0f, left) / perDay;
 	}
 
@@ -4254,7 +4204,12 @@ public class ThreatColonyManager {
 		float growthMult = growthPace(market);
 		if (growthMult <= 0f) return Float.MAX_VALUE;
 		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size * IncursionManager.timeScale();
-		return Math.max(0f, daysPerLevel - ThreatIncData.growthProgressDays(market.getId())) / growthMult;
+		if (!ThreatColonyUpkeep.enabled()) {
+			return Math.max(0f, daysPerLevel - ThreatIncData.growthProgressDays(market.getId())) / growthMult;
+		}
+		// the strata to the next size's worth at the pace they thicken (ThreatStrata)
+		float perDay = ThreatStrata.perSize() * growthMult / Math.max(1f, daysPerLevel);
+		return Math.max(0f, ThreatStrata.nextSizeAt(market) - ThreatStrata.of(market)) / perDay;
 	}
 
 	/**
@@ -4284,6 +4239,7 @@ public class ThreatColonyManager {
 		CoreImmigrationPluginImpl.increaseMarketSize(market);
 		ThreatIncData.setGrowthProgressDays(id, 0f);
 		if (market.getSize() <= old) return false;
+		ThreatStrata.sizeChanged(market, old);
 		ListenerUtil.reportColonySizeChanged(market, old);
 		ThreatIncData.setGrowthTime(id);
 		// the Fabrication Core's machinery output tracks size by itself
@@ -4302,10 +4258,9 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * ERADICATION: the teardown of a Threat colony, by the two ways it dies - a
-	 * ground victory, or starved past size 1 ({@link #starveOut}, 2026-10-24) -
-	 * never a timer, and never from orbit alone (saturation takes
-	 * no size off a hive, ThreatRazing.razes). Vitality bookkeeping
+	 * ERADICATION: the teardown of a Threat colony, by the ways it dies - a
+	 * ground victory, or its strata starved or bombed to nothing
+	 * (ThreatStrata.collapse, 2026-10-24) - never a timer. Vitality bookkeeping
 	 * cleared, then the vanilla decivilization teardown; pollColonies reacts
 	 * on the next poll.
 	 */

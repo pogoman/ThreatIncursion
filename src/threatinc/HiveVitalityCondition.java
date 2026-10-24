@@ -47,6 +47,14 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 			}
 			float cut = ThreatColonyUpkeep.importCut(market);
 			if (cut > 0f) tooltip.addPara(INDENT + "Imports cut: %s", 3f, neg, pct(cut));
+			// THE STRATA (ThreatStrata, 2026-10-24): the defence figure, the next size's worth
+			float strata = ThreatStrata.of(market);
+			if (market.getSize() >= ThreatColonyManager.maxColonySize(market)) {
+				tooltip.addPara("Strata: %s", opad, h, ThreatStrata.fmt(strata));
+			} else {
+				tooltip.addPara("Strata: %s, size %s at %s", opad, h, ThreatStrata.fmt(strata),
+						"" + (market.getSize() + 1), ThreatStrata.fmt(ThreatStrata.nextSizeAt(market)));
+			}
 		} else {
 			float fab = ThreatColonyManager.computeFabricationMult(market);
 			float supply = ThreatColonyManager.computeSupplyMult(market);

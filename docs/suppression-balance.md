@@ -162,7 +162,10 @@ records what the build decided where the spec left it open. v1 at the bottom is 
 4. **Marines reach the guns only by landing.** No raiding party lands under intact batteries
    (Merville, Pointe du Hoc were parts of landings). The ground front is the marine route.
 5. **Saturation razes a colony.** Only saturation can destroy a human colony from orbit, and it
-   is priced on what it destroys. A hive it presses and never razes (2026-10-01, section 4).
+   is priced on what it destroys. A hive it presses and never razes (2026-10-01, section 4) -
+   until 2026-10-24: now it takes chunks of the hive's strata (`ThreatStrata`, the user:
+   "Bombardment eliminates chunks of strata"), a size's worth per `strataSuppressDaysPerSize` 300
+   disruption days it adds; the size steps down with them, and at 0 the hive is gone.
 6. **Return fire is set by the guns.** A battery fires at its own rate until silenced, so a
    bigger fleet that silences it sooner pays less (Lanchester, counter-battery).
 7. **No decline.** A human colony dies only two ways: a siege won on the ground, or saturation

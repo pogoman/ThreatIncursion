@@ -359,6 +359,8 @@ public class ThreatIncConfig {
 	public static float siegeSuppressDaysPerDay() { return f("threatinc_siegeSuppressDaysPerDay"); }
 	/** The same, over a hive's war-strata (their clock is defenseWearDays). */
 	public static float hiveSiegeSuppressDaysPerDay() { return f("threatinc_hiveSiegeSuppressDaysPerDay"); }
+	/** Disruption days of saturation that take one size's worth of strata (hiveDefensePerSize) off a hive (ThreatStrata; ThreatGroundFronts.saturationSlice). */
+	public static float strataSuppressDaysPerSize() { return f("threatinc_strataSuppressDaysPerSize"); }
 	/** Days before the player's fleet can organize another bombardment; tactical and saturation share the lock. */
 	public static float bombardCooldownDays() { return f("threatinc_bombardCooldownDays"); }
 	/** Fuel a day of tactical bombardment burns per fleet point (an AI fleet's from its provisions). */
@@ -419,7 +421,7 @@ public class ThreatIncConfig {
 
 	// ---- hive sieges ----
 
-	/** Flat ground-defense points per colony size (before industry multipliers). */
+	/** Strata a hive size is worth (ThreatStrata): its ground-defense points before industry multipliers, the figure saturation takes chunks of, and the step its size follows. */
 	public static float hiveDefensePerSize()  { return f("threatinc_hiveDefensePerSize"); }
 	/** Ground Defenses structure bonus: defense mult = 1 + bonus (x2 at 1.0). */
 	public static float groundDefensesBonus() { return f("threatinc_groundDefensesBonus"); }
@@ -715,7 +717,7 @@ public class ThreatIncConfig {
 	public static float sizeUpkeepRatio()          { return f("threatinc_sizeUpkeepRatio"); }
 	public static float upkeepBreakEven()          { return f("threatinc_upkeepBreakEven"); }
 	public static float starveDaysPerSize()        { return f("threatinc_starveDaysPerSize"); }
-	/** A blockade or a dead port starves a seed hive (size 1-2) by the share of its imports cut, to nothing (ThreatColonyUpkeep.feed, ThreatColonyManager.starveOut); false: a seed only ever holds. */
+	/** A blockade or a dead port starves a seed hive (size 1-2) by the share of its imports cut, to nothing (ThreatColonyUpkeep.feed, ThreatStrata.collapse); false: a seed only ever holds. */
 	public static boolean blockadeStarvesSeeds()   { return b("threatinc_blockadeStarvesSeeds", true); }
 	/** A FOUNDING BUDGET (S6, 2026-10-10): while a seeding is held on supplies, growth draws only the stock above one founding kit. */
 	public static boolean foundingBudget()         { return b("threatinc_foundingBudget", true); }

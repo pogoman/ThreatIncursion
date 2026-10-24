@@ -451,6 +451,10 @@
 	# its size and runs several times a colony's, so its rate is higher.
 	"threatinc_siegeSuppressDaysPerDay": 12,
 	"threatinc_hiveSiegeSuppressDaysPerDay": 30,
+	# THE STRATA (2026-10-24): a saturation day over a hive also takes strata -
+	# one size's worth (hiveDefensePerSize) per this many disruption days it adds,
+	# so a day that puts the structures down 30 days takes 40 strata at 400 / 300
+	"threatinc_strataSuppressDaysPerSize": 300,
 	"threatinc_siegeFPWeight": 1.0,
 	# the player's bombardments share one lock: another within this many days
 	"threatinc_bombardCooldownDays": 1,
@@ -538,11 +542,13 @@
 	# scale on hive ground-defense strength
 	"threatinc_groundDefenseMult": 1.0,
 
-	# Hive sieges: every hive lives deep underground behind ground defenses
-	# anchored to COLONY SIZE (hiveDefensePerSize x size, times stability like
-	# any colony's, then multiplied by the defense industries - a size-8 hive's
-	# true figure runs five digits). A hive dies only to a ground victory:
-	# saturation keeps its structures down but never takes a size off it.
+	# Hive sieges: every hive lives deep underground on its STRATA (2026-10-24):
+	# this many a size, the figure its ground defence is before the defense
+	# industries multiply it (times stability like any colony's). Fed, the strata
+	# thicken (colonyGrowthBaseDays x size a size) and the hive grows a size at
+	# each multiple; starving they thin (starveDaysPerSize a size); saturation
+	# takes chunks (strataSuppressDaysPerSize); a front holds whole ones. At 0 the
+	# hive is gone.
 	"threatinc_hiveDefensePerSize": 400,
 	# defense-structure scaling: defense mult = 1 + bonus per structure
 	"threatinc_groundDefensesBonus": 1.0,

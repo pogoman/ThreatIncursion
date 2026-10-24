@@ -2820,13 +2820,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return hi;
 	}
 
-	/** A hive's defender strength once its Swarm Nexus stands (SwarmNexus: the size anchor over the strata left, times the Nexus bonus and a standing Swarm Bastion's or Command's), batteries aside. */
+	/** A hive's defender strength once its Swarm Nexus stands (SwarmNexus: the strata standing less what a front holds, ThreatStrata.standing, times the Nexus bonus and a standing Swarm Bastion's or Command's), batteries aside. */
 	public static float nexusAnchoredDefense(MarketAPI target) {
-		int strataLeft = Math.max(0, target.getSize() - ThreatGroundFronts.strataHeld(target.getId()));
 		int tier = SwarmBastion.tier(target);
 		float bastion = SwarmBastion.defenseBonus(tier >= 2 ? SwarmBastion.COMMAND
 				: tier == 1 ? SwarmBastion.BASTION : null);
-		return ThreatIncConfig.hiveDefensePerSize() * strataLeft
+		return ThreatStrata.standing(target)
 				* (1f + ThreatIncConfig.nexusDefenseBonus()) * (1f + bastion) * ThreatIncConfig.groundDefenseMult();
 	}
 

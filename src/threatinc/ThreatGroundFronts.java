@@ -4245,11 +4245,24 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		int[] razed = ThreatRazing.pour(market, pour * through, razerFactionId);
 		out[2] = razed[0];
 		out[3] = razed[1];
+		// THE STRATA (the user, 2026-10-24: "Bombardment eliminates chunks of strata"): over a hive the
+		// day takes strata instead of a bar - hiveDefensePerSize per strataSuppressDaysPerSize disruption
+		// days it adds - the size steps down with them and at 0 the hive is gone (ThreatStrata)
+		float strataTaken = 0f;
+		if (!ThreatRazing.razes(market)) {
+			strataTaken = rate * days * ThreatStrata.perSize() / Math.max(1f, ThreatIncConfig.strataSuppressDaysPerSize());
+			int sizeBefore = market.getSize();
+			float left = ThreatStrata.add(market, -strataTaken, "Razed a stratum of",
+					razerFactionId != null ? razerFactionId : Factions.PLAYER);
+			out[2] = Math.max(0, sizeBefore - market.getSize());
+			if (left <= 0f) out[3] = 1;
+		}
 		ThreatIncConfig.log("saturationSlice " + market.getName() + " fp=" + String.format("%.0f", fp)
 				+ " days=" + String.format("%.2f", days) + " poured=" + String.format("%.0f", pour)
-				+ " through=" + String.format("%.2f", through) + " razed=" + razed[0]
-				+ (razed[1] > 0 ? " DESTROYED" : "") + " loss=" + String.format("%.2f", out[0]));
-		if (razed[1] > 0) return out;
+				+ " through=" + String.format("%.2f", through) + " razed=" + (int) out[2]
+				+ (strataTaken > 0f ? " strata=-" + String.format("%.1f", strataTaken) : "")
+				+ (out[3] > 0 ? " DESTROYED" : "") + " loss=" + String.format("%.2f", out[0]));
+		if (out[3] > 0) return out;
 		if (reapply) finishSlice(market, touched, days);
 		return out;
 	}

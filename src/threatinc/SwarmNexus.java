@@ -58,19 +58,17 @@ public class SwarmNexus extends BaseIndustry {
 						* ThreatIncConfig.groundDefenseMult(),
 				getNameForModifier() + (isDisrupted() ? " (in refit)" : ""));
 
-		// The deep defenses: hive ground strength is anchored to COLONY SIZE
-		// (hiveDefensePerSize per size, default 500 - a size-8 hive fields a
-		// 4000-point base before industry multipliers), not vanilla's shallow
-		// base table. Topped up as a flat so the vanilla base + this = the
-		// anchor, then the industry mults stack on top. Applied even while the
-		// nexus is disrupted - the strata below the crust don't stop existing.
-		// EXCEPT the strata a ground front has taken (docs/ground-war.md): the
-		// war-strata ARE the base defense, so each stratum held strips one
-		// size-worth of it - a front fighting inward gains real momentum, and
-		// a hive counter-attack that retakes a stratum wins it back.
-		int strataLeft = Math.max(0,
-				market.getSize() - ThreatGroundFronts.strataHeld(market.getId()));
-		float targetBase = ThreatIncConfig.hiveDefensePerSize() * strataLeft;
+		// The deep defenses: hive ground strength IS THE STRATA (ThreatStrata, the
+		// user 2026-10-24: hiveDefensePerSize a size, fed they thicken, starving
+		// they thin, saturation takes chunks, and the size follows the figure),
+		// not vanilla's shallow base table. Topped up as a flat so the vanilla
+		// base + this = the strata standing, then the industry mults stack on
+		// top. Applied even while the nexus is disrupted - the strata below the
+		// crust don't stop existing. EXCEPT the strata a ground front has taken
+		// (docs/ground-war.md): each stratum held strips one size-worth - a front
+		// fighting inward gains real momentum, and a hive counter-attack that
+		// retakes a stratum wins it back.
+		float targetBase = ThreatStrata.standing(market);
 		float vanillaBase = com.fs.starfarer.api.impl.campaign.econ.impl
 				.PopulationAndInfrastructure.getBaseGroundDefenses(market.getSize());
 		float topUp = targetBase - vanillaBase;

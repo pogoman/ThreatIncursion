@@ -84,15 +84,7 @@ public class ThreatColonyUpkeep {
 		return Math.max(1f, ThreatIncConfig.starveDaysPerSize());
 	}
 
-	/**
-	 * How far below its size, in levels, a starving colony's progress runs
-	 * before the size goes: a colony just grown does not lose its size to the
-	 * first lean week, and one that loses it lands halfway back to it. A world
-	 * at its cap banks a full level above its size while it is fed
-	 * (ThreatColonyManager.advanceFedGrowth), so a fortress paid nothing holds
-	 * for 1.5 levels' starving. h35a, without it: 23 size-8 worlds of the base
-	 * save, their progress 0 at the cap, lost a size in the first week.
-	 */
+	/** RETIRED 2026-10-24: the strata are the figure (ThreatStrata) and the size follows them with no hysteresis; kept for older notes. */
 	public static final float SHRINK_MARGIN = 0.5f;
 
 	/**
@@ -408,7 +400,7 @@ public class ThreatColonyUpkeep {
 			// a seed has nothing to starve on: unfed it holds, fed it grows - unless a blockade or a
 			// dead port cuts what it would import (the user, 2026-10-24, in orbit over a size-2 hive
 			// with its imports cut 100%: "shortages seem to have no effect"): fed the share that gets
-			// through, it starves - to nothing (blockadeStarvesSeeds; ThreatColonyManager.starveOut)
+			// through, it starves - to nothing (blockadeStarvesSeeds; ThreatStrata.collapse)
 			if (n.seed) {
 				share = t + (1f - t) * share;
 				float cut = importCut(n.market);
