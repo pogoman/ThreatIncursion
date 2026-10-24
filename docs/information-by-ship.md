@@ -50,7 +50,7 @@ Both sides, once at war. The budget is fixed FP; its split into patrols follows 
   A found hive system the faction has no report of, its own or a partner's, stays a candidate and is not
   skipped as a known stop (`ThreatScouts.unreported`, in `planRoute` and `knownStop`): the find is the sector's,
   the picture each faction's own, and the council sees only the systems it has a picture of. Paid as any
-  scouting party: a party sails only if its home's fuel pays the route, so its range is its home's fuel.
+  scouting party: a party sails only if its home's fuel pays the route, so its range is its home's fuel. Parties show on their faction's board under Fleets in flight (`ThreatFactionView.fleetRows`, 2026-10-24).
 - Swarm: `ThreatSwarmPatrols.launchAll`, per hive system that can stage a swarm (`ThreatSwarmScouts.pickStaging`),
   from phase 2 with a faction mobilised. Budget `swarmPatrolFPPerSystem` 120, base size `swarmPatrolFP` 30. Route:
   the nearest `patrolStops` systems no hive and no human holds, not patrolled within `swarmPatrolMemoryDays` 45

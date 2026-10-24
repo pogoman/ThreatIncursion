@@ -1586,6 +1586,32 @@ public class ThreatFactionView {
 
 	/** The FP an unspawned expedition fields, estimated from its planned fleet sizes: a daily siege's less the damage booked, as its marines. */
 	protected static int abstractFP(ThreatPurgeFGI p) {
+		// scouting parties and patrols (ThreatScouts; 2026-10-24, the user: "how
+		// come i cant see scouts under fleets in flight"): no order, so no Recall
+		for (ThreatScouts.Scout s : ThreatScouts.all()) {
+			if (!factionId.equals(s.factionId)) continue;
+			if (s.fleet == null || !s.fleet.isAlive() || s.fleet.isExpired()) continue;
+			MarketAPI home = Global.getSector().getEconomy().getMarket(s.homeMarketId);
+			String homeName = home != null ? home.getName() : "-";
+			FleetRow f = new FleetRow();
+			f.kind = s.patrol ? "Patrol" : s.recon ? "Recon" : "Scout";
+			f.color = h;
+			f.name = homeName;
+			if (s.returning) {
+				f.task = "returning to " + homeName;
+			} else {
+				StarSystemAPI at = s.leg < s.route.size() ? ThreatScoutRoute.systemById(s.route.get(s.leg)) : null;
+				f.task = at != null ? "sweeping the " + at.getNameWithLowercaseTypeShort()
+						+ (s.route.size() > 1 ? " (" + (s.leg + 1) + " of " + s.route.size() + ")" : "") : "sweeping";
+			}
+			f.status = s.carried != null && !s.carried.isEmpty() ? "sighting aboard" : s.returning ? "en route" : "out";
+			f.strength = fleetStrength(s.fleet);
+			int days = s.launchedTimestamp != 0L
+					? (int) Global.getSector().getClock().getElapsedDaysSince(s.launchedTimestamp) : 0;
+			f.eta = days + " d out";
+			f.rowId = s.fleet;
+			rows.add(f);
+		}
 		return Math.round(p.abstractNow());
 	}
 

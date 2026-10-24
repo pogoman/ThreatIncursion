@@ -350,6 +350,10 @@ only while the raid action itself is current; the cargo line shows from launch.
   (`ThreatWarCouncil.strategyLine`), and one row per running play at the top of the fleets table
   (`ThreatFactionView.fleetRows`; kind, target, phase, planned FP, days to the next check).
 - A faction view's fronts table names worlds in systems the player has not discovered (any
+- The fleets table also lists the faction's scouting parties and patrols (`ThreatScouts.all`; kind Patrol / Scout /
+  Recon, home world, the system it is sweeping with its leg of the route or "returning to", status out / en route /
+  sighting aboard, days out; no Recall - a party is no order). Added 2026-10-24, the user: "how come i cant see
+  scouts under fleets in flight".
   landing of that faction shows), the one place the board breaks the fog-of-war rule in
   [intel-ui-platform.md](intel-ui-platform.md) trap 8. Asked for that way; revisit if it reads
   as a leak. (The hive view's copy follows the selected system, which is always found.)
