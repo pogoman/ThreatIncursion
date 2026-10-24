@@ -949,9 +949,10 @@
 	"threatinc_sizeUpkeepRatio": 2.5,
 	"threatinc_upkeepBreakEven": 0.5,
 	"threatinc_starveDaysPerSize": 90,
-	# a size-2 seed hive (free below size 3) under a blockade or with its port down is
-	# fed only the share of its imports that gets through, so a full blockade starves
-	# it to size 1 (2026-10-24); false = a seed only ever holds
+	# a seed hive (size 1-2, free below size 3) under a blockade or with its port down
+	# is fed only the share of its imports that gets through, so a full blockade starves
+	# it a size per starveDaysPerSize and destroys it past size 1 (2026-10-24); false =
+	# a seed only ever holds
 	"threatinc_blockadeStarvesSeeds": true,
 	"threatinc_foundingBudget": true,
 	# TANGIBLE FEEDING (the user, 2026-10-18): a world's size upkeep is eaten from a larder only a sailing

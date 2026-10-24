@@ -4173,11 +4173,15 @@ public class ThreatColonyManager {
 		if (rate == 0f) return;
 		progress += elapsedDays * rate * daysPerLevel / (ThreatColonyUpkeep.starveDays() * IncursionManager.timeScale());
 		float floor = -ThreatColonyUpkeep.SHRINK_MARGIN * daysPerLevel;
-		if (progress >= floor || size <= 1) {
-			ThreatIncData.setGrowthProgressDays(id, Math.max(size <= 1 ? 0f : floor, progress));
+		if (progress >= floor) {
+			ThreatIncData.setGrowthProgressDays(id, Math.max(floor, progress));
 			return;
 		}
 		float below = progress / daysPerLevel;
+		if (size <= 1) {
+			starveOut(market);
+			return;
+		}
 		shrinkColony(market);
 		float lower = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize() * IncursionManager.timeScale();
 		ThreatIncData.setGrowthProgressDays(id, Math.max(0f, (1f + below) * lower));
@@ -4188,6 +4192,25 @@ public class ThreatColonyManager {
 		ThreatRazing.reduceSize(market, "Starved a level of");
 		announce(ThreatNotice.titled("Hive Starving").good()
 				.line("%s has shrunk to size %s", ThreatNotice.market(market), market.getSize()));
+	}
+
+	/**
+	 * A size-1 hive starved past its floor dies (the user, 2026-10-24: "hive should shrink to zero
+	 * and be destroyed if it reaches 0"): a front standing on it takes the victory
+	 * (ThreatGroundFronts.groundVictory), else the strata go cold on their own ({@link #eradicate}).
+	 */
+	protected static void starveOut(MarketAPI market) {
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		if (front != null) {
+			ThreatIncConfig.log("Starved out under a front: " + market.getName());
+			ThreatGroundFronts.groundVictory(front, market);
+			return;
+		}
+		ThreatIncConfig.log("Starved out: " + market.getName());
+		announce(ThreatNotice.titled("Hive Starved").good()
+				.line("%s has starved", ThreatNotice.market(market))
+				.line("The strata are cold."));
+		eradicate(market);
 	}
 
 	/** Whether the colony grows now: by the share of its upkeep paid under size upkeep, else by vitality. */
@@ -4209,7 +4232,7 @@ public class ThreatColonyManager {
 	 * Float.MAX_VALUE for one that is not starving.
 	 */
 	public static float daysToLoseSize(MarketAPI market) {
-		if (market == null || !ThreatColonyUpkeep.enabled() || market.getSize() <= 1) return Float.MAX_VALUE;
+		if (market == null || !ThreatColonyUpkeep.enabled()) return Float.MAX_VALUE;
 		float rate = growthPace(market);
 		if (rate >= 0f) return Float.MAX_VALUE;
 		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize() * IncursionManager.timeScale();
@@ -4279,8 +4302,9 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * ERADICATION: the teardown of a Threat colony, by the one way it dies - a
-	 * ground victory - never a timer, and never from orbit (saturation takes
+	 * ERADICATION: the teardown of a Threat colony, by the two ways it dies - a
+	 * ground victory, or starved past size 1 ({@link #starveOut}, 2026-10-24) -
+	 * never a timer, and never from orbit alone (saturation takes
 	 * no size off a hive, ThreatRazing.razes). Vitality bookkeeping
 	 * cleared, then the vanilla decivilization teardown; pollColonies reacts
 	 * on the next poll.

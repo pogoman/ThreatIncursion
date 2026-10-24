@@ -715,7 +715,7 @@ public class ThreatIncConfig {
 	public static float sizeUpkeepRatio()          { return f("threatinc_sizeUpkeepRatio"); }
 	public static float upkeepBreakEven()          { return f("threatinc_upkeepBreakEven"); }
 	public static float starveDaysPerSize()        { return f("threatinc_starveDaysPerSize"); }
-	/** A blockade or a dead port starves a size-2 seed hive by the share of its imports cut (ThreatColonyUpkeep.feed); false: a seed only ever holds. */
+	/** A blockade or a dead port starves a seed hive (size 1-2) by the share of its imports cut, to nothing (ThreatColonyUpkeep.feed, ThreatColonyManager.starveOut); false: a seed only ever holds. */
 	public static boolean blockadeStarvesSeeds()   { return b("threatinc_blockadeStarvesSeeds", true); }
 	/** A FOUNDING BUDGET (S6, 2026-10-10): while a seeding is held on supplies, growth draws only the stock above one founding kit. */
 	public static boolean foundingBudget()         { return b("threatinc_foundingBudget", true); }

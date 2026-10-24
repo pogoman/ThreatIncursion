@@ -195,8 +195,11 @@ forward base, commodity-bound the way vanilla's economy is.
   of its output cannot leave (`reachesStock`, in `ThreatFuel.perMonth`). So a blockade starves the
   worlds that import; a forge world declines once its forge is raided too. Since 2026-10-24 a size-2
   seed is fed only the share of its imports that gets through (`feed`: its holding share capped at
-  1 - `importCut`; knob `blockadeStarvesSeeds`), so a full blockade starves it to size 1 - until then a
-  seed held under any blockade (the user, in orbit over Beta Prisma I: "shortages seem to have no effect").
+  1 - `importCut`; knob `blockadeStarvesSeeds`; a size-1 seed likewise), so a full blockade starves it a
+  size per `starveDaysPerSize` and, past size 1, destroys it (`ThreatColonyManager.starveOut`: a front
+  standing on it takes the victory, else "Hive Starved" and `eradicate`) - until then a seed held under
+  any blockade and size 1 never fell (the user, in orbit over Beta Prisma I: "shortages seem to have no
+  effect"; then "hive should shrink to zero and be destroyed if it reaches 0").
 - **Tangible feeding (2026-10-18, the user: "make the supply thing tangible so they send convoys both
   sides to maintain worlds and forward bases; the convoys don't need to return home, they can just be
   absorbed when they reach their target").** `ThreatFeeding`, knob `threatinc_feedConvoys`. A world eats

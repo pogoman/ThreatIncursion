@@ -89,7 +89,8 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 					"" + front.strataHeld, "" + market.getSize());
 		}
 		if (sized && pace < 0f) {
-			tooltip.addPara("Growth: %s, a size in %s days", front != null ? 3f : opad, neg, "starving",
+			tooltip.addPara(market.getSize() <= 1 ? "Growth: %s, destroyed in %s days" : "Growth: %s, a size in %s days",
+					front != null ? 3f : opad, neg, "starving",
 					"" + Math.max(1, (int) ThreatColonyManager.daysToLoseSize(market)));
 		} else if (front != null) {
 			tooltip.addPara("Growth: %s", 3f, neg, "halted");

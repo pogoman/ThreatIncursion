@@ -219,7 +219,7 @@ threatinc_sizeUpkeepAt3,Size Upkeep at Size 3,Double,100,"Supplies a month a siz
 threatinc_sizeUpkeepRatio,Size Upkeep Ratio,Double,2.5,"How many times the size below it each size costs.",1,10
 threatinc_upkeepBreakEven,Upkeep Break-even,Double,0.5,"Share of its upkeep that holds a colony at its size: more grows it, less shrinks it.",0.05,0.95
 threatinc_starveDaysPerSize,Starving Days per Size,Double,90,"Days a colony paid none of its upkeep takes to lose a size.",10,1000
-threatinc_blockadeStarvesSeeds,Blockade Starves Seed Hives,Boolean,true,"A size-2 hive (free below size 3) under a blockade or with its port down is fed only the share of its imports that gets through, so a full blockade starves it to size 1. Off, a seed only ever holds.",,
+threatinc_blockadeStarvesSeeds,Blockade Starves Seed Hives,Boolean,true,"A hive of size 1 or 2 (free below size 3) under a blockade or with its port down is fed only the share of its imports that gets through, so a full blockade starves it a size at a time and destroys it past size 1. Off, a seed only ever holds.",,
 threatinc_feedShareExpand,Feed Share Expanding,Double,0.5,"Share of the hive's monthly supplies, after its fleets away, that its colonies' upkeep may take while it expands. The rest is banked for forges and waves.",0,1
 threatinc_feedSharePress,Feed Share Pressing,Double,0.7,"As Feed Share Expanding, while the hive presses a rival.",0,1
 threatinc_feedShareConsolidate,Feed Share Consolidating,Double,0.5,"As Feed Share Expanding, while the hive consolidates under attack.",0,1

@@ -267,8 +267,16 @@ public class ThreatColonyUpkeep {
 			// a forge world grows free to its first output at size 3 (the opening chain's seed forge)
 			boolean seed = perMonth <= 0f && size == 2 && ThreatColonyManager.getForge(m) == null;
 			if (perMonth <= 0f && !seed) {
-				// a size-1 seed, or a forge world growing toward its first output: free
-				m.getMemoryWithoutUpdate().unset(MEM_FED);
+				// a size-1 seed, or a forge world growing toward its first output: free - but a size-1
+				// seed with its imports cut starves on the cut as a size-2 one does, to nothing (the
+				// user, 2026-10-24: "hive should shrink to zero and be destroyed if it reaches 0")
+				float cut = size <= 1 && ThreatColonyManager.getForge(m) == null
+						&& ThreatIncConfig.blockadeStarvesSeeds() ? importCut(m) : 0f;
+				if (cut > 0f) {
+					m.getMemoryWithoutUpdate().set(MEM_FED, Math.min(t, 1f - cut));
+				} else {
+					m.getMemoryWithoutUpdate().unset(MEM_FED);
+				}
 				continue;
 			}
 			Need n = new Need();
@@ -400,7 +408,7 @@ public class ThreatColonyUpkeep {
 			// a seed has nothing to starve on: unfed it holds, fed it grows - unless a blockade or a
 			// dead port cuts what it would import (the user, 2026-10-24, in orbit over a size-2 hive
 			// with its imports cut 100%: "shortages seem to have no effect"): fed the share that gets
-			// through, it starves to size 1 (blockadeStarvesSeeds)
+			// through, it starves - to nothing (blockadeStarvesSeeds; ThreatColonyManager.starveOut)
 			if (n.seed) {
 				share = t + (1f - t) * share;
 				float cut = importCut(n.market);
