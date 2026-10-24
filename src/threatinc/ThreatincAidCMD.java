@@ -27,12 +27,15 @@ import com.fs.starfarer.api.util.Misc;
  * convoy does (reserve deposit), and earns standing weighted by the purpose
  * ({@link ThreatAid#onDelivered}). Ship hulls are never in a hold; fleets are the board's.
  *
- * <p>Wired from rules.csv: {@code option} adds the option to the market's main menu, and to
- * the station or base commander's comm-directory conversation, at every NPC colony of a
- * mobilised faction (since 2026-10-24 the command decides and logs why, not a ticked memory
- * flag - the user docked at besieged Sindria and saw no option). Back re-fires PopulateOptions
- * without touching $menuState, so it returns to whichever menu the player came from. Commands:
- * {@code option [person]}, {@code menu}, {@code deliver <commodityId> <tier>}, {@code back}.
+ * <p>Wired from rules.csv: the option sits at order 30 on the market's main menu (before Leave)
+ * and in the station or base commander's comm-directory conversation, on rows that read the
+ * market memory flag {@link ThreatAidMissionIntel#MEM_REQUEST}. Since 2026-10-24 {@code option}
+ * (a PopulateOptions row of its own) sets that flag at the dialog itself - true at every NPC colony
+ * of a mobilised faction, cleared elsewhere - and, when the ordered row has not fired yet, clears
+ * the panel and re-fires PopulateOptions once so the option takes its place (an option a script
+ * adds lands after Leave: the user, 2026-10-24); it logs the decision either way. Back re-fires
+ * PopulateOptions without touching $menuState, so it returns to whichever menu the player came
+ * from. Commands: {@code option}, {@code menu}, {@code deliver <commodityId> <tier>}, {@code back}.
  */
 public class ThreatincAidCMD extends BaseCommandPlugin {
 
@@ -56,7 +59,7 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		}
 		if (market == null) return false;
 		if ("option".equals(command)) {
-			option(dialog, market, params.size() > 1 && "person".equals(params.get(1).getString(memoryMap)));
+			option(dialog, market, memoryMap);
 			return true;
 		}
 		if ("menu".equals(command)) {
@@ -93,7 +96,7 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 	/** The tier words of a purpose: what each of Min / Med / Max buys. */
 	protected static String[] tierWords(ThreatNeeds.Need n) {
 		if (ThreatNeeds.HOLD.equals(n.purpose)) return new String[] { "hold the line", "push back", "overrun" };
-		if (ThreatNeeds.PUSH_BACK.equals(n.purpose)) return new String[] { "push back", "overrun", "and then some" };
+		if (ThreatNeeds.PUSH_BACK.equals(n.purpose)) return new String[] { "push back", "overrun", "overrun with a reserve" };
 		if (ThreatNeeds.ARM.equals(n.purpose)) return new String[] { "30 days", "60 days", "fill the depot" };
 		if (ThreatNeeds.EXPEDITION.equals(n.purpose)) return new String[] { "to sail", "a margin", "the full voyage" };
 		return new String[] { "the gap", "a margin", "fill the depot" };
@@ -107,17 +110,23 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		String figures;
 		String[] words = tierWords(n);
 		if (ThreatNeeds.HOLD.equals(n.purpose) || ThreatNeeds.PUSH_BACK.equals(n.purpose)) {
-			figures = n.shown(n.min) + " to " + words[0] + ", " + n.shown(n.med) + " to " + words[1] + ", "
-					+ n.shown(n.max) + " to " + words[2];
+			// a tier already covered (marines just handed over, convoys at sea) reads covered, not "0 to"
+			float[] tiers = { n.min, n.med, n.max };
+			StringBuilder sb = new StringBuilder();
+			for (int t = 0; t < 3; t++) {
+				if (sb.length() > 0) sb.append(", ");
+				sb.append(Math.round(tiers[t]) <= 0 ? words[t] + " covered" : n.shown(tiers[t]) + " to " + words[t]);
+			}
+			figures = sb.toString();
 		} else {
 			figures = n.figures();
 		}
 		String lead;
 		if (ThreatNeeds.HOLD.equals(n.purpose)) {
-			lead = world + (n.overrun ? " is being overrun by " : " holds the line against ")
+			lead = world + (n.overrun ? " is being overrun by " : " is losing the line to ")
 					+ Misc.getWithDGS(Math.round(n.troops)) + " Threat troops.";
 		} else if (ThreatNeeds.PUSH_BACK.equals(n.purpose)) {
-			lead = world + " has " + Misc.getWithDGS(Math.round(n.troops)) + " Threat troops stopped.";
+			lead = "The line at " + world + " holds against " + Misc.getWithDGS(Math.round(n.troops)) + " Threat troops.";
 		} else if (ThreatNeeds.ARM.equals(n.purpose)) {
 			lead = world + "'s defenders burn " + String.format("%.1f", n.troops) + " heavy armaments a day.";
 		} else if (ThreatNeeds.EXPEDITION.equals(n.purpose)) {
@@ -130,23 +139,47 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		return s;
 	}
 
+	/** Guards the one re-population {@link #option} may fire. */
+	protected static boolean repopulating = false;
+
 	/**
-	 * Adds the hand-over option at an NPC colony of a mobilised faction (the needs themselves
-	 * are listed by {@link #menu}); logs the decision either way so a missing option can be read
-	 * off the log.
+	 * Gates the hand-over option: sets the market memory flag the ordered rows read at an NPC
+	 * colony of a mobilised faction (clears it elsewhere), re-fires PopulateOptions once if the
+	 * ordered row has not added the option yet, and logs the decision so a missing option can be
+	 * read off the log. The needs themselves are listed by {@link #menu}.
 	 */
-	protected void option(InteractionDialogAPI dialog, MarketAPI market, boolean person) {
+	protected void option(InteractionDialogAPI dialog, MarketAPI market, Map<String, MemoryAPI> memoryMap) {
 		FactionAPI faction = market.getFaction();
 		String why = null;
 		if (faction == null || faction.isPlayerFaction()) why = "your own colony";
 		else if (Factions.THREAT.equals(faction.getId())) why = "a hive";
 		else if (!ThreatWarState.isAtWar(faction)) why = ThreatWarState.displayName(faction.getId()) + " is not mobilised";
-		if (why == null) {
-			dialog.getOptionPanel().addOption(person ? "\"I've brought aid for the war effort.\""
-					: "Deliver aid for the war effort", OPTION_MENU);
+		MemoryAPI mem = market.getMemoryWithoutUpdate();
+		if (why == null) mem.set(ThreatAidMissionIntel.MEM_REQUEST, true);
+		else mem.unset(ThreatAidMissionIntel.MEM_REQUEST);
+		OptionPanelAPI panel = dialog.getOptionPanel();
+		boolean present = panel.hasOption(OPTION_MENU);
+		if (why == null && !present && !repopulating) {
+			// the flag was not set when the ordered row was read: build the menu again, once
+			repopulating = true;
+			try {
+				panel.clearOptions();
+				FireAll.fire(null, dialog, memoryMap, "PopulateOptions");
+			} finally {
+				repopulating = false;
+			}
+			present = panel.hasOption(OPTION_MENU);
+			if (!present) {
+				// the ordered row still did not fire: the option goes in where it can
+				panel.addOption("Deliver aid for the war effort", OPTION_MENU);
+				ThreatIncConfig.log("Dock aid option at " + market.getName()
+						+ ": the ordered rule did not fire with the flag set - added last");
+			}
 		}
-		ThreatIncConfig.log("Dock aid option at " + market.getName() + ": " + (why == null
-				? "offered, " + ThreatNeeds.of(market).size() + " need(s)" : "none - " + why));
+		if (!repopulating) {
+			ThreatIncConfig.log("Dock aid option at " + market.getName() + ": " + (why == null
+					? "offered, " + ThreatNeeds.of(market).size() + " need(s)" : "none - " + why));
+		}
 	}
 
 	protected void menu(InteractionDialogAPI dialog, MarketAPI market) {
@@ -242,8 +275,8 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		int armaments = Commodities.HAND_WEAPONS.equals(commodityId) ? qty : 0;
 		int fuel = Commodities.FUEL.equals(commodityId) ? qty : 0;
 		int supplies = Commodities.SUPPLIES.equals(commodityId) ? qty : 0;
-		text.addPara("Lost: " + Misc.getWithDGS(qty) + " " + ThreatReserves.label(commodityId));
-		text.highlightInLastPara(Misc.getNegativeHighlightColor(), Misc.getWithDGS(qty));
+		text.addPara("Handed over: " + Misc.getWithDGS(qty) + " " + ThreatReserves.label(commodityId));
+		text.highlightInLastPara(ThreatNotice.goodColor(), Misc.getWithDGS(qty));
 		text.addPara(ThreatComms.dockThanks(market.getFaction(), market, qty, commodityId, overMax));
 		ThreatAid.onDelivered(market, market.getFactionId(), marines, armaments, fuel, supplies, 0,
 				false, text, weights);

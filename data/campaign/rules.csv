@@ -29,18 +29,27 @@ threatinc_groundWithdrawSel,DialogOptionSelected,$option == threatincGroundWithd
 threatinc_groundPushSel,DialogOptionSelected,$option == threatincGroundPush,ThreatincMarketCMD groundPush,,,"Orders the front to assault the next stratum"
 threatinc_groundEntrenchSel,DialogOptionSelected,$option == threatincGroundEntrench,ThreatincMarketCMD groundEntrench,,,"Orders the front to break off / stand fast and entrench"
 threatinc_groundBackSel,DialogOptionSelected,$option == threatincGroundBack,ThreatincMarketCMD goBackToDefenses,,,"Back from ground operations to the military options menu"
-threatincAidOption,PopulateOptions,"$menuState == main
+threatincAidGate,PopulateOptions,"$menuState == main
 $hasMarket
 $faction.id != player
-$faction.id != threat",ThreatincAidCMD option,,,"Player aid (docs/war-effort-rework.md 5): at any colony of a mobilised faction the command adds the hand-over option (and logs why not); the station commander lists its needs and takes a hand-over from the player's cargo"
-threatincAidOptionStation,PopulateOptions,"$isPerson
+$faction.id != threat",ThreatincAidCMD option,,,"Player aid (docs/war-effort-rework.md 5): sets $market.threatinc_aidRequest at any colony of a mobilised faction (clears it elsewhere), re-fires PopulateOptions once if the ordered row below has not added the option, and logs why"
+threatincAidOption,PopulateOptions,"$menuState == main
+$hasMarket
+$market.threatinc_aidRequest",,,30:threatincAidDeliver:Deliver aid for the war effort,"The hand-over option in its place, before Leave: the station commander lists the colony's needs and takes a hand-over from the player's cargo"
+threatincAidGateStation,PopulateOptions,"$isPerson
 $postId == stationCommander
 $faction.id != player
-$faction.id != threat",ThreatincAidCMD option person,,,"The same hand-over from the station commander's comm-directory conversation ($local is the person there, so the dock-menu rule cannot fire)"
-threatincAidOptionBase,PopulateOptions,"$isPerson
+$faction.id != threat",ThreatincAidCMD option,,,"The gate for the station commander's comm-directory conversation ($local is the person there, so the dock-menu rows cannot fire)"
+threatincAidOptionStation,PopulateOptions,"$isPerson
+$postId == stationCommander
+$market.threatinc_aidRequest",,,"30:threatincAidDeliver:""I've brought aid for the war effort.""","The same hand-over from the station commander's comm-directory conversation"
+threatincAidGateBase,PopulateOptions,"$isPerson
 $postId == baseCommander
 $faction.id != player
-$faction.id != threat",ThreatincAidCMD option person,,,"As above for a colony whose military post is a base commander (no orbital station)"
+$faction.id != threat",ThreatincAidCMD option,,,"As above for a colony whose military post is a base commander (no orbital station)"
+threatincAidOptionBase,PopulateOptions,"$isPerson
+$postId == baseCommander
+$market.threatinc_aidRequest",,,"30:threatincAidDeliver:""I've brought aid for the war effort.""","As above for a colony whose military post is a base commander (no orbital station)"
 threatincAidDeliverSel,DialogOptionSelected,$option == threatincAidDeliver,ThreatincAidCMD menu,,,"Lists every need of the colony (ThreatNeeds) and what the player carries; a hand-over option per tier the hold covers, and all you carry (tier 3)"
 threatincAidHandMarines0Sel,DialogOptionSelected,$option == threatincAidHand_marines_0,ThreatincAidCMD deliver marines 0,,,
 threatincAidHandMarines1Sel,DialogOptionSelected,$option == threatincAidHand_marines_1,ThreatincAidCMD deliver marines 1,,,

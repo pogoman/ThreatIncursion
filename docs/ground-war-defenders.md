@@ -197,10 +197,12 @@ a lone toggle reading "Dig in" under a swarm landing already "dug in" looked lik
 (user, 2026-10-17 night) - which is also what led to the per-tab fronts table the next day, where the
 Stance column is the tab's own side's
 (`ThreatWarBoard.addFrontButtons`, `ThreatFactionView.BUTTON_DEFEND_PUSH` / `BUTTON_DEFEND_ENTRENCH`,
-own colony only). NPC colonies run `tickDefenderStance` each tick: push when
-`counterAttackStrength > defenseStrength(front)` (the counter-attack would win), dig in when it would
-bounce - a garrison does not throw itself at a beachhead it cannot beat (humans play to win,
-2026-10-04). That is a behaviour change for NPC worlds: before, an outmatched colony counter-attacked
+own colony only). NPC colonies run `tickDefenderStance` each tick: since 2026-10-24 (`doctrineDefendersPush`, the
+user: marines handed to Sindria "to push back" sat dug in for a week) push while pushing moves the
+line toward them past `frontGrindBand`, dig in for the cover while it does not - unless dug in the
+line would move against them while pushing holds it (the mirror of the swarm's `doctrinePushes`).
+Before, the test was "would one counter-attack win" (`counterAttackStrength > defenseStrength`),
+which never said yes against a dug-in swarm the need was sized to push. That is a behaviour change for NPC worlds: before, an outmatched colony counter-attacked
 on the cadence anyway, fed the front experience and lost marines each time. Hives have no stance and
 counter-attack with everything, as before.
 

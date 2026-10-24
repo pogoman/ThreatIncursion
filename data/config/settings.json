@@ -586,9 +586,10 @@
 	# the rate toward its defenders a colony's marines ask (relief convoys, Reinforce, battle
 	# requests) is sized to: push the army back, between hold (0) and overrun (frontOverrunRate)
 	"threatinc_frontPushBackRate": 0.25,
-	# a front wears the defences by its advantage: this x troops / (troops +
-	# defence) disruption days per day, whatever orbit left standing; the clock
-	# counts down 1/day naturally, so it breaks even at about 0.09 x defence
+	# a front wears the world's military structures only while it pushes and the line moves its
+	# way: this x the line's rate (0..1) days of disruption a day (the user, 2026-10-24: tied to
+	# progress - an overwhelming push wears them fast); held, stalled or pushed back, the clocks
+	# run down a day a day as vanilla's do; capped at wearDays x 1.2
 	"threatinc_frontWearRate": 12,
 	# marines lost per 30 days (fraction of current), times the multiplier once
 	# the heavy armaments run dry; below min marines the front is overrun

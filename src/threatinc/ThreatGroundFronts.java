@@ -1119,7 +1119,7 @@ public class ThreatGroundFronts {
 			coverD = 1f;
 		} else {
 			d = colonyGarrison(market) + colonyMarineDefense(market, 1f);
-			coverD = worldPushes ? 1f : defenderCoverMult(front);
+			coverD = worldPushes ? 1f : defenderCoverIfDugIn(front);
 		}
 		float coverA = landingPushes ? 1f : coverIfDugIn(front);
 		return lineRateOf(a, coverA, d, coverD, defenderPressure(front, market), landingPushes, worldPushes);
@@ -1430,9 +1430,10 @@ public class ThreatGroundFronts {
 	// counter-attacks on the cadence, each win retaking a district - or DIGS
 	// IN: holds fire, earns frontEntrenchDefenseBonus on its defence over
 	// frontEntrenchDays, and loses that cover with a district. The player
-	// orders their own colonies from the board; NPC colonies push when a
-	// counter-attack would win and dig in when it would bounce. A hive has
-	// no stance: it counter-attacks with everything, as before.
+	// orders their own colonies from the board; NPC colonies push while
+	// pushing moves the line toward them and dig in while it does not
+	// (doctrineDefendersPush, 2026-10-24). A hive has no stance: it
+	// counter-attacks with everything, as before.
 	// ------------------------------------------------------------------
 
 	/** The defenders' stance: STANCE_PUSH unless ordered to dig in (null on older saves is push). */
@@ -1457,6 +1458,30 @@ public class ThreatGroundFronts {
 	public static float defenderCoverMult(GroundFront front) {
 		if (front == null || !STANCE_ENTRENCH.equals(front.defence)) return 1f;
 		return 1f + (ThreatIncConfig.frontEntrenchDefenseBonus() - 1f) * defenderEntrenchFraction(front);
+	}
+
+	/** The defenders' cover as it would stand dug in, whatever their stance now - defenderCoverMult without the stance test (the cover dug so far is kept while they push). */
+	public static float defenderCoverIfDugIn(GroundFront front) {
+		if (front == null) return 1f;
+		return 1f + (ThreatIncConfig.frontEntrenchDefenseBonus() - 1f) * defenderEntrenchFraction(front);
+	}
+
+	/**
+	 * NPC defenders' doctrine under THE LINE (the user, Sindria 2026-10-24: marines
+	 * handed over "to push back" sat dug in for a week - the old test asked whether
+	 * one counter-attack would win): push while pushing moves the line toward them
+	 * (past frontGrindBand), otherwise dig in for the cover, unless dug in the line
+	 * would move against them while pushing holds it. The mirror of
+	 * {@link #doctrinePushes}; the player's colonies keep their orders.
+	 */
+	public static boolean doctrineDefendersPush(GroundFront front, MarketAPI market) {
+		if (front == null || market == null || isHiveTarget(market)) return true;
+		boolean landingPushes = STANCE_PUSH.equals(front.stance);
+		float rPush = lineRate(front, market, landingPushes, true);
+		if (rPush < 0f && lineMoves(rPush)) return true;
+		float rDig = lineRate(front, market, landingPushes, false);
+		if (rDig < 0f || !lineMoves(rDig)) return false; // dug in the line stands: the cover is free
+		return rPush < rDig; // dug in they would lose ground: push if that holds it better
 	}
 
 	/** "push" / "dug in" - the marines' stance against a Threat landing, as the board names it (push = they move the line, dug in = they hold it from cover). */
@@ -1521,15 +1546,16 @@ public class ThreatGroundFronts {
 	}
 
 	/**
-	 * NPC colonies' defender stance AI, one tick: go over the top when a
-	 * counter-attack would win, hold fire and dig in when it would bounce
-	 * (humans play to win, 2026-10-04: a garrison does not throw itself at a
-	 * beachhead it cannot beat). The player's colonies keep their orders.
+	 * NPC colonies' defender stance AI, one tick ({@link #doctrineDefendersPush},
+	 * 2026-10-24): push while pushing moves the line toward them, hold fire and
+	 * dig in while it does not (humans play to win, 2026-10-04: a garrison does
+	 * not throw itself at a beachhead it cannot move). The player's colonies
+	 * keep their orders.
 	 */
 	protected static void tickDefenderStance(GroundFront front, MarketAPI market, float elapsedDays) {
 		if (front == null || market == null || isHiveTarget(market)) return;
 		if (!market.isPlayerOwned()) {
-			boolean wins = counterAttackStrength(market) > defenseStrength(front);
+			boolean wins = doctrineDefendersPush(front, market);
 			boolean dugIn = STANCE_ENTRENCH.equals(front.defence);
 			if (wins && dugIn) {
 				orderDefenderPush(front);
@@ -1971,21 +1997,18 @@ public class ThreatGroundFronts {
 		float line = lineRate(front, market);
 		front.state = lineSuppressionState(line);
 
-		// suppression: the front wears what it reaches by its advantage,
-		// frontWearRate x troops / (troops + defence) days a day, and the
-		// clock runs down a day a day - so it breaks even near 0.09 x the
-		// defence. Not cut by what orbit left standing: boots clear the
+		// suppression (the user, 2026-10-24: "military structures should only increase
+		// in disrupt while invaders are pushing and it should be tied to progress"):
+		// while the landing pushes and the line moves its way, every military
+		// structure (the theatre's key structures and the shield) takes frontWearRate
+		// x the line's rate days of disruption a day - an overwhelming push wears them
+		// fast, a crawl barely; held, stalled or pushed back, the clocks run down a day
+		// a day as vanilla's do. Not cut by what orbit left standing: boots clear the
 		// hardened points bombardment cannot (docs/suppression-balance.md v2).
-		float rate = Math.max(0f, ThreatIncConfig.frontWearRate()) * eff / Math.max(1f, eff + defender);
 		boolean suppressedAny = false;
-		if (STATE_HOLDING.equals(front.state)) {
+		if (STANCE_PUSH.equals(front.stance) && line > 0f && lineMoves(line)) {
+			float rate = Math.max(0f, ThreatIncConfig.frontWearRate()) * line;
 			for (Industry ind : theatre.keyStructures(market)) {
-				suppressedAny |= suppress(ind, rate * elapsedDays);
-			}
-			suppressedAny |= suppressShield(market, rate * elapsedDays);
-		} else if (STATE_GRINDING.equals(front.state)) {
-			// only the defense structures
-			for (Industry ind : theatre.defenseStructures(market)) {
 				suppressedAny |= suppress(ind, rate * elapsedDays);
 			}
 			suppressedAny |= suppressShield(market, rate * elapsedDays);
@@ -5335,7 +5358,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		boolean landingPushes = STANCE_PUSH.equals(front.stance);
 		boolean worldPushes = target < 0f || defendersPush(front, market);
 		float coverA = landingPushes ? 1f : coverIfDugIn(front);
-		float coverD = worldPushes ? 1f : defenderCoverMult(front);
+		float coverD = worldPushes ? 1f : defenderCoverIfDugIn(front);
 		float garrison = colonyGarrison(market);
 		float counter = Math.max(0f, ThreatIncConfig.marineCounterAttackMult());
 		float staff = hasMilitaryCommand(market)
