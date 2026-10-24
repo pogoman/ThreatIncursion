@@ -266,7 +266,7 @@ public class ThreatIncConfig {
 	public static float siegeBeachheadMargin() { return f("threatinc_siegeBeachheadMargin"); }
 	/** The beachhead line is the REPEL line (2026-10-18, the user: "size to repel"): the landing holds the first counter-attack at 1:1 x the margin, not merely outlives it at the 2:1 overrun odds. */
 	public static boolean beachheadRepels() { return b("threatinc_beachheadRepels", true); }
-	/** An NPC siege carries its landing's marines times this, for those lost with the hulls on the way in. */
+	/** A siege carries its landing's marines times this for those lost with the hulls on the way in, while a Defense Swarm is seen over the world; else only the guns' planned toll (IncursionManager.marineHeadroom). */
 	public static float siegeMarineHeadroom() { return f("threatinc_siegeMarineHeadroom"); }
 	/** An NPC first landing short of the beachhead is not made, even once orbit is done. */
 	public static boolean siegeNoDoomedLanding() { return b("threatinc_siegeNoDoomedLanding", false); }
@@ -715,6 +715,8 @@ public class ThreatIncConfig {
 	public static float sizeUpkeepRatio()          { return f("threatinc_sizeUpkeepRatio"); }
 	public static float upkeepBreakEven()          { return f("threatinc_upkeepBreakEven"); }
 	public static float starveDaysPerSize()        { return f("threatinc_starveDaysPerSize"); }
+	/** A blockade or a dead port starves a size-2 seed hive by the share of its imports cut (ThreatColonyUpkeep.feed); false: a seed only ever holds. */
+	public static boolean blockadeStarvesSeeds()   { return b("threatinc_blockadeStarvesSeeds", true); }
 	/** A FOUNDING BUDGET (S6, 2026-10-10): while a seeding is held on supplies, growth draws only the stock above one founding kit. */
 	public static boolean foundingBudget()         { return b("threatinc_foundingBudget", true); }
 	/** TANGIBLE FEEDING (the user, 2026-10-18): size upkeep arrives by a feeding swarm / convoy, absorbed on arrival (ThreatFeeding). */

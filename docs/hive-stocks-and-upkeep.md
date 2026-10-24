@@ -193,7 +193,10 @@ forward base, commodity-bound the way vanilla's economy is.
   it cuts that half or all (`ThreatBlockade.hiveCut`, docs/ground-war-defenders.md "Blockade") and a disrupted
   port halves it (`importCut`). A blockaded forge world keeps what its own upkeep takes and the rest
   of its output cannot leave (`reachesStock`, in `ThreatFuel.perMonth`). So a blockade starves the
-  worlds that import; a forge world declines once its forge is raided too.
+  worlds that import; a forge world declines once its forge is raided too. Since 2026-10-24 a size-2
+  seed is fed only the share of its imports that gets through (`feed`: its holding share capped at
+  1 - `importCut`; knob `blockadeStarvesSeeds`), so a full blockade starves it to size 1 - until then a
+  seed held under any blockade (the user, in orbit over Beta Prisma I: "shortages seem to have no effect").
 - **Tangible feeding (2026-10-18, the user: "make the supply thing tangible so they send convoys both
   sides to maintain worlds and forward bases; the convoys don't need to return home, they can just be
   absorbed when they reach their target").** `ThreatFeeding`, knob `threatinc_feedConvoys`. A world eats

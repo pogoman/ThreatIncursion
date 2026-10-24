@@ -397,8 +397,15 @@ public class ThreatColonyUpkeep {
 				paid = local + ThreatFeeding.payHive(n.market, paid - local, importedMonthly);
 			}
 			float share = n.want > 0f ? paid / n.want : 1f;
-			// a seed has nothing to starve on: unfed it holds, fed it grows
-			if (n.seed) share = t + (1f - t) * share;
+			// a seed has nothing to starve on: unfed it holds, fed it grows - unless a blockade or a
+			// dead port cuts what it would import (the user, 2026-10-24, in orbit over a size-2 hive
+			// with its imports cut 100%: "shortages seem to have no effect"): fed the share that gets
+			// through, it starves to size 1 (blockadeStarvesSeeds)
+			if (n.seed) {
+				share = t + (1f - t) * share;
+				float cut = importCut(n.market);
+				if (cut > 0f && ThreatIncConfig.blockadeStarvesSeeds()) share = Math.min(share, 1f - cut);
+			}
 			n.market.getMemoryWithoutUpdate().set(MEM_FED, share);
 		}
 		// sustenance unpaid is the one supplies shortage the planner answers on

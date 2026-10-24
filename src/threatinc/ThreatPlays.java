@@ -445,7 +445,7 @@ public class ThreatPlays {
 
 	protected static MarketAPI payingBase(ThreatWarCouncil.Cluster k, FactionAPI faction, StarSystemAPI s, MarketAPI w) {
 		List<MarketAPI> one = java.util.Collections.singletonList(w);
-		float need = IncursionManager.siegeRaidStrNeeded(one) * IncursionManager.minMarinesFraction(faction);
+		float need = IncursionManager.siegeRaidStrNeeded(one, ThreatIntel.observerOf(faction)) * IncursionManager.minMarinesFraction(faction);
 		lastWhy = "no base in reach";
 		for (MarketAPI m : k.bases) {
 			if (!usable(m, faction.getId())) continue;

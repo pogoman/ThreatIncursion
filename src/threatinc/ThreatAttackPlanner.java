@@ -443,7 +443,7 @@ public final class ThreatAttackPlanner {
 				o.trust = ThreatIntel.trust(fid, system.getId(), o.travel);
 				o.age = age;
 				o.pressed = system.getId().equals(ThreatFactionStance.target(fid));
-				o.landing = IncursionManager.siegeRaidStrNeeded(targets);
+				o.landing = IncursionManager.siegeRaidStrNeeded(targets, fid);
 				o.orbit = IncursionManager.siegeOrbitFaced(fid, targets);
 			}
 			o.bases.add(b);

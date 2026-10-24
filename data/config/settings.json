@@ -949,6 +949,10 @@
 	"threatinc_sizeUpkeepRatio": 2.5,
 	"threatinc_upkeepBreakEven": 0.5,
 	"threatinc_starveDaysPerSize": 90,
+	# a size-2 seed hive (free below size 3) under a blockade or with its port down is
+	# fed only the share of its imports that gets through, so a full blockade starves
+	# it to size 1 (2026-10-24); false = a seed only ever holds
+	"threatinc_blockadeStarvesSeeds": true,
 	"threatinc_foundingBudget": true,
 	# TANGIBLE FEEDING (the user, 2026-10-18): a world's size upkeep is eaten from a larder only a sailing
 	# fills - a hive world's allotment docks and sails as a feeding swarm seated in the world's garrison on
@@ -1622,7 +1626,9 @@
 	# win, hw191: 0 repelled in 370); false = it merely outlives it at the 2:1 overrun odds
 	"threatinc_beachheadRepels": true,
 	# ...times this, for the marines that go down with the hulls the orbit
-	# costs (a 60-90 day siege loses 25-35% of its ships, cargo with them)
+	# costs (a 60-90 day siege loses 25-35% of its ships, cargo with them) -
+	# in full while the besieger's reports show a Defense Swarm over the world;
+	# with none seen only the guns' planned toll is carried (2026-10-24)
 	"threatinc_siegeMarineHeadroom": 2.0,
 	# an NPC first landing that would not outlast the first counter-attack is
 	# not made, even once orbit has done all it can: the marines sail home
