@@ -13,6 +13,7 @@ import com.fs.starfarer.api.campaign.TextPanelAPI;
 import com.fs.starfarer.api.campaign.econ.MarketAPI;
 import com.fs.starfarer.api.campaign.rules.MemoryAPI;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
+import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.impl.campaign.rulecmd.BaseCommandPlugin;
 import com.fs.starfarer.api.impl.campaign.rulecmd.FireAll;
 import com.fs.starfarer.api.util.Misc;
@@ -26,11 +27,12 @@ import com.fs.starfarer.api.util.Misc;
  * convoy does (reserve deposit), and earns standing weighted by the purpose
  * ({@link ThreatAid#onDelivered}). Ship hulls are never in a hold; fleets are the board's.
  *
- * <p>Wired from rules.csv: the option appears on the market's main menu, and in the station or
- * base commander's comm-directory conversation, while the market memory carries
- * {@link ThreatAidMissionIntel#MEM_REQUEST} (every mobilised NPC colony, ThreatNeeds.tick).
- * Back re-fires PopulateOptions without touching $menuState, so it returns to whichever menu
- * the player came from. Commands: {@code menu}, {@code deliver <commodityId> <tier>}, {@code back}.
+ * <p>Wired from rules.csv: {@code option} adds the option to the market's main menu, and to
+ * the station or base commander's comm-directory conversation, at every NPC colony of a
+ * mobilised faction (since 2026-10-24 the command decides and logs why, not a ticked memory
+ * flag - the user docked at besieged Sindria and saw no option). Back re-fires PopulateOptions
+ * without touching $menuState, so it returns to whichever menu the player came from. Commands:
+ * {@code option [person]}, {@code menu}, {@code deliver <commodityId> <tier>}, {@code back}.
  */
 public class ThreatincAidCMD extends BaseCommandPlugin {
 
@@ -53,6 +55,10 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 			return true;
 		}
 		if (market == null) return false;
+		if ("option".equals(command)) {
+			option(dialog, market, params.size() > 1 && "person".equals(params.get(1).getString(memoryMap)));
+			return true;
+		}
 		if ("menu".equals(command)) {
 			menu(dialog, market);
 			return true;
@@ -122,6 +128,25 @@ public class ThreatincAidCMD extends BaseCommandPlugin {
 		String s = lead + " " + goodCap + ": " + figures + ". You carry " + Misc.getWithDGS(have) + ".";
 		if (n.suspended) s += " The swarm holds the orbit: nothing lands but what you bring yourself.";
 		return s;
+	}
+
+	/**
+	 * Adds the hand-over option at an NPC colony of a mobilised faction (the needs themselves
+	 * are listed by {@link #menu}); logs the decision either way so a missing option can be read
+	 * off the log.
+	 */
+	protected void option(InteractionDialogAPI dialog, MarketAPI market, boolean person) {
+		FactionAPI faction = market.getFaction();
+		String why = null;
+		if (faction == null || faction.isPlayerFaction()) why = "your own colony";
+		else if (Factions.THREAT.equals(faction.getId())) why = "a hive";
+		else if (!ThreatWarState.isAtWar(faction)) why = ThreatWarState.displayName(faction.getId()) + " is not mobilised";
+		if (why == null) {
+			dialog.getOptionPanel().addOption(person ? "\"I've brought aid for the war effort.\""
+					: "Deliver aid for the war effort", OPTION_MENU);
+		}
+		ThreatIncConfig.log("Dock aid option at " + market.getName() + ": " + (why == null
+				? "offered, " + ThreatNeeds.of(market).size() + " need(s)" : "none - " + why));
 	}
 
 	protected void menu(InteractionDialogAPI dialog, MarketAPI market) {

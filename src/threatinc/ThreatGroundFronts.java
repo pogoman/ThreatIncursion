@@ -1192,6 +1192,24 @@ public class ThreatGroundFronts {
 		return STATE_GRINDING;
 	}
 
+	/**
+	 * NPC and swarm doctrine (the user, 2026-10-24: both boards read stalled and
+	 * the swarm kept pushing - "no point pushing when they are stalled"): push
+	 * only while pushing moves the line forward; otherwise dig in for the cover,
+	 * unless dug in the line would move against the landing while pushing holds
+	 * it. A dry swarm front's final push is spent whatever the line says.
+	 */
+	public static boolean doctrinePushes(GroundFront front, MarketAPI market) {
+		if (front == null || market == null) return false;
+		if (front.finalPush) return true;
+		boolean worldPushes = defendersPush(front, market);
+		float rPush = lineRate(front, market, true, worldPushes);
+		if (rPush > 0f && lineMoves(rPush)) return true;
+		float rDig = lineRate(front, market, false, worldPushes);
+		if (rDig > 0f || !lineMoves(rDig)) return false; // dug in the line stands: the cover is free
+		return rPush > rDig; // dug in it would lose ground: push if that holds it better
+	}
+
 	/** Whether a line rate moves the line at all: outside frontGrindBand either way; inside it the line stands (stalled / grinding). */
 	public static boolean lineMoves(float rate) {
 		return Math.abs(rate) > Math.max(0f, ThreatIncConfig.frontGrindBand());
@@ -1986,7 +2004,7 @@ public class ThreatGroundFronts {
 			front.consolidateDaysLeft -= elapsedDays;
 			if (front.consolidateDaysLeft <= 0f) {
 				front.consolidateDaysLeft = 0f;
-			if (lineRate(front, market, true, defendersPush(front, market)) > 0f || front.finalPush) {
+			if (doctrinePushes(front, market)) {
 				front.stance = STANCE_PUSH;
 					front.pushProgress = 0f;
 				} else {
@@ -2070,21 +2088,21 @@ public class ThreatGroundFronts {
 		ThreatIncConfig.log("Threat front at " + market.getName() + " makes its final push");
 	}
 
-		// NPC stance AI: push whenever strong enough and supplied, dig in
-		// otherwise. Consolidation paces them like everyone else; player
-		// fronts push when troops land (autoPush), when ordered, or by
-		// checkpoint doctrine above - a Dig in order holds until then.
-		//
-		// shouldBrace is checked here as well as at the break-off above, and
-		// that is not belt-and-braces: this runs LATER IN THE SAME TICK, saw
-		// the entrench the brace had just ordered, and pushed the front
-		// straight back out of cover. The brace was dead for every NPC and
-		// Threat front from the day it was written (2026-09-08).
-		if (!front.isPlayerOwned() && STANCE_ENTRENCH.equals(front.stance)
-				&& !isDry(front)
-				&& effectiveStrength(front) >= holdRequirement(market)
-				&& !lastStratumProtected(front, market)) {
-			orderPush(front);
+		// NPC stance AI (doctrinePushes, 2026-10-24): push while pushing moves
+		// the line, dig in for the cover while it does not - a pushing front that
+		// stalls breaks off, a dug-in one that could gain goes. Consolidation
+		// paces them like everyone else; player fronts push when troops land
+		// (autoPush), when ordered, or by checkpoint doctrine above - a Dig in
+		// order holds until then.
+		if (!front.isPlayerOwned() && !isDry(front) && !lastStratumProtected(front, market)) {
+			if (STANCE_ENTRENCH.equals(front.stance) && doctrinePushes(front, market)) {
+				orderPush(front);
+			} else if (STANCE_PUSH.equals(front.stance) && !doctrinePushes(front, market)) {
+				orderEntrench(front);
+				ThreatIncConfig.log((isThreatOwned(front) ? "Threat" : ownerOf(front)) + " front at "
+						+ market.getName() + " digs in: pushing moves nothing (line "
+						+ String.format("%.2f", lineRate(front, market)) + ")");
+			}
 		}
 	}
 
