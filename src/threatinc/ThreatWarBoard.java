@@ -1416,13 +1416,14 @@ public class ThreatWarBoard {
 		float xpLossD = 1f;
 		String needD = needLine(f, m, false, -sA, band, overrun, pushing, worldPushes, hive ? "troops" : "marines");
 		if (hive) {
-			float troops = ThreatGroundFronts.hiveTroops(m);
+			// the strata are the troops (ThreatStrata, 2026-10-24): the defence is the strata standing, multiplied by its structures
+			float strata = ThreatStrata.standing(m);
 			float pace = ThreatGroundFronts.hiveCounterAttackPace(m);
 			d = defender;
-			tooltip.addPara(World + " %s = %s ground defence + %s troops" + (pace < 0.995f ? "; attacks at x %s supplies = %s" : "")
+			tooltip.addPara(World + " %s from %s strata standing" + (pace < 0.995f ? "; attacks at x %s supplies = %s" : "")
 					+ "." + needD, 4f, text, h, pace < 0.995f
-							? new String[] { n(defender), n(defender - troops), n(troops), f2(pace), n(push) }
-							: new String[] { n(defender), n(defender - troops), n(troops) });
+							? new String[] { n(defender), n(strata), f2(pace), n(push) }
+							: new String[] { n(defender), n(strata) });
 		} else {
 			float garrison = ThreatGroundFronts.colonyGarrison(m);
 			armed = ThreatReserves.armedMarines(m);
@@ -1510,7 +1511,7 @@ public class ThreatWarBoard {
 		if (orbit > 0f) lossArgs.add(ThreatGroundFronts.perDay(orbit));
 		tooltip.addPara(Army + " attrition %s/d = %s size x (" + World + " %s / " + Army + " %s) x 1/%s cover" + vetA
 				+ (orbit > 0f ? " + %s/d from orbit" : "") + ".", 4f, text, h, lossArgs.toArray(new String[0]));
-		float worldTroops = hive ? ThreatGroundFronts.hiveTroops(m) : armed;
+		float worldTroops = hive ? ThreatStrata.standing(m) : armed;
 		if (worldTroops > 0f) {
 			float coverFactorD = hive ? 1f : ThreatGroundFronts.defenderCoverMult(f) * ThreatGroundFronts.defenderOverExtendMult(f);
 			String vetD = !hive && Math.abs(xpLossD - 1f) >= 0.005f ? " x " + f2(xpLossD) + " veteran" : "";

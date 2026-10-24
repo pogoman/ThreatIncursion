@@ -29,6 +29,8 @@ public final class ThreatStrata {
 
 	/** Market memory: the hive's strata. */
 	public static final String KEY = "$threatinc_strata";
+	/** Market memory: the figure the hive's industries were last applied at (the Nexus top-up is recomputed when it has moved a point). */
+	protected static final String APPLIED_KEY = "$threatinc_strataApplied";
 
 	/** Strata a size: hiveDefensePerSize. */
 	public static float perSize() {
@@ -47,13 +49,28 @@ public final class ThreatStrata {
 	public static float of(MarketAPI market) {
 		if (market == null) return 0f;
 		MemoryAPI mem = market.getMemoryWithoutUpdate();
-		if (mem.contains(KEY)) return Math.max(0f, mem.getFloat(KEY));
-		int size = Math.max(1, market.getSize());
-		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size * IncursionManager.timeScale();
-		float banked = daysPerLevel > 0f
-				? Math.max(0f, Math.min(0.99f, ThreatIncData.growthProgressDays(market.getId()) / daysPerLevel)) : 0f;
-		float strata = perSize() * (size + banked);
-		mem.set(KEY, strata);
+		float strata;
+		if (mem.contains(KEY)) {
+			strata = Math.max(0f, mem.getFloat(KEY));
+		} else {
+			int size = Math.max(1, market.getSize());
+			float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size * IncursionManager.timeScale();
+			float banked = daysPerLevel > 0f
+					? Math.max(0f, Math.min(0.99f, ThreatIncData.growthProgressDays(market.getId()) / daysPerLevel)) : 0f;
+			strata = perSize() * (size + banked);
+			mem.set(KEY, strata);
+		}
+		// THE STRATA ARE THE TROOPS (the user, 2026-10-24): the bioforms an older save landed on the
+		// hive from ships broken up over it (ThreatGroundFronts.HIVE_TROOPS_KEY) are strata now
+		if (mem.contains(ThreatGroundFronts.HIVE_TROOPS_KEY)) {
+			float troops = Math.max(0f, mem.getFloat(ThreatGroundFronts.HIVE_TROOPS_KEY));
+			mem.unset(ThreatGroundFronts.HIVE_TROOPS_KEY);
+			if (troops > 0f) {
+				strata += troops;
+				mem.set(KEY, strata);
+				ThreatIncConfig.log("Strata: " + market.getName() + " folds " + (int) troops + " landed troops into its strata (" + (int) strata + ")");
+			}
+		}
 		return strata;
 	}
 
@@ -90,7 +107,19 @@ public final class ThreatStrata {
 			return 0f;
 		}
 		syncSize(market, what, razerFactionId);
+		reapplyIfMoved(market);
 		return after;
+	}
+
+	/** The defence the strata are lives in SwarmNexus.apply: recomputed once the figure has moved a point since the industries last ran. */
+	protected static void reapplyIfMoved(MarketAPI market) {
+		if (market == null || !market.isInEconomy()) return;
+		MemoryAPI mem = market.getMemoryWithoutUpdate();
+		float applied = mem.contains(APPLIED_KEY) ? mem.getFloat(APPLIED_KEY) : Float.NaN;
+		float now = of(market);
+		if (!Float.isNaN(applied) && Math.abs(now - applied) < 1f) return;
+		mem.set(APPLIED_KEY, now);
+		ThreatGroundFronts.reapply(market.getId());
 	}
 
 	/** The strata the vanilla size says, kept in step when something else resizes the hive (growColony, ThreatRazing.reduceSize): the floor on a size up, the ceiling on a size down. */
@@ -123,7 +152,7 @@ public final class ThreatStrata {
 			if (wants < size) {
 				ThreatRazing.reduceSize(market, what);
 				if (market.getSize() >= size) break;
-				announceShrink(market, size, razerFactionId);
+				announceShrink(market, size, razerFactionId, what);
 				ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
 				if (front != null && front.strataHeld >= market.getSize()) {
 					ThreatIncConfig.log("The strata under the front at " + market.getName() + " are gone: the front holds all there is");
@@ -136,21 +165,23 @@ public final class ThreatStrata {
 		}
 	}
 
-	/** A size off: "Hive Starving" for hunger, "Stratum Razed" under the razer's crest for a bombardment. */
-	protected static void announceShrink(MarketAPI market, int before, String razerFactionId) {
+	/** A size off: "Hive Starving" for hunger, "Stratum Razed" under the razer's crest for a bombardment, "Stratum Bled" for a front's attrition ({@code what} starts "Bled"). */
+	protected static void announceShrink(MarketAPI market, int before, String razerFactionId, String what) {
 		if (razerFactionId == null) {
 			ThreatColonyManager.announce(ThreatNotice.titled("Hive Starving").good()
 					.line("%s has shrunk to size %s", ThreatNotice.market(market), "" + market.getSize()));
 			return;
 		}
+		boolean bled = what != null && what.startsWith("Bled");
+		String deed = bled ? "front has bled" : "bombardment has razed";
 		FactionAPI razer = Global.getSector().getFaction(razerFactionId);
-		ThreatNotice n = ThreatNotice.titled("Stratum Razed").good().icon(razer);
+		ThreatNotice n = ThreatNotice.titled(bled ? "Stratum Bled" : "Stratum Razed").good().icon(razer);
 		if (Factions.PLAYER.equals(razerFactionId)) {
-			n.line("Your bombardment has razed a stratum of %s.", ThreatNotice.market(market));
+			n.line("Your " + deed + " a stratum of %s.", ThreatNotice.market(market));
 		} else if (razer != null) {
-			n.line("%s's bombardment has razed a stratum of %s.", ThreatNotice.faction(razer), ThreatNotice.market(market));
+			n.line("%s's " + deed + " a stratum of %s.", ThreatNotice.faction(razer), ThreatNotice.market(market));
 		} else {
-			n.line("Bombardment has razed a stratum of %s.", ThreatNotice.market(market));
+			n.line("The " + deed + " a stratum of %s.", ThreatNotice.market(market));
 		}
 		n.line("Size %s to %s.", "" + before, "" + market.getSize());
 		ThreatColonyManager.announce(n);

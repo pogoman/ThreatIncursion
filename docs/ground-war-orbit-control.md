@@ -226,12 +226,12 @@ that the stock would not arm **breaks up its ships for the ground** instead (`br
 `threatinc_hiveBreakUpEnabled`, under the fabricate master): what the hive is short to beat the front -
 the front's defence x (1 + `fabricateHoldMargin`) less the hive's counter-attack strength
 (`hiveTroopNeed`) - at `fabricateTroopsPerFP` troops a point, smallest hulls first, the flagship and the
-last hull spared, no battery toll (the ground is its own), into the hive's troops (market memory
-`$threatinc_hiveTroops`, `hiveTroops`). They stand with the garrison proper in the hive's defender and
-counter-attack strength (`Theatre.HIVE`; orbit still fights the fixed defences alone), bleed as a
-colony's marines do (THE ATTRITION RULE on the landed troops, `worldLossPerDay` in
-`bleedHiveTroops`) and pay `defenderCounterAttackLossFraction` of the engaged for every counter-attack
-(`hiveTroopsCounterAttackLoss`); what survives the front stays the hive's. Only a fleet the stock WOULD
+last hull spared, no battery toll (the ground is its own), into the hive's STRATA (`ThreatStrata.add`;
+until 2026-10-24 a troop count of its own, market memory `$threatinc_hiveTroops`, which `ThreatStrata.of`
+folds in). The strata are the troops (the user, 2026-10-24): they are the hive's defender and
+counter-attack strength (`Theatre.HIVE`, through the Nexus top-up), and the strata standing bleed as a
+colony's marines do (THE ATTRITION RULE, `worldLossPerDay` in `bleedHiveStrata`) - for good, whatever
+becomes of the landing, the size stepping down with them. Only a fleet the stock WOULD
 arm flies to a port that can hand the ordnance over (`sendToRearm`); a fleet the stock arms bombards and
 keeps its hulls, so a fuel-rich navy never breaks up and a fuel-poor one does. Log: "Swarm breaks up
 over X: <fleet> (N FP) lands T troops against the <owner> front (...); hive troops H, counter-attack C;

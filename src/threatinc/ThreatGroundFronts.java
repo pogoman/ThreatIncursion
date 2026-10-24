@@ -334,11 +334,11 @@ public class ThreatGroundFronts {
 	public static final Theatre HIVE = new Theatre() {
 		public float defenderStrength(MarketAPI market) {
 			// hive worlds have no marine logistics, so forBombard changes
-			// nothing for them and the flag stays true for continuity; the
-			// troops its swarms broke up over it stand with the garrison
-			// (hiveTroops, 2026-10-13) - orbit still fights the fixed defences
-			// alone (siegeSlice reads vanilla's figure)
-			return MarketCMD.getDefenderStr(market, true) + hiveTroops(market);
+			// nothing for them and the flag stays true for continuity. THE
+			// STRATA ARE THE TROOPS (the user, 2026-10-24): the figure is the
+			// strata standing (SwarmNexus tops vanilla's base up to them), and
+			// what its swarms break up over it lands as strata (breakUpForHive)
+			return MarketCMD.getDefenderStr(market, true);
 		}
 		public float counterAttackStrength(MarketAPI market) {
 			// no marines to hold back: the hive throws its whole body at the
@@ -1337,7 +1337,8 @@ public class ThreatGroundFronts {
 		float coverD;
 		float pressure;
 		if (isHiveTarget(market)) {
-			float troops = forLanding ? hiveTroops(market) : count;
+			// a hive's troops are its strata, in vanilla's figure already (ThreatStrata); the count asked is extra
+			float troops = forLanding ? 0f : count;
 			d = MarketCMD.getDefenderStr(market, true) + troops;
 			coverD = 1f;
 			pressure = d * hiveCounterAttackPace(market);
@@ -2157,7 +2158,7 @@ public class ThreatGroundFronts {
 		bleedDefenders(market, front, elapsedDays);
 		burnDefenderArms(market, front, elapsedDays); // and burn armaments as a front does (2026-10-17)
 		tickDefenderStance(front, market, elapsedDays); // and choose: counter-attack or dig in (2026-10-17)
-		bleedHiveTroops(market, front, elapsedDays); // a hive's landed troops too (2026-10-13)
+		bleedHiveStrata(market, front, elapsedDays); // a hive's strata too: every troop lost is a stratum point gone for good (2026-10-24)
 		if (groundDown(front)) {
 			if (threatFront) {
 				ThreatNotice.titled("Threat Landing Destroyed").good()
@@ -3026,7 +3027,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 *
 	 * <p>Hives are not here: their strength is structural and erodes by losing
 	 * strata instead ({@link Theatre#HIVE}); their landed troops bleed by the
-	 * same rule in {@link #bleedHiveTroops}.
+	 * same rule on their strata standing in {@link #bleedHiveStrata} (2026-10-24).
 	 */
 	public static float defenderLossPer30Days(MarketAPI market, GroundFront front) {
 		if (market == null || front == null || isHiveTarget(market)) return 0f;
@@ -4468,19 +4469,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	private static float reserveIncomeDay = -1f, reserveIncome = 0f;
 
-	/** Market memory: troops the swarm has landed on its own hive from ships broken up over it (hiveTroops). */
+	/** Market memory of saves before 2026-10-24: troops the swarm landed on its own hive from ships broken up over it. ThreatStrata.of folds it into the strata and unsets it. */
 	public static final String HIVE_TROOPS_KEY = "$threatinc_hiveTroops";
-
-	/** The bioforms a hive fields on the ground from ships broken up over it (breakUpForHive): they hold and counter-attack with the garrison proper (Theatre.HIVE) and bleed like a colony's marines (bleedHiveTroops). */
-	public static float hiveTroops(MarketAPI market) {
-		return market == null ? 0f : Math.max(0f, market.getMemoryWithoutUpdate().getFloat(HIVE_TROOPS_KEY));
-	}
-
-	protected static void setHiveTroops(MarketAPI market, float troops) {
-		if (market == null) return;
-		if (troops > 0.5f) market.getMemoryWithoutUpdate().set(HIVE_TROOPS_KEY, troops);
-		else market.getMemoryWithoutUpdate().unset(HIVE_TROOPS_KEY);
-	}
 
 	/** The troops that would let the hive's counter-attack beat the enemy front, with fabricateHoldMargin of daylight; 0 when it already does. */
 	public static float hiveTroopNeed(GroundFront front, MarketAPI market) {
@@ -4514,11 +4504,13 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		int troops = (int) (removed * perFP);
 		if (troops <= 0) return none;
 		fleet.getMemoryWithoutUpdate().set(FABRICATE_FLAG_KEY, true);
-		setHiveTroops(market, hiveTroops(market) + troops);
+		// THE STRATA ARE THE TROOPS (the user, 2026-10-24: "if threat reinforce their own planet that is
+		// directly increasing strata"): what lands is strata, for good
+		ThreatStrata.add(market, troops, "Reinforced", null);
 		fabricationVisual(market, Factions.THREAT, troops);
 		ThreatIncConfig.log("Swarm breaks up over " + market.getName() + ": " + fleet.getName() + " (" + (int) fpBefore
 				+ " FP) lands " + troops + " troops against the " + ownerOf(front) + " front (" + (int) front.marines
-				+ " marines, " + (int) defenseStrength(front) + " defence); hive troops " + (int) hiveTroops(market)
+				+ " marines, " + (int) defenseStrength(front) + " defence); strata " + (int) ThreatStrata.of(market)
 				+ ", counter-attack " + (int) counterAttackStrength(market) + "; fuel stock " + (int) ThreatFuel.stock()
 				+ " under the reserve " + (int) bombardReserve());
 		// told (the user, 2026-10-13: "should say how much fp converted into x troops"): the swarm's doing,
@@ -4528,7 +4520,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 						ThreatNotice.hl((int) removed), ThreatNotice.hl(troops), ThreatNotice.market(market))
 				.line("Against the %s front of %s marines.", ThreatNotice.faction(ownerFaction(front)),
 						ThreatNotice.hl((int) front.marines))
-				.line("Hive troops %s, counter-attack strength %s.", ThreatNotice.hl((int) hiveTroops(market)),
+				.line("Strata %s, counter-attack strength %s.", ThreatNotice.hl((int) ThreatStrata.of(market)),
 						ThreatNotice.hl((int) counterAttackStrength(market)))
 				.line("Fuel stock %s under the reserve of %s.", ThreatNotice.hl((int) ThreatFuel.stock()),
 						ThreatNotice.hl((int) bombardReserve()))
@@ -4537,16 +4529,21 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
-	 * The hive's landed troops bleed as a colony's marines do: {@link #worldLossPerDay} on them
-	 * (bleedDefenders' rule, which leaves hives out because their strength is structural - these
-	 * troops are not). Returns the troops lost.
+	 * THE STRATA ARE THE TROOPS (the user, 2026-10-24: "I'm expecting a siege's attrition to
+	 * permanently lower strata for every troop lost even if siege against threat fails"): the hive's
+	 * strata standing bleed as a colony's marines do - {@link #worldLossPerDay} on them (THE
+	 * ATTRITION RULE) - and what is bled is gone for good whatever becomes of the landing
+	 * (ThreatStrata.add: the size steps down with them, a front holding all that is left wins, 0 is
+	 * the end). Until 2026-10-24 only the troops broken up over the hive bled (bleedHiveTroops) and
+	 * the strata were a wall. Returns the strata lost.
 	 */
-	protected static float bleedHiveTroops(MarketAPI market, GroundFront front, float elapsedDays) {
+	protected static float bleedHiveStrata(MarketAPI market, GroundFront front, float elapsedDays) {
 		if (market == null || front == null || elapsedDays <= 0f || !isHiveTarget(market)) return 0f;
-		float troops = hiveTroops(market);
-		if (troops <= 0f) return 0f;
-		float loss = Math.min(troops, worldLossPerDay(market, front, troops) * elapsedDays);
-		setHiveTroops(market, troops - loss);
+		float standing = ThreatStrata.standing(market);
+		if (standing <= 0f) return 0f;
+		float loss = Math.min(standing, worldLossPerDay(market, front, standing) * elapsedDays);
+		if (loss <= 0f) return 0f;
+		ThreatStrata.add(market, -loss, "Bled a stratum of", ownerOf(front));
 		return loss;
 	}
 
