@@ -42,14 +42,14 @@ is the layout it implements.
    one). Shown only while the selection has a front; other systems' fronts show as crests in
    Activity. Columns, every figure from `ThreatGroundFronts`' readout helpers so the table
    quotes what the tick does: Force (owner in its colour, "You"), World, [System],
-   Attackers (effective strength), Defenders (the world's figure), Defenses (worn green / held yellow /
-   recovering red / intact - which way the defenders are heading, `defensesTrend`), State
+   Attackers (effective strength), Defenders (the world's figure), Disruption (the besieged world's military
+   structures' disruption over the suppress cap, averaged, as a percentage - `disruptionFraction`), State
    (holding / grinding / foothold), Strata `N` on a hive (the strata it still stands on; a table with a colony's front is headed Held and a colony's cell reads `held/size` districts - `heldCell`), Stance (push / regrouping / dug in),
    Attrition ("N / day" - troops a day at the current stance and supply, `attritionPer30Days` over
    `perDay`; every player-facing loss figure in the mod is a rate a day), Counter
    (days to the next counter-attack, green when the front would repel it now,
-   `counterAttackRepelled`), Arms (days of armaments, "dry" red), Falls ("~N d" until the last layer falls while
-   it can push), Space (who holds the space over the world in their colour, grey "Empty" when
+   `counterAttackRepelled`), Arms (days of armaments, "dry" red), Objective (days until this side takes the next layer, "-" while the
+   line stands or moves against it), Victory ("~N d" until this side wins the world - `victoryDays`), Space (who holds the space over the world in their colour, grey "Empty" when
    nothing armed is there - `ThreatGroundFronts.spaceHolder`, the faction with the most armed
    points within `ORBIT_HOLD_RANGE`). The row tooltip is the arithmetic, one line per fact (`addFrontTooltip`):
    strength = troops x entrenchment x supply; defenders and the hold / grind requirements;

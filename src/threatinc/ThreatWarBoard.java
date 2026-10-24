@@ -1035,22 +1035,6 @@ public class ThreatWarBoard {
 		return ThreatAid.canAid(r.market.getFaction()) == null;
 	}
 
-	/** "~N d" until the last stratum or district falls while the front can push at its current strength, else null. */
-	protected static String coreEstimate(ThreatGroundFronts.GroundFront front, MarketAPI market) {
-		int left = Math.max(1, market.getSize() - front.strataHeld);
-		float perStratum = ThreatGroundFronts.pushDaysEstimate(front, market);
-		if (perStratum <= 0f || ThreatGroundFronts.effectiveStrength(front)
-				< ThreatGroundFronts.holdRequirement(market)) {
-			return null;
-		}
-		// the layer under assault counts what is left of it, not a whole one
-		float first = perStratum;
-		if (ThreatGroundFronts.STANCE_PUSH.equals(front.stance)) {
-			first = Math.max(0f, ThreatGroundFronts.pushDaysRemaining(front, market));
-		}
-		return "~" + (int) Math.ceil(first + (left - 1) * perStratum) + " d";
-	}
-
 	/** The State cell's colour for a line word: gaining ground good, losing it bad, grinding highlighted, stalled plain. */
 	protected static Color lineColor(String line, Color pos, Color neg, Color h, Color text) {
 		if (ThreatGroundFronts.LINE_GAINING.equals(line) || ThreatGroundFronts.LINE_OVERRUNNING.equals(line)) return pos;
@@ -1111,9 +1095,10 @@ public class ThreatWarBoard {
 		// the supply-load selector sits in a reserved row under the heading,
 		// only where a front of the player's carries orders; its buttons float
 		// in later (addFrontButtons -> addSupplyTierSelector)
+		// no orders on the Threat tab (the user, 2026-10-24): a faction is aided from its own tab
 		boolean tierSelector = false;
 		for (FrontRow r : rows) {
-			if (playerCanOrder(r) || playerCanReinforce(r)) tierSelector = true;
+			if (!threatView && (playerCanOrder(r) || playerCanReinforce(r))) tierSelector = true;
 		}
 		if (tierSelector) main.addSpacer(ThreatFactionView.SELECTOR_ROW_H);
 		float tw = width - 24f;
@@ -1125,14 +1110,14 @@ public class ThreatWarBoard {
 		names.add("World"); fracs.add(.13f);
 		if (showSystem) { names.add("System"); fracs.add(.11f); }
 		names.add("Force"); fracs.add(.12f);
-		names.add("Defenses"); fracs.add(.08f);
+		names.add("Disruption"); fracs.add(.08f);
 		names.add("State"); fracs.add(.075f);
 		names.add("Held"); fracs.add(.055f);
 		names.add("Stance"); fracs.add(.085f);
 		names.add("Losses"); fracs.add(.075f);
-		names.add("Line"); fracs.add(.065f);
+		names.add("Objective"); fracs.add(.065f);
 		names.add("Arms"); fracs.add(.055f);
-		names.add("Falls"); fracs.add(.07f);
+		names.add("Victory"); fracs.add(.07f);
 		names.add("Space"); fracs.add(.09f);
 		float sum = 0f;
 		for (Float fr : fracs) sum += fr;
@@ -1151,8 +1136,8 @@ public class ThreatWarBoard {
 		main.addTableHeaderTooltip(strengthCol, "Force: " + side + " strength, then the enemy's. "
 				+ "-> " + side + " landing on the enemy's world, <- the enemy's landing on " + side + " world. "
 				+ "A side gains ground by what it outweighs the other's cover by.");
-		main.addTableHeaderTooltip(strengthCol + 1, "Which way the world's defences are heading: worn down "
-				+ "by a gaining landing, held by a grinding one, recovering from a losing one.");
+		main.addTableHeaderTooltip(strengthCol + 1, "Disruption of the world's military structures, "
+				+ "averaged, as a share of the most a siege inflicts.");
 		main.addTableHeaderTooltip(strengthCol + 2, "The line from " + side + " side: gaining or losing "
 				+ "ground, grinding with both sides pushing, stalled, overrunning or overrun.");
 		main.addTableHeaderTooltip(strengthCol + 3, "Districts or strata: taken by " + side + " landing, "
@@ -1161,12 +1146,12 @@ public class ThreatWarBoard {
 				+ "dug in holds from cover, regrouping awaits orders.");
 		main.addTableHeaderTooltip(strengthCol + 5, "Lost a day by " + side + " side at the current "
 				+ "stances and supply.");
-		main.addTableHeaderTooltip(strengthCol + 6, "Days until the next district or stratum changes "
-				+ "hands at the line's current rate.");
+		main.addTableHeaderTooltip(strengthCol + 6, "Days until " + side + " side takes the next district "
+				+ "or stratum at the line's current rate; - while the line stands or moves against it.");
 		main.addTableHeaderTooltip(strengthCol + 7, "Days of heavy armaments left to " + side + " side "
 				+ "at the current burn; the swarm fights on none.");
-		main.addTableHeaderTooltip(strengthCol + 8, "Days until the last stratum or district falls "
-				+ "at the current push pace.");
+		main.addTableHeaderTooltip(strengthCol + 8, "Days until " + side + " side wins the world at the "
+				+ "line's current rate: the last layer taken, or the landing pushed off.");
 		main.addTableHeaderTooltip(strengthCol + 9, "Whose warships hold the space over the world.");
 
 		Fronts result = new Fronts();
@@ -1215,12 +1200,10 @@ public class ThreatWarBoard {
 			cells.add(Alignment.MID);
 			cells.add(text);
 			cells.add(force); i++;
-			// the world's defences, coloured for this side: worn is the landing's gain
-			int trend = ThreatGroundFronts.defensesTrend(f, m);
-			String defenses = ThreatGroundFronts.defensesLabel(f, m);
-			cell(cells, Alignment.MID, trend == ThreatGroundFronts.DEFENSES_WORN ? (weLanded ? pos : neg)
-					: trend == ThreatGroundFronts.DEFENSES_RECOVERING ? (weLanded ? neg : pos)
-					: "held".equals(defenses) ? h : text, defenses); i++;
+			// Disruption (the user, 2026-10-24): the besieged world's military structures,
+			// averaged, as a share of the cap - the landing's gain, the world's loss
+			int disruption = Math.round(ThreatGroundFronts.disruptionFraction(m) * 100f);
+			cell(cells, Alignment.MID, disruption <= 0 ? text : weLanded ? pos : neg, disruption + "%"); i++;
 			String line = ThreatGroundFronts.lineState(f, m, weLanded); // THE LINE (2026-10-23), from this side
 			cell(cells, Alignment.MID, lineColor(line, pos, neg, h, text), line); i++;
 			// Held from this side: what our landing has taken, or what still stands on our world
@@ -1237,12 +1220,14 @@ public class ThreatWarBoard {
 			float oursLost = threatView ? ThreatGroundFronts.swarmLossPer30Days(f, m)
 					: ThreatGroundFronts.marineLossPer30Days(f, m);
 			cell(cells, Alignment.MID, oursDry ? neg : text, ThreatGroundFronts.perDay(oursLost) + " / day"); i++;
+			// Objective (the user, 2026-10-24): days until this side takes the next layer;
+			// a dash while the line stands or moves against it
 			float change = ThreatGroundFronts.daysToLineChange(f, m);
-			if (change < 0f) {
-				cell(cells, Alignment.MID, text, "held"); // the line stands still
+			boolean ourWay = (ThreatGroundFronts.lineRate(f, m) > 0f) == weLanded;
+			if (change < 0f || !ourWay) {
+				cell(cells, Alignment.MID, gray, "-");
 			} else {
-				boolean ourWay = (ThreatGroundFronts.lineRate(f, m) > 0f) == weLanded;
-				cell(cells, Alignment.MID, ourWay ? pos : neg, (int) Math.ceil(change) + " d");
+				cell(cells, Alignment.MID, pos, (int) Math.ceil(change) + " d");
 			}
 			i++;
 			// armaments read as what they buy: days of fighting left. The swarm
@@ -1261,10 +1246,11 @@ public class ThreatWarBoard {
 						!ThreatGroundFronts.needsArms(f) ? gray : marinesDry ? neg : text,
 						!ThreatGroundFronts.needsArms(f) ? "-" : marinesDry ? "dry" : (int) days + " d"); i++;
 			}
-			// when the world falls: the landing's prize, the world's loss
-			String estimate = coreEstimate(f, m);
-			cell(cells, Alignment.MID, estimate != null ? (weLanded ? pos : neg) : gray,
-					estimate != null ? estimate : "-"); i++;
+			// Victory (the user, 2026-10-24): days until this side wins the world - the
+			// landing takes the last layer, or the world pushes the landing off
+			float victory = ThreatGroundFronts.victoryDays(f, m, weLanded);
+			cell(cells, Alignment.MID, victory < 0f ? gray : pos,
+					victory < 0f ? "-" : "~" + (int) Math.ceil(victory) + " d"); i++;
 			String spaceId = ThreatGroundFronts.spaceHolder(m);
 			FactionAPI space = spaceId != null ? Global.getSector().getFaction(spaceId) : null;
 			boolean spacePlayer = Factions.PLAYER.equals(spaceId);
@@ -1284,7 +1270,7 @@ public class ThreatWarBoard {
 			main.addTooltipToAddedRow(facts, TooltipLocation.LEFT, false);
 			main.setIdForAddedRow(ThreatFactionView.ROW_MARKET + m.getId());
 			rowIndex++;
-			if (!playerCanOrder(r) && !playerCanReinforce(r)) {
+			if (threatView || (!playerCanOrder(r) && !playerCanReinforce(r))) {
 				result.buttonRows.add(-1);
 				continue;
 			}
@@ -1433,19 +1419,13 @@ public class ThreatWarBoard {
 						defDays >= 999f ? "999+" : "" + (int) defDays);
 			}
 		}
-		// the defenders' whole "reinforcement": structures recovering from
-		// disruption, unless the front keeps them down
-		int trend = ThreatGroundFronts.defensesTrend(f, m);
+		// the world's military structures: the Disruption figure and each clock
 		List<String> disrupted = ThreatGroundFronts.recoveringStructures(m);
 		if (disrupted.isEmpty()) {
-			tooltip.addPara("Defenses intact: nothing disrupted, nothing to recover.", text, 4f);
+			tooltip.addPara("Military structures intact: nothing disrupted.", text, 4f);
 		} else {
-			String verb = trend == ThreatGroundFronts.DEFENSES_WORN ? "worn down while the landing holds"
-					: trend == ThreatGroundFronts.DEFENSES_RECOVERING ? "recovering"
-					: "held down";
-			tooltip.addPara("Defenses " + verb + " - disruption left: " + join(disrupted) + ".",
-					trend == ThreatGroundFronts.DEFENSES_WORN ? pos
-					: trend == ThreatGroundFronts.DEFENSES_RECOVERING ? neg : h, 4f);
+			tooltip.addPara("Military structures %s disrupted: " + join(disrupted) + ".", 4f, text, h,
+					Math.round(ThreatGroundFronts.disruptionFraction(m) * 100f) + "%");
 		}
 
 		float burn = ThreatGroundFronts.dailyUpkeep(f)
@@ -1547,31 +1527,14 @@ public class ThreatWarBoard {
 				tooltip.addPara("The hive stands on %s of %s strata.", 4f, text, h, "" + standing, "" + m.getSize());
 			}
 		}
-		int next = f.strataHeld + 1;
-		float pace = ThreatGroundFronts.pushDaysEstimate(f, m);
-		if (pushing) {
-			// the engine's own figure, so the quote and the decision to press
-			// on or brace read the same number
-			float remaining = ThreatGroundFronts.pushDaysRemaining(f, m);
-			tooltip.addPara(Army + " pushing " + layer + " %s of %s: ~%s days more at this pace, ~%s casualties "
-					+ "for the " + layer + ".", 4f, text, h, "" + next, "" + m.getSize(),
-					"" + (int) Math.ceil(Math.max(0f, remaining)),
-					Misc.getWithDGS(ThreatGroundFronts.pushCasualtyEstimate(f, m)));
-		} else if (regrouping) {
+		// the old cadence's push estimate ("pushing district 7 of 7: ~0 days more") is gone (2026-10-24):
+		// under THE LINE the Line paragraph above says when the next district moves
+		if (regrouping) {
 			boolean strong = eff >= ThreatGroundFronts.holdRequirement(m);
 			tooltip.addPara(Army + " regrouping after " + layer + " %s: %s days until "
 					+ (threatFront ? "it" : "they") + " " + (strong ? "push" : "dig in")
 					+ " on by doctrine, told nothing.", 4f, text, h,
 					"" + f.strataHeld, "" + (int) Math.ceil(f.consolidateDaysLeft));
-		} else if (pace > 0f && eff >= ThreatGroundFronts.holdRequirement(m)
-				&& f.strataHeld < m.getSize()) {
-			tooltip.addPara("A " + Army.toLowerCase() + " push on " + layer + " %s of %s would take ~%s days and ~%s troops.", 4f,
-					text, h, "" + next, "" + m.getSize(), "" + (int) Math.ceil(pace),
-					Misc.getWithDGS(ThreatGroundFronts.pushCasualtyEstimate(f, m)));
-		} else if (f.strataHeld < m.getSize()) {
-			tooltip.addPara(Army + " too weak to push: %s effective of the %s needed to hold.", 4f, text, neg,
-					Misc.getWithDGS(Math.round(eff)),
-					Misc.getWithDGS(Math.round(ThreatGroundFronts.holdRequirement(m))));
 		}
 
 		if (f.isPlayerOwned()) {

@@ -240,14 +240,15 @@ colour - a worn defence, a repelled counter-attack, a Falls estimate are the lan
 | Column | Helper | What it is |
 | --- | --- | --- |
 | Force | `effectiveStrength`, `defenderStrength` | this side's strength, an arrow, the enemy's: `983 <- 144` on this side's world under a landing, `1,450 -> 2,080` where this side has landed. A landing's figure is troops x entrenchment (0.75 on landing -> 1.0 over 30 days of holding) x 0.5 when dry; a colony's is garrison + armed marines x cover (x 0.5 with no heavy armaments in stock); a hive's its defence figure. A landing holds at 17% of the world's figure, grinds at 10% |
-| Defenses | `defensesTrend` / `defensesLabel` | the world's: **worn** (holding landing, disruption clocks fed faster than they run), **held** (grinding landing keeps the defense structures down), **recovering** (foothold keeps nothing down), **intact** |
+| Disruption | `disruptionFraction` | the besieged world's military structures (the theatre's key + defence lists), each clock over the suppress cap (`suppressCap`: wearDays x 1.2), averaged, as a percentage - whichever tab reads it; coloured the landing's gain, the world's loss (the user, 2026-10-24) |
 | State | the landing's | holding / grinding / foothold |
 | Held | `heldCell` | from this side: districts or strata this side's landing has taken (on a hive, the strata still standing - a `held/size` read as a reset when starvation took a size off, user 2026-10-11); on this side's own colony, the districts still its own of its size |
 | Stance | `marineStanceLabel` / `swarmStanceLabel` | this side's: a landing's own push / regrouping / dug in; a garrison's push (= counter-attacks on the cadence, `defenderStanceLabel`) or dug in; a hive has none ("-") |
 | Losses | `marineLossPer30Days` / `swarmLossPer30Days` | this side's, per day: a landing's `attritionPer30Days` (8% of troops per 30 days holding, 30% pushing x the Lanchester skew, x3 when dry), a garrison's `defenderLossPer30Days`; a hive bleeds nothing |
 | Counter | `daysToCounterAttack`, `counterAttackRepelled` | days to the next counter-attack - the garrison's against a Threat landing, the hive's against a marine landing; "held" while a garrison is dug in; coloured for this side (a repelled one is the landing's gain) |
 | Arms | `supplyDaysLeft` / `defenderArmsDaysLeft` | this side's days of heavy armaments at the current burn: a marine landing's own (x2 while pushing), a colony stockpile's; "dry" when out; "-" on the Threat tab, the swarm fights on none |
-| Falls | `pushDaysEstimate` | "~N d" until the last stratum or district falls while the landing can push (what is left of the current layer plus whole ones after it); the landing's prize, the world's loss |
+| Objective | `daysToLineChange` | days until THIS side takes the next district or stratum at the line's rate; "-" while the line stands (inside `frontGrindBand`) or moves against it (the user, 2026-10-24) |
+| Victory | `victoryDays` | "~N d" until this side wins the world at the line's rate: a landing takes the last layer (what is left of the current one plus whole ones after), a world pushes the landing off (every layer it holds back, then the beachhead); "-" otherwise (the user, 2026-10-24) |
 | Space | `spaceHolder` | whose warships hold the orbit |
 
 The row tooltip gives the arithmetic one line per fact, including which structures are

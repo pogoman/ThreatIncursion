@@ -681,7 +681,7 @@ public class ThreatGroundFronts {
 		float eff = effectiveStrength(front);
 		if (eff <= 0f) return -1f;
 		float r = lineRate(front, market, true, defendersPush(front, market));
-		if (r <= 0f) return -1f;
+		if (r <= 0f || !lineMoves(r)) return -1f;
 		float base = Math.max(0f, ThreatIncConfig.frontLineBaseDays() - front.pushProgress);
 		return base / r;
 	}
@@ -1192,6 +1192,11 @@ public class ThreatGroundFronts {
 		return STATE_GRINDING;
 	}
 
+	/** Whether a line rate moves the line at all: outside frontGrindBand either way; inside it the line stands (stalled / grinding). */
+	public static boolean lineMoves(float rate) {
+		return Math.abs(rate) > Math.max(0f, ThreatIncConfig.frontGrindBand());
+	}
+
 	/** Days until the next district changes hands at the current rate, or -1 while the line stands still. */
 	public static float daysToLineChange(GroundFront front, MarketAPI market) {
 		return lineChangeDays(front, lineRate(front, market));
@@ -1199,10 +1204,53 @@ public class ThreatGroundFronts {
 
 	/** As {@link #daysToLineChange} at a given rate (an order's quote). */
 	public static float lineChangeDays(GroundFront front, float r) {
-		if (front == null || Math.abs(r) < 0.0001f) return -1f;
+		if (front == null || !lineMoves(r)) return -1f;
 		float base = Math.max(1f, ThreatIncConfig.frontLineBaseDays());
 		float left = r > 0f ? base - front.pushProgress : base + front.pushProgress;
 		return Math.max(0f, left / Math.abs(r));
+	}
+
+	/**
+	 * Days until the side given wins the world at the line's current rate - the
+	 * landing takes the last layer, or the world pushes the landing off (every
+	 * layer it holds back, then the beachhead) - or -1 while the line stands or
+	 * moves the other way, and for a landing barred from a story-critical world.
+	 * The fronts table's Victory column (the user, 2026-10-24).
+	 */
+	public static float victoryDays(GroundFront front, MarketAPI market, boolean fromLanding) {
+		if (front == null || market == null) return -1f;
+		float r = lineRate(front, market);
+		if (!lineMoves(r) || (r > 0f) != fromLanding) return -1f;
+		if (fromLanding && lastStratumProtected(front, market)) return -1f;
+		float base = Math.max(1f, ThreatIncConfig.frontLineBaseDays());
+		float first = fromLanding ? Math.max(0f, base - front.pushProgress) : Math.max(0f, base + front.pushProgress);
+		int after = fromLanding ? Math.max(0, market.getSize() - front.strataHeld - 1) : Math.max(0, front.strataHeld);
+		return (first + after * base) / Math.abs(r);
+	}
+
+	/**
+	 * The world's military structures' disruption as a share of the most a siege
+	 * inflicts ({@link #suppressCap}), averaged over the theatre's key and defence
+	 * structures; 0 with none. The fronts table's Disruption column (the user,
+	 * 2026-10-24): always the world the siege is on, whichever tab reads it.
+	 */
+	public static float disruptionFraction(MarketAPI market) {
+		if (market == null) return 0f;
+		Theatre theatre = Theatre.of(market);
+		List<Industry> all = new ArrayList<Industry>(theatre.keyStructures(market));
+		for (Industry ind : theatre.defenseStructures(market)) {
+			if (!all.contains(ind)) all.add(ind);
+		}
+		float cap = suppressCap(market);
+		if (cap <= 0f) return 0f;
+		float sum = 0f;
+		int n = 0;
+		for (Industry ind : all) {
+			if (ind == null) continue;
+			sum += Math.min(1f, siegeDisruptDays(ind) / cap);
+			n++;
+		}
+		return n == 0 ? 0f : sum / n;
 	}
 
 	/** Effective strength a landing needs to gain ground here, pushing against the world as it stands: its defence in cover. */
@@ -1227,7 +1275,7 @@ public class ThreatGroundFronts {
 		float eff = effectiveStrength(front);
 		if (eff <= 0f) return -1f;
 		float r = lineRate(front, market, true, defendersPush(front, market));
-		if (r <= 0f) return -1f;
+		if (r <= 0f || !lineMoves(r)) return -1f;
 		return Math.max(1f, ThreatIncConfig.frontLineBaseDays()) / r;
 	}
 
@@ -1951,7 +1999,11 @@ public class ThreatGroundFronts {
 		// cover, back while the world out-pushes its own. frontLineBaseDays of
 		// progress takes the next district; the same the other way gives one
 		// back, or pushes a beachhead holding none off the world
-		if (line != 0f) {
+		// inside frontGrindBand the line stands: stalled / grinding means no ground
+		// changes hands (the user, Sindria 2026-10-24: both boards read stalled and
+		// the last district fell four days later - the rate inside the band had
+		// been adding up all along)
+		if (lineMoves(line)) {
 			front.pushProgress += line * elapsedDays;
 			float base = Math.max(1f, ThreatIncConfig.frontLineBaseDays());
 			if (front.pushProgress >= base) {
@@ -2764,13 +2816,17 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 */
 	protected static boolean suppress(Industry ind, float addDays) {
 		if (ind == null || addDays <= 0f) return false;
-		// the theatre's own clock, a fifth past worn-out
-		float cap = (ind.getMarket() != null ? Theatre.of(ind.getMarket()).wearDays()
-				: Math.max(1f, ThreatIncConfig.defenseWearDays())) * 1.2f;
+		float cap = suppressCap(ind.getMarket());
 		float cur = siegeDisruptDays(ind);
 		if (cur >= cap) return true; // already pinned at the cap - still "suppressed"
 		ind.setDisrupted(Math.min(cap, cur + addDays));
 		return true;
+	}
+
+	/** The most disruption a siege inflicts on a structure: the theatre's own clock, a fifth past worn-out. */
+	protected static float suppressCap(MarketAPI market) {
+		return (market != null ? Theatre.of(market).wearDays()
+				: Math.max(1f, ThreatIncConfig.defenseWearDays())) * 1.2f;
 	}
 
 	/**
@@ -5223,7 +5279,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 */
 	public static boolean losingGround(GroundFront front, MarketAPI market) {
 		if (front == null || market == null) return false;
-		return lineRate(front, market) < 0f; // the world's push is moving the line back (THE LINE, 2026-10-23)
+		float r = lineRate(front, market);
+		return r < 0f && lineMoves(r); // the world's push is moving the line back (THE LINE, 2026-10-23); inside the band it stands
 	}
 
 	/**

@@ -691,6 +691,10 @@ public class ThreatAid {
 			load[1] = Math.min(wants[1], ThreatReserves.available(m, Commodities.HAND_WEAPONS));
 			// a convoy sails on the colony's own hulls: staged warships do not fold into it
 			float[] fitted = ThreatAidCapacity.fitLoad(ThreatAidCapacity.ownFreeFP(m), load);
+			// a marines ask is served with marines: a colony whose marines are committed (its own
+			// front) or clipped out of the hold offers arms alone, which is no push (sd1 test 2026-10-24:
+			// "push back: 376 arms from Arkoman, of the 752 asked")
+			if (marinesAsk > 0f && fitted[0] < 1f) continue;
 			float value = ThreatConvoys.cargoValue(fitted[0], fitted[1], 0f, 0f);
 			if (value <= bestValue) continue;
 			best = m;
