@@ -3,6 +3,8 @@ package threatinc;
 import java.awt.Color;
 
 import com.fs.starfarer.api.campaign.econ.Industry;
+import com.fs.starfarer.api.campaign.econ.MutableCommodityQuantity;
+import com.fs.starfarer.api.impl.campaign.ids.Commodities;
 import com.fs.starfarer.api.impl.campaign.econ.BaseMarketConditionPlugin;
 import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.Misc;
@@ -10,7 +12,7 @@ import com.fs.starfarer.api.util.Misc;
 /**
  * The player-facing readout of a hive world, shown as a market condition on every Threat
  * colony: the strata and the next size's, the Fabrication Core's inputs and its state (growing
- * / holding / starving, ThreatColonyManager.coreState), the strata density that is its
+ * / holding / starving, ThreatColonyManager.coreState), the swarm density that is its
  * accessibility, and what holds its growth. One line per fact (docs/strata-are-the-threat.md
  * 8). The condition id keeps its old name.
  */
@@ -19,6 +21,44 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 	@Override
 	public boolean hasCustomTooltip() {
 		return true;
+	}
+
+	/** Human commodities no machine world demands, on any of its industries (Mining asks drugs, Population food and goods). */
+	private static final java.util.Set<String> HUMAN = new java.util.HashSet<String>(java.util.Arrays.asList(
+			Commodities.FOOD, Commodities.DRUGS, Commodities.DOMESTIC_GOODS, Commodities.LUXURY_GOODS));
+
+	/**
+	 * Each recompute, after the industries (vanilla's ResourceDepositsCondition pattern): the port flag
+	 * and the density total so no "No spaceport" line shows; the comm-relay and "demand met" stability
+	 * lines lifted; every industry's demand for a human commodity x0 (the user, 2026-10-25: Surgat's
+	 * Mining short of drugs). The Core's own inputs are untouched.
+	 */
+	@Override
+	public void apply(String id) {
+		super.apply(id);
+		if (market == null || !ThreatStrata.has(market)) return;
+		market.setHasSpaceport(true);
+		ThreatColonyManager.applyHiveAccessibility(market);
+		for (String mod : ThreatColonyManager.HUMAN_STABILITY_MODS) {
+			market.getStability().unmodifyFlat(mod);
+		}
+		for (Industry ind : market.getIndustries()) {
+			if (ThreatColonyManager.FABRICATION_CORE.equals(ind.getId())) continue;
+			for (MutableCommodityQuantity d : ind.getAllDemand()) {
+				if (HUMAN.contains(d.getCommodityId())) d.getQuantity().modifyMult(id, 0f, "Threat");
+			}
+		}
+	}
+
+	@Override
+	public void unapply(String id) {
+		super.unapply(id);
+		if (market == null) return;
+		for (Industry ind : market.getIndustries()) {
+			for (MutableCommodityQuantity d : ind.getAllDemand()) {
+				d.getQuantity().unmodifyMult(id);
+			}
+		}
 	}
 
 	@Override
@@ -50,7 +90,7 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 		if (ThreatColonyManager.hiveBlockaded(market)) {
 			tooltip.addPara("Blockaded: %s", 3f, neg, "nothing docks");
 		} else {
-			tooltip.addPara("Strata density: %s", 3f, h,
+			tooltip.addPara("Swarm density: %s", 3f, h,
 					ThreatColonyManager.signedPct(ThreatColonyManager.hiveDensityAccess(market)));
 		}
 

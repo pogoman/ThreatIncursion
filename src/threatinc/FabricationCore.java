@@ -44,7 +44,7 @@ public class FabricationCore extends BaseIndustry {
 		com.fs.starfarer.api.combat.StatBonus defense = market.getStats().getDynamic()
 				.getMod(com.fs.starfarer.api.impl.campaign.ids.Stats.GROUND_DEFENSES_MOD);
 		if (targetBase - vanillaBase > 0f) {
-			defense.modifyFlat(getModId(1), targetBase - vanillaBase, "Fabrication strata");
+			defense.modifyFlat(getModId(1), targetBase - vanillaBase, "Swarm");
 		} else {
 			defense.unmodifyFlat(getModId(1));
 		}
@@ -118,7 +118,7 @@ public class FabricationCore extends BaseIndustry {
 		if (ThreatColonyManager.hiveBlockaded(market)) {
 			tooltip.addPara("Blockaded: %s", 3f, neg, "nothing docks");
 		} else {
-			tooltip.addPara("Strata density: %s", 3f, h, ThreatColonyManager.signedPct(ThreatColonyManager.hiveDensityAccess(market)));
+			tooltip.addPara("Swarm density: %s", 3f, h, ThreatColonyManager.signedPct(ThreatColonyManager.hiveDensityAccess(market)));
 		}
 	}
 }

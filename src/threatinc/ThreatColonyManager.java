@@ -1142,8 +1142,9 @@ public class ThreatColonyManager {
 			changed = true;
 		}
 		if (!changed) return false;
+		market.setHasSpaceport(true); // no port, no penalty (applyHiveAccessibility)
 		markEconomyDirty();
-		ThreatIncConfig.log("Hive planner: port retired at " + market.getName() + " (the strata density is the hive's accessibility)");
+		ThreatIncConfig.log("Hive planner: port retired at " + market.getName() + " (the swarm density is the hive's accessibility)");
 		return true;
 	}
 
@@ -1554,20 +1555,36 @@ public class ThreatColonyManager {
 	 * survives a save load.
 	 */
 	public static void applyHiveAccessibility() {
-		List<MarketAPI> colonies = ThreatIncData.getAllLiveColonyMarkets();
-		if (colonies.isEmpty()) return;
-		for (MarketAPI market : colonies) {
-			market.getAccessibilityMod().unmodifyFlat(PORT_DOWN_MOD_ID);
-			market.getAccessibilityMod().unmodifyFlat(ACCESS_MOD_ID);
-			boolean blockaded = hiveBlockaded(market);
-			float target = blockaded ? shippingAccessibility(0) : hiveDensityAccess(market);
-			float current = market.getAccessibilityMod().computeEffective(0f);
-			String why = blockaded ? "Blockaded - nothing docks" : "Strata density";
-			market.getAccessibilityMod().modifyFlat(ACCESS_MOD_ID, target - current, why);
-			ThreatIncConfig.logOnChange("port:" + market.getId(), blockaded ? "blockaded" : "open",
-					why + " at " + market.getName() + ": accessibility " + Math.round(target * 100f) + "%, shipping "
-							+ Misc.getShippingCapacity(market, true) + " units");
+		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
+			applyHiveAccessibility(market);
 		}
+	}
+
+	/** Vanilla's "No spaceport" line on the accessibility stat (PopulationAndInfrastructure, ind_population_0). */
+	public static final String NO_PORT_MOD_ID = "ind_population_0";
+	/** Stability lines a machine world never shows (the user, 2026-10-25): the comm relay and Population's "demand met" / shortage lines. */
+	public static final String[] HUMAN_STABILITY_MODS = { "ind_population_0", "ind_population_1", "ind_population_2",
+			com.fs.starfarer.api.impl.campaign.econ.CommRelayCondition.COMM_RELAY_MOD_ID };
+
+	/**
+	 * One world, from the poll and from HiveVitalityCondition.apply (each recompute): vanilla's
+	 * "No spaceport" -100% line is lifted first (the port is retired by design; the user,
+	 * 2026-10-25: "if we cant get rid of that might as well give them all spaceports"), then
+	 * the density total is landed against the stat's current value.
+	 */
+	public static void applyHiveAccessibility(MarketAPI market) {
+		if (market == null) return;
+		market.getAccessibilityMod().unmodifyFlat(NO_PORT_MOD_ID);
+		market.getAccessibilityMod().unmodifyFlat(PORT_DOWN_MOD_ID);
+		market.getAccessibilityMod().unmodifyFlat(ACCESS_MOD_ID);
+		boolean blockaded = hiveBlockaded(market);
+		float target = blockaded ? shippingAccessibility(0) : hiveDensityAccess(market);
+		float current = market.getAccessibilityMod().computeEffective(0f);
+		String why = blockaded ? "Blockaded - nothing docks" : "Swarm density";
+		market.getAccessibilityMod().modifyFlat(ACCESS_MOD_ID, target - current, why);
+		ThreatIncConfig.logOnChange("port:" + market.getId(), blockaded ? "blockaded" : "open",
+				why + " at " + market.getName() + ": accessibility " + Math.round(target * 100f) + "%, shipping "
+						+ Misc.getShippingCapacity(market, true) + " units");
 	}
 
 	/** Whether a human blockade holds the world's orbit (ThreatBlockade.syncHive, any cut): nothing docks. */
@@ -1713,6 +1730,10 @@ public class ThreatColonyManager {
 		if (pop != null) {
 			pop.getDemandReductionFromOther().modifyFlat("threatinc_machines", 100f); // any size (FabricationCore.apply re-asserts it)
 		}
+		// no port, no penalty: the flag PopulationAndInfrastructure reads for its -100% line (HiveVitalityCondition.apply keeps it)
+		market.setHasSpaceport(true);
+		// the colony screen's Growth figure reads the strata
+		ThreatHiveGrowth.apply(market);
 	}
 
 	/**
@@ -3141,7 +3162,7 @@ public class ThreatColonyManager {
 
 				if (conversion) {
 					announce(ThreatNotice.titled("Ruins Claimed").bad()
-							.line("Fabrication strata spread through the ruins of %s", planet.getName())
+							.line("The swarm spreads through the ruins of %s", planet.getName())
 							.line("The swarm has claimed what it killed"));
 				} else if (firstColony) {
 					announce(ThreatNotice.titled("Hive Takes Root").bad()
@@ -3149,7 +3170,7 @@ public class ThreatColonyManager {
 							.line("In the %s", system.getNameWithLowercaseType()));
 				} else {
 					announce(ThreatNotice.titled("Hive Spreads").bad()
-							.line("%s is being converted to fabrication strata", planet.getName())
+							.line("%s is being consumed by the swarm", planet.getName())
 							.line("Another world in the %s", system.getNameWithLowercaseType()));
 				}
 				ThreatIncConfig.log("Colony founded: " + planet.getName()

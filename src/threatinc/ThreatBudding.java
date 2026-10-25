@@ -325,7 +325,7 @@ public class ThreatBudding {
 			if (back > 0f) {
 				ThreatStrata.add(market, ThreatStrata.strataOf(back), "Absorbed into", null);
 				pool -= back;
-				visual(market, "Strata settling", back, false);
+				visual(market, "Swarm settling", back, false);
 			}
 			if (pool <= 0.5f) {
 				ThreatIncConfig.log("Budding: " + market.getName() + " stands down, the force over it gone (" + (int) want + " FP wanted)");
@@ -451,7 +451,7 @@ public class ThreatBudding {
 			return;
 		}
 		float bite = Math.min(flowFP(market) * elapsedDays, ThreatStrata.fpOf(room));
-		absorbHulls(market, pick, bite, "Strata absorbed");
+		absorbHulls(market, pick, bite, "Swarm absorbed");
 	}
 
 	/**
@@ -505,7 +505,7 @@ public class ThreatBudding {
 		} else {
 			ok = ThreatColonyManager.poolHiveBanks(colony, bite, "Strike");
 		}
-		if (ok) visual(colony, "Strata rising", bite, true);
+		if (ok) visual(colony, "Swarm rising", bite, true);
 	}
 
 	// ------------------------------------------------------------------

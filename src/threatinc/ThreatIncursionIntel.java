@@ -403,7 +403,7 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		Color neg = Misc.getNegativeHighlightColor();
 
 		info.addPara("The Threat - the ancient fabricator swarms of the Abyss - has come to the "
-				+ "sector. Where its fabrication strata take root, a machine colony rises that "
+				+ "sector. Where its swarm takes root, a machine colony rises that "
 				+ "cannot be reasoned with or occupied, only burned away.", opad);
 
 		java.util.List<String> known = knownInfestedSystemIds();

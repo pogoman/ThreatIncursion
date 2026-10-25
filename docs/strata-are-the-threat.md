@@ -34,7 +34,7 @@ committed before phase A below starts; this spec assumes it.
 - The hive is off supplies entirely: metals and fuel into the Core are its only inputs.
 - At the cap, fed in surplus, nothing happens: a capped world sits. The hive's whole mass is
   bounded by its worlds' caps; it grows only by seeding.
-- Accessibility on a hive world is not distance to a producer: it is **aggregate strata density,
+- Accessibility on a hive world is not distance to a producer: it is **aggregate swarm density,
   like gravity** - the densest place has the highest accessibility; mass shifted to the front
   makes the front rich and the back poor (section 3).
 
@@ -99,7 +99,7 @@ and the standing garrisons it kept in orbit put back into the ground until neede
 | `garrisonUpkeepPerMonth` 0.04 of a fleet's FP charged to the bank; the navy pays supplies | Nothing. A budded fleet has no upkeep; strata do not decay |
 | Size upkeep in supplies; growth clock; starving thins strata | The Core's three states on vanilla's deficit: grow / hold / starve a size per `starveDaysPerSize` |
 | `redistributeByPressure` ships garrison swarms between worlds | SHIFT: bud at the back, fly, absorb at the front - the hive's one strategic lever |
-| Accessibility: Spaceport, size, the Core-distance penalty refunded | One figure, "Strata density" |
+| Accessibility: Spaceport, size, the Core-distance penalty refunded | One figure, "Swarm density" |
 | `foundingFPPerStructure`, `ThreatBuildCost` supplies, founding kit | A structure costs strata; a seed is the strata the wave carried |
 | Ground defence = strata standing x Nexus / Bastion / batteries / shield x condition | Ground defence = strata standing. No multipliers, no condition |
 | Return fire from guns by their condition | None. The hive buds a fleet against the bombers or loses strata |
@@ -205,7 +205,7 @@ specific industry producer. I just want it to be aggregate proximity/density. Sh
 on strata concentration kinda like gravity. There should be a pull almost to the location with
 the highest concentration of strata which has highest accessibility. However for example the
 threat could convert it's backline strata to ships and then reabsorb them at the world's by the
-front. So then accessibility at the front is high and worlds at the back with low strata density
+front. So then accessibility at the front is high and worlds at the back with low swarm density
 accessibility is low. So now there's a pro and con. Front like is strong but perhaps all the
 producers at the back have now low size and accessibility so stop outputting etc. So it's
 basically super dynamic."
@@ -231,7 +231,7 @@ runs on a hive). There is no disruption on a hive world; what hurts the Core is 
   Spaceport its own bonus; the distance line is applied by the obfuscated core when it
   recomputes the economy, and the setting is global (a mod `settings.json` override would turn
   it off for every faction). So the hive's accessibility is taken over wholesale: one mod line,
-  "Strata density", computed against the stat's current value so the TOTAL is our figure
+  "Swarm density", computed against the stat's current value so the TOTAL is our figure
   (`applyPortDisruption` already lands a target this way), re-asserted every poll. Vanilla's
   lines still show in the breakdown; the total is the density. `applyHiveAccessibility`'s refund
   and `coreDistanceOffset` go.
@@ -268,14 +268,14 @@ runs on a hive). There is no disruption on a hive world; what hurts the Core is 
   importer grows up to the size of the biggest producer it can reach, then holds. The HOLD band
   is one unit so the user's "met exactly = no growth" is a state the player sees on big
   importers.
-- **Accessibility is strata density** (the user's gravity; self-weight 0 DECIDED round 3). For
+- **Accessibility is swarm density** (the user's gravity; self-weight 0 DECIDED round 3). For
   hive world i: `density_i = sum over OTHER hive worlds j of S_j x w(d_ij)`, with
   `w(d) = 1 / (1 + (d / densityLY)^2)` (`densityLY` 10: a sibling in the same system counts in
   full, a world 10 ly off half, 20 ly a fifth, 30 ly a tenth); the world's own strata count
   `densitySelfWeight` (0, kept as a knob). Accessibility = `densityAccessPerDoubling` (0.10) x
   log2(density_i / `densityRef` 6,400), clamped to [`densityAccessMin` -0.30, `densityAccessMax`
   +0.50]. Nothing else moves a hive world's accessibility - not the Spaceport, not the size, not
-  the Core-distance. One line in the tooltip: "Strata density: +23%".
+  the Core-distance. One line in the tooltip: "Swarm density: +23%".
   - THE CALCULATION, STEP BY STEP (the user asked to see it, round 4). (1) For every other hive
     world j, take its strata S_j and the distance d in light-years between the two systems (0
     inside one system). (2) Weight it: w = 1 / (1 + (d / 10)^2) - same system 1.00, 5 ly 0.80,
@@ -355,7 +355,7 @@ user set on 2026-10-24):**
   cover (`ThreatHiveCover`), `foundingBudget`, `ThreatBuildCost` on hives. The forward bases'
   feeding convoys (the human side) stay.
 - Accessibility plumbing: `applyHiveAccessibility`, `coreDistanceOffset`, `applyPortDisruption`
-  (nothing disrupts a hive port now) - one "Strata density" line replaces them.
+  (nothing disrupts a hive port now) - one "Swarm density" line replaces them.
 - **The Spaceport on hive worlds** (the user, round 4: "it no longer does anything for
   accessibility, assuming that doesn't break any vanilla mechanics"). Checked in the API and
   core jars (2026-10-25): vanilla reads `hasSpaceport` in `PopulationAndInfrastructure` (the
@@ -568,7 +568,7 @@ from "move / build a fleet" to "bud / shift / absorb".
 
 - **Colony screen of a hive:** Population, Fabrication Core and the resource industries (no
   Spaceport, round 4). The Core's tooltip: "Strata: 1,150 (size 3 at 1,600). Growing 480 a month.
-  Core: metals 3 of 3, fuel 1 of 1. Strata density: +23%." One line per fact; "holding" or
+  Core: metals 3 of 3, fuel 1 of 1. Swarm density: +23%." One line per fact; "holding" or
   "starving, a size in N days" in place of the growth line when it is.
 - **War board, hive rows:** the strata figure beside the size, the density, and while a flow
   runs "budding 1,250 (2 d)" / "absorbing 640 (1 d)" / "shifting to X". No Defense Swarm count -
@@ -850,7 +850,7 @@ that answer with a Nexus, Bastion, battery, bank, garrison or feed.
 order A -> B -> C -> D, nothing started while the design is open; the Core's size-scaled demand
 under accessibility replaces upkeep, grow / hold / starve; fleets bud when the world is attacked
 and have no upkeep - no standing garrisons; the hive off supplies entirely; nothing at the cap;
-accessibility is aggregate strata density, like gravity, not distance to a producer; density
+accessibility is aggregate swarm density, like gravity, not distance to a producer; density
 self-weight 0 (siblings in the system count in full, the world itself not at all); a siege is
 sized against the buds over its planned stay; the flow is 2% a day with a 400 floor; no
 producer floor on shifting.

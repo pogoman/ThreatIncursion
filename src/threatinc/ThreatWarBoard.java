@@ -2125,7 +2125,7 @@ public class ThreatWarBoard {
 		main.addTableHeaderTooltip(c.visibleIndex(MASS), "Combined size of the hive colonies - "
 				+ "the swarm's fabrication mass.");
 		main.addTableHeaderTooltip(c.visibleIndex(VIT), "The Fabrication Cores' state: growing, holding or starving.");
-		main.addTableHeaderTooltip(c.visibleIndex(FLOW), "Strata on the move: a fleet budding, one being absorbed, or a shift to another world.");
+		main.addTableHeaderTooltip(c.visibleIndex(FLOW), "Swarm on the move: a fleet budding, one being absorbed, or a shift to another world.");
 		main.addTableHeaderTooltip(c.visibleIndex(SWARMS), "Threat fleet points last seen in the "
 				+ "system, and days since.");
 		main.addTableHeaderTooltip(c.visibleIndex(REACH), billed

@@ -233,7 +233,7 @@ public class SeedingSwarmIntel extends BaseIntelPlugin {
 
 		if ("arrived".equals(outcome)) {
 			info.addPara("The Seeding Swarm has made planetfall on " + target + ". "
-					+ "Fabrication strata are taking root - a Threat colony now exists there, "
+					+ "The swarm is taking root - a Threat colony now exists there, "
 					+ "and it will grow.", opad, neg, "made planetfall");
 			return;
 		}
