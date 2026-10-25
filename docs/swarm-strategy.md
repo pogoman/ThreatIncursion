@@ -42,10 +42,11 @@ system per 30 days, and no global cap ("the bank is the limit").
   0 until 2026-10-04, `stanceConsolidateStrikes`), and the strike gate (104 "passed over" lines on 33 targets, defence a mean 2.4x the strike).
 
 **What a strike does** (`ThreatStrikeFGI.AnnihilationAction`): besiege (`siegePass`,
-`ThreatGroundFronts.siegeSlice`), land (`readyToLand`, `beachheadLanding` breaks hulls into troops at
-`fabricateTroopsPerFP` when the share is short), reinforce (`landOrReinforce`; really the next strike,
-since a dry front weighs x4). Troops: `strikeTroopsPerPoint` 20 x difficulty points, per world
-max(300, pool / worlds), called off under `frontMinMarines` 50. The landing fleet stays as a
+`ThreatGroundFronts.siegeSlice`), land (`readyToLand`, `beachheadLanding` -> `embark` breaks hulls into
+troops at `fabricateTroopsPerFP` - every troop, since 2026-10-25), reinforce (`landOrReinforce`, hulls
+too; really the next strike, since a dry front weighs x4). Troops: a first landing max(300, the
+landing that overruns the world - `overrunTroops`, 2026-10-25), a reinforcement `fabricateNeed`, called off under `frontMinMarines` 50; the free pool
+`strikeTroopsPerPoint` is 0. The landing fleet stays as a
 `ThreatSwarmDefend` station; an unspawned strike builds its share of its fleets over the world for it
 (`guardUnspawned`, 2026-10-02; one fleet until `strikeGuardWhole`, 2026-10-04, `ground-war-orbit-control.md`). A human colony falls only by `colonyGroundVictory`; with
 `conquestConverts` it becomes a size-2 hive at once (`convertConquered`, paid by `conquestPayer`),

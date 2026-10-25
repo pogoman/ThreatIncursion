@@ -13,7 +13,7 @@ stay home and nothing is recalled.
 - **Size**: `strikeStagedMargin` (1.5) x the defence last seen at the target
   (`targetDefence`: the swarm's fog, `ThreatSwarmIntel.place`; a world never seen is no
   candidate), at least two swarms, every swarm built from the bank at the staging colony's
-  size + 3. The war's OPENING strike - no faction mobilised - sails with at least
+  size + 3 - **plus the landing's hulls** (2026-10-25, ships are the soldiers: `IncursionManager.landingPoints`, max(300, the landing that overruns the world - `overrunTroops`, 2026-10-25) troops at 5 a FP, 25 FP a point; the orbit is sized on the points left once they are broken up). The war's OPENING strike - no faction mobilised - sails with at least
   `strikeStagedMinFP` (8,000) so the hive is strong before the first attack wakes the humans
   (the user, 2026-10-06); every later strike is sized to its target. It also waits until the fund
   holds `strikeStagedOpenFP` (40,000 since 2026-10-10, the user: "raise the minimum strike fp bar so

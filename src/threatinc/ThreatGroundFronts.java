@@ -5245,6 +5245,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (!readyToLand(market, troops, orbitDone)) return false;
 		if (factionId == null || Factions.PLAYER.equals(factionId)) return true;
 		if (orbitDone) return true;
+		// the swarm lands to overrun (the user, 2026-10-25); an NPC siege's first landing keeps the beachhead test
+		if (Factions.THREAT.equals(factionId)) return landingOverruns(market, troops);
 		return beachheadSurvives(market, troops);
 	}
 
@@ -5268,6 +5270,41 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		if (market == null || margin <= 0f) return true;
 		float odds = threatinc.rules.BattleRules.beachheadOdds(ThreatIncConfig.groundStrengthExponent(), ThreatIncConfig.beachheadRepels());
 		return afterDrop(market, troops) * ThreatIncConfig.frontLandingMult() * odds >= counterAttackStrength(market) * margin;
+	}
+
+	/**
+	 * THE LANDING IS SIZED TO OVERRUN (the user, 2026-10-25: "there are no
+	 * counter attacks anymore. Landings should be sized to overrun"): the
+	 * marines ashore, exposed as they land (frontLandingMult, no cover yet),
+	 * whose line against the world as it stands - its defence in cover,
+	 * pushing back with its whole pressure - moves toward them at
+	 * frontOverrunRate (IncursionManager.lineMarinesFor, the Force ladder's Max
+	 * tier: at 0.5 that is four times the defence before the drop). 0 with
+	 * nothing to overrun. The beachhead (outlast the first counter-attack) was
+	 * the old model's figure: hw274 landed three of them on Nomios and the
+	 * line pushed each one off.
+	 */
+	public static float overrunNeed(MarketAPI market) {
+		if (market == null) return 0f;
+		float def = defenderStrength(market);
+		if (def <= 0f) return 0f;
+		// lineMarinesFor reads the world's push as def x pace
+		float pace = defenderPressure(getFront(market.getId()), market) / def;
+		return IncursionManager.lineMarinesFor(def, pace, Math.max(0f, ThreatIncConfig.frontOverrunRate()));
+	}
+
+	/** The landing that puts {@link #overrunNeed} ashore through the guns' toll ({@link #landingFor}). */
+	public static int overrunTroops(MarketAPI market) {
+		float need = overrunNeed(market);
+		if (need <= 0f) return 0;
+		return (int) Math.ceil(landingFor(market, need));
+	}
+
+	/** Whether a landing of {@code troops} here now overruns the world: what reaches the ground against {@link #overrunNeed}. */
+	public static boolean landingOverruns(MarketAPI market, float troops) {
+		float need = overrunNeed(market);
+		if (need <= 0f) return true;
+		return afterDrop(market, troops) >= need;
 	}
 
 	/**

@@ -398,12 +398,14 @@
 	# restore the old "one pass wounds or erases a world" behaviour.
 	"threatinc_strikeSaturationEnabled": false,
 	"threatinc_strikeGroundFrontsEnabled": true,
-	# the troop pool: strikeTroopsPerPoint per difficulty point of the swarms
-	# mustered (3-9 each), fixed at launch, discounted by losses on the way,
-	# split evenly across the worlds in the sweep, shown on the strike's intel
-	# - a strike lands what it brought and nothing more
-	"threatinc_strikeTroopsPerPoint": 20,
-	# a world's share is never below this; a small strike lands fewer worlds
+	# SHIPS ARE THE SOLDIERS (2026-10-25): every troop a strike lands is a hull
+	# it breaks up at fabricateTroopsPerFP (flagship and last hull spared), and
+	# the staged muster buys the landing's hulls on top of the orbit force. The
+	# free pool - strikeTroopsPerPoint per difficulty point of the swarms
+	# mustered, fixed at launch, never paid for - is 0; a value restores it on
+	# top of the hulls
+	"threatinc_strikeTroopsPerPoint": 0,
+	# a landing is never below this; a small strike lands fewer worlds
 	# rather than token forces
 	"threatinc_strikeFrontMinTroops": 300,
 	# days of armaments a Threat landing carries; it is never resupplied except

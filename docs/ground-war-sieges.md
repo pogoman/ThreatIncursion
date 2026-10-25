@@ -56,15 +56,26 @@ A pass that lands nothing - the share spent - is still a pass
 spent, and does not count toward the strike's success
 (`AnnihilationAction.getSuccessFraction`); a slice of the siege spends nothing.
 
-### Sizing the landing - the troop pool
+### Sizing the landing - ships are the soldiers
 
-Strike fleets are swarm ships with no marine cargo, so the force is abstract - but it is
-fixed at **launch** from what the expedition is, the mirror of the purge's
-`marinesAllotted`, never from the defender:
+**Since 2026-10-25 every troop a strike lands is a hull it breaks up** (the user: "they should
+break up their ships so it's actually a tracked resource that's consumed"). Strike fleets are
+swarm ships with no marine cargo; `ThreatStrikeFGI.embark` breaks hulls up at
+`fabricateTroopsPerFP` (5) - smallest first, flagship and last hull spared, on the fabrication
+bank so the log and the census read it as a break-up; an unspawned strike books it as
+`fabricatedFP` off its abstract strength - until the landing is aboard, and `commitLanding`
+draws it. A first landing is `max(strikeFrontMinTroops (300), overrunTroops)` - **sized to overrun** (the user, 2026-10-25: "there are no counter attacks anymore. Landings should be sized to overrun"; `ThreatGroundFronts.overrunNeed` = `IncursionManager.lineMarinesFor` at `frontOverrunRate` against the world's defence in cover pushing with its whole pressure, four times the defence at 0.5, through the drop toll; `landingOverruns` is the swarm's land-early gate in `readyToLand`; the beachhead figure stays for NPC sieges only), a
+reinforcement pass `fabricateNeed`; `landable` (fragments aboard + `hullTroops`) is what can
+still land and gates every pass, `abstractLanding` the land-early tests of the abstract siege.
+The staged muster buys the landing on top of the orbit (`IncursionManager.landingPoints`:
+troops / 5 / `ABSTRACT_FP_PER_POINT` 25 a difficulty point; `stagedPlan` sizes the orbit on the
+points left after it). Strata stay the hive's own body: an away landing never draws on them.
 
-- `troopsAllotted = strikeTroopsPerPoint (20) x` the difficulty points of the swarms
-  mustered (3-9 each; `launchStrike` puts them in `fleetSizes`). Shown on the strike's
-  intel as "Aboard: N troops", with each world's phase and passes spent.
+The pool below is kept as a knob, 0 by default (it was 20 until 2026-10-25, free troops the
+hive never paid for - about a sixth of a strike's hulls turned to soldiers for nothing):
+
+- `troopsAllotted = strikeTroopsPerPoint (0) x` the difficulty points of the swarms
+  mustered (3-9 each; `launchStrike` puts them in `fleetSizes`), plus every break-up since.
 - A world's **share** is `max(strikeFrontMinTroops (300), troopsAllotted / worlds in the
   sweep)`, and a world receives no more than its share across all its passes
   (`landedAt`) unless it needs more: a front takes what it needs from the pool still aboard

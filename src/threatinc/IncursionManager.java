@@ -5466,6 +5466,21 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	}
 
 	/** A staged strike as planned: its swarms' expedition sizes, and the garrison fleets it takes from which colonies. */
+	/**
+	 * The difficulty points of hull a strike breaks up to land on the world
+	 * (ThreatStrikeFGI.embark): the larger of the landing floor
+	 * (strikeFrontMinTroops) and the landing that overruns the world
+	 * (ThreatGroundFronts.overrunTroops; the user, 2026-10-25), at fabricateTroopsPerFP a fleet
+	 * point and ThreatGroundFronts.ABSTRACT_FP_PER_POINT a difficulty point.
+	 * 0 with fabrication off (the pool lands then, strikeTroopsPerPoint).
+	 */
+	public static int landingPoints(MarketAPI target) {
+		if (target == null || !ThreatIncConfig.fabricateEnabled()) return 0;
+		float troops = Math.max(ThreatIncConfig.strikeFrontMinTroops(), ThreatGroundFronts.overrunTroops(target));
+		float fp = troops / Math.max(0.01f, ThreatIncConfig.fabricateTroopsPerFP());
+		return (int) Math.ceil(fp / ThreatGroundFronts.ABSTRACT_FP_PER_POINT);
+	}
+
 	protected static class StagedPlan {
 		java.util.List<Integer> sizes = new ArrayList<Integer>();
 		java.util.List<MarketAPI> from = new ArrayList<MarketAPI>();
@@ -5693,6 +5708,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		if (def >= Float.MAX_VALUE) return null;
 		if (defOut != null) defOut[0] = def;
 		float need = def * ThreatIncConfig.strikeStagedMargin();
+		// SHIPS ARE THE SOLDIERS (2026-10-25): the landing comes out of the strike's hulls
+		// (ThreatStrikeFGI.embark), so the muster buys it on top of the orbit - the points left
+		// once the landing's hulls are broken up must still meet the need
+		int landingPoints = landingPoints(target);
 		int size = strikeFleetSize(Math.min(9, staging.getSize() + 3));
 		// with a strike fund the strike is paid from it alone. The war's OPENING strike - nobody mobilised
 		// yet - sails with at least strikeStagedMinFP, so the hive is strong before the first attack
@@ -5736,7 +5755,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			int count = 0;
 			for (ThreatColonyManager.MusterFleet mf : s.walk) {
 				if (toNeed && plan.sizes.size() >= 2 && plan.fp >= minFP
-						&& (FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) >= need
+						&& (FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT,
+								Math.max(0, points - landingPoints)) >= need
 								|| plan.fp >= pricedFP)) {
 					full = true;
 					break;
@@ -5763,7 +5783,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 		}
 		while (plan.sizes.size() < 2 || plan.fp < minFP
-				|| (FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT, points) < need
+				|| (FleetGroupIntel.getApproximateStrengthForTotalDifficultyPoints(Factions.THREAT,
+						Math.max(0, points - landingPoints)) < need
 						&& plan.fp < pricedFP)) {
 			java.util.List<Integer> one = new ArrayList<Integer>();
 			one.add(size);

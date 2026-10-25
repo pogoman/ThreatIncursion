@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 17;
+	static final int MIGRATION_VERSION = 18;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -67,6 +67,7 @@ class LunaConfigBridge {
 	 * Version 14 (2026-10-05, the user): nexusDefenseBonus 0.5 -> 0.
 	 * Version 16 (2026-10-17, the user): marineCounterAttackMult 0.25 -> 1.0.
 	 * Version 17 (2026-10-24, the user): frontlinesEnabled true -> false - forward bases are off by default.
+	 * Version 18 (2026-10-25, the user): strikeTroopsPerPoint 20 -> 0 - ships are the soldiers.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
@@ -144,6 +145,10 @@ class LunaConfigBridge {
 				// 2026-10-24, the user: forward bases off by default ("thought we removed them completely")
 				if (from < 17) {
 					changed |= bumpBoolean(json, "threatinc_frontlinesEnabled", true, false);
+				}
+				// 2026-10-25, the user: ships are the soldiers - the free troop pool is gone
+				if (from < 18) {
+					changed |= bump(json, "threatinc_strikeTroopsPerPoint", 20, 0, false);
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));
