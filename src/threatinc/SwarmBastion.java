@@ -53,12 +53,7 @@ public class SwarmBastion extends BaseIndustry {
 	 * Command is still a Bastion. Disruption wears the defence bonus, not this.
 	 */
 	public static int tier(MarketAPI market) {
-		if (market == null) return 0;
-		Industry command = market.getIndustry(COMMAND);
-		if (command != null && (!command.isBuilding() || command.isUpgrading())) return 2;
-		Industry bastion = market.getIndustry(BASTION);
-		if (bastion != null && (!bastion.isBuilding() || bastion.isUpgrading())) return 1;
-		return 0;
+		return 0; // the military tier is retired (phase D): no hive has one
 	}
 
 	/** The tier's structure on the colony, standing or building; null without one. */

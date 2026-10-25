@@ -45,8 +45,7 @@ public class ThreatGroundDefenses extends GroundDefenses {
 		float mult = ThreatSiegeMalus.weighDeficit(getDeficitMult(Commodities.HEAVY_MACHINERY, Commodities.METALS));
 		// one bracket of single words (user, 2026-10-12: "just show shortage not what is short")
 		String extra = mult != 1f ? "shortage" : "";
-		float bonus = hb ? ThreatIncConfig.heavyBatteriesBonus()
-				: ThreatIncConfig.groundDefensesBonus();
+		float bonus = 0f; // retired (phase D): the strata are the defence; the class stays for older saves
 
 		// no unapply-on-disruption - the contribution degrades instead, wearing
 		// down with the disruption days on the clock (see

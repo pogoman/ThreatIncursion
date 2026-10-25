@@ -373,8 +373,7 @@ public class ThreatWarBoard {
 			op.detail = "Threat strike against " + target + " - " + fleetsText(fleets) + ", "
 					+ op.status + (op.eta.equals("-") ? "" : " (" + op.eta + ")") + "."
 					+ (strike.isPreparing()
-							? " Recall window open: disrupt the staging colony's forge or Swarm "
-									+ "Nexus before departure and the operation is stillborn."
+							? " Recall window open: starve the staging colony's Core before departure and the operation is stillborn."
 							: " Departed - autonomous; it can only be met in space.");
 			e.outbound.add(op);
 		}
@@ -1949,7 +1948,7 @@ public class ThreatWarBoard {
 			public float getTooltipWidth(Object tooltipParam) { return 420f; }
 			public void createTooltip(TooltipMakerAPI tooltip, boolean expanded, Object tooltipParam) {
 				tooltip.addPara("Phases are capability, not calendar. Phase 2: some hive can "
-						+ "stage an expedition (strike-sized, forged, fuelled, nexus intact). "
+						+ "stage an expedition (strike-sized, its Core standing). "
 						+ "Phase 3: some hive can field a full armada and a core world sits "
 						+ "within its reach. "
 						+ "Burn their forges, cut their fuel or shrink their colonies and the "
@@ -2692,6 +2691,16 @@ public class ThreatWarBoard {
 		// line B: the fuel bill for the player's fleet as it stands - a day of
 		// saturation (a hive has no bar to finish: ThreatRazing.razes; a colony
 		// shows what razing it takes) and a day of tactical bombardment
+		// over a hive (phase D): the strata, and what a day of the player's fleet razes for what fuel
+		if (ThreatGroundFronts.strataTarget(market)) {
+			float pfp = Global.getSector().getPlayerFleet().getFleetPoints();
+			textHl(card, 8f, 45f, cardW - 16f - rightW, "Strata %s   razes %s a day   %s fuel a day", gray,
+					new Color[] {text, neg, text},
+					new String[] {ThreatStrata.fmt(ThreatStrata.of(market)), ThreatStrata.fmt(ThreatGroundFronts.hiveRazePerDay(pfp)),
+							Misc.getWithDGS(Math.round(ThreatGroundFronts.bombardFuelPerDay(market, pfp)))},
+					Alignment.LMID, true);
+			return card;
+		}
 		int defense = (int) MarketCMD.getDefenderStr(market, true);
 		float fp = Global.getSector().getPlayerFleet().getFleetPoints();
 		boolean razes = ThreatRazing.razes(market);

@@ -422,11 +422,6 @@
 	# the clock's own run-down (a day per day). A hive's figure is anchored to
 	# its size and runs several times a colony's, so its rate is higher.
 	"threatinc_siegeSuppressDaysPerDay": 12,
-	"threatinc_hiveSiegeSuppressDaysPerDay": 30,
-	# THE STRATA (2026-10-24): a saturation day over a hive also takes strata -
-	# one size's worth (hiveDefensePerSize) per this many disruption days it adds,
-	# so a day that puts the structures down 30 days takes 40 strata at 400 / 300
-	"threatinc_strataSuppressDaysPerSize": 300,
 	"threatinc_siegeFPWeight": 1.0,
 	# the player's bombardments share one lock: another within this many days
 	"threatinc_bombardCooldownDays": 1,
@@ -442,19 +437,11 @@
 	# hull costs ~5,600 credits at vanilla's median, ~6,000 armed and crewed,
 	# a marine 200, and a defence point is a marine the landing no longer needs
 	"threatinc_bombardFPWorth": 30,
-	# the two above on the HIVE theatre (2026-10-13, the user, from the return-fire
-	# tables in docs/suppression-balance.md): a fortified hive is a fleet-killer to
-	# linger under - three times a colony's constant - and the worth is lowered so
-	# the same commanders bombard a big hive as before (6,000 FP and up at a
-	# size-8 Heavy Batteries hive; 3,000 and under land at full defence)
-	"threatinc_hiveBombardReturnFirePerGunDefence": 0.0024,
-	"threatinc_hiveBombardFPWorth": 10,
 	# THE DROP UNDER THE GUNS (2026-10-18, the user: "marines lost to heavy batteries like FP
 	# is lost to bombardment"): a landing loses this x the defence the batteries still add
 	# (worn guns take less - the reason to bombard first), never more than the fraction;
 	# every landing gate and planner sizes for the survivors, the player's prompt quotes it
 	"threatinc_dropLossPerGunDefence": 0.3,
-	"threatinc_hiveDropLossPerGunDefence": 0.3,
 	"threatinc_dropLossMaxFraction": 0.6,
 	# unrest a bombardment raises the world to, never stacked: this x
 	# (1 - fortification condition), tactical and saturation alike
@@ -553,13 +540,12 @@
 	"threatinc_strataFlowPerDay": 400,
 	"threatinc_strataFlowFractionPerDay": 0.02,
 	"threatinc_defendLingerDays": 10,
-	# defense-structure scaling: defense mult = 1 + bonus per structure
-	"threatinc_groundDefensesBonus": 1.0,
-	"threatinc_heavyBatteriesBonus": 2.0,
-	# 0 since 2026-10-05 (the user): the Nexus gives no defence bonus and is no
-	# target of tactical bombardment (nexusBombardable; saturation reaches it)
-	"threatinc_nexusDefenseBonus": 0,
-	"threatinc_nexusBombardable": false,
+	# phase D (2026-10-25): bombardment on a hive is a strata exchange - a day by F fleet points razes
+	# bombardStrataPerFPDay x F strata for bombardFuelPerStratum fuel each, no return fire, no
+	# unrest; the one Attack order's Med ladder takes attackMedShare of the base's fuel and marines
+	"threatinc_bombardStrataPerFPDay": 1.0,
+	"threatinc_bombardFuelPerStratum": 2,
+	"threatinc_attackMedShare": 0.5,
 	# ...wearing down under disruption: the bonus falls linearly with the
 	# disruption days on the structure's clock, to nothing at this many - the
 	# hive's fortification clock. The same wear applies to a disrupted Core's
@@ -900,8 +886,6 @@
 	# bring the swarm over the world x1 at Min, x these at Med and Max. Siege lands marines
 	# to hold / push back (frontPushBackRate) / overrun (frontOverrunRate); Hunt beats the
 	# weakest swarm seen / matches the swarms seen / x npcSiegeOrbitMargin
-	"threatinc_bombardTierMinDays": 30,
-	"threatinc_bombardTierMedDays": 90,
 	"threatinc_orbitTierMedMargin": 1.25,
 	"threatinc_orbitTierMaxMargin": 1.5,
 	# provisions drawn per fleet point: fuel per light-year, supplies flat
@@ -950,7 +934,6 @@
 	# swarm's bombardment burns the hive's fuel at the rate everyone pays
 	# (threatPaysOrdnance)
 	"threatinc_hiveConvertSurplus": true,
-	"threatinc_hiveMilitaryTier": true,
 	"threatinc_threatPaysOrdnance": true,
 	"threatinc_sizeUpkeep": true,
 	"threatinc_sizeUpkeepAt3": 100,

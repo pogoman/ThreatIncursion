@@ -58,6 +58,10 @@ public class ThreatFactionView {
 	public static final String BUTTON_SCOUT = "threatinc_board_scout:";
 	/** Picks the siege-force tier (payload: the tier index 0/1/2); a view toggle, not an order - no Confirm. */
 	public static final String BUTTON_SIEGE_TIER = "threatinc_board_siegetier:";
+	/** The Attack's Fuel ladder (phase D): the passage, half the fuel above the floor, all. */
+	public static final String BUTTON_FUEL_TIER = "threatinc_board_fueltier:";
+	/** The Attack's Marines ladder: none, half the pool, all. */
+	public static final String BUTTON_MARINE_TIER = "threatinc_board_marinetier:";
 	/** Picks the ground-front supply tier (payload: the tier index 0/1/2); a view toggle, not an order. */
 	public static final String BUTTON_SUPPLY_TIER = "threatinc_board_supplytier:";
 	/** Picks the colony convoy-load tier (payload: the tier index 0/1/2); a view toggle, not an order. */
@@ -849,86 +853,51 @@ public class ThreatFactionView {
 							+ " days.");
 					continue;
 				}
-				// each order's own gate, so a button never opens a Confirm the
-				// order would then fail. Siege commits the force the tier selector
-				// above the table is set to (siegeMarineGoal); its Confirm names it.
+				// ONE ORDER ON A HIVE ROW (phase D, docs/strata-are-the-threat.md 8): Attack, sized by the
+				// Fleet / Fuel / Marines ladders above the table to the base's own stock. Off only when the
+				// base cannot field one fleet or pay the passage (IncursionManager.attackBlockFacts)
 				MarketAPI siegeBase = nearestBase(markets, e.system);
-				String siegeWhy = IncursionManager.siegeBlockReason(siegeBase, faction, e.system, intel.getSiegeTier());
-				boolean siegeOk = mayOrder && e.isColony() && siegeWhy == null;
-				String siegeBlock = blocked != null ? blocked : siegeWhy != null ? siegeWhy
-						: "Nothing there to besiege yet.";
-				float right = -6f;
-				ButtonAPI siege = intel.addGenericButton(main, SMALL_BUTTON_W, "Siege",
+				String attackWhy = IncursionManager.attackBlockReason(siegeBase, faction, e.system);
+				boolean attackOk = mayOrder && e.isColony() && attackWhy == null;
+				ButtonAPI attack = intel.addGenericButton(main, SMALL_BUTTON_W + 10f, "Attack",
 						BUTTON_SIEGE + factionId + ":" + e.systemId);
-				siege.getPosition().belowRight(hiveTable, -up).setXAlignOffset(right);
-				disableWith(main, siege, siegeOk, siegeBlock,
-						"A purge expedition sails from "
-						+ (siegeBase != null ? siegeBase.getName() : "the nearest base")
-						+ ", its landing the marines the siege-force selector is set to.");
-				right -= SMALL_BUTTON_W + 4f;
-				// Bombard only saturates (docs/suppression-balance.md v2 section 9): its
-				// own gate - a hive with no front, fuel past the passage
-				String bombardWhy = IncursionManager.bombardBlockReason(siegeBase, faction, e.system, intel.getSiegeTier());
-				boolean bombardOk = mayOrder && e.isColony() && bombardWhy == null;
-				ButtonAPI bombard = intel.addGenericButton(main, SMALL_BUTTON_W + 12f, "Bombard",
-						BUTTON_BOMBARD + factionId + ":" + e.systemId);
-				bombard.getPosition().belowRight(hiveTable, -up).setXAlignOffset(right);
-				disableWith(main, bombard, bombardOk, blocked != null ? blocked : bombardWhy != null ? bombardWhy
-						: "Nothing there to bombard yet.",
-						"A bombing expedition sails from "
-						+ (siegeBase != null ? siegeBase.getName() : "the nearest base") + ".");
-				right -= SMALL_BUTTON_W + 12f + 4f;
-				ButtonAPI hunt = intel.addGenericButton(main, SMALL_BUTTON_W + 14f, "Hunt",
-						BUTTON_HUNT + factionId + ":" + e.systemId);
-				hunt.getPosition().belowRight(hiveTable, -up).setXAlignOffset(right);
-				ThreatAid.Quote iq = ThreatAid.quoteStrike(e.system, intel.getSiegeTier());
-				disableWith(main, hunt, mayOrder && iq.ok(), blocked != null ? blocked : ThreatNotice.text(iq.reason),
-						"A task force of " + forceText(iq) + " from "
-						+ (iq.ok() ? iq.source.getName() : "the nearest colony") + " hunts this "
-						+ "hive's Defense Swarms for " + (int) ThreatIncConfig.softenDays()
-						+ " days, weakest garrison first.");
-				right -= SMALL_BUTTON_W + 14f + 4f;
-				// the player's own look at the system (the user, 2026-10-24: "should also be able to send
-				// scout to any system to get refreshed info on defence swarms")
-				ButtonAPI scout = intel.addGenericButton(main, SMALL_BUTTON_W + 4f, "Scout",
-						BUTTON_SCOUT + factionId + ":" + e.systemId);
-				scout.getPosition().belowRight(hiveTable, -up).setXAlignOffset(right);
-				String scoutWhy = ThreatScouts.scoutOffReason(e.system);
-				disableWith(main, scout, mayOrder && scoutWhy == null, blocked != null ? blocked : scoutWhy,
-						"A scouting party of " + (int) ThreatIncConfig.scoutFleetPoints()
-						+ " fleet points from your nearest colony looks at this system and reports what it sees.");
+				attack.getPosition().belowRight(hiveTable, -up).setXAlignOffset(-6f);
+				disableWith(main, attack, attackOk, blocked != null ? blocked : attackWhy != null ? attackWhy
+						: "Nothing there to attack yet.",
+						"A task force from " + (siegeBase != null ? siegeBase.getName() : "the nearest base")
+						+ " holds the orbit, razes the strata for the fuel it carries past the passage and lands its marines.");
 			}
 		}
 		if (colonyTable != null) {
 			addConvoyTierSelector(intel, main, colonyTable);
 		}
 		if (hiveTable != null && own) {
-			addSiegeTierSelector(intel, main, hiveTable, faction);
+			addAttackLadders(intel, main, hiveTable);
 		}
 			main.setHeightSoFar(heightBefore);
 	}
 
 	/**
-	 * The Min/Med/Max force selector floated into the row reserved under the
-	 * "Known hive systems" heading. Every order on the board reads this one
-	 * choice (the user, 2026-10-11: "min med max should apply to all"): a task
-	 * force - Fleet, Hunt, Defend, Support, aid - sails as one fleet, half the
-	 * hulls free or all of them (ThreatAid.forceFP); a siege lands the marines
-	 * the assault needs, a factor more, or every marine sparable.
+	 * The Attack's three ladders in the row reserved under the "Known hive systems" heading (phase D,
+	 * docs/strata-are-the-threat.md 8): Fleet, Fuel and Marines, each a share of the staging colony's
+	 * own stock and nothing of the target's. Min is the least that still sails.
 	 */
-	protected static void addSiegeTierSelector(ThreatIncursionIntel intel, TooltipMakerAPI main,
-			UIComponentAPI anchor, FactionAPI faction) {
-		// each tier an outcome (the user, 2026-10-24): what the order achieves, never a share of the hulls
-		addTierSelector(intel, main, anchor, "Force", TIER_LABEL_W, BUTTON_SIEGE_TIER,
-				intel.getSiegeTier(), new String[] {
-				"Siege lands marines to hold. Bombard puts structures down " + (int) ThreatIncConfig.bombardTierMinDays()
-						+ " days. Hunt beats the weakest swarm seen. Support or Defend matches the swarm over the world.",
-				"Siege lands marines to push the line back. Bombard puts structures down " + (int) ThreatIncConfig.bombardTierMedDays()
-						+ " days. Hunt matches every swarm seen in the system. Support or Defend brings x"
-						+ trimZero(ThreatIncConfig.orbitTierMedMargin()) + " the swarm over the world.",
-				"Siege lands marines to overrun the hive. Bombard puts structures down as far as bombing goes. Hunt brings x"
-						+ trimZero(ThreatIncConfig.npcSiegeOrbitMargin()) + " every swarm seen. Support or Defend brings x"
-						+ trimZero(ThreatIncConfig.orbitTierMaxMargin()) + " the swarm over the world."});
+	protected static void addAttackLadders(ThreatIncursionIntel intel, TooltipMakerAPI main, UIComponentAPI anchor) {
+		String share = Math.round(Math.max(0f, Math.min(1f, ThreatIncConfig.attackMedShare())) * 100f) + "%";
+		float ladder = ATTACK_LABEL_W + 3f * (SMALL_BUTTON_W - 8f + 4f) + 14f;
+		addTierSelector(intel, main, anchor, "Fleet", ATTACK_LABEL_W, BUTTON_SIEGE_TIER, intel.getSiegeTier(), new String[] {
+				"One fleet of the base's task-force size, the task forces on station first.",
+				"Half the base's hulls free.",
+				"Every hull the base has free."}, 0f);
+		addTierSelector(intel, main, anchor, "Fuel", ATTACK_LABEL_W, BUTTON_FUEL_TIER, intel.getFuelTier(), new String[] {
+				"The passage only: a blockade, nothing razed.",
+				share + " of the base's fuel above the passage: every " + (int) ThreatIncConfig.bombardFuelPerStratum()
+						+ " fuel razes a stratum.",
+				"All the base's fuel above its floor."}, ladder);
+		addTierSelector(intel, main, anchor, "Marines", ATTACK_LABEL_W, BUTTON_MARINE_TIER, intel.getMarineTier(), new String[] {
+				"No marines: the fleet holds the orbit and bombs.",
+				share + " of the base's marines above its floor, as many as the fleets carry.",
+				"Every marine above the base's floor, as many as the fleets carry."}, ladder * 2f);
 	}
 
 	/**
@@ -971,8 +940,15 @@ public class ThreatFactionView {
 	protected static void addTierSelector(ThreatIncursionIntel intel, TooltipMakerAPI main,
 			UIComponentAPI anchor, String label, float labelW, String buttonPrefix,
 			int tier, String[] tips) {
+		addTierSelector(intel, main, anchor, label, labelW, buttonPrefix, tier, tips, 0f);
+	}
+
+	/** As above, the ladder shifted right by {@code xOff}: several ladders share one row (the Attack's). */
+	protected static void addTierSelector(ThreatIncursionIntel intel, TooltipMakerAPI main,
+			UIComponentAPI anchor, String label, float labelW, String buttonPrefix,
+			int tier, String[] tips, float xOff) {
 		LabelAPI text = main.addPara(label, Misc.getGrayColor(), 0f);
-		text.getPosition().aboveLeft(anchor, 4f).setXAlignOffset(2f);
+		text.getPosition().aboveLeft(anchor, 4f).setXAlignOffset(2f + xOff);
 		ButtonAPI prev = null;
 		for (int t = 0; t < TIER_LABELS.length; t++) {
 			ButtonAPI b = intel.addGenericButton(main, SMALL_BUTTON_W - 8f, TIER_LABELS[t],
@@ -981,7 +957,7 @@ public class ThreatFactionView {
 			b.setShowTooltipWhileInactive(true);
 			if (prev == null) {
 				// clear the label to the left, then chain rightward
-				b.getPosition().aboveLeft(anchor, 3f).setXAlignOffset(labelW);
+				b.getPosition().aboveLeft(anchor, 3f).setXAlignOffset(labelW + xOff);
 			} else {
 				b.getPosition().rightOfTop(prev, 4f);
 			}
@@ -1712,6 +1688,9 @@ public class ThreatFactionView {
 	/** Where a ladder's first button sits: clear of the widest selector label. */
 	protected static final float TIER_LABEL_W = 92f;
 
+	/** Where an Attack ladder's first button sits: clear of "Marines". */
+	protected static final float ATTACK_LABEL_W = 60f;
+
 	/** "2" for 2.0, "1.5" for 1.5 - a factor without a trailing zero. */
 	protected static String trimZero(float f) {
 		return f == Math.floor(f) ? "" + (int) f : "" + f;
@@ -1925,46 +1904,12 @@ public class ThreatFactionView {
 			if (faction != null && system != null) {
 				base = nearestBase(ThreatReserves.marketsOf(faction.getId()), system);
 			}
-			String why = IncursionManager.siegeBlockReason(base, faction, system, siegeTier);
+			String why = IncursionManager.attackBlockReason(base, faction, system);
 			if (why != null) {
 				prompt.addPara(why, 0f);
 			} else {
-				// the selected tier's landing goal, and the flotilla grown to
-				// carry it then trimmed to the base's free points (siegeMarineGoal/siegeSizes)
-				List<MarketAPI> targets = IncursionManager.collectSiegeTargets(system);
-				float goal = siegeMarineGoal(siegeTier, base, targets);
-				float have = ThreatReserves.available(base, Commodities.MARINES);
-				float commit = Math.min(goal, have);
-				// the Force tier's fleets: the need, half the free points, all of them - the task forces
-				// on station first, as they are (IncursionManager.playerExpeditionSizes)
-				// the tier is the landing's outcome; the flotilla is what carries it (playerExpeditionSizes at Min)
-				List<Integer> sizes = IncursionManager.playerExpeditionSizes(base, faction,
-						IncursionManager.siegeSizes(base, faction, system, goal), 0, null);
-				String outcome = IncursionManager.siegeTierOutcome(siegeTier);
-				if (faction.isPlayerFaction() && ThreatAidCapacity.enabled()) {
-					prompt.addPara("Order a purge expedition from " + base.getName() + " against the "
-							+ system.getNameWithLowercaseType() + "? %s fleets holding %s of its %s fleet points "
-							+ "free; commits %s marines of %s in its reserve to " + outcome + ".",
-							0f, h, "" + sizes.size(),
-							Misc.getWithDGS((int) ThreatAidCapacity.expeditionPoints(sizes)),
-							Misc.getWithDGS((int) Math.max(0f, ThreatAidCapacity.freeFP(base))),
-							Misc.getWithDGS((int) commit), Misc.getWithDGS((int) have));
-				} else {
-					prompt.addPara("Order a purge expedition from " + base.getName() + " against the "
-							+ system.getNameWithLowercaseType() + "? %s fleets; commits %s marines "
-							+ "of %s in its reserve to " + outcome + ".", 0f, h,
-							"" + sizes.size(), Misc.getWithDGS((int) commit),
-							Misc.getWithDGS((int) have));
-				}
-				float[] takes = IncursionManager.expeditionWants(base, system, targets, sizes);
-				addTakesLine(prompt, base, takes[2], takes[3]);
-				// the ordnance it draws for the bombardment before it lands (the launch's draw)
-				float[] fuel = IncursionManager.expeditionFuelCarried(base, system, targets, sizes,
-						IncursionManager.razeWorlds(base, faction, system, targets));
-				if (fuel[2] >= 1f) {
-					prompt.addPara("Carries %s of the %s fuel its bombardment burns.", 3f, h,
-							Misc.getWithDGS(Math.round(fuel[1])), Misc.getWithDGS(Math.round(fuel[2])));
-				}
+				addAttackPrompt(prompt, IncursionManager.attackPlan(base, faction, system, siegeTier,
+						intel != null ? intel.getFuelTier() : 0, intel != null ? intel.getMarineTier() : 0));
 			}
 		} else if (BUTTON_BOMBARD.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
@@ -2273,6 +2218,46 @@ public class ThreatFactionView {
 		}
 	}
 
+	/** The Attack's confirmation (phase D, docs/strata-are-the-threat.md 8): one line per fact, figures as "N to what it buys". */
+	protected static void addAttackPrompt(TooltipMakerAPI prompt, IncursionManager.Attack a) {
+		Color h = Misc.getHighlightColor();
+		if (a == null || a.base == null || a.system == null) {
+			prompt.addPara("The situation has changed.", 0f);
+			return;
+		}
+		prompt.addPara("Attack the " + a.system.getNameWithLowercaseType() + "?", 0f);
+		prompt.addPara("From " + a.base.getName() + ": %s fleet points in %s fleets.", 10f, h,
+				Misc.getWithDGS((int) a.points), "" + a.sizes.size());
+		if (a.razeFuel > 0.5f && a.target != null) {
+			float now = ThreatStrata.of(a.target);
+			float after = Math.max(0f, now - a.strata);
+			int sizeAfter = after <= 0f ? 0 : ThreatStrata.sizeOf(after, ThreatColonyManager.maxColonySize(a.target));
+			int down = a.target.getSize() - sizeAfter;
+			String outcome = after <= 0f ? a.target.getName() + " razed to nothing"
+					: down == 1 ? "a size down from " + ThreatStrata.fmt(now)
+					: down > 1 ? down + " sizes down from " + ThreatStrata.fmt(now)
+					: "of " + a.target.getName() + "'s " + ThreatStrata.fmt(now);
+			prompt.addPara("Fuel %s: %s days of bombardment, %s strata - " + outcome + ".", 3f, h,
+					Misc.getWithDGS(Math.round(a.razeFuel)), "" + (int) Math.ceil(a.days), ThreatStrata.fmt(a.strata));
+		} else {
+			prompt.addPara("Fuel: the passage only, nothing razed.", 3f);
+		}
+		if (a.marines > 0f && a.target != null) {
+			prompt.addPara("Marines %s against %s strata on the ground"
+					+ (a.marines < a.lift - 0.5f ? "." : ", all the fleets carry."), 3f, h,
+					Misc.getWithDGS((int) a.marines), ThreatStrata.fmt(ThreatStrata.standing(a.target)));
+		} else {
+			prompt.addPara("Marines: none.", 3f);
+		}
+		if (a.budFP > 0f) {
+			prompt.addPara(a.system.getBaseName() + " can bud %s fleet points against it in %s days.", 3f, h,
+					Misc.getWithDGS((int) a.budFP), "" + (int) a.budDays);
+		} else {
+			prompt.addPara("Nothing seen there to bud against it.", 3f);
+		}
+		prompt.addPara("Passage %s fuel, %s days.", 3f, h, Misc.getWithDGS(Math.round(a.passage)), "" + (int) a.passageDays);
+	}
+
 	/** Executes an order button. Returns a message for the log, or null if nothing happened. */
 	public static String executeOrder(String id, ThreatIncursionIntel intel) {
 		String[] parts = parse(id);
@@ -2392,46 +2377,28 @@ public class ThreatFactionView {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);
 			if (system == null) return null;
 			MarketAPI base = nearestBase(ThreatReserves.marketsOf(faction.getId()), system);
-			if (base == null) return null;
-			List<MarketAPI> targets = IncursionManager.collectSiegeTargets(system);
-			if (targets.isEmpty()) return null;
-			// the faction's own sizing: what it last saw over the worlds (ThreatIntel)
-			boolean anyGarrisoned = IncursionManager.anyTargetGarrisoned(
-					ThreatIntel.observerOf(faction), targets);
-			int difficulty = IncursionManager.computeSiegeDifficulty(targets, anyGarrisoned);
-			// the selected tier's landing goal: the need, the need x a knob, or
-			// every marine the base can spare (docs/player-aid.md) - the flotilla
-			// is grown to carry it, then trimmed to the base's free fleet points
-			float marineGoal = siegeMarineGoal(siegeTier, base, targets);
-			// the button's gate again at the tier (the board may have been open a while): fuel and supplies
-			// for the flotilla that sails, or the order is refused with the reason
-			ThreatNotice.Reason unpaid = IncursionManager.siegeBlockFacts(base, faction, system, siegeTier);
-			if (unpaid != null) {
-				ThreatNotice.titled("Siege Refused").bad().icon(faction).lines(unpaid).send();
+			// the button's gate again (the board may have been open a while)
+			ThreatNotice.Reason why = IncursionManager.attackBlockFacts(base, faction, system);
+			if (why != null) {
+				ThreatNotice.titled("Attack Refused").bad().icon(faction).lines(why).send();
 				return null;
 			}
-			// the Force tier's fleets: the task forces on station sail as they are, the yards build
-			// the rest from the own hulls (IncursionManager.playerExpeditionSizes, ThreatPurgeFGI.takeStaged)
-			List<ThreatFleetOrders.Order> staged = new java.util.ArrayList<ThreatFleetOrders.Order>();
-			List<Integer> sizes = IncursionManager.playerExpeditionSizes(base, faction,
-					IncursionManager.siegeFleetSizes(difficulty, anyGarrisoned, false, targets, marineGoal),
-					0, staged);
-			ThreatPurgeFGI purge = IncursionManager.launchSiegeExpedition(base, faction, system,
-					targets, sizes, faction.isPlayerFaction(), random, marineGoal, null, null, staged);
+			IncursionManager.Attack a = IncursionManager.attackPlan(base, faction, system, siegeTier,
+					intel != null ? intel.getFuelTier() : 0, intel != null ? intel.getMarineTier() : 0);
+			ThreatPurgeFGI purge = IncursionManager.launchAttack(a, faction, random);
 			if (purge == null) {
-				// the launch's own gates (fleet points, then marines) say why
-				ThreatNotice.Reason why = IncursionManager.siegeBlockFacts(base, faction, system, siegeTier);
-				ThreatNotice n = ThreatNotice.titled("Siege Refused").bad().icon(faction);
-				if (why != null) n.lines(why);
-				else n.line("No expedition could be raised at %s", ThreatNotice.market(base));
-				n.send();
+				ThreatNotice.titled("Attack Refused").bad().icon(faction)
+						.line("No expedition could be raised at %s", ThreatNotice.market(base)).send();
 				return null;
 			}
-			ThreatNotice.titled("Expedition Musters").icon(faction)
-					.line("Purge expedition at %s", ThreatNotice.market(base))
-					.line("Bound for the %s", system.getNameWithLowercaseType())
-					.send();
-			return "siege";
+			ThreatNotice n = ThreatNotice.titled("Attack Sails").icon(faction)
+					.line("From %s: %s fleet points in %s fleets", ThreatNotice.market(base),
+							Misc.getWithDGS((int) a.points), "" + a.sizes.size())
+					.line("Bound for the %s", system.getNameWithLowercaseType());
+			if (a.razeFuel > 0.5f) n.line("%s fuel to raze %s strata", Misc.getWithDGS(Math.round(a.razeFuel)), ThreatStrata.fmt(a.strata));
+			if (a.marines > 0f) n.line("%s marines to land", Misc.getWithDGS((int) a.marines));
+			n.send();
+			return "attack";
 		}
 		if (BUTTON_BOMBARD.equals(parts[0])) {
 			StarSystemAPI system = ThreatWarBoard.getSystem(parts[2]);

@@ -77,6 +77,9 @@ public final class ThreatIntel {
 		/** Threat fleet points in the system and near none of its hive worlds. */
 		public float looseFP;
 		public int looseFleets;
+		/** What the system could bud against a fleet holding a hive's orbit (phase D: ThreatBudding.buddableFP), and the days that takes at its flow. */
+		public float budFP;
+		public float budDays;
 
 		public float worldFP(String marketId) {
 			float[] w = worlds.get(marketId);
@@ -188,6 +191,25 @@ public final class ThreatIntel {
 				r.looseFP += fp;
 				r.looseFleets++;
 			}
+		}
+		// THE BUDS (phase D, docs/strata-are-the-threat.md 6): a hive keeps nothing over it and buds against
+		// what holds its orbit, so what the observer must beat is what the system could bud
+		// (ThreatBudding.buddableFP) - counted as the swarm over each world and over the system, one
+		// fleet where none stands. The orbit gate, the hunts, the bounties and the board read it as the swarm
+		r.budFP = Math.max(0f, ThreatBudding.buddableFP(system));
+		float flow = ThreatBudding.flowPerDay(system);
+		r.budDays = flow > 0f ? (float) Math.ceil(r.budFP * ThreatStrata.strataPerFP() / flow) : 0f;
+		for (MarketAPI hive : hives) {
+			float[] w = r.worlds.get(hive.getId());
+			float bud = Math.max(0f, ThreatBudding.buddableFP(hive, true));
+			if (bud > w[0]) {
+				w[0] = bud;
+				if (w[1] < 1f) w[1] = 1f;
+			}
+		}
+		if (r.budFP > r.nearFP) {
+			r.nearFP = r.budFP;
+			if (r.nearFleets < 1) r.nearFleets = 1;
 		}
 		return r;
 	}

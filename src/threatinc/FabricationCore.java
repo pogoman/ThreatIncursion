@@ -30,6 +30,19 @@ public class FabricationCore extends BaseIndustry {
 		int fuel = ThreatColonyManager.coreDemand(size, Commodities.FUEL);
 		if (metals > 0) demand(Commodities.METALS, metals);
 		if (fuel > 0) demand(Commodities.FUEL, fuel);
+		// THE DEFENCE IS THE STRATA (phase D, docs/strata-are-the-threat.md 4): vanilla's base figure is
+		// topped up as a flat to the strata standing (less what a front holds), so what the ground war
+		// reads is the strata and no structure's multiplier - applied while the Core builds too
+		float targetBase = ThreatStrata.standing(market);
+		float vanillaBase = com.fs.starfarer.api.impl.campaign.econ.impl.PopulationAndInfrastructure
+				.getBaseGroundDefenses(market.getSize());
+		com.fs.starfarer.api.combat.StatBonus defense = market.getStats().getDynamic()
+				.getMod(com.fs.starfarer.api.impl.campaign.ids.Stats.GROUND_DEFENSES_MOD);
+		if (targetBase - vanillaBase > 0f) {
+			defense.modifyFlat(getModId(1), targetBase - vanillaBase, "Fabrication strata");
+		} else {
+			defense.unmodifyFlat(getModId(1));
+		}
 		if (!isFunctional()) {
 			supply.clear();
 			demand.clear();
@@ -39,6 +52,8 @@ public class FabricationCore extends BaseIndustry {
 	@Override
 	public void unapply() {
 		super.unapply();
+		market.getStats().getDynamic().getMod(com.fs.starfarer.api.impl.campaign.ids.Stats.GROUND_DEFENSES_MOD)
+				.unmodifyFlat(getModId(1));
 	}
 
 	/** Nothing on a hive world is disrupted; what hurts the Core is what starves it. */

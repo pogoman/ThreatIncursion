@@ -203,14 +203,6 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				}
 				line.append(".");
 
-				com.fs.starfarer.api.campaign.econ.Industry nexus =
-						market.getIndustry(ThreatColonyManager.SWARM_NEXUS);
-				if (nexus != null && nexus.isDisrupted()) {
-					line.append(" %s");
-					hl.add("Nexus silenced " + (int) nexus.getDisruptedDays()
-							+ "d - fabricating no fleets.");
-					hlColors.add(neg);
-				}
 				ThreatGroundFronts.GroundFront front =
 						ThreatGroundFronts.getFront(market.getId());
 				if (front != null) {
@@ -227,23 +219,11 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 					+ "its link colonies starves every world in the network.", opad);
 
 			if (!everySeen || seenFP > 0f) {
-				info.addPara("Counterplay: the hive lives %s behind defenses anchored to its "
-						+ "size - no bombardment can reduce its population, and saturating a "
-						+ "world costs fuel equal to its full defense strength for mere days "
-						+ "of disruption. Bombardment and starvation only weaken a hive; it "
-						+ "dies to a ground victory alone.", opad, pos, "deep underground");
-				info.addPara("The efficient siege: %s craters the exposed war-strata (ground "
-						+ "defenses, batteries, the nexus), halving their defensive effect - "
-						+ "then %s a ground front (marines and heavy armaments, from the "
-						+ "Ground operations menu) to take the hive stratum by stratum and "
-						+ "destroy the %s at its center. Starved, suppressed colonies "
-						+ "counter-attack feebly and fall cheaply.", opad, pos,
-						"tactical bombardment", "land", "Fabrication Core");
-				info.addPara("A colony's fleets are fabricated by its %s: raid or bombard it "
-						+ "into disruption and the colony grows no new Defense Swarms and "
-						+ "stages no expeditions until it recovers - the swarms already in "
-						+ "orbit fight on, but nothing replaces them.", opad, pos,
-						"Swarm Nexus");
+				info.addPara("Counterplay: the hive is its %s - its defence, its troops and its fleets are one "
+						+ "figure. A day of bombardment razes a stratum per fleet point for %s fuel each; a landing "
+						+ "fights the strata standing; a blockade starves the Core. Nothing stands over a quiet hive: "
+						+ "it buds its fleets against whatever holds its orbit.", opad, pos, "strata",
+						"" + (int) ThreatIncConfig.bombardFuelPerStratum());
 			} else {
 				// what the player last saw, and when: the garrisons may have regrown since
 				info.addPara("Every colony here lay %s as last seen %s: no Defense Swarm held "

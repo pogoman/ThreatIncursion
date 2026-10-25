@@ -1595,7 +1595,7 @@ public class ThreatPlays {
 
 	protected static float fuelCost(MarketAPI base, MarketAPI world, float fp, float stay) {
 		float[] w = ThreatFleetOrders.sortieWants(base, fp, world.getLocationInHyperspace());
-		return w[0] + ThreatGroundFronts.bombardFuelPerDay(fp) * stay;
+		return w[0] + ThreatGroundFronts.bombardFuelPerDay(world, fp) * stay;
 	}
 
 	// ------------------------------------------------------------------

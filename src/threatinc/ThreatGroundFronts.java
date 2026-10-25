@@ -346,26 +346,11 @@ public class ThreatGroundFronts {
 			return defenderStrength(market);
 		}
 		public List<Industry> keyStructures(MarketAPI market) {
-			// the named organs - Core, Nexus, the military tier and both defense
-			// structures; never the port (the user, 2026-10-24: a siege does not
-			// disrupt the port, only a blockade touches accessibility)
-			List<Industry> list = new ArrayList<Industry>();
-			Industry core = market.getIndustry(ThreatColonyManager.FABRICATION_CORE);
-			if (core != null) list.add(core);
-			Industry nexus = market.getIndustry(ThreatColonyManager.SWARM_NEXUS);
-			if (nexus != null) list.add(nexus);
-			Industry bastion = SwarmBastion.of(market);
-			if (bastion != null) list.add(bastion);
-			list.addAll(defenseStructures(market));
-			return list;
+			// phase D: nothing stands on a hive but its strata, and the Core cannot be disrupted
+			return new ArrayList<Industry>();
 		}
 		public List<Industry> defenseStructures(MarketAPI market) {
-			List<Industry> list = new ArrayList<Industry>();
-			Industry gd = market.getIndustry(ThreatColonyManager.THREAT_GROUND_DEFENSES);
-			if (gd != null) list.add(gd);
-			Industry hb = market.getIndustry(ThreatColonyManager.THREAT_HEAVY_BATTERIES);
-			if (hb != null) list.add(hb);
-			return list;
+			return new ArrayList<Industry>(); // retired with the military layer (phase D)
 		}
 		public List<Industry> seizedStructures(MarketAPI market) {
 			return new ArrayList<Industry>(); // a hive's strata strip fabrication, not industries
@@ -374,29 +359,13 @@ public class ThreatGroundFronts {
 			return "stratum";
 		}
 		public List<Industry> fortifications(MarketAPI market) {
-			// the war-strata: both defence structures and the Nexus that
-			// commands them, and the Swarm Bastion or Swarm Command over it
-			// (SwarmBastion, 2026-10-01) - orbit wears them, none of them fires
-			List<Industry> list = defenseStructures(market);
-			// the Nexus is not a target of tactical bombardment since 2026-10-05 (the
-			// user): it went down within a month of a siege's first day and the hive's
-			// income with it. Saturation still reaches it (saturationTargets) and so
-			// does a front that holds (keyStructures)
-			Industry nexus = ThreatIncConfig.nexusBombardable() ? market.getIndustry(ThreatColonyManager.SWARM_NEXUS) : null;
-			if (nexus != null) list.add(nexus);
-			Industry bastion = SwarmBastion.of(market);
-			if (bastion != null) list.add(bastion);
-			for (java.util.Iterator<Industry> it = list.iterator(); it.hasNext();) {
-				Industry ind = it.next();
-				if (ind.isBuilding() && !ind.isUpgrading()) it.remove();
-			}
-			return list;
+			return new ArrayList<Industry>(); // orbit razes strata here, it suppresses nothing (hiveRaze)
 		}
 		public float wearDays() {
 			return Math.max(1f, ThreatIncConfig.defenseWearDays());
 		}
 		public float suppressDaysPerDay() {
-			return ThreatIncConfig.hiveSiegeSuppressDaysPerDay();
+			return 0f; // phase D: a hive has nothing to suppress - bombardment razes strata (hiveRaze)
 		}
 		public float batteryShare(MarketAPI market) {
 			// the weapon growths' share of the figure, on the hive's own inputs
@@ -3235,11 +3204,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/** A hive fortification's defence bonus at full condition: the Nexus's, the military tier's, or a battery's after its deficits (SwarmNexus, SwarmBastion, ThreatGroundDefenses). */
 	public static float hiveFortificationBonus(Industry ind) {
-		if (ThreatColonyManager.SWARM_NEXUS.equals(ind.getId())) return ThreatIncConfig.nexusDefenseBonus();
-		if (SwarmBastion.isTier(ind.getId())) return SwarmBastion.defenseBonus(ind.getId());
-		float bonus = ThreatColonyManager.THREAT_HEAVY_BATTERIES.equals(ind.getId())
-				? ThreatIncConfig.heavyBatteriesBonus() : ThreatIncConfig.groundDefensesBonus();
-		return bonus * ThreatSiegeMalus.deficitMult(ind, Commodities.HEAVY_MACHINERY, Commodities.METALS);
+		return 0f; // phase D: no fortification stands on a hive (the knobs this read are retired)
 	}
 
 	/** A fortification's defence bonus at full condition on either theatre, after its input deficits. */
@@ -3291,14 +3256,12 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** The guns' constant on this world: the hive theatre's (hiveBombardReturnFirePerGunDefence) or the colony's (bombardReturnFirePerGunDefence). */
 	public static float returnFireConstant(MarketAPI market) {
 		boolean hive = market != null && Theatre.of(market) == HIVE;
-		return Math.max(0f, hive ? ThreatIncConfig.hiveBombardReturnFirePerGunDefence()
-				: ThreatIncConfig.bombardReturnFirePerGunDefence());
+		return hive ? 0f : Math.max(0f, ThreatIncConfig.bombardReturnFirePerGunDefence()); // no return fire from a hive (phase D)
 	}
 
 	/** A faction commander's worth on this world: the hive theatre's (hiveBombardFPWorth) or the colony's (bombardFPWorth). */
 	public static float bombardWorth(MarketAPI market) {
-		boolean hive = market != null && Theatre.of(market) == HIVE;
-		return Math.max(0f, hive ? ThreatIncConfig.hiveBombardFPWorth() : ThreatIncConfig.bombardFPWorth());
+		return Math.max(0f, ThreatIncConfig.bombardFPWorth()); // one worth since phase D: a hive answers with no guns
 	}
 
 	/** Fleet points the guns take per day from whatever bombards the world - set by the guns, not the fleet (the theatre's constant, returnFireConstant). */
@@ -3323,7 +3286,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** The drop's constant on this world: the hive theatre's (hiveDropLossPerGunDefence) or the colony's (dropLossPerGunDefence). */
 	public static float dropLossConstant(MarketAPI market) {
 		boolean hive = market != null && Theatre.of(market) == HIVE;
-		return Math.max(0f, hive ? ThreatIncConfig.hiveDropLossPerGunDefence() : ThreatIncConfig.dropLossPerGunDefence());
+		return hive ? 0f : Math.max(0f, ThreatIncConfig.dropLossPerGunDefence()); // no guns on the drop at a hive (phase D)
 	}
 
 	/** Marines the guns take from a landing of troops on this world now, its batteries as worn as they are. */
@@ -3384,6 +3347,101 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return threatinc.rules.BattleRules.bombardDaysFor(fuel, bombardFuelPerDay(fp));
 	}
 
+	// ------------------------------------------------------------------
+	// THE STRATA EXCHANGE (phase D, docs/strata-are-the-threat.md 6): a hive has no structure to
+	// suppress and no gun to answer with. A day of bombardment by F fleet points razes
+	// bombardStrataPerFPDay x F strata for bombardFuelPerStratum fuel each - the size steps down
+	// with them (ThreatStrata.add) and at 0 the hive is gone. No return fire, no unrest. Every
+	// path - the player's dialog, an expedition's siege, a Support or Defend sortie, the council's
+	// squadrons - runs this one rule on a hive (siegeSlice, saturationSlice, bombardPlan).
+	// ------------------------------------------------------------------
+
+	/** Whether the world is bombarded as strata: a hive world with a strata figure. */
+	public static boolean strataTarget(MarketAPI market) {
+		return market != null && Theatre.of(market) == HIVE && ThreatStrata.has(market);
+	}
+
+	/** Strata a day of bombardment by fp razes off a hive. */
+	public static float hiveRazePerDay(float fp) {
+		return Math.max(0f, fp) * Math.max(0f, ThreatIncConfig.bombardStrataPerFPDay());
+	}
+
+	/** Fuel a stratum razed burns. */
+	public static float fuelPerStratum() {
+		return Math.max(0f, ThreatIncConfig.bombardFuelPerStratum());
+	}
+
+	/** Fuel a day of bombardment burns here: a hive's strata rate x the fuel a stratum, else {@link #bombardFuelPerDay(float)}. */
+	public static float bombardFuelPerDay(MarketAPI market, float fp) {
+		if (strataTarget(market)) return hiveRazePerDay(fp) * fuelPerStratum();
+		return bombardFuelPerDay(fp);
+	}
+
+	/** Days of bombardment this much fuel buys a fleet of fp here ({@link #bombardFuelPerDay(MarketAPI, float)}); with no price, as long as it likes. */
+	public static float bombardDaysFor(MarketAPI market, float fuel, float fp) {
+		return threatinc.rules.BattleRules.bombardDaysFor(fuel, bombardFuelPerDay(market, fp));
+	}
+
+	/**
+	 * {@code days} of bombardment by {@code fp} over a hive with up to {@code fuel} to burn
+	 * (Float.MAX_VALUE: unpriced): the strata razed, never more than stand. Returns {strata razed,
+	 * fuel burnt, sizes down, 1 when the hive is gone}.
+	 */
+	public static float[] hiveRaze(MarketAPI market, float fp, float days, float fuel, String razerFactionId) {
+		float[] out = new float[4];
+		if (!strataTarget(market) || fp <= 0f || days <= 0f) return out;
+		float strata = hiveRazePerDay(fp) * days;
+		if (fuel < Float.MAX_VALUE && fuelPerStratum() > 0f) {
+			strata = Math.min(strata, Math.max(0f, fuel) / fuelPerStratum());
+		}
+		strata = Math.min(strata, ThreatStrata.of(market));
+		if (strata <= 0f) return out;
+		int sizeBefore = market.getSize();
+		markBesieged(market);
+		float left = ThreatStrata.add(market, -strata, "Razed a stratum of",
+				razerFactionId != null ? razerFactionId : Factions.PLAYER);
+		out[0] = strata;
+		out[1] = strata * fuelPerStratum();
+		if (fuel < Float.MAX_VALUE) out[1] = Math.min(Math.max(0f, fuel), out[1]);
+		out[2] = Math.max(0, sizeBefore - (market.isInEconomy() ? market.getSize() : 0));
+		out[3] = left <= 0f ? 1f : 0f;
+		ThreatIncConfig.log("hiveRaze " + market.getName() + " fp=" + String.format("%.0f", fp) + " days="
+				+ String.format("%.2f", days) + " strata=-" + String.format("%.0f", strata) + " fuel="
+				+ String.format("%.0f", out[1]) + " left=" + String.format("%.0f", Math.max(0f, left))
+				+ (out[3] > 0f ? " DESTROYED" : ""));
+		return out;
+	}
+
+	/**
+	 * {@link #bombardPlan}'s run over a hive: the days a fleet of fp bombards for - until the troops it
+	 * carries could land ({@link #troopsToLand} against the strata as they fall), the strata are gone,
+	 * or the budget - and the defence figure then as a fraction of now. No guns: the fleet comes
+	 * through whole. {the days, the fraction, the fleet points left, 1 when the troops land, 0}.
+	 */
+	protected static float[] hivePlan(MarketAPI market, float fp, float budget, float troops, boolean beachhead) {
+		float start = Math.max(0f, fp);
+		float d0 = Math.max(1f, MarketCMD.getDefenderStr(market, true));
+		float s0 = Math.max(0f, ThreatStrata.standing(market));
+		float lands0 = troops > 0f && troops >= troopsToLand(market, d0, d0, beachhead) ? 1f : 0f;
+		if (start <= 0f || s0 <= 0f || lands0 > 0f) return new float[] { 0f, 1f, start, lands0, 0f };
+		float perDay = hiveRazePerDay(start);
+		if (perDay <= 0f) return new float[] { 0f, 1f, start, 0f, 0f };
+		float s = s0;
+		float d = d0;
+		int day = 0;
+		float lands = 0f;
+		while (day < budget && s > 0f) {
+			s = Math.max(0f, s - perDay);
+			d = d0 * s / s0;
+			day++;
+			if (troops > 0f && troops >= troopsToLand(market, d, d0, beachhead)) {
+				lands = 1f;
+				break;
+			}
+		}
+		return new float[] { day, d / d0, start, lands, 0f };
+	}
+
 	/** Disruption days a day of bombardment adds to a structure still whole: the theatre's rate x fleet / (fleet + defence). */
 	public static float suppressionRate(MarketAPI market, float fp, float defence) {
 		if (market == null || fp <= 0f) return 0f;
@@ -3442,6 +3500,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/** As above, a day needing {@code worth} defence off the world per fleet point lost ({@link #swarmWorth}). */
 	public static boolean orbitSpent(MarketAPI market, float fp, float troops, boolean beachhead, float worth) {
+		// a hive's orbit always has strata to raze (phase D): spent only when none stand
+		if (strataTarget(market)) return ThreatStrata.standing(market) <= 0f || hiveRazePerDay(fp) <= 0f;
 		if (market == null || !bombardable(market)) return true;
 		return bombardPlan(market, fp, 1f, troops, beachhead, worth)[0] < 1f;
 	}
@@ -3586,6 +3646,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			boolean beachhead, float worth, float floorFraction) {
 		float start = Math.max(0f, fp);
 		if (market == null) return new float[] { 0f, 1f, start, 0f, 0f };
+		if (strataTarget(market)) return hivePlan(market, start, budget, troops, beachhead);
 		float d0 = Math.max(1f, MarketCMD.getDefenderStr(market, true));
 		float lands0 = troops > 0f && troops >= troopsToLand(market, d0, d0, beachhead) ? 1f : 0f;
 		if (start <= 0f) return new float[] { 0f, 1f, start, lands0, 0f };
@@ -4162,7 +4223,19 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 */
 	public static float siegeSlice(float fp, float orbitFP, MarketAPI market, float days, boolean elapsed,
 			boolean reapply, float defenceOverride, String reason) {
+		return siegeSlice(fp, orbitFP, market, days, elapsed, reapply, defenceOverride, reason, null);
+	}
+
+	/** As above naming the faction whose bombardment it is ({@code razerFactionId}: who razes a hive's strata; null: the player). */
+	public static float siegeSlice(float fp, float orbitFP, MarketAPI market, float days, boolean elapsed,
+			boolean reapply, float defenceOverride, String reason, String razerFactionId) {
 		if (market == null || days <= 0f || fp <= 0f) return 0f;
+		// THE STRATA EXCHANGE (phase D): over a hive the day razes strata and nothing answers
+		if (strataTarget(market)) {
+			hiveRaze(market, fp, days, Float.MAX_VALUE, razerFactionId);
+			if (reapply && market.isInEconomy()) market.reapplyIndustries();
+			return 0f;
+		}
 		Theatre theatre = Theatre.of(market);
 		float defence = defenceOverride >= 0f ? defenceOverride
 				: Math.max(0f, MarketCMD.getDefenderStr(market, true));
@@ -4224,6 +4297,15 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			boolean elapsed, boolean reapply, float defenceOverride, String razerFactionId, String reason) {
 		float[] out = new float[4];
 		if (market == null || days <= 0f || fp <= 0f) return out;
+		// THE STRATA EXCHANGE (phase D): over a hive saturation is the one bombardment - strata for fuel
+		if (strataTarget(market)) {
+			float[] r = hiveRaze(market, fp, days, fuel, razerFactionId);
+			out[1] = r[1];
+			out[2] = r[2];
+			out[3] = r[3];
+			if (out[3] <= 0f && reapply && market.isInEconomy()) market.reapplyIndustries();
+			return out;
+		}
 		float defence = defenceOverride >= 0f ? defenceOverride
 				: Math.max(0f, MarketCMD.getDefenderStr(market, true));
 		float orbit = Math.max(fp, orbitFP);
@@ -4246,22 +4328,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		int[] razed = ThreatRazing.pour(market, pour * through, razerFactionId);
 		out[2] = razed[0];
 		out[3] = razed[1];
-		// THE STRATA (the user, 2026-10-24: "Bombardment eliminates chunks of strata"): over a hive the
-		// day takes strata instead of a bar - a stratum (ThreatStrata.perSize) per strataSuppressDaysPerSize disruption
-		// days it adds - the size steps down with them and at 0 the hive is gone (ThreatStrata)
-		float strataTaken = 0f;
-		if (!ThreatRazing.razes(market)) {
-			strataTaken = rate * days * ThreatStrata.perSize() / Math.max(1f, ThreatIncConfig.strataSuppressDaysPerSize());
-			int sizeBefore = market.getSize();
-			float left = ThreatStrata.add(market, -strataTaken, "Razed a stratum of",
-					razerFactionId != null ? razerFactionId : Factions.PLAYER);
-			out[2] = Math.max(0, sizeBefore - market.getSize());
-			if (left <= 0f) out[3] = 1;
-		}
 		ThreatIncConfig.log("saturationSlice " + market.getName() + " fp=" + String.format("%.0f", fp)
 				+ " days=" + String.format("%.2f", days) + " poured=" + String.format("%.0f", pour)
 				+ " through=" + String.format("%.2f", through) + " razed=" + (int) out[2]
-				+ (strataTaken > 0f ? " strata=-" + String.format("%.1f", strataTaken) : "")
 				+ (out[3] > 0 ? " DESTROYED" : "") + " loss=" + String.format("%.2f", out[0]));
 		if (out[3] > 0) return out;
 		if (reapply) finishSlice(market, touched, days);
@@ -4288,6 +4357,10 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		public float shieldAfter = -1f;
 		/** The unrest the day raises the world to; 0 when it raises nothing. */
 		public int unrest;
+		/** Over a hive (phase D): the strata the day razes, the strata standing now, and the size they leave. */
+		public float strata;
+		public float strataNow;
+		public int sizeAfter;
 	}
 
 	/** The day a fleet of fp would fly here now, tactical or saturation ({@link #siegeSlice}, {@link #saturationSlice}). */
@@ -4299,7 +4372,15 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		day.rate = suppressionRate(market, fp, day.defence);
 		day.through = ThreatShield.throughput(market);
 		day.returnFire = returnFirePerDay(market, day.defence);
-		day.fuel = bombardFuelPerDay(fp);
+		day.fuel = bombardFuelPerDay(market, fp);
+		if (strataTarget(market)) {
+			day.rate = 0f;
+			day.strataNow = ThreatStrata.of(market);
+			day.strata = Math.min(hiveRazePerDay(fp), day.strataNow);
+			day.sizeAfter = day.strataNow - day.strata <= 0f ? 0
+					: ThreatStrata.sizeOf(day.strataNow - day.strata, ThreatColonyManager.maxColonySize(market));
+			return day;
+		}
 		List<Industry> forts = theatre.fortifications(market);
 		if (!forts.isEmpty()) {
 			float now = 0f;
@@ -4804,7 +4885,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 				factionId != null && !Factions.PLAYER.equals(factionId)))) {
 			return new float[] { fp, fuel, 0f, SIEGE_STEP_READY };
 		}
-		float days = Math.min(step, bombardDaysFor(fuel, fp));
+		float days = Math.min(step, bombardDaysFor(market, fuel, fp));
 		if (days <= 0f) return new float[] { fp, fuel, 0f, SIEGE_STEP_DRY };
 		// the guns would break the siege within the step: its commander lands
 		// on what orbit has left instead of turning for home
@@ -4813,8 +4894,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// the stats are recomputed after every step - read once, the defence
 		// stayed at its intact figure all siege (Eventide, 1221 for 18 steps
 		// from 0.93 to 0.33), overpaying the guns and wearing the world too slowly
-		float cost = bombardFuelPerDay(fp) * days;
-		fp -= siegeSlice(fp, market, days, elapsed, false);
+		float cost = bombardFuelPerDay(market, fp) * days;
+		fp -= siegeSlice(fp, fp, market, days, elapsed, false, -1f, "Orbital bombardment", factionId);
 		if (fuel < Float.MAX_VALUE) fuel = Math.max(0f, fuel - cost);
 		syncSiegeState(market);
 		market.reapplyIndustries();
@@ -5560,7 +5641,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			}
 		}
 		if (contested) return 0f;
-		float want = bombardFuelPerDay(fp) * days;
+		float want = bombardFuelPerDay(market, fp) * days;
 		float paid = payOrdnance(fleet, factionId, want);
 		if (want > 0f && paid < want) {
 			// short of ordnance: bombard for what it could pay, then stand
@@ -5571,7 +5652,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			}
 		}
 		float loss = siegeSlice(fp, orbitPoints(factionId, market, fp), market, days, true, true, -1f,
-				"Orbital bombardment");
+				"Orbital bombardment", factionId);
 		float removed = applyFleetLosses(fleet, loss);
 		if (removed > 0f) {
 			ThreatIncConfig.log(label + " over " + market.getName() + ": " + fleet.getName()

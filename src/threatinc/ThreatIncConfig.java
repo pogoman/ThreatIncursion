@@ -348,10 +348,6 @@ public class ThreatIncConfig {
 	public static float coreRaidDepthWeight() { return f("threatinc_coreRaidDepthWeight"); }
 	/** Disruption days per day an unopposed siege fleet adds to a colony's fortifications at overwhelming strength, scaled by fleet / (fleet + defence). */
 	public static float siegeSuppressDaysPerDay() { return f("threatinc_siegeSuppressDaysPerDay"); }
-	/** The same, over a hive's war-strata (their clock is defenseWearDays). */
-	public static float hiveSiegeSuppressDaysPerDay() { return f("threatinc_hiveSiegeSuppressDaysPerDay"); }
-	/** Disruption days of saturation that take one stratum (ThreatStrata.perSize, strataSizeBase) off a hive (ThreatStrata; ThreatGroundFronts.saturationSlice). */
-	public static float strataSuppressDaysPerSize() { return f("threatinc_strataSuppressDaysPerSize"); }
 	/** Days before the player's fleet can organize another bombardment; tactical and saturation share the lock. */
 	public static float bombardCooldownDays() { return f("threatinc_bombardCooldownDays"); }
 	/** Fuel a day of tactical bombardment burns per fleet point (an AI fleet's from its provisions). */
@@ -360,16 +356,10 @@ public class ThreatIncConfig {
 	public static float bombardReturnFirePerGunDefence() { return f("threatinc_bombardReturnFirePerGunDefence"); }
 	/** Defence points a day of bombardment must take off per fleet point the guns take: a hull's price in marines. */
 	public static float bombardFPWorth() { return f("threatinc_bombardFPWorth"); }
-	/** The hive theatre's bombardReturnFirePerGunDefence (2026-10-13: 0.0024, three times a colony's). */
-	public static float hiveBombardReturnFirePerGunDefence() { return f("threatinc_hiveBombardReturnFirePerGunDefence"); }
 	/** Marines a landing loses on the drop per point of defence a colony's batteries still add (2026-10-18, the user: the guns tax the drop as they tax the bombardment). */
 	public static float dropLossPerGunDefence() { return f("threatinc_dropLossPerGunDefence"); }
-	/** The same on the hive theatre. */
-	public static float hiveDropLossPerGunDefence() { return f("threatinc_hiveDropLossPerGunDefence"); }
 	/** The most of a landing the drop can take, as a fraction of it. */
 	public static float dropLossMaxFraction() { return f("threatinc_dropLossMaxFraction"); }
-	/** The hive theatre's bombardFPWorth (2026-10-13: 10, so the commanders who bombard a big hive at 0.0008 / 30 still do at 0.0024). */
-	public static float hiveBombardFPWorth() { return f("threatinc_hiveBombardFPWorth"); }
 	/** Unrest a bombardment raises a world to: this x (1 - fortification condition), tactical and saturation alike. */
 	public static float bombardUnrestMax() { return f("threatinc_bombardUnrestMax"); }
 	/** Fuel a day of saturation pours onto a world per fleet point. */
@@ -448,14 +438,12 @@ public class ThreatIncConfig {
 	public static float strataFlowFractionPerDay() { return f("threatinc_strataFlowFractionPerDay"); }
 	/** Days a Defend fleet lingers over its world after the last hostile left the orbit before it is absorbed. */
 	public static float defendLingerDays()    { return f("threatinc_defendLingerDays"); }
-	/** Ground Defenses structure bonus: defense mult = 1 + bonus (x2 at 1.0). */
-	public static float groundDefensesBonus() { return f("threatinc_groundDefensesBonus"); }
-	/** Heavy Batteries structure bonus: defense mult = 1 + bonus (x3 at 2.0). */
-	public static float heavyBatteriesBonus() { return f("threatinc_heavyBatteriesBonus"); }
-	/** Swarm Nexus defense bonus: defense mult = 1 + bonus (x1.5 at 0.5). */
-	public static float nexusDefenseBonus()   { return f("threatinc_nexusDefenseBonus"); }
-	/** Whether tactical bombardment wears a hive's Swarm Nexus with its defence structures (ThreatGroundFronts HIVE.fortifications); saturation reaches it either way. */
-	public static boolean nexusBombardable() { return b("threatinc_nexusBombardable", false); }
+	/** Strata a day of bombardment by one fleet point razes off a hive (1: 1,000 FP raze a size-5 hive's 6,400 in 7 days). */
+	public static float bombardStrataPerFPDay() { return f("threatinc_bombardStrataPerFPDay"); }
+	/** Fuel a stratum razed burns (2: a size-5 hive is 12,800 fuel, a fortress 102k). */
+	public static float bombardFuelPerStratum() { return f("threatinc_bombardFuelPerStratum"); }
+	/** The Attack's Med share of the staging colony's fuel above the passage and of its marines (0.5). */
+	public static float attackMedShare()      { return f("threatinc_attackMedShare"); }
 	/** Disruption days on a structure's clock at which its bonus has worn to nothing (0 = no wear); the hive's fortification clock. */
 	public static float defenseWearDays()     { return f("threatinc_defenseWearDays"); }
 	/** Marine-loss multiplier when raiding hive worlds. */
@@ -709,10 +697,6 @@ public class ThreatIncConfig {
 	public static float expeditionMinMarinesFraction() { return f("threatinc_expeditionMinMarinesFraction"); }
 	/** An NPC siege waits unless its base can pay this fraction of the fuel and supplies its flotilla burns. */
 	public static float expeditionMinProvisionsFraction() { return f("threatinc_expeditionMinProvisionsFraction"); }
-	/** Days the board's Bombard puts a hive's structures down at Min (the saturation goal, IncursionManager.bombardGoalDays). */
-	public static float bombardTierMinDays() { return f("threatinc_bombardTierMinDays"); }
-	/** Days the board's Bombard puts a hive's structures down at Med; Max is the commander's stop. */
-	public static float bombardTierMedDays() { return f("threatinc_bombardTierMedDays"); }
 	/** The board's Support or Defend at Med brings this multiple of the swarm over the world (ThreatAid.orbitAskFP); Min matches it. */
 	public static float orbitTierMedMargin() { return f("threatinc_orbitTierMedMargin"); }
 	/** The board's Support or Defend at Max brings this multiple of the swarm over the world. */
@@ -732,8 +716,6 @@ public class ThreatIncConfig {
 	public static float structureSuppliesMult()    { return f("threatinc_structureSuppliesMult"); }
 	/** The hive planner turns a fuel plant its stock can spare into what it lacks, one a month (ThreatColonyManager.convertSurplus). */
 	public static boolean hiveConvertSurplus()     { return b("threatinc_hiveConvertSurplus", true); }
-	/** Hive colonies buy a Swarm Bastion and Swarm Command with idle fleet points (SwarmBastion). */
-	public static boolean hiveMilitaryTier()       { return b("threatinc_hiveMilitaryTier", true); }
 	/** The swarm's bombardment draws its fuel from the hive's stock, at the rate everyone pays (ThreatGroundFronts.payOrdnance). */
 	public static boolean threatPaysOrdnance()     { return b("threatinc_threatPaysOrdnance", true); }
 	/** The factions' forward bases pay a supplies upkeep by size (ThreatColonyUpkeep); hive worlds pay none since 2026-10-25. */

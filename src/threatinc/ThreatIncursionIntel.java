@@ -51,6 +51,12 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 	/** The siege-force tier the board's Siege buttons commit: 0 min (the need), 1 med, 2 max (docs/player-aid.md). */
 	protected int siegeTier;
 
+	/** The Attack's Fuel ladder (phase D): 0 the passage, 1 half the fuel above the floor, 2 all. */
+	protected int fuelTier;
+
+	/** The Attack's Marines ladder: 0 none, 1 half the pool, 2 all. */
+	protected int marineTier;
+
 	/** The load tier the board's front Supply buttons run: 0 min (what the front wants), 1 med, 2 max. */
 	protected int supplyTier;
 
@@ -63,6 +69,14 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 
 	public void setSiegeTier(int tier) {
 		siegeTier = tier;
+	}
+
+	public int getFuelTier() {
+		return fuelTier;
+	}
+
+	public int getMarineTier() {
+		return marineTier;
 	}
 
 	public int getSupplyTier() {
@@ -325,6 +339,16 @@ public class ThreatIncursionIntel extends BaseIntelPlugin {
 		// re-render, no Confirm (doesButtonHaveConfirmDialog leaves it to the default)
 		if (id.startsWith(ThreatFactionView.BUTTON_SIEGE_TIER)) {
 			siegeTier = tierOf(id, ThreatFactionView.BUTTON_SIEGE_TIER);
+			rerenderInPlace(ui);
+			return;
+		}
+		if (id.startsWith(ThreatFactionView.BUTTON_FUEL_TIER)) {
+			fuelTier = tierOf(id, ThreatFactionView.BUTTON_FUEL_TIER);
+			rerenderInPlace(ui);
+			return;
+		}
+		if (id.startsWith(ThreatFactionView.BUTTON_MARINE_TIER)) {
+			marineTier = tierOf(id, ThreatFactionView.BUTTON_MARINE_TIER);
 			rerenderInPlace(ui);
 			return;
 		}

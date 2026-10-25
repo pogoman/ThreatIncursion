@@ -30,59 +30,9 @@ public class SwarmNexus extends BaseIndustry {
 
 	@Override
 	public void apply() {
+		// RETIRED (phase D, docs/strata-are-the-threat.md 4): the strata are the hive's military. The class
+		// stays so older saves load; ThreatColonyManager.retireMilitaryLayer removes it on their first tick
 		super.apply(true);
-		// the nexus is the hive's military CONSUMER: growing Defense Swarms
-		// eats the forge chain's hull output and machinery. It demands them
-		// always (2026-09-29): the garrison has no capacity to reach, so there
-		// is no Idle state, and a demand that does not move with the garrison
-		// is what keeps the hulls it is delivered - the production it banks
-		// (ThreatColonyManager.nexusDraw, the fabrication ledger) - from
-		// oscillating with the deficit its own demand makes. Under vanilla's
-		// economy a demand takes nothing from other worlds (docs/hive-economy.md)
-		demand(com.fs.starfarer.api.impl.campaign.ids.Commodities.SHIPS,
-				market.getSize());
-		demand(com.fs.starfarer.api.impl.campaign.ids.Commodities.HEAVY_MACHINERY,
-				Math.max(1, market.getSize() - 2));
-		// the patrols vanilla would keep over a hive of this size and military tier
-		// (ThreatHulls.patrolTable: the Nexus a Patrol HQ, a Bastion a Military Base,
-		// Swarm Command a High Command) - what the hull pool reads as its standing
-		// hulls and the posture as its garrison want (ThreatHulls, 2026-10-06)
-		ThreatHulls.applyPatrols(market, getModId(3),
-				ThreatHulls.patrolTable(market.getSize(), SwarmBastion.tier(market)));
-		// wears down with the disruption days on the clock, like the batteries
-		float resilience = ThreatColonyManager.disruptedDefenseResilience(this);
-		com.fs.starfarer.api.combat.StatBonus defense = market.getStats().getDynamic()
-				.getMod(com.fs.starfarer.api.impl.campaign.ids.Stats.GROUND_DEFENSES_MOD);
-		defense.modifyMult(getModId(),
-				(1f + ThreatIncConfig.nexusDefenseBonus() * resilience)
-						* ThreatIncConfig.groundDefenseMult(),
-				getNameForModifier() + (isDisrupted() ? " (in refit)" : ""));
-
-		// The deep defenses: hive ground strength IS THE STRATA (ThreatStrata, the
-		// user 2026-10-24: the strata (ThreatStrata, the doubling table since 2026-10-25), fed they thicken, starving
-		// they thin, saturation takes chunks, and the size follows the figure),
-		// not vanilla's shallow base table. Topped up as a flat so the vanilla
-		// base + this = the strata standing, then the industry mults stack on
-		// top. Applied even while the nexus is disrupted - the strata below the
-		// crust don't stop existing. EXCEPT the strata a ground front has taken
-		// (docs/ground-war.md): each stratum held strips one size-worth - a front
-		// fighting inward gains real momentum, and a hive counter-attack that
-		// retakes a stratum wins it back.
-		float targetBase = ThreatStrata.standing(market);
-		float vanillaBase = com.fs.starfarer.api.impl.campaign.econ.impl
-				.PopulationAndInfrastructure.getBaseGroundDefenses(market.getSize());
-		float topUp = targetBase - vanillaBase;
-		if (topUp > 0) {
-			defense.modifyFlat(getModId(1), topUp, "Deep fabrication strata");
-		} else {
-			defense.unmodifyFlat(getModId(1));
-		}
-
-		// bombardment unrest cuts the hive's defence through vanilla's stability
-		// multiplier, as it does a colony's (docs/suppression-balance.md v2):
-		// the guns' return fire is what prices the spiral now. The cancel this
-		// once carried is stripped from old saves here.
-		defense.unmodifyMult(getModId(2));
 	}
 
 	@Override

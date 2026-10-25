@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 20;
+	static final int MIGRATION_VERSION = 21;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -164,6 +164,12 @@ class LunaConfigBridge {
 							"threatinc_forgeNanoforgeChance", "threatinc_threatSuppliesUpkeep", "threatinc_foundingBudget",
 							"threatinc_hiveCover", "threatinc_feedShareExpand", "threatinc_feedSharePress",
 							"threatinc_feedShareConsolidate", "threatinc_navyFitsSpare", "threatinc_sustenanceFirst" }) {
+						changed |= drop(json, key);
+					}
+				}
+				// 2026-10-25, phase D: the military layer and the hive's bombardment knobs go with it
+				if (from < 21) {
+					for (String key : new String[] { "threatinc_nexusDefenseBonus", "threatinc_groundDefensesBonus", "threatinc_heavyBatteriesBonus", "threatinc_hiveBombardReturnFirePerGunDefence", "threatinc_strataSuppressDaysPerSize", "threatinc_hiveMilitaryTier", "threatinc_nexusBombardable", "threatinc_hiveBombardFPWorth", "threatinc_hiveDropLossPerGunDefence", "threatinc_hiveSiegeSuppressDaysPerDay", "threatinc_bombardTierMinDays", "threatinc_bombardTierMedDays" }) {
 						changed |= drop(json, key);
 					}
 				}

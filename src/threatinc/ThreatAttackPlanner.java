@@ -577,7 +577,7 @@ public final class ThreatAttackPlanner {
 		o.travel = ThreatReach.days(ly);
 		o.trust = ThreatIntel.trust(fid, world.getStarSystem().getId(), o.travel);
 		float[] wants = ThreatFleetOrders.sortieWants(base, fp, world.getLocationInHyperspace());
-		o.fuel = wants[0] + ThreatGroundFronts.bombardFuelPerDay(fp) * run[0];
+		o.fuel = wants[0] + ThreatGroundFronts.bombardFuelPerDay(world, fp) * run[0];
 		o.supplies = wants[1];
 		float cost = o.fuel * IncursionManager.basePrice(Commodities.FUEL)
 				+ o.supplies * IncursionManager.basePrice(Commodities.SUPPLIES);

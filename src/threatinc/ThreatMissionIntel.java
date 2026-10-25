@@ -223,7 +223,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 			case TYPE_FUEL: return Industries.FUELPROD;
 			case TYPE_REFINING: return Industries.REFINING;
 			case TYPE_NEXUS:
-				return ThreatColonyManager.SWARM_NEXUS;
+				return ThreatColonyManager.FABRICATION_CORE; // the Nexus is gone (phase D); an older save's contract reads the Core
 		}
 		return null;
 	}
@@ -241,8 +241,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 			case TYPE_NEXUS:
 				// military value: the nexus of a world big enough to matter as a
 				// staging platform - every colony HAS one, so scale is the filter
-				return market.hasIndustry(ThreatColonyManager.SWARM_NEXUS)
-						&& market.getSize() >= ThreatIncConfig.strikeMinSize();
+				return false; // retired (phase D): no Nexus stands to contract against
 		}
 		return false;
 	}

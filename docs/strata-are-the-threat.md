@@ -80,7 +80,7 @@ clipped to crew space; the force holds the orbit, fights what buds, razes every 
 lands on arrival, home when both are spent; Support and Defend off the hive rows; "Closed:
 start phase A".
 
-Nothing open. Phases A (jar 13:22), B (jar 13:54) and C (jar 14:16) BUILT 2026-10-25, untested (section 10).
+Nothing open. Phases A (jar 13:22), B (jar 13:54), C (jar 14:16) and D (jar 14:47) BUILT 2026-10-25, untested (section 10).
 
 ## 1. Review - most of this already exists, hidden
 
@@ -758,6 +758,47 @@ Beta Prisma I under the player's bombardment loses strata a day at the quoted ra
 dies; a landing fights the strata figure alone; nothing on a hive reads "disrupted"; NPC sieges
 still sail; an Attack at Fleet Max / Fuel Med / Marines Min sails with the quoted fuel, razes at
 the quoted rate and comes home when the fuel is at the passage.
+
+**BUILT 2026-10-25, jar 14:47, untested.** The military layer: `ThreatColonyManager.retireMilitaryLayer`
+strips the Nexus, both batteries (ours and vanilla's), the Bastion and Command off a hive world in
+every essentials sweep; the classes stay for older saves (`SwarmNexus.apply` adds nothing,
+`SwarmBastion.tier` 0, `ThreatGroundDefenses` bonus 0) and `hasOperationalNexus` reads
+`coreStands`. The Core carries the defence: a flat `GROUND_DEFENSES_MOD` top-up to
+`ThreatStrata.standing` (`FabricationCore.apply`), tagged `unraidable` in industries.csv, and the
+hive's RAID option is off ("Nothing to raid: the hive is its strata"). The HIVE theatre is
+structureless (`keyStructures` / `defenseStructures` / `fortifications` empty, `suppressDaysPerDay`
+0, `hiveFortificationBonus` 0) and its return fire, drop loss and worth are 0. ONE exchange path:
+`ThreatGroundFronts.hiveRaze(market, fp, days, fuel, razer)` razes `hiveRazePerDay(fp)` =
+`bombardStrataPerFPDay` x fp a day for `fuelPerStratum()` each, through `ThreatStrata.add` (sizes
+step down, destroyed at 0); `siegeSlice` (now with a razer id), `saturationSlice`, `bombardPlan`
+(`hivePlan`), `bombardDay`, `abstractSiegeStep`, `supportSlice`, the purge's live slice and daily
+siege all route through it, with market-aware `bombardFuelPerDay(market, fp)` /
+`bombardDaysFor(market, fuel, fp)` overloads (`siegeOrdnance`, `ThreatFleetOrders`, `ThreatPlays`,
+`ThreatAttackPlanner`, `tacticalFuel`). A purge dry of fuel with no marines over strata holds the
+orbit as a blockade up to `siegeOrbitDays`. The player's dialog over a hive: `strataBombardMenu` /
+`strataBombardPrompt` (strata, size, a day's strata for its fuel, the size it leaves; the fuel paid
+is the prompt's price, no pollution). The humans size against buds: `ThreatIntel.picture` folds
+`ThreatBudding.buddableFP` into each report (`budFP`, `budDays`; `nearFP` and each world's swarm at
+least the bud), so the orbit gate, hunts, bounties and the board read the bud as the swarm.
+`nexusAnchoredDefense` reads `ThreatStrata.standing`; `bombardGoalDays` 0. THE ATTACK ORDER:
+`IncursionManager.Attack` / `attackPlan(base, faction, system, fleetTier, fuelTier, marineTier)` /
+`attackBlockFacts` / `launchAttack` -> `launchSiegeExpedition(..., downGoal, fuelGiven)` in attack
+mode (the ladders' fuel and marines exactly, an empty raze set so the marines land); the board's own
+hive row has one Attack button (`BUTTON_SIEGE`), three ladders above the table
+(`addAttackLadders`: Fleet = `siegeTier`, Fuel = `fuelTier`, Marines = `marineTier` on
+`ThreatIncursionIntel`; `addTierSelector` takes an x offset), `addAttackPrompt` one line a fact
+and an "Attack Sails" notice. Knobs: `bombardStrataPerFPDay` 1, `bombardFuelPerStratum` 2,
+`attackMedShare` 0.5 added; nexusDefenseBonus, groundDefensesBonus, heavyBatteriesBonus,
+hiveBombardReturnFirePerGunDefence, strataSuppressDaysPerSize, hiveMilitaryTier, nexusBombardable,
+hiveBombardFPWorth, hiveDropLossPerGunDefence, hiveSiegeSuppressDaysPerDay, bombardTierMinDays,
+bombardTierMedDays retired (Luna migration 21). Judgement calls: `retireMilitary` and
+`conversionRank` stay (dead without Bastions); the allied Hunt (aid) and the fleet-row Hunt detach
+stay; the Bombard / Hunt / Scout handlers stay as dead code in `executeOrder`; `groundDefenseMult`
+kept though unread; Nexus contracts are never offered again (old ones read the Core); the
+blockade's stay is `siegeOrbitDays`, not `sortieStayDays`; an NPC siege now prices its fuel as
+`hivePlan` days x fp x 2 (1,400 FP against 6,400 strata is about 5 days, 12.8k fuel). Verify:
+the proves above; the Attack prompt's "Fuel N: D days, S strata - a size down from X" against what
+lands; a hive's tooltip shows no Nexus and no batteries after one sweep on an old save.
 
 **E. Consuming a human world** (section 13). The infestation condition on a market under a
 Threat front (every industry's output x (1 - the seized share)), the landed strata growing as a

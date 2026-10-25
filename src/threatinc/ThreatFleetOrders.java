@@ -2337,7 +2337,7 @@ public class ThreatFleetOrders {
 		o.contestedSince = 0L;
 		float fp = o.fleet.getFleetPoints();
 		// nothing left to bomb with: its own fuel and the stock that reaches it (supportSlice would idle)
-		if (ThreatGroundFronts.ordnanceAvailable(o.fleet, o.factionId) < ThreatGroundFronts.bombardFuelPerDay(fp)) {
+		if (ThreatGroundFronts.ordnanceAvailable(o.fleet, o.factionId) < ThreatGroundFronts.bombardFuelPerDay(world, fp)) {
 			return "out of ordnance";
 		}
 		// the day bombards with every fleet of the faction over the world, as the slice does (orbitPoints)

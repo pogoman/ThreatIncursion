@@ -2824,13 +2824,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return hi;
 	}
 
-	/** A hive's defender strength once its Swarm Nexus stands (SwarmNexus: the strata standing less what a front holds, ThreatStrata.standing, times the Nexus bonus and a standing Swarm Bastion's or Command's), batteries aside. */
+	/** A hive's defender strength: the strata standing less what a front holds (ThreatStrata.standing, FabricationCore) - no structure multiplies it since phase D. */
 	public static float nexusAnchoredDefense(MarketAPI target) {
-		int tier = SwarmBastion.tier(target);
-		float bastion = SwarmBastion.defenseBonus(tier >= 2 ? SwarmBastion.COMMAND
-				: tier == 1 ? SwarmBastion.BASTION : null);
-		return ThreatStrata.standing(target)
-				* (1f + ThreatIncConfig.nexusDefenseBonus()) * (1f + bastion) * ThreatIncConfig.groundDefenseMult();
+		return ThreatStrata.standing(target);
 	}
 
 	/**
@@ -3268,6 +3264,20 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random,
 			float marineGoal, java.util.Set<String> razeGiven, String playId,
 			java.util.List<ThreatFleetOrders.Order> staged, float downGoal) {
+		return launchSiegeExpedition(base, faction, system, targets, fleetSizes, playerCommissioned, random,
+				marineGoal, razeGiven, playId, staged, downGoal, -1f);
+	}
+
+	/**
+	 * As above in ATTACK MODE ({@code fuelGiven} >= 0; phase D, docs/strata-are-the-threat.md 8): the fuel
+	 * drawn is exactly that - the passage first, the rest the bombardment's ordnance - and the landing
+	 * exactly {@code marineGoal} marines (0: none); nothing is priced to the target. -1: priced as always.
+	 */
+	public static ThreatPurgeFGI launchSiegeExpedition(MarketAPI base, FactionAPI faction,
+			StarSystemAPI system, java.util.List<MarketAPI> targets,
+			java.util.List<Integer> fleetSizes, boolean playerCommissioned, Random random,
+			float marineGoal, java.util.Set<String> razeGiven, String playId,
+			java.util.List<ThreatFleetOrders.Order> staged, float downGoal, float fuelGiven) {
 		GenericRaidParams params = new GenericRaidParams(
 				new Random(random.nextLong()), !playerCommissioned);
 		params.factionId = faction.getId();
@@ -3384,6 +3394,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			float need = siegeRaidStrNeeded(land, ThreatIntel.observerOf(faction));
 			float strGoal = Math.min(need, siegeRaidStrEstimate(params.fleetSizes));
 			float[] wants = expeditionWants(base, system, targets, fleetSizes, raze, 0f, downGoal);
+			if (fuelGiven >= 0f) wants[0] = Math.max(0f, marineGoal); // attack mode: the ladder's marines, none a need
 			// the landing the player asked for: the need (wants[0]), or the
 			// Extra/All tier's bigger goal - never below the need
 			float lift = marineGoal > wants[0] ? marineGoal : wants[0];
@@ -3575,6 +3586,12 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// depend on the targets, not the fleets)
 			wants = expeditionWants(base, system, targets, params.fleetSizes, raze, shortLanding, downGoal);
 			fuelParts = expeditionFuel(base, system, targets, params.fleetSizes, raze, shortLanding, downGoal);
+			if (fuelGiven >= 0f) {
+				// attack mode: the ladder's fuel - the passage first, the rest the ordnance
+				wants[0] = Math.max(0f, marineGoal);
+				wants[2] = Math.max(0f, fuelGiven);
+				fuelParts = new float[] { Math.min(wants[2], fuelParts[0]), Math.max(0f, wants[2] - fuelParts[0]), 0f };
+			}
 			// the landing's arms come with its marines: pooled the same way, and short
 			// of them the siege waits as it does for marines. Marines alone were
 			// pooled, so fronts landed with 161 of 600 arms and were overrun (rc1 logs)
@@ -3822,7 +3839,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	public static float siegeOrdnance(MarketAPI world, float fp, float troops) {
 		if (world == null || fp <= 0f) return 0f;
 		return ThreatGroundFronts.bombardPlan(world, fp, ThreatIncConfig.siegeOrbitDays(), troops, true)[0]
-				* ThreatGroundFronts.bombardFuelPerDay(fp);
+				* ThreatGroundFronts.bombardFuelPerDay(world, fp);
 	}
 
 	/**
@@ -4316,9 +4333,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * the least-worn structure, Med bombardTierMedDays, Max the commander's stop (0).
 	 */
 	public static float bombardGoalDays(int tier) {
-		if (tier <= 0) return Math.max(0f, ThreatIncConfig.bombardTierMinDays());
-		if (tier == 1) return Math.max(0f, ThreatIncConfig.bombardTierMedDays());
-		return 0f;
+		return 0f; // retired with the Bombard order (phase D): the commander's stop
 	}
 
 	/** Whether a hive world still makes something saturation would stop: a forge, a fuel plant or its Fabrication Core in working order. */
@@ -4589,6 +4604,123 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		float passage = Math.min(drawn, want[0]);
 		float razing = Math.min(drawn - passage, want[2]);
 		return new float[] {passage, drawn - passage - razing, want[1], razing, want[2], drawn, have};
+	}
+
+	// ------------------------------------------------------------------
+	// THE ATTACK ORDER (phase D, docs/strata-are-the-threat.md 8): one order on a hive row, sized by
+	// three ladders to the staging colony's own stock - Fleet (one fleet / half the hulls free /
+	// all), Fuel (the passage / half the fuel above the floor / all), Marines (none / half the pool /
+	// all, clipped to what the fleets carry). At the target the expedition holds the orbit, razes a
+	// stratum a fleet point a day for the fuel past the passage while nothing of the swarm stands,
+	// and lands its marines under the landing gate as built (ThreatPurgeFGI).
+	// ------------------------------------------------------------------
+
+	/** What an Attack from a base against a system would sail with at the board's three ladders. */
+	public static class Attack {
+		public MarketAPI base;
+		public StarSystemAPI system;
+		public java.util.List<MarketAPI> targets = new ArrayList<MarketAPI>();
+		/** The largest hive there: what the prompt's strata figures name. */
+		public MarketAPI target;
+		public java.util.List<Integer> sizes = new ArrayList<Integer>();
+		public java.util.List<ThreatFleetOrders.Order> staged = new ArrayList<ThreatFleetOrders.Order>();
+		/** Whole-fleet points of the flotilla. */
+		public float points;
+		/** The passage's fuel, the fuel drawn in all, the fuel past the passage and the strata it razes. */
+		public float passage, fuel, razeFuel, strata;
+		/** Days of bombardment the fuel buys at the flotilla's rate. */
+		public float days;
+		/** The marines drawn, the base's pool and what the fleets could carry. */
+		public float marines, marinesHave, lift;
+		/** What the system could bud against it and the days that takes, from the player's reports. */
+		public float budFP, budDays;
+		/** Days of passage at the board's estimated speed. */
+		public float passageDays;
+	}
+
+	/** The Attack's own gate: null when it would sail, else why not - a base, a target, one fleet's hulls, the passage's fuel. */
+	public static ThreatNotice.Reason attackBlockFacts(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
+		if (base == null) {
+			return ThreatNotice.Reason.of(faction != null && faction.isPlayerFaction()
+					? "No military colony of yours has a Waystation" : "No base in reach");
+		}
+		if (system == null || collectSiegeTargets(system).isEmpty()) {
+			return ThreatNotice.Reason.of("Nothing there to attack yet");
+		}
+		if (faction == null) return null;
+		Attack a = attackPlan(base, faction, system, 0, 0, 0);
+		if (faction.isPlayerFaction() && ThreatAidCapacity.enabled()) {
+			float free = ThreatAidCapacity.freeFP(base);
+			float least = ThreatAidCapacity.taskForcePoints(ThreatIncConfig.aidGuardMinFP());
+			if (a.points <= 0f || a.points > free + 0.5f || a.points < least - 0.5f) {
+				return ThreatNotice.Reason.of("%s has %s fleet points free", ThreatNotice.market(base),
+						(int) Math.max(0f, free))
+						.line("One fleet needs %s", (int) Math.ceil(Math.max(a.points, least)));
+			}
+		}
+		float have = ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL);
+		if (have < a.passage - 0.5f) {
+			return ThreatNotice.Reason.of("%s has %s fuel", ThreatNotice.market(base), Misc.getWithDGS((int) have))
+					.line("The passage takes %s", Misc.getWithDGS((int) Math.ceil(a.passage)));
+		}
+		return null;
+	}
+
+	/** {@link #attackBlockFacts} as one string for a button's disabled tooltip. */
+	public static String attackBlockReason(MarketAPI base, FactionAPI faction, StarSystemAPI system) {
+		return ThreatNotice.text(attackBlockFacts(base, faction, system));
+	}
+
+	/** The Attack at the ladders: Fleet, Fuel and Marines each 0 min, 1 med, 2 max. */
+	public static Attack attackPlan(MarketAPI base, FactionAPI faction, StarSystemAPI system, int fleetTier,
+			int fuelTier, int marineTier) {
+		Attack a = new Attack();
+		a.base = base;
+		a.system = system;
+		if (base == null || faction == null || system == null) return a;
+		a.targets = collectSiegeTargets(system);
+		for (MarketAPI m : a.targets) {
+			if (a.target == null || ThreatStrata.of(m) > ThreatStrata.of(a.target)) a.target = m;
+		}
+		// the fleet: one of the colony's task-force size, grown to half or all of its hulls free, the
+		// task forces on station sailing as they are (playerExpeditionSizes)
+		java.util.List<Integer> one = new ArrayList<Integer>();
+		one.add(stagedSize(Math.max(ThreatAid.taskForcePoints(base, false),
+				ThreatAidCapacity.taskForcePoints(ThreatIncConfig.aidGuardMinFP()))));
+		a.sizes = playerExpeditionSizes(base, faction, one, fleetTier, a.staged);
+		a.points = ThreatAidCapacity.expeditionPoints(a.sizes);
+		// the fuel: the passage, then the share of what the colony holds above its floor
+		float share = Math.max(0f, Math.min(1f, ThreatIncConfig.attackMedShare()));
+		a.passage = expeditionPassage(base, system, a.sizes);
+		float fuelHave = Math.max(0f, ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL));
+		float above = Math.max(0f, fuelHave - a.passage);
+		a.fuel = Math.min(fuelHave, a.passage + (fuelTier >= 2 ? above : fuelTier == 1 ? above * share : 0f));
+		a.razeFuel = Math.max(0f, a.fuel - a.passage);
+		a.strata = ThreatGroundFronts.fuelPerStratum() > 0f ? a.razeFuel / ThreatGroundFronts.fuelPerStratum() : 0f;
+		float perDay = ThreatGroundFronts.hiveRazePerDay(a.points);
+		a.days = perDay > 0f ? a.strata / perDay : 0f;
+		// the marines: none, half the pool, all of it, clipped to what the fleets carry
+		a.marinesHave = Math.max(0f, ThreatReserves.available(base, com.fs.starfarer.api.impl.campaign.ids.Commodities.MARINES));
+		a.lift = siegeRaidStrEstimate(a.sizes);
+		float want = marineTier >= 2 ? a.marinesHave : marineTier == 1 ? a.marinesHave * share : 0f;
+		a.marines = (float) Math.floor(Math.min(want, a.lift));
+		// the system's answer, as the player's reports show it (ThreatIntel.Report.budFP)
+		ThreatIntel.Report r = ThreatIntel.report(Factions.PLAYER, system);
+		if (r != null) {
+			a.budFP = r.budFP;
+			a.budDays = r.budDays;
+		}
+		float ly = base.getStarSystem() != null
+				? Misc.getDistanceLY(base.getStarSystem().getLocation(), system.getLocation()) : 0f;
+		a.passageDays = (float) Math.ceil(ly / ThreatWarBoard.EST_LY_PER_DAY);
+		return a;
+	}
+
+	/** Sails the Attack: the siege expedition in attack mode, the ladders' fuel and marines exactly. Null when refused. */
+	public static ThreatPurgeFGI launchAttack(Attack a, FactionAPI faction, Random random) {
+		if (a == null || a.base == null || a.system == null || a.targets.isEmpty() || a.sizes.isEmpty()) return null;
+		return launchSiegeExpedition(a.base, faction, a.system, a.targets, a.sizes, true, random, a.marines,
+				new java.util.HashSet<String>(), null, a.staged, 0f, a.fuel);
 	}
 
 	/**

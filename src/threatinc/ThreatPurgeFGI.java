@@ -268,8 +268,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	 * bombardment a fleet of fp gets from what is left, never more than asked,
 	 * the fuel burned.
 	 */
-	protected float burnOrdnance(float fp, float days) {
-		float want = ThreatGroundFronts.bombardFuelPerDay(fp) * days;
+	protected float burnOrdnance(MarketAPI market, float fp, float days) {
+		float want = ThreatGroundFronts.bombardFuelPerDay(market, fp) * days;
 		if (!paysOrdnance || want <= 0f) return days;
 		float paid = Math.min(want, ordnance);
 		ordnance -= paid;
@@ -2136,10 +2136,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		float fp = fleet.getFleetPoints();
 		// a day's ordnance for every day since its last pass, from what the
 		// expedition carries: short of it, the slice is as long as it buys
-		float days = burnOrdnance(fp, ThreatGroundFronts.siegeSliceDays(fleet));
+		float days = burnOrdnance(market, fp, ThreatGroundFronts.siegeSliceDays(fleet));
 		ThreatGroundFronts.BombardDay est = ThreatGroundFronts.bombardDay(fp, market, false);
 		float loss = ThreatGroundFronts.siegeSlice(fp, ThreatGroundFronts.orbitPoints(ourId, market, fp), market,
-				days, true, true, -1f, "Orbital bombardment");
+				days, true, true, -1f, "Orbital bombardment", ourId);
 		float removed = ThreatGroundFronts.applyFleetLosses(fleet, loss);
 		if (siegeAnnounced == null) siegeAnnounced = new java.util.HashSet<String>();
 		if (siegeAnnounced.add(market.getId())) {
@@ -2752,8 +2752,17 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			}
 			if (verdict == ThreatGroundFronts.SIEGE_STEP_GUNS) why = "guns";
 			else if (verdict == ThreatGroundFronts.SIEGE_STEP_DRY
-					|| ThreatGroundFronts.bombardDaysFor(ordnanceLeft(), fp) < 0.5f) why = "dry";
+					|| ThreatGroundFronts.bombardDaysFor(w, ordnanceLeft(), fp) < 0.5f) why = "dry";
 			else why = "ready";
+		}
+		// an Attack with no marines and no fuel past the passage is a blockade (phase D): it holds the
+		// orbit its stay rather than landing nothing and sailing home
+		if ("dry".equals(why) && abstractTroops(w) <= 0f && ThreatGroundFronts.strataTarget(w)
+				&& abstractWorldDays < ThreatIncConfig.siegeOrbitDays()) {
+			abstractWorldDays++;
+			ThreatIncConfig.logQuiet(dailyKey(w), "Daily siege of " + w.getName() + ", day " + abstractWorldDays
+					+ ": blockading - nothing to bomb with, no marines to land");
+			return true;
 		}
 		endWorld(action, w, why, true);
 		return true;

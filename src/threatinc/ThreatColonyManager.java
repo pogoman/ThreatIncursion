@@ -876,28 +876,6 @@ public class ThreatColonyManager {
 		// no port on a hive (ensureSpaceport retires one an older save built)
 		ensureSpaceport(market);
 
-		// defensive structures don't take industry slots. The hive builds its
-		// own marine-free variants (ThreatGroundDefenses: machinery+metals) -
-		// but only guns it can feed (defensesAffordable): a colony has one
-		// industry slot until size 4 and Mining holds it, so batteries built
-		// at size 3 demanded metals no refinery could yet exist to make, and
-		// that unmet demand held vitality on the stall floor for good - every
-		// hive frozen at five size-3 worlds, 0.4.0 through 0.6.0 (found
-		// 2026-09-09; docs/hive-economy.md). The hive arms once it can pay.
-		if (size >= 6 && market.hasIndustry(THREAT_GROUND_DEFENSES) && defensesAffordable(market)) {
-			// the upgrade is a new structure: paid before the old one comes down
-			if (!affordStructure(market, payerId, THREAT_HEAVY_BATTERIES)) return;
-			market.removeIndustry(THREAT_GROUND_DEFENSES, null, true);
-			buyStructure(market, THREAT_HEAVY_BATTERIES, payerId);
-			return;
-		}
-		if (size >= 3 && !market.hasIndustry(THREAT_GROUND_DEFENSES)
-				&& !market.hasIndustry(THREAT_HEAVY_BATTERIES) && defensesAffordable(market)) {
-			// a world already past size 6 arms with the heavy batteries at once,
-			// not a tick later (saves whose hives never armed catch up in one tick)
-			buyStructure(market, size >= 6 ? THREAT_HEAVY_BATTERIES : THREAT_GROUND_DEFENSES, payerId);
-			return;
-		}
 
 		if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) return;
 
@@ -1149,30 +1127,6 @@ public class ThreatColonyManager {
 		return true;
 	}
 
-	/**
-	 * Whether the colony can feed the batteries it would build: the machinery
-	 * and metals Ground Defenses / Heavy Batteries demand (size - 2 each,
-	 * ThreatGroundDefenses.apply) are at least half-met on the hive market -
-	 * the same bar a growth input must clear (STALL_MET_FRACTION), so arming
-	 * can never be what stalls the world.
-	 */
-	public static boolean defensesAffordable(MarketAPI market) {
-		int need = market.getSize() - 2;
-		if (need <= 0) return true;
-		for (String commodityId : new String[] { Commodities.HEAVY_MACHINERY, Commodities.METALS }) {
-			CommodityOnMarketAPI com = market.getCommodityData(commodityId);
-			// what it could draw, not only what it shows: vanilla imports only up
-			// to demand, so a world with no batteries yet shows no metals however
-			// much the hive's refineries make - read locally, 35 of 41 hives never
-			// armed (2026-09-28 run). The hive's largest producer is what it would
-			// draw from (availability is per source, as outputCovered reads it);
-			// before any refinery exists that is still nothing, so the 0.6.1
-			// stall stays fixed
-			float available = Math.max(com != null ? com.getAvailable() : 0f, hiveMaxSupply(commodityId));
-			if (available < need * STALL_MET_FRACTION) return false;
-		}
-		return true;
-	}
 
 	/** The most any one hive world makes of a commodity: what another hive world could draw of it. */
 	protected static int hiveMaxSupply(String commodityId) {
@@ -1334,27 +1288,14 @@ public class ThreatColonyManager {
 			// growth step a season away - structures need no slot
 			int size = market.getSize();
 			int cap = maxColonySize(market);
-			boolean gd = market.hasIndustry(THREAT_GROUND_DEFENSES);
-			boolean hb = market.hasIndustry(THREAT_HEAVY_BATTERIES);
-			boolean arms = ((size >= 3 && !gd && !hb) || (size >= 6 && gd)) && defensesAffordable(market);
-			// Swarm Command needs no slot either: a Bastion grows into it in place
-			boolean command = militaryUpgradeDue(market);
 			// a growing world plans on this tick too (2026-10-01): under size upkeep
 			// a growth step takes months, and a world that built only on its steps
 			// left its free slot empty that long - ng1b's bootstrap worlds reached
 			// size 3 at month 11 and built their refinery and fuel plant at 16.
 			// What a build costs in supplies and time is the pace now. Size upkeep
 			// off, growth is quick and builds on its steps as before
-			if (!arms && !command) {
-				if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) continue;
-			}
-			int before = buildSignature(market);
+			if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) continue;
 			planHiveEconomy(market);
-			// the military tier comes last: only where the chain built and wants
-			// nothing this tick (maintainMilitaryTier)
-			if (buildSignature(market) == before && !buildWaiting().containsKey(market.getId())) {
-				maintainMilitaryTier(market);
-			}
 		}
 	}
 
@@ -1455,18 +1396,10 @@ public class ThreatColonyManager {
 			if (!conversionPayable(m, build)) continue;
 			// paid before anything comes down
 			String price;
-			if (SwarmBastion.BASTION.equals(build)) {
-				float fp = ThreatBuildCost.fleetPoints(build);
-				if (!payMilitary(m, build)) continue;
-				m.removeIndustry(Industries.FUELPROD, null, false);
-				addMilitary(m);
-				price = Misc.getWithDGS((int) fp) + " FP";
-			} else {
-				// bought first (addIndustry asks no slot): a refusal tears nothing down
-				if (!buyStructure(m, build, m.getId())) continue;
-				m.removeIndustry(Industries.FUELPROD, null, false);
-				price = (int) ThreatIncConfig.structureStrata() + " strata";
-			}
+			// bought first (addIndustry asks no slot): a refusal tears nothing down
+			if (!buyStructure(m, build, m.getId())) continue;
+			m.removeIndustry(Industries.FUELPROD, null, false);
+			price = (int) ThreatIncConfig.structureStrata() + " strata";
 			madeLeft -= output;
 			done.add(m);
 			ThreatIncConfig.log("Converted Fuel Production on " + m.getName() + " to " + structureName(build) + ": fuel "
@@ -1491,16 +1424,11 @@ public class ThreatColonyManager {
 				&& (countLink(refinery) == 0 || (!outputCovered(refinery) && m.getSize() > largestLinkSize(refinery)))) {
 			return Industries.REFINING;
 		}
-		// else the military tier, on a world with a Nexus and none yet
-		if (ThreatIncConfig.hiveMilitaryTier() && m.hasIndustry(SWARM_NEXUS) && SwarmBastion.of(m) == null) {
-			return SwarmBastion.BASTION;
-		}
 		return null;
 	}
 
 	/** Whether the conversion's build can be paid now: structureFP off the world's strata, or for the military tier an idle bank (militaryIdle). */
 	protected static boolean conversionPayable(MarketAPI m, String build) {
-		if (SwarmBastion.BASTION.equals(build)) return militaryIdle(m, build);
 		return canAffordFP(m, structureFP());
 	}
 
@@ -1583,114 +1511,6 @@ public class ThreatColonyManager {
 		}
 	}
 
-	/**
-	 * THE MILITARY TIER (SwarmBastion): a colony whose chain built and wants
-	 * nothing this tick, and whose bank its garrison does not need
-	 * (militaryIdle), grows a Swarm Bastion in a free slot - unless a stock is
-	 * wanted (ThreatFuel.wanted) whose producer the world lacks, a free slot
-	 * being the chain's first - and later grows it into Swarm Command in place. Paid in fleet points from
-	 * the colony's bank, its system's topping it up (poolSystemBanks), at the
-	 * vanilla structure's price (ThreatBuildCost.fleetPoints); vanilla's build
-	 * time. The swarms the tier keeps home are then fabricated from the bank and
-	 * pay the garrison's upkeep: the sink for fleet points the hive banks and
-	 * has no other use for (ng4a: 297k FP banked).
-	 */
-	protected static void maintainMilitaryTier(MarketAPI market) {
-		if (!ThreatIncConfig.hiveMilitaryTier() || !market.hasIndustry(SWARM_NEXUS)) return;
-		Industry standing = SwarmBastion.of(market);
-		if (standing != null) {
-			if (!militaryUpgradeDue(market)) return;
-			float fp = ThreatBuildCost.fleetPoints(SwarmBastion.COMMAND);
-			if (!payMilitary(market, SwarmBastion.COMMAND)) return;
-			if (ThreatBuildCost.enabled() && ThreatBuildCost.buildDays(SwarmBastion.COMMAND) > 0f
-					&& standing.getSpec().getUpgrade() != null) {
-				standing.startUpgrading();
-			} else {
-				market.removeIndustry(SwarmBastion.BASTION, null, true);
-				market.addIndustry(SwarmBastion.COMMAND);
-			}
-			markEconomyDirty();
-			logMilitary(market, SwarmBastion.COMMAND, fp);
-			return;
-		}
-		if (Misc.getNumIndustries(market) >= Misc.getMaxIndustries(market)) return;
-		// a free slot is the chain's first: held for a forge while supplies are
-		// wanted and the world has none, for a fuel plant while fuel is and it
-		// has none (a build the planner already chose waits in buildWaiting).
-		// Held while either stock was short anywhere, it was held for good under
-		// size upkeep: h40a ran short of supplies all run, 98k FP banked, no Bastion
-		if (ThreatFuel.wanted(Commodities.FUEL) && !market.hasIndustry(Industries.FUELPROD)) return;
-		if (!militaryIdle(market, SwarmBastion.BASTION)) return;
-		float fp = ThreatBuildCost.fleetPoints(SwarmBastion.BASTION);
-		if (!payMilitary(market, SwarmBastion.BASTION)) return;
-		addMilitary(market);
-		logMilitary(market, SwarmBastion.BASTION, fp);
-	}
-
-	/** Whether the colony's standing Swarm Bastion grows into Swarm Command now: not disrupted or building, and the bank idle for it. */
-	protected static boolean militaryUpgradeDue(MarketAPI market) {
-		if (!ThreatIncConfig.hiveMilitaryTier()) return false;
-		Industry bastion = market.getIndustry(SwarmBastion.BASTION);
-		if (bastion == null || bastion.isBuilding() || bastion.isDisrupted()) return false;
-		return militaryIdle(market, SwarmBastion.COMMAND);
-	}
-
-	/**
-	 * Whether the colony's fleet points sit idle enough for the tier's
-	 * structure: its garrison holds its want, its income carries the upkeep of
-	 * that garrison and of the swarms the structure adds (militaryExtraFP), and
-	 * its bank with its system's (poolableFP) holds the price, those swarms and
-	 * that upkeep over the structure's build time. No number of its own: the
-	 * price is the vanilla structure's, the rest the garrison's own rows and
-	 * upkeep rate.
-	 */
-	protected static boolean militaryIdle(MarketAPI market, String industryId) {
-		List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(market.getId());
-		float held = ownedFleetFP(market, fleets);
-		if (ThreatPosture.enabled()) {
-			if (held < ThreatPosture.wantFP(market)) return false;
-		} else if (countFitGarrison(market) + swarmsAway(market.getId()) < desiredGarrisonCount(market)) {
-			return false;
-		}
-		float extra = militaryExtraFP(market, industryId);
-		// no income and no upkeep since phase A (2026-10-25): the strata pay the structure and its swarms outright
-		return poolableFP(market) >= ThreatBuildCost.fleetPoints(industryId) + extra;
-	}
-
-	/** Fleet points of the swarms the structure adds to the colony's reserve: a base reserve's worth of the size table's next rows. */
-	protected static float militaryExtraFP(MarketAPI market, String industryId) {
-		int base = baseReserve(market);
-		int from = SwarmBastion.COMMAND.equals(industryId) ? 2 * base : base;
-		return ThreatPosture.rowsFP(market, from, base);
-	}
-
-	/** Pays the tier's structure from the colony's bank, its system's topping it up; false, nothing paid, if they cannot. */
-	protected static boolean payMilitary(MarketAPI market, String industryId) {
-		float price = ThreatBuildCost.fleetPoints(industryId);
-		if (!poolSystemBanks(market, price, structureName(industryId))) return false;
-		chargeFP(market, price);
-		return true;
-	}
-
-	/** Adds the Swarm Bastion to the colony, grown over vanilla's build time while structures take one. */
-	protected static void addMilitary(MarketAPI market) {
-		market.addIndustry(SwarmBastion.BASTION);
-		Industry ind = market.getIndustry(SwarmBastion.BASTION);
-		if (ind != null && ThreatBuildCost.enabled() && ThreatBuildCost.buildDays(SwarmBastion.BASTION) > 0f) {
-			ind.startBuilding();
-		}
-		markEconomyDirty();
-	}
-
-	protected static void logMilitary(MarketAPI market, String industryId, float fp) {
-		int reserve = baseReserve(market) * (SwarmBastion.COMMAND.equals(industryId) ? 3 : 2);
-		ThreatIncConfig.log("Hive planner: " + structureName(industryId) + " at " + market.getName() + " for "
-				+ (int) fp + " FP, " + reserve + " swarms home once it stands ("
-				+ (int) militaryExtraFP(market, industryId) + " FP more); " + (int) bankedFP(market) + " FP banked");
-		announce(ThreatNotice.titled(structureName(industryId)).bad()
-				.line("%s is growing a " + structureName(industryId), ThreatNotice.market(market))
-				.line("It will keep %s Defense Swarms at home", ThreatNotice.hl("" + reserve)));
-	}
 
 	// ------------------------------------------------------------------
 	// hive accessibility: the strata density (docs/strata-are-the-threat.md 4)
@@ -1854,30 +1674,7 @@ public class ThreatColonyManager {
 		if (!market.hasCondition(HIVE_VITALITY_CONDITION)) {
 			market.addCondition(HIVE_VITALITY_CONDITION);
 		}
-		if (!market.hasIndustry(SWARM_NEXUS)) {
-			addEssentialStructure(market, SWARM_NEXUS, payerId);
-			ThreatIncConfig.log("Swarm Nexus added at " + market.getName());
-		}
-		// migrate vanilla defensive structures (marine/supplies demands make no
-		// sense on a machine hive) to the machinery+metals variants
-		if (market.hasIndustry(Industries.GROUNDDEFENSES)) {
-			market.removeIndustry(Industries.GROUNDDEFENSES, null, false);
-			if (!market.hasIndustry(THREAT_GROUND_DEFENSES)
-					&& !market.hasIndustry(THREAT_HEAVY_BATTERIES)) {
-				market.addIndustry(THREAT_GROUND_DEFENSES);
-			}
-			ThreatIncConfig.log("Ground defenses migrated to hive variant at " + market.getName());
-		}
-		if (market.hasIndustry(Industries.HEAVYBATTERIES)) {
-			market.removeIndustry(Industries.HEAVYBATTERIES, null, false);
-			if (!market.hasIndustry(THREAT_HEAVY_BATTERIES)) {
-				if (market.hasIndustry(THREAT_GROUND_DEFENSES)) {
-					market.removeIndustry(THREAT_GROUND_DEFENSES, null, false);
-				}
-				market.addIndustry(THREAT_HEAVY_BATTERIES);
-			}
-			ThreatIncConfig.log("Heavy batteries migrated to hive variant at " + market.getName());
-		}
+		retireMilitaryLayer(market);
 		// legacy saves: remove the old population-machinery supply mod
 		// (quantity 0 unmodifies; a no-op once gone)
 		Industry pop = market.getIndustry(Industries.POPULATION);
@@ -1927,17 +1724,25 @@ public class ThreatColonyManager {
 		}
 	}
 
-	/**
-	 * Whether the colony's military organ is up: present, undisrupted,
-	 * functional. Everything that FABRICATES fleets gates on this - garrison
-	 * respawn and strike staging - so raiding or bombing the nexus silences
-	 * the colony militarily until it recovers. Fleets already fabricated are
-	 * deliberately unaffected.
-	 */
+	/** Whether the world's war organ stands: the Fabrication Core since phase D (the Swarm Nexus is gone; the strata are the military). */
 	public static boolean hasOperationalNexus(MarketAPI market) {
-		if (market == null) return false;
-		Industry nexus = market.getIndustry(SWARM_NEXUS);
-		return nexus != null && !nexus.isDisrupted() && nexus.isFunctional();
+		return coreStands(market);
+	}
+
+	/**
+	 * THE MILITARY LAYER GOES (phase D, docs/strata-are-the-threat.md 4): the Swarm Nexus, the hive's
+	 * defence structures, the Swarm Bastion and Command come off every hive world - the strata are its
+	 * defence, its troops and its navy. Run on every essentials sweep, so an older save sheds them on
+	 * its first tick; the classes stay for the save's deserialisation.
+	 */
+	public static void retireMilitaryLayer(MarketAPI market) {
+		if (market == null) return;
+		for (String id : new String[] { SWARM_NEXUS, THREAT_GROUND_DEFENSES, THREAT_HEAVY_BATTERIES,
+				Industries.GROUNDDEFENSES, Industries.HEAVYBATTERIES, SwarmBastion.BASTION, SwarmBastion.COMMAND }) {
+			if (!market.hasIndustry(id)) continue;
+			market.removeIndustry(id, null, false);
+			ThreatIncConfig.log("Military layer retired at " + market.getName() + ": " + id + " removed (phase D)");
+		}
 	}
 
 	/** Fast-cadence sweep: migrates older saves and heals any removed core. */
