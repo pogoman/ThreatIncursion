@@ -24,6 +24,11 @@ public class FabricationCore extends BaseIndustry {
 	@Override
 	public void apply() {
 		super.apply(true);
+		// MACHINES EAT NOTHING (the user, 2026-10-25: "they should not be short of food and luxury goods"):
+		// Population & Infrastructure's human demands are cancelled on every recompute, at any size - the
+		// essentials sweep's size-sized flat lagged a size change and the stat is wiped on load
+		com.fs.starfarer.api.campaign.econ.Industry pop = market.getIndustry(com.fs.starfarer.api.impl.campaign.ids.Industries.POPULATION);
+		if (pop != null) pop.getDemandReductionFromOther().modifyFlat("threatinc_machines", 100f);
 		int size = market.getSize();
 		supply(Commodities.HEAVY_MACHINERY, size);
 		int metals = ThreatColonyManager.coreDemand(market, Commodities.METALS); // 0 while a conquered world is consumed (phase E)

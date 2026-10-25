@@ -1711,8 +1711,7 @@ public class ThreatColonyManager {
 		// fixed id is idempotent. Sized to the market: pop's largest demand is
 		// its size. Crew SUPPLY is untouched - the megaport consumes it.
 		if (pop != null) {
-			pop.getDemandReductionFromOther().modifyFlat("threatinc_machines",
-					market.getSize());
+			pop.getDemandReductionFromOther().modifyFlat("threatinc_machines", 100f); // any size (FabricationCore.apply re-asserts it)
 		}
 	}
 
@@ -4281,41 +4280,57 @@ public class ThreatColonyManager {
 	protected static void migrateBankToStrata() {
 		if (Boolean.TRUE.equals(Global.getSector().getPersistentData().get(KEY_STRATA_MIGRATED))) return;
 		Global.getSector().getPersistentData().put(KEY_STRATA_MIGRATED, true);
+		// A SIZE AT MOST (2026-10-25, the user's Beta Prisma I: a size-2 world took the 46,689 FP strike
+		// fund to its cap in one poll and read size 8): every world takes at most one size's worth above
+		// where it stands (ThreatStrata.span) - its own bank first, then its strata-weighted share of
+		// the fund - and the rest of the retired figures is lost, logged. A migration seeds no fortress.
 		Map<String, Float> bank = fabBank();
+		List<MarketAPI> all = new ArrayList<MarketAPI>(ThreatIncData.getAllLiveColonyMarkets());
+		Map<String, Float> allowance = new java.util.HashMap<String, Float>();
 		float moved = 0f;
+		float lost = 0f;
 		int worlds = 0;
-		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+		for (MarketAPI m : all) {
+			float room = Math.min(ThreatStrata.room(m), ThreatStrata.span(Math.max(1, m.getSize())));
 			Float fp = bank.get(m.getId());
-			if (fp == null || fp <= 0f) continue;
-			absorb(m, ThreatStrata.strataOf(fp));
-			moved += fp;
-			worlds++;
+			float own = fp != null && fp > 0f ? ThreatStrata.strataOf(fp) : 0f;
+			float take = Math.min(own, room);
+			if (take > 0f) {
+				ThreatStrata.add(m, take, "Absorbed into", null);
+				moved += ThreatStrata.fpOf(take);
+				worlds++;
+			}
+			lost += own - take;
+			allowance.put(m.getId(), Math.max(0f, room - take));
 		}
 		bank.clear();
 		fabAccruedAt().clear();
 		Object v = Global.getSector().getPersistentData().get(KEY_STRIKE_FUND);
 		float fund = v instanceof Float ? (Float) v : 0f;
 		Global.getSector().getPersistentData().remove(KEY_STRIKE_FUND);
-		float fundLeft = fund;
-		if (fundLeft > 0f) {
-			List<MarketAPI> all = new ArrayList<MarketAPI>(ThreatIncData.getAllLiveColonyMarkets());
-			java.util.Collections.sort(all, new java.util.Comparator<MarketAPI>() {
-				public int compare(MarketAPI a, MarketAPI b) {
-					return Float.compare(ThreatStrata.room(b), ThreatStrata.room(a));
-				}
-			});
+		float fundLeft = ThreatStrata.strataOf(Math.max(0f, fund));
+		for (int pass = 0; pass < 3 && fundLeft > 0.5f; pass++) {
+			float weight = 0f;
 			for (MarketAPI m : all) {
-				if (fundLeft <= 0.01f) break;
-				float take = Math.min(ThreatStrata.room(m), ThreatStrata.strataOf(fundLeft));
+				if (allowance.get(m.getId()) > 0.5f) weight += ThreatStrata.of(m);
+			}
+			if (weight <= 0f) break;
+			float pool = fundLeft;
+			for (MarketAPI m : all) {
+				float room = allowance.get(m.getId());
+				if (room <= 0.5f) continue;
+				float take = Math.min(room, pool * ThreatStrata.of(m) / weight);
 				if (take <= 0f) continue;
 				ThreatStrata.add(m, take, "Absorbed into", null);
-				fundLeft -= ThreatStrata.fpOf(take);
+				allowance.put(m.getId(), room - take);
+				fundLeft -= take;
 			}
 		}
+		lost += Math.max(0f, fundLeft);
 		if (moved > 0f || fund > 0f) {
 			ThreatIncConfig.log("Strata: the fabrication banks of " + worlds + " worlds (" + (int) moved
-					+ " FP) and the strike fund (" + (int) fund + " FP) moved into the strata"
-					+ (fundLeft > 0.5f ? ", " + (int) fundLeft + " FP of the fund with no room" : ""));
+					+ " FP) and the strike fund (" + (int) fund + " FP) moved into the strata, a size's worth a world at most; "
+					+ (int) ThreatStrata.fpOf(lost) + " FP of the retired figures lost");
 		}
 	}
 
@@ -4819,9 +4834,8 @@ public class ThreatColonyManager {
 	protected static void placeGarrisonSwarm(MarketAPI market, CampaignFleetAPI fleet, Random random) {
 		SectorEntityToken planet = market.getPrimaryEntity();
 		market.getStarSystem().addEntity(fleet);
-		Vector2f loc = Misc.getPointAtRadius(planet.getLocation(),
-				planet.getRadius() + 400f + random.nextFloat() * 300f);
-		fleet.setLocation(loc.x, loc.y);
+		// out of the world itself (the user, 2026-10-25): spawned at the planet, as vanilla's patrols are, and the orbit order takes it out
+		fleet.setLocation(planet.getLocation().x, planet.getLocation().y);
 		fleet.addAssignment(FleetAssignment.ORBIT_AGGRESSIVE, planet, 1000000f);
 	}
 
