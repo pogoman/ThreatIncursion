@@ -159,12 +159,9 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (Global.getSector().getPersistentData().get(ThreatIncData.KEY_RARE_ECONOMY) == null) {
 				ThreatIncData.setUsesRareEconomy(ThreatColonyManager.ogSystemHasRareOre());
 			}
-			// a hive frozen by an unfinished chain (docs/hive-economy.md, "The
-			// bootstrap must not depend on growth") is finished on load, not a
-			// tick later; transient flag, so once per session
+			// once per session (transient flag)
 			if (!bootstrapHealed) {
 				bootstrapHealed = true;
-				ThreatColonyManager.healStalledBootstrap();
 				ThreatColonyManager.adoptUnbookedConquests();
 			}
 		}
@@ -838,7 +835,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		int freeForges = 0;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (market.getSize() < ThreatIncConfig.spreadMinSize()) continue;
-			if (!ThreatColonyManager.hasReadyForge(market)) continue;
+			if (!ThreatColonyManager.seedReady(market)) continue;
 			if (!ThreatColonyManager.isStableForExpansion(market)) continue;
 			// a forge of a pressed system stays home only under posturePressedForgesHome
 			// (off since 2026-10-04): what it may launch is already what it holds

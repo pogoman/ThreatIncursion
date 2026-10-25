@@ -105,8 +105,6 @@ public class ThreatIncConfig {
 	public static int colonizationEscort()   { return i("threatinc_colonizationEscort"); }
 	/** Fleet points a hive's FP bank gains per ship unit its forges produce, per 30 days - the Threat's whole fleet income (closed economy, 2026-09-29). */
 	public static float fabFPPerShipUnit()   { return f("threatinc_fabFPPerShipUnit"); }
-	/** Fleet points each structure a Seeding Swarm founds its colony with costs the launching colony's bank (Population, Spaceport, Fabrication Core, Swarm Nexus, a first industry). */
-	public static float foundingFPPerStructure() { return f("threatinc_foundingFPPerStructure"); }
 	/** Fraction of a colony's standing fleets' FP its bank pays in upkeep every 30 days (garrison, raiders, inbound reinforcements, its ledger-bound fleets). */
 	public static float garrisonUpkeepPerMonth() { return f("threatinc_garrisonUpkeepPerMonth"); }
 	/** Military options menu: how far (su) from a hive's world a defending swarm fleet can be engaged from its orbit; any swarm fleet inside also counts as a defender. */
@@ -258,8 +256,6 @@ public class ThreatIncConfig {
 	/** A garrison swarm below this fraction of its fabricated fleet points no longer holds its slot. */
 	public static float garrisonUnderStrengthFraction() { return f("threatinc_garrisonUnderStrengthFraction"); }
 	public static boolean economyGatesGrowth(){ return b("threatinc_economyGatesGrowth", true); }
-	/** Whether the home system's industries carry Domain items (nanoforge, mantle bore...) where its deposits fall short. */
-	public static boolean homeRelics()        { return b("threatinc_homeRelics", true); }
 	/** Ground (raid) strength one difficulty point of siege fleet lands - measured, about a quarter of crew capacity. */
 	public static float siegeRaidStrPerPoint() { return f("threatinc_siegeRaidStrPerPoint"); }
 	/** A siege lands this much over the 2:1 odds at which the hive overruns a fresh beachhead; 0 sizes for the raids only. */
@@ -280,7 +276,6 @@ public class ThreatIncConfig {
 	/** How far from its nearest target an expedition fleet may stray before it is recalled. */
 	public static float siegeLeashRange()    { return f("threatinc_siegeLeashRange"); }
 	/** Chance that a forge outside the home system's Pristine one carries a Corrupted Nanoforge (fixed roll per world). */
-	public static float forgeNanoforgeChance() { return f("threatinc_forgeNanoforgeChance"); }
 	public static boolean convertDecivWorlds(){ return b("threatinc_convertDecivWorlds", true); }
 
 	// ---- missions (defense-board contracts) ----
@@ -443,6 +438,10 @@ public class ThreatIncConfig {
 	public static float densitySelfWeight()   { return f("threatinc_densitySelfWeight"); }
 	/** Strata a world keeps from the hive's strikes and shifts (800: a seed's worth - never below size 2 by choice). */
 	public static float shiftFloorStrata()    { return f("threatinc_shiftFloorStrata"); }
+	/** Strata a structure the hive planner builds costs the building world (750: 150 FP at strataPerFP 5). */
+	public static float structureStrata()     { return f("threatinc_structureStrata"); }
+	/** Strata a seed is founded with, paid by its source beyond the Seeding Swarm's hulls (400: size 1; the carrier absorbed on landing makes 800, size 2). */
+	public static float seedStrata()          { return f("threatinc_seedStrata"); }
 	/** Ground Defenses structure bonus: defense mult = 1 + bonus (x2 at 1.0). */
 	public static float groundDefensesBonus() { return f("threatinc_groundDefensesBonus"); }
 	/** Heavy Batteries structure bonus: defense mult = 1 + bonus (x3 at 2.0). */
@@ -721,7 +720,6 @@ public class ThreatIncConfig {
 	public static boolean humanBilledReach()       { return b("threatinc_humanBilledReach", true); }
 	/** Each mobilised faction keeps its own stance - PRESS, EXPAND, CONSOLIDATE - as the hive does (ThreatFactionStance). */
 	public static boolean factionStanceEnabled()   { return b("threatinc_factionStanceEnabled", true); }
-	public static boolean threatSuppliesUpkeep()   { return b("threatinc_threatSuppliesUpkeep", true); }
 	/** Standing upkeep (the user, 2026-10-06): the hulls a faction's yards built beyond vanilla's patrol table pay their ships' maintenance a month times this while at home; vanilla's patrols and the hive's garrison are vanilla's to keep. 0 turns it off (ThreatHulls.maintain). */
 	public static float standingUpkeepMult()       { return f("threatinc_standingUpkeepMult"); }
 	public static boolean structuresCostSupplies() { return b("threatinc_structuresCostSupplies", true); }
@@ -732,34 +730,22 @@ public class ThreatIncConfig {
 	public static boolean hiveMilitaryTier()       { return b("threatinc_hiveMilitaryTier", true); }
 	/** The swarm's bombardment draws its fuel from the hive's stock, at the rate everyone pays (ThreatGroundFronts.payOrdnance). */
 	public static boolean threatPaysOrdnance()     { return b("threatinc_threatPaysOrdnance", true); }
+	/** The factions' forward bases pay a supplies upkeep by size (ThreatColonyUpkeep); hive worlds pay none since 2026-10-25. */
 	public static boolean sizeUpkeep()             { return b("threatinc_sizeUpkeep", true); }
 	public static float sizeUpkeepAt3()            { return f("threatinc_sizeUpkeepAt3"); }
 	public static float sizeUpkeepRatio()          { return f("threatinc_sizeUpkeepRatio"); }
 	public static float upkeepBreakEven()          { return f("threatinc_upkeepBreakEven"); }
 	public static float starveDaysPerSize()        { return f("threatinc_starveDaysPerSize"); }
-	/** A FOUNDING BUDGET (S6, 2026-10-10): while a seeding is held on supplies, growth draws only the stock above one founding kit. */
-	public static boolean foundingBudget()         { return b("threatinc_foundingBudget", true); }
 	/** TANGIBLE FEEDING (the user, 2026-10-18): size upkeep arrives by a feeding swarm / convoy, absorbed on arrival (ThreatFeeding). */
 	public static boolean feedConvoys()            { return b("threatinc_feedConvoys", true); }
 	/** Months of a world's imported bill one feeding sailing carries. */
 	public static float feedConvoyLoadMonths()     { return f("threatinc_feedConvoyLoadMonths"); }
 	/** A feeding sailing is called when the larder (and what is at sea to it) holds under this many months of the bill. */
 	public static float feedConvoyReserveMonths()  { return f("threatinc_feedConvoyReserveMonths"); }
-	/** Hive cover (2026-10-18): the hive stock covers a hive world's vanilla shortages as a human depot covers its colony's (ThreatHiveCover). */
-	public static boolean hiveCover()              { return b("threatinc_hiveCover", true); }
 	/** Size upkeep on the humans' core colonies (2026-10-18): the hive's table billed to every mobilised faction's colony, not the forward bases alone (ThreatCoreUpkeep). */
 	public static boolean coreSizeUpkeep()         { return b("threatinc_coreSizeUpkeep", false); }
 	/** Whether the player's own colonies pay it too. */
 	public static boolean coreSizeUpkeepPlayer()   { return b("threatinc_coreSizeUpkeepPlayer", false); }
-	/** K2 (2026-10-13, hw177c): the navy's upkeep and the fleets away leave the kit, and the navy a prong's trip, in the supplies stock (ThreatFuel.keptAhead). */
-	public static boolean keepAheadOfFleets()      { return b("threatinc_keepAheadOfFleets", true); }
-	/** After hw180 (2026-10-13): navy upkeep the stock keeps ahead recycles the smallest swarms, and a hive with navy upkeep unpaid in the last month builds no navy (ThreatColonyManager.navyUnpaidRecently). */
-	public static boolean unpaidNavyHoldsBuilder() { return b("threatinc_unpaidNavyHoldsBuilder", true); }
-	/** K4 (2026-10-13): a founding's chest-full surplus test reads the supplies demand less the held seedings' own kit bookings (ThreatFuel.canFound). */
-	public static boolean foundingSurplusOwnBookings() { return b("threatinc_foundingSurplusOwnBookings", true); }
-	public static float feedShareExpand()          { return f("threatinc_feedShareExpand"); }
-	public static float feedSharePress()           { return f("threatinc_feedSharePress"); }
-	public static float feedShareConsolidate()     { return f("threatinc_feedShareConsolidate"); }
 	/** Supplies an expedition draws per fleet point. */
 	public static float expeditionSuppliesPerPoint() { return f("threatinc_expeditionSuppliesPerPoint"); }
 	public static boolean fleetUpkeep()            { return b("threatinc_fleetUpkeep", true); }
@@ -1112,10 +1098,6 @@ public class ThreatIncConfig {
 	public static float alarmTargetMult()     { return f("threatinc_alarmTargetMult"); }
 	/** Whether a ground victory draws an immediate strike at the winner. */
 	public static boolean retaliationEnabled() { return b("threatinc_retaliationEnabled", true); }
-	/** The colonies' break-even sustenance is paid before the fleets away and the navy at home (ThreatColonyUpkeep.sustenanceDue, 2026-10-08). */
-	public static boolean sustenanceFirst() { return b("threatinc_sustenanceFirst", true); }
-	/** The hive keeps no standing navy its supplies flow cannot carry with the sends it wants (ThreatColonyManager.fitNavyToSpare, 2026-10-08). */
-	public static boolean navyFitsSpare() { return b("threatinc_navyFitsSpare", true); }
 
 	// ---- coalition (docs/design-theory.md 8.7) ----
 

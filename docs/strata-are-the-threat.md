@@ -80,8 +80,7 @@ clipped to crew space; the force holds the orbit, fights what buds, razes every 
 lands on arrival, home when both are spent; Support and Defend off the hive rows; "Closed:
 start phase A".
 
-Nothing open. Phase A started 2026-10-25 evening and was BUILT the same day (jar 13:22, untested;
-section 10).
+Nothing open. Phases A (jar 13:22) and B (jar 13:54) BUILT 2026-10-25, untested (section 10).
 
 ## 1. Review - most of this already exists, hidden
 
@@ -687,6 +686,20 @@ navy fit and the upkeep recycle, `ThreatBuildCost` -> `structureStrata`, foundin
 `foundingBudget` gone. `ThreatColonyUpkeep`, `ThreatFeeding`, `ThreatHiveCover`, `ThreatUpkeep`,
 `ThreatReach` (the bill = passage fuel). Proves: a blockade starves a seed by the Core's imports;
 a fortress with its own plants holds; nothing thins with time.
+**BUILT 2026-10-25, jar 13:54, untested.** Judgement calls: `ThreatColonyUpkeep` stays as the FORWARD
+BASES' size-upkeep table (`enabled()`), with `hives()` false and the hive's feed deleted; the supplies
+stock reads 0 rather than being removed from the save; structures keep vanilla's build time and
+cost `structureStrata` off the payer world above its floor (`structureFP`, `canAffordFP`), a build
+the strata cannot pay waiting (`buildWaiting`); a seed is `seedStrata` charged at the source plus
+the Seeding Swarm's hulls absorbed on landing (`settleFounding`: 80 FP of hulls on 400 = 800, size
+2); a Seeding Swarm needs a standing Core (`seedReady`), no forge or retool; forges and Domain
+items on older saves are stripped each tick (`retireForge`, `maintainHomeRelics`); the board's
+Fed / Vitality column is the Core's state (`fedState` on `daysToLoseSize` / `daysToNextSize`,
+`stateColor`); the Abyss bootstrap wave still lands as a garrison (phase C absorbs it);
+`sortieStayDays` stays for the humans. To verify in game: a seed lands at size 2 (800 strata, the
+"Founded" log line); an old save logs forges retired and items given up; the Core column reads
+growing / holding / starving; no seeding or strike is ever held on supplies; a planner build logs
+"N FP banked".
 
 **C. Fleets bud, shift and are absorbed; the flow is staggered and seen.** The garrisons go:
 budding a ship at a time (`growGarrisonFleet` per ship, the flow, the queue per world, absorb

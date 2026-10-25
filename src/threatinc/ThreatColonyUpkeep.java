@@ -16,41 +16,20 @@ import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * Colony upkeep by size (2026-09-30, user's call; docs/hive-economy.md "Size
- * upkeep"). A colony of size 3 or more costs sizeUpkeepAt3 x
- * sizeUpkeepRatio^(size - 3) supplies a month - 100, 250, 625 ... 9,766 at
- * size 8 - a hive world and a forward base alike; sizes 1 and 2 are free, so
- * a seed costs nothing until it is a world. The share of it that arrives sets
- * the colony's growth (growthRate): the break-even share (upkeepBreakEven)
- * holds its size, all of it grows it at the full pace, none of it takes a size
- * off every starveDaysPerSize days.
+ * Colony upkeep by size for the factions' FORWARD BASES (2026-09-30, user's
+ * call; docs/hive-economy.md "Size upkeep"): a base of size 3 or more costs
+ * sizeUpkeepAt3 x sizeUpkeepRatio^(size - 3) supplies a month - 100, 250,
+ * 625 ... - and the share of it paid sets its growth (growthRate): the
+ * break-even share (upkeepBreakEven) holds its size, all of it grows it at
+ * the full pace, none of it takes a size off every starveDaysPerSize days
+ * (ThreatFrontlines.feedSize).
  *
- * <p>The hive pays out of the production of the days fed, after its fleets
- * away (feed, once a poll):
- * <ol>
- * <li>Sustenance: the break-even share of every colony's upkeep, forge worlds
- * that make more than they eat first, then the worlds nearest the humans - up to the largest stance share
- * of the production (sustainShare, 0.7), never more: the hive always keeps a
- * tithe for forges, waves and fleets. h35a let sustenance take everything and
- * the base save's hive shrank until it did - 26k of 29k a month - with nothing
- * left to buy the forges that would have fed it again. The leeway is the half
- * level a colony's progress runs below its size before the size goes
- * (SHRINK_MARGIN), not the stock: a raided forge stops growth at once and
- * costs sizes only if it stays down.</li>
- * <li>Growth: the rest of each colony's upkeep, out of its stance's share of
- * the production (feedShare: expanding 0.5, pressing 0.7, consolidating 0.5),
- * to a colony only while that share still holds its next size's sustenance.
- * Forges whose next size pays for itself first; then pressing feeds the front,
- * expanding and consolidating the smallest. A size-2 world grows into
- * size 3, where upkeep starts, only as it is fed for it (its growth priced at
- * size 3's upkeep); a size-1 seed and a forge world below size 3 grow free.
- * h35a let size 2 grow free: 76 worlds grew into size 3 unpaid and starved
- * back.</li>
- * </ol>
- * What a colony's own forge does not make it imports, and imports arrive cut
- * by a human blockade over it (half or all, ThreatBlockade.hiveCut) and halved
- * while its port is disrupted (importCut); a blockaded forge world's surplus
- * cannot leave either (reachesStock).
+ * <p>HIVE WORLDS PAY NONE since 2026-10-25 (phase B of
+ * docs/strata-are-the-threat.md): a hive's size is its strata, grown by its
+ * Fabrication Core on metals and fuel (ThreatColonyManager.coreState); the
+ * swarm keeps no supplies stock and its fleets burn none. What stays here
+ * of the hive is the import cut a blockade puts on its fuel reaching the
+ * stock (importCut, reachesStock) and the census line.
  */
 public class ThreatColonyUpkeep {
 
@@ -62,6 +41,11 @@ public class ThreatColonyUpkeep {
 
 	public static boolean enabled() {
 		return ThreatIncConfig.sizeUpkeep() && ThreatFuel.enabled();
+	}
+
+	/** Hive worlds pay no size upkeep since 2026-10-25 (phase B): their size is their strata. enabled() is the forward bases' gate. */
+	public static boolean hives() {
+		return false;
 	}
 
 	protected static Map<String, Object> data() {
@@ -142,339 +126,6 @@ public class ThreatColonyUpkeep {
 		return keep + (units - keep) * (1f - cut);
 	}
 
-	/** The share of the month's production, after fleets away, the hive lets its colonies' upkeep take (by stance). */
-	public static float feedShare() {
-		int stance = ThreatStance.stance();
-		return threatinc.rules.StanceRules.feedShare(
-				stance == ThreatStance.PRESS ? threatinc.rules.StanceRules.PRESS
-						: stance == ThreatStance.CONSOLIDATE ? threatinc.rules.StanceRules.CONSOLIDATE
-						: threatinc.rules.StanceRules.EXPAND,
-				ThreatIncConfig.feedShareExpand(), ThreatIncConfig.feedSharePress(),
-				ThreatIncConfig.feedShareConsolidate());
-	}
-
-	/**
-	 * Supplies a month the production leaves once the fleets away are paid and
-	 * every colony's sustenance fits under sustainShare, as the last feed read
-	 * it: what a new trip may burn without starving a colony (ThreatReach). The chest full, the
-	 * production less what the colonies took; else less their share, the rest kept for expansion.
-	 * Unlimited with size upkeep off.
-	 */
-	public static float spareSupplies() {
-		if (!enabled()) return Float.MAX_VALUE;
-		Object v = data().get("spare");
-		return v instanceof Float ? (Float) v : ThreatFuel.perMonth(Commodities.SUPPLIES);
-	}
-
-	/** Supplies a month the fleets away burned at the last feed. */
-	public static float fleetsPerMonth() {
-		Object v = data().get("fleets");
-		return v instanceof Float ? (Float) v : 0f;
-	}
-
-	/** Supplies a month the navy above the patrols pays at home, as the last feed read it (navyChargePerMonth). */
-	public static float navyPerMonth() {
-		Object v = data().get("navy");
-		return v instanceof Float ? (Float) v : 0f;
-	}
-
-	/** Supplies a month every colony's garrison above its patrols costs now (ThreatColonyManager.payNavySupplies's rate x navyFP). */
-	public static float navyChargePerMonth() {
-		if (!ThreatIncConfig.threatSuppliesUpkeep()) return 0f;
-		float rate = ThreatReach.suppliesPerFP() * ThreatIncConfig.standingUpkeepMult();
-		if (rate <= 0f) return 0f;
-		float fp = 0f;
-		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
-			fp += ThreatColonyManager.navyFP(m, ThreatIncData.garrisonsFor(m.getId()));
-		}
-		return fp * rate;
-	}
-
-	/**
-	 * The colonies' sustenance due at the next feed - every world's break-even share of its upkeep for the days
-	 * since the last feed, under sustainShare of the production over the same days - which the fleets away and
-	 * the navy at home may not draw (ThreatColonyManager.paySupplies / payNavySupplies, ThreatReach.freeStock):
-	 * the forge is the income, the navy the expense (the user, 2026-10-08, after hw68a: sustenance paid last,
-	 * the colonies starved first at a 10% overshoot, sizes 179 -> 93 and income 72k -> 25k a month in eight
-	 * months while the fleets already out kept drawing; the navy shrank only after the forges were gone).
-	 * 0 with sustenanceFirst off.
-	 */
-	public static float sustenanceDue() {
-		if (!enabled() || !ThreatIncConfig.sustenanceFirst()) return 0f;
-		Object last = data().get("at");
-		if (!(last instanceof Long)) return 0f;
-		float days = Global.getSector().getClock().getElapsedDaysSince((Long) last);
-		if (days <= 0f) return 0f;
-		float t = breakEven();
-		float due = 0f;
-		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
-			float perMonth = perMonth(m.getSize());
-			if (perMonth <= 0f) continue; // a seed or a forge world growing toward its first output: free
-			float want = perMonth * days / 30f;
-			float own = Math.min(want, localSupplies(m) * days / 30f);
-			float cap = own + (want - own) * (1f - importCut(m));
-			due += Math.min(t * want, cap);
-		}
-		float made = ThreatFuel.perMonth(Commodities.SUPPLIES) * days / 30f;
-		return Math.max(0f, Math.min(due, Math.min(sustainShare() * made, ThreatFuel.stock(Commodities.SUPPLIES))));
-	}
-
-	/** The share of the production, after fleets away, sustenance may take whatever the stance: the largest stance share. */
-	public static float sustainShare() {
-		float share = Math.max(ThreatIncConfig.feedShareExpand(),
-				Math.max(ThreatIncConfig.feedSharePress(), ThreatIncConfig.feedShareConsolidate()));
-		return Math.max(0f, Math.min(1f, share));
-	}
-
-	protected static class Need {
-		MarketAPI market;
-		int size;
-		float want, cap, sustain, paid, frontLY;
-		boolean forge, forgeStepPays, grows;
-		/** A size-2 world fed toward size 3: its want is size 3's upkeep, and it has no sustenance to pay. */
-		boolean seed;
-	}
-
-	/**
-	 * Pays every hive world's upkeep for the days since the last feed - once a
-	 * poll, after the fleets away are paid (maintainGarrisons), whose supplies
-	 * a month {@code fleetsPerMonth} come off the production the growth share
-	 * is taken from. Records each world's share paid (MEM_FED).
-	 */
-	public static void feed(float fleetsPerMonth) {
-		if (!enabled()) return;
-		long now = Global.getSector().getClock().getTimestamp();
-		Object last = data().get("at");
-		data().put("at", now);
-		if (!(last instanceof Long)) return;
-		float days = Global.getSector().getClock().getElapsedDaysSince((Long) last);
-		if (days <= 0f) return;
-
-		float t = breakEven();
-		List<MarketAPI> humans = humanMarkets();
-		List<Need> needs = new ArrayList<Need>();
-		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
-			int size = m.getSize();
-			float perMonth = perMonth(size);
-			float local = localSupplies(m) * days / 30f;
-			// a forge world grows free to its first output at size 3 (the opening chain's seed forge)
-			boolean seed = perMonth <= 0f && size == 2 && ThreatColonyManager.getForge(m) == null;
-			if (perMonth <= 0f && !seed) {
-				// a size-1 seed, or a forge world growing toward its first output: free - but a size-1
-				// seed with its imports cut starves on the cut as a size-2 one does, to nothing (the
-				// user, 2026-10-24: "hive should shrink to zero and be destroyed if it reaches 0")
-				// (a blockaded seed starves by the Core's famine since 2026-10-25, ThreatColonyManager.coreState)
-				float cut = 0f;
-				if (cut > 0f) {
-					m.getMemoryWithoutUpdate().set(MEM_FED, Math.min(t, 1f - cut));
-				} else {
-					m.getMemoryWithoutUpdate().unset(MEM_FED);
-				}
-				continue;
-			}
-			Need n = new Need();
-			n.market = m;
-			n.size = size;
-			n.seed = seed;
-			n.want = (seed ? perMonth(3) : perMonth) * days / 30f;
-			float own = seed ? 0f : Math.min(n.want, local);
-			n.cap = own + (n.want - own) * (1f - importCut(m));
-			n.sustain = seed ? 0f : Math.min(t * n.want, n.cap);
-			// fed first while it makes more than it eats: a forge's size - 2 units
-			// of 750 against 0.5 x its upkeep peak at size 6 and fall short at 8
-			// (4,500 against 4,883) - the lt save's size-8 forges ate first and made
-			// less than they took
-			n.forge = local > 0f && local >= n.sustain;
-			n.forgeStepPays = n.forge && forgeStepPays(m, t);
-			n.grows = size < ThreatColonyManager.maxColonySize(m)
-					&& !ThreatGroundFronts.hasFront(m) && !ThreatRazing.saturated(m);
-			n.frontLY = frontLY(m, humans);
-			needs.add(n);
-		}
-		// what a new trip may burn a month (ThreatReach): the production less
-		// the fleets away and the sustenance at its share - a trip never starves
-		// a colony
-		float sustainMonth = 0f;
-		for (Need n : needs) sustainMonth += n.sustain;
-		sustainMonth *= 30f / days;
-		float sustainCap = sustainShare();
-		// ...and the navy charge the garrisons above the patrols pay at home (ThreatColonyManager.payNavySupplies):
-		// a claim on the same stock, so a swarm that leaves on a strike moves its burn rather than adds one
-		// (ThreatReach.awayFP). hw48-49: left out, the spare was overstated by the whole charge and three
-		// corrections were layered on the symptom
-		float navyMonth = navyChargePerMonth();
-		data().put("fleets", Math.max(0f, fleetsPerMonth));
-		data().put("navy", navyMonth);
-		data().put("spare", ThreatFuel.perMonth(Commodities.SUPPLIES) - Math.max(0f, fleetsPerMonth) - navyMonth
-				- (sustainCap > 0f ? sustainMonth / sustainCap : sustainMonth));
-		ThreatReach.clearCommitted();
-		if (needs.isEmpty()) return;
-
-		// sustenance first (sustenanceDue): the colonies' break-even is a claim on the whole stock and on the whole
-		// production - the fleets away and the planner's forge reserve come after it, not before; growth still
-		// draws only what is free above the reserve, out of the production the fleets away leave
-		boolean first = ThreatIncConfig.sustenanceFirst();
-		float whole = ThreatFuel.stock(Commodities.SUPPLIES);
-		float free = ThreatFuel.free(Commodities.SUPPLIES); // above the planner's reserve (ThreatFuel.reserved)
-		float stock = first ? whole : free;
-		float made = ThreatFuel.perMonth(Commodities.SUPPLIES) * days / 30f;
-		float fleets = Math.max(0f, fleetsPerMonth) * days / 30f;
-		float net = Math.max(0f, made - fleets);
-		// 1. sustenance, out of the days' production up to sustainShare: forges
-		// first, then the front
-		Collections.sort(needs, SUSTAIN_ORDER);
-		float pool = Math.min(stock, sustainShare() * (first ? made : net));
-		// billed reach lets a trip draw on the stock (ThreatReach.canSustain(fp,
-		// days)), which takes its burn out of net: the stock above one founding
-		// kit makes the colonies' sustenance whole again, or a stock-paid trip
-		// would starve them with the supplies still banked (2026-10-01 review)
-		if (ThreatReach.enabled()) {
-			float sustenance = 0f;
-			for (Need n : needs) sustenance += n.sustain;
-			if (sustenance > pool) {
-				pool += Math.max(0f, Math.min(sustenance - pool, stock - pool - ThreatFuel.foundingCost()[0]));
-			}
-		}
-		float sustained = 0f, short_ = 0f, bill = 0f;
-		for (Need n : needs) {
-			if (!n.seed) bill += n.want;
-			float pay = Math.min(n.sustain, pool);
-			n.paid = pay;
-			pool -= pay;
-			stock -= pay;
-			sustained += pay;
-			if (pay < n.sustain) short_ += n.sustain - pay;
-		}
-		// 2. growth, out of the stance's share, to colonies whose next size it still holds - from the free stock
-		if (first) stock = Math.max(0f, Math.min(stock, free - sustained));
-		float budget = Math.max(0f, feedShare() * net - sustained);
-		Collections.sort(needs, growthOrder(ThreatStance.stance()));
-		float grown = 0f;
-		// A FOUNDING BUDGET BEFORE GROWTH (the user, 2026-10-10 21:45, "S6 sounds fine", after hw149c: 43 seedings
-		// held 1,200 days on a stock of 0-2,600 while the feed grew the colonies 41-43k a month and the navy sat
-		// at 125k FP - "a frozen navy i would consider a bug"): while a seeding is held on supplies, growth draws
-		// only the stock above one founding kit (ThreatFuel.foundingCost), so the flow banks the kit within a
-		// month or two and the wave sails. Sustenance (above) is untouched; the navy's fit already asks the
-		// spare for the same kit a month (ThreatColonyManager.fitWant) - this makes the stock keep it.
-		float kit = ThreatIncConfig.foundingBudget() && ThreatFuel.heldOnSuppliesThisMonth() > 0f
-				? ThreatFuel.foundingCost()[0] : 0f;
-		float growStock = Math.max(0f, stock - kit);
-		if (kit > 0f) {
-			ThreatIncConfig.logQuiet("foundingbudget", "Feed: a seeding is held - growth leaves " + (int) Math.min(stock, kit)
-					+ " of " + (int) kit + " supplies for the founding kit, " + (int) growStock + " to grow on");
-		}
-		for (Need n : needs) {
-			if (budget <= 0f || growStock <= 0f) break;
-			if (!n.grows) continue;
-			float next = t * (perMonth(n.size + 1) - perMonth(n.size)) * days / 30f;
-			if (budget < next) continue;
-			float extra = Math.min(n.cap - n.paid, Math.min(budget, growStock));
-			if (extra <= 0f) continue;
-			n.paid += extra;
-			budget -= extra;
-			growStock -= extra;
-			stock -= extra;
-			grown += extra;
-		}
-		// the chest full (ThreatStance.chestFull), the tithe above sustenance feeds the fleets: the spare is the
-		// production less what the colonies actually took, not less their share (hw62: the fund banked 38k -> 141k FP
-		// in every game while the spare sat at zero under the expansion tithe; 2026-10-08)
-		if (ThreatStance.chestFull()) {
-			float took = Math.max(sustainMonth, (sustained + grown) * 30f / days);
-			data().put("spare", ThreatFuel.perMonth(Commodities.SUPPLIES) - Math.max(0f, fleetsPerMonth) - navyMonth - took);
-		}
-		float draw = Math.min(sustained + grown, first ? ThreatFuel.stock(Commodities.SUPPLIES) : ThreatFuel.free(Commodities.SUPPLIES));
-		if (draw > 0f) ThreatFuel.pay(Commodities.SUPPLIES, draw, "feed");
-		// TANGIBLE FEEDING (the user, 2026-10-18, ThreatFeeding): the stock is debited as above, but a world
-		// eats only its own forge's output on the spot - the rest of its allotment docks at the hive, sails as
-		// a feeding swarm and is eaten from the world's larder when it lands; the share paid is what it ate
-		boolean tangible = ThreatFeeding.enabled();
-		for (Need n : needs) {
-			float paid = n.paid;
-			if (tangible) {
-				float ownOutput = n.seed ? 0f : Math.min(n.want, localSupplies(n.market) * days / 30f);
-				float local = Math.min(paid, ownOutput);
-				float importedMonthly = Math.max(0f, n.want - ownOutput) * 30f / Math.max(0.01f, days);
-				paid = local + ThreatFeeding.payHive(n.market, paid - local, importedMonthly);
-			}
-			float share = n.want > 0f ? paid / n.want : 1f;
-			// a seed has nothing to starve on: unfed it holds, fed it grows - unless a blockade or a
-			// dead port cuts what it would import (the user, 2026-10-24, in orbit over a size-2 hive
-			// with its imports cut 100%: "shortages seem to have no effect"): fed the share that gets
-			// through, it starves - to nothing (the Core's famine since 2026-10-25, ThreatColonyManager.coreState; ThreatStrata.collapse)
-			if (n.seed) {
-				share = t + (1f - t) * share;
-			}
-			n.market.getMemoryWithoutUpdate().set(MEM_FED, share);
-		}
-		// sustenance unpaid is the one supplies shortage the planner answers on
-		// its own (ThreatFuel.noteShort), and it is demand the stock did not meet
-		if (short_ > 0f) {
-			ThreatFuel.noteShort(Commodities.SUPPLIES);
-			ThreatFuel.noteDemand(Commodities.SUPPLIES, short_);
-		}
-		add("bill", bill);
-		add("sustained", sustained);
-		add("grown", grown);
-		add("short", short_);
-	}
-
-	/** Whether the forge world's next size adds more output than sustenance: one unit a size against t x the upkeep step. */
-	protected static boolean forgeStepPays(MarketAPI m, float t) {
-		CommodityOnMarketAPI com = m.getCommodityData(Commodities.SUPPLIES);
-		if (com == null) return false;
-		float unit = com.getCommodity().getEconUnit() * ThreatIncConfig.hiveSurplusMult();
-		int s = m.getSize();
-		return unit >= t * (perMonth(s + 1) - perMonth(s));
-	}
-
-	protected static final Comparator<Need> SUSTAIN_ORDER = new Comparator<Need>() {
-		public int compare(Need a, Need b) {
-			if (a.forge != b.forge) return a.forge ? -1 : 1;
-			int c = Float.compare(a.frontLY, b.frontLY);
-			return c != 0 ? c : b.size - a.size;
-		}
-	};
-
-	/** Growth order: forges whose next size pays first; then the front (pressing), the biggest (consolidating) or the smallest (expanding). */
-	protected static Comparator<Need> growthOrder(final int stance) {
-		return new Comparator<Need>() {
-			public int compare(Need a, Need b) {
-				if (a.forgeStepPays != b.forgeStepPays) return a.forgeStepPays ? -1 : 1;
-				// pressing feeds the front; expanding and consolidating the smallest.
-				// Consolidating fed the biggest until 2026-10-01: ng3a's three core
-				// forges grew 7 -> 8 on it (each step 2,930 supplies a month more for
-				// 750 more made) and the bill went 35k -> 53k while young worlds died
-				// cheap - a razing pours ~1k fuel into a size-2 world and 39k into a
-				// size 5, so holding is growing the small out of reach of it
-				int c;
-				if (stance == ThreatStance.PRESS) c = Float.compare(a.frontLY, b.frontLY);
-				else c = a.size - b.size;
-				return c != 0 ? c : Float.compare(a.frontLY, b.frontLY);
-			}
-		};
-	}
-
-	/** Every market in the economy that is not the Threat's: the humans the front is measured to. */
-	protected static List<MarketAPI> humanMarkets() {
-		List<MarketAPI> out = new ArrayList<MarketAPI>();
-		for (MarketAPI m : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (m == null || !m.isInEconomy() || m.getPrimaryEntity() == null) continue;
-			if (Factions.THREAT.equals(m.getFactionId())) continue;
-			out.add(m);
-		}
-		return out;
-	}
-
-	/** Light-years from the world to the nearest human market. */
-	protected static float frontLY(MarketAPI m, List<MarketAPI> humans) {
-		float best = Float.MAX_VALUE;
-		for (MarketAPI h : humans) {
-			best = Math.min(best, Misc.getDistanceLY(m.getLocationInHyperspace(), h.getLocationInHyperspace()));
-		}
-		return best;
-	}
-
 	protected static void add(String key, float v) {
 		Object o = data().get(key);
 		data().put(key, (o instanceof Float ? (Float) o : 0f) + v);
@@ -488,7 +139,6 @@ public class ThreatColonyUpkeep {
 
 	/** The month's upkeep line for the census log, and the month's tallies reset. */
 	public static void logMonth() {
-		if (!enabled()) return;
 		int growing = 0, holding = 0, shrinking = 0, free = 0, blockaded = 0, portsDown = 0;
 		float perMonth = 0f;
 		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
@@ -501,16 +151,12 @@ public class ThreatColonyUpkeep {
 				free++;
 				continue;
 			}
-			float rate = growthRate(fedShare(m));
-			if (rate > 0f) growing++;
-			else if (rate < 0f) shrinking++;
+			int state = ThreatWarBoard.fedState(m);
+			if (state == ThreatWarBoard.GROWING) growing++;
+			else if (state == ThreatWarBoard.STARVING) shrinking++;
 			else holding++;
 		}
-		ThreatIncConfig.log("Colony upkeep: bill " + (int) take("bill") + " (" + (int) perMonth + "/mo), paid "
-				+ (int) take("sustained") + " sustenance + " + (int) take("grown") + " growth, short "
-				+ (int) take("short") + "; stance " + ThreatStance.stanceName() + " share " + feedShare()
-				+ "; growing " + growing + ", holding " + holding + ", shrinking " + shrinking + ", free " + free
-				+ "; blockaded " + blockaded + ", ports down " + portsDown + "; fleets away " + (int) fleetsPerMonth()
-				+ "/mo, navy " + (int) navyPerMonth() + "/mo, spare " + (int) spareSupplies() + "/mo");
+		ThreatIncConfig.log("Hive worlds: growing " + growing + ", holding " + holding + ", shrinking " + shrinking
+				+ ", free " + free + "; blockaded " + blockaded + ", ports down " + portsDown + " (no upkeep since 2026-10-25)");
 	}
 }

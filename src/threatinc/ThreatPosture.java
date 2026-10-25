@@ -247,14 +247,6 @@ public class ThreatPosture {
 
 	/** wantFP before the consolidation reads it. */
 	protected static float plainWantFP(MarketAPI market) {
-		// while the navy fits the spare (ThreatColonyManager.fitActive, 2026-10-08) a colony nobody attacks
-		// wants the fit's floor, whatever reads it: hw79a's pressure pass, reading the posture's want with
-		// every colony held at the floor, found every colony short, no donor, and fabricated the receiver a
-		// swarm from a fabricator's bank that the fit recycled (4,330 fabricated, 1,060 recycled at the same hive)
-		if (market != null && market.getStarSystem() != null && !underAttack(market.getStarSystem())
-				&& ThreatColonyManager.fitActive()) {
-			return ThreatColonyManager.fitFloor(market);
-		}
 		float[] c = market != null ? COLONY.get(market.getId()) : null;
 		return (c != null ? c[0] : baseFP(market)) + ThreatStance.extraWantFP(market);
 	}
@@ -264,7 +256,7 @@ public class ThreatPosture {
 		float[] c = market != null ? COLONY.get(market.getId()) : null;
 		float need = c != null ? c[1] : 0f;
 		// consolidating (consolidate): a keystone's stand is its need - held from rallies, launches and
-		// the navy's fit (launchSpareFP, fitFloor); a conceded hive needs nothing, so it gives to the reserve
+		// launches (launchSpareFP); a conceded hive needs nothing, so it gives to the reserve
 		if (market != null && !KEYSTONE.isEmpty()) {
 			Float stand = KEYSTONE.get(market.getId());
 			if (stand != null) return Math.max(stand, need);
@@ -787,7 +779,7 @@ public class ThreatPosture {
 		if (margin <= 0f) margin = 1f;
 		float postureMargin = Math.max(0f, ThreatIncConfig.postureMargin());
 		float band = Math.max(0f, ThreatIncConfig.postureBand());
-		float bill = ThreatColonyManager.foundingFP(ThreatColonyManager.FOUNDING_CORE_STRUCTURES + 1);
+		float bill = ThreatColonyManager.seedFP();
 		// the swarm's own restraints, removed 2026-10-04 (docs/game-runs.md 4); each knob puts one back
 		float stagedShare = Math.max(0f, ThreatIncConfig.postureStagedShare());
 		boolean triage = ThreatIncConfig.postureTriage();
@@ -1861,9 +1853,9 @@ public class ThreatPosture {
 	protected static Map<String, Float> waitingBills() {
 		Map<String, Float> out = new HashMap<String, Float>();
 		for (String id : ThreatColonyManager.buildWaiting().keySet()) {
-			out.put(id, ThreatColonyManager.foundingFP(1));
+			out.put(id, ThreatColonyManager.structureFP());
 		}
-		float founding = ThreatColonyManager.foundingFP(ThreatColonyManager.FOUNDING_CORE_STRUCTURES + 1);
+		float founding = ThreatColonyManager.seedFP();
 		for (Map.Entry<String, String> e : ThreatIncData.stages().entrySet()) {
 			if (!ThreatIncData.STAGE_SEEDED.equals(e.getValue())) continue;
 			if (ThreatIncData.bootstrapSeeds().contains(e.getKey())) continue;

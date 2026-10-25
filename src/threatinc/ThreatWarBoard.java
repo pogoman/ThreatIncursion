@@ -191,6 +191,8 @@ public class ThreatWarBoard {
 		public float health = -1f;
 		/** Size upkeep: the share of its worlds' supplies upkeep paid at the last feed, 0..1; -1 with nothing billed. */
 		public float fed = -1f;
+		/** The Fabrication Cores' state over the system's worlds (fedState): starving before growing before holding. */
+		public int core = HOLDING;
 		/** Size upkeep: a world here is starving, the first to lose a size in {@code loseDays}. */
 		public boolean starving;
 		public float loseDays = Float.MAX_VALUE;
@@ -279,9 +281,6 @@ public class ThreatWarBoard {
 		e.stage = ThreatIncData.stages().get(systemId);
 		e.markets = ThreatIncData.getLiveColonyMarkets(systemId);
 
-		boolean sized = ThreatColonyUpkeep.enabled();
-		float weightedHealth = 0f;
-		float bill = 0f, paid = 0f;
 		boolean anyDeclining = false;
 		boolean anyGrowing = false;
 		for (MarketAPI market : e.markets) {
@@ -289,30 +288,18 @@ public class ThreatWarBoard {
 			// "declining" since the ground-war rework: a front is on the ground
 			// taking the colony apart, or saturation is razing it from orbit
 			boolean besieged = ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market);
-			if (sized) {
-				// size upkeep (2026-09-30): the share of the bill paid, and
-				// whether each world grows, holds or starves on it
-				float upkeep = ThreatColonyUpkeep.perMonth(market.getSize());
-				bill += upkeep;
-				paid += upkeep * ThreatColonyUpkeep.fedShare(market);
-				int state = fedState(market);
-				if (state == STARVING) {
-					e.starving = true;
-					e.loseDays = Math.min(e.loseDays, ThreatColonyManager.daysToLoseSize(market));
-				}
-				if (besieged) anyDeclining = true;
-				else if (state == GROWING) anyGrowing = true;
-			} else {
-				float health = ThreatColonyManager.computeHealth(market);
-				weightedHealth += health * market.getSize();
-				if (besieged) anyDeclining = true;
-				else if (ThreatColonyManager.growthMultFor(health) > 0f) anyGrowing = true;
+			// the Fabrication Core's state (2026-10-25): growing, holding or starving on its inputs
+			int state = fedState(market);
+			if (state == STARVING) {
+				e.starving = true;
+				e.loseDays = Math.min(e.loseDays, ThreatColonyManager.daysToLoseSize(market));
 			}
+			if (besieged) anyDeclining = true;
+			else if (state == GROWING) anyGrowing = true;
 		}
 		// the swarms as the player last saw them, never the live garrisons
 		e.seen = ThreatIntel.report(Factions.PLAYER, systemId);
-		if (sized) e.fed = bill > 0f ? paid / bill : -1f;
-		else if (e.mass > 0) e.health = weightedHealth / e.mass;
+		e.core = e.starving ? STARVING : anyGrowing ? GROWING : HOLDING;
 		e.trend = anyDeclining || e.starving ? -1 : (anyGrowing ? 1 : 0);
 
 		e.staging = ThreatColonyManager.pickStrikeStaging(systemId, false);
@@ -832,12 +819,9 @@ public class ThreatWarBoard {
 			if (e.mass < ThreatIncConfig.strikeMinSize()) {
 				chip = "FOOTHOLD";
 				reason = "A young foothold, below strike size.";
-			} else if (e.trend == 0 && ThreatColonyUpkeep.enabled()) {
+			} else if (e.trend == 0) {
 				chip = "HOLDING";
 				reason = "Holding its size - no world here is growing.";
-			} else if (e.trend == 0) {
-				chip = "STALLED";
-				reason = "Growth stalled - its supply lines are choked.";
 			} else {
 				chip = "ENTRENCHED";
 				reason = "Entrenched and growing; not yet staging expeditions.";
@@ -2107,11 +2091,9 @@ public class ThreatWarBoard {
 
 		// the stock table carries the text, the clicks and the tooltips
 		final Cols c = new Cols(width - 24f);
-		// size upkeep and billed reach (2026-09-30): the vitality column is the
-		// share of the supplies upkeep paid, and reach the world struck first
-		final boolean sized = ThreatColonyUpkeep.enabled();
+		// the Core column (2026-10-25) is the Fabrication Cores' state; reach the world struck first
 		final boolean billed = ThreatReach.enabled();
-		String[] names = {"#", "System", "Threat", "Worlds", "Mass", sized ? "Fed" : "Vitality", "Swarm fleet",
+		String[] names = {"#", "System", "Threat", "Worlds", "Mass", "Core", "Swarm fleet",
 				"Reach", "Strikes", "Activity", "Supply", "Core"};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < COLS; i++) {
@@ -2123,22 +2105,14 @@ public class ThreatWarBoard {
 		main.makeTableItemsClickable();
 		main.addTableHeaderTooltip(c.visibleIndex(RANK), "Priority: an expedition in flight, "
 				+ (billed ? "a strike it can pay for" : "living systems inside its strike reach")
-				+ (sized ? ", a colony declining or starving" : ", a colony already declining")
+				+ ", a colony declining or starving"
 				+ ", its place in the hive's supply chain, then mass and proximity to the core. The "
 				+ "reason is the first line of the row tooltip.");
 		main.addTableHeaderTooltip(c.visibleIndex(WORLDS), "The size of every hive colony in the "
 				+ "system, largest first.");
 		main.addTableHeaderTooltip(c.visibleIndex(MASS), "Combined size of the hive colonies - "
 				+ "the swarm's fabrication mass.");
-		if (sized) {
-			main.addTableHeaderTooltip(c.visibleIndex(VIT), "Share of its supplies upkeep paid; the "
-					+ "tick is the share that holds a size.");
-		} else {
-			main.addTableHeaderTooltip(c.visibleIndex(VIT), "Size-weighted hive vitality (fabrication x "
-					+ "supply); the exact figure is in the row tooltip. Ticks mark the decline threshold "
-					+ "and the full-growth mark. Below the first a colony declines - the only way a "
-					+ "Threat colony dies.");
-		}
+		main.addTableHeaderTooltip(c.visibleIndex(VIT), "The Fabrication Cores' state: growing, holding or starving.");
 		main.addTableHeaderTooltip(c.visibleIndex(SWARMS), "Threat fleet points last seen in the "
 				+ "system, and days since.");
 		main.addTableHeaderTooltip(c.visibleIndex(REACH), billed
@@ -2188,9 +2162,8 @@ public class ThreatWarBoard {
 			} else {
 				cell(cells, Alignment.MID, h, sizeDigits(e, c));
 				cell(cells, Alignment.MID, h, "" + e.mass);
-				// the bar is drawn by the overlay; nothing billed (every world
-				// below size 3) has no bar
-				cell(cells, Alignment.LMID, gray, sized && e.fed < 0f ? "-" : "");
+				// the Cores' state over the system's worlds: starving before growing before holding
+				cell(cells, Alignment.MID, stateColor(e.core), fedStateName(e.core));
 				// the player's report: its figure and age, "Unknown" never seen
 				float seenFP = e.seen != null ? e.seen.totalFP() : 0f;
 				cell(cells, Alignment.MID, e.seen == null ? gray : seenFP <= 0f ? pos : text,
@@ -2293,18 +2266,12 @@ public class ThreatWarBoard {
 		protected List<Entry> entries;
 		protected Cols c;
 		protected String selectedId;
-		/** Read once a build, not every frame: which figure the bar draws, and its ticks. */
-		protected boolean sized;
-		protected float[] ticks;
 
 		LedgerOverlay(List<Object> rows, List<Entry> entries, Cols c, String selectedId) {
 			this.rows = rows;
 			this.entries = entries;
 			this.c = c;
 			this.selectedId = selectedId;
-			sized = ThreatColonyUpkeep.enabled();
-			ticks = sized ? new float[] {ThreatColonyUpkeep.breakEven()}
-					: new float[] {ThreatColonyManager.CRITICAL_HEALTH, ThreatIncConfig.growthFullHealth()};
 		}
 
 		@Override
@@ -2363,16 +2330,9 @@ public class ThreatWarBoard {
 
 				if (!e.isColony()) continue;
 
-				// the bar fills the column - the share of the supplies upkeep
-				// paid, or vitality with size upkeep off - trend glyph at its
-				// right end; nothing billed draws no bar (the cell reads "-")
+				// the Core column reads its state (the cell); the trend glyph at its right end
 				float vx = x + c.x[VIT] * scale + CELL_PAD;
 				float vw = c.w[VIT] * scale - 2f * CELL_PAD - 18f;
-				if (!sized) {
-					bar(vx, midY - 4f, vw, 8f, e.health, healthColor(e.health), ticks, alphaMult);
-				} else if (e.fed >= 0f) {
-					bar(vx, midY - 4f, vw, 8f, e.fed, fedColor(e.fed), ticks, alphaMult);
-				}
 				trend(vx + vw + 10f, midY, e.trend, alphaMult);
 			}
 			glEnd();
@@ -2386,17 +2346,14 @@ public class ThreatWarBoard {
 		float w = tooltip.getWidthSoFar();
 		tooltip.addSectorMap(w, Math.round(w / 1.8f), e.system, 0f);
 		tooltip.addSpacer(10f);
-		boolean sized = ThreatColonyUpkeep.enabled();
 		String title = e.system.getNameWithNoType();
 		if (e.isColony()) {
 			title += " - " + e.markets.size() + (e.markets.size() == 1 ? " hive world" : " hive worlds")
 					+ ", mass " + e.mass;
-			if (!sized) title += ", vitality " + (int) (e.health * 100f) + "%";
-			else if (e.fed >= 0f) title += ", fed " + pct(e.fed);
 		}
 		tooltip.addPara(title, Global.getSector().getFaction(Factions.THREAT).getBrightUIColor(), 6f);
 		tooltip.addPara(e.chip + " - " + e.reason, e.reasonColor, 4f);
-		if (sized && e.isColony()) {
+		if (e.isColony()) {
 			// its worlds' growth, then one line per world losing a size
 			int[] states = new int[3];
 			for (MarketAPI m : e.markets) states[fedState(m) - STARVING]++;
@@ -2582,10 +2539,9 @@ public class ThreatWarBoard {
 
 	protected static CustomPanelAPI buildCard(TooltipMakerAPI main, final MarketAPI market,
 			float cardW, Entry e) {
-		// vitality only with size upkeep off; under it the card reads the share
-		// of the supplies upkeep paid (2026-09-30)
-		final boolean sized = ThreatColonyUpkeep.enabled();
-		final float health = sized ? 0f : ThreatColonyManager.computeHealth(market);
+		// the Fabrication Core's state (2026-10-25): growing, holding or starving on its inputs
+		final int core = fedState(market);
+		final float health = 0f;
 		final List<Industry> organs = organsOf(market);
 		// "declining" = a ground front or saturation is taking this colony
 		// apart (the card border lights up)
@@ -2649,10 +2605,8 @@ public class ThreatWarBoard {
 		nameWidths.put(market.getId(), probe.computeStringWidth(name));
 		String[] forecast = forecastParts(market, health);
 		// size forecast, right-aligned on line B beside the fuel bill (line A needs its full width);
-		// under size upkeep in the Fed figure's colour
-		Color forecastColor = declining ? neg
-				: sized ? fedColor(ThreatColonyUpkeep.fedShare(market))
-				: health >= ThreatIncConfig.growthFullHealth() ? pos : h;
+		// in the Core state's colour
+		Color forecastColor = declining ? neg : stateColor(core);
 		textHl(card, cardW - rightW - 8f, 45f, rightW, forecast[0], gray,
 				new Color[] {h, forecastColor},
 				new String[] {forecast[1], forecast[2]}, Alignment.RMID, true);
@@ -2681,17 +2635,9 @@ public class ThreatWarBoard {
 		// seen, reach or front
 		List<String> hlA = new ArrayList<String>();
 		List<Color> hlcA = new ArrayList<Color>();
-		StringBuilder a = new StringBuilder(sized ? "Fed %s    Swarm fleet %s" : "Vitality %s    Swarm fleet %s");
-		if (sized) {
-			// below size 3 a world has no upkeep to be paid
-			boolean owes = ThreatColonyUpkeep.perMonth(market.getSize()) > 0f;
-			float fed = ThreatColonyUpkeep.fedShare(market);
-			hlA.add(owes ? pct(fed) : "-");
-			hlcA.add(owes ? fedColor(fed) : gray);
-		} else {
-			hlA.add((int) (health * 100f) + "%");
-			hlcA.add(healthColor(health));
-		}
+		StringBuilder a = new StringBuilder("Core %s    Swarm fleet %s");
+		hlA.add(fedStateName(core));
+		hlcA.add(stateColor(core));
 		// the player's report of the swarms over this world (ThreatIntel, the fog
 		// of war, 2026-10-01): its figure and age, "Unknown" never seen. Nothing
 		// of the hive's own plans - the garrison it builds toward, reinforcements
@@ -2851,10 +2797,9 @@ public class ThreatWarBoard {
 			}
 			return new String[] {"%s %s", from, "contested"};
 		}
-		if (ThreatColonyUpkeep.enabled()) {
-			// size upkeep: the engine's own clocks - a starving hive counts down
-			// to the size it loses; one fed only to break-even, or under
-			// saturation, holds
+		{
+			// the Core's own clocks (2026-10-25): a starving hive counts down to the size it
+			// loses; one holding, at its largest or under saturation, holds
 			int size = market.getSize();
 			float lose = ThreatColonyManager.daysToLoseSize(market);
 			if (lose < Float.MAX_VALUE) {
@@ -2867,15 +2812,6 @@ public class ThreatWarBoard {
 			}
 			return new String[] {"%s %s", from, "holding"};
 		}
-		float growthMult = ThreatColonyManager.growthMultFor(health);
-		int cap = ThreatColonyManager.maxColonySize(market);
-		if (market.getSize() >= cap) return new String[] {"%s %s", from, "max"};
-		if (growthMult <= 0f) return new String[] {"%s %s", from, "stalled"};
-		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize()
-				* IncursionManager.timeScale();
-		float remaining = (daysPerLevel - ThreatIncData.growthProgressDays(id)) / growthMult;
-		return new String[] {"%s -> %s", from, "s" + (market.getSize() + 1) + " ~"
-				+ Math.max(1, (int) remaining) + " d"};
 	}
 
 	/** Plain-text form of the size line for tooltips. */
@@ -2973,11 +2909,11 @@ public class ThreatWarBoard {
 	public static final int STARVING = -1, HOLDING = 0, GROWING = 1;
 
 	/**
-	 * A hive world's growth under size upkeep, on the engine's own clocks:
-	 * STARVING while it is paid below the break-even share (a size lost in
-	 * ThreatColonyManager.daysToLoseSize), GROWING while it grows toward its
-	 * next size, else HOLDING - paid the break-even share, at its largest, or
-	 * held by a front or saturation.
+	 * A hive world's Fabrication Core state (2026-10-25), on the engine's own
+	 * clocks: STARVING while its strata fall (a size lost in
+	 * ThreatColonyManager.daysToLoseSize), GROWING while they rise toward its
+	 * next size, else HOLDING - an input short, at its largest, or held by a
+	 * front or saturation.
 	 */
 	public static int fedState(MarketAPI market) {
 		if (ThreatColonyManager.daysToLoseSize(market) < Float.MAX_VALUE) return STARVING;
@@ -2987,6 +2923,13 @@ public class ThreatWarBoard {
 
 	public static String fedStateName(int state) {
 		return state == STARVING ? "starving" : state == GROWING ? "growing" : "holding";
+	}
+
+	/** A Core state in the reserve key's colours: growing white, holding yellow, starving red. */
+	public static Color stateColor(int state) {
+		if (state == STARVING) return Misc.getNegativeHighlightColor();
+		if (state == HOLDING) return Misc.getHighlightColor();
+		return Misc.getTextColor();
 	}
 
 	/**

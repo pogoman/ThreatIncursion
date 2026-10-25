@@ -43,11 +43,6 @@
 	"threatinc_colonyMaxSize": 8,
 	"threatinc_colonyGrowthBaseDays": 60,
 	"threatinc_fabFPPerShipUnit": 100,
-	# a Seeding Swarm's hulls become its colony, not its garrison: the launching
-	# colony's bank also pays this much per structure the colony is founded
-	# with (Population, Spaceport, Fabrication Core, Swarm Nexus, a first
-	# industry), and the new hive builds its garrison from its own bank
-	"threatinc_foundingFPPerStructure": 150,
 	# upkeep: every 30 days a colony's bank pays this fraction of the fleet
 	# points of the fleets it owns (its garrison, raiders, reinforcements
 	# inbound, strikes/waves/scouts it paid for). A bank that cannot carry its
@@ -310,15 +305,6 @@
 	# recycles the weak one, its hulls back into the bank.
 	"threatinc_garrisonUnderStrengthFraction": 0.5,
 	"threatinc_economyGatesGrowth": true,
-	# The first hive system carries Domain-era items the way a swarm out of the
-	# Abyss would: a Pristine Nanoforge on its largest forge, and a Mantle Bore,
-	# Plasma Dynamo, Catalytic Core or Synchrotron wherever its own deposits
-	# leave a link short. Vanilla's chain only balances at size 8 with these;
-	# every later colony draws on the home hive, and the items are the loot for
-	# taking it. Every other forge in the hive has the chance below of carrying
-	# a Corrupted Nanoforge - a fixed roll per world.
-	"threatinc_homeRelics": true,
-	"threatinc_forgeNanoforgeChance": 0.2,
 	"threatinc_convertDecivWorlds": true,
 	# Defense-board contracts are ordinary missions: offered through the comm
 	# network, accepted or ignored like a survey posting. Offers stand for
@@ -554,6 +540,12 @@
 	"threatinc_densityAccessMax": 0.50,
 	"threatinc_densitySelfWeight": 0,
 	"threatinc_shiftFloorStrata": 800,
+	# phase B (2026-10-25): a structure the hive planner builds costs the building world this many
+	# strata (150 FP); a seed is founded with seedStrata (size 1), paid by its source beyond the Seeding
+	# Swarm's hulls, which are absorbed on landing (80 FP of hulls makes 800: size 2). No supplies
+	# anywhere on the hive: no stock, no upkeep, no founding kit, no forge, no Domain items.
+	"threatinc_structureStrata": 750,
+	"threatinc_seedStrata": 400,
 	# defense-structure scaling: defense mult = 1 + bonus per structure
 	"threatinc_groundDefensesBonus": 1.0,
 	"threatinc_heavyBatteriesBonus": 2.0,
@@ -935,7 +927,6 @@
 	# (ThreatFactionStance): PRESS a weak hive world it outweighs, EXPAND its
 	# forward bases toward the hive, or CONSOLIDATE when the swarm presses it
 	"threatinc_factionStanceEnabled": true,
-	"threatinc_threatSuppliesUpkeep": true,
 	# standing upkeep (2026-10-06, hw33-37): the navy a faction's yards built beyond vanilla's
 	# patrol table pays its ships' vanilla maintenance a month times this while at home, from the
 	# reserves above floors and holds; a hull-month unpaid is a built hull lost. Vanilla's patrols
@@ -959,7 +950,6 @@
 	"threatinc_sizeUpkeepRatio": 2.5,
 	"threatinc_upkeepBreakEven": 0.5,
 	"threatinc_starveDaysPerSize": 90,
-	"threatinc_foundingBudget": true,
 	# TANGIBLE FEEDING (the user, 2026-10-18): a world's size upkeep is eaten from a larder only a sailing
 	# fills - a hive world's allotment docks and sails as a feeding swarm seated in the world's garrison on
 	# arrival, a forward base is fed by a feeding convoy settled where it lands (ThreatFeeding); false = the
@@ -968,21 +958,11 @@
 	"threatinc_feedConvoys": true,
 	"threatinc_feedConvoyLoadMonths": 3,
 	"threatinc_feedConvoyReserveMonths": 1,
-	# Hive cover (2026-10-18): the hive stock covers a hive world's vanilla shortages (whole
-	# units, a trade modifier for reserveShortageCoverDays, at most reserveShortageCoverFraction
-	# of the stock) as a human depot covers its colony's; fuel from the fuel stock, the rest from
-	# supplies at vanilla's base-price ratio.
-	"threatinc_hiveCover": true,
 	# Size upkeep on the humans' core colonies (2026-10-18): the hive's table (sizeUpkeepAt3 x
 	# ratio^(size-3) a month) billed to every mobilised faction's colony from its own depot,
 	# a size lost per starveDays unpaid; the player's colonies only under the second knob.
 	"threatinc_coreSizeUpkeep": false,
 	"threatinc_coreSizeUpkeepPlayer": false,
-	"threatinc_feedShareExpand": 0.5,
-	"threatinc_feedSharePress": 0.7,
-	# consolidating 0.9 -> 0.5 (2026-10-02, the war simulator's round 20): the largest of the three
-	# is also the share sustenance may take in any stance (ThreatColonyUpkeep.sustainShare), now 0.7
-	"threatinc_feedShareConsolidate": 0.5,
 	# troop-transport share of a cargo-carrying expedition fleet
 	"threatinc_expeditionTransportMult": 0.3,
 	# convoys: donor colonies ship stock to staging bases (the
@@ -1413,11 +1393,6 @@
 	"threatinc_alarmDecayPer30": 0.2,
 	"threatinc_alarmTargetMult": 0.2,
 	"threatinc_retaliationEnabled": true,
-	"threatinc_sustenanceFirst": true,
-	# the hive keeps no standing navy its supplies flow cannot carry with the sends it wants: swarms above the
-	# floor are recycled into the bank until the spare covers a held send, and no transfer sails on a short
-	# flow to a world nobody attacks (2026-10-08)
-	"threatinc_navyFitsSpare": true,
 	# coalition (docs/design-theory.md 8.7): a mobilised faction's siege posts
 	# a call; each tick every other mobilised faction with a base in reach
 	# rolls to answer with an Intercept task force at the hive's jump-point.

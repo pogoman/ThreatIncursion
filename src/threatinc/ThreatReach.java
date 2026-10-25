@@ -14,13 +14,10 @@ import com.fs.starfarer.api.util.Misc;
 /**
  * How far the hive's fleets go (2026-09-30, user's call; docs/hive-economy.md
  * "Reach is the bill"): as far as the hive pays for. No radius. A trip's bill
- * is its passage - fuel out of the hive's stock (ThreatFuel.passage) - and the
- * supplies its fleet burns while away, its hulls' vanilla supplies a month,
- * which must fit in what the colonies' sustenance leaves of the month's
- * production (ThreatColonyUpkeep.spareSupplies): a trip never starves a
- * colony. Both grow with the fleet, so a 30 FP scout crosses the sector on
- * what a 3,000 FP strike burns to go next door, and a hive with nothing spare
- * launches nothing at all.
+ * is its passage - fuel out of the hive's stock (ThreatFuel.passage). (Until
+ * 2026-10-25 it was also the supplies its fleet burned while away, which had
+ * to fit in the colonies' spare; the swarm is off supplies since phase B of
+ * docs/strata-are-the-threat.md, and the supplies gates below pass.)
  *
  * <p>Where to go is a choice, not a wall: a picker weighs each target by what
  * it is worth per day its fleet is away (strikeDays), so the swarm strikes
@@ -86,22 +83,9 @@ public class ThreatReach {
 	protected static long perFPDay = Long.MIN_VALUE;
 	protected static float perFP = DEFAULT_SUPPLIES_PER_FP;
 
-	/** Supplies a month a fleet point of the hive's fleets burns: its garrisons' hulls, measured once a day. */
+	/** Supplies a month a fleet point of the hive's fleets burns: none since 2026-10-25 (phase B of docs/strata-are-the-threat.md - the swarm is off supplies; a trip costs passage fuel alone). */
 	public static float suppliesPerFP() {
-		long day = today();
-		if (perFPSector == Global.getSector() && perFPDay == day) return perFP;
-		float supplies = 0f, fp = 0f;
-		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
-			for (CampaignFleetAPI f : ThreatIncData.garrisonsFor(m.getId())) {
-				if (f == null || !f.isAlive()) continue;
-				supplies += ThreatFrontlines.maintenancePerMonth(f);
-				fp += f.getFleetPoints();
-			}
-		}
-		perFP = fp > 0f && supplies > 0f ? supplies / fp : DEFAULT_SUPPLIES_PER_FP;
-		perFPSector = Global.getSector();
-		perFPDay = day;
-		return perFP;
+		return 0f;
 	}
 
 	/** Supplies a month a fleet of {@code fp} burns away from home. */
@@ -292,14 +276,12 @@ public class ThreatReach {
 	 * draw the stock their campaign was priced on).
 	 */
 	public static float spare() {
-		if (!ThreatColonyUpkeep.enabled()) return Float.MAX_VALUE;
-		return ThreatColonyUpkeep.spareSupplies() - committed;
+		return Float.MAX_VALUE; // the swarm burns no supplies (phase B)
 	}
 
 	/** Whether the hive can keep a fleet of {@code fp} away without starving a colony, on the month's flow alone. Always, billed reach off. */
 	public static boolean canSustain(float fp) {
-		if (!enabled() || !ThreatColonyUpkeep.enabled()) return true;
-		return suppliesPerMonth(fp) <= spare();
+		return true; // the swarm burns no supplies (phase B)
 	}
 
 	/**
@@ -311,7 +293,7 @@ public class ThreatReach {
 	 * a stock is what a flow short of a trip has to draw on.
 	 */
 	public static boolean canSustain(float fp, float days) {
-		if (!enabled() || !ThreatColonyUpkeep.enabled()) return true;
+		if (!enabled() || !ThreatColonyUpkeep.hives()) return true;
 		float need = suppliesPerMonth(fp);
 		// a trip that burns nothing new (garrison swarms whose home charge it takes over, awayFP) is always kept,
 		// whatever the flow (hw48: a negative spare refused at launch what the campaign's pricing had passed)
@@ -365,17 +347,15 @@ public class ThreatReach {
 
 	/** The most fleet points canSustain lets away for {@code days}: the flow and the stock spread over the trip. */
 	public static float sustainableFP(float days) {
-		if (!enabled() || !ThreatColonyUpkeep.enabled()) return Float.MAX_VALUE;
+		if (!enabled() || !ThreatColonyUpkeep.hives()) return Float.MAX_VALUE;
 		return threatinc.rules.StrikeRules.sustainableFP(spare(), days, freeStock(), suppliesPerFP());
 	}
 
 	/**
-	 * Supplies in stock above what one founding takes (ThreatFuel.foundingCost) and the colonies' sustenance
-	 * due (ThreatColonyUpkeep.sustenanceDue): what trips may draw on.
+	 * Supplies in stock trips may draw on: none since phase B.
 	 */
 	public static float freeStock() {
-		return Math.max(0f, ThreatFuel.free(com.fs.starfarer.api.impl.campaign.ids.Commodities.SUPPLIES)
-				- ThreatFuel.foundingCost()[0] - ThreatColonyUpkeep.sustenanceDue());
+		return 0f; // no supplies stock since phase B (2026-10-25)
 	}
 
 	/** A fleet of {@code fp} has left: its supplies a month come off the spare until the next feed counts it. */
@@ -386,7 +366,7 @@ public class ThreatReach {
 	/**
 	 * The fleet points a strike of {@code fp} adds to the supplies the hive pays: the garrison
 	 * swarms in it ({@code garrisonFP}, the navy above the patrols) stop paying the navy charge
-	 * as they leave (ThreatColonyManager.payNavySupplies, standingUpkeepMult), so only the rest
+	 * as they leave (no navy charge since phase B: garrisonCredit 0), so only the rest
 	 * is a new burn (the user, 2026-10-07: the navy is spent on the offensive, not kept at home).
 	 */
 	public static float awayFP(float fp, float garrisonFP) {
@@ -395,11 +375,11 @@ public class ThreatReach {
 
 	/**
 	 * The share of a garrison swarm's burn away its home navy charge no longer takes (awayFP): the
-	 * charge is in the feed's spare (ThreatColonyUpkeep.navyChargePerMonth), so a swarm leaving moves
+	 * charge was in the feed's spare, so a swarm leaving moved
 	 * its burn, and the next feed reads the charge lower by itself.
 	 */
 	protected static float garrisonCredit() {
-		return ThreatIncConfig.threatSuppliesUpkeep() ? Math.max(0f, Math.min(1f, ThreatIncConfig.standingUpkeepMult())) : 0f;
+		return 0f; // no navy charge since phase B (2026-10-25)
 	}
 
 	/** Whether the hive can pay a trip: its passage from the fuel stock, its supplies away from the spare. */
@@ -491,13 +471,7 @@ public class ThreatReach {
 	public static void logMonth() {
 		if (!enabled()) return;
 		Map<String, Object> d = data();
-		StringBuilder sb = new StringBuilder("Reach: spare ");
-		float spare = ThreatColonyUpkeep.enabled() ? ThreatColonyUpkeep.spareSupplies() : 0f;
-		sb.append((int) spare).append(" supplies/mo (fleets away ").append((int) ThreatColonyUpkeep.fleetsPerMonth())
-				.append("/mo, navy charge ").append((int) (ThreatColonyUpkeep.enabled() ? ThreatColonyUpkeep.navyPerMonth() : 0f))
-				.append(", held prongs ").append((int) ThreatOffensive.heldSuppliesPerMonth()).append("/mo, ")
-				.append((int) ThreatOffensive.heldSupplies()).append(" in stock")
-				.append(", ").append(String.format("%.2f", suppliesPerFP())).append(" a FP)");
+		StringBuilder sb = new StringBuilder("Reach: no supplies burned (the strata are the Threat)");
 		for (String k : KINDS) {
 			int n = (int) num(d.get(k + ".n"));
 			sb.append("; ").append(k).append("s ").append(n);

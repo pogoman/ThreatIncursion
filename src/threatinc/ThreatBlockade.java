@@ -56,7 +56,7 @@ public class ThreatBlockade extends BaseMarketConditionPlugin {
 	}
 
 	public static void syncHive(MarketAPI market) {
-		float cut = ThreatColonyUpkeep.enabled() ? hiveCut(market) : 0f;
+		float cut = hiveCut(market);
 		float had = market.getMemoryWithoutUpdate().getFloat(HIVE_KEY);
 		boolean has = market.hasCondition(HIVE_ID);
 		if (cut <= 0f) {

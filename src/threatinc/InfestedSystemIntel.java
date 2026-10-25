@@ -186,39 +186,10 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				if (over == null) everySeen = false;
 
 				line.append(". Hive Status %s, Swarm fleet %s");
-				if (ThreatColonyUpkeep.enabled()) {
-					// size upkeep (2026-09-30): graded by the share of its
-					// upkeep paid - starving below break-even, else growing or
-					// holding - and the share itself (none below size 3)
-					int state = ThreatWarBoard.fedState(market);
-					boolean owes = ThreatColonyUpkeep.perMonth(market.getSize()) > 0f;
-					hl.add(ThreatWarBoard.fedStateName(state) + (owes ? " (fed "
-							+ ThreatWarBoard.pct(ThreatColonyUpkeep.fedShare(market)) + ")" : ""));
-					hlColors.add(state == ThreatWarBoard.STARVING ? neg : h);
-				} else {
-					// "output" = the swarm's real fabrication output: ship hulls.
-					// A starved colony reads critical; a healthy young colony with no
-					// forge output yet is developing; a forging colony grades on how
-					// well its hulls are supplied.
-					boolean healthy = ThreatColonyManager.isEconomicallyHealthy(market);
-					float health = ThreatColonyManager.computeHealth(market);
-					float shipsAvail = ThreatColonyManager.shipsAvailable(market);
-					String output;
-					if (health < ThreatColonyManager.CRITICAL_HEALTH) {
-						output = "failing";
-					} else if (!healthy) {
-						output = "critical";
-					} else if (shipsAvail <= 0f) {
-						output = "developing";
-					} else if (ThreatColonyManager.shipSupplyMult(market) >= 0.75f) {
-						output = "nominal";
-					} else {
-						output = "strained";
-					}
-					hl.add(output + " (vitality " + (int) (health * 100f) + "%)");
-					hlColors.add("critical".equals(output) || "strained".equals(output)
-							|| "failing".equals(output) ? neg : h);
-				}
+				// the Fabrication Core's state (2026-10-25): growing, holding or starving on its inputs
+				int state = ThreatWarBoard.fedState(market);
+				hl.add(ThreatWarBoard.fedStateName(state));
+				hlColors.add(state == ThreatWarBoard.STARVING ? neg : h);
 				// "3,400 (41 d)", "Unknown" never seen
 				hl.add(ThreatIntel.figure(over, worldFP));
 				hlColors.add(over != null ? h : Misc.getGrayColor());
@@ -313,7 +284,6 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 		if (ThreatIncConfig.debugMode() && ThreatIncData.STAGE_COLONY.equals(stage)) {
 			info.addSectionHeading("DEBUG - hive vitals", com.fs.starfarer.api.ui.Alignment.MID, opad);
 			boolean billed = ThreatReach.enabled();
-			boolean sized = ThreatColonyUpkeep.enabled();
 			String faced = billed && system != null ? ThreatReach.facedFaction(system) : null;
 			for (MarketAPI market : ThreatIncData.getLiveColonyMarkets(systemId)) {
 				float access = market.getAccessibilityMod().computeEffective(0f);
@@ -326,13 +296,11 @@ public class InfestedSystemIntel extends BaseIntelPlugin {
 				else if (faced == null) reach = "none known";
 				else reach = ThreatWarState.displayName(faced) + " "
 						+ (int) Math.ceil(ThreatReach.facedLY(system)) + " ly";
-				// size upkeep: the share of its upkeep paid; else vitality
-				String fed = sized ? ThreatWarBoard.pct(ThreatColonyUpkeep.fedShare(market))
-						: (int) (ThreatIncData.lastHealth(market.getId()) * 100) + "%";
+				String fed = ThreatWarBoard.fedStateName(ThreatWarBoard.fedState(market));
 				int strataHeld = ThreatGroundFronts.strataHeld(market.getId());
 				info.addPara(market.getName() + " (size " + market.getSize() + "): "
 						+ "access %s, hull output %s, " + (billed ? "first strike" : "fuel reach") + " %s, "
-						+ (sized ? "fed" : "health") + " %s, strata taken %s",
+						+ "core %s, strata taken %s",
 						opad, h, (int) (access * 100) + "%", shipPct + "%",
 						reach, fed, "" + strataHeld);
 

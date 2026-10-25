@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 19;
+	static final int MIGRATION_VERSION = 20;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -158,6 +158,14 @@ class LunaConfigBridge {
 					changed |= drop(json, "threatinc_disruptedPortShipping");
 					changed |= drop(json, "threatinc_blockadeStarvesSeeds");
 					changed |= drop(json, "threatinc_fabricateTroopsPerFP");
+				}
+				if (from < 20) {
+					for (String key : new String[] { "threatinc_foundingFPPerStructure", "threatinc_homeRelics",
+							"threatinc_forgeNanoforgeChance", "threatinc_threatSuppliesUpkeep", "threatinc_foundingBudget",
+							"threatinc_hiveCover", "threatinc_feedShareExpand", "threatinc_feedSharePress",
+							"threatinc_feedShareConsolidate", "threatinc_navyFitsSpare", "threatinc_sustenanceFirst" }) {
+						changed |= drop(json, key);
+					}
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));

@@ -15,7 +15,9 @@ import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * The hive's fuel and supplies (2026-09-30): the Threat pays passage and
+ * The hive's fuel (2026-09-30; supplies retired 2026-10-25, phase B of
+ * docs/strata-are-the-threat.md - the swarm burns none, its structures and
+ * seeds are strata): the Threat pays passage and
  * founds colonies the way the factions do. A fleet sent across hyperspace
  * draws fleet points / 25 x light-years x expeditionFuelPerPointLY - the
  * factions' own rate - from one fuel stock the whole hive shares, as vanilla's
@@ -46,7 +48,7 @@ public class ThreatFuel {
 	public static final String KEY = "threatinc_hiveFuel";
 	private static final String AT = "at";
 	private static final String HELD = "heldMonth";
-	/** Of them, the sends held on supplies (the navy fit's want, ThreatColonyManager.fitWant). */
+	/** Of them, the sends held on supplies (none since phase B). */
 	private static final String HELD_SUPPLIES = "heldSuppliesMonth";
 	private static final String HELD_FUEL = "heldFuelMonth";
 	/** The two stocks: fuel keeps the keys it was saved under before supplies joined it. */
@@ -89,13 +91,15 @@ public class ThreatFuel {
 		return stock(Commodities.FUEL);
 	}
 
-	/** The hive's stock of fuel or supplies. */
+	/** The hive's stock of fuel; 0 of supplies, which the swarm no longer keeps (2026-10-25, phase B: the strata are the Threat). */
 	public static float stock(String commodityId) {
+		if (Commodities.SUPPLIES.equals(commodityId)) return 0f;
 		Object v = data().get(stockKey(commodityId));
 		return v instanceof Float ? (Float) v : 0f;
 	}
 
 	protected static void setStock(String commodityId, float amount) {
+		if (Commodities.SUPPLIES.equals(commodityId)) return;
 		data().put(stockKey(commodityId), Math.max(0f, amount));
 	}
 
@@ -138,13 +142,7 @@ public class ThreatFuel {
 	 * 0 with threatinc_keepAheadOfFleets off.
 	 */
 	public static float keptAhead(boolean navy) {
-		if (!ThreatIncConfig.keepAheadOfFleets() || !planned()) return 0f;
-		boolean kit = heldOnSuppliesThisMonth() > 0f;
-		float trip = navy ? ThreatOffensive.tripShort() : 0f;
-		if (!kit && trip <= 0f) return 0f;
-		// the prong's trip is read by freeStock above the reserve and a kit, whether a seeding is held or not
-		float kept = reserved(Commodities.SUPPLIES) + foundingCost()[0] + trip;
-		return Math.min(kept, Math.max(0f, perMonth(Commodities.SUPPLIES)));
+		return 0f; // no supplies stock since phase B (2026-10-25)
 	}
 
 	/** Reserves {@code supplies} for the producer the market waits to build; 0 or less releases it. */
@@ -175,6 +173,8 @@ public class ThreatFuel {
 	 * 4 forges making 24 units of supplies against 199 wanted).
 	 */
 	public static float perMonth(String commodityId) {
+		// no supplies stock since phase B (2026-10-25): the swarm burns none and builds with strata
+		if (Commodities.SUPPLIES.equals(commodityId)) return 0f;
 		float banked = 0f, made = 0f, foreign = 0f, unit = 0f;
 		boolean own = ThreatBuildCost.enabled();
 		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
@@ -212,6 +212,7 @@ public class ThreatFuel {
 		data().put(AT, now);
 		float days = last instanceof Long ? Global.getSector().getClock().getElapsedDaysSince((Long) last) : 0f;
 		for (String c : STOCKED) {
+			if (Commodities.SUPPLIES.equals(c)) continue;
 			if (!data().containsKey(stockKey(c))) {
 				setStock(c, perMonth(c) * ThreatColonyManager.FAB_ENDOWMENT_DAYS / 30f);
 			} else if (days > 0f) {
@@ -296,15 +297,13 @@ public class ThreatFuel {
 	}
 
 	/**
-	 * What founding a colony costs in stock: a faction's forward base
-	 * (ThreatOutposts.npcCost), {supplies, fuel}, and under size upkeep the
-	 * structures the colony is founded with (ThreatBuildCost.foundingKit);
-	 * nothing while the Threat pays no passage.
+	 * What founding a colony costs in stock, {supplies, fuel}: nothing since
+	 * 2026-10-25 (a seed is strata, paid at its source).
 	 */
 	public static float[] foundingCost() {
-		if (!enabled()) return new float[] { 0f, 0f };
-		float[] cost = ThreatOutposts.npcCost();
-		return new float[] { cost[0] + ThreatBuildCost.foundingKit(), cost[1] };
+		// nothing since phase B (2026-10-25): a seed is its own strata, paid at the source (ThreatColonyManager.seedFP),
+		// and its wave pays the passage alone
+		return new float[] { 0f, 0f };
 	}
 
 	/**
@@ -313,17 +312,8 @@ public class ThreatFuel {
 	 * holds it - never a shortage of its own (2026-10-01).
 	 */
 	public static boolean canFound(float passageFuel) {
-		float[] cost = foundingCost();
 		UNMET.clear();
-		// above the planner's reserve (reserved): a founding never takes the forge's price; and while the
-		// chest is full (ThreatStance.chestFull: a strike fund a horizon's saving could not field), nothing
-		// is founded the supplies surplus does not pay - the kits' supplies feed the fleets (hw62: 110-173
-		// seedings a game while the fund banked 38k -> 141k FP unspent)
-		boolean supplies = cost[0] <= 0f || (free(Commodities.SUPPLIES) >= cost[0]
-				&& (!ThreatStance.chestFull() || surplus(Commodities.SUPPLIES, ThreatIncConfig.foundingSurplusOwnBookings())));
-		if (!supplies) UNMET.put(Commodities.SUPPLIES, cost[0]);
-		boolean fuel = canPay(Commodities.FUEL, cost[1] + passageFuel);
-		return supplies && fuel;
+		return canPay(Commodities.FUEL, passageFuel);
 	}
 
 	/**
@@ -549,7 +539,7 @@ public class ThreatFuel {
 
 	/** What the planner answers with a producer: the hive runs dry of it, or (supplies) its colonies went unfed lately (noteShort). */
 	public static boolean wanted(String commodityId) {
-		if (Commodities.SUPPLIES.equals(commodityId) && shortOf(commodityId)) return true;
+		if (Commodities.SUPPLIES.equals(commodityId)) return false; // no forge on a hive since phase B
 		if (!planned()) return shortOf(commodityId);
 		return runsDry(commodityId);
 	}

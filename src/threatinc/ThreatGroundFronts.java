@@ -1469,10 +1469,10 @@ public class ThreatGroundFronts {
 	 */
 	public static float hiveCounterAttackPace(MarketAPI market) {
 		if (market == null) return 0f;
-		if (!ThreatColonyUpkeep.enabled()) return ThreatColonyManager.computeHealth(market);
 		int size = market.getSize();
 		if (size <= 0) return 0f;
-		float fed = Math.min(1f, ThreatColonyUpkeep.fedShare(market) / ThreatColonyUpkeep.breakEven());
+		// a starving hive (its Core two inputs short, 2026-10-25) counter-attacks at half pace
+		float fed = ThreatColonyManager.coreState(market).starving() ? 0.5f : 1f;
 		return fed * Math.max(0, size - strataHeld(market.getId())) / (float) size;
 	}
 
@@ -4442,27 +4442,22 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
-	 * A FOUNDING BUDGET FOR THE ORDNANCE (hw161, 2026-10-12: on ZhiFarah the
-	 * bombardment drew 1.12M fuel, the stock sat under 1k from war day 3,300,
-	 * 70 hives founded against 135 without it): while a seeding is held on fuel
-	 * this month, a load or a stock-paid day leaves one founding's fuel in the
-	 * stock - the S6 rule growth keeps for the kit's supplies
-	 * (ThreatColonyUpkeep), applied to the fuel the ordnance competes for.
+	 * A WORKING RESERVE FOR THE ORDNANCE: see below. (The founding budget that kept one founding's
+	 * fuel ahead of the bombardment went with the founding kit, 2026-10-25: a seed costs no fuel.)
 	 */
 	public static float bombardReserve() {
-		float kit = ThreatIncConfig.foundingBudget() && ThreatFuel.heldOnFuelThisMonth() > 0f ? ThreatFuel.foundingCost()[1] : 0f;
-		// AND A WORKING RESERVE (the user, 2026-10-13, after hw165-hw171: in five of 21 games the holds
+		// A WORKING RESERVE (the user, 2026-10-13, after hw165-hw171: in five of 21 games the holds
 		// drained the stock to 0 at +120k a month and the founding stopped - "only take fuel for bombard
 		// in the first place if reserves are good"): swarmBombardReserveMonths of the hive's fuel income
 		// stay in the stock; a hold loads only from what lies above. The income is summed once a day.
 		float months = Math.max(0f, ThreatIncConfig.swarmBombardReserveMonths());
-		if (months <= 0f) return kit;
+		if (months <= 0f) return 0f;
 		float day = ThreatPosture.today();
 		if (reserveIncomeDay != day) {
 			reserveIncomeDay = day;
 			reserveIncome = Math.max(0f, ThreatFuel.perMonth());
 		}
-		return kit + months * reserveIncome;
+		return months * reserveIncome;
 	}
 
 	private static float reserveIncomeDay = -1f, reserveIncome = 0f;

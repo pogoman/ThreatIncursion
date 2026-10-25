@@ -43,8 +43,9 @@ public class ThreatHiveCover {
 		return false;
 	}
 
+	/** Off since 2026-10-25 (phase B of docs/strata-are-the-threat.md): the Core eats what the economy delivers, nothing is covered from a stock. */
 	public static boolean enabled() {
-		return ThreatIncConfig.hiveCover() && ThreatFuel.enabled();
+		return false;
 	}
 
 	/** The fast poll (IncursionManager, beside ThreatReserves.poll): one cover issue per short commodity per hive world. */

@@ -11,8 +11,10 @@ import com.fs.starfarer.api.loading.IndustrySpecAPI;
 /**
  * What a structure costs to build (2026-09-30, user's call): its vanilla build
  * cost in credits, paid in supplies at the supplies base price, times
- * structureSuppliesMult - for the hive's planner (ThreatColonyManager.buyStructure)
- * and the factions' forward bases (ThreatFrontlines.startNew, upgrade) alike.
+ * structureSuppliesMult - for the factions' forward bases (ThreatFrontlines.startNew,
+ * upgrade). The hive's planner pays structureStrata off the building world's
+ * strata since 2026-10-25 (ThreatColonyManager.buyStructure) and reads only
+ * buildDays here.
  * Credits were ruled out: nothing the player can hit. Supplies sit on the
  * worlds that make them, so a forge is worth raiding. Founding a colony or a
  * forward base is paid separately (ThreatOutposts.npcCost), for its first
@@ -57,20 +59,6 @@ public class ThreatBuildCost {
 	}
 
 	/**
-	 * Supplies a Seeding Swarm carries for the four structures its colony is
-	 * founded with - Population, Spaceport, Fabrication Core and Swarm Nexus,
-	 * the Nexus priced as the Patrol HQ it stands in for: 3,500 at vanilla's
-	 * prices (2026-09-30: with the forge's retooling gone under size upkeep,
-	 * a wave's price is what bounds the spread). 0 while structures are free
-	 * or size upkeep is off.
-	 */
-	public static float foundingKit() {
-		if (!enabled() || !ThreatColonyUpkeep.enabled()) return 0f;
-		return supplies(Industries.POPULATION) + supplies(Industries.SPACEPORT)
-				+ supplies(ThreatColonyManager.FABRICATION_CORE) + supplies(ThreatColonyManager.SWARM_NEXUS);
-	}
-
-	/**
 	 * Supplies a faction's forward base pays for the structures it is founded
 	 * with (ThreatFrontlines.found) - Population, Spaceport, Waystation and its
 	 * orbital station - as the hive's Seeding Swarm pays its kit (2026-10-01,
@@ -90,13 +78,12 @@ public class ThreatBuildCost {
 	 * fleet points, 30 for 25, 1.2 a point, what a faction's expedition draws
 	 * to field one. A Military Base's 4,500 supplies is 3,750 FP, a High
 	 * Command's 1,500 is 1,250. Read whether or not structures cost supplies;
-	 * with no supplies a point, a structure's founding price
-	 * (foundingFPPerStructure).
+	 * with no supplies a point, nothing.
 	 */
 	public static float fleetPoints(String industryId) {
 		float price = Global.getSettings().getCommoditySpec(Commodities.SUPPLIES).getBasePrice();
 		float perFP = ThreatIncConfig.expeditionSuppliesPerPoint() / IncursionManager.FP_PER_RESPONSE_DIFFICULTY;
-		if (price <= 0f || perFP <= 0f) return Math.max(0f, ThreatIncConfig.foundingFPPerStructure());
+		if (price <= 0f || perFP <= 0f) return 0f;
 		return credits(industryId) / price * Math.max(0f, ThreatIncConfig.structureSuppliesMult()) / perFP;
 	}
 

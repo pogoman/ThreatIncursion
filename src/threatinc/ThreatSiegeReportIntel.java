@@ -220,26 +220,11 @@ public class ThreatSiegeReportIntel extends BaseIntelPlugin {
 				String grade;
 				Color gradeColor;
 				String label;
-				if (ThreatColonyUpkeep.enabled()) {
-					// size upkeep (2026-09-30): graded by the share of its upkeep
-					// paid - starving below break-even, else growing or holding -
-					// and the share itself (none below size 3)
-					int state = ThreatWarBoard.fedState(live);
-					grade = ThreatWarBoard.fedStateName(state);
-					if (ThreatColonyUpkeep.perMonth(live.getSize()) > 0f) {
-						grade += ", fed " + ThreatWarBoard.pct(ThreatColonyUpkeep.fedShare(live));
-					}
-					gradeColor = state == ThreatWarBoard.STARVING ? neg : h;
-					label = "";
-				} else {
-					float health = ThreatIncData.lastHealth(live.getId());
-					if (health < ThreatColonyManager.CRITICAL_HEALTH) grade = "failing";
-					else if (health < ThreatIncConfig.growthStallHealth()) grade = "critical";
-					else if (health < ThreatIncConfig.growthFullHealth()) grade = "strained";
-					else grade = "nominal";
-					gradeColor = "failing".equals(grade) || "critical".equals(grade) ? neg : h;
-					label = "hive vitality ";
-				}
+				// the Fabrication Core's state (2026-10-25): growing, holding or starving on its inputs
+				int state = ThreatWarBoard.fedState(live);
+				grade = ThreatWarBoard.fedStateName(state);
+				gradeColor = state == ThreatWarBoard.STARVING ? neg : h;
+				label = "";
 				if (strataHeld > 0) {
 					info.addPara("Current state: size %s, " + label + "%s, ground war "
 							+ "at %s strata taken.", 3f, Misc.getTextColor(),

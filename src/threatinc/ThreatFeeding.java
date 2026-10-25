@@ -108,7 +108,7 @@ public class ThreatFeeding {
 	 * a month, kept for the sailings' size.
 	 */
 	public static float payHive(MarketAPI market, float bank, float monthly) {
-		if (market == null) return 0f;
+		if (market == null || !ThreatColonyUpkeep.hives()) return 0f;
 		MemoryAPI mem = market.getMemoryWithoutUpdate();
 		mem.set(MEM_MONTHLY, Math.max(0f, monthly));
 		seed(market, monthly);
@@ -138,7 +138,7 @@ public class ThreatFeeding {
 	 * hive, or no fuel for the passage, and the dock waits.
 	 */
 	public static void shipHive() {
-		if (!enabled()) return;
+		if (!enabled() || !ThreatColonyUpkeep.hives()) return; // hive worlds pay no upkeep since phase B
 		float load = Math.max(0.5f, ThreatIncConfig.feedConvoyLoadMonths());
 		float reserve = Math.max(0f, ThreatIncConfig.feedConvoyReserveMonths());
 		List<MarketAPI> colonies = ThreatIncData.getAllLiveColonyMarkets();
