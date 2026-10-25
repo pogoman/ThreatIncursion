@@ -288,6 +288,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// garrison it wants, what it lets go, the appetite to spread
 		ThreatPosture.poll();
 		ThreatColonyManager.maintainGarrisons(random);
+		// the strata bud, shift and are absorbed at the flow rate (ThreatBudding, phase C 2026-10-25)
+		ThreatBudding.poll(interval.getIntervalDuration(), random);
 		// colonies cover each other: landed reinforcements join their new
 		// garrison first (so they count as on-station), then worn-down colonies
 		// draw fresh help from siblings - same system, then fuel range
@@ -1123,9 +1125,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			StagedPlan plan = stagedPlan(colony, source, target, new java.util.HashMap<String, float[]>(), stagedDef, null,
 					Float.NaN, expectedDef);
 			if (plan == null) return null;
-			if (ThreatIncConfig.strikeFundShare() > 0f) {
-				if (!ThreatColonyManager.spendStrikeFund(colony, plan.bankFP)) return null;
-			} else if (!ThreatColonyManager.poolHiveBanks(colony, plan.bankFP, "Strike")) return null;
+			// THE PREPARATION IS THE BUDDING (phase C, 2026-10-25): the bill buds into the staging colony's
+			// staged points at its system's flow (ThreatBudding.advanceStrike, from the fund or the hive's
+			// banks); until they hold it the launch waits, and the draw in sendStrike takes them
+			if (!ThreatBudding.strikeStaged(colony, plan.bankFP)) {
+				ThreatBudding.orderStrike(colony, target, plan.bankFP);
+				return null;
+			}
+			ThreatBudding.clearStrike(colony);
 			// the spare garrison fleets leave their worlds; the rest is built
 			float[] paid = { 0f };
 			java.util.List<Integer> swarmSizes = new ArrayList<Integer>();
@@ -5720,7 +5727,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		boolean playerTarget = target.isPlayerOwned();
 		float minFP = funded && !playerTarget && !ThreatWarState.npcAtWar() ? ThreatIncConfig.strikeStagedMinFP() : 0f;
 		float bank = !Float.isNaN(bankLimit) ? bankLimit
-				: funded ? ThreatColonyManager.strikeFund() : ThreatColonyManager.hivePoolableFP(staging);
+				: funded ? ThreatColonyManager.strikeFund() + ThreatColonyManager.staged(staging.getId()) : ThreatColonyManager.hivePoolableFP(staging);
 		// the war's first strike waits until the fund holds strikeStagedOpenFP (a trial of 2026-10-06, hw27:
 		// does the swarm win on the size of its strikes or on the growth before the war opens?). Attacked
 		// first means open now (the user, 2026-10-10): once an NPC faction has mobilised or struck at the hive
@@ -6118,9 +6125,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		boolean canStrikeCore = false;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (market.getSize() < ThreatIncConfig.strikeMinSize()) continue;
-			if (ThreatColonyManager.getForge(market) == null) continue;
+			if (!ThreatColonyManager.coreStands(market)) continue;
 			if (!ThreatColonyManager.hasOperationalFuel(market)) continue;
-			if (!ThreatColonyManager.hasOperationalNexus(market)) continue;
 			canStrike = true;
 			if (isCoreWorld(market)
 					&& ThreatColonyManager.shipSupplyMult(market)

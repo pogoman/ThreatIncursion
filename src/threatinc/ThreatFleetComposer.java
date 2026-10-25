@@ -160,6 +160,32 @@ public class ThreatFleetComposer {
 	}
 
 	/**
+	 * A fleet of about the given fleet points for the job (phase C, 2026-10-25: a budded Defend or
+	 * shift fleet, ThreatBudding.spawn), built as createScouts builds a scouting party: the job's
+	 * archetype filled to the budget, or vanilla picks by weight class with archetypes off. Carries
+	 * every flag a Threat fleet gets; unnamed - the caller names, tags and places it.
+	 */
+	public static CampaignFleetAPI createSized(String job, float fp, Random random) {
+		if (random == null) random = new Random();
+		CampaignFleetAPI fleet = DisposableThreatFleetManager.createThreatFleet(
+				new ThreatFleetCreationParams(), random);
+		beltGuard(fleet);
+		String archetype = pickArchetype(job, random);
+		Archetype a = archetype != null && archetypes != null ? archetypes.get(archetype) : null;
+		if (a != null) {
+			fill(fleet, a, fp, random);
+			fleet.getMemoryWithoutUpdate().set(ARCHETYPE_KEY, archetype);
+		} else {
+			// archetypes off or the file failed: vanilla picks, two fifths of the points in capitals
+			DisposableThreatFleetManager.addShips(fleet, Math.max(0, Math.round(fp * 0.4f / 40f)), ShipRoles.COMBAT_LARGE, random);
+			DisposableThreatFleetManager.addShips(fleet, Math.max(0, Math.round(fp * 0.35f / 15f)), ShipRoles.COMBAT_MEDIUM, random);
+			DisposableThreatFleetManager.addShips(fleet, Math.max(1, Math.round(fp * 0.25f / 6f)), ShipRoles.COMBAT_SMALL, random);
+		}
+		finish(fleet);
+		return fleet;
+	}
+
+	/**
 	 * Carves a fleet of about targetFP off {@code from}: its smallest ships first, until the piece
 	 * reaches the target, never past capFP and never the last ship. The piece carries every flag a
 	 * Threat fleet gets (createThreatFleet) and the belt guard; the caller names, tags and places

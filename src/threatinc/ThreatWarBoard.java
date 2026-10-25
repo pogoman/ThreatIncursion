@@ -193,6 +193,8 @@ public class ThreatWarBoard {
 		public float fed = -1f;
 		/** The Fabrication Cores' state over the system's worlds (fedState): starving before growing before holding. */
 		public int core = HOLDING;
+		/** The first flow running over the system's worlds (ThreatBudding.flowText); null when nothing moves. */
+		public String flow;
 		/** Size upkeep: a world here is starving, the first to lose a size in {@code loseDays}. */
 		public boolean starving;
 		public float loseDays = Float.MAX_VALUE;
@@ -300,6 +302,9 @@ public class ThreatWarBoard {
 		// the swarms as the player last saw them, never the live garrisons
 		e.seen = ThreatIntel.report(Factions.PLAYER, systemId);
 		e.core = e.starving ? STARVING : anyGrowing ? GROWING : HOLDING;
+		for (MarketAPI market : e.markets) {
+			if (e.flow == null) e.flow = ThreatBudding.flowText(market);
+		}
 		e.trend = anyDeclining || e.starving ? -1 : (anyGrowing ? 1 : 0);
 
 		e.staging = ThreatColonyManager.pickStrikeStaging(systemId, false);
@@ -2023,8 +2028,8 @@ public class ThreatWarBoard {
 	// ---- the ledger ----
 
 	protected static final int RANK = 0, SYSTEM = 1, THREAT = 2, WORLDS = 3, MASS = 4, VIT = 5,
-			SWARMS = 6, REACH = 7, OUT = 8, IN = 9, SUPPLY = 10, CORE = 11;
-	protected static final int COLS = 12;
+			SWARMS = 6, REACH = 7, OUT = 8, IN = 9, SUPPLY = 10, CORE = 11, FLOW = 12;
+	protected static final int COLS = 13;
 
 	/** Column widths (and their offsets within a row) for a given table width. */
 	protected static class Cols {
@@ -2040,8 +2045,8 @@ public class ThreatWarBoard {
 			// holds a report's figure and age, "12,400 (141 d)" (the fog of war,
 			// 2026-10-01): its points came off System, Worlds, Fed and Activity
 			float[] frac = narrow
-					? new float[] {.03f, .15f, 0f, .10f, .05f, .12f, .12f, .08f, .06f, .12f, .17f, 0f}
-					: new float[] {.028f, .15f, 0f, .09f, .05f, .10f, .12f, .075f, .055f, .11f, .17f, .052f};
+					? new float[] {.03f, .14f, 0f, .09f, .05f, .09f, .11f, .08f, .05f, .10f, .12f, 0f, .14f}
+					: new float[] {.028f, .14f, 0f, .08f, .05f, .08f, .11f, .07f, .05f, .10f, .13f, .052f, .11f};
 			float cursor = 0f;
 			for (int i = 0; i < COLS; i++) {
 				w[i] = (float) Math.floor(width * frac[i]);
@@ -2094,7 +2099,7 @@ public class ThreatWarBoard {
 		// the Core column (2026-10-25) is the Fabrication Cores' state; reach the world struck first
 		final boolean billed = ThreatReach.enabled();
 		String[] names = {"#", "System", "Threat", "Worlds", "Mass", "Core", "Swarm fleet",
-				"Reach", "Strikes", "Activity", "Supply", "Core"};
+				"Reach", "Strikes", "Activity", "Supply", "Core", "Flow"};
 		List<Object> columns = new ArrayList<Object>();
 		for (int i = 0; i < COLS; i++) {
 			if (!c.has(i)) continue;
@@ -2113,6 +2118,7 @@ public class ThreatWarBoard {
 		main.addTableHeaderTooltip(c.visibleIndex(MASS), "Combined size of the hive colonies - "
 				+ "the swarm's fabrication mass.");
 		main.addTableHeaderTooltip(c.visibleIndex(VIT), "The Fabrication Cores' state: growing, holding or starving.");
+		main.addTableHeaderTooltip(c.visibleIndex(FLOW), "Strata on the move: a fleet budding, one being absorbed, or a shift to another world.");
 		main.addTableHeaderTooltip(c.visibleIndex(SWARMS), "Threat fleet points last seen in the "
 				+ "system, and days since.");
 		main.addTableHeaderTooltip(c.visibleIndex(REACH), billed
@@ -2187,6 +2193,9 @@ public class ThreatWarBoard {
 			if (c.has(CORE)) {
 				cell(cells, Alignment.MID, text, e.coreLY >= 0f ? (int) Math.ceil(e.coreLY) + " ly" : "-");
 			}
+			// strata on the move (ThreatBudding.flowText): the first flow over the system's worlds
+			cell(cells, Alignment.LMID, e.flow != null ? h : gray,
+					e.flow != null ? main.shortenString(e.flow, c.w[FLOW] - 2f * CELL_PAD) : "-");
 
 			Object row = isSelected ? main.addRowWithGlow(cells.toArray()) : main.addRow(cells.toArray());
 			main.addTooltipToAddedRow(new TooltipCreator() {

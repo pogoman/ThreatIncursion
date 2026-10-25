@@ -546,6 +546,13 @@
 	# anywhere on the hive: no stock, no upkeep, no founding kit, no forge, no Domain items.
 	"threatinc_structureStrata": 750,
 	"threatinc_seedStrata": 400,
+	# phase C (2026-10-25): no garrison stands - a hive world buds a fleet on a trigger (a hostile holding
+	# its orbit), moving this fraction of its strata a day into the pool, at least strataFlowPerDay, and
+	# spawns it whole; the fleet lingers defendLingerDays after the orbit clears and is absorbed at the
+	# same rate. Strikes bud into the staging colony's staged points at its system's flow.
+	"threatinc_strataFlowPerDay": 400,
+	"threatinc_strataFlowFractionPerDay": 0.02,
+	"threatinc_defendLingerDays": 10,
 	# defense-structure scaling: defense mult = 1 + bonus per structure
 	"threatinc_groundDefensesBonus": 1.0,
 	"threatinc_heavyBatteriesBonus": 2.0,

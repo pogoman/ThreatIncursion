@@ -46,11 +46,18 @@ public class ThreatFabricationVisual implements EveryFrameScript {
 	protected final int count;
 	protected int spawned;
 	protected float sinceLast;
+	/** Rising (phase C, 2026-10-25): the fragments leave the surface toward orbit - strata budding - instead of falling to it. */
+	protected final boolean rising;
 
 	public ThreatFabricationVisual(SectorEntityToken target, Color colour, int count) {
+		this(target, colour, count, false);
+	}
+
+	public ThreatFabricationVisual(SectorEntityToken target, Color colour, int count, boolean rising) {
 		this.target = target;
 		this.colour = colour;
 		this.count = Math.max(1, count);
+		this.rising = rising;
 	}
 
 	public boolean isDone() {
@@ -75,10 +82,13 @@ public class ThreatFabricationVisual implements EveryFrameScript {
 			float angle = (float) Math.random() * 360f;
 			Vector2f from = Misc.getUnitVectorAtDegreeAngle(angle);
 			// out at START_RADIUS, falling in to the surface over FALL_SECONDS
-			Vector2f loc = new Vector2f(target.getLocation().x + from.x * radius * START_RADIUS,
-					target.getLocation().y + from.y * radius * START_RADIUS);
 			float speed = radius * (START_RADIUS - 1f) / FALL_SECONDS;
-			Vector2f vel = new Vector2f(-from.x * speed, -from.y * speed);
+			// rising: the same fragments out of the surface toward orbit (strata budding)
+			float at = rising ? 1f : START_RADIUS;
+			Vector2f loc = new Vector2f(target.getLocation().x + from.x * radius * at,
+					target.getLocation().y + from.y * radius * at);
+			Vector2f vel = rising ? new Vector2f(from.x * speed, from.y * speed)
+					: new Vector2f(-from.x * speed, -from.y * speed);
 			// the planet is moving; the fragments fall with it, not behind it
 			Vector2f drift = target.getVelocity();
 			if (drift != null) Vector2f.add(vel, drift, vel);
@@ -97,12 +107,17 @@ public class ThreatFabricationVisual implements EveryFrameScript {
 	 * location nobody is rendering.
 	 */
 	public static void play(SectorEntityToken planet, Color colour, String label, int fragments) {
+		play(planet, colour, label, fragments, false);
+	}
+
+	/** As above; {@code rising} plays the fragments out of the surface (strata budding, ThreatBudding). */
+	public static void play(SectorEntityToken planet, Color colour, String label, int fragments, boolean rising) {
 		if (planet == null || planet.getContainingLocation() == null) return;
 		if (Global.getSector() == null) return;
 		com.fs.starfarer.api.campaign.CampaignFleetAPI player = Global.getSector().getPlayerFleet();
 		if (player == null || player.getContainingLocation() != planet.getContainingLocation()) return;
 		try {
-			planet.addScript(new ThreatFabricationVisual(planet, colour, fragments));
+			planet.addScript(new ThreatFabricationVisual(planet, colour, fragments, rising));
 			planet.addFloatingText(label, colour, 1f);
 			Global.getSector().addPing(planet, Pings.DANGER);
 		} catch (Throwable t) {

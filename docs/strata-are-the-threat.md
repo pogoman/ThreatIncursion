@@ -80,7 +80,7 @@ clipped to crew space; the force holds the orbit, fights what buds, razes every 
 lands on arrival, home when both are spent; Support and Defend off the hive rows; "Closed:
 start phase A".
 
-Nothing open. Phases A (jar 13:22) and B (jar 13:54) BUILT 2026-10-25, untested (section 10).
+Nothing open. Phases A (jar 13:22), B (jar 13:54) and C (jar 14:16) BUILT 2026-10-25, untested (section 10).
 
 ## 1. Review - most of this already exists, hidden
 
@@ -710,6 +710,39 @@ flow cell, a budded fleet fighting at what it has, budding against bombers; migr
 garrisons. Proves: a quiet hive has nothing over it; a siege races the buds; a strike's
 preparation is visible; a fleet home lands over days; the back line thins toward the front under
 PRESS.
+**BUILT 2026-10-25, jar 14:16, untested.** `ThreatBudding` is the whole mechanism: a per-world order in
+market memory (kind defend / shift, want in FP, the pool in FP), filled at the flow each poll
+(`take`: staged points first, then strata to a stratum for the world's own defence and to
+`shiftFloorStrata` for a shift), spawned whole (`ThreatFleetComposer.createSized` on the garrison
+archetype, seated as the world's Defend fleet in `garrisonsFor`, a shift sent by `sendReinforcement`
+and absorbed on arrival), drained back when the attacker leaves, spawned short when doomed (ground /
+yesterday's enemy loss rate, kept by `ThreatStrata.add` -> `noteLoss`). The trigger is any hostile
+weight within ORBIT_HOLD_RANGE (`hostilePointsNear`) with less standing against it: the poll calls
+`ThreatPosture.rally`, whose gather now counts the system's buddable strata and whose tail buds the
+rest (`defend`: the world first, quiet siblings as shifts to it). Absorbing: a fleet over its own
+world with the orbit quiet `defendLingerDays` (a shift at once) loses hulls smallest-first at the
+flow (`applyFleetLosses`) into the strata up to the cap. Strikes: the staged branch of
+`launchStrike` holds until the bill is in the colony's staged points (`strikeStaged`), ordering
+`orderStrike`; the poll bites the fund (`spendStrikeFund`) or the banks at the staging system's
+flow; the plan's budget counts the staged points. The shift replaces the pressure pass: one order a
+poll, an attacked world short of an answer first, else PRESS -> the hive system nearest a known human
+world, CONSOLIDATE -> the system with the most strata, the world with the most room; donor the nearest
+quiet world of another system above the floor. Judgement calls: the posture's standing figures
+(`floorFP`, `minimumFP`, `baseCount`, `rowsFP`, `oneSwarmFP`, `baseReserve`) read 0 rather than being
+deleted, so `wantFP` is the pressure's share and the line alone; `maintainColonyGarrisons` only
+prunes; `redistributeByPressure` and `splitLaunchSwarm` deleted, `fillGarrisonNow` returns 0; scouts,
+patrols and raiders still draw strata instantly (`chargeFP`), not by budding; a strike or Defend
+fleet that comes home still settles into the strata at once on despawn (`settleLedger`), the
+flow-rate absorb applies to fleets seated over a world; the Abyss bootstrap wave and every standing
+garrison of an older save are absorbed by the linger rule (no separate migration); a held prong whose
+launch now waits on budding is dropped by the offensive that day and re-priced next pass, the order
+keeps budding (lapses after 60 d unasked); the Nexus still stands (phase D); `ThreatHulls` still
+reads the Nexus's patrol table (phase D). Three phase-B leftovers fixed: `getPhase`, the posture's
+forge count and `isStrikePlatform` gated on a forge no hive has - now `coreStands`. Board: a Flow
+column ("budding 1,250 (2 d)" / "shifting 640 to X" / "absorbing 400 (1 d)" / "settling" / "strike
+..."). To verify in game: a quiet hive has nothing over it after `defendLingerDays`; a bomber over a
+hive sees rising glows and a whole Defend fleet after want x 5 / flow days; the pool drains when it
+leaves; a strike's "buds at" line, then its launch days later; an old save's garrisons absorbed ("absorbs N FP of") and the sizes step up; a shift order under PRESS.
 
 **D. The military layer goes; the humans size against buds.** The five industries removed and
 migrated, the Core unraidable and undisruptable, the hive theatre with no structures

@@ -554,18 +554,12 @@ public class ThreatPosture {
 
 	/** Fleet points of the colony's size table (swarmCostEstimate of every row): how the need is split. */
 	public static float floorFP(MarketAPI market) {
-		if (market == null) return 0f;
-		float fp = 0f;
-		for (int[] row : ThreatColonyManager.desiredGarrison(market.getSize())) {
-			fp += ThreatColonyManager.swarmCostEstimate(row);
-		}
-		return fp;
+		return 0f; // no garrison stands since phase C (2026-10-25): the strata are the defence
 	}
 
 	/** The swarms baseFP stands for: the reserve, and a launching colony's stock. */
 	public static int baseCount(MarketAPI market) {
-		if (market == null) return 0;
-		return ThreatColonyManager.garrisonReserve(market) + (stockFP(market) > 0f ? LAUNCH_STOCK : 0);
+		return 0; // no reserve, no launch stock since phase C
 	}
 
 	/** What a colony wants with nothing pressing it: its minimum, and its launch stock. */
@@ -579,12 +573,7 @@ public class ThreatPosture {
 	 * that stays home is the smallest. At least one swarm.
 	 */
 	public static float minimumFP(MarketAPI market) {
-		if (market == null) return 0f;
-		// the hull pool (ThreatHulls, 2026-10-06): the garrison a hive keeps is what
-		// vanilla would keep over a world of its size and military tier, read as a
-		// human world's is; the table still shapes what is built
-		if (ThreatHulls.enabled()) return Math.max(ThreatHulls.standingFP(market), rowsFP(market, 0, 1));
-		return rowsFP(market, 0, ThreatColonyManager.garrisonReserve(market));
+		return 0f; // no minimum since phase C: a quiet world has nothing over it
 	}
 
 	/**
@@ -601,24 +590,12 @@ public class ThreatPosture {
 
 	/** The cost of n rows of the colony's size table from the cheapest, the from-th on (in turn past the table, as maintainGarrisons builds). */
 	protected static float rowsFP(MarketAPI market, int from, int n) {
-		int[][] table = ThreatColonyManager.desiredGarrison(market.getSize());
-		if (table.length == 0 || n <= 0) return 0f;
-		float[] costs = new float[table.length];
-		for (int i = 0; i < table.length; i++) costs[i] = ThreatColonyManager.swarmCostEstimate(table[i]);
-		java.util.Arrays.sort(costs);
-		float fp = 0f;
-		for (int i = from; i < from + n; i++) fp += costs[i % costs.length];
-		return fp;
+		return 0f; // the size table shapes nothing since phase C
 	}
 
 	/** The heaviest swarm of the colony's size table: the band's one swarm. */
 	public static float oneSwarmFP(MarketAPI market) {
-		if (market == null) return 0f;
-		float fp = 0f;
-		for (int[] row : ThreatColonyManager.desiredGarrison(market.getSize())) {
-			fp = Math.max(fp, ThreatColonyManager.swarmCostEstimate(row));
-		}
-		return fp;
+		return 0f; // no swarm of the table since phase C
 	}
 
 	public static void noteSent(float fp) {
@@ -977,7 +954,7 @@ public class ThreatPosture {
 			// a pressed system's forges count too unless they stay home (posturePressedForgesHome)
 			if (mode <= WATCHFUL || !forgesHome) {
 				for (MarketAPI c : colonies) {
-					if (ThreatColonyManager.getForge(c) == null) continue;
+					if (!ThreatColonyManager.coreStands(c)) continue;
 					forges++;
 					if (ThreatColonyManager.poolableFP(c) >= bill) forgesCovered++;
 				}
@@ -1192,6 +1169,8 @@ public class ThreatPosture {
 		}
 		float gather = have;
 		for (CampaignFleetAPI f : pool.keySet()) gather += f.getFleetPoints();
+		// what the system can bud (phase C, 2026-10-25): the strata are the defence, budded on this trigger
+		gather += ThreatBudding.buddableFP(world.getStarSystem());
 		// short on its own, the hives in fuel reach pool with the system (regionalPool)
 		float regionalWant = margin > 0f ? want : attackFP;
 		float afar = 0f;
@@ -1231,6 +1210,8 @@ public class ThreatPosture {
 					+ (int) have + " FP stood against " + (int) attackFP + ")");
 			have += fp;
 		}
+		// the rest buds (phase C): the world its own strata, its quiet siblings a shift to it (ThreatBudding.defend)
+		if (have < want) ThreatBudding.defend(world, attackFP, have, want);
 	}
 
 	/**

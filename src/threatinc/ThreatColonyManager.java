@@ -2318,7 +2318,8 @@ public class ThreatColonyManager {
 
 	/** The reserve without a military tier: half the (hull-scaled) size table, at least one swarm. */
 	public static int baseReserve(MarketAPI market) {
-		return Math.max(1, desiredGarrisonCount(market) / 2);
+		// no reserve since phase C (2026-10-25): nothing stands over a quiet world, every fleet over one is spare
+		return 0;
 	}
 
 	/**
@@ -2406,50 +2407,6 @@ public class ThreatColonyManager {
 			out.add(curr);
 		}
 		return out;
-	}
-
-	/**
-	 * A forge colony that holds a swarm's worth above its reserve's FP but no fleet a launch can
-	 * take (launchOrder empty: its fleets too big for the spare, or one fleet - the founding seed
-	 * holds ~5x the reserve) carves one off its largest fleet in orbit
-	 * (ThreatFleetComposer.splitOff): the size table's first launch-stock row, within the spare.
-	 * The piece is a garrison swarm of the host's spec; the host's spawn strength drops by it so
-	 * neither reads under strength. Once a poll, from maintainGarrisons (hw136, 2026-10-09).
-	 */
-	protected static void splitLaunchSwarm(MarketAPI market, List<CampaignFleetAPI> fleets, Random random) {
-		if (market == null || market.getStarSystem() == null || market.getPrimaryEntity() == null) return;
-		if (getForge(market) == null || ThreatPosture.underAttack(market.getStarSystem())) return;
-		float held = ownedFleetFP(market, fleets);
-		if (ThreatPosture.regrowing(market, held)) return;
-		float spare = Math.min(held - ThreatPosture.minimumFP(market), ThreatPosture.launchSpareFP(market));
-		int[][] table = desiredGarrison(market.getSize());
-		float target = swarmCostEstimate(table[Math.min(garrisonReserve(market), table.length - 1)]);
-		if (target <= 0f || spare < target) return;
-		CampaignFleetAPI host = null;
-		for (CampaignFleetAPI curr : fleets) {
-			if (curr == null || !curr.isAlive() || curr.getBattle() != null) continue;
-			if (curr.getContainingLocation() != market.getStarSystem()) continue;
-			if (curr.getFleetData().getNumMembers() < 2 || curr.getFleetPoints() <= target) continue;
-			if (host == null || curr.getFleetPoints() > host.getFleetPoints()) host = curr;
-		}
-		if (host == null) return;
-		CampaignFleetAPI piece = ThreatFleetComposer.splitOff(host, target, spare, random);
-		if (piece == null) return;
-		float fp = piece.getFleetPoints();
-		com.fs.starfarer.api.campaign.rules.MemoryAPI hm = host.getMemoryWithoutUpdate();
-		com.fs.starfarer.api.campaign.rules.MemoryAPI pm = piece.getMemoryWithoutUpdate();
-		pm.set(GARRISON_FLAG, market.getId());
-		pm.set(SWARM_TIER_KEY, swarmTier(host));
-		pm.set(SWARM_FABS_KEY, swarmFabs(host));
-		pm.set(SWARM_SPAWN_FP, fp);
-		if (hm.contains(SWARM_SPAWN_FP)) hm.set(SWARM_SPAWN_FP, Math.max(0f, hm.getFloat(SWARM_SPAWN_FP) - fp));
-		if (swarmCount(host) > 1) hm.set(SWARM_COUNT_KEY, swarmCount(host) - 1);
-		makeDetectable(piece);
-		placeGarrisonSwarm(market, piece, random);
-		fleets.add(piece);
-		ThreatIncConfig.log("Launch swarm split at " + market.getName() + ": " + (int) fp + " FP off a "
-				+ (int) (host.getFleetPoints() + fp) + " FP fleet (spare " + (int) spare + ", target " + (int) target
-				+ ", " + fleets.size() + " fleets)");
 	}
 
 	/**
@@ -3549,6 +3506,11 @@ public class ThreatColonyManager {
 		return ind == null || ind.isDisrupted() || !ind.isFunctional();
 	}
 
+	/** Whether the world's Fabrication Core stands - built, functional, not disrupted: the one organ strikes, seeds and the phase read since phases B-C. */
+	public static boolean coreStands(MarketAPI market) {
+		return market != null && market.hasIndustry(FABRICATION_CORE) && !organDown(market.getIndustry(FABRICATION_CORE));
+	}
+
 	/**
 	 * Whether any of the colony's key organs (Core, Nexus, port) is currently
 	 * disrupted - the "under active siege" test. While true, the decline meter
@@ -4042,16 +4004,9 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * Prunes dead garrison fleets, banks the nexus's production (the
-	 * strata, bankedFP: what it holds above its size) and fabricates a swarm whenever
-	 * the bank pays for it, one per colony per poll: the floor's unheld slots first, then past the
-	 * floor with no ceiling (2026-09-29: the size table capped every garrison,
-	 * and a swarm came free every interval). Past the whole table a swarm grows
-	 * a standing fleet of its spec up to maxShipsInAIFleet before it takes orbit
-	 * as a fleet of its own (growGarrisonFleet). The garrison orbits its own colony
-	 * planet - it is both the "defenders want to fight" gate on bombardment and
-	 * the visible face of the colony's strength. Hull shortages lower the
-	 * floor and the income that pays for it; with no hulls nothing is built.
+	 * Each poll: the retired banks migrated once, the fuel stock accrued, the garrison lists pruned.
+	 * Nothing is built here since phase C (2026-10-25): a hive world holds its strata on the ground
+	 * and buds a fleet only on a trigger (ThreatBudding, docs/strata-are-the-threat.md).
 	 */
 	public static void maintainGarrisons(Random random) {
 		migrateBankToStrata();
@@ -4060,146 +4015,18 @@ public class ThreatColonyManager {
 		maintainColonyGarrisons(random, ledgerFleetFP());
 	}
 
-	/** maintainGarrisons' loop over the colonies; returns the supplies a month of their fleets away. */
+	/** maintainGarrisons' loop over the colonies: dead fleets pruned, the trade-fleet suppression backfilled; nothing is built (ThreatBudding). */
 	protected static void maintainColonyGarrisons(Random random, Map<String, Float> ledgerFP) {
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
-			SectorEntityToken planet = market.getPrimaryEntity();
-			StarSystemAPI system = market.getStarSystem();
-			if (planet == null || system == null) continue;
 			String marketId = market.getId();
-
 			// backfill the ambient/trade-fleet suppression for colonies founded
 			// before it was added (idempotent)
 			SharedData.getData().getMarketsWithoutTradeFleetSpawn().add(marketId);
-
 			List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(marketId);
 			for (int i = fleets.size() - 1; i >= 0; i--) {
 				CampaignFleetAPI curr = fleets.get(i);
 				if (curr == null || !curr.isAlive()) fleets.remove(i);
 			}
-
-			// no production banked and no upkeep charged since phase A (2026-10-25): the strata are the
-			// bank, grown by the Fabrication Core (advanceCoreGrowth) and spent on the fleets built here
-			// two hard on/off gates on fabrication. The Fabrication Core is the
-			// master switch for all growth: while it is down (missing, disrupted or
-			// still building) NOTHING is grown, Defense Swarms included. The Swarm
-			// Nexus is the military organ: while IT is disrupted no new swarms spawn
-			// either - existing swarms keep fighting, and sibling colonies send
-			// reinforcements to cover the gap. Both organs must be up to rebuild.
-			if (organDown(market.getIndustry(FABRICATION_CORE))) continue;
-			if (!hasOperationalNexus(market)) continue;
-
-			int[][] table = desiredGarrison(market.getSize());
-
-			// backfill fabrication-tier tags on swarms from saves that predate
-			// them, assuming each swarm sits in its table slot - an untagged
-			// legacy swarm otherwise re-embodies from an FP estimate, and real
-			// Threat fleet FP runs high enough to inflate a MEDIUM garrison
-			// swarm into a fabricator armada at muster
-			for (int i = 0; i < fleets.size(); i++) {
-				CampaignFleetAPI curr = fleets.get(i);
-				if (curr.getMemoryWithoutUpdate().contains(SWARM_TIER_KEY)) continue;
-				int[] slot = table[Math.min(i, table.length - 1)];
-				curr.getMemoryWithoutUpdate().set(SWARM_TIER_KEY, slot[1]);
-				curr.getMemoryWithoutUpdate().set(SWARM_FABS_KEY, slot[0]);
-			}
-
-			// the floor: a hull-starved colony's is a fraction of its nominal
-			// garrison (same figure the launch gates read - see
-			// desiredGarrisonCount). What counts against it is slots PROPERLY
-			// HELD (countFitGarrison), not fleets parked: a weak holder - a swarm
-			// shot under strength, or one too light for its slot (a small
-			// colony's swarm sent here to help) - keeps fighting but does not
-			// stop the nexus growing the real thing
-			int desired = desiredGarrisonCount(market);
-			// a swarm out raiding or on its way in holds its slot
-			int away = swarmsAway(marketId);
-			int fit = countFitGarrison(market);
-			boolean belowFloor = fit + away < desired;
-			// under posture the want is the floor (ThreatPosture: the reserve and
-			// a forge's launch stock, or the war's need) and the table only
-			// shapes what is built: what the colony holds and has inbound against
-			// it, never below one swarm
-			boolean posture = ThreatPosture.enabled();
-			if (posture) {
-				belowFloor = fleets.size() + away < 1
-						|| ThreatPosture.wantsGrowth(market, ownedFleetFP(market, fleets));
-				desired = ThreatPosture.baseCount(market);
-			}
-
-			// an unheld floor slot first, most demanding first; past the floor
-			// the table's rows in turn, so the garrison keeps its mix (counted in
-			// swarms: past the table they grow fleets, growGarrisonFleet)
-			int swarms = 0;
-			for (CampaignFleetAPI curr : fleets) swarms += swarmCount(curr);
-			int[] spec = table[fit < table.length ? fit : (swarms + away) % table.length];
-			// production pays for the garrison: the bank must hold what the swarm
-			// will cost (a strained hive banks slower; a starved one, nothing)
-			if (bankedFP(market) < swarmCostEstimate(spec)) continue;
-			// a structure waiting on the bank comes before growth past the floor,
-			// or swarms cheaper than it would spend every FP as it banked
-			if (!belowFloor && buildWaiting().containsKey(marketId)) continue;
-			// nothing past the want: the bank keeps the rest for waves, strikes
-			// and foundings
-			if (posture && !belowFloor) {
-				if (ownAvailableForLaunch(market) == 0) splitLaunchSwarm(market, fleets, random);
-				continue;
-			}
-			// (2026-10-06: the garrison is vanilla's patrols - the Nexus's table,
-			// shrinking with the market's shortages as a human world's does - and
-			// pays no supplies; one evening charged it and gated its growth on the
-			// hive's supplies surplus, hw36-37, docs/hive-stocks-and-upkeep.md)
-			// (2026-09-29: closed economy - the bank is the only bound. The nexus
-			// used to spend it at one swarm per garrisonRespawnDays, which the
-			// alarm quickened: a second, arbitrary cap on top of production. Now
-			// it builds whenever the bank pays, one swarm per colony per poll
-			// (this loop's cadence, ~half a day) - so a large endowment comes
-			// out over days, never as a frame full of fleets)
-
-			// the head-count is at the floor but a slot is only weakly held: the
-			// fresh swarm REPLACES the weakest weak holder not in a battle, and
-			// its hulls go back into the bank. Retired only after the fresh one
-			// is built, so a failed spawn costs nothing
-			CampaignFleetAPI recycled = null;
-			if (belowFloor && fleets.size() + away >= desired) recycled = weakestWeakHolder(market);
-
-			CampaignFleetAPI fleet = buildGarrisonSwarm(market, spec, random);
-			if (fleet == null) continue;
-			float cost = fleet.getFleetPoints();
-			chargeFP(market, cost);
-			learnSwarmCost(spec, cost);
-
-			// every row of the table properly held: the swarm's hulls join a
-			// standing fleet of its spec with room for them, up to
-			// maxShipsInAIFleet, and only a swarm no fleet has room for takes
-			// orbit as a fleet of its own (2026-09-29 review: growth past the
-			// floor added a fleet a swarm, dozens to hundreds over a rich hive).
-			// The same hulls at the same price - fewer, fuller fleets
-			CampaignFleetAPI host = fit >= table.length ? garrisonHostFor(fleets, planet, spec, fleet) : null;
-			if (host != null) {
-				growGarrisonFleet(host, fleet);
-				ThreatIncConfig.log("Garrison swarm fabricated into a standing fleet at " + market.getName()
-						+ " (" + swarmCount(host) + " swarms, " + host.getFleetData().getNumMembers() + " ships; "
-						+ (int) cost + " FP, " + (int) bankedFP(market) + " FP banked)");
-				continue;
-			}
-			placeGarrisonSwarm(market, fleet, random);
-
-			if (recycled != null) {
-				// read before despawn: a despawned fleet reports 0 FP
-				int oldTier = swarmTier(recycled);
-				float oldFP = recycled.getFleetPoints();
-				fleets.remove(recycled);
-				recycled.despawn();
-				creditFP(market, oldFP);
-				ThreatIncConfig.log("Recycled weak Defense Swarm at " + market.getName()
-						+ " (tier " + oldTier + ", " + (int) oldFP + " FP) for a fresh one");
-			}
-
-			fleets.add(fleet);
-			ThreatIncConfig.log("Garrison fleet fabricated at " + market.getName()
-					+ " (" + fleets.size() + ", floor " + desired + ", " + (int) cost + " FP, "
-					+ (int) bankedFP(market) + " FP banked)");
 		}
 	}
 
@@ -5218,17 +5045,8 @@ public class ThreatColonyManager {
 	 * hull economy's cap skipped. Returns how many swarms it fabricated.
 	 */
 	public static int fillGarrisonNow(MarketAPI market, Random random) {
-		if (market == null) return 0;
-		List<CampaignFleetAPI> fleets = ThreatIncData.garrisonsFor(market.getId());
-		int[][] table = desiredGarrison(market.getSize());
-		int made = 0;
-		while (fleets.size() < table.length) {
-			CampaignFleetAPI fleet = fabricateGarrisonSwarm(market, table[fleets.size()], random);
-			if (fleet == null) break;
-			fleets.add(fleet);
-			made++;
-		}
-		return made;
+		// no garrison stands since phase C (2026-10-25): the strata bud on a trigger (ThreatBudding)
+		return 0;
 	}
 
 	// ------------------------------------------------------------------
@@ -5344,7 +5162,8 @@ public class ThreatColonyManager {
 		// under posture each colony's want replaces the size table as what a
 		// garrison is filled toward (ThreatPosture): the nominal pass would
 		// shuffle swarms toward tables no colony is meant to reach
-		if (ThreatPosture.enabled()) redistributeByPressure(colonies);
+		// the shift (phase C, 2026-10-25): strata budded at a quiet world, flown, absorbed at the receiver
+		if (ThreatPosture.enabled()) ThreatBudding.shift();
 		else redistributeNominal(colonies);
 	}
 
@@ -5398,245 +5217,6 @@ public class ThreatColonyManager {
 			}
 			if (!dispatched) return;
 		}
-	}
-
-	/**
-	 * The pressure pass (ThreatPosture): a colony holding less than its want
-	 * (inbound included), the neediest first, draws whole fleets from siblings
-	 * holding more than their own want by the band and a swarm - and, for a
-	 * colony of a system under real attack (ThreatPosture.underAttack), from a
-	 * quiet system's colonies down to their reserve - same system first, then
-	 * the most to spare, then the nearest. A fleet goes only if the donor's
-	 * surplus covers it whole and it leaves the receiver no surplus to send
-	 * back: the largest that fits the deficit, else the smallest. The held
-	 * figures are kept here as fleets leave, and every dispatch takes a fleet
-	 * off a garrison, so the loop ends within the hive's fleet count.
-	 *
-	 * <p>No circuits (ti8c: 89 fleets sent in a month, round Sun Wukong - Zeta
-	 * Ranau II - Gamma Shevar II and back): a donor gives only from what is on
-	 * station, never while below its own want nor within DECAY_DAYS of being
-	 * sent a transfer, and a fleet sent is not sent again for as long.
-	 */
-	protected static void redistributeByPressure(List<MarketAPI> colonies) {
-		if (!ThreatPosture.enabled()) return;
-		final Map<String, Float> held = new java.util.HashMap<String, Float>();
-		final Map<String, Float> inbound = new java.util.HashMap<String, Float>();
-		int fleetsTotal = 0;
-		for (MarketAPI curr : colonies) {
-			held.put(curr.getId(), ownedFleetFP(curr, ThreatIncData.garrisonsFor(curr.getId())));
-			inbound.put(curr.getId(), ThreatPosture.inboundFP(curr.getId()));
-			fleetsTotal += countLiveGarrison(curr.getId());
-		}
-		float band = Math.max(0f, ThreatIncConfig.postureBand());
-		boolean atAttack = ThreatIncConfig.postureNeedAtAttack();
-		// receivers the force over which nothing this pass could gather would outweigh: read once a pass
-		final java.util.Set<String> outweighed = new java.util.HashSet<String>();
-		for (int n = 0; n <= fleetsTotal; n++) {
-			List<MarketAPI> receivers = new ArrayList<MarketAPI>();
-			final Map<String, Float> shortfall = new java.util.HashMap<String, Float>();
-			for (MarketAPI curr : colonies) {
-				if (curr.getPrimaryEntity() == null) continue;
-				float want = ThreatPosture.wantFP(curr);
-				if (want <= 0f) continue;
-				float deficit = want - held.get(curr.getId());
-				if (deficit <= 0f) continue;
-				receivers.add(curr);
-				shortfall.put(curr.getId(), deficit / want);
-			}
-			if (receivers.isEmpty()) return;
-			java.util.Collections.sort(receivers, new java.util.Comparator<MarketAPI>() {
-				public int compare(MarketAPI a, MarketAPI b) {
-					return Float.compare(shortfall.get(b.getId()), shortfall.get(a.getId()));
-				}
-			});
-
-			boolean dispatched = false;
-			for (MarketAPI receiver : receivers) {
-				float want = ThreatPosture.wantFP(receiver);
-				float deficit = want - held.get(receiver.getId());
-				float accept = deficit + want * band + ThreatPosture.oneSwarmFP(receiver);
-				// consolidating (ThreatStance), a merely THREATENED system is fed too
-				boolean attacked = ThreatPosture.underAttack(receiver.getStarSystem())
-						|| (ThreatStance.feedsPressed() && ThreatPosture.pressed(receiver.getStarSystem()));
-				// (2026-10-08) what cannot outweigh the force over an attacked world is not fed into it a
-				// swarm at a time - the rally's rule (systemDefenceOnlyIfEnough), which the ordinary transfers
-				// and the fabrication for a receiver had sat outside: hw83a's Nomios, under a 4,450 FP siege
-				// with 800 FP standing, was sent 91 swarms of 40-90 FP in three months, Epiphany's bank
-				// fabricating one a dispatch from 1,668 FP down to 74, each hunted down as it arrived;
-				// 4,501 swarms, 470k FP, fabricated for attacked hives in a game, forty of them eradicated
-				if (outweighed.contains(receiver.getId())) continue;
-				if (ThreatIncConfig.systemDefenceOnlyIfEnough() && ThreatPosture.underAttack(receiver.getStarSystem())) {
-					float force = ThreatPosture.forceOver(receiver);
-					float stands = force > 0f ? ThreatPosture.standsFor(receiver) : 0f;
-					if (force > 0f && stands < force) {
-						float gather = 0f;
-						for (MarketAPI curr : colonies) {
-							if (curr == receiver) continue;
-							gather += pressureSpare(curr, receiver, held, inbound, attacked, atAttack);
-							gather += fabricableFor(curr, receiver, held);
-						}
-						// what the pass would send this poll is at most the receiver's accept (its deficit, the band
-						// and a swarm), whatever the sector's banks hold: hw87a gated on the banks alone refused 49
-						// times and fabricated 4,489 swarms for attacked hives, hw83a's 4,501 - a want of 1,000
-						// under a 4,450 FP siege was fed 400 FP a poll from banks that "could" have stood 60k
-						float could = stands + Math.min(accept, gather);
-						if (could < force) {
-							outweighed.add(receiver.getId());
-							ThreatIncConfig.logQuiet("navy-enough:" + receiver.getId(), "Posture: no transfer to "
-									+ receiver.getName() + " - " + (int) force + " FP over it, " + (int) could
-									+ " FP could stand (" + (int) stands + " standing, " + (int) accept
-									+ " FP more wanted, " + (int) gather + " FP to gather)");
-							continue;
-						}
-					}
-				}
-				MarketAPI donor = null;
-				CampaignFleetAPI pick = null;
-				boolean donorSame = false;
-				float donorSpare = 0f, donorDist = Float.MAX_VALUE;
-				for (MarketAPI curr : colonies) {
-					if (curr == receiver) continue;
-					float spare = pressureSpare(curr, receiver, held, inbound, attacked, atAttack);
-					if (spare <= 0f) continue;
-					CampaignFleetAPI fleet = pressureFleet(curr, Math.min(spare, accept), deficit);
-					if (fleet == null) continue;
-					boolean same = curr.getStarSystem() == receiver.getStarSystem();
-					float dist = same ? 0f : Misc.getDistanceLY(curr.getStarSystem().getLocation(),
-							receiver.getStarSystem().getLocation());
-					// the way there comes from the hive's fuel (ThreatFuel)
-					if (!ThreatFuel.canPay(ThreatFuel.passage(fleet.getFleetPoints(), dist, false))) continue;
-					// billed reach: the nearest donor first - no radius keeps the
-					// richest garrison across the sector from being the one that sails
-					boolean better;
-					if (donor == null) better = true;
-					else if (same != donorSame) better = same;
-					else if (ThreatReach.enabled() && dist != donorDist) better = dist < donorDist;
-					else if (spare != donorSpare) better = spare > donorSpare;
-					else better = dist < donorDist;
-					if (better) {
-						donor = curr;
-						pick = fleet;
-						donorSame = same;
-						donorSpare = spare;
-						donorDist = dist;
-					}
-				}
-				if (donor == null) {
-					// no fleet to spare anywhere in reach: a colony whose bank lies
-					// idle past its own want builds a swarm for the receiver instead
-					donor = fabricatorFor(colonies, receiver, held);
-					if (donor == null) continue;
-					pick = fabricateFor(donor, receiver, deficit);
-					if (pick == null) continue;
-					held.put(donor.getId(), held.get(donor.getId()) + pick.getFleetPoints());
-				}
-				// read before it leaves: the garrison list no longer holds it after
-				float fp = pick.getFleetPoints();
-				if (!sendReinforcement(donor, receiver, pick)) continue;
-				held.put(donor.getId(), held.get(donor.getId()) - fp);
-				held.put(receiver.getId(), held.get(receiver.getId()) + fp);
-				inbound.put(receiver.getId(), inbound.get(receiver.getId()) + fp);
-				ThreatPosture.noteTransfer(receiver, pick);
-				ThreatPosture.noteSent(fp);
-				if (donor.getStarSystem() != receiver.getStarSystem()) {
-					ThreatReach.note("send", ThreatFuel.ly(donor.getStarSystem(), receiver.getStarSystem()));
-				}
-				ThreatIncConfig.log("Posture: " + donor.getName() + " sent " + (int) fp + " FP to "
-						+ receiver.getName() + " (" + held.get(receiver.getId()).intValue() + " of "
-						+ (int) want + " FP wanted)");
-				dispatched = true;
-				break;
-			}
-			if (!dispatched) return;
-		}
-	}
-
-	/**
-	 * What the colony can give the receiver in the pressure pass, from what is
-	 * on station: 0 unless it can rebuild, is not earmarked by the offensive,
-	 * holds two fleets, was not sent a transfer within DECAY_DAYS, and can
-	 * reach the receiver. Its releasable surplus - or, for a receiver under
-	 * attack, what a colony the war asks nothing of may thin to its reserve
-	 * (postureNeedAtAttack: hw6, the stock was a founding's or a strike's,
-	 * never the defence's, and a colony short of its want gave nothing).
-	 */
-	protected static float pressureSpare(MarketAPI curr, MarketAPI receiver, Map<String, Float> held,
-			Map<String, Float> inbound, boolean attacked, boolean atAttack) {
-		if (curr == receiver || curr.getPrimaryEntity() == null) return 0f;
-		if (!canRebuildGarrison(curr)) return 0f;
-		// a system whose spare the offensive's held prongs will muster on their day keeps it (hw50c: eight
-		// sends drained a staging system between a launch and its prongs' days, and every one was refused)
-		if (curr.getStarSystem() != null && ThreatOffensive.earmarked(curr.getStarSystem().getId()) > 0) return 0f;
-		if (countLiveGarrison(curr.getId()) < 2) return 0f;
-		if (ThreatPosture.recentlyReceived(curr)) return 0f;
-		// what is on station, not what is flying in
-		float onStation = held.get(curr.getId()) - inbound.get(curr.getId());
-		boolean thin = attacked && (atAttack ? ThreatPosture.needFP(curr) <= 0f
-				: !ThreatPosture.pressed(curr.getStarSystem()));
-		if (!(thin && atAttack) && onStation < ThreatPosture.wantFP(curr)) return 0f;
-		float spare = ThreatPosture.releasableFP(curr, onStation);
-		if (thin) spare = Math.max(spare, ThreatPosture.thinnableFP(curr, onStation));
-		if (spare <= 0f) return 0f;
-		if (!canReinforce(curr, receiver)) return 0f;
-		return spare;
-	}
-
-	/**
-	 * Fleet points the colony's bank could build for the receiver as
-	 * fabricatorFor would have it: its idle bank past its own want, 0 unless it
-	 * holds its want, can rebuild and reach the receiver.
-	 */
-	protected static float fabricableFor(MarketAPI curr, MarketAPI receiver, Map<String, Float> held) {
-		if (curr == receiver || curr.getPrimaryEntity() == null || curr.getStarSystem() == null) return 0f;
-		if (!canRebuildGarrison(curr)) return 0f;
-		float want = ThreatPosture.wantFP(curr);
-		Float h = held.get(curr.getId());
-		if (h == null || h < want) return 0f;
-		float idle = bankedFP(curr) - want;
-		if (idle <= 0f) return 0f;
-		if (!canReinforce(curr, receiver)) return 0f;
-		return idle;
-	}
-
-	/**
-	 * A colony that can build a swarm for a receiver no garrison can spare one
-	 * for: it holds its own want, can fabricate and reach the receiver, and its
-	 * bank holds one rebuild of its own want plus the swarm. The richest such
-	 * bank goes first, same-system first. (2026-09-29, ti-h8f: 60-80k FP lay
-	 * banked at colonies at their want - a bank past the want is spent only by
-	 * the forges' waves and strikes - while pressed systems held 5-10k short.)
-	 */
-	protected static MarketAPI fabricatorFor(List<MarketAPI> colonies, MarketAPI receiver, Map<String, Float> held) {
-		int[] spec = cheapestRow(receiver);
-		if (spec == null) return null;
-		float cost = swarmCostEstimate(spec);
-		MarketAPI best = null;
-		boolean bestSame = false;
-		float bestIdle = 0f, bestLY = Float.MAX_VALUE;
-		for (MarketAPI curr : colonies) {
-			if (curr == receiver || curr.getPrimaryEntity() == null || curr.getStarSystem() == null) continue;
-			if (!canRebuildGarrison(curr)) continue;
-			float want = ThreatPosture.wantFP(curr);
-			Float h = held.get(curr.getId());
-			if (h == null || h < want) continue;
-			float idle = bankedFP(curr) - want - cost;
-			if (idle < 0f) continue;
-			if (!canReinforce(curr, receiver)) continue;
-			boolean same = curr.getStarSystem() == receiver.getStarSystem();
-			// a swarm the hive cannot fuel to the receiver is not built for it
-			float ly = ThreatFuel.ly(curr.getStarSystem(), receiver.getStarSystem());
-			if (!ThreatFuel.canPay(ThreatFuel.passage(cost, ly, false))) continue;
-			// billed reach: the nearest idle bank first, as the donors go
-			boolean better = best == null || (same != bestSame ? same
-					: ThreatReach.enabled() && ly != bestLY ? ly < bestLY : idle > bestIdle);
-			if (better) {
-				best = curr;
-				bestSame = same;
-				bestIdle = idle;
-				bestLY = ly;
-			}
-		}
-		return best;
 	}
 
 	/** The receiver's cheapest garrison row (its table's lowest tier), or null. */

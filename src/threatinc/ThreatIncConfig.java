@@ -442,6 +442,12 @@ public class ThreatIncConfig {
 	public static float structureStrata()     { return f("threatinc_structureStrata"); }
 	/** Strata a seed is founded with, paid by its source beyond the Seeding Swarm's hulls (400: size 1; the carrier absorbed on landing makes 800, size 2). */
 	public static float seedStrata()          { return f("threatinc_seedStrata"); }
+	/** Strata a hive world moves a day, budding or absorbing, at least (400: 80 FP, the flow of a size-6 world or smaller). */
+	public static float strataFlowPerDay()    { return f("threatinc_strataFlowPerDay"); }
+	/** The flow as a fraction of the world's strata a day (0.02: a size-7 world moves 512, a fortress 1,024). */
+	public static float strataFlowFractionPerDay() { return f("threatinc_strataFlowFractionPerDay"); }
+	/** Days a Defend fleet lingers over its world after the last hostile left the orbit before it is absorbed. */
+	public static float defendLingerDays()    { return f("threatinc_defendLingerDays"); }
 	/** Ground Defenses structure bonus: defense mult = 1 + bonus (x2 at 1.0). */
 	public static float groundDefensesBonus() { return f("threatinc_groundDefensesBonus"); }
 	/** Heavy Batteries structure bonus: defense mult = 1 + bonus (x3 at 2.0). */

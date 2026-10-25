@@ -359,7 +359,7 @@ public class ThreatMissionIntel extends BaseMissionIntel {
 	/** A colony that can stage expeditions, not merely supply them. */
 	protected static boolean isStrikePlatform(MarketAPI market) {
 		return market.getSize() >= ThreatIncConfig.strikeMinSize()
-				&& ThreatColonyManager.getForge(market) != null
+				&& ThreatColonyManager.coreStands(market)
 				&& ThreatColonyManager.hasOperationalFuel(market)
 				&& ThreatColonyManager.hasOperationalNexus(market);
 	}

@@ -162,6 +162,10 @@ public final class ThreatStrata {
 		if (delta == 0f) return before;
 		float after = Math.max(0f, Math.min(cap(market), before + delta));
 		market.getMemoryWithoutUpdate().set(KEY, after);
+		// what the enemy took (a bombardment, a front's attrition): the budding reads yesterday's rate (ThreatBudding.doomed)
+		if (after < before && (razerFactionId != null || (what != null && what.startsWith("Bled")))) {
+			ThreatBudding.noteLoss(market, before - after);
+		}
 		if (after <= 0f) {
 			collapse(market, razerFactionId);
 			return 0f;
