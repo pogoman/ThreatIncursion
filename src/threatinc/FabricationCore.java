@@ -26,8 +26,8 @@ public class FabricationCore extends BaseIndustry {
 		super.apply(true);
 		int size = market.getSize();
 		supply(Commodities.HEAVY_MACHINERY, size);
-		int metals = ThreatColonyManager.coreDemand(size, Commodities.METALS);
-		int fuel = ThreatColonyManager.coreDemand(size, Commodities.FUEL);
+		int metals = ThreatColonyManager.coreDemand(market, Commodities.METALS); // 0 while a conquered world is consumed (phase E)
+		int fuel = ThreatColonyManager.coreDemand(market, Commodities.FUEL);
 		if (metals > 0) demand(Commodities.METALS, metals);
 		if (fuel > 0) demand(Commodities.FUEL, fuel);
 		// THE DEFENCE IS THE STRATA (phase D, docs/strata-are-the-threat.md 4): vanilla's base figure is

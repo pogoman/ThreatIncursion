@@ -67,6 +67,9 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 			tooltip.addPara("Growth: %s", 3f, neg, "halted");
 		} else if (ThreatRazing.saturated(market)) {
 			tooltip.addPara("Growth: %s", opad, neg, "halted under saturation");
+		} else if (s.consuming) {
+			tooltip.addPara("Growth: %s a month, consuming the world to size %s", opad, h,
+					ThreatStrata.fmt(s.strataPerDay * 30f), "" + ThreatColonyManager.consumingTo(market));
 		} else if (s.coreDown) {
 			tooltip.addPara("Growth: %s", opad, neg, "holding");
 		} else if (s.growing()) {

@@ -80,7 +80,7 @@ clipped to crew space; the force holds the orbit, fights what buds, razes every 
 lands on arrival, home when both are spent; Support and Defend off the hive rows; "Closed:
 start phase A".
 
-Nothing open. Phases A (jar 13:22), B (jar 13:54), C (jar 14:16) and D (jar 14:47) BUILT 2026-10-25, untested (section 10).
+Nothing open. ALL FIVE PHASES BUILT 2026-10-25, untested: A (jar 13:22), B (13:54), C (14:16), D (14:47), E (14:55) - section 10 has each phase's BUILT block, judgement calls and verify list.
 
 ## 1. Review - most of this already exists, hidden
 
@@ -808,6 +808,29 @@ strata), the conquered hive's ceiling at the market's size and its growth into i
 growth. Proves: a Threat front holding half a world grows and the world's output halves; a
 world taken by 2,000 strata reads size 6 a year on; the humans' counter-push still wins when
 sized to it.
+
+**BUILT 2026-10-25, jar 14:55, untested.** The infestation is `ThreatGroundWarCondition.apply`: every
+industry's supply x (1 - `ThreatGroundFronts.infestShare`), the share the swarm's front holds of
+the world's size (vanilla's `ResourceDepositsCondition` pattern, so it survives the recompute);
+its tooltip says "Threat infestation: every industry's output xN; the swarm grows S strata a day on
+it". The growth is `infestGrowthPerDay` = `coreStrataPerSizeMonth` x size x share / 30 (time
+scale applied), joined to the front's strata (`front.marines`) each tick by `feedOnWorld`, after the
+attrition; the fronts table's Held cell reads "2/6 +40/d" and the row tooltip has the arithmetic.
+A ground victory seeds the hive at the army's strata (`colonyGroundVictory` passes `front.marines` to
+`convertConquered(planet, market, armyStrata)`: `ThreatStrata.add` "Landed as", never under the
+founding size) and sets `CONSUME_TO_FLAG` to the world's size (clipped to `maxColonySize`); while
+`consumingTo(market)` > 0 the Core demands nothing (`coreDemand(market, commodity)`, read by
+`FabricationCore.apply` and `coreState`) and `coreState.consuming` grows `ThreatStrata.span(size)` per
+`starveDaysPerSize` days, a size per clock, held as any growth is by a front or saturation; at the
+size the flag is unset ("has consumed its world"). The vitality tooltip reads "Growth: N a month,
+consuming the world to size S". Judgement calls: the growth is not capped by anything but the attrition
+(a dug-in front is a clock, as decided); the seized industries stay pinned disrupted as well (both
+cuts stand); the condition's `apply` relies on vanilla reapplying conditions after industries (as
+`ResourceDepositsCondition` does) - if the colony screen shows no output cut after a district falls,
+add `market.reapplyConditions()` to `ThreatGroundFronts.reapply`. Verify: the proves above; a Threat
+front holding 2 of 6 districts reads "+40/d" and the world's industries show "Threat infestation x0.67";
+a conquered size-6 world's hive logs "consumed from size N up to 6" and reads "consuming the world to
+size 6" with no Core inputs on its tooltip.
 
 Every phase: `compile.ps1`, a game run from the current save and a day-0 run through the
 harness, the digest, facts and the topic docs updated the same session (`code-map.md` for the

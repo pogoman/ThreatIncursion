@@ -2128,6 +2128,7 @@ public class ThreatGroundFronts {
 		burnDefenderArms(market, front, elapsedDays); // and burn armaments as a front does (2026-10-17)
 		tickDefenderStance(front, market, elapsedDays); // and choose: counter-attack or dig in (2026-10-17)
 		bleedHiveStrata(market, front, elapsedDays); // a hive's strata too: every troop lost is a stratum point gone for good (2026-10-24)
+		feedOnWorld(market, front, elapsedDays); // and the swarm's front on a human world eats it and grows (phase E)
 		if (groundDown(front)) {
 			if (threatFront) {
 				ThreatNotice.titled("Threat Landing Destroyed").good()
@@ -2485,6 +2486,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * stratum, holding, until it withers.
 	 */
 	protected static void colonyGroundVictory(GroundFront front, MarketAPI market) {
+		float army = Math.max(0f, front.marines); // the strata that took the world seed the hive (phase E)
 		fronts().remove(front.marketId);
 		if (syncSiegeState(market)) market.reapplyIndustries(); // strip the malus/tooltip before the teardown
 		ThreatNotice.titled("Colony Lost").bad()
@@ -2502,7 +2504,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		// the ruins later.
 		SectorEntityToken world = market.getPrimaryEntity();
 		if (ThreatIncConfig.conquestConverts() && world instanceof PlanetAPI) {
-			MarketAPI hive = ThreatColonyManager.convertConquered((PlanetAPI) world, market);
+			MarketAPI hive = ThreatColonyManager.convertConquered((PlanetAPI) world, market, army);
 			if (hive != null) {
 				ThreatNotice.titled("Hive Seeded").bad()
 						.line("The swarm has seeded a hive on the ruins of %s.", ThreatNotice.market(hive))
@@ -4600,6 +4602,38 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 						ThreatNotice.hl((int) bombardReserve()))
 				.send();
 		return new float[] { removed, troops };
+	}
+
+	// ------------------------------------------------------------------
+	// CONSUMING A HUMAN WORLD (phase E, docs/strata-are-the-threat.md 13): the swarm's landed
+	// strata eat the seized share of everything the world makes (ThreatGroundWarCondition's
+	// output cut) and grow by it as a hive of the size they hold - coreStrataPerSizeMonth x
+	// (size x share) a month, no Core needed: the planet is the Core. A dug-in Threat front is a
+	// clock the defenders must push off; the attrition rule still bleeds it, and eating against
+	// bleeding is the fight. A ground victory seeds the hive at the army's strata, and the hive
+	// grows into the world's size by consumption (ThreatColonyManager.convertConquered).
+	// ------------------------------------------------------------------
+
+	/** The seized share of a human world under the swarm's front: districts held of its size; 0 for any other front. */
+	public static float infestShare(MarketAPI market, GroundFront front) {
+		if (market == null || front == null || !isThreatOwned(front) || isHiveTarget(market)) return 0f;
+		return Math.max(0f, Math.min(1f, front.strataHeld / (float) Math.max(1, market.getSize())));
+	}
+
+	/** Strata a day the swarm's front grows on what it eats of the world (infestShare). */
+	public static float infestGrowthPerDay(MarketAPI market, GroundFront front) {
+		float share = infestShare(market, front);
+		if (share <= 0f) return 0f;
+		return Math.max(0f, ThreatIncConfig.coreStrataPerSizeMonth()) * market.getSize() * share / 30f
+				/ Math.max(0.01f, IncursionManager.timeScale());
+	}
+
+	/** One tick of that: the growth joins the front's strata (its troops). */
+	protected static void feedOnWorld(MarketAPI market, GroundFront front, float elapsedDays) {
+		float grow = infestGrowthPerDay(market, front) * elapsedDays;
+		if (grow <= 0f) return;
+		front.marines += grow;
+		front.marinesLanded = Math.max(front.marinesLanded, front.marines);
 	}
 
 	/**

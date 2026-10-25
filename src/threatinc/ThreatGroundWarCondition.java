@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.util.List;
 
 import com.fs.starfarer.api.campaign.econ.Industry;
+import com.fs.starfarer.api.campaign.econ.MutableCommodityQuantity;
 import com.fs.starfarer.api.impl.campaign.econ.BaseMarketConditionPlugin;
 import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.Misc;
@@ -24,6 +25,25 @@ import com.fs.starfarer.api.util.Misc;
 public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 
 	public static final String ID = "threatinc_ground_war";
+
+	/** THE INFESTATION (phase E): every industry's output x (1 - the seized share), ThreatGroundFronts.infestShare; what is eaten grows the front. */
+	@Override
+	public void apply(String id) {
+		float share = ThreatGroundFronts.infestShare(market, ThreatGroundFronts.getFront(market.getId()));
+		for (Industry ind : market.getIndustries()) {
+			for (MutableCommodityQuantity q : ind.getAllSupply()) {
+				if (share > 0f) q.getQuantity().modifyMult(id, 1f - share, "Threat infestation");
+				else q.getQuantity().unmodifyMult(id);
+			}
+		}
+	}
+
+	@Override
+	public void unapply(String id) {
+		for (Industry ind : market.getIndustries()) {
+			for (MutableCommodityQuantity q : ind.getAllSupply()) q.getQuantity().unmodifyMult(id);
+		}
+	}
 
 	@Override
 	public boolean hasCustomTooltip() {
@@ -54,6 +74,11 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 					names.append(ind.getCurrentName());
 				}
 				tooltip.addPara("Seized: %s.", 3f, neg, names.toString());
+			}
+			float share = ThreatGroundFronts.infestShare(market, front);
+			if (share > 0f) {
+				tooltip.addPara("Threat infestation: every industry's output x%s; the swarm grows %s strata a day on it.", 3f, neg,
+						String.format("%.2f", 1f - share), ThreatStrata.fmt(ThreatGroundFronts.infestGrowthPerDay(market, front)));
 			}
 		}
 

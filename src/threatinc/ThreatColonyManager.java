@@ -59,6 +59,8 @@ public class ThreatColonyManager {
 
 	public static final String COLONY_FLAG = "$threatinc_colony";
 	public static final String GARRISON_FLAG = "$threatinc_garrison";
+	/** On a conquered hive: the world's size it is consuming its way up to (phase E, consumingTo). */
+	public static final String CONSUME_TO_FLAG = "$threatinc_consumeTo";
 	/** The FabricatorEscortStrength ordinal a swarm was fabricated at. */
 	public static final String SWARM_TIER_KEY = "$threatinc_swarmTier";
 	/** How many fabricator ships a swarm was fabricated with. */
@@ -258,8 +260,18 @@ public class ThreatColonyManager {
 	 * falls back to the deciv path).
 	 */
 	public static MarketAPI convertConquered(PlanetAPI planet, MarketAPI market) {
+		return convertConquered(planet, market, 0f);
+	}
+
+	/**
+	 * As above, seeded at the army's strata (phase E, docs/strata-are-the-threat.md 13): the hive starts
+	 * at what took the world, never under the founding size, and grows into the world's size by
+	 * consumption - a size per starveDaysPerSize days with no Core demand until it is there (coreState).
+	 */
+	public static MarketAPI convertConquered(PlanetAPI planet, MarketAPI market, float armyStrata) {
 		if (planet == null || market == null) return null;
 		String name = market.getName();
+		int worldSize = market.getSize();
 		DecivTracker.decivilize(market, false);
 		MarketAPI ruin = planet.getMarket();
 		if (ruin == null || !ThreatMapFog.conditionOnly(ruin)) {
@@ -280,6 +292,14 @@ public class ThreatColonyManager {
 			return null;
 		}
 		registerConquest(planet, hive);
+		if (armyStrata > ThreatStrata.of(hive)) {
+			ThreatStrata.add(hive, armyStrata - ThreatStrata.of(hive), "Landed as", null);
+		}
+		int ceiling = Math.min(worldSize, maxColonySize(hive));
+		if (ceiling > hive.getSize()) {
+			hive.getMemoryWithoutUpdate().set(CONSUME_TO_FLAG, ceiling);
+			ThreatIncConfig.log("Conquest: " + name + " consumed from size " + hive.getSize() + " up to " + ceiling);
+		}
 		ThreatIncConfig.log("Conquest: " + name + " seeded as a size-" + size + " hive, "
 				+ hive.getIndustries().size() + " structures, " + (int) (had - fpBank(payer)) + " FP paid by "
 				+ (ThreatIncData.resolveColonyMarket(payer) != null ? ThreatIncData.resolveColonyMarket(payer).getName() : payer)
@@ -3501,6 +3521,20 @@ public class ThreatColonyManager {
 		return 0;
 	}
 
+	/** The same for a world: nothing while a conquered hive consumes its world (consumingTo - the planet is the Core). */
+	public static int coreDemand(MarketAPI market, String commodityId) {
+		if (market == null) return 0;
+		if (consumingTo(market) > 0) return 0;
+		return coreDemand(market.getSize(), commodityId);
+	}
+
+	/** The size a conquered hive is consuming its world up to (CONSUME_TO_FLAG); 0 when it is not, or is there. */
+	public static int consumingTo(MarketAPI market) {
+		if (market == null) return 0;
+		int to = market.getMemoryWithoutUpdate().getInt(CONSUME_TO_FLAG);
+		return to > market.getSize() ? to : 0;
+	}
+
 	/** What the Fabrication Core sees of a hive world (coreState). */
 	public static final class CoreState {
 		public int metalsDemand, metalsHave, fuelDemand, fuelHave;
@@ -3510,6 +3544,8 @@ public class ThreatColonyManager {
 		public boolean famine;
 		/** The Core is absent or still building: the world holds. */
 		public boolean coreDown;
+		/** A conquered hive consuming its world up to its size (consumingTo): no demand, a size per starveDaysPerSize days. */
+		public boolean consuming;
 		/** Strata a day the state moves the world: positive growing, negative starving, 0 holding. */
 		public float strataPerDay;
 		public boolean growing() { return strataPerDay > 0f; }
@@ -3530,12 +3566,19 @@ public class ThreatColonyManager {
 		CoreState s = new CoreState();
 		if (market == null) return s;
 		int size = Math.max(1, market.getSize());
-		s.metalsDemand = coreDemand(size, Commodities.METALS);
-		s.fuelDemand = coreDemand(size, Commodities.FUEL);
+		s.consuming = consumingTo(market) > 0;
+		s.metalsDemand = coreDemand(market, Commodities.METALS); // 0 while consuming
+		s.fuelDemand = coreDemand(market, Commodities.FUEL);
 		s.metalsHave = Math.min(s.metalsDemand, available(market, Commodities.METALS));
 		s.fuelHave = Math.min(s.fuelDemand, available(market, Commodities.FUEL));
 		s.shortUnits = (s.metalsDemand - s.metalsHave) + (s.fuelDemand - s.fuelHave);
 		s.famine = (s.metalsDemand > 0 && s.metalsHave <= 0) || (s.fuelDemand > 0 && s.fuelHave <= 0);
+		if (s.consuming) {
+			// the conquered world is the Core (phase E): a size per starveDaysPerSize days up to its size
+			s.strataPerDay = ThreatStrata.span(size)
+					/ Math.max(1f, ThreatIncConfig.starveDaysPerSize() * Math.max(0.01f, IncursionManager.timeScale()));
+			return s;
+		}
 		Industry core = market.getIndustry(FABRICATION_CORE);
 		s.coreDown = core == null || core.isBuilding();
 		if (s.coreDown) return s;
@@ -3567,7 +3610,11 @@ public class ThreatColonyManager {
 		if (s.strataPerDay > 0f) {
 			if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) return;
 			if (ThreatStrata.of(market) >= ThreatStrata.cap(market)) return;
-			ThreatStrata.add(market, s.strataPerDay * elapsedDays, "Grew", null);
+			ThreatStrata.add(market, s.strataPerDay * elapsedDays, s.consuming ? "Consumed into" : "Grew", null);
+			if (s.consuming && consumingTo(market) <= 0) {
+				market.getMemoryWithoutUpdate().unset(CONSUME_TO_FLAG);
+				ThreatIncConfig.log("Hive " + market.getName() + " has consumed its world: size " + market.getSize());
+			}
 			return;
 		}
 		ThreatStrata.add(market, s.strataPerDay * elapsedDays, "Starved a level of", null);

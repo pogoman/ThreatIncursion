@@ -1040,7 +1040,9 @@ public class ThreatWarBoard {
 		if (ThreatGroundFronts.Theatre.of(m) == ThreatGroundFronts.HIVE) {
 			return "" + Math.max(0, m.getSize() - f.strataHeld);
 		}
-		return f.strataHeld + "/" + m.getSize();
+		// the swarm's front on a colony eats what it holds and grows by it (phase E): the growth a day
+		float feed = ThreatGroundFronts.infestGrowthPerDay(m, f);
+		return f.strataHeld + "/" + m.getSize() + (feed > 0f ? " +" + ThreatStrata.fmt(feed) + "/d" : "");
 	}
 
 	/** heldCell in words: "3 strata standing" or "1 of 4 districts". */
@@ -1499,6 +1501,12 @@ public class ThreatWarBoard {
 		if (orbit > 0f) lossArgs.add(ThreatGroundFronts.perDay(orbit));
 		tooltip.addPara(Army + " attrition %s/d = %s size x (" + World + " %s / " + Army + " %s) x 1/%s cover" + vetA
 				+ (orbit > 0f ? " + %s/d from orbit" : "") + ".", 4f, text, h, lossArgs.toArray(new String[0]));
+		float feed = ThreatGroundFronts.infestGrowthPerDay(m, f);
+		if (feed > 0f) {
+			tooltip.addPara(Army + " grows %s/d = %s a month x " + World + " size %s x %s held / 30, on what it eats of the world.", 4f, text, h,
+					ThreatStrata.fmt(feed), ThreatStrata.fmt(ThreatIncConfig.coreStrataPerSizeMonth()), "" + m.getSize(),
+					f.strataHeld + "/" + m.getSize());
+		}
 		float worldTroops = hive ? ThreatStrata.standing(m) : armed;
 		if (worldTroops > 0f) {
 			float coverFactorD = hive ? 1f : ThreatGroundFronts.defenderCoverMult(f) * ThreatGroundFronts.defenderOverExtendMult(f);
