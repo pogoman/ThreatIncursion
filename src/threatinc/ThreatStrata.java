@@ -8,20 +8,19 @@ import com.fs.starfarer.api.impl.campaign.ids.Factions;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * THE STRATA (the user, 2026-10-24: "Bombardment eliminates chunks of strata. Strata grows
- * over time if colony is fed and the colony increases size when it reaches the next 400
- * increment. It also decays when unfed."): a hive's one figure - its ground defence before
- * the structure multipliers (SwarmNexus tops vanilla's base up to it), its growth and its
- * size. hiveDefensePerSize (400) a size: the size is the strata over 400, rounded down, 1 at
- * least, stepped by {@link #syncSize}; at 0 the hive is gone ({@link #collapse}). Fed, the
- * strata thicken at the growth pace (colonyGrowthBaseDays x size a size); starving, they thin
- * (starveDaysPerSize a size; ThreatColonyManager.advanceFedGrowth); saturation takes
- * hiveDefensePerSize per strataSuppressDaysPerSize disruption days it adds
- * (ThreatGroundFronts.saturationSlice). A ground front holds whole strata (strataHeld), which
- * stand off the figure for the defence ({@link #standing}). Until 2026-10-24 the figure was
- * the size anchor alone - 400 x size, which bombing never wore (facts 194, 377) - and growth
- * was a progress clock (ThreatIncData.growthProgressDays, still the vitality path's with size
- * upkeep off).
+ * THE STRATA ARE THE THREAT (the user, 2026-10-25, docs/strata-are-the-threat.md): a hive
+ * world's one figure, in market memory - its size by the doubling table ({@link #sizeAt}:
+ * strataSizeBase 400 at size 1, x strataSizeRatio 2 a size - 800, 1,600 ... 51,200 at 8), its
+ * ground defence (SwarmNexus tops vanilla's base up to the strata standing), its troops (a
+ * landing bleeds them, a break-up lands them) and its navy (a fleet point is strataPerFP 5
+ * strata, drawn off a world when the fleet is built and credited back when it comes home -
+ * ThreatColonyManager's bank is a view of this figure since phase A). The Fabrication Core alone
+ * grows it (ThreatColonyManager.coreState: fed in full a world grows coreStrataPerSizeMonth x
+ * size a month, one unit short it holds, two or more it starves a size per starveDaysPerSize /
+ * (units - 1) days); bombardment razes it; at 0 the hive is gone ({@link #collapse}). Until
+ * 2026-10-24 the figure was the size anchor alone (400 x size, which bombing never wore); until
+ * 2026-10-25 the table was linear and the fleets were paid from a bank apart from it - a figure
+ * written under the linear table is moved to this one the first time it is read ({@link #of}).
  */
 public final class ThreatStrata {
 
@@ -31,34 +30,89 @@ public final class ThreatStrata {
 	public static final String KEY = "$threatinc_strata";
 	/** Market memory: the figure the hive's industries were last applied at (the Nexus top-up is recomputed when it has moved a point). */
 	protected static final String APPLIED_KEY = "$threatinc_strataApplied";
+	/** Market memory: the size table the figure was written under (2 = the doubling table; absent = 400 a size). */
+	protected static final String TABLE_KEY = "$threatinc_strataTable";
+	protected static final float TABLE_VERSION = 2f;
+	/** The linear table's strata a size, for a figure written under it (hiveDefensePerSize, retired at 400). */
+	protected static final float LEGACY_PER_SIZE = 400f;
 
-	/** Strata a size: hiveDefensePerSize. */
+	/** A stratum - the unit a ground front holds and saturation takes: strataSizeBase (400), the strata of a size-1 world. */
 	public static float perSize() {
-		return Math.max(1f, ThreatIncConfig.hiveDefensePerSize());
+		return Math.max(1f, ThreatIncConfig.strataSizeBase());
 	}
 
-	/** Whether the market carries strata: a hive world. */
+	/** The strata a size begins at: strataSizeBase x strataSizeRatio^(size - 1) - 400, 800, 1,600, 3,200, 6,400, 12,800, 25,600, 51,200. */
+	public static float sizeAt(int size) {
+		float ratio = Math.max(1f, ThreatIncConfig.strataSizeRatio());
+		return perSize() * (float) Math.pow(ratio, Math.max(1, size) - 1);
+	}
+
+	/** The size this many strata make: 1 at least, {@code cap} at most. */
+	public static int sizeOf(float strata, int cap) {
+		int size = 1;
+		while (size < cap && strata >= sizeAt(size + 1)) size++;
+		return Math.max(1, size);
+	}
+
+	/** The strata a world of this size grows through before the next: sizeAt(size + 1) - sizeAt(size). */
+	public static float span(int size) {
+		return sizeAt(size + 1) - sizeAt(size);
+	}
+
+	/** A size's worth to lose at this size: the span below it; a size-1 world's whole 400. */
+	public static float spanBelow(int size) {
+		return size <= 1 ? sizeAt(1) : sizeAt(size) - sizeAt(size - 1);
+	}
+
+	/** Strata a fleet point: strataPerFP (5), one exchange both ways. */
+	public static float strataPerFP() {
+		return Math.max(0.01f, ThreatIncConfig.strataPerFP());
+	}
+
+	/** Fleet points this many strata bud. */
+	public static float fpOf(float strata) {
+		return strata / strataPerFP();
+	}
+
+	/** Strata this many fleet points are. */
+	public static float strataOf(float fp) {
+		return fp * strataPerFP();
+	}
+
+	/** Whether the market carries strata: a live hive world. */
 	public static boolean has(MarketAPI market) {
 		return market != null && ThreatGroundFronts.Theatre.of(market) == ThreatGroundFronts.HIVE;
 	}
 
 	/**
 	 * The hive's strata now. A hive from before the figure, or one just founded, starts at its
-	 * size's worth plus the growth it had banked on the old clock, and keeps it from there.
+	 * size's strata plus the growth it had banked on the old clock; a figure written under the
+	 * linear table keeps its size and how far it was into the next.
 	 */
 	public static float of(MarketAPI market) {
 		if (market == null) return 0f;
 		MemoryAPI mem = market.getMemoryWithoutUpdate();
+		int size = Math.max(1, market.getSize());
 		float strata;
 		if (mem.contains(KEY)) {
 			strata = Math.max(0f, mem.getFloat(KEY));
+			float table = mem.contains(TABLE_KEY) ? mem.getFloat(TABLE_KEY) : 1f;
+			if (table < TABLE_VERSION) {
+				float frac = Math.max(0f, Math.min(0.99f, (strata - LEGACY_PER_SIZE * size) / LEGACY_PER_SIZE));
+				float moved = sizeAt(size) + frac * span(size);
+				ThreatIncConfig.log("Strata: " + market.getName() + " moved to the doubling table, " + (int) strata
+						+ " -> " + (int) moved + " (size " + size + ")");
+				strata = moved;
+				mem.set(KEY, strata);
+				mem.set(TABLE_KEY, TABLE_VERSION);
+			}
 		} else {
-			int size = Math.max(1, market.getSize());
 			float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size * IncursionManager.timeScale();
 			float banked = daysPerLevel > 0f
 					? Math.max(0f, Math.min(0.99f, ThreatIncData.growthProgressDays(market.getId()) / daysPerLevel)) : 0f;
-			strata = perSize() * (size + banked);
+			strata = sizeAt(size) + banked * span(size);
 			mem.set(KEY, strata);
+			mem.set(TABLE_KEY, TABLE_VERSION);
 		}
 		// THE STRATA ARE THE TROOPS (the user, 2026-10-24): the bioforms an older save landed on the
 		// hive from ships broken up over it (ThreatGroundFronts.HIVE_TROOPS_KEY) are strata now
@@ -82,19 +136,25 @@ public final class ThreatStrata {
 
 	/** The strata the hive's next size needs. */
 	public static float nextSizeAt(MarketAPI market) {
-		return perSize() * (Math.max(1, market.getSize()) + 1);
+		return sizeAt(Math.max(1, market.getSize()) + 1);
 	}
 
-	/** The most a hive banks: a size's worth short of the one past its cap. */
+	/** The most a hive holds: the top size's strata plus a size's worth (the span below it), so a fortress at its cap has a buffer before it desizes. */
 	public static float cap(MarketAPI market) {
-		return perSize() * (ThreatColonyManager.maxColonySize(market) + 1) - 1f;
+		int max = Math.max(1, ThreatColonyManager.maxColonySize(market));
+		return sizeAt(max) + spanBelow(max);
+	}
+
+	/** The strata the world could still take: cap less the figure. */
+	public static float room(MarketAPI market) {
+		return market == null ? 0f : Math.max(0f, cap(market) - of(market));
 	}
 
 	/**
 	 * Adds strata (takes them, negative) and steps the size with the figure. {@code what} names
-	 * the cause for the log ("Grew", "Starved a level of", "Razed a stratum of");
-	 * {@code razerFactionId} the faction whose bombardment it was (null: hunger). Returns the
-	 * strata left, 0 once the hive is gone.
+	 * the cause for the log ("Grew", "Starved a level of", "Razed a stratum of", "Budded from",
+	 * "Absorbed into"); {@code razerFactionId} the faction whose bombardment it was (null:
+	 * hunger, or the hive's own spending). Returns the strata left, 0 once the hive is gone.
 	 */
 	public static float add(MarketAPI market, float delta, String what, String razerFactionId) {
 		if (market == null) return 0f;
@@ -127,16 +187,16 @@ public final class ThreatStrata {
 		if (market == null || !market.getMemoryWithoutUpdate().contains(KEY)) return;
 		int size = market.getSize();
 		float strata = of(market);
-		if (size > oldSize && strata < perSize() * size) {
-			market.getMemoryWithoutUpdate().set(KEY, perSize() * size);
-		} else if (size < oldSize && strata >= perSize() * (size + 1)) {
-			market.getMemoryWithoutUpdate().set(KEY, perSize() * (size + 1) - 1f);
+		if (size > oldSize && strata < sizeAt(size)) {
+			market.getMemoryWithoutUpdate().set(KEY, sizeAt(size));
+		} else if (size < oldSize && strata >= sizeAt(size + 1)) {
+			market.getMemoryWithoutUpdate().set(KEY, sizeAt(size + 1) - 1f);
 		}
 	}
 
 	/**
 	 * The size the strata say, stepped one at a time so each step's bookkeeping and notices run:
-	 * up by ThreatColonyManager.growColony at each size's worth reached, down by
+	 * up by ThreatColonyManager.growColony at each size's strata reached, down by
 	 * ThreatRazing.reduceSize when the figure falls under the size's own. Strata bombed out from
 	 * under a front may leave it holding all there is: the front wins.
 	 */
@@ -144,7 +204,7 @@ public final class ThreatStrata {
 		int cap = ThreatColonyManager.maxColonySize(market);
 		for (int guard = 0; guard < 12; guard++) {
 			int size = market.getSize();
-			int wants = Math.max(1, Math.min(cap, (int) Math.floor(of(market) / perSize())));
+			int wants = sizeOf(of(market), cap);
 			if (wants > size) {
 				if (!ThreatColonyManager.growColony(market, cap)) break;
 				continue;
@@ -165,10 +225,11 @@ public final class ThreatStrata {
 		}
 	}
 
-	/** A size off: "Hive Starving" for hunger, "Stratum Razed" under the razer's crest for a bombardment, "Stratum Bled" for a front's attrition ({@code what} starts "Bled"). */
+	/** A size off: "Hive Starving" for hunger, "Hive Thins" for the hive's own spending, "Stratum Razed" under the razer's crest for a bombardment, "Stratum Bled" for a front's attrition ({@code what} starts "Bled"). */
 	protected static void announceShrink(MarketAPI market, int before, String razerFactionId, String what) {
 		if (razerFactionId == null) {
-			ThreatColonyManager.announce(ThreatNotice.titled("Hive Starving").good()
+			boolean spent = what != null && (what.startsWith("Budded") || what.startsWith("Absorbed") || what.startsWith("Shifted"));
+			ThreatColonyManager.announce(ThreatNotice.titled(spent ? "Hive Thins" : "Hive Starving").good()
 					.line("%s has shrunk to size %s", ThreatNotice.market(market), "" + market.getSize()));
 			return;
 		}

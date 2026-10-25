@@ -4,18 +4,15 @@ import java.awt.Color;
 
 import com.fs.starfarer.api.campaign.econ.Industry;
 import com.fs.starfarer.api.impl.campaign.econ.BaseMarketConditionPlugin;
-import com.fs.starfarer.api.impl.campaign.ids.Industries;
 import com.fs.starfarer.api.ui.TooltipMakerAPI;
 import com.fs.starfarer.api.util.Misc;
 
 /**
- * The player-facing readout of the hive growth/decline engine, shown as a
- * market condition on every Threat colony. The vanilla colony UI's growth
- * number is meaningless for hive worlds (their growth is driven entirely by
- * {@link ThreatColonyManager#updateColonyVitality}); this tooltip shows the
- * numbers that actually matter - the share of its supplies upkeep paid and any
- * import cut (size upkeep; vitality, fabrication x supply, with it off), each
- * organ's status, and the growth pace. The condition id keeps its old name.
+ * The player-facing readout of a hive world, shown as a market condition on every Threat
+ * colony: the strata and the next size's, the Fabrication Core's inputs and its state (growing
+ * / holding / starving, ThreatColonyManager.coreState), the strata density that is its
+ * accessibility, and what holds its growth. One line per fact (docs/strata-are-the-threat.md
+ * 8). The condition id keeps its old name.
  */
 public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 
@@ -31,97 +28,57 @@ public class HiveVitalityCondition extends BaseMarketConditionPlugin {
 		Color h = Misc.getHighlightColor();
 		Color neg = Misc.getNegativeHighlightColor();
 
-		boolean sized = ThreatColonyUpkeep.enabled();
-		// vitality paces growth only with size upkeep off (2026-09-30)
-		float health = sized ? 0f : ThreatColonyManager.computeHealth(market);
-
-		if (sized) {
-			float upkeep = ThreatColonyUpkeep.perMonth(market.getSize());
-			if (upkeep <= 0f) {
-				tooltip.addPara("Upkeep: %s", opad, h, "none below size 3");
-			} else {
-				float fed = ThreatColonyUpkeep.fedShare(market);
-				tooltip.addPara("Supplies: %s of %s a month", opad,
-						fed < ThreatColonyUpkeep.breakEven() ? neg : h,
-						pct(fed), Misc.getWithDGS((int) upkeep));
-			}
-			float cut = ThreatColonyUpkeep.importCut(market);
-			if (cut > 0f) tooltip.addPara(INDENT + "Imports cut: %s", 3f, neg, pct(cut));
-			// THE STRATA (ThreatStrata, 2026-10-24): the defence figure, the next size's worth
-			float strata = ThreatStrata.of(market);
-			if (market.getSize() >= ThreatColonyManager.maxColonySize(market)) {
-				tooltip.addPara("Strata: %s", opad, h, ThreatStrata.fmt(strata));
-			} else {
-				tooltip.addPara("Strata: %s, size %s at %s", opad, h, ThreatStrata.fmt(strata),
-						"" + (market.getSize() + 1), ThreatStrata.fmt(ThreatStrata.nextSizeAt(market)));
-			}
+		ThreatColonyManager.CoreState s = ThreatColonyManager.coreState(market);
+		float strata = ThreatStrata.of(market);
+		int max = ThreatColonyManager.maxColonySize(market);
+		if (market.getSize() >= max) {
+			tooltip.addPara("Strata: %s", opad, h, ThreatStrata.fmt(strata));
 		} else {
-			float fab = ThreatColonyManager.computeFabricationMult(market);
-			float supply = ThreatColonyManager.computeSupplyMult(market);
-			tooltip.addPara("Vitality: %s (fabrication %s x supply %s)", opad,
-					health < ThreatColonyManager.CRITICAL_HEALTH ? neg : h,
-					pct(health), pct(fab), pct(supply));
+			tooltip.addPara("Strata: %s, size %s at %s", opad, h, ThreatStrata.fmt(strata),
+					"" + (market.getSize() + 1), ThreatStrata.fmt(ThreatStrata.nextSizeAt(market)));
 		}
 
-		// the Core wears with its clock rather than switching off, so it shows
-		// its output while vitality counts it; the port is on/off
-		// (applyPortDisruption zeroes shipping)
 		Industry core = market.getIndustry(ThreatColonyManager.FABRICATION_CORE);
 		if (core == null) {
-			tooltip.addPara(INDENT + "Fabrication Core: %s", 3f, neg, "absent");
-		} else if (core.isDisrupted()) {
-			tooltip.addPara(INDENT + "Fabrication Core: %s (%s days)", 3f, neg,
-					sized ? "disrupted" : pct(ThreatColonyManager.wornDownFactor(core,
-							ThreatIncConfig.coreDownFactor())),
-					"" + (int) core.getDisruptedDays());
+			tooltip.addPara("Fabrication Core: %s", opad, neg, "absent");
+		} else if (core.isBuilding()) {
+			tooltip.addPara("Fabrication Core: %s", opad, neg, "building");
 		} else {
-			tooltip.addPara(INDENT + "Fabrication Core: %s", 3f, h, "running");
+			tooltip.addPara("Core: metals %s of %s, fuel %s of %s", opad, s.shortUnits > 0 ? neg : h,
+					"" + s.metalsHave, "" + s.metalsDemand, "" + s.fuelHave, "" + s.fuelDemand);
 		}
-		Industry port = market.getIndustry(Industries.MEGAPORT);
-		if (port == null) port = market.getIndustry(Industries.SPACEPORT);
-		if (port == null) {
-			tooltip.addPara(INDENT + "Port: %s", 3f, neg, "absent");
-		} else if (port.isDisrupted()) {
-			tooltip.addPara(INDENT + "Port: %s (%s days)", 3f, neg,
-					"offline", "" + (int) port.getDisruptedDays());
+		if (ThreatColonyManager.hiveBlockaded(market)) {
+			tooltip.addPara("Blockaded: %s", 3f, neg, "nothing docks");
 		} else {
-			tooltip.addPara(INDENT + "Port: %s", 3f, h, "running");
+			tooltip.addPara("Strata density: %s", 3f, h,
+					ThreatColonyManager.signedPct(ThreatColonyManager.hiveDensityAccess(market)));
 		}
 
-		ThreatGroundFronts.GroundFront front =
-				ThreatGroundFronts.getFront(market.getId());
-		// under size upkeep a front or saturation holds a colony's growth, never its hunger
-		float pace = sized ? ThreatColonyManager.growthPace(market) : 0f;
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
 		if (front != null) {
-			tooltip.addPara("Strata held: %s of %s", opad, h,
-					"" + front.strataHeld, "" + market.getSize());
+			tooltip.addPara("Strata held: %s of %s", opad, h, "" + front.strataHeld, "" + market.getSize());
 		}
-		if (sized && pace < 0f) {
-			tooltip.addPara(market.getSize() <= 1 ? "Growth: %s, destroyed in %s days" : "Growth: %s, a size in %s days",
+		// the Core's hunger is never held; its growth is, by a front or saturation
+		if (s.starving()) {
+			tooltip.addPara(market.getSize() <= 1 ? "Growth: %s, gone in %s days" : "Growth: %s, a size in %s days",
 					front != null ? 3f : opad, neg, "starving",
 					"" + Math.max(1, (int) ThreatColonyManager.daysToLoseSize(market)));
 		} else if (front != null) {
 			tooltip.addPara("Growth: %s", 3f, neg, "halted");
 		} else if (ThreatRazing.saturated(market)) {
 			tooltip.addPara("Growth: %s", opad, neg, "halted under saturation");
-		} else if (sized) {
-			if (market.getSize() >= ThreatColonyManager.maxColonySize(market)) {
+		} else if (s.coreDown) {
+			tooltip.addPara("Growth: %s", opad, neg, "holding");
+		} else if (s.growing()) {
+			if (strata >= ThreatStrata.cap(market)) {
 				tooltip.addPara("Growth: %s", opad, h, "at its largest");
-			} else if (pace > 0f) {
-				tooltip.addPara("Growth: %s of full pace", opad, pace >= 1f ? h : neg, pct(pace));
 			} else {
-				tooltip.addPara("Growth: %s", opad, neg, "holding");
+				tooltip.addPara("Growth: %s a month, size %s in %s days", opad, h, ThreatStrata.fmt(s.strataPerDay * 30f),
+						"" + Math.min(max, market.getSize() + 1),
+						"" + Math.max(1, (int) Math.min(9999f, ThreatColonyManager.daysToNextSize(market))));
 			}
 		} else {
-			float growthMult = ThreatColonyManager.growthMultFor(health);
-			tooltip.addPara("Growth: %s", opad, growthMult >= 1f ? h : neg,
-					growthMult <= 0f ? "stalled" : pct(growthMult));
+			tooltip.addPara("Growth: %s", opad, neg, "holding, a unit short");
 		}
 	}
-
-	protected static String pct(float f) {
-		return (int) (f * 100f) + "%";
-	}
-
-	protected static final String INDENT = "    ";
 }

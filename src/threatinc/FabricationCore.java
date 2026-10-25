@@ -1,38 +1,50 @@
 package threatinc;
 
+import java.awt.Color;
+
 import com.fs.starfarer.api.impl.campaign.econ.impl.BaseIndustry;
 import com.fs.starfarer.api.impl.campaign.ids.Commodities;
+import com.fs.starfarer.api.ui.TooltipMakerAPI;
+import com.fs.starfarer.api.util.Misc;
 
 /**
- * The population-as-machinery organ of a Threat colony: supplies heavy
- * machinery equal to colony size, covering the largest vanilla machinery
- * demand at that size (size-2, from refining/fuel production) with surplus
- * that feeds sibling colonies through in-group trade. This is what makes the
- * hive's input chain acyclic (population -> machinery -> mining -> ore ->
- * metals -> hulls), which the growth gate in ThreatColonyManager relies on.
- *
- * A real industry rather than an external supply mod because supply must be
- * declared inside apply() to survive the economy's per-recompute wipe
- * (BaseIndustry.updateSupplyAndDemandModifiers unmodifies the stats before
- * every pass; a script-injected modifier loses that race). Being a real
- * structure also gives it the vanilla surface: visible in the colony UI, and
- * disruptable by raids like any other structure - a disrupted core supplies
- * nothing, so knocking it out machinery-starves the whole hive chain.
+ * THE FABRICATION CORE IS THE HIVE'S ONE PRODUCER (the user, 2026-10-25,
+ * docs/strata-are-the-threat.md 3). It demands METALS at the world's size and FUEL at
+ * size - 2 (coreInputPerSize scales both - vanilla's own balanced table, so a refinery and a
+ * fuel plant of the world's size meet it in full) and supplies heavy machinery equal to the
+ * size (Mining and Refining demand it; the chain stays bootstrapped). What the market sees
+ * of each input against that demand is the Core's state (ThreatColonyManager.coreState): met
+ * in full the world GROWS coreStrataPerSizeMonth x size a month, one unit short it HOLDS,
+ * two or more short it STARVES a size per starveDaysPerSize / (units - 1) days. Hive-only,
+ * never disrupted (what hurts the Core is what starves it), never offered in the player's
+ * picker. Declared inside apply() to survive the economy's per-recompute wipe.
  */
 public class FabricationCore extends BaseIndustry {
 
 	@Override
 	public void apply() {
 		super.apply(true);
-		supply(Commodities.HEAVY_MACHINERY, market.getSize());
+		int size = market.getSize();
+		supply(Commodities.HEAVY_MACHINERY, size);
+		int metals = ThreatColonyManager.coreDemand(size, Commodities.METALS);
+		int fuel = ThreatColonyManager.coreDemand(size, Commodities.FUEL);
+		if (metals > 0) demand(Commodities.METALS, metals);
+		if (fuel > 0) demand(Commodities.FUEL, fuel);
 		if (!isFunctional()) {
 			supply.clear();
+			demand.clear();
 		}
 	}
 
 	@Override
 	public void unapply() {
 		super.unapply();
+	}
+
+	/** Nothing on a hive world is disrupted; what hurts the Core is what starves it. */
+	@Override
+	public boolean canBeDisrupted() {
+		return false;
 	}
 
 	// hive-only organ: never offered in the player's construction picker
@@ -44,5 +56,49 @@ public class FabricationCore extends BaseIndustry {
 	@Override
 	public boolean showWhenUnavailable() {
 		return false;
+	}
+
+	/** One line per fact: the strata, the growth, the Core's inputs, the density (docs/strata-are-the-threat.md 8). */
+	@Override
+	protected void addPostDescriptionSection(TooltipMakerAPI tooltip, IndustryTooltipMode mode) {
+		if (market == null || !ThreatStrata.has(market)) return;
+		float opad = 10f;
+		Color h = Misc.getHighlightColor();
+		Color neg = Misc.getNegativeHighlightColor();
+		ThreatColonyManager.CoreState s = ThreatColonyManager.coreState(market);
+		float strata = ThreatStrata.of(market);
+		int max = ThreatColonyManager.maxColonySize(market);
+		if (market.getSize() >= max) {
+			tooltip.addPara("Strata: %s (size %s, the largest)", opad, h, ThreatStrata.fmt(strata), "" + market.getSize());
+		} else {
+			tooltip.addPara("Strata: %s (size %s at %s)", opad, h, ThreatStrata.fmt(strata),
+					"" + (market.getSize() + 1), ThreatStrata.fmt(ThreatStrata.nextSizeAt(market)));
+		}
+		if (s.coreDown) {
+			tooltip.addPara("Growth: %s", 3f, neg, isBuilding() ? "holding while the Core builds" : "holding");
+		} else if (s.starving()) {
+			tooltip.addPara(market.getSize() <= 1 ? "Starving: %s a month, gone in %s days" : "Starving: %s a month, a size in %s days",
+					3f, neg, ThreatStrata.fmt(-s.strataPerDay * 30f),
+					"" + Math.max(1, (int) ThreatColonyManager.daysToLoseSize(market)));
+		} else if (s.growing()) {
+			if (ThreatGroundFronts.hasFront(market)) {
+				tooltip.addPara("Growth: %s", 3f, neg, "halted under the front");
+			} else if (ThreatRazing.saturated(market)) {
+				tooltip.addPara("Growth: %s", 3f, neg, "halted under saturation");
+			} else if (strata >= ThreatStrata.cap(market)) {
+				tooltip.addPara("Growth: %s", 3f, h, "at its cap");
+			} else {
+				tooltip.addPara("Growing %s a month", 3f, h, ThreatStrata.fmt(s.strataPerDay * 30f));
+			}
+		} else {
+			tooltip.addPara("Holding: %s", 3f, neg, "a unit short");
+		}
+		tooltip.addPara("Core: metals %s of %s, fuel %s of %s", 3f, s.shortUnits > 0 ? neg : h,
+				"" + s.metalsHave, "" + s.metalsDemand, "" + s.fuelHave, "" + s.fuelDemand);
+		if (ThreatColonyManager.hiveBlockaded(market)) {
+			tooltip.addPara("Blockaded: %s", 3f, neg, "nothing docks");
+		} else {
+			tooltip.addPara("Strata density: %s", 3f, h, ThreatColonyManager.signedPct(ThreatColonyManager.hiveDensityAccess(market)));
+		}
 	}
 }

@@ -80,7 +80,8 @@ clipped to crew space; the force holds the orbit, fights what buds, razes every 
 lands on arrival, home when both are spent; Support and Defend off the hive rows; "Closed:
 start phase A".
 
-Nothing open. Phase A started 2026-10-25 evening (section 10).
+Nothing open. Phase A started 2026-10-25 evening and was BUILT the same day (jar 13:22, untested;
+section 10).
 
 ## 1. Review - most of this already exists, hidden
 
@@ -482,7 +483,8 @@ Every path takes strata; no path wears anything. A quiet hive has nothing over i
   against a fortress system, whose answer mirrors its own strength at the rally margin, it
   sails only with the margin to beat its mirror - or it raids, in and out inside the spawn
   delay, razing F x days strata for 2 fuel each and gone before the pool fills. The council's
-  Picture reads sizes already and is untouched.
+  Picture reads sizes already and is untouched. The player sizes by hand: the Attack order
+  (section 8) quotes the system's answer and sails what its ladders say.
 - **Bombardment (DECIDED round 8: one Bombard, no tactical, nothing instant).** The user:
   "forgot no instant bombing. maybe we just get rid of tac bombing, just have sat bomb scaled to
   size of the fleet is how much they can do a day. so 1000 FP fleet could sat bomb 1000 a day,
@@ -655,7 +657,27 @@ bank's methods redirected to `ThreatStrata` at the exchange; `settleLedger` adds
 `FabricationCore` (demand by size, the three states, the Nexus's top-up moved in), the density
 accessibility in place of `applyHiveAccessibility`, the doubling table (`ThreatStrata.perSize`
 -> `sizeAt` / `sizeOf`), the cap as a hard stop, `ThreatOffensive` / `ThreatPosture` reading
-strata. Migration of the bank. Garrisons still stand in this phase. Proves: the hive still
+strata. Migration of the bank. Garrisons still stand in this phase.
+**BUILT 2026-10-25, jar 13:22, untested.** Judgement calls: the cap is the top size's strata plus
+the span below it (76,800 at 8) so a fortress at its cap has a buffer before it desizes; a world's
+bank (`spareFP`, what it builds garrisons and foundings from) is its strata above the larger of its
+size's own and `shiftFloorStrata`, while a strike or a funded shift draws from everything above
+800 alone (`strikeSpareFP`) and takes a size with it ("Hive Thins"); the strike fund is that spare
+hive-wide, less the posture's defence shortfall and the offensive's escrow (`addStrikeFund(-cost)`
+escrows, `(+cost)` releases), paid in proportion to what each world gives and STAGED at the staging
+colony as fleet points in flight (`KEY_STAGED_FP`) so a pooled bill never flickers that world's
+size; `creditFP` absorbs into strata with spill to the nearest world with room; `strikeFundShare`
+stays only as the fund-path switch and `strikeStagedOpenFP` (40k) now reads spare strata; the
+retired banks and fund are moved into the strata once a save (`migrateBankToStrata`), and a figure
+written under the linear table on first read (`ThreatStrata.of`); the Core holds while absent or
+building and cannot be disrupted; no income or upkeep anywhere (`militaryIdle` is the price alone);
+no Spaceport (`foundColony` adds none, `ensureSpaceport` retires one; `portArms` and
+`ThreatColonyUpkeep.importCut` no longer need a port); the Nexus's top-up stays in `SwarmNexus`
+until the Nexus goes (phase C); `ThreatColonyUpkeep` still runs its supplies ledger but drives no
+growth (phase B retires it). To verify in game: a hive fed in full grows 200 x size a month
+(Core tooltip "Growing N a month"); a far seed reads a low density, few shipping units and holds or
+starves; a strike thins its givers ("Hive Thins") and the density around them falls; the board's
+census reads strata and density; an old save logs the migration; no port on any hive. Proves: the hive still
 grows, strikes and founds on one figure; a far seed stalls; a thinned back line starves; the
 census reads strata and density.
 

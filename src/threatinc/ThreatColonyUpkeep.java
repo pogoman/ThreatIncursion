@@ -111,7 +111,8 @@ public class ThreatColonyUpkeep {
 		if (market == null) return 0f;
 		float cut = market.getMemoryWithoutUpdate().getFloat(ThreatBlockade.HIVE_KEY);
 		Industry port = ThreatColonyManager.getPort(market);
-		if (port == null || port.isDisrupted()) cut = Math.max(cut, PORT_DOWN_CUT);
+		// no port on a hive since phase A (2026-10-25): only one an older save still has counts while disrupted
+		if (port != null && port.isDisrupted()) cut = Math.max(cut, PORT_DOWN_CUT);
 		return Math.max(0f, Math.min(1f, cut));
 	}
 
@@ -262,8 +263,8 @@ public class ThreatColonyUpkeep {
 				// a size-1 seed, or a forge world growing toward its first output: free - but a size-1
 				// seed with its imports cut starves on the cut as a size-2 one does, to nothing (the
 				// user, 2026-10-24: "hive should shrink to zero and be destroyed if it reaches 0")
-				float cut = size <= 1 && ThreatColonyManager.getForge(m) == null
-						&& ThreatIncConfig.blockadeStarvesSeeds() ? importCut(m) : 0f;
+				// (a blockaded seed starves by the Core's famine since 2026-10-25, ThreatColonyManager.coreState)
+				float cut = 0f;
 				if (cut > 0f) {
 					m.getMemoryWithoutUpdate().set(MEM_FED, Math.min(t, 1f - cut));
 				} else {
@@ -400,11 +401,9 @@ public class ThreatColonyUpkeep {
 			// a seed has nothing to starve on: unfed it holds, fed it grows - unless a blockade or a
 			// dead port cuts what it would import (the user, 2026-10-24, in orbit over a size-2 hive
 			// with its imports cut 100%: "shortages seem to have no effect"): fed the share that gets
-			// through, it starves - to nothing (blockadeStarvesSeeds; ThreatStrata.collapse)
+			// through, it starves - to nothing (the Core's famine since 2026-10-25, ThreatColonyManager.coreState; ThreatStrata.collapse)
 			if (n.seed) {
 				share = t + (1f - t) * share;
-				float cut = importCut(n.market);
-				if (cut > 0f && ThreatIncConfig.blockadeStarvesSeeds()) share = Math.min(share, 1f - cut);
 			}
 			n.market.getMemoryWithoutUpdate().set(MEM_FED, share);
 		}

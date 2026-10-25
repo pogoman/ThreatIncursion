@@ -319,22 +319,6 @@
 	# a Corrupted Nanoforge - a fixed roll per world.
 	"threatinc_homeRelics": true,
 	"threatinc_forgeNanoforgeChance": 0.2,
-	# The hive is a closed economy that never trades with the Core worlds, so
-	# vanilla's distance-from-Core accessibility penalty models a supply line it
-	# doesn't have. This cancels that penalty for hive colonies (1 = fully, 0 =
-	# leave it). Distance from the rest of the hive does not move accessibility
-	# either way: vanilla's same-faction proximity term is only ever a bonus.
-	"threatinc_coreDistanceOffset": 1.0,
-	# A disrupted port is a skeleton port. Vanilla keeps a disrupted Spaceport
-	# counted as present, so it only loses the port's bonus and, since
-	# same-faction shipping is 5+ units down to 0% accessibility, a disrupted
-	# hive port changed nothing. While a hive world's port is disrupted its
-	# shipping (imports and exports alike) is capped at this many units: a
-	# size-8 forge gets 3 of the 8 metals it wants, growth stalls, its output
-	# reaches the hive only as a trickle. Not zero on purpose - with the Core
-	# also down a colony's machinery is imported, and zero shipping made a port
-	# cut deadlier than a Core cut. 0 = nothing docks, -1 = vanilla behaviour.
-	"threatinc_disruptedPortShipping": 3,
 	"threatinc_convertDecivWorlds": true,
 	# Defense-board contracts are ordinary missions: offered through the comm
 	# network, accepted or ignored like a survey posting. Offers stand for
@@ -544,14 +528,32 @@
 	# scale on hive ground-defense strength
 	"threatinc_groundDefenseMult": 1.0,
 
-	# Hive sieges: every hive lives deep underground on its STRATA (2026-10-24):
-	# this many a size, the figure its ground defence is before the defense
-	# industries multiply it (times stability like any colony's). Fed, the strata
-	# thicken (colonyGrowthBaseDays x size a size) and the hive grows a size at
-	# each multiple; starving they thin (starveDaysPerSize a size); saturation
-	# takes chunks (strataSuppressDaysPerSize); a front holds whole ones. At 0 the
-	# hive is gone.
-	"threatinc_hiveDefensePerSize": 400,
+	# THE STRATA ARE THE THREAT (2026-10-25, docs/strata-are-the-threat.md): a hive
+	# world's one figure is its strata - its size by a doubling table (strataSizeBase
+	# at size 1, x strataSizeRatio a size: 400, 800, 1,600 ... 51,200 at 8), its
+	# ground defence, its troops and its navy (a fleet point is strataPerFP strata,
+	# budded off the world and absorbed back). The Fabrication Core alone grows it:
+	# fed in full (METALS at the size, FUEL at size - 2, x coreInputPerSize) a world
+	# grows coreStrataPerSizeMonth x size a month; one unit short it holds; two or
+	# more short it starves a size per starveDaysPerSize / (units - 1) days, never
+	# faster than starveMinDays. Accessibility is the strata DENSITY around the world
+	# (every other hive world's strata weighed 1 / (1 + (d / densityLY)^2)):
+	# densityAccessPerDoubling a doubling over densityRef, clamped to densityAccessMin
+	# / Max; a blockade lands it at -50%. A world keeps shiftFloorStrata from the
+	# hive's strikes.
+	"threatinc_strataSizeBase": 400,
+	"threatinc_strataSizeRatio": 2,
+	"threatinc_strataPerFP": 5,
+	"threatinc_coreStrataPerSizeMonth": 200,
+	"threatinc_coreInputPerSize": 1,
+	"threatinc_starveMinDays": 15,
+	"threatinc_densityLY": 10,
+	"threatinc_densityRef": 6400,
+	"threatinc_densityAccessPerDoubling": 0.10,
+	"threatinc_densityAccessMin": -0.30,
+	"threatinc_densityAccessMax": 0.50,
+	"threatinc_densitySelfWeight": 0,
+	"threatinc_shiftFloorStrata": 800,
 	# defense-structure scaling: defense mult = 1 + bonus per structure
 	"threatinc_groundDefensesBonus": 1.0,
 	"threatinc_heavyBatteriesBonus": 2.0,
@@ -957,11 +959,6 @@
 	"threatinc_sizeUpkeepRatio": 2.5,
 	"threatinc_upkeepBreakEven": 0.5,
 	"threatinc_starveDaysPerSize": 90,
-	# a seed hive (size 1-2, free below size 3) under a blockade or with its port down
-	# is fed only the share of its imports that gets through, so a full blockade starves
-	# it a size per starveDaysPerSize and destroys it past size 1 (2026-10-24); false =
-	# a seed only ever holds
-	"threatinc_blockadeStarvesSeeds": true,
 	"threatinc_foundingBudget": true,
 	# TANGIBLE FEEDING (the user, 2026-10-18): a world's size upkeep is eaten from a larder only a sailing
 	# fills - a hive world's allotment docks and sails as a feeding swarm seated in the world's garrison on
@@ -1250,8 +1247,7 @@
 	# off: the Defend fleet no longer breaks up hulls over its front; a strike short of its
 	# beachhead still does (2026-10-03, the overnight option: hw4d's guards' troops won the war)
 	"threatinc_fabricateDefendEnabled": true,
-	# 10 -> 5 (2026-10-03, the user): at 10 a guard's hulls fed its front past the defenders' marines (hw4d-hw4l)
-	"threatinc_fabricateTroopsPerFP": 5,
+	# (fabricateTroopsPerFP is strataPerFP since 2026-10-25, above)
 	"threatinc_fabricateHoldMargin": 1.05,
 	"threatinc_fabricateSupplyDays": 30,
 	# a Support or Defend fleet, and a swarm's station, HOLDS STATION: it

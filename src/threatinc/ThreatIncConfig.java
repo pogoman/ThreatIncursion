@@ -281,10 +281,6 @@ public class ThreatIncConfig {
 	public static float siegeLeashRange()    { return f("threatinc_siegeLeashRange"); }
 	/** Chance that a forge outside the home system's Pristine one carries a Corrupted Nanoforge (fixed roll per world). */
 	public static float forgeNanoforgeChance() { return f("threatinc_forgeNanoforgeChance"); }
-	/** Fraction of the vanilla Core-distance accessibility penalty to cancel for hive colonies (0 = keep it, 1 = remove it). */
-	public static float coreDistanceOffset()  { return f("threatinc_coreDistanceOffset"); }
-	/** Same-faction shipping units a hive world keeps while its port is disrupted (0 = nothing docks, -1 = vanilla, no effect); vanilla alone lets a disrupted port keep trading at 5+ units. */
-	public static int disruptedPortShipping() { return i("threatinc_disruptedPortShipping"); }
 	public static boolean convertDecivWorlds(){ return b("threatinc_convertDecivWorlds", true); }
 
 	// ---- missions (defense-board contracts) ----
@@ -359,7 +355,7 @@ public class ThreatIncConfig {
 	public static float siegeSuppressDaysPerDay() { return f("threatinc_siegeSuppressDaysPerDay"); }
 	/** The same, over a hive's war-strata (their clock is defenseWearDays). */
 	public static float hiveSiegeSuppressDaysPerDay() { return f("threatinc_hiveSiegeSuppressDaysPerDay"); }
-	/** Disruption days of saturation that take one size's worth of strata (hiveDefensePerSize) off a hive (ThreatStrata; ThreatGroundFronts.saturationSlice). */
+	/** Disruption days of saturation that take one stratum (ThreatStrata.perSize, strataSizeBase) off a hive (ThreatStrata; ThreatGroundFronts.saturationSlice). */
 	public static float strataSuppressDaysPerSize() { return f("threatinc_strataSuppressDaysPerSize"); }
 	/** Days before the player's fleet can organize another bombardment; tactical and saturation share the lock. */
 	public static float bombardCooldownDays() { return f("threatinc_bombardCooldownDays"); }
@@ -421,8 +417,32 @@ public class ThreatIncConfig {
 
 	// ---- hive sieges ----
 
-	/** Strata a hive size is worth (ThreatStrata): its ground-defense points before industry multipliers, the figure saturation takes chunks of, and the step its size follows. */
-	public static float hiveDefensePerSize()  { return f("threatinc_hiveDefensePerSize"); }
+	// ---- THE STRATA ARE THE THREAT (2026-10-25, docs/strata-are-the-threat.md) ----
+
+	/** Strata a size-1 hive begins at, and the stratum a ground front holds (ThreatStrata.sizeAt / perSize). */
+	public static float strataSizeBase()      { return f("threatinc_strataSizeBase"); }
+	/** The size table's ratio: a size is this many times the one below (2: 400, 800, 1,600 ... 51,200 at 8). */
+	public static float strataSizeRatio()     { return f("threatinc_strataSizeRatio"); }
+	/** Strata a fleet point: what a ship buds from and breaks up into, one exchange both ways (was fabricateTroopsPerFP). */
+	public static float strataPerFP()         { return f("threatinc_strataPerFP"); }
+	/** Strata a month a size the Fabrication Core grows a world fed in full (ThreatColonyManager.coreState). */
+	public static float coreStrataPerSizeMonth() { return f("threatinc_coreStrataPerSizeMonth"); }
+	/** Scale on the Core's demand: METALS at the size x this, FUEL at (size - 2) x this. */
+	public static float coreInputPerSize()    { return f("threatinc_coreInputPerSize"); }
+	/** The fastest a starving world loses a size, in days (starveDaysPerSize / (units short - 1), never under this). */
+	public static float starveMinDays()       { return f("threatinc_starveMinDays"); }
+	/** Strata density: the light-years at which another hive world's strata count half (1 / (1 + (d / this)^2)). */
+	public static float densityLY()           { return f("threatinc_densityLY"); }
+	/** Strata density: the density that is 0% accessibility. */
+	public static float densityRef()          { return f("threatinc_densityRef"); }
+	/** Strata density: accessibility a doubling of the density over densityRef. */
+	public static float densityAccessPerDoubling() { return f("threatinc_densityAccessPerDoubling"); }
+	public static float densityAccessMin()    { return f("threatinc_densityAccessMin"); }
+	public static float densityAccessMax()    { return f("threatinc_densityAccessMax"); }
+	/** Strata density: the weight of the world's own strata (0: only the worlds around it count). */
+	public static float densitySelfWeight()   { return f("threatinc_densitySelfWeight"); }
+	/** Strata a world keeps from the hive's strikes and shifts (800: a seed's worth - never below size 2 by choice). */
+	public static float shiftFloorStrata()    { return f("threatinc_shiftFloorStrata"); }
 	/** Ground Defenses structure bonus: defense mult = 1 + bonus (x2 at 1.0). */
 	public static float groundDefensesBonus() { return f("threatinc_groundDefensesBonus"); }
 	/** Heavy Batteries structure bonus: defense mult = 1 + bonus (x3 at 2.0). */
@@ -717,8 +737,6 @@ public class ThreatIncConfig {
 	public static float sizeUpkeepRatio()          { return f("threatinc_sizeUpkeepRatio"); }
 	public static float upkeepBreakEven()          { return f("threatinc_upkeepBreakEven"); }
 	public static float starveDaysPerSize()        { return f("threatinc_starveDaysPerSize"); }
-	/** A blockade or a dead port starves a seed hive (size 1-2) by the share of its imports cut, to nothing (ThreatColonyUpkeep.feed, ThreatStrata.collapse); false: a seed only ever holds. */
-	public static boolean blockadeStarvesSeeds()   { return b("threatinc_blockadeStarvesSeeds", true); }
 	/** A FOUNDING BUDGET (S6, 2026-10-10): while a seeding is held on supplies, growth draws only the stock above one founding kit. */
 	public static boolean foundingBudget()         { return b("threatinc_foundingBudget", true); }
 	/** TANGIBLE FEEDING (the user, 2026-10-18): size upkeep arrives by a feeding swarm / convoy, absorbed on arrival (ThreatFeeding). */
@@ -994,8 +1012,8 @@ public class ThreatIncConfig {
 	 * (ThreatStrikeFGI.beachheadLanding); the guard holds orbit and bombards.
 	 */
 	public static boolean fabricateDefendEnabled() { return fabricateEnabled() && b("threatinc_fabricateDefendEnabled", true); }
-	/** Troops landed per fleet point of hulls broken up. */
-	public static float fabricateTroopsPerFP(){ return f("threatinc_fabricateTroopsPerFP"); }
+	/** Troops landed per fleet point of hulls broken up: strataPerFP (the name kept for its readers). */
+	public static float fabricateTroopsPerFP(){ return strataPerFP(); }
 	/** How far past the hold line fabrication aims, so the front does not oscillate on the boundary. */
 	public static float fabricateHoldMargin() { return f("threatinc_fabricateHoldMargin"); }
 	/** Days of armaments a batch of fabricated troops brings down with it. */

@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 18;
+	static final int MIGRATION_VERSION = 19;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -149,6 +149,15 @@ class LunaConfigBridge {
 				// 2026-10-25, the user: ships are the soldiers - the free troop pool is gone
 				if (from < 18) {
 					changed |= bump(json, "threatinc_strikeTroopsPerPoint", 20, 0, false);
+				}
+				// 2026-10-25, the strata are the Threat (phase A): the size table doubles, the bank is the strata,
+				// accessibility is the strata density - the knobs they replace go (docs/strata-are-the-threat.md 9)
+				if (from < 19) {
+					changed |= drop(json, "threatinc_hiveDefensePerSize");
+					changed |= drop(json, "threatinc_coreDistanceOffset");
+					changed |= drop(json, "threatinc_disruptedPortShipping");
+					changed |= drop(json, "threatinc_blockadeStarvesSeeds");
+					changed |= drop(json, "threatinc_fabricateTroopsPerFP");
 				}
 				if (changed) {
 					settings.writeTextFileToCommon(path, json.toString(3));

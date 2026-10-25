@@ -148,9 +148,8 @@ public class ThreatColonyManager {
 		market.setIncoming(new PopulationComposition());
 
 		addEssentialStructure(market, Industries.POPULATION, payerId);
-		// no spaceport means -100% accessibility, no in-group shipping, and no
-		// supply convoys - the hive economy needs its ports
-		addEssentialStructure(market, Industries.SPACEPORT, payerId);
+		// no Spaceport (the user, 2026-10-25, round 4): a hive's accessibility is the strata
+		// density around it, landed whole over vanilla's figures (applyHiveAccessibility)
 
 		// what the player knew of the planet, for the map while the hive is unfound (ThreatMapFog)
 		market.getMemoryWithoutUpdate().set(ThreatMapFog.KEY_PRIOR_SURVEY, market.getSurveyLevel().name());
@@ -879,7 +878,7 @@ public class ThreatColonyManager {
 		// the flag stands only while a build is waiting on the bank (buyStructure)
 		buildWaiting().remove(market.getId());
 
-		// the port stays a Spaceport for life (see ensureSpaceport)
+		// no port on a hive (ensureSpaceport retires one an older save built)
 		ensureSpaceport(market);
 
 		// defensive structures don't take industry slots. The hive builds its
@@ -1193,26 +1192,27 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * A hive world's port is a Spaceport, never a Megaport. The hive used to
-	 * upgrade to Megaports for the accessibility, on the theory that
-	 * accessibility was its supply line; it is not (same-faction shipping is
-	 * 5+ units at 0% and no hive producer makes more than 8 - see
-	 * docs/hive-economy.md), so the Megaport bought nothing and cost the one
-	 * thing that showed: it demands fuel at colony size, where a Spaceport
-	 * demands size-2, which is exactly what a fuel plant of the same size
-	 * makes. On Megaports every hive world read a permanent fuel shortage by
-	 * construction. Retired Sept 2026; this also migrates saves that already
-	 * built them. Idempotent.
+	 * A hive world has no port (the user, 2026-10-25, round 4): the strata density is its
+	 * accessibility (applyHiveAccessibility), and nothing docks at a blockaded world by the
+	 * same modifier. Every hive built a Spaceport until phase A, and Megaports before Sept
+	 * 2026: this retires either off a world that has one. Idempotent.
 	 *
-	 * @return true if it swapped a Megaport out this call
+	 * @return true if it removed a port this call
 	 */
 	public static boolean ensureSpaceport(MarketAPI market) {
 		if (market == null) return false;
-		if (!market.hasIndustry(Industries.MEGAPORT)) return false;
-		market.removeIndustry(Industries.MEGAPORT, null, true);
-		if (!market.hasIndustry(Industries.SPACEPORT)) market.addIndustry(Industries.SPACEPORT);
+		boolean changed = false;
+		if (market.hasIndustry(Industries.MEGAPORT)) {
+			market.removeIndustry(Industries.MEGAPORT, null, true);
+			changed = true;
+		}
+		if (market.hasIndustry(Industries.SPACEPORT)) {
+			market.removeIndustry(Industries.SPACEPORT, null, true);
+			changed = true;
+		}
+		if (!changed) return false;
 		markEconomyDirty();
-		ThreatIncConfig.log("Hive planner: Megaport retired for a Spaceport at " + market.getName());
+		ThreatIncConfig.log("Hive planner: port retired at " + market.getName() + " (the strata density is the hive's accessibility)");
 		return true;
 	}
 
@@ -1251,7 +1251,7 @@ public class ThreatColonyManager {
 		return supply;
 	}
 
-	/** Tick sweep: every live colony back on a Spaceport (older saves built Megaports). */
+	/** Tick sweep: no live colony keeps a port (older saves built them; ensureSpaceport). */
 	public static void maintainPorts() {
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			ensureSpaceport(market);
@@ -1811,10 +1811,8 @@ public class ThreatColonyManager {
 			return false;
 		}
 		float extra = militaryExtraFP(market, industryId);
-		float upkeepMonth = upkeepPerDay(held + extra) * 30f;
-		if (fabricationRatePerDay(market) * 30f < upkeepMonth) return false;
-		float months = ThreatBuildCost.enabled() ? ThreatBuildCost.buildDays(industryId) / 30f : 0f;
-		return poolableFP(market) >= ThreatBuildCost.fleetPoints(industryId) + extra + upkeepMonth * months;
+		// no income and no upkeep since phase A (2026-10-25): the strata pay the structure and its swarms outright
+		return poolableFP(market) >= ThreatBuildCost.fleetPoints(industryId) + extra;
 	}
 
 	/** Fleet points of the swarms the structure adds to the colony's reserve: a base reserve's worth of the size table's next rows. */
@@ -1904,137 +1902,82 @@ public class ThreatColonyManager {
 	}
 
 	// ------------------------------------------------------------------
-	// hive accessibility: the swarm doesn't trade through the human Core
+	// hive accessibility: the strata density (docs/strata-are-the-threat.md 4)
 	// ------------------------------------------------------------------
 
 	public static final String ACCESS_MOD_ID = "threatinc_coredist";
+	/** The retired disrupted-port modifier's id (phase A): lifted off any market an older save left it on. */
 	public static final String PORT_DOWN_MOD_ID = "threatinc_portdown";
 
 	/**
-	 * The accessibility that gives exactly the configured same-faction
-	 * shipping capacity while a port is disrupted. Misc.getShippingCapacity is
-	 * (accessibility + SAME_FACTION_BONUS) / PER_UNIT_SHIPPING units, truncated
-	 * (vanilla: +0.5, 0.1 per unit), so this aims at the middle of the unit's
-	 * band - 3 units is -15% - to stay clear of float edges. 0 units is -50%,
-	 * nothing docks at all. Read from vanilla's constants so a settings change
-	 * tracks.
-	 */
-	public static float portDownAccessibility() {
-		int units = Math.max(0, ThreatIncConfig.disruptedPortShipping());
-		return (units + 0.5f) * Misc.PER_UNIT_SHIPPING - Misc.SAME_FACTION_BONUS;
-	}
-
-	/**
-	 * The two accessibility modifiers the hive applies, re-asserted every poll
-	 * so they track the economy and survive save load: the Core-distance
-	 * refund and the disrupted-port cut. Everything else about hive trade is
-	 * vanilla's - see docs/hive-economy.md.
-	 *
-	 * Core distance: vanilla docks a market's accessibility by its distance
-	 * from the economy's centre of mass - a size-weighted centroid that the
-	 * many large Core worlds pull to the Core. That penalty models dependence
-	 * on the Core trade hub. The hive has no such dependence: it is a closed
-	 * econ group, hostile to everyone, pulled from the trade-fleet network -
-	 * every commodity it receives comes from its own colonies. Charging it a
-	 * Core-distance penalty models a supply line that does not exist, and it
-	 * cripples exactly the fringe colonies the swarm is built to seed. So that
-	 * one component is cancelled, restored as a flat bonus. Note that this
-	 * leaves nothing that falls with distance: vanilla's same-faction proximity
-	 * term is only ever a bonus, so a hive colony's imports and reach do not
-	 * depend on how far it sits from its siblings.
+	 * THE STRATA DENSITY (the user, 2026-10-25, round 4: "like gravity"): a hive world's
+	 * accessibility is the strata around it - every OTHER live hive world's strata weighed
+	 * 1 / (1 + (d / densityLY)^2) over the light-years between them (a sibling in the same
+	 * system in full, one 10 ly off half) and the world's own at densitySelfWeight (0) - at
+	 * densityAccessPerDoubling (10%) a doubling over densityRef (6,400), clamped to
+	 * densityAccessMin / Max (-30% / +50%). Nothing else moves it: no port (round 4), no
+	 * Core-distance penalty (the hive trades with no one but itself), no proximity bonus -
+	 * the TOTAL is landed by one flat modifier against the stat's current value, the way the
+	 * retired disrupted-port cut was. A human blockade over the world (ThreatBlockade.HIVE_KEY)
+	 * lands it at -50%: nothing docks. Re-asserted every poll so it tracks the strata and
+	 * survives a save load.
 	 */
 	public static void applyHiveAccessibility() {
 		List<MarketAPI> colonies = ThreatIncData.getAllLiveColonyMarkets();
 		if (colonies.isEmpty()) return;
-
-		float fraction = ThreatIncConfig.coreDistanceOffset();
-		Vector2f com = fraction > 0f ? economyCenterOfMass() : null;
-		// vanilla: accessibility loses 1.0 per this many LY from the COM
-		float lyPerUnit = com != null
-				? Global.getSettings().getFloat("accessibilityDistFromCOM") : 0f;
-
 		for (MarketAPI market : colonies) {
-			if (com == null || lyPerUnit <= 0f) {
-				// feature off: make sure no stale bonus lingers from a prior setting
-				market.getAccessibilityMod().unmodifyFlat(ACCESS_MOD_ID);
-			} else {
-				float dist = Misc.getDistanceLY(market.getLocationInHyperspace(), com);
-				float penalty = dist / lyPerUnit;
-				// clamp so a COM estimate that drifts from vanilla's can never turn
-				// this into a runaway accessibility fountain
-				float offset = Math.max(0f, Math.min(2f, penalty * fraction));
-				market.getAccessibilityMod().modifyFlat(ACCESS_MOD_ID, offset,
-						"Hive network (Core distance not applicable)");
-			}
-			applyPortDisruption(market);
+			market.getAccessibilityMod().unmodifyFlat(PORT_DOWN_MOD_ID);
+			market.getAccessibilityMod().unmodifyFlat(ACCESS_MOD_ID);
+			boolean blockaded = hiveBlockaded(market);
+			float target = blockaded ? shippingAccessibility(0) : hiveDensityAccess(market);
+			float current = market.getAccessibilityMod().computeEffective(0f);
+			String why = blockaded ? "Blockaded - nothing docks" : "Strata density";
+			market.getAccessibilityMod().modifyFlat(ACCESS_MOD_ID, target - current, why);
+			ThreatIncConfig.logOnChange("port:" + market.getId(), blockaded ? "blockaded" : "open",
+					why + " at " + market.getName() + ": accessibility " + Math.round(target * 100f) + "%, shipping "
+							+ Misc.getShippingCapacity(market, true) + " units");
 		}
 	}
 
-	/**
-	 * A disrupted port is a skeleton port. Vanilla deliberately keeps a
-	 * disrupted Spaceport flagged as present (Spaceport.apply re-asserts
-	 * hasSpaceport even while non-functional), so a Core world only loses the
-	 * port's own bonus and its shipping barely moves - and for the hive,
-	 * whose producers never make more than 6 units, that meant a disrupted
-	 * Megaport changed nothing (same-faction shipping is 5+ units down to 0%
-	 * accessibility). So while a hive world's port is disrupted its
-	 * accessibility is held at portDownAccessibility(): shipping capped at
-	 * threatinc_disruptedPortShipping units both ways (default 3). A mature
-	 * world's factories run on a trickle - a size-8 forge fed 3 of 8 metals -
-	 * growth stalls, and what the world makes reaches its siblings only as
-	 * that trickle (the hive falls back to its next-best source of it).
-	 *
-	 * Deliberately NOT zero. Vitality is fabrication x supply, and the siege
-	 * raids the Nexus, then the Core, then the port; with the Core down a
-	 * colony's machinery is imported, so a zero-shipping port on top drove
-	 * supply to 0 and the decline rate to its maximum - a port cut worse than
-	 * the Core cut, which is backwards. The port is logistics: it slows a
-	 * colony, the Core kills it.
-	 *
-	 * Computed against the stat's current value rather than a fixed penalty:
-	 * the Core-distance refund and vanilla's proximity bonus can hold a well
-	 * placed colony above 0% even after vanilla's own -100% no-spaceport
-	 * figure. Re-applied every poll (the stat changes as vanilla's own
-	 * modifiers move) and lifted the moment the port is back.
-	 */
-	protected static void applyPortDisruption(MarketAPI market) {
-		boolean had = market.getAccessibilityMod().getFlatBonuses().containsKey(PORT_DOWN_MOD_ID);
-		market.getAccessibilityMod().unmodifyFlat(PORT_DOWN_MOD_ID);
-		Industry port = getPort(market);
-		int trickle = ThreatIncConfig.disruptedPortShipping();
-		boolean down = trickle >= 0 && port != null && port.isDisrupted();
-		// a human blockade over it (ThreatBlockade.syncHive): half holds shipping
-		// at the dead port's trickle, all at nothing - vanilla's own accessibility
-		// modifier barely moves same-faction shipping (5+ units at 0%)
-		float cut = market.getMemoryWithoutUpdate().getFloat(ThreatBlockade.HIVE_KEY);
-		int units = Integer.MAX_VALUE;
-		String why = null;
-		if (down || (cut > 0f && cut < 1f && trickle >= 0)) {
-			units = Math.max(0, trickle);
-			why = down ? "Port disrupted - skeleton docking only" : "Blockaded - skeleton docking only";
-		}
-		if (cut >= 1f) {
-			units = 0;
-			why = "Blockaded - nothing docks";
-		}
-		if (why == null) {
-			if (had) ThreatIncConfig.log("Shipping back up at " + market.getName());
-			return;
-		}
-		float target = shippingAccessibility(units);
-		float current = market.getAccessibilityMod().computeEffective(0f);
-		if (current > target) {
-			market.getAccessibilityMod().modifyFlat(PORT_DOWN_MOD_ID, target - current, why);
-		}
-		// a verdict line: a port already below the trickle's figure never takes
-		// the modifier, so "had" never held and it logged every poll (Qaras,
-		// 106 times in ng7a)
-		ThreatIncConfig.logOnChange("port:" + market.getId(), why, why + " at " + market.getName() + ": accessibility "
-				+ Math.round(current * 100f) + "% -> " + Math.round(target * 100f)
-				+ "%, shipping " + Misc.getShippingCapacity(market, true) + " units");
+	/** Whether a human blockade holds the world's orbit (ThreatBlockade.syncHive, any cut): nothing docks. */
+	public static boolean hiveBlockaded(MarketAPI market) {
+		return market != null && market.getMemoryWithoutUpdate().getFloat(ThreatBlockade.HIVE_KEY) > 0f;
 	}
 
-	/** The accessibility that gives {@code units} of same-faction shipping (portDownAccessibility's rule). */
+	/** The accessibility the strata density gives the world (applyHiveAccessibility's rule), a blockade aside. */
+	public static float hiveDensityAccess(MarketAPI market) {
+		float min = ThreatIncConfig.densityAccessMin(), max = ThreatIncConfig.densityAccessMax();
+		float density = strataDensity(market);
+		if (density <= 0f) return min;
+		float ref = Math.max(1f, ThreatIncConfig.densityRef());
+		float access = ThreatIncConfig.densityAccessPerDoubling() * (float) (Math.log(density / ref) / Math.log(2d));
+		return Math.max(min, Math.min(max, access));
+	}
+
+	/** The weighed strata around a hive world: every other live hive world's x 1 / (1 + (d / densityLY)^2), its own x densitySelfWeight. */
+	public static float strataDensity(MarketAPI market) {
+		if (market == null) return 0f;
+		Vector2f here = market.getLocationInHyperspace();
+		if (here == null) return 0f;
+		float ly = Math.max(0.01f, ThreatIncConfig.densityLY());
+		float density = ThreatStrata.of(market) * Math.max(0f, ThreatIncConfig.densitySelfWeight());
+		for (MarketAPI other : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (other == market) continue;
+			Vector2f loc = other.getLocationInHyperspace();
+			if (loc == null) continue;
+			float d = Misc.getDistanceLY(here, loc) / ly;
+			density += ThreatStrata.of(other) / (1f + d * d);
+		}
+		return density;
+	}
+
+	/** "+23%" / "-15%" / "0%". */
+	public static String signedPct(float v) {
+		int p = Math.round(v * 100f);
+		return (p > 0 ? "+" : "") + p + "%";
+	}
+
+	/** The accessibility that gives {@code units} of same-faction shipping (the blockade figure applyHiveAccessibility lands at 0 units). */
 	public static float shippingAccessibility(int units) {
 		return (Math.max(0, units) + 0.5f) * Misc.PER_UNIT_SHIPPING - Misc.SAME_FACTION_BONUS;
 	}
@@ -2045,27 +1988,6 @@ public class ThreatColonyManager {
 		Industry port = market.getIndustry(Industries.MEGAPORT);
 		if (port == null) port = market.getIndustry(Industries.SPACEPORT);
 		return port;
-	}
-
-	/**
-	 * Size-weighted centroid of the sector's inhabited markets, in hyperspace
-	 * coordinates - our reconstruction of the figure vanilla docks accessibility
-	 * against. Dominated by the numerous large Core worlds, so it lands in the
-	 * Core regardless of small weighting differences from vanilla's own.
-	 */
-	protected static Vector2f economyCenterOfMass() {
-		float sx = 0f, sy = 0f, weight = 0f;
-		for (MarketAPI market : Global.getSector().getEconomy().getMarketsCopy()) {
-			if (ThreatMapFog.hidden(market) || ThreatMapFog.conditionOnly(market)) continue;
-			Vector2f loc = market.getLocationInHyperspace();
-			if (loc == null) continue;
-			float w = market.getSize();
-			sx += loc.x * w;
-			sy += loc.y * w;
-			weight += w;
-		}
-		if (weight <= 0f) return null;
-		return new Vector2f(sx / weight, sy / weight);
 	}
 
 	protected static boolean groupHasIndustry(String industryId) {
@@ -2285,7 +2207,7 @@ public class ThreatColonyManager {
 	 * A colony is starved when its own industries can't get their inputs - a
 	 * refinery with no ore, a forge with no metals, a mine with no machinery.
 	 * That happens when the hive's supply lines are cut - a link colony
-	 * destroyed, or this colony's own port disrupted (applyPortDisruption) -
+	 * destroyed, or this colony blockaded (applyHiveAccessibility: nothing docks) -
 	 * exactly the intended siege pressure. A frontier colony whose factories are
 	 * fed is healthy even if its population goods run short. Distance from the
 	 * rest of the hive is not a factor: accessibility never falls with it (see
@@ -3489,7 +3411,7 @@ public class ThreatColonyManager {
 		fleet.getMemoryWithoutUpdate().set(SWARM_TIER_KEY, escortIdx);
 		fleet.getMemoryWithoutUpdate().set(SWARM_FABS_KEY, 1);
 		fleet.getMemoryWithoutUpdate().set(WAVE_FLAG, targetSystem.getId());
-		// out of the Abyss: its colony lands with a stockpile (endowSeed)
+		// out of the Abyss: its colony lands with its size's strata and nothing more (phase A)
 		if (source == null) fleet.getMemoryWithoutUpdate().set(BOOTSTRAP_WAVE_FLAG, true);
 		makeDetectable(fleet);
 
@@ -3718,10 +3640,8 @@ public class ThreatColonyManager {
 				// the beachhead is established; the Abyss sends no more
 				ThreatIncData.bootstrapSeeds().remove(systemId);
 
-				if (fleet.getMemoryWithoutUpdate().getBoolean(BOOTSTRAP_WAVE_FLAG)) {
-					fleet.getMemoryWithoutUpdate().unset(BOOTSTRAP_WAVE_FLAG);
-					endowSeed(market);
-				}
+				// (a seed out of the Abyss is endowed with nothing since phase A: its strata are its size's, grown by its Core)
+				fleet.getMemoryWithoutUpdate().unset(BOOTSTRAP_WAVE_FLAG);
 
 				if (paidFounding) {
 					// the seeding swarm's hulls ARE the colony: consumed, not
@@ -3899,7 +3819,7 @@ public class ThreatColonyManager {
 	 * reaching zero at defenseWearDays. Disruption stacks (every siege slice and every
 	 * successful raid adds its own), so a structure carrying 300 days has been
 	 * hit again and again, and by then it is scrap. The size-anchored base
-	 * (hiveDefensePerSize x size) is untouched - the strata below the crust
+	 * (ThreatStrata) is untouched - the strata below the crust
 	 * do not stop existing - so bombardment never gets free, only cheaper as
 	 * the war-strata are ground down. Shared by ThreatGroundDefenses
 	 * (batteries too) and SwarmNexus.
@@ -3977,7 +3897,7 @@ public class ThreatColonyManager {
 	 * absent: it fabricates FLEETS, not population, so its disruption halts new
 	 * swarm fabrication (maintainGarrisons), never the colony's vitality. The
 	 * PORT is likewise absent: it is logistics, not fabrication - its disruption
-	 * bites through the supply score (applyPortDisruption zeroes the world's
+	 * bites through the supply score (applyHiveAccessibility lands a blockaded world's
 	 * shipping capacity: no imports here, and its exports reach no sibling),
 	 * so counting it here would double-charge it and wrongly punish colonies
 	 * that make their own inputs.
@@ -4107,109 +4027,128 @@ public class ThreatColonyManager {
 			applyHiveOrder(market);
 			pinMaxSize(market);
 
-			if (ThreatColonyUpkeep.enabled()) {
-				advanceFedGrowth(market, elapsedDays);
-				continue;
-			}
-
-			// no growth while a ground front is on the surface - a colony
-			// fighting inside its own strata builds no new ones - or while
-			// saturation falls on it (docs/suppression-balance.md v2)
-			if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) continue;
-
-			int size = market.getSize();
-			int cap = maxColonySize(market);
-			if (size >= cap) continue;
-
-			float growthMult = growthMultFor(health);
-			if (growthMult <= 0f) continue; // starved: resumes once supply recovers
-
-			float accrued = ThreatIncData.growthProgressDays(id) + elapsedDays * growthMult;
-			float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size
-					* IncursionManager.timeScale();
-			if (accrued < daysPerLevel) {
-				ThreatIncData.setGrowthProgressDays(id, accrued);
-				continue;
-			}
-
-			growColony(market, cap);
+			// THE CORE GROWS THE STRATA (2026-10-25): fed in full, held, or starving - coreState
+			advanceCoreGrowth(market, elapsedDays);
 		}
 	}
 
+	/** The Fabrication Core's demand for an input at a hive size: METALS at the size, FUEL at size - 2, both x coreInputPerSize (docs/strata-are-the-threat.md 3). 0 for anything else. */
+	public static int coreDemand(int size, String commodityId) {
+		float scale = Math.max(0f, ThreatIncConfig.coreInputPerSize());
+		if (Commodities.METALS.equals(commodityId)) return Math.round(Math.max(0, size) * scale);
+		if (Commodities.FUEL.equals(commodityId)) return Math.round(Math.max(0, size - 2) * scale);
+		return 0;
+	}
+
+	/** What the Fabrication Core sees of a hive world (coreState). */
+	public static final class CoreState {
+		public int metalsDemand, metalsHave, fuelDemand, fuelHave;
+		/** Units short across both inputs; 0 = fed in full. */
+		public int shortUnits;
+		/** An input demanded with not a unit of it available: the world starves whatever the count (a blockade's work). */
+		public boolean famine;
+		/** The Core is absent or still building: the world holds. */
+		public boolean coreDown;
+		/** Strata a day the state moves the world: positive growing, negative starving, 0 holding. */
+		public float strataPerDay;
+		public boolean growing() { return strataPerDay > 0f; }
+		public boolean starving() { return strataPerDay < 0f; }
+		public String word() { return starving() ? "starving" : growing() ? "growing" : "holding"; }
+	}
+
 	/**
-	 * Growth under size upkeep (ThreatColonyUpkeep, 2026-09-30; THE STRATA since
-	 * 2026-10-24, ThreatStrata): the hive's strata move at the pace the share of
-	 * its upkeep paid gives - a size's worth (hiveDefensePerSize) gained per
-	 * colonyGrowthBaseDays x size paid in full, held at the break-even share, a
-	 * size's worth starved off per starveDaysPerSize paid nothing - and the size
-	 * steps with the figure (ThreatStrata.syncSize: up at each size's worth
-	 * reached, down when it falls under the size's own, gone at 0). A world at
-	 * its cap banks a size's worth while fed. A front on the surface or
-	 * saturation holds its growth, never its hunger; the Fabrication Core no
-	 * longer gates it.
+	 * THE CORE'S STATE (the user, 2026-10-25, rounds 1-2): what the market sees of each input
+	 * against the Core's demand (coreDemand). Met in full the world GROWS coreStrataPerSizeMonth
+	 * x size a month; one unit short across both inputs it HOLDS; two or more short it STARVES
+	 * a size's worth (the span below its size) per starveDaysPerSize / (units - 1) days, never
+	 * faster than starveMinDays; an input demanded and at nothing always starves (famine).
+	 * Without a Core the world holds (a founding's builds for a while). timeScale stretches
+	 * both clocks.
 	 */
-	protected static void advanceFedGrowth(MarketAPI market, float elapsedDays) {
-		float rate = ThreatColonyUpkeep.growthRate(ThreatColonyUpkeep.fedShare(market));
-		if (rate == 0f) return;
-		float per = ThreatStrata.perSize();
-		if (rate > 0f) {
+	public static CoreState coreState(MarketAPI market) {
+		CoreState s = new CoreState();
+		if (market == null) return s;
+		int size = Math.max(1, market.getSize());
+		s.metalsDemand = coreDemand(size, Commodities.METALS);
+		s.fuelDemand = coreDemand(size, Commodities.FUEL);
+		s.metalsHave = Math.min(s.metalsDemand, available(market, Commodities.METALS));
+		s.fuelHave = Math.min(s.fuelDemand, available(market, Commodities.FUEL));
+		s.shortUnits = (s.metalsDemand - s.metalsHave) + (s.fuelDemand - s.fuelHave);
+		s.famine = (s.metalsDemand > 0 && s.metalsHave <= 0) || (s.fuelDemand > 0 && s.fuelHave <= 0);
+		Industry core = market.getIndustry(FABRICATION_CORE);
+		s.coreDown = core == null || core.isBuilding();
+		if (s.coreDown) return s;
+		float scale = Math.max(0.01f, IncursionManager.timeScale());
+		if (s.shortUnits <= 0 && !s.famine) {
+			s.strataPerDay = Math.max(0f, ThreatIncConfig.coreStrataPerSizeMonth()) * size / 30f / scale;
+		} else if (s.shortUnits >= 2 || s.famine) {
+			int units = Math.max(2, s.shortUnits);
+			float days = Math.max(ThreatIncConfig.starveMinDays(), ThreatIncConfig.starveDaysPerSize() / (units - 1)) * scale;
+			s.strataPerDay = -ThreatStrata.spanBelow(size) / Math.max(1f, days);
+		}
+		return s;
+	}
+
+	/** Units of a commodity the market sees now (vanilla's available: its own production and what reaches it). */
+	protected static int available(MarketAPI market, String commodityId) {
+		CommodityOnMarketAPI c = market.getCommodityData(commodityId);
+		return c == null ? 0 : Math.max(0, c.getAvailable());
+	}
+
+	/**
+	 * The Core's state moved over the poll (coreState): growth is held while a ground front
+	 * is on the surface, saturation falls on the world or the strata are at their cap; hunger
+	 * is never held.
+	 */
+	protected static void advanceCoreGrowth(MarketAPI market, float elapsedDays) {
+		CoreState s = coreState(market);
+		if (s.strataPerDay == 0f) return;
+		if (s.strataPerDay > 0f) {
 			if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) return;
-			float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * market.getSize() * IncursionManager.timeScale();
-			ThreatStrata.add(market, per * rate * elapsedDays / Math.max(1f, daysPerLevel), "Grew", null);
+			if (ThreatStrata.of(market) >= ThreatStrata.cap(market)) return;
+			ThreatStrata.add(market, s.strataPerDay * elapsedDays, "Grew", null);
 			return;
 		}
-		float starveDays = Math.max(1f, ThreatColonyUpkeep.starveDays() * IncursionManager.timeScale());
-		ThreatStrata.add(market, per * rate * elapsedDays / starveDays, "Starved a level of", null);
+		ThreatStrata.add(market, s.strataPerDay * elapsedDays, "Starved a level of", null);
 	}
 
-	/** Whether the colony grows now: by the share of its upkeep paid under size upkeep, else by vitality. */
+	/** Whether the Core grows the world now (coreState). */
 	public static boolean growing(MarketAPI market) {
-		if (ThreatColonyUpkeep.enabled()) {
-			return ThreatColonyUpkeep.growthRate(ThreatColonyUpkeep.fedShare(market)) > 0f;
-		}
-		return growthMultFor(computeHealth(market)) > 0f;
+		return coreState(market).growing();
 	}
 
-	/** The colony's growth pace now, of the full pace: paid share under size upkeep (negative while it starves), else vitality's. */
+	/** The world's growth now, of a world of its size fed in full: 1 growing, 0 holding, negative starving. */
 	public static float growthPace(MarketAPI market) {
-		if (ThreatColonyUpkeep.enabled()) return ThreatColonyUpkeep.growthRate(ThreatColonyUpkeep.fedShare(market));
-		return growthMultFor(computeHealth(market));
+		if (market == null) return 0f;
+		CoreState s = coreState(market);
+		if (s.strataPerDay >= 0f) return s.growing() ? 1f : 0f;
+		float full = Math.max(0.01f, ThreatIncConfig.coreStrataPerSizeMonth()) * Math.max(1, market.getSize()) / 30f
+				/ Math.max(0.01f, IncursionManager.timeScale());
+		return s.strataPerDay / full;
 	}
 
-	/**
-	 * Days until a starving hive loses its size at the rate it starves now;
-	 * Float.MAX_VALUE for one that is not starving.
-	 */
+	/** Days until a starving hive loses its size at the rate it starves now (a size-1 world: until it is gone); Float.MAX_VALUE for one that is not starving. */
 	public static float daysToLoseSize(MarketAPI market) {
-		if (market == null || !ThreatColonyUpkeep.enabled()) return Float.MAX_VALUE;
-		float rate = growthPace(market);
-		if (rate >= 0f) return Float.MAX_VALUE;
-		float per = ThreatStrata.perSize();
-		float perDay = -rate * per / Math.max(1f, ThreatColonyUpkeep.starveDays() * IncursionManager.timeScale());
-		// the strata above the size's own; a size-1 hive has only what it stands on (ThreatStrata.collapse at 0)
-		float left = ThreatStrata.of(market) - (market.getSize() <= 1 ? 0f : per * market.getSize());
-		return Math.max(0f, left) / perDay;
+		if (market == null) return Float.MAX_VALUE;
+		CoreState s = coreState(market);
+		if (!s.starving()) return Float.MAX_VALUE;
+		int size = market.getSize();
+		float floor = size <= 1 ? 0f : ThreatStrata.sizeAt(size);
+		return Math.max(0f, ThreatStrata.of(market) - floor) / -s.strataPerDay;
 	}
 
 	/**
-	 * Days until a hive grows its next size at the rate it grows now
-	 * (updateColonyVitality's rule); Float.MAX_VALUE for a world that is not a
-	 * hive, is at its cap, starving, or held by a front or saturation.
+	 * Days until a hive grows its next size at the rate the Core grows it now; Float.MAX_VALUE
+	 * for a world that is not a hive, is at its cap, not growing, or held by a front or
+	 * saturation.
 	 */
 	public static float daysToNextSize(MarketAPI market) {
 		if (market == null || !Factions.THREAT.equals(market.getFactionId())) return Float.MAX_VALUE;
 		if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) return Float.MAX_VALUE;
-		int size = market.getSize();
-		if (size >= maxColonySize(market)) return Float.MAX_VALUE;
-		float growthMult = growthPace(market);
-		if (growthMult <= 0f) return Float.MAX_VALUE;
-		float daysPerLevel = ThreatIncConfig.colonyGrowthBaseDays() * size * IncursionManager.timeScale();
-		if (!ThreatColonyUpkeep.enabled()) {
-			return Math.max(0f, daysPerLevel - ThreatIncData.growthProgressDays(market.getId())) / growthMult;
-		}
-		// the strata to the next size's worth at the pace they thicken (ThreatStrata)
-		float perDay = ThreatStrata.perSize() * growthMult / Math.max(1f, daysPerLevel);
-		return Math.max(0f, ThreatStrata.nextSizeAt(market) - ThreatStrata.of(market)) / perDay;
+		if (market.getSize() >= maxColonySize(market)) return Float.MAX_VALUE;
+		CoreState s = coreState(market);
+		if (!s.growing()) return Float.MAX_VALUE;
+		return Math.max(0f, ThreatStrata.nextSizeAt(market) - ThreatStrata.of(market)) / s.strataPerDay;
 	}
 
 	/**
@@ -4410,7 +4349,7 @@ public class ThreatColonyManager {
 
 	/**
 	 * Prunes dead garrison fleets, banks the nexus's production (the
-	 * fabrication ledger, accrueFabrication) and fabricates a swarm whenever
+	 * strata, bankedFP: what it holds above its size) and fabricates a swarm whenever
 	 * the bank pays for it, one per colony per poll: the floor's unheld slots first, then past the
 	 * floor with no ceiling (2026-09-29: the size table capped every garrison,
 	 * and a swarm came free every interval). Past the whole table a swarm grows
@@ -4421,9 +4360,7 @@ public class ThreatColonyManager {
 	 * floor and the income that pays for it; with no hulls nothing is built.
 	 */
 	public static void maintainGarrisons(Random random) {
-		float hiveOutput = hiveShipOutput();
-		float hiveDraw = hiveNexusDraw();
-		endowSave(hiveOutput, hiveDraw);
+		migrateBankToStrata();
 		ThreatFuel.accrue();
 		// the fleets each bank paid for that are out in space (upkeep)
 		Map<String, Float> ledgerFP = ledgerFleetFP();
@@ -4432,8 +4369,7 @@ public class ThreatColonyManager {
 		// the colonies' sustenance is held back from the fleets and the navy (sustenanceDue): the forge is the
 		// income, the navy the expense (2026-10-08)
 		float hold = suppliesUpkeep ? ThreatColonyUpkeep.sustenanceDue() : 0f;
-		float fleetsSupplies = maintainColonyGarrisons(random, hiveOutput, hiveDraw, ledgerFP, suppliesUpkeep,
-				ledgerSupplies, hold);
+		float fleetsSupplies = maintainColonyGarrisons(random, ledgerFP, suppliesUpkeep, ledgerSupplies, hold);
 		// the colonies' size upkeep: its break-even first out of the whole stock, growth out of the production the
 		// fleets away leave (their supplies a month come off the share it is taken from)
 		ThreatColonyUpkeep.feed(fleetsSupplies);
@@ -4517,8 +4453,8 @@ public class ThreatColonyManager {
 	}
 
 	/** maintainGarrisons' loop over the colonies; returns the supplies a month of their fleets away. */
-	protected static float maintainColonyGarrisons(Random random, float hiveOutput, float hiveDraw,
-			Map<String, Float> ledgerFP, boolean suppliesUpkeep, Map<String, Float> ledgerSupplies, float hold) {
+	protected static float maintainColonyGarrisons(Random random, Map<String, Float> ledgerFP, boolean suppliesUpkeep,
+			Map<String, Float> ledgerSupplies, float hold) {
 		float fleetsSupplies = 0f;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
 			SectorEntityToken planet = market.getPrimaryEntity();
@@ -4536,17 +4472,8 @@ public class ThreatColonyManager {
 				if (curr == null || !curr.isAlive()) fleets.remove(i);
 			}
 
-			// production accrues (or, organs down, does not) whatever happens next,
-			// and the fleets the colony keeps cost their upkeep over the same days
-			float income = fabricationRatePerDay(market, hiveOutput, hiveDraw);
-			Float outFP = ledgerFP.get(marketId);
-			// with supplies upkeep on, only the garrison at home pays FP; the
-			// fleets away pay supplies (paySupplies)
-			float upkeep = upkeepPerDay(suppliesUpkeep ? garrisonFP(fleets)
-					: ownedFleetFP(market, fleets) + (outFP != null ? outFP : 0f));
-			accrueFabrication(market, income, upkeep);
-			// a bank that cannot carry its fleets gives some back (organs up or not)
-			recycleForUpkeep(market, fleets, income, upkeep);
+			// no production banked and no upkeep charged since phase A (2026-10-25): the strata are the
+			// bank, grown by the Fabrication Core (advanceCoreGrowth) and spent on the fleets built here
 			if (suppliesUpkeep) {
 				Float outSupplies = ledgerSupplies.get(marketId);
 				float away = awayFleetSupplies(market) + (outSupplies != null ? outSupplies : 0f);
@@ -4756,31 +4683,38 @@ public class ThreatColonyManager {
 	public static final float GARRISON_POLL_DAYS = 0.5f;
 
 	// ------------------------------------------------------------------
-	// the fabrication ledger: every Threat fleet is paid for
+	// the bank is the strata (phase A, 2026-10-25): every Threat fleet is budded
 	// ------------------------------------------------------------------
 	//
-	// (2026-09-29, the closed economy.) Vanilla's hull availability is a rate
-	// the whole econ group reads at once, consumed by nothing - so the swarm's
-	// fleets used to come free, one per respawn interval. Now the hive's forges
-	// make fleet points from the hulls they really produce, each colony's
-	// Swarm Nexus BANKS its share (fabricationRatePerDay), and every Threat
-	// fleet it fabricates is PAID from that bank: garrison swarms, the wave
-	// fleet's difference over the swarm it is made of and the structures of
-	// the colony it founds (foundingFP), Scouting Swarms, a
-	// recycled swarm's replacement less the hulls it gives back. No forges, no
-	// production, no fleets. Strength goes where it is needed by moving swarms
-	// (reinforcement, pooled musters), which costs nothing new.
+	// (2026-09-29 the closed economy banked the forges' output per colony and
+	// paid every fleet from the bank; 2026-10-25 THE STRATA ARE THE THREAT,
+	// docs/strata-are-the-threat.md.) A colony's "bank" is a view of its strata:
+	// what it holds above its size's own (ThreatStrata.sizeAt) and above
+	// shiftFloorStrata, in fleet points at strataPerFP (5), plus what has been
+	// STAGED at it for a bill (a pooled founding, a strike paid from the hive).
+	// Charging a fleet takes the staged points first, then strata off the world
+	// - never below shiftFloorStrata (800, a seed's worth); crediting (survivors
+	// home, hulls recycled) absorbs strata back, what the world's cap cannot
+	// take spilling to the nearest hive world with room. The strike fund is the
+	// hive's spare above the floor (strikeFund), less what the posture still
+	// wants built and what the offensive has escrowed for its held prongs.
+	// Nothing accrues here: the Fabrication Core grows the strata
+	// (advanceCoreGrowth).
 
+	/** Persistent map of the retired per-colony bank (fleet points), moved into the strata once (migrateBankToStrata). */
 	public static final String KEY_FAB_BANK = "threatinc_fabBank";
 	public static final String KEY_FAB_ACCRUED_AT = "threatinc_fabAccruedAt";
 	public static final String KEY_FAB_COSTS = "threatinc_fabCosts";
+	/** Market id -> fleet points staged at the colony for a bill it is about to pay (not strata: a transfer in flight). */
+	public static final String KEY_STAGED_FP = "threatinc_stagedFP";
+	/** Set once a save's banks and strike fund have been moved into the strata. */
+	public static final String KEY_STRATA_MIGRATED = "threatinc_strataMigrated";
 
-	/** Market id -> fleet points banked by its nexus (may dip below 0: a fleet built on the last of it). */
+	/** The retired bank (market id -> fleet points): empty once migrated. */
 	public static Map<String, Float> fabBank() {
 		return ThreatIncData.map(KEY_FAB_BANK);
 	}
 
-	/** Market id -> when its production was last banked. */
 	protected static Map<String, Long> fabAccruedAt() {
 		return ThreatIncData.map(KEY_FAB_ACCRUED_AT);
 	}
@@ -4790,31 +4724,110 @@ public class ThreatColonyManager {
 		return ThreatIncData.map(KEY_FAB_COSTS);
 	}
 
-	public static float bankedFP(MarketAPI market) {
-		if (market == null) return 0f;
-		Float v = fabBank().get(market.getId());
+	/** Market id -> fleet points staged at the colony (stage / chargeFP). */
+	protected static Map<String, Float> stagedFP() {
+		return ThreatIncData.map(KEY_STAGED_FP);
+	}
+
+	/** Fleet points staged at the colony, by market id. */
+	public static float staged(String marketId) {
+		if (marketId == null) return 0f;
+		Float v = stagedFP().get(marketId);
 		return v != null ? v : 0f;
 	}
 
-	/** Takes fleet points out of the colony's bank (a fleet it fabricated). */
-	public static void chargeFP(MarketAPI market, float fp) {
+	/** Stages fleet points at the colony for a bill it is about to pay (a pooled founding, a funded strike): a charge takes them first. */
+	protected static void stage(MarketAPI market, float fp) {
 		if (market == null || fp <= 0f) return;
-		fabBank().put(market.getId(), bankedFP(market) - fp);
+		stagedFP().put(market.getId(), staged(market.getId()) + fp);
 	}
 
-	/** Puts fleet points back in the colony's bank (hulls recycled). */
+	/** The strata the colony holds above its size's own and above shiftFloorStrata, in fleet points: what it builds from without losing a size. */
+	public static float spareFP(MarketAPI market) {
+		if (market == null) return 0f;
+		float keep = Math.max(ThreatStrata.sizeAt(market.getSize()), Math.max(0f, ThreatIncConfig.shiftFloorStrata()));
+		return ThreatStrata.fpOf(Math.max(0f, ThreatStrata.of(market) - keep));
+	}
+
+	/** The strata above shiftFloorStrata (800), in fleet points: what a strike or a shift may take, a size or more with it (the user, round 7). */
+	public static float strikeSpareFP(MarketAPI market) {
+		if (market == null) return 0f;
+		return ThreatStrata.fpOf(Math.max(0f, ThreatStrata.of(market) - Math.max(0f, ThreatIncConfig.shiftFloorStrata())));
+	}
+
+	/** The colony's bank: what is staged at it plus its spare strata in fleet points (spareFP). */
+	public static float bankedFP(MarketAPI market) {
+		if (market == null) return 0f;
+		return staged(market.getId()) + spareFP(market);
+	}
+
+	/** Takes fleet points out of the colony: the staged points first, then strata off the world, never below shiftFloorStrata. */
+	public static void chargeFP(MarketAPI market, float fp) {
+		if (market == null || fp <= 0f) return;
+		String id = market.getId();
+		float have = staged(id);
+		float fromStaged = Math.min(have, fp);
+		if (fromStaged > 0f) {
+			if (have - fromStaged <= 0.01f) stagedFP().remove(id);
+			else stagedFP().put(id, have - fromStaged);
+		}
+		float rest = fp - fromStaged;
+		if (rest <= 0f) return;
+		float floor = Math.max(0f, ThreatIncConfig.shiftFloorStrata());
+		float take = Math.min(ThreatStrata.strataOf(rest), Math.max(0f, ThreatStrata.of(market) - floor));
+		if (take < ThreatStrata.strataOf(rest) - 0.5f) {
+			ThreatIncConfig.log("Strata: " + market.getName() + " charged " + (int) rest + " FP, only "
+					+ (int) ThreatStrata.fpOf(take) + " above its floor of " + (int) floor);
+		}
+		if (take > 0f) ThreatStrata.add(market, -take, "Budded from", null);
+	}
+
+	/** Puts fleet points back into the colony's strata (hulls recycled, survivors home); what its cap cannot take spills to the nearest hive world with room. */
 	public static void creditFP(MarketAPI market, float fp) {
 		if (market == null || fp <= 0f) return;
-		fabBank().put(market.getId(), bankedFP(market) + fp);
+		absorb(market, ThreatStrata.strataOf(fp));
+	}
+
+	/** Adds strata to the world up to its cap, the rest to the nearest other live hive world with room (one hop; what no world can take is lost, logged). */
+	protected static void absorb(MarketAPI market, float strata) {
+		if (market == null || strata <= 0f) return;
+		float here = Math.min(ThreatStrata.room(market), strata);
+		if (here > 0f) ThreatStrata.add(market, here, "Absorbed into", null);
+		float rest = strata - here;
+		if (rest <= 0.5f) return;
+		MarketAPI next = null;
+		float best = Float.MAX_VALUE;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			if (m == market || ThreatStrata.room(m) <= 0f) continue;
+			float d = strataDistanceLY(market, m);
+			if (d < best) {
+				best = d;
+				next = m;
+			}
+		}
+		if (next == null) {
+			ThreatIncConfig.log("Strata: " + (int) rest + " spilt at " + market.getName() + " with no hive world to take them");
+			return;
+		}
+		float took = Math.min(ThreatStrata.room(next), rest);
+		ThreatStrata.add(next, took, "Absorbed into", null);
+		ThreatIncConfig.log("Strata: " + market.getName() + " at its cap, " + (int) took + " absorbed into " + next.getName()
+				+ (rest - took > 0.5f ? ", " + (int) (rest - took) + " lost" : ""));
+	}
+
+	/** Light-years between two markets (Float.MAX_VALUE when either has no hyperspace location). */
+	public static float strataDistanceLY(MarketAPI a, MarketAPI b) {
+		if (a == null || b == null) return Float.MAX_VALUE;
+		Vector2f la = a.getLocationInHyperspace(), lb = b.getLocationInHyperspace();
+		if (la == null || lb == null) return Float.MAX_VALUE;
+		return Misc.getDistanceLY(la, lb);
 	}
 
 	/**
 	 * Whether the source's bank, topped up from its system's other colonies,
-	 * pays the bill; tops it up when it does. A sibling gives only while it
-	 * holds its garrison (ThreatPosture.regrowing) and only what it has banked.
-	 * Its Defense Swarms already pool for a launch (launchPool); its bank did
-	 * not, and a founding waited on one colony's bank while 42k FP sat in the
-	 * others (2026-09-29, ti-h8d).
+	 * pays the bill; stages the top-up at it when it does. A sibling gives only
+	 * while it holds its garrison (ThreatPosture.regrowing) and only its spare
+	 * strata (spareFP: nothing that would cost it a size).
 	 */
 	public static boolean poolSystemBanks(MarketAPI source, float bill) {
 		return poolSystemBanks(source, bill, "Founding");
@@ -4841,7 +4854,7 @@ public class ThreatColonyManager {
 			if (left <= 0f) break;
 			float take = Math.min(left, bankedFP(m));
 			chargeFP(m, take);
-			creditFP(source, take);
+			stage(source, take);
 			left -= take;
 			if (from.length() > 0) from.append(", ");
 			from.append(m.getName()).append(' ').append((int) take);
@@ -4852,48 +4865,108 @@ public class ThreatColonyManager {
 	}
 
 	public static final String KEY_STRIKE_FUND = "threatinc_strikeFund";
+	/** Persistent float: fleet points the offensive has escrowed for the prongs it holds (addStrikeFund(-cost)), released on launch (+cost). */
+	public static final String KEY_STRIKE_ESCROW = "threatinc_strikeEscrow";
 
 	/**
-	 * THE STRIKE FUND (a trial of 2026-10-05, after hw20: the banks hold
-	 * nothing, production becoming garrison as it is banked, so a strike paid
-	 * from them stayed two swarms): strikeFundShare of every colony's
-	 * production is set aside, hive-wide, and staged strikes are built from
-	 * it alone (IncursionManager.stagedPlan). Fleet points.
+	 * THE STRIKE FUND is the hive's spare strata (phase A, 2026-10-25; a set-aside share of
+	 * production from 2026-10-05 until then): every live colony's strata above
+	 * shiftFloorStrata (strikeSpareFP), less what the posture still wants built at it
+	 * (ThreatPosture.defenceShortFP) and less what the offensive has escrowed for prongs it
+	 * holds (addStrikeFund). Fleet points. strikeFundShare above 0 keeps the offensive on this
+	 * path (IncursionManager.stagedPlan); the share itself buys nothing now.
 	 */
 	public static float strikeFund() {
-		Object v = Global.getSector().getPersistentData().get(KEY_STRIKE_FUND);
+		float fp = 0f;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) fp += strikeGivable(m);
+		return Math.max(0f, fp - strikeEscrow());
+	}
+
+	/** What a world gives a strike: its strata above the floor less what the posture still wants built at it. */
+	protected static float strikeGivable(MarketAPI m) {
+		return Math.max(0f, strikeSpareFP(m) - Math.max(0f, ThreatPosture.defenceShortFP(m)));
+	}
+
+	/** Fleet points the offensive holds in escrow for prongs it has priced (strikeFund is read net of them). */
+	public static float strikeEscrow() {
+		Object v = Global.getSector().getPersistentData().get(KEY_STRIKE_ESCROW);
 		return v instanceof Float ? (Float) v : 0f;
 	}
 
+	/** The offensive's escrow: a negative figure holds that many fleet points for a prong (off strikeFund), a positive one releases them. */
 	public static void addStrikeFund(float fp) {
-		Global.getSector().getPersistentData().put(KEY_STRIKE_FUND, Math.max(0f, strikeFund() + fp));
+		Global.getSector().getPersistentData().put(KEY_STRIKE_ESCROW, Math.max(0f, strikeEscrow() - fp));
 	}
 
-	/** Fleet points a month the strike fund gains at today's fabrication: strikeFundShare of every live colony's rate (ThreatOffensive's saving horizon). */
+	/** Fleet points a month the fund gains: what the Cores grow across the hive (hiveFabricationPerMonth), all of it spare. */
 	public static float strikeFundPerMonth() {
-		float share = Math.max(0f, Math.min(1f, ThreatIncConfig.strikeFundShare()));
-		if (share <= 0f) return 0f;
-		return hiveFabricationPerMonth() * share;
+		if (ThreatIncConfig.strikeFundShare() <= 0f) return 0f;
+		return hiveFabricationPerMonth();
 	}
 
-	/** Fleet points a month every live colony fabricates at today's rate: what the forges replace (ThreatStance.losingPressure). */
+	/** Fleet points a month the hive's Fabrication Cores grow on the worlds growing now (coreState): what replaces losses (ThreatStance.losingPressure). */
 	public static float hiveFabricationPerMonth() {
-		float output = hiveShipOutput(), draw = hiveNexusDraw(), perDay = 0f;
+		float perDay = 0f;
 		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
-			perDay += Math.max(0f, fabricationRatePerDay(m, output, draw));
+			CoreState s = coreState(m);
+			if (s.growing()) perDay += s.strataPerDay;
 		}
-		return perDay * 30f;
+		return ThreatStrata.fpOf(perDay * 30f);
 	}
 
-	/** Moves the bill from the strike fund to the staging colony's bank, which the launch then draws it from; false when the fund is short. */
+	/**
+	 * Pays the bill from the strike fund: strata off the hive's worlds in proportion to what
+	 * each gives (strikeGivable), staged at the staging colony for the launch's draw; false
+	 * when the fund is short.
+	 */
 	public static boolean spendStrikeFund(MarketAPI staging, float bill) {
-		if (staging == null || bill > strikeFund() + 0.5f) return false;
-		addStrikeFund(-bill);
-		creditFP(staging, bill);
+		if (staging == null || bill <= 0f || bill > strikeFund() + 0.5f) return false;
+		List<MarketAPI> givers = new ArrayList<MarketAPI>();
+		float can = 0f;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			float give = strikeGivable(m);
+			if (give <= 0f) continue;
+			givers.add(m);
+			can += give;
+		}
+		if (can < bill - 0.5f) return false;
+		float left = bill;
+		int n = 0;
+		for (MarketAPI m : givers) {
+			if (left <= 0.01f) break;
+			float took = takeStrikeFP(m, Math.min(left, bill * strikeGivable(m) / can));
+			left -= took;
+			if (took > 0f) n++;
+		}
+		// rounding: the richest givers cover what the shares left
+		if (left > 0.01f) {
+			java.util.Collections.sort(givers, new java.util.Comparator<MarketAPI>() {
+				public int compare(MarketAPI a, MarketAPI b) {
+					return Float.compare(strikeSpareFP(b), strikeSpareFP(a));
+				}
+			});
+			for (MarketAPI m : givers) {
+				if (left <= 0.01f) break;
+				left -= takeStrikeFP(m, left);
+			}
+		}
+		float paid = bill - Math.max(0f, left);
+		stage(staging, paid);
+		ThreatIncConfig.log("Strike fund: " + (int) bill + " FP for " + staging.getName() + " budded from " + n
+				+ " worlds in proportion to their spare" + (left > 0.5f ? ", " + (int) left + " short" : ""));
 		return true;
 	}
 
-	/** Every live colony of the hive that gives to a staged strike's bill: banked, and holding its garrison (ThreatPosture.regrowing). */
+	/** Takes up to this many fleet points of strata off a world for a strike, down to shiftFloorStrata (a size or more with it); returns what it took. */
+	protected static float takeStrikeFP(MarketAPI market, float fp) {
+		if (market == null || fp <= 0f) return 0f;
+		float take = Math.min(fp, strikeSpareFP(market));
+		if (take <= 0f) return 0f;
+		ThreatStrata.add(market, -ThreatStrata.strataOf(take), "Shifted from", null);
+		return take;
+	}
+
+	/** Every live colony of the hive that gives to a staged strike's bill: with a bank, and holding its garrison (ThreatPosture.regrowing). */
 	protected static List<MarketAPI> hiveGivers(MarketAPI source) {
 		List<MarketAPI> givers = new ArrayList<MarketAPI>();
 		for (String systemId : new ArrayList<String>(ThreatIncData.colonyMarkets().keySet())) {
@@ -4917,7 +4990,7 @@ public class ThreatColonyManager {
 	/**
 	 * poolSystemBanks across the whole hive, for a staged strike (the user,
 	 * 2026-10-05: built from the whole hive's bank, as the humans pay a siege
-	 * from their pooled means): the richest givers first.
+	 * from their pooled means): the richest givers first, staged at the source.
 	 */
 	public static boolean poolHiveBanks(MarketAPI source, float bill, String what) {
 		if (source == null) return false;
@@ -4938,7 +5011,7 @@ public class ThreatColonyManager {
 			if (left <= 0f) break;
 			float take = Math.min(left, bankedFP(m));
 			chargeFP(m, take);
-			creditFP(source, take);
+			stage(source, take);
 			left -= take;
 			n++;
 		}
@@ -4967,21 +5040,63 @@ public class ThreatColonyManager {
 
 	/** The bank by market id (the hooks' API: strikes, their survivors). */
 	public static float fpBank(String marketId) {
-		if (marketId == null) return 0f;
-		Float v = fabBank().get(marketId);
-		return v != null ? v : 0f;
+		return bankedFP(ThreatIncData.resolveColonyMarket(marketId));
 	}
 
-	/** Takes fleet points out of a colony's bank by market id. */
+	/** Takes fleet points out of a colony by market id (chargeFP). */
 	public static void drawFP(String marketId, float fp) {
-		if (marketId == null || fp <= 0f) return;
-		fabBank().put(marketId, fpBank(marketId) - fp);
+		chargeFP(ThreatIncData.resolveColonyMarket(marketId), fp);
 	}
 
-	/** Puts fleet points back in a colony's bank by market id (survivors home, hulls recycled). */
+	/** Puts fleet points back into a colony's strata by market id (survivors home, hulls recycled). */
 	public static void creditFP(String marketId, float fp) {
-		if (marketId == null || fp <= 0f) return;
-		fabBank().put(marketId, fpBank(marketId) + fp);
+		creditFP(ThreatIncData.resolveColonyMarket(marketId), fp);
+	}
+
+	/**
+	 * Once per save (KEY_STRATA_MIGRATED): the retired per-colony banks become each world's
+	 * strata at strataPerFP, and the retired strike fund is absorbed into the worlds with the
+	 * most room first; the ledger's clocks are cleared. A new game has nothing to move.
+	 */
+	protected static void migrateBankToStrata() {
+		if (Boolean.TRUE.equals(Global.getSector().getPersistentData().get(KEY_STRATA_MIGRATED))) return;
+		Global.getSector().getPersistentData().put(KEY_STRATA_MIGRATED, true);
+		Map<String, Float> bank = fabBank();
+		float moved = 0f;
+		int worlds = 0;
+		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
+			Float fp = bank.get(m.getId());
+			if (fp == null || fp <= 0f) continue;
+			absorb(m, ThreatStrata.strataOf(fp));
+			moved += fp;
+			worlds++;
+		}
+		bank.clear();
+		fabAccruedAt().clear();
+		Object v = Global.getSector().getPersistentData().get(KEY_STRIKE_FUND);
+		float fund = v instanceof Float ? (Float) v : 0f;
+		Global.getSector().getPersistentData().remove(KEY_STRIKE_FUND);
+		float fundLeft = fund;
+		if (fundLeft > 0f) {
+			List<MarketAPI> all = new ArrayList<MarketAPI>(ThreatIncData.getAllLiveColonyMarkets());
+			java.util.Collections.sort(all, new java.util.Comparator<MarketAPI>() {
+				public int compare(MarketAPI a, MarketAPI b) {
+					return Float.compare(ThreatStrata.room(b), ThreatStrata.room(a));
+				}
+			});
+			for (MarketAPI m : all) {
+				if (fundLeft <= 0.01f) break;
+				float take = Math.min(ThreatStrata.room(m), ThreatStrata.strataOf(fundLeft));
+				if (take <= 0f) continue;
+				ThreatStrata.add(m, take, "Absorbed into", null);
+				fundLeft -= ThreatStrata.fpOf(take);
+			}
+		}
+		if (moved > 0f || fund > 0f) {
+			ThreatIncConfig.log("Strata: the fabrication banks of " + worlds + " worlds (" + (int) moved
+					+ " FP) and the strike fund (" + (int) fund + " FP) moved into the strata"
+					+ (fundLeft > 0.5f ? ", " + (int) fundLeft + " FP of the fund with no room" : ""));
+		}
 	}
 
 	// ------------------------------------------------------------------
@@ -5124,12 +5239,6 @@ public class ThreatColonyManager {
 	/** Days of income a save from before the ledger, or the Abyss's first seeds, start with. */
 	public static final float FAB_ENDOWMENT_DAYS = 180f;
 
-	/** Set once the ledger has endowed the colonies a save already had. */
-	public static final String KEY_FAB_INIT = "threatinc_fabLedgerInit";
-
-	/** Market ids of a pre-ledger save's colonies not yet endowed: each waits for a rate above 0 (endowSave). */
-	public static final String KEY_FAB_ENDOW_PENDING = "threatinc_fabEndowPending";
-
 	/** Memory flag on a Seeding Swarm out of the Abyss: its colony is endowed. */
 	public static final String BOOTSTRAP_WAVE_FLAG = "$threatinc_bootstrapWave";
 
@@ -5175,55 +5284,8 @@ public class ThreatColonyManager {
 		return units;
 	}
 
-	/**
-	 * Fleet points a day this colony's nexus banks. Vanilla broadcasts one
-	 * forge's output to every world that reaches it, using none of it up, so
-	 * the income is the hive's real forge output shared out: the hulls the
-	 * hive's forges make (hiveShipOutput) go to the nexuses in proportion to
-	 * what each draws (nexusDraw), never more than a nexus draws, at
-	 * fpPerShipUnit30d a unit a month. More nexuses split the same hulls;
-	 * only more forges raise the total. The alarm does not raise it.
-	 */
-	public static float fabricationRatePerDay(MarketAPI market) {
-		return fabricationRatePerDay(market, hiveShipOutput(), hiveNexusDraw());
-	}
-
-	/** fabricationRatePerDay with the hive totals already summed (once a poll). */
-	protected static float fabricationRatePerDay(MarketAPI market, float hiveOutput, float hiveDraw) {
-		return threatinc.rules.HiveRules.fabricationRatePerDay(nexusDraw(market), hiveOutput, hiveDraw,
-				fpPerShipUnit30d());
-	}
-
-	/**
-	 * Banks the production since the colony was last banked, less the upkeep
-	 * of its fleets over the same days (upkeepPerDay); once a poll. The bank
-	 * may go below 0 on upkeep - recycleForUpkeep answers that.
-	 */
-	protected static void accrueFabrication(MarketAPI market, float ratePerDay, float upkeepPerDay) {
-		if (market == null) return;
-		String id = market.getId();
-		long now = Global.getSector().getClock().getTimestamp();
-		Long last = fabAccruedAt().get(id);
-		fabAccruedAt().put(id, now);
-		// the first sight of a colony starts its clock; it does not back-pay
-		// the time before (a save's colonies are endowed once, endowSave)
-		if (last == null) return;
-		float days = Global.getSector().getClock().getElapsedDaysSince(last);
-		if (days <= 0f) return;
-		float fp = days * ratePerDay;
-		// the strike fund's share of the production never reaches the colony's bank (strikeFundShare)
-		float fund = fp > 0f ? fp * Math.max(0f, Math.min(1f, ThreatIncConfig.strikeFundShare())) : 0f;
-		if (fund > 0f) addStrikeFund(fund);
-		if (fp - fund > 0f) creditFP(market, fp - fund);
-		float owed = days * upkeepPerDay;
-		if (owed > 0f) {
-			chargeFP(market, owed);
-			upkeepLog(id).charged += owed;
-		}
-	}
-
 	// ------------------------------------------------------------------
-	// upkeep: a standing fleet costs its bank while it exists
+	// upkeep: a standing fleet cost its bank while it existed - not charged since phase A (2026-10-25); the rate stays for the readouts
 	// ------------------------------------------------------------------
 	//
 	// (2026-09-29, closed economy.) Paying for a fleet once let a rich hive's
@@ -5570,46 +5632,6 @@ public class ThreatColonyManager {
 		return out;
 	}
 
-	/**
-	 * The bank has gone below 0 and the colony's income does not cover its
-	 * upkeep: it recycles standing swarms, weakest first - a weak holder
-	 * (weakestWeakHolder), else the smallest on station - each crediting
-	 * ThreatReturns.hullShare of its FP, until the bank is back to 0 or the
-	 * upkeep left is one its income pays. It may go below the garrison floor:
-	 * a floor the bank cannot carry is not one. Out of battle only; at most
-	 * one pass over the garrison, so it always ends.
-	 */
-	protected static void recycleForUpkeep(MarketAPI market, List<CampaignFleetAPI> fleets, float income,
-			float upkeep) {
-		if (bankedFP(market) >= 0f || income >= upkeep) return;
-		// the fleets a held prong of the offensive will muster are its, not the bank's to scrap (earmarked)
-		if (market.getStarSystem() != null && ThreatOffensive.earmarked(market.getStarSystem().getId()) > 0) return;
-		// a keystone's stand is the war's, fed from other hives (ThreatPosture.consolidate): not its own bank's to
-		// scrap (hw140c: the last keystone's bank recycled six swarms, 3.4k FP, of the stand the others had sent)
-		if (ThreatPosture.keystone(market)) return;
-		float rate = upkeepPerDay(1f);
-		float share = ThreatReturns.hullShare();
-		int budget = fleets.size();
-		for (int i = 0; i < budget; i++) {
-			if (bankedFP(market) >= 0f || income >= upkeep) return;
-			CampaignFleetAPI victim = weakestWeakHolder(market);
-			if (victim == null || !fleets.contains(victim)) victim = smallestOnStation(fleets);
-			if (victim == null) return;
-			// read before despawn: a despawned fleet reports 0 FP
-			float fp = victim.getFleetPoints();
-			fleets.remove(victim);
-			victim.despawn();
-			creditFP(market, fp * share);
-			upkeep -= fp * rate;
-			UpkeepLog log = upkeepLog(market.getId());
-			log.recycled++;
-			log.recycledFP += fp;
-			ThreatIncConfig.log("Upkeep: " + market.getName() + " recycled a " + (int) fp + " FP swarm ("
-					+ (int) (fp * share) + " FP back, " + (int) bankedFP(market) + " FP banked, "
-					+ fleets.size() + " on station)");
-		}
-	}
-
 	/** The garrison's smallest live fleet out of battle; null if none. */
 	protected static CampaignFleetAPI smallestOnStation(List<CampaignFleetAPI> fleets) {
 		CampaignFleetAPI best = null;
@@ -5681,81 +5703,26 @@ public class ThreatColonyManager {
 	 * its income and upkeep a month.
 	 */
 	public static String hiveLedgerSummary() {
-		float hiveOutput = hiveShipOutput();
-		float hiveDraw = hiveNexusDraw();
 		Map<String, Float> ledgerFP = ledgerFleetFP();
-		float fleetFP = 0f, income = 0f, banked = 0f;
-		float homeFP = 0f;
+		float fleetFP = 0f, strata = 0f, spare = 0f, stagedFp = 0f;
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
-			homeFP += garrisonFP(ThreatIncData.garrisonsFor(market.getId()));
 			fleetFP += ownedFleetFP(market, ThreatIncData.garrisonsFor(market.getId()));
 			Float away = ledgerFP.get(market.getId());
 			if (away != null) fleetFP += away;
-			income += fabricationRatePerDay(market, hiveOutput, hiveDraw) * 30f;
-			banked += bankedFP(market);
+			strata += ThreatStrata.of(market);
+			spare += spareFP(market);
+			stagedFp += staged(market.getId());
 		}
-		return "fleets " + (int) fleetFP + " FP, income " + (int) income + " FP/mo, upkeep "
-				+ (int) (upkeepPerDay(ThreatIncConfig.threatSuppliesUpkeep() ? homeFP : fleetFP) * 30f)
-				+ " FP/mo, banked " + (int) banked + " FP";
-	}
-
-	/**
-	 * The first poll of a save from before the ledger: every colony starts
-	 * with FAB_ENDOWMENT_DAYS of what it makes, read at the first poll that
-	 * rate is known (KEY_FAB_ENDOW_PENDING), so a loaded war does not
-	 * stall while the banks fill. Once per save; a new game has no colonies
-	 * yet and endows nothing (its seeds are endowed on landing, endowSeed).
-	 */
-	protected static void endowSave(float hiveOutput, float hiveDraw) {
-		Map<String, Boolean> pending = ThreatIncData.map(KEY_FAB_ENDOW_PENDING);
-		if (!Boolean.TRUE.equals(Global.getSector().getPersistentData().get(KEY_FAB_INIT))) {
-			Global.getSector().getPersistentData().put(KEY_FAB_INIT, true);
-			for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) pending.put(market.getId(), true);
-		}
-		if (pending.isEmpty()) return;
-		// each colony is endowed at the first poll its rate reads above 0, not
-		// at the first poll after the load: vanilla's SHIPS figures an idle
-		// nexus reads may be empty until its industries apply again, and an
-		// endowment of 180 days of nothing was 0 FP (2026-09-29 review). A
-		// colony whose organs never come up is never endowed; one that dies,
-		// forgotten
-		float total = 0f;
-		int endowed = 0;
-		for (String id : new ArrayList<String>(pending.keySet())) {
-			MarketAPI market = ThreatIncData.resolveColonyMarket(id);
-			if (market == null) {
-				pending.remove(id);
-				continue;
-			}
-			float rate = fabricationRatePerDay(market, hiveOutput, hiveDraw);
-			if (rate <= 0f) continue;
-			pending.remove(id);
-			float fp = FAB_ENDOWMENT_DAYS * rate;
-			creditFP(market, fp);
-			total += fp;
-			endowed++;
-		}
-		if (endowed > 0) {
-			ThreatIncConfig.log("Fabrication ledger opened for " + endowed + " colony(ies): " + (int) total
-					+ " FP endowed" + (pending.isEmpty() ? "" : ", " + pending.size() + " still waiting on a rate"));
-		}
-	}
-
-	/**
-	 * A colony founded by a Seeding Swarm out of the Abyss (the war's opening,
-	 * source null) lands with FAB_ENDOWMENT_DAYS of a full nexus's income at
-	 * its size - what the swarm brought with it, not production.
-	 */
-	protected static void endowSeed(MarketAPI market) {
-		float fp = threatinc.rules.HiveRules.seedEndowment(FAB_ENDOWMENT_DAYS, market.getSize(), fpPerShipUnit30d());
-		creditFP(market, fp);
-		ThreatIncConfig.log("Seed endowed at " + market.getName() + ": " + (int) fp + " FP");
+		return "fleets " + (int) fleetFP + " FP, strata " + (int) strata + " (" + (int) ThreatStrata.fpOf(strata)
+				+ " FP), spare " + (int) spare + " FP, staged " + (int) stagedFp + " FP, growth "
+				+ (int) hiveFabricationPerMonth() + " FP/mo, fund " + (int) strikeFund() + " FP";
 	}
 
 	/** The colony's ledger is gone with it. */
 	public static void clearFabrication(String marketId) {
 		fabBank().remove(marketId);
 		fabAccruedAt().remove(marketId);
+		stagedFP().remove(marketId);
 	}
 
 	/**

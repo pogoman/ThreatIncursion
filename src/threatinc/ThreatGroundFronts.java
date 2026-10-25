@@ -4247,7 +4247,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		out[2] = razed[0];
 		out[3] = razed[1];
 		// THE STRATA (the user, 2026-10-24: "Bombardment eliminates chunks of strata"): over a hive the
-		// day takes strata instead of a bar - hiveDefensePerSize per strataSuppressDaysPerSize disruption
+		// day takes strata instead of a bar - a stratum (ThreatStrata.perSize) per strataSuppressDaysPerSize disruption
 		// days it adds - the size steps down with them and at 0 the hive is gone (ThreatStrata)
 		float strataTaken = 0f;
 		if (!ThreatRazing.razes(market)) {
@@ -4363,11 +4363,9 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** Fleet memory: the hold has been loaded once; from then on only an arming port refills it. */
 	protected static final String MEM_BOMBARD_LOADED = "$threatinc_bombardHoldLoaded";
 
-	/** Whether a hive's port can hand ordnance to the swarms over it: a port standing and not disrupted, its imports not fully cut by a blockade (ThreatBlockade.HIVE_KEY under 1). */
+	/** Whether a hive can hand ordnance to the swarms over it: its imports not fully cut by a blockade (ThreatBlockade.HIVE_KEY under 1). Hives have no port since phase A (2026-10-25); the name stays for its readers. */
 	public static boolean portArms(MarketAPI market) {
 		if (market == null || !Factions.THREAT.equals(market.getFactionId())) return false;
-		Industry port = ThreatColonyManager.getPort(market);
-		if (port == null || port.isDisrupted() || !port.isFunctional()) return false;
 		return market.getMemoryWithoutUpdate().getFloat(ThreatBlockade.HIVE_KEY) < 1f;
 	}
 

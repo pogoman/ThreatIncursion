@@ -36,8 +36,8 @@ public class ThreatBlockade extends BaseMarketConditionPlugin {
 	 * warships holding a hive world's orbit cut what it imports and exports,
 	 * half or all by the same strength test (hiveCut), while size upkeep is on
 	 * (ThreatColonyUpkeep) - the upkeep its own forge does not make arrives cut,
-	 * and vanilla's shipping is held at a disrupted port's trickle (half) or
-	 * nothing (all) by ThreatColonyManager.applyPortDisruption. Market memory:
+	 * and vanilla's shipping is held at nothing by
+	 * ThreatColonyManager.applyHiveAccessibility. Market memory:
 	 * the share cut. Shown by HiveBlockadeCondition.
 	 */
 	public static final String HIVE_ID = "threatinc_hive_blockaded";

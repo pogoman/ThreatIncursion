@@ -2614,7 +2614,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	 * landing force must be at least a third of the strongest target's
 	 * defender strength as it will stand AFTER the siege's bombardment - plus
 	 * headroom for the preparedness bump. Hive defenses run to thousands
-	 * (hiveDefensePerSize x size, multiplied by the Nexus and the batteries),
+	 * (the strata, ThreatStrata.standing, multiplied by the Nexus and the batteries),
 	 * which is exactly why a flotilla sized by difficulty alone spent its
 	 * raids being repulsed.
 	 *

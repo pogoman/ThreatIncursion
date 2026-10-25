@@ -10,7 +10,7 @@ import com.fs.starfarer.api.util.Misc;
  * BLOCKADED, on a hive world (docs/ground-war.md "Blockade"): human warships
  * hold its orbit. Display only - the cut is ThreatBlockade.syncHive's, taken
  * off the world's imports by ThreatColonyUpkeep and off vanilla's shipping by
- * ThreatColonyManager.applyPortDisruption.
+ * ThreatColonyManager.applyHiveAccessibility (nothing docks).
  */
 public class HiveBlockadeCondition extends BaseMarketConditionPlugin {
 

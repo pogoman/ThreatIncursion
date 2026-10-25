@@ -59,7 +59,7 @@ public class SwarmNexus extends BaseIndustry {
 				getNameForModifier() + (isDisrupted() ? " (in refit)" : ""));
 
 		// The deep defenses: hive ground strength IS THE STRATA (ThreatStrata, the
-		// user 2026-10-24: hiveDefensePerSize a size, fed they thicken, starving
+		// user 2026-10-24: the strata (ThreatStrata, the doubling table since 2026-10-25), fed they thicken, starving
 		// they thin, saturation takes chunks, and the size follows the figure),
 		// not vanilla's shallow base table. Topped up as a flat so the vanilla
 		// base + this = the strata standing, then the industry mults stack on
