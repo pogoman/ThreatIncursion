@@ -17,10 +17,10 @@ threatinc_coreStrataPerSizeMonth,Core Growth per Size a Month,Double,200,"Strata
 threatinc_coreInputPerSize,Core Demand per Size,Double,1,"Scale on the Fabrication Core's demand: metals at the world's size times this, fuel at size minus 2 times this.",0,3
 threatinc_starveMinDays,Fastest Starving Days per Size,Double,15,"A starving world loses a size per Starving Days per Size divided by (units short - 1), never faster than this many days.",1,365
 threatinc_densityLY,Density Half-Weight Distance (ly),Double,10,"Accessibility is the strata density around a hive world: every other hive world's strata weighed 1 / (1 + (distance / this)^2) - a sibling in the same system in full, one this many light-years away half.",1,100
-threatinc_densityRef,Density at 0% Accessibility,Double,6400,"The weighed strata around a world that give it 0% accessibility (5 units of shipping a commodity).",400,200000
+threatinc_densityRef,Density at Zero Accessibility,Double,6400,"The weighed strata around a world that give it no accessibility (5 units of shipping a commodity).",400,200000
 threatinc_densityAccessPerDoubling,Accessibility per Density Doubling,Double,0.10,"Accessibility gained per doubling of the density over the reference (and lost per halving).",0,0.5
-threatinc_densityAccessMin,Density Accessibility Floor,Double,-0.30,"The lowest accessibility the density gives (2 units of shipping a commodity at -30%).",-0.5,0
-threatinc_densityAccessMax,Density Accessibility Cap,Double,0.50,"The highest accessibility the density gives (10 units a commodity at +50%).",0,1
+threatinc_densityAccessMin,Density Accessibility Floor,Double,-0.30,"The lowest accessibility the density gives (2 units of shipping a commodity at -30 percent).",-0.5,0
+threatinc_densityAccessMax,Density Accessibility Cap,Double,0.50,"The highest accessibility the density gives (10 units a commodity at +50 percent).",0,1
 threatinc_densitySelfWeight,Density Self Weight,Double,0,"How much a world's own strata count toward its density (0: only the worlds around it).",0,1
 threatinc_shiftFloorStrata,Strike Floor Strata,Double,800,"Strata a world keeps from the hive's strikes and shifts - a seed's worth: a world is never drawn below size 2 by choice.",0,51200
 threatinc_structureStrata,Structure Strata,Double,750,"Strata a structure the hive planner builds costs the building world (150 fleet points).",0,10000
