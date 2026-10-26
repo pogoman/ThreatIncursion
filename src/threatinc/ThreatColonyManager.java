@@ -2881,8 +2881,9 @@ public class ThreatColonyManager {
 		if (fleet == null) return false;
 
 		if (source != null) {
-			// the carrier's hulls, as built, off the staged points first, then the strata
-			chargeFP(source, fleet.getFleetPoints());
+			// the carrier's hulls, as built, off the staged points first, then the strata - never a size
+			// of the source (keepSize; the pooled share is staged, poolSystemBanks)
+			chargeFP(source, fleet.getFleetPoints(), true);
 			// (2026-09-29: closed economy - a wave that withdraws flies its hulls
 			// back into the source's bank; one that lands is consumed into its
 			// colony, checkWaveArrivals)
@@ -2890,7 +2891,7 @@ public class ThreatColonyManager {
 			// the colony's structures, paid now so an unaffordable founding
 			// never sails; refunded if the wave never founds (refundFounding).
 			// The key's presence marks a wave launched under these rules
-			chargeFP(source, structuresFP);
+			chargeFP(source, structuresFP, true);
 			fleet.getMemoryWithoutUpdate().set(FOUNDING_FP_KEY, structuresFP);
 			fleet.getMemoryWithoutUpdate().set(FOUNDING_SOURCE_KEY, source.getId());
 			float waveLY = ThreatFuel.ly(source.getStarSystem(), targetSystem);
@@ -3667,10 +3668,23 @@ public class ThreatColonyManager {
 		int next = size + 1;
 		if (next > maxColonySize(market)) return true;
 		int metalsDemand = coreDemand(next, Commodities.METALS), fuelDemand = coreDemand(next, Commodities.FUEL);
+		// an input the world does not demand yet has no availability to read (vanilla computes it for
+		// what is demanded; 2026-10-26, hw279: every size-2 seed read fuel 0 of 1 and held at 2) - its
+		// first unit is asked only once the world is there, where one short is a HOLD, never a famine
+		if (coreDemand(size, Commodities.METALS) <= 0) metalsDemand = 0;
+		if (coreDemand(size, Commodities.FUEL) <= 0) fuelDemand = 0;
 		int metalsHave = Math.min(metalsDemand, available(market, Commodities.METALS));
 		int fuelHave = Math.min(fuelDemand, available(market, Commodities.FUEL));
 		int shortUnits = (metalsDemand - metalsHave) + (fuelDemand - fuelHave);
 		return shortUnits < 2 && !famine(metalsDemand, metalsHave) && !famine(fuelDemand, fuelHave);
+	}
+
+	/** The world's inputs for the log: "metals 2/3, fuel 0/1 at size 3" - what it sees now against the Core's demand at {@code size}. */
+	public static String inputsText(MarketAPI market, int size) {
+		return "metals " + Math.min(coreDemand(size, Commodities.METALS), available(market, Commodities.METALS)) + "/"
+				+ coreDemand(size, Commodities.METALS) + ", fuel "
+				+ Math.min(coreDemand(size, Commodities.FUEL), available(market, Commodities.FUEL)) + "/"
+				+ coreDemand(size, Commodities.FUEL) + " at size " + size;
 	}
 
 	/** Units of a commodity the market sees now (vanilla's available: its own production and what reaches it). */
@@ -4069,6 +4083,17 @@ public class ThreatColonyManager {
 
 	/** Takes fleet points out of the colony: the staged points first, then strata off the world, never below shiftFloorStrata. */
 	public static void chargeFP(MarketAPI market, float fp) {
+		chargeFP(market, fp, false);
+	}
+
+	/**
+	 * chargeFP; with {@code keepSize} the strata floor is the world's own size's as well as
+	 * shiftFloorStrata (spareFP's keep), so the charge never costs the world a size - a Seeding
+	 * Swarm's (2026-10-26, hw279: every wave logged "Budded from X: size 4 -> 3", the sources churned
+	 * between 3 and 4 and no hive ever reached strikeMinSize). A strike or a shift keeps the plain
+	 * floor: it may take a size with it (the user, round 7).
+	 */
+	public static void chargeFP(MarketAPI market, float fp, boolean keepSize) {
 		if (market == null || fp <= 0f) return;
 		String id = market.getId();
 		float have = staged(id);
@@ -4080,6 +4105,7 @@ public class ThreatColonyManager {
 		float rest = fp - fromStaged;
 		if (rest <= 0f) return;
 		float floor = Math.max(0f, ThreatIncConfig.shiftFloorStrata());
+		if (keepSize) floor = Math.max(floor, ThreatStrata.sizeAt(market.getSize()));
 		float take = Math.min(ThreatStrata.strataOf(rest), Math.max(0f, ThreatStrata.of(market) - floor));
 		if (take < ThreatStrata.strataOf(rest) - 0.5f) {
 			ThreatIncConfig.log("Strata: " + market.getName() + " charged " + (int) rest + " FP, only "
