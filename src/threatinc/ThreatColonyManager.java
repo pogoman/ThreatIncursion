@@ -3620,8 +3620,16 @@ public class ThreatColonyManager {
 		s.consuming = consumingTo(market) > 0;
 		s.metalsDemand = coreDemand(market, Commodities.METALS); // 0 while consuming
 		s.fuelDemand = coreDemand(market, Commodities.FUEL);
-		s.metalsHave = Math.min(s.metalsDemand, available(market, Commodities.METALS));
-		s.fuelHave = Math.min(s.fuelDemand, available(market, Commodities.FUEL));
+		// the better of vanilla's live figure and its rule's (availableAt): vanilla recomputes
+		// availability on its economy tick, so a world just grown reads its OLD demand's figures
+		// until then - one short per input, two short, starving - and the size-up lands at the floor,
+		// so one day's hunger dropped it and it flapped daily (2026-10-26, hw282: Strathcona 5 <-> 6
+		// twenty-seven times in 600 days). A blockade reads through both (its shipping is landed on
+		// the accessibility stat at once); a lost source settles on the tick either way
+		s.metalsHave = Math.min(s.metalsDemand, Math.max(available(market, Commodities.METALS),
+				availableAt(market, Commodities.METALS, s.metalsDemand)));
+		s.fuelHave = Math.min(s.fuelDemand, Math.max(available(market, Commodities.FUEL),
+				availableAt(market, Commodities.FUEL, s.fuelDemand)));
 		s.shortUnits = (s.metalsDemand - s.metalsHave) + (s.fuelDemand - s.fuelHave);
 		// a famine is two or more units demanded and none seen (a blockade's work); one unit demanded
 		// and none is the one-short HOLD of the design's table ("a lone importer reaches size 3,
