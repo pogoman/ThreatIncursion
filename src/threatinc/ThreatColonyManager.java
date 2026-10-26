@@ -2569,7 +2569,7 @@ public class ThreatColonyManager {
 		}
 		if (poolableFP(market) < seedWaveFP(market)) {
 			return "no strata to spare (" + (int) poolableFP(market) + " FP banked in its system of a wave's "
-					+ (int) seedWaveFP(market) + ")";
+					+ (int) seedWaveFP(market) + " - carrier and seed)";
 		}
 		if (requireStable ? !isStableForExpansion(market) : !canProjectFleets(market)) return "unstable";
 		return null;
@@ -2660,14 +2660,13 @@ public class ThreatColonyManager {
 	}
 
 	/**
-	 * The fleet points a Seeding Swarm from this colony costs: the wave's hulls at the colony's
-	 * escort tier (swarmCostEstimate) plus the seed's strata (seedFP) - what pickForgeSource asks
-	 * the system's banks for and launchColonizationWave charges (2026-10-26: the garrisons are
-	 * gone, the wave buds from the strata).
+	 * The fleet points a Seeding Swarm costs its source: the carrier swarm of seedFP points plus
+	 * the seed's strata of seedFP more (2 x 80 at the defaults, 800 strata) - what pickForgeSource
+	 * asks the system's banks for and launchColonizationWave charges (2026-10-26: the garrisons are
+	 * gone, the wave buds from the strata; hw277 showed the old escort-tier expedition at ~600 FP).
 	 */
 	public static float seedWaveFP(MarketAPI source) {
-		int escortIdx = Math.max(0, Math.min(3, seedingEscort(source)));
-		return swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, new int[] { 1, escortIdx }) + seedFP();
+		return 2f * seedFP();
 	}
 
 	/** The world whose strata pay a build: the payer by id, else the building world itself. */
@@ -2852,46 +2851,38 @@ public class ThreatColonyManager {
 		if (escortIdx < 0) escortIdx = 0;
 		if (escortIdx > 3) escortIdx = 3;
 		FabricatorEscortStrength escort = FabricatorEscortStrength.values()[escortIdx];
-		int[] spec = { 1, escortIdx };
 
-		// the expedition is paid for in real fleets: one Defense Swarm leaves
-		// the source's garrison to become the seeding wave's substance, and the
-		// source's bank pays whatever the wave weighs beyond it (the fabrication
-		// ledger, 2026-09-29) plus the structures the colony will be founded
-		// with (2026-09-29: founding is paid, not transferred) - a wave it
-		// cannot pay for waits
+		// THE WAVE BUDS FROM THE STRATA (2026-10-26, hw277: the old expedition of a Fabricator and
+		// its escorts sailed at ~600 FP, drew its source to the floor and landed as size 3): the
+		// carrier is one swarm of seedFP points (400 strata), the seed's strata seedFP more, and the
+		// two are the bill (seedWaveFP) - 800 strata land, size 2 (strata-are-the-threat.md 2,
+		// "Founding"). The Abyss bootstrap (source null) still sails the configured expedition.
 		float structuresFP = 0f;
 		if (source != null) {
 			// a forge still retooled around its last wave builds no other
 			// (pickForgeSource checks it; this holds every caller to it)
 			if (!seedReady(source)) return false;
-			float[] swarmFP = { 0f };
-			peekGarrison(source, 1, swarmFP);
 			structuresFP = seedFP();
-			float bill = swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec) - swarmFP[0] + structuresFP;
+			float bill = seedWaveFP(source);
 			// the way out comes from the hive's fuel (ThreatFuel); the wave stays.
 			// (a seed carries nothing since phase B: its strata are paid at the source, seedFP)
-			if (!ThreatFuel.canFound(ThreatFuel.passage(swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, spec),
+			if (!ThreatFuel.canFound(ThreatFuel.passage(seedFP(),
 					ThreatFuel.ly(source.getStarSystem(), targetSystem), false))) {
 				ThreatFuel.held("a Seeding Swarm from " + source.getName());
 				return false;
 			}
-			if (bill > 0f && !poolSystemBanks(source, bill)) return false;
+			if (!poolSystemBanks(source, bill)) return false;
+			if (bankedFP(source) < bill - 0.5f) return false;
 		}
 
-		CampaignFleetAPI fleet = ThreatFleetComposer.create(ThreatFleetComposer.JOB_SEEDING,
-				1, escort, random);
+		CampaignFleetAPI fleet = source == null
+				? ThreatFleetComposer.create(ThreatFleetComposer.JOB_SEEDING, 1, escort, random)
+				: ThreatFleetComposer.createSized(ThreatFleetComposer.JOB_SEEDING, seedFP(), random);
 		if (fleet == null) return false;
 
 		if (source != null) {
-			float[] paid = { 0f };
-			consumeGarrison(source, 1, paid);
-			float diff = fleet.getFleetPoints() - paid[0];
-			if (diff > 0f) chargeFP(source, diff);
-			else creditFP(source, -diff);
-			// its own job's mean: a seeding wave is not composed as a garrison
-			// swarm, and {1, tier} is also a garrison row's key
-			learnSwarmCost(ThreatFleetComposer.JOB_SEEDING, spec, fleet.getFleetPoints());
+			// the carrier's hulls, as built, off the staged points first, then the strata
+			chargeFP(source, fleet.getFleetPoints());
 			// (2026-09-29: closed economy - a wave that withdraws flies its hulls
 			// back into the source's bank; one that lands is consumed into its
 			// colony, checkWaveArrivals)
