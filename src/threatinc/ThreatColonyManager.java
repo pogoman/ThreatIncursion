@@ -2041,7 +2041,9 @@ public class ThreatColonyManager {
 		MarketAPI best = null;
 		for (MarketAPI curr : ThreatIncData.getLiveColonyMarkets(systemId)) {
 			if (curr.getSize() < ThreatIncConfig.strikeMinSize()) continue;
-			if (requireReadyForge && shipsAvailable(curr) <= 0f) continue;
+			// a standing Core, not the ships commodity (2026-10-26, hw276: nothing supplies SHIPS
+			// since the military layer went, so this gate grounded every strike)
+			if (requireReadyForge && !coreStands(curr)) continue;
 			// a strike musters at least two Defense Swarms above the reserves -
 			// the system's colonies pool theirs (garrisonAvailableForLaunch,
 			// 2026-09-29), each at full garrison or adding nothing
@@ -2080,8 +2082,8 @@ public class ThreatColonyManager {
 	public static boolean isStableForExpansion(MarketAPI market) {
 		if (!canProjectFleets(market)) return false;
 		if (!ThreatIncConfig.economyGatesGrowth()) return true;
-		boolean nominalForge = shipsAvailable(market) > 0f
-				&& shipSupplyMult(market) >= STABLE_SHIP_SUPPLY_MULT;
+		boolean nominalForge = coreStands(market)
+				&& shipSupplyMult(market) >= STABLE_SHIP_SUPPLY_MULT; // the Core, not SHIPS (2026-10-26, hw276)
 		boolean saturated = market.getSize() >= maxColonySize(market);
 		return nominalForge || saturated;
 	}
@@ -2509,7 +2511,7 @@ public class ThreatColonyManager {
 	public static MarketAPI pickForgeSource(StarSystemAPI target, boolean requireStable) {
 		MarketAPI best = null;
 		float bestDist = Float.MAX_VALUE;
-		int bestSpare = -1;
+		float bestSpare = -1f;
 		boolean bestPays = false;
 		boolean posture = ThreatPosture.enabled();
 		// billed reach (ThreatReach): any distance, the nearest forge first - the
@@ -2522,11 +2524,12 @@ public class ThreatColonyManager {
 			StarSystemAPI system = market.getStarSystem();
 			if (system == null) continue;
 			if (posture && ThreatIncConfig.posturePressedForgesHome() && ThreatPosture.pressed(system)) continue;
-			// the wave's substance is a mustered Defense Swarm: the colony (or a
-			// sibling in its system, launchPool) must have one to spare above
-			// its defensive reserve
-			int spare = garrisonAvailableForLaunch(market);
-			if (spare < 1) continue;
+			// the wave's substance buds from the strata (2026-10-26, hw276: the garrison
+			// gate outlived the garrisons and no wave ever launched): the colony and its
+			// system's banks must hold the wave's hulls and the seed's strata above
+			// their floors (seedWaveFP; launchColonizationWave charges exactly that)
+			float spare = poolableFP(market);
+			if (spare < seedWaveFP(market)) continue;
 			if (requireStable ? !isStableForExpansion(market) : !canProjectFleets(market)) continue;
 			float d = Misc.getDistanceLY(system.getLocation(), target.getLocation());
 			// the old radius: a wave only as far as the fuel the hive network
@@ -2564,15 +2567,9 @@ public class ThreatColonyManager {
 		if (ThreatPosture.enabled() && ThreatIncConfig.posturePressedForgesHome() && ThreatPosture.pressed(system)) {
 			return "pressed";
 		}
-		if (garrisonAvailableForLaunch(market) < 1) {
-			float held = ownedFleetFP(market, ThreatIncData.garrisonsFor(market.getId()));
-			float spare = ThreatPosture.launchSpareFP(market);
-			return "no swarm to spare (garrison " + countLiveGarrison(market.getId())
-					+ ", reserve " + garrisonReserve(market)
-					+ ", held " + (int) held + " of want " + (int) ThreatPosture.wantFP(market)
-					+ (ThreatPosture.regrowing(market, held) ? ", regrowing" : "")
-					+ ", reserve FP " + (int) ThreatPosture.minimumFP(market) + ", fleets " + fleetFPs(market)
-					+ ", pressure spare " + (spare == Float.MAX_VALUE ? "none" : String.valueOf((int) spare)) + ")";
+		if (poolableFP(market) < seedWaveFP(market)) {
+			return "no strata to spare (" + (int) poolableFP(market) + " FP banked in its system of a wave's "
+					+ (int) seedWaveFP(market) + ")";
 		}
 		if (requireStable ? !isStableForExpansion(market) : !canProjectFleets(market)) return "unstable";
 		return null;
@@ -2660,6 +2657,17 @@ public class ThreatColonyManager {
 	/** Fleet points a founding costs its source beyond the Seeding Swarm's hulls: the seed's own strata (seedStrata, 400: 80 FP). */
 	public static float seedFP() {
 		return ThreatStrata.fpOf(Math.max(0f, ThreatIncConfig.seedStrata()));
+	}
+
+	/**
+	 * The fleet points a Seeding Swarm from this colony costs: the wave's hulls at the colony's
+	 * escort tier (swarmCostEstimate) plus the seed's strata (seedFP) - what pickForgeSource asks
+	 * the system's banks for and launchColonizationWave charges (2026-10-26: the garrisons are
+	 * gone, the wave buds from the strata).
+	 */
+	public static float seedWaveFP(MarketAPI source) {
+		int escortIdx = Math.max(0, Math.min(3, seedingEscort(source)));
+		return swarmCostEstimate(ThreatFleetComposer.JOB_SEEDING, new int[] { 1, escortIdx }) + seedFP();
 	}
 
 	/** The world whose strata pay a build: the payer by id, else the building world itself. */
@@ -3260,7 +3268,7 @@ public class ThreatColonyManager {
 	 */
 	public static boolean anyNominalColony() {
 		for (MarketAPI market : ThreatIncData.getAllLiveColonyMarkets()) {
-			if (shipsAvailable(market) > 0f
+			if (coreStands(market) // the Core, not SHIPS (2026-10-26, hw276)
 					&& shipSupplyMult(market) >= STABLE_SHIP_SUPPLY_MULT) {
 				return true;
 			}
@@ -3566,6 +3574,8 @@ public class ThreatColonyManager {
 		public boolean coreDown;
 		/** A conquered hive consuming its world up to its size (consumingTo): no demand, a size per starveDaysPerSize days. */
 		public boolean consuming;
+		/** Fed in full at its size but at the next size's floor with that size's inputs short (nextSizeFed): the world holds there. */
+		public boolean nextSizeShort;
 		/** Strata a day the state moves the world: positive growing, negative starving, 0 holding. */
 		public float strataPerDay;
 		public boolean growing() { return strataPerDay > 0f; }
@@ -3592,7 +3602,10 @@ public class ThreatColonyManager {
 		s.metalsHave = Math.min(s.metalsDemand, available(market, Commodities.METALS));
 		s.fuelHave = Math.min(s.fuelDemand, available(market, Commodities.FUEL));
 		s.shortUnits = (s.metalsDemand - s.metalsHave) + (s.fuelDemand - s.fuelHave);
-		s.famine = (s.metalsDemand > 0 && s.metalsHave <= 0) || (s.fuelDemand > 0 && s.fuelHave <= 0);
+		// a famine is two or more units demanded and none seen (a blockade's work); one unit demanded
+		// and none is the one-short HOLD of the design's table ("a lone importer reaches size 3,
+		// holds") - read as a famine it starved a fresh size-3 world the day it grew (2026-10-26, hw276)
+		s.famine = famine(s.metalsDemand, s.metalsHave) || famine(s.fuelDemand, s.fuelHave);
 		if (s.consuming) {
 			// the conquered world is the Core (phase E): a size per starveDaysPerSize days up to its size
 			s.strataPerDay = ThreatStrata.span(size)
@@ -3604,6 +3617,13 @@ public class ThreatColonyManager {
 		if (s.coreDown) return s;
 		float scale = Math.max(0.01f, IncursionManager.timeScale());
 		if (s.shortUnits <= 0 && !s.famine) {
+			// a world grows only into a size it can feed (2026-10-26, hw276: fuel-less seeds grew to
+			// exactly the size-3 floor, starved under it a day later and flapped daily for 3,800 days):
+			// at the next size's floor with that size's inputs short it HOLDS there
+			if (!nextSizeFed(market, size) && ThreatStrata.of(market) >= ThreatStrata.nextSizeAt(market) - 1f) {
+				s.nextSizeShort = true;
+				return s;
+			}
 			s.strataPerDay = Math.max(0f, ThreatIncConfig.coreStrataPerSizeMonth()) * size / 30f / scale;
 		} else if (s.shortUnits >= 2 || s.famine) {
 			int units = Math.max(2, s.shortUnits);
@@ -3611,6 +3631,26 @@ public class ThreatColonyManager {
 			s.strataPerDay = -ThreatStrata.spanBelow(size) / Math.max(1f, days);
 		}
 		return s;
+	}
+
+	/** A famine: two or more units of an input demanded and not one seen (coreState). */
+	protected static boolean famine(int demand, int have) {
+		return demand >= 2 && have <= 0;
+	}
+
+	/**
+	 * Whether the market sees the Core's inputs for the size above {@code size} well enough not to
+	 * starve there (fewer than two units short across both, no famine) - the Core grows a world
+	 * only into a size it can feed (coreState, advanceCoreGrowth). True at the cap.
+	 */
+	public static boolean nextSizeFed(MarketAPI market, int size) {
+		int next = size + 1;
+		if (next > maxColonySize(market)) return true;
+		int metalsDemand = coreDemand(next, Commodities.METALS), fuelDemand = coreDemand(next, Commodities.FUEL);
+		int metalsHave = Math.min(metalsDemand, available(market, Commodities.METALS));
+		int fuelHave = Math.min(fuelDemand, available(market, Commodities.FUEL));
+		int shortUnits = (metalsDemand - metalsHave) + (fuelDemand - fuelHave);
+		return shortUnits < 2 && !famine(metalsDemand, metalsHave) && !famine(fuelDemand, fuelHave);
 	}
 
 	/** Units of a commodity the market sees now (vanilla's available: its own production and what reaches it). */
@@ -3630,7 +3670,13 @@ public class ThreatColonyManager {
 		if (s.strataPerDay > 0f) {
 			if (ThreatGroundFronts.hasFront(market) || ThreatRazing.saturated(market)) return;
 			if (ThreatStrata.of(market) >= ThreatStrata.cap(market)) return;
-			ThreatStrata.add(market, s.strataPerDay * elapsedDays, s.consuming ? "Consumed into" : "Grew", null);
+			float delta = s.strataPerDay * elapsedDays;
+			if (!s.consuming && !nextSizeFed(market, market.getSize())) {
+				// up to just under the next size's floor, then hold (coreState reads nextSizeShort there)
+				delta = Math.min(delta, Math.max(0f, ThreatStrata.nextSizeAt(market) - 1f - ThreatStrata.of(market)));
+				if (delta <= 0f) return;
+			}
+			ThreatStrata.add(market, delta, s.consuming ? "Consumed into" : "Grew", null);
 			if (s.consuming && consumingTo(market) <= 0) {
 				market.getMemoryWithoutUpdate().unset(CONSUME_TO_FLAG);
 				ThreatIncConfig.log("Hive " + market.getName() + " has consumed its world: size " + market.getSize());

@@ -846,8 +846,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			freeForges++;
 			ThreatIncConfig.log("Spread-capable forge: " + market.getName() + " (size "
 					+ market.getSize()
-					+ ", ships " + ThreatColonyManager.shipsAvailable(market)
-					+ ", shipMult " + ThreatColonyManager.shipSupplyMult(market) + ")");
+					+ ", strata " + (int) ThreatStrata.of(market) + ", banked " + (int) ThreatColonyManager.poolableFP(market)
+					+ " FP of a wave's " + (int) ThreatColonyManager.seedWaveFP(market) + ")");
 		}
 		if (freeForges <= 0) return;
 

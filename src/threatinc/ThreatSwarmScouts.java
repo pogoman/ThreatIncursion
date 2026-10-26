@@ -251,7 +251,7 @@ public class ThreatSwarmScouts {
 		for (MarketAPI curr : ThreatIncData.getLiveColonyMarkets(systemId)) {
 			if (curr.getPrimaryEntity() == null) continue;
 			if (curr.getSize() < ThreatIncConfig.strikeMinSize()) continue;
-			if (ThreatColonyManager.shipsAvailable(curr) <= 0f) continue;
+			if (!ThreatColonyManager.coreStands(curr)) continue; // the Core, not SHIPS (2026-10-26, hw276: 0 scouts, 0 places known)
 			if (!ThreatColonyManager.hasOperationalFuel(curr)) continue;
 			if (!ThreatColonyManager.hasOperationalNexus(curr)) continue;
 			if (best == null || curr.getSize() > best.getSize()) best = curr;

@@ -139,7 +139,7 @@ public class ThreatColonyUpkeep {
 
 	/** The month's upkeep line for the census log, and the month's tallies reset. */
 	public static void logMonth() {
-		int growing = 0, holding = 0, shrinking = 0, free = 0, blockaded = 0, portsDown = 0;
+		int growing = 0, holding = 0, shrinking = 0, free = 0, blockaded = 0, portsDown = 0, heldNext = 0;
 		float perMonth = 0f;
 		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
 			float u = perMonth(m.getSize());
@@ -147,6 +147,7 @@ public class ThreatColonyUpkeep {
 			if (m.getMemoryWithoutUpdate().getFloat(ThreatBlockade.HIVE_KEY) > 0f) blockaded++;
 			Industry port = ThreatColonyManager.getPort(m);
 			if (port != null && port.isDisrupted()) portsDown++;
+			if (ThreatColonyManager.coreState(m).nextSizeShort) heldNext++;
 			if (u <= 0f) {
 				free++;
 				continue;
@@ -157,6 +158,6 @@ public class ThreatColonyUpkeep {
 			else holding++;
 		}
 		ThreatIncConfig.log("Hive worlds: growing " + growing + ", holding " + holding + ", shrinking " + shrinking
-				+ ", free " + free + "; blockaded " + blockaded + ", ports down " + portsDown + " (no upkeep since 2026-10-25)");
+				+ ", free " + free + ", held at the next size's floor " + heldNext + "; blockaded " + blockaded + ", ports down " + portsDown + " (no upkeep since 2026-10-25)");
 	}
 }

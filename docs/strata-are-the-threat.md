@@ -80,7 +80,7 @@ clipped to crew space; the force holds the orbit, fights what buds, razes every 
 lands on arrival, home when both are spent; Support and Defend off the hive rows; "Closed:
 start phase A".
 
-Nothing open. ALL FIVE PHASES BUILT 2026-10-25, untested: A (jar 13:22), B (13:54), C (14:16), D (14:47), E (14:55) - section 10 has each phase's BUILT block, judgement calls and verify list.
+First day-0 test hw276 (2026-10-26) froze on three phase-C/D leftovers, fixed jar 13:00:40 (section 10, "THREE LEFTOVERS FIXED"), retest round 51. ALL FIVE PHASES BUILT 2026-10-25: A (jar 13:22), B (13:54), C (14:16), D (14:47), E (14:55) - section 10 has each phase's BUILT block, judgement calls and verify list.
 
 ## 1. Review - most of this already exists, hidden
 
@@ -843,6 +843,8 @@ and `swarm-navy-fit.md` (retired), `swarm-defence.md` (the garrison parts), `sup
 (the hive rows), `ground-war-sieges.md` and `ground-war-orbit-control.md` (the hive paths),
 `strategy-reserves-sieges.md` (the orbit gate), `war-board.md`, `code-map.md`, `facts.md` lines
 that answer with a Nexus, Bastion, battery, bank, garrison or feed.
+
+**FIRST DAY-0 TEST AND THREE LEFTOVERS FIXED (2026-10-26, hw276 -> jar 13:00:40; `game-runs-2.md` s55-s56).** hw276 (set B from day 0 on 2e71d1aa) froze on every seed: 4 / 4 / 4 hives for 3,800 days, 0 founded, 0 strikes, 0 scouts, 0 places known. Each was a gate still reading a layer phases C-D removed; the user: "fix all with recommended then retest". (1) **The Seeding Swarm buds from the strata**: `pickForgeSource` and `forgeSourceBlock` asked `garrisonAvailableForLaunch >= 1`; now `poolableFP(market) >= seedWaveFP(market)` - the wave's hulls at the colony's escort tier (`swarmCostEstimate(JOB_SEEDING)`) plus `seedFP` - which is exactly what `launchColonizationWave` charges (`chargeFP` / `poolSystemBanks`; its `consumeGarrison` now musters nothing and pays 0). Judgement call: the wave's strata are drawn at once like a scout's or raider's (`chargeFP`), not budded at the flow. (2) **A standing Core, not the ships commodity**: nothing supplies `Commodities.SHIPS` since the Forge went (`FabricationCore` supplies heavy machinery only), so `shipsAvailable > 0` grounded `pickStrikeStaging` (every strike), `ThreatSwarmScouts.pickStaging` (every scout) and `isStableForExpansion` / `anyNominalColony`; all four read `coreStands` now, `shipSupplyMult` kept. (3) **The Core grows a world only into a size it can feed**: at the next size's floor with that size's inputs short (`nextSizeFed`: two or more units short or a famine at size + 1, read from what the market sees now) the world HOLDS just under the floor (`CoreState.nextSizeShort`; `advanceCoreGrowth` clips the day's growth to the floor - 1), and a **famine is two or more units demanded and none seen** (`famine(demand, have)`) - one unit demanded and none is the design's one-short HOLD (the table's "lone importer reaches size 3, holds"); read as a famine it starved a fresh size-3 world the day it grew, and `sizeChanged` landing a size up at its floor made the flap daily (hw276a 11,410 starve / grow pairs). The "Hive worlds" census counts "held at the next size's floor". Verify: a fuel-less cluster holds at 3 (not flapping), seeding waves launch from size-3+ worlds with 160+ FP banked, scouts chart, the opening strike comes.
 
 ## 11. Decided, and open (closed in round 10)
 
