@@ -3668,29 +3668,46 @@ public class ThreatColonyManager {
 		int next = size + 1;
 		if (next > maxColonySize(market)) return true;
 		int metalsDemand = coreDemand(next, Commodities.METALS), fuelDemand = coreDemand(next, Commodities.FUEL);
-		// an input the world does not demand yet has no availability to read (vanilla computes it for
-		// what is demanded; 2026-10-26, hw279: every size-2 seed read fuel 0 of 1 and held at 2) - its
-		// first unit is asked only once the world is there, where one short is a HOLD, never a famine
-		if (coreDemand(size, Commodities.METALS) <= 0) metalsDemand = 0;
-		if (coreDemand(size, Commodities.FUEL) <= 0) fuelDemand = 0;
-		int metalsHave = Math.min(metalsDemand, available(market, Commodities.METALS));
-		int fuelHave = Math.min(fuelDemand, available(market, Commodities.FUEL));
+		// the next size's figures by vanilla's rule (availableAt): getAvailable never reads above the
+		// world's CURRENT demand, so it read every input exactly one short at the next size (2026-10-26,
+		// hw280: "metals 3/4, fuel 1/2 at size 4" on every world of three games, shipping 10 units)
+		int metalsHave = availableAt(market, Commodities.METALS, metalsDemand);
+		int fuelHave = availableAt(market, Commodities.FUEL, fuelDemand);
 		int shortUnits = (metalsDemand - metalsHave) + (fuelDemand - fuelHave);
 		return shortUnits < 2 && !famine(metalsDemand, metalsHave) && !famine(fuelDemand, fuelHave);
 	}
 
-	/** The world's inputs for the log: "metals 2/3, fuel 0/1 at size 3" - what it sees now against the Core's demand at {@code size}. */
+	/** The world's inputs for the log: "metals 2/3, fuel 0/1 at size 3, shipping 10" - what it would see (availableAt) against the Core's demand at {@code size}. */
 	public static String inputsText(MarketAPI market, int size) {
-		return "metals " + Math.min(coreDemand(size, Commodities.METALS), available(market, Commodities.METALS)) + "/"
-				+ coreDemand(size, Commodities.METALS) + ", fuel "
-				+ Math.min(coreDemand(size, Commodities.FUEL), available(market, Commodities.FUEL)) + "/"
-				+ coreDemand(size, Commodities.FUEL) + " at size " + size;
+		int metals = coreDemand(size, Commodities.METALS), fuel = coreDemand(size, Commodities.FUEL);
+		return "metals " + availableAt(market, Commodities.METALS, metals) + "/" + metals + ", fuel "
+				+ availableAt(market, Commodities.FUEL, fuel) + "/" + fuel + " at size " + size
+				+ ", shipping " + Misc.getShippingCapacity(market, true);
 	}
 
-	/** Units of a commodity the market sees now (vanilla's available: its own production and what reaches it). */
+	/** Units of a commodity the market sees now (vanilla's available: its own production and what reaches it, no more than it demands). */
 	protected static int available(MarketAPI market, String commodityId) {
 		CommodityOnMarketAPI c = market.getCommodityData(commodityId);
 		return c == null ? 0 : Math.max(0, c.getAvailable());
+	}
+
+	/**
+	 * Units of a commodity the market would see at a demand of {@code demand} - vanilla's own rule
+	 * (CommodityMarketData, decompiled 2026-10-26): its production, then the rest imported from the
+	 * faction's largest source, no more than its same-faction shipping carries (the swarm trades with
+	 * nobody else). getAvailable is this at the world's current demand and never reads above it, so
+	 * the next size's inputs (nextSizeFed, inputsText) are computed here.
+	 */
+	public static int availableAt(MarketAPI market, String commodityId, int demand) {
+		if (market == null || demand <= 0) return 0;
+		CommodityOnMarketAPI c = market.getCommodityData(commodityId);
+		if (c == null) return 0;
+		int local = Math.max(0, c.getMaxSupply());
+		if (local >= demand) return demand;
+		int export = c.getCommodityMarketData() == null ? 0
+				: Math.max(0, c.getCommodityMarketData().getMaxExport(market.getFactionId()));
+		int shipping = Math.max(0, Misc.getShippingCapacity(market, true));
+		return local + Math.max(0, Math.min(demand - local, Math.min(export, shipping)));
 	}
 
 	/**
