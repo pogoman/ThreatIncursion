@@ -3532,6 +3532,35 @@ public class ThreatColonyManager {
 		}
 	}
 
+	/** The stat id of the hive industries' lift (applyHiveOutput). */
+	public static final String HIVE_OUTPUT_MOD = "threatinc_hiveOutput";
+
+	/**
+	 * A HIVE INDUSTRY PRODUCES AT ITS SIZE (the user, 2026-10-26, after hw277: "have the mine give the same
+	 * as the size rather than size - 2"). Vanilla mines rare ore and volatiles at size + deposit - 2, makes
+	 * fuel at size - 2 and asks a refinery's ore at size + 2, so a chain of equal sizes ran short at every
+	 * link and the Core's one-short HOLD froze every hive at size 3. hiveOutputOffset (2) is added to
+	 * Mining's and Fuel Production's supply bonus and to Refining's demand reduction - vanilla's own
+	 * supplyBonusFromOther / demandReductionFromOther, read inside each industry's apply() whatever the
+	 * order the market applies them in, so a flat set here stands through every recompute. Hive worlds
+	 * only (FabricationCore.apply re-asserts it); 0 or less removes the lift.
+	 */
+	public static void applyHiveOutput(MarketAPI market) {
+		if (market == null) return;
+		float off = ThreatIncConfig.hiveOutputOffset();
+		for (String id : new String[] { Industries.MINING, Industries.FUELPROD }) {
+			Industry ind = market.getIndustry(id);
+			if (ind == null) continue;
+			if (off > 0f) ind.getSupplyBonusFromOther().modifyFlat(HIVE_OUTPUT_MOD, off, "Swarm");
+			else ind.getSupplyBonusFromOther().unmodifyFlat(HIVE_OUTPUT_MOD);
+		}
+		Industry refining = market.getIndustry(Industries.REFINING);
+		if (refining != null) {
+			if (off > 0f) refining.getDemandReductionFromOther().modifyFlat(HIVE_OUTPUT_MOD, off, "Swarm");
+			else refining.getDemandReductionFromOther().unmodifyFlat(HIVE_OUTPUT_MOD);
+		}
+	}
+
 	/** The Fabrication Core's demand for an input at a hive size: METALS at the size, FUEL at size - 2, both x coreInputPerSize (docs/strata-are-the-threat.md 3). 0 for anything else. */
 	public static int coreDemand(int size, String commodityId) {
 		float scale = Math.max(0f, ThreatIncConfig.coreInputPerSize());

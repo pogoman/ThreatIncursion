@@ -414,6 +414,8 @@ public class ThreatIncConfig {
 	public static float coreStrataPerSizeMonth() { return f("threatinc_coreStrataPerSizeMonth"); }
 	/** Scale on the Core's demand: METALS at the size x this, FUEL at (size - 2) x this. */
 	public static float coreInputPerSize()    { return f("threatinc_coreInputPerSize"); }
+	/** Units added to a hive Mining's and Fuel Production's supply and taken off Refining's demand, so a hive industry produces at its size (ThreatColonyManager.applyHiveOutput). */
+	public static float hiveOutputOffset()    { return f("threatinc_hiveOutputOffset"); }
 	/** The fastest a starving world loses a size, in days (starveDaysPerSize / (units short - 1), never under this). */
 	public static float starveMinDays()       { return f("threatinc_starveMinDays"); }
 	/** Strata density: the light-years at which another hive world's strata count half (1 / (1 + (d / this)^2)). */

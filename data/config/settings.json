@@ -519,6 +519,10 @@
 	"threatinc_strataPerFP": 5,
 	"threatinc_coreStrataPerSizeMonth": 200,
 	"threatinc_coreInputPerSize": 1,
+	# a hive industry produces at its size (the user, 2026-10-26): vanilla mines rare ore and volatiles at size + deposit - 2,
+	# makes fuel at size - 2 and asks a refinery's ore at size + 2; this many units are added to a hive Mining's and Fuel
+	# Production's supply and taken off Refining's demand, so a chain of equal sizes meets the Core's demand at every size
+	"threatinc_hiveOutputOffset": 2,
 	"threatinc_starveMinDays": 15,
 	"threatinc_densityLY": 10,
 	"threatinc_densityRef": 6400,

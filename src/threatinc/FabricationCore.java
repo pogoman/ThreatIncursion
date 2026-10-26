@@ -31,6 +31,13 @@ public class FabricationCore extends BaseIndustry {
 		if (pop != null) pop.getDemandReductionFromOther().modifyFlat("threatinc_machines", 100f);
 		int size = market.getSize();
 		supply(Commodities.HEAVY_MACHINERY, size);
+		// A HIVE INDUSTRY PRODUCES AT ITS SIZE (the user, 2026-10-26, after hw277 held every hive at size 3):
+		// vanilla takes two off the rare ore and volatiles a mine gives and off the fuel a plant makes, and
+		// asks a refinery's ore at size + 2 - so a plant fed by a same-size mine netted 0-1 fuel against a
+		// Core demand of size - 2. hiveOutputOffset lifts each hive industry's supply and eases Refining's
+		// demand by that much, through vanilla's own bonus stats (read inside each industry's apply, so the
+		// order of apply does not matter) - ThreatColonyManager.applyHiveOutput
+		ThreatColonyManager.applyHiveOutput(market);
 		int metals = ThreatColonyManager.coreDemand(market, Commodities.METALS); // 0 while a conquered world is consumed (phase E)
 		int fuel = ThreatColonyManager.coreDemand(market, Commodities.FUEL);
 		if (metals > 0) demand(Commodities.METALS, metals);

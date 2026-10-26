@@ -159,6 +159,8 @@ its sources and today's shortfall. The home chain still ranks by `depositScore` 
 | Swarm Nexus (mod) | ships size, machinery size-2 | - |
 | Fabrication Core (mod) | - | machinery scaled with size |
 
+**Hive industries since 2026-10-26 (`threatinc_hiveOutputOffset` 2, `ThreatColonyManager.applyHiveOutput`):** a hive Mining and Fuel Production supply 2 more of everything they make (rare ore and volatiles at size + modifier, fuel at size, ore at size + 2) and a hive Refining demands 2 less (ore at size) - vanilla's `supplyBonusFromOther` / `demandReductionFromOther`, hive worlds only, so a chain of equal sizes meets the Core's metals-at-size and fuel-at-size-minus-2 at every size (the user, after hw277 held every hive at size 3).
+
 So at equal sizes the growth chain balances (metals at size feeds a forge at size; rare ore and
 volatiles at size need a rich/plentiful mine of that size; ore at size+2 needs a rich deposit)
 and so does fuel now that hive ports are Spaceports (fuel wanted at size-2, made at size-2).
