@@ -3701,10 +3701,11 @@ public class ThreatColonyManager {
 
 	/**
 	 * Units of a commodity the market would see at a demand of {@code demand} - vanilla's own rule
-	 * (CommodityMarketData, decompiled 2026-10-26): its production, then the rest imported from the
-	 * faction's largest source, no more than its same-faction shipping carries (the swarm trades with
-	 * nobody else). getAvailable is this at the world's current demand and never reads above it, so
-	 * the next size's inputs (nextSizeFed, inputsText) are computed here.
+	 * (CommodityMarketData, decompiled 2026-10-26): its production, then the rest imported by the
+	 * better of two routes - the faction's largest source within the same-faction shipping, or the
+	 * sector's largest within the out-of-faction shipping (hostility is already in the accessibility;
+	 * vanilla sells to the hive as to anyone). getAvailable is this at the world's current demand and
+	 * never reads above it, so the next size's inputs (nextSizeFed, inputsText) are computed here.
 	 */
 	public static int availableAt(MarketAPI market, String commodityId, int demand) {
 		if (market == null || demand <= 0) return 0;
@@ -3712,10 +3713,24 @@ public class ThreatColonyManager {
 		if (c == null) return 0;
 		int local = Math.max(0, c.getMaxSupply());
 		if (local >= demand) return demand;
-		int export = c.getCommodityMarketData() == null ? 0
-				: Math.max(0, c.getCommodityMarketData().getMaxExport(market.getFactionId()));
-		int shipping = Math.max(0, Misc.getShippingCapacity(market, true));
-		return local + Math.max(0, Math.min(demand - local, Math.min(export, shipping)));
+		int want = demand - local;
+		int imports = 0;
+		if (c.getCommodityMarketData() != null) {
+			int own = Math.max(0, c.getCommodityMarketData().getMaxExport(market.getFactionId()));
+			int any = Math.max(0, c.getCommodityMarketData().getMaxExportGlobal());
+			imports = Math.max(Math.min(want, Math.min(own, Math.max(0, Misc.getShippingCapacity(market, true)))),
+					Math.min(want, Math.min(any, Math.max(0, Misc.getShippingCapacity(market, false)))));
+		}
+		return local + Math.max(0, imports);
+	}
+
+	/** Why a world starves, for the log: "metals live 2 / rule 3 of 4, fuel live 0 / rule 0 of 2 at size 4, shipping 10" - vanilla's live figure and the rule's (availableAt) against the Core's demand at {@code size}. */
+	public static String starveText(MarketAPI market, int size) {
+		int metals = coreDemand(size, Commodities.METALS), fuel = coreDemand(size, Commodities.FUEL);
+		return "metals live " + Math.min(metals, available(market, Commodities.METALS)) + " / rule "
+				+ availableAt(market, Commodities.METALS, metals) + " of " + metals + ", fuel live "
+				+ Math.min(fuel, available(market, Commodities.FUEL)) + " / rule " + availableAt(market, Commodities.FUEL, fuel)
+				+ " of " + fuel + " at size " + size + ", shipping " + Misc.getShippingCapacity(market, true);
 	}
 
 	/**
@@ -3742,7 +3757,13 @@ public class ThreatColonyManager {
 			}
 			return;
 		}
-		ThreatStrata.add(market, s.strataPerDay * elapsedDays, "Starved a level of", null);
+		float loss = s.strataPerDay * elapsedDays;
+		if (ThreatStrata.of(market) + loss < ThreatStrata.sizeAt(market.getSize())) {
+			// a size goes: say what starved it (2026-10-26, hw284 - home worlds lost sizes with no line saying why)
+			ThreatIncConfig.log("Core starving at " + market.getName() + " (size " + market.getSize() + "): "
+					+ starveText(market, market.getSize()) + (s.famine ? ", famine" : ", " + s.shortUnits + " short"));
+		}
+		ThreatStrata.add(market, loss, "Starved a level of", null);
 	}
 
 	/** Whether the Core grows the world now (coreState). */
