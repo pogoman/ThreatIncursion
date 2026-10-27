@@ -2307,6 +2307,9 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (satBombed.contains(id)) return false;
 		float price = ThreatSatBomb.price(market, fp);
 		if (price <= 0f) return false;
+		// worth it only when the hive has industries to disrupt and survives the stroke: a hive the bomb
+		// would raze to nothing is the tac raze at a fifth of the price (hw297: 9 of 16 NPC drops destroyed, 0 disrupted)
+		if (ThreatSatBomb.targets(market).isEmpty() || ThreatSatBomb.strata(market, fp) >= ThreatStrata.of(market)) return false;
 		float rest = Math.max(0f, ThreatStrata.of(market) - ThreatSatBomb.strata(market, fp))
 				* ThreatGroundFronts.fuelPerStratum();
 		if (paysOrdnance && ordnance < price + rest) {

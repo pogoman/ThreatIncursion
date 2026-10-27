@@ -1297,3 +1297,5 @@ Round 64 hw296 (set A) / hw297 (set B) from day 0 on the v3 jar 19:40:43: BACK T
 ## 73. hw297 - round 65, the siege-path sat bomb (2026-10-27 21:02-)
 
 Set B from day 0 on jar 21:02:26 (satBombFirst + the merged occupied-industry images), driver run-seeds-24.ps1 (ThreatIncSeeds24 / WatchSeeds24), launched by handover-23-24.sh the moment hw296 ended. Verify: "Sat bomb vs" lines from expeditions over hives (price = 3 days of the tac raze x 5), "disrupts N industries", the rest of the hive still razed after it; 0 exceptions.
+
+**hw297 cap (22:17, w3,120-3,339):** 274 / 306 / 316 hives, 53 / 36 / 33 worlds occupied, sat bombs dropped 5 / 2 / 9 (held for ordnance 15 / 10 / 24), tac razes 36 / 35 / 53, relief sorties 336 / 321 / 317, grand fleet sails 5 / 4 / 19, 0 swarm bombardment, 0 exceptions. The siege-path sat bomb works; the swarm wins all three. Next: round 66 hw298 (set A) on the phase 1b cleanup + strike-lands jar (handover-24-25.sh).
