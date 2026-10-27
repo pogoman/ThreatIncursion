@@ -214,8 +214,12 @@
 	"threatinc_patrolStops": 6,
 	"threatinc_patrolFPPerBase": 40,
 	"threatinc_patrolCalmDays": 120,
-	"threatinc_swarmPatrolFP": 30,
+	"threatinc_swarmPatrolFP": 120,
 	"threatinc_swarmPatrolFPPerSystem": 120,
+	# vanilla prunes every AI fleet to this many ships (its own 30): the swarm's strikes pack as few fleets as it
+	# allows, so 60 halves the fleets a strike arrives as (the user, 2026-10-27: small fleets arrive and die one at
+	# a time) and halves what vanilla's fleet AI weighs each frame (docs/performance.md)
+	"maxShipsInAIFleet": 60,
 	"threatinc_swarmPatrolMemoryDays": 45,
 	"threatinc_patrolBurnBombers": 6,
 	"threatinc_patrolBurnSiege": 7,

@@ -526,8 +526,10 @@ public class ThreatOccupation {
 			front.budRising = 0f;
 		}
 		front.orbitQuietDays += elapsedDays;
-		if (front.orbitQuietDays >= ThreatIncConfig.defendLingerDays()
-				&& absorb(front, market, ThreatStrata.fpOf(flow))) return;
+		if (front.orbitQuietDays >= ThreatIncConfig.defendLingerDays()) {
+			if (absorb(front, market, ThreatStrata.fpOf(flow))) return;
+			if (standDown(front, market)) return; // the pool is full (or nothing fits): the rest go home
+		}
 		if (holdsAll(front, market) && ThreatGroundFronts.holdGap(front, market) <= 0f
 				&& ThreatGroundFronts.counterGap(front, market) <= 0f) {
 			int spare = (int) Math.min(Math.min(flow, Math.max(0f, cap(market) - held(front, market))),
@@ -549,7 +551,10 @@ public class ThreatOccupation {
 	/**
 	 * The smallest swarm over the world gives up to {@code fp} of its hulls to the pool,
 	 * smallest first, the whole fleet when it is down to the bite or one ship (the shape of
-	 * ThreatBudding.absorbHulls); whether anything was absorbed.
+	 * ThreatBudding.absorbHulls); whether anything was absorbed. Any swarm of the Threat's on
+	 * station here - a parked strike as much as the pool's own bud (the user, 2026-10-27 23:00: "they
+	 * should when no threat detected so they help grow colony"); the cap still binds, standDown takes
+	 * the rest home.
 	 */
 	protected static boolean absorb(GroundFront front, MarketAPI market, float fp) {
 		fp = Math.min(fp, ThreatStrata.fpOf(Math.max(0f, cap(market) - held(front, market)))); // never above the cap
@@ -559,7 +564,6 @@ public class ThreatOccupation {
 			if (e.fleet == null || !e.fleet.isAlive() || e.fleet.isExpired() || e.fleet.getBattle() != null) continue;
 			if (!market.getId().equals(e.marketId) || !Factions.THREAT.equals(e.factionId)) continue;
 			if (!ThreatGroundFronts.nearWorld(e.fleet, market)) continue;
-			if (!e.fleet.getMemoryWithoutUpdate().getBoolean(BUD_KEY)) continue; // only what the pool budded
 			if (pick == null || e.fleet.getFleetPoints() < pick.getFleetPoints()) pick = e.fleet;
 		}
 		if (pick == null) return false;
@@ -580,6 +584,31 @@ public class ThreatOccupation {
 				+ " absorbs " + (int) got + " FP of " + fleetName
 				+ (pick.isAlive() ? " (" + (int) pick.getFleetPoints() + " FP left)" : " (the whole fleet)")
 				+ "; pool " + (int) front.budPool + " strata");
+		return true;
+	}
+
+	/**
+	 * A quiet orbit with a full pool (the user, 2026-10-27 23:00): every swarm of the Threat's still
+	 * on station here goes home to its hive, where it despawns and its points are re-banked
+	 * (ThreatSwarmDefend.sendHome) - nothing of the swarm's sits over a world nobody contests. True
+	 * when any was sent.
+	 */
+	protected static boolean standDown(GroundFront front, MarketAPI market) {
+		int sent = 0;
+		float fp = 0f;
+		for (ThreatSwarmDefend.Entry e : new ArrayList<ThreatSwarmDefend.Entry>(ThreatSwarmDefend.all())) {
+			if (e.fleet == null || !e.fleet.isAlive() || e.fleet.isExpired() || e.fleet.getBattle() != null) continue;
+			if (!market.getId().equals(e.marketId) || !Factions.THREAT.equals(e.factionId)) continue;
+			if (!ThreatGroundFronts.nearWorld(e.fleet, market)) continue;
+			fp += e.fleet.getFleetPoints();
+			ThreatSwarmDefend.release(e.fleet);
+			ThreatSwarmDefend.sendHome(e);
+			sent++;
+		}
+		if (sent == 0) return false;
+		ThreatIncConfig.log("Occupation: " + market.getName() + " stands down " + sent + " swarm(s), " + (int) fp
+				+ " FP, quiet " + (int) front.orbitQuietDays + " d and the pool full (" + (int) front.budPool
+				+ " of " + (int) cap(market) + " strata)");
 		return true;
 	}
 

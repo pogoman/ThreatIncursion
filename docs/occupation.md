@@ -331,3 +331,5 @@ over the world - the strike fleets that came to defend it - into pools of up to 
 pool budded (`BUD_KEY` in fleet memory, set in `bud`), `held` counts only those (`buddedFP`;
 `standingFP` still counts every swarm for the want), and neither an absorb nor a re-embark takes
 the pool above `cap`. `game-runs-2.md` 72.
+
+**Fix 2 (2026-10-27 23:05, the user: "they should when no threat detected so they help grow colony"):** a quiet orbit (no hostile in the system for defendLingerDays) absorbs ANY swarm of the Threat's on station over the world into the pool - parked strike fleets included, not only the pool's buds (`absorb`, the cap still binds) - and `standDown` sends whatever the full pool cannot take home to its hive to despawn and re-bank (`ThreatSwarmDefend.sendHome`). Why: hw297a kept 60-90 strike fleets parked over sieged and occupied worlds for years, and vanilla's fleet AI weighing them was 60% of the frame (`performance.md`).

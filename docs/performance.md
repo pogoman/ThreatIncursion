@@ -36,6 +36,8 @@ NUMBER of campaign fleets in play and how many sit in the same systems as human 
 - **Infestation Swarms** budded by the occupation pool: 22 standing.
 - Garrison swarms (`ThreatSwarmDefend`, 471k FP) are abstract until needed and cost nothing.
 
+**DECIDED 23:00:** the user took 1 (as reabsorption: a quiet orbit absorbs parked fleets into the pool, the overflow goes home - `ThreatOccupation.absorb` / `standDown`), 2 (`swarmPatrolFP` 120) and 3 (`maxShipsInAIFleet` 60 - vanilla's cap, not ours; "small fleets are super annoying, especially as the player they all arrive separate and die one at a time"). Jar 23:05, round 66 hw298.
+
 **Options (2026-10-27 22:50, the user's call):**
 1. Sleep quiet swarm fleets: `CampaignFleetAPI.setDoNotAdvanceAI(true)` for a strike / infestation
    fleet parked at a world with no hostile fleet in its system, woken by the mod's own tick when one

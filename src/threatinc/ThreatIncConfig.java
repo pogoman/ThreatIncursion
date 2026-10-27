@@ -160,7 +160,7 @@ public class ThreatIncConfig {
 	/** Days without losing a patrol after which a side forgets one loss (its patrols halve in size and double in number). */
 	public static float patrolCalmDays() { return fd("threatinc_patrolCalmDays", 120f); }
 	/** Fleet points of one Patrol Swarm before any loss. */
-	public static float swarmPatrolFP() { return fd("threatinc_swarmPatrolFP", 30f); }
+	public static float swarmPatrolFP() { return fd("threatinc_swarmPatrolFP", 120f); }
 	/** Fleet points of Patrol Swarms a hive system keeps out. */
 	public static float swarmPatrolFPPerSystem() { return fd("threatinc_swarmPatrolFPPerSystem", 120f); }
 	/** Days a system is left alone after a Patrol Swarm's visit. */
