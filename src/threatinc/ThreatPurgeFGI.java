@@ -2937,12 +2937,25 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		// a hive it can neither bomb nor land on, with no front to cover, ends its stay
 		if (stays) {
 			boolean troops = abstractTroops(w) >= ThreatIncConfig.frontMinMarines();
+			// dry with nothing it can land - no marines aboard, or a landing the rule refuses (waitsInOrbit: not ready,
+			// or too few to hold) - and no front to cover: the leg moves on (hw289, 2026-10-27: a fleet re-tried a
+			// refused landing every day of its stay, "landed (dry), stays, no front" x161)
+			if ("dry".equals(why) && !front && (!troops || waitsInOrbit(w))) {
+				endWorld(action, w, "dry, nothing it can land", false);
+				return true;
+			}
 			if (!troops && !front) {
 				endWorld(action, w, why, false);
 				return true;
 			}
 			if (troops) {
 				landStaying(action, w, why);
+				// dry and the pass refused the landing (the beachhead test - "Siege pass at X: no landing"): nothing more
+				// it can do here, the leg moves on (hw290, 2026-10-27: Diti re-tried a refused landing x106)
+				if ("dry".equals(why) && !front && !ownFrontOn(w, ourId)) {
+					endWorld(action, w, "dry, landing refused", false);
+					return true;
+				}
 			} else {
 				ThreatIncConfig.logQuiet(dailyKey(w), "Daily siege of " + w.getName() + ", day " + (abstractWorldDays + 1)
 						+ ": holds the orbit over its front (" + why + ")");
