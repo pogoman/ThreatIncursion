@@ -57,9 +57,16 @@ public class ThreatOccupation {
 			{ "com.fs.starfarer.api.impl.campaign.econ.impl.LightIndustry", "threatinc.OccupiedLightIndustry" },
 			{ "com.fs.starfarer.api.impl.campaign.econ.impl.HeavyIndustry", "threatinc.OccupiedHeavyIndustry" },
 			{ "com.fs.starfarer.api.impl.campaign.econ.impl.FuelProduction", "threatinc.OccupiedFuelProduction" } };
-	/** The vanilla industry images with a dark-green copy, by file name. */
-	protected static final String[] IMAGES = { "farming", "aquaculture", "mining", "techmining", "refining",
-			"light_industry", "heavy_industry", "orbital_works", "fuel_production" };
+	/**
+	 * The vanilla industry images with a dark-green copy, by file name - every variant vanilla
+	 * swaps in by condition (Haven's Farming drew farming_med and stayed plain, 2026-10-27).
+	 * Made by tools/occupied-images.ps1.
+	 */
+	protected static final String[] IMAGES = { "farming", "farming_low", "farming_med", "farming_high",
+			"aquaculture", "mining", "mining_low", "gas_giant_mining", "techmining", "refining",
+			"light_industry", "light_industry_low", "light_industry_high", "light_industry_orbital",
+			"light_industry_orbital_low", "light_industry_orbital_high", "heavy_industry", "orbital_works",
+			"fuel_production", "advanced_fuel_production" };
 
 	/**
 	 * XStream: our plugin classes write as vanilla's names and vanilla's names read as ours,
