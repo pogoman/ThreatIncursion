@@ -3409,7 +3409,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatNoticeClickDialog.backFromEngagement(EngagementResultAPI battleResult)` :112
 - `ThreatNoticeClickDialog.getContext()` :116
 
-## ThreatOccupation (651 lines)
+## ThreatOccupation (652 lines)
 - `ThreatOccupation.aliasPlugins(com.thoughtworks.xstream.XStream x)` :79 - XStream:
 - `ThreatOccupation.ensurePlugins(MarketAPI market, List<String> claims)` :95 - The alias's fallback:
 - `ThreatOccupation.registerPlugins()` :123 - At application load:
@@ -3441,9 +3441,9 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatOccupation.flowPerDay(GroundFront front, MarketAPI market)` :453 - Strata a day the occupation moves, either way:
 - `ThreatOccupation.groundWant(GroundFront front, MarketAPI market)` :463 - The troops the ground keeps standing:
 - `ThreatOccupation.shift(GroundFront front, MarketAPI market, float elapsedDays)` :484 - The swarm shifts its strata between the ground and the orbit over time (the user, 2026-10-27:
-- `ThreatOccupation.absorb(GroundFront front, MarketAPI market, float fp)` :559 - The smallest swarm over the world gives up to fp of its hulls to the pool, smallest first, the whole fleet when it is down to the bite or one ship (the shape of ThreatBudding.absorbHulls);
-- `ThreatOccupation.standDown(GroundFront front, MarketAPI market)` :596 - A quiet orbit with a full pool (the user, 2026-10-27 23:00):
-- `ThreatOccupation.bud(GroundFront front, MarketAPI market, float against)` :620 - The strata risen become a swarm over the world, whole:
+- `ThreatOccupation.absorb(GroundFront front, MarketAPI market, float fp)` :560 - The smallest swarm over the world gives up to fp of its hulls to the pool, smallest first, the whole fleet when it is down to the bite or one ship (the shape of ThreatBudding.absorbHulls);
+- `ThreatOccupation.standDown(GroundFront front, MarketAPI market)` :597 - A quiet orbit with a full pool (the user, 2026-10-27 23:00):
+- `ThreatOccupation.bud(GroundFront front, MarketAPI market, float against)` :621 - The strata risen become a swarm over the world, whole:
 
 ## ThreatOffensive (1060 lines)
 - `ThreatOffensive.startDay()` :126 - The campaign's start (the last launch), or NaN for none - never -1:
