@@ -262,11 +262,15 @@ units of everything, shortages across the board). The hive is a closed econ grou
 ever uses the same-faction column.
 
 Vanilla's distance penalty is 1.0 per 50 ly from the sector economy's centre of mass
-(`accessibilityDistFromCOM`) - distance from the Core, not from the hive - and
-`applyHiveAccessibility` refunds it. The same-faction proximity term is only ever a bonus.
-So a hive colony's accessibility never falls with its distance from the rest of the hive,
-and reach cannot decay with distance. Prose that said an isolated seed "starves" or "is
-grounded" described an effect the model never produced; corrected Sept 2026.
+(`accessibilityDistFromCOM`) - distance from the Core, not from the hive. It is one flat
+mod, `core_base` ("Isolation from other colonies" below zero, "Proximity to" above),
+`modifyFlatAlways` from `CommodityMarketData.computeBaseAccessibility` on every economy
+tick (javap, 2026-10-27). On a hive world `applyHiveAccessibility` lifts it with the
+"No spaceport" line and lands the swarm density as the whole total (since 2026-10-25); the
+line is unmodified each pass (`ISOLATION_MOD_ID`) so the tooltip reads one line, "Swarm
+density" (the user, 2026-10-27, Sindria showing "-15% Isolation, +48% Swarm density"). So a
+hive's accessibility is its distance from the swarm's mass, never from the Core; the
+density's own reach is in `strata-are-the-threat.md` 3 and "Density, worked".
 
 ## The disrupted-port rule
 

@@ -1562,6 +1562,8 @@ public class ThreatColonyManager {
 
 	/** Vanilla's "No spaceport" line on the accessibility stat (PopulationAndInfrastructure, ind_population_0). */
 	public static final String NO_PORT_MOD_ID = "ind_population_0";
+	/** Vanilla's "Isolation from / Proximity to other colonies" line (CommodityMarketData.computeBaseAccessibility, modifyFlatAlways on every economy tick): base accessibility less the distance from the sector's colony centre of mass. A hive's distance is its density, so the line is lifted (the user, 2026-10-27). */
+	public static final String ISOLATION_MOD_ID = "core_base";
 	/** Stability lines a machine world never shows (the user, 2026-10-25): the comm relay and Population's "demand met" / shortage lines. */
 	public static final String[] HUMAN_STABILITY_MODS = { "ind_population_0", "ind_population_1", "ind_population_2",
 			com.fs.starfarer.api.impl.campaign.econ.CommRelayCondition.COMM_RELAY_MOD_ID };
@@ -1569,12 +1571,15 @@ public class ThreatColonyManager {
 	/**
 	 * One world, from the poll and from HiveVitalityCondition.apply (each recompute): vanilla's
 	 * "No spaceport" -100% line is lifted first (the port is retired by design; the user,
-	 * 2026-10-25: "if we cant get rid of that might as well give them all spaceports"), then
-	 * the density total is landed against the stat's current value.
+	 * 2026-10-25: "if we cant get rid of that might as well give them all spaceports"), so is
+	 * vanilla's isolation / proximity line (the swarm density IS the hive's distance figure; the
+	 * user, 2026-10-27, Sindria reading "-15% Isolation, +48% Swarm density" for a +33% total),
+	 * then the density total is landed against the stat's current value.
 	 */
 	public static void applyHiveAccessibility(MarketAPI market) {
 		if (market == null) return;
 		market.getAccessibilityMod().unmodifyFlat(NO_PORT_MOD_ID);
+		market.getAccessibilityMod().unmodifyFlat(ISOLATION_MOD_ID);
 		market.getAccessibilityMod().unmodifyFlat(PORT_DOWN_MOD_ID);
 		market.getAccessibilityMod().unmodifyFlat(ACCESS_MOD_ID);
 		boolean blockaded = hiveBlockaded(market);
@@ -1602,18 +1607,26 @@ public class ThreatColonyManager {
 		return Math.max(min, Math.min(max, access));
 	}
 
-	/** The weighed strata around a hive world: every other live hive world's x 1 / (1 + (d / densityLY)^2), its own x densitySelfWeight. */
+	/**
+	 * The weighed strata around a hive world: every other live hive world within densityRangeLY
+	 * (0: all of them) x 1 / (1 + (d / densityLY)^2), its own x densitySelfWeight. The range is
+	 * the user's 2026-10-27 bound: a mature swarm's whole mass (811,000 strata over 37 worlds)
+	 * summed past the falloff and Sindria, 27-40 ly from every other hive, still fed size 8.
+	 */
 	public static float strataDensity(MarketAPI market) {
 		if (market == null) return 0f;
 		Vector2f here = market.getLocationInHyperspace();
 		if (here == null) return 0f;
 		float ly = Math.max(0.01f, ThreatIncConfig.densityLY());
+		float range = ThreatIncConfig.densityRangeLY();
 		float density = ThreatStrata.of(market) * Math.max(0f, ThreatIncConfig.densitySelfWeight());
 		for (MarketAPI other : ThreatIncData.getAllLiveColonyMarkets()) {
 			if (other == market) continue;
 			Vector2f loc = other.getLocationInHyperspace();
 			if (loc == null) continue;
-			float d = Misc.getDistanceLY(here, loc) / ly;
+			float distLY = Misc.getDistanceLY(here, loc);
+			if (range > 0f && distLY > range) continue;
+			float d = distLY / ly;
 			density += ThreatStrata.of(other) / (1f + d * d);
 		}
 		return density;

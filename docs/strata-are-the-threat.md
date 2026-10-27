@@ -447,7 +447,22 @@ less what its own industries make; a world grows when its demand at its CURRENT 
 
 So "spread too far too fast" is a seed 30 ly from the mass stopping at size 5 and a lone seed
 in an empty system stopping at 3; "the back thins" is an importer fortress left alone starving
-to 3 while a self-sufficient one holds. Rounding of the units (floor or nearest) is vanilla's
+to 3 while a self-sufficient one holds.
+
+**The table is against ONE fortress; a mature swarm overwhelms the falloff (the user's game,
+2026-10-27).** Sindria, conquered in Askonia at the far west of the sector, read +33%
+accessibility (8 units, enough for every size to 8) while every other hive sat 27-40 ly away
+in the east: the save held 811,000 strata across 37 worlds (sixteen fortresses' worth), and a
+tenth of that at 30 ly is 75,000 - twelve times `densityRef`, +36% before the few nearer
+worlds. The curve was set for the pair bootstrap and checked against a single 51,200 fortress;
+once the swarm holds a dozen fortresses, 1 / (1 + (d / 10)^2) at 30-40 ly (0.06-0.12) still
+sums past the reference, and distance stops limiting size anywhere in the sector. DECIDED the
+same day (the user: "isolated colonies cant grow large"; "Range 20 ly"): **only hive worlds
+within `densityRangeLY` (20) count**, the curve unchanged inside it (`strataDensity`; 0 =
+every world, the old rule). Sindria with nothing in range: density 0, -30%, 2 units, size 3
+until a hive lands within 20 ly of Askonia. A seed 10 ly from the mass reads as before; 15 ly
+0.31, 20 ly 0.20, beyond that nothing. Same-system siblings weigh 1 whatever the range, so the
+pair bootstrap and the home cluster are untouched. Built 2026-10-27, untested. Rounding of the units (floor or nearest) is vanilla's
 and is checked in phase A; the pair's exact fit at every step rides on it (`densityRef` 3,200
 gives the pair a unit to spare and lifts every reach a size).
 
@@ -664,7 +679,7 @@ from "move / build a fleet" to "bud / shift / absorb".
   exchange), `strataFlowPerDay` (400, the floor) and `strataFlowFractionPerDay` (0.02),
   `defendLingerDays` (10), `coreStrataPerSizeMonth` (200), `coreInputPerSize` (1),
   `starveMinDays` (15; `starveDaysPerSize` 90 stays), `densityLY`
-  (10), `densityRef` (6,400), `densityAccessPerDoubling` (0.10), `densityAccessMin` / `Max`
+  (10), `densityRangeLY` (20, 2026-10-27), `densityRef` (6,400), `densityAccessPerDoubling` (0.10), `densityAccessMin` / `Max`
   (-0.30 / 0.50), `densitySelfWeight` (0), `seedStrata` (400), `structureStrata` (750),
   `bombardStrataPerFPDay` (1.0), `bombardFuelPerStratum` (2), `shiftFloorStrata` (800),
   `strataSizeBase` (400) and

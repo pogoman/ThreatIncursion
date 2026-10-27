@@ -544,6 +544,10 @@
 	"threatinc_hiveOutputOffset": 2,
 	"threatinc_starveMinDays": 15,
 	"threatinc_densityLY": 10,
+	# only hive worlds within this many light-years count toward a world's density (0: every hive world,
+	# however far). The user, 2026-10-27: a mature swarm's whole mass summed past the falloff and a hive
+	# 27-40 ly from every other (Sindria) still fed size 8; isolated colonies are not to grow large.
+	"threatinc_densityRangeLY": 20,
 	"threatinc_densityRef": 6400,
 	"threatinc_densityAccessPerDoubling": 0.10,
 	"threatinc_densityAccessMin": -0.30,

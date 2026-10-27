@@ -450,6 +450,8 @@ public class ThreatIncConfig {
 	public static float starveMinDays()       { return f("threatinc_starveMinDays"); }
 	/** Strata density: the light-years at which another hive world's strata count half (1 / (1 + (d / this)^2)). */
 	public static float densityLY()           { return f("threatinc_densityLY"); }
+	/** Strata density: only hive worlds within this many light-years count (0: every hive world). The user, 2026-10-27. */
+	public static float densityRangeLY()      { return f("threatinc_densityRangeLY"); }
 	/** Strata density: the density that is 0% accessibility. */
 	public static float densityRef()          { return f("threatinc_densityRef"); }
 	/** Strata density: accessibility a doubling of the density over densityRef. */
