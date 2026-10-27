@@ -350,3 +350,11 @@ bases. BUILT (12:50, untested):
 What to see in round 59: grand fleets sailing on every seed once the war opens (the hw288c bases had
 hulls and marines); cruises ending "home after N legs" with worlds destroyed by fronts rather than
 fuel; the swarm's count against hw288's 272 / 280 / 350 at w2,400-2,700.
+
+Round 59 hw289 at w2,100-2,200 (13:30): grand fleets sail on every seed - 25 / 32 / 22 sails (hw288: 3 / 7 / 0 by
+the end), Tri-Tachyon on b "home after 6 legs, 12 worlds destroyed"; hives 105 / 116 / 122, 0 exceptions. One
+fault from the new stay rule: a dry fleet whose landing the rule refuses (`waitsInOrbit` - too few marines for
+the hold) re-tried it every day of its stay ("landed (dry), stays, no front" x161 on b, Ogre days 4-25)
+where the old rule moved the leg on. FIXED (13:45, in the next jar): dry with nothing it can land - no
+marines, or a refused landing - and no front to cover ends the world ("dry, nothing it can land") and the
+leg hops or turns home; dry with a landing the rule accepts lands and holds, dry over a front holds.
