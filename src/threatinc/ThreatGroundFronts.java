@@ -193,8 +193,12 @@ public class ThreatGroundFronts {
 		public float claimDays;
 		/** Output units a day of the claimed industries, as the ground war condition last read them. */
 		public float eatenUnits;
-		/** Strata pooled toward a swarm once every district is held. */
+		/** THE HIVE POOL (docs/occupation.md 6): the strata the occupation holds in the ground, fed at a hive's rate. */
 		public float budPool;
+		/** Strata of the pool rising into a swarm; it spawns whole when they hold the want. */
+		public float budRising;
+		/** Days the orbit has been quiet: past defendLingerDays the swarms above are absorbed into the pool. */
+		public float orbitQuietDays;
 		/** The World Occupied notice has been sent. */
 		public boolean occupiedAnnounced;
 
@@ -4677,7 +4681,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/**
 	 * Strata a day the swarm's front grows on what it eats of the world: under THE
-	 * OCCUPATION (2026-10-27) the claimed industries' output x occupationStrataPerUnit
+	 * OCCUPATION (2026-10-27) a hive's rate for the world's size x the share of producers claimed
 	 * (ThreatOccupation.growthPerDay); with it off, phase E's share of the world's size.
 	 */
 	public static float infestGrowthPerDay(MarketAPI market, GroundFront front) {

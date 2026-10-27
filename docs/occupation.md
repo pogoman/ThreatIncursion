@@ -1,4 +1,4 @@
-# Occupation without ownership - engine feasibility (2026-10-27, nothing built)
+# Occupation without ownership (2026-10-27)
 
 The user's direction (2026-10-27): the Threat never takes a human world. A landed army
 occupies it, infests and feeds on it, and the owner keeps the market, so the world can be
@@ -258,3 +258,59 @@ icon is drawn INTO the occupied image instead - `make-icons.ps1` renders the nin
 vanilla's Fabricator sprite (`graphics/ships/threat/fabricator.png`, the ship at the centre
 of the Fabrication Core image) alone; `commodities.csv` points at it, so the tooltip's
 production list shows the same ship.
+
+## 6. THE HIVE POOL (2026-10-27 evening, the user's decision; built, untested)
+
+hw292 (round 62, set A from day 0, the first games on the occupation jar) ran clean - 0
+exceptions, 0 human worlds consumed, 35-45 worlds occupied a game - and the swarm won, but
+the occupation fed on a factory's rule, not a hive's: the claimed industries' output went to
+the front at ONE TROOP PER UNIT A DAY (section 5). Raesvelg (Hegemony, size 8) refilled
+11,092 FP of troops against 4,738 marines landed in 29 convoys and 4,885 bombed off, and the
+front never moved; once every district was held the same output budded a 60-FP Infestation
+Swarm every fill (934-1,552 a game), every faction's navy sat on relief at home (5,972 relief
+sorties against 730 on the jar before) and grand fleets sailed 3 / 3 / 3 times. The user:
+"i want it to behave like a normal threat world, they can dynamically shift troops from
+space and back to the siege at will (albeit over time) ... everything is a bit overtuned";
+the claims stay ("so you are saying remove the infestation of individual industries?" - no).
+
+**The rule: an occupied world is a hive of its size without the title.**
+
+- **The pool.** The claimed industries feed ONE strata pool (`GroundFront.budPool`) at the
+  rate a hive of the world's size grows when fed in full: `coreStrataPerSizeMonth` (200) x
+  size a month x the share of the world's producers claimed (`ThreatOccupation.share`,
+  claimed of claimable) x `occupationRateMult` (1). A size 8 with every producer claimed
+  grows 53 a day, a size 4 with half of them 13. Cap (`cap`): the pool, the strata rising,
+  the troops on the ground and the swarms above (`held`) never exceed `ThreatStrata.sizeAt`
+  of the world's size - the strata a hive of that size begins at (size 4: 3,200; size 8:
+  51,200). `eatenUnits` stays the marker's figure (the "Threat Swarm N" production line).
+- **The flow.** Every move is at the hive's flow (`flowPerDay`): `strataFlowPerDay` (400) a
+  day, or `strataFlowFractionPerDay` (0.02) of what the occupation holds; one direction a
+  tick, the ground first (`shift`).
+- **Down.** The ground short (`fabricateNeed`: the hold line or the counter-attack, with
+  `fabricateHoldMargin`) draws troops from the pool at the flow, armed by `fabricateArms`.
+- **Up.** A force over the world (`hostilePointsNear`) that the Infestation Swarms standing
+  (`standingFP`, the swarm's `ThreatSwarmDefend` entries there) do not outweigh by
+  `systemDefenceMargin` (1.25) draws a swarm, ONLY IF ENOUGH: the pool and the strata risen
+  must cover the want (at least `occupationBudFP`, 60 FP); the strata rise into
+  `budRising` at the flow and the swarm spawns WHOLE when they hold the want ("Swarm
+  Rising", a garrison swarm on Defend over the world as before). The force gone before it
+  spawns, the rising goes back to the pool; short of enough, the swarm stays in the ground
+  ("cannot match N FP over it" in the log). No more 60-FP drips to be annihilated.
+- **Back.** The orbit quiet for `defendLingerDays` (10): the swarms above are absorbed into
+  the pool at the flow (`absorb`: the smallest first, a hull at a time, the fleet whole when
+  down to the bite). The ground quiet (every district held, both gaps 0): troops beyond the
+  ground's want (`groundWant` - the hold line and the counter-attack with margin, never
+  under a stratum of `strataSizeBase` 400 a district held) re-embark into the pool at the
+  flow.
+- **Already there, unchanged:** a Defend swarm over its own short front breaks its hulls into
+  troops (`defendFabricates` / `fabricateTroops`); the attrition rule bleeds the front; a
+  front pushed off ends the pool, the rising and the swarms above with it (home = none).
+- **Knobs:** `occupationRateMult` 1 (new, settings.json only), `occupationBudFP` 60 (now the
+  least swarm the pool buds), `occupationStrataPerUnit` gone. New front fields `budRising`,
+  `orbitQuietDays` (0 on older saves).
+
+**Verify (from day 0 against hw292):** the fronts table's Held cell "+N/d" reads the hive
+rate x share and 0 at the cap; a relief over an occupied world draws one whole swarm sized to
+it or none; a quiet orbit absorbs the swarm within about 10 days plus the flow; a size-8
+occupied world no longer fabricates 11k FP a war; grand fleets sail again (hw290 21 / 25 /
+9 sails) and the navies come off relief.

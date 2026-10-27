@@ -125,11 +125,11 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 			}
 			float grow = ThreatOccupation.growthPerDay(front);
 			if (grow > 0f) {
-				tooltip.addPara(ThreatOccupation.holdsAll(front, market)
-						? "The swarm eats %s units a day: %s strata a day budding over the world."
-						: "The swarm eats %s units a day: %s troops a day to its landing.", 3f, neg,
+				tooltip.addPara("The swarm eats %s units a day: %s strata a day into its pool.", 3f, neg,
 						ThreatStrata.fmt(front.eatenUnits), ThreatStrata.fmt(grow));
 			}
+			tooltip.addPara("The swarm holds %s strata in the ground and %s fleet points above.", 3f, neg,
+					ThreatStrata.fmt(front.budPool + front.budRising), "" + (int) ThreatOccupation.standingFP(market));
 		} else if (held > 0) {
 			List<Industry> seized = ThreatGroundFronts.seizedIndustries(market);
 			if (!seized.isEmpty()) {

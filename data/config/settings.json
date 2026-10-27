@@ -518,13 +518,15 @@
 	# THE OCCUPATION (2026-10-27, docs/occupation.md): the swarm never takes a human world.
 	# Its landing claims the world's industries one by one, one per occupationClaimDays while
 	# it holds a district; a claimed industry runs for the swarm (its output x0 to the market)
-	# and every unit it makes grows the landing occupationStrataPerUnit strata a day - troops
-	# while districts are contested, a swarm budded over the world at occupationBudFP fleet
-	# points once every district is held (0 never buds). A district retaken releases the
-	# newest claim. Off: the old end state (conquestConverts, or the world decivilises)
+	# and the claimed share of its producers feeds ONE strata pool at the rate a hive of the
+	# world's size grows (coreStrataPerSizeMonth x size a month) x occupationRateMult, capped at
+	# the strata a hive of that size begins at; the swarm shifts the pool between the ground
+	# and the orbit at the strata flow - troops down when the front is short, a swarm of at
+	# least occupationBudFP up (whole, only if enough) against a force over the world, and
+	# back when either is quiet. A district retaken releases the newest claim. Off: the old end state (conquestConverts, or the world decivilises)
 	"threatinc_occupationEnabled": true,
 	"threatinc_occupationClaimDays": 30,
-	"threatinc_occupationStrataPerUnit": 1.0,
+	"threatinc_occupationRateMult": 1.0,
 	"threatinc_occupationBudFP": 60,
 
 	# THE STRATA ARE THE THREAT (2026-10-25, docs/strata-are-the-threat.md): a hive

@@ -424,9 +424,9 @@ public class ThreatIncConfig {
 	public static boolean occupationEnabled() { return b("threatinc_occupationEnabled", true); }
 	/** Days the swarm's front takes to claim the next industry of a world it holds a district of. */
 	public static float occupationClaimDays() { return f("threatinc_occupationClaimDays"); }
-	/** Strata a day the swarm grows per output unit the industries it has claimed make. */
-	public static float occupationStrataPerUnit() { return f("threatinc_occupationStrataPerUnit"); }
-	/** Fleet points a fully held world's pool buds a swarm at; 0 never buds. */
+	/** The hive pool's growth as a share of a hive's rate for the world's size (1 = a hive's; docs/occupation.md 6). */
+	public static float occupationRateMult() { return f("threatinc_occupationRateMult"); }
+	/** The least swarm an occupied world's pool buds against a force over it; 0 never buds. */
 	public static float occupationBudFP()     { return f("threatinc_occupationBudFP"); }
 	public static int colonyMaxSize()         { return i("threatinc_colonyMaxSize"); }
 
