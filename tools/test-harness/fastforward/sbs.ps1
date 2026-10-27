@@ -12,7 +12,8 @@
 # or mouse is touched it lets go and waits for -IdleSeconds of quiet (the games run on at normal speed).
 #
 #   sbs.ps1 -Tags hw6a,hw6b,hw6c -Days 3750                       three runs on shipped defaults
-#   sbs.ps1 -Tags a,b -Knobs "b:threatinc_someKnob=2;threatinc_other=true"   a knob set for one run only
+#   sbs.ps1 -Tags a,b -Knobs "b:threatinc_someKnob=2;threatinc_other=true"   a knob set for one run only - ONLY a knob with a
+#       LunaSettings.csv row (63 since 2026-10-27); any other is read from settings.json, shared by every run
 #   sbs.ps1 -Tags sa,sb -TrialSeconds 150                         a timed trial: days run by each game
 #
 # Status lines in %TEMP%\threatinc-tests\sbs-status.txt, the logs ti-<tag>.txt and exc-<tag>.txt beside it,

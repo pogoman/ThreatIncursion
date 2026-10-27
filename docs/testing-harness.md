@@ -338,7 +338,7 @@ stall nudges and the pause for a user.
   (`-Dcom.fs.starfarer.settings.paths.saves` / `.logs`; `start.bat` there is `starsector.bat`'s java line with
   the two paths changed). `saves` is the one place under the game a script may create a folder; the Starsector
   folder itself refuses. Its `saves\common` is a copy taken after `run-settings.ps1`, so each game has its own
-  LunaLib store (`-Knobs "tag:k=v;k=v|tag2:k=v"` edits one game's only, nothing to put back) and its own
+  LunaLib store (`-Knobs "tag:k=v;k=v|tag2:k=v"` edits one game's only, nothing to put back) - a knob with a `LunaSettings.csv` row only (63 rows since the 2026-10-27 settings review; every other key is read from `settings.json`, shared by every run) and its own
   `threatinc_sim*` dumps. `tail-ti.ps1 -Log` follows its own `starsector.log` into `ti-<tag>.txt`.
 - **The launcher prefs are shared**, so the games are launched in turn, about 70 seconds each: `continue` is
   set to `..\saves\_sbs\<tag>\saves\<clone>` (the game takes a path into another saves folder), the window is

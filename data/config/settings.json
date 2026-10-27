@@ -480,9 +480,8 @@
 	# an NPC attack sails with what its base has (marines pooled, fuel to raze the rest); only hulls and the passage refuse it
 	"threatinc_npcAttackTakesWhatItHas": true,
 	# THE GRAND FLEET (2026-10-26): NPC offence is one grand fleet a faction; false: the council's sized sieges
-	# 2026-10-27 (the user, option 1 on hw288c): it sails on hulls, the passage and supplies; fuel beyond the passage as found - grandFleetOrdnanceMargin and grandFleetKills are unused
+	# 2026-10-27 (the user, option 1 on hw288c): it sails on hulls, the passage and supplies; fuel beyond the passage as found; grandFleetsPerFaction and grandFleetKills retired (settings review 2026-10-27)
 	"threatinc_npcGrandFleet": true,
-	"threatinc_grandFleetsPerFaction": 1,
 	"threatinc_grandFleetShare": 0.5,
 	"threatinc_grandFleetMinFP": 300,
 	"threatinc_grandFleetMaxFP": 3000,
@@ -490,7 +489,6 @@
 	"threatinc_grandFleetReserveDays": 20,
 	"threatinc_grandFleetPointsPerFleet": 10,
 	"threatinc_grandFleetOrdnanceMargin": 2,
-	"threatinc_grandFleetKills": 2,
 	"threatinc_grandFleetOutweigh": 1,
 	"threatinc_grandFleetRetryDays": 60,
 	# an NPC siege expedition off-screen runs its siege a day at a time - the
@@ -517,9 +515,6 @@
 	# a Threat ground victory seeds a hive of conquestHiveSize on the spot
 	"threatinc_conquestConverts": true,
 	"threatinc_conquestHiveSize": 2,
-
-	# scale on hive ground-defense strength
-	"threatinc_groundDefenseMult": 1.0,
 
 	# THE STRATA ARE THE THREAT (2026-10-25, docs/strata-are-the-threat.md): a hive
 	# world's one figure is its strata - its size by a doubling table (strataSizeBase
@@ -1075,11 +1070,6 @@
 	# attack force in hyperspace within swarmPicketLY of a live hive is seen,
 	# exact. Forces in flight only - never a base, a world or a convoy. 0 = off
 	"threatinc_swarmPicketLY": 4,
-	# A faction's staged stock read against a hive system halves every
-	# postureStagedHalfLifeDays it sends nothing there (down to
-	# postureStagedFloor); an attack seen bound there makes it whole. 0 = off.
-	"threatinc_postureStagedHalfLifeDays": 0,
-	"threatinc_postureStagedFloor": 0,
 	# the attack planner: each mobilised faction plans its sieges, raids and
 	# recon every planIntervalDays and on news, adding prongs at other worlds
 	# until the chance that one lands reaches planConfidence. false = each
@@ -1133,13 +1123,11 @@
 	"threatinc_councilStrikeWaitDays": 30,
 	# phase clocks (jittered by councilJitter)
 	"threatinc_councilPrepareDays": 30,
-	"threatinc_councilMusterDays": 30,
 	"threatinc_councilExploitDays": 30,
 	"threatinc_councilStarveCheckDays": 30,
 	"threatinc_councilStarveAbortRaids": 3,
 	"threatinc_councilInvadeNexusDays": 21,
 	"threatinc_councilFeintWatchDays": 15,
-	"threatinc_councilFeintWindowDays": 30,
 	"threatinc_councilStrikeMaxDays": 8,
 	# personalities: weights on the strategies (hold, starve, rollback,
 	# decapitate) and plays (hammer, feint, bombers, joint), shareMult on every
@@ -1444,7 +1432,7 @@
 	# founded and every standing link is dismantled, its stock and garrison home
 	"threatinc_frontlinesEnabled": false,  # OFF by default (the user, 2026-10-24; Luna migration 17 flips a store still at true); was ON after hw260 / hw261 (a modest shield: 115 vs 85 worlds lost over six games) - NO BASES trial hw258 (B) / hw259 (A) vs hw257 / hw256
 	"threatinc_frontlinePlanDays": 15,
-	"threatinc_frontlineLinkLY": 10,
+	"threatinc_frontlineLinkLY": 12,
 	"threatinc_frontlineReachLY": 10,
 	"threatinc_frontlineKeepLY": 36,
 	"threatinc_frontlineGrowDays": 60,
