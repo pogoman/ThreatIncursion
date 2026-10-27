@@ -117,6 +117,90 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		this.playerCommissioned = playerCommissioned;
 	}
 
+	// ------------------------------------------------------------------
+	// THE GRAND FLEET (ThreatGrandFleets, the user 2026-10-26)
+	// ------------------------------------------------------------------
+	/** This expedition is a leg of its faction's grand fleet: it bombards with or without marines, and when done with its system hops to the next (ThreatGrandFleets.legDone) instead of turning home. */
+	protected boolean grandFleet = false;
+	protected int grandLeg = 0;
+	/** This leg handed everything aboard to the next: no refund, no settlement, no return. */
+	protected boolean hopped = false;
+	/** Worlds this expedition's bombardment or landing destroyed (ThreatGrandFleets.legDone credits only these). */
+	protected java.util.Set<String> razed;
+	/** The entity the next constructed expedition sails FROM in place of its source - a grand fleet's hop, the system it just fought in. Read once in { #initActions}, during the super constructor, so it is static. */
+	protected static transient com.fs.starfarer.api.campaign.SectorEntityToken hopFrom;
+
+	public void setGrandFleet(int leg) {
+		grandFleet = true;
+		grandLeg = leg;
+	}
+
+	public boolean isGrandFleet() {
+		return grandFleet;
+	}
+
+	public int grandLeg() {
+		return grandLeg;
+	}
+
+	public void markHopped() {
+		hopped = true;
+	}
+
+	/** Whether this expedition destroyed the world with that id. */
+	public boolean razed(String marketId) {
+		return marketId != null && razed != null && razed.contains(marketId);
+	}
+
+	protected void markRazed(String marketId) {
+		if (marketId == null) return;
+		if (razed == null) razed = new java.util.HashSet<String>();
+		razed.add(marketId);
+	}
+
+	public boolean hopped() {
+		return hopped;
+	}
+
+	/** A hop with the fleets spawned: the next leg takes the live fleets as they are, and this leg has none left to send home. */
+	public void adoptFleetsFrom(ThreatPurgeFGI old) {
+		if (old == null || !old.isSpawnedFleets()) return;
+		fleets.addAll(old.fleets);
+		old.fleets.clear();
+		setSpawnedFleets(true);
+		setTotalFPSpawned(old.getTotalFPSpawned());
+		everSpawned = true;
+	}
+
+	/** A hop sails from where the last leg fought (hopFrom), not from the source: the travel action starts there and there is no departure wait. */
+	@Override
+	protected void initActions() {
+		super.initActions();
+		com.fs.starfarer.api.campaign.SectorEntityToken from = hopFrom;
+		hopFrom = null;
+		if (from == null || raidAction == null || raidAction.getWhere() == null) return;
+		com.fs.starfarer.api.impl.campaign.intel.group.FGTravelAction t =
+				new com.fs.starfarer.api.impl.campaign.intel.group.FGTravelAction(from, raidAction.getWhere().getCenter());
+		int idx = travelAction != null ? actions.indexOf(travelAction) : -1;
+		if (idx >= 0) {
+			t.setId(travelAction.getId());
+			t.setIntel(this);
+			actions.set(idx, t);
+		} else {
+			addAction(t, "travel_hop");
+		}
+		travelAction = t;
+		if (waitAction != null) actions.remove(waitAction);
+		origin = from;
+		// super.initActions built the route from the stock actions - a wait at the source, a travel from
+		// it - so the current segment's action was never among this leg's, and vanilla's spawn (the player
+		// in range) threw every action away and aborted (run gf2: all four hops). Rebuilt from the hop's.
+		if (route != null) com.fs.starfarer.api.impl.campaign.fleets.RouteManager.getInstance().removeRoute(route);
+		int total = 0;
+		for (Integer i : params.fleetSizes) total += i;
+		createRoute(params.factionId, total, params.fleetSizes.size(), null, params);
+	}
+
 	public boolean isPlayerCommissioned() {
 		return playerCommissioned;
 	}
@@ -538,6 +622,9 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected void stayOnDefend(CampaignFleetAPI passing, MarketAPI market) {
 		if (market == null || getFaction() == null) return;
 		if (!ThreatIncConfig.landingDefendEnabled()) return;
+		// a grand fleet keeps its fleets: they stay over the hive as the expedition (siegePass's live stay) and
+		// sail on with the next leg (run gf3: 12 fleets handed to Defend left the leg with 0 FP and no hop)
+		if (grandFleet) return;
 		if (passing == null && !anyFleetLive()) {
 			// autoresolved: no fleet to put on DEFEND, so what the abstract siege
 			// left stays over the landing as the front's orbit cover - out of one
@@ -829,8 +916,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
 		setFailedButNotDefeated(true);
 		abort();
-		ThreatNotice.titled("Siege Called Off").icon(faction)
-				.line("%s siege of %s turns home.", ThreatNotice.faction(faction), ThreatNotice.market(at))
+		// a grand fleet outweighed here: its system waits grandFleetRetryDays before it is picked again
+		if (grandFleet) ThreatGrandFleets.calledOff(this, at);
+		ThreatNotice.titled(grandFleet ? "Grand Fleet Turns Home" : "Siege Called Off").icon(faction)
+				.line(grandFleet ? "%s grand fleet over %s turns home." : "%s siege of %s turns home.",
+						ThreatNotice.faction(faction), ThreatNotice.market(at))
 				.line("Defense Swarms %s fleet points against its %s fleet points.", ThreatNotice.hl(Misc.getWithDGS((int) worst)),
 						ThreatNotice.hl(Misc.getWithDGS((int) ours)))
 				.send();
@@ -844,6 +934,31 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			ThreatSwarmBountyIntel.post(base, system,
 					(int) (ours / Math.max(0.01f, ThreatIncConfig.npcSiegeOrbitMargin())));
 		}
+	}
+
+	/**
+	 * Turn a live siege home that cannot land - its beachhead would not hold the world's
+	 * counter-attack ({@link #doCustomRaidAction}, siegeNoDoomedLanding) - and has nothing left to
+	 * bombard with: notice and log. No swarm bounty and no swarms noted, none were met; the planner
+	 * sizes the next landing on the world as it will stand (ThreatStrata.atArrival).
+	 */
+	protected void callOffShort(MarketAPI at, float troops, int need) {
+		com.fs.starfarer.api.campaign.FactionAPI faction = getFaction();
+		if (faction == null || at == null || isEnding() || isEnded() || isAborted()) return;
+		// a grand fleet with nothing left to do here sails on to the next world, or home (ThreatGrandFleets.legDone)
+		if (grandFleet) {
+			ThreatGrandFleets.legDone(this, true);
+			return;
+		}
+		setFailedButNotDefeated(true);
+		abort();
+		ThreatNotice.titled("Siege Called Off").icon(faction)
+				.line("%s siege of %s turns home.", ThreatNotice.faction(faction), ThreatNotice.market(at))
+				.line("%s marines aboard against the %s a landing needs.",
+						ThreatNotice.hl(Misc.getWithDGS((int) troops)), ThreatNotice.hl(Misc.getWithDGS(need)))
+				.send();
+		ThreatIncConfig.log("Siege called off over " + at.getName() + " (" + faction.getId() + "): " + (int) troops
+				+ " marines against the " + need + " a landing needs, nothing left to bombard with");
 	}
 
 	/**
@@ -1947,10 +2062,16 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (landingBlocked == null && standing == null && ourId != null
 				&& !com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER.equals(ourId)
 				&& ThreatIncConfig.siegeNoDoomedLanding() && !ThreatGroundFronts.beachheadSurvives(market, groundStr)) {
+			int need = ThreatGroundFronts.beachheadTroops(market);
 			ThreatIncConfig.logQuiet("doomed:" + rec.marketId, "Siege pass at " + rec.marketName + ": no landing - "
 					+ (int) groundStr + " troops would not outlast a counter-attack of "
-					+ (int) ThreatGroundFronts.counterAttackStrength(market) + " (need "
-					+ ThreatGroundFronts.beachheadTroops(market) + ")");
+					+ (int) ThreatGroundFronts.counterAttackStrength(market) + " (need " + need + ")");
+			// a live siege whose orbit has nothing left to give (no ordnance to raze the difference
+			// off) turns home at once, saying why, instead of holding the orbit its stay with nothing
+			// to land and nothing to bomb with (2026-10-26, the Hegemony over a conquered Sindria)
+			if (fleet != null && !playerCommissioned && orbitDoneHere(market, groundStr)) {
+				callOffShort(market, groundStr, need);
+			}
 			return;
 		}
 
@@ -2109,6 +2230,19 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		if (ourId == null) return false;
 		float troops = combinedRaidStr(market, MarketCMD.getRaidStr(fleet));
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		// the grand fleet's live stay (the user, 2026-10-26; run gf3 landed and sailed home): its front down or
+		// nothing aboard to land, every pass is a slice of bombardment, unspent, while the ordnance lasts and
+		// the hive stands - its fleets never leave for Defend (stayOnDefend); dry, the pass goes ahead and the
+		// stage runs out, and ThreatGrandFleets.legDone takes the fleets on
+		if (grandFleet && ThreatGroundFronts.strataTarget(market) && troops < ThreatIncConfig.frontMinMarines()
+				&& (front == null || ourId.equals(ThreatGroundFronts.ownerOf(front)))) {
+			if (ThreatGroundFronts.orbitContestedFor(ourId, market)) {
+				ThreatIncConfig.log("Siege of " + market.getName() + ": the orbit is contested");
+				return true;
+			}
+			if (ordnanceLeft() <= 0f) return false;
+			return liveSlice(fleet, market);
+		}
 		// only a cargo expedition knows what it has left to land; the other
 		// kind fights on vanilla's raid strength, which never runs out
 		if (front != null) {
@@ -2123,7 +2257,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		// take (2026-09-07, Gamma Hero I - the batteries were paid for
 		// nothing). The fleet joins the defence of the front it did land;
 		// with none, the pass goes ahead and spends itself on nothing
-		if (carriesCargo && troops < ThreatIncConfig.frontMinMarines()) {
+		// a grand fleet bombards with or without marines: fuel destroys strata (the user, 2026-10-26)
+		if (carriesCargo && troops < ThreatIncConfig.frontMinMarines() && !grandFleet) {
 			if (joinDefend(fleet, market)) return true;
 			ThreatIncConfig.log("Siege of " + market.getName() + ": nothing left to land, no siege");
 			return false;
@@ -2133,14 +2268,22 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			return true;
 		}
 		if (ThreatGroundFronts.readyToLand(market, troops, ourId, orbitDoneHere(market, troops))) return false;
+		return liveSlice(fleet, market);
+	}
+
+	/** One live slice of the orbital siege by this fleet: a day's ordnance for every day since its last pass, the batteries' answer taken off the fleet. Always true (the pass is not spent). */
+	protected boolean liveSlice(CampaignFleetAPI fleet, MarketAPI market) {
+		String ourId = getFaction() != null ? getFaction().getId() : null;
 		float fp = fleet.getFleetPoints();
 		// a day's ordnance for every day since its last pass, from what the
 		// expedition carries: short of it, the slice is as long as it buys
 		float days = burnOrdnance(market, fp, ThreatGroundFronts.siegeSliceDays(fleet));
+		boolean hive = ThreatGroundFronts.strataTarget(market);
 		ThreatGroundFronts.BombardDay est = ThreatGroundFronts.bombardDay(fp, market, false);
 		float loss = ThreatGroundFronts.siegeSlice(fp, ThreatGroundFronts.orbitPoints(ourId, market, fp), market,
 				days, true, true, -1f, "Orbital bombardment", ourId);
 		float removed = ThreatGroundFronts.applyFleetLosses(fleet, loss);
+		if (hive && !ThreatGroundFronts.isHiveTarget(market)) markRazed(market.getId());
 		if (siegeAnnounced == null) siegeAnnounced = new java.util.HashSet<String>();
 		if (siegeAnnounced.add(market.getId())) {
 			SiegeActionRecord rec = new SiegeActionRecord();
@@ -2152,6 +2295,13 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			rec.targets = "war-strata suppressed from orbit";
 			rec.success = true;
 			siegeActions.add(rec);
+		}
+		if (hive) {
+			// a hive answers nothing and has no fortifications: the slice razes strata (the hiveRaze line above it)
+			ThreatIncConfig.log("Siege slice vs " + market.getName() + ": " + (int) fp + " FP for "
+					+ String.format("%.1f", days) + " d razing strata" + (ThreatGroundFronts.isHiveTarget(market) ? "" : " - destroyed")
+					+ (paysOrdnance ? "; " + (int) ordnance + " ordnance left" : ""));
+			return true;
 		}
 		ThreatIncConfig.log("Siege slice vs " + market.getName() + ": " + (int) fp + " FP for "
 				+ String.format("%.1f", days) + " d at " + String.format("%.1f", est.rate)
@@ -2612,6 +2762,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			}
 			if (at != null && ThreatGroundFronts.isHiveTarget(at)) return at;
 			dailySummary(at != null ? at.getName() : abstractWorld, abstractWorldDays, "gone");
+			if (abstractWorldDays > 0) markRazed(abstractWorld);
 			siegeResolved.add(abstractWorld);
 			resetWorld();
 		}
@@ -2649,8 +2800,10 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		String ourId = faction.getId();
 		boolean razing = razes(w);
 		boolean front = ThreatGroundFronts.getFront(w.getId()) != null;
+		// a grand fleet stays over a hive until its strata are gone (the user, 2026-10-26): with or without marines
+		boolean stays = grandFleet && ThreatGroundFronts.strataTarget(w);
 		// nothing aboard to land: no siege of it (siegePass's rule), the passes stand down
-		if (!razing && !front && carriesCargo && abstractTroops(w) < ThreatIncConfig.frontMinMarines()) {
+		if (!razing && !front && !stays && carriesCargo && abstractTroops(w) < ThreatIncConfig.frontMinMarines()) {
 			endWorld(action, w, "nothing to land", true);
 			return true;
 		}
@@ -2727,13 +2880,13 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			endWorld(action, w, "razing", true);
 			return true;
 		}
-		if (front) {
+		if (front && !stays) {
 			endWorld(action, w, "front", true);
 			return true;
 		}
 		float fp = abstractAllotment();
 		String why;
-		if (abstractWorldDays >= ThreatIncConfig.siegeOrbitDays()) {
+		if (!stays && abstractWorldDays >= ThreatIncConfig.siegeOrbitDays()) {
 			why = "days";
 		} else if (ThreatGroundFronts.gunsWouldBreak(w, fp, abstractFull(), frac)) {
 			why = "guns";
@@ -2748,12 +2901,37 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 				ThreatIncConfig.logQuiet(dailyKey(w), "Daily siege of " + w.getName() + ", day " + abstractWorldDays
 						+ ": bombarded, " + (int) fp + " -> " + (int) abstractAllotment() + " FP"
 						+ (paysOrdnance ? ", " + (int) ordnance + " ordnance left" : ""));
+				if (stays) stayWindow(seg);
 				return true;
 			}
 			if (verdict == ThreatGroundFronts.SIEGE_STEP_GUNS) why = "guns";
 			else if (verdict == ThreatGroundFronts.SIEGE_STEP_DRY
 					|| ThreatGroundFronts.bombardDaysFor(w, ordnanceLeft(), fp) < 0.5f) why = "dry";
 			else why = "ready";
+		}
+		// the grand fleet's stay: it lands what it carries when the landing is ready (or the guns leave no
+		// better day), keeps the world as its daily world, bombards while the ordnance lasts and holds the
+		// orbit over its front when orbit can do no more; the ordnance running dry ends its stay, as does
+		// a hive it can neither bomb nor land on with no front of its own to cover
+		if (stays) {
+			boolean troops = abstractTroops(w) >= ThreatIncConfig.frontMinMarines();
+			if ("dry".equals(why)) {
+				endWorld(action, w, "dry", troops);
+				return true;
+			}
+			if (!troops && !front) {
+				endWorld(action, w, why, false);
+				return true;
+			}
+			if (troops) {
+				landStaying(action, w, why);
+			} else {
+				ThreatIncConfig.logQuiet(dailyKey(w), "Daily siege of " + w.getName() + ", day " + (abstractWorldDays + 1)
+						+ ": holds the orbit over its front (" + why + ")");
+			}
+			abstractWorldDays++;
+			stayWindow(seg);
+			return true;
 		}
 		// an Attack with no marines and no fuel past the passage is a blockade (phase D): it holds the
 		// orbit its stay rather than landing nothing and sailing home
@@ -2766,6 +2944,24 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 		endWorld(action, w, why, true);
 		return true;
+	}
+
+	/** A staying grand fleet's landing: vanilla's passes over the world as {@link #endWorld} delivers them, the world kept as the daily world. */
+	protected void landStaying(SiegeRaidAction action, MarketAPI w, String why) {
+		if (siegeResolved == null) siegeResolved = new java.util.HashSet<String>();
+		siegeResolved.add(w.getId());
+		int n = Math.max(1, action.getParams() != null ? action.getParams().raidsPerColony : 1);
+		for (int i = 0; i < n && !isEnding() && !isEnded() && !isAborted(); i++) {
+			action.performRaid(null, w);
+		}
+		String ourId = ourFactionId();
+		ThreatIncConfig.log("Daily siege of " + w.getName() + ", day " + (abstractWorldDays + 1) + ": landed (" + why
+				+ "), stays" + (ourId != null && ownFrontOn(w, ourId) ? "" : ", no front"));
+	}
+
+	/** A staying grand fleet's segment never closes under it: its window is kept 30 days ahead. */
+	protected void stayWindow(RouteSegment seg) {
+		if (seg != null && seg.daysMax < seg.elapsed + 30f) seg.daysMax = seg.elapsed + 30f;
 	}
 
 	/**
@@ -3061,8 +3257,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	@Override
 	protected void notifyActionFinished(com.fs.starfarer.api.impl.campaign.intel.group.FGAction action) {
 		super.notifyActionFinished(action);
-		if (action != null && action == raidAction && !isAborted() && !isFailed()) {
+		// a grand fleet's leg is done when its action is, razed or not (gf4: a target dead before arrival left vanilla's
+		// success at 0, "failed", and the leg sailed home credited nothing instead of hopping)
+		if (action != null && action == raidAction && !isAborted() && (grandFleet || !isFailed())) {
 			postSiegeReport();
+			// a grand fleet done with its system sails on to the next (ThreatGrandFleets.legDone) or home
+			if (grandFleet && !hopped) ThreatGrandFleets.legDone(this, false);
 		}
 	}
 
@@ -3070,8 +3270,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected void notifyEnding() {
 		super.notifyEnding();
 		postSiegeReport();
+		// a grand fleet's leg that hopped handed everything aboard to the next leg: nothing to settle or refund
+		if (hopped) return;
+		float keep = survivingFraction();
 		settleUnplaced();
 		refundOnReturn();
+		if (grandFleet) ThreatGrandFleets.ended(this, keep);
 	}
 
 	/** Posts the after-action sitrep once, however the expedition ended. */
@@ -3082,7 +3286,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		String outcome;
 		if (isAborted()) {
 			outcome = "aborted";
-		} else if (isFailed()) {
+		} else if (isFailed() && !grandFleet) {
 			outcome = "destroyed";
 		} else {
 			outcome = "completed";
@@ -3098,5 +3302,16 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		Global.getSector().getIntelManager().addIntel(report);
 		ThreatIncConfig.log("Siege expedition " + outcome + " (" + siegeActions.size()
 				+ " ground actions) - sitrep posted.");
+		if (isAborted()) {
+			// vanilla aborts without a word: the state it found (run gf2's silent hop aborts)
+			RouteData r = getRoute();
+			RouteSegment cur = r != null ? r.getCurrent() : null;
+			String seg = cur == null ? "no segment" : cur.custom == null ? "a plain segment"
+					: cur.custom.getClass().getSimpleName() + (actions.contains(cur.custom) ? "" : " (not among its actions)");
+			ThreatIncConfig.log("Expedition abort state: " + seg + ", " + actions.size() + " actions left, "
+					+ (isSpawnedFleets() ? "fleets live" : "abstract") + ", route damage " + (int) (routeDamage() * 100f)
+					+ "%, daily siege " + (dailySiege ? "on, day " + abstractDays : "off")
+					+ (grandFleet ? ", grand fleet leg " + grandLeg : ""));
+		}
 	}
 }

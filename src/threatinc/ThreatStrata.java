@@ -134,6 +134,23 @@ public final class ThreatStrata {
 		return Math.max(0f, of(market) - perSize() * ThreatGroundFronts.strataHeld(market.getId()));
 	}
 
+	/**
+	 * The strata a landing sized today meets on arrival: {@link #standing} plus what the Core's state
+	 * grows a day (ThreatColonyManager.coreState - a fed hive, or a conquered world consuming up to its
+	 * size) over siegeGrowthDays, the siege's muster and passage, never past the cap. A world starving
+	 * or holding is read as it stands. The planner's figure (IncursionManager.nexusAnchoredDefense):
+	 * sized on today's strata, a siege against a growing hive arrived under its beachhead line and
+	 * could do nothing (2026-10-26, Sindria).
+	 */
+	public static float atArrival(MarketAPI market) {
+		float now = standing(market);
+		if (market == null) return now;
+		float perDay = ThreatColonyManager.coreState(market).strataPerDay;
+		float days = Math.max(0f, ThreatIncConfig.siegeGrowthDays());
+		if (perDay <= 0f || days <= 0f) return now;
+		return Math.min(now + perDay * days, Math.max(now, cap(market)));
+	}
+
 	/** The strata the hive's next size needs. */
 	public static float nextSizeAt(MarketAPI market) {
 		return sizeAt(Math.max(1, market.getSize()) + 1);

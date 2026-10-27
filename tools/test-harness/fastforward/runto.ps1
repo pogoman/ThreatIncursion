@@ -8,7 +8,7 @@
 # out and the run carries on; someone at work for -WaitMinutes stops it with FOREGROUND LOST and
 # the game window is sent to the back, left running at normal speed. Start runto again (same -Tag,
 # same -Days: the count is from the run's first Clock line) when the machine is free.
-param([int]$Days = 3300, [string]$Tag = "x", [int]$Chunks = 3, [int]$Seconds = 110, [int]$MaxRounds = 60, [int]$IdleSeconds = 90, [int]$WaitMinutes = 20)
+param([int]$Days = 3300, [string]$Tag = "x", [int]$Chunks = 3, [int]$Seconds = 110, [int]$MaxRounds = 60, [int]$IdleSeconds = 90, [int]$WaitMinutes = 20, [switch]$NoSave)
 $out = if ($env:THREATINC_TEST_OUT) { $env:THREATINC_TEST_OUT } else { Join-Path $env:TEMP "threatinc-tests" }
 New-Item -ItemType Directory -Force $out | Out-Null
 $txt = "$out\run-$Tag.txt"; $done = "$out\run-$Tag.done"; $ti = "$out\ti-$Tag.txt"
@@ -49,7 +49,7 @@ for ($r = 1; $r -le $MaxRounds; $r++) {
   if (-not $g) { $why = "STOPPED: WINDOW LOST (no game process)"; break }
   # the first round may take the foreground (the caller has just launched the game); later ones only from an idle machine
   if ($r -gt 1 -and [RT]::GetForegroundWindow() -ne $g.MainWindowHandle -and -not (Free $g)) { $why = "STOPPED: FOREGROUND LOST"; break }
-  $o = powershell -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\run.ps1" -Chunks $Chunks -Seconds $Seconds -SaveEvery $Chunks -Tag $Tag
+  $o = powershell -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\run.ps1" -Chunks $Chunks -Seconds $Seconds -SaveEvery $(if ($NoSave) { 0 } else { $Chunks }) -Tag $Tag
   $o | Add-Content $txt
   $c = Clock
   $el = if ($c) { $c.Last - $c.First } else { -1 }

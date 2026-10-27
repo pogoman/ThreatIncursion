@@ -295,6 +295,11 @@ public class ThreatFactionView {
 		// the faction's overall strength in fleet points, the calculation in the tooltip (the user,
 		// 2026-10-24: "an overall score on each human factions board indicating their overall strength")
 		final Strength str = strengthOf(factionId);
+		// the grand fleet (the user, 2026-10-26): one line, what is true now
+		if (ThreatIncConfig.npcGrandFleet() && !com.fs.starfarer.api.impl.campaign.ids.Factions.PLAYER.equals(factionId)) {
+			String[] gf = ThreatGrandFleets.boardLine(factionId);
+			if (gf != null) main.addPara(gf[0], opad, text, h, java.util.Arrays.copyOfRange(gf, 1, gf.length));
+		}
 		main.addPara("Strength %s = %s navy + %s army + %s depots", opad, text, h,
 				ThreatWarBoard.n(str.total()), ThreatWarBoard.n(str.navy()), ThreatWarBoard.n(str.army()), ThreatWarBoard.n(str.depots()));
 		main.addTooltipToPrevious(new TooltipCreator() {

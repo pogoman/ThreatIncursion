@@ -231,15 +231,24 @@ public class ThreatPlays {
 					+ ThreatCoreBuild.homeFirstStatus(fid) + ")");
 			return;
 		}
+		// THE GRAND FLEET (the user, 2026-10-26): the faction attacks as one grand fleet (ThreatGrandFleets), so the
+		// council starts no hammer, starve, feint or joint play - it scouts, nearest hives first, so the fleet has targets
+		if (ThreatIncConfig.npcGrandFleet()) {
+			reconForGrandFleet(c, faction, p, today, random);
+			return;
+		}
 		// HOME UNDER ATTACK (the user, 2026-10-20): no play while an own world is under a Threat army
 		if (ThreatGroundFronts.homeUnderAttack(fid)) {
-			ThreatIncConfig.logQuiet("homeattack:" + fid, "Council " + fid + ": home under attack - no play while "
+			ThreatIncConfig.logQuiet("homeattack:" + fid, "Council " + fid + ": home under attack - no play but the home fight while "
 					+ ThreatGroundFronts.invadedWorlds(fid).size() + " own world(s) stand under a Threat army");
+			// THE HOME FIGHT (the user, 2026-10-26: Sindria conquered, the Diktat struck systems light years away):
+			// the hives in the invaded systems are attacked all the same - that IS the defence of home
+			invade(c, faction, p, today, random, true);
 			return;
 		}
 		opportunity(c, faction, p, today, random);
 		// the strategy picks where its own plays go, never whether the faction attacks (user, 2026-10-04)
-		invade(c, faction, p, today, random);
+		invade(c, faction, p, today, random, false);
 		String observer = ThreatIntel.observerOf(faction);
 		float half = Math.max(1f, ThreatIncConfig.intelHalfLifeDays());
 		if (ThreatWarCouncil.HOLD.equals(c.strategy)) {
@@ -333,8 +342,29 @@ public class ThreatPlays {
 	 * siege sails the day its play starts ({@link #strike}), so the next hive is
 	 * weighed against what is left; what stops it is marines, fuel and supplies.
 	 */
-	protected static void invade(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p,
+	/** The council's whole play under the grand fleet: recon of the nearest cluster whose picture is missing or stale, one a day. */
+	protected static void reconForGrandFleet(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p,
 			float today, Random random) {
+		String fid = faction.getId();
+		String observer = ThreatIntel.observerOf(faction);
+		float half = Math.max(1f, ThreatIncConfig.intelHalfLifeDays());
+		List<ThreatWarCouncil.Cluster> near = new ArrayList<ThreatWarCouncil.Cluster>(p.clusters);
+		java.util.Collections.sort(near, new java.util.Comparator<ThreatWarCouncil.Cluster>() {
+			public int compare(ThreatWarCouncil.Cluster a, ThreatWarCouncil.Cluster b) { return Float.compare(a.ly, b.ly); }
+		});
+		for (ThreatWarCouncil.Cluster k : near) {
+			if (!k.inReach()) continue;
+			boolean known = ThreatIntel.known(observer, k.systemId);
+			if (known && ThreatIntel.age(observer, k.systemId) < half) continue;
+			if (running(fid, RECON, k.systemId) || ThreatScouts.reconInFlight(fid, k.systemId)) continue;
+			if (!reconDue(c, k.systemId, today)) continue;
+			if (startRecon(c, faction, k, today, random, known ? "grand fleet: the picture of " + k.name + " is stale"
+					: "grand fleet: no report of " + k.name) != null) break;
+		}
+	}
+
+	protected static void invade(ThreatWarCouncil.Council c, FactionAPI faction, ThreatWarCouncil.Picture p,
+			float today, Random random, boolean homeOnly) {
 		String fid = faction.getId();
 		long every = Math.max(1L, (long) ThreatIncConfig.councilInvadeDays());
 		if (Math.floorMod(ThreatReach.today() + (fid.hashCode() & 0xff), every) != 0L) return;
@@ -357,6 +387,8 @@ public class ThreatPlays {
 		int inReach = 0, ownStrike = 0, noReport = 0, known = 0;
 		for (ThreatWarCouncil.Cluster k : p.clusters) {
 			if (!k.inReach()) continue;
+			// the home fight: only the systems where an own world stands under a Threat army
+			if (homeOnly && !ThreatGroundFronts.homeFightIn(fid, k.systemId)) continue;
 			inReach++;
 			if (strikingAt(fid, k.systemId)) {
 				ownStrike++;
@@ -374,6 +406,10 @@ public class ThreatPlays {
 		}
 		List<MarketAPI> hives = IncursionManager.easiestFirst(observer, ready);
 		hives.addAll(IncursionManager.easiestFirst(observer, recent));
+		// NEAREST FIRST (the user, 2026-10-26: "where is the distance based prioritisation" - Sindria struck systems
+		// light years away with a hive in its own system): the worlds not recently sieged first, then by the passage
+		// from the cluster's nearest base (an own system is 0 ly), the easiest among equals
+		if (ThreatIncConfig.invadeNearestFirst()) hives = nearestFirst(p, hives, recent);
 		java.util.Set<String> started = new java.util.HashSet<String>();
 		java.util.Set<String> noBase = new java.util.HashSet<String>();
 		java.util.Map<String, Integer> noBaseWhy = new java.util.LinkedHashMap<String, Integer>();
@@ -419,7 +455,7 @@ public class ThreatPlays {
 				ThreatWarCouncil.Cluster k = s != null ? p.cluster(s.getId()) : null;
 				if (k == null || !noBase.contains(k.systemId) || started.contains(k.systemId)) continue;
 				String why = whyOf.get(k.systemId);
-				if (!"marines".equals(why) && !"cannot pay".equals(why)) continue;
+				if (!"marines".equals(why) && (why == null || !why.startsWith("cannot pay"))) continue;
 				// one staging hammer a base: the stock it waits for is the base's
 				MarketAPI b = baseOf(k, fid);
 				if (b == null || stagedAt.contains(b.getId()) || stagingHammerAt(fid, b.getId())) continue;
@@ -433,10 +469,36 @@ public class ThreatPlays {
 			}
 		}
 		// one line a pass (hw217a, 2026-10-19: the Hegemony sat on 39k FP free and nothing said why its passes started nothing)
-		ThreatIncConfig.log("Council " + fid + " invade pass: " + inReach + " clusters in reach (" + ownStrike
+		ThreatIncConfig.log("Council " + fid + (homeOnly ? " home-fight" : "") + " invade pass: " + inReach + " clusters in reach (" + ownStrike
 				+ " with its own strike, " + noReport + " without a report), " + hives.size() + " of " + known
 				+ " hives open, started " + started.size() + ", staged " + staged
-				+ (noBase.isEmpty() ? "" : ", no paying base in " + noBase.size() + ": " + noBaseWhy));
+				+ (noBase.isEmpty() ? "" : ", no paying base in " + noBase.size() + ": " + whyOf));
+	}
+
+	/**
+	 * The hives in the invade pass's order (invadeNearestFirst): those not on cooldown first, then the nearest -
+	 * the passage in ly from the cluster's nearest base, 0 in an own system - and the given (easiest) order among equals.
+	 */
+	protected static List<MarketAPI> nearestFirst(final ThreatWarCouncil.Picture p, List<MarketAPI> hives,
+			final List<MarketAPI> recent) {
+		final java.util.Map<MarketAPI, Float> ly = new java.util.HashMap<MarketAPI, Float>();
+		final java.util.Map<MarketAPI, Integer> order = new java.util.HashMap<MarketAPI, Integer>();
+		for (MarketAPI w : hives) {
+			order.put(w, order.size());
+			StarSystemAPI s = w.getStarSystem();
+			ThreatWarCouncil.Cluster k = s != null ? p.cluster(s.getId()) : null;
+			ly.put(w, k != null && !k.bases.isEmpty() ? ly(k.bases.get(0), s) : Float.MAX_VALUE);
+		}
+		List<MarketAPI> out = new ArrayList<MarketAPI>(hives);
+		java.util.Collections.sort(out, new java.util.Comparator<MarketAPI>() {
+			public int compare(MarketAPI a, MarketAPI b) {
+				int c = Boolean.compare(recent.contains(a), recent.contains(b));
+				if (c != 0) return c;
+				c = Float.compare(ly.get(a), ly.get(b));
+				return c != 0 ? c : Integer.compare(order.get(a), order.get(b));
+			}
+		});
+		return out;
 	}
 
 	/** The cluster's nearest base whose pools man, arm and provision a landing siege of the world now (IncursionManager.siegeCanPay), or null. */
@@ -457,10 +519,14 @@ public class ThreatPlays {
 			// the marines first: the cheap read, and what most landings are short of
 			float pooled = IncursionManager.siegeMarinesPooled(m, faction, s);
 			if (pooled < need) {
-				lastWhy = "marines";
 				// the core build raises the military ladder while this stands (the marine step, 2026-10-19)
 				ThreatFactionStock.noteMarineShort(faction.getId(), need - pooled, need);
-				continue;
+				// AN ATTACK TAKES WHAT IT HAS (the user, 2026-10-26): short of the landing it sails with the marines
+				// pooled and the fuel to raze the rest; only the hulls and the passage refuse it (siegeCanPay)
+				if (!ThreatIncConfig.npcAttackTakesWhatItHas()) {
+					lastWhy = "marines";
+					continue;
+				}
 			}
 			List<Integer> sizes = IncursionManager.siegeSizesFor(m, faction, one, 0f, NO_RAZE);
 			if (sizes.isEmpty()) {
@@ -468,7 +534,8 @@ public class ThreatPlays {
 				continue;
 			}
 			if (IncursionManager.siegeCanPay(m, faction, s, one, sizes, NO_RAZE)) return m;
-			lastWhy = "cannot pay";
+			// the refusal itself, for the pass's one line (2026-10-26: six systems read "cannot pay" and nothing said what or where)
+			lastWhy = "cannot pay (" + IncursionManager.lastRefusal + ")";
 		}
 		return null;
 	}
@@ -836,7 +903,8 @@ public class ThreatPlays {
 		}
 		// HOME UNDER ATTACK (the user, 2026-10-20: "the fleets are supposed to defend homeworlds first"): a play
 		// under way stands down and its forces come home; one not yet under way is held (below)
-		if (ThreatGroundFronts.homeUnderAttack(pl.factionId) && !pausable(pl)) {
+		if (ThreatGroundFronts.homeUnderAttack(pl.factionId) && !pausable(pl)
+				&& !ThreatGroundFronts.homeFightIn(pl.factionId, pl.systemId)) {
 			standDownForces(pl, "home under attack");
 			end(pl, NEUTRAL, "home under attack - its forces come home to defend the invaded worlds", today);
 			return;
@@ -848,7 +916,9 @@ public class ThreatPlays {
 		}
 		sample(pl, faction, today);
 		// relief before offensives: the next phase waits, the play is paused, not cancelled
-		boolean homeAttacked = ThreatGroundFronts.homeUnderAttack(faction.getId());
+		// a play at the home fight (the hive in an invaded system) is neither stood down nor held (2026-10-26)
+		boolean homeAttacked = ThreatGroundFronts.homeUnderAttack(faction.getId())
+				&& !ThreatGroundFronts.homeFightIn(faction.getId(), pl.systemId);
 		if ((homeAttacked || ThreatFleetOrders.reliefOwed(faction)) && pausable(pl)) {
 			if (!pl.held) {
 				pl.held = true;
@@ -1235,7 +1305,8 @@ public class ThreatPlays {
 			fp += purge.abstractFull();
 			ThreatIncConfig.log("Play " + pl.id + " " + pl.type + ": siege of " + (int) purge.abstractFull()
 					+ " FP sails from " + base.getName() + " for " + w.getName() + ", "
-					+ (int) purge.getMarinesAllotted() + " marines aboard");
+					+ (int) purge.getMarinesAllotted() + " marines aboard, " + (int) purge.ordnanceLeft() + " ordnance, "
+					+ (int) purge.razeFuelLeft() + " razing fuel");
 		}
 		return new float[] { n, fp };
 	}

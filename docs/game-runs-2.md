@@ -1184,3 +1184,51 @@ The user's two instructions of the handover (`strikes-staged.md` 3-4), built as 
 
 - **hw286-hw287** (2026-10-26 18:51, jar 18:51:27 = round 56's build + fix 8; driver `scratchpad/seeds-hw174/run-seeds-16.ps1`, hw286 set B, hw287 set A, from day 0 `-Days 3800 -Snapshots 300`, watcher `watch-seeds-16.sh`, scheduled tasks ThreatIncSeeds16 / ThreatIncWatchSeeds16). The confirmation round on the final jar, read against hw284 / hw285 (405-518 hives, 7-85 strikes, 0 at the floor). What to see: the same shape; every "Starved a level" preceded by a "Core starving at X" line naming the inputs (the home worlds' first-days famine "fuel live 0 / rule 0 of 2", blockades "shipping 0"); no new hold from the global route reading high.
   **hw286 read at w300-315 (19:01):** 14 / 5 / 7 hives, held at the floor 0, 0 exceptions, every "Starved a level" preceded by its "Core starving at" line - and they say what the home worlds' first-days starvation is: each home world opens at size 4 on absorbed strata before any refinery stands ("Core starving at Unhcegila (size 4): metals live 0 / rule 0 of 4, fuel live 0 / rule 0 of 2 at size 4, shipping 1, famine"; New Pender and Mag Mell the same with fuel 2 of 2 once the plant stood) - the design's famine on an ungated absorption, a size or two per home world in the first 300 days, then never again. Live and rule figures agree on every line (the rule reads vanilla right).
+
+## 62. gf1 - the first grand fleet run, from the user's StarLord save (2026-10-26 night)
+
+The 21:18 jar (grand fleet doctrine, `docs/grand-fleet.md`), the user's current save
+`save_StarLord_8637357637131209349sd1hw275d3725` cloned as `...gf1`, 364 days at normal speed
+(the harness yields the machine while the user is at it), 0 exceptions. Findings and fixes are
+in `grand-fleet.md` section 6: the fuel bank priced 120 days of full-rate razing (723,000 fuel
+for the Hegemony) so only the Diktat ever sailed, and the Diktat sailed its whole 243-FP navy
+four times into Sindria's 1,214-4,382-FP swarm and was called off each time. Both fixed in the
+22:03 jar (bank = the kill; the floor is a floor; the target is the nearest world the fleet
+outweighs; called-off systems wait 60 days), untested. The hop never ran.
+
+## 63. gf2 - the second grand fleet run, the day-4036 StarLord save (2026-10-26 night)
+
+The 22:03 jar, `save_StarLord_8637357637131209349sd1hw275d4036` cloned as `...gf2`, war days
+4,039-4,361 at normal speed (the user at the machine), 0 exceptions. Every faction musters and
+sails; the outweigh rule works; legs landed everything and left after two days credited 0 (the
+fronts eradicated 12 hives behind them); all four hops aborted silently on arrival (the route
+built from the stock actions); the Path's leg came home at 25% unannounced. All three fixed in the
+22:52 jar (`grand-fleet.md` 7), untested. Open: the fuel bank is one kill, so big systems are
+never hopped to.
+
+## 64. gf3 - the third grand fleet run, the day-4036 StarLord save (2026-10-27 morning)
+
+The 06:21 jar (gf2's fixes + the two-kill bank), clone `...gf3`, war days 4,039-4,283, 0
+exceptions, the game closed at 06:37. The stay works and bombardment razes hives (13 razed, 10
+eradicated), but the purge stand-down aborted every leg at its kill (credited 0, no hop), and live
+legs near the player handed their fleets to Defend and went home empty. Both fixed in the 06:45
+jar (`grand-fleet.md` 8), untested. The two-kill bank sails near pairs; far pairs cost 150,000-
+515,000 fuel.
+
+## 65. gf4 - the fourth grand fleet run, the day-4036 StarLord save (2026-10-27 morning)
+
+The 06:55 jar (gf3's fixes + banked chain first), clone `...gf4`, war days 4,039-4,278, 0
+exceptions, stopped at 07:33 when the game crawled (3-6 days a round from day 4,262). The first hops
+ran and kills are credited; the live stay razed Volturn to 0. Four faults fixed in the 07:37 jar
+(`grand-fleet.md` 9): hops with 0 fuel (passage from an unset `best`), legs that razed nothing
+read as "failed" and never hopped, "Grand Fleet Lost" at 100% strength, kill credit to any dead
+target. 1 razed, 4 eradicated in 239 days.
+
+## 66. gf5 - the fifth grand fleet run, the day-4036 StarLord save (2026-10-27 morning)
+
+The 07:37 jar (gf4's four fixes), clone `...gf5`, war days 4,039-4,391, 0 exceptions, stopped at
+08:24 (the harness crawl after round 1 again). Every fix confirmed: hops carry fuel, empty arrivals
+hop on, ends read right, credit is the razer's; 13 razed + 9 eradicated, Hegemony 6 worlds in 3
+cruises and 7 at Yma in one leg. Open: the chain blinks on a day's sighting and the bank sails one
+kill short (`grand-fleet.md` 10). Hives 47 -> 116 over the run.
+

@@ -100,6 +100,21 @@ threatinc_shieldSoakMult,Planetary Shield Soak,Double,1.0,"Disruption a planetar
 threatinc_shieldDefenseBonus,Planetary Shield Ground Defense,Double,0,"What a planetary shield adds to the colony's ground defense at full condition. Vanilla gives a flat 2 (a x3 multiplier) and strips all of it the moment the shield is disrupted; this mod gives the shield a different job - absorbing bombardment - so the default is 0. Set to 2 for vanilla's figure, applied in proportion to the shield's condition rather than as an on/off switch.",0,5
 
 threatinc_siegeOrbitDays,Siege Orbit Days,Double,120,"Days a strike or siege expedition holds orbit over each target world before giving the siege up and moving on.",20,400
+threatinc_siegeGrowthDays,Siege Sized For Growth Days,Double,90,"A siege's landing is sized for the strata the hive will have grown to this many days on - its muster and passage - not the strata it has today. 0: today's figure.",0,365
+threatinc_invadeNearestFirst,Attack The Nearest Hive First,Boolean,true,"A faction's war council attacks the nearest hive first - one in its own system before any other - rather than the easiest. A hive in a system where its own world is under a Threat army is attacked even while home is under attack.",,
+threatinc_npcGrandFleet,Grand Fleets,Boolean,true,"NPC factions attack as one grand fleet each: it musters to a share of the navy, sails with every marine and the fuel and supplies of a cruise, destroys the nearest Threat world then the next, and turns home when fuel or supplies run low. Off: the war council's sized sieges.",,
+threatinc_grandFleetsPerFaction,Grand Fleets Per Faction,Int,1,"Grand fleets a faction musters or has out at once.",1,5
+threatinc_grandFleetShare,Grand Fleet Share Of Navy,Double,0.5,"The share of the faction's navy (hulls free + at sea, the board's Navy figure) a grand fleet musters to.",0.1,1
+threatinc_grandFleetMinFP,Grand Fleet Min FP,Double,300,"The least a grand fleet musters to, in fleet points - never above the navy itself.",50,3000
+threatinc_grandFleetMaxFP,Grand Fleet Max FP,Double,3000,"The most a grand fleet musters to, in fleet points.",300,10000
+threatinc_grandFleetCruiseDays,Grand Fleet Cruise Days,Double,120,"Days of the fleet's supplies the base banks before the grand fleet sails.",30,365
+threatinc_grandFleetOrdnanceMargin,Grand Fleet Ordnance Margin,Double,2,"The fuel a grand fleet banks to raze its targets: the strata it meets on arrival x the fuel a stratum x this.",1,5
+threatinc_grandFleetKills,Grand Fleet Kills Banked,Int,2,"Threat worlds a grand fleet banks fuel for before it sails: its target, then the next nearest it outweighs from there - each kill's razing and the passages between and home.",1,5
+threatinc_grandFleetOutweigh,Grand Fleet Outweighs Swarm By,Double,1,"A grand fleet picks a Threat world only where its fleet points cover this x the swarm fleet points its faction last saw over the system.",0,3
+threatinc_grandFleetRetryDays,Grand Fleet Retry Days,Double,60,"Days a system a grand fleet was called off over - outweighed on arrival - is not picked again.",0,365
+threatinc_grandFleetReserveDays,Grand Fleet Reserve Days,Double,20,"Days of burn a grand fleet keeps for the passage home: below the passage plus this, it turns home.",0,90
+threatinc_grandFleetPointsPerFleet,Grand Fleet Points Per Fleet,Int,10,"Difficulty points each of a grand fleet's fleets is built of (25 FP a point).",3,10
+threatinc_npcAttackTakesWhatItHas,Attacks Take What They Have,Boolean,true,"An NPC attack sails with what its base has: short of the landing it takes the marines pooled, however few, and the fuel to raze the rest of the hive's strata. Only the hulls and the passage can refuse it. Off: a siege waits for the full landing.",,
 threatinc_abstractSiegeDaily,Off-Screen Sieges Run Daily,Boolean,true,"An NPC siege expedition away from the player fights, bombards and lands a day at a time, so swarms sent in reply can reach the world, and goes home when outmatched. Off: the whole siege resolves in one go a day after arrival.",,
 
 threatinc_strikeReinforceWeight,Reinforcement Target Weight,Double,4.0,"A world whose Threat front has run dry weighs this much more as the next strike's target: the front signals, the next expedition answers and resupplies it.",1,20

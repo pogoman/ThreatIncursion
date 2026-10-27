@@ -508,6 +508,30 @@ Every path takes strata; no path wears anything. A quiet hive has nothing over i
   cheaper than landing" will raze far more often than today, every razing a fleet battle
   against the spawn; `bombardStrataPerFPDay` is the knob if razing swamps landing; (3) the pool
   makes hit-and-run worth it: a bomber gone inside the spawn delay pays only fuel.
+- **Landing (sized for the arrival, 2026-10-26).** A hive grows while a siege musters and sails,
+  and its beachhead line is its strata, so the landing is sized on the strata at ARRIVAL
+  (`ThreatStrata.atArrival`: standing + the Core's growth a day x `siegeGrowthDays` 90, to the cap;
+  a starving or holding world as it stands); a live NPC siege that still arrives under the line
+  with no ordnance turns home at once with a notice (`ThreatPurgeFGI.callOffShort`) instead of
+  holding the orbit its stay. Found over a conquered Sindria: the Hegemony idled and left.
+- **An attack takes what it has, nearest first (the user, 2026-10-26: "it's not a siege it's not a
+  bombing run it's not a hunt it's an attack, and the attack takes whatever it can use ... where is
+  the distance based prioritisation").** `npcAttackTakesWhatItHas`: an NPC siege is refused only
+  for hulls and the passage - short of the landing it sails with the marines pooled, however few,
+  and the ordnance to raze what they cannot cover (the short-landing pricing, drawn as far as the
+  depot holds it), the flotilla not trimmed to the marines; the council's `payingBase` and
+  `siegeCanPay` no longer refuse for marines or arms. `invadeNearestFirst`: the invade pass takes
+  the nearest hive first (0 ly in an own system), the easiest among equals, worlds not on cooldown
+  first. THE HOME FIGHT: with an own world under a Threat army the council still invades the hives
+  in THAT system (`ThreatGroundFronts.homeFightIn`; the planner's two siege gates and the plays'
+  stand-down / hold let it through) - attacking the hive at home is the defence of home.
+- **Sized at the unworn need (2026-10-26, the 0-marine sieges).** `needAndWear` sized the landing
+  at the defence the flotilla's plan leaves; with strata razed for good that is nothing, so every
+  siege sailed with 0 marines. Under `npcAttackTakesWhatItHas` an NPC landing is sized at
+  `raidStrNeededAt(targets, 0)` - the strata at arrival, no credit for the orbit - the marines
+  pooled sail (however few) with ordnance to raze what they cannot cover, and land when the
+  bombardment has done its part. `razeWorlds` never saturates a hive in place of missing marines;
+  `siegeCanPay` gates on the passage alone. The player's tiers keep the worn figure.
 - **Landing.** Unchanged: the front fights the strata standing, holds strata, bleeds them for
   good by the attrition rule, wins when it holds all that is left. Sizing (`siegeTierMarines`,
   `raidStrNeededAt`, `nexusAnchoredDefense`) reads the strata standing with no multiplier and no

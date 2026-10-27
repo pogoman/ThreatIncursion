@@ -473,6 +473,25 @@
 	"threatinc_shieldDefenseBonus": 0,
 	# days an expedition holds orbit over each world before it gives the siege up
 	"threatinc_siegeOrbitDays": 120,
+	# a siege's landing is sized for the strata the hive grows to over this many days (its muster and passage), not today's
+	"threatinc_siegeGrowthDays": 90,
+	# the council attacks the nearest hive first (an own system before any other), not the easiest
+	"threatinc_invadeNearestFirst": true,
+	# an NPC attack sails with what its base has (marines pooled, fuel to raze the rest); only hulls and the passage refuse it
+	"threatinc_npcAttackTakesWhatItHas": true,
+	# THE GRAND FLEET (2026-10-26): NPC offence is one grand fleet a faction; false: the council's sized sieges
+	"threatinc_npcGrandFleet": true,
+	"threatinc_grandFleetsPerFaction": 1,
+	"threatinc_grandFleetShare": 0.5,
+	"threatinc_grandFleetMinFP": 300,
+	"threatinc_grandFleetMaxFP": 3000,
+	"threatinc_grandFleetCruiseDays": 120,
+	"threatinc_grandFleetReserveDays": 20,
+	"threatinc_grandFleetPointsPerFleet": 10,
+	"threatinc_grandFleetOrdnanceMargin": 2,
+	"threatinc_grandFleetKills": 2,
+	"threatinc_grandFleetOutweigh": 1,
+	"threatinc_grandFleetRetryDays": 60,
 	# an NPC siege expedition off-screen runs its siege a day at a time - the
 	# fight with the swarms over the world, the bombardment, the landing - and
 	# goes home when outmatched, instead of resolving it all in one frame a day

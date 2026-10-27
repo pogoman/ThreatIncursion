@@ -384,6 +384,36 @@ public class ThreatIncConfig {
 	public static float siegeFPWeight()       { return f("threatinc_siegeFPWeight"); }
 	/** Days a strike expedition holds orbit over a system before giving its siege up. */
 	public static float siegeOrbitDays()      { return f("threatinc_siegeOrbitDays"); }
+	/** Days of a hive's growth a siege's landing is sized for ahead of its arrival (ThreatStrata.atArrival): its muster and passage. 0: today's figure. */
+	public static float siegeGrowthDays()     { return f("threatinc_siegeGrowthDays"); }
+	/** The council's invade pass takes the nearest hive first, an own system before any other (ThreatPlays.invade); off: the easiest first. */
+	public static boolean invadeNearestFirst()      { return b("threatinc_invadeNearestFirst", true); }
+	/** An NPC attack takes what its base has: short of the landing it sails with the marines pooled and the fuel to raze the rest; only the hulls and the passage refuse it (IncursionManager.siegeCanPay, launchSiegeExpedition). */
+	public static boolean npcAttackTakesWhatItHas() { return b("threatinc_npcAttackTakesWhatItHas", true); }
+	/** THE GRAND FLEET (the user, 2026-10-26): NPC offence is one grand fleet a faction (ThreatGrandFleets), the council's sized sieges off; false: the council's plays as before. */
+	public static boolean npcGrandFleet()           { return b("threatinc_npcGrandFleet", true); }
+	/** Grand fleets a faction musters or has out at once. */
+	public static int grandFleetsPerFaction()       { return Math.max(1, i("threatinc_grandFleetsPerFaction")); }
+	/** The share of the faction's navy (the board's Navy figure: hulls free + at sea) a grand fleet musters to. */
+	public static float grandFleetShare()           { return f("threatinc_grandFleetShare"); }
+	/** The least a grand fleet musters to, in fleet points (never above the navy itself). */
+	public static float grandFleetMinFP()           { return f("threatinc_grandFleetMinFP"); }
+	/** The most a grand fleet musters to, in fleet points. */
+	public static float grandFleetMaxFP()           { return f("threatinc_grandFleetMaxFP"); }
+	/** Days of the fleet's fuel (ordnance) and supplies (hold) the base banks before the grand fleet sails. */
+	public static float grandFleetCruiseDays()      { return f("threatinc_grandFleetCruiseDays"); }
+	/** Days of burn a grand fleet keeps for the passage home: below the passage plus this, it turns home. */
+	public static float grandFleetReserveDays()     { return f("threatinc_grandFleetReserveDays"); }
+	/** Difficulty points a grand fleet's fleet is built of (25 FP a point). */
+	public static int grandFleetPointsPerFleet()    { return Math.max(1, i("threatinc_grandFleetPointsPerFleet")); }
+	/** The fuel a grand fleet banks for its targets: the strata met on arrival x the fuel a stratum, x this (run gf1: a day-count bank was 723,000 fuel). */
+	public static float grandFleetOrdnanceMargin()  { return f("threatinc_grandFleetOrdnanceMargin"); }
+	/** Threat worlds a grand fleet banks fuel for before it sails: its target, then the next nearest it outweighs from there, each kill's razing and the passages between and home (gf2: a one-kill bank paid no hop). */
+	public static int grandFleetKills()             { return Math.max(1, i("threatinc_grandFleetKills")); }
+	/** A grand fleet picks a Threat world only where its FP cover this x the swarm FP its faction last saw over the system. */
+	public static float grandFleetOutweigh()        { return f("threatinc_grandFleetOutweigh"); }
+	/** Days a system a grand fleet was called off over (outweighed on arrival) is not picked again. */
+	public static float grandFleetRetryDays()       { return f("threatinc_grandFleetRetryDays"); }
 	/** An NPC siege expedition, and a swarm strike under the ground doctrine, off-screen runs its siege a day at a time (ThreatPurgeFGI and ThreatStrikeFGI advanceDaily), not in one frame on arrival. */
 	public static boolean abstractSiegeDaily() { return b("threatinc_abstractSiegeDaily", true); }
 	/** Strike-target weight multiplier for a world whose Threat front is dry and signalling for the next expedition. */

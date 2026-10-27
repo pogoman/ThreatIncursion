@@ -1979,9 +1979,20 @@ public class ThreatGroundFronts {
 		if (fleet.getFleetPoints() <= 0f || fleet.getFaction() == null) return false;
 		// a passing freighter holds nothing
 		if (Misc.isTrader(fleet) || Misc.isSmuggler(fleet) || Misc.isScavenger(fleet)) return false;
+		// nor does a fleet running from another (the user, 2026-10-26: Threat fleets "fly in and fly away constantly",
+		// and each time one was in range it held the orbit against eight Hegemony fleets)
+		if (fleeing(fleet)) return false;
 		boolean own = factionId.equals(fleet.getFaction().getId());
 		if (friendly ? !own : own || !fleet.getFaction().isHostileTo(factionId)) return false;
 		return nearWorld(fleet, market);
+	}
+
+	/** Whether the fleet is running from another: vanilla's flee state, or the flee target its AI remembers (FleetAIFlags.NEAREST_FLEEING_FROM). A fleeing fleet holds no orbit and is struck by no daily siege. */
+	public static boolean fleeing(CampaignFleetAPI fleet) {
+		if (fleet == null) return false;
+		if (fleet.getAI() != null && fleet.getAI().isFleeing()) return true;
+		return fleet.getMemoryWithoutUpdate() != null
+				&& fleet.getMemoryWithoutUpdate().contains(com.fs.starfarer.api.campaign.ai.FleetAIFlags.NEAREST_FLEEING_FROM);
 	}
 
 	protected static boolean nearWorld(CampaignFleetAPI fleet, MarketAPI market) {
@@ -5859,6 +5870,19 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 */
 	public static boolean homeUnderAttack(String factionId) {
 		return ThreatIncConfig.homeUnderAttack() && !invadedWorlds(factionId).isEmpty();
+	}
+
+	/**
+	 * Whether the faction's home fight is in this system: an own world of its stands under a Threat army there.
+	 * The one attack {@link #homeUnderAttack} lets through (the user, 2026-10-26: the Diktat, Volturn invaded and
+	 * Sindria a hive, struck systems light years away) - ThreatPlays.invade, the planner's siege gates.
+	 */
+	public static boolean homeFightIn(String factionId, String systemId) {
+		if (factionId == null || systemId == null) return false;
+		for (MarketAPI m : invadedWorlds(factionId)) {
+			if (m.getStarSystem() != null && systemId.equals(m.getStarSystem().getId())) return true;
+		}
+		return false;
 	}
 
 

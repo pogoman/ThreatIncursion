@@ -1,4 +1,4 @@
-# Fast-forward the loaded campaign: Chunks x Seconds of held Shift, quicksave every SaveEvery
+# Fast-forward the loaded campaign: Chunks x Seconds of held Shift, quicksave every SaveEvery (0: never - on the 20 MB StarLord save the F5 quicksave never wrote and the game stopped rendering, gf3-gf5 2026-10-27)
 # chunks. After each chunk prints ThreatInc log lines written, window state, and a small shot
 # (to $env:THREATINC_TEST_OUT, default %TEMP%\threatinc-tests).
 param([int]$Chunks = 5, [int]$Seconds = 110, [int]$SaveEvery = 5, [string]$Tag = "c", [switch]$Unpause)
@@ -40,7 +40,7 @@ for ($i = 1; $i -le $Chunks; $i++) {
     if ((Count) -eq $p0) { "LITTLE PROGRESS - clock stopped, dismiss failed; see $shot"; break }
     "  stall dismissed, continuing"
   }
-  if ($i % $SaveEvery -eq 0) {
+  if ($SaveEvery -gt 0 -and $i % $SaveEvery -eq 0) {
     $cp = (Get-ItemProperty 'HKCU:\Software\JavaSoft\Prefs\com\fs\starfarer').continue -replace '^\.\.\\saves\\', '' -replace '/', ''
     $cx = "C:\Program Files (x86)\Fractal Softworks\Starsector\saves\$cp\campaign.xml"
     $t0 = if (Test-Path $cx) { (Get-Item $cx).LastWriteTime } else { $null }

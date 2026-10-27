@@ -233,6 +233,13 @@ public class ThreatWarCouncil {
 			ThreatIncConfig.log("Plays: error " + e);
 			Global.getLogger(ThreatWarCouncil.class).error("War council plays", e);
 		}
+		// THE GRAND FLEET (the user, 2026-10-26): each faction's one attack, mustered and sent daily
+		try {
+			ThreatGrandFleets.daily(random);
+		} catch (RuntimeException e) {
+			ThreatIncConfig.log("Grand fleets: error " + e);
+			Global.getLogger(ThreatWarCouncil.class).error("Grand fleets", e);
+		}
 	}
 
 	protected static void daily(Council c, FactionAPI faction, float today, Random random) {

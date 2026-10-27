@@ -1694,7 +1694,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				if (ThreatFleetOrders.reliefOwed(faction)) continue;
 				// consolidating, only a spoiling blow at a system facing it
 				// HOME UNDER ATTACK (the user, 2026-10-20): no siege sails while an own world is under a Threat army
-				if (ThreatGroundFronts.homeUnderAttack(faction.getId())) continue;
+				if (ThreatGroundFronts.homeUnderAttack(faction.getId())
+						&& !ThreatGroundFronts.homeFightIn(faction.getId(), system.getId())) continue; // but the home fight (2026-10-26)
 				if (!ThreatFactionStance.siegeAllowed(faction, system)) continue;
 				// ONE sizing (siegeTargets + siegeSizesFor) for the launch, the hunting gate
 				// (hasSiegeableHive) and the convoy planner (ThreatConvoys.stagingTargets): a base
@@ -1753,6 +1754,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 	public static ThreatPurgeFGI launchPlanned(MarketAPI base, FactionAPI faction, StarSystemAPI system,
 			java.util.List<MarketAPI> targets, Random random) {
 		if (base == null || faction == null || system == null || targets == null || targets.isEmpty()) return null;
+		// THE GRAND FLEET (the user, 2026-10-26): no sized NPC siege; the faction attacks as one grand fleet
+		if (ThreatIncConfig.npcGrandFleet() && !faction.isPlayerFaction()) return null;
 		int difficulty = siegeDifficulty(base, faction, targets,
 				anyTargetGarrisoned(ThreatIntel.observerOf(faction), targets));
 		java.util.List<Integer> fleetSizes = siegeSizesFor(base, faction, targets, 0f);
@@ -2200,7 +2203,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// a siege its stance forbids (CONSOLIDATE, a system not facing it) bars
 			// no hunt: tryPurgeBombardments will not sail it (review, 2026-10-01)
 			// HOME UNDER ATTACK (the user, 2026-10-20): no siege sails while an own world is under a Threat army
-			if (ThreatGroundFronts.homeUnderAttack(faction.getId())) continue;
+			if (ThreatGroundFronts.homeUnderAttack(faction.getId())
+					&& !ThreatGroundFronts.homeFightIn(faction.getId(), system.getId())) continue; // but the home fight (2026-10-26)
 			if (!ThreatFactionStance.siegeAllowed(faction, system)) continue;
 			// worlds its own running siege has booked are left out by siegeTargets
 			java.util.List<MarketAPI> targets = siegeTargets(base, faction, system);
@@ -2291,6 +2295,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// (zealotDonors), or the gate refuses a landing the launch could pay for
 			if (i == 0 && !faction.isPlayerFaction()) have += donorsPooled(base, zealotDonors(faction, base, system), c);
 			if (have < wants[i] * minMarinesFraction(faction)) {
+				// AN ATTACK TAKES WHAT IT HAS (the user, 2026-10-26): the marines and arms pooled sail, however few
+				if (!faction.isPlayerFaction() && ThreatIncConfig.npcAttackTakesWhatItHas()) continue;
 				lastRefusal = c + " " + (int) have + " of " + (int) (wants[i] * minMarinesFraction(faction)) + " at " + base.getName();
 				lastRefusalGate = c;
 				lastRefusalHave = have;
@@ -2315,7 +2321,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			lastRefusalNeed = fuel[2];
 			return false;
 		}
-		float fuelPerPoint = points > 0 ? (fuel[0] + fuel[1]) / points : 0f;
+		// an attack that takes what it has is gated on the passage alone, as the launch gates it: its ordnance is
+		// drawn as far as the depot holds it (npcAttackTakesWhatItHas, 2026-10-26)
+		boolean takesWhatItHas = !faction.isPlayerFaction() && ThreatIncConfig.npcAttackTakesWhatItHas();
+		float fuelPerPoint = points > 0 ? (fuel[0] + (takesWhatItHas ? 0f : fuel[1])) / points : 0f;
 		float suppliesPerPoint = siegeSuppliesPerPoint(base, faction, system,
 				siegeStayDays(landTargets(targets, raze), razeTargets(targets, raze),
 						ThreatAidCapacity.expeditionPoints(sizes), faction.getId()));
@@ -2736,7 +2745,16 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		// sized at the landing side: hi fleet points wear the worlds to this
 		// need and carry it (hi >= carry x need). The low side is the unworn
 		// need wherever the first day's line falls inside the search
-		float[] out = {raidStrNeededAt(targets, hi, rate, observer), hi};
+		float need = raidStrNeededAt(targets, hi, rate, observer);
+		// AN ATTACK TAKES WHAT IT HAS (the user, 2026-10-26): with strata razed for good (ThreatStrata, 2026-10-25) a
+		// flotilla's plan wears a hive to nothing, and the landing sized at that wear fell to 0 marines - every siege
+		// of the 2026-10-26 run sailed with none (the Hegemony for Sindria, 16,872 held). An NPC landing is sized on
+		// the strata as they stand at arrival, no credit for the orbit's work: the marines sail and land once the
+		// bombardment has done its part. The player's tiers keep the worn figure.
+		if (ThreatIncConfig.npcAttackTakesWhatItHas() && !Factions.PLAYER.equals(observer)) {
+			need = Math.max(need, raidStrNeededAt(targets, 0f, rate, observer));
+		}
+		float[] out = {need, hi};
 		NEED_MEMO.put(key.toString(), out.clone());
 		return out;
 	}
@@ -2824,9 +2842,15 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 		return hi;
 	}
 
-	/** A hive's defender strength: the strata standing less what a front holds (ThreatStrata.standing, FabricationCore) - no structure multiplies it since phase D. */
+	/**
+	 * A hive's defender strength as the siege sized here will meet it: the strata standing less what a
+	 * front holds (ThreatStrata.standing, FabricationCore - no structure multiplies it since phase D),
+	 * grown on by the Core's state over siegeGrowthDays, the muster and passage (ThreatStrata.atArrival).
+	 * Sized on today's figure, every landing against a growing hive arrived under its beachhead
+	 * (2026-10-26, Sindria: a Hegemony siege idled its stay over a conquered hive and went home).
+	 */
 	public static float nexusAnchoredDefense(MarketAPI target) {
-		return ThreatStrata.standing(target);
+		return ThreatStrata.atArrival(target);
 	}
 
 	/**
@@ -3425,9 +3449,14 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// ships' worth lets the marines it has land - they sail with all of
 			// them, and the ordnance of the longer bombardment
 			float shortLanding = 0f;
+			// AN ATTACK TAKES WHAT IT HAS (the user, 2026-10-26, npcAttackTakesWhatItHas): short of the landing it
+			// sails with the marines pooled, however few, and the ordnance to raze what they cannot cover
+			// (expeditionFuel at the short landing - 1 marine prices the whole raze), drawn as far as the depot
+			// holds it; the hulls and the passage alone refuse it. The flotilla is not trimmed to the marines.
+			boolean takesWhatItHas = !faction.isPlayerFaction() && ThreatIncConfig.npcAttackTakesWhatItHas();
 			if (wants[0] > 0f && haveMarines < minMarines && !faction.isPlayerFaction()
-					&& landsAfterSoftening(land, ThreatAidCapacity.expeditionPoints(params.fleetSizes), haveMarines)) {
-				shortLanding = haveMarines;
+					&& (takesWhatItHas || landsAfterSoftening(land, ThreatAidCapacity.expeditionPoints(params.fleetSizes), haveMarines))) {
+				shortLanding = Math.max(1f, haveMarines);
 				ThreatIncConfig.logQuiet("short:" + base.getId() + ":" + system.getId(),
 						"Expedition at " + base.getName() + " against " + system.getName()
 						+ " lands " + (int) haveMarines + " of " + (int) wants[0]
@@ -3447,7 +3476,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			// sizes say (takeStaged), so a trim here priced the hold on 2 fleets for 11 that
 			// sailed (2026-10-12: 5,820 supplies for 2,863 FP, the landing's defend fleets
 			// stood down at once); what the Siege button quoted is what sails
-			if (haveMarines < lift && !faction.isPlayerFaction()) {
+			if (haveMarines < lift && !faction.isPlayerFaction() && !takesWhatItHas) {
 				int before = params.fleetSizes.size();
 				while (params.fleetSizes.size() > 2
 						&& siegeRaidStrEstimate(params.fleetSizes) > haveMarines) {
@@ -3477,7 +3506,8 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				// with the fleets; the razing fuel is set aside whole, as razeWorlds
 				// razes only what the reserve holds over the passage
 				float[] fuel = expeditionFuel(base, system, targets, params.fleetSizes, raze, shortLanding, downGoal);
-				float fuelPerPoint = points > 0 ? (fuel[0] + fuel[1]) / points : 0f;
+				// an attack that takes what it has is gated on the passage alone: its ordnance is drawn as far as the depot holds it
+				float fuelPerPoint = points > 0 ? (fuel[0] + (takesWhatItHas ? 0f : fuel[1])) / points : 0f;
 				float suppliesPerPoint = siegeSuppliesPerPoint(base, faction, system,
 						siegeStayDays(land, razeTargets(targets, raze),
 								ThreatAidCapacity.expeditionPoints(params.fleetSizes), faction.getId(), downGoal));
@@ -3575,7 +3605,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			}
 			// a short landing rests on the fleets' wear: trimmed for provisions
 			// below what softens the worlds enough, it waits
-			if (shortLanding > 0f && !landsAfterSoftening(land,
+			if (shortLanding > 0f && !takesWhatItHas && !landsAfterSoftening(land,
 					ThreatAidCapacity.expeditionPoints(params.fleetSizes), shortLanding)) {
 				ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 						+ (int) ThreatAidCapacity.expeditionPoints(params.fleetSizes) + " FP cannot soften it enough for "
@@ -3599,7 +3629,7 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (!faction.isPlayerFaction() && wants[1] > 0f) {
 				float haveArms = siegePooled(base, pool, arms);
 				float minArms = wants[1] * minMarinesFraction(faction);
-				if (haveArms < minArms) {
+				if (haveArms < minArms && !takesWhatItHas) {
 					ThreatIncConfig.logQuiet("postpone:" + base.getId() + ":" + system.getId(), "Expedition postponed at " + base.getName() + " against " + system.getName() + ": "
 							+ (int) haveArms + " of " + (int) wants[1]
 							+ " armaments available (need " + (int) minArms + ")");
@@ -3975,6 +4005,18 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 				if (marines > 0f && marinesLeft >= marines * minLanding && armsLeft >= arms * minLanding) {
 					marinesLeft = Math.max(0f, marinesLeft - marines);
 					armsLeft = Math.max(0f, armsLeft - arms);
+					continue;
+				}
+				// AN ATTACK TAKES WHAT IT HAS (the user, 2026-10-26): a hive beyond the marines left is not saturated
+				// in their place - the attack sails with the marines pooled and the ordnance to raze what they cannot
+				// cover (launchSiegeExpedition's short landing), and lands once the bombardment has done its part
+				if (ThreatIncConfig.npcAttackTakesWhatItHas()) {
+					marinesLeft = Math.max(0f, marinesLeft - marines);
+					armsLeft = Math.max(0f, armsLeft - arms);
+					ThreatIncConfig.logOnChange("raze:" + base.getId() + ":" + target.getId(), "takes",
+							"Saturate or siege of " + target.getName() + " (size " + target.getSize() + ") from "
+							+ base.getName() + ": sieges - the attack takes the " + Misc.getWithDGS(Math.round(Math.min(held, marines)))
+							+ " marines it has of the " + Misc.getWithDGS(Math.round(marines)) + " the landing wants and razes the rest");
 					continue;
 				}
 				String verdict;
@@ -6690,6 +6732,10 @@ public class IncursionManager implements EveryFrameScript, ColonyDecivListener,
 			if (purge.isEnded() || purge.isEnding() || purge.isAborted()) continue;
 			if (purge.isSucceeded()) continue;
 			if (purge.getParams() == null || purge.getParams().raidParams == null) continue;
+			// a grand fleet's leg ends on its own when its worlds are gone (the daily siege's "gone", the live
+			// stage's run-out) and ThreatGrandFleets.legDone counts them and sails on; this abort credited it
+			// nothing and sent it home (run gf3, every kill)
+			if (purge instanceof ThreatPurgeFGI && ((ThreatPurgeFGI) purge).isGrandFleet()) continue;
 			boolean containsDead = false;
 			boolean anyAlive = false;
 			for (MarketAPI target : purge.getParams().raidParams.allowedTargets) {
