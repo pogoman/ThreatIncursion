@@ -257,22 +257,14 @@ public class ThreatGrandFleets {
 		for (Integer s : sizes) points += s;
 		float cruise = Math.max(1f, ThreatIncConfig.grandFleetCruiseDays());
 		float passage = IncursionManager.expeditionPassage(base, target, sizes);
+		// THE RAZING FUEL IS TAKEN AS FOUND, NEVER A HOLD (the user, 2026-10-27, on hw288c where no grand fleet ever sailed:
+		// every base read "fuel 0 of 180,000-355,000" on a fuel income of 0 - "every attack goes with whatever it has, they
+		// can still land marines and defend the orbit"): the muster waits on hulls, the passage out and the cruise's
+		// supplies only; razeFuel is what the convoys stage for and the log reads against, the kill bank (grandFleetKills,
+		// grandFleetOrdnanceMargin) is gone and a hop is decided from what is aboard (hopNeed)
 		float ordnance = razeFuel(targets);
-		// the bank is grandFleetKills kills (the user, 2026-10-27, after gf2's one-kill bank paid no hop): from the
-		// target, the next nearest worlds it outweighs, their razing, the passages between them and the one home
-		List<StarSystemAPI> chain = heldChain(g, observer, target, size, hives, ThreatIncConfig.grandFleetKills() - 1);
 		g.chainIds = new ArrayList<String>();
-		for (StarSystemAPI s : chain) g.chainIds.add(s.getId());
-		if (!chain.isEmpty()) {
-			float rate = ThreatIncConfig.expeditionFuelPerPointLY();
-			StarSystemAPI last = target;
-			for (StarSystemAPI s : chain) {
-				ordnance += points * ly(last, s) * rate + razeFuel(hives.get(s));
-				last = s;
-			}
-			ordnance += points * ly(last, base.getStarSystem()) * rate;
-		}
-		float fuelWant = passage + ordnance;
+		float fuelWant = passage;
 		float suppliesWant = IncursionManager.siegeSuppliesPerPoint(base, faction, target, cruise) * points;
 		List<MarketAPI> donors = IncursionManager.siegeDonors(base, faction, target);
 		List<MarketAPI> pool = ThreatIncConfig.siegePoolProvisions() ? donors : new ArrayList<MarketAPI>();
@@ -289,9 +281,9 @@ public class ThreatGrandFleets {
 			if (haveSupplies < suppliesWant) ThreatFactionStock.noteShort(fid, Commodities.SUPPLIES, suppliesWant - haveSupplies);
 			// the convoys fill the base for it, as they fill a staged hammer's
 			ThreatConvoys.stageForPlay(base, "grand:" + fid, fid, target,
-					new float[] { marines, arms, fuelWant, suppliesWant });
+					new float[] { marines, arms, fuelWant + ordnance, suppliesWant });
 			ThreatIncConfig.logQuiet("grand:" + fid, "Grand fleet " + fid + ": musters at " + base.getName() + " for "
-					+ target.getName() + " (" + (int) size + " FP, " + (int) best + " ly" + chainNames(chain) + ") - " + g.why);
+					+ target.getName() + " (" + (int) size + " FP, " + (int) best + " ly) - " + g.why);
 			return;
 		}
 		launch(g, faction, base, target, targets, sizes, fp, passage, ordnance, suppliesWant, cruise, random);
@@ -323,7 +315,7 @@ public class ThreatGrandFleets {
 	}
 
 	/**
-	 * The chain the muster banks for. The worlds already in it stay while they stand and were not called off over
+	 * (Unused since 2026-10-27 - no kill bank; kept for the sighting rule it records.) The chain the muster banked for. The worlds already in it stay while they stand and were not called off over
 	 * ({@link #onCooldown}) - a sighting of swarms above the fleet's size is weighed at the hop (legDone), not
 	 * here: run gf5, a day's sighting at Yma dropped it from the bank the day the Hegemony sailed, and three
 	 * cruises running came up a few thousand fuel short of it (the user, 2026-10-27: hold the chain) - and
@@ -360,7 +352,7 @@ public class ThreatGrandFleets {
 		return b.toString();
 	}
 
-	/** The first leg sails: every marine and armament pooled, the passage and the cruise's ordnance, the cruise's hold. */
+	/** The first leg sails: every marine, armament and fuel unit pooled above the reserve (the passage first), the cruise's hold. */
 	protected static void launch(GrandFleet g, FactionAPI faction, MarketAPI base, StarSystemAPI target,
 			List<MarketAPI> targets, List<Integer> sizes, float fp, float passage, float ordnance, float suppliesWant,
 			float cruise, Random random) {
@@ -373,7 +365,8 @@ public class ThreatGrandFleets {
 				IncursionManager.siegePooled(base, marinePool, Commodities.MARINES), "marines");
 		float arms = IncursionManager.siegeDraw(base, marinePool, Commodities.HAND_WEAPONS,
 				IncursionManager.siegePooled(base, marinePool, Commodities.HAND_WEAPONS), "armaments");
-		float fuel = IncursionManager.siegeDraw(base, pool, Commodities.FUEL, passage + ordnance, "fuel");
+		float fuel = IncursionManager.siegeDraw(base, pool, Commodities.FUEL,
+				Math.max(passage, IncursionManager.siegePooled(base, pool, Commodities.FUEL)), "fuel");
 		float supplies = IncursionManager.siegeDraw(base, pool, Commodities.SUPPLIES, suppliesWant, "supplies");
 		ThreatConvoys.clearPlayStaging("grand:" + fid);
 		ThreatConvoys.clearCommitment(base);
@@ -409,7 +402,7 @@ public class ThreatGrandFleets {
 				.send();
 		ThreatIncConfig.log("Grand fleet " + fid + " sails from " + base.getName() + " for " + target.getName() + ": "
 				+ (int) fp + " FP in " + sizes.size() + " fleets, " + (int) marines + " marines, " + (int) arms
-				+ " armaments, " + (int) fuel + " fuel (passage " + (int) paidPassage + ", razing " + (int) ordnance + "), " + (int) supplies
+				+ " armaments, " + (int) fuel + " fuel (passage " + (int) paidPassage + ", " + (int) (fuel - paidPassage) + " to raze with; the targets take " + (int) ordnance + "), " + (int) supplies
 				+ " supplies (hold " + (int) (supplies - deposit) + "); " + targets.size() + " worlds");
 	}
 
@@ -479,39 +472,8 @@ public class ThreatGrandFleets {
 		StarSystemAPI next = null;
 		float best = Float.MAX_VALUE;
 		String refused = null;
-		// the banked chain first (the user, 2026-10-27): the world the muster saved the fuel for, while it still
-		// stands, is outweighed and the fuel and supplies aboard pay it; gone, called off over or outweighing the
-		// fleet it is dropped from the chain, unaffordable it waits there and the nearest affordable is tried
-		if (g.chainIds != null) {
-			for (java.util.Iterator<String> it = g.chainIds.iterator(); it.hasNext();) {
-				StarSystemAPI s = Global.getSector().getStarSystem(it.next());
-				if (s == null || s == here || !hives.containsKey(s) || onCooldown(g, s)) {
-					it.remove();
-					continue;
-				}
-				float swarms = swarmsSeen(observer, s);
-				if (swarms > fp) {
-					refused = Misc.getWithDGS(Math.round(swarms)) + " FP of swarms seen at " + s.getName() + " against " + (int) fp;
-					it.remove();
-					continue;
-				}
-				float[] need = hopNeed(g, here, s, base, points, rate, hives.get(s), reserveDays);
-				if (fuelLeft < need[0]) {
-					refused = "fuel " + (int) fuelLeft + " of " + (int) need[0] + " for " + s.getName() + " (banked)";
-					break;
-				}
-				if (suppliesLeft < need[1]) {
-					refused = "supplies " + (int) suppliesLeft + " of " + (int) need[1] + " for " + s.getName() + " (banked)";
-					break;
-				}
-				next = s;
-				it.remove();
-				ThreatIncConfig.log("Grand fleet " + fid + " leg " + g.leg + " done at " + here.getName() + ": the banked "
-						+ s.getName() + " next");
-				break;
-			}
-		}
-		if (next == null) {
+		// the nearest known Threat world it outweighs that the fuel and supplies aboard reach (no banked chain since
+		// 2026-10-27: the fuel aboard is whatever the base held, the hop is decided from it)
 		for (StarSystemAPI s : hives.keySet()) {
 			if (s == here) continue;
 			float d = ly(here, s);
@@ -534,7 +496,6 @@ public class ThreatGrandFleets {
 			best = d;
 			next = s;
 		}
-		}
 		if (next == null) {
 			ThreatIncConfig.log("Grand fleet " + fid + " leg " + g.leg + " done at " + here.getName() + ": turns home"
 					+ (refused != null ? " - " + refused : " - no other known Threat world"));
@@ -545,12 +506,12 @@ public class ThreatGrandFleets {
 		hop(purge, g, faction, base, here, next, hives.get(next), fp, points * ly(here, next) * rate);
 	}
 
-	/** What a hop from {@code here} to {@code s} needs aboard: {fuel for the passage there, that system's razing and the passage home; supplies for those days and the reserve}. */
+	/** What a hop from {@code here} to {@code s} needs aboard: {fuel for the passage there - the razing is whatever is left (2026-10-27); supplies for those days, the passage home and the reserve}. */
 	protected static float[] hopNeed(GrandFleet g, StarSystemAPI here, StarSystemAPI s, MarketAPI base, int points,
 			float rate, List<MarketAPI> targets, float reserveDays) {
 		float d = ly(here, s);
 		float home = ly(s, base.getStarSystem());
-		float fuel = points * d * rate + points * home * rate + razeFuel(targets);
+		float fuel = points * d * rate;
 		float supplies = (ThreatReach.days(d) + ThreatReach.days(home) + reserveDays) * g.dailySupplies;
 		return new float[] { fuel, supplies };
 	}

@@ -2932,14 +2932,11 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 		// the grand fleet's stay: it lands what it carries when the landing is ready (or the guns leave no
 		// better day), keeps the world as its daily world, bombards while the ordnance lasts and holds the
-		// orbit over its front when orbit can do no more; the ordnance running dry ends its stay, as does
-		// a hive it can neither bomb nor land on with no front of its own to cover
+		// orbit over its front when orbit can do no more; dry, it lands what it carries and holds the orbit over
+		// its front all the same (the user, 2026-10-27: "they can still land marines and defend the orbit") - only
+		// a hive it can neither bomb nor land on, with no front to cover, ends its stay
 		if (stays) {
 			boolean troops = abstractTroops(w) >= ThreatIncConfig.frontMinMarines();
-			if ("dry".equals(why)) {
-				endWorld(action, w, "dry", troops);
-				return true;
-			}
 			if (!troops && !front) {
 				endWorld(action, w, why, false);
 				return true;

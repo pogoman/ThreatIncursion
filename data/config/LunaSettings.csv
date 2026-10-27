@@ -109,8 +109,8 @@ threatinc_grandFleetShare,Grand Fleet Share Of Navy,Double,0.5,"The share of the
 threatinc_grandFleetMinFP,Grand Fleet Min FP,Double,300,"The least a grand fleet musters to, in fleet points - never above the navy itself.",50,3000
 threatinc_grandFleetMaxFP,Grand Fleet Max FP,Double,3000,"The most a grand fleet musters to, in fleet points.",300,10000
 threatinc_grandFleetCruiseDays,Grand Fleet Cruise Days,Double,120,"Days of the fleet's supplies the base banks before the grand fleet sails.",30,365
-threatinc_grandFleetOrdnanceMargin,Grand Fleet Ordnance Margin,Double,2,"The fuel a grand fleet banks to raze its targets: the strata it meets on arrival x the fuel a stratum x this.",1,5
-threatinc_grandFleetKills,Grand Fleet Kills Banked,Int,2,"Threat worlds a grand fleet banks fuel for before it sails: its target, then the next nearest it outweighs from there - each kill's razing and the passages between and home.",1,5
+threatinc_grandFleetOrdnanceMargin,Grand Fleet Ordnance Margin,Double,2,"UNUSED since 2026-10-27 (a grand fleet sails with the fuel its base holds). Was: The fuel a grand fleet banks to raze its targets: the strata it meets on arrival x the fuel a stratum x this.",1,5
+threatinc_grandFleetKills,Grand Fleet Kills Banked,Int,2,"UNUSED since 2026-10-27 (no kill bank). Was: Threat worlds a grand fleet banks fuel for before it sails: its target, then the next nearest it outweighs from there - each kill's razing and the passages between and home.",1,5
 threatinc_grandFleetOutweigh,Grand Fleet Outweighs Swarm By,Double,1,"A grand fleet picks a Threat world only where its fleet points cover this x the swarm fleet points its faction last saw over the system.",0,3
 threatinc_grandFleetRetryDays,Grand Fleet Retry Days,Double,60,"Days a system a grand fleet was called off over - outweighed on arrival - is not picked again.",0,365
 threatinc_grandFleetReserveDays,Grand Fleet Reserve Days,Double,20,"Days of burn a grand fleet keeps for the passage home: below the passage plus this, it turns home.",0,90
