@@ -1980,7 +1980,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 ## ThreatGarrisonMuster (80 lines)
 - `ThreatGarrisonMuster.advance()` :42 - Battles already mustered to;
 
-## ThreatGrandFleets (650 lines)
+## ThreatGrandFleets (611 lines)
 - `ThreatGrandFleets.GrandFleet()` :54 - System id -> timestamp a leg was called off over it (calledOff);
 - `ThreatGrandFleets.of(String factionId)` :67
 - `ThreatGrandFleets.daily(Random random)` :78 - Once a day (ThreatWarCouncil.advance):
@@ -1995,17 +1995,17 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatGrandFleets.basesFor(String fid, StarSystemAPI s)` :179 - The faction's bases (its own, and allies' staging hosts) in reach of the system, nearest first.
 - `ThreatGrandFleets.ly(StarSystemAPI a, StarSystemAPI b)` :188
 - `ThreatGrandFleets.muster(FactionAPI faction, Random random)` :193
-- `ThreatGrandFleets.chainFrom(GrandFleet g, String observer, StarSystemAPI from, float size, Map<StarSystemAPI, List<MarketAPI>> hives, int n, List<StarSystemAPI> skip)` :304 - The next n known Threat systems a grand fleet of size would hop to from from:
-- `ThreatGrandFleets.heldChain(GrandFleet g, String observer, StarSystemAPI target, float size, Map<StarSystemAPI, List<MarketAPI>> hives, int n)` :332 - The chain the muster banks for.
-- `ThreatGrandFleets.chainNames(List<StarSystemAPI> chain)` :353 - ", then X, Y" for the log, or nothing.
-- `ThreatGrandFleets.launch(GrandFleet g, FactionAPI faction, MarketAPI base, StarSystemAPI target, List<MarketAPI> targets, List<Integer> sizes, float fp, float passage, float ordnance, float suppliesWant, float cruise, Random random)` :364 - The first leg sails:
-- `ThreatGrandFleets.params(FactionAPI faction, MarketAPI base, StarSystemAPI system, List<MarketAPI> targets, List<Integer> sizes, float cruise, Random random)` :417 - The leg's expedition params:
-- `ThreatGrandFleets.legDone(ThreatPurgeFGI purge, boolean forced)` :448 - A leg is done with its system - its raid finished, or (forced) it can do nothing more there.
-- `ThreatGrandFleets.hopNeed(GrandFleet g, StarSystemAPI here, StarSystemAPI s, MarketAPI base, int points, float rate, List<MarketAPI> targets, float reserveDays)` :549 - What a hop from here to s needs aboard:
-- `ThreatGrandFleets.hop(ThreatPurgeFGI old, GrandFleet g, FactionAPI faction, MarketAPI base, StarSystemAPI here, StarSystemAPI next, List<MarketAPI> targets, float fp, float passage)` :559 - The next leg:
-- `ThreatGrandFleets.home(ThreatPurgeFGI purge, GrandFleet g, String why)` :597 - The leg turns home at once (ThreatPurgeFGI.callOffShort's shape), saying why.
-- `ThreatGrandFleets.ended(ThreatPurgeFGI purge, float keep)` :606 - The grand fleet is home or gone (ThreatPurgeFGI.notifyEnding, not a hop).
-- `ThreatGrandFleets.boardLine(String factionId)` :630 - The faction tab's one line:
+- `ThreatGrandFleets.chainFrom(GrandFleet g, String observer, StarSystemAPI from, float size, Map<StarSystemAPI, List<MarketAPI>> hives, int n, List<StarSystemAPI> skip)` :296 - The next n known Threat systems a grand fleet of size would hop to from from:
+- `ThreatGrandFleets.heldChain(GrandFleet g, String observer, StarSystemAPI target, float size, Map<StarSystemAPI, List<MarketAPI>> hives, int n)` :324 - (Unused since 2026-10-27 - no kill bank;
+- `ThreatGrandFleets.chainNames(List<StarSystemAPI> chain)` :345 - ", then X, Y" for the log, or nothing.
+- `ThreatGrandFleets.launch(GrandFleet g, FactionAPI faction, MarketAPI base, StarSystemAPI target, List<MarketAPI> targets, List<Integer> sizes, float fp, float passage, float ordnance, float suppliesWant, float cruise, Random random)` :356 - The first leg sails:
+- `ThreatGrandFleets.params(FactionAPI faction, MarketAPI base, StarSystemAPI system, List<MarketAPI> targets, List<Integer> sizes, float cruise, Random random)` :410 - The leg's expedition params:
+- `ThreatGrandFleets.legDone(ThreatPurgeFGI purge, boolean forced)` :441 - A leg is done with its system - its raid finished, or (forced) it can do nothing more there.
+- `ThreatGrandFleets.hopNeed(GrandFleet g, StarSystemAPI here, StarSystemAPI s, MarketAPI base, int points, float rate, List<MarketAPI> targets, float reserveDays)` :510 - What a hop from here to s needs aboard:
+- `ThreatGrandFleets.hop(ThreatPurgeFGI old, GrandFleet g, FactionAPI faction, MarketAPI base, StarSystemAPI here, StarSystemAPI next, List<MarketAPI> targets, float fp, float passage)` :520 - The next leg:
+- `ThreatGrandFleets.home(ThreatPurgeFGI purge, GrandFleet g, String why)` :558 - The leg turns home at once (ThreatPurgeFGI.callOffShort's shape), saying why.
+- `ThreatGrandFleets.ended(ThreatPurgeFGI purge, float keep)` :567 - The grand fleet is home or gone (ThreatPurgeFGI.notifyEnding, not a hop).
+- `ThreatGrandFleets.boardLine(String factionId)` :591 - The faction tab's one line:
 
 ## ThreatGroundDefenses (78 lines)
 - `ThreatGroundDefenses.apply()` :32
@@ -3737,7 +3737,7 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPosture.compare(MarketAPI a, MarketAPI b)` :1938
 - `ThreatPosture.k(float fp)` :1950
 
-## ThreatPurgeFGI (3338 lines)
+## ThreatPurgeFGI (3335 lines)
 - `ThreatPurgeFGI.ThreatPurgeFGI(GenericRaidParams params, boolean playerCommissioned)` :115
 ### THE GRAND FLEET (ThreatGrandFleets, the user 2026-10-26)
 - `ThreatPurgeFGI.setGrandFleet(int leg)` :133 - The entity the next constructed expedition sails FROM in place of its source - a grand fleet's hop, the system it just fought in.
@@ -3867,28 +3867,28 @@ section banners inside a class. Grep a word of the behaviour ("landing", "bounty
 - `ThreatPurgeFGI.dailyWorlds(SiegeRaidAction action)` :2756 - The worlds the daily siege takes in turn:
 - `ThreatPurgeFGI.dailyWorld(SiegeRaidAction action)` :2776 - The world the daily siege is over:
 - `ThreatPurgeFGI.dailyDay(SiegeRaidAction action, RouteSegment seg)` :2811 - One siege day over the world the daily siege is at:
-- `ThreatPurgeFGI.landStaying(SiegeRaidAction action, MarketAPI w, String why)` :2971 - A staying grand fleet's landing:
-- `ThreatPurgeFGI.stayWindow(RouteSegment seg)` :2984 - A staying grand fleet's segment never closes under it:
-- `ThreatPurgeFGI.endWorld(SiegeRaidAction action, MarketAPI w, String why, boolean passes)` :2996 - Ends the daily siege of a world.
-- `ThreatPurgeFGI.dailyDone(SiegeRaidAction action, RouteSegment seg)` :3022 - Every world done with:
-- `ThreatPurgeFGI.dailyAutoresolve(SiegeRaidAction action)` :3037 - Vanilla's autoresolve, for a siege the daily siege has taken - from any of its entries:
-- `ThreatPurgeFGI.dailySummary(String name, int days, String outcome)` :3052 - The one line a world's daily siege ends with.
-- `ThreatPurgeFGI.resetWorld()` :3057
-- `ThreatPurgeFGI.dailyKey(MarketAPI w)` :3065
-- `ThreatPurgeFGI.whereName(SiegeRaidAction action)` :3069
-- `ThreatPurgeFGI.livePoints(List<CampaignFleetAPI> fleets)` :3075 - Fleet points of the fleets in the list still alive.
-- `ThreatPurgeFGI.addRouteLoss(float share)` :3084 - Books a loss of share of the flotilla as route damage, as vanilla's autoresolve does:
-- `ThreatPurgeFGI.abstractTroops(MarketAPI market)` :3093 - The ground strength an unspawned expedition would land:
-- `ThreatPurgeFGI.ourFactionId()` :3099
-- `ThreatPurgeFGI.waitsInOrbit(MarketAPI market)` :3109 - Whether a pass here should wait rather than spend itself:
-- `ThreatPurgeFGI.combinedRaidStr(MarketAPI market, float fallback)` :3123 - The expedition's total ground strength against a market:
-- `ThreatPurgeFGI.raidWeight(String commodityId)` :3165 - What one unit of hive-wide availability of each commodity is worth taking away.
-- `ThreatPurgeFGI.pickRaidTarget(MarketAPI market)` :3196 - The industry whose disruption takes the most from the hive, scored on this world right now - the same reasoning the mission board applies:
-- `ThreatPurgeFGI.raidValue(MarketAPI market, Industry ind)` :3216 - This industry's raid value on this world, 0 for anything not worth a landing.
-- `ThreatPurgeFGI.estimateMarineLosses(MarketAPI market, float raidStr, boolean success)` :3258 - Casualty ESTIMATE for the after-action report - NPC ground actions are abstract (no marines are actually simulated), so this mirrors the shape of the player-side loss math:
-- `ThreatPurgeFGI.notifyActionFinished(com.fs.starfarer.api.impl.campaign.intel.group.FGAction action)` :3279 - The sitrep goes out the moment the siege operations finish - when the payload action completes and the fleets turn for home - not when they arrive weeks later.
-- `ThreatPurgeFGI.notifyEnding()` :3291
-- `ThreatPurgeFGI.postSiegeReport()` :3303 - Posts the after-action sitrep once, however the expedition ended.
+- `ThreatPurgeFGI.landStaying(SiegeRaidAction action, MarketAPI w, String why)` :2968 - A staying grand fleet's landing:
+- `ThreatPurgeFGI.stayWindow(RouteSegment seg)` :2981 - A staying grand fleet's segment never closes under it:
+- `ThreatPurgeFGI.endWorld(SiegeRaidAction action, MarketAPI w, String why, boolean passes)` :2993 - Ends the daily siege of a world.
+- `ThreatPurgeFGI.dailyDone(SiegeRaidAction action, RouteSegment seg)` :3019 - Every world done with:
+- `ThreatPurgeFGI.dailyAutoresolve(SiegeRaidAction action)` :3034 - Vanilla's autoresolve, for a siege the daily siege has taken - from any of its entries:
+- `ThreatPurgeFGI.dailySummary(String name, int days, String outcome)` :3049 - The one line a world's daily siege ends with.
+- `ThreatPurgeFGI.resetWorld()` :3054
+- `ThreatPurgeFGI.dailyKey(MarketAPI w)` :3062
+- `ThreatPurgeFGI.whereName(SiegeRaidAction action)` :3066
+- `ThreatPurgeFGI.livePoints(List<CampaignFleetAPI> fleets)` :3072 - Fleet points of the fleets in the list still alive.
+- `ThreatPurgeFGI.addRouteLoss(float share)` :3081 - Books a loss of share of the flotilla as route damage, as vanilla's autoresolve does:
+- `ThreatPurgeFGI.abstractTroops(MarketAPI market)` :3090 - The ground strength an unspawned expedition would land:
+- `ThreatPurgeFGI.ourFactionId()` :3096
+- `ThreatPurgeFGI.waitsInOrbit(MarketAPI market)` :3106 - Whether a pass here should wait rather than spend itself:
+- `ThreatPurgeFGI.combinedRaidStr(MarketAPI market, float fallback)` :3120 - The expedition's total ground strength against a market:
+- `ThreatPurgeFGI.raidWeight(String commodityId)` :3162 - What one unit of hive-wide availability of each commodity is worth taking away.
+- `ThreatPurgeFGI.pickRaidTarget(MarketAPI market)` :3193 - The industry whose disruption takes the most from the hive, scored on this world right now - the same reasoning the mission board applies:
+- `ThreatPurgeFGI.raidValue(MarketAPI market, Industry ind)` :3213 - This industry's raid value on this world, 0 for anything not worth a landing.
+- `ThreatPurgeFGI.estimateMarineLosses(MarketAPI market, float raidStr, boolean success)` :3255 - Casualty ESTIMATE for the after-action report - NPC ground actions are abstract (no marines are actually simulated), so this mirrors the shape of the player-side loss math:
+- `ThreatPurgeFGI.notifyActionFinished(com.fs.starfarer.api.impl.campaign.intel.group.FGAction action)` :3276 - The sitrep goes out the moment the siege operations finish - when the payload action completes and the fleets turn for home - not when they arrive weeks later.
+- `ThreatPurgeFGI.notifyEnding()` :3288
+- `ThreatPurgeFGI.postSiegeReport()` :3300 - Posts the after-action sitrep once, however the expedition ended.
 
 ## ThreatRaiders (372 lines)
 - `ThreatRaiders.homeName()` :60

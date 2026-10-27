@@ -43,18 +43,16 @@ own orders are untouched.
   (`IncursionManager.systemSwarms`, the faction's last report) x `grandFleetOutweigh` (1.0) are
   within the muster size, and that no leg was called off over within `grandFleetRetryDays`
   (60). None: it keeps mustering and the board says what outweighs it.
-- **It saves up for the kills and the cruise.** The base banks the passage to that world, the
-  fuel that razes every hive there as they will stand on arrival (`ThreatStrata.atArrival` x
-  `bombardFuelPerStratum` x `grandFleetOrdnanceMargin` 2; `ThreatGrandFleets.razeFuel`) - and,
-  since 2026-10-27 (the user, after gf2: a one-kill bank never paid a hop), the same for the
-  next `grandFleetKills` - 1 (default 2 kills) nearest worlds it outweighs from there, with the
-  passages between them and the passage home from the last (`chainFrom`); a world once in the
-  chain stays banked while it stands and was not called off over (`heldChain`, the user
-  2026-10-27 after gf5 - a day's sighting is weighed at the hop, not at the muster) - and
-  `grandFleetCruiseDays` (120) of the fleet's supplies, and takes **every** marine and
-  armament the base and its donors hold - no landing arithmetic. Short of that it waits and
-  the staging planner fills the base (as today's staged hammers). Hulls, passage, the kill's
-  fuel and the cruise's supplies are the only things that hold it.
+- **It sails on hulls, the passage and the cruise's supplies - the razing fuel is taken as found**
+  (the user, 2026-10-27 12:40, option 1 on hw288c: "every attack goes with whatever it has, they can
+  still land marines and defend the orbit" - section 12). The base banks the passage to that world
+  (`IncursionManager.expeditionPassage`) and `grandFleetCruiseDays` (120) of the fleet's supplies,
+  and takes **every** marine, armament and fuel unit the base and its donors hold above their
+  reserve (the passage first) - no landing arithmetic, no kill bank. Short of hulls, passage or
+  supplies it waits and the staging planner fills the base (the convoys stage the target's razing
+  fuel, `razeFuel`, as a want, but it never holds the sail). SUPERSEDED (2026-10-26 to 27): the
+  bank of the target's razing x `grandFleetOrdnanceMargin` for `grandFleetKills` worlds and the
+  passages between (`heldChain`, `chainFrom` - kept in the source, unused).
 - **It flies to the nearest Threat world and destroys it.** Nearest by passage from where
   the fleet is, not from home. At the world: its ships fight whatever holds the orbit (a
   fleeing fleet holds nothing - built 2026-10-26); its fuel razes strata every day
@@ -92,10 +90,10 @@ own orders are untouched.
 | `grandFleetsPerFaction` | 1 | grand fleets mustering or out at once |
 | `grandFleetShare` | 0.5 | share of the navy's standing FP that musters |
 | `grandFleetMinFP` / `grandFleetMaxFP` | 300 / 3000 | the muster's floor and cap |
-| `grandFleetKills` | 2 | Threat worlds the fuel bank covers before it sails: the target, then the next nearest from there |
+| `grandFleetKills` | 2 | UNUSED since 2026-10-27 (no kill bank, section 12) |
 | `grandFleetCruiseDays` | 120 | days of supplies banked before it sails |
 | `grandFleetReserveDays` | 20 | days of supplies kept beyond the passages when it hops |
-| `grandFleetOrdnanceMargin` | 2 | fuel banked = the targets' strata on arrival x the fuel a stratum x this |
+| `grandFleetOrdnanceMargin` | 2 | UNUSED since 2026-10-27 (no kill bank, section 12) |
 | `grandFleetOutweigh` | 1.0 | a world is picked only where the fleet's FP cover this x the swarms last seen there |
 | `grandFleetRetryDays` | 60 | a system a leg was called off over is not picked again for this long |
 | `grandFleetPointsPerFleet` | 10 | difficulty points a fleet is built of (25 FP a point) |
@@ -329,3 +327,26 @@ or no longer a hive, logging "Siege of X: gone, passed over - the stage moves on
 `notifyActionFinished` runs `legDone`, the leg hops or turns home. Every live expedition gets it,
 not only grand fleets; the daily siege already passes dead worlds itself.
 
+## 12. Round 58 hw288 (2026-10-27, the first day-0 games): the fuel bank never fills - DECISION, fuel as found
+
+hw288 (set B from day 0, the 11:34 jar) sailed grand fleets on two seeds (a: the Independents' 3,000 FP
+cruise destroyed 8 worlds in 3 legs and came home at 99%; b: the Hegemony 4 worlds, the Church 3) and
+none on the third: every mustering base on hw288c read "fuel 0 of 180,000-355,000" for 1,300 days -
+the Independents' Nortia, the Hegemony's Citadel Arcadia, Tri-Tachyon's Skathi and the League's Yesod
+all with a fuel income of 0 a month ("short 6u DEPOT TOO LOW", the few thousand held inside the
+reserve floor), while the nearest hive sat in their own system and its razing bill grew with it. The
+user: "i thought the point was every attack goes with whatever it has, they can still land marines no
+and defend the orbit? why is fuel stopping them?" - and chose option 1 over shipping fuel to the
+bases. BUILT (12:50, untested):
+
+- `ThreatGrandFleets.muster` holds on hulls, the passage out and the cruise's supplies only; the
+  target's razing fuel is staged for by the convoys but never gates the sail; no chain is banked.
+- `launch` draws every pooled fuel unit above the reserve (the passage first); the log reads "fuel
+  (passage P, N to raze with; the targets take R)".
+- `hopNeed` wants the passage there only; the razing at the next world is whatever is left.
+- `ThreatPurgeFGI` (the stay): dry no longer ends it - with marines aboard it lands them, with a front
+  below it holds the orbit; only nothing to land and no front moves the leg on.
+
+What to see in round 59: grand fleets sailing on every seed once the war opens (the hw288c bases had
+hulls and marines); cruises ending "home after N legs" with worlds destroyed by fronts rather than
+fuel; the swarm's count against hw288's 272 / 280 / 350 at w2,400-2,700.
