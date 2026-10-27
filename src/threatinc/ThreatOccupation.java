@@ -528,7 +528,8 @@ public class ThreatOccupation {
 		front.orbitQuietDays += elapsedDays;
 		if (front.orbitQuietDays >= ThreatIncConfig.defendLingerDays()) {
 			if (absorb(front, market, ThreatStrata.fpOf(flow))) return;
-			if (standDown(front, market)) return; // the pool is full (or nothing fits): the rest go home
+			// the pool full (not a tick whose bite rounds below a hull - hw298: 10 swarms sent home at 0 of 3,200): the rest go home
+			if (cap(market) - held(front, market) < ThreatStrata.strataOf(1f) && standDown(front, market)) return;
 		}
 		if (holdsAll(front, market) && ThreatGroundFronts.holdGap(front, market) <= 0f
 				&& ThreatGroundFronts.counterGap(front, market) <= 0f) {
@@ -607,8 +608,8 @@ public class ThreatOccupation {
 		}
 		if (sent == 0) return false;
 		ThreatIncConfig.log("Occupation: " + market.getName() + " stands down " + sent + " swarm(s), " + (int) fp
-				+ " FP, quiet " + (int) front.orbitQuietDays + " d and the pool full (" + (int) front.budPool
-				+ " of " + (int) cap(market) + " strata)");
+				+ " FP, quiet " + (int) front.orbitQuietDays + " d and the pool full (holds " + (int) held(front, market) + " of " + (int) cap(market)
+				+ " strata, pool " + (int) front.budPool + ")");
 		return true;
 	}
 

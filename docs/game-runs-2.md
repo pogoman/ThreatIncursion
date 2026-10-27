@@ -1305,3 +1305,14 @@ Set B from day 0 on jar 21:02:26 (satBombFirst + the merged occupied-industry im
 Set A, TWO games (the user on the machine; three games x 3.6 GB left 585 MB of 16 GB), from day 0 on jar 23:00:49 = phase 1b cleanup + the unspawned strike lands on arrival + NPC sat bomb only where it disrupts + the user's three performance decisions (`performance.md` DECIDED). Verify: "stands down N swarm(s)" and "Occupation: X absorbs ... of <strike>" lines, strikes spawned as about half the fleets (hw297a 5-39), patrol census ~30 out at 120 FP (was ~60 at 30), days a minute late in the war above hw296's 20, 0 "Daily strike ... bombarded", 0 exceptions. Overnight: rounds 67-69 hw299 (set B) / hw300 (set A) / hw301 (set B), three games each, from handover-25-26.sh (ThreatIncSeeds26 / WatchSeeds26).
 
 **Did the humans ever push the Threat off a world (the user, 23:10)?** Practically never: over the nine games of rounds 63-65, Threat landings destroyed 0-2 a game (all early, small), beachheads overrun 0-4, districts retaken 4-12 a game out of 130-210 taken; no occupied world was ever freed.
+
+**First poll (23:17, w1,650-1,750):** hw298a 142 hives / hw298b 135, 0 mod exceptions (the two the
+checker counts are vanilla ship-hull loading noise), 0 "Daily strike ... bombarded", stand-downs
+4 / 15, absorbs 10 / 17, strikes spawn as 2-14 fleets (was 5-39), the patrol census 13-16 out at
+2,100-2,400 FP (was ~60 fleets of 30). Grand fleet sails 4 / 12, sat bombs 0 / 1.
+**Bug found (23:15):** "Athulf stands down 10 swarm(s), 14015 FP, quiet 10 d and the pool full (0
+of 3200 strata)" (the line printed the pool, not `held`; it now prints both) - `standDown` ran on an EMPTY pool because `absorb` returned false (its per-tick
+bite rounds below one hull), so ten swarms sailed home that should have become strata. FIXED
+23:18: the stand-down runs only when the pool has less than one hull-worth of room
+(`cap - held < strataOf(1)`); scratch javac clean; `handover-25-26b.sh` rebuilds the jar, commits
+and starts rounds 67-69 on it when hw298 ends.
