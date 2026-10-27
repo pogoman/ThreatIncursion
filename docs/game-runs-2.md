@@ -1316,3 +1316,30 @@ bite rounds below one hull), so ten swarms sailed home that should have become s
 23:18: the stand-down runs only when the pool has less than one hull-worth of room
 (`cap - held < strataOf(1)`); scratch javac clean; `handover-25-26b.sh` rebuilds the jar, commits
 and starts rounds 67-69 on it when hw298 ends.
+
+**hw298 cap (23:59, 58 minutes for two games; hw296's three took 75):**
+
+| game | war day | hives | worlds the occupation touched | districts retaken | grand fleet sails | sat bombs | stand-downs / absorbs | late war d/min (w3,000-3,500) | exc |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hw298a | 3,495 | 309 | 32 | 17 | 6 | 1 | 40 / 55 | 28 | 0 |
+| hw298b | 3,812 | 317 | 45 | 11 | 12 | 1 | 117 / 86 | 38 | 0 |
+
+- Same war as hw296 (283 / 220 / 180 hives at w3,100-3,300 there; here 309 / 317 at w3,500-3,800)
+  with a third fewer fleets: strikes spawn as 2-42 fleets (the 60-ship pack), the patrol census
+  peaks at 43 out + 28 returning (was ~60 + 60 of 30 FP), 0 "Daily strike ... bombarded", 0 sat
+  bombs wasted on hives they would not disrupt (1 dropped a game). Late-war rate 28-38 days a
+  minute against hw296's 20 - but two games on the machine, not three; hw300 (three) is the
+  like-for-like read.
+- Humans retook 11-17 districts a game and freed no world (as rounds 63-65).
+- The stand-down ran 40 / 117 times; the Athulf case (10 swarms home at 0 of 3,200) is the
+  sub-hull-bite bug above, fixed in the jar the overnight rounds run on (00:00:03, 7290e50f).
+
+**Round 67 hw299 LOST at launch (23:58-23:59):** the one-shot task `ThreatIncSeeds26` had been
+created `/sc once /st 23:58` as a placeholder to be started by `schtasks /run`, and it fired
+itself at 23:58:00 - a minute before hw298 ended - so hw299's three games launched beside hw298's
+two, and the handover's kill at 23:59:16 took them with hw298. Driver 26 went on to hw300 (set
+A, 00:00:08, on the rebuilt jar) and will run hw301 (set B); its watcher died waiting on hw299
+(`watch-seeds-26b.sh` watches hw300-hw301 instead, task `WatchSeeds26b`). hw299's set B re-runs
+as **hw302, round 70** (`run-seeds-27.ps1`, `handover-26-27.sh` starts it when hw301 ends).
+Rule: a one-shot task meant for `schtasks /run` gets a far-future start date (`/sd 01.01.2030`),
+never today's time.
