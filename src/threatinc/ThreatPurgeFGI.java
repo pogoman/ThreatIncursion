@@ -1898,6 +1898,26 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		}
 
 		/**
+		 * A world gone from the economy, or no longer the Threat's, is done with: its passes are spent so
+		 * vanilla's stage ends with the last of them and the fleets move on (the user's game, 2026-10-27:
+		 * the Independents' grand fleet razed Sindria, cleansed Askonia and then sat over the dead world
+		 * with nothing to attack - performRaid never counts a pass against a world not in the economy,
+		 * so the stage ran its full duration). Live only; the daily siege passes a dead world itself.
+		 */
+		protected void passDeadWorlds() {
+			if (!isActionFinished() && intel instanceof ThreatPurgeFGI && getParams() != null
+					&& getParams().allowedTargets != null && !((ThreatPurgeFGI) intel).dailySiege) {
+				for (MarketAPI t : new ArrayList<MarketAPI>(getParams().allowedTargets)) {
+					if (t == null || getRaidCount().getCount(t) >= getParams().raidsPerColony) continue;
+					if (t.isInEconomy() && ThreatGroundFronts.isHiveTarget(t)) continue;
+					passesSpent(t);
+					ThreatIncConfig.log("Siege of " + t.getName() + ": " + (t.isInEconomy() ? "no longer a hive" : "gone")
+							+ ", passed over - the stage moves on");
+				}
+			}
+		}
+
+		/**
 		 * The worlds it razes come first ({@link #razingFirst}); fleets spawned
 		 * in the middle of a daily siege take it up where it is
 		 * ({@link #dailyStages}).
@@ -1991,6 +2011,7 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		 */
 		@Override
 		public void directFleets(float amount) {
+			passDeadWorlds();
 			super.directFleets(amount);
 			if (isActionFinished() || intel == null) return;
 			// fleets still mustering at the source are not strays (vanilla's own guard)

@@ -315,3 +315,17 @@ Eradicated". Every section-9 fix confirmed:
   -NoSave` (run.ps1 `-SaveEvery 0`) now skips the round-end quicksave; the next run on this save
   uses it.
 
+## 11. The user's manual test (2026-10-27 09:10): fleets idle over a dead Sindria - FIXED (09:32 jar)
+
+The Independents' grand fleet (1,500 FP, 6 fleets) sailed for Askonia with the player there, landed
+1,741 marines on Sindria (a hive in this save), razed it ("Hive Eradicated", "System Cleansed:
+Askonia") and then sat over the dead world: "loads of fleets over Sindria none attacking". Live,
+vanilla's stage ends when every target's passes are spent or its duration (the whole cruise) runs
+out, and `SiegeRaidAction.performRaid` never counts a pass against a world no longer in the economy -
+so the dead world held the stage, `legDone` never ran and the fleets neither hopped nor went home
+(gf5's League leg at Askonia lingered the same way before its late hop). FIXED:
+`SiegeRaidAction.passDeadWorlds` (from `directFleets`) spends the passes of any target that is gone
+or no longer a hive, logging "Siege of X: gone, passed over - the stage moves on"; the stage ends,
+`notifyActionFinished` runs `legDone`, the leg hops or turns home. Every live expedition gets it,
+not only grand fleets; the daily siege already passes dead worlds itself.
+
