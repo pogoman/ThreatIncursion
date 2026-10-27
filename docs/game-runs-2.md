@@ -1264,3 +1264,30 @@ kill short (`grand-fleet.md` 10). Hives 47 -> 116 over the run.
   **hw292 end (17:40, the 75-minute cap at w2,946 / 2,945 / 3,144 - the games ran at 31-34 days a minute against ~50 before, the Infestation Swarm fleets loading the sim; 0 exceptions): THE OCCUPATION HOLDS THE CORE, THE SWARM IS SMALLER, THE NPC OFFENCE IS GONE.** a AmaruDugas 181 hives (size 894; 81 strikes, 24 size-ups to 8), b PoseidonDeimos 206 (1,356; 83 strikes, 48 to 8), c AresDaniels 252 (1,456; 77 strikes, 18 to 8) - hw290 (set A, the conversion jar) had 254 / 229 / 209 at w2,250-2,365 and 439 / 439 / 453 at d3,800 with 15 / 10 / 18 human worlds consumed; here 0 consumed, 35 / 43 / 45 distinct human worlds occupied ("the swarm claims" 117 / 111 / 152 industries, "holds every district" 68 / 87 / 106), Infestation Swarms budded 934 / 1,552 / 1,431, industries reclaimed 80 / 32 / 140 ("Orthrus reclaims Mining, 1 still claimed"). Grand fleets 3 / 3 / 3 sails and 6 / 13 / 13 worlds destroyed in ~3,000 days (hw290: 23 / 28 / 24 sails, 17 / 42 / 49) - every faction held on "hulls N of N FP" or "supplies N of N" at its base all war: the occupied home worlds feed the swarm, not the navy. Snapshots `save_<Sector>_<id>hw292[abc]d<war>` every 300 days to d2,859-3,0xx. hw293 (set B) follows on the same jar.
 
 **hw293 STOPPED 18:17 (the user: "its invalid anyway") at w2,217 / ~2,100 / 2,427:** 194 / 172 / 204 hives, Infestation Swarms budded 490 / 486 / 568, grand fleets 12 / 10 / 2 sails, 0 exceptions - the same shape as hw292. Round 63 hw294 (set A) / hw295 (set B) from day 0 on THE HIVE POOL jar 18:19:09 (`docs/occupation.md` 6): one pool at a hive's rate, shifted between the ground and the orbit.
+
+## 72. hw294 - round 63, THE HIVE POOL from day 0 (2026-10-27 18:20-19:39)
+
+Set A on the hive-pool jar 18:19:09 (f1f78244), 75 minutes, 38-44 days a minute; hw295 (set B)
+stopped before it ran, superseded by v3.
+
+| game | war day | hives | worlds occupied / consumed | pool sends / buds / short / absorbs / up | grand fleet sails | exc |
+| --- | --- | --- | --- | --- | --- | --- |
+| hw294a | 3,691 | 332 | 48 / 0 | 1,927 / 1,184 / 347 / 1,023 / 86 | 6 | 0 |
+| hw294b | 3,505 | 287 | 43 / 0 | 1,379 / 551 / 394 / 682 / 72 | 9 | 0 |
+| hw294c | 3,821 | 381 | 43 / 0 | 1,879 / 546 / 343 / 759 / 74 | 3 | 0 |
+
+- The pool runs clean and does what section 6 of `occupation.md` says: troops go down to a short
+  front in small lots ("6 short"), one whole swarm rises against a force the standing swarms do
+  not outweigh (124-254 FP against 200-240 FP over it), "cannot match" leaves the strata in the
+  ground, quiet orbits absorb. Relief sorties fell from 5,972 (hw292) to 435-536.
+- **Bug: the pool ate the navy.** `absorb` took ANY swarm Defend fleet over the world, strike
+  fleets included ("Sindria absorbs 26 FP of First Strike"); over 3,700 days 682-1,023 absorbs
+  turned the strike fleets defending occupied worlds into pools of up to 179,185 strata
+  (Cibola, size 6, cap 12,800), budded back a top-up at a time. FIXED 19:40: the pool absorbs
+  only swarms it budded (`ThreatOccupation.BUD_KEY`), and neither an absorb nor a re-embark
+  takes it above the cap.
+- Buds are top-ups to hostile x 1.25 above what stands, so one every ~150 days a world; not a
+  drip, kept.
+
+Round 64 hw296 (set A) / hw297 (set B) from day 0 on the v3 jar 19:40:43: BACK TO VANILLA
+(`suppression-balance.md` 10) + the pool fix.

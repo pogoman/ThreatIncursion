@@ -314,3 +314,12 @@ rate x share and 0 at the cap; a relief over an occupied world draws one whole s
 it or none; a quiet orbit absorbs the swarm within about 10 days plus the flow; a size-8
 occupied world no longer fabricates 11k FP a war; grand fleets sail again (hw290 21 / 25 /
 9 sails) and the navies come off relief.
+
+**hw294 (round 63, set A from day 0, jar 18:19:09, capped at w3,500-3,800):** 0 exceptions, 0
+worlds consumed, 43-48 occupied, relief sorties 435-536 (hw292 5,972), sends 1,379-1,927, buds
+546-1,184, absorbs 682-1,023. **Fix 1 (19:40):** the pool had absorbed every swarm Defend fleet
+over the world - the strike fleets that came to defend it - into pools of up to 179k strata
+(Cibola, cap 12,800) and budded them back a top-up at a time. Now `absorb` takes only swarms the
+pool budded (`BUD_KEY` in fleet memory, set in `bud`), `held` counts only those (`buddedFP`;
+`standingFP` still counts every swarm for the want), and neither an absorb nor a re-embark takes
+the pool above `cap`. `game-runs-2.md` 72.

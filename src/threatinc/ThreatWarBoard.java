@@ -1100,7 +1100,6 @@ public class ThreatWarBoard {
 		names.add("World"); fracs.add(.13f);
 		if (showSystem) { names.add("System"); fracs.add(.11f); }
 		names.add("Force"); fracs.add(.12f);
-		names.add("Disruption"); fracs.add(.08f);
 		names.add("State"); fracs.add(.075f);
 		names.add("Held"); fracs.add(.055f);
 		names.add("Stance"); fracs.add(.085f);
@@ -1126,23 +1125,21 @@ public class ThreatWarBoard {
 		main.addTableHeaderTooltip(strengthCol, "Force: " + side + " strength, then the enemy's. "
 				+ "-> " + side + " attacking, <- the enemy attacking, <-> both, - neither. "
 				+ "A side gains ground by what it outweighs the other's cover by.");
-		main.addTableHeaderTooltip(strengthCol + 1, "Disruption of the world's military structures, "
-				+ "averaged, as a share of the most a siege inflicts.");
-		main.addTableHeaderTooltip(strengthCol + 2, "The line from " + side + " side: gaining or losing "
+		main.addTableHeaderTooltip(strengthCol + 1, "The line from " + side + " side: gaining or losing "
 				+ "ground, grinding with both sides pushing, stalled, overrunning or overrun.");
-		main.addTableHeaderTooltip(strengthCol + 3, "Districts or strata: taken by " + side + " landing, "
+		main.addTableHeaderTooltip(strengthCol + 2, "Districts or strata: taken by " + side + " landing, "
 				+ "or still standing on " + side + " world.");
-		main.addTableHeaderTooltip(strengthCol + 4, "Stance of " + side + " side: push moves the line, "
+		main.addTableHeaderTooltip(strengthCol + 3, "Stance of " + side + " side: push moves the line, "
 				+ "dug in holds from cover, regrouping awaits orders.");
-		main.addTableHeaderTooltip(strengthCol + 5, "Lost a day by " + side + " side at the current "
+		main.addTableHeaderTooltip(strengthCol + 4, "Lost a day by " + side + " side at the current "
 				+ "stances and supply.");
-		main.addTableHeaderTooltip(strengthCol + 6, "Days until " + side + " side takes the next district "
+		main.addTableHeaderTooltip(strengthCol + 5, "Days until " + side + " side takes the next district "
 				+ "or stratum at the line's current rate; - while the line stands or moves against it.");
-		main.addTableHeaderTooltip(strengthCol + 7, "Days of heavy armaments left to " + side + " side "
+		main.addTableHeaderTooltip(strengthCol + 6, "Days of heavy armaments left to " + side + " side "
 				+ "at the current burn; the swarm fights on none.");
-		main.addTableHeaderTooltip(strengthCol + 8, "Days until " + side + " side wins the world at the "
+		main.addTableHeaderTooltip(strengthCol + 7, "Days until " + side + " side wins the world at the "
 				+ "line's current rate: the last layer taken, or the landing pushed off.");
-		main.addTableHeaderTooltip(strengthCol + 9, "Whose warships hold the space over the world.");
+		main.addTableHeaderTooltip(strengthCol + 8, "Whose warships hold the space over the world.");
 
 		Fronts result = new Fronts();
 		result.table = table;
@@ -1199,10 +1196,6 @@ public class ThreatWarBoard {
 			cells.add(Alignment.MID);
 			cells.add(text);
 			cells.add(force); i++;
-			// Disruption (the user, 2026-10-24): the besieged world's military structures,
-			// averaged, as a share of the cap - the landing's gain, the world's loss
-			int disruption = Math.round(ThreatGroundFronts.disruptionFraction(m) * 100f);
-			cell(cells, Alignment.MID, disruption <= 0 ? text : weLanded ? pos : neg, disruption + "%"); i++;
 			String line = ThreatGroundFronts.lineState(f, m, weLanded); // THE LINE (2026-10-23), from this side
 			cell(cells, Alignment.MID, lineColor(line, pos, neg, h, text), line); i++;
 			// Held from this side: what our landing has taken, or what still stands on our world
@@ -1469,24 +1462,6 @@ public class ThreatWarBoard {
 					"" + (int) Math.ceil(victory), "" + after);
 		}
 
-		// Disruption
-		ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(m);
-		List<Industry> structures = ThreatGroundFronts.militaryStructures(m);
-		float cap = ThreatGroundFronts.suppressCap(m);
-		List<String> parts = new ArrayList<String>();
-		for (Industry ind : structures) {
-			if (ind == null) continue;
-			parts.add(ind.getCurrentName() + " " + (int) Math.ceil(ThreatGroundFronts.siegeDisruptDays(ind)) + "/" + (int) cap);
-		}
-		tooltip.addPara("Disruption %s = mean(days / %s d cap) over the military structures: " + (parts.isEmpty() ? "none" : join(parts)) + ".", 4f, text, h,
-				Math.round(ThreatGroundFronts.disruptionFraction(m) * 100f) + "%", "" + (int) cap);
-		if (pushing && rate > 0f && moves) {
-			tooltip.addPara("Military structures +%s d disruption a day while the " + Army.toLowerCase() + " advance.", 4f,
-					text, h, f1(ThreatIncConfig.frontWearRate() * rate));
-		} else {
-			tooltip.addPara("Military structures recovering %s d of disruption a day.", 4f, text, h, "1");
-		}
-
 		// Losses: THE ATTRITION RULE (the user, 2026-10-24), the same line for both sides
 		float per = Math.max(1f, ThreatIncConfig.attritionTroopsPer());
 		float xpL = ThreatMarineXP.frontLossMult(f);
@@ -1559,6 +1534,7 @@ public class ThreatWarBoard {
 		} else if (ThreatGroundFronts.swarmBombardContested(f, m)) {
 			tooltip.addPara("Orbit contested: bombardment %s.", 4f, text, h, "0");
 		}
+		ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(m);
 		if (theatre == ThreatGroundFronts.HIVE) {
 			int standing = Math.max(0, m.getSize() - f.strataHeld);
 			int starved = f.sizeAtLanding > 0 ? Math.max(0, f.sizeAtLanding - m.getSize()) : 0;

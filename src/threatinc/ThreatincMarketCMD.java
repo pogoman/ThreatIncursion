@@ -772,6 +772,10 @@ public class ThreatincMarketCMD extends MarketCMD {
 			super.bombardTactical();
 			return;
 		}
+		if (!isThreatTarget()) { // v3 (the user, 2026-10-27): a human world is bombarded as vanilla does it
+			super.bombardTactical();
+			return;
+		}
 		temp.bombardType = BombardType.TACTICAL;
 		temp.willBecomeHostile.clear();
 		temp.willBecomeHostile.add(faction);
@@ -801,13 +805,6 @@ public class ThreatincMarketCMD extends MarketCMD {
 		}
 		for (String line : ThreatGroundFronts.lossLines(playerFleet, day.returnFire)) text.addPara(line, bad);
 		if (day.unrest > 0) text.addPara("Unrest raised to %s.", h, "" + day.unrest);
-		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
-		if (isThreatTarget() && front != null && front.isPlayerOwned()
-				&& ThreatIncConfig.frontsEnabled() && ThreatIncConfig.frontDangerCloseEnabled()) {
-			int loss = (int) Math.ceil(front.marines * ThreatIncConfig.frontDangerCloseLossFraction());
-			text.addPara("Your front marks targets: the Fabrication Core and the port take the day too.");
-			text.addPara("The front loses about %s marines to the barrage.", bad, "" + loss);
-		}
 		int fuel = (int) playerFleet.getCargo().getFuel();
 		text.addPara("The bombardment requires %s fuel. You have %s fuel.", h,
 				"" + temp.bombardCost, "" + fuel);
@@ -853,6 +850,45 @@ public class ThreatincMarketCMD extends MarketCMD {
 	}
 
 	/** The day before it is flown, over a hive: the strata it razes, the size they leave, the fuel from the tanks. */
+	/**
+	 * THE SAT BOMB over a hive (the user, 2026-10-27, docs/suppression-balance.md 10): what it razes,
+	 * what it disrupts, what it costs. No atrocity, no stability.
+	 */
+	protected void satBombPrompt() {
+		temp.bombardType = BombardType.SATURATION;
+		temp.willBecomeHostile.clear();
+		temp.willBecomeHostile.add(faction);
+		temp.bombardmentTargets.clear();
+		Color h = Misc.getHighlightColor();
+		Color bad = Misc.getNegativeHighlightColor();
+		float fp = playerFleet.getFleetPoints();
+		int fuel = (int) playerFleet.getCargo().getFuel();
+		float strata = ThreatSatBomb.strata(market, fp);
+		float now = ThreatStrata.of(market);
+		temp.bombardCost = Math.max(0, Math.round(ThreatSatBomb.price(market, fp)));
+		float left = now - strata;
+		text.addPara("A saturation bombardment:");
+		if (left <= 0f) {
+			text.addPara("    " + market.getName() + " is destroyed.", bad);
+		} else {
+			int sizeAfter = ThreatStrata.sizeOf(left, ThreatColonyManager.maxColonySize(market));
+			if (sizeAfter < market.getSize()) {
+				text.addPara("    Razes %s of %s strata: size %s to %s.", h, ThreatStrata.fmt(strata),
+						ThreatStrata.fmt(now), "" + market.getSize(), "" + sizeAfter);
+			} else {
+				text.addPara("    Razes %s of %s strata.", h, ThreatStrata.fmt(strata), ThreatStrata.fmt(now));
+			}
+			String names = ThreatSatBomb.targetNames(market);
+			if (names.length() > 0) {
+				text.addPara("    Disrupts " + names + " for %s days.", h, "" + (int) ThreatSatBomb.disruptDays());
+			}
+		}
+		text.addPara("The bombardment requires %s fuel. You have %s fuel.", h,
+				Misc.getWithDGS(temp.bombardCost), Misc.getWithDGS(fuel));
+		addBombardConfirmOptions();
+		gateConfirm(fuel >= Math.max(1, temp.bombardCost));
+	}
+
 	protected void strataBombardPrompt() {
 		temp.bombardType = BombardType.SATURATION;
 		temp.willBecomeHostile.clear();
@@ -914,9 +950,16 @@ public class ThreatincMarketCMD extends MarketCMD {
 			return;
 		}
 		if (isThreatTarget()) {
-			strataBombardPrompt();
+			if (ThreatSatBomb.enabled()) satBombPrompt(); else strataBombardPrompt();
 			return;
 		}
+		// v3 (the user, 2026-10-27): a human world is bombarded as vanilla does it
+		super.bombardSaturation();
+		return;
+	}
+
+	/** The razing-bar saturation of a human colony (v2 section 4), unreachable since v3: vanilla's own saturation runs instead. */
+	protected void bombardSaturationV2() {
 		temp.bombardType = BombardType.SATURATION;
 		// hostile list: vanilla's sweep of the factions that care about
 		// atrocities; the owner alone under the waiver
@@ -1025,6 +1068,10 @@ public class ThreatincMarketCMD extends MarketCMD {
 			super.bombardConfirm();
 			return;
 		}
+		if (!isThreatTarget()) { // v3: vanilla's confirm for vanilla's bombardment of a human world
+			super.bombardConfirm();
+			return;
+		}
 		if (temp.bombardType == null) {
 			bombardNeverMind();
 			return;
@@ -1099,7 +1146,8 @@ public class ThreatincMarketCMD extends MarketCMD {
 			Global.getSector().adjustPlayerReputation(
 					new RepActionEnvelope(RepActions.CUSTOM, impact, null, text, true, true), curr.getId());
 		}
-		if (saturation) countAtrocity();
+		boolean satBomb = saturation && isThreatTarget() && ThreatSatBomb.enabled();
+		if (saturation && !satBomb) countAtrocity(); // the sat bomb on a hive is no atrocity (the user, 2026-10-27)
 		if (!isThreatTarget() && market.hasCondition(Conditions.HABITABLE) && !market.hasCondition(Conditions.POLLUTION)) {
 			market.addCondition(Conditions.POLLUTION);
 		}
@@ -1109,7 +1157,14 @@ public class ThreatincMarketCMD extends MarketCMD {
 		float loss;
 		boolean destroyed = false;
 		float strataRazed = 0f;
-		if (saturation) {
+		int disrupted = 0;
+		if (satBomb) {
+			float[] out = ThreatSatBomb.drop(market, fp, Factions.PLAYER, "Player bombardment");
+			loss = 0f;
+			strataRazed = out[0];
+			disrupted = (int) out[1];
+			destroyed = out[2] > 0f;
+		} else if (saturation) {
 			// over a hive the fuel is the prompt's price (phase D): strata for fuel, and no more than paid
 			float[] out = ThreatGroundFronts.saturationSlice(fp, market, 1f, isThreatTarget() ? cost : fuelAboard, true, false,
 					defence, Factions.PLAYER, reason);
@@ -1137,6 +1192,9 @@ public class ThreatincMarketCMD extends MarketCMD {
 			if (strataRazed > 0f) {
 				text.addPara("Razed %s strata; %s stand.", h, ThreatStrata.fmt(strataRazed), ThreatStrata.fmt(ThreatStrata.of(market)));
 			}
+			if (disrupted > 0) {
+				text.addPara("Disrupted %s industries for %s days.", h, "" + disrupted, "" + (int) ThreatSatBomb.disruptDays());
+			}
 			if (market.getSize() < sizeBefore) {
 				text.addPara("Colony size reduced to %s.", bad, "" + market.getSize());
 			}
@@ -1145,7 +1203,6 @@ public class ThreatincMarketCMD extends MarketCMD {
 				text.addPara("Stability of " + name + " reduced by %s.", h, "" + raised);
 			}
 			if (!ThreatGroundFronts.Theatre.of(market).fortifications(market).isEmpty()) {
-				text.addPara("Defences at %s.", h, pct(ThreatGroundFronts.fortificationCondition(market)));
 			}
 			// the suppressed defences in force now, not on the next colony poll
 			ThreatGroundFronts.syncSiegeState(market);
@@ -1203,30 +1260,6 @@ public class ThreatincMarketCMD extends MarketCMD {
 	 * reapply.
 	 */
 	protected void applyDangerClose(float rate) {
-		if (!ThreatIncConfig.frontsEnabled()
-				|| !ThreatIncConfig.frontDangerCloseEnabled()) return;
-		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
-		if (front == null || !front.isPlayerOwned()) return;
-
-		int loss = (int) Math.ceil(front.marines
-				* ThreatIncConfig.frontDangerCloseLossFraction());
-		// through frontLose, or the pool is left dangling above the headcount
-		// and shelling your own troops promotes them (review, 2026-09-08)
-		ThreatMarineXP.frontLose(front, loss);
-
-		List<Industry> deep = new ArrayList<Industry>();
-		Industry core = market.getIndustry(ThreatColonyManager.FABRICATION_CORE);
-		if (core != null) deep.add(core);
-		// never the port (the user, 2026-10-24: bombardment does not disrupt it)
-		ThreatGroundFronts.bombardStructures(market, deep, rate, 1f, 0f);
-
-		text.addPara("Your front marked targets: the Fabrication Core took the day too.");
-		text.addPara("The front lost %s marines to the barrage.", Misc.getNegativeHighlightColor(), "" + loss);
-
-		if (ThreatGroundFronts.groundDown(front)) {
-			ThreatGroundFronts.destroy(market.getId());
-			text.addPara("What was left of the front could not hold its positions "
-					+ "afterward - it has been overrun.", Misc.getNegativeHighlightColor());
-		}
+		if (rate >= 0f) return; // v3 (2026-10-27): danger close is gone with the rest of the custom disruption
 	}
 }

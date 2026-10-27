@@ -18,7 +18,6 @@ threatinc_coreStrataPerSizeMonth,Hive Growth per Month,Double,200,"Strata a well
 threatinc_strikeMinSize,Strike Min Hive Size,Int,4,A hive world must be this size before it launches strikes.,2,8
 threatinc_strikeStrengthMult,Strike Strength,Double,1.0,Multiplier on the size of every Threat strike fleet.,0.5,10
 threatinc_playerGraceDays,Grace Between Strikes on You,Double,120,Fewest days between strikes aimed at your colonies.,0,720
-threatinc_strikeSaturationEnabled,Strikes Raze Instead of Landing,Boolean,false,Off: strikes land armies. On: they saturation-bombard the worlds they reach.,,
 threatinc_conquestConverts,Conquest Seeds a Hive,Boolean,true,A world the swarm takes on the ground becomes a hive. Off: it decivilises. Only with Occupation off.,,
 threatinc_occupationEnabled,Occupation,Boolean,true,"The swarm never takes a human world: its landing claims the world's industries one by one, eats their output and grows on it; the owner keeps the world until the landing is pushed off. Off: a ground victory seeds a hive or decivilises the world.",,
 threatinc_occupationClaimDays,Days per Industry Claimed,Double,30,Days the swarm's landing takes to claim the next industry of a world it holds a district of.,1,365
@@ -36,7 +35,6 @@ threatinc_strikeDetection,Strike Warning,Boolean,true,"A Threat strike is hidden
 groundHeader,Ground War Header,Header,Ground War,Armies on hive worlds and colonies.,,
 threatinc_frontsEnabled,Ground Fronts,Boolean,true,Land marines and armaments on a hive and they stay and fight. Off hides the option.,,
 threatinc_frontAutoPush,Troops Push on Landing,Boolean,true,A landing strong enough to hold attacks the next stratum at once. Off: it waits for your order.,,
-threatinc_frontDangerCloseEnabled,Danger-Close Bombardment,Boolean,true,Tactical bombardment with your own army on the ground costs it marines and hits harder.,,
 threatinc_marineFleetXpTransfer,Fleet Marine Rank Transfers,Boolean,true,A landing inherits your fleet's marine rank and brings its experience back when it withdraws.,,
 threatinc_playerReserveFloorFraction,Your Colony Reserve Floor,Double,0,Share of a colony's stockpile your orders never spend. 0 lets an order commit everything.,0,0.9
 factionsHeader,The Factions Header,Header,The Factions,How the NPC factions fight the war.,,
@@ -71,3 +69,5 @@ threatinc_debugPlayerIgnored,Fleets Ignore You,Boolean,false,No fleet stops for 
 threatinc_debugSimDump,Simulator Dump,Boolean,false,Writes war-state dumps to saves/common. Leave off to play.,,
 threatinc_debugInstantWar,Instant War,Boolean,false,Fires once when toggled on: stands up a mature hive network across the sector. Turn off again afterward.,,
 threatinc_debugReset,RESET War,Boolean,false,DANGER: wipes the whole war from this save. Fires once when toggled on; turn it off again afterward.,,
+threatinc_satBombFuelMult,Saturation Bomb Fuel,Double,5,"A saturation bombardment of a hive costs its strata's tactical price times this; it also disrupts every industry the hive runs for a year.",1,50
+threatinc_satBombStrataDays,Saturation Bomb Strata,Double,3,Days of tactical bombardment a saturation bombardment of a hive razes at a stroke.,1,30

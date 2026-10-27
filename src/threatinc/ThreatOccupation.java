@@ -414,7 +414,21 @@ public class ThreatOccupation {
 	/** What the occupation holds: the pool, the strata rising, the troops on the ground and the swarms above, as strata. */
 	public static float held(GroundFront front, MarketAPI market) {
 		return Math.max(0f, front.budPool) + Math.max(0f, front.budRising) + Math.max(0f, front.marines)
-				+ ThreatStrata.strataOf(standingFP(market));
+				+ ThreatStrata.strataOf(buddedFP(market));
+	}
+
+	/** Fleet memory: a swarm the pool budded - the only swarms it absorbs back (hw294, 2026-10-27: it ate the strike fleets defending it, pools of 179k strata). */
+	public static final String BUD_KEY = "$threatinc_occBud";
+
+	/** Fleet points of the swarms the pool budded that stand over the world. */
+	public static float buddedFP(MarketAPI market) {
+		float fp = 0f;
+		for (ThreatSwarmDefend.Entry e : ThreatSwarmDefend.all()) {
+			if (e.fleet == null || !e.fleet.isAlive() || e.fleet.isExpired()) continue;
+			if (!market.getId().equals(e.marketId) || !e.fleet.getMemoryWithoutUpdate().getBoolean(BUD_KEY)) continue;
+			fp += e.fleet.getFleetPoints();
+		}
+		return fp;
 	}
 
 	/** Fleet points of the swarm's Defend fleets over the world (the Infestation Swarms). */
@@ -509,7 +523,8 @@ public class ThreatOccupation {
 				&& absorb(front, market, ThreatStrata.fpOf(flow))) return;
 		if (holdsAll(front, market) && ThreatGroundFronts.holdGap(front, market) <= 0f
 				&& ThreatGroundFronts.counterGap(front, market) <= 0f) {
-			int spare = (int) Math.min(flow, front.marines - groundWant(front, market));
+			int spare = (int) Math.min(Math.min(flow, Math.max(0f, cap(market) - held(front, market))),
+					front.marines - groundWant(front, market)); // never above the cap: the rest stand on the ground
 			if (spare > 0) {
 				front.marines -= spare;
 				front.budPool += spare;
@@ -530,12 +545,14 @@ public class ThreatOccupation {
 	 * ThreatBudding.absorbHulls); whether anything was absorbed.
 	 */
 	protected static boolean absorb(GroundFront front, MarketAPI market, float fp) {
-		if (fp <= 0f) return false;
+		fp = Math.min(fp, ThreatStrata.fpOf(Math.max(0f, cap(market) - held(front, market)))); // never above the cap
+		if (fp < 1f) return false;
 		CampaignFleetAPI pick = null;
 		for (ThreatSwarmDefend.Entry e : ThreatSwarmDefend.all()) {
 			if (e.fleet == null || !e.fleet.isAlive() || e.fleet.isExpired() || e.fleet.getBattle() != null) continue;
 			if (!market.getId().equals(e.marketId) || !Factions.THREAT.equals(e.factionId)) continue;
 			if (!ThreatGroundFronts.nearWorld(e.fleet, market)) continue;
+			if (!e.fleet.getMemoryWithoutUpdate().getBoolean(BUD_KEY)) continue; // only what the pool budded
 			if (pick == null || e.fleet.getFleetPoints() < pick.getFleetPoints()) pick = e.fleet;
 		}
 		if (pick == null) return false;
@@ -576,6 +593,7 @@ public class ThreatOccupation {
 			return;
 		}
 		fleet.setName("Infestation Swarm");
+		fleet.getMemoryWithoutUpdate().set(BUD_KEY, true);
 		ThreatColonyManager.makeDetectable(fleet);
 		planet.getContainingLocation().addEntity(fleet);
 		fleet.setLocation(planet.getLocation().x, planet.getLocation().y);

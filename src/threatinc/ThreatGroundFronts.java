@@ -461,7 +461,7 @@ public class ThreatGroundFronts {
 			return ThreatSiegeMalus.fortifications(market);
 		}
 		public float wearDays() {
-			return Math.max(1f, ThreatIncConfig.fortificationDisruptDays());
+			return 365f; // v3: vanilla disrupts for a year; nothing of ours wears a colony's structures
 		}
 		public float suppressDaysPerDay() {
 			return ThreatIncConfig.siegeSuppressDaysPerDay();
@@ -2198,29 +2198,8 @@ public class ThreatGroundFronts {
 		float line = lineRate(front, market);
 		front.state = lineSuppressionState(line);
 
-		// suppression (the user, 2026-10-24: "military structures should only increase
-		// in disrupt while invaders are pushing and it should be tied to progress"):
-		// while the landing pushes and the line moves its way, every military
-		// structure (the theatre's key structures and the shield) takes frontWearRate
-		// x the line's rate days of disruption a day - an overwhelming push wears them
-		// fast, a crawl barely; held, stalled or pushed back, the clocks run down a day
-		// a day as vanilla's do. Not cut by what orbit left standing: boots clear the
-		// hardened points bombardment cannot (docs/suppression-balance.md v2).
-		boolean suppressedAny = false;
-		if (STANCE_PUSH.equals(front.stance) && line > 0f && lineMoves(line)) {
-			float rate = Math.max(0f, ThreatIncConfig.frontWearRate()) * line;
-			for (Industry ind : theatre.keyStructures(market)) {
-				suppressedAny |= suppress(ind, rate * elapsedDays);
-			}
-			suppressedAny |= suppressShield(market, rate * elapsedDays);
-		}
-	// districts held seize their share of the colony's industries, pinned while held
-	if (front.strataHeld > 0 && !ThreatOccupation.occupies(front, market)) { // claims are eaten, not pinned (the occupation, 2026-10-27)
-		for (Industry ind : theatre.seizedStructures(market)) {
-			suppressedAny |= pin(ind, ThreatIncConfig.districtSeizeDays());
-		}
-	}
-	if (suppressedAny) market.reapplyIndustries();
+		// v3 (the user, 2026-10-27, docs/suppression-balance.md 10): a landing wears, pins and
+		// suppresses nothing - the world's structures are its innate defence, on or off as vanilla has them
 
 		// the checkpoint: consolidating troops count down their orders window;
 		// told nothing, doctrine says push on - or stand fast if too weak
@@ -2271,8 +2250,7 @@ public class ThreatGroundFronts {
 
 		// the swarm's answer to an army on its world: hold the orbit
 		// the swarm grinds a front it has the orbit over (2026-09-08)
-		tickSwarmBombard(front, market, elapsedDays);
-		if (getFront(front.marketId) == null) return; // bombarded to nothing
+		tickHiveBreakUp(front, market); // v3: never bombards; its swarms break up into strata when the ground is short
 		// ...and the defenders' answer to a Threat army on theirs: a relief that
 		// holds the orbit bombards it while they are losing (2026-10-03, the user)
 		tickReliefBombard(front, market, elapsedDays);
@@ -2640,6 +2618,17 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	protected static final String SWARM_VISUAL_KEY = "$threatinc_swarmBombardVisual";
 	/** Market memory: days of swarm bombardment the stock could not fuel, banked toward the next log line. */
 	protected static final String SWARM_DRY_KEY = "$threatinc_swarmBombardDry";
+
+	/**
+	 * v3 (the user, 2026-10-27): THE SWARM NEVER BOMBARDS. Over its own besieged hive every swarm
+	 * fleet breaks up what the ground is short into strata ({@link #breakUpForHive}); no holds, no
+	 * ordnance, no reserve. Replaces {@link #tickSwarmBombard}, which is no longer called.
+	 */
+	protected static void tickHiveBreakUp(GroundFront front, MarketAPI market) {
+		if (front == null || market == null || isThreatOwned(front) || !isHiveTarget(market)) return;
+		if (!swarmHoldsOrbit(market)) return;
+		for (CampaignFleetAPI f : swarmFleetsNear(market)) breakUpForHive(front, market, f);
+	}
 
 	protected static void tickSwarmBombard(GroundFront front, MarketAPI market, float elapsedDays) {
 		if (isThreatOwned(front) || !isHiveTarget(market)) return;
@@ -4297,6 +4286,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			if (reapply && market.isInEconomy()) market.reapplyIndustries();
 			return 0f;
 		}
+		if (!Factions.THREAT.equals(market.getFactionId())) return 0f; // v3: nothing of ours wears a human colony; vanilla's bombardment is vanilla's
 		Theatre theatre = Theatre.of(market);
 		float defence = defenceOverride >= 0f ? defenceOverride
 				: Math.max(0f, MarketCMD.getDefenderStr(market, true));
@@ -4367,6 +4357,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			if (out[3] <= 0f && reapply && market.isInEconomy()) market.reapplyIndustries();
 			return out;
 		}
+		if (!Factions.THREAT.equals(market.getFactionId())) return out; // v3: no saturation of a human colony by anything of ours
 		float defence = defenceOverride >= 0f ? defenceOverride
 				: Math.max(0f, MarketCMD.getDefenderStr(market, true));
 		float orbit = Math.max(fp, orbitFP);
@@ -5605,6 +5596,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	public static boolean defendBombards(String factionId, MarketAPI market, CampaignFleetAPI fleet) {
 		if (factionId == null || market == null) return false;
+		if (Factions.THREAT.equals(factionId)) return false; // v3: the swarm never bombards
 		GroundFront front = getFront(market.getId());
 		if (front == null || !factionId.equals(ownerOf(front))) return false;
 		// A front that holds is not the same as a front that survives

@@ -653,41 +653,11 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 					+ ": the orbit is contested");
 			return true;
 		}
-		float fp = fleet.getFleetPoints();
-		// the swarm over the world bombards as one: one ratio, one answer from the guns
-		float orbit = ThreatGroundFronts.orbitPoints(Factions.THREAT, market, fp);
-		// its ordnance comes out of the hive's fuel stock (2026-10-01, it was
-		// free): a stock that will not buy half a day ends the siege, and the
-		// troops land on what orbit left if they can hold - an abstract siege's rule
-		boolean dry = ThreatFuel.paysOrdnance()
-				&& ThreatGroundFronts.bombardDaysFor(ThreatFuel.stock(), fp) < 0.5f;
-		if (ThreatGroundFronts.readyToLand(market, troops, Factions.THREAT, dry
-				|| ThreatGroundFronts.orbitSpent(market, orbit, 0f, false, ThreatGroundFronts.swarmWorth(market)))) return false;
-		float days = ThreatGroundFronts.siegeSliceDays(fleet);
-		float want = ThreatGroundFronts.bombardFuelPerDay(fp) * days;
-		float paid = ThreatGroundFronts.payOrdnance(fleet, Factions.THREAT, want);
-		// short of the day's ordnance it bombards the share it could pay
-		if (want > 0f && paid < want) days *= paid / want;
-		if (days < 0.01f) {
-			ThreatIncConfig.logQuiet("siegefuel:" + market.getId(), "Siege of " + market.getName()
-					+ ": no fuel in the hive's stock");
-			return true;
-		}
-		ThreatGroundFronts.BombardDay est = ThreatGroundFronts.bombardDay(fp, market, false);
-		float loss = ThreatGroundFronts.siegeSlice(fp, orbit, market, days, true, true, -1f, "Orbital bombardment");
-		float removed = ThreatGroundFronts.applyFleetLosses(fleet, loss);
-		if (siegeAnnounced.add(market.getId())) {
-			ThreatNotice.titled("Under Siege").bad()
-					.line("Threat swarms are besieging %s.", ThreatNotice.market(market))
-					.line("Its defences are being suppressed from orbit.")
-					.line("Its batteries are answering.")
-					.send();
-		}
-		ThreatIncConfig.log("Siege slice vs " + market.getName() + ": " + (int) fp + " FP for "
-				+ String.format("%.1f", days) + " d at " + String.format("%.1f", est.rate)
-				+ " d/day, defences " + Math.round(ThreatGroundFronts.fortificationCondition(market) * 100f)
-				+ "%, batteries cost " + String.format("%.1f", loss) + " FP (" + (int) removed + " removed)");
-		return true;
+		// v3 (the user, 2026-10-27, docs/suppression-balance.md 10): THE SWARM NEVER BOMBARDS - the
+		// orbit clear, it lands what it brought and fights on the ground
+		ThreatIncConfig.logQuiet("lands:" + market.getId(), "Siege of " + market.getName() + ": the orbit is clear, "
+				+ troops + " troops land on arrival");
+		return false;
 	}
 
 	/**
@@ -697,6 +667,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * writes is real; the passes that follow land if it got there.
 	 */
 	protected void abstractSiege(MarketAPI market) {
+		if (market != null) return; // v3: the swarm never bombards - an unspawned strike lands on arrival
 		if (dailySiege) return; // the daily siege has fought and paid day by day already
 		if (market == null || !siegeResolved.add(market.getId())) return;
 		if (ThreatGroundFronts.getFront(market.getId()) != null) return;
@@ -1156,6 +1127,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * Eventide and Mazalot lost 42% and 31% of the strike and nothing landed.
 	 */
 	protected boolean abstractOrbitDone(MarketAPI market) {
+		if (market != null) return true; // v3: orbit has nothing to give - the landing goes down on arrival
 		if (market != null && siegeResolved.contains(market.getId())) return true;
 		return ThreatGroundFronts.orbitSpent(market, abstractStrength(), 0f, false, ThreatGroundFronts.swarmWorth(market));
 	}
@@ -1183,6 +1155,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * over vanilla's bombardment.
 	 */
 	protected boolean saturationPass(CampaignFleetAPI fleet, MarketAPI market) {
+		if (market != null) return true; // v3: the swarm never bombards (no bombing strikes are launched; a pass here is spent on nothing)
 		if (ThreatRazing.razeable(market) <= 0) return razedAsFarAsItGoes(market);
 		if (fleet != null && ThreatGroundFronts.orbitContestedFor(Factions.THREAT, market)) {
 			ThreatIncConfig.log("Razing of " + market.getName() + ": the orbit is contested");
@@ -1277,6 +1250,7 @@ public class ThreatStrikeFGI extends GenericRaidFGI {
 	 * held against the swarm.
 	 */
 	protected boolean harassPass(CampaignFleetAPI fleet, MarketAPI market) {
+		if (market != null) return true; // v3: the swarm never bombards
 		if (fleet != null && ThreatGroundFronts.orbitContestedFor(Factions.THREAT, market)) return false;
 		float fp = fleet != null ? fleet.getFleetPoints() : abstractStrength();
 		float days = fleet != null ? ThreatGroundFronts.siegeSliceDays(fleet)

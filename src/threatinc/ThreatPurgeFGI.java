@@ -272,6 +272,8 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 	protected java.util.Set<String> razeIds = new java.util.LinkedHashSet<String>();
 	/** Hive id -> the bombing squadron saturating it ({@link #squadron}): {fleet points sent in, fleet points left}. Null in a save from before squadrons. */
 	protected java.util.Map<String, float[]> squadrons;
+	/** Hives this expedition has sat-bombed (ThreatSatBomb): one act a world. */
+	protected java.util.Set<String> satBombed;
 	/** Saturation days-down goal of the Bombard order's tier (IncursionManager.bombardGoalDays; 0: the commander's stop, and every save from before tiers). */
 	protected float downGoal = 0f;
 
@@ -2470,6 +2472,25 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		String id = market.getId();
 		String name = market.getName();
 		int size = market.getSize();
+		// THE SAT BOMB (the user, 2026-10-27): over a hive, once, when the flotilla carries the price -
+		// the strata of satBombStrataDays at a stroke and the hive's industries disrupted; short of
+		// the price, or done, the tac raze below
+		if (ThreatSatBomb.enabled() && ThreatGroundFronts.strataTarget(market)) {
+			if (satBombed == null) satBombed = new java.util.HashSet<String>();
+			float price = ThreatSatBomb.price(market, fp);
+			if (!satBombed.contains(id) && price > 0f && (!paysOrdnance || razeFuelLeft() >= price)) {
+				satBombed.add(id);
+				recordRazing(id, name, size, false);
+				float[] sat = ThreatSatBomb.drop(market, fp, ourId, razeReason());
+				if (paysOrdnance) razeFuel = Math.max(0f, razeFuel - price);
+				boolean gone = sat[2] > 0f;
+				if (gone) recordRazing(id, name, size, true);
+				ThreatIncConfig.log("Sat bomb vs " + name + ": " + (int) fp + " FP paid " + (int) price + " fuel, razed "
+						+ (int) sat[0] + " strata, disrupted " + (int) sat[1] + " industries" + (gone ? ", destroyed" : "")
+						+ (paysOrdnance ? "; " + (int) razeFuel + " razing fuel left" : ""));
+				return gone;
+			}
+		}
 		float days = ThreatGroundFronts.siegeSliceDays(fleet);
 		recordRazing(id, name, size, false);
 		// the fleets over the world bomb as one; over a hive that is the

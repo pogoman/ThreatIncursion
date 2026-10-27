@@ -96,8 +96,7 @@ public class ThreatSiegeMalus extends BaseIndustry implements MarketImmigrationM
 
 	/** Vanilla's raw deficit factor, weighed: a full deficit takes defenseDeficitWeight of the bonus, a partial one its share (2026-10-12, after a blockade's zero shipping zeroed every besieged hive's guns). */
 	public static float weighDeficit(float raw) {
-		float weight = Math.max(0f, Math.min(1f, ThreatIncConfig.defenseDeficitWeight()));
-		return 1f - (1f - Math.max(0f, Math.min(1f, raw))) * weight;
+		return Math.max(0f, Math.min(1f, raw)); // v3: vanilla's own factor, unweighted
 	}
 
 	/** The same factor on any structure's own inputs (a hive's batteries run on machinery and metals). */
@@ -120,12 +119,10 @@ public class ThreatSiegeMalus extends BaseIndustry implements MarketImmigrationM
 		return weighDeficit((demand - deficit) / demand);
 	}
 
-	/** 1 intact .. 0 fully suppressed, from the structure's disruption clock. */
+	/** v3 (the user, 2026-10-27, docs/suppression-balance.md 10): vanilla's switch - 1 while the structure runs, 0 while it is disrupted. */
 	public static float condition(Industry ind) {
 		if (ind == null) return 0f;
-		if (!ind.isDisrupted()) return 1f;
-		float full = Math.max(1f, ThreatIncConfig.fortificationDisruptDays());
-		return Math.min(1f, Math.max(0f, 1f - ind.getDisruptedDays() / full));
+		return ind.isDisrupted() ? 0f : 1f;
 	}
 
 	public static float condition(MarketAPI market, Industry ind) {
@@ -178,6 +175,7 @@ public class ThreatSiegeMalus extends BaseIndustry implements MarketImmigrationM
 	/** "Heavy Batteries 40%" for every suppressed structure, the planetary shield included. */
 	public static List<String> suppressedLines(MarketAPI market) {
 		List<String> lines = new ArrayList<String>();
+		if (market != null) return lines; // v3: nothing of ours suppresses a structure
 		for (Industry ind : fortifications(market)) {
 			if (!ind.isDisrupted()) continue;
 			lines.add(ind.getCurrentName() + " " + Math.round(condition(market, ind) * 100f) + "%");
@@ -203,49 +201,16 @@ public class ThreatSiegeMalus extends BaseIndustry implements MarketImmigrationM
 	public void apply() {
 		super.apply(true);
 		market.addTransientImmigrationModifier(this);
+		// v3 (the user, 2026-10-27, docs/suppression-balance.md 10): a human colony's defence is
+		// vanilla's - no districts multiplier, no condition-scaled bonus, no stability or
+		// accessibility flat; everything an older jar wrote is unmodified so a save clears
 		StatBonus defense = market.getStats().getDynamic().getMod(Stats.GROUND_DEFENSES_MOD);
-		int size = Math.max(1, market.getSize());
-		// a colony that shrank onto its held districts still defends its last one
-		int held = Math.max(0, Math.min(size - 1, ThreatGroundFronts.strataHeld(market.getId())));
-
-		// districts: the garrison's share, and the colony's order
-		// no stability or accessibility penalty per district (the user, Sindria 2026-10-24: the
-		// defence multiplier already charges for the lost districts and stability multiplied the
-		// defence again; accessibility went the same evening, hives alike) - the old flats are
-		// unmodified so a save carrying them clears
+		defense.unmodifyMult(getModId());
 		market.getStability().unmodifyFlat(getModId());
 		market.getAccessibilityMod().unmodifyFlat(getModId());
-		if (held <= 0) {
-			defense.unmodifyMult(getModId());
-		} else {
-			defense.modifyMult(getModId(), (float) (size - held) / (float) size,
-					"Districts lost to the ground front");
-		}
-
-		// fortification: a suppressed structure keeps its bonus in proportion
-		// to its condition (vanilla stripped it whole) and to its inputs, as
-		// vanilla scales it when it runs. Its STABILITY bonus is vanilla's alone:
-		// on while it runs, off while it is disrupted (the user, 2026-10-24
-		// evening: "lets not play with the stability modifiers for disrupted
-		// ground defences or high command etc. they can just be on or off
-		// depending on disrupted or not as vanilla"); the flat of the earlier
-		// rules is unmodified so a save carrying it clears
 		for (String id : FORTIFICATION_IDS) {
-			String key = getModId() + "_" + id;
-			Industry ind = market.getIndustry(id);
-			market.getStability().unmodifyFlat(key);
-			if (ind == null || !ind.isDisrupted() || (ind.isBuilding() && !ind.isUpgrading())) {
-				defense.unmodifyMult(key);
-				continue;
-			}
-			float wear = condition(ind);
-			float cond = wear * deficitMult(ind);
-			if (cond <= 0f) {
-				defense.unmodifyMult(key);
-				continue;
-			}
-			defense.modifyMult(key, 1f + bonusOf(id) * cond, ind.getCurrentName()
-					+ " (suppressed, " + Math.round(cond * 100f) + "% effect)");
+			defense.unmodifyMult(getModId() + "_" + id);
+			market.getStability().unmodifyFlat(getModId() + "_" + id);
 		}
 	}
 

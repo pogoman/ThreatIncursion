@@ -389,23 +389,9 @@
 	"threatinc_scoreTroopsPerPoint": 20,
 	"threatinc_scoreSiegeRangeLY": 10,
 
-	# Sieges from orbit (docs/ground-war.md "Sieges from orbit", 2026-09-06),
-	# the same duel over a hive and over a human colony. Defenders = garrison
-	# x fortification. The garrison (a colony's base-by-size figure times
-	# stability plus reserve marines; a hive's size-anchored strata) orbit
-	# cannot touch. The fortification is each defence structure's multiplier
-	# scaled by its condition - 1 intact, 0 once its disruption clock carries
-	# the theatre's wear days (fortificationDisruptDays on a colony,
-	# defenseWearDays on a hive) - instead of vanilla's on/off. On a colony
-	# the rule applies to worlds besieged (or landed on), not to every raid.
-	"threatinc_fortificationDisruptDays": 180,
-	# A starved defence structure (its inputs short: a hive's machinery and
-	# metals, a colony's supplies, marines and arms) loses this share of its
-	# bonus at a full deficit, a partial deficit its share of it. Vanilla takes
-	# all of it (1), which let any siege that outweighed a hive's orbit
-	# switch its guns off by blockade before a shot (2026-10-12). 0 = inputs
-	# never matter to the guns.
-	"threatinc_defenseDeficitWeight": 0.5,
+	# v3 (the user, 2026-10-27, docs/suppression-balance.md 10): a human colony's defence is
+	# vanilla's - its structures give their bonus while they run and nothing while vanilla has
+	# them disrupted; nothing of ours wears, scales or strips them, and the swarm never bombards.
 	# raiding a hive's Fabrication Core (the one raid on a war structure left,
 	# 2026-09-28): marines lost grow by (tokens ^ depthLoss - 1) x the
 	# defence's share of the fight x the Core's weight (Ground Defenses = 1)
@@ -580,6 +566,14 @@
 	# bombardStrataPerFPDay x F strata for bombardFuelPerStratum fuel each, no return fire, no
 	# unrest; the one Attack order's Med ladder takes attackMedShare of the base's fuel and marines
 	"threatinc_bombardStrataPerFPDay": 1.0,
+	# THE SAT BOMB (the user, 2026-10-27, docs/suppression-balance.md 10): one act over a hive, the
+	# player's and an NPC flotilla's alike - satBombStrataDays of the tac raze at a stroke and every
+	# vanilla industry the hive runs disrupted satBombDisruptDays (never the Fabrication Core), for
+	# the strata's tac price x satBombFuelMult. No atrocity, no stability penalty.
+	"threatinc_satBombEnabled": true,
+	"threatinc_satBombFuelMult": 5,
+	"threatinc_satBombStrataDays": 3,
+	"threatinc_satBombDisruptDays": 365,
 	"threatinc_bombardFuelPerStratum": 2,
 	"threatinc_attackMedShare": 0.5,
 	# ...wearing down under disruption: the bonus falls linearly with the
@@ -619,11 +613,6 @@
 	# the rate toward its defenders a colony's marines ask (relief convoys, Reinforce, battle
 	# requests) is sized to: push the army back, between hold (0) and overrun (frontOverrunRate)
 	"threatinc_frontPushBackRate": 0.25,
-	# a front wears the world's military structures only while it pushes and the line moves its
-	# way: this x the line's rate (0..1) days of disruption a day (the user, 2026-10-24: tied to
-	# progress - an overwhelming push wears them fast); held, stalled or pushed back, the clocks
-	# run down a day a day as vanilla's do; capped at wearDays x 1.2
-	"threatinc_frontWearRate": 12,
 	# THE ATTRITION RULE (the user, 2026-10-24): a side loses, a day, its troops /
 	# attritionTroopsPer x (the enemy's force / its own force) x 1 / its own cover
 	# x its veteran factor - both sides alike, forces as the board shows them. No
@@ -680,12 +669,6 @@
 	# landings inherit the player fleet's marine rank and write back what they
 	# earned on withdrawal, and the ground skills apply to the player's fronts
 	"threatinc_marineFleetXpTransfer": true,
-	# a tactical pass with a front deployed costs it this fraction of its
-	# marines - and in exchange the strike's disruption also lands on the
-	# Fabrication Core and port (the ground forces mark targets)
-	"threatinc_frontDangerCloseEnabled": true,
-	# per bombardment day (a bombardment is one day since 2026-09-28)
-	"threatinc_frontDangerCloseLossFraction": 0.005,
 	# Threat doctrine over its own besieged world (2026-09-06): while Defense
 	# Swarms or any armed Threat fleet hold the orbit over an enemy front with
 	# no armed hostile fleet there to contest them, a countdown runs; at

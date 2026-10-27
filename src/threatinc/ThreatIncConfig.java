@@ -313,7 +313,7 @@ public class ThreatIncConfig {
 
 	/** Whether Threat strikes still saturation-bomb (the pre-ground-front doctrine). Default OFF. */
 	public static boolean strikeSaturationEnabled() {
-		return b("threatinc_strikeSaturationEnabled", false);
+		return false; // v3 (the user, 2026-10-27): the swarm never bombards - no bombing strikes, whatever the store says
 	}
 	/** Whether a Threat strike lands a Threat-owned ground front once the defenses are softened. */
 	public static boolean strikeGroundFrontsEnabled() {
@@ -334,10 +334,6 @@ public class ThreatIncConfig {
 
 	// ---- sieges from orbit (docs/ground-war.md "Sieges from orbit") ----
 
-	/** Disruption days at which a colony's defence structure contributes nothing (its bonus scales down linearly to it). */
-	public static float fortificationDisruptDays() { return f("threatinc_fortificationDisruptDays"); }
-	/** How much of a defence structure's bonus a full input deficit takes - 1 is vanilla's rule (a starved battery gives nothing), 0 ignores the deficit; a partial deficit takes its share of this. Both theatres (ThreatSiegeMalus.weighDeficit). */
-	public static float defenseDeficitWeight() { return f("threatinc_defenseDeficitWeight"); }
 	/** Marines lost raiding a hive's Fabrication Core grow as (tokens on it) ^ this: 0 is vanilla (depth free), 1 costs the same as shallow raids, above 1 one deep raid costs more. */
 	public static float coreRaidDepthLoss() { return f("threatinc_coreRaidDepthLoss"); }
 	/** A Fabrication Core's weight in the raid depth toll, Ground Defenses intact = 1 (the Nexus is weighted by its defence bonus). */
@@ -476,6 +472,14 @@ public class ThreatIncConfig {
 	public static float bombardStrataPerFPDay() { return f("threatinc_bombardStrataPerFPDay"); }
 	/** Fuel a stratum razed burns (2: a size-5 hive is 12,800 fuel, a fortress 102k). */
 	public static float bombardFuelPerStratum() { return f("threatinc_bombardFuelPerStratum"); }
+	/** THE SAT BOMB (the user, 2026-10-27, docs/suppression-balance.md 10): one act over a hive - strata and every vanilla industry disrupted. */
+	public static boolean satBombEnabled() { return b("threatinc_satBombEnabled", true); }
+	/** The sat bomb's fuel: the tac raze's price for its strata x this. */
+	public static float satBombFuelMult() { return f("threatinc_satBombFuelMult"); }
+	/** Days of the tac raze the sat bomb delivers at a stroke. */
+	public static float satBombStrataDays() { return f("threatinc_satBombStrataDays"); }
+	/** Days the sat bomb disrupts the hive's industries for (never the Fabrication Core). */
+	public static float satBombDisruptDays() { return f("threatinc_satBombDisruptDays"); }
 	/** The Attack's Med share of the staging colony's fuel above the passage and of its marines (0.5). */
 	public static float attackMedShare()      { return f("threatinc_attackMedShare"); }
 	/** Disruption days on a structure's clock at which its bonus has worn to nothing (0 = no wear); the hive's fortification clock. */
@@ -489,8 +493,6 @@ public class ThreatIncConfig {
 	public static boolean frontsEnabled()     { return b("threatinc_frontsEnabled", true); }
 	/** Troops that land push: a front at holding strength assaults as soon as it is on the ground. */
 	public static boolean frontAutoPush()     { return b("threatinc_frontAutoPush", true); }
-	/** Disruption days a front adds per day to what it holds, times troops / (troops + defence); the clock runs down 1/day. */
-	public static float frontWearRate()       { return f("threatinc_frontWearRate"); }
 	/** THE ATTRITION RULE's one knob (ThreatGroundFronts.attritionPerDay): a side loses its troops / this x (enemy force / own force) x 1 / own cover x veteran a day. */
 	public static float attritionTroopsPer() { return f("threatinc_attritionTroopsPer"); }
 	/** Heavy armaments consumed per marine per 30 days - the front's upkeep. */
@@ -532,10 +534,6 @@ public class ThreatIncConfig {
 	public static float npcLandingVeterancy() { return f("threatinc_npcLandingVeterancy"); }
 	/** Whether landings inherit the player fleet's marine rank, write it back on withdrawal, and read the ground skills. */
 	public static boolean marineFleetXpTransfer() { return b("threatinc_marineFleetXpTransfer", true); }
-	/** Whether a tactical pass with a front deployed costs front marines (and cracks the deep organs in exchange). */
-	public static boolean frontDangerCloseEnabled() { return b("threatinc_frontDangerCloseEnabled", true); }
-	/** Fraction of the front's marines lost to each day of danger-close tactical bombardment. */
-	public static float frontDangerCloseLossFraction() { return f("threatinc_frontDangerCloseLossFraction"); }
 	/** Fraction of an enemy front's troops the swarm kills per 30 days while it holds the orbit over its own hive unopposed. */
 	public static float swarmFrontBombardPer30Days() { return f("threatinc_swarmFrontBombardPer30Days"); }
 	/** Marines an enemy front on a hive loses a day per fleet point the swarm holds the orbit with (ThreatGroundFronts.swarmBombardPer30Days); 0 falls back to swarmFrontBombardPer30Days. */

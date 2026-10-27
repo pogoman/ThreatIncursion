@@ -564,6 +564,81 @@ The AI half, and what reviewing it changed (same day):
   bombards at all (6 per FP at 10,000 FP) and 1,000 FP dies on day 17 - rejected.
 - **Old saves.** Expeditions already out drew no ordnance: they bombard unpaid and raze nothing.
 
+## 10. v3 - BACK TO VANILLA (2026-10-27 evening, the user's decision; BUILT jar 19:40:43, untested)
+
+Forum players found the proportional disruption confusing: a structure "disrupted 112 days"
+still firing at 38% - vanilla has taught them that disrupted means off. The user: vanilla's
+year-long flat switch "is so stupid"; a threshold on/off (a structure out once its clock
+carries 30 days) makes the defences "effectively never do anything" once a push is over it;
+so: "the threat dont have military structures anymore, player just bombards the strata away
+... sat bomb ... takes out some strata and disrupts all their production buildings (but not
+the fab core) ... the threat dont ever bombard they just land and attack and they dont have
+effect on ground defences or military structures i.e. no siege disruption ... lets remove all
+our custom disruption stuff ... that way we are still pretty much vanilla". Answers 19:20:
+districts held strip NOTHING ("threat gain industries that fabricate for them, humans kill the
+threat to reduce strata thats it. i wanna simplify as many systems as possible then balance
+from there"); the sat bomb has NO atrocity and NO stability penalty; NPCs get it too.
+
+**The rules**
+
+- **A human colony's defence is vanilla's.** Ground Defenses, Heavy Batteries, Patrol HQ,
+  Military Base, High Command give their bonus while they run and nothing while vanilla has
+  them disrupted. Nothing of ours wears, suppresses, scales, pins or strips them: no
+  condition dial, no wear clock, no "Heavy Batteries 40%", no districts-held multiplier, no
+  seized-industry pins, no danger close, no fortification-raid rule (vanilla raids again).
+  The player's tac bomb on another faction's world is vanilla's act (365 days off) and
+  hampers that colony against the swarm exactly as a player expects.
+- **The swarm never bombards.** A strike or grand fleet sails on passage fuel, arrives,
+  lands when its troops can hold (`readyToLand` by strength alone - orbit has nothing to
+  give it) or holds the orbit over its front; a swarm above a short front still breaks its
+  hulls into troops. No siege pass bombardment, no support bombardment, no finish by
+  saturation, no bombard hold, no ordnance reserve, no raze fuel, no marines killed from
+  orbit over its own hive (`tickSwarmBombard`): the swarm kills on the ground, with strata.
+- **On a hive the strata are everything.** Humans reduce a hive by killing strata: the
+  day-by-day raze that exists (`hiveRaze`, `bombardStrataPerFPDay` x F strata a day for
+  `bombardFuelPerStratum` fuel each) is THE TAC BOMB, for the player and for NPC fleets
+  alike; a landing fights the strata on the ground. Nothing on a hive is disrupted by
+  fighting.
+- **THE SAT BOMB (new, player and NPC).** One act over a hive: it razes `satBombStrataDays`
+  (3) days of the tac raze at once and disrupts every vanilla industry the hive runs (mining,
+  refining, fuel production, heavy industry, farming, light industry...) for
+  `satBombDisruptDays` (365, vanilla's), never the Fabrication Core, the Nexus or any
+  structure of ours; price = the tac day's fuel x `satBombFuelMult` (5), a lot dearer than
+  the strata. No atrocity, no stability penalty, no decivilisation. An NPC flotilla that
+  carries the price uses it where its play asks (the bombing campaign, Starve); one that
+  cannot tac bombs.
+
+**What goes (symbols):** `ThreatSiegeMalus.apply`'s defence multipliers (the carrier stays
+for saves and the saturation immigration hold), `condition` (now 1 running / 0 disrupted),
+`fortificationDisruptDays`, `defenseWearDays`, `siegeSuppressDaysPerDay`, `frontWearRate`
+and the push's wear, `keyStructures` / `defenseStructures` suppression by a holding front,
+`districtSeizeDays` pins, `siegeSlice` and `saturationSlice` on a colony (no-ops),
+`supportSlice` / `defendBombards` / `defendRazes` / `defendRazeSlice` for the swarm,
+`ThreatStrikeFGI`'s bombardment pass, `ThreatPurgeFGI`'s bombard and raze steps for the
+swarm (`ordnance`, `razeFuel`, `burnOrdnance`), `IncursionManager.siegeOrdnance`,
+`ThreatGrandFleets.razeFuel`, `bombardReserve` / the bombard hold / `threatPaysOrdnance` /
+`swarmBombard*`, `tickSwarmBombard`, `fabricateCost` (the batteries' toll on a drop from a
+Defend swarm: the drop toll `dropLoss` stays, it is the landing), `frontDangerClose*`,
+`ThreatFortificationRaids` (vanilla raids), `bombardReturnFirePerGunDefence`,
+`defenseDeficitWeight`, `coreRaidDepth*`. The board's siege column and the fronts tooltip
+lose their condition lines.
+
+**What stays:** the drop toll, districts as the ground war's progress (held districts are
+claims, nothing else), the occupation and its pool, `hiveRaze` and its fuel, the strata
+exchange, the attrition rule, the line, the planetary shield as a vanilla structure (on or
+off), vanilla's own tac and sat bombardment of human worlds by the player.
+
+**Knobs added:** `satBombEnabled` true, `satBombFuelMult` 5, `satBombStrataDays` 3,
+`satBombDisruptDays` 365.
+
+**BUILT 19:40 (phase 1a gates + phase 2; phase 1b, the dead code, pending):** `ThreatSiegeMalus.condition` 1 running / 0 disrupted, `apply` unmodifies everything of ours and keeps only the immigration hold, `suppressedLines` empty, `weighDeficit` raw; `ThreatGroundFronts`: the push's wear and the seized pins cut from the tick, `tickHiveBreakUp` (every swarm fleet over its besieged hive breaks up what the ground is short - `breakUpForHive`, no holds, no reserve) in place of `tickSwarmBombard`, `defendBombards` false for the swarm, `siegeSlice` / `saturationSlice` 0 on a human colony, the colony theatre's `wearDays` 365; `ThreatStrikeFGI.siegePass` lands on arrival ("the orbit is clear, N troops land on arrival"), `abstractSiege` no-op, `abstractOrbitDone` true, `saturationPass` / `harassPass` spent at once, `strikeSaturationEnabled` false whatever the store says (csv row gone); `ThreatincMarketCMD`: a human world's tac / sat bombardment and confirm are vanilla's (`super`), danger close gone, "Defences at" gone, the hive's saturation is `satBombPrompt` and `bombardDay` drops `ThreatSatBomb` (no `countAtrocity`); `ThreatFortificationRaids` no longer registered; the board's Disruption column and tooltip block gone; `ThreatSatBomb` (new): `targets` (vanilla `isIndustry`, not ours), `strata`, `price`, `drop`; `ThreatPurgeFGI`'s raze step drops it once a hive when the flotilla carries the price (`satBombed`), else the tac raze. Knobs gone: `fortificationDisruptDays`, `defenseDeficitWeight`, `frontWearRate`, `frontDangerClose*`; added `satBombEnabled` / `satBombFuelMult` / `satBombStrataDays` / `satBombDisruptDays`. **Pending 1b:** delete the dead code (`tickSwarmBombard`, the bombard holds, `bombardReserve`, `ThreatRazing` on colonies, `bombardSaturationV2`, `ThreatFortificationRaids`, the condition readouts) and the knobs `defenseWearDays`, `siegeSuppressDaysPerDay`, `bombardReturnFirePerGunDefence`, `bombardFuelPerFPDay`, `swarmBombard*`, `threatPaysOrdnance`, `satFuelPerFPDay`, `coreRaidDepth*`.
+
+**Verify (day 0 against hw294):** no "Orbital bombardment" / "Siege pass" bombard lines by the
+swarm, strikes land or hold; a human world's ground defence reads vanilla's figure with every
+structure on; the player's tac bomb on a hive razes strata as before, the sat bomb option
+razes 3 days' worth and the hive's industries read "disrupted" for a year, no reputation
+change; NPC campaigns use it; 0 exceptions.
+
 ## Proposed model v1 - SUPERSEDED by the final spec above (brainstorm 2026-09-28, history only)
 
 The user's direction: no arbitrary levers or caps - every limit is a cost the attacker chooses

@@ -93,7 +93,6 @@ class LunaConfigBridge {
 					changed |= bump(json, "threatinc_bombardReturnFirePerGunDefence", 0.008, 0.0008, false);
 				}
 				if (from < 6) {
-					changed |= bump(json, "threatinc_frontDangerCloseLossFraction", 0.05, 0.005, false);
 				}
 				if (from < 7) {
 					changed |= bump(json, "threatinc_coreDownFactor", 1.0, 0.8, false);
