@@ -58,8 +58,6 @@ public class ThreatGroundDefenses extends GroundDefenses {
 		}
 		if (!extra.isEmpty()) extra = " (" + extra + ")";
 
-		// the groundDefenseMult config knob is applied by SwarmNexus (every
-		// colony has one) - applying it here too would square it
 		market.getStats().getDynamic().getMod(Stats.GROUND_DEFENSES_MOD)
 				.modifyMult(getModId(), 1f + bonus * mult * resilience,
 						getNameForModifier() + extra);

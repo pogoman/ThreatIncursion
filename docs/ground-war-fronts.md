@@ -119,11 +119,11 @@ options menu; commits everything aboard). Ticks on the colony poll at flat rates
   size-share of fabrication output (`computeFabricationMult`) - momentum is real,
   and each stratum weakens the colony. Growth halts entirely while a front is on
   the surface.
-- **Checkpoint**: after each stratum the front CONSOLIDATES for
-  `frontCheckpointDays` (10), announces a reinforcement request, and - told
-  nothing - **pushes on by doctrine**. Orders at the checkpoint: push now,
-  entrench and stand fast, or withdraw (docking gates enforce that pulling out
-  requires the space over the planet).
+- **Checkpoint**: after each stratum the doctrine picks the front's stance AT ONCE
+  (`frontCheckpointDays` 0, the default since 2026-10-27 - the user, Haven: the 10-day regroup
+  after every district was a flat pause for every side, 50 days on a six-district world, that
+  gave nobody an order they could not give anyway). With the knob set the front regroups
+  (`STANCE_CONSOLIDATE`, counts as dug in) for that many days first.
 - **Counter-attacks**: every `frontCounterAttackDays` (40) / colony health - so a
   starved hive attacks 4x more rarely, which is what economic strangulation buys
   now. Attack = current defense figure vs the front's strength x its cover when dug in
@@ -301,8 +301,9 @@ x`frontEntrenchDefenseBonus`, 1.5, once dug in); takes no ground. Push (`STANCE_
 progress toward the next layer at `frontPushBaseDays` x the defense/strength ratio
 (clamped 0.5-3x) while HOLDING strength lasts (progress pauses below it), attrition at
 the push rate, burn x2, cover and entrenchment spent day by day (exposed outright until 2026-10-24).
-Regrouping (`STANCE_CONSOLIDATE`): the checkpoint after a layer, `frontCheckpointDays`;
-told nothing it pushes on if it still holds, digs in otherwise. The player's front pushes the
+Regrouping (`STANCE_CONSOLIDATE`): the checkpoint after a layer, only with `frontCheckpointDays`
+set (default 0 since 2026-10-27, so the stance resolves at once); told nothing it pushes on if
+it still holds, digs in otherwise. The player's front pushes the
 moment its troops land if it can hold (`ThreatGroundFronts.autoPush`, from `deploy` and from
 any `resupply` that brings troops; knob `threatinc_frontAutoPush`, default on - user,
 2026-09-07); too weak to hold, it digs in and pushes when a later landing brings it to

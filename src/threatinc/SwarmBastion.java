@@ -76,9 +76,7 @@ public class SwarmBastion extends BaseIndustry {
 			defense.unmodifyMult(getModId());
 			return;
 		}
-		// wears down with the disruption days on the clock, like the Nexus. The
-		// groundDefenseMult knob is the Nexus's to apply (applied here too it
-		// would be squared)
+		// wears down with the disruption days on the clock, like the Nexus
 		float resilience = ThreatColonyManager.disruptedDefenseResilience(this);
 		defense.modifyMult(getModId(), 1f + defenseBonus(getId()) * resilience,
 				getNameForModifier() + (isDisrupted() ? " (in refit)" : ""));

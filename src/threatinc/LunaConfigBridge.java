@@ -32,7 +32,7 @@ class LunaConfigBridge {
 
 	/** Common-data file recording which stored-default migration last ran; kept apart from LunaLib's own file. */
 	static final String MIGRATION_MARKER = "threatinc_lunaSettingsVersion";
-	static final int MIGRATION_VERSION = 21;
+	static final int MIGRATION_VERSION = 22;
 
 	/**
 	 * LunaLib writes every default to its stored file on first launch and
@@ -68,6 +68,7 @@ class LunaConfigBridge {
 	 * Version 16 (2026-10-17, the user): marineCounterAttackMult 0.25 -> 1.0.
 	 * Version 17 (2026-10-24, the user): frontlinesEnabled true -> false - forward bases are off by default.
 	 * Version 18 (2026-10-25, the user): strikeTroopsPerPoint 20 -> 0 - ships are the soldiers.
+	 * Version 22 (2026-10-27, the settings review): the knobs retired with it are dropped from the store.
 	 */
 	static void migrateStoredDefaults() {
 		SettingsAPI settings = Global.getSettings();
@@ -170,6 +171,12 @@ class LunaConfigBridge {
 				// 2026-10-25, phase D: the military layer and the hive's bombardment knobs go with it
 				if (from < 21) {
 					for (String key : new String[] { "threatinc_nexusDefenseBonus", "threatinc_groundDefensesBonus", "threatinc_heavyBatteriesBonus", "threatinc_hiveBombardReturnFirePerGunDefence", "threatinc_strataSuppressDaysPerSize", "threatinc_hiveMilitaryTier", "threatinc_nexusBombardable", "threatinc_hiveBombardFPWorth", "threatinc_hiveDropLossPerGunDefence", "threatinc_hiveSiegeSuppressDaysPerDay", "threatinc_bombardTierMinDays", "threatinc_bombardTierMedDays" }) {
+						changed |= drop(json, key);
+					}
+				}
+				// 2026-10-27, the settings review: 439 LunaLib rows cut to 63 (the rest live in settings.json); these keys left the code too
+				if (from < 22) {
+					for (String key : new String[] { "threatinc_grandFleetsPerFaction", "threatinc_grandFleetKills", "threatinc_groundDefenseMult", "threatinc_councilMusterDays", "threatinc_councilFeintWindowDays", "threatinc_postureStagedHalfLifeDays", "threatinc_postureStagedFloor", "threatinc_outpostChance", "threatinc_homeYards" }) {
 						changed |= drop(json, key);
 					}
 				}

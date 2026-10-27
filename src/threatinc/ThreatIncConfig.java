@@ -308,10 +308,6 @@ public class ThreatIncConfig {
 	public static boolean destroyStoryCritical() {
 		return b("threatinc_destroyStoryCritical", true);
 	}
-	/** Overall scale on hive ground-defense strength (= saturation bombardment fuel cost). */
-	public static float groundDefenseMult() {
-		return f("threatinc_groundDefenseMult");
-	}
 
 	// ---- Threat strike doctrine (docs/ground-war.md "Threat ground assaults") ----
 
@@ -392,8 +388,6 @@ public class ThreatIncConfig {
 	public static boolean npcAttackTakesWhatItHas() { return b("threatinc_npcAttackTakesWhatItHas", true); }
 	/** THE GRAND FLEET (the user, 2026-10-26): NPC offence is one grand fleet a faction (ThreatGrandFleets), the council's sized sieges off; false: the council's plays as before. */
 	public static boolean npcGrandFleet()           { return b("threatinc_npcGrandFleet", true); }
-	/** Grand fleets a faction musters or has out at once. */
-	public static int grandFleetsPerFaction()       { return Math.max(1, i("threatinc_grandFleetsPerFaction")); }
 	/** The share of the faction's navy (the board's Navy figure: hulls free + at sea) a grand fleet musters to. */
 	public static float grandFleetShare()           { return f("threatinc_grandFleetShare"); }
 	/** The least a grand fleet musters to, in fleet points (never above the navy itself). */
@@ -408,8 +402,6 @@ public class ThreatIncConfig {
 	public static int grandFleetPointsPerFleet()    { return Math.max(1, i("threatinc_grandFleetPointsPerFleet")); }
 	/** The fuel a grand fleet banks for its targets: the strata met on arrival x the fuel a stratum, x this (run gf1: a day-count bank was 723,000 fuel). */
 	public static float grandFleetOrdnanceMargin()  { return f("threatinc_grandFleetOrdnanceMargin"); }
-	/** Threat worlds a grand fleet banks fuel for before it sails: its target, then the next nearest it outweighs from there, each kill's razing and the passages between and home (gf2: a one-kill bank paid no hop). */
-	public static int grandFleetKills()             { return Math.max(1, i("threatinc_grandFleetKills")); }
 	/** A grand fleet picks a Threat world only where its FP cover this x the swarm FP its faction last saw over the system. */
 	public static float grandFleetOutweigh()        { return f("threatinc_grandFleetOutweigh"); }
 	/** Days a system a grand fleet was called off over (outweighed on arrival) is not picked again. */
@@ -428,6 +420,14 @@ public class ThreatIncConfig {
 	public static boolean conquestConverts()  { return b("threatinc_conquestConverts", true); }
 	/** Size of the hive seeded on a conquered world. */
 	public static int conquestHiveSize()      { return i("threatinc_conquestHiveSize"); }
+	/** THE OCCUPATION (2026-10-27, docs/occupation.md): a Threat ground victory occupies the world - claims, eats, buds - and never takes it. */
+	public static boolean occupationEnabled() { return b("threatinc_occupationEnabled", true); }
+	/** Days the swarm's front takes to claim the next industry of a world it holds a district of. */
+	public static float occupationClaimDays() { return f("threatinc_occupationClaimDays"); }
+	/** Strata a day the swarm grows per output unit the industries it has claimed make. */
+	public static float occupationStrataPerUnit() { return f("threatinc_occupationStrataPerUnit"); }
+	/** Fleet points a fully held world's pool buds a swarm at; 0 never buds. */
+	public static float occupationBudFP()     { return f("threatinc_occupationBudFP"); }
 	public static int colonyMaxSize()         { return i("threatinc_colonyMaxSize"); }
 
 	// ---- hive sieges ----
@@ -565,7 +565,7 @@ public class ThreatIncConfig {
 	public static boolean threatFrontNeedsArms() { return b("threatinc_threatFrontNeedsArms", false); }
 	/** Defense multiplier of an entrenched (non-pushing) front against counter-attacks. */
 	public static float frontEntrenchDefenseBonus() { return f("threatinc_frontEntrenchDefenseBonus"); }
-	/** Days a front consolidates at each stratum checkpoint before pushing on by doctrine. */
+	/** Days a front regroups after each district taken before the doctrine picks its stance; 0 (the default since 2026-10-27) picks at once. */
 	public static float frontCheckpointDays() { return f("threatinc_frontCheckpointDays"); }
 	/** Days of armaments supply an NPC expedition's landing force carries. */
 	public static float npcFrontSupplyDays()  { return f("threatinc_npcFrontSupplyDays"); }
@@ -882,8 +882,6 @@ public class ThreatIncConfig {
 	public static float councilStrikeWaitDays() { return f("threatinc_councilStrikeWaitDays"); }
 	/** Days a play stages and scouts before it musters. */
 	public static float councilPrepareDays()  { return f("threatinc_councilPrepareDays"); }
-	/** Days a play's muster waits for its force before it goes with what it has. */
-	public static float councilMusterDays()   { return f("threatinc_councilMusterDays"); }
 	/** Days after the strike a play judges the damage done. */
 	public static float councilExploitDays()  { return f("threatinc_councilExploitDays"); }
 	/** Days between a bombing campaign's checks. */
@@ -894,8 +892,6 @@ public class ThreatIncConfig {
 	public static float councilInvadeNexusDays() { return f("threatinc_councilInvadeNexusDays"); }
 	/** Days a feint has to draw the swarm before the strike goes anyway. */
 	public static float councilFeintWatchDays() { return f("threatinc_councilFeintWatchDays"); }
-	/** Days after the feint draws in which the strike must land. */
-	public static float councilFeintWindowDays() { return f("threatinc_councilFeintWindowDays"); }
 	/** Most days' sail from a feint's striking base to its target. */
 	public static float councilStrikeMaxDays() { return f("threatinc_councilStrikeMaxDays"); }
 	/** Days between a faction's plans, besides re-plans on news. */

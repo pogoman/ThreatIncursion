@@ -26,10 +26,44 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 
 	public static final String ID = "threatinc_ground_war";
 
-	/** THE INFESTATION (phase E): every industry's output x (1 - the seized share), ThreatGroundFronts.infestShare; what is eaten grows the front. */
+	/**
+	 * THE INFESTATION. Under THE OCCUPATION (2026-10-27, ThreatOccupation) every industry
+	 * the swarm's front has claimed runs for the swarm: its output x0 to the market, the
+	 * units it made read into the front (eatenUnits) for the growth. With the occupation
+	 * off, phase E's shape: every industry's output x (1 - the seized share).
+	 */
 	@Override
 	public void apply(String id) {
-		float share = ThreatGroundFronts.infestShare(market, ThreatGroundFronts.getFront(market.getId()));
+		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
+		if (ThreatOccupation.occupies(front, market)) {
+			List<String> claims = ThreatOccupation.claims(front);
+			float units = 0f;
+			for (Industry ind : market.getIndustries()) {
+				boolean claimed = claims.contains(ind.getId());
+				float mine = 0f;
+				for (MutableCommodityQuantity q : ind.getAllSupply()) {
+					if (ThreatOccupation.MARK.equals(q.getCommodityId())) continue;
+					q.getQuantity().unmodifyMult(id);
+					if (!claimed) continue;
+					mine += Math.max(0f, q.getQuantity().getModifiedValue());
+					q.getQuantity().modifyMult(id, 0f, "Threat infestation");
+				}
+				units += mine;
+				// THE MARKER (the user, 2026-10-27, "it shows its producing threat swarm"): a claimed
+				// industry produces ThreatOccupation.MARK at the units it feeds the swarm - the
+				// Fabrication Core icon in its production list (the real outputs, cut to 0, drop
+				// off the list: BaseIndustry.clearUnmodified)
+				if (claimed) {
+					ind.getSupply(ThreatOccupation.MARK).getQuantity().modifyFlat(id, Math.max(1f, Math.round(mine)), "Threat infestation");
+				} else {
+					unmark(ind, id);
+				}
+			}
+			// a conditions-only reapply finds the cut outputs already dropped: keep the last full read
+			if (units > 0f || claims.isEmpty()) front.eatenUnits = units;
+			return;
+		}
+		float share = ThreatGroundFronts.infestShare(market, front);
 		for (Industry ind : market.getIndustries()) {
 			for (MutableCommodityQuantity q : ind.getAllSupply()) {
 				if (share > 0f) q.getQuantity().modifyMult(id, 1f - share, "Threat infestation");
@@ -42,6 +76,14 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 	public void unapply(String id) {
 		for (Industry ind : market.getIndustries()) {
 			for (MutableCommodityQuantity q : ind.getAllSupply()) q.getQuantity().unmodifyMult(id);
+			unmark(ind, id);
+		}
+	}
+
+	/** Takes the marker's production off an industry without creating the entry (clearUnmodified drops it). */
+	protected static void unmark(Industry ind, String id) {
+		for (MutableCommodityQuantity q : ind.getAllSupply()) {
+			if (ThreatOccupation.MARK.equals(q.getCommodityId())) q.getQuantity().unmodifyFlat(id);
 		}
 	}
 
@@ -65,7 +107,30 @@ public class ThreatGroundWarCondition extends BaseMarketConditionPlugin {
 		int held = Math.max(0, Math.min(size, front.strataHeld));
 		tooltip.addPara("Districts held by the swarm: %s of %s.", opad, held > 0 ? neg : h,
 				"" + held, "" + size);
-		if (held > 0) {
+		if (ThreatOccupation.occupies(front, market)) {
+			// THE OCCUPATION (2026-10-27): the claims, the next, what they feed
+			List<Industry> claimed = ThreatOccupation.claimed(market, front);
+			if (!claimed.isEmpty()) {
+				StringBuilder names = new StringBuilder();
+				for (Industry ind : claimed) {
+					if (names.length() > 0) names.append(", ");
+					names.append(ind.getCurrentName());
+				}
+				tooltip.addPara("Claimed by the swarm: %s.", 3f, neg, names.toString());
+			}
+			Industry next = ThreatOccupation.next(market, front);
+			if (next != null && held > 0) {
+				tooltip.addPara("Next claim: %s in %s.", 3f, h, next.getCurrentName(),
+						days(ThreatOccupation.daysToNextClaim(front)));
+			}
+			float grow = ThreatOccupation.growthPerDay(front);
+			if (grow > 0f) {
+				tooltip.addPara(ThreatOccupation.holdsAll(front, market)
+						? "The swarm eats %s units a day: %s strata a day budding over the world."
+						: "The swarm eats %s units a day: %s troops a day to its landing.", 3f, neg,
+						ThreatStrata.fmt(front.eatenUnits), ThreatStrata.fmt(grow));
+			}
+		} else if (held > 0) {
 			List<Industry> seized = ThreatGroundFronts.seizedIndustries(market);
 			if (!seized.isEmpty()) {
 				StringBuilder names = new StringBuilder();

@@ -192,6 +192,12 @@ JDK 17 is at `C:\Users\zuzam\jdk\jdk-17.0.20.1+1\bin`).
 - `ThreatIncConfig.f()` / `i()` throw on a missing key; `b(key, def)` / `s(key, def)` take a default.
   Each tries `LunaConfigBridge` first, then `Global.getSettings()` - `settings.json` is the
   fallback even with Luna on, since Luna returns null for a key it has not stored.
+- **Only a key with a `LunaSettings.csv` row is asked of LunaLib** (`ThreatIncConfig.luna`, the row set read
+  once from the CSV); every other key is `settings.json` alone, Luna on or off. Since the 2026-10-27 settings
+  review the CSV holds 63 player-facing rows (toggles, start conditions, costs and rewards, debug aids) and
+  `settings.json` the other ~480: a balance lever gets no row, and a store value a player once set for a
+  knob that lost its row is simply no longer read. The CSV is the source of its rows; a row is one line
+  with the type, default and range copied from `settings.json`.
 - `settings.json`: flat `"threatinc_*"` keys, tabs, `#` comment lines allowed. `LunaSettings.csv`
   columns: `fieldID,fieldName,fieldType,defaultValue,fieldDescription,minValue,maxValue`; types
   Boolean / Double / Int / Header; a Boolean row has two empty trailing fields.

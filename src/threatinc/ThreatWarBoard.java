@@ -2668,7 +2668,8 @@ public class ThreatWarBoard {
 		ThreatGroundFronts.GroundFront front = ThreatGroundFronts.getFront(market.getId());
 		if (front != null) {
 			a.append("    Front %s");
-			String stance = ThreatGroundFronts.STANCE_PUSH.equals(front.stance) ? "push"
+			String stance = ThreatOccupation.holdsAll(front, market) ? "occupying"
+					: ThreatGroundFronts.STANCE_PUSH.equals(front.stance) ? "push"
 					: ThreatGroundFronts.STANCE_CONSOLIDATE.equals(front.stance) ? "regrouping"
 					: "dug in";
 			String label = Misc.getWithDGS(Math.round(front.marines)) + " "
