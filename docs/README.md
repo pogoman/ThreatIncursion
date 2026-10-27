@@ -19,6 +19,7 @@ Everything here was verified in the running game unless marked otherwise.
 | [swarm-defence.md](swarm-defence.md) | The swarm's defence since 2026-10-04: its restraints removed, strikes called home, the defence massed at the worlds attacked (`postureMass`, off) and the launch hold, the system defending as one (`systemDefence`, 2026-10-05). |
 | [hive-reach-and-stock.md](hive-reach-and-stock.md) | Reach is the bill, idle stock (retire, convert, the Bastion/Command military tier), the verified levers, what the board shows. |
 | [testing-harness.md](testing-harness.md) | Launching the game, reaching the board and screenshotting it automatically. Scripts live in `tools/test-harness/`. |
+| [performance.md](performance.md) | Where the late war's frame time goes (JFR, 2026-10-27): vanilla fleet AI 60%, markets 15%, the mod 7%; the levers are campaign fleet counts; options for the user. |
 | [ground-war.md](ground-war.md) | Index of the ground war, split 2026-10-01 into six files; its table maps each section to its file. |
 | [ground-war-fronts.md](ground-war-fronts.md) | The front engine (states, strata, NPC fronts), the board's front readouts, vanilla-tool integration (the `removeOption` trap). |
 | [ground-war-defenders.md](ground-war-defenders.md) | What a defended colony is made of: garrison, marines, veterancy, planetary shield, blockade, how it falls. |
