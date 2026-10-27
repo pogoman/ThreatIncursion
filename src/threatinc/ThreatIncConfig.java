@@ -334,12 +334,6 @@ public class ThreatIncConfig {
 
 	// ---- sieges from orbit (docs/ground-war.md "Sieges from orbit") ----
 
-	/** Marines lost raiding a hive's Fabrication Core grow as (tokens on it) ^ this: 0 is vanilla (depth free), 1 costs the same as shallow raids, above 1 one deep raid costs more. */
-	public static float coreRaidDepthLoss() { return f("threatinc_coreRaidDepthLoss"); }
-	/** A Fabrication Core's weight in the raid depth toll, Ground Defenses intact = 1 (the Nexus is weighted by its defence bonus). */
-	public static float coreRaidDepthWeight() { return f("threatinc_coreRaidDepthWeight"); }
-	/** Disruption days per day an unopposed siege fleet adds to a colony's fortifications at overwhelming strength, scaled by fleet / (fleet + defence). */
-	public static float siegeSuppressDaysPerDay() { return f("threatinc_siegeSuppressDaysPerDay"); }
 	/** Days before the player's fleet can organize another bombardment; tactical and saturation share the lock. */
 	public static float bombardCooldownDays() { return f("threatinc_bombardCooldownDays"); }
 	/** Fuel a day of tactical bombardment burns per fleet point (an AI fleet's from its provisions). */
@@ -410,8 +404,6 @@ public class ThreatIncConfig {
 	public static float frontDryFinalPushDays() { return f("threatinc_frontDryFinalPushDays"); }
 	/** Accessibility a colony loses while Threat warships hold its orbit; half while the fight is even. */
 	public static float blockadeAccessPenalty() { return f("threatinc_blockadeAccessPenalty"); }
-	/** Disruption days a seized civilian industry is pinned at while the invader holds its district. */
-	public static float districtSeizeDays()   { return f("threatinc_districtSeizeDays"); }
 	/** Whether a Threat ground victory seeds a hive on the spot (off: the world decivilises). */
 	public static boolean conquestConverts()  { return b("threatinc_conquestConverts", true); }
 	/** Size of the hive seeded on a conquered world. */
@@ -534,17 +526,7 @@ public class ThreatIncConfig {
 	public static float npcLandingVeterancy() { return f("threatinc_npcLandingVeterancy"); }
 	/** Whether landings inherit the player fleet's marine rank, write it back on withdrawal, and read the ground skills. */
 	public static boolean marineFleetXpTransfer() { return b("threatinc_marineFleetXpTransfer", true); }
-	/** Fraction of an enemy front's troops the swarm kills per 30 days while it holds the orbit over its own hive unopposed. */
-	public static float swarmFrontBombardPer30Days() { return f("threatinc_swarmFrontBombardPer30Days"); }
-	/** Marines an enemy front on a hive loses a day per fleet point the swarm holds the orbit with (ThreatGroundFronts.swarmBombardPer30Days); 0 falls back to swarmFrontBombardPer30Days. */
-	public static float swarmBombardMarinesPerFPDay() { return f("threatinc_swarmBombardMarinesPerFPDay"); }
-	/** Fuel a day of swarm bombardment draws from the swarm's stock per fleet point over the planet (ThreatGroundFronts.tickSwarmBombard); 0 free. */
-	public static float swarmBombardFuelPerFPDay() { return f("threatinc_swarmBombardFuelPerFPDay"); }
-	/** Days of ordnance a swarm fleet carries (ThreatGroundFronts.bombardHoldFull), refilled only at a hive whose port arms it (portArms); 0 no hold, the stock pays every day. */
-	public static float swarmBombardHoldDays() { return f("threatinc_swarmBombardHoldDays"); }
-	/** Months of the hive's fuel income the stock keeps before it arms a bombard hold (ThreatGroundFronts.bombardReserve, on top of the founding kit): under it a dry swarm over its besieged hive breaks up for the ground instead; 0 arms from any stock. */
-	public static float swarmBombardReserveMonths() { return f("threatinc_swarmBombardReserveMonths"); }
-	/** Whether a swarm fleet over its own besieged hive that the stock would not arm breaks up its ships into the hive's ground troops (ThreatGroundFronts.breakUpForHive). */
+	/** Whether a swarm fleet over its own besieged hive breaks up its ships into the hive's ground troops (ThreatGroundFronts.breakUpForHive). */
 	public static boolean hiveBreakUpEnabled() { return fabricateEnabled() && b("threatinc_hiveBreakUpEnabled", true); }
 	/** Threat troops a relief force over its invaded world bombards per 30 days while the defenders are losing (ThreatGroundFronts.tickReliefBombard); 0 off. */
 	public static float reliefBombardPer30Days() { return f("threatinc_reliefBombardPer30Days"); }
@@ -748,8 +730,6 @@ public class ThreatIncConfig {
 	public static float structureSuppliesMult()    { return f("threatinc_structureSuppliesMult"); }
 	/** The hive planner turns a fuel plant its stock can spare into what it lacks, one a month (ThreatColonyManager.convertSurplus). */
 	public static boolean hiveConvertSurplus()     { return b("threatinc_hiveConvertSurplus", true); }
-	/** The swarm's bombardment draws its fuel from the hive's stock, at the rate everyone pays (ThreatGroundFronts.payOrdnance). */
-	public static boolean threatPaysOrdnance()     { return b("threatinc_threatPaysOrdnance", true); }
 	/** The factions' forward bases pay a supplies upkeep by size (ThreatColonyUpkeep); hive worlds pay none since 2026-10-25. */
 	public static boolean sizeUpkeep()             { return b("threatinc_sizeUpkeep", true); }
 	public static float sizeUpkeepAt3()            { return f("threatinc_sizeUpkeepAt3"); }

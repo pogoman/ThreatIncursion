@@ -144,7 +144,7 @@ public class ThreatIncModPlugin extends BaseModPlugin {
 		// it can waive the atrocity penalty for exterminating the swarm, and
 		// pre-raid marine-loss computation so hive worlds chew up marines
 		Global.getSector().getListenerManager().addListener(manager, true);
-		// v3 (2026-10-27): raids are vanilla's (ThreatFortificationRaids is not registered)
+		// v3 (2026-10-27): raids are vanilla's (ThreatFortificationRaids deleted with phase 1b)
 		// hears the player's battles for the swarm bounties
 		Global.getSector().addTransientListener(new ThreatSwarmBountyIntel.Kills());
 		// unfound hives veiled on the map and intel screens while a core tab is open

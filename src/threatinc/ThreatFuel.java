@@ -68,16 +68,6 @@ public class ThreatFuel {
 		return ThreatIncConfig.threatPaysPassage();
 	}
 
-	/**
-	 * Whether the swarm's bombardment burns the fuel stock (2026-10-01,
-	 * threatPaysOrdnance): tactical days at bombardFuelPerFPDay, saturation's
-	 * pour at satFuelPerFPDay, as every besieger pays them
-	 * (ThreatGroundFronts.payOrdnance, ThreatStrikeFGI.saturationPass).
-	 */
-	public static boolean paysOrdnance() {
-		return enabled() && ThreatIncConfig.threatPaysOrdnance();
-	}
-
 	protected static String stockKey(String commodityId) {
 		return Commodities.FUEL.equals(commodityId) ? "stock" : "stock_" + commodityId;
 	}
@@ -260,8 +250,6 @@ public class ThreatFuel {
 
 	/** The purposes the census breaks the month's supplies spend into (pay's tag): feed, away, navy, build, found, other. */
 	public static final String[] PURPOSES = { "feed", "away", "navy", "build", "found", "cover", "other" };
-	/** PURPOSES plus the fuel-only tags the census brackets: the bombardment's draws (ThreatGroundFronts.tickSwarmBombard, reloadBombardHold). */
-	public static final String[] ALL_PURPOSES = { "feed", "away", "navy", "build", "found", "cover", "other", "bombard", "bombard hold" };
 
 	/**
 	 * As above, tallied under {@code purpose} for the census (monthSummary):
@@ -641,9 +629,6 @@ public class ThreatFuel {
 	/** Send -> when its hold was last booked as demand (held): once a SHORT_DAYS a send. */
 	public static final String KEY_HELD = "threatinc_hiveHeld";
 
-	/** Fleet memory: a day of this fleet's bombardment the stock could not pay is booked (groundedOrdnance). */
-	public static final String MEM_ORDNANCE_HELD = "$threatinc_ordnanceHeld";
-
 	/** On load: no unmet bill of the session left behind is booked against the loaded one. */
 	public static void forget() {
 		UNMET.clear();
@@ -745,21 +730,6 @@ public class ThreatFuel {
 				+ " " + commodityId + ", " + (int) stock(commodityId) + " in stock");
 	}
 
-	/**
-	 * A swarm fleet that would bombard with the fuel stock empty stands down
-	 * (ThreatGroundFronts.ordnanceAvailable, orbitDoneFor): its day of ordnance
-	 * is demand the stock did not meet, booked once a day a fleet. A stock
-	 * that pays part of a day books its shortfall where it is paid
-	 * (payOrdnance), so only an empty one books here.
-	 */
-	public static void groundedOrdnance(CampaignFleetAPI fleet, float perDay) {
-		if (fleet == null || perDay <= 0f || stock() >= 1f) return;
-		if (fleet.getMemoryWithoutUpdate().getBoolean(MEM_ORDNANCE_HELD)) return;
-		fleet.getMemoryWithoutUpdate().set(MEM_ORDNANCE_HELD, true, 1f);
-		unmet(Commodities.FUEL, perDay, "bombardment over " + (fleet.getContainingLocation() != null
-				? fleet.getContainingLocation().getName() : "nowhere"));
-	}
-
 	protected static void add(String key, float v) {
 		Object o = data().get(key);
 		data().put(key, (o instanceof Float ? (Float) o : 0f) + v);
@@ -777,11 +747,6 @@ public class ThreatFuel {
 		return v instanceof Float ? (Float) v : 0f;
 	}
 
-	/** Of the month's holds, those the fuel stock held (held): the ordnance loads leave a founding's fuel while one is (ThreatGroundFronts.bombardReserve). */
-	public static float heldOnFuelThisMonth() {
-		Object v = data().get(HELD_FUEL);
-		return v instanceof Float ? (Float) v : 0f;
-	}
 
 	/** The census's stock clause, and the month's tallies reset. */
 	public static String monthSummary() {
@@ -796,7 +761,7 @@ public class ThreatFuel {
 			{
 				// both stocks by purpose (hw161, 2026-10-12: the fuel the bombardment drew was invisible here)
 				StringBuilder by = new StringBuilder();
-				for (String p : ALL_PURPOSES) {
+				for (String p : PURPOSES) {
 					Object v = data().get(spentKey(c) + ":" + p);
 					float f = v instanceof Float ? (Float) v : 0f;
 					data().put(spentKey(c) + ":" + p, 0f);

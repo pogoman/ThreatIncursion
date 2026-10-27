@@ -133,7 +133,7 @@ public class ThreatGroundFronts {
 		public boolean withdrawRequested;
 		/**
 		 * Days the swarm has held the orbit over this (enemy) front unopposed -
-		 * how long it has been bombarding it ({@link #tickSwarmBombard}). Was the
+		 * how long it bombarded it until v3 (2026-10-27: the swarm never bombards). Was the
 		 * scour countdown before 2026-09-08; the field is kept under its old name
 		 * because removing one breaks every save that holds it.
 		 */
@@ -464,7 +464,7 @@ public class ThreatGroundFronts {
 			return 365f; // v3: vanilla disrupts for a year; nothing of ours wears a colony's structures
 		}
 		public float suppressDaysPerDay() {
-			return ThreatIncConfig.siegeSuppressDaysPerDay();
+			return 0f; // v3: nothing of ours suppresses a colony's structures
 		}
 		public float batteryShare(MarketAPI market) {
 			return ThreatSiegeMalus.batteryShare(market);
@@ -1261,55 +1261,6 @@ public class ThreatGroundFronts {
 	}
 
 	/**
-	 * The world's military structures: the theatre's key and defence lists less
-	 * the port and, on a hive, the Fabrication Core and Swarm Nexus - a colony's
-	 * Ground Defenses, Heavy Batteries, Patrol HQ / Military Base / High Command
-	 * and Lion's Guard; a hive's Bastion and Ground Defenses. What the Disruption
-	 * figure averages (the user, 2026-10-24: "shouldn't factor in Megaport, only
-	 * military buildings").
-	 */
-	public static List<Industry> militaryStructures(MarketAPI market) {
-		List<Industry> all = new ArrayList<Industry>();
-		if (market == null) return all;
-		Theatre theatre = Theatre.of(market);
-		all.addAll(theatre.keyStructures(market));
-		for (Industry ind : theatre.defenseStructures(market)) {
-			if (!all.contains(ind)) all.add(ind);
-		}
-		Industry port = ThreatColonyManager.getPort(market);
-		for (Iterator<Industry> it = all.iterator(); it.hasNext();) {
-			Industry ind = it.next();
-			if (ind == null || ind == port
-					|| ThreatColonyManager.FABRICATION_CORE.equals(ind.getId())
-					|| ThreatColonyManager.SWARM_NEXUS.equals(ind.getId())) {
-				it.remove();
-			}
-		}
-		return all;
-	}
-
-	/**
-	 * The world's military structures' disruption as a share of the most a siege
-	 * inflicts ({@link #suppressCap}), averaged over {@link #militaryStructures};
-	 * 0 with none. The fronts table's Disruption column (the user, 2026-10-24):
-	 * always the world the siege is on, whichever tab reads it.
-	 */
-	public static float disruptionFraction(MarketAPI market) {
-		if (market == null) return 0f;
-		List<Industry> all = militaryStructures(market);
-		float cap = suppressCap(market);
-		if (cap <= 0f) return 0f;
-		float sum = 0f;
-		int n = 0;
-		for (Industry ind : all) {
-			if (ind == null) continue;
-			sum += Math.min(1f, siegeDisruptDays(ind) / cap);
-			n++;
-		}
-		return n == 0 ? 0f : sum / n;
-	}
-
-	/**
 	 * The line's rate (positive toward the landing) with one side's count
 	 * changed: the landing at {@code troops}, or the world at {@code armed}
 	 * marines (a colony) or troops (a hive) - everything else as it stands,
@@ -1788,7 +1739,7 @@ public class ThreatGroundFronts {
 	 */
 	public static float attritionPer30Days(GroundFront front, MarketAPI market, boolean pushing) {
 		if (front == null) return 0f;
-		return landingLossPerDay(front, market, pushing) * 30f + swarmBombardPer30Days(front, market) + reliefBombardPer30Days(front, market);
+		return landingLossPerDay(front, market, pushing) * 30f + reliefBombardPer30Days(front, market);
 	}
 
 	/**
@@ -2584,180 +2535,14 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
-	 * Strength contest on the counter-attack cadence: the colony's current
-	 * defense figure against the front's (entrenchment-boosted) strength.
-	 * Losing costs marines and a held stratum; a beachhead beaten twice over
-	 * is destroyed outright. Cadence comes from {@link #counterAttackInterval}
-	 * - the supplies a hive world is paid, stability and military command on a
-	 * human one.
-	 */
-	/**
-	 * Threat doctrine over its own besieged world. While the swarm holds the
-	 * orbit in force (swarmOrbitMinFleetFP of Threat fleet points at the planet -
-	 * a bombardment is a fleet operation, not a lone frigate) and no armed
-	 * hostile fleet contests it, it bombards the enemy front on the surface:
-	 * marines die day by day at swarmFrontBombardPer30Days, scaled by the
-	 * swarm's weight against what the front can put in the way.
-	 *
-	 * <p>This REPLACES the scour (removed 2026-09-08, user): the hive used to
-	 * saturation-bomb its own surface after threatScourDays unopposed and
-	 * annihilate the front outright, to the last marine, with fallout closing
-	 * the ground afterwards. That predated the siege system and cut across all
-	 * of it - orbital superiority skipped the ground war rather than feeding it,
-	 * and no amount of entrenchment, veterancy or reinforcement mattered against
-	 * a guillotine on a timer. A swarm that owns the orbit now does what any
-	 * other besieger does: it grinds, and the counter-attacks (paced by
-	 * counterAttackTempo, which answers being outnumbered) do the rest.
-	 *
-	 * <p>The counterplay is unchanged in shape - get a fleet over the planet -
-	 * but it is now a question of degree rather than a deadline: contesting the
-	 * orbit stops the bleeding, and arriving late costs troops instead of
-	 * everything.
-	 */
-	/** Market memory: days of swarm bombardment banked toward the next burst and log line (tickSwarmBombard). */
-	protected static final String SWARM_VISUAL_KEY = "$threatinc_swarmBombardVisual";
-	/** Market memory: days of swarm bombardment the stock could not fuel, banked toward the next log line. */
-	protected static final String SWARM_DRY_KEY = "$threatinc_swarmBombardDry";
-
-	/**
 	 * v3 (the user, 2026-10-27): THE SWARM NEVER BOMBARDS. Over its own besieged hive every swarm
 	 * fleet breaks up what the ground is short into strata ({@link #breakUpForHive}); no holds, no
-	 * ordnance, no reserve. Replaces {@link #tickSwarmBombard}, which is no longer called.
+	 * ordnance, no reserve. Replaces the swarm's bombardment of the front (tickSwarmBombard, deleted with phase 1b).
 	 */
 	protected static void tickHiveBreakUp(GroundFront front, MarketAPI market) {
 		if (front == null || market == null || isThreatOwned(front) || !isHiveTarget(market)) return;
 		if (!swarmHoldsOrbit(market)) return;
 		for (CampaignFleetAPI f : swarmFleetsNear(market)) breakUpForHive(front, market, f);
-	}
-
-	protected static void tickSwarmBombard(GroundFront front, MarketAPI market, float elapsedDays) {
-		if (isThreatOwned(front) || !isHiveTarget(market)) return;
-		if (elapsedDays <= 0f) return;
-		if (!swarmHoldsOrbit(market)) {
-			front.swarmOrbitDays = 0f;
-			return;
-		}
-		front.swarmOrbitDays += elapsedDays;
-		float perFP = ThreatIncConfig.swarmBombardMarinesPerFPDay();
-		float fuelPer = perFP > 0f ? Math.max(0f, ThreatIncConfig.swarmBombardFuelPerFPDay()) : 0f;
-		boolean holds = perFP > 0f && bombardHoldsOn();
-		// the ordnance (user, 2026-10-12, "1% for how much fuel?"): fuel per fleet point
-		// per day. With the holds on each fleet pays from what it carries, filled at
-		// first use and after that only where a port arms it (reloadBombardHold); a
-		// dry garrison swarm over a hive that cannot arm it goes to the nearest hive
-		// that can (ThreatColonyManager.sendToRearm). With the holds off the stock
-		// pays, and a day it cannot is skipped and said once a day.
-		float armedFP;
-		float brokeFP = 0f;
-		int landed = 0;
-		List<CampaignFleetAPI> armed = new ArrayList<CampaignFleetAPI>();
-		if (holds) {
-			armedFP = 0f;
-			// the stock arms a hold only above its reserve (bombardReserve); a fleet it
-			// would not arm is the hive's ground reinforcement instead (breakUpForHive -
-			// the user, 2026-10-13), and only a fleet the stock WOULD arm flies to a port
-			// that can hand it over (sendToRearm)
-			boolean stockArms = ThreatFuel.stock() > bombardReserve();
-			for (CampaignFleetAPI f : swarmFleetsNear(market)) {
-				if (reloadBombardHold(f, "over " + market.getName()) > 0f) {
-					armed.add(f);
-					armedFP += f.getFleetPoints();
-				} else if (stockArms && nearestArmingHive(market) != null) {
-					ThreatColonyManager.sendToRearm(f, market);
-				} else {
-					float[] broke = breakUpForHive(front, market, f);
-					brokeFP += broke[0];
-					landed += (int) broke[1];
-				}
-			}
-		} else {
-			armedFP = swarmOrbitStrength(market);
-		}
-		float per30 = perFP > 0f
-				? perFP * armedFP * 30f / Math.max(1f, coverMult(front)) * ThreatMarineXP.frontLossMult(front)
-				: swarmBombardPer30Days(front, market);
-		float loss = per30 / 30f * elapsedDays;
-		float fuel = fuelPer * armedFP * elapsedDays;
-		if (loss <= 0f && !holds) return;
-		if (loss <= 0f || (!holds && fuel > 0f && (!ThreatFuel.canPay(fuel) || ThreatFuel.stock() - fuel < bombardReserve()))) {
-			float dry = market.getMemoryWithoutUpdate().getFloat(SWARM_DRY_KEY) + elapsedDays;
-			if (dry >= 1f) {
-				dry = 0f;
-				if (!holds) ThreatFuel.held("the swarm's bombardment over " + market.getName());
-				ThreatIncConfig.log("Swarm bombardment over " + market.getName() + " held: " + (holds
-						? "no ordnance aboard (" + (int) swarmOrbitStrength(market) + " FP over the orbit, port "
-								+ (portArms(market) ? "arms" : "cannot arm") + ", stock " + (int) ThreatFuel.stock()
-								+ " / reserve " + (int) bombardReserve() + ")"
-								+ (brokeFP > 0f ? "; " + (int) brokeFP + " FP broke up for the ground (" + landed + " troops)" : "")
-						: "no fuel for " + (int) armedFP + " FP (" + Math.round(fuel / Math.max(0.01f, elapsedDays)) + " a day)"));
-			}
-			market.getMemoryWithoutUpdate().set(SWARM_DRY_KEY, dry, 10f);
-			return;
-		}
-		if (holds) {
-			for (CampaignFleetAPI f : armed) spendBombardHold(f, fuelPer * f.getFleetPoints() * elapsedDays);
-		} else if (fuel > 0f) {
-			ThreatFuel.pay(com.fs.starfarer.api.impl.campaign.ids.Commodities.FUEL, fuel, "bombard");
-		}
-		ThreatMarineXP.frontLose(front, loss);
-		// seen and read (user, 2026-10-12, "there's no bombardment animation at all i
-		// would have noticed"): vanilla's burst on the planet and one log line per
-		// whole day of bombardment, as the siege slice does (finishSlice)
-		float banked = market.getMemoryWithoutUpdate().getFloat(SWARM_VISUAL_KEY) + elapsedDays;
-		if (banked >= 1f) {
-			banked = 0f;
-			if (market.getPrimaryEntity() != null) MarketCMD.addBombardVisual(market.getPrimaryEntity());
-			float aboard = 0f;
-			for (CampaignFleetAPI f : armed) aboard += bombardHold(f);
-			ThreatIncConfig.log("Swarm bombards the " + ownerOf(front) + " front at " + market.getName() + ": "
-					+ (int) armedFP + " FP armed of " + (int) swarmOrbitStrength(market) + " over the orbit, "
-					+ Math.round(per30 / 30f) + " marines a day, front "
-					+ (int) front.marines + " marines, held " + (int) front.swarmOrbitDays + " d, fuel "
-					+ Math.round(fuelPer * armedFP) + " a day" + (holds ? ", " + (int) aboard + " aboard" : ""));
-		}
-		market.getMemoryWithoutUpdate().set(SWARM_VISUAL_KEY, banked, 10f);
-		if (groundDown(front)) {
-			ThreatNotice n = ThreatNotice.titled("Front Destroyed"); // the swarm's doing: its crest and colour
-			if (front.isPlayerOwned()) {
-				n.line("Your front on %s has been bombarded to nothing from orbit.",
-						ThreatNotice.market(market));
-			} else {
-				n.line("%s's front on %s has been bombarded to nothing from orbit.",
-						ThreatNotice.faction(ownerFaction(front)), ThreatNotice.market(market));
-			}
-			n.send();
-			ThreatIncConfig.log("Front at " + market.getName() + " (" + ownerOf(front)
-					+ ") destroyed by swarm orbital bombardment");
-			fronts().remove(front.marketId);
-			reapply(front.marketId);
-		}
-	}
-
-	/**
-	 * Troops the swarm's orbital bombardment costs this front per 30 days: the
-	 * base rate scaled by the swarm's weight over the planet against what the
-	 * front can put in the way, and by the front's own veterancy. 0 when the
-	 * swarm does not hold the orbit - the board quotes this, so it is the tick's
-	 * own arithmetic.
-	 */
-	public static float swarmBombardPer30Days(GroundFront front, MarketAPI market) {
-		if (front == null || market == null) return 0f;
-		if (isThreatOwned(front) || !isHiveTarget(market)) return 0f;
-		if (!swarmHoldsOrbit(market)) return 0f;
-		float perFP = ThreatIncConfig.swarmBombardMarinesPerFPDay();
-		float fp = perFP > 0f ? swarmArmedFP(market) : swarmOrbitStrength(market);
-		if (perFP > 0f) {
-			// in proportion to the weight over the planet (user, 2026-10-12): the
-			// fraction rule below capped the grind at per30 of the front however
-			// many swarms stood overhead - 1,015 FP over Delta Mengryla I read 1% a
-			// day against a 1,378-marine push and the hive fell. Cover halves it
-			// at full entrenchment; a pushing front is exposed (coverMult)
-			return perFP * fp * 30f / Math.max(1f, coverMult(front)) * ThreatMarineXP.frontLossMult(front);
-		}
-		float per30 = ThreatIncConfig.swarmFrontBombardPer30Days();
-		if (per30 <= 0f) return 0f;
-		float ratio = fp / Math.max(1f, fp + defenseStrength(front));
-		return front.marines * per30 * ratio * ThreatMarineXP.frontLossMult(front);
 	}
 
 	// ------------------------------------------------------------------
@@ -2881,7 +2666,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return reliefBombardPer30Days(front, fp);
 	}
 
-	/** The swarm's formula ({@link #swarmBombardPer30Days}) for {@code fp} of relief: reliefBombardPer30Days of the army, by the relief's weight against what the army puts in the way and its veterancy. */
+	/** The swarm's old bombardment formula (swarmBombardPer30Days, gone with v3) for {@code fp} of relief: reliefBombardPer30Days of the army, by the relief's weight against what the army puts in the way and its veterancy. */
 	protected static float reliefBombardPer30Days(GroundFront front, float fp) {
 		if (front == null || fp <= 0f) return 0f;
 		float ratio = fp / Math.max(1f, fp + defenseStrength(front));
@@ -2968,7 +2753,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * Armed fleets hostile to the Threat within the swarm orbit radius of the hive
 	 * world weigh at least orbitContestFraction of the swarm's there - the swarm's
 	 * orbital dominance is being contested. This is what STOPS the swarm bombarding
-	 * an enemy front ({@link #tickSwarmBombard}), and it is the whole counterplay:
+	 * an enemy front (until v3 - the swarm never bombards now), and it is the whole counterplay:
 	 * keep enough armed over the planet. Until 2026-10-12 any armed hostile fleet
 	 * contested it (the user, the last fleet in a system the swarm held, dancing
 	 * inside the radius: "my presence shouldn't necessarily stop them").
@@ -3019,24 +2804,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		GroundFront front = getFront(market.getId());
 		if (front == null || front.coverFP <= 0f || !factionId.equals(front.factionId)) return false;
 		return front.coverFP >= swarmOrbitStrength(market);
-	}
-
-	/** Days the swarm has held the orbit over this front unopposed; 0 when it does not. */
-	public static float swarmOrbitDaysHeld(GroundFront front, MarketAPI market) {
-		if (front == null || market == null) return 0f;
-		if (isThreatOwned(front) || !isHiveTarget(market)) return 0f;
-		return swarmHoldsOrbit(market) ? Math.max(0f, front.swarmOrbitDays) : 0f;
-	}
-
-	/**
-	 * The swarm is over the planet in force but hostile fleets of orbitContestFraction
-	 * of its weight are contesting the orbit, so its bombardment is stopped. The counterplay,
-	 * seen from the board.
-	 */
-	public static boolean swarmBombardContested(GroundFront front, MarketAPI market) {
-		if (front == null || market == null) return false;
-		if (isThreatOwned(front) || !isHiveTarget(market)) return false;
-		return swarmPresent(market) && swarmOrbitContested(market);
 	}
 
 	/**
@@ -3094,37 +2861,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			list.add(ind);
 		}
 		return list;
-	}
-
-	/**
-	 * Adds days to a structure's disruption clock, capped so the figure stays
-	 * sane (wear maxes out at defenseWearDays anyway). Returns whether the
-	 * structure was touched.
-	 */
-	protected static boolean suppress(Industry ind, float addDays) {
-		if (ind == null || addDays <= 0f) return false;
-		float cap = suppressCap(ind.getMarket());
-		float cur = siegeDisruptDays(ind);
-		if (cur >= cap) return true; // already pinned at the cap - still "suppressed"
-		ind.setDisrupted(Math.min(cap, cur + addDays));
-		return true;
-	}
-
-	/** The most disruption a siege inflicts on a structure: the theatre's own clock, a fifth past worn-out. */
-	public static float suppressCap(MarketAPI market) {
-		return (market != null ? Theatre.of(market).wearDays()
-				: Math.max(1f, ThreatIncConfig.defenseWearDays())) * 1.2f;
-	}
-
-	/**
-	 * The shield is a military structure and boots grind it at the same rate as
-	 * the guns. Kept out of {@code keyStructures} /
-	 * {@code defenseStructures} because those lists also answer "are the
-	 * colony's defences held", which the shield does not speak to.
-	 */
-	protected static boolean suppressShield(MarketAPI market, float addDays) {
-		if (!ThreatShield.present(market)) return false;
-		return suppress(ThreatShield.get(market), addDays);
 	}
 
 	/**
@@ -3192,10 +2928,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 
 	/** Fleet memory: when this fleet last delivered a slice of a siege. */
 	public static final String SIEGE_LAST_KEY = "$threatinc_siegeLast";
-	/** Market memory: when a slice last made up the clocks' run-down - once per world, however many fleets slice it. */
-	public static final String SIEGE_MADE_UP_KEY = "$threatinc_siegeMadeUp";
-	/** Market memory: suppression days banked toward the next bombardment burst (one per whole day added). */
-	public static final String SIEGE_VISUAL_KEY = "$threatinc_siegeVisualDays";
 	/** Fleet memory: this fleet's Support / Defend slice has been logged today. */
 	public static final String SLICE_LOG_KEY = "$threatinc_sliceLogged";
 	/** Days a first slice stands for - vanilla's own gap between a fleet's passes. */
@@ -4160,73 +3892,12 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		mem.set(DECIV_HELD_KEY, true, theatre.wearDays());
 	}
 
-	/** The unrest a bombardment of either kind raises the world to: bombardUnrestMax x what it has suppressed. */
-	public static int tacticalUnrest(MarketAPI market) {
-		return Math.round(Math.max(0f, ThreatIncConfig.bombardUnrestMax())
-				* (1f - fortificationCondition(market)));
-	}
-
 	/** A world the siege rule describes counts as besieged for as long as its clock can run. */
 	protected static void markBesieged(MarketAPI market) {
 		Theatre theatre = Theatre.of(market);
 		if (theatre.carriesSiegeState()) {
 			market.getMemoryWithoutUpdate().set(BESIEGED_FLAG, true, theatre.wearDays());
 		}
-	}
-
-	/**
-	 * The structures' side of {@code days} of bombardment: each target gains
-	 * {@code rate} x its condition x the shield's throughput a day, a day at a
-	 * time so every pass lands on what the last one left, and the shield takes
-	 * its own share at full weight. The clocks' run-down since the last slice
-	 * ({@code madeUp}) is made up first, on a clock already running. The cap
-	 * is the theatre's wear days, which the x condition only approaches.
-	 * Returns whether anything was written.
-	 */
-	protected static boolean bombardStructures(MarketAPI market, List<Industry> targets, float rate,
-			float days, float madeUp) {
-		Theatre theatre = Theatre.of(market);
-		float cap = siegeWornDays(market);
-		boolean touched = false;
-		if (madeUp > 0f) {
-			for (Industry ind : targets) {
-				float cur = siegeDisruptDays(ind);
-				if (cur <= 0f || cur >= cap) continue;
-				ind.setDisrupted(Math.min(cap, cur + madeUp));
-				touched = true;
-			}
-		}
-		if (rate <= 0f) return touched;
-		float restore = madeUp;
-		for (float left = days; left > 0.001f; left -= 1f) {
-			float step = Math.min(1f, left);
-			// re-read every day: the shield wears with everything under it
-			float through = ThreatShield.throughput(market);
-			for (Industry ind : targets) {
-				float cur = siegeDisruptDays(ind);
-				if (cur >= cap) continue;
-				float add = rate * theatre.condition(market, ind) * through * step;
-				if (add <= 0f) continue;
-				ind.setDisrupted(Math.min(cap, cur + add));
-				touched = true;
-			}
-			if (ThreatShield.soak(market, rate * step, restore, cap)) touched = true;
-			restore = 0f;
-		}
-		return touched;
-	}
-
-	/** After a slice: the siege state and the stat recomputed, and vanilla's burst on the planet once per whole day of bombardment. */
-	protected static void finishSlice(MarketAPI market, boolean touched, float days) {
-		boolean synced = syncSiegeState(market);
-		if (touched || synced) market.reapplyIndustries();
-		if (!touched || market.getPrimaryEntity() == null) return;
-		float banked = market.getMemoryWithoutUpdate().getFloat(SIEGE_VISUAL_KEY) + days;
-		if (banked >= 1f) {
-			banked = 0f;
-			MarketCMD.addBombardVisual(market.getPrimaryEntity());
-		}
-		market.getMemoryWithoutUpdate().set(SIEGE_VISUAL_KEY, banked, 10f);
 	}
 
 	/**
@@ -4286,29 +3957,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			if (reapply && market.isInEconomy()) market.reapplyIndustries();
 			return 0f;
 		}
-		if (!Factions.THREAT.equals(market.getFactionId())) return 0f; // v3: nothing of ours wears a human colony; vanilla's bombardment is vanilla's
-		Theatre theatre = Theatre.of(market);
-		float defence = defenceOverride >= 0f ? defenceOverride
-				: Math.max(0f, MarketCMD.getDefenderStr(market, true));
-		float orbit = Math.max(fp, orbitFP);
-		float share = fp / orbit;
-		// the guns answer with what they had when the day began
-		float loss = returnFirePerDay(market, defence) * days * share;
-		float rate = suppressionRate(market, orbit, defence) * share;
-		markBesieged(market);
-		// what the clocks ran down since the last slice by ANY fleet, made up
-		// first: each fleet counting its own gap gave N fleets over one world
-		// N days back per day, and splitting a fleet bought free suppression
-		float madeUp = elapsed ? madeUpDays(market, days) : 0f;
-		boolean touched = bombardStructures(market, theatre.fortifications(market), rate, days, madeUp);
-		raiseUnrest(market, tacticalUnrest(market), reason);
-		ThreatIncConfig.log("siegeSlice " + market.getName() + " [" + (theatre == HIVE ? "hive" : "colony")
-				+ "] fp=" + String.format("%.0f", fp) + " defence=" + String.format("%.0f", defence)
-				+ " rate=" + String.format("%.2f", rate) + " days=" + String.format("%.2f", days)
-				+ " condition=" + String.format("%.2f", fortificationCondition(market))
-				+ " loss=" + String.format("%.2f", loss));
-		if (reapply) finishSlice(market, touched, days);
-		return loss;
+		// v3 (2026-10-27): nothing of ours wears a human colony - vanilla's bombardment is vanilla's; a hive is strata (above)
+		return 0f;
 	}
 
 	/** What saturation falls on: every building vanilla does not spare, bar the shield (it soaks on its own). */
@@ -4357,35 +4007,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 			if (out[3] <= 0f && reapply && market.isInEconomy()) market.reapplyIndustries();
 			return out;
 		}
-		if (!Factions.THREAT.equals(market.getFactionId())) return out; // v3: no saturation of a human colony by anything of ours
-		float defence = defenceOverride >= 0f ? defenceOverride
-				: Math.max(0f, MarketCMD.getDefenderStr(market, true));
-		float orbit = Math.max(fp, orbitFP);
-		float share = fp / orbit;
-		out[0] = returnFirePerDay(market, defence) * days * share;
-		float rate = suppressionRate(market, orbit, defence) * share;
-		// the shield turns its share aside for the whole day's pour
-		float through = ThreatShield.throughput(market);
-		float pour = ThreatRazing.deliverable(market, fp, days, fuel);
-		// never less than the tactical day it also flies - bar the day that
-		// finishes the razing, which pours what it takes and no more
-		boolean finishes = ThreatRazing.razes(market)
-				&& pour * through >= ThreatRazing.fuelToDestroy(market) - 0.5f;
-		out[1] = finishes ? pour : Math.max(pour, Math.min(Math.max(0f, fuel), bombardFuelPerDay(fp) * days));
-		markBesieged(market);
-		ThreatRazing.markSaturated(market, days);
-		float madeUp = elapsed ? madeUpDays(market, days) : 0f;
-		boolean touched = bombardStructures(market, saturationTargets(market), rate, days, madeUp);
-		raiseUnrest(market, tacticalUnrest(market), reason); // what it broke, as tactical (user, 2026-10-13)
-		int[] razed = ThreatRazing.pour(market, pour * through, razerFactionId);
-		out[2] = razed[0];
-		out[3] = razed[1];
-		ThreatIncConfig.log("saturationSlice " + market.getName() + " fp=" + String.format("%.0f", fp)
-				+ " days=" + String.format("%.2f", days) + " poured=" + String.format("%.0f", pour)
-				+ " through=" + String.format("%.2f", through) + " razed=" + (int) out[2]
-				+ (out[3] > 0 ? " DESTROYED" : "") + " loss=" + String.format("%.2f", out[0]));
-		if (out[3] > 0) return out;
-		if (reapply) finishSlice(market, touched, days);
+		// v3 (2026-10-27): no saturation of a human colony by anything of ours; a hive is strata (above)
 		return out;
 	}
 
@@ -4455,20 +4077,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return day;
 	}
 
-	/**
-	 * The run-down a slice of {@code days} may make up on this world: the days
-	 * since any slice last made it up, never more than the slice's own.
-	 */
-	private static float madeUpDays(MarketAPI market, float days) {
-		MemoryAPI mem = market.getMemoryWithoutUpdate();
-		float since = days;
-		if (mem.contains(SIEGE_MADE_UP_KEY)) {
-			since = Global.getSector().getClock().getElapsedDaysSince(mem.getLong(SIEGE_MADE_UP_KEY));
-		}
-		mem.set(SIEGE_MADE_UP_KEY, Global.getSector().getClock().getTimestamp(), SIEGE_MAX_SLICE_DAYS);
-		return Math.max(0f, Math.min(days, since));
-	}
-
 	/** Days since this fleet's last slice, clamped; a first slice stands for vanilla's gap between passes. */
 	public static float siegeSliceDays(CampaignFleetAPI fleet) {
 		MemoryAPI mem = fleet.getMemoryWithoutUpdate();
@@ -4480,120 +4088,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		mem.set(SIEGE_LAST_KEY, now);
 		return Math.max(0.5f, Math.min(SIEGE_MAX_SLICE_DAYS, days));
 	}
-
-	// ------------------------------------------------------------------
-	// THE SWARM'S BOMBARD HOLD (user, 2026-10-12): a swarm fleet carries its
-	// ordnance as a human fleet does. The sector-wide stock had paid every day
-	// of bombardment wherever the fleet stood - 61k fuel over 18 days for a
-	// hive whose port was offline and imports cut - "the swarm pays nothing for
-	// fuel and they could keep bombarding". Now the stock fills a fleet's hold
-	// at first use (the load it would have sailed with) and after that only at
-	// a hive whose port can hand it over; dry, it must go and get more.
-	// ------------------------------------------------------------------
-
-	/** Fleet memory: fuel a swarm fleet carries for its bombardment. */
-	public static final String MEM_BOMBARD_HOLD = "$threatinc_bombardHold";
-	/** Fleet memory: the hold has been loaded once; from then on only an arming port refills it. */
-	protected static final String MEM_BOMBARD_LOADED = "$threatinc_bombardHoldLoaded";
-
-	/** Whether a hive can hand ordnance to the swarms over it: its imports not fully cut by a blockade (ThreatBlockade.HIVE_KEY under 1). Hives have no port since phase A (2026-10-25); the name stays for its readers. */
-	public static boolean portArms(MarketAPI market) {
-		if (market == null || !Factions.THREAT.equals(market.getFactionId())) return false;
-		return market.getMemoryWithoutUpdate().getFloat(ThreatBlockade.HIVE_KEY) < 1f;
-	}
-
-	/** The hive within ORBIT_HOLD_RANGE of the fleet whose port arms it (portArms); null if none. */
-	public static MarketAPI armingHiveNear(CampaignFleetAPI fleet) {
-		if (fleet == null || fleet.getContainingLocation() == null) return null;
-		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
-			SectorEntityToken world = m != null ? m.getPrimaryEntity() : null;
-			if (world == null || world.getContainingLocation() != fleet.getContainingLocation()) continue;
-			if (Misc.getDistance(fleet.getLocation(), world.getLocation()) > ThreatFleetOrders.ORBIT_HOLD_RANGE) continue;
-			if (portArms(m)) return m;
-		}
-		return null;
-	}
-
-	/** The nearest hive to the market, by light-years, whose port arms a swarm (portArms); the market itself never. */
-	public static MarketAPI nearestArmingHive(MarketAPI from) {
-		if (from == null) return null;
-		MarketAPI best = null; float bestLy = Float.MAX_VALUE;
-		for (MarketAPI m : ThreatIncData.getAllLiveColonyMarkets()) {
-			if (m == null || m == from || m.getPrimaryEntity() == null || m.getStarSystem() == null) continue;
-			if (!portArms(m)) continue;
-			float ly = ThreatFuel.ly(from.getStarSystem(), m.getStarSystem());
-			if (ly < bestLy) { bestLy = ly; best = m; }
-		}
-		return best;
-	}
-
-	/** A full hold for a fleet of fp: swarmBombardHoldDays of swarmBombardFuelPerFPDay; 0 with either knob at 0 (no hold, the stock pays every day). */
-	public static float bombardHoldFull(float fp) {
-		return Math.max(0f, ThreatIncConfig.swarmBombardHoldDays()) * Math.max(0f, ThreatIncConfig.swarmBombardFuelPerFPDay())
-				* Math.max(0f, fp);
-	}
-
-	/** Whether swarm fleets carry a hold at all (both knobs above 0 and the swarm pays ordnance). */
-	public static boolean bombardHoldsOn() {
-		return ThreatFuel.paysOrdnance() && ThreatIncConfig.swarmBombardHoldDays() > 0f
-				&& ThreatIncConfig.swarmBombardFuelPerFPDay() > 0f;
-	}
-
-	/** The ordnance a swarm fleet carries now. */
-	public static float bombardHold(CampaignFleetAPI fleet) {
-		return fleet == null ? 0f : Math.max(0f, fleet.getMemoryWithoutUpdate().getFloat(MEM_BOMBARD_HOLD));
-	}
-
-	/**
-	 * Fills what the fleet's hold lacks from the stock: at first use anywhere (the
-	 * load it would have sailed with), after that only within reach of a hive whose
-	 * port arms it (armingHiveNear). The stock pays what it can; short, the hold is
-	 * what it paid. Returns what the fleet carries now.
-	 */
-	public static float reloadBombardHold(CampaignFleetAPI fleet, String why) {
-		if (fleet == null) return 0f;
-		MemoryAPI mem = fleet.getMemoryWithoutUpdate();
-		float have = bombardHold(fleet);
-		float full = bombardHoldFull(fleet.getFleetPoints());
-		if (have >= full) return have;
-		boolean first = !mem.getBoolean(MEM_BOMBARD_LOADED);
-		MarketAPI at = first ? null : armingHiveNear(fleet);
-		if (!first && at == null) return have;
-		float want = full - have;
-		float reserve = bombardReserve();
-		float paid = Math.min(want, Math.max(0f, ThreatFuel.stock() - reserve));
-		mem.set(MEM_BOMBARD_LOADED, true);
-		if (first) HoldRefund.arm(fleet);
-		if (paid <= 0f) return have;
-		ThreatFuel.pay(Commodities.FUEL, paid, "bombard hold");
-		mem.set(MEM_BOMBARD_HOLD, have + paid);
-		ThreatIncConfig.log("Swarm " + (first ? "sails armed" : "rearms at " + at.getName()) + ": " + fleet.getName()
-				+ " (" + (int) fleet.getFleetPoints() + " FP) loads " + (int) paid + " fuel of ordnance"
-				+ (paid < want ? ", stock short " + (int) (want - paid) + (reserve > 0f ? " (reserve " + (int) reserve + ")" : "") : "")
-				+ (why != null ? " - " + why : ""));
-		return have + paid;
-	}
-
-	/**
-	 * A WORKING RESERVE FOR THE ORDNANCE: see below. (The founding budget that kept one founding's
-	 * fuel ahead of the bombardment went with the founding kit, 2026-10-25: a seed costs no fuel.)
-	 */
-	public static float bombardReserve() {
-		// A WORKING RESERVE (the user, 2026-10-13, after hw165-hw171: in five of 21 games the holds
-		// drained the stock to 0 at +120k a month and the founding stopped - "only take fuel for bombard
-		// in the first place if reserves are good"): swarmBombardReserveMonths of the hive's fuel income
-		// stay in the stock; a hold loads only from what lies above. The income is summed once a day.
-		float months = Math.max(0f, ThreatIncConfig.swarmBombardReserveMonths());
-		if (months <= 0f) return 0f;
-		float day = ThreatPosture.today();
-		if (reserveIncomeDay != day) {
-			reserveIncomeDay = day;
-			reserveIncome = Math.max(0f, ThreatFuel.perMonth());
-		}
-		return months * reserveIncome;
-	}
-
-	private static float reserveIncomeDay = -1f, reserveIncome = 0f;
 
 	/** Market memory of saves before 2026-10-24: troops the swarm landed on its own hive from ships broken up over it. ThreatStrata.of folds it into the strata and unsets it. */
 	public static final String HIVE_TROOPS_KEY = "$threatinc_hiveTroops";
@@ -4610,11 +4104,11 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * to the bombardment draining the fuel stock to 0: "only take fuel for bombard in the first place if
 	 * reserves are good. Otherwise they can go with no fuel and just reinforce the front right by breaking
 	 * up ships. Conversely a navy that is small but with lots of fuel doesn't break up ships but bombards a
-	 * lot instead"). A swarm fleet over its own hive with an enemy front on it and no ordnance aboard - the
-	 * stock under its reserve would not arm it (bombardReserve) - breaks up what the hive is short to beat
+	 * lot instead"). A swarm fleet over its own hive with an enemy front on it (v3: the swarm never bombards) breaks up
+	 * what the hive is short to beat
 	 * the front (hiveTroopNeed) at fabricateTroopsPerFP, smallest hulls first, the flagship and the last
 	 * hull spared (applyFleetLosses on the fabrication bank), into the hive's ground troops (hiveTroops).
-	 * No battery toll: the ground is its own. A fleet the stock arms bombards and keeps its hulls. Returns
+	 * No battery toll: the ground is its own. Returns
 	 * {fleet points broken up, troops landed}.
 	 */
 	protected static float[] breakUpForHive(GroundFront front, MarketAPI market, CampaignFleetAPI fleet) {
@@ -4637,8 +4131,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		ThreatIncConfig.log("Swarm breaks up over " + market.getName() + ": " + fleet.getName() + " (" + (int) fpBefore
 				+ " FP) lands " + troops + " troops against the " + ownerOf(front) + " front (" + (int) front.marines
 				+ " marines, " + (int) defenseStrength(front) + " defence); strata " + (int) ThreatStrata.of(market)
-				+ ", counter-attack " + (int) counterAttackStrength(market) + "; fuel stock " + (int) ThreatFuel.stock()
-				+ " under the reserve " + (int) bombardReserve());
+				+ ", counter-attack " + (int) counterAttackStrength(market));
 		// told (the user, 2026-10-13: "should say how much fp converted into x troops"): the swarm's doing,
 		// under its crest and colour, one fact a line
 		ThreatNotice.titled("Swarm Breaks Up").bad()
@@ -4648,8 +4141,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 						ThreatNotice.hl((int) front.marines))
 				.line("Strata %s, counter-attack strength %s.", ThreatNotice.hl((int) ThreatStrata.of(market)),
 						ThreatNotice.hl((int) counterAttackStrength(market)))
-				.line("Fuel stock %s under the reserve of %s.", ThreatNotice.hl((int) ThreatFuel.stock()),
-						ThreatNotice.hl((int) bombardReserve()))
 				.send();
 		return new float[] { removed, troops };
 	}
@@ -4703,51 +4194,6 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 
-	/**
-	 * THE HOLD COMES HOME (hw162, 2026-10-12: on Aphelion 35 strike flotillas
-	 * loaded 517k fuel of ordnance for human-world sieges that used to pay by
-	 * the day, and fired none of it - a strike that bombs three days and sails
-	 * home, or dissolves into its hive, left the other seven days' fuel nowhere).
-	 * A fleet despawned any way but destroyed in battle puts what it carries
-	 * back in the stock (ThreatFuel.deposit, the withdrawing wave's rule);
-	 * destroyed, the cargo went down with it. Armed once, at the first load.
-	 */
-	public static class HoldRefund implements com.fs.starfarer.api.campaign.listeners.FleetEventListener {
-		static void arm(CampaignFleetAPI fleet) {
-			for (Object l : fleet.getEventListeners()) {
-				if (l instanceof HoldRefund) return;
-			}
-			fleet.addEventListener(new HoldRefund());
-		}
-
-		public void reportFleetDespawnedToListener(CampaignFleetAPI fleet,
-				com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason reason, Object param) {
-			if (fleet == null) return;
-			float have = bombardHold(fleet);
-			if (have <= 0f) return;
-			fleet.getMemoryWithoutUpdate().set(MEM_BOMBARD_HOLD, 0f);
-			if (reason == com.fs.starfarer.api.campaign.CampaignEventListener.FleetDespawnReason.DESTROYED_BY_BATTLE) {
-				ThreatIncConfig.log("Swarm lost with its ordnance: " + fleet.getName() + ", " + (int) have + " fuel aboard");
-				return;
-			}
-			ThreatFuel.deposit(Commodities.FUEL, have, 0f);
-			ThreatIncConfig.log("Swarm home with its ordnance: " + fleet.getName() + " returns " + (int) have
-					+ " fuel to the stock");
-		}
-
-		public void reportBattleOccurred(CampaignFleetAPI fleet, CampaignFleetAPI primaryWinner,
-				com.fs.starfarer.api.campaign.BattleAPI battle) {
-		}
-	}
-
-	/** Draws fuel from the fleet's hold; what it could pay. */
-	protected static float spendBombardHold(CampaignFleetAPI fleet, float fuel) {
-		float have = bombardHold(fleet);
-		float paid = Math.max(0f, Math.min(fuel, have));
-		if (paid > 0f) fleet.getMemoryWithoutUpdate().set(MEM_BOMBARD_HOLD, have - paid);
-		return paid;
-	}
-
 	/** The Threat fleets within the swarm orbit radius of a hive world - the fleets swarmOrbitStrength weighs. */
 	public static List<CampaignFleetAPI> swarmFleetsNear(MarketAPI market) {
 		List<CampaignFleetAPI> out = new ArrayList<CampaignFleetAPI>();
@@ -4765,29 +4211,8 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	}
 
 	/**
-	 * The swarm points over a hive that can bombard today, for the board (no side
-	 * effects): fleets with ordnance aboard, never loaded (they load at first use
-	 * while the stock has fuel), or dry over a hive whose port arms them while the
-	 * stock has fuel. Every fleet with the holds off.
-	 */
-	public static float swarmArmedFP(MarketAPI market) {
-		if (!bombardHoldsOn()) return swarmOrbitStrength(market);
-		boolean stock = ThreatFuel.stock() >= 1f;
-		boolean arms = portArms(market);
-		float fp = 0f;
-		for (CampaignFleetAPI fleet : swarmFleetsNear(market)) {
-			MemoryAPI mem = fleet.getMemoryWithoutUpdate();
-			boolean loaded = mem.getBoolean(MEM_BOMBARD_LOADED);
-			if (bombardHold(fleet) > 0f || (stock && (!loaded || arms))) fp += fleet.getFleetPoints();
-		}
-		return fp;
-	}
-
-	/**
-	 * What a fleet's bombardment costs in fuel, paid. The swarm carries none:
-	 * it pays from the hive's fuel stock at the same rate (ThreatFuel,
-	 * 2026-10-01 - it poured without limit), and what the stock cannot pay is
-	 * demand it did not meet (ThreatFuel.unmet). Anyone else pays from its own
+	 * What a fleet's bombardment costs in fuel, paid. The swarm never bombards
+	 * (v3, 2026-10-27): nothing to pay. Anyone else pays from its own
 	 * provisions ({@link ThreatReturns#MEM_FUEL}) first and then from the
 	 * spendable reserve of its supply line ({@link #ordnanceSources}).
 	 * Returns the fuel actually paid, which may be short.
@@ -4799,18 +4224,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	/** As {@link #payOrdnance(CampaignFleetAPI, String, float)}, never touching the last {@code keep} of what the fleet carries (a relief's passage home, {@link #reliefFuelHome}). */
 	public static float payOrdnance(CampaignFleetAPI fleet, String factionId, float fuel, float keep) {
 		if (fuel <= 0f) return 0f;
-		if (Factions.THREAT.equals(factionId)) {
-			if (!ThreatFuel.paysOrdnance()) return fuel;
-			if (fleet != null && bombardHoldsOn()) {
-				// a swarm fleet pays from its own hold (2026-10-12), filled only where a port arms it
-				reloadBombardHold(fleet, null);
-				return spendBombardHold(fleet, fuel);
-			}
-			float paid = Math.min(fuel, ThreatFuel.stock());
-			ThreatFuel.pay(paid);
-			ThreatFuel.unmet(Commodities.FUEL, fuel - paid, "bombardment");
-			return paid;
-		}
+		if (Factions.THREAT.equals(factionId)) return fuel; // v3: the swarm never bombards, nothing to pay
 		if (fleet == null) return 0f;
 		MemoryAPI mem = fleet.getMemoryWithoutUpdate();
 		float carried = Math.max(0f, mem.getFloat(ThreatReturns.MEM_FUEL));
@@ -4829,26 +4243,14 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 		return paid;
 	}
 
-	/** The fuel a fleet could put into its bombardment now, without paying it ({@link #payOrdnance}): the swarm's, the hive's stock. */
+	/** The fuel a fleet could put into its bombardment now, without paying it ({@link #payOrdnance}); the swarm's without limit (v3: it never bombards). */
 	public static float ordnanceAvailable(CampaignFleetAPI fleet, String factionId) {
 		return ordnanceAvailable(fleet, factionId, 0f);
 	}
 
 	/** As {@link #ordnanceAvailable(CampaignFleetAPI, String)}, less the last {@code keep} of what the fleet carries ({@link #payOrdnance(CampaignFleetAPI, String, float, float)}). */
 	public static float ordnanceAvailable(CampaignFleetAPI fleet, String factionId, float keep) {
-		if (Factions.THREAT.equals(factionId)) {
-			if (!ThreatFuel.paysOrdnance()) return Float.MAX_VALUE;
-			if (fleet != null && bombardHoldsOn()) {
-				// its own hold (2026-10-12): dry where no port arms it, the fleet is done here (orbitDoneFor)
-				float have = reloadBombardHold(fleet, null);
-				if (have <= 0f) ThreatFuel.groundedOrdnance(fleet, bombardFuelPerDay(fleet.getFleetPoints()));
-				return have;
-			}
-			// with the stock empty a swarm fleet stands down (orbitDoneFor), and
-			// its day is demand the stock did not meet (once a day)
-			if (fleet != null) ThreatFuel.groundedOrdnance(fleet, bombardFuelPerDay(fleet.getFleetPoints()));
-			return ThreatFuel.stock();
-		}
+		if (Factions.THREAT.equals(factionId)) return Float.MAX_VALUE; // v3: the swarm never bombards
 		if (fleet == null) return 0f;
 		float fuel = Math.max(0f, fleet.getMemoryWithoutUpdate().getFloat(ThreatReturns.MEM_FUEL) - Math.max(0f, keep));
 		for (MarketAPI m : ordnanceSources(fleet, factionId)) {
@@ -5323,7 +4725,7 @@ protected static void takeStratum(GroundFront front, MarketAPI market) {
 	 * A navy's Defend fleet over its own standing front stays however worn
 	 * (2026-09-28, the user: troops on the ground are not left to the swarm):
 	 * holding the orbit costs it nothing, keeps the swarm from bombarding the
-	 * front (tickSwarmBombard) and keeps the door open for the front runs
+	 * front (until v3) and keeps the door open for the front runs
 	 * that reinforce it (ThreatConvoys.canRunTo). It goes only when worn AND
 	 * outweighed - Defense Swarms over the world of at least
 	 * siegeBreakOffRatio x its faction's points there - and the runs'

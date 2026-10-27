@@ -958,110 +958,6 @@ public class ThreatincMarketCMD extends MarketCMD {
 		return;
 	}
 
-	/** The razing-bar saturation of a human colony (v2 section 4), unreachable since v3: vanilla's own saturation runs instead. */
-	protected void bombardSaturationV2() {
-		temp.bombardType = BombardType.SATURATION;
-		// hostile list: vanilla's sweep of the factions that care about
-		// atrocities; the owner alone under the waiver
-		temp.willBecomeHostile.clear();
-		temp.willBecomeHostile.add(faction);
-		List<FactionAPI> nonHostile = new ArrayList<FactionAPI>();
-		if (!faction.isHostileTo(Factions.PLAYER)) nonHostile.add(faction);
-		if (!waiveAtrocity()) {
-			for (FactionAPI other : Global.getSector().getAllFactions()) {
-				if (temp.willBecomeHostile.contains(other)) continue;
-				if (other.getCustomBoolean(Factions.CUSTOM_CARES_ABOUT_ATROCITIES)) {
-					temp.willBecomeHostile.add(other);
-					if (!other.isHostileTo(Factions.PLAYER)) nonHostile.add(other);
-				}
-			}
-		}
-		temp.bombardmentTargets.clear();
-		temp.bombardmentTargets.addAll(ThreatGroundFronts.saturationTargets(market));
-
-		Color h = Misc.getHighlightColor();
-		Color bad = Misc.getNegativeHighlightColor();
-		float fp = playerFleet.getFleetPoints();
-		float pour = saturationPour();
-		temp.bombardCost = saturationFuel(pour);
-		ThreatGroundFronts.BombardDay day = ThreatGroundFronts.bombardDay(fp, market, true);
-		ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(market);
-
-		text.addPara("A day of saturation bombardment:");
-		int size = market.getSize();
-		int layers = ThreatRazing.enemyLayers(market);
-		if (layers < size) {
-			text.addPara("    Your front holds %s of %s " + theatre.layer() + "s; the bombs fall on the other %s.",
-					h, "" + (size - layers), "" + size, "" + layers);
-		}
-		// a hive has no bar (ThreatRazing.razes): the day's wear, unrest and
-		// halted growth are all it buys, and the lines below say those
-		if (ThreatRazing.razes(market) && ThreatRazing.razeable(market) <= 0) {
-			text.addPara("    " + market.getName() + " cannot be razed any further.");
-		} else if (ThreatRazing.razes(market)) {
-			razingLines(pour * day.through, h, bad);
-			float rate = Math.max(0f, ThreatIncConfig.satFuelPerFPDay()) * fp;
-			float whole = ThreatRazing.fuelToDestroyThrough(market);
-			if (rate > 0f && whole > pour + 0.5f) {
-				text.addPara("    Razed in about %s days at this rate: %s fuel in all.", h,
-						"" + (int) Math.ceil(whole / rate), Misc.getWithDGS(Math.round(whole)));
-			}
-		}
-		if (day.shieldNow >= 0f) {
-			text.addPara("    " + ThreatShield.get(market).getCurrentName() + " %s, turning aside %s of the fuel.",
-					h, pct(day.shieldNow), pct(ThreatShield.absorb(market)));
-		}
-		if (!theatre.fortifications(market).isEmpty()) {
-			text.addPara("    Every structure suppressed; the defences %s to %s.", h,
-					pct(day.conditionNow), pct(day.conditionAfter));
-		}
-		for (String line : ThreatGroundFronts.lossLines(playerFleet, day.returnFire)) text.addPara(line, bad);
-		if (day.unrest > 0) text.addPara("Unrest raised to %s.", h, "" + day.unrest);
-
-		if (waiveAtrocity()) {
-			text.addPara("No power in the civilized sector mourns the swarm.");
-		} else if (nonHostile.isEmpty()) {
-			text.addPara("An atrocity of this scale can not be hidden, but any factions that would "
-					+ "be dismayed by such actions are already hostile to you.");
-		} else {
-			text.addPara("An atrocity of this scale can not be hidden, and will make the following "
-					+ "factions hostile:");
-			for (FactionAPI fac : nonHostile) {
-				text.addPara("    " + Misc.ucFirst(fac.getDisplayName()), fac.getBaseUIColor());
-			}
-		}
-		int fuel = (int) playerFleet.getCargo().getFuel();
-		text.addPara("The bombardment requires %s fuel. You have %s fuel.", h,
-				"" + temp.bombardCost, "" + fuel);
-		addBombardConfirmOptions();
-		gateConfirm(fuel >= Math.max(1, temp.bombardCost));
-	}
-
-	/** What the day's fuel does to the razing bar, one line a fact: a destroyed colony, the size it falls to, the level's bar after. */
-	protected void razingLines(float barFuel, Color h, Color bad) {
-		int layers = ThreatRazing.enemyLayers(market);
-		int levels = ThreatRazing.razeable(market);
-		float bar = ThreatRazing.progress(market) + barFuel;
-		int razed = 0;
-		while (razed < levels) {
-			float need = ThreatRazing.levelFuel(layers - razed);
-			if (bar < need) break;
-			bar -= need;
-			razed++;
-		}
-		if (razed > 0 && razed >= layers) {
-			text.addPara("    " + market.getName() + " is destroyed.", bad);
-			return;
-		}
-		if (razed > 0) {
-			text.addPara("    Size %s to %s.", bad, "" + market.getSize(), "" + (market.getSize() - razed));
-		}
-		if (razed < levels) {
-			text.addPara("    The next level: %s of %s fuel.", h, Misc.getWithDGS(Math.round(bar)),
-					Misc.getWithDGS(Math.round(ThreatRazing.levelFuel(layers - razed))));
-		}
-	}
-
 	@Override
 	protected void bombardConfirm() {
 		if (!ThreatIncConfig.enabled()) {
@@ -1173,7 +1069,6 @@ public class ThreatincMarketCMD extends MarketCMD {
 			if (isThreatTarget() && ThreatGroundFronts.fuelPerStratum() > 0f) strataRazed = out[1] / ThreatGroundFronts.fuelPerStratum();
 		} else {
 			loss = ThreatGroundFronts.siegeSlice(fp, market, 1f, true, false, defence, reason);
-			if (isThreatTarget()) applyDangerClose(suppression);
 		}
 		List<FleetMemberAPI> lost = new ArrayList<FleetMemberAPI>();
 		ThreatGroundFronts.applyFleetLosses(playerFleet, loss, lost);
@@ -1250,16 +1145,5 @@ public class ThreatincMarketCMD extends MarketCMD {
 			fmem.set(MemFlags.FACTION_SATURATION_BOMBARED_BY_PLAYER,
 					fmem.getInt(MemFlags.FACTION_SATURATION_BOMBARED_BY_PLAYER) + 1);
 		}
-	}
-
-	/**
-	 * Danger close (docs/ground-war.md): a day of tactical bombardment with your
-	 * front deployed costs it marines, and in exchange the ground forces mark
-	 * targets - the day also lands on the Fabrication Core and the port, at the
-	 * rate it lands on the war-strata. Called from the tactical day, before the
-	 * reapply.
-	 */
-	protected void applyDangerClose(float rate) {
-		if (rate >= 0f) return; // v3 (2026-10-27): danger close is gone with the rest of the custom disruption
 	}
 }

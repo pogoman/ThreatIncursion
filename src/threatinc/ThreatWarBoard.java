@@ -1465,7 +1465,7 @@ public class ThreatWarBoard {
 		// Losses: THE ATTRITION RULE (the user, 2026-10-24), the same line for both sides
 		float per = Math.max(1f, ThreatIncConfig.attritionTroopsPer());
 		float xpL = ThreatMarineXP.frontLossMult(f);
-		float orbit = ThreatGroundFronts.swarmBombardPer30Days(f, m) + ThreatGroundFronts.reliefBombardPer30Days(f, m);
+		float orbit = ThreatGroundFronts.reliefBombardPer30Days(f, m);
 		String vetA = Math.abs(xpL - 1f) >= 0.005f ? " x " + f2(xpL) + " veteran" : "";
 		List<String> lossArgs = new ArrayList<String>();
 		lossArgs.add(ThreatGroundFronts.perDay(ThreatGroundFronts.attritionPer30Days(f, m)));
@@ -1527,12 +1527,6 @@ public class ThreatWarBoard {
 			tooltip.addPara("Final push: arms 0, waited %s d.", 4f, text, neg, "" + (int) ThreatIncConfig.frontDryFinalPushDays());
 		} else if (finalIn >= 0f) {
 			tooltip.addPara("Final push in %s d without resupply.", 4f, text, h, "" + (int) Math.ceil(finalIn));
-		}
-		if (ThreatGroundFronts.swarmBombardPer30Days(f, m) > 0f) {
-			tooltip.addPara("Swarm orbit %s d unopposed: %s FP bombarding.", 4f, text, neg,
-					"" + (int) ThreatGroundFronts.swarmOrbitDaysHeld(f, m), n(ThreatGroundFronts.swarmArmedFP(m)));
-		} else if (ThreatGroundFronts.swarmBombardContested(f, m)) {
-			tooltip.addPara("Orbit contested: bombardment %s.", 4f, text, h, "0");
 		}
 		ThreatGroundFronts.Theatre theatre = ThreatGroundFronts.Theatre.of(m);
 		if (theatre == ThreatGroundFronts.HIVE) {

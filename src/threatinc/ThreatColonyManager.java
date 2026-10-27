@@ -82,10 +82,6 @@ public class ThreatColonyManager {
 	protected static final String REINFORCE_ENGAGED_KEY = "$threatinc_reinforceEngaged";
 	/** A swarm that reached its hive while an enemy held station and has not fought yet: its weight lifts no blockade while the player holds station (ThreatBlockade.foughtPointsNear). */
 	public static final String UNFOUGHT_KEY = "$threatinc_unfought";
-	/** Fleet memory: the hive a swarm sent to rearm returns to (sendToRearm, rearmAndReturn). */
-	public static final String REARM_RETURN_KEY = "$threatinc_rearmReturn";
-	/** Fleet memory: the day a dry swarm was last judged for a rearming trip, so one with nowhere to go is not re-judged every poll. */
-	protected static final String REARM_DAY_KEY = "$threatinc_rearmDay";
 	/** Fleet points a garrison swarm had the moment it was fabricated (under-strength baseline). */
 	public static final String SWARM_SPAWN_FP = "$threatinc_swarmSpawnFP";
 	/** How many swarms of its spec a garrison fleet embodies (absent: one); see growGarrisonFleet. */
@@ -5673,7 +5669,6 @@ public class ThreatColonyManager {
 			}
 
 			if (fleet.getBattle() != null) continue;
-			if (mem.contains(REARM_RETURN_KEY) && rearmAndReturn(fleet, target, mem)) continue;
 
 			inTransit.remove(fleetId);
 			mem.unset(REINFORCE_TARGET_KEY);
@@ -5693,88 +5688,6 @@ public class ThreatColonyManager {
 					+ (am.contains(REINFORCE_DAY_KEY) ? (int) (ThreatPosture.today() - am.getFloat(REINFORCE_DAY_KEY)) : -1) + " d out, "
 					+ (int) fleet.getFleetPoints() + " FP");
 		}
-	}
-
-	/**
-	 * A swarm fleet with no ordnance over a hive whose port cannot arm it
-	 * (ThreatGroundFronts.portArms: disrupted, or imports fully cut by a blockade)
-	 * flies to the nearest hive whose port can (nearestArmingHive), reloads there
-	 * and comes back (rearmAndReturn, from the arrivals poll), its passage both
-	 * ways paid from the stock. A garrison swarm leaves its list for the trip, an
-	 * engaged reinforcement its engagement. Nothing to fly to, or no fuel for the
-	 * trip, it stays, dry; judged once a day. User, 2026-10-12: the stock had paid
-	 * 61k fuel over 18 days of bombardment for a hive whose port was offline and
-	 * imports cut - "the swarm pays nothing for fuel and they could keep
-	 * bombarding" - where a human fleet would have run dry and left.
-	 */
-	public static boolean sendToRearm(CampaignFleetAPI fleet, MarketAPI from) {
-		if (fleet == null || !fleet.isAlive() || from == null) return false;
-		com.fs.starfarer.api.campaign.rules.MemoryAPI mem = fleet.getMemoryWithoutUpdate();
-		if (mem.contains(REARM_RETURN_KEY)) return false;
-		// a raider out or returning keeps its garrison flag but is the raider poll's (hw217c, 2026-10-19: one sent
-		// to rearm was seated home by the poll too, and the two leashes fought over it 7,800 times)
-		if (ThreatRaiders.isRaider(fleet)) return false;
-		// only this hive's own: its garrison, or a reinforcement bound here (a strike or Defend passing through answers to orbitDoneFor)
-		String here = from.getId();
-		if (!here.equals(mem.getString(GARRISON_FLAG)) && !here.equals(mem.getString(REINFORCE_TARGET_KEY))) return false;
-		float day = ThreatPosture.today();
-		if (mem.contains(REARM_DAY_KEY) && day - mem.getFloat(REARM_DAY_KEY) < 1f) return false;
-		mem.set(REARM_DAY_KEY, day);
-		if (fleet.getBattle() != null) return false;
-		MarketAPI to = ThreatGroundFronts.nearestArmingHive(from);
-		if (to == null) {
-			ThreatIncConfig.log("Swarm dry at " + from.getName() + ": " + fleet.getName() + " (" + (int) fleet.getFleetPoints()
-					+ " FP) has no hive with a working port to rearm at");
-			return false;
-		}
-		float ly = ThreatFuel.ly(from.getStarSystem(), to.getStarSystem());
-		float passage = ThreatFuel.passage(fleet.getFleetPoints(), ly, true);
-		if (!ThreatFuel.canPay(passage)) {
-			ThreatFuel.held("a swarm rearming from " + from.getName());
-			return false;
-		}
-		ThreatIncData.garrisonsFor(from.getId()).remove(fleet);
-		ThreatIncData.reinforcementFleets().remove(fleet.getId());
-		mem.unset(GARRISON_FLAG);
-		mem.unset(REINFORCE_ENGAGED_KEY);
-		mem.unset(UNFOUGHT_KEY);
-		mem.set(REARM_RETURN_KEY, from.getId());
-		if (!sendToGarrison(fleet, to)) {
-			mem.unset(REARM_RETURN_KEY);
-			mem.set(GARRISON_FLAG, from.getId());
-			ThreatIncData.garrisonsFor(from.getId()).add(fleet);
-			return false;
-		}
-		ThreatFuel.pay(passage);
-		ThreatIncConfig.log("Swarm rearms: " + fleet.getName() + " (" + (int) fleet.getFleetPoints() + " FP) leaves "
-				+ from.getName() + " for " + to.getName() + " (" + String.format("%.1f", ly) + " ly, " + (int) passage
-				+ " fuel) - port at " + from.getName() + " cannot arm it");
-		return true;
-	}
-
-	/**
-	 * A rearming swarm at the hive it was sent to: fills its hold there and flies
-	 * back to the hive it left (sendToGarrison; its passage was paid at the send).
-	 * True when it turned back; false when it stays here (the hive it left is gone,
-	 * or this port no longer arms it and it is seated here instead).
-	 */
-	protected static boolean rearmAndReturn(CampaignFleetAPI fleet, MarketAPI at,
-			com.fs.starfarer.api.campaign.rules.MemoryAPI mem) {
-		String backId = mem.getString(REARM_RETURN_KEY);
-		mem.unset(REARM_RETURN_KEY);
-		float had = ThreatGroundFronts.bombardHold(fleet);
-		float have = ThreatGroundFronts.reloadBombardHold(fleet, "rearming");
-		MarketAPI back = backId != null ? ThreatIncData.resolveColonyMarket(backId) : null;
-		if (back == null || back == at || back.getPrimaryEntity() == null || have <= had) {
-			ThreatIncConfig.log("Swarm rearmed at " + at.getName() + ": " + fleet.getName() + " stays ("
-					+ (back == null ? "the hive it left is gone" : have <= had ? "nothing loaded here" : "home") + ")");
-			return false;
-		}
-		ThreatIncData.reinforcementFleets().remove(fleet.getId());
-		if (!sendToGarrison(fleet, back)) return false;
-		ThreatIncConfig.log("Swarm rearmed at " + at.getName() + ": " + fleet.getName() + " (" + (int) fleet.getFleetPoints()
-				+ " FP) carries " + (int) have + " fuel of ordnance, returns to " + back.getName());
-		return true;
 	}
 
 	/**

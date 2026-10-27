@@ -392,22 +392,9 @@
 	# v3 (the user, 2026-10-27, docs/suppression-balance.md 10): a human colony's defence is
 	# vanilla's - its structures give their bonus while they run and nothing while vanilla has
 	# them disrupted; nothing of ours wears, scales or strips them, and the swarm never bombards.
-	# raiding a hive's Fabrication Core (the one raid on a war structure left,
-	# 2026-09-28): marines lost grow by (tokens ^ depthLoss - 1) x the
-	# defence's share of the fight x the Core's weight (Ground Defenses = 1)
-	"threatinc_coreRaidDepthLoss": 1.5,
-	"threatinc_coreRaidDepthWeight": 1.0,
-	# Bombardment (docs/suppression-balance.md, v2 2026-09-28). A bombardment
-	# is a day of sorties, once a day: every besieger - a Threat strike, a
-	# faction's or the player's siege expedition, a Support or Defend sortie,
-	# the player's own tactical bombardment - adds suppressDaysPerDay x fleet /
-	# (fleet + defence) x condition disruption days per day to each
-	# fortification (fleet points x siegeFPWeight against the ground-defence
-	# figure). The x condition is what still stands: each pass finds fewer
-	# targets, so orbit softens and boots finish. A hovering fleet makes up
-	# the clock's own run-down (a day per day). A hive's figure is anchored to
-	# its size and runs several times a colony's, so its rate is higher.
-	"threatinc_siegeSuppressDaysPerDay": 12,
+	# Bombardment: since v3 (2026-10-27) only a hive is bombarded by anything of ours - the tac raze takes its
+	# strata (bombardStrataPerFPDay) and the sat bomb its industries (satBomb*); a human colony's structures
+	# are vanilla's and vanilla's bombardment runs on it.
 	"threatinc_siegeFPWeight": 1.0,
 	# the player's bombardments share one lock: another within this many days
 	"threatinc_bombardCooldownDays": 1,
@@ -489,15 +476,10 @@
 	# days a dry Threat front digs in for that expedition before spending
 	# itself in a final push (the swarm does not extract)
 	"threatinc_frontDryFinalPushDays": 120,
-	# each district a front holds seizes its share of the colony's industries, pinned
-	# at districtSeizeDays of disruption while held; its stability and accessibility
-	# penalties went 2026-10-24 (the defence multiplier already charges for the lost
-	# districts, and hives pay the same way)
 	# Threat warships holding a colony's orbit blockade it, as vanilla's League
 	# blockade does: this much accessibility at 1.25x the defenders' points,
 	# half from 0.75x (vanilla 0.6)
 	"threatinc_blockadeAccessPenalty": 0.6,
-	"threatinc_districtSeizeDays": 30,
 	# a Threat ground victory seeds a hive of conquestHiveSize on the spot
 	"threatinc_conquestConverts": true,
 	"threatinc_conquestHiveSize": 2,
@@ -684,31 +666,9 @@
 	# resets (a remnant is not a bombardment platform). The smallest real Defense
 	# Swarm is ~83 FP and a stray frigate ~5-15, so 50 separates them; raise it
 	# toward 150-300 to demand a serious battle group.
-	# the swarm grinds an enemy front it has the orbit over, rather than
-	# annihilating it on a timer (the scour, removed 2026-09-08): this
-	# fraction of the front per 30 days, scaled by its weight over the planet
-	"threatinc_swarmFrontBombardPer30Days": 0.60,
-	# the swarm's bombardment in proportion to the fleet points over the planet (user, 2026-10-12: "shouldn't
-	# be proportional to the FP overhead?" - the fraction rule above capped it at 2% of the front a day whatever
-	# the weight): marines killed a day per fleet point, divided by the front's cover (dug in up to 1.5x) and
-	# scaled by its veterancy; 0 falls back to the fraction rule
-	"threatinc_swarmBombardMarinesPerFPDay": 0.05,
-	# fuel a day of that bombardment draws from the swarm's stock per fleet point (2.86 is the human saturation
-	# rate, satFuelPerFPDay); a day the stock cannot pay is skipped and logged; 0 free
-	"threatinc_swarmBombardFuelPerFPDay": 2.86,
-	# a swarm fleet carries its ordnance (user, 2026-10-12, after the central stock paid 61k fuel over 18 days
-	# for a hive whose port was offline: "the swarm pays nothing for fuel and they could keep bombarding"):
-	# this many days of swarmBombardFuelPerFPDay, drawn from the stock at first use (the launch load) and
-	# refilled only at a hive whose port stands undisrupted with its imports not fully cut; dry over a hive
-	# that cannot arm it, a garrison swarm flies to the nearest hive that can and comes back
-	"threatinc_swarmBombardHoldDays": 10,
-	# the stock arms a hold only above its reserve: this many months of the hive's fuel income, on top of the
-	# founding kit (the user, 2026-10-13, after hw165-hw171: five of 21 games fell to the bombardment draining the
-	# stock to 0 - "only take fuel for bombard in the first place if reserves are good"); 0 arms from any stock
-	"threatinc_swarmBombardReserveMonths": 1,
-	# under the reserve a dry swarm over its own besieged hive breaks up its ships into the hive's ground troops
-	# (fabricateTroopsPerFP a point, smallest first, flagship and last hull spared) instead of bombarding - "they
-	# can go with no fuel and just reinforce the front right by breaking up ships"; a fuel-rich navy never does
+	# the swarm never bombards (v3, 2026-10-27): a swarm over its own besieged hive breaks up its ships into the
+	# hive's strata (fabricateTroopsPerFP a point, smallest first, flagship and last hull spared) - "they can go
+	# with no fuel and just reinforce the front right by breaking up ships"
 	"threatinc_hiveBreakUpEnabled": true,
 	# a relief force holding the orbit over its own invaded world bombards the Threat army on the same formula while
 	# the defenders are losing (the army pushes, or holds and the next counter-attack would not overrun it), paying
@@ -951,11 +911,8 @@
 	# once a month turns a fuel plant its stock can spare into a forge, a
 	# missing chain link or a Swarm Bastion (hiveConvertSurplus); idle fleet
 	# points buy the Swarm Bastion and Swarm Command, which keep two and three
-	# times a colony's reserve of swarms at home (hiveMilitaryTier); the
-	# swarm's bombardment burns the hive's fuel at the rate everyone pays
-	# (threatPaysOrdnance)
+	# times a colony's reserve of swarms at home (hiveMilitaryTier)
 	"threatinc_hiveConvertSurplus": true,
-	"threatinc_threatPaysOrdnance": true,
 	"threatinc_sizeUpkeep": true,
 	"threatinc_sizeUpkeepAt3": 100,
 	"threatinc_sizeUpkeepRatio": 2.5,
