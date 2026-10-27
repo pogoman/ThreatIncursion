@@ -2294,10 +2294,48 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 		return liveSlice(fleet, market);
 	}
 
+	/**
+	 * THE SAT BOMB (the user, 2026-10-27): the expedition's first stroke over a hive, once a hive, paid
+	 * from its siege ordnance - and only when the ordnance left after it still razes the rest of the
+	 * hive at the tac price, so the bomb is a stroke on top of the mission, never in its place. True
+	 * when dropped (the day's pass).
+	 */
+	protected boolean satBombFirst(MarketAPI market, float fp) {
+		if (market == null || fp <= 0f || !ThreatSatBomb.enabled() || !ThreatGroundFronts.strataTarget(market)) return false;
+		String id = market.getId();
+		if (satBombed == null) satBombed = new java.util.HashSet<String>();
+		if (satBombed.contains(id)) return false;
+		float price = ThreatSatBomb.price(market, fp);
+		if (price <= 0f) return false;
+		float rest = Math.max(0f, ThreatStrata.of(market) - ThreatSatBomb.strata(market, fp))
+				* ThreatGroundFronts.fuelPerStratum();
+		if (paysOrdnance && ordnance < price + rest) {
+			ThreatIncConfig.logQuiet("satbomb:" + id, "Sat bomb vs " + market.getName() + " held: " + (int) ordnance
+					+ " ordnance against " + (int) price + " + " + (int) rest + " to raze the rest");
+			return false;
+		}
+		satBombed.add(id);
+		String ourId = getFaction() != null ? getFaction().getId() : null;
+		recordRazing(id, market.getName(), market.getSize(), false);
+		float[] sat = ThreatSatBomb.drop(market, fp, ourId, razeReason());
+		if (paysOrdnance) ordnance = Math.max(0f, ordnance - price);
+		boolean gone = sat[2] > 0f;
+		if (gone) recordRazing(id, market.getName(), market.getSize(), true);
+		ThreatIncConfig.log("Sat bomb vs " + market.getName() + ": " + (int) fp + " FP paid " + (int) price
+				+ " ordnance, razed " + (int) sat[0] + " strata, disrupted " + (int) sat[1] + " industries"
+				+ (gone ? ", destroyed" : "") + (paysOrdnance ? "; " + (int) ordnance + " ordnance left" : ""));
+		return true;
+	}
+
 	/** One live slice of the orbital siege by this fleet: a day's ordnance for every day since its last pass, the batteries' answer taken off the fleet. Always true (the pass is not spent). */
 	protected boolean liveSlice(CampaignFleetAPI fleet, MarketAPI market) {
 		String ourId = getFaction() != null ? getFaction().getId() : null;
 		float fp = fleet.getFleetPoints();
+		// the sat bomb first, once a hive (satBombFirst): the day's pass
+		if (ThreatGroundFronts.strataTarget(market) && satBombFirst(market, fp)) {
+			if (!ThreatGroundFronts.isHiveTarget(market)) markRazed(market.getId());
+			return true;
+		}
 		// a day's ordnance for every day since its last pass, from what the
 		// expedition carries: short of it, the slice is as long as it buys
 		float days = burnOrdnance(market, fp, ThreatGroundFronts.siegeSliceDays(fleet));
@@ -2927,6 +2965,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			return true;
 		}
 		float fp = abstractAllotment();
+		// the sat bomb first, once a hive (satBombFirst): the day's stroke
+		if (ThreatGroundFronts.strataTarget(w) && satBombFirst(w, fp)) {
+			abstractWorldDays++;
+			if (stays) stayWindow(seg);
+			return true;
+		}
 		String why;
 		if (!stays && abstractWorldDays >= ThreatIncConfig.siegeOrbitDays()) {
 			why = "days";
