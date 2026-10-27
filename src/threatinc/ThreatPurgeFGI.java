@@ -2950,6 +2950,12 @@ public class ThreatPurgeFGI extends GenericRaidFGI {
 			}
 			if (troops) {
 				landStaying(action, w, why);
+				// dry and the pass refused the landing (the beachhead test - "Siege pass at X: no landing"): nothing more
+				// it can do here, the leg moves on (hw290, 2026-10-27: Diti re-tried a refused landing x106)
+				if ("dry".equals(why) && !front && !ownFrontOn(w, ourId)) {
+					endWorld(action, w, "dry, landing refused", false);
+					return true;
+				}
 			} else {
 				ThreatIncConfig.logQuiet(dailyKey(w), "Daily siege of " + w.getName() + ", day " + (abstractWorldDays + 1)
 						+ ": holds the orbit over its front (" + why + ")");

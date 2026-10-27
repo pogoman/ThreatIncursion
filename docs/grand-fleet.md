@@ -358,3 +358,10 @@ the hold) re-tried it every day of its stay ("landed (dry), stays, no front" x16
 where the old rule moved the leg on. FIXED (13:45, in the next jar): dry with nothing it can land - no
 marines, or a refused landing - and no front to cover ends the world ("dry, nothing it can land") and the
 leg hops or turns home; dry with a landing the rule accepts lands and holds, dry over a front holds.
+
+Round 60 hw290 (set A, the 13:52 jar) at w2,250-2,365 (14:25): "dry, nothing it can land" fires (14 / 23 / 14) but
+"landed (dry), stays, no front" persists (90 / 176 / 95; Diti x106): `waitsInOrbit` passes a dry fleet (orbit
+done, so `readyToLand` says yes) and the PASS then refuses the landing on the beachhead test ("Siege pass at
+Diti: no landing - 1433 troops would not outlast a counter-attack of 10873 (need 18122)"), so the stay tried
+again the next day. FIXED (14:30, next jar): after `landStaying`, dry with no front of ours on the world ends it
+("dry, landing refused") and the leg moves on.
